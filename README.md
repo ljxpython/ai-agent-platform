@@ -260,12 +260,20 @@ AITestLab/
 │   │   ├── chat.py           # 对话模型
 │   │   ├── testcase.py       # 测试用例模型
 │   │   └── role.py           # 角色权限模型
+│   ├── ai_core/              # AI核心组件（新增）
+│   │   ├── __init__.py       # 统一导出接口
+│   │   ├── llm.py           # LLM客户端管理器（支持多模型）
+│   │   ├── agents.py        # 智能体基础类
+│   │   ├── factory.py       # 智能体工厂
+│   │   ├── runtime.py       # 运行时基类
+│   │   ├── memory.py        # 内存管理器
+│   │   └── testcase_runtime.py # 测试用例专用运行时
 │   ├── core/                 # 核心功能模块
 │   │   ├── init_app.py       # 应用初始化
 │   │   ├── database.py       # 数据库配置
 │   │   ├── security.py       # 安全认证
 │   │   ├── dependency.py     # 权限依赖注入
-│   │   └── llm.py           # LLM客户端管理
+│   │   └── llm.py           # LLM客户端管理（兼容层）
 │   ├── conf/                 # 配置管理
 │   └── utils/                # 工具函数
 ├── frontend/                  # 前端应用

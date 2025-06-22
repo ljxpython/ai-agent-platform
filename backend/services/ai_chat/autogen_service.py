@@ -12,8 +12,8 @@ from loguru import logger
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 sys.path.append(project_root)
 
-# 使用 backend 目录下的配置
-from backend.core.llm import get_openai_model_client
+# 使用 AI 核心模块的配置
+from backend.ai_core.llm import get_default_client
 
 
 class AutoGenService:
@@ -49,7 +49,7 @@ class AutoGenService:
             safe_name = f"assistant_{conversation_id.replace('-', '_')}"
             agent = AssistantAgent(
                 name=safe_name,
-                model_client=get_openai_model_client(),
+                model_client=get_default_client(),
                 system_message=system_message,
                 model_client_stream=True,
             )

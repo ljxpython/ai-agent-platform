@@ -40,8 +40,8 @@ from autogen_core import (
 from loguru import logger
 from pydantic import BaseModel, Field
 
+from backend.ai_core.llm import get_default_client as get_model_client
 from backend.conf.config import settings
-from backend.core.llm import get_openai_model_client as get_model_client
 from backend.models.midscene import (
     MidsceneAgentLog,
     MidsceneSession,

@@ -25,50 +25,31 @@ from backend.services.document.document_service import document_service
 from backend.services.testcase.testcase_service import (
     FeedbackMessage,
     RequirementMessage,
-    get_message_queue,
-    put_feedback_to_queue,
-    testcase_runtime,
     testcase_service,
 )
 
 testcase_router = APIRouter()
 
 
-# 消费者（SSE流生成）- 参考examples/topic1.py
+# 消费者（SSE流生成）- 直接使用TestCaseService的流式接口
 async def testcase_message_generator(conversation_id: str):
     """
-    测试用例流式消息生成器 - 队列消费者模式
-
-    参考examples/topic1.py中的message_generator实现
+    测试用例流式消息生成器 - 直接使用TestCaseService
     """
-    queue = await get_message_queue(conversation_id)
     try:
-        while True:
-            message = await queue.get()  # 阻塞直到有消息
-            if message == "CLOSE":
-                logger.info(f"🏁 [队列消费者] 收到结束信号 | 对话ID: {conversation_id}")
-                break
-            yield f"data: {message}\n\n"
-            queue.task_done()  # 标记任务完成
-            logger.debug(f"📤 [队列消费者] 消息已发送 | 对话ID: {conversation_id}")
+        # 直接使用TestCaseService的流式消息获取方法
+        async for message in testcase_service.get_streaming_messages(conversation_id):
+            yield message
     except Exception as e:
-        logger.error(
-            f"❌ [队列消费者] 消息生成失败 | 对话ID: {conversation_id} | 错误: {e}"
-        )
+        logger.error(f"❌ [流式消息] 生成失败 | 对话ID: {conversation_id} | 错误: {e}")
         error_message = {
             "type": "error",
             "source": "system",
-            "content": f"消息生成失败: {str(e)}",
+            "content": f"流式消息生成失败: {str(e)}",
             "conversation_id": conversation_id,
             "timestamp": datetime.now().isoformat(),
         }
         yield f"data: {json.dumps(error_message, ensure_ascii=False)}\n\n"
-    finally:
-        # 清理资源 - 参考examples/topic1.py
-        from backend.services.testcase.testcase_service import message_queues
-
-        message_queues.pop(conversation_id, None)
-        logger.debug(f"🗑️ [队列消费者] 队列资源已清理 | 对话ID: {conversation_id}")
 
 
 class FeedbackRequest(BaseModel):
@@ -251,8 +232,11 @@ async def submit_feedback_simple(conversation_id: str, message: str):
     logger.info(f"   💭 反馈内容: {message}")
     logger.info(f"   🌐 请求方法: GET /api/testcase/feedback (简单模式)")
 
-    # 直接放入反馈队列 - 参考examples/topic1.py
-    asyncio.create_task(put_feedback_to_queue(conversation_id, message))
+    # 使用新的服务接口处理反馈
+    feedback = FeedbackMessage(
+        feedback=message, conversation_id=conversation_id, round_number=1
+    )
+    asyncio.create_task(testcase_service.process_user_feedback(feedback))
 
     logger.success(f"✅ [API-简单反馈] 反馈已放入队列 | 对话ID: {conversation_id}")
     return {"message": "ok"}
@@ -288,39 +272,16 @@ async def get_conversation_history(conversation_id: str):
     logger.info(f"   🌐 请求方法: GET /api/testcase/history/{conversation_id}")
 
     try:
-        # 步骤1: 获取历史记录
-        logger.info(
-            f"📖 [API-历史接口] 步骤1: 获取历史记录 | 对话ID: {conversation_id}"
-        )
-        history = await testcase_service.get_history(conversation_id)
+        # 获取对话历史
+        logger.info(f"📖 [API-历史接口] 获取对话历史 | 对话ID: {conversation_id}")
+        history = await testcase_service.get_conversation_history(conversation_id)
         logger.info(f"   📊 历史记录数量: {len(history)}")
-        logger.debug(f"   📋 历史记录: {history}")
 
-        # 步骤2: 获取消息列表
-        logger.info(
-            f"📨 [API-历史接口] 步骤2: 获取消息列表 | 对话ID: {conversation_id}"
-        )
-        messages = testcase_service.get_messages(conversation_id)
-        logger.info(f"   📊 消息数量: {len(messages)}")
-
-        # 统计消息类型
-        message_types = {}
-        for msg in messages:
-            msg_type = msg.get("message_type", "unknown")
-            message_types[msg_type] = message_types.get(msg_type, 0) + 1
-        logger.info(f"   📊 消息类型统计: {message_types}")
-
-        # 步骤3: 构造响应数据
-        logger.info(
-            f"📋 [API-历史接口] 步骤3: 构造响应数据 | 对话ID: {conversation_id}"
-        )
+        # 构造响应数据
         response_data = {
             "conversation_id": conversation_id,
             "history": history,
-            "messages": messages,
-            "total_messages": len(messages),
             "total_history": len(history),
-            "message_types": message_types,
         }
         logger.debug(f"   📦 响应数据: {response_data}")
 
@@ -328,7 +289,6 @@ async def get_conversation_history(conversation_id: str):
             f"✅ [API-历史接口] 对话历史获取成功 | 对话ID: {conversation_id}"
         )
         logger.info(f"   📊 历史记录: {len(history)} 条")
-        logger.info(f"   📊 消息记录: {len(messages)} 条")
 
         return response_data
 
@@ -359,8 +319,8 @@ async def clear_conversation_history(conversation_id: str):
     logger.info(f"   🌐 请求方法: DELETE /api/testcase/conversation/{conversation_id}")
 
     try:
-        # 清除历史记录和消息
-        await testcase_service.clear_conversation(conversation_id)
+        # 清除对话资源
+        await testcase_service.cleanup_conversation(conversation_id)
 
         logger.success(
             f"✅ [API-清除历史] 对话历史清除成功 | 对话ID: {conversation_id}"

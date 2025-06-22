@@ -19,6 +19,23 @@
 - [用户系统架构](./architecture/USER_SYSTEM.md) - 用户认证和权限管理
 - [服务重构文档](./architecture/SERVICES_REFACTORING.md) - 后端服务模块化重构
 - [服务优化总结](./architecture/SERVICES_OPTIMIZATION_SUMMARY.md) - 服务框架优化成果
+- [AI核心框架文档](./architecture/AI_CORE_FRAMEWORK.md) - AI核心组件和LLM管理器
+- [框架优化第三步](./architecture/FRAMEWORK_OPTIMIZATION_STEP3.md) - 服务抽象与智能体框架
+- [测试用例服务重构](./architecture/TESTCASE_SERVICE_REFACTORING.md) - 基于AI核心框架的服务重构实践
+- [AutoGen序列化问题修复](./architecture/AUTOGEN_SERIALIZATION_FIX.md) - AutoGen消息订阅和序列化问题解决方案
+- [消息队列重构](./architecture/MESSAGE_QUEUE_REFACTORING.md) - 移除重复代码，复用AI核心框架队列功能
+- [真实智能体实现](./architecture/REAL_AGENT_IMPLEMENTATION.md) - 从mock数据升级为真实的AI智能体功能
+- [智能体继承重构](./architecture/AGENT_INHERITANCE_REFACTORING.md) - 智能体正确继承AI核心框架基类，复用框架功能
+- [AI核心智能体基类重构](./architecture/AI_CORE_AGENTS_REFACTORING.md) - 参考examples/frame_v1设计，提供标准化智能体基类
+- [完全参考testcase_service1.py的智能体实现](./architecture/TESTCASE_SERVICE1_AGENT_IMPLEMENTATION.md) - 不使用StreamingAgent，完全复用testcase_service1.py的逻辑
+- [智能体初始化修复](./architecture/AGENT_INITIALIZATION_FIX.md) - 修复register_agents函数，使用工厂模式创建智能体
+- [队列消息修复](./architecture/QUEUE_MESSAGE_FIX.md) - 修复智能体消息队列，使用正确的testcase_service队列管理
+- [内存管理集成](./architecture/MEMORY_MANAGEMENT_INTEGRATION.md) - 集成AI核心框架的内存管理器，统一智能体记忆功能
+- [内存管理优化](./architecture/MEMORY_OPTIMIZATION.md) - 优化内存管理底层健壮性，上层直接导入使用
+- [AI核心模块健壮性增强](./architecture/AI_CORE_ROBUSTNESS_ENHANCEMENT.md) - 全面增强AI核心模块的容错机制和日志记录
+- [TestCase服务文件方法修复](./architecture/TESTCASE_SERVICE_FILE_METHODS_FIX.md) - 修复智能体访问文件内容的方法缺失问题
+- [智能体流式日志调试增强](./architecture/AGENT_STREAMING_DEBUG_ENHANCEMENT.md) - 增强智能体流式处理的详细日志记录和调试能力
+- [测试用例智能体用户反馈功能实现](./architecture/TESTCASE_AGENT_USER_FEEDBACK_IMPLEMENTATION.md) - 实现测试用例智能体的团队协作和用户反馈机制
 
 ### 💻 开发指南
 - [开发环境配置](./development/README.md) - 开发环境详细配置

@@ -25,7 +25,7 @@ from .document import (
 )
 
 # 测试用例生成模块
-from .testcase import TestCaseService
+from .testcase import TestCaseService, testcase_service
 
 # UI测试模块
 from .ui_testing import MidsceneService
@@ -36,6 +36,7 @@ __all__ = [
     "autogen_service",
     # 测试用例生成
     "TestCaseService",
+    "testcase_service",
     # UI测试
     "MidsceneService",
     # 文档处理
