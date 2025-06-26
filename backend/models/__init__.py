@@ -6,6 +6,7 @@ from .api import Api
 from .base import BaseModel, TimestampMixin
 from .chat import ChatMessage
 from .department import Department
+from .rag_file import RAGFileRecord
 from .role import Role, RoleApi
 from .testcase import TestCaseConversation, TestCaseFile, TestCaseMessage
 from .user import User, UserSession
@@ -23,4 +24,5 @@ __all__ = [
     "RoleApi",
     "Department",
     "Api",
+    "RAGFileRecord",
 ]

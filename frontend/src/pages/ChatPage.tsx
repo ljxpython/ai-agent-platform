@@ -27,6 +27,9 @@ import {
   DatabaseOutlined,
   RobotOutlined,
   BookOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+
 } from '@ant-design/icons';
 import { v4 as uuidv4 } from 'uuid';
 import ChatMessage from '@/components/ChatMessage';
@@ -42,12 +45,13 @@ const { Option } = Select;
 
 // RAG消息类型
 interface RAGMessage {
-  type: 'rag_result' | 'agent_start' | 'streaming_chunk' | 'complete' | 'error';
+  type: 'rag_start' | 'rag_retrieval' | 'rag_retrieved_start' | 'rag_retrieved_chunk' | 'rag_retrieved_end' | 'rag_no_result' | 'agent_start' | 'streaming_chunk' | 'complete' | 'error';
   source: string;
   content: string;
   rag_answer?: string;
   retrieved_count?: number;
   collection_name?: string;
+  document_index?: number;
   timestamp: string;
 }
 
@@ -64,6 +68,15 @@ const ChatPage: React.FC = () => {
   const [ragStatus, setRagStatus] = useState<any>(null);
   const [isUserScrolling, setIsUserScrolling] = useState<boolean>(false);
   const [shouldAutoScroll, setShouldAutoScroll] = useState<boolean>(true);
+
+  // 文件上传相关状态
+  const [selectedFiles, setSelectedFiles] = useState<any[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  // RAG召回文档相关状态
+  const [retrievedDocuments, setRetrievedDocuments] = useState<any[]>([]);
+  const [showRetrievedDocs, setShowRetrievedDocs] = useState<boolean>(false);
+  const [retrievedDocsMessageId, setRetrievedDocsMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -183,15 +196,26 @@ const ChatPage: React.FC = () => {
     }
   };
 
-  // 文件上传处理
-  const handleFileUpload = async (fileList: any[]) => {
-    if (fileList.length === 0) return;
+  // 文件选择处理
+  const handleFileChange = ({ fileList }: any) => {
+    setSelectedFiles(fileList);
+  };
 
+  // 确认上传文件
+  const handleConfirmUpload = async () => {
+    if (selectedFiles.length === 0) {
+      antMessage.warning('请先选择要上传的文件');
+      return;
+    }
+
+    setUploading(true);
     const formData = new FormData();
-    fileList.forEach(file => {
-      formData.append('files', file.originFileObj);
+
+    selectedFiles.forEach(file => {
+      formData.append('files', file.originFileObj || file);
     });
     formData.append('collection_name', selectedCollection);
+    formData.append('user_id', 'frontend_user');
 
     try {
       const response = await fetch('/api/v1/chat/upload', {
@@ -200,16 +224,53 @@ const ChatPage: React.FC = () => {
       });
 
       const result = await response.json();
+
       if (result.success) {
-        antMessage.success(`文件上传成功！已添加到 ${selectedCollection} 知识库`);
+        const { summary } = result;
+        let message = `文件处理完成！`;
+
+        if (summary.success > 0) {
+          message += ` 成功上传 ${summary.success} 个文件`;
+        }
+        if (summary.duplicate > 0) {
+          message += ` ${summary.duplicate} 个文件已存在`;
+        }
+        if (summary.failed > 0) {
+          message += ` ${summary.failed} 个文件失败`;
+        }
+
+        antMessage.success(message);
+
+        // 显示详细结果
+        result.results.forEach((fileResult: any) => {
+          if (fileResult.status === 'duplicate') {
+            antMessage.info(`${fileResult.filename}: 文件已存在于知识库中`);
+          } else if (!fileResult.success) {
+            antMessage.error(`${fileResult.filename}: ${fileResult.message}`);
+          }
+        });
+
+        // 重置状态
+        setSelectedFiles([]);
         setUploadModalVisible(false);
+
+        // 刷新RAG状态
+        loadRAGStatus();
       } else {
         antMessage.error('文件上传失败');
       }
     } catch (error) {
       console.error('文件上传失败:', error);
       antMessage.error('文件上传失败');
+    } finally {
+      setUploading(false);
     }
+  };
+
+  // 取消上传
+  const handleCancelUpload = () => {
+    setSelectedFiles([]);
+    setUploadModalVisible(false);
   };
 
   // 清理 EventSource
@@ -234,7 +295,7 @@ const ChatPage: React.FC = () => {
     setMessages(prev => [...prev, userMessage]);
     setLoading(true);
 
-    // 创建助手消息占位符
+    // 创建助手消息占位符（但不立即添加到消息列表）
     const assistantMessageId = uuidv4();
     const assistantMessage: ChatMessageType = {
       id: assistantMessageId,
@@ -243,8 +304,6 @@ const ChatPage: React.FC = () => {
       timestamp: new Date(),
       isStreaming: true,
     };
-
-    setMessages(prev => [...prev, assistantMessage]);
 
     try {
       // 使用RAG增强的流式API
@@ -299,11 +358,14 @@ const ChatPage: React.FC = () => {
                   const ragMessage: RAGMessage = data;
 
                   if (ragMessage.type === 'rag_start') {
-                    // RAG查询开始
+                    // RAG查询开始 - 清空之前的召回文档
+                    setRetrievedDocuments([]);
+                    setShowRetrievedDocs(false);
+                    setRetrievedDocsMessageId(null);
                     setMessages(prev =>
                       prev.map(msg =>
                         msg.id === assistantMessageId
-                          ? { ...msg, content: msg.content + ragMessage.content + '\n' }
+                          ? { ...msg, content: msg.content + `🔍 ${ragMessage.content}\n` }
                           : msg
                       )
                     );
@@ -312,37 +374,76 @@ const ChatPage: React.FC = () => {
                     setMessages(prev =>
                       prev.map(msg =>
                         msg.id === assistantMessageId
-                          ? { ...msg, content: msg.content + ragMessage.content + '\n' }
+                          ? { ...msg, content: msg.content + `📄 ${ragMessage.content}\n` }
                           : msg
                       )
                     );
-                  } else if (ragMessage.type === 'rag_answer_start') {
-                    // RAG回答开始
-                    setMessages(prev =>
-                      prev.map(msg =>
-                        msg.id === assistantMessageId
-                          ? { ...msg, content: msg.content + '\n' + ragMessage.content + '\n' }
-                          : msg
-                      )
-                    );
-                  } else if (ragMessage.type === 'rag_answer_chunk') {
-                    // RAG回答流式块
-                    setMessages(prev =>
-                      prev.map(msg =>
-                        msg.id === assistantMessageId
-                          ? { ...msg, content: msg.content + ragMessage.content }
-                          : msg
-                      )
-                    );
-                  } else if (ragMessage.type === 'rag_answer_end') {
-                    // RAG回答结束
-                    setMessages(prev =>
-                      prev.map(msg =>
-                        msg.id === assistantMessageId
-                          ? { ...msg, content: msg.content + ragMessage.content }
-                          : msg
-                      )
-                    );
+                  } else if (ragMessage.type === 'rag_retrieved_start') {
+                    // 召回内容开始 - 创建召回文档消息
+                    const docsMessageId = uuidv4();
+                    setRetrievedDocsMessageId(docsMessageId);
+
+                    const retrievedDocsMessage: ChatMessageType = {
+                      id: docsMessageId,
+                      content: ragMessage.content,
+                      role: 'retrieved_docs',
+                      timestamp: new Date(),
+                      retrievedDocuments: []
+                    };
+
+                    setMessages(prev => [...prev, retrievedDocsMessage]);
+                  } else if (ragMessage.type === 'rag_retrieved_chunk') {
+                    // 召回文档内容块 - 更新召回文档消息
+                    const docIndex = ragMessage.document_index || 0;
+                    const content = ragMessage.content;
+
+                    // 解析相似度分数（如果存在）
+                    const similarityMatch = content.match(/相似度:\s*([\d.]+)/);
+                    const similarity = similarityMatch ? parseFloat(similarityMatch[1]) : undefined;
+
+                    // 更新召回文档列表
+                    setRetrievedDocuments(prev => {
+                      const existingDoc = prev.find(doc => doc.index === docIndex);
+                      if (existingDoc) {
+                        // 更新现有文档内容
+                        return prev.map(doc =>
+                          doc.index === docIndex
+                            ? { ...doc, content: doc.content + content, similarity: similarity || doc.similarity }
+                            : doc
+                        );
+                      } else {
+                        // 添加新文档
+                        return [...prev, { index: docIndex, content, similarity }];
+                      }
+                    });
+
+                    // 更新召回文档消息
+                    if (retrievedDocsMessageId) {
+                      setMessages(prev =>
+                        prev.map(msg => {
+                          if (msg.id === retrievedDocsMessageId) {
+                            const updatedDocs = [...(msg.retrievedDocuments || [])];
+                            const existingDocIndex = updatedDocs.findIndex(doc => doc.index === docIndex);
+
+                            if (existingDocIndex >= 0) {
+                              updatedDocs[existingDocIndex] = {
+                                ...updatedDocs[existingDocIndex],
+                                content: updatedDocs[existingDocIndex].content + content,
+                                similarity: similarity || updatedDocs[existingDocIndex].similarity
+                              };
+                            } else {
+                              updatedDocs.push({ index: docIndex, content, similarity });
+                            }
+
+                            return { ...msg, retrievedDocuments: updatedDocs };
+                          }
+                          return msg;
+                        })
+                      );
+                    }
+                  } else if (ragMessage.type === 'rag_retrieved_end') {
+                    // 召回内容结束 - 创建AI助手消息
+                    setMessages(prev => [...prev, assistantMessage]);
                   } else if (ragMessage.type === 'rag_no_result') {
                     // RAG无结果
                     setMessages(prev =>
@@ -353,14 +454,12 @@ const ChatPage: React.FC = () => {
                       )
                     );
                   } else if (ragMessage.type === 'agent_start') {
-                    // 显示Agent开始处理
-                    setMessages(prev =>
-                      prev.map(msg =>
-                        msg.id === assistantMessageId
-                          ? { ...msg, content: msg.content + ragMessage.content + '\n\n' }
-                          : msg
-                      )
-                    );
+                    // Agent开始处理 - 添加AI助手消息到消息列表
+                    const updatedAssistantMessage = {
+                      ...assistantMessage,
+                      content: ragMessage.content + '\n\n'
+                    };
+                    setMessages(prev => [...prev, updatedAssistantMessage]);
                   } else if (ragMessage.type === 'streaming_chunk') {
                     // 流式内容
                     setMessages(prev =>
@@ -856,9 +955,22 @@ const ChatPage: React.FC = () => {
       <Modal
         title="上传文件到知识库"
         open={uploadModalVisible}
-        onCancel={() => setUploadModalVisible(false)}
-        footer={null}
-        width={600}
+        onCancel={handleCancelUpload}
+        footer={[
+          <Button key="cancel" onClick={handleCancelUpload}>
+            取消
+          </Button>,
+          <Button
+            key="upload"
+            type="primary"
+            loading={uploading}
+            disabled={selectedFiles.length === 0}
+            onClick={handleConfirmUpload}
+          >
+            确认上传 {selectedFiles.length > 0 && `(${selectedFiles.length}个文件)`}
+          </Button>
+        ]}
+        width={700}
       >
         <div style={{ padding: '20px 0' }}>
           <Space direction="vertical" style={{ width: '100%' }} size="large">
@@ -871,37 +983,64 @@ const ChatPage: React.FC = () => {
                 placeholder="选择要上传到的知识库"
               >
                 {availableCollections.map(collection => (
-                  <Option key={collection} value={collection}>
+                  <Select.Option key={collection} value={collection}>
                     <Space>
                       <DatabaseOutlined />
                       {collection}
                     </Space>
-                  </Option>
+                  </Select.Option>
                 ))}
               </Select>
             </div>
 
             <div>
-              <Text strong>上传文件：</Text>
+              <Text strong>选择文件：</Text>
               <Upload.Dragger
                 multiple
+                fileList={selectedFiles}
                 beforeUpload={() => false}
-                onChange={({ fileList }) => {
-                  if (fileList.length > 0) {
-                    handleFileUpload(fileList);
-                  }
-                }}
+                onChange={handleFileChange}
                 style={{ marginTop: 8 }}
+                disabled={uploading}
               >
                 <p className="ant-upload-drag-icon">
                   <UploadOutlined style={{ fontSize: 48, color: '#1890ff' }} />
                 </p>
-                <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
+                <p className="ant-upload-text">点击或拖拽文件到此区域选择</p>
                 <p className="ant-upload-hint">
-                  支持单个或批量上传。文件将被添加到选定的知识库中，用于增强AI回答的准确性。
+                  支持多文件选择。选择完成后点击"确认上传"按钮开始上传。
+                  <br />
+                  系统会自动检测重复文件，避免重复上传相同内容。
                 </p>
               </Upload.Dragger>
             </div>
+
+            {selectedFiles.length > 0 && (
+              <div>
+                <Text strong>已选择 {selectedFiles.length} 个文件：</Text>
+                <div style={{
+                  marginTop: 8,
+                  maxHeight: 200,
+                  overflowY: 'auto',
+                  border: '1px solid #d9d9d9',
+                  borderRadius: 6,
+                  padding: 12
+                }}>
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '4px 0',
+                      borderBottom: index < selectedFiles.length - 1 ? '1px solid #f0f0f0' : 'none'
+                    }}>
+                      <span>{file.name}</span>
+                      <Tag color="blue">{(file.size / 1024).toFixed(1)} KB</Tag>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {ragStatus && (
               <Card size="small" title="知识库状态">

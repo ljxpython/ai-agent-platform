@@ -234,8 +234,8 @@ class RAGQueryController:
     async def get_system_stats(self) -> Success:
         """获取系统统计信息"""
         # 获取Collections统计
-        total_collections = await RAGCollection.count()
-        total_documents = await RAGDocument.count()
+        total_collections = await RAGCollection.all().count()
+        total_documents = await RAGDocument.all().count()
 
         # 模拟其他统计数据
         stats = {

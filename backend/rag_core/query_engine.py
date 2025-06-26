@@ -72,10 +72,10 @@ class RAGQueryEngine:
             self.embedding_generator = EmbeddingGenerator(self.config)
             await self.embedding_generator.initialize()
 
-            # 初始化LLM服务
+            # # 初始化LLM服务,使用Autogen的assitant,暂时注释调该部分
             self.llm_service = LLMService(self.config)
             self.llm_service.initialize()
-
+            #
             # 创建向量索引
             self.index = VectorStoreIndex.from_vector_store(
                 vector_store=self.vector_db.vector_store,

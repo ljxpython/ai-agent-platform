@@ -161,8 +161,21 @@ class RAGService:
         """
         await self.ensure_initialized()
 
+        operation_id = f"add_text_{hash(text[:100])}_{collection_name}"
         try:
+            logger.info(
+                f"🚀 [操作开始] {operation_id} | 添加文本到Collection: {collection_name}"
+            )
+            logger.info(f"📝 [文本信息] 长度: {len(text)} 字符 | 元数据: {metadata}")
+
+            # 开始添加文本
+            logger.info(f"⚙️ [处理阶段] 开始向量化和存储文本...")
             node_count = await self.rag_system.add_text(text, collection_name, metadata)
+
+            logger.success(f"🎉 [操作完成] {operation_id} - 文本添加成功")
+            logger.info(
+                f"📊 [结果详情] Collection: {collection_name} | 节点数: {node_count} | 文本长度: {len(text)}"
+            )
 
             return {
                 "success": True,
@@ -173,12 +186,44 @@ class RAGService:
             }
 
         except Exception as e:
-            logger.error(f"❌ 文本添加失败 - Collection: {collection_name}: {e}")
+            logger.error(
+                f"💥 [操作失败] {operation_id} - Collection: {collection_name} | 错误: {str(e)}"
+            )
+            logger.error(
+                f"🔍 [错误详情] 异常类型: {type(e).__name__} | 文本长度: {len(text)}"
+            )
             return {
                 "success": False,
                 "message": f"文本添加失败: {str(e)}",
                 "collection_name": collection_name,
             }
+
+    async def add_text_to_collection(
+        self,
+        text: str,
+        collection_name: str = "general",
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """
+        添加文本到指定collection（add_text的别名方法）
+
+        Args:
+            text: 要添加的文本内容
+            collection_name: 集合名称
+            metadata: 元数据
+
+        Returns:
+            Dict: 添加结果，包含vector_count和chunk_count
+        """
+        result = await self.add_text(text, collection_name, metadata)
+
+        # 为了兼容性，添加vector_count和chunk_count字段
+        if result.get("success", False):
+            node_count = result.get("node_count", 0)
+            result["vector_count"] = node_count
+            result["chunk_count"] = node_count
+
+        return result
 
     async def add_file(
         self, file_path: Union[str, Path], collection_name: str = "general"

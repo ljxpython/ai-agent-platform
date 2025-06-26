@@ -1,9 +1,10 @@
 export interface ChatMessage {
   id: string;
   content: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'retrieved_docs';
   timestamp: Date;
   isStreaming?: boolean;
+  retrievedDocuments?: any[];
 }
 
 export interface ChatRequest {

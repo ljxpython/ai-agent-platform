@@ -372,6 +372,72 @@ class DocumentService:
             "llm_enabled": self.config.use_llm,
         }
 
+    async def parse_file_content(
+        self, content: bytes, filename: str, file_type: str
+    ) -> str:
+        """
+        解析文件内容，提取文本
+
+        Args:
+            content: 文件二进制内容
+            filename: 文件名
+            file_type: 文件类型（扩展名）
+
+        Returns:
+            str: 解析后的文本内容
+        """
+        try:
+            # 创建临时文件
+            import tempfile
+
+            with tempfile.NamedTemporaryFile(
+                suffix=file_type, delete=False
+            ) as temp_file:
+                temp_file.write(content)
+                temp_file_path = temp_file.name
+
+            try:
+                # 使用文件处理器解析内容
+                result = await self.file_processor.process_file(
+                    temp_file_path, filename
+                )
+
+                if result.get("success", False):
+                    return result.get("content", "")
+                else:
+                    # 如果处理失败，尝试简单的文本解码
+                    if file_type.lower() in [
+                        ".txt",
+                        ".md",
+                        ".py",
+                        ".js",
+                        ".html",
+                        ".css",
+                        ".json",
+                        ".xml",
+                    ]:
+                        try:
+                            return content.decode("utf-8")
+                        except UnicodeDecodeError:
+                            try:
+                                return content.decode("gbk")
+                            except UnicodeDecodeError:
+                                return content.decode("latin-1")
+                    else:
+                        return f"无法解析文件类型: {file_type}"
+
+            finally:
+                # 清理临时文件
+                Path(temp_file_path).unlink(missing_ok=True)
+
+        except Exception as e:
+            logger.error(f"解析文件内容失败: {filename} | 错误: {e}")
+            # 尝试简单的文本解码作为后备方案
+            try:
+                return content.decode("utf-8")
+            except UnicodeDecodeError:
+                return f"文件解析失败: {str(e)}"
+
 
 # 创建全局文档服务实例
 document_service = DocumentService()

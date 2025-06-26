@@ -50,6 +50,7 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ children }) => {
     if (path.startsWith('/rag')) {
       if (path === '/rag' || path === '/rag/dashboard') return 'rag-dashboard';
       if (path === '/rag/documents') return 'rag-documents';
+      if (path === '/rag/collections') return 'rag-collections';
       if (path === '/rag/vectors') return 'rag-vectors';
       if (path === '/rag/monitoring') return 'rag-monitoring';
       if (path === '/rag/config') return 'rag-config';
@@ -107,6 +108,11 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ children }) => {
           key: 'rag-documents',
           icon: <FileTextOutlined />,
           label: '文档管理',
+        },
+        {
+          key: 'rag-collections',
+          icon: <DatabaseOutlined />,
+          label: 'Collection管理',
         },
         {
           key: 'rag-vectors',
@@ -221,6 +227,9 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ children }) => {
         break;
       case 'rag-documents':
         navigate('/rag/documents');
+        break;
+      case 'rag-collections':
+        navigate('/rag/collections');
         break;
       case 'rag-vectors':
         navigate('/rag/vectors');

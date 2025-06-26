@@ -115,10 +115,56 @@ class CollectionUpdateRequest(BaseModel):
 # 创建路由器
 rag_router = APIRouter()
 
+from backend.api.v1.rag_collections import rag_collections_router
+
 # 包含仪表板路由
 from backend.api.v1.rag_dashboard import rag_dashboard_router
+from backend.api.v1.rag_documents import rag_documents_router
 
 rag_router.include_router(rag_dashboard_router, prefix="/dashboard", tags=["RAG仪表板"])
+rag_router.include_router(
+    rag_documents_router, prefix="/documents", tags=["RAG文档管理"]
+)
+rag_router.include_router(
+    rag_collections_router, prefix="/collections-manage", tags=["RAG Collection管理"]
+)
+
+
+@rag_router.get("/processing/jobs", summary="获取处理任务列表")
+async def get_processing_jobs():
+    """获取文档处理任务列表"""
+    try:
+        from backend.models.rag_file import RAGFileRecord
+
+        # 获取最近的处理任务（模拟处理队列）
+        recent_records = await RAGFileRecord.all().order_by("-created_at").limit(10)
+
+        jobs = []
+        for record in recent_records:
+            # 模拟处理状态
+            status = "completed" if record.status == "completed" else "processing"
+            progress = 100 if status == "completed" else 85
+
+            jobs.append(
+                {
+                    "id": record.id,
+                    "filename": record.filename,
+                    "collection": record.collection_name,
+                    "status": status,
+                    "progress": progress,
+                    "created_at": (
+                        record.created_at.isoformat() if record.created_at else None
+                    ),
+                    "file_size": record.file_size,
+                    "user_id": record.user_id,
+                }
+            )
+
+        return {"code": 200, "msg": "获取处理任务成功", "data": {"jobs": jobs}}
+
+    except Exception as e:
+        logger.error(f"获取处理任务失败: {e}")
+        raise HTTPException(status_code=500, detail=f"获取处理任务失败: {str(e)}")
 
 
 @rag_router.get("/collections/{collection_name}", summary="获取指定Collection信息")

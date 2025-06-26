@@ -20,6 +20,7 @@ import DocumentManagement from '@/pages/rag/DocumentManagement';
 import VectorManagement from '@/pages/rag/VectorManagement';
 import SystemMonitoring from '@/pages/rag/SystemMonitoring';
 import ConfigManagement from '@/pages/rag/ConfigManagement';
+import CollectionManagement from './pages/rag/CollectionManagement';
 import { isAuthenticated } from '@/services/auth';
 
 // 认证保护组件
@@ -76,6 +77,7 @@ const AppContent: React.FC = () => {
           <Route path="/rag/vectors" element={<VectorManagement />} />
           <Route path="/rag/monitoring" element={<SystemMonitoring />} />
           <Route path="/rag/config" element={<ConfigManagement />} />
+          <Route path="/rag/collections" element={<CollectionManagement />} />
         </Routes>
       </SideNavigation>
     </ProtectedRoute>

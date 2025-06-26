@@ -196,9 +196,6 @@ class AutoGenService:
             logger.error(
                 f"RAG增强流式聊天处理失败 | 对话ID: {conversation_id} | 错误: {e}"
             )
-            # 发送错误信息到队列
-            from backend.ai_core.message_queue import put_message_to_queue
-
             error_message = json.dumps(
                 {
                     "type": "error",
@@ -220,8 +217,6 @@ class AutoGenService:
         use_rag: bool,
     ) -> None:
         """处理RAG和Agent流式输出（放入队列）"""
-        from backend.ai_core.message_queue import put_message_to_queue
-
         try:
             enhanced_message = message
             rag_context = ""
@@ -269,6 +264,7 @@ class AutoGenService:
                         },
                         ensure_ascii=False,
                     )
+                    logger.info(f"📄 检索到 {retrieval_message}")
                     await put_message_to_queue(conversation_id, retrieval_message)
 
                     # 4. 流式输出召回的内容
@@ -290,6 +286,7 @@ class AutoGenService:
                         # 逐个流式输出召回的文档
                         for i, node_info in enumerate(retrieved_nodes):
                             node_content = f"\n\n【文档 {i+1}】(相似度: {node_info.get('score', 0):.3f})\n{node_info.get('text', '')}"
+                            logger.info(f"{node_content}")
 
                             # 分块流式输出文档内容
                             chunk_size = 100
@@ -465,6 +462,98 @@ class AutoGenService:
             "cleanup_interval": self.cleanup_interval,
             **rag_stats,
         }
+
+    async def add_content_to_rag(
+        self, content: str, filename: str, collection_name: str = "ai_chat"
+    ) -> dict:
+        """
+        添加文本内容到RAG知识库
+
+        Args:
+            content: 文本内容
+            filename: 文件名（用于标识）
+            collection_name: 集合名称
+
+        Returns:
+            dict: 处理结果
+        """
+        try:
+            await self._ensure_rag_service()
+            if not self.rag_service:
+                return {"success": False, "error": "RAG服务不可用"}
+
+            logger.info(
+                f"添加内容到RAG | 文件: {filename} | 集合: {collection_name} | 内容长度: {len(content)}"
+            )
+
+            # 调用RAG服务添加内容
+            result = await self.rag_service.add_text_to_collection(
+                text=content,
+                collection_name=collection_name,
+                metadata={"filename": filename, "source": "upload"},
+            )
+
+            if result.get("success", False):
+                logger.success(
+                    f"内容添加成功 | 文件: {filename} | 向量数: {result.get('vector_count', 0)}"
+                )
+                return {
+                    "success": True,
+                    "vector_count": result.get("vector_count", 0),
+                    "chunk_count": result.get("chunk_count", 0),
+                    "collection_name": collection_name,
+                    "filename": filename,
+                }
+            else:
+                error_msg = result.get("error", "未知错误")
+                logger.error(f"内容添加失败 | 文件: {filename} | 错误: {error_msg}")
+                return {"success": False, "error": error_msg}
+
+        except Exception as e:
+            logger.error(f"添加内容到RAG异常 | 文件: {filename} | 错误: {e}")
+            return {"success": False, "error": str(e)}
+
+    async def add_file_to_rag(
+        self, file_path: str, collection_name: str = "ai_chat"
+    ) -> dict:
+        """
+        添加文件到RAG知识库（兼容旧接口）
+
+        Args:
+            file_path: 文件路径
+            collection_name: 集合名称
+
+        Returns:
+            dict: 处理结果
+        """
+        try:
+            from backend.services.document.document_service import document_service
+
+            # 读取文件内容
+            with open(file_path, "rb") as f:
+                content = f.read()
+
+            filename = Path(file_path).name
+            file_type = Path(file_path).suffix.lower()
+
+            # 解析文件内容
+            parsed_content = await document_service.parse_file_content(
+                content, filename, file_type
+            )
+
+            if not parsed_content:
+                return {"success": False, "error": "文件解析失败"}
+
+            # 添加到RAG
+            return await self.add_content_to_rag(
+                content=parsed_content,
+                filename=filename,
+                collection_name=collection_name,
+            )
+
+        except Exception as e:
+            logger.error(f"添加文件到RAG异常 | 文件: {file_path} | 错误: {e}")
+            return {"success": False, "error": str(e)}
 
 
 # 全局服务实例

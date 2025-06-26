@@ -257,10 +257,12 @@ backend/ai_core层,backend/rag_core层在其目录下已经有详细介绍了
 ## 问题
 
 ```
+问题一:
 目前RAG里面其实就包含了和llm对话返回内容的部分,但是chat的服务还会调用Autogen的对话,再次问一遍,这个功能以后优化
 
 目前RAG知识库不是流式输出,且内容输出不是使用的消息队列的方式,这个都放到面在优化
 
+问题二
 文本上传未来使用mino当前上传到本地,解析后,放入数据库中保存
 
 流式输出的地方优化
@@ -270,7 +272,7 @@ backend/ai_core层,backend/rag_core层在其目录下已经有详细介绍了
 
 
 
-## 问题优化
+## 问题解决
 
 想了想,还是把基建搭好吧,防止以后推到重来
 
@@ -385,9 +387,17 @@ backend/ai_core层,backend/rag_core层在其目录下已经有详细介绍了
 
 
 
+查询不存在的
+
+![image-20250626114645268](./assets/image-20250626114645268.png)
+
+查询存在的:
+
+![image-20250626114846916](./assets/image-20250626114846916.png)
 
 
 
+需要优化的点是,召回的内容应该放到一个文本框里面
 
 
 
@@ -397,5 +407,146 @@ backend/ai_core层,backend/rag_core层在其目录下已经有详细介绍了
 上传文件的逻辑需要优化
 首先,上传的文件,先解析记录md5,之后解析后将内容存储到MySQL或者数据库中
 后面再次有文件传入,先查询一次数据库,如果值存在,则使用已有的值,可以服用document中的逻辑
+
+1.每个召回的内容都放到一个文本框中
+2. 用数据库记录 上传的文件的相关信息:必要的有用户,md5,文件类型,解析内容,上传到那个collection等等信息
+3. backend/api/v1/chat.py接口增加功能: 可以参照backend/services/document/document_service.py中代码实现,判断上传文件为之前上传过的,那么不需要处理,告诉前端,该内容已经存入RAG如需上传
+
+```
+
+
+
+
+
+```
+1.前端每个召回的内容都放到一个文本框中
+2. 用数据库记录 上传的文件的相关信息:必要的有用户,md5,文件类型,解析内容,上传到那个collection等等信息
+3. backend/api/v1/chat.py接口增加功能: 可以参照backend/services/document/document_service.py中代码实现,判断上传文件为之前上传过的,那么不需要处理,告诉前端,该内容已经存入RAG如需上传
+```
+
+
+
+
+
+```
+步骤一:将当前的代码还原到上一个版本重新设计
+步骤二:数据库设计思路如下:
+维护一个RAG上传文件的记录的表: 最关键的字段:记录文件的MD5,及上传到那个collection
+步骤三: 使用:当用户上传文件时,如果该文件(MD5判断)已经上传到对应的collection,就不需要再次重复上传了
+步骤四: 修改对应的上传文件接口
+```
+
+
+
+```
+1. 前端优化:上传文件到知识库模块,应该添加一个确认的按钮,当点击确认后才执行,且支持多个文件同时上传
+2. 前端每个召回的内容都放到一个文本框中
+```
+
+
+
+
+
+```
+召回的相关文档 放置的位置不对,应该放置在用户需求和AI智能体回答之间的位置
+```
+
+
+
+
+
+```
+1. RAG知识库,文档管理的前端和后端没有打通,实现文档管理的部分的后端
+2. RAG知识库,下面几个模块还未开发完成:向量管理,系统监控,配置管理,当用户打开后,最好有一个暖心的提醒,告诉用户,该模块当前正处于开发过程,暂不对外使用
+
+```
+
+
+
+
+
+```
+问题1:前端文档管理为空 /api/v1/rag/documents接口返回结果为空:{
+    "code": 200,
+    "msg": "获取文档列表成功",
+    "data": {
+        "documents": []
+    },
+    "total": 0,
+    "page": 1,
+    "page_size": 20
+}
+问题2: 打开添加文本:目标collection显示的为0123,而非对应的文本
+问题3: 打开添加文本,添加文本后,/api/v1/rag/documents/add-text报错
+{
+    "code": 422,
+    "msg": "请求参数验证失败",
+    "data": {
+        "errors": [
+            {
+                "type": "missing",
+                "loc": [
+                    "body",
+                    "title"
+                ],
+                "msg": "Field required",
+                "input": null
+            },
+            {
+                "type": "missing",
+                "loc": [
+                    "body",
+                    "content"
+                ],
+                "msg": "Field required",
+                "input": null
+            }
+        ]
+    }
+}
+对应后端报错2025-06-26 22:59:09 | ERROR    | backend.api_core.exceptions:request_validation_handler:101 | 请求参数验证异常: [{'type': 'missing', 'loc': ('body', 'title'), 'msg': 'Field required', 'input': None}, {'type': 'missing', 'loc':  'content'), 'msg': 'Field required', 'input': None}]
+2025-06-26 22:59:09 - INFO - 127.0.0.1:56930 - "POST /api/v1/rag/documents/add-text HTTP/1.1" 422 Unprocessable Entity
+问题4: 上传文件功能,点击后应该添加一个确认的按钮,当点击确认后才执行,且支持多个文件同时上传
+```
+
+
+
+
+
+```
+1. 上传文本和添加文本中目标Collection下拉的选项不是真正的collection,真正已经存在的Collection,请调用接口从数据库中查找,后端报错2025-06-26 23:29:18 | INFO     | backend.services.ai_chat.autogen_service:add_content_to_rag:491 | 添加内容到RAG | 文件: 协程使用.md | 集合: 1 | 内容长度: 4437
+2025-06-26 23:29:18 | ERROR    | backend.services.rag.rag_service:add_text:176 | ❌ 文本添加失败 - Collection: 1: Collection不存在: 1
+2. http://localhost:8000/api/v1/rag/documents/?page=1&page_size=20 是可以查到值的,但是调用http://localhost:3000/api/v1/rag/documents,前端却没有值
+修复上述两个问题
+```
+
+
+
+
+
+```
+1. 前端调取/api/v1/rag/documents接口为空问题:
+2025-06-27 00:54:06 - INFO - 127.0.0.1:59807 - "GET /api/v1/rag/documents/ HTTP/1.1" 200 OK 可以获取到结果
+2025-06-27 00:54:15 - INFO - 127.0.0.1:59851 - "GET /api/v1/rag/documents HTTP/1.1" 200 OK  结果为空
+2. 文档管理:处理消息队列一栏 文件名和Collection列没有正确的展示
+3. RAG知识库系统没有一个对Collection进行管理的界面,实现前后端,界面放在管理中心下方,支持对Collection的增删改查
+4. 管理中心中文档总数没有正确的显示,快速操作中,上传文档和创建Collection的功能都为实现
+5. 参考后端其他服务的代码,为RAG系统增加完善的日志,这样有利于排查问题,前段也同样增加详细的日志
+```
+
+
+
+
+
+```
+调用后端报错,创建Collection报错,再次调用报错test已存在,不过向量数据库里查询却没有
+2025-06-27 01:24:19 | ERROR    | backend.api.v1.rag_collections:create_collection:134 | ❌ 创建Collection失败: 'RAGCollection' object has no attribute 'embedding_model'
+2025-06-27 01:24:19 | ERROR    | backend.api_core.exceptions:http_exception_handler:92 | HTTP异常: 500 - 创建Collection失败: 'RAGCollection' object has no attribute 'embedding_model'
+2025-06-27 01:24:19 - INFO - 127.0.0.1:53225 - "POST /api/v1/rag/collections-manage/ HTTP/1.1" 500 Internal Server Error
+2025-06-27 01:24:26 | INFO     | backend.api.v1.rag_collections:create_collection:91 | 📝 创建Collection: test
+2025-06-27 01:24:26 | WARNING  | backend.api.v1.rag_collections:create_collection:96 | ⚠️ Collection名称已存在: test
+2025-06-27 01:24:26 | ERROR    | backend.api_core.exceptions:http_exception_handler:92 | HTTP异常: 400 - Collection名称 'test' 已存在
+2025-06-27 01:24:26 - INFO - 127.0.0.1:53260 - "POST /api/v1/rag/collections-manage/ HTTP/1.1" 400 Bad Request
+目前RAG相关配置在backend/conf/settings.yaml中backend/conf/rag_config.py封装
 
 ```

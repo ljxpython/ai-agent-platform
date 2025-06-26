@@ -59,7 +59,7 @@ url = "https://pypi.tuna.tsinghua.edu.cn/simple"
 priority = "primary"
 
 [tool.aerich]
-tortoise_orm = "backend.core.database.TORTOISE_ORM"
+tortoise_orm = "backend.api_core.database.TORTOISE_ORM"
 location = "./migrations"
 src_folder = "./."
 

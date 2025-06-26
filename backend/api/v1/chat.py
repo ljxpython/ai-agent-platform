@@ -241,42 +241,154 @@ async def clear_conversation(conversation_id: str):
 
 @chat_router.post("/upload")
 async def upload_file_to_rag(
-    files: List[UploadFile] = File(...), collection_name: str = Form("ai_chat")
+    files: List[UploadFile] = File(...),
+    collection_name: str = Form("ai_chat"),
+    user_id: str = Form("anonymous"),
 ):
-    """上传文件到RAG知识库"""
+    """
+    上传文件到RAG知识库 - 支持MD5重复检测
+
+    核心功能：
+    1. 计算文件MD5，检查是否已在指定collection中存在
+    2. 如果文件已存在，跳过上传，返回重复信息
+    3. 如果文件不存在，上传到RAG并记录到数据库
+    """
     logger.info(
-        f"收到文件上传请求 | 文件数量: {len(files)} | Collection: {collection_name}"
+        f"收到文件上传请求 | 文件数量: {len(files)} | Collection: {collection_name} | 用户: {user_id}"
     )
 
     try:
+        from backend.services.document.document_service import document_service
+        from backend.services.rag.file_upload_service import rag_file_upload_service
+
         results = []
-        upload_dir = Path("backend/data/uploads/chat")
-        upload_dir.mkdir(parents=True, exist_ok=True)
 
         for file in files:
-            # 保存上传的文件
-            file_path = upload_dir / file.filename
-            with open(file_path, "wb") as buffer:
-                content = await file.read()
-                buffer.write(content)
+            logger.info(f"处理文件: {file.filename}")
 
-            # 添加到RAG知识库
-            result = await autogen_service.add_file_to_rag(
-                str(file_path), collection_name
+            # 读取文件内容
+            content = await file.read()
+
+            # 1. 检查文件是否已存在（MD5 + collection）
+            upload_check = await rag_file_upload_service.process_file_upload(
+                filename=file.filename,
+                content=content,
+                collection_name=collection_name,
+                user_id=user_id,
             )
 
-            # 清理临时文件
-            file_path.unlink()
+            if upload_check.get("skip_upload", False):
+                # 文件已存在或处理失败，跳过上传
+                results.append(
+                    {
+                        "filename": file.filename,
+                        "status": upload_check.get("status", "error"),
+                        "message": upload_check.get("message", "处理失败"),
+                        "success": False,
+                        "existing_file": upload_check.get("existing_file"),
+                        "duplicate": upload_check.get("status") == "duplicate",
+                    }
+                )
+                continue
 
-            results.append({"filename": file.filename, "result": result})
+            # 2. 文件不存在，开始上传处理
+            try:
+                # 解析文件内容
+                file_type = Path(file.filename).suffix.lower()
+                parsed_content = await document_service.parse_file_content(
+                    content, file.filename, file_type
+                )
+
+                if not parsed_content:
+                    results.append(
+                        {
+                            "filename": file.filename,
+                            "status": "error",
+                            "message": "文件解析失败，无法提取文本内容",
+                            "success": False,
+                        }
+                    )
+                    continue
+
+                # 添加到RAG知识库
+                rag_result = await autogen_service.add_content_to_rag(
+                    content=parsed_content,
+                    filename=file.filename,
+                    collection_name=collection_name,
+                )
+
+                if rag_result.get("success", False):
+                    # RAG上传成功，记录到数据库
+                    file_md5 = upload_check.get("file_md5")
+                    file_size = upload_check.get("file_size")
+
+                    record_result = await rag_file_upload_service.complete_file_upload(
+                        filename=file.filename,
+                        file_md5=file_md5,
+                        file_size=file_size,
+                        collection_name=collection_name,
+                        user_id=user_id,
+                    )
+
+                    logger.success(f"文件上传成功: {file.filename}")
+
+                    results.append(
+                        {
+                            "filename": file.filename,
+                            "status": "success",
+                            "message": "文件上传并处理成功",
+                            "success": True,
+                            "rag_result": rag_result,
+                            "record_result": record_result,
+                        }
+                    )
+
+                else:
+                    # RAG处理失败
+                    error_msg = rag_result.get("error", "RAG处理失败")
+                    logger.error(f"RAG处理失败: {file.filename} | 错误: {error_msg}")
+
+                    results.append(
+                        {
+                            "filename": file.filename,
+                            "status": "rag_failed",
+                            "message": f"RAG处理失败: {error_msg}",
+                            "success": False,
+                            "error": error_msg,
+                        }
+                    )
+
+            except Exception as file_error:
+                logger.error(f"文件处理异常: {file.filename} | 错误: {file_error}")
+
+                results.append(
+                    {
+                        "filename": file.filename,
+                        "status": "error",
+                        "message": f"文件处理异常: {str(file_error)}",
+                        "success": False,
+                        "error": str(file_error),
+                    }
+                )
+
+        # 统计结果
+        success_count = sum(1 for r in results if r.get("success", False))
+        duplicate_count = sum(1 for r in results if r.get("duplicate", False))
+        failed_count = len(results) - success_count - duplicate_count
 
         logger.success(
-            f"文件上传完成 | 成功: {sum(1 for r in results if r['result']['success'])}/{len(results)}"
+            f"文件上传完成 | 总数: {len(files)} | 成功: {success_count} | 重复: {duplicate_count} | 失败: {failed_count}"
         )
 
         return {
             "success": True,
             "message": f"处理了 {len(files)} 个文件",
+            "summary": {
+                "total": len(files),
+                "success": success_count,
+                "duplicate": duplicate_count,
+                "failed": failed_count,
+            },
             "results": results,
             "collection_name": collection_name,
         }
@@ -301,6 +413,25 @@ async def get_rag_collections():
         return {"success": True, "collections": collections}
     except Exception as e:
         logger.error(f"获取RAG collections失败 | 错误: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@chat_router.get("/collections/{collection_name}/files")
+async def get_collection_files(collection_name: str):
+    """获取指定collection中的文件列表"""
+    logger.debug(f"收到获取collection文件列表请求: {collection_name}")
+
+    try:
+        from backend.services.rag.file_upload_service import rag_file_upload_service
+
+        result = await rag_file_upload_service.get_collection_files(collection_name)
+        logger.debug(f"Collection {collection_name} 文件列表: {result}")
+
+        return result
+    except Exception as e:
+        logger.error(
+            f"获取collection文件列表失败 | Collection: {collection_name} | 错误: {e}"
+        )
         raise HTTPException(status_code=500, detail=str(e))
 
 

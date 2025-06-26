@@ -27,6 +27,7 @@ TORTOISE_ORM = {
                 "backend.models.department",
                 "backend.models.api",
                 "backend.models.rag",
+                "backend.models.rag_file",
                 "aerich.models",
             ],
             "default_connection": "default",

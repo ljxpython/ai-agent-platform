@@ -1,6 +1,6 @@
 import React from 'react';
-import { Avatar, Typography, Button } from 'antd';
-import { UserOutlined, CopyOutlined, LikeOutlined, DislikeOutlined } from '@ant-design/icons';
+import { Avatar, Typography, Button, Card, Tag, Space } from 'antd';
+import { UserOutlined, CopyOutlined, LikeOutlined, DislikeOutlined, BookOutlined } from '@ant-design/icons';
 import { ChatMessage as ChatMessageType } from '@/types/chat';
 import MarkdownRenderer from '@/components/MarkdownRenderer';
 import dayjs from 'dayjs';
@@ -13,6 +13,7 @@ interface ChatMessageProps {
 
 const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
   const isUser = message.role === 'user';
+  const isRetrievedDocs = message.role === 'retrieved_docs';
   const isStreaming = message.isStreaming;
 
   const handleCopy = () => {
@@ -50,6 +51,26 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
               您
             </Text>
           </>
+        ) : isRetrievedDocs ? (
+          <>
+            <div style={{
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #1890ff 0%, #096dd9 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: 12,
+              fontWeight: 'bold'
+            }}>
+              <BookOutlined style={{ fontSize: 12 }} />
+            </div>
+            <Text style={{ fontSize: 14, fontWeight: 500, color: '#374151' }}>
+              召回的相关文档
+            </Text>
+          </>
         ) : (
           <>
             <div style={{
@@ -79,10 +100,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
       {/* 消息内容 */}
       <div style={{
         marginLeft: isUser ? 0 : 32,
-        backgroundColor: isUser ? '#f3f4f6' : 'transparent',
-        padding: isUser ? '12px 16px' : '0',
-        borderRadius: isUser ? '12px' : '0',
-        border: isUser ? '1px solid #e5e7eb' : 'none'
+        backgroundColor: isUser ? '#f3f4f6' : (isRetrievedDocs ? '#f8f9fa' : 'transparent'),
+        padding: isUser ? '12px 16px' : (isRetrievedDocs ? '16px' : '0'),
+        borderRadius: isUser ? '12px' : (isRetrievedDocs ? '12px' : '0'),
+        border: isUser ? '1px solid #e5e7eb' : (isRetrievedDocs ? '1px solid #e8e8e8' : 'none')
       }}>
         {isUser ? (
           // 用户消息：简单文本显示
@@ -96,6 +117,46 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             }}
           >
             {message.content}
+          </div>
+        ) : isRetrievedDocs ? (
+          // 召回文档：卡片展示
+          <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+              {message.retrievedDocuments?.map((doc, index) => (
+                <Card
+                  key={`${doc.index}-${index}`}
+                  size="small"
+                  style={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e8e8e8',
+                    borderRadius: '8px'
+                  }}
+                  title={
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Text strong style={{ fontSize: 14, color: '#262626' }}>
+                        文档 {doc.index}
+                      </Text>
+                      {doc.similarity && (
+                        <Tag color="blue" style={{ fontSize: 12 }}>
+                          相似度: {doc.similarity.toFixed(3)}
+                        </Tag>
+                      )}
+                    </div>
+                  }
+                >
+                  <div style={{
+                    maxHeight: '120px',
+                    overflowY: 'auto',
+                    fontSize: 13,
+                    lineHeight: 1.5,
+                    color: '#595959',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {doc.content}
+                  </div>
+                </Card>
+              ))}
+            </Space>
           </div>
         ) : (
           // AI 消息：Markdown 渲染
@@ -117,7 +178,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
         )}
 
         {/* 操作按钮 - 仅对 AI 回复显示 */}
-        {!isUser && !isStreaming && message.content && (
+        {!isUser && !isRetrievedDocs && !isStreaming && message.content && (
           <div style={{
             marginTop: 12,
             display: 'flex',

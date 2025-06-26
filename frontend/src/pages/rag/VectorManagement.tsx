@@ -33,6 +33,8 @@ import {
   ReloadOutlined,
   ExperimentOutlined,
   BarChartOutlined,
+  HeartOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import PageLayout from '@/components/PageLayout';
 
@@ -333,6 +335,36 @@ const VectorManagement: React.FC = () => {
             管理嵌入模型、向量数据库和搜索配置，优化RAG系统的检索性能
           </Paragraph>
         </div>
+
+        {/* 暖心提醒 */}
+        <Alert
+          message={
+            <span>
+              <HeartOutlined style={{ color: '#ff7875', marginRight: '8px' }} />
+              暖心提醒
+            </span>
+          }
+          description={
+            <div>
+              <p style={{ margin: 0, marginBottom: '8px' }}>
+                <ExclamationCircleOutlined style={{ color: '#faad14', marginRight: '6px' }} />
+                该模块当前正处于开发过程中，暂不对外使用。
+              </p>
+              <p style={{ margin: 0, color: '#666' }}>
+                我们正在努力完善向量管理功能，包括嵌入模型优化、向量数据库监控和搜索参数调优等核心功能。
+                预计将在下个版本中正式发布，敬请期待！
+              </p>
+            </div>
+          }
+          type="warning"
+          showIcon
+          style={{
+            marginBottom: '24px',
+            border: '1px solid #ffe7ba',
+            backgroundColor: '#fffbf0'
+          }}
+          closable
+        />
 
         {/* 统计信息 */}
         <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>

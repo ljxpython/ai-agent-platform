@@ -30,6 +30,8 @@ import {
   EyeOutlined,
   DeleteOutlined,
   PlusOutlined,
+  HeartOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import PageLayout from '@/components/PageLayout';
 
@@ -281,6 +283,36 @@ const ConfigManagement: React.FC = () => {
             管理RAG系统的全局配置、API密钥和环境参数
           </Paragraph>
         </div>
+
+        {/* 暖心提醒 */}
+        <Alert
+          message={
+            <span>
+              <HeartOutlined style={{ color: '#ff7875', marginRight: '8px' }} />
+              暖心提醒
+            </span>
+          }
+          description={
+            <div>
+              <p style={{ margin: 0, marginBottom: '8px' }}>
+                <ExclamationCircleOutlined style={{ color: '#faad14', marginRight: '6px' }} />
+                该模块当前正处于开发过程中，暂不对外使用。
+              </p>
+              <p style={{ margin: 0, color: '#666' }}>
+                我们正在努力完善配置管理功能，包括系统参数配置、API密钥管理和环境变量设置等核心功能。
+                预计将在下个版本中正式发布，敬请期待！
+              </p>
+            </div>
+          }
+          type="warning"
+          showIcon
+          style={{
+            marginBottom: '24px',
+            border: '1px solid #ffe7ba',
+            backgroundColor: '#fffbf0'
+          }}
+          closable
+        />
 
         <Tabs defaultActiveKey="system">
           <TabPane tab="系统配置" key="system">

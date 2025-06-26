@@ -29,6 +29,8 @@ import {
   DownloadOutlined,
   LineChartOutlined,
   PieChartOutlined,
+  HeartOutlined,
+  ExclamationCircleOutlined,
 } from '@ant-design/icons';
 import PageLayout from '@/components/PageLayout';
 
@@ -224,6 +226,36 @@ const SystemMonitoring: React.FC = () => {
             </Button>
           </Space>
         </div>
+
+        {/* 暖心提醒 */}
+        <Alert
+          message={
+            <span>
+              <HeartOutlined style={{ color: '#ff7875', marginRight: '8px' }} />
+              暖心提醒
+            </span>
+          }
+          description={
+            <div>
+              <p style={{ margin: 0, marginBottom: '8px' }}>
+                <ExclamationCircleOutlined style={{ color: '#faad14', marginRight: '6px' }} />
+                该模块当前正处于开发过程中，暂不对外使用。
+              </p>
+              <p style={{ margin: 0, color: '#666' }}>
+                我们正在努力完善系统监控功能，包括实时性能监控、查询日志分析和智能告警等核心功能。
+                预计将在下个版本中正式发布，敬请期待！
+              </p>
+            </div>
+          }
+          type="warning"
+          showIcon
+          style={{
+            marginBottom: '24px',
+            border: '1px solid #ffe7ba',
+            backgroundColor: '#fffbf0'
+          }}
+          closable
+        />
 
         {/* 系统指标概览 */}
         <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>

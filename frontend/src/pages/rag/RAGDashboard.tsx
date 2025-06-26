@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Card,
   Row,
@@ -49,6 +50,7 @@ interface RecentActivity {
 }
 
 const RAGDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<RAGStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
@@ -105,28 +107,28 @@ const RAGDashboard: React.FC = () => {
       description: '添加新文档到知识库',
       icon: <FileTextOutlined />,
       color: '#1890ff',
-      path: '/rag/documents/upload',
+      action: () => navigate('/rag/documents'),
     },
     {
       title: '创建Collection',
       description: '创建新的知识库集合',
       icon: <DatabaseOutlined />,
       color: '#52c41a',
-      path: '/rag/collections/create',
+      action: () => navigate('/rag/collections'),
     },
     {
-      title: '模型管理',
-      description: '管理嵌入和生成模型',
-      icon: <RobotOutlined />,
+      title: '向量管理',
+      description: '管理向量数据库',
+      icon: <CloudOutlined />,
       color: '#722ed1',
-      path: '/rag/models',
+      action: () => navigate('/rag/vectors'),
     },
     {
       title: '系统配置',
       description: '配置RAG系统参数',
       icon: <SettingOutlined />,
       color: '#fa8c16',
-      path: '/rag/settings',
+      action: () => navigate('/rag/config'),
     },
   ];
 
@@ -228,8 +230,8 @@ const RAGDashboard: React.FC = () => {
                         cursor: 'pointer'
                       }}
                       onClick={() => {
-                        // 这里可以添加路由跳转逻辑
-                        console.log(`Navigate to ${action.path}`);
+                        console.log(`执行快速操作: ${action.title}`);
+                        action.action();
                       }}
                     >
                       <Space>
