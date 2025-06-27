@@ -10,6 +10,7 @@ from loguru import logger
 from pydantic import BaseModel
 
 from backend.models.rag import RAGCollection
+from backend.services.rag.collection_service import collection_service
 from backend.services.rag.rag_service import RAGService, get_rag_service
 
 rag_collections_router = APIRouter()
@@ -100,57 +101,36 @@ async def get_collections():
 
 @rag_collections_router.post("/", summary="创建Collection")
 async def create_collection(request: CollectionCreateRequest):
-    """创建新的Collection"""
+    """创建新的Collection，包括数据库记录和向量数据库collection"""
     try:
         logger.info(f"📝 创建Collection: {request.name}")
 
-        # 检查名称是否已存在
-        existing = await RAGCollection.filter(name=request.name).first()
-        if existing:
-            logger.warning(f"⚠️ Collection名称已存在: {request.name}")
-            raise HTTPException(
-                status_code=400, detail=f"Collection名称 '{request.name}' 已存在"
-            )
+        # 准备collection数据
+        collection_data = {
+            "name": request.name,
+            "display_name": request.display_name,
+            "description": request.description,
+            "business_type": request.business_type,
+            "chunk_size": request.chunk_size,
+            "chunk_overlap": request.chunk_overlap,
+            "dimension": request.dimension,
+            "top_k": request.top_k,
+            "similarity_threshold": request.similarity_threshold,
+        }
 
-        # 创建Collection
-        collection = await RAGCollection.create(
-            name=request.name,
-            display_name=request.display_name,
-            description=request.description,
-            business_type=request.business_type,
-            chunk_size=request.chunk_size,
-            chunk_overlap=request.chunk_overlap,
-            dimension=request.dimension,
-            top_k=request.top_k,
-            similarity_threshold=request.similarity_threshold,
-        )
+        # 调用服务层创建Collection（包括向量数据库）
+        result = await collection_service.create_collection(collection_data)
 
-        logger.success(
-            f"✅ Collection创建成功: {collection.name} (ID: {collection.id})"
-        )
+        if not result["success"]:
+            logger.warning(f"⚠️ Collection创建失败: {result['message']}")
+            raise HTTPException(status_code=400, detail=result["message"])
+
+        logger.success(f"✅ Collection创建成功: {request.name}")
 
         return {
             "code": 200,
             "msg": "Collection创建成功",
-            "data": {
-                "collection": {
-                    "id": collection.id,
-                    "name": collection.name,
-                    "display_name": collection.display_name,
-                    "description": collection.description,
-                    "business_type": collection.business_type,
-                    "chunk_size": collection.chunk_size,
-                    "chunk_overlap": collection.chunk_overlap,
-                    "dimension": collection.dimension,
-                    "top_k": collection.top_k,
-                    "similarity_threshold": collection.similarity_threshold,
-                    "created_at": (
-                        collection.created_at.isoformat()
-                        if collection.created_at
-                        else None
-                    ),
-                }
-            },
+            "data": result,
         }
 
     except HTTPException:
@@ -214,7 +194,7 @@ async def get_collection(collection_id: int):
 
 @rag_collections_router.put("/{collection_id}", summary="更新Collection")
 async def update_collection(collection_id: int, request: CollectionUpdateRequest):
-    """更新Collection信息"""
+    """更新Collection信息，包括数据库记录和向量数据库配置"""
     try:
         logger.info(f"✏️ 更新Collection: ID={collection_id}")
 
@@ -223,7 +203,7 @@ async def update_collection(collection_id: int, request: CollectionUpdateRequest
             logger.warning(f"⚠️ Collection不存在: ID={collection_id}")
             raise HTTPException(status_code=404, detail="Collection不存在")
 
-        # 更新字段
+        # 准备更新数据
         update_data = {}
         if request.display_name is not None:
             update_data["display_name"] = request.display_name
@@ -243,7 +223,15 @@ async def update_collection(collection_id: int, request: CollectionUpdateRequest
             update_data["similarity_threshold"] = request.similarity_threshold
 
         if update_data:
-            await RAGCollection.filter(id=collection_id).update(**update_data)
+            # 调用服务层更新Collection
+            result = await collection_service.update_collection(
+                collection.name, update_data
+            )
+
+            if not result["success"]:
+                logger.warning(f"⚠️ Collection更新失败: {result['message']}")
+                raise HTTPException(status_code=400, detail=result["message"])
+
             # 重新获取更新后的数据
             collection = await RAGCollection.filter(id=collection_id).first()
 
@@ -282,7 +270,7 @@ async def update_collection(collection_id: int, request: CollectionUpdateRequest
 
 @rag_collections_router.delete("/{collection_id}", summary="删除Collection")
 async def delete_collection(collection_id: int):
-    """删除Collection"""
+    """删除Collection，包括数据库记录和向量数据库collection"""
     try:
         logger.info(f"🗑️ 删除Collection: ID={collection_id}")
 
@@ -305,9 +293,13 @@ async def delete_collection(collection_id: int):
                 detail=f"Collection '{collection.name}' 包含 {doc_count} 个文档，请先删除所有文档后再删除Collection",
             )
 
-        # 删除Collection
+        # 调用服务层删除Collection（包括向量数据库）
         collection_name = collection.name
-        await collection.delete()
+        result = await collection_service.delete_collection(collection_name)
+
+        if not result["success"]:
+            logger.warning(f"⚠️ Collection删除失败: {result['message']}")
+            raise HTTPException(status_code=400, detail=result["message"])
 
         logger.success(f"✅ Collection删除成功: {collection_name}")
 

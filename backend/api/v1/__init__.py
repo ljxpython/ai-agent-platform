@@ -24,7 +24,10 @@ v1_router.include_router(midscene_router, prefix="/midscene", tags=["Midscene智
 v1_router.include_router(rag_router, prefix="/rag", tags=["RAG知识库"])
 # 系统管理需要管理员权限
 v1_router.include_router(
-    system_router, prefix="/system", tags=["系统管理"], dependencies=[DependAdmin]
+    system_router,
+    prefix="/system",
+    tags=["系统管理"],
+    # dependencies=[DependAdmin]
 )
 
 __all__ = ["v1_router"]

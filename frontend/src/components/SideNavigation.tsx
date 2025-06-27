@@ -40,7 +40,7 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ children }) => {
     const path = location.pathname;
     if (path === '/') return 'home';
     if (path === '/chat') return 'chat';
-    if (path === '/rag-manage') return 'rag-manage';
+
     if (path === '/testcase') return 'testcase';
     if (path === '/midscene') return 'midscene';
     if (path === '/ui-test-script') return 'ui-test-script';
@@ -82,11 +82,7 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ children }) => {
           icon: <MessageOutlined />,
           label: 'AI对话',
         },
-        {
-          key: 'rag-manage',
-          icon: <DatabaseOutlined />,
-          label: 'RAG知识库管理',
-        },
+
         {
           key: 'testcase',
           icon: <FileTextOutlined />,
@@ -201,9 +197,7 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ children }) => {
       case 'chat':
         navigate('/chat');
         break;
-      case 'rag-manage':
-        navigate('/rag-manage');
-        break;
+
       case 'testcase':
         navigate('/testcase');
         break;
@@ -282,6 +276,8 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ children }) => {
           zIndex: 1000,
           borderRight: '1px solid #f0f0f0',
           overflow: 'auto',
+          userSelect: 'none',
+          WebkitUserSelect: 'none',
         }}
       >
         {/* 顶部间距 */}
@@ -353,6 +349,8 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ children }) => {
               background: '#f5f5f5',
               minHeight: 'calc(100vh - 64px)',
               marginLeft: collapsed ? 48 : 240,
+              overflow: 'auto',
+              position: 'relative',
             }}
           >
             {children}

@@ -7,7 +7,9 @@ from typing import Dict, List, Optional
 from loguru import logger
 from tortoise.exceptions import DoesNotExist, IntegrityError
 
+from backend.conf.rag_config import CollectionConfig, get_rag_config
 from backend.models.rag import RAGCollection, RAGDocument
+from backend.rag_core.collection_manager import create_collection_manager
 
 
 class RAGCollectionService:
@@ -167,7 +169,7 @@ class RAGCollectionService:
             return None
 
     async def create_collection(self, collection_data: Dict) -> Dict:
-        """创建新的Collection"""
+        """创建新的Collection，包括数据库记录和向量数据库collection"""
         try:
             # 检查名称是否已存在
             existing = await RAGCollection.get_or_none(name=collection_data["name"])
@@ -177,9 +179,24 @@ class RAGCollectionService:
                     "message": f"Collection名称 '{collection_data['name']}' 已存在",
                 }
 
-            # 创建Collection
+            # 1. 先在数据库中创建记录
             collection = await RAGCollection.create(**collection_data)
-            logger.success(f"✅ 创建Collection成功: {collection.name}")
+            logger.success(f"✅ 数据库Collection记录创建成功: {collection.name}")
+
+            # 2. 在向量数据库中创建实际的collection
+            try:
+                await self._create_vector_collection(collection)
+                logger.success(f"✅ 向量数据库Collection创建成功: {collection.name}")
+            except Exception as vector_error:
+                # 如果向量数据库创建失败，删除数据库记录
+                await collection.delete()
+                logger.error(
+                    f"❌ 向量数据库Collection创建失败，已回滚数据库记录: {vector_error}"
+                )
+                return {
+                    "success": False,
+                    "message": f"向量数据库创建失败: {str(vector_error)}",
+                }
 
             return {
                 "success": True,
@@ -200,20 +217,115 @@ class RAGCollectionService:
             logger.error(f"❌ 创建Collection失败: {e}")
             return {"success": False, "message": f"创建失败: {str(e)}"}
 
+    async def _create_vector_collection(self, collection: RAGCollection):
+        """在向量数据库中创建collection"""
+        logger.info(f"🚀 开始在向量数据库中创建Collection: {collection.name}")
+
+        try:
+            # 创建CollectionConfig
+            collection_config = CollectionConfig(
+                name=collection.name,
+                description=collection.description,
+                dimension=collection.dimension,
+                business_type=collection.business_type,
+                top_k=collection.top_k,
+                similarity_threshold=collection.similarity_threshold,
+                chunk_size=collection.chunk_size,
+                chunk_overlap=collection.chunk_overlap,
+            )
+
+            # 获取RAG配置
+            rag_config = get_rag_config()
+
+            # 动态添加到配置中
+            rag_config.milvus.collections[collection.name] = collection_config
+
+            # 创建collection manager并初始化新的collection
+            manager = await create_collection_manager(rag_config)
+            await manager.create_collection(collection.name, overwrite=False)
+
+            logger.success(f"✅ 向量数据库Collection创建完成: {collection.name}")
+
+        except Exception as e:
+            logger.error(f"❌ 向量数据库Collection创建失败: {collection.name}: {e}")
+            raise
+
+    async def _delete_vector_collection(self, collection: RAGCollection):
+        """在向量数据库中删除collection"""
+        logger.info(f"🗑️ 开始在向量数据库中删除Collection: {collection.name}")
+
+        try:
+            # 获取RAG配置
+            rag_config = get_rag_config()
+
+            # 创建collection manager并删除collection
+            manager = await create_collection_manager(rag_config)
+            await manager.delete_collection(collection.name)
+
+            # 从配置中移除collection配置
+            if collection.name in rag_config.milvus.collections:
+                del rag_config.milvus.collections[collection.name]
+
+            logger.success(f"✅ 向量数据库Collection删除完成: {collection.name}")
+
+        except Exception as e:
+            logger.error(f"❌ 向量数据库Collection删除失败: {collection.name}: {e}")
+            raise
+
+    async def _update_vector_collection_config(self, collection: RAGCollection):
+        """更新向量数据库中的collection配置"""
+        logger.info(f"🔄 开始更新向量数据库Collection配置: {collection.name}")
+
+        try:
+            # 创建新的CollectionConfig
+            collection_config = CollectionConfig(
+                name=collection.name,
+                description=collection.description,
+                dimension=collection.dimension,
+                business_type=collection.business_type,
+                top_k=collection.top_k,
+                similarity_threshold=collection.similarity_threshold,
+                chunk_size=collection.chunk_size,
+                chunk_overlap=collection.chunk_overlap,
+            )
+
+            # 获取RAG配置并更新
+            rag_config = get_rag_config()
+            rag_config.milvus.collections[collection.name] = collection_config
+
+            logger.success(f"✅ 向量数据库Collection配置更新完成: {collection.name}")
+
+        except Exception as e:
+            logger.error(f"❌ 向量数据库Collection配置更新失败: {collection.name}: {e}")
+            raise
+
     async def update_collection(self, name: str, update_data: Dict) -> Dict:
-        """更新Collection"""
+        """更新Collection，包括数据库记录和向量数据库配置"""
         try:
             collection = await RAGCollection.get_or_none(name=name)
             if not collection:
                 return {"success": False, "message": f"Collection '{name}' 不存在"}
 
-            # 更新字段
+            # 1. 更新数据库记录
             for field, value in update_data.items():
                 if hasattr(collection, field) and field != "name":  # 不允许修改name
                     setattr(collection, field, value)
 
             await collection.save()
-            logger.success(f"✅ 更新Collection成功: {collection.name}")
+            logger.success(f"✅ 数据库Collection记录更新成功: {collection.name}")
+
+            # 2. 更新向量数据库配置
+            try:
+                await self._update_vector_collection_config(collection)
+                logger.success(
+                    f"✅ 向量数据库Collection配置更新成功: {collection.name}"
+                )
+            except Exception as vector_error:
+                logger.error(f"❌ 向量数据库配置更新失败: {vector_error}")
+                # 向量数据库配置更新失败不回滚数据库更新，但记录警告
+                logger.warning(
+                    f"⚠️ 向量数据库配置更新失败，数据库记录已更新: {collection.name}"
+                )
 
             return {"success": True, "message": "Collection更新成功"}
 
@@ -222,17 +334,28 @@ class RAGCollectionService:
             return {"success": False, "message": f"更新失败: {str(e)}"}
 
     async def delete_collection(self, name: str) -> Dict:
-        """删除Collection"""
+        """删除Collection，包括数据库记录和向量数据库collection"""
         try:
             collection = await RAGCollection.get_or_none(name=name)
             if not collection:
                 return {"success": False, "message": f"Collection '{name}' 不存在"}
 
-            # 删除相关文档
+            # 1. 先删除向量数据库中的collection
+            try:
+                await self._delete_vector_collection(collection)
+                logger.success(f"✅ 向量数据库Collection删除成功: {collection.name}")
+            except Exception as vector_error:
+                logger.error(f"❌ 向量数据库Collection删除失败: {vector_error}")
+                # 向量数据库删除失败不阻止数据库记录删除，但记录警告
+                logger.warning(
+                    f"⚠️ 向量数据库删除失败，继续删除数据库记录: {collection.name}"
+                )
+
+            # 2. 删除相关文档
             doc_count = await RAGDocument.filter(collection=collection).count()
             await RAGDocument.filter(collection=collection).delete()
 
-            # 删除Collection
+            # 3. 删除数据库中的Collection记录
             await collection.delete()
             logger.success(
                 f"✅ 删除Collection成功: {name}，同时删除了 {doc_count} 个文档"

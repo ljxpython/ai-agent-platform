@@ -235,8 +235,10 @@ export class SystemAPI {
 
   // 部门管理
   static async getDepartmentList(params: DepartmentListParams = {}) {
+    console.log('🌐 [SystemAPI] 发送部门列表请求:', params);
     const response = await request.get('/v1/system/departments', { params });
-    return response.data;
+    console.log('📨 [SystemAPI] 部门列表原始响应:', response);
+    return response;
   }
 
   static async getDepartmentTree() {
@@ -268,8 +270,10 @@ export class SystemAPI {
 
   // API管理
   static async getApiList(params: ApiListParams = {}) {
+    console.log('🌐 [SystemAPI] 发送API列表请求:', params);
     const response = await request.get('/v1/system/apis', { params });
-    return response.data;
+    console.log('📨 [SystemAPI] API列表原始响应:', response);
+    return response;
   }
 
   static async getApi(id: number) {

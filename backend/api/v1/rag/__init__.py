@@ -21,26 +21,11 @@ rag_router.include_router(
     rag_documents_router, prefix="/documents", tags=["RAG文档管理"]
 )
 rag_router.include_router(
-    rag_collections_router, prefix="/collections-manage", tags=["RAG Collection管理"]
+    rag_collections_router, prefix="/collections", tags=["RAG Collection管理"]
 )
 
 
 # 添加主路由级别的API
-@rag_router.get("/collections", summary="获取所有Collections")
-async def get_collections():
-    """获取所有Collections信息"""
-    logger.info("📋 获取所有Collections")
-    try:
-        from backend.controllers.rag_controller import rag_collection_controller
-
-        result = await rag_collection_controller.get_all_collections()
-        logger.success("✅ Collections列表获取成功")
-        return result
-    except Exception as e:
-        logger.error(f"❌ 获取Collections失败: {e}")
-        raise
-
-
 @rag_router.get("/processing/jobs", summary="获取处理任务列表")
 async def get_processing_jobs():
     """获取文档处理任务列表"""

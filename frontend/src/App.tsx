@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'r
 import SideNavigation from '@/components/SideNavigation';
 import HomePage from '@/pages/HomePage';
 import ChatPage from '@/pages/ChatPage';
-import RAGManagePage from '@/pages/RAGManagePage';
+
 import TestCasePage from '@/pages/TestCasePage';
 import MidscenePage from '@/pages/MidscenePage';
 import UITestScriptPage from '@/pages/UITestScriptPage';
@@ -60,7 +60,7 @@ const AppContent: React.FC = () => {
       <SideNavigation>
         <Routes>
           <Route path="/chat" element={<ChatPage />} />
-          <Route path="/rag-manage" element={<RAGManagePage />} />
+
           <Route path="/testcase" element={<TestCasePage />} />
           <Route path="/midscene" element={<MidscenePage />} />
           <Route path="/ui-test-script" element={<UITestScriptPage />} />

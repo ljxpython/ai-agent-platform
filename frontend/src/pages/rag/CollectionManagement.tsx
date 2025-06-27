@@ -69,7 +69,7 @@ const CollectionManagement: React.FC = () => {
     console.log('🔄 开始加载Collection列表...');
     setLoading(true);
     try {
-      const response = await fetch('/api/v1/rag/collections-manage/');
+      const response = await fetch('/api/v1/rag/collections/');
       if (response.ok) {
         const data = await response.json();
         console.log('📋 Collection API响应:', data);
@@ -96,7 +96,7 @@ const CollectionManagement: React.FC = () => {
   const handleCreateCollection = async (values: any) => {
     console.log('📝 创建Collection:', values);
     try {
-      const response = await fetch('/api/v1/rag/collections-manage/', {
+      const response = await fetch('/api/v1/rag/collections/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
@@ -124,7 +124,7 @@ const CollectionManagement: React.FC = () => {
 
     console.log('✏️ 更新Collection:', selectedCollection.id, values);
     try {
-      const response = await fetch(`/api/v1/rag/collections-manage/${selectedCollection.id}`, {
+      const response = await fetch(`/api/v1/rag/collections/${selectedCollection.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),
@@ -151,7 +151,7 @@ const CollectionManagement: React.FC = () => {
   const handleDeleteCollection = async (collection: Collection) => {
     console.log('🗑️ 删除Collection:', collection.name);
     try {
-      const response = await fetch(`/api/v1/rag/collections-manage/${collection.id}`, {
+      const response = await fetch(`/api/v1/rag/collections/${collection.id}`, {
         method: 'DELETE',
       });
 
@@ -173,7 +173,7 @@ const CollectionManagement: React.FC = () => {
   const handleViewStats = async (collection: Collection) => {
     console.log('📊 查看Collection统计:', collection.name);
     try {
-      const response = await fetch(`/api/v1/rag/collections-manage/${collection.id}/stats`);
+      const response = await fetch(`/api/v1/rag/collections/${collection.id}/stats`);
       const result = await response.json();
 
       if (response.ok && result.code === 200) {

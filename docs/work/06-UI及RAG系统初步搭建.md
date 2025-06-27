@@ -553,7 +553,7 @@ backend/ai_core层,backend/rag_core层在其目录下已经有详细介绍了
 
 
 
-## 问题
+## RAG相关功能的完善
 
 ```
 RAG知识库的中每个Collection实例化一个是否有必要
@@ -565,4 +565,18 @@ RAG知识库创建Collection的的代码
 
 后端服务的API router注册都放在init中来管理
 
+```
+
+
+
+
+
+```
+1. 前端调用接口:/api/v1/rag/collections/9 405 Method Not Allowed  为什么是9 Request Method DELETE 方法不对,检查更新的方法是不是也报这个错误
+2. /api/v1/rag/collections/3/stats  查看统计的接口也报错
+Request Method
+GET
+Status Code
+404 Not Found
+3. 想拖动左侧的导航栏发现,右侧的页面在滑动
 ```
