@@ -273,6 +273,70 @@ const ChatPage: React.FC = () => {
     setUploadModalVisible(false);
   };
 
+  // 处理召回文档内容块的辅助函数
+  const handleRetrievedChunk = (docsMessageId: string, docIndex: number, content: string) => {
+    console.log(`📚 处理召回文档内容块: docId=${docsMessageId}, index=${docIndex}, contentLength=${content.length}`);
+
+    // 解析相似度分数（如果存在）
+    const similarityMatch = content.match(/相似度:\s*([\d.]+)/);
+    const similarity = similarityMatch ? parseFloat(similarityMatch[1]) : undefined;
+
+    // 更新召回文档列表
+    setRetrievedDocuments(prev => {
+      const existingDoc = prev.find(doc => doc.index === docIndex);
+      if (existingDoc) {
+        // 更新现有文档内容
+        const updatedDoc = {
+          ...existingDoc,
+          content: existingDoc.content + content,
+          similarity: similarity || existingDoc.similarity
+        };
+        console.log(`📚 合并文档 ${docIndex} 内容: ${existingDoc.content.length} + ${content.length} = ${updatedDoc.content.length}`);
+        return prev.map(doc => doc.index === docIndex ? updatedDoc : doc);
+      } else {
+        // 添加新文档
+        const newDoc = { index: docIndex, content, similarity };
+        console.log(`📚 新增文档 ${docIndex}: ${content.length} 字符`);
+        return [...prev, newDoc];
+      }
+    });
+
+    // 更新召回文档消息
+    setMessages(prev =>
+      prev.map(msg => {
+        if (msg.id === docsMessageId) {
+          const updatedDocs = [...(msg.retrievedDocuments || [])];
+          const existingDocIndex = updatedDocs.findIndex(doc => doc.index === docIndex);
+
+          if (existingDocIndex >= 0) {
+            // 合并现有文档内容
+            const existingDoc = updatedDocs[existingDocIndex];
+            updatedDocs[existingDocIndex] = {
+              ...existingDoc,
+              content: existingDoc.content + content,
+              similarity: similarity || existingDoc.similarity
+            };
+            console.log(`📚 消息中合并文档 ${docIndex}: ${existingDoc.content.length} + ${content.length} = ${updatedDocs[existingDocIndex].content.length}`);
+          } else {
+            // 添加新文档
+            updatedDocs.push({ index: docIndex, content, similarity });
+            console.log(`📚 消息中新增文档 ${docIndex}: ${content.length} 字符`);
+          }
+
+          console.log(`📚 更新召回文档消息:`, {
+            messageId: docsMessageId,
+            totalDocs: updatedDocs.length,
+            docIndex: docIndex,
+            currentDocLength: updatedDocs.find(d => d.index === docIndex)?.content?.length
+          });
+
+          return { ...msg, retrievedDocuments: updatedDocs };
+        }
+        return msg;
+      })
+    );
+  };
+
   // 清理 EventSource
   useEffect(() => {
     return () => {
@@ -358,30 +422,31 @@ const ChatPage: React.FC = () => {
                   const ragMessage: RAGMessage = data;
 
                   if (ragMessage.type === 'rag_start') {
-                    // RAG查询开始 - 清空之前的召回文档
+                    // RAG查询开始 - 清空之前的召回文档，但不添加助手消息
+                    console.log('🚀 RAG查询开始:', ragMessage.content);
                     setRetrievedDocuments([]);
                     setShowRetrievedDocs(false);
                     setRetrievedDocsMessageId(null);
-                    setMessages(prev =>
-                      prev.map(msg =>
-                        msg.id === assistantMessageId
-                          ? { ...msg, content: msg.content + `🔍 ${ragMessage.content}\n` }
-                          : msg
-                      )
-                    );
+
+                    // 清理之前的临时状态
+                    if (window.currentRetrievedDocsMessageId) {
+                      delete window.currentRetrievedDocsMessageId;
+                    }
+
+                    // 不在这里添加助手消息，等待agent_start时再添加
+                    console.log('🚀 RAG查询开始，等待召回文档和助手回答');
                   } else if (ragMessage.type === 'rag_retrieval') {
-                    // RAG检索结果
-                    setMessages(prev =>
-                      prev.map(msg =>
-                        msg.id === assistantMessageId
-                          ? { ...msg, content: msg.content + `📄 ${ragMessage.content}\n` }
-                          : msg
-                      )
-                    );
+                    // RAG检索结果 - 只记录日志，不更新消息
+                    console.log('📄 RAG检索结果:', ragMessage.content);
+                    // 不在这里更新助手消息，等待agent_start时再添加助手消息
                   } else if (ragMessage.type === 'rag_retrieved_start') {
                     // 召回内容开始 - 创建召回文档消息
+                    console.log('📚 开始接收召回文档:', ragMessage.content);
                     const docsMessageId = uuidv4();
-                    setRetrievedDocsMessageId(docsMessageId);
+
+                    // 立即设置到ref中，避免异步状态更新问题
+                    const currentDocsMessageId = docsMessageId;
+                    setRetrievedDocsMessageId(currentDocsMessageId);
 
                     const retrievedDocsMessage: ChatMessageType = {
                       id: docsMessageId,
@@ -392,58 +457,59 @@ const ChatPage: React.FC = () => {
                     };
 
                     setMessages(prev => [...prev, retrievedDocsMessage]);
+                    console.log('📚 召回文档消息已添加到列表, ID:', docsMessageId);
+
+                    // 将ID存储到一个ref中，供后续chunk使用
+                    if (!window.currentRetrievedDocsMessageId) {
+                      window.currentRetrievedDocsMessageId = docsMessageId;
+                    }
                   } else if (ragMessage.type === 'rag_retrieved_chunk') {
                     // 召回文档内容块 - 更新召回文档消息
                     const docIndex = ragMessage.document_index || 0;
                     const content = ragMessage.content;
 
-                    // 解析相似度分数（如果存在）
-                    const similarityMatch = content.match(/相似度:\s*([\d.]+)/);
-                    const similarity = similarityMatch ? parseFloat(similarityMatch[1]) : undefined;
+                    // 优先使用window中存储的ID，然后是state中的ID
+                    let currentDocsMessageId = window.currentRetrievedDocsMessageId || retrievedDocsMessageId;
 
-                    // 更新召回文档列表
-                    setRetrievedDocuments(prev => {
-                      const existingDoc = prev.find(doc => doc.index === docIndex);
-                      if (existingDoc) {
-                        // 更新现有文档内容
-                        return prev.map(doc =>
-                          doc.index === docIndex
-                            ? { ...doc, content: doc.content + content, similarity: similarity || doc.similarity }
-                            : doc
-                        );
-                      } else {
-                        // 添加新文档
-                        return [...prev, { index: docIndex, content, similarity }];
-                      }
+                    console.log('📚 RAG检索内容块:', {
+                      document_index: docIndex,
+                      content_length: content?.length,
+                      content_preview: content?.substring(0, 100),
+                      retrievedDocsMessageId: retrievedDocsMessageId,
+                      currentDocsMessageId: currentDocsMessageId
                     });
 
-                    // 更新召回文档消息
-                    if (retrievedDocsMessageId) {
-                      setMessages(prev =>
-                        prev.map(msg => {
-                          if (msg.id === retrievedDocsMessageId) {
-                            const updatedDocs = [...(msg.retrievedDocuments || [])];
-                            const existingDocIndex = updatedDocs.findIndex(doc => doc.index === docIndex);
+                    // 如果还没有召回文档消息，先创建一个
+                    if (!currentDocsMessageId) {
+                      console.log('📚 检测到召回内容但没有消息容器，创建召回文档消息');
+                      const docsMessageId = uuidv4();
+                      setRetrievedDocsMessageId(docsMessageId);
+                      window.currentRetrievedDocsMessageId = docsMessageId;
+                      currentDocsMessageId = docsMessageId;
 
-                            if (existingDocIndex >= 0) {
-                              updatedDocs[existingDocIndex] = {
-                                ...updatedDocs[existingDocIndex],
-                                content: updatedDocs[existingDocIndex].content + content,
-                                similarity: similarity || updatedDocs[existingDocIndex].similarity
-                              };
-                            } else {
-                              updatedDocs.push({ index: docIndex, content, similarity });
-                            }
+                      const retrievedDocsMessage: ChatMessageType = {
+                        id: docsMessageId,
+                        content: '正在检索相关文档...',
+                        role: 'retrieved_docs',
+                        timestamp: new Date(),
+                        retrievedDocuments: []
+                      };
 
-                            return { ...msg, retrievedDocuments: updatedDocs };
-                          }
-                          return msg;
-                        })
-                      );
+                      setMessages(prev => [...prev, retrievedDocsMessage]);
+                      console.log('📚 召回文档消息已创建:', docsMessageId);
                     }
+
+                    // 处理召回文档内容
+                    handleRetrievedChunk(currentDocsMessageId, docIndex, content);
                   } else if (ragMessage.type === 'rag_retrieved_end') {
-                    // 召回内容结束 - 创建AI助手消息
-                    setMessages(prev => [...prev, assistantMessage]);
+                    // 召回内容结束 - 准备接收AI助手回答
+                    console.log('📚 RAG检索内容结束，准备接收AI回答');
+
+                    // 清理临时状态
+                    if (window.currentRetrievedDocsMessageId) {
+                      console.log('📚 清理临时召回文档ID:', window.currentRetrievedDocsMessageId);
+                      delete window.currentRetrievedDocsMessageId;
+                    }
                   } else if (ragMessage.type === 'rag_no_result') {
                     // RAG无结果
                     setMessages(prev =>
@@ -454,23 +520,54 @@ const ChatPage: React.FC = () => {
                       )
                     );
                   } else if (ragMessage.type === 'agent_start') {
-                    // Agent开始处理 - 添加AI助手消息到消息列表
-                    const updatedAssistantMessage = {
-                      ...assistantMessage,
-                      content: ragMessage.content + '\n\n'
-                    };
-                    setMessages(prev => [...prev, updatedAssistantMessage]);
+                    // Agent开始处理 - 在召回文档之后添加助手消息
+                    console.log('🤖 AI助手开始回答:', ragMessage.content);
+
+                    // 确保助手消息在召回文档之后添加
+                    setMessages(prev => {
+                      const hasAssistantMessage = prev.some(msg => msg.id === assistantMessageId);
+                      if (!hasAssistantMessage) {
+                        // 添加新的助手消息，包含RAG查询开始的内容和agent开始的内容
+                        const updatedAssistantMessage = {
+                          ...assistantMessage,
+                          content: `🔍 正在为您查询相关信息...\n\n${ragMessage.content}\n\n`
+                        };
+                        console.log('🤖 在召回文档之后添加助手消息');
+                        return [...prev, updatedAssistantMessage];
+                      } else {
+                        // 如果已存在，更新现有消息
+                        console.log('🤖 更新现有助手消息内容');
+                        return prev.map(msg =>
+                          msg.id === assistantMessageId
+                            ? { ...msg, content: msg.content + ragMessage.content + '\n\n' }
+                            : msg
+                        );
+                      }
+                    });
                   } else if (ragMessage.type === 'streaming_chunk') {
-                    // 流式内容
-                    setMessages(prev =>
-                      prev.map(msg =>
+                    // 流式内容 - 智能体回答内容
+                    console.log('🤖 智能体流式内容:', {
+                      content: ragMessage.content,
+                      contentLength: ragMessage.content?.length,
+                      assistantMessageId: assistantMessageId
+                    });
+
+                    setMessages(prev => {
+                      const assistantMsg = prev.find(msg => msg.id === assistantMessageId);
+                      if (!assistantMsg) {
+                        console.warn('⚠️ 找不到助手消息，跳过streaming内容更新');
+                        return prev;
+                      }
+
+                      return prev.map(msg =>
                         msg.id === assistantMessageId
                           ? { ...msg, content: msg.content + ragMessage.content }
                           : msg
-                      )
-                    );
+                      );
+                    });
                   } else if (ragMessage.type === 'complete') {
                     // 完成
+                    console.log('✅ RAG对话完成');
                     setMessages(prev =>
                       prev.map(msg =>
                         msg.id === assistantMessageId
@@ -491,20 +588,31 @@ const ChatPage: React.FC = () => {
                     break;
                   }
                 } else {
-                  // 处理普通流式消息
+                  // 处理普通流式消息（非RAG模式）
+                  console.log('📝 普通流式消息:', data);
                   const chunk: StreamChunk = data;
 
+                  // 确保助手消息已添加到列表中（只在第一次添加）
                   if (chunk.content) {
-                    setMessages(prev =>
-                      prev.map(msg =>
-                        msg.id === assistantMessageId
-                          ? { ...msg, content: msg.content + chunk.content }
-                          : msg
-                      )
-                    );
+                    setMessages(prev => {
+                      const hasAssistantMessage = prev.some(msg => msg.id === assistantMessageId);
+                      if (!hasAssistantMessage) {
+                        // 第一次添加助手消息并包含内容
+                        console.log('📝 添加新的助手消息（非RAG模式）');
+                        return [...prev, { ...assistantMessage, content: chunk.content }];
+                      } else {
+                        // 更新现有助手消息
+                        return prev.map(msg =>
+                          msg.id === assistantMessageId
+                            ? { ...msg, content: msg.content + chunk.content }
+                            : msg
+                        );
+                      }
+                    });
                   }
 
                   if (chunk.is_complete) {
+                    console.log('✅ 普通对话完成');
                     setMessages(prev =>
                       prev.map(msg =>
                         msg.id === assistantMessageId

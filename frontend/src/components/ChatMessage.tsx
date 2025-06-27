@@ -124,7 +124,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({ message }) => {
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
               {message.retrievedDocuments?.map((doc, index) => (
                 <Card
-                  key={`${doc.index}-${index}`}
+                  key={`${message.id}-doc-${doc.index}-${index}`}
                   size="small"
                   style={{
                     backgroundColor: '#ffffff',
