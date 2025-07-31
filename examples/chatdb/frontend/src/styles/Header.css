@@ -1,0 +1,127 @@
+/* 导航栏样式 */
+.app-header {
+  background: linear-gradient(90deg, #001529 0%, #003a70 100%);
+  padding: 0 24px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  height: 64px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.app-logo {
+  height: 40px;
+  margin-right: 16px;
+}
+
+.app-title {
+  font-size: 22px;
+  font-weight: bold;
+  color: white;
+  margin-right: 48px;
+  white-space: nowrap;
+  letter-spacing: 1px;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+  position: relative;
+  padding-left: 15px;
+}
+
+.app-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 5px;
+  height: 24px;
+  background: #1890ff;
+  border-radius: 3px;
+}
+
+/* 导航菜单样式 */
+.app-menu {
+  flex: 1;
+  min-width: 0;
+  border-bottom: none;
+  background: transparent;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.app-menu .ant-menu-item {
+  padding: 0 24px;
+  margin: 0 5px;
+  font-size: 16px;
+  line-height: 64px;
+  height: 64px;
+  border-radius: 4px 4px 0 0;
+  transition: all 0.3s;
+  position: relative;
+  overflow: visible;
+}
+
+.app-menu .ant-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.app-menu .ant-menu-item-selected {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  font-weight: 500;
+  box-shadow: 0 0 10px rgba(24, 144, 255, 0.3);
+}
+
+.app-menu .ant-menu-item-selected::after {
+  border-bottom: 3px solid #1890ff;
+  transition: all 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+.app-menu .ant-menu-item::before {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 3px;
+  background-color: #1890ff;
+  transform: translateX(-50%);
+  transition: width 0.3s;
+}
+
+.app-menu .ant-menu-item:hover::before {
+  width: 30%;
+}
+
+.app-menu .ant-menu-item .anticon {
+  margin-right: 8px;
+  font-size: 18px;
+  vertical-align: middle;
+}
+
+/* 链接样式 */
+.app-menu .ant-menu-item a {
+  color: rgba(255, 255, 255, 0.85);
+  transition: color 0.3s;
+}
+
+.app-menu .ant-menu-item:hover a,
+.app-menu .ant-menu-item-selected a {
+  color: #fff;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .app-title {
+    font-size: 18px;
+    margin-right: 20px;
+  }
+
+  .app-menu .ant-menu-item {
+    padding: 0 12px;
+    font-size: 14px;
+  }
+}

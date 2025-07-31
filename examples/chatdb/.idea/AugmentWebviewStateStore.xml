@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AugmentWebviewStateStore">
+    <option name="stateMap">
+      <map>
+        <entry key="CHAT_STATE" value="{&quot;currentConversationId&quot;:&quot;__NEW_AGENT__&quot;,&quot;conversations&quot;:{&quot;__NEW_AGENT__&quot;:{&quot;id&quot;:&quot;__NEW_AGENT__&quot;,&quot;createdAtIso&quot;:&quot;2025-07-28T05:13:22.966Z&quot;,&quot;lastInteractedAtIso&quot;:&quot;2025-07-28T09:10:08.101Z&quot;,&quot;chatHistory&quot;:[],&quot;feedbackStates&quot;:{},&quot;toolUseStates&quot;:{},&quot;draftExchange&quot;:{&quot;request_message&quot;:&quot;&quot;,&quot;rich_text_json_repr&quot;:{&quot;type&quot;:&quot;doc&quot;,&quot;content&quot;:[{&quot;type&quot;:&quot;paragraph&quot;}]},&quot;mentioned_items&quot;:[],&quot;status&quot;:&quot;draft&quot;},&quot;requestIds&quot;:[],&quot;isPinned&quot;:false,&quot;isShareable&quot;:false,&quot;extraData&quot;:{&quot;hasDirtyEdits&quot;:false,&quot;isAgentConversation&quot;:true,&quot;baselineTimestamp&quot;:0},&quot;personaType&quot;:0,&quot;rootTaskUuid&quot;:&quot;486530df-41b8-4b55-be31-ce274d5fce45&quot;},&quot;78b891d7-6e82-493f-9f2d-804e7bdd7ad9&quot;:{&quot;id&quot;:&quot;78b891d7-6e82-493f-9f2d-804e7bdd7ad9&quot;,&quot;createdAtIso&quot;:&quot;2025-07-28T09:10:08.025Z&quot;,&quot;lastInteractedAtIso&quot;:&quot;2025-07-28T09:10:08.025Z&quot;,&quot;chatHistory&quot;:[],&quot;feedbackStates&quot;:{},&quot;toolUseStates&quot;:{},&quot;requestIds&quot;:[],&quot;isPinned&quot;:false,&quot;isShareable&quot;:false,&quot;extraData&quot;:{&quot;hasDirtyEdits&quot;:false},&quot;personaType&quot;:0}},&quot;agentExecutionMode&quot;:&quot;auto&quot;,&quot;isPanelCollapsed&quot;:true,&quot;displayedAnnouncements&quot;:[],&quot;sortConversationsBy&quot;:&quot;lastMessageTimestamp&quot;,&quot;sendMode&quot;:&quot;send&quot;}" />
+      </map>
+    </option>
+  </component>
+</project>

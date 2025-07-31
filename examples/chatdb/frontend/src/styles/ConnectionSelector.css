@@ -1,0 +1,163 @@
+/* 右上角数据库连接选择器样式 */
+.text2sql-connection-selector {
+  position: relative;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.text2sql-connection-selector .text2sql-db-select-wrapper {
+  margin-bottom: 0;
+  transition: all 0.2s ease;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(226, 232, 240, 1);
+  width: auto;
+  min-width: 200px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+}
+
+.text2sql-connection-selector .text2sql-db-select-wrapper:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.text2sql-connection-selector .text2sql-db-select-wrapper:focus-within {
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.5);
+}
+
+.text2sql-connection-selector .text2sql-db-select {
+  font-size: 0.875rem;
+  padding: 0 8px;
+  border: none;
+  outline: none;
+  background: transparent;
+  width: 100%;
+  color: #1f2937;
+}
+
+.text2sql-connection-selector .text2sql-db-select-icon {
+  position: relative;
+  left: auto;
+  top: auto;
+  transform: none;
+  color: #3b82f6;
+  margin-left: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text2sql-connection-selector .text2sql-db-select-arrow {
+  position: relative;
+  right: auto;
+  top: auto;
+  transform: none;
+  color: #3b82f6;
+  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 暗色模式样式 */
+.dark .text2sql-connection-selector .text2sql-db-select-wrapper {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+.dark .text2sql-connection-selector .text2sql-db-select {
+  color: #e5e7eb;
+}
+
+.dark .text2sql-connection-selector .text2sql-db-select-icon,
+.dark .text2sql-connection-selector .text2sql-db-select-arrow {
+  color: #60a5fa;
+}
+
+/* 用户反馈复选框样式 */
+.text2sql-feedback-checkbox {
+  display: flex;
+  align-items: center;
+}
+
+.feedback-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: #374151;
+  user-select: none;
+  transition: color 0.2s ease;
+}
+
+.feedback-checkbox-label:hover {
+  color: #1f2937;
+}
+
+.feedback-checkbox-input {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #d1d5db;
+  border-radius: 3px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin: 0;
+}
+
+.feedback-checkbox-input:checked {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  background-image: url("data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='m13.854 3.646-7.5 7.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6 10.293l7.146-7.147a.5.5 0 0 1 .708.708z'/%3e%3c/svg%3e");
+  background-size: 12px 12px;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.feedback-checkbox-input:hover {
+  border-color: #9ca3af;
+}
+
+.feedback-checkbox-input:checked:hover {
+  background-color: #2563eb;
+  border-color: #2563eb;
+}
+
+.feedback-checkbox-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.feedback-checkbox-text {
+  font-weight: 500;
+}
+
+/* 暗色模式下的复选框样式 */
+.dark .feedback-checkbox-label {
+  color: #d1d5db;
+}
+
+.dark .feedback-checkbox-label:hover {
+  color: #f3f4f6;
+}
+
+.dark .feedback-checkbox-input {
+  background: #374151;
+  border-color: #4b5563;
+}
+
+.dark .feedback-checkbox-input:hover {
+  border-color: #6b7280;
+}
+
+.dark .feedback-checkbox-input:checked {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+}

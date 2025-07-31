@@ -1,0 +1,132 @@
+/* 布局和滚动修复样式 */
+
+/* 全局滚动修复 */
+html {
+  height: 100%;
+  overflow-x: hidden; /* 只禁用水平滚动 */
+  overflow-y: auto; /* 允许垂直滚动 */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  overflow-x: hidden; /* 只禁用水平滚动 */
+}
+
+#root {
+  min-height: 100vh;
+  overflow-x: hidden; /* 只禁用水平滚动 */
+  display: flex;
+  flex-direction: column;
+}
+
+/* 修复 Ant Design Layout 组件的滚动问题 */
+.ant-layout {
+  min-height: 100vh !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.ant-layout-content {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* 页面容器通用样式 */
+.page-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  min-height: 0; /* 确保flex子元素可以收缩 */
+  padding: 24px;
+}
+
+/* 内容区域通用样式 */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding-bottom: 20px; /* 确保底部有足够空间 */
+}
+
+/* 滚动条美化 */
+.content-area::-webkit-scrollbar {
+  width: 8px;
+}
+
+.content-area::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.content-area::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.content-area::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 修复表格和卡片组件的滚动问题 */
+.ant-table-wrapper {
+  overflow: auto !important;
+}
+
+.ant-card-body {
+  overflow: visible !important;
+}
+
+/* 修复模态框的滚动问题 */
+.ant-modal-body {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* 响应式修复 */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 16px;
+  }
+
+  .content-area {
+    padding-bottom: 40px; /* 移动端需要更多底部空间 */
+  }
+}
+
+/* 特殊页面的滚动修复 */
+.schema-management-page,
+.connections-page,
+.graph-visualization-page,
+.hybrid-qa-page,
+.value-mappings-page {
+  height: 100%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 确保 ReactFlow 容器正确显示 */
+.react-flow-wrapper {
+  flex: 1;
+  min-height: 500px;
+  overflow: hidden;
+}
+
+/* 修复固定定位元素的显示问题 */
+.fixed-panel {
+  position: fixed;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  z-index: 1000;
+}
+
+/* 确保内容不被固定元素遮挡 */
+.main-content-with-fixed-panel {
+  padding-bottom: 200px; /* 为固定面板留出空间 */
+}

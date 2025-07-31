@@ -1,0 +1,341 @@
+/* 混合检索示例面板样式 */
+
+.hybrid-examples-panel {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  width: 450px;
+  max-height: calc(100vh - 120px);
+  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  background: white;
+  overflow: hidden;
+}
+
+.examples-card {
+  height: 100%;
+  border: none;
+  box-shadow: none;
+}
+
+.examples-card .ant-card-body {
+  padding: 16px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.examples-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.example-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding-right: 40px; /* 为extra按钮留空间 */
+}
+
+.example-title {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0; /* 允许文本截断 */
+}
+
+.example-index {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: bold;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.example-question {
+  font-size: 13px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.example-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.example-content {
+  margin-top: 12px;
+}
+
+.example-section {
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #666;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+}
+
+.sql-code {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 12px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #333;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+
+.explanation {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.5;
+  margin: 0;
+  background: #f0f7ff;
+  padding: 8px 12px;
+  border-radius: 4px;
+  border-left: 3px solid #1890ff;
+}
+
+.score-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.score-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.score-item span:first-child {
+  width: 70px;
+  color: #666;
+  flex-shrink: 0;
+}
+
+.score-item .ant-progress {
+  flex: 1;
+  margin: 0;
+}
+
+.score-value {
+  width: 35px;
+  text-align: right;
+  color: #333;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.example-footer {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #f0f0f0;
+  font-size: 11px;
+  color: #999;
+}
+
+.example-footer .ant-space {
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.example-footer .ant-tag {
+  margin: 0 2px;
+  font-size: 10px;
+  padding: 0 4px;
+  line-height: 16px;
+}
+
+/* 小尺寸 Tag 样式 */
+.example-meta .ant-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  line-height: 18px;
+  margin: 0;
+}
+
+.example-footer .ant-tag {
+  font-size: 10px;
+  padding: 0 4px;
+  line-height: 16px;
+  margin: 0 2px;
+}
+
+/* Collapse 样式调整 */
+.examples-list .ant-collapse {
+  background: transparent;
+  border: none;
+}
+
+.examples-list .ant-collapse-item {
+  border: 1px solid #f0f0f0;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.examples-list .ant-collapse-item:last-child {
+  margin-bottom: 0;
+}
+
+.examples-list .ant-collapse-header {
+  padding: 12px 16px !important;
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.examples-list .ant-collapse-content {
+  border-top: none;
+}
+
+.examples-list .ant-collapse-content-box {
+  padding: 16px;
+  background: white;
+}
+
+/* 展开状态的样式 */
+.examples-list .ant-collapse-item-active .ant-collapse-header {
+  background: #e6f7ff;
+  border-bottom-color: #91d5ff;
+}
+
+/* 响应式调整 */
+@media (max-width: 1200px) {
+  .hybrid-examples-panel {
+    width: 400px;
+    right: 10px;
+  }
+}
+
+@media (max-width: 768px) {
+  .hybrid-examples-panel {
+    position: fixed;
+    top: 60px;
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-height: calc(100vh - 80px);
+  }
+
+  .example-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding-right: 20px;
+  }
+
+  .example-meta {
+    align-self: flex-end;
+  }
+}
+
+/* 滚动条样式 */
+.examples-card .ant-card-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.examples-card .ant-card-body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.examples-card .ant-card-body::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.examples-card .ant-card-body::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* 动画效果 */
+.hybrid-examples-panel {
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 加载状态 */
+.examples-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: #666;
+}
+
+.examples-loading .ant-spin {
+  margin-bottom: 16px;
+}
+
+/* 空状态 */
+.examples-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #999;
+}
+
+/* 错误状态 */
+.examples-error {
+  text-align: center;
+  padding: 40px 20px;
+}
+
+.examples-error p {
+  color: #ff4d4f;
+  margin-bottom: 16px;
+}
+
+/* 高亮效果 */
+.example-content:hover {
+  background: #fafafa;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+/* 按钮样式调整 */
+.example-header .ant-btn {
+  border: none;
+  box-shadow: none;
+  padding: 4px;
+  height: auto;
+  width: auto;
+  min-width: auto;
+}
+
+.example-header .ant-btn:hover {
+  background: rgba(24, 144, 255, 0.1);
+  color: #1890ff;
+}

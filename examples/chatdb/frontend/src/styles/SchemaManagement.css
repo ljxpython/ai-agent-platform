@@ -1,0 +1,487 @@
+/* 表节点样式 - 参考 wren-modeling.png 风格 */
+.table-node {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background-color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.12);
+  min-width: 220px;
+  max-width: 280px;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  z-index: 10;
+  transition: all 0.2s ease-in-out;
+}
+
+.table-node.selected {
+  border: 2px solid #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.table-node.hovered {
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1), 0 4px 8px rgba(0, 0, 0, 0.05);
+  transform: translateY(-2px);
+}
+
+.table-node .node-header {
+  background: linear-gradient(to bottom, #f8fafc, #f1f5f9);
+  padding: 12px 14px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.table-node .node-title {
+  display: flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 15px;
+  color: #1e293b;
+  letter-spacing: -0.01em;
+  justify-content: space-between;
+}
+
+.table-node .table-remove-btn {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  margin-left: auto;
+  padding: 2px;
+  height: auto;
+  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-node:hover .table-remove-btn,
+.table-node.selected .table-remove-btn {
+  opacity: 1;
+}
+
+.table-node .table-remove-btn:hover {
+  background-color: rgba(255, 77, 79, 0.1);
+  color: #ff4d4f;
+}
+
+.table-node .node-icon {
+  margin-right: 8px;
+  color: #3b82f6;
+  font-size: 16px;
+}
+
+.table-node .node-description {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-style: italic;
+}
+
+.table-node .node-content {
+  padding: 0;
+}
+
+.table-node .columns-container {
+  max-height: 350px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f8fafc;
+}
+
+.table-node .columns-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.table-node .columns-container::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.table-node .columns-container::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 6px;
+}
+
+.table-node .column {
+  padding: 8px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 13px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: relative;
+  cursor: grab;
+  transition: background-color 0.15s ease-in-out;
+}
+
+.table-node .column:last-child {
+  border-bottom: none;
+}
+
+.table-node .column:hover {
+  background-color: #f8fafc;
+}
+
+.table-node .column.hovered {
+  background-color: #eff6ff;
+}
+
+.table-node .column.primary-key {
+  background-color: #f0f9ff;
+  border-left: 3px solid #3b82f6;
+}
+
+.table-node .column.foreign-key {
+  background-color: #fef3c7;
+  border-left: 3px solid #f59e0b;
+}
+
+.table-node .column.potential-target {
+  background-color: #eff6ff;
+  border: 1px dashed #93c5fd;
+  animation: pulse-blue 1.5s infinite;
+}
+
+@keyframes pulse-blue {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.2); }
+  70% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+.table-node .column.active-target {
+  background-color: #dbeafe;
+  border: 1px solid #3b82f6;
+  box-shadow: inset 0 0 0 1px #3b82f6;
+}
+
+.table-node .column-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.table-node .column-name {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  color: #334155;
+}
+
+.table-node .column-icon {
+  margin-right: 6px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.table-node .primary-key-icon {
+  color: #2563eb;
+}
+
+.table-node .foreign-key-icon {
+  color: #d97706;
+}
+
+.table-node .column-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table-node .column-type {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 3px;
+}
+
+.table-node .type-badge {
+  background-color: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  letter-spacing: 0.02em;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+/* 连接点样式 */
+.column-handle {
+  width: 10px !important;
+  height: 10px !important;
+  background-color: white !important;
+  border: 2px solid #64748b !important;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.column-handle.source-handle {
+  right: -5px;
+}
+
+.column-handle.target-handle {
+  left: -5px;
+}
+
+.column:hover .column-handle,
+.column-handle.visible {
+  opacity: 1;
+}
+
+/* 关系边样式 */
+.react-flow__edge-path {
+  stroke-width: 2;
+  transition: stroke-width 0.2s, filter 0.2s;
+}
+
+/* 一对一关系 */
+.react-flow__edge[data-type="1-to-1"] .react-flow__edge-path,
+.react-flow__edge[data-relationshiptype="1-to-1"] .react-flow__edge-path {
+  stroke: #8b5cf6; /* 紫色 */
+}
+
+/* 一对多关系 */
+.react-flow__edge[data-type="1-to-N"] .react-flow__edge-path,
+.react-flow__edge[data-relationshiptype="1-to-N"] .react-flow__edge-path {
+  stroke: #0ea5e9; /* 蓝色 */
+}
+
+/* 多对多关系 */
+.react-flow__edge[data-type="N-to-M"] .react-flow__edge-path,
+.react-flow__edge[data-relationshiptype="N-to-M"] .react-flow__edge-path {
+  stroke: #f59e0b; /* 橙色 */
+  stroke-width: 1.5;
+  stroke-dasharray: 5,3;
+}
+
+/* 选中的边 */
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 3px rgba(59, 130, 246, 0.5));
+}
+
+/* 悬停的边 */
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 2.5;
+  filter: drop-shadow(0 0 2px rgba(100, 116, 139, 0.4));
+}
+
+/* 关系线标签 */
+.react-flow__edge-text {
+  font-size: 12px;
+  font-weight: 500;
+  fill: #475569;
+  text-shadow: 0 0 3px white, 0 0 2px white, 0 0 1px white;
+}
+
+.react-flow__edge.selected .react-flow__edge-text {
+  fill: #3b82f6;
+  font-weight: 600;
+}
+
+/* 自定义标记样式 */
+#one-to-one-start, #one-to-one-end,
+#one-to-many-start, #one-to-many-end,
+#many-to-many-start, #many-to-many-end {
+  overflow: visible;
+}
+
+/* 端点标记动画 */
+@keyframes pulse-marker {
+  0% { stroke-width: 2; }
+  50% { stroke-width: 3; }
+  100% { stroke-width: 2; }
+}
+
+/* 增强端点标记可见性 */
+.react-flow__edge marker path {
+  stroke-width: 2;
+}
+
+/* 选中时增强端点标记 */
+.react-flow__edge.selected marker path {
+  stroke-width: 3;
+  filter: drop-shadow(0 0 3px rgba(59, 130, 246, 0.5));
+  animation: pulse-marker 2s infinite ease-in-out;
+}
+
+/* 自定义连接线 */
+.custom-connection-line {
+  stroke: #0ea5e9;
+  stroke-width: 2;
+  stroke-dasharray: 5,5;
+}
+
+/* 关系线样式 */
+.react-flow__edge-path {
+  stroke-width: 2.5 !important;
+}
+
+.react-flow__edge.selected .react-flow__edge-path {
+  stroke-width: 3.5 !important;
+}
+
+/* 一对多关系的特殊样式 */
+.react-flow__edge[data-relationshiptype="1-to-N"] .react-flow__edge-path {
+  stroke: #0ea5e9 !important;
+}
+
+/* 一对一关系的特殊样式 */
+.react-flow__edge[data-relationshiptype="1-to-1"] .react-flow__edge-path {
+  stroke: #8b5cf6 !important;
+}
+
+/* 多对多关系的特殊样式 */
+.react-flow__edge[data-relationshiptype="N-to-M"] .react-flow__edge-path {
+  stroke: #f59e0b !important;
+  stroke-dasharray: 5,5 !important;
+}
+
+/* 关系标签容器 */
+.edge-label-container {
+  pointer-events: all;
+  cursor: pointer;
+}
+
+.edge-label-container.highlighted {
+  z-index: 1001;
+}
+
+/* 工具栏样式 */
+.schema-toolbar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.schema-toolbar .ant-btn {
+  display: flex;
+  align-items: center;
+}
+
+/* 关系创建指示器 */
+.relationship-indicator {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  z-index: 1000;
+}
+
+/* 画布容器样式 */
+.diagram-container {
+  width: 100%;
+  height: 100%;
+  border: 1px solid #d9d9d9;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* 确保ReactFlow填满整个容器 */
+.react-flow {
+  width: 100%;
+  height: 100%;
+}
+
+/* 确保边线样式更高的优先级 */
+.react-flow__edge .react-flow__edge-path {
+  stroke-width: 1.5 !important;
+}
+
+/* 特殊边缘类型样式 - 使用更高优先级选择器 */
+.react-flow__edges .react-flow__edge[data-type="relationshipEdge"] .react-flow__edge-path {
+  stroke-width: 2 !important;
+}
+
+/* 确保连接点在线条上方 */
+.react-flow__handle {
+  z-index: 20 !important;
+}
+
+.react-flow__controls {
+  z-index: 30;
+}
+
+.react-flow__minimap {
+  z-index: 40;
+}
+
+/* 控制面板样式 */
+.schema-controls {
+  position: relative;
+  z-index: 1000;
+  background: white;
+  padding: 10px;
+  border-radius: 5px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* 自动布局按钮样式 */
+.react-flow__controls-button svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+  pointer-events: none;
+}
+
+.react-flow__controls-button:hover {
+  background-color: #f0f0f0;
+}
+
+/* 自动布局动画效果 */
+@keyframes layout-animation {
+  0% { opacity: 0.7; transform: translate(0, 0); }
+  50% { opacity: 1; transform: translate(5px, 5px); }
+  100% { opacity: 0.7; transform: translate(0, 0); }
+}
+
+.node-animating {
+  animation: layout-animation 0.5s ease-in-out;
+}
+
+/* 确保标签在线条上方 */
+.react-flow__edge-textwrapper {
+  z-index: 6 !important;
+}
+
+.react-flow__edge foreignObject {
+  z-index: 6 !important;
+  overflow: visible;
+}
+
+/* 删除按钮样式 */
+.edge-delete-button {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+  transform: scale(0.8);
+}
+
+.edge-delete-button:hover {
+  transform: scale(1.1);
+}
+
+.edge-label-container:hover .edge-delete-button,
+.react-flow__edge.selected .edge-delete-button {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* 删除按钮悬停效果 */
+.edge-delete-button:hover {
+  background-color: #ff4d4f !important;
+  box-shadow: 0 0 8px rgba(255, 77, 79, 0.5) !important;
+}

@@ -1,0 +1,23 @@
+// 这是一个临时文件，用于替换 SchemaManagementPage.tsx 中的部分内容
+// 将以下代码替换到 SchemaManagementPage.tsx 文件中的相应位置
+
+    } else if (!sourceIsPrimaryKey && targetIsPrimaryKey) {
+      // 源字段不是主键，目标字段是主键 -> 多对一（源表是"多"，目标表是"一"）
+      // 使用MANY_TO_ONE关系类型
+      relationshipType = RELATIONSHIP_TYPES.MANY_TO_ONE;
+      console.log('设置关系类型: 多对一（源表是"多"，目标表是"一"）');
+
+      // 准备关系数据 - 保持源和目标不变
+      const relationshipData = {
+        id: `edge-${Date.now()}`,
+        sourceNodeId: sourceNodeId,
+        targetNodeId: targetNodeId,
+        sourceTable: sourceNode.data.label,
+        sourceColumn: sourceColumn.column_name,
+        sourceColumnId: sourceColumn.id,
+        targetTable: targetNode.data.label,
+        targetColumn: targetColumn.column_name,
+        targetColumnId: targetColumn.id,
+        relationshipType: relationshipType,
+        description: ''
+      };

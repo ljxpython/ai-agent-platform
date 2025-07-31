@@ -1,0 +1,147 @@
+/* 节点样式 */
+.graph-node {
+  transition: all 0.3s ease;
+  z-index: 5;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.graph-node:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  z-index: 10;
+}
+
+.graph-node.selected {
+  box-shadow: 0 0 0 2px #1890ff, 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  z-index: 10;
+}
+
+/* 表节点和列节点容器 */
+.table-node-container,
+.column-node-container {
+  position: relative;
+  z-index: 5;
+}
+
+/* 确保节点在边的上方 */
+.react-flow__node {
+  z-index: 5;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.react-flow__edge {
+  z-index: 1;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* 确保节点内容可见 */
+.react-flow__node-table,
+.react-flow__node-column {
+  width: auto !important;
+  height: auto !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: all !important;
+}
+
+.table-node {
+  border-radius: 4px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.column-node {
+  border-radius: 8px !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* 节点交互 */
+.react-flow__node {
+  cursor: pointer;
+}
+
+/* 控制按钮样式 */
+.react-flow__controls {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  background-color: white;
+  padding: 4px;
+}
+
+.react-flow__controls-button {
+  border-radius: 4px;
+  background: white;
+  border: 1px solid #d9d9d9;
+  color: #1890ff;
+  margin: 2px;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.react-flow__controls-button:hover {
+  background: #f0f0f0;
+}
+
+/* 边样式 */
+.react-flow__edge-path {
+  transition: stroke-width 0.3s ease;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.react-flow__edge-path:hover {
+  stroke-width: 3px;
+}
+
+/* 背景和其他元素 */
+.react-flow__background {
+  background-color: #fafafa;
+}
+
+.react-flow__attribution {
+  background: transparent;
+  color: #8c8c8c;
+}
+
+/* 确保连接点可见 */
+.react-flow__handle {
+  width: 8px !important;
+  height: 8px !important;
+  background-color: #1890ff;
+  border: 2px solid white;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* 确保画布内容可见 */
+.react-flow__viewport {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+/* 确保边标签可见 */
+.react-flow__edge-label {
+  opacity: 1 !important;
+  visibility: visible !important;
+  z-index: 1000;
+}
+
+/* 确保边箭头可见 */
+.react-flow__arrowhead {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+/* 面板样式 */
+.react-flow__panel {
+  z-index: 5;
+}

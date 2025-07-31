@@ -4,14 +4,63 @@
   "metadata": {
     "version": "2.0.0",
     "description": "project 级资源注册表",
-    "createdAt": "2025-07-19T15:58:44.995Z",
-    "updatedAt": "2025-07-19T15:58:44.995Z",
-    "resourceCount": 0
+    "createdAt": "2025-07-27T14:28:49.630Z",
+    "updatedAt": "2025-07-27T14:28:49.632Z",
+    "resourceCount": 3
   },
-  "resources": [],
+  "resources": [
+    {
+      "id": "development-workflow",
+      "source": "project",
+      "protocol": "execution",
+      "name": "Development Workflow 执行模式",
+      "description": "执行模式，定义具体的行为模式",
+      "reference": "@project://.promptx/resource/role/noah/execution/development-workflow.execution.md",
+      "metadata": {
+        "createdAt": "2025-07-27T14:28:49.632Z",
+        "updatedAt": "2025-07-27T14:28:49.632Z",
+        "scannedAt": "2025-07-27T14:28:49.631Z",
+        "path": "role/noah/execution/development-workflow.execution.md"
+      }
+    },
+    {
+      "id": "noah",
+      "source": "project",
+      "protocol": "role",
+      "name": "Noah 角色",
+      "description": "专业角色，提供特定领域的专业能力",
+      "reference": "@project://.promptx/resource/role/noah/noah.role.md",
+      "metadata": {
+        "createdAt": "2025-07-27T14:28:49.632Z",
+        "updatedAt": "2025-07-27T14:28:49.632Z",
+        "scannedAt": "2025-07-27T14:28:49.632Z",
+        "path": "role/noah/noah.role.md"
+      }
+    },
+    {
+      "id": "engineering-mindset",
+      "source": "project",
+      "protocol": "thought",
+      "name": "Engineering Mindset 思维模式",
+      "description": "思维模式，指导AI的思考方式",
+      "reference": "@project://.promptx/resource/role/noah/thought/engineering-mindset.thought.md",
+      "metadata": {
+        "createdAt": "2025-07-27T14:28:49.632Z",
+        "updatedAt": "2025-07-27T14:28:49.632Z",
+        "scannedAt": "2025-07-27T14:28:49.632Z",
+        "path": "role/noah/thought/engineering-mindset.thought.md"
+      }
+    }
+  ],
   "stats": {
-    "totalResources": 0,
-    "byProtocol": {},
-    "bySource": {}
+    "totalResources": 3,
+    "byProtocol": {
+      "execution": 1,
+      "role": 1,
+      "thought": 1
+    },
+    "bySource": {
+      "project": 3
+    }
   }
 }

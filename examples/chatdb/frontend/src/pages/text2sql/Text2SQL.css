@@ -1,0 +1,100 @@
+.text2sql-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+}
+
+.query-card {
+  margin-bottom: 16px;
+}
+
+.query-input-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.connection-selector {
+  margin-bottom: 8px;
+}
+
+.query-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.tabs-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #f0f0f0;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.tabs-header {
+  display: flex;
+  background-color: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.tab {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+}
+
+.tab:hover {
+  color: #1890ff;
+}
+
+.tab.active {
+  color: #1890ff;
+  border-bottom: 2px solid #1890ff;
+}
+
+.tab-content {
+  flex: 1;
+  padding: 16px;
+  overflow: auto;
+}
+
+.processing-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+.empty-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: #999;
+}
+
+.explanation-card {
+  height: 100%;
+}
+
+.explanation-content {
+  white-space: pre-wrap;
+}
+
+/* 确保代码块正确显示 */
+pre {
+  background-color: #f6f8fa;
+  border-radius: 3px;
+  padding: 16px;
+  overflow: auto;
+}
+
+code {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+  font-size: 85%;
+}

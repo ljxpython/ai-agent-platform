@@ -1,0 +1,1340 @@
+/* Gemini风格聊天界面样式 */
+
+/* 确保全局布局正确，允许必要的滚动 */
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow-x: hidden; /* 只禁用水平滚动 */
+}
+
+#root {
+  min-height: 100vh;
+  overflow-x: hidden; /* 只禁用水平滚动 */
+}
+
+/* Gemini主布局 - 优化滚动处理 */
+.gemini-chat-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #ffffff;
+  overflow-x: hidden;
+}
+
+/* Gemini左侧边栏 - 固定宽度，完全固定，支持折叠 */
+.gemini-sidebar {
+  width: 260px;
+  background: #f9f9f9;
+  border-right: 1px solid #e8eaed;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  flex-shrink: 0;
+  position: relative;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 当侧边栏折叠时，调整布局 */
+.gemini-chat-layout.sidebar-collapsed .gemini-sidebar {
+  width: 64px;
+}
+
+.gemini-chat-layout.sidebar-collapsed .gemini-main-area {
+  margin-left: 0;
+}
+
+/* 当侧边栏折叠时，调整输入框位置 */
+.gemini-chat-layout.sidebar-collapsed .gemini-input-area {
+  left: 64px !important;
+}
+
+/* Gemini右侧主区域 - 分为上下两部分，优化滚动处理 */
+.gemini-main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background: #ffffff;
+  overflow-x: hidden;
+  position: relative;
+}
+
+/* Gemini聊天内容区域 - 上部分，优化滚动处理 */
+.gemini-chat-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0;
+  background: #ffffff;
+  min-height: 0; /* 重要：确保flex子元素可以收缩 */
+  position: relative;
+  min-height: calc(100vh - 200px); /* 为输入框预留空间，使用min-height而不是固定height */
+}
+
+/* Gemini输入区域 - 下部分，固定高度，不滚动 */
+.gemini-input-area {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  padding: 24px;
+  display: flex !important;
+  justify-content: center;
+  align-items: center;
+  height: 100px !important;
+  min-height: 100px !important;
+  max-height: 100px !important;
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 260px !important;
+  right: 0 !important;
+  z-index: 1000 !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  box-shadow: none;
+}
+
+/* 企业级聊天界面样式 - 保持兼容 */
+.enterprise-chat-layout {
+  display: flex;
+  height: 100vh;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  overflow: hidden;
+}
+
+/* Gemini风格聊天历史侧边栏 - 确保不滚动，头部可见 */
+.gemini-sidebar .chat-history-sidebar {
+  width: 100%;
+  height: 100%;
+  background: #f9f9f9;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+/* 确保侧边栏头部可见 */
+.gemini-sidebar .sidebar-header {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+/* 聊天历史侧边栏 - 保持兼容 */
+.chat-history-sidebar {
+  width: 320px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border-right: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.05);
+  position: relative;
+  z-index: 10;
+}
+
+.chat-history-sidebar.collapsed {
+  width: 64px;
+}
+
+/* 侧边栏头部 - 确保可见 */
+.sidebar-header {
+  padding: 20px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  position: relative;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.sidebar-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M20 20c0 11.046-8.954 20-20 20v-40c11.046 0 20 8.954 20 20z'/%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.title-icon {
+  font-size: 18px;
+}
+
+.new-chat-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  padding: 8px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.new-chat-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.collapse-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 6px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.collapse-btn svg {
+  transition: transform 0.3s ease;
+}
+
+.collapse-btn svg.rotate-180 {
+  transform: rotate(180deg);
+}
+
+/* Gemini风格历史记录列表 - 支持滚动 */
+.gemini-sidebar .history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(203, 213, 225, 0.5) transparent;
+}
+
+/* 历史记录列表 - 支持滚动 */
+.history-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(203, 213, 225, 0.5) transparent;
+}
+
+/* WebKit滚动条样式 - 通用 */
+.history-list::-webkit-scrollbar,
+.gemini-sidebar .history-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.history-list::-webkit-scrollbar-track,
+.gemini-sidebar .history-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.history-list::-webkit-scrollbar-thumb,
+.gemini-sidebar .history-list::-webkit-scrollbar-thumb {
+  background-color: rgba(203, 213, 225, 0.5);
+  border-radius: 2px;
+  transition: background-color 0.2s ease;
+}
+
+.history-list::-webkit-scrollbar-thumb:hover,
+.gemini-sidebar .history-list::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(203, 213, 225, 0.8);
+}
+
+.history-item {
+  padding: 12px;
+  margin-bottom: 4px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.history-item:hover {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+  border-color: #cbd5e1;
+  transform: translateX(2px);
+}
+
+.history-item.selected {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  border-color: #3b82f6;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.15);
+}
+
+.history-content {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+/* 删除按钮样式 */
+.history-actions {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.history-item:hover .history-actions {
+  opacity: 1;
+}
+
+.delete-button {
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 6px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.delete-button:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  transform: scale(1.1);
+}
+
+.delete-button:active {
+  transform: scale(0.95);
+}
+
+.delete-button svg {
+  transition: transform 0.2s ease;
+}
+
+.delete-button:hover svg {
+  transform: rotate(90deg);
+}
+
+/* Markdown 内容样式 */
+.markdown-content {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  line-height: 1.6;
+  color: #374151;
+}
+
+.markdown-content h1 {
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  margin: 24px 0 16px 0 !important;
+  color: #1f2937 !important;
+  border-bottom: 2px solid #e5e7eb !important;
+  padding-bottom: 8px !important;
+}
+
+.markdown-content h2 {
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  margin: 20px 0 14px 0 !important;
+  color: #374151 !important;
+}
+
+.markdown-content h3 {
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  margin: 16px 0 12px 0 !important;
+  color: #4b5563 !important;
+}
+
+.markdown-content h4 {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  margin: 14px 0 10px 0 !important;
+  color: #6b7280 !important;
+}
+
+.markdown-content p {
+  margin-bottom: 12px !important;
+  line-height: 1.6 !important;
+}
+
+.markdown-content ul {
+  margin: 12px 0 !important;
+  padding-left: 20px !important;
+  list-style-type: disc !important;
+}
+
+.markdown-content ol {
+  margin: 12px 0 !important;
+  padding-left: 20px !important;
+  list-style-type: decimal !important;
+}
+
+.markdown-content li {
+  margin-bottom: 4px !important;
+  line-height: 1.5 !important;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid #e5e7eb !important;
+  padding-left: 16px !important;
+  margin: 16px 0 !important;
+  font-style: italic !important;
+  color: #6b7280 !important;
+  background-color: #f9fafb !important;
+  padding: 12px 16px !important;
+  border-radius: 0 6px 6px 0 !important;
+}
+
+.markdown-content code {
+  background-color: #f5f5f5 !important;
+  padding: 2px 6px !important;
+  border-radius: 4px !important;
+  font-size: 13px !important;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+}
+
+.markdown-content pre {
+  background-color: #f5f5f5 !important;
+  padding: 12px !important;
+  border-radius: 6px !important;
+  overflow-x: auto !important;
+  margin: 16px 0 !important;
+}
+
+.markdown-content pre code {
+  background-color: transparent !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+.markdown-content table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 16px 0 !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.markdown-content th {
+  padding: 12px !important;
+  background-color: #f9fafb !important;
+  border: 1px solid #e5e7eb !important;
+  font-weight: 600 !important;
+  text-align: left !important;
+}
+
+.markdown-content td {
+  padding: 12px !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.markdown-content a {
+  color: #3b82f6 !important;
+  text-decoration: none !important;
+}
+
+.markdown-content a:hover {
+  text-decoration: underline !important;
+}
+
+.markdown-content strong {
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+}
+
+.markdown-content em {
+  font-style: italic !important;
+  color: #4b5563 !important;
+}
+
+.markdown-content hr {
+  margin: 24px 0 !important;
+  border: none !important;
+  border-top: 1px solid #e5e7eb !important;
+}
+
+.history-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1e293b;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.history-time {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.history-tags {
+  display: flex;
+  gap: 4px;
+}
+
+.tag {
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sql-tag {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.data-tag {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.viz-tag {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.history-indicator {
+  width: 8px;
+  height: 8px;
+  position: relative;
+}
+
+.indicator-dot {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #cbd5e1;
+  transition: all 0.2s ease;
+}
+
+.history-item.selected .indicator-dot {
+  background: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+}
+
+/* 空状态 */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #64748b;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.5;
+}
+
+.empty-text {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.empty-hint {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+/* 侧边栏底部 */
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid #e2e8f0;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.sidebar-footer .smart-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.sidebar-footer .smart-toggle:hover {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-footer .smart-toggle span {
+  font-size: 14px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.sidebar-footer .help-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  transition: all 0.2s ease;
+}
+
+.sidebar-footer .help-icon:hover {
+  background: #cbd5e1;
+  color: #475569;
+}
+
+/* 收起状态 */
+.collapsed-actions {
+  padding: 16px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.collapsed-new-chat {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+.collapsed-new-chat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.collapsed-count {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.collapsed-smart-toggle {
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.collapsed-smart-toggle:hover {
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.collapsed-smart-toggle.enabled {
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.collapsed-smart-toggle.enabled:hover {
+  background: linear-gradient(135deg, #fde68a 0%, #fcd34d 100%);
+}
+
+/* 企业级工具栏 */
+.enterprise-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  position: relative;
+  z-index: 5;
+}
+
+.toolbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.smart-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+}
+
+.smart-toggle:hover {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.smart-toggle span {
+  font-size: 14px;
+  color: #475569;
+  font-weight: 500;
+}
+
+.help-icon {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: help;
+  transition: all 0.2s ease;
+}
+
+.help-icon:hover {
+  background: #cbd5e1;
+  color: #475569;
+}
+
+.connection-selector-wrapper {
+  flex: 0 0 auto;
+  min-width: 200px;
+}
+
+/* Gemini风格输入面板 - 在输入区域内 */
+.gemini-input-area .gemini-input-container {
+  width: 100%;
+  max-width: 768px;
+  margin: 0 auto;
+}
+
+/* Gemini风格固定底部输入面板 - 保持兼容 */
+.gemini-input-panel-fixed {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-top: 1px solid #e2e8f0;
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Gemini风格输入面板 */
+.gemini-input-panel {
+  padding: 24px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border-top: 1px solid #e2e8f0;
+  position: relative;
+  z-index: 5;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Gemini风格输入容器 */
+.gemini-input-container {
+  width: 100%;
+  max-width: 768px;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Gemini标准输入框样式 */
+.gemini-input-area .gemini-input-box {
+  display: flex !important;
+  align-items: center;
+  background: #f8f9fa;
+  border: 1px solid #e3e3e3;
+  border-radius: 26px;
+  padding: 12px 20px;
+  box-shadow: 0 2px 5px 1px rgba(64, 60, 67, 0.16);
+  transition: all 0.2s ease;
+  min-height: 52px !important;
+  gap: 12px;
+  width: 100%;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.gemini-input-area .gemini-input-box:focus-within {
+  background: #ffffff;
+  border-color: #1a73e8;
+  box-shadow: 0 2px 5px 1px rgba(64, 60, 67, 0.16), 0 0 0 1px #1a73e8;
+}
+
+.gemini-input-box {
+  display: flex;
+  align-items: center;
+  background: white;
+  border: 1px solid #dadce0;
+  border-radius: 24px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  min-height: 56px;
+  gap: 12px;
+}
+
+.gemini-input-box:focus-within {
+  border-color: #1a73e8;
+  box-shadow: 0 4px 16px rgba(26, 115, 232, 0.15);
+}
+
+/* 左侧控制按钮组 */
+.left-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.control-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 20px;
+  background: transparent;
+  color: #5f6368;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.control-button:hover:not(:disabled) {
+  background: #f8f9fa;
+  color: #202124;
+}
+
+.control-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.control-button.active {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.database-button {
+  border: 1px solid #dadce0;
+  background: #f8f9fa;
+}
+
+.database-button:hover:not(:disabled) {
+  background: #f1f3f4;
+  border-color: #c4c7c5;
+}
+
+.connection-text {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 输入框区域 */
+.input-wrapper {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.gemini-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 16px;
+  color: #3c4043;
+  line-height: 1.5;
+  padding: 0;
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+}
+
+.gemini-input::placeholder {
+  color: #9aa0a6;
+  font-size: 16px;
+  font-family: 'Google Sans', Roboto, Arial, sans-serif;
+}
+
+.gemini-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 右侧控制按钮组 */
+.right-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.send-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: #1a73e8;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.send-button:hover:not(:disabled) {
+  background: #1557b0;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.3);
+  transform: translateY(-1px);
+}
+
+.send-button:disabled {
+  background: #dadce0;
+  color: #9aa0a6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* 连接菜单样式 */
+.connection-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.connection-name {
+  font-weight: 500;
+  color: #202124;
+  font-size: 14px;
+}
+
+.connection-info {
+  font-size: 12px;
+  color: #5f6368;
+}
+
+/* 输入容器 */
+.enterprise-input-container {
+  width: 100%;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 24px;
+  padding: 12px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s ease;
+  min-height: 56px;
+}
+
+.input-group:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 16px rgba(59, 130, 246, 0.12);
+  background: #fefefe;
+}
+
+/* 输入框区域 */
+.input-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.input-icon {
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.input-group:focus-within .input-icon {
+  color: #3b82f6;
+}
+
+.chat-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 15px;
+  color: #1e293b;
+  placeholder-color: #94a3b8;
+  line-height: 1.5;
+  padding: 8px 0;
+  min-width: 0;
+}
+
+.chat-input::placeholder {
+  color: #94a3b8;
+}
+
+.chat-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 按钮组 */
+.button-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.action-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  min-height: 40px;
+}
+
+.action-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+.secondary-button {
+  background: #f8f9fa;
+  color: #5f6368;
+  border: 1px solid #dadce0;
+}
+
+.secondary-button:hover:not(:disabled) {
+  background: #f1f3f4;
+  border-color: #c4c7c5;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.primary-button {
+  background: #1a73e8;
+  color: white;
+  border: 1px solid #1a73e8;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: #1557b0;
+  border-color: #1557b0;
+  box-shadow: 0 2px 8px rgba(26, 115, 232, 0.25);
+}
+
+.action-button svg {
+  flex-shrink: 0;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .chat-history-sidebar {
+    width: 280px;
+  }
+
+  .chat-history-sidebar.collapsed {
+    width: 56px;
+  }
+
+  .sidebar-header {
+    padding: 16px 12px;
+  }
+
+  .history-item {
+    padding: 10px;
+  }
+
+  .enterprise-toolbar {
+    padding: 12px 16px;
+  }
+
+  .toolbar-controls {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .connection-selector-wrapper {
+    min-width: auto;
+    width: 100%;
+  }
+
+  .gemini-input-panel-fixed {
+    padding: 16px;
+  }
+
+  .gemini-input-panel {
+    padding: 16px;
+    max-width: none;
+  }
+
+  .gemini-input-box {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 16px;
+    min-height: auto;
+  }
+
+  .left-controls {
+    order: 1;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .input-wrapper {
+    order: 2;
+  }
+
+  .right-controls {
+    order: 3;
+    justify-content: center;
+  }
+
+  .control-button {
+    padding: 12px 16px;
+    font-size: 15px;
+  }
+
+  .database-button .connection-text {
+    max-width: none;
+  }
+
+  .send-button {
+    width: 48px;
+    height: 48px;
+  }
+}
+
+/* Gemini响应式设计 - 优化移动端滚动 */
+@media (max-width: 768px) {
+  .gemini-chat-layout {
+    flex-direction: column;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .gemini-sidebar {
+    width: 100%;
+    height: 200px;
+    flex-shrink: 0;
+    border-right: none;
+    border-bottom: 1px solid #e8eaed;
+    overflow-y: auto;
+  }
+
+  .gemini-main-area {
+    flex: 1;
+    min-height: calc(100vh - 200px);
+    overflow-x: hidden;
+  }
+
+  .gemini-chat-content {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+  }
+
+  .gemini-input-area {
+    padding: 12px;
+    flex-shrink: 0;
+  }
+
+  .gemini-input-area .gemini-input-container {
+    max-width: none;
+  }
+
+  .gemini-input-area .gemini-input-box {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+}
+
+/* 聊天区域头部控件样式 - 紧凑布局 */
+.chat-header-controls {
+  position: absolute;
+  top: 12px;
+  left: 20px;
+  z-index: 10;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #e8eaed;
+  border-radius: 8px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(8px);
+}
+
+.database-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.selector-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #5f6368;
+  white-space: nowrap;
+}
+
+.database-icon {
+  font-size: 14px;
+}
+
+.database-select {
+  padding: 4px 8px;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  background: #ffffff;
+  font-size: 12px;
+  color: #3c4043;
+  outline: none;
+  transition: all 0.2s ease;
+  min-width: 150px;
+  max-width: 200px;
+}
+
+.database-select:focus {
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+}
+
+.database-select:disabled {
+  background: #f8f9fa;
+  color: #9aa0a6;
+  cursor: not-allowed;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .chat-header-controls {
+    padding: 12px 16px;
+  }
+
+  .database-selector {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .database-select {
+    min-width: auto;
+  }
+}

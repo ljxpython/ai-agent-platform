@@ -1,0 +1,317 @@
+/* 流式输出组件样式 */
+.streaming-output {
+  width: 100%;
+  height: 100%;
+}
+
+/* 区域面板样式 */
+.region-panel {
+  margin-bottom: 16px;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.region-panel.streaming {
+  border-left: 4px solid #1890ff;
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.15);
+}
+
+/* 区域头部样式 */
+.region-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.region-title {
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  color: #262626;
+}
+
+.region-extra {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* 流式文本容器样式 */
+.streaming-text-container {
+  position: relative;
+  background: #fafafa;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  padding: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  line-height: 1.6;
+}
+
+.streaming-text-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.streaming-text-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.streaming-text-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.streaming-text-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Markdown内容样式 */
+.markdown-content {
+  color: #262626;
+  line-height: 1.6;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.markdown-content h1 {
+  font-size: 1.5em;
+  color: #1890ff;
+  border-bottom: 2px solid #e8f4ff;
+  padding-bottom: 8px;
+}
+
+.markdown-content h2 {
+  font-size: 1.3em;
+  color: #1890ff;
+}
+
+.markdown-content h3 {
+  font-size: 1.2em;
+  color: #595959;
+}
+
+.markdown-content h4 {
+  font-size: 1.1em;
+  color: #595959;
+}
+
+.markdown-paragraph {
+  margin-bottom: 12px;
+  color: #262626;
+}
+
+.markdown-list,
+.markdown-ordered-list {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+
+.markdown-list li,
+.markdown-ordered-list li {
+  margin-bottom: 4px;
+  color: #262626;
+}
+
+/* 代码块样式 */
+.code-block {
+  margin: 12px 0 !important;
+  border-radius: 6px !important;
+  border: 1px solid #e8e8e8 !important;
+}
+
+.inline-code {
+  background: #f5f5f5;
+  border: 1px solid #e8e8e8;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 0.9em;
+  color: #d63384;
+}
+
+/* SQL内容样式 */
+.sql-content {
+  background: #f8f9fa !important;
+  border: 1px solid #e9ecef !important;
+  border-radius: 6px !important;
+  margin: 0 !important;
+}
+
+/* JSON内容样式 */
+.json-content {
+  background: #f8f9fa !important;
+  border: 1px solid #e9ecef !important;
+  border-radius: 6px !important;
+  margin: 0 !important;
+}
+
+/* 文本内容样式 */
+.text-content {
+  color: #262626;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.text-content pre {
+  margin: 0;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* 流式指示器样式 */
+.streaming-indicator {
+  display: flex;
+  align-items: center;
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: #e6f7ff;
+  border: 1px solid #91d5ff;
+  border-radius: 4px;
+  color: #1890ff;
+}
+
+/* 空状态样式 */
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #8c8c8c;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .streaming-text-container {
+    max-height: 300px;
+    padding: 8px;
+  }
+
+  .region-extra {
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .markdown-content h1 {
+    font-size: 1.3em;
+  }
+
+  .markdown-content h2 {
+    font-size: 1.2em;
+  }
+
+  .markdown-content h3 {
+    font-size: 1.1em;
+  }
+}
+
+/* 动画效果 */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.region-panel {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* 流式输出动画 */
+@keyframes typing {
+  from {
+    border-right-color: transparent;
+  }
+  to {
+    border-right-color: #1890ff;
+  }
+}
+
+.streaming-text-container.streaming::after {
+  content: '';
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: #1890ff;
+  margin-left: 2px;
+  animation: typing 1s infinite;
+}
+
+/* 高亮效果 */
+.region-panel:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.region-panel.streaming:hover {
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.2);
+}
+
+/* 折叠面板自定义样式 */
+.ant-collapse-ghost > .ant-collapse-item > .ant-collapse-header {
+  padding: 12px 16px;
+  background: #fafafa;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  transition: all 0.3s ease;
+}
+
+.ant-collapse-ghost > .ant-collapse-item > .ant-collapse-header:hover {
+  background: #f0f0f0;
+}
+
+.ant-collapse-ghost > .ant-collapse-item-active > .ant-collapse-header {
+  background: #e6f7ff;
+  border-color: #91d5ff;
+}
+
+.ant-collapse-ghost > .ant-collapse-item > .ant-collapse-content > .ant-collapse-content-box {
+  padding: 16px;
+  background: #fff;
+  border-radius: 6px;
+  border: 1px solid #f0f0f0;
+  margin-top: 8px;
+}
+
+/* 复制按钮样式 */
+.ant-btn-text:hover {
+  background: rgba(24, 144, 255, 0.1);
+  color: #1890ff;
+}
+
+/* 加载状态样式 */
+.ant-spin {
+  color: #1890ff;
+}
+
+/* 错误状态样式 */
+.error-message {
+  color: #ff4d4f;
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+/* 成功状态样式 */
+.success-message {
+  color: #52c41a;
+  background: #f6ffed;
+  border: 1px solid #b7eb8f;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+}

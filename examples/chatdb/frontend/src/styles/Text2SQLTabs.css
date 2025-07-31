@@ -1,0 +1,147 @@
+/* 标签容器样式 */
+.text2sql-tabs {
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(229, 231, 235, 1);
+}
+
+.text2sql-tabs-list {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.text2sql-tabs-list::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
+
+/* 标签按钮样式 */
+.text2sql-tab {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(107, 114, 128, 1);
+  border: none;
+  background: transparent;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.text2sql-tab:hover {
+  color: rgba(79, 70, 229, 1);
+  background-color: rgba(243, 244, 246, 0.5);
+}
+
+.text2sql-tab-active {
+  color: rgba(79, 70, 229, 1);
+  border-bottom-color: rgba(79, 70, 229, 1);
+}
+
+.text2sql-tab-icon {
+  margin-right: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text2sql-tab-has-content .text2sql-tab-label::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: rgba(79, 70, 229, 0.7);
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.text2sql-tab-streaming-indicator {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: rgba(79, 70, 229, 0.7);
+  margin-left: 0.5rem;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.7);
+  }
+
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(79, 70, 229, 0);
+  }
+
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(79, 70, 229, 0);
+  }
+}
+
+/* 标签面板样式 */
+.text2sql-tabpanel {
+  padding: 1rem 0;
+}
+
+.text2sql-tabpanel.active {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* 底部控制面板样式 */
+.text2sql-control-panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem;
+  background-color: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid rgba(229, 231, 235, 1);
+  z-index: 100;
+  box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* 内容区域样式 - 确保有足够的底部边距，避免被控制面板遮挡 */
+.text2sql-content {
+  padding-bottom: 100px; /* 根据控制面板高度调整 */
+}
+
+/* 标签内容区域样式 */
+.text2sql-analysis-tab,
+.text2sql-sql-tab,
+.text2sql-visualization-tab {
+  margin-bottom: 1.5rem;
+}
+
+/* 响应式调整 */
+@media (max-width: 640px) {
+  .text2sql-tab {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .text2sql-control-panel {
+    padding: 0.75rem;
+  }
+
+  .text2sql-content {
+    padding-bottom: 80px;
+  }
+}

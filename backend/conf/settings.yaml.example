@@ -1,0 +1,96 @@
+online: null
+test:
+  ACCESS_TOKEN_EXPIRE_MINUTES: 1440
+  APP_DESCRIPTION: 基于 AutoGen 的智能聊天 API
+  APP_TITLE: AI Chat API
+  LOG_FILE: ai_chat.log
+  LOG_LEVEL: INFO
+  SECRET_KEY: your-secret-key-change-in-production-aitestlab-2024
+  VERSION: 1.0.0
+  aimodel:
+    api_key: {sk-xxxxxx}
+    base_url: https://api.deepseek.com/v1
+    model: deepseek-chat
+  autogen:
+    agent_ttl: 7200
+    cleanup_interval: 3600
+    max_agents: 100
+  database:
+    mysql:
+      charset: utf8mb4
+      database: {your_database}
+      host: {ip}
+      max_overflow: 20
+      password: {your_password}
+      pool_recycle: 3600
+      pool_size: 10
+      pool_timeout: 30
+      port: 3306
+      user: aitestlab
+    sqlite:
+      path: ./data/aitestlab.db
+    type: sqlite
+  qwen_model:
+    api_key: {sk-xxxxxx}
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    model: qwen-vl-max-latest
+  rag:
+    collection_defaults:
+      chunk_overlap: 200
+      chunk_size: 1000
+      dimension: 1024
+      similarity_threshold: 0.7
+      top_k: 5
+    collections:
+      ai_chat:
+        business_type: ai_chat
+        chunk_overlap: 200
+        chunk_size: 1000
+        description: AI对话专业知识库
+        dimension: 1024
+        name: ai_chat_knowledge
+        similarity_threshold: 0.7
+        top_k: 5
+      general:
+        business_type: general
+        chunk_overlap: 200
+        chunk_size: 1000
+        description: 通用知识库
+        dimension: 1024
+        name: general_knowledge
+        similarity_threshold: 0.7
+        top_k: 5
+      testcase:
+        business_type: testcase
+        chunk_overlap: 150
+        chunk_size: 800
+        description: 测试用例专业知识库
+        dimension: 1024
+        name: testcase_knowledge
+        similarity_threshold: 0.7
+        top_k: 5
+      ui_testing:
+        business_type: ui_testing
+        chunk_overlap: 200
+        chunk_size: 1200
+        description: UI测试专业知识库
+        dimension: 1024
+        name: ui_testing_knowledge
+        similarity_threshold: 0.7
+        top_k: 5
+    deepseek:
+      api_key: {your_api_key}
+      base_url: https://api.deepseek.com/v1
+      model: deepseek-chat
+    milvus:
+      default_collection: general_knowledge
+      dimension: 1024
+      host: {your_host}
+      port: 19530
+    ollama:
+      base_url: http://{your_host}:11434
+      embedding_model: bge-m3
+  ui_tars_model:
+    api_key: {sk-xxxxxx}
+    base_url: https://ark.cn-beijing.volces.com/api/v3
+    model: doubao-1-5-ui-tars-250428

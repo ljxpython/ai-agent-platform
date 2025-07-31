@@ -1,0 +1,128 @@
+/* Gemini 风格的聊天界面样式 */
+
+/* SQL内容区域样式 */
+.sql-content {
+  background-color: #f1f3f4;
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.9em;
+  line-height: 1.5;
+  color: #333;
+}
+
+.sql-content pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.sql-content code {
+  font-family: inherit;
+}
+
+.chat-message {
+  position: relative;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background-color: #f8f9fa;
+  max-width: 90%;
+  width: fit-content;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.chat-message p {
+  margin: 0.5em 0;
+}
+
+.chat-message p:first-child {
+  margin-top: 0;
+}
+
+.chat-message p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-message ul, .chat-message ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+
+.chat-message pre {
+  background-color: #f1f3f4;
+  border-radius: 8px;
+  padding: 12px;
+  overflow-x: auto;
+  margin: 0.5em 0;
+}
+
+.chat-message code {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 0.9em;
+}
+
+.chat-message table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.5em 0;
+}
+
+.chat-message th, .chat-message td {
+  border: 1px solid #e0e0e0;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.chat-message th {
+  background-color: #f1f3f4;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 加载动画样式 */
+.loading-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+}
+
+.loading-dots .dot {
+  width: 8px;
+  height: 8px;
+  margin: 0 4px;
+  border-radius: 50%;
+  background-color: #5f6368;
+  animation: dotPulse 1.5s infinite ease-in-out;
+}
+
+.loading-dots .dot:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots .dot:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes dotPulse {
+  0%, 100% {
+    transform: scale(0.7);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}

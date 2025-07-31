@@ -30,7 +30,9 @@ import VectorManagement from '@/pages/rag/VectorManagement';
 import SystemMonitoring from '@/pages/rag/SystemMonitoring';
 import ConfigManagement from '@/pages/rag/ConfigManagement';
 import CollectionManagement from './pages/rag/CollectionManagement';
+import RAGChat from '@/pages/rag/Chat';
 import { isAuthenticated } from '@/services/auth';
+import { RAGProvider } from '@/contexts/RAGContext';
 
 // 认证保护组件
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -91,6 +93,11 @@ const AppContent: React.FC = () => {
           {/* RAG管理路由 */}
           <Route path="/rag" element={<RAGDashboard />} />
           <Route path="/rag/dashboard" element={<RAGDashboard />} />
+          <Route path="/rag/chat" element={
+            <RAGProvider>
+              <RAGChat />
+            </RAGProvider>
+          } />
           <Route path="/rag/documents" element={<DocumentManagement />} />
           <Route path="/rag/vectors" element={<VectorManagement />} />
           <Route path="/rag/monitoring" element={<SystemMonitoring />} />

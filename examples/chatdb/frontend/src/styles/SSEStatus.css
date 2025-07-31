@@ -1,0 +1,61 @@
+/* SSE状态指示器 */
+.sse-status {
+  display: flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  transition: all 0.2s ease;
+}
+
+.sse-status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  margin-right: 0.375rem;
+}
+
+.sse-status-connected .sse-status-dot {
+  background-color: #10b981;
+}
+
+.sse-status-connecting .sse-status-dot {
+  background-color: #f59e0b;
+  animation: pulse 1.5s infinite;
+}
+
+.sse-status-error .sse-status-dot {
+  background-color: #ef4444;
+}
+
+.sse-status-disconnected .sse-status-dot {
+  background-color: #6b7280;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 暗色模式下SSE状态指示器 */
+@media (prefers-color-scheme: dark) {
+  .sse-status {
+    background-color: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #93c5fd;
+  }
+}

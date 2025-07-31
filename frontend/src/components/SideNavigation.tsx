@@ -57,6 +57,7 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ children }) => {
     // RAG管理路由
     if (path.startsWith('/rag')) {
       if (path === '/rag' || path === '/rag/dashboard') return 'rag-dashboard';
+      if (path === '/rag/chat') return 'rag-chat';
       if (path === '/rag/documents') return 'rag-documents';
       if (path === '/rag/collections') return 'rag-collections';
       if (path === '/rag/vectors') return 'rag-vectors';
@@ -108,6 +109,11 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ children }) => {
           key: 'rag-dashboard',
           icon: <DashboardOutlined />,
           label: '管理中心',
+        },
+        {
+          key: 'rag-chat',
+          icon: <MessageOutlined />,
+          label: 'RAG对话',
         },
         {
           key: 'rag-documents',
@@ -250,6 +256,9 @@ const SideNavigation: React.FC<SideNavigationProps> = ({ children }) => {
       // RAG管理路由
       case 'rag-dashboard':
         navigate('/rag/dashboard');
+        break;
+      case 'rag-chat':
+        navigate('/rag/chat');
         break;
       case 'rag-documents':
         navigate('/rag/documents');

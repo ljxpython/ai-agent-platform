@@ -1,0 +1,1300 @@
+/* Text2SQL页面样式 */
+
+/* 背景效果 */
+.text2sql-bg {
+  background: linear-gradient(135deg, #f5f7ff 0%, #f0f4ff 100%);
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -2;
+}
+
+.text2sql-bg-pattern {
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231a56db' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -1;
+  opacity: 0.5;
+}
+
+/* 页面容器 */
+.text2sql-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 2rem 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* 标题区域 */
+.text2sql-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.text2sql-badge {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(79, 70, 229, 0.1) 100%);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 10px rgba(59, 130, 246, 0.05);
+  transition: all 0.3s ease;
+}
+
+.text2sql-badge:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.text2sql-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 50%, #8b5cf6 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1rem;
+  line-height: 1.2;
+}
+
+.text2sql-subtitle {
+  font-size: 1.125rem;
+  color: #6b7280;
+  max-width: 42rem;
+  margin: 0 auto 1.5rem;
+  line-height: 1.6;
+}
+
+.text2sql-supported-db {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0;
+}
+
+.text2sql-db-badge {
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  transition: all 0.2s ease;
+}
+
+.text2sql-db-badge:hover {
+  background-color: rgba(59, 130, 246, 0.15);
+  transform: translateY(-1px);
+}
+
+/* 查询输入区域 */
+.text2sql-query-container {
+  max-width: 48rem;
+  margin: 0 auto 1.5rem;
+}
+
+/* 数据库连接选择样式 */
+.text2sql-db-select-wrapper {
+  position: relative;
+  margin-bottom: 1rem;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  background: white;
+  border: 1px solid rgba(226, 232, 240, 1);
+  overflow: hidden;
+}
+
+.text2sql-db-select-wrapper:focus-within {
+  box-shadow: 0 8px 30px rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+}
+
+.text2sql-db-select {
+  width: 100%;
+  padding: 0.875rem 1rem 0.875rem 3rem;
+  border: none;
+  outline: none;
+  font-size: 0.95rem;
+  background: transparent;
+  color: #4b5563;
+  appearance: none;
+  cursor: pointer;
+}
+
+.text2sql-db-select-icon {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #3b82f6;
+  pointer-events: none;
+}
+
+.text2sql-db-select-arrow {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  pointer-events: none;
+}
+
+/* 暗色模式样式 */
+.dark .text2sql-db-select-wrapper {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark .text2sql-db-select {
+  color: #e5e7eb;
+}
+
+.dark .text2sql-db-select-arrow {
+  color: #9ca3af;
+}
+
+/* 输入区域样式优化 */
+.text2sql-input-wrapper {
+  position: relative;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: white;
+  border: 1px solid rgba(226, 232, 240, 1);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  margin: 10px 0;
+}
+
+.text2sql-input-wrapper:focus-within {
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.5);
+  transform: translateY(-1px);
+}
+
+.text2sql-input {
+  width: 100%;
+  padding: 0.75rem 4.5rem 0.75rem 2.5rem;
+  border: none;
+  outline: none;
+  font-size: 0.95rem;
+  background: transparent;
+  color: #1f2937;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  height: 38px;
+}
+
+.text2sql-input::placeholder {
+  color: #9ca3af;
+  opacity: 0.8;
+  font-weight: 300;
+}
+
+.text2sql-input-icon {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #3b82f6;
+  width: 1.125rem;
+  height: 1.125rem;
+  opacity: 0.9;
+}
+
+.text2sql-button {
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  height: 32px;
+}
+
+.text2sql-button svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.text2sql-button-primary {
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
+  color: white;
+  box-shadow: 0 2px 6px rgba(59, 130, 246, 0.2);
+}
+
+.text2sql-button-primary:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #4f46e5 100%);
+  box-shadow: 0 3px 8px rgba(59, 130, 246, 0.25);
+  transform: scale(1.02);
+}
+
+.text2sql-button-primary:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(59, 130, 246, 0.15);
+}
+
+.text2sql-button-primary:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: scale(1);
+}
+
+.text2sql-button-secondary {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: white;
+  box-shadow: 0 2px 6px rgba(251, 191, 36, 0.2);
+}
+
+.text2sql-button-secondary:hover {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  box-shadow: 0 3px 8px rgba(251, 191, 36, 0.25);
+  transform: scale(1.02);
+}
+
+.text2sql-button-secondary:active {
+  transform: scale(0.98);
+  box-shadow: 0 1px 4px rgba(251, 191, 36, 0.15);
+}
+
+.text2sql-button-secondary:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: scale(1);
+}
+
+/* 暗色模式输入区域样式 */
+.dark .text2sql-input-wrapper {
+  background: #1f2937;
+  border-color: #374151;
+}
+
+.dark .text2sql-input {
+  color: #e5e7eb;
+}
+
+.dark .text2sql-input::placeholder {
+  color: #6b7280;
+}
+
+/* 暗色模式用户反馈区域样式 */
+.dark .text2sql-feedback-wrapper {
+  background-color: #111827;
+  border-color: #374151;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.dark .text2sql-feedback-header {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%);
+  border-bottom-color: rgba(59, 130, 246, 0.3);
+}
+
+.dark .text2sql-feedback-content {
+  background-color: #1f2937;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+  border-top-color: #374151;
+}
+
+.dark .text2sql-feedback-info {
+  background-color: #172554;
+  border-left-color: #3b82f6;
+  color: #93c5fd;
+}
+
+.dark .text2sql-feedback-title {
+  color: #93c5fd;
+}
+
+.dark .text2sql-feedback-button:not(.text2sql-feedback-button-approve):not(.text2sql-feedback-button-submit) {
+  background: #374151;
+  color: #e5e7eb;
+}
+
+.dark .text2sql-feedback-button:disabled {
+  background: #374151;
+  color: #6b7280;
+}
+
+/* 结果卡片样式 */
+.text2sql-card {
+  border-radius: 1rem;
+  background: white;
+  border: 1px solid rgba(226, 232, 240, 1);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  margin-bottom: 2rem;
+  transition: all 0.3s ease;
+}
+
+.text2sql-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+.text2sql-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 1);
+}
+
+.text2sql-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+  font-size: 1.125rem;
+  color: #1f2937;
+}
+
+.text2sql-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(79, 70, 229, 0.1) 100%);
+}
+
+.text2sql-card-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #3b82f6;
+}
+
+.text2sql-card-action {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text2sql-card-action:hover {
+  background-color: rgba(243, 244, 246, 0.8);
+  color: #4b5563;
+}
+
+.text2sql-card-content {
+  padding: 1.5rem;
+}
+
+/* 代码块样式 */
+.text2sql-code {
+  border-radius: 0.5rem;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 1rem;
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  overflow-x: auto;
+  color: #334155;
+}
+
+/* 用户反馈框样式 - 修复覆盖和可用性问题 */
+.text2sql-feedback-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 1200px;
+  background-color: #ffffff;
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
+  animation: slideUp 0.3s ease;
+  z-index: 9999; /* 大幅提高z-index确保在最上层 */
+  border: 1px solid rgba(226, 232, 240, 1);
+  border-bottom: none;
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  flex-direction: column;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.text2sql-feedback-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid rgba(226, 232, 240, 1);
+  background-color: rgba(249, 250, 251, 0.8);
+  backdrop-filter: blur(8px);
+  border-radius: 8px 8px 0 0;
+  width: 100%;
+}
+
+.text2sql-feedback-title {
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.text2sql-feedback-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  background-color: rgba(59, 130, 246, 0.1);
+  border-radius: 50%;
+  margin-right: 0.5rem;
+}
+
+.text2sql-feedback-icon svg {
+  color: #3b82f6;
+}
+
+.text2sql-feedback-content {
+  padding: 1rem 1.5rem;
+  background-color: #ffffff;
+  width: 100%;
+  min-height: 120px;
+}
+
+.text2sql-feedback-info {
+  font-size: 0.8rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  background-color: rgba(249, 250, 251, 0.8);
+  border: 1px solid rgba(226, 232, 240, 1);
+  margin-bottom: 0.75rem;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+/* 反馈输入框样式 */
+.text2sql-feedback-input {
+  width: 100%;
+  min-height: 60px;
+  padding: 0.75rem;
+  border: 1px solid rgba(226, 232, 240, 1);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  resize: vertical;
+  background-color: #ffffff;
+  color: #1f2937;
+  outline: none;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.text2sql-feedback-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.text2sql-feedback-input::placeholder {
+  color: #9ca3af;
+  opacity: 0.8;
+}
+
+.text2sql-feedback-input:disabled {
+  background-color: #f9fafb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+.text2sql-feedback-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  width: 100%;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(226, 232, 240, 0.5);
+}
+
+.text2sql-feedback-button {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid rgba(226, 232, 240, 1);
+  background-color: #f9fafb;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  height: 2.25rem;
+}
+
+.text2sql-feedback-button svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.text2sql-feedback-button:hover {
+  background-color: #f3f4f6;
+  border-color: #e5e7eb;
+}
+
+.text2sql-feedback-button:active {
+  transform: scale(0.98);
+}
+
+.text2sql-feedback-button-approve {
+  background-color: #ecfdf5;
+  border-color: #d1fae5;
+  color: #059669;
+}
+
+.text2sql-feedback-button-approve:hover {
+  background-color: #d1fae5;
+  border-color: #a7f3d0;
+}
+
+.text2sql-feedback-button-submit {
+  background-color: #eff6ff;
+  border-color: #dbeafe;
+  color: #2563eb;
+}
+
+.text2sql-feedback-button-submit:hover {
+  background-color: #dbeafe;
+  border-color: #bfdbfe;
+}
+
+.text2sql-feedback-button-submit:disabled {
+  background-color: #f9fafb;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.text2sql-feedback-close-button {
+  width: 1.75rem;
+  height: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem;
+  background-color: transparent;
+  color: #6b7280;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.text2sql-feedback-close-button:hover {
+  background-color: rgba(243, 244, 246, 0.8);
+  color: #4b5563;
+}
+
+/* 确保分析内容区域在反馈框显示时仍可见 */
+.analysis-content-container {
+  padding-bottom: 160px; /* 确保内容区域底部有足够空间显示反馈框 */
+  transition: padding-bottom 0.3s ease;
+}
+
+/* 修复滚动问题 */
+.gemini-message {
+  width: 100%;
+  position: relative;
+}
+
+/* 确保内容区域有足够的高度且可滚动 */
+.analysis-content {
+  min-height: 300px;
+  overflow-y: auto !important;
+  display: block !important;
+  padding-bottom: 20px;
+  flex: 1; /* 允许内容区域扩展 */
+}
+
+/* 分析区域内容容器样式 */
+.analysis-content-container {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto !important;
+  min-height: 300px;
+  padding-right: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(203, 213, 225, 0.5) transparent;
+  flex: 1; /* 允许容器扩展 */
+}
+
+.analysis-content-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.analysis-content-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.analysis-content-container::-webkit-scrollbar-thumb {
+  background-color: rgba(203, 213, 225, 0.5);
+  border-radius: 3px;
+}
+
+.analysis-content-container::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.7);
+}
+
+/* 确保内容完整显示 */
+.prose.prose-sm {
+  width: 100%;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  word-break: break-word;
+}
+
+/* 数据表格样式 */
+.text2sql-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid #e5e7eb;
+}
+
+.text2sql-table th {
+  background-color: #f9fafb;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+}
+
+.text2sql-table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+  color: #4b5563;
+  font-size: 0.875rem;
+}
+
+.text2sql-table tr:last-child td {
+  border-bottom: none;
+}
+
+.text2sql-table tr:nth-child(even) {
+  background-color: #f9fafb;
+}
+
+/* 分页控件样式 */
+.text2sql-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1.5rem;
+  gap: 0.25rem;
+}
+
+/* 分页容器样式 */
+.text2sql-pagination-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(226, 232, 240, 0.8);
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+  border-radius: 0 0 0.5rem 0.5rem;
+  background: linear-gradient(180deg, rgba(249, 250, 251, 0) 0%, rgba(249, 250, 251, 0.5) 100%);
+}
+
+/* 分页信息文本 */
+.text2sql-pagination-info {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 0.75rem;
+}
+
+/* 分页导航 */
+.text2sql-pagination-nav {
+  display: flex;
+  align-items: center;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* 分页按钮基础样式 */
+.text2sql-pagination-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: 1px solid #e5e7eb;
+  background-color: white;
+  color: #4b5563;
+  transition: all 0.2s ease;
+  position: relative;
+  margin: 0 -1px; /* 覆盖相邻边框 */
+}
+
+/* 首页和尾页按钮 */
+.text2sql-pagination-button.first-page {
+  border-top-left-radius: 0.375rem;
+  border-bottom-left-radius: 0.375rem;
+  padding-left: 0.5rem;
+}
+
+.text2sql-pagination-button.last-page {
+  border-top-right-radius: 0.375rem;
+  border-bottom-right-radius: 0.375rem;
+  padding-right: 0.5rem;
+}
+
+/* 悬停效果 */
+.text2sql-pagination-button:hover:not(:disabled) {
+  background: linear-gradient(to bottom, #f9fafb, #f3f4f6);
+  border-color: #d1d5db;
+  z-index: 1;
+}
+
+/* 禁用状态 */
+.text2sql-pagination-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f3f4f6;
+}
+
+/* 激活状态 */
+.text2sql-pagination-button-active {
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  border-color: #3b82f6;
+  color: white;
+  font-weight: 600;
+  z-index: 2;
+  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.3);
+}
+
+/* 移动端分页导航 */
+.text2sql-pagination-mobile-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  width: fit-content;
+}
+
+/* 移动端分页按钮 */
+.text2sql-pagination-mobile-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid #e5e7eb;
+  background: linear-gradient(to bottom, white, #f9fafb);
+  color: #4b5563;
+  transition: all 0.2s ease;
+  position: relative;
+  margin: 0 -1px; /* 覆盖相邻边框 */
+}
+
+.text2sql-pagination-mobile-button:first-child {
+  border-top-left-radius: 0.375rem;
+  border-bottom-left-radius: 0.375rem;
+}
+
+.text2sql-pagination-mobile-button:last-child {
+  border-top-right-radius: 0.375rem;
+  border-bottom-right-radius: 0.375rem;
+}
+
+.text2sql-pagination-mobile-button:hover:not(:disabled) {
+  background: linear-gradient(to bottom, #f9fafb, #f3f4f6);
+  border-color: #d1d5db;
+  z-index: 1;
+}
+
+.text2sql-pagination-mobile-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f3f4f6;
+}
+
+/* 当前页信息 */
+.text2sql-pagination-mobile-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: rgba(249, 250, 251, 0.7);
+  border: 1px solid rgba(229, 231, 235, 0.7);
+  border-radius: 0.25rem;
+}
+
+/* 加载动画 */
+.text2sql-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.text2sql-loading-spinner {
+  width: 2.5rem;
+  height: 2.5rem;
+  border: 3px solid rgba(59, 130, 246, 0.1);
+  border-radius: 50%;
+  border-top-color: #3b82f6;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 进度指示器 */
+.text2sql-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.text2sql-progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex: 1;
+}
+
+.text2sql-progress-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 1rem;
+  right: -50%;
+  width: 100%;
+  height: 2px;
+  background-color: #e5e7eb;
+  z-index: 0;
+}
+
+.text2sql-progress-step.active:not(:last-child)::after {
+  background-color: #3b82f6;
+}
+
+.text2sql-progress-icon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  position: relative;
+  z-index: 1;
+  border: 2px solid #e5e7eb;
+}
+
+.text2sql-progress-step.active .text2sql-progress-icon {
+  background-color: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.text2sql-progress-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.text2sql-progress-step.active .text2sql-progress-label {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+/* WebSocket状态指示器 */
+.websocket-status {
+  display: flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  transition: all 0.2s ease;
+}
+
+.websocket-status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  margin-right: 0.375rem;
+}
+
+.websocket-status-connected .websocket-status-dot {
+  background-color: #10b981;
+}
+
+.websocket-status-connecting .websocket-status-dot,
+.websocket-status-reconnecting .websocket-status-dot {
+  background-color: #f59e0b;
+  animation: pulse 1.5s infinite;
+}
+
+.websocket-status-error .websocket-status-dot {
+  background-color: #ef4444;
+}
+
+.websocket-status-disconnected .websocket-status-dot {
+  background-color: #6b7280;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 打字光标效果 */
+.typing-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background-color: #3b82f6;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  from, to { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+  .text2sql-title {
+    font-size: 2rem;
+  }
+
+  .text2sql-subtitle {
+    font-size: 1rem;
+  }
+
+  .text2sql-container {
+    padding: 1.5rem;
+  }
+
+  .text2sql-input {
+    padding: 1rem 1.25rem 1rem 3rem;
+  }
+
+  .text2sql-button {
+    padding: 0.625rem 1.25rem;
+  }
+}
+
+/* 暗色模式 */
+@media (prefers-color-scheme: dark) {
+  .text2sql-bg {
+    background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+  }
+
+  .text2sql-bg-pattern {
+    opacity: 0.2;
+  }
+
+  .text2sql-badge {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(79, 70, 229, 0.2) 100%);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+
+  .text2sql-subtitle {
+    color: #9ca3af;
+  }
+
+  .text2sql-db-badge {
+    background-color: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
+  }
+
+  /* 暗色模式下WebSocket状态指示器 */
+  .websocket-status {
+    background-color: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.3);
+    color: #93c5fd;
+  }
+
+  .text2sql-input-wrapper {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .text2sql-input {
+    color: #e5e7eb;
+  }
+
+  .text2sql-card {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .text2sql-card-header {
+    border-color: #374151;
+  }
+
+  .text2sql-card-title {
+    color: #e5e7eb;
+  }
+
+  .text2sql-card-action {
+    color: #9ca3af;
+  }
+
+  .text2sql-card-action:hover {
+    background-color: rgba(55, 65, 81, 0.5);
+    color: #e5e7eb;
+  }
+
+  .text2sql-code {
+    background-color: #111827;
+    border-color: #374151;
+    color: #e5e7eb;
+  }
+
+  .text2sql-code-sql {
+    background-color: #1a1d2d;
+    border-color: #2d3748;
+  }
+
+  .text2sql-table th {
+    background-color: #111827;
+    border-color: #374151;
+    color: #e5e7eb;
+  }
+
+  .text2sql-table td {
+    border-color: #374151;
+    color: #d1d5db;
+  }
+
+  .text2sql-table tr:nth-child(even) {
+    background-color: #1a202c;
+  }
+
+  /* 暗色模式分页容器 */
+  .text2sql-pagination-container {
+    border-top-color: rgba(55, 65, 81, 0.8);
+    background: linear-gradient(180deg, rgba(31, 41, 55, 0) 0%, rgba(31, 41, 55, 0.5) 100%);
+  }
+
+  .text2sql-pagination-info {
+    color: #9ca3af;
+  }
+
+  .typing-cursor {
+    background-color: #60a5fa;
+  }
+
+  .text2sql-pagination-nav {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  /* 暗色模式分页按钮 */
+  .text2sql-pagination-button {
+    border-color: #374151;
+    background-color: #1f2937;
+    color: #d1d5db;
+  }
+
+  .text2sql-pagination-button:hover:not(:disabled) {
+    background: linear-gradient(to bottom, #1f2937, #111827);
+    border-color: #4b5563;
+  }
+
+  .text2sql-pagination-button:disabled {
+    background-color: #111827;
+    opacity: 0.4;
+  }
+
+  .text2sql-pagination-button-active {
+    background: linear-gradient(135deg, #3b82f6, #4f46e5);
+    border-color: #4f46e5;
+    color: white;
+    box-shadow: 0 1px 3px rgba(79, 70, 229, 0.4);
+  }
+
+  /* 暗色模式移动端分页导航 */
+  .text2sql-pagination-mobile-nav {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  }
+
+  /* 暗色模式移动端分页按钮 */
+  .text2sql-pagination-mobile-button {
+    border-color: #374151;
+    background: linear-gradient(to bottom, #1f2937, #111827);
+    color: #d1d5db;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+
+  .text2sql-pagination-mobile-button:hover:not(:disabled) {
+    background: linear-gradient(to bottom, #374151, #1f2937);
+    border-color: #4b5563;
+  }
+
+  .text2sql-pagination-mobile-button:disabled {
+    background: #111827;
+    opacity: 0.4;
+  }
+
+  /* 暗色模式当前页信息 */
+  .text2sql-pagination-mobile-info {
+    color: #9ca3af;
+    background: rgba(31, 41, 55, 0.7);
+    border-color: rgba(55, 65, 81, 0.7);
+  }
+}
+
+/* 确保SQL解释内容始终可见 - 增强版 */
+.sql-explanation-content {
+  display: block !important;
+  width: 100% !important;
+  min-height: 100px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  overflow: auto !important;
+  position: relative !important;
+  z-index: 10 !important;
+  background-color: white !important;
+  padding: 1rem !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* 强制可见类 */
+.force-visible {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* 解释内容内部元素 */
+.explanation-content-inner {
+  display: block !important;
+  width: 100% !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* 确保SQL解释内容的子元素也可见 */
+.sql-explanation-content > div,
+.sql-explanation-content > p,
+.sql-explanation-content > ul,
+.sql-explanation-content > ol,
+.sql-explanation-content > h1,
+.sql-explanation-content > h2,
+.sql-explanation-content > h3,
+.sql-explanation-content > h4,
+.sql-explanation-content > h5,
+.sql-explanation-content > h6,
+.sql-explanation-content > pre,
+.sql-explanation-content > code,
+.sql-explanation-content > blockquote,
+.explanation-content-inner > pre {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-wrap: break-word !important;
+}
+
+/* 修复Markdown内容渲染的容器样式 */
+.prose.prose-sm {
+  display: block !important;
+  width: 100% !important;
+  min-height: 100px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  overflow: auto !important;
+  word-break: break-word !important;
+}
+
+/* 确保代码块正确显示 */
+.prose pre {
+  display: block !important;
+  overflow-x: auto !important;
+  width: 100% !important;
+}
+
+/* 确保SQL标签页内容容器可见 */
+.text2sql-card-content {
+  display: block !important;
+  min-height: 100px !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  position: relative !important;
+  overflow: visible !important;
+}
