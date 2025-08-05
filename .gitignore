@@ -311,7 +311,33 @@ sketch
 docs/_book
 
 # TODO: where does this rule come from?
-test/
+# test/ - 注释掉通用的test目录忽略规则，避免影响frontend/src/pages/test
+# 如果需要忽略特定的测试目录，请使用更具体的路径
+
+# 测试相关文件和目录 - 使用更精确的规则
+# Python 测试 (避免重复，Python相关规则已在上面定义)
+/tests/__pycache__/
+
+# UI 测试结果和缓存
+/uitest/test-results/
+/uitest/midscene_run/
+/uitest/node_modules/
+
+# 通用测试文件模式
+test_*.py
+*_test.py
+*.test.js
+*.test.ts
+*.spec.js
+*.spec.ts
+
+# 但保留重要的测试配置文件和源码目录
+!/uitest/tests/
+!/uitest/tests-examples/
+!/uitest/playwright.config.ts
+!/uitest/package.json
+!/tests/
+!/frontend/src/pages/test/
 
 ### Vuejs ###
 # Recommended template: Node.gitignore
