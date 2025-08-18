@@ -13,8 +13,17 @@
       "Bash(mkdir:*)",
       "Bash(python tests/test_bmad_integration.py)",
       "Bash(python:*)",
-      "Bash(npx -y @modelcontextprotocol/server-sequential-thinking)"
+      "Bash(npx -y @modelcontextprotocol/server-sequential-thinking)",
+      "Bash(git config:*)",
+      "Bash(ssh:*)",
+      "Bash(echo:*)",
+      "Bash(networksetup:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(git push:*)"
     ],
-    "defaultMode": "acceptEdits"
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "/Users/lijiaxin"
+    ]
   }
 }
