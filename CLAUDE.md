@@ -214,29 +214,7 @@ The platform uses multiple specialized AI agents:
 
 Configuration is managed through `backend/conf/settings.yaml`:
 
-```yaml
-test:
-  # AI model configurations
-  aimodel:
-    model: "deepseek-chat"
-    base_url: "https://api.deepseek.com/v1"
-    api_key: "your-api-key"
 
-  # Database configuration
-  database:
-    type: "sqlite"  # or "mysql", "postgresql"
-    sqlite:
-      path: "./data/aitestlab.db"
-
-  # RAG system configuration
-  rag:
-    milvus:
-      host: "localhost"
-      port: 19530
-    collections:
-      general: {...}
-      testcase: {...}
-```
 
 ### Key Configuration Files
 
@@ -295,21 +273,6 @@ return error_response(
 ```
 
 ### Authentication & Authorization
-
-```python
-from backend.api_core.deps import require_auth, require_permission
-
-# Require authentication only
-@require_auth
-async def protected_endpoint(current_user: User = Depends(get_current_user)):
-    pass
-
-# Require specific permission
-@require_permission("module.action")
-async def admin_endpoint():
-    pass
-```
-
 ### SSE (Server-Sent Events) for Streaming
 
 ```python
@@ -430,17 +393,9 @@ async with RAGSystem() as rag:
 # View logs
 make logs
 
-# Check service status
-make status
-
-# Test configuration
-make test-config
-
-# Database connection test
-make test-db
-
 # Clean and restart
-make force-clean && make start
+make stop && make start
+
 ```
 
 ### Log Locations
@@ -483,83 +438,3 @@ The platform exposes RESTful APIs with OpenAPI documentation:
 - WebSocket support planned for future features
 
 This architecture supports both development and production deployment while maintaining clean separation of concerns and scalability.
-
-## BMAD Framework Integration
-
-本项目已成功集成 BMAD-METHOD (Agentic Agile Driven Development) 框架，实现智能化的敏捷开发流程管理。
-
-### BMAD 功能概览
-- **智能体工厂**: 支持创建专业的 BMAD 智能体和团队
-- **工作流程管理**: 完整的敏捷开发工作流程自动化
-- **开发故事管理**: 从 PRD 自动生成和管理开发故事
-- **服务层集成**: 与现有 AI Core 系统无缝集成
-
-### BMAD 相关组件
-```python
-# 导入 BMAD 组件
-from backend.ai_core import (
-    get_bmad_runtime,      # BMAD 运行时管理器
-    get_bmad_factory,      # BMAD 智能体工厂
-    BMADAgentType,         # BMAD 智能体类型
-    BMADWorkflowState      # 工作流程状态管理
-)
-from backend.services.bmad_service import get_bmad_service
-from backend.services.bmad_story_manager import get_story_manager
-```
-
-### BMAD 智能体类型
-- `ai_architect` - AI 架构专家
-- `system_refactor_expert` - 系统重构专家
-- `platform_integration_expert` - 平台集成专家
-- `qa_specialist` - 质量保证专家
-
-### BMAD 工作流程
-支持的工作流程类型：
-- `aitestlab_bmad_integration` - AITestLab BMAD 集成工作流程
-- `feature_development` - 功能开发工作流程
-- `bug_fix` - Bug 修复工作流程
-- `refactoring` - 代码重构工作流程
-
-### 快速使用示例
-```python
-# 启动 BMAD 工作流程
-bmad_service = get_bmad_service()
-result = await bmad_service.start_aitestlab_refactor_workflow(
-    conversation_id="example_001",
-    project_context={"project": "AITestLab"}
-)
-
-# 创建开发故事
-story_manager = get_story_manager()
-stories = await story_manager.create_story_from_prd(
-    prd_content="需求文档内容",
-    conversation_id="example_001",
-    story_type="feature_development"
-)
-```
-
-### BMAD 配置文件
-- `bmad-config/core-config.yaml` - 核心配置
-- `bmad-config/teams/` - 团队配置
-- `bmad-config/agents/` - 智能体配置
-- `bmad-config/workflows/` - 工作流程配置
-
-### BMAD 测试
-运行 BMAD 系统测试：
-```bash
-python tests/bmad_system_tests.py
-python demos/bmad_story_demo.py
-```
-
-### BMAD API 接口
-- **故事管理**: `/api/bmad/stories/` - 开发故事CRUD操作
-- **工作流程**: 通过服务层接口访问
-- **智能体管理**: 通过工厂模式创建和管理
-
-### BMAD 集成状态
-- ✅ **系统集成度**: 100% - 完全集成
-- ✅ **测试覆盖率**: 90% - 10项测试，9项通过
-- ✅ **性能表现**: 优秀 - 智能体创建 < 1s，工作流程启动 < 2s
-- ✅ **向后兼容性**: 100% - 完全保持与现有系统的兼容性
-
-详细信息请参考 `BMAD_INTEGRATION_REPORT.md`。
