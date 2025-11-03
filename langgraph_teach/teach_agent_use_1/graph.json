@@ -1,0 +1,16 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "agent": {
+      "path": "./main.py:agent"
+    },
+    "web_agent": {
+      "path": "./main.py:web_agent"
+    },
+    "ui_test_agent": {
+      "path": "./main.py:ui_test_agent"
+    }
+  },
+  "env": ".env",
+  "image_distro": "wolfi"
+}

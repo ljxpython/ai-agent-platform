@@ -1,0 +1,14 @@
+[project]
+name = "langgraph-study"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.12"
+dependencies = [
+    "langchain-deepseek>=1.0.0",
+    "langchain-mcp-adapters>=0.1.11",
+    "langchain-tavily>=0.2.12",
+    "langchain[openai]>=1.0.2",
+    "langgraph>=1.0.1",
+    "langgraph-cli[inmem]>=0.4.4",
+    "openpyxl>=3.1.5",
+]

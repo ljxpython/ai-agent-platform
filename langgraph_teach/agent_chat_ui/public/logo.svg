@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" fill="none" aria-hidden="true" role="img" class="iconify iconify--logos" width="32" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 120 60">
+  <!-- 背景圆角矩形 -->
+  <rect
+    x="4"
+    y="4"
+    width="112"
+    height="52"
+    rx="26"
+    fill="#264849"
+    stroke="#1a3334"
+    stroke-width="2"
+  />
+
+  <!-- 混合云图标 - 左侧云朵 -->
+  <path
+    d="M25 25 C22 25 20 27 20 30 C20 33 22 35 25 35 C26 35 27 34.5 27.5 34 C28.5 35 30 35 31 34 C32 33 32 31 31 30 C31 28 29.5 26.5 28 26 C28 24 26 22 24 22 C22 22 20 24 20 26 C20 28 22 30 24 30 Z"
+    fill="#4a9eff"
+    opacity="0.9"
+  />
+
+  <!-- 边缘计算图标 - 右侧节点 -->
+  <circle cx="85" cy="30" r="8" fill="none" stroke="#4a9eff" stroke-width="2" opacity="0.9" />
+  <circle cx="85" cy="30" r="3" fill="#4a9eff" opacity="0.9" />
+
+  <!-- 连接线 -->
+  <line
+    x1="55"
+    y1="30"
+    x2="75"
+    y2="30"
+    stroke="#4a9eff"
+    stroke-width="1.5"
+    opacity="0.6"
+    stroke-dasharray="2,2"
+  />
+
+  <!-- 小点装饰 -->
+  <circle cx="65" cy="25" r="1.5" fill="#4a9eff" opacity="0.7" />
+  <circle cx="65" cy="35" r="1.5" fill="#4a9eff" opacity="0.7" />
+</svg>

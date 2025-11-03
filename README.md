@@ -25,6 +25,13 @@
 <img src="docs/work/assets/image-20250531212549739.png" alt="Description" width="300"/>
 
 ---
+
+工作上的事情算是告一段落, terminal agent + MCP在软件测试赋能已经开始落地,效果不错,后面开始修复一些bug,在增加新的功能即可,效果大家可以看:https://www.yuque.com/lijiaxin-woaqo/gs9ge5/vriqtnc7lmly94ae?singleDoc# 《Terminal Agents + MCP AI测试代码生成项目搭建及效果展示》
+
+后续,我将会继续完善这个项目,当前项目应该也会做重大的更新,框架由之前的Autogen 切换为langgraph,这段时间也对这个框架做了一些二开和研究,发现使用上比较顺手
+
+时间: 2025年11月03日
+
 最近开始着手实践 terminal agent + MCP在软件测试赋能上的使用,(ps:忙完了Trae + MCP的实践探索) Trae+MCP的部分一直没时间整理就进入了下一个阶段的探索
 
 有时间一定给大家补上,也直接加我微信一起交流哈,也就国庆有时间抽空写一写github了
