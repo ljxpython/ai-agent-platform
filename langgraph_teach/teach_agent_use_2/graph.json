@@ -1,0 +1,16 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "sql_agent": {
+      "path": "./sql_agent.py:agent"
+    },
+    "tool_graph": {
+      "path": "./graphs_examples/tool_call_example.py:graph"
+    },
+    "test_case_generator": {
+      "path": "./graphs_examples/test_case_generator.py:graph"
+    }
+  },
+  "env": ".env",
+  "image_distro": "wolfi"
+}

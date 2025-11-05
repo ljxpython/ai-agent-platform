@@ -1,0 +1,10 @@
+[project]
+name = "2025-11-01-graph-python"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "ipython>=9.6.0",
+    "python-dotenv>=1.2.1",
+]
