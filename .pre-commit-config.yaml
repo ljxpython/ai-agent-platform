@@ -1,11 +1,26 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
-# `pre-commit autoupdate` to update hooks
-# exclude 部分的使用，参考了pyproject.toml中的相关使用 https://stackoverflow.com/questions/61032281/exclude-some-files-on-running-black-using-pre-commit
-#exclude: |
-#  (
-#    mkdocs.yml
-#  )
+
+exclude: |
+  (?x)^(
+    archive/legacy-aitestlab/|
+    apps/platform-api/\.venv/|
+    apps/platform-api/\.pytest_cache/|
+    apps/platform-api/data/|
+    apps/platform-api/logs/|
+    apps/platform-api/backups/|
+    apps/platform-web/node_modules/|
+    apps/platform-web/\.next/|
+    apps/platform-web/test-results/|
+    apps/runtime-service/\.venv/|
+    apps/runtime-service/\.pytest_cache/|
+    apps/runtime-service/\.langgraph_api/|
+    apps/runtime-web/node_modules/|
+    apps/runtime-web/\.next/
+  )
+
+default_language_version:
+  python: python3
 
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -14,13 +29,12 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
-        exclude: ^\.bmad-core/templates/.*\.yaml$
 
   - repo: https://github.com/psf/black
     rev: 24.4.0
     hooks:
       - id: black
-        language_version: python3.12
+        files: ^(apps/platform-api|apps/runtime-service)/.*\.py$
 
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
@@ -28,3 +42,4 @@ repos:
       - id: isort
         name: isort (python)
         args: ["--profile", "black", "--filter-files"]
+        files: ^(apps/platform-api|apps/runtime-service)/.*\.py$
