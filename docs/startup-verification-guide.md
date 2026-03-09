@@ -1,11 +1,11 @@
 # 启动与本地验证指南（当前可执行版本）
 
-本文只记录当前 `AITestLab` 新结构下，已经在本机验证过的启动方式。
+本文只记录当前 `agent-platform` 新结构下，已经在本机验证过的启动方式。
 
 ## 1. 当前目录结构
 
 ```text
-AITestLab/
+agent-platform/
 ├── apps/platform-api
 ├── apps/platform-web
 ├── apps/runtime-service

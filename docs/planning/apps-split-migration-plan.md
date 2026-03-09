@@ -53,7 +53,7 @@
 ## 3. 目标目录结构
 
 ```text
-AITestLab/
+agent-platform/
 ├── README.md
 ├── apps/
 │   ├── platform-api/

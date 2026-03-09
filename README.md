@@ -74,7 +74,7 @@ flowchart LR
 ## 仓库结构
 
 ```text
-AITestLab/
+agent-platform/
 ├── apps/
 │   ├── platform-api/
 │   ├── platform-web/
