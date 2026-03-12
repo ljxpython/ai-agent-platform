@@ -1,43 +1,53 @@
-# v2 鉴权与验证指南
+# graph_src_v2 鉴权与验证指南
 
-## 1) 认证入口
+## 认证入口
 
-统一文件：`graph_src_v2/auth/provider.py`
+统一实现文件：`graph_src_v2/auth/provider.py`
 
-- `custom_auth`：本地 demo token 模式（默认）
+- `custom_auth`：本地 demo token 模式
 - `oauth_auth`：Supabase OAuth 模式
 
-## 2) Demo 模式（默认）
+## 两套配置文件的职责
 
-- `langgraph.json` 默认走 `./graph_src_v2/auth/provider.py:custom_auth`
-- 可用 token：`owner-token`、`viewer-token`、`admin-token`
+- `graph_src_v2/langgraph.json`
+  - 本地默认开发配置
+  - 当前不声明 `auth` 段，因此默认按无鉴权模式启动
+- `graph_src_v2/langgraph_auth.json`
+  - 鉴权模式配置
+  - 显式声明 `auth.path = ./graph_src_v2/auth/provider.py:oauth_auth`
 
-推荐检查：
+如果要验证 OAuth / Supabase 鉴权，应使用 `langgraph_auth.json`，而不是修改默认 `langgraph.json` 的说明文案来推断行为。
 
-1. `owner-token` 可以创建 thread
-2. `viewer-token` 无法创建 thread（403）
-3. `owner-token` 可在自己的 thread 上执行 run
-
-## 3) OAuth 模式（Supabase）
-
-把配置中的 `auth.path` 改成：
-
-- `./graph_src_v2/auth/provider.py:oauth_auth`
-
-并在 `.env` 中准备：
+## OAuth 模式所需环境变量
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_KEY`
 - 可选：`SUPABASE_TIMEOUT_SECONDS`
 
-## 4) 启动命令
+## 启动命令
+
+本地无鉴权模式：
 
 ```bash
 uv run langgraph dev --config graph_src_v2/langgraph.json --port 8123 --no-browser
 ```
 
-## 5) 自动化验证
+OAuth 鉴权模式：
+
+```bash
+uv run langgraph dev --config graph_src_v2/langgraph_auth.json --port 8123 --no-browser
+```
+
+## 推荐验证
+
+自动化：
 
 ```bash
 uv run pytest graph_src_v2/tests/test_auth_core.py graph_src_v2/tests/test_custom_routes.py graph_src_v2/tests/test_model_smoke.py -q
 ```
+
+手工联调时，重点确认：
+
+1. 未鉴权配置下服务可正常启动
+2. 鉴权配置下 OAuth provider 可被加载
+3. 自定义能力路由不因鉴权切换而失效

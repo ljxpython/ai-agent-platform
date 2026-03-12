@@ -1,8 +1,34 @@
-# graph_src_v2 多模态中间件设计草案（v1）
+# graph_src_v2 多模态中间件实现说明（Phase 1）
 
-## 1. 背景与问题定义
+## 1. 当前状态
 
-当前 `graph_src_v2` 的主执行模式主要有两类：
+当前多模态能力已经在仓库中落地，而不再只是设计草案。
+
+核心实现文件：`graph_src_v2/middlewares/multimodal.py`
+
+已接入的 graph / agent 路径包括：
+
+- `graph_src_v2/agents/assistant_agent/graph.py`
+- `graph_src_v2/agents/deepagent_agent/graph.py`
+- `graph_src_v2/agents/customer_support_agent/tools.py`
+- `graph_src_v2/agents/personal_assistant_agent/tools.py`
+- `graph_src_v2/agents/skills_sql_assistant_agent/tools.py`
+
+对应测试：`graph_src_v2/tests/test_multimodal_middleware.py`
+
+## 2. 已完成范围
+
+当前 Phase 1 已完成：
+
+- 前端附件 block 归一化
+- 附件类型识别（image/pdf/doc/docx/xlsx/file/other）
+- 多模态摘要注入 system prompt
+- `multimodal_attachments` / `multimodal_summary` 写入 state
+- fail-soft 解析路径与回归测试
+
+## 3. 设计边界仍然有效
+
+虽然实现已落地，但以下设计原则仍然成立：
 
 - `create_agent(...)`
 - `create_deep_agent(...)`
@@ -23,7 +49,7 @@
 
 ---
 
-## 2. 目标
+## 4. 当前仍然坚持的目标
 
 这份设计稿的目标不是立刻实现视觉理解，而是先定义一条长期稳定的架构路线。
 
@@ -40,7 +66,7 @@
 
 ---
 
-## 3. 为什么选择中间件，而不是把逻辑塞进 graph
+## 5. 为什么选择中间件，而不是把逻辑塞进 graph
 
 这是这份方案最核心的设计判断。
 
@@ -70,7 +96,7 @@
 当前仓库已经有明确证据表明：
 
 - `assistant` 已预留 `middleware=[]`
-- `assistant_entrypoint` 使用了 `HumanInTheLoopMiddleware`
+- `assistant` 使用了 `HumanInTheLoopMiddleware`
 - `customer_support` / `skills_sql_assistant` 已使用 `wrap_model_call` 风格 middleware
 
 这说明：
@@ -92,7 +118,7 @@
 
 ---
 
-## 4. 为什么要“增强，不覆盖”
+## 6. 为什么要“增强，不覆盖”
 
 这是第二个核心判断。
 
@@ -142,7 +168,7 @@
 
 ---
 
-## 5. 为什么要把结果“回填”
+## 7. 为什么要把结果“回填”
 
 这里需要特别解释，因为这一步最容易被误解。
 
@@ -194,7 +220,7 @@
 
 ---
 
-## 6. 分层设计（推荐）
+## 8. 分层设计
 
 推荐把整个多模态处理链拆成 4 层。
 
@@ -254,7 +280,7 @@
 
 ---
 
-## 7. 统一数据契约（推荐）
+## 9. 统一数据契约
 
 这是整个设计最重要的长期资产。
 
