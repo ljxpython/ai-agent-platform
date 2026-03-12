@@ -18,10 +18,16 @@
 - `graph_src_v2/runtime/options.py`：合并 `context`、`configurable`、环境变量与鉴权上下文，生成最终运行配置。
 - `graph_src_v2/runtime/modeling.py`：按模型组配置解析模型，并绑定温度、`max_tokens`、`top_p` 等运行时参数。
 - `graph_src_v2/tools/registry.py`：统一装配内建工具与 MCP 工具。
+- `graph_src_v2/services/`：业务服务模块目录（推荐承载生产/业务智能体能力）。
 - `graph_src_v2/agents/assistant_agent/graph.py`：默认 assistant graph 入口，也是当前推荐范式。
 - `graph_src_v2/agents/assistant_agent/graph_legacy.py`：历史 assistant 入口，仅保留兼容与参考价值。
 - `graph_src_v2/agents/deepagent_agent/graph.py`：deepagent graph 入口。
 - `graph_src_v2/agents/personal_assistant_agent/graph.py`：subagent / supervisor 协作范式入口。
+
+说明：
+
+- `agents/` 作为 demo/范例保留。
+- 新增业务能力建议落在 `services/`，目录规范见 `docs/07-service-modularization.md`。
 
 推荐模板参考：
 

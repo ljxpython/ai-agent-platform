@@ -14,7 +14,8 @@
 6. `docs/04-agent-scaffold-templates.md`
 7. `docs/05-template-to-runnable-agent-10min.md`
 8. `docs/03-agent-development-playbook.md`
-9. 按专题再读鉴权、多模态与其他文档
+9. `docs/07-service-modularization.md`
+10. 按专题再读鉴权、多模态与其他文档
 
 其中：
 
@@ -78,6 +79,7 @@ curl -sS http://127.0.0.1:8123/internal/capabilities/models
 - `docs/04-agent-scaffold-templates.md`：三种主模式对应的脚手架模板
 - `docs/05-template-to-runnable-agent-10min.md`：从模板到可运行 graph 的最小落地流程
 - `docs/06-multimodal-middleware-design.md`：当前多模态实现状态与扩展边界
+- `docs/07-service-modularization.md`：同一运行时内的业务服务模块化规范
 
 ## 开发约定
 
@@ -87,4 +89,5 @@ curl -sS http://127.0.0.1:8123/internal/capabilities/models
 4. subagent / supervisor 协作参考 `personal_assistant_agent/graph.py`
 5. 流程文档优先参考 `docs/archive/02-runnableconfig-vs-serverruntime.md`、`docs/04-agent-scaffold-templates.md`、`docs/05-template-to-runnable-agent-10min.md`
 6. 显式步骤流可额外参考 `customer_support_agent/graph.py`
-7. 改完代码后至少跑相关 pytest 与 `python -m compileall graph_src_v2`
+7. 业务服务模块化开发规范见 `docs/07-service-modularization.md`
+8. 改完代码后至少跑相关 pytest 与 `python -m compileall graph_src_v2`

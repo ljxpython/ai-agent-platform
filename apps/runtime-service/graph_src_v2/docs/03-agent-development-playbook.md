@@ -177,6 +177,10 @@ tools.append(...)
    - `compileall` 通过
    - 最小冒烟测试通过
 
+补充：
+
+- 若是业务服务开发，目录与边界请按 `docs/07-service-modularization.md` 执行。
+
 ## 9. 禁止事项
 
 - 为了“看起来统一”强行让所有智能体都写成一种模式
