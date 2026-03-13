@@ -19,6 +19,7 @@ type TogglePosition = {
 
 const NAV_ITEMS = [
   { href: "/workspace/chat", label: "Chat" },
+  { href: "/workspace/sql-agent", label: "SQL Agent" },
   { href: "/workspace/threads", label: "Threads" },
   { href: "/workspace/graphs", label: "Graphs" },
   { href: "/workspace/assistants", label: "Assistants" },
