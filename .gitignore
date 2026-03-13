@@ -339,6 +339,7 @@ test_*.py
 !/uitest/package.json
 !/tests/
 !/frontend/src/pages/test/
+!apps/platform-web/tests/platform-regression.spec.ts
 
 ### Vuejs ###
 # Recommended template: Node.gitignore
