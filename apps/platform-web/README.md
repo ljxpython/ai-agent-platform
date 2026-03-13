@@ -30,6 +30,7 @@
 - `/`：根据登录态跳转到 `/workspace/projects` 或 `/auth/login`
 - `/auth/login`：用户名/密码登录
 - `/workspace/chat`
+- `/workspace/sql-agent`
 - `/workspace/threads`
 - `/workspace/graphs`
 - `/workspace/assistants`
@@ -83,12 +84,15 @@ pnpm dev
 4. `docs/current-architecture.md`
 5. `docs/local-dev.md`
 6. `docs/testing.md`
+7. `docs/agent-chat-template.md`
 
 ## 当前代码入口
 
 - `src/app/layout.tsx`：根布局与全局 auth guard
 - `src/app/workspace/layout.tsx`：工作区布局
+- `src/app/workspace/sql-agent/page.tsx`：基于 Base Chat Template 的 agent 专属页面示例
 - `src/components/platform/workspace-shell.tsx`：主导航与 shell
+- `src/components/chat-template/base-chat-template.tsx`：内部复用的 chat 模板基座
 - `src/providers/WorkspaceContext.tsx`：工作区 query-state
 - `src/providers/Stream.tsx`：chat/runtime stream provider
 - `src/providers/Thread.tsx`：thread list/query provider
@@ -112,3 +116,4 @@ platform-web
 - `docs/current-architecture.md`：当前前端结构与集成边界
 - `docs/local-dev.md`：本地开发说明
 - `docs/testing.md`：构建与 Playwright 验证
+- `docs/agent-chat-template.md`：Agent 专属 chat 页面模板开发约定

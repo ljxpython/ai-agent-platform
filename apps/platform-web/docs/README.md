@@ -12,6 +12,8 @@
    - 环境变量、本地启动、联调口径
 5. `docs/testing.md`
    - 构建、lint、Playwright 回归
+6. `docs/agent-chat-template.md`
+   - Agent 专属 chat 页面模板的推荐开发方式与边界约定
 
 ## 文档约定
 

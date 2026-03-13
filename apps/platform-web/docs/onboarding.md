@@ -24,6 +24,8 @@
 - 改工作区导航：`src/components/platform/workspace-shell.tsx`
 - 改工作区 query-state：`src/providers/WorkspaceContext.tsx`
 - 改 chat/runtime 行为：`src/providers/Stream.tsx`、`src/providers/Thread.tsx`
+- 做 agent 专属 chat 页面：`docs/agent-chat-template.md`
+- 改模板基座：`src/components/chat-template/base-chat-template.tsx`
 - 改管理面接口：`src/lib/management-api/*`
 
 ## 3. 当前模块地图
@@ -34,8 +36,9 @@ src/
     auth/              # 登录页
     workspace/         # 工作区页面
     api/[..._path]/    # 可选 Next passthrough route
-  components/platform/ # 工作台组件、导航、guards、表格工具
-  components/thread/   # Chat / thread UI
+  components/platform/      # 工作台组件、导航、guards、表格工具
+  components/chat-template/ # Agent chat 模板基座
+  components/thread/        # Chat / thread UI 主体
   providers/           # Workspace / Stream / Thread providers
   lib/management-api/  # 平台管理面 API 客户端
   lib/oidc-storage.ts  # token 与 API URL 本地存储
@@ -59,6 +62,12 @@ src/
 - `src/providers/Thread.tsx`
 - `src/components/thread/*`
 
+### 新增 agent 专属 chat 页面
+
+- 路由：`src/app/workspace/<agent-page>/page.tsx`
+- 基座：`src/components/chat-template/base-chat-template.tsx`
+- 约定：优先复用模板，只有明显超出模板边界时再复制模板页面层分叉
+
 ### 修改工作区上下文
 
 - `src/providers/WorkspaceContext.tsx`
@@ -71,3 +80,4 @@ src/
 - 项目边界通过 `x-project-id` 传给后端
 - 管理页主要是 client component + `useEffect/useState/useCallback`
 - Chat 页通过 provider 组合运行，不要直接绕开 `WorkspaceProvider` / `ThreadProvider` / `StreamProvider`
+- 新 agent 页面默认先基于 `BaseChatTemplate` 实现，不要一开始就复制整套 chat

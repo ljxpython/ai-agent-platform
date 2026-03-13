@@ -45,6 +45,7 @@
 `WorkspaceShell` 暴露的主导航包括：
 
 - Chat
+- SQL Agent
 - Threads
 - Graphs
 - Assistants
@@ -73,6 +74,25 @@
 
 - `src/providers/Thread.tsx`：thread 查询与列表
 - `src/providers/Stream.tsx`：运行时 stream、assistant/graph 选择、消息与 UI event 合并
+
+### 4.3 Chat 模板层
+
+当前 chat 已经引入内部模板基座：
+
+- `src/components/chat-template/base-chat-template.tsx`
+
+当前使用方式：
+
+- `src/app/workspace/chat/page.tsx`：默认 chat 包装页
+- `src/app/workspace/sql-agent/page.tsx`：agent 专属页面示例
+
+这里的模板是**内部开发基座**，不是用户可见的前端模板选择功能。
+
+团队当前约定：
+
+- 默认先复用 `BaseChatTemplate`
+- 未来如果某个 agent 页面明显超出模板边界，再复制模板页面层单独演化
+- 默认不复制底层 providers
 
 ## 5. API 集成边界
 
