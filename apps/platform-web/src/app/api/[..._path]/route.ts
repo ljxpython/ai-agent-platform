@@ -2,9 +2,6 @@ import { initApiPassthrough } from "langgraph-nextjs-api-passthrough";
 import type { NextRequest } from "next/server";
 import { logFrontendServer } from "@/lib/server-logger";
 
-// This file acts as a proxy for requests to your LangGraph server.
-// Read the [Going to Production](https://github.com/langchain-ai/agent-chat-ui?tab=readme-ov-file#going-to-production) section for more information.
-
 const passthrough = initApiPassthrough({
   apiUrl: process.env.LANGGRAPH_API_URL ?? "remove-me",
   apiKey: process.env.LANGSMITH_API_KEY ?? "remove-me",

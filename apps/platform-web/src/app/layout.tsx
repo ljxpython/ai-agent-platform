@@ -8,8 +8,8 @@ import "./globals.css";
 import { GlobalAuthGuard } from "@/components/platform/global-auth-guard";
 
 export const metadata: Metadata = {
-  title: "Agent Chat",
-  description: "Agent Chat UX by LangChain",
+  title: "Platform Web",
+  description: "Platform workspace UI for management, chat, and runtime operations.",
 };
 
 export default function RootLayout({
