@@ -2,7 +2,7 @@
 
 `apps/platform-web` 是当前平台工作台前端。
 
-它不再是上游通用 `agent-chat-ui` 示例应用，而是一个基于 Next.js App Router 的平台控制面 UI，主要负责：
+它不再是通用 LangGraph 示例前端，而是一个基于 Next.js App Router 的平台控制面 UI，主要负责：
 
 - 登录与工作区导航
 - 项目、用户、成员、审计等管理页面

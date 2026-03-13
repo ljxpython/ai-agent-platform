@@ -1,6 +1,6 @@
 # 当前架构说明
 
-这份文档只描述 `apps/platform-web` 当前真实实现，不再沿用上游 `agent-chat-ui` 的通用产品叙事。
+这份文档只描述 `apps/platform-web` 当前真实实现，不再沿用旧的通用 demo 产品叙事。
 
 ## 1. 产品定位
 
@@ -63,7 +63,6 @@
 
 它依赖 URL query state（`nuqs`）维护：
 
-- `tenantId`（当前仍有遗留字段，但真实工作流已主要围绕 `projectId`）
 - `projectId`
 - `assistantId`
 - `threadId`
