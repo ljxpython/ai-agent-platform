@@ -64,6 +64,7 @@ curl -sS http://127.0.0.1:8123/internal/capabilities/models
 最常用运行时参数：
 
 - `model_id`
+- `system_prompt`（仅用于外部覆盖；未提供时由各 graph 自己回退到业务默认 prompt）
 - `enable_tools`
 - `tools`
 - `temperature`

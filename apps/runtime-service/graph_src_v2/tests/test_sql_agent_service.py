@@ -15,10 +15,19 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
+from graph_src_v2.runtime.options import build_runtime_config  # noqa: E402
 from graph_src_v2.services.sql_agent import tools as sql_tools  # noqa: E402
-from graph_src_v2.runtime.options import DEFAULT_SYSTEM_PROMPT  # noqa: E402
 
 sql_agent_graph = importlib.import_module("graph_src_v2.services.sql_agent.graph")
+
+
+def test_build_runtime_config_defaults_to_empty_system_prompt(monkeypatch: Any) -> None:
+    monkeypatch.delenv("SYSTEM_PROMPT", raising=False)
+    monkeypatch.setenv("MODEL_ID", "glm5_mass")
+
+    options = build_runtime_config({"configurable": {}}, {})
+
+    assert options.system_prompt == ""
 
 
 def _invoke_tool(tool_obj: Any, args: dict[str, Any]) -> Any:
@@ -113,7 +122,7 @@ def test_make_graph_builds_sql_agent(monkeypatch: Any) -> None:
 
     class DummyOptions:
         model_spec = object()
-        system_prompt = DEFAULT_SYSTEM_PROMPT
+        system_prompt = ""
 
     async def fake_build_tools(options: Any) -> list[Any]:
         del options
@@ -153,7 +162,7 @@ def test_make_graph_ignores_optional_chart_failures(monkeypatch: Any) -> None:
 
     class DummyOptions:
         model_spec = object()
-        system_prompt = DEFAULT_SYSTEM_PROMPT
+        system_prompt = ""
 
     async def fake_build_tools(options: Any) -> list[Any]:
         del options

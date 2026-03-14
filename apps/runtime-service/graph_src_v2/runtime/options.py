@@ -30,7 +30,7 @@ class AppRuntimeConfig:
             model_provider="", model="", base_url="", api_key=""
         )
     )
-    system_prompt: str = DEFAULT_SYSTEM_PROMPT
+    system_prompt: str = ""
     enable_tools: bool = False
     tools: list[str] | None = None
     temperature: float | None = None
@@ -181,7 +181,7 @@ def build_runtime_config(
         or configurable.get("system_prompt")
         or configurable.get("x-system-prompt")
         or os.getenv("SYSTEM_PROMPT")
-        or DEFAULT_SYSTEM_PROMPT
+        or ""
     )
     enable_tools = _parse_bool(
         (

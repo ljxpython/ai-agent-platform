@@ -22,7 +22,7 @@ cp graph_src_v2/.env.example graph_src_v2/.env
 
 可选（按需启用）：
 
-- `SYSTEM_PROMPT`：默认 system prompt
+- `SYSTEM_PROMPT`：运行时覆盖 prompt。若未设置，则由各个 graph 自己回退到业务默认提示词
 - `ENABLE_TOOLS`：公共工具池总开关
 - `TOOLS`：公共工具白名单（逗号分隔，支持本地工具与 `mcp:<server>`）
 

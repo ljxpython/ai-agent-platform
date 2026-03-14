@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from typing import Any
 
+from graph_src_v2.agents.assistant_agent.prompts import (
+    SYSTEM_PROMPT,
+    resolve_assistant_system_prompt,
+)
 from graph_src_v2.agents.assistant_agent.tools import (
     build_langchain_concepts_demo_tools,
     draft_release_plan,
@@ -61,12 +65,16 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
         ),
         MultimodalMiddleware(),
     ]
+    system_prompt = resolve_assistant_system_prompt(
+        options.system_prompt or SYSTEM_PROMPT,
+        demo_enabled=True,
+    )
 
     return create_agent(
         model=model,
         tools=tools,
         middleware=middleware,
-        system_prompt=options.system_prompt,
+        system_prompt=system_prompt,
         state_schema=MultimodalAgentState,
         name="assistant",
     )

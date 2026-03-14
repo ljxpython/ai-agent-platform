@@ -169,6 +169,96 @@ def normalize_messages(messages: Sequence[Any]) -> list[Any]:
     return normalized_messages
 
 
+def _artifact_model_text(artifact: AttachmentArtifact) -> str:
+    lines: list[str] = []
+    name = artifact.get("name") or artifact.get("attachment_id") or "附件"
+    kind = artifact.get("kind") or "file"
+    lines.append(f"[附件: {name}; kind={kind}; status={artifact.get('status', 'unknown')}]")
+
+    summary = artifact.get("summary_for_model")
+    if isinstance(summary, str) and summary.strip():
+        lines.append(f"摘要: {summary.strip()}")
+
+    parsed_text = artifact.get("parsed_text")
+    if isinstance(parsed_text, str) and parsed_text.strip():
+        lines.append(f"解析文本摘录:\n{parsed_text.strip()[:4000]}")
+
+    structured_data = artifact.get("structured_data")
+    if isinstance(structured_data, Mapping) and structured_data:
+        lines.append(
+            "结构化要点: " + json.dumps(dict(structured_data), ensure_ascii=False)
+        )
+
+    return "\n".join(lines)
+
+
+def _rewrite_latest_human_message_for_model(
+    messages: Sequence[Any],
+    artifacts: Sequence[AttachmentArtifact],
+) -> list[Any]:
+    if not artifacts:
+        return list(messages)
+
+    latest_index = -1
+    for idx in range(len(messages) - 1, -1, -1):
+        message = messages[idx]
+        if _get_message_type(message) not in {"human", "user"}:
+            continue
+        content = _get_message_content(message)
+        if not isinstance(content, list):
+            continue
+        if any(
+            isinstance(item, Mapping) and item.get("type") in {"image", "file"}
+            for item in content
+        ):
+            latest_index = idx
+            break
+
+    if latest_index < 0:
+        return list(messages)
+
+    message = messages[latest_index]
+    content = _get_message_content(message)
+    if not isinstance(content, list):
+        return list(messages)
+
+    artifact_iter = iter(artifacts)
+    rewritten_content: list[Any] = []
+    for item in content:
+        if not isinstance(item, Mapping) or item.get("type") not in {"image", "file"}:
+            rewritten_content.append(item)
+            continue
+
+        artifact = next(artifact_iter, None)
+        if artifact is None:
+            rewritten_content.append(item)
+            continue
+
+        if artifact.get("kind") == "image":
+            rewritten_content.append(item)
+            continue
+
+        rewritten_content.append(
+            {
+                "type": "text",
+                "text": _artifact_model_text(artifact),
+            }
+        )
+
+    rewritten_messages = list(messages)
+    if hasattr(message, "model_copy"):
+        rewritten_messages[latest_index] = message.model_copy(
+            update={"content": rewritten_content}
+        )
+    elif isinstance(message, Mapping):
+        next_message = dict(message)
+        next_message["content"] = rewritten_content
+        rewritten_messages[latest_index] = next_message
+    else:
+        rewritten_messages[latest_index] = message
+    return rewritten_messages
+
+
 def _build_attachment_summary(
     kind: AttachmentKind,
     mime_type: str | None,
@@ -892,21 +982,29 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
                 updates[key] = next_state.get(key)
         return updates or None
 
-    @staticmethod
     def _augment_request(
-        request: ModelRequest, next_state: Mapping[str, Any] | None = None
+        self,
+        request: ModelRequest,
+        next_state: Mapping[str, Any] | None = None,
     ) -> ModelRequest:
         normalized_messages = normalize_messages(request.messages)
         resolved_state = dict(
             next_state
             or MultimodalMiddleware._build_state(normalized_messages, request.state)
         )
+        rewritten_messages = _rewrite_latest_human_message_for_model(
+            normalized_messages,
+            cast(
+                list[AttachmentArtifact],
+                resolved_state.get(MULTIMODAL_ATTACHMENTS_KEY) or [],
+            ),
+        )
         summary = cast(str | None, resolved_state.get(MULTIMODAL_SUMMARY_KEY))
         system_message = build_multimodal_system_message(
             request.system_message, summary
         )
         return request.override(
-            messages=normalized_messages,
+            messages=rewritten_messages,
             state=cast(AgentState[Any], resolved_state),
             system_message=system_message,
         )
@@ -918,7 +1016,7 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
     ) -> ModelResponse:
         normalized_messages = normalize_messages(request.messages)
         next_state = self._parse_artifacts(normalized_messages, request.state)
-        return handler(self._augment_request(request, next_state))
+        return handler(self._augment_request(request=request, next_state=next_state))
 
     async def awrap_model_call(
         self,
@@ -927,7 +1025,9 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
     ) -> ModelResponse:
         normalized_messages = normalize_messages(request.messages)
         next_state = await self._aparse_artifacts(normalized_messages, request.state)
-        return await handler(self._augment_request(request, next_state))
+        return await handler(
+            self._augment_request(request=request, next_state=next_state)
+        )
 
 
 __all__ = [

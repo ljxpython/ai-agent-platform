@@ -135,8 +135,9 @@ def test_multimodal_middleware_wrap_model_call_augments_request() -> None:
         assert "PDF 已解析" in state[MULTIMODAL_SUMMARY_KEY]
         content = cast(list[dict[str, Any]], updated_request.messages[0].content)
         assert isinstance(content, list)
-        assert content[1]["base64"] == "pdfbase64"
-        assert content[1]["mime_type"] == "application/pdf"
+        assert content[1]["type"] == "text"
+        assert "PDF 已解析" in content[1]["text"]
+        assert "测试 PDF 文本" in content[1]["text"]
         return ModelResponse(result=[AIMessage(content="ok")])
 
     response = middleware.wrap_model_call(request, handler)
@@ -201,9 +202,80 @@ def test_multimodal_middleware_awrap_model_call_augments_request() -> None:
         state = cast(dict[str, Any], updated_request.state)
         assert state[MULTIMODAL_ATTACHMENTS_KEY][0]["kind"] == "doc"
         assert state[MULTIMODAL_ATTACHMENTS_KEY][0]["status"] == "unprocessed"
+        content = cast(list[dict[str, Any]], updated_request.messages[0].content)
+        assert content[0]["type"] == "text"
+        assert "kind=doc" in content[0]["text"]
         return ModelResponse(result=[AIMessage(content="ok")])
 
     response = asyncio.run(middleware.awrap_model_call(request, handler))
+    assert response.result[0].text == "ok"
+
+
+def test_multimodal_middleware_preserves_model_with_attachments() -> None:
+    class DummyModel:
+        def __init__(self) -> None:
+            self.bound_kwargs: dict[str, Any] | None = None
+
+        def bind(self, **kwargs: Any) -> "DummyModel":
+            bound = DummyModel()
+            bound.bound_kwargs = kwargs
+            return bound
+
+    base_model = DummyModel()
+    middleware = MultimodalMiddleware()
+    request = ModelRequest(
+        model=cast(BaseChatModel, base_model),
+        messages=[
+            HumanMessage(
+                content=[
+                    {"type": "text", "text": "请分析这个 PDF"},
+                    {
+                        "type": "file",
+                        "mimeType": "application/pdf",
+                        "data": "pdfbase64",
+                        "metadata": {"filename": "report.pdf"},
+                    },
+                ]
+            )
+        ],
+        system_message=SystemMessage(content="Base prompt"),
+        state=cast(Any, {}),
+        )
+
+    def handler(updated_request: ModelRequest) -> ModelResponse:
+        assert updated_request.model is base_model
+        content = cast(list[dict[str, Any]], updated_request.messages[0].content)
+        assert content[1]["type"] == "text"
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    response = middleware.wrap_model_call(request, handler)
+    assert response.result[0].text == "ok"
+
+
+def test_multimodal_middleware_preserves_model_without_attachments() -> None:
+    class DummyModel:
+        def __init__(self) -> None:
+            self.bound_kwargs: dict[str, Any] | None = None
+
+        def bind(self, **kwargs: Any) -> "DummyModel":
+            bound = DummyModel()
+            bound.bound_kwargs = kwargs
+            return bound
+
+    base_model = DummyModel()
+    middleware = MultimodalMiddleware()
+    request = ModelRequest(
+        model=cast(BaseChatModel, base_model),
+        messages=[HumanMessage(content="纯文本请求")],
+        system_message=SystemMessage(content="Base prompt"),
+        state=cast(Any, {}),
+    )
+
+    def handler(updated_request: ModelRequest) -> ModelResponse:
+        assert updated_request.model is base_model
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    response = middleware.wrap_model_call(request, handler)
     assert response.result[0].text == "ok"
 
 
@@ -241,6 +313,40 @@ def test_multimodal_middleware_parser_failure_is_fail_soft() -> None:
         state = cast(dict[str, Any], updated_request.state)
         assert state[MULTIMODAL_ATTACHMENTS_KEY][0]["status"] == "failed"
         assert "附件解析失败" in state[MULTIMODAL_SUMMARY_KEY]
+        content = cast(list[dict[str, Any]], updated_request.messages[0].content)
+        assert content[0]["type"] == "image"
+        assert content[0]["base64"] == "imgbase64"
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    response = middleware.wrap_model_call(request, handler)
+    assert response.result[0].text == "ok"
+
+
+def test_multimodal_middleware_keeps_image_blocks_for_model() -> None:
+    middleware = MultimodalMiddleware()
+    request = ModelRequest(
+        model=cast(BaseChatModel, object()),
+        messages=[
+            HumanMessage(
+                content=[
+                    {"type": "text", "text": "请看图片"},
+                    {
+                        "type": "image",
+                        "mimeType": "image/png",
+                        "data": "imgbase64",
+                        "metadata": {"name": "screen.png"},
+                    },
+                ]
+            )
+        ],
+        system_message=SystemMessage(content="Base prompt"),
+        state=cast(Any, {}),
+    )
+
+    def handler(updated_request: ModelRequest) -> ModelResponse:
+        content = cast(list[dict[str, Any]], updated_request.messages[0].content)
+        assert content[1]["type"] == "image"
+        assert content[1]["base64"] == "imgbase64"
         return ModelResponse(result=[AIMessage(content="ok")])
 
     response = middleware.wrap_model_call(request, handler)

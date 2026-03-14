@@ -121,6 +121,28 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
 - `ServerRuntime` 作为统一签名保留；当前大多数场景不直接使用它。
 - 若当前场景不需要 `user/store`，可以 `del runtime`，但不要另起一套不兼容签名。
 
+## 4.1 system_prompt 全局规则
+
+统一规则：
+
+- `runtime/options.py` 不再提供“前端不传时的全局默认提示词”
+- 当前端/调用方未传 `system_prompt` 时，`options.system_prompt == ""`
+- 每个 graph 必须在自己的 `graph.py` 内显式决定业务默认提示词
+
+推荐写法：
+
+```python
+system_prompt = options.system_prompt or SYSTEM_PROMPT
+```
+
+如果该 graph 需要对外部 prompt 做更复杂处理，也必须在 graph 内完成，而不是回退到 runtime 层统一默认值。
+
+说明：
+
+- `SYSTEM_PROMPT` 属于业务 graph 的默认行为，不属于全局 runtime 的统一默认值
+- 这样可以保证不同业务 graph 在前端不传 prompt 时，仍然各自按自己的业务语义运行
+- 新 graph 禁止直接把 `options.system_prompt` 原样透传后假定它总会有默认值
+
 ## 5. 工具装配规范（重点）
 
 统一采用“两段式装配”：

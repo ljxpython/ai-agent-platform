@@ -28,6 +28,10 @@
     "sql_agent": {
       "path": "./graph_src_v2/services/sql_agent/graph.py:graph",
       "description": "SQL 问答服务：基于内置 Chinook SQLite 示例库的只读查询 Agent，自动完成表发现、schema 检查、SQL 生成、自检与执行。"
+    },
+    "usecase_workflow_agent": {
+      "path": "./graph_src_v2/services/usecase_workflow_agent/graph.py:graph",
+      "description": "用例生成工作流样板：复用 PDF 多模态中间件，使用 deepagent 编排需求分析与用例评审，并在人工确认后执行最终持久化动作。"
     }
   },
   "http": {

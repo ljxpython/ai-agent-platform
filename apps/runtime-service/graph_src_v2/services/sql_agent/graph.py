@@ -3,11 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from graph_src_v2.runtime.modeling import apply_model_runtime_params, resolve_model
-from graph_src_v2.runtime.options import (
-    DEFAULT_SYSTEM_PROMPT,
-    build_runtime_config,
-    merge_trusted_auth_context,
-)
+from graph_src_v2.runtime.options import build_runtime_config, merge_trusted_auth_context
 from graph_src_v2.services.sql_agent.chart_mcp import aget_mcp_server_chart_tools
 from graph_src_v2.services.sql_agent.prompts import build_sql_agent_system_prompt
 from graph_src_v2.services.sql_agent.schemas import DEFAULT_DATABASE_NAME
@@ -35,9 +31,7 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
     except Exception:
         pass
 
-    custom_instructions = (
-        options.system_prompt if options.system_prompt != DEFAULT_SYSTEM_PROMPT else None
-    )
+    custom_instructions = options.system_prompt or None
     system_prompt = build_sql_agent_system_prompt(
         dialect="sqlite",
         top_k=service_config.top_k,

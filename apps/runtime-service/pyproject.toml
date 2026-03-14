@@ -21,3 +21,8 @@ dependencies = [
     "langchain-openai>=1.1.10",
     "pymupdf4llm>=0.3.4",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
