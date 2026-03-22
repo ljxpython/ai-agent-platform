@@ -39,3 +39,5 @@
 - `runtime-service`：执行智能体/工作流；需要持久化时调用对应 domain 的 `/api/<domain>/...`。
 - `platform-api`：对外统一鉴权/项目隔离；需要时转发/聚合 `interaction-data-service`。
 - `platform-web`：按 domain 做页面入口与管理能力。
+
+本地部署补充说明：`interaction-data-service` 属于仓库架构的一部分，但不在默认本地四服务启动集里；默认本地部署成员以 `docs/local-deployment-contract.yaml` 为准。

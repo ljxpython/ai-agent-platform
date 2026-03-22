@@ -1,8 +1,14 @@
 # 本地开发与联调说明
 
-本文保留当前仓库最小且稳定的本地联调口径，重点回答三件事：服务怎么启动、配置文件放哪里、启动后怎么确认链路是通的。
+本文是给人快速浏览的本地联调摘要。
+
+默认本地部署的唯一事实源是 `docs/local-deployment-contract.yaml`；如果本文与 contract 有冲突，以 contract 为准。
+
+本文只保留人类排查时最常看的摘要信息，不再承担独立规范源的职责。
 
 ## 1. 固定端口与链路
+
+以下内容对应 contract 中的默认四服务 profile，不包含按需服务 `interaction-data-service`。
 
 - `apps/runtime-service`: `8123`
 - `apps/platform-api`: `2024`
@@ -31,7 +37,7 @@
 1. 启动 `runtime-service`
 2. 启动 `platform-api`
 3. 启动 `platform-web`
-4. 按需启动 `runtime-web`
+4. 启动 `runtime-web`
 
 ## 4. 各应用启动命令
 
@@ -104,4 +110,4 @@ scripts/dev-down.sh
 - 不共享 `.venv`
 - 不共享 Node 依赖
 - 不共享根级 `.env`
-- 先保证四个应用可独立运行，再处理统一工具链或更深层重构
+- 先保证默认四服务启动集可独立运行，再处理统一工具链或更深层重构

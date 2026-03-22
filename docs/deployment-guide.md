@@ -1,9 +1,13 @@
 # 部署准备与环境说明
 
-本文基于当前仓库真实结构整理，目标是回答三个问题：
+本文是默认本地部署的补充说明，重点保留系统依赖、PostgreSQL、环境准备和常见排错信息。
+
+默认本地部署的唯一事实源是 `docs/local-deployment-contract.yaml`；代理执行规则见 `docs/ai-deployment-assistant-instruction.md`。
+
+本文主要回答三个问题：
 
 1. 拉取代码后，需要先准备哪些系统依赖？
-2. 四个应用分别依赖什么、各自怎么配置？
+2. 默认四服务启动集分别依赖什么、各自怎么配置？
 3. `platform-api` 的 PostgreSQL、`.env`、`uv`、`pnpm` 应该怎么准备？
 
 当前仓库结构：
@@ -14,18 +18,23 @@ agent-platform/
 ├── apps/platform-web
 ├── apps/runtime-service
 ├── apps/runtime-web
+├── apps/interaction-data-service
 ├── docs/
 └── scripts/
 ```
 
+`interaction-data-service` 也在仓库中，但它不属于默认本地四服务启动集；本文仍只覆盖默认本地部署路径。
+
 ## 1. 总体部署前提
 
-### 1.1 四个应用的职责
+### 1.1 默认四服务启动集的职责
 
 - `apps/platform-api`：平台控制面后端，依赖 PostgreSQL
 - `apps/platform-web`：平台主前端，连接 `platform-api`
 - `apps/runtime-service`：LangGraph 运行时执行层，依赖 Python 配置与模型配置
 - `apps/runtime-web`：直连 runtime 的调试前端，连接 `runtime-service`
+
+补充：`apps/interaction-data-service` 是仓库内的按需结果域服务，但不在默认本地启动集里。
 
 ### 1.2 当前推荐联调关系
 
@@ -331,21 +340,14 @@ curl http://127.0.0.1:2024/_proxy/health
 curl http://127.0.0.1:2024/api/langgraph/info
 ```
 
-### 重要说明：`.env` 加载位置存在文档冲突
+### 重要说明：`.env` 生效位置以 contract 为准
 
-当前仓库里有两个说法：
+默认本地部署当前只使用 app-local 配置文件，不使用 repo-root `.env`。
 
-- `apps/platform-api/README.md` 写的是“运行时读取 repo-root `.env`”
-- 但真实代码 `apps/platform-api/app/factory.py` 中调用的是 `load_dotenv()`，未传路径
-
-这意味着：
-
-- 如果你在 `apps/platform-api` 目录下启动，最稳妥的做法是把 `.env` 放在 `apps/platform-api/.env`
-- 这也与 `docs/local-dev.md`、`docs/env-matrix.md` 当前写法一致
-
-因此，本文建议：
+因此这里的结论不再依赖多份文档交叉解释：
 
 - **优先在 `apps/platform-api/.env` 放实际生效配置**
+- 如果其他历史文档仍提到 repo-root `.env`，以 contract 为准
 
 ## 5.2 `apps/runtime-service`
 
@@ -608,7 +610,7 @@ NEXT_PUBLIC_ASSISTANT_ID=assistant
 1. runtime-service
 2. platform-api
 3. platform-web
-4. runtime-web（按需）
+4. runtime-web
 ```
 
 启动命令：
@@ -673,11 +675,12 @@ PLATFORM_DB_ENABLED=true
 
 但 PostgreSQL 没准备好，平台认证、项目管理、审计等控制面能力无法正常工作。
 
-## 10. 推荐阅读
+## 10. 相关文档
 
-- `README.md`
-- `docs/local-dev.md`
-- `docs/env-matrix.md`
-- `docs/ai-deployment-assistant-instruction.md`
-- `apps/platform-api/docs/postgres-operations.md`
-- `apps/runtime-service/graph_src_v2/docs/README.md`
+- 默认本地部署 contract：`docs/local-deployment-contract.yaml`
+- 代理执行说明：`docs/ai-deployment-assistant-instruction.md`
+- 人类快速摘要：`docs/local-dev.md`
+- 环境变量索引：`docs/env-matrix.md`
+- PostgreSQL 深入排查：`apps/platform-api/docs/postgres-operations.md`
+
+除非你在排查特定应用的内部问题，否则默认本地部署不需要先读 app README 或源码。
