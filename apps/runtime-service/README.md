@@ -67,29 +67,28 @@ cp graph_src_v2/conf/settings.yaml.example graph_src_v2/conf/settings.yaml
 
 更完整的开发/验证说明见：`graph_src_v2/docs/README.md`。
 
-## Run LangGraph dev server in background
+## 本地启动
 
-Use the command below to start the dev server as a detached background process.
-It will continue running after you close the terminal session.
-
-```bash
-setsid bash -lc 'cd /root/my_best/langgraph-agent-studio && exec nohup .venv/bin/langgraph dev --config graph_src_v2/langgraph.json --port 8123 --no-browser >/tmp/langgraph-8123.log 2>&1 < /dev/null' &
-```
-
-### Check process
+在当前仓库中，推荐以前台方式启动，便于联调和排错：
 
 ```bash
-pgrep -af "langgraph dev --config graph_src_v2/langgraph.json --port 8123"
+# from repo root
+cd apps/runtime-service
+uv run langgraph dev --config graph_src_v2/langgraph.json --port 8123 --no-browser
 ```
 
-### View logs
+如果你已经在 `apps/runtime-service` 目录内，直接执行最后一行 `uv run ...` 即可。
+
+启动后建议先做最小健康检查：
 
 ```bash
-tail -f /tmp/langgraph-8123.log
+curl http://127.0.0.1:8123/info
+curl http://127.0.0.1:8123/internal/capabilities/models
+curl http://127.0.0.1:8123/internal/capabilities/tools
 ```
 
-### Stop service
+如果你需要查看当前仓库统一的本地联调口径，参考根级文档：
 
-```bash
-pkill -f "langgraph dev --config graph_src_v2/langgraph.json --port 8123"
-```
+- `docs/local-dev.md`
+- `docs/env-matrix.md`
+- `docs/deployment-guide.md`

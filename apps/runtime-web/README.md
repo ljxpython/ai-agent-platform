@@ -1,28 +1,10 @@
-# Agent Chat UI
+# Runtime Web
 
-Agent Chat UI is a Next.js application which enables chatting with any LangGraph server with a `messages` key through a chat interface.
+`apps/runtime-web` 是当前仓库里的 LangGraph 调试前端，用于直接连接 `runtime-service` 做本地交互验证。
 
-> [!NOTE]
-> 🎥 Watch the video setup guide [here](https://youtu.be/lInrwVnZ83o).
+## Local Setup
 
-## Setup
-
-> [!TIP]
-> Don't want to run the app locally? Use the deployed site here: [agentchat.vercel.app](https://agentchat.vercel.app)!
-
-First, clone the repository, or run the [`npx` command](https://www.npmjs.com/package/create-agent-chat-app):
-
-```bash
-npx create-agent-chat-app
-```
-
-or
-
-```bash
-git clone https://github.com/langchain-ai/agent-chat-ui.git
-
-cd agent-chat-ui
-```
+在当前仓库中使用它时，不需要重新 `clone` 上游模板；直接在本目录安装依赖并启动即可。
 
 Install dependencies:
 
@@ -33,18 +15,24 @@ pnpm install
 Run the app:
 
 ```bash
-pnpm dev
+PORT=3001 pnpm dev
 ```
 
-The app will be available at `http://localhost:3000`.
+The app will be available at `http://localhost:3001`.
 
 ## Usage
 
-Once the app is running (or if using the deployed site), you'll be prompted to enter:
+当前仓库推荐的本地链路是：
 
-- **Deployment URL**: The URL of the LangGraph server you want to chat with. This can be a production or development URL.
-- **Assistant/Graph ID**: The name of the graph, or ID of the assistant to use when fetching, and submitting runs via the chat interface.
-- **LangSmith API Key**: (only required for connecting to deployed LangGraph servers) Your LangSmith API key to use when authenticating requests sent to LangGraph servers.
+- `runtime-web -> runtime-service`
+- `runtime-service`: `http://127.0.0.1:8123`
+- `runtime-web`: `http://127.0.0.1:3001`
+
+如果没有预先配置环境变量，首次进入页面时仍可以手动填写：
+
+- **Deployment URL**: 当前本地建议填写 `http://localhost:8123`
+- **Assistant/Graph ID**: 当前仓库默认可先使用 `assistant`
+- **LangSmith API Key**: 仅在连接需要额外鉴权的远端部署时才需要
 
 After entering these values, click `Continue`. You'll then be redirected to a chat interface where you can start chatting with your LangGraph server.
 
@@ -53,8 +41,8 @@ After entering these values, click `Continue`. You'll then be redirected to a ch
 You can bypass the initial setup form by setting the following environment variables:
 
 ```bash
-NEXT_PUBLIC_API_URL=http://localhost:2024
-NEXT_PUBLIC_ASSISTANT_ID=agent
+NEXT_PUBLIC_API_URL=http://localhost:8123
+NEXT_PUBLIC_ASSISTANT_ID=assistant
 ```
 
 > [!TIP]
@@ -63,10 +51,12 @@ NEXT_PUBLIC_ASSISTANT_ID=agent
 To use these variables:
 
 1. Copy the `.env.example` file to a new file named `.env`
-2. Fill in the values in the `.env` file
+2. Replace the template values with the current local values shown above, especially `NEXT_PUBLIC_API_URL=http://localhost:8123`
 3. Restart the application
 
 When these environment variables are set, the application will use them instead of showing the setup form.
+
+For the current repository-wide local development conventions, see `docs/local-dev.md` and `docs/env-matrix.md`.
 
 ## Hiding Messages in the Chat
 

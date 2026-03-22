@@ -59,5 +59,5 @@
 ## 启动示例
 
 ```bash
-APP_ENV=test langgraph dev --config graph_src_v2/langgraph.json
+uv run langgraph dev --config graph_src_v2/langgraph.json --port 8123 --no-browser
 ```
