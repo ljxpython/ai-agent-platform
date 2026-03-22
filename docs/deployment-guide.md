@@ -164,12 +164,11 @@ pnpm -v
 - `graph_src_v2/.env`
 - `graph_src_v2/conf/settings.yaml`
 
-至少要能提供一个可用模型组，包括：
+至少要能提供这个仓库实际会落地的一组配置：
 
-- `model_provider`
-- `model`
-- `base_url`
-- `api_key`
+- `.env` 里的 `MODEL_ID`
+- `settings.yaml` 里的 `default.default_model_id`
+- `settings.yaml` 里的 `default.models.<model_id>` 配置块
 
 ## 3. 一次性准备清单
 
@@ -393,6 +392,8 @@ default:
 test:
   default_model_id: glm4_mass
 ```
+
+如果你是在给 AI 代理补充缺失模型配置，不要只回复 AK/SK、API Key、`base_url` 和模型名；请直接按上面这种仓库配置形状回复完整的 `MODEL_ID + settings.yaml` 模型块。
 
 ### 启动前准备
 
@@ -642,6 +643,12 @@ PORT=3001 pnpm dev
 - `scripts/check-health.sh`
 
 但首次部署时，仍建议先手工逐个启动，排错最直观。
+
+日常重复操作时，建议固定这样用：
+
+- 启动：`scripts/dev-up.sh`
+- 健康检查：`scripts/check-health.sh`
+- 停止：`scripts/dev-down.sh`
 
 ## 9. 部署时最容易踩的坑
 
