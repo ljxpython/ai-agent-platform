@@ -152,8 +152,8 @@ const StreamSession = ({
 };
 
 // Default values for the form
-const DEFAULT_API_URL = "http://localhost:2024";
-const DEFAULT_ASSISTANT_ID = "agent";
+const DEFAULT_API_URL = "http://localhost:8123";
+const DEFAULT_ASSISTANT_ID = "assistant";
 
 export const StreamProvider: FC<{ children: ReactNode }> = ({
   children,
