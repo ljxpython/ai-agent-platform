@@ -387,6 +387,8 @@ apps/platform-web/.env.local
 apps/platform-web/node_modules/
 apps/platform-web/.next/
 apps/platform-web/test-results/
+!apps/platform-web/src/lib/
+!apps/platform-web/src/lib/**
 
 apps/runtime-service/.venv/
 apps/runtime-service/.pytest_cache/
@@ -401,3 +403,5 @@ apps/runtime-web/.env
 apps/runtime-web/.env.local
 apps/runtime-web/node_modules/
 apps/runtime-web/.next/
+!apps/runtime-web/src/lib/
+!apps/runtime-web/src/lib/**
