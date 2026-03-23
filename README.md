@@ -220,7 +220,7 @@ scripts/dev-down.sh
 - 健康检查：`scripts/check-health.sh`
 - 停止：`scripts/dev-down.sh`
 
-首次排错优先按 `docs/local-dev.md` 手工逐个服务启动；确认口径无误后，再切回脚本做日常启动/停止。
+对于最少描述触发的标准部署，代理应先按 contract 检查配置，再优先使用根脚本 bring-up；只有在脚本失败、状态不清或进入排错场景时，才回退到 `docs/local-dev.md` 的逐服务启动方式。
 
 默认本地部署与联调的唯一事实源：
 
@@ -280,11 +280,19 @@ scripts/dev-down.sh
 
 这句话就够了。代理应该自动继续读取 contract；如果缺少必须由你提供的材料，它应该一次性明确告诉你缺什么，而不是要求你重写一大段 prompt。
 
+默认情况下，代理接下来应该自己完成这些动作，而不是再让你补“更完整的描述”：
+
+- 继续读取 `docs/local-deployment-contract.yaml`
+- 按需要自行读取 `docs/local-dev.md`、`docs/deployment-guide.md`、`docs/env-matrix.md`
+- 先检查本地已有配置、依赖和端口状态
+- 标准 bring-up 优先尝试根目录脚本；脚本失败再回退到逐服务启动排查
+- 只有在真实阻塞仍存在时，才一次性向你索要完整缺失材料
+
 如果缺的是 `runtime-service` 的模型配置，代理不应只向你索要 AK/SK、API Key、`base_url` 这类零散字段；它应该直接按这个仓库的实际配置形状，向你索要 `apps/runtime-service/graph_src_v2/.env` 中的 `MODEL_ID` 和 `apps/runtime-service/graph_src_v2/conf/settings.yaml` 中对应的模型配置块。
 
 ### 面向 LLM 代理
 
-如果你在编写或调试一个代理来执行这个仓库的本地部署任务，`docs/ai-deployment-assistant-instruction.md` 应该就是单入口；代理读到它之后，应自行继续读取 `docs/local-deployment-contract.yaml`，而不是要求用户再补第二段提示词。它们应该共同解决的是：
+如果你在编写或调试一个代理来执行这个仓库的本地部署任务，`docs/ai-deployment-assistant-instruction.md` 应该就是单入口；代理读到它之后，应自行继续读取 `docs/local-deployment-contract.yaml` 和必要的根级 supporting docs，而不是要求用户再补第二段提示词。它们应该共同解决的是：
 
 - 当前本地部署的唯一有效口径是什么
 - 配置文件应该写到哪里，哪些旧说法不能再用
@@ -305,6 +313,7 @@ scripts/dev-down.sh
 ### 使用这份文档时的几个提醒
 
 - 这套 AI 助手文档服务的是当前仓库的本地部署与验证，不是外部插件接入说明
+- 用户可以只给一句最短触发语，后续根文档读取和部署路径选择应由代理自行完成
 - `platform-api` 的本地配置以 `apps/platform-api/.env` 为准
 - `runtime-web` 本地最小联调应直连 `http://localhost:8123`
 - 默认本地 bootstrap 账号是 `admin / admin123456`，仅适合临时本地环境
