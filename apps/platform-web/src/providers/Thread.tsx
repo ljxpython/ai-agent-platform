@@ -11,11 +11,10 @@ import {
 } from "react";
 import { getApiKey } from "@/lib/api-key";
 import { logClient } from "@/lib/client-logger";
+import { getConfiguredPlatformApiUrl } from "@/lib/platform-api-url";
 import { isJwtToken } from "@/lib/token";
 import { createClient } from "./client";
 import { useWorkspaceContext } from "./WorkspaceContext";
-
-const DEFAULT_PROXY_API_URL = "http://localhost:2024";
 
 function isDirectRuntimeUrl(apiUrl: string): boolean {
   try {
@@ -31,7 +30,7 @@ function isDirectRuntimeUrl(apiUrl: string): boolean {
 
 function normalizeApiUrl(apiUrl: string, fallbackApiUrl?: string): string {
   if (isDirectRuntimeUrl(apiUrl)) {
-    return fallbackApiUrl || DEFAULT_PROXY_API_URL;
+    return fallbackApiUrl || getConfiguredPlatformApiUrl();
   }
   return apiUrl;
 }

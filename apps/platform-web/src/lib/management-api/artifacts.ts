@@ -1,5 +1,6 @@
 import { createManagementApiClient } from "./client";
 import type { ArtifactRecord } from "@/lib/types/artifacts";
+import { getStoredOrConfiguredPlatformApiUrl } from "@/lib/platform-api-url";
 
 type ArtifactListResponse = {
   items: ArtifactRecord[];
@@ -40,12 +41,6 @@ export async function listThreadArtifacts(
 }
 
 export function buildArtifactDownloadUrl(downloadUrl: string): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_PLATFORM_API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined"
-      ? window.localStorage.getItem("lg:platform:apiUrl")
-      : null) ||
-    "http://localhost:2024";
+  const baseUrl = getStoredOrConfiguredPlatformApiUrl();
   return `${String(baseUrl).replace(/\/+$/, "")}${downloadUrl}`;
 }

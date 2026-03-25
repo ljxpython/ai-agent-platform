@@ -1,19 +1,17 @@
 "use client";
 
 import { BaseChatTemplate } from "@/components/chat-template/base-chat-template";
-
-const DEFAULT_PLATFORM_API_URL =
-  process.env.NEXT_PUBLIC_PLATFORM_API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "http://localhost:2024";
+import { getConfiguredPlatformApiUrl } from "@/lib/platform-api-url";
 
 export default function SqlAgentPage() {
+  const defaultPlatformApiUrl = getConfiguredPlatformApiUrl();
+
   return (
     <BaseChatTemplate
       target={{
         targetType: "graph",
         graphId: "sql_agent",
-        apiUrl: DEFAULT_PLATFORM_API_URL,
+        apiUrl: defaultPlatformApiUrl,
       }}
       display={{
         title: "SQL Agent",

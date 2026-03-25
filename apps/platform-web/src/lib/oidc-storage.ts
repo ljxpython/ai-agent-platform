@@ -1,3 +1,5 @@
+import { syncPlatformApiUrlStorage } from "@/lib/platform-api-url";
+
 export type OidcTokenSet = {
   access_token: string;
   refresh_token?: string;
@@ -6,7 +8,6 @@ export type OidcTokenSet = {
 };
 
 const OIDC_TOKEN_SET_KEY = "oidc:token_set";
-const DEFAULT_API_URL = "http://localhost:2024";
 
 function decodeBase64Url(raw: string): string {
   const normalized = raw.replace(/-/g, "+").replace(/_/g, "/");
@@ -64,21 +65,7 @@ export function setOidcTokenSet(tokenSet: OidcTokenSet): void {
 }
 
 export function ensureApiUrlSeeded(): void {
-  if (typeof window === "undefined") return;
-
-  const existingPlatformApiUrl = window.localStorage.getItem("lg:platform:apiUrl")?.trim();
-  const existingChatApiUrl = window.localStorage.getItem("lg:chat:apiUrl")?.trim();
-  if (existingPlatformApiUrl || existingChatApiUrl) {
-    return;
-  }
-
-  const preferred =
-    process.env.NEXT_PUBLIC_PLATFORM_API_URL?.trim() ||
-    process.env.NEXT_PUBLIC_API_URL?.trim() ||
-    DEFAULT_API_URL;
-
-  window.localStorage.setItem("lg:platform:apiUrl", preferred);
-  window.localStorage.setItem("lg:chat:apiUrl", preferred);
+  syncPlatformApiUrlStorage();
 }
 
 export function clearOidcTokenSet(): void {

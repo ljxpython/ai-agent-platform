@@ -26,6 +26,7 @@ import { ArrowRight } from "lucide-react";
 import { PasswordInput } from "@/components/ui/password-input";
 import { getApiKey } from "@/lib/api-key";
 import { logClient } from "@/lib/client-logger";
+import { getConfiguredPlatformApiUrl } from "@/lib/platform-api-url";
 import { isJwtToken } from "@/lib/token";
 import { useThreads } from "./Thread";
 import { useWorkspaceContext } from "./WorkspaceContext";
@@ -306,7 +307,6 @@ const StreamSession = ({
 };
 
 // Default values for the form
-const DEFAULT_API_URL = "http://localhost:2024";
 const DEFAULT_ASSISTANT_ID = "assistant";
 
 function isDirectRuntimeUrl(apiUrl: string): boolean {
@@ -323,7 +323,7 @@ function isDirectRuntimeUrl(apiUrl: string): boolean {
 
 function normalizeApiUrl(apiUrl: string, fallbackApiUrl?: string): string {
   if (isDirectRuntimeUrl(apiUrl)) {
-    return fallbackApiUrl || DEFAULT_API_URL;
+    return fallbackApiUrl || getConfiguredPlatformApiUrl();
   }
   return apiUrl;
 }
@@ -426,14 +426,15 @@ export const StreamProvider: FC<{
     }
 
     if (isDirectRuntimeUrl(apiUrl)) {
-      setApiUrl(DEFAULT_API_URL);
+      const platformApiUrl = getConfiguredPlatformApiUrl();
+      setApiUrl(platformApiUrl);
       logClient({
         level: "warn",
         event: "stream_runtime_url_rewritten",
         message: "Rewrote direct runtime URL to proxy URL for CORS-safe browser access",
         context: {
           from: apiUrl,
-          to: DEFAULT_API_URL,
+          to: platformApiUrl,
         },
       });
     }
@@ -557,12 +558,16 @@ export const StreamProvider: FC<{
                   id="apiUrl"
                   name="apiUrl"
                   className="bg-background"
-                  defaultValue={apiUrl || DEFAULT_API_URL}
+                  defaultValue={apiUrl || getConfiguredPlatformApiUrl()}
                   required
                 />
               </div>
             ) : (
-              <input type="hidden" name="apiUrl" value={apiUrl || DEFAULT_API_URL} />
+              <input
+                type="hidden"
+                name="apiUrl"
+                value={apiUrl || getConfiguredPlatformApiUrl()}
+              />
             )}
 
             {allowAssistantSwitch ? (

@@ -1,4 +1,5 @@
 import { getValidAccessToken } from "@/lib/oidc-storage";
+import { getStoredOrConfiguredPlatformApiUrl } from "@/lib/platform-api-url";
 
 type ApiClientOptions = {
   headers?: Record<string, string>;
@@ -83,10 +84,7 @@ class ManagementApiClient {
 
 export function createManagementApiClient(options?: ApiClientOptions): ManagementApiClient | null {
   const baseUrl =
-    process.env.NEXT_PUBLIC_PLATFORM_API_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" ? window.localStorage.getItem("lg:platform:apiUrl") : null) ||
-    "http://localhost:2024";
+    getStoredOrConfiguredPlatformApiUrl();
 
   if (!baseUrl) {
     return null;
