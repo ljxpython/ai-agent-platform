@@ -33,8 +33,8 @@
 
 ### 两条主链路
 
-- 平台链路：`platform-web -> platform-api -> runtime-service -> interaction-data-service`
-- 调试链路：`runtime-web -> runtime-service -> interaction-data-service`
+- 平台链路：`platform-web -> platform-api -> runtime-service`
+- 调试链路：`runtime-web -> runtime-service`
 
 ### 两个前端分别干什么
 
@@ -57,14 +57,15 @@ flowchart LR
         RS[runtime-service<br/>LangGraph Runtime]
     end
 
-    IDS[interaction-data-service<br/>FastAPI Result Store]
-    DB[(PostgreSQL)]
+    IDS[interaction-data-service<br/>FastAPI Result Domain Service]
+    DB[(Shared PostgreSQL)]
 
     User --> PW
     User --> RW
 
     PW --> PA
     PA --> RS
+    PA --> DB
     PA --> IDS
 
     RW --> RS
