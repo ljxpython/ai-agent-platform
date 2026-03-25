@@ -23,6 +23,16 @@
 - 提供可复用的 Runtime 执行骨架，而不是一次性 demo
 - 给后续业务二开和测试场景接入预留空间
 
+## 前端效果展示
+
+如果你想先看当前平台前端已经做到了什么程度、页面大致长什么样，以及前端这部分是怎么组织和展示的，可以直接看这篇记录：
+
+- [平台前端效果展示与介绍](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/20260325_platform_frontend_intro.md)
+
+这篇内容更偏平台前端视角，适合快速了解 `platform-web` 当前的页面效果、工作台结构和一些实际展示结果。
+
+![平台前端效果展示](docs/assets/image-20260325161139758.png)
+
 ## 系统总览
 
 当前默认本地联调由五个应用组成：
