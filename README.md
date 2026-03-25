@@ -69,6 +69,7 @@ flowchart LR
     PA --> IDS
 
     RW --> RS
+    RS --> DB
     RS --> IDS
     IDS --> DB
 ```
