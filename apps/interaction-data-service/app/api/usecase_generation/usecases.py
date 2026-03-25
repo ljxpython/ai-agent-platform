@@ -3,11 +3,13 @@ from __future__ import annotations
 from app.db.access import (
     create_use_case,
     delete_use_case,
+    get_usecase_workflow,
     get_use_case,
     list_use_cases,
     parse_uuid,
     update_use_case,
 )
+from app.db.models import UsecaseWorkflowSnapshot
 from app.db.session import session_scope
 from app.schemas.usecases import CreateUseCaseRequest, UpdateUseCaseRequest
 from fastapi import APIRouter, HTTPException, Query, Request
@@ -62,8 +64,23 @@ async def create_new_use_case(request: Request, payload: CreateUseCaseRequest):
     snapshot_uuid = parse_uuid(payload.snapshot_id) if payload.snapshot_id else None
     if project_uuid is None:
         raise HTTPException(status_code=400, detail="invalid_project_id")
+    if payload.workflow_id and workflow_uuid is None:
+        raise HTTPException(status_code=400, detail="invalid_workflow_id")
+    if payload.snapshot_id and snapshot_uuid is None:
+        raise HTTPException(status_code=400, detail="invalid_snapshot_id")
     session_factory = require_db_session_factory(request)
     with session_scope(session_factory) as session:
+        if workflow_uuid is not None and get_usecase_workflow(session, workflow_uuid) is None:
+            raise HTTPException(status_code=404, detail="workflow_not_found")
+        snapshot = None
+        if snapshot_uuid is not None:
+            snapshot = session.get(UsecaseWorkflowSnapshot, snapshot_uuid)
+            if snapshot is None:
+                raise HTTPException(status_code=404, detail="snapshot_not_found")
+            if workflow_uuid is not None and snapshot.workflow_id != workflow_uuid:
+                raise HTTPException(status_code=400, detail="snapshot_workflow_mismatch")
+            if workflow_uuid is None:
+                workflow_uuid = snapshot.workflow_id
         row = create_use_case(
             session,
             project_id=project_uuid,

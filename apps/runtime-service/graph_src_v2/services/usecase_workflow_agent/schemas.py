@@ -10,6 +10,7 @@ WorkflowStage = Literal[
     "requirement_analysis",
     "generated_candidate_usecases",
     "reviewed_candidate_usecases",
+    "awaiting_user_revision",
     "awaiting_user_confirmation",
     "persisted",
 ]
@@ -18,6 +19,7 @@ WorkflowToolStage = Literal[
     "analysis",
     "generation",
     "review",
+    "awaiting_user_revision",
     "awaiting_user_confirmation",
     "completed",
 ]

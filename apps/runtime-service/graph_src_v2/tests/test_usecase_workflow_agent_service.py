@@ -56,7 +56,6 @@ def test_build_usecase_workflow_tools_exports_expected_names() -> None:
         "record_requirement_analysis",
         "record_generated_usecases",
         "record_usecase_review",
-        "persist_approved_usecases",
     ]
 
 
@@ -68,7 +67,6 @@ def test_subagent_tools_hide_runtime_from_schema() -> None:
     record_analysis_tool = workflow_tools.record_requirement_analysis
     record_generation_tool = workflow_tools.record_generated_usecases
     record_review_tool = workflow_tools.record_usecase_review
-    persist_tool = workflow_tools.persist_approved_usecases
 
     assert set(requirement_tool.args.keys()) == set()
     assert set(generation_tool.args.keys()) == set()
@@ -77,7 +75,6 @@ def test_subagent_tools_hide_runtime_from_schema() -> None:
     assert set(record_analysis_tool.args.keys()) == set()
     assert set(record_generation_tool.args.keys()) == set()
     assert set(record_review_tool.args.keys()) == set()
-    assert set(persist_tool.args.keys()) == {"approval_note", "revision_feedback"}
 
 
 def test_subagent_tools_require_non_empty_context() -> None:
@@ -151,7 +148,9 @@ def test_subagent_tools_can_derive_context_from_runtime_state(monkeypatch: Any) 
         workflow_tools, "_build_usecase_review_subagent", lambda model: DummySubagent()
     )
     monkeypatch.setattr(
-        workflow_tools, "_build_usecase_persist_subagent", lambda model: DummySubagent()
+        workflow_tools,
+        "_build_usecase_persist_subagent",
+        lambda model, persist_tool: DummySubagent(),
     )
 
     requirement_tool = workflow_tools.build_requirement_analysis_subagent_tool(object())
@@ -163,6 +162,38 @@ def test_subagent_tools_can_derive_context_from_runtime_state(monkeypatch: Any) 
     assert getattr(generation_tool, "func")(runtime=DummyRuntime()) == "structured output"
     assert getattr(review_tool, "func")(runtime=DummyRuntime()) == "structured output"
     assert getattr(persist_plan_tool, "func")(runtime=DummyRuntime()) == "structured output"
+
+
+def test_requirement_subagent_tool_retries_retryable_provider_error(
+    monkeypatch: Any,
+) -> None:
+    attempts = {"count": 0}
+
+    class DummyRuntime:
+        def __init__(self) -> None:
+            self.state = {
+                "messages": [HumanMessage(content="请分析这个需求文档")],
+                "multimodal_summary": "需求文档摘要",
+            }
+
+    class FlakySubagent:
+        def invoke(self, payload: dict[str, Any]) -> dict[str, Any]:
+            del payload
+            attempts["count"] += 1
+            if attempts["count"] == 1:
+                raise TypeError("Received response with null value for 'choices'.")
+            return {"messages": [AIMessage(content="structured output")]}
+
+    monkeypatch.setattr(
+        workflow_tools,
+        "_build_requirement_analysis_subagent",
+        lambda model: FlakySubagent(),
+    )
+
+    requirement_tool = workflow_tools.build_requirement_analysis_subagent_tool(object())
+
+    assert getattr(requirement_tool, "func")(runtime=DummyRuntime()) == "structured output"
+    assert attempts["count"] == 2
 
 
 def test_persist_plan_tool_falls_back_when_provider_response_is_malformed(
@@ -201,7 +232,9 @@ def test_persist_plan_tool_falls_back_when_provider_response_is_malformed(
             }
 
     monkeypatch.setattr(
-        workflow_tools, "_build_usecase_persist_subagent", lambda model: FailingSubagent()
+        workflow_tools,
+        "_build_usecase_persist_subagent",
+        lambda model, persist_tool: FailingSubagent(),
     )
     persist_plan_tool = workflow_tools.build_usecase_persist_subagent_tool(object())
 
@@ -257,10 +290,126 @@ def test_record_usecase_review_reports_persistable_state() -> None:
     data = json.loads(payload)
     _assert_snapshot_envelope(data)
     assert data["stage"] == "reviewed_candidate_usecases"
-    assert data["persistable"] is True
     assert data["next_action"] == "await_user_confirmation"
-    assert data["payload"]["candidate_usecase_count"] == 1
-    assert data["payload"]["deficiency_count"] == 0
+
+
+def test_record_usecase_review_waits_for_user_revision_when_deficiencies_exist() -> None:
+    class DummyRuntime:
+        def __init__(self) -> None:
+            self.state = {
+                "workflow_id": "workflow-1",
+                "latest_snapshot": {"payload": {"project_id": "project-1"}},
+                "messages": [
+                    ToolMessage(
+                        content=json.dumps(
+                            {
+                                "stage": "generated_candidate_usecases",
+                                "summary": "Generated candidate use cases",
+                                "persistable": False,
+                                "next_action": "run_usecase_review_subagent",
+                                "payload": {
+                                    "project_id": "project-1",
+                                    "candidate_usecase_count": 1,
+                                    "candidate_usecases": {"usecases": [{"title": "login"}]},
+                                },
+                            }
+                        ),
+                        tool_call_id="tc_generation_snapshot",
+                        name="record_generated_usecases",
+                    ),
+                    ToolMessage(
+                        content=json.dumps(
+                            {
+                                "summary": "Still missing edge cases",
+                                "candidate_usecases": [{"title": "login"}],
+                                "deficiencies": ["missing edge case"],
+                                "strengths": ["clear happy path"],
+                                "revision_suggestions": ["add boundary and exception flows"],
+                            }
+                        ),
+                        tool_call_id="tc_review_with_gap",
+                        name="run_usecase_review_subagent",
+                    ),
+                ],
+            }
+
+    payload = getattr(workflow_tools.record_usecase_review, "func")(runtime=DummyRuntime())
+    data = json.loads(payload)
+
+    assert data["stage"] == "reviewed_candidate_usecases"
+    assert data["persistable"] is False
+    assert data["next_action"] == "await_user_revision"
+
+
+def test_record_usecase_review_accepts_fenced_json_payload() -> None:
+    class DummyRuntime:
+        def __init__(self) -> None:
+            self.state = {
+                "latest_snapshot": {"payload": {"project_id": "project-1"}},
+                "messages": [
+                    ToolMessage(
+                        content=json.dumps(
+                            {
+                                "stage": "generated_candidate_usecases",
+                                "summary": "Generated candidate use cases",
+                                "persistable": False,
+                                "next_action": "run_usecase_review_subagent",
+                                "payload": {
+                                    "project_id": "project-1",
+                                    "candidate_usecases": {"usecases": [{"title": "login"}]},
+                                },
+                            }
+                        ),
+                        tool_call_id="tc_generation_snapshot",
+                        name="record_generated_usecases",
+                    ),
+                    ToolMessage(
+                        content=(
+                            "```json\n"
+                            "{\"summary\":\"Looks good\",\"candidate_usecases\":[{\"title\":\"login\"}],"
+                            "\"deficiencies\":[],\"strengths\":[],\"revision_suggestions\":[]}\n"
+                            "```"
+                        ),
+                        tool_call_id="tc_review_fenced",
+                        name="run_usecase_review_subagent",
+                    ),
+                ],
+            }
+
+    payload = getattr(workflow_tools.record_usecase_review, "func")(runtime=DummyRuntime())
+    data = json.loads(payload)
+
+    assert data["stage"] == "reviewed_candidate_usecases"
+    assert data["persistable"] is True
+
+
+def test_record_requirement_analysis_accepts_embedded_json_payload() -> None:
+    class DummyRuntime:
+        def __init__(self) -> None:
+            self.state = {
+                "messages": [
+                    ToolMessage(
+                        content=(
+                            "下面是需求分析结果：\n"
+                            "{\"summary\":\"需求摘要\",\"requirements\":[\"登录\"],"
+                            "\"business_rules\":[],\"preconditions\":[],\"edge_cases\":[],"
+                            "\"exception_scenarios\":[],\"open_questions\":[]}\n"
+                            "请继续。"
+                        ),
+                        tool_call_id="tc_analysis_embedded",
+                        name="run_requirement_analysis_subagent",
+                    )
+                ],
+            }
+
+    payload = getattr(workflow_tools.record_requirement_analysis, "func")(runtime=DummyRuntime())
+    data = json.loads(payload)
+
+    assert data["stage"] == "requirement_analysis"
+    assert data["payload"]["analysis"]["requirements"] == ["登录"]
+    assert data["persistable"] is False
+    assert data["next_action"] == "run_usecase_generation_subagent"
+    assert data["payload"]["requirement_count"] == 1
 
 
 def test_record_requirement_analysis_returns_workflow_snapshot() -> None:
@@ -338,6 +487,10 @@ def test_persist_approved_usecases_returns_persisted_snapshot(monkeypatch: Any) 
                     ToolMessage(
                         content=json.dumps(
                             {
+                                "stage": "reviewed_candidate_usecases",
+                                "summary": "Reviewed candidate use cases are ready for persistence.",
+                                "persistable": True,
+                                "next_action": "await_user_confirmation",
                                 "payload": {
                                     "project_id": "project-1",
                                     "candidate_usecases": {"usecases": [{"title": "login success"}]},
@@ -351,8 +504,9 @@ def test_persist_approved_usecases_returns_persisted_snapshot(monkeypatch: Any) 
                 ]
             }
 
-    payload = getattr(workflow_tools.persist_approved_usecases, "func")(
-        runtime=DummyRuntime(), approval_note="approved by reviewer"
+    payload = workflow_tools._persist_approved_usecases_from_state(
+        DummyRuntime().state,
+        approval_note="approved by reviewer",
     )
     data = json.loads(payload)
     _assert_snapshot_envelope(data)
@@ -377,6 +531,10 @@ def test_persist_approved_usecases_with_revision_feedback_returns_review_snapsho
                     ToolMessage(
                         content=json.dumps(
                             {
+                                "stage": "reviewed_candidate_usecases",
+                                "summary": "Reviewed candidate use cases are ready for persistence.",
+                                "persistable": True,
+                                "next_action": "await_user_confirmation",
                                 "payload": {
                                     "workflow_id": "workflow-1",
                                     "project_id": "project-1",
@@ -398,8 +556,8 @@ def test_persist_approved_usecases_with_revision_feedback_returns_review_snapsho
                 ]
             }
 
-    payload = getattr(workflow_tools.persist_approved_usecases, "func")(
-        runtime=DummyRuntime(),
+    payload = workflow_tools._persist_approved_usecases_from_state(
+        DummyRuntime().state,
         revision_feedback="Please split admin and member scenarios before saving.",
     )
 
@@ -425,6 +583,10 @@ def test_persist_approved_usecases_prefers_latest_persist_plan(monkeypatch: Any)
                     ToolMessage(
                         content=json.dumps(
                             {
+                                "stage": "reviewed_candidate_usecases",
+                                "summary": "Reviewed candidate use cases are ready for persistence.",
+                                "persistable": True,
+                                "next_action": "await_user_confirmation",
                                 "payload": {
                                     "workflow_id": "workflow-review",
                                     "project_id": "project-1",
@@ -457,8 +619,9 @@ def test_persist_approved_usecases_prefers_latest_persist_plan(monkeypatch: Any)
                 ]
             }
 
-    payload = getattr(workflow_tools.persist_approved_usecases, "func")(
-        runtime=DummyRuntime(), approval_note="ignored-when-plan-exists"
+    payload = workflow_tools._persist_approved_usecases_from_state(
+        DummyRuntime().state,
+        approval_note="ignored-when-plan-exists",
     )
     data = json.loads(payload)
     assert data["payload"]["approval_note"] == "plan-approved"
@@ -527,7 +690,7 @@ def test_review_tool_context_includes_human_revision_feedback(monkeypatch: Any) 
                             }
                         ),
                         tool_call_id="tc_edit_feedback",
-                        name="persist_approved_usecases",
+                        name="run_usecase_persist_subagent",
                     ),
                 ]
             }
@@ -615,12 +778,12 @@ def test_workflow_tool_selection_infers_generation_stage_from_tool_message() -> 
 
     def handler(updated_request: Any) -> ModelResponse:
         names = [tool.name for tool in updated_request.tools]
-        assert set(names) == set(workflow_graph.STAGE_ALLOWED_TOOLS["generation"])
+        assert names == ["run_usecase_generation_subagent"]
         assert "Current workflow stage: generation." in updated_request.system_message.content
         return ModelResponse(result=[AIMessage(content="ok")])
 
     response = middleware.wrap_model_call(request, handler)
-    assert response.result[0].text == "ok"
+    assert response.result[0].tool_calls[0]["name"] == "run_usecase_generation_subagent"
 
 
 def test_workflow_tool_selection_moves_from_generation_snapshot_to_review() -> None:
@@ -663,12 +826,12 @@ def test_workflow_tool_selection_moves_from_generation_snapshot_to_review() -> N
 
     def handler(updated_request: Any) -> ModelResponse:
         names = [tool.name for tool in updated_request.tools]
-        assert set(names) == set(workflow_graph.STAGE_ALLOWED_TOOLS["review"])
+        assert names == ["run_usecase_review_subagent"]
         assert "Current workflow stage: review." in updated_request.system_message.content
         return ModelResponse(result=[AIMessage(content="ok")])
 
     response = middleware.wrap_model_call(request, handler)
-    assert response.result[0].text == "ok"
+    assert response.result[0].tool_calls[0]["name"] == "run_usecase_review_subagent"
 
 
 def test_workflow_tool_selection_uses_latest_review_message_to_reenter_generation() -> None:
@@ -703,10 +866,11 @@ def test_workflow_tool_selection_uses_latest_review_message_to_reenter_generatio
                             {
                                 "stage": "reviewed_candidate_usecases",
                                 "persistable": False,
+                                "next_action": "revise_and_review_again",
                             }
                         ),
                         tool_call_id="tc_edit",
-                        name="persist_approved_usecases",
+                        name="run_usecase_persist_subagent",
                     )
                 ],
             },
@@ -715,13 +879,13 @@ def test_workflow_tool_selection_uses_latest_review_message_to_reenter_generatio
 
     def handler(updated_request: Any) -> ModelResponse:
         names = [tool.name for tool in updated_request.tools]
-        assert set(names) == set(workflow_graph.STAGE_ALLOWED_TOOLS["generation"])
+        assert names == ["run_usecase_generation_subagent"]
         assert "Current workflow stage: generation." in updated_request.system_message.content
         return ModelResponse(result=[AIMessage(content="ok")])
 
     response = middleware.wrap_model_call(request, handler)
 
-    assert response.result[0].text == "ok"
+    assert response.result[0].tool_calls[0]["name"] == "run_usecase_generation_subagent"
 
 
 def test_workflow_tool_selection_injects_generation_progress_text() -> None:
@@ -840,14 +1004,14 @@ def test_workflow_tool_selection_allows_explicit_workflow_request_after_greeting
 
     def handler(updated_request: Any) -> ModelResponse:
         names = [tool.name for tool in updated_request.tools]
-        assert set(names) == set(workflow_graph.STAGE_ALLOWED_TOOLS["analysis"])
+        assert names == ["run_requirement_analysis_subagent"]
         assert "Current workflow stage: analysis." in updated_request.system_message.content
         assert updated_request.state["current_stage"] == "analysis"
         return ModelResponse(result=[AIMessage(content="ok")])
 
     response = middleware.wrap_model_call(request, handler)
 
-    assert response.result[0].text == "ok"
+    assert response.result[0].tool_calls[0]["name"] == "run_requirement_analysis_subagent"
 
 
 def test_workflow_tool_selection_allows_greeting_turn_when_attachment_context_exists() -> None:
@@ -879,13 +1043,13 @@ def test_workflow_tool_selection_allows_greeting_turn_when_attachment_context_ex
 
     def handler(updated_request: Any) -> ModelResponse:
         names = [tool.name for tool in updated_request.tools]
-        assert set(names) == set(workflow_graph.STAGE_ALLOWED_TOOLS["analysis"])
+        assert names == ["run_requirement_analysis_subagent"]
         assert "Current workflow stage: analysis." in updated_request.system_message.content
         return ModelResponse(result=[AIMessage(content="ok")])
 
     response = middleware.wrap_model_call(request, handler)
 
-    assert response.result[0].text == "ok"
+    assert response.result[0].tool_calls[0]["name"] == "run_requirement_analysis_subagent"
 
 
 def test_workflow_tool_selection_keeps_active_stage_during_greeting_turn() -> None:
@@ -911,14 +1075,14 @@ def test_workflow_tool_selection_keeps_active_stage_during_greeting_turn() -> No
 
     def handler(updated_request: Any) -> ModelResponse:
         names = [tool.name for tool in updated_request.tools]
-        assert set(names) == set(workflow_graph.STAGE_ALLOWED_TOOLS["review"])
+        assert names == ["run_usecase_review_subagent"]
         assert "Current workflow stage: review." in updated_request.system_message.content
         assert updated_request.state["current_stage"] == "review"
         return ModelResponse(result=[AIMessage(content="ok")])
 
     response = middleware.wrap_model_call(request, handler)
 
-    assert response.result[0].text == "ok"
+    assert response.result[0].tool_calls[0]["name"] == "run_usecase_review_subagent"
 
 
 def test_local_repl_builds_structured_edit_resume_payload() -> None:
@@ -982,10 +1146,10 @@ def test_workflow_tool_selection_drops_blank_tool_name_from_model_response() -> 
 
     response = middleware.wrap_model_call(request, handler)
 
-    assert response.result[0].tool_calls == []
+    assert response.result[0].tool_calls[0]["name"] == "run_requirement_analysis_subagent"
 
 
-def test_workflow_tool_selection_keeps_valid_confirmation_tool_call() -> None:
+def test_workflow_tool_selection_keeps_valid_confirmation_persist_plan_tool_call() -> None:
     workflow_graph = importlib.import_module(
         "graph_src_v2.services.usecase_workflow_agent.graph"
     )
@@ -1010,15 +1174,15 @@ def test_workflow_tool_selection_keeps_valid_confirmation_tool_call() -> None:
     )
 
     valid_tool_call = {
-        "name": "persist_approved_usecases",
-        "args": {"approval_note": "confirmed"},
-        "id": "call_persist_approved_usecases",
+        "name": "run_usecase_persist_subagent",
+        "args": {},
+        "id": "call_run_usecase_persist_subagent",
         "type": "tool_call",
     }
 
     def handler(updated_request: Any) -> ModelResponse:
         names = [tool.name for tool in updated_request.tools]
-        assert set(names) == {"run_usecase_persist_subagent", "persist_approved_usecases"}
+        assert names == ["run_usecase_persist_subagent"]
         return ModelResponse(
             result=[
                 AIMessage(
@@ -1041,7 +1205,7 @@ def test_workflow_tool_selection_keeps_valid_confirmation_tool_call() -> None:
     assert response.result[0].tool_calls == [valid_tool_call]
 
 
-def test_workflow_tool_selection_only_exposes_persist_after_plan_exists() -> None:
+def test_workflow_tool_selection_keeps_persist_plan_only_after_plan_exists() -> None:
     workflow_graph = importlib.import_module(
         "graph_src_v2.services.usecase_workflow_agent.graph"
     )
@@ -1088,24 +1252,24 @@ def test_workflow_tool_selection_only_exposes_persist_after_plan_exists() -> Non
     )
 
     valid_tool_call = {
-        "name": "persist_approved_usecases",
-        "args": {"approval_note": "confirmed"},
-        "id": "call_persist_approved_usecases",
+        "name": "run_usecase_persist_subagent",
+        "args": {},
+        "id": "call_run_usecase_persist_subagent",
         "type": "tool_call",
     }
 
     def handler(updated_request: Any) -> ModelResponse:
         names = [tool.name for tool in updated_request.tools]
-        assert names == ["persist_approved_usecases"]
+        assert names == ["run_usecase_persist_subagent"]
         return ModelResponse(
             result=[
                 AIMessage(
                     content="",
                     tool_calls=[
                         {
-                            "name": "run_usecase_persist_subagent",
-                            "args": {},
-                            "id": "call_duplicate_persist_plan",
+                            "name": "persist_approved_usecases",
+                            "args": {"approval_note": "confirmed"},
+                            "id": "call_invalid_root_persist",
                             "type": "tool_call",
                         },
                         valid_tool_call,
@@ -1173,6 +1337,61 @@ def test_workflow_tool_selection_infers_awaiting_confirmation_stage_from_review_
     assert response.result[0].text == "ok"
 
 
+def test_workflow_tool_selection_infers_awaiting_revision_stage_from_review_snapshot() -> None:
+    workflow_graph = importlib.import_module(
+        "graph_src_v2.services.usecase_workflow_agent.graph"
+    )
+    middleware = workflow_graph.WorkflowToolSelectionMiddleware()
+
+    class DummyTool:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    request = ModelRequest(
+        model=cast(BaseChatModel, object()),
+        messages=[HumanMessage(content="这轮评审结果具体是什么意思？")],
+        tools=cast(
+            Any,
+            [
+                DummyTool(name)
+                for name in workflow_graph.STAGE_ALLOWED_TOOLS["awaiting_user_revision"]
+            ],
+        ),
+        system_message=SystemMessage(content="base"),
+        state=cast(
+            Any,
+            {
+                "messages": [
+                    ToolMessage(
+                        content=json.dumps(
+                            {
+                                "stage": "reviewed_candidate_usecases",
+                                "persistable": False,
+                                "next_action": "await_user_revision",
+                            }
+                        ),
+                        tool_call_id="tc_reviewed_needs_revision",
+                        name="record_usecase_review",
+                    )
+                ]
+            },
+        ),
+    )
+
+    def handler(updated_request: Any) -> ModelResponse:
+        assert updated_request.tools == []
+        assert (
+            "Current workflow stage: awaiting_user_revision."
+            in updated_request.system_message.content
+        )
+        assert "requires revisions before persistence is possible" in updated_request.system_message.content
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    response = middleware.wrap_model_call(request, handler)
+
+    assert response.result[0].text == "ok"
+
+
 def test_workflow_tool_selection_routes_revision_request_to_generation_during_confirmation() -> None:
     workflow_graph = importlib.import_module(
         "graph_src_v2.services.usecase_workflow_agent.graph"
@@ -1199,15 +1418,145 @@ def test_workflow_tool_selection_routes_revision_request_to_generation_during_co
 
     def handler(updated_request: Any) -> ModelResponse:
         names = [tool.name for tool in updated_request.tools]
-        assert set(names) == {
-            "run_usecase_generation_subagent",
-            "record_generated_usecases",
-        }
+        assert names == ["run_usecase_generation_subagent"]
         return ModelResponse(result=[AIMessage(content="ok")])
 
     response = middleware.wrap_model_call(request, handler)
 
-    assert response.result[0].text == "ok"
+    assert response.result[0].tool_calls[0]["name"] == "run_usecase_generation_subagent"
+
+
+def test_workflow_tool_selection_routes_revision_request_to_generation_during_revision_wait() -> None:
+    workflow_graph = importlib.import_module(
+        "graph_src_v2.services.usecase_workflow_agent.graph"
+    )
+    middleware = workflow_graph.WorkflowToolSelectionMiddleware()
+
+    class DummyTool:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    request = ModelRequest(
+        model=cast(BaseChatModel, object()),
+        messages=[HumanMessage(content="请补充异常流程，并拆分管理员与普通用户场景。")],
+        tools=cast(
+            Any,
+            [
+                DummyTool(name)
+                for name in workflow_graph.STAGE_ALLOWED_TOOLS["awaiting_user_revision"]
+            ],
+        ),
+        system_message=SystemMessage(content="base"),
+        state=cast(Any, {"current_stage": "awaiting_user_revision"}),
+    )
+
+    def handler(updated_request: Any) -> ModelResponse:
+        names = [tool.name for tool in updated_request.tools]
+        assert names == ["run_usecase_generation_subagent"]
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    response = middleware.wrap_model_call(request, handler)
+
+    assert response.result[0].tool_calls[0]["name"] == "run_usecase_generation_subagent"
+
+
+def test_workflow_tool_selection_uses_record_tool_after_generation_result() -> None:
+    workflow_graph = importlib.import_module(
+        "graph_src_v2.services.usecase_workflow_agent.graph"
+    )
+    middleware = workflow_graph.WorkflowToolSelectionMiddleware()
+
+    class DummyTool:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    request = ModelRequest(
+        model=cast(BaseChatModel, object()),
+        messages=[],
+        tools=cast(
+            Any,
+            [DummyTool(name) for name in workflow_graph.STAGE_ALLOWED_TOOLS["generation"]],
+        ),
+        system_message=SystemMessage(content="base"),
+        state=cast(
+            Any,
+            {
+                "current_stage": "generation",
+                "messages": [
+                    ToolMessage(
+                        content=json.dumps(
+                            {
+                                "summary": "Generated draft use cases",
+                                "usecases": [{"title": "login success"}],
+                            }
+                        ),
+                        tool_call_id="tc_generation_result",
+                        name="run_usecase_generation_subagent",
+                    )
+                ],
+            },
+        ),
+    )
+
+    def handler(updated_request: Any) -> ModelResponse:
+        names = [tool.name for tool in updated_request.tools]
+        assert names == ["record_generated_usecases"]
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    response = middleware.wrap_model_call(request, handler)
+
+    assert response.result[0].tool_calls[0]["name"] == "record_generated_usecases"
+
+
+def test_workflow_tool_selection_requires_fresh_confirmation_after_re_review() -> None:
+    workflow_graph = importlib.import_module(
+        "graph_src_v2.services.usecase_workflow_agent.graph"
+    )
+    middleware = workflow_graph.WorkflowToolSelectionMiddleware()
+
+    class DummyTool:
+        def __init__(self, name: str) -> None:
+            self.name = name
+
+    request = ModelRequest(
+        model=cast(BaseChatModel, object()),
+        messages=[],
+        tools=cast(
+            Any,
+            [
+                DummyTool(name)
+                for name in workflow_graph.STAGE_ALLOWED_TOOLS["awaiting_user_confirmation"]
+            ],
+        ),
+        system_message=SystemMessage(content="base"),
+        state=cast(
+            Any,
+            {
+                "current_stage": "awaiting_user_confirmation",
+                "messages": [
+                    HumanMessage(content="I explicitly confirm persistence."),
+                    ToolMessage(
+                        content=json.dumps(
+                            {
+                                "stage": "reviewed_candidate_usecases",
+                                "persistable": True,
+                            }
+                        ),
+                        tool_call_id="tc_review_after_edit",
+                        name="record_usecase_review",
+                    ),
+                ],
+            },
+        ),
+    )
+
+    def handler(updated_request: Any) -> ModelResponse:
+        assert updated_request.tools == []
+        return ModelResponse(result=[AIMessage(content="Please confirm this new version again.")])
+
+    response = middleware.wrap_model_call(request, handler)
+
+    assert response.result[0].text == "Please confirm this new version again."
 
 
 def test_workflow_tool_selection_strips_persist_tool_without_explicit_confirmation() -> None:
@@ -1296,6 +1645,10 @@ def test_persist_approved_usecases_posts_to_interaction_data_service(
                     ToolMessage(
                         content=json.dumps(
                             {
+                                "stage": "reviewed_candidate_usecases",
+                                "summary": "Reviewed candidate use cases are ready for persistence.",
+                                "persistable": True,
+                                "next_action": "await_user_confirmation",
                                 "payload": {
                                     "project_id": "project-1",
                                     "candidate_usecases": {
@@ -1311,8 +1664,9 @@ def test_persist_approved_usecases_posts_to_interaction_data_service(
                 ]
             }
 
-    payload = getattr(workflow_tools.persist_approved_usecases, "func")(
-        runtime=DummyRuntime(), approval_note="approved"
+    payload = workflow_tools._persist_approved_usecases_from_state(
+        DummyRuntime().state,
+        approval_note="approved",
     )
 
     data = json.loads(payload)
@@ -1386,14 +1740,12 @@ def test_make_graph_preserves_production_streaming_with_pdf_middleware_and_hitl(
     assert any(getattr(tool, "name", "") == "run_usecase_generation_subagent" for tool in captured["tools"])
     assert any(getattr(tool, "name", "") == "run_usecase_review_subagent" for tool in captured["tools"])
     assert any(getattr(tool, "name", "") == "run_usecase_persist_subagent" for tool in captured["tools"])
-    assert any(getattr(tool, "name", "") == "persist_approved_usecases" for tool in captured["tools"])
     middleware_names = [type(item).__name__ for item in captured["middleware"]]
-    assert "HumanInTheLoopMiddleware" in middleware_names
     assert "MultimodalMiddleware" in middleware_names
     assert captured["system_prompt"]
 
 
-def test_local_repl_builds_non_streaming_agent_with_pdf_middleware_and_hitl(
+def test_local_repl_builds_non_streaming_agent_with_pdf_middleware(
     monkeypatch: Any,
 ) -> None:
     local_repl = importlib.import_module("graph_src_v2.tests.services_usecase_workflow")
@@ -1422,7 +1774,6 @@ def test_local_repl_builds_non_streaming_agent_with_pdf_middleware_and_hitl(
     assert result["name"] == "usecase_workflow_agent"
     assert captured["model"].disable_streaming is True
     middleware_names = [type(item).__name__ for item in captured["middleware"]]
-    assert "HumanInTheLoopMiddleware" in middleware_names
     assert "MultimodalMiddleware" in middleware_names
 
 
@@ -1520,7 +1871,7 @@ def test_workflow_tool_selection_synthesizes_persist_plan_after_repeat_retryable
     assert response.result[0].tool_calls[0]["name"] == "run_usecase_persist_subagent"
 
 
-def test_workflow_tool_selection_synthesizes_persist_after_plan_exists_on_repeat_retryable_error() -> None:
+def test_workflow_tool_selection_synthesizes_persist_plan_after_plan_exists_on_repeat_retryable_error() -> None:
     workflow_graph = importlib.import_module(
         "graph_src_v2.services.usecase_workflow_agent.graph"
     )
@@ -1575,7 +1926,7 @@ def test_workflow_tool_selection_synthesizes_persist_after_plan_exists_on_repeat
     response = asyncio.run(middleware.awrap_model_call(request, handler))
 
     assert attempts["count"] == 2
-    assert response.result[0].tool_calls[0]["name"] == "persist_approved_usecases"
+    assert response.result[0].tool_calls[0]["name"] == "run_usecase_persist_subagent"
 
 
 def test_make_graph_uses_service_prompt_when_runtime_prompt_is_default(monkeypatch: Any) -> None:

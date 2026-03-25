@@ -10,7 +10,6 @@ from graph_src_v2.runtime.options import build_runtime_config, merge_trusted_aut
 from graph_src_v2.services.usecase_workflow_agent.prompts import SYSTEM_PROMPT
 from graph_src_v2.services.usecase_workflow_agent.schemas import UsecaseWorkflowState
 from graph_src_v2.services.usecase_workflow_agent.tools import (
-    build_usecase_workflow_service_config,
     build_usecase_workflow_tools,
 )
 from graph_src_v2.services.usecase_workflow_agent.workflow_policy import (
@@ -29,7 +28,6 @@ from graph_src_v2.services.usecase_workflow_agent.workflow_policy import (
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
     AgentMiddleware,
-    HumanInTheLoopMiddleware,
     ModelRequest,
     ModelResponse,
 )
@@ -72,7 +70,25 @@ class WorkflowToolSelectionMiddleware(AgentMiddleware):
                 names.append(name)
         stage = request.state.get("current_stage") if isinstance(request.state, Mapping) else None
         latest_user_text = get_latest_user_text(request.messages, request.state.get("messages"))
-        return allowed_names_for_request(names, stage, latest_user_text, request.state.get("messages"))
+        return allowed_names_for_request(
+            names,
+            stage,
+            latest_user_text,
+            request.state.get("messages"),
+            request.messages,
+        )
+
+    @staticmethod
+    def _dedupe_tools_by_name(tools: list[Any]) -> list[Any]:
+        unique_tools: list[Any] = []
+        seen: set[str] = set()
+        for tool in tools:
+            name = getattr(tool, "name", "")
+            if not isinstance(name, str) or not name.strip() or name in seen:
+                continue
+            unique_tools.append(tool)
+            seen.add(name)
+        return unique_tools
 
     @staticmethod
     def _apply_stage(request: ModelRequest) -> ModelRequest:
@@ -94,9 +110,9 @@ class WorkflowToolSelectionMiddleware(AgentMiddleware):
 
         stage = WorkflowToolSelectionMiddleware._infer_stage(request)
         stage_allowed_names = WorkflowToolSelectionMiddleware._allowed_names_for_stage(stage)
-        stage_filtered_tools = [
+        stage_filtered_tools = WorkflowToolSelectionMiddleware._dedupe_tools_by_name([
             tool for tool in request.tools if getattr(tool, "name", "") in stage_allowed_names
-        ]
+        ])
         next_state = cast(UsecaseWorkflowState, {**request.state, "current_stage": stage})
         stage_scoped_request = request.override(
             messages=normalized_messages,
@@ -107,9 +123,9 @@ class WorkflowToolSelectionMiddleware(AgentMiddleware):
         allowed_names = WorkflowToolSelectionMiddleware._allowed_names_for_request(
             stage_scoped_request
         )
-        filtered_tools = [
+        filtered_tools = WorkflowToolSelectionMiddleware._dedupe_tools_by_name([
             tool for tool in stage_filtered_tools if getattr(tool, "name", "") in allowed_names
-        ]
+        ])
         next_system = build_stage_system_message(system_text, stage, allowed_names)
         return request.override(
             messages=normalized_messages,
@@ -124,6 +140,34 @@ class WorkflowToolSelectionMiddleware(AgentMiddleware):
     ) -> ModelResponse:
         return sanitize_model_response(response, allowed_names)
 
+    @staticmethod
+    def _response_has_tool_calls(response: ModelResponse) -> bool:
+        result = getattr(response, "result", None)
+        if not isinstance(result, list):
+            return False
+        return any(getattr(message, "tool_calls", None) for message in result)
+
+    @staticmethod
+    def _synthesize_required_tool_response(allowed_names: list[str]) -> ModelResponse | None:
+        if not allowed_names:
+            return None
+        tool_name = allowed_names[0]
+        return ModelResponse(
+            result=[
+                AIMessage(
+                    content="",
+                    tool_calls=[
+                        {
+                            "name": tool_name,
+                            "args": {},
+                            "id": f"synthesized_{tool_name}",
+                            "type": "tool_call",
+                        }
+                    ],
+                )
+            ]
+        )
+
     @classmethod
     def _is_retryable_model_error(cls, exc: Exception) -> bool:
         message = str(exc).lower()
@@ -133,23 +177,10 @@ class WorkflowToolSelectionMiddleware(AgentMiddleware):
     def _fallback_model_error_response(
         cls, *, stage: str | None, allowed_names: list[str]
     ) -> ModelResponse:
-        if stage == "awaiting_user_confirmation" and allowed_names:
-            tool_name = allowed_names[0]
-            return ModelResponse(
-                result=[
-                    AIMessage(
-                        content="",
-                        tool_calls=[
-                            {
-                                "name": tool_name,
-                                "args": {},
-                                "id": f"fallback_{tool_name}",
-                                "type": "tool_call",
-                            }
-                        ],
-                    )
-                ]
-            )
+        del stage
+        synthesized = cls._synthesize_required_tool_response(allowed_names)
+        if synthesized is not None:
+            return cls._sanitize_model_response(synthesized, allowed_names)
         return ModelResponse(result=[AIMessage(content=cls._MODEL_RESPONSE_ERROR_TEXT)])
 
     def wrap_model_call(
@@ -178,10 +209,16 @@ class WorkflowToolSelectionMiddleware(AgentMiddleware):
                     stage=stage,
                     allowed_names=allowed_names,
                 )
-        return self._sanitize_model_response(
+        sanitized = self._sanitize_model_response(
             response,
             allowed_names,
         )
+        if self._response_has_tool_calls(sanitized):
+            return sanitized
+        synthesized = self._synthesize_required_tool_response(allowed_names)
+        if synthesized is None:
+            return sanitized
+        return self._sanitize_model_response(synthesized, allowed_names)
 
     async def awrap_model_call(
         self,
@@ -209,10 +246,16 @@ class WorkflowToolSelectionMiddleware(AgentMiddleware):
                     stage=stage,
                     allowed_names=allowed_names,
                 )
-        return self._sanitize_model_response(
+        sanitized = self._sanitize_model_response(
             response,
             allowed_names,
         )
+        if self._response_has_tool_calls(sanitized):
+            return sanitized
+        synthesized = self._synthesize_required_tool_response(allowed_names)
+        if synthesized is None:
+            return sanitized
+        return self._sanitize_model_response(synthesized, allowed_names)
 
 
 def _bind_non_streaming_model(model: Any) -> Any:
@@ -225,7 +268,6 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
     del runtime
     runtime_context = merge_trusted_auth_context(config, {})
     options = build_runtime_config(config, runtime_context)
-    build_usecase_workflow_service_config(config)
     model = apply_model_runtime_params(resolve_model(options.model_spec), options)
     tools = build_usecase_workflow_tools(model)
     system_prompt = options.system_prompt or SYSTEM_PROMPT
@@ -235,15 +277,6 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
         name="usecase_workflow_agent",
         tools=tools,
         middleware=[
-            HumanInTheLoopMiddleware(
-                interrupt_on={
-                    "persist_approved_usecases": {
-                        "allowed_decisions": ["approve", "edit", "reject"],
-                        "description": "Persisting reviewed use cases requires explicit human confirmation.",
-                    }
-                },
-                description_prefix="Use case persistence pending confirmation",
-            ),
             WorkflowToolSelectionMiddleware(),
             MultimodalMiddleware(),
         ],

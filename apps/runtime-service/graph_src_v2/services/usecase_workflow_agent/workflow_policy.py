@@ -21,13 +21,27 @@ STAGE_ALLOWED_TOOLS: dict[str, list[str]] = {
         "run_usecase_review_subagent",
         "record_usecase_review",
     ],
+    "awaiting_user_revision": [
+        "run_usecase_generation_subagent",
+        "record_generated_usecases",
+    ],
     "awaiting_user_confirmation": [
         "run_usecase_generation_subagent",
         "record_generated_usecases",
         "run_usecase_persist_subagent",
-        "persist_approved_usecases",
     ],
     "completed": [],
+}
+
+_STAGE_ENTRY_TOOL = {
+    "analysis": "run_requirement_analysis_subagent",
+    "generation": "run_usecase_generation_subagent",
+    "review": "run_usecase_review_subagent",
+}
+_FOLLOW_UP_TOOL_BY_RESULT = {
+    "run_requirement_analysis_subagent": "record_requirement_analysis",
+    "run_usecase_generation_subagent": "record_generated_usecases",
+    "run_usecase_review_subagent": "record_usecase_review",
 }
 
 GREETING_GUARD_SYSTEM_INSTRUCTION = (
@@ -39,9 +53,17 @@ GREETING_GUARD_SYSTEM_INSTRUCTION = (
 
 AWAITING_CONFIRMATION_SYSTEM_INSTRUCTION = (
     "The reviewed use cases are waiting for an explicit user decision. "
-    "When the user clearly confirms persistence, prepare the final persistence plan with `run_usecase_persist_subagent` before calling `persist_approved_usecases`. "
+    "When the user clearly confirms persistence, call `run_usecase_persist_subagent` and let the persistence specialist handle the final execution approval. "
     "If the user requests revisions, continue with generation tools instead of persisting. "
     "If the user has not decided yet, answer naturally and ask whether they want revisions or final persistence."
+)
+
+AWAITING_REVISION_SYSTEM_INSTRUCTION = (
+    "The latest review still requires revisions before persistence is possible. "
+    "Do not continue regenerating automatically on this turn. "
+    "First summarize the review findings and wait for the user to provide concrete revision instructions. "
+    "If the user gives concrete revision instructions, call `run_usecase_generation_subagent` once so the workflow can produce a new reviewed version. "
+    "If the user is only asking questions or discussing options, answer naturally without calling tools."
 )
 
 _TOOL_CALL_PLACEHOLDER_CONTENT = "[tool-call]"
@@ -53,7 +75,6 @@ _TOOL_PROGRESS_MESSAGES = {
     "run_usecase_review_subagent": "我正在检查候选用例的覆盖性、规范性和缺失项。",
     "record_usecase_review": "我已经完成候选用例评审，正在整理结果给你确认。",
     "run_usecase_persist_subagent": "我正在整理最终落库计划，确认最终用例和附件持久化范围。",
-    "persist_approved_usecases": "我正在根据你的确认执行最终落库。",
 }
 
 _GREETING_ONLY_RE = re.compile(
@@ -118,6 +139,18 @@ def get_message_name(message: Any) -> str | None:
     if isinstance(message, Mapping):
         value = message.get("name")
         return value if isinstance(value, str) else None
+    return None
+
+
+def get_latest_tool_message_name(messages: Any) -> str | None:
+    if not isinstance(messages, list):
+        return None
+    for message in reversed(messages):
+        if get_message_type(message) != "tool" and get_message_role(message) != "tool":
+            continue
+        name = get_message_name(message)
+        if isinstance(name, str) and name.strip():
+            return name
     return None
 
 
@@ -213,6 +246,56 @@ def get_latest_user_text_from_messages(messages: Any) -> str:
     return ""
 
 
+def get_latest_user_message_index(messages: Any) -> int | None:
+    if not isinstance(messages, list):
+        return None
+    for index in range(len(messages) - 1, -1, -1):
+        message = messages[index]
+        message_type = get_message_type(message)
+        message_role = get_message_role(message)
+        if message_type in {"human", "user"} or message_role == "user":
+            return index
+    return None
+
+
+def get_latest_review_snapshot_index(messages: Any) -> int | None:
+    if not isinstance(messages, list):
+        return None
+    for index in range(len(messages) - 1, -1, -1):
+        message = messages[index]
+        if get_message_type(message) != "tool" and get_message_role(message) != "tool":
+            continue
+        content = get_message_content(message)
+        if not isinstance(content, str):
+            continue
+        try:
+            payload = json.loads(content)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict) and payload.get("stage") == "reviewed_candidate_usecases":
+            return index
+    return None
+
+
+def has_fresh_user_turn_since_latest_review(
+    request_messages: Any,
+    state_messages: Any,
+) -> bool:
+    request_list = request_messages if isinstance(request_messages, list) else []
+    state_list = state_messages if isinstance(state_messages, list) else []
+    if len(request_list) >= len(state_list):
+        messages = request_list
+    else:
+        messages = state_list
+    latest_user_index = get_latest_user_message_index(messages)
+    if latest_user_index is None:
+        return False
+    latest_review_index = get_latest_review_snapshot_index(messages)
+    if latest_review_index is None:
+        return True
+    return latest_user_index > latest_review_index
+
+
 def get_latest_user_text(request_messages: Any, state_messages: Any) -> str:
     latest_request_text = get_latest_user_text_from_messages(request_messages)
     if latest_request_text:
@@ -273,7 +356,12 @@ def infer_stage_from_messages(messages: Any) -> str | None:
         if stage == "generated_candidate_usecases":
             return "review"
         if stage == "reviewed_candidate_usecases":
-            return "awaiting_user_confirmation" if bool(payload.get("persistable")) else "generation"
+            if bool(payload.get("persistable")):
+                return "awaiting_user_confirmation"
+            next_action = payload.get("next_action")
+            if isinstance(next_action, str) and next_action.strip() == "revise_and_review_again":
+                return "generation"
+            return "awaiting_user_revision"
         if stage == "persisted":
             return "completed"
     return None
@@ -335,53 +423,43 @@ def should_guard_greeting_only_turn(state: Mapping[str, Any], request_messages: 
     return is_greeting_only_text(latest_user_text)
 
 
-def has_tool_message_since_latest_user_turn(messages: Any, tool_name: str) -> bool:
-    if not isinstance(messages, list):
-        return False
-
-    latest_user_index: int | None = None
-    for index in range(len(messages) - 1, -1, -1):
-        message = messages[index]
-        message_type = get_message_type(message)
-        message_role = get_message_role(message)
-        if message_type in {"human", "user"} or message_role == "user":
-            latest_user_index = index
-            break
-
-    if latest_user_index is None:
-        return False
-
-    for message in messages[latest_user_index + 1 :]:
-        if get_message_type(message) != "tool":
-            continue
-        if get_message_name(message) == tool_name:
-            return True
-    return False
-
-
 def allowed_names_for_request(
-    tool_names: list[str], stage: str | None, latest_user_text: str, state_messages: Any
+    tool_names: list[str],
+    stage: str | None,
+    latest_user_text: str,
+    state_messages: Any,
+    request_messages: Any = None,
 ) -> list[str]:
-    if stage != "awaiting_user_confirmation":
+    if not stage:
         return tool_names
-    if is_explicit_persist_confirmation_text(latest_user_text):
-        if has_tool_message_since_latest_user_turn(
-            state_messages, "run_usecase_persist_subagent"
-        ):
-            return [
-                name for name in tool_names if name == "persist_approved_usecases"
-            ]
-        return [
-            name
-            for name in tool_names
-            if name in {"run_usecase_persist_subagent", "persist_approved_usecases"}
-        ]
+
+    latest_tool_name = get_latest_tool_message_name(request_messages) or get_latest_tool_message_name(
+        state_messages
+    )
+    follow_up_tool = _FOLLOW_UP_TOOL_BY_RESULT.get(latest_tool_name or "")
+    if follow_up_tool and follow_up_tool in tool_names:
+        return [follow_up_tool]
+
+    if stage in _STAGE_ENTRY_TOOL:
+        entry_tool = _STAGE_ENTRY_TOOL[stage]
+        return [entry_tool] if entry_tool in tool_names else []
+
+    if stage not in {"awaiting_user_revision", "awaiting_user_confirmation"}:
+        return tool_names
+
+    if not has_fresh_user_turn_since_latest_review(request_messages, state_messages):
+        return []
+
+    if stage == "awaiting_user_confirmation" and is_explicit_persist_confirmation_text(
+        latest_user_text
+    ):
+        return [name for name in tool_names if name == "run_usecase_persist_subagent"]
+
     if is_revision_request_text(latest_user_text):
-        return [
-            name
-            for name in tool_names
-            if name in {"run_usecase_generation_subagent", "record_generated_usecases"}
-        ]
+        if "run_usecase_generation_subagent" in tool_names:
+            return ["run_usecase_generation_subagent"]
+        if "record_generated_usecases" in tool_names:
+            return ["record_generated_usecases"]
     return []
 
 
@@ -391,6 +469,8 @@ def build_stage_system_message(system_text: str, stage: str, allowed_names: list
         f"Only use these tools now: {', '.join(allowed_names) if allowed_names else 'none'}"
     )
     system_sections = [section for section in [system_text, stage_text] if section]
+    if stage == "awaiting_user_revision":
+        system_sections.append(AWAITING_REVISION_SYSTEM_INSTRUCTION)
     if stage == "awaiting_user_confirmation":
         system_sections.append(AWAITING_CONFIRMATION_SYSTEM_INSTRUCTION)
     return "\n\n".join(system_sections)
@@ -444,15 +524,16 @@ def sanitize_model_response(response: ModelResponse, allowed_names: list[str]) -
 
 __all__ = [
     "AWAITING_CONFIRMATION_SYSTEM_INSTRUCTION",
+    "AWAITING_REVISION_SYSTEM_INSTRUCTION",
     "GREETING_GUARD_SYSTEM_INSTRUCTION",
     "STAGE_ALLOWED_TOOLS",
     "allowed_names_for_request",
     "allowed_names_for_stage",
     "build_stage_system_message",
+    "get_latest_tool_message_name",
     "get_message_name",
     "get_latest_user_text",
     "get_system_message_text",
-    "has_tool_message_since_latest_user_turn",
     "infer_stage",
     "normalize_tool_call_messages",
     "sanitize_model_response",

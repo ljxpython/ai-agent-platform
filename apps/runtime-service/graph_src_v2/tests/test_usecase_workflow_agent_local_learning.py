@@ -10,26 +10,15 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, cast
 
-from langchain.agents import create_agent
-from langchain.agents.middleware import HumanInTheLoopMiddleware
-from langchain.tools import ToolRuntime
 from langchain_core.language_models.fake_chat_models import FakeMessagesListChatModel
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
-from langchain_core.tools import tool
-from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from graph_src_v2.middlewares.multimodal import MultimodalMiddleware  # noqa: E402
 from graph_src_v2.services.usecase_workflow_agent import tools as workflow_tools  # noqa: E402
-from graph_src_v2.services.usecase_workflow_agent.graph import (  # noqa: E402
-    SYSTEM_PROMPT,
-    UsecaseWorkflowState,
-    WorkflowToolSelectionMiddleware,
-)
 from graph_src_v2.tests.test_usecase_workflow_langgraph_api_smoke import (  # noqa: E402
     _build_review_snapshot,
 )
@@ -58,105 +47,94 @@ def _seed_review_state(project_id: str, user_text: str) -> dict[str, Any]:
     }
 
 
+def _thread_config() -> dict[str, Any]:
+    return {"configurable": {"thread_id": str(uuid.uuid4())}}
+
+
 def _build_local_agent(responses: list[AIMessage], monkeypatch: Any) -> Any:
-    workflow_graph = importlib.import_module(
-        "graph_src_v2.services.usecase_workflow_agent.graph"
-    )
+    local_repl = importlib.import_module("graph_src_v2.tests.services_usecase_workflow")
     fake_model = ToolReadyFakeChatModel(responses=cast(Any, responses))
 
-    monkeypatch.setattr(workflow_graph, "merge_trusted_auth_context", lambda config, ctx: ctx)
+    monkeypatch.setattr(local_repl, "merge_trusted_auth_context", lambda config, ctx: ctx)
     monkeypatch.setattr(
-        workflow_graph,
+        local_repl,
         "build_runtime_config",
         lambda config, ctx: SimpleNamespace(model_spec="fake-model", system_prompt=""),
     )
-    monkeypatch.setattr(workflow_graph, "resolve_model", lambda spec: fake_model)
-    monkeypatch.setattr(workflow_graph, "apply_model_runtime_params", lambda model, options: model)
+    monkeypatch.setattr(local_repl, "resolve_model", lambda spec: fake_model)
+    monkeypatch.setattr(local_repl, "apply_model_runtime_params", lambda model, options: model)
 
-    return asyncio.run(workflow_graph.make_graph({"configurable": {}}, object()))
+    return asyncio.run(local_repl._build_local_agent({"configurable": {}}))
 
 
 def _build_resume_agent(
     *, responses: list[AIMessage], expected_feedback: str, monkeypatch: Any
-) -> Any:
-    fake_model = ToolReadyFakeChatModel(responses=cast(Any, responses))
+) -> tuple[Any, list[str], str]:
     observed_feedback: list[str] = []
 
-    @tool(
-        "run_usecase_generation_subagent",
-        description="Run the usecase-generation specialist using the current thread state.",
-    )
-    def run_usecase_generation_subagent(
-        runtime: ToolRuntime[None, UsecaseWorkflowState],
-    ) -> str:
-        messages = runtime.state.get("messages", [])
-        latest_feedback = ""
-        for message in reversed(messages):
-            if getattr(message, "type", None) != "tool":
-                continue
-            if getattr(message, "name", None) != "persist_approved_usecases":
-                continue
-            content = getattr(message, "content", None)
-            if not isinstance(content, str):
-                continue
-            payload = json.loads(content)
-            latest_feedback = str(payload.get("payload", {}).get("human_revision_feedback") or "")
-            break
-        observed_feedback.append(latest_feedback)
-        return json.dumps(
-            {
-                "summary": "Regenerated candidate use cases with the requested revisions.",
-                "usecases": [{"title": "admin login separated from member login"}],
+    class DummyGenerationSubagent:
+        def invoke(self, payload: dict[str, Any]) -> dict[str, Any]:
+            prompt = payload["messages"][0].content
+            marker = "[HUMAN_REVISION_FEEDBACK]\n"
+            latest_feedback = ""
+            if marker in prompt:
+                latest_feedback = prompt.split(marker, 1)[1].split("\n\n", 1)[0].strip()
+            observed_feedback.append(latest_feedback)
+            return {
+                "messages": [
+                    AIMessage(
+                        content=json.dumps(
+                            {
+                                "summary": "Regenerated candidate use cases with the requested revisions.",
+                                "usecases": [
+                                    {"title": "admin login separated from member login"}
+                                ],
+                            }
+                        )
+                    )
+                ]
             }
-        )
 
-    @tool(
-        "run_usecase_review_subagent",
-        description="Run the usecase-review specialist using the current thread state.",
-    )
-    def run_usecase_review_subagent(
-        runtime: ToolRuntime[None, UsecaseWorkflowState],
-    ) -> str:
-        del runtime
-        return json.dumps(
-            {
-                "summary": "Updated use cases address the requested revisions.",
-                "candidate_usecases": [{"title": "admin login separated from member login"}],
-                "deficiencies": [],
-                "strengths": ["revisions incorporated"],
-                "revision_suggestions": [],
+    class DummyReviewSubagent:
+        def invoke(self, payload: dict[str, Any]) -> dict[str, Any]:
+            del payload
+            return {
+                "messages": [
+                    AIMessage(
+                        content=json.dumps(
+                            {
+                                "summary": "Updated use cases address the requested revisions.",
+                                "candidate_usecases": [
+                                    {"title": "admin login separated from member login"}
+                                ],
+                                "deficiencies": [],
+                                "strengths": ["revisions incorporated"],
+                                "revision_suggestions": [],
+                            }
+                        )
+                    )
+                ]
             }
-        )
 
-    monkeypatch.setattr(workflow_tools.requests, "post", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("edit resume must not persist")))
-
-    agent = create_agent(
-        model=fake_model,
-        name="usecase_workflow_agent",
-        tools=[
-            run_usecase_generation_subagent,
-            workflow_tools.record_generated_usecases,
-            run_usecase_review_subagent,
-            workflow_tools.record_usecase_review,
-            workflow_tools.persist_approved_usecases,
-        ],
-        middleware=[
-            HumanInTheLoopMiddleware(
-                interrupt_on={
-                    "persist_approved_usecases": {
-                        "allowed_decisions": ["approve", "edit", "reject"],
-                        "description": "Persisting reviewed use cases requires explicit human confirmation.",
-                    }
-                },
-                description_prefix="Use case persistence pending confirmation",
-            ),
-            WorkflowToolSelectionMiddleware(),
-            MultimodalMiddleware(),
-        ],
-        system_prompt=SYSTEM_PROMPT,
-        state_schema=UsecaseWorkflowState,
-        checkpointer=MemorySaver(),
+    monkeypatch.setattr(
+        workflow_tools,
+        "_build_usecase_generation_subagent",
+        lambda model: DummyGenerationSubagent(),
     )
+    monkeypatch.setattr(
+        workflow_tools,
+        "_build_usecase_review_subagent",
+        lambda model: DummyReviewSubagent(),
+    )
+    monkeypatch.setattr(
+        workflow_tools.requests,
+        "post",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("edit resume must not persist")
+        ),
+    )
+
+    agent = _build_local_agent(responses=responses, monkeypatch=monkeypatch)
     return agent, observed_feedback, expected_feedback
 
 
@@ -176,7 +154,8 @@ def test_local_invoke_without_confirmation_asks_for_confirmation(monkeypatch: An
             _seed_review_state(
                 project_id,
                 "The review looks good. What happens if I have not explicitly confirmed persistence yet?",
-            )
+            ),
+            config=_thread_config(),
         )
     )
 
@@ -193,44 +172,13 @@ def test_local_invoke_with_confirmation_exposes_persist_interrupt(monkeypatch: A
                 content="",
                 tool_calls=[
                     {
-                        "name": "persist_approved_usecases",
-                        "args": {"approval_note": "Explicitly confirmed by the reviewer."},
-                        "id": "call_persist_approved_usecases",
+                        "name": "run_usecase_persist_subagent",
+                        "args": {},
+                        "id": "call_run_usecase_persist_subagent",
                         "type": "tool_call",
                     }
                 ],
-            )
-        ],
-        monkeypatch=monkeypatch,
-    )
-    project_id = str(uuid.uuid4())
-
-    result = asyncio.run(
-        agent.ainvoke(
-            _seed_review_state(
-                project_id,
-                "I explicitly confirm persistence. Please save the approved use cases now.",
-            )
-        )
-    )
-
-    assert result["messages"][-1].type == "ai"
-    assert any(
-        tool_call["name"] == "persist_approved_usecases"
-        for tool_call in result["messages"][-1].tool_calls
-    )
-    assert "__interrupt__" in result
-    assert any(
-        action_request["name"] == "persist_approved_usecases"
-        for interrupt in result["__interrupt__"]
-        for action_request in getattr(interrupt, "value", {}).get("action_requests", [])
-    )
-
-
-def test_local_resume_with_edit_feedback_returns_to_review_loop(monkeypatch: Any) -> None:
-    feedback = "Please split admin and member scenarios before saving."
-    agent, observed_feedback, expected_feedback = _build_resume_agent(
-        responses=[
+            ),
             AIMessage(
                 content="",
                 tool_calls=[
@@ -242,6 +190,62 @@ def test_local_resume_with_edit_feedback_returns_to_review_loop(monkeypatch: Any
                     }
                 ],
             ),
+        ],
+        monkeypatch=monkeypatch,
+    )
+    project_id = str(uuid.uuid4())
+
+    result = asyncio.run(
+        agent.ainvoke(
+            _seed_review_state(
+                project_id,
+                "I explicitly confirm persistence. Please save the approved use cases now.",
+            ),
+            config=_thread_config(),
+        )
+    )
+
+    assert "__interrupt__" in result
+    assert any(
+        action_request["name"] == "persist_approved_usecases"
+        for interrupt in result["__interrupt__"]
+        for action_request in getattr(interrupt, "value", {}).get("action_requests", [])
+    )
+    assert any(
+        tool_call["name"] == "run_usecase_persist_subagent"
+        for message in result["messages"]
+        if getattr(message, "type", None) == "ai"
+        for tool_call in getattr(message, "tool_calls", [])
+    )
+
+
+def test_local_resume_with_edit_feedback_returns_to_review_loop(monkeypatch: Any) -> None:
+    feedback = "Please split admin and member scenarios before saving."
+    agent, observed_feedback, expected_feedback = _build_resume_agent(
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "run_usecase_persist_subagent",
+                        "args": {},
+                        "id": "call_run_usecase_persist_subagent",
+                        "type": "tool_call",
+                    }
+                ],
+            ),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {
+                        "name": "persist_approved_usecases",
+                        "args": {"approval_note": "Explicitly confirmed by the reviewer."},
+                        "id": "call_persist_approved_usecases",
+                        "type": "tool_call",
+                    }
+                ],
+            ),
+            AIMessage(content=""),
             AIMessage(
                 content="",
                 tool_calls=[
@@ -294,7 +298,7 @@ def test_local_resume_with_edit_feedback_returns_to_review_loop(monkeypatch: Any
         monkeypatch=monkeypatch,
     )
     project_id = str(uuid.uuid4())
-    config = {"configurable": {"thread_id": str(uuid.uuid4())}}
+    config = _thread_config()
 
     initial_result = asyncio.run(
         agent.ainvoke(
@@ -342,7 +346,7 @@ def test_local_resume_with_edit_feedback_returns_to_review_loop(monkeypatch: Any
         message
         for message in resume_result["messages"]
         if getattr(message, "type", None) == "tool"
-        and getattr(message, "name", None) == "persist_approved_usecases"
+        and getattr(message, "name", None) == "run_usecase_persist_subagent"
     ]
     assert persist_messages
     persist_payload = json.loads(persist_messages[-1].content)

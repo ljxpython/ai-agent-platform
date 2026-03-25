@@ -326,16 +326,28 @@ def test_multimodal_middleware_parser_failure_is_fail_soft() -> None:
         assert state[MULTIMODAL_ATTACHMENTS_KEY][0]["status"] == "failed"
         assert "附件解析失败" in state[MULTIMODAL_SUMMARY_KEY]
         content = cast(list[dict[str, Any]], updated_request.messages[0].content)
-        assert content[0]["type"] == "image"
-        assert content[0]["base64"] == "imgbase64"
+        assert content[0]["type"] == "text"
+        assert "kind=image" in content[0]["text"]
+        assert "附件解析失败：测试失败" in content[0]["text"]
         return ModelResponse(result=[AIMessage(content="ok")])
 
     response = middleware.wrap_model_call(request, handler)
     assert response.result[0].text == "ok"
 
 
-def test_multimodal_middleware_keeps_image_blocks_for_model() -> None:
-    middleware = MultimodalMiddleware()
+def test_multimodal_middleware_rewrites_image_blocks_for_model() -> None:
+    def fake_parser(
+        artifact: AttachmentArtifact, block: Mapping[str, Any]
+    ) -> AttachmentArtifact:
+        del block
+        next_artifact = dict(artifact)
+        next_artifact["status"] = "parsed"
+        next_artifact["summary_for_model"] = "图片已解析：界面包含登录入口与错误提示。"
+        next_artifact["parsed_text"] = "详细 OCR 文本，不应直接注入主模型。"
+        next_artifact["structured_data"] = {"key_points": ["登录入口", "错误提示"]}
+        return cast(AttachmentArtifact, next_artifact)
+
+    middleware = MultimodalMiddleware(parser=fake_parser)
     request = ModelRequest(
         model=cast(BaseChatModel, object()),
         messages=[
@@ -356,9 +368,71 @@ def test_multimodal_middleware_keeps_image_blocks_for_model() -> None:
     )
 
     def handler(updated_request: ModelRequest) -> ModelResponse:
+        state = cast(dict[str, Any], updated_request.state)
+        assert state[MULTIMODAL_ATTACHMENTS_KEY][0]["kind"] == "image"
+        assert state[MULTIMODAL_ATTACHMENTS_KEY][0]["status"] == "parsed"
         content = cast(list[dict[str, Any]], updated_request.messages[0].content)
-        assert content[1]["type"] == "image"
-        assert content[1]["base64"] == "imgbase64"
+        assert content[1]["type"] == "text"
+        assert "kind=image" in content[1]["text"]
+        assert "图片已解析：界面包含登录入口与错误提示。" in content[1]["text"]
+        assert "关键要点" in content[1]["text"]
+        assert "详细 OCR 文本" not in content[1]["text"]
+        return ModelResponse(result=[AIMessage(content="ok")])
+
+    response = middleware.wrap_model_call(request, handler)
+    assert response.result[0].text == "ok"
+
+
+def test_multimodal_middleware_rewrites_mixed_image_and_pdf_blocks_in_order() -> None:
+    def fake_parser(
+        artifact: AttachmentArtifact, block: Mapping[str, Any]
+    ) -> AttachmentArtifact:
+        del block
+        next_artifact = dict(artifact)
+        next_artifact["status"] = "parsed"
+        if artifact["kind"] == "image":
+            next_artifact["summary_for_model"] = "图片已解析：订单列表截图。"
+            next_artifact["structured_data"] = {"key_points": ["订单编号", "金额"]}
+            next_artifact["parsed_text"] = "图片 OCR 原文"
+        else:
+            next_artifact["summary_for_model"] = "PDF 已解析：结算规则说明。"
+            next_artifact["structured_data"] = {"key_points": ["结算周期", "退款规则"]}
+            next_artifact["parsed_text"] = "PDF 原文"
+        return cast(AttachmentArtifact, next_artifact)
+
+    middleware = MultimodalMiddleware(parser=fake_parser)
+    request = ModelRequest(
+        model=cast(BaseChatModel, object()),
+        messages=[
+            HumanMessage(
+                content=[
+                    {"type": "text", "text": "请综合分析这两个附件"},
+                    {
+                        "type": "image",
+                        "mimeType": "image/png",
+                        "data": "imgbase64",
+                        "metadata": {"name": "screen.png"},
+                    },
+                    {
+                        "type": "file",
+                        "mimeType": "application/pdf",
+                        "data": "pdfbase64",
+                        "metadata": {"filename": "report.pdf"},
+                    },
+                ]
+            )
+        ],
+        system_message=SystemMessage(content="Base prompt"),
+        state=cast(Any, {}),
+    )
+
+    def handler(updated_request: ModelRequest) -> ModelResponse:
+        content = cast(list[dict[str, Any]], updated_request.messages[0].content)
+        assert [item["type"] for item in content] == ["text", "text", "text"]
+        assert "图片已解析：订单列表截图。" in content[1]["text"]
+        assert "订单编号" in content[1]["text"]
+        assert "PDF 已解析：结算规则说明。" in content[2]["text"]
+        assert "结算周期" in content[2]["text"]
         return ModelResponse(result=[AIMessage(content="ok")])
 
     response = middleware.wrap_model_call(request, handler)

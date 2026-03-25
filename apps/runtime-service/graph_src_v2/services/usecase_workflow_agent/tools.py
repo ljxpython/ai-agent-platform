@@ -15,7 +15,8 @@ from __future__ import annotations
    说明：快照的作用是让主 Agent 不必在长对话里靠自然语言回忆状态，而是始终有结构化中间结果可追踪。
 
 3) 最终持久化（带人工确认）：
-   - `persist_approved_usecases`：只在 Human-in-the-loop 通过后调用，把最终用例 + 附件解析产物写入 `interaction-data-service`。
+   - `run_usecase_persist_subagent`：进入最终落库阶段，并在子智能体内部触发 HITL 审批。
+   - `persist_approved_usecases`：持久化子智能体内部使用的执行工具，把最终用例 + 附件解析产物写入 `interaction-data-service`。
 
 设计要点：
 - 工具参数尽量短：上下文（PDF 摘要/关键信息/最近用户意图/历史工具结果）从 `runtime.state` 中推导，避免把大段文本塞进 tool args。
@@ -24,6 +25,8 @@ from __future__ import annotations
 
 import json
 import os
+import copy
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -39,32 +42,10 @@ from graph_src_v2.services.usecase_workflow_agent.schemas import (
     build_workflow_snapshot,
 )
 from langchain.agents import create_agent
+from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langchain.tools import ToolRuntime
 from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
-from pydantic import BaseModel, Field
-
-
-class PersistApprovedUsecasesToolInput(BaseModel):
-    """`persist_approved_usecases` 的输入 schema。
-
-    说明：当前实现的 `persist_approved_usecases(...)` 直接使用了 `approval_note: str = ""` 参数，
-    这个 Pydantic schema 主要用于：
-    - 让工具在一些框架/IDE 展示里拥有更清晰的字段描述
-    - 或未来把 tool 的签名统一迁移为 `@tool(args_schema=...)` 的形态
-    """
-
-    approval_note: str = Field(
-        default="",
-        description="Optional human approval note recorded alongside the persist action.",
-    )
-    revision_feedback: str = Field(
-        default="",
-        description=(
-            "Optional human revision feedback used only when the reviewer chooses edit; "
-            "this routes the workflow back to review instead of persisting."
-        ),
-    )
 
 
 def build_usecase_workflow_service_config(
@@ -112,71 +93,30 @@ def build_usecase_workflow_service_config(
     )
 
 
-def list_deepagent_skills() -> list[str]:
-    """声明子智能体可能使用的 skills（deepagent 生态）。
+def _prepare_subagent_model(model: Any) -> Any:
+    prepared_model = model
+    if not (hasattr(model, "responses") and hasattr(model, "i")):
+        try:
+            prepared_model = copy.copy(model)
+        except Exception:
+            prepared_model = model
+    if hasattr(prepared_model, "disable_streaming"):
+        setattr(prepared_model, "disable_streaming", True)
+    return prepared_model
 
-    当前 `usecase_workflow_agent` 主体并未强依赖 deepagent，但在 `list_subagents()` 中
-    会在能 import 到 deepagents 的情况下返回 `SubAgent` 描述，从而复用 skill 目录。
-    """
 
-    return ["/skills/common", "/skills/research"]
-
-
-def list_subagents() -> list[Any]:
-    """给外部（如 devtools/脚手架）提供“子智能体清单”。
-
-    这里有一层兼容：
-    - 如果安装了 `deepagents.middleware.subagents.SubAgent`，则返回真实 SubAgent 实例
-    - 否则返回一个简化的 `FallbackSubAgent`（仅靠 `__dict__` 存字段），避免 import 失败
-
-    注意：这只是“描述/元信息”，并不参与实际运行时创建 agent；实际创建见下方
-    `_build_requirement_analysis_subagent()` / `_build_usecase_review_subagent()`。
-    """
-
-    SubAgentCtor: Any
-    try:
-        from deepagents.middleware.subagents import SubAgent as ImportedSubAgent
-        SubAgentCtor = ImportedSubAgent
-    except ImportError:
-        class FallbackSubAgent:
-            def __init__(self, **kwargs: Any) -> None:
-                self.__dict__.update(kwargs)
-
-        SubAgentCtor = FallbackSubAgent
-
-    from graph_src_v2.services.usecase_workflow_agent.prompts import (
-        REQUIREMENT_ANALYSIS_SUBAGENT_PROMPT,
-        USECASE_GENERATION_SUBAGENT_PROMPT,
-        USECASE_PERSIST_SUBAGENT_PROMPT,
-        USECASE_REVIEW_SUBAGENT_PROMPT,
-    )
-
-    return [
-        SubAgentCtor(
-            name="requirement-analysis-subagent",
-            description="Extract structured requirements, constraints, edge cases, and ambiguities from the uploaded requirement document.",
-            system_prompt=REQUIREMENT_ANALYSIS_SUBAGENT_PROMPT,
-            skills=["/skills/research"],
-        ),
-        SubAgentCtor(
-            name="usecase-generation-subagent",
-            description="Generate candidate use cases from the structured requirement analysis and the latest revision feedback.",
-            system_prompt=USECASE_GENERATION_SUBAGENT_PROMPT,
-            skills=["/skills/common"],
-        ),
-        SubAgentCtor(
-            name="usecase-review-subagent",
-            description="Review draft use cases against quality standards and report deficiencies, ambiguities, and revision suggestions.",
-            system_prompt=USECASE_REVIEW_SUBAGENT_PROMPT,
-            skills=["/skills/common"],
-        ),
-        SubAgentCtor(
-            name="usecase-persist-subagent",
-            description="Prepare the final persistence plan from reviewed use cases and explicit user confirmation without performing the HTTP writes itself.",
-            system_prompt=USECASE_PERSIST_SUBAGENT_PROMPT,
-            skills=["/skills/common"],
-        ),
-    ]
+def _invoke_subagent_with_retry(subagent: Any, payload: dict[str, Any]) -> Any:
+    last_exc: Exception | None = None
+    for _ in range(2):
+        try:
+            return subagent.invoke(payload)
+        except Exception as exc:
+            if not _is_retryable_model_response_error(exc):
+                raise
+            last_exc = exc
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("subagent_invoke_failed")
 
 
 def _build_requirement_analysis_subagent(model: Any) -> Any:
@@ -192,7 +132,7 @@ def _build_requirement_analysis_subagent(model: Any) -> Any:
     )
 
     return create_agent(
-        model=model,
+        model=_prepare_subagent_model(model),
         tools=[],
         system_prompt=REQUIREMENT_ANALYSIS_SUBAGENT_PROMPT,
         name="requirement_analysis_subagent",
@@ -210,7 +150,7 @@ def _build_usecase_review_subagent(model: Any) -> Any:
     )
 
     return create_agent(
-        model=model,
+        model=_prepare_subagent_model(model),
         tools=[],
         system_prompt=USECASE_REVIEW_SUBAGENT_PROMPT,
         name="usecase_review_subagent",
@@ -223,21 +163,34 @@ def _build_usecase_generation_subagent(model: Any) -> Any:
     )
 
     return create_agent(
-        model=model,
+        model=_prepare_subagent_model(model),
         tools=[],
         system_prompt=USECASE_GENERATION_SUBAGENT_PROMPT,
         name="usecase_generation_subagent",
     )
 
 
-def _build_usecase_persist_subagent(model: Any) -> Any:
+def _build_usecase_persist_subagent(model: Any, persist_tool: Any) -> Any:
     from graph_src_v2.services.usecase_workflow_agent.prompts import (
         USECASE_PERSIST_SUBAGENT_PROMPT,
     )
 
     return create_agent(
-        model=model,
-        tools=[],
+        model=_prepare_subagent_model(model),
+        tools=[persist_tool],
+        middleware=[
+            HumanInTheLoopMiddleware(
+                interrupt_on={
+                    "persist_approved_usecases": {
+                        "allowed_decisions": ["approve", "edit", "reject"],
+                        "description": (
+                            "Persisting reviewed use cases requires explicit execution approval."
+                        ),
+                    }
+                },
+                description_prefix="Use case persistence pending confirmation",
+            )
+        ],
         system_prompt=USECASE_PERSIST_SUBAGENT_PROMPT,
         name="usecase_persist_subagent",
     )
@@ -252,21 +205,61 @@ def _extract_last_text(result: Any) -> str:
     - message.content 可能是 str 或多模态 list[block]
     """
 
-    messages = result.get("messages") if isinstance(result, dict) else getattr(result, "messages", None)
+    messages = (
+        result.get("messages") if isinstance(result, dict) else getattr(result, "messages", None)
+    )
     if not isinstance(messages, list) or not messages:
         return ""
-    content = getattr(messages[-1], "content", None)
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        parts: list[str] = []
-        for item in content:
-            if isinstance(item, dict):
-                text = item.get("text")
-                if isinstance(text, str) and text.strip():
-                    parts.append(text.strip())
-        return "\n".join(parts).strip()
-    return str(content or "")
+    for message in reversed(messages):
+        content = getattr(message, "content", None)
+        if isinstance(content, str) and content.strip():
+            return content
+        if isinstance(content, list):
+            parts: list[str] = []
+            for item in content:
+                if isinstance(item, dict):
+                    text = item.get("text")
+                    if isinstance(text, str) and text.strip():
+                        parts.append(text.strip())
+                elif isinstance(item, str) and item.strip():
+                    parts.append(item.strip())
+            if parts:
+                return "\n".join(parts).strip()
+        elif content is not None:
+            text = str(content).strip()
+            if text:
+                return text
+    return ""
+
+
+def _load_json_object_from_text(content: Any) -> dict[str, Any] | None:
+    if not isinstance(content, str):
+        return None
+    text = content.strip()
+    if not text:
+        return None
+
+    candidates = [text]
+    fenced_match = re.search(r"```(?:json)?\s*(.*?)\s*```", text, re.DOTALL | re.IGNORECASE)
+    if fenced_match:
+        fenced_body = fenced_match.group(1).strip()
+        if fenced_body:
+            candidates.insert(0, fenced_body)
+    first_brace = text.find("{")
+    last_brace = text.rfind("}")
+    if first_brace >= 0 and last_brace > first_brace:
+        object_body = text[first_brace : last_brace + 1].strip()
+        if object_body and object_body not in candidates:
+            candidates.insert(0, object_body)
+
+    for candidate in candidates:
+        try:
+            payload = json.loads(candidate)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            return payload
+    return None
 
 
 def _extract_recent_human_context(messages: list[Any] | None) -> str:
@@ -377,13 +370,7 @@ def _extract_latest_tool_payload(state: dict[str, Any], tool_name: str) -> dict[
             continue
         if getattr(message, "name", None) != tool_name:
             continue
-        content = getattr(message, "content", None)
-        if not isinstance(content, str):
-            continue
-        try:
-            payload = json.loads(content)
-        except json.JSONDecodeError:
-            continue
+        payload = _load_json_object_from_text(getattr(message, "content", None))
         if isinstance(payload, dict):
             return payload
     return None
@@ -397,15 +384,9 @@ def _extract_latest_review_snapshot(state: dict[str, Any]) -> dict[str, Any] | N
         if getattr(message, "type", None) != "tool":
             continue
         tool_name = getattr(message, "name", None)
-        if tool_name not in {"record_usecase_review", "persist_approved_usecases"}:
+        if tool_name not in {"record_usecase_review", "run_usecase_persist_subagent"}:
             continue
-        content = getattr(message, "content", None)
-        if not isinstance(content, str):
-            continue
-        try:
-            payload = json.loads(content)
-        except json.JSONDecodeError:
-            continue
+        payload = _load_json_object_from_text(getattr(message, "content", None))
         if not isinstance(payload, dict):
             continue
         if payload.get("stage") == "reviewed_candidate_usecases":
@@ -422,24 +403,10 @@ def _extract_latest_generation_snapshot(state: dict[str, Any]) -> dict[str, Any]
             continue
         if getattr(message, "name", None) != "record_generated_usecases":
             continue
-        content = getattr(message, "content", None)
-        if not isinstance(content, str):
-            continue
-        try:
-            payload = json.loads(content)
-        except json.JSONDecodeError:
-            continue
+        payload = _load_json_object_from_text(getattr(message, "content", None))
         if isinstance(payload, dict) and payload.get("stage") == "generated_candidate_usecases":
             return payload
     return None
-
-
-def _extract_latest_reviewed_snapshot(state: dict[str, Any]) -> dict[str, Any] | None:
-    latest_review_snapshot = _extract_latest_tool_payload(state, "record_usecase_review")
-    if isinstance(latest_review_snapshot, dict):
-        return latest_review_snapshot
-    return _extract_latest_review_snapshot(state)
-
 
 def _derive_requirement_context(runtime: ToolRuntime[Any, Any]) -> str:
     """构造“需求分析子智能体”的输入上下文。
@@ -570,7 +537,7 @@ def _derive_review_context(runtime: ToolRuntime[Any, Any]) -> str:
 def _derive_persist_context(runtime: ToolRuntime[Any, Any]) -> str:
     state = _get_runtime_state(runtime)
     recent_human = _extract_recent_human_context(state.get("messages"))
-    latest_review_snapshot = _extract_latest_reviewed_snapshot(state)
+    latest_review_snapshot = _extract_latest_review_snapshot(state)
     latest_review_payload = (
         latest_review_snapshot.get("payload")
         if isinstance(latest_review_snapshot, dict)
@@ -649,7 +616,10 @@ def build_requirement_analysis_subagent_tool(model: Any) -> Any:
         requirement_context = _derive_requirement_context(runtime)
         if not requirement_context:
             raise ValueError("requirement_context is required")
-        result = subagent.invoke({"messages": [HumanMessage(content=requirement_context)]})
+        result = _invoke_subagent_with_retry(
+            subagent,
+            {"messages": [HumanMessage(content=requirement_context)]},
+        )
         return _extract_last_text(result)
 
     return run_requirement_analysis_subagent
@@ -668,7 +638,10 @@ def build_usecase_generation_subagent_tool(model: Any) -> Any:
         generation_context = _derive_generation_context(runtime)
         if not generation_context:
             raise ValueError("generation_context is required")
-        result = subagent.invoke({"messages": [HumanMessage(content=generation_context)]})
+        result = _invoke_subagent_with_retry(
+            subagent,
+            {"messages": [HumanMessage(content=generation_context)]},
+        )
         return _extract_last_text(result)
 
     return run_usecase_generation_subagent
@@ -692,15 +665,16 @@ def build_usecase_review_subagent_tool(model: Any) -> Any:
         review_context = _derive_review_context(runtime)
         if not review_context:
             raise ValueError("review_context is required")
-        result = subagent.invoke({"messages": [HumanMessage(content=review_context)]})
+        result = _invoke_subagent_with_retry(
+            subagent,
+            {"messages": [HumanMessage(content=review_context)]},
+        )
         return _extract_last_text(result)
 
     return run_usecase_review_subagent
 
 
 def build_usecase_persist_subagent_tool(model: Any) -> Any:
-    subagent = _build_usecase_persist_subagent(model)
-
     @tool(
         "run_usecase_persist_subagent",
         description="Prepare the final persistence plan from the latest reviewed use cases, explicit user confirmation, and attachment state. Do not pass long persistence payloads manually.",
@@ -712,13 +686,20 @@ def build_usecase_persist_subagent_tool(model: Any) -> Any:
         persist_context = _derive_persist_context(runtime)
         if not persist_context:
             raise ValueError("persist_context is required")
+        subagent = _build_usecase_persist_subagent(
+            model,
+            _build_persist_execution_tool(state),
+        )
         try:
-            result = subagent.invoke({"messages": [HumanMessage(content=persist_context)]})
+            result = _invoke_subagent_with_retry(
+                subagent,
+                {"messages": [HumanMessage(content=persist_context)]},
+            )
             return _extract_last_text(result)
         except Exception as exc:
             if not _is_retryable_model_response_error(exc):
                 raise
-            latest_snapshot = _extract_latest_reviewed_snapshot(state) or {}
+            latest_snapshot = _extract_latest_review_snapshot(state) or {}
             payload_data = latest_snapshot.get("payload")
             fallback_payload = payload_data if isinstance(payload_data, dict) else {}
             return json.dumps(
@@ -727,18 +708,6 @@ def build_usecase_persist_subagent_tool(model: Any) -> Any:
             )
 
     return run_usecase_persist_subagent
-
-
-def _parse_json_payload(value: str, *, field_name: str) -> dict[str, Any]:
-    """把字符串解析为 JSON object（dict），否则抛错。"""
-
-    try:
-        payload = json.loads(value)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"{field_name} must be valid JSON") from exc
-    if not isinstance(payload, dict):
-        raise ValueError(f"{field_name} must decode to a JSON object")
-    return payload
 
 
 def _coerce_optional_text(value: Any) -> str | None:
@@ -882,6 +851,147 @@ def _build_runtime_persistence_config() -> UsecaseWorkflowServiceConfig:
     """
 
     return build_usecase_workflow_service_config({"configurable": {}})
+
+
+def _persist_approved_usecases_from_state(
+    state: dict[str, Any],
+    *,
+    approval_note: str = "",
+    revision_feedback: str = "",
+) -> str:
+    latest_snapshot = _extract_latest_review_snapshot(state)
+    if latest_snapshot is None:
+        raise ValueError("latest reviewed usecase snapshot is missing")
+    snapshot_payload = latest_snapshot.get("payload")
+    payload_data = snapshot_payload if isinstance(snapshot_payload, dict) else {}
+    normalized_feedback = _coerce_optional_text(revision_feedback)
+    if normalized_feedback:
+        payload = _normalize_usecase_draft(
+            {
+                "workflow_id": payload_data.get("workflow_id"),
+                "project_id": payload_data.get("project_id"),
+                "usecases": (
+                    (payload_data.get("revised_usecases") or {}).get("usecases")
+                    if isinstance(payload_data.get("revised_usecases"), dict)
+                    else None
+                )
+                or (
+                    (payload_data.get("candidate_usecases") or {}).get("usecases")
+                    if isinstance(payload_data.get("candidate_usecases"), dict)
+                    else None
+                )
+                or [],
+            }
+        )
+        review_report_payload = payload_data.get("review_report")
+        review_report = _normalize_usecase_review(
+            review_report_payload if isinstance(review_report_payload, dict) else {}
+        )
+        deficiency_count = payload_data.get("deficiency_count")
+        deficiency_total = (
+            deficiency_count
+            if isinstance(deficiency_count, int)
+            else len(review_report.get("deficiencies") or [])
+        )
+        return json.dumps(
+            build_workflow_snapshot(
+                workflow_type=DEFAULT_WORKFLOW_TYPE,
+                stage="reviewed_candidate_usecases",
+                summary="Human reviewer requested revisions before persistence.",
+                persistable=False,
+                next_action="revise_and_review_again",
+                payload={
+                    "workflow_id": payload_data.get("workflow_id"),
+                    "project_id": payload_data.get("project_id"),
+                    "candidate_usecase_count": len(payload["usecases"]),
+                    "deficiency_count": max(1, deficiency_total),
+                    "candidate_usecases": payload,
+                    "review_report": review_report,
+                    "revised_usecases": payload_data.get("revised_usecases"),
+                    "approval_note": approval_note,
+                    "human_revision_feedback": normalized_feedback,
+                },
+            ),
+            ensure_ascii=False,
+        )
+    latest_persist_plan = _extract_latest_tool_payload(state, "run_usecase_persist_subagent")
+    persist_plan = _normalize_persist_plan(
+        latest_persist_plan if isinstance(latest_persist_plan, dict) else {},
+        fallback_payload=payload_data,
+        approval_note=approval_note,
+    )
+    payload = _normalize_usecase_draft(
+        {
+            "workflow_id": persist_plan.get("workflow_id"),
+            "project_id": persist_plan.get("project_id"),
+            "usecases": persist_plan.get("final_usecases") or [],
+        }
+    )
+    project_id = payload.get("project_id") if isinstance(payload.get("project_id"), str) else None
+    usecase_count = len(payload["usecases"])
+    service_config = _build_runtime_persistence_config()
+    # 当前工作流不会先在 interaction-data-service 创建 usecase_workflows 主记录，
+    # 所以真实落库时不能把内存里的 workflow_id 直接传给外部服务。
+    persisted_workflow_id = None
+    if persist_plan["document_persistence_requested"]:
+        document_persistence_result = _persist_requirement_documents_to_interaction_service(
+            state=state,
+            project_id=project_id,
+            workflow_id=persisted_workflow_id,
+            service_config=service_config,
+        )
+    else:
+        document_persistence_result = {
+            "document_delivery_status": "skipped_by_plan",
+            "persisted_document_items": [],
+        }
+    persistence_result = _persist_usecases_to_interaction_service(
+        payload=payload,
+        workflow_id=persisted_workflow_id,
+        approval_note=str(persist_plan.get("approval_note") or ""),
+        service_config=service_config,
+    )
+    persistence_result.update(document_persistence_result)
+    return json.dumps(
+        build_workflow_snapshot(
+            workflow_type=DEFAULT_WORKFLOW_TYPE,
+            stage="persisted",
+            summary="Approved use cases have been persisted.",
+            persistable=True,
+            next_action="workflow_completed",
+            payload={
+                "approval_note": persist_plan.get("approval_note") or "",
+                "persist_plan": persist_plan,
+                "persistence_result": persistence_result,
+                "final_usecase_count": usecase_count,
+                "final_usecases": payload,
+                "human_revision_feedback": normalized_feedback,
+            },
+        ),
+        ensure_ascii=False,
+    )
+
+
+def _build_persist_execution_tool(state: dict[str, Any]) -> Any:
+    @tool(
+        "persist_approved_usecases",
+        description=(
+            "Persist the final approved use cases only after the user explicitly confirms the "
+            "current version is ready. If human revision feedback is supplied during edit, "
+            "return to review instead of persisting."
+        ),
+    )
+    def persist_approved_usecases_for_subagent(
+        approval_note: str = "",
+        revision_feedback: str = "",
+    ) -> str:
+        return _persist_approved_usecases_from_state(
+            state,
+            approval_note=approval_note,
+            revision_feedback=revision_feedback,
+        )
+
+    return persist_approved_usecases_for_subagent
 
 
 def _build_service_headers(service_config: UsecaseWorkflowServiceConfig) -> dict[str, str]:
@@ -1182,8 +1292,8 @@ def record_usecase_review(
 
     该快照既保存候选用例，也保存评审报告（deficiencies/strengths/suggestions）。
     并根据 deficiency_count 推断：
-    - `persistable=True`：可进入 approval（等待用户确认）
-    - `persistable=False`：停留在 review（需要继续修订）
+    - `persistable=True`：可进入最终确认（等待用户决定是否落库）
+    - `persistable=False`：先返回 review 结果并等待用户给出修订意见
     """
 
     state = _get_runtime_state(runtime)
@@ -1231,7 +1341,7 @@ def record_usecase_review(
         next_action=(
             "await_user_confirmation"
             if deficiency_count == 0
-            else "revise_and_review_again"
+            else "await_user_revision"
         ),
         payload={
             "workflow_id": workflow_id,
@@ -1246,150 +1356,10 @@ def record_usecase_review(
     return json.dumps(snapshot, ensure_ascii=False)
 
 
-@tool(
-    "persist_approved_usecases",
-    description=(
-        "Persist the final approved use cases only after the user explicitly confirms the "
-        "current version is ready. If human revision feedback is supplied during edit, "
-        "return to review instead of persisting."
-    ),
-)
-def persist_approved_usecases(
-    runtime: ToolRuntime[None, UsecaseWorkflowState],
-    approval_note: str = "",
-    revision_feedback: str = "",
-) -> str:
-    """持久化“已确认的最终用例”。
-
-    数据来源：
-    - 依赖最近一次 `record_usecase_review` 的快照（它包含 candidate/revised usecases）
-    - 最终选择 revised_usecases（如果存在），否则用 candidate_usecases
-
-    副作用：
-    - 调用 interaction-data-service 写入：
-      1) 已解析的需求文档 artifacts（如果有附件）
-      2) 最终用例列表
-
-    安全性：
-    - 该工具在 `graph.py` 里会被 `HumanInTheLoopMiddleware` 拦截，需要人工 approve 才会真正执行。
-    """
-
-    state = _get_runtime_state(runtime)
-    latest_snapshot = _extract_latest_tool_payload(state, "record_usecase_review")
-    if latest_snapshot is None:
-        raise ValueError("latest reviewed usecase snapshot is missing")
-    snapshot_payload = latest_snapshot.get("payload")
-    payload_data = snapshot_payload if isinstance(snapshot_payload, dict) else {}
-    normalized_feedback = _coerce_optional_text(revision_feedback)
-    if normalized_feedback:
-        payload = _normalize_usecase_draft(
-            {
-                "workflow_id": payload_data.get("workflow_id"),
-                "project_id": payload_data.get("project_id"),
-                "usecases": (
-                    (payload_data.get("revised_usecases") or {}).get("usecases")
-                    if isinstance(payload_data.get("revised_usecases"), dict)
-                    else None
-                )
-                or (
-                    (payload_data.get("candidate_usecases") or {}).get("usecases")
-                    if isinstance(payload_data.get("candidate_usecases"), dict)
-                    else None
-                )
-                or [],
-            }
-        )
-        review_report_payload = payload_data.get("review_report")
-        review_report = _normalize_usecase_review(
-            review_report_payload if isinstance(review_report_payload, dict) else {}
-        )
-        deficiency_count = payload_data.get("deficiency_count")
-        deficiency_total = (
-            deficiency_count
-            if isinstance(deficiency_count, int)
-            else len(review_report.get("deficiencies") or [])
-        )
-        return json.dumps(
-            build_workflow_snapshot(
-                workflow_type=DEFAULT_WORKFLOW_TYPE,
-                stage="reviewed_candidate_usecases",
-                summary="Human reviewer requested revisions before persistence.",
-                persistable=False,
-                next_action="revise_and_review_again",
-                payload={
-                    "workflow_id": payload_data.get("workflow_id"),
-                    "project_id": payload_data.get("project_id"),
-                    "candidate_usecase_count": len(payload["usecases"]),
-                    "deficiency_count": max(1, deficiency_total),
-                    "candidate_usecases": payload,
-                    "review_report": review_report,
-                    "revised_usecases": payload_data.get("revised_usecases"),
-                    "approval_note": approval_note,
-                    "human_revision_feedback": normalized_feedback,
-                },
-            ),
-            ensure_ascii=False,
-        )
-    latest_persist_plan = _extract_latest_tool_payload(state, "run_usecase_persist_subagent")
-    persist_plan = _normalize_persist_plan(
-        latest_persist_plan if isinstance(latest_persist_plan, dict) else {},
-        fallback_payload=payload_data,
-        approval_note=approval_note,
-    )
-    payload = _normalize_usecase_draft(
-        {
-            "workflow_id": persist_plan.get("workflow_id"),
-            "project_id": persist_plan.get("project_id"),
-            "usecases": persist_plan.get("final_usecases") or [],
-        }
-    )
-    workflow_id = payload.get("workflow_id") if isinstance(payload.get("workflow_id"), str) else None
-    project_id = payload.get("project_id") if isinstance(payload.get("project_id"), str) else None
-    usecase_count = len(payload["usecases"])
-    service_config = _build_runtime_persistence_config()
-    if persist_plan["document_persistence_requested"]:
-        document_persistence_result = _persist_requirement_documents_to_interaction_service(
-            state=state,
-            project_id=project_id,
-            workflow_id=workflow_id,
-            service_config=service_config,
-        )
-    else:
-        document_persistence_result = {
-            "document_delivery_status": "skipped_by_plan",
-            "persisted_document_items": [],
-        }
-    persistence_result = _persist_usecases_to_interaction_service(
-        payload=payload,
-        workflow_id=workflow_id,
-        approval_note=str(persist_plan.get("approval_note") or ""),
-        service_config=service_config,
-    )
-    persistence_result.update(document_persistence_result)
-    return json.dumps(
-        build_workflow_snapshot(
-            workflow_type=DEFAULT_WORKFLOW_TYPE,
-            stage="persisted",
-            summary="Approved use cases have been persisted.",
-            persistable=True,
-            next_action="workflow_completed",
-            payload={
-                "approval_note": persist_plan.get("approval_note") or "",
-                "persist_plan": persist_plan,
-                "persistence_result": persistence_result,
-                "final_usecase_count": usecase_count,
-                "final_usecases": payload,
-                "human_revision_feedback": normalized_feedback,
-            },
-        ),
-        ensure_ascii=False,
-    )
-
-
 def build_usecase_workflow_tools(model: Any | None = None) -> list[Any]:
     """组装对外暴露的工具列表。
 
-    - model != None：同时提供两个“子智能体调用工具” + 三个“工作流工具”
+    - model != None：同时提供四个“子智能体调用工具” + 三个“工作流快照工具”
     - model == None：只提供本地工作流工具（便于某些离线/测试场景）
     """
 
@@ -1408,7 +1378,6 @@ def build_usecase_workflow_tools(model: Any | None = None) -> list[Any]:
             record_requirement_analysis,
             record_generated_usecases,
             record_usecase_review,
-            persist_approved_usecases,
         ]
     )
     return tools
@@ -1422,7 +1391,6 @@ __all__ = [
     "build_usecase_generation_subagent_tool",
     "build_usecase_persist_subagent_tool",
     "build_usecase_review_subagent_tool",
-    "persist_approved_usecases",
     "record_requirement_analysis",
     "record_generated_usecases",
     "record_usecase_review",

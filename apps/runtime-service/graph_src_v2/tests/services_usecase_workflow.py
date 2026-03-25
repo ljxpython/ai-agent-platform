@@ -1,12 +1,12 @@
 # pyright: reportMissingImports=false, reportMissingModuleSource=false
 import asyncio
+import json
 import sys
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import Command
@@ -26,7 +26,6 @@ from graph_src_v2.services.usecase_workflow_agent.graph import (
     _bind_non_streaming_model,
 )
 from graph_src_v2.services.usecase_workflow_agent.tools import (
-    build_usecase_workflow_service_config,
     build_usecase_workflow_tools,
 )
 
@@ -48,7 +47,6 @@ def _load_first_pdf_message() -> Any:
 async def _build_local_agent(config: RunnableConfig) -> Any:
     runtime_context = merge_trusted_auth_context(config, {})
     options = build_runtime_config(config, runtime_context)
-    build_usecase_workflow_service_config(config)
     model = apply_model_runtime_params(resolve_model(options.model_spec), options)
     model = _bind_non_streaming_model(model)
     tools = build_usecase_workflow_tools(model)
@@ -61,15 +59,6 @@ async def _build_local_agent(config: RunnableConfig) -> Any:
         name="usecase_workflow_agent",
         tools=tools,
         middleware=[
-            HumanInTheLoopMiddleware(
-                interrupt_on={
-                    "persist_approved_usecases": {
-                        "allowed_decisions": ["approve", "edit", "reject"],
-                        "description": "Persisting reviewed use cases requires explicit human confirmation.",
-                    }
-                },
-                description_prefix="Use case persistence pending confirmation",
-            ),
             WorkflowToolSelectionMiddleware(),
             MultimodalMiddleware(),
         ],
@@ -102,7 +91,103 @@ def _extract_interrupt(update: Any) -> Any | None:
     return None
 
 
-async def _stream_turn(agent: Any, payload: Any, config: RunnableConfig) -> bool:
+def _interrupt_value(interrupt: Any) -> dict[str, Any]:
+    value = getattr(interrupt, "value", None)
+    return value if isinstance(value, dict) else {}
+
+
+def _interrupt_action_name(interrupts: Any) -> str:
+    if not isinstance(interrupts, list | tuple):
+        return "persist_approved_usecases"
+    for interrupt in interrupts:
+        for action_request in _interrupt_value(interrupt).get("action_requests", []):
+            action_name = action_request.get("name")
+            if isinstance(action_name, str) and action_name:
+                return action_name
+    return "persist_approved_usecases"
+
+
+def _interrupt_allowed_decisions(interrupts: Any) -> list[str]:
+    if not isinstance(interrupts, list | tuple):
+        return ["approve", "edit", "reject"]
+    for interrupt in interrupts:
+        for review_config in _interrupt_value(interrupt).get("review_configs", []):
+            decisions = review_config.get("allowed_decisions")
+            if (
+                isinstance(decisions, list)
+                and decisions
+                and all(isinstance(item, str) and item for item in decisions)
+            ):
+                return list(decisions)
+    return ["approve", "edit", "reject"]
+
+
+def _print_interrupt_details(interrupts: Any) -> None:
+    if not isinstance(interrupts, list | tuple):
+        print("interrupt payload is not a list/tuple:", interrupts)
+        return
+
+    for index, interrupt in enumerate(interrupts, start=1):
+        value = _interrupt_value(interrupt)
+        print(f"interrupt[{index}]")
+        action_requests = value.get("action_requests")
+        if isinstance(action_requests, list):
+            for action_index, action_request in enumerate(action_requests, start=1):
+                print(
+                    f"  action[{action_index}]",
+                    json.dumps(action_request, ensure_ascii=False, indent=2),
+                )
+        review_configs = value.get("review_configs")
+        if isinstance(review_configs, list):
+            for review_index, review_config in enumerate(review_configs, start=1):
+                print(
+                    f"  review[{review_index}]",
+                    json.dumps(review_config, ensure_ascii=False, indent=2),
+                )
+
+
+def _build_free_text_turn_status() -> dict[str, Any]:
+    return {
+        "needs_user_input": True,
+        "input_mode": "free_text",
+        "interrupts": None,
+        "allowed_decisions": [],
+        "action_name": None,
+    }
+
+
+def _build_interrupt_turn_status(interrupts: Any) -> dict[str, Any]:
+    return {
+        "needs_user_input": True,
+        "input_mode": "interrupt_decision",
+        "interrupts": interrupts,
+        "allowed_decisions": _interrupt_allowed_decisions(interrupts),
+        "action_name": _interrupt_action_name(interrupts),
+    }
+
+
+def _print_turn_status(turn_status: dict[str, Any]) -> None:
+    if turn_status.get("input_mode") == "interrupt_decision":
+        print(
+            "turn_status",
+            {
+                "needs_user_input": True,
+                "input_mode": "interrupt_decision",
+                "allowed_decisions": turn_status.get("allowed_decisions", []),
+                "action_name": turn_status.get("action_name"),
+            },
+        )
+        return
+    print(
+        "turn_status",
+        {
+            "needs_user_input": True,
+            "input_mode": "free_text",
+        },
+    )
+
+
+async def _stream_turn(agent: Any, payload: Any, config: RunnableConfig) -> dict[str, Any]:
     saw_stream_text = False
 
     async for mode, event in agent.astream(
@@ -125,17 +210,26 @@ async def _stream_turn(agent: Any, payload: Any, config: RunnableConfig) -> bool
             saw_stream_text = False
 
         print("update", event)
-        if _extract_interrupt(event) is not None:
-            print("interrupt", _extract_interrupt(event))
-            return True
+        interrupts = _extract_interrupt(event)
+        if interrupts is not None:
+            _print_interrupt_details(interrupts)
+            turn_status = _build_interrupt_turn_status(interrupts)
+            _print_turn_status(turn_status)
+            return turn_status
 
     if saw_stream_text:
         print()
 
-    return False
+    turn_status = _build_free_text_turn_status()
+    _print_turn_status(turn_status)
+    return turn_status
 
 
-def _build_interrupt_resume_payload(decision: str, feedback: str = "") -> dict[str, Any]:
+def _build_interrupt_resume_payload(
+    decision: str,
+    feedback: str = "",
+    action_name: str = "persist_approved_usecases",
+) -> dict[str, Any]:
     if decision == "edit":
         feedback_text = feedback.strip()
         if not feedback_text:
@@ -145,27 +239,40 @@ def _build_interrupt_resume_payload(decision: str, feedback: str = "") -> dict[s
                 {
                     "type": "edit",
                     "edited_action": {
-                        "name": "persist_approved_usecases",
+                        "name": action_name,
                         "args": {"revision_feedback": feedback_text},
                     },
                 }
             ]
         }
+    if decision == "reject":
+        reason = feedback.strip()
+        if reason:
+            return {"decisions": [{"type": "reject", "message": reason}]}
     return {"decisions": [{"type": decision}]}
 
 
-def _prompt_interrupt_decision() -> tuple[str, str]:
+def _prompt_interrupt_decision(allowed_decisions: list[str]) -> tuple[str, str]:
+    allowed = [decision for decision in allowed_decisions if isinstance(decision, str)]
+    prompt = " | ".join([*allowed, "quit"]) if allowed else "approve | edit | reject | quit"
+
     while True:
         decision = input("you ").strip().lower()
-        if decision in {"approve", "reject", "quit"}:
+        if decision == "quit":
             return decision, ""
+        if decision not in allowed:
+            print(f"interrupt {prompt}")
+            continue
         if decision == "edit":
             feedback = input("edit feedback ").strip()
             if feedback:
                 return decision, feedback
             print("edit feedback required")
             continue
-        print("interrupt approve | edit | reject | quit")
+        if decision == "reject":
+            feedback = input("reject reason (optional) ").strip()
+            return decision, feedback
+        return decision, ""
 
 
 async def _run_repl() -> None:
@@ -174,16 +281,24 @@ async def _run_repl() -> None:
     agent = await _build_local_agent(config)
 
     first_message = _load_first_pdf_message()
-    interrupted = await _stream_turn(agent, {"messages": [first_message]}, config)
+    turn_status = await _stream_turn(agent, {"messages": [first_message]}, config)
 
     while True:
-        if interrupted:
-            decision, feedback = _prompt_interrupt_decision()
+        if turn_status.get("input_mode") == "interrupt_decision":
+            decision, feedback = _prompt_interrupt_decision(
+                list(turn_status.get("allowed_decisions") or [])
+            )
             if decision == "quit":
                 return
-            interrupted = await _stream_turn(
+            turn_status = await _stream_turn(
                 agent,
-                Command(resume=_build_interrupt_resume_payload(decision, feedback)),
+                Command(
+                    resume=_build_interrupt_resume_payload(
+                        decision,
+                        feedback,
+                        action_name=str(turn_status.get("action_name") or "persist_approved_usecases"),
+                    )
+                ),
                 config,
             )
             continue
@@ -194,7 +309,7 @@ async def _run_repl() -> None:
         if user_text.lower() == "quit":
             return
 
-        interrupted = await _stream_turn(agent, {"messages": [user_text]}, config)
+        turn_status = await _stream_turn(agent, {"messages": [user_text]}, config)
 
 
 def graph_local() -> None:

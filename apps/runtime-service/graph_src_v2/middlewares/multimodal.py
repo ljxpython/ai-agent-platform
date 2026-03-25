@@ -234,10 +234,6 @@ def _rewrite_latest_human_message_for_model(
             rewritten_content.append(item)
             continue
 
-        if artifact.get("kind") == "image":
-            rewritten_content.append(item)
-            continue
-
         rewritten_content.append(
             {
                 "type": "text",

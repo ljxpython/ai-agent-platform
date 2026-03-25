@@ -23,21 +23,18 @@
 
 ## 系统总览
 
-当前默认本地联调由四个应用组成：
+当前默认本地联调由五个应用组成：
 
+- `apps/interaction-data-service`：结果域数据服务 / 工作流结果落库与查询
 - `apps/platform-api`：平台后端 / 控制面 API
 - `apps/platform-web`：平台主前端 / 管理台入口
 - `apps/runtime-service`：LangGraph 执行层 / Agent Runtime
 - `apps/runtime-web`：直连 Runtime 的调试前端
 
-另有一个按需服务：
-
-- `apps/interaction-data-service`：结果域数据服务，不属于默认四服务启动集
-
 ### 两条主链路
 
-- 平台链路：`platform-web -> platform-api -> runtime-service`
-- 调试链路：`runtime-web -> runtime-service`
+- 平台链路：`platform-web -> platform-api -> runtime-service -> interaction-data-service`
+- 调试链路：`runtime-web -> runtime-service -> interaction-data-service`
 
 ### 两个前端分别干什么
 
@@ -60,16 +57,19 @@ flowchart LR
         RS[runtime-service<br/>LangGraph Runtime]
     end
 
+    IDS[interaction-data-service<br/>FastAPI Result Store]
     DB[(PostgreSQL)]
 
     User --> PW
     User --> RW
 
     PW --> PA
-    PA --> DB
     PA --> RS
+    PA --> IDS
 
     RW --> RS
+    RS --> IDS
+    IDS --> DB
 ```
 
 ## 快速开始
@@ -77,9 +77,10 @@ flowchart LR
 ### 默认启动顺序
 
 1. `runtime-service`
-2. `platform-api`
-3. `platform-web`
-4. `runtime-web`
+2. `interaction-data-service`
+3. `platform-api`
+4. `platform-web`
+5. `runtime-web`
 
 ### 根目录脚本
 
@@ -97,6 +98,7 @@ scripts/dev-down.sh
 
 ### 默认本地端口
 
+- `interaction-data-service`：`8090`
 - `runtime-service`：`8123`
 - `platform-api`：`2024`
 - `platform-web`：`3000`
@@ -110,12 +112,13 @@ scripts/dev-down.sh
 ### 最小健康检查
 
 ```bash
+curl http://127.0.0.1:8090/_service/health
 curl http://127.0.0.1:8123/info
 curl http://127.0.0.1:2024/_proxy/health
 curl http://127.0.0.1:2024/api/langgraph/info
 ```
 
-如果 `platform-api` 的 `/api/langgraph/info` 返回 `200`，说明平台链路已经打通。
+如果 `platform-api` 的 `/api/langgraph/info` 返回 `200`，且 `interaction-data-service` 的 `/_service/health` 返回 `200`，说明平台链路和结果落库链路都已基本打通。
 
 ## 仓库结构
 
@@ -208,11 +211,12 @@ AITestLab/
 
 当前仓库已经完成：
 
-- 默认四服务启动集已迁入 `apps/*`
-- `interaction-data-service` 作为按需服务单独保留
+- 默认五服务启动集已迁入 `apps/*`
 - `runtime-service` 可启动
+- `interaction-data-service` 可启动
 - `platform-api` 可启动
 - `platform-api -> runtime-service` 联调已通过
+- `runtime-service -> interaction-data-service` 已接入本地联调脚本
 - `platform-web` / `runtime-web` 已去除 Google Fonts 构建时外网依赖
 
 当前仍保持的约定：
