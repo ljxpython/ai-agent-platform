@@ -1,5 +1,7 @@
 # 企业级 AI Agent 平台架构
 
+[English](README.en.md) | 中文
+
 基于 `LangGraph / LangChain` 的企业级 AI 平台架构，可在此基础上进行二次开发。  
 它把**平台治理层**和**Agent Runtime 执行层**拆开，既支持平台侧的认证、项目管理、审计、catalog 管理，也支持 Agent 侧的图编排、模型装配、Tools / MCP / Skills 接入与快速调试，适合作为企业内部 AI 平台和智能体应用的基础骨架。
 
@@ -55,36 +57,7 @@
 
 ## 架构图
 
-```mermaid
-flowchart LR
-    User[User]
-
-    subgraph Platform[Platform Layer]
-        PW[platform-web<br/>Next.js]
-        PA[platform-api<br/>FastAPI API]
-    end
-
-    subgraph Runtime[Runtime Layer]
-        RW[runtime-web<br/>Next.js Debug UI]
-        RS[runtime-service<br/>LangGraph Runtime]
-    end
-
-    IDS[interaction-data-service<br/>FastAPI Result Domain Service]
-    DB[(Shared PostgreSQL)]
-
-    User --> PW
-    User --> RW
-
-    PW --> PA
-    PA --> RS
-    PA --> DB
-    PA --> IDS
-
-    RW --> RS
-    RS --> DB
-    RS --> IDS
-    IDS --> DB
-```
+![系统架构图](docs/assets/system-architecture.zh.svg)
 
 ## 快速开始
 
@@ -134,6 +107,8 @@ curl http://127.0.0.1:2024/api/langgraph/info
 
 如果 `platform-api` 的 `/api/langgraph/info` 返回 `200`，且 `interaction-data-service` 的 `/_service/health` 返回 `200`，说明平台链路和结果落库链路都已基本打通。
 
+![本地联调启动流程图](docs/assets/local-dev-startup-flow.zh.svg)
+
 ## 仓库结构
 
 ```text
@@ -155,6 +130,8 @@ AITestLab/
 - `archive/`：历史归档说明
 
 ## 按目标阅读文档
+
+![文档导航图](docs/assets/readme-doc-navigation.zh.svg)
 
 ### 我想先把环境跑起来
 
