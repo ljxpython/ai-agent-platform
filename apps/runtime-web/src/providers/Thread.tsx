@@ -15,6 +15,7 @@ import { buildThreadTargetMetadata, resolveThreadTarget } from "./thread-target"
 
 interface ThreadContextType {
   getThreads: () => Promise<Thread[]>;
+  deleteThread: (threadId: string) => Promise<void>;
   updateThreadState: (
     threadId: string,
     values: Record<string, unknown>,
@@ -106,8 +107,26 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
     [buildClient],
   );
 
+  const deleteThread = useCallback(
+    async (threadId: string) => {
+      const normalizedThreadId = threadId.trim();
+      if (!normalizedThreadId) {
+        throw new Error("Thread id is required");
+      }
+
+      const client = buildClient();
+      if (!client) {
+        throw new Error("API URL is not configured");
+      }
+
+      await client.threads.delete(normalizedThreadId);
+    },
+    [buildClient],
+  );
+
   const value = {
     getThreads,
+    deleteThread,
     updateThreadState,
     threads,
     setThreads,

@@ -217,6 +217,7 @@
 - P0 状态：`已实现（待你验收）`
 - P1 状态：`已实现（待你验收）`
 - P2 状态：`已实现（待你验收）`
+- 对齐补齐项状态：`已实现（待你验收）`
 - 实施日期：`2026-03-28`
 
 ### 8.2 已完成项
@@ -258,6 +259,19 @@
 - 在 `agent-inbox` 的审批页新增信息分区：`Workflow Actions / Batch Progress / Decision Input / Batch Navigation`。
 - 保持原有审批协议与提交流程不变，仅优化信息层级与可读性。
 
+8. 对标补齐-线程删除
+- `platform-web` 与 `runtime-web` 的 thread history 已新增线程删除入口（悬浮删除按钮）。
+- 删除前会弹出确认框，删除当前线程时会自动清空 URL 中 `threadId`。
+- 删除失败会 toast 提示，删除成功后自动刷新线程列表。
+
+9. 对标补齐-Debug 单步/继续
+- 两端输入区已新增 `Debug Mode` 开关。
+- 开启后发送按钮切换为 `Step`，提交时使用 `interruptBefore: [\"tools\"]` 实现单步执行。
+- 当流进入可继续的中断态（非 agent-inbox 审批中断）时显示 `Continue` 按钮。
+- Continue 逻辑与参考实现对齐：
+  - 若存在待处理 `task` 工具调用：`interruptAfter: [\"tools\"]`
+  - 否则：`interruptBefore: [\"tools\"]`
+
 ### 8.3 相关代码变更
 
 - `apps/platform-web/src/components/thread/tasks-files-panel.tsx`（新增）
@@ -272,6 +286,10 @@
 - `apps/runtime-web/src/components/thread/history/index.tsx`（P2 线程列表增强）
 - `apps/platform-web/src/components/thread/agent-inbox/components/thread-actions-view.tsx`（P2 审批视觉优化）
 - `apps/runtime-web/src/components/thread/agent-inbox/components/thread-actions-view.tsx`（P2 审批视觉优化）
+- `apps/platform-web/src/providers/Thread.tsx`（新增 `deleteThread`）
+- `apps/runtime-web/src/providers/Thread.tsx`（新增 `deleteThread`）
+- `apps/platform-web/src/components/thread/index.tsx`（新增 Debug Mode 单步/继续）
+- `apps/runtime-web/src/components/thread/index.tsx`（新增 Debug Mode 单步/继续）
 
 ### 8.4 已知问题 / 兼容性说明
 

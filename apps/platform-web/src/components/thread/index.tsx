@@ -25,6 +25,7 @@ import {
   DO_NOT_RENDER_ID_PREFIX,
   ensureToolCallsHaveResponses,
 } from "@/lib/ensure-tool-responses";
+import { isAgentInboxInterruptSchema } from "@/lib/agent-inbox-interrupt";
 import {
   listRuntimeModels,
   listRuntimeTools,
@@ -127,6 +128,39 @@ function OpenGitHubRepo() {
   );
 }
 
+function hasPendingTaskToolCall(messages: Message[]): boolean {
+  const resolvedToolCallIds = new Set<string>();
+
+  for (const message of messages) {
+    if (
+      message.type === "tool" &&
+      typeof message.tool_call_id === "string" &&
+      message.tool_call_id.trim()
+    ) {
+      resolvedToolCallIds.add(message.tool_call_id);
+    }
+  }
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.type !== "ai" || !Array.isArray(message.tool_calls)) {
+      continue;
+    }
+
+    for (const toolCall of message.tool_calls) {
+      if (!toolCall) {
+        continue;
+      }
+      const unresolved = !toolCall.id || !resolvedToolCallIds.has(toolCall.id);
+      if (unresolved && toolCall.name === "task") {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 type ThreadFeatures = {
   allowRunOptions?: boolean;
   showHistory?: boolean;
@@ -174,6 +208,10 @@ export function Thread({
   const [chatGraphId] = useQueryState("graphId", { defaultValue: initialGraphId });
   const [hideToolCalls, setHideToolCalls] = useQueryState(
     "hideToolCalls",
+    parseAsBoolean.withDefault(false),
+  );
+  const [debugMode, setDebugMode] = useQueryState(
+    "debugMode",
     parseAsBoolean.withDefault(false),
   );
   const [input, setInput] = useState("");
@@ -417,6 +455,7 @@ export function Thread({
       { messages: [...toolMessages, newHumanMessage], context },
       {
         config,
+        ...(debugMode ? { interruptBefore: ["tools"] } : {}),
         streamMode: ["messages", "values"],
         streamSubgraphs: true,
         streamResumable: true,
@@ -444,6 +483,30 @@ export function Thread({
     stream.submit(undefined, {
       checkpoint: parentCheckpoint,
       config,
+      ...(debugMode ? { interruptBefore: ["tools"] } : {}),
+      streamMode: ["messages", "values"],
+      streamSubgraphs: true,
+      streamResumable: true,
+    });
+  };
+
+  const canContinueDebugStream =
+    Boolean(debugMode) &&
+    Boolean(stream.interrupt) &&
+    !isAgentInboxInterruptSchema(stream.interrupt);
+
+  const handleContinueStream = () => {
+    if (!canContinueDebugStream || isLoading) {
+      return;
+    }
+
+    const config = buildRunConfig();
+    const hasTaskToolCall = hasPendingTaskToolCall(stream.messages);
+    stream.submit(undefined, {
+      config,
+      ...(hasTaskToolCall
+        ? { interruptAfter: ["tools"] }
+        : { interruptBefore: ["tools"] }),
       streamMode: ["messages", "values"],
       streamSubgraphs: true,
       streamResumable: true,
@@ -897,6 +960,21 @@ export function Thread({
                             </Label>
                           </div>
                         </div>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              id="debug-mode"
+                              checked={debugMode ?? false}
+                              onCheckedChange={setDebugMode}
+                            />
+                            <Label
+                              htmlFor="debug-mode"
+                              className="text-sm text-muted-foreground"
+                            >
+                              Debug Mode
+                            </Label>
+                          </div>
+                        </div>
                         <Label
                           htmlFor="file-input"
                           className="flex cursor-pointer items-center gap-2"
@@ -924,16 +1002,28 @@ export function Thread({
                             Cancel
                           </Button>
                         ) : (
-                          <Button
-                            type="submit"
-                            className="ml-auto shadow-md transition-all motion-micro"
-                            disabled={
-                              isLoading ||
-                              (!input.trim() && contentBlocks.length === 0)
-                            }
-                          >
-                            Send
-                          </Button>
+                          <div className="ml-auto flex items-center gap-2">
+                            {canContinueDebugStream ? (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleContinueStream}
+                              >
+                                Continue
+                              </Button>
+                            ) : null}
+                            <Button
+                              type="submit"
+                              className="shadow-md transition-all motion-micro"
+                              disabled={
+                                isLoading ||
+                                canContinueDebugStream ||
+                                (!input.trim() && contentBlocks.length === 0)
+                              }
+                            >
+                              {debugMode ? "Step" : "Send"}
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </form>

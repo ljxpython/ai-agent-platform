@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { useThreads } from "@/providers/Thread";
-import { Thread } from "@langchain/langgraph-sdk";
-import { useEffect, useMemo, useState } from "react";
+import { Message, Thread } from "@langchain/langgraph-sdk";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { getContentString } from "../utils";
 import { useQueryState, parseAsBoolean } from "nuqs";
@@ -12,9 +12,10 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PanelRightOpen, PanelRightClose, RefreshCw } from "lucide-react";
+import { Loader2, PanelRightOpen, PanelRightClose, RefreshCw, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
+import { toast } from "sonner";
 
 const THREAD_HISTORY_SKELETON_KEYS = Array.from(
   { length: 30 },
@@ -78,14 +79,27 @@ function deriveThreadTitle(thread: Thread): string {
   ) {
     const firstHuman = thread.values.messages.find(
       (message) => message && typeof message === "object" && "type" in message && message.type === "human",
-    ) as { content?: unknown } | undefined;
-    const firstMessage = firstHuman ?? (thread.values.messages[0] as { content?: unknown });
-    const content = getContentString(firstMessage?.content ?? "");
+    );
+    const firstMessage = firstHuman ?? thread.values.messages[0];
+    const content = getContentString(getThreadMessageContent(firstMessage));
     if (content.trim()) {
       return content.trim();
     }
   }
   return thread.thread_id;
+}
+
+function getThreadMessageContent(message: unknown): Message["content"] {
+  if (
+    message &&
+    typeof message === "object" &&
+    "content" in message &&
+    ((typeof (message as { content?: unknown }).content === "string") ||
+      Array.isArray((message as { content?: unknown }).content))
+  ) {
+    return (message as { content: Message["content"] }).content;
+  }
+  return "";
 }
 
 function normalizeThreadStatus(status: unknown): string {
@@ -155,9 +169,13 @@ function groupThreadsByTime(items: ThreadListItem[]): Record<GroupKey, ThreadLis
 function ThreadList({
   items,
   onThreadClick,
+  onThreadDelete,
+  deletingThreadId,
 }: {
   items: ThreadListItem[];
   onThreadClick?: (threadId: string) => void;
+  onThreadDelete?: (threadId: string) => void;
+  deletingThreadId?: string | null;
 }) {
   const [threadId, setThreadId] = useQueryState("threadId");
 
@@ -165,14 +183,11 @@ function ThreadList({
     <div className="flex h-full w-full flex-col items-start justify-start gap-2 overflow-y-scroll [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent">
       {items.map((item) => {
         return (
-          <div
-            key={item.id}
-            className="w-full px-1"
-          >
+          <div key={item.id} className="group relative w-full px-1">
             <Button
               variant="ghost"
               className={cn(
-                "h-auto w-[280px] justify-start px-3 py-2 text-left font-normal",
+                "h-auto w-[280px] justify-start px-3 py-2 pr-8 text-left font-normal",
                 threadId === item.id
                   ? "bg-accent text-foreground"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -190,6 +205,29 @@ function ThreadList({
                 <span className="text-[11px] text-muted-foreground">{formatThreadTime(item.updatedAt)}</span>
               </div>
             </Button>
+            {onThreadDelete ? (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onThreadDelete(item.id);
+                }}
+                disabled={deletingThreadId === item.id}
+                className={cn(
+                  "absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:bg-destructive hover:text-destructive-foreground group-hover:opacity-100",
+                  deletingThreadId === item.id && "opacity-100",
+                )}
+                title="Delete thread"
+                aria-label="Delete thread"
+              >
+                {deletingThreadId === item.id ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="size-3.5" />
+                )}
+              </button>
+            ) : null}
           </div>
         );
       })}
@@ -212,19 +250,20 @@ function ThreadHistoryLoading() {
 
 export default function ThreadHistory() {
   const isLargeScreen = useMediaQuery("(min-width: 1024px)");
+  const [threadId, setThreadId] = useQueryState("threadId");
   const [chatHistoryOpen, setChatHistoryOpen] = useQueryState(
     "chatHistoryOpen",
     parseAsBoolean.withDefault(false),
   );
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [deletingThreadId, setDeletingThreadId] = useState<string | null>(null);
 
-  const { getThreads, threads, setThreads, threadsLoading, setThreadsLoading } =
+  const { getThreads, deleteThread, threads, setThreads, threadsLoading, setThreadsLoading } =
     useThreads();
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
+  const refreshThreads = useCallback(() => {
     setThreadsLoading(true);
-    getThreads()
+    return getThreads()
       .then(setThreads)
       .catch((error) => {
         if (isStaleTenantScopeError(error)) return;
@@ -232,6 +271,39 @@ export default function ThreadHistory() {
       })
       .finally(() => setThreadsLoading(false));
   }, [getThreads, setThreads, setThreadsLoading]);
+
+  const handleDeleteThread = useCallback(
+    async (targetThreadId: string) => {
+      if (typeof window !== "undefined") {
+        const confirmed = window.confirm(
+          "Delete this thread? This action cannot be undone.",
+        );
+        if (!confirmed) {
+          return;
+        }
+      }
+
+      setDeletingThreadId(targetThreadId);
+      try {
+        await deleteThread(targetThreadId);
+        if (threadId === targetThreadId) {
+          setThreadId(null);
+        }
+        await refreshThreads();
+      } catch (error) {
+        console.error(error);
+        toast.error("Failed to delete thread");
+      } finally {
+        setDeletingThreadId(null);
+      }
+    },
+    [deleteThread, threadId, setThreadId, refreshThreads],
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    void refreshThreads();
+  }, [refreshThreads]);
 
   const normalizedThreads = useMemo<ThreadListItem[]>(
     () =>
@@ -282,16 +354,7 @@ export default function ThreadHistory() {
               variant="ghost"
               size="icon"
               className="h-8 w-8 text-muted-foreground"
-              onClick={() => {
-                setThreadsLoading(true);
-                getThreads()
-                  .then(setThreads)
-                  .catch((error) => {
-                    if (isStaleTenantScopeError(error)) return;
-                    console.error(error);
-                  })
-                  .finally(() => setThreadsLoading(false));
-              }}
+              onClick={() => void refreshThreads()}
               disabled={threadsLoading}
             >
               <RefreshCw className={cn("size-4", threadsLoading && "animate-spin")} />
@@ -328,7 +391,11 @@ export default function ThreadHistory() {
                   <p className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                     {GROUP_LABELS[groupKey]}
                   </p>
-                  <ThreadList items={groupItems} />
+                  <ThreadList
+                    items={groupItems}
+                    onThreadDelete={handleDeleteThread}
+                    deletingThreadId={deletingThreadId}
+                  />
                 </div>
               );
             })}
@@ -383,6 +450,8 @@ export default function ThreadHistory() {
                     <ThreadList
                       items={groupItems}
                       onThreadClick={() => setChatHistoryOpen((o) => !o)}
+                      onThreadDelete={handleDeleteThread}
+                      deletingThreadId={deletingThreadId}
                     />
                   </div>
                 );
