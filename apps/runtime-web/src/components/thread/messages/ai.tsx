@@ -9,11 +9,154 @@ import { cn } from "@/lib/utils";
 import { ToolCalls, ToolResult } from "./tool-calls";
 import { MessageContentComplex } from "@langchain/core/messages";
 import { Fragment } from "react/jsx-runtime";
+import { useState } from "react";
 import { isAgentInboxInterruptSchema } from "@/lib/agent-inbox-interrupt";
 import { ThreadView } from "../agent-inbox";
 import { useQueryState, parseAsBoolean } from "nuqs";
 import { GenericInterruptView } from "./generic-interrupt";
 import { useArtifact } from "../artifact";
+import { ChevronDown, ChevronUp } from "lucide-react";
+
+type SubAgentCard = {
+  id: string;
+  name: string;
+  status: "pending" | "completed";
+  input: string;
+  output?: string;
+};
+
+function normalizeToolCallInput(args: unknown): string {
+  if (args == null) {
+    return "";
+  }
+  if (typeof args === "string") {
+    return args;
+  }
+  if (typeof args === "object") {
+    const argsRecord = args as Record<string, unknown>;
+    const task =
+      typeof argsRecord.task === "string"
+        ? argsRecord.task
+        : typeof argsRecord.description === "string"
+          ? argsRecord.description
+          : "";
+    if (task.trim()) {
+      return task;
+    }
+    return JSON.stringify(argsRecord, null, 2);
+  }
+  return String(args);
+}
+
+function getSubAgentName(args: unknown): string {
+  if (!args || typeof args !== "object") {
+    return "sub-agent";
+  }
+  const argsRecord = args as Record<string, unknown>;
+  const candidate = argsRecord.subagent_type;
+  if (typeof candidate === "string" && candidate.trim()) {
+    return candidate.trim();
+  }
+  return "sub-agent";
+}
+
+function extractSubAgentCards(
+  message: Message | undefined,
+  threadMessages: Message[],
+): SubAgentCard[] {
+  if (!message || message.type !== "ai" || !Array.isArray(message.tool_calls)) {
+    return [];
+  }
+
+  const toolMessages = threadMessages.filter((item) => item.type === "tool");
+
+  return message.tool_calls
+    .filter((toolCall) => toolCall?.name === "task")
+    .map((toolCall, index) => {
+      const id =
+        typeof toolCall.id === "string" && toolCall.id.trim()
+          ? toolCall.id
+          : `task-${message.id ?? "message"}-${index + 1}`;
+      const matchingResult = toolMessages.find(
+        (toolMessage) => toolMessage.tool_call_id === toolCall.id,
+      );
+      const output = matchingResult ? getContentString(matchingResult.content) : "";
+      return {
+        id,
+        name: getSubAgentName(toolCall.args),
+        status: matchingResult ? "completed" : "pending",
+        input: normalizeToolCallInput(toolCall.args),
+        output: output || undefined,
+      } satisfies SubAgentCard;
+    });
+}
+
+function SubAgentCards({ items }: { items: SubAgentCard[] }) {
+  const [openMap, setOpenMap] = useState<Record<string, boolean>>({});
+
+  if (items.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="mx-auto grid max-w-3xl gap-2">
+      {items.map((item) => {
+        const isOpen = openMap[item.id] ?? true;
+        return (
+          <div key={item.id} className="overflow-hidden rounded-lg border border-border bg-card">
+            <button
+              type="button"
+              className="flex w-full items-center justify-between px-3 py-2 text-left"
+              onClick={() =>
+                setOpenMap((prev) => ({
+                  ...prev,
+                  [item.id]: !(prev[item.id] ?? true),
+                }))
+              }
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={cn(
+                    "inline-block size-2 rounded-full",
+                    item.status === "completed" ? "bg-emerald-600" : "bg-amber-500",
+                  )}
+                />
+                <span className="text-sm font-medium text-foreground">{item.name}</span>
+                <span className="text-xs text-muted-foreground">
+                  {item.status === "completed" ? "completed" : "running"}
+                </span>
+              </div>
+              {isOpen ? (
+                <ChevronUp className="size-4 text-muted-foreground" />
+              ) : (
+                <ChevronDown className="size-4 text-muted-foreground" />
+              )}
+            </button>
+
+            {isOpen ? (
+              <div className="space-y-2 border-t border-border/80 px-3 py-2">
+                <div>
+                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Input</p>
+                  <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded bg-muted/40 px-2 py-1.5 text-xs text-foreground">
+                    {item.input || "<empty>"}
+                  </pre>
+                </div>
+                {item.output ? (
+                  <div>
+                    <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Output</p>
+                    <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded bg-muted/40 px-2 py-1.5 text-xs text-foreground">
+                      {item.output}
+                    </pre>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 function CustomComponent({
   message,
@@ -140,6 +283,7 @@ export function AssistantMessage({
     );
   const hasAnthropicToolCalls = !!anthropicStreamedToolCalls?.length;
   const isToolResult = message?.type === "tool";
+  const subAgentCards = extractSubAgentCards(message, thread.messages);
 
   if (isToolResult && hideToolCalls) {
     return null;
@@ -178,6 +322,7 @@ export function AssistantMessage({
                   ))}
               </>
             )}
+            {!hideToolCalls && <SubAgentCards items={subAgentCards} />}
 
             {message && (
               <CustomComponent

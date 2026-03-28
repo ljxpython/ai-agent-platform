@@ -838,6 +838,8 @@ export function Thread({
                     >
                       <TasksFilesPanel
                         values={stream.values as Record<string, unknown> | undefined}
+                        isRunning={isLoading}
+                        hasInterrupt={Boolean(stream.interrupt)}
                       />
                       <ContentBlocksPreview
                         blocks={contentBlocks}

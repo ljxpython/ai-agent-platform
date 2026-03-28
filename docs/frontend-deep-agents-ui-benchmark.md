@@ -212,9 +212,10 @@
 
 ## 8. 实施进度（持续更新）
 
-### 8.1 P0 实施状态
+### 8.1 P0/P1 实施状态
 
-- 状态：`进行中（首版已落地，待你验证交互与视觉）`
+- P0 状态：`已实现（待你验收）`
+- P1 状态：`已实现（待你验收）`
 - 实施日期：`2026-03-28`
 
 ### 8.2 已完成项
@@ -236,12 +237,26 @@
 - `apps/runtime-web/src/components/thread/index.tsx` 已接入新面板。
 - 两端均新增 `tasks-files-panel.tsx` 组件用于 P0 功能。
 
+4. P1-文件编辑回写
+- `platform-web` 与 `runtime-web` 文件面板均已支持 `Edit / Save / Cancel`。
+- 保存逻辑走 `threads.updateState(..., { values: { files: ... } })` 回写线程状态。
+- 运行中 (`isLoading`) 或存在待处理中断 (`interrupt`) 时禁用编辑，避免状态冲突。
+
+5. P1-子代理执行可视化
+- 在 AI 消息区域新增 `task` 工具调用专属“子代理卡片”展示。
+- 展示信息：子代理名称（`subagent_type`）、状态（running/completed）、输入、输出。
+- 输入输出支持折叠查看，不影响现有 tool call 与 interrupt 渲染链路。
+
 ### 8.3 相关代码变更
 
 - `apps/platform-web/src/components/thread/tasks-files-panel.tsx`（新增）
 - `apps/platform-web/src/components/thread/index.tsx`（接入）
+- `apps/platform-web/src/components/thread/messages/ai.tsx`（新增子代理执行卡片）
+- `apps/platform-web/src/providers/Thread.tsx`（新增 `updateThreadState`）
 - `apps/runtime-web/src/components/thread/tasks-files-panel.tsx`（新增）
 - `apps/runtime-web/src/components/thread/index.tsx`（接入）
+- `apps/runtime-web/src/components/thread/messages/ai.tsx`（新增子代理执行卡片）
+- `apps/runtime-web/src/providers/Thread.tsx`（新增 `updateThreadState`）
 
 ### 8.4 已知问题 / 兼容性说明
 
@@ -253,7 +268,11 @@
 - 面板默认仅在存在 `todos` 或 `files` 时展示。
 - 首次出现任务/文件会自动展开一个面板（优先保留当前打开态）。
 
-3. 代码重复
+3. 子代理可视化范围
+- 当前仅对 `tool_call.name === \"task\"` 生效，其他工具调用仍按原逻辑显示。
+- 输出依赖 tool message 与 tool_call_id 匹配，若后端不返回 tool message，则状态保持 running。
+
+4. 代码重复
 - 当前为保证两端快速落地，`platform-web` 与 `runtime-web` 各自保留了一份 `tasks-files-panel.tsx`。
 - 后续若你确认继续推进，可抽成共享组件减少重复维护成本。
 

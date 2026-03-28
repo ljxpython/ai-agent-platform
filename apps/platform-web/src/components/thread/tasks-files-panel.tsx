@@ -5,12 +5,16 @@ import {
   Clock3,
   Copy,
   Download,
+  Edit3,
   FileText,
+  Save,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
+import { useQueryState } from "nuqs";
+import { useThreads } from "@/providers/Thread";
 
 type TodoStatus = "pending" | "in_progress" | "completed";
 
@@ -134,13 +138,22 @@ function downloadTextFile(fileName: string, content: string) {
 
 export function TasksFilesPanel({
   values,
+  isRunning,
+  hasInterrupt,
 }: {
   values: Record<string, unknown> | undefined;
+  isRunning: boolean;
+  hasInterrupt: boolean;
 }) {
   const todos = useMemo(() => normalizeTodos(values), [values]);
   const files = useMemo(() => normalizeFiles(values), [values]);
+  const { updateThreadState } = useThreads();
+  const [threadId] = useQueryState("threadId");
   const [metaOpen, setMetaOpen] = useState<"tasks" | "files" | null>(null);
   const [selectedFilePath, setSelectedFilePath] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
   const prevTodosCount = useRef(0);
   const prevFilesCount = useRef(0);
 
@@ -161,10 +174,13 @@ export function TasksFilesPanel({
   useEffect(() => {
     if (files.length === 0) {
       setSelectedFilePath(null);
+      setIsEditing(false);
+      setEditValue("");
       return;
     }
     if (!selectedFilePath || !files.some((file) => file.path === selectedFilePath)) {
       setSelectedFilePath(files[0].path);
+      setIsEditing(false);
     }
   }, [files, selectedFilePath]);
 
@@ -172,6 +188,7 @@ export function TasksFilesPanel({
     () => files.find((file) => file.path === selectedFilePath) ?? null,
     [files, selectedFilePath],
   );
+  const editDisabled = isRunning || hasInterrupt || isSaving;
 
   const groupedTodos = useMemo(
     () => ({
@@ -209,6 +226,66 @@ export function TasksFilesPanel({
       toast.success("File downloaded");
     } catch {
       toast.error("Failed to download file");
+    }
+  };
+
+  const handleStartEdit = () => {
+    if (!selectedFile) return;
+    if (editDisabled) {
+      toast.error("Cannot edit file while run is active or waiting for interrupt decision");
+      return;
+    }
+    setIsEditing(true);
+    setEditValue(selectedFile.content);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditValue(selectedFile?.content ?? "");
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedFile) return;
+    const normalizedThreadId = (threadId ?? "").trim();
+    if (!normalizedThreadId) {
+      toast.error("No active thread selected");
+      return;
+    }
+
+    const rawFiles = values?.files;
+    if (!rawFiles || typeof rawFiles !== "object" || Array.isArray(rawFiles)) {
+      toast.error("No editable files found in current thread state");
+      return;
+    }
+
+    const nextFiles = { ...(rawFiles as Record<string, unknown>) };
+    const currentRaw = nextFiles[selectedFile.path];
+    if (typeof currentRaw === "string" || currentRaw == null) {
+      nextFiles[selectedFile.path] = editValue;
+    } else if (typeof currentRaw === "object" && !Array.isArray(currentRaw)) {
+      const currentRecord = currentRaw as Record<string, unknown>;
+      if ("content" in currentRecord) {
+        nextFiles[selectedFile.path] = {
+          ...currentRecord,
+          content: editValue,
+        };
+      } else {
+        nextFiles[selectedFile.path] = editValue;
+      }
+    } else {
+      nextFiles[selectedFile.path] = editValue;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateThreadState(normalizedThreadId, { files: nextFiles });
+      toast.success("File saved to thread state");
+      setIsEditing(false);
+    } catch (error) {
+      toast.error("Failed to save file");
+      console.error(error);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -354,6 +431,44 @@ export function TasksFilesPanel({
                         {selectedFile.path}
                       </p>
                       <div className="flex items-center gap-1">
+                        {isEditing ? (
+                          <>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={handleCancelEdit}
+                              disabled={isSaving}
+                            >
+                              <X className="mr-1 size-3.5" />
+                              Cancel
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 px-2 text-xs"
+                              onClick={handleSaveEdit}
+                              disabled={editDisabled}
+                            >
+                              <Save className="mr-1 size-3.5" />
+                              Save
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 px-2 text-xs"
+                            onClick={handleStartEdit}
+                            disabled={editDisabled}
+                          >
+                            <Edit3 className="mr-1 size-3.5" />
+                            Edit
+                          </Button>
+                        )}
                         <Button type="button" variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={handleCopyFile}>
                           <Copy className="mr-1 size-3.5" />
                           Copy
@@ -364,9 +479,18 @@ export function TasksFilesPanel({
                         </Button>
                       </div>
                     </div>
-                    <pre className="h-full max-h-52 overflow-auto px-3 py-2 text-xs leading-5 text-foreground">
-                      {selectedFile.content || "<empty file>"}
-                    </pre>
+                    {isEditing ? (
+                      <textarea
+                        className="h-full max-h-52 w-full resize-none bg-background px-3 py-2 font-mono text-xs leading-5 text-foreground outline-none"
+                        value={editValue}
+                        onChange={(event) => setEditValue(event.target.value)}
+                        disabled={editDisabled}
+                      />
+                    ) : (
+                      <pre className="h-full max-h-52 overflow-auto px-3 py-2 text-xs leading-5 text-foreground">
+                        {selectedFile.content || "<empty file>"}
+                      </pre>
+                    )}
                   </div>
                 ) : (
                   <p className="px-3 py-4 text-xs text-muted-foreground">No files available.</p>
@@ -379,4 +503,3 @@ export function TasksFilesPanel({
     </div>
   );
 }
-

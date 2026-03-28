@@ -50,6 +50,10 @@ function appendLangGraphApiPrefix(apiUrl: string): string {
 
 interface ThreadContextType {
   getThreads: () => Promise<Thread[]>;
+  updateThreadState: (
+    threadId: string,
+    values: Record<string, unknown>,
+  ) => Promise<void>;
   threads: Thread[];
   setThreads: Dispatch<SetStateAction<Thread[]>>;
   threadsLoading: boolean;
@@ -102,13 +106,13 @@ export function ThreadProvider({
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
 
-  const getThreads = useCallback(async (): Promise<Thread[]> => {
+  const buildClient = useCallback(() => {
     const finalApiUrl = appendLangGraphApiPrefix(
       normalizeApiUrl(apiUrl || envApiUrl || "", envApiUrl),
     );
-    const finalTargetId =
-      (targetType === "graph" ? graphId || assistantId : assistantId || envAssistantId) || "";
-    if (!finalApiUrl || !finalTargetId) return [];
+    if (!finalApiUrl) {
+      return null;
+    }
 
     const rawApiKey = getApiKey();
     const clientApiKey =
@@ -116,9 +120,22 @@ export function ThreadProvider({
         ? rawApiKey
         : undefined;
 
-    const client = createClient(finalApiUrl, clientApiKey, {
+    return createClient(finalApiUrl, clientApiKey, {
       ...(projectId ? { "x-project-id": projectId } : {}),
     });
+  }, [apiUrl, envApiUrl, projectId, autoTokenEnabled]);
+
+  const getThreads = useCallback(async (): Promise<Thread[]> => {
+    const finalApiUrl = appendLangGraphApiPrefix(
+      normalizeApiUrl(apiUrl || envApiUrl || "", envApiUrl),
+    );
+    const finalTargetId =
+      (targetType === "graph" ? graphId || assistantId : assistantId || envAssistantId) || "";
+    if (!finalApiUrl || !finalTargetId) return [];
+    const client = buildClient();
+    if (!client) {
+      return [];
+    }
 
     try {
         const threads = await client.threads.search({
@@ -160,13 +177,30 @@ export function ThreadProvider({
     graphId,
     envApiUrl,
     envAssistantId,
-    projectId,
-    autoTokenEnabled,
     targetType,
+    buildClient,
   ]);
+
+  const updateThreadState = useCallback(
+    async (threadId: string, values: Record<string, unknown>) => {
+      const normalizedThreadId = threadId.trim();
+      if (!normalizedThreadId) {
+        throw new Error("Thread id is required");
+      }
+
+      const client = buildClient();
+      if (!client) {
+        throw new Error("API URL is not configured");
+      }
+
+      await client.threads.updateState(normalizedThreadId, { values });
+    },
+    [buildClient],
+  );
 
   const value = {
     getThreads,
+    updateThreadState,
     threads,
     setThreads,
     threadsLoading,

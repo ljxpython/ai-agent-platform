@@ -15,6 +15,10 @@ import { buildThreadTargetMetadata, resolveThreadTarget } from "./thread-target"
 
 interface ThreadContextType {
   getThreads: () => Promise<Thread[]>;
+  updateThreadState: (
+    threadId: string,
+    values: Record<string, unknown>,
+  ) => Promise<void>;
   threads: Thread[];
   setThreads: Dispatch<SetStateAction<Thread[]>>;
   threadsLoading: boolean;
@@ -41,6 +45,14 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [threadsLoading, setThreadsLoading] = useState(false);
 
+  const buildClient = useCallback(() => {
+    const finalApiUrl = apiUrl || envApiUrl || "";
+    if (!finalApiUrl) {
+      return null;
+    }
+    return createClient(finalApiUrl, getApiKey() ?? undefined);
+  }, [apiUrl, envApiUrl]);
+
   const getThreads = useCallback(async (): Promise<Thread[]> => {
     const finalApiUrl = apiUrl || envApiUrl || "";
     const resolvedTarget = resolveThreadTarget({
@@ -51,7 +63,10 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
     });
     if (!finalApiUrl || !resolvedTarget.targetId) return [];
 
-    const client = createClient(finalApiUrl, getApiKey() ?? undefined);
+    const client = buildClient();
+    if (!client) {
+      return [];
+    }
 
     const threads = await client.threads.search({
       metadata: {
@@ -64,10 +79,36 @@ export function ThreadProvider({ children }: { children: ReactNode }) {
     });
 
     return threads;
-  }, [apiUrl, assistantId, envApiUrl, envAssistantId, graphId, targetType]);
+  }, [
+    apiUrl,
+    assistantId,
+    envApiUrl,
+    envAssistantId,
+    graphId,
+    targetType,
+    buildClient,
+  ]);
+
+  const updateThreadState = useCallback(
+    async (threadId: string, values: Record<string, unknown>) => {
+      const normalizedThreadId = threadId.trim();
+      if (!normalizedThreadId) {
+        throw new Error("Thread id is required");
+      }
+
+      const client = buildClient();
+      if (!client) {
+        throw new Error("API URL is not configured");
+      }
+
+      await client.threads.updateState(normalizedThreadId, { values });
+    },
+    [buildClient],
+  );
 
   const value = {
     getThreads,
+    updateThreadState,
     threads,
     setThreads,
     threadsLoading,
