@@ -202,6 +202,7 @@ export function TasksFilesPanel({
   const totalTasks = todos.length;
   const completedTasks = groupedTodos.completed.length;
   const activeTask = groupedTodos.in_progress[0] ?? groupedTodos.pending[0] ?? null;
+  const allTasksCompleted = totalTasks > 0 && completedTasks === totalTasks;
   const hasTasks = totalTasks > 0;
   const hasFiles = files.length > 0;
 
@@ -299,9 +300,17 @@ export function TasksFilesPanel({
               onClick={() => setMetaOpen("tasks")}
               className="grid grid-cols-[auto_1fr] items-center gap-2 px-4 py-3 text-left text-sm hover:bg-accent/60"
             >
-              {activeTask ? <TodoStatusIcon status={activeTask.status} /> : <Circle className="size-3.5 text-muted-foreground" />}
+              {allTasksCompleted ? (
+                <CheckCircle2 className="size-3.5 text-emerald-600" />
+              ) : activeTask ? (
+                <TodoStatusIcon status={activeTask.status} />
+              ) : (
+                <Circle className="size-3.5 text-muted-foreground" />
+              )}
               <span className="truncate text-foreground">
-                {activeTask
+                {allTasksCompleted
+                  ? "All tasks completed"
+                  : activeTask
                   ? `${completedTasks}/${totalTasks} ${activeTask.content}`
                   : `${completedTasks}/${totalTasks} tasks completed`}
               </span>

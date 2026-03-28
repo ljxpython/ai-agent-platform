@@ -14,7 +14,6 @@ import {
 } from "@/lib/ensure-tool-responses";
 import { isAgentInboxInterruptSchema } from "@/lib/agent-inbox-interrupt";
 import { LangGraphLogoSVG } from "../icons/langgraph";
-import { TooltipIconButton } from "./tooltip-icon-button";
 import {
   ArrowDown,
   LoaderCircle,
@@ -95,7 +94,7 @@ function OpenGitHubRepo() {
       <Tooltip>
         <TooltipTrigger asChild>
           <a
-            href="https://github.com/langchain-ai/agent-chat-ui"
+            href="https://github.com/ljxpython/ai-agent-platform"
             target="_blank"
             className="flex items-center justify-center"
           >
@@ -436,15 +435,15 @@ export function Thread() {
                 <div className="flex items-center">
                   <OpenGitHubRepo />
                 </div>
-                <TooltipIconButton
-                  size="lg"
-                  className="p-4"
-                  tooltip="New thread"
+                <Button
+                  type="button"
                   variant="ghost"
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
                   onClick={() => setThreadId(null)}
                 >
                   <SquarePen className="size-5" />
-                </TooltipIconButton>
+                  <span>New Chat</span>
+                </Button>
               </div>
 
               <div className="from-background to-background/0 absolute inset-x-0 top-full h-5 bg-gradient-to-b" />

@@ -42,7 +42,6 @@ import { TasksFilesPanel } from "./tasks-files-panel";
 import { ThreadIdCopyable } from "./agent-inbox/components/thread-id";
 import { AssistantMessage, AssistantMessageLoading } from "./messages/ai";
 import { HumanMessage } from "./messages/human";
-import { TooltipIconButton } from "./tooltip-icon-button";
 import { GitHubSVG } from "../icons/github";
 import { LangGraphLogoSVG } from "../icons/langgraph";
 import { Button } from "../ui/button";
@@ -109,7 +108,7 @@ function OpenGitHubRepo() {
       <Tooltip>
         <TooltipTrigger asChild>
           <a
-            href="https://github.com/ljxpython/ai-agent-test-platform"
+            href="https://github.com/ljxpython/ai-agent-platform"
             target="_blank"
             rel="noreferrer noopener"
             className="flex items-center justify-center"
@@ -672,15 +671,15 @@ export function Thread({
                 <div className="flex items-center">
                   <OpenGitHubRepo />
                 </div>
-                <TooltipIconButton
-                  size="lg"
-                  className="p-4"
-                  tooltip="New thread"
+                <Button
+                  type="button"
                   variant="ghost"
+                  className="inline-flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
                   onClick={() => setThreadId(null)}
                 >
                   <SquarePen className="size-5" />
-                </TooltipIconButton>
+                  <span>New Chat</span>
+                </Button>
               </div>
             </div>
           )}

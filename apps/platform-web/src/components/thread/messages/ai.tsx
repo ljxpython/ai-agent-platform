@@ -1,6 +1,6 @@
 import { parsePartialJson } from "@langchain/core/output_parsers";
 import { useStreamContext } from "@/providers/Stream";
-import { AIMessage, Checkpoint, Message } from "@langchain/langgraph-sdk";
+import { AIMessage, Checkpoint, Message, ToolMessage } from "@langchain/langgraph-sdk";
 import { getContentString } from "../utils";
 import { BranchSwitcher, CommandBar } from "./shared";
 import { MarkdownText } from "../markdown-text";
@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { ToolCalls, ToolResult } from "./tool-calls";
 import { MessageContentComplex } from "@langchain/core/messages";
 import { Fragment } from "react/jsx-runtime";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { isAgentInboxInterruptSchema } from "@/lib/agent-inbox-interrupt";
 import { ThreadView } from "../agent-inbox";
 import { useQueryState, parseAsBoolean } from "nuqs";
@@ -279,10 +279,61 @@ export function AssistantMessage({
     ) ?? false);
   const hasAnthropicToolCalls = !!anthropicStreamedToolCalls?.length;
   const isToolResult = message?.type === "tool";
+  const toolResultsByCallId = useMemo(() => {
+    const result: Record<string, ToolMessage> = {};
+    for (const item of thread.messages) {
+      if (
+        item.type === "tool" &&
+        typeof item.tool_call_id === "string" &&
+        item.tool_call_id.trim()
+      ) {
+        result[item.tool_call_id] = item;
+      }
+    }
+    return result;
+  }, [thread.messages]);
+  const linkedToolCallIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of thread.messages) {
+      if (item.type !== "ai" || !Array.isArray(item.tool_calls)) {
+        continue;
+      }
+      for (const toolCall of item.tool_calls) {
+        if (typeof toolCall?.id === "string" && toolCall.id.trim()) {
+          ids.add(toolCall.id);
+        }
+      }
+    }
+    return ids;
+  }, [thread.messages]);
+  const shouldHideStandaloneToolResult = Boolean(
+    isToolResult &&
+      typeof message?.tool_call_id === "string" &&
+      linkedToolCallIds.has(message.tool_call_id),
+  );
   const subAgentCards = extractSubAgentCards(message, thread.messages);
 
   if (isToolResult && hideToolCalls) {
     return null;
+  }
+
+  if (shouldHideStandaloneToolResult) {
+    const shouldShowInterrupt =
+      Boolean(threadInterrupt) && (isLastMessage || hasNoAIOrToolMessages);
+    if (!shouldShowInterrupt) {
+      return null;
+    }
+    return (
+      <div className="group mr-auto flex w-full items-start gap-2">
+        <div className="flex w-full flex-col gap-2">
+          <Interrupt
+            interrupt={threadInterrupt}
+            isLastMessage={isLastMessage}
+            hasNoAIOrToolMessages={hasNoAIOrToolMessages}
+          />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -307,13 +358,22 @@ export function AssistantMessage({
             {!hideToolCalls && (
               <>
                 {(hasToolCalls && toolCallsHaveContents && (
-                  <ToolCalls toolCalls={message.tool_calls} />
+                  <ToolCalls
+                    toolCalls={message.tool_calls}
+                    toolResultsByCallId={toolResultsByCallId}
+                  />
                 )) ||
                   (hasAnthropicToolCalls && (
-                    <ToolCalls toolCalls={anthropicStreamedToolCalls} />
+                    <ToolCalls
+                      toolCalls={anthropicStreamedToolCalls}
+                      toolResultsByCallId={toolResultsByCallId}
+                    />
                   )) ||
                   (hasToolCalls && (
-                    <ToolCalls toolCalls={message.tool_calls} />
+                    <ToolCalls
+                      toolCalls={message.tool_calls}
+                      toolResultsByCallId={toolResultsByCallId}
+                    />
                   ))}
               </>
             )}
