@@ -339,29 +339,50 @@ export function ThreadActionsView({
         </div>
       </div>
 
-      <div className="flex w-full flex-row flex-wrap items-center justify-start gap-2">
-        <Button
-          variant="outline"
-          className="border-gray-500 bg-white font-normal text-gray-800"
-          onClick={handleResolve}
-          disabled={actionsDisabled}
-        >
-          Mark as Resolved
-        </Button>
-        {hasMultipleActions && allAllowApprove && (
+      <div className="rounded-xl border border-border/80 bg-card/60 p-3">
+        <div className="mb-2 flex items-center justify-between">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Workflow Actions
+          </p>
+          {hasMultipleActions ? (
+            <p className="text-xs text-muted-foreground">
+              Addressed {addressedActions.size}/{actionRequests.length}
+            </p>
+          ) : null}
+        </div>
+        <div className="flex w-full flex-row flex-wrap items-center justify-start gap-2">
           <Button
             variant="outline"
             className="border-gray-500 bg-white font-normal text-gray-800"
-            onClick={handleApproveAll}
+            onClick={handleResolve}
             disabled={actionsDisabled}
           >
-            Approve All
+            Mark as Resolved
           </Button>
-        )}
+          {hasMultipleActions && allAllowApprove && (
+            <Button
+              variant="outline"
+              className="border-gray-500 bg-white font-normal text-gray-800"
+              onClick={handleApproveAll}
+              disabled={actionsDisabled}
+            >
+              Approve All
+            </Button>
+          )}
+        </div>
       </div>
 
       {hasMultipleActions && (
-        <div className="flex w-full items-center gap-2">
+        <div className="rounded-xl border border-border/80 bg-card/60 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Batch Progress
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Current {currentIndex + 1}/{actionRequests.length}
+            </p>
+          </div>
+          <div className="flex w-full items-center gap-2">
           {actionRequests.map((_, index) => {
             const status = getDecisionStatus(addressedActions.get(index));
             return (
@@ -383,59 +404,70 @@ export function ThreadActionsView({
               </button>
             );
           })}
+          </div>
         </div>
       )}
 
-      <InboxItemInput
-        approveAllowed={approveAllowed}
-        hasEdited={hasEdited}
-        hasAddedResponse={hasAddedResponse}
-        interruptValue={interruptValue}
-        humanResponse={humanResponse}
-        initialValues={initialHumanInterruptEditValue.current}
-        setHumanResponse={setHumanResponse}
-        supportsMultipleMethods={supportsMultipleMethods}
-        setSelectedSubmitType={setSelectedSubmitType}
-        setHasAddedResponse={setHasAddedResponse}
-        setHasEdited={setHasEdited}
-        handleSubmit={hasMultipleActions ? handleSaveDecision : handleSubmit}
-        isLoading={hasMultipleActions ? submittingAll : loading}
-        selectedSubmitType={selectedSubmitType}
-      />
+      <div className="rounded-xl border border-border/80 bg-card/60 p-3">
+        <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Decision Input
+        </p>
+        <InboxItemInput
+          approveAllowed={approveAllowed}
+          hasEdited={hasEdited}
+          hasAddedResponse={hasAddedResponse}
+          interruptValue={interruptValue}
+          humanResponse={humanResponse}
+          initialValues={initialHumanInterruptEditValue.current}
+          setHumanResponse={setHumanResponse}
+          supportsMultipleMethods={supportsMultipleMethods}
+          setSelectedSubmitType={setSelectedSubmitType}
+          setHasAddedResponse={setHasAddedResponse}
+          setHasEdited={setHasEdited}
+          handleSubmit={hasMultipleActions ? handleSaveDecision : handleSubmit}
+          isLoading={hasMultipleActions ? submittingAll : loading}
+          selectedSubmitType={selectedSubmitType}
+        />
+      </div>
 
       {hasMultipleActions && (
-        <div className="flex w-full items-center justify-between">
-          <div className="flex gap-2">
+        <div className="rounded-xl border border-border/80 bg-card/60 p-3">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Batch Navigation
+          </div>
+          <div className="flex w-full items-center justify-between">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentIndex === 0}
+                onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentIndex === actionRequests.length - 1}
+                onClick={() =>
+                  setCurrentIndex((prev) =>
+                    Math.min(actionRequests.length - 1, prev + 1),
+                  )
+                }
+              >
+                Next
+              </Button>
+            </div>
             <Button
-              variant="outline"
-              size="sm"
-              disabled={currentIndex === 0}
-              onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
+              variant="brand"
+              disabled={!hasAllDecisions || submittingAll}
+              onClick={handleSubmitAll}
             >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={currentIndex === actionRequests.length - 1}
-              onClick={() =>
-                setCurrentIndex((prev) =>
-                  Math.min(actionRequests.length - 1, prev + 1),
-                )
-              }
-            >
-              Next
+              {submittingAll
+                ? "Submitting..."
+                : `Submit all ${actionRequests.length} decisions`}
             </Button>
           </div>
-          <Button
-            variant="brand"
-            disabled={!hasAllDecisions || submittingAll}
-            onClick={handleSubmitAll}
-          >
-            {submittingAll
-              ? "Submitting..."
-              : `Submit all ${actionRequests.length} decisions`}
-          </Button>
         </div>
       )}
 

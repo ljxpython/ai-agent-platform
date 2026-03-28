@@ -212,10 +212,11 @@
 
 ## 8. 实施进度（持续更新）
 
-### 8.1 P0/P1 实施状态
+### 8.1 P0/P1/P2 实施状态
 
 - P0 状态：`已实现（待你验收）`
 - P1 状态：`已实现（待你验收）`
+- P2 状态：`已实现（待你验收）`
 - 实施日期：`2026-03-28`
 
 ### 8.2 已完成项
@@ -247,6 +248,16 @@
 - 展示信息：子代理名称（`subagent_type`）、状态（running/completed）、输入、输出。
 - 输入输出支持折叠查看，不影响现有 tool call 与 interrupt 渲染链路。
 
+6. P2-线程列表工作台增强
+- `platform-web` 与 `runtime-web` 的 thread history 均已支持状态筛选：`all / interrupted / busy / idle / error`。
+- 已支持按时间分组展示：`Needs Attention / Today / Yesterday / This Week / Older`。
+- 已支持中断数聚合展示（Interrupted 标签计数）。
+- 已新增手动刷新按钮，便于快速更新线程列表。
+
+7. P2-中断审批视觉优化
+- 在 `agent-inbox` 的审批页新增信息分区：`Workflow Actions / Batch Progress / Decision Input / Batch Navigation`。
+- 保持原有审批协议与提交流程不变，仅优化信息层级与可读性。
+
 ### 8.3 相关代码变更
 
 - `apps/platform-web/src/components/thread/tasks-files-panel.tsx`（新增）
@@ -257,6 +268,10 @@
 - `apps/runtime-web/src/components/thread/index.tsx`（接入）
 - `apps/runtime-web/src/components/thread/messages/ai.tsx`（新增子代理执行卡片）
 - `apps/runtime-web/src/providers/Thread.tsx`（新增 `updateThreadState`）
+- `apps/platform-web/src/components/thread/history/index.tsx`（P2 线程列表增强）
+- `apps/runtime-web/src/components/thread/history/index.tsx`（P2 线程列表增强）
+- `apps/platform-web/src/components/thread/agent-inbox/components/thread-actions-view.tsx`（P2 审批视觉优化）
+- `apps/runtime-web/src/components/thread/agent-inbox/components/thread-actions-view.tsx`（P2 审批视觉优化）
 
 ### 8.4 已知问题 / 兼容性说明
 
@@ -275,6 +290,10 @@
 4. 代码重复
 - 当前为保证两端快速落地，`platform-web` 与 `runtime-web` 各自保留了一份 `tasks-files-panel.tsx`。
 - 后续若你确认继续推进，可抽成共享组件减少重复维护成本。
+
+5. P2 视觉优化边界
+- P2 仅做视觉分区与信息组织优化，不改 `resume/approve/reject/edit` 协议路径。
+- 线程分组依赖 `updated_at` 与 `status` 字段，字段缺失时会自动回落到 `Older` 分组。
 
 ### 8.5 校验记录
 
