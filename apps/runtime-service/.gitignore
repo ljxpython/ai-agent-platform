@@ -198,6 +198,9 @@ target/
 .ipynb_checkpoints
 
 # IPython
+
+# Runtime artifacts (agent local temp data)
+runtime_service/agents/**/temp/
 profile_default/
 ipython_config.py
 
