@@ -1,4 +1,4 @@
-import { createManagementApiClient } from "./client";
+import { createManagementApiClient, type ManagementDownload } from "./client";
 
 export type TestcaseOverview = {
   project_id: string;
@@ -168,6 +168,34 @@ export async function getTestcaseCase(projectId: string, caseId: string): Promis
     throw new Error("management_api_unavailable");
   }
   return client.get<TestcaseCase>(`/_management/projects/${projectId}/testcase/cases/${caseId}`);
+}
+
+export async function exportTestcaseCasesExcel(
+  projectId: string,
+  options?: {
+    batch_id?: string;
+    status?: string;
+    query?: string;
+  },
+): Promise<ManagementDownload> {
+  const client = createClient(projectId);
+  if (!client || !projectId) {
+    throw new Error("management_api_unavailable");
+  }
+  const params = new URLSearchParams();
+  if (options?.batch_id?.trim()) {
+    params.set("batch_id", options.batch_id.trim());
+  }
+  if (options?.status?.trim()) {
+    params.set("status", options.status.trim());
+  }
+  if (options?.query?.trim()) {
+    params.set("query", options.query.trim());
+  }
+  const suffix = params.toString();
+  return client.download(
+    `/_management/projects/${projectId}/testcase/cases/export${suffix ? `?${suffix}` : ""}`,
+  );
 }
 
 export async function createTestcaseCase(

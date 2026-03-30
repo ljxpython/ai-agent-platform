@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from io import BytesIO
 from typing import Any
 
 from app.api.management.common import require_project_role
@@ -9,7 +10,14 @@ from app.api.management.schemas import (
 )
 from app.db.access import parse_uuid
 from app.services.interaction_data_service import InteractionDataService
+from app.services.testcase_case_export import (
+    MAX_TESTCASE_EXPORT_ROWS,
+    _EXPORT_MEDIA_TYPE,
+    build_content_disposition,
+    build_testcase_cases_workbook,
+)
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import StreamingResponse
 
 router = APIRouter(tags=["management-testcase"])
 
@@ -73,6 +81,43 @@ async def list_testcase_cases(
         query=_cleanup_optional_text(query),
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get("/projects/{project_id}/testcase/cases/export")
+async def export_testcase_cases(
+    request: Request,
+    project_id: str,
+    status: str | None = Query(default=None),
+    batch_id: str | None = Query(default=None),
+    query: str | None = Query(default=None),
+) -> StreamingResponse:
+    project_uuid = _parse_project_id(project_id)
+    require_project_role(request, project_uuid, allowed_roles={"admin", "editor", "executor"})
+    service = InteractionDataService(request)
+    normalized_status = _cleanup_optional_text(status)
+    normalized_batch_id = _cleanup_optional_text(batch_id)
+    normalized_query = _cleanup_optional_text(query)
+    items, _total = await service.list_all_cases_for_export(
+        project_id,
+        status=normalized_status,
+        batch_id=normalized_batch_id,
+        query=normalized_query,
+        max_items=MAX_TESTCASE_EXPORT_ROWS,
+    )
+    filename, workbook_bytes = build_testcase_cases_workbook(
+        project_id=project_id,
+        cases=items,
+        filters={
+            "status": normalized_status,
+            "batch_id": normalized_batch_id,
+            "query": normalized_query,
+        },
+    )
+    return StreamingResponse(
+        BytesIO(workbook_bytes),
+        media_type=_EXPORT_MEDIA_TYPE,
+        headers={"Content-Disposition": build_content_disposition(filename)},
     )
 
 

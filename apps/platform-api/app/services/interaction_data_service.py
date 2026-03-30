@@ -9,6 +9,7 @@ _DOCUMENTS_PATH = "/api/test-case-service/documents"
 _TEST_CASES_PATH = "/api/test-case-service/test-cases"
 _OVERVIEW_PATH = "/api/test-case-service/overview"
 _BATCHES_PATH = "/api/test-case-service/batches"
+_DEFAULT_EXPORT_PAGE_SIZE = 200
 
 
 class InteractionDataService:
@@ -73,6 +74,50 @@ class InteractionDataService:
     async def get_case(self, project_id: str, case_id: str) -> dict[str, Any]:
         payload = await self._client.get(f"{_TEST_CASES_PATH}/{case_id}")
         return self._ensure_project_match(payload, project_id, detail="test_case_not_found")
+
+    async def list_all_cases_for_export(
+        self,
+        project_id: str,
+        *,
+        status: str | None,
+        batch_id: str | None,
+        query: str | None,
+        max_items: int,
+    ) -> tuple[list[dict[str, Any]], int]:
+        first_page = await self.list_cases(
+            project_id,
+            status=status,
+            batch_id=batch_id,
+            query=query,
+            limit=min(_DEFAULT_EXPORT_PAGE_SIZE, max_items + 1),
+            offset=0,
+        )
+        total = int(first_page.get("total") or 0)
+        if total > max_items:
+            raise HTTPException(
+                status_code=400,
+                detail=f"testcase_export_limit_exceeded:{total}>{max_items}",
+            )
+        items = list(first_page.get("items") or [])
+        if len(items) >= total:
+            return items[:total], total
+
+        offset = len(items)
+        while offset < total:
+            page = await self.list_cases(
+                project_id,
+                status=status,
+                batch_id=batch_id,
+                query=query,
+                limit=min(_DEFAULT_EXPORT_PAGE_SIZE, total - offset),
+                offset=offset,
+            )
+            chunk = list(page.get("items") or [])
+            items.extend(chunk)
+            if not chunk:
+                break
+            offset = len(items)
+        return items[:total], total
 
     async def create_case(self, project_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         next_payload = {**payload, "project_id": project_id}

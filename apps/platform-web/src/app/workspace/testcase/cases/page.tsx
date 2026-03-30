@@ -1,13 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Download, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 import { ListSearch } from "@/components/platform/list-search";
 import { PageStateEmpty, PageStateError, PageStateLoading } from "@/components/platform/page-state";
 import { DEFAULT_PAGE_SIZE_OPTIONS, PaginationControls } from "@/components/platform/pagination-controls";
 import { TestcaseOverviewStrip } from "@/components/platform/testcase-overview-strip";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  exportTestcaseCasesExcel,
   getTestcaseCase,
   getTestcaseOverview,
   listTestcaseBatches,
@@ -33,6 +37,17 @@ function stringifyJson(value: unknown) {
   return JSON.stringify(value ?? {}, null, 2);
 }
 
+function triggerBrowserDownload(blob: Blob, filename: string) {
+  const objectUrl = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = objectUrl;
+  anchor.download = filename;
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(objectUrl);
+}
+
 const STATUS_OPTIONS = ["", "active", "draft", "disabled", "archived"];
 
 export default function TestcaseCasesPage() {
@@ -54,6 +69,7 @@ export default function TestcaseCasesPage() {
   const [selectedItem, setSelectedItem] = useState<TestcaseCase | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const currentPage = Math.floor(offset / pageSize) + 1;
   const maxPage = Math.max(1, Math.ceil(total / pageSize));
@@ -173,6 +189,31 @@ export default function TestcaseCasesPage() {
     [batchFilter, batches],
   );
 
+  const handleExport = useCallback(async () => {
+    if (!projectId || exporting) {
+      return;
+    }
+    setExporting(true);
+    try {
+      const download = await exportTestcaseCasesExcel(projectId, {
+        batch_id: batchFilter || undefined,
+        status: statusFilter || undefined,
+        query: query || undefined,
+      });
+      const fallbackName = `testcase-cases-${new Date().toISOString().slice(0, 19).replaceAll(":", "-")}.xlsx`;
+      triggerBrowserDownload(download.blob, download.filename || fallbackName);
+      toast("导出成功", {
+        description: `已导出当前筛选结果，共 ${total} 条测试用例。`,
+      });
+    } catch (err) {
+      toast("导出失败", {
+        description: err instanceof Error ? err.message : "Failed to export testcase cases",
+      });
+    } finally {
+      setExporting(false);
+    }
+  }, [batchFilter, exporting, projectId, query, statusFilter, total]);
+
   return (
     <section className="p-4 sm:p-6">
       <h2 className="text-xl font-semibold tracking-tight">用例管理</h2>
@@ -182,43 +223,55 @@ export default function TestcaseCasesPage() {
 
       <TestcaseOverviewStrip overview={overview} />
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <label className="text-sm text-muted-foreground">
-          批次
-          <select
-            className="ml-2 h-9 rounded-md border border-border bg-background px-3 text-sm"
-            value={batchFilter}
-            onChange={(event) => {
-              setBatchFilter(event.target.value);
-              setOffset(0);
-            }}
-          >
-            <option value="">全部批次</option>
-            {batches.map((item) => (
-              <option key={item.batch_id} value={item.batch_id}>
-                {item.batch_id}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="text-sm text-muted-foreground">
+            批次
+            <select
+              className="ml-2 h-9 rounded-md border border-border bg-background px-3 text-sm"
+              value={batchFilter}
+              onChange={(event) => {
+                setBatchFilter(event.target.value);
+                setOffset(0);
+              }}
+            >
+              <option value="">全部批次</option>
+              {batches.map((item) => (
+                <option key={item.batch_id} value={item.batch_id}>
+                  {item.batch_id}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <label className="text-sm text-muted-foreground">
-          状态
-          <select
-            className="ml-2 h-9 rounded-md border border-border bg-background px-3 text-sm"
-            value={statusFilter}
-            onChange={(event) => {
-              setStatusFilter(event.target.value);
-              setOffset(0);
-            }}
-          >
-            {STATUS_OPTIONS.map((item) => (
-              <option key={item || "all"} value={item}>
-                {item || "全部状态"}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className="text-sm text-muted-foreground">
+            状态
+            <select
+              className="ml-2 h-9 rounded-md border border-border bg-background px-3 text-sm"
+              value={statusFilter}
+              onChange={(event) => {
+                setStatusFilter(event.target.value);
+                setOffset(0);
+              }}
+            >
+              {STATUS_OPTIONS.map((item) => (
+                <option key={item || "all"} value={item}>
+                  {item || "全部状态"}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void handleExport()}
+          disabled={!projectId || loading || exporting || total <= 0}
+        >
+          {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+          {exporting ? "导出中..." : "导出 Excel"}
+        </Button>
       </div>
 
       <ListSearch

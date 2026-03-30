@@ -11,7 +11,7 @@ const HEADER_ITEMS = [
   {
     label: "持久化范围",
     value: "documents + test_cases",
-    meta: "正式保存后可回看",
+    meta: "documents 上传即落库，test_cases 正式保存后可回看",
   },
 ];
 
