@@ -57,6 +57,7 @@
 - `catalog`
 - `runtime_policies`
 - `runtime_capabilities`
+- `testcase`
 
 ### 3.2 LangGraph 网关
 
@@ -106,6 +107,7 @@ caller
 - Assistant CRUD
 - catalog refresh
 - runtime policy 更新
+- testcase 工作区读取/管理
 
 ### 5.2 LangGraph 网关请求
 
@@ -166,6 +168,21 @@ caller
 - 模型：`app/db/models.py`
 - 数据访问：`app/db/access.py`
 - 业务逻辑：`app/services/`
+
+## 8. Testcase 管理面
+
+当前新增了 `/_management/projects/{project_id}/testcase/*` 路由组。
+
+职责：
+
+- 为 `platform-web` 的 Testcase 工作区提供统一管理接口
+- 承担项目级权限校验
+- 通过本地共享 JSON HTTP client 调用 `interaction-data-service`
+
+当前不承担：
+
+- testcase 业务数据落库
+- testcase 聚合统计自算
 
 ### 新增 LangGraph 代理能力
 

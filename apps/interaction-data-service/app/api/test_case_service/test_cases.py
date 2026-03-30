@@ -68,6 +68,7 @@ async def list_all_test_cases(
     project_id: str | None = Query(None),
     status: str | None = Query(None),
     batch_id: str | None = Query(None),
+    query: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
@@ -81,6 +82,7 @@ async def list_all_test_cases(
             project_id=project_uuid,
             status=status,
             batch_id=batch_id,
+            query=query,
             limit=limit,
             offset=offset,
         )

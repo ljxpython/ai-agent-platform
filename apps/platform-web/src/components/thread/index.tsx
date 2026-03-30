@@ -169,6 +169,7 @@ type ThreadFeatures = {
 
 type ThreadSlots = {
   headerSlot?: ReactNode;
+  contextSlot?: ReactNode;
   emptyStateSlot?: ReactNode;
   rightPanelSlot?: ReactNode;
 };
@@ -538,6 +539,15 @@ export function Thread({
   );
   const effectiveEmptyTitle = emptyTitle || title;
   const effectiveEmptyDescription = emptyDescription || description;
+  const contextPanel = showContextBar ? <ChatContextPanel
+    sourceLabel={sourceLabel}
+    graphId={activeGraphId}
+    assistantId={activeAssistantId}
+    threadId={threadId || ""}
+    collapsed={contextBarCollapsed}
+    onToggleCollapsed={() => setContextBarCollapsed((prev) => !prev)}
+    extraContent={slots?.contextSlot}
+  /> : null;
 
   return (
     <div className="flex min-h-0 w-full flex-1 overflow-hidden">
@@ -609,14 +619,11 @@ export function Thread({
               ) : null}
               {showContextBar ? (
                 <div className="absolute top-14 left-4 max-w-[calc(100%-2rem)]">
-                  <ChatContextPanel
-                    sourceLabel={sourceLabel}
-                    graphId={activeGraphId}
-                    assistantId={activeAssistantId}
-                    threadId={threadId || ""}
-                    collapsed={contextBarCollapsed}
-                    onToggleCollapsed={() => setContextBarCollapsed((prev) => !prev)}
-                  />
+                  {contextPanel}
+                </div>
+              ) : slots?.contextSlot ? (
+                <div className="absolute top-14 left-4 max-w-[calc(100%-2rem)]">
+                  <div className="max-w-full">{slots.contextSlot}</div>
                 </div>
               ) : null}
             </div>
@@ -656,14 +663,7 @@ export function Thread({
                     </span>
                   </motion.button>
                   {slots?.headerSlot ? <div className="max-w-full">{slots.headerSlot}</div> : null}
-                  {showContextBar ? <ChatContextPanel
-                    sourceLabel={sourceLabel}
-                    graphId={activeGraphId}
-                    assistantId={activeAssistantId}
-                    threadId={threadId || ""}
-                    collapsed={contextBarCollapsed}
-                    onToggleCollapsed={() => setContextBarCollapsed((prev) => !prev)}
-                  /> : null}
+                  {contextPanel ? contextPanel : slots?.contextSlot ? <div className="max-w-full">{slots.contextSlot}</div> : null}
                 </motion.div>
               </div>
 
@@ -1102,6 +1102,7 @@ function ChatContextPanel({
   threadId,
   collapsed,
   onToggleCollapsed,
+  extraContent,
 }: {
   sourceLabel: string;
   graphId: string;
@@ -1109,6 +1110,7 @@ function ChatContextPanel({
   threadId: string;
   collapsed: boolean;
   onToggleCollapsed: () => void;
+  extraContent?: ReactNode;
 }) {
   const summary = [graphId && `graph ${graphId}`, assistantId && `assistant ${assistantId}`, threadId && `thread ${threadId}`]
     .filter(Boolean)
@@ -1146,6 +1148,11 @@ function ChatContextPanel({
             <div className="flex min-w-0 items-center gap-2">
               <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground/80">thread</span>
               <ThreadContextChip threadId={threadId} />
+            </div>
+          ) : null}
+          {extraContent ? (
+            <div className="mt-2 border-t border-border/60 pt-2">
+              {extraContent}
             </div>
           ) : null}
         </div>

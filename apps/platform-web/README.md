@@ -30,6 +30,10 @@
 - `/`：根据登录态跳转到 `/workspace/projects` 或 `/auth/login`
 - `/auth/login`：用户名/密码登录
 - `/workspace/chat`
+- `/workspace/testcase`
+- `/workspace/testcase/generate`
+- `/workspace/testcase/cases`
+- `/workspace/testcase/documents`
 - `/workspace/sql-agent`
 - `/workspace/threads`
 - `/workspace/graphs`
@@ -85,6 +89,7 @@ pnpm dev
 5. `docs/local-dev.md`
 6. `docs/testing.md`
 7. `docs/agent-chat-template.md`
+8. `docs/testcase-workspace.md`
 
 ## 当前代码入口
 

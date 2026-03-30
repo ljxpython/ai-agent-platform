@@ -25,6 +25,8 @@
   - Assistant 管理设计与接口落地稿
 - `docs/runtime-object-catalog-design.md`
   - runtime 对象目录与平台主数据设计
+- `docs/testcase-management-api.md`
+  - testcase 管理接口、权限约束与 interaction-data-service 依赖链
 
 ## 文档约定
 

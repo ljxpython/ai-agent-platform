@@ -88,3 +88,25 @@ class UpsertProjectToolPolicyRequest(BaseModel):
     is_enabled: bool = True
     display_order: int | None = None
     note: str | None = None
+
+
+class CreateTestCaseRecordRequest(BaseModel):
+    batch_id: str | None = Field(default=None, max_length=255)
+    case_id: str | None = Field(default=None, max_length=255)
+    title: str = Field(min_length=1, max_length=255)
+    description: str = ""
+    status: str = Field(default="active", min_length=1, max_length=64)
+    module_name: str | None = Field(default=None, max_length=255)
+    priority: str | None = Field(default=None, max_length=32)
+    source_document_ids: list[str] = Field(default_factory=list)
+    content_json: dict[str, Any] = Field(default_factory=dict)
+
+
+class UpdateTestCaseRecordRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    description: str | None = None
+    status: str | None = Field(default=None, min_length=1, max_length=64)
+    module_name: str | None = Field(default=None, max_length=255)
+    priority: str | None = Field(default=None, max_length=32)
+    source_document_ids: list[str] | None = None
+    content_json: dict[str, Any] | None = None

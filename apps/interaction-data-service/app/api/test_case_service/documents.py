@@ -69,6 +69,8 @@ async def list_documents(
     request: Request,
     project_id: str | None = Query(None),
     batch_id: str | None = Query(None),
+    parse_status: str | None = Query(None),
+    query: str | None = Query(None),
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
 ):
@@ -81,6 +83,8 @@ async def list_documents(
             session,
             project_id=project_uuid,
             batch_id=batch_id,
+            parse_status=parse_status,
+            query=query,
             limit=limit,
             offset=offset,
         )

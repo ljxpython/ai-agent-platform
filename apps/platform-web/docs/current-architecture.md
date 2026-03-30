@@ -45,6 +45,7 @@
 `WorkspaceShell` 暴露的主导航包括：
 
 - Chat
+- Testcase
 - SQL Agent
 - Threads
 - Graphs
@@ -85,6 +86,7 @@
 
 - `src/app/workspace/chat/page.tsx`：默认 chat 包装页
 - `src/app/workspace/sql-agent/page.tsx`：agent 专属页面示例
+- `src/app/workspace/testcase/generate/page.tsx`：固定 `test_case_agent` 的业务 chat 页面
 
 这里的模板是**内部开发基座**，不是用户可见的前端模板选择功能。
 
@@ -112,6 +114,7 @@
 - `/_management/assistants/*`
 - `/_management/catalog/*`
 - `/_management/runtime/*`
+- `/_management/projects/{project_id}/testcase/*`
 
 ### 5.2 LangGraph 运行时交互
 
@@ -132,8 +135,22 @@
   - `ListSearch`
   - `PaginationControls`
   - `PageState*`
-  - `ConfirmDialog`
-  - `useResizableColumns`
+- `ConfirmDialog`
+- `useResizableColumns`
+
+## 6.1 Testcase 工作区
+
+当前 `Testcase` 工作区已经落地三类页面：
+
+- `AI 对话生成`
+- `用例管理`
+- `PDF 解析`
+
+实现特点：
+
+- 一级导航支持下拉进入二级页面
+- 生成页固定目标到 `test_case_agent`
+- 用例与文档管理页统一走管理面接口，不直连数据服务
 
 ## 7. 与其他应用的关系
 

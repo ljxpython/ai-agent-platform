@@ -31,6 +31,10 @@
 - `/api/langgraph/*`：LangGraph SDK 风格代理
 - `/_proxy/health`：健康检查
 
+其中 testcase 相关管理接口当前挂在：
+
+- `/_management/projects/{project_id}/testcase/*`
+
 当前应用装配以 `app/factory.py` 为准；历史 passthrough 路由已经 retired，不再作为当前接口基线。
 
 ## 5 分钟本地启动
@@ -89,6 +93,7 @@ curl http://127.0.0.1:2024/_proxy/health
 - `docs/error-playbook.md`
 - `docs/assistant-management-design.md`
 - `docs/runtime-object-catalog-design.md`
+- `docs/testcase-management-api.md`
 
 ## 当前代码入口
 

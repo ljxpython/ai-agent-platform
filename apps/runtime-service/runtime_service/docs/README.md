@@ -105,6 +105,7 @@ fixtures 存放在 `runtime_service/test_data/`。
 - `docs/08-middleware-development-playbook.md`：middleware 目录组织、生命周期钩子与测试规范
 - `docs/09-test-case-service-skills-troubleshooting.md`：test_case_service 的 skills / 多模态问题排查
 - `docs/10-test-case-service-persistence-design.md`：test_case_service 与 interaction-data-service 的新持久化范式
+- `docs/11-testcase-platform-workspace-design.md`：Testcase 平台工作区、管理接口与页面结构的一期设计
 
 ## 开发约定
 

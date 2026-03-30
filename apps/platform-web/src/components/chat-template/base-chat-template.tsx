@@ -35,6 +35,7 @@ export type BaseChatTemplateFeatureFlags = {
 
 export type BaseChatTemplateSlots = {
   headerSlot?: ReactNode;
+  contextSlot?: ReactNode;
   emptyStateSlot?: ReactNode;
   rightPanelSlot?: ReactNode;
 };

@@ -8,6 +8,9 @@ from dataclasses import dataclass
 class Settings:
     langgraph_upstream_url: str
     langgraph_upstream_api_key: str | None
+    interaction_data_service_url: str | None
+    interaction_data_service_token: str | None
+    interaction_data_service_timeout_seconds: float
     proxy_timeout_seconds: float
     proxy_cors_allow_origins: list[str]
     proxy_upstream_retries: int
@@ -44,6 +47,13 @@ def load_settings() -> Settings:
             "LANGGRAPH_UPSTREAM_URL", "http://127.0.0.1:8123"
         ),
         langgraph_upstream_api_key=os.getenv("LANGGRAPH_UPSTREAM_API_KEY") or None,
+        interaction_data_service_url=os.getenv("INTERACTION_DATA_SERVICE_URL")
+        or "http://127.0.0.1:8081",
+        interaction_data_service_token=os.getenv("INTERACTION_DATA_SERVICE_TOKEN")
+        or None,
+        interaction_data_service_timeout_seconds=float(
+            os.getenv("INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS", "30")
+        ),
         proxy_timeout_seconds=float(os.getenv("PROXY_TIMEOUT_SECONDS", "300")),
         proxy_cors_allow_origins=os.getenv("PROXY_CORS_ALLOW_ORIGINS", "*").split(","),
         proxy_upstream_retries=max(0, int(os.getenv("PROXY_UPSTREAM_RETRIES", "1"))),

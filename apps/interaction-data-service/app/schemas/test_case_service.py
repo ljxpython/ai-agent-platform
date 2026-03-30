@@ -44,6 +44,29 @@ class TestCaseDocumentListResponse(BaseModel):
     total: int
 
 
+class TestCaseOverviewResponse(BaseModel):
+    project_id: str | None = None
+    documents_total: int
+    parsed_documents_total: int
+    failed_documents_total: int
+    test_cases_total: int
+    latest_batch_id: str | None = None
+    latest_activity_at: str | None = None
+
+
+class TestCaseBatchSummary(BaseModel):
+    batch_id: str
+    documents_count: int
+    test_cases_count: int
+    latest_created_at: str | None = None
+    parse_status_summary: dict[str, int] = Field(default_factory=dict)
+
+
+class TestCaseBatchListResponse(BaseModel):
+    items: list[TestCaseBatchSummary]
+    total: int
+
+
 class CreateTestCaseRequest(BaseModel):
     project_id: str
     batch_id: str | None = None

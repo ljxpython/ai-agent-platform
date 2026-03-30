@@ -30,6 +30,11 @@
 - `PATCH /api/test-case-service/test-cases/{test_case_id}`
 - `DELETE /api/test-case-service/test-cases/{test_case_id}`
 
+### 3. 聚合读取
+
+- `GET /api/test-case-service/overview`
+- `GET /api/test-case-service/batches`
+
 ## 当前真实表
 
 定义文件：`app/db/models.py`
@@ -73,6 +78,13 @@ curl "http://127.0.0.1:8081/api/test-case-service/documents?project_id=<project_
 
 ```bash
 curl "http://127.0.0.1:8081/api/test-case-service/test-cases?project_id=<project_id>&limit=20"
+```
+
+### 4. 查看总览与批次
+
+```bash
+curl "http://127.0.0.1:8081/api/test-case-service/overview?project_id=<project_id>"
+curl "http://127.0.0.1:8081/api/test-case-service/batches?project_id=<project_id>&limit=20"
 ```
 
 ## 相关文档

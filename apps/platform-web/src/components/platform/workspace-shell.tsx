@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
@@ -17,12 +18,45 @@ type TogglePosition = {
   y: number;
 };
 
-const NAV_ITEMS = [
+type NavChildItem = {
+  href: string;
+  label: string;
+  description?: string;
+};
+
+type NavItem = {
+  href: string;
+  label: string;
+  children?: NavChildItem[];
+};
+
+const NAV_ITEMS: NavItem[] = [
   { href: "/workspace/chat", label: "Chat" },
   { href: "/workspace/threads", label: "Threads" },
   { href: "/workspace/graphs", label: "Graphs" },
   { href: "/workspace/assistants", label: "Assistants" },
   { href: "/workspace/runtime", label: "Runtime" },
+  {
+    href: "/workspace/testcase",
+    label: "Testcase",
+    children: [
+      {
+        href: "/workspace/testcase/generate",
+        label: "AI 对话生成",
+        description: "固定连接到 test_case_agent 的生成会话。",
+      },
+      {
+        href: "/workspace/testcase/cases",
+        label: "用例管理",
+        description: "查看和管理正式保存的测试用例。",
+      },
+      {
+        href: "/workspace/testcase/documents",
+        label: "PDF 解析",
+        description: "查看已保存文档的解析结果。",
+      },
+    ],
+  },
   { href: "/workspace/projects", label: "Projects" },
   { href: "/workspace/users", label: "Users" },
   { href: "/workspace/sql-agent", label: "SQL Agent" },
@@ -39,8 +73,10 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   const [desktopMode, setDesktopMode] = useState(true);
   const [togglePosition, setTogglePosition] = useState<TogglePosition | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [openMenuHref, setOpenMenuHref] = useState<string | null>(null);
   const dragRef = useRef<{ offsetX: number; offsetY: number; moved: boolean } | null>(null);
   const ignoreClickRef = useRef(false);
+  const navRef = useRef<HTMLElement | null>(null);
 
   const clampPosition = useCallback((position: TogglePosition): TogglePosition => {
     if (typeof window === "undefined") {
@@ -149,8 +185,52 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     };
   }, [clampPosition, dragging, togglePosition]);
 
+  useEffect(() => {
+    setOpenMenuHref(null);
+  }, [pathname, query]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!navRef.current) {
+        return;
+      }
+      if (!navRef.current.contains(event.target as Node)) {
+        setOpenMenuHref(null);
+      }
+    };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setOpenMenuHref(null);
+      }
+    };
+    window.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
   const canCollapseHeader = desktopMode;
   const collapsed = canCollapseHeader && headerCollapsed;
+
+  const buildHref = useCallback(
+    (href: string) => (query ? `${href}?${query}` : href),
+    [query],
+  );
+
+  const isNavItemActive = useCallback(
+    (item: NavItem) => {
+      if (item.children && item.children.length > 0) {
+        return item.children.some((child) => pathname?.startsWith(child.href));
+      }
+      return pathname?.startsWith(item.href);
+    },
+    [pathname],
+  );
 
   return (
     <div className="bg-background text-foreground flex min-h-dvh flex-col">
@@ -167,23 +247,99 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
               </div>
             </div>
 
-            <nav data-testid="workspace-nav" aria-label="Workspace sections" className="flex flex-wrap items-center gap-2">
+            <nav
+              ref={navRef}
+              data-testid="workspace-nav"
+              aria-label="Workspace sections"
+              className="flex flex-wrap items-center gap-2"
+            >
               {NAV_ITEMS.map((item) => {
-                const active = pathname?.startsWith(item.href);
+                const active = isNavItemActive(item);
+                const sharedClassName = [
+                  "inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                  active
+                    ? "border-sidebar-primary/60 bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
+                    : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                ].join(" ");
+                if (!item.children || item.children.length === 0) {
+                  return (
+                    <Link
+                      key={item.href}
+                      href={buildHref(item.href)}
+                      aria-current={active ? "page" : undefined}
+                      className={sharedClassName}
+                    >
+                      {item.label}
+                    </Link>
+                  );
+                }
+                const open = openMenuHref === item.href;
                 return (
-                  <Link
+                  <div
                     key={item.href}
-                    href={query ? `${item.href}?${query}` : item.href}
-                    aria-current={active ? "page" : undefined}
-                    className={[
-                      "inline-flex items-center rounded-md border px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                      active
-                        ? "border-sidebar-primary/60 bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                        : "border-border bg-card text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                    ].join(" ")}
+                    className="relative flex items-center gap-1"
                   >
-                    {item.label}
-                  </Link>
+                    <Link
+                      href={buildHref(item.href)}
+                      aria-current={active ? "page" : undefined}
+                      className={sharedClassName}
+                      onClick={() => setOpenMenuHref(null)}
+                    >
+                      {item.label}
+                    </Link>
+                    <button
+                      type="button"
+                      aria-label={`${item.label} sections`}
+                      aria-expanded={open}
+                      aria-haspopup="menu"
+                      className={[
+                        "inline-flex h-9 w-8 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                        active
+                          ? "text-sidebar-primary-foreground hover:bg-sidebar-primary/80"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                      ].join(" ")}
+                      onClick={() => setOpenMenuHref((current) => (current === item.href ? null : item.href))}
+                    >
+                      <ChevronDown
+                        className={[
+                          "h-4 w-4 transition-transform",
+                          open ? "rotate-180" : "rotate-0",
+                        ].join(" ")}
+                      />
+                    </button>
+                    {open ? (
+                      <div
+                        role="menu"
+                        className="bg-popover text-popover-foreground absolute left-0 top-full z-30 mt-2 w-72 rounded-xl border border-border p-2 shadow-xl"
+                      >
+                        {item.children.map((child) => {
+                          const childActive = pathname?.startsWith(child.href);
+                          return (
+                            <Link
+                              key={child.href}
+                              href={buildHref(child.href)}
+                              role="menuitem"
+                              aria-current={childActive ? "page" : undefined}
+                              className={[
+                                "flex rounded-lg px-3 py-2 transition-colors",
+                                childActive
+                                  ? "bg-sidebar-primary/10 text-foreground"
+                                  : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                              ].join(" ")}
+                              onClick={() => setOpenMenuHref(null)}
+                            >
+                              <span className="flex flex-col">
+                                <span className="text-sm font-medium">{child.label}</span>
+                                {child.description ? (
+                                  <span className="text-xs text-muted-foreground">{child.description}</span>
+                                ) : null}
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
                 );
               })}
             </nav>

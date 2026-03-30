@@ -14,6 +14,8 @@
    - 构建、lint、Playwright 回归
 6. `docs/agent-chat-template.md`
    - Agent 专属 chat 页面模板的推荐开发方式与边界约定
+7. `docs/testcase-workspace.md`
+   - Testcase 工作区页面、路由、上下文卡片与接口依赖
 
 ## 文档约定
 

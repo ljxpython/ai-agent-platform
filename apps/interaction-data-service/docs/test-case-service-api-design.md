@@ -49,6 +49,8 @@
 
 - `project_id`
 - `batch_id`
+- `parse_status`
+- `query`
 
 ## 资源 2：test-cases
 
@@ -81,6 +83,34 @@
 - `project_id`
 - `status`
 - `batch_id`
+- `query`
+
+## 聚合资源：overview / batches
+
+### 总览
+
+- `GET /api/test-case-service/overview`
+
+返回当前项目下的聚合统计：
+
+- `documents_total`
+- `parsed_documents_total`
+- `failed_documents_total`
+- `test_cases_total`
+- `latest_batch_id`
+- `latest_activity_at`
+
+### 批次聚合
+
+- `GET /api/test-case-service/batches`
+
+返回批次级聚合：
+
+- `batch_id`
+- `documents_count`
+- `test_cases_count`
+- `latest_created_at`
+- `parse_status_summary`
 
 ## 表结构
 
