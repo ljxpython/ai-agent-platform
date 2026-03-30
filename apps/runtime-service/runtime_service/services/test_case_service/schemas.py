@@ -11,6 +11,7 @@ from runtime_service.runtime.options import read_configurable
 DEFAULT_MULTIMODAL_PARSER_MODEL_ID = "iflow_qwen3-vl-plus"
 DEFAULT_MULTIMODAL_DETAIL_MODE = False
 DEFAULT_MULTIMODAL_DETAIL_TEXT_MAX_CHARS = 2000
+DEFAULT_TEST_CASE_MODEL_ID = "deepseek_chat"
 DEFAULT_TEST_CASE_PROJECT_ID = "00000000-0000-0000-0000-000000000001"
 DEFAULT_TEST_CASE_PERSISTENCE_ENABLED = True
 
@@ -20,6 +21,7 @@ class TestCaseServiceConfig:
     multimodal_parser_model_id: str = DEFAULT_MULTIMODAL_PARSER_MODEL_ID
     multimodal_detail_mode: bool = DEFAULT_MULTIMODAL_DETAIL_MODE
     multimodal_detail_text_max_chars: int = DEFAULT_MULTIMODAL_DETAIL_TEXT_MAX_CHARS
+    default_model_id: str = DEFAULT_TEST_CASE_MODEL_ID
     default_project_id: str = DEFAULT_TEST_CASE_PROJECT_ID
     persistence_enabled: bool = DEFAULT_TEST_CASE_PERSISTENCE_ENABLED
 
@@ -81,6 +83,9 @@ def build_test_case_service_config(config: RunnableConfig) -> TestCaseServiceCon
         multimodal_detail_text_max_chars=_parse_int(
             private_config.get("test_case_multimodal_detail_text_max_chars"),
             DEFAULT_MULTIMODAL_DETAIL_TEXT_MAX_CHARS,
+        ),
+        default_model_id=str(
+            private_config.get("test_case_default_model_id") or DEFAULT_TEST_CASE_MODEL_ID
         ),
         default_project_id=str(
             private_config.get("test_case_default_project_id") or DEFAULT_TEST_CASE_PROJECT_ID

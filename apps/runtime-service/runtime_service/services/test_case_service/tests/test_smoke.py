@@ -30,6 +30,7 @@ from runtime_service.services.test_case_service.schemas import (  # noqa: E402
     DEFAULT_MULTIMODAL_PARSER_MODEL_ID,
     DEFAULT_MULTIMODAL_DETAIL_MODE,
     DEFAULT_MULTIMODAL_DETAIL_TEXT_MAX_CHARS,
+    DEFAULT_TEST_CASE_MODEL_ID,
     DEFAULT_TEST_CASE_PROJECT_ID,
     DEFAULT_TEST_CASE_PERSISTENCE_ENABLED,
 )
@@ -78,6 +79,7 @@ def test_build_test_case_service_config_defaults() -> None:
     assert cfg.multimodal_parser_model_id == DEFAULT_MULTIMODAL_PARSER_MODEL_ID
     assert cfg.multimodal_detail_mode == DEFAULT_MULTIMODAL_DETAIL_MODE
     assert cfg.multimodal_detail_text_max_chars == DEFAULT_MULTIMODAL_DETAIL_TEXT_MAX_CHARS
+    assert cfg.default_model_id == DEFAULT_TEST_CASE_MODEL_ID
     assert cfg.default_project_id == DEFAULT_TEST_CASE_PROJECT_ID
     assert cfg.persistence_enabled == DEFAULT_TEST_CASE_PERSISTENCE_ENABLED
 
@@ -88,6 +90,7 @@ def test_build_test_case_service_config_overrides() -> None:
             "test_case_multimodal_parser_model_id": "custom_model",
             "test_case_multimodal_detail_mode": "true",
             "test_case_multimodal_detail_text_max_chars": "5000",
+            "test_case_default_model_id": "glm5_mass",
             "test_case_default_project_id": "00000000-0000-0000-0000-000000000099",
             "test_case_persistence_enabled": "false",
         }
@@ -96,6 +99,7 @@ def test_build_test_case_service_config_overrides() -> None:
     assert cfg.multimodal_parser_model_id == "custom_model"
     assert cfg.multimodal_detail_mode is True
     assert cfg.multimodal_detail_text_max_chars == 5000
+    assert cfg.default_model_id == "glm5_mass"
     assert cfg.default_project_id == "00000000-0000-0000-0000-000000000099"
     assert cfg.persistence_enabled is False
 
@@ -257,6 +261,72 @@ def test_make_graph_merges_system_prompt_when_options_has_one(monkeypatch: Any) 
     system_prompt = captured.get("system_prompt", "")
     assert system_prompt.startswith("RUNTIME_PREFIX")
     assert SYSTEM_PROMPT in system_prompt
+
+
+def test_make_graph_uses_service_default_model_when_request_does_not_provide_one(
+    monkeypatch: Any,
+) -> None:
+    captured_config: dict[str, Any] = {}
+
+    class DummyOptions:
+        model_spec = "dummy_spec"
+        system_prompt = ""
+
+    async def fake_build_tools(_config: Any) -> list[str]:
+        return []
+
+    def fake_create_deep_agent(**kwargs: Any) -> dict[str, Any]:
+        return kwargs
+
+    def fake_build_runtime_config(config: Any, ctx: Any) -> DummyOptions:
+        del ctx
+        captured_config.update(dict(config))
+        return DummyOptions()
+
+    monkeypatch.setattr(tc_graph, "merge_trusted_auth_context", lambda config, ctx: ctx)
+    monkeypatch.setattr(tc_graph, "build_runtime_config", fake_build_runtime_config)
+    monkeypatch.setattr(tc_graph, "resolve_model", lambda spec: "dummy_model")
+    monkeypatch.setattr(tc_graph, "apply_model_runtime_params", lambda model, options: model)
+    monkeypatch.setattr(tc_graph, "build_tools", fake_build_tools)
+    monkeypatch.setattr(tc_graph, "create_deep_agent", fake_create_deep_agent)
+
+    asyncio.run(tc_graph.make_graph({"configurable": {}}, object()))
+
+    configurable = captured_config.get("configurable") or {}
+    assert configurable.get("model_id") == DEFAULT_TEST_CASE_MODEL_ID
+
+
+def test_make_graph_preserves_explicit_model_id_from_request(monkeypatch: Any) -> None:
+    captured_config: dict[str, Any] = {}
+
+    class DummyOptions:
+        model_spec = "dummy_spec"
+        system_prompt = ""
+
+    async def fake_build_tools(_config: Any) -> list[str]:
+        return []
+
+    def fake_create_deep_agent(**kwargs: Any) -> dict[str, Any]:
+        return kwargs
+
+    def fake_build_runtime_config(config: Any, ctx: Any) -> DummyOptions:
+        del ctx
+        captured_config.update(dict(config))
+        return DummyOptions()
+
+    monkeypatch.setattr(tc_graph, "merge_trusted_auth_context", lambda config, ctx: ctx)
+    monkeypatch.setattr(tc_graph, "build_runtime_config", fake_build_runtime_config)
+    monkeypatch.setattr(tc_graph, "resolve_model", lambda spec: "dummy_model")
+    monkeypatch.setattr(tc_graph, "apply_model_runtime_params", lambda model, options: model)
+    monkeypatch.setattr(tc_graph, "build_tools", fake_build_tools)
+    monkeypatch.setattr(tc_graph, "create_deep_agent", fake_create_deep_agent)
+
+    asyncio.run(
+        tc_graph.make_graph({"configurable": {"model_id": "iflow_kimi-k2"}}, object())
+    )
+
+    configurable = captured_config.get("configurable") or {}
+    assert configurable.get("model_id") == "iflow_kimi-k2"
 
 
 # ---------------------------------------------------------------------------

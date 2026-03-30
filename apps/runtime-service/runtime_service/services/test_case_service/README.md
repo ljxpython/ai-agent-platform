@@ -52,6 +52,7 @@ test_case_service/
 
 | 配置键 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
+| `test_case_default_model_id` | `str` | `deepseek_chat` | 当调用方未显式传 `model_id` 时，`test_case_service` 的服务级默认主模型 |
 | `test_case_multimodal_parser_model_id` | `str` | `iflow_qwen3-vl-plus` | 多模态解析模型 |
 | `test_case_multimodal_detail_mode` | `bool` | `False` | 启用详细解析模式 |
 | `test_case_multimodal_detail_text_max_chars` | `int` | `2000` | 详细模式最大字符数 |
@@ -61,6 +62,11 @@ test_case_service/
 | `interaction_data_service_url` | `str` | 环境变量/空 | interaction-data-service 基地址 |
 | `interaction_data_service_token` | `str` | 环境变量/空 | interaction-data-service Bearer Token |
 | `interaction_data_service_timeout_seconds` | `int` | `10` | interaction-data-service 请求超时 |
+
+说明：
+
+- 如果 `RunnableConfig.configurable.model_id` 已显式传入，则始终优先使用调用方指定模型
+- 只有在未显式传 `model_id` 且未设置环境变量 `MODEL_ID` 时，服务才回落到 `test_case_default_model_id=deepseek_chat`
 
 ## Skills 说明
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,7 @@ from runtime_service.runtime.context import RuntimeContext
 from runtime_service.runtime.modeling import apply_model_runtime_params, resolve_model
 from runtime_service.runtime.options import (
     build_runtime_config,
+    context_to_mapping,
     merge_trusted_auth_context,
     read_configurable,
 )
@@ -62,9 +64,24 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
 
     # 1. 运行时解析（公共层）
     runtime_context = merge_trusted_auth_context(config, {})
-    options = build_runtime_config(config, runtime_context)
     private_config = dict(read_configurable(config))
     service_config = build_test_case_service_config(config)
+    explicit_model_id = (
+        context_to_mapping(runtime_context).get("model_id")
+        or private_config.get("model_id")
+        or os.getenv("MODEL_ID")
+    )
+    effective_config: RunnableConfig | dict[str, Any] = config
+    if not isinstance(explicit_model_id, str) or not explicit_model_id.strip():
+        next_config = dict(config)
+        next_config["configurable"] = {
+            **private_config,
+            "model_id": service_config.default_model_id,
+        }
+        effective_config = next_config
+        private_config = dict(read_configurable(effective_config))
+        service_config = build_test_case_service_config(effective_config)
+    options = build_runtime_config(effective_config, runtime_context)
 
     # 2. 模型装配（公共层）
     model = apply_model_runtime_params(resolve_model(options.model_spec), options)

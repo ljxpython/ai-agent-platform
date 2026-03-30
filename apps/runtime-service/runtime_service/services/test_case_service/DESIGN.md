@@ -78,9 +78,9 @@ create_deep_agent
 RunnableConfig
     │
     ├── merge_trusted_auth_context()  → runtime_context
-    ├── build_runtime_config()        → options（model_spec, system_prompt）
     ├── read_configurable()           → private_config
-    └── build_test_case_service_config() → service_config（多模态 + 默认项目 + 持久化开关）
+    ├── build_test_case_service_config() → service_config（默认主模型 + 多模态 + 默认项目 + 持久化开关）
+    └── build_runtime_config()        → options（model_spec, system_prompt）
 ```
 
 ### 2.4 System Prompt 合并策略
@@ -152,6 +152,7 @@ description: 激活场景说明   # 供 Agent 判断何时激活此 Skill
 ```python
 @dataclass(frozen=True)
 class TestCaseServiceConfig:
+    default_model_id: str             # 服务级默认主模型（仅在未显式传 model_id 时生效）
     multimodal_parser_model_id: str   # 多模态解析模型
     multimodal_detail_mode: bool      # 是否启用详细解析
     multimodal_detail_text_max_chars: int  # 详细模式字符上限
@@ -160,6 +161,15 @@ class TestCaseServiceConfig:
 ```
 
 使用 `frozen=True` 确保不可变性，避免运行时意外修改。
+
+### 4.1.1 服务级默认模型策略
+
+- `test_case_service` 默认主模型固定为 `deepseek_chat`
+- 只有在调用方没有显式传 `model_id`，且环境变量 `MODEL_ID` 也未覆盖时，才注入这个服务级默认值
+- 这样可以保证：
+  - 当前 testcase 业务默认走工具遵循性更稳定的 DeepSeek
+  - 其他 graph 仍然可以继续使用 runtime 全局默认模型
+  - 调用方如果明确指定模型，仍然可以覆盖这个服务级默认值
 
 ### 4.2 Backend Root 解析逻辑
 

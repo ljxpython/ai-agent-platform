@@ -21,6 +21,7 @@
 3. 共享 HTTP client 只抽传输层，不抽业务 payload
 4. `project_id` 等受信参数由 `runtime.config / runtime.state / runtime.context` 读取
 5. 当前尚未完全透传项目上下文时，允许使用默认项目 ID 兜底
+6. `test_case_service` 在未显式传 `model_id` 时，服务级默认主模型使用 `deepseek_chat`
 
 ## runtime-service 侧结构
 
@@ -100,7 +101,8 @@
 
 当前默认值：
 
-- `00000000-0000-0000-0000-000000000001`
+- `test_case_default_model_id = deepseek_chat`
+- `test_case_default_project_id = 00000000-0000-0000-0000-000000000001`
 
 这是过渡方案，后续接入真实项目上下文后应优先覆盖。
 
