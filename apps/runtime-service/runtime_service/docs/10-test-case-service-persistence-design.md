@@ -45,6 +45,35 @@
 - 不要再为这个工具显式绑定 `args_schema`
 - 该工具应由函数签名自动推导 schema，否则 LangGraph 可能无法正确注入 `runtime`
 
+### 1.1 二期职责调整
+
+二期后 `persist_test_case_results` 不再承担“首次写入 document”的职责。
+
+它只负责：
+
+- 读取运行态里已经持久化成功的 `document_id`
+- 对缺失 `document_id` 的附件做补偿写入
+- 写入最终正式 `test_cases`
+- 建立 `source_document_ids` 关联
+
+### 1.2 服务专属即时持久化层
+
+二期新增：
+
+- `runtime_service/services/test_case_service/document_persistence.py`
+- `runtime_service/services/test_case_service/middleware.py`
+
+职责：
+
+- 在 `test_case_service` 作用域内即时持久化已解析附件
+- 基于附件 fingerprint 做幂等
+- 将 `persisted_document_id / persist_status / persisted_at / persist_error` 回填到附件状态
+
+约束：
+
+- 通用 `runtime_service/middlewares/multimodal/*` 不耦合 testcase 落库逻辑
+- 即时持久化逻辑只允许出现在 `test_case_service` 私有层
+
 ### 2. 共享 HTTP client
 
 新增：
@@ -108,6 +137,7 @@
 - `provenance`
 - `confidence`
 - `error`
+- `idempotency_key`（二期用于上传即落库幂等）
 
 ### 2. `test_cases`
 
@@ -141,6 +171,96 @@
    - 工具调用记录
    - 远端返回结果
    - 最终异常或成功状态
+
+二期额外要求：
+
+1. 在不调用 `persist_test_case_results` 的前提下，上传真实 PDF 后应立即能在 `test_case_documents` 中查到记录
+2. 同一 PDF 同一项目重复重试时，document 不得重复插入
+3. 后续正式保存 testcase 时，必须复用既有 `document_id`
+
+推荐使用两个真实验证脚本：
+
+```bash
+cd apps/runtime-service
+uv run python runtime_service/tests/services_test_case_service_document_live.py \
+  --model-id deepseek_chat \
+  --timeout 900 \
+  --interaction-timeout 60
+
+uv run python runtime_service/tests/services_test_case_service_persistence_live.py \
+  --model-id deepseek_chat \
+  --timeout 900
+```
+
+含义：
+
+1. `services_test_case_service_document_live.py`
+   - 真实上传 PDF
+   - 不允许调用 `persist_test_case_results`
+   - 验证 `TestCaseDocumentPersistenceMiddleware` 是否完成“上传即落库”
+   - 同一 `batch_id` 连续跑两次，验证 document 幂等
+2. `services_test_case_service_persistence_live.py`
+   - 真实生成正式测试用例
+   - 调用 `persist_test_case_results`
+   - 验证 `test_cases` 写入以及 `source_document_ids` 关联
+
+## 实现陷阱与修复点
+
+### 1. middleware 阶段不能假设 `runtime.config` 一定存在
+
+`persist_test_case_results` 工具里拿到的是 `ToolRuntime`，它有 `config/state`。
+
+但 `wrap_model_call` 中间件里拿到的是 `langgraph.runtime.Runtime`，默认只有：
+
+- `context`
+- `store`
+- `stream_writer`
+- `previous`
+
+没有 `config`。
+
+因此 `test_case_service` 的文档即时持久化层必须这样取配置：
+
+1. 优先读 `runtime.config`
+2. 若不存在，则回退到 `langgraph.config.get_config()`
+
+否则中间件阶段会拿不到：
+
+- `interaction_data_service_url`
+- `project_id`
+- `batch_id`
+
+最终表现为“即时落库没有真正发生”。
+
+### 2. `wrap_model_call` 里的 `request.override(state=...)` 不等于 graph state 已更新
+
+`wrap_model_call` 内改过的 `request.state` 只保证“本次模型调用能看到”。
+
+如果希望后续工具节点也能读到这些状态，例如：
+
+- `persisted_document_id`
+- `persist_status`
+- `persisted_at`
+
+就必须额外返回：
+
+- `ExtendedModelResponse`
+- `Command(update=...)`
+
+把附件状态显式写回 graph state。
+
+否则会出现：
+
+1. 文档即时落库已经成功
+2. 但后续 `persist_test_case_results` 仍看不到 `persisted_document_id`
+3. `source_document_ids` 为空
+4. testcase 与 document 无法关联
+
+当前修复方案：
+
+1. `document_persistence.py` 在 middleware 阶段回退使用 `get_config()`
+2. `TestCaseDocumentPersistenceMiddleware` 在 `wrap_model_call/awrap_model_call` 返回 `ExtendedModelResponse + Command(update=...)`
+3. 工具阶段复用 graph state 中已回填的 `persisted_document_id`
 
 ## 已完成真实验证
 

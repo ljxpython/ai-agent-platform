@@ -11,171 +11,21 @@ from runtime_service.integrations import (
     build_interaction_data_service_config,
 )
 from runtime_service.runtime.context import RuntimeContext
-from runtime_service.runtime.options import context_to_mapping, read_configurable
+from runtime_service.services.test_case_service.document_persistence import (
+    _coerce_string_list,
+    _get_runtime_state,
+    _resolve_batch_id,
+    _resolve_project_id,
+    _resolve_runtime_meta,
+    collect_persisted_document_ids,
+    persist_runtime_documents,
+)
 from runtime_service.services.test_case_service.schemas import (
     PersistTestCaseItem,
     TestCaseServiceConfig,
 )
 
-TEST_CASE_DOCUMENTS_PATH = "/api/test-case-service/documents"
 TEST_CASES_PATH = "/api/test-case-service/test-cases"
-
-
-def _coerce_optional_text(value: Any) -> str | None:
-    if value is None:
-        return None
-    text = str(value).strip()
-    return text or None
-
-
-def _coerce_mapping(value: Any) -> dict[str, Any] | None:
-    if not isinstance(value, Mapping):
-        return None
-    return {str(key): item for key, item in value.items()}
-
-
-def _coerce_string_list(value: Any) -> list[str]:
-    if not isinstance(value, list):
-        return []
-    items: list[str] = []
-    for item in value:
-        text = _coerce_optional_text(item)
-        if text:
-            items.append(text)
-    return items
-
-
-def _get_runtime_state(
-    runtime: ToolRuntime[RuntimeContext | Mapping[str, Any] | None, dict[str, Any]],
-) -> dict[str, Any]:
-    state = runtime.state if hasattr(runtime, "state") else {}
-    return state if isinstance(state, dict) else {}
-
-
-def _get_runtime_context_mapping(
-    runtime: ToolRuntime[RuntimeContext | Mapping[str, Any] | None, dict[str, Any]],
-) -> Mapping[str, Any]:
-    return context_to_mapping(runtime.context)
-
-
-def _resolve_project_id(
-    runtime: ToolRuntime[RuntimeContext | Mapping[str, Any] | None, dict[str, Any]],
-    service_config: TestCaseServiceConfig,
-) -> str:
-    context_data = _get_runtime_context_mapping(runtime)
-    configurable = read_configurable(runtime.config)
-    metadata = runtime.config.get("metadata")
-    metadata_map = metadata if isinstance(metadata, Mapping) else {}
-    state = _get_runtime_state(runtime)
-    for candidate in (
-        context_data.get("project_id"),
-        configurable.get("project_id"),
-        configurable.get("x-project-id"),
-        metadata_map.get("project_id"),
-        state.get("project_id"),
-    ):
-        text = _coerce_optional_text(candidate)
-        if text:
-            return text
-    return service_config.default_project_id
-
-
-def _resolve_batch_id(
-    runtime: ToolRuntime[RuntimeContext | Mapping[str, Any] | None, dict[str, Any]],
-) -> str:
-    configurable = read_configurable(runtime.config)
-    metadata = runtime.config.get("metadata")
-    metadata_map = metadata if isinstance(metadata, Mapping) else {}
-    state = _get_runtime_state(runtime)
-    thread_id = _coerce_optional_text(configurable.get("thread_id") or state.get("thread_id"))
-    run_id = _coerce_optional_text(runtime.config.get("run_id"))
-    explicit = _coerce_optional_text(
-        configurable.get("batch_id") or metadata_map.get("batch_id") or state.get("batch_id")
-    )
-    if explicit:
-        return explicit
-    suffix = thread_id or run_id or "default"
-    return f"test-case-service:{suffix}"
-
-
-def _resolve_runtime_meta(
-    runtime: ToolRuntime[RuntimeContext | Mapping[str, Any] | None, dict[str, Any]],
-) -> dict[str, Any]:
-    configurable = read_configurable(runtime.config)
-    state = _get_runtime_state(runtime)
-    return {
-        "thread_id": _coerce_optional_text(configurable.get("thread_id") or state.get("thread_id")),
-        "run_id": _coerce_optional_text(runtime.config.get("run_id")),
-        "agent_key": "test_case_service",
-    }
-
-
-def _build_document_payloads(
-    *,
-    state: dict[str, Any],
-    project_id: str,
-    batch_id: str,
-) -> list[dict[str, Any]]:
-    attachments = state.get("multimodal_attachments")
-    if not isinstance(attachments, list):
-        return []
-    multimodal_summary = _coerce_optional_text(state.get("multimodal_summary")) or ""
-    payloads: list[dict[str, Any]] = []
-    for attachment in attachments:
-        if not isinstance(attachment, Mapping):
-            continue
-        filename = (
-            _coerce_optional_text(attachment.get("name"))
-            or _coerce_optional_text(attachment.get("attachment_id"))
-            or "attachment"
-        )
-        content_type = _coerce_optional_text(attachment.get("mime_type")) or "application/octet-stream"
-        source_kind = (
-            _coerce_optional_text(attachment.get("kind"))
-            or _coerce_optional_text(attachment.get("source_type"))
-            or "upload"
-        )
-        parse_status = _coerce_optional_text(attachment.get("status")) or "parsed"
-        payloads.append(
-            {
-                "project_id": project_id,
-                "batch_id": batch_id,
-                "filename": filename,
-                "content_type": content_type,
-                "storage_path": None,
-                "source_kind": source_kind,
-                "parse_status": parse_status,
-                "summary_for_model": (
-                    _coerce_optional_text(attachment.get("summary_for_model"))
-                    or multimodal_summary
-                    or f"Parsed {source_kind} attachment."
-                ),
-                "parsed_text": _coerce_optional_text(attachment.get("parsed_text")),
-                "structured_data": _coerce_mapping(attachment.get("structured_data")),
-                "provenance": _coerce_mapping(attachment.get("provenance")) or {},
-                "confidence": attachment.get("confidence")
-                if isinstance(attachment.get("confidence"), (int, float))
-                else None,
-                "error": _coerce_mapping(attachment.get("error")),
-            }
-        )
-    return payloads
-
-
-def _persist_documents(
-    *,
-    client: InteractionDataServiceClient,
-    state: dict[str, Any],
-    project_id: str,
-    batch_id: str,
-) -> tuple[str, list[dict[str, Any]]]:
-    payloads = _build_document_payloads(state=state, project_id=project_id, batch_id=batch_id)
-    if not payloads:
-        return "no_attachments", []
-    persisted: list[dict[str, Any]] = []
-    for payload in payloads:
-        persisted.append(client.post_json(TEST_CASE_DOCUMENTS_PATH, payload))
-    return "persisted", persisted
 
 
 def _merge_content_json(
@@ -308,14 +158,21 @@ def build_test_case_service_tools(service_config: TestCaseServiceConfig) -> list
                 },
                 ensure_ascii=False,
             )
-
-        document_status, persisted_documents = _persist_documents(
-            client=client,
+        document_outcome = persist_runtime_documents(
+            runtime=runtime,
             state=state,
-            project_id=project_id,
-            batch_id=batch_id,
+            service_config=service_config,
+            client=client,
         )
-        source_document_ids = _coerce_string_list([item.get("id") for item in persisted_documents])
+        if isinstance(state, dict):
+            state["multimodal_attachments"] = document_outcome.attachments
+        source_document_ids = collect_persisted_document_ids(
+            {"multimodal_attachments": document_outcome.attachments}
+        )
+        if not source_document_ids and document_outcome.persisted_documents:
+            source_document_ids = _coerce_string_list(
+                [item.get("id") for item in document_outcome.persisted_documents]
+            )
         quality_payload = quality_review or {}
         test_case_payloads = _build_test_case_payloads(
             items=normalized_cases,
@@ -334,8 +191,8 @@ def build_test_case_service_tools(service_config: TestCaseServiceConfig) -> list
                 "status": "persisted",
                 "project_id": project_id,
                 "batch_id": batch_id,
-                "document_status": document_status,
-                "persisted_document_count": len(persisted_documents),
+                "document_status": document_outcome.status,
+                "persisted_document_count": len(source_document_ids),
                 "persisted_document_ids": source_document_ids,
                 "persisted_test_case_count": len(persisted_test_cases),
                 "persisted_test_case_ids": _coerce_string_list(

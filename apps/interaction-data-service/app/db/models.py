@@ -20,6 +20,7 @@ class TestCaseDocument(Base):
     )
     project_id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     batch_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     content_type: Mapped[str] = mapped_column(String(128), nullable=False)
     storage_path: Mapped[str | None] = mapped_column(String(1024), nullable=True)

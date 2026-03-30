@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from typing import Any, Literal
 
 from langchain.agents import AgentState
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 AttachmentKind = Literal["image", "pdf", "doc", "docx", "xlsx", "file", "other"]
 AttachmentStatus = Literal["unprocessed", "parsed", "unsupported", "failed"]
@@ -36,6 +36,10 @@ class AttachmentArtifact(TypedDict):
     provenance: dict[str, Any]
     confidence: float | None
     error: dict[str, Any] | None
+    persisted_document_id: NotRequired[str | None]
+    persist_status: NotRequired[str | None]
+    persisted_at: NotRequired[str | None]
+    persist_error: NotRequired[dict[str, Any] | None]
 
 
 ParserResult = TypedDict(

@@ -29,6 +29,7 @@
 
 - `project_id`
 - `batch_id`
+- `idempotency_key`
 - `filename`
 - `content_type`
 - `source_kind`
@@ -51,6 +52,18 @@
 - `batch_id`
 - `parse_status`
 - `query`
+
+### 幂等语义
+
+`documents` 的写入支持幂等：
+
+- 唯一范围：`project_id + batch_id + idempotency_key`
+- 命中已有记录时：
+  - 复用原 `document_id`
+  - 按最新请求做有限字段更新
+  - 不重复插入新行
+
+这个约定用于支持 `test_case_service` 的“上传即落库 + 同批次重试不重复写入”。
 
 ## 资源 2：test-cases
 
@@ -117,6 +130,10 @@
 ### 1. `test_case_documents`
 
 用途：保存附件解析结果，支持来源追踪和回看。
+
+关键字段补充：
+
+- `idempotency_key`：用于同批次附件重试幂等
 
 ### 2. `test_cases`
 

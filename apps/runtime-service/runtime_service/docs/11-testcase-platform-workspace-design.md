@@ -345,7 +345,7 @@ platform-web AI 对话生成页
 ```text
 用户上传 PDF
   -> MultimodalMiddleware 完成解析
-  -> 在解析结果准备传给主 agent 时立即持久化 document
+  -> test_case_service 专属持久化层即时保存 document
   -> 主 agent 继续消费解析结果
   -> 后续正式保存 testcase 时，只补充 test_cases 落库与 source_document_ids 关联
 ```
@@ -354,14 +354,21 @@ platform-web AI 对话生成页
 
 建议不要把“文档即时落库”交给模型自主决定，而要做成服务内确定性逻辑。
 
+同时明确：
+
+- 通用 `MultimodalMiddleware` 只负责附件解析、状态归一化与 prompt 注入
+- 不在通用多模态中间件内耦合任何 testcase 业务落库逻辑
+- 即时落库必须由 `test_case_service` 自己的专属 middleware / 服务层负责
+
 推荐做法：
 
 1. 在 `test_case_service` 内新增一个“文档即时持久化”服务层能力
-2. 触发点位于多模态解析完成、主模型调用前
-3. 为每个已解析附件生成稳定幂等键
-4. 先写入 `test_case_documents`
-5. 将返回的 `document_id` 回填到运行态 state
-6. 后续 `persist_test_case_results` 只负责：
+2. 新增 `test_case_service` 专属 middleware，放在 `MultimodalMiddleware` 之后
+3. 触发点位于多模态解析完成、主模型调用前
+4. 为每个已解析附件生成稳定幂等键
+5. 先写入 `test_case_documents`
+6. 将返回的 `document_id` 回填到运行态 state
+7. 后续 `persist_test_case_results` 只负责：
    - 避免重复写 document
    - 写正式 `test_cases`
    - 关联 `source_document_ids`
@@ -392,7 +399,7 @@ platform-web AI 对话生成页
 
 二期后职责应拆成：
 
-- 文档解析阶段：保存 document
+- 文档解析阶段：由 `test_case_service` 专属持久化层保存 document
 - 正式结果输出阶段：保存 test_cases 并建立引用
 
 这样系统行为更稳定，也更符合“上传文档解析结果页实时可见”的产品预期。

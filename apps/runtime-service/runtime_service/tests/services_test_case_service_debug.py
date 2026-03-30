@@ -159,6 +159,35 @@ def _summarize_update(event: Any) -> dict[str, Any]:
             }
             continue
 
+        if key == "TestCaseDocumentPersistenceMiddleware.before_model" and isinstance(value, dict):
+            attachments = value.get(MULTIMODAL_ATTACHMENTS_KEY)
+            summary[key] = {
+                "attachments_count": (
+                    len(attachments) if isinstance(attachments, list) else 0
+                ),
+                "persist_statuses": [
+                    item.get("persist_status")
+                    for item in attachments
+                    if isinstance(item, dict)
+                ]
+                if isinstance(attachments, list)
+                else [],
+                "persisted_document_ids": [
+                    item.get("persisted_document_id")
+                    for item in attachments
+                    if isinstance(item, dict)
+                ]
+                if isinstance(attachments, list)
+                else [],
+                "has_persist_errors": any(
+                    isinstance(item, dict) and item.get("persist_error")
+                    for item in attachments
+                )
+                if isinstance(attachments, list)
+                else False,
+            }
+            continue
+
         if key == "PatchToolCallsMiddleware.before_agent":
             summary[key] = {"note": "messages patched"}
             continue
@@ -286,6 +315,12 @@ async def _stream_agent_run(
         "tool_calls": tool_calls,
         "skill_related_tool_calls": [
             name for name in tool_calls if name in {"read_file", "ls", "glob"}
+        ],
+        "document_persistence_updates": [
+            item.get("TestCaseDocumentPersistenceMiddleware.before_model")
+            for item in update_summaries
+            if isinstance(item, dict)
+            and isinstance(item.get("TestCaseDocumentPersistenceMiddleware.before_model"), dict)
         ],
         "updates": update_summaries,
         "output_text": "".join(stream_chunks),

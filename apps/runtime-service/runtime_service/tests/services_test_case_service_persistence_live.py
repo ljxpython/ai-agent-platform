@@ -64,12 +64,21 @@ def _verify_remote_results(
         TEST_CASES_PATH,
         params={"project_id": project_id, "batch_id": batch_id, "limit": 50},
     )
+    case_items = test_cases.get("items", []) if isinstance(test_cases.get("items"), list) else []
     return {
         "documents_total": documents.get("total"),
         "document_ids": [item.get("id") for item in documents.get("items", []) if isinstance(item, dict)],
         "test_cases_total": test_cases.get("total"),
         "test_case_titles": [
-            item.get("title") for item in test_cases.get("items", []) if isinstance(item, dict)
+            item.get("title") for item in case_items if isinstance(item, dict)
+        ],
+        "test_case_source_document_ids": [
+            {
+                "title": item.get("title"),
+                "source_document_ids": item.get("source_document_ids"),
+            }
+            for item in case_items
+            if isinstance(item, dict)
         ],
         "raw_documents": documents,
         "raw_test_cases": test_cases,
@@ -107,6 +116,17 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         default=900.0,
         help="真实 graph 流式调用超时时间，单位秒。",
     )
+    parser.add_argument(
+        "--interaction-timeout",
+        type=int,
+        default=60,
+        help="interaction-data-service HTTP 超时，单位秒。",
+    )
+    parser.add_argument(
+        "--interaction-url",
+        default=None,
+        help="显式 interaction-data-service URL；不传则走环境变量或默认配置。",
+    )
     return parser
 
 
@@ -122,8 +142,11 @@ async def _main_async(args: argparse.Namespace) -> int:
             "thread_id": thread_id,
             "model_id": args.model_id,
             "project_id": project_id,
+            "interaction_data_service_timeout_seconds": args.interaction_timeout,
         }
     }
+    if args.interaction_url:
+        config["configurable"]["interaction_data_service_url"] = args.interaction_url
     if args.parser_model_id:
         config["configurable"]["test_case_multimodal_parser_model_id"] = args.parser_model_id
 
@@ -140,6 +163,7 @@ async def _main_async(args: argparse.Namespace) -> int:
             "thread_id": thread_id,
             "batch_id": batch_id,
             "interaction_data_service_url": build_interaction_data_service_config(config).service_url,
+            "interaction_timeout_seconds": args.interaction_timeout,
         },
     )
 
@@ -173,6 +197,13 @@ async def _main_async(args: argparse.Namespace) -> int:
         return 1
     if int(remote_report.get("test_cases_total") or 0) <= 0:
         print("测试用例未写入远端服务", file=sys.stderr)
+        return 1
+    if any(
+        not isinstance(item.get("source_document_ids"), list) or not item.get("source_document_ids")
+        for item in remote_report.get("test_case_source_document_ids", [])
+        if isinstance(item, dict)
+    ):
+        print("存在测试用例未关联 source_document_ids", file=sys.stderr)
         return 1
     return 0
 

@@ -50,10 +50,31 @@
 
 ```text
 runtime-service/test_case_service
+  -> TestCaseDocumentPersistenceMiddleware
+  -> interaction-data-service HTTP API
+  -> test_case_documents
   -> persist_test_case_results
   -> interaction-data-service HTTP API
-  -> test_case_documents / test_cases
+  -> test_cases
 ```
+
+约束：
+
+1. 通用多模态中间件不负责任何 testcase 落库
+2. `documents` 的即时写入由 `test_case_service` 私有层触发
+3. `persist_test_case_results` 负责正式 `test_cases` 保存，并对未成功的 document 做补偿写入
+
+`documents` 写入已支持幂等字段：
+
+- `idempotency_key`
+
+幂等范围：
+
+- `project_id + batch_id + idempotency_key`
+
+目标：
+
+- 保证同一批次重复重试不会重复插入相同 document
 
 受信上下文约定：
 
@@ -72,6 +93,12 @@ curl "http://127.0.0.1:8081/api/meta"
 
 ```bash
 curl "http://127.0.0.1:8081/api/test-case-service/documents?project_id=<project_id>&limit=20"
+```
+
+如需排查即时落库幂等，可带上 `batch_id`：
+
+```bash
+curl "http://127.0.0.1:8081/api/test-case-service/documents?project_id=<project_id>&batch_id=<batch_id>&limit=20"
 ```
 
 ### 3. 查看正式测试用例

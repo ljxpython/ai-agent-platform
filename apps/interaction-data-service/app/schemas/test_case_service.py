@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 class CreateTestCaseDocumentRequest(BaseModel):
     project_id: str
     batch_id: str | None = None
+    idempotency_key: str | None = Field(default=None, max_length=255)
     filename: str = Field(min_length=1, max_length=255)
     content_type: str = Field(min_length=1, max_length=128)
     storage_path: str | None = None
@@ -25,6 +26,7 @@ class TestCaseDocumentResponse(BaseModel):
     id: str
     project_id: str
     batch_id: str | None
+    idempotency_key: str | None
     filename: str
     content_type: str
     storage_path: str | None

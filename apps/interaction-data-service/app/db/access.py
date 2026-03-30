@@ -20,6 +20,7 @@ def create_test_case_document(
     *,
     project_id: uuid.UUID,
     batch_id: str | None,
+    idempotency_key: str | None,
     filename: str,
     content_type: str,
     storage_path: str | None,
@@ -32,9 +33,50 @@ def create_test_case_document(
     confidence: float | None,
     error: dict | None,
 ) -> TestCaseDocument:
+    normalized_batch_id = batch_id.strip() if isinstance(batch_id, str) and batch_id.strip() else None
+    normalized_idempotency_key = (
+        idempotency_key.strip()
+        if isinstance(idempotency_key, str) and idempotency_key.strip()
+        else None
+    )
+    if normalized_idempotency_key is not None:
+        existing_stmt = select(TestCaseDocument).where(
+            TestCaseDocument.project_id == project_id,
+            TestCaseDocument.idempotency_key == normalized_idempotency_key,
+        )
+        if normalized_batch_id is None:
+            existing_stmt = existing_stmt.where(TestCaseDocument.batch_id.is_(None))
+        else:
+            existing_stmt = existing_stmt.where(TestCaseDocument.batch_id == normalized_batch_id)
+        existing = session.scalar(existing_stmt)
+        if existing is not None:
+            if normalized_batch_id is not None and not existing.batch_id:
+                existing.batch_id = normalized_batch_id
+            if storage_path is not None:
+                existing.storage_path = storage_path
+            if parse_status == "parsed" or existing.parse_status == "unprocessed":
+                existing.parse_status = parse_status
+            if summary_for_model:
+                existing.summary_for_model = summary_for_model
+            if parsed_text:
+                existing.parsed_text = parsed_text
+            if structured_data is not None:
+                existing.structured_data = structured_data
+            if provenance:
+                existing.provenance = provenance
+            if confidence is not None:
+                existing.confidence = confidence
+            if error is not None:
+                existing.error = error
+            elif parse_status == "parsed":
+                existing.error = None
+            session.flush()
+            return existing
+
     row = TestCaseDocument(
         project_id=project_id,
-        batch_id=batch_id,
+        batch_id=normalized_batch_id,
+        idempotency_key=normalized_idempotency_key,
         filename=filename,
         content_type=content_type,
         storage_path=storage_path,
