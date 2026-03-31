@@ -1,9 +1,9 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type ReactNode, useEffect, useMemo } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 
-import { getValidAccessToken } from "@/lib/oidc-storage";
+import { hasOidcSession } from "@/lib/oidc-storage";
 
 const PUBLIC_PATH_PREFIXES = ["/auth/login", "/auth/callback"];
 
@@ -15,16 +15,25 @@ export function GlobalAuthGuard({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const [ready, setReady] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
 
   const redirectTarget = useMemo(() => {
     const query = searchParams.toString();
     return query ? `${pathname}?${query}` : pathname;
   }, [pathname, searchParams]);
 
-  const loggedIn = Boolean(getValidAccessToken());
   const publicPath = isPublicPath(pathname);
 
   useEffect(() => {
+    setLoggedIn(hasOidcSession());
+    setReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!ready) {
+      return;
+    }
     if (publicPath) {
       if (loggedIn && pathname.startsWith("/auth/login")) {
         router.replace("/workspace/chat");
@@ -37,9 +46,9 @@ export function GlobalAuthGuard({ children }: { children: ReactNode }) {
       params.set("redirect", redirectTarget);
       router.replace(`/auth/login?${params.toString()}`);
     }
-  }, [loggedIn, pathname, publicPath, redirectTarget, router]);
+  }, [loggedIn, pathname, publicPath, ready, redirectTarget, router]);
 
-  if (!publicPath && !loggedIn) {
+  if (!publicPath && (!ready || !loggedIn)) {
     return <div className="p-6">Redirecting to login...</div>;
   }
 

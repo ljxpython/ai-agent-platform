@@ -37,7 +37,6 @@ export function getValidAccessToken(): string {
   }
 
   if (expiresAt && Date.now() >= expiresAt * 1000) {
-    clearOidcTokenSet();
     return "";
   }
 
@@ -46,16 +45,19 @@ export function getValidAccessToken(): string {
     try {
       const payload = JSON.parse(decodeBase64Url(parts[1])) as { exp?: number };
       if (typeof payload.exp === "number" && Date.now() >= payload.exp * 1000) {
-        clearOidcTokenSet();
         return "";
       }
     } catch {
-      clearOidcTokenSet();
       return "";
     }
   }
 
   return accessToken;
+}
+
+export function hasOidcSession(): boolean {
+  const tokenSet = getOidcTokenSet();
+  return Boolean(tokenSet?.access_token || tokenSet?.refresh_token);
 }
 
 export function setOidcTokenSet(tokenSet: OidcTokenSet): void {

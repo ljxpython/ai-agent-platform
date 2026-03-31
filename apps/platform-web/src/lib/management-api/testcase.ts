@@ -90,7 +90,6 @@ type CaseListResponse = {
 
 function createClient(projectId: string) {
   return createManagementApiClient({
-    requireAuth: false,
     headers: projectId ? { "x-project-id": projectId } : {},
   });
 }

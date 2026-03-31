@@ -57,6 +57,16 @@
 - 支持按当前筛选结果导出 `.xlsx`
 - 支持自定义导出列
 - 根据 `role.can_write_testcase` 控制写权限态
+- 右侧编辑区拆成：
+  - 基础信息
+  - 用例正文
+  - 扩展信息
+  - 来源文档
+- `steps / expected_results` 保存前至少要求 1 条
+- `test_data` 提供实时 JSON object 校验
+- 表单切换时支持未保存离开确认
+- 来源文档支持按文件名 / 解析状态 / document id 搜索，并显示已选数量
+- 编辑态保留 `quality_review / bundle_title / bundle_summary / created_at / updated_at` 只读展示
 
 ### 2.3 PDF 解析
 
@@ -77,6 +87,9 @@
 - 支持导出当前筛选结果为 `.xlsx`
 - 详情区展示 `summary_for_model / parsed_text / structured_data / provenance / error`
 - 详情区展示 `thread_id / run_id / agent_key / related_cases`
+- 详情区展示 `Batch Context`
+- 支持 `查看同批次全部用例 / 查看同批次全部文档 / 复制 batch_id`
+- 支持查看同批次其他文档，并在右侧直接切换详情
 - 支持复制 `document_id`
 - 若存在 `storage_path`，支持在线预览与下载原始 PDF
 

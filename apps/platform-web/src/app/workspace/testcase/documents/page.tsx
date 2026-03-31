@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Copy, Download, ExternalLink, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useQueryState } from "nuqs";
 import { toast } from "sonner";
 
 import { ListSearch } from "@/components/platform/list-search";
@@ -86,7 +88,9 @@ function resolveStoragePath(document: TestcaseDocument | null): string {
 const PARSE_STATUS_OPTIONS = ["", "parsed", "failed", "unsupported", "unprocessed"];
 
 export default function TestcaseDocumentsPage() {
+  const router = useRouter();
   const { projectId } = useWorkspaceContext();
+  const [batchQuery, setBatchQuery] = useQueryState("batchId", { defaultValue: "" });
   const [overview, setOverview] = useState<TestcaseOverview | null>(null);
   const [batches, setBatches] = useState<TestcaseBatchSummary[]>([]);
   const [items, setItems] = useState<TestcaseDocument[]>([]);
@@ -98,7 +102,7 @@ export default function TestcaseDocumentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
-  const [batchFilter, setBatchFilter] = useState("");
+  const [batchFilter, setBatchFilter] = useState(batchQuery);
   const [parseStatusFilter, setParseStatusFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string>("");
   const [selectedItem, setSelectedItem] = useState<TestcaseDocument | null>(null);
@@ -117,6 +121,25 @@ export default function TestcaseDocumentsPage() {
   );
   const storagePath = resolveStoragePath(selectedItem);
   const runtimeMeta = useMemo(() => asRecord(relations?.runtime_meta), [relations]);
+  const selectedBatchSummary = useMemo(
+    () => batches.find((item) => item.batch_id === (selectedItem?.batch_id || "")) ?? null,
+    [batches, selectedItem?.batch_id],
+  );
+  const batchStatusEntries = useMemo(
+    () => Object.entries(selectedBatchSummary?.parse_status_summary ?? {}).sort(([left], [right]) => left.localeCompare(right)),
+    [selectedBatchSummary],
+  );
+  const sameBatchDocuments = useMemo(() => {
+    if (!selectedItem?.batch_id) {
+      return [];
+    }
+    return items.filter((item) => item.batch_id === selectedItem.batch_id && item.id !== selectedItem.id);
+  }, [items, selectedItem]);
+
+  useEffect(() => {
+    const normalized = batchQuery ?? "";
+    setBatchFilter((current) => (current === normalized ? current : normalized));
+  }, [batchQuery]);
 
   const loadMeta = useCallback(async () => {
     if (!projectId) {
@@ -309,6 +332,47 @@ export default function TestcaseDocumentsPage() {
     }
   }, [selectedItem]);
 
+  const handleCopyBatchId = useCallback(async () => {
+    if (!selectedItem?.batch_id) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(selectedItem.batch_id);
+      toast("已复制批次 ID", {
+        description: selectedItem.batch_id,
+      });
+    } catch (err) {
+      toast("复制失败", {
+        description: err instanceof Error ? err.message : "Failed to copy batch id",
+      });
+    }
+  }, [selectedItem?.batch_id]);
+
+  const handleViewBatchDocuments = useCallback(() => {
+    if (!selectedItem?.batch_id) {
+      return;
+    }
+    setBatchFilter(selectedItem.batch_id);
+    void setBatchQuery(selectedItem.batch_id);
+    setParseStatusFilter("");
+    setQuery("");
+    setSearchInput("");
+    setOffset(0);
+    toast("已切换到当前批次", {
+      description: `正在查看批次 ${selectedItem.batch_id} 的全部文档。`,
+    });
+  }, [selectedItem?.batch_id, setBatchQuery]);
+
+  const handleViewBatchCases = useCallback(() => {
+    if (!projectId || !selectedItem?.batch_id) {
+      return;
+    }
+    const params = new URLSearchParams();
+    params.set("projectId", projectId);
+    params.set("batchId", selectedItem.batch_id);
+    router.push(`/workspace/testcase/cases?${params.toString()}`);
+  }, [projectId, router, selectedItem?.batch_id]);
+
   return (
     <section className="p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -338,7 +402,9 @@ export default function TestcaseDocumentsPage() {
             className="ml-2 h-9 rounded-md border border-border bg-background px-3 text-sm"
             value={batchFilter}
             onChange={(event) => {
-              setBatchFilter(event.target.value);
+              const nextValue = event.target.value;
+              setBatchFilter(nextValue);
+              void setBatchQuery(nextValue || null);
               setOffset(0);
             }}
           >
@@ -446,7 +512,7 @@ export default function TestcaseDocumentsPage() {
               </div>
             </div>
 
-            <Card className="gap-4 py-4">
+            <Card className="min-w-0 gap-4 py-4">
               <CardHeader className="px-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <CardTitle className="text-base">解析详情</CardTitle>
@@ -493,7 +559,7 @@ export default function TestcaseDocumentsPage() {
                       <div className="text-lg font-semibold tracking-tight break-all">{selectedItem.filename}</div>
                       <div className="text-xs text-muted-foreground">{selectedItem.id}</div>
                     </div>
-                    <dl className="grid gap-3 text-sm">
+                    <dl className="min-w-0 grid gap-3 text-sm">
                       <div>
                         <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">解析状态</dt>
                         <dd className="mt-1">{selectedItem.parse_status}</dd>
@@ -517,13 +583,73 @@ export default function TestcaseDocumentsPage() {
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">摘要</dt>
-                        <dd className="mt-1 whitespace-pre-wrap text-muted-foreground">
-                          {selectedItem.summary_for_model || "-"}
+                        <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Batch Context</dt>
+                        <dd className="mt-2 rounded-lg border border-border bg-muted/20 p-3">
+                          {selectedItem.batch_id ? (
+                            <div className="space-y-4">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div className="space-y-1">
+                                  <div className="font-medium text-foreground break-all">{selectedItem.batch_id}</div>
+                                  <div className="text-xs text-muted-foreground">
+                                    {selectedBatchSummary
+                                      ? `documents=${selectedBatchSummary.documents_count} / test_cases=${selectedBatchSummary.test_cases_count}`
+                                      : "当前批次未命中汇总信息，可能是筛选条件限制。"}
+                                  </div>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <Button type="button" variant="outline" size="sm" onClick={() => void handleCopyBatchId()}>
+                                    <Copy className="size-4" />
+                                    复制 batch_id
+                                  </Button>
+                                  <Button type="button" variant="outline" size="sm" onClick={handleViewBatchDocuments}>
+                                    查看同批次全部文档
+                                  </Button>
+                                  <Button type="button" variant="outline" size="sm" onClick={handleViewBatchCases}>
+                                    查看同批次全部用例
+                                  </Button>
+                                </div>
+                              </div>
+
+                              {selectedBatchSummary ? (
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <div className="rounded-md border border-border bg-background px-3 py-2">
+                                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">documents_count</div>
+                                    <div className="mt-1 text-sm font-medium">{selectedBatchSummary.documents_count}</div>
+                                  </div>
+                                  <div className="rounded-md border border-border bg-background px-3 py-2">
+                                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">test_cases_count</div>
+                                    <div className="mt-1 text-sm font-medium">{selectedBatchSummary.test_cases_count}</div>
+                                  </div>
+                                  <div className="rounded-md border border-border bg-background px-3 py-2 sm:col-span-2">
+                                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">latest_created_at</div>
+                                    <div className="mt-1 text-sm">{formatDateTime(selectedBatchSummary.latest_created_at)}</div>
+                                  </div>
+                                  <div className="rounded-md border border-border bg-background px-3 py-2 sm:col-span-2">
+                                    <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">parse_status_summary</div>
+                                    <div className="mt-2 flex flex-wrap gap-2">
+                                      {batchStatusEntries.length > 0 ? (
+                                        batchStatusEntries.map(([status, count]) => (
+                                          <span key={status} className="rounded-full border border-border px-2 py-1 text-xs text-muted-foreground">
+                                            {status}: {count}
+                                          </span>
+                                        ))
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">当前批次暂无状态汇总。</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <div className="text-xs leading-6 text-muted-foreground">
+                              当前 document 没有关联 batch_id，暂时只能查看单 document 详情。
+                            </div>
+                          )}
                         </dd>
                       </div>
                       <div>
-                        <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">related_cases</dt>
+                        <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">本文档关联用例</dt>
                         <dd className="mt-2 rounded-lg bg-muted/20 p-3 text-xs leading-6">
                           <div className="mb-2 text-muted-foreground">共 {relations?.related_cases_count ?? 0} 条关联用例</div>
                           {relations && relations.related_cases.length > 0 ? (
@@ -542,10 +668,50 @@ export default function TestcaseDocumentsPage() {
                         </dd>
                       </div>
                       <div>
+                        <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">同批次其他文档</dt>
+                        <dd className="mt-2 rounded-lg bg-muted/20 p-3 text-xs leading-6">
+                          {selectedItem.batch_id ? (
+                            <>
+                              <div className="mb-2 text-muted-foreground">
+                                当前列表已加载 {sameBatchDocuments.length} 条同批次文档；
+                                {selectedBatchSummary ? `批次总量 ${selectedBatchSummary.documents_count} 条。` : "批次汇总暂不可用。"}
+                              </div>
+                              {sameBatchDocuments.length > 0 ? (
+                                <div className="space-y-2">
+                                  {sameBatchDocuments.map((item) => (
+                                    <button
+                                      key={item.id}
+                                      type="button"
+                                      className="block w-full rounded-md border border-border bg-background px-3 py-2 text-left transition-colors hover:bg-muted/20"
+                                      onClick={() => setSelectedId(item.id)}
+                                    >
+                                      <div className="font-medium text-foreground">{item.filename}</div>
+                                      <div className="mt-1 text-muted-foreground">{item.parse_status} / {formatDateTime(item.created_at)}</div>
+                                    </button>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-muted-foreground">
+                                  当前列表未加载其他同批次文档。可以点击“查看同批次全部文档”切到对应批次后继续排查。
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="text-muted-foreground">当前 document 没有关联 batch_id。</div>
+                          )}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">摘要</dt>
+                        <dd className="mt-1 whitespace-pre-wrap text-muted-foreground">
+                          {selectedItem.summary_for_model || "-"}
+                        </dd>
+                      </div>
+                      <div>
                         <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">parsed_text</dt>
                         <dd className="mt-2">
                           {selectedItem.parsed_text ? (
-                            <pre className="max-h-[240px] overflow-auto rounded-lg bg-muted/40 p-3 text-xs leading-6 whitespace-pre-wrap">
+                            <pre className="max-h-[240px] max-w-full overflow-auto rounded-lg bg-muted/40 p-3 text-xs leading-6 whitespace-pre-wrap break-all">
                               {selectedItem.parsed_text}
                             </pre>
                           ) : (
@@ -559,7 +725,7 @@ export default function TestcaseDocumentsPage() {
                       <div>
                         <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">structured_data</dt>
                         <dd className="mt-2">
-                          <pre className="max-h-[220px] overflow-auto rounded-lg bg-muted/40 p-3 text-xs leading-6">
+                          <pre className="max-h-[220px] max-w-full overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted/40 p-3 text-xs leading-6">
                             {stringifyJson(selectedItem.structured_data)}
                           </pre>
                         </dd>
@@ -567,7 +733,7 @@ export default function TestcaseDocumentsPage() {
                       <div>
                         <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">provenance</dt>
                         <dd className="mt-2">
-                          <pre className="max-h-[200px] overflow-auto rounded-lg bg-muted/40 p-3 text-xs leading-6">
+                          <pre className="max-h-[200px] max-w-full overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted/40 p-3 text-xs leading-6">
                             {stringifyJson(selectedItem.provenance)}
                           </pre>
                         </dd>
@@ -575,7 +741,7 @@ export default function TestcaseDocumentsPage() {
                       <div>
                         <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">error</dt>
                         <dd className="mt-2">
-                          <pre className="max-h-[140px] overflow-auto rounded-lg bg-muted/40 p-3 text-xs leading-6">
+                          <pre className="max-h-[140px] max-w-full overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted/40 p-3 text-xs leading-6">
                             {stringifyJson(selectedItem.error)}
                           </pre>
                         </dd>

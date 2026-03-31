@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Download, Loader2, PencilLine, Plus, Settings2, Trash2 } from "lucide-react";
+import { useQueryState } from "nuqs";
 import { toast } from "sonner";
 
 import { ConfirmDialog } from "@/components/platform/confirm-dialog";
@@ -13,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
   createTestcaseCase,
@@ -93,7 +95,36 @@ function splitLines(value: string): string[] {
     .filter(Boolean);
 }
 
+function parseJsonObjectText(value: string): { value: Record<string, unknown>; error: string | null } {
+  const normalized = value.trim();
+  if (!normalized) {
+    return { value: {}, error: null };
+  }
+
+  try {
+    const parsed = JSON.parse(normalized) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {
+        value: {},
+        error: "test_data 必须是 JSON object，不能是数组或纯文本。",
+      };
+    }
+    return { value: parsed as Record<string, unknown>, error: null };
+  } catch (err) {
+    return {
+      value: {},
+      error: err instanceof Error ? `test_data JSON 非法：${err.message}` : "test_data JSON 非法",
+    };
+  }
+}
+
 type EditorMode = "detail" | "create" | "edit";
+
+type PendingEditorAction =
+  | { type: "detail" }
+  | { type: "create" }
+  | { type: "edit" }
+  | { type: "select"; id: string };
 
 type CaseFormState = {
   batch_id: string;
@@ -227,19 +258,18 @@ function buildContentJsonPayload(form: CaseFormState, baseContentJson?: Record<s
   assign("design_technique", form.design_technique);
   assign("remarks", form.remarks);
 
-  const parsedTestData = form.test_data_text.trim();
-  if (parsedTestData) {
-    const jsonValue = JSON.parse(parsedTestData) as unknown;
-    assign("test_data", asRecord(jsonValue));
-  } else {
-    assign("test_data", {});
+  const parsedTestData = parseJsonObjectText(form.test_data_text);
+  if (parsedTestData.error) {
+    throw new Error(parsedTestData.error);
   }
+  assign("test_data", parsedTestData.value);
 
   return next;
 }
 
 export default function TestcaseCasesPage() {
   const { projectId } = useWorkspaceContext();
+  const [batchQuery, setBatchQuery] = useQueryState("batchId", { defaultValue: "" });
   const [overview, setOverview] = useState<TestcaseOverview | null>(null);
   const [batches, setBatches] = useState<TestcaseBatchSummary[]>([]);
   const [items, setItems] = useState<TestcaseCase[]>([]);
@@ -253,7 +283,7 @@ export default function TestcaseCasesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState("");
   const [query, setQuery] = useState("");
-  const [batchFilter, setBatchFilter] = useState("");
+  const [batchFilter, setBatchFilter] = useState(batchQuery);
   const [statusFilter, setStatusFilter] = useState("");
   const [selectedId, setSelectedId] = useState<string>("");
   const [selectedItem, setSelectedItem] = useState<TestcaseCase | null>(null);
@@ -262,10 +292,15 @@ export default function TestcaseCasesPage() {
   const [exporting, setExporting] = useState(false);
   const [editorMode, setEditorMode] = useState<EditorMode>("detail");
   const [form, setForm] = useState<CaseFormState>(buildDefaultForm());
+  const [initialForm, setInitialForm] = useState<CaseFormState>(buildDefaultForm());
   const [formError, setFormError] = useState<string | null>(null);
+  const [saveAttempted, setSaveAttempted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [sourceDocumentQuery, setSourceDocumentQuery] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
+  const [pendingEditorAction, setPendingEditorAction] = useState<PendingEditorAction | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [showExportConfig, setShowExportConfig] = useState(false);
   const [exportColumns, setExportColumns] = useState<string[]>(DEFAULT_EXPORT_COLUMNS);
@@ -277,6 +312,48 @@ export default function TestcaseCasesPage() {
     () => batches.find((item) => item.batch_id === batchFilter)?.batch_id ?? "",
     [batchFilter, batches],
   );
+  const parsedTestData = useMemo(() => parseJsonObjectText(form.test_data_text), [form.test_data_text]);
+  const stepsCount = useMemo(() => splitLines(form.steps_text).length, [form.steps_text]);
+  const expectedResultsCount = useMemo(
+    () => splitLines(form.expected_results_text).length,
+    [form.expected_results_text],
+  );
+  const preconditionsCount = useMemo(() => splitLines(form.preconditions_text).length, [form.preconditions_text]);
+  const isFormDirty = useMemo(
+    () => editorMode !== "detail" && JSON.stringify(form) !== JSON.stringify(initialForm),
+    [editorMode, form, initialForm],
+  );
+  const sourceDocumentLookup = useMemo(
+    () => new Map(documents.map((item) => [item.id, item])),
+    [documents],
+  );
+  const visibleDocuments = useMemo(() => {
+    const normalized = sourceDocumentQuery.trim().toLowerCase();
+    if (!normalized) {
+      return documents;
+    }
+    return documents.filter((document) =>
+      [document.filename, document.id, document.parse_status, document.batch_id]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalized)),
+    );
+  }, [documents, sourceDocumentQuery]);
+  const selectedSourceDocuments = useMemo(
+    () =>
+      form.source_document_ids
+        .map((documentId) => sourceDocumentLookup.get(documentId) ?? null)
+        .filter((item): item is TestcaseDocument => Boolean(item)),
+    [form.source_document_ids, sourceDocumentLookup],
+  );
+  const unresolvedSourceDocumentIds = useMemo(
+    () => form.source_document_ids.filter((documentId) => !sourceDocumentLookup.has(documentId)),
+    [form.source_document_ids, sourceDocumentLookup],
+  );
+
+  useEffect(() => {
+    const normalized = batchQuery ?? "";
+    setBatchFilter((current) => (current === normalized ? current : normalized));
+  }, [batchQuery]);
 
   const loadMeta = useCallback(async () => {
     if (!projectId) {
@@ -441,28 +518,80 @@ export default function TestcaseCasesPage() {
     };
   }, [editorMode, projectId, selectedId]);
 
+  const applyEditorAction = useCallback(
+    (action: PendingEditorAction) => {
+      switch (action.type) {
+        case "detail":
+          setEditorMode("detail");
+          setFormError(null);
+          setSaveAttempted(false);
+          setSourceDocumentQuery("");
+          setPendingEditorAction(null);
+          return;
+        case "select":
+          setSelectedId(action.id);
+          setEditorMode("detail");
+          setFormError(null);
+          setSaveAttempted(false);
+          setSourceDocumentQuery("");
+          setPendingEditorAction(null);
+          return;
+        case "create": {
+          if (!canWrite) {
+            toast("当前角色只读", { description: "只有 admin / editor 可以新增测试用例。" });
+            return;
+          }
+          const nextForm = buildDefaultForm(batchFilter);
+          setForm(nextForm);
+          setInitialForm(nextForm);
+          setFormError(null);
+          setSaveAttempted(false);
+          setSourceDocumentQuery("");
+          setEditorMode("create");
+          setPendingEditorAction(null);
+          return;
+        }
+        case "edit": {
+          if (!canWrite) {
+            toast("当前角色只读", { description: "只有 admin / editor 可以编辑测试用例。" });
+            return;
+          }
+          if (!selectedItem) {
+            return;
+          }
+          const nextForm = buildFormFromCase(selectedItem);
+          setForm(nextForm);
+          setInitialForm(nextForm);
+          setFormError(null);
+          setSaveAttempted(false);
+          setSourceDocumentQuery("");
+          setEditorMode("edit");
+          setPendingEditorAction(null);
+        }
+      }
+    },
+    [batchFilter, canWrite, selectedItem],
+  );
+
+  const requestEditorAction = useCallback(
+    (action: PendingEditorAction) => {
+      if (editorMode !== "detail" && isFormDirty) {
+        setPendingEditorAction(action);
+        setShowDiscardConfirm(true);
+        return;
+      }
+      applyEditorAction(action);
+    },
+    [applyEditorAction, editorMode, isFormDirty],
+  );
+
   const openCreateEditor = useCallback(() => {
-    if (!canWrite) {
-      toast("当前角色只读", { description: "只有 admin / editor 可以新增测试用例。" });
-      return;
-    }
-    setForm(buildDefaultForm(batchFilter));
-    setFormError(null);
-    setEditorMode("create");
-  }, [batchFilter, canWrite]);
+    requestEditorAction({ type: "create" });
+  }, [requestEditorAction]);
 
   const openEditEditor = useCallback(() => {
-    if (!canWrite) {
-      toast("当前角色只读", { description: "只有 admin / editor 可以编辑测试用例。" });
-      return;
-    }
-    if (!selectedItem) {
-      return;
-    }
-    setForm(buildFormFromCase(selectedItem));
-    setFormError(null);
-    setEditorMode("edit");
-  }, [canWrite, selectedItem]);
+    requestEditorAction({ type: "edit" });
+  }, [requestEditorAction]);
 
   const handleSave = useCallback(async () => {
     if (!projectId) {
@@ -472,8 +601,21 @@ export default function TestcaseCasesPage() {
       toast("当前角色只读", { description: "只有 admin / editor 可以保存测试用例。" });
       return;
     }
+    setSaveAttempted(true);
     if (!form.title.trim()) {
       setFormError("标题不能为空");
+      return;
+    }
+    if (stepsCount === 0) {
+      setFormError("步骤至少填写 1 条。");
+      return;
+    }
+    if (expectedResultsCount === 0) {
+      setFormError("预期结果至少填写 1 条。");
+      return;
+    }
+    if (parsedTestData.error) {
+      setFormError(parsedTestData.error);
       return;
     }
 
@@ -507,6 +649,9 @@ export default function TestcaseCasesPage() {
         description: `${response.title} 已写回当前项目。`,
       });
       setEditorMode("detail");
+      setInitialForm(buildFormFromCase(response));
+      setSaveAttempted(false);
+      setSourceDocumentQuery("");
       await refreshAll();
       setSelectedId(response.id);
       setSelectedItem(response);
@@ -521,12 +666,15 @@ export default function TestcaseCasesPage() {
   }, [
     canWrite,
     editorMode,
+    expectedResultsCount,
     form,
     normalizeMutationError,
+    parsedTestData.error,
     projectId,
     refreshAll,
     selectedId,
     selectedItem,
+    stepsCount,
   ]);
 
   const handleDelete = useCallback(async () => {
@@ -581,6 +729,11 @@ export default function TestcaseCasesPage() {
   }, [batchFilter, exportColumns, exporting, projectId, query, statusFilter, total]);
 
   const detailMeta = useMemo(() => asRecord(asRecord(selectedItem?.content_json).meta), [selectedItem]);
+  const titleError = saveAttempted && !form.title.trim() ? "标题不能为空。" : null;
+  const stepsError = saveAttempted && stepsCount === 0 ? "步骤至少填写 1 条。" : null;
+  const expectedResultsError =
+    saveAttempted && expectedResultsCount === 0 ? "预期结果至少填写 1 条。" : null;
+  const selectedSourceCount = form.source_document_ids.length;
 
   return (
     <section className="p-4 sm:p-6">
@@ -666,7 +819,9 @@ export default function TestcaseCasesPage() {
               className="ml-2 h-9 rounded-md border border-border bg-background px-3 text-sm"
               value={batchFilter}
               onChange={(event) => {
-                setBatchFilter(event.target.value);
+                const nextValue = event.target.value;
+                setBatchFilter(nextValue);
+                void setBatchQuery(nextValue || null);
                 setOffset(0);
               }}
             >
@@ -760,8 +915,7 @@ export default function TestcaseCasesPage() {
                                 type="button"
                                 className="text-left"
                                 onClick={() => {
-                                  setSelectedId(item.id);
-                                  setEditorMode("detail");
+                                  requestEditorAction({ type: "select", id: item.id });
                                 }}
                               >
                                 <div className="font-medium text-foreground">{item.title}</div>
@@ -786,7 +940,7 @@ export default function TestcaseCasesPage() {
               )}
             </div>
 
-            <Card className="gap-4 py-4">
+            <Card className="min-w-0 gap-4 py-4">
               <CardHeader className="px-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <CardTitle className="text-base">
@@ -823,7 +977,7 @@ export default function TestcaseCasesPage() {
                           <div className="text-lg font-semibold tracking-tight">{selectedItem.title}</div>
                           <div className="text-xs text-muted-foreground">{selectedItem.case_id || selectedItem.id}</div>
                         </div>
-                        <dl className="grid gap-3 text-sm">
+                        <dl className="min-w-0 grid gap-3 text-sm">
                           <div>
                             <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">状态</dt>
                             <dd className="mt-1">{selectedItem.status}</dd>
@@ -846,16 +1000,22 @@ export default function TestcaseCasesPage() {
                           </div>
                           <div>
                             <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">来源文档</dt>
-                            <dd className="mt-1 break-all text-muted-foreground">
-                              {selectedItem.source_document_ids.length > 0
-                                ? selectedItem.source_document_ids.join(", ")
-                                : "-"}
+                            <dd className="mt-2 space-y-2 text-muted-foreground">
+                              {selectedItem.source_document_ids.length > 0 ? (
+                                selectedItem.source_document_ids.map((documentId) => (
+                                  <div key={documentId} className="max-w-full rounded-md border border-border bg-muted/20 px-3 py-2 text-xs break-all">
+                                    {documentId}
+                                  </div>
+                                ))
+                              ) : (
+                                "-"
+                              )}
                             </dd>
                           </div>
                           <div>
                             <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">质量评审</dt>
                             <dd className="mt-2">
-                              <pre className="max-h-[160px] overflow-auto rounded-lg bg-muted/40 p-3 text-xs leading-6">
+                              <pre className="max-h-[160px] max-w-full overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted/40 p-3 text-xs leading-6">
                                 {stringifyJson(detailMeta.quality_review)}
                               </pre>
                             </dd>
@@ -863,7 +1023,7 @@ export default function TestcaseCasesPage() {
                           <div>
                             <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">content_json</dt>
                             <dd className="mt-2">
-                              <pre className="max-h-[320px] overflow-auto rounded-lg bg-muted/40 p-3 text-xs leading-6">
+                              <pre className="max-h-[320px] max-w-full overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted/40 p-3 text-xs leading-6">
                                 {stringifyJson(selectedItem.content_json)}
                               </pre>
                             </dd>
@@ -874,191 +1034,306 @@ export default function TestcaseCasesPage() {
                   </>
                 ) : (
                   <div className="space-y-4">
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="case-batch-id">批次 ID</Label>
-                        <Input
-                          id="case-batch-id"
-                          value={form.batch_id}
-                          onChange={(event) => setForm((current) => ({ ...current, batch_id: event.target.value }))}
-                          placeholder="可为空，默认沿用当前筛选批次"
-                        />
+                    <div className="space-y-4 rounded-xl border border-border/80 bg-muted/10 p-4">
+                      <div className="space-y-1">
+                        <div className="text-sm font-semibold tracking-tight">基础信息</div>
+                        <div className="text-xs text-muted-foreground">维护批次、标题、模块、优先级等主索引字段。</div>
                       </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="case-batch-id">批次 ID</Label>
+                          <Input
+                            id="case-batch-id"
+                            value={form.batch_id}
+                            onChange={(event) => setForm((current) => ({ ...current, batch_id: event.target.value }))}
+                            placeholder="可为空，默认沿用当前筛选批次"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="case-case-id">Case ID</Label>
+                          <Input
+                            id="case-case-id"
+                            value={form.case_id}
+                            onChange={(event) => setForm((current) => ({ ...current, case_id: event.target.value }))}
+                            placeholder="例如 TC-LOGIN-001"
+                          />
+                        </div>
+                      </div>
+
                       <div className="space-y-2">
-                        <Label htmlFor="case-case-id">Case ID</Label>
+                        <Label htmlFor="case-title">标题</Label>
                         <Input
-                          id="case-case-id"
-                          value={form.case_id}
-                          onChange={(event) => setForm((current) => ({ ...current, case_id: event.target.value }))}
-                          placeholder="例如 TC-LOGIN-001"
+                          id="case-title"
+                          value={form.title}
+                          onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                          placeholder="请输入测试用例标题"
                         />
+                        {titleError ? <div className="text-xs text-destructive">{titleError}</div> : null}
+                      </div>
+
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="case-status">状态</Label>
+                          <select
+                            id="case-status"
+                            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                            value={form.status}
+                            onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
+                          >
+                            {FORM_STATUS_OPTIONS.map((item) => (
+                              <option key={item} value={item}>
+                                {item}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="case-module">模块</Label>
+                          <Input
+                            id="case-module"
+                            value={form.module_name}
+                            onChange={(event) => setForm((current) => ({ ...current, module_name: event.target.value }))}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="case-priority">优先级</Label>
+                          <select
+                            id="case-priority"
+                            className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                            value={form.priority}
+                            onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value }))}
+                          >
+                            {PRIORITY_OPTIONS.map((item) => (
+                              <option key={item || "empty"} value={item}>
+                                {item || "未设置"}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="case-title">标题</Label>
-                      <Input
-                        id="case-title"
-                        value={form.title}
-                        onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-                        placeholder="请输入测试用例标题"
-                      />
+                    <div className="space-y-4 rounded-xl border border-border/80 bg-muted/10 p-4">
+                      <div className="space-y-1">
+                        <div className="text-sm font-semibold tracking-tight">用例正文</div>
+                        <div className="text-xs text-muted-foreground">用一行一项的方式维护步骤和预期，减少保存时再返工。</div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="case-description">描述</Label>
+                        <Textarea
+                          id="case-description"
+                          value={form.description}
+                          onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
+                          rows={4}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="case-preconditions">前置条件（一行一项，当前 {preconditionsCount} 条）</Label>
+                        <Textarea
+                          id="case-preconditions"
+                          value={form.preconditions_text}
+                          onChange={(event) => setForm((current) => ({ ...current, preconditions_text: event.target.value }))}
+                          rows={4}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="case-steps">步骤（一行一项，当前 {stepsCount} 条）</Label>
+                        <Textarea
+                          id="case-steps"
+                          value={form.steps_text}
+                          onChange={(event) => setForm((current) => ({ ...current, steps_text: event.target.value }))}
+                          rows={6}
+                        />
+                        {stepsError ? <div className="text-xs text-destructive">{stepsError}</div> : null}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="case-expected-results">预期结果（一行一项，当前 {expectedResultsCount} 条）</Label>
+                        <Textarea
+                          id="case-expected-results"
+                          value={form.expected_results_text}
+                          onChange={(event) => setForm((current) => ({ ...current, expected_results_text: event.target.value }))}
+                          rows={5}
+                        />
+                        {expectedResultsError ? <div className="text-xs text-destructive">{expectedResultsError}</div> : null}
+                      </div>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-3">
+                    <div className="space-y-4 rounded-xl border border-border/80 bg-muted/10 p-4">
+                      <div className="space-y-1">
+                        <div className="text-sm font-semibold tracking-tight">扩展信息</div>
+                        <div className="text-xs text-muted-foreground">补充测试类型、设计技术、JSON 测试数据与备注。</div>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="case-test-type">测试类型</Label>
+                          <Input
+                            id="case-test-type"
+                            value={form.test_type}
+                            onChange={(event) => setForm((current) => ({ ...current, test_type: event.target.value }))}
+                            placeholder="例如 functional"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="case-design-technique">设计技术</Label>
+                          <Input
+                            id="case-design-technique"
+                            value={form.design_technique}
+                            onChange={(event) => setForm((current) => ({ ...current, design_technique: event.target.value }))}
+                            placeholder="例如 boundary value"
+                          />
+                        </div>
+                      </div>
                       <div className="space-y-2">
-                        <Label htmlFor="case-status">状态</Label>
-                        <select
-                          id="case-status"
-                          className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
-                          value={form.status}
-                          onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
+                        <Label htmlFor="case-test-data">测试数据（JSON object）</Label>
+                        <Textarea
+                          id="case-test-data"
+                          value={form.test_data_text}
+                          onChange={(event) => setForm((current) => ({ ...current, test_data_text: event.target.value }))}
+                          rows={6}
+                        />
+                        <div className={parsedTestData.error ? "text-xs text-destructive" : "text-xs text-muted-foreground"}>
+                          {parsedTestData.error || "实时校验通过，保存时会按 JSON object 写入 content_json.test_data。"}
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="case-remarks">备注</Label>
+                        <Textarea
+                          id="case-remarks"
+                          value={form.remarks}
+                          onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
+                          rows={3}
+                        />
+                      </div>
+
+                      {editorMode === "edit" && selectedItem ? (
+                        <>
+                          <Separator />
+                          <div className="space-y-3">
+                            <div className="text-sm font-semibold tracking-tight">只读元信息</div>
+                            <div className="grid gap-3 text-sm sm:grid-cols-2">
+                              <div>
+                                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">创建时间</div>
+                                <div className="mt-1">{formatDateTime(selectedItem.created_at)}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">更新时间</div>
+                                <div className="mt-1">{formatDateTime(selectedItem.updated_at)}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">bundle_title</div>
+                                <div className="mt-1 break-all">{coerceText(detailMeta.bundle_title) || "-"}</div>
+                              </div>
+                              <div>
+                                <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">bundle_summary</div>
+                                <div className="mt-1 whitespace-pre-wrap text-muted-foreground">{coerceText(detailMeta.bundle_summary) || "-"}</div>
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs uppercase tracking-[0.18em] text-muted-foreground">quality_review</div>
+                              <pre className="mt-2 max-h-[180px] max-w-full overflow-auto whitespace-pre-wrap break-all rounded-lg bg-muted/40 p-3 text-xs leading-6">
+                                {stringifyJson(detailMeta.quality_review)}
+                              </pre>
+                            </div>
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
+
+                    <div className="space-y-4 rounded-xl border border-border/80 bg-muted/10 p-4">
+                      <div className="space-y-1">
+                        <div className="text-sm font-semibold tracking-tight">来源文档</div>
+                        <div className="text-xs text-muted-foreground">
+                          已选 {selectedSourceCount} 条，当前加载 {documents.length} 条，可按文件名、解析状态或文档 ID 搜索。
+                        </div>
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+                        <Input
+                          value={sourceDocumentQuery}
+                          onChange={(event) => setSourceDocumentQuery(event.target.value)}
+                          placeholder="搜索来源文档：文件名 / 解析状态 / document id"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setSourceDocumentQuery("")}
+                          disabled={sourceDocumentQuery.length === 0}
                         >
-                          {FORM_STATUS_OPTIONS.map((item) => (
-                            <option key={item} value={item}>
-                              {item}
-                            </option>
-                          ))}
-                        </select>
+                          清空搜索
+                        </Button>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="case-module">模块</Label>
-                        <Input
-                          id="case-module"
-                          value={form.module_name}
-                          onChange={(event) => setForm((current) => ({ ...current, module_name: event.target.value }))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="case-priority">优先级</Label>
-                        <select
-                          id="case-priority"
-                          className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
-                          value={form.priority}
-                          onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value }))}
-                        >
-                          {PRIORITY_OPTIONS.map((item) => (
-                            <option key={item || "empty"} value={item}>
-                              {item || "未设置"}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="case-description">描述</Label>
-                      <Textarea
-                        id="case-description"
-                        value={form.description}
-                        onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                        rows={4}
-                      />
-                    </div>
+                      {selectedSourceDocuments.length > 0 ? (
+                        <div className="rounded-lg border border-border bg-background p-3">
+                          <div className="mb-2 text-xs uppercase tracking-[0.18em] text-muted-foreground">已选来源文档</div>
+                          <div className="space-y-2">
+                            {selectedSourceDocuments.map((document) => (
+                              <div key={document.id} className="rounded-md border border-border/80 bg-muted/20 px-3 py-2 text-sm">
+                                <div className="font-medium text-foreground">{document.filename}</div>
+                                <div className="mt-1 text-xs text-muted-foreground">
+                                  {document.parse_status} / {document.batch_id || "-"} / {formatDateTime(document.created_at)}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="case-test-type">测试类型</Label>
-                        <Input
-                          id="case-test-type"
-                          value={form.test_type}
-                          onChange={(event) => setForm((current) => ({ ...current, test_type: event.target.value }))}
-                          placeholder="例如 functional"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="case-design-technique">设计技术</Label>
-                        <Input
-                          id="case-design-technique"
-                          value={form.design_technique}
-                          onChange={(event) => setForm((current) => ({ ...current, design_technique: event.target.value }))}
-                          placeholder="例如 boundary value"
-                        />
-                      </div>
-                    </div>
+                      {unresolvedSourceDocumentIds.length > 0 ? (
+                        <div className="rounded-lg border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
+                          以下来源文档当前未加载到列表中，但仍会随表单保存：
+                          <div className="mt-2 space-y-1">
+                            {unresolvedSourceDocumentIds.map((documentId) => (
+                              <div key={documentId} className="break-all">{documentId}</div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
 
-                    <div className="space-y-2">
-                      <Label htmlFor="case-preconditions">前置条件（一行一项）</Label>
-                      <Textarea
-                        id="case-preconditions"
-                        value={form.preconditions_text}
-                        onChange={(event) => setForm((current) => ({ ...current, preconditions_text: event.target.value }))}
-                        rows={4}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="case-steps">步骤（一行一项）</Label>
-                      <Textarea
-                        id="case-steps"
-                        value={form.steps_text}
-                        onChange={(event) => setForm((current) => ({ ...current, steps_text: event.target.value }))}
-                        rows={6}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="case-expected-results">预期结果（一行一项）</Label>
-                      <Textarea
-                        id="case-expected-results"
-                        value={form.expected_results_text}
-                        onChange={(event) => setForm((current) => ({ ...current, expected_results_text: event.target.value }))}
-                        rows={5}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="case-test-data">测试数据（JSON）</Label>
-                      <Textarea
-                        id="case-test-data"
-                        value={form.test_data_text}
-                        onChange={(event) => setForm((current) => ({ ...current, test_data_text: event.target.value }))}
-                        rows={6}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="case-remarks">备注</Label>
-                      <Textarea
-                        id="case-remarks"
-                        value={form.remarks}
-                        onChange={(event) => setForm((current) => ({ ...current, remarks: event.target.value }))}
-                        rows={3}
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>来源文档</Label>
-                      <div className="max-h-[220px] overflow-auto rounded-lg border border-border bg-muted/20 p-3">
+                      <div className="max-h-[280px] overflow-auto rounded-lg border border-border bg-muted/20 p-3">
                         {documentsLoading ? <div className="text-sm text-muted-foreground">Loading documents...</div> : null}
                         {!documentsLoading && documents.length === 0 ? (
-                          <div className="text-sm text-muted-foreground">当前批次下没有可关联的 document。</div>
+                          <div className="text-sm text-muted-foreground">当前筛选批次下没有可关联的 document。</div>
                         ) : null}
-                        {!documentsLoading ? (
+                        {!documentsLoading && documents.length > 0 ? (
                           <div className="space-y-2">
-                            {documents.map((document) => {
-                              const checked = form.source_document_ids.includes(document.id);
-                              return (
-                                <label key={document.id} className="flex items-start gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={(event) => {
-                                      setForm((current) => ({
-                                        ...current,
-                                        source_document_ids: event.target.checked
-                                          ? [...current.source_document_ids, document.id]
-                                          : current.source_document_ids.filter((item) => item !== document.id),
-                                      }));
-                                    }}
-                                  />
-                                  <span>
-                                    <span className="block font-medium">{document.filename}</span>
-                                    <span className="text-xs text-muted-foreground">{document.id}</span>
-                                  </span>
-                                </label>
-                              );
-                            })}
+                            {visibleDocuments.length > 0 ? (
+                              visibleDocuments.map((document) => {
+                                const checked = form.source_document_ids.includes(document.id);
+                                return (
+                                  <label
+                                    key={document.id}
+                                    className={[
+                                      "flex items-start gap-3 rounded-md border px-3 py-3 text-sm transition-colors",
+                                      checked
+                                        ? "border-sidebar-primary/50 bg-sidebar-primary/10"
+                                        : "border-border bg-background hover:bg-muted/20",
+                                    ].join(" ")}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={checked}
+                                      onChange={(event) => {
+                                        setForm((current) => ({
+                                          ...current,
+                                          source_document_ids: event.target.checked
+                                            ? Array.from(new Set([...current.source_document_ids, document.id]))
+                                            : current.source_document_ids.filter((item) => item !== document.id),
+                                        }));
+                                      }}
+                                    />
+                                    <span className="min-w-0 flex-1">
+                                      <span className="block truncate font-medium text-foreground">{document.filename}</span>
+                                      <span className="mt-1 block text-xs text-muted-foreground break-all">{document.id}</span>
+                                      <span className="mt-1 block text-xs text-muted-foreground">
+                                        {document.parse_status} / {document.batch_id || "-"} / {formatDateTime(document.created_at)}
+                                      </span>
+                                    </span>
+                                  </label>
+                                );
+                              })
+                            ) : (
+                              <div className="text-sm text-muted-foreground">没有匹配当前搜索词的来源文档。</div>
+                            )}
                           </div>
                         ) : null}
                       </div>
@@ -1074,10 +1349,7 @@ export default function TestcaseCasesPage() {
                       <Button
                         type="button"
                         variant="outline"
-                        onClick={() => {
-                          setEditorMode("detail");
-                          setFormError(null);
-                        }}
+                        onClick={() => requestEditorAction({ type: "detail" })}
                         disabled={saving}
                       >
                         取消
@@ -1137,6 +1409,25 @@ export default function TestcaseCasesPage() {
         loading={deleting}
         onConfirm={() => void handleDelete()}
         onCancel={() => setShowDeleteConfirm(false)}
+      />
+
+      <ConfirmDialog
+        open={showDiscardConfirm}
+        title="存在未保存修改，确认离开？"
+        description="当前表单还有未保存内容。继续切换会丢失这些修改。"
+        confirmLabel="放弃修改"
+        confirmLabelLoading="处理中..."
+        cancelLabel="继续编辑"
+        onConfirm={() => {
+          setShowDiscardConfirm(false);
+          if (pendingEditorAction) {
+            applyEditorAction(pendingEditorAction);
+          }
+        }}
+        onCancel={() => {
+          setShowDiscardConfirm(false);
+          setPendingEditorAction(null);
+        }}
       />
     </section>
   );
