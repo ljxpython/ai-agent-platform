@@ -26,6 +26,9 @@ from runtime_service.services.test_case_service.schemas import (
     build_test_case_service_config,
     get_service_root,
 )
+from runtime_service.services.test_case_service.tool_runtime_context_middleware import (
+    ToolRuntimeContextSanitizerMiddleware,
+)
 from runtime_service.services.test_case_service.tools import (
     build_test_case_service_tools,
 )
@@ -97,6 +100,7 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
         detail_text_max_chars=service_config.multimodal_detail_text_max_chars,
     )
     document_persistence_middleware = TestCaseDocumentPersistenceMiddleware(service_config)
+    tool_runtime_context_middleware = ToolRuntimeContextSanitizerMiddleware()
 
     # 5. FilesystemBackend：root 指向服务 skills 目录
     #    virtual_mode=True：skills 从磁盘读取，运行时中间产物保存在内存
@@ -119,7 +123,11 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
         name="test_case_agent",
         model=model,
         tools=tools,
-        middleware=[multimodal_middleware, document_persistence_middleware],
+        middleware=[
+            multimodal_middleware,
+            document_persistence_middleware,
+            tool_runtime_context_middleware,
+        ],
         system_prompt=system_prompt,
         backend=backend,
         skills=skills,

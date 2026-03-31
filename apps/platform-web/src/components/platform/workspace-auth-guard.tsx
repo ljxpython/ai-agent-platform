@@ -20,8 +20,6 @@ export function WorkspaceAuthGuard({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
 
-    setReady(false);
-
     void ensureOidcSession().then((nextLoggedIn) => {
       if (cancelled) {
         return;

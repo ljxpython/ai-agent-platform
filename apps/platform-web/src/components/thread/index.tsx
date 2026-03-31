@@ -456,7 +456,7 @@ export function Thread({
       {
         config,
         ...(debugMode ? { interruptBefore: ["tools"] } : {}),
-        streamMode: ["messages", "values"],
+        streamMode: ["values"],
         streamSubgraphs: true,
         streamResumable: true,
         optimisticValues: (prev) => ({
@@ -484,7 +484,7 @@ export function Thread({
       checkpoint: parentCheckpoint,
       config,
       ...(debugMode ? { interruptBefore: ["tools"] } : {}),
-      streamMode: ["messages", "values"],
+      streamMode: ["values"],
       streamSubgraphs: true,
       streamResumable: true,
     });
@@ -507,7 +507,7 @@ export function Thread({
       ...(hasTaskToolCall
         ? { interruptAfter: ["tools"] }
         : { interruptBefore: ["tools"] }),
-      streamMode: ["messages", "values"],
+      streamMode: ["values"],
       streamSubgraphs: true,
       streamResumable: true,
     });
@@ -517,6 +517,8 @@ export function Thread({
   const hasNoAIOrToolMessages = !messages.find(
     (m) => m.type === "ai" || m.type === "tool",
   );
+  const shouldRenderStandaloneInterrupt =
+    chatStarted && hasNoAIOrToolMessages && Boolean(stream.interrupt);
   const shellSpringTransition =
     !prefersReducedMotion && isLargeScreen
       ? { type: "spring" as const, stiffness: 300, damping: 30 }
@@ -714,7 +716,7 @@ export function Thread({
                     )}
                   {/* Special rendering case where there are no AI/tool messages, but there is an interrupt.
                     We need to render it outside of the messages list, since there are no messages to render */}
-                  {hasNoAIOrToolMessages && !!stream.interrupt && (
+                  {shouldRenderStandaloneInterrupt && (
                     <AssistantMessage
                       key="interrupt-msg"
                       message={undefined}

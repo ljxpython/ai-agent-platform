@@ -17,7 +17,7 @@ import {
   type UIMessage,
   type RemoveUIMessage,
 } from "@langchain/langgraph-sdk/react-ui";
-import { useQueryState } from "nuqs";
+import { parseAsBoolean, useQueryState } from "nuqs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { LangGraphLogoSVG } from "@/components/icons/langgraph";
@@ -48,6 +48,71 @@ const useTypedStream = useStream<
 
 type StreamContextType = ReturnType<typeof useTypedStream>;
 const StreamContext = createContext<StreamContextType | undefined>(undefined);
+
+function countRenderableAssistantMessages(messages: Message[]): number {
+  return messages.reduce((count, message) => {
+    return message.type === "ai" || message.type === "tool" ? count + 1 : count;
+  }, 0);
+}
+
+function pickCanonicalMessages(
+  streamMessages: Message[],
+  stateMessages: Message[],
+): Message[] {
+  if (stateMessages.length === 0) {
+    return streamMessages;
+  }
+  if (streamMessages.length === 0) {
+    return stateMessages;
+  }
+
+  if (stateMessages.length > streamMessages.length) {
+    return stateMessages;
+  }
+
+  const streamAssistantCount = countRenderableAssistantMessages(streamMessages);
+  const stateAssistantCount = countRenderableAssistantMessages(stateMessages);
+  if (stateAssistantCount > streamAssistantCount) {
+    return stateMessages;
+  }
+
+  const streamLastType = streamMessages[streamMessages.length - 1]?.type;
+  const stateLastType = stateMessages[stateMessages.length - 1]?.type;
+  if (
+    stateLastType !== streamLastType &&
+    (stateLastType === "ai" || stateLastType === "tool")
+  ) {
+    return stateMessages;
+  }
+
+  return streamMessages;
+}
+
+function unwrapInterruptPayload(interrupt: unknown): unknown {
+  if (Array.isArray(interrupt)) {
+    return interrupt.map(unwrapInterruptPayload);
+  }
+  if (
+    interrupt &&
+    typeof interrupt === "object" &&
+    "value" in interrupt &&
+    (interrupt as { value?: unknown }).value !== undefined
+  ) {
+    return (interrupt as { value?: unknown }).value;
+  }
+  return interrupt;
+}
+
+function isBreakpointInterrupt(interrupt: unknown): boolean {
+  const payload = unwrapInterruptPayload(interrupt);
+  if (Array.isArray(payload)) {
+    return payload.length > 0 && payload.every((item) => isBreakpointInterrupt(item));
+  }
+  if (!payload || typeof payload !== "object") {
+    return false;
+  }
+  return (payload as Record<string, unknown>).when === "breakpoint";
+}
 
 async function sleep(ms = 4000) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -188,6 +253,10 @@ const StreamSession = ({
   autoTokenEnabled: boolean;
 }) => {
   const [threadId, setThreadId] = useQueryState("threadId");
+  const [debugMode] = useQueryState(
+    "debugMode",
+    parseAsBoolean.withDefault(false),
+  );
   const { getThreads, setThreads } = useThreads();
   const runtimeHeaders = useMemo<Record<string, string>>(
     () => ({
@@ -235,6 +304,47 @@ const StreamSession = ({
     assistantId,
     threadId: threadId || null,
     fetchStateHistory: true,
+    reconnectOnMount: true,
+    onCreated: (meta) => {
+      void logClient({
+        level: "info",
+        event: "stream_run_created",
+        message: "Run stream created",
+        context: {
+          threadId: meta.thread_id,
+          runId: meta.run_id,
+          assistantId,
+        },
+      });
+    },
+    onFinish: (checkpoint, meta) => {
+      void logClient({
+        level: "info",
+        event: "stream_run_finished",
+        message: "Run stream finished",
+        context: {
+          threadId: meta?.thread_id,
+          runId: meta?.run_id,
+          checkpointId: checkpoint?.checkpoint?.checkpoint_id,
+          next: checkpoint?.next,
+          messageCount: Array.isArray(checkpoint?.values?.messages)
+            ? checkpoint.values.messages.length
+            : undefined,
+        },
+      });
+    },
+    onError: (error, meta) => {
+      void logClient({
+        level: "error",
+        event: "stream_run_error",
+        message: "Run stream failed",
+        context: {
+          threadId: meta?.thread_id,
+          runId: meta?.run_id,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    },
     onCustomEvent: (event, options) => {
       if (isUIMessage(event) || isRemoveUIMessage(event)) {
         options.mutate((prev) => {
@@ -272,6 +382,35 @@ const StreamSession = ({
     },
   });
 
+  const normalizedMessages = useMemo<Message[]>(() => {
+    const streamMessages = Array.isArray(streamValue.messages)
+      ? streamValue.messages
+      : [];
+    const stateMessages = Array.isArray(streamValue.values?.messages)
+      ? streamValue.values.messages
+      : [];
+    return pickCanonicalMessages(streamMessages, stateMessages);
+  }, [streamValue.messages, streamValue.values?.messages]);
+
+  const normalizedInterrupt = useMemo(() => {
+    if (!streamValue.interrupt) {
+      return undefined;
+    }
+    if (!debugMode && isBreakpointInterrupt(streamValue.interrupt)) {
+      return undefined;
+    }
+    return streamValue.interrupt;
+  }, [debugMode, streamValue.interrupt]);
+
+  const streamContextValue: StreamContextType = useMemo(
+    () => ({
+      ...streamValue,
+      messages: normalizedMessages,
+      interrupt: normalizedInterrupt,
+    }),
+    [streamValue, normalizedInterrupt, normalizedMessages],
+  );
+
   useEffect(() => {
     checkGraphStatus(apiUrl, statusHeaders).then((ok) => {
       if (!ok) {
@@ -300,7 +439,7 @@ const StreamSession = ({
   }, [apiUrl, assistantId, statusHeaders]);
 
   return (
-    <StreamContext.Provider value={streamValue}>
+    <StreamContext.Provider value={streamContextValue}>
       {children}
     </StreamContext.Provider>
   );

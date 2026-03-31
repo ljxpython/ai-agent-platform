@@ -218,6 +218,96 @@ cd apps/runtime-service
 在修复 skills 和多模态问题后，`test_case_service` 已继续向“正式测试资产服务”收敛：
 
 - 不再复用 `usecase_workflow_agent` 的 workflow/snapshot/review 设计
+
+---
+
+## 补充问题：工具节点出现 `PydanticSerializationUnexpectedValue(Expected \`none\`)`
+
+### 问题现象
+
+当 `test_case_agent` 通过 LangGraph API / `langgraph dev` 在线运行，并且模型触发 tools 节点时，日志会出现：
+
+```text
+Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected `none` - serialized value may not be as expected [field_name='context', input_value=RuntimeContext(...), input_type=RuntimeContext])
+```
+
+典型位置：
+
+- `langgraph_node=tools`
+- 发生在 skills 读取阶段最常见，也就是 `read_file` / `write_file` / `edit_file` 一类文件系统工具被调用时
+
+### 真正根因
+
+这次也不是 `test_case_service` 自己的 `persist_test_case_results` 工具有问题，而是 **Deep Agents 自带 filesystem tools 的 runtime 签名与我们的 `RuntimeContext` 组合不兼容**：
+
+1. `test_case_agent` 图通过 `context_schema=RuntimeContext` 为整条运行链路注入真实上下文
+2. `deepagents.middleware.filesystem` 内部创建的 `read_file` / `write_file` / `edit_file` 等工具，签名是 `ToolRuntime[None, FilesystemState]`
+3. `langchain_core.tools.base._parse_input()` 在校验工具参数后，会对结果执行 `result.model_dump()`
+4. 当 runtime 里真实带着 `RuntimeContext`，但工具 schema 声明“context 应该是 `None`”时，Pydantic 在 `model_dump()` 阶段发出 serializer warning
+5. 在线 `langgraph dev` / LangGraph API 会把这个 warning 打到日志里；如果把 warning 提升成 error，整个 run 会在 tools 节点失败
+
+### 修复方案
+
+新增服务私有中间件：
+
+- `runtime_service/services/test_case_service/tool_runtime_context_middleware.py`
+
+核心做法：
+
+1. 在 `wrap_tool_call/awrap_tool_call` 里读取当前工具的 input schema
+2. 如果工具的 `runtime` 字段注解是 `ToolRuntime[None, ...]`
+3. 说明这个工具明确声明“不接受 context”
+4. 只在这种场景下，把 `request.runtime.context` 置空后再继续执行工具
+5. 对 `persist_test_case_results` 这类真正需要 runtime context 的工具，不做改写
+
+这属于 **服务侧兼容层**，不去改三方 `deepagents` 包，也不把“落库/项目作用域”逻辑耦合进公共 middleware。
+
+### 为什么这样修
+
+这次问题本质上不是业务逻辑错，而是“三方工具签名声明过窄”：
+
+- 我们不能改 LangGraph API 的序列化路径
+- 也不应该为了迁就第三方 filesystem tools，把整条 `test_case_agent` 图退回到“没有 `RuntimeContext`”
+- 最稳的方式就是：
+  - 保留真实 `RuntimeContext`
+  - 只对“明确声明 `context=None`”的工具做最小兼容
+
+### 验证方式
+
+#### 单测
+
+```bash
+cd apps/runtime-service
+PYTHONPATH=. .venv/bin/pytest -q runtime_service/tests/test_test_case_tool_runtime_context_middleware.py
+```
+
+预期：
+
+- `ToolRuntime[None, ...]` 工具会收到 `runtime.context=None`
+- context-aware 工具仍能收到真实 `RuntimeContext`
+
+#### 真实联调
+
+1. 启动独立 dev server：
+
+```bash
+cd apps/runtime-service
+uv run langgraph dev --config runtime_service/langgraph.json --port 8124 --no-browser
+```
+
+2. 用真实 `test_case_agent` 发起一次会触发 skills 读取的 run
+3. 观察 8124 日志
+
+修复前：
+
+- tools 节点会出现 `PydanticSerializationUnexpectedValue(Expected \`none\`)`
+
+修复后：
+
+- `test_case_agent` 仍会正常读取 skill
+- tools 节点不再出现该 warning
+- run 正常完成
 - 正式持久化只保留一个工具：`persist_test_case_results`
 - 远端只保留两个结果域：
   - `documents`
