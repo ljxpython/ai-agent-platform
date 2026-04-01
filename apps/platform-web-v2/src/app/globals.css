@@ -5,7 +5,9 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans:
+    "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", sans-serif;
   --background: #f4f7fb;
   --background-soft: #edf2f8;
   --background-spot: rgba(176, 212, 247, 0.22);
@@ -53,7 +55,11 @@ body {
 
 body {
   background:
-    radial-gradient(circle at top right, var(--background-spot), transparent 28%),
+    radial-gradient(
+      circle at top right,
+      var(--background-spot),
+      transparent 28%
+    ),
     linear-gradient(180deg, var(--background), var(--background-soft) 100%);
   color: var(--foreground);
   font-family: var(--font-sans);
@@ -69,7 +75,8 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -225,7 +232,9 @@ select {
   border-radius: 12px;
   text-decoration: none;
   font-weight: 600;
-  transition: background-color 180ms ease, color 180ms ease;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
 }
 
 .workspace-shell__nav-item:hover,

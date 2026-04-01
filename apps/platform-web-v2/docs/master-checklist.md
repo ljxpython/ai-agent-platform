@@ -86,7 +86,7 @@
 - [x] 建立 `button`
 - [x] 建立 `input`
 - [x] 建立 `textarea`
-- [ ] 建立 `dialog`
+- [x] 建立 `dialog`
 - [ ] 建立 `sheet`
 - [ ] 建立 `tooltip`
 - [ ] 建立 `avatar`
@@ -138,7 +138,7 @@
 
 - [x] 迁移 `/workspace/projects/new`
 - [x] 迁移 `/workspace/projects/[projectId]`
-- [ ] 迁移 `/workspace/projects/[projectId]/members`
+- [x] 迁移 `/workspace/projects/[projectId]/members`
 - [x] 迁移 `/workspace/users/new`
 - [x] 迁移 `/workspace/users/[userId]`
 - [x] 迁移 `/workspace/assistants/new`

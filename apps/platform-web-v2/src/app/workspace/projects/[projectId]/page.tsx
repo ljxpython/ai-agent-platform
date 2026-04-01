@@ -58,6 +58,11 @@ export default function ProjectDetailPage() {
             <Button asChild variant="ghost">
               <Link href="/workspace/projects">Back to projects</Link>
             </Button>
+            <Button asChild variant="ghost">
+              <Link href={`/workspace/projects/${projectId}/members`}>
+                Manage members
+              </Link>
+            </Button>
             <Button
               disabled={!project}
               onClick={() => {
@@ -75,7 +80,7 @@ export default function ProjectDetailPage() {
             </Button>
           </PageActions>
         }
-        description="项目详情页先承担上下文确认和后续入口分发。成员、审计和策略页会继续沿着这套版式扩展。"
+        description="项目详情页现在已经能承接成员管理入口。后续审计和策略页会继续沿着这套版式扩展，不会再散落到旧壳子里。"
         eyebrow="Workspace"
         title={project?.name || "Project Detail"}
       />
@@ -131,7 +136,7 @@ export default function ProjectDetailPage() {
             </Button>
           ) : undefined
         }
-        description="这里先保留项目范围、上下文和跳转入口。后续成员管理和策略页直接挂在这个详情视图下面。"
+        description="这里承接项目范围、上下文和关键入口。成员管理已经并入 v2，其他项目级能力会继续挂在这个详情视图下面。"
         title="Project Scope"
       >
         <div className="grid gap-4 lg:grid-cols-2">
@@ -174,7 +179,7 @@ export default function ProjectDetailPage() {
         </div>
       </FormSection>
 
-      <StateBanner message="项目成员、审计和更细的策略管理会在下一阶段迁入。这里先把项目上下文和后续工作区入口承接稳。" />
+      <StateBanner message="成员管理已经迁入 v2。下一阶段会继续补项目审计和更细粒度的策略管理。" />
     </PlatformPage>
   );
 }

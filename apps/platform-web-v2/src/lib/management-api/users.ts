@@ -34,6 +34,7 @@ export async function listUsersPage(options?: {
   offset?: number;
   query?: string;
   status?: string;
+  excludeUserIds?: string[];
 }): Promise<UserListResponse> {
   const client = createManagementApiClient();
   if (!client) {
@@ -48,6 +49,17 @@ export async function listUsersPage(options?: {
   }
   if (options?.status?.trim()) {
     params.set("status", options.status.trim());
+  }
+  if (
+    Array.isArray(options?.excludeUserIds) &&
+    options.excludeUserIds.length > 0
+  ) {
+    const encoded = options.excludeUserIds
+      .map((item) => item.trim())
+      .filter(Boolean);
+    if (encoded.length > 0) {
+      params.set("exclude_user_ids", encoded.join(","));
+    }
   }
 
   return client.get<UserListResponse>(
