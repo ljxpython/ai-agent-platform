@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { DataPanel } from "@/components/platform/data-panel";
 import { EmptyState } from "@/components/platform/empty-state";
 import { PageHeader } from "@/components/platform/page-header";
+import { PageActions } from "@/components/platform/page-actions";
 import { PlatformPage } from "@/components/platform/platform-page";
 import { StateBanner } from "@/components/platform/state-banner";
 import { StatusPill } from "@/components/platform/status-pill";
@@ -38,7 +40,11 @@ export default function UsersPage() {
         setTotal(payload.total);
       } catch (fetchError) {
         if (!cancelled) {
-          setError(fetchError instanceof Error ? fetchError.message : "Failed to load users");
+          setError(
+            fetchError instanceof Error
+              ? fetchError.message
+              : "Failed to load users",
+          );
         }
       } finally {
         if (!cancelled) {
@@ -56,7 +62,10 @@ export default function UsersPage() {
 
   const currentPage = Math.floor(offset / pageSize) + 1;
   const maxPage = Math.max(1, Math.ceil(total / pageSize));
-  const activeCount = useMemo(() => items.filter((item) => item.status === "active").length, [items]);
+  const activeCount = useMemo(
+    () => items.filter((item) => item.status === "active").length,
+    [items],
+  );
   const superAdminCount = useMemo(
     () => items.filter((item) => item.is_super_admin).length,
     [items],
@@ -65,7 +74,14 @@ export default function UsersPage() {
   return (
     <PlatformPage>
       <PageHeader
-        description="用户页先承接列表和搜索，让 v2 有真实可用的系统管理入口。更细的编辑、新建和详情能力继续在后续阶段补齐。"
+        actions={
+          <PageActions>
+            <Button asChild variant="primary">
+              <Link href="/workspace/users/new">Create user</Link>
+            </Button>
+          </PageActions>
+        }
+        description="用户页现在不只是列表壳子，已经开始承接新建和详情入口。账号状态、管理员身份和密码更新会继续在 v2 里闭环。"
         eyebrow="Workspace"
         title="Users"
       />
@@ -78,7 +94,7 @@ export default function UsersPage() {
           ["Total", String(total)],
         ].map(([label, value]) => (
           <Card key={label} className="p-5">
-            <div className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]">
+            <div className="text-xs font-bold tracking-[0.14em] text-[var(--muted-foreground)] uppercase">
               {label}
             </div>
             <div className="mt-4 text-4xl font-semibold tracking-tight text-[var(--foreground)]">
@@ -123,7 +139,11 @@ export default function UsersPage() {
           </>
         }
       >
-        {loading ? <div className="text-sm text-[var(--muted-foreground)]">Loading users...</div> : null}
+        {loading ? (
+          <div className="text-sm text-[var(--muted-foreground)]">
+            Loading users...
+          </div>
+        ) : null}
 
         {!loading && items.length === 0 ? (
           <EmptyState
@@ -135,13 +155,22 @@ export default function UsersPage() {
         {!loading && items.length > 0 ? (
           <>
             <div className="overflow-x-auto">
-              <table className="min-w-[760px] w-full border-collapse">
+              <table className="w-full min-w-[760px] border-collapse">
                 <thead>
-                  <tr className="border-b" style={{ borderColor: "var(--border)" }}>
-                    {["Username", "Status", "Super Admin", "Updated"].map((label) => (
+                  <tr
+                    className="border-b"
+                    style={{ borderColor: "var(--border)" }}
+                  >
+                    {[
+                      "Username",
+                      "Status",
+                      "Super Admin",
+                      "Updated",
+                      "Action",
+                    ].map((label) => (
                       <th
                         key={label}
-                        className="px-4 py-3 text-left text-xs font-bold uppercase tracking-[0.14em] text-[var(--muted-foreground)]"
+                        className="px-4 py-3 text-left text-xs font-bold tracking-[0.14em] text-[var(--muted-foreground)] uppercase"
                       >
                         {label}
                       </th>
@@ -150,15 +179,25 @@ export default function UsersPage() {
                 </thead>
                 <tbody>
                   {items.map((item) => (
-                    <tr key={item.id} className="border-b last:border-b-0" style={{ borderColor: "var(--border)" }}>
+                    <tr
+                      key={item.id}
+                      className="border-b last:border-b-0"
+                      style={{ borderColor: "var(--border)" }}
+                    >
                       <td className="px-4 py-4 align-top">
-                        <div className="font-semibold text-[var(--foreground)]">{item.username}</div>
-                        <div className="mt-1 text-xs text-[var(--muted-foreground)]">{item.id}</div>
+                        <div className="font-semibold text-[var(--foreground)]">
+                          {item.username}
+                        </div>
+                        <div className="mt-1 text-xs text-[var(--muted-foreground)]">
+                          {item.id}
+                        </div>
                       </td>
                       <td className="px-4 py-4 align-top">
                         <StatusPill
                           label={item.status}
-                          variant={item.status === "active" ? "success" : "warning"}
+                          variant={
+                            item.status === "active" ? "success" : "warning"
+                          }
                         />
                       </td>
                       <td className="px-4 py-4 align-top">
@@ -169,6 +208,13 @@ export default function UsersPage() {
                       </td>
                       <td className="px-4 py-4 align-top text-sm text-[var(--muted-foreground)]">
                         {item.updated_at || item.created_at || "-"}
+                      </td>
+                      <td className="px-4 py-4 align-top">
+                        <Button asChild size="sm" variant="ghost">
+                          <Link href={`/workspace/users/${item.id}`}>
+                            Details
+                          </Link>
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -181,7 +227,13 @@ export default function UsersPage() {
                 Page {currentPage} / {maxPage}
               </div>
               <div className="flex items-center gap-3">
-                <Button disabled={loading || offset === 0} onClick={() => setOffset((prev) => Math.max(0, prev - pageSize))} variant="ghost">
+                <Button
+                  disabled={loading || offset === 0}
+                  onClick={() =>
+                    setOffset((prev) => Math.max(0, prev - pageSize))
+                  }
+                  variant="ghost"
+                >
                   Previous
                 </Button>
                 <Button

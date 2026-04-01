@@ -85,7 +85,7 @@
 
 - [x] 建立 `button`
 - [x] 建立 `input`
-- [ ] 建立 `textarea`
+- [x] 建立 `textarea`
 - [ ] 建立 `dialog`
 - [ ] 建立 `sheet`
 - [ ] 建立 `tooltip`
@@ -105,10 +105,10 @@
 - [x] 实现 `TopContextActions`
 - [x] 实现 `PlatformPage`
 - [x] 实现 `PageHeader`
-- [ ] 实现 `PageActions`
+- [x] 实现 `PageActions`
 - [ ] 实现 `FilterToolbar`
 - [x] 实现 `DataPanel`
-- [ ] 实现 `FormSection`
+- [x] 实现 `FormSection`
 - [ ] 实现 `DetailPanel`
 - [x] 实现 `StateBanner`
 - [x] 实现 `EmptyState`
@@ -136,13 +136,13 @@
 
 ## 11. P1 标准管理页迁移
 
-- [ ] 迁移 `/workspace/projects/new`
-- [ ] 迁移 `/workspace/projects/[projectId]`
+- [x] 迁移 `/workspace/projects/new`
+- [x] 迁移 `/workspace/projects/[projectId]`
 - [ ] 迁移 `/workspace/projects/[projectId]/members`
-- [ ] 迁移 `/workspace/users/new`
-- [ ] 迁移 `/workspace/users/[userId]`
-- [ ] 迁移 `/workspace/assistants/new`
-- [ ] 迁移 `/workspace/assistants/[assistantId]`
+- [x] 迁移 `/workspace/users/new`
+- [x] 迁移 `/workspace/users/[userId]`
+- [x] 迁移 `/workspace/assistants/new`
+- [x] 迁移 `/workspace/assistants/[assistantId]`
 - [ ] 迁移 `/workspace/graphs`
 - [ ] 迁移 `/workspace/runtime/models`
 - [ ] 迁移 `/workspace/runtime/tools`
