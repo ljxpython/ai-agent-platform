@@ -49,7 +49,7 @@ const NAV_GROUPS = [
         children: [
           { href: "/workspace/testcase/generate", label: "AI 对话生成" },
           { href: "/workspace/testcase/cases", label: "用例管理" },
-          { href: "/workspace/testcase/documents", label: "PDF 解析" },
+          { href: "/workspace/testcase/documents", label: "文档解析" },
         ],
       },
     ],

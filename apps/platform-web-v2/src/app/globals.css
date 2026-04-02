@@ -105,6 +105,7 @@ html,
 body {
   margin: 0;
   min-height: 100%;
+  width: 100%;
 }
 
 body {
@@ -214,6 +215,7 @@ textarea {
 
 .workspace-shell {
   min-height: 100vh;
+  width: 100%;
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
 }
@@ -354,6 +356,7 @@ textarea {
 .workspace-shell__main {
   display: flex;
   flex-direction: column;
+  width: 100%;
   min-width: 0;
   min-height: 100vh;
   background: var(--shell-background);
@@ -419,12 +422,14 @@ textarea {
 .workspace-shell__content {
   display: flex;
   flex: 1 1 auto;
+  width: 100%;
   min-height: 0;
   padding: 24px;
   overflow: auto;
 }
 
 .workspace-shell__content > * {
+  width: 100%;
   min-width: 0;
 }
 

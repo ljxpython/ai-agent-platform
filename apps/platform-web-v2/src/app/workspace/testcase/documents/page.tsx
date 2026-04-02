@@ -56,10 +56,171 @@ function triggerBrowserDownload(blob: Blob, filename: string) {
   URL.revokeObjectURL(objectUrl);
 }
 
-function openBlobPreview(blob: Blob) {
+function openPreviewWindowShell(filename?: string) {
+  const previewWindow = window.open("", "_blank");
+  if (!previewWindow) {
+    throw new Error("浏览器阻止了预览窗口，请允许当前站点打开新窗口后重试。");
+  }
+
+  previewWindow.document.write(`<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(filename || "document")}</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #eef3fa;
+        color: #33465f;
+        font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+      }
+      .preview-loading {
+        border-radius: 18px;
+        border: 1px solid rgba(118, 145, 178, 0.18);
+        background: rgba(255, 255, 255, 0.92);
+        padding: 18px 22px;
+        box-shadow: 0 18px 40px rgba(67, 93, 126, 0.08);
+        font-size: 14px;
+        letter-spacing: 0.01em;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="preview-loading">正在加载预览…</div>
+  </body>
+</html>`);
+  previewWindow.document.close();
+  return previewWindow;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function openBlobPreview(
+  blob: Blob,
+  options?: { filename?: string; contentType?: string | null; previewWindow?: Window | null },
+) {
   const objectUrl = URL.createObjectURL(blob);
-  window.open(objectUrl, "_blank", "noopener,noreferrer");
+  const previewWindow = options?.previewWindow ?? window.open("", "_blank");
+  if (!previewWindow) {
+    URL.revokeObjectURL(objectUrl);
+    throw new Error("浏览器阻止了预览窗口，请允许当前站点打开新窗口后重试。");
+  }
+
+  const contentType = options?.contentType || blob.type || "application/octet-stream";
+  const filename = options?.filename || "document";
+
+  if (contentType.startsWith("image/")) {
+    previewWindow.document.write(`<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(filename)}</title>
+    <style>
+      body {
+        margin: 0;
+        background: #dfe7f3;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        font-family: "Segoe UI", "PingFang SC", sans-serif;
+      }
+      img {
+        display: block;
+        max-width: min(92vw, 1440px);
+        max-height: 92vh;
+        object-fit: contain;
+        border-radius: 18px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.16);
+        background: rgba(255, 255, 255, 0.82);
+      }
+    </style>
+  </head>
+  <body>
+    <img src="${objectUrl}" alt="${escapeHtml(filename)}" />
+  </body>
+</html>`);
+    previewWindow.document.close();
+  } else {
+    previewWindow.location.replace(objectUrl);
+  }
+
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+}
+
+function isTextPreviewContentType(contentType: string): boolean {
+  return (
+    contentType.startsWith("text/") ||
+    contentType === "application/json" ||
+    contentType === "application/xml" ||
+    contentType === "application/javascript"
+  );
+}
+
+function readBlobAsText(blob: Blob): Promise<string> {
+  return blob.text();
+}
+
+async function openDocumentPreview(
+  blob: Blob,
+  options?: { filename?: string; contentType?: string | null; previewWindow?: Window | null },
+) {
+  const contentType = (options?.contentType || blob.type || "application/octet-stream").toLowerCase();
+  if (contentType.startsWith("application/pdf") || contentType.startsWith("image/")) {
+    openBlobPreview(blob, options);
+    return;
+  }
+
+  if (isTextPreviewContentType(contentType)) {
+    const text = await readBlobAsText(blob);
+    const previewWindow = options?.previewWindow ?? window.open("", "_blank");
+    if (!previewWindow) {
+      throw new Error("浏览器阻止了预览窗口，请允许当前站点打开新窗口后重试。");
+    }
+    const filename = options?.filename || "document";
+    previewWindow.document.write(`<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${escapeHtml(filename)}</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 24px;
+        background: #eef3fa;
+        color: #142033;
+        font-family: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+      }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        word-break: break-word;
+        line-height: 1.7;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <pre>${escapeHtml(text)}</pre>
+  </body>
+</html>`);
+    previewWindow.document.close();
+    return;
+  }
+
+  throw new Error(`当前类型暂不支持在线预览：${contentType}`);
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -89,6 +250,19 @@ function resolveStoragePath(document: TestcaseDocument | null): string {
 }
 
 const PARSE_STATUS_OPTIONS = ["", "parsed", "failed", "unsupported", "unprocessed"];
+
+const INLINE_PREVIEW_CONTENT_TYPES = [
+  "application/pdf",
+  "application/json",
+  "application/xml",
+  "application/javascript",
+  "text/",
+  "image/",
+];
+
+function supportsInlinePreview(contentType: string): boolean {
+  return INLINE_PREVIEW_CONTENT_TYPES.some((prefix) => contentType.startsWith(prefix));
+}
 
 export default function TestcaseDocumentsPage() {
   const router = useRouter();
@@ -126,6 +300,9 @@ export default function TestcaseDocumentsPage() {
     [batchFilter, batches],
   );
   const storagePath = resolveStoragePath(selectedItem);
+  const canAccessDocumentBinary = Boolean(projectId && selectedItem?.id && storagePath);
+  const selectedContentType = (selectedItem?.content_type || "").toLowerCase();
+  const isPreviewSupported = supportsInlinePreview(selectedContentType);
   const runtimeMeta = useMemo(() => asRecord(relations?.runtime_meta), [relations]);
   const selectedBatchSummary = useMemo(
     () => batchDetail?.batch ?? batches.find((item) => item.batch_id === (selectedItem?.batch_id || "")) ?? null,
@@ -320,7 +497,7 @@ export default function TestcaseDocumentsPage() {
       const fallbackName = `testcase-documents-${new Date().toISOString().slice(0, 19).replaceAll(":", "-")}.xlsx`;
       triggerBrowserDownload(download.blob, download.filename || fallbackName);
       toast("导出成功", {
-        description: `已导出当前筛选结果，共 ${total} 条 PDF 解析记录。`,
+        description: `已导出当前筛选结果，共 ${total} 条文档解析记录。`,
       });
     } catch (err) {
       toast("导出失败", {
@@ -332,30 +509,43 @@ export default function TestcaseDocumentsPage() {
   }, [batchFilter, exporting, parseStatusFilter, projectId, query, total]);
 
   const handlePreview = useCallback(async () => {
-    if (!projectId || !selectedItem || !storagePath) {
+    if (!projectId || !selectedItem) {
+      return;
+    }
+    if (!isPreviewSupported) {
+      toast("当前类型暂不支持在线预览", {
+        description: selectedItem.content_type || "unknown",
+      });
       return;
     }
     setPreviewing(true);
+    let previewWindow: Window | null = null;
     try {
+      previewWindow = openPreviewWindowShell(selectedItem.filename);
       const download = await previewTestcaseDocument(projectId, selectedItem.id);
-      openBlobPreview(download.blob);
+      await openDocumentPreview(download.blob, {
+        filename: selectedItem.filename,
+        contentType: download.contentType || selectedItem.content_type,
+        previewWindow,
+      });
     } catch (err) {
+      previewWindow?.close();
       toast("预览失败", {
         description: err instanceof Error ? err.message : "Failed to preview testcase document",
       });
     } finally {
       setPreviewing(false);
     }
-  }, [projectId, selectedItem, storagePath]);
+  }, [isPreviewSupported, projectId, selectedItem]);
 
   const handleDownload = useCallback(async () => {
-    if (!projectId || !selectedItem || !storagePath) {
+    if (!projectId || !selectedItem) {
       return;
     }
     setDownloading(true);
     try {
       const download = await downloadTestcaseDocument(projectId, selectedItem.id);
-      const fallbackName = selectedItem.filename || `document-${selectedItem.id}.pdf`;
+      const fallbackName = selectedItem.filename || `document-${selectedItem.id}`;
       triggerBrowserDownload(download.blob, download.filename || fallbackName);
     } catch (err) {
       toast("下载失败", {
@@ -364,7 +554,7 @@ export default function TestcaseDocumentsPage() {
     } finally {
       setDownloading(false);
     }
-  }, [projectId, selectedItem, storagePath]);
+  }, [projectId, selectedItem]);
 
   const handleCopyDocumentId = useCallback(async () => {
     if (!selectedItem) {
@@ -430,7 +620,7 @@ export default function TestcaseDocumentsPage() {
       </div>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">PDF 解析</h2>
+          <h2 className="text-xl font-semibold tracking-tight">文档解析</h2>
           <p className="text-muted-foreground mt-2 text-sm">
             查看已保存到 `interaction-data-service` 的文档解析结果，并追踪 thread / run / testcase 关联。
           </p>
@@ -442,7 +632,7 @@ export default function TestcaseDocumentsPage() {
           disabled={!projectId || loading || exporting || total <= 0}
         >
           {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-          {exporting ? "导出中..." : "导出 PDF 解析"}
+          {exporting ? "导出中..." : "导出文档解析"}
         </Button>
       </div>
 
@@ -503,7 +693,7 @@ export default function TestcaseDocumentsPage() {
         }}
       />
 
-      {!projectId ? <PageStateEmpty message="当前没有选中项目，无法读取 PDF 解析结果。" /> : null}
+      {!projectId ? <PageStateEmpty message="当前没有选中项目，无法读取文档解析结果。" /> : null}
       {projectId && loading ? <PageStateLoading message="Loading testcase documents..." /> : null}
       {projectId && error ? <PageStateError message={error} /> : null}
 
@@ -512,7 +702,7 @@ export default function TestcaseDocumentsPage() {
           message={
             selectedBatchLabel
               ? `批次 ${selectedBatchLabel} 暂无文档解析结果。`
-              : "当前项目下还没有保存过 PDF 解析结果。"
+              : "当前项目下还没有保存过文档解析结果。"
           }
         />
       ) : null}
@@ -585,20 +775,20 @@ export default function TestcaseDocumentsPage() {
                       variant="outline"
                       size="sm"
                       onClick={() => void handlePreview()}
-                      disabled={!storagePath || previewing}
+                      disabled={!canAccessDocumentBinary || !isPreviewSupported || previewing}
                     >
                       {previewing ? <Loader2 className="size-4 animate-spin" /> : <ExternalLink className="size-4" />}
-                      在线预览 PDF
+                      在线预览
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       size="sm"
                       onClick={() => void handleDownload()}
-                      disabled={!storagePath || downloading}
+                      disabled={!canAccessDocumentBinary || downloading}
                     >
                       {downloading ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
-                      下载原始 PDF
+                      下载原始文件
                     </Button>
                   </div>
                 </div>
@@ -624,7 +814,20 @@ export default function TestcaseDocumentsPage() {
                       <div>
                         <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">原始文件路径</dt>
                         <dd className="mt-1 break-all text-muted-foreground">
-                          {storagePath || "当前记录未保存原始 PDF，仅保留了解析结果。"}
+                          {storagePath || "当前记录未保存原始文件路径，仅保留了解析结果。"}
+                        </dd>
+                      </div>
+                      {!storagePath ? (
+                        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-6 text-amber-700">
+                          当前记录没有回填 `storage_path`，说明原始文件资产尚未落库，当前无法在线预览或下载原始文件。
+                        </div>
+                      ) : null}
+                      <div>
+                        <dt className="text-xs uppercase tracking-[0.18em] text-muted-foreground">预览能力</dt>
+                        <dd className="mt-1 text-sm text-muted-foreground">
+                          {isPreviewSupported
+                            ? `当前支持在线预览，类型为 ${selectedItem.content_type || "unknown"}。`
+                            : `当前仅支持下载，暂不支持在线预览 ${selectedItem.content_type || "unknown"}。`}
                         </dd>
                       </div>
                       <div>

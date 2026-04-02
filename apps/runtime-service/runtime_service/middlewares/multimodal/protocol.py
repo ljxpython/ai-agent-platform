@@ -179,10 +179,9 @@ def build_attachment_artifact(
         "confidence": None,
         "error": None,
     }
-    if kind == "pdf":
-        payload = block.get("base64") or block.get("data")
-        if isinstance(payload, str) and payload.strip():
-            artifact["source_payload_base64"] = payload
+    payload = block.get("base64") or block.get("data")
+    if isinstance(payload, str) and payload.strip():
+        artifact["source_payload_base64"] = payload
     return artifact
 
 

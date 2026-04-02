@@ -311,18 +311,15 @@ def _upload_document_asset(
 ) -> tuple[dict[str, Any] | None, str | None]:
     if (_coerce_optional_text(attachment.get("status")) or "unprocessed") == "unprocessed":
         return None, None
-    kind = _coerce_optional_text(attachment.get("kind"))
-    if kind != "pdf":
-        return None, None
     file_bytes = _decode_attachment_payload(attachment) or _decode_block_payload(source_block)
     if file_bytes is None:
         return None, "raw_attachment_payload_missing"
     filename = (
         _coerce_optional_text(attachment.get("name"))
         or _coerce_optional_text(attachment.get("attachment_id"))
-        or "document.pdf"
+        or "document"
     )
-    content_type = _coerce_optional_text(attachment.get("mime_type")) or "application/pdf"
+    content_type = _coerce_optional_text(attachment.get("mime_type")) or "application/octet-stream"
     try:
         payload = client.post_multipart(
             TEST_CASE_DOCUMENT_ASSETS_PATH,

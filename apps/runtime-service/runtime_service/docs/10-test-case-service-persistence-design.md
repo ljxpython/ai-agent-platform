@@ -205,7 +205,7 @@ platform-web WorkspaceContext.projectId
 - `confidence`
 - `error`
 - `idempotency_key`（二期用于上传即落库幂等）
-- `storage_path`（二期用于原始 PDF 预览与下载）
+- `storage_path`（二期用于原始附件预览与下载）
 
 二期约定：
 
@@ -253,7 +253,7 @@ platform-web WorkspaceContext.projectId
 
 验证必须同时满足：
 
-1. 使用真实 PDF 或真实业务需求文本
+1. 使用真实附件或真实业务需求文本
 2. 使用真实模型
 3. 调用真实 `interaction-data-service`
 4. 最终通过远端查询接口确认文档和测试用例已写入
@@ -265,10 +265,10 @@ platform-web WorkspaceContext.projectId
 
 二期额外要求：
 
-1. 在不调用 `persist_test_case_results` 的前提下，上传真实 PDF 后应立即能在 `test_case_documents` 中查到记录
-2. 同一 PDF 同一项目重复重试时，document 不得重复插入
+1. 在不调用 `persist_test_case_results` 的前提下，上传真实附件后应立即能在 `test_case_documents` 中查到记录
+2. 同一附件同一项目重复重试时，document 不得重复插入
 3. 后续正式保存 testcase 时，必须复用既有 `document_id`
-4. 若原始 PDF 资产上传成功，document 记录中必须带有可用 `storage_path`
+4. 若原始附件资产上传成功，document 记录中必须带有可用 `storage_path`
 5. `provenance.runtime` 中必须能看到 `thread_id / run_id / agent_key`
 6. 真实前端或真实 LangGraph run 请求中必须显式携带当前项目，最终落库不能再命中默认项目
 
@@ -298,7 +298,7 @@ uv run python runtime_service/tests/services_test_case_service_project_scope_liv
 含义：
 
 1. `services_test_case_service_document_live.py`
-   - 真实上传 PDF
+   - 真实上传附件
    - 不允许调用 `persist_test_case_results`
    - 验证 `TestCaseDocumentPersistenceMiddleware` 是否完成“上传即落库”
    - 同一 `batch_id` 连续跑两次，验证 document 幂等
