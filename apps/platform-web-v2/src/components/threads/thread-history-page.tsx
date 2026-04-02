@@ -16,7 +16,6 @@ import {
   getThreadDetail,
   getThreadHistoryPage,
   getThreadState,
-  getThreadPreviewText,
   listThreadsPage,
 } from "@/lib/management-api/threads";
 import {
@@ -95,6 +94,8 @@ export function ThreadHistoryPage() {
     if (!projectId) {
       setItems([]);
       setTotal(0);
+      setSelectedThread(null);
+      setSelectedThreadId("");
       return;
     }
     setLoading(true);
@@ -103,10 +104,11 @@ export function ThreadHistoryPage() {
       const payload = await listThreadsPage(projectId, activeFilters);
       setItems(payload.items);
       setTotal(payload.total);
-      if (payload.items.length === 0) {
-        setSelectedThreadId("");
-      } else if (!selectedThreadId || !payload.items.some((item) => item.thread_id === selectedThreadId)) {
-        setSelectedThreadId(payload.items[0].thread_id);
+      if (selectedThreadId) {
+        const matched = payload.items.find((item) => item.thread_id === selectedThreadId);
+        if (matched) {
+          setSelectedThread((current) => (current?.thread_id === matched.thread_id ? { ...current, ...matched } : matched));
+        }
       }
       if (payload.total > 0 && offset >= payload.total) {
         const fallbackOffset = Math.max(0, (Math.ceil(payload.total / pageSize) - 1) * pageSize);
@@ -128,11 +130,15 @@ export function ThreadHistoryPage() {
       setHistoryItems([]);
       return;
     }
+    const selectedSummary = items.find((item) => item.thread_id === selectedThreadId) ?? null;
+    if (selectedSummary) {
+      setSelectedThread(selectedSummary);
+    }
     setDetailLoading(true);
     setDetailError(null);
     try {
       const [detail, state, history] = await Promise.all([
-        getThreadDetail(projectId, selectedThreadId),
+        selectedSummary ? Promise.resolve(selectedSummary) : getThreadDetail(projectId, selectedThreadId),
         getThreadState(projectId, selectedThreadId).catch(() => null),
         getThreadHistoryPage(projectId, selectedThreadId, { limit: 20 }).catch(() => []),
       ]);
@@ -147,7 +153,7 @@ export function ThreadHistoryPage() {
     } finally {
       setDetailLoading(false);
     }
-  }, [projectId, selectedThreadId]);
+  }, [items, projectId, selectedThreadId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -426,12 +432,6 @@ export function ThreadHistoryPage() {
           Select a project first. Thread history is always scoped to the current workspace project.
         </div>
       )}
-
-      {selectedThread ? (
-        <p className="text-xs text-muted-foreground">
-          Selected thread preview: {getThreadPreviewText(selectedThread)}
-        </p>
-      ) : null}
     </section>
   );
 }

@@ -50,7 +50,7 @@ export function ThreadHistoryToolbar({
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Threads</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Browse project-scoped thread history without affecting the live chat page.</p>
+          <p className="mt-1 text-sm text-muted-foreground">先浏览线程列表，点中某条后再加载该 thread 的消息、状态和历史。</p>
         </div>
       </div>
 
@@ -63,7 +63,7 @@ export function ThreadHistoryToolbar({
       >
         <input
           className="h-9 rounded-md border border-border bg-background px-3 text-sm"
-          placeholder="search preview text"
+          placeholder="search thread id / assistant / graph / status"
           value={previewQuery}
           onChange={(event) => onPreviewQueryChange(event.target.value)}
         />

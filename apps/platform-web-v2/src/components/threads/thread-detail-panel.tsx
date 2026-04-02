@@ -43,7 +43,7 @@ export function ThreadDetailPanel({
     <div className="grid gap-4">
       <ThreadSummaryCard thread={thread} onCopyThreadId={onCopyThreadId} onOpenInChat={onOpenInChat} />
       <ThreadMessagePreview messages={messages} />
-      <ThreadHistoryTimeline items={historyItems} />
+      <ThreadHistoryTimeline items={historyItems} loading={loading} />
       <ThreadRawDataCard
         metadata={thread.metadata as Record<string, unknown> | null | undefined}
         values={thread.values as Record<string, unknown> | null | undefined}

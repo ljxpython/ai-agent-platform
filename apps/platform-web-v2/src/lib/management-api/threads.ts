@@ -1,6 +1,7 @@
 import type { Message, Thread } from "@langchain/langgraph-sdk";
 
 import { createManagementApiClient } from "./client";
+import { getThreadListSearchText } from "@/lib/threads";
 
 export type ManagementThread = Thread & {
   status?: string | null;
@@ -58,6 +59,7 @@ export async function listThreadsPage(
     offset,
     sort_by: "updated_at",
     sort_order: "desc",
+    select: ["thread_id", "metadata", "status", "created_at", "updated_at"],
   };
   if (Object.keys(metadata).length > 0) {
     payload.metadata = metadata;
@@ -67,7 +69,16 @@ export async function listThreadsPage(
   }
 
   const [itemsResponse, countResponse] = await Promise.all([
-    client.post<ManagementThread[] | { items?: ManagementThread[] }>("/api/langgraph/threads/search", payload),
+    client
+      .post<ManagementThread[] | { items?: ManagementThread[] }>("/api/langgraph/threads/search", payload)
+      .catch(() => {
+        const fallbackPayload = { ...payload };
+        delete fallbackPayload.select;
+        return client.post<ManagementThread[] | { items?: ManagementThread[] }>(
+          "/api/langgraph/threads/search",
+          fallbackPayload,
+        );
+      }),
     client.post<CountResponse>("/api/langgraph/threads/count", payload).catch(() => ({ count: 0 })),
   ]);
 
@@ -77,15 +88,19 @@ export async function listThreadsPage(
       ? itemsResponse.items
       : [];
 
+  const normalizedRows = rows.map((thread) => ({
+    thread_id: thread.thread_id,
+    metadata: thread.metadata,
+    status: thread.status,
+    created_at: thread.created_at,
+    updated_at: thread.updated_at,
+  })) as ManagementThread[];
+
   const query = options?.query?.trim().toLowerCase() || "";
   const threadIdQuery = options?.threadId?.trim().toLowerCase() || "";
   const filtered = query
-    ? rows.filter((thread) => {
-        const normalizedThreadId = typeof thread.thread_id === "string" ? thread.thread_id.toLowerCase() : "";
-        const preview = getThreadPreviewText(thread).toLowerCase();
-        return normalizedThreadId.includes(query) || preview.includes(query);
-      })
-    : rows;
+    ? normalizedRows.filter((thread) => getThreadListSearchText(thread).includes(query))
+    : normalizedRows;
 
   const filteredByThreadId = threadIdQuery
     ? filtered.filter((thread) => {

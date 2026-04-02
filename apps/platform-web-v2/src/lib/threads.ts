@@ -31,6 +31,53 @@ export function getThreadGraphId(thread?: ManagementThread | null): string | nul
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
 
+function coerceText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+export function getThreadListTitle(thread?: ManagementThread | null): string {
+  if (!thread) {
+    return "Thread";
+  }
+  const metadata = thread.metadata;
+  if (metadata && typeof metadata === "object") {
+    const title = coerceText((metadata as Record<string, unknown>).title);
+    if (title) {
+      return title;
+    }
+    const name = coerceText((metadata as Record<string, unknown>).name);
+    if (name) {
+      return name;
+    }
+  }
+  const threadId = coerceText(thread.thread_id);
+  if (!threadId) {
+    return "Thread";
+  }
+  if (threadId.length <= 24) {
+    return threadId;
+  }
+  return `${threadId.slice(0, 8)}...${threadId.slice(-8)}`;
+}
+
+export function getThreadListSearchText(thread?: ManagementThread | null): string {
+  if (!thread) {
+    return "";
+  }
+  const metadata = thread.metadata && typeof thread.metadata === "object" ? thread.metadata : {};
+  return [
+    thread.thread_id,
+    thread.status,
+    getThreadAssistantId(thread),
+    getThreadGraphId(thread),
+    coerceText((metadata as Record<string, unknown>).title),
+    coerceText((metadata as Record<string, unknown>).name),
+  ]
+    .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+    .join(" ")
+    .toLowerCase();
+}
+
 export function getThreadMessages(thread?: ManagementThread | null, state?: Record<string, unknown> | null): Message[] {
   const stateMessages = extractMessages(state);
   if (stateMessages.length > 0) {
