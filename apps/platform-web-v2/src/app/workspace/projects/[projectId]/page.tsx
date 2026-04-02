@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 
+import { DetailPanel } from "@/components/platform/detail-panel";
 import { EmptyState } from "@/components/platform/empty-state";
 import { FormSection } from "@/components/platform/form-section";
 import { PageHeader } from "@/components/platform/page-header";
 import { PageActions } from "@/components/platform/page-actions";
 import { PlatformPage } from "@/components/platform/platform-page";
-import { StateBanner } from "@/components/platform/state-banner";
 import { StatusPill } from "@/components/platform/status-pill";
+import { SuccessBanner } from "@/components/platform/success-banner";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useWorkspaceContext } from "@/providers/WorkspaceProvider";
@@ -179,7 +180,13 @@ export default function ProjectDetailPage() {
         </div>
       </FormSection>
 
-      <StateBanner message="成员管理已经迁入 v2。下一阶段会继续补项目审计和更细粒度的策略管理。" />
+      <DetailPanel
+        description="成员管理已经迁入 v2。下一阶段继续把项目审计和策略控制挂回这个详情视图，不再让入口散到旧壳子里。"
+        eyebrow="Migration"
+        title="What is already in v2"
+      >
+        <SuccessBanner message="项目详情、当前项目切换和成员管理入口都已经在 v2 闭环。" />
+      </DetailPanel>
     </PlatformPage>
   );
 }

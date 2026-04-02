@@ -11,6 +11,12 @@ type ApiClientOptions = {
   requireAuth?: boolean;
 };
 
+export type ManagementDownload = {
+  blob: Blob;
+  filename: string | null;
+  contentType: string | null;
+};
+
 function redirectToLogin(): void {
   if (typeof window === "undefined") {
     return;
@@ -20,6 +26,22 @@ function redirectToLogin(): void {
   const params = new URLSearchParams();
   params.set("redirect", currentPath);
   window.location.replace(`/auth/login?${params.toString()}`);
+}
+
+function parseContentDispositionFilename(header: string | null): string | null {
+  if (!header) {
+    return null;
+  }
+  const utf8Match = header.match(/filename\*=UTF-8''([^;]+)/i);
+  if (utf8Match?.[1]) {
+    try {
+      return decodeURIComponent(utf8Match[1]);
+    } catch {
+      return utf8Match[1];
+    }
+  }
+  const plainMatch = header.match(/filename="?([^";]+)"?/i);
+  return plainMatch?.[1] ?? null;
 }
 
 class ManagementApiClient {
@@ -50,9 +72,34 @@ class ManagementApiClient {
     return this.parseJson<T>(response);
   }
 
+  async put<T>(path: string, payload: unknown): Promise<T> {
+    const response = await this.request(path, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+    return this.parseJson<T>(response);
+  }
+
   async del<T>(path: string): Promise<T> {
     const response = await this.request(path, { method: "DELETE" });
     return this.parseJson<T>(response);
+  }
+
+  async download(path: string): Promise<ManagementDownload> {
+    const response = await this.request(path, {
+      method: "GET",
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error(await this.readError(response));
+    }
+    return {
+      blob: await response.blob(),
+      filename: parseContentDispositionFilename(
+        response.headers.get("content-disposition"),
+      ),
+      contentType: response.headers.get("content-type"),
+    };
   }
 
   private async request(path: string, init: RequestInit, allowRetry = true): Promise<Response> {
@@ -74,10 +121,15 @@ class ManagementApiClient {
       });
       if (refreshedToken) {
         const retryHeaders = await this.buildHeaders(Boolean(init.body), true);
-        return fetch(`${this.baseUrl}${path}`, {
+        const retryResponse = await fetch(`${this.baseUrl}${path}`, {
           ...init,
           headers: retryHeaders,
         });
+        if (retryResponse.status === 401) {
+          clearOidcTokenSet();
+          redirectToLogin();
+        }
+        return retryResponse;
       }
 
       clearOidcTokenSet();
@@ -104,6 +156,8 @@ class ManagementApiClient {
       : await ensureValidAccessToken({ baseUrl: this.baseUrl });
     if (token) {
       headers.Authorization = `Bearer ${token}`;
+    } else {
+      delete headers.Authorization;
     }
     return headers;
   }
@@ -120,6 +174,21 @@ class ManagementApiClient {
       throw new Error(detail);
     }
     return payload as T;
+  }
+
+  private async readError(response: Response): Promise<string> {
+    const contentType = response.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) {
+      const payload = await response.json().catch(() => ({}));
+      if (typeof payload?.detail === "string") {
+        return payload.detail;
+      }
+      if (typeof payload?.error === "string") {
+        return payload.error;
+      }
+    }
+    const text = await response.text().catch(() => "");
+    return text || `HTTP ${response.status}`;
   }
 }
 

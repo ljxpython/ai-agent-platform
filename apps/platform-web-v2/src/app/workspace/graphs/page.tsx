@@ -19,6 +19,10 @@ import {
   refreshGraphsCatalog,
   type ManagementGraph,
 } from "@/lib/management-api/graphs";
+import {
+  buildChatHref,
+  writeRecentChatTarget,
+} from "@/lib/chat-target-preference";
 import { useWorkspaceContext } from "@/providers/WorkspaceProvider";
 
 function getSyncVariant(
@@ -285,14 +289,18 @@ export default function GraphsPage() {
                             type="button"
                             variant="ghost"
                             onClick={() => {
-                              const params = new URLSearchParams();
+                              const target = {
+                                targetType: "graph" as const,
+                                graphId: item.graph_id,
+                              };
                               if (projectId) {
-                                params.set("projectId", projectId);
+                                writeRecentChatTarget(projectId, target);
                               }
-                              params.set("targetType", "graph");
-                              params.set("assistantId", item.graph_id);
                               router.push(
-                                `/workspace/chat?${params.toString()}`,
+                                buildChatHref({
+                                  projectId,
+                                  target,
+                                }),
                               );
                             }}
                           >

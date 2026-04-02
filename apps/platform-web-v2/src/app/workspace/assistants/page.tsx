@@ -5,11 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DataPanel } from "@/components/platform/data-panel";
 import { EmptyState } from "@/components/platform/empty-state";
+import { FilterToolbar } from "@/components/platform/filter-toolbar";
 import { PageHeader } from "@/components/platform/page-header";
 import { PageActions } from "@/components/platform/page-actions";
 import { PlatformPage } from "@/components/platform/platform-page";
 import { StateBanner } from "@/components/platform/state-banner";
 import { StatusPill } from "@/components/platform/status-pill";
+import { TableContainer } from "@/components/platform/table-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -160,7 +162,7 @@ export default function AssistantsPage() {
           description="这里先承接助手列表、搜索、同步状态和项目上下文。更复杂的编辑、resync 和 runtime 能力后续再逐步迁移。"
           title="Assistant Registry"
           toolbar={
-            <>
+            <FilterToolbar className="w-full xl:w-auto">
               <Input
                 className="min-w-[260px]"
                 placeholder="Search by name, graph ID or description"
@@ -186,7 +188,7 @@ export default function AssistantsPage() {
               >
                 Clear
               </Button>
-            </>
+            </FilterToolbar>
           }
         >
           {loading ? (
@@ -204,79 +206,81 @@ export default function AssistantsPage() {
 
           {!loading && items.length > 0 ? (
             <>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[980px] border-collapse">
-                  <thead>
-                    <tr
-                      className="border-b"
-                      style={{ borderColor: "var(--border)" }}
-                    >
-                      {[
-                        "Assistant",
-                        "Graph",
-                        "Status",
-                        "Sync",
-                        "Runtime",
-                        "Updated",
-                        "Action",
-                      ].map((label) => (
-                        <th
-                          key={label}
-                          className="px-4 py-3 text-left text-xs font-bold tracking-[0.14em] text-[var(--muted-foreground)] uppercase"
-                        >
-                          {label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item) => (
+              <TableContainer>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[980px] border-collapse">
+                    <thead>
                       <tr
-                        key={item.id}
-                        className="border-b last:border-b-0"
+                        className="border-b"
                         style={{ borderColor: "var(--border)" }}
                       >
-                        <td className="px-4 py-4 align-top">
-                          <div className="font-semibold text-[var(--foreground)]">
-                            {item.name}
-                          </div>
-                          <div className="mt-1 text-sm text-[var(--muted-foreground)]">
-                            {item.description || "No description"}
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 align-top text-sm text-[var(--muted-foreground)]">
-                          {item.graph_id}
-                        </td>
-                        <td className="px-4 py-4 align-top">
-                          <StatusPill
-                            label={item.status}
-                            variant={getAssistantStatusVariant(item.status)}
-                          />
-                        </td>
-                        <td className="px-4 py-4 align-top">
-                          <StatusPill
-                            label={item.sync_status || "unknown"}
-                            variant={getSyncStatusVariant(item.sync_status)}
-                          />
-                        </td>
-                        <td className="px-4 py-4 align-top text-sm text-[var(--muted-foreground)]">
-                          {item.runtime_base_url || "-"}
-                        </td>
-                        <td className="px-4 py-4 align-top text-sm text-[var(--muted-foreground)]">
-                          {item.updated_at || item.last_synced_at || "-"}
-                        </td>
-                        <td className="px-4 py-4 align-top">
-                          <Button asChild size="sm" variant="ghost">
-                            <Link href={`/workspace/assistants/${item.id}`}>
-                              Details
-                            </Link>
-                          </Button>
-                        </td>
+                        {[
+                          "Assistant",
+                          "Graph",
+                          "Status",
+                          "Sync",
+                          "Runtime",
+                          "Updated",
+                          "Action",
+                        ].map((label) => (
+                          <th
+                            key={label}
+                            className="px-4 py-3 text-left text-xs font-bold tracking-[0.14em] text-[var(--muted-foreground)] uppercase"
+                          >
+                            {label}
+                          </th>
+                        ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {items.map((item) => (
+                        <tr
+                          key={item.id}
+                          className="border-b last:border-b-0"
+                          style={{ borderColor: "var(--border)" }}
+                        >
+                          <td className="px-4 py-4 align-top">
+                            <div className="font-semibold text-[var(--foreground)]">
+                              {item.name}
+                            </div>
+                            <div className="mt-1 text-sm text-[var(--muted-foreground)]">
+                              {item.description || "No description"}
+                            </div>
+                          </td>
+                          <td className="px-4 py-4 align-top text-sm text-[var(--muted-foreground)]">
+                            {item.graph_id}
+                          </td>
+                          <td className="px-4 py-4 align-top">
+                            <StatusPill
+                              label={item.status}
+                              variant={getAssistantStatusVariant(item.status)}
+                            />
+                          </td>
+                          <td className="px-4 py-4 align-top">
+                            <StatusPill
+                              label={item.sync_status || "unknown"}
+                              variant={getSyncStatusVariant(item.sync_status)}
+                            />
+                          </td>
+                          <td className="px-4 py-4 align-top text-sm text-[var(--muted-foreground)]">
+                            {item.runtime_base_url || "-"}
+                          </td>
+                          <td className="px-4 py-4 align-top text-sm text-[var(--muted-foreground)]">
+                            {item.updated_at || item.last_synced_at || "-"}
+                          </td>
+                          <td className="px-4 py-4 align-top">
+                            <Button asChild size="sm" variant="ghost">
+                              <Link href={`/workspace/assistants/${item.id}`}>
+                                Details
+                              </Link>
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </TableContainer>
 
               <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-sm text-[var(--muted-foreground)]">

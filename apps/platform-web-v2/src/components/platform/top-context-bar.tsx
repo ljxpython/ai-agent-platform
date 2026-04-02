@@ -4,16 +4,33 @@ import { ThemeToggle } from "@/components/platform/theme-toggle";
 import { useWorkspaceContext } from "@/providers/WorkspaceProvider";
 
 export function TopContextBar() {
-  const { currentProject, loading, projectId, projects, setProjectId } = useWorkspaceContext();
+  const {
+    currentProject,
+    currentRoleLabel,
+    currentUser,
+    loading,
+    projectId,
+    projects,
+    setProjectId,
+  } = useWorkspaceContext();
 
   return (
     <header className="workspace-shell__topbar">
       <div className="workspace-shell__context">
         <span className="workspace-shell__chip">Workspace</span>
         <span className="workspace-shell__chip">
-          {loading ? "Project: loading..." : `Project: ${currentProject?.name || "未选择项目"}`}
+          {loading
+            ? "User: loading..."
+            : `User: ${currentUser?.username || "unknown"}`}
         </span>
-        <span className="workspace-shell__chip">Role: admin</span>
+        <span className="workspace-shell__chip">
+          {loading
+            ? "Project: loading..."
+            : `Project: ${currentProject?.name || "未选择项目"}`}
+        </span>
+        <span className="workspace-shell__chip">
+          {loading ? "Role: loading..." : `Role: ${currentRoleLabel}`}
+        </span>
       </div>
 
       <div className="workspace-shell__topbar-actions">
@@ -25,7 +42,9 @@ export function TopContextBar() {
             onChange={(event) => setProjectId(event.target.value)}
             disabled={loading || projects.length === 0}
           >
-            {projects.length === 0 ? <option value="">No project</option> : null}
+            {projects.length === 0 ? (
+              <option value="">No project</option>
+            ) : null}
             {projects.map((project) => (
               <option key={project.id} value={project.id}>
                 {project.name}

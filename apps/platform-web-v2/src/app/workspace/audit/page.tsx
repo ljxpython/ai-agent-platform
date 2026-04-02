@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DataPanel } from "@/components/platform/data-panel";
 import { EmptyState } from "@/components/platform/empty-state";
+import { ErrorState } from "@/components/platform/error-state";
 import { PageHeader } from "@/components/platform/page-header";
 import { PageActions } from "@/components/platform/page-actions";
 import { PlatformPage } from "@/components/platform/platform-page";
@@ -32,7 +33,8 @@ function getStatusVariant(
 }
 
 export default function AuditPage() {
-  const { currentProject, projectId } = useWorkspaceContext();
+  const { canAccessAudit, currentProject, currentProjectRole, projectId } =
+    useWorkspaceContext();
   const [items, setItems] = useState<ManagementAuditRow[]>([]);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -60,6 +62,14 @@ export default function AuditPage() {
   }, [projectId]);
 
   useEffect(() => {
+    if (!canAccessAudit) {
+      setItems([]);
+      setTotal(0);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     let cancelled = false;
 
     async function loadAudit() {
@@ -115,6 +125,7 @@ export default function AuditPage() {
     statusCodeFilter,
     targetIdFilter,
     targetTypeFilter,
+    canAccessAudit,
   ]);
 
   const currentPage = Math.floor(offset / pageSize) + 1;
@@ -123,6 +134,23 @@ export default function AuditPage() {
     () => items.filter((item) => item.status_code >= 400).length,
     [items],
   );
+
+  if (!canAccessAudit) {
+    return (
+      <PlatformPage>
+        <PageHeader
+          description="审计页只对具备审计权限的账号开放。普通执行账号不再硬闯接口然后吃一脸 403。"
+          eyebrow="Advanced"
+          title="Audit"
+        />
+
+        <ErrorState
+          description={`当前账号没有审计查看权限。请切换到管理员账号后再查看。当前项目角色：${currentProjectRole || "none"}`}
+          title="Audit access required"
+        />
+      </PlatformPage>
+    );
+  }
 
   return (
     <PlatformPage>

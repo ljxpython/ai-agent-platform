@@ -29,6 +29,10 @@ import {
   type AssistantParameterSchema,
   type ManagementAssistant,
 } from "@/lib/management-api/assistants";
+import {
+  buildChatHref,
+  writeRecentChatTarget,
+} from "@/lib/chat-target-preference";
 import { parseJsonObject, stringifyJsonObject } from "@/lib/json-object";
 import { useWorkspaceContext } from "@/providers/WorkspaceProvider";
 
@@ -219,13 +223,19 @@ export default function AssistantDetailPage() {
                 type="button"
                 variant="ghost"
                 onClick={() => {
-                  const searchParams = new URLSearchParams();
-                  searchParams.set("targetType", "assistant");
-                  searchParams.set("assistantId", item.langgraph_assistant_id);
+                  const target = {
+                    targetType: "assistant" as const,
+                    assistantId: item.langgraph_assistant_id || assistantId,
+                  };
                   if (projectId) {
-                    searchParams.set("projectId", projectId);
+                    writeRecentChatTarget(projectId, target);
                   }
-                  router.push(`/workspace/chat?${searchParams.toString()}`);
+                  router.push(
+                    buildChatHref({
+                      projectId,
+                      target,
+                    }),
+                  );
                 }}
               >
                 Open in chat

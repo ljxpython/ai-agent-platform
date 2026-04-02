@@ -1,6 +1,6 @@
 # Platform Web V2 总清单
 
-更新时间：2026-04-01
+更新时间：2026-04-02
 
 说明：
 
@@ -30,6 +30,7 @@
 - [x] 完成功能迁移台账
 - [x] 完成迁移路线规划文档
 - [x] 完成总清单文档
+- [x] 完成 Chat 入口优化与复杂工作区修复文档
 
 ## 3. 视觉样板与主题
 
@@ -87,33 +88,33 @@
 - [x] 建立 `input`
 - [x] 建立 `textarea`
 - [x] 建立 `dialog`
-- [ ] 建立 `sheet`
-- [ ] 建立 `tooltip`
+- [x] 建立 `sheet`
+- [x] 建立 `tooltip`
 - [x] 建立 `avatar`
 - [x] 建立 `card`
-- [ ] 建立 `separator`
-- [ ] 建立 `skeleton`
-- [ ] 建立基础表格容器能力
+- [x] 建立 `separator`
+- [x] 建立 `skeleton`
+- [x] 建立基础表格容器能力
 
 ## 8. 平台组件库
 
 - [x] 实现 `WorkspaceShellV2`
 - [x] 实现 `SidebarNav`
-- [ ] 实现 `SidebarSection`
+- [x] 实现 `SidebarSection`
 - [x] 实现 `TopContextBar`
 - [x] 实现 `TopContextProject`
 - [x] 实现 `TopContextActions`
 - [x] 实现 `PlatformPage`
 - [x] 实现 `PageHeader`
 - [x] 实现 `PageActions`
-- [ ] 实现 `FilterToolbar`
+- [x] 实现 `FilterToolbar`
 - [x] 实现 `DataPanel`
 - [x] 实现 `FormSection`
-- [ ] 实现 `DetailPanel`
+- [x] 实现 `DetailPanel`
 - [x] 实现 `StateBanner`
 - [x] 实现 `EmptyState`
-- [ ] 实现 `ErrorState`
-- [ ] 实现 `SuccessBanner`
+- [x] 实现 `ErrorState`
+- [x] 实现 `SuccessBanner`
 
 ## 9. Provider 与底层能力承接
 
@@ -121,9 +122,9 @@
 - [x] 承接 token 存储逻辑
 - [x] 承接 platform api base url 解析
 - [x] 承接 `WorkspaceContext`
-- [ ] 承接 `ThreadProvider`
-- [ ] 承接 `StreamProvider`
-- [ ] 承接日志 bootstrap 能力
+- [x] 承接 `ThreadProvider`
+- [x] 承接 `StreamProvider`
+- [x] 承接日志 bootstrap 能力
 
 ## 10. P0 首批样板页迁移
 
@@ -132,7 +133,7 @@
 - [x] 迁移 `/workspace/users`
 - [x] 迁移 `/workspace/assistants`
 - [x] 完成 P0 页面构建验证
-- [ ] 完成 P0 页面基础联调验证
+- [x] 完成 P0 页面基础联调验证
 
 ## 11. P1 标准管理页迁移
 
@@ -152,36 +153,39 @@
 
 ## 12. P2 复杂工作区迁移
 
-- [ ] 迁移 `/workspace/chat`
-- [ ] 迁移 `/workspace/threads`
-- [ ] 迁移 `/workspace/sql-agent`
-- [ ] 迁移 `/workspace/testcase/generate`
-- [ ] 迁移 `/workspace/testcase/cases`
-- [ ] 迁移 `/workspace/testcase/documents`
+- [x] 迁移 `/workspace/chat`
+- [x] 迁移 `/workspace/threads`
+- [x] 迁移 `/workspace/sql-agent`
+- [x] 迁移 `/workspace/testcase/generate`
+- [x] 迁移 `/workspace/testcase/cases`
+- [x] 迁移 `/workspace/testcase/documents`
 
 ## 13. 功能完整性验收
 
-- [ ] 核对旧 `platform-web` 路由是否全部覆盖
-- [ ] 核对旧 `platform-web` 核心页面是否全部覆盖
-- [ ] 核对项目切换链路是否正常
-- [ ] 核对认证链路是否正常
-- [ ] 核对 CRUD 管理页核心操作是否正常
-- [ ] 核对 chat / thread / runtime 工作区是否正常
-- [ ] 核对 testcase 工作区是否正常
+- [x] 核对旧 `platform-web` 路由是否全部覆盖
+- [x] 核对旧 `platform-web` 核心页面是否全部覆盖
+- [x] 核对项目切换链路是否正常
+- [x] 核对认证链路是否正常
+- [x] 核对 CRUD 管理页核心操作是否正常
+- [x] 核对 chat / thread / runtime 工作区是否正常
+- [x] 核对 testcase 工作区是否正常
+- [x] 核对 Chat 首次引导与最近目标恢复是否正常
+- [x] 核对 SQL Agent / Testcase Generate 聊天主区域显示是否正常
+- [x] 核对 Testcase 三页面入口是否清晰可达
 
 ## 14. 视觉与工程化验收
 
 - [ ] 默认主题整体效果通过评审
 - [x] 可切换主题工作正常
-- [ ] 页面壳子统一，不再各写各的布局
-- [ ] 基础组件与平台组件边界清晰
-- [ ] 不存在第二套重型 UI 体系混入
-- [ ] 关键页面复用统一母版
+- [x] 页面壳子统一，不再各写各的布局
+- [x] 基础组件与平台组件边界清晰
+- [x] 不存在第二套重型 UI 体系混入
+- [x] 关键页面复用统一母版
 
 ## 15. 最终替换准备
 
 - [x] 完成构建验证
 - [x] 完成 lint 验证
-- [ ] 完成关键路径手工联调
-- [ ] 完成替换前最终核对
-- [ ] 确认 `platform-web-v2` 达到替代旧前端条件
+- [x] 完成关键路径手工联调
+- [x] 完成替换前最终核对
+- [x] 确认 `platform-web-v2` 达到替代旧前端条件

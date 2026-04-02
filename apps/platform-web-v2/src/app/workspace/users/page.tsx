@@ -5,11 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { DataPanel } from "@/components/platform/data-panel";
 import { EmptyState } from "@/components/platform/empty-state";
+import { FilterToolbar } from "@/components/platform/filter-toolbar";
 import { PageHeader } from "@/components/platform/page-header";
 import { PageActions } from "@/components/platform/page-actions";
 import { PlatformPage } from "@/components/platform/platform-page";
 import { StateBanner } from "@/components/platform/state-banner";
 import { StatusPill } from "@/components/platform/status-pill";
+import { TableContainer } from "@/components/platform/table-container";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -110,7 +112,7 @@ export default function UsersPage() {
         description="当前先迁系统级用户列表、状态展示和搜索。页面母版、卡片层级和操作区都已切进 v2 的新视觉体系。"
         title="User Registry"
         toolbar={
-          <>
+          <FilterToolbar className="w-full xl:w-auto">
             <Input
               className="min-w-[260px]"
               placeholder="Search by username"
@@ -136,7 +138,7 @@ export default function UsersPage() {
             >
               Clear
             </Button>
-          </>
+          </FilterToolbar>
         }
       >
         {loading ? (
@@ -154,73 +156,77 @@ export default function UsersPage() {
 
         {!loading && items.length > 0 ? (
           <>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] border-collapse">
-                <thead>
-                  <tr
-                    className="border-b"
-                    style={{ borderColor: "var(--border)" }}
-                  >
-                    {[
-                      "Username",
-                      "Status",
-                      "Super Admin",
-                      "Updated",
-                      "Action",
-                    ].map((label) => (
-                      <th
-                        key={label}
-                        className="px-4 py-3 text-left text-xs font-bold tracking-[0.14em] text-[var(--muted-foreground)] uppercase"
-                      >
-                        {label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item) => (
+            <TableContainer>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[760px] border-collapse">
+                  <thead>
                     <tr
-                      key={item.id}
-                      className="border-b last:border-b-0"
+                      className="border-b"
                       style={{ borderColor: "var(--border)" }}
                     >
-                      <td className="px-4 py-4 align-top">
-                        <div className="font-semibold text-[var(--foreground)]">
-                          {item.username}
-                        </div>
-                        <div className="mt-1 text-xs text-[var(--muted-foreground)]">
-                          {item.id}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 align-top">
-                        <StatusPill
-                          label={item.status}
-                          variant={
-                            item.status === "active" ? "success" : "warning"
-                          }
-                        />
-                      </td>
-                      <td className="px-4 py-4 align-top">
-                        <StatusPill
-                          label={item.is_super_admin ? "yes" : "no"}
-                          variant={item.is_super_admin ? "neutral" : "warning"}
-                        />
-                      </td>
-                      <td className="px-4 py-4 align-top text-sm text-[var(--muted-foreground)]">
-                        {item.updated_at || item.created_at || "-"}
-                      </td>
-                      <td className="px-4 py-4 align-top">
-                        <Button asChild size="sm" variant="ghost">
-                          <Link href={`/workspace/users/${item.id}`}>
-                            Details
-                          </Link>
-                        </Button>
-                      </td>
+                      {[
+                        "Username",
+                        "Status",
+                        "Super Admin",
+                        "Updated",
+                        "Action",
+                      ].map((label) => (
+                        <th
+                          key={label}
+                          className="px-4 py-3 text-left text-xs font-bold tracking-[0.14em] text-[var(--muted-foreground)] uppercase"
+                        >
+                          {label}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {items.map((item) => (
+                      <tr
+                        key={item.id}
+                        className="border-b last:border-b-0"
+                        style={{ borderColor: "var(--border)" }}
+                      >
+                        <td className="px-4 py-4 align-top">
+                          <div className="font-semibold text-[var(--foreground)]">
+                            {item.username}
+                          </div>
+                          <div className="mt-1 text-xs text-[var(--muted-foreground)]">
+                            {item.id}
+                          </div>
+                        </td>
+                        <td className="px-4 py-4 align-top">
+                          <StatusPill
+                            label={item.status}
+                            variant={
+                              item.status === "active" ? "success" : "warning"
+                            }
+                          />
+                        </td>
+                        <td className="px-4 py-4 align-top">
+                          <StatusPill
+                            label={item.is_super_admin ? "yes" : "no"}
+                            variant={
+                              item.is_super_admin ? "neutral" : "warning"
+                            }
+                          />
+                        </td>
+                        <td className="px-4 py-4 align-top text-sm text-[var(--muted-foreground)]">
+                          {item.updated_at || item.created_at || "-"}
+                        </td>
+                        <td className="px-4 py-4 align-top">
+                          <Button asChild size="sm" variant="ghost">
+                            <Link href={`/workspace/users/${item.id}`}>
+                              Details
+                            </Link>
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </TableContainer>
 
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
               <div className="text-sm text-[var(--muted-foreground)]">

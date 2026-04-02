@@ -28,15 +28,6 @@ export default tseslint.config(
         "warn",
         { args: "none", argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
-      "react-refresh/only-export-components": [
-        "warn",
-        { allowConstantExport: true },
-      ],
-    },
-  },
-  {
-    files: ["src/app/**/*.{ts,tsx}"],
-    rules: {
       "react-refresh/only-export-components": "off",
     },
   },

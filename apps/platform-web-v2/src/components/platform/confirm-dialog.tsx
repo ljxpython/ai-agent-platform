@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,6 +13,7 @@ import {
 export function ConfirmDialog({
   confirmLabel = "Confirm",
   confirmLabelLoading = "Processing...",
+  cancelLabel = "Cancel",
   description,
   loading = false,
   onCancel,
@@ -20,7 +23,8 @@ export function ConfirmDialog({
 }: {
   confirmLabel?: string;
   confirmLabelLoading?: string;
-  description?: string;
+  cancelLabel?: string;
+  description?: ReactNode;
   loading?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -47,7 +51,7 @@ export function ConfirmDialog({
             variant="ghost"
             onClick={onCancel}
           >
-            Cancel
+            {cancelLabel}
           </Button>
           <Button
             disabled={loading}
