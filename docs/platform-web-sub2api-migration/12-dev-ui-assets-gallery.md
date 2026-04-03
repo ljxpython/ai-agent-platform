@@ -77,9 +77,20 @@
 而是直接从上游源码目录自动收录：
 
 - 数据文件：`apps/platform-web-vue/src/modules/examples/ui-assets-catalog.ts`
+- 参考源码快照：`apps/platform-web-vue/examples/sub2api-reference/src`
 - 通过 `import.meta.glob` 自动枚举模板文件
 - 页面只消费分组后的模板元数据
 - 模板详情按需加载源码内容，而不是把说明手工写死
+
+这里已经不再直接依赖本地 `apps/platform-web-sub2api-base` 那个上游仓目录。
+
+原因：
+
+- 原目录体积大
+- 带嵌套 `.git`
+- 不适合直接作为正式仓库依赖
+
+所以现在 dev 资源库依赖的是一份轻量参考快照，而不是整个上游仓。
 
 这样做的好处：
 

@@ -192,6 +192,16 @@ instance/
 # Sphinx documentation
 docs/_build/
 
+# Local debug artifacts
+/.playwright-mcp/
+/.spec-workflow/
+/platform-web-vue-*.png
+/resources-*.png
+/ui-assets-*.png
+/pro-components-playground.png
+/apps/platform-web-v2/sql-agent-debug.png
+/apps/platform-web-sub2api-base/
+
 # PyBuilder
 .pybuilder/
 target/

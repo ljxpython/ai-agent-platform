@@ -49,12 +49,12 @@ export type TemplateModeOption = {
   description: string
 }
 
-const repoSourceRoot = 'apps/platform-web-sub2api-base/frontend/src/'
+const repoSourceRoot = 'apps/platform-web-vue/examples/sub2api-reference/src/'
 
 const pageLoaders = import.meta.glob(
   [
-    '../../../../platform-web-sub2api-base/frontend/src/views/**/*.vue',
-    '!../../../../platform-web-sub2api-base/frontend/src/**/__tests__/**'
+    '../../../examples/sub2api-reference/src/views/**/*.vue',
+    '!../../../examples/sub2api-reference/src/**/__tests__/**'
   ],
   {
     query: '?raw',
@@ -64,8 +64,8 @@ const pageLoaders = import.meta.glob(
 
 const componentLoaders = import.meta.glob(
   [
-    '../../../../platform-web-sub2api-base/frontend/src/components/**/*.{vue,ts}',
-    '!../../../../platform-web-sub2api-base/frontend/src/**/__tests__/**'
+    '../../../examples/sub2api-reference/src/components/**/*.{vue,ts}',
+    '!../../../examples/sub2api-reference/src/**/__tests__/**'
   ],
   {
     query: '?raw',
@@ -75,19 +75,19 @@ const componentLoaders = import.meta.glob(
 
 const engineeringLoaders = import.meta.glob(
   [
-    '../../../../platform-web-sub2api-base/frontend/src/App.vue',
-    '../../../../platform-web-sub2api-base/frontend/src/main.ts',
-    '../../../../platform-web-sub2api-base/frontend/src/api/**/*.ts',
-    '../../../../platform-web-sub2api-base/frontend/src/composables/**/*.ts',
-    '../../../../platform-web-sub2api-base/frontend/src/i18n/**/*.ts',
-    '../../../../platform-web-sub2api-base/frontend/src/router/**/*.ts',
-    '../../../../platform-web-sub2api-base/frontend/src/stores/**/*.ts',
-    '../../../../platform-web-sub2api-base/frontend/src/styles/**/*.css',
-    '../../../../platform-web-sub2api-base/frontend/src/types/**/*.ts',
-    '../../../../platform-web-sub2api-base/frontend/src/utils/**/*.ts',
-    '../../../../platform-web-sub2api-base/frontend/src/views/**/*.ts',
-    '!../../../../platform-web-sub2api-base/frontend/src/**/__tests__/**',
-    '!../../../../platform-web-sub2api-base/frontend/src/**/*.d.ts'
+    '../../../examples/sub2api-reference/src/App.vue',
+    '../../../examples/sub2api-reference/src/main.ts',
+    '../../../examples/sub2api-reference/src/api/**/*.ts',
+    '../../../examples/sub2api-reference/src/composables/**/*.ts',
+    '../../../examples/sub2api-reference/src/i18n/**/*.ts',
+    '../../../examples/sub2api-reference/src/router/**/*.ts',
+    '../../../examples/sub2api-reference/src/stores/**/*.ts',
+    '../../../examples/sub2api-reference/src/styles/**/*.css',
+    '../../../examples/sub2api-reference/src/types/**/*.ts',
+    '../../../examples/sub2api-reference/src/utils/**/*.ts',
+    '../../../examples/sub2api-reference/src/views/**/*.ts',
+    '!../../../examples/sub2api-reference/src/**/__tests__/**',
+    '!../../../examples/sub2api-reference/src/**/*.d.ts'
   ],
   {
     query: '?raw',

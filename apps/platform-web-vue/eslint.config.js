@@ -6,7 +6,7 @@ import vueParser from 'vue-eslint-parser'
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'coverage', '.vite']
+    ignores: ['dist', 'coverage', '.vite', 'examples/sub2api-reference/**']
   },
   js.configs.recommended,
   ...pluginVue.configs['flat/recommended'],
