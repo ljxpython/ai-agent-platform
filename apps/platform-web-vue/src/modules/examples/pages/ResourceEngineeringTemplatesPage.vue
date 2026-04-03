@@ -3,14 +3,18 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import MetricCard from '@/components/platform/MetricCard.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import Sub2apiTemplateGallery from '@/modules/examples/components/Sub2apiTemplateGallery.vue'
-import { recommendedTemplateStats, templateSceneStats } from '@/modules/examples/ui-assets-curation'
-import { sub2apiTemplateStats } from '@/modules/examples/ui-assets-catalog'
+import {
+  curatedTemplateStats,
+  recommendedTemplateStats,
+  teamRecommendedStats,
+  templateSceneStats
+} from '@/modules/examples/ui-assets-curation'
 
 const stats = [
   {
-    label: '工程模板数',
-    value: sub2apiTemplateStats.engineering,
-    hint: 'API、Pinia、router、composable、i18n、utils 等工程支撑都沉淀进来了。',
+    label: '去重模板数',
+    value: curatedTemplateStats.engineering,
+    hint: '工程层现在只展示去重后的骨架模板，不再把整库辅助文件全部摊开。',
     icon: 'runtime',
     tone: 'warning'
   },
@@ -19,6 +23,13 @@ const stats = [
     value: recommendedTemplateStats.engineering,
     hint: 'API client、状态收口、路由接线和 i18n 这批最值钱的工程骨架已被优先抽出。',
     icon: 'folder',
+    tone: 'primary'
+  },
+  {
+    label: '团队推荐',
+    value: teamRecommendedStats.engineering,
+    hint: '工程分类里固定钉住的优先模板数量。',
+    icon: 'check',
     tone: 'primary'
   },
   {
@@ -41,11 +52,11 @@ const stats = [
 
     <StateBanner
       title="工程模板已收敛为三层资源页"
-      description="工程层最容易被全量文件淹没，所以现在默认先看推荐模板和场景模板，再决定是否进入原始档案查具体实现。"
+      description="工程层最容易被全量文件淹没，所以现在默认先看推荐模板和场景模板，最后只保留一个去重后的模板库做横向比较。"
       variant="info"
     />
 
-    <div class="grid gap-4 xl:grid-cols-3">
+    <div class="grid gap-4 xl:grid-cols-4">
       <MetricCard
         v-for="item in stats"
         :key="item.label"
@@ -61,7 +72,7 @@ const stats = [
       mode="engineering"
       eyebrow="Engineering Templates"
       title="Sub2api 工程模板库"
-      description="接口、store、router、composable、i18n、styles、utils 这些工程模板仍然都在，但默认先展示最值得借的骨架和场景集，减少翻原始文件的噪音。"
+      description="接口、store、router、composable、i18n、styles、utils 这些工程模板仍然都在，但现在只展示最值得借的骨架、场景集和去重后的工程模板库。"
       search-placeholder="搜索文件名、路径、工程标签或借用点"
     />
   </section>

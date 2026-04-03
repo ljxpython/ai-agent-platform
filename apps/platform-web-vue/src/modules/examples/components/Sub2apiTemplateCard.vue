@@ -1,11 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import Sub2apiTemplatePreview from '@/modules/examples/components/Sub2apiTemplatePreview.vue'
+import { getTemplateCurationMeta } from '@/modules/examples/ui-assets-curation'
 import { humanizeTemplateName, type Sub2apiTemplateItem } from '@/modules/examples/ui-assets-catalog'
 
-defineProps<{
+const props = defineProps<{
   item: Sub2apiTemplateItem
 }>()
 
@@ -14,6 +16,8 @@ const emit = defineEmits<{
   inspect: [item: Sub2apiTemplateItem]
   code: [item: Sub2apiTemplateItem]
 }>()
+
+const curation = computed(() => getTemplateCurationMeta(props.item))
 
 function toneOf(item: Sub2apiTemplateItem) {
   if (item.kind === 'page') {
@@ -38,6 +42,18 @@ function toneOf(item: Sub2apiTemplateItem) {
       <StatusPill :tone="toneOf(item)">
         {{ item.sceneLabel }}
       </StatusPill>
+      <span
+        v-if="curation.isTeamRecommended"
+        class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
+      >
+        团队推荐 Top {{ curation.teamRank }}
+      </span>
+      <span
+        v-else-if="curation.isRecommended"
+        class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300"
+      >
+        首选模板
+      </span>
       <span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200">
         {{ item.groupTitle }}
       </span>
@@ -56,6 +72,13 @@ function toneOf(item: Sub2apiTemplateItem) {
       <p class="mt-2 text-sm leading-7 text-gray-500 dark:text-dark-300">
         {{ item.summary }}
       </p>
+    </div>
+
+    <div
+      v-if="curation.teamReason"
+      class="mt-4 rounded-[20px] border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm leading-7 text-amber-800 dark:border-amber-900/30 dark:bg-amber-950/15 dark:text-amber-200"
+    >
+      团队建议：{{ curation.teamReason }}
     </div>
 
     <div class="mt-4 flex flex-wrap gap-2">

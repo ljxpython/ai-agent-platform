@@ -4,7 +4,7 @@ import {
   type TemplateMode
 } from '@/modules/examples/ui-assets-catalog'
 
-export type TemplateExplorerLayer = 'recommended' | 'scenes' | 'archive'
+export type TemplateExplorerLayer = 'recommended' | 'scenes' | 'library'
 
 export type TemplateExplorerLayerOption = {
   key: TemplateExplorerLayer
@@ -25,6 +25,17 @@ type SceneDefinition = Omit<TemplateScene, 'items' | 'mode'> & {
   sources: string[]
 }
 
+export type TeamRecommendedTemplate = {
+  rank: number
+  reason: string
+  item: Sub2apiTemplateItem
+}
+
+type TeamRecommendedDefinition = {
+  source: string
+  reason: string
+}
+
 const templateIndex = new Map(
   allSub2apiTemplates.map((item) => [item.shortSource.replace(/^src\//, ''), item])
 )
@@ -39,6 +50,10 @@ function uniqueTemplateCount(scenes: TemplateScene[]) {
   return new Set(scenes.flatMap((scene) => scene.items.map((item) => item.id))).size
 }
 
+function uniqueTemplates(items: readonly Sub2apiTemplateItem[]) {
+  return Array.from(new Map(items.map((item) => [item.id, item])).values())
+}
+
 export const templateExplorerLayers: TemplateExplorerLayerOption[] = [
   {
     key: 'recommended',
@@ -51,9 +66,9 @@ export const templateExplorerLayers: TemplateExplorerLayerOption[] = [
     description: '按列表、看板、认证、弹窗、工程接线这些真实开发场景收口。'
   },
   {
-    key: 'archive',
-    label: '原始档案',
-    description: '保留完整上游模板档案，只有需要深挖细节时再进来翻。'
+    key: 'library',
+    label: '模板库',
+    description: '把推荐模板和场景模板去重后并成一个可搜索模板库，只保留值得直接看的可视化模板。'
   }
 ]
 
@@ -283,6 +298,10 @@ export const recommendedTemplatesByMode = {
   engineering: pickTemplates(recommendedSourceMap.engineering)
 } as const
 
+const recommendedTemplateIdSet = new Set(
+  Object.values(recommendedTemplatesByMode).flatMap((items) => items.map((item) => item.id))
+)
+
 export const recommendedTemplateStats = {
   pages: recommendedTemplatesByMode.pages.length,
   components: recommendedTemplatesByMode.components.length,
@@ -291,6 +310,124 @@ export const recommendedTemplateStats = {
     recommendedTemplatesByMode.pages.length +
     recommendedTemplatesByMode.components.length +
     recommendedTemplatesByMode.engineering.length
+}
+
+const teamRecommendedDefinitions: TeamRecommendedDefinition[] = [
+  {
+    source: 'components/layout/AppLayout.vue',
+    reason: '后台主壳层的总骨架，决定侧栏、顶栏和主内容区的整体节奏。'
+  },
+  {
+    source: 'components/layout/AppSidebar.vue',
+    reason: '左侧主导航的层级、激活态和折叠逻辑都该先从这份模板借。'
+  },
+  {
+    source: 'components/layout/AppHeader.vue',
+    reason: '顶部上下文条、公告、语言切换和个人菜单的组织方式以它为准。'
+  },
+  {
+    source: 'components/layout/TablePageLayout.vue',
+    reason: '后台列表页最常见的工具栏加内容区节奏，别再每页重拼。'
+  },
+  {
+    source: 'views/admin/UsersView.vue',
+    reason: '最典型的后台管理页成品参考，筛选、表格和弹窗动作都比较完整。'
+  },
+  {
+    source: 'views/admin/UsageView.vue',
+    reason: '统计型列表页的卡片、筛选和表格组合已经跑通，适合做运营页母版。'
+  },
+  {
+    source: 'components/common/DataTable.vue',
+    reason: '表格头、单元格、空态和交互壳统一收口，新列表页优先复用它。'
+  },
+  {
+    source: 'components/common/Pagination.vue',
+    reason: '分页、页大小切换和翻页节奏不要重新造，这个模板已经够成熟。'
+  },
+  {
+    source: 'components/common/BaseDialog.vue',
+    reason: '编辑、新建、确认类弹层都应该从这个底座出发，别到处散。'
+  },
+  {
+    source: 'composables/useTableLoader.ts',
+    reason: '列表装载、翻页和刷新状态的工程逻辑靠它兜底，值钱得很。'
+  }
+]
+
+export const teamRecommendedTemplates = teamRecommendedDefinitions
+  .map((entry, index) => {
+    const item = templateIndex.get(entry.source)
+
+    if (!item) {
+      return null
+    }
+
+    return {
+      rank: index + 1,
+      reason: entry.reason,
+      item
+    }
+  })
+  .filter((item): item is TeamRecommendedTemplate => Boolean(item))
+
+const teamRecommendedMetaById = new Map(
+  teamRecommendedTemplates.map((item) => [
+    item.item.id,
+    {
+      rank: item.rank,
+      reason: item.reason
+    }
+  ])
+)
+
+export const teamRecommendedTemplatesByMode = {
+  pages: teamRecommendedTemplates.filter((item) => item.item.mode === 'pages'),
+  components: teamRecommendedTemplates.filter((item) => item.item.mode === 'components'),
+  engineering: teamRecommendedTemplates.filter((item) => item.item.mode === 'engineering')
+} as const
+
+export const teamRecommendedStats = {
+  pages: teamRecommendedTemplatesByMode.pages.length,
+  components: teamRecommendedTemplatesByMode.components.length,
+  engineering: teamRecommendedTemplatesByMode.engineering.length,
+  total: teamRecommendedTemplates.length
+}
+
+export function getTemplateCurationMeta(item: Sub2apiTemplateItem) {
+  const teamRecommended = teamRecommendedMetaById.get(item.id)
+
+  return {
+    isRecommended: recommendedTemplateIdSet.has(item.id),
+    isTeamRecommended: Boolean(teamRecommended),
+    teamRank: teamRecommended?.rank ?? null,
+    teamReason: teamRecommended?.reason ?? ''
+  }
+}
+
+export function sortTemplatesByRecommendation(items: readonly Sub2apiTemplateItem[]) {
+  return [...items]
+    .map((item, index) => ({
+      item,
+      index,
+      meta: getTemplateCurationMeta(item)
+    }))
+    .sort((left, right) => {
+      if (left.meta.teamRank && right.meta.teamRank) {
+        return left.meta.teamRank - right.meta.teamRank
+      }
+
+      if (left.meta.teamRank) {
+        return -1
+      }
+
+      if (right.meta.teamRank) {
+        return 1
+      }
+
+      return left.index - right.index
+    })
+    .map((entry) => entry.item)
 }
 
 export const templateScenesByMode = {
@@ -324,4 +461,29 @@ export const templateSceneStats = {
     sceneCount: templateScenesByMode.engineering.length,
     templateCount: uniqueTemplateCount(templateScenesByMode.engineering)
   }
+}
+
+export const curatedTemplatesByMode = {
+  pages: uniqueTemplates([
+    ...recommendedTemplatesByMode.pages,
+    ...templateScenesByMode.pages.flatMap((scene) => scene.items)
+  ]),
+  components: uniqueTemplates([
+    ...recommendedTemplatesByMode.components,
+    ...templateScenesByMode.components.flatMap((scene) => scene.items)
+  ]),
+  engineering: uniqueTemplates([
+    ...recommendedTemplatesByMode.engineering,
+    ...templateScenesByMode.engineering.flatMap((scene) => scene.items)
+  ])
+} as const
+
+export const curatedTemplateStats = {
+  pages: curatedTemplatesByMode.pages.length,
+  components: curatedTemplatesByMode.components.length,
+  engineering: curatedTemplatesByMode.engineering.length,
+  total:
+    curatedTemplatesByMode.pages.length +
+    curatedTemplatesByMode.components.length +
+    curatedTemplatesByMode.engineering.length
 }

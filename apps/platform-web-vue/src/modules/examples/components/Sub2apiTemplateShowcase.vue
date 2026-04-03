@@ -3,11 +3,8 @@ import { computed } from 'vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import Sub2apiTemplateCard from '@/modules/examples/components/Sub2apiTemplateCard.vue'
 import Sub2apiTemplateDialog from '@/modules/examples/components/Sub2apiTemplateDialog.vue'
-import { recommendedTemplatesByMode } from '@/modules/examples/ui-assets-curation'
-import {
-  sub2apiTemplateGroups,
-  type TemplateMode
-} from '@/modules/examples/ui-assets-catalog'
+import { curatedTemplatesByMode, recommendedTemplatesByMode } from '@/modules/examples/ui-assets-curation'
+import { type TemplateMode } from '@/modules/examples/ui-assets-catalog'
 import { useSub2apiTemplateDialog } from '@/modules/examples/useSub2apiTemplateDialog'
 
 const props = withDefaults(
@@ -24,8 +21,7 @@ const props = withDefaults(
   }
 )
 
-const groups = computed(() => sub2apiTemplateGroups[props.mode])
-const totalCount = computed(() => groups.value.reduce((total, group) => total + group.items.length, 0))
+const totalCount = computed(() => curatedTemplatesByMode[props.mode].length)
 const {
   selectedTemplate,
   selectedTemplateDetail,

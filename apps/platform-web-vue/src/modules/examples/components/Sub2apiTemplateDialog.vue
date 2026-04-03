@@ -5,6 +5,7 @@ import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import Sub2apiTemplatePreview from '@/modules/examples/components/Sub2apiTemplatePreview.vue'
+import { getTemplateCurationMeta } from '@/modules/examples/ui-assets-curation'
 import type { TemplateDetailTab } from '@/modules/examples/useSub2apiTemplateDialog'
 import { useUiStore } from '@/stores/ui'
 import {
@@ -72,6 +73,8 @@ const activeCode = computed(() => {
 
   return props.detail.code
 })
+
+const curation = computed(() => (props.item ? getTemplateCurationMeta(props.item) : null))
 
 watch(
   () => [props.item?.id, props.initialTab],
@@ -143,6 +146,18 @@ async function copyValue(value: string, message: string) {
               <StatusPill :tone="toneOf(item)">
                 {{ item.sceneLabel }}
               </StatusPill>
+              <span
+                v-if="curation?.isTeamRecommended"
+                class="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
+              >
+                团队推荐 Top {{ curation.teamRank }}
+              </span>
+              <span
+                v-else-if="curation?.isRecommended"
+                class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-300"
+              >
+                首选模板
+              </span>
               <span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200">
                 {{ item.groupTitle }}
               </span>
@@ -178,6 +193,15 @@ async function copyValue(value: string, message: string) {
                 </div>
                 <div class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
                   {{ detail.lineCount }} 行
+                </div>
+              </div>
+
+              <div v-if="curation?.isRecommended">
+                <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
+                  推荐层级
+                </div>
+                <div class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
+                  {{ curation.isTeamRecommended ? `团队推荐 Top ${curation.teamRank}` : '默认首选模板' }}
                 </div>
               </div>
             </div>
@@ -257,6 +281,18 @@ async function copyValue(value: string, message: string) {
                 {{ borrow }}
               </span>
             </div>
+          </div>
+
+          <div
+            v-if="curation?.teamReason"
+            class="rounded-[24px] border border-amber-100 bg-amber-50/70 p-4 dark:border-amber-900/30 dark:bg-amber-950/15"
+          >
+            <div class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">
+              团队建议
+            </div>
+            <p class="mt-3 text-sm leading-7 text-amber-800 dark:text-amber-100">
+              {{ curation.teamReason }}
+            </p>
           </div>
 
           <div class="rounded-[24px] border border-gray-100 bg-white/80 p-4 dark:border-dark-800 dark:bg-dark-950/35">

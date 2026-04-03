@@ -174,7 +174,13 @@ export const templateModeOptions: TemplateModeOption[] = [
 ]
 
 function toRepoRelativePath(key: string) {
-  return key.startsWith('../../../../') ? `apps/${key.slice(12)}` : key
+  const normalized = key.replace(/^(\.\.\/)+/, '')
+
+  if (normalized.startsWith('examples/') || normalized.startsWith('src/')) {
+    return `apps/platform-web-vue/${normalized}`
+  }
+
+  return key
 }
 
 function toSourceRelativePath(source: string) {

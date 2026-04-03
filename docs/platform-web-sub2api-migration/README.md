@@ -44,7 +44,8 @@
   - `BulkActionsBar`
   - dark mode 首屏主题初始化
 - [x] 完成 dev 环境 `UI 资产库` 初版入口，开始沉淀 testcase 页面与共享 UI 母版资源
-- [x] 完成 dev 环境 `Resources` 三层收敛：`推荐模板 / 场景模板 / 原始档案`
+- [x] 完成 dev 环境 `Resources` 三层收敛：`推荐模板 / 场景模板 / 模板库`
+- [x] 完成 `团队推荐 Top 10` 独立资源页与跨页跳转
 
 ## 文档列表
 

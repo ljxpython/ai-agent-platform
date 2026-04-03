@@ -3,14 +3,18 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import MetricCard from '@/components/platform/MetricCard.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import Sub2apiTemplateGallery from '@/modules/examples/components/Sub2apiTemplateGallery.vue'
-import { recommendedTemplateStats, templateSceneStats } from '@/modules/examples/ui-assets-curation'
-import { sub2apiTemplateStats } from '@/modules/examples/ui-assets-catalog'
+import {
+  curatedTemplateStats,
+  recommendedTemplateStats,
+  teamRecommendedStats,
+  templateSceneStats
+} from '@/modules/examples/ui-assets-curation'
 
 const stats = [
   {
-    label: '页面模板数',
-    value: sub2apiTemplateStats.pages,
-    hint: '把上游页面母版整库拆开，方便直接按页挑模板。',
+    label: '去重模板数',
+    value: curatedTemplateStats.pages,
+    hint: '只保留推荐模板和场景模板去重后的页面集合，避免重复页面来回出现。',
     icon: 'folder',
     tone: 'primary'
   },
@@ -20,6 +24,13 @@ const stats = [
     hint: '默认优先展示这批首选页面骨架，减少同类页面反复横跳。',
     icon: 'overview',
     tone: 'success'
+  },
+  {
+    label: '团队推荐',
+    value: teamRecommendedStats.pages,
+    hint: '页面分类里被固定钉住的模板数量。',
+    icon: 'check',
+    tone: 'primary'
   },
   {
     label: '场景模板集',
@@ -41,11 +52,11 @@ const stats = [
 
     <StateBanner
       title="页面模板已收敛为三层资源页"
-      description="默认先看推荐模板，再按场景找页面骨架，只有需要深挖时才进入原始档案。这样不会再被整库页面模板直接淹没。"
+      description="默认先看推荐模板，再按场景找页面骨架，最后只保留一个去重后的模板库做横向比较。重复页面不再直接铺满页面。"
       variant="info"
     />
 
-    <div class="grid gap-4 xl:grid-cols-3">
+    <div class="grid gap-4 xl:grid-cols-4">
       <MetricCard
         v-for="item in stats"
         :key="item.label"
@@ -61,7 +72,7 @@ const stats = [
       mode="pages"
       eyebrow="Page Templates"
       title="Sub2api 页面模板库"
-      description="后台管理页、运维监控页、认证页、公开页和用户工作台模板都在这里，但默认先给推荐模板和场景模板，不再让人直接陷进整库 views。"
+      description="后台管理页、运维监控页、认证页、公开页和用户工作台模板都在这里，但现在只展示推荐模板、场景模板和去重后的页面模板库，不再让人直接陷进整库 views。"
       search-placeholder="搜索页面名、源码路径或原始路由"
     />
   </section>

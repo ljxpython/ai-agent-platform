@@ -5,8 +5,13 @@ import BaseIcon from '@/components/base/BaseIcon.vue'
 import MetricCard from '@/components/platform/MetricCard.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import Sub2apiTemplateShowcase from '@/modules/examples/components/Sub2apiTemplateShowcase.vue'
-import { recommendedTemplateStats, templateSceneStats } from '@/modules/examples/ui-assets-curation'
-import { sub2apiTemplateGroups, sub2apiTemplateStats } from '@/modules/examples/ui-assets-catalog'
+import {
+  curatedTemplateStats,
+  recommendedTemplateStats,
+  teamRecommendedStats,
+  templateSceneStats
+} from '@/modules/examples/ui-assets-curation'
+import { sub2apiTemplateGroups } from '@/modules/examples/ui-assets-catalog'
 
 const isDev = import.meta.env.DEV
 const totalSceneCount =
@@ -30,17 +35,17 @@ const stats = [
     tone: 'success'
   },
   {
-    label: '原始档案',
-    value: sub2apiTemplateStats.pages + sub2apiTemplateStats.components + sub2apiTemplateStats.engineering,
-    hint: '完整保留上游模板档案，只有需要深挖源码时才建议进入。',
+    label: '去重模板',
+    value: curatedTemplateStats.total,
+    hint: '推荐模板和场景模板合并去重后的可视化模板集合，Resources 页面现在就围绕这批模板展开。',
     icon: 'runtime',
     tone: 'warning'
   },
   {
-    label: '资源页',
-    value: 4,
-    hint: '总览页加三个模板子页，结构继续保持清晰，不回到单页大杂烩。',
-    icon: 'sparkle',
+    label: '团队推荐',
+    value: `Top ${teamRecommendedStats.total}`,
+    hint: '把最常用的 10 个模板钉死为固定锚点，开发时先看这批，不容易选岔。',
+    icon: 'check',
     tone: 'primary'
   }
 ] as const
@@ -53,7 +58,7 @@ const resourceCards = [
     label: '进入页面模板',
     icon: 'folder',
     tone: 'primary',
-    count: sub2apiTemplateStats.pages,
+    count: curatedTemplateStats.pages,
     groupCount: sub2apiTemplateGroups.pages.length
   },
   {
@@ -63,7 +68,7 @@ const resourceCards = [
     label: '进入组件模板',
     icon: 'users',
     tone: 'success',
-    count: sub2apiTemplateStats.components,
+    count: curatedTemplateStats.components,
     groupCount: sub2apiTemplateGroups.components.length
   },
   {
@@ -73,7 +78,7 @@ const resourceCards = [
     label: '进入工程模板',
     icon: 'runtime',
     tone: 'warning',
-    count: sub2apiTemplateStats.engineering,
+    count: curatedTemplateStats.engineering,
     groupCount: sub2apiTemplateGroups.engineering.length
   }
 ] as const
@@ -91,7 +96,7 @@ const resourceCards = [
       :title="isDev ? '当前为开发环境资源总览页' : '当前为隐藏资源总览页'"
       :description="
         isDev
-          ? 'Resources 已经拆成多页面结构，并且每个模板子页都采用 推荐模板 / 场景模板 / 原始档案 三层结构。'
+          ? 'Resources 已经拆成多页面结构，并且每个模板子页都采用 推荐模板 / 场景模板 / 模板库 三层结构，展示口径完全基于当前 examples 参考快照。'
           : '生产环境默认不暴露这类研发资源位，但路由仍然保留，方便后续扩展。'
       "
       variant="info"
@@ -118,7 +123,7 @@ const resourceCards = [
           模板入口
         </h2>
         <p class="mt-2 max-w-4xl text-sm leading-7 text-gray-500 dark:text-dark-300">
-          以后开发者不需要在一页里滚 260 多个模板。先判断自己要找的是页面、组件还是工程支撑，再进入对应资源页，从推荐模板和场景模板开始挑。
+          现在不用再去翻一堆重复卡片了。先判断自己要找的是页面、组件还是工程支撑，再进入对应资源页，从推荐模板和场景模板开始挑。
         </p>
 
         <div class="mt-6 grid gap-4 xl:grid-cols-3">
@@ -187,7 +192,7 @@ const resourceCards = [
             2. 进入对应资源页，先看推荐模板；如果还不确定，再切到场景模板。
           </div>
           <div class="rounded-[20px] border border-gray-100 bg-gray-50/80 p-4 dark:border-dark-800 dark:bg-dark-950/45">
-            3. 真要深挖实现细节时，再进入原始档案，按分组或搜索找源码。
+            3. 还要横向对比时，再进入模板库看去重后的完整集合。
           </div>
           <div class="rounded-[20px] border border-gray-100 bg-gray-50/80 p-4 dark:border-dark-800 dark:bg-dark-950/45">
             4. 借的是结构、节奏和拆分方式，不是把上游业务语义整页硬搬。
@@ -195,6 +200,74 @@ const resourceCards = [
         </div>
       </SurfaceCard>
     </div>
+
+    <SurfaceCard>
+      <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <div class="pw-page-eyebrow">
+            Team Recommended
+          </div>
+          <h2 class="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
+            团队推荐 Top 10
+          </h2>
+          <p class="mt-2 max-w-5xl text-sm leading-7 text-gray-500 dark:text-dark-300">
+            这 10 个模板已经抽成单独页面，做成固定入口。后续开发者如果不知道先看谁，直接先吃这批。
+          </p>
+        </div>
+
+        <router-link
+          to="/workspace/resources/top-picks"
+          class="pw-btn pw-btn-secondary inline-flex items-center gap-2"
+        >
+          <BaseIcon
+            name="chevron-right"
+            size="sm"
+          />
+          进入 Top 10 页面
+        </router-link>
+      </div>
+
+      <div class="mt-6 grid gap-4 xl:grid-cols-4">
+        <article class="rounded-[24px] border border-amber-100 bg-amber-50/70 p-5 dark:border-amber-900/30 dark:bg-amber-950/15">
+          <div class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">
+            Total Picks
+          </div>
+          <div class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">
+            {{ teamRecommendedStats.total }}
+          </div>
+          <p class="mt-2 text-sm leading-7 text-amber-900/80 dark:text-amber-100">
+            固定锚点模板总数
+          </p>
+        </article>
+
+        <article class="rounded-[24px] border border-gray-100 bg-white/85 p-5 dark:border-dark-800 dark:bg-dark-950/35">
+          <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
+            页面模板
+          </div>
+          <div class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">
+            {{ teamRecommendedStats.pages }}
+          </div>
+        </article>
+
+        <article class="rounded-[24px] border border-gray-100 bg-white/85 p-5 dark:border-dark-800 dark:bg-dark-950/35">
+          <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
+            组件模板
+          </div>
+          <div class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">
+            {{ teamRecommendedStats.components }}
+          </div>
+        </article>
+
+        <article class="rounded-[24px] border border-gray-100 bg-white/85 p-5 dark:border-dark-800 dark:bg-dark-950/35">
+          <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
+            工程模板
+          </div>
+          <div class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">
+            {{ teamRecommendedStats.engineering }}
+          </div>
+        </article>
+      </div>
+    </SurfaceCard>
 
     <Sub2apiTemplateShowcase
       mode="pages"

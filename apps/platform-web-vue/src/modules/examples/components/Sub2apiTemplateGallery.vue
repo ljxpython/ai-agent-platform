@@ -5,14 +5,19 @@ import SearchInput from '@/components/platform/SearchInput.vue'
 import Sub2apiTemplateCard from '@/modules/examples/components/Sub2apiTemplateCard.vue'
 import Sub2apiTemplateDialog from '@/modules/examples/components/Sub2apiTemplateDialog.vue'
 import {
+  curatedTemplatesByMode,
   recommendedTemplatesByMode,
+  sortTemplatesByRecommendation,
+  teamRecommendedTemplatesByMode,
   templateExplorerLayers,
   templateSceneStats,
   templateScenesByMode,
   type TemplateExplorerLayer
 } from '@/modules/examples/ui-assets-curation'
 import {
+  humanizeTemplateName,
   sub2apiTemplateGroups,
+  type Sub2apiTemplateGroup,
   templateModeOptions,
   type TemplateMode
 } from '@/modules/examples/ui-assets-catalog'
@@ -56,16 +61,33 @@ const currentLayerOption = computed(() =>
 )
 
 const activeGroups = computed(() => sub2apiTemplateGroups[props.mode])
-const recommendedItems = computed(() => recommendedTemplatesByMode[props.mode])
+const libraryItems = computed(() => sortTemplatesByRecommendation(curatedTemplatesByMode[props.mode]))
+const recommendedItems = computed(() =>
+  sortTemplatesByRecommendation(recommendedTemplatesByMode[props.mode])
+)
+const teamRecommendedItems = computed(() => teamRecommendedTemplatesByMode[props.mode])
 const sceneGroups = computed(() => templateScenesByMode[props.mode])
 
 const totalActiveCount = computed(() =>
-  activeGroups.value.reduce((total, group) => total + group.items.length, 0)
+  libraryItems.value.length
+)
+
+const libraryItemIdSet = computed(() => new Set(libraryItems.value.map((item) => item.id)))
+
+const libraryGroups = computed<Sub2apiTemplateGroup[]>(() =>
+  activeGroups.value
+    .map((group) => ({
+      ...group,
+      items: sortTemplatesByRecommendation(
+        group.items.filter((item) => libraryItemIdSet.value.has(item.id))
+      )
+    }))
+    .filter((group) => group.items.length > 0)
 )
 
 const groupOptions = computed(() => [
   { key: 'all', label: '全部分组' },
-  ...activeGroups.value.map((group) => ({
+  ...libraryGroups.value.map((group) => ({
     key: group.key,
     label: `${group.title} · ${group.items.length}`
   }))
@@ -74,7 +96,7 @@ const groupOptions = computed(() => [
 const filteredGroups = computed(() => {
   const query = searchQuery.value.trim().toLowerCase()
 
-  return activeGroups.value
+  return libraryGroups.value
     .filter((group) => activeGroupKey.value === 'all' || group.key === activeGroupKey.value)
     .map((group) => ({
       ...group,
@@ -106,14 +128,14 @@ const filteredCount = computed(() =>
 
 const currentDisplayLabel = computed(() => {
   if (activeLayer.value === 'recommended') {
-    return `当前展示 ${recommendedItems.value.length} / ${totalActiveCount.value} 个首选模板`
+    return `当前展示 ${recommendedItems.value.length} / ${totalActiveCount.value} 个首选模板，其中 ${teamRecommendedItems.value.length} 个已列为团队推荐`
   }
 
   if (activeLayer.value === 'scenes') {
     return `当前展示 ${templateSceneStats[props.mode].sceneCount} 个场景 / ${templateSceneStats[props.mode].templateCount} 个代表模板`
   }
 
-  return `当前展示 ${filteredCount.value} / ${totalActiveCount.value} 个原始模板`
+  return `当前展示 ${filteredCount.value} / ${totalActiveCount.value} 个去重模板`
 })
 
 const currentDisplayHint = computed(() => {
@@ -125,7 +147,7 @@ const currentDisplayHint = computed(() => {
     return '不确定先借页面骨架、列表体系还是工程接线时，就从场景模板看，按任务类型选。'
   }
 
-  return '原始档案保留完整分组、搜索和源码路径能力，只在需要深挖时再进来翻。'
+  return '这里只保留去重后的模板库，继续支持搜索、分组和可视化卡片，不再把整库源码档案直接摊给你。'
 })
 
 watch(
@@ -161,7 +183,7 @@ watch(
       </div>
 
       <div
-        v-if="activeLayer === 'archive'"
+        v-if="activeLayer === 'library'"
         class="w-full lg:w-[320px]"
       >
         <SearchInput
@@ -180,7 +202,7 @@ watch(
           {{ currentModeOption?.label }}
         </div>
         <p class="mt-2 text-sm leading-7 text-gray-500 dark:text-dark-300">
-          默认先看推荐模板，再按场景找，最后才进入原始档案。别一上来就把整库模板全翻一遍。
+          默认先看推荐模板，再按场景找，最后再进模板库补细节。别一上来就把一整坨源码卡片翻到底。
         </p>
       </div>
 
@@ -230,7 +252,7 @@ watch(
         <div class="mt-2 space-y-2 text-sm leading-7 text-gray-500 dark:text-dark-300">
           <div>1. 先从推荐模板选能直接开工的首选骨架。</div>
           <div>2. 不确定时切到场景模板，按任务类型缩小范围。</div>
-          <div>3. 只有要抠细节、查源码块时，才进原始档案翻整库。</div>
+          <div>3. 还要横向对比时，再进模板库看去重后的完整集合。</div>
         </div>
       </div>
     </div>
@@ -257,7 +279,7 @@ watch(
             默认别跳过这层
           </div>
           <p class="mt-2 text-sm leading-7 text-gray-600 dark:text-dark-300">
-            如果这层已经能满足大部分选型，就不要再回头翻全量模板。原始档案留着查细枝末节，不是让开发者重新迷路的。
+            如果这层已经能满足大部分选型，就不要再回头翻更大的模板集合。先把首选骨架确定掉，后面就顺很多。
           </p>
           <div class="mt-4">
             <button
@@ -272,6 +294,34 @@ watch(
               查看场景模板
             </button>
           </div>
+        </div>
+      </div>
+
+      <div
+        v-if="teamRecommendedItems.length > 0"
+        class="mt-5 rounded-[24px] border border-amber-100 bg-amber-50/65 p-5 dark:border-amber-900/30 dark:bg-amber-950/15"
+      >
+        <div class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">
+          Team Picks
+        </div>
+        <div class="mt-2 text-lg font-semibold text-gray-900 dark:text-white">
+          当前分类钉死的团队推荐
+        </div>
+        <p class="mt-2 text-sm leading-7 text-amber-900/80 dark:text-amber-100">
+          这些模板在当前分类里优先级最高。先从它们开工，再去看同层其他首选模板，开发者不容易选岔。
+        </p>
+        <div class="mt-4 flex flex-wrap gap-2">
+          <router-link
+            v-for="entry in teamRecommendedItems"
+            :key="entry.item.id"
+            :to="{ name: 'workspace-resources-top-picks', hash: `#${entry.item.id}` }"
+            class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-2 text-sm font-medium text-amber-700 transition hover:border-amber-300 hover:bg-amber-100 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200 dark:hover:bg-amber-950/35"
+          >
+            <span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-900/40 dark:text-amber-200">
+              Top {{ entry.rank }}
+            </span>
+            <span>{{ humanizeTemplateName(entry.item.name) }}</span>
+          </router-link>
         </div>
       </div>
 
@@ -331,7 +381,14 @@ watch(
     </template>
 
     <template v-else>
-      <div class="mt-6 flex flex-wrap gap-2">
+      <div class="mt-6 flex flex-wrap items-center gap-3">
+        <div class="w-full lg:w-[320px]">
+          <SearchInput
+            v-model="searchQuery"
+            :placeholder="searchPlaceholder"
+          />
+        </div>
+
         <button
           v-for="group in groupOptions"
           :key="group.key"

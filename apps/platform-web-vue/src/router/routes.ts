@@ -126,6 +126,12 @@ const workspaceChildren: RouteRecordRaw[] = [
         name: 'workspace-resources-engineering',
         component: () => import('@/modules/examples/pages/ResourceEngineeringTemplatesPage.vue'),
         meta: { title: '工程模板', eyebrow: 'Resources' }
+      },
+      {
+        path: 'top-picks',
+        name: 'workspace-resources-top-picks',
+        component: () => import('@/modules/examples/pages/ResourceTopPicksPage.vue'),
+        meta: { title: '团队推荐 Top 10', eyebrow: 'Resources' }
       }
     ]
   },
