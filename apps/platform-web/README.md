@@ -125,6 +125,8 @@ pnpm dev
 6. `docs/testing.md`
 7. `docs/agent-chat-template.md`
 8. `docs/testcase-workspace.md`
+9. `docs/frontend-admin-framework-research.md`
+10. `docs/frontend-visual-refresh-plan.md`
 
 ## 当前代码入口
 
@@ -157,3 +159,5 @@ platform-web
 - `docs/local-dev.md`：本地开发说明
 - `docs/testing.md`：构建与 Playwright 验证
 - `docs/agent-chat-template.md`：Agent 专属 chat 页面模板开发约定
+- `docs/frontend-admin-framework-research.md`：前端中台框架调研与推荐结论
+- `docs/frontend-visual-refresh-plan.md`：平台视觉升级规划

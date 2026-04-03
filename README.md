@@ -28,6 +28,22 @@
 
 > 想先理解当前项目为什么这么设计、后续应该按什么范式继续开发，可先看 [当前项目开发范式说明](docs/development-paradigm.md)。
 
+## 当前前端迁移进展
+
+`apps/platform-web-vue` 已作为新的 Vue 迁移前端正式落地，并已接通首批真实平台页面：
+
+- `overview`
+- `projects`
+- `users`
+- `assistants`
+- `me`
+- `security`
+- `audit`
+
+迁移规划、技术栈决策、模块交付顺序与当前清单统一维护在：
+
+- [docs/platform-web-sub2api-migration/README.md](docs/platform-web-sub2api-migration/README.md)
+
 ## 这个项目解决什么问题
 
 很多 Agent 项目能跑 demo，但一到真实工程场景就容易混乱：平台治理、运行时执行、调试入口、环境配置全耦在一起，后面越改越难受。

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="pw-gradient" x1="0%" x2="100%" y1="0%" y2="100%">
+      <stop offset="0%" stop-color="#5ca1f6" />
+      <stop offset="100%" stop-color="#243d63" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="18" fill="url(#pw-gradient)" />
+  <path
+    d="M18 20h14c8.837 0 16 7.163 16 16s-7.163 16-16 16h-8V42h7.5a6.5 6.5 0 0 0 0-13H26v23H18V20Zm23 0h5v32h-8V32l3-12Z"
+    fill="#fff"
+  />
+</svg>
