@@ -6,6 +6,7 @@ import { useUiStore } from '@/stores/ui'
 import { downloadBlob } from '@/utils/browser-download'
 import { copyText } from '@/utils/clipboard'
 import { getHistoryEntryId, getHistoryEntryPreviewText, getHistoryEntryTime, toPrettyJson } from '@/utils/threads'
+import { buildChatHistoryView } from '../history-view-model'
 import type { ChatInspectorFile } from '../inspector-view-model'
 import { type ChatPlanTodo, type ChatPlanView } from '../plan-view-model'
 import type { ThreadHistoryEntry } from '@/types/management'
@@ -87,6 +88,13 @@ const hasTasks = computed(
 )
 const editDisabled = computed(() => props.isRunning || props.hasInterrupt || isSaving.value)
 const currentTaskLabel = computed(() => props.planView.activeTask?.content || '暂无')
+const historyView = computed(() =>
+  buildChatHistoryView({
+    items: props.historyItems,
+    selectedBranch: props.selectedBranch,
+    isViewingBranch: props.isViewingBranch
+  })
+)
 
 watch(
   () => [props.initialTab, props.showHistory, props.show] as const,
@@ -685,19 +693,50 @@ async function handleSaveEdit() {
         </div>
 
         <template v-else>
+          <div class="grid gap-4 md:grid-cols-3">
+            <div class="pw-card-glass p-4">
+              <div class="text-xs text-gray-400 dark:text-dark-400">
+                Checkpoints
+              </div>
+              <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+                {{ historyView.totalEntries }}
+              </div>
+            </div>
+            <div class="pw-card-glass p-4">
+              <div class="text-xs text-gray-400 dark:text-dark-400">
+                分叉组
+              </div>
+              <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+                {{ historyView.branchGroupCount }}
+              </div>
+            </div>
+            <div class="pw-card-glass p-4">
+              <div class="text-xs text-gray-400 dark:text-dark-400">
+                当前快照
+              </div>
+              <div class="mt-2 break-all text-sm font-semibold text-gray-900 dark:text-white">
+                {{ historyView.activeCheckpointId || 'latest' }}
+              </div>
+            </div>
+          </div>
+
           <div
-            v-if="props.isViewingBranch"
-            class="flex items-center justify-between gap-3 rounded-2xl border border-primary-200 bg-primary-50/70 px-4 py-4 text-sm dark:border-primary-900/40 dark:bg-primary-950/20"
+            class="flex flex-col gap-3 rounded-2xl border border-primary-200 bg-primary-50/70 px-4 py-4 text-sm dark:border-primary-900/40 dark:bg-primary-950/20 sm:flex-row sm:items-center sm:justify-between"
           >
             <div class="min-w-0">
               <div class="font-semibold text-gray-900 dark:text-white">
-                当前正在查看历史分支
+                {{ props.isViewingBranch ? '当前正在查看历史分支' : '当前正在查看最新线程头' }}
               </div>
               <div class="mt-1 break-all text-xs leading-6 text-gray-500 dark:text-dark-300">
-                {{ props.selectedBranch }}
+                {{
+                  props.isViewingBranch
+                    ? props.selectedBranch
+                    : historyView.activeCheckpointId || 'latest'
+                }}
               </div>
             </div>
             <BaseButton
+              v-if="props.isViewingBranch"
               variant="ghost"
               @click="emit('select-branch', '')"
             >
@@ -712,36 +751,123 @@ async function handleSaveEdit() {
             当前 thread 还没有 checkpoint 历史，或者还没开始对话。
           </div>
 
-          <details
-            v-for="(entry, historyIndex) in props.historyItems"
-            :key="getHistoryEntryId(entry, historyIndex)"
-            class="rounded-2xl border border-white/70 bg-white/80 p-4 dark:border-dark-700 dark:bg-dark-900/70"
+          <div
+            v-else
+            class="space-y-4"
           >
-            <summary class="cursor-pointer list-none">
-              <div class="flex items-center justify-between gap-3">
-                <div class="min-w-0">
-                  <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                    {{ getHistoryEntryPreviewText(entry, historyIndex) }}
+            <div
+              v-for="(entry, historyIndex) in props.historyItems"
+              :key="getHistoryEntryId(entry, historyIndex)"
+              class="relative pl-6"
+            >
+              <span class="absolute left-0 top-7 h-full w-px bg-gray-200 dark:bg-dark-700" />
+              <span
+                class="absolute left-[-4px] top-6 inline-flex h-3 w-3 rounded-full border-2 border-white dark:border-dark-950"
+                :class="
+                  historyView.items[historyIndex]?.isCurrent
+                    ? 'bg-primary-500'
+                    : historyView.items[historyIndex]?.isInSelectedPath
+                      ? 'bg-sky-500'
+                      : historyView.items[historyIndex]?.childCount
+                        ? 'bg-amber-500'
+                        : 'bg-gray-300 dark:bg-dark-500'
+                "
+              />
+
+              <details class="rounded-2xl border border-white/70 bg-white/80 p-4 dark:border-dark-700 dark:bg-dark-900/70">
+                <summary class="cursor-pointer list-none">
+                  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div class="min-w-0">
+                      <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                        {{ historyView.items[historyIndex]?.preview || getHistoryEntryPreviewText(entry, historyIndex) }}
+                      </div>
+                      <div class="mt-1 truncate text-xs text-gray-400 dark:text-dark-400">
+                        {{ historyView.items[historyIndex]?.id || getHistoryEntryId(entry, historyIndex) }}
+                      </div>
+                    </div>
+                    <div class="shrink-0 text-xs text-gray-400 dark:text-dark-400">
+                      {{ historyView.items[historyIndex]?.time || getHistoryEntryTime(entry) }}
+                    </div>
                   </div>
-                  <div class="mt-1 truncate text-xs text-gray-400 dark:text-dark-400">
-                    {{ getHistoryEntryId(entry, historyIndex) }}
+
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    <span
+                      v-if="historyView.items[historyIndex]?.isLatest"
+                      class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-200"
+                    >
+                      latest
+                    </span>
+                    <span
+                      v-if="historyView.items[historyIndex]?.isCurrent"
+                      class="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-[11px] font-medium text-primary-700 dark:border-primary-900/40 dark:bg-primary-950/20 dark:text-primary-200"
+                    >
+                      当前快照
+                    </span>
+                    <span
+                      v-if="historyView.items[historyIndex]?.isInSelectedPath && !historyView.items[historyIndex]?.isCurrent"
+                      class="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-[11px] font-medium text-sky-700 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-200"
+                    >
+                      当前分支路径
+                    </span>
+                    <span
+                      v-if="(historyView.items[historyIndex]?.siblingCount || 0) > 1"
+                      class="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-200"
+                    >
+                      分叉组 {{ historyView.items[historyIndex]?.siblingCount }}
+                    </span>
+                    <span
+                      v-if="(historyView.items[historyIndex]?.childCount || 0) > 0"
+                      class="inline-flex items-center rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-[11px] font-medium text-violet-700 dark:border-violet-900/40 dark:bg-violet-950/20 dark:text-violet-200"
+                    >
+                      后续分支 {{ historyView.items[historyIndex]?.childCount }}
+                    </span>
+                    <span class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:border-dark-700 dark:bg-dark-900/70 dark:text-dark-300">
+                      {{ historyView.items[historyIndex]?.step || '--' }}
+                    </span>
+                    <span
+                      v-if="historyView.items[historyIndex]?.source"
+                      class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:border-dark-700 dark:bg-dark-900/70 dark:text-dark-300"
+                    >
+                      {{ historyView.items[historyIndex]?.source }}
+                    </span>
+                    <span class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:border-dark-700 dark:bg-dark-900/70 dark:text-dark-300">
+                      messages {{ historyView.items[historyIndex]?.messageCount || 0 }}
+                    </span>
+                    <span
+                      v-if="(historyView.items[historyIndex]?.taskCount || 0) > 0"
+                      class="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-600 dark:border-dark-700 dark:bg-dark-900/70 dark:text-dark-300"
+                    >
+                      tasks {{ historyView.items[historyIndex]?.taskCount || 0 }}
+                    </span>
+                    <span
+                      v-if="historyView.items[historyIndex]?.hasInterrupts"
+                      class="inline-flex items-center rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-[11px] font-medium text-rose-700 dark:border-rose-900/40 dark:bg-rose-950/20 dark:text-rose-200"
+                    >
+                      interrupts
+                    </span>
                   </div>
+                </summary>
+
+                <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div class="text-xs leading-6 text-gray-500 dark:text-dark-300">
+                    <span v-if="historyView.items[historyIndex]?.parentId">
+                      parent: {{ historyView.items[historyIndex]?.parentId }}
+                    </span>
+                    <span v-else>根 checkpoint</span>
+                  </div>
+                  <BaseButton
+                    variant="ghost"
+                    :disabled="historyView.items[historyIndex]?.isCurrent"
+                    @click="emit('select-branch', historyView.items[historyIndex]?.id || getHistoryEntryId(entry, historyIndex))"
+                  >
+                    {{ historyView.items[historyIndex]?.selectLabel || '查看此快照' }}
+                  </BaseButton>
                 </div>
-                <div class="shrink-0 text-xs text-gray-400 dark:text-dark-400">
-                  {{ getHistoryEntryTime(entry) }}
-                </div>
-              </div>
-            </summary>
-            <div class="mt-3 flex justify-end">
-              <BaseButton
-                variant="ghost"
-                @click="emit('select-branch', getHistoryEntryId(entry, historyIndex))"
-              >
-                查看此分支
-              </BaseButton>
+
+                <pre class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-gray-950 px-3 py-3 text-xs leading-6 text-gray-100 dark:bg-black/50">{{ toPrettyJson(entry) }}</pre>
+              </details>
             </div>
-            <pre class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-gray-950 px-3 py-3 text-xs leading-6 text-gray-100 dark:bg-black/50">{{ toPrettyJson(entry) }}</pre>
-          </details>
+          </div>
         </template>
       </div>
     </div>

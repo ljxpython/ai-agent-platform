@@ -19,11 +19,26 @@ export type ManagementUser = {
   updated_at?: string | null
 }
 
+export type ManagementUserProject = {
+  project_id: string
+  project_name: string
+  project_description: string
+  project_status: string
+  role: 'admin' | 'editor' | 'executor'
+  joined_at: string
+}
+
 export type ManagementProject = {
   id: string
   name: string
   description: string
   status: string
+}
+
+export type ManagementProjectMember = {
+  user_id: string
+  username: string
+  role: 'admin' | 'editor' | 'executor'
 }
 
 export type ManagementAssistant = {
@@ -38,6 +53,11 @@ export type ManagementAssistant = {
   last_sync_error?: string | null
   last_synced_at?: string | null
   status: 'active' | 'disabled'
+  config: Record<string, unknown>
+  context: Record<string, unknown>
+  metadata: Record<string, unknown>
+  created_by?: string | null
+  updated_by?: string | null
   created_at?: string | null
   updated_at?: string | null
 }

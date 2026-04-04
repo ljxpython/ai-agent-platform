@@ -35,7 +35,8 @@
 
 - 统一 `PaginationBar`
 - 顶栏 `LocaleSwitcher`
-- 顶栏 `AnnouncementCenter` 前端壳层与空态
+- 顶栏 `AnnouncementCenter` 前端壳层、演示公告替身与本地已读态
+- 第一批 `HelpTooltip` 母版与 chat 头部关键操作提示
 - 顶栏 `UserMenu`
 - 全局 `ToastStack`
 - 通用 `BaseDialog / ConfirmDialog`
@@ -58,7 +59,8 @@
 
 当前仍然保留的真实边界：
 
-- `AnnouncementCenter` 还没有接后端公告接口
+- `AnnouncementCenter` 已有可演示的公告替身，但还没有接真实后端公告接口
+- `HelpTooltip` 已接入第一批高频入口，但帮助提示体系还没做到全站覆盖
 - 中英文切换现在先覆盖共享壳层文案，不是全站全文案翻译完成
 - `BulkActionsBar / 行选择` 目前先落在 `projects / users`，更大范围页面回刷还在待办
 
@@ -540,21 +542,21 @@
 
 当前缺失：
 
-- 更完整的 checkpoint history 可视化
-- “查看此分支”与 branch 对比的交互打磨
-- 移动端 sheet / 小屏抽屉体验
+- 更完整的系统级一致性复查
+- 公告、帮助提示、引导这类产品化母版细节
+- 最终汇报链路与演示硬化
 
 结论：
 
 - `chat` 现在已经不是“只有基座”的状态
 - 主链路工作台已经成型
-- 但离旧版业务工作台完全收口还差 history 可视化和移动端细节
-- 后续必须按下面顺序推进
+- history 可视化和小屏抽屉体验已经补齐
+- 后续重点转向系统级一致性和最终演示硬化
 
 执行顺序：
 
-1. checkpoint history 可视化与 branch 细节
-2. 小屏 / 抽屉 / sheet 体验补完
+1. 系统级一致性复查
+2. 演示与验收硬化
 
 ## 五、哪些不该迁
 

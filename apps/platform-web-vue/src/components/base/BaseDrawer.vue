@@ -34,13 +34,13 @@ let previousActiveElement: HTMLElement | null = null
 function widthClass(width: DrawerWidth) {
   switch (width) {
     case 'narrow':
-      return 'w-[320px] max-w-[92vw]'
+      return 'w-screen sm:w-[320px] sm:max-w-[92vw]'
     case 'wide':
-      return 'w-[520px] max-w-[96vw]'
+      return 'w-screen sm:w-[520px] sm:max-w-[96vw]'
     case 'full':
-      return 'w-[min(720px,100vw)]'
+      return 'w-screen sm:w-[min(720px,100vw)]'
     default:
-      return 'w-[420px] max-w-[94vw]'
+      return 'w-screen sm:w-[420px] sm:max-w-[94vw]'
   }
 }
 

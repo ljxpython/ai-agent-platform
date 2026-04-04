@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -23,6 +24,7 @@ import { downloadBlob } from '@/utils/browser-download'
 import { copyText } from '@/utils/clipboard'
 import { shortId } from '@/utils/format'
 
+const router = useRouter()
 const workspaceStore = useWorkspaceStore()
 const uiStore = useUiStore()
 
@@ -207,14 +209,6 @@ function handleExportProjectSummary() {
   })
 }
 
-function handlePendingAction(message: string) {
-  uiStore.pushToast({
-    type: 'info',
-    title: '能力待迁移',
-    message
-  })
-}
-
 function projectActions(project: ManagementProject): ActionMenuItem[] {
   return [
     {
@@ -233,9 +227,9 @@ function projectActions(project: ManagementProject): ActionMenuItem[] {
     },
     {
       key: 'detail',
-      label: '项目详情待迁移',
+      label: '项目详情',
       icon: 'eye',
-      onSelect: () => handlePendingAction(`项目 ${project.name} 的详情页仍在迁移队列中。`)
+      onSelect: () => void router.push(`/workspace/projects/${project.id}`)
     }
   ]
 }
@@ -287,6 +281,13 @@ onMounted(() => {
       description="项目页先作为新视觉基座的样板列表页，重点验证筛选栏、统计卡片、表格容器和当前项目高亮。"
     >
       <template #actions>
+        <BaseButton @click="void router.push('/workspace/projects/new')">
+          <BaseIcon
+            name="folder"
+            size="sm"
+          />
+          新建项目
+        </BaseButton>
         <BaseButton
           variant="secondary"
           @click="loadProjects"

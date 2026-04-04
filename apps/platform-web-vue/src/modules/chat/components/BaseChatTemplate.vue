@@ -8,6 +8,7 @@ import BaseIcon from '@/components/base/BaseIcon.vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import EmptyState from '@/components/platform/EmptyState.vue'
+import HelpTooltip from '@/components/platform/HelpTooltip.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import { useUiStore } from '@/stores/ui'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -709,49 +710,61 @@ async function handleCancelRun() {
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
-            <BaseButton
-              variant="secondary"
-              @click="threadsDrawerOpen = true"
-            >
-              <BaseIcon
-                name="threads"
-                size="sm"
-              />
-              会话 {{ workspace.threadItems.value.length }}
-            </BaseButton>
-            <BaseButton
-              variant="secondary"
-              @click="openInspectorDrawer('overview')"
-            >
-              <BaseIcon
-                name="overview"
-                size="sm"
-              />
-              会话详情
-            </BaseButton>
-            <BaseButton
+            <div class="flex items-center gap-1">
+              <BaseButton
+                variant="secondary"
+                @click="threadsDrawerOpen = true"
+              >
+                <BaseIcon
+                  name="threads"
+                  size="sm"
+                />
+                会话 {{ workspace.threadItems.value.length }}
+              </BaseButton>
+            </div>
+            <div class="flex items-center gap-1">
+              <BaseButton
+                variant="secondary"
+                @click="openInspectorDrawer('overview')"
+              >
+                <BaseIcon
+                  name="overview"
+                  size="sm"
+                />
+                会话详情
+              </BaseButton>
+              <HelpTooltip text="查看当前 target、thread、运行上下文、ToDo、Files 和 checkpoint 历史，不会打断主消息区阅读。" />
+            </div>
+            <div
               v-if="allowRunOptions"
-              variant="secondary"
-              @click="openRuntimeOptionsDialog"
+              class="flex items-center gap-1"
             >
-              <BaseIcon
-                name="runtime"
-                size="sm"
-              />
-              运行参数
-            </BaseButton>
-            <BaseButton
-              variant="secondary"
-              title="重新从服务端拉取当前会话状态"
-              :disabled="workspace.loadingThreads.value || workspace.loadingThreadDetail.value"
-              @click="workspace.refreshActiveThread"
-            >
-              <BaseIcon
-                name="refresh"
-                size="sm"
-              />
-              重新同步
-            </BaseButton>
+              <BaseButton
+                variant="secondary"
+                @click="openRuntimeOptionsDialog"
+              >
+                <BaseIcon
+                  name="runtime"
+                  size="sm"
+                />
+                运行参数
+              </BaseButton>
+              <HelpTooltip text="修改后续运行要用的模型、工具、Debug Mode 和生成参数，不会回改已经开始的这轮执行。" />
+            </div>
+            <div class="flex items-center gap-1">
+              <BaseButton
+                variant="secondary"
+                :disabled="workspace.loadingThreads.value || workspace.loadingThreadDetail.value"
+                @click="workspace.refreshActiveThread"
+              >
+                <BaseIcon
+                  name="refresh"
+                  size="sm"
+                />
+                重新同步
+              </BaseButton>
+              <HelpTooltip text="重新从服务端拉取当前会话状态。适合流式中断、切页面回来后状态漂移、或你怀疑前端没跟上后端时使用。" />
+            </div>
             <BaseButton
               :disabled="!workspace.canStartThread.value"
               @click="workspace.startNewThread"
@@ -827,7 +840,7 @@ async function handleCancelRun() {
           >
             <button
               type="button"
-              class="pointer-events-auto w-[280px] rounded-[24px] border border-primary-200/70 bg-white/95 px-4 py-3 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-lg dark:border-primary-900/40 dark:bg-dark-900/95"
+              class="pointer-events-auto w-[calc(100vw-2.5rem)] rounded-[24px] border border-primary-200/70 bg-white/95 px-4 py-3 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-lg dark:border-primary-900/40 dark:bg-dark-900/95 sm:w-[280px]"
               @click="handleJumpToLatest"
             >
               <div class="flex items-start gap-3">

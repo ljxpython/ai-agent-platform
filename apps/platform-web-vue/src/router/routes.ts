@@ -20,16 +20,58 @@ const workspaceChildren: RouteRecordRaw[] = [
     meta: { title: '项目', eyebrow: 'Projects' }
   },
   {
+    path: 'projects/new',
+    name: 'workspace-project-create',
+    component: () => import('@/modules/projects/pages/ProjectCreatePage.vue'),
+    meta: { title: '新建项目', eyebrow: 'Projects' }
+  },
+  {
+    path: 'projects/:projectId',
+    name: 'workspace-project-detail',
+    component: () => import('@/modules/projects/pages/ProjectDetailPage.vue'),
+    meta: { title: '项目详情', eyebrow: 'Projects' }
+  },
+  {
+    path: 'projects/:projectId/members',
+    name: 'workspace-project-members',
+    component: () => import('@/modules/projects/pages/ProjectMembersPage.vue'),
+    meta: { title: '项目成员', eyebrow: 'Projects' }
+  },
+  {
     path: 'users',
     name: 'workspace-users',
     component: () => import('@/modules/users/pages/UsersPage.vue'),
     meta: { title: '用户', eyebrow: 'Users' }
   },
   {
+    path: 'users/new',
+    name: 'workspace-user-create',
+    component: () => import('@/modules/users/pages/UserCreatePage.vue'),
+    meta: { title: '新建用户', eyebrow: 'Users' }
+  },
+  {
+    path: 'users/:userId',
+    name: 'workspace-user-detail',
+    component: () => import('@/modules/users/pages/UserDetailPage.vue'),
+    meta: { title: '用户详情', eyebrow: 'Users' }
+  },
+  {
     path: 'assistants',
     name: 'workspace-assistants',
     component: () => import('@/modules/assistants/pages/AssistantsPage.vue'),
     meta: { title: '助手', eyebrow: 'Assistants' }
+  },
+  {
+    path: 'assistants/new',
+    name: 'workspace-assistant-create',
+    component: () => import('@/modules/assistants/pages/AssistantCreatePage.vue'),
+    meta: { title: '新建助手', eyebrow: 'Assistants' }
+  },
+  {
+    path: 'assistants/:assistantId',
+    name: 'workspace-assistant-detail',
+    component: () => import('@/modules/assistants/pages/AssistantDetailPage.vue'),
+    meta: { title: '助手详情', eyebrow: 'Assistants' }
   },
   {
     path: 'runtime',

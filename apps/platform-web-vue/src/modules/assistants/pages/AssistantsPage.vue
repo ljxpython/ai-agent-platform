@@ -178,14 +178,6 @@ async function handleCopyValue(label: string, value: string) {
   })
 }
 
-function handlePendingAction(message: string) {
-  uiStore.pushToast({
-    type: 'info',
-    title: '能力待迁移',
-    message
-  })
-}
-
 function resolveAssistantTargetId(assistant: ManagementAssistant) {
   return assistant.langgraph_assistant_id?.trim() || assistant.id
 }
@@ -265,9 +257,9 @@ function assistantActions(assistant: ManagementAssistant): ActionMenuItem[] {
     },
     {
       key: 'detail',
-      label: '助手详情待迁移',
+      label: '助手详情',
       icon: 'eye',
-      onSelect: () => handlePendingAction(`助手 ${assistant.name} 的详情页仍在迁移队列中。`)
+      onSelect: () => void router.push(`/workspace/assistants/${assistant.id}`)
     }
   ]
 }
@@ -298,6 +290,16 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
       description="Agent 是汇报里的重点，所以这页先把项目上下文、助手列表和同步状态做成像样的后台页。"
     >
       <template #actions>
+        <BaseButton
+          :disabled="!currentProject"
+          @click="void router.push('/workspace/assistants/new')"
+        >
+          <BaseIcon
+            name="assistant"
+            size="sm"
+          />
+          新建助手
+        </BaseButton>
         <BaseButton
           variant="secondary"
           :disabled="!currentProject"

@@ -29,6 +29,12 @@
 - [x] 完成真实登录链路、路由守卫与工作台上下文基座接入
 - [x] 完成 `modules/` 目录下首批真实业务页面落地
 - [x] 完成 `overview / projects / users / assistants / me / security / audit` 首批页面接入真实平台接口
+- [x] 完成 `assistants/new` 与 `assistants/:assistantId` 页面迁移，补齐创建与详情链路
+- [x] 完成 `projects/:projectId` 页面迁移，补齐项目概览与成员预览入口
+- [x] 完成 `users/:userId` 页面迁移，补齐资料、安全、项目访问与最近审计链路
+- [x] 完成 `projects/new` 页面迁移，补齐项目创建与工作区切换链路
+- [x] 完成 `users/new` 页面迁移，补齐用户创建链路
+- [x] 完成 `projects/:projectId/members` 页面迁移，补齐项目成员增删改链路
 - [x] 完成首轮视觉基座校准：layout / sidebar / topbar / table page layout / filter toolbar / stat card / empty state
 - [x] 完成第二轮 UI 壳层精修：workspace sidebar / topbar / card / status / empty state / table 母版统一到 `sub2api-base` 风格区间
 - [x] 明确当前已经进入“视觉母版几乎复刻”阶段，而不是停留在最初的壳层试探阶段
@@ -51,17 +57,19 @@
   - 消息级复制 / 重试 / 编辑
   - retry / edit 后的 branch 切换与默认最新分支修正
   - thread history 搜索 / 状态筛选 / 时间分组 / 删除
-- [ ] `chat` 剩余体验差距
+- [x] `chat` 剩余体验差距
   - 更完整的 checkpoint history 可视化与“查看此分支”交互打磨
   - 移动端 sheet / 小屏抽屉体验补完
 - [x] 完成 `sql-agent` 到通用 chat 基座的收敛，固定 `sql_agent` 对话已可直接使用
-- [x] 完成 `testcase` 一级入口与 `cases / documents` 二级页迁移，并恢复文档在线预览 / 原始下载前端链路
+- [x] 完成 `testcase` 一级入口与 `generate / cases / documents` 三个子页迁移，并恢复文档在线预览 / 原始下载前端链路
 - [x] 完成 `platform-web-vue` 本地 `pnpm check` 验证与浏览器基础烟测
 - [x] 确认正式采用“借壳不借魂”的 UI 壳层迁移路线
 - [x] 完成第一批系统级交互母版迁移
   - `Pagination`
   - `LocaleSwitcher`
   - `AnnouncementBell`
+  - 顶栏公告中心演示替身与本地已读状态
+  - `HelpTooltip` 第一批接入
   - 顶栏个人下拉菜单
   - `Toast / BaseDialog / ConfirmDialog`
   - `DataTable / SearchInput / NavigationProgress`
@@ -142,9 +150,9 @@
 
 补充说明：
 
-- `chat/sql-agent` 已完成“可用对话基座 + 执行态工作台 + markdown 输出 + 消息级操作与 history 第一版”
+- `chat/sql-agent` 已完成“可用对话基座 + 执行态工作台 + markdown 输出 + 消息级操作 + checkpoint history 可视化 + 小屏抽屉体验”
 - 这轮额外修掉了 retry branch 默认分支与切换挂载点不正确的问题
-- 当前剩余主差距已经收敛到 `testcase/generate`、详情页补齐，以及 chat 的移动端 / history 可视化细节
+- 当前正式页面迁移已经完成，剩余主差距已经收敛到系统级一致性细节、真实后端公告接入、首次引导体系与最终演示硬化
 
 当前锁定的执行顺序见：
 

@@ -7,6 +7,8 @@ export async function listAudit(
     limit?: number
     offset?: number
     action?: string
+    targetType?: string
+    targetId?: string
     method?: string
     statusCode?: number | null
   }
@@ -17,6 +19,8 @@ export async function listAudit(
       limit: options?.limit ?? 50,
       offset: options?.offset ?? 0,
       action: options?.action?.trim() || undefined,
+      target_type: options?.targetType?.trim() || undefined,
+      target_id: options?.targetId?.trim() || undefined,
       method: options?.method?.trim().toUpperCase() || undefined,
       status_code:
         typeof options?.statusCode === 'number' && options.statusCode > 0

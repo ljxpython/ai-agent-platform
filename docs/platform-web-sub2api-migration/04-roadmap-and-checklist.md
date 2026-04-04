@@ -198,11 +198,11 @@
   - [x] 消息级复制 / 重试 / 编辑
   - [x] retry / edit 后的 branch 切换与默认最新分支修正
   - [x] thread history 搜索 / 状态筛选 / 时间分组 / 删除
-- [ ] `testcase/generate`
-- [ ] `assistants/detail`
-- [ ] `assistants/new`
-- [ ] `projects/detail`
-- [ ] `users/detail`
+- [x] `testcase/generate`
+- [x] `assistants/detail`
+- [x] `assistants/new`
+- [x] `projects/detail`
+- [x] `users/detail`
 
 ### 3. 系统级一致性与体验补完
 
@@ -210,7 +210,7 @@
 - [x] `chat` 运行上下文与参数改为草稿态编辑，并补齐 `确定 / 还原`
 - [x] `chat` 最近历史保留为调试折叠区，不再常驻主画布
 - [x] `chat` 目标来源提示支持手动关闭
-- [ ] `chat` checkpoint history 可视化与“查看此分支”交互细节
+- [x] `chat` checkpoint history 可视化与“查看此分支”交互细节
 - [ ] 公告真实数据接入或演示替身方案
 - [ ] tooltip / 帮助提示体系
 - [ ] 首次引导与入口提示体系

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
@@ -23,6 +24,7 @@ import { downloadBlob } from '@/utils/browser-download'
 import { copyText } from '@/utils/clipboard'
 import { formatDateTime, shortId } from '@/utils/format'
 
+const router = useRouter()
 const uiStore = useUiStore()
 
 const queryInput = ref('')
@@ -182,14 +184,6 @@ async function handleCopyValue(label: string, value: string) {
   })
 }
 
-function handlePendingAction(message: string) {
-  uiStore.pushToast({
-    type: 'info',
-    title: '能力待迁移',
-    message
-  })
-}
-
 function clearUserSelection() {
   selectedUserIds.value = []
 }
@@ -258,9 +252,9 @@ function userActions(user: ManagementUser): ActionMenuItem[] {
     },
     {
       key: 'detail',
-      label: '用户详情待迁移',
+      label: '用户详情',
       icon: 'eye',
-      onSelect: () => handlePendingAction(`用户 ${user.username} 的详情页仍在迁移队列中。`)
+      onSelect: () => void router.push(`/workspace/users/${user.id}`)
     }
   ]
 }
@@ -316,6 +310,13 @@ onMounted(() => {
       description="用户页承担账号盘点和权限可视化。这里先把列表、筛选和状态表达统一到新的页面母版里。"
     >
       <template #actions>
+        <BaseButton @click="void router.push('/workspace/users/new')">
+          <BaseIcon
+            name="users"
+            size="sm"
+          />
+          新建用户
+        </BaseButton>
         <BaseButton
           variant="secondary"
           @click="loadUsers"

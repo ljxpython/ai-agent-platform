@@ -21,3 +21,11 @@ export async function listProjects(): Promise<ManagementProject[]> {
   const payload = await listProjectsPage()
   return payload.items
 }
+
+export async function createProject(payload: {
+  name: string
+  description?: string
+}): Promise<ManagementProject> {
+  const response = await httpClient.post('/_management/projects', payload)
+  return response.data as ManagementProject
+}

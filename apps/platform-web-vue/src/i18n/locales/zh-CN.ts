@@ -59,6 +59,11 @@ export const zhCN = {
     announcements: '公告',
     announcementsEmptyTitle: '公告中心暂未接入',
     announcementsEmptyDescription: '这一块前端壳层可以先落地，真实公告数据和已读状态还需要后端接口配合。',
+    announcementsUnread: '当前有 {count} 条未读公告',
+    announcementsMarked: '公告已全部标记已读',
+    announcementsMarkedDesc: '这轮演示数据的已读状态已写入本地存储。',
+    announcementsDemoHint: '当前为演示公告数据',
+    markAllRead: '全部已读',
     noUnread: '当前没有未读公告',
     moreSoon: '后续会继续把更多系统交互入口收敛到这里。'
   },

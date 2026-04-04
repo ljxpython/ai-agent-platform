@@ -59,6 +59,11 @@ export const enUS = {
     announcements: 'Announcements',
     announcementsEmptyTitle: 'Announcement center is not connected yet',
     announcementsEmptyDescription: 'This area can be delivered now as a shell. Real data and read status still need backend support.',
+    announcementsUnread: '{count} unread announcements',
+    announcementsMarked: 'Announcements marked as read',
+    announcementsMarkedDesc: 'Read state for the demo feed is now stored locally.',
+    announcementsDemoHint: 'Demo announcement feed',
+    markAllRead: 'Mark all read',
     noUnread: 'No unread items',
     moreSoon: 'More system interactions will be added here later.'
   },

@@ -18,9 +18,9 @@
 ## 覆盖统计
 
 - 源页面总数：`28`
-- `已完成`：`17`
-- `部分完成`：`3`
-- `未开始`：`7`
+- `已完成`：`27`
+- `部分完成`：`0`
+- `未开始`：`0`
 - `暂缓`：`1`
 
 ## 已完成页面
@@ -31,14 +31,24 @@
 | `/workspace` | `/workspace` | 已完成 | 已有工作区默认跳转与上下文校验 |
 | `/workspace/overview` | `/workspace/overview` | 已完成 | 作为总览首页和演示入口使用 |
 | `/workspace/projects` | `/workspace/projects` | 已完成 | 列表页母版已接住真实接口 |
+| `/workspace/projects/new` | `/workspace/projects/new` | 已完成 | 项目创建页已落地，创建成功后自动切换当前项目 |
+| `/workspace/projects/[projectId]` | `/workspace/projects/:projectId` | 已完成 | 项目概览、成员预览和审计入口已落地 |
+| `/workspace/projects/[projectId]/members` | `/workspace/projects/:projectId/members` | 已完成 | 成员增删改、候选用户搜索与最后一个 admin 保护已落地 |
 | `/workspace/users` | `/workspace/users` | 已完成 | 列表页母版已接住真实接口 |
+| `/workspace/users/new` | `/workspace/users/new` | 已完成 | 用户创建页已落地 |
+| `/workspace/users/[userId]` | `/workspace/users/:userId` | 已完成 | 用户资料、密码、项目访问和最近审计已落地 |
 | `/workspace/assistants` | `/workspace/assistants` | 已完成 | 助手列表已落到正式工作区 |
+| `/workspace/assistants/new` | `/workspace/assistants/new` | 已完成 | 新建助手、graph schema 驱动字段与 runtime 配置已落地 |
+| `/workspace/assistants/[assistantId]` | `/workspace/assistants/:assistantId` | 已完成 | 助手详情、参数 schema、保存与上游重同步已落地 |
 | `/workspace/graphs` | `/workspace/graphs` | 已完成 | Agent 图谱工作区可进入 |
 | `/workspace/runtime` | `/workspace/runtime` | 已完成 | Runtime 概览页已落地 |
 | `/workspace/runtime/models` | `/workspace/runtime/models` | 已完成 | Runtime Models 已落地 |
 | `/workspace/runtime/tools` | `/workspace/runtime/tools` | 已完成 | Runtime Tools 已落地 |
+| `/workspace/sql-agent` | `/workspace/sql-agent` | 已完成 | 已补齐 checkpoint history 可视化、分支快照切换和小屏抽屉体验 |
 | `/workspace/threads` | `/workspace/threads` | 已完成 | 已改成点选后加载详情，不再全量展开 |
+| `/workspace/chat` | `/workspace/chat` | 已完成 | 已补齐 checkpoint history 可视化、分支快照切换和小屏抽屉体验 |
 | `/workspace/testcase` | `/workspace/testcase` | 已完成 | 已保持一级标题并承接三个二级页 |
+| `/workspace/testcase/generate` | `/workspace/testcase/generate` | 已完成 | 已固定接入 `test_case_agent` 并接入正式 chat 基座 |
 | `/workspace/testcase/cases` | `/workspace/testcase/cases` | 已完成 | 用例管理页已落地 |
 | `/workspace/testcase/documents` | `/workspace/testcase/documents` | 已完成 | 文档管理、预览、下载主链路已恢复 |
 | `/workspace/me` | `/workspace/me` | 已完成 | 个人信息页已落地 |
@@ -47,23 +57,11 @@
 
 ## 部分完成页面
 
-| 来源路由 | `platform-web-vue` 对应路由 | 当前状态 | 关键差距 | 执行顺序 |
-| --- | --- | --- | --- | --- |
-| `/workspace/sql-agent` | `/workspace/sql-agent` | 部分完成 | 已接入通用 chat 基座，并补齐运行中取消、Debug / Continue、`todos / files`、interrupt / HITL、tool call / artifact、markdown 输出、消息级复制 / 编辑 / 重试、retry branch 切换与 history 第一版；剩余缺口为 checkpoint history 可视化和移动端抽屉细节 | 1 |
-| `/workspace/chat` | `/workspace/chat` | 部分完成 | 首次引导和真实对话已落地，并补齐运行中取消、Debug / Continue、`todos / files`、interrupt / HITL、tool call / artifact、markdown 输出、消息级复制 / 编辑 / 重试、retry branch 切换与 history 第一版；剩余缺口为 checkpoint history 可视化和移动端抽屉细节 | 1 |
-| `/workspace/testcase/generate` | `/workspace/testcase/generate` | 部分完成 | 页面已存在，但生成链路和验收口径还没完全对齐 | 2 |
+当前功能页面层面的部分完成项已经清零。
 
 ## 未开始页面
 
-| 来源路由 | 目标建议路由 | 当前状态 | 主要依赖 | 执行顺序 |
-| --- | --- | --- | --- | --- |
-| `/workspace/assistants/[assistantId]` | `/workspace/assistants/:assistantId` | 未开始 | 助手详情数据装配、详情页母版 | 4 |
-| `/workspace/assistants/new` | `/workspace/assistants/new` | 未开始 | 表单页母版、创建接口契约 | 5 |
-| `/workspace/projects/[projectId]` | `/workspace/projects/:projectId` | 未开始 | 项目详情接口装配、详情页骨架 | 6 |
-| `/workspace/users/[userId]` | `/workspace/users/:userId` | 未开始 | 用户详情接口装配、详情页骨架 | 7 |
-| `/workspace/projects/new` | `/workspace/projects/new` | 未开始 | 创建表单、校验和提交反馈 | 8 |
-| `/workspace/users/new` | `/workspace/users/new` | 未开始 | 创建表单、校验和提交反馈 | 9 |
-| `/workspace/projects/[projectId]/members` | `/workspace/projects/:projectId/members` | 未开始 | 依赖项目详情页、成员管理接口和弹窗流 | 10 |
+当前正式页面迁移项已经清零。
 
 ## 暂缓页面
 
@@ -73,17 +71,8 @@
 
 ## 当前主线执行顺序
 
-1. `testcase/generate`
-2. `assistants/detail`
-3. `assistants/new`
-4. `projects/detail`
-5. `users/detail`
-6. `projects/new`
-7. `users/new`
-8. `projects/members`
-9. `chat / sql-agent` 的 checkpoint history 可视化与移动端细节
-10. 系统级一致性补完
-11. 演示与验收硬化
+1. 系统级一致性补完
+2. 演示与验收硬化
 
 ## 系统级补完清单
 
