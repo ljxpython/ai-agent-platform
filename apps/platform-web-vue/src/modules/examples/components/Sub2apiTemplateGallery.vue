@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, defineAsyncComponent, ref, watch } from 'vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import SearchInput from '@/components/platform/SearchInput.vue'
 import Sub2apiTemplateCard from '@/modules/examples/components/Sub2apiTemplateCard.vue'
-import Sub2apiTemplateDialog from '@/modules/examples/components/Sub2apiTemplateDialog.vue'
 import {
   curatedTemplatesByMode,
   recommendedTemplatesByMode,
@@ -22,6 +21,10 @@ import {
   type TemplateMode
 } from '@/modules/examples/ui-assets-catalog'
 import { useSub2apiTemplateDialog } from '@/modules/examples/useSub2apiTemplateDialog'
+
+const Sub2apiTemplateDialog = defineAsyncComponent(
+  () => import('@/modules/examples/components/Sub2apiTemplateDialog.vue')
+)
 
 const props = withDefaults(
   defineProps<{

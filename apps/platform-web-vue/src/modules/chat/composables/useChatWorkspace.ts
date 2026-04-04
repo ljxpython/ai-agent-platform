@@ -107,6 +107,24 @@ function unwrapInterruptPayload(interrupt: unknown): unknown {
   return interrupt
 }
 
+function hasMeaningfulInterruptPayload(interrupt: unknown): boolean {
+  const payload = unwrapInterruptPayload(interrupt)
+
+  if (Array.isArray(payload)) {
+    return payload.some((item) => hasMeaningfulInterruptPayload(item))
+  }
+
+  if (!payload) {
+    return false
+  }
+
+  if (typeof payload === 'object') {
+    return Object.keys(payload as Record<string, unknown>).length > 0
+  }
+
+  return true
+}
+
 function isBreakpointInterrupt(interrupt: unknown): boolean {
   const payload = unwrapInterruptPayload(interrupt)
   if (Array.isArray(payload)) {
@@ -123,12 +141,16 @@ function extractInterruptPayload(state?: Record<string, unknown> | null): unknow
     return undefined
   }
 
-  if ('__interrupt__' in state) {
+  if ('__interrupt__' in state && hasMeaningfulInterruptPayload(state.__interrupt__)) {
     return state.__interrupt__
   }
 
-  if ('interrupt' in state) {
+  if ('interrupt' in state && hasMeaningfulInterruptPayload(state.interrupt)) {
     return state.interrupt
+  }
+
+  if ('interrupts' in state && hasMeaningfulInterruptPayload(state.interrupts)) {
+    return state.interrupts
   }
 
   const tasks = Array.isArray(state.tasks) ? state.tasks : []
@@ -139,7 +161,7 @@ function extractInterruptPayload(state?: Record<string, unknown> | null): unknow
       }
       return (task as { interrupts?: unknown }).interrupts
     })
-    .filter((item) => item !== undefined)
+    .filter((item) => hasMeaningfulInterruptPayload(item))
 
   if (taskInterrupts.length === 1) {
     return taskInterrupts[0]
@@ -189,6 +211,50 @@ function isAbortLikeError(error: unknown): boolean {
     return true
   }
   return false
+}
+
+function extractErrorText(value: unknown): string {
+  if (typeof value === 'string') {
+    return value.trim()
+  }
+
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return ''
+  }
+
+  const record = value as Record<string, unknown>
+  for (const key of ['error', 'message', 'detail']) {
+    const candidate = record[key]
+    if (typeof candidate === 'string' && candidate.trim()) {
+      return candidate.trim()
+    }
+  }
+
+  return ''
+}
+
+function extractThreadFailureMessage(
+  state?: Record<string, unknown> | null,
+  threadStatus?: string | null
+): string {
+  const tasks = Array.isArray(state?.tasks) ? state.tasks : []
+  for (const task of tasks) {
+    if (!task || typeof task !== 'object') {
+      continue
+    }
+
+    const taskError = extractErrorText((task as Record<string, unknown>).error)
+    if (taskError) {
+      return taskError
+    }
+  }
+
+  const stateError = extractErrorText(state?.error)
+  if (stateError) {
+    return stateError
+  }
+
+  return threadStatus === 'error' ? '最近一次运行失败，请查看线程状态后继续。' : ''
 }
 
 export function useChatWorkspace(options: UseChatWorkspaceOptions) {
@@ -286,6 +352,9 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
   const isViewingBranch = computed(() => selectedBranch.value.trim().length > 0)
 
   const interruptPayload = computed(() => extractInterruptPayload(displayStateRaw.value))
+  const threadFailureMessage = computed(() =>
+    extractThreadFailureMessage(displayStateRaw.value, activeThread.value?.status)
+  )
   const hasBreakpointInterrupt = computed(() => isBreakpointInterrupt(interruptPayload.value))
   const canContinueDebug = computed(() => {
     if (!runOptions.debugMode || sending.value) {
@@ -977,6 +1046,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
     sendMessage,
     sending,
     startNewThread,
+    threadFailureMessage,
     threadItems,
     threadSummary,
     toggleTool,

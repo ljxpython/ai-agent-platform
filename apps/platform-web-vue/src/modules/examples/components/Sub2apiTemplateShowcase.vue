@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import Sub2apiTemplateCard from '@/modules/examples/components/Sub2apiTemplateCard.vue'
-import Sub2apiTemplateDialog from '@/modules/examples/components/Sub2apiTemplateDialog.vue'
 import { curatedTemplatesByMode, recommendedTemplatesByMode } from '@/modules/examples/ui-assets-curation'
 import { type TemplateMode } from '@/modules/examples/ui-assets-catalog'
 import { useSub2apiTemplateDialog } from '@/modules/examples/useSub2apiTemplateDialog'
+
+const Sub2apiTemplateDialog = defineAsyncComponent(
+  () => import('@/modules/examples/components/Sub2apiTemplateDialog.vue')
+)
 
 const props = withDefaults(
   defineProps<{

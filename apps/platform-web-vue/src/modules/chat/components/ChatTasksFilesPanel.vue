@@ -5,15 +5,10 @@ import BaseIcon from '@/components/base/BaseIcon.vue'
 import { useUiStore } from '@/stores/ui'
 import { downloadBlob } from '@/utils/browser-download'
 import { copyText } from '@/utils/clipboard'
+import { buildChatPlanView, type ChatPlanTodo } from '../plan-view-model'
 
-type TodoStatus = 'pending' | 'in_progress' | 'completed'
 type PanelMode = 'tasks' | 'files' | null
-
-type NormalizedTodo = {
-  id: string
-  content: string
-  status: TodoStatus
-}
+type TodoStatus = ChatPlanTodo['status']
 
 type NormalizedFile = {
   path: string
@@ -35,49 +30,6 @@ const editValue = ref('')
 const isSaving = ref(false)
 const previousTodosCount = ref(0)
 const previousFilesCount = ref(0)
-
-function normalizeTodoStatus(value: unknown): TodoStatus {
-  if (value === 'in_progress') {
-    return 'in_progress'
-  }
-  if (value === 'completed') {
-    return 'completed'
-  }
-  return 'pending'
-}
-
-function normalizeTodos(values?: Record<string, unknown> | null): NormalizedTodo[] {
-  const rawTodos = values?.todos
-  if (!Array.isArray(rawTodos)) {
-    return []
-  }
-
-  return rawTodos
-    .map((item, index) => {
-      if (!item || typeof item !== 'object') {
-        return null
-      }
-
-      const todo = item as Record<string, unknown>
-      const content =
-        typeof todo.content === 'string'
-          ? todo.content
-          : typeof todo.text === 'string'
-            ? todo.text
-            : ''
-
-      if (!content.trim()) {
-        return null
-      }
-
-      return {
-        id: typeof todo.id === 'string' && todo.id.trim() ? todo.id : `todo-${index + 1}`,
-        content: content.trim(),
-        status: normalizeTodoStatus(todo.status)
-      } satisfies NormalizedTodo
-    })
-    .filter((item): item is NormalizedTodo => item !== null)
-}
 
 function normalizeFileContent(rawContent: unknown): string {
   if (typeof rawContent === 'string') {
@@ -124,22 +76,27 @@ function normalizeFiles(values?: Record<string, unknown> | null): NormalizedFile
     .sort((left, right) => left.path.localeCompare(right.path))
 }
 
-const todos = computed(() => normalizeTodos(props.values))
+function groupTodoList(todos: ChatPlanTodo[]) {
+  return {
+    in_progress: todos.filter((item) => item.status === 'in_progress'),
+    pending: todos.filter((item) => item.status === 'pending'),
+    completed: todos.filter((item) => item.status === 'completed')
+  }
+}
+
+const planView = computed(() => buildChatPlanView(props.values))
+const todos = computed(() => planView.value.planTodos)
+const ephemeralTodos = computed(() => planView.value.ephemeralTodos)
 const files = computed(() => normalizeFiles(props.values))
-const groupedTodos = computed(() => ({
-  in_progress: todos.value.filter((item) => item.status === 'in_progress'),
-  pending: todos.value.filter((item) => item.status === 'pending'),
-  completed: todos.value.filter((item) => item.status === 'completed')
-}))
-const totalTasks = computed(() => todos.value.length)
-const completedTasks = computed(() => groupedTodos.value.completed.length)
-const activeTask = computed(
-  () => groupedTodos.value.in_progress[0] || groupedTodos.value.pending[0] || null
-)
-const allTasksCompleted = computed(
-  () => totalTasks.value > 0 && completedTasks.value === totalTasks.value
-)
-const hasTasks = computed(() => totalTasks.value > 0)
+const groupedTodos = computed(() => groupTodoList(todos.value))
+const groupedEphemeralTodos = computed(() => groupTodoList(ephemeralTodos.value))
+const totalTasks = computed(() => planView.value.totalTasks)
+const completedTasks = computed(() => planView.value.completedTasks)
+const activeTask = computed(() => planView.value.activeTask)
+const hasFrozenPlan = computed(() => planView.value.hasFrozenPlan)
+const allTasksCompleted = computed(() => planView.value.allTasksCompleted)
+const hasTasks = computed(() => totalTasks.value > 0 || ephemeralTodos.value.length > 0)
+const hasEphemeralTodos = computed(() => ephemeralTodos.value.length > 0)
 const hasFiles = computed(() => files.value.length > 0)
 const selectedFile = computed(
   () => files.value.find((item) => item.path === selectedFilePath.value) || null
@@ -359,7 +316,9 @@ async function handleSaveEdit() {
               ? '当前任务已全部完成'
               : activeTask
                 ? `正在处理：${activeTask.content}`
-                : '当前还没有任务项'
+                : hasEphemeralTodos
+                  ? `存在 ${ephemeralTodos.length} 个临时执行项`
+                  : '当前还没有任务项'
             : metaOpen === 'files'
               ? selectedFile?.path || '当前还没有文件'
               : '执行面板已折叠'
@@ -371,6 +330,13 @@ async function handleSaveEdit() {
       v-if="metaOpen === 'tasks'"
       class="max-h-64 space-y-4 overflow-y-auto px-4 py-4"
     >
+      <div
+        v-if="hasFrozenPlan"
+        class="rounded-2xl border border-sky-100 bg-sky-50/80 px-3 py-3 text-xs leading-6 text-sky-800 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-100"
+      >
+        主计划固定展示第一次 write_todos 生成的任务列表；后续实时 todos 只更新主计划状态，新出现的任务会单列到临时执行项。
+      </div>
+
       <div
         v-if="!hasTasks"
         class="text-sm leading-7 text-gray-500 dark:text-dark-300"
@@ -407,6 +373,47 @@ async function handleSaveEdit() {
             </div>
           </div>
         </template>
+      </div>
+
+      <div
+        v-if="hasEphemeralTodos"
+        class="space-y-2"
+      >
+        <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-500 dark:text-amber-300">
+          临时执行项
+        </div>
+        <div class="rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-3 text-xs leading-6 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
+          这些任务出现在后续运行中，不属于首次制定的主计划，因此不会覆盖上面的原始任务清单。
+        </div>
+        <div
+          v-for="statusKey in ['in_progress', 'pending', 'completed']"
+          :key="`ephemeral-${statusKey}`"
+        >
+          <template v-if="groupedEphemeralTodos[statusKey as keyof typeof groupedEphemeralTodos].length > 0">
+            <div class="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
+              {{
+                statusKey === 'in_progress'
+                  ? 'In Progress'
+                  : statusKey === 'pending'
+                    ? 'Pending'
+                    : 'Completed'
+              }}
+            </div>
+            <div class="space-y-2">
+              <div
+                v-for="todo in groupedEphemeralTodos[statusKey as keyof typeof groupedEphemeralTodos]"
+                :key="todo.id"
+                class="flex items-start gap-3 rounded-2xl border border-amber-100/80 bg-white/90 px-3 py-3 text-sm text-gray-700 dark:border-amber-900/30 dark:bg-dark-900/70 dark:text-dark-100"
+              >
+                <span
+                  class="mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full border"
+                  :class="statusDotClass(todo.status)"
+                />
+                <span class="leading-7">{{ todo.content }}</span>
+              </div>
+            </div>
+          </template>
+        </div>
       </div>
     </div>
 

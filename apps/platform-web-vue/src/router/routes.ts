@@ -1,26 +1,6 @@
 import type { RouteRecordRaw } from 'vue-router'
 import { h } from 'vue'
 import { RouterView } from 'vue-router'
-import AuthLayout from '@/layouts/AuthLayout.vue'
-import WorkspaceLayout from '@/layouts/WorkspaceLayout.vue'
-import ProfilePage from '@/modules/account/pages/ProfilePage.vue'
-import SecurityPage from '@/modules/account/pages/SecurityPage.vue'
-import AssistantsPage from '@/modules/assistants/pages/AssistantsPage.vue'
-import AuditPage from '@/modules/audit/pages/AuditPage.vue'
-import ChatPage from '@/modules/chat/pages/ChatPage.vue'
-import GraphsPage from '@/modules/graphs/pages/GraphsPage.vue'
-import OverviewPage from '@/modules/overview/pages/OverviewPage.vue'
-import ProjectsPage from '@/modules/projects/pages/ProjectsPage.vue'
-import RuntimeModelsPage from '@/modules/runtime/pages/RuntimeModelsPage.vue'
-import RuntimePage from '@/modules/runtime/pages/RuntimePage.vue'
-import RuntimeToolsPage from '@/modules/runtime/pages/RuntimeToolsPage.vue'
-import SqlAgentPage from '@/modules/sql-agent/pages/SqlAgentPage.vue'
-import TestcaseCasesPage from '@/modules/testcase/pages/TestcaseCasesPage.vue'
-import TestcaseDocumentsPage from '@/modules/testcase/pages/TestcaseDocumentsPage.vue'
-import TestcaseGeneratePage from '@/modules/testcase/pages/TestcaseGeneratePage.vue'
-import ThreadsPage from '@/modules/threads/pages/ThreadsPage.vue'
-import UsersPage from '@/modules/users/pages/UsersPage.vue'
-import LoginView from '@/views/auth/LoginView.vue'
 
 const workspaceChildren: RouteRecordRaw[] = [
   {
@@ -30,25 +10,25 @@ const workspaceChildren: RouteRecordRaw[] = [
   {
     path: 'overview',
     name: 'workspace-overview',
-    component: OverviewPage,
+    component: () => import('@/modules/overview/pages/OverviewPage.vue'),
     meta: { title: '总览', eyebrow: 'Overview' }
   },
   {
     path: 'projects',
     name: 'workspace-projects',
-    component: ProjectsPage,
+    component: () => import('@/modules/projects/pages/ProjectsPage.vue'),
     meta: { title: '项目', eyebrow: 'Projects' }
   },
   {
     path: 'users',
     name: 'workspace-users',
-    component: UsersPage,
+    component: () => import('@/modules/users/pages/UsersPage.vue'),
     meta: { title: '用户', eyebrow: 'Users' }
   },
   {
     path: 'assistants',
     name: 'workspace-assistants',
-    component: AssistantsPage,
+    component: () => import('@/modules/assistants/pages/AssistantsPage.vue'),
     meta: { title: '助手', eyebrow: 'Assistants' }
   },
   {
@@ -58,19 +38,19 @@ const workspaceChildren: RouteRecordRaw[] = [
       {
         path: '',
         name: 'workspace-runtime',
-        component: RuntimePage,
+        component: () => import('@/modules/runtime/pages/RuntimePage.vue'),
         meta: { title: 'Runtime', eyebrow: 'Runtime' }
       },
       {
         path: 'models',
         name: 'workspace-runtime-models',
-        component: RuntimeModelsPage,
+        component: () => import('@/modules/runtime/pages/RuntimeModelsPage.vue'),
         meta: { title: 'Runtime Models', eyebrow: 'Runtime' }
       },
       {
         path: 'tools',
         name: 'workspace-runtime-tools',
-        component: RuntimeToolsPage,
+        component: () => import('@/modules/runtime/pages/RuntimeToolsPage.vue'),
         meta: { title: 'Runtime Tools', eyebrow: 'Runtime' }
       }
     ]
@@ -78,25 +58,25 @@ const workspaceChildren: RouteRecordRaw[] = [
   {
     path: 'graphs',
     name: 'workspace-graphs',
-    component: GraphsPage,
+    component: () => import('@/modules/graphs/pages/GraphsPage.vue'),
     meta: { title: 'Graphs', eyebrow: 'Graphs' }
   },
   {
     path: 'sql-agent',
     name: 'workspace-sql-agent',
-    component: SqlAgentPage,
+    component: () => import('@/modules/sql-agent/pages/SqlAgentPage.vue'),
     meta: { title: 'SQL Agent', eyebrow: 'Agent' }
   },
   {
     path: 'threads',
     name: 'workspace-threads',
-    component: ThreadsPage,
+    component: () => import('@/modules/threads/pages/ThreadsPage.vue'),
     meta: { title: 'Threads', eyebrow: 'Threads' }
   },
   {
     path: 'chat',
     name: 'workspace-chat',
-    component: ChatPage,
+    component: () => import('@/modules/chat/pages/ChatPage.vue'),
     meta: { title: 'Chat', eyebrow: 'Chat' }
   },
   {
@@ -153,19 +133,19 @@ const workspaceChildren: RouteRecordRaw[] = [
       {
         path: 'generate',
         name: 'workspace-testcase-generate',
-        component: TestcaseGeneratePage,
+        component: () => import('@/modules/testcase/pages/TestcaseGeneratePage.vue'),
         meta: { title: '用例生成', eyebrow: 'Testcase' }
       },
       {
         path: 'cases',
         name: 'workspace-testcase-cases',
-        component: TestcaseCasesPage,
+        component: () => import('@/modules/testcase/pages/TestcaseCasesPage.vue'),
         meta: { title: '用例管理', eyebrow: 'Testcase' }
       },
       {
         path: 'documents',
         name: 'workspace-testcase-documents',
-        component: TestcaseDocumentsPage,
+        component: () => import('@/modules/testcase/pages/TestcaseDocumentsPage.vue'),
         meta: { title: '文档管理', eyebrow: 'Testcase' }
       }
     ]
@@ -173,19 +153,19 @@ const workspaceChildren: RouteRecordRaw[] = [
   {
     path: 'me',
     name: 'workspace-me',
-    component: ProfilePage,
+    component: () => import('@/modules/account/pages/ProfilePage.vue'),
     meta: { title: '我的信息', eyebrow: 'Account' }
   },
   {
     path: 'security',
     name: 'workspace-security',
-    component: SecurityPage,
+    component: () => import('@/modules/account/pages/SecurityPage.vue'),
     meta: { title: '安全设置', eyebrow: 'Account' }
   },
   {
     path: 'audit',
     name: 'workspace-audit',
-    component: AuditPage,
+    component: () => import('@/modules/audit/pages/AuditPage.vue'),
     meta: { title: '审计日志', eyebrow: 'Audit' }
   }
 ]
@@ -197,18 +177,18 @@ export const routes: RouteRecordRaw[] = [
   },
   {
     path: '/auth',
-    component: AuthLayout,
+    component: () => import('@/layouts/AuthLayout.vue'),
     children: [
       {
         path: 'login',
         name: 'auth-login',
-        component: LoginView
+        component: () => import('@/views/auth/LoginView.vue')
       }
     ]
   },
   {
     path: '/workspace',
-    component: WorkspaceLayout,
+    component: () => import('@/layouts/WorkspaceLayout.vue'),
     children: workspaceChildren
   }
 ]

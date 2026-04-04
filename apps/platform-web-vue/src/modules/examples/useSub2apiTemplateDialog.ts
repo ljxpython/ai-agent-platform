@@ -1,6 +1,5 @@
 import { computed, ref } from 'vue'
 import {
-  loadSub2apiTemplateDetail,
   relatedTemplatesOf,
   type Sub2apiTemplateDetail,
   type Sub2apiTemplateItem
@@ -31,6 +30,7 @@ export function useSub2apiTemplateDialog() {
     detailLoading.value = true
 
     try {
+      const { loadSub2apiTemplateDetail } = await import('@/modules/examples/template-detail-loader')
       const detail = await loadSub2apiTemplateDetail(item)
       detailCache.set(item.id, detail)
 

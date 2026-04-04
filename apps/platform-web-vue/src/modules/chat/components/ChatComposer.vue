@@ -1,0 +1,173 @@
+<script setup lang="ts">
+import { computed, ref } from 'vue'
+import BaseButton from '@/components/base/BaseButton.vue'
+import BaseIcon from '@/components/base/BaseIcon.vue'
+import { CHAT_ATTACHMENT_ACCEPT, type ChatAttachmentBlock } from '@/utils/chat-content'
+import ChatAttachmentPreview from './ChatAttachmentPreview.vue'
+import ChatInterruptPanel from './ChatInterruptPanel.vue'
+import ChatTasksFilesPanel from './ChatTasksFilesPanel.vue'
+
+const props = defineProps<{
+  modelValue: string
+  attachments: ChatAttachmentBlock[]
+  isRunning: boolean
+  hasBlockingInterrupt: boolean
+  interruptPayload: unknown
+  displayState?: Record<string, unknown> | null
+  canStartThread: boolean
+  showContinueAction: boolean
+  canSendFreshMessage: boolean
+  cancelling: boolean
+  sendButtonLabel: string
+  lastEventAt: string
+  onResumeInterruptedRun: (resumePayload: unknown) => Promise<boolean>
+  onUpdateState: (values: Record<string, unknown>) => Promise<boolean>
+}>()
+
+const emit = defineEmits<{
+  'update:modelValue': [value: string]
+  'send': []
+  'cancel': []
+  'continue-run': []
+  'new-thread': []
+  'file-input-change': [event: Event]
+  'composer-paste': [event: ClipboardEvent]
+  'remove-attachment': [index: number]
+}>()
+
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const composerModel = computed({
+  get: () => props.modelValue,
+  set: (value: string) => emit('update:modelValue', value)
+})
+
+const helperText = computed(() =>
+  props.lastEventAt
+    ? `最近响应：${props.lastEventAt}`
+    : '支持 JPEG、PNG、GIF、WEBP、PDF，也支持直接粘贴图片。'
+)
+
+function handleComposerKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault()
+    if (!props.isRunning && !props.hasBlockingInterrupt && props.canSendFreshMessage) {
+      emit('send')
+    }
+  }
+}
+
+function handleComposerPaste(event: ClipboardEvent) {
+  emit('composer-paste', event)
+}
+
+function openFilePicker() {
+  fileInputRef.value?.click()
+}
+</script>
+
+<template>
+  <div class="border-t border-gray-100 px-6 py-5 dark:border-dark-800">
+    <div class="rounded-[26px] border border-white/70 bg-white/95 p-4 shadow-soft dark:border-dark-700 dark:bg-dark-900/90">
+      <ChatInterruptPanel
+        v-if="hasBlockingInterrupt"
+        :interrupt="interruptPayload"
+        :submitting="isRunning"
+        :on-resume="onResumeInterruptedRun"
+      />
+
+      <ChatTasksFilesPanel
+        :values="displayState"
+        :is-running="isRunning"
+        :has-interrupt="interruptPayload !== undefined"
+        :on-update-state="onUpdateState"
+      />
+
+      <div
+        v-if="attachments.length > 0"
+        class="mb-4 flex flex-wrap gap-3"
+      >
+        <ChatAttachmentPreview
+          v-for="(attachment, index) in attachments"
+          :key="`composer-attachment-${index}`"
+          :block="attachment"
+          removable
+          @remove="emit('remove-attachment', index)"
+        />
+      </div>
+
+      <textarea
+        v-model="composerModel"
+        rows="5"
+        class="pw-input min-h-[132px] resize-none border-0 bg-transparent px-0 py-0 shadow-none focus:ring-0"
+        placeholder="输入消息。Enter 发送，Shift + Enter 换行。"
+        :disabled="isRunning || hasBlockingInterrupt"
+        @keydown="handleComposerKeydown"
+        @paste="handleComposerPaste"
+      />
+
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-3 text-xs leading-6 text-gray-400 dark:text-dark-400">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1.5 text-gray-600 transition hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700 dark:border-dark-700 dark:text-dark-200 dark:hover:border-primary-900/40 dark:hover:bg-primary-950/20 dark:hover:text-primary-100"
+            :disabled="isRunning || hasBlockingInterrupt"
+            @click="openFilePicker"
+          >
+            <BaseIcon
+              name="paperclip"
+              size="sm"
+            />
+            <span>上传图片 / PDF</span>
+          </button>
+          <input
+            ref="fileInputRef"
+            type="file"
+            class="hidden"
+            multiple
+            :accept="CHAT_ATTACHMENT_ACCEPT"
+            @change="emit('file-input-change', $event)"
+          >
+          <span>{{ helperText }}</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <BaseButton
+            variant="secondary"
+            :disabled="!canStartThread"
+            @click="emit('new-thread')"
+          >
+            空白对话
+          </BaseButton>
+          <BaseButton
+            v-if="showContinueAction"
+            variant="secondary"
+            @click="emit('continue-run')"
+          >
+            <BaseIcon
+              name="chevron-right"
+              size="sm"
+            />
+            Continue
+          </BaseButton>
+          <BaseButton
+            :variant="isRunning ? 'danger' : 'primary'"
+            :disabled="isRunning ? cancelling : !canSendFreshMessage"
+            @click="isRunning ? emit('cancel') : emit('send')"
+          >
+            <BaseIcon
+              :name="isRunning ? 'x' : 'chat'"
+              size="sm"
+            />
+            {{
+              isRunning
+                ? cancelling
+                  ? '取消中...'
+                  : '取消运行'
+                : sendButtonLabel
+            }}
+          </BaseButton>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>

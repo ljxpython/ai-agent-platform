@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import { defineAsyncComponent } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
-import Sub2apiTemplateDialog from '@/modules/examples/components/Sub2apiTemplateDialog.vue'
 import { teamRecommendedTemplates } from '@/modules/examples/ui-assets-curation'
 import {
   humanizeTemplateName,
@@ -10,6 +10,10 @@ import {
   type TemplateMode
 } from '@/modules/examples/ui-assets-catalog'
 import { useSub2apiTemplateDialog } from '@/modules/examples/useSub2apiTemplateDialog'
+
+const Sub2apiTemplateDialog = defineAsyncComponent(
+  () => import('@/modules/examples/components/Sub2apiTemplateDialog.vue')
+)
 
 const {
   selectedTemplate,
