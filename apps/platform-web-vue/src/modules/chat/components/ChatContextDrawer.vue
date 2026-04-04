@@ -1,14 +1,21 @@
 <script setup lang="ts">
+import { computed, ref, watch } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseDrawer from '@/components/base/BaseDrawer.vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import type { ChatRunOptions } from '../types'
-import type { RuntimeModelItem, RuntimeToolItem, ThreadHistoryEntry } from '@/types/management'
-import { getHistoryEntryId, getHistoryEntryTime, toPrettyJson } from '@/utils/threads'
+import { useUiStore } from '@/stores/ui'
+import { downloadBlob } from '@/utils/browser-download'
+import { copyText } from '@/utils/clipboard'
+import { getHistoryEntryId, getHistoryEntryPreviewText, getHistoryEntryTime, toPrettyJson } from '@/utils/threads'
+import type { ChatInspectorFile } from '../inspector-view-model'
+import { type ChatPlanTodo, type ChatPlanView } from '../plan-view-model'
+import type { ThreadHistoryEntry } from '@/types/management'
 
-defineProps<{
+type InspectorTabKey = 'overview' | 'tasks' | 'files' | 'history'
+type TodoStatus = ChatPlanTodo['status']
+
+const props = defineProps<{
   show: boolean
-  allowRunOptions: boolean
+  initialTab: InspectorTabKey
   showHistory: boolean
   showArtifacts: boolean
   allowResetTarget: boolean
@@ -18,333 +25,725 @@ defineProps<{
   lastRunId: string
   selectedBranch: string
   latestMessagePreview: string
-  selectedToolsLabel: string
-  draftRunOptions: ChatRunOptions
-  runtimeModels: RuntimeModelItem[]
-  runtimeTools: RuntimeToolItem[]
-  loadingRuntime: boolean
   historyItems: ThreadHistoryEntry[]
   isViewingBranch: boolean
+  planView: ChatPlanView
+  files: ChatInspectorFile[]
+  values?: Record<string, unknown> | null
+  isRunning: boolean
+  hasInterrupt: boolean
+  sourceNote: string
+  contextNotice?: string
+  onUpdateState: (values: Record<string, unknown>) => Promise<boolean>
 }>()
 
 const emit = defineEmits<{
   close: []
-  'update:model-id': [value: string]
-  'update:enable-tools': [value: boolean]
-  'toggle-tool': [toolKey: string]
-  'update:debug-mode': [value: boolean]
-  'update:temperature': [value: string]
-  'update:max-tokens': [value: string]
   'select-branch': [branchId: string]
   'reset-target': []
-  restore: []
-  apply: []
 }>()
 
-function getInputValue(event: Event) {
-  return (event.target as HTMLInputElement | HTMLSelectElement | null)?.value || ''
+const uiStore = useUiStore()
+const activeTab = ref<InspectorTabKey>('overview')
+const selectedFilePath = ref('')
+const isEditing = ref(false)
+const editValue = ref('')
+const isSaving = ref(false)
+
+const availableTabs = computed(() => {
+  const tabs: Array<{
+    key: InspectorTabKey
+    label: string
+    count?: number
+    tone?: 'info' | 'warning' | 'success'
+  }> = [
+    { key: 'overview', label: '概览' },
+    {
+      key: 'tasks',
+      label: 'ToDo',
+      count: props.planView.totalTasks + props.planView.ephemeralTodos.length,
+      tone: props.planView.activeTask ? 'info' : props.planView.allTasksCompleted ? 'success' : undefined
+    },
+    { key: 'files', label: 'Files', count: props.files.length }
+  ]
+
+  if (props.showHistory) {
+    tabs.push({
+      key: 'history',
+      label: '历史',
+      count: props.historyItems.length,
+      tone: props.isViewingBranch ? 'warning' : undefined
+    })
+  }
+
+  return tabs
+})
+
+const selectedFile = computed(
+  () => props.files.find((item) => item.path === selectedFilePath.value) || null
+)
+const hasTasks = computed(
+  () => props.planView.totalTasks > 0 || props.planView.ephemeralTodos.length > 0
+)
+const editDisabled = computed(() => props.isRunning || props.hasInterrupt || isSaving.value)
+const currentTaskLabel = computed(() => props.planView.activeTask?.content || '暂无')
+
+watch(
+  () => [props.initialTab, props.showHistory, props.show] as const,
+  ([nextTab, showHistory, isOpen]) => {
+    if (!isOpen) {
+      return
+    }
+
+    if (nextTab === 'history' && !showHistory) {
+      activeTab.value = 'overview'
+      return
+    }
+
+    activeTab.value = nextTab
+  },
+  { immediate: true }
+)
+
+watch(
+  () => props.files,
+  (nextFiles) => {
+    if (nextFiles.length === 0) {
+      selectedFilePath.value = ''
+      isEditing.value = false
+      editValue.value = ''
+      return
+    }
+
+    if (!selectedFilePath.value || !nextFiles.some((item) => item.path === selectedFilePath.value)) {
+      selectedFilePath.value = nextFiles[0].path
+      isEditing.value = false
+      editValue.value = nextFiles[0].content
+    }
+  },
+  { immediate: true, deep: true }
+)
+
+watch(selectedFile, (file) => {
+  if (!isEditing.value) {
+    editValue.value = file?.content || ''
+  }
+})
+
+function groupTodoList(todos: ChatPlanTodo[]) {
+  return {
+    in_progress: todos.filter((item) => item.status === 'in_progress'),
+    pending: todos.filter((item) => item.status === 'pending'),
+    completed: todos.filter((item) => item.status === 'completed')
+  }
 }
 
-function getCheckedValue(event: Event) {
-  return Boolean((event.target as HTMLInputElement | null)?.checked)
+function statusDotClass(status: TodoStatus) {
+  if (status === 'completed') {
+    return 'border-emerald-200 bg-emerald-500'
+  }
+  if (status === 'in_progress') {
+    return 'border-sky-200 bg-sky-500'
+  }
+  return 'border-gray-200 bg-white'
+}
+
+async function handleCopyFile() {
+  if (!selectedFile.value) {
+    return
+  }
+
+  const copied = await copyText(selectedFile.value.content)
+  uiStore.pushToast({
+    type: copied ? 'success' : 'error',
+    title: copied ? '已复制文件内容' : '复制失败',
+    message: copied ? selectedFile.value.path : '浏览器拒绝了复制动作'
+  })
+}
+
+function handleDownloadFile() {
+  if (!selectedFile.value) {
+    return
+  }
+
+  downloadBlob(
+    new Blob([selectedFile.value.content], { type: 'text/plain;charset=utf-8' }),
+    selectedFile.value.path
+  )
+  uiStore.pushToast({
+    type: 'success',
+    title: '已下载文件',
+    message: selectedFile.value.path
+  })
+}
+
+function handleStartEdit() {
+  if (!selectedFile.value) {
+    return
+  }
+
+  if (editDisabled.value) {
+    uiStore.pushToast({
+      type: 'warning',
+      title: '当前不可编辑',
+      message: '运行中或等待中断决策时，文件内容不能直接改。'
+    })
+    return
+  }
+
+  isEditing.value = true
+  editValue.value = selectedFile.value.content
+}
+
+function handleCancelEdit() {
+  isEditing.value = false
+  editValue.value = selectedFile.value?.content || ''
+}
+
+async function handleSaveEdit() {
+  if (!selectedFile.value) {
+    return
+  }
+
+  const rawFiles = props.values?.files
+  if (!rawFiles || typeof rawFiles !== 'object' || Array.isArray(rawFiles)) {
+    uiStore.pushToast({
+      type: 'error',
+      title: '保存失败',
+      message: '当前线程里没有可编辑的文件状态。'
+    })
+    return
+  }
+
+  const nextFiles = { ...(rawFiles as Record<string, unknown>) }
+  const currentRaw = nextFiles[selectedFile.value.path]
+  if (typeof currentRaw === 'string' || currentRaw == null) {
+    nextFiles[selectedFile.value.path] = editValue.value
+  } else if (typeof currentRaw === 'object' && !Array.isArray(currentRaw)) {
+    const currentRecord = currentRaw as Record<string, unknown>
+    nextFiles[selectedFile.value.path] =
+      'content' in currentRecord
+        ? {
+            ...currentRecord,
+            content: editValue.value
+          }
+        : editValue.value
+  } else {
+    nextFiles[selectedFile.value.path] = editValue.value
+  }
+
+  isSaving.value = true
+  try {
+    await props.onUpdateState({ files: nextFiles })
+    isEditing.value = false
+    uiStore.pushToast({
+      type: 'success',
+      title: '文件已保存',
+      message: selectedFile.value.path
+    })
+  } catch (error) {
+    uiStore.pushToast({
+      type: 'error',
+      title: '保存失败',
+      message: error instanceof Error ? error.message : '线程状态更新失败'
+    })
+  } finally {
+    isSaving.value = false
+  }
 }
 </script>
 
 <template>
   <BaseDrawer
     :show="show"
-    title="运行上下文与参数"
+    title="会话详情"
     side="right"
-    width="wide"
+    width="full"
     @close="emit('close')"
   >
     <div class="space-y-5">
-      <div class="pw-card-glass p-4">
-        <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-          当前上下文
-        </div>
-        <div class="mt-3 space-y-3 text-sm leading-7 text-gray-600 dark:text-dark-300">
-          <div class="flex items-start justify-between gap-3">
-            <span>Target</span>
-            <span class="max-w-[220px] break-all text-right font-semibold text-gray-900 dark:text-white">{{ targetText }}</span>
-          </div>
-          <div class="flex items-start justify-between gap-3">
-            <span>项目</span>
-            <span class="max-w-[220px] text-right font-semibold text-gray-900 dark:text-white">{{ projectName || '--' }}</span>
-          </div>
-          <div class="flex items-start justify-between gap-3">
-            <span>Thread</span>
-            <span class="max-w-[220px] break-all text-right font-semibold text-gray-900 dark:text-white">{{ activeThreadId || '--' }}</span>
-          </div>
-          <div class="flex items-start justify-between gap-3">
-            <span>Run</span>
-            <span class="max-w-[220px] break-all text-right font-semibold text-gray-900 dark:text-white">{{ lastRunId || '--' }}</span>
-          </div>
-          <div class="flex items-start justify-between gap-3">
-            <span>Branch</span>
-            <span class="max-w-[220px] break-all text-right font-semibold text-gray-900 dark:text-white">
-              {{ selectedBranch || 'latest' }}
-            </span>
-          </div>
-          <div class="flex items-start justify-between gap-3">
-            <span>最近消息</span>
-            <span class="max-w-[220px] text-right text-gray-500 dark:text-dark-300">{{ latestMessagePreview || '暂无' }}</span>
-          </div>
-        </div>
-      </div>
-
-      <div
-        v-if="allowRunOptions"
-        class="space-y-4"
-      >
-        <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-          <BaseIcon
-            name="runtime"
-            size="sm"
-            class="text-primary-500"
+      <div class="flex flex-wrap gap-2">
+        <button
+          v-for="tab in availableTabs"
+          :key="tab.key"
+          type="button"
+          class="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition"
+          :class="
+            activeTab === tab.key
+              ? 'border-primary-200 bg-primary-50 text-primary-700 shadow-soft dark:border-primary-900/40 dark:bg-primary-950/20 dark:text-primary-100'
+              : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200 dark:hover:bg-dark-800 dark:hover:text-white'
+          "
+          @click="activeTab = tab.key"
+        >
+          <span>{{ tab.label }}</span>
+          <span
+            v-if="typeof tab.count === 'number'"
+            class="rounded-full px-2 py-0.5 text-[11px]"
+            :class="
+              activeTab === tab.key
+                ? 'bg-white/80 text-primary-700 dark:bg-dark-800 dark:text-primary-100'
+                : 'bg-gray-100 text-gray-500 dark:bg-dark-800 dark:text-dark-300'
+            "
+          >
+            {{ tab.count }}
+          </span>
+          <span
+            v-else-if="tab.tone"
+            class="inline-flex h-2.5 w-2.5 rounded-full"
+            :class="
+              tab.tone === 'warning'
+                ? 'bg-amber-500'
+                : tab.tone === 'success'
+                  ? 'bg-emerald-500'
+                  : 'bg-sky-500'
+            "
           />
-          Run Options
-        </div>
+        </button>
+      </div>
 
-        <label class="block">
-          <span class="pw-input-label">模型</span>
-          <select
-            :value="draftRunOptions.modelId"
-            class="pw-select"
-            @change="emit('update:model-id', getInputValue($event))"
-          >
-            <option value="">
-              使用默认模型
-            </option>
-            <option
-              v-for="model in runtimeModels"
-              :key="model.id"
-              :value="model.model_id"
-            >
-              {{ model.display_name || model.model_id }}
-            </option>
-          </select>
-        </label>
-
-        <div class="pw-card-glass p-4">
-          <label class="flex items-center justify-between gap-3">
-            <div>
-              <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                工具开关
-              </div>
-              <div class="mt-1 text-xs leading-6 text-gray-500 dark:text-dark-300">
-                {{ selectedToolsLabel }}
-              </div>
+      <div
+        v-if="activeTab === 'overview'"
+        class="space-y-5"
+      >
+        <div class="grid gap-4 md:grid-cols-3">
+          <div class="pw-card-glass p-4">
+            <div class="text-xs text-gray-400 dark:text-dark-400">
+              当前任务
             </div>
-            <input
-              :checked="draftRunOptions.enableTools"
-              type="checkbox"
-              class="pw-table-checkbox"
-              @change="emit('update:enable-tools', getCheckedValue($event))"
-            >
-          </label>
-
-          <div
-            v-if="draftRunOptions.enableTools"
-            class="mt-4 max-h-56 space-y-2 overflow-y-auto"
-          >
-            <label
-              v-for="tool in runtimeTools"
-              :key="tool.id"
-              class="flex items-start gap-3 rounded-2xl border border-white/70 bg-white/80 px-3 py-3 text-sm dark:border-dark-700 dark:bg-dark-900/70"
-            >
-              <input
-                :checked="draftRunOptions.toolNames.includes(tool.tool_key)"
-                type="checkbox"
-                class="pw-table-checkbox mt-1"
-                @change="emit('toggle-tool', tool.tool_key)"
-              >
-              <div class="min-w-0">
-                <div class="font-semibold text-gray-900 dark:text-white">
-                  {{ tool.name || tool.tool_key }}
-                </div>
-                <div class="mt-1 text-xs leading-6 text-gray-500 dark:text-dark-300">
-                  {{ tool.description || tool.source || '暂无描述' }}
-                </div>
-              </div>
-            </label>
-
-            <div
-              v-if="runtimeTools.length === 0 && !loadingRuntime"
-              class="text-xs leading-6 text-gray-400 dark:text-dark-400"
-            >
-              当前没有可选工具目录。
+            <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+              {{ currentTaskLabel }}
+            </div>
+          </div>
+          <div class="pw-card-glass p-4">
+            <div class="text-xs text-gray-400 dark:text-dark-400">
+              文件状态
+            </div>
+            <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+              {{ props.files.length }} 个文件
+            </div>
+          </div>
+          <div class="pw-card-glass p-4">
+            <div class="text-xs text-gray-400 dark:text-dark-400">
+              历史快照
+            </div>
+            <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+              {{ props.showHistory ? `${props.historyItems.length} 条` : '未启用' }}
             </div>
           </div>
         </div>
 
-        <div class="pw-card-glass p-4">
-          <label class="flex items-center justify-between gap-3">
-            <div>
-              <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                Debug Mode
-              </div>
-              <div class="mt-1 text-xs leading-6 text-gray-500 dark:text-dark-300">
-                打开后，发送消息会先在工具执行前暂停，你可以逐步继续执行。
-              </div>
+        <div
+          v-if="props.isViewingBranch"
+          class="flex items-center justify-between gap-3 rounded-2xl border border-primary-200 bg-primary-50/70 px-4 py-4 text-sm dark:border-primary-900/40 dark:bg-primary-950/20"
+        >
+          <div class="min-w-0">
+            <div class="font-semibold text-gray-900 dark:text-white">
+              当前正在查看历史分支
             </div>
-            <input
-              :checked="draftRunOptions.debugMode"
-              type="checkbox"
-              class="pw-table-checkbox"
-              @change="emit('update:debug-mode', getCheckedValue($event))"
-            >
-          </label>
-        </div>
-
-        <div class="grid gap-4 md:grid-cols-2">
-          <label class="block">
-            <span class="pw-input-label">Temperature</span>
-            <input
-              :value="draftRunOptions.temperature"
-              class="pw-input"
-              placeholder="例如 0.2"
-              @input="emit('update:temperature', getInputValue($event))"
-            >
-          </label>
-          <label class="block">
-            <span class="pw-input-label">Max Tokens</span>
-            <input
-              :value="draftRunOptions.maxTokens"
-              class="pw-input"
-              placeholder="例如 4096"
-              @input="emit('update:max-tokens', getInputValue($event))"
-            >
-          </label>
-        </div>
-      </div>
-
-      <div
-        v-if="showHistory"
-        class="space-y-3"
-      >
-        <details class="pw-card-glass overflow-hidden p-4">
-          <summary class="cursor-pointer list-none">
-            <div class="flex items-center justify-between gap-3">
-              <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-                <BaseIcon
-                  name="threads"
-                  size="sm"
-                  class="text-primary-500"
-                />
-                最近历史
-              </div>
-              <div class="text-xs text-gray-400 dark:text-dark-400">
-                调试用
-              </div>
+            <div class="mt-1 break-all text-xs leading-6 text-gray-500 dark:text-dark-300">
+              {{ props.selectedBranch }}
             </div>
-          </summary>
-
-          <div class="mt-4 space-y-3">
-            <div
-              v-if="isViewingBranch"
-              class="flex items-center justify-between gap-3 rounded-2xl border border-primary-200 bg-primary-50/70 px-3 py-3 text-sm dark:border-primary-900/40 dark:bg-primary-950/20"
-            >
-              <div class="min-w-0">
-                <div class="font-semibold text-gray-900 dark:text-white">
-                  当前正在查看历史分支
-                </div>
-                <div class="mt-1 break-all text-xs leading-6 text-gray-500 dark:text-dark-300">
-                  {{ selectedBranch }}
-                </div>
-              </div>
-              <BaseButton
-                variant="ghost"
-                @click="emit('select-branch', '')"
-              >
-                返回最新
-              </BaseButton>
-            </div>
-
-            <div
-              v-if="historyItems.length === 0"
-              class="text-sm leading-7 text-gray-500 dark:text-dark-300"
-            >
-              当前 thread 还没有 checkpoint 历史，或者还没开始对话。
-            </div>
-
-            <details
-              v-for="(entry, historyIndex) in historyItems"
-              :key="getHistoryEntryId(entry, historyIndex)"
-              class="rounded-2xl border border-white/70 bg-white/80 p-4 dark:border-dark-700 dark:bg-dark-900/70"
-            >
-              <summary class="cursor-pointer list-none">
-                <div class="flex items-center justify-between gap-3">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                    {{ getHistoryEntryId(entry, historyIndex) }}
-                  </div>
-                  <div class="text-xs text-gray-400 dark:text-dark-400">
-                    {{ getHistoryEntryTime(entry) }}
-                  </div>
-                </div>
-              </summary>
-              <div class="mt-3 flex justify-end">
-                <BaseButton
-                  variant="ghost"
-                  @click="emit('select-branch', getHistoryEntryId(entry, historyIndex))"
-                >
-                  查看此分支
-                </BaseButton>
-              </div>
-              <pre class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-gray-950 px-3 py-3 text-xs leading-6 text-gray-100 dark:bg-black/50">{{ toPrettyJson(entry) }}</pre>
-            </details>
           </div>
-        </details>
-      </div>
-
-      <div
-        v-if="showArtifacts"
-        class="pw-card-glass p-4 text-sm leading-7 text-gray-500 dark:text-dark-300"
-      >
-        <div class="text-sm font-semibold text-gray-900 dark:text-white">
-          Artifact 侧栏
-        </div>
-        <p class="mt-2">
-          当前 thread 如果存在 `values.ui` 条目，会在主画布右侧直接展开 artifact 侧栏。没有数据时，这里只保留口径说明，不再继续放空占位。
-        </p>
-      </div>
-
-      <div
-        v-if="allowResetTarget"
-        class="pw-card-glass p-4"
-      >
-        <div class="text-sm font-semibold text-gray-900 dark:text-white">
-          默认聊天目标
-        </div>
-        <p class="mt-2 text-sm leading-7 text-gray-500 dark:text-dark-300">
-          这个动作只会清掉当前项目保存的默认聊天入口，不会删除任何 thread、消息或后端运行数据。
-        </p>
-        <div class="mt-4">
           <BaseButton
             variant="ghost"
-            @click="emit('reset-target')"
+            @click="emit('select-branch', '')"
           >
-            重置默认聊天目标
+            返回最新
           </BaseButton>
         </div>
+
+        <div class="pw-card-glass p-4">
+          <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
+            当前上下文
+          </div>
+          <div class="mt-3 space-y-3 text-sm leading-7 text-gray-600 dark:text-dark-300">
+            <div class="flex items-start justify-between gap-3">
+              <span>Target</span>
+              <span class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white">{{ props.targetText }}</span>
+            </div>
+            <div class="flex items-start justify-between gap-3">
+              <span>项目</span>
+              <span class="max-w-[320px] text-right font-semibold text-gray-900 dark:text-white">{{ props.projectName || '--' }}</span>
+            </div>
+            <div class="flex items-start justify-between gap-3">
+              <span>Thread</span>
+              <span class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white">{{ props.activeThreadId || '--' }}</span>
+            </div>
+            <div class="flex items-start justify-between gap-3">
+              <span>Run</span>
+              <span class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white">{{ props.lastRunId || '--' }}</span>
+            </div>
+            <div class="flex items-start justify-between gap-3">
+              <span>Branch</span>
+              <span class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white">
+                {{ props.selectedBranch || 'latest' }}
+              </span>
+            </div>
+            <div class="flex items-start justify-between gap-3">
+              <span>最近消息</span>
+              <span class="max-w-[320px] text-right text-gray-500 dark:text-dark-300">{{ props.latestMessagePreview || '暂无' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="props.sourceNote"
+          class="rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-4 text-sm leading-7 text-sky-800 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-100"
+        >
+          <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-500 dark:text-sky-300">
+            目标来源
+          </div>
+          <div class="mt-2 whitespace-pre-wrap break-words">
+            {{ props.sourceNote }}
+          </div>
+        </div>
+
+        <div
+          v-if="props.contextNotice"
+          class="rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-4 text-sm leading-7 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100"
+        >
+          <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">
+            上下文说明
+          </div>
+          <div class="mt-2 whitespace-pre-wrap break-words">
+            {{ props.contextNotice }}
+          </div>
+        </div>
+
+        <div
+          v-if="props.showArtifacts"
+          class="pw-card-glass p-4 text-sm leading-7 text-gray-500 dark:text-dark-300"
+        >
+          <div class="text-sm font-semibold text-gray-900 dark:text-white">
+            Artifact 侧栏
+          </div>
+          <p class="mt-2">
+            当前 thread 如果存在 `values.ui` 条目，会在主画布右侧直接展开 artifact 侧栏。这里仅保留说明，不再重复渲染内容。
+          </p>
+        </div>
+
+        <div
+          v-if="props.allowResetTarget"
+          class="pw-card-glass p-4"
+        >
+          <div class="text-sm font-semibold text-gray-900 dark:text-white">
+            默认聊天目标
+          </div>
+          <p class="mt-2 text-sm leading-7 text-gray-500 dark:text-dark-300">
+            这个动作只会清掉当前项目保存的默认聊天入口，不会删除任何 thread、消息或后端运行数据。
+          </p>
+          <div class="mt-4 flex justify-end">
+            <BaseButton
+              variant="ghost"
+              @click="emit('reset-target')"
+            >
+              清空默认目标
+            </BaseButton>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-else-if="activeTab === 'tasks'"
+        class="space-y-4"
+      >
+        <div
+          v-if="props.planView.hasFrozenPlan"
+          class="rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-4 text-sm leading-7 text-sky-800 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-100"
+        >
+          主计划固定展示第一次 `write_todos` 生成的任务列表；后续实时 todos 只更新主计划状态，新出现的任务会单列到临时执行项。
+        </div>
+
+        <div
+          v-if="hasTasks"
+          class="grid gap-4 md:grid-cols-3"
+        >
+          <div class="pw-card-glass p-4">
+            <div class="text-xs text-gray-400 dark:text-dark-400">
+              当前任务
+            </div>
+            <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+              {{ props.planView.activeTask?.content || '暂无' }}
+            </div>
+          </div>
+          <div class="pw-card-glass p-4">
+            <div class="text-xs text-gray-400 dark:text-dark-400">
+              主计划进度
+            </div>
+            <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+              {{ props.planView.completedTasks }}/{{ props.planView.totalTasks }}
+            </div>
+          </div>
+          <div class="pw-card-glass p-4">
+            <div class="text-xs text-gray-400 dark:text-dark-400">
+              临时执行项
+            </div>
+            <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+              {{ props.planView.ephemeralTodos.length }}
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="!hasTasks"
+          class="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-sm leading-7 text-gray-500 dark:border-dark-700 dark:text-dark-300"
+        >
+          当前还没有任务项。
+        </div>
+
+        <div
+          v-for="statusKey in ['in_progress', 'pending', 'completed']"
+          v-else
+          :key="statusKey"
+          class="space-y-3"
+        >
+          <template
+            v-if="groupTodoList(props.planView.planTodos)[statusKey as keyof ReturnType<typeof groupTodoList>].length > 0"
+          >
+            <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
+              {{
+                statusKey === 'in_progress'
+                  ? 'In Progress'
+                  : statusKey === 'pending'
+                    ? 'Pending'
+                    : 'Completed'
+              }}
+            </div>
+
+            <div class="space-y-2">
+              <div
+                v-for="todo in groupTodoList(props.planView.planTodos)[statusKey as keyof ReturnType<typeof groupTodoList>]"
+                :key="todo.id"
+                class="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 dark:border-dark-700 dark:bg-dark-900/70"
+              >
+                <div class="flex items-start gap-3">
+                  <span
+                    class="mt-1 inline-flex h-2.5 w-2.5 rounded-full border"
+                    :class="statusDotClass(todo.status)"
+                  />
+                  <div class="min-w-0">
+                    <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                      {{ todo.content }}
+                    </div>
+                    <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
+                      {{ todo.id }}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div
+          v-if="props.planView.ephemeralTodos.length > 0"
+          class="space-y-3"
+        >
+          <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
+            临时执行项
+          </div>
+          <div class="space-y-2">
+            <div
+              v-for="todo in props.planView.ephemeralTodos"
+              :key="todo.id"
+              class="rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 dark:border-amber-900/30 dark:bg-amber-950/15"
+            >
+              <div class="flex items-start gap-3">
+                <span
+                  class="mt-1 inline-flex h-2.5 w-2.5 rounded-full border"
+                  :class="statusDotClass(todo.status)"
+                />
+                <div class="min-w-0">
+                  <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                    {{ todo.content }}
+                  </div>
+                  <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
+                    {{ todo.id }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-else-if="activeTab === 'files'"
+        class="space-y-4"
+      >
+        <div
+          v-if="props.files.length === 0"
+          class="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-sm leading-7 text-gray-500 dark:border-dark-700 dark:text-dark-300"
+        >
+          当前线程还没有文件状态。
+        </div>
+
+        <div
+          v-else
+          class="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]"
+        >
+          <div class="space-y-2">
+            <button
+              v-for="file in props.files"
+              :key="file.path"
+              type="button"
+              class="block w-full rounded-2xl border px-3 py-3 text-left transition"
+              :class="
+                selectedFilePath === file.path
+                  ? 'border-primary-200 bg-primary-50 text-primary-700 dark:border-primary-900/40 dark:bg-primary-950/20 dark:text-primary-100'
+                  : 'border-white/70 bg-white/80 text-gray-600 hover:border-gray-200 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700 dark:bg-dark-900/70 dark:text-dark-200 dark:hover:bg-dark-800 dark:hover:text-white'
+              "
+              @click="selectedFilePath = file.path"
+            >
+              <div class="truncate text-sm font-semibold">
+                {{ file.path }}
+              </div>
+              <div class="mt-1 text-xs opacity-70">
+                {{ file.lineCount }} 行
+              </div>
+            </button>
+          </div>
+
+          <div
+            v-if="selectedFile"
+            class="space-y-3"
+          >
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                  {{ selectedFile.path }}
+                </div>
+                <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
+                  {{ selectedFile.lineCount }} 行
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <BaseButton
+                  variant="ghost"
+                  @click="handleCopyFile"
+                >
+                  复制
+                </BaseButton>
+                <BaseButton
+                  variant="ghost"
+                  @click="handleDownloadFile"
+                >
+                  下载
+                </BaseButton>
+                <BaseButton
+                  v-if="!isEditing"
+                  variant="ghost"
+                  @click="handleStartEdit"
+                >
+                  编辑
+                </BaseButton>
+              </div>
+            </div>
+
+            <textarea
+              v-if="isEditing"
+              v-model="editValue"
+              rows="18"
+              class="pw-input min-h-[420px] resize-y font-mono text-xs leading-6"
+            />
+            <pre
+              v-else
+              class="min-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-[24px] border border-white/70 bg-white/90 px-4 py-4 text-xs leading-6 text-gray-700 dark:border-dark-700 dark:bg-dark-900/80 dark:text-dark-100"
+            >{{ selectedFile.content }}</pre>
+
+            <div
+              v-if="isEditing"
+              class="flex flex-wrap justify-end gap-3"
+            >
+              <BaseButton
+                variant="ghost"
+                @click="handleCancelEdit"
+              >
+                取消
+              </BaseButton>
+              <BaseButton
+                :disabled="editDisabled"
+                @click="handleSaveEdit"
+              >
+                {{ isSaving ? '保存中...' : '保存' }}
+              </BaseButton>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div
+        v-else-if="activeTab === 'history'"
+        class="space-y-3"
+      >
+        <div
+          v-if="!props.showHistory"
+          class="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-sm leading-7 text-gray-500 dark:border-dark-700 dark:text-dark-300"
+        >
+          当前页面没有启用历史分支功能。
+        </div>
+
+        <template v-else>
+          <div
+            v-if="props.isViewingBranch"
+            class="flex items-center justify-between gap-3 rounded-2xl border border-primary-200 bg-primary-50/70 px-4 py-4 text-sm dark:border-primary-900/40 dark:bg-primary-950/20"
+          >
+            <div class="min-w-0">
+              <div class="font-semibold text-gray-900 dark:text-white">
+                当前正在查看历史分支
+              </div>
+              <div class="mt-1 break-all text-xs leading-6 text-gray-500 dark:text-dark-300">
+                {{ props.selectedBranch }}
+              </div>
+            </div>
+            <BaseButton
+              variant="ghost"
+              @click="emit('select-branch', '')"
+            >
+              返回最新
+            </BaseButton>
+          </div>
+
+          <div
+            v-if="props.historyItems.length === 0"
+            class="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-sm leading-7 text-gray-500 dark:border-dark-700 dark:text-dark-300"
+          >
+            当前 thread 还没有 checkpoint 历史，或者还没开始对话。
+          </div>
+
+          <details
+            v-for="(entry, historyIndex) in props.historyItems"
+            :key="getHistoryEntryId(entry, historyIndex)"
+            class="rounded-2xl border border-white/70 bg-white/80 p-4 dark:border-dark-700 dark:bg-dark-900/70"
+          >
+            <summary class="cursor-pointer list-none">
+              <div class="flex items-center justify-between gap-3">
+                <div class="min-w-0">
+                  <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                    {{ getHistoryEntryPreviewText(entry, historyIndex) }}
+                  </div>
+                  <div class="mt-1 truncate text-xs text-gray-400 dark:text-dark-400">
+                    {{ getHistoryEntryId(entry, historyIndex) }}
+                  </div>
+                </div>
+                <div class="shrink-0 text-xs text-gray-400 dark:text-dark-400">
+                  {{ getHistoryEntryTime(entry) }}
+                </div>
+              </div>
+            </summary>
+            <div class="mt-3 flex justify-end">
+              <BaseButton
+                variant="ghost"
+                @click="emit('select-branch', getHistoryEntryId(entry, historyIndex))"
+              >
+                查看此分支
+              </BaseButton>
+            </div>
+            <pre class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-gray-950 px-3 py-3 text-xs leading-6 text-gray-100 dark:bg-black/50">{{ toPrettyJson(entry) }}</pre>
+          </details>
+        </template>
       </div>
     </div>
-
-    <template
-      v-if="allowRunOptions"
-      #footer
-    >
-      <div class="flex flex-wrap items-center gap-3">
-        <BaseButton
-          variant="ghost"
-          @click="emit('restore')"
-        >
-          还原
-        </BaseButton>
-        <BaseButton @click="emit('apply')">
-          确定
-        </BaseButton>
-      </div>
-    </template>
   </BaseDrawer>
 </template>

@@ -88,17 +88,41 @@ type ThreadMessage = {
   content?: unknown
 }
 
+function getMessagesFromRecord(record: Record<string, unknown>): ThreadMessage[] {
+  if (Array.isArray(record.messages)) {
+    return record.messages as ThreadMessage[]
+  }
+
+  const nestedValues = asRecord(record.values)
+  if (Array.isArray(nestedValues.messages)) {
+    return nestedValues.messages as ThreadMessage[]
+  }
+
+  const stateRecord = asRecord(record.state)
+  const stateValues = asRecord(stateRecord.values)
+  if (Array.isArray(stateValues.messages)) {
+    return stateValues.messages as ThreadMessage[]
+  }
+
+  const checkpointRecord = asRecord(record.checkpoint)
+  const channelValues = asRecord(checkpointRecord.channel_values)
+  if (Array.isArray(channelValues.messages)) {
+    return channelValues.messages as ThreadMessage[]
+  }
+
+  return []
+}
+
 function extractMessages(source: unknown): ThreadMessage[] {
   if (!source || typeof source !== 'object') {
     return []
   }
-  const values = source as Record<string, unknown>
-  if (Array.isArray(values.messages)) {
-    return values.messages as ThreadMessage[]
-  }
 
-  const nestedValues = asRecord(values.values)
-  return Array.isArray(nestedValues.messages) ? (nestedValues.messages as ThreadMessage[]) : []
+  return getMessagesFromRecord(source as Record<string, unknown>)
+}
+
+function normalizePreviewText(value: string): string {
+  return value.replace(/\s+/g, ' ').trim().slice(0, 96)
 }
 
 export function getThreadMessages(
@@ -154,6 +178,29 @@ export function getHistoryEntryTime(entry: ThreadHistoryEntry): string {
     return formatThreadTime(checkpointThreadTs)
   }
   return '--'
+}
+
+export function getHistoryEntryPreviewText(entry: ThreadHistoryEntry, index: number): string {
+  const messages = extractMessages(entry)
+  if (messages.length > 0) {
+    const firstConversationMessage =
+      messages.find((item) => item?.type === 'human') ||
+      messages.find((item) => item?.type === 'ai') ||
+      messages[0]
+
+    const preview = normalizePreviewText(summarizeMessageContent(firstConversationMessage?.content))
+    if (preview) {
+      return preview
+    }
+  }
+
+  const valuesRecord = asRecord(entry.values)
+  const multimodalSummary = normalizePreviewText(coerceText(valuesRecord.multimodal_summary))
+  if (multimodalSummary) {
+    return multimodalSummary
+  }
+
+  return getHistoryEntryId(entry, index)
 }
 
 export function toPrettyJson(value: unknown): string {

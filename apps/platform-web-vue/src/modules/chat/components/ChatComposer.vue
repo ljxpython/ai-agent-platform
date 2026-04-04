@@ -5,7 +5,6 @@ import BaseIcon from '@/components/base/BaseIcon.vue'
 import { CHAT_ATTACHMENT_ACCEPT, type ChatAttachmentBlock } from '@/utils/chat-content'
 import ChatAttachmentPreview from './ChatAttachmentPreview.vue'
 import ChatInterruptPanel from './ChatInterruptPanel.vue'
-import ChatTasksFilesPanel from './ChatTasksFilesPanel.vue'
 
 const props = defineProps<{
   modelValue: string
@@ -13,7 +12,6 @@ const props = defineProps<{
   isRunning: boolean
   hasBlockingInterrupt: boolean
   interruptPayload: unknown
-  displayState?: Record<string, unknown> | null
   canStartThread: boolean
   showContinueAction: boolean
   canSendFreshMessage: boolean
@@ -21,7 +19,6 @@ const props = defineProps<{
   sendButtonLabel: string
   lastEventAt: string
   onResumeInterruptedRun: (resumePayload: unknown) => Promise<boolean>
-  onUpdateState: (values: Record<string, unknown>) => Promise<boolean>
 }>()
 
 const emit = defineEmits<{
@@ -43,19 +40,14 @@ const composerModel = computed({
 })
 
 const helperText = computed(() =>
-  props.lastEventAt
-    ? `最近响应：${props.lastEventAt}`
-    : '支持 JPEG、PNG、GIF、WEBP、PDF，也支持直接粘贴图片。'
+  props.hasBlockingInterrupt
+    ? '当前运行正在等待人工决策。你可以先编辑下一条消息草稿，处理完中断后再发送。'
+    : props.isRunning
+      ? 'Agent 正在运行。你可以继续编辑下一条消息草稿，待本轮结束后再点击发送。'
+      : props.lastEventAt
+        ? `最近响应：${props.lastEventAt}`
+        : '支持 JPEG、PNG、GIF、WEBP、PDF，也支持直接粘贴图片。'
 )
-
-function handleComposerKeydown(event: KeyboardEvent) {
-  if (event.key === 'Enter' && !event.shiftKey) {
-    event.preventDefault()
-    if (!props.isRunning && !props.hasBlockingInterrupt && props.canSendFreshMessage) {
-      emit('send')
-    }
-  }
-}
 
 function handleComposerPaste(event: ClipboardEvent) {
   emit('composer-paste', event)
@@ -76,13 +68,6 @@ function openFilePicker() {
         :on-resume="onResumeInterruptedRun"
       />
 
-      <ChatTasksFilesPanel
-        :values="displayState"
-        :is-running="isRunning"
-        :has-interrupt="interruptPayload !== undefined"
-        :on-update-state="onUpdateState"
-      />
-
       <div
         v-if="attachments.length > 0"
         class="mb-4 flex flex-wrap gap-3"
@@ -100,9 +85,7 @@ function openFilePicker() {
         v-model="composerModel"
         rows="5"
         class="pw-input min-h-[132px] resize-none border-0 bg-transparent px-0 py-0 shadow-none focus:ring-0"
-        placeholder="输入消息。Enter 发送，Shift + Enter 换行。"
-        :disabled="isRunning || hasBlockingInterrupt"
-        @keydown="handleComposerKeydown"
+        placeholder="输入消息。只有点击发送按钮时才会真正提交。"
         @paste="handleComposerPaste"
       />
 

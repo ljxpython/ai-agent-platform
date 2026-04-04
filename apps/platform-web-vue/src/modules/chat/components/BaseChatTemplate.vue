@@ -18,13 +18,20 @@ import ChatArtifactPanel from './ChatArtifactPanel.vue'
 import ChatComposer from './ChatComposer.vue'
 import ChatContextDrawer from './ChatContextDrawer.vue'
 import ChatMessageList from './ChatMessageList.vue'
+import ChatRunOptionsDialog from './ChatRunOptionsDialog.vue'
 import ChatThreadDrawer from './ChatThreadDrawer.vue'
+import { normalizeChatInspectorFiles } from '../inspector-view-model'
 import { createChatMessageActions } from '../message-actions'
 import { buildChatDisplayMessages } from '../message-view-model'
+import { buildChatPlanView } from '../plan-view-model'
+import { isChatViewportNearBottom } from '../scroll-state'
 import { buildChatThreadListView, type ChatThreadStatusFilter } from '../thread-list-view-model'
 import { useChatAttachments } from '../composables/useChatAttachments'
 import { useChatWorkspace } from '../composables/useChatWorkspace'
 import type { ChatResolvedTarget, ChatWorkspaceDisplay, ChatWorkspaceFeatures } from '../types'
+
+type InspectorTabKey = 'overview' | 'tasks' | 'files' | 'history'
+const CHAT_DRAFT_STORAGE_PREFIX = 'pw:chat:draft'
 
 const props = withDefaults(
   defineProps<{
@@ -59,11 +66,16 @@ const threadSearch = ref('')
 const threadStatusFilter = ref<ChatThreadStatusFilter>('all')
 const threadsDrawerOpen = ref(false)
 const contextDrawerOpen = ref(false)
+const runtimeOptionsDialogOpen = ref(false)
+const inspectorInitialTab = ref<InspectorTabKey>('overview')
 const messagesViewport = ref<HTMLDivElement | null>(null)
 const sourceNoteDismissed = ref(false)
 const deletingThreadId = ref('')
 const editingMessageId = ref('')
 const editingMessageValue = ref('')
+const autoFollowEnabled = ref(true)
+const unreadMessageCount = ref(0)
+const bufferedStreamActivity = ref(false)
 const draftRunOptions = reactive({
   modelId: '',
   enableTools: false,
@@ -84,6 +96,8 @@ const currentProject = computed(() => workspaceStore.currentProject)
 const renderMessages = computed(() => workspace.messages.value)
 const displayMessages = computed(() => buildChatDisplayMessages(renderMessages.value))
 const composerAttachments = computed(() => attachmentState.attachments.value)
+const planView = computed(() => buildChatPlanView(workspace.displayState.value))
+const inspectorFiles = computed(() => normalizeChatInspectorFiles(workspace.displayState.value))
 const allowRunOptions = computed(() => props.features?.allowRunOptions ?? true)
 const showHistory = computed(() => props.features?.showHistory ?? true)
 const showArtifacts = computed(() => props.features?.showArtifacts ?? true)
@@ -95,6 +109,7 @@ const hasArtifactEntries = computed(() => {
 const hasComposerContent = computed(
   () => Boolean(composerInput.value.trim()) || composerAttachments.value.length > 0
 )
+const visibleSourceNote = computed(() => Boolean(props.sourceNote.trim()) && !sourceNoteDismissed.value)
 const showContinueAction = computed(
   () => !workspace.sending.value && workspace.canContinueDebug.value
 )
@@ -138,6 +153,31 @@ const selectedToolsLabel = computed(() => {
   }
   return `${draftRunOptions.toolNames.length} 个工具`
 })
+const showJumpToLatestNotice = computed(
+  () =>
+    !contextDrawerOpen.value &&
+    !runtimeOptionsDialogOpen.value &&
+    !autoFollowEnabled.value &&
+    (unreadMessageCount.value > 0 || bufferedStreamActivity.value || workspace.sending.value)
+)
+const jumpToLatestTitle = computed(() => {
+  if (unreadMessageCount.value > 0) {
+    return `有 ${unreadMessageCount.value} 条新消息`
+  }
+
+  if (workspace.sending.value) {
+    return 'Agent 仍在运行'
+  }
+
+  return '有新的执行更新'
+})
+const jumpToLatestDescription = computed(() => {
+  if (unreadMessageCount.value > 0) {
+    return '你正在查看历史内容，点击可回到底部继续跟随。'
+  }
+
+  return '当前对话仍在持续输出，点击回到底部继续跟随。'
+})
 
 const headerPills = computed(() => [
   {
@@ -166,6 +206,80 @@ const threadListView = computed(() =>
 )
 const filteredThreadSummary = computed(() => threadListView.value.filteredItems)
 const groupedThreadSummary = computed(() => threadListView.value.groups)
+const composerDraftKey = computed(() => {
+  const projectId = workspaceStore.currentProjectId.trim()
+  const targetId = props.target?.resolvedTargetId?.trim() || 'no-target'
+  const threadId = workspace.activeThreadId.value.trim() || '__new__'
+
+  if (!projectId) {
+    return ''
+  }
+
+  return `${CHAT_DRAFT_STORAGE_PREFIX}:${projectId}:${targetId}:${threadId}`
+})
+
+function readComposerDraft(storageKey: string) {
+  if (typeof window === 'undefined' || !storageKey) {
+    return ''
+  }
+
+  return window.localStorage.getItem(storageKey) || ''
+}
+
+function writeComposerDraft(storageKey: string, value: string) {
+  if (typeof window === 'undefined' || !storageKey) {
+    return
+  }
+
+  if (value.trim()) {
+    window.localStorage.setItem(storageKey, value)
+    return
+  }
+
+  window.localStorage.removeItem(storageKey)
+}
+
+function resetBufferedActivity() {
+  unreadMessageCount.value = 0
+  bufferedStreamActivity.value = false
+}
+
+async function scrollMessagesToLatest(behavior: globalThis.ScrollBehavior = 'auto') {
+  await nextTick()
+
+  const viewport = messagesViewport.value
+  if (!viewport) {
+    return
+  }
+
+  viewport.scrollTo({
+    top: viewport.scrollHeight,
+    behavior
+  })
+}
+
+function resumeAutoFollow(behavior: globalThis.ScrollBehavior = 'auto') {
+  autoFollowEnabled.value = true
+  resetBufferedActivity()
+  void scrollMessagesToLatest(behavior)
+}
+
+function handleMessagesScroll() {
+  const viewport = messagesViewport.value
+  if (!viewport) {
+    return
+  }
+
+  if (isChatViewportNearBottom(viewport)) {
+    autoFollowEnabled.value = true
+    resetBufferedActivity()
+    return
+  }
+
+  if (autoFollowEnabled.value) {
+    autoFollowEnabled.value = false
+  }
+}
 
 function syncThreadIdToRoute(threadId: string) {
   const nextQuery: LocationQueryRaw = { ...route.query }
@@ -197,12 +311,50 @@ watch(
 )
 
 watch(
+  () => composerDraftKey.value,
+  (nextKey) => {
+    composerInput.value = readComposerDraft(nextKey)
+  },
+  { immediate: true }
+)
+
+watch(
+  () => composerInput.value,
+  (nextValue) => {
+    writeComposerDraft(composerDraftKey.value, nextValue)
+  }
+)
+
+watch(
   () => displayMessages.value.length,
-  async () => {
-    await nextTick()
-    if (messagesViewport.value) {
-      messagesViewport.value.scrollTop = messagesViewport.value.scrollHeight
+  (nextCount, previousCount) => {
+    const delta = Math.max(0, nextCount - previousCount)
+    if (delta === 0) {
+      return
     }
+
+    if (autoFollowEnabled.value && !contextDrawerOpen.value && !runtimeOptionsDialogOpen.value) {
+      resumeAutoFollow(previousCount === 0 ? 'auto' : 'smooth')
+      return
+    }
+
+    unreadMessageCount.value += delta
+  }
+)
+
+watch(
+  () => workspace.lastEventAt.value,
+  (nextValue, previousValue) => {
+    if (!nextValue || nextValue === previousValue) {
+      return
+    }
+
+    if (autoFollowEnabled.value && !contextDrawerOpen.value && !runtimeOptionsDialogOpen.value) {
+      resumeAutoFollow('auto')
+      return
+    }
+
+    bufferedStreamActivity.value = true
   }
 )
 
@@ -211,6 +363,27 @@ watch(
   () => {
     messageActions.cancelEditMessage()
     deletingThreadId.value = ''
+    autoFollowEnabled.value = true
+    resetBufferedActivity()
+    void scrollMessagesToLatest('auto')
+  }
+)
+
+watch(
+  () => contextDrawerOpen.value,
+  (isOpen) => {
+    if (isOpen) {
+      autoFollowEnabled.value = false
+    }
+  }
+)
+
+watch(
+  () => runtimeOptionsDialogOpen.value,
+  (isOpen) => {
+    if (isOpen) {
+      autoFollowEnabled.value = false
+    }
   }
 )
 
@@ -308,8 +481,10 @@ async function handleDeleteThread(threadId: string) {
 }
 
 async function handleSend() {
+  const currentDraftKey = composerDraftKey.value
   const sent = await workspace.sendMessage(composerInput.value, composerAttachments.value)
   if (sent) {
+    writeComposerDraft(currentDraftKey, '')
     composerInput.value = ''
     attachmentState.resetAttachments()
   }
@@ -334,8 +509,13 @@ function syncDraftRunOptions() {
   draftRunOptions.debugMode = workspace.runOptions.debugMode
 }
 
-function openContextDrawer() {
+function openRuntimeOptionsDialog() {
   syncDraftRunOptions()
+  runtimeOptionsDialogOpen.value = true
+}
+
+function openInspectorDrawer(tab: InspectorTabKey = 'overview') {
+  inspectorInitialTab.value = tab
   contextDrawerOpen.value = true
 }
 
@@ -362,7 +542,15 @@ function applyDraftRunOptions() {
   workspace.runOptions.temperature = draftRunOptions.temperature
   workspace.runOptions.maxTokens = draftRunOptions.maxTokens
   workspace.runOptions.debugMode = draftRunOptions.debugMode
-  contextDrawerOpen.value = false
+  runtimeOptionsDialogOpen.value = false
+}
+
+function handleDismissSourceNote() {
+  sourceNoteDismissed.value = true
+}
+
+function handleJumpToLatest() {
+  resumeAutoFollow('smooth')
 }
 
 async function handleContinue() {
@@ -383,25 +571,45 @@ async function handleCancelRun() {
     />
 
     <div
-      v-if="sourceNote && !sourceNoteDismissed"
-      class="relative"
+      v-if="visibleSourceNote"
+      class="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-sky-100 bg-sky-50/70 px-4 py-3 text-sky-900 shadow-soft dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-50"
     >
-      <StateBanner
-        title="目标来源"
-        :description="sourceNote"
-        variant="info"
-      />
-      <button
-        type="button"
-        class="absolute right-3 top-3 rounded-xl p-2 text-gray-400 transition hover:bg-white/80 hover:text-gray-700 dark:hover:bg-dark-900/80 dark:hover:text-dark-100"
-        aria-label="关闭目标来源提示"
-        @click="sourceNoteDismissed = true"
-      >
-        <BaseIcon
-          name="x"
-          size="sm"
-        />
-      </button>
+      <div class="min-w-0 flex items-center gap-3">
+        <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white/70 text-sky-600 dark:bg-dark-900/60 dark:text-sky-200">
+          <BaseIcon
+            name="info"
+            size="sm"
+          />
+        </span>
+        <div class="min-w-0">
+          <div class="text-sm font-semibold text-sky-800 dark:text-sky-100">
+            当前目标来源已记录
+          </div>
+          <p class="text-xs leading-6 text-sky-700/90 dark:text-sky-100/80">
+            完整说明已经收进会话详情的概览页，不再在页面顶部重复堆内容。
+          </p>
+        </div>
+      </div>
+
+      <div class="flex shrink-0 items-center gap-2">
+        <BaseButton
+          variant="ghost"
+          @click="openInspectorDrawer('overview')"
+        >
+          查看会话详情
+        </BaseButton>
+        <button
+          type="button"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-2xl text-sky-500 transition hover:bg-white/80 hover:text-sky-700 dark:text-sky-200 dark:hover:bg-dark-900/80 dark:hover:text-white"
+          aria-label="关闭目标来源提示"
+          @click="handleDismissSourceNote"
+        >
+          <BaseIcon
+            name="x"
+            size="sm"
+          />
+        </button>
+      </div>
     </div>
 
     <StateBanner
@@ -513,16 +721,28 @@ async function handleCancelRun() {
             </BaseButton>
             <BaseButton
               variant="secondary"
-              @click="openContextDrawer"
+              @click="openInspectorDrawer('overview')"
+            >
+              <BaseIcon
+                name="overview"
+                size="sm"
+              />
+              会话详情
+            </BaseButton>
+            <BaseButton
+              v-if="allowRunOptions"
+              variant="secondary"
+              @click="openRuntimeOptionsDialog"
             >
               <BaseIcon
                 name="runtime"
                 size="sm"
               />
-              运行上下文
+              运行参数
             </BaseButton>
             <BaseButton
               variant="secondary"
+              title="重新从服务端拉取当前会话状态"
               :disabled="workspace.loadingThreads.value || workspace.loadingThreadDetail.value"
               @click="workspace.refreshActiveThread"
             >
@@ -530,7 +750,7 @@ async function handleCancelRun() {
                 name="refresh"
                 size="sm"
               />
-              刷新
+              重新同步
             </BaseButton>
             <BaseButton
               :disabled="!workspace.canStartThread.value"
@@ -550,53 +770,84 @@ async function handleCancelRun() {
         class="min-h-0 flex-1 overflow-hidden"
         :class="showArtifacts && hasArtifactEntries ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_360px]' : ''"
       >
-        <div
-          ref="messagesViewport"
-          class="min-h-0 overflow-y-auto px-6 py-5"
-        >
+        <div class="relative min-h-0">
           <div
-            v-if="workspace.loadingThreadDetail.value && renderMessages.length === 0"
-            class="space-y-4"
+            ref="messagesViewport"
+            class="min-h-0 h-full overflow-y-auto px-6 py-5"
+            @scroll="handleMessagesScroll"
           >
             <div
-              v-for="index in 3"
-              :key="index"
-              class="pw-card-glass h-28 animate-pulse"
+              v-if="workspace.loadingThreadDetail.value && renderMessages.length === 0"
+              class="space-y-4"
+            >
+              <div
+                v-for="index in 3"
+                :key="index"
+                class="pw-card-glass h-28 animate-pulse"
+              />
+            </div>
+
+            <div
+              v-else-if="displayMessages.length === 0"
+              class="flex h-full items-center justify-center"
+            >
+              <EmptyState
+                icon="chat"
+                :title="display.emptyTitle || '从这里开始第一轮对话'"
+                :description="display.emptyDescription || '输入框已经可用。发出第一条消息时会自动创建 thread，并把后续历史沉淀到当前项目。'"
+              />
+            </div>
+
+            <ChatMessageList
+              v-else
+              :display-messages="displayMessages"
+              :all-messages="renderMessages"
+              :editing-message-id="editingMessageId"
+              :editing-message-value="editingMessageValue"
+              :is-running="workspace.sending.value"
+              :get-message-meta="messageActions.getMessageMeta"
+              :get-message-branch-index="messageActions.getMessageBranchIndex"
+              :has-branch-switcher="messageActions.hasBranchSwitcher"
+              :can-edit-message="messageActions.canEditMessage"
+              :can-retry-message="messageActions.canRetryMessage"
+              @update:editing-message-value="editingMessageValue = $event"
+              @copy-message="handleCopyMessage"
+              @cancel-edit="messageActions.cancelEditMessage"
+              @submit-edit="submitEditMessage"
+              @start-edit="messageActions.startEditMessage"
+              @retry-message="handleRetryMessage"
+              @select-previous-branch="messageActions.selectPreviousMessageBranch"
+              @select-next-branch="messageActions.selectNextMessageBranch"
             />
           </div>
 
           <div
-            v-else-if="displayMessages.length === 0"
-            class="flex h-full items-center justify-center"
+            v-if="showJumpToLatestNotice"
+            class="pointer-events-none absolute bottom-5 right-5 z-10 flex justify-end"
           >
-            <EmptyState
-              icon="chat"
-              :title="display.emptyTitle || '从这里开始第一轮对话'"
-              :description="display.emptyDescription || '输入框已经可用。发出第一条消息时会自动创建 thread，并把后续历史沉淀到当前项目。'"
-            />
+            <button
+              type="button"
+              class="pointer-events-auto w-[280px] rounded-[24px] border border-primary-200/70 bg-white/95 px-4 py-3 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-lg dark:border-primary-900/40 dark:bg-dark-900/95"
+              @click="handleJumpToLatest"
+            >
+              <div class="flex items-start gap-3">
+                <span class="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 dark:bg-primary-950/30 dark:text-primary-100">
+                  <BaseIcon
+                    name="chevron-down"
+                    size="sm"
+                  />
+                </span>
+                <span class="min-w-0 flex-1">
+                  <span class="block text-sm font-semibold text-gray-900 dark:text-white">
+                    {{ jumpToLatestTitle }}
+                  </span>
+                  <span class="mt-1 block text-xs leading-6 text-gray-500 dark:text-dark-300">
+                    {{ jumpToLatestDescription }}
+                  </span>
+                </span>
+              </div>
+            </button>
           </div>
-
-          <ChatMessageList
-            v-else
-            :display-messages="displayMessages"
-            :all-messages="renderMessages"
-            :editing-message-id="editingMessageId"
-            :editing-message-value="editingMessageValue"
-            :is-running="workspace.sending.value"
-            :get-message-meta="messageActions.getMessageMeta"
-            :get-message-branch-index="messageActions.getMessageBranchIndex"
-            :has-branch-switcher="messageActions.hasBranchSwitcher"
-            :can-edit-message="messageActions.canEditMessage"
-            :can-retry-message="messageActions.canRetryMessage"
-            @update:editing-message-value="editingMessageValue = $event"
-            @copy-message="handleCopyMessage"
-            @cancel-edit="messageActions.cancelEditMessage"
-            @submit-edit="submitEditMessage"
-            @start-edit="messageActions.startEditMessage"
-            @retry-message="handleRetryMessage"
-            @select-previous-branch="messageActions.selectPreviousMessageBranch"
-            @select-next-branch="messageActions.selectNextMessageBranch"
-          />
         </div>
 
         <ChatArtifactPanel
@@ -611,7 +862,6 @@ async function handleCancelRun() {
         :is-running="workspace.sending.value"
         :has-blocking-interrupt="hasBlockingInterrupt"
         :interrupt-payload="workspace.interruptPayload.value"
-        :display-state="workspace.displayState.value"
         :can-start-thread="workspace.canStartThread.value"
         :show-continue-action="showContinueAction"
         :can-send-fresh-message="canSendFreshMessage"
@@ -619,7 +869,6 @@ async function handleCancelRun() {
         :send-button-label="sendButtonLabel"
         :last-event-at="workspace.lastEventAt.value"
         :on-resume-interrupted-run="workspace.resumeInterruptedRun"
-        :on-update-state="workspace.updateThreadStatePatch"
         @send="handleSend"
         @cancel="handleCancelRun"
         @continue-run="handleContinue"
@@ -655,7 +904,7 @@ async function handleCancelRun() {
 
     <ChatContextDrawer
       :show="contextDrawerOpen"
-      :allow-run-options="allowRunOptions"
+      :initial-tab="inspectorInitialTab"
       :show-history="showHistory"
       :show-artifacts="showArtifacts"
       :allow-reset-target="allowResetTarget"
@@ -665,22 +914,35 @@ async function handleCancelRun() {
       :last-run-id="workspace.lastRunId.value"
       :selected-branch="workspace.selectedBranch.value"
       :latest-message-preview="workspace.latestMessagePreview.value"
+      :history-items="workspace.historyItems.value"
+      :is-viewing-branch="workspace.isViewingBranch.value"
+      :plan-view="planView"
+      :files="inspectorFiles"
+      :values="workspace.displayState.value"
+      :is-running="workspace.sending.value"
+      :has-interrupt="hasBlockingInterrupt"
+      :source-note="props.sourceNote"
+      :context-notice="props.contextNotice"
+      :on-update-state="workspace.updateThreadStatePatch"
+      @close="contextDrawerOpen = false"
+      @select-branch="workspace.selectBranch($event)"
+      @reset-target="handleResetTarget"
+    />
+
+    <ChatRunOptionsDialog
+      :show="runtimeOptionsDialogOpen"
       :selected-tools-label="selectedToolsLabel"
       :draft-run-options="draftRunOptions"
       :runtime-models="workspace.runtimeModels.value"
       :runtime-tools="workspace.runtimeTools.value"
       :loading-runtime="workspace.loadingRuntime.value"
-      :history-items="workspace.historyItems.value"
-      :is-viewing-branch="workspace.isViewingBranch.value"
-      @close="contextDrawerOpen = false"
+      @close="runtimeOptionsDialogOpen = false"
       @update:model-id="draftRunOptions.modelId = $event"
       @update:enable-tools="draftRunOptions.enableTools = $event"
       @toggle-tool="toggleDraftTool"
       @update:debug-mode="draftRunOptions.debugMode = $event"
       @update:temperature="draftRunOptions.temperature = $event"
       @update:max-tokens="draftRunOptions.maxTokens = $event"
-      @select-branch="workspace.selectBranch($event)"
-      @reset-target="handleResetTarget"
       @restore="restoreDraftRunOptions"
       @apply="applyDraftRunOptions"
     />
