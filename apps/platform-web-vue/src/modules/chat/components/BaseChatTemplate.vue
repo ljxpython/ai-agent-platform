@@ -7,8 +7,8 @@ import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
+import ButtonWithTooltip from '@/components/platform/ButtonWithTooltip.vue'
 import EmptyState from '@/components/platform/EmptyState.vue'
-import HelpTooltip from '@/components/platform/HelpTooltip.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import { useUiStore } from '@/stores/ui'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -722,25 +722,21 @@ async function handleCancelRun() {
                 会话 {{ workspace.threadItems.value.length }}
               </BaseButton>
             </div>
-            <div class="flex items-center gap-1">
-              <BaseButton
-                variant="secondary"
-                @click="openInspectorDrawer('overview')"
-              >
-                <BaseIcon
-                  name="overview"
-                  size="sm"
-                />
-                会话详情
-              </BaseButton>
-              <HelpTooltip text="查看当前 target、thread、运行上下文、ToDo、Files 和 checkpoint 历史，不会打断主消息区阅读。" />
-            </div>
-            <div
-              v-if="allowRunOptions"
-              class="flex items-center gap-1"
+            <ButtonWithTooltip
+              variant="secondary"
+              tooltip="查看当前 target、thread、运行上下文、ToDo、Files 和 checkpoint 历史，不会打断主消息区阅读。"
+              @click="openInspectorDrawer('overview')"
             >
-              <BaseButton
+              <BaseIcon
+                name="overview"
+                size="sm"
+              />
+              会话详情
+            </ButtonWithTooltip>
+            <div v-if="allowRunOptions">
+              <ButtonWithTooltip
                 variant="secondary"
+                tooltip="修改后续运行要用的模型、工具、Debug Mode 和生成参数，不会回改已经开始的这轮执行。"
                 @click="openRuntimeOptionsDialog"
               >
                 <BaseIcon
@@ -748,23 +744,20 @@ async function handleCancelRun() {
                   size="sm"
                 />
                 运行参数
-              </BaseButton>
-              <HelpTooltip text="修改后续运行要用的模型、工具、Debug Mode 和生成参数，不会回改已经开始的这轮执行。" />
+              </ButtonWithTooltip>
             </div>
-            <div class="flex items-center gap-1">
-              <BaseButton
-                variant="secondary"
-                :disabled="workspace.loadingThreads.value || workspace.loadingThreadDetail.value"
-                @click="workspace.refreshActiveThread"
-              >
-                <BaseIcon
-                  name="refresh"
-                  size="sm"
-                />
-                重新同步
-              </BaseButton>
-              <HelpTooltip text="重新从服务端拉取当前会话状态。适合流式中断、切页面回来后状态漂移、或你怀疑前端没跟上后端时使用。" />
-            </div>
+            <ButtonWithTooltip
+              variant="secondary"
+              tooltip="重新从服务端拉取当前会话状态。适合流式中断、切页面回来后状态漂移、或你怀疑前端没跟上后端时使用。"
+              :disabled="workspace.loadingThreads.value || workspace.loadingThreadDetail.value"
+              @click="workspace.refreshActiveThread"
+            >
+              <BaseIcon
+                name="refresh"
+                size="sm"
+              />
+              重新同步
+            </ButtonWithTooltip>
             <BaseButton
               :disabled="!workspace.canStartThread.value"
               @click="workspace.startNewThread"
