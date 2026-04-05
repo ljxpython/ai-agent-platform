@@ -7,6 +7,7 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
+from uuid import UUID
 
 from langgraph.config import get_config
 from runtime_service.integrations import (
@@ -26,6 +27,7 @@ PERSIST_STATUS_PERSISTED = "persisted"
 PERSIST_STATUS_FAILED = "failed"
 PERSIST_STATUS_SKIPPED = "skipped"
 MISSING_PROJECT_ID_ERROR = "test_case_project_id_required"
+INVALID_PROJECT_ID_ERROR = "test_case_project_id_must_be_uuid"
 
 
 @dataclass(frozen=True)
@@ -126,6 +128,27 @@ def _require_project_id(
     if project_id:
         return project_id
     raise ValueError(MISSING_PROJECT_ID_ERROR)
+
+
+def _is_valid_uuid_text(value: Any) -> bool:
+    text = _coerce_optional_text(value)
+    if not text:
+        return False
+    try:
+        UUID(text)
+    except ValueError:
+        return False
+    return True
+
+
+def _require_uuid_project_id(
+    runtime: Any,
+    service_config: TestCaseServiceConfig,
+) -> str:
+    project_id = _require_project_id(runtime, service_config)
+    if _is_valid_uuid_text(project_id):
+        return project_id
+    raise ValueError(INVALID_PROJECT_ID_ERROR)
 
 
 def _resolve_batch_id(runtime: Any) -> str:
@@ -311,18 +334,15 @@ def _upload_document_asset(
 ) -> tuple[dict[str, Any] | None, str | None]:
     if (_coerce_optional_text(attachment.get("status")) or "unprocessed") == "unprocessed":
         return None, None
-    kind = _coerce_optional_text(attachment.get("kind"))
-    if kind != "pdf":
-        return None, None
     file_bytes = _decode_attachment_payload(attachment) or _decode_block_payload(source_block)
     if file_bytes is None:
         return None, "raw_attachment_payload_missing"
     filename = (
         _coerce_optional_text(attachment.get("name"))
         or _coerce_optional_text(attachment.get("attachment_id"))
-        or "document.pdf"
+        or "document"
     )
-    content_type = _coerce_optional_text(attachment.get("mime_type")) or "application/pdf"
+    content_type = _coerce_optional_text(attachment.get("mime_type")) or "application/octet-stream"
     try:
         payload = client.post_multipart(
             TEST_CASE_DOCUMENT_ASSETS_PATH,
@@ -414,7 +434,7 @@ def persist_runtime_documents(
             "context": resolved_context if resolved_context is not None else RuntimeContext(),
         },
     )()
-    project_id = _require_project_id(runtime_like, service_config)
+    project_id = _require_uuid_project_id(runtime_like, service_config)
     batch_id = _resolve_batch_id(runtime_like)
     resolved_client = client or InteractionDataServiceClient(
         build_interaction_data_service_config(runtime_like.config)
@@ -571,9 +591,12 @@ __all__ = [
     "_get_runtime_state",
     "_get_runtime_config",
     "_require_project_id",
+    "_require_uuid_project_id",
     "_resolve_batch_id",
     "_resolve_project_id",
     "_resolve_runtime_meta",
+    "_is_valid_uuid_text",
+    "INVALID_PROJECT_ID_ERROR",
     "MISSING_PROJECT_ID_ERROR",
     "apersist_runtime_documents",
     "collect_persisted_document_ids",

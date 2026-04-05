@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -24,9 +25,10 @@ from runtime_service.tools.registry import build_tools
 from langchain_core.runnables import RunnableConfig
 from langgraph_sdk.runtime import ServerRuntime
 
-def _resolve_filesystem_backend_root_dir(
+
+def _resolve_filesystem_backend_root_dir_path(
     private_config: dict[str, Any], *, agent_name: str
-) -> str:
+) -> Path:
     override = private_config.get("deepagents_backend_root_dir")
     if isinstance(override, str) and override.strip():
         path = Path(override).expanduser()
@@ -37,7 +39,16 @@ def _resolve_filesystem_backend_root_dir(
             / "deepagents"
             / agent_name
         )
-    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+async def _aresolve_filesystem_backend_root_dir(
+    private_config: dict[str, Any], *, agent_name: str
+) -> str:
+    path = _resolve_filesystem_backend_root_dir_path(
+        private_config, agent_name=agent_name
+    )
+    await asyncio.to_thread(path.mkdir, parents=True, exist_ok=True)
     return str(path)
 
 
@@ -57,7 +68,7 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
         middleware=[MultimodalMiddleware()],
         system_prompt=options.system_prompt or SYSTEM_PROMPT,
         backend=FilesystemBackend(
-            root_dir=_resolve_filesystem_backend_root_dir(
+            root_dir=await _aresolve_filesystem_backend_root_dir(
                 private_config, agent_name="deepagent-demo"
             ),
             virtual_mode=False,

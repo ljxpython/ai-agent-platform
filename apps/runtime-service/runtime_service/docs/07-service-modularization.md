@@ -85,12 +85,67 @@ runtime_service/services/<service_name>/
 - 服务依赖公共层（`runtime/*`、`tools/*`、`middlewares/*` 等）
 - 如果某段能力真的跨服务共享：下沉到公共层，或在服务内复制一份（优先避免耦合）
 
-### 3.2 公共工具池与服务私有工具
+### 3.2 私有优先：tools / MCP / skills 默认都不共享
 
-- 公共工具池（`tools/registry.py`）只放“跨服务通用”的工具
-- 服务私有工具放在 `services/<service>/tools.py`，由该服务的 graph 装配
-- 服务内 MCP 默认也视为“服务私有工具”，优先在 graph 中显式 `tools.extend(...)` / `tools.append(...)` 接入
+默认规则：
+
+- 新增业务服务时，`tools`、`MCP`、`skills` 一律先按“服务私有”设计
+- 没有明确的跨服务复用诉求前，不要把服务能力放进公共 `tools/registry.py`
+- 没有明确的跨服务复用诉求前，不要把服务内 MCP 放进公共 `runtime_service/mcp/servers.py`
+- 服务的私有 skill 只放在 `services/<service>/skills/`，不要抽到公共目录
+
+公共层与私有层的分工：
+
+- 公共工具池（`tools/registry.py`）只放“跨服务通用、稳定、低业务耦合”的工具
+- 服务私有工具放在 `services/<service>/tools.py`，由该服务 graph 显式装配
+- 服务私有 MCP 放在 `services/<service>/` 内部模块中，由该服务 graph 显式装配
 - 只有在用户或架构明确要求“做成跨服务共享能力”时，才进入公共 `mcp/` 模块与公共 catalog
+
+推荐范式：
+
+- 服务 graph 默认不要无脑调用公共 `build_tools(options)` 作为起点
+- 优先在服务内显式组装“该服务真正需要的最小工具集合”
+- 如果某个服务确实要接入公共工具，必须是显式 opt-in，而不是默认全量继承
+
+简单说：
+
+- 公共层是“被批准后共享”
+- 服务层是“默认私有”
+
+补充推荐：
+
+- 如果服务私有 MCP 未来可能独立部署到另一台机器，默认优先选 `SSE/HTTP` 这类网络传输
+- `stdio` 只适合本机联调或单机进程内临时验证，不应作为长期默认方案
+- 服务 graph 内部应只关心“私有 MCP spec 如何装配”，不要把部署耦合写死在公共 catalog 里
+
+这样做的目的不是故作姿态，而是避免两个常见烂坑：
+
+- 一个服务新增的 MCP/server 被别的服务意外继承，污染 agent 工具面
+- 一个强业务耦合 tool 被误放进公共层，后续改一个服务把其他服务一起打穿
+
+### 3.3 服务私有工具装配范式
+
+推荐结构：
+
+```python
+tools: list[Any] = []
+
+# 1. 服务私有 MCP
+tools.extend(await build_service_private_mcp_tools(service_config))
+
+# 2. 服务私有业务工具
+tools.extend(build_service_private_tools(service_config))
+
+# 3. skills 相关文件系统能力
+# 由 create_deep_agent(..., skills=[...], backend=...) 自动提供
+```
+
+约束：
+
+- `services/<service>/graph.py` 对最终进入 agent 的工具集合负责
+- 如果没有特殊说明，服务 graph 不应默认装配公共 builtin tools、公共 MCP tools
+- `runtime_service/mcp/servers.py` 只登记“明确对多个服务开放”的共享 MCP server
+- `runtime_service/tools/registry.py` 只处理公共能力，不承担服务私有装配职责
 
 ## 4. 运行时配置与服务配置
 

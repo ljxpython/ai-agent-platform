@@ -93,12 +93,37 @@ cp runtime_service/conf/settings.yaml.example runtime_service/conf/settings.yaml
 ```bash
 # from repo root
 cd apps/runtime-service
-uv run langgraph dev --config runtime_service/langgraph.json --port 8123 --no-browser
+uv run langgraph dev --config runtime_service/langgraph.json --port 8123 --no-browser --allow-blocking
 ```
 
 如果你已经在 `apps/runtime-service` 目录内，直接执行最后一行 `uv run ...` 即可。
 
 注意：`runtime_service/langgraph.json` 会自动加载 `runtime_service/.env`。如果 `.env` 中保留了旧的 `MODEL_ID`，它会覆盖 `settings.yaml` 的默认模型；排查模型配置问题时，先检查这里有没有陈旧值。
+
+如果启用了 `research_demo`、`deepagent_demo`、`test_case_agent` 这类依赖 Deep Agents 文件后端/skills 的 graph，当前本地 `langgraph dev` 调试请显式带上 `--allow-blocking`。这套依赖链内部仍有同步文件 IO（如 `resolve` / `readlink` / `stat`），在 `langgraph-api 0.7.58` 下会被 `blockbuster` 直接拦成 `BlockingError`。
+
+同时建议在 `.env` 中保留 `BG_JOB_ISOLATED_LOOPS=true`。它对托管/后台 worker 仍然有价值，但单独配置它并不能替代当前本地 dev 的 `--allow-blocking`。
+
+如果是部署环境，可以直接在配置或容器环境变量中声明：
+
+```json
+{
+  "graphs": {
+    "agent": "./graph.py:graph"
+  },
+  "env": {
+    "BG_JOB_ISOLATED_LOOPS": "true"
+  }
+}
+```
+
+容器环境也可以直接在启动前导出：
+
+```bash
+export BG_JOB_ISOLATED_LOOPS=true
+```
+
+这两种方式都适合部署侧注入环境变量；当前仓库本地联调仍以 `.env` + `--allow-blocking` 为准。
 
 启动后建议先做最小健康检查：
 

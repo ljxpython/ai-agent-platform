@@ -34,6 +34,7 @@ from runtime_service.runtime.options import (  # noqa: E402
     build_runtime_config,
     merge_trusted_auth_context,
 )
+from runtime_service.tests.live_args import parse_uuid_arg  # noqa: E402
 from runtime_service.tests.services_test_case_service_debug import (  # noqa: E402
     _print_section,
     _resolve_pdf_path,
@@ -42,6 +43,15 @@ from runtime_service.tests.services_test_case_service_debug import (  # noqa: E4
 
 DOCUMENTS_PATH = "/api/test-case-service/documents"
 TEST_CASES_PATH = "/api/test-case-service/test-cases"
+PERSISTENCE_STATUSES = (
+    "persisted",
+    "partial_failed",
+    "failed_remote_request",
+    "failed_invalid_project_id",
+    "skipped_remote_not_configured",
+    "skipped_empty_test_cases",
+    "failed_missing_project_id",
+)
 
 
 def _verify_remote_results(
@@ -82,6 +92,18 @@ def _verify_remote_results(
     }
 
 
+def _detect_persistence_status(output_text: Any) -> str | None:
+    if not isinstance(output_text, str) or not output_text:
+        return None
+    for status in PERSISTENCE_STATUSES:
+        if (
+            f'"status":"{status}"' in output_text
+            or f'"status": "{status}"' in output_text
+        ):
+            return status
+    return None
+
+
 def _build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run a real end-to-end persistence validation for test_case_service."
@@ -100,7 +122,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--project-id",
         required=True,
-        help="显式 project_id；真实链路验证不再允许 default project fallback。",
+        type=parse_uuid_arg,
+        help="显式 project_id；必须是 UUID，真实链路验证不再允许 default project fallback。",
     )
     parser.add_argument(
         "--parser-model-id",
@@ -180,13 +203,35 @@ async def _main_async(args: argparse.Namespace) -> int:
             {"reason": "persist_test_case_results_not_called"},
         )
         return 1
+    persistence_status = _detect_persistence_status(graph_report.get("output_text"))
+    if persistence_status and persistence_status != "persisted":
+        _print_section(
+            "Remote Verification Skipped",
+            {
+                "reason": "persistence_not_completed",
+                "persistence_status": persistence_status,
+            },
+        )
+        return 1
 
-    remote_report = await asyncio.to_thread(
-        _verify_remote_results,
-        config=config,
-        project_id=project_id,
-        batch_id=batch_id,
-    )
+    try:
+        remote_report = await asyncio.to_thread(
+            _verify_remote_results,
+            config=config,
+            project_id=project_id,
+            batch_id=batch_id,
+        )
+    except Exception as exc:
+        _print_section(
+            "Remote Verification Failed",
+            {
+                "reason": "interaction_data_service_request_failed",
+                "error_type": exc.__class__.__name__,
+                "error_message": str(exc),
+                "persistence_status": persistence_status,
+            },
+        )
+        return 1
     _print_section("Remote Verification", remote_report)
 
     if int(remote_report.get("documents_total") or 0) <= 0:

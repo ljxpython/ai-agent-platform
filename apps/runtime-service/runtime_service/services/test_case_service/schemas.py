@@ -15,6 +15,10 @@ DEFAULT_TEST_CASE_MODEL_ID = "deepseek_chat"
 DEFAULT_TEST_CASE_PROJECT_ID = "00000000-0000-0000-0000-000000000001"
 DEFAULT_TEST_CASE_ALLOW_DEFAULT_PROJECT_FALLBACK = False
 DEFAULT_TEST_CASE_PERSISTENCE_ENABLED = True
+DEFAULT_TEST_CASE_KNOWLEDGE_MCP_ENABLED = True
+DEFAULT_TEST_CASE_KNOWLEDGE_MCP_URL = "http://0.0.0.0:8000/sse"
+DEFAULT_TEST_CASE_KNOWLEDGE_TIMEOUT_SECONDS = 30
+DEFAULT_TEST_CASE_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS = 300
 
 
 @dataclass(frozen=True)
@@ -26,6 +30,12 @@ class TestCaseServiceConfig:
     default_project_id: str = DEFAULT_TEST_CASE_PROJECT_ID
     allow_default_project_fallback: bool = DEFAULT_TEST_CASE_ALLOW_DEFAULT_PROJECT_FALLBACK
     persistence_enabled: bool = DEFAULT_TEST_CASE_PERSISTENCE_ENABLED
+    knowledge_mcp_enabled: bool = DEFAULT_TEST_CASE_KNOWLEDGE_MCP_ENABLED
+    knowledge_mcp_url: str = DEFAULT_TEST_CASE_KNOWLEDGE_MCP_URL
+    knowledge_timeout_seconds: int = DEFAULT_TEST_CASE_KNOWLEDGE_TIMEOUT_SECONDS
+    knowledge_sse_read_timeout_seconds: int = (
+        DEFAULT_TEST_CASE_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS
+    )
 
 
 class PersistTestCaseItem(BaseModel):
@@ -99,6 +109,22 @@ def build_test_case_service_config(config: RunnableConfig) -> TestCaseServiceCon
         persistence_enabled=_parse_bool(
             private_config.get("test_case_persistence_enabled"),
             DEFAULT_TEST_CASE_PERSISTENCE_ENABLED,
+        ),
+        knowledge_mcp_enabled=_parse_bool(
+            private_config.get("test_case_knowledge_mcp_enabled"),
+            DEFAULT_TEST_CASE_KNOWLEDGE_MCP_ENABLED,
+        ),
+        knowledge_mcp_url=str(
+            private_config.get("test_case_knowledge_mcp_url")
+            or DEFAULT_TEST_CASE_KNOWLEDGE_MCP_URL
+        ),
+        knowledge_timeout_seconds=_parse_int(
+            private_config.get("test_case_knowledge_timeout_seconds"),
+            DEFAULT_TEST_CASE_KNOWLEDGE_TIMEOUT_SECONDS,
+        ),
+        knowledge_sse_read_timeout_seconds=_parse_int(
+            private_config.get("test_case_knowledge_sse_read_timeout_seconds"),
+            DEFAULT_TEST_CASE_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS,
         ),
     )
 

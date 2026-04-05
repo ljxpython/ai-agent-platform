@@ -31,6 +31,7 @@ from runtime_service.integrations import (  # noqa: E402
     InteractionDataServiceClient,
     build_interaction_data_service_config,
 )
+from runtime_service.tests.live_args import parse_uuid_arg  # noqa: E402
 from runtime_service.tests.services_test_case_service_debug import (  # noqa: E402
     _print_section,
     _resolve_pdf_path,
@@ -41,6 +42,10 @@ DEFAULT_PLATFORM_API_URL = "http://127.0.0.1:2024"
 DEFAULT_DEFAULT_PROJECT_ID = "00000000-0000-0000-0000-000000000001"
 DEFAULT_GRAPH_ID = "test_case_agent"
 DEFAULT_MODEL_ID = "deepseek_chat"
+DEFAULT_PLATFORM_API_TOKEN_ENV_KEYS = (
+    "PLATFORM_API_TOKEN",
+    "PLATFORM_ACCESS_TOKEN",
+)
 
 
 def _normalize_base_url(url: str) -> str:
@@ -60,6 +65,33 @@ def _build_management_assistants_url(platform_api_url: str, project_id: str) -> 
 def _build_langgraph_assistants_search_url(platform_api_url: str) -> str:
     base = _normalize_base_url(platform_api_url)
     return f"{base}/api/langgraph/assistants/search"
+
+
+def _resolve_platform_token(args: argparse.Namespace) -> str | None:
+    raw = str(getattr(args, "platform_token", "") or "").strip()
+    if raw:
+        return raw
+    for key in DEFAULT_PLATFORM_API_TOKEN_ENV_KEYS:
+        value = str(os.getenv(key, "") or "").strip()
+        if value:
+            return value
+    return None
+
+
+def _build_platform_headers(
+    args: argparse.Namespace,
+    *,
+    project_id: str | None = None,
+) -> dict[str, str]:
+    headers: dict[str, str] = {}
+    token = _resolve_platform_token(args)
+    if token:
+        headers["authorization"] = (
+            token if token.lower().startswith("bearer ") else f"Bearer {token}"
+        )
+    if isinstance(project_id, str) and project_id.strip():
+        headers["x-project-id"] = project_id.strip()
+    return headers
 
 
 def _build_interaction_config(args: argparse.Namespace) -> dict[str, Any]:
@@ -157,7 +189,7 @@ async def _resolve_assistant_id(args: argparse.Namespace) -> str:
         management_url = _build_management_assistants_url(
             args.platform_api_url, args.project_id
         )
-        headers = {"x-project-id": args.project_id}
+        headers = _build_platform_headers(args, project_id=args.project_id)
         params = {"graph_id": args.graph_id, "limit": 20, "offset": 0}
         try:
             response = await client.get(management_url, params=params, headers=headers)
@@ -215,7 +247,7 @@ async def _run_positive_case(
 
     client = langgraph_sdk.get_client(
         url=_build_langgraph_url(args.platform_api_url),
-        headers={"x-project-id": args.project_id},
+        headers=_build_platform_headers(args, project_id=args.project_id),
     )
     thread = await client.threads.create(metadata={"source": "project-scope-live"})
     result = await client.runs.wait(
@@ -296,7 +328,10 @@ async def _run_negative_case(
         ),
     }
 
-    client = langgraph_sdk.get_client(url=_build_langgraph_url(args.platform_api_url))
+    client = langgraph_sdk.get_client(
+        url=_build_langgraph_url(args.platform_api_url),
+        headers=_build_platform_headers(args),
+    )
     thread = await client.threads.create(metadata={"source": "project-scope-negative"})
 
     error_summary: dict[str, Any] = {}
@@ -374,17 +409,27 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--project-id",
         required=True,
-        help="要验证的真实 project_id。",
+        type=parse_uuid_arg,
+        help="要验证的真实 project_id，必须是 UUID。",
     )
     parser.add_argument(
         "--default-project-id",
         default=DEFAULT_DEFAULT_PROJECT_ID,
-        help="默认兜底项目 ID，用于确认没有脏写入。",
+        type=parse_uuid_arg,
+        help="默认兜底项目 ID，用于确认没有脏写入；必须是 UUID。",
     )
     parser.add_argument(
         "--platform-api-url",
         default=DEFAULT_PLATFORM_API_URL,
         help="platform-api 基地址，默认 http://127.0.0.1:2024 。",
+    )
+    parser.add_argument(
+        "--platform-token",
+        default=None,
+        help=(
+            "platform-api Bearer token；不传则尝试读取环境变量 "
+            "PLATFORM_API_TOKEN / PLATFORM_ACCESS_TOKEN。"
+        ),
     )
     parser.add_argument(
         "--platform-timeout",
@@ -448,6 +493,7 @@ async def _main_async(args: argparse.Namespace) -> int:
             "project_id": args.project_id,
             "default_project_id": args.default_project_id,
             "platform_api_url": _normalize_base_url(args.platform_api_url),
+            "platform_token_configured": bool(_resolve_platform_token(args)),
             "langgraph_url": _build_langgraph_url(args.platform_api_url),
             "assistant_id": assistant_id,
             "graph_id": args.graph_id,

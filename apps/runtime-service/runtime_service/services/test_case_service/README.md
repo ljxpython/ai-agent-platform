@@ -21,6 +21,7 @@ test_case_service/
 ├── graph.py          # make_graph 工厂函数（LangGraph 入口）
 ├── prompts.py        # SYSTEM_PROMPT（角色定位 + Skills 激活协议）
 ├── schemas.py        # 服务配置 + 持久化工具入参模型
+├── knowledge_mcp.py  # 服务私有知识库 MCP（SSE 装配）
 ├── tools.py          # 服务私有工具（persist_test_case_results）
 ├── __init__.py       # 延迟导入（避免 pytest collect 阶段 import 错误）
 ├── skills/           # 私有 Skills 知识库
@@ -42,6 +43,7 @@ test_case_service/
 - **`FilesystemBackend(virtual_mode=True)`**：Skills 从磁盘加载，运行时中间产物保存内存不落盘
 - **`skills=["/skills/"]`**：加载 backend root 下 `skills/` 目录中的所有 SKILL.md
 - **`MultimodalMiddleware`**：横切多模态解析能力，解析结果写入 `state.multimodal_summary`
+- **服务私有知识库 MCP**：通过 `MultiServerMCPClient(...).get_tools()` 以 `SSE` 接入远端知识库 MCP，仅在 `test_case_service` 内装配
 - **服务私有持久化工具**：`persist_test_case_results` 负责把附件解析结果和正式测试用例写入 `interaction-data-service`
 - **共享 Interaction Data HTTP Client**：抽取到 `runtime_service.integrations.interaction_data`
 - **`RuntimeContext`**：通过 `context_schema` 注入运行时上下文
@@ -60,6 +62,10 @@ test_case_service/
 | `test_case_default_project_id` | `str` | `00000000-0000-0000-0000-000000000001` | 仅在显式开启 `test_case_allow_default_project_fallback=true` 时使用的调试默认项目 ID |
 | `test_case_allow_default_project_fallback` | `bool` | `False` | 是否允许在缺失真实项目上下文时回退到默认项目；平台真实链路必须保持关闭 |
 | `test_case_persistence_enabled` | `bool` | `True` | 是否允许调用正式持久化工具 |
+| `test_case_knowledge_mcp_enabled` | `bool` | `True` | 是否启用服务私有知识库 MCP |
+| `test_case_knowledge_mcp_url` | `str` | `http://0.0.0.0:8000/sse` | 服务私有知识库 MCP 的 SSE 地址 |
+| `test_case_knowledge_timeout_seconds` | `int` | `30` | 知识库 MCP 连接超时 |
+| `test_case_knowledge_sse_read_timeout_seconds` | `int` | `300` | 知识库 MCP SSE 读超时 |
 | `interaction_data_service_url` | `str` | 环境变量/空 | interaction-data-service 基地址 |
 | `interaction_data_service_token` | `str` | 环境变量/空 | interaction-data-service Bearer Token |
 | `interaction_data_service_timeout_seconds` | `int` | `10` | interaction-data-service 请求超时 |
@@ -69,6 +75,8 @@ test_case_service/
 - 如果 `RunnableConfig.configurable.model_id` 已显式传入，则始终优先使用调用方指定模型
 - 只有在未显式传 `model_id` 且未设置环境变量 `MODEL_ID` 时，服务才回落到 `test_case_default_model_id=deepseek_chat`
 - `project_id` 是受信运行时上下文，平台真实链路必须由 `platform-api` 注入到 `context/metadata`；未注入时 `test_case_service` 会显式报错，不再静默写入默认项目
+- 当前 `interaction-data-service` 的 `test-case-service` 相关接口要求 `project_id` 为 UUID 字符串；联调脚本里的 `--project-id` 也会前置校验这一点，避免把无效参数直接打成远端 `400`
+- `test_case_service` 的文档即时持久化层和 `persist_test_case_results` 也会校验 `project_id` 是否为 UUID；无效时不会再把请求发到远端
 
 ## Skills 说明
 
@@ -83,6 +91,48 @@ Agent 通过 `SkillsMiddleware` 自动加载以下 Skills，按需激活：
 | `output-formatter` | 输出最终格式化测试用例交付物 |
 | `test-data-generator` | 用户需要配套测试数据 |
 | `test-case-persistence` | 输出正式测试资产并落库到 interaction-data-service |
+
+## 知识库工具装配
+
+`test_case_service` 不再默认继承公共 tools / 公共 MCP。当前 agent 的工具集合收敛为：
+
+- deep agent 自带文件系统工具
+- 服务私有知识库 MCP 的 3 个工具：
+  - `query_project_knowledge`
+  - `list_project_knowledge_documents`
+  - `get_project_knowledge_document_status`
+- `persist_test_case_results`
+
+推荐接入方式：
+
+- 默认推荐 **SSE**，而不是本地 `stdio`
+- 原因很直接：后续知识库服务与 `runtime-service` 大概率不会部署在同一台机器上，SSE 更符合真实部署形态
+- 当前 `test_case_service` 的私有知识库配置默认就是 `http://0.0.0.0:8000/sse`
+- 若后续上正式环境，只改 `test_case_knowledge_mcp_url`，不需要改 graph 装配逻辑
+
+知识工具使用约束：
+
+- `query_project_knowledge` 是默认主入口
+- `list_project_knowledge_documents` 只在需要确认文档范围时调用
+- `get_project_knowledge_document_status` 只在排查索引状态或检索异常时调用
+- 如果当前轮附件和 `multimodal_summary` 已足够支撑结论，不要机械补查知识库
+- 如果用户直接要求“生成某类业务/模块/场景测试用例”，且当前轮没有提供附件，必须先查询私有知识库，再基于命中的业务片段生成用例
+- graph 会把当前请求解析到的 `project_id` 注入系统提示词，agent 调用知识工具时必须使用该项目 ID
+- 服务内会把 MCP 工具返回的内容块归一化为字符串，避免当前模型链路在 tool message 回灌时发生 400 反序列化错误
+- 服务内额外挂了 `TestCaseKnowledgeQueryGuardMiddleware`：无附件业务用例请求会先强制 `read_file(/skills/requirement-analysis/SKILL.md)`，再强制 `query_project_knowledge`，不是只靠 prompt 自觉
+- 服务内新增了 `TestCaseKnowledgeQueryGuardMiddleware`，对“无附件生成业务测试用例”场景做代码级兜底：
+  - 先强制读取 `/skills/requirement-analysis/SKILL.md`
+  - 再强制调用 `query_project_knowledge`
+  - `query_project_knowledge` 命中前，不放开正式用例生成链路
+
+无附件生成用例约束：
+
+- 输入示例：`生成支付业务测试用例`、`生成登录模块测试用例`
+- 这类请求即使没有 PDF/图片，也不能直接按经验出用例
+- 必须先调用 `query_project_knowledge`
+- 必须基于命中的知识片段抽取规则、流程、边界条件，再生成正式测试用例
+- 如果知识库无结果，应明确说明“知识依据不足”，而不是编造业务细节
+- 代码层顺序是：`read_file(requirement-analysis) -> query_project_knowledge -> 正常策略/用例生成`
 
 ## 在 LangGraph 中的注册
 
@@ -105,9 +155,19 @@ pytest runtime_service/services/test_case_service/tests/ -v
 ```bash
 cd apps/runtime-service
 
+# 先在知识库仓库启动 SSE MCP
+# cd /path/to/light_anything_test
+# MCP_TRANSPORT=sse MCP_HOST=0.0.0.0 MCP_PORT=8000 uv run python src/mcp_server.py
+
 uv run python runtime_service/tests/services_test_case_service_document_live.py \
   --project-id 5f419550-a3c7-49c6-9450-09154fd1bf7d \
   --model-id deepseek_chat
+
+uv run python runtime_service/tests/services_test_case_service_knowledge_live.py \
+  --project-id 5f419550-a3c7-49c6-9450-09154fd1bf7d \
+  --knowledge-mcp-url http://0.0.0.0:8000/sse \
+  --model-id deepseek_chat \
+  --require-query-tool
 
 uv run python runtime_service/tests/services_test_case_service_persistence_live.py \
   --project-id 5f419550-a3c7-49c6-9450-09154fd1bf7d \
@@ -115,14 +175,25 @@ uv run python runtime_service/tests/services_test_case_service_persistence_live.
 
 uv run python runtime_service/tests/services_test_case_service_project_scope_live.py \
   --project-id 5f419550-a3c7-49c6-9450-09154fd1bf7d \
+  --platform-token <platform_api_bearer_token> \
   --model-id deepseek_chat
 ```
 
 说明：
 
 - `services_test_case_service_document_live.py`：验证“上传即落库”的 document 链路
+- `services_test_case_service_knowledge_live.py`：验证 agent 在真实对话中会调用私有知识库 MCP 工具；加 `--require-query-tool` 可强制断言必须命中 `query_project_knowledge`
 - `services_test_case_service_persistence_live.py`：验证正式 testcase 保存与 `source_document_ids` 关联
 - `services_test_case_service_project_scope_live.py`：验证 `platform-api` 项目作用域注入、缺失项目时的显式失败、以及默认项目不被脏写入
+- 所有 live 脚本的 `--project-id` 都要求传 UUID；不要再用 `test-case-persist-123456` 这种普通字符串
+- `services_test_case_service_project_scope_live.py` 需要 `platform-api` 的 Bearer token；可显式传 `--platform-token`，也可通过环境变量 `PLATFORM_API_TOKEN` / `PLATFORM_ACCESS_TOKEN` 提供
+
+当前已验证事实：
+
+- `test_case_service -> 私有 SSE MCP -> RAG Anything` 主链路可真实跑通
+- 同一轮 agent 对话里可连续多次调用 `query_project_knowledge`
+- 知识库验证场景下不会误调用 `persist_test_case_results`
+- 当 `interaction-data-service` 已配置但暂时不可达时，`persist_test_case_results` 会返回结构化失败结果，而不是直接打崩整条 agent 链路
 
 ## 典型使用场景
 
@@ -131,3 +202,9 @@ uv run python runtime_service/tests/services_test_case_service_project_scope_liv
 3. **上传已有用例集** → 直接触发 quality-review 评分
 4. **指定导出格式** → output-formatter 输出 JSON/CSV 供工具导入
 5. **需要正式保存** → `persist_test_case_results` 把附件解析结果和最终测试用例写入 interaction-data-service
+
+## 私有化约束
+
+- 该服务默认不把知识库能力注册进公共 `runtime_service/mcp/servers.py`
+- 该服务默认不继承公共 `tools/registry.py` 的工具集合
+- 私有知识库 MCP、私有 skills、私有持久化工具都由 `test_case_service/graph.py` 显式装配

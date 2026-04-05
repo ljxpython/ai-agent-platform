@@ -16,6 +16,10 @@
    - Agent 专属 chat 页面模板的推荐开发方式与边界约定
 7. `docs/testcase-workspace.md`
    - Testcase 工作区页面、路由、上下文卡片与接口依赖
+8. `docs/frontend-admin-framework-research.md`
+   - 前端中台框架调研、候选对比与推荐结论
+9. `docs/frontend-visual-refresh-plan.md`
+   - 平台视觉升级的分阶段规划
 
 ## 文档约定
 

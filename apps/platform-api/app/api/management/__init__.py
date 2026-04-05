@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
+from .announcements import router as announcements_router
 from .assistants import router as assistants_router
 from .audit import router as audit_router
 from .auth import router as auth_router
@@ -18,6 +19,7 @@ router.include_router(auth_router)
 router.include_router(users_router)
 router.include_router(projects_router)
 router.include_router(members_router)
+router.include_router(announcements_router)
 router.include_router(audit_router)
 router.include_router(assistants_router)
 router.include_router(catalog_router)

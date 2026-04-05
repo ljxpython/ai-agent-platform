@@ -43,8 +43,29 @@ graph 注册以 `runtime_service/langgraph.json` 和 `runtime_service/langgraph_
 在 `apps/runtime-service` 目录执行：
 
 ```bash
-uv run langgraph dev --config runtime_service/langgraph.json --port 8123 --no-browser
+uv run langgraph dev --config runtime_service/langgraph.json --port 8123 --no-browser --allow-blocking
 ```
+
+说明：
+
+- `research_demo`、`deepagent_demo`、`test_case_agent` 这类依赖 Deep Agents 文件后端/skills 的 graph，在当前本地 `langgraph-api 0.7.58` 下需要 `--allow-blocking`，否则容易被 `blockbuster` 拦成 `BlockingError`。
+- 如果是部署环境，可以在 `langgraph.json` 中直接使用内联 `env`：
+
+```json
+{
+  "env": {
+    "BG_JOB_ISOLATED_LOOPS": "true"
+  }
+}
+```
+
+- 容器环境也可以直接在启动前设置：
+
+```bash
+export BG_JOB_ISOLATED_LOOPS=true
+```
+
+- 需要注意：`BG_JOB_ISOLATED_LOOPS=true` 对后台 worker/部署环境有价值，但单独配置它并不能替代当前本地 dev 的 `--allow-blocking`。
 
 常用验证：
 

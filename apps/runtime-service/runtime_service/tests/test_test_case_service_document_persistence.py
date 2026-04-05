@@ -14,6 +14,7 @@ from runtime_service.middlewares.multimodal import MULTIMODAL_ATTACHMENTS_KEY
 from runtime_service.middlewares.multimodal import protocol as multimodal_protocol
 from runtime_service.runtime.context import RuntimeContext
 from runtime_service.services.test_case_service.document_persistence import (
+    INVALID_PROJECT_ID_ERROR,
     MISSING_PROJECT_ID_ERROR,
     PERSIST_STATUS_PERSISTED,
     persist_runtime_documents,
@@ -52,8 +53,9 @@ class _FakeInteractionDataClient:
                 "content_type": content_type,
             }
         )
+        extension = Path(file_name).suffix or ".bin"
         return {
-            "storage_path": f"test-case-service/{form_data['project_id']}/{form_data['batch_id']}/asset.pdf",
+            "storage_path": f"test-case-service/{form_data['project_id']}/{form_data['batch_id']}/asset{extension}",
             "filename": file_name,
             "content_type": content_type,
             "size": len(file_bytes),
@@ -123,6 +125,65 @@ def test_persist_runtime_documents_uploads_pdf_asset_from_request_messages(tmp_p
     assert outcome.attachments[0].get("persist_error") is None
 
 
+def test_persist_runtime_documents_uploads_image_asset_from_request_messages(tmp_path: Path) -> None:
+    image_path = tmp_path / "sample.png"
+    image_bytes = (
+        b"\x89PNG\r\n\x1a\n"
+        b"\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01\x08\x02\x00\x00\x00\x90wS\xde"
+        b"\x00\x00\x00\x0cIDAT\x08\x99c```\x00\x00\x00\x04\x00\x01\xf6\x178U"
+        b"\x00\x00\x00\x00IEND\xaeB`\x82"
+    )
+    image_path.write_bytes(image_bytes)
+
+    message = build_human_message_from_paths("请分析图片附件", [image_path])
+    normalized_messages = multimodal_protocol.normalize_messages([message])
+    attachments = multimodal_protocol.collect_current_turn_attachment_artifacts(normalized_messages)
+    assert len(attachments) == 1
+
+    attachment = dict(attachments[0])
+    attachment["status"] = "parsed"
+    attachment["summary_for_model"] = "图片已解析"
+    attachment["parsed_text"] = "这是图片的解析结果"
+
+    state = {MULTIMODAL_ATTACHMENTS_KEY: [attachment]}
+    runtime = SimpleNamespace(
+        state=state,
+        config={
+            "configurable": {
+                "project_id": "5f419550-a3c7-49c6-9450-09154fd1bf7d",
+                "thread_id": "thread-test-image-1",
+                "batch_id": "test-case-service:batch-test-image-1",
+            }
+        },
+        context=RuntimeContext(),
+    )
+    client = _FakeInteractionDataClient()
+
+    outcome = persist_runtime_documents(
+        runtime=runtime,
+        state=state,
+        service_config=ServiceConfig(),
+        client=client,
+        messages=normalized_messages,
+    )
+
+    assert outcome.status == "persisted"
+    assert len(client.multipart_requests) == 1
+    assert client.multipart_requests[0]["file_bytes"] == image_bytes
+    assert client.multipart_requests[0]["file_name"] == "sample.png"
+    assert client.multipart_requests[0]["content_type"] == "image/png"
+    assert client.json_requests[0]["payload"]["content_type"] == "image/png"
+    assert client.json_requests[0]["payload"]["storage_path"] == (
+        "test-case-service/5f419550-a3c7-49c6-9450-09154fd1bf7d/"
+        "test-case-service:batch-test-image-1/asset.png"
+    )
+    assert outcome.attachments[0]["persist_status"] == PERSIST_STATUS_PERSISTED
+    assert outcome.attachments[0]["storage_path"] == (
+        "test-case-service/5f419550-a3c7-49c6-9450-09154fd1bf7d/"
+        "test-case-service:batch-test-image-1/asset.png"
+    )
+
+
 def test_persist_runtime_documents_prefers_runtime_context_project_id(tmp_path: Path) -> None:
     pdf_path = tmp_path / "context-sample.pdf"
     pdf_path.write_bytes(b"%PDF-1.4\n%%EOF")
@@ -185,6 +246,45 @@ def test_persist_runtime_documents_requires_project_id(tmp_path: Path) -> None:
         assert str(exc) == MISSING_PROJECT_ID_ERROR
     else:
         raise AssertionError("persist_runtime_documents should require project_id")
+
+
+def test_persist_runtime_documents_rejects_non_uuid_project_id(tmp_path: Path) -> None:
+    pdf_path = tmp_path / "invalid-project.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n%%EOF")
+
+    message = build_human_message_from_paths("请分析附件", [pdf_path])
+    normalized_messages = multimodal_protocol.normalize_messages([message])
+    attachments = multimodal_protocol.collect_current_turn_attachment_artifacts(normalized_messages)
+    attachment = dict(attachments[0])
+    attachment["status"] = "parsed"
+    attachment["summary_for_model"] = "PDF 已解析"
+    attachment["parsed_text"] = "这是 PDF 的解析结果"
+    state = {MULTIMODAL_ATTACHMENTS_KEY: [attachment]}
+    runtime = SimpleNamespace(
+        state=state,
+        config={
+            "configurable": {
+                "project_id": "project-not-uuid",
+                "thread_id": "thread-test-invalid-project",
+                "batch_id": "test-case-service:batch-test-invalid-project",
+            }
+        },
+        context=RuntimeContext(),
+    )
+    client = _FakeInteractionDataClient()
+
+    try:
+        persist_runtime_documents(
+            runtime=runtime,
+            state=state,
+            service_config=ServiceConfig(),
+            client=client,
+            messages=normalized_messages,
+        )
+    except ValueError as exc:
+        assert str(exc) == INVALID_PROJECT_ID_ERROR
+    else:
+        raise AssertionError("persist_runtime_documents should reject non-uuid project_id")
 
 
 def test_persist_runtime_documents_allows_explicit_default_project_fallback(tmp_path: Path) -> None:

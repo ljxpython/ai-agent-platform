@@ -48,6 +48,12 @@ from runtime_service.services.test_case_service.schemas import (  # noqa: E402
     build_test_case_service_config,
 )
 
+KNOWLEDGE_TOOL_NAMES = {
+    "query_project_knowledge",
+    "list_project_knowledge_documents",
+    "get_project_knowledge_document_status",
+}
+
 
 def _json_dump(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, indent=2, default=str)
@@ -313,6 +319,7 @@ async def _stream_agent_run(
     return {
         "ok": True,
         "tool_calls": tool_calls,
+        "knowledge_tool_calls": [name for name in tool_calls if name in KNOWLEDGE_TOOL_NAMES],
         "skill_related_tool_calls": [
             name for name in tool_calls if name in {"read_file", "ls", "glob"}
         ],
@@ -358,6 +365,28 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="跳过 MultimodalMiddleware 预检。",
     )
+    parser.add_argument(
+        "--project-id",
+        default=None,
+        help="可选：显式 project_id。用于知识库 MCP 或正式项目作用域联调。",
+    )
+    parser.add_argument(
+        "--knowledge-mcp-url",
+        default=None,
+        help="可选：覆盖 test_case_service 私有知识库 MCP SSE 地址。",
+    )
+    parser.add_argument(
+        "--knowledge-timeout",
+        type=int,
+        default=None,
+        help="可选：覆盖知识库 MCP 连接超时秒数。",
+    )
+    parser.add_argument(
+        "--knowledge-sse-read-timeout",
+        type=int,
+        default=None,
+        help="可选：覆盖知识库 MCP SSE 读超时秒数。",
+    )
     return parser
 
 
@@ -372,8 +401,18 @@ async def _main_async(args: argparse.Namespace) -> int:
             "model_id": args.model_id,
         }
     }
+    if args.project_id:
+        config["configurable"]["project_id"] = args.project_id
     if args.parser_model_id:
         config["configurable"]["test_case_multimodal_parser_model_id"] = args.parser_model_id
+    if args.knowledge_mcp_url:
+        config["configurable"]["test_case_knowledge_mcp_url"] = args.knowledge_mcp_url
+    if args.knowledge_timeout is not None:
+        config["configurable"]["test_case_knowledge_timeout_seconds"] = args.knowledge_timeout
+    if args.knowledge_sse_read_timeout is not None:
+        config["configurable"]["test_case_knowledge_sse_read_timeout_seconds"] = (
+            args.knowledge_sse_read_timeout
+        )
 
     runtime_options = build_runtime_config(config, merge_trusted_auth_context(config, {}))
     service_config = build_test_case_service_config(config)
@@ -388,6 +427,11 @@ async def _main_async(args: argparse.Namespace) -> int:
             "parser_model_id": service_config.multimodal_parser_model_id,
             "runtime_model": runtime_options.model_spec.model,
             "runtime_provider": runtime_options.model_spec.model_provider,
+            "project_id": args.project_id,
+            "knowledge_mcp_enabled": service_config.knowledge_mcp_enabled,
+            "knowledge_mcp_url": service_config.knowledge_mcp_url,
+            "knowledge_timeout_seconds": service_config.knowledge_timeout_seconds,
+            "knowledge_sse_read_timeout_seconds": service_config.knowledge_sse_read_timeout_seconds,
         },
     )
     _print_section(

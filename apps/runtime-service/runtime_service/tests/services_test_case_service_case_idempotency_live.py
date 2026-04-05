@@ -34,6 +34,7 @@ from runtime_service.services.test_case_service.tools import (  # noqa: E402
     TEST_CASES_PATH,
     _build_test_case_payloads,
 )
+from runtime_service.tests.live_args import parse_uuid_arg  # noqa: E402
 
 
 def _json_dump(payload: Any) -> str:
@@ -52,7 +53,8 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--project-id",
         required=True,
-        help="显式 project_id；真实链路验证不再允许 default project fallback。",
+        type=parse_uuid_arg,
+        help="显式 project_id；必须是 UUID，真实链路验证不再允许 default project fallback。",
     )
     parser.add_argument(
         "--batch-id",

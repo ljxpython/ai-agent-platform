@@ -13,9 +13,11 @@ from runtime_service.integrations import (
 )
 from runtime_service.runtime.context import RuntimeContext
 from runtime_service.services.test_case_service.document_persistence import (
+    INVALID_PROJECT_ID_ERROR,
+    MISSING_PROJECT_ID_ERROR,
     _coerce_string_list,
     _get_runtime_state,
-    _require_project_id,
+    _require_uuid_project_id,
     _resolve_batch_id,
     _resolve_runtime_meta,
     collect_persisted_document_ids,
@@ -159,6 +161,27 @@ def _build_test_case_payloads(
     return payloads
 
 
+def _persist_test_case_payloads(
+    *,
+    client: InteractionDataServiceClient,
+    payloads: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, str]]]:
+    persisted_items: list[dict[str, Any]] = []
+    failed_items: list[dict[str, str]] = []
+    for payload in payloads:
+        try:
+            persisted_items.append(client.post_json(TEST_CASES_PATH, payload))
+        except Exception as exc:
+            failed_items.append(
+                {
+                    "title": str(payload.get("title") or ""),
+                    "idempotency_key": str(payload.get("idempotency_key") or ""),
+                    "error": str(exc),
+                }
+            )
+    return persisted_items, failed_items
+
+
 def build_test_case_service_tools(service_config: TestCaseServiceConfig) -> list[Any]:
     @tool(
         "persist_test_case_results",
@@ -196,12 +219,18 @@ def build_test_case_service_tools(service_config: TestCaseServiceConfig) -> list
         batch_id = _resolve_batch_id(runtime)
         runtime_meta = _resolve_runtime_meta(runtime)
         try:
-            project_id = _require_project_id(runtime, service_config)
+            project_id = _require_uuid_project_id(runtime, service_config)
         except ValueError as exc:
+            reason = str(exc)
+            status = (
+                "failed_missing_project_id"
+                if reason == MISSING_PROJECT_ID_ERROR
+                else "failed_invalid_project_id"
+            )
             return json.dumps(
                 {
-                    "status": "failed_missing_project_id",
-                    "reason": str(exc),
+                    "status": status,
+                    "reason": reason,
                     "batch_id": batch_id,
                     "test_case_count": len(normalized_cases),
                 },
@@ -247,7 +276,29 @@ def build_test_case_service_tools(service_config: TestCaseServiceConfig) -> list
             export_format=export_format,
             runtime_meta=runtime_meta,
         )
-        persisted_test_cases = [client.post_json(TEST_CASES_PATH, payload) for payload in test_case_payloads]
+        persisted_test_cases, failed_test_cases = _persist_test_case_payloads(
+            client=client,
+            payloads=test_case_payloads,
+        )
+        if failed_test_cases:
+            status = "partial_failed" if persisted_test_cases else "failed_remote_request"
+            return json.dumps(
+                {
+                    "status": status,
+                    "project_id": project_id,
+                    "batch_id": batch_id,
+                    "document_status": document_outcome.status,
+                    "persisted_document_count": len(source_document_ids),
+                    "persisted_document_ids": source_document_ids,
+                    "persisted_test_case_count": len(persisted_test_cases),
+                    "persisted_test_case_ids": _coerce_string_list(
+                        [item.get("id") for item in persisted_test_cases]
+                    ),
+                    "failed_test_case_count": len(failed_test_cases),
+                    "failed_test_cases": failed_test_cases,
+                },
+                ensure_ascii=False,
+            )
         return json.dumps(
             {
                 "status": "persisted",

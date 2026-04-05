@@ -13,6 +13,28 @@ if str(_PROJECT_ROOT) not in sys.path:
 research_agent_graph = importlib.import_module("runtime_service.agents.research_agent.graph")
 
 
+def test_async_backend_root_dir_creation_uses_to_thread(monkeypatch: Any) -> None:
+    calls: list[tuple[Any, tuple[Any, ...], dict[str, Any]]] = []
+
+    async def fake_to_thread(func: Any, /, *args: Any, **kwargs: Any) -> Any:
+        calls.append((func, args, kwargs))
+        return func(*args, **kwargs)
+
+    monkeypatch.setattr(research_agent_graph.asyncio, "to_thread", fake_to_thread)
+
+    result = asyncio.run(
+        research_agent_graph._aresolve_filesystem_backend_root_dir(
+            {}, agent_name="research-demo-test"
+        )
+    )
+
+    assert result.endswith("research-demo-test")
+    assert len(calls) == 1
+    _, args, kwargs = calls[0]
+    assert args == ()
+    assert kwargs == {"parents": True, "exist_ok": True}
+
+
 def test_make_graph_builds_research_agent(monkeypatch: Any) -> None:
     captured: dict[str, Any] = {}
 

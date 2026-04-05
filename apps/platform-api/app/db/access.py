@@ -5,6 +5,8 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.db.models import (
+    Announcement,
+    AnnouncementRead,
     Agent,
     AssistantProfile,
     AuditLog,
@@ -239,6 +241,201 @@ def list_project_members(
         .order_by(asc(ProjectMember.created_at))
     )
     return list(session.scalars(stmt).all())
+
+
+def list_visible_announcements(
+    session: Session,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID | None = None,
+    now: datetime | None = None,
+) -> list[tuple[Announcement, bool]]:
+    current_time = now or datetime.now(timezone.utc)
+    visibility_clause = (
+        Announcement.scope_type == "global"
+        if project_id is None
+        else (
+            (Announcement.scope_type == "global")
+            | (
+                (Announcement.scope_type == "project")
+                & (Announcement.scope_project_id == project_id)
+            )
+        )
+    )
+    stmt = (
+        select(Announcement)
+        .where(
+            Announcement.status == "published",
+            Announcement.publish_at <= current_time,
+            (Announcement.expire_at.is_(None) | (Announcement.expire_at >= current_time)),
+            visibility_clause,
+        )
+        .order_by(desc(Announcement.publish_at), desc(Announcement.created_at))
+    )
+    announcements = list(session.scalars(stmt).all())
+    if not announcements:
+        return []
+
+    announcement_ids = [item.id for item in announcements]
+    read_stmt = select(AnnouncementRead.announcement_id).where(
+        AnnouncementRead.user_id == user_id,
+        AnnouncementRead.announcement_id.in_(announcement_ids),
+    )
+    read_ids = set(session.scalars(read_stmt).all())
+    return [(item, item.id in read_ids) for item in announcements]
+
+
+def list_announcements_admin(
+    session: Session,
+    *,
+    limit: int = 100,
+    offset: int = 0,
+    query: str | None = None,
+    status: str | None = None,
+    scope_type: str | None = None,
+    scope_project_id: uuid.UUID | None = None,
+) -> tuple[list[Announcement], int]:
+    base_stmt = select(Announcement)
+    if isinstance(query, str) and query.strip():
+        normalized_query = f"%{query.strip().lower()}%"
+        base_stmt = base_stmt.where(
+            func.lower(Announcement.title).like(normalized_query)
+            | func.lower(Announcement.summary).like(normalized_query)
+            | func.lower(Announcement.body).like(normalized_query)
+        )
+    if isinstance(status, str) and status.strip():
+        base_stmt = base_stmt.where(Announcement.status == status.strip())
+    if isinstance(scope_type, str) and scope_type.strip():
+        base_stmt = base_stmt.where(Announcement.scope_type == scope_type.strip())
+    if scope_project_id is not None:
+        base_stmt = base_stmt.where(Announcement.scope_project_id == scope_project_id)
+
+    stmt = base_stmt.order_by(desc(Announcement.publish_at), desc(Announcement.created_at)).offset(offset).limit(limit)
+    count_stmt = select(func.count()).select_from(base_stmt.subquery())
+    rows = list(session.scalars(stmt).all())
+    total = int(session.scalar(count_stmt) or 0)
+    return rows, total
+
+
+def get_announcement_by_id(
+    session: Session, announcement_id: uuid.UUID
+) -> Announcement | None:
+    return session.get(Announcement, announcement_id)
+
+
+def create_announcement(
+    session: Session,
+    *,
+    title: str,
+    summary: str,
+    body: str,
+    tone: str,
+    scope_type: str,
+    scope_project_id: uuid.UUID | None,
+    status: str,
+    publish_at: datetime,
+    expire_at: datetime | None,
+    created_by: uuid.UUID | None,
+    updated_by: uuid.UUID | None,
+) -> Announcement:
+    row = Announcement(
+        title=title,
+        summary=summary,
+        body=body,
+        tone=tone,
+        scope_type=scope_type,
+        scope_project_id=scope_project_id,
+        status=status,
+        publish_at=publish_at,
+        expire_at=expire_at,
+        created_by=created_by,
+        updated_by=updated_by,
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
+def update_announcement(
+    session: Session,
+    row: Announcement,
+    *,
+    title: str,
+    summary: str,
+    body: str,
+    tone: str,
+    scope_type: str,
+    scope_project_id: uuid.UUID | None,
+    status: str,
+    publish_at: datetime,
+    expire_at: datetime | None,
+    updated_by: uuid.UUID | None,
+) -> Announcement:
+    row.title = title
+    row.summary = summary
+    row.body = body
+    row.tone = tone
+    row.scope_type = scope_type
+    row.scope_project_id = scope_project_id
+    row.status = status
+    row.publish_at = publish_at
+    row.expire_at = expire_at
+    row.updated_by = updated_by
+    session.flush()
+    return row
+
+
+def delete_announcement(session: Session, row: Announcement) -> None:
+    session.delete(row)
+    session.flush()
+
+
+def get_announcement_read(
+    session: Session, *, announcement_id: uuid.UUID, user_id: uuid.UUID
+) -> AnnouncementRead | None:
+    stmt = select(AnnouncementRead).where(
+        AnnouncementRead.announcement_id == announcement_id,
+        AnnouncementRead.user_id == user_id,
+    )
+    return session.scalar(stmt)
+
+
+def mark_announcement_read(
+    session: Session, *, announcement_id: uuid.UUID, user_id: uuid.UUID
+) -> AnnouncementRead:
+    row = get_announcement_read(
+        session, announcement_id=announcement_id, user_id=user_id
+    )
+    if row is None:
+        row = AnnouncementRead(announcement_id=announcement_id, user_id=user_id)
+        session.add(row)
+        session.flush()
+        return row
+
+    row.read_at = datetime.now(timezone.utc)
+    session.flush()
+    return row
+
+
+def mark_all_announcements_read(
+    session: Session,
+    *,
+    user_id: uuid.UUID,
+    project_id: uuid.UUID | None = None,
+    now: datetime | None = None,
+) -> int:
+    visible_items = list_visible_announcements(
+        session, user_id=user_id, project_id=project_id, now=now
+    )
+    changed = 0
+    for announcement, is_read in visible_items:
+        if is_read:
+            continue
+        mark_announcement_read(
+            session, announcement_id=announcement.id, user_id=user_id
+        )
+        changed += 1
+    return changed
 
 
 def list_user_project_memberships(

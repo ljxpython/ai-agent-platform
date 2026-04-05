@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Mapping
 import os
 from pathlib import Path
 from typing import Any
@@ -18,11 +19,20 @@ from runtime_service.runtime.options import (
     merge_trusted_auth_context,
     read_configurable,
 )
+from runtime_service.services.test_case_service.knowledge_mcp import (
+    aget_test_case_knowledge_tools,
+)
+from runtime_service.services.test_case_service.knowledge_query_guard_middleware import (
+    TestCaseKnowledgeQueryGuardMiddleware,
+)
 from runtime_service.services.test_case_service.middleware import (
     TestCaseDocumentPersistenceMiddleware,
 )
-from runtime_service.services.test_case_service.prompts import SYSTEM_PROMPT
+from runtime_service.services.test_case_service.prompts import (
+    build_test_case_system_prompt,
+)
 from runtime_service.services.test_case_service.schemas import (
+    TestCaseServiceConfig,
     build_test_case_service_config,
     get_service_root,
 )
@@ -32,7 +42,6 @@ from runtime_service.services.test_case_service.tool_runtime_context_middleware 
 from runtime_service.services.test_case_service.tools import (
     build_test_case_service_tools,
 )
-from runtime_service.tools.registry import build_tools
 from langchain_core.runnables import RunnableConfig
 from langgraph_sdk.runtime import ServerRuntime
 
@@ -62,6 +71,36 @@ async def _aresolve_backend_root_dir(
     return str(path)
 
 
+def _coerce_optional_text(value: Any) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
+
+
+def _resolve_current_project_id(
+    config: RunnableConfig,
+    runtime_context: Any,
+    private_config: Mapping[str, Any],
+    service_config: TestCaseServiceConfig,
+) -> str | None:
+    metadata = config.get("metadata") if isinstance(config, Mapping) else None
+    metadata_map = metadata if isinstance(metadata, Mapping) else {}
+    context_map = context_to_mapping(runtime_context)
+    candidates = (
+        context_map.get("project_id"),
+        private_config.get("project_id"),
+        metadata_map.get("project_id"),
+    )
+    for candidate in candidates:
+        resolved = _coerce_optional_text(candidate)
+        if resolved:
+            return resolved
+    if service_config.allow_default_project_fallback:
+        return _coerce_optional_text(service_config.default_project_id)
+    return None
+
+
 async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
     del runtime
 
@@ -89,8 +128,8 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
     # 2. 模型装配（公共层）
     model = apply_model_runtime_params(resolve_model(options.model_spec), options)
 
-    # 3. 工具装配（仅平台公共工具，服务无私有工具）
-    tools = await build_tools(options)
+    # 3. 工具装配（仅 test_case_service 私有工具，不继承公共 tools / MCP）
+    tools = await aget_test_case_knowledge_tools(service_config)
     tools.extend(build_test_case_service_tools(service_config))
 
     # 4. 多模态中间件（图片/PDF 解析，横切能力）
@@ -100,6 +139,7 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
         detail_text_max_chars=service_config.multimodal_detail_text_max_chars,
     )
     document_persistence_middleware = TestCaseDocumentPersistenceMiddleware(service_config)
+    knowledge_query_guard_middleware = TestCaseKnowledgeQueryGuardMiddleware()
     tool_runtime_context_middleware = ToolRuntimeContextSanitizerMiddleware()
 
     # 5. FilesystemBackend：root 指向服务 skills 目录
@@ -113,10 +153,16 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
     #    create_deep_agent 内部自动构建 SkillsMiddleware(backend=backend, sources=skills)
     skills = ["/skills/"]
 
-    # 7. 系统提示词：将运行时覆盖作为“前置补充”，服务 prompt 始终生效。
-    # 避免全局 SYSTEM_PROMPT 覆盖掉本服务的 skills/工作流约束。
-    system_prompt = (
-        f"{options.system_prompt}\n\n{SYSTEM_PROMPT}" if options.system_prompt else SYSTEM_PROMPT
+    current_project_id = _resolve_current_project_id(
+        effective_config,
+        runtime_context,
+        private_config,
+        service_config,
+    )
+    # 7. 系统提示词：运行时覆盖前置，服务 prompt 始终生效，并补充当前项目 ID。
+    system_prompt = build_test_case_system_prompt(
+        runtime_system_prompt=options.system_prompt,
+        current_project_id=current_project_id,
     )
 
     return create_deep_agent(
@@ -126,6 +172,7 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
         middleware=[
             multimodal_middleware,
             document_persistence_middleware,
+            knowledge_query_guard_middleware,
             tool_runtime_context_middleware,
         ],
         system_prompt=system_prompt,

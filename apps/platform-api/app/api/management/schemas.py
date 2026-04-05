@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any, Literal
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
@@ -49,6 +50,30 @@ class CreateProjectRequest(BaseModel):
 class UpsertMemberRequest(BaseModel):
     user_id: str
     role: str
+
+
+class CreateAnnouncementRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    summary: str = Field(default="", max_length=512)
+    body: str = Field(default="")
+    tone: Literal["info", "warning", "success"] = "info"
+    scope_type: Literal["global", "project"] = "global"
+    scope_project_id: str | None = None
+    status: Literal["draft", "published", "archived"] = "published"
+    publish_at: datetime | None = None
+    expire_at: datetime | None = None
+
+
+class UpdateAnnouncementRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=255)
+    summary: str | None = Field(default=None, max_length=512)
+    body: str | None = None
+    tone: Literal["info", "warning", "success"] | None = None
+    scope_type: Literal["global", "project"] | None = None
+    scope_project_id: str | None = None
+    status: Literal["draft", "published", "archived"] | None = None
+    publish_at: datetime | None = None
+    expire_at: datetime | None = None
 
 
 class CreateAssistantRequest(BaseModel):

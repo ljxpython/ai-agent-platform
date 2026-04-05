@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Platform UI Style Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="style-switcher">
+      <div>
+        <div class="eyebrow">Platform Web V2</div>
+        <h1>企业工作台风格预览</h1>
+        <p>这次不走 AI 演示风，直接对齐成熟企业后台的气质。下面 3 套都遵循同一布局：左侧主导航 + 顶部上下文条 + 主内容区。</p>
+      </div>
+
+      <div class="switcher-buttons">
+        <button class="style-button is-active" data-theme="theme-refine">A. Refine HR 系</button>
+        <button class="style-button" data-theme="theme-workspace">B. Workspace Neutral</button>
+        <button class="style-button" data-theme="theme-admin">C. Soft Admin</button>
+      </div>
+    </div>
+
+    <main class="preview-root theme-refine" id="preview-root">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">PW</div>
+          <div>
+            <div class="brand-title">Platform Workspace</div>
+            <div class="brand-subtitle">enterprise console</div>
+          </div>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="section-label">工作台</div>
+          <a class="nav-item" href="#">Requests</a>
+          <a class="nav-item" href="#">Polls</a>
+          <a class="nav-item" href="#">Employees</a>
+          <a class="nav-item" href="#">Settings</a>
+        </div>
+
+        <div class="sidebar-section">
+          <div class="section-label">业务页面</div>
+          <a class="nav-item is-active" href="#">Overview</a>
+          <a class="nav-item" href="#">Projects</a>
+          <a class="nav-item" href="#">Assistants</a>
+          <a class="nav-item" href="#">Users</a>
+          <a class="nav-item" href="#">Audit</a>
+        </div>
+
+        <div class="sidebar-section sidebar-footer">
+          <div class="section-label">当前组织</div>
+          <div class="environment-card">
+            <div class="env-name">Byte AI Lab</div>
+            <div class="env-meta">Shanghai Workspace</div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="app-shell">
+        <header class="topbar">
+          <div class="topbar-left">
+            <div class="context-chip">Workspace</div>
+            <div class="context-chip">Project: 智能测试平台</div>
+            <div class="context-chip">Role: admin</div>
+          </div>
+
+          <div class="topbar-right">
+            <button class="ghost-button">Manage</button>
+            <button class="primary-button">Add record</button>
+          </div>
+        </header>
+
+        <section class="content">
+          <div class="page-header">
+            <div>
+              <div class="eyebrow">Home</div>
+              <h2>Overview</h2>
+              <p>统一承载项目、用户、助手和治理数据的企业工作台入口。</p>
+            </div>
+            <div class="header-actions">
+              <button class="ghost-button">See all</button>
+              <button class="primary-button">New request</button>
+            </div>
+          </div>
+
+          <section class="stats-grid">
+            <article class="stat-card">
+              <div class="stat-label">Active Projects</div>
+              <div class="stat-value">12</div>
+              <div class="stat-meta positive">3 newly created this week</div>
+            </article>
+            <article class="stat-card">
+              <div class="stat-label">Assistants</div>
+              <div class="stat-value">37</div>
+              <div class="stat-meta">5 pending synchronization</div>
+            </article>
+            <article class="stat-card">
+              <div class="stat-label">Runtime Threads</div>
+              <div class="stat-value">128</div>
+              <div class="stat-meta">stable throughput</div>
+            </article>
+            <article class="stat-card">
+              <div class="stat-label">Awaiting Review</div>
+              <div class="stat-value">3</div>
+              <div class="stat-meta danger">requires manual action</div>
+            </article>
+          </section>
+
+          <section class="main-grid">
+            <article class="panel panel-large">
+              <div class="panel-header">
+                <div>
+                  <h3>Projects</h3>
+                  <p>展示典型企业后台的搜索、筛选、表格和行操作节奏。</p>
+                </div>
+                <div class="toolbar">
+                  <input class="text-input" type="text" placeholder="Search projects, users or descriptions" />
+                  <button class="ghost-button">Filter</button>
+                  <button class="ghost-button">Refresh</button>
+                </div>
+              </div>
+
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Project</th>
+                    <th>Owner</th>
+                    <th>Status</th>
+                    <th>Updated</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>智能测试平台</td>
+                    <td>张三</td>
+                    <td><span class="status success">active</span></td>
+                    <td>今天 14:22</td>
+                    <td>
+                      <div class="table-actions">
+                        <button class="link-button">View</button>
+                        <button class="link-button">Manage</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>用例生成平台</td>
+                    <td>李四</td>
+                    <td><span class="status warning">review</span></td>
+                    <td>今天 10:18</td>
+                    <td>
+                      <div class="table-actions">
+                        <button class="link-button">View</button>
+                        <button class="link-button">Manage</button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td>SQL Agent 工作台</td>
+                    <td>王五</td>
+                    <td><span class="status neutral">idle</span></td>
+                    <td>昨天 21:40</td>
+                    <td>
+                      <div class="table-actions">
+                        <button class="link-button">View</button>
+                        <button class="link-button">Manage</button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header compact">
+                <div>
+                  <h3>Awaiting Requests</h3>
+                  <p>适合承载待审批、审计、同步异常等侧边信息列表。</p>
+                </div>
+              </div>
+
+              <ul class="activity-list">
+                <li>
+                  <span class="activity-tag">Sync</span>
+                  <div>
+                    <strong>assistant/test_case_agent</strong>
+                    <p>配置变更后待同步到 runtime catalog</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="activity-tag warning">Audit</span>
+                  <div>
+                    <strong>权限提升申请</strong>
+                    <p>项目「智能测试平台」存在角色调整请求</p>
+                  </div>
+                </li>
+                <li>
+                  <span class="activity-tag danger">Alert</span>
+                  <div>
+                    <strong>线程失败重试</strong>
+                    <p>过去 1 小时内出现 3 次超时</p>
+                  </div>
+                </li>
+              </ul>
+            </article>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="./styles.js"></script>
+  </body>
+</html>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title>Platform Web V2</title>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c7e1f8" />
+      <stop offset="100%" stop-color="#7fb4e2" />
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="52" height="52" rx="16" fill="url(#bg)" />
+  <path
+    d="M20 20h10.5c7 0 11 3.8 11 9.8s-4 9.8-11 9.8h-4v8.4H20V20Zm10 14.3c3.5 0 5.3-1.6 5.3-4.5 0-2.8-1.8-4.4-5.3-4.4h-3.5v8.9H30Z"
+    fill="#23405c"
+  />
+  <path
+    d="M40.5 20h6.7l4.3 17.8L56 20h6L54.3 48h-5.6l-4.9-18.9L38.9 48h-5.6L25.7 20h6l4.5 17.8L40.5 20Z"
+    fill="#23405c"
+  />
+</svg>
