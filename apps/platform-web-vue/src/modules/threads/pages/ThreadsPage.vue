@@ -380,7 +380,7 @@ watch(
 
     <div
       v-else
-      class="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]"
+      class="grid gap-6 xl:grid-cols-[minmax(320px,420px)_minmax(0,1fr)]"
     >
       <SurfaceCard class="space-y-4">
         <div class="flex items-center justify-between gap-3">

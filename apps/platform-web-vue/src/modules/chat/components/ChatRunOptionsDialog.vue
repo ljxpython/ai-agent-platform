@@ -2,6 +2,7 @@
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 import type { ChatRunOptions } from '../types'
 import type { RuntimeModelItem, RuntimeToolItem } from '@/types/management'
 
@@ -76,10 +77,9 @@ function getCheckedValue(event: Event) {
 
       <label class="block">
         <span class="pw-input-label">模型</span>
-        <select
-          :value="props.draftRunOptions.modelId"
-          class="pw-select"
-          @change="emit('update:model-id', getInputValue($event))"
+        <BaseSelect
+          :model-value="props.draftRunOptions.modelId"
+          @update:model-value="emit('update:model-id', $event)"
         >
           <option value="">
             使用默认模型
@@ -91,7 +91,7 @@ function getCheckedValue(event: Event) {
           >
             {{ model.display_name || model.model_id }}
           </option>
-        </select>
+        </BaseSelect>
       </label>
 
       <div class="pw-card-glass p-4">

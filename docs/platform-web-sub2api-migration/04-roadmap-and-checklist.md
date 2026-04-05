@@ -214,15 +214,17 @@
 - [x] 公告真实数据接入或演示替身方案
 - [x] tooltip / 帮助提示体系
 - [x] 首次引导与入口提示体系
-- [ ] dark mode 全链路一致性复查
-- [ ] 大屏与小屏下关键页面占满与溢出复查
+- [x] `Resources` 新增“前端开发范式”入口页，统一沉淀页面母版与组件复用口径
+- [x] 输出 `platform-web-vue` 正式前端开发手册，后续开发默认先看当前仓库文档与 Resources
+- [x] dark mode 全链路一致性复查
+- [x] 大屏与小屏下关键页面占满与溢出复查
 
 ### 4. 汇报与验收硬化
 
-- [ ] 演示账号、演示数据、演示路径固化
-- [ ] 关键链路烟测清单固化
-- [ ] 最终汇报口径整理
-- [ ] 验收回归与遗留清单归档
+- [x] 演示账号、演示数据、演示路径固化
+- [x] 关键链路烟测清单固化
+- [x] 最终汇报口径整理
+- [x] 验收回归与遗留清单归档
 
 ### 5. Chat 执行态补齐顺序
 
@@ -248,6 +250,7 @@
 - [x] 输出裁剪方案
 - [x] 输出目标架构与编码规范
 - [x] 输出 UI 参考分析与后续开发范式
+- [x] 输出 `platform-web-vue` 前端开发范式手册，并接入 Resources 可视化入口
 - [x] 输出新 app 基座蓝图与职责边界
 - [x] 输出现有页面到新模块的迁移映射与交付顺序
 - [x] 输出 `platform-web-vue` 的 package / script / env 初始化规范
@@ -310,12 +313,15 @@
 
 - `projects / users / audit` 已经回刷到统一分页母版
 - 顶栏系统区已接入 `LocaleSwitcher / AnnouncementBell / UserMenu`
-- `AnnouncementBell` 当前先落前端壳层和空态，真实公告数据仍待后端接口
+- `WorkspaceProjectSwitcher / LocaleSwitcher / AnnouncementCenter / UserMenu` 已统一顶栏触发器与 dropdown 壳层语法
+- `AnnouncementBell` 已优先接入真实公告接口，异常时回退演示数据
 - `projects / users / audit` 已经接入统一 `DataTable / 列设置 / 排序持久化 / ActionMenu`
 - `projects / users` 已接入统一 `BulkActionsBar / 行选择`
 - `assistants / runtime models / runtime tools` 已经接入统一 `DataTable / 列设置 / 排序持久化 / ActionMenu`
 - `graphs / testcase cases / testcase documents` 已经接入统一 `DataTable` 母版
 - `testcase cases / testcase documents` 已经接入统一 `筛选设置 dropdown`
+- `BaseSelect` 已切到 `Teleport + fixed positioning`，统一页大小选择、项目切换等下拉层行为
+- `PaginationBar` 已补齐跳页输入，`DataTable` 已支持桌面表格与移动端卡片双模
 - `NavigationProgress` 已接入全局根组件导航监听，页面切换时会提供顶部进度反馈
 - `index.html` 已在 Vue 挂载前完成主题 class 注入，dark mode 首屏不再等应用启动后再切换
 - dev 环境已新增 `UI 资产库` 入口，先承接 testcase 页面资源与共享 UI 母版索引
@@ -326,12 +332,12 @@
 - [x] 登录
 - [x] overview
 - [x] projects
-- [ ] project detail
+- [x] project detail
 - [x] users
-- [ ] user detail
+- [x] user detail
 - [x] assistants
-- [ ] assistant detail
-- [ ] assistants new
+- [x] assistant detail
+- [x] assistants new
 - [x] graphs
 - [x] runtime
 - [x] runtime models
@@ -342,11 +348,11 @@
 - [x] sql-agent
 - [x] threads
 - [x] chat
-- [ ] testcase generate
+- [x] testcase generate
 - [x] testcase cases
 - [x] testcase documents
-- [ ] 评估并迁入可重放的新手引导框架
-- [ ] 评估并迁入帮助提示与 tooltip 体系
+- [x] 评估并迁入可重放的新手引导框架
+- [x] 评估并迁入帮助提示与 tooltip 体系
 - [ ] 评估用户属性配置能力的前后端契约
 - [ ] 评估分组替换、分组排序等复杂后台操作的前后端契约
 
@@ -358,7 +364,7 @@
 - [x] 关键页面烟测通过
 - [x] 演示账号可登录
 - [x] 首批页面的主题、按钮、表格、筛选器视觉统一
-- [ ] 形成最终汇报口径
+- [x] 形成最终汇报口径
 
 ## 验收口径
 
@@ -387,10 +393,10 @@
 
 ## 当前建议
 
-当前已经不再处于“先换壳再说”的阶段。
+当前已经完成页面迁移主线、系统级一致性补完和演示硬化文档归档。
 
-下一步正确动作应该是：
+下一步默认动作应该是：
 
-1. 先产出 `apps/platform-web -> apps/platform-web-vue` 的页面/功能对照矩阵
-2. 按顺序补齐 `testcase/generate -> assistant detail/new -> project detail -> user detail`
-3. 再做系统级一致性补完和最终汇报链路加固
+1. 新增功能继续遵守 `14-frontend-development-playbook.md`
+2. 演示与回归先按 `15`、`16`、`17` 三份文档执行
+3. 非主链路遗留项单独排期处理，不再反向干扰正式迁移主线

@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import EmptyState from '@/components/platform/EmptyState.vue'
 import MetricCard from '@/components/platform/MetricCard.vue'
@@ -490,9 +491,8 @@ watch(
           <div class="grid gap-4 md:grid-cols-2">
             <label class="block">
               <span class="pw-input-label">Graph ID</span>
-              <select
+              <BaseSelect
                 v-model="graphId"
-                class="pw-select"
                 :disabled="submitting || graphLoading || sortedGraphOptions.length === 0"
               >
                 <option
@@ -508,7 +508,7 @@ watch(
                 >
                   {{ option.description?.trim() ? `${option.graph_id} - ${option.description}` : option.graph_id }}
                 </option>
-              </select>
+              </BaseSelect>
             </label>
 
             <label class="block">
@@ -589,9 +589,8 @@ watch(
             <div class="grid gap-4 md:grid-cols-2">
               <label class="block">
                 <span class="pw-input-label">默认模型</span>
-                <select
+                <BaseSelect
                   v-model="runtimeModelId"
-                  class="pw-select"
                   :disabled="submitting || runtimeLoading"
                 >
                   <option value="">使用默认模型</option>
@@ -602,7 +601,7 @@ watch(
                   >
                     {{ model.display_name || model.model_id }}
                   </option>
-                </select>
+                </BaseSelect>
               </label>
 
               <label class="flex items-center justify-between gap-3 rounded-2xl border border-white/70 bg-white/80 px-4 py-4 text-sm dark:border-dark-700 dark:bg-dark-900/70">

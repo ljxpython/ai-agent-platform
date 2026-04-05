@@ -89,6 +89,7 @@ const hiddenColumnSet = computed(() => new Set(hiddenColumns.value))
 const visibleColumns = computed(() =>
   props.columns.filter((column) => column.alwaysVisible || !hiddenColumnSet.value.has(column.key))
 )
+const mobileColumns = computed(() => visibleColumns.value.filter((column) => column.key !== 'actions'))
 
 function isSortableKey(candidate: string) {
   return props.columns.some((column) => column.key === candidate && column.sortable)
@@ -588,139 +589,214 @@ watch([pageAllSelected, pagePartiallySelected], () => {
       />
     </div>
 
-    <div
-      v-else
-      class="pw-table-wrapper"
-    >
-      <table class="pw-table">
-        <thead>
-          <tr>
-            <th
-              v-if="selectable"
-              class="w-12"
-            >
-              <label class="flex items-center justify-center">
-                <input
-                  ref="selectAllRef"
-                  type="checkbox"
-                  class="pw-table-checkbox"
-                  :checked="pageAllSelected"
-                  :disabled="loading || !pagedRowKeys.length"
-                  @change="handlePageSelectionChange"
-                >
-                <span class="sr-only">{{ selectLabel }}</span>
-              </label>
-            </th>
-            <th
-              v-for="column in visibleColumns"
-              :key="column.key"
-              :class="[alignmentClass(column), column.headerClass]"
-            >
-              <button
-                v-if="column.sortable"
-                type="button"
-                class="pw-table-sort-button"
-                @click="handleSort(column)"
-              >
-                <span>{{ column.label }}</span>
-                <BaseIcon
-                  v-if="sortKey === column.key"
-                  name="chevron-down"
-                  size="sm"
-                  class="transition"
-                  :class="sortOrder === 'asc' ? 'rotate-180' : ''"
-                />
-                <BaseIcon
-                  v-else
-                  name="sort"
-                  size="sm"
-                  class="text-gray-300 dark:text-dark-500"
-                />
-              </button>
-              <span v-else>{{ column.label }}</span>
-            </th>
-            <th
-              v-if="hasActionsColumn"
-              class="w-[72px] text-right"
-            >
-              {{ actionsLabel }}
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          <template v-if="loading">
-            <tr
-              v-for="index in 5"
-              :key="index"
-            >
-              <td v-if="selectable">
-                <div class="mx-auto h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-dark-700" />
-              </td>
-              <td
-                v-for="column in visibleColumns"
-                :key="column.key"
-                :class="[alignmentClass(column), column.cellClass]"
-              >
-                <div class="h-4 w-3/4 animate-pulse rounded bg-gray-200 dark:bg-dark-700" />
-              </td>
-              <td
-                v-if="hasActionsColumn"
-                class="text-right"
-              >
-                <div class="ml-auto h-9 w-9 animate-pulse rounded-xl bg-gray-200 dark:bg-dark-700" />
-              </td>
-            </tr>
-          </template>
-
-          <tr
-            v-for="(row, index) in pagedRows"
-            v-else
-            :key="resolveRowKey(row, resolveVisibleRowIndex(index))"
-            :class="[
-              resolveRowClass(row, resolveVisibleRowIndex(index)),
-              isRowSelected(row, resolveVisibleRowIndex(index)) ? 'pw-table-row-selected' : ''
-            ]"
+    <template v-else>
+      <div class="space-y-3 md:hidden">
+        <template v-if="loading">
+          <article
+            v-for="index in 4"
+            :key="`mobile-loading-${index}`"
+            class="rounded-[24px] border border-gray-100 bg-white/85 p-4 shadow-soft dark:border-dark-800 dark:bg-dark-950/35"
           >
-            <td v-if="selectable">
-              <label class="flex items-center justify-center">
-                <input
-                  type="checkbox"
-                  class="pw-table-checkbox"
-                  :checked="isRowSelected(row, resolveVisibleRowIndex(index))"
-                  @change="handleRowSelectionChange(row, resolveVisibleRowIndex(index), $event)"
-                >
-                <span class="sr-only">{{ selectLabel }}</span>
-              </label>
-            </td>
-            <td
-              v-for="column in visibleColumns"
-              :key="column.key"
-              :class="[alignmentClass(column), column.cellClass]"
-            >
-              <slot
-                :name="`cell-${column.key}`"
-                :row="row"
-                :value="resolveCellValue(row, column)"
+            <div class="space-y-3">
+              <div
+                v-for="column in mobileColumns"
+                :key="column.key"
+                class="flex items-start justify-between gap-4"
               >
-                {{
-                  column.formatter
-                    ? column.formatter(resolveCellValue(row, column), row)
-                    : resolveCellValue(row, column)
-                }}
-              </slot>
-            </td>
-            <td
-              v-if="hasActionsColumn"
-              class="text-right"
-            >
-              <slot
-                name="cell-actions"
-                :row="row"
-              />
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+                <div class="h-4 w-20 animate-pulse rounded bg-gray-200 dark:bg-dark-700" />
+                <div class="h-4 w-32 animate-pulse rounded bg-gray-200 dark:bg-dark-700" />
+              </div>
+              <div
+                v-if="hasActionsColumn"
+                class="border-t border-gray-100 pt-3 dark:border-dark-800"
+              >
+                <div class="h-9 w-full animate-pulse rounded-2xl bg-gray-200 dark:bg-dark-700" />
+              </div>
+            </div>
+          </article>
+        </template>
+
+        <template v-else>
+          <article
+            v-for="(row, index) in pagedRows"
+            :key="resolveRowKey(row, resolveVisibleRowIndex(index))"
+            class="rounded-[24px] border border-gray-100 bg-white/85 p-4 shadow-soft dark:border-dark-800 dark:bg-dark-950/35"
+            :class="isRowSelected(row, resolveVisibleRowIndex(index)) ? 'ring-2 ring-primary-500/20' : ''"
+          >
+            <div class="space-y-3">
+              <div
+                v-for="column in mobileColumns"
+                :key="column.key"
+                class="flex items-start justify-between gap-4"
+              >
+                <div class="min-w-[88px] text-xs font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-dark-500">
+                  {{ column.label }}
+                </div>
+                <div
+                  class="min-w-0 flex-1 text-right text-sm text-gray-700 dark:text-dark-200"
+                  :class="alignmentClass(column)"
+                >
+                  <slot
+                    :name="`cell-${column.key}`"
+                    :row="row"
+                    :value="resolveCellValue(row, column)"
+                  >
+                    {{
+                      column.formatter
+                        ? column.formatter(resolveCellValue(row, column), row)
+                        : resolveCellValue(row, column)
+                    }}
+                  </slot>
+                </div>
+              </div>
+
+              <div
+                v-if="hasActionsColumn"
+                class="border-t border-gray-100 pt-3 dark:border-dark-800"
+              >
+                <slot
+                  name="cell-actions"
+                  :row="row"
+                />
+              </div>
+            </div>
+          </article>
+        </template>
+      </div>
+
+      <div class="hidden md:block">
+        <div class="pw-table-wrapper">
+          <table class="pw-table">
+            <thead>
+              <tr>
+                <th
+                  v-if="selectable"
+                  class="w-12"
+                >
+                  <label class="flex items-center justify-center">
+                    <input
+                      ref="selectAllRef"
+                      type="checkbox"
+                      class="pw-table-checkbox"
+                      :checked="pageAllSelected"
+                      :disabled="loading || !pagedRowKeys.length"
+                      @change="handlePageSelectionChange"
+                    >
+                    <span class="sr-only">{{ selectLabel }}</span>
+                  </label>
+                </th>
+                <th
+                  v-for="column in visibleColumns"
+                  :key="column.key"
+                  :class="[alignmentClass(column), column.headerClass]"
+                >
+                  <button
+                    v-if="column.sortable"
+                    type="button"
+                    class="pw-table-sort-button"
+                    @click="handleSort(column)"
+                  >
+                    <span>{{ column.label }}</span>
+                    <BaseIcon
+                      v-if="sortKey === column.key"
+                      name="chevron-down"
+                      size="sm"
+                      class="transition"
+                      :class="sortOrder === 'asc' ? 'rotate-180' : ''"
+                    />
+                    <BaseIcon
+                      v-else
+                      name="sort"
+                      size="sm"
+                      class="text-gray-300 dark:text-dark-500"
+                    />
+                  </button>
+                  <span v-else>{{ column.label }}</span>
+                </th>
+                <th
+                  v-if="hasActionsColumn"
+                  class="w-[72px] text-right"
+                >
+                  {{ actionsLabel }}
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <template v-if="loading">
+                <tr
+                  v-for="index in 5"
+                  :key="index"
+                >
+                  <td v-if="selectable">
+                    <div class="mx-auto h-4 w-4 animate-pulse rounded bg-gray-200 dark:bg-dark-700" />
+                  </td>
+                  <td
+                    v-for="column in visibleColumns"
+                    :key="column.key"
+                    :class="[alignmentClass(column), column.cellClass]"
+                  >
+                    <div class="h-4 w-3/4 animate-pulse rounded bg-gray-200 dark:bg-dark-700" />
+                  </td>
+                  <td
+                    v-if="hasActionsColumn"
+                    class="text-right"
+                  >
+                    <div class="ml-auto h-9 w-9 animate-pulse rounded-xl bg-gray-200 dark:bg-dark-700" />
+                  </td>
+                </tr>
+              </template>
+
+              <tr
+                v-for="(row, index) in pagedRows"
+                v-else
+                :key="resolveRowKey(row, resolveVisibleRowIndex(index))"
+                :class="[
+                  resolveRowClass(row, resolveVisibleRowIndex(index)),
+                  isRowSelected(row, resolveVisibleRowIndex(index)) ? 'pw-table-row-selected' : ''
+                ]"
+              >
+                <td v-if="selectable">
+                  <label class="flex items-center justify-center">
+                    <input
+                      type="checkbox"
+                      class="pw-table-checkbox"
+                      :checked="isRowSelected(row, resolveVisibleRowIndex(index))"
+                      @change="handleRowSelectionChange(row, resolveVisibleRowIndex(index), $event)"
+                    >
+                    <span class="sr-only">{{ selectLabel }}</span>
+                  </label>
+                </td>
+                <td
+                  v-for="column in visibleColumns"
+                  :key="column.key"
+                  :class="[alignmentClass(column), column.cellClass]"
+                >
+                  <slot
+                    :name="`cell-${column.key}`"
+                    :row="row"
+                    :value="resolveCellValue(row, column)"
+                  >
+                    {{
+                      column.formatter
+                        ? column.formatter(resolveCellValue(row, column), row)
+                        : resolveCellValue(row, column)
+                    }}
+                  </slot>
+                </td>
+                <td
+                  v-if="hasActionsColumn"
+                  class="text-right"
+                >
+                  <slot
+                    name="cell-actions"
+                    :row="row"
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </template>
   </div>
 </template>

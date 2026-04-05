@@ -65,6 +65,7 @@ const groups = computed(() => {
       label: 'Resources',
       items: [
         { to: '/workspace/resources', label: t('nav.resourcesOverview'), icon: 'sparkle', exact: true },
+        { to: '/workspace/resources/playbook', label: t('nav.resourcePlaybook'), icon: 'overview' },
         { to: '/workspace/resources/pages', label: t('nav.resourcePages'), icon: 'folder' },
         { to: '/workspace/resources/components', label: t('nav.resourceComponents'), icon: 'users' },
         { to: '/workspace/resources/engineering', label: t('nav.resourceEngineering'), icon: 'runtime' }

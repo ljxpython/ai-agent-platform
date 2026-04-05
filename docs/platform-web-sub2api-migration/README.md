@@ -75,6 +75,8 @@
   - `DataTable / SearchInput / NavigationProgress`
   - `BulkActionsBar`
   - dark mode 首屏主题初始化
+  - 顶栏 `ProjectSwitcher / LocaleSwitcher / AnnouncementCenter / UserMenu` 同源化
+  - `BaseSelect` Teleport 下拉定位与 `PaginationBar` 跳页
 - [x] 完成 dev 环境 `UI 资产库` 初版入口，开始沉淀 testcase 页面与共享 UI 母版资源
 - [x] 完成 dev 环境 `Resources` 三层收敛：`推荐模板 / 场景模板 / 模板库`
 - [x] 完成 `团队推荐 Top 10` 独立资源页与跨页跳转
@@ -90,6 +92,10 @@
 - [x] 完成第一批页面级引导面板接入
   - `overview` 演示路径引导
   - `projects` 项目入口引导
+- [x] 完成演示与验收硬化文档归档
+  - 固定演示环境、账号与推荐走查顺序
+  - 固定关键链路烟测清单
+  - 固定最终汇报口径与遗留项归档
 
 ## 文档列表
 
@@ -147,6 +153,19 @@
    - `apps/platform-web` 到 `apps/platform-web-vue` 的页面/功能状态矩阵
    - 已完成、部分完成、未开始、暂缓项一览
    - 当前主线执行顺序
+14. `14-frontend-development-playbook.md`
+   - `platform-web-vue` 的正式前端开发范式手册
+   - 新页面、表格页、详情页、工作区页该怎么做
+   - 组件复用、视觉约束、i18n、主题与 Resources 使用顺序
+15. `15-demo-environment-and-walkthrough.md`
+   - 演示环境、启动命令、账号与推荐演示顺序
+   - 老板汇报和联调走查都按这份手册执行
+16. `16-smoke-test-and-acceptance-checklist.md`
+   - 命令级校验、页面级烟测、主题与响应式验收清单
+   - 当前已验证结果与非阻塞项归档
+17. `17-demo-report-and-residual-risks.md`
+   - 对外汇报口径
+   - 当前遗留风险与后续执行口径
 
 ## 当前建议
 
@@ -155,8 +174,10 @@
 1. 以 `apps/platform-web` 作为页面、功能、交互链路的唯一迁移真相源
 2. 以当前 `apps/platform-web-vue` 作为视觉、交互、美化特效的持续演进基线
 3. 只在需要补资产时再回看 `apps/platform-web-sub2api-base`，不再围绕它重新开一条 UI 主线
-4. 先补齐 `apps/platform-web` 中尚未完成的高价值页面和链路，再做系统级收尾与汇报加固
+4. 页面迁移主线完成后，统一按演示硬化文档做回归与汇报
 5. dev 环境的 `Resources` 只承担模板沉淀和参考作用，不再反向主导正式业务页设计
+6. 后续新增前端功能默认先遵守 `14-frontend-development-playbook.md`，再进入模板挑选和页面实现阶段
+7. 演示、烟测、汇报默认先看 `15`、`16`、`17` 三份文档
 
 补充说明：
 
@@ -174,4 +195,4 @@
 - `apps/platform-web-sub2api-base` 当前带有上游 `.git` 目录
 - 正式纳入当前 monorepo 前，需要先去掉这个嵌套仓库边界
 - `apps/platform-web-v3` 只是试验产物，已经从当前仓库工作目录移走，不再作为正式候选方案
-- 当前 `platform-web-vue` 的主要差距已经从“系统级交互母版缺失”转向“`apps/platform-web` 剩余页面与行为对齐、系统级细节一致性、最终汇报链路加固”
+- 当前 `platform-web-vue` 的剩余问题已经收敛到非主链路项、仓库整理项和后续增量优化项

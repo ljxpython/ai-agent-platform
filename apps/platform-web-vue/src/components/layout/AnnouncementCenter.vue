@@ -118,6 +118,7 @@ async function markAllRead() {
     <button
       type="button"
       class="pw-topbar-action"
+      :class="isOpen ? 'pw-topbar-action-active' : ''"
       :aria-label="t('topbar.announcements')"
       @click="toggle"
     >
@@ -132,6 +133,9 @@ async function markAllRead() {
         >
           {{ unreadCount > 9 ? '9+' : unreadCount }}
         </span>
+      </span>
+      <span class="hidden text-sm font-semibold xl:inline">
+        {{ t('topbar.announcements') }}
       </span>
     </button>
 

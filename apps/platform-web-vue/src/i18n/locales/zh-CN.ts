@@ -45,6 +45,7 @@ export const zhCN = {
     announcements: '公告管理',
     uiAssets: 'UI 资产库',
     resourcesOverview: '资源总览',
+    resourcePlaybook: '前端开发范式',
     resourcePages: '页面模板',
     resourceComponents: '组件模板',
     resourceEngineering: '工程模板',
@@ -53,8 +54,9 @@ export const zhCN = {
     audit: '审计日志'
   },
   topbar: {
-    projectContext: '{project} · 当前项目工作区上下文',
-    globalContext: '全局平台工作区上下文',
+    projectContext: '{project} · 项目上下文',
+    globalContext: '全局平台上下文',
+    projectPlaceholder: '未选择项目',
     operator: '平台操作员',
     language: '语言',
     announcements: '公告',

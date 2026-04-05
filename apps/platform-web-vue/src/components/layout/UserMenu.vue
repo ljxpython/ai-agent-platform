@@ -61,14 +61,15 @@ onBeforeUnmount(() => {
   >
     <button
       type="button"
-      class="flex items-center gap-2 rounded-2xl border border-white/60 bg-white/75 px-2.5 py-1.5 shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:shadow-card dark:border-dark-700 dark:bg-dark-900/70"
+      class="pw-topbar-user-trigger"
+      :class="isOpen ? 'pw-topbar-user-trigger-active' : ''"
       @click="toggle"
     >
-      <div class="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-primary text-xs font-semibold text-white shadow-sm shadow-primary-500/25">
+      <div class="pw-topbar-user-avatar">
         {{ initials }}
       </div>
-      <div class="hidden text-left md:block">
-        <div class="max-w-[140px] truncate text-sm font-medium text-gray-900 dark:text-white">
+      <div class="pw-topbar-user-copy">
+        <div class="max-w-[120px] truncate text-sm font-medium text-gray-900 dark:text-white">
           {{ authStore.user?.username ?? t('common.loading') }}
         </div>
         <div class="text-xs text-gray-500 dark:text-dark-400">

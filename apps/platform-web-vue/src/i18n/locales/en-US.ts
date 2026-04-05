@@ -45,6 +45,7 @@ export const enUS = {
     announcements: 'Announcements',
     uiAssets: 'UI Assets',
     resourcesOverview: 'Resources',
+    resourcePlaybook: 'Frontend Playbook',
     resourcePages: 'Page Templates',
     resourceComponents: 'Component Templates',
     resourceEngineering: 'Engineering Templates',
@@ -53,8 +54,9 @@ export const enUS = {
     audit: 'Audit'
   },
   topbar: {
-    projectContext: '{project} · current project workspace context',
-    globalContext: 'Global platform workspace context',
+    projectContext: '{project} · project context',
+    globalContext: 'Global platform context',
+    projectPlaceholder: 'No project selected',
     operator: 'Platform Operator',
     language: 'Language',
     announcements: 'Announcements',

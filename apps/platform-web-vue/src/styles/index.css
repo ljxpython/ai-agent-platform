@@ -39,6 +39,7 @@
     @apply min-h-screen;
   }
 
+  html.pw-dialog-open,
   body.pw-dialog-open {
     overflow: hidden;
   }
@@ -189,6 +190,86 @@
     @apply w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 outline-none transition-all duration-200;
     @apply placeholder:text-gray-400 focus:border-primary-500 focus:ring-2 focus:ring-primary-500/30;
     @apply disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-600 dark:bg-dark-800 dark:text-gray-100 dark:placeholder:text-dark-400 dark:disabled:bg-dark-900;
+  }
+
+  .pw-select {
+    @apply hidden;
+  }
+
+  .pw-select-trigger {
+    @apply flex h-11 w-full items-center justify-between gap-2 rounded-2xl border border-white/70 bg-white/90 px-4 text-left text-sm text-gray-900 shadow-soft backdrop-blur outline-none transition-all duration-200;
+    @apply hover:-translate-y-0.5 hover:border-gray-200 hover:bg-white hover:shadow-card;
+    @apply focus:border-sky-200 focus:ring-2 focus:ring-sky-500/20;
+    @apply dark:border-dark-700 dark:bg-dark-900/80 dark:text-gray-100 dark:hover:border-dark-600 dark:hover:bg-dark-900 dark:hover:shadow-card;
+  }
+
+  .pw-select-trigger-open {
+    @apply border-sky-100 bg-sky-50/90 text-sky-700 ring-2 ring-sky-500/15 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-200;
+  }
+
+  .pw-select-trigger-ghost {
+    @apply h-auto min-h-0 border-transparent bg-transparent px-0 py-0 shadow-none hover:translate-y-0 hover:border-transparent hover:bg-transparent hover:shadow-none;
+    @apply focus:border-transparent focus:ring-0 dark:bg-transparent dark:hover:border-transparent dark:hover:bg-transparent;
+  }
+
+  .pw-select-trigger-ghost.pw-select-trigger-open {
+    @apply border-transparent bg-transparent ring-0 dark:bg-transparent;
+  }
+
+  .pw-select-trigger-ghost .pw-select-trigger-label {
+    @apply text-sm font-semibold text-gray-800 dark:text-gray-100;
+  }
+
+  .pw-select-trigger-ghost .pw-select-trigger-icon {
+    @apply text-sky-300 dark:text-sky-300;
+  }
+
+  .pw-select-trigger-disabled {
+    @apply cursor-not-allowed bg-gray-100 text-gray-400 opacity-70 hover:border-gray-200 hover:bg-gray-100;
+    @apply dark:bg-dark-900 dark:text-dark-400 dark:hover:border-dark-600 dark:hover:bg-dark-900;
+  }
+
+  .pw-select-trigger-label {
+    @apply min-w-0 flex-1 truncate font-medium;
+  }
+
+  .pw-select-trigger-placeholder {
+    @apply text-gray-400 dark:text-dark-400;
+  }
+
+  .pw-select-trigger-icon {
+    @apply shrink-0 text-gray-400 transition-transform duration-200 dark:text-dark-400;
+  }
+
+  .pw-select-dropdown {
+    @apply z-[80] overflow-hidden rounded-[26px] border border-white/80 bg-white shadow-card backdrop-blur-xl;
+    @apply dark:border-dark-700 dark:bg-dark-900 dark:shadow-[0_20px_50px_rgba(0,0,0,0.45)];
+  }
+
+  .pw-select-dropdown-top {
+    transform-origin: bottom center;
+  }
+
+  .pw-select-options {
+    @apply max-h-72 overflow-y-auto p-1.5;
+    overscroll-behavior: contain;
+  }
+
+  .pw-select-option {
+    @apply flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-gray-700 transition-all duration-150;
+    @apply hover:bg-gray-50 hover:text-gray-900 dark:text-dark-200 dark:hover:bg-dark-800 dark:hover:text-white;
+  }
+
+  .pw-select-option-focused {
+    @apply bg-gray-50 text-gray-900 dark:bg-dark-800 dark:text-white;
+  }
+
+  .pw-select-option-selected {
+    @apply bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300;
+  }
+
+  .pw-select-option-disabled {
+    @apply cursor-not-allowed opacity-45 hover:bg-transparent hover:text-inherit dark:hover:bg-transparent;
   }
 
   .input-label,
@@ -478,9 +559,42 @@
   }
 
   .pw-topbar-action {
-    @apply inline-flex h-10 items-center justify-center gap-2 rounded-2xl border border-white/60 bg-white/75 px-3 text-gray-600 shadow-soft backdrop-blur transition;
+    @apply inline-flex h-11 items-center justify-center gap-2 rounded-[22px] border border-white/60 bg-white/75 px-3.5 text-gray-600 shadow-soft backdrop-blur transition;
     @apply hover:-translate-y-0.5 hover:text-gray-900 hover:shadow-card;
     @apply dark:border-dark-700 dark:bg-dark-900/70 dark:text-dark-200 dark:hover:text-white;
+  }
+
+  .pw-topbar-action-active {
+    @apply border-sky-100 bg-sky-50/90 text-sky-700 shadow-card;
+    @apply dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-200;
+  }
+
+  .pw-topbar-chip {
+    @apply inline-flex h-11 items-center gap-2 rounded-[22px] border px-3.5 text-sm shadow-soft backdrop-blur transition;
+  }
+
+  .pw-topbar-chip-primary {
+    @apply border-primary-100 bg-primary-50/90 text-primary-700;
+    @apply dark:border-primary-900/40 dark:bg-primary-950/20 dark:text-primary-300;
+  }
+
+  .pw-topbar-user-trigger {
+    @apply inline-flex min-h-11 items-center gap-3 rounded-[22px] border border-white/60 bg-white/75 px-2.5 py-1.5 text-left text-gray-700 shadow-soft backdrop-blur transition;
+    @apply hover:-translate-y-0.5 hover:text-gray-900 hover:shadow-card;
+    @apply dark:border-dark-700 dark:bg-dark-900/70 dark:text-dark-100 dark:hover:text-white;
+  }
+
+  .pw-topbar-user-trigger-active {
+    @apply border-sky-100 bg-sky-50/90 text-sky-700 shadow-card;
+    @apply dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-200;
+  }
+
+  .pw-topbar-user-avatar {
+    @apply flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-primary text-xs font-semibold text-white shadow-sm shadow-primary-500/25;
+  }
+
+  .pw-topbar-user-copy {
+    @apply hidden min-w-0 text-left md:block;
   }
 
   .pw-topbar-dropdown {

@@ -132,6 +132,12 @@ const workspaceChildren: RouteRecordRaw[] = [
         meta: { title: '资源总览', eyebrow: 'Resources' }
       },
       {
+        path: 'playbook',
+        name: 'workspace-resources-playbook',
+        component: () => import('@/modules/examples/pages/ResourcePlaybookPage.vue'),
+        meta: { title: '前端开发范式', eyebrow: 'Resources' }
+      },
+      {
         path: 'pages',
         name: 'workspace-resources-pages',
         component: () => import('@/modules/examples/pages/ResourcePageTemplatesPage.vue'),

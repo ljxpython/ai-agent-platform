@@ -86,7 +86,7 @@ function openPreviewWindowShell(filename?: string) {
     <style>
       body {
         margin: 0;
-        min-height: 100vh;
+        min-height: 100dvh;
         display: grid;
         place-items: center;
         background: #eef3fa;
@@ -157,7 +157,7 @@ async function openDocumentPreview(
     <style>
       body {
         margin: 0;
-        min-height: 100vh;
+        min-height: 100dvh;
         display: grid;
         place-items: center;
         background: #dfe7f3;
@@ -625,7 +625,7 @@ watch(
       <div class="space-y-4">
         <FilterToolbar>
           <div class="flex flex-wrap items-center gap-3">
-            <div class="min-w-[260px] flex-1">
+            <div class="min-w-0 flex-1 basis-full sm:min-w-[260px]">
               <SearchInput
                 v-model="searchInput"
                 placeholder="按文件名或摘要搜索"
@@ -634,7 +634,7 @@ watch(
 
             <div
               v-if="visibleFilterSet.has('batch')"
-              class="w-[240px]"
+              class="w-full sm:w-[240px]"
             >
               <BaseSelect v-model="batchInput">
                 <option value="">
@@ -652,7 +652,7 @@ watch(
 
             <div
               v-if="visibleFilterSet.has('parse_status')"
-              class="w-[200px]"
+              class="w-full sm:w-[200px]"
             >
               <BaseSelect v-model="parseStatusInput">
                 <option value="">
@@ -673,7 +673,7 @@ watch(
               </BaseSelect>
             </div>
 
-            <div class="ml-auto flex items-center gap-2">
+            <div class="flex w-full flex-wrap items-center justify-end gap-2 xl:ml-auto xl:w-auto xl:flex-nowrap">
               <FilterSettingsMenu
                 :items="filterItems"
                 :model-value="visibleFilterKeys"

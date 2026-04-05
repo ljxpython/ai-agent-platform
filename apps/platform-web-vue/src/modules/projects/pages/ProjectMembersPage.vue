@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -346,14 +347,13 @@ watch(
 
           <label class="block">
             <span class="pw-input-label">角色</span>
-            <select
+            <BaseSelect
               v-model="role"
-              class="pw-select"
             >
               <option value="admin">admin</option>
               <option value="editor">editor</option>
               <option value="executor">executor</option>
-            </select>
+            </BaseSelect>
           </label>
 
           <div

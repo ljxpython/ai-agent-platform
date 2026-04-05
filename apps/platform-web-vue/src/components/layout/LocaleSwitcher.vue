@@ -58,6 +58,7 @@ onBeforeUnmount(() => {
     <button
       type="button"
       class="pw-topbar-action"
+      :class="isOpen ? 'pw-topbar-action-active' : ''"
       :aria-label="t('topbar.language')"
       @click="toggle"
     >

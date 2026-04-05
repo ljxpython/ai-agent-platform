@@ -325,7 +325,7 @@ watch(
       <template #filters>
         <FilterToolbar>
           <div class="flex flex-wrap items-center gap-3">
-            <div class="min-w-[260px] flex-1">
+            <div class="min-w-0 flex-1 basis-full sm:min-w-[260px]">
               <SearchInput
                 v-model="searchInput"
                 placeholder="按标题、模块、描述、case_id 搜索"
@@ -334,7 +334,7 @@ watch(
 
             <div
               v-if="visibleFilterSet.has('batch')"
-              class="w-[240px]"
+              class="w-full sm:w-[240px]"
             >
               <BaseSelect v-model="batchInput">
                 <option value="">
@@ -352,7 +352,7 @@ watch(
 
             <div
               v-if="visibleFilterSet.has('status')"
-              class="w-[180px]"
+              class="w-full sm:w-[180px]"
             >
               <BaseSelect v-model="statusInput">
                 <option value="">
@@ -373,7 +373,7 @@ watch(
               </BaseSelect>
             </div>
 
-            <div class="ml-auto flex items-center gap-2">
+            <div class="flex w-full flex-wrap items-center justify-end gap-2 xl:ml-auto xl:w-auto xl:flex-nowrap">
               <FilterSettingsMenu
                 :items="filterItems"
                 :model-value="visibleFilterKeys"

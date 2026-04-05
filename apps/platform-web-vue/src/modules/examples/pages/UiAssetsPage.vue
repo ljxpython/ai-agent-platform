@@ -52,6 +52,16 @@ const stats = [
 
 const resourceCards = [
   {
+    title: '前端开发范式',
+    description: '先看这页再去挑模板。把页面母版、组件复用、顶栏交互、表格分页、主题和 i18n 的统一口径全部固定下来。',
+    to: '/workspace/resources/playbook',
+    label: '进入开发范式',
+    icon: 'overview',
+    tone: 'primary',
+    count: 5,
+    groupCount: 4
+  },
+  {
     title: '页面模板',
     description: '专门看页面级模板。列表页、看板页、认证页、公开页、向导页都拆开了，后续开发者直接按页面借壳。',
     to: '/workspace/resources/pages',
@@ -126,7 +136,7 @@ const resourceCards = [
           现在不用再去翻一堆重复卡片了。先判断自己要找的是页面、组件还是工程支撑，再进入对应资源页，从推荐模板和场景模板开始挑。
         </p>
 
-        <div class="mt-6 grid gap-4 xl:grid-cols-3">
+        <div class="mt-6 grid gap-4 xl:grid-cols-4">
           <article
             v-for="card in resourceCards"
             :key="card.to"
@@ -149,7 +159,11 @@ const resourceCards = [
                 />
               </div>
               <div class="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200">
-                {{ card.groupCount }} 组 / {{ card.count }} 个
+                {{
+                  card.to === '/workspace/resources/playbook'
+                    ? `${card.groupCount} 条原则 / ${card.count} 类母版`
+                    : `${card.groupCount} 组 / ${card.count} 个`
+                }}
               </div>
             </div>
 

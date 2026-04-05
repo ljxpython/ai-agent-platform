@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import EmptyState from '@/components/platform/EmptyState.vue'
@@ -335,14 +336,13 @@ watch(
               </label>
               <label class="block">
                 <span class="pw-input-label">状态</span>
-                <select
+                <BaseSelect
                   v-model="status"
-                  class="pw-select"
                   :disabled="savingProfile"
                 >
                   <option value="active">active</option>
                   <option value="disabled">disabled</option>
-                </select>
+                </BaseSelect>
               </label>
             </div>
 

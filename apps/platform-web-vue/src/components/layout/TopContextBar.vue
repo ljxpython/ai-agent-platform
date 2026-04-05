@@ -27,7 +27,7 @@ const roleLabel = computed(() => (authStore.user?.is_super_admin ? t('common.adm
 
 <template>
   <header class="pw-topbar">
-    <div class="flex min-h-16 items-center justify-between gap-4 px-4 py-3 md:px-6 lg:px-8">
+    <div class="flex min-h-16 flex-wrap items-start justify-between gap-3 px-4 py-3 md:px-6 lg:px-8">
       <div class="flex min-w-0 flex-1 items-center gap-4">
         <div class="min-w-0">
           <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
@@ -42,15 +42,15 @@ const roleLabel = computed(() => (authStore.user?.is_super_admin ? t('common.adm
         </div>
       </div>
 
-      <div class="flex shrink-0 items-center gap-2 md:gap-3">
+      <div class="flex min-w-0 w-full flex-wrap items-center justify-end gap-2 md:w-auto md:flex-nowrap md:gap-3">
         <WorkspaceProjectSwitcher />
-        <div class="hidden items-center gap-2 rounded-2xl border border-primary-100 bg-primary-50/90 px-3 py-1.5 shadow-soft sm:flex dark:border-primary-900/40 dark:bg-primary-950/20">
+        <div class="pw-topbar-chip pw-topbar-chip-primary hidden sm:flex">
           <BaseIcon
             name="shield"
             size="sm"
             class="text-primary-600 dark:text-primary-400"
           />
-          <span class="text-sm font-semibold text-primary-700 dark:text-primary-300">
+          <span class="text-sm font-semibold">
             {{ roleLabel }}
           </span>
         </div>

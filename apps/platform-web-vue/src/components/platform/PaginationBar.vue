@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
@@ -24,10 +24,17 @@ const emit = defineEmits<{
 }>()
 
 const { t } = useI18n()
+const jumpPage = ref('')
 
 const totalPages = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
 const from = computed(() => (props.total === 0 ? 0 : (props.page - 1) * props.pageSize + 1))
 const to = computed(() => Math.min(props.page * props.pageSize, props.total))
+const pageSizeSelectOptions = computed(() =>
+  props.pageSizeOptions.map((option) => ({
+    value: String(option),
+    label: String(option)
+  }))
+)
 
 const visiblePages = computed(() => {
   const pages: Array<number | 'ellipsis'> = []
@@ -79,6 +86,25 @@ function handlePageSizeChange(value: string) {
     emit('update:pageSize', nextPageSize)
   }
 }
+
+function submitJump() {
+  const nextPage = Number.parseInt(jumpPage.value.trim(), 10)
+  if (!Number.isFinite(nextPage)) {
+    jumpPage.value = ''
+    return
+  }
+
+  goToPage(nextPage)
+  jumpPage.value = ''
+}
+
+watch(
+  () => props.page,
+  (page) => {
+    jumpPage.value = String(page)
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
@@ -106,7 +132,7 @@ function handlePageSizeChange(value: string) {
     </div>
 
     <div class="hidden flex-1 items-center justify-between gap-4 sm:flex">
-      <div class="flex items-center gap-4">
+      <div class="flex flex-wrap items-center gap-4">
         <p class="text-sm text-gray-500 dark:text-dark-300">
           {{ t('pagination.showing') }}
           <span class="font-semibold text-gray-900 dark:text-white">{{ from }}</span>
@@ -122,17 +148,30 @@ function handlePageSizeChange(value: string) {
           <div class="w-24">
             <BaseSelect
               :model-value="String(pageSize)"
+              :options="pageSizeSelectOptions"
               @update:model-value="handlePageSizeChange"
-            >
-              <option
-                v-for="option in pageSizeOptions"
-                :key="option"
-                :value="option"
-              >
-                {{ option }}
-              </option>
-            </BaseSelect>
+            />
           </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-gray-500 dark:text-dark-300">跳转</span>
+          <input
+            v-model="jumpPage"
+            type="number"
+            min="1"
+            :max="totalPages"
+            class="w-20 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 outline-none transition focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 dark:border-dark-700 dark:bg-dark-800 dark:text-white"
+            @keydown.enter.prevent="submitJump"
+          >
+          <button
+            type="button"
+            class="pw-pagination-nav"
+            :disabled="disabled"
+            @click="submitJump"
+          >
+            Go
+          </button>
         </div>
       </div>
 
