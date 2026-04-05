@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/README-EN%2FZH-F59E0B" alt="README EN/ZH" />
 </p>
 
-<p align="center"><a href="#system-overview">System Overview</a> · <a href="#quick-start">Quick Start</a> · <a href="docs/deployment-guide.md">Deployment Guide</a> · <a href="docs/CHANGELOG.md">Changelog</a> · <a href="docs/commit-and-changelog-guidelines.md">Commit Guidelines</a> · <a href="#ai-deploy">AI Deployment</a></p>
+<p align="center"><a href="#system-overview">System Overview</a> · <a href="#frontend-entry">Frontend Entry</a> · <a href="#quick-start">Quick Start</a> · <a href="docs/deployment-guide.md">Deployment Guide</a> · <a href="docs/CHANGELOG.md">Changelog</a> · <a href="docs/commit-and-changelog-guidelines.md">Commit Guidelines</a> · <a href="#acknowledgements">Acknowledgements</a> · <a href="#ai-deploy">AI Deployment</a></p>
 
 An enterprise AI agent platform architecture built on `LangGraph / LangChain`, intended as a reusable foundation for further development.  
 It separates the **platform governance layer** from the **Agent Runtime execution layer**, so the repo can support platform-side authentication, project management, audit, and catalog management, while also supporting runtime graph orchestration, model assembly, Tools / MCP / Skills integration, and rapid agent debugging.
@@ -27,6 +27,33 @@ The repository currently provides a default five-service local bring-up setup. I
 - Teams that want to bring AI-assisted collaboration into the real engineering workflow
 
 > If you want to understand why the project is designed this way and how development should continue, start with [docs/development-paradigm.md](docs/development-paradigm.md). Most supporting docs in this repo are currently Chinese-first.
+
+<a id="frontend-entry"></a>
+
+## Current Frontend Entry
+
+`apps/platform-web-vue` is now the official platform frontend host and the default place for future platform frontend development.
+
+Use the frontend apps in this repo like this:
+
+- `apps/platform-web-vue`: official platform workspace frontend
+- `apps/platform-web`: legacy frontend kept for compatibility and migration reference
+- `apps/runtime-web`: runtime-facing debug frontend
+
+If you just want the current official local demo path, start the root scripts and open `apps/platform-web-vue`.
+
+## AI Continuous-Coding Harness
+
+This repository is not only a codebase. It already acts as an engineering harness for continuous AI-assisted development.
+
+That harness is made of several parts working together:
+
+- `Boundaries`: platform governance, runtime execution, debug frontend, and result-domain service are separated instead of mixed together
+- `Contracts`: local deployment contract, env conventions, startup order, API naming, and demo account rules are fixed
+- `Patterns`: `runtime-service`, `platform-web-vue`, migration playbooks, and reusable examples already provide working implementation patterns
+- `Delivery loop`: helper scripts, health checks, smoke tests, acceptance docs, changelog, and release runbooks form a repeatable delivery path
+
+In short, the repo is meant to let AI agents keep building inside a controlled engineering environment, not just generate random code in a vacuum.
 
 ## What Problem This Project Solves
 
@@ -45,7 +72,7 @@ If you want to see what the current platform frontend already looks like and how
 
 - [Platform frontend showcase and introduction](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/20260325_platform_frontend_intro.md)
 
-That article is more frontend-oriented and is useful for quickly understanding the current `platform-web` pages, workspace structure, and actual UI results.
+That article is more frontend-oriented and is useful for quickly understanding the current platform workspace structure and UI direction.
 
 ![Platform Frontend Showcase](docs/assets/image-20260325161139758.png)
 
@@ -57,18 +84,19 @@ The default local bring-up currently includes five apps:
 
 - `apps/interaction-data-service`: result-domain data service for workflow result persistence and querying
 - `apps/platform-api`: platform backend / control-plane API
-- `apps/platform-web`: main platform frontend / admin workspace entry
+- `apps/platform-web-vue`: official platform frontend / admin workspace entry
 - `apps/runtime-service`: LangGraph execution layer / Agent Runtime
 - `apps/runtime-web`: debug frontend that talks directly to the runtime
 
 ### Two Main Paths
 
-- Platform path: `platform-web -> platform-api -> runtime-service`
+- Platform path: `platform-web-vue -> platform-api -> runtime-service`
 - Debug path: `runtime-web -> runtime-service`
 
-### What The Two Frontends Are For
+### What The Frontends Are For
 
-- `platform-web`: platform product capabilities, admin workspace, and platform-side chat entry
+- `platform-web-vue`: official platform product workspace and future frontend host
+- `platform-web`: legacy frontend kept for compatibility and migration reference
 - `runtime-web`: agent debugging, interaction validation, and fast runtime iteration
 
 ## Architecture Diagram
@@ -84,7 +112,7 @@ The default local bring-up currently includes five apps:
 1. `runtime-service`
 2. `interaction-data-service`
 3. `platform-api`
-4. `platform-web`
+4. `platform-web-vue`
 5. `runtime-web`
 
 ### Root Scripts
@@ -101,17 +129,31 @@ These three scripts are:
 - Health check: `scripts/check-health.sh`
 - Stop: `scripts/dev-down.sh`
 
+### If You Want To Start `platform-web-vue` Separately
+
+The root scripts already start `apps/platform-web-vue`.
+
+If you want to run it alone during frontend work:
+
+```bash
+VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web-vue" dev
+```
+
+Then open:
+
+- `platform-web-vue`: `http://127.0.0.1:3002`
+
 ### Default Local Ports
 
 - `interaction-data-service`: `8090`
 - `runtime-service`: `8123`
 - `platform-api`: `2024`
-- `platform-web`: `3000`
+- `platform-web-vue`: `3000`
 - `runtime-web`: `3001`
 
 ### URLs After Startup
 
-- `platform-web`: `http://127.0.0.1:3000`
+- `platform-web-vue`: `http://127.0.0.1:3000`
 - `runtime-web`: `http://127.0.0.1:3001`
 
 ### Minimum Health Checks
@@ -132,17 +174,19 @@ If `/api/langgraph/info` on `platform-api` returns `200`, and `/_service/health`
 ```text
 AITestLab/
 ├── apps/
+│   ├── interaction-data-service/
 │   ├── platform-api/
 │   ├── platform-web/
+│   ├── platform-web-vue/
 │   ├── runtime-service/
 │   ├── runtime-web/
-│   └── interaction-data-service/
+│   └── ...
 ├── docs/
 ├── scripts/
 └── archive/
 ```
 
-- `apps/`: business apps and the default local startup set
+- `apps/`: business apps, including the default local startup set and the official Vue platform frontend host
 - `docs/`: deployment, development, constraints, and background docs
 - `scripts/`: unified start, stop, and health-check scripts
 - `archive/`: historical archive notes
@@ -254,12 +298,13 @@ If this is your first time looking at the repo, the recommended reading order is
 This repo has already completed:
 
 - The default five-service startup set has been moved under `apps/*`
+- `apps/platform-web-vue` is now the official platform frontend host
 - `runtime-service` can start
 - `interaction-data-service` can start
 - `platform-api` can start
 - `platform-api -> runtime-service` integration has passed
 - `runtime-service -> interaction-data-service` has been wired into the local bring-up scripts
-- `platform-web` and `runtime-web` no longer depend on Google Fonts during build
+- `platform-web-vue` and `runtime-web` now form the current frontend mainline
 
 Current conventions that are still kept:
 
@@ -298,3 +343,22 @@ The old `AITestLab` code is no longer kept on the current working branch.
 If you need the historical code, see:
 
 - [AITestLab-archive](https://github.com/ljxpython/AITestLab-archive)
+
+<a id="acknowledgements"></a>
+
+## Acknowledgements
+
+This project has benefited from several strong open-source projects and ecosystems, especially:
+
+- [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api/tree/main): strong inspiration for frontend layout rhythm, dashboard organization, and workspace interaction patterns
+- [FastAPI](https://fastapi.tiangolo.com/): key foundation for the platform backend and service interfaces
+- [LangGraph](https://docs.langchain.com/langgraph): key foundation for agent runtime orchestration and stateful execution flows
+- [FastMCP](https://gofastmcp.com/): important reference ecosystem for MCP-based tooling and service integration
+
+These references are not copied blindly. They are absorbed, reorganized, and adapted around the goals and engineering boundaries of this repository.
+
+## Open Source Usage Notice
+
+This project is maintained as public source code. Learning from it, referencing it, and building on top of it are all welcome.
+
+If you use this project in public repositories, technical articles, demos, training materials, or redistributed derivatives, please clearly credit the original repository and author.

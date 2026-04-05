@@ -7,7 +7,7 @@
 本文主要回答三个问题：
 
 1. 拉取代码后，需要先准备哪些系统依赖？
-2. 默认四服务启动集分别依赖什么、各自怎么配置？
+2. 默认五服务启动集分别依赖什么、各自怎么配置？
 3. `platform-api` 的 PostgreSQL、`.env`、`uv`、`pnpm` 应该怎么准备？
 
 它不是额外提示词负担：用户不需要在请求里单独点名本文，代理应在需要这些细节时自行读取。
@@ -16,41 +16,44 @@
 
 ```text
 agent-platform/
+├── apps/interaction-data-service
 ├── apps/platform-api
 ├── apps/platform-web
+├── apps/platform-web-vue
 ├── apps/runtime-service
 ├── apps/runtime-web
-├── apps/interaction-data-service
 ├── docs/
 └── scripts/
 ```
 
-`interaction-data-service` 也在仓库中，但它不属于默认本地四服务启动集；本文仍只覆盖默认本地部署路径。
+当前默认本地部署主线已经切换到 `apps/platform-web-vue`，`apps/platform-web` 只保留为历史兼容入口和迁移参考。
 
 ## 1. 总体部署前提
 
-### 1.1 默认四服务启动集的职责
+### 1.1 默认五服务启动集的职责
 
 - `apps/platform-api`：平台控制面后端，依赖 PostgreSQL
-- `apps/platform-web`：平台主前端，连接 `platform-api`
+- `apps/platform-web-vue`：正式平台前端宿主，连接 `platform-api`
 - `apps/runtime-service`：LangGraph 运行时执行层，依赖 Python 配置与模型配置
 - `apps/runtime-web`：直连 runtime 的调试前端，连接 `runtime-service`
-
-补充：`apps/interaction-data-service` 是仓库内的按需结果域服务，但不在默认本地启动集里。
+- `apps/interaction-data-service`：结果域服务，承接工作流结果、文档和相关持久化能力
 
 ### 1.2 当前推荐联调关系
 
 ```text
-platform-web -> platform-api -> runtime-service
+platform-web-vue -> platform-api -> runtime-service
+platform-api -> interaction-data-service
+runtime-service -> interaction-data-service
 runtime-web  -> runtime-service
 ```
 
 ### 1.3 当前推荐端口
 
 - `platform-api`: `2024`
-- `platform-web`: `3000`
+- `platform-web-vue`: `3000`
 - `runtime-service`: `8123`
 - `runtime-web`: `3001`
+- `interaction-data-service`: `8090`
 
 ## 2. 需要先安装什么
 
@@ -96,26 +99,26 @@ uv python install 3.13
 
 ### 2.3 Node.js
 
-两个前端应用当前 CI 使用：
+当前正式前端宿主与调试前端建议都使用：
 
 - `Node.js 22.x`
 
 证据：
 
-- `apps/platform-web/.github/workflows/ci.yml`
+- `apps/platform-web-vue/package.json`
 - `apps/runtime-web/.github/workflows/ci.yml`
 
 虽然 `pnpm 10` 最低支持 Node `18.12+`，但当前仓库建议直接按 CI 对齐到 `Node 22.x`。
 
 ### 2.4 pnpm
 
-两个前端应用当前固定：
+当前前端应用统一固定：
 
 - `pnpm@10.5.1`
 
 证据：
 
-- `apps/platform-web/package.json`
+- `apps/platform-web-vue/package.json`
 - `apps/runtime-web/package.json`
 
 官方安装方式可选：
@@ -439,7 +442,49 @@ curl http://127.0.0.1:8123/internal/capabilities/tools
 uv run langgraph dev --config runtime_service/langgraph_auth.json --port 8123 --no-browser
 ```
 
-## 5.3 `apps/platform-web`
+## 5.3 `apps/interaction-data-service`
+
+### 依赖
+
+- Python `3.13`
+- `uv`
+
+### 关键 env
+
+最小本地可运行建议：
+
+```env
+SERVICE_NAME=interaction-data-service
+INTERACTION_DB_ENABLED=false
+INTERACTION_DB_AUTO_CREATE=false
+DATABASE_URL=
+```
+
+如果你要让它真实接 PostgreSQL，再把：
+
+```env
+INTERACTION_DB_ENABLED=true
+DATABASE_URL=postgresql+psycopg://agent:<pg-password>@127.0.0.1:5432/agent_platform
+```
+
+补进去。
+
+### 启动前准备
+
+```bash
+cd apps/interaction-data-service
+cp .env.example .env
+uv sync
+```
+
+### 启动命令
+
+```bash
+cd apps/interaction-data-service
+uv run uvicorn main:app --host 0.0.0.0 --port 8090 --reload
+```
+
+## 5.4 `apps/platform-web-vue`
 
 ### 依赖
 
@@ -451,18 +496,16 @@ uv run langgraph dev --config runtime_service/langgraph_auth.json --port 8123 --
 最小本地可运行建议：
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:2024
-NEXT_PUBLIC_ASSISTANT_ID=assistant
-
-# 可选：如果要使用 Next.js server-side passthrough
-LANGGRAPH_API_URL=http://127.0.0.1:8123
-LANGSMITH_API_KEY=
+VITE_PLATFORM_API_URL=http://localhost:2024
+VITE_DEV_PROXY_TARGET=http://localhost:2024
+VITE_DEV_PORT=3000
+VITE_LANGGRAPH_DEBUG_URL=
 ```
 
 ### 启动前准备
 
 ```bash
-cd apps/platform-web
+cd apps/platform-web-vue
 cp .env.example .env
 pnpm install
 ```
@@ -470,19 +513,24 @@ pnpm install
 ### 启动命令
 
 ```bash
-cd apps/platform-web
-pnpm dev
+cd apps/platform-web-vue
+VITE_DEV_PORT=3000 pnpm dev
 ```
 
 ### 生产构建命令
 
 ```bash
-cd apps/platform-web
+cd apps/platform-web-vue
 pnpm build
-pnpm start
+pnpm preview
 ```
 
-## 5.4 `apps/runtime-web`
+### 说明
+
+- `apps/platform-web-vue` 是当前正式平台前端宿主
+- `apps/platform-web` 不再是默认本地部署主线
+
+## 5.5 `apps/runtime-web`
 
 ### 依赖
 
@@ -587,15 +635,23 @@ uv sync
 
 然后把 `.env` 中的 `DATABASE_URL` 密码替换成你自己的 PostgreSQL 密码。
 
-## 6.7 配置 platform-web
+## 6.7 配置 interaction-data-service
 
 ```bash
-cd ../platform-web
+cd ../interaction-data-service
+cp .env.example .env
+uv sync
+```
+
+## 6.8 配置 platform-web-vue
+
+```bash
+cd ../platform-web-vue
 cp .env.example .env
 pnpm install
 ```
 
-## 6.8 配置 runtime-web
+## 6.9 配置 runtime-web
 
 ```bash
 cd ../runtime-web
@@ -614,9 +670,10 @@ NEXT_PUBLIC_ASSISTANT_ID=assistant
 
 ```text
 1. runtime-service
-2. platform-api
-3. platform-web
-4. runtime-web
+2. interaction-data-service
+3. platform-api
+4. platform-web-vue
+5. runtime-web
 ```
 
 启动命令：
@@ -627,14 +684,18 @@ cd apps/runtime-service
 uv run langgraph dev --config runtime_service/langgraph.json --port 8123 --no-browser
 
 # terminal 2
+cd apps/interaction-data-service
+uv run uvicorn main:app --host 0.0.0.0 --port 8090 --reload
+
+# terminal 3
 cd apps/platform-api
 uv run uvicorn main:app --host 0.0.0.0 --port 2024
 
-# terminal 3
-cd apps/platform-web
-pnpm dev
-
 # terminal 4
+cd apps/platform-web-vue
+VITE_DEV_PORT=3000 pnpm dev
+
+# terminal 5
 cd apps/runtime-web
 PORT=3001 pnpm dev
 ```
@@ -666,18 +727,24 @@ PORT=3001 pnpm dev
 - 在 `apps/platform-api/.env` 放实际配置
 - 并从 `apps/platform-api` 目录执行 `uv run ...`
 
-### 9.2 `runtime-web` 历史本地配置残留旧地址
+### 9.2 `platform-web-vue` 仍沿用旧前端认知
+
+当前正式平台前端已经是 `apps/platform-web-vue`。
+
+如果你还在默认部署文档、脚本或本地习惯里优先启动 `apps/platform-web`，会导致你看到的是历史前端，而不是当前正式工作台。
+
+### 9.3 `runtime-web` 历史本地配置残留旧地址
 
 当前模板已经按 `8123` 对齐；如果你本地 `apps/runtime-web/.env` 还残留旧的 `2024` 地址，需要手动改回 `http://localhost:8123`。
 
-### 9.3 `runtime-service` 不是只复制 `.env` 就能跑
+### 9.4 `runtime-service` 不是只复制 `.env` 就能跑
 
 它还必须有：
 
 - `runtime_service/conf/settings.yaml`
 - 且其中至少有一个可用模型组
 
-### 9.4 `platform-api` 没有 PG 就启动不完整
+### 9.5 `platform-api` 没有 PG 就启动不完整
 
 如果你启用了：
 

@@ -38,6 +38,7 @@
 - `interaction-data-service`：承接落库与 CRUD/查询接口（按 domain 命名空间组织）。
 - `runtime-service`：执行智能体/工作流；需要持久化时调用对应 domain 的 `/api/<domain>/...`。
 - `platform-api`：对外统一鉴权/项目隔离；需要时转发/聚合 `interaction-data-service`。
-- `platform-web`：按 domain 做页面入口与管理能力。
+- `platform-web-vue`：当前正式平台前端宿主，按 domain 做页面入口与管理能力。
+- `platform-web`：历史兼容入口，仅在迁移对照或必要兼容时使用。
 
-本地部署补充说明：`interaction-data-service` 属于仓库架构的一部分，但不在默认本地四服务启动集里；默认本地部署成员以 `docs/local-deployment-contract.yaml` 为准。
+本地部署补充说明：默认本地部署成员以 `docs/local-deployment-contract.yaml` 为准；当前默认本地启动集已经包含 `interaction-data-service` 与 `platform-web-vue`。

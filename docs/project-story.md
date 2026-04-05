@@ -30,8 +30,13 @@
 
 这次调整的目标，是把这两条线的经验整合成现在的 `Agent Platform`：
 
-- 平台控制面：`platform-api` + `platform-web`
+- 平台控制面：`platform-api` + `platform-web-vue`
 - 运行时执行面：`runtime-service` + `runtime-web`
+
+补充说明：
+
+- `apps/platform-web-vue` 是当前正式平台前端宿主
+- `apps/platform-web` 保留为历史兼容入口和迁移参考
 
 这样做之后，读者不需要在多个实验仓库之间来回切换，可以直接在当前仓库里看到一条更完整的演进路径：从测试平台出发，逐步过渡到通用智能体平台；从零散探索，逐步收敛到平台层和运行时分层清晰的整体架构。
 

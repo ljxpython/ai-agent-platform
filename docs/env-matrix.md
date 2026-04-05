@@ -4,7 +4,7 @@
 
 默认本地部署的服务成员、启动顺序、端口和链路，以 `docs/local-deployment-contract.yaml` 为准。
 
-本文当前只覆盖默认四服务启动集，不覆盖按需服务 `interaction-data-service`。
+本文当前覆盖默认五服务启动集，并额外保留 `platform-web` 的兼容参考说明。
 
 ## 1. `platform-api`
 
@@ -25,20 +25,37 @@
 - `JWT_ACCESS_SECRET`
 - `JWT_REFRESH_SECRET`
 
-## 2. `platform-web`
+## 2. `interaction-data-service`
 
 主要配置来源：
 
-- `apps/platform-web/.env`
-- `apps/platform-web/.env.example`
+- `apps/interaction-data-service/.env`
+- `apps/interaction-data-service/.env.example`
 
 关键变量：
 
-- `NEXT_PUBLIC_API_URL`
-- `NEXT_PUBLIC_ASSISTANT_ID`
-- 可选：`LANGGRAPH_API_URL`
+- `SERVICE_NAME`
+- `INTERACTION_DB_ENABLED`
+- `INTERACTION_DB_AUTO_CREATE`
+- `DATABASE_URL`
+- `DOCUMENT_ASSET_ROOT`
 
-## 3. `runtime-service`
+## 3. `platform-web-vue`
+
+主要配置来源：
+
+- `apps/platform-web-vue/.env.example`
+- `apps/platform-web-vue/.env`
+- `apps/platform-web-vue/.env.local`
+
+关键变量：
+
+- `VITE_PLATFORM_API_URL`
+- `VITE_DEV_PROXY_TARGET`
+- `VITE_DEV_PORT`
+- `VITE_LANGGRAPH_DEBUG_URL`
+
+## 4. `runtime-service`
 
 主要配置来源：
 
@@ -64,7 +81,7 @@
 - `apps/runtime-service/runtime_service/conf/settings.yaml` 中对应的 `default.models.<model_id>` 配置块
 - 不建议只给零散的 AK/SK、API Key、`base_url` 或模型名
 
-## 4. `runtime-web`
+## 5. `runtime-web`
 
 主要配置来源：
 
@@ -76,9 +93,22 @@
 - `NEXT_PUBLIC_API_URL`
 - `NEXT_PUBLIC_ASSISTANT_ID`
 
-## 5. 当前原则
+## 6. `platform-web`（历史兼容入口）
 
-- 默认四服务启动集的环境变量彼此独立维护
+主要配置来源：
+
+- `apps/platform-web/.env`
+- `apps/platform-web/.env.example`
+
+说明：
+
+- 当前只用于历史兼容和迁移对照
+- 不属于默认本地部署主线
+
+## 7. 当前原则
+
+- 默认五服务启动集的环境变量彼此独立维护
 - 根目录暂不新增统一 `.env`
+- `apps/platform-web-vue` 是当前正式平台前端宿主
 - 后续如果确实需要统一入口，再额外设计根级环境编排
 - 默认本地部署的事实源不是本文，而是 `docs/local-deployment-contract.yaml`

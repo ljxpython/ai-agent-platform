@@ -1,6 +1,12 @@
 # 前端 API 地址与本地/远端调试说明
 
-本文补充说明 `platform-web` / `runtime-web` 在不同调试场景下应如何配置 API 地址，避免把浏览器端请求错误地指向 `localhost`。
+本文补充说明 `platform-web-vue` / `runtime-web` 在不同调试场景下应如何配置 API 地址，避免把浏览器端请求错误地指向 `localhost`。
+
+补充口径：
+
+- `apps/platform-web-vue` 是当前正式平台前端宿主
+- `apps/platform-web` 只保留为历史兼容入口
+- 如果你正在看旧的 `NEXT_PUBLIC_*` 配置示例，请把它视为旧前端的历史说明，不再是默认主线
 
 ## 1. 核心原则
 
@@ -19,21 +25,21 @@
 
 ## 2. 推荐配置矩阵
 
-### 2.1 四个服务都在 Mac 本地运行
+### 2.1 五个服务都在 Mac 本地运行
 
 适用场景：
 
-- 你在 Mac 上本地启动 `platform-web`
+- 你在 Mac 上本地启动 `platform-web-vue`
 - `platform-api` 也在 Mac 上
 - `runtime-service` 也在 Mac 上
 
 推荐配置：
 
 ```env
-# apps/platform-web/.env.local
-NEXT_PUBLIC_API_URL=http://localhost:2024
-NEXT_PUBLIC_PLATFORM_API_URL=http://localhost:2024
-NEXT_PUBLIC_ASSISTANT_ID=assistant
+# apps/platform-web-vue/.env.local
+VITE_PLATFORM_API_URL=http://localhost:2024
+VITE_DEV_PROXY_TARGET=http://localhost:2024
+VITE_DEV_PORT=3000
 ```
 
 ```env
@@ -46,17 +52,17 @@ NEXT_PUBLIC_ASSISTANT_ID=assistant
 
 适用场景：
 
-- 你在 Mac 上运行 `platform-web`
+- 你在 Mac 上运行 `platform-web-vue`
 - 浏览器访问的是 Mac 本地前端
 - `platform-api` 跑在服务器上
 
 推荐配置：
 
 ```env
-# apps/platform-web/.env.local
-NEXT_PUBLIC_API_URL=http://101.126.90.71:2024
-NEXT_PUBLIC_PLATFORM_API_URL=http://101.126.90.71:2024
-NEXT_PUBLIC_ASSISTANT_ID=assistant
+# apps/platform-web-vue/.env.local
+VITE_PLATFORM_API_URL=http://101.126.90.71:2024
+VITE_DEV_PROXY_TARGET=http://101.126.90.71:2024
+VITE_DEV_PORT=3000
 ```
 
 ### 2.3 前端和后端都部署在远端服务器，并从外部机器访问
@@ -69,16 +75,16 @@ NEXT_PUBLIC_ASSISTANT_ID=assistant
 推荐配置：
 
 ```env
-# apps/platform-web/.env
-NEXT_PUBLIC_API_URL=http://101.126.90.71:2024
-NEXT_PUBLIC_PLATFORM_API_URL=http://101.126.90.71:2024
-NEXT_PUBLIC_ASSISTANT_ID=assistant
+# apps/platform-web-vue/.env
+VITE_PLATFORM_API_URL=http://101.126.90.71:2024
+VITE_DEV_PROXY_TARGET=http://101.126.90.71:2024
+VITE_DEV_PORT=3000
 ```
 
 不要写成：
 
 ```env
-NEXT_PUBLIC_API_URL=http://localhost:2024
+VITE_PLATFORM_API_URL=http://localhost:2024
 ```
 
 因为这会让外部浏览器把请求发往“访问者自己的本机”。
@@ -93,52 +99,43 @@ NEXT_PUBLIC_API_URL=http://localhost:2024
 
 ### 3.2 `pnpm build`
 
-`NEXT_PUBLIC_*` 变量会在构建时进入前端产物。
+`VITE_*` 变量会在构建时进入前端产物。
 
 这意味着：
 
 - `pnpm build` 之前必须先写好正确的公网地址或本地地址
-- 如果改了 `NEXT_PUBLIC_API_URL` / `NEXT_PUBLIC_PLATFORM_API_URL`，需要重新 `pnpm build`
-- 不能指望旧的构建产物在 `pnpm start` 时自动吃到新的 `NEXT_PUBLIC_*`
+- 如果改了 `VITE_PLATFORM_API_URL` / `VITE_DEV_PROXY_TARGET`，需要重新 `pnpm build`
+- 不能指望旧的构建产物在 `pnpm preview` 时自动吃到新的 `VITE_*`
 
 ## 4. 浏览器缓存注意事项
 
-前端会在浏览器 `localStorage` 里保存这些键：
+当前前端会在浏览器 `localStorage` 里保存若干工作区状态，例如：
 
-- `lg:platform:apiUrl`
-- `lg:chat:apiUrl`
-- `oidc:token_set`
-- `lg:chat:apiKey`
+- 登录 token
+- 当前项目 id
+- chat 目标缓存
+- 主题和语言选择
 
 切换“本地联调 / 远端联调 / 公网访问”后，如果页面仍然打到了旧地址，先在浏览器控制台执行：
 
 ```js
-localStorage.removeItem("lg:platform:apiUrl");
-localStorage.removeItem("lg:chat:apiUrl");
-localStorage.removeItem("oidc:token_set");
-localStorage.removeItem("lg:chat:apiKey");
+localStorage.clear();
 location.reload();
 ```
 
-## 5. 本次代码调整做了什么
+## 5. 当前正式前端代码口径
 
-为避免前端继续回退到硬编码的 `localhost:2024`，当前代码已做这些收敛：
+`platform-web-vue` 当前通过统一 env 模块和服务客户端收敛 API 地址：
 
-- 新增统一的 platform API 地址解析逻辑
-- 优先使用 `NEXT_PUBLIC_PLATFORM_API_URL`
-- 其次使用 `NEXT_PUBLIC_API_URL`
-- 如果浏览器里残留了旧的 loopback 地址，而当前环境变量已是公网地址，优先改用当前环境变量
-- 对若干 `platform-web` 页面和管理接口客户端的默认回退逻辑做了统一处理
+- `VITE_PLATFORM_API_URL` 作为平台 API 基础地址
+- `VITE_DEV_PROXY_TARGET` 作为本地开发代理目标
+- `runtime-web` 继续保持直连 `runtime-service`
 
 相关文件：
 
-- `apps/platform-web/src/lib/platform-api-url.ts`
-- `apps/platform-web/src/lib/oidc-storage.ts`
-- `apps/platform-web/src/lib/management-api/client.ts`
-- `apps/platform-web/src/lib/management-api/artifacts.ts`
-- `apps/platform-web/src/providers/Thread.tsx`
-- `apps/platform-web/src/providers/Stream.tsx`
-- `apps/platform-web/src/app/workspace/sql-agent/page.tsx`
+- `apps/platform-web-vue/src/config/env.ts`
+- `apps/platform-web-vue/src/services/http/client.ts`
+- `apps/platform-web-vue/src/services/langgraph/client.ts`
 
 ## 6. `runtime-web` 额外说明
 

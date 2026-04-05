@@ -56,30 +56,35 @@ preflight:
 
 profiles:
   default-local:
-    description: Minimal local deployment and integration profile
+    description: Default local demo and integration profile
     services:
       - runtime-service
+      - interaction-data-service
       - platform-api
-      - platform-web
+      - platform-web-vue
       - runtime-web
     startup_order:
       - runtime-service
+      - interaction-data-service
       - platform-api
-      - platform-web
+      - platform-web-vue
       - runtime-web
     chains:
-      - platform-web -> platform-api -> runtime-service
+      - platform-web-vue -> platform-api -> runtime-service
+      - platform-api -> interaction-data-service
+      - runtime-service -> interaction-data-service
       - runtime-web -> runtime-service
   optional-repo-services:
-    description: Services present in the repo but outside the default local startup set
+    description: Services or historical apps present in the repo but outside the default local startup set
     services:
-      - interaction-data-service
+      - platform-web
 
 global:
   ports:
+    interaction-data-service: 8090
     runtime-service: 8123
     platform-api: 2024
-    platform-web: 3000
+    platform-web-vue: 3000
     runtime-web: 3001
   dependencies:
     python: ">=3.13"
@@ -95,6 +100,7 @@ global:
   config_rules:
     - Do not assume a repo-root .env
     - Use app-local config files only
+    - platform-web-vue is the official platform frontend host for default local deployment
     - runtime-web default local upstream is http://localhost:8123
   helper_scripts:
     - scripts/dev-up.sh
@@ -103,6 +109,23 @@ global:
   helper_script_rule: Scripts are shortcuts for standard bring-up, not config generators.
 
 services:
+  interaction-data-service:
+    role: Result-domain service
+    in_default_local: true
+    repo_path: apps/interaction-data-service
+    port: 8090
+    config_files:
+      required:
+        - apps/interaction-data-service/.env
+    minimum_required_env:
+      - SERVICE_NAME=interaction-data-service
+      - INTERACTION_DB_ENABLED=false or a valid DATABASE_URL when true
+    start:
+      workdir: apps/interaction-data-service
+      command: uv run uvicorn main:app --host 0.0.0.0 --port 8090 --reload
+    health_checks:
+      - curl http://127.0.0.1:8090/_service/health
+
   runtime-service:
     role: LangGraph runtime service
     in_default_local: true
@@ -188,24 +211,37 @@ services:
       - curl http://127.0.0.1:2024/_proxy/health
       - curl http://127.0.0.1:2024/api/langgraph/info
 
-  platform-web:
-    role: Platform frontend
+  platform-web-vue:
+    role: Official platform frontend workspace
     in_default_local: true
-    repo_path: apps/platform-web
+    repo_path: apps/platform-web-vue
     port: 3000
     upstreams:
       - platform-api
     config_files:
-      required:
-        - apps/platform-web/.env
+      optional:
+        - apps/platform-web-vue/.env
+        - apps/platform-web-vue/.env.local
+        - apps/platform-web-vue/.env.example
     minimum_required_env:
-      - NEXT_PUBLIC_API_URL=http://localhost:2024
-      - NEXT_PUBLIC_ASSISTANT_ID=assistant
+      - VITE_PLATFORM_API_URL=http://localhost:2024
+      - VITE_DEV_PROXY_TARGET=http://localhost:2024
     start:
-      workdir: apps/platform-web
-      command: pnpm dev
+      workdir: apps/platform-web-vue
+      command: VITE_DEV_PORT=3000 pnpm dev
     access_urls:
       - http://127.0.0.1:3000
+
+  platform-web:
+    role: Legacy platform frontend kept for compatibility and migration reference
+    in_default_local: false
+    classification: optional-repo-service
+    repo_path: apps/platform-web
+    default_profile_behavior: Do not start unless the user explicitly asks for the legacy frontend
+    notes:
+      - Historical platform frontend
+      - No longer the official platform frontend host
+      - Default local deployment uses apps/platform-web-vue instead
 
   runtime-web:
     role: Runtime debug frontend
@@ -227,17 +263,6 @@ services:
       command: PORT=3001 pnpm dev
     access_urls:
       - http://127.0.0.1:3001
-
-  interaction-data-service:
-    role: Result-domain service present in the repo
-    in_default_local: false
-    classification: optional-repo-service
-    repo_path: apps/interaction-data-service
-    default_profile_behavior: Do not start unless the user explicitly asks for it
-    notes:
-      - Present in the repo architecture
-      - Outside the default four-service local startup set
-      - Local base URL and port are intentionally not fixed by this contract
 
 failure_handling:
   model_config_missing:
@@ -263,9 +288,10 @@ final_report:
     - bootstrap_account_if_used
     - recommended_restart_method
   required_urls:
+    interaction-data-service: http://127.0.0.1:8090
     runtime-service: http://127.0.0.1:8123
     platform-api: http://127.0.0.1:2024
-    platform-web: http://127.0.0.1:3000
+    platform-web-vue: http://127.0.0.1:3000
     runtime-web: http://127.0.0.1:3001
 
 forbidden_assumptions:

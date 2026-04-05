@@ -14,12 +14,12 @@
   <img src="https://img.shields.io/badge/README-EN%2FZH-F59E0B" alt="README EN/ZH" />
 </p>
 
-<p align="center"><a href="#system-overview">系统总览</a> · <a href="#quick-start">快速开始</a> · <a href="docs/deployment-guide.md">部署文档</a> · <a href="docs/CHANGELOG.md">更新日志</a> · <a href="docs/commit-and-changelog-guidelines.md">提交规范</a> · <a href="#ai-deploy">AI代理部署</a></p>
+<p align="center"><a href="#system-overview">系统总览</a> · <a href="#frontend-entry">前端入口</a> · <a href="#quick-start">快速开始</a> · <a href="docs/deployment-guide.md">部署文档</a> · <a href="docs/CHANGELOG.md">更新日志</a> · <a href="docs/commit-and-changelog-guidelines.md">提交规范</a> · <a href="#acknowledgements">致谢参考</a> · <a href="#ai-deploy">AI代理部署</a></p>
 
 基于 `LangGraph / LangChain` 的企业级 AI 平台架构，可在此基础上进行二次开发。  
 它把**平台治理层**和**Agent Runtime 执行层**拆开，既支持平台侧的认证、项目管理、审计、catalog 管理，也支持 Agent 侧的图编排、模型装配、Tools / MCP / Skills 接入与快速调试，适合作为企业内部 AI 平台和智能体应用的基础骨架。
 
-当前仓库默认提供一套四服务本地联调方案，适合：
+当前仓库默认提供一套五服务本地联调方案，适合：
 
 - 想基于主流 Agent 技术栈做二次开发的团队
 - 想同时建设平台能力和 Agent 执行能力的项目
@@ -28,7 +28,9 @@
 
 > 想先理解当前项目为什么这么设计、后续应该按什么范式继续开发，可先看 [当前项目开发范式说明](docs/development-paradigm.md)。
 
-## 当前前端迁移进展
+<a id="frontend-entry"></a>
+
+## 当前前端与推荐入口
 
 `apps/platform-web-vue` 已作为新的 Vue 迁移前端正式落地，并已接通首批真实平台页面：
 
@@ -43,6 +45,30 @@
 迁移规划、技术栈决策、模块交付顺序与当前清单统一维护在：
 
 - [docs/platform-web-sub2api-migration/README.md](docs/platform-web-sub2api-migration/README.md)
+
+当前建议这样理解仓库里的几个前端：
+
+- `apps/platform-web-vue`：当前推荐使用的前端工作台宿主，后续平台前端迁移和持续开发默认都在这里推进
+- `apps/platform-web`：历史平台前端与兼容入口，保留用于迁移对照和必要兼容
+- `apps/runtime-web`：直连 Runtime 的调试前端，适合做 Agent 调试与交互验证
+
+如果你是第一次跑这个仓库，建议先区分清楚两件事：
+
+- 想快速跑通仓库默认联调：按根目录脚本启动，打开的是 `apps/platform-web-vue`
+- 想回看历史实现或做迁移对照：按需单独启动 `apps/platform-web`
+
+## AI 持续编程 Harness
+
+这个仓库不只是“放了一堆代码”，而是已经形成了一套可以指导 AI 代理持续开发、持续联调、持续验收的工程 Harness。
+
+这里说的 Harness，不是单个工具，而是一整套受控的工程外壳：
+
+- `边界`：平台治理、运行时执行、调试前端、结果域服务已经拆层，AI 不需要在一个大泥球里瞎改
+- `契约`：本地部署 contract、环境变量矩阵、接口命名、默认启动顺序和账号口径都已固定
+- `范式`：`runtime-service`、`platform-web-vue`、`Resources / Playbook`、迁移手册和样例页面已经沉淀出可复用范式
+- `闭环`：根级脚本、健康检查、烟测清单、验收文档、CHANGELOG 和 release runbook 已形成可执行交付链路
+
+一句话说，这个仓库已经不是“让 AI 随便写代码”，而是“让 AI 在明确边界、稳定契约和现成范式中持续完成开发”。
 
 ## 这个项目解决什么问题
 
@@ -61,7 +87,7 @@
 
 - [平台前端效果展示与介绍](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/20260325_platform_frontend_intro.md)
 
-这篇内容更偏平台前端视角，适合快速了解 `platform-web` 当前的页面效果、工作台结构和一些实际展示结果。
+这篇内容更偏平台前端视角，适合快速了解当前平台工作台的页面效果、工作区结构和一些实际展示结果。
 
 ![平台前端效果展示](docs/assets/image-20260325161139758.png)
 
@@ -69,22 +95,23 @@
 
 ## 系统总览
 
-当前默认本地联调由五个应用组成：
+当前根目录默认联调脚本会启动 5 个核心应用：
 
 - `apps/interaction-data-service`：结果域数据服务 / 工作流结果落库与查询
 - `apps/platform-api`：平台后端 / 控制面 API
-- `apps/platform-web`：平台主前端 / 管理台入口
+- `apps/platform-web-vue`：正式平台前端宿主 / 管理台入口
 - `apps/runtime-service`：LangGraph 执行层 / Agent Runtime
 - `apps/runtime-web`：直连 Runtime 的调试前端
 
 ### 两条主链路
 
-- 平台链路：`platform-web -> platform-api -> runtime-service`
+- 平台链路：`platform-web-vue -> platform-api -> runtime-service`
 - 调试链路：`runtime-web -> runtime-service`
 
-### 两个前端分别干什么
+### 几个前端分别干什么
 
-- `platform-web`：适合做平台产品能力、管理台、平台侧聊天入口
+- `platform-web-vue`：当前推荐的迁移前端宿主，承接平台工作台、Agent 页面和后续正式前端开发
+- `platform-web`：历史平台前端与兼容入口，适合回看旧链路和对照迁移结果
 - `runtime-web`：适合做 Agent 调试、交互验证、Runtime 快速迭代
 
 ## 架构图
@@ -100,7 +127,7 @@
 1. `runtime-service`
 2. `interaction-data-service`
 3. `platform-api`
-4. `platform-web`
+4. `platform-web-vue`
 5. `runtime-web`
 
 ### 根目录脚本
@@ -117,17 +144,33 @@ scripts/dev-down.sh
 - 健康检查：`scripts/check-health.sh`
 - 停止：`scripts/dev-down.sh`
 
+### 如果你想单独启动 `platform-web-vue`
+
+根目录默认脚本已经会启动 `apps/platform-web-vue`。
+
+如果你要单独调试新的平台前端，也可以这样启动：
+
+```bash
+VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web-vue" dev
+```
+
+然后打开：
+
+- `platform-web-vue`：`http://127.0.0.1:3002`
+
+这样不会和默认的 `platform-web-vue:3000` 端口冲突。
+
 ### 默认本地端口
 
 - `interaction-data-service`：`8090`
 - `runtime-service`：`8123`
 - `platform-api`：`2024`
-- `platform-web`：`3000`
+- `platform-web-vue`：`3000`
 - `runtime-web`：`3001`
 
 ### 成功启动后访问地址
 
-- `platform-web`：`http://127.0.0.1:3000`
+- `platform-web-vue`：`http://127.0.0.1:3000`
 - `runtime-web`：`http://127.0.0.1:3001`
 
 ### 最小健康检查
@@ -148,17 +191,19 @@ curl http://127.0.0.1:2024/api/langgraph/info
 ```text
 AITestLab/
 ├── apps/
+│   ├── interaction-data-service/
 │   ├── platform-api/
 │   ├── platform-web/
+│   ├── platform-web-vue/
 │   ├── runtime-service/
 │   ├── runtime-web/
-│   └── interaction-data-service/
+│   └── ...
 ├── docs/
 ├── scripts/
 └── archive/
 ```
 
-- `apps/`：业务应用与默认四服务启动集
+- `apps/`：业务应用目录，包含默认联调服务、迁移中的新前端宿主以及参考工程
 - `docs/`：部署、开发、约束和背景文档
 - `scripts/`：统一启动、停止、健康检查脚本
 - `archive/`：历史归档说明
@@ -280,12 +325,13 @@ default:
 当前仓库已经完成：
 
 - 默认五服务启动集已迁入 `apps/*`
+- `apps/platform-web-vue` 已作为新的迁移前端宿主持续推进
 - `runtime-service` 可启动
 - `interaction-data-service` 可启动
 - `platform-api` 可启动
 - `platform-api -> runtime-service` 联调已通过
 - `runtime-service -> interaction-data-service` 已接入本地联调脚本
-- `platform-web` / `runtime-web` 已去除 Google Fonts 构建时外网依赖
+- `platform-web-vue` / `runtime-web` 已形成当前主线前端入口
 
 当前仍保持的约定：
 
@@ -324,3 +370,29 @@ default:
 如需回看旧版代码，请访问：
 
 - [AITestLab-archive](https://github.com/ljxpython/AITestLab-archive)
+
+<a id="acknowledgements"></a>
+
+## 致谢与参考
+
+本项目在持续演进过程中，参考并受益于一些优秀的开源项目与技术生态，尤其包括：
+
+- [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api/tree/main)：在前端视觉组织、后台工作台布局、列表页与系统区交互节奏上给了当前迁移工作不少启发
+- [FastAPI](https://fastapi.tiangolo.com/)：平台后端与服务接口层的重要基础
+- [LangGraph](https://docs.langchain.com/langgraph)：Agent Runtime、状态编排与执行流建模的重要基础
+- [FastMCP](https://gofastmcp.com/)：MCP 工具接入与服务化能力的重要参考生态
+
+这里的“参考”不是简单照搬源码，而是基于这些开源项目和技术生态，结合当前仓库的业务目标、工程边界和平台化需求，做了再组织、再封装和再落地。
+
+## 开源与引用说明
+
+本项目以公开源码方式持续维护，欢迎学习、参考和基于当前仓库继续二次开发。
+
+如果你在公开项目、技术文章、演示材料、培训内容或二次发布中使用了本项目的代码、设计、文档或衍生实现，请明确注明来源仓库与作者信息。
+
+建议至少保留类似说明：
+
+```text
+This project is based on or references AITestLab:
+https://github.com/ljxpython/AITestLab
+```
