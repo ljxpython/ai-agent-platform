@@ -87,7 +87,7 @@
 
 - [平台前端效果展示与介绍](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/20260325_platform_frontend_intro.md)
 
-这篇内容更偏平台前端视角，适合快速了解当前平台工作台的页面效果、工作区结构和一些实际展示结果。
+这篇内容更偏平台前端视角，适合快速了解当前 `Agent Platform Console` 的页面效果、工作区结构和一些实际展示结果。
 
 ![平台前端效果展示](docs/assets/image-20260325161139758.png)
 
@@ -110,7 +110,7 @@
 
 ### 几个前端分别干什么
 
-- `platform-web-vue`：当前推荐的迁移前端宿主，承接平台工作台、Agent 页面和后续正式前端开发
+- `platform-web-vue`：当前推荐的迁移前端宿主，承接 `Agent Platform Console`、Agent 页面和后续正式前端开发
 - `platform-web`：历史平台前端与兼容入口，适合回看旧链路和对照迁移结果
 - `runtime-web`：适合做 Agent 调试、交互验证、Runtime 快速迭代
 

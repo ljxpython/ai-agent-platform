@@ -159,7 +159,7 @@ const brandCandidates = [
     title: 'Workspace Frame',
     variant: 'workspace-frame',
     file: 'src/assets/brand/mark-workspace-frame.svg',
-    description: '左侧导航 + 主内容区的结构直接体现在图形里，最像正式平台工作台。',
+    description: '左侧导航 + 主内容区的结构直接体现在图形里，最像正式控制台产品。',
     recommendation: '备选'
   },
   {
@@ -175,6 +175,27 @@ const brandCandidates = [
     file: 'src/assets/brand/mark-monogram.svg',
     description: '保留字母品牌识别，但比直接写 PW 更规整，适合保守路线。',
     recommendation: '备选'
+  },
+  {
+    title: 'Control Plane Grid',
+    variant: 'control-plane-grid',
+    file: 'src/assets/brand/mark-control-plane-grid.svg',
+    description: '更像总控台和平台网格，适合强调“控制台 / 控制面”的产品语义。',
+    recommendation: '新增候选'
+  },
+  {
+    title: 'Split Dock',
+    variant: 'split-dock',
+    file: 'src/assets/brand/mark-split-dock.svg',
+    description: '导航与内容区切分更明显，整体更偏平台壳层和工作区布局。',
+    recommendation: '新增候选'
+  },
+  {
+    title: 'Beacon Frame',
+    variant: 'beacon-frame',
+    file: 'src/assets/brand/mark-beacon-frame.svg',
+    description: '更偏品牌化的控制中心符号，比字母方案更稳，也不会有 AI 味。',
+    recommendation: '新增候选'
   }
 ] as const
 </script>

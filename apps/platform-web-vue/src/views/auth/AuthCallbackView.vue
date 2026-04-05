@@ -36,7 +36,7 @@ onMounted(async () => {
 <template>
   <SurfaceCard class="rounded-[28px] p-8 text-center">
     <div class="text-sm font-semibold text-gray-900 dark:text-white">
-      正在返回平台工作台
+      正在返回智能体平台控制台
     </div>
     <p class="mt-3 text-sm leading-7 text-gray-500 dark:text-dark-300">
       登录回跳入口已保留，当前会自动回到正式登录页或已有会话对应的工作区。

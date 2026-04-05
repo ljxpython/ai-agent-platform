@@ -144,7 +144,7 @@ watch(
   <section class="pw-page-shell">
     <PageHeader
       eyebrow="Overview"
-      title="Platform Workspace 总览"
+      title="Agent Platform Console 总览"
       description="先把当前工作台的项目、成员、助手和最近操作压缩成一个真正能汇报的概览面板，而不是空壳页面。"
     >
       <template #actions>

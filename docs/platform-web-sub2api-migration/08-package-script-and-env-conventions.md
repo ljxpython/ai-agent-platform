@@ -361,7 +361,7 @@ Vite 项目统一规则：
 
 | 变量名 | 必填 | 默认值 | 用途 |
 | --- | --- | --- | --- |
-| `VITE_APP_NAME` | 否 | `Platform Workspace` | 页面标题、页签、品牌文案 |
+| `VITE_APP_NAME` | 否 | `Agent Platform Console` | 页面标题、页签、品牌文案 |
 | `VITE_PLATFORM_API_URL` | 否 | `http://localhost:2024` | 平台后端基础地址 |
 | `VITE_REQUEST_TIMEOUT_MS` | 否 | `30000` | Axios 超时时间 |
 | `VITE_DEV_PORT` | 否 | `3000` | Vite 本地启动端口 |
@@ -449,7 +449,7 @@ Vite 项目统一规则：
 建议新 app 的 `.env.example` 初版至少长这样：
 
 ```dotenv
-VITE_APP_NAME=Platform Workspace
+VITE_APP_NAME=Agent Platform Console
 VITE_PLATFORM_API_URL=http://localhost:2024
 VITE_REQUEST_TIMEOUT_MS=30000
 VITE_DEV_PORT=3000

@@ -20,11 +20,11 @@ export const enUS = {
     placeholder: 'This module will be connected to real business capabilities in a later migration phase.'
   },
   brand: {
-    title: 'Platform Workspace',
-    subtitle: 'Official workspace shell'
+    title: 'Agent Platform Console',
+    subtitle: 'Official agent control plane'
   },
   auth: {
-    title: 'Welcome to Platform Workspace',
+    title: 'Welcome to Agent Platform Console',
     description: 'A unified workspace entry for platform operations, agent workspaces, and quality workflows.',
     username: 'Username',
     password: 'Password',

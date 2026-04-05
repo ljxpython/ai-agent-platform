@@ -77,8 +77,8 @@ Phase 1 不做：
 
 前端展示层建议固定为：
 
-- 英文主名称：`Platform Workspace`
-- 中文描述名：`平台工作台`
+- 英文主名称：`Agent Platform Console`
+- 中文描述名：`智能体平台控制台`
 
 这样定的原因：
 
@@ -202,7 +202,7 @@ Phase 1 前置决策现在已经收敛成下面这套：
 
 - 新 app 名称：`apps/platform-web-vue`
 - 国际化策略：保留 `vue-i18n`，首期只维护 `zh-CN`
-- 展示品牌：`Platform Workspace / 平台工作台`
+- 展示品牌：`Agent Platform Console / 智能体平台控制台`
 - 主题体系：`light|dark + workspace preset`
 - 演示环境：`2024` 平台后端、`8123` LangGraph、用户名密码登录
 

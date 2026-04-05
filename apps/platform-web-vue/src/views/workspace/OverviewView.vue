@@ -17,7 +17,7 @@ const cards = [
   <section class="space-y-6">
     <PageHeader
       eyebrow="Overview"
-      title="Platform Workspace 基座"
+      title="Agent Platform Console 基座"
       description="这不是最终业务页，而是 platform-web-vue 的初始化样板。后续所有模块都会在这套布局、主题和路由边界上继续迁移。"
     />
 

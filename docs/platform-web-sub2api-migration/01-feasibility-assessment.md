@@ -69,7 +69,7 @@
 
 我们的目标是：
 
-- 平台工作台
+- Agent Platform Console
 - 项目、用户、助手、图谱、运行时、SQL Agent、Threads、Chat、Testcase
 
 这两套业务模型几乎没有重合。

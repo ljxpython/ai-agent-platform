@@ -5,17 +5,14 @@ import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import { appMeta } from '@/config/app-meta'
 import BrandMark from '@/components/layout/BrandMark.vue'
-import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { useUiStore } from '@/stores/ui'
 
 const route = useRoute()
 const { t } = useI18n()
 const uiStore = useUiStore()
-const authStore = useAuthStore()
 const themeStore = useThemeStore()
 const isDev = import.meta.env.DEV
-const roleLabel = computed(() => (authStore.user?.is_super_admin ? t('common.admin') : t('common.member')))
 
 type SidebarItem = {
   to: string
@@ -85,8 +82,6 @@ function isActive(path: string, exact = false): boolean {
 
   return route.path === path || route.path.startsWith(`${path}/`)
 }
-
-const initials = computed(() => (authStore.user?.username || 'PW').slice(0, 2).toUpperCase())
 </script>
 
 <template>
@@ -96,7 +91,7 @@ const initials = computed(() => (authStore.user?.username || 'PW').slice(0, 2).t
   >
     <div class="pw-sidebar-header">
       <div class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl shadow-glow">
-        <BrandMark alt="Platform Workspace mark" />
+        <BrandMark alt="Agent Platform Console mark" />
       </div>
       <div
         v-if="!uiStore.sidebarCollapsed"
@@ -147,25 +142,6 @@ const initials = computed(() => (authStore.user?.username || 'PW').slice(0, 2).t
     </nav>
 
     <div class="mt-auto border-t border-gray-100 p-3 dark:border-dark-800">
-      <div
-        v-if="!uiStore.sidebarCollapsed"
-        class="mb-3 rounded-2xl border border-white/60 bg-white/70 p-3 shadow-soft backdrop-blur dark:border-dark-700 dark:bg-dark-900/70"
-      >
-        <div class="flex items-center gap-3">
-          <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary text-sm font-semibold text-white shadow-sm shadow-primary-500/25">
-            {{ initials }}
-          </div>
-          <div class="min-w-0">
-            <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">
-              {{ authStore.user?.username || t('common.loading') }}
-            </div>
-            <div class="text-xs text-gray-500 dark:text-dark-400">
-              {{ roleLabel }}
-            </div>
-          </div>
-        </div>
-      </div>
-
       <button
         type="button"
         class="pw-sidebar-link mb-2 w-full"

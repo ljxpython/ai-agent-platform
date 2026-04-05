@@ -3,8 +3,17 @@ import { computed } from 'vue'
 import markWorkspaceFrame from '@/assets/brand/mark-workspace-frame.svg'
 import markPanelStack from '@/assets/brand/mark-panel-stack.svg'
 import markMonogram from '@/assets/brand/mark-monogram.svg'
+import markControlPlaneGrid from '@/assets/brand/mark-control-plane-grid.svg'
+import markSplitDock from '@/assets/brand/mark-split-dock.svg'
+import markBeaconFrame from '@/assets/brand/mark-beacon-frame.svg'
 
-type BrandMarkVariant = 'workspace-frame' | 'panel-stack' | 'monogram'
+type BrandMarkVariant =
+  | 'workspace-frame'
+  | 'panel-stack'
+  | 'monogram'
+  | 'control-plane-grid'
+  | 'split-dock'
+  | 'beacon-frame'
 
 const props = withDefaults(
   defineProps<{
@@ -13,21 +22,20 @@ const props = withDefaults(
   }>(),
   {
     variant: 'panel-stack',
-    alt: 'Platform Workspace brand mark'
+    alt: 'Agent Platform Console brand mark'
   }
 )
 
-const src = computed(() => {
-  if (props.variant === 'panel-stack') {
-    return markPanelStack
-  }
+const variants: Record<BrandMarkVariant, string> = {
+  'workspace-frame': markWorkspaceFrame,
+  'panel-stack': markPanelStack,
+  monogram: markMonogram,
+  'control-plane-grid': markControlPlaneGrid,
+  'split-dock': markSplitDock,
+  'beacon-frame': markBeaconFrame
+}
 
-  if (props.variant === 'monogram') {
-    return markMonogram
-  }
-
-  return markWorkspaceFrame
-})
+const src = computed(() => variants[props.variant])
 </script>
 
 <template>

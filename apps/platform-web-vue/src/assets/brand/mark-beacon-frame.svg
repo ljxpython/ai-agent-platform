@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <linearGradient id="beacon-frame-bg" x1="10" y1="9" x2="54" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#214A86" />
+      <stop offset="1" stop-color="#0E1B31" />
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="48" height="48" rx="16" fill="url(#beacon-frame-bg)" />
+  <rect x="17" y="17" width="30" height="30" rx="10" stroke="#F6FAFF" stroke-width="3" />
+  <circle cx="32" cy="32" r="6" fill="#8FD3FF" />
+  <path d="M32 14V20" stroke="#BBD7FF" stroke-linecap="round" stroke-width="3" />
+  <path d="M32 44V50" stroke="#BBD7FF" stroke-linecap="round" stroke-width="3" />
+  <path d="M14 32H20" stroke="#BBD7FF" stroke-linecap="round" stroke-width="3" />
+  <path d="M44 32H50" stroke="#BBD7FF" stroke-linecap="round" stroke-width="3" />
+</svg>

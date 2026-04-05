@@ -23,9 +23,9 @@ const ANNOUNCEMENTS_STORAGE_KEY = 'pw:announcements:read-ids'
 const ANNOUNCEMENT_SEED: AnnouncementItem[] = [
   {
     id: 'migration-shell',
-    title: '平台工作台版本已更新',
-    summary: '当前正式前端宿主已经统一为 platform-web-vue。',
-    body: '平台工作台、Agent 页面和后续前端开发都以 platform-web-vue 为正式宿主，页面与工程规范按同一套基座继续演进。',
+    title: 'Agent Platform Console 品牌已更新',
+    summary: '当前正式前端宿主已经统一为 Agent Platform Console。',
+    body: '智能体平台控制台、Agent 页面和后续前端开发都以 platform-web-vue 为正式宿主，页面与工程规范按同一套基座继续演进。',
     tone: 'info',
     createdAt: '2026-04-05T09:00:00+08:00',
     isRead: false
