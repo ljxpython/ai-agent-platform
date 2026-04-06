@@ -87,13 +87,13 @@ const draftRunOptions = reactive({
 })
 
 const workspace = useChatWorkspace({
-  projectId: computed(() => workspaceStore.currentProjectId || ''),
+  projectId: computed(() => workspaceStore.runtimeScopedProjectId || ''),
   target: computed(() => props.target),
   initialThreadId: computed(() => props.initialThreadId?.trim() || '')
 })
 const attachmentState = useChatAttachments()
 
-const currentProject = computed(() => workspaceStore.currentProject)
+const currentProject = computed(() => workspaceStore.runtimeScopedProject)
 const renderMessages = computed(() => workspace.messages.value)
 const displayMessages = computed(() => buildChatDisplayMessages(renderMessages.value))
 const composerAttachments = computed(() => attachmentState.attachments.value)
@@ -208,7 +208,7 @@ const threadListView = computed(() =>
 const filteredThreadSummary = computed(() => threadListView.value.filteredItems)
 const groupedThreadSummary = computed(() => threadListView.value.groups)
 const composerDraftKey = computed(() => {
-  const projectId = workspaceStore.currentProjectId.trim()
+  const projectId = workspaceStore.runtimeScopedProjectId.trim()
   const targetId = props.target?.resolvedTargetId?.trim() || 'no-target'
   const threadId = workspace.activeThreadId.value.trim() || '__new__'
 
@@ -642,6 +642,13 @@ async function handleCancelRun() {
     />
 
     <StateBanner
+      v-if="workspace.detailWarning.value"
+      title="会话状态部分未同步"
+      :description="workspace.detailWarning.value"
+      variant="warning"
+    />
+
+    <StateBanner
       v-if="debugStatusDescription"
       title="Debug 已暂停"
       :description="debugStatusDescription"
@@ -674,6 +681,15 @@ async function handleCancelRun() {
       icon="chat"
       title="请先选择聊天目标"
       description="当前页已经是聊天工作台，但没有明确 assistant 或 graph，先从入口页选一个真实目标再进来。"
+    />
+
+    <EmptyState
+      v-else-if="workspace.accessDeniedMessage.value"
+      icon="shield"
+      title="当前项目没有运行工作台权限"
+      :description="workspace.accessDeniedMessage.value"
+      action-label="重新同步"
+      @action="workspace.refreshActiveThread"
     />
 
     <SurfaceCard

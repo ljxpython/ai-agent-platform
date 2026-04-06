@@ -14,7 +14,14 @@ import SearchInput from '@/components/platform/SearchInput.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import type { ActionMenuItem, DataTableColumn } from '@/components/platform/data-table'
-import { listRuntimeTools, refreshRuntimeTools } from '@/services/runtime/runtime.service'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
+import {
+  listRuntimeTools,
+  refreshRuntimeTools,
+  submitRuntimeRefreshOperation,
+  waitForRuntimeRefreshOperation
+} from '@/services/runtime/runtime.service'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { useUiStore } from '@/stores/ui'
 import type { RuntimeToolItem } from '@/types/management'
 import { copyText } from '@/utils/clipboard'
@@ -41,6 +48,7 @@ const refreshing = ref(false)
 const error = ref('')
 const notice = ref('')
 const lastSyncedAt = ref<string | null>(null)
+const workspaceStore = useWorkspaceStore()
 const uiStore = useUiStore()
 const pagination = usePagination({
   initialPageSize: 20,
@@ -136,11 +144,12 @@ function toolFromRow(row: Record<string, unknown>) {
 }
 
 async function loadTools() {
+  const projectId = workspaceStore.runtimeScopedProjectId
   loading.value = true
   error.value = ''
 
   try {
-    const payload = await listRuntimeTools()
+    const payload = await listRuntimeTools(projectId)
     items.value = Array.isArray(payload.tools) ? payload.tools : []
     lastSyncedAt.value = payload.last_synced_at
   } catch (loadError) {
@@ -153,13 +162,32 @@ async function loadTools() {
 }
 
 async function handleRefreshCatalog() {
+  const projectId = workspaceStore.runtimeScopedProjectId
   refreshing.value = true
   error.value = ''
   notice.value = ''
 
   try {
-    const payload = await refreshRuntimeTools()
-    notice.value = `Runtime 工具目录已刷新，当前同步 ${payload.count} 条记录`
+    if (
+      resolvePlatformClientScope('runtime_catalog') === 'v2' &&
+      resolvePlatformClientScope('operations') === 'v2'
+    ) {
+      const operation = await submitRuntimeRefreshOperation('tools', projectId)
+      notice.value = `工具目录刷新任务已提交，任务号 ${shortId(operation.id)}`
+      const finalOperation = await waitForRuntimeRefreshOperation(operation.id, {
+        timeoutMs: 90000
+      })
+      if (finalOperation.status !== 'succeeded') {
+        throw new Error(
+          (finalOperation.error_payload?.message as string | undefined) || 'Runtime 工具目录刷新未成功完成'
+        )
+      }
+      const count = Number(finalOperation.result_payload?.count || 0)
+      notice.value = `Runtime 工具目录已刷新，当前同步 ${count} 条记录`
+    } else {
+      const payload = await refreshRuntimeTools(projectId)
+      notice.value = `Runtime 工具目录已刷新，当前同步 ${payload.count} 条记录`
+    }
     await loadTools()
   } catch (refreshError) {
     error.value = refreshError instanceof Error ? refreshError.message : 'Runtime 工具目录刷新失败'
@@ -237,6 +265,13 @@ watch(
     pagination.setTotal(count)
   },
   { immediate: true }
+)
+
+watch(
+  () => workspaceStore.runtimeScopedProjectId,
+  () => {
+    void loadTools()
+  }
 )
 </script>
 

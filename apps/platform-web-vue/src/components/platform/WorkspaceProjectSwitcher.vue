@@ -1,25 +1,41 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRoute } from 'vue-router'
 import BaseIcon from '@/components/base/BaseIcon.vue'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
+import { getWorkspaceProjectContextModule } from '@/services/platform/workspace-context'
 import { useWorkspaceStore } from '@/stores/workspace'
 
 const { t } = useI18n()
+const route = useRoute()
 const workspaceStore = useWorkspaceStore()
 const isOpen = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
+const contextModule = computed(() => getWorkspaceProjectContextModule(route.path))
+const useDedicatedRuntimeContext = computed(() => {
+  const module = contextModule.value
+  if (!module) {
+    return false
+  }
+  return resolvePlatformClientScope(module) === 'v2'
+})
+const activeProjects = computed(() =>
+  useDedicatedRuntimeContext.value ? workspaceStore.runtimeProjects : workspaceStore.projects
+)
+const activeProjectId = computed(() =>
+  useDedicatedRuntimeContext.value ? workspaceStore.runtimeProjectId : workspaceStore.currentProjectId
+)
 
 const projectOptions = computed(() =>
-  workspaceStore.projects.map((project) => ({
+  activeProjects.value.map((project) => ({
     value: project.id,
     label: project.name
   }))
 )
 
 const currentProjectLabel = computed(
-  () =>
-    projectOptions.value.find((project) => project.value === workspaceStore.currentProjectId)?.label ||
-    t('topbar.projectPlaceholder')
+  () => projectOptions.value.find((project) => project.value === activeProjectId.value)?.label || t('topbar.projectPlaceholder')
 )
 
 function close() {
@@ -35,7 +51,11 @@ function toggle() {
 }
 
 function selectProject(projectId: string) {
-  workspaceStore.setProjectId(projectId)
+  if (useDedicatedRuntimeContext.value) {
+    workspaceStore.setRuntimeProjectId(projectId)
+  } else {
+    workspaceStore.setProjectId(projectId)
+  }
   close()
 }
 
@@ -114,7 +134,7 @@ onBeforeUnmount(() => {
               {{ project.label }}
             </span>
             <BaseIcon
-              v-if="project.value === workspaceStore.currentProjectId"
+              v-if="project.value === activeProjectId"
               name="check"
               size="sm"
               class="mt-0.5 shrink-0 text-primary-500"

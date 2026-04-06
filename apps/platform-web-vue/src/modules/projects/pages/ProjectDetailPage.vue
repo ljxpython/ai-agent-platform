@@ -10,6 +10,7 @@ import MetricCard from '@/components/platform/MetricCard.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import { listProjectMembers } from '@/services/members/members.service'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { useUiStore } from '@/stores/ui'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { ManagementProjectMember } from '@/types/management'
@@ -34,9 +35,16 @@ const uiStore = useUiStore()
 const projectId = computed(() =>
   typeof route.params.projectId === 'string' ? route.params.projectId.trim() : ''
 )
+const projectsUseRuntimeApi = computed(() => resolvePlatformClientScope('projects') === 'v2')
+const activeProjects = computed(() =>
+  projectsUseRuntimeApi.value ? workspaceStore.runtimeProjects : workspaceStore.projects
+)
+const activeProjectId = computed(() =>
+  projectsUseRuntimeApi.value ? workspaceStore.runtimeProjectId : workspaceStore.currentProjectId
+)
 
 const project = computed(() =>
-  workspaceStore.projects.find((item) => item.id === projectId.value) ?? null
+  activeProjects.value.find((item) => item.id === projectId.value) ?? null
 )
 
 const members = ref<ManagementProjectMember[]>([])
@@ -67,9 +75,9 @@ const stats = computed(() => [
   },
   {
     label: '当前工作区',
-    value: workspaceStore.currentProjectId === project.value?.id ? '已对齐' : '未对齐',
+    value: activeProjectId.value === project.value?.id ? '已对齐' : '未对齐',
     hint:
-      workspaceStore.currentProjectId === project.value?.id
+      activeProjectId.value === project.value?.id
         ? '当前工作区已指向本项目'
         : '可在这里切换工作区项目',
     icon: 'project',
@@ -95,7 +103,11 @@ function focusProject() {
     return
   }
 
-  workspaceStore.setProjectId(project.value.id)
+  if (projectsUseRuntimeApi.value) {
+    workspaceStore.setRuntimeProjectId(project.value.id)
+  } else {
+    workspaceStore.setProjectId(project.value.id)
+  }
   uiStore.pushToast({
     type: 'success',
     title: '已切换当前项目',
@@ -108,7 +120,11 @@ function openAudit() {
     return
   }
 
-  workspaceStore.setProjectId(project.value.id)
+  if (projectsUseRuntimeApi.value) {
+    workspaceStore.setRuntimeProjectId(project.value.id)
+  } else {
+    workspaceStore.setProjectId(project.value.id)
+  }
   void router.push('/workspace/audit')
 }
 
@@ -123,7 +139,11 @@ async function loadMembers() {
   membersError.value = ''
 
   try {
-    members.value = await listProjectMembers(projectId.value)
+    members.value = await listProjectMembers(
+      projectId.value,
+      undefined,
+      projectsUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+    )
   } catch (loadError) {
     members.value = []
     membersError.value =

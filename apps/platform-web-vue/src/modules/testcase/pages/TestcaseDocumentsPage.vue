@@ -19,8 +19,13 @@ import TestcaseOverviewStrip from '@/components/platform/TestcaseOverviewStrip.v
 import TestcaseWorkspaceNav from '@/components/platform/TestcaseWorkspaceNav.vue'
 import type { ActionMenuItem, DataTableColumn } from '@/components/platform/data-table'
 import type { FilterSettingItem } from '@/components/platform/filter-settings'
+import { getOperationFailureMessage } from '@/services/operations/operations.service'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import {
   downloadTestcaseDocument,
+  exportTestcaseDocuments,
+  exportTestcaseDocumentsByOperation,
+  getTestcaseBatchDetail,
   getTestcaseDocumentRelations,
   getTestcaseOverview,
   listTestcaseBatches,
@@ -30,12 +35,14 @@ import {
 import { useUiStore } from '@/stores/ui'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type {
+  TestcaseBatchDetail,
   TestcaseBatchSummary,
   TestcaseDocument,
   TestcaseDocumentRelations,
   TestcaseOverview
 } from '@/types/management'
 import { copyText } from '@/utils/clipboard'
+import { downloadBlob } from '@/utils/browser-download'
 import { formatDateTime, shortId } from '@/utils/format'
 
 function getParseStatusTone(status: string): 'neutral' | 'success' | 'warning' | 'danger' {
@@ -58,17 +65,6 @@ function escapeHtml(value: string) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
-}
-
-function triggerBrowserDownload(blob: Blob, filename: string) {
-  const objectUrl = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = objectUrl
-  anchor.download = filename
-  document.body.append(anchor)
-  anchor.click()
-  anchor.remove()
-  URL.revokeObjectURL(objectUrl)
 }
 
 function openPreviewWindowShell(filename?: string) {
@@ -250,6 +246,13 @@ function resolveStoragePath(document: TestcaseDocument | null): string {
 
 const workspaceStore = useWorkspaceStore()
 const uiStore = useUiStore()
+const testcaseUseRuntimeApi = computed(() => resolvePlatformClientScope('testcase') === 'v2')
+const activeProjectId = computed(() =>
+  testcaseUseRuntimeApi.value ? workspaceStore.runtimeProjectId : workspaceStore.currentProjectId
+)
+const activeProject = computed(() =>
+  testcaseUseRuntimeApi.value ? workspaceStore.runtimeProject : workspaceStore.currentProject
+)
 
 const overview = ref<TestcaseOverview | null>(null)
 const batches = ref<TestcaseBatchSummary[]>([])
@@ -266,8 +269,12 @@ const selectedId = ref('')
 const relations = ref<TestcaseDocumentRelations | null>(null)
 const detailLoading = ref(false)
 const detailError = ref('')
+const batchDetail = ref<TestcaseBatchDetail | null>(null)
+const batchDetailLoading = ref(false)
+const batchDetailError = ref('')
 const previewing = ref(false)
 const downloading = ref(false)
+const exporting = ref(false)
 const documentRows = computed(() => items.value as unknown as Record<string, unknown>[])
 const pagination = usePagination({
   initialPageSize: 20,
@@ -327,18 +334,37 @@ const selectedItem = computed(() => relations.value?.document ?? selectedListIte
 const storagePath = computed(() => resolveStoragePath(selectedItem.value))
 const selectedContentType = computed(() => (selectedItem.value?.content_type || '').toLowerCase())
 const isPreviewSupported = computed(() => supportsInlinePreview(selectedContentType.value))
+const selectedBatchSummary = computed(
+  () => batchDetail.value?.batch ?? batches.value.find((item) => item.batch_id === (selectedItem.value?.batch_id || '')) ?? null
+)
+const batchStatusEntries = computed(() =>
+  Object.entries(selectedBatchSummary.value?.parse_status_summary ?? {}).sort(([left], [right]) =>
+    left.localeCompare(right)
+  )
+)
+const sameBatchDocuments = computed(() => {
+  if (!selectedItem.value?.batch_id) {
+    return []
+  }
+  return (batchDetail.value?.documents.items ?? []).filter((item) => item.id !== selectedItem.value?.id)
+})
+const batchPreviewCases = computed(() => batchDetail.value?.test_cases.items ?? [])
 
 async function loadMeta(projectId: string) {
   const [overviewPayload, batchPayload] = await Promise.all([
-    getTestcaseOverview(projectId),
-    listTestcaseBatches(projectId, { limit: 100, offset: 0 })
+    getTestcaseOverview(projectId, testcaseUseRuntimeApi.value ? { mode: 'runtime' } : undefined),
+    listTestcaseBatches(
+      projectId,
+      { limit: 100, offset: 0 },
+      testcaseUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+    )
   ])
   overview.value = overviewPayload
   batches.value = batchPayload.items
 }
 
 async function loadDocuments() {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = activeProjectId.value
   if (!projectId) {
     overview.value = null
     batches.value = []
@@ -361,7 +387,7 @@ async function loadDocuments() {
       query: query.value || undefined,
       limit: pagination.pageSize.value,
       offset: pagination.offset.value
-    })
+    }, testcaseUseRuntimeApi.value ? { mode: 'runtime' } : undefined)
     items.value = payload.items
     pagination.setTotal(payload.total)
 
@@ -378,19 +404,29 @@ async function loadDocuments() {
 }
 
 async function loadDetail() {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = activeProjectId.value
   if (!projectId || !selectedId.value) {
     relations.value = null
+    batchDetail.value = null
     detailError.value = ''
+    batchDetailError.value = ''
     return
   }
 
   detailLoading.value = true
   detailError.value = ''
+  batchDetailError.value = ''
   try {
-    relations.value = await getTestcaseDocumentRelations(projectId, selectedId.value)
+    const payload = await getTestcaseDocumentRelations(
+      projectId,
+      selectedId.value,
+      testcaseUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+    )
+    relations.value = payload
+    await loadBatchDetail(payload.document.batch_id)
   } catch (loadError) {
     relations.value = null
+    batchDetail.value = null
     detailError.value = loadError instanceof Error ? loadError.message : '文档详情加载失败'
   } finally {
     detailLoading.value = false
@@ -400,10 +436,41 @@ async function loadDetail() {
 function selectDocument(documentId: string) {
   selectedId.value = documentId
   detailError.value = ''
+  batchDetailError.value = ''
+}
+
+async function loadBatchDetail(batchId: string | null | undefined) {
+  const projectId = activeProjectId.value
+  if (!projectId || !batchId) {
+    batchDetail.value = null
+    batchDetailError.value = ''
+    return
+  }
+
+  batchDetailLoading.value = true
+  batchDetailError.value = ''
+  try {
+    batchDetail.value = await getTestcaseBatchDetail(
+      projectId,
+      batchId,
+      {
+        document_limit: 100,
+        document_offset: 0,
+        case_limit: 50,
+        case_offset: 0
+      },
+      testcaseUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+    )
+  } catch (loadError) {
+    batchDetail.value = null
+    batchDetailError.value = loadError instanceof Error ? loadError.message : '批次上下文加载失败'
+  } finally {
+    batchDetailLoading.value = false
+  }
 }
 
 async function handlePreview(targetDocument: TestcaseDocument | null = selectedItem.value) {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = activeProjectId.value
   if (!projectId || !targetDocument) {
     return
   }
@@ -419,7 +486,11 @@ async function handlePreview(targetDocument: TestcaseDocument | null = selectedI
   try {
     selectDocument(targetDocument.id)
     previewWindow = openPreviewWindowShell(targetDocument.filename)
-    const download = await previewTestcaseDocument(projectId, targetDocument.id)
+    const download = await previewTestcaseDocument(
+      projectId,
+      targetDocument.id,
+      testcaseUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+    )
     await openDocumentPreview(download.blob, {
       filename: targetDocument.filename,
       contentType: download.contentType || targetDocument.content_type,
@@ -434,7 +505,7 @@ async function handlePreview(targetDocument: TestcaseDocument | null = selectedI
 }
 
 async function handleDownload(targetDocument: TestcaseDocument | null = selectedItem.value) {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = activeProjectId.value
   if (!projectId || !targetDocument) {
     return
   }
@@ -442,12 +513,63 @@ async function handleDownload(targetDocument: TestcaseDocument | null = selected
   downloading.value = true
   try {
     selectDocument(targetDocument.id)
-    const download = await downloadTestcaseDocument(projectId, targetDocument.id)
-    triggerBrowserDownload(download.blob, download.filename || targetDocument.filename)
+    const download = await downloadTestcaseDocument(
+      projectId,
+      targetDocument.id,
+      testcaseUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+    )
+    downloadBlob(download.blob, download.filename || targetDocument.filename)
   } catch (downloadError) {
     detailError.value = downloadError instanceof Error ? downloadError.message : '文档下载失败'
   } finally {
     downloading.value = false
+  }
+}
+
+async function handleExport() {
+  const projectId = activeProjectId.value
+  if (!projectId || exporting.value) {
+    return
+  }
+
+  exporting.value = true
+  try {
+    const exportOptions = {
+      batch_id: batchFilter.value || undefined,
+      parse_status: parseStatusFilter.value || undefined,
+      query: query.value || undefined
+    }
+    const download = testcaseUseRuntimeApi.value
+      ? await (async () => {
+          const result = await exportTestcaseDocumentsByOperation(projectId, exportOptions)
+          if (result.operation.status !== 'succeeded') {
+            throw new Error(getOperationFailureMessage(result.operation))
+          }
+          return result.download
+        })()
+      : await exportTestcaseDocuments(
+          projectId,
+          exportOptions,
+          testcaseUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+        )
+    downloadBlob(
+      download.blob,
+      download.filename ||
+        `testcase-documents-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.xlsx`
+    )
+    uiStore.pushToast({
+      type: 'success',
+      title: '导出成功',
+      message: `已导出当前筛选结果，共 ${pagination.total.value} 条文档记录。`
+    })
+  } catch (exportError) {
+    uiStore.pushToast({
+      type: 'error',
+      title: '导出失败',
+      message: exportError instanceof Error ? exportError.message : '文档导出失败'
+    })
+  } finally {
+    exporting.value = false
   }
 }
 
@@ -514,6 +636,15 @@ async function handleCopyDocumentId(document: TestcaseDocument) {
   })
 }
 
+async function handleCopyBatchId(batchId: string) {
+  const copied = await copyText(batchId)
+  uiStore.pushToast({
+    type: copied ? 'success' : 'warning',
+    title: copied ? '已复制批次 ID' : '复制失败',
+    message: copied ? batchId : '当前环境不支持自动复制，请手动复制。'
+  })
+}
+
 function documentActions(document: TestcaseDocument): ActionMenuItem[] {
   const path = resolveStoragePath(document)
   const previewSupported = supportsInlinePreview((document.content_type || '').toLowerCase())
@@ -563,7 +694,7 @@ watch(
 )
 
 watch(
-  () => workspaceStore.currentProjectId,
+  () => activeProjectId.value,
   () => {
     if (pagination.page.value !== 1) {
       pagination.resetPage()
@@ -593,12 +724,21 @@ watch(
       description="查看已保存到服务端的文档解析结果，并恢复在线预览和下载原始文件能力。未来再扩展其他格式时，也统一走这套按 content-type 分流的预览逻辑。"
     >
       <template #actions>
-        <BaseButton
-          variant="secondary"
-          @click="loadDocuments"
-        >
-          刷新
-        </BaseButton>
+        <div class="flex flex-wrap items-center gap-2">
+          <BaseButton
+            variant="secondary"
+            :disabled="!activeProjectId || loading || exporting || pagination.total.value === 0"
+            @click="handleExport"
+          >
+            {{ exporting ? '导出中...' : '导出 Excel' }}
+          </BaseButton>
+          <BaseButton
+            variant="secondary"
+            @click="loadDocuments"
+          >
+            刷新
+          </BaseButton>
+        </div>
       </template>
     </PageHeader>
 
@@ -612,7 +752,7 @@ watch(
     />
 
     <EmptyState
-      v-if="!workspaceStore.currentProject"
+      v-if="!activeProject"
       icon="project"
       title="请先选择项目"
       description="没有项目上下文，没法读取 testcase 文档解析结果。"
@@ -854,6 +994,9 @@ watch(
               <div class="text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-dark-400">
                 关联用例
               </div>
+              <div class="mt-1 text-xs text-gray-400 dark:text-dark-400">
+                共 {{ relations?.related_cases_count ?? 0 }} 条
+              </div>
               <div class="mt-2 space-y-2">
                 <div
                   v-for="item in relations?.related_cases || []"
@@ -877,6 +1020,12 @@ watch(
             </div>
             <div>
               <div class="text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-dark-400">
+                runtime_meta
+              </div>
+              <pre class="mt-2 max-h-[180px] overflow-auto whitespace-pre-wrap break-all rounded-2xl bg-gray-50 p-3 text-xs text-gray-700 dark:bg-dark-900 dark:text-gray-200">{{ stringifyJson(relations?.runtime_meta) }}</pre>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-dark-400">
                 摘要
               </div>
               <div class="mt-1 whitespace-pre-wrap text-gray-500 dark:text-dark-300">
@@ -885,9 +1034,168 @@ watch(
             </div>
             <div>
               <div class="text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-dark-400">
+                parsed_text
+              </div>
+              <pre class="mt-2 max-h-[220px] overflow-auto whitespace-pre-wrap break-all rounded-2xl bg-gray-50 p-3 text-xs text-gray-700 dark:bg-dark-900 dark:text-gray-200">{{ selectedItem.parsed_text || '--' }}</pre>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-dark-400">
                 structured_data
               </div>
               <pre class="max-h-[220px] overflow-auto whitespace-pre-wrap break-all rounded-2xl bg-gray-50 p-3 text-xs text-gray-700 dark:bg-dark-900 dark:text-gray-200">{{ stringifyJson(selectedItem.structured_data) }}</pre>
+            </div>
+            <div>
+              <div class="text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-dark-400">
+                provenance
+              </div>
+              <pre class="mt-2 max-h-[220px] overflow-auto whitespace-pre-wrap break-all rounded-2xl bg-gray-50 p-3 text-xs text-gray-700 dark:bg-dark-900 dark:text-gray-200">{{ stringifyJson(selectedItem.provenance) }}</pre>
+            </div>
+            <div v-if="selectedItem.error">
+              <div class="text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-dark-400">
+                error
+              </div>
+              <pre class="mt-2 max-h-[180px] overflow-auto whitespace-pre-wrap break-all rounded-2xl bg-rose-50 p-3 text-xs text-rose-700 dark:bg-rose-950/20 dark:text-rose-200">{{ stringifyJson(selectedItem.error) }}</pre>
+            </div>
+
+            <div class="rounded-[24px] border border-gray-100 bg-gray-50/80 px-4 py-4 dark:border-dark-700 dark:bg-dark-900/50">
+              <div class="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                    Batch Context
+                  </div>
+                  <div class="mt-1 text-xs text-gray-400 dark:text-dark-400">
+                    {{ selectedItem.batch_id || '当前文档未归属批次' }}
+                  </div>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <BaseButton
+                    variant="secondary"
+                    :disabled="!selectedItem.batch_id || batchDetailLoading"
+                    @click="loadBatchDetail(selectedItem.batch_id)"
+                  >
+                    {{ batchDetailLoading ? '加载中...' : '刷新批次上下文' }}
+                  </BaseButton>
+                  <BaseButton
+                    v-if="selectedItem.batch_id"
+                    variant="secondary"
+                    @click="handleCopyBatchId(selectedItem.batch_id)"
+                  >
+                    复制批次 ID
+                  </BaseButton>
+                </div>
+              </div>
+
+              <StateBanner
+                v-if="batchDetailError"
+                class="mt-4"
+                title="批次上下文加载失败"
+                :description="batchDetailError"
+                variant="warning"
+              />
+
+              <div
+                v-else-if="batchDetailLoading"
+                class="mt-4 text-sm text-gray-500 dark:text-dark-300"
+              >
+                正在加载批次上下文...
+              </div>
+
+              <div
+                v-else-if="selectedBatchSummary"
+                class="mt-4 space-y-4"
+              >
+                <div class="grid gap-3 md:grid-cols-3">
+                  <div class="rounded-2xl border border-white/70 bg-white/85 px-3 py-3 text-sm dark:border-dark-700 dark:bg-dark-950/75">
+                    文档数：{{ selectedBatchSummary.documents_count }}
+                  </div>
+                  <div class="rounded-2xl border border-white/70 bg-white/85 px-3 py-3 text-sm dark:border-dark-700 dark:bg-dark-950/75">
+                    用例数：{{ selectedBatchSummary.test_cases_count }}
+                  </div>
+                  <div class="rounded-2xl border border-white/70 bg-white/85 px-3 py-3 text-sm dark:border-dark-700 dark:bg-dark-950/75">
+                    最新时间：{{ formatDateTime(selectedBatchSummary.latest_created_at) }}
+                  </div>
+                </div>
+
+                <div>
+                  <div class="text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-dark-400">
+                    解析状态分布
+                  </div>
+                  <div class="mt-2 flex flex-wrap gap-2">
+                    <StatusPill
+                      v-for="[status, count] in batchStatusEntries"
+                      :key="status"
+                      :tone="getParseStatusTone(status)"
+                    >
+                      {{ status }} · {{ count }}
+                    </StatusPill>
+                    <div
+                      v-if="batchStatusEntries.length === 0"
+                      class="text-xs text-gray-500 dark:text-dark-300"
+                    >
+                      当前批次没有状态聚合数据。
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-dark-400">
+                    同批次文档
+                  </div>
+                  <div class="mt-2 space-y-2">
+                    <button
+                      v-for="document in sameBatchDocuments"
+                      :key="document.id"
+                      type="button"
+                      class="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/70 bg-white/85 px-3 py-3 text-left transition hover:border-primary-200 hover:bg-primary-50/60 dark:border-dark-700 dark:bg-dark-950/75 dark:hover:border-primary-700 dark:hover:bg-primary-950/20"
+                      @click="selectDocument(document.id)"
+                    >
+                      <div class="min-w-0">
+                        <div class="font-medium text-gray-900 dark:text-white">
+                          {{ document.filename }}
+                        </div>
+                        <div class="mt-1 break-all text-xs text-gray-500 dark:text-dark-300">
+                          {{ document.id }}
+                        </div>
+                      </div>
+                      <StatusPill :tone="getParseStatusTone(document.parse_status)">
+                        {{ document.parse_status }}
+                      </StatusPill>
+                    </button>
+                    <div
+                      v-if="sameBatchDocuments.length === 0"
+                      class="text-xs text-gray-500 dark:text-dark-300"
+                    >
+                      当前批次没有其他文档。
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div class="text-xs uppercase tracking-[0.18em] text-gray-400 dark:text-dark-400">
+                    同批次用例预览
+                  </div>
+                  <div class="mt-2 space-y-2">
+                    <div
+                      v-for="item in batchPreviewCases"
+                      :key="item.id"
+                      class="rounded-2xl border border-white/70 bg-white/85 px-3 py-3 text-sm dark:border-dark-700 dark:bg-dark-950/75"
+                    >
+                      <div class="font-medium text-gray-900 dark:text-white">
+                        {{ item.title }}
+                      </div>
+                      <div class="mt-1 break-all text-xs text-gray-500 dark:text-dark-300">
+                        {{ item.case_id || item.id }} · {{ item.status }} · {{ item.module_name || '--' }}
+                      </div>
+                    </div>
+                    <div
+                      v-if="batchPreviewCases.length === 0"
+                      class="text-xs text-gray-500 dark:text-dark-300"
+                    >
+                      当前批次还没有正式测试用例。
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </template>

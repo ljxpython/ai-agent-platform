@@ -11,6 +11,7 @@ import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import { listAssistantsPage } from '@/services/assistants/assistants.service'
 import { listAudit } from '@/services/audit/audit.service'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { listProjectsPage } from '@/services/projects/projects.service'
 import { listUsersPage } from '@/services/users/users.service'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -29,7 +30,16 @@ const recentProjects = ref<ManagementProject[]>([])
 const recentAuditRows = ref<ManagementAuditRow[]>([])
 const currentProjectAssistants = ref<ManagementAssistant[]>([])
 
-const currentProject = computed(() => workspaceStore.currentProject)
+const projectsUseRuntimeApi = computed(() => resolvePlatformClientScope('projects') === 'v2')
+const usersUseRuntimeApi = computed(() => resolvePlatformClientScope('users') === 'v2')
+const auditUseRuntimeApi = computed(() => resolvePlatformClientScope('audit') === 'v2')
+const assistantsUseRuntimeApi = computed(() => resolvePlatformClientScope('assistants') === 'v2')
+const currentProject = computed(() =>
+  projectsUseRuntimeApi.value ? workspaceStore.runtimeProject : workspaceStore.currentProject
+)
+const assistantProject = computed(() =>
+  assistantsUseRuntimeApi.value ? workspaceStore.runtimeProject : workspaceStore.currentProject
+)
 const stats = computed(() => [
   {
     label: '项目总量',
@@ -41,21 +51,23 @@ const stats = computed(() => [
   {
     label: '成员总量',
     value: userTotal.value,
-    hint: '来自管理端用户列表接口',
+    hint: usersUseRuntimeApi.value ? '当前来自 v2 用户目录' : '当前仍来自 legacy 用户列表接口',
     icon: 'users',
     tone: 'success'
   },
   {
     label: '助手总量',
     value: assistantTotal.value,
-    hint: currentProject.value ? `当前项目 ${currentProject.value.name} 下的助手数量` : '先选择项目后再查看助手统计',
+    hint: assistantProject.value
+      ? `当前助手上下文 ${assistantProject.value.name} 下的助手数量`
+      : '先选择助手上下文项目后再查看助手统计',
     icon: 'assistant',
     tone: 'warning'
   },
   {
     label: '审计记录',
     value: auditTotal.value,
-    hint: '优先展示最近的管理端操作轨迹',
+    hint: auditUseRuntimeApi.value ? '优先展示 v2 控制面的最近操作轨迹' : '优先展示最近的管理端操作轨迹',
     icon: 'activity',
     tone: 'danger'
   }
@@ -73,17 +85,46 @@ function getAuditTone(statusCode: number): 'success' | 'warning' | 'danger' {
   return 'success'
 }
 
+async function ensureOverviewRuntimeContext() {
+  if (!projectsUseRuntimeApi.value && !auditUseRuntimeApi.value && !assistantsUseRuntimeApi.value) {
+    return
+  }
+
+  if (workspaceStore.runtimeProjects.length > 0) {
+    return
+  }
+
+  await workspaceStore.hydrateRuntimeContext()
+}
+
 async function loadOverview() {
   loading.value = true
   error.value = ''
 
-  const projectId = workspaceStore.currentProjectId
+  await ensureOverviewRuntimeContext()
+  const auditProjectId = auditUseRuntimeApi.value
+    ? workspaceStore.runtimeProjectId
+    : workspaceStore.currentProjectId
+  const assistantProjectId = assistantsUseRuntimeApi.value
+    ? workspaceStore.runtimeProjectId
+    : workspaceStore.currentProjectId
   const results = await Promise.allSettled([
-    listProjectsPage({ limit: 6, offset: 0 }),
-    listUsersPage({ limit: 6, offset: 0 }),
-    listAudit(projectId || null, { limit: 6, offset: 0 }),
-    projectId
-      ? listAssistantsPage(projectId, { limit: 6, offset: 0 })
+    listProjectsPage(
+      { limit: 6, offset: 0 },
+      projectsUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+    ),
+    listUsersPage({ limit: 6, offset: 0 }, usersUseRuntimeApi.value ? { mode: 'runtime' } : undefined),
+    listAudit(
+      auditProjectId || null,
+      { limit: 6, offset: 0 },
+      auditUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+    ),
+    assistantProjectId
+      ? listAssistantsPage(
+          assistantProjectId,
+          { limit: 6, offset: 0 },
+          assistantsUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+        )
       : Promise.resolve({ items: [], total: 0 })
   ])
 
@@ -132,7 +173,14 @@ async function loadOverview() {
 }
 
 watch(
-  () => workspaceStore.currentProjectId,
+  () => [
+    workspaceStore.currentProjectId,
+    workspaceStore.runtimeProjectId,
+    projectsUseRuntimeApi.value,
+    usersUseRuntimeApi.value,
+    auditUseRuntimeApi.value,
+    assistantsUseRuntimeApi.value
+  ],
   () => {
     void loadOverview()
   },
@@ -233,7 +281,7 @@ watch(
         <p class="text-sm leading-7 text-gray-500 dark:text-dark-300">
           {{
             currentProject?.description ||
-              '项目上下文会驱动 assistants、runtime、graphs、sql-agent 等后续页面，所以这里先把项目切换打透。'
+              '这里展示的是当前控制面项目上下文；当 projects / audit / assistants 切到 v2 后，总览会直接复用 runtime 项目上下文。'
           }}
         </p>
 
@@ -278,13 +326,18 @@ watch(
           </div>
 
           <div class="pw-card-glass p-4">
-            <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-              <BaseIcon
-                name="assistant"
-                size="sm"
-                class="text-primary-500"
-              />
-              当前项目助手
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+                <BaseIcon
+                  name="assistant"
+                  size="sm"
+                  class="text-primary-500"
+                />
+                {{ assistantsUseRuntimeApi ? '当前助手上下文' : '当前项目助手' }}
+              </div>
+              <StatusPill :tone="assistantProject ? 'info' : 'neutral'">
+                {{ assistantProject?.name || '未选择' }}
+              </StatusPill>
             </div>
             <div
               v-if="currentProjectAssistants.length"
@@ -311,11 +364,11 @@ watch(
             <EmptyState
               v-else
               icon="assistant"
-              :title="currentProject ? '当前项目还没有助手' : '请先选择项目'"
+              :title="assistantProject ? '当前助手上下文还没有助手' : '请先选择助手上下文项目'"
               :description="
-                currentProject
-                  ? '这个项目下暂时没有助手数据。'
-                  : '先在顶部选择项目，再查看对应助手。'
+                assistantProject
+                  ? '这个助手上下文项目下暂时没有助手数据。'
+                  : '先在顶部切换器里选择对应项目，再查看助手摘要。'
               "
             />
           </div>

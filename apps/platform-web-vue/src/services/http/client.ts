@@ -1,34 +1,72 @@
 import axios from 'axios'
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
 import { env } from '@/config/env'
-import { clearTokenSet, getAccessToken, getRefreshToken, setTokenSet } from '@/services/auth/token'
+import {
+  clearTokenSet,
+  getAccessToken,
+  getRefreshToken,
+  setTokenSet,
+  type AuthTokenScope
+} from '@/services/auth/token'
 import type { AuthTokenSet } from '@/types/management'
 
 type RetriableRequest = InternalAxiosRequestConfig & {
   _retry?: boolean
 }
 
-let refreshPromise: Promise<string> | null = null
+const refreshPromises: Partial<Record<AuthTokenScope, Promise<string> | null>> = {}
 
-async function refreshAccessToken(): Promise<string> {
-  const refreshToken = getRefreshToken()
+type ScopeConfig = {
+  baseUrl: string
+  refreshPath: string
+  mapRefreshPayload: (payload: {
+    access_token?: string
+    refresh_token?: string
+    token_type?: string
+  }) => AuthTokenSet
+}
+
+const scopeConfig: Record<AuthTokenScope, ScopeConfig> = {
+  legacy: {
+    baseUrl: env.platformApiUrl,
+    refreshPath: '/_management/auth/refresh',
+    mapRefreshPayload: (payload) => ({
+      accessToken: payload.access_token || '',
+      refreshToken: payload.refresh_token || '',
+      tokenType: payload.token_type || 'bearer'
+    })
+  },
+  v2: {
+    baseUrl: env.platformApiV2Url,
+    refreshPath: '/api/identity/session/refresh',
+    mapRefreshPayload: (payload) => ({
+      accessToken: payload.access_token || '',
+      refreshToken: payload.refresh_token || '',
+      tokenType: payload.token_type || 'bearer'
+    })
+  }
+}
+
+async function refreshAccessToken(scope: AuthTokenScope): Promise<string> {
+  const refreshToken = getRefreshToken(scope)
   if (!refreshToken) {
-    clearTokenSet()
+    clearTokenSet(scope)
     return ''
   }
 
-  if (refreshPromise) {
-    return refreshPromise
+  if (refreshPromises[scope]) {
+    return refreshPromises[scope] as Promise<string>
   }
 
-  refreshPromise = (async () => {
+  const config = scopeConfig[scope]
+  refreshPromises[scope] = (async () => {
     try {
       const response = await axios.post<{
         access_token: string
         refresh_token: string
         token_type?: string
       }>(
-        `${env.platformApiUrl}/_management/auth/refresh`,
+        `${config.baseUrl}${config.refreshPath}`,
         { refresh_token: refreshToken },
         {
           timeout: env.requestTimeoutMs,
@@ -38,59 +76,67 @@ async function refreshAccessToken(): Promise<string> {
         }
       )
 
-      const payload = response.data
-      const tokenSet: AuthTokenSet = {
-        accessToken: payload.access_token,
-        refreshToken: payload.refresh_token,
-        tokenType: payload.token_type || 'bearer'
-      }
+      const tokenSet = config.mapRefreshPayload(response.data)
 
-      setTokenSet(tokenSet)
+      setTokenSet(tokenSet, scope)
       return tokenSet.accessToken
     } catch {
-      clearTokenSet()
+      clearTokenSet(scope)
       return ''
     } finally {
-      refreshPromise = null
+      refreshPromises[scope] = null
     }
   })()
 
-  return refreshPromise
+  return refreshPromises[scope] as Promise<string>
 }
 
-export const httpClient = axios.create({
-  baseURL: env.platformApiUrl,
-  timeout: env.requestTimeoutMs,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-})
-
-httpClient.interceptors.request.use((config) => {
-  const token = getAccessToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
-
-httpClient.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as RetriableRequest | undefined
-
-    if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
-      return Promise.reject(error)
+function createScopedHttpClient(scope: AuthTokenScope) {
+  const client = axios.create({
+    baseURL: scopeConfig[scope].baseUrl,
+    timeout: env.requestTimeoutMs,
+    headers: {
+      'Content-Type': 'application/json'
     }
+  })
 
-    originalRequest._retry = true
-    const nextToken = await refreshAccessToken()
-    if (!nextToken) {
-      return Promise.reject(error)
+  client.interceptors.request.use((config) => {
+    const token = getAccessToken(scope)
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
     }
+    return config
+  })
 
-    originalRequest.headers = originalRequest.headers || {}
-    originalRequest.headers.Authorization = `Bearer ${nextToken}`
-    return httpClient(originalRequest)
-  }
-)
+  client.interceptors.response.use(
+    (response) => response,
+    async (error: AxiosError) => {
+      const originalRequest = error.config as RetriableRequest | undefined
+
+      if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
+        return Promise.reject(error)
+      }
+
+      originalRequest._retry = true
+      const nextToken = await refreshAccessToken(scope)
+      if (!nextToken) {
+        return Promise.reject(error)
+      }
+
+      originalRequest.headers = originalRequest.headers || {}
+      originalRequest.headers.Authorization = `Bearer ${nextToken}`
+      return client(originalRequest)
+    }
+  )
+
+  return client
+}
+
+export const httpClient = createScopedHttpClient('legacy')
+export const platformV2HttpClient = createScopedHttpClient('v2')
+
+export const legacyBaseUrl = scopeConfig.legacy.baseUrl
+export const platformV2BaseUrl = scopeConfig.v2.baseUrl
+
+export const legacyAuthRefreshPath = scopeConfig.legacy.refreshPath
+export const platformV2AuthRefreshPath = scopeConfig.v2.refreshPath

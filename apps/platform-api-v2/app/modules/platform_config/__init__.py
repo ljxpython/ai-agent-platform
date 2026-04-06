@@ -1,0 +1,2 @@
+"""Platform config governance module."""
+

@@ -7,6 +7,7 @@ import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import MetricCard from '@/components/platform/MetricCard.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { createUser } from '@/services/users/users.service'
 
 const router = useRouter()
@@ -17,6 +18,7 @@ const isSuperAdmin = ref(false)
 const submitting = ref(false)
 const error = ref('')
 const notice = ref('')
+const usersUseRuntimeApi = computed(() => resolvePlatformClientScope('users') === 'v2')
 
 const normalizedUsername = computed(() => username.value.trim())
 const requestPreview = computed(() => ({
@@ -61,7 +63,7 @@ async function handleSubmit() {
       username: normalizedUsername.value,
       password: password.value,
       is_super_admin: isSuperAdmin.value
-    })
+    }, usersUseRuntimeApi.value ? { mode: 'runtime' } : undefined)
 
     notice.value = `已创建用户：${created.username}`
     void router.replace('/workspace/users')

@@ -11,6 +11,7 @@ import MetricCard from '@/components/platform/MetricCard.vue'
 import SearchInput from '@/components/platform/SearchInput.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { listAudit } from '@/services/audit/audit.service'
 import { useUiStore } from '@/stores/ui'
 import type { ManagementAuditRow, ManagementUser, ManagementUserProject } from '@/types/management'
@@ -45,6 +46,8 @@ const uiStore = useUiStore()
 const userId = computed(() =>
   typeof route.params.userId === 'string' ? route.params.userId.trim() : ''
 )
+const usersUseRuntimeApi = computed(() => resolvePlatformClientScope('users') === 'v2')
+const auditUseRuntimeApi = computed(() => resolvePlatformClientScope('audit') === 'v2')
 
 const user = ref<ManagementUser | null>(null)
 const projects = ref<ManagementUserProject[]>([])
@@ -139,9 +142,13 @@ async function reload() {
 
   try {
     const [userRow, projectsPayload, auditPayload] = await Promise.all([
-      getUser(userId.value),
-      listUserProjects(userId.value),
-      listAudit(null, { limit: 10, offset: 0, targetId: userId.value })
+      getUser(userId.value, usersUseRuntimeApi.value ? { mode: 'runtime' } : undefined),
+      listUserProjects(userId.value, usersUseRuntimeApi.value ? { mode: 'runtime' } : undefined),
+      listAudit(
+        null,
+        { limit: 10, offset: 0, targetId: userId.value },
+        auditUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+      )
     ])
 
     user.value = userRow
@@ -180,7 +187,7 @@ async function saveProfile() {
       username: normalizedUsername,
       status: status.value,
       is_super_admin: isSuperAdmin.value
-    })
+    }, usersUseRuntimeApi.value ? { mode: 'runtime' } : undefined)
     user.value = updated
     notice.value = '资料已更新'
   } catch (saveError) {
@@ -210,7 +217,11 @@ async function updatePassword() {
   notice.value = ''
 
   try {
-    await updateUser(user.value.id, { password: newPassword.value })
+    await updateUser(
+      user.value.id,
+      { password: newPassword.value },
+      usersUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+    )
     newPassword.value = ''
     confirmNewPassword.value = ''
     notice.value = '密码已更新'

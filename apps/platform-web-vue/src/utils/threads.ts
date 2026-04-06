@@ -32,9 +32,29 @@ export function getThreadAssistantId(thread?: ManagementThread | null): string |
   return typeof value === 'string' && value.trim() ? value : null
 }
 
+export function getThreadAssistantName(thread?: ManagementThread | null): string | null {
+  const value = asRecord(thread?.metadata).assistant_name
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
 export function getThreadGraphId(thread?: ManagementThread | null): string | null {
   const value = asRecord(thread?.metadata).graph_id
   return typeof value === 'string' && value.trim() ? value : null
+}
+
+export function getThreadGraphName(thread?: ManagementThread | null): string | null {
+  const value = asRecord(thread?.metadata).graph_name
+  return typeof value === 'string' && value.trim() ? value : null
+}
+
+export function hasDistinctThreadAssistantTarget(thread?: ManagementThread | null): boolean {
+  const assistantId = getThreadAssistantId(thread)
+  if (!assistantId) {
+    return false
+  }
+
+  const graphId = getThreadGraphId(thread)
+  return !graphId || assistantId !== graphId
 }
 
 export function getThreadListTitle(thread?: ManagementThread | null): string {
@@ -73,9 +93,12 @@ export function getThreadListSearchText(thread?: ManagementThread | null): strin
     thread.thread_id,
     thread.status,
     getThreadAssistantId(thread),
+    getThreadAssistantName(thread),
     getThreadGraphId(thread),
+    getThreadGraphName(thread),
     coerceText(metadata.title),
-    coerceText(metadata.name)
+    coerceText(metadata.name),
+    coerceText(metadata.target_display_name)
   ]
     .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
     .join(' ')

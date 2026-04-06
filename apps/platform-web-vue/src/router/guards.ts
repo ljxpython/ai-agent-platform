@@ -1,5 +1,7 @@
 import type { Router } from 'vue-router'
 import { getAccessToken } from '@/services/auth/token'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
+import { getWorkspaceProjectContextModule } from '@/services/platform/workspace-context'
 import { useAuthStore } from '@/stores/auth'
 import { useWorkspaceStore } from '@/stores/workspace'
 
@@ -32,6 +34,17 @@ export function registerRouterGuards(router: Router) {
 
     if (to.path.startsWith('/workspace') && isAuthenticated && !workspaceStore.projects.length) {
       await workspaceStore.hydrateContext()
+    }
+
+    const contextModule = getWorkspaceProjectContextModule(to.path)
+    if (
+      to.path.startsWith('/workspace') &&
+      isAuthenticated &&
+      contextModule &&
+      resolvePlatformClientScope(contextModule) === 'v2' &&
+      !workspaceStore.runtimeProjects.length
+    ) {
+      await workspaceStore.hydrateRuntimeContext()
     }
 
     return true

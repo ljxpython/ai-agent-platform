@@ -1,4 +1,5 @@
-import { httpClient } from '@/services/http/client'
+import { httpClient, platformV2HttpClient } from '@/services/http/client'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import type { ManagementAnnouncement } from '@/types/management'
 
 type AnnouncementsFeedResponse = {
@@ -11,10 +12,24 @@ type AnnouncementListResponse = {
   total: number
 }
 
+export type AnnouncementServiceMode = 'legacy' | 'runtime'
+
+export type AnnouncementServiceOptions = {
+  mode?: AnnouncementServiceMode
+}
+
+function useRuntimeAnnouncementsApi(options?: AnnouncementServiceOptions) {
+  return options?.mode === 'runtime' && resolvePlatformClientScope('announcements') === 'v2'
+}
+
 export async function listAnnouncementsFeed(
-  projectId?: string
+  projectId?: string,
+  requestOptions?: AnnouncementServiceOptions
 ): Promise<AnnouncementsFeedResponse> {
-  const response = await httpClient.get('/_management/announcements/feed', {
+  const useRuntimeApi = useRuntimeAnnouncementsApi(requestOptions)
+  const client = useRuntimeApi ? platformV2HttpClient : httpClient
+  const endpoint = useRuntimeApi ? '/api/announcements/feed' : '/_management/announcements/feed'
+  const response = await client.get(endpoint, {
     params: {
       project_id: projectId?.trim() || undefined
     }
@@ -23,19 +38,33 @@ export async function listAnnouncementsFeed(
   return response.data as AnnouncementsFeedResponse
 }
 
-export async function markAnnouncementRead(announcementId: string): Promise<{
+export async function markAnnouncementRead(
+  announcementId: string,
+  requestOptions?: AnnouncementServiceOptions
+): Promise<{
   ok: boolean
   read_at: string
 }> {
-  const response = await httpClient.post(`/_management/announcements/${announcementId}/read`)
+  const useRuntimeApi = useRuntimeAnnouncementsApi(requestOptions)
+  const client = useRuntimeApi ? platformV2HttpClient : httpClient
+  const endpoint = useRuntimeApi
+    ? `/api/announcements/${announcementId}/read`
+    : `/_management/announcements/${announcementId}/read`
+  const response = await client.post(endpoint)
   return response.data as { ok: boolean; read_at: string }
 }
 
-export async function markAllAnnouncementsRead(projectId?: string): Promise<{
+export async function markAllAnnouncementsRead(
+  projectId?: string,
+  requestOptions?: AnnouncementServiceOptions
+): Promise<{
   ok: boolean
   count: number
 }> {
-  const response = await httpClient.post('/_management/announcements/read-all', null, {
+  const useRuntimeApi = useRuntimeAnnouncementsApi(requestOptions)
+  const client = useRuntimeApi ? platformV2HttpClient : httpClient
+  const endpoint = useRuntimeApi ? '/api/announcements/read-all' : '/_management/announcements/read-all'
+  const response = await client.post(endpoint, null, {
     params: {
       project_id: projectId?.trim() || undefined
     }
@@ -50,8 +79,11 @@ export async function listAnnouncements(options?: {
   status?: string
   projectId?: string
   scopeType?: string
-}): Promise<AnnouncementListResponse> {
-  const response = await httpClient.get('/_management/announcements', {
+}, requestOptions?: AnnouncementServiceOptions): Promise<AnnouncementListResponse> {
+  const useRuntimeApi = useRuntimeAnnouncementsApi(requestOptions)
+  const client = useRuntimeApi ? platformV2HttpClient : httpClient
+  const endpoint = useRuntimeApi ? '/api/announcements' : '/_management/announcements'
+  const response = await client.get(endpoint, {
     params: {
       limit: options?.limit ?? 50,
       offset: options?.offset ?? 0,
@@ -75,8 +107,11 @@ export async function createAnnouncement(payload: {
   status: 'draft' | 'published' | 'archived'
   publish_at?: string | null
   expire_at?: string | null
-}): Promise<ManagementAnnouncement> {
-  const response = await httpClient.post('/_management/announcements', payload)
+}, requestOptions?: AnnouncementServiceOptions): Promise<ManagementAnnouncement> {
+  const useRuntimeApi = useRuntimeAnnouncementsApi(requestOptions)
+  const client = useRuntimeApi ? platformV2HttpClient : httpClient
+  const endpoint = useRuntimeApi ? '/api/announcements' : '/_management/announcements'
+  const response = await client.post(endpoint, payload)
   return response.data as ManagementAnnouncement
 }
 
@@ -92,13 +127,27 @@ export async function updateAnnouncement(
     status?: 'draft' | 'published' | 'archived'
     publish_at?: string | null
     expire_at?: string | null
-  }
+  },
+  requestOptions?: AnnouncementServiceOptions
 ): Promise<ManagementAnnouncement> {
-  const response = await httpClient.patch(`/_management/announcements/${announcementId}`, payload)
+  const useRuntimeApi = useRuntimeAnnouncementsApi(requestOptions)
+  const client = useRuntimeApi ? platformV2HttpClient : httpClient
+  const endpoint = useRuntimeApi
+    ? `/api/announcements/${announcementId}`
+    : `/_management/announcements/${announcementId}`
+  const response = await client.patch(endpoint, payload)
   return response.data as ManagementAnnouncement
 }
 
-export async function deleteAnnouncement(announcementId: string): Promise<{ ok: boolean }> {
-  const response = await httpClient.delete(`/_management/announcements/${announcementId}`)
+export async function deleteAnnouncement(
+  announcementId: string,
+  requestOptions?: AnnouncementServiceOptions
+): Promise<{ ok: boolean }> {
+  const useRuntimeApi = useRuntimeAnnouncementsApi(requestOptions)
+  const client = useRuntimeApi ? platformV2HttpClient : httpClient
+  const endpoint = useRuntimeApi
+    ? `/api/announcements/${announcementId}`
+    : `/_management/announcements/${announcementId}`
+  const response = await client.delete(endpoint)
   return response.data as { ok: boolean }
 }

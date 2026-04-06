@@ -7,7 +7,7 @@ import BaseInput from '@/components/base/BaseInput.vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
-import { updateMe } from '@/services/users/users.service'
+import { updateCurrentProfile } from '@/services/identity/identity.service'
 import { useAuthStore } from '@/stores/auth'
 import { useWorkspaceStore } from '@/stores/workspace'
 
@@ -49,7 +49,7 @@ async function saveProfile() {
   notice.value = ''
 
   try {
-    await updateMe({
+    await updateCurrentProfile({
       username: nextUsername,
       email: email.value.trim()
     })

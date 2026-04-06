@@ -9,6 +9,7 @@ import EmptyState from '@/components/platform/EmptyState.vue'
 import MetricCard from '@/components/platform/MetricCard.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import { createProject } from '@/services/projects/projects.service'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { useWorkspaceStore } from '@/stores/workspace'
 
 const router = useRouter()
@@ -20,6 +21,13 @@ const submitting = ref(false)
 const error = ref('')
 const notice = ref('')
 
+const projectsUseRuntimeApi = computed(() => resolvePlatformClientScope('projects') === 'v2')
+const activeProjects = computed(() =>
+  projectsUseRuntimeApi.value ? workspaceStore.runtimeProjects : workspaceStore.projects
+)
+const activeLoading = computed(() =>
+  projectsUseRuntimeApi.value ? workspaceStore.runtimeLoading : workspaceStore.loading
+)
 const normalizedName = computed(() => name.value.trim())
 const requestPreview = computed(() => ({
   name: normalizedName.value,
@@ -28,7 +36,7 @@ const requestPreview = computed(() => ({
 const stats = computed(() => [
   {
     label: '当前项目数',
-    value: workspaceStore.projects.length,
+    value: activeProjects.value.length,
     hint: '创建成功后会自动把新项目写入工作区上下文',
     icon: 'folder',
     tone: 'primary'
@@ -56,11 +64,16 @@ async function handleSubmit() {
     const created = await createProject({
       name: normalizedName.value,
       description: description.value.trim() || undefined
-    })
+    }, projectsUseRuntimeApi.value ? { mode: 'runtime' } : undefined)
 
-    workspaceStore.setProjectId(created.id)
+    if (projectsUseRuntimeApi.value) {
+      workspaceStore.setRuntimeProjectId(created.id)
+      await workspaceStore.hydrateRuntimeContext()
+    } else {
+      workspaceStore.setProjectId(created.id)
+      await workspaceStore.hydrateContext()
+    }
     notice.value = `已创建项目：${created.name}`
-    await workspaceStore.hydrateContext()
     void router.replace('/workspace/projects')
   } catch (createError) {
     error.value = createError instanceof Error ? createError.message : '项目创建失败'
@@ -88,7 +101,7 @@ async function handleSubmit() {
     </PageHeader>
 
     <EmptyState
-      v-if="!workspaceStore.projects.length && !workspaceStore.loading"
+      v-if="!activeProjects.length && !activeLoading"
       icon="folder"
       title="当前还没有任何项目"
       description="可以直接在这里创建第一个项目。创建成功后会自动把你设为该项目的管理员成员。"

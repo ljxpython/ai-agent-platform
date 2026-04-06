@@ -68,6 +68,10 @@
 - `范式`：`runtime-service`、`platform-web-vue`、`Resources / Playbook`、迁移手册和样例页面已经沉淀出可复用范式
 - `闭环`：根级脚本、健康检查、烟测清单、验收文档、CHANGELOG 和 release runbook 已形成可执行交付链路
 
+平台控制面后端这部分，当前专用的落地蓝图已经单独写入：
+
+- `apps/platform-api/docs/refactor-blueprint.md`
+
 一句话说，这个仓库已经不是“让 AI 随便写代码”，而是“让 AI 在明确边界、稳定契约和现成范式中持续完成开发”。
 
 ## 这个项目解决什么问题

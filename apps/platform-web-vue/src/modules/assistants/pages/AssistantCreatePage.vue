@@ -35,6 +35,7 @@ type ParameterSchemaResponse = {
 
 const router = useRouter()
 const workspaceStore = useWorkspaceStore()
+const currentProject = computed(() => workspaceStore.runtimeScopedProject)
 
 const graphId = ref('assistant')
 const graphOptions = ref<ManagementGraph[]>([])
@@ -97,8 +98,8 @@ const configPropertyDefs = computed(() => {
 const stats = computed(() => [
   {
     label: '当前项目',
-    value: workspaceStore.currentProject?.name || '未选择',
-    hint: workspaceStore.currentProjectId || '--',
+    value: currentProject.value?.name || '未选择',
+    hint: workspaceStore.runtimeScopedProjectId || '--',
     icon: 'project',
     tone: 'primary'
   },
@@ -254,7 +255,7 @@ function toggleRuntimeTool(toolKey: string) {
 }
 
 async function loadGraphs() {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
   if (!projectId) {
     graphOptions.value = []
     return
@@ -262,7 +263,7 @@ async function loadGraphs() {
 
   graphLoading.value = true
   try {
-    const payload = await listGraphsPage(projectId, { limit: 500, offset: 0 })
+    const payload = await listGraphsPage(projectId, { limit: 500, offset: 0 }, { mode: 'runtime' })
     graphOptions.value = payload.items.filter(
       (item): item is ManagementGraph =>
         typeof item.graph_id === 'string' && item.graph_id.trim().length > 0
@@ -279,9 +280,10 @@ async function loadRuntime() {
   runtimeError.value = ''
 
   try {
+    const projectId = workspaceStore.runtimeScopedProjectId
     const [modelsResponse, toolsResponse] = await Promise.all([
-      listRuntimeModels().catch(() => null),
-      listRuntimeTools().catch(() => null)
+      listRuntimeModels(projectId).catch(() => null),
+      listRuntimeTools(projectId).catch(() => null)
     ])
 
     runtimeModels.value =
@@ -299,7 +301,7 @@ async function loadRuntime() {
 }
 
 async function loadSchema() {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
   const normalizedGraphId = graphId.value.trim()
   if (!projectId || !normalizedGraphId) {
     schema.value = null
@@ -313,7 +315,8 @@ async function loadSchema() {
   try {
     schema.value = (await getAssistantParameterSchema(
       normalizedGraphId,
-      projectId
+      projectId,
+      { mode: 'runtime' }
     )) as ParameterSchemaResponse
   } catch (loadError) {
     schema.value = null
@@ -325,7 +328,7 @@ async function loadSchema() {
 }
 
 async function handleSubmit() {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
   const normalizedName = name.value.trim()
   const normalizedGraphId = graphId.value.trim()
 
@@ -345,15 +348,19 @@ async function handleSubmit() {
 
   try {
     const payload = requestBodyPreview.value
-    const created = await createAssistant(projectId, payload as {
-      graph_id: string
-      name: string
-      description?: string
-      assistant_id?: string
-      config?: Record<string, unknown>
-      context?: Record<string, unknown>
-      metadata?: Record<string, unknown>
-    })
+    const created = await createAssistant(
+      projectId,
+      payload as {
+        graph_id: string
+        name: string
+        description?: string
+        assistant_id?: string
+        config?: Record<string, unknown>
+        context?: Record<string, unknown>
+        metadata?: Record<string, unknown>
+      },
+      { mode: 'runtime' }
+    )
 
     notice.value = `已创建助手：${created.name}`
     void router.replace(`/workspace/assistants/${created.id}`)
@@ -366,7 +373,7 @@ async function handleSubmit() {
 }
 
 watch(
-  () => workspaceStore.currentProjectId,
+  () => workspaceStore.runtimeScopedProjectId,
   () => {
     void loadGraphs()
   },
@@ -403,7 +410,7 @@ watch([configPropertyDefs, config], () => {
 }, { immediate: true })
 
 watch(
-  () => workspaceStore.currentProjectId,
+  () => workspaceStore.runtimeScopedProjectId,
   () => {
     void loadRuntime()
   },
@@ -429,7 +436,7 @@ watch(
     </PageHeader>
 
     <EmptyState
-      v-if="!workspaceStore.currentProject"
+      v-if="!currentProject"
       icon="project"
       title="请先选择项目"
       description="助手创建页必须在项目上下文里工作。没有项目，graph 选择、参数校验和最终落库都不成立。"

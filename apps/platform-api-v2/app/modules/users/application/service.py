@@ -1,0 +1,208 @@
+from __future__ import annotations
+
+from uuid import UUID
+
+from sqlalchemy.orm import Session, sessionmaker
+
+from app.core.context.models import ActorContext
+from app.core.db import SqlAlchemyUnitOfWork
+from app.core.errors import BadRequestError, ConflictError, NotFoundError, ServiceUnavailableError
+from app.core.security import hash_password
+from app.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode
+from app.modules.users.application.contracts import CreateUserCommand, ListUsersQuery, UpdateUserCommand
+from app.modules.users.domain import UserItem, UserPage, UserProjectItem, UserProjectPage
+from app.modules.users.infra import SqlAlchemyUsersRepository
+
+
+def _parse_uuid(raw_value: str, *, code: str) -> UUID:
+    try:
+        return UUID(raw_value)
+    except ValueError as exc:
+        raise BadRequestError(code=code, message="Invalid UUID") from exc
+
+
+class UsersService:
+    def __init__(
+        self,
+        *,
+        session_factory: sessionmaker[Session] | None,
+        policy_engine: IamPolicyEngine | None = None,
+    ) -> None:
+        self._session_factory = session_factory
+        self._policy_engine = policy_engine or IamPolicyEngine()
+
+    def _require_session_factory(self) -> sessionmaker[Session]:
+        if self._session_factory is None:
+            raise ServiceUnavailableError(
+                code="platform_database_not_enabled",
+                message="Platform database is not enabled",
+            )
+        return self._session_factory
+
+    def _require_permission(self, *, actor: ActorContext, permission: PermissionCode) -> None:
+        self._policy_engine.require(
+            actor=actor,
+            authorization=AuthorizationRequest(permission=permission),
+        )
+
+    def _user_item(self, item) -> UserItem:
+        return UserItem(
+            id=str(item.id),
+            username=item.username,
+            status=item.status,
+            is_super_admin=item.is_super_admin,
+            email=item.email,
+            created_at=item.created_at,
+            updated_at=item.updated_at,
+        )
+
+    def _user_project_item(self, item) -> UserProjectItem:
+        return UserProjectItem(
+            project_id=str(item.project_id),
+            project_name=item.project_name,
+            project_description=item.project_description,
+            project_status=item.project_status,
+            role=item.role,
+            joined_at=item.joined_at,
+        )
+
+    def _parse_excluded_user_ids(self, values: tuple[str, ...]) -> tuple[UUID, ...]:
+        excluded_user_ids: list[UUID] = []
+        for raw_value in values:
+            if not raw_value:
+                continue
+            excluded_user_ids.append(
+                _parse_uuid(raw_value, code="invalid_exclude_user_id"),
+            )
+        return tuple(excluded_user_ids)
+
+    async def list_users(
+        self,
+        *,
+        actor: ActorContext,
+        query: ListUsersQuery,
+    ) -> UserPage:
+        session_factory = self._require_session_factory()
+        self._require_permission(actor=actor, permission=PermissionCode.PLATFORM_USER_READ)
+        exclude_user_ids = self._parse_excluded_user_ids(query.exclude_user_ids)
+        async with SqlAlchemyUnitOfWork(session_factory) as uow:
+            repository = SqlAlchemyUsersRepository(uow.session)
+            items, total = repository.list_users(
+                limit=query.limit,
+                offset=query.offset,
+                query=query.query,
+                status=query.status.value if query.status else None,
+                exclude_user_ids=exclude_user_ids,
+            )
+            return UserPage(items=[self._user_item(item) for item in items], total=total)
+
+    async def create_user(
+        self,
+        *,
+        actor: ActorContext,
+        command: CreateUserCommand,
+    ) -> UserItem:
+        session_factory = self._require_session_factory()
+        self._require_permission(actor=actor, permission=PermissionCode.PLATFORM_USER_WRITE)
+        async with SqlAlchemyUnitOfWork(session_factory) as uow:
+            repository = SqlAlchemyUsersRepository(uow.session)
+            if repository.get_user_by_username(command.username.strip()) is not None:
+                raise ConflictError(
+                    code="username_conflict",
+                    message="Username already exists",
+                )
+            created = repository.create_user(
+                username=command.username.strip(),
+                password_hash=hash_password(command.password),
+                email=None,
+                is_super_admin=command.is_super_admin,
+            )
+            return self._user_item(created)
+
+    async def get_user(
+        self,
+        *,
+        actor: ActorContext,
+        user_id: str,
+    ) -> UserItem:
+        session_factory = self._require_session_factory()
+        self._require_permission(actor=actor, permission=PermissionCode.PLATFORM_USER_READ)
+        user_uuid = _parse_uuid(user_id, code="invalid_user_id")
+        async with SqlAlchemyUnitOfWork(session_factory) as uow:
+            repository = SqlAlchemyUsersRepository(uow.session)
+            item = repository.get_user_by_id(user_uuid)
+            if item is None:
+                raise NotFoundError(message="User not found", code="user_not_found")
+            return self._user_item(item)
+
+    async def list_user_projects(
+        self,
+        *,
+        actor: ActorContext,
+        user_id: str,
+    ) -> UserProjectPage:
+        session_factory = self._require_session_factory()
+        self._require_permission(actor=actor, permission=PermissionCode.PLATFORM_USER_READ)
+        user_uuid = _parse_uuid(user_id, code="invalid_user_id")
+        async with SqlAlchemyUnitOfWork(session_factory) as uow:
+            repository = SqlAlchemyUsersRepository(uow.session)
+            item = repository.get_user_by_id(user_uuid)
+            if item is None:
+                raise NotFoundError(message="User not found", code="user_not_found")
+            projects = repository.list_user_projects(user_id=user_uuid)
+            return UserProjectPage(
+                items=[self._user_project_item(project) for project in projects],
+                total=len(projects),
+            )
+
+    async def update_user(
+        self,
+        *,
+        actor: ActorContext,
+        user_id: str,
+        command: UpdateUserCommand,
+    ) -> UserItem:
+        session_factory = self._require_session_factory()
+        self._require_permission(actor=actor, permission=PermissionCode.PLATFORM_USER_WRITE)
+        user_uuid = _parse_uuid(user_id, code="invalid_user_id")
+        async with SqlAlchemyUnitOfWork(session_factory) as uow:
+            repository = SqlAlchemyUsersRepository(uow.session)
+            current = repository.get_user_by_id(user_uuid)
+            if current is None:
+                raise NotFoundError(message="User not found", code="user_not_found")
+
+            next_username = command.username.strip() if command.username is not None else current.username
+            next_status = command.status.value if command.status is not None else current.status
+            next_is_super_admin = (
+                command.is_super_admin if command.is_super_admin is not None else current.is_super_admin
+            )
+            if next_username != current.username:
+                existing = repository.get_user_by_username(next_username)
+                if existing is not None and existing.id != current.id:
+                    raise ConflictError(
+                        code="username_conflict",
+                        message="Username already exists",
+                    )
+
+            if current.is_super_admin and (
+                next_status != "active" or not next_is_super_admin
+            ) and repository.count_active_super_admins() <= 1:
+                raise ConflictError(
+                    code="last_super_admin_protected",
+                    message="Cannot disable or demote the last active super admin",
+                )
+
+            password_hash = hash_password(command.password) if command.password else None
+            updated = repository.update_user(
+                user_uuid,
+                username=next_username,
+                email=current.email,
+                status=next_status,
+                is_super_admin=next_is_super_admin,
+                password_hash=password_hash,
+            )
+            if updated is None:
+                raise NotFoundError(message="User not found", code="user_not_found")
+            if password_hash or next_status != "active":
+                repository.revoke_all_refresh_tokens_for_user(user_uuid)
+            return self._user_item(updated)

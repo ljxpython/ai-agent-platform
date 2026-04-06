@@ -6,6 +6,9 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import MetricCard from '@/components/platform/MetricCard.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import { listRuntimeModels, listRuntimeTools } from '@/services/runtime/runtime.service'
+import { useWorkspaceStore } from '@/stores/workspace'
+
+const workspaceStore = useWorkspaceStore()
 
 const loading = ref(false)
 const error = ref('')
@@ -39,10 +42,14 @@ const stats = computed(() => [
 ])
 
 async function loadRuntimeOverview() {
+  const projectId = workspaceStore.runtimeScopedProjectId
   loading.value = true
   error.value = ''
 
-  const results = await Promise.allSettled([listRuntimeModels(), listRuntimeTools()])
+  const results = await Promise.allSettled([
+    listRuntimeModels(projectId),
+    listRuntimeTools(projectId)
+  ])
   const [modelsResult, toolsResult] = results
   const failedSections: string[] = []
 
@@ -103,6 +110,26 @@ onMounted(() => {
             size="sm"
           />
           工具目录
+        </router-link>
+        <router-link
+          class="pw-btn pw-btn-secondary"
+          to="/workspace/runtime/policies"
+        >
+          <BaseIcon
+            name="shield"
+            size="sm"
+          />
+          策略覆盖
+        </router-link>
+        <router-link
+          class="pw-btn pw-btn-ghost"
+          to="/workspace/operations"
+        >
+          <BaseIcon
+            name="activity"
+            size="sm"
+          />
+          Operations
         </router-link>
       </template>
     </PageHeader>
@@ -198,6 +225,35 @@ onMounted(() => {
               </router-link>
             </div>
           </div>
+        </div>
+      </SurfaceCard>
+
+      <SurfaceCard class="space-y-4 xl:col-span-2">
+        <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
+          <BaseIcon
+            name="shield"
+            size="sm"
+            class="text-primary-500"
+          />
+          运行策略治理
+        </div>
+        <p class="text-sm leading-7 text-gray-500 dark:text-dark-300">
+          phase-3 会把项目级模型、工具、图策略覆盖收进统一治理页，同时所有刷新任务都能回流到 operations
+          中心追踪，不再靠口头同步。
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <router-link
+            class="pw-btn pw-btn-secondary"
+            to="/workspace/runtime/policies"
+          >
+            打开运行策略
+          </router-link>
+          <router-link
+            class="pw-btn pw-btn-ghost"
+            to="/workspace/operations"
+          >
+            查看刷新任务
+          </router-link>
         </div>
       </SurfaceCard>
     </div>

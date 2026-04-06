@@ -3,6 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import {
+  type AnnouncementServiceOptions
+} from '@/services/announcements/announcements.service'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { useAnnouncementsStore } from '@/stores/announcements'
 import { useUiStore } from '@/stores/ui'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -15,6 +19,17 @@ const workspaceStore = useWorkspaceStore()
 const isOpen = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
 const selectedAnnouncementId = ref('')
+const announcementsUseRuntimeApi = computed(
+  () => resolvePlatformClientScope('announcements') === 'v2'
+)
+const activeProjectId = computed(() =>
+  announcementsUseRuntimeApi.value
+    ? workspaceStore.runtimeProjectId
+    : workspaceStore.currentProjectId
+)
+const requestOptions = computed<AnnouncementServiceOptions | undefined>(() =>
+  announcementsUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+)
 
 const items = computed(() => announcementsStore.items)
 const unreadCount = computed(() => announcementsStore.unreadCount)
@@ -90,14 +105,20 @@ function handleClickOutside(event: MouseEvent) {
 }
 
 onMounted(() => {
-  void announcementsStore.init(workspaceStore.currentProjectId)
+  if (announcementsUseRuntimeApi.value && !workspaceStore.runtimeProjects.length) {
+    void workspaceStore.hydrateRuntimeContext().then(() =>
+      announcementsStore.init(activeProjectId.value, requestOptions.value)
+    )
+  } else {
+    void announcementsStore.init(activeProjectId.value, requestOptions.value)
+  }
   document.addEventListener('click', handleClickOutside)
 })
 
 watch(
-  () => workspaceStore.currentProjectId,
-  (projectId) => {
-    void announcementsStore.load(projectId)
+  () => [activeProjectId.value, announcementsUseRuntimeApi.value],
+  ([projectId]) => {
+    void announcementsStore.load(String(projectId || ''), requestOptions.value)
   }
 )
 
@@ -107,11 +128,11 @@ onBeforeUnmount(() => {
 
 async function selectAnnouncement(id: string) {
   selectedAnnouncementId.value = id
-  await announcementsStore.markRead(id)
+  await announcementsStore.markRead(id, requestOptions.value)
 }
 
 async function markAllRead() {
-  await announcementsStore.markAllRead(workspaceStore.currentProjectId)
+  await announcementsStore.markAllRead(activeProjectId.value, requestOptions.value)
   uiStore.pushToast({
     type: 'success',
     title: t('topbar.announcementsMarked'),

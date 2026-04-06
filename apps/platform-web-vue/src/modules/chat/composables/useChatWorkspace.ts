@@ -1,8 +1,19 @@
-import type { Command, Message, Thread as LanggraphThread } from '@langchain/langgraph-sdk'
+import type { Command, Message } from '@langchain/langgraph-sdk'
 import { computed, reactive, ref, watch, type ComputedRef, type Ref } from 'vue'
 import { listRuntimeModels, listRuntimeTools } from '@/services/runtime/runtime.service'
-import { createLanggraphClient } from '@/services/langgraph/client'
-import { getThreadDetail, getThreadHistoryPage, getThreadState, listThreadsPage } from '@/services/threads/threads.service'
+import {
+  buildRuntimeSnapshotWarning,
+  cancelRuntimeRun,
+  createRuntimeRunStream,
+  createRuntimeThread,
+  deleteRuntimeThread,
+  getRuntimeThreadSnapshot,
+  listRuntimeThreadsPage,
+  normalizeRuntimeGatewayError,
+  resolveRuntimePermissionDescription,
+  updateRuntimeThreadState,
+  type RuntimeGatewayErrorMeta
+} from '@/services/runtime-gateway/workspace.service'
 import type { ManagementThread } from '@/types/management'
 import { summarizeMessageContent, type ChatAttachmentBlock } from '@/utils/chat-content'
 import {
@@ -23,30 +34,6 @@ type UseChatWorkspaceOptions = {
   projectId: ComputedRef<string>
   target: ComputedRef<ChatResolvedTarget | null>
   initialThreadId: Ref<string>
-}
-
-function normalizeThread(thread: LanggraphThread<Record<string, unknown>>): ManagementThread {
-  return {
-    thread_id: thread.thread_id,
-    status: thread.status,
-    created_at: thread.created_at,
-    updated_at: thread.updated_at,
-    metadata: thread.metadata,
-    values: thread.values
-  }
-}
-
-function buildThreadMetadata(target: ChatResolvedTarget) {
-  if (target.targetType === 'graph') {
-    return {
-      assistant_id: target.resolvedTargetId,
-      graph_id: target.graphId || target.resolvedTargetId
-    }
-  }
-
-  return {
-    assistant_id: target.assistantId || target.resolvedTargetId
-  }
 }
 
 function parseNumericInput(raw: string, kind: 'float' | 'int'): number | undefined {
@@ -272,7 +259,10 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
   const cancelling = ref(false)
   const error = ref('')
   const detailError = ref('')
+  const detailWarning = ref('')
   const runtimeError = ref('')
+  const threadErrorMeta = ref<RuntimeGatewayErrorMeta | null>(null)
+  const detailErrorMeta = ref<RuntimeGatewayErrorMeta | null>(null)
   const lastRunId = ref('')
   const currentRunId = ref('')
   const lastEventAt = ref('')
@@ -355,6 +345,10 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
   const threadFailureMessage = computed(() =>
     extractThreadFailureMessage(displayStateRaw.value, activeThread.value?.status)
   )
+  const accessDeniedMessage = computed(() => {
+    const permissionError = detailErrorMeta.value || threadErrorMeta.value
+    return resolveRuntimePermissionDescription(permissionError)
+  })
   const hasBreakpointInterrupt = computed(() => isBreakpointInterrupt(interruptPayload.value))
   const canContinueDebug = computed(() => {
     if (!runOptions.debugMode || sending.value) {
@@ -403,7 +397,10 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
     runtimeError.value = ''
 
     try {
-      const [modelsPayload, toolsPayload] = await Promise.all([listRuntimeModels(), listRuntimeTools()])
+      const [modelsPayload, toolsPayload] = await Promise.all([
+        listRuntimeModels(projectId),
+        listRuntimeTools(projectId)
+      ])
       runtimeModels.value = Array.isArray(modelsPayload.models) ? modelsPayload.models : awaitableEmptyModels()
       runtimeTools.value = Array.isArray(toolsPayload.tools) ? toolsPayload.tools : awaitableEmptyTools()
 
@@ -413,9 +410,10 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
         runOptions.modelId = defaultModel
       }
     } catch (loadError) {
+      const normalizedError = normalizeRuntimeGatewayError(loadError, '运行时目录加载失败')
       runtimeModels.value = awaitableEmptyModels()
       runtimeTools.value = awaitableEmptyTools()
-      runtimeError.value = loadError instanceof Error ? loadError.message : '运行时目录加载失败'
+      runtimeError.value = normalizedError.message
     } finally {
       loadingRuntime.value = false
     }
@@ -433,43 +431,50 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
       selectedBranch.value = ''
       branchResetPending.value = false
       detailError.value = ''
+      detailWarning.value = ''
+      detailErrorMeta.value = null
       return
     }
 
     const currentToken = ++detailToken
     loadingThreadDetail.value = true
     detailError.value = ''
+    detailWarning.value = ''
+    detailErrorMeta.value = null
 
     try {
       const fallbackSummary = threadItems.value.find((item) => item.thread_id === normalizedThreadId) || null
-      const [detail, state, history] = await Promise.all([
-        fallbackSummary ? Promise.resolve(fallbackSummary) : getThreadDetail(projectId, normalizedThreadId),
-        getThreadState(projectId, normalizedThreadId).catch(() => null),
-        getThreadHistoryPage(projectId, normalizedThreadId, { limit: 12 }).catch(() => [])
-      ])
+      const snapshot = await getRuntimeThreadSnapshot(projectId, normalizedThreadId, {
+        summary: fallbackSummary,
+        historyLimit: 12
+      })
 
       if (currentToken !== detailToken) {
         return
       }
 
       activeThreadId.value = normalizedThreadId
-      activeThread.value = detail
+      activeThread.value = snapshot.detail
       selectedBranch.value = ''
       branchResetPending.value = false
-      applyStateSnapshot(state)
-      historyItems.value = Array.isArray(history) ? history : []
+      applyStateSnapshot(snapshot.state)
+      historyItems.value = Array.isArray(snapshot.history) ? snapshot.history : []
+      detailWarning.value = buildRuntimeSnapshotWarning(snapshot)
     } catch (loadError) {
       if (currentToken !== detailToken) {
         return
       }
 
+      const normalizedError = normalizeRuntimeGatewayError(loadError, '线程详情加载失败')
       activeThread.value = null
       activeState.value = null
       activeStateRaw.value = null
       historyItems.value = []
       selectedBranch.value = ''
       branchResetPending.value = false
-      detailError.value = loadError instanceof Error ? loadError.message : '线程详情加载失败'
+      detailError.value = normalizedError.message
+      detailWarning.value = ''
+      detailErrorMeta.value = normalizedError
     } finally {
       if (currentToken === detailToken) {
         loadingThreadDetail.value = false
@@ -491,6 +496,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
       selectedBranch.value = ''
       branchResetPending.value = false
       error.value = ''
+      threadErrorMeta.value = null
       loadingThreads.value = false
       return
     }
@@ -498,9 +504,10 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
     const currentToken = ++threadListToken
     loadingThreads.value = true
     error.value = ''
+    threadErrorMeta.value = null
 
     try {
-      const payload = await listThreadsPage(projectId, {
+      const payload = await listRuntimeThreadsPage(projectId, {
         limit: 100,
         offset: 0,
         assistantId: target.targetType === 'assistant' ? target.assistantId : undefined,
@@ -528,6 +535,9 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
         historyItems.value = []
         selectedBranch.value = ''
         branchResetPending.value = false
+        detailError.value = ''
+        detailWarning.value = ''
+        detailErrorMeta.value = null
         return
       }
 
@@ -537,6 +547,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
         return
       }
 
+      const normalizedError = normalizeRuntimeGatewayError(loadError, '线程列表加载失败')
       threadItems.value = []
       activeThreadId.value = ''
       activeThread.value = null
@@ -545,7 +556,9 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
       historyItems.value = []
       selectedBranch.value = ''
       branchResetPending.value = false
-      error.value = loadError instanceof Error ? loadError.message : '线程列表加载失败'
+      detailWarning.value = ''
+      error.value = normalizedError.message
+      threadErrorMeta.value = normalizedError
     } finally {
       if (currentToken === threadListToken) {
         loadingThreads.value = false
@@ -563,15 +576,19 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
 
     creatingThread.value = true
     detailError.value = ''
+    detailWarning.value = ''
+    detailErrorMeta.value = null
 
     try {
-      const client = createLanggraphClient(projectId)
-      const createdThread = (await client.threads.create({
-        metadata: buildThreadMetadata(target),
-        graphId: target.targetType === 'graph' ? target.graphId || target.resolvedTargetId : undefined
-      })) as LanggraphThread<Record<string, unknown>>
-
-      const normalizedThread = normalizeThread(createdThread)
+      const normalizedThread = await createRuntimeThread(projectId, {
+        targetType: target.targetType,
+        resolvedTargetId: target.resolvedTargetId,
+        displayName: target.displayName,
+        assistantId: target.assistantId,
+        assistantName: target.assistantName,
+        graphId: target.graphId,
+        graphName: target.graphName
+      })
       threadItems.value = [normalizedThread, ...threadItems.value.filter((item) => item.thread_id !== normalizedThread.thread_id)]
       activeThreadId.value = normalizedThread.thread_id
       activeThread.value = normalizedThread
@@ -604,19 +621,18 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
       return false
     }
 
-    const client = createLanggraphClient(projectId)
     const abortController = new AbortController()
     currentStreamAbortController.value = abortController
 
     try {
-      const stream = client.runs.stream<['values', 'tasks'], true>(params.threadId, target.resolvedTargetId, {
+      const stream = createRuntimeRunStream({
+        projectId,
+        threadId: params.threadId,
+        targetId: target.resolvedTargetId,
         input: params.input,
         command: params.command,
         checkpointId: params.checkpointId || undefined,
         config: buildRunConfig(runOptions),
-        streamMode: ['values', 'tasks'],
-        streamSubgraphs: true,
-        streamResumable: true,
         interruptBefore: params.interruptBefore,
         interruptAfter: params.interruptAfter,
         signal: abortController.signal,
@@ -674,7 +690,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
         return false
       }
 
-      detailError.value = runError instanceof Error ? runError.message : '对话发送失败'
+      detailError.value = normalizeRuntimeGatewayError(runError, '对话发送失败').message
       return false
     } finally {
       sending.value = false
@@ -690,7 +706,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
       error.value = ''
       return true
     } catch (createError) {
-      detailError.value = createError instanceof Error ? createError.message : '新建对话失败'
+      detailError.value = normalizeRuntimeGatewayError(createError, '新建对话失败').message
       return false
     }
   }
@@ -725,6 +741,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
     cancelling.value = false
     error.value = ''
     detailError.value = ''
+    detailWarning.value = ''
     lastRunId.value = ''
 
     const humanMessageContent =
@@ -762,7 +779,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
         ...(runOptions.debugMode ? { interruptBefore: ['tools'] } : {})
       })
     } catch (runError) {
-      detailError.value = runError instanceof Error ? runError.message : '对话发送失败'
+      detailError.value = normalizeRuntimeGatewayError(runError, '对话发送失败').message
       return false
     }
   }
@@ -777,6 +794,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
     cancelling.value = false
     error.value = ''
     detailError.value = ''
+    detailWarning.value = ''
 
     const pendingTaskToolCall = hasPendingTaskToolCall(messages.value)
 
@@ -803,8 +821,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
 
     try {
       if (currentRunId.value.trim()) {
-        const client = createLanggraphClient(projectId)
-        await client.runs.cancel(threadId, currentRunId.value, false, 'interrupt')
+        await cancelRuntimeRun(projectId, threadId, currentRunId.value)
       }
     } catch {
       // 服务端取消失败时，仍然中止当前前端流，避免页面继续假死。
@@ -823,8 +840,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
       throw new Error('缺少可更新的线程上下文')
     }
 
-    const client = createLanggraphClient(projectId)
-    await client.threads.updateState(threadId, { values })
+    await updateRuntimeThreadState(projectId, threadId, values)
     await loadThreadDetail(threadId)
     return true
   }
@@ -837,8 +853,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
       throw new Error('缺少可删除的线程上下文')
     }
 
-    const client = createLanggraphClient(projectId)
-    await client.threads.delete(normalizedThreadId)
+    await deleteRuntimeThread(projectId, normalizedThreadId)
 
     const remaining = threadItems.value.filter((item) => item.thread_id !== normalizedThreadId)
     threadItems.value = remaining
@@ -872,6 +887,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
     cancelling.value = false
     error.value = ''
     detailError.value = ''
+    detailWarning.value = ''
 
     if (selectedBranch.value) {
       branchResetPending.value = true
@@ -904,6 +920,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
     cancelling.value = false
     error.value = ''
     detailError.value = ''
+    detailWarning.value = ''
     lastRunId.value = ''
 
     if (selectedBranch.value) {
@@ -944,6 +961,7 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
     cancelling.value = false
     error.value = ''
     detailError.value = ''
+    detailWarning.value = ''
     lastRunId.value = ''
 
     if (selectedBranch.value) {
@@ -1017,7 +1035,9 @@ export function useChatWorkspace(options: UseChatWorkspaceOptions) {
     creatingThread,
     cancelActiveRun,
     canContinueDebug,
+    accessDeniedMessage,
     detailError,
+    detailWarning,
     deleteThread,
     editHumanMessage,
     error,

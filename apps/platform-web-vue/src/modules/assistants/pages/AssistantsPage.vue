@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
+import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import TablePageLayout from '@/components/layout/TablePageLayout.vue'
@@ -16,7 +17,14 @@ import SearchInput from '@/components/platform/SearchInput.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import type { ActionMenuItem, DataTableColumn } from '@/components/platform/data-table'
-import { listAssistantsPage } from '@/services/assistants/assistants.service'
+import {
+  deleteAssistant,
+  listAssistantsPage,
+  resyncAssistant,
+  resyncAssistantByOperation
+} from '@/services/assistants/assistants.service'
+import { getOperationFailureMessage } from '@/services/operations/operations.service'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { useUiStore } from '@/stores/ui'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { ManagementAssistant } from '@/types/management'
@@ -33,6 +41,9 @@ const query = ref('')
 const loading = ref(false)
 const error = ref('')
 const items = ref<ManagementAssistant[]>([])
+const actionBusyAssistantId = ref('')
+const showDeleteDialog = ref(false)
+const deletingAssistant = ref<ManagementAssistant | null>(null)
 const assistantRows = computed(() => items.value as unknown as Record<string, unknown>[])
 const pagination = usePagination({
   initialPageSize: 20,
@@ -79,9 +90,11 @@ const columns = computed<DataTableColumn[]>(() => [
   }
 ])
 
-const currentProject = computed(() => workspaceStore.currentProject)
+const currentProject = computed(() => workspaceStore.runtimeScopedProject)
 const activeCount = computed(() => items.value.filter((item) => item.status === 'active').length)
-const syncIssueCount = computed(() => items.value.filter((item) => item.sync_status !== 'synced').length)
+const syncIssueCount = computed(() =>
+  items.value.filter((item) => item.sync_status !== 'synced' && item.sync_status !== 'ready').length
+)
 const stats = computed(() => [
   {
     label: '当前项目',
@@ -100,7 +113,7 @@ const stats = computed(() => [
   {
     label: '同步异常',
     value: syncIssueCount.value,
-    hint: 'sync_status 不为 synced 的助手',
+    hint: 'sync_status 既不是 synced 也不是 ready 的助手',
     icon: 'activity',
     tone: 'warning'
   },
@@ -117,8 +130,12 @@ function assistantFromRow(row: Record<string, unknown>) {
   return row as ManagementAssistant
 }
 
+function getSyncTone(status: string) {
+  return status === 'synced' || status === 'ready' ? 'success' : 'warning'
+}
+
 async function loadAssistants() {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
   if (!projectId) {
     items.value = []
     pagination.setTotal(0)
@@ -131,11 +148,15 @@ async function loadAssistants() {
   error.value = ''
 
   try {
-    const payload = await listAssistantsPage(projectId, {
-      limit: pagination.pageSize.value,
-      offset: pagination.offset.value,
-      query: query.value
-    })
+    const payload = await listAssistantsPage(
+      projectId,
+      {
+        limit: pagination.pageSize.value,
+        offset: pagination.offset.value,
+        query: query.value
+      },
+      { mode: 'runtime' }
+    )
 
     items.value = payload.items
     pagination.setTotal(payload.total)
@@ -178,18 +199,105 @@ async function handleCopyValue(label: string, value: string) {
   })
 }
 
+async function handleResyncAssistant(assistant: ManagementAssistant) {
+  const projectId = workspaceStore.runtimeScopedProjectId
+  if (!projectId) {
+    return
+  }
+
+  actionBusyAssistantId.value = assistant.id
+  error.value = ''
+
+  try {
+    if (resolvePlatformClientScope('operations') === 'v2') {
+      const operation = await resyncAssistantByOperation(assistant.id, projectId, {
+        idempotencyKey: `assistant-resync:${assistant.id}`
+      })
+      if (operation.status !== 'succeeded') {
+        throw new Error(getOperationFailureMessage(operation))
+      }
+    } else {
+      await resyncAssistant(assistant.id, projectId, { mode: 'runtime' })
+    }
+
+    uiStore.pushToast({
+      type: 'success',
+      title: '助手已重同步',
+      message: assistant.name || assistant.id
+    })
+    await loadAssistants()
+  } catch (resyncError) {
+    error.value = resyncError instanceof Error ? resyncError.message : '助手重同步失败'
+  } finally {
+    actionBusyAssistantId.value = ''
+  }
+}
+
+function openDeleteDialog(assistant: ManagementAssistant) {
+  deletingAssistant.value = assistant
+  showDeleteDialog.value = true
+}
+
+function cancelDelete() {
+  showDeleteDialog.value = false
+  deletingAssistant.value = null
+}
+
+async function confirmDelete() {
+  const assistant = deletingAssistant.value
+  const projectId = workspaceStore.runtimeScopedProjectId
+  if (!assistant || !projectId) {
+    cancelDelete()
+    return
+  }
+
+  actionBusyAssistantId.value = assistant.id
+  error.value = ''
+
+  try {
+    await deleteAssistant(
+      assistant.id,
+      {
+        deleteRuntime: true,
+        deleteThreads: false
+      },
+      projectId,
+      { mode: 'runtime' }
+    )
+
+    uiStore.pushToast({
+      type: 'success',
+      title: '助手已删除',
+      message: assistant.name || assistant.id
+    })
+    cancelDelete()
+
+    if (items.value.length === 1 && pagination.page.value > 1) {
+      pagination.resetPage()
+      return
+    }
+
+    await loadAssistants()
+  } catch (deleteError) {
+    error.value = deleteError instanceof Error ? deleteError.message : '助手删除失败'
+  } finally {
+    actionBusyAssistantId.value = ''
+  }
+}
+
 function resolveAssistantTargetId(assistant: ManagementAssistant) {
   return assistant.langgraph_assistant_id?.trim() || assistant.id
 }
 
 function openAssistantChat(assistant: ManagementAssistant) {
   const assistantId = resolveAssistantTargetId(assistant)
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
 
   if (projectId) {
     writeRecentChatTarget(projectId, {
       targetType: 'assistant',
-      assistantId
+      assistantId,
+      assistantName: assistant.name || assistantId
     })
   }
 
@@ -197,13 +305,14 @@ function openAssistantChat(assistant: ManagementAssistant) {
     path: '/workspace/chat',
     query: {
       targetType: 'assistant',
-      assistantId
+      assistantId,
+      assistantName: assistant.name || assistantId
     }
   })
 }
 
 function setAssistantAsRecentTarget(assistant: ManagementAssistant) {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
   const assistantId = resolveAssistantTargetId(assistant)
   if (!projectId) {
     return
@@ -211,7 +320,8 @@ function setAssistantAsRecentTarget(assistant: ManagementAssistant) {
 
   writeRecentChatTarget(projectId, {
     targetType: 'assistant',
-    assistantId
+    assistantId,
+    assistantName: assistant.name || assistantId
   })
 
   uiStore.pushToast({
@@ -222,50 +332,71 @@ function setAssistantAsRecentTarget(assistant: ManagementAssistant) {
 }
 
 function assistantActions(assistant: ManagementAssistant): ActionMenuItem[] {
+  const busy = actionBusyAssistantId.value === assistant.id
+
   return [
     {
       key: 'open-chat',
       label: '打开聊天',
       icon: 'chat',
+      disabled: busy,
       onSelect: () => openAssistantChat(assistant)
     },
     {
       key: 'focus-chat-target',
       label: '设为聊天目标',
       icon: 'check',
+      disabled: busy,
       onSelect: () => setAssistantAsRecentTarget(assistant)
+    },
+    {
+      key: 'resync',
+      label: '上游重同步',
+      icon: 'refresh',
+      disabled: busy,
+      onSelect: () => handleResyncAssistant(assistant)
     },
     {
       key: 'copy-id',
       label: '复制助手 ID',
       icon: 'copy',
+      disabled: busy,
       onSelect: () => handleCopyValue('助手 ID', assistant.id)
     },
     {
       key: 'copy-graph-id',
       label: assistant.graph_id ? '复制 Graph ID' : '未绑定 Graph',
       icon: 'copy',
-      disabled: !assistant.graph_id,
+      disabled: busy || !assistant.graph_id,
       onSelect: () => handleCopyValue('Graph ID', assistant.graph_id || '')
     },
     {
       key: 'copy-langgraph-assistant-id',
       label: assistant.langgraph_assistant_id ? '复制 LangGraph ID' : '未绑定 LangGraph ID',
       icon: 'copy',
-      disabled: !assistant.langgraph_assistant_id,
+      disabled: busy || !assistant.langgraph_assistant_id,
       onSelect: () => handleCopyValue('LangGraph Assistant ID', assistant.langgraph_assistant_id || '')
     },
     {
       key: 'detail',
       label: '助手详情',
       icon: 'eye',
+      disabled: busy,
       onSelect: () => void router.push(`/workspace/assistants/${assistant.id}`)
+    },
+    {
+      key: 'delete',
+      label: '删除助手',
+      icon: 'alert',
+      danger: true,
+      disabled: busy,
+      onSelect: () => openDeleteDialog(assistant)
     }
   ]
 }
 
 watch(
-  () => workspaceStore.currentProjectId,
+  () => workspaceStore.runtimeScopedProjectId,
   () => {
     if (pagination.page.value !== 1) {
       pagination.resetPage()
@@ -399,7 +530,7 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
           </template>
 
           <template #cell-sync_status="{ row }">
-            <StatusPill :tone="assistantFromRow(row).sync_status === 'synced' ? 'success' : 'warning'">
+            <StatusPill :tone="getSyncTone(assistantFromRow(row).sync_status)">
               {{ assistantFromRow(row).sync_status }}
             </StatusPill>
           </template>
@@ -443,4 +574,18 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
       </template>
     </TablePageLayout>
   </section>
+
+  <ConfirmDialog
+    :show="showDeleteDialog"
+    title="删除助手"
+    :message="
+      deletingAssistant
+        ? `确认删除助手“${deletingAssistant.name}”吗？会同时删除 runtime 中的 assistant 记录，但保留 threads 历史。`
+        : ''
+    "
+    confirm-text="删除"
+    danger
+    @cancel="cancelDelete"
+    @confirm="confirmDelete"
+  />
 </template>

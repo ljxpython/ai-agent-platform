@@ -94,8 +94,20 @@ const workspaceChildren: RouteRecordRaw[] = [
         name: 'workspace-runtime-tools',
         component: () => import('@/modules/runtime/pages/RuntimeToolsPage.vue'),
         meta: { title: 'Runtime Tools', eyebrow: 'Runtime' }
+      },
+      {
+        path: 'policies',
+        name: 'workspace-runtime-policies',
+        component: () => import('@/modules/runtime/pages/RuntimePoliciesPage.vue'),
+        meta: { title: 'Runtime Policies', eyebrow: 'Runtime' }
       }
     ]
+  },
+  {
+    path: 'operations',
+    name: 'workspace-operations',
+    component: () => import('@/modules/operations/pages/OperationsPage.vue'),
+    meta: { title: 'Operations', eyebrow: 'Governance' }
   },
   {
     path: 'graphs',
@@ -221,6 +233,12 @@ const workspaceChildren: RouteRecordRaw[] = [
     name: 'workspace-audit',
     component: () => import('@/modules/audit/pages/AuditPage.vue'),
     meta: { title: '审计日志', eyebrow: 'Audit' }
+  },
+  {
+    path: 'platform-config',
+    name: 'workspace-platform-config',
+    component: () => import('@/modules/platform-config/pages/PlatformConfigPage.vue'),
+    meta: { title: '平台配置', eyebrow: 'Governance' }
   }
 ]
 

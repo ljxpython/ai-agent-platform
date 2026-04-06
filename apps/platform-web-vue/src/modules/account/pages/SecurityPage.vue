@@ -7,7 +7,7 @@ import BaseInput from '@/components/base/BaseInput.vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
-import { changePassword } from '@/services/auth/auth.service'
+import { changeCurrentPassword } from '@/services/identity/identity.service'
 import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
@@ -41,7 +41,7 @@ async function submit() {
   notice.value = ''
 
   try {
-    await changePassword({
+    await changeCurrentPassword({
       oldPassword: oldPassword.value,
       newPassword: newPassword.value
     })

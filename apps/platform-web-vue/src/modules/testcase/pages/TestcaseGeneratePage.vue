@@ -4,6 +4,7 @@ import EmptyState from '@/components/platform/EmptyState.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import TestcaseOverviewStrip from '@/components/platform/TestcaseOverviewStrip.vue'
 import TestcaseWorkspaceNav from '@/components/platform/TestcaseWorkspaceNav.vue'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { getTestcaseOverview } from '@/services/testcase/testcase.service'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { TestcaseOverview } from '@/types/management'
@@ -16,23 +17,32 @@ const workspaceStore = useWorkspaceStore()
 const overview = ref<TestcaseOverview | null>(null)
 const loading = ref(false)
 const error = ref('')
+const testcaseUseRuntimeApi = computed(() => resolvePlatformClientScope('testcase') === 'v2')
+const activeProjectId = computed(() =>
+  testcaseUseRuntimeApi.value ? workspaceStore.runtimeProjectId : workspaceStore.currentProjectId
+)
+const activeProject = computed(() =>
+  testcaseUseRuntimeApi.value ? workspaceStore.runtimeProject : workspaceStore.currentProject
+)
 
 const testcaseTarget = computed(() =>
   resolveChatTarget({
     targetType: 'graph',
     graphId: 'test_case_agent',
+    graphName: 'Test Case Agent',
     updatedAt: new Date().toISOString()
   })
 )
 
 watchEffect(() => {
-  if (!workspaceStore.currentProjectId) {
+  if (!activeProjectId.value) {
     return
   }
 
-  writeRecentChatTarget(workspaceStore.currentProjectId, {
+  writeRecentChatTarget(activeProjectId.value, {
     targetType: 'graph',
-    graphId: 'test_case_agent'
+    graphId: 'test_case_agent',
+    graphName: 'Test Case Agent'
   })
 })
 
@@ -41,7 +51,10 @@ async function loadOverview(projectId: string) {
   error.value = ''
 
   try {
-    overview.value = await getTestcaseOverview(projectId)
+    overview.value = await getTestcaseOverview(
+      projectId,
+      testcaseUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+    )
   } catch (loadError) {
     overview.value = null
     error.value = loadError instanceof Error ? loadError.message : 'Testcase 概览加载失败'
@@ -51,7 +64,7 @@ async function loadOverview(projectId: string) {
 }
 
 watch(
-  () => workspaceStore.currentProjectId,
+  () => activeProjectId.value,
   (projectId) => {
     if (!projectId) {
       overview.value = null
@@ -79,7 +92,7 @@ watch(
     <TestcaseOverviewStrip :overview="overview" />
 
     <EmptyState
-      v-if="!workspaceStore.currentProject"
+      v-if="!activeProject"
       icon="project"
       title="请先选择项目"
       description="Testcase 工作区也是项目级入口。没有项目上下文，文档解析、测试用例和生成会话都没法稳定落地。"

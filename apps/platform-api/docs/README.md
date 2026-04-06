@@ -14,6 +14,8 @@
    - 本地开发、环境文件、数据库、bootstrap admin、启动顺序
 5. `docs/testing.md`
    - 当前测试层级、命令、环境要求、最小验收
+6. `docs/refactor-blueprint.md`
+   - `platform-api` 下一阶段重构蓝图、术语解释、模块目标结构与迁移顺序
 
 ## 按专题阅读（当前保留）
 
@@ -27,6 +29,8 @@
   - runtime 对象目录与平台主数据设计
 - `docs/testcase-management-api.md`
   - testcase 管理接口、权限约束与 interaction-data-service 依赖链
+- `docs/refactor-blueprint.md`
+  - `platform-api` 的目标架构、开发范式和分阶段重构路线
 
 ## 文档约定
 

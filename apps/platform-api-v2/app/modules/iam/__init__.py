@@ -1,0 +1,1 @@
+"""Authorization and permission module."""

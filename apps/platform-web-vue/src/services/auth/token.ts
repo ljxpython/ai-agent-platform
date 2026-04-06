@@ -1,13 +1,18 @@
 import type { AuthTokenSet } from '@/types/management'
 
 const TOKEN_STORAGE_KEY = 'pw:auth:token-set'
+export type AuthTokenScope = 'legacy' | 'v2'
 
-export function getTokenSet(): AuthTokenSet | null {
+function getStorageKey(scope: AuthTokenScope) {
+  return scope === 'legacy' ? TOKEN_STORAGE_KEY : `${TOKEN_STORAGE_KEY}:${scope}`
+}
+
+export function getTokenSet(scope: AuthTokenScope = 'legacy'): AuthTokenSet | null {
   if (typeof window === 'undefined') {
     return null
   }
 
-  const raw = window.localStorage.getItem(TOKEN_STORAGE_KEY)
+  const raw = window.localStorage.getItem(getStorageKey(scope))
   if (!raw) {
     return null
   }
@@ -19,26 +24,31 @@ export function getTokenSet(): AuthTokenSet | null {
   }
 }
 
-export function setTokenSet(tokenSet: AuthTokenSet): void {
+export function setTokenSet(tokenSet: AuthTokenSet, scope: AuthTokenScope = 'legacy'): void {
   if (typeof window === 'undefined') {
     return
   }
 
-  window.localStorage.setItem(TOKEN_STORAGE_KEY, JSON.stringify(tokenSet))
+  window.localStorage.setItem(getStorageKey(scope), JSON.stringify(tokenSet))
 }
 
-export function clearTokenSet(): void {
+export function clearTokenSet(scope: AuthTokenScope = 'legacy'): void {
   if (typeof window === 'undefined') {
     return
   }
 
-  window.localStorage.removeItem(TOKEN_STORAGE_KEY)
+  window.localStorage.removeItem(getStorageKey(scope))
 }
 
-export function getAccessToken(): string {
-  return getTokenSet()?.accessToken?.trim() || ''
+export function clearAllTokenSets(): void {
+  clearTokenSet('legacy')
+  clearTokenSet('v2')
 }
 
-export function getRefreshToken(): string {
-  return getTokenSet()?.refreshToken?.trim() || ''
+export function getAccessToken(scope: AuthTokenScope = 'legacy'): string {
+  return getTokenSet(scope)?.accessToken?.trim() || ''
+}
+
+export function getRefreshToken(scope: AuthTokenScope = 'legacy'): string {
+  return getTokenSet(scope)?.refreshToken?.trim() || ''
 }

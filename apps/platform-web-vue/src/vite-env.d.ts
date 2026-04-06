@@ -3,6 +3,8 @@
 interface ImportMetaEnv {
   readonly VITE_APP_NAME: string
   readonly VITE_PLATFORM_API_URL: string
+  readonly VITE_PLATFORM_API_V2_URL?: string
+  readonly VITE_PLATFORM_API_V2_RUNTIME_ENABLED?: string
   readonly VITE_REQUEST_TIMEOUT_MS: string
   readonly VITE_DEV_PORT: string
   readonly VITE_DEV_PROXY_TARGET: string

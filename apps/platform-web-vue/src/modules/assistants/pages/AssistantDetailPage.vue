@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
+import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
@@ -10,11 +11,15 @@ import EmptyState from '@/components/platform/EmptyState.vue'
 import MetricCard from '@/components/platform/MetricCard.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import {
+  deleteAssistant,
   getAssistant,
   getAssistantParameterSchema,
   resyncAssistant,
+  resyncAssistantByOperation,
   updateAssistant
 } from '@/services/assistants/assistants.service'
+import { getOperationFailureMessage } from '@/services/operations/operations.service'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { useUiStore } from '@/stores/ui'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { ManagementAssistant } from '@/types/management'
@@ -42,6 +47,7 @@ const route = useRoute()
 const router = useRouter()
 const workspaceStore = useWorkspaceStore()
 const uiStore = useUiStore()
+const currentProject = computed(() => workspaceStore.runtimeScopedProject)
 
 const assistantId = computed(() =>
   typeof route.params.assistantId === 'string' ? route.params.assistantId.trim() : ''
@@ -52,9 +58,11 @@ const schema = ref<ParameterSchemaResponse | null>(null)
 const loading = ref(false)
 const saving = ref(false)
 const resyncing = ref(false)
+const deleting = ref(false)
 const schemaLoading = ref(false)
 const error = ref('')
 const notice = ref('')
+const showDeleteDialog = ref(false)
 
 const editName = ref('')
 const editDescription = ref('')
@@ -100,7 +108,7 @@ const stats = computed(() => {
   return [
     {
       label: '当前项目',
-      value: workspaceStore.currentProject?.name || '未选择',
+      value: currentProject.value?.name || '未选择',
       hint: assistant?.project_id || '--',
       icon: 'project',
       tone: 'primary'
@@ -205,7 +213,7 @@ function applyConfigFieldValue(key: string, value: string, valueType: string) {
 }
 
 async function loadAssistantDetail() {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
   if (!projectId || !assistantId.value) {
     item.value = null
     error.value = ''
@@ -218,7 +226,7 @@ async function loadAssistantDetail() {
   notice.value = ''
 
   try {
-    const payload = await getAssistant(assistantId.value, projectId)
+    const payload = await getAssistant(assistantId.value, projectId, { mode: 'runtime' })
     fillForm(payload)
   } catch (loadError) {
     item.value = null
@@ -229,7 +237,7 @@ async function loadAssistantDetail() {
 }
 
 async function loadSchema() {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
   const graphId = editGraphId.value.trim()
 
   if (!projectId || !graphId) {
@@ -240,7 +248,7 @@ async function loadSchema() {
   schemaLoading.value = true
 
   try {
-    schema.value = (await getAssistantParameterSchema(graphId, projectId)) as ParameterSchemaResponse
+    schema.value = (await getAssistantParameterSchema(graphId, projectId, { mode: 'runtime' })) as ParameterSchemaResponse
   } catch {
     schema.value = null
   } finally {
@@ -249,7 +257,7 @@ async function loadSchema() {
 }
 
 async function handleSave() {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
   if (!projectId || !assistantId.value) {
     return
   }
@@ -270,7 +278,8 @@ async function handleSave() {
         context: parseObjectJson(editContext.value, 'context'),
         metadata: parseObjectJson(editMetadata.value, 'metadata')
       },
-      projectId
+      projectId,
+      { mode: 'runtime' }
     )
 
     fillForm(updated)
@@ -283,7 +292,7 @@ async function handleSave() {
 }
 
 async function handleResync() {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
   if (!projectId || !assistantId.value) {
     return
   }
@@ -293,13 +302,72 @@ async function handleResync() {
   notice.value = ''
 
   try {
-    const updated = await resyncAssistant(assistantId.value, projectId)
-    fillForm(updated)
+    if (resolvePlatformClientScope('operations') === 'v2') {
+      const operation = await resyncAssistantByOperation(assistantId.value, projectId, {
+        idempotencyKey: `assistant-resync:${assistantId.value}`
+      })
+      if (operation.status !== 'succeeded') {
+        throw new Error(getOperationFailureMessage(operation))
+      }
+      await loadAssistantDetail()
+    } else {
+      const updated = await resyncAssistant(assistantId.value, projectId, { mode: 'runtime' })
+      fillForm(updated)
+    }
     notice.value = '助手已完成上游重同步'
   } catch (resyncError) {
     error.value = resyncError instanceof Error ? resyncError.message : '助手重同步失败'
   } finally {
     resyncing.value = false
+  }
+}
+
+function openDeleteDialog() {
+  if (!item.value) {
+    return
+  }
+
+  showDeleteDialog.value = true
+}
+
+function cancelDelete() {
+  showDeleteDialog.value = false
+}
+
+async function confirmDelete() {
+  const projectId = workspaceStore.runtimeScopedProjectId
+  const currentItem = item.value
+  if (!projectId || !currentItem) {
+    cancelDelete()
+    return
+  }
+
+  deleting.value = true
+  error.value = ''
+  notice.value = ''
+
+  try {
+    await deleteAssistant(
+      currentItem.id,
+      {
+        deleteRuntime: true,
+        deleteThreads: false
+      },
+      projectId,
+      { mode: 'runtime' }
+    )
+
+    uiStore.pushToast({
+      type: 'success',
+      title: '助手已删除',
+      message: currentItem.name || currentItem.id
+    })
+    cancelDelete()
+    await router.push('/workspace/assistants')
+  } catch (deleteError) {
+    error.value = deleteError instanceof Error ? deleteError.message : '助手删除失败'
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -318,11 +386,12 @@ function openAssistantChat() {
   }
 
   const targetAssistantId = item.value.langgraph_assistant_id?.trim() || item.value.id
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
   if (projectId) {
     writeRecentChatTarget(projectId, {
       targetType: 'assistant',
-      assistantId: targetAssistantId
+      assistantId: targetAssistantId,
+      assistantName: item.value.name || targetAssistantId
     })
   }
 
@@ -330,12 +399,13 @@ function openAssistantChat() {
     path: '/workspace/chat',
     query: {
       targetType: 'assistant',
-      assistantId: targetAssistantId
+      assistantId: targetAssistantId,
+      assistantName: item.value.name || targetAssistantId
     }
   })
 }
 
-watch([() => assistantId.value, () => workspaceStore.currentProjectId], () => {
+watch([() => assistantId.value, () => workspaceStore.runtimeScopedProjectId], () => {
   void loadAssistantDetail()
 }, { immediate: true })
 
@@ -377,11 +447,22 @@ watch([configPropertyDefs, editConfig], () => {
           />
           打开聊天
         </BaseButton>
+        <BaseButton
+          variant="danger"
+          :disabled="!item || deleting"
+          @click="openDeleteDialog"
+        >
+          <BaseIcon
+            name="alert"
+            size="sm"
+          />
+          {{ deleting ? '删除中...' : '删除助手' }}
+        </BaseButton>
       </template>
     </PageHeader>
 
     <EmptyState
-      v-if="!workspaceStore.currentProject"
+      v-if="!currentProject"
       icon="project"
       title="请先选择项目"
       description="助手详情页同样需要项目上下文。没有项目，权限校验和详情数据都不成立。"
@@ -661,4 +742,18 @@ watch([configPropertyDefs, editConfig], () => {
       </div>
     </template>
   </section>
+
+  <ConfirmDialog
+    :show="showDeleteDialog"
+    title="删除助手"
+    :message="
+      item
+        ? `确认删除助手“${item.name}”吗？会同时删除 runtime 中的 assistant 记录，但保留 threads 历史。`
+        : ''
+    "
+    confirm-text="删除"
+    danger
+    @cancel="cancelDelete"
+    @confirm="confirmDelete"
+  />
 </template>

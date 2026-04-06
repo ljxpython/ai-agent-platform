@@ -17,6 +17,7 @@ import {
   listProjectMembers,
   upsertProjectMember
 } from '@/services/members/members.service'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { listUsersPage } from '@/services/users/users.service'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { ManagementProjectMember, ManagementUser } from '@/types/management'
@@ -38,8 +39,13 @@ const workspaceStore = useWorkspaceStore()
 const projectId = computed(() =>
   typeof route.params.projectId === 'string' ? route.params.projectId.trim() : ''
 )
+const projectsUseRuntimeApi = computed(() => resolvePlatformClientScope('projects') === 'v2')
+const usersUseRuntimeApi = computed(() => resolvePlatformClientScope('users') === 'v2')
+const activeProjects = computed(() =>
+  projectsUseRuntimeApi.value ? workspaceStore.runtimeProjects : workspaceStore.projects
+)
 const project = computed(() =>
-  workspaceStore.projects.find((item) => item.id === projectId.value) ?? null
+  activeProjects.value.find((item) => item.id === projectId.value) ?? null
 )
 
 const items = ref<ManagementProjectMember[]>([])
@@ -111,7 +117,11 @@ async function refreshMembers() {
   error.value = ''
 
   try {
-    items.value = await listProjectMembers(projectId.value, { query: memberQuery.value })
+    items.value = await listProjectMembers(
+      projectId.value,
+      { query: memberQuery.value },
+      projectsUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+    )
   } catch (loadError) {
     items.value = []
     error.value = loadError instanceof Error ? loadError.message : '项目成员加载失败'
@@ -144,7 +154,7 @@ async function saveMember() {
       projectId: projectId.value,
       userId: userId.value.trim(),
       role: role.value
-    })
+    }, projectsUseRuntimeApi.value ? { mode: 'runtime' } : undefined)
     notice.value = `已保存成员：${row.username}`
     userId.value = ''
     userSearch.value = ''
@@ -162,7 +172,11 @@ async function confirmDelete(member: ManagementProjectMember) {
   notice.value = ''
 
   try {
-    await deleteProjectMember(projectId.value, member.user_id)
+    await deleteProjectMember(
+      projectId.value,
+      member.user_id,
+      projectsUseRuntimeApi.value ? { mode: 'runtime' } : undefined
+    )
     notice.value = `已移除成员：${member.username}`
     await refreshMembers()
   } catch (deleteError) {
@@ -215,7 +229,7 @@ watch(
           query: nextValue,
           status: 'active',
           excludeUserIds: Array.from(existingMemberUserIds.value)
-        })
+        }, usersUseRuntimeApi.value ? { mode: 'runtime' } : undefined)
         if (!cancelled) {
           userCandidates.value = payload.items.filter(
             (candidate) => !existingMemberUserIds.value.has(candidate.id)

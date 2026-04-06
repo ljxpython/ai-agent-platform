@@ -9,11 +9,14 @@ import { resolveChatTarget } from '@/modules/chat/types'
 
 const route = useRoute()
 const workspaceStore = useWorkspaceStore()
+const activeProjectId = computed(() => workspaceStore.runtimeScopedProjectId)
+const activeProject = computed(() => workspaceStore.runtimeScopedProject)
 
 const sqlAgentTarget = computed(() =>
   resolveChatTarget({
     targetType: 'graph',
     graphId: 'sql_agent',
+    graphName: 'SQL Agent',
     updatedAt: new Date().toISOString()
   })
 )
@@ -23,13 +26,14 @@ const initialThreadId = computed(() =>
 )
 
 watchEffect(() => {
-  if (!workspaceStore.currentProjectId) {
+  if (!activeProjectId.value) {
     return
   }
 
-  writeRecentChatTarget(workspaceStore.currentProjectId, {
+  writeRecentChatTarget(activeProjectId.value, {
     targetType: 'graph',
-    graphId: 'sql_agent'
+    graphId: 'sql_agent',
+    graphName: 'SQL Agent'
   })
 })
 </script>
@@ -37,7 +41,7 @@ watchEffect(() => {
 <template>
   <section class="pw-page-shell">
     <EmptyState
-      v-if="!workspaceStore.currentProject"
+      v-if="!activeProject"
       icon="project"
       title="请先选择项目"
       description="SQL Agent 也是项目级入口。没有项目上下文，数据库问答线程和运行记录都没法落地。"

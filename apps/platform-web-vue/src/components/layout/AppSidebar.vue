@@ -41,6 +41,7 @@ const groups = computed(() => {
       label: 'Agent',
       items: [
         { to: '/workspace/runtime', label: t('nav.runtime'), icon: 'runtime' },
+        { to: '/workspace/runtime/policies', label: t('nav.runtimePolicies'), icon: 'shield' },
         { to: '/workspace/graphs', label: t('nav.graphs'), icon: 'graph' },
         { to: '/workspace/sql-agent', label: t('nav.sqlAgent'), icon: 'sql-agent' },
         { to: '/workspace/threads', label: t('nav.threads'), icon: 'threads' },
@@ -48,13 +49,20 @@ const groups = computed(() => {
       ]
     },
     {
+      label: 'Governance',
+      items: [
+        { to: '/workspace/operations', label: t('nav.operations'), icon: 'activity' },
+        { to: '/workspace/announcements', label: t('nav.announcements'), icon: 'bell' },
+        { to: '/workspace/platform-config', label: t('nav.platformConfig'), icon: 'lock' },
+        { to: '/workspace/audit', label: t('nav.audit'), icon: 'audit' }
+      ]
+    },
+    {
       label: 'Quality',
       items: [
         { to: '/workspace/testcase', label: t('nav.testcase'), icon: 'testcase' },
-        { to: '/workspace/announcements', label: t('nav.announcements'), icon: 'bell' },
         { to: '/workspace/me', label: t('nav.me'), icon: 'user' },
-        { to: '/workspace/security', label: t('nav.security'), icon: 'lock' },
-        { to: '/workspace/audit', label: t('nav.audit'), icon: 'audit' }
+        { to: '/workspace/security', label: t('nav.security'), icon: 'lock' }
       ]
     }
   ]

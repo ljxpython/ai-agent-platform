@@ -9,6 +9,7 @@ import type { ChatTargetPreference } from '@/utils/chatTarget'
 
 export type ChatResolvedTarget = ChatTargetPreference & {
   resolvedTargetId: string
+  displayName: string
   label: string
 }
 
@@ -55,12 +56,16 @@ export function resolveChatTarget(target?: ChatTargetPreference | null): ChatRes
       return null
     }
 
+    const displayName = target.graphName?.trim() || graphId
+
     return {
       targetType: 'graph',
       graphId,
+      graphName: target.graphName,
       updatedAt: target.updatedAt,
       resolvedTargetId: graphId,
-      label: `Graph · ${graphId}`
+      displayName,
+      label: `Graph · ${displayName}`
     }
   }
 
@@ -69,11 +74,15 @@ export function resolveChatTarget(target?: ChatTargetPreference | null): ChatRes
     return null
   }
 
+  const displayName = target.assistantName?.trim() || assistantId
+
   return {
     targetType: 'assistant',
     assistantId,
+    assistantName: target.assistantName,
     updatedAt: target.updatedAt,
     resolvedTargetId: assistantId,
-    label: `Assistant · ${assistantId}`
+    displayName,
+    label: `Assistant · ${displayName}`
   }
 }

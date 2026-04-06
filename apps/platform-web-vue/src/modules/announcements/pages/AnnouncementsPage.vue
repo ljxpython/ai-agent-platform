@@ -18,6 +18,7 @@ import SearchInput from '@/components/platform/SearchInput.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import type { ActionMenuItem, DataTableColumn } from '@/components/platform/data-table'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import {
   createAnnouncement,
   deleteAnnouncement,
@@ -72,7 +73,16 @@ const form = reactive({
 })
 
 const isSuperAdmin = computed(() => Boolean(authStore.user?.is_super_admin))
-const availableProjects = computed(() => workspaceStore.projects)
+const announcementsUseRuntimeApi = computed(() => resolvePlatformClientScope('announcements') === 'v2')
+const availableProjects = computed(() =>
+  announcementsUseRuntimeApi.value ? workspaceStore.runtimeProjects : workspaceStore.projects
+)
+const activeProjectId = computed(() =>
+  announcementsUseRuntimeApi.value ? workspaceStore.runtimeProjectId : workspaceStore.currentProjectId
+)
+const activeProject = computed(() =>
+  announcementsUseRuntimeApi.value ? workspaceStore.runtimeProject : workspaceStore.currentProject
+)
 const announcementsRows = computed(() => items.value as unknown as Record<string, unknown>[])
 const globalCount = computed(() => items.value.filter((item) => item.scope_type === 'global').length)
 const projectCount = computed(() => items.value.filter((item) => item.scope_type === 'project').length)
@@ -101,7 +111,7 @@ const stats = computed(() => [
   },
   {
     label: '当前项目',
-    value: workspaceStore.currentProject?.name || '未选择',
+    value: activeProject.value?.name || '未选择',
     hint: isSuperAdmin.value ? '超级管理员可切全局与项目范围' : '项目管理员按当前项目工作',
     icon: 'project',
     tone: 'danger'
@@ -191,7 +201,7 @@ function normalizeFormForScope() {
   }
 
   if (!form.scopeProjectId) {
-    form.scopeProjectId = workspaceStore.currentProjectId
+    form.scopeProjectId = activeProjectId.value
   }
 }
 
@@ -213,7 +223,7 @@ async function loadAnnouncements() {
       status: status.value || undefined,
       scopeType: scopeType.value || undefined,
       projectId: projectFilterId.value || undefined
-    })
+    }, { mode: 'runtime' })
 
     items.value = payload.items
     pagination.setTotal(payload.total)
@@ -262,7 +272,7 @@ function resetForm() {
   form.body = ''
   form.tone = 'info'
   form.scopeType = isSuperAdmin.value ? 'global' : 'project'
-  form.scopeProjectId = isSuperAdmin.value ? '' : workspaceStore.currentProjectId
+  form.scopeProjectId = isSuperAdmin.value ? '' : activeProjectId.value
   form.status = 'published'
   form.publishAt = ''
   form.expireAt = ''
@@ -325,14 +335,14 @@ async function saveAnnouncement() {
 
   try {
     if (editingAnnouncement.value) {
-      await updateAnnouncement(editingAnnouncement.value.id, payload)
+      await updateAnnouncement(editingAnnouncement.value.id, payload, { mode: 'runtime' })
       uiStore.pushToast({
         type: 'success',
         title: '公告已更新',
         message: form.title.trim()
       })
     } else {
-      await createAnnouncement(payload)
+      await createAnnouncement(payload, { mode: 'runtime' })
       uiStore.pushToast({
         type: 'success',
         title: '公告已创建',
@@ -357,7 +367,7 @@ async function confirmDelete() {
   }
 
   try {
-    await deleteAnnouncement(deletingAnnouncement.value.id)
+    await deleteAnnouncement(deletingAnnouncement.value.id, { mode: 'runtime' })
     uiStore.pushToast({
       type: 'success',
       title: '公告已删除',
@@ -393,7 +403,7 @@ function actionsForRow(item: ManagementAnnouncement): ActionMenuItem[] {
 }
 
 watch(
-  () => workspaceStore.currentProjectId,
+  activeProjectId,
   (projectId) => {
     if (!isSuperAdmin.value) {
       projectFilterId.value = projectId
@@ -415,7 +425,7 @@ watch(
     }
 
     if (!form.scopeProjectId) {
-      form.scopeProjectId = workspaceStore.currentProjectId
+      form.scopeProjectId = activeProjectId.value
     }
   }
 )
@@ -425,8 +435,11 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
 })
 
 onMounted(() => {
+  if (announcementsUseRuntimeApi.value && !workspaceStore.runtimeProjects.length) {
+    void workspaceStore.hydrateRuntimeContext()
+  }
   if (!isSuperAdmin.value) {
-    projectFilterId.value = workspaceStore.currentProjectId
+    projectFilterId.value = activeProjectId.value
   }
   void loadAnnouncements()
 })
@@ -461,7 +474,7 @@ onMounted(() => {
     </PageHeader>
 
     <EmptyState
-      v-if="!isSuperAdmin && !workspaceStore.currentProjectId"
+      v-if="!isSuperAdmin && !activeProjectId"
       icon="project"
       title="请先选择项目"
       description="项目级管理员需要先选中当前项目，才能管理该项目范围内的公告。超级管理员可直接查看全局公告。"

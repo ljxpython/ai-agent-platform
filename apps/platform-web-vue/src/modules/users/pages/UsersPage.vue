@@ -17,6 +17,7 @@ import SearchInput from '@/components/platform/SearchInput.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import type { ActionMenuItem, BulkActionItem, DataTableColumn } from '@/components/platform/data-table'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { listUsersPage } from '@/services/users/users.service'
 import { useUiStore } from '@/stores/ui'
 import type { ManagementUser } from '@/types/management'
@@ -35,6 +36,7 @@ const loading = ref(false)
 const error = ref('')
 const items = ref<ManagementUser[]>([])
 const selectedUserIds = ref<string[]>([])
+const usersUseRuntimeApi = computed(() => resolvePlatformClientScope('users') === 'v2')
 const userRows = computed(() => items.value as unknown as Record<string, unknown>[])
 const pagination = usePagination({
   initialPageSize: 20,
@@ -138,7 +140,7 @@ async function loadUsers() {
       offset: pagination.offset.value,
       query: query.value,
       status: status.value
-    })
+    }, usersUseRuntimeApi.value ? { mode: 'runtime' } : undefined)
 
     items.value = payload.items
     pagination.setTotal(payload.total)

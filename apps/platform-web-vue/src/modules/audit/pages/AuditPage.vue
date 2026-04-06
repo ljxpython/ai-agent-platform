@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
@@ -16,6 +17,7 @@ import SearchInput from '@/components/platform/SearchInput.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import type { ActionMenuItem, DataTableColumn } from '@/components/platform/data-table'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { listAudit } from '@/services/audit/audit.service'
 import { useUiStore } from '@/stores/ui'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -25,14 +27,19 @@ import { formatDateTime, shortId } from '@/utils/format'
 
 const workspaceStore = useWorkspaceStore()
 const uiStore = useUiStore()
+const route = useRoute()
 
 const scope = ref<'project' | 'global'>('project')
 const actionInput = ref('')
 const methodInput = ref('')
 const statusCodeInput = ref('')
+const targetTypeInput = ref('')
+const targetIdInput = ref('')
 const action = ref('')
 const method = ref('')
 const statusCode = ref<number | null>(null)
+const targetType = ref('')
+const targetId = ref('')
 const loading = ref(false)
 const error = ref('')
 const items = ref<ManagementAuditRow[]>([])
@@ -86,7 +93,13 @@ function auditRowFromTable(row: Record<string, unknown>) {
   return row as ManagementAuditRow
 }
 
-const currentProject = computed(() => workspaceStore.currentProject)
+const auditUseRuntimeApi = computed(() => resolvePlatformClientScope('audit') === 'v2')
+const activeProjectId = computed(() =>
+  auditUseRuntimeApi.value ? workspaceStore.runtimeProjectId : workspaceStore.currentProjectId
+)
+const currentProject = computed(() =>
+  auditUseRuntimeApi.value ? workspaceStore.runtimeProject : workspaceStore.currentProject
+)
 const errorCount = computed(() => items.value.filter((item) => item.status_code >= 400).length)
 const stats = computed(() => [
   {
@@ -136,13 +149,19 @@ async function loadAuditRows() {
   error.value = ''
 
   try {
-    const payload = await listAudit(scope.value === 'project' ? workspaceStore.currentProjectId || null : null, {
-      limit: pagination.pageSize.value,
-      offset: pagination.offset.value,
-      action: action.value,
-      method: method.value,
-      statusCode: statusCode.value
-    })
+    const payload = await listAudit(
+      scope.value === 'project' ? activeProjectId.value || null : null,
+      {
+        limit: pagination.pageSize.value,
+        offset: pagination.offset.value,
+        action: action.value,
+        targetType: targetType.value,
+        targetId: targetId.value,
+        method: method.value,
+        statusCode: statusCode.value
+      },
+      { mode: 'runtime' }
+    )
 
     items.value = payload.items
     pagination.setTotal(payload.total)
@@ -159,6 +178,8 @@ function applyFilters() {
   action.value = actionInput.value.trim()
   method.value = methodInput.value.trim()
   statusCode.value = statusCodeInput.value.trim() ? Number(statusCodeInput.value) : null
+  targetType.value = targetTypeInput.value.trim()
+  targetId.value = targetIdInput.value.trim()
   if (pagination.page.value === 1) {
     void loadAuditRows()
     return
@@ -202,8 +223,19 @@ function auditActions(row: ManagementAuditRow): ActionMenuItem[] {
   ]
 }
 
+function syncRouteFilters() {
+  actionInput.value = typeof route.query.action === 'string' ? route.query.action : actionInput.value
+  methodInput.value = typeof route.query.method === 'string' ? route.query.method : methodInput.value
+  statusCodeInput.value =
+    typeof route.query.statusCode === 'string' ? route.query.statusCode : statusCodeInput.value
+  targetTypeInput.value =
+    typeof route.query.targetType === 'string' ? route.query.targetType : targetTypeInput.value
+  targetIdInput.value = typeof route.query.targetId === 'string' ? route.query.targetId : targetIdInput.value
+  applyFilters()
+}
+
 watch(
-  () => workspaceStore.currentProjectId,
+  activeProjectId,
   (projectId) => {
     if (!projectId) {
       scope.value = 'global'
@@ -236,12 +268,23 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
   void loadAuditRows()
 })
 
+watch(
+  () => route.query,
+  () => {
+    syncRouteFilters()
+  }
+)
+
 onMounted(() => {
-  if (!workspaceStore.currentProjectId) {
+  if (auditUseRuntimeApi.value && !workspaceStore.runtimeProjects.length) {
+    void workspaceStore.hydrateRuntimeContext()
+  }
+
+  if (!activeProjectId.value) {
     scope.value = 'global'
   }
 
-  void loadAuditRows()
+  syncRouteFilters()
 })
 </script>
 
@@ -272,6 +315,12 @@ onMounted(() => {
       :description="error"
       variant="danger"
     />
+    <StateBanner
+      v-else-if="targetType || targetId"
+      title="当前已启用深链过滤"
+      :description="`target_type=${targetType || '--'} / target_id=${targetId || '--'}`"
+      variant="info"
+    />
 
     <div class="grid gap-4 xl:grid-cols-4">
       <MetricCard
@@ -288,7 +337,7 @@ onMounted(() => {
     <TablePageLayout>
       <template #filters>
         <FilterToolbar>
-          <div class="grid gap-4 xl:grid-cols-[180px_minmax(0,1fr)_180px_180px_auto]">
+          <div class="grid gap-4 xl:grid-cols-[160px_minmax(0,1fr)_160px_140px_160px_minmax(0,1fr)_auto]">
             <BaseSelect v-model="scope">
               <option
                 v-if="currentProject"
@@ -325,6 +374,14 @@ onMounted(() => {
             <BaseInput
               v-model="statusCodeInput"
               placeholder="状态码"
+            />
+            <BaseInput
+              v-model="targetTypeInput"
+              placeholder="target type"
+            />
+            <BaseInput
+              v-model="targetIdInput"
+              placeholder="target id"
             />
             <BaseButton @click="applyFilters">
               应用筛选

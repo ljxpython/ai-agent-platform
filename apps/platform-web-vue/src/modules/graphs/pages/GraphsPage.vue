@@ -147,7 +147,7 @@ async function loadGraphs() {
       limit: pagination.pageSize.value,
       offset: pagination.offset.value,
       query: query.value
-    })
+    }, { mode: 'runtime' })
 
     items.value = payload.items
     pagination.setTotal(payload.total)
@@ -173,7 +173,7 @@ async function handleRefreshCatalog() {
   notice.value = ''
 
   try {
-    const payload = await refreshGraphsCatalog(projectId)
+    const payload = await refreshGraphsCatalog(projectId, { mode: 'runtime' })
     notice.value = `图谱目录已刷新，当前同步 ${payload.count} 条记录`
     await loadGraphs()
   } catch (refreshError) {
@@ -212,7 +212,8 @@ function setAsRecentChatTarget(graph: ManagementGraph) {
 
   writeRecentChatTarget(projectId, {
     targetType: 'graph',
-    graphId: graph.graph_id
+    graphId: graph.graph_id,
+    graphName: graph.display_name || graph.graph_id
   })
   uiStore.pushToast({
     type: 'success',
@@ -227,7 +228,8 @@ function openGraphChat(graph: ManagementGraph) {
   if (projectId) {
     writeRecentChatTarget(projectId, {
       targetType: 'graph',
-      graphId: graph.graph_id
+      graphId: graph.graph_id,
+      graphName: graph.display_name || graph.graph_id
     })
   }
 
@@ -235,7 +237,8 @@ function openGraphChat(graph: ManagementGraph) {
     path: '/workspace/chat',
     query: {
       targetType: 'graph',
-      graphId: graph.graph_id
+      graphId: graph.graph_id,
+      graphName: graph.display_name || graph.graph_id
     }
   })
 }

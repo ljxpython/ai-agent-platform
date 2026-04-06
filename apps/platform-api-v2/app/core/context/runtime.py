@@ -1,0 +1,94 @@
+from __future__ import annotations
+
+import time
+import uuid
+from contextvars import ContextVar, Token
+
+from fastapi import Request
+
+from app.core.context.models import (
+    ActorContext,
+    PlatformRequestContext,
+    ProjectContext,
+    RequestContext,
+    TenantContext,
+)
+
+_REQUEST_CONTEXT: ContextVar[PlatformRequestContext | None] = ContextVar(
+    "platform_api_v2_request_context",
+    default=None,
+)
+
+
+def _clean(value: str | None) -> str | None:
+    if value is None:
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+def _split_csv(value: str | None) -> tuple[str, ...]:
+    if not value:
+        return ()
+    return tuple(item.strip() for item in value.split(",") if item.strip())
+
+
+def _request_id(request: Request) -> str:
+    incoming = _clean(request.headers.get("x-request-id"))
+    return incoming or uuid.uuid4().hex
+
+
+def build_request_context(request: Request) -> PlatformRequestContext:
+    request_id = _request_id(request)
+    started_at = time.perf_counter()
+    tenant_id = _clean(request.headers.get("x-tenant-id"))
+    project_id = _clean(request.headers.get("x-project-id"))
+    platform_roles = _split_csv(request.headers.get("x-platform-roles"))
+    current_project_roles = _split_csv(
+        request.headers.get("x-project-roles") or request.headers.get("x-project-role")
+    )
+    project_roles = {project_id: current_project_roles} if project_id and current_project_roles else {}
+    return PlatformRequestContext(
+        request=RequestContext(
+            request_id=request_id,
+            method=request.method,
+            path=request.url.path,
+            query=request.url.query or None,
+            started_at=started_at,
+            client_ip=request.client.host if request.client else None,
+            user_agent=_clean(request.headers.get("user-agent")),
+        ),
+        tenant=TenantContext(tenant_id=tenant_id),
+        project=ProjectContext(
+            project_id=project_id,
+            requested_by_header=project_id is not None,
+        ),
+        actor=ActorContext(
+            user_id=_clean(request.headers.get("x-user-id")),
+            subject=_clean(request.headers.get("x-user-subject")),
+            email=_clean(request.headers.get("x-user-email")),
+            platform_roles=platform_roles,
+            project_roles=project_roles,
+        ),
+    )
+
+
+def set_current_request_context(
+    context: PlatformRequestContext,
+) -> Token[PlatformRequestContext | None]:
+    return _REQUEST_CONTEXT.set(context)
+
+
+def replace_current_request_context(context: PlatformRequestContext) -> None:
+    _REQUEST_CONTEXT.set(context)
+
+
+def reset_current_request_context(token: Token[PlatformRequestContext | None]) -> None:
+    _REQUEST_CONTEXT.reset(token)
+
+
+def get_current_request_context() -> PlatformRequestContext:
+    context = _REQUEST_CONTEXT.get()
+    if context is None:
+        raise RuntimeError("request_context_not_bound")
+    return context

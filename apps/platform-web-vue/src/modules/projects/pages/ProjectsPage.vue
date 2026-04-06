@@ -18,6 +18,7 @@ import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import type { ActionMenuItem, BulkActionItem, DataTableColumn } from '@/components/platform/data-table'
 import { listProjectsPage } from '@/services/projects/projects.service'
+import { resolvePlatformClientScope } from '@/services/platform/control-plane'
 import { useUiStore } from '@/stores/ui'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { ManagementProject } from '@/types/management'
@@ -35,6 +36,10 @@ const loading = ref(false)
 const error = ref('')
 const items = ref<ManagementProject[]>([])
 const selectedProjectIds = ref<string[]>([])
+const projectsUseRuntimeApi = computed(() => resolvePlatformClientScope('projects') === 'v2')
+const activeProjectId = computed(() =>
+  projectsUseRuntimeApi.value ? workspaceStore.runtimeProjectId : workspaceStore.currentProjectId
+)
 const projectRows = computed(() => items.value as unknown as Record<string, unknown>[])
 const pagination = usePagination({
   initialPageSize: 20,
@@ -124,7 +129,7 @@ async function loadProjects() {
       limit: pagination.pageSize.value,
       offset: pagination.offset.value,
       query: query.value
-    })
+    }, projectsUseRuntimeApi.value ? { mode: 'runtime' } : undefined)
 
     items.value = payload.items
     pagination.setTotal(payload.total)
@@ -168,7 +173,11 @@ async function handleCopyProjectId(project: ManagementProject) {
 }
 
 function handleFocusProject(project: ManagementProject) {
-  workspaceStore.setProjectId(project.id)
+  if (projectsUseRuntimeApi.value) {
+    workspaceStore.setRuntimeProjectId(project.id)
+  } else {
+    workspaceStore.setProjectId(project.id)
+  }
   uiStore.pushToast({
     type: 'success',
     title: '已切换当前项目',
@@ -215,9 +224,9 @@ function projectActions(project: ManagementProject): ActionMenuItem[] {
     {
       key: 'focus',
       label:
-        workspaceStore.currentProjectId === project.id ? '当前工作台项目' : '设为当前项目',
+        activeProjectId.value === project.id ? '当前工作台项目' : '设为当前项目',
       icon: 'project',
-      disabled: workspaceStore.currentProjectId === project.id,
+      disabled: activeProjectId.value === project.id,
       onSelect: () => handleFocusProject(project)
     },
     {
@@ -398,7 +407,7 @@ onMounted(() => {
                   {{ projectFromRow(row).name }}
                 </div>
                 <div
-                  v-if="workspaceStore.currentProjectId === projectFromRow(row).id"
+                  v-if="activeProjectId === projectFromRow(row).id"
                   class="mt-1 text-xs uppercase tracking-[0.14em] text-primary-600 dark:text-primary-300"
                 >
                   当前工作台项目

@@ -9,7 +9,16 @@ import EmptyState from '@/components/platform/EmptyState.vue'
 import MetricCard from '@/components/platform/MetricCard.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
-import { listThreadsPage, getThreadDetail, getThreadHistoryPage, getThreadState } from '@/services/threads/threads.service'
+import { findAssistantByTargetId } from '@/services/assistants/assistants.service'
+import { getGraphCatalogItem } from '@/services/graphs/graphs.service'
+import {
+  buildRuntimeSnapshotWarning,
+  getRuntimeThreadSnapshot,
+  listRuntimeThreadsPage,
+  normalizeRuntimeGatewayError,
+  resolveRuntimePermissionDescription,
+  type RuntimeGatewayErrorMeta
+} from '@/services/runtime-gateway/workspace.service'
 import { useWorkspaceStore } from '@/stores/workspace'
 import type { ManagementThread, ThreadHistoryEntry } from '@/types/management'
 import { writeRecentChatTarget } from '@/utils/chatTarget'
@@ -19,10 +28,13 @@ import {
   getHistoryEntryTime,
   getMessageText,
   getThreadAssistantId,
+  getThreadAssistantName,
   getThreadGraphId,
+  getThreadGraphName,
   getThreadListTitle,
   getThreadMessages,
   getThreadPreviewText,
+  hasDistinctThreadAssistantTarget,
   toPrettyJson
 } from '@/utils/threads'
 
@@ -34,6 +46,9 @@ const loading = ref(false)
 const detailLoading = ref(false)
 const error = ref('')
 const detailError = ref('')
+const detailWarning = ref('')
+const listErrorMeta = ref<RuntimeGatewayErrorMeta | null>(null)
+const detailErrorMeta = ref<RuntimeGatewayErrorMeta | null>(null)
 const total = ref(0)
 const pageSize = ref(20)
 const offset = ref(0)
@@ -43,6 +58,8 @@ const selectedThread = ref<ManagementThread | null>(null)
 const threadState = ref<Record<string, unknown> | null>(null)
 const historyItems = ref<ThreadHistoryEntry[]>([])
 const expandedHistoryIds = ref<Record<string, boolean>>({})
+const resolvedAssistantNames = ref<Record<string, string>>({})
+const resolvedGraphNames = ref<Record<string, string>>({})
 
 const previewQuery = ref(typeof route.query.threadQuery === 'string' ? route.query.threadQuery : '')
 const threadIdQuery = ref(typeof route.query.threadThreadId === 'string' ? route.query.threadThreadId : '')
@@ -60,10 +77,39 @@ const appliedFilters = ref({
   status: statusFilter.value
 })
 
-const currentProject = computed(() => workspaceStore.currentProject)
+const currentProject = computed(() => workspaceStore.runtimeScopedProject)
+const accessDeniedMessage = computed(() => resolveRuntimePermissionDescription(detailErrorMeta.value || listErrorMeta.value))
 const currentPage = computed(() => Math.floor(offset.value / pageSize.value) + 1)
 const maxPage = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 const messages = computed(() => getThreadMessages(selectedThread.value, threadState.value))
+const assistantIdsToResolve = computed(() => {
+  const ids = new Set<string>()
+  for (const thread of [selectedThread.value, ...items.value]) {
+    if (!hasDistinctThreadAssistantTarget(thread) || getThreadAssistantName(thread)) {
+      continue
+    }
+    const assistantId = getThreadAssistantId(thread)
+    if (assistantId && !resolvedAssistantNames.value[assistantId]) {
+      ids.add(assistantId)
+    }
+  }
+  return Array.from(ids).sort()
+})
+const graphIdsToResolve = computed(() => {
+  const ids = new Set<string>()
+  for (const thread of [selectedThread.value, ...items.value]) {
+    if (getThreadGraphName(thread)) {
+      continue
+    }
+    const graphId = getThreadGraphId(thread)
+    if (graphId && !resolvedGraphNames.value[graphId]) {
+      ids.add(graphId)
+    }
+  }
+  return Array.from(ids).sort()
+})
+
+let targetNameToken = 0
 
 const stats = computed(() => [
   {
@@ -122,19 +168,21 @@ function syncRouteQuery() {
 }
 
 async function loadThreads() {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
   if (!projectId) {
     items.value = []
     total.value = 0
     error.value = ''
+    listErrorMeta.value = null
     return
   }
 
   loading.value = true
   error.value = ''
+  listErrorMeta.value = null
 
   try {
-    const payload = await listThreadsPage(projectId, {
+    const payload = await listRuntimeThreadsPage(projectId, {
       query: appliedFilters.value.query,
       threadId: appliedFilters.value.threadId,
       assistantId: appliedFilters.value.assistantId,
@@ -151,21 +199,25 @@ async function loadThreads() {
       selectedThreadId.value = payload.items[0]?.thread_id || ''
     }
   } catch (loadError) {
+    const normalizedError = normalizeRuntimeGatewayError(loadError, '线程列表加载失败')
     items.value = []
     total.value = 0
-    error.value = loadError instanceof Error ? loadError.message : '线程列表加载失败'
+    error.value = normalizedError.message
+    listErrorMeta.value = normalizedError
   } finally {
     loading.value = false
   }
 }
 
 async function loadThreadDetail() {
-  const projectId = workspaceStore.currentProjectId
+  const projectId = workspaceStore.runtimeScopedProjectId
   if (!projectId || !selectedThreadId.value) {
     selectedThread.value = null
     threadState.value = null
     historyItems.value = []
     detailError.value = ''
+    detailWarning.value = ''
+    detailErrorMeta.value = null
     return
   }
 
@@ -176,22 +228,27 @@ async function loadThreadDetail() {
 
   detailLoading.value = true
   detailError.value = ''
+  detailWarning.value = ''
+  detailErrorMeta.value = null
 
   try {
-    const [detail, state, history] = await Promise.all([
-      selectedSummary ? Promise.resolve(selectedSummary) : getThreadDetail(projectId, selectedThreadId.value),
-      getThreadState(projectId, selectedThreadId.value).catch(() => null),
-      getThreadHistoryPage(projectId, selectedThreadId.value, { limit: 20 }).catch(() => [])
-    ])
+    const snapshot = await getRuntimeThreadSnapshot(projectId, selectedThreadId.value, {
+      summary: selectedSummary,
+      historyLimit: 20
+    })
 
-    selectedThread.value = detail
-    threadState.value = state
-    historyItems.value = history
+    selectedThread.value = snapshot.detail
+    threadState.value = snapshot.state
+    historyItems.value = snapshot.history
+    detailWarning.value = buildRuntimeSnapshotWarning(snapshot)
   } catch (loadError) {
+    const normalizedError = normalizeRuntimeGatewayError(loadError, '线程详情加载失败')
     selectedThread.value = null
     threadState.value = null
     historyItems.value = []
-    detailError.value = loadError instanceof Error ? loadError.message : '线程详情加载失败'
+    detailError.value = normalizedError.message
+    detailWarning.value = ''
+    detailErrorMeta.value = normalizedError
   } finally {
     detailLoading.value = false
   }
@@ -237,6 +294,34 @@ function selectThread(item: ManagementThread) {
   void loadThreadDetail()
 }
 
+function getAssistantDisplayName(thread?: ManagementThread | null) {
+  const assistantName = getThreadAssistantName(thread)
+  if (assistantName) {
+    return assistantName
+  }
+
+  const assistantId = getThreadAssistantId(thread)
+  if (!assistantId) {
+    return '--'
+  }
+
+  return resolvedAssistantNames.value[assistantId] || assistantId
+}
+
+function getGraphDisplayName(thread?: ManagementThread | null) {
+  const graphName = getThreadGraphName(thread)
+  if (graphName) {
+    return graphName
+  }
+
+  const graphId = getThreadGraphId(thread)
+  if (!graphId) {
+    return '--'
+  }
+
+  return resolvedGraphNames.value[graphId] || graphId
+}
+
 async function copyThreadId(threadId: string) {
   try {
     await navigator.clipboard.writeText(threadId)
@@ -251,21 +336,31 @@ function openInChat(threadId: string) {
   const query: Record<string, string> = { threadId }
 
   if (graphId) {
+    const graphName = getGraphDisplayName(selectedThread.value)
     query.targetType = 'graph'
     query.graphId = graphId
-    if (workspaceStore.currentProjectId) {
-      writeRecentChatTarget(workspaceStore.currentProjectId, {
+    if (graphName && graphName !== '--') {
+      query.graphName = graphName
+    }
+    if (workspaceStore.runtimeScopedProjectId) {
+      writeRecentChatTarget(workspaceStore.runtimeScopedProjectId, {
         targetType: 'graph',
-        graphId
+        graphId,
+        graphName: graphName !== '--' ? graphName : undefined
       })
     }
   } else if (assistantId) {
+    const assistantName = getAssistantDisplayName(selectedThread.value)
     query.targetType = 'assistant'
     query.assistantId = assistantId
-    if (workspaceStore.currentProjectId) {
-      writeRecentChatTarget(workspaceStore.currentProjectId, {
+    if (assistantName && assistantName !== '--') {
+      query.assistantName = assistantName
+    }
+    if (workspaceStore.runtimeScopedProjectId) {
+      writeRecentChatTarget(workspaceStore.runtimeScopedProjectId, {
         targetType: 'assistant',
-        assistantId
+        assistantId,
+        assistantName: assistantName !== '--' ? assistantName : undefined
       })
     }
   }
@@ -281,11 +376,70 @@ function toggleHistory(entryId: string) {
 }
 
 watch(
-  () => workspaceStore.currentProjectId,
+  () => workspaceStore.runtimeScopedProjectId,
   async () => {
+    targetNameToken += 1
+    resolvedAssistantNames.value = {}
+    resolvedGraphNames.value = {}
     offset.value = 0
     await loadThreads()
     await loadThreadDetail()
+  },
+  { immediate: true }
+)
+
+watch(
+  [() => workspaceStore.runtimeScopedProjectId, assistantIdsToResolve, graphIdsToResolve],
+  async ([projectId, assistantIds, graphIds]) => {
+    if (!projectId) {
+      return
+    }
+
+    if (assistantIds.length === 0 && graphIds.length === 0) {
+      return
+    }
+
+    const currentToken = ++targetNameToken
+    const [assistantEntries, graphEntries] = await Promise.all([
+      Promise.all(
+        assistantIds.map(async (assistantId) => {
+          try {
+            const assistant = await findAssistantByTargetId(projectId, assistantId, { mode: 'runtime' })
+            return [assistantId, assistant?.name || ''] as const
+          } catch {
+            return [assistantId, ''] as const
+          }
+        })
+      ),
+      Promise.all(
+        graphIds.map(async (graphId) => {
+          try {
+            const graph = await getGraphCatalogItem(projectId, graphId, { mode: 'runtime' })
+            return [graphId, graph?.display_name || ''] as const
+          } catch {
+            return [graphId, ''] as const
+          }
+        })
+      )
+    ])
+
+    if (currentToken !== targetNameToken) {
+      return
+    }
+
+    if (assistantEntries.length > 0) {
+      resolvedAssistantNames.value = {
+        ...resolvedAssistantNames.value,
+        ...Object.fromEntries(assistantEntries.filter(([, name]) => Boolean(name)))
+      }
+    }
+
+    if (graphEntries.length > 0) {
+      resolvedGraphNames.value = {
+        ...resolvedGraphNames.value,
+        ...Object.fromEntries(graphEntries.filter(([, name]) => Boolean(name)))
+      }
+    }
   },
   { immediate: true }
 )
@@ -321,6 +475,13 @@ watch(
       title="线程列表加载失败"
       :description="error"
       variant="danger"
+    />
+
+    <StateBanner
+      v-if="detailWarning"
+      title="线程快照部分未同步"
+      :description="detailWarning"
+      variant="warning"
     />
 
     <div class="grid gap-4 xl:grid-cols-4">
@@ -376,6 +537,15 @@ watch(
       icon="project"
       title="请先选择项目"
       description="没有项目上下文，就没法从管理端正确过滤当前项目下的 thread。"
+    />
+
+    <EmptyState
+      v-else-if="accessDeniedMessage"
+      icon="shield"
+      title="当前项目没有线程工作台权限"
+      :description="accessDeniedMessage"
+      action-label="刷新列表"
+      @action="loadThreads"
     />
 
     <div
@@ -449,16 +619,16 @@ watch(
                   {{ item.status }}
                 </span>
                 <span
-                  v-if="getThreadAssistantId(item)"
+                  v-if="hasDistinctThreadAssistantTarget(item)"
                   class="rounded-full border border-gray-200/80 px-2 py-0.5 dark:border-dark-700"
                 >
-                  {{ getThreadAssistantId(item) }}
+                  Assistant · {{ getAssistantDisplayName(item) }}
                 </span>
                 <span
                   v-if="getThreadGraphId(item)"
                   class="rounded-full border border-gray-200/80 px-2 py-0.5 dark:border-dark-700"
                 >
-                  {{ getThreadGraphId(item) }}
+                  Graph · {{ getGraphDisplayName(item) }}
                 </span>
               </div>
             </div>
@@ -542,7 +712,7 @@ watch(
                   Assistant
                 </div>
                 <div class="mt-2 break-all text-sm text-gray-900 dark:text-white">
-                  {{ getThreadAssistantId(selectedThread) || '--' }}
+                  {{ hasDistinctThreadAssistantTarget(selectedThread) ? getAssistantDisplayName(selectedThread) : '--' }}
                 </div>
               </div>
               <div class="pw-card-glass p-3">
@@ -550,7 +720,7 @@ watch(
                   Graph
                 </div>
                 <div class="mt-2 break-all text-sm text-gray-900 dark:text-white">
-                  {{ getThreadGraphId(selectedThread) || '--' }}
+                  {{ getThreadGraphId(selectedThread) ? getGraphDisplayName(selectedThread) : '--' }}
                 </div>
               </div>
               <div class="pw-card-glass p-3">

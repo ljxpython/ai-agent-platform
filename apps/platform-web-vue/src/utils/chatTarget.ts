@@ -3,14 +3,18 @@ export type ChatTargetType = 'assistant' | 'graph'
 export type ChatTargetPreference = {
   targetType: ChatTargetType
   assistantId?: string
+  assistantName?: string
   graphId?: string
+  graphName?: string
   updatedAt: string
 }
 
 type ChatTargetInput = {
   targetType?: string | null
   assistantId?: string | null
+  assistantName?: string | null
   graphId?: string | null
+  graphName?: string | null
   updatedAt?: string | null
 }
 
@@ -20,6 +24,11 @@ function getStorageKey(projectId: string) {
   return `${STORAGE_KEY_PREFIX}${projectId}`
 }
 
+function normalizeTargetName(value?: string | null) {
+  const normalized = value?.trim() || ''
+  return normalized || undefined
+}
+
 export function normalizeChatTarget(input?: ChatTargetInput | null): ChatTargetPreference | null {
   if (!input) {
     return null
@@ -27,7 +36,9 @@ export function normalizeChatTarget(input?: ChatTargetInput | null): ChatTargetP
 
   const targetType = input.targetType === 'graph' ? 'graph' : 'assistant'
   const assistantId = input.assistantId?.trim() || ''
+  const assistantName = normalizeTargetName(input.assistantName)
   const graphId = input.graphId?.trim() || ''
+  const graphName = normalizeTargetName(input.graphName)
   const updatedAt = input.updatedAt?.trim() || new Date().toISOString()
 
   if (targetType === 'graph') {
@@ -39,6 +50,7 @@ export function normalizeChatTarget(input?: ChatTargetInput | null): ChatTargetP
     return {
       targetType,
       graphId: resolvedGraphId,
+      graphName,
       updatedAt
     }
   }
@@ -50,7 +62,65 @@ export function normalizeChatTarget(input?: ChatTargetInput | null): ChatTargetP
   return {
     targetType,
     assistantId,
+    assistantName,
     updatedAt
+  }
+}
+
+function resolveComparableTargetId(target: ChatTargetPreference) {
+  if (target.targetType === 'graph') {
+    return target.graphId?.trim() || target.assistantId?.trim() || ''
+  }
+
+  return target.assistantId?.trim() || ''
+}
+
+export function hasChatTargetDisplayName(target?: ChatTargetPreference | null) {
+  if (!target) {
+    return false
+  }
+
+  if (target.targetType === 'graph') {
+    return Boolean(target.graphName?.trim())
+  }
+
+  return Boolean(target.assistantName?.trim())
+}
+
+export function mergeChatTargets(
+  preferred?: ChatTargetInput | null,
+  fallback?: ChatTargetInput | null
+): ChatTargetPreference | null {
+  const normalizedPreferred = normalizeChatTarget(preferred)
+  const normalizedFallback = normalizeChatTarget(fallback)
+
+  if (!normalizedPreferred) {
+    return normalizedFallback
+  }
+
+  if (!normalizedFallback) {
+    return normalizedPreferred
+  }
+
+  if (
+    normalizedPreferred.targetType !== normalizedFallback.targetType ||
+    resolveComparableTargetId(normalizedPreferred) !== resolveComparableTargetId(normalizedFallback)
+  ) {
+    return normalizedPreferred
+  }
+
+  if (normalizedPreferred.targetType === 'graph') {
+    return {
+      ...normalizedFallback,
+      ...normalizedPreferred,
+      graphName: normalizedPreferred.graphName || normalizedFallback.graphName
+    }
+  }
+
+  return {
+    ...normalizedFallback,
+    ...normalizedPreferred,
+    assistantName: normalizedPreferred.assistantName || normalizedFallback.assistantName
   }
 }
 

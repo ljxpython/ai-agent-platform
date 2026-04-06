@@ -1,13 +1,18 @@
 <script setup lang="ts">
-import { computed, watchEffect } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import EmptyState from '@/components/platform/EmptyState.vue'
+import { findAssistantByTargetId } from '@/services/assistants/assistants.service'
+import { getGraphCatalogItem } from '@/services/graphs/graphs.service'
 import { useWorkspaceStore } from '@/stores/workspace'
 import {
   clearRecentChatTarget,
+  hasChatTargetDisplayName,
+  mergeChatTargets,
   normalizeChatTarget,
   readRecentChatTarget,
-  writeRecentChatTarget
+  writeRecentChatTarget,
+  type ChatTargetPreference
 } from '@/utils/chatTarget'
 import BaseChatTemplate from '../components/BaseChatTemplate.vue'
 import ChatEntryGuide from '../components/ChatEntryGuide.vue'
@@ -16,24 +21,37 @@ import { resolveChatTarget } from '../types'
 const route = useRoute()
 const router = useRouter()
 const workspaceStore = useWorkspaceStore()
+const activeProjectId = computed(() => workspaceStore.runtimeScopedProjectId)
+const activeProject = computed(() => workspaceStore.runtimeScopedProject)
 
 const explicitTarget = computed(() =>
   normalizeChatTarget({
     targetType: typeof route.query.targetType === 'string' ? route.query.targetType : null,
     assistantId: typeof route.query.assistantId === 'string' ? route.query.assistantId : null,
-    graphId: typeof route.query.graphId === 'string' ? route.query.graphId : null
+    assistantName: typeof route.query.assistantName === 'string' ? route.query.assistantName : null,
+    graphId: typeof route.query.graphId === 'string' ? route.query.graphId : null,
+    graphName: typeof route.query.graphName === 'string' ? route.query.graphName : null
   })
 )
 
 const recentTarget = computed(() => {
-  const projectId = workspaceStore.currentProjectId
-  if (!projectId || explicitTarget.value) {
+  const projectId = activeProjectId.value
+  if (!projectId) {
     return null
   }
   return readRecentChatTarget(projectId)
 })
 
-const activeTarget = computed(() => resolveChatTarget(explicitTarget.value || recentTarget.value))
+const targetPreference = computed(() => {
+  if (explicitTarget.value) {
+    return mergeChatTargets(explicitTarget.value, recentTarget.value)
+  }
+
+  return recentTarget.value
+})
+const hydratedTargetPreference = ref<ChatTargetPreference | null>(null)
+const activeTargetPreference = computed(() => hydratedTargetPreference.value || targetPreference.value)
+const activeTarget = computed(() => resolveChatTarget(activeTargetPreference.value))
 const initialThreadId = computed(() =>
   typeof route.query.threadId === 'string' && route.query.threadId.trim() ? route.query.threadId.trim() : ''
 )
@@ -51,14 +69,64 @@ const sourceNote = computed(() => {
 })
 
 watchEffect(() => {
-  if (explicitTarget.value && workspaceStore.currentProjectId) {
-    writeRecentChatTarget(workspaceStore.currentProjectId, explicitTarget.value)
+  if (activeTargetPreference.value && activeProjectId.value) {
+    writeRecentChatTarget(activeProjectId.value, activeTargetPreference.value)
   }
 })
 
+watch(
+  [activeProjectId, targetPreference],
+  async ([projectId, target], _previous, onCleanup) => {
+    hydratedTargetPreference.value = target
+
+    if (!projectId || !target || hasChatTargetDisplayName(target)) {
+      return
+    }
+
+    let cancelled = false
+    onCleanup(() => {
+      cancelled = true
+    })
+
+    try {
+      if (target.targetType === 'graph') {
+        const graphId = target.graphId?.trim() || target.assistantId?.trim() || ''
+        const graph = await getGraphCatalogItem(projectId, graphId, { mode: 'runtime' })
+        if (!cancelled && graph) {
+          hydratedTargetPreference.value = mergeChatTargets(
+            {
+              ...target,
+              graphName: graph.display_name || graph.graph_id
+            },
+            target
+          )
+        }
+        return
+      }
+
+      const assistantId = target.assistantId?.trim() || ''
+      const assistant = await findAssistantByTargetId(projectId, assistantId, { mode: 'runtime' })
+      if (!cancelled && assistant) {
+        hydratedTargetPreference.value = mergeChatTargets(
+          {
+            ...target,
+            assistantName: assistant.name || assistant.langgraph_assistant_id || assistant.id
+          },
+          target
+        )
+      }
+    } catch {
+      if (!cancelled) {
+        hydratedTargetPreference.value = target
+      }
+    }
+  },
+  { immediate: true }
+)
+
 function clearTarget() {
-  if (workspaceStore.currentProjectId) {
-    clearRecentChatTarget(workspaceStore.currentProjectId)
+  if (activeProjectId.value) {
+    clearRecentChatTarget(activeProjectId.value)
   }
 
   void router.replace({
@@ -71,7 +139,7 @@ function clearTarget() {
 <template>
   <section class="pw-page-shell">
     <EmptyState
-      v-if="!workspaceStore.currentProject"
+      v-if="!activeProject"
       icon="project"
       title="请先选择项目"
       description="Chat 是项目级工作区。没有项目上下文，assistant、graph、thread 这些目标都不成立。"
@@ -79,7 +147,7 @@ function clearTarget() {
 
     <ChatEntryGuide
       v-else-if="!activeTarget"
-      :project-name="workspaceStore.currentProject.name"
+      :project-name="activeProject.name"
     />
 
     <BaseChatTemplate

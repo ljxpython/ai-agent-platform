@@ -22,6 +22,10 @@
 3. 当前层改动优先用真实登录、真实 token、真实下游服务验证
 4. 能在本层闭环验证的问题，不要一上来依赖前端页面
 
+如果你想理解“为什么现在要重构、后面应该收敛成什么样”，直接看：
+
+- `docs/refactor-blueprint.md`
+
 ## 当前职责边界
 
 ### 负责
@@ -122,6 +126,7 @@ curl http://127.0.0.1:2024/_proxy/health
 4. `docs/current-architecture.md`
 5. `docs/local-dev.md`
 6. `docs/testing.md`
+7. `docs/refactor-blueprint.md`
 
 如果你要改具体专题，再读：
 
@@ -130,6 +135,7 @@ curl http://127.0.0.1:2024/_proxy/health
 - `docs/assistant-management-design.md`
 - `docs/runtime-object-catalog-design.md`
 - `docs/testcase-management-api.md`
+- `docs/refactor-blueprint.md`
 
 ## 当前代码入口
 

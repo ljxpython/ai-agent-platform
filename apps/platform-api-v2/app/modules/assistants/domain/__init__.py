@@ -1,0 +1,13 @@
+from app.modules.assistants.domain.models import (
+    AssistantItem,
+    AssistantPage,
+    AssistantStatus,
+    AssistantSyncStatus,
+)
+
+__all__ = [
+    "AssistantItem",
+    "AssistantPage",
+    "AssistantStatus",
+    "AssistantSyncStatus",
+]

@@ -75,6 +75,120 @@ export type ManagementAuditRow = {
   user_id: string | null
 }
 
+export type OperationStatus =
+  | 'submitted'
+  | 'running'
+  | 'succeeded'
+  | 'failed'
+  | 'cancelled'
+
+export type ManagementOperation = {
+  id: string
+  kind: string
+  status: OperationStatus
+  requested_by: string
+  tenant_id?: string | null
+  project_id?: string | null
+  idempotency_key?: string | null
+  input_payload: Record<string, unknown>
+  result_payload: Record<string, unknown>
+  error_payload: Record<string, unknown>
+  metadata: Record<string, unknown>
+  cancel_requested_at?: string | null
+  started_at?: string | null
+  finished_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type ManagementOperationPage = PaginatedResponse<ManagementOperation>
+
+export type RuntimeGraphPolicyValue = {
+  is_enabled: boolean
+  display_order?: number | null
+  note?: string | null
+  updated_at?: string | null
+}
+
+export type RuntimeGraphPolicyItem = {
+  catalog_id: string
+  graph_id: string
+  display_name: string
+  description: string
+  source_type: string
+  sync_status: string
+  last_synced_at?: string | null
+  policy: RuntimeGraphPolicyValue
+}
+
+export type RuntimeToolPolicyValue = {
+  is_enabled: boolean
+  display_order?: number | null
+  note?: string | null
+  updated_at?: string | null
+}
+
+export type RuntimeToolPolicyItem = {
+  catalog_id: string
+  tool_key: string
+  name: string
+  source: string
+  description: string
+  sync_status: string
+  last_synced_at?: string | null
+  policy: RuntimeToolPolicyValue
+}
+
+export type RuntimeModelPolicyValue = {
+  is_enabled: boolean
+  is_default_for_project: boolean
+  temperature_default?: number | null
+  note?: string | null
+  updated_at?: string | null
+}
+
+export type RuntimeModelPolicyItem = {
+  catalog_id: string
+  model_id: string
+  display_name: string
+  is_default_runtime: boolean
+  sync_status: string
+  last_synced_at?: string | null
+  policy: RuntimeModelPolicyValue
+}
+
+export type RuntimeGraphPolicyListResponse = PaginatedResponse<RuntimeGraphPolicyItem>
+export type RuntimeToolPolicyListResponse = PaginatedResponse<RuntimeToolPolicyItem>
+export type RuntimeModelPolicyListResponse = PaginatedResponse<RuntimeModelPolicyItem>
+
+export type PlatformConfigSnapshot = {
+  service: {
+    name: string
+    version: string
+    env: string
+    docs_enabled: boolean
+  }
+  database: {
+    enabled: boolean
+    auto_create: boolean
+    migration_strategy: string
+  }
+  operations: {
+    queue_backend: string
+    worker_poll_interval_seconds: number
+    worker_idle_sleep_seconds: number
+  }
+  auth: {
+    required: boolean
+    bootstrap_admin_enabled: boolean
+  }
+  runtime: {
+    langgraph_upstream_url: string
+    interaction_data_service_configured: boolean
+  }
+  feature_flags: Record<string, boolean>
+}
+
 export type ManagementAnnouncement = {
   id: string
   title: string
@@ -132,6 +246,24 @@ export type RuntimeRefreshResponse = {
   last_synced_at: string | null
 }
 
+export type RuntimeGraphItem = {
+  id: string
+  runtime_id: string
+  graph_id: string
+  display_name: string
+  description: string
+  source_type: string
+  sync_status: string
+  last_seen_at: string | null
+  last_synced_at: string | null
+}
+
+export type RuntimeGraphsResponse = {
+  count: number
+  graphs: RuntimeGraphItem[]
+  last_synced_at: string | null
+}
+
 export type ManagementGraph = {
   id: string
   runtime_id: string
@@ -174,6 +306,17 @@ export type TestcaseBatchSummary = {
   test_cases_count: number
   latest_created_at?: string | null
   parse_status_summary: Record<string, number>
+}
+
+export type TestcaseBatchDetailCase = {
+  id: string
+  case_id?: string | null
+  title: string
+  status: string
+  batch_id?: string | null
+  module_name?: string | null
+  priority?: string | null
+  updated_at?: string | null
 }
 
 export type TestcaseDocument = {
@@ -225,6 +368,18 @@ export type TestcaseCase = {
   content_json: Record<string, unknown>
   created_at: string
   updated_at: string
+}
+
+export type TestcaseBatchDetail = {
+  batch: TestcaseBatchSummary
+  documents: {
+    items: TestcaseDocument[]
+    total: number
+  }
+  test_cases: {
+    items: TestcaseBatchDetailCase[]
+    total: number
+  }
 }
 
 export type TestcaseRole = {

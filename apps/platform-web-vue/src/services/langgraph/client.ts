@@ -1,14 +1,13 @@
 import { Client } from '@langchain/langgraph-sdk'
-import { env } from '@/config/env'
-import { getAccessToken } from '@/services/auth/token'
+import { getPlatformAccessToken, getPlatformApiBaseUrl } from '@/services/platform/control-plane'
 
 function getLanggraphApiUrl() {
-  const normalizedBase = env.platformApiUrl.replace(/\/+$/, '')
+  const normalizedBase = getPlatformApiBaseUrl('runtime_gateway').replace(/\/+$/, '')
   return normalizedBase.endsWith('/api/langgraph') ? normalizedBase : `${normalizedBase}/api/langgraph`
 }
 
 export function createLanggraphClient(projectId?: string): Client {
-  const accessToken = getAccessToken()
+  const accessToken = getPlatformAccessToken('runtime_gateway')
 
   return new Client({
     apiUrl: getLanggraphApiUrl(),
