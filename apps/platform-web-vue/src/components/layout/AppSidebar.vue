@@ -21,6 +21,7 @@ type SidebarItem = {
   to: string
   label: string
   icon: string
+  sectionTitle?: string
   exact?: boolean
   requiredPermissions?: PermissionCode[]
   permissionMode?: 'all' | 'any'
@@ -92,6 +93,7 @@ const groups = computed(() => {
           to: '/workspace/sql-agent',
           label: t('nav.sqlAgent'),
           icon: 'sql-agent',
+          sectionTitle: t('nav.agentApps'),
           requiredPermissions: ['project.runtime.read']
         },
         {
@@ -279,21 +281,30 @@ watch(
           v-show="isGroupExpanded(group.id)"
           class="space-y-1"
         >
-          <router-link
+          <template
             v-for="item in group.items"
             :key="item.to"
-            :to="item.to"
-            class="pw-sidebar-link"
-            :class="isActive(item.to, item.exact) ? 'pw-sidebar-link-active' : ''"
-            :title="uiStore.sidebarCollapsed ? item.label : undefined"
           >
-            <BaseIcon
-              :name="item.icon as never"
-              size="md"
-              class="shrink-0"
-            />
-            <span v-if="!uiStore.sidebarCollapsed">{{ item.label }}</span>
-          </router-link>
+            <div
+              v-if="!uiStore.sidebarCollapsed && item.sectionTitle"
+              class="pw-sidebar-subsection-title"
+            >
+              {{ item.sectionTitle }}
+            </div>
+            <router-link
+              :to="item.to"
+              class="pw-sidebar-link"
+              :class="isActive(item.to, item.exact) ? 'pw-sidebar-link-active' : ''"
+              :title="uiStore.sidebarCollapsed ? item.label : undefined"
+            >
+              <BaseIcon
+                :name="item.icon as never"
+                size="md"
+                class="shrink-0"
+              />
+              <span v-if="!uiStore.sidebarCollapsed">{{ item.label }}</span>
+            </router-link>
+          </template>
         </div>
       </section>
     </nav>

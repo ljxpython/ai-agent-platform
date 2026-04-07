@@ -694,7 +694,7 @@ watch(
     <TestcaseWorkspaceNav />
 
     <PageHeader
-      eyebrow="Testcase"
+      eyebrow="Testcase Agent"
       title="文档列表"
       description="查看已保存到服务端的文档解析结果，并统一承接在线预览、原始文件下载与批次上下文。"
     >
@@ -730,7 +730,7 @@ watch(
       v-if="!activeProject"
       icon="project"
       title="请先选择项目"
-      description="没有项目上下文，没法读取 testcase 文档解析结果。"
+      description="没有项目上下文，没法读取 Testcase Agent 文档解析结果。"
     />
 
     <div

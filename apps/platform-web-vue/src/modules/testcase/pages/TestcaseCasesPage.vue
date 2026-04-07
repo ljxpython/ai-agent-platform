@@ -833,7 +833,7 @@ watch(
     <TestcaseWorkspaceNav />
 
     <PageHeader
-      eyebrow="Testcase"
+      eyebrow="Testcase Agent"
       title="用例列表"
       description="查看正式保存的测试用例，已经补上详情、创建、编辑、删除和按当前筛选结果导出。"
     >
@@ -883,7 +883,7 @@ watch(
       v-if="!activeProject"
       icon="project"
       title="请先选择项目"
-      description="没有项目上下文，没法读取 testcase 数据。"
+      description="没有项目上下文，没法读取 Testcase Agent 数据。"
     />
 
     <TablePageLayout v-else>

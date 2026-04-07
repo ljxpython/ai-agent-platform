@@ -46,7 +46,7 @@ async function loadOverview(projectId: string) {
     overview.value = await getTestcaseOverview(projectId)
   } catch (loadError) {
     overview.value = null
-    error.value = loadError instanceof Error ? loadError.message : 'Testcase 概览加载失败'
+    error.value = loadError instanceof Error ? loadError.message : 'Testcase Agent 概览加载失败'
   } finally {
     loading.value = false
   }
@@ -73,7 +73,7 @@ watch(
 
     <StateBanner
       v-if="error"
-      title="Testcase 概览加载失败"
+      title="Testcase Agent 概览加载失败"
       :description="error"
       variant="warning"
     />
@@ -84,16 +84,16 @@ watch(
       v-if="!activeProject"
       icon="project"
       title="请先选择项目"
-      description="Testcase 工作区也是项目级入口。没有项目上下文，文档解析、测试用例和生成会话都没法稳定落地。"
+      description="Testcase Agent 工作区也是项目级入口。没有项目上下文，文档解析、测试用例和生成会话都没法稳定落地。"
     />
 
     <BaseChatTemplate
       v-else
       :target="testcaseTarget"
       context-notice="当前页面固定接入 graph: test_case_agent。生成过程会复用通用 chat 基座，但目标不会切到其他 assistant 或 graph。"
-      source-note="当前入口来自 Testcase 工作区。建议上传真实 PDF 文档后直接让 agent 解析并生成正式测试用例，文档与用例结果会落在当前项目范围内。"
+      source-note="当前入口来自 Testcase Agent 工作区。建议上传真实 PDF 文档后直接让 agent 解析并生成正式测试用例，文档与用例结果会落在当前项目范围内。"
       :display="{
-        title: 'Testcase · AI 对话生成',
+        title: 'Testcase Agent · AI 对话生成',
         description:
           '这里固定绑定 `test_case_agent`，用于发起文档解析、提炼和测试用例生成对话。',
         emptyTitle: '上传 PDF 开始生成',

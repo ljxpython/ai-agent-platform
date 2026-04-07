@@ -521,6 +521,10 @@
     @apply mb-0 px-0 text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-400 dark:text-dark-500;
   }
 
+  .pw-sidebar-subsection-title {
+    @apply mb-1 mt-3 px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500;
+  }
+
   .pw-topbar {
     @apply sticky top-0 z-30 h-16 border-b border-gray-200/70 bg-white/90 backdrop-blur-xl;
     @apply dark:border-dark-800 dark:bg-dark-950;

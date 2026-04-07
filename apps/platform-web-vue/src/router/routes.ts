@@ -283,8 +283,8 @@ const workspaceChildren: RouteRecordRaw[] = [
         name: 'workspace-testcase',
         redirect: '/workspace/testcase/generate',
         meta: {
-          title: 'Testcase',
-          eyebrow: 'Testcase',
+          title: 'Testcase Agent',
+          eyebrow: 'Testcase Agent',
           requiredPermissions: ['project.testcase.read'],
           permissionProjectSource: 'workspace',
           allowWithoutProject: true
@@ -296,7 +296,7 @@ const workspaceChildren: RouteRecordRaw[] = [
         component: () => import('@/modules/testcase/pages/TestcaseGeneratePage.vue'),
         meta: {
           title: '用例生成',
-          eyebrow: 'Testcase',
+          eyebrow: 'Testcase Agent',
           requiredPermissions: ['project.testcase.read'],
           permissionProjectSource: 'workspace',
           allowWithoutProject: true
@@ -308,7 +308,7 @@ const workspaceChildren: RouteRecordRaw[] = [
         component: () => import('@/modules/testcase/pages/TestcaseCasesPage.vue'),
         meta: {
           title: '用例管理',
-          eyebrow: 'Testcase',
+          eyebrow: 'Testcase Agent',
           requiredPermissions: ['project.testcase.read'],
           permissionProjectSource: 'workspace',
           allowWithoutProject: true
@@ -320,7 +320,7 @@ const workspaceChildren: RouteRecordRaw[] = [
         component: () => import('@/modules/testcase/pages/TestcaseDocumentsPage.vue'),
         meta: {
           title: '文档管理',
-          eyebrow: 'Testcase',
+          eyebrow: 'Testcase Agent',
           requiredPermissions: ['project.testcase.read'],
           permissionProjectSource: 'workspace',
           allowWithoutProject: true
