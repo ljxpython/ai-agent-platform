@@ -45,12 +45,6 @@ const groups = computed(() => {
           label: t('nav.users'),
           icon: 'users',
           requiredPermissions: ['platform.user.read']
-        },
-        {
-          to: '/workspace/assistants',
-          label: t('nav.assistants'),
-          icon: 'assistant',
-          requiredPermissions: ['project.assistant.read']
         }
       ]
     },
@@ -58,6 +52,18 @@ const groups = computed(() => {
       id: 'agent',
       label: 'Agent',
       items: [
+        {
+          to: '/workspace/assistants',
+          label: t('nav.assistants'),
+          icon: 'assistant',
+          requiredPermissions: ['project.assistant.read']
+        },
+        {
+          to: '/workspace/graphs',
+          label: t('nav.graphs'),
+          icon: 'graph',
+          requiredPermissions: ['project.runtime.read']
+        },
         {
           to: '/workspace/runtime',
           label: t('nav.runtime'),
@@ -71,15 +77,9 @@ const groups = computed(() => {
           requiredPermissions: ['project.runtime.read']
         },
         {
-          to: '/workspace/graphs',
-          label: t('nav.graphs'),
-          icon: 'graph',
-          requiredPermissions: ['project.runtime.read']
-        },
-        {
-          to: '/workspace/sql-agent',
-          label: t('nav.sqlAgent'),
-          icon: 'sql-agent',
+          to: '/workspace/chat',
+          label: t('nav.chat'),
+          icon: 'chat',
           requiredPermissions: ['project.runtime.read']
         },
         {
@@ -89,10 +89,16 @@ const groups = computed(() => {
           requiredPermissions: ['project.runtime.read']
         },
         {
-          to: '/workspace/chat',
-          label: t('nav.chat'),
-          icon: 'chat',
+          to: '/workspace/sql-agent',
+          label: t('nav.sqlAgent'),
+          icon: 'sql-agent',
           requiredPermissions: ['project.runtime.read']
+        },
+        {
+          to: '/workspace/testcase',
+          label: t('nav.testcase'),
+          icon: 'testcase',
+          requiredPermissions: ['project.testcase.read']
         }
       ]
     },
@@ -147,20 +153,6 @@ const groups = computed(() => {
         }
       ]
     },
-    {
-      id: 'quality',
-      label: 'Quality',
-      items: [
-        {
-          to: '/workspace/testcase',
-          label: t('nav.testcase'),
-          icon: 'testcase',
-          requiredPermissions: ['project.testcase.read']
-        },
-        { to: '/workspace/me', label: t('nav.me'), icon: 'user' },
-        { to: '/workspace/security', label: t('nav.security'), icon: 'lock' }
-      ]
-    }
   ]
 
   if (isDev) {
