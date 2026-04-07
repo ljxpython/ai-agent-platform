@@ -3,6 +3,7 @@ import type { Message } from '@langchain/langgraph-sdk'
 import { computed, ref, watch } from 'vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import { buildChatMessageMetaView } from '../message-meta-view-model'
+import ChatToolResultRenderer from './ChatToolResultRenderer.vue'
 
 const props = withDefaults(
   defineProps<{
@@ -200,13 +201,13 @@ function toggleExpanded() {
           </div>
 
           <div
-            v-if="tool.resultText"
+            v-if="tool.resultText || tool.resultImageUrl"
             class="mt-3 space-y-2"
           >
             <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
               Result
             </div>
-            <pre class="pw-panel-muted overflow-auto whitespace-pre-wrap break-words px-3 py-3 text-xs leading-6 text-gray-600 dark:text-dark-100">{{ tool.resultText }}</pre>
+            <ChatToolResultRenderer :tool="tool" />
           </div>
         </div>
       </div>

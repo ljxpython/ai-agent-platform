@@ -1,14 +1,10 @@
 import type { Message } from '@langchain/langgraph-sdk'
 import { getMessageText } from '@/utils/chat-content'
 import { toPrettyJson } from '@/utils/threads'
+import { extractToolCallsFromMessage } from './tool-call-utils'
+import { buildChatToolResultView, type ChatToolResultRenderMode } from './tool-result-renderers'
 
 type ToolCallResultMap = Record<string, Message>
-
-type ToolCallLike = {
-  id?: string
-  name?: string
-  args?: unknown
-}
 
 export type ChatToolCallArgEntry = {
   key: string
@@ -22,6 +18,8 @@ export type ChatToolCallCard = {
   status: 'pending' | 'completed'
   argsEntries: ChatToolCallArgEntry[]
   resultText?: string
+  resultRenderMode: ChatToolResultRenderMode
+  resultImageUrl?: string
 }
 
 export type ChatSubAgentCard = {
@@ -108,7 +106,7 @@ export function buildToolResultsByCallId(messages: Message[]): ToolCallResultMap
 export function buildChatMessageMetaView(message: Message, allMessages: Message[]) {
   const toolResultsByCallId = buildToolResultsByCallId(allMessages)
 
-  if (message.type !== 'ai' || !Array.isArray(message.tool_calls)) {
+  if (message.type !== 'ai') {
     return {
       toolCalls: [] as ChatToolCallCard[],
       subAgentCards: [] as ChatSubAgentCard[]
@@ -118,11 +116,11 @@ export function buildChatMessageMetaView(message: Message, allMessages: Message[
   const toolCalls: ChatToolCallCard[] = []
   const subAgentCards: ChatSubAgentCard[] = []
 
-  message.tool_calls.forEach((item, index) => {
-    const toolCall = (item || {}) as ToolCallLike
-    const toolCallId = typeof toolCall.id === 'string' && toolCall.id.trim() ? toolCall.id : ''
-    const toolName = typeof toolCall.name === 'string' && toolCall.name.trim() ? toolCall.name : ''
+  extractToolCallsFromMessage(message).forEach((toolCall, index) => {
+    const toolCallId = toolCall.id
+    const toolName = toolCall.name
     const toolResult = toolCallId ? toolResultsByCallId[toolCallId] : undefined
+    const resultView = buildChatToolResultView(toolName, toolResult)
 
     if (toolName === 'task') {
       const output = toolResult ? getMessageText(toolResult.content) : ''
@@ -142,7 +140,9 @@ export function buildChatMessageMetaView(message: Message, allMessages: Message[
       idLabel: toolCallId || `tool-${index + 1}`,
       status: toolResult ? 'completed' : 'pending',
       argsEntries: toArgEntries(toolCall.args),
-      resultText: toolResult ? getMessageText(toolResult.content) || undefined : undefined
+      resultText: resultView.text,
+      resultRenderMode: resultView.mode,
+      resultImageUrl: resultView.imageUrl
     })
   })
 

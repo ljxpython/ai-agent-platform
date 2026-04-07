@@ -1,5 +1,6 @@
 import type { Message } from '@langchain/langgraph-sdk'
 import { getChatMessageIdentifier } from './branching'
+import { collectLinkedToolCallIds } from './tool-call-utils'
 
 export type ChatDisplayMessage = {
   id: string
@@ -8,24 +9,6 @@ export type ChatDisplayMessage = {
   roleLabel: string
   bubbleClass: string
   wrapClass: string
-}
-
-function collectLinkedToolCallIds(messages: Message[]) {
-  const linkedToolCallIds = new Set<string>()
-
-  for (const message of messages) {
-    if (message.type !== 'ai' || !Array.isArray(message.tool_calls)) {
-      continue
-    }
-
-    for (const toolCall of message.tool_calls) {
-      if (typeof toolCall?.id === 'string' && toolCall.id.trim()) {
-        linkedToolCallIds.add(toolCall.id)
-      }
-    }
-  }
-
-  return linkedToolCallIds
 }
 
 export function isVisibleChatMessage(message: Message, linkedToolCallIds: Set<string>) {
