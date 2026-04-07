@@ -141,7 +141,7 @@ async function copyValue(value: string, message: string) {
     <template v-if="item">
       <div class="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
         <aside class="space-y-4">
-          <div class="rounded-[24px] border border-gray-100 bg-gray-50/80 p-4 dark:border-dark-800 dark:bg-dark-950/45">
+          <div class="pw-panel-muted">
             <div class="flex flex-wrap gap-2">
               <StatusPill :tone="toneOf(item)">
                 {{ item.sceneLabel }}
@@ -158,7 +158,7 @@ async function copyValue(value: string, message: string) {
               >
                 首选模板
               </span>
-              <span class="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200">
+              <span class="pw-pill px-3 py-1 text-xs">
                 {{ item.groupTitle }}
               </span>
             </div>
@@ -268,7 +268,7 @@ async function copyValue(value: string, message: string) {
             </div>
           </div>
 
-          <div class="rounded-[24px] border border-gray-100 bg-white/80 p-4 dark:border-dark-800 dark:bg-dark-950/35">
+          <div class="pw-panel">
             <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
               推荐借用
             </div>
@@ -285,7 +285,7 @@ async function copyValue(value: string, message: string) {
 
           <div
             v-if="curation?.teamReason"
-            class="rounded-[24px] border border-amber-100 bg-amber-50/70 p-4 dark:border-amber-900/30 dark:bg-amber-950/15"
+            class="pw-panel-warning"
           >
             <div class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">
               团队建议
@@ -295,7 +295,7 @@ async function copyValue(value: string, message: string) {
             </p>
           </div>
 
-          <div class="rounded-[24px] border border-gray-100 bg-white/80 p-4 dark:border-dark-800 dark:bg-dark-950/35">
+          <div class="pw-panel">
             <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
               相关模板
             </div>
@@ -324,7 +324,7 @@ async function copyValue(value: string, message: string) {
         </aside>
 
         <section class="min-w-0">
-          <div class="rounded-[24px] border border-gray-100 bg-white/80 p-4 dark:border-dark-800 dark:bg-dark-950/35">
+          <div class="pw-panel">
             <div class="flex flex-wrap gap-2">
               <button
                 v-for="tab in availableTabs"
@@ -340,14 +340,14 @@ async function copyValue(value: string, message: string) {
 
             <div
               v-if="loading"
-              class="mt-4 rounded-[22px] border border-dashed border-gray-200 px-4 py-10 text-sm text-gray-500 dark:border-dark-700 dark:text-dark-300"
+              class="mt-4 rounded-2xl border border-dashed border-gray-200 px-4 py-10 text-sm text-gray-500 dark:border-dark-700 dark:text-dark-300"
             >
               正在读取模板源码和结构块...
             </div>
 
             <template v-else-if="activeTab === 'preview'">
               <div class="mt-4 space-y-4">
-                <div class="rounded-[22px] border border-gray-100 bg-gray-50/80 p-4 dark:border-dark-800 dark:bg-dark-950/45">
+                <div class="pw-panel-muted">
                   <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
                     Visual Preview
                   </div>
@@ -365,7 +365,7 @@ async function copyValue(value: string, message: string) {
 
             <template v-else-if="activeTab === 'overview' && detail">
               <div class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-                <div class="rounded-[22px] border border-gray-100 bg-gray-50/80 p-4 dark:border-dark-800 dark:bg-dark-950/45">
+                <div class="pw-panel-muted">
                   <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
                     结构说明
                   </div>
@@ -380,7 +380,7 @@ async function copyValue(value: string, message: string) {
                   </div>
                 </div>
 
-                <div class="rounded-[22px] border border-gray-100 bg-gray-50/80 p-4 dark:border-dark-800 dark:bg-dark-950/45">
+                <div class="pw-panel-muted">
                   <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
                     依赖导入
                   </div>
@@ -404,7 +404,7 @@ async function copyValue(value: string, message: string) {
             </template>
 
             <template v-else>
-              <pre class="mt-4 max-h-[68vh] overflow-auto rounded-[22px] bg-slate-950 p-4 text-xs leading-6 text-slate-100"><code>{{ activeCode }}</code></pre>
+              <pre class="mt-4 max-h-[68vh] overflow-auto rounded-2xl bg-slate-950 p-4 text-xs leading-6 text-slate-100"><code>{{ activeCode }}</code></pre>
             </template>
           </div>
         </section>

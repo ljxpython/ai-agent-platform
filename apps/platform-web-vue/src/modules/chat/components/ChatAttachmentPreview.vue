@@ -30,7 +30,7 @@ const imageUrl = computed(() => (isImage.value ? getChatAttachmentDataUrl(props.
 
 <template>
   <div
-    class="relative overflow-hidden rounded-[20px] border border-white/80 bg-white/90 shadow-soft dark:border-dark-700 dark:bg-dark-900/85"
+    class="pw-panel relative overflow-hidden p-0"
     :class="compact ? 'max-w-[180px]' : 'max-w-[220px]'"
   >
     <button

@@ -53,7 +53,7 @@ function handleEditingInput(event: Event) {
         {{ displayEntry.roleLabel }}
       </div>
       <div
-        class="max-w-[88%] rounded-[24px] border px-4 py-3 shadow-soft"
+        class="pw-chat-bubble max-w-[88%]"
         :class="displayEntry.bubbleClass"
       >
         <div
@@ -190,7 +190,7 @@ function handleEditingInput(event: Event) {
       v-if="isRunning"
       class="flex items-start"
     >
-      <div class="rounded-[24px] border border-white/70 bg-white/95 px-4 py-3 shadow-soft dark:border-dark-700 dark:bg-dark-900/85">
+      <div class="pw-panel px-4 py-3">
         <div class="flex items-center gap-2 text-sm text-gray-500 dark:text-dark-300">
           <span class="h-2 w-2 animate-pulse rounded-full bg-primary-400" />
           <span class="h-2 w-2 animate-pulse rounded-full bg-primary-300 [animation-delay:120ms]" />

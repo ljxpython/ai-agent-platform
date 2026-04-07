@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/components/base/BaseIcon.vue'
@@ -27,6 +27,7 @@ type SidebarItem = {
 }
 
 type SidebarGroup = {
+  id: string
   label: string
   items: SidebarItem[]
 }
@@ -34,6 +35,7 @@ type SidebarGroup = {
 const groups = computed(() => {
   const baseGroups: SidebarGroup[] = [
     {
+      id: 'workspace',
       label: 'Workspace',
       items: [
         { to: '/workspace/overview', label: t('nav.overview'), icon: 'overview' },
@@ -53,6 +55,7 @@ const groups = computed(() => {
       ]
     },
     {
+      id: 'agent',
       label: 'Agent',
       items: [
         {
@@ -94,6 +97,7 @@ const groups = computed(() => {
       ]
     },
     {
+      id: 'governance',
       label: 'Governance',
       items: [
         {
@@ -144,6 +148,7 @@ const groups = computed(() => {
       ]
     },
     {
+      id: 'quality',
       label: 'Quality',
       items: [
         {
@@ -160,6 +165,7 @@ const groups = computed(() => {
 
   if (isDev) {
     baseGroups.push({
+      id: 'resources',
       label: 'Resources',
       items: [
         { to: '/workspace/resources', label: t('nav.resourcesOverview'), icon: 'sparkle', exact: true },
@@ -200,6 +206,34 @@ function isActive(path: string, exact = false): boolean {
 
   return route.path === path || route.path.startsWith(`${path}/`)
 }
+
+function isGroupExpanded(groupId: string): boolean {
+  if (uiStore.sidebarCollapsed) {
+    return true
+  }
+
+  return uiStore.isSidebarGroupExpanded(groupId)
+}
+
+function isGroupActive(group: SidebarGroup): boolean {
+  return group.items.some((item) => isActive(item.to, item.exact))
+}
+
+function toggleGroup(groupId: string) {
+  if (uiStore.sidebarCollapsed) {
+    return
+  }
+
+  uiStore.toggleSidebarGroup(groupId)
+}
+
+watch(
+  groups,
+  (nextGroups) => {
+    uiStore.ensureSidebarExpandedGroups(nextGroups.map((group) => group.id))
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -209,16 +243,19 @@ function isActive(path: string, exact = false): boolean {
   >
     <div class="pw-sidebar-header">
       <div class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-xl shadow-glow">
-        <BrandMark alt="Agent Platform Console mark" />
+        <BrandMark
+          alt="Agent Platform Console mark"
+          class="scale-[1.18]"
+        />
       </div>
       <div
         v-if="!uiStore.sidebarCollapsed"
         class="flex min-w-0 flex-col"
       >
-        <div class="truncate text-base font-bold text-gray-900 dark:text-white">
+        <div class="truncate text-lg font-bold text-gray-900 dark:text-white">
           {{ appMeta.name }}
         </div>
-        <div class="mt-0.5 text-xs uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
+        <div class="mt-0.5 text-[11px] uppercase tracking-[0.14em] text-gray-400 dark:text-dark-500">
           {{ appMeta.versionLabel }}
         </div>
       </div>
@@ -227,20 +264,34 @@ function isActive(path: string, exact = false): boolean {
     <nav class="pw-sidebar-nav">
       <section
         v-for="group in groups"
-        :key="group.label"
+        :key="group.id"
         class="mb-6"
       >
-        <div
+        <button
           v-if="!uiStore.sidebarCollapsed"
-          class="pw-sidebar-section-title"
+          type="button"
+          class="mb-2 flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition-colors duration-150 hover:bg-gray-100 dark:hover:bg-dark-800"
+          :class="isGroupActive(group) ? 'text-gray-700 dark:text-dark-100' : 'text-gray-500 dark:text-dark-400'"
+          :aria-expanded="isGroupExpanded(group.id)"
+          @click="toggleGroup(group.id)"
         >
-          {{ group.label }}
-        </div>
+          <span class="pw-sidebar-section-title mb-0 px-0">
+            {{ group.label }}
+          </span>
+          <BaseIcon
+            :name="isGroupExpanded(group.id) ? 'chevron-down' : 'chevron-right'"
+            size="xs"
+            class="shrink-0 transition-transform duration-200"
+          />
+        </button>
         <div
           v-else
-          class="mx-3 my-3 h-px bg-gray-200 dark:bg-dark-700"
+          class="mx-3 my-3 h-px bg-gray-200 dark:bg-dark-800"
         />
-        <div class="space-y-1">
+        <div
+          v-show="isGroupExpanded(group.id)"
+          class="space-y-1"
+        >
           <router-link
             v-for="item in group.items"
             :key="item.to"
@@ -251,7 +302,8 @@ function isActive(path: string, exact = false): boolean {
           >
             <BaseIcon
               :name="item.icon as never"
-              size="sm"
+              size="md"
+              class="shrink-0"
             />
             <span v-if="!uiStore.sidebarCollapsed">{{ item.label }}</span>
           </router-link>
@@ -268,7 +320,8 @@ function isActive(path: string, exact = false): boolean {
       >
         <BaseIcon
           :name="themeStore.mode === 'dark' ? 'sun' : 'moon'"
-          size="sm"
+          size="md"
+          class="shrink-0"
           :class="themeStore.mode === 'dark' ? 'text-amber-500' : ''"
         />
         <span v-if="!uiStore.sidebarCollapsed">
@@ -284,10 +337,11 @@ function isActive(path: string, exact = false): boolean {
       >
         <BaseIcon
           :name="uiStore.sidebarCollapsed ? 'expand' : 'collapse'"
-          size="sm"
+          size="md"
+          class="shrink-0"
         />
         <span v-if="!uiStore.sidebarCollapsed">
-          {{ uiStore.sidebarCollapsed ? '展开' : '收起' }}
+          收起导航
         </span>
       </button>
     </div>

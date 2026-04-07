@@ -340,7 +340,7 @@ onUnmounted(() => {
     />
 
     <template v-else-if="metrics">
-      <div class="grid gap-4 xl:grid-cols-3">
+      <div class="grid gap-4 xl:items-start xl:grid-cols-3">
         <SurfaceCard class="space-y-4 xl:col-span-3">
           <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
             <BaseIcon
@@ -350,11 +350,11 @@ onUnmounted(() => {
             />
             值班风险面板
           </div>
-          <div class="grid gap-3 xl:grid-cols-3">
+          <div class="grid gap-3 xl:items-start xl:grid-cols-3">
             <article
               v-for="flag in riskFlags"
               :key="flag.title"
-              class="rounded-[24px] border px-4 py-4 shadow-soft"
+              class="rounded-2xl border px-4 py-4 shadow-sm"
               :class="flag.tone === 'danger'
                 ? 'border-rose-200 bg-rose-50/80 dark:border-rose-900/40 dark:bg-rose-950/20'
                 : flag.tone === 'warning'
@@ -382,11 +382,11 @@ onUnmounted(() => {
             />
             指标趋势
           </div>
-          <div class="grid gap-4 xl:grid-cols-4">
+          <div class="grid gap-4 xl:items-start xl:grid-cols-4">
             <article
               v-for="trend in trendCards"
               :key="trend.label"
-              class="rounded-[24px] border border-gray-100 bg-white px-4 py-4 shadow-soft dark:border-dark-800 dark:bg-dark-900/80"
+              class="pw-card-subtle px-4 py-4"
             >
               <div class="flex items-center justify-between gap-3">
                 <div>
@@ -422,7 +422,7 @@ onUnmounted(() => {
             Probes
           </div>
           <div class="space-y-3">
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Live
               </div>
@@ -435,7 +435,7 @@ onUnmounted(() => {
                 </StatusPill>
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Ready
               </div>
@@ -451,7 +451,7 @@ onUnmounted(() => {
                 database {{ ready?.database_ready }} / healthy workers {{ ready?.healthy_workers }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Health
               </div>
@@ -467,7 +467,7 @@ onUnmounted(() => {
                 request {{ health?.request_id || 'n/a' }} / trace {{ health?.trace_id || 'n/a' }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Auto Refresh
               </div>
@@ -490,8 +490,8 @@ onUnmounted(() => {
             />
             Request Metrics
           </div>
-          <div class="grid gap-3 sm:grid-cols-2">
-            <div class="pw-card-glass p-4">
+          <div class="grid gap-3 sm:items-start sm:grid-cols-2">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Totals
               </div>
@@ -502,7 +502,7 @@ onUnmounted(() => {
                 failed {{ metrics.requests.failed }} / rate {{ formatPercent(metrics.requests.failure_rate) }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Latency
               </div>
@@ -521,7 +521,7 @@ onUnmounted(() => {
             <article
               v-for="item in metrics.requests.top_paths"
               :key="item.path"
-              class="rounded-[20px] border border-gray-100 bg-white px-4 py-3 shadow-soft dark:border-dark-800 dark:bg-dark-900/80"
+              class="pw-card-subtle px-4 py-3"
             >
               <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">
                 {{ item.path }}
@@ -542,8 +542,8 @@ onUnmounted(() => {
             />
             Worker Metrics
           </div>
-          <div class="grid gap-3 sm:grid-cols-2">
-            <div class="pw-card-glass p-4">
+          <div class="grid gap-3 sm:items-start sm:grid-cols-2">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Queue Depth
               </div>
@@ -551,7 +551,7 @@ onUnmounted(() => {
                 {{ metrics.operations.queue_depth }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Heartbeats
               </div>
@@ -559,7 +559,7 @@ onUnmounted(() => {
                 {{ metrics.workers.healthy_count }} healthy / {{ metrics.workers.stale_count }} stale
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Success / Fail
               </div>
@@ -567,7 +567,7 @@ onUnmounted(() => {
                 {{ metrics.operations.succeeded_count }} / {{ metrics.operations.failed_count }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Duration
               </div>
@@ -602,7 +602,7 @@ onUnmounted(() => {
                 v-for="worker in workerItems"
                 :key="worker.worker_id"
                 type="button"
-                class="flex w-full items-start justify-between gap-3 rounded-[20px] border border-gray-100 bg-white px-4 py-3 text-left shadow-soft transition hover:border-primary-200 hover:bg-primary-50/40 dark:border-dark-800 dark:bg-dark-900/80 dark:hover:border-primary-900/40 dark:hover:bg-primary-950/10"
+                class="pw-card-subtle flex w-full items-start justify-between gap-3 px-4 py-3 text-left transition-colors hover:border-primary-200 hover:bg-primary-50/60 dark:hover:border-primary-900/40 dark:hover:bg-primary-950/20"
                 @click="openWorkerDetail(worker.worker_id)"
               >
                 <div class="min-w-0 flex-1">
@@ -643,7 +643,7 @@ onUnmounted(() => {
         v-if="selectedWorker"
         class="space-y-5"
       >
-        <div class="rounded-[24px] border border-gray-100 bg-white p-5 shadow-soft dark:border-dark-800 dark:bg-dark-900/80">
+        <div class="pw-card p-5">
           <div class="flex flex-wrap items-center gap-2">
             <div class="text-base font-semibold text-gray-900 dark:text-white">
               {{ selectedWorker.worker_id }}
@@ -668,7 +668,7 @@ onUnmounted(() => {
           <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
             Last Error
           </div>
-          <div class="rounded-[20px] bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:bg-dark-800/80 dark:text-dark-200">
+          <div class="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:bg-dark-800/80 dark:text-dark-200">
             {{ selectedWorker.last_error || '当前没有记录错误。' }}
           </div>
         </SurfaceCard>
@@ -677,7 +677,7 @@ onUnmounted(() => {
           <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
             Metadata
           </div>
-          <pre class="overflow-x-auto rounded-[20px] bg-slate-950 px-4 py-4 text-xs leading-6 text-slate-100">{{ formatMetadata(selectedWorker.metadata) }}</pre>
+          <pre class="overflow-x-auto rounded-2xl bg-slate-950 px-4 py-4 text-xs leading-6 text-slate-100">{{ formatMetadata(selectedWorker.metadata) }}</pre>
         </SurfaceCard>
       </div>
     </BaseDrawer>

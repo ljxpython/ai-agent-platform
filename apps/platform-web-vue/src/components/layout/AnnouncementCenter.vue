@@ -133,7 +133,7 @@ async function markAllRead() {
   >
     <button
       type="button"
-      class="pw-topbar-action"
+      class="pw-topbar-action w-9 px-0"
       :class="isOpen ? 'pw-topbar-action-active' : ''"
       :aria-label="t('topbar.announcements')"
       @click="toggle"
@@ -149,9 +149,6 @@ async function markAllRead() {
         >
           {{ unreadCount > 9 ? '9+' : unreadCount }}
         </span>
-      </span>
-      <span class="hidden text-sm font-semibold xl:inline">
-        {{ t('topbar.announcements') }}
       </span>
     </button>
 
@@ -211,11 +208,11 @@ async function markAllRead() {
               v-for="item in items"
               :key="item.id"
               type="button"
-              class="rounded-2xl border px-4 py-3 text-left transition"
+              class="rounded-xl border px-4 py-3 text-left transition-colors"
               :class="
                 selectedAnnouncement?.id === item.id
                   ? 'border-primary-200 bg-primary-50 dark:border-primary-900/40 dark:bg-primary-950/20'
-                  : 'border-white/70 bg-white/80 hover:border-gray-200 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900/70 dark:hover:bg-dark-800'
+                  : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:hover:bg-dark-800'
               "
               @click="selectAnnouncement(item.id)"
             >
@@ -252,7 +249,7 @@ async function markAllRead() {
 
           <div
             v-if="!loading && selectedAnnouncement"
-            class="rounded-2xl border px-4 py-4"
+            class="rounded-2xl border px-4 py-4 shadow-sm"
             :class="toneClasses(selectedAnnouncement.tone).card"
           >
             <div class="flex items-start gap-3">

@@ -345,7 +345,7 @@ watch([activeInterruptIndex, activeActionIndex, isHitl], () => {
 </script>
 
 <template>
-  <div class="mb-4 overflow-hidden rounded-[24px] border border-sky-200/70 bg-sky-50/90 shadow-[0_18px_40px_-28px_rgba(14,116,144,0.32)] dark:border-primary-900/40 dark:bg-primary-950/18">
+  <div class="pw-panel-info mb-4 overflow-hidden p-0">
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-sky-200/70 px-4 py-3 dark:border-primary-900/30">
       <div>
         <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-600 dark:text-primary-200">
@@ -380,8 +380,8 @@ watch([activeInterruptIndex, activeActionIndex, isHitl], () => {
           class="rounded-full border px-3 py-1.5 text-sm transition"
           :class="
             index === activeInterruptIndex
-              ? 'border-sky-300 bg-white text-slate-900 shadow-soft dark:border-primary-900/40 dark:bg-dark-800 dark:text-white'
-              : 'border-transparent text-slate-500 hover:border-sky-200 hover:bg-white/70 hover:text-slate-900 dark:text-dark-300 dark:hover:border-primary-900/40 dark:hover:bg-dark-800 dark:hover:text-white'
+              ? 'border-sky-300 bg-white text-slate-900 dark:border-primary-900/40 dark:bg-dark-800 dark:text-white'
+              : 'border-transparent text-slate-500 hover:border-sky-200 hover:bg-white hover:text-slate-900 dark:text-dark-300 dark:hover:border-primary-900/40 dark:hover:bg-dark-800 dark:hover:text-white'
           "
           @click="activeInterruptIndex = index"
         >
@@ -389,7 +389,7 @@ watch([activeInterruptIndex, activeActionIndex, isHitl], () => {
         </button>
       </div>
 
-      <div class="rounded-2xl border border-white/80 bg-white/90 p-4 dark:border-dark-700 dark:bg-dark-900/70">
+      <div class="pw-panel">
         <div class="flex flex-wrap items-start justify-between gap-3">
           <div>
             <div class="text-lg font-semibold text-slate-900 dark:text-white">
@@ -417,7 +417,7 @@ watch([activeInterruptIndex, activeActionIndex, isHitl], () => {
 
       <div
         v-if="hasMultipleActions"
-        class="rounded-2xl border border-white/80 bg-white/90 p-4 dark:border-dark-700 dark:bg-dark-900/70"
+        class="pw-panel"
       >
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="text-sm font-semibold text-slate-900 dark:text-white">
@@ -439,7 +439,7 @@ watch([activeInterruptIndex, activeActionIndex, isHitl], () => {
                 ? 'border-sky-300 bg-sky-50 text-slate-900 dark:border-primary-900/40 dark:bg-primary-950/30 dark:text-white'
                 : savedDecisions[decisionKey(activeInterruptIndex, index)]
                   ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/30 dark:bg-emerald-950/20 dark:text-emerald-200'
-                  : 'border-transparent text-slate-500 hover:border-sky-200 hover:bg-slate-50 hover:text-slate-900 dark:text-dark-300 dark:hover:border-primary-900/40 dark:hover:bg-dark-800 dark:hover:text-white'
+                  : 'border-transparent text-slate-500 hover:border-sky-200 hover:bg-white hover:text-slate-900 dark:text-dark-300 dark:hover:border-primary-900/40 dark:hover:bg-dark-800 dark:hover:text-white'
             "
             @click="activeActionIndex = index"
           >
@@ -448,7 +448,7 @@ watch([activeInterruptIndex, activeActionIndex, isHitl], () => {
         </div>
       </div>
 
-      <div class="rounded-2xl border border-white/80 bg-white/95 p-4 dark:border-dark-700 dark:bg-dark-900/80">
+      <div class="pw-panel">
         <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-dark-400">
           Decision
         </div>
@@ -497,7 +497,7 @@ watch([activeInterruptIndex, activeActionIndex, isHitl], () => {
 
         <div
           v-if="selectedMode === 'approve'"
-          class="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50/90 px-4 py-3 text-sm leading-7 text-emerald-800 dark:border-emerald-900/30 dark:bg-emerald-950/20 dark:text-emerald-100"
+          class="pw-panel-success mt-4 px-4 py-3 text-sm leading-7 text-emerald-800 dark:text-emerald-100"
         >
           当前动作会按“批准”提交，agent 将继续后续执行。
         </div>
@@ -508,7 +508,7 @@ watch([activeInterruptIndex, activeActionIndex, isHitl], () => {
         >
           <div
             v-if="allowApprove && !editArgsChanged"
-            class="rounded-2xl border border-amber-100 bg-amber-50/90 px-4 py-3 text-sm leading-7 text-amber-800 dark:border-amber-900/30 dark:bg-amber-950/20 dark:text-amber-100"
+            class="pw-panel-warning px-4 py-3 text-sm leading-7 text-amber-800 dark:text-amber-100"
           >
             当前没有改动参数，提交时会按“批准”处理。
           </div>
@@ -552,7 +552,7 @@ watch([activeInterruptIndex, activeActionIndex, isHitl], () => {
 
         <div
           v-if="currentAction && Object.keys(currentAction.args || {}).length > 0"
-          class="mt-4 rounded-2xl border border-slate-100 bg-slate-50/80 p-4 dark:border-dark-700 dark:bg-dark-800/70"
+          class="pw-panel-muted mt-4"
         >
           <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-dark-400">
             原始参数
@@ -566,7 +566,7 @@ watch([activeInterruptIndex, activeActionIndex, isHitl], () => {
               <div class="text-sm font-semibold text-slate-900 dark:text-white">
                 {{ prettifyInterruptLabel(key) }}
               </div>
-              <pre class="overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-white px-3 py-3 text-xs leading-6 text-slate-700 dark:bg-dark-900 dark:text-dark-100">{{ stringifyInterruptValue(value) }}</pre>
+              <pre class="pw-panel mt-2 overflow-auto whitespace-pre-wrap break-words px-3 py-3 text-xs leading-6 text-slate-700 dark:text-dark-100">{{ stringifyInterruptValue(value) }}</pre>
             </div>
           </div>
         </div>
@@ -632,7 +632,7 @@ watch([activeInterruptIndex, activeActionIndex, isHitl], () => {
       class="px-4 py-4"
     >
       <pre
-        class="overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-white/90 px-4 py-4 text-xs leading-6 text-slate-700 dark:bg-dark-900/80 dark:text-dark-100"
+        class="pw-panel overflow-auto whitespace-pre-wrap break-words px-4 py-4 text-xs leading-6 text-slate-700 dark:text-dark-100"
         :class="genericExpanded ? 'max-h-[480px]' : 'max-h-56'"
       >{{ genericPayloadText }}</pre>
 

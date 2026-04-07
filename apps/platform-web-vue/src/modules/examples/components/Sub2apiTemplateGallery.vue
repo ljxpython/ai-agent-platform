@@ -165,7 +165,7 @@ watch(
 </script>
 
 <template>
-  <article class="pw-card p-6">
+  <article class="pw-card p-5">
     <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <div class="pw-page-eyebrow">
@@ -197,7 +197,7 @@ watch(
     </div>
 
     <div class="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div class="rounded-[24px] border border-gray-100 bg-gray-50/80 p-5 dark:border-dark-800 dark:bg-dark-950/45">
+      <div class="pw-panel-muted-lg">
         <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
           当前模式
         </div>
@@ -209,7 +209,7 @@ watch(
         </p>
       </div>
 
-      <div class="rounded-[24px] border border-gray-100 bg-gray-50/80 p-5 dark:border-dark-800 dark:bg-dark-950/45">
+      <div class="pw-panel-muted-lg">
         <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
           当前层级
         </div>
@@ -236,7 +236,7 @@ watch(
     </div>
 
     <div class="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-      <div class="rounded-[24px] border border-gray-100 bg-gray-50/80 p-5 dark:border-dark-800 dark:bg-dark-950/45">
+      <div class="pw-panel-muted-lg">
         <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
           展示范围
         </div>
@@ -248,7 +248,7 @@ watch(
         </p>
       </div>
 
-      <div class="rounded-[24px] border border-gray-100 bg-gray-50/80 p-5 dark:border-dark-800 dark:bg-dark-950/45">
+      <div class="pw-panel-muted-lg">
         <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
           选型顺序
         </div>
@@ -262,7 +262,7 @@ watch(
 
     <template v-if="activeLayer === 'recommended'">
       <div class="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div class="rounded-[28px] border border-gray-100 bg-white/85 p-5 dark:border-dark-800 dark:bg-dark-950/35">
+        <div class="pw-panel-lg">
           <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
             Default Picks
           </div>
@@ -274,7 +274,7 @@ watch(
           </p>
         </div>
 
-        <div class="rounded-[28px] border border-primary-100 bg-primary-50/70 p-5 dark:border-primary-950/40 dark:bg-primary-950/15">
+        <div class="pw-panel-info p-5">
           <div class="text-xs font-semibold uppercase tracking-[0.16em] text-primary-500 dark:text-primary-300">
             使用建议
           </div>
@@ -302,7 +302,7 @@ watch(
 
       <div
         v-if="teamRecommendedItems.length > 0"
-        class="mt-5 rounded-[24px] border border-amber-100 bg-amber-50/65 p-5 dark:border-amber-900/30 dark:bg-amber-950/15"
+        class="pw-panel-warning mt-5 p-5"
       >
         <div class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">
           Team Picks
@@ -345,7 +345,7 @@ watch(
         <article
           v-for="scene in sceneGroups"
           :key="scene.key"
-          class="rounded-[28px] border border-gray-100 bg-gray-50/70 p-5 dark:border-dark-800 dark:bg-dark-950/30"
+          class="pw-panel-muted-lg"
         >
           <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
             <div>
@@ -360,12 +360,12 @@ watch(
               </p>
             </div>
 
-            <div class="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200">
+            <div class="pw-pill px-3 py-1.5 text-sm">
               {{ scene.items.length }} 个代表模板
             </div>
           </div>
 
-          <div class="mt-4 rounded-[20px] border border-gray-200 bg-white/85 px-4 py-4 text-sm leading-7 text-gray-600 dark:border-dark-800 dark:bg-dark-950/45 dark:text-dark-300">
+          <div class="pw-panel mt-4 px-4 py-4 text-sm leading-7 text-gray-600 dark:text-dark-300">
             {{ scene.guidance }}
           </div>
 
@@ -406,7 +406,7 @@ watch(
 
       <div
         v-if="filteredGroups.length === 0"
-        class="mt-6 rounded-[24px] border border-dashed border-gray-200 bg-gray-50/80 px-5 py-10 text-center text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-950/35 dark:text-dark-300"
+        class="mt-6 rounded-2xl border border-dashed border-gray-200 bg-gray-50 px-5 py-10 text-center text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-900/40 dark:text-dark-300"
       >
         没有匹配到模板，换个关键词或者切换分组看看。
       </div>
@@ -418,7 +418,7 @@ watch(
         <article
           v-for="group in filteredGroups"
           :key="group.key"
-          class="rounded-[28px] border border-gray-100 bg-gray-50/70 p-5 dark:border-dark-800 dark:bg-dark-950/30"
+          class="pw-panel-muted-lg"
         >
           <div class="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -430,7 +430,7 @@ watch(
               </p>
             </div>
 
-            <div class="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-600 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200">
+            <div class="pw-pill px-3 py-1.5 text-sm">
               <BaseIcon
                 name="folder"
                 size="sm"

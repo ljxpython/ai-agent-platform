@@ -295,14 +295,14 @@ const fileTree = computed(() => {
 
 const rootClass = computed(() =>
   isExpanded.value
-    ? 'min-h-[540px] rounded-[28px] p-5'
-    : 'aspect-[16/10] rounded-[24px] p-3'
+    ? 'min-h-[540px] rounded-2xl p-5'
+    : 'aspect-[16/10] rounded-2xl p-3'
 )
 
 const shellClass = computed(() =>
   isExpanded.value
-    ? 'rounded-[24px] p-5'
-    : 'h-full rounded-[20px] p-3'
+    ? 'rounded-2xl p-5'
+    : 'h-full rounded-xl p-3'
 )
 
 const titleClass = computed(() =>
@@ -362,7 +362,7 @@ const variantToneClass = computed(() => {
 
 <template>
   <div
-    class="relative overflow-hidden border shadow-soft"
+    class="relative overflow-hidden border shadow-sm"
     :class="[rootClass, variantToneClass.shell]"
   >
     <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.65),transparent_36%)] dark:bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.06),transparent_28%)]" />
@@ -400,13 +400,13 @@ const variantToneClass = computed(() => {
         </div>
       </div>
 
-      <div class="rounded-[22px] border border-slate-200 bg-slate-50/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:border-dark-800 dark:bg-dark-950/70">
+      <div class="rounded-2xl border border-slate-200 bg-slate-50/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)] dark:border-dark-800 dark:bg-dark-950/70">
         <div class="flex items-center gap-2 border-b border-slate-200 px-4 py-3 dark:border-dark-800">
           <span class="h-2.5 w-2.5 rounded-full bg-rose-300/90 dark:bg-rose-500/70" />
           <span class="h-2.5 w-2.5 rounded-full bg-amber-300/90 dark:bg-amber-500/70" />
           <span class="h-2.5 w-2.5 rounded-full bg-emerald-300/90 dark:bg-emerald-500/70" />
           <div
-            class="ml-2 min-w-0 flex-1 truncate rounded-full border border-slate-200 bg-white/95 font-medium text-slate-500 dark:border-dark-700 dark:bg-dark-900/90 dark:text-dark-300"
+            class="ml-2 min-w-0 flex-1 truncate rounded-full border border-slate-200 bg-white font-medium text-slate-500 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-300"
             :class="browserPathClass"
           >
             {{ pathLabel }}
@@ -582,7 +582,7 @@ const variantToneClass = computed(() => {
               v-else-if="variant === 'auth'"
               class="grid gap-4 lg:grid-cols-[1fr_0.95fr]"
             >
-              <div class="rounded-[20px] bg-gradient-to-br from-sky-500 via-cyan-500 to-teal-400 p-6 text-white shadow-[0_20px_40px_rgba(14,165,233,0.24)]">
+              <div class="rounded-2xl bg-gradient-to-br from-sky-500 via-cyan-500 to-teal-400 p-6 text-white shadow-[0_20px_40px_rgba(14,165,233,0.24)]">
                 <div class="text-xs font-semibold uppercase tracking-[0.2em] text-white/75">
                   Platform Access
                 </div>
@@ -598,7 +598,7 @@ const variantToneClass = computed(() => {
                 </div>
               </div>
 
-              <div class="rounded-[20px] border border-slate-200 bg-white p-6 dark:border-dark-800 dark:bg-dark-900">
+              <div class="rounded-2xl border border-slate-200 bg-white p-6 dark:border-dark-800 dark:bg-dark-900">
                 <div class="text-sm font-semibold text-slate-900 dark:text-white">
                   账号登录
                 </div>
@@ -670,7 +670,7 @@ const variantToneClass = computed(() => {
 
             <div
               v-else-if="variant === 'dialog'"
-              class="relative min-h-[260px] rounded-[20px] border border-slate-200 bg-slate-100 p-4 dark:border-dark-800 dark:bg-dark-950"
+              class="relative min-h-[260px] rounded-2xl border border-slate-200 bg-slate-100 p-4 dark:border-dark-800 dark:bg-dark-950"
             >
               <div class="space-y-3 opacity-70">
                 <div class="flex items-center justify-between rounded-2xl bg-white px-4 py-3 dark:bg-dark-900">

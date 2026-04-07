@@ -2,52 +2,33 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { useAuthorization } from '@/composables/useAuthorization'
 import AnnouncementCenter from '@/components/layout/AnnouncementCenter.vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import { appMeta } from '@/config/app-meta'
 import LocaleSwitcher from '@/components/layout/LocaleSwitcher.vue'
 import UserMenu from '@/components/layout/UserMenu.vue'
 import WorkspaceProjectSwitcher from '@/components/platform/WorkspaceProjectSwitcher.vue'
 const route = useRoute()
 const { t } = useI18n()
-const authorization = useAuthorization()
 
 const routeTitle = computed(() => String(route.meta.title || t('brand.title')))
 const routeEyebrow = computed(() => String(route.meta.eyebrow || t('common.workspace')))
-const routeSubtitle = computed(() => appMeta.versionLabel)
-const roleLabel = computed(() => authorization.roleLabel.value)
 </script>
 
 <template>
   <header class="pw-topbar">
-    <div class="flex min-h-16 flex-wrap items-start justify-between gap-3 px-4 py-3 md:px-6 lg:px-8">
+    <div class="flex h-full items-center justify-between gap-4 px-5 md:px-6">
       <div class="flex min-w-0 flex-1 items-center gap-4">
         <div class="min-w-0">
-          <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
+          <div class="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-dark-500">
             {{ routeEyebrow }}
           </div>
-          <div class="mt-1 truncate text-lg font-semibold text-gray-900 dark:text-white">
+          <div class="mt-1 truncate text-base font-semibold text-gray-900 dark:text-white md:text-lg">
             {{ routeTitle }}
           </div>
-          <p class="text-xs text-gray-500 dark:text-dark-400">
-            {{ routeSubtitle }}
-          </p>
         </div>
       </div>
 
-      <div class="flex min-w-0 w-full flex-wrap items-center justify-end gap-2 md:w-auto md:flex-nowrap md:gap-3">
+      <div class="flex min-w-0 shrink-0 items-center justify-end gap-2 overflow-x-auto md:gap-2.5">
         <WorkspaceProjectSwitcher />
-        <div class="pw-topbar-chip pw-topbar-chip-primary hidden sm:flex">
-          <BaseIcon
-            name="shield"
-            size="sm"
-            class="text-primary-600 dark:text-primary-400"
-          />
-          <span class="text-sm font-semibold">
-            {{ roleLabel }}
-          </span>
-        </div>
         <LocaleSwitcher />
         <AnnouncementCenter />
         <UserMenu />

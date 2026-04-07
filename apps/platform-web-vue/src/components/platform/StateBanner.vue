@@ -59,7 +59,7 @@ const iconName = computed(() => {
   >
     <div class="flex items-start gap-3">
       <div
-        class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-xl"
+        class="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl"
         :class="iconClass"
       >
         <BaseIcon
@@ -71,7 +71,7 @@ const iconName = computed(() => {
         <div class="text-sm font-semibold text-gray-900 dark:text-white">
           {{ title }}
         </div>
-        <p class="mt-2 text-sm leading-6 text-gray-600 dark:text-dark-300">
+        <p class="mt-1.5 text-sm leading-6 text-gray-600 dark:text-dark-300">
           {{ description }}
         </p>
       </div>

@@ -240,7 +240,7 @@ const brandCandidates = [
         <article
           v-for="item in brandCandidates"
           :key="item.title"
-          class="rounded-[24px] border border-gray-100 bg-white/80 p-5 shadow-soft dark:border-dark-800 dark:bg-dark-950/35"
+          class="pw-panel-lg"
         >
           <div class="flex items-start justify-between gap-4">
             <div class="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl">
@@ -249,7 +249,7 @@ const brandCandidates = [
                 :alt="item.title"
               />
             </div>
-            <div class="rounded-full border border-sky-100 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-200">
+            <div class="pw-panel-info px-3 py-1 text-xs font-medium text-sky-700 dark:text-sky-200">
               {{ item.recommendation }}
             </div>
           </div>
@@ -259,7 +259,7 @@ const brandCandidates = [
           <p class="mt-2 text-sm leading-7 text-gray-500 dark:text-dark-300">
             {{ item.description }}
           </p>
-          <div class="mt-4 rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-3 font-mono text-xs text-gray-600 dark:border-dark-800 dark:bg-dark-900/70 dark:text-dark-300">
+          <div class="pw-panel-muted mt-4 px-4 py-3 font-mono text-xs text-gray-600 dark:text-dark-300">
             {{ item.file }}
           </div>
         </article>
@@ -277,7 +277,7 @@ const brandCandidates = [
         <article
           v-for="item in principles"
           :key="item.title"
-          class="rounded-[24px] border border-gray-100 bg-white/80 p-5 shadow-soft dark:border-dark-800 dark:bg-dark-950/35"
+          class="pw-panel-lg"
         >
           <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 text-sky-500 dark:bg-sky-950/30 dark:text-sky-300">
             <BaseIcon
@@ -307,7 +307,7 @@ const brandCandidates = [
           <article
             v-for="pattern in pagePatterns"
             :key="pattern.title"
-            class="rounded-[24px] border border-gray-100 bg-white/80 p-5 shadow-soft dark:border-dark-800 dark:bg-dark-950/35"
+            class="pw-panel-lg"
           >
             <div class="flex items-start justify-between gap-4">
               <div>
@@ -353,7 +353,7 @@ const brandCandidates = [
           <div
             v-for="(item, index) in workflow"
             :key="item"
-            class="rounded-[22px] border border-gray-100 bg-gray-50/80 p-4 dark:border-dark-800 dark:bg-dark-950/45"
+            class="pw-panel-muted"
           >
             <div class="flex items-start gap-3">
               <div class="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-semibold text-gray-700 shadow-sm dark:bg-dark-900 dark:text-dark-100">
@@ -379,7 +379,7 @@ const brandCandidates = [
         <article
           v-for="rule in componentRules"
           :key="rule.title"
-          class="rounded-[24px] border border-gray-100 bg-white/80 p-5 shadow-soft dark:border-dark-800 dark:bg-dark-950/35"
+          class="pw-panel-lg"
         >
           <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
             {{ rule.title }}
@@ -414,7 +414,7 @@ const brandCandidates = [
           v-for="entry in resourceLinks"
           :key="entry.to"
           :to="entry.to"
-          class="rounded-[24px] border border-gray-100 bg-white/80 p-5 shadow-soft transition hover:-translate-y-0.5 hover:shadow-card dark:border-dark-800 dark:bg-dark-950/35"
+          class="pw-panel-lg transition hover:border-gray-300 dark:hover:border-dark-600"
         >
           <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-50 text-primary-500 dark:bg-primary-950/30 dark:text-primary-300">
             <BaseIcon

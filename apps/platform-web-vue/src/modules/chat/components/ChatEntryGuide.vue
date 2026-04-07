@@ -8,8 +8,8 @@ defineProps<{
 </script>
 
 <template>
-  <div class="grid gap-6 xl:grid-cols-[minmax(0,1.18fr)_360px]">
-    <SurfaceCard class="space-y-5">
+  <div class="grid gap-4 xl:grid-cols-[minmax(0,1.18fr)_320px]">
+    <SurfaceCard class="space-y-4">
       <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
         <BaseIcon
           name="chat"
@@ -19,7 +19,7 @@ defineProps<{
         首次进入引导
       </div>
 
-      <div class="pw-card-glass p-4 text-sm leading-7 text-gray-500 dark:text-dark-300">
+      <div class="pw-panel-muted text-sm leading-7 text-gray-500 dark:text-dark-300">
         <p>
           当前项目
           <span class="font-semibold text-gray-900 dark:text-white">{{ projectName || '未选择' }}</span>
@@ -28,7 +28,7 @@ defineProps<{
       </div>
 
       <div class="grid gap-4 md:grid-cols-2">
-        <div class="pw-card-glass p-4">
+        <div class="pw-panel-muted">
           <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
             <BaseIcon
               name="assistant"
@@ -50,7 +50,7 @@ defineProps<{
           </div>
         </div>
 
-        <div class="pw-card-glass p-4">
+        <div class="pw-panel-muted">
           <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
             <BaseIcon
               name="graph"

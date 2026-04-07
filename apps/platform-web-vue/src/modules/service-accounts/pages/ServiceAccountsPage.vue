@@ -509,7 +509,7 @@ onMounted(() => {
 
     <div
       v-if="summary"
-      class="grid gap-4 xl:grid-cols-3"
+      class="grid gap-4 xl:items-start xl:grid-cols-3"
     >
       <SurfaceCard class="space-y-2">
         <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
@@ -664,12 +664,12 @@ onMounted(() => {
           />
           <div
             v-else
-            class="grid gap-3 xl:grid-cols-2"
+            class="grid gap-3 xl:items-start xl:grid-cols-2"
           >
             <article
               v-for="token in account.tokens"
               :key="token.id"
-              class="rounded-[24px] border border-gray-100 bg-white px-4 py-4 shadow-soft dark:border-dark-800 dark:bg-dark-900/80"
+              class="pw-card-subtle px-4 py-4"
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 flex-1">
@@ -766,7 +766,7 @@ onMounted(() => {
       <div class="space-y-4">
         <div
           v-if="selectedAccount"
-          class="rounded-[20px] bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:bg-dark-800/80 dark:text-dark-200"
+          class="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:bg-dark-800/80 dark:text-dark-200"
         >
           当前账号：{{ selectedAccount.name }}
         </div>
@@ -814,7 +814,7 @@ onMounted(() => {
       <div class="space-y-4">
         <div
           v-if="selectedAccount"
-          class="rounded-[20px] bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:bg-dark-800/80 dark:text-dark-200"
+          class="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:bg-dark-800/80 dark:text-dark-200"
         >
           当前账号：{{ selectedAccount.name }}
         </div>
@@ -836,7 +836,7 @@ onMounted(() => {
 
         <div
           v-if="tokenSecret"
-          class="rounded-[20px] border border-emerald-200 bg-emerald-50 px-4 py-4 dark:border-emerald-900/40 dark:bg-emerald-950/20"
+          class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 dark:border-emerald-900/40 dark:bg-emerald-950/20"
         >
           <div class="text-sm font-semibold text-emerald-700 dark:text-emerald-200">
             明文 Token 只展示这一次
@@ -883,7 +883,7 @@ onMounted(() => {
         v-if="selectedAccount"
         class="space-y-5"
       >
-        <div class="rounded-[24px] border border-gray-100 bg-white p-5 shadow-soft dark:border-dark-800 dark:bg-dark-900/80">
+        <div class="pw-card p-5">
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div class="flex flex-wrap items-center gap-2">
@@ -983,7 +983,7 @@ onMounted(() => {
             <article
               v-for="token in filteredSelectedTokens"
               :key="token.id"
-              class="rounded-[20px] border border-gray-100 bg-white px-4 py-4 shadow-soft dark:border-dark-800 dark:bg-dark-900/80"
+              class="pw-card-subtle px-4 py-4"
             >
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 flex-1">

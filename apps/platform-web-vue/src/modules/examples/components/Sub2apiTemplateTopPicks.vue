@@ -51,7 +51,7 @@ function toneOf(item: Sub2apiTemplateItem) {
 </script>
 
 <template>
-  <section class="pw-card p-6">
+  <section class="pw-card p-5">
     <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <div class="pw-page-eyebrow">
@@ -65,7 +65,7 @@ function toneOf(item: Sub2apiTemplateItem) {
         </p>
       </div>
 
-      <div class="rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+      <div class="rounded-full border border-amber-200 bg-amber-50 px-3.5 py-1.5 text-sm font-medium text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
         固定锚点 10 个
       </div>
     </div>
@@ -75,7 +75,7 @@ function toneOf(item: Sub2apiTemplateItem) {
         v-for="entry in teamRecommendedTemplates"
         :id="entry.item.id"
         :key="entry.item.id"
-        class="rounded-[28px] border border-gray-100 bg-white/85 p-5 shadow-soft dark:border-dark-800 dark:bg-dark-950/35"
+        class="pw-panel-lg"
       >
         <div class="flex items-start justify-between gap-4">
           <div>
@@ -96,7 +96,7 @@ function toneOf(item: Sub2apiTemplateItem) {
           {{ entry.reason }}
         </p>
 
-        <div class="mt-4 rounded-[20px] border border-gray-100 bg-gray-50/85 p-4 dark:border-dark-800 dark:bg-dark-950/45">
+        <div class="pw-panel-muted mt-4">
           <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
             源码位置
           </div>

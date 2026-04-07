@@ -65,8 +65,9 @@ onBeforeUnmount(() => {
       <BaseIcon
         name="globe"
         size="sm"
+        class="text-gray-400 dark:text-dark-400"
       />
-      <span class="hidden text-sm font-semibold sm:inline">{{ currentLocale.shortLabel }}</span>
+      <span class="hidden text-sm font-medium sm:inline">{{ currentLocale.shortLabel }}</span>
       <BaseIcon
         name="chevron-down"
         size="xs"

@@ -595,7 +595,7 @@ watch([pageAllSelected, pagePartiallySelected], () => {
           <article
             v-for="index in 4"
             :key="`mobile-loading-${index}`"
-            class="rounded-[24px] border border-gray-100 bg-white/85 p-4 shadow-soft dark:border-dark-800 dark:bg-dark-950/35"
+            class="pw-panel"
           >
             <div class="space-y-3">
               <div
@@ -620,7 +620,7 @@ watch([pageAllSelected, pagePartiallySelected], () => {
           <article
             v-for="(row, index) in pagedRows"
             :key="resolveRowKey(row, resolveVisibleRowIndex(index))"
-            class="rounded-[24px] border border-gray-100 bg-white/85 p-4 shadow-soft dark:border-dark-800 dark:bg-dark-950/35"
+            class="pw-panel"
             :class="isRowSelected(row, resolveVisibleRowIndex(index)) ? 'ring-2 ring-primary-500/20' : ''"
           >
             <div class="space-y-3">

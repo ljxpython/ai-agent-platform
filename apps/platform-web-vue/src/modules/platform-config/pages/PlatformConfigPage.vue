@@ -267,7 +267,7 @@ onMounted(() => {
         />
       </div>
 
-      <div class="grid gap-6 xl:grid-cols-2">
+      <div class="grid gap-6 xl:items-start xl:grid-cols-2">
         <SurfaceCard class="space-y-4">
           <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
             <BaseIcon
@@ -277,8 +277,8 @@ onMounted(() => {
             />
             服务快照
           </div>
-          <div class="grid gap-3 sm:grid-cols-2">
-            <div class="pw-card-glass p-4">
+          <div class="grid gap-3 sm:items-start sm:grid-cols-2">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Service
               </div>
@@ -286,7 +286,7 @@ onMounted(() => {
                 {{ snapshot.service.name }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Version
               </div>
@@ -294,7 +294,7 @@ onMounted(() => {
                 {{ snapshot.service.version }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Env
               </div>
@@ -302,7 +302,7 @@ onMounted(() => {
                 {{ snapshot.service.env }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Docs
               </div>
@@ -322,8 +322,8 @@ onMounted(() => {
             />
             基础设施快照
           </div>
-          <div class="grid gap-3 sm:grid-cols-2">
-            <div class="pw-card-glass p-4">
+          <div class="grid gap-3 sm:items-start sm:grid-cols-2">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Database
               </div>
@@ -334,7 +334,7 @@ onMounted(() => {
                 auto create: {{ snapshot.database.auto_create ? 'true' : 'false' }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Queue
               </div>
@@ -345,7 +345,7 @@ onMounted(() => {
                 {{ snapshot.operations.worker_poll_interval_seconds }}s / {{ snapshot.operations.worker_idle_sleep_seconds }}s
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Artifact Store
               </div>
@@ -356,7 +356,7 @@ onMounted(() => {
                 retention {{ snapshot.operations.artifact_retention_hours }}h / cleanup {{ snapshot.operations.artifact_cleanup_batch_size }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Auth
               </div>
@@ -367,7 +367,7 @@ onMounted(() => {
                 bootstrap admin: {{ snapshot.auth.bootstrap_admin_enabled ? 'enabled' : 'disabled' }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Runtime
               </div>
@@ -382,7 +382,7 @@ onMounted(() => {
         </SurfaceCard>
       </div>
 
-      <div class="grid gap-6 xl:grid-cols-2">
+      <div class="grid gap-6 xl:items-start xl:grid-cols-2">
         <SurfaceCard class="space-y-4">
           <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
             <BaseIcon
@@ -392,8 +392,8 @@ onMounted(() => {
             />
             可观测性与请求指标
           </div>
-          <div class="grid gap-3 sm:grid-cols-2">
-            <div class="pw-card-glass p-4">
+          <div class="grid gap-3 sm:items-start sm:grid-cols-2">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Requests
               </div>
@@ -404,7 +404,7 @@ onMounted(() => {
                 failed {{ snapshot.observability.requests.failed }} / rate {{ (snapshot.observability.requests.failure_rate * 100).toFixed(2) }}%
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Latency
               </div>
@@ -415,7 +415,7 @@ onMounted(() => {
                 max {{ snapshot.observability.requests.max_duration_ms }} ms
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Trace Headers
               </div>
@@ -426,7 +426,7 @@ onMounted(() => {
                 {{ snapshot.observability.trace.operation_chain_source }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Methods
               </div>
@@ -450,7 +450,7 @@ onMounted(() => {
               <article
                 v-for="item in snapshot.observability.requests.top_paths"
                 :key="item.path"
-                class="rounded-[24px] border border-gray-100 bg-white px-4 py-3 shadow-soft dark:border-dark-800 dark:bg-dark-900/80"
+                class="pw-card-subtle px-4 py-3"
               >
                 <div class="flex items-start justify-between gap-4">
                   <div class="min-w-0 flex-1">
@@ -490,8 +490,8 @@ onMounted(() => {
             />
             Worker 与执行治理
           </div>
-          <div class="grid gap-3 sm:grid-cols-2">
-            <div class="pw-card-glass p-4">
+          <div class="grid gap-3 sm:items-start sm:grid-cols-2">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Queue Depth
               </div>
@@ -502,7 +502,7 @@ onMounted(() => {
                 running {{ snapshot.observability.operations.running_count }} / succeeded {{ snapshot.observability.operations.succeeded_count }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Failure / Cancel
               </div>
@@ -513,7 +513,7 @@ onMounted(() => {
                 archived {{ snapshot.observability.operations.archived_count }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Duration
               </div>
@@ -524,7 +524,7 @@ onMounted(() => {
                 max {{ snapshot.observability.operations.max_duration_ms }} ms
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Heartbeat
               </div>
@@ -548,7 +548,7 @@ onMounted(() => {
               <article
                 v-for="worker in snapshot.observability.workers.items"
                 :key="worker.worker_id"
-                class="rounded-[24px] border border-gray-100 bg-white px-4 py-3 shadow-soft dark:border-dark-800 dark:bg-dark-900/80"
+                class="pw-card-subtle px-4 py-3"
               >
                 <div class="flex flex-wrap items-start justify-between gap-3">
                   <div class="min-w-0 flex-1">
@@ -599,7 +599,7 @@ onMounted(() => {
         </SurfaceCard>
       </div>
 
-      <div class="grid gap-6 xl:grid-cols-3">
+      <div class="grid gap-6 xl:items-start xl:grid-cols-3">
         <SurfaceCard class="space-y-4">
           <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
             <BaseIcon
@@ -610,7 +610,7 @@ onMounted(() => {
             安全治理
           </div>
           <div class="space-y-3">
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 OIDC / SSO
               </div>
@@ -621,7 +621,7 @@ onMounted(() => {
                 mode: {{ snapshot.security.oidc.mode }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Service Accounts
               </div>
@@ -639,7 +639,7 @@ onMounted(() => {
               <div
                 v-for="(item, key) in snapshot.security.sensitive_config"
                 :key="key"
-                class="rounded-[20px] border border-gray-100 bg-white px-4 py-3 text-sm text-gray-700 shadow-soft dark:border-dark-800 dark:bg-dark-900/80 dark:text-dark-100"
+                class="pw-card-subtle px-4 py-3 text-sm text-gray-700 dark:text-dark-100"
               >
                 <div class="font-medium text-gray-900 dark:text-white">
                   {{ key }}
@@ -661,7 +661,7 @@ onMounted(() => {
             />
             环境治理
           </div>
-          <div class="pw-card-glass p-4">
+          <div class="pw-card-subtle p-4">
             <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
               Current Environment
             </div>
@@ -672,7 +672,7 @@ onMounted(() => {
               production-like: {{ snapshot.environment.production_like ? 'true' : 'false' }}
             </div>
           </div>
-          <div class="pw-card-glass p-4">
+          <div class="pw-card-subtle p-4">
             <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
               Supported
             </div>
@@ -686,7 +686,7 @@ onMounted(() => {
               </span>
             </div>
           </div>
-          <div class="pw-card-glass p-4">
+          <div class="pw-card-subtle p-4">
             <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
               Guards
             </div>
@@ -706,7 +706,7 @@ onMounted(() => {
             数据治理
           </div>
           <div class="space-y-3">
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Artifact Retention
               </div>
@@ -717,7 +717,7 @@ onMounted(() => {
                 cleanup batch {{ snapshot.data_governance.artifact_cleanup_batch_size }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Audit Storage
               </div>
@@ -725,7 +725,7 @@ onMounted(() => {
                 {{ snapshot.data_governance.audit_storage }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Export / Delete Mode
               </div>
@@ -760,11 +760,11 @@ onMounted(() => {
           </div>
         </div>
 
-        <div class="grid gap-4 xl:grid-cols-2">
+        <div class="grid gap-4 xl:items-start xl:grid-cols-2">
           <article
             v-for="flag in featureFlags"
             :key="flag.key"
-            class="rounded-[28px] border border-gray-100 bg-white p-5 shadow-soft dark:border-dark-800 dark:bg-dark-900/80"
+            class="pw-card p-5"
           >
             <div class="flex items-start justify-between gap-4">
               <div class="min-w-0 flex-1">

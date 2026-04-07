@@ -83,7 +83,7 @@ onBeforeUnmount(() => {
     >
       <div
         v-if="isOpen"
-        class="absolute top-full z-20 mt-2 w-[min(280px,calc(100vw-2rem))] rounded-2xl border border-white/70 bg-white/95 px-3 py-3 text-xs leading-6 text-gray-600 shadow-card backdrop-blur dark:border-dark-700 dark:bg-dark-900/95 dark:text-dark-200"
+        class="absolute top-full z-20 mt-2 w-[min(280px,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white px-3 py-3 text-xs leading-6 text-gray-600 shadow-lg dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200"
         :class="alignmentClass()"
       >
         {{ text }}

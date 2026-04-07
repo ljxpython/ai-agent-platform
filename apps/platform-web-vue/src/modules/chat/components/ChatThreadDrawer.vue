@@ -53,7 +53,7 @@ const searchModel = computed({
     <div class="space-y-4">
       <div
         v-if="showContextBar"
-        class="pw-card-glass p-4"
+        class="pw-panel-muted p-4"
       >
         <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
           Current Target
@@ -73,7 +73,7 @@ const searchModel = computed({
         />
         <button
           type="button"
-          class="pw-topbar-action h-11 px-3"
+          class="pw-topbar-action h-9 px-2.5"
           :disabled="!canStartThread"
           @click="emit('start-new-thread')"
         >
@@ -89,12 +89,8 @@ const searchModel = computed({
           v-for="filter in filters"
           :key="filter.value"
           type="button"
-          class="rounded-full border px-3 py-1.5 text-xs font-medium transition"
-          :class="
-            statusFilter === filter.value
-              ? 'border-primary-200 bg-primary-50 text-primary-700 dark:border-primary-900/40 dark:bg-primary-950/25 dark:text-primary-100'
-              : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:text-gray-900 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white'
-          "
+          class="pw-table-tool-button text-xs"
+          :class="statusFilter === filter.value ? 'pw-pagination-page-active' : ''"
           @click="emit('update:statusFilter', filter.value)"
         >
           {{ filter.label }}
@@ -108,20 +104,20 @@ const searchModel = computed({
         <div
           v-for="index in 4"
           :key="index"
-          class="pw-card-glass h-24 animate-pulse"
+          class="pw-panel-muted h-24 animate-pulse"
         />
       </div>
 
       <div
         v-else-if="threadCount === 0"
-        class="pw-card-glass p-4 text-sm leading-7 text-gray-500 dark:text-dark-300"
+        class="pw-panel-muted p-4 text-sm leading-7 text-gray-500 dark:text-dark-300"
       >
         还没有会话。第一条消息发出去时会自动创建 thread；如果你只是想先清空当前画布，直接点上面的新对话就行。
       </div>
 
       <div
         v-else-if="filteredCount === 0"
-        class="pw-card-glass p-4 text-sm leading-7 text-gray-500 dark:text-dark-300"
+        class="pw-panel-muted p-4 text-sm leading-7 text-gray-500 dark:text-dark-300"
       >
         没有命中当前筛选条件。
       </div>
@@ -147,11 +143,11 @@ const searchModel = computed({
             >
               <button
                 type="button"
-                class="w-full rounded-2xl border px-4 py-3 pr-12 text-left transition"
+                class="w-full rounded-xl border px-4 py-3 pr-12 text-left transition-colors"
                 :class="
                   item.id === activeThreadId
-                    ? 'border-primary-200 bg-primary-50/85 shadow-soft dark:border-primary-900/40 dark:bg-primary-950/25'
-                    : 'border-transparent bg-transparent hover:border-gray-200 hover:bg-gray-50 dark:hover:border-dark-700 dark:hover:bg-dark-900/60'
+                    ? 'border-primary-200 bg-primary-50/80 dark:border-primary-900/40 dark:bg-primary-950/25'
+                    : 'border-transparent bg-transparent hover:border-gray-200 hover:bg-white dark:hover:border-dark-700 dark:hover:bg-dark-900/60'
                 "
                 @click="emit('select-thread', item.id)"
               >

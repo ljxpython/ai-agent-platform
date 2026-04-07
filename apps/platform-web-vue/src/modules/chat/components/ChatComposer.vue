@@ -60,7 +60,7 @@ function openFilePicker() {
 
 <template>
   <div class="border-t border-gray-100 px-6 py-5 dark:border-dark-800">
-    <div class="rounded-[26px] border border-white/70 bg-white/95 p-4 shadow-soft dark:border-dark-700 dark:bg-dark-900/90">
+    <div class="pw-panel p-4">
       <ChatInterruptPanel
         v-if="hasBlockingInterrupt"
         :interrupt="interruptPayload"
@@ -93,7 +93,7 @@ function openFilePicker() {
         <div class="flex flex-wrap items-center gap-3 text-xs leading-6 text-gray-400 dark:text-dark-400">
           <button
             type="button"
-            class="inline-flex items-center gap-2 rounded-full border border-gray-200 px-3 py-1.5 text-gray-600 transition hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700 dark:border-dark-700 dark:text-dark-200 dark:hover:border-primary-900/40 dark:hover:bg-primary-950/20 dark:hover:text-primary-100"
+            class="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-1.5 text-gray-600 transition hover:border-primary-200 hover:bg-primary-50 hover:text-primary-700 dark:border-dark-700 dark:text-dark-200 dark:hover:border-primary-900/40 dark:hover:bg-primary-950/20 dark:hover:text-primary-100"
             :disabled="isRunning || hasBlockingInterrupt"
             @click="openFilePicker"
           >

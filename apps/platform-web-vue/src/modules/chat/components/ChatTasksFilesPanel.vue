@@ -258,7 +258,7 @@ async function handleSaveEdit() {
 <template>
   <div
     v-if="hasTasks || hasFiles"
-    class="mb-4 overflow-hidden rounded-[24px] border border-slate-200/80 bg-slate-50/90 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] dark:border-dark-700 dark:bg-dark-900/80"
+    class="pw-panel-muted mb-4 overflow-hidden p-0"
   >
     <div class="flex flex-wrap items-center gap-2 border-b border-slate-200/80 px-4 py-3 dark:border-dark-700">
       <button
@@ -267,8 +267,8 @@ async function handleSaveEdit() {
         class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition"
         :class="
           metaOpen === 'tasks'
-            ? 'bg-white text-gray-900 shadow-soft dark:bg-dark-800 dark:text-white'
-            : 'text-gray-500 hover:bg-white/70 hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-white'
+            ? 'border border-primary-200 bg-primary-50 text-gray-900 dark:border-primary-900/40 dark:bg-primary-950/20 dark:text-white'
+            : 'border border-transparent text-gray-500 hover:bg-white hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-white'
         "
         @click="metaOpen = metaOpen === 'tasks' ? null : 'tasks'"
       >
@@ -294,8 +294,8 @@ async function handleSaveEdit() {
         class="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm transition"
         :class="
           metaOpen === 'files'
-            ? 'bg-white text-gray-900 shadow-soft dark:bg-dark-800 dark:text-white'
-            : 'text-gray-500 hover:bg-white/70 hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-white'
+            ? 'border border-primary-200 bg-primary-50 text-gray-900 dark:border-primary-900/40 dark:bg-primary-950/20 dark:text-white'
+            : 'border border-transparent text-gray-500 hover:bg-white hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-white'
         "
         @click="metaOpen = metaOpen === 'files' ? null : 'files'"
       >
@@ -332,7 +332,7 @@ async function handleSaveEdit() {
     >
       <div
         v-if="hasFrozenPlan"
-        class="rounded-2xl border border-sky-100 bg-sky-50/80 px-3 py-3 text-xs leading-6 text-sky-800 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-100"
+        class="pw-panel-info px-3 py-3 text-xs leading-6 text-sky-800 dark:text-sky-100"
       >
         主计划固定展示第一次 write_todos 生成的任务列表；后续实时 todos 只更新主计划状态，新出现的任务会单列到临时执行项。
       </div>
@@ -363,7 +363,7 @@ async function handleSaveEdit() {
             <div
               v-for="todo in groupedTodos[statusKey as keyof typeof groupedTodos]"
               :key="todo.id"
-              class="flex items-start gap-3 rounded-2xl border border-white/80 bg-white/90 px-3 py-3 text-sm text-gray-700 dark:border-dark-700 dark:bg-dark-900/70 dark:text-dark-100"
+              class="pw-panel flex items-start gap-3 px-3 py-3 text-sm text-gray-700 dark:text-dark-100"
             >
               <span
                 class="mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full border"
@@ -382,7 +382,7 @@ async function handleSaveEdit() {
         <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-500 dark:text-amber-300">
           临时执行项
         </div>
-        <div class="rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-3 text-xs leading-6 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
+        <div class="pw-panel-warning px-3 py-3 text-xs leading-6 text-amber-800 dark:text-amber-100">
           这些任务出现在后续运行中，不属于首次制定的主计划，因此不会覆盖上面的原始任务清单。
         </div>
         <div
@@ -403,7 +403,7 @@ async function handleSaveEdit() {
               <div
                 v-for="todo in groupedEphemeralTodos[statusKey as keyof typeof groupedEphemeralTodos]"
                 :key="todo.id"
-                class="flex items-start gap-3 rounded-2xl border border-amber-100/80 bg-white/90 px-3 py-3 text-sm text-gray-700 dark:border-amber-900/30 dark:bg-dark-900/70 dark:text-dark-100"
+                class="pw-panel-warning flex items-start gap-3 px-3 py-3 text-sm text-gray-700 dark:text-dark-100"
               >
                 <span
                   class="mt-1 inline-flex h-2.5 w-2.5 shrink-0 rounded-full border"
@@ -421,7 +421,7 @@ async function handleSaveEdit() {
       v-else-if="metaOpen === 'files'"
       class="grid gap-3 px-4 py-4 lg:grid-cols-[220px_1fr]"
     >
-      <div class="max-h-64 overflow-y-auto rounded-2xl border border-white/80 bg-white/90 dark:border-dark-700 dark:bg-dark-900/70">
+      <div class="pw-panel max-h-64 overflow-y-auto p-0">
         <button
           v-for="file in files"
           :key="file.path"
@@ -439,7 +439,7 @@ async function handleSaveEdit() {
         </button>
       </div>
 
-      <div class="min-h-[240px] overflow-hidden rounded-2xl border border-white/80 bg-white/95 dark:border-dark-700 dark:bg-dark-900/80">
+      <div class="pw-panel min-h-[240px] overflow-hidden p-0">
         <div
           v-if="selectedFile"
           class="flex h-full flex-col"

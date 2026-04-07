@@ -75,7 +75,7 @@ onBeforeUnmount(() => {
           {{ authStore.user?.username ?? t('common.loading') }}
         </div>
         <div class="text-xs text-gray-500 dark:text-dark-400">
-          {{ t('topbar.operator') }}
+          {{ roleLabel }}
         </div>
       </div>
       <BaseIcon
@@ -112,7 +112,7 @@ onBeforeUnmount(() => {
               </div>
             </div>
           </div>
-          <div class="mt-3 inline-flex rounded-full border border-primary-100 bg-primary-50 px-3 py-1 text-xs font-semibold text-primary-700 dark:border-primary-900/40 dark:bg-primary-950/30 dark:text-primary-300">
+          <div class="mt-3 inline-flex rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-xs font-semibold text-gray-600 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200">
             {{ roleLabel }}
           </div>
         </div>

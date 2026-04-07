@@ -59,20 +59,19 @@ onBeforeUnmount(() => {
   >
     <button
       type="button"
-      class="pw-topbar-action min-h-11 min-w-0 max-w-full justify-start gap-2.5 px-2.5 py-2"
+      class="pw-topbar-action min-h-9 min-w-0 max-w-full justify-start gap-1.5 px-2"
       :class="isOpen ? 'pw-topbar-action-active' : ''"
       :disabled="!projectOptions.length"
       :aria-label="t('common.project')"
       @click="toggle"
     >
-      <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-500 dark:bg-sky-950/30 dark:text-sky-300">
-        <BaseIcon
-          name="project"
-          size="sm"
-        />
-      </div>
+      <BaseIcon
+        name="project"
+        size="sm"
+        class="shrink-0 text-gray-400 dark:text-dark-400"
+      />
       <span
-        class="max-w-[min(132px,32vw)] truncate text-sm font-semibold text-gray-800 dark:text-gray-100 sm:max-w-[140px]"
+        class="max-w-[min(120px,30vw)] truncate text-sm font-medium text-gray-800 dark:text-gray-100 sm:max-w-[128px]"
         :title="currentProjectLabel"
       >
         {{ currentProjectLabel }}
@@ -80,7 +79,7 @@ onBeforeUnmount(() => {
       <BaseIcon
         name="chevron-down"
         size="xs"
-        class="shrink-0 text-sky-300 transition"
+        class="shrink-0 text-gray-400 transition"
         :class="isOpen ? 'rotate-180' : ''"
       />
     </button>

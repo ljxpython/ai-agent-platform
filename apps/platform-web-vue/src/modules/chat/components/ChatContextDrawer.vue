@@ -278,7 +278,7 @@ async function handleSaveEdit() {
           class="inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition"
           :class="
             activeTab === tab.key
-              ? 'border-primary-200 bg-primary-50 text-primary-700 shadow-soft dark:border-primary-900/40 dark:bg-primary-950/20 dark:text-primary-100'
+              ? 'border-primary-200 bg-primary-50 text-primary-700 dark:border-primary-900/40 dark:bg-primary-950/20 dark:text-primary-100'
               : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200 dark:hover:bg-dark-800 dark:hover:text-white'
           "
           @click="activeTab = tab.key"
@@ -289,7 +289,7 @@ async function handleSaveEdit() {
             class="rounded-full px-2 py-0.5 text-[11px]"
             :class="
               activeTab === tab.key
-                ? 'bg-white/80 text-primary-700 dark:bg-dark-800 dark:text-primary-100'
+                ? 'bg-white text-primary-700 dark:bg-dark-800 dark:text-primary-100'
                 : 'bg-gray-100 text-gray-500 dark:bg-dark-800 dark:text-dark-300'
             "
           >
@@ -314,7 +314,7 @@ async function handleSaveEdit() {
         class="space-y-5"
       >
         <div class="grid gap-4 md:grid-cols-3">
-          <div class="pw-card-glass p-4">
+          <div class="pw-panel-muted">
             <div class="text-xs text-gray-400 dark:text-dark-400">
               当前任务
             </div>
@@ -322,7 +322,7 @@ async function handleSaveEdit() {
               {{ currentTaskLabel }}
             </div>
           </div>
-          <div class="pw-card-glass p-4">
+          <div class="pw-panel-muted">
             <div class="text-xs text-gray-400 dark:text-dark-400">
               文件状态
             </div>
@@ -330,7 +330,7 @@ async function handleSaveEdit() {
               {{ props.files.length }} 个文件
             </div>
           </div>
-          <div class="pw-card-glass p-4">
+          <div class="pw-panel-muted">
             <div class="text-xs text-gray-400 dark:text-dark-400">
               历史快照
             </div>
@@ -342,7 +342,7 @@ async function handleSaveEdit() {
 
         <div
           v-if="props.isViewingBranch"
-          class="flex items-center justify-between gap-3 rounded-2xl border border-primary-200 bg-primary-50/70 px-4 py-4 text-sm dark:border-primary-900/40 dark:bg-primary-950/20"
+          class="pw-panel-info flex items-center justify-between gap-3 text-sm"
         >
           <div class="min-w-0">
             <div class="font-semibold text-gray-900 dark:text-white">
@@ -360,7 +360,7 @@ async function handleSaveEdit() {
           </BaseButton>
         </div>
 
-        <div class="pw-card-glass p-4">
+        <div class="pw-panel">
           <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
             当前上下文
           </div>
@@ -396,7 +396,7 @@ async function handleSaveEdit() {
 
         <div
           v-if="props.sourceNote"
-          class="rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-4 text-sm leading-7 text-sky-800 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-100"
+          class="pw-panel-info text-sm leading-7 text-sky-800 dark:text-sky-100"
         >
           <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-500 dark:text-sky-300">
             目标来源
@@ -408,7 +408,7 @@ async function handleSaveEdit() {
 
         <div
           v-if="props.contextNotice"
-          class="rounded-2xl border border-emerald-100 bg-emerald-50/80 px-4 py-4 text-sm leading-7 text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100"
+          class="pw-panel-success text-sm leading-7 text-emerald-800 dark:text-emerald-100"
         >
           <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">
             上下文说明
@@ -420,7 +420,7 @@ async function handleSaveEdit() {
 
         <div
           v-if="props.showArtifacts"
-          class="pw-card-glass p-4 text-sm leading-7 text-gray-500 dark:text-dark-300"
+          class="pw-panel-muted text-sm leading-7 text-gray-500 dark:text-dark-300"
         >
           <div class="text-sm font-semibold text-gray-900 dark:text-white">
             Artifact 侧栏
@@ -432,7 +432,7 @@ async function handleSaveEdit() {
 
         <div
           v-if="props.allowResetTarget"
-          class="pw-card-glass p-4"
+          class="pw-panel-muted"
         >
           <div class="text-sm font-semibold text-gray-900 dark:text-white">
             默认聊天目标
@@ -457,7 +457,7 @@ async function handleSaveEdit() {
       >
         <div
           v-if="props.planView.hasFrozenPlan"
-          class="rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-4 text-sm leading-7 text-sky-800 dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-100"
+          class="pw-panel-info text-sm leading-7 text-sky-800 dark:text-sky-100"
         >
           主计划固定展示第一次 `write_todos` 生成的任务列表；后续实时 todos 只更新主计划状态，新出现的任务会单列到临时执行项。
         </div>
@@ -466,7 +466,7 @@ async function handleSaveEdit() {
           v-if="hasTasks"
           class="grid gap-4 md:grid-cols-3"
         >
-          <div class="pw-card-glass p-4">
+          <div class="pw-panel-muted">
             <div class="text-xs text-gray-400 dark:text-dark-400">
               当前任务
             </div>
@@ -474,7 +474,7 @@ async function handleSaveEdit() {
               {{ props.planView.activeTask?.content || '暂无' }}
             </div>
           </div>
-          <div class="pw-card-glass p-4">
+          <div class="pw-panel-muted">
             <div class="text-xs text-gray-400 dark:text-dark-400">
               主计划进度
             </div>
@@ -482,7 +482,7 @@ async function handleSaveEdit() {
               {{ props.planView.completedTasks }}/{{ props.planView.totalTasks }}
             </div>
           </div>
-          <div class="pw-card-glass p-4">
+          <div class="pw-panel-muted">
             <div class="text-xs text-gray-400 dark:text-dark-400">
               临时执行项
             </div>
@@ -522,7 +522,7 @@ async function handleSaveEdit() {
               <div
                 v-for="todo in groupTodoList(props.planView.planTodos)[statusKey as keyof ReturnType<typeof groupTodoList>]"
                 :key="todo.id"
-                class="rounded-2xl border border-white/70 bg-white/80 px-4 py-3 dark:border-dark-700 dark:bg-dark-900/70"
+                class="pw-panel px-4 py-3"
               >
                 <div class="flex items-start gap-3">
                   <span
@@ -554,7 +554,7 @@ async function handleSaveEdit() {
             <div
               v-for="todo in props.planView.ephemeralTodos"
               :key="todo.id"
-              class="rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-3 dark:border-amber-900/30 dark:bg-amber-950/15"
+              class="pw-panel-warning px-4 py-3"
             >
               <div class="flex items-start gap-3">
                 <span
@@ -599,7 +599,7 @@ async function handleSaveEdit() {
               :class="
                 selectedFilePath === file.path
                   ? 'border-primary-200 bg-primary-50 text-primary-700 dark:border-primary-900/40 dark:bg-primary-950/20 dark:text-primary-100'
-                  : 'border-white/70 bg-white/80 text-gray-600 hover:border-gray-200 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700 dark:bg-dark-900/70 dark:text-dark-200 dark:hover:bg-dark-800 dark:hover:text-white'
+                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200 dark:hover:bg-dark-800 dark:hover:text-white'
               "
               @click="selectedFilePath = file.path"
             >
@@ -657,7 +657,7 @@ async function handleSaveEdit() {
             />
             <pre
               v-else
-              class="min-h-[420px] overflow-auto whitespace-pre-wrap break-words rounded-[24px] border border-white/70 bg-white/90 px-4 py-4 text-xs leading-6 text-gray-700 dark:border-dark-700 dark:bg-dark-900/80 dark:text-dark-100"
+              class="pw-panel min-h-[420px] overflow-auto whitespace-pre-wrap break-words px-4 py-4 text-xs leading-6 text-gray-700 dark:text-dark-100"
             >{{ selectedFile.content }}</pre>
 
             <div
@@ -694,7 +694,7 @@ async function handleSaveEdit() {
 
         <template v-else>
           <div class="grid gap-4 md:grid-cols-3">
-            <div class="pw-card-glass p-4">
+            <div class="pw-panel-muted">
               <div class="text-xs text-gray-400 dark:text-dark-400">
                 Checkpoints
               </div>
@@ -702,7 +702,7 @@ async function handleSaveEdit() {
                 {{ historyView.totalEntries }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-panel-muted">
               <div class="text-xs text-gray-400 dark:text-dark-400">
                 分叉组
               </div>
@@ -710,7 +710,7 @@ async function handleSaveEdit() {
                 {{ historyView.branchGroupCount }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-panel-muted">
               <div class="text-xs text-gray-400 dark:text-dark-400">
                 当前快照
               </div>
@@ -721,7 +721,7 @@ async function handleSaveEdit() {
           </div>
 
           <div
-            class="flex flex-col gap-3 rounded-2xl border border-primary-200 bg-primary-50/70 px-4 py-4 text-sm dark:border-primary-900/40 dark:bg-primary-950/20 sm:flex-row sm:items-center sm:justify-between"
+            class="pw-panel-info flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between"
           >
             <div class="min-w-0">
               <div class="font-semibold text-gray-900 dark:text-white">
@@ -774,7 +774,7 @@ async function handleSaveEdit() {
                 "
               />
 
-              <details class="rounded-2xl border border-white/70 bg-white/80 p-4 dark:border-dark-700 dark:bg-dark-900/70">
+              <details class="pw-panel p-4">
                 <summary class="cursor-pointer list-none">
                   <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0">

@@ -573,7 +573,7 @@ async function handleCancelRun() {
 
     <div
       v-if="visibleSourceNote"
-      class="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-sky-100 bg-sky-50/70 px-4 py-3 text-sky-900 shadow-soft dark:border-sky-900/40 dark:bg-sky-950/20 dark:text-sky-50"
+      class="pw-panel-info flex flex-wrap items-center justify-between gap-3 text-sky-900 dark:text-sky-50"
     >
       <div class="min-w-0 flex items-center gap-3">
         <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white/70 text-sky-600 dark:bg-dark-900/60 dark:text-sky-200">
@@ -601,7 +601,7 @@ async function handleCancelRun() {
         </BaseButton>
         <button
           type="button"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-2xl text-sky-500 transition hover:bg-white/80 hover:text-sky-700 dark:text-sky-200 dark:hover:bg-dark-900/80 dark:hover:text-white"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-xl text-sky-500 transition hover:bg-white hover:text-sky-700 dark:text-sky-200 dark:hover:bg-dark-900 dark:hover:text-white"
           aria-label="关闭目标来源提示"
           @click="handleDismissSourceNote"
         >
@@ -812,7 +812,7 @@ async function handleCancelRun() {
               <div
                 v-for="index in 3"
                 :key="index"
-                class="pw-card-glass h-28 animate-pulse"
+                class="pw-panel-muted h-28 animate-pulse"
               />
             </div>
 
@@ -856,11 +856,11 @@ async function handleCancelRun() {
           >
             <button
               type="button"
-              class="pointer-events-auto w-[calc(100vw-2.5rem)] rounded-[24px] border border-primary-200/70 bg-white/95 px-4 py-3 text-left shadow-soft transition hover:-translate-y-0.5 hover:border-primary-300 hover:shadow-lg dark:border-primary-900/40 dark:bg-dark-900/95 sm:w-[280px]"
+              class="pointer-events-auto pw-panel w-[calc(100vw-2.5rem)] px-4 py-3 text-left transition hover:border-primary-300 dark:hover:border-primary-700 sm:w-[280px]"
               @click="handleJumpToLatest"
             >
               <div class="flex items-start gap-3">
-                <span class="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 dark:bg-primary-950/30 dark:text-primary-100">
+                <span class="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-950/30 dark:text-primary-100">
                   <BaseIcon
                     name="chevron-down"
                     size="sm"

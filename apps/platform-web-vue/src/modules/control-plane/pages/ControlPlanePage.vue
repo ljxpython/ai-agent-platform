@@ -363,7 +363,7 @@ onMounted(() => {
     />
 
     <template v-else>
-      <div class="grid gap-4 xl:grid-cols-3">
+      <div class="grid gap-4 xl:items-start xl:grid-cols-3">
         <SurfaceCard class="space-y-4 xl:col-span-3">
           <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
             <BaseIcon
@@ -373,11 +373,11 @@ onMounted(() => {
             />
             当前风险摘要
           </div>
-          <div class="grid gap-3 xl:grid-cols-3">
+          <div class="grid gap-3 xl:items-start xl:grid-cols-3">
             <article
               v-for="flag in riskFlags"
               :key="flag.title"
-              class="rounded-[24px] border px-4 py-4 shadow-soft"
+              class="rounded-2xl border px-4 py-4 shadow-sm"
               :class="flag.tone === 'danger'
                 ? 'border-rose-200 bg-rose-50/80 dark:border-rose-900/40 dark:bg-rose-950/20'
                 : flag.tone === 'warning'
@@ -403,12 +403,12 @@ onMounted(() => {
             />
             快捷入口
           </div>
-          <div class="grid gap-3 xl:grid-cols-5">
+          <div class="grid gap-3 xl:items-start xl:grid-cols-5">
             <router-link
               v-for="item in visibleQuickLinks"
               :key="item.to"
               :to="item.to"
-              class="rounded-[24px] border border-gray-100 bg-white px-4 py-4 shadow-soft transition hover:border-primary-200 hover:bg-primary-50/50 dark:border-dark-800 dark:bg-dark-900/80 dark:hover:border-primary-900/40 dark:hover:bg-primary-950/10"
+              class="pw-card-subtle px-4 py-4 transition-colors hover:border-primary-200 hover:bg-primary-50/60 dark:hover:border-primary-900/40 dark:hover:bg-primary-950/20"
             >
               <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
                 <BaseIcon
@@ -438,7 +438,7 @@ onMounted(() => {
             v-if="snapshot"
             class="space-y-3"
           >
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Runtime Upstream
               </div>
@@ -446,7 +446,7 @@ onMounted(() => {
                 {{ snapshot.runtime.langgraph_upstream_url }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Environment
               </div>
@@ -457,7 +457,7 @@ onMounted(() => {
                 auth {{ snapshot.environment.auth_required }} / docs {{ snapshot.environment.docs_enabled }}
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Security
               </div>
@@ -468,7 +468,7 @@ onMounted(() => {
                 oidc {{ snapshot.security.oidc.enabled ? 'enabled' : 'disabled' }} / ttl {{ snapshot.security.service_accounts.default_token_ttl_days }}d
               </div>
             </div>
-            <div class="pw-card-glass p-4">
+            <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Workers
               </div>
@@ -501,7 +501,7 @@ onMounted(() => {
             <article
               v-for="operation in recentOperations"
               :key="operation.id"
-              class="rounded-[20px] border border-gray-100 bg-white px-4 py-3 shadow-soft dark:border-dark-800 dark:bg-dark-900/80"
+              class="pw-card-subtle px-4 py-3"
             >
               <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0 flex-1">
@@ -539,7 +539,7 @@ onMounted(() => {
             <article
               v-for="row in recentAuditRows"
               :key="row.id"
-              class="rounded-[20px] border border-gray-100 bg-white px-4 py-3 shadow-soft dark:border-dark-800 dark:bg-dark-900/80"
+              class="pw-card-subtle px-4 py-3"
             >
               <div class="flex items-center justify-between gap-3">
                 <div class="min-w-0 flex-1">
@@ -558,7 +558,10 @@ onMounted(() => {
           </template>
         </SurfaceCard>
 
-        <SurfaceCard class="space-y-4 xl:col-span-3">
+        <SurfaceCard
+          class="space-y-4"
+          :class="recentServiceAccounts.length > 1 ? 'xl:col-span-3' : ''"
+        >
           <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
             <BaseIcon
               name="users"
@@ -567,11 +570,14 @@ onMounted(() => {
             />
             Service Accounts Snapshot
           </div>
-          <div class="grid gap-3 xl:grid-cols-3">
+          <div
+            class="grid gap-3"
+            :class="recentServiceAccounts.length > 1 ? 'xl:items-start xl:grid-cols-3' : 'max-w-[420px]'"
+          >
             <article
               v-for="account in recentServiceAccounts"
               :key="account.id"
-              class="rounded-[24px] border border-gray-100 bg-white px-4 py-4 shadow-soft dark:border-dark-800 dark:bg-dark-900/80"
+              class="pw-card-subtle px-4 py-4"
             >
               <div class="flex flex-wrap items-center gap-2">
                 <div class="text-sm font-semibold text-gray-900 dark:text-white">

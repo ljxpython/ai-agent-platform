@@ -41,7 +41,7 @@ const items = computed(() => [
 </script>
 
 <template>
-  <div class="grid gap-4 xl:grid-cols-4">
+  <div class="grid gap-3 xl:grid-cols-4">
     <MetricCard
       v-for="item in items"
       :key="item.label"

@@ -140,7 +140,7 @@ const resourceCards = [
           <article
             v-for="card in resourceCards"
             :key="card.to"
-            class="rounded-[24px] border border-gray-100 bg-white/80 p-5 shadow-soft dark:border-dark-800 dark:bg-dark-950/35"
+            class="pw-panel-lg"
           >
             <div class="flex items-start justify-between gap-4">
               <div
@@ -158,7 +158,7 @@ const resourceCards = [
                   size="md"
                 />
               </div>
-              <div class="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-medium text-gray-600 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200">
+              <div class="pw-pill px-3 py-1 text-xs">
                 {{
                   card.to === '/workspace/resources/playbook'
                     ? `${card.groupCount} 条原则 / ${card.count} 类母版`
@@ -199,16 +199,16 @@ const resourceCards = [
         </h2>
 
         <div class="mt-5 space-y-3 text-sm leading-7 text-gray-500 dark:text-dark-300">
-          <div class="rounded-[20px] border border-gray-100 bg-gray-50/80 p-4 dark:border-dark-800 dark:bg-dark-950/45">
+          <div class="pw-panel-muted">
             1. 先判断你要借的是页面骨架、局部组件还是工程支撑。
           </div>
-          <div class="rounded-[20px] border border-gray-100 bg-gray-50/80 p-4 dark:border-dark-800 dark:bg-dark-950/45">
+          <div class="pw-panel-muted">
             2. 进入对应资源页，先看推荐模板；如果还不确定，再切到场景模板。
           </div>
-          <div class="rounded-[20px] border border-gray-100 bg-gray-50/80 p-4 dark:border-dark-800 dark:bg-dark-950/45">
+          <div class="pw-panel-muted">
             3. 还要横向对比时，再进入模板库看去重后的完整集合。
           </div>
-          <div class="rounded-[20px] border border-gray-100 bg-gray-50/80 p-4 dark:border-dark-800 dark:bg-dark-950/45">
+          <div class="pw-panel-muted">
             4. 借的是结构、节奏和拆分方式，不是把上游业务语义整页硬搬。
           </div>
         </div>
@@ -242,7 +242,7 @@ const resourceCards = [
       </div>
 
       <div class="mt-6 grid gap-4 xl:grid-cols-4">
-        <article class="rounded-[24px] border border-amber-100 bg-amber-50/70 p-5 dark:border-amber-900/30 dark:bg-amber-950/15">
+        <article class="pw-panel-warning p-5">
           <div class="text-xs font-semibold uppercase tracking-[0.16em] text-amber-600 dark:text-amber-300">
             Total Picks
           </div>
@@ -254,7 +254,7 @@ const resourceCards = [
           </p>
         </article>
 
-        <article class="rounded-[24px] border border-gray-100 bg-white/85 p-5 dark:border-dark-800 dark:bg-dark-950/35">
+        <article class="pw-panel-lg">
           <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
             页面模板
           </div>
@@ -263,7 +263,7 @@ const resourceCards = [
           </div>
         </article>
 
-        <article class="rounded-[24px] border border-gray-100 bg-white/85 p-5 dark:border-dark-800 dark:bg-dark-950/35">
+        <article class="pw-panel-lg">
           <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
             组件模板
           </div>
@@ -272,7 +272,7 @@ const resourceCards = [
           </div>
         </article>
 
-        <article class="rounded-[24px] border border-gray-100 bg-white/85 p-5 dark:border-dark-800 dark:bg-dark-950/35">
+        <article class="pw-panel-lg">
           <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-500">
             工程模板
           </div>

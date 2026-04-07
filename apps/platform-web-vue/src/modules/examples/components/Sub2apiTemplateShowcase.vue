@@ -39,7 +39,7 @@ const featuredItems = computed(() => recommendedTemplatesByMode[props.mode].slic
 </script>
 
 <template>
-  <section class="pw-card p-6">
+  <section class="pw-card p-5">
     <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
       <div>
         <div class="pw-page-eyebrow">
@@ -54,7 +54,7 @@ const featuredItems = computed(() => recommendedTemplatesByMode[props.mode].slic
       </div>
 
       <div class="flex items-center gap-3">
-        <div class="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200">
+        <div class="pw-pill px-4 py-2 text-sm">
           {{ featuredItems.length }} 个精选 / {{ totalCount }} 个总模板
         </div>
 

@@ -1032,7 +1032,7 @@ watch(
               <pre class="mt-2 max-h-[180px] overflow-auto whitespace-pre-wrap break-all rounded-2xl bg-rose-50 p-3 text-xs text-rose-700 dark:bg-rose-950/20 dark:text-rose-200">{{ stringifyJson(selectedItem.error) }}</pre>
             </div>
 
-            <div class="rounded-[24px] border border-gray-100 bg-gray-50/80 px-4 py-4 dark:border-dark-700 dark:bg-dark-900/50">
+            <div class="pw-panel-muted">
               <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -1080,13 +1080,13 @@ watch(
                 class="mt-4 space-y-4"
               >
                 <div class="grid gap-3 md:grid-cols-3">
-                  <div class="rounded-2xl border border-white/70 bg-white/85 px-3 py-3 text-sm dark:border-dark-700 dark:bg-dark-950/75">
+                  <div class="pw-panel px-3 py-3 text-sm">
                     文档数：{{ selectedBatchSummary.documents_count }}
                   </div>
-                  <div class="rounded-2xl border border-white/70 bg-white/85 px-3 py-3 text-sm dark:border-dark-700 dark:bg-dark-950/75">
+                  <div class="pw-panel px-3 py-3 text-sm">
                     用例数：{{ selectedBatchSummary.test_cases_count }}
                   </div>
-                  <div class="rounded-2xl border border-white/70 bg-white/85 px-3 py-3 text-sm dark:border-dark-700 dark:bg-dark-950/75">
+                  <div class="pw-panel px-3 py-3 text-sm">
                     最新时间：{{ formatDateTime(selectedBatchSummary.latest_created_at) }}
                   </div>
                 </div>
@@ -1121,7 +1121,7 @@ watch(
                       v-for="document in sameBatchDocuments"
                       :key="document.id"
                       type="button"
-                      class="flex w-full items-start justify-between gap-3 rounded-2xl border border-white/70 bg-white/85 px-3 py-3 text-left transition hover:border-primary-200 hover:bg-primary-50/60 dark:border-dark-700 dark:bg-dark-950/75 dark:hover:border-primary-700 dark:hover:bg-primary-950/20"
+                      class="pw-panel flex w-full items-start justify-between gap-3 px-3 py-3 text-left transition hover:border-primary-200 dark:hover:border-primary-700"
                       @click="selectDocument(document.id)"
                     >
                       <div class="min-w-0">
@@ -1153,7 +1153,7 @@ watch(
                     <div
                       v-for="item in batchPreviewCases"
                       :key="item.id"
-                      class="rounded-2xl border border-white/70 bg-white/85 px-3 py-3 text-sm dark:border-dark-700 dark:bg-dark-950/75"
+                      class="pw-panel px-3 py-3 text-sm"
                     >
                       <div class="font-medium text-gray-900 dark:text-white">
                         {{ item.title }}

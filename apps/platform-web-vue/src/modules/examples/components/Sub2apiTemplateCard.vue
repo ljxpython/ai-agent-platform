@@ -76,7 +76,7 @@ function toneOf(item: Sub2apiTemplateItem) {
 
     <div
       v-if="curation.teamReason"
-      class="mt-4 rounded-[20px] border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm leading-7 text-amber-800 dark:border-amber-900/30 dark:bg-amber-950/15 dark:text-amber-200"
+      class="pw-panel-warning mt-4 px-4 py-3 text-sm leading-7 text-amber-800 dark:text-amber-200"
     >
       团队建议：{{ curation.teamReason }}
     </div>

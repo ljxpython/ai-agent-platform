@@ -215,7 +215,7 @@ watch(
       </template>
     </GuidePanel>
 
-    <div class="grid gap-4 xl:grid-cols-4">
+    <div class="grid gap-3 xl:grid-cols-4">
       <MetricCard
         v-for="item in stats"
         :key="item.label"
@@ -227,8 +227,8 @@ watch(
       />
     </div>
 
-    <div class="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.9fr)]">
-      <SurfaceCard class="space-y-5">
+    <div class="grid gap-4 xl:items-start xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.9fr)]">
+      <SurfaceCard class="space-y-4">
         <div class="flex items-center justify-between gap-4">
           <div>
             <div class="pw-page-eyebrow">
@@ -250,8 +250,8 @@ watch(
           }}
         </p>
 
-        <div class="grid gap-4 xl:grid-cols-2">
-          <div class="pw-card-glass p-4">
+        <div class="grid gap-3 xl:items-start xl:grid-cols-2">
+          <div class="pw-card-subtle p-4">
             <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
               <BaseIcon
                 name="folder"
@@ -267,7 +267,7 @@ watch(
               <div
                 v-for="project in recentProjects.slice(0, 3)"
                 :key="project.id"
-                class="pw-card p-3"
+                class="pw-card border-gray-200 p-3"
               >
                 <div class="flex items-center justify-between gap-3">
                   <div class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -290,7 +290,7 @@ watch(
             />
           </div>
 
-          <div class="pw-card-glass p-4">
+          <div class="pw-card-subtle p-4">
             <div class="flex items-start justify-between gap-3">
               <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
                 <BaseIcon
@@ -311,7 +311,7 @@ watch(
               <div
                 v-for="assistant in currentProjectAssistants.slice(0, 3)"
                 :key="assistant.id"
-                class="pw-card p-3"
+                class="pw-card border-gray-200 p-3"
               >
                 <div class="flex items-center justify-between gap-3">
                   <div class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -340,7 +340,7 @@ watch(
         </div>
       </SurfaceCard>
 
-      <SurfaceCard class="space-y-4">
+      <SurfaceCard class="space-y-3">
         <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
           <BaseIcon
             name="activity"
@@ -364,7 +364,7 @@ watch(
           <div
             v-for="row in recentAuditRows"
             :key="row.id"
-            class="pw-card-glass p-4"
+            class="pw-card-subtle p-4"
           >
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div class="text-sm font-semibold text-gray-900 dark:text-white">

@@ -44,12 +44,12 @@ function getCheckedValue(event: Event) {
     @close="emit('close')"
   >
     <div class="space-y-5">
-      <div class="rounded-[24px] border border-primary-100 bg-primary-50/70 px-4 py-4 text-sm leading-7 text-primary-900 dark:border-primary-900/30 dark:bg-primary-950/20 dark:text-primary-100">
+      <div class="pw-card-highlight px-4 py-4 text-sm leading-7 text-primary-900 dark:text-primary-100">
         这里的设置只影响后续发送、继续执行或新建出来的下一次运行，不会回改已经开始的这轮会话。
       </div>
 
       <div class="grid gap-4 md:grid-cols-3">
-        <div class="pw-card-glass p-4">
+        <div class="pw-panel-muted p-4">
           <div class="text-xs text-gray-400 dark:text-dark-400">
             当前模型
           </div>
@@ -57,7 +57,7 @@ function getCheckedValue(event: Event) {
             {{ props.draftRunOptions.modelId || '默认模型' }}
           </div>
         </div>
-        <div class="pw-card-glass p-4">
+        <div class="pw-panel-muted p-4">
           <div class="text-xs text-gray-400 dark:text-dark-400">
             工具策略
           </div>
@@ -65,7 +65,7 @@ function getCheckedValue(event: Event) {
             {{ selectedToolsLabel }}
           </div>
         </div>
-        <div class="pw-card-glass p-4">
+        <div class="pw-panel-muted p-4">
           <div class="text-xs text-gray-400 dark:text-dark-400">
             执行模式
           </div>
@@ -94,7 +94,7 @@ function getCheckedValue(event: Event) {
         </BaseSelect>
       </label>
 
-      <div class="pw-card-glass p-4">
+      <div class="pw-panel p-4">
         <label class="flex items-center justify-between gap-3">
           <div>
             <div class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -119,7 +119,7 @@ function getCheckedValue(event: Event) {
           <label
             v-for="tool in props.runtimeTools"
             :key="tool.id"
-            class="flex items-start gap-3 rounded-2xl border border-white/70 bg-white/80 px-3 py-3 text-sm dark:border-dark-700 dark:bg-dark-900/70"
+            class="pw-panel-muted flex items-start gap-3 px-3 py-3 text-sm"
           >
             <input
               :checked="props.draftRunOptions.toolNames.includes(tool.tool_key)"
@@ -153,7 +153,7 @@ function getCheckedValue(event: Event) {
         </div>
       </div>
 
-      <div class="pw-card-glass p-4">
+      <div class="pw-panel p-4">
         <label class="flex items-center justify-between gap-3">
           <div>
             <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">

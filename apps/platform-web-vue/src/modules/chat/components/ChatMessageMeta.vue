@@ -151,7 +151,7 @@ function toggleExpanded() {
         <div
           v-for="tool in metaView.toolCalls"
           :key="tool.key"
-          class="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-4 dark:border-dark-700 dark:bg-dark-900/80"
+          class="pw-panel"
         >
           <div class="flex items-center justify-between gap-3">
             <div>
@@ -189,7 +189,7 @@ function toggleExpanded() {
               <div
                 v-for="arg in tool.argsEntries"
                 :key="arg.key"
-                class="rounded-2xl bg-slate-50 px-3 py-3 dark:bg-dark-800/80"
+                class="pw-panel-muted px-3 py-3"
               >
                 <div class="text-xs font-semibold text-gray-900 dark:text-white">
                   {{ arg.key }}
@@ -206,7 +206,7 @@ function toggleExpanded() {
             <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
               Result
             </div>
-            <pre class="overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-slate-50 px-3 py-3 text-xs leading-6 text-gray-600 dark:bg-dark-800/80 dark:text-dark-100">{{ tool.resultText }}</pre>
+            <pre class="pw-panel-muted overflow-auto whitespace-pre-wrap break-words px-3 py-3 text-xs leading-6 text-gray-600 dark:text-dark-100">{{ tool.resultText }}</pre>
           </div>
         </div>
       </div>
@@ -222,7 +222,7 @@ function toggleExpanded() {
         <div
           v-for="item in metaView.subAgentCards"
           :key="item.id"
-          class="rounded-2xl border border-slate-200/80 bg-white/90 px-4 py-4 dark:border-dark-700 dark:bg-dark-900/80"
+          class="pw-panel"
         >
           <div class="flex items-center justify-between gap-3">
             <div>
@@ -253,7 +253,7 @@ function toggleExpanded() {
             <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
               Input
             </div>
-            <pre class="mt-2 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-slate-50 px-3 py-3 text-xs leading-6 text-gray-600 dark:bg-dark-800/80 dark:text-dark-100">{{ item.input || '<empty>' }}</pre>
+            <pre class="pw-panel-muted mt-2 overflow-auto whitespace-pre-wrap break-words px-3 py-3 text-xs leading-6 text-gray-600 dark:text-dark-100">{{ item.input || '<empty>' }}</pre>
           </div>
 
           <div
@@ -263,7 +263,7 @@ function toggleExpanded() {
             <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
               Output
             </div>
-            <pre class="mt-2 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-slate-50 px-3 py-3 text-xs leading-6 text-gray-600 dark:bg-dark-800/80 dark:text-dark-100">{{ item.output }}</pre>
+            <pre class="pw-panel-muted mt-2 overflow-auto whitespace-pre-wrap break-words px-3 py-3 text-xs leading-6 text-gray-600 dark:text-dark-100">{{ item.output }}</pre>
           </div>
         </div>
       </div>

@@ -1064,7 +1064,7 @@ watch(
         <template v-if="caseDialogMode === 'detail'">
           <div
             v-if="detailLoading"
-            class="rounded-[24px] border border-gray-100 bg-gray-50/80 px-4 py-6 text-sm text-gray-500 dark:border-dark-700 dark:bg-dark-900/50 dark:text-dark-300"
+            class="pw-panel-muted px-4 py-6 text-sm text-gray-500 dark:text-dark-300"
           >
             正在加载用例详情...
           </div>
@@ -1072,7 +1072,7 @@ watch(
           <template v-else-if="selectedCase">
             <div class="grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
               <div class="space-y-4">
-                <div class="rounded-[28px] border border-gray-100 bg-white/90 px-5 py-5 dark:border-dark-700 dark:bg-dark-950/80">
+                <div class="pw-panel-lg">
                   <div class="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div class="text-xl font-semibold text-gray-900 dark:text-white">
@@ -1129,7 +1129,7 @@ watch(
                 </div>
 
                 <div class="grid gap-4 lg:grid-cols-2">
-                  <div class="rounded-[28px] border border-gray-100 bg-white/90 px-5 py-5 dark:border-dark-700 dark:bg-dark-950/80">
+                  <div class="pw-panel-lg">
                     <div class="text-sm font-semibold text-gray-900 dark:text-white">
                       描述
                     </div>
@@ -1138,7 +1138,7 @@ watch(
                     </div>
                   </div>
 
-                  <div class="rounded-[28px] border border-gray-100 bg-white/90 px-5 py-5 dark:border-dark-700 dark:bg-dark-950/80">
+                  <div class="pw-panel-lg">
                     <div class="text-sm font-semibold text-gray-900 dark:text-white">
                       前置条件
                     </div>
@@ -1149,7 +1149,7 @@ watch(
                 </div>
 
                 <div class="grid gap-4 lg:grid-cols-2">
-                  <div class="rounded-[28px] border border-gray-100 bg-white/90 px-5 py-5 dark:border-dark-700 dark:bg-dark-950/80">
+                  <div class="pw-panel-lg">
                     <div class="text-sm font-semibold text-gray-900 dark:text-white">
                       步骤
                     </div>
@@ -1158,7 +1158,7 @@ watch(
                     </div>
                   </div>
 
-                  <div class="rounded-[28px] border border-gray-100 bg-white/90 px-5 py-5 dark:border-dark-700 dark:bg-dark-950/80">
+                  <div class="pw-panel-lg">
                     <div class="text-sm font-semibold text-gray-900 dark:text-white">
                       预期结果
                     </div>
@@ -1169,7 +1169,7 @@ watch(
                 </div>
 
                 <div class="grid gap-4 lg:grid-cols-2">
-                  <div class="rounded-[28px] border border-gray-100 bg-white/90 px-5 py-5 dark:border-dark-700 dark:bg-dark-950/80">
+                  <div class="pw-panel-lg">
                     <div class="text-sm font-semibold text-gray-900 dark:text-white">
                       扩展字段
                     </div>
@@ -1180,7 +1180,7 @@ watch(
                     </div>
                   </div>
 
-                  <div class="rounded-[28px] border border-gray-100 bg-white/90 px-5 py-5 dark:border-dark-700 dark:bg-dark-950/80">
+                  <div class="pw-panel-lg">
                     <div class="text-sm font-semibold text-gray-900 dark:text-white">
                       test_data
                     </div>
@@ -1190,7 +1190,7 @@ watch(
               </div>
 
               <div class="space-y-4">
-                <div class="rounded-[28px] border border-gray-100 bg-white/90 px-5 py-5 dark:border-dark-700 dark:bg-dark-950/80">
+                <div class="pw-panel-lg">
                   <div class="flex items-center justify-between gap-3">
                     <div class="text-sm font-semibold text-gray-900 dark:text-white">
                       来源文档
@@ -1204,7 +1204,7 @@ watch(
                     <div
                       v-for="document in selectedCase.source_documents || []"
                       :key="document.id"
-                      class="rounded-2xl border border-gray-100 bg-gray-50/80 px-3 py-3 dark:border-dark-700 dark:bg-dark-900/60"
+                      class="pw-panel-muted px-3 py-3"
                     >
                       <div class="font-medium text-gray-900 dark:text-white">
                         {{ document.filename }}
@@ -1231,7 +1231,7 @@ watch(
                   </div>
                 </div>
 
-                <div class="rounded-[28px] border border-gray-100 bg-white/90 px-5 py-5 dark:border-dark-700 dark:bg-dark-950/80">
+                <div class="pw-panel-lg">
                   <div class="text-sm font-semibold text-gray-900 dark:text-white">
                     meta.quality_review
                   </div>
@@ -1422,7 +1422,7 @@ watch(
             </div>
           </label>
 
-          <div class="rounded-[28px] border border-gray-100 bg-gray-50/70 px-5 py-5 dark:border-dark-700 dark:bg-dark-900/50">
+          <div class="pw-panel-muted-lg">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -1452,7 +1452,7 @@ watch(
               <label
                 v-for="document in filteredSourceDocuments"
                 :key="document.id"
-                class="flex items-start gap-3 rounded-2xl border border-white/70 bg-white/85 px-4 py-3 text-sm dark:border-dark-700 dark:bg-dark-950/75"
+                class="pw-panel flex items-start gap-3 px-4 py-3 text-sm"
               >
                 <input
                   type="checkbox"

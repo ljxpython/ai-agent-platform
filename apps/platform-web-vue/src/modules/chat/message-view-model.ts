@@ -51,15 +51,15 @@ export function getChatMessageRoleLabel(message: Message) {
 
 export function getChatMessageBubbleClass(message: Message) {
   if (message.type === 'human') {
-    return 'border-primary-200 bg-primary-50/90 text-primary-950 dark:border-primary-900/40 dark:bg-primary-950/30 dark:text-primary-50'
+    return 'border-primary-200 bg-primary-50/80 text-primary-950 dark:border-primary-900/40 dark:bg-primary-950/25 dark:text-primary-50'
   }
   if (message.type === 'tool') {
-    return 'border-amber-200 bg-amber-50/90 text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-50'
+    return 'border-amber-200 bg-amber-50/80 text-amber-950 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-50'
   }
   if (message.type === 'system') {
     return 'border-gray-200 bg-gray-50 text-gray-800 dark:border-dark-700 dark:bg-dark-900/70 dark:text-gray-200'
   }
-  return 'border-white/70 bg-white/95 text-gray-900 dark:border-dark-700 dark:bg-dark-900/85 dark:text-white'
+  return 'border-gray-200 bg-white text-gray-900 dark:border-dark-700 dark:bg-dark-900/85 dark:text-white'
 }
 
 export function getChatMessageWrapClass(message: Message) {

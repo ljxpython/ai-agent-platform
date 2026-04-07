@@ -28,20 +28,20 @@ const visible = computed(() => !guidesStore.isDismissed(props.guideId))
 function toneClass() {
   if (props.tone === 'warning') {
     return {
-      wrapper: 'border-amber-100 bg-amber-50/85 dark:border-amber-900/40 dark:bg-amber-950/20',
+      wrapper: 'border-amber-100 bg-amber-50/75 dark:border-amber-900/40 dark:bg-amber-950/20',
       icon: 'text-amber-600 dark:text-amber-300',
       chip: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-200'
     }
   }
   if (props.tone === 'success') {
     return {
-      wrapper: 'border-emerald-100 bg-emerald-50/85 dark:border-emerald-900/40 dark:bg-emerald-950/20',
+      wrapper: 'border-emerald-100 bg-emerald-50/75 dark:border-emerald-900/40 dark:bg-emerald-950/20',
       icon: 'text-emerald-600 dark:text-emerald-300',
       chip: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
     }
   }
   return {
-    wrapper: 'border-sky-100 bg-sky-50/85 dark:border-sky-900/40 dark:bg-sky-950/20',
+    wrapper: 'border-sky-100 bg-sky-50/75 dark:border-sky-900/40 dark:bg-sky-950/20',
     icon: 'text-sky-600 dark:text-sky-300',
     chip: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-200'
   }
@@ -55,13 +55,13 @@ function dismiss() {
 <template>
   <div
     v-if="visible"
-    class="rounded-[28px] border px-5 py-4 shadow-soft"
+    class="rounded-2xl border px-4 py-4 shadow-sm"
     :class="toneClass().wrapper"
   >
     <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
       <div class="min-w-0 flex-1">
         <div class="flex items-center gap-3">
-          <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/80 dark:bg-dark-900/70">
+          <div class="flex h-9 w-9 items-center justify-center rounded-xl border border-white/70 bg-white dark:border-white/10 dark:bg-dark-900">
             <BaseIcon
               name="info"
               size="sm"
@@ -85,7 +85,7 @@ function dismiss() {
         </p>
         <div
           v-if="$slots.actions"
-          class="mt-4 flex flex-wrap gap-3"
+          class="mt-4 flex flex-wrap gap-2.5"
         >
           <slot name="actions" />
         </div>
@@ -94,7 +94,7 @@ function dismiss() {
       <button
         v-if="dismissible"
         type="button"
-        class="inline-flex h-9 w-9 items-center justify-center rounded-2xl text-gray-400 transition hover:bg-white/80 hover:text-gray-700 dark:hover:bg-dark-900/80 dark:hover:text-dark-100"
+        class="inline-flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-white hover:text-gray-700 dark:hover:bg-dark-900 dark:hover:text-dark-100"
         aria-label="关闭引导"
         @click="dismiss"
       >
