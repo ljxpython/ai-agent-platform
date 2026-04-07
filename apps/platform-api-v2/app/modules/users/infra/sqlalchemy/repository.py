@@ -6,18 +6,28 @@ from uuid import UUID
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
-from app.modules.identity.infra.sqlalchemy.models import RefreshTokenRecord, UserRecord
+from app.modules.identity.infra.sqlalchemy.models import (
+    RefreshTokenRecord,
+    UserRecord,
+    has_super_admin_platform_role,
+    normalize_user_platform_roles,
+)
 from app.modules.projects.infra.sqlalchemy.models import ProjectMemberRecord, ProjectRecord
 from app.modules.users.application.ports import StoredPlatformUser, StoredUserProjectMembership
 
 
 def _to_user(record: UserRecord) -> StoredPlatformUser:
+    platform_roles = normalize_user_platform_roles(
+        record.platform_roles_json,
+        is_super_admin=record.is_super_admin,
+    )
     return StoredPlatformUser(
         id=record.id,
         username=record.username,
         email=record.email,
         status=record.status,
-        is_super_admin=record.is_super_admin,
+        is_super_admin=has_super_admin_platform_role(platform_roles),
+        platform_roles=platform_roles,
         created_at=record.created_at,
         updated_at=record.updated_at,
     )
@@ -69,15 +79,21 @@ class SqlAlchemyUsersRepository:
         username: str,
         password_hash: str,
         email: str | None,
+        platform_roles: tuple[str, ...] = (),
         is_super_admin: bool,
     ) -> StoredPlatformUser:
+        normalized_roles = normalize_user_platform_roles(
+            platform_roles,
+            is_super_admin=is_super_admin,
+        )
         record = UserRecord(
             username=username,
             external_subject=username,
             email=email,
             password_hash=password_hash,
             status="active",
-            is_super_admin=is_super_admin,
+            is_super_admin=has_super_admin_platform_role(normalized_roles),
+            platform_roles_json=list(normalized_roles),
         )
         self.session.add(record)
         self.session.flush()
@@ -90,17 +106,23 @@ class SqlAlchemyUsersRepository:
         username: str,
         email: str | None,
         status: str,
+        platform_roles: tuple[str, ...],
         is_super_admin: bool,
         password_hash: str | None,
     ) -> StoredPlatformUser | None:
         record = self.session.get(UserRecord, user_id)
         if record is None:
             return None
+        normalized_roles = normalize_user_platform_roles(
+            platform_roles,
+            is_super_admin=is_super_admin,
+        )
         record.username = username
         record.external_subject = username
         record.email = email
         record.status = status
-        record.is_super_admin = is_super_admin
+        record.is_super_admin = has_super_admin_platform_role(normalized_roles)
+        record.platform_roles_json = list(normalized_roles)
         if password_hash:
             record.password_hash = password_hash
         self.session.flush()
@@ -141,12 +163,12 @@ class SqlAlchemyUsersRepository:
         return changed
 
     def count_active_super_admins(self) -> int:
-        stmt = (
-            select(func.count())
-            .select_from(UserRecord)
-            .where(
-                UserRecord.is_super_admin.is_(True),
-                UserRecord.status == "active",
+        stmt = select(UserRecord).where(UserRecord.status == "active")
+        return sum(
+            1
+            for record in self.session.scalars(stmt).all()
+            if has_super_admin_platform_role(
+                record.platform_roles_json,
+                is_super_admin=record.is_super_admin,
             )
         )
-        return int(self.session.scalar(stmt) or 0)

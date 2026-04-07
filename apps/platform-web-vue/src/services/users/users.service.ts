@@ -3,7 +3,8 @@ import { normalizeManagementUser, normalizeProjectRole } from '@/services/auth/p
 import type {
   ManagementUser,
   ManagementUserListResponse,
-  ManagementUserProject
+  ManagementUserProject,
+  PlatformRole
 } from '@/types/management'
 
 function normalizeUserProject(payload: ManagementUserProject): ManagementUserProject {
@@ -43,6 +44,7 @@ export async function listUsersPage(options?: {
 export async function createUser(payload: {
   username: string
   password: string
+  platform_roles?: PlatformRole[]
   is_super_admin?: boolean
 }): Promise<ManagementUser> {
   const response = await platformHttpClient.post('/api/users', payload)
@@ -80,6 +82,7 @@ export async function updateUser(
     username?: string
     password?: string
     status?: 'active' | 'disabled'
+    platform_roles?: PlatformRole[]
     is_super_admin?: boolean
   }
 ): Promise<ManagementUser> {

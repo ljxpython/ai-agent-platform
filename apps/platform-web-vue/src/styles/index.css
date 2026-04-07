@@ -242,7 +242,7 @@
   }
 
   .pw-select-dropdown {
-    @apply z-[80] overflow-hidden rounded-[26px] border border-white/80 bg-white shadow-card backdrop-blur-xl;
+    @apply z-[110] overflow-hidden rounded-[26px] border border-white/80 bg-white shadow-card backdrop-blur-xl;
     @apply dark:border-dark-700 dark:bg-dark-900 dark:shadow-[0_20px_50px_rgba(0,0,0,0.45)];
   }
 
@@ -671,7 +671,7 @@
   }
 
   .pw-data-table-menu {
-    @apply absolute z-50 overflow-hidden rounded-2xl border border-white/70 bg-white/95 p-2 shadow-card backdrop-blur-xl;
+    @apply absolute z-[110] overflow-hidden rounded-2xl border border-white/70 bg-white/95 p-2 shadow-card backdrop-blur-xl;
     @apply dark:border-dark-700 dark:bg-dark-900/95;
   }
 

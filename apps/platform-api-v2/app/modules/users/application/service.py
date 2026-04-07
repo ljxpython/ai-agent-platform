@@ -10,9 +10,38 @@ from app.core.errors import ConflictError, NotFoundError, ServiceUnavailableErro
 from app.core.identifiers import parse_uuid
 from app.core.security import hash_password
 from app.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode
+from app.modules.iam.domain import PlatformRole
 from app.modules.users.application.contracts import CreateUserCommand, ListUsersQuery, UpdateUserCommand
 from app.modules.users.domain import UserItem, UserPage, UserProjectItem, UserProjectPage
 from app.modules.users.infra import SqlAlchemyUsersRepository
+
+
+def _normalize_platform_roles(
+    values: tuple[PlatformRole, ...] | tuple[str, ...],
+) -> tuple[str, ...]:
+    return tuple(sorted({str(role.value if isinstance(role, PlatformRole) else role).strip() for role in values if str(role).strip()}))
+
+
+def _resolve_platform_roles_for_create(command: CreateUserCommand) -> tuple[str, ...]:
+    roles = set(_normalize_platform_roles(command.platform_roles))
+    if command.is_super_admin:
+        roles.add(PlatformRole.SUPER_ADMIN.value)
+    return tuple(sorted(roles))
+
+
+def _resolve_platform_roles_for_update(
+    *,
+    current_roles: tuple[str, ...],
+    command: UpdateUserCommand,
+) -> tuple[str, ...]:
+    roles = set(current_roles if command.platform_roles is None else _normalize_platform_roles(command.platform_roles))
+
+    if command.is_super_admin is True:
+        roles.add(PlatformRole.SUPER_ADMIN.value)
+    elif command.is_super_admin is False:
+        roles.discard(PlatformRole.SUPER_ADMIN.value)
+
+    return tuple(sorted(roles))
 
 
 class UsersService:
@@ -45,6 +74,7 @@ class UsersService:
             username=item.username,
             status=item.status,
             is_super_admin=item.is_super_admin,
+            platform_roles=item.platform_roles,
             email=item.email,
             created_at=item.created_at,
             updated_at=item.updated_at,
@@ -98,6 +128,7 @@ class UsersService:
     ) -> UserItem:
         session_factory = self._require_session_factory()
         self._require_permission(actor=actor, permission=PermissionCode.PLATFORM_USER_WRITE)
+        platform_roles = _resolve_platform_roles_for_create(command)
         async with SqlAlchemyUnitOfWork(session_factory) as uow:
             repository = SqlAlchemyUsersRepository(uow.session)
             if repository.get_user_by_username(command.username.strip()) is not None:
@@ -109,7 +140,8 @@ class UsersService:
                 username=command.username.strip(),
                 password_hash=hash_password(command.password),
                 email=None,
-                is_super_admin=command.is_super_admin,
+                platform_roles=platform_roles,
+                is_super_admin=PlatformRole.SUPER_ADMIN.value in platform_roles,
             )
             return self._user_item(created)
 
@@ -167,9 +199,11 @@ class UsersService:
 
             next_username = command.username.strip() if command.username is not None else current.username
             next_status = command.status.value if command.status is not None else current.status
-            next_is_super_admin = (
-                command.is_super_admin if command.is_super_admin is not None else current.is_super_admin
+            next_platform_roles = _resolve_platform_roles_for_update(
+                current_roles=current.platform_roles,
+                command=command,
             )
+            next_is_super_admin = PlatformRole.SUPER_ADMIN.value in next_platform_roles
             if next_username != current.username:
                 existing = repository.get_user_by_username(next_username)
                 if existing is not None and existing.id != current.id:
@@ -192,6 +226,7 @@ class UsersService:
                 username=next_username,
                 email=current.email,
                 status=next_status,
+                platform_roles=next_platform_roles,
                 is_super_admin=next_is_super_admin,
                 password_hash=password_hash,
             )

@@ -18,7 +18,7 @@ import SearchInput from '@/components/platform/SearchInput.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import type { ActionMenuItem, BulkActionItem, DataTableColumn } from '@/components/platform/data-table'
-import { formatPlatformRoleLabel } from '@/services/auth/permissions'
+import { describePlatformRole, primaryPlatformRole } from '@/services/auth/permissions'
 import { listUsersPage } from '@/services/users/users.service'
 import { useUiStore } from '@/stores/ui'
 import type { ManagementUser } from '@/types/management'
@@ -62,7 +62,20 @@ const columns = computed<DataTableColumn[]>(() => [
     key: 'role',
     label: '角色',
     sortable: true,
-    sortValue: (row) => (row.is_super_admin ? 1 : 0)
+    sortValue: (row) => {
+      const user = row as ManagementUser
+      const role = primaryPlatformRole(user)
+      if (role === 'platform_super_admin') {
+        return 3
+      }
+      if (role === 'platform_operator') {
+        return 2
+      }
+      if (role === 'platform_viewer') {
+        return 1
+      }
+      return 0
+    }
   },
   {
     key: 'status',
@@ -90,7 +103,9 @@ function userFromRow(row: Record<string, unknown>) {
   return row as ManagementUser
 }
 
-const adminCount = computed(() => items.value.filter((item) => item.is_super_admin).length)
+const adminCount = computed(
+  () => items.value.filter((item) => primaryPlatformRole(item) === 'platform_super_admin').length
+)
 const activeCount = computed(() => items.value.filter((item) => item.status === 'active').length)
 const selectedUsers = computed(() => items.value.filter((item) => selectedUserIds.value.includes(item.id)))
 const stats = computed(() => [
@@ -221,7 +236,7 @@ function handleExportUserSummary() {
       item.id,
       item.username,
       item.email || '',
-      item.is_super_admin ? formatPlatformRoleLabel('platform_super_admin') : '普通成员',
+      describePlatformRole(item),
       item.status,
       item.created_at || ''
     ].join('\t')
@@ -432,8 +447,8 @@ onMounted(() => {
           </template>
 
           <template #cell-role="{ row }">
-            <StatusPill :tone="userFromRow(row).is_super_admin ? 'info' : 'neutral'">
-              {{ userFromRow(row).is_super_admin ? formatPlatformRoleLabel('platform_super_admin') : '普通成员' }}
+            <StatusPill :tone="primaryPlatformRole(userFromRow(row)) === 'platform_super_admin' ? 'warning' : 'neutral'">
+              {{ describePlatformRole(userFromRow(row)) }}
             </StatusPill>
           </template>
 

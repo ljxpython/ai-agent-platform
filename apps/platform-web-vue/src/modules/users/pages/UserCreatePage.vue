@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 import { useAuthorization } from '@/composables/useAuthorization'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -10,22 +11,31 @@ import MetricCard from '@/components/platform/MetricCard.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import { formatPlatformRoleLabel } from '@/services/auth/permissions'
 import { createUser } from '@/services/users/users.service'
+import type { PlatformRole } from '@/types/management'
 
 const router = useRouter()
 const authorization = useAuthorization()
 
 const username = ref('')
 const password = ref('')
-const isSuperAdmin = ref(false)
+const platformRole = ref<PlatformRole | ''>('')
 const submitting = ref(false)
 const error = ref('')
 const notice = ref('')
+
+const platformRoleOptions: Array<{ value: PlatformRole | ''; label: string }> = [
+  { value: '', label: '无平台角色' },
+  { value: 'platform_viewer', label: formatPlatformRoleLabel('platform_viewer') },
+  { value: 'platform_operator', label: formatPlatformRoleLabel('platform_operator') },
+  { value: 'platform_super_admin', label: formatPlatformRoleLabel('platform_super_admin') }
+]
 
 const normalizedUsername = computed(() => username.value.trim())
 const requestPreview = computed(() => ({
   username: normalizedUsername.value,
   password: password.value ? '********' : '',
-  is_super_admin: isSuperAdmin.value
+  platform_roles: platformRole.value ? [platformRole.value] : [],
+  is_super_admin: platformRole.value === 'platform_super_admin'
 }))
 const stats = computed(() => [
   {
@@ -41,6 +51,13 @@ const stats = computed(() => [
     hint: '建议至少 8 位',
     icon: 'lock',
     tone: password.value.length >= 8 ? 'success' : 'danger'
+  },
+  {
+    label: '平台角色',
+    value: platformRole.value ? formatPlatformRoleLabel(platformRole.value) : '无平台角色',
+    hint: '项目级权限仍需在项目成员页单独分配',
+    icon: 'shield',
+    tone: platformRole.value ? 'primary' : 'warning'
   }
 ])
 
@@ -68,7 +85,8 @@ async function handleSubmit() {
     const created = await createUser({
       username: normalizedUsername.value,
       password: password.value,
-      is_super_admin: isSuperAdmin.value
+      platform_roles: platformRole.value ? [platformRole.value] : [],
+      is_super_admin: platformRole.value === 'platform_super_admin'
     })
 
     notice.value = `已创建用户：${created.username}`
@@ -112,7 +130,7 @@ async function handleSubmit() {
       variant="success"
     />
 
-    <div class="grid gap-4 xl:grid-cols-2">
+    <div class="grid gap-4 xl:grid-cols-3">
       <MetricCard
         v-for="itemStat in stats"
         :key="itemStat.label"
@@ -131,7 +149,7 @@ async function handleSubmit() {
             创建表单
           </div>
           <div class="mt-1 text-sm text-gray-500 dark:text-dark-300">
-            当前页负责最小可用创建链路：用户名、密码、是否超级管理员。
+            当前页负责最小可用创建链路：用户名、密码、平台角色。
           </div>
         </div>
 
@@ -157,17 +175,18 @@ async function handleSubmit() {
           >
         </label>
 
-        <label class="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/80 px-4 py-4 text-sm dark:border-dark-700 dark:bg-dark-900/70">
-          <input
-            v-model="isSuperAdmin"
-            type="checkbox"
-            class="pw-table-checkbox"
+        <label class="block">
+          <span class="pw-input-label">平台角色</span>
+          <BaseSelect
+            v-model="platformRole"
             :disabled="submitting || !authorization.can('platform.user.write')"
-          >
-          <span class="font-medium text-gray-900 dark:text-white">
-            {{ formatPlatformRoleLabel('platform_super_admin') }}
-          </span>
+            :options="platformRoleOptions"
+          />
         </label>
+
+        <div class="rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-4 text-sm leading-7 text-gray-600 dark:border-dark-700 dark:bg-dark-900/70 dark:text-dark-200">
+          用户是否能管理具体项目，不在这里定。项目访问和项目内写权限，统一去项目成员页分配。
+        </div>
 
         <div class="flex justify-end">
           <BaseButton

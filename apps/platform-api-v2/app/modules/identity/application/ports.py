@@ -15,6 +15,7 @@ class StoredUser:
     status: str
     password_hash: str
     is_super_admin: bool
+    platform_roles: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +38,7 @@ class IdentityRepository(Protocol):
         password_hash: str,
         external_subject: str,
         email: str | None,
+        platform_roles: tuple[str, ...] = (),
         is_super_admin: bool,
     ) -> StoredUser: ...
 

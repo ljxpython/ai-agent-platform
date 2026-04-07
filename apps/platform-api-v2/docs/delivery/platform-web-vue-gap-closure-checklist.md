@@ -76,6 +76,7 @@
   - 侧边栏导航裁剪
   - 页面按钮级 action gate
 - [x] 前端保留完整 `platform_roles` 与项目级角色能力，不再只靠 `is_super_admin`
+- [x] 用户创建页 / 用户详情页支持显式平台角色绑定，不再只能靠 bootstrap admin 或旧 `is_super_admin`
 - [x] 将前端项目角色命名对齐 V2 最终标准，不再长期保留旧口径
 - [x] 收敛重复 identity 能力：
   - `users.service.ts` 中的 `getMe / updateMe`

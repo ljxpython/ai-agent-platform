@@ -207,6 +207,23 @@ export function formatPlatformRoleLabel(role: PlatformRole): string {
   return '平台只读'
 }
 
+export function primaryPlatformRole(user: ManagementUser | null | undefined): PlatformRole | null {
+  if (!user) {
+    return null
+  }
+
+  if (user.platform_roles.includes('platform_super_admin')) {
+    return 'platform_super_admin'
+  }
+  if (user.platform_roles.includes('platform_operator')) {
+    return 'platform_operator'
+  }
+  if (user.platform_roles.includes('platform_viewer')) {
+    return 'platform_viewer'
+  }
+  return null
+}
+
 export function formatProjectRoleLabel(role: ProjectRole | null | undefined): string {
   if (role === 'project_admin') {
     return '项目管理员'
@@ -221,20 +238,8 @@ export function formatProjectRoleLabel(role: ProjectRole | null | undefined): st
 }
 
 export function describePlatformRole(user: ManagementUser | null | undefined): string {
-  if (!user) {
-    return '成员'
-  }
-
-  if (user.platform_roles.includes('platform_super_admin')) {
-    return formatPlatformRoleLabel('platform_super_admin')
-  }
-  if (user.platform_roles.includes('platform_operator')) {
-    return formatPlatformRoleLabel('platform_operator')
-  }
-  if (user.platform_roles.includes('platform_viewer')) {
-    return formatPlatformRoleLabel('platform_viewer')
-  }
-  return '成员'
+  const role = primaryPlatformRole(user)
+  return role ? formatPlatformRoleLabel(role) : '成员'
 }
 
 export function describePrimaryRole(

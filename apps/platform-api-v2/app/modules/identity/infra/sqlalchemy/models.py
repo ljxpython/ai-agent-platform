@@ -3,10 +3,40 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid, func
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, String, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db.base import Base
+from app.modules.iam.domain import PlatformRole
+
+
+def normalize_user_platform_roles(
+    values: list[str] | tuple[str, ...] | None,
+    *,
+    is_super_admin: bool = False,
+) -> tuple[str, ...]:
+    normalized: set[str] = set()
+
+    for value in values or ():
+        raw_value = str(value).strip()
+        if not raw_value:
+            continue
+        try:
+            normalized.add(PlatformRole(raw_value).value)
+        except ValueError:
+            continue
+
+    if is_super_admin:
+        normalized.add(PlatformRole.SUPER_ADMIN.value)
+
+    return tuple(sorted(normalized))
+
+
+def has_super_admin_platform_role(values: list[str] | tuple[str, ...] | None, *, is_super_admin: bool = False) -> bool:
+    return PlatformRole.SUPER_ADMIN.value in normalize_user_platform_roles(
+        values,
+        is_super_admin=is_super_admin,
+    )
 
 
 class UserRecord(Base):
@@ -30,6 +60,11 @@ class UserRecord(Base):
         Boolean,
         nullable=False,
         default=False,
+    )
+    platform_roles_json: Mapped[list[str]] = mapped_column(
+        JSON,
+        nullable=False,
+        default=list,
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

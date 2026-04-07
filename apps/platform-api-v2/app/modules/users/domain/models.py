@@ -14,6 +14,7 @@ class UserItem(BaseModel):
     username: str
     status: str
     is_super_admin: bool
+    platform_roles: tuple[str, ...] = ()
     email: str | None = None
     created_at: datetime | None = None
     updated_at: datetime | None = None

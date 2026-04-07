@@ -225,6 +225,29 @@ function syncFocusedIndex() {
   focusedIndex.value = normalizedOptions.value.findIndex((option) => !option.disabled)
 }
 
+function scrollFocusedOptionIntoView() {
+  const container = optionsRef.value
+  const optionEl = container?.children[focusedIndex.value] as HTMLElement | undefined
+
+  if (!container || !optionEl) {
+    return
+  }
+
+  const optionTop = optionEl.offsetTop
+  const optionBottom = optionTop + optionEl.offsetHeight
+  const visibleTop = container.scrollTop
+  const visibleBottom = visibleTop + container.clientHeight
+
+  if (optionTop < visibleTop) {
+    container.scrollTop = optionTop
+    return
+  }
+
+  if (optionBottom > visibleBottom) {
+    container.scrollTop = optionBottom - container.clientHeight
+  }
+}
+
 function focusNext(direction: 1 | -1) {
   if (normalizedOptions.value.length === 0) {
     focusedIndex.value = -1
@@ -241,9 +264,7 @@ function focusNext(direction: 1 | -1) {
   }
 
   nextTick(() => {
-    const container = optionsRef.value
-    const optionEl = container?.children[focusedIndex.value] as HTMLElement | undefined
-    optionEl?.scrollIntoView({ block: 'nearest' })
+    scrollFocusedOptionIntoView()
   })
 }
 
@@ -328,9 +349,7 @@ watch(
     syncFocusedIndex()
     nextTick(() => {
       updateDropdownPosition()
-      const container = optionsRef.value
-      const optionEl = container?.children[focusedIndex.value] as HTMLElement | undefined
-      optionEl?.scrollIntoView({ block: 'nearest' })
+      scrollFocusedOptionIntoView()
     })
   }
 )

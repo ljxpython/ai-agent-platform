@@ -13,6 +13,7 @@ class StoredPlatformUser:
     email: str | None
     status: str
     is_super_admin: bool
+    platform_roles: tuple[str, ...]
     created_at: datetime | None
     updated_at: datetime | None
 
@@ -48,6 +49,7 @@ class UsersRepositoryProtocol(Protocol):
         username: str,
         password_hash: str,
         email: str | None,
+        platform_roles: tuple[str, ...] = (),
         is_super_admin: bool,
     ) -> StoredPlatformUser: ...
 
@@ -58,6 +60,7 @@ class UsersRepositoryProtocol(Protocol):
         username: str,
         email: str | None,
         status: str,
+        platform_roles: tuple[str, ...],
         is_super_admin: bool,
         password_hash: str | None,
     ) -> StoredPlatformUser | None: ...

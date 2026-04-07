@@ -17,11 +17,12 @@ import {
   formatPlatformRoleLabel,
   formatProjectRoleLabel,
   isProjectAdminRole,
-  isProjectEditorRole
+  isProjectEditorRole,
+  primaryPlatformRole
 } from '@/services/auth/permissions'
 import { listAudit } from '@/services/audit/audit.service'
 import { useUiStore } from '@/stores/ui'
-import type { ManagementAuditRow, ManagementUser, ManagementUserProject, ProjectRole } from '@/types/management'
+import type { ManagementAuditRow, ManagementUser, ManagementUserProject, PlatformRole, ProjectRole } from '@/types/management'
 import { copyText } from '@/utils/clipboard'
 import { formatDateTime, shortId } from '@/utils/format'
 import { getUser, listUserProjects, updateUser } from '@/services/users/users.service'
@@ -66,7 +67,7 @@ const notice = ref('')
 
 const username = ref('')
 const status = ref<'active' | 'disabled'>('active')
-const isSuperAdmin = ref(false)
+const platformRole = ref<PlatformRole | ''>('')
 const newPassword = ref('')
 const confirmNewPassword = ref('')
 const projectSearchInput = ref('')
@@ -74,6 +75,12 @@ const projectQuery = ref('')
 const auditSearchInput = ref('')
 const auditQuery = ref('')
 const canManageUsers = computed(() => authorization.can('platform.user.write'))
+const platformRoleOptions: Array<{ value: PlatformRole | ''; label: string }> = [
+  { value: '', label: '无平台角色' },
+  { value: 'platform_viewer', label: formatPlatformRoleLabel('platform_viewer') },
+  { value: 'platform_operator', label: formatPlatformRoleLabel('platform_operator') },
+  { value: 'platform_super_admin', label: formatPlatformRoleLabel('platform_super_admin') }
+]
 
 const filteredProjects = computed(() => {
   const keyword = projectQuery.value.trim().toLowerCase()
@@ -117,7 +124,7 @@ const stats = computed(() => [
     value: user.value?.status || '--',
     hint: describePlatformRole(user.value),
     icon: 'shield',
-    tone: user.value?.is_super_admin ? 'warning' : 'success'
+    tone: primaryPlatformRole(user.value) === 'platform_super_admin' ? 'warning' : 'success'
   },
   {
     label: '项目访问',
@@ -159,7 +166,7 @@ async function reload() {
     audits.value = auditPayload.items
     username.value = userRow.username
     status.value = userRow.status === 'disabled' ? 'disabled' : 'active'
-    isSuperAdmin.value = Boolean(userRow.is_super_admin)
+    platformRole.value = primaryPlatformRole(userRow) || ''
   } catch (loadError) {
     user.value = null
     projects.value = []
@@ -194,9 +201,11 @@ async function saveProfile() {
     const updated = await updateUser(user.value.id, {
       username: normalizedUsername,
       status: status.value,
-      is_super_admin: isSuperAdmin.value
+      platform_roles: platformRole.value ? [platformRole.value] : [],
+      is_super_admin: platformRole.value === 'platform_super_admin'
     })
     user.value = updated
+    platformRole.value = primaryPlatformRole(updated) || ''
     notice.value = '资料已更新'
   } catch (saveError) {
     error.value = saveError instanceof Error ? saveError.message : '用户资料更新失败'
@@ -343,7 +352,7 @@ watch(
                   对应旧版 User Detail 的基础资料编辑区。
                 </div>
               </div>
-              <StatusPill :tone="user.is_super_admin ? 'warning' : 'info'">
+              <StatusPill :tone="primaryPlatformRole(user) === 'platform_super_admin' ? 'warning' : 'info'">
                 {{ describePlatformRole(user) }}
               </StatusPill>
             </div>
@@ -369,16 +378,13 @@ watch(
               </label>
             </div>
 
-            <label class="flex items-center gap-3 rounded-2xl border border-white/70 bg-white/80 px-4 py-4 text-sm dark:border-dark-700 dark:bg-dark-900/70">
-              <input
-                v-model="isSuperAdmin"
-                type="checkbox"
-                class="pw-table-checkbox"
+            <label class="block">
+              <span class="pw-input-label">平台角色</span>
+              <BaseSelect
+                v-model="platformRole"
                 :disabled="savingProfile || !canManageUsers"
-              >
-              <span class="font-medium text-gray-900 dark:text-white">
-                {{ formatPlatformRoleLabel('platform_super_admin') }}
-              </span>
+                :options="platformRoleOptions"
+              />
             </label>
 
             <div class="grid gap-4 md:grid-cols-2">

@@ -10,7 +10,6 @@ from app.core.context import replace_current_request_context
 from app.core.context.models import ActorContext, PlatformRequestContext
 from app.core.errors.payload import build_error_response
 from app.core.security import InvalidTokenError, decode_access_token
-from app.modules.iam.domain import PlatformRole
 from app.modules.identity.infra.sqlalchemy.repository import SqlAlchemyIdentityRepository
 from app.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
 from app.modules.service_accounts.application.service import ServiceAccountsService
@@ -48,14 +47,11 @@ def _load_actor(
         if user is None or user.status != "active":
             return None
         projects_repository = SqlAlchemyProjectsRepository(session)
-        platform_roles = (
-            (PlatformRole.SUPER_ADMIN.value,) if user.is_super_admin else ()
-        )
         return ActorContext(
             user_id=str(user.id),
             subject=user.external_subject,
             email=user.email,
-            platform_roles=platform_roles,
+            platform_roles=user.platform_roles,
             project_roles=projects_repository.list_user_project_roles(
                 user_id=normalized_user_id
             ),

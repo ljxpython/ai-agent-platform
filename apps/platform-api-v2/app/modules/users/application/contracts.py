@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.modules.iam.domain import PlatformRole
 from app.modules.identity.domain import UserStatus
 
 
@@ -20,6 +21,7 @@ class CreateUserCommand(BaseModel):
 
     username: str = Field(min_length=1, max_length=64)
     password: str = Field(min_length=1)
+    platform_roles: tuple[PlatformRole, ...] = ()
     is_super_admin: bool = False
 
 
@@ -29,4 +31,5 @@ class UpdateUserCommand(BaseModel):
     username: str | None = Field(default=None, min_length=1, max_length=64)
     password: str | None = Field(default=None, min_length=8)
     status: UserStatus | None = None
+    platform_roles: tuple[PlatformRole, ...] | None = None
     is_super_admin: bool | None = None

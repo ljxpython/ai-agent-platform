@@ -355,6 +355,27 @@ module/
 
 两者不是互相替代关系。
 
+### 8.5.1 人类用户怎么赋权
+
+当前正式口径已经不是只看 `is_super_admin` 这个老字段了，而是看用户绑定的 `platform_roles`。
+
+实际操作入口分两层：
+
+- 平台级角色：
+  - 在 `apps/platform-web-vue/src/modules/users/pages/UserCreatePage.vue` 选择单个平台角色
+  - 在 `apps/platform-web-vue/src/modules/users/pages/UserDetailPage.vue` 调整平台角色与状态
+  - 当前 UI 采用单选模型：`无平台角色 / platform_viewer / platform_operator / platform_super_admin`
+- 项目级角色：
+  - 统一去项目成员页分配，不放在用户创建页混着管
+  - 入口在项目成员治理页面，由 `project_admin / project_editor / project_executor` 控制项目内权限
+
+这样设计的原因很直接：
+
+- 平台角色决定“能不能治理平台”
+- 项目角色决定“能不能进入某个项目并修改项目内容”
+- 平台管理员不会因为有平台角色就自动拿到所有项目写权限
+- 项目管理员也不会因为能管项目就自动变成平台管理员
+
 ### 8.6 服务账号和普通账号的区别
 
 服务账号是给系统集成、脚本或平台内部自动化调用准备的，不是给人登录页面用的。

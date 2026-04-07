@@ -10,10 +10,19 @@ from app.modules.identity.application.ports import (
     StoredRefreshToken,
     StoredUser,
 )
-from app.modules.identity.infra.sqlalchemy.models import RefreshTokenRecord, UserRecord
+from app.modules.identity.infra.sqlalchemy.models import (
+    RefreshTokenRecord,
+    UserRecord,
+    has_super_admin_platform_role,
+    normalize_user_platform_roles,
+)
 
 
 def _to_user(record: UserRecord) -> StoredUser:
+    platform_roles = normalize_user_platform_roles(
+        record.platform_roles_json,
+        is_super_admin=record.is_super_admin,
+    )
     return StoredUser(
         id=record.id,
         username=record.username,
@@ -21,7 +30,8 @@ def _to_user(record: UserRecord) -> StoredUser:
         email=record.email,
         status=record.status,
         password_hash=record.password_hash,
-        is_super_admin=record.is_super_admin,
+        is_super_admin=has_super_admin_platform_role(platform_roles),
+        platform_roles=platform_roles,
     )
 
 
@@ -54,30 +64,36 @@ class SqlAlchemyIdentityRepository:
         password_hash: str,
         external_subject: str,
         email: str | None,
+        platform_roles: tuple[str, ...] = (),
         is_super_admin: bool,
     ) -> StoredUser:
+        normalized_roles = normalize_user_platform_roles(
+            platform_roles,
+            is_super_admin=is_super_admin,
+        )
         record = UserRecord(
             username=username,
             password_hash=password_hash,
             external_subject=external_subject,
             email=email,
             status="active",
-            is_super_admin=is_super_admin,
+            is_super_admin=has_super_admin_platform_role(normalized_roles),
+            platform_roles_json=list(normalized_roles),
         )
         self.session.add(record)
         self.session.flush()
         return _to_user(record)
 
     def count_super_admins(self) -> int:
-        stmt = (
-            select(func.count())
-            .select_from(UserRecord)
-            .where(
-                UserRecord.is_super_admin.is_(True),
-                UserRecord.status == "active",
+        stmt = select(UserRecord).where(UserRecord.status == "active")
+        return sum(
+            1
+            for record in self.session.scalars(stmt).all()
+            if has_super_admin_platform_role(
+                record.platform_roles_json,
+                is_super_admin=record.is_super_admin,
             )
         )
-        return int(self.session.scalar(stmt) or 0)
 
     def get_refresh_token(self, token_id: str) -> StoredRefreshToken | None:
         stmt = select(RefreshTokenRecord).where(RefreshTokenRecord.token_id == token_id)
@@ -161,6 +177,7 @@ class SqlAlchemyIdentityRepository:
                 password_hash=password_hash,
                 external_subject=username,
                 email=None,
+                platform_roles=("platform_super_admin",),
                 is_super_admin=True,
             )
             return "created"
@@ -168,6 +185,16 @@ class SqlAlchemyIdentityRepository:
         changed = False
         if record.status != "active":
             record.status = "active"
+            changed = True
+        normalized_roles = normalize_user_platform_roles(
+            record.platform_roles_json,
+            is_super_admin=record.is_super_admin,
+        )
+        if "platform_super_admin" not in normalized_roles:
+            normalized_roles = normalize_user_platform_roles(
+                (*normalized_roles, "platform_super_admin"),
+            )
+            record.platform_roles_json = list(normalized_roles)
             changed = True
         if not record.is_super_admin:
             record.is_super_admin = True

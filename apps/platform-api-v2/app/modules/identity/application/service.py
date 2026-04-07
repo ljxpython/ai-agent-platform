@@ -23,7 +23,6 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.modules.iam.domain import PlatformRole
 from app.modules.identity.application.contracts import (
     ChangePasswordCommand,
     LoginCommand,
@@ -81,9 +80,6 @@ class IdentityService:
         *,
         project_roles: dict[str, tuple[str, ...]] | None = None,
     ) -> UserProfile:
-        platform_roles = (
-            (PlatformRole.SUPER_ADMIN.value,) if user.is_super_admin else ()
-        )
         status = (
             UserStatus.ACTIVE
             if user.status == UserStatus.ACTIVE.value
@@ -94,7 +90,7 @@ class IdentityService:
             username=user.username,
             email=user.email,
             status=status,
-            platform_roles=platform_roles,
+            platform_roles=user.platform_roles,
             project_roles=project_roles or {},
         )
 
