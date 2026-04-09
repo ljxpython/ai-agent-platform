@@ -17,6 +17,7 @@
 - 优先用 LangChain 官方 `AgentMiddleware` 生命周期，不自己发明一套拦截协议。
 - 只有“横切关注点”才进入 middleware：输入归一化、状态增强、模型调用包装、输出审计。
 - 业务流程本身不是 middleware；复杂流程仍应放在 graph / tool / service。
+- 公共 runtime 解析层优先收敛成共享 middleware，而不是散落在每个 graph 里各写一套。
 
 ## 2. 目录规则
 
@@ -138,6 +139,30 @@ runtime_service/middlewares/
 - 有顺序依赖的 middleware 必须在 graph 中显式排序
 - 后置 middleware 不得依赖“前面某个 wrap 一定已经改过某字段”这种脆弱约定，除非写在注释和文档里
 
+### 4.5 统一运行时解析 middleware 约定
+
+后续 `runtime_service` 的共享 runtime 解析层，优先落成公共 middleware。
+
+适合放进这个公共 middleware 的职责：
+
+- 读取 `RuntimeContext`
+- 解析模型与运行参数
+- 覆盖 `system prompt`
+- 根据 `enable_tools/tools` 筛选静态工具集合
+- 对非法 runtime 参数直接报错
+
+不适合放进这个公共 middleware 的职责：
+
+- 业务流程分支
+- deepagent 专属 `skills/subagents` 编排
+- 某个业务服务私有的核心决策逻辑
+
+要求：
+
+- 模型、prompt、tools 的公共运行时逻辑不要散落到每个 graph 自己手搓
+- 修改模型调用请求时，优先通过 `request.override(...)` 和 `request.system_message`
+- 需要 graph 明确排序时，在 graph 里直接把 runtime middleware 放在靠前位置
+
 ## 5. 状态设计规则
 
 - 每个中间件只能写自己的命名空间字段
@@ -165,8 +190,10 @@ MY_MIDDLEWARE_RESULT_KEY = "my_middleware_result"
 
 ## 7. 失败处理规则
 
-- 外部解析失败必须 fail-soft，不能把整个 agent 直接打死
-- 错误信息进入中间件自己的状态结构
+- runtime contract 校验失败必须直接报错，不能静默回退
+- 非法 `model_id`、非法 `tools`、非法字段类型直接返回明确错误
+- 外部增强链路是否允许 fail-soft，必须按中间件性质区分并写入文档
+- 即便允许降级，也不能静默吞错，错误信息必须可观测、可定位
 - 对外模型可见内容只给必要错误摘要，不泄漏过长内部细节
 - 同一类失败分支统一走共享 helper，不要每个分支各写一套失败对象
 

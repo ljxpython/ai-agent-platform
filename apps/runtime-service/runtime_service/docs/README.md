@@ -6,16 +6,16 @@
 
 推荐阅读顺序：
 
-1. `docs/02-architecture.md`
-2. `agents/assistant_agent/graph.py`
-3. `agents/deepagent_agent/graph.py`
-4. `agents/personal_assistant_agent/graph.py`
-5. `docs/archive/02-runnableconfig-vs-serverruntime.md`
-6. `docs/04-agent-scaffold-templates.md`
-7. `docs/05-template-to-runnable-agent-10min.md`
-8. `docs/03-agent-development-playbook.md`
-9. `docs/07-service-modularization.md`
-10. 按专题再读鉴权、多模态与其他文档
+1. `docs/standards/01-harness-overview.md`
+2. `docs/standards/02-architecture.md`
+3. `docs/standards/03-agent-development-playbook.md`
+4. `docs/standards/08-middleware-development-playbook.md`
+5. `docs/knowledge/04-runtime-contract-v1.md`
+6. `docs/knowledge/06-runtime-blueprint-pseudocode.md`
+7. `agents/assistant_agent/graph.py`
+8. `agents/deepagent_agent/graph.py`
+9. `agents/personal_assistant_agent/graph.py`
+10. 按专题再读鉴权、runbook、知识文档与其他资料
 
 其中：
 
@@ -24,6 +24,7 @@
 - `agents/personal_assistant_agent/graph.py`：subagent / supervisor 协作范式参考模板
 - `agents/assistant_agent/graph_legacy.py`：历史实现，仅保留兼容与参考价值
 - `agents/assistant_agent/graph_entrypoint.py`：兼容导出文件，避免旧引用立刻失效
+- `docs/archive/`：历史模板和背景资料，不作为现行开发范式入口
 
 ## 当前 graph 一览
 
@@ -115,18 +116,28 @@ fixtures 存放在 `runtime_service/test_data/`。
 
 ## 文档分工
 
-- `docs/02-architecture.md`：稳定运行时契约与目录边界
-- `docs/archive/02-runnableconfig-vs-serverruntime.md`：流程背景资料与设计上下文
+- `docs/standards/`：现行标准与开发范式，团队默认以这里为准
+- `docs/standards/01-harness-overview.md`：harness 总览与验收范围
+- `docs/standards/02-architecture.md`：稳定运行时契约与目录边界
+- `docs/standards/03-agent-development-playbook.md`：graph 形态、RuntimeContext、工具与 middleware 的团队规范
+- `docs/standards/08-middleware-development-playbook.md`：middleware 生命周期、目录组织与测试规范
+- `docs/knowledge/`：面向学习与官方对照的知识型资料，重点覆盖 `RuntimeContext` / `config` / `create_agent` / SDK 与 HTTP API 传参
+- `docs/runbooks/`：排障手册与问题定位文档
+- `docs/archive/`：历史模板、旧范式和背景资料，不作为现行实施模板
 - `docs/01-auth-and-sdk-validation.md`：鉴权模式与验证方法
-- `docs/03-agent-development-playbook.md`：三种主模式的团队规范与选型规则
-- `docs/04-agent-scaffold-templates.md`：三种主模式对应的脚手架模板
-- `docs/05-template-to-runnable-agent-10min.md`：从模板到可运行 graph 的最小落地流程
 - `docs/06-multimodal-middleware-design.md`：当前多模态实现状态与扩展边界
 - `docs/07-service-modularization.md`：同一运行时内的业务服务模块化规范
-- `docs/08-middleware-development-playbook.md`：middleware 目录组织、生命周期钩子与测试规范
-- `docs/09-test-case-service-skills-troubleshooting.md`：test_case_service 的 skills / 多模态问题排查
 - `docs/10-test-case-service-persistence-design.md`：test_case_service 与 interaction-data-service 的新持久化范式
 - `docs/11-testcase-platform-workspace-design.md`：Testcase 平台工作区、管理接口与页面结构的一期设计
+
+知识文档入口：
+
+1. `docs/knowledge/01-langgraph-context-vs-config.md`
+2. `docs/knowledge/02-create-agent-params.md`
+3. `docs/knowledge/03-sdk-and-curl-passing-context-and-config.md`
+4. `docs/knowledge/04-runtime-contract-v1.md`
+5. `docs/knowledge/05-runtime-contract-open-questions.md`
+6. `docs/knowledge/06-runtime-blueprint-pseudocode.md`
 
 ## 开发约定
 
@@ -134,8 +145,10 @@ fixtures 存放在 `runtime_service/test_data/`。
 2. 默认以 `assistant_agent/graph.py` 为 create_agent 推荐范式
 3. 复杂任务分解参考 `deepagent_agent/graph.py`
 4. subagent / supervisor 协作参考 `personal_assistant_agent/graph.py`
-5. 流程文档优先参考 `docs/archive/02-runnableconfig-vs-serverruntime.md`、`docs/04-agent-scaffold-templates.md`、`docs/05-template-to-runnable-agent-10min.md`
-6. 显式步骤流可额外参考 `customer_support_agent/graph.py`
-7. 业务服务模块化开发规范见 `docs/07-service-modularization.md`
-8. middleware 开发规范见 `docs/08-middleware-development-playbook.md`
-9. 改完代码后至少跑相关 pytest 与 `python -m compileall runtime_service`
+5. 现行规范优先参考 `docs/standards/`
+6. 知识和官方对照优先参考 `docs/knowledge/`
+7. 具体排障优先参考 `docs/runbooks/`
+8. 历史模板只在需要理解旧设计时查看 `docs/archive/`
+9. 显式步骤流可额外参考 `customer_support_agent/graph.py`
+10. 业务服务模块化开发规范见 `docs/07-service-modularization.md`
+11. 改完代码后至少跑相关 pytest 与 `python -m compileall runtime_service`

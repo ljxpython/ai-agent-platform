@@ -1,7 +1,7 @@
 # RunnableConfig vs ServerRuntime：背景资料（归档）
 
 > 说明：这份文档保留为历史背景材料，不再作为 `runtime_service` 当前开发的主规范入口。
-> 当前推荐范式请优先参考 `docs/README.md`、`docs/02-architecture.md` 和 `docs/03-agent-development-playbook.md`。
+> 当前推荐范式请优先参考 `docs/README.md`、`docs/standards/02-architecture.md` 和 `docs/standards/03-agent-development-playbook.md`。
 
 本文用于回答一个高频问题：在 LangGraph 部署与运行中，什么时候用 `RunnableConfig`，什么时候用 `ServerRuntime`。
 
