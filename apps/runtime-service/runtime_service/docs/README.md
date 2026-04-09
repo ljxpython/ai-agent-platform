@@ -10,11 +10,11 @@
 2. `docs/standards/02-architecture.md`
 3. `docs/standards/03-agent-development-playbook.md`
 4. `docs/standards/08-middleware-development-playbook.md`
-5. `docs/knowledge/04-runtime-contract-v1.md`
-6. `docs/knowledge/06-runtime-blueprint-pseudocode.md`
-7. `agents/assistant_agent/graph.py`
-8. `agents/deepagent_agent/graph.py`
-9. `agents/personal_assistant_agent/graph.py`
+5. `docs/standards/04-agent-scaffold-templates.md`
+6. `docs/standards/05-template-to-runnable-agent-10min.md`
+7. `docs/knowledge/04-runtime-contract-v1.md`
+8. `docs/knowledge/06-runtime-blueprint-pseudocode.md`
+9. `agents/assistant_agent/graph.py`
 10. 按专题再读鉴权、runbook、知识文档与其他资料
 
 其中：
@@ -121,6 +121,8 @@ fixtures 存放在 `runtime_service/test_data/`。
 - `docs/standards/02-architecture.md`：稳定运行时契约与目录边界
 - `docs/standards/03-agent-development-playbook.md`：graph 形态、RuntimeContext、工具与 middleware 的团队规范
 - `docs/standards/08-middleware-development-playbook.md`：middleware 生命周期、目录组织与测试规范
+- `docs/standards/04-agent-scaffold-templates.md`：现行脚手架模板
+- `docs/standards/05-template-to-runnable-agent-10min.md`：从模板到可运行 graph 的最小落地流程
 - `docs/knowledge/`：面向学习与官方对照的知识型资料，重点覆盖 `RuntimeContext` / `config` / `create_agent` / SDK 与 HTTP API 传参
 - `docs/runbooks/`：排障手册与问题定位文档
 - `docs/archive/`：历史模板、旧范式和背景资料，不作为现行实施模板

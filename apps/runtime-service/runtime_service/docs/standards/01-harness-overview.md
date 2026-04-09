@@ -25,6 +25,8 @@
 - `standards/02-architecture.md`
 - `standards/03-agent-development-playbook.md`
 - `standards/08-middleware-development-playbook.md`
+- `standards/04-agent-scaffold-templates.md`
+- `standards/05-template-to-runnable-agent-10min.md`
 - `knowledge/04-runtime-contract-v1.md`
 - `knowledge/06-runtime-blueprint-pseudocode.md`
 
