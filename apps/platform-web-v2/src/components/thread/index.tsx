@@ -361,34 +361,57 @@ export function Thread({
     );
   }
 
-  function buildRunConfig(): Record<string, unknown> | undefined {
-    const configurable: Record<string, unknown> = {};
+  function buildRuntimeContext(): Record<string, unknown> | undefined {
+    const runtimeContext: Record<string, unknown> = {};
     const trimmedModelId = appliedRunOptions.modelId.trim();
     if (trimmedModelId) {
-      configurable.model_id = trimmedModelId;
+      runtimeContext.model_id = trimmedModelId;
     }
     if (appliedRunOptions.enableTools && appliedRunOptions.toolNames.length > 0) {
-      configurable.enable_tools = true;
-      configurable.tools = appliedRunOptions.toolNames;
+      runtimeContext.enable_tools = true;
+      runtimeContext.tools = appliedRunOptions.toolNames;
     }
     const normalizedTemperature = appliedRunOptions.temperature.trim();
     if (normalizedTemperature) {
       const parsedTemperature = Number(normalizedTemperature);
       if (Number.isFinite(parsedTemperature)) {
-        configurable.temperature = parsedTemperature;
+        runtimeContext.temperature = parsedTemperature;
       }
     }
     const normalizedMaxTokens = appliedRunOptions.maxTokens.trim();
     if (normalizedMaxTokens) {
       const parsedMaxTokens = Number(normalizedMaxTokens);
       if (Number.isFinite(parsedMaxTokens)) {
-        configurable.max_tokens = parsedMaxTokens;
+        runtimeContext.max_tokens = parsedMaxTokens;
       }
     }
-    if (Object.keys(configurable).length === 0) {
+    if (Object.keys(runtimeContext).length === 0) {
       return undefined;
     }
-    return { configurable };
+    return runtimeContext;
+  }
+
+  function buildRunConfig(): Record<string, unknown> | undefined {
+    const runtimeContext = buildRuntimeContext();
+    if (!runtimeContext) {
+      return undefined;
+    }
+    return {
+      configurable: runtimeContext,
+    };
+  }
+
+  function buildSubmissionContext(): Record<string, unknown> | undefined {
+    const baseContext =
+      Object.keys(artifactContext).length > 0 ? artifactContext : undefined;
+    const runtimeContext = buildRuntimeContext();
+    if (!baseContext && !runtimeContext) {
+      return undefined;
+    }
+    return {
+      ...(baseContext ?? {}),
+      ...(runtimeContext ?? {}),
+    };
   }
 
   function hasAppliedRunOptions(): boolean {
@@ -448,11 +471,13 @@ export function Thread({
       ] as Message["content"],
     };
     const toolMessages = ensureToolCallsHaveResponses(stream.messages);
-    const context =
-      Object.keys(artifactContext).length > 0 ? artifactContext : undefined;
+    const context = buildSubmissionContext();
     const config = buildRunConfig();
     stream.submit(
-      { messages: [...toolMessages, newHumanMessage], context },
+      {
+        messages: [...toolMessages, newHumanMessage],
+        ...(context ? { context } : {}),
+      },
       {
         config,
         ...(debugMode ? { interruptBefore: ["tools"] } : {}),
@@ -479,15 +504,19 @@ export function Thread({
   ) => {
     prevMessageLength.current = prevMessageLength.current - 1;
     setFirstTokenReceived(false);
+    const context = buildSubmissionContext();
     const config = buildRunConfig();
-    stream.submit(undefined, {
-      checkpoint: parentCheckpoint,
-      config,
-      ...(debugMode ? { interruptBefore: ["tools"] } : {}),
-      streamMode: ["values"],
-      streamSubgraphs: true,
-      streamResumable: true,
-    });
+    stream.submit(
+      context ? { context } : undefined,
+      {
+        checkpoint: parentCheckpoint,
+        config,
+        ...(debugMode ? { interruptBefore: ["tools"] } : {}),
+        streamMode: ["values"],
+        streamSubgraphs: true,
+        streamResumable: true,
+      },
+    );
   };
 
   const canContinueDebugStream =
@@ -500,17 +529,21 @@ export function Thread({
       return;
     }
 
+    const context = buildSubmissionContext();
     const config = buildRunConfig();
     const hasTaskToolCall = hasPendingTaskToolCall(stream.messages);
-    stream.submit(undefined, {
-      config,
-      ...(hasTaskToolCall
-        ? { interruptAfter: ["tools"] }
-        : { interruptBefore: ["tools"] }),
-      streamMode: ["values"],
-      streamSubgraphs: true,
-      streamResumable: true,
-    });
+    stream.submit(
+      context ? { context } : undefined,
+      {
+        config,
+        ...(hasTaskToolCall
+          ? { interruptAfter: ["tools"] }
+          : { interruptBefore: ["tools"] }),
+        streamMode: ["values"],
+        streamSubgraphs: true,
+        streamResumable: true,
+      },
+    );
   };
 
   const chatStarted = !!threadId || !!messages.length;

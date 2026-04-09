@@ -154,13 +154,10 @@ class RuntimeGatewayService:
         configurable = config_dict.get("configurable")
         if isinstance(configurable, dict) and not configurable:
             config_dict.pop("configurable", None)
-            configurable = None
-
-        if not isinstance(configurable, dict):
-            context = next_payload.get("context")
-            context_dict = dict(context) if isinstance(context, dict) else {}
-            context_dict["project_id"] = project_id
-            next_payload["context"] = context_dict
+        context = next_payload.get("context")
+        context_dict = dict(context) if isinstance(context, dict) else {}
+        context_dict["project_id"] = project_id
+        next_payload["context"] = context_dict
 
         config_metadata = config_dict.get("metadata")
         config_metadata_dict = (

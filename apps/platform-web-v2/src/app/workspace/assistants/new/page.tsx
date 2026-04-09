@@ -65,8 +65,10 @@ function buildCreateAssistantPayload(input: {
 
   const trimmedModelId = input.runtimeModelId.trim();
   if (trimmedModelId) {
+    contextObject.model_id = trimmedModelId;
     configurable.model_id = trimmedModelId;
   } else {
+    delete contextObject.model_id;
     delete configurable.model_id;
   }
 
@@ -74,9 +76,13 @@ function buildCreateAssistantPayload(input: {
     .map((name) => name.trim())
     .filter((name) => name.length > 0);
   if (input.runtimeEnableTools && cleanedTools.length > 0) {
+    contextObject.enable_tools = true;
+    contextObject.tools = cleanedTools;
     configurable.enable_tools = true;
     configurable.tools = cleanedTools;
   } else {
+    delete contextObject.enable_tools;
+    delete contextObject.tools;
     delete configurable.enable_tools;
     delete configurable.tools;
   }
@@ -485,7 +491,7 @@ export default function CreateAssistantPage() {
         </FormSection>
 
         <FormSection
-          description="runtime 相关选择会写入 config.configurable，不跟 schema 字段混在一起。"
+          description="runtime 相关选择优先写入 context；旧 graph 迁移完成前，同时镜像到 config.configurable。"
           title="Runtime Configuration"
         >
           <div className="grid gap-5 lg:grid-cols-2">

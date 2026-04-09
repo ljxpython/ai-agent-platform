@@ -113,6 +113,46 @@ class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase
             assistant_id="assistant-1",
         )
 
+    def test_inject_project_scope_always_writes_context_project_id(self) -> None:
+        service = RuntimeGatewayService(
+            session_factory=None,
+            upstream=SimpleNamespace(),
+        )
+
+        payload = service._inject_project_scope(
+            project_id="project-1",
+            payload={
+                "context": {"model_id": "assistant-model"},
+                "config": {
+                    "configurable": {
+                        "thread_id": "thread-1",
+                        "checkpoint_id": "checkpoint-1",
+                    }
+                },
+            },
+        )
+
+        self.assertEqual(
+            payload["context"],
+            {
+                "model_id": "assistant-model",
+                "project_id": "project-1",
+            },
+        )
+        self.assertEqual(
+            payload["config"]["configurable"],
+            {
+                "thread_id": "thread-1",
+                "checkpoint_id": "checkpoint-1",
+            },
+        )
+        self.assertEqual(
+            payload["config"]["metadata"],
+            {
+                "project_id": "project-1",
+            },
+        )
+
     async def test_cancel_runs_ignores_blank_thread_id(self) -> None:
         upstream = SimpleNamespace(cancel_runs=AsyncMock(return_value={"ok": True}))
         service = RuntimeGatewayService(
