@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -56,6 +57,12 @@ async def aget_test_case_knowledge_tools(
         return []
 
     return [_wrap_mcp_tool_with_string_output(tool) for tool in tools]
+
+
+def get_test_case_knowledge_tools(
+    service_config: TestCaseServiceConfig,
+) -> list[Any]:
+    return asyncio.run(aget_test_case_knowledge_tools(service_config))
 
 
 def _wrap_mcp_tool_with_string_output(tool: Any) -> StructuredTool:

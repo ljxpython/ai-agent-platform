@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import asyncio
-import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -12,71 +10,65 @@ from runtime_service.agents.deepagent_agent.tools import (
     list_deepagent_skills,
     list_subagents,
 )
+from runtime_service.conf.settings import get_default_model_id
 from runtime_service.middlewares.multimodal import MultimodalMiddleware
+from runtime_service.middlewares.runtime_request import RuntimeRequestMiddleware
 from runtime_service.runtime.context import RuntimeContext
-from runtime_service.runtime.filesystem_backend import abuild_filesystem_backend
-from runtime_service.runtime.modeling import apply_model_runtime_params, resolve_model
-from runtime_service.runtime.options import (
-    build_runtime_config,
-    merge_trusted_auth_context,
-    read_configurable,
+from runtime_service.runtime.filesystem_backend import build_filesystem_backend
+from runtime_service.runtime.modeling import resolve_model_by_id
+from runtime_service.runtime.runtime_request_resolver import AgentDefaults
+from runtime_service.tools.registry import abuild_runtime_tools, build_runtime_tools
+
+
+def _runtime_service_root() -> Path:
+    return Path(__file__).resolve().parents[2]
+
+
+DEEPAGENT_DEFAULTS = AgentDefaults(
+    model_id=get_default_model_id(),
+    system_prompt=SYSTEM_PROMPT,
+    enable_tools=False,
 )
-from runtime_service.tools.registry import build_tools
-from langchain_core.runnables import RunnableConfig
-from langgraph_sdk.runtime import ServerRuntime
+
+BASELINE_MODEL = resolve_model_by_id(DEEPAGENT_DEFAULTS.model_id)
+SUBAGENTS: list[SubAgent | CompiledSubAgent] = list(list_subagents())
+BACKEND = build_filesystem_backend(
+    root_dir=_runtime_service_root(),
+    virtual_mode=False,
+)
 
 
-def _resolve_filesystem_backend_root_dir_path(
-    private_config: dict[str, Any], *, agent_name: str
-) -> Path:
-    override = private_config.get("deepagents_backend_root_dir")
-    if isinstance(override, str) and override.strip():
-        path = Path(override).expanduser()
-    else:
-        path = (
-            Path(tempfile.gettempdir())
-            / "ai-agent-platform"
-            / "deepagents"
-            / agent_name
-        )
-    return path
-
-
-async def _aresolve_filesystem_backend_root_dir(
-    private_config: dict[str, Any], *, agent_name: str
-) -> str:
-    path = _resolve_filesystem_backend_root_dir_path(
-        private_config, agent_name=agent_name
+def _resolve_public_tools(settings: Any) -> list[Any]:
+    return build_runtime_tools(
+        enable_tools=settings.enable_tools,
+        requested_tool_names=settings.requested_public_tool_names or None,
     )
-    await asyncio.to_thread(path.mkdir, parents=True, exist_ok=True)
-    return str(path)
 
 
-async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
-    del runtime
-    runtime_context = merge_trusted_auth_context(config, {})
-    options = build_runtime_config(config, runtime_context)
-    private_config = dict(read_configurable(config))
-    tools = await build_tools(options)
-    model = apply_model_runtime_params(resolve_model(options.model_spec), options)
-    subagents: list[SubAgent | CompiledSubAgent] = list(list_subagents())
+async def _aresolve_public_tools(settings: Any) -> list[Any]:
+    return await abuild_runtime_tools(
+        enable_tools=settings.enable_tools,
+        requested_tool_names=settings.requested_public_tool_names or None,
+    )
 
-    return create_deep_agent(
-        name="deepagent-demo",
-        model=model,
-        tools=tools,
-        middleware=[MultimodalMiddleware()],
-        system_prompt=options.system_prompt or SYSTEM_PROMPT,
-        backend=await abuild_filesystem_backend(
-            root_dir=await _aresolve_filesystem_backend_root_dir(
-                private_config, agent_name="deepagent-demo"
-            ),
-            virtual_mode=False,
+
+graph = create_deep_agent(
+    name="deepagent-demo",
+    model=BASELINE_MODEL,
+    tools=[],
+    middleware=[
+        RuntimeRequestMiddleware(
+            defaults=DEEPAGENT_DEFAULTS,
+            required_tools=[],
+            public_tools=[],
+            public_tool_resolver=_resolve_public_tools,
+            apublic_tool_resolver=_aresolve_public_tools,
         ),
-        skills=list_deepagent_skills(),
-        subagents=subagents,
-        context_schema=RuntimeContext,
-    )
-
-
-graph = make_graph
+        MultimodalMiddleware(),
+    ],
+    system_prompt=DEEPAGENT_DEFAULTS.system_prompt,
+    backend=BACKEND,
+    skills=list_deepagent_skills(),
+    subagents=SUBAGENTS,
+    context_schema=RuntimeContext,
+)

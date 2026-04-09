@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
 from typing import Any
@@ -54,3 +55,7 @@ async def aget_research_private_tools(config: dict[str, Any]) -> list[Any]:
         }
     )
     return await client.get_tools()
+
+
+def get_research_private_tools(config: dict[str, Any] | None = None) -> list[Any]:
+    return asyncio.run(aget_research_private_tools(config or {}))

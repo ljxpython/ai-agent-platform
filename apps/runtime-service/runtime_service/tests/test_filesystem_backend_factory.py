@@ -15,6 +15,30 @@ filesystem_backend = importlib.import_module(
 )
 
 
+def test_build_filesystem_backend_prepares_root_dir(monkeypatch: Any, tmp_path: Path) -> None:
+    captured: dict[str, Any] = {}
+
+    class DummyBackend:
+        def __init__(self, *, root_dir: str, virtual_mode: bool) -> None:
+            captured["root_dir"] = root_dir
+            captured["virtual_mode"] = virtual_mode
+
+    target_root = tmp_path / "sync-backend"
+    monkeypatch.setattr(filesystem_backend, "FilesystemBackend", DummyBackend)
+
+    backend = filesystem_backend.build_filesystem_backend(
+        root_dir=target_root,
+        virtual_mode=True,
+    )
+
+    assert isinstance(backend, DummyBackend)
+    assert target_root.is_dir()
+    assert captured == {
+        "root_dir": str(target_root),
+        "virtual_mode": True,
+    }
+
+
 def test_abuild_filesystem_backend_uses_to_thread(monkeypatch: Any) -> None:
     calls: list[tuple[Any, tuple[Any, ...], dict[str, Any]]] = []
 
@@ -40,13 +64,15 @@ def test_abuild_filesystem_backend_uses_to_thread(monkeypatch: Any) -> None:
     assert isinstance(backend, DummyBackend)
     assert backend.root_dir == "/tmp/runtime-service-backend"
     assert backend.virtual_mode is False
-    assert calls == [
-        (
-            DummyBackend,
-            (),
-            {
-                "root_dir": "/tmp/runtime-service-backend",
-                "virtual_mode": False,
-            },
-        )
-    ]
+    assert len(calls) == 2
+    assert calls[0][0] is filesystem_backend._prepare_root_dir
+    assert calls[0][1] == ("/tmp/runtime-service-backend",)
+    assert calls[0][2] == {}
+    assert calls[1] == (
+        DummyBackend,
+        (),
+        {
+            "root_dir": "/tmp/runtime-service-backend",
+            "virtual_mode": False,
+        },
+    )
