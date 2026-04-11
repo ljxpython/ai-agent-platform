@@ -426,4 +426,5 @@ apps/runtime-web/node_modules/
 apps/runtime-web/.next/
 !apps/runtime-web/src/lib/
 !apps/runtime-web/src/lib/**
+.omx/
 .codex/
