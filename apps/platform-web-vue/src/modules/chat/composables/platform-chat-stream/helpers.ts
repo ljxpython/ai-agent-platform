@@ -1,42 +1,7 @@
 import type { Message } from '@langchain/langgraph-sdk'
 import type { ChatAttachmentBlock } from '@/utils/chat-content'
-import type { ChatResolvedTarget, ChatRunOptions } from '../../types'
+import type { ChatResolvedTarget } from '../../types'
 import type { AIMessage, BaseMessage, ToolMessage } from './types'
-
-function parseNumericInput(raw: string, kind: 'float' | 'int'): number | undefined {
-  const normalized = raw.trim()
-  if (!normalized) {
-    return undefined
-  }
-
-  const parsed = kind === 'float' ? Number.parseFloat(normalized) : Number.parseInt(normalized, 10)
-  return Number.isFinite(parsed) ? parsed : undefined
-}
-
-export function buildRunConfig(runOptions: ChatRunOptions) {
-  const configurable: Record<string, unknown> = {}
-
-  if (runOptions.modelId.trim()) {
-    configurable.model_id = runOptions.modelId.trim()
-  }
-
-  configurable.enable_tools = runOptions.enableTools
-  if (runOptions.enableTools && runOptions.toolNames.length > 0) {
-    configurable.tools = runOptions.toolNames
-  }
-
-  const temperature = parseNumericInput(runOptions.temperature, 'float')
-  if (temperature !== undefined) {
-    configurable.temperature = temperature
-  }
-
-  const maxTokens = parseNumericInput(runOptions.maxTokens, 'int')
-  if (maxTokens !== undefined) {
-    configurable.max_tokens = maxTokens
-  }
-
-  return Object.keys(configurable).length > 0 ? { configurable } : undefined
-}
 
 function unwrapInterruptPayload(interrupt: unknown): unknown {
   if (Array.isArray(interrupt)) {

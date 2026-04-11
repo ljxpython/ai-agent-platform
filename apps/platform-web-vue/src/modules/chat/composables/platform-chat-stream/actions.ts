@@ -1,8 +1,8 @@
 import { cancelRuntimeRun, normalizeRuntimeGatewayError } from '@/services/runtime-gateway/workspace.service'
+import { buildChatRunSubmitOptions } from '@/services/runtime/runtime-contract'
 import type { PlatformChatStreamActionDeps } from './types'
 import {
   buildOptimisticMessage,
-  buildRunConfig,
   createThreadMetadata,
   getMetadataCheckpointId,
   hasPendingTaskToolCall,
@@ -54,6 +54,7 @@ export function createPlatformChatStreamActions(deps: PlatformChatStreamActionDe
       deps.options.selectedBranch.value && deps.stream.branch.value
         ? getMetadataCheckpointId(deps.messageMetadataById.value[deps.messages.value[deps.messages.value.length - 1]?.id || ''])
         : ''
+    const runtimeSubmitOptions = buildChatRunSubmitOptions(deps.options.runOptions)
 
     try {
       await deps.stream.submit(
@@ -70,7 +71,7 @@ export function createPlatformChatStreamActions(deps: PlatformChatStreamActionDe
             ...prev,
             messages: [...((prev.messages as unknown[] | undefined) || []), humanMessage]
           }),
-          config: buildRunConfig(deps.options.runOptions),
+          ...runtimeSubmitOptions,
           ...(deps.options.runOptions.debugMode ? { interruptBefore: ['tools'] } : {}),
           streamSubgraphs: true,
           multitaskStrategy: 'interrupt',
@@ -100,10 +101,11 @@ export function createPlatformChatStreamActions(deps: PlatformChatStreamActionDe
     clearDetailFeedback()
 
     const pendingTaskToolCall = hasPendingTaskToolCall(deps.stream.messages.value)
+    const runtimeSubmitOptions = buildChatRunSubmitOptions(deps.options.runOptions)
 
     try {
       await deps.stream.submit(undefined, {
-        config: buildRunConfig(deps.options.runOptions),
+        ...runtimeSubmitOptions,
         ...(pendingTaskToolCall ? { interruptAfter: ['tools'] } : { interruptBefore: ['tools'] }),
         streamSubgraphs: true,
         multitaskStrategy: 'interrupt'
@@ -150,13 +152,14 @@ export function createPlatformChatStreamActions(deps: PlatformChatStreamActionDe
     deps.sending.value = true
     deps.cancelling.value = false
     clearDetailFeedback()
+    const runtimeSubmitOptions = buildChatRunSubmitOptions(deps.options.runOptions)
 
     try {
       await deps.stream.submit(null, {
         command: {
           resume: resumePayload
         },
-        config: buildRunConfig(deps.options.runOptions),
+        ...runtimeSubmitOptions,
         streamSubgraphs: true,
         multitaskStrategy: 'interrupt'
       })
@@ -188,13 +191,14 @@ export function createPlatformChatStreamActions(deps: PlatformChatStreamActionDe
     deps.cancelling.value = false
     clearDetailFeedback()
     deps.lastRunId.value = ''
+    const runtimeSubmitOptions = buildChatRunSubmitOptions(deps.options.runOptions)
 
     try {
       await deps.stream.submit(undefined, {
         checkpoint: {
           checkpoint_id: checkpointId
         },
-        config: buildRunConfig(deps.options.runOptions),
+        ...runtimeSubmitOptions,
         ...(deps.options.runOptions.debugMode ? { interruptBefore: ['tools'] } : {}),
         streamSubgraphs: true,
         multitaskStrategy: 'interrupt'
@@ -224,6 +228,7 @@ export function createPlatformChatStreamActions(deps: PlatformChatStreamActionDe
     deps.cancelling.value = false
     clearDetailFeedback()
     deps.lastRunId.value = ''
+    const runtimeSubmitOptions = buildChatRunSubmitOptions(deps.options.runOptions)
 
     try {
       await deps.stream.submit(
@@ -238,7 +243,7 @@ export function createPlatformChatStreamActions(deps: PlatformChatStreamActionDe
             ...prev,
             messages: [...((prev.messages as unknown[] | undefined) || []), optimisticMessage]
           }),
-          config: buildRunConfig(deps.options.runOptions),
+          ...runtimeSubmitOptions,
           ...(deps.options.runOptions.debugMode ? { interruptBefore: ['tools'] } : {}),
           streamSubgraphs: true,
           multitaskStrategy: 'interrupt'

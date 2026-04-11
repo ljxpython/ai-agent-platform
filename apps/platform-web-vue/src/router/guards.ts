@@ -4,7 +4,7 @@ import {
   hasPermission,
   isProjectPermission
 } from '@/services/auth/permissions'
-import { getAccessToken } from '@/services/auth/token'
+import { getAccessToken, hasStoredAuthSession } from '@/services/auth/token'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
 import { useWorkspaceStore } from '@/stores/workspace'
@@ -56,11 +56,11 @@ export function registerRouterGuards(router: Router) {
     const uiStore = useUiStore()
 
     await authStore.hydrate()
-    if (getAccessToken() && !authStore.user) {
+    if (hasStoredAuthSession() && (!authStore.user || !getAccessToken())) {
       await authStore.fetchCurrentUser()
     }
 
-    const isAuthenticated = Boolean(getAccessToken()) && Boolean(authStore.user)
+    const isAuthenticated = hasStoredAuthSession() && Boolean(authStore.user)
 
     if (to.path.startsWith('/workspace') && !isAuthenticated) {
       return {

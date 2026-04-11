@@ -4,9 +4,9 @@ import { login as loginRequest, logout as logoutRequest } from '@/services/auth/
 import { describePlatformRole } from '@/services/auth/permissions'
 import {
   clearAllTokenSets,
-  getAccessToken,
   getRefreshToken,
   getTokenSet,
+  hasStoredAuthSession,
   setTokenSet
 } from '@/services/auth/token'
 import { getCurrentProfile } from '@/services/identity/identity.service'
@@ -17,11 +17,11 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
   const hydrated = ref(false)
 
-  const isAuthenticated = computed(() => Boolean(getAccessToken()) && Boolean(user.value))
+  const isAuthenticated = computed(() => hasStoredAuthSession() && Boolean(user.value))
   const roleLabel = computed(() => describePlatformRole(user.value))
 
   async function fetchCurrentUser(): Promise<ManagementUser | null> {
-    if (!getAccessToken()) {
+    if (!hasStoredAuthSession()) {
       user.value = null
       return null
     }

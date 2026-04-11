@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { Message } from '@langchain/langgraph-sdk'
+import { computed } from 'vue'
 import MarkdownContent from '@/components/platform/MarkdownContent.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import { getMessageAttachments, getMessageText } from '@/utils/threads'
 import type { ChatDisplayMessage } from '../message-view-model'
+import { buildChatMessageMetaView } from '../message-meta-view-model'
 import ChatAttachmentPreview from './ChatAttachmentPreview.vue'
 import ChatMessageMeta from './ChatMessageMeta.vue'
 
@@ -12,7 +14,7 @@ type BranchMeta = {
   branchOptions?: string[]
 }
 
-defineProps<{
+const props = defineProps<{
   displayMessages: ChatDisplayMessage[]
   allMessages: Message[]
   editingMessageId: string
@@ -40,6 +42,19 @@ const emit = defineEmits<{
 function handleEditingInput(event: Event) {
   emit('update:editingMessageValue', (event.target as HTMLTextAreaElement | null)?.value || '')
 }
+
+function hasMetaSummary(message: Message) {
+  const metaView = buildChatMessageMetaView(message, props.allMessages)
+  return metaView.toolCalls.length > 0 || metaView.subAgentCards.length > 0
+}
+
+const emptyPlaceholderSuppressedIds = computed(() => {
+  return new Set(
+    props.displayMessages
+      .filter((entry) => entry.message.type === 'ai' && hasMetaSummary(entry.message))
+      .map((entry) => entry.id)
+  )
+})
 </script>
 
 <template>
@@ -88,7 +103,10 @@ function handleEditingInput(event: Event) {
           :class="getMessageAttachments(displayEntry.message.content).length > 0 ? 'mt-3' : ''"
         />
         <div
-          v-else-if="getMessageAttachments(displayEntry.message.content).length === 0"
+          v-else-if="
+            getMessageAttachments(displayEntry.message.content).length === 0 &&
+              !emptyPlaceholderSuppressedIds.has(displayEntry.id)
+          "
           class="text-sm leading-7 text-gray-500 dark:text-dark-300"
         >
           当前消息没有可渲染的文本内容。

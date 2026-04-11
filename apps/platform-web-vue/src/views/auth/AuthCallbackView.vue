@@ -2,7 +2,7 @@
 import { computed, onMounted } from 'vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getAccessToken } from '@/services/auth/token'
+import { hasStoredAuthSession } from '@/services/auth/token'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,7 +24,7 @@ const fallbackTarget = computed(() =>
 )
 
 onMounted(async () => {
-  if (getAccessToken()) {
+  if (hasStoredAuthSession()) {
     await router.replace(redirectPath.value)
     return
   }

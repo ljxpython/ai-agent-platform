@@ -4,6 +4,7 @@ import { env } from '@/config/env'
 import {
   getAccessToken,
   getRefreshToken,
+  isAccessTokenExpiringSoon,
   setTokenSet
 } from '@/services/auth/token'
 import { handleSessionExpired, hasStoredSession } from '@/services/auth/session-expiry'
@@ -79,6 +80,20 @@ export async function refreshAccessToken(): Promise<string> {
   return refreshPromise
 }
 
+export async function resolveAuthorizedAccessToken(skewSeconds = 30): Promise<string> {
+  const currentToken = getAccessToken()
+  if (currentToken && !isAccessTokenExpiringSoon(currentToken, skewSeconds)) {
+    return currentToken
+  }
+
+  if (!getRefreshToken()) {
+    return currentToken
+  }
+
+  const refreshedToken = (await refreshAccessToken()).trim()
+  return refreshedToken || currentToken
+}
+
 function createPlatformHttpClient() {
   const client = axios.create({
     baseURL: platformApiBaseUrl,
@@ -88,8 +103,8 @@ function createPlatformHttpClient() {
     }
   })
 
-  client.interceptors.request.use((config) => {
-    const token = getAccessToken()
+  client.interceptors.request.use(async (config) => {
+    const token = await resolveAuthorizedAccessToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }

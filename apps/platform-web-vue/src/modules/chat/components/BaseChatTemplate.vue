@@ -419,10 +419,18 @@ function handleMessagesContentResize() {
 }
 
 function syncThreadIdToRoute(threadId: string) {
+  const normalizedThreadId = threadId.trim()
+  const currentRouteThreadId =
+    typeof route.query.threadId === 'string' && route.query.threadId.trim() ? route.query.threadId.trim() : ''
+
+  if (normalizedThreadId === currentRouteThreadId) {
+    return
+  }
+
   const nextQuery: LocationQueryRaw = { ...route.query }
 
-  if (threadId.trim()) {
-    nextQuery.threadId = threadId.trim()
+  if (normalizedThreadId) {
+    nextQuery.threadId = normalizedThreadId
   } else {
     delete nextQuery.threadId
   }

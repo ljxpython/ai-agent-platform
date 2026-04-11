@@ -3,6 +3,10 @@ import {
   submitOperation,
   waitForOperationTerminalState
 } from '@/services/operations/operations.service'
+import {
+  normalizeAssistantRuntimePayload,
+  type AssistantRuntimePayload
+} from '@/services/runtime/runtime-contract'
 import type {
   ManagementAssistant,
   ManagementAssistantListResponse,
@@ -44,17 +48,12 @@ export async function listAssistantsPage(
 
 export async function createAssistant(
   projectId: string,
-  payload: {
-    graph_id: string
-    name: string
-    description?: string
-    assistant_id?: string
-    config?: Record<string, unknown>
-    context?: Record<string, unknown>
-    metadata?: Record<string, unknown>
-  }
+  payload: AssistantRuntimePayload
 ): Promise<ManagementAssistant> {
-  const response = await platformHttpClient.post(`/api/projects/${projectId}/assistants`, payload)
+  const response = await platformHttpClient.post(
+    `/api/projects/${projectId}/assistants`,
+    normalizeAssistantRuntimePayload(payload)
+  )
   return response.data as ManagementAssistant
 }
 
@@ -71,20 +70,16 @@ export async function getAssistant(
 
 export async function updateAssistant(
   assistantId: string,
-  payload: {
-    graph_id?: string
-    name?: string
-    description?: string
-    status?: 'active' | 'disabled'
-    config?: Record<string, unknown>
-    context?: Record<string, unknown>
-    metadata?: Record<string, unknown>
-  },
+  payload: AssistantRuntimePayload,
   projectId?: string
 ): Promise<ManagementAssistant> {
-  const response = await platformHttpClient.patch(`/api/assistants/${assistantId}`, payload, {
-    headers: getProjectHeaders(projectId)
-  })
+  const response = await platformHttpClient.patch(
+    `/api/assistants/${assistantId}`,
+    normalizeAssistantRuntimePayload(payload),
+    {
+      headers: getProjectHeaders(projectId)
+    }
+  )
 
   return response.data as ManagementAssistant
 }

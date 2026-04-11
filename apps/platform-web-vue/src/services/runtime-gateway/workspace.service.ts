@@ -1,7 +1,7 @@
-import type { Command, Thread as LanggraphThread } from '@langchain/langgraph-sdk'
+import type { Thread as LanggraphThread } from '@langchain/langgraph-sdk'
 import { isAxiosError } from 'axios'
 import { createLanggraphClient } from '@/services/langgraph/client'
-import { getPlatformHttpClient } from '@/services/platform/control-plane'
+import { platformHttpClient } from '@/services/http/client'
 import type { ManagementThread, ThreadHistoryEntry } from '@/types/management'
 import { getThreadListSearchText } from '@/utils/threads'
 
@@ -58,25 +58,6 @@ export type ListRuntimeThreadsOptions = {
   assistantId?: string
   graphId?: string
   status?: string
-}
-
-export type RuntimeStreamEvent = {
-  event?: string
-  data?: unknown
-}
-
-export type CreateRuntimeRunStreamOptions = {
-  projectId: string
-  threadId: string
-  targetId: string
-  input?: Record<string, unknown> | null
-  command?: Command
-  checkpointId?: string
-  config?: Record<string, unknown>
-  interruptBefore?: '*' | string[]
-  interruptAfter?: '*' | string[]
-  signal?: AbortSignal
-  onRunCreated?: (payload: { run_id?: string }) => void
 }
 
 function normalizeThread(thread: LanggraphThread<Record<string, unknown>>): ManagementThread {
@@ -245,7 +226,7 @@ export async function listRuntimeThreadsPage(
   projectId: string,
   options?: ListRuntimeThreadsOptions
 ): Promise<RuntimeThreadsPage> {
-  const client = getPlatformHttpClient('runtime_gateway')
+  const client = platformHttpClient
   const limit = options?.limit ?? 20
   const offset = options?.offset ?? 0
 
@@ -345,7 +326,7 @@ export async function listRuntimeThreadsPage(
 }
 
 export async function getRuntimeThreadDetail(projectId: string, threadId: string): Promise<ManagementThread> {
-  const client = getPlatformHttpClient('runtime_gateway')
+  const client = platformHttpClient
   const response = await client.get(`/api/langgraph/threads/${encodeURIComponent(threadId)}`, {
     headers: {
       'x-project-id': projectId
@@ -359,7 +340,7 @@ export async function getRuntimeThreadHistoryPage(
   threadId: string,
   options?: { limit?: number; before?: string }
 ): Promise<ThreadHistoryEntry[]> {
-  const client = getPlatformHttpClient('runtime_gateway')
+  const client = platformHttpClient
   if (!projectId) {
     return []
   }
@@ -390,7 +371,7 @@ export async function getRuntimeThreadState(
   projectId: string,
   threadId: string
 ): Promise<Record<string, unknown>> {
-  const client = getPlatformHttpClient('runtime_gateway')
+  const client = platformHttpClient
   const response = await client.get(`/api/langgraph/threads/${encodeURIComponent(threadId)}/state`, {
     headers: {
       'x-project-id': projectId
@@ -450,26 +431,6 @@ export async function createRuntimeThread(
   })) as LanggraphThread<Record<string, unknown>>
 
   return normalizeThread(createdThread)
-}
-
-export function createRuntimeRunStream(
-  options: CreateRuntimeRunStreamOptions
-): AsyncIterable<RuntimeStreamEvent> {
-  const client = createLanggraphClient(options.projectId)
-
-  return client.runs.stream<['values', 'tasks'], true>(options.threadId, options.targetId, {
-    input: options.input,
-    command: options.command,
-    checkpointId: options.checkpointId || undefined,
-    config: options.config,
-    streamMode: ['values', 'tasks'],
-    streamSubgraphs: true,
-    streamResumable: true,
-    interruptBefore: options.interruptBefore,
-    interruptAfter: options.interruptAfter,
-    signal: options.signal,
-    onRunCreated: options.onRunCreated
-  }) as AsyncIterable<RuntimeStreamEvent>
 }
 
 export async function cancelRuntimeRun(

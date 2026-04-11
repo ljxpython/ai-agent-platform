@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, watchEffect } from 'vue'
+import { useRoute } from 'vue-router'
 import { useWorkspaceProjectContext } from '@/composables/useWorkspaceProjectContext'
 import EmptyState from '@/components/platform/EmptyState.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
@@ -11,6 +12,7 @@ import { writeRecentChatTarget } from '@/utils/chatTarget'
 import BaseChatTemplate from '@/modules/chat/components/BaseChatTemplate.vue'
 import { resolveChatTarget } from '@/modules/chat/types'
 
+const route = useRoute()
 const { activeProjectId, activeProject } = useWorkspaceProjectContext()
 
 const overview = ref<TestcaseOverview | null>(null)
@@ -24,6 +26,10 @@ const testcaseTarget = computed(() =>
     graphName: 'Test Case Agent',
     updatedAt: new Date().toISOString()
   })
+)
+
+const initialThreadId = computed(() =>
+  typeof route.query.threadId === 'string' && route.query.threadId.trim() ? route.query.threadId.trim() : ''
 )
 
 watchEffect(() => {
@@ -90,6 +96,7 @@ watch(
     <BaseChatTemplate
       v-else
       :target="testcaseTarget"
+      :initial-thread-id="initialThreadId"
       context-notice="当前页面固定接入 graph: test_case_agent。生成过程会复用通用 chat 基座，但目标不会切到其他 assistant 或 graph。"
       source-note="当前入口来自 Testcase Agent 工作区。建议上传真实 PDF 文档后直接让 agent 解析并生成正式测试用例，文档与用例结果会落在当前项目范围内。"
       :display="{

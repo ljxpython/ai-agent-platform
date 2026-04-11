@@ -1,4 +1,4 @@
-import { clearAllTokenSets, getAccessToken, getRefreshToken } from '@/services/auth/token'
+import { clearAllTokenSets, hasStoredAuthSession } from '@/services/auth/token'
 import { useAuthStore } from '@/stores/auth'
 import { useWorkspaceStore } from '@/stores/workspace'
 
@@ -7,7 +7,7 @@ export const SESSION_EXPIRED_REASON = 'session_expired'
 let redirectingToLogin = false
 
 export function hasStoredSession(): boolean {
-  return Boolean(getAccessToken() || getRefreshToken())
+  return hasStoredAuthSession()
 }
 
 export function resolveSessionRedirectTarget(

@@ -1,11 +1,14 @@
 import { Client } from '@langchain/langgraph-sdk'
-import { refreshAccessToken } from '@/services/http/client'
+import {
+  platformApiBaseUrl,
+  refreshAccessToken,
+  resolveAuthorizedAccessToken
+} from '@/services/http/client'
 import { getAccessToken } from '@/services/auth/token'
 import { handleSessionExpired, hasStoredSession } from '@/services/auth/session-expiry'
-import { getPlatformApiBaseUrl } from '@/services/platform/control-plane'
 
 function getLanggraphApiUrl() {
-  const normalizedBase = getPlatformApiBaseUrl('runtime_gateway').replace(/\/+$/, '')
+  const normalizedBase = platformApiBaseUrl.replace(/\/+$/, '')
   return normalizedBase.endsWith('/api/langgraph') ? normalizedBase : `${normalizedBase}/api/langgraph`
 }
 
@@ -41,7 +44,9 @@ export function createLanggraphAuthorizedFetch(options: LanggraphAuthorizedFetch
   const expireSession = options.onSessionExpired ?? handleSessionExpired
 
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const initialResponse = await fetchImpl(input, withAccessToken(init, readAccessToken()))
+    const initialToken =
+      (await resolveAuthorizedAccessToken()).trim() || readAccessToken().trim()
+    const initialResponse = await fetchImpl(input, withAccessToken(init, initialToken))
     if (initialResponse.status !== 401) {
       return initialResponse
     }

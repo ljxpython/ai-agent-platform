@@ -66,6 +66,26 @@ export function useChatThreadWorkspace(options: UseChatThreadWorkspaceOptions) {
   let detailToken = 0
   let preserveBranchOnThreadSync = false
 
+  function invalidatePendingThreadLoads() {
+    threadListToken += 1
+    detailToken += 1
+    loadingThreads.value = false
+    loadingThreadDetail.value = false
+  }
+
+  function getThreadSortTimestamp(item: ManagementThread) {
+    const rawTimestamp = item.updated_at || item.created_at || ''
+    const parsedTimestamp = Date.parse(rawTimestamp)
+    return Number.isNaN(parsedTimestamp) ? 0 : parsedTimestamp
+  }
+
+  function upsertThreadSummary(nextThread: ManagementThread) {
+    const remainingThreads = threadItems.value.filter((item) => item.thread_id !== nextThread.thread_id)
+    threadItems.value = [nextThread, ...remainingThreads].sort(
+      (left, right) => getThreadSortTimestamp(right) - getThreadSortTimestamp(left)
+    )
+  }
+
   const threadSummary = computed(() =>
     threadItems.value.map((item) => ({
       id: item.thread_id,
@@ -88,6 +108,7 @@ export function useChatThreadWorkspace(options: UseChatThreadWorkspaceOptions) {
   }
 
   function clearActiveThreadState(controlOptions: { preserveInfo?: boolean } = {}) {
+    invalidatePendingThreadLoads()
     options.activeThreadId.value = ''
     options.activeThread.value = null
     options.historyItems.value = []
@@ -97,6 +118,7 @@ export function useChatThreadWorkspace(options: UseChatThreadWorkspaceOptions) {
   }
 
   function resetForContextChange(initialThreadId = '') {
+    invalidatePendingThreadLoads()
     options.activeThreadId.value = initialThreadId.trim()
     options.activeThread.value = null
     options.historyItems.value = []
@@ -173,6 +195,7 @@ export function useChatThreadWorkspace(options: UseChatThreadWorkspaceOptions) {
 
       const liveValues =
         options.activeThreadId.value === normalizedThreadId ? options.displayState.value : null
+      upsertThreadSummary(snapshot.detail)
       options.activeThreadId.value = normalizedThreadId
       options.activeThread.value = {
         ...snapshot.detail,
@@ -298,6 +321,7 @@ export function useChatThreadWorkspace(options: UseChatThreadWorkspaceOptions) {
       return false
     }
 
+    invalidatePendingThreadLoads()
     error.value = ''
     options.activeThreadId.value = ''
     options.activeThread.value = null
@@ -315,6 +339,7 @@ export function useChatThreadWorkspace(options: UseChatThreadWorkspaceOptions) {
       return
     }
 
+    invalidatePendingThreadLoads()
     await syncActiveThreadFromList(normalizedThreadId)
   }
 

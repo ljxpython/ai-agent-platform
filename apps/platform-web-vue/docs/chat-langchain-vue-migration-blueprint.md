@@ -28,9 +28,10 @@
   - 坏线程：`281a09cb-2d5a-4b06-aa44-4139a4d22bb1`
   - 默认打开 `/workspace/chat` 时，页面会自动切到最近可用线程
   - 显式进入坏线程时，会保留 warning 提示，避免用户误判为现在线路再次损坏
-- 本轮修复了两个关键问题：
+- 本轮修复了三个关键问题：
   1. `@langchain/langgraph-sdk` 不接受相对 `apiUrl`。浏览器侧必须产出同源绝对地址，不能把 `/api/langgraph` 这种相对值直接塞进 SDK。
   2. `@langchain/vue` 在运行时不会自动把 `HumanMessage` 类实例转换成提交 payload。提交时必须传标准消息字典，也就是 `type/content` 结构。
+  3. chat / assistant 的 runtime business fields 已统一改为进入 `context`，不再塞进 `config.configurable`。
 - 当前 chat 前端已完成第一轮收口：
   - `usePlatformChatStream.ts` 负责 stream 内核
   - `useChatThreadWorkspace.ts` 负责 thread 工作台
@@ -135,7 +136,7 @@ chat 数据源拆成两层：
 | tool call | 从消息里手工拼 | `stream.getToolCalls(message)` + `stream.toolCalls` | 是，消息卡片保留 |
 | sub-agent | 现阶段基本靠消息推导 | `stream.subagents` / `stream.activeSubagents` | 是，视图整形保留 |
 | thread 列表 | 平台 service | 平台 service | 是 |
-| 运行参数 | `runOptions` 本地状态 | `submit(..., { config, interruptBefore, interruptAfter })` | 是 |
+| 运行参数 | `runOptions` 本地状态 | `submit(..., { context, config, interruptBefore, interruptAfter })` | 是 |
 | 取消运行 | `cancelRuntimeRun + abort` | `stream.stop()` + 显式 `client.runs.cancel()` | 是 |
 
 ## 5. 保留 / 新增 / 下线清单
@@ -174,6 +175,7 @@ chat 数据源拆成两层：
 
 下面这些逻辑应该逐步退场：
 
+- `services/platform/control-plane.ts` 里的 fake module-aware client / baseURL 抽象
 - `workspace.service.ts` 中的 `createRuntimeRunStream()`
 - `useChatWorkspace.ts` 中手写的 `streamRun()`
 - `useChatWorkspace.ts` 中手写的 `applyStateSnapshot()`
@@ -228,8 +230,9 @@ chat 数据源拆成两层：
 
 当前事实：
 
-- `platform-web-vue` 现在使用 `@langchain/langgraph-sdk@1.0.0`
-- 官方 `@langchain/vue@0.4.5` 依赖的是更高版本的 `@langchain/langgraph-sdk`
+- `platform-web-vue` 现在使用 `@langchain/langgraph-sdk@1.8.8`
+- `platform-web-vue` 现在使用 `@langchain/vue@0.4.5`
+- `createLanggraphClient()` 已固定基于 `platformApiBaseUrl` 产出绝对 `/api/langgraph` 地址
 
 因此本次迁移必须同时完成：
 
@@ -238,9 +241,35 @@ chat 数据源拆成两层：
 3. 验证 `createLanggraphClient()` 与 `/api/langgraph` 网关兼容
 4. 回归 thread / run / cancel / history / interrupt 行为
 
+## 9. Runtime Contract 与 Client 收口结果
+
+当前 chat 主链已经冻结为下面的提交范式：
+
+- `context`
+  - 只承载 runtime business fields
+  - 例如 `model_id`、`temperature`、`max_tokens`、`enable_tools`、`tools`
+- `config`
+  - 只承载执行控制
+  - 例如 `recursion_limit`
+- `config.configurable`
+  - 只承载线程 / 平台 / 私有字段
+  - 例如 `thread_id`、`checkpoint_id`
+
+当前前端也已经完成 client 层收平：
+
+- `services/platform/control-plane.ts` 已下线
+- `services/langgraph/client.ts` 直接基于 `platformApiBaseUrl` 生成绝对 `/api/langgraph`
+- `services/runtime/runtime.service.ts` 与 `services/runtime-gateway/workspace.service.ts` 不再走 fake module-aware client
+
+这条线的目标很简单：
+
+- 不再保留假的 module routing 抽象
+- 不再保留无调用方的旧 stream helper
+- 不再让 assistant/chat 各自维护一套 runtime contract
+
 不能只装一个包就幻想自动成功。
 
-## 9. 执行顺序
+## 10. 执行顺序
 
 ### Phase A：依赖和最小接通
 
@@ -272,12 +301,12 @@ chat 数据源拆成两层：
 
 ### Phase E：清理旧状态机
 
-- [ ] 删除或退役 `createRuntimeRunStream()`
+- [x] 删除或退役 `createRuntimeRunStream()`
 - [ ] 删除 `useChatWorkspace.ts` 内的手写流状态机
 - [ ] 合并重复的 message / tool / interrupt 推导逻辑
-- [ ] 补充文档与回归清单
+- [x] 补充文档与回归清单
 
-## 9.1 本轮执行清单
+## 10.1 本轮执行清单
 
 这一轮直接落地的范围冻结如下：
 

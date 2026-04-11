@@ -20,6 +20,7 @@ import {
   updateAssistant
 } from '@/services/assistants/assistants.service'
 import { getOperationFailureMessage } from '@/services/operations/operations.service'
+import { normalizeAssistantRuntimePayload } from '@/services/runtime/runtime-contract'
 import { useUiStore } from '@/stores/ui'
 import type { ManagementAssistant } from '@/types/management'
 import { copyText } from '@/utils/clipboard'
@@ -272,17 +273,18 @@ async function handleSave() {
   notice.value = ''
 
   try {
+    const normalizedPayload = normalizeAssistantRuntimePayload({
+      name: editName.value,
+      description: editDescription.value,
+      graph_id: editGraphId.value,
+      status: editStatus.value,
+      config: parseObjectJson(editConfig.value, 'config'),
+      context: parseObjectJson(editContext.value, 'context'),
+      metadata: parseObjectJson(editMetadata.value, 'metadata')
+    })
     const updated = await updateAssistant(
       assistantId.value,
-      {
-        name: editName.value.trim(),
-        description: editDescription.value.trim(),
-        graph_id: editGraphId.value.trim(),
-        status: editStatus.value,
-        config: parseObjectJson(editConfig.value, 'config'),
-        context: parseObjectJson(editContext.value, 'context'),
-        metadata: parseObjectJson(editMetadata.value, 'metadata')
-      },
+      normalizedPayload,
       projectId
     )
 

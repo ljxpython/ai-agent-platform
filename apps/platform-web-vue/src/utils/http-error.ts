@@ -1,5 +1,5 @@
 import { isAxiosError } from 'axios'
-import { getAccessToken } from '@/services/auth/token'
+import { hasStoredAuthSession } from '@/services/auth/token'
 
 function extractErrorMessage(error: unknown): string {
   if (isAxiosError(error)) {
@@ -53,7 +53,7 @@ export function resolvePlatformHttpErrorMessage(
   const status = extractErrorStatus(error)
   const upstreamMessage = extractErrorMessage(error)
 
-  if (!getAccessToken()) {
+  if (!hasStoredAuthSession()) {
     return '当前登录态缺少控制面会话。请重新登录后再试。'
   }
 

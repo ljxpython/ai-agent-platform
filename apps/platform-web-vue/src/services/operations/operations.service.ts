@@ -1,5 +1,4 @@
-import { getAccessToken } from '@/services/auth/token'
-import { platformApiBaseUrl, platformHttpClient } from '@/services/http/client'
+import { platformApiBaseUrl, platformHttpClient, resolveAuthorizedAccessToken } from '@/services/http/client'
 import type {
   OperationArchiveScope,
   OperationArtifactCleanupResult,
@@ -134,7 +133,7 @@ export async function* createOperationPageStream(
     signal?: AbortSignal
   }
 ): AsyncIterable<OperationPageStreamEvent> {
-  const accessToken = getAccessToken()
+  const accessToken = (await resolveAuthorizedAccessToken()).trim()
   if (!accessToken) {
     throw new Error('missing_platform_v2_session')
   }

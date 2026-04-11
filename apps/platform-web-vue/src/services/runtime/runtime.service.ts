@@ -1,8 +1,8 @@
-import { getPlatformHttpClient } from '@/services/platform/control-plane'
 import {
   submitOperation,
   waitForOperationTerminalState
 } from '@/services/operations/operations.service'
+import { platformHttpClient } from '@/services/http/client'
 import type {
   ManagementOperation,
   RuntimeModelsResponse,
@@ -23,14 +23,14 @@ function runtimeOperationKind(resource: 'models' | 'tools' | 'graphs') {
 }
 
 export async function listRuntimeModels(projectId?: string): Promise<RuntimeModelsResponse> {
-  const response = await getPlatformHttpClient('runtime_catalog').get('/api/runtime/models', {
+  const response = await platformHttpClient.get('/api/runtime/models', {
     headers: buildRuntimeHeaders(projectId)
   })
   return response.data as RuntimeModelsResponse
 }
 
 export async function listRuntimeTools(projectId?: string): Promise<RuntimeToolsResponse> {
-  const response = await getPlatformHttpClient('runtime_catalog').get('/api/runtime/tools', {
+  const response = await platformHttpClient.get('/api/runtime/tools', {
     headers: buildRuntimeHeaders(projectId)
   })
   return response.data as RuntimeToolsResponse

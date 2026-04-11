@@ -1,8 +1,15 @@
-import type { PlatformClientModule } from '@/services/platform/control-plane'
+export type WorkspaceProjectContextModule =
+  | 'projects'
+  | 'runtime_gateway'
+  | 'assistants'
+  | 'testcase'
+  | 'announcements'
+  | 'operations'
+  | 'audit'
 
 const workspaceProjectContextRules: Array<{
   prefix: string
-  module: PlatformClientModule
+  module: WorkspaceProjectContextModule
 }> = [
   { prefix: '/workspace/overview', module: 'projects' },
   { prefix: '/workspace/runtime', module: 'runtime_gateway' },
@@ -17,7 +24,7 @@ const workspaceProjectContextRules: Array<{
   { prefix: '/workspace/audit', module: 'audit' }
 ]
 
-export function getWorkspaceProjectContextModule(path: string): PlatformClientModule | null {
+export function getWorkspaceProjectContextModule(path: string): WorkspaceProjectContextModule | null {
   const match = workspaceProjectContextRules.find(
     (rule) => path === rule.prefix || path.startsWith(`${rule.prefix}/`)
   )

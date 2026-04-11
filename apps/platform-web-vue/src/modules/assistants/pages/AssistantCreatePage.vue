@@ -12,6 +12,7 @@ import StateBanner from '@/components/platform/StateBanner.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { createAssistant, getAssistantParameterSchema } from '@/services/assistants/assistants.service'
 import { listGraphsPage } from '@/services/graphs/graphs.service'
+import { buildAssistantDraftPayload } from '@/services/runtime/runtime-contract'
 import { listRuntimeModels, listRuntimeTools } from '@/services/runtime/runtime.service'
 import type { ManagementGraph, RuntimeModelItem, RuntimeToolItem } from '@/types/management'
 
@@ -127,66 +128,18 @@ const stats = computed(() => [
 ])
 
 const requestBodyPreview = computed(() => {
-  const normalizedGraphId = graphId.value.trim()
-  const normalizedName = name.value.trim()
-  const payload: Record<string, unknown> = {}
-
-  if (normalizedGraphId) {
-    payload.graph_id = normalizedGraphId
-  }
-  if (normalizedName) {
-    payload.name = normalizedName
-  }
-  if (description.value.trim()) {
-    payload.description = description.value.trim()
-  }
-  if (assistantId.value.trim()) {
-    payload.assistant_id = assistantId.value.trim()
-  }
-
-  const configObject = parseObjectJson(config.value, 'config')
-  const configurableRaw =
-    configObject && typeof configObject.configurable === 'object' && !Array.isArray(configObject.configurable)
-      ? (configObject.configurable as Record<string, unknown>)
-      : {}
-  const configurable: Record<string, unknown> = { ...configurableRaw }
-
-  if (runtimeModelId.value.trim()) {
-    configurable.model_id = runtimeModelId.value.trim()
-  } else {
-    delete configurable.model_id
-  }
-
-  const cleanedTools = runtimeToolNames.value.map((item) => item.trim()).filter(Boolean)
-  if (runtimeEnableTools.value && cleanedTools.length > 0) {
-    configurable.enable_tools = true
-    configurable.tools = cleanedTools
-  } else {
-    delete configurable.enable_tools
-    delete configurable.tools
-  }
-
-  if (Object.keys(configurable).length > 0) {
-    configObject.configurable = configurable
-  } else {
-    delete (configObject as Record<string, unknown>).configurable
-  }
-
-  if (Object.keys(configObject).length > 0) {
-    payload.config = configObject
-  }
-
-  const contextObject = parseObjectJson(context.value, 'context')
-  if (Object.keys(contextObject).length > 0) {
-    payload.context = contextObject
-  }
-
-  const metadataObject = parseObjectJson(metadata.value, 'metadata')
-  if (Object.keys(metadataObject).length > 0) {
-    payload.metadata = metadataObject
-  }
-
-  return payload
+  return buildAssistantDraftPayload({
+    graphId: graphId.value,
+    name: name.value,
+    description: description.value,
+    assistantId: assistantId.value,
+    config: parseObjectJson(config.value, 'config'),
+    context: parseObjectJson(context.value, 'context'),
+    metadata: parseObjectJson(metadata.value, 'metadata'),
+    runtimeModelId: runtimeModelId.value,
+    runtimeEnableTools: runtimeEnableTools.value,
+    runtimeToolNames: runtimeToolNames.value
+  })
 })
 
 function syncConfigFields() {
@@ -347,18 +300,7 @@ async function handleSubmit() {
 
   try {
     const payload = requestBodyPreview.value
-    const created = await createAssistant(
-      projectId,
-      payload as {
-        graph_id: string
-        name: string
-        description?: string
-        assistant_id?: string
-        config?: Record<string, unknown>
-        context?: Record<string, unknown>
-        metadata?: Record<string, unknown>
-      }
-    )
+    const created = await createAssistant(projectId, payload)
 
     notice.value = `已创建助手：${created.name}`
     void router.replace(`/workspace/assistants/${created.id}`)
@@ -615,7 +557,7 @@ watch(
                     启用工具
                   </div>
                   <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                    仅当你显式挑选工具时，才会把 tools 写入 configurable。
+                    这里选择的模型和工具会写入 runtime `context`，不再进入 `configurable`。
                   </div>
                 </div>
                 <input
