@@ -258,10 +258,10 @@
 
 要补：
 
-- `project_id` 必须注入 `metadata.project_id`
-- 当 `config.configurable` 已存在时：
-  - 不再写 `context.project_id`
-  - 但仍要写 `config.metadata.project_id`
+- `project_id` 必须注入 `context.project_id`
+- 顶层 `metadata.project_id` 允许作为检索 / 审计冗余
+- `config.configurable` 不再承接业务 project scope
+- `config.metadata.project_id` 不再作为主链注入口
 - thread project scope 校验
 - assistant ownership 校验
 - thread graph id 回退允许逻辑

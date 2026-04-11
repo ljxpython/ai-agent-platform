@@ -15,12 +15,17 @@ from app.core.errors import (
 )
 from app.core.identifiers import parse_uuid
 from app.core.normalization import clean_str, ensure_dict
+from app.core.runtime_contract import (
+    PROJECT_SCOPE_ALIAS_KEYS,
+    normalize_runtime_payload,
+    strip_keys,
+)
 from app.modules.assistants.infra.sqlalchemy.repository import SqlAlchemyAssistantsRepository
 from app.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode
 from app.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
 from app.modules.runtime_gateway.application.ports import RuntimeGatewayUpstreamProtocol
 
-_THREAD_PROJECT_ID_KEYS = ("project_id", "x-project-id", "projectId")
+_THREAD_PROJECT_ID_KEYS = PROJECT_SCOPE_ALIAS_KEYS
 _THREAD_GRAPH_ID_KEYS = ("graph_id", "graphId")
 
 
@@ -40,6 +45,10 @@ def _thread_project_id(thread: dict[str, Any]) -> str | None:
         if value:
             return value
     return None
+
+
+def _without_project_scope_aliases(payload: dict[str, Any]) -> dict[str, Any]:
+    return strip_keys(payload, _THREAD_PROJECT_ID_KEYS)
 
 
 def _thread_graph_id(thread: dict[str, Any]) -> str | None:
@@ -137,7 +146,11 @@ class RuntimeGatewayService:
     ) -> dict[str, Any]:
         next_payload = _normalize_payload(payload)
         metadata = next_payload.get("metadata")
-        metadata_dict = dict(metadata) if isinstance(metadata, dict) else {}
+        metadata_dict = (
+            _without_project_scope_aliases(dict(metadata))
+            if isinstance(metadata, dict)
+            else {}
+        )
         metadata_dict["project_id"] = project_id
         next_payload["metadata"] = metadata_dict
         return next_payload
@@ -148,25 +161,7 @@ class RuntimeGatewayService:
         project_id: str,
         payload: dict[str, Any] | None,
     ) -> dict[str, Any]:
-        next_payload = self._inject_project_metadata(project_id=project_id, payload=payload)
-        config = next_payload.get("config")
-        config_dict = dict(config) if isinstance(config, dict) else {}
-        configurable = config_dict.get("configurable")
-        if isinstance(configurable, dict) and not configurable:
-            config_dict.pop("configurable", None)
-        context = next_payload.get("context")
-        context_dict = dict(context) if isinstance(context, dict) else {}
-        context_dict["project_id"] = project_id
-        next_payload["context"] = context_dict
-
-        config_metadata = config_dict.get("metadata")
-        config_metadata_dict = (
-            dict(config_metadata) if isinstance(config_metadata, dict) else {}
-        )
-        config_metadata_dict["project_id"] = project_id
-        config_dict["metadata"] = config_metadata_dict
-        next_payload["config"] = config_dict
-        return next_payload
+        return normalize_runtime_payload(payload=payload, project_id=project_id)
 
     def _assert_thread_project_scope(
         self,

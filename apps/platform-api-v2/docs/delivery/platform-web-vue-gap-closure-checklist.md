@@ -149,3 +149,10 @@
 - `../handbook/project-handbook.md`
 - `../handbook/development-playbook.md`
 - `./platform-web-vue-capability-coverage.md`
+- `./runtime-contract-three-wave-checklist.md`
+- `./runtime-contract-manual-integration-checklist.md`
+
+## 11. 当前执行单
+
+- [x] 已建立文件级三波次执行清单：`./runtime-contract-three-wave-checklist.md`
+- [x] 已建立手工联调清单：`./runtime-contract-manual-integration-checklist.md`

@@ -27,7 +27,7 @@
 | `operations` | list / detail / stream / bulk / artifact | 已对齐 | `OperationsPage` | 异步治理主链已接通，runtime refresh / assistant resync / testcase export 都统一回流 |
 | `testcase` | overview / role / batches / documents / cases / export / preview / download | 部分对齐 | `TestcaseDocumentsPage` / `TestcaseCasesPage` / `TestcaseGeneratePage` | 文档、用例、导出、预览、下载、详情都已接；批次详情仍是嵌入式消费，没有单独一级治理页 |
 | `_system` | probes / health / metrics / platform-config | 已对齐 | `SystemGovernancePage` / `PlatformConfigPage` | 平台配置与系统探针已有正式治理入口 |
-| `runtime_gateway` public 子集 | thread list/detail/history/state, run stream/cancel | 已对齐 | `ChatPage` / `BaseChatTemplate` / `ThreadsPage` / `SqlAgentPage` | 正式工作台依赖的线程与运行主链已接通 |
+| `runtime_gateway` public 子集 | thread list/detail/history/state, run stream/cancel | 已对齐 | `ChatPage` / `BaseChatTemplate` / `ThreadsPage` / `SqlAgentPage` | 正式工作台依赖的线程与运行主链已接通；assistant/chat 已统一使用 `context + config` runtime contract，前端不再保留 fake control-plane 抽象 |
 | `runtime_gateway` advanced/internal | `info` / runs admin / crons / prune / copy / join* | 故意不开放 | 无正式导航入口 | 这些能力要么属于 internal，要么是 SDK / 运维工具口径，不应该直接进正式 UI |
 
 ## 3. 当前剩余缺口
@@ -41,6 +41,14 @@
 
 - `service layer` 虽然已经切到正式命名，但还需要继续保持不新增 `legacy*` / `v2*` 过渡命名
 - `TopContextBar` / `UserMenu` / 若干概览页已经在吃正式权限与项目上下文，后续新页必须复用同一套范式，不能回退成页面各自发挥
+
+## 3.1 本轮已收口的前端硬规则
+
+- assistant create / update 与 chat submit 共享同一份 runtime contract helper
+- runtime business fields 只进入 `context`
+- `config` 只保留执行控制
+- `config.configurable` 只保留线程 / 平台 / 私有字段
+- `services/platform/control-plane.ts` 已下线，前端不再保留 fake module-aware client / baseURL 抽象
 
 ## 4. 前端继续开发时的硬规则
 

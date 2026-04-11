@@ -36,6 +36,8 @@
 - `delivery/runbook.md`
 - `delivery/postgres-baseline.md`
 - `delivery/release-template.md`
+- `delivery/runtime-contract-three-wave-checklist.md`
+- `delivery/runtime-contract-manual-integration-checklist.md`
 
 其中：
 
@@ -43,6 +45,10 @@
   - 当前 `platform-api-v2` 的循环导入治理清单与回归记录；`identity / projects / runtime_gateway` 首轮治理已完成
 - `platform-web-vue-gap-closure-checklist.md`
   - 说明 `platform-api-v2` 与 `platform-web-vue` 的正式能力边界、前端收口任务和执行顺序
+- `runtime-contract-three-wave-checklist.md`
+  - 当前 runtime contract 三波次改造的执行单
+- `runtime-contract-manual-integration-checklist.md`
+  - runtime contract 的手工联调与验收清单
 
 ## 4. 迁移决策和历史方案放哪
 

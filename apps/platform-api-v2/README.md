@@ -67,6 +67,20 @@
 - 长耗时动作统一进入 `operations`
 - 从第一天开始为分布式和 worker 演进预留结构
 
+## Runtime Contract 投影原则
+
+`platform-api-v2` 对 `runtime-service` 的参数认知，统一按新 contract 投影：
+
+- `context`：公共业务运行时，直接对应 `RuntimeContext`
+- `config`：执行控制字段，不再承接业务运行参数
+- `config.configurable`：线程 / 平台 / 鉴权 / 服务私有字段
+
+明确不再做的事情：
+
+- 不再解析 `AppRuntimeConfig`
+- 不再把 `model_id / system_prompt / enable_tools / tools` 当成 `config.configurable` 主入口
+- 不再把 `runtime_service/runtime/options.py` 这类已删除入口当真源
+
 ## 目录骨架
 
 ```text

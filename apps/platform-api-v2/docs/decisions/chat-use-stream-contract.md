@@ -114,3 +114,25 @@
 - 平台职责标准：权限、审计、项目隔离、错误归一
 
 这意味着后续前端 chat 基座可以继续沿着官方 `useStream` 演进，而不用再为平台私有协议反复返工。
+
+## 8. Runtime Contract 冻结口径
+
+当前 `platform-api-v2` 对 runtime payload 的最终口径再补一条硬规则：
+
+- `context`
+  - 只承载运行时业务字段
+  - 例如 `project_id`、`model_id`、`system_prompt`、`temperature`、`max_tokens`、`top_p`、`enable_tools`、`tools`
+- `config`
+  - 只承载执行控制字段
+  - 例如 `recursion_limit`、`run_name`、`max_concurrency`
+- `config.configurable`
+  - 只承载线程 / 平台 / 私有字段
+  - 例如 `thread_id`、`checkpoint_id`、`assistant_id`、`graph_id`、`langgraph_auth_*`
+
+平台侧禁止再做这些旧写法：
+
+- 把 `project_id` 注入到 run payload 的 `metadata`
+- 把 `model_id / temperature / enable_tools / tools` 塞进 `config` 或 `config.configurable`
+- 把 `user_id / tenant_id / role / permissions` 当成前端可写字段透传
+
+对 thread 资源本身的项目隔离，仍然允许通过 thread metadata 记录 `project_id`，因为那属于平台线程作用域，不属于 runtime business contract。

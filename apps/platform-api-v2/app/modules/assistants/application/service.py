@@ -17,7 +17,10 @@ from app.core.errors import (
     ServiceUnavailableError,
 )
 from app.core.identifiers import parse_actor_user_id, parse_uuid
-from app.core.normalization import ensure_dict
+from app.core.runtime_contract import (
+    normalize_runtime_contract,
+    normalize_runtime_object,
+)
 from app.modules.assistants.application.contracts import (
     CreateAssistantCommand,
     ListAssistantsQuery,
@@ -38,13 +41,27 @@ from app.modules.assistants.infra.sqlalchemy.repository import SqlAlchemyAssista
 from app.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode
 from app.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
 
-
 def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
 def _normalize_object(value: dict[str, Any] | None) -> dict[str, Any]:
-    return ensure_dict(value)
+    return normalize_runtime_object(value)
+
+
+def _normalize_assistant_runtime_contract(
+    *,
+    config: dict[str, Any],
+    context: dict[str, Any],
+    metadata: dict[str, Any],
+    project_id: str,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    return normalize_runtime_contract(
+        config=config,
+        context=context,
+        metadata=metadata,
+        project_id=project_id,
+    )
 
 
 def _extract_upstream_assistant_id(item: Any) -> str | None:
@@ -109,16 +126,6 @@ class AssistantsService:
             updated_at=item.updated_at,
         )
 
-    def _normalize_metadata(
-        self,
-        *,
-        project_id: str,
-        metadata: dict[str, Any],
-    ) -> dict[str, Any]:
-        next_metadata = dict(metadata)
-        next_metadata["project_id"] = project_id
-        return next_metadata
-
     def _require_project_exists(
         self,
         *,
@@ -179,9 +186,12 @@ class AssistantsService:
         )
         user_config = _normalize_object(command.config)
         user_context = _normalize_object(command.context)
-        user_metadata = self._normalize_metadata(
+        user_metadata = _normalize_object(command.metadata)
+        user_config, user_context, user_metadata = _normalize_assistant_runtime_contract(
+            config=user_config,
+            context=user_context,
+            metadata=user_metadata,
             project_id=project_id,
-            metadata=_normalize_object(command.metadata),
         )
 
         upstream_payload: dict[str, Any] = {
@@ -327,9 +337,11 @@ class AssistantsService:
                 if "metadata" in fields_set
                 else dict(current.metadata)
             )
-            next_metadata = self._normalize_metadata(
-                project_id=project_id,
+            next_config, next_context, next_metadata = _normalize_assistant_runtime_contract(
+                config=next_config,
+                context=next_context,
                 metadata=next_metadata,
+                project_id=project_id,
             )
 
             upstream_payload: dict[str, Any] = {}
@@ -498,9 +510,11 @@ class AssistantsService:
                 if isinstance(upstream_item.get("metadata"), dict)
                 else dict(current.metadata)
             )
-            next_metadata = self._normalize_metadata(
-                project_id=project_id,
+            next_config, next_context, next_metadata = _normalize_assistant_runtime_contract(
+                config=next_config,
+                context=next_context,
                 metadata=next_metadata,
+                project_id=project_id,
             )
 
             repository.update_assistant_runtime_fields(

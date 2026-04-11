@@ -2,6 +2,10 @@
 
 这份清单不是要把旧 `platform-api` 原样搬回来，而是把旧方案里真正做对的东西抽出来，作为 `platform-api-v2` 后续重构的硬性继承项。
 
+> 更新说明：
+> `runtime_service` 与 `platform-api-v2` 现在都已切到新 runtime contract。
+> 下面凡是提到 `config/configurable` 与 `context` 的兼容处理、`config.metadata.project_id` 作为真源等表述，均视为**已废弃旧决策**，不得再作为当前实现依据。
+
 ## 1. 必须继承的优点
 
 ### 1.1 官方 SDK 优先，而不是自写原生 client
@@ -43,7 +47,7 @@
 - `assistant` 是否属于当前项目
 - `thread` 是否属于当前项目
 - `project_id` 注入
-- `config/configurable` 与 `context` 的兼容处理
+- 运行时 project scope 注入
 
 这件事做对了。
 
@@ -108,15 +112,16 @@
 - request trace 丢失
 - 跨服务审计串不起来
 
-### 1.7 `metadata.project_id` 注入规则成熟
+### 1.7 `project_id` 注入规则已按新 contract 收口
 
-旧方案里最该保留的一条细节规则：
+当前正式规则：
 
-- `metadata.project_id` 必须打
-- 当 `config.configurable` 已经存在时，不强塞 `context.project_id`
-- 但 `config.metadata.project_id` 仍然要保留
+- `context.project_id` 是业务真源
+- 顶层 `metadata.project_id` 允许保留，作为检索 / 审计冗余
+- `config.metadata.project_id` 不再作为主链注入口
+- `config.configurable` 不再承接业务 project scope
 
-这是一个很重要的兼容性结论，必须写成平台标准，而不是靠记忆。
+这不是兼容规则，而是当前正式标准。
 
 ### 1.8 运行能力完整，不只盯着 happy path
 
@@ -196,7 +201,7 @@
 - [ ] `project_id` 注入是否统一
 - [ ] assistant ownership 校验是否存在
 - [ ] thread ownership 校验是否存在
-- [ ] `config.configurable` 与 `context` 的兼容规则是否保留
+- [ ] `context.project_id` 是否是唯一业务真源
 - [ ] graph target / assistant target 允许逻辑是否保留
 
 ### 3.3 平台质量检查
