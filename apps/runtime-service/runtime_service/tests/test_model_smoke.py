@@ -17,8 +17,7 @@ from runtime_service.conf.settings import (  # noqa: E402
     get_default_model_id,
     require_model_spec,
 )
-from runtime_service.runtime.modeling import resolve_model  # noqa: E402
-from runtime_service.runtime.options import ModelSpec  # noqa: E402
+from runtime_service.runtime.modeling import resolve_model_by_id  # noqa: E402
 
 
 def _maybe_load_local_env() -> None:
@@ -50,7 +49,8 @@ def _mask(value: str | None) -> str:
 def test_model_smoke_ok() -> None:
     """模型连通性/鉴权烟囱测试。
 
-    - 默认走 v2 的 `resolve_model()`，provider/model/base_url/api_key 来自 settings.yaml 的 model_id 映射。
+    - 默认走 `resolve_model_by_id(model_id)`。
+    - provider/model/base_url/api_key 来自 settings.yaml 的 model_id 映射。
     - 无可用 key 时自动 skip，避免 CI/无网环境失败。
     """
 
@@ -72,14 +72,7 @@ def test_model_smoke_ok() -> None:
         pytest.skip("No model API key configured in env")
     timeout_secs = float(os.getenv("MODEL_SMOKE_TIMEOUT_SECS", "20"))
 
-    model = resolve_model(
-        ModelSpec(
-            model_provider=provider,
-            model=model_name,
-            base_url=base_url,
-            api_key=api_key,
-        )
-    )
+    model = resolve_model_by_id(model_id)
 
     async def _run() -> str:
         resp = await asyncio.wait_for(

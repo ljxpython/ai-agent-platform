@@ -30,6 +30,8 @@
 - 共享 runtime middleware 存在
 - model/tools/system_prompt 的运行时解析由共享 middleware 驱动
 - 非法 `model_id` / `tools` 直接报错
+- `test_case_service` 不得从 `state / configurable / metadata / system prompt` 反推 `project_id`
+- `runtime/options.py` 不再存在
 
 ### 1.4 tool registry contract
 
@@ -37,6 +39,7 @@
 
 - `tools/registry.py` 是公开可选工具唯一真源
 - graph-required tools 不应塞进公共 registry
+- 不再暴露 `build_tools(options)` 这种旧入口
 
 ### 1.5 graph registration
 

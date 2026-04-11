@@ -18,7 +18,7 @@
 
 ```
 test_case_service/
-├── graph.py          # make_graph 工厂函数（LangGraph 入口）
+├── graph.py          # static graph（LangGraph 入口）
 ├── prompts.py        # SYSTEM_PROMPT（角色定位 + Skills 激活协议）
 ├── schemas.py        # 服务配置 + 持久化工具入参模型
 ├── knowledge_mcp.py  # 服务私有知识库 MCP（SSE 装配）
@@ -34,7 +34,7 @@ test_case_service/
 │   └── test-case-persistence/SKILL.md
 └── tests/
     ├── __init__.py
-    └── test_smoke.py # 冒烟测试（schemas / prompts / graph / 注册）
+    └── ...           # graph / middleware / tools 回归统一放到 runtime_service/tests
 ```
 
 ### 核心技术选型
@@ -59,8 +59,6 @@ test_case_service/
 | `test_case_multimodal_detail_mode` | `bool` | `False` | 启用详细解析模式 |
 | `test_case_multimodal_detail_text_max_chars` | `int` | `2000` | 详细模式最大字符数 |
 | `test_case_backend_root_dir` | `str` | 服务包目录 | FilesystemBackend 根目录覆盖 |
-| `test_case_default_project_id` | `str` | `00000000-0000-0000-0000-000000000001` | 仅在显式开启 `test_case_allow_default_project_fallback=true` 时使用的调试默认项目 ID |
-| `test_case_allow_default_project_fallback` | `bool` | `False` | 是否允许在缺失真实项目上下文时回退到默认项目；平台真实链路必须保持关闭 |
 | `test_case_persistence_enabled` | `bool` | `True` | 是否允许调用正式持久化工具 |
 | `test_case_knowledge_mcp_enabled` | `bool` | `True` | 是否启用服务私有知识库 MCP |
 | `test_case_knowledge_mcp_url` | `str` | `http://0.0.0.0:8000/sse` | 服务私有知识库 MCP 的 SSE 地址 |
@@ -72,9 +70,11 @@ test_case_service/
 
 说明：
 
-- 如果 `RunnableConfig.configurable.model_id` 已显式传入，则始终优先使用调用方指定模型
-- 只有在未显式传 `model_id` 且未设置环境变量 `MODEL_ID` 时，服务才回落到 `test_case_default_model_id=deepseek_chat`
-- `project_id` 是受信运行时上下文，平台真实链路必须由 `platform-api` 注入到 `context/metadata`；未注入时 `test_case_service` 会显式报错，不再静默写入默认项目
+- 如果 `RuntimeContext.model_id` 已显式传入，则始终优先使用调用方指定模型
+- 只有在调用方未显式传 `model_id` 时，服务才回落到 `test_case_default_model_id=deepseek_chat`
+- `project_id` 是受信运行时上下文，平台真实链路必须由 `platform-api` 注入到 `context`
+- `test_case_service` 只认 `RuntimeContext.project_id`，不再从 `configurable / metadata / state / system prompt` 反推项目上下文
+- 未注入 `project_id` 时，`test_case_service` 会直接报错；不再提供默认项目 fallback
 - 当前 `interaction-data-service` 的 `test-case-service` 相关接口要求 `project_id` 为 UUID 字符串；联调脚本里的 `--project-id` 也会前置校验这一点，避免把无效参数直接打成远端 `400`
 - `test_case_service` 的文档即时持久化层和 `persist_test_case_results` 也会校验 `project_id` 是否为 UUID；无效时不会再把请求发到远端
 
@@ -117,7 +117,7 @@ Agent 通过 `SkillsMiddleware` 自动加载以下 Skills，按需激活：
 - `get_project_knowledge_document_status` 只在排查索引状态或检索异常时调用
 - 如果当前轮附件和 `multimodal_summary` 已足够支撑结论，不要机械补查知识库
 - 如果用户直接要求“生成某类业务/模块/场景测试用例”，且当前轮没有提供附件，必须先查询私有知识库，再基于命中的业务片段生成用例
-- graph 会把当前请求解析到的 `project_id` 注入系统提示词，agent 调用知识工具时必须使用该项目 ID
+- graph 会把当前请求解析到的 `project_id` 注入系统提示词；若缺失则明确标记缺失，不能靠 prompt 反推项目 ID
 - 服务内会把 MCP 工具返回的内容块归一化为字符串，避免当前模型链路在 tool message 回灌时发生 400 反序列化错误
 - 服务内额外挂了 `TestCaseKnowledgeQueryGuardMiddleware`：无附件业务用例请求会先强制 `read_file(/skills/requirement-analysis/SKILL.md)`，再强制 `query_project_knowledge`，不是只靠 prompt 自觉
 - 服务内新增了 `TestCaseKnowledgeQueryGuardMiddleware`，对“无附件生成业务测试用例”场景做代码级兜底：

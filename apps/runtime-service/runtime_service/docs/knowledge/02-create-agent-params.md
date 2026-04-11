@@ -63,7 +63,7 @@ agent = create_agent(
 在本仓库里，一般不是直接写死，而是先经过：
 
 - [modeling.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/modeling.py)
-- [options.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/options.py)
+- [runtime_request_resolver.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/runtime_request_resolver.py)
 
 ### 3.2 `tools`
 
@@ -203,9 +203,9 @@ agent = create_agent(
 
 目前更贴标准的写法在这里：
 
-- [assistant_agent/graph_legacy.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph_legacy.py#L52)
-- [research_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/research_agent/graph.py#L114)
-- [test_case_service/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/services/test_case_service/graph.py#L184)
+- [assistant_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph.py#L55)
+- [research_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/research_agent/graph.py#L74)
+- [test_case_service/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/services/test_case_service/graph.py#L94)
 
 ### 3.8 `checkpointer`
 
@@ -366,6 +366,5 @@ return create_agent(
   - `apps/runtime-service/.venv` 当前安装版本实测
 - 本仓库参考实现
   - [assistant_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph.py)
-  - [assistant_agent/graph_legacy.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph_legacy.py)
   - [research_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/research_agent/graph.py)
   - [test_case_service/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/services/test_case_service/graph.py)

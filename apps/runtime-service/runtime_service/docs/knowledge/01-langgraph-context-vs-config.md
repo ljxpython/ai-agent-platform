@@ -227,29 +227,25 @@ graph.invoke(
 
 这个方向是对的。
 
-### 6.2 现实实现还是 `configurable-first` 倾向
+### 6.2 旧的 `configurable-first` 路径已经删除
 
-[options.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/options.py) 当前会从下面几层混合读取：
+之前仓库里确实存在“从多层混合读取运行时参数”的旧实现，容易把系统拖回 `configurable-first`。
 
-- `runtime_context`
-- `configurable`
-- `env`
+现在这条旧路径已经删除，主路径统一收敛为：
 
-这个兼容策略本身没错，但如果长期让 graph 不传 `context_schema`，那最后就会退化成“嘴上说 context-first，代码还是 configurable-first”。
+- `RuntimeContext`
+- `RuntimeRequestMiddleware`
+- `resolve_runtime_settings(...)`
 
-### 6.3 `assistant_agent/graph.py` 当前不够标准
+### 6.3 当前推荐样板已经切到静态 graph + typed context
 
 当前 [assistant_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph.py)：
 
-- 保留了 `make_graph(config, runtime)` 正确签名
-- 但没有把 `context_schema=RuntimeContext` 传进 `create_agent(...)`
+- 顶层静态导出 `graph = create_agent(...)`
+- 显式传入 `context_schema=RuntimeContext`
+- 通过 `RuntimeRequestMiddleware` 统一处理运行时模型 / prompt / tools
 
-这会导致 assistant 这条链路并没有正式接入 typed runtime context。
-
-相比之下，这两个更接近官方推荐范式：
-
-- [assistant_agent/graph_legacy.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph_legacy.py)
-- [research_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/research_agent/graph.py)
+这也是当前仓库的正式标准；`research_agent/graph.py`、`test_case_service/graph.py` 已同步采用同一路线。
 
 ## 7. 最稳妥的项目落地规则
 
@@ -273,10 +269,12 @@ graph.invoke(
 
 ### 规则五
 
-`build_runtime_config(...)` 保留兼容层价值，但长期目标应该是：
+旧的 `build_runtime_config(...)` 路径已经删除。
 
-- 主路径吃 `context`
-- `configurable` 只做平台通道和兼容兜底
+当前标准就是：
+
+- 主路径只吃 `context`
+- `configurable` 只做平台通道和服务私有字段
 
 ## 8. 一个推荐心智模型
 
@@ -303,7 +301,6 @@ graph.invoke(
   - https://docs.langchain.com/langsmith/graph-rebuild
 - 本仓库参考实现
   - [context.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/context.py)
-  - [options.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/options.py)
+  - [runtime_request_resolver.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/runtime_request_resolver.py)
   - [assistant_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph.py)
-  - [assistant_agent/graph_legacy.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph_legacy.py)
   - [research_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/research_agent/graph.py)

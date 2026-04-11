@@ -41,6 +41,59 @@ The app will be available at `http://localhost:3001`.
 - `runtime-service`: `http://127.0.0.1:8123`
 - `runtime-web`: `http://127.0.0.1:3001`
 
+## Run Context 调试面板
+
+`runtime-web` 现提供一个最小化的 **Run Context** 调试面板，用于把任意 JSON object 透传到 LangGraph run 的 `context` 字段。
+
+这块的设计边界必须记死：
+
+1. `runtime-web` 是通用调试壳，不按某个 graph 定制表单
+2. 它只负责透传 `context`，不负责判断某个 graph 该传什么
+3. 业务字段是否合法，由服务端自己报错
+4. 页面只做最薄校验：`Run Context` 必须是合法 JSON，且根节点必须是 object
+
+当前实现方式：
+
+- 输入区工具栏提供 `Context` 按钮
+- 点击后打开右侧 `Run Context` 面板
+- 面板支持：
+  - JSON 编辑
+  - `Format`
+  - `Save`
+  - `Clear`
+- 已保存的内容会按当前 `apiUrl + targetType + targetId` 维度存到 `localStorage`
+
+提交时的上下文合并规则：
+
+- `artifactContext`：来自 artifact 面板的附加上下文
+- `manualRunContext`：用户在 `Run Context` 面板手工输入并保存的 JSON
+- 最终提交时执行浅合并：
+
+```ts
+finalContext = {
+  ...artifactContext,
+  ...manualRunContext,
+}
+```
+
+其中：
+
+- 手工输入的 `manualRunContext` 覆盖同名 `artifactContext`
+- 若合并后为空对象，则本轮 run 不传 `context`
+
+推荐用途：
+
+- 给 `runtime-service` 的 `RuntimeContext` 手工传参
+- 快速验证 `project_id / model_id / system_prompt / enable_tools / tools`
+- 不改平台层代码，直接调 runtime 运行时契约
+
+不做的事情：
+
+- 不按 graph 自动生成字段面板
+- 不做 graph-specific 必填校验
+- 不做 schema 驱动表单
+- 不替服务端兜底契约错误
+
 ## 本应用的开发与验证要求
 
 如果本轮需要验证 Agent 交互，但暂时不需要平台治理能力，优先用 `runtime-web`。

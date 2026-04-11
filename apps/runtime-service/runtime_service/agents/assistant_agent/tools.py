@@ -7,17 +7,10 @@ from runtime_service.agents.assistant_agent.prompts import (
     KNOWLEDGE_SPECIALIST_PROMPT,
     OPS_SPECIALIST_PROMPT,
 )
-from runtime_service.runtime.options import AppRuntimeConfig
-from runtime_service.tools.registry import build_tools
 from langchain.agents import create_agent
 from langchain_core.tools import tool
 from langgraph.config import get_config
 from langgraph.types import interrupt
-
-
-async def build_assistant_tools(options: AppRuntimeConfig) -> list[Any]:
-    return await build_tools(options)
-
 
 def _has_runnable_context() -> bool:
     try:

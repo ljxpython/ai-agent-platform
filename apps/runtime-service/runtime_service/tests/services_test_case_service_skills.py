@@ -10,7 +10,7 @@
 
 1. _alist_skills 静态枚举：skills 元数据（名称/路径/描述）是否正确加载
 2. SkillsMiddleware.abefore_agent 注入验证：skills 是否真实注入进 system prompt
-3. make_graph 集成验证：真实 graph 工厂函数能否正常构建（不调用 LLM）
+3. static graph 集成验证：真实 graph 能否正常构建（不调用 LLM）
 
 以上三项均无需 LLM 网络调用，可离线运行。
 如需完整 astream 验证，在命令行加 --live 参数。
@@ -39,16 +39,18 @@ if _ENV_FILE.exists():
 
 os.environ.setdefault("APP_ENV", "test")
 
+from runtime_service.conf.settings import require_model_spec  # noqa: E402
 from deepagents.backends import FilesystemBackend  # noqa: E402
 from deepagents.middleware.skills import SkillsMiddleware, _alist_skills  # noqa: E402
 from langgraph.checkpoint.memory import MemorySaver  # noqa: E402
 from runtime_service.middlewares.multimodal import MultimodalMiddleware  # noqa: E402
 from runtime_service.runtime.context import RuntimeContext  # noqa: E402
-from runtime_service.runtime.modeling import apply_model_runtime_params, resolve_model  # noqa: E402
-from runtime_service.runtime.options import build_runtime_config, merge_trusted_auth_context  # noqa: E402
+from runtime_service.runtime.runtime_request_resolver import (  # noqa: E402
+    AgentDefaults,
+    resolve_runtime_settings,
+)
 from runtime_service.services.test_case_service.prompts import SYSTEM_PROMPT  # noqa: E402
 from runtime_service.services.test_case_service.schemas import get_service_root  # noqa: E402
-from runtime_service.tools.registry import build_tools  # noqa: E402
 
 SEP = "=" * 60
 _BACKEND_ROOT = str(get_service_root())
@@ -61,6 +63,29 @@ _EXPECTED_SKILLS = {
     "output-formatter",
     "test-data-generator",
 }
+_SCRIPT_DEFAULTS = AgentDefaults(
+    model_id="deepseek_chat",
+    system_prompt=SYSTEM_PROMPT,
+    enable_tools=False,
+)
+
+
+def _resolve_script_runtime(model_id: str) -> tuple[Any, list[Any], dict[str, str]]:
+    runtime_context = RuntimeContext(model_id=model_id)
+    settings = resolve_runtime_settings(
+        context=runtime_context,
+        defaults=_SCRIPT_DEFAULTS,
+    )
+    resolved_model_id, spec = require_model_spec(model_id or _SCRIPT_DEFAULTS.model_id)
+    return (
+        settings,
+        [],  # 当前 skills 验证脚本不依赖公共 optional tools
+        {
+            "runtime_model_id": resolved_model_id,
+            "runtime_model": spec["model"],
+            "runtime_provider": spec["model_provider"],
+        },
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -146,29 +171,26 @@ async def verify_middleware_injection(skills_metadata: list[dict]) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 验证 3：make_graph 构建验证
+# 验证 3：static graph 构建验证
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def verify_make_graph() -> None:
-    """调用真实 make_graph 工厂函数，验证 agent 能正常构建。不调用 LLM。"""
-    print(f"\n── 验证 3：make_graph 构建验证 {'─' * 35}")
+async def verify_static_graph() -> None:
+    """验证 test_case_service 的静态 graph 能正常构建并暴露可调用对象。"""
+    print(f"\n── 验证 3：static graph 构建验证 {'─' * 33}")
 
     from deepagents import create_deep_agent  # noqa: E402
 
     config: RunnableConfig = {
         "configurable": {
             "thread_id": str(uuid4()),
-            "model_id": "deepseek_chat",
         }
     }
-    options = build_runtime_config(config, merge_trusted_auth_context(config, {}))
-    model = apply_model_runtime_params(resolve_model(options.model_spec), options)
-    tools = await build_tools(options)
+    settings, tools, _model_preview = _resolve_script_runtime("deepseek_chat")
     backend = FilesystemBackend(root_dir=_BACKEND_ROOT, virtual_mode=True)
 
     agent = create_deep_agent(
         name="test_case_agent",
-        model=model,
+        model=settings.model,
         tools=tools,
         middleware=[MultimodalMiddleware()],
         system_prompt=SYSTEM_PROMPT,
@@ -198,7 +220,7 @@ async def verify_make_graph() -> None:
     else:
         print("  ℹ middleware 属性未直接暴露（create_deep_agent 内部管理）")
 
-    print(f"  ✔ make_graph 集成验证通过")
+    print("  ✔ static graph 集成验证通过")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -215,13 +237,10 @@ async def verify_live_stream(model_id: str = "deepseek_chat") -> None:
     config: RunnableConfig = {
         "configurable": {
             "thread_id": str(uuid4()),
-            "model_id": model_id,
         }
     }
-    options = build_runtime_config(config, merge_trusted_auth_context(config, {}))
-    model = apply_model_runtime_params(resolve_model(options.model_spec), options)
-    print(f"  model spec: {options.model_spec}")
-    tools = await build_tools(options)
+    settings, tools, model_preview = _resolve_script_runtime(model_id)
+    print(f"  resolved model: {model_preview}")
     backend = FilesystemBackend(root_dir=_BACKEND_ROOT, virtual_mode=True)
 
     # 用 callback 拦截第一次 before_model，打印实际注入的 system prompt
@@ -229,7 +248,7 @@ async def verify_live_stream(model_id: str = "deepseek_chat") -> None:
 
     agent = create_deep_agent(
         name="test_case_agent",
-        model=model,
+        model=settings.model,
         tools=tools,
         middleware=[MultimodalMiddleware()],
         system_prompt=SYSTEM_PROMPT,
@@ -334,7 +353,7 @@ async def _run(live: bool, model_id: str) -> None:
 
     skills_metadata = await verify_static_enum()
     await verify_middleware_injection(skills_metadata)
-    await verify_make_graph()
+    await verify_static_graph()
 
     if live:
         await verify_live_stream(model_id=model_id)
@@ -367,4 +386,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

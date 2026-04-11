@@ -8,6 +8,7 @@ from runtime_service.middlewares.runtime_request import RuntimeRequestMiddleware
 from runtime_service.runtime.runtime_request_resolver import (
     AgentDefaults,
     ResolvedRuntimeSettings,
+    dedupe_tools_by_name,
 )
 from runtime_service.runtime.context import RuntimeContext
 from runtime_service.runtime.modeling import resolve_model_by_id
@@ -31,7 +32,6 @@ SQL_AGENT_DEFAULTS = AgentDefaults(
 
 SQL_AGENT_SERVICE_CONFIG = build_sql_agent_service_config(None)
 BASELINE_MODEL = resolve_model_by_id(SQL_AGENT_DEFAULTS.model_id)
-BASELINE_PRIVATE_TOOLS = build_sql_agent_tools(BASELINE_MODEL)
 
 _CHART_TOOLS_CACHE: list[Any] | None = None
 _CHART_TOOLS_LOAD_FAILED = False
@@ -91,6 +91,14 @@ async def _aresolve_required_tools(settings: ResolvedRuntimeSettings) -> list[An
         *build_sql_agent_tools(settings.model),
         *(await _aget_chart_tools()),
     ]
+
+
+BASELINE_PRIVATE_TOOLS = dedupe_tools_by_name(
+    [
+        *build_sql_agent_tools(BASELINE_MODEL),
+        *_get_chart_tools(),
+    ]
+)
 
 
 def _resolve_public_tools(settings: ResolvedRuntimeSettings) -> list[Any]:

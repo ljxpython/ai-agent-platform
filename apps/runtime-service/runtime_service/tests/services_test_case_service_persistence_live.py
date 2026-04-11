@@ -30,14 +30,12 @@ from runtime_service.integrations import (  # noqa: E402
     InteractionDataServiceClient,
     build_interaction_data_service_config,
 )
-from runtime_service.runtime.options import (  # noqa: E402
-    build_runtime_config,
-    merge_trusted_auth_context,
-)
+from runtime_service.runtime.context import RuntimeContext  # noqa: E402
 from runtime_service.tests.live_args import parse_uuid_arg  # noqa: E402
 from runtime_service.tests.services_test_case_service_debug import (  # noqa: E402
     _print_section,
     _resolve_pdf_path,
+    _resolve_runtime_model_preview,
     _stream_agent_run,
 )
 
@@ -160,8 +158,6 @@ async def _main_async(args: argparse.Namespace) -> int:
     config: RunnableConfig = {
         "configurable": {
             "thread_id": thread_id,
-            "model_id": args.model_id,
-            "project_id": project_id,
             "interaction_data_service_timeout_seconds": args.interaction_timeout,
         }
     }
@@ -170,15 +166,18 @@ async def _main_async(args: argparse.Namespace) -> int:
     if args.parser_model_id:
         config["configurable"]["test_case_multimodal_parser_model_id"] = args.parser_model_id
 
-    runtime_options = build_runtime_config(config, merge_trusted_auth_context(config, {}))
+    runtime_context = RuntimeContext(
+        model_id=args.model_id,
+        project_id=project_id,
+    )
+    model_preview = _resolve_runtime_model_preview(runtime_context)
     _print_section(
         "Persistence Input",
         {
             "pdf_path": str(pdf_path),
             "question": args.question,
             "model_id": args.model_id,
-            "runtime_model": runtime_options.model_spec.model,
-            "runtime_provider": runtime_options.model_spec.model_provider,
+            **model_preview,
             "project_id": project_id,
             "thread_id": thread_id,
             "batch_id": batch_id,
@@ -191,6 +190,7 @@ async def _main_async(args: argparse.Namespace) -> int:
     graph_report = await _stream_agent_run(
         message=message,
         config=config,
+        runtime_context=runtime_context,
         timeout_seconds=max(1.0, args.timeout),
     )
     print()

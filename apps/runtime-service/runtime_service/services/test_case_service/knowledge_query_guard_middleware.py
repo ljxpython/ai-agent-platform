@@ -7,12 +7,12 @@ from typing import Any
 from deepagents.middleware._utils import append_to_system_message
 from langchain.agents.middleware import AgentMiddleware, ModelRequest, ModelResponse
 from langchain.messages import AIMessage
+from runtime_service.runtime.context import coerce_runtime_context
 
 MULTIMODAL_ATTACHMENTS_KEY = "multimodal_attachments"
 REQUIREMENT_ANALYSIS_SKILL_PATH = "/skills/requirement-analysis/SKILL.md"
 READ_FILE_TOOL_NAME = "read_file"
 QUERY_PROJECT_KNOWLEDGE_TOOL_NAME = "query_project_knowledge"
-_LATEST_PROJECT_ID_PATTERN = re.compile(r"当前项目 ID：`([^`]+)`")
 _TEST_CASE_GENERATION_PATTERN = re.compile(
     r"(生成|设计|编写|输出|给出).{0,24}(测试用例|测试案例|用例)"
     r"|"
@@ -142,29 +142,8 @@ def _collect_tool_names(messages: Sequence[Any]) -> list[str]:
 
 def _resolve_project_id(request: ModelRequest) -> str | None:
     runtime = getattr(request, "runtime", None)
-    context = getattr(runtime, "context", None)
-    if isinstance(context, Mapping):
-        project_id = context.get("project_id")
-        if isinstance(project_id, str) and project_id.strip():
-            return project_id.strip()
-    else:
-        project_id = getattr(context, "project_id", None)
-        if isinstance(project_id, str) and project_id.strip():
-            return project_id.strip()
-
-    state = request.state if isinstance(request.state, Mapping) else {}
-    project_id = state.get("project_id")
-    if isinstance(project_id, str) and project_id.strip():
-        return project_id.strip()
-
-    system_message = getattr(request, "system_message", None)
-    system_text = _extract_text_from_content(getattr(system_message, "content", None))
-    if not system_text:
-        system_text = _extract_text_from_content(getattr(system_message, "content_blocks", None))
-    matched = _LATEST_PROJECT_ID_PATTERN.search(system_text)
-    if matched:
-        return matched.group(1).strip()
-    return None
+    context = getattr(runtime, "context", None) if runtime is not None else None
+    return coerce_runtime_context(context).project_id
 
 
 def _build_synthesized_tool_response(name: str, args: dict[str, Any]) -> ModelResponse:

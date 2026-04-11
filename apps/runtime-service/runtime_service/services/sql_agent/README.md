@@ -75,12 +75,11 @@ runtime_service/services/sql_agent/
 
 该服务必须沿用现有统一链路：
 
-1. `merge_trusted_auth_context(config, {})`
-2. `build_runtime_config(config, runtime_context)`
-3. `resolve_model(options.model_spec)`
-4. `apply_model_runtime_params(model, options)`
-5. 组装服务私有 SQL tools
-6. `create_agent(...)`
+1. 调用方通过 `RuntimeContext` 传公共业务参数
+2. `RuntimeRequestMiddleware` 调 `resolve_runtime_settings(...)`
+3. `resolve_model_by_id(...)`
+4. graph / service 组装 SQL 私有 tools
+5. `create_agent(...)`
 
 也就是说：
 
@@ -278,20 +277,13 @@ def get_mcp_server_chart_tools():
     return tools
 ```
 
-实际落地时，考虑到 `graph.py` 是异步工厂函数，推荐同时提供异步版本，优先在 `make_graph(...)` 里 `await` 加载，避免在已有 event loop 中直接调用 `asyncio.run(...)`。
+当前实现已经收敛为静态 graph，不再通过异步工厂函数装配整个 agent；需要异步获取的 chart tools 通过 `RuntimeRequestMiddleware` 的 async resolver 在请求期处理。
 
 接入方式：
 
-- 先构建 SQL agent 自己的 tools
-- 再从 `chart_mcp.py` 取回 chart tools
-- 最后在 `create_agent(...)` 前用 `tools.extend(...)` 追加进去
-
-示意：
-
-```python
-tools = await build_sql_agent_tools(...)
-tools.extend(await aget_mcp_server_chart_tools())
-```
+- SQL agent 自己的只读数据库 tools 作为 required tools
+- chart MCP tools 通过 graph 内的 required tool resolver 动态补入
+- 最终仍由静态 `create_agent(...)` 导出统一 graph
 
 一期约束：
 
@@ -346,22 +338,21 @@ tools.extend(await aget_mcp_server_chart_tools())
 建议骨架：
 
 ```python
-async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
-    del runtime
-    runtime_context = merge_trusted_auth_context(config, {})
-    options = build_runtime_config(config, runtime_context)
-    model = apply_model_runtime_params(resolve_model(options.model_spec), options)
-    tools = build_sql_agent_tools(model, config=config)
-
-    return create_agent(
-        model=model,
-        tools=tools,
-        system_prompt=build_sql_agent_system_prompt(...),
-        name="sql_agent",
-    )
-
-
-graph = make_graph
+graph = create_agent(
+    model=BASELINE_MODEL,
+    tools=BASELINE_PRIVATE_TOOLS,
+    middleware=[
+        RuntimeRequestMiddleware(
+            defaults=SQL_AGENT_DEFAULTS,
+            required_tool_resolver=_resolve_required_tools,
+            arequired_tool_resolver=_aresolve_required_tools,
+            system_prompt_resolver=_build_sql_system_prompt,
+        )
+    ],
+    system_prompt=_build_sql_system_prompt(...),
+    context_schema=RuntimeContext,
+    name="sql_agent",
+)
 ```
 
 说明：
@@ -369,7 +360,7 @@ graph = make_graph
 - 一期不强制接入多模态 middleware
 - 一期不强制接入 HITL middleware
 - 一期先把“只读 SQL 问答主链路”跑通
-- graph 创建阶段不做下载、不做数据库文件初始化、不做网络请求
+- graph 顶层不重建拓扑，重资源通过 resolver / lazy helper 延迟处理
 
 如果后续发现需要人工审批，再单独加：
 
@@ -389,7 +380,7 @@ graph = make_graph
 
 - `sql_agent_top_k`
 
-这些参数不进入公共 `AppRuntimeConfig`，而是在 `services/sql_agent/` 内部自行解析。
+这些参数不进入公共 `RuntimeContext`，而是在 `services/sql_agent/` 内部自行解析。
 
 建议读取顺序：
 

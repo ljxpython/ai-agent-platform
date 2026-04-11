@@ -22,8 +22,6 @@
 - `agents/assistant_agent/graph.py`：当前推荐的 assistant 开发范式
 - `agents/deepagent_agent/graph.py`：deepagent 范式参考模板
 - `agents/personal_assistant_agent/graph.py`：subagent / supervisor 协作范式参考模板
-- `agents/assistant_agent/graph_legacy.py`：历史实现，仅保留兼容与参考价值
-- `agents/assistant_agent/graph_entrypoint.py`：兼容导出文件，避免旧引用立刻失效
 - `docs/archive/`：历史模板和背景资料，不作为现行开发范式入口
 
 ## 当前 graph 一览
@@ -34,7 +32,6 @@
 - `personal_assistant_demo`：supervisor + subagent 范式
 - `research_demo`：deepagent 研究范式（research_agent 私有 skills + 可选 Tavily MCP）
 - `skills_sql_assistant_demo`：middleware + skills 范式
-- `usecase_workflow_agent`：业务工作流范式，当前实现见 `services/usecase_workflow_agent/README.md`，后续重构计划见 `services/usecase_workflow_agent/refactor-plan.md`
 - `test_case_agent`：测试用例分析与正式持久化服务，设计见 `docs/10-test-case-service-persistence-design.md`
 
 graph 注册以 `runtime_service/langgraph.json` 和 `runtime_service/langgraph_auth.json` 为准。
@@ -97,8 +94,10 @@ fixtures 存放在 `runtime_service/test_data/`。
 ## 运行时最小心智模型
 
 - graph 入口统一从 `langgraph.json` 注册
-- 运行时参数主要经由 `runtime/options.py` 解析
-- 模型装配在 `runtime/modeling.py`
+- 公共业务参数通过 `RuntimeContext` 进入 graph
+- graph 内统一通过 `RuntimeRequestMiddleware + runtime/runtime_request_resolver.py` 做模型、prompt、工具解析
+- 模型装配统一走 `resolve_runtime_settings(...) + resolve_model_by_id(...)`
+- `runtime/options.py` 已删除，不再保留旧运行时入口
 - 工具装配在 `tools/registry.py`
 - MCP server 清单在 `mcp/servers.py`
 - 自定义 HTTP 路由在 `custom_routes/`

@@ -16,8 +16,8 @@ from runtime_service.integrations import (
 )
 from runtime_service.middlewares.multimodal import MULTIMODAL_ATTACHMENTS_KEY
 from runtime_service.middlewares.multimodal import protocol as _multimodal_protocol
-from runtime_service.runtime.context import RuntimeContext
-from runtime_service.runtime.options import context_to_mapping, read_configurable
+from runtime_service.runtime.config_utils import read_configurable
+from runtime_service.runtime.context import RuntimeContext, coerce_runtime_context
 from runtime_service.services.test_case_service.schemas import TestCaseServiceConfig
 
 TEST_CASE_DOCUMENTS_PATH = "/api/test-case-service/documents"
@@ -91,40 +91,15 @@ def _get_runtime_config(runtime: Any) -> Mapping[str, Any]:
     return fallback if isinstance(fallback, Mapping) else {}
 
 
-def _get_runtime_context_mapping(runtime: Any) -> Mapping[str, Any]:
-    return context_to_mapping(getattr(runtime, "context", None))
+def _resolve_project_id(runtime: Any) -> str | None:
+    runtime_context = coerce_runtime_context(
+        getattr(runtime, "context", None) if runtime is not None else None
+    )
+    return _coerce_optional_text(runtime_context.project_id)
 
 
-def _resolve_project_id(
-    runtime: Any,
-    service_config: TestCaseServiceConfig,
-) -> str | None:
-    context_data = _get_runtime_context_mapping(runtime)
-    config = _get_runtime_config(runtime)
-    configurable = read_configurable(config)
-    metadata = config.get("metadata")
-    metadata_map = metadata if isinstance(metadata, Mapping) else {}
-    state = _get_runtime_state(runtime)
-    for candidate in (
-        context_data.get("project_id"),
-        configurable.get("project_id"),
-        configurable.get("x-project-id"),
-        metadata_map.get("project_id"),
-        state.get("project_id"),
-    ):
-        text = _coerce_optional_text(candidate)
-        if text:
-            return text
-    if service_config.allow_default_project_fallback:
-        return _coerce_optional_text(service_config.default_project_id)
-    return None
-
-
-def _require_project_id(
-    runtime: Any,
-    service_config: TestCaseServiceConfig,
-) -> str:
-    project_id = _resolve_project_id(runtime, service_config)
+def _require_project_id(runtime: Any) -> str:
+    project_id = _resolve_project_id(runtime)
     if project_id:
         return project_id
     raise ValueError(MISSING_PROJECT_ID_ERROR)
@@ -141,11 +116,8 @@ def _is_valid_uuid_text(value: Any) -> bool:
     return True
 
 
-def _require_uuid_project_id(
-    runtime: Any,
-    service_config: TestCaseServiceConfig,
-) -> str:
-    project_id = _require_project_id(runtime, service_config)
+def _require_uuid_project_id(runtime: Any) -> str:
+    project_id = _require_project_id(runtime)
     if _is_valid_uuid_text(project_id):
         return project_id
     raise ValueError(INVALID_PROJECT_ID_ERROR)
@@ -434,7 +406,7 @@ def persist_runtime_documents(
             "context": resolved_context if resolved_context is not None else RuntimeContext(),
         },
     )()
-    project_id = _require_uuid_project_id(runtime_like, service_config)
+    project_id = _require_uuid_project_id(runtime_like)
     batch_id = _resolve_batch_id(runtime_like)
     resolved_client = client or InteractionDataServiceClient(
         build_interaction_data_service_config(runtime_like.config)

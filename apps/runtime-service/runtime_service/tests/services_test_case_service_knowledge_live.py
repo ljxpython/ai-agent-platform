@@ -24,14 +24,12 @@ if _ENV_FILE.exists():
 
 os.environ.setdefault("APP_ENV", "test")
 
-from runtime_service.runtime.options import (  # noqa: E402
-    build_runtime_config,
-    merge_trusted_auth_context,
-)
+from runtime_service.runtime.context import RuntimeContext  # noqa: E402
 from runtime_service.tests.live_args import parse_uuid_arg  # noqa: E402
 from runtime_service.tests.services_test_case_service_debug import (  # noqa: E402
     KNOWLEDGE_TOOL_NAMES,
     _print_section,
+    _resolve_runtime_model_preview,
     _stream_agent_run,
 )
 
@@ -92,15 +90,17 @@ async def _main_async(args: argparse.Namespace) -> int:
     config: RunnableConfig = {
         "configurable": {
             "thread_id": thread_id,
-            "model_id": args.model_id,
-            "project_id": args.project_id,
             "test_case_knowledge_mcp_enabled": True,
             "test_case_knowledge_mcp_url": args.knowledge_mcp_url,
             "test_case_knowledge_timeout_seconds": args.knowledge_timeout,
             "test_case_knowledge_sse_read_timeout_seconds": args.knowledge_sse_read_timeout,
         }
     }
-    runtime_options = build_runtime_config(config, merge_trusted_auth_context(config, {}))
+    runtime_context = RuntimeContext(
+        model_id=args.model_id,
+        project_id=args.project_id,
+    )
+    model_preview = _resolve_runtime_model_preview(runtime_context)
     message = HumanMessage(content=args.question)
 
     _print_section(
@@ -108,8 +108,7 @@ async def _main_async(args: argparse.Namespace) -> int:
         {
             "question": args.question,
             "model_id": args.model_id,
-            "runtime_model": runtime_options.model_spec.model,
-            "runtime_provider": runtime_options.model_spec.model_provider,
+            **model_preview,
             "project_id": args.project_id,
             "thread_id": thread_id,
             "knowledge_mcp_url": args.knowledge_mcp_url,
@@ -122,6 +121,7 @@ async def _main_async(args: argparse.Namespace) -> int:
     graph_report = await _stream_agent_run(
         message=message,
         config=config,
+        runtime_context=runtime_context,
         timeout_seconds=max(1.0, args.timeout),
     )
     print()

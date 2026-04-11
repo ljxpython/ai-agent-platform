@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+from langchain.agents.middleware import ModelRequest
 from langchain.messages import HumanMessage
 
 _PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -12,7 +13,9 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from runtime_service.services.test_case_service.knowledge_query_guard_middleware import (  # noqa: E402
     TestCaseKnowledgeQueryGuardMiddleware,
+    _resolve_project_id,
 )
+from runtime_service.runtime.context import RuntimeContext  # noqa: E402
 
 
 def test_requires_guard_for_plain_business_generation_without_attachments() -> None:
@@ -58,3 +61,29 @@ def test_requires_guard_skips_when_multimodal_state_already_has_attachments() ->
 
     assert guarded is False
     assert latest_user_text == ""
+
+
+def test_resolve_project_id_only_reads_runtime_context() -> None:
+    request = ModelRequest(
+        model=None,
+        system_prompt="你正在处理项目：`state-project`",
+        messages=[HumanMessage(content="请生成支付模块测试用例")],
+        tools=[],
+        state={"project_id": "state-project"},
+        runtime=SimpleNamespace(context=RuntimeContext(project_id="context-project")),
+    )
+
+    assert _resolve_project_id(request) == "context-project"
+
+
+def test_resolve_project_id_does_not_fallback_to_state_or_system_prompt() -> None:
+    request = ModelRequest(
+        model=None,
+        system_prompt="当前项目 ID：`prompt-project`",
+        messages=[HumanMessage(content="请生成支付模块测试用例")],
+        tools=[],
+        state={"project_id": "state-project"},
+        runtime=SimpleNamespace(context=RuntimeContext()),
+    )
+
+    assert _resolve_project_id(request) is None

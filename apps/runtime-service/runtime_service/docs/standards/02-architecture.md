@@ -27,8 +27,8 @@
 
 - `runtime_service/langgraph.json`：graph 注册表、HTTP app 挂载点、CORS 与 `.env` 加载入口。
 - `runtime_service/runtime/context.py`：共享 `RuntimeContext` 定义，约束模型、工具、租户等运行时字段。
-- `runtime_service/runtime/options.py`：运行时解析入口，负责合并 `context`、`config`、`configurable` 与可信注入。
-- `runtime_service/runtime/modeling.py`：模型解析与运行参数绑定。
+- `runtime_service/runtime/runtime_request_resolver.py`：运行时解析入口，负责把 `RuntimeContext` + 默认值收敛成模型、prompt、tools。
+- `runtime_service/runtime/modeling.py`：模型 ID -> ChatModel 解析入口。
 - `runtime_service/tools/registry.py`：工具 catalog 唯一真源，负责统一注册内建工具与 MCP 工具。
 - `runtime_service/custom_routes/tools.py`：工具能力对外暴露层，不是工具真源。
 - `runtime_service/middlewares/`：共享横切能力目录，后续公共 runtime 解析层也应收敛在这里。
@@ -89,20 +89,22 @@
 
 - `assistant`、`research_demo`、`deepagent_demo`、`test_case_agent` 共享同一套 runtime contract。
 - `deepagent` 默认也按静态 graph 收敛，`skills` / `subagents` 保持静态注册。
-- `graph_entrypoint.py` 这类文件只保留兼容导出价值，不再作为新范式扩散。
+- 不再保留 `graph_entrypoint.py` 这类兼容导出文件。
 - 工具对外展示可以走 `custom_routes/tools.py`，但 graph 内部仍以 `tools/registry.py` 为唯一真源。
 
 ## 当前状态说明
 
-本文描述的是目标架构，不等于当前代码已经全部符合。
+本文描述的就是 `runtime_service` 当前主线架构。
 
-当前代码里仍有一些旧范式残留，例如：
+已经明确完成的收口：
 
-- `configurable-first` 倾向
-- 个别 graph 仍依赖 `make_graph(...)`
-- 模型/工具解析还没有完全收敛到共享 middleware
+- `runtime/options.py` 已删除
+- `graph_entrypoint.py` / `graph_legacy.py` 已删除
+- `usecase_workflow_agent` 已删除
+- 主线 graph 已不再使用 `make_graph(...)` 作为默认导出
+- live/debug 脚本已切到 `RuntimeContext + RuntimeRequestMiddleware`
 
-后续重构以本文档为准。
+如果其他应用层仍然引用旧入口，直接改调用方；**不在 `runtime_service` 内保留 compat 层**。
 
 ## 启动示例
 

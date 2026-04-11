@@ -23,7 +23,6 @@
 阅读完成后，再回头看这些活代码会更顺：
 
 - `runtime_service/agents/assistant_agent/graph.py`
-- `runtime_service/agents/assistant_agent/graph_legacy.py`
 - `runtime_service/agents/research_agent/graph.py`
 - `runtime_service/services/test_case_service/graph.py`
 

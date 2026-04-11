@@ -28,6 +28,7 @@ if _ENV_FILE.exists():
 
 os.environ.setdefault("APP_ENV", "test")
 
+from runtime_service.conf.settings import require_model_spec  # noqa: E402
 from runtime_service.devtools.multimodal_frontend_compat import (  # noqa: E402
     build_human_message_from_paths,
     file_path_to_frontend_content_block,
@@ -38,11 +39,11 @@ from runtime_service.middlewares.multimodal import (  # noqa: E402
     MultimodalMiddleware,
     normalize_messages,
 )
-from runtime_service.runtime.options import (  # noqa: E402
-    build_runtime_config,
-    merge_trusted_auth_context,
+from runtime_service.runtime.context import RuntimeContext  # noqa: E402
+from runtime_service.services.test_case_service.graph import (  # noqa: E402
+    TEST_CASE_DEFAULTS,
+    graph,
 )
-from runtime_service.services.test_case_service.graph import make_graph  # noqa: E402
 from runtime_service.services.test_case_service.prompts import SYSTEM_PROMPT  # noqa: E402
 from runtime_service.services.test_case_service.schemas import (  # noqa: E402
     build_test_case_service_config,
@@ -65,6 +66,16 @@ def _print_section(title: str, payload: Any) -> None:
         print(payload)
         return
     print(_json_dump(payload))
+
+
+def _resolve_runtime_model_preview(runtime_context: RuntimeContext) -> dict[str, str]:
+    requested_model_id = runtime_context.model_id or TEST_CASE_DEFAULTS.model_id
+    resolved_model_id, spec = require_model_spec(requested_model_id)
+    return {
+        "runtime_model_id": resolved_model_id,
+        "runtime_model": spec["model"],
+        "runtime_provider": spec["model_provider"],
+    }
 
 
 def _default_pdf_path() -> Path:
@@ -270,9 +281,10 @@ async def _stream_agent_run(
     *,
     message: Any,
     config: RunnableConfig,
+    runtime_context: RuntimeContext,
     timeout_seconds: float,
 ) -> dict[str, Any]:
-    agent = await make_graph(config, cast(Any, None))
+    agent = graph
     stream_chunks: list[str] = []
     tool_calls: list[str] = []
     update_summaries: list[dict[str, Any]] = []
@@ -281,6 +293,7 @@ async def _stream_agent_run(
         async for mode, event in agent.astream(
             {"messages": [message]},
             config=config,
+            context=runtime_context,
             stream_mode=["messages", "updates"],
         ):
             if mode == "messages":
@@ -398,11 +411,8 @@ async def _main_async(args: argparse.Namespace) -> int:
     config: RunnableConfig = {
         "configurable": {
             "thread_id": str(uuid4()),
-            "model_id": args.model_id,
         }
     }
-    if args.project_id:
-        config["configurable"]["project_id"] = args.project_id
     if args.parser_model_id:
         config["configurable"]["test_case_multimodal_parser_model_id"] = args.parser_model_id
     if args.knowledge_mcp_url:
@@ -414,8 +424,12 @@ async def _main_async(args: argparse.Namespace) -> int:
             args.knowledge_sse_read_timeout
         )
 
-    runtime_options = build_runtime_config(config, merge_trusted_auth_context(config, {}))
+    runtime_context = RuntimeContext(
+        model_id=args.model_id,
+        project_id=args.project_id,
+    )
     service_config = build_test_case_service_config(config)
+    model_preview = _resolve_runtime_model_preview(runtime_context)
 
     _print_section(
         "Input",
@@ -425,8 +439,7 @@ async def _main_async(args: argparse.Namespace) -> int:
             "question": args.question,
             "model_id": args.model_id,
             "parser_model_id": service_config.multimodal_parser_model_id,
-            "runtime_model": runtime_options.model_spec.model,
-            "runtime_provider": runtime_options.model_spec.model_provider,
+            **model_preview,
             "project_id": args.project_id,
             "knowledge_mcp_enabled": service_config.knowledge_mcp_enabled,
             "knowledge_mcp_url": service_config.knowledge_mcp_url,
@@ -466,6 +479,7 @@ async def _main_async(args: argparse.Namespace) -> int:
     graph_report = await _stream_agent_run(
         message=message,
         config=config,
+        runtime_context=runtime_context,
         timeout_seconds=max(1.0, args.timeout),
     )
     print()

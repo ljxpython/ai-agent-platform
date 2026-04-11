@@ -69,8 +69,6 @@ def _resolve_current_project_id(settings: ResolvedRuntimeSettings) -> str | None
     project_id = settings.context.project_id
     if project_id:
         return str(project_id).strip() or None
-    if TEST_CASE_SERVICE_CONFIG.allow_default_project_fallback:
-        return str(TEST_CASE_SERVICE_CONFIG.default_project_id).strip() or None
     return None
 
 

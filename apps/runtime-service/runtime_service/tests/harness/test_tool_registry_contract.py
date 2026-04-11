@@ -34,3 +34,13 @@ def test_custom_tools_route_uses_registry_source_of_truth() -> None:
     )
     source = route_file.read_text(encoding="utf-8")
     assert "get_tool_catalog" in source
+
+
+def test_tool_registry_does_not_expose_legacy_appruntimeconfig_entrypoint() -> None:
+    source = (
+        Path(__file__).resolve().parents[2]
+        / "tools"
+        / "registry.py"
+    ).read_text(encoding="utf-8")
+    assert "AppRuntimeConfig" not in source
+    assert "def build_tools(" not in source

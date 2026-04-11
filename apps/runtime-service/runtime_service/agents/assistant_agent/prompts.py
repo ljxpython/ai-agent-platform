@@ -1,6 +1,7 @@
-from runtime_service.runtime.options import DEFAULT_SYSTEM_PROMPT
-
-SYSTEM_PROMPT = DEFAULT_SYSTEM_PROMPT
+SYSTEM_PROMPT = (
+    "You are an expert researcher. Your job is to conduct thorough research and then "
+    "write a polished report."
+)
 
 LANGCHAIN_CONCEPTS_DEMO_PROMPT = (
     "LangChain concepts demo mode is enabled. "

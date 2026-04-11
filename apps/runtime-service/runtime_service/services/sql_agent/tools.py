@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 import requests
-from runtime_service.runtime.options import read_configurable
+from runtime_service.runtime.config_utils import read_configurable
 from runtime_service.services.sql_agent.schemas import (
     CHINOOK_DB_URL,
     DEFAULT_DOWNLOAD_TIMEOUT_SECONDS,

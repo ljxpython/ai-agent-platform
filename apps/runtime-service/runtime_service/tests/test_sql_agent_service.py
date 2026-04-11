@@ -14,7 +14,6 @@ _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
-from runtime_service.runtime.options import build_runtime_config  # noqa: E402
 from runtime_service.runtime.context import RuntimeContext  # noqa: E402
 from runtime_service.runtime.runtime_request_resolver import (  # noqa: E402
     ResolvedRuntimeSettings,
@@ -24,13 +23,8 @@ from runtime_service.services.sql_agent import tools as sql_tools  # noqa: E402
 sql_agent_graph = importlib.import_module("runtime_service.services.sql_agent.graph")
 
 
-def test_build_runtime_config_defaults_to_empty_system_prompt(monkeypatch: Any) -> None:
-    monkeypatch.delenv("SYSTEM_PROMPT", raising=False)
-    monkeypatch.setenv("MODEL_ID", "glm5_mass")
-
-    options = build_runtime_config({"configurable": {}}, {})
-
-    assert options.system_prompt == ""
+def test_sql_agent_defaults_to_empty_system_prompt() -> None:
+    assert sql_agent_graph.SQL_AGENT_DEFAULTS.system_prompt == ""
 
 
 def _invoke_tool(tool_obj: Any, args: dict[str, Any]) -> Any:

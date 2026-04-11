@@ -220,7 +220,7 @@ def build_test_case_service_tools(service_config: TestCaseServiceConfig) -> list
         batch_id = _resolve_batch_id(runtime)
         runtime_meta = _resolve_runtime_meta(runtime)
         try:
-            project_id = _require_uuid_project_id(runtime, service_config)
+            project_id = _require_uuid_project_id(runtime)
         except ValueError as exc:
             reason = str(exc)
             status = (

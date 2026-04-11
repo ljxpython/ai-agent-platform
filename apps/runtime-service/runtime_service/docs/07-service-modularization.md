@@ -43,7 +43,7 @@ runtime_service/services/<service_name>/
 
 要求：
 
-- `graph.py` 必须导出 `graph`（通常是 `graph = make_graph`）
+- `graph.py` 必须导出 `graph`（默认推荐静态顶层导出）
 - `README.md` 说明该服务的用途、入口 graph id、最小运行参数、验证方式
 - `tests/` 至少包含一个“注册/冒烟”层面的测试（不要依赖外部服务）
 
@@ -151,7 +151,7 @@ tools.extend(build_service_private_tools(service_config))
 
 统一要求：
 
-- 服务必须走同一套运行时解析链路（`build_runtime_config(...)`），不要重新发明一套配置入口
+- 服务必须走同一套运行时解析链路（`RuntimeContext + RuntimeRequestMiddleware + resolve_runtime_settings(...)`），不要重新发明一套配置入口
 - 服务级的默认值（例如默认 system prompt、默认工具集合）应写在服务模块内部
 
 推荐约定（便于跨服务共存）：

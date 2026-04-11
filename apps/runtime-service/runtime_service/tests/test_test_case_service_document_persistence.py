@@ -91,12 +91,11 @@ def test_persist_runtime_documents_uploads_pdf_asset_from_request_messages(tmp_p
         state=state,
         config={
             "configurable": {
-                "project_id": "5f419550-a3c7-49c6-9450-09154fd1bf7d",
                 "thread_id": "thread-test-1",
                 "batch_id": "test-case-service:batch-test-1",
             }
         },
-        context=RuntimeContext(),
+        context=RuntimeContext(project_id="5f419550-a3c7-49c6-9450-09154fd1bf7d"),
     )
     client = _FakeInteractionDataClient()
 
@@ -150,12 +149,11 @@ def test_persist_runtime_documents_uploads_image_asset_from_request_messages(tmp
         state=state,
         config={
             "configurable": {
-                "project_id": "5f419550-a3c7-49c6-9450-09154fd1bf7d",
                 "thread_id": "thread-test-image-1",
                 "batch_id": "test-case-service:batch-test-image-1",
             }
         },
-        context=RuntimeContext(),
+        context=RuntimeContext(project_id="5f419550-a3c7-49c6-9450-09154fd1bf7d"),
     )
     client = _FakeInteractionDataClient()
 
@@ -248,6 +246,49 @@ def test_persist_runtime_documents_requires_project_id(tmp_path: Path) -> None:
         raise AssertionError("persist_runtime_documents should require project_id")
 
 
+def test_persist_runtime_documents_rejects_configurable_project_id_as_public_contract(
+    tmp_path: Path,
+) -> None:
+    pdf_path = tmp_path / "configurable-project.pdf"
+    pdf_path.write_bytes(b"%PDF-1.4\n%%EOF")
+
+    message = build_human_message_from_paths("请分析附件", [pdf_path])
+    normalized_messages = multimodal_protocol.normalize_messages([message])
+    attachments = multimodal_protocol.collect_current_turn_attachment_artifacts(normalized_messages)
+    attachment = dict(attachments[0])
+    attachment["status"] = "parsed"
+    attachment["summary_for_model"] = "PDF 已解析"
+    attachment["parsed_text"] = "这是 PDF 的解析结果"
+    state = {MULTIMODAL_ATTACHMENTS_KEY: [attachment]}
+    runtime = SimpleNamespace(
+        state=state,
+        config={
+            "configurable": {
+                "project_id": "5f419550-a3c7-49c6-9450-09154fd1bf7d",
+                "thread_id": "thread-test-configurable-project",
+                "batch_id": "test-case-service:batch-test-configurable-project",
+            }
+        },
+        context=RuntimeContext(),
+    )
+    client = _FakeInteractionDataClient()
+
+    try:
+        persist_runtime_documents(
+            runtime=runtime,
+            state=state,
+            service_config=ServiceConfig(),
+            client=client,
+            messages=normalized_messages,
+        )
+    except ValueError as exc:
+        assert str(exc) == MISSING_PROJECT_ID_ERROR
+    else:
+        raise AssertionError(
+            "persist_runtime_documents must not read project_id from configurable"
+        )
+
+
 def test_persist_runtime_documents_rejects_non_uuid_project_id(tmp_path: Path) -> None:
     pdf_path = tmp_path / "invalid-project.pdf"
     pdf_path.write_bytes(b"%PDF-1.4\n%%EOF")
@@ -264,12 +305,11 @@ def test_persist_runtime_documents_rejects_non_uuid_project_id(tmp_path: Path) -
         state=state,
         config={
             "configurable": {
-                "project_id": "project-not-uuid",
                 "thread_id": "thread-test-invalid-project",
                 "batch_id": "test-case-service:batch-test-invalid-project",
             }
         },
-        context=RuntimeContext(),
+        context=RuntimeContext(project_id="project-not-uuid"),
     )
     client = _FakeInteractionDataClient()
 
@@ -287,8 +327,10 @@ def test_persist_runtime_documents_rejects_non_uuid_project_id(tmp_path: Path) -
         raise AssertionError("persist_runtime_documents should reject non-uuid project_id")
 
 
-def test_persist_runtime_documents_allows_explicit_default_project_fallback(tmp_path: Path) -> None:
-    pdf_path = tmp_path / "fallback-project.pdf"
+def test_persist_runtime_documents_does_not_allow_implicit_default_project_fallback(
+    tmp_path: Path,
+) -> None:
+    pdf_path = tmp_path / "fallback-project-disabled.pdf"
     pdf_path.write_bytes(b"%PDF-1.4\n%%EOF")
 
     message = build_human_message_from_paths("请分析附件", [pdf_path])
@@ -306,13 +348,15 @@ def test_persist_runtime_documents_allows_explicit_default_project_fallback(tmp_
     )
     client = _FakeInteractionDataClient()
 
-    outcome = persist_runtime_documents(
-        runtime=runtime,
-        state=state,
-        service_config=ServiceConfig(allow_default_project_fallback=True),
-        client=client,
-        messages=normalized_messages,
-    )
-
-    assert outcome.project_id == "00000000-0000-0000-0000-000000000001"
-    assert client.json_requests[0]["payload"]["project_id"] == "00000000-0000-0000-0000-000000000001"
+    try:
+        persist_runtime_documents(
+            runtime=runtime,
+            state=state,
+            service_config=ServiceConfig(),
+            client=client,
+            messages=normalized_messages,
+        )
+    except ValueError as exc:
+        assert str(exc) == MISSING_PROJECT_ID_ERROR
+    else:
+        raise AssertionError("default project fallback must not bypass RuntimeContext.project_id")

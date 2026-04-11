@@ -86,10 +86,10 @@ create_deep_agent
 ```
 RunnableConfig
     │
-    ├── merge_trusted_auth_context()  → runtime_context
     ├── read_configurable()           → private_config
-    ├── build_test_case_service_config() → service_config（默认主模型 + 多模态 + 默认项目 + 持久化开关 + 私有知识库 MCP 配置）
-    └── build_runtime_config()        → options（model_spec, system_prompt）
+    ├── RuntimeContext                → 公共业务输入（project_id / model_id / prompt 等）
+    ├── build_test_case_service_config() → service_config（默认主模型 + 多模态 + 持久化开关 + 私有知识库 MCP 配置）
+    └── RuntimeRequestMiddleware      → resolve_runtime_settings()（model + system_prompt + tools）
 ```
 
 ### 2.3.1 知识检索调用链
@@ -226,8 +226,6 @@ class TestCaseServiceConfig:
     multimodal_parser_model_id: str   # 多模态解析模型
     multimodal_detail_mode: bool      # 是否启用详细解析
     multimodal_detail_text_max_chars: int  # 详细模式字符上限
-    default_project_id: str           # 仅用于显式调试 fallback 的默认项目 ID
-    allow_default_project_fallback: bool  # 是否允许缺失 project_id 时回退默认项目
     persistence_enabled: bool         # 是否允许正式落库
     knowledge_mcp_enabled: bool       # 是否启用私有知识库 MCP
     knowledge_mcp_url: str            # 私有知识库 MCP 的 SSE 地址
@@ -277,16 +275,16 @@ def _resolve_backend_root_dir_path(private_config, *, agent_name) -> Path:
 
 | 层次 | 文件 | 覆盖内容 |
 |------|------|----------|
-| 单元测试 | `tests/test_smoke.py` | schemas、prompts、路径解析、graph 工厂 |
-| 集成测试 | 暂无（需真实模型）| make_graph 端到端执行 |
+| 单元测试 | `runtime_service/tests/test_test_case_service_graph.py` 等 | schemas、prompts、graph 静态装配 |
+| 集成测试 | 暂无（需真实模型）| static graph 端到端执行 |
 
 ### 5.2 Graph 测试策略
 
-`make_graph` 通过 `monkeypatch` 替换所有外部依赖：
-- `merge_trusted_auth_context`、`build_runtime_config`：替换为返回 DummyOptions
-- `resolve_model`、`apply_model_runtime_params`：直接透传
-- 私有知识库 MCP 装配函数：返回固定 fixture
-- `create_deep_agent`：捕获调用参数进行断言
+静态 graph 通过 resolver 单测 + harness 合同测试验证：
+- graph 是否顶层静态导出
+- 是否显式声明 `context_schema=RuntimeContext`
+- 是否接入 `RuntimeRequestMiddleware`
+- required tool / system prompt resolver 是否符合 contract
 
 这样可以在不依赖真实模型和网络的情况下验证装配逻辑的正确性。
 
@@ -307,14 +305,15 @@ def _resolve_backend_root_dir_path(private_config, *, agent_name) -> Path:
 | `virtual_mode=True` 不持久化 | 会话结束后中间产物丢失 | 支持 `virtual_mode=False` + 配置化存储路径 |
 | 无流式输出进度反馈 | 长任务用户体验差 | 集成 LangGraph streaming |
 | Skills 无版本管理 | SKILL.md 变更无法灰度 | 引入 skills 版本号机制 |
-| 平台真实链路缺失 project_id 时会显式失败 | 运行时项目上下文必须由 platform-api 注入 | 仅在显式打开 `test_case_allow_default_project_fallback` 时允许本地调试回退 |
+| 平台真实链路缺失 project_id 时会显式失败 | 运行时项目上下文必须由 platform-api 注入 | 不做默认项目 fallback，直接暴露配置错误 |
 | 平台人工 CRUD 仍允许重复 testcase | 自动保存已支持幂等覆盖，但人工录入仍可能录入相似记录 | 后续如有需要再评估平台侧提示或弱校验 |
-| 旧 `usecase-generation` 结果域已退役 | 旧服务仍可能残留历史依赖 | 后续下线 `usecase_workflow_agent` 并清理历史文档 |
+| 旧 `usecase-generation` 结果域已退役 | 历史引用可能残留在外部系统 | 保持新服务独立，不再恢复旧 workflow 服务 |
 | 私有知识库 MCP 依赖外部 SSE 服务 | 本服务私有装配链路正常，但远端服务不可达时知识工具不可用 | 生产环境接入统一发布地址，并按需增加健康检查 / 降级策略 |
 
 ## 7. 当前落地结论
 
 - `test_case_service` 当前已经实现“服务私有 tools + 服务私有 MCP + 服务私有 skills”三者显式装配
 - 知识库能力保持私有，不进入公共 `runtime_service/mcp/servers.py`
-- 推荐接入姿势是：调用方只需给 `RunnableConfig.configurable` 传入 `project_id` 和 `test_case_knowledge_mcp_url`
+- 推荐接入姿势是：调用方把 `project_id` 放进 `RuntimeContext`，服务私有配置仍走 `RunnableConfig.configurable`
+- `project_id` 只认 `RuntimeContext.project_id`，服务内部不再从 `state/configurable/system prompt` 反推业务项目上下文
 - 对接方如果要做真实验收，优先使用 `services_test_case_service_knowledge_live.py --require-query-tool`，这样能直接断言 agent 确实命中了知识主查询工具

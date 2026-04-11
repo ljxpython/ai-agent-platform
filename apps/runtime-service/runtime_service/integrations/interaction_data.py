@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Mapping
 
 import requests
-from runtime_service.runtime.options import read_configurable
+from runtime_service.runtime.config_utils import read_configurable
 
 DEFAULT_INTERACTION_DATA_TIMEOUT_SECONDS = 10
 

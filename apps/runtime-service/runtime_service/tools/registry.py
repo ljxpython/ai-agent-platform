@@ -5,7 +5,6 @@ from typing import Any
 
 from runtime_service.mcp.loader import get_mcp_tools
 from runtime_service.mcp.servers import get_mcp_server_specs
-from runtime_service.runtime.options import AppRuntimeConfig
 from runtime_service.tools.local import get_builtin_tools
 
 MCP_TOOL_PREFIX = "mcp:"
@@ -115,9 +114,10 @@ async def abuild_runtime_tools(
         tools.extend(await get_mcp_tools(mcp_server_names))
     return tools
 
-
-async def build_tools(options: AppRuntimeConfig) -> list[Any]:
-    return await abuild_runtime_tools(
-        enable_tools=options.enable_tools,
-        requested_tool_names=options.tools,
-    )
+__all__ = [
+    "MCP_TOOL_PREFIX",
+    "abuild_runtime_tools",
+    "build_runtime_tools",
+    "get_tool_catalog",
+    "resolve_requested_tools",
+]

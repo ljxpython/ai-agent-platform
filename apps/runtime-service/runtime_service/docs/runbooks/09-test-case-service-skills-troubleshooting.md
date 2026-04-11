@@ -78,14 +78,14 @@ cd apps/runtime-service
 
 - skills 枚举成功
 - `SkillsMiddleware.abefore_agent` 注入成功
-- `make_graph` 能正常构建
+- static graph 能正常构建
 
 ### 精确测试
 
 ```bash
 cd apps/runtime-service
 .venv/bin/pytest runtime_service/tests/test_multimodal_middleware.py -k "preserves_content_blocks_text or preserves_skills_system_prompt_without_attachments or removes_stale_section" -q
-.venv/bin/pytest runtime_service/services/test_case_service/tests/test_smoke.py -q
+.venv/bin/pytest runtime_service/tests/test_test_case_service_graph.py -q
 ```
 
 ### live 验证
@@ -261,7 +261,7 @@ Pydantic serializer warnings:
 4. 只在这种场景下，把 `request.runtime.context` 置空后再继续执行工具
 5. 对 `persist_test_case_results` 这类真正需要 runtime context 的工具，不做改写
 
-这属于 **服务侧兼容层**，不去改三方 `deepagents` 包，也不把“落库/项目作用域”逻辑耦合进公共 middleware。
+这属于 **服务侧边界适配**，不去改三方 `deepagents` 包，也不把“落库/项目作用域”逻辑耦合进公共 middleware。
 
 ### 为什么这样修
 
@@ -271,7 +271,7 @@ Pydantic serializer warnings:
 - 也不应该为了迁就第三方 filesystem tools，把整条 `test_case_agent` 图退回到“没有 `RuntimeContext`”
 - 最稳的方式就是：
   - 保留真实 `RuntimeContext`
-  - 只对“明确声明 `context=None`”的工具做最小兼容
+  - 只对“明确声明 `context=None`”的工具做最小边界适配
 
 ### 验证方式
 

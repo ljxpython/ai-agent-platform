@@ -122,14 +122,11 @@
 标准约束：
 
 1. `runtime.context.project_id` 升级为运行时标准字段
-2. `platform-api` 必须把当前项目同时注入到：
-   - `payload.context.project_id`（仅当请求未携带 `config.configurable`）
-   - `payload.config.metadata.project_id`
-   - `payload.metadata.project_id`
-3. `platform-api` 不再把 `project_id` 注入 `payload.config.configurable`，因为 LangGraph 0.7.x HTTP API 不允许请求同时携带 `context` 与 `configurable` 业务作用域
-4. 当调用方已经使用 `config.configurable` 传运行参数时，`platform-api` 只注入 `payload.config.metadata.project_id` 与 `payload.metadata.project_id`，`runtime-service` 通过 metadata 兼容读取
-5. `runtime.state.project_id` 仅保留兼容读取，不再作为主信源
-6. `test_case_service` 不再无条件使用 `test_case_default_project_id`
+2. `platform-api` 必须把当前项目写入 `payload.context.project_id`
+3. `platform-api` 不再把 `project_id` 注入 `payload.config.configurable / payload.config.metadata / payload.metadata`
+4. `runtime-service` 只认 `runtime.context.project_id`
+5. `runtime.state.project_id` 不再读取
+6. `test_case_service` 不再保留 `test_case_default_project_id`
 
 保留项：
 
@@ -145,7 +142,7 @@
 platform-web WorkspaceContext.projectId
   -> x-project-id header
   -> platform-api LangGraph gateway
-  -> payload.context/metadata 注入 project_id（若请求已带 configurable，则只注 metadata）
+  -> payload.context.project_id
   -> runtime.context.project_id
   -> test_case_service document/tool persistence
   -> interaction-data-service.project_id
@@ -168,8 +165,8 @@ platform-web WorkspaceContext.projectId
 
 本地调试链路下：
 
-1. 仅允许通过显式开关启用 default project fallback
-2. 默认关闭，避免开发环境把脏数据继续写到默认项目
+1. 仍然要求显式传 `RuntimeContext.project_id`
+2. 不提供 default project fallback
 
 ## interaction-data-service 侧结构
 

@@ -1,9 +1,8 @@
 import { v4 as uuidv4 } from "uuid";
-import { ReactNode, useEffect, useRef } from "react";
+import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useStreamContext } from "@/providers/Stream";
-import { useState, FormEvent } from "react";
 import { Button } from "../ui/button";
 import { Checkpoint, Message } from "@langchain/langgraph-sdk";
 import { AssistantMessage, AssistantMessageLoading } from "./messages/ai";
@@ -16,6 +15,7 @@ import { isAgentInboxInterruptSchema } from "@/lib/agent-inbox-interrupt";
 import { LangGraphLogoSVG } from "../icons/langgraph";
 import {
   ArrowDown,
+  Braces,
   LoaderCircle,
   PanelRightOpen,
   PanelRightClose,
@@ -40,12 +40,20 @@ import {
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { ContentBlocksPreview } from "./ContentBlocksPreview";
 import { TasksFilesPanel } from "./tasks-files-panel";
+import { resolveThreadTarget } from "@/providers/thread-target";
+import {
+  buildRunContextStorageKey,
+  formatRunContextText,
+  mergeRunContexts,
+  parseRunContextText,
+} from "@/lib/run-context";
 import {
   useArtifactOpen,
   ArtifactContent,
   ArtifactTitle,
   useArtifactContext,
 } from "./artifact";
+import { RunContextSheet } from "./run-context-sheet";
 
 function StickyToBottomContent(props: {
   content: ReactNode;
@@ -148,6 +156,9 @@ function hasPendingTaskToolCall(messages: Message[]): boolean {
 export function Thread() {
   const [artifactContext, setArtifactContext] = useArtifactContext();
   const [artifactOpen, closeArtifact] = useArtifactOpen();
+  const envApiUrl: string | undefined = process.env.NEXT_PUBLIC_API_URL;
+  const envAssistantId: string | undefined =
+    process.env.NEXT_PUBLIC_ASSISTANT_ID;
 
   const [threadId, _setThreadId] = useQueryState("threadId");
   const [chatHistoryOpen, setChatHistoryOpen] = useQueryState(
@@ -162,7 +173,25 @@ export function Thread() {
     "debugMode",
     parseAsBoolean.withDefault(false),
   );
+  const [apiUrl] = useQueryState("apiUrl", {
+    defaultValue: envApiUrl || "",
+  });
+  const [assistantId] = useQueryState("assistantId", {
+    defaultValue: envAssistantId || "",
+  });
+  const [graphId] = useQueryState("graphId", {
+    defaultValue: "",
+  });
+  const [targetType] = useQueryState("targetType", {
+    defaultValue: "",
+  });
   const [input, setInput] = useState("");
+  const [runContextOpen, setRunContextOpen] = useState(false);
+  const [manualRunContextText, setManualRunContextText] = useState("");
+  const [savedRunContextText, setSavedRunContextText] = useState("");
+  const [manualRunContext, setManualRunContext] = useState<
+    Record<string, unknown> | undefined
+  >();
   const {
     contentBlocks,
     setContentBlocks,
@@ -181,6 +210,28 @@ export function Thread() {
   const isLoading = stream.isLoading;
 
   const lastError = useRef<string | undefined>(undefined);
+  const finalApiUrl = apiUrl || envApiUrl || "";
+  const resolvedTarget = resolveThreadTarget({
+    assistantId,
+    graphId,
+    targetType,
+    envAssistantId,
+  });
+  const runContextStorageKey = useMemo(
+    () =>
+      buildRunContextStorageKey({
+        apiUrl: finalApiUrl,
+        targetType: resolvedTarget.targetType,
+        targetId: resolvedTarget.targetId,
+      }),
+    [finalApiUrl, resolvedTarget.targetId, resolvedTarget.targetType],
+  );
+  const finalContext = mergeRunContexts(
+    Object.keys(artifactContext).length > 0 ? artifactContext : undefined,
+    manualRunContext,
+  );
+  const hasSavedRunContext = manualRunContext !== undefined;
+  const hasUnsavedRunContextChanges = manualRunContextText !== savedRunContextText;
 
   const setThreadId = (id: string | null) => {
     _setThreadId(id);
@@ -218,6 +269,81 @@ export function Thread() {
     }
   }, [stream.error]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const savedText = window.localStorage.getItem(runContextStorageKey) ?? "";
+    setManualRunContextText(savedText);
+    setSavedRunContextText(savedText);
+    try {
+      setManualRunContext(parseRunContextText(savedText));
+    } catch {
+      setManualRunContext(undefined);
+    }
+  }, [runContextStorageKey]);
+
+  const handleFormatRunContext = () => {
+    try {
+      setManualRunContextText(formatRunContextText(manualRunContextText));
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Invalid run context JSON.";
+      toast.error("Invalid run context JSON.", {
+        description: (
+          <p>
+            <strong>Error:</strong> <code>{message}</code>
+          </p>
+        ),
+        richColors: true,
+        closeButton: true,
+      });
+    }
+  };
+
+  const handleSaveRunContext = () => {
+    try {
+      const parsed = parseRunContextText(manualRunContextText);
+      const normalizedText = parsed ? JSON.stringify(parsed, null, 2) : "";
+      setManualRunContext(parsed);
+      setManualRunContextText(normalizedText);
+      setSavedRunContextText(normalizedText);
+
+      if (typeof window !== "undefined") {
+        if (normalizedText) {
+          window.localStorage.setItem(runContextStorageKey, normalizedText);
+        } else {
+          window.localStorage.removeItem(runContextStorageKey);
+        }
+      }
+
+      toast.success(parsed ? "Run context saved." : "Run context cleared.");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Invalid run context JSON.";
+      toast.error("Invalid run context JSON.", {
+        description: (
+          <p>
+            <strong>Error:</strong> <code>{message}</code>
+          </p>
+        ),
+        richColors: true,
+        closeButton: true,
+      });
+    }
+  };
+
+  const handleClearRunContext = () => {
+    setManualRunContextText("");
+    setSavedRunContextText("");
+    setManualRunContext(undefined);
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(runContextStorageKey);
+    }
+    toast.success("Run context cleared.");
+  };
+
   // TODO: this should be part of the useStream hook
   const prevMessageLength = useRef(0);
   useEffect(() => {
@@ -249,11 +375,8 @@ export function Thread() {
 
     const toolMessages = ensureToolCallsHaveResponses(stream.messages);
 
-    const context =
-      Object.keys(artifactContext).length > 0 ? artifactContext : undefined;
-
     stream.submit(
-      { messages: [...toolMessages, newHumanMessage], context },
+      { messages: [...toolMessages, newHumanMessage], context: finalContext },
       {
         ...(debugMode ? { interruptBefore: ["tools"] } : {}),
         streamMode: ["values"],
@@ -261,7 +384,7 @@ export function Thread() {
         streamResumable: true,
         optimisticValues: (prev) => ({
           ...prev,
-          context,
+          context: finalContext,
           messages: [
             ...(prev.messages ?? []),
             ...toolMessages,
@@ -580,6 +703,14 @@ export function Thread() {
                             </Label>
                           </div>
                         </div>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setRunContextOpen(true)}
+                        >
+                          <Braces className="size-4" />
+                          <span>{hasSavedRunContext ? "Context On" : "Context"}</span>
+                        </Button>
                         <Label
                           htmlFor="file-input"
                           className="flex cursor-pointer items-center gap-2"
@@ -653,6 +784,17 @@ export function Thread() {
           </div>
         </div>
       </div>
+      <RunContextSheet
+        open={runContextOpen}
+        onOpenChange={setRunContextOpen}
+        text={manualRunContextText}
+        onTextChange={setManualRunContextText}
+        hasSavedContext={hasSavedRunContext}
+        hasUnsavedChanges={hasUnsavedRunContextChanges}
+        onFormat={handleFormatRunContext}
+        onSave={handleSaveRunContext}
+        onClear={handleClearRunContext}
+      />
     </div>
   );
 }

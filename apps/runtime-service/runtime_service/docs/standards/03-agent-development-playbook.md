@@ -192,20 +192,16 @@ graph = builder.compile()
 - runtime 参数校验错误直接报错。
 - 外部增强链路是否允许降级，必须在中间件文档里单独写清楚，不能静默吃掉。
 
-## 9. assistant 历史实现说明
+## 9. assistant 样板说明
 
 当前推荐样板：
 
 - `runtime_service/agents/assistant_agent/graph.py`
 
-历史实现：
-
-- `runtime_service/agents/assistant_agent/graph_legacy.py`
-
 要求：
 
 - 新功能默认落在 `graph.py`
-- `graph_legacy.py` 只保留兼容和参考价值
+- 历史范式只保留在 `docs/archive/` 文档中，不再保留运行时代码副本
 
 ## 10. 开发流程（执行清单）
 
@@ -231,4 +227,4 @@ graph = builder.compile()
 - 把公共业务字段长期塞进 `config.configurable`
 - 绕开共享 runtime 解析层，各 graph 自己发明一套字段读取规则
 - 把 `skills` / `subagents` 提前塞进公开 runtime contract
-- 把历史实现 `graph_legacy.py` 继续当作默认新范式
+- 通过兼容入口文件扩散旧 graph 形态

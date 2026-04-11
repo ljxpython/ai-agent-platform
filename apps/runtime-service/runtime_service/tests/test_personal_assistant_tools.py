@@ -11,6 +11,10 @@ if str(_PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(_PROJECT_ROOT))
 
 from runtime_service.agents.personal_assistant_agent import tools as pa_tools  # noqa: E402
+from runtime_service.runtime.context import RuntimeContext  # noqa: E402
+from runtime_service.runtime.runtime_request_resolver import (  # noqa: E402
+    ResolvedRuntimeSettings,
+)
 
 personal_assistant_graph_module = importlib.import_module(
     "runtime_service.agents.personal_assistant_agent.graph"
@@ -105,3 +109,40 @@ def test_personal_assistant_graph_exports_static_graph_symbol() -> None:
     assert hasattr(personal_assistant_graph_module, "graph")
     assert not hasattr(personal_assistant_graph_module, "make_graph")
     assert hasattr(personal_assistant_graph_module.graph, "invoke")
+
+
+def test_personal_assistant_graph_public_tools_delegate_to_shared_registry(
+    monkeypatch: Any,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    def fake_build_runtime_tools(
+        *,
+        enable_tools: bool,
+        requested_tool_names: list[str] | None,
+    ) -> list[str]:
+        captured["enable_tools"] = enable_tools
+        captured["requested_tool_names"] = requested_tool_names
+        return ["public_tool"]
+
+    monkeypatch.setattr(
+        personal_assistant_graph_module,
+        "build_runtime_tools",
+        fake_build_runtime_tools,
+    )
+
+    settings = ResolvedRuntimeSettings(
+        context=RuntimeContext(),
+        model="runtime-model",
+        system_prompt="",
+        enable_tools=True,
+        requested_public_tool_names=["word_count"],
+    )
+
+    resolved_tools = personal_assistant_graph_module._resolve_public_tools(settings)
+
+    assert resolved_tools == ["public_tool"]
+    assert captured == {
+        "enable_tools": True,
+        "requested_tool_names": ["word_count"],
+    }
