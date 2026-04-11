@@ -187,8 +187,8 @@
 
 当前锁定的执行顺序见：
 
-1. [04-roadmap-and-checklist.md](/Users/bytedance/PycharmProjects/my_best/AITestLab/docs/platform-web-sub2api-migration/04-roadmap-and-checklist.md)
-2. [07-module-migration-map-and-delivery-order.md](/Users/bytedance/PycharmProjects/my_best/AITestLab/docs/platform-web-sub2api-migration/07-module-migration-map-and-delivery-order.md)
+1. [04-roadmap-and-checklist.md](./04-roadmap-and-checklist.md)
+2. [07-module-migration-map-and-delivery-order.md](./07-module-migration-map-and-delivery-order.md)
 
 ## 已知注意事项
 

@@ -168,7 +168,7 @@ graph.invoke(
   - `skills`
   - `subagents`
 
-也就是你现在 [context.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/context.py) 定义的大方向，本质上是对的。
+也就是你现在 [context.py](../../runtime/context.py) 定义的大方向，本质上是对的。
 
 ### 4.2 `config.configurable`
 
@@ -220,7 +220,7 @@ graph.invoke(
 
 ### 6.1 文档主张是 `context-first`
 
-[02-architecture.md](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/docs/standards/02-architecture.md) 已经写得很明确：
+[02-architecture.md](../standards/02-architecture.md) 已经写得很明确：
 
 - 运行时参数统一通过 `context` 传入
 - `config` 不承担业务运行时配置主入口职责
@@ -239,7 +239,7 @@ graph.invoke(
 
 ### 6.3 当前推荐样板已经切到静态 graph + typed context
 
-当前 [assistant_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph.py)：
+当前 [assistant_agent/graph.py](../../agents/assistant_agent/graph.py)：
 
 - 顶层静态导出 `graph = create_agent(...)`
 - 显式传入 `context_schema=RuntimeContext`
@@ -300,7 +300,7 @@ graph.invoke(
 - LangSmith / LangGraph graph rebuild at runtime
   - https://docs.langchain.com/langsmith/graph-rebuild
 - 本仓库参考实现
-  - [context.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/context.py)
-  - [runtime_request_resolver.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/runtime_request_resolver.py)
-  - [assistant_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph.py)
-  - [research_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/research_agent/graph.py)
+  - [context.py](../../runtime/context.py)
+  - [runtime_request_resolver.py](../../runtime/runtime_request_resolver.py)
+  - [assistant_agent/graph.py](../../agents/assistant_agent/graph.py)
+  - [research_agent/graph.py](../../agents/research_agent/graph.py)

@@ -2,7 +2,7 @@
 
 > 调研目标：先不改代码，分析参考前端项目中可借鉴能力，并评估 `apps/platform-web`、`apps/runtime-web` 的可优化点。
 >
-> 参考项目路径：`/Users/bytedance/Downloads/2026-03-21-testing-deep-agents-ui-unzipped`
+> 参考项目路径：本地解压后的 `deep-agents-ui` 参考项目目录
 >
 > 当前日期：2026-03-28
 

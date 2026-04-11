@@ -158,8 +158,8 @@ GitHub Release 建议固定为以下结构：
 
 仓库的对外变更记录遵循：
 
-- [docs/commit-and-changelog-guidelines.md](/Users/bytedance/PycharmProjects/my_best/AITestLab/docs/commit-and-changelog-guidelines.md)
-- [docs/CHANGELOG.md](/Users/bytedance/PycharmProjects/my_best/AITestLab/docs/CHANGELOG.md)
+- [docs/commit-and-changelog-guidelines.md](../commit-and-changelog-guidelines.md)
+- [docs/CHANGELOG.md](../CHANGELOG.md)
 
 在正式 release 时，需要把当前版本的摘要同步整理进 `docs/CHANGELOG.md`。
 

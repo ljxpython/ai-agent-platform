@@ -62,8 +62,8 @@ agent = create_agent(
 
 在本仓库里，一般不是直接写死，而是先经过：
 
-- [modeling.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/modeling.py)
-- [runtime_request_resolver.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/runtime_request_resolver.py)
+- [modeling.py](../../runtime/modeling.py)
+- [runtime_request_resolver.py](../../runtime/runtime_request_resolver.py)
 
 ### 3.2 `tools`
 
@@ -118,7 +118,7 @@ agent = create_agent(
 
 本仓库已经大量在用：
 
-- [MultimodalMiddleware](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/middlewares/multimodal.py)
+- [MultimodalMiddleware](../../middlewares/multimodal/middleware.py)
 - `HumanInTheLoopMiddleware`
 - `ToolRuntimeContextSanitizerMiddleware`
 
@@ -168,7 +168,7 @@ agent = create_agent(
 
 本仓库例子：
 
-- [assistant_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph.py#L78)
+- [assistant_agent/graph.py](../../agents/assistant_agent/graph.py)
   - `state_schema=MultimodalAgentState`
 
 这个用法是合理的，因为多模态处理中间件确实需要额外 state。
@@ -199,13 +199,13 @@ agent = create_agent(
 
 在本仓库里，最该接这个的是：
 
-- [RuntimeContext](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/runtime/context.py)
+- [RuntimeContext](../../runtime/context.py)
 
 目前更贴标准的写法在这里：
 
-- [assistant_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph.py#L55)
-- [research_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/research_agent/graph.py#L74)
-- [test_case_service/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/services/test_case_service/graph.py#L94)
+- [assistant_agent/graph.py](../../agents/assistant_agent/graph.py)
+- [research_agent/graph.py](../../agents/research_agent/graph.py)
+- [test_case_service/graph.py](../../services/test_case_service/graph.py)
 
 ### 3.8 `checkpointer`
 
@@ -333,7 +333,7 @@ return create_agent(
 
 ## 6. 回到你当前的 assistant graph
 
-当前 [assistant_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph.py)：
+当前 [assistant_agent/graph.py](../../agents/assistant_agent/graph.py)：
 
 - `middleware` 用得没问题
 - `state_schema=MultimodalAgentState` 也没问题
@@ -365,6 +365,6 @@ return create_agent(
 - 本地 `create_agent` 签名与 docstring
   - `apps/runtime-service/.venv` 当前安装版本实测
 - 本仓库参考实现
-  - [assistant_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/assistant_agent/graph.py)
-  - [research_agent/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/agents/research_agent/graph.py)
-  - [test_case_service/graph.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/services/test_case_service/graph.py)
+  - [assistant_agent/graph.py](../../agents/assistant_agent/graph.py)
+  - [research_agent/graph.py](../../agents/research_agent/graph.py)
+  - [test_case_service/graph.py](../../services/test_case_service/graph.py)

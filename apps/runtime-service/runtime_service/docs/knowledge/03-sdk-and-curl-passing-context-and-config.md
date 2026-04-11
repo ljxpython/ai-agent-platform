@@ -197,12 +197,11 @@ async for part in client.runs.stream(
 
 ## 6. 你仓库里已经有的 SDK 样例
 
-你仓库里当前已有不少 LangGraph SDK 调用样例，不过主要还是 `config` 用得多，`context` 用得偏少。
+你仓库里当前已有 LangGraph SDK 调用样例，不过目前主要集中在 live 测试里，且主要还是 `config` 用得多，`context` 用得偏少。
 
 参考：
 
-- [smoke_usecase_workflow_langgraph_api.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/devtools/smoke_usecase_workflow_langgraph_api.py)
-- [test_usecase_workflow_langgraph_api_smoke.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/tests/test_usecase_workflow_langgraph_api_smoke.py)
+- [services_test_case_service_project_scope_live.py](../../tests/services_test_case_service_project_scope_live.py)
 
 例如你现在的 run 创建基本长这样：
 
@@ -361,5 +360,4 @@ curl -sS -X POST "http://127.0.0.1:8123/threads/thread-1/runs" \
 - LangGraph SDK `assistants.create` / `runs.create` 当前环境签名与 docstring
   - `apps/runtime-service/.venv` 当前安装版本实测
 - 本仓库 SDK 样例
-  - [smoke_usecase_workflow_langgraph_api.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/devtools/smoke_usecase_workflow_langgraph_api.py)
-  - [test_usecase_workflow_langgraph_api_smoke.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/tests/test_usecase_workflow_langgraph_api_smoke.py)
+  - [services_test_case_service_project_scope_live.py](../../tests/services_test_case_service_project_scope_live.py)

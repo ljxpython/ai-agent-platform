@@ -43,7 +43,7 @@ bash "./scripts/platform-web-vue-demo-health.sh"
 ### 2.1 runtime-service
 
 ```bash
-cd "/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service"
+cd apps/runtime-service
 uv run langgraph dev --config runtime_service/langgraph.json --port 8123 --no-browser
 ```
 
@@ -56,21 +56,21 @@ uv run langgraph dev --config runtime_service/langgraph.json --port 8123 --no-br
 ### 2.2 legacy platform-api
 
 ```bash
-cd "/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-api"
+cd apps/platform-api
 uv run uvicorn main:app --host 0.0.0.0 --port 2024 --reload
 ```
 
 ### 2.3 platform-api-v2
 
 ```bash
-cd "/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-api-v2"
+cd apps/platform-api-v2
 uv run uvicorn main:app --host 127.0.0.1 --port 2142 --reload
 ```
 
 ### 2.4 platform-web-vue
 
 ```bash
-pnpm --dir "/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-web-vue" dev
+pnpm --dir apps/platform-web-vue dev
 ```
 
 ## 3. 页面进入与引导验收
