@@ -24,6 +24,7 @@ class RuntimeContext:
     top_p: float | None = None
     enable_tools: bool | None = None
     tools: list[str] | None = None
+    multimodal_parser_model_id: str | None = None
 
     def to_mapping(self) -> dict[str, Any]:
         # Drop None values so downstream resolver can use fallback logic clearly.

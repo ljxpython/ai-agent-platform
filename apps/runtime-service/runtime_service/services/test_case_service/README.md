@@ -65,7 +65,7 @@ test_case_service/
 | 配置键 | 类型 | 默认值 | 说明 |
 |--------|------|--------|------|
 | `test_case_default_model_id` | `str` | `deepseek_chat` | 当调用方未显式传 `model_id` 时，`test_case_service` 的服务级默认主模型 |
-| `test_case_multimodal_parser_model_id` | `str` | `iflow_qwen3-vl-plus` | 多模态解析模型 |
+| `test_case_multimodal_parser_model_id` | `str` | `.env -> MULTIMODAL_PARSER_MODEL_ID` 或 `iflow_qwen3-vl-plus` | 多模态解析模型（服务私有 override） |
 | `test_case_multimodal_detail_mode` | `bool` | `False` | 启用详细解析模式 |
 | `test_case_multimodal_detail_text_max_chars` | `int` | `2000` | 详细模式最大字符数 |
 | `test_case_backend_root_dir` | `str` | 服务包目录 | FilesystemBackend 根目录覆盖 |
@@ -76,6 +76,11 @@ test_case_service/
 | `test_case_knowledge_sse_read_timeout_seconds` | `int` | `300` | 知识库 MCP SSE 读超时 |
 | `interaction_data_service_url` | `str` | 环境变量/空 | interaction-data-service 基地址 |
 | `interaction_data_service_token` | `str` | 环境变量/空 | interaction-data-service Bearer Token |
+
+说明：
+
+- 共享 `MultimodalMiddleware` 的默认 parser model 现在会优先读取 `.env` 中的 `MULTIMODAL_PARSER_MODEL_ID`
+- 如果要在真实 graph 调用时临时覆盖，可通过 `RuntimeContext.multimodal_parser_model_id`
 | `interaction_data_service_timeout_seconds` | `int` | `10` | interaction-data-service 请求超时 |
 
 说明：

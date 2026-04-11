@@ -200,7 +200,7 @@ curl http://127.0.0.1:8123/internal/capabilities/models
 
 ### 4.3 配置风险点
 
-- parser 模型 id 默认是 `iflow_qwen3-vl-plus`（`types.py`）。
+- parser 模型 id 默认优先读取 `.env` 中的 `MULTIMODAL_PARSER_MODEL_ID`；未设置时才回退到 `iflow_qwen3-vl-plus`（`types.py`）。
 - 若 `resolve_model_by_id` 对应模型没有 `model_name/root_client/root_async_client`，解析链路会失败并打 `failed`。
 - `.env` / `settings.yaml` 的模型配置不一致会导致“模型可调用但 parser 不兼容”。
 

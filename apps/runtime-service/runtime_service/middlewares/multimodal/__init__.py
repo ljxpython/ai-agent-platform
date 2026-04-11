@@ -27,10 +27,12 @@ from runtime_service.middlewares.multimodal.types import (
     AttachmentKind,
     AttachmentStatus,
     DEFAULT_MULTIMODAL_MODEL_ID,
+    MULTIMODAL_PARSER_MODEL_ID_ENV,
     MULTIMODAL_ATTACHMENTS_KEY,
     MULTIMODAL_SUMMARY_KEY,
     MultimodalAgentState,
     ParserResult,
+    get_default_multimodal_model_id,
 )
 from runtime_service.runtime.modeling import resolve_model_by_id
 
@@ -41,9 +43,11 @@ __all__ = [
     "MULTIMODAL_ATTACHMENTS_KEY",
     "MULTIMODAL_SUMMARY_KEY",
     "DEFAULT_MULTIMODAL_MODEL_ID",
+    "MULTIMODAL_PARSER_MODEL_ID_ENV",
     "MultimodalAgentState",
     "MultimodalMiddleware",
     "ParserResult",
+    "get_default_multimodal_model_id",
     "build_attachment_artifact",
     "build_multimodal_summary",
     "build_multimodal_system_message",

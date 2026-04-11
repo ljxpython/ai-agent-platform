@@ -564,7 +564,7 @@ Phase 1 仍然**不会**做：
 
 当前仓库 Phase 2 已落地的范围：
 
-- 共享中间件默认使用 `iflow_qwen3-vl-plus` 作为附件解析模型
+- 共享中间件默认优先读取 `.env` 中的 `MULTIMODAL_PARSER_MODEL_ID`；未设置时回退到 `iflow_qwen3-vl-plus`
 - 仅对 `image` / `pdf` 触发真实解析
 - PDF 当前使用 `pymupdf4llm` 做单一路线文本/结构抽取，不引入 OCR 与其他 fallback
 - `doc/docx/xlsx` 暂不进入真实解析链路，仍保持后续阶段再扩展

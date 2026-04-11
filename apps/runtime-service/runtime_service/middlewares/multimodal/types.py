@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from collections.abc import Awaitable, Callable, Mapping
 from typing import Any, Literal
 
@@ -13,6 +14,7 @@ DocumentAttachmentKind = Literal["doc", "docx", "xlsx"]
 MULTIMODAL_ATTACHMENTS_KEY = "multimodal_attachments"
 MULTIMODAL_SUMMARY_KEY = "multimodal_summary"
 DEFAULT_MULTIMODAL_MODEL_ID = "iflow_qwen3-vl-plus"
+MULTIMODAL_PARSER_MODEL_ID_ENV = "MULTIMODAL_PARSER_MODEL_ID"
 _MULTIMODAL_PROMPT_HEADER = "## Multimodal Attachments\n"
 
 _DOC_MIME_TYPES: dict[str, DocumentAttachmentKind] = {
@@ -58,6 +60,11 @@ AttachmentParser = Callable[[AttachmentArtifact, Mapping[str, Any]], AttachmentA
 AsyncAttachmentParser = Callable[
     [AttachmentArtifact, Mapping[str, Any]], Awaitable[AttachmentArtifact]
 ]
+
+
+def get_default_multimodal_model_id() -> str:
+    env_value = str(os.getenv(MULTIMODAL_PARSER_MODEL_ID_ENV) or "").strip()
+    return env_value or DEFAULT_MULTIMODAL_MODEL_ID
 
 
 class MultimodalAgentState(AgentState):

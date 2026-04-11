@@ -21,12 +21,12 @@ from runtime_service.devtools.multimodal_frontend_compat import (  # noqa: E402
     file_path_to_frontend_content_block,
 )
 from runtime_service.middlewares.multimodal import (  # noqa: E402
-    DEFAULT_MULTIMODAL_MODEL_ID,
     MULTIMODAL_ATTACHMENTS_KEY,
     MULTIMODAL_SUMMARY_KEY,
     AttachmentArtifact,
     MultimodalMiddleware,
     MultimodalAgentState,
+    get_default_multimodal_model_id,
     normalize_messages,
 )
 
@@ -186,7 +186,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--parser-model-id",
-        default=DEFAULT_MULTIMODAL_MODEL_ID,
+        default=get_default_multimodal_model_id(),
         help="多模态解析模型 ID。",
     )
     parser.add_argument(

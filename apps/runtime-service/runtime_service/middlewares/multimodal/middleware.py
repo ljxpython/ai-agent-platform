@@ -18,6 +18,7 @@ AttachmentParser = _types.AttachmentParser
 AttachmentStatus = _types.AttachmentStatus
 AsyncAttachmentParser = _types.AsyncAttachmentParser
 DEFAULT_MULTIMODAL_MODEL_ID = _types.DEFAULT_MULTIMODAL_MODEL_ID
+get_default_multimodal_model_id = _types.get_default_multimodal_model_id
 MULTIMODAL_ATTACHMENTS_KEY = _types.MULTIMODAL_ATTACHMENTS_KEY
 MULTIMODAL_SUMMARY_KEY = _types.MULTIMODAL_SUMMARY_KEY
 MultimodalAgentState = _types.MultimodalAgentState
@@ -30,17 +31,30 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
     def __init__(
         self,
         *,
-        parser_model_id: str = DEFAULT_MULTIMODAL_MODEL_ID,
+        parser_model_id: str | None = None,
         parser: AttachmentParser | None = None,
         async_parser: AsyncAttachmentParser | None = None,
         detail_mode: bool = False,
         detail_text_max_chars: int = 2000,
     ) -> None:
-        self._parser_model_id = parser_model_id
+        self._parser_model_id = (
+            str(parser_model_id).strip()
+            if isinstance(parser_model_id, str) and parser_model_id.strip()
+            else get_default_multimodal_model_id()
+        )
         self._parser = parser
         self._async_parser = async_parser
         self._detail_mode = detail_mode
         self._detail_text_max_chars = max(0, detail_text_max_chars)
+
+    def _resolve_parser_model_id(self, runtime: Any | None = None) -> str:
+        if runtime is None:
+            return self._parser_model_id
+        context = getattr(runtime, "context", None)
+        override = getattr(context, "multimodal_parser_model_id", None)
+        if isinstance(override, str) and override.strip():
+            return override.strip()
+        return self._parser_model_id
 
     @staticmethod
     def _new_state(
@@ -220,7 +234,10 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
         ]
 
     def _parse_artifacts(
-        self, messages: Sequence[Any], current_state: Mapping[str, Any] | None = None
+        self,
+        messages: Sequence[Any],
+        current_state: Mapping[str, Any] | None = None,
+        runtime: Any | None = None,
     ) -> tuple[MultimodalAgentState, list[AttachmentArtifact]]:
         state, current_pairs, parse_pairs = self._prepare_artifact_parsing(messages, current_state)
         if not current_pairs:
@@ -228,6 +245,7 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
         if not parse_pairs:
             return state, self._resolve_rewrite_artifacts(state, current_pairs)
 
+        parser_model_id = self._resolve_parser_model_id(runtime)
         current_state_artifacts = self._read_state_attachments(state)
         existing_by_id = {
             artifact["attachment_id"]: artifact for artifact in current_state_artifacts
@@ -242,11 +260,11 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
                     parsed = _parsing._build_failed_artifact(
                         base_artifact,
                         f"附件解析失败：{exc}",
-                        model_id=self._parser_model_id,
+                        model_id=parser_model_id,
                     )
             else:
                 parsed = _parsing._parse_attachment_with_model(
-                    base_artifact, item, model_id=self._parser_model_id
+                    base_artifact, item, model_id=parser_model_id
                 )
             existing_by_id[parsed["attachment_id"]] = parsed
         merged = [existing_by_id[item["attachment_id"]] for item in current_state_artifacts]
@@ -254,7 +272,10 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
         return next_state, self._resolve_rewrite_artifacts(next_state, current_pairs)
 
     async def _aparse_artifacts(
-        self, messages: Sequence[Any], current_state: Mapping[str, Any] | None = None
+        self,
+        messages: Sequence[Any],
+        current_state: Mapping[str, Any] | None = None,
+        runtime: Any | None = None,
     ) -> tuple[MultimodalAgentState, list[AttachmentArtifact]]:
         state, current_pairs, parse_pairs = self._prepare_artifact_parsing(messages, current_state)
         if not current_pairs:
@@ -262,6 +283,7 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
         if not parse_pairs:
             return state, self._resolve_rewrite_artifacts(state, current_pairs)
 
+        parser_model_id = self._resolve_parser_model_id(runtime)
         current_state_artifacts = self._read_state_attachments(state)
         existing_by_id = {
             artifact["attachment_id"]: artifact for artifact in current_state_artifacts
@@ -276,7 +298,7 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
                     parsed = _parsing._build_failed_artifact(
                         base_artifact,
                         f"附件解析失败：{exc}",
-                        model_id=self._parser_model_id,
+                        model_id=parser_model_id,
                     )
             elif self._parser is not None:
                 try:
@@ -285,11 +307,11 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
                     parsed = _parsing._build_failed_artifact(
                         base_artifact,
                         f"附件解析失败：{exc}",
-                        model_id=self._parser_model_id,
+                        model_id=parser_model_id,
                     )
             else:
                 parsed = await _parsing._aparse_attachment_with_model(
-                    base_artifact, item, model_id=self._parser_model_id
+                    base_artifact, item, model_id=parser_model_id
                 )
             existing_by_id[parsed["attachment_id"]] = parsed
         merged = [existing_by_id[item["attachment_id"]] for item in current_state_artifacts]
@@ -362,7 +384,7 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
     ) -> ModelResponse:
         normalized_messages = _protocol.normalize_messages(request.messages)
         next_state, rewrite_artifacts = self._parse_artifacts(
-            normalized_messages, request.state
+            normalized_messages, request.state, request.runtime
         )
         return handler(
             self._augment_request(
@@ -380,7 +402,7 @@ class MultimodalMiddleware(AgentMiddleware[AgentState[Any], Any]):
     ) -> ModelResponse:
         normalized_messages = _protocol.normalize_messages(request.messages)
         next_state, rewrite_artifacts = await self._aparse_artifacts(
-            normalized_messages, request.state
+            normalized_messages, request.state, request.runtime
         )
         return await handler(
             self._augment_request(
@@ -399,6 +421,7 @@ __all__ = [
     "MULTIMODAL_ATTACHMENTS_KEY",
     "MULTIMODAL_SUMMARY_KEY",
     "DEFAULT_MULTIMODAL_MODEL_ID",
+    "get_default_multimodal_model_id",
     "MultimodalAgentState",
     "MultimodalMiddleware",
 ]

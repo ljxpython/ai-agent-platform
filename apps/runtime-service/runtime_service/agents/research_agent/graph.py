@@ -39,11 +39,7 @@ RESEARCH_DEFAULTS = AgentDefaults(
 
 BASELINE_MODEL = resolve_model_by_id(RESEARCH_DEFAULTS.model_id)
 SUBAGENTS: list[SubAgent | CompiledSubAgent] = list(list_research_subagents())
-RESEARCH_MIDDLEWARE = MultimodalMiddleware(
-    parser_model_id="iflow_qwen3-vl-plus",
-    detail_mode=False,
-    detail_text_max_chars=2000,
-)
+RESEARCH_MIDDLEWARE = MultimodalMiddleware()
 BACKEND = build_filesystem_backend(
     root_dir=_default_backend_root(),
     virtual_mode=False,

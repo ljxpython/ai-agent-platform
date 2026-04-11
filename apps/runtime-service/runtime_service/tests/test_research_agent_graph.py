@@ -14,6 +14,9 @@ from runtime_service.runtime.context import RuntimeContext  # noqa: E402
 from runtime_service.runtime.runtime_request_resolver import (  # noqa: E402
     ResolvedRuntimeSettings,
 )
+from runtime_service.middlewares.multimodal import (  # noqa: E402
+    MULTIMODAL_PARSER_MODEL_ID_ENV,
+)
 
 research_agent_graph = importlib.import_module("runtime_service.agents.research_agent.graph")
 
@@ -32,6 +35,16 @@ def test_research_graph_exports_static_graph_symbol() -> None:
     assert hasattr(research_agent_graph, "graph")
     assert not hasattr(research_agent_graph, "make_graph")
     assert hasattr(research_agent_graph.graph, "invoke")
+
+
+def test_research_graph_middleware_uses_shared_env_default(monkeypatch: Any) -> None:
+    monkeypatch.setenv(MULTIMODAL_PARSER_MODEL_ID_ENV, "research_env_default")
+
+    reloaded = importlib.reload(research_agent_graph)
+    assert reloaded.RESEARCH_MIDDLEWARE._parser_model_id == "research_env_default"
+
+    monkeypatch.delenv(MULTIMODAL_PARSER_MODEL_ID_ENV, raising=False)
+    importlib.reload(reloaded)
 
 
 def test_research_graph_resolve_required_tools_includes_runtime_and_private_tools(

@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field
+from runtime_service.middlewares.multimodal.types import get_default_multimodal_model_id
 from runtime_service.runtime.config_utils import read_configurable
 
-DEFAULT_MULTIMODAL_PARSER_MODEL_ID = "iflow_qwen3-vl-plus"
 DEFAULT_MULTIMODAL_DETAIL_MODE = False
 DEFAULT_MULTIMODAL_DETAIL_TEXT_MAX_CHARS = 2000
 DEFAULT_TEST_CASE_MODEL_ID = "deepseek_chat"
@@ -21,7 +21,9 @@ DEFAULT_TEST_CASE_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS = 300
 
 @dataclass(frozen=True)
 class TestCaseServiceConfig:
-    multimodal_parser_model_id: str = DEFAULT_MULTIMODAL_PARSER_MODEL_ID
+    multimodal_parser_model_id: str = field(
+        default_factory=get_default_multimodal_model_id
+    )
     multimodal_detail_mode: bool = DEFAULT_MULTIMODAL_DETAIL_MODE
     multimodal_detail_text_max_chars: int = DEFAULT_MULTIMODAL_DETAIL_TEXT_MAX_CHARS
     default_model_id: str = DEFAULT_TEST_CASE_MODEL_ID
@@ -79,10 +81,11 @@ def _parse_int(value: Any, default: int) -> int:
 def build_test_case_service_config(config: RunnableConfig) -> TestCaseServiceConfig:
     """从 RunnableConfig 中解析服务配置，未提供则使用默认值。"""
     private_config = dict(read_configurable(config))
+    default_multimodal_parser_model_id = get_default_multimodal_model_id()
     return TestCaseServiceConfig(
         multimodal_parser_model_id=str(
             private_config.get("test_case_multimodal_parser_model_id")
-            or DEFAULT_MULTIMODAL_PARSER_MODEL_ID
+            or default_multimodal_parser_model_id
         ),
         multimodal_detail_mode=_parse_bool(
             private_config.get("test_case_multimodal_detail_mode"),
