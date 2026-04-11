@@ -15,6 +15,9 @@ def _settings() -> Settings:
     return Settings(
         langgraph_upstream_url="http://127.0.0.1:8123",
         langgraph_upstream_api_key=None,
+        interaction_data_service_url="http://127.0.0.1:8081",
+        interaction_data_service_token=None,
+        interaction_data_service_timeout_seconds=30,
         proxy_timeout_seconds=30,
         proxy_cors_allow_origins=["*"],
         proxy_upstream_retries=0,

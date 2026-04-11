@@ -10,6 +10,24 @@ from fastapi import HTTPException, Request
 
 _PROJECT_ID_HEADER = "x-project-id"
 _THREAD_PROJECT_ID_KEYS = ("project_id", "x-project-id", "projectId")
+_RUNTIME_CONTEXT_BUSINESS_KEYS = (
+    "model_id",
+    "system_prompt",
+    "temperature",
+    "max_tokens",
+    "top_p",
+    "enable_tools",
+    "tools",
+)
+_TRUSTED_CONTEXT_KEYS = (
+    "user_id",
+    "tenant_id",
+    "role",
+    "permissions",
+    "project_id",
+    "projectId",
+    "x-project-id",
+)
 
 
 def _scope_guard_enabled(request: Request) -> bool:
@@ -117,10 +135,41 @@ def inject_project_metadata(
     if project_id is None:
         return next_payload
     metadata = next_payload.get("metadata")
-    metadata_dict = dict(metadata) if isinstance(metadata, dict) else {}
+    metadata_dict = _without_project_scope_aliases(dict(metadata)) if isinstance(metadata, dict) else {}
     metadata_dict["project_id"] = project_id
     next_payload["metadata"] = metadata_dict
     return next_payload
+
+
+def _without_project_scope_aliases(payload: dict[str, Any]) -> dict[str, Any]:
+    next_payload = dict(payload)
+    for key in _THREAD_PROJECT_ID_KEYS:
+        next_payload.pop(key, None)
+    return next_payload
+
+
+def _without_trusted_context_keys(payload: dict[str, Any]) -> dict[str, Any]:
+    next_payload = dict(payload)
+    for key in _TRUSTED_CONTEXT_KEYS:
+        next_payload.pop(key, None)
+    return next_payload
+
+
+def _move_runtime_business_fields_into_context(
+    *,
+    source: dict[str, Any],
+    context: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    next_source = dict(source)
+    next_context = dict(context)
+    for key in _RUNTIME_CONTEXT_BUSINESS_KEYS:
+        if key not in next_source:
+            continue
+        value = next_source.pop(key)
+        if value is None or key in next_context:
+            continue
+        next_context[key] = value
+    return next_source, next_context
 
 
 def inject_project_scope(
@@ -134,26 +183,50 @@ def inject_project_scope(
 
     config = next_payload.get("config")
     config_dict = dict(config) if isinstance(config, dict) else {}
-    configurable = config_dict.get("configurable")
-    if isinstance(configurable, dict) and not configurable:
-        config_dict.pop("configurable", None)
-        configurable = None
+    context = next_payload.get("context")
+    context_dict = (
+        _without_trusted_context_keys(dict(context))
+        if isinstance(context, dict)
+        else {}
+    )
 
-    # LangGraph 0.7.x 的 HTTP API 不允许请求同时携带 context 与 config.configurable。
-    # 当调用方已经显式传了 configurable（例如前端运行参数）时，项目作用域只写 metadata，
-    # 运行时再从 metadata 兼容读取 project_id。
-    if not isinstance(configurable, dict):
-        context = next_payload.get("context")
-        context_dict = dict(context) if isinstance(context, dict) else {}
-        context_dict["project_id"] = project_id
-        next_payload["context"] = context_dict
+    config_dict = _without_project_scope_aliases(config_dict)
+    config_dict, context_dict = _move_runtime_business_fields_into_context(
+        source=config_dict,
+        context=context_dict,
+    )
+
+    configurable = config_dict.get("configurable")
+    if isinstance(configurable, dict):
+        configurable_dict = _without_trusted_context_keys(
+            _without_project_scope_aliases(dict(configurable))
+        )
+        configurable_dict, context_dict = _move_runtime_business_fields_into_context(
+            source=configurable_dict,
+            context=context_dict,
+        )
+        if configurable_dict:
+            config_dict["configurable"] = configurable_dict
+        else:
+            config_dict.pop("configurable", None)
+    else:
+        config_dict.pop("configurable", None)
+
+    context_dict["project_id"] = project_id
+    next_payload["context"] = context_dict
 
     config_metadata = config_dict.get("metadata")
-    config_metadata_dict = (
-        dict(config_metadata) if isinstance(config_metadata, dict) else {}
-    )
-    config_metadata_dict["project_id"] = project_id
-    config_dict["metadata"] = config_metadata_dict
+    if isinstance(config_metadata, dict):
+        config_metadata_dict = _without_project_scope_aliases(dict(config_metadata))
+        if config_metadata_dict:
+            config_dict["metadata"] = config_metadata_dict
+        else:
+            config_dict.pop("metadata", None)
+    else:
+        config_dict.pop("metadata", None)
 
-    next_payload["config"] = config_dict
+    if config_dict:
+        next_payload["config"] = config_dict
+    else:
+        next_payload.pop("config", None)
     return next_payload

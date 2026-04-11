@@ -28,6 +28,32 @@ from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(tags=["management-assistants"])
 
+_RUNTIME_CONTEXT_BUSINESS_KEYS = (
+    "model_id",
+    "system_prompt",
+    "temperature",
+    "max_tokens",
+    "top_p",
+    "enable_tools",
+    "tools",
+)
+
+_TRUSTED_CONTEXT_KEYS = (
+    "user_id",
+    "tenant_id",
+    "role",
+    "permissions",
+    "project_id",
+    "projectId",
+    "x-project-id",
+)
+
+_PROJECT_SCOPE_ALIAS_KEYS = (
+    "project_id",
+    "projectId",
+    "x-project-id",
+)
+
 
 def _extract_upstream_assistant_id(item: Any) -> str | None:
     if isinstance(item, dict):
@@ -60,16 +86,78 @@ def _serialize_assistant(row: Any, profile: Any) -> dict[str, Any]:
     }
 
 
-def _normalize_metadata(
-    project_id: str, payload_metadata: dict[str, Any]
-) -> dict[str, Any]:
-    next_metadata = dict(payload_metadata)
+def _normalize_object(value: dict[str, Any] | None) -> dict[str, Any]:
+    return dict(value) if isinstance(value, dict) else {}
+
+
+def _strip_keys(payload: dict[str, Any], keys: tuple[str, ...]) -> dict[str, Any]:
+    next_payload = dict(payload)
+    for key in keys:
+        next_payload.pop(key, None)
+    return next_payload
+
+
+def _move_runtime_business_fields_into_context(
+    *,
+    source: dict[str, Any],
+    context: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    next_source = dict(source)
+    next_context = dict(context)
+    for key in _RUNTIME_CONTEXT_BUSINESS_KEYS:
+        if key not in next_source:
+            continue
+        value = next_source.pop(key)
+        if value is None or key in next_context:
+            continue
+        next_context[key] = value
+    return next_source, next_context
+
+
+def _normalize_assistant_runtime_contract(
+    *,
+    config: dict[str, Any],
+    context: dict[str, Any],
+    metadata: dict[str, Any],
+    project_id: str,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    next_context = _strip_keys(context, _TRUSTED_CONTEXT_KEYS)
+    next_config = _strip_keys(config, _PROJECT_SCOPE_ALIAS_KEYS)
+    next_metadata = _strip_keys(metadata, _PROJECT_SCOPE_ALIAS_KEYS)
     next_metadata["project_id"] = project_id
-    return next_metadata
 
+    next_config, next_context = _move_runtime_business_fields_into_context(
+        source=next_config,
+        context=next_context,
+    )
 
-def _has_user_input_object(value: Any) -> bool:
-    return isinstance(value, dict) and len(value) > 0
+    configurable = next_config.get("configurable")
+    configurable_dict = (
+        _strip_keys(dict(configurable), _TRUSTED_CONTEXT_KEYS)
+        if isinstance(configurable, dict)
+        else {}
+    )
+    configurable_dict, next_context = _move_runtime_business_fields_into_context(
+        source=configurable_dict,
+        context=next_context,
+    )
+    if configurable_dict:
+        next_config["configurable"] = configurable_dict
+    else:
+        next_config.pop("configurable", None)
+
+    config_metadata = next_config.get("metadata")
+    config_metadata_dict = (
+        _strip_keys(dict(config_metadata), _PROJECT_SCOPE_ALIAS_KEYS)
+        if isinstance(config_metadata, dict)
+        else {}
+    )
+    if config_metadata_dict:
+        next_config["metadata"] = config_metadata_dict
+    else:
+        next_config.pop("metadata", None)
+
+    return next_config, next_context, next_metadata
 
 
 @router.get("/projects/{project_id}/assistants")
@@ -127,22 +215,21 @@ async def create_assistant_for_project(
         upstream_payload["description"] = payload.description
     if isinstance(payload.assistant_id, str) and payload.assistant_id.strip():
         upstream_payload["assistant_id"] = payload.assistant_id.strip()
-    user_config = payload.config if isinstance(payload.config, dict) else {}
-    user_context = payload.context if isinstance(payload.context, dict) else {}
-    user_metadata: dict[str, Any] = (
-        dict(payload.metadata) if isinstance(payload.metadata, dict) else {}
+    user_config = _normalize_object(payload.config)
+    user_context = _normalize_object(payload.context)
+    user_metadata = _normalize_object(payload.metadata)
+    user_config, user_context, user_metadata = _normalize_assistant_runtime_contract(
+        config=user_config,
+        context=user_context,
+        metadata=user_metadata,
+        project_id=project_id,
     )
-    if _has_user_input_object(user_config):
+    if user_config:
         upstream_payload["config"] = user_config
-    if _has_user_input_object(user_context):
+    if user_context:
         upstream_payload["context"] = user_context
-    normalized_metadata = (
-        _normalize_metadata(project_id, user_metadata)
-        if _has_user_input_object(user_metadata)
-        else {}
-    )
-    if normalized_metadata:
-        upstream_payload["metadata"] = normalized_metadata
+    if user_metadata:
+        upstream_payload["metadata"] = user_metadata
 
     service = LangGraphAssistantsService(request)
     try:
@@ -179,7 +266,7 @@ async def create_assistant_for_project(
                 status="active",
                 config=user_config,
                 context=user_context,
-                metadata_json=normalized_metadata,
+                metadata_json=user_metadata,
                 actor_user_id=actor_user_id,
             )
         except IntegrityError as exc:
@@ -242,21 +329,26 @@ async def update_assistant(
             else (profile.status if profile is not None else "active")
         )
         next_config = (
-            payload.config
+            _normalize_object(payload.config)
             if isinstance(payload.config, dict)
-            else (profile.config if profile is not None else {})
+            else (dict(profile.config) if profile is not None else {})
         )
         next_context = (
-            payload.context
+            _normalize_object(payload.context)
             if isinstance(payload.context, dict)
-            else (profile.context if profile is not None else {})
+            else (dict(profile.context) if profile is not None else {})
         )
         next_metadata = (
-            payload.metadata
+            _normalize_object(payload.metadata)
             if isinstance(payload.metadata, dict)
-            else (profile.metadata_json if profile is not None else {})
+            else (dict(profile.metadata_json) if profile is not None else {})
         )
-        next_metadata = _normalize_metadata(str(row.project_id), next_metadata)
+        next_config, next_context, next_metadata = _normalize_assistant_runtime_contract(
+            config=next_config,
+            context=next_context,
+            metadata=next_metadata,
+            project_id=str(row.project_id),
+        )
 
         update_payload: dict[str, Any] = {}
         if next_graph_id != row.graph_id:
@@ -430,21 +522,26 @@ async def resync_assistant_item(request: Request, assistant_id: str) -> dict[str
         next_name = str(upstream_item.get("name") or row.name)
         next_description = str(upstream_item.get("description") or row.description)
         next_config = (
-            upstream_item.get("config")
+            dict(upstream_item.get("config"))
             if isinstance(upstream_item.get("config"), dict)
-            else (profile.config if profile is not None else {})
+            else (dict(profile.config) if profile is not None else {})
         )
         next_context = (
-            upstream_item.get("context")
+            dict(upstream_item.get("context"))
             if isinstance(upstream_item.get("context"), dict)
-            else (profile.context if profile is not None else {})
+            else (dict(profile.context) if profile is not None else {})
         )
         next_metadata = (
-            upstream_item.get("metadata")
+            dict(upstream_item.get("metadata"))
             if isinstance(upstream_item.get("metadata"), dict)
-            else (profile.metadata_json if profile is not None else {})
+            else (dict(profile.metadata_json) if profile is not None else {})
         )
-        next_metadata = _normalize_metadata(str(row.project_id), next_metadata)
+        next_config, next_context, next_metadata = _normalize_assistant_runtime_contract(
+            config=next_config,
+            context=next_context,
+            metadata=next_metadata,
+            project_id=str(row.project_id),
+        )
 
         update_agent_runtime_fields(
             session,

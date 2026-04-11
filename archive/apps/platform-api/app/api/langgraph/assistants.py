@@ -5,6 +5,11 @@ from __future__ import annotations
 from typing import Any
 
 from app.services.langgraph_sdk.assistants_service import LangGraphAssistantsService
+from app.services.langgraph_sdk.scope_guard import (
+    assert_assistant_belongs_project,
+    inject_project_metadata,
+    inject_project_scope,
+)
 from fastapi import APIRouter, Body, Query, Request
 from fastapi.encoders import jsonable_encoder
 
@@ -25,8 +30,9 @@ async def create_assistant(
     返回语义：
     - 返回上游创建后的 assistant 对象（经 jsonable_encoder 序列化）。
     """
+    scoped_payload = inject_project_scope(request, payload)
     service = LangGraphAssistantsService(request)
-    assistant = await service.create(payload)
+    assistant = await service.create(scoped_payload)
     return jsonable_encoder(assistant)
 
 
@@ -44,8 +50,9 @@ async def search_assistants(
     返回语义：
     - 返回符合过滤条件的 assistant 列表或上游定义的数据结构（已序列化）。
     """
+    scoped_payload = inject_project_metadata(request, payload)
     service = LangGraphAssistantsService(request)
-    assistants = await service.search(payload)
+    assistants = await service.search(scoped_payload)
     return jsonable_encoder(assistants)
 
 
@@ -61,6 +68,7 @@ async def get_assistant(request: Request, assistant_id: str) -> Any:
     返回语义：
     - 返回对应 assistant 的完整信息（已序列化）。
     """
+    await assert_assistant_belongs_project(request, assistant_id)
     service = LangGraphAssistantsService(request)
     assistant = await service.get(assistant_id)
     return jsonable_encoder(assistant)
@@ -83,8 +91,10 @@ async def update_assistant(
     返回语义：
     - 返回更新后的 assistant 对象（已序列化）。
     """
+    await assert_assistant_belongs_project(request, assistant_id)
+    scoped_payload = inject_project_scope(request, payload)
     service = LangGraphAssistantsService(request)
-    assistant = await service.update(assistant_id, payload)
+    assistant = await service.update(assistant_id, scoped_payload)
     return jsonable_encoder(assistant)
 
 
@@ -106,6 +116,7 @@ async def delete_assistant(
     - 若上游返回具体结果，则透传并序列化该结果。
     - 若上游返回 None，则回退为 {"ok": true} 语义（本实现中为 Python 布尔值 True）。
     """
+    await assert_assistant_belongs_project(request, assistant_id)
     service = LangGraphAssistantsService(request)
     result = await service.delete(assistant_id, delete_threads=delete_threads)
     if result is None:
@@ -127,6 +138,7 @@ async def count_assistants(
     返回语义：
     - 返回上游 count 接口结果（通常包含总数信息，已序列化）。
     """
+    scoped_payload = inject_project_metadata(request, payload)
     service = LangGraphAssistantsService(request)
-    count = await service.count(payload)
+    count = await service.count(scoped_payload)
     return jsonable_encoder(count)

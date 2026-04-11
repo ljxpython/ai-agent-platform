@@ -7,6 +7,33 @@ from typing import Any
 
 from app.config import Settings
 
+_RUNTIME_CONTEXT_READONLY_KEYS = [
+    "user_id",
+    "tenant_id",
+    "role",
+    "permissions",
+    "project_id",
+]
+
+_EXECUTION_CONFIG_PROPERTIES: dict[str, dict[str, Any]] = {
+    "recursion_limit": {"type": "number", "required": False},
+    "run_name": {"type": "string", "required": False},
+    "max_concurrency": {"type": "number", "required": False},
+}
+
+_CONFIGURABLE_PLATFORM_PROPERTIES: dict[str, dict[str, Any]] = {
+    "thread_id": {"type": "string", "required": False},
+    "checkpoint_id": {"type": "string", "required": False},
+    "assistant_id": {"type": "string", "required": False},
+    "graph_id": {"type": "string", "required": False},
+    "langgraph_auth_user_id": {"type": "string", "required": False},
+    "langgraph_auth_user": {"type": "object", "required": False},
+}
+
+_CONFIGURABLE_NOISE_KEYS = {
+    "__pregel_scratchpad",
+}
+
 
 class GraphParameterSchemaService:
     def __init__(self, settings: Settings) -> None:
@@ -22,55 +49,43 @@ class GraphParameterSchemaService:
         if graph_entry_file is None:
             return self._fallback_schema(graph_id, reason="graph_entry_not_found")
 
-        runtime_options_file = root / "runtime" / "options.py"
         runtime_context_file = root / "runtime" / "context.py"
-        config_properties = self._extract_runtime_config_properties(
-            runtime_options_file
-        )
-        context_properties = self._extract_context_properties(
-            runtime_options_file, runtime_context_file
-        )
-        metadata_properties = {
-            "project_id": {"type": "string", "required": False},
-        }
-
-        graph_specific_keys = self._extract_graph_specific_config_keys(graph_entry_file)
-        for key in sorted(graph_specific_keys):
-            config_properties.setdefault(key, {"type": "string", "required": False})
+        config_properties = self._execution_config_properties()
+        context_properties = self._extract_context_properties(runtime_context_file)
+        configurable_properties = self._extract_configurable_properties(graph_entry_file)
 
         return {
             "graph_id": graph_id,
-            "schema_version": "dynamic-v1",
+            "schema_version": "dynamic-v2",
             "dynamic": True,
             "sources": {
                 "root": str(root),
                 "langgraph_json": str(graph_config_path),
                 "graph_entry": str(graph_entry_file),
-                "runtime_options": str(runtime_options_file),
                 "runtime_context": str(runtime_context_file),
             },
             "sections": [
                 {
                     "key": "config",
-                    "title": "Runtime Config",
+                    "title": "Execution Config",
                     "type": "object",
                     "required": False,
                     "properties": config_properties,
                 },
                 {
                     "key": "context",
-                    "title": "Business Context",
+                    "title": "Runtime Context",
                     "type": "object",
                     "required": False,
                     "properties": context_properties,
-                    "readonly_keys": ["user_id", "tenant_id", "role", "permissions", "project_id"],
+                    "readonly_keys": list(_RUNTIME_CONTEXT_READONLY_KEYS),
                 },
                 {
-                    "key": "metadata",
-                    "title": "Search Metadata",
+                    "key": "configurable",
+                    "title": "Platform / Private Configurable",
                     "type": "object",
                     "required": False,
-                    "properties": metadata_properties,
+                    "properties": configurable_properties,
                 },
             ],
         }
@@ -81,13 +96,8 @@ class GraphParameterSchemaService:
         if isinstance(explicit, str) and explicit.strip():
             candidates.append(Path(explicit.strip()).expanduser())
 
-        repo_root = Path(__file__).resolve().parents[2]
-        candidates.extend(
-            [
-                repo_root / "graph_src_v2",
-                repo_root.parent / "langgraph_open_teach" / "graph_src_v2",
-            ]
-        )
+        repo_root = Path(__file__).resolve().parents[4]
+        candidates.append(repo_root / "apps" / "runtime-service" / "runtime_service")
 
         for path in candidates:
             resolved = path.resolve()
@@ -96,7 +106,9 @@ class GraphParameterSchemaService:
         return None
 
     def _resolve_graph_entry_file(
-        self, graph_config_path: Path, graph_id: str
+        self,
+        graph_config_path: Path,
+        graph_id: str,
     ) -> Path | None:
         if not graph_config_path.exists():
             return None
@@ -110,6 +122,8 @@ class GraphParameterSchemaService:
             return None
 
         raw_target = graphs.get(graph_id)
+        if isinstance(raw_target, dict):
+            raw_target = raw_target.get("path")
         if not isinstance(raw_target, str) or not raw_target.strip():
             return None
 
@@ -117,9 +131,7 @@ class GraphParameterSchemaService:
         if not relative_file:
             return None
 
-        normalized = (
-            relative_file[2:] if relative_file.startswith("./") else relative_file
-        )
+        normalized = relative_file[2:] if relative_file.startswith("./") else relative_file
         candidate_roots = [graph_config_path.parent, graph_config_path.parent.parent]
         for root in candidate_roots:
             file_path = (root / normalized).resolve()
@@ -127,174 +139,172 @@ class GraphParameterSchemaService:
                 return file_path
         return None
 
-    def _extract_runtime_config_properties(
-        self, options_file: Path
-    ) -> dict[str, dict[str, Any]]:
-        defaults: dict[str, dict[str, Any]] = {
-            "model_id": {"type": "string", "required": False},
-            "system_prompt": {"type": "string", "required": False},
-            "enable_local_tools": {"type": "boolean", "required": False},
-            "local_tools": {"type": "array[string]", "required": False},
-            "enable_local_mcp": {"type": "boolean", "required": False},
-            "mcp_servers": {"type": "array[string]", "required": False},
-            "temperature": {"type": "number", "required": False},
-            "max_tokens": {"type": "number", "required": False},
-            "top_p": {"type": "number", "required": False},
-        }
-        if not options_file.exists():
-            return defaults
-
-        try:
-            tree = ast.parse(options_file.read_text(encoding="utf-8"))
-        except Exception:
-            return defaults
-
-        fields = self._extract_dataclass_fields(tree, "AppRuntimeConfig")
-        mapped: dict[str, dict[str, Any]] = {}
-        for key, annotation in fields.items():
-            if key in {"environment", "model_spec"}:
-                continue
-            mapped[key] = {
-                "type": self._annotation_to_schema_type(annotation),
-                "required": False,
-            }
-        return mapped or defaults
+    def _execution_config_properties(self) -> dict[str, dict[str, Any]]:
+        return dict(_EXECUTION_CONFIG_PROPERTIES)
 
     def _extract_context_properties(
         self,
-        options_file: Path,
         context_file: Path,
     ) -> dict[str, dict[str, Any]]:
-        defaults: dict[str, dict[str, Any]] = {
-            "environment": {"type": "string", "required": False},
-            "user_id": {"type": "string", "required": False},
-            "tenant_id": {"type": "string", "required": False},
-            "role": {"type": "string", "required": False},
-            "permissions": {"type": "array[string]", "required": False},
-        }
-
+        properties: dict[str, dict[str, Any]] = {}
         if context_file.exists():
             try:
                 context_tree = ast.parse(context_file.read_text(encoding="utf-8"))
                 context_fields = self._extract_dataclass_fields(
-                    context_tree, "RuntimeContext"
+                    context_tree,
+                    "RuntimeContext",
                 )
                 for key, annotation in context_fields.items():
-                    defaults[key] = {
+                    properties[key] = {
                         "type": self._annotation_to_schema_type(annotation),
                         "required": False,
                     }
+                return properties
             except Exception:
                 pass
 
-        if not options_file.exists():
-            return defaults
-
-        try:
-            tree = ast.parse(options_file.read_text(encoding="utf-8"))
-        except Exception:
-            return defaults
-
-        key_candidates = self._extract_get_call_string_args(tree)
-        for key in sorted(key_candidates):
-            if key.startswith("langgraph_auth_"):
-                defaults.setdefault(key, {"type": "string", "required": False})
-        return defaults
-
-    def _extract_graph_specific_config_keys(self, graph_entry_file: Path) -> set[str]:
-        try:
-            tree = ast.parse(graph_entry_file.read_text(encoding="utf-8"))
-        except Exception:
-            return set()
-
-        keys = self._extract_get_call_string_args(tree)
-        known_noise = {
-            "messages",
-            "allowed_decisions",
-            "description",
-            "interrupt_on",
-            "metadata",
-            "configurable",
+        return {
+            "project_id": {"type": "string", "required": False},
+            "model_id": {"type": "string", "required": False},
+            "system_prompt": {"type": "string", "required": False},
+            "temperature": {"type": "number", "required": False},
+            "max_tokens": {"type": "number", "required": False},
+            "top_p": {"type": "number", "required": False},
+            "enable_tools": {"type": "boolean", "required": False},
+            "tools": {"type": "array[string]", "required": False},
         }
-        return {k for k in keys if k and k not in known_noise and len(k) < 64}
 
-    def _extract_get_call_string_args(self, tree: ast.AST) -> set[str]:
-        values: set[str] = set()
+    def _extract_configurable_properties(
+        self,
+        graph_entry_file: Path,
+    ) -> dict[str, dict[str, Any]]:
+        properties = dict(_CONFIGURABLE_PLATFORM_PROPERTIES)
+        for key in sorted(self._extract_graph_scope_configurable_keys(graph_entry_file)):
+            properties.setdefault(key, {"type": "string", "required": False})
+        return properties
+
+    def _extract_graph_scope_configurable_keys(self, graph_entry_file: Path) -> set[str]:
+        scope_root = graph_entry_file.parent
+        keys: set[str] = set()
+        for path in scope_root.rglob("*.py"):
+            if any(part in {"tests", "__pycache__"} for part in path.parts):
+                continue
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            keys.update(
+                self._extract_mapping_get_call_string_args(
+                    tree,
+                    target_names={"configurable", "private_config"},
+                )
+            )
+        return {
+            key
+            for key in keys
+            if key and key not in _CONFIGURABLE_NOISE_KEYS and len(key) < 128
+        }
+
+    def _extract_dataclass_fields(
+        self,
+        tree: ast.AST,
+        class_name: str,
+    ) -> dict[str, ast.expr | None]:
+        for node in tree.body if isinstance(tree, ast.Module) else []:
+            if isinstance(node, ast.ClassDef) and node.name == class_name:
+                result: dict[str, ast.expr | None] = {}
+                for child in node.body:
+                    if isinstance(child, ast.AnnAssign) and isinstance(child.target, ast.Name):
+                        result[child.target.id] = child.annotation
+                return result
+        return {}
+
+    def _extract_mapping_get_call_string_args(
+        self,
+        tree: ast.AST,
+        *,
+        target_names: set[str],
+    ) -> set[str]:
+        keys: set[str] = set()
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
-            if not isinstance(node.func, ast.Attribute) or node.func.attr != "get":
+            if not isinstance(node.func, ast.Attribute):
+                continue
+            if node.func.attr != "get":
+                continue
+            if not isinstance(node.func.value, ast.Name):
+                continue
+            if node.func.value.id not in target_names:
                 continue
             if not node.args:
                 continue
-            first = node.args[0]
-            if isinstance(first, ast.Constant) and isinstance(first.value, str):
-                values.add(first.value)
-        return values
+            first_arg = node.args[0]
+            if isinstance(first_arg, ast.Constant) and isinstance(first_arg.value, str):
+                keys.add(first_arg.value)
+        return keys
 
-    def _extract_dataclass_fields(
-        self, tree: ast.AST, class_name: str
-    ) -> dict[str, str]:
-        fields: dict[str, str] = {}
-        for node in ast.walk(tree):
-            if not isinstance(node, ast.ClassDef) or node.name != class_name:
-                continue
-            for item in node.body:
-                if isinstance(item, ast.AnnAssign) and isinstance(
-                    item.target, ast.Name
-                ):
-                    fields[item.target.id] = (
-                        ast.unparse(item.annotation)
-                        if item.annotation is not None
-                        else "Any"
-                    )
-            break
-        return fields
-
-    def _annotation_to_schema_type(self, annotation: str) -> str:
-        lowered = annotation.lower()
-        if "bool" in lowered:
+    def _annotation_to_schema_type(self, annotation: ast.expr | None) -> str:
+        if annotation is None:
+            return "string"
+        if isinstance(annotation, ast.Name):
+            mapping = {
+                "str": "string",
+                "int": "number",
+                "float": "number",
+                "bool": "boolean",
+                "dict": "object",
+                "list": "array",
+            }
+            return mapping.get(annotation.id, "string")
+        annotation_text = ast.unparse(annotation).lower()
+        if "bool" in annotation_text:
             return "boolean"
-        if "float" in lowered or "int" in lowered:
+        if "float" in annotation_text or "int" in annotation_text:
             return "number"
-        if "list" in lowered and "str" in lowered:
+        if "list" in annotation_text and "str" in annotation_text:
             return "array[string]"
-        if "dict" in lowered or "mapping" in lowered:
+        if "dict" in annotation_text or "mapping" in annotation_text:
             return "object"
         return "string"
 
     def _fallback_schema(self, graph_id: str, *, reason: str) -> dict[str, Any]:
         return {
             "graph_id": graph_id,
-            "schema_version": "fallback-v1",
+            "schema_version": "fallback-v2",
             "dynamic": False,
             "reason": reason,
             "sections": [
                 {
                     "key": "config",
-                    "title": "Runtime Config",
+                    "title": "Execution Config",
                     "type": "object",
                     "required": False,
-                    "properties": {
-                        "model": {"type": "string", "required": False},
-                        "temperature": {"type": "number", "required": False},
-                        "max_tokens": {"type": "number", "required": False},
-                    },
+                    "properties": dict(_EXECUTION_CONFIG_PROPERTIES),
                 },
                 {
                     "key": "context",
-                    "title": "Business Context",
-                    "type": "object",
-                    "required": False,
-                },
-                {
-                    "key": "metadata",
-                    "title": "Search Metadata",
+                    "title": "Runtime Context",
                     "type": "object",
                     "required": False,
                     "properties": {
                         "project_id": {"type": "string", "required": False},
+                        "model_id": {"type": "string", "required": False},
+                        "system_prompt": {"type": "string", "required": False},
+                        "temperature": {"type": "number", "required": False},
+                        "max_tokens": {"type": "number", "required": False},
+                        "top_p": {"type": "number", "required": False},
+                        "enable_tools": {"type": "boolean", "required": False},
+                        "tools": {"type": "array[string]", "required": False},
                     },
+                    "readonly_keys": list(_RUNTIME_CONTEXT_READONLY_KEYS),
+                },
+                {
+                    "key": "configurable",
+                    "title": "Platform / Private Configurable",
+                    "type": "object",
+                    "required": False,
+                    "properties": dict(_CONFIGURABLE_PLATFORM_PROPERTIES),
                 },
             ],
         }

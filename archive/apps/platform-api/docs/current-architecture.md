@@ -71,6 +71,13 @@
 - `threads`
 - `runs`
 
+当前 LangGraph 网关 contract 约束：
+
+- `assistants.create/update` 与 `runs.create/update-like` 会先收口 runtime contract，再注入项目作用域
+- `threads.*` 只负责 thread 元数据 project scope，不承接 runtime 业务参数治理
+- project-scoped `cron search/count` 必须显式带 `assistant_id` 或 `thread_id`
+- project-scoped bulk cancel 必须显式带 `thread_id`
+
 ### 3.3 健康检查
 
 - `/_proxy/health`
@@ -163,15 +170,15 @@ caller
 标准注入位置：
 
 1. `payload.metadata.project_id`
-2. `payload.context.project_id`（仅当请求本身不携带 `config.configurable` 时）
-3. `payload.config.metadata.project_id`
+2. `payload.context.project_id`
 
 设计原因：
 
 1. 仅靠 header 不能保证 `runtime-service` 节点/工具在执行期总能读到项目上下文
 2. 仅靠 thread metadata 不足以覆盖无 thread 的首轮 global run 或 run payload 直接执行场景
-3. LangGraph 0.7.x 的 HTTP API 不允许同一请求同时传 `context` 与 `config.configurable`；当调用方已经使用运行参数时，平台只能把项目作用域注入到 metadata，运行时再兼容读取
-4. 运行时项目上下文必须在 LangGraph payload 内显式存在，避免业务服务再使用默认项目兜底
+3. `config.configurable` 只保留平台/线程/私有字段，业务项目作用域不再走兼容注入
+4. `config.metadata.project_id` 不再作为业务输入通道，旧兜底口径已经埋掉
+5. 运行时项目上下文必须在 LangGraph payload 内显式存在，避免业务服务再使用默认项目兜底
 
 ### 6.3 runtime catalog
 

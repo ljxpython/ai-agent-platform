@@ -49,7 +49,7 @@ def test_inject_project_metadata_preserves_and_overrides_project_scope() -> None
     assert scoped["metadata"]["project_id"] == "5f419550-a3c7-49c6-9450-09154fd1bf7d"
 
 
-def test_inject_project_scope_populates_context_when_configurable_absent() -> None:
+def test_inject_project_scope_populates_context_and_top_level_metadata_only() -> None:
     request = _build_request("5f419550-a3c7-49c6-9450-09154fd1bf7d")
     payload = {
         "assistant_id": "assistant-1",
@@ -63,31 +63,68 @@ def test_inject_project_scope_populates_context_when_configurable_absent() -> No
     assert scoped["context"]["foo"] == "bar"
     assert scoped["context"]["project_id"] == "5f419550-a3c7-49c6-9450-09154fd1bf7d"
     assert scoped["config"]["metadata"]["trace"] == "abc"
-    assert scoped["config"]["metadata"]["project_id"] == "5f419550-a3c7-49c6-9450-09154fd1bf7d"
+    assert "project_id" not in scoped["config"]["metadata"]
     assert scoped["metadata"]["origin"] == "test"
     assert scoped["metadata"]["project_id"] == "5f419550-a3c7-49c6-9450-09154fd1bf7d"
 
 
-def test_inject_project_scope_skips_context_when_configurable_exists() -> None:
+def test_inject_project_scope_keeps_context_even_when_configurable_exists() -> None:
     request = _build_request("5f419550-a3c7-49c6-9450-09154fd1bf7d")
     payload = {
         "assistant_id": "assistant-1",
         "context": {"foo": "bar"},
-        "config": {"configurable": {"model_id": "deepseek_chat"}, "metadata": {"trace": "abc"}},
+        "config": {
+            "configurable": {
+                "model_id": "deepseek_chat",
+                "project_id": "wrong-project",
+            },
+            "metadata": {"trace": "abc", "project_id": "wrong-project"},
+        },
         "metadata": {"origin": "test"},
     }
 
     scoped = inject_project_scope(request, payload)
 
     assert scoped["context"]["foo"] == "bar"
-    assert "project_id" not in scoped["context"]
-    assert scoped["config"]["configurable"]["model_id"] == "deepseek_chat"
-    assert "project_id" not in scoped["config"]["configurable"]
-    assert "x-project-id" not in scoped["config"]["configurable"]
+    assert scoped["context"]["project_id"] == "5f419550-a3c7-49c6-9450-09154fd1bf7d"
+    assert scoped["context"]["model_id"] == "deepseek_chat"
+    assert "configurable" not in scoped["config"]
     assert scoped["config"]["metadata"]["trace"] == "abc"
-    assert scoped["config"]["metadata"]["project_id"] == "5f419550-a3c7-49c6-9450-09154fd1bf7d"
+    assert "project_id" not in scoped["config"]["metadata"]
     assert scoped["metadata"]["origin"] == "test"
     assert scoped["metadata"]["project_id"] == "5f419550-a3c7-49c6-9450-09154fd1bf7d"
+
+
+def test_inject_project_scope_moves_runtime_fields_from_config_into_context() -> None:
+    request = _build_request("5f419550-a3c7-49c6-9450-09154fd1bf7d")
+    payload = {
+        "assistant_id": "assistant-1",
+        "config": {
+            "recursion_limit": 12,
+            "model_id": "config-model",
+            "configurable": {
+                "thread_id": "thread-1",
+                "temperature": 0.7,
+                "project_id": "wrong-project",
+            },
+        },
+        "context": {
+            "system_prompt": "context prompt",
+            "user_id": "user-1",
+        },
+    }
+
+    scoped = inject_project_scope(request, payload)
+
+    assert scoped["config"]["recursion_limit"] == 12
+    assert "model_id" not in scoped["config"]
+    assert scoped["config"]["configurable"] == {"thread_id": "thread-1"}
+    assert scoped["context"] == {
+        "system_prompt": "context prompt",
+        "model_id": "config-model",
+        "temperature": 0.7,
+        "project_id": "5f419550-a3c7-49c6-9450-09154fd1bf7d",
+    }
 
 
 def test_raise_langgraph_request_error_maps_value_error_to_400() -> None:

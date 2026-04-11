@@ -70,9 +70,9 @@
 - 服务端强制注入：
   - `project_id`（来自 path）
   - `created_by`/`updated_by`（来自认证上下文）
-  - `metadata.project_id` 与审计字段（防前端伪造）
+  - `context.project_id` 与 `metadata.project_id`（防前端伪造）
 - 行为：
-  - 校验动态参数白名单。
+  - 收口 runtime contract：`config` 只放执行控制，`context` 放业务运行时，`config.configurable` 只放平台/私有字段。
   - 调用 `/api/langgraph/assistants` 创建上游 assistant。
   - 保存平台映射记录。
 
@@ -98,12 +98,12 @@
 
 ## 5. 动态参数治理策略
 
-结合你在 `graph_entrypoint.py` 的动态能力（`config/context` 合并与 runtime 参数解析），建议：
+当前 contract 约束：
 
-- 白名单允许：模型、温度、工具开关、业务上下文。
-- 黑名单禁止：身份边界字段（如项目归属、用户身份、权限角色）。
-- 类型校验：字符串/数字/布尔/对象/数组严格校验。
-- 版本控制：schema 响应带 `schema_version`，前后端可灰度升级。
+- `context`：`project_id/model_id/system_prompt/temperature/max_tokens/top_p/enable_tools/tools`
+- `config`：`recursion_limit/run_name/max_concurrency`
+- `config.configurable`：`thread_id/checkpoint_id/assistant_id/langgraph_auth_*` 及图专属私有 override
+- 禁止：身份边界字段、项目归属 alias、把 runtime 业务字段塞进 `config.configurable`
 
 ## 6. 前端页面设计
 

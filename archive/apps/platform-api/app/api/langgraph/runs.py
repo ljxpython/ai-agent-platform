@@ -9,6 +9,7 @@ from app.services.langgraph_sdk.runs_service import LangGraphRunsService
 from app.services.langgraph_sdk.scope_guard import (
     assert_assistant_belongs_project,
     assert_thread_belongs_project,
+    get_optional_project_id,
     inject_project_scope,
 )
 from fastapi import APIRouter, Body, HTTPException, Query, Request
@@ -85,6 +86,49 @@ def _raise_langgraph_request_error(exc: Exception, *, fallback_detail: str) -> N
         detail = message.split(":", 1)[1].strip() or fallback_detail
         raise HTTPException(status_code=400, detail=detail) from exc
     raise HTTPException(status_code=502, detail=fallback_detail) from exc
+
+
+async def _assert_cron_query_scope(
+    request: Request,
+    payload: dict[str, Any],
+) -> None:
+    assistant_id = payload.get("assistant_id")
+    thread_id = payload.get("thread_id")
+
+    if isinstance(assistant_id, str) and assistant_id:
+        await assert_assistant_belongs_project(request, assistant_id)
+    if isinstance(thread_id, str) and thread_id:
+        await assert_thread_belongs_project(request, thread_id)
+
+    if get_optional_project_id(request) is not None:
+        has_target = (
+            isinstance(assistant_id, str)
+            and bool(assistant_id)
+        ) or (
+            isinstance(thread_id, str)
+            and bool(thread_id)
+        )
+        if not has_target:
+            raise HTTPException(
+                status_code=400,
+                detail="assistant_id or thread_id is required for project-scoped cron query",
+            )
+
+
+async def _assert_bulk_cancel_scope(
+    request: Request,
+    payload: dict[str, Any],
+) -> None:
+    thread_id = payload.get("thread_id")
+    if isinstance(thread_id, str) and thread_id:
+        await assert_thread_belongs_project(request, thread_id)
+        return
+
+    if get_optional_project_id(request) is not None:
+        raise HTTPException(
+            status_code=400,
+            detail="thread_id is required for project-scoped bulk cancel",
+        )
 
 
 @router.post("/runs")
@@ -217,6 +261,7 @@ async def cancel_runs(request: Request, payload: dict[str, Any] = Body(...)) -> 
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="payload must be object")
 
+    await _assert_bulk_cancel_scope(request, payload)
     service = LangGraphRunsService(request)
     result = await service.cancel_many(payload)
     if result is None:
@@ -256,6 +301,7 @@ async def search_crons(request: Request, payload: dict[str, Any] = Body(...)) ->
     返回语义：
     - 返回上游 cron 搜索结果，并通过 jsonable_encoder 序列化。
     """
+    await _assert_cron_query_scope(request, payload)
     service = LangGraphRunsService(request)
     crons = await service.search_crons(payload)
     return jsonable_encoder(crons)
@@ -273,6 +319,7 @@ async def count_crons(request: Request, payload: dict[str, Any] = Body(...)) -> 
     返回语义：
     - 返回上游 cron count 结果，并通过 jsonable_encoder 序列化。
     """
+    await _assert_cron_query_scope(request, payload)
     service = LangGraphRunsService(request)
     count = await service.count_crons(payload)
     return jsonable_encoder(count)
@@ -531,8 +578,9 @@ async def create_thread_run_cron(
     await assert_thread_belongs_project(request, thread_id)
     _require_assistant_id(payload)
     await assert_assistant_belongs_project(request, payload["assistant_id"])
+    scoped_payload = inject_project_scope(request, payload)
     service = LangGraphRunsService(request)
-    cron = await service.create_cron_for_thread(thread_id, payload)
+    cron = await service.create_cron_for_thread(thread_id, scoped_payload)
     return jsonable_encoder(cron)
 
 
