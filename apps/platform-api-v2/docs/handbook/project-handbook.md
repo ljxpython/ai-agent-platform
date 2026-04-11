@@ -1,5 +1,15 @@
 # Platform API V2 Project Handbook
 
+文档类型：`Current Handbook`
+
+这份手册说明当前 `platform-api-v2` 作为正式 control plane 的职责、使用方式和治理边界。
+
+如果你要先理解仓库级主链，请同时看：
+
+- `docs/development-paradigm.md`
+- `docs/local-deployment-contract.yaml`
+- `README.md`
+
 这份文档是 `apps/platform-api-v2` 的总手册。
 
 如果你是第一次接手这套控制面，或者你已经看过代码但还是没搞清楚“这服务到底怎么用、为什么要这么拆、权限到底怎么判”，先看这份文档，不要一头扎进 `phase-*` 里迷路。

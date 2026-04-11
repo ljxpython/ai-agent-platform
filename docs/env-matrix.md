@@ -1,12 +1,34 @@
 # 环境变量矩阵
 
+文档类型：`Operational`（配置索引，不是唯一事实源）
+
 本文只做配置文件与关键变量索引。
 
 默认本地部署的服务成员、启动顺序、端口和链路，以 `docs/local-deployment-contract.yaml` 为准。
 
-本文当前覆盖正式本地演示链路，并额外保留 `runtime-web`、`platform-web`、`platform-api` 的历史或调试说明。
+建议按下面这个顺序理解配置口径：
 
-## 1. `platform-api-v2`
+1. `docs/local-deployment-contract.yaml`
+2. `docs/local-dev.md`
+3. 本文
+4. 各 app README / app docs
+
+当前仓库的总哲学是 `AI Harness`：正式主链优先收敛 app-local 配置，避免重新引入 repo-root 统一 `.env` 泥球。
+
+## 1. 当前正式主链
+
+当前正式本地演示链路包括：
+
+- `platform-web-vue`
+- `platform-api-v2`
+- `runtime-service`
+- `interaction-data-service`
+
+可选调试入口：
+
+- `runtime-web`
+
+## 2. `platform-api-v2`
 
 主要配置来源：
 
@@ -29,7 +51,12 @@
 - `PLATFORM_API_V2_JWT_REFRESH_SECRET`
 - `PLATFORM_API_V2_BOOTSTRAP_ADMIN_ENABLED`
 
-## 2. `interaction-data-service`
+说明：
+
+- `platform-api-v2` 是当前正式控制面宿主
+- 它既负责平台治理，也负责受控访问 `runtime-service` 与 `interaction-data-service`
+
+## 3. `interaction-data-service`
 
 主要配置来源：
 
@@ -44,7 +71,12 @@
 - `DATABASE_URL`
 - `DOCUMENT_ASSET_ROOT`
 
-## 3. `platform-web-vue`
+说明：
+
+- 它是结果域服务，不承载平台治理主数据
+- 新结果域能力应继续沿 app-local 配置扩展，不回退到根级统一 `.env`
+
+## 4. `platform-web-vue`
 
 主要配置来源：
 
@@ -60,7 +92,12 @@
 - `VITE_DEV_PORT`
 - `VITE_LANGGRAPH_DEBUG_URL`
 
-## 4. `runtime-service`
+说明：
+
+- `platform-web-vue` 是当前正式平台前端宿主
+- 正常情况下应通过 `platform-api-v2` 访问平台与 testcase 等治理能力
+
+## 5. `runtime-service`
 
 主要配置来源：
 
@@ -86,7 +123,7 @@
 - `apps/runtime-service/runtime_service/conf/settings.yaml` 中对应的 `default.models.<model_id>` 配置块
 - 不建议只给零散的 AK/SK、API Key、`base_url` 或模型名
 
-## 5. `runtime-web`（可选调试入口）
+## 6. `runtime-web`（可选调试入口）
 
 主要配置来源：
 
@@ -98,7 +135,15 @@
 - `NEXT_PUBLIC_API_URL`
 - `NEXT_PUBLIC_ASSISTANT_ID`
 
-## 6. `platform-web`（历史兼容入口）
+说明：
+
+- 当前只作为可选调试入口
+- 默认应直连 `runtime-service`
+- 不属于正式产品前端主线
+
+## 7. 历史兼容应用
+
+### 7.1 `platform-web`
 
 主要配置来源：
 
@@ -110,7 +155,7 @@
 - 当前只用于历史兼容和迁移对照
 - 不属于默认本地部署主线
 
-## 7. `platform-api`（历史控制面）
+### 7.2 `platform-api`
 
 主要配置来源：
 
@@ -128,6 +173,9 @@
 - 根目录暂不新增统一 `.env`
 - `apps/platform-web-vue` 是当前正式平台前端宿主
 - `apps/platform-api-v2` 是当前正式控制面宿主
+- `apps/runtime-service` 是当前正式执行层
+- `apps/interaction-data-service` 是当前正式结果域服务
 - 默认本地正式端口为 `8081 / 8123 / 2142 / 3000`
-- 后续如果确实需要统一入口，再额外设计根级环境编排
+- 可选调试端口为 `3001`
+- 后续如果确实需要统一入口，应先设计新的 harness contract，再决定是否引入新的编排层
 - 默认本地部署的事实源不是本文，而是 `docs/local-deployment-contract.yaml`

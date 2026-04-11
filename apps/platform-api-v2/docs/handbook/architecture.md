@@ -1,5 +1,9 @@
 # Platform API V2 目标架构
 
+文档类型：`Current Architecture`
+
+本文回答的是 `platform-api-v2` 当前和目标 control plane 形态；它描述的是服务级架构，不替代仓库级正式部署 contract。
+
 这份文档只回答一个问题：
 
 > `apps/platform-api-v2` 这套新的平台控制面，最终要长成什么样。

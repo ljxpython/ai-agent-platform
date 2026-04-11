@@ -1,5 +1,16 @@
 # test_case_service 持久化设计
 
+状态：`Current Local Design`
+
+这篇文档描述当前 `test_case_service -> interaction-data-service` 的正式持久化设计。
+
+当前代码真相源建议同时参考：
+
+- `runtime_service/services/test_case_service/document_persistence.py`
+- `runtime_service/services/test_case_service/tools.py`
+- `runtime_service/services/test_case_service/middleware.py`
+- `apps/interaction-data-service/app/api/test_case_service/**`
+
 ## 目标
 
 为 `runtime_service/services/test_case_service` 增加一条最小但稳定的正式落库链路：
@@ -19,7 +30,7 @@
 1. 只保留一个模型可见持久化工具：`persist_test_case_results`
 2. 只保留两类远端资源：`documents` 和 `test-cases`
 3. 共享 HTTP client 只抽传输层，不抽业务 payload
-4. `project_id` 等受信参数由 `runtime.context / runtime.config / runtime.state` 读取
+4. `project_id` 等受信参数以 `runtime.context` 为主，旧透传位置仅作为治理收口中的历史兼容参考
 5. `project_id` 缺失时必须显式报错，不能再静默回退默认项目
 6. `test_case_service` 在未显式传 `model_id` 时，服务级默认主模型使用 `deepseek_chat`
 
@@ -122,8 +133,8 @@
 标准约束：
 
 1. `runtime.context.project_id` 升级为运行时标准字段
-2. `platform-api` 必须把当前项目写入 `payload.context.project_id`
-3. `platform-api` 不再把 `project_id` 注入 `payload.config.configurable / payload.config.metadata / payload.metadata`
+2. `platform-api-v2` 必须把当前项目写入 `payload.context.project_id`
+3. `platform-api-v2` 不再把 `project_id` 注入 `payload.config.configurable / payload.config.metadata / payload.metadata`
 4. `runtime-service` 只认 `runtime.context.project_id`
 5. `runtime.state.project_id` 不再读取
 6. `test_case_service` 不再保留 `test_case_default_project_id`
@@ -139,9 +150,9 @@
 ### 3.1 平台到运行时的可信传播链路
 
 ```text
-platform-web WorkspaceContext.projectId
+platform-web-vue WorkspaceContext.projectId
   -> x-project-id header
-  -> platform-api LangGraph gateway
+  -> platform-api-v2 LangGraph gateway
   -> payload.context.project_id
   -> runtime.context.project_id
   -> test_case_service document/tool persistence
@@ -151,7 +162,7 @@ platform-web WorkspaceContext.projectId
 要求：
 
 1. 前端只负责携带当前项目 header，不自己拼业务 `project_id`
-2. `platform-api` 负责把 header 中的受信项目写入 LangGraph run payload
+2. `platform-api-v2` 负责把 header 中的受信项目写入 LangGraph run payload
 3. `runtime-service` 统一从标准运行时字段读取，不再各服务自己发明透传入口
 4. `interaction-data-service` 只接收最终明确的 `project_id`
 
@@ -308,8 +319,8 @@ uv run python runtime_service/tests/services_test_case_service_project_scope_liv
    - 使用真实 `interaction-data-service` 和真实业务字段构造两轮 testcase 写入
    - 第二轮命中同一逻辑身份时必须覆盖旧记录而不是新增脏数据
 4. `services_test_case_service_project_scope_live.py`
-   - 强制经过 `platform-api` LangGraph 网关
-   - 正向验证 `x-project-id -> platform-api -> runtime-service -> interaction-data-service` 的真实注入链路
+   - 强制经过 `platform-api-v2` LangGraph 网关
+   - 正向验证 `x-project-id -> platform-api-v2 -> runtime-service -> interaction-data-service` 的真实注入链路
    - 负向验证缺失 `x-project-id` 时必须返回 `400 test_case_project_id_required`
    - 同时确认默认项目不会被脏写入
 
@@ -424,7 +435,7 @@ frontend upload
 }
 ```
 
-这样 `interaction-data-service` 与 `platform-api` 都能直接复用。
+这样 `interaction-data-service` 与 `platform-api-v2` 都能直接复用。
 
 ## 已完成真实验证
 

@@ -19,7 +19,7 @@
 An enterprise AI agent platform architecture built on `LangGraph / LangChain`, intended as a reusable foundation for further development.  
 It separates the **platform governance layer** from the **Agent Runtime execution layer**, so the repo can support platform-side authentication, project management, audit, and catalog management, while also supporting runtime graph orchestration, model assembly, Tools / MCP / Skills integration, and rapid agent debugging.
 
-The repository currently provides a default five-service local bring-up setup. It is suitable for:
+The repository currently provides a default four-service local bring-up path, plus an optional runtime debug entry. It is suitable for:
 
 - Teams that want to build on mainstream agent infrastructure instead of inventing a closed framework
 - Projects that need both platform capabilities and agent execution capabilities
@@ -55,6 +55,13 @@ That harness is made of several parts working together:
 
 In short, the repo is meant to let AI agents keep building inside a controlled engineering environment, not just generate random code in a vacuum.
 
+The current canonical docs for that harness are:
+
+- `docs/local-deployment-contract.yaml`
+- `docs/development-paradigm.md`
+- `docs/local-dev.md`
+- `docs/env-matrix.md`
+
 ## What Problem This Project Solves
 
 Many agent projects can run a demo, but once they enter a real engineering context, things become messy fast: platform governance, runtime execution, debug entrypoints, and environment configuration all get coupled together.
@@ -80,18 +87,22 @@ That article is more frontend-oriented and is useful for quickly understanding t
 
 ## System Overview
 
-The default local bring-up currently includes five apps:
+The default local bring-up currently includes four formal services:
 
 - `apps/interaction-data-service`: result-domain data service for workflow result persistence and querying
-- `apps/platform-api`: platform backend / control-plane API
+- `apps/platform-api-v2`: official platform backend / control-plane API
 - `apps/platform-web-vue`: official platform frontend / admin workspace entry
 - `apps/runtime-service`: LangGraph execution layer / Agent Runtime
+
+Optional debug entry:
+
 - `apps/runtime-web`: debug frontend that talks directly to the runtime
 
 ### Two Main Paths
 
-- Platform path: `platform-web-vue -> platform-api -> runtime-service`
+- Platform path: `platform-web-vue -> platform-api-v2 -> runtime-service`
 - Debug path: `runtime-web -> runtime-service`
+- Result-domain path: `runtime-service -> interaction-data-service`
 
 ### What The Frontends Are For
 
@@ -111,9 +122,9 @@ The default local bring-up currently includes five apps:
 
 1. `runtime-service`
 2. `interaction-data-service`
-3. `platform-api`
+3. `platform-api-v2`
 4. `platform-web-vue`
-5. `runtime-web`
+5. `runtime-web` (optional)
 
 ### Root Scripts
 
@@ -145,9 +156,9 @@ Then open:
 
 ### Default Local Ports
 
-- `interaction-data-service`: `8090`
+- `interaction-data-service`: `8081`
 - `runtime-service`: `8123`
-- `platform-api`: `2024`
+- `platform-api-v2`: `2142`
 - `platform-web-vue`: `3000`
 - `runtime-web`: `3001`
 
@@ -159,13 +170,13 @@ Then open:
 ### Minimum Health Checks
 
 ```bash
-curl http://127.0.0.1:8090/_service/health
+curl http://127.0.0.1:8081/_service/health
 curl http://127.0.0.1:8123/info
-curl http://127.0.0.1:2024/_proxy/health
-curl http://127.0.0.1:2024/api/langgraph/info
+curl http://127.0.0.1:2142/_system/health
+curl http://127.0.0.1:2142/api/langgraph/info
 ```
 
-If `/api/langgraph/info` on `platform-api` returns `200`, and `/_service/health` on `interaction-data-service` also returns `200`, the platform path and result persistence path are basically connected.
+If `/api/langgraph/info` on `platform-api-v2` returns `200`, and `/_service/health` on `interaction-data-service` also returns `200`, the platform path and result persistence path are basically connected.
 
 ![Local Startup Flow](docs/assets/local-dev-startup-flow.en.svg)
 
@@ -176,6 +187,7 @@ AITestLab/
 ├── apps/
 │   ├── interaction-data-service/
 │   ├── platform-api/
+│   ├── platform-api-v2/
 │   ├── platform-web/
 │   ├── platform-web-vue/
 │   ├── runtime-service/
@@ -242,7 +254,7 @@ Read `docs/ai-deployment-assistant-instruction.md` and help me deploy the enviro
 
 Use `<YOUR_REASONING_MODEL_ID>` as the default reasoning model.
 Also configure `<YOUR_MULTIMODAL_MODEL_ID>` for the current multimodal pipeline.
-If runtime model config is missing locally, write the following into `apps/runtime-service/graph_src_v2/conf/settings.local.yaml`, then continue deployment, startup, and verification. Do not commit the real API key back to the repo.
+If runtime model config is missing locally, write the following into `apps/runtime-service/runtime_service/conf/settings.local.yaml`, then continue deployment, startup, and verification. Do not commit the real API key back to the repo.
 
 default:
   default_model_id: <YOUR_REASONING_MODEL_ID>
@@ -297,14 +309,15 @@ If this is your first time looking at the repo, the recommended reading order is
 
 This repo has already completed:
 
-- The default five-service startup set has been moved under `apps/*`
+- The default four-service startup set has been stabilized under `apps/*`
 - `apps/platform-web-vue` is now the official platform frontend host
+- `apps/platform-api-v2` is now the official platform control plane
 - `runtime-service` can start
 - `interaction-data-service` can start
-- `platform-api` can start
-- `platform-api -> runtime-service` integration has passed
+- `platform-api-v2` can start
+- `platform-api-v2 -> runtime-service` integration has passed
 - `runtime-service -> interaction-data-service` has been wired into the local bring-up scripts
-- `platform-web-vue` and `runtime-web` now form the current frontend mainline
+- `platform-web-vue` is the formal frontend mainline, while `runtime-web` remains the optional runtime debug shell
 
 Current conventions that are still kept:
 

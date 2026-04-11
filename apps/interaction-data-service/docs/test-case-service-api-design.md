@@ -1,5 +1,23 @@
 # test-case-service API 设计
 
+状态：`Current API Design`
+
+这篇文档描述当前 `interaction-data-service` 中 `test-case-service` 切片的接口设计。
+
+当前代码真相源优先级：
+
+1. `app/api/test_case_service/**`
+2. `app/db/models.py`
+3. 本文
+
+如需理解更高层边界，请同时参考：
+
+- `README.md`
+- `docs/README.md`
+- `../runtime-service/runtime_service/docs/10-test-case-service-persistence-design.md`
+
+退役说明：旧的 `/api/usecase-generation/*` 只保留为历史记录，不再作为当前实现参考。
+
 ## 目标
 
 为 `runtime_service/services/test_case_service` 提供一组最小且稳定的结果域接口：
@@ -286,7 +304,7 @@
 说明：
 
 - `documents/export` 不在 `interaction-data-service` 直接生成 Excel
-- 导出工作仍由 `platform-api` 统一完成
+- 导出工作仍由 `platform-api-v2` 统一完成
 - 当前服务只提供稳定分页查询接口和详情/关系接口
 
 ## 二期实现边界

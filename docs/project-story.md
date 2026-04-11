@@ -1,5 +1,7 @@
 # 项目故事与演进记录
 
+> 状态说明：这篇文档主要记录项目演进过程与阶段性思考，不是当前实现的正式事实来源。当前架构、启动链路和部署口径请优先以 `README.md`、`docs/deployment-guide.md`、`docs/local-dev.md` 和 `docs/local-deployment-contract.yaml` 为准。
+
 ## 1. 项目初心
 
 和 AI 一起开发测试开发平台。
@@ -30,7 +32,7 @@
 
 这次调整的目标，是把这两条线的经验整合成现在的 `Agent Platform`：
 
-- 平台控制面：`platform-api` + `platform-web-vue`
+- 平台控制面：`platform-api-v2` + `platform-web-vue`
 - 运行时执行面：`runtime-service` + `runtime-web`
 
 补充说明：

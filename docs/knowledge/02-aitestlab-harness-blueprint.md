@@ -1,5 +1,15 @@
 # AITestLab Harness Blueprint（仓库级 Harness 蓝图）
 
+文档类型：`Knowledge Blueprint`
+
+这篇蓝图解释当前仓库为什么按 `platform-web-vue -> platform-api-v2 -> runtime-service -> interaction-data-service` 这条正式主链组织，但它不是本地部署 contract 本身。
+
+如需当前正式部署口径，请优先看：
+
+- `docs/local-deployment-contract.yaml`
+- `docs/local-dev.md`
+- `docs/deployment-guide.md`
+
 ## 这篇文档解决什么问题
 
 上一份文档已经把 Harness Engineering 的思想讲清楚了，但光讲思想还不够。工程里最怕的就是话说得漂亮，落地时还是一团浆糊。

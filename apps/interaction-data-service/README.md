@@ -1,34 +1,60 @@
 # Interaction Data Service
 
-`apps/interaction-data-service` 是用于承接交互结果的独立服务。
+`apps/interaction-data-service` 是当前正式架构里的结果域服务。
 
-它的目标不是接管平台现有主数据，也不是做通用数据库代理，而是专门承接：
+它处在仓库总哲学 `AI Harness` 之下，负责承接“运行时产出的结构化结果”和“平台需要读取、管理、展示的结果域数据”，但不接管平台治理主数据，也不反向吞并 runtime 编排职责。
 
-- agent 产出的结构化业务结果
-- 平台需要查询和展示的交互数据
-- 结果类型注册、版本校验、类型路由
+## 文档定位
 
-## 开发范式入口
+文档类型：`Current Overview`
 
-跨应用统一开发方式先看根文档：
+阅读这份 README 时，建议按下面这个优先级理解事实源：
 
-- `docs/development-paradigm.md`
+1. 代码与接口：`app/api/**`、`app/db/models.py`
+2. 当前说明：`README.md`、`docs/README.md`
+3. 当前 API 设计：`docs/test-case-service-api-design.md`
+4. 局部设计文档：`docs/service-design.md`
+5. 历史设计记录：`docs/usecase-workflow-design.md`
 
-对 `interaction-data-service` 来说，最重要的执行原则是：
+## 这个服务当前在整体架构里的位置
 
-1. 只做结果域，不吞平台治理，也不吞智能体编排
-2. 一个业务服务一组专属接口前缀，不做“大而全”的万能入口
-3. 先把资源模型、接口契约、落库存储讲清楚，再开始写代码
-4. 改这一层时，优先直接用真实 HTTP 请求和真实数据验证，不依赖前端兜底
+当前正式链路里，它主要承接两条调用路径：
 
-## 当前职责边界
+```text
+platform-web-vue
+  -> platform-api-v2
+    -> interaction-data-service
+
+runtime-service
+  -> interaction-data-service
+```
+
+其中：
+
+- `platform-web-vue` 不直接打本服务
+- `platform-api-v2` 负责项目权限、治理边界、聚合视图和协议整形
+- `runtime-service` 负责执行期生成结果，再通过稳定 HTTP 契约写入本服务
+
+## 当前开发范式
+
+对 `interaction-data-service` 来说，最重要的不是“抽一个万能结果中心”，而是先守住结果域边界。
+
+核心原则：
+
+1. 只做结果域，不吞平台治理，也不吞 runtime 编排
+2. 一个 runtime 业务服务一组专属接口前缀，不回退到“大一统 records 入口”
+3. 先固定资源模型、接口契约、落库存储，再继续扩展上层页面或 tool
+4. 关键链路优先用真实 HTTP 请求和真实数据验证，不靠前端 mock 兜底
+5. 平台读取结果时继续经过 `platform-api-v2`，而不是让正式前端直连本服务
+
+## 当前真实职责边界
 
 ### 负责
 
-- 定义 agent 与平台共享的结果写入契约
-- 提供结果记录的 HTTP CRUD 接口
-- 维护公共登记表与业务结果表
-- 根据 `record_type` 路由不同业务结果的落库与查询
+- 承接 `runtime-service` 等上游写入的结果域数据
+- 提供结果域资源的 HTTP CRUD / 聚合读取能力
+- 维护本服务拥有的数据表与资源语义
+- 为平台 testcase 工作区等结果域页面提供下游数据源
 
 ### 不负责
 
@@ -36,69 +62,124 @@
 - 项目、成员、RBAC 管理
 - LangGraph graph 执行
 - assistant / catalog 主数据
-- 聊天 transcript 存储
+- 平台工作区聚合与项目权限判断
 
-## 本应用的开发与验证要求
+## 当前已落地的真实资源
 
-如果本轮只改 `interaction-data-service`，推荐顺序是：
+当前已经落地并作为正式主线使用的是 `test-case-service` 这一条结果域切片。
 
-1. 先确定：
-   - 新增什么资源
-   - 接口前缀是什么
-   - 存储落点是什么
-   - 上游哪个服务会调用
-2. 直接调本服务真实接口验证：
-   - `POST`
-   - `GET`
-   - `PATCH`
-   - `DELETE`
-3. 再让上游服务接入，不要反过来先改前端或平台页
+当前真实前缀：
 
-关键约束：
+- `/api/test-case-service`
 
-- 结果域关键链路优先用真实数据验证，不要只写 mock
-- 下游表结构、返回字段、幂等策略必须在文档里写明
-- 平台读取结果时应继续经过 `platform-api`，前端不要直连本服务
+当前真实资源：
 
-## 当前状态
+- `documents`
+- `test-cases`
+- `overview`
+- `batches`
 
-当前目录已经有代码与设计文档，但整体仍处于持续收敛阶段。
+### `documents`
 
-当前更准确的理解是：
+用于保存测试用例业务里的附件解析结果与原始资产索引。
 
-- 已经存在可供排查和继续演进的真实代码
-- README 主要说明服务边界、目标接口和与其他应用的关系
-- `docs/README.md` 与专题设计文档更适合用来查当前表、接口和后续收敛方向
-- 它目前不属于根级 `README.md` 中默认联调的四个应用集合
+当前真实接口：
 
-已经明确的设计结论：
+- `POST /api/test-case-service/documents/assets`
+- `POST /api/test-case-service/documents`
+- `GET /api/test-case-service/documents`
+- `GET /api/test-case-service/documents/{document_id}`
+- `GET /api/test-case-service/documents/{document_id}/relations`
+- `GET /api/test-case-service/documents/{document_id}/preview`
+- `GET /api/test-case-service/documents/{document_id}/download`
 
-- 与现有平台共用 PostgreSQL，但只维护自己的表
-- 服务间通信优先 HTTP，不做公共 MCP
-- 每个业务 agent 自己定义本地 LangGraph tools
-- agent 的 tool 分别调用不同的 HTTP 接口，而不是统一落库入口
-- 统一的是契约、元数据和类型路由，不是所有业务表结构
+### `test-cases`
 
-当前规划中的 API 主轴是：
+用于保存正式测试用例记录。
 
-- `POST /api/records`
-- `GET /api/records`
-- `GET /api/records/{record_id}`
-- `PATCH /api/records/{record_id}`
-- `DELETE /api/records/{record_id}`
+当前真实接口：
 
-服务内部仍以 `record_type` 做 schema 校验、handler 分发和业务表路由。
+- `POST /api/test-case-service/test-cases`
+- `GET /api/test-case-service/test-cases`
+- `GET /api/test-case-service/test-cases/{test_case_id}`
+- `PATCH /api/test-case-service/test-cases/{test_case_id}`
+- `DELETE /api/test-case-service/test-cases/{test_case_id}`
 
-这里说的 `/api/records*` 是目标收敛方向；如果你当前是在排查已经存在的实现与数据流，请优先参考 `docs/README.md` 中记录的 `/api/usecase-generation/*` 现状接口。
+### 聚合读取
+
+用于 testcase 工作区总览和批次视图。
+
+当前真实接口：
+
+- `GET /api/test-case-service/overview`
+- `GET /api/test-case-service/batches`
+- `GET /api/test-case-service/batches/{batch_id}`
+
+## 当前真实数据表
+
+定义文件：`app/db/models.py`
+
+- `test_case_documents`
+  - 保存附件解析结果、来源追踪和原始资产路径
+- `test_cases`
+  - 保存正式测试用例记录
+
+这说明当前实现已经不是早期泛化设计里的“公共登记表 + record_type 分流”主形态，而是先以 testcase 业务切片落地专属资源。
+
+## 当前与 runtime-service 的关系
+
+当前 testcase 持久化链路是：
+
+```text
+runtime-service/test_case_service
+  -> 文档即时持久化 / persist_test_case_results
+  -> interaction-data-service HTTP API
+  -> test_case_documents / test_cases
+```
+
+这里的核心约束是：
+
+- 多模态解析结果和正式测试用例都通过稳定 HTTP 契约进入结果域
+- `interaction-data-service` 不负责 graph 编排与 tool 选择
+- `runtime-service` 不直接接管结果域表结构与查询页面
+
+## 当前与平台层的关系
+
+当前正式平台读取链路是：
+
+```text
+platform-web-vue
+  -> platform-api-v2
+    -> interaction-data-service
+```
+
+也就是说：
+
+- 正式平台前端读取 testcase 页面时，应该打 `platform-api-v2`
+- `platform-api-v2` 负责项目权限、导出、预览、聚合整形
+- `interaction-data-service` 保持结果域所有权，不变成新的控制面后端
+
+## 旧方案与历史文档怎么理解
+
+下面两类内容不要再当成当前实现事实：
+
+- 旧的 `/api/records*` 泛化入口
+- 旧的 `/api/usecase-generation/*` 业务接口
+
+它们现在的身份分别是：
+
+- `/api/records*`：早期泛化结果域设计方向，保留在 `docs/service-design.md` 中作为 `Local Design` 参考
+- `/api/usecase-generation/*`：已退役的历史方案，保留在 `docs/usecase-workflow-design.md` 中作为 `Historical-in-place` 记录
 
 ## 推荐阅读顺序
 
 1. `README.md`
 2. `docs/README.md`
-3. `docs/service-design.md`
-4. `docs/usecase-workflow-design.md`
+3. `docs/test-case-service-api-design.md`
+4. `docs/service-design.md`
+5. `docs/usecase-workflow-design.md`
 
-## 建议目录
+## 当前目录建议这样理解
 
 ```text
 apps/interaction-data-service/
@@ -107,32 +188,13 @@ apps/interaction-data-service/
   app/
     api/
     db/
-    handlers/
     schemas/
     services/
   tests/
 ```
 
-## 与其他应用的关系
-
-```text
-runtime-service
-  -> agent local tools
-    -> interaction-data-service
-
-platform-web
-  -> platform-api
-    -> interaction-data-service
-```
-
-说明：
-
-- `platform-api` 继续负责鉴权、项目上下文和聚合访问
-- `interaction-data-service` 只负责结果域
-- `platform-web` 仍然通过 `platform-api` 读取平台视图
-
-## 文档目录
-
-- `docs/README.md`：文档导航
-- `docs/service-design.md`：第一版正式设计稿
-- `docs/usecase-workflow-design.md`：用例生成工作流专题设计稿
+- `app/api/`：当前真实接口入口
+- `app/db/`：当前真实表与数据访问
+- `docs/README.md`：当前文档导航与运维入口
+- `docs/service-design.md`：局部设计解释，不是当前 API 真相源
+- `docs/usecase-workflow-design.md`：历史方案记录

@@ -1,6 +1,13 @@
 # 用例生成工作流设计稿
 
+状态：`Historical-in-place`
+
 > 归档说明：本文对应的 `/api/usecase-generation/*` 业务接口已退役，仅保留为历史设计记录，不再作为当前实现参考。
+>
+> 当前正式结果域主线请改读：
+> - `../README.md`
+> - `README.md`
+> - `test-case-service-api-design.md`
 
 本文描述的是用例生成工作流的目标设计稿，用来约束后续 `runtime-service` 与 `interaction-data-service` 之间的结果契约。
 

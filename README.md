@@ -28,6 +28,13 @@
 
 > 想先理解当前项目为什么这么设计、后续应该按什么范式继续开发，可先看 [当前项目开发范式说明](docs/development-paradigm.md)。
 
+当前建议优先把下面几份文档当成正式事实源：
+
+- `docs/local-deployment-contract.yaml`
+- `docs/development-paradigm.md`
+- `docs/local-dev.md`
+- `docs/env-matrix.md`
+
 <a id="frontend-entry"></a>
 
 ## 当前前端与推荐入口
@@ -58,6 +65,8 @@
 - `apps/platform-api-v2/docs/handbook/project-handbook.md`
 - `apps/platform-api-v2/docs/delivery/change-delivery-checklist.md`
 - `apps/platform-web-vue/docs/control-plane-page-standard.md`
+
+补充说明：上面列出的 `overview / projects / users / assistants / me / security / audit` 是最早接通的一批正式页面，不代表当前前端范围的全部页面；以 `apps/platform-web-vue/src/router/routes.ts` 为当前正式页面面的代码事实源。
 
 如果你是第一次跑这个仓库，建议先区分清楚两件事：
 

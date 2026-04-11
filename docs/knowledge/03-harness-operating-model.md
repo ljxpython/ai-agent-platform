@@ -1,5 +1,9 @@
 # Harness Operating Model（AITestLab 的运行方式与落地操作模型）
 
+文档类型：`Knowledge Operating Model`
+
+本文解释团队和 AI 代理应如何在当前 harness 中工作。它描述的是操作模型，不直接替代某个服务的 README、contract 或 API 文档。
+
 ## 这篇文档解决什么问题
 
 前两篇文档已经把两件事讲清楚了：

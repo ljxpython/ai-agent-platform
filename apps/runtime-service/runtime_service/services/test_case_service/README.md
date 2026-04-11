@@ -1,5 +1,15 @@
 # test_case_service
 
+文档类型：`Current Service Overview`
+
+这份 README 说明当前 `test_case_service` 的服务边界、私有装配方式和真实联调入口。
+
+如果你要确认当前正式持久化或平台链路，请同时参考：
+
+- `../../docs/10-test-case-service-persistence-design.md`
+- `../../../interaction-data-service/docs/README.md`
+- `../../../platform-api-v2/app/modules/testcase/presentation/http.py`
+
 测试用例分析智能体服务。基于 `create_deep_agent` + 私有 Skills 体系，将模糊的产品需求转化为高质量、可执行、可量化的测试资产。
 
 ## 功能概述
@@ -72,7 +82,7 @@ test_case_service/
 
 - 如果 `RuntimeContext.model_id` 已显式传入，则始终优先使用调用方指定模型
 - 只有在调用方未显式传 `model_id` 时，服务才回落到 `test_case_default_model_id=deepseek_chat`
-- `project_id` 是受信运行时上下文，平台真实链路必须由 `platform-api` 注入到 `context`
+- `project_id` 是受信运行时上下文，平台真实链路必须由 `platform-api-v2` 注入到 `context`
 - `test_case_service` 只认 `RuntimeContext.project_id`，不再从 `configurable / metadata / state / system prompt` 反推项目上下文
 - 未注入 `project_id` 时，`test_case_service` 会直接报错；不再提供默认项目 fallback
 - 当前 `interaction-data-service` 的 `test-case-service` 相关接口要求 `project_id` 为 UUID 字符串；联调脚本里的 `--project-id` 也会前置校验这一点，避免把无效参数直接打成远端 `400`
@@ -211,9 +221,9 @@ uv run python runtime_service/tests/services_test_case_service_project_scope_liv
 - `services_test_case_service_document_live.py`：验证“上传即落库”的 document 链路
 - `services_test_case_service_knowledge_live.py`：验证 agent 在真实对话中会调用私有知识库 MCP 工具；加 `--require-query-tool` 可强制断言必须命中 `query_project_knowledge`
 - `services_test_case_service_persistence_live.py`：验证正式 testcase 保存与 `source_document_ids` 关联
-- `services_test_case_service_project_scope_live.py`：验证 `platform-api` 项目作用域注入、缺失项目时的显式失败、以及默认项目不被脏写入
+- `services_test_case_service_project_scope_live.py`：验证 `platform-api-v2` 项目作用域注入、缺失项目时的显式失败、以及默认项目不被脏写入
 - 所有 live 脚本的 `--project-id` 都要求传 UUID；不要再用 `test-case-persist-123456` 这种普通字符串
-- `services_test_case_service_project_scope_live.py` 需要 `platform-api` 的 Bearer token；可显式传 `--platform-token`，也可通过环境变量 `PLATFORM_API_TOKEN` / `PLATFORM_ACCESS_TOKEN` 提供
+- `services_test_case_service_project_scope_live.py` 需要 `platform-api-v2` 的 Bearer token；可显式传 `--platform-token`，也可通过环境变量 `PLATFORM_API_TOKEN` / `PLATFORM_ACCESS_TOKEN` 提供
 
 当前已验证事实：
 

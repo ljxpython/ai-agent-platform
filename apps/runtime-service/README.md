@@ -1,5 +1,26 @@
 # langgraph-agent-studio
 
+文档类型：`Current App Overview`
+
+`apps/runtime-service` 是当前正式架构里的 runtime 执行层，也是仓库总哲学 `AI Harness` 下的智能体开发主战场。
+
+当前正式主链里，它的位置是：
+
+```text
+platform-web-vue -> platform-api-v2 -> runtime-service
+runtime-service -> interaction-data-service
+runtime-web -> runtime-service   (optional debug path)
+```
+
+如果你要先理解仓库级正式链路与本地 bring-up 口径，先看：
+
+- `docs/local-deployment-contract.yaml`
+- `docs/local-dev.md`
+- `docs/deployment-guide.md`
+- `docs/development-paradigm.md`
+
+如果你要理解 `runtime-service` 自己的内部范式和 graph/runtime 资料，再回到本目录与 `runtime_service/docs/**`。
+
 ## 开发范式入口
 
 跨应用统一开发方式先看根文档：
@@ -12,6 +33,7 @@
 2. 先在低依赖层做真实验证，再决定要不要接平台页面
 3. 关键链路优先用真实模型、真实文件、真实下游服务验证，不要用 mock 掩盖问题
 4. 如果模型会口头声称成功，必须再查真实 tool call 和远端结果，不能只信最终回复
+5. 平台真实链路下，受信上下文由 `platform-api-v2` 注入，运行时服务不再自己发明透传规则
 
 ## 0) 前置说明（必读）
 
@@ -153,7 +175,7 @@ curl http://127.0.0.1:8123/internal/capabilities/tools
    - 真实 PDF / 图片 / 文本
    - 真实 `interaction-data-service`
    - 真实流式输出和 tool call 记录
-3. 验证通过后，再接 `runtime-web` 或 `platform-web`
+3. 验证通过后，再接 `runtime-web` 或 `platform-web-vue`
 
 推荐优先使用：
 

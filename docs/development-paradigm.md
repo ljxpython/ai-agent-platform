@@ -276,7 +276,7 @@ graph = create_agent(
 
 这时候再把结果域能力放进 `interaction-data-service`，由 Runtime 的本地 tools 通过 HTTP 调用它。
 
-这套方式比把业务表直接硬塞进 `platform-api` 清爽得多。
+这套方式比把业务表直接硬塞进 `platform-api-v2` 这类平台控制面更清爽得多。
 
 ### 6.5 最后再考虑部署形态
 
@@ -310,7 +310,7 @@ graph = create_agent(
 - `docs/project-story.md`
 - `apps/platform-api-v2/docs/README.md`
 - `apps/platform-api-v2/docs/handbook/project-handbook.md`
-- `apps/platform-web/README.md`
+- `apps/platform-web/README.md`（仅在你需要查看历史兼容入口时再读）
 - `apps/runtime-web/README.md`
 - `apps/runtime-service/runtime_service/docs/README.md`
 - `apps/runtime-service/runtime_service/docs/05-template-to-runnable-agent-10min.md`
@@ -318,7 +318,7 @@ graph = create_agent(
 
 ## 9. 多应用联动开发范式
 
-这一节不是抽象口号，而是把最近一轮 `test_case_service -> interaction-data-service -> platform-api -> platform-web-vue` 的真实开发、调试、联调、提交过程收敛成一套后续都能复用的方法。
+这一节不是抽象口号，而是把最近一轮 `test_case_service -> interaction-data-service -> platform-api-v2 -> platform-web-vue` 的真实开发、调试、联调、提交过程收敛成一套后续都能复用的方法。
 
 ### 9.1 第一原则：先把要做什么讨论清楚，再开始写代码
 
@@ -350,7 +350,7 @@ graph = create_agent(
 
 1. 先把 `runtime-service` 里的 `test_case_service` 做通
 2. 再把结果落到 `interaction-data-service`
-3. 再由 `platform-api` 暴露 testcase 管理接口
+3. 再由 `platform-api-v2` 暴露 testcase 管理接口
 4. 最后由 `platform-web-vue` 展示管理页和导出能力
 
 不要反过来。先堆页面、再倒逼服务补能力，通常只会把边界写烂。
@@ -392,7 +392,7 @@ graph = create_agent(
 - 资源语义清楚
 - 不把不同业务结果揉成一个“万能接口”
 
-#### `platform-api`
+#### `platform-api-v2`
 
 只负责：
 
@@ -418,7 +418,7 @@ graph = create_agent(
 不要负责：
 
 - 自己拼业务持久化协议
-- 绕过 `platform-api` 直连结果域服务
+- 绕过 `platform-api-v2` 直连结果域服务
 - 把导出、权限、聚合逻辑硬写在前端
 
 #### `runtime-web`
@@ -447,7 +447,7 @@ Agent 没在 `runtime-web` 或服务级脚本里调通之前，不要急着接 `
 
 ```text
 platform-web-vue
-  -> platform-api /_management/projects/{project_id}/testcase/*
+  -> platform-api-v2 /_management/projects/{project_id}/testcase/*
     -> interaction-data-service /api/test-case-service/*
       -> test_case_documents / test_cases
 ```
@@ -485,7 +485,7 @@ runtime-web 或 platform-web-vue chat
 1. “这一轮先只做服务层，不接前端”
 2. “这一轮要把平台接口一起补上”
 3. “这一轮必须用真实 PDF / 真实模型 / 真实下游服务验证，不能 mock”
-4. “这一轮只验证到 platform-api，不依赖前端”
+4. “这一轮只验证到 platform-api-v2，不依赖前端”
 5. “这一轮要前端真实上传、真实下载，再看最终体验”
 
 这类沟通越具体，返工越少。
@@ -545,7 +545,7 @@ runtime-web 或 platform-web-vue chat
 例如：
 
 - `runtime-service` 写入后，要去查 `interaction-data-service`
-- `platform-api` 导出后，要把真实下载文件重新打开校验
+- `platform-api-v2` 导出后，要把真实下载文件重新打开校验
 
 必须查的内容包括：
 
@@ -560,13 +560,13 @@ runtime-web 或 platform-web-vue chat
 如果当前变更已经到管理面，就用真实登录和真实接口来测：
 
 - 真实登录拿 token
-- 真实请求 `platform-api`
+- 真实请求 `platform-api-v2`
 - 真实 project_id / batch_id / case_id
 - 真实下载文件或详情接口
 
 例如这轮 Excel 导出，正确做法就是：
 
-1. 登录 `platform-api`
+1. 登录 `platform-api-v2`
 2. 调 `/_management/projects/{project_id}/testcase/cases/export`
 3. 下载真实 `.xlsx`
 4. 再用 `openpyxl` 反读校验 sheet 和数据行数
@@ -594,7 +594,7 @@ runtime-web 或 platform-web-vue chat
 
 - 只改 `runtime-service`，就先在 `runtime-service` 把真实验证做透
 - 只改 `interaction-data-service`，就直接调它的接口确认读写口径
-- 只改 `platform-api`，就用真实登录 + curl / 脚本做管理面验证
+- 只改 `platform-api-v2`，就用真实登录 + curl / 脚本做管理面验证
 - 只改 `platform-web-vue`，就在后端已经稳定的前提下看页面交互
 
 不要一上来就五层一起跑，然后出了问题全靠猜。
@@ -717,7 +717,7 @@ runtime-web 或 platform-web-vue chat
 - 涉及应用：
   - runtime-service:
   - interaction-data-service:
-  - platform-api:
+  - platform-api-v2:
   - platform-web-vue:
   - runtime-web:
 - 本轮主改动层：
@@ -750,7 +750,7 @@ runtime-web 或 platform-web-vue chat
 
 - runtime-service 负责：
 - interaction-data-service 负责：
-- platform-api 负责：
+- platform-api-v2 负责：
 - platform-web-vue 负责：
 - runtime-web 负责：
 
@@ -838,7 +838,7 @@ runtime-web 或 platform-web-vue chat
 
 - [ ] runtime-service 已启动并健康检查通过
 - [ ] interaction-data-service 已启动并健康检查通过
-- [ ] platform-api 已启动并健康检查通过
+- [ ] platform-api-v2 已启动并健康检查通过
 - [ ] platform-web-vue / runtime-web 已按需启动
 
 ## C. 服务层真实验证
@@ -862,7 +862,7 @@ runtime-web 或 platform-web-vue chat
 ## E. 平台接口校验
 
 - [ ] 已使用真实登录获取 token
-- [ ] 已用真实项目上下文调用 platform-api
+- [ ] 已用真实项目上下文调用 platform-api-v2
 - [ ] 已确认路由和权限正确
 - [ ] 已确认聚合结果正确
 - [ ] 已确认下载 / 导出文件可真实打开

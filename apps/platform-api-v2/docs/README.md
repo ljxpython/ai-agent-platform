@@ -1,5 +1,16 @@
 # Platform API V2 文档导航
 
+文档类型：`Docs Index`
+
+`apps/platform-api-v2` 是当前正式 control plane 宿主；本目录文档应放在仓库总 harness 之下理解，而不是脱离根文档单独阅读。
+
+推荐事实源顺序：
+
+1. 代码与模块接口：`app/modules/**`
+2. `handbook/project-handbook.md`
+3. `handbook/architecture.md`
+4. 本导航页
+
 `apps/platform-api-v2/docs` 现在按“主手册、标准、交付、决策、归档”五类组织。
 
 如果你是第一次接手，不要先翻 `phase-*`，先看主手册。
