@@ -18,15 +18,12 @@
 
 ## Testcase Agent Demo
 
-<p align="center"><a href="https://youtu.be/SVplU-uIci0">Open demo video</a></p>
-
 <p align="center">
-  <a href="https://youtu.be/SVplU-uIci0">
-    <img src="docs/assets/testcase-agent-demo-cover.jpg" alt="Testcase Agent Demo" width="100%" />
-  </a>
+  <strong>Current platform Testcase Agent demo:</strong>
+  <a href="https://youtu.be/SVplU-uIci0">https://youtu.be/SVplU-uIci0</a>
 </p>
 
-<p align="center"><sub>Current Testcase Agent showcase for the platform. Click the cover image to play it on YouTube.</sub></p>
+<p align="center"><sub>The repository uses a direct video-link presentation here. Click to open the YouTube demo.</sub></p>
 
 An enterprise AI agent platform architecture built on `LangGraph / LangChain`, intended as a reusable foundation for further development.  
 It separates the **platform governance layer** from the **Agent Runtime execution layer**, so the repo can support platform-side authentication, project management, audit, and catalog management, while also supporting runtime graph orchestration, model assembly, Tools / MCP / Skills integration, and rapid agent debugging.
