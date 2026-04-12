@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     interaction_data_service_url: str | None = "http://127.0.0.1:8081"
     interaction_data_service_token: str | None = None
     interaction_data_service_timeout_seconds: float = Field(default=30.0, gt=0, le=600)
+    knowledge_upstream_url: str = "http://127.0.0.1:9621"
+    knowledge_upstream_api_key: str | None = None
+    knowledge_upstream_timeout_seconds: float = Field(default=60.0, gt=0, le=600)
 
     platform_db_enabled: bool = False
     platform_db_auto_create: bool = False

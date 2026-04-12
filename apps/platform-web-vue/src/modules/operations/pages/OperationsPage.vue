@@ -234,6 +234,13 @@ function inferResourceRoute(operation: ManagementOperation) {
   if (operation.kind === 'testcase.cases.export') {
     return '/workspace/testcase/cases'
   }
+  if (
+    (operation.kind === 'knowledge.documents.scan' ||
+      operation.kind === 'knowledge.documents.clear') &&
+    operation.project_id
+  ) {
+    return `/workspace/projects/${operation.project_id}/knowledge/documents`
+  }
   return ''
 }
 

@@ -8,6 +8,7 @@ from app.modules.assistants.presentation import router as assistants_router
 from app.modules.audit.presentation import router as audit_router
 from app.modules.identity.presentation import router as identity_router
 from app.modules.operations.presentation import router as operations_router
+from app.modules.project_knowledge.presentation import router as project_knowledge_router
 from app.modules.projects.presentation import router as projects_router
 from app.modules.runtime_catalog.presentation import router as runtime_catalog_router
 from app.modules.runtime_gateway.presentation import router as runtime_gateway_router
@@ -21,6 +22,7 @@ api_router.include_router(system_router)
 api_router.include_router(identity_router)
 api_router.include_router(operations_router)
 api_router.include_router(projects_router)
+api_router.include_router(project_knowledge_router)
 api_router.include_router(users_router)
 api_router.include_router(service_accounts_router)
 api_router.include_router(announcements_router)

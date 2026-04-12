@@ -24,6 +24,10 @@ from app.modules.operations.application.ports import (
 from app.modules.operations.application.service import OperationsService
 from app.modules.operations.application.worker import OperationWorker
 from app.modules.operations.infra import RedisListOperationQueue
+from app.modules.project_knowledge.application.operations import (
+    ProjectKnowledgeDocumentsExecutor,
+)
+from app.modules.project_knowledge.bootstrap import build_project_knowledge_service
 from app.modules.runtime_catalog.application.operations import RuntimeCatalogRefreshExecutor
 from app.modules.runtime_catalog.bootstrap import build_runtime_catalog_service
 from app.modules.testcase.application import TestcaseService
@@ -93,6 +97,18 @@ def _build_testcase_service(
     )
 
 
+def _build_project_knowledge_service(
+    *,
+    settings: Settings,
+    session_factory: sessionmaker[Session] | None,
+) -> "ProjectKnowledgeService":
+    return build_project_knowledge_service(
+        settings=settings,
+        session_factory=session_factory,
+        forwarded_headers={},
+    )
+
+
 def build_operations_service(
     *,
     settings: Settings,
@@ -124,6 +140,10 @@ def build_operation_worker(
         settings=settings,
         session_factory=session_factory,
     )
+    project_knowledge_service = _build_project_knowledge_service(
+        settings=settings,
+        session_factory=session_factory,
+    )
     artifact_store = _build_operation_artifact_store(settings)
     registry = OperationExecutorRegistry(
         (
@@ -150,6 +170,16 @@ def build_operation_worker(
             TestcaseCasesExportExecutor(
                 service=testcase_service,
                 artifact_store=artifact_store,
+            ),
+            ProjectKnowledgeDocumentsExecutor(
+                kind="knowledge.documents.scan",
+                action="scan",
+                service=project_knowledge_service,
+            ),
+            ProjectKnowledgeDocumentsExecutor(
+                kind="knowledge.documents.clear",
+                action="clear",
+                service=project_knowledge_service,
             ),
         )
     )

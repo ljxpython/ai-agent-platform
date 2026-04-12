@@ -41,6 +41,7 @@ export const zhCN = {
     agentApps: 'Agent Apps',
     runtime: 'Runtime',
     runtimePolicies: '运行策略',
+    knowledge: '知识库',
     graphs: 'Graphs',
     sqlAgent: 'SQL Agent',
     threads: 'Threads',

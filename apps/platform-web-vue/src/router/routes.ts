@@ -48,6 +48,67 @@ const workspaceChildren: RouteRecordRaw[] = [
     }
   },
   {
+    path: 'projects/:projectId/knowledge',
+    component: { render: () => h(RouterView) },
+    children: [
+      {
+        path: '',
+        name: 'workspace-project-knowledge',
+        redirect: (to) => `/workspace/projects/${String(to.params.projectId || '').trim()}/knowledge/documents`,
+        meta: {
+          title: '知识库',
+          eyebrow: 'Knowledge',
+          requiredPermissions: ['project.knowledge.read'],
+          permissionProjectSource: 'route'
+        }
+      },
+      {
+        path: 'documents',
+        name: 'workspace-project-knowledge-documents',
+        component: () => import('@/modules/knowledge/pages/KnowledgeDocumentsPage.vue'),
+        meta: {
+          title: '知识文档',
+          eyebrow: 'Knowledge',
+          requiredPermissions: ['project.knowledge.read'],
+          permissionProjectSource: 'route'
+        }
+      },
+      {
+        path: 'retrieval',
+        name: 'workspace-project-knowledge-retrieval',
+        component: () => import('@/modules/knowledge/pages/KnowledgeRetrievalPage.vue'),
+        meta: {
+          title: '知识检索',
+          eyebrow: 'Knowledge',
+          requiredPermissions: ['project.knowledge.read'],
+          permissionProjectSource: 'route'
+        }
+      },
+      {
+        path: 'graph',
+        name: 'workspace-project-knowledge-graph',
+        component: () => import('@/modules/knowledge/pages/KnowledgeGraphPage.vue'),
+        meta: {
+          title: '知识图谱',
+          eyebrow: 'Knowledge',
+          requiredPermissions: ['project.knowledge.read'],
+          permissionProjectSource: 'route'
+        }
+      },
+      {
+        path: 'settings',
+        name: 'workspace-project-knowledge-settings',
+        component: () => import('@/modules/knowledge/pages/KnowledgeSettingsPage.vue'),
+        meta: {
+          title: '知识设置',
+          eyebrow: 'Knowledge',
+          requiredPermissions: ['project.knowledge.read'],
+          permissionProjectSource: 'route'
+        }
+      }
+    ]
+  },
+  {
     path: 'users',
     name: 'workspace-users',
     component: () => import('@/modules/users/pages/UsersPage.vue'),

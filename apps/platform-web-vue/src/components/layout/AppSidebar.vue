@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import { useAuthorization } from '@/composables/useAuthorization'
+import { useWorkspaceProjectContext } from '@/composables/useWorkspaceProjectContext'
 import { appMeta } from '@/config/app-meta'
 import BrandMark from '@/components/layout/BrandMark.vue'
 import { useThemeStore } from '@/stores/theme'
@@ -16,6 +17,7 @@ const uiStore = useUiStore()
 const themeStore = useThemeStore()
 const isDev = import.meta.env.DEV
 const authorization = useAuthorization()
+const { activeProjectId } = useWorkspaceProjectContext()
 
 type SidebarItem = {
   to: string
@@ -34,6 +36,9 @@ type SidebarGroup = {
 }
 
 const groups = computed(() => {
+  const knowledgeTarget = activeProjectId.value
+    ? `/workspace/projects/${activeProjectId.value}/knowledge`
+    : '/workspace/projects'
   const baseGroups: SidebarGroup[] = [
     {
       id: 'workspace',
@@ -58,6 +63,12 @@ const groups = computed(() => {
           label: t('nav.assistants'),
           icon: 'assistant',
           requiredPermissions: ['project.assistant.read']
+        },
+        {
+          to: knowledgeTarget,
+          label: t('nav.knowledge'),
+          icon: 'file',
+          requiredPermissions: ['project.knowledge.read']
         },
         {
           to: '/workspace/graphs',

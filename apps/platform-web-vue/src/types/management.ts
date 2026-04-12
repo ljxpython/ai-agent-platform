@@ -28,6 +28,9 @@ export type PermissionCode =
   | 'project.assistant.write'
   | 'project.runtime.read'
   | 'project.runtime.write'
+  | 'project.knowledge.read'
+  | 'project.knowledge.write'
+  | 'project.knowledge.admin'
   | 'project.testcase.read'
   | 'project.testcase.write'
   | 'project.operation.read'
@@ -460,6 +463,80 @@ export type RuntimeGraphsResponse = {
   count: number
   graphs: RuntimeGraphItem[]
   last_synced_at: string | null
+}
+
+export type ProjectKnowledgeSpace = {
+  id: string
+  project_id: string
+  provider: string
+  display_name: string
+  workspace_key: string
+  status: string
+  service_base_url: string
+  runtime_profile_json: Record<string, unknown>
+  health?: Record<string, unknown> | null
+  created_at?: string | null
+  updated_at?: string | null
+}
+
+export type KnowledgeDocument = {
+  id: string
+  content_summary: string
+  content_length: number
+  status: string
+  created_at?: string | null
+  updated_at?: string | null
+  track_id?: string | null
+  chunks_count?: number | null
+  error_msg?: string | null
+  metadata?: Record<string, unknown> | null
+  file_path?: string | null
+}
+
+export type KnowledgeDocumentsPage = {
+  documents: KnowledgeDocument[]
+  pagination: {
+    page: number
+    page_size: number
+    total_count: number
+    total_pages: number
+    has_next: boolean
+    has_prev: boolean
+  }
+  status_counts: Record<string, number>
+}
+
+export type KnowledgeTrackStatus = {
+  track_id: string
+  documents: KnowledgeDocument[]
+  total_count: number
+  status_summary: Record<string, number>
+}
+
+export type KnowledgePipelineStatus = {
+  autoscanned?: boolean
+  busy?: boolean
+  job_name?: string
+  job_start?: string | null
+  docs?: number
+  batchs?: number
+  cur_batch?: number
+  request_pending?: boolean
+  latest_message?: string
+  history_messages?: string[]
+  update_status?: Record<string, boolean[]>
+  [key: string]: unknown
+}
+
+export type KnowledgeQueryReference = {
+  reference_id: string
+  file_path: string
+  content?: string[]
+}
+
+export type KnowledgeQueryResult = {
+  response: string
+  references?: KnowledgeQueryReference[] | null
 }
 
 export type ManagementGraph = {

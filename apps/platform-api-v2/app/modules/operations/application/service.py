@@ -43,6 +43,11 @@ _TERMINAL_OPERATION_STATUSES = {
     OperationStatus.CANCELLED,
 }
 
+_PROJECT_OPERATION_SUBMIT_PERMISSIONS: dict[str, PermissionCode] = {
+    "knowledge.documents.scan": PermissionCode.PROJECT_KNOWLEDGE_WRITE,
+    "knowledge.documents.clear": PermissionCode.PROJECT_KNOWLEDGE_ADMIN,
+}
+
 
 def _normalize_str(value: str | None) -> str | None:
     if value is None:
@@ -116,6 +121,29 @@ class OperationsService:
             ),
         )
 
+    def _require_submit_access(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str | None,
+        kind: str,
+    ) -> None:
+        self._require_write_access(actor=actor, project_id=project_id)
+        if not project_id:
+            return
+
+        extra_permission = _PROJECT_OPERATION_SUBMIT_PERMISSIONS.get(kind)
+        if extra_permission is None:
+            return
+
+        self._policy_engine.require(
+            actor=actor,
+            authorization=AuthorizationRequest(
+                permission=extra_permission,
+                project_id=project_id,
+            ),
+        )
+
     def _operation_view(self, item: StoredOperation) -> OperationView:
         return OperationView(
             id=item.id,
@@ -162,7 +190,11 @@ class OperationsService:
         kind = command.kind.strip()
         metadata = with_actor_snapshot(metadata=command.metadata, actor=actor)
 
-        self._require_write_access(actor=actor, project_id=project_id)
+        self._require_submit_access(
+            actor=actor,
+            project_id=project_id,
+            kind=kind,
+        )
 
         async with SqlAlchemyUnitOfWork(session_factory) as uow:
             if project_id:

@@ -41,6 +41,7 @@ export const enUS = {
     agentApps: 'Agent Apps',
     runtime: 'Runtime',
     runtimePolicies: 'Runtime Policies',
+    knowledge: 'Knowledge',
     graphs: 'Graphs',
     sqlAgent: 'SQL Agent',
     threads: 'Threads',

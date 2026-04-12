@@ -29,6 +29,9 @@ class PermissionCode(StrEnum):
     PROJECT_ASSISTANT_WRITE = "project.assistant.write"
     PROJECT_RUNTIME_READ = "project.runtime.read"
     PROJECT_RUNTIME_WRITE = "project.runtime.write"
+    PROJECT_KNOWLEDGE_READ = "project.knowledge.read"
+    PROJECT_KNOWLEDGE_WRITE = "project.knowledge.write"
+    PROJECT_KNOWLEDGE_ADMIN = "project.knowledge.admin"
     PROJECT_TESTCASE_READ = "project.testcase.read"
     PROJECT_TESTCASE_WRITE = "project.testcase.write"
     PROJECT_OPERATION_READ = "project.operation.read"
@@ -109,6 +112,15 @@ PROJECT_PERMISSION_MAP: dict[PermissionCode, frozenset[ProjectRole]] = {
     ),
     PermissionCode.PROJECT_RUNTIME_WRITE: frozenset(
         {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
+    ),
+    PermissionCode.PROJECT_KNOWLEDGE_READ: frozenset(
+        {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
+    ),
+    PermissionCode.PROJECT_KNOWLEDGE_WRITE: frozenset(
+        {ProjectRole.ADMIN, ProjectRole.EDITOR}
+    ),
+    PermissionCode.PROJECT_KNOWLEDGE_ADMIN: frozenset(
+        {ProjectRole.ADMIN}
     ),
     PermissionCode.PROJECT_TESTCASE_READ: frozenset(
         {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}

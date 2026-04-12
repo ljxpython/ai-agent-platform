@@ -120,6 +120,15 @@ function openAudit() {
   void router.push('/workspace/audit')
 }
 
+function openKnowledgeWorkspace() {
+  if (!project.value) {
+    return
+  }
+
+  setActiveProjectId(project.value.id)
+  void router.push(`/workspace/projects/${project.value.id}/knowledge/documents`)
+}
+
 async function loadMembers() {
   if (!projectId.value) {
     members.value = []
@@ -225,6 +234,17 @@ watch(
             size="sm"
           />
           设为当前项目
+        </BaseButton>
+        <BaseButton
+          variant="secondary"
+          :disabled="!project"
+          @click="openKnowledgeWorkspace"
+        >
+          <BaseIcon
+            name="file"
+            size="sm"
+          />
+          知识库工作台
         </BaseButton>
         <BaseButton
           v-if="canManageProject"
