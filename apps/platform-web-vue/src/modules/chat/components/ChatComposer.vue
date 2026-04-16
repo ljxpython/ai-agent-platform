@@ -19,6 +19,7 @@ const props = defineProps<{
   sendButtonLabel: string
   lastEventAt: string
   onResumeInterruptedRun: (resumePayload: unknown) => Promise<boolean>
+  compact?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -59,8 +60,14 @@ function openFilePicker() {
 </script>
 
 <template>
-  <div class="border-t border-gray-100 px-6 py-5 dark:border-dark-800">
-    <div class="pw-panel p-4">
+  <div
+    class="border-t border-gray-100 px-6 py-5 transition-all duration-200 dark:border-dark-800"
+    :class="props.compact ? 'px-4 py-4 md:px-5' : ''"
+  >
+    <div
+      class="pw-panel p-4 transition-all duration-200"
+      :class="props.compact ? 'rounded-xl p-3.5' : ''"
+    >
       <ChatInterruptPanel
         v-if="hasBlockingInterrupt"
         :interrupt="interruptPayload"
@@ -83,17 +90,25 @@ function openFilePicker() {
 
       <textarea
         v-model="composerModel"
-        rows="5"
+        :rows="props.compact ? 4 : 5"
         class="pw-input min-h-[132px] resize-none border-0 bg-transparent px-0 py-0 shadow-none focus:ring-0"
+        :class="props.compact ? 'min-h-[104px]' : ''"
         placeholder="输入消息。只有点击发送按钮时才会真正提交。"
         @paste="handleComposerPaste"
       />
 
-      <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <div class="flex flex-wrap items-center gap-3 text-xs leading-6 text-gray-400 dark:text-dark-400">
+      <div
+        class="mt-4 flex flex-wrap items-center justify-between gap-3 transition-all duration-200"
+        :class="props.compact ? 'mt-3 gap-2' : ''"
+      >
+        <div
+          class="flex flex-wrap items-center gap-3 text-xs leading-6 text-gray-400 transition-all duration-200 dark:text-dark-400"
+          :class="props.compact ? 'gap-2 leading-5' : ''"
+        >
           <button
             type="button"
             class="pw-table-tool-button h-9 rounded-lg px-3 text-xs"
+            :class="props.compact ? 'h-8 px-2.5' : ''"
             :disabled="isRunning || hasBlockingInterrupt"
             @click="openFilePicker"
           >
@@ -113,7 +128,10 @@ function openFilePicker() {
           >
           <span>{{ helperText }}</span>
         </div>
-        <div class="flex flex-wrap items-center gap-3">
+        <div
+          class="flex flex-wrap items-center gap-3 transition-all duration-200"
+          :class="props.compact ? 'gap-2' : ''"
+        >
           <BaseButton
             variant="secondary"
             :disabled="!canStartThread"

@@ -7,9 +7,11 @@ const props = withDefaults(
     title: string
     description: string
     variant?: 'info' | 'success' | 'warning' | 'danger'
+    compact?: boolean
   }>(),
   {
-    variant: 'info'
+    variant: 'info',
+    compact: false
   }
 )
 
@@ -54,13 +56,16 @@ const iconName = computed(() => {
 
 <template>
   <div
-    class="pw-banner"
-    :class="bannerClass"
+    class="pw-banner transition-all duration-200"
+    :class="[bannerClass, props.compact ? 'rounded-xl px-3 py-2' : '']"
   >
-    <div class="flex items-start gap-3">
+    <div
+      class="flex items-start gap-3 transition-all duration-200"
+      :class="props.compact ? 'gap-2' : ''"
+    >
       <div
-        class="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl"
-        :class="iconClass"
+        class="mt-0.5 flex h-8 w-8 items-center justify-center rounded-xl transition-all duration-200"
+        :class="[iconClass, props.compact ? 'h-7 w-7 rounded-lg' : '']"
       >
         <BaseIcon
           :name="iconName"
@@ -68,10 +73,16 @@ const iconName = computed(() => {
         />
       </div>
       <div class="min-w-0">
-        <div class="text-sm font-semibold text-gray-900 dark:text-white">
+        <div
+          class="text-sm font-semibold text-gray-900 dark:text-white transition-all duration-200"
+          :class="props.compact ? 'text-xs' : ''"
+        >
           {{ title }}
         </div>
-        <p class="mt-1.5 text-sm leading-6 text-gray-600 dark:text-dark-300">
+        <p
+          class="mt-1.5 text-sm leading-6 text-gray-600 transition-all duration-200 dark:text-dark-300"
+          :class="props.compact ? 'mt-1 text-xs leading-5' : ''"
+        >
           {{ description }}
         </p>
       </div>

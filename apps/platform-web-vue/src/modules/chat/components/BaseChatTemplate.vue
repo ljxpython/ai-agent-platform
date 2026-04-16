@@ -21,6 +21,7 @@ import ChatContextDrawer from './ChatContextDrawer.vue'
 import ChatMessageList from './ChatMessageList.vue'
 import ChatRunOptionsDialog from './ChatRunOptionsDialog.vue'
 import ChatThreadDrawer from './ChatThreadDrawer.vue'
+import { buildChatCompactModeView } from '../compact-mode-view-model'
 import { normalizeChatInspectorFiles } from '../inspector-view-model'
 import { buildChatLiveFollowView } from '../live-follow-view-model'
 import { createChatMessageActions } from '../message-actions'
@@ -57,14 +58,13 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'reset-target': []
+  'compact-mode-change': [value: boolean]
 }>()
 
 const route = useRoute()
 const router = useRouter()
 const uiStore = useUiStore()
 const { activeProjectId, activeProject } = useWorkspaceProjectContext()
-
-type ChatSurfaceRef = HTMLElement | { $el?: Element | null } | null
 
 const composerInput = ref('')
 const threadSearch = ref('')
@@ -73,7 +73,6 @@ const threadsDrawerOpen = ref(false)
 const contextDrawerOpen = ref(false)
 const runtimeOptionsDialogOpen = ref(false)
 const inspectorInitialTab = ref<InspectorTabKey>('overview')
-const chatSurface = ref<ChatSurfaceRef>(null)
 const messagesViewport = ref<HTMLDivElement | null>(null)
 const messagesContent = ref<HTMLDivElement | null>(null)
 const sourceNoteDismissed = ref(false)
@@ -187,6 +186,15 @@ const liveFollowPillClass = computed(() => {
 
   return 'pw-pill-soft-info'
 })
+const compactModeView = computed(() =>
+  buildChatCompactModeView({
+    activeThreadId: workspace.activeThreadId.value,
+    messageCount: renderMessages.value.length,
+    isRunning: workspace.sending.value,
+    loadingThreadDetail: workspace.loadingThreadDetail.value
+  })
+)
+const isCompactMode = computed(() => compactModeView.value.enabled)
 const showJumpToLatestNotice = computed(
   () =>
     !contextDrawerOpen.value &&
@@ -291,27 +299,6 @@ async function scrollMessagesToLatest(behavior: globalThis.ScrollBehavior = 'aut
   viewport.scrollTo({
     top: viewport.scrollHeight,
     behavior
-  })
-}
-
-async function scrollChatSurfaceIntoView(behavior: globalThis.ScrollBehavior = 'smooth') {
-  await nextTick()
-
-  const surfaceRef = chatSurface.value
-  const surface =
-    surfaceRef instanceof HTMLElement
-      ? surfaceRef
-      : surfaceRef && '$el' in surfaceRef && surfaceRef.$el instanceof HTMLElement
-        ? surfaceRef.$el
-        : null
-
-  if (!surface) {
-    return
-  }
-
-  surface.scrollIntoView({
-    behavior,
-    block: 'end'
   })
 }
 
@@ -478,6 +465,18 @@ watch(
 )
 
 watch(
+  () => isCompactMode.value,
+  (nextValue) => {
+    emit('compact-mode-change', nextValue)
+
+    if (nextValue && autoFollowEnabled.value) {
+      scheduleScrollToLatest('auto')
+    }
+  },
+  { immediate: true }
+)
+
+watch(
   () => props.sourceNote,
   () => {
     sourceNoteDismissed.value = false
@@ -586,17 +585,6 @@ watch(
     })
   },
   { immediate: true }
-)
-
-watch(
-  () => workspace.sending.value,
-  (isSending) => {
-    if (!isSending) {
-      return
-    }
-
-    void scrollChatSurfaceIntoView('smooth')
-  }
 )
 
 watch(
@@ -737,7 +725,6 @@ async function handleSend() {
 
   composerInput.value = ''
   attachmentState.resetAttachments()
-  void scrollChatSurfaceIntoView('smooth')
 
   void workspace.sendMessage(draftContent, draftAttachments)
     .then((sent) => {
@@ -855,35 +842,52 @@ async function handleCancelRun() {
 </script>
 
 <template>
-  <section class="pw-page-shell flex min-h-0 flex-col">
+  <section class="pw-page-shell flex flex-1 min-h-0 flex-col">
     <PageHeader
       :eyebrow="props.target?.targetType === 'graph' ? 'Graph Chat' : 'Assistant Chat'"
       :title="display.title"
       :description="display.description"
+      :compact="isCompactMode"
     />
 
     <div
       v-if="visibleSourceNote"
-      class="pw-panel-info flex flex-wrap items-center justify-between gap-3 text-sky-900 dark:text-sky-50"
+      class="pw-panel-info flex flex-wrap items-center justify-between gap-3 text-sky-900 transition-all duration-200 dark:text-sky-50"
+      :class="isCompactMode ? 'gap-2 rounded-xl px-3 py-3' : ''"
     >
-      <div class="min-w-0 flex items-center gap-3">
-        <span class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white/70 text-sky-600 dark:bg-dark-900/60 dark:text-sky-200">
+      <div
+        class="min-w-0 flex items-center gap-3 transition-all duration-200"
+        :class="isCompactMode ? 'gap-2' : ''"
+      >
+        <span
+          class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white/70 text-sky-600 transition-all duration-200 dark:bg-dark-900/60 dark:text-sky-200"
+          :class="isCompactMode ? 'h-8 w-8 rounded-xl' : ''"
+        >
           <BaseIcon
             name="info"
             size="sm"
           />
         </span>
         <div class="min-w-0">
-          <div class="text-sm font-semibold text-sky-800 dark:text-sky-100">
+          <div
+            class="text-sm font-semibold text-sky-800 transition-all duration-200 dark:text-sky-100"
+            :class="isCompactMode ? 'text-xs' : ''"
+          >
             当前目标来源已记录
           </div>
-          <p class="text-xs leading-6 text-sky-700/90 dark:text-sky-100/80">
+          <p
+            class="text-xs leading-6 text-sky-700/90 transition-all duration-200 dark:text-sky-100/80"
+            :class="isCompactMode ? 'leading-5 line-clamp-1' : ''"
+          >
             完整说明已经收进会话详情的概览页，不再在页面顶部重复堆内容。
           </p>
         </div>
       </div>
 
-      <div class="flex shrink-0 items-center gap-2">
+      <div
+        class="flex shrink-0 items-center gap-2 transition-all duration-200"
+        :class="isCompactMode ? 'gap-1.5' : ''"
+      >
         <BaseButton
           variant="ghost"
           @click="openInspectorDrawer('overview')"
@@ -909,6 +913,7 @@ async function handleCancelRun() {
       title="上下文说明"
       :description="contextNotice"
       variant="success"
+      :compact="isCompactMode"
     />
 
     <StateBanner
@@ -916,6 +921,7 @@ async function handleCancelRun() {
       title="聊天线程加载失败"
       :description="workspace.error.value"
       variant="danger"
+      :compact="isCompactMode"
     />
 
     <StateBanner
@@ -923,6 +929,7 @@ async function handleCancelRun() {
       title="当前对话运行失败"
       :description="activeRunFailureDescription"
       variant="danger"
+      :compact="isCompactMode"
     />
 
     <StateBanner
@@ -930,6 +937,7 @@ async function handleCancelRun() {
       title="运行时目录加载失败"
       :description="workspace.runtimeError.value"
       variant="warning"
+      :compact="isCompactMode"
     />
 
     <StateBanner
@@ -937,6 +945,7 @@ async function handleCancelRun() {
       title="运行状态更新"
       :description="workspace.detailInfo.value"
       variant="info"
+      :compact="isCompactMode"
     />
 
     <StateBanner
@@ -944,6 +953,7 @@ async function handleCancelRun() {
       title="会话状态部分未同步"
       :description="workspace.detailWarning.value"
       variant="warning"
+      :compact="isCompactMode"
     />
 
     <StateBanner
@@ -951,6 +961,7 @@ async function handleCancelRun() {
       title="Debug 已暂停"
       :description="debugStatusDescription"
       variant="info"
+      :compact="isCompactMode"
     />
 
     <StateBanner
@@ -958,6 +969,7 @@ async function handleCancelRun() {
       title="等待人工决策"
       description="当前运行进入 interrupt 状态。先处理下面的中断面板，再继续和 agent 交互。"
       variant="warning"
+      :compact="isCompactMode"
     />
 
     <StateBanner
@@ -965,6 +977,7 @@ async function handleCancelRun() {
       title="当前正在查看历史分支"
       description="你现在看到的是某个 checkpoint 分支下的消息快照。继续发送、编辑或重试时，会基于这个分支重新生成新的对话路径。"
       variant="info"
+      :compact="isCompactMode"
     />
 
     <EmptyState
@@ -992,16 +1005,27 @@ async function handleCancelRun() {
 
     <SurfaceCard
       v-else
-      ref="chatSurface"
-      class="flex h-[680px] min-h-[680px] flex-col overflow-hidden p-0"
+      class="flex min-h-0 flex-1 flex-col overflow-hidden p-0"
     >
-      <div class="border-b border-gray-100 px-5 py-4 dark:border-dark-800 md:px-6 md:py-5">
-        <div class="flex flex-wrap items-start justify-between gap-4">
+      <div
+        class="border-b border-gray-100 px-5 py-4 transition-all duration-200 dark:border-dark-800 md:px-6 md:py-5"
+        :class="isCompactMode ? 'px-4 py-3 md:px-5 md:py-3.5' : ''"
+      >
+        <div
+          class="flex flex-wrap items-start justify-between gap-4 transition-all duration-200"
+          :class="isCompactMode ? 'gap-3' : ''"
+        >
           <div class="min-w-0">
-            <div class="text-lg font-semibold text-gray-900 dark:text-white">
+            <div
+              class="text-lg font-semibold text-gray-900 transition-all duration-200 dark:text-white"
+              :class="isCompactMode ? 'text-base' : ''"
+            >
               {{ workspace.selectedThreadSummary.value?.title || display.emptyTitle || '开始一个新对话' }}
             </div>
-            <div class="mt-2 text-sm leading-7 text-gray-500 dark:text-dark-300">
+            <div
+              class="mt-2 text-sm leading-7 text-gray-500 transition-all duration-200 dark:text-dark-300"
+              :class="isCompactMode ? 'mt-1 text-xs leading-5 line-clamp-2' : ''"
+            >
               {{
                 workspace.selectedThreadSummary.value?.preview ||
                   display.emptyDescription ||
@@ -1011,12 +1035,14 @@ async function handleCancelRun() {
 
             <div
               v-if="showContextBar"
-              class="mt-4 flex flex-wrap gap-2"
+              class="mt-4 flex flex-wrap gap-2 transition-all duration-200"
+              :class="isCompactMode ? 'mt-3 gap-1.5' : ''"
             >
               <span
                 v-for="pill in headerPills"
                 :key="pill.label"
                 class="pw-pill"
+                :class="isCompactMode ? 'gap-1.5 px-2.5 py-1 text-[11px]' : ''"
               >
                 <span class="text-gray-400 dark:text-dark-400">{{ pill.label }}</span>
                 <span class="max-w-[220px] truncate text-gray-700 dark:text-white">{{ pill.value }}</span>
@@ -1024,10 +1050,14 @@ async function handleCancelRun() {
             </div>
           </div>
 
-          <div class="flex flex-wrap items-center gap-2">
+          <div
+            class="flex flex-wrap items-center gap-2 transition-all duration-200"
+            :class="isCompactMode ? 'gap-1.5' : ''"
+          >
             <div
               v-if="liveFollowView.visible"
               class="pw-pill-soft gap-2 px-3 py-2 text-xs font-medium"
+              :class="isCompactMode ? 'gap-1.5 px-2.5 py-1.5 text-[11px]' : ''"
               :class="liveFollowPillClass"
             >
               <BaseIcon
@@ -1106,6 +1136,7 @@ async function handleCancelRun() {
           <div
             ref="messagesViewport"
             class="min-h-0 flex-1 overflow-y-auto px-5 py-4 md:px-6 md:py-5"
+            :class="isCompactMode ? 'px-4 py-3 md:px-5 md:py-4' : ''"
             @scroll="handleMessagesScroll"
           >
             <div
@@ -1233,6 +1264,7 @@ async function handleCancelRun() {
         :send-button-label="sendButtonLabel"
         :last-event-at="workspace.lastEventAt.value"
         :on-resume-interrupted-run="workspace.resumeInterruptedRun"
+        :compact="isCompactMode"
         @send="handleSend"
         @cancel="handleCancelRun"
         @continue-run="handleContinue"

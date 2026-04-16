@@ -6,6 +6,7 @@ import { formatDateTime } from '@/utils/format'
 
 const props = defineProps<{
   overview: TestcaseOverview | null
+  compact?: boolean
 }>()
 
 const items = computed(() => [
@@ -41,7 +42,10 @@ const items = computed(() => [
 </script>
 
 <template>
-  <div class="grid gap-3 xl:grid-cols-4">
+  <div
+    class="grid gap-3 transition-all duration-200 xl:grid-cols-4"
+    :class="props.compact ? 'gap-2 lg:grid-cols-2 xl:grid-cols-4' : ''"
+  >
     <MetricCard
       v-for="item in items"
       :key="item.label"

@@ -2,6 +2,15 @@
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
+const props = withDefaults(
+  defineProps<{
+    compact?: boolean
+  }>(),
+  {
+    compact: false
+  }
+)
+
 const route = useRoute()
 
 const items = computed(() => [
@@ -25,13 +34,19 @@ function isActive(path: string) {
 </script>
 
 <template>
-  <div class="flex flex-wrap gap-2">
+  <div
+    class="flex flex-wrap gap-2 transition-all duration-200"
+    :class="props.compact ? 'gap-1.5' : ''"
+  >
     <router-link
       v-for="item in items"
       :key="item.to"
       :to="item.to"
       class="pw-table-tool-button"
-      :class="isActive(item.to) ? 'pw-pagination-page-active' : ''"
+      :class="[
+        isActive(item.to) ? 'pw-pagination-page-active' : '',
+        props.compact ? 'h-8 px-2.5 text-xs' : ''
+      ]"
     >
       {{ item.label }}
     </router-link>
