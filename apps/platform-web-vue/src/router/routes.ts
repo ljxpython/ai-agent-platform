@@ -390,6 +390,60 @@ const workspaceChildren: RouteRecordRaw[] = [
     ]
   },
   {
+    path: 'testcase-v2',
+    component: { render: () => h(RouterView) },
+    children: [
+      {
+        path: '',
+        name: 'workspace-testcase-v2',
+        redirect: '/workspace/testcase-v2/generate',
+        meta: {
+          title: 'Testcase Agent V2',
+          eyebrow: 'Testcase Agent V2',
+          requiredPermissions: ['project.testcase.read'],
+          permissionProjectSource: 'workspace',
+          allowWithoutProject: true
+        }
+      },
+      {
+        path: 'generate',
+        name: 'workspace-testcase-v2-generate',
+        component: () => import('@/modules/testcase/pages/TestcaseV2GeneratePage.vue'),
+        meta: {
+          title: '用例生成',
+          eyebrow: 'Testcase Agent V2',
+          requiredPermissions: ['project.testcase.read'],
+          permissionProjectSource: 'workspace',
+          allowWithoutProject: true
+        }
+      },
+      {
+        path: 'cases',
+        name: 'workspace-testcase-v2-cases',
+        component: () => import('@/modules/testcase/pages/TestcaseV2CasesPage.vue'),
+        meta: {
+          title: '用例管理',
+          eyebrow: 'Testcase Agent V2',
+          requiredPermissions: ['project.testcase.read'],
+          permissionProjectSource: 'workspace',
+          allowWithoutProject: true
+        }
+      },
+      {
+        path: 'documents',
+        name: 'workspace-testcase-v2-documents',
+        component: () => import('@/modules/testcase/pages/TestcaseV2DocumentsPage.vue'),
+        meta: {
+          title: '文档管理',
+          eyebrow: 'Testcase Agent V2',
+          requiredPermissions: ['project.testcase.read'],
+          permissionProjectSource: 'workspace',
+          allowWithoutProject: true
+        }
+      }
+    ]
+  },
+  {
     path: 'announcements',
     name: 'workspace-announcements',
     component: () => import('@/modules/announcements/pages/AnnouncementsPage.vue'),

@@ -40,7 +40,7 @@ const stats = [
 const principles = [
   {
     title: '功能真相源固定',
-    description: '页面和功能是否完整，一律以 apps/platform-web 为准。platform-web-vue 负责正式迁移和视觉升级，不另起一套业务真相。',
+    description: '页面和功能是否完整，一律以 apps/platform-web 为准。platform-web-vue 负责统一体验与视觉升级，不另起一套业务真相。',
     icon: 'project'
   },
   {
@@ -234,7 +234,7 @@ const brandCandidates = [
         品牌图标候选
       </h2>
       <p class="mt-2 text-sm leading-7 text-gray-500 dark:text-dark-300">
-        这 3 个 SVG 都已经落到仓库里，后续如果要换 favicon、登录页和侧栏品牌区，只需要切换同一套资源，不要再用临时字母块占位。
+        这组 SVG 都已经落到仓库里，后续如果要换 favicon、登录页和侧栏品牌区，只需要切换同一套资源，不要再使用临时字母标识。
       </p>
       <div class="mt-5 grid gap-4 xl:grid-cols-3">
         <article

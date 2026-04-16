@@ -646,6 +646,17 @@ def _build_pdf_fallback_result(
     )
 
 
+def _normalize_pdf_summary_failure_reason(exc: Exception) -> str:
+    raw = str(exc).strip() or exc.__class__.__name__
+    normalized = raw.lower()
+    if "setlimitexceeded" in normalized or "toomanyrequests" in normalized or "429" in normalized:
+        return (
+            "PDF 摘要生成失败：多模态摘要模型当前被限流或额度受限"
+            f"（{raw}）"
+        )
+    return f"PDF 摘要生成失败：{raw}"
+
+
 def _parse_response_to_artifact(
     artifact: AttachmentArtifact,
     response: Any,
@@ -701,7 +712,7 @@ def _parse_attachment_with_model(
                     extracted_text=extracted_text,
                     pdf_meta=pdf_meta,
                     pdf_chunks=pdf_chunks,
-                    reason=f"PDF 摘要生成失败：{exc}",
+                    reason=_normalize_pdf_summary_failure_reason(exc),
                 ),
                 model_id=model_id,
             )
@@ -772,7 +783,7 @@ async def _aparse_attachment_with_model(
                     extracted_text=extracted_text,
                     pdf_meta=pdf_meta,
                     pdf_chunks=pdf_chunks,
-                    reason=f"PDF 摘要生成失败：{exc}",
+                    reason=_normalize_pdf_summary_failure_reason(exc),
                 ),
                 model_id=model_id,
             )

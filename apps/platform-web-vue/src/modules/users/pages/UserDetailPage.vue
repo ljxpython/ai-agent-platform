@@ -283,7 +283,7 @@ watch(
     <PageHeader
       eyebrow="Users"
       :title="user ? `${user.username}` : '用户详情'"
-      description="用户详情页承接资料、状态、密码、项目访问和最近审计。这里不再是列表页上的“待迁移”提示。"
+      description="用户详情页集中展示资料、状态、密码、项目访问和最近审计，方便在一个入口内完成日常管理。"
     >
       <template #actions>
         <BaseButton

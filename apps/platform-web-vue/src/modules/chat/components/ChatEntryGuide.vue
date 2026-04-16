@@ -80,7 +80,7 @@ defineProps<{
       </div>
       <div class="space-y-3 text-sm leading-7 text-gray-500 dark:text-dark-300">
         <p>如果你是固定 SQL 问答流程，直接打开 SQL Agent 就行，它会把目标锁定在 `sql_agent`。</p>
-        <p>后面 Testcase Generate 迁移完成后，也会复用同一套聊天基座，不会再做第二套半残实现。</p>
+        <p>后续 Testcase Generate 接入同一套聊天基座后，也会复用这份目标绑定，不会再单独维护第二套半成品实现。</p>
       </div>
     </SurfaceCard>
   </div>

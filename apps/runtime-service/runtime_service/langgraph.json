@@ -36,6 +36,10 @@
     "test_case_agent": {
       "path": "./runtime_service/services/test_case_service/graph.py:graph",
       "description": "测试用例分析智能体：基于 create_deep_agent + 私有 Skills 体系，支持需求分析、测试策略制定、用例设计、质量评审与格式化输出，多模态输入（图片/PDF）通过 MultimodalMiddleware 解析。"
+    },
+    "test_case_agent_v2": {
+      "path": "./runtime_service/services/test_case_service_v2/graph.py:graph",
+      "description": "测试用例分析智能体 V2：基于独立的 create_deep_agent + 私有 Skills 体系，使用 LightRAG project-scoped MCP 进行知识检索，支持需求分析、测试策略制定、用例设计、质量评审与格式化输出。"
     }
 
   },

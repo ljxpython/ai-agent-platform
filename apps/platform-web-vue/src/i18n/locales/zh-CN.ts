@@ -17,7 +17,7 @@ export const zhCN = {
     security: '安全设置',
     logout: '退出登录',
     unavailable: '暂不可用',
-    placeholder: '该模块将在后续迁移中接入真实业务。'
+    placeholder: '该模块正在完善中，相关业务能力会在这里统一提供。'
   },
   brand: {
     title: 'Agent Platform',
@@ -93,7 +93,7 @@ export const zhCN = {
   },
   toast: {
     localeUpdated: '语言已切换',
-    localeUpdatedDesc: '共享壳层文案会跟随当前语言变化。',
+    localeUpdatedDesc: '共享界面文案会跟随当前语言变化。',
     logoutSuccess: '已退出登录'
   }
 }

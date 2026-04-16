@@ -191,38 +191,42 @@ function reset() {
       </div>
     </div>
 
-    <div class="grid gap-3 md:grid-cols-4">
-      <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-dark-200">
+    <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <label class="flex min-w-0 items-start gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-5 text-gray-700 dark:bg-dark-800/70 dark:text-dark-200">
         <input
           :checked="modelValue.stream"
           type="checkbox"
+          class="mt-0.5 shrink-0"
           @change="update('stream', ($event.target as HTMLInputElement).checked)"
         >
-        stream
+        <span class="break-words">stream</span>
       </label>
-      <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-dark-200">
+      <label class="flex min-w-0 items-start gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-5 text-gray-700 dark:bg-dark-800/70 dark:text-dark-200">
         <input
           :checked="modelValue.only_need_context"
           type="checkbox"
+          class="mt-0.5 shrink-0"
           @change="update('only_need_context', ($event.target as HTMLInputElement).checked)"
         >
-        only_need_context
+        <span class="break-words">only_need_context</span>
       </label>
-      <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-dark-200">
+      <label class="flex min-w-0 items-start gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-5 text-gray-700 dark:bg-dark-800/70 dark:text-dark-200">
         <input
           :checked="modelValue.only_need_prompt"
           type="checkbox"
+          class="mt-0.5 shrink-0"
           @change="update('only_need_prompt', ($event.target as HTMLInputElement).checked)"
         >
-        only_need_prompt
+        <span class="break-words">only_need_prompt</span>
       </label>
-      <label class="flex items-center gap-2 text-sm text-gray-700 dark:text-dark-200">
+      <label class="flex min-w-0 items-start gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-5 text-gray-700 dark:bg-dark-800/70 dark:text-dark-200">
         <input
           :checked="modelValue.enable_rerank"
           type="checkbox"
+          class="mt-0.5 shrink-0"
           @change="update('enable_rerank', ($event.target as HTMLInputElement).checked)"
         >
-        enable_rerank
+        <span class="break-words">enable_rerank</span>
       </label>
     </div>
   </SurfaceCard>

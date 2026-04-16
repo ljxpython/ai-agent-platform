@@ -104,7 +104,7 @@ async function handleSubmit() {
     <PageHeader
       eyebrow="Users"
       title="新建用户"
-      description="创建新的系统用户。这里承接旧版 `/workspace/users/new`，不再把用户创建链路留在迁移清单里。"
+      description="创建新的系统用户。提交后会返回用户列表，并保持统一的平台管理链路。"
     >
       <template #actions>
         <BaseButton
@@ -209,7 +209,7 @@ async function handleSubmit() {
         <pre class="overflow-auto whitespace-pre-wrap break-words rounded-[24px] bg-gray-950 px-4 py-4 text-xs leading-6 text-gray-100">{{ JSON.stringify(requestPreview, null, 2) }}</pre>
 
         <div class="rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-4 text-sm leading-7 text-gray-600 dark:border-dark-700 dark:bg-dark-900/70 dark:text-dark-200">
-          创建成功后会直接返回用户列表页。复杂邀请式流程不在这轮迁移范围里，先把正式管理链路接通。
+          创建成功后会直接返回用户列表页。更复杂的邀请式流程暂不在当前页面支持范围内。
         </div>
       </SurfaceCard>
     </div>

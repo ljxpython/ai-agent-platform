@@ -17,7 +17,7 @@ export const enUS = {
     security: 'Security',
     logout: 'Log out',
     unavailable: 'Unavailable',
-    placeholder: 'This module will be connected to real business capabilities in a later migration phase.'
+    placeholder: 'This module is being prepared, and related business capabilities will be available here.'
   },
   brand: {
     title: 'Agent Platform',
@@ -93,7 +93,7 @@ export const enUS = {
   },
   toast: {
     localeUpdated: 'Language updated',
-    localeUpdatedDesc: 'Shared shell content now follows the selected language.',
+    localeUpdatedDesc: 'Shared interface copy now follows the selected language.',
     logoutSuccess: 'You have been logged out.'
   }
 }

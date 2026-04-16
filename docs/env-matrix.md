@@ -141,33 +141,7 @@
 - 默认应直连 `runtime-service`
 - 不属于正式产品前端主线
 
-## 7. 历史兼容应用
-
-### 7.1 `platform-web`
-
-主要配置来源：
-
-- `apps/platform-web/.env`
-- `apps/platform-web/.env.example`
-
-说明：
-
-- 当前只用于历史兼容和迁移对照
-- 不属于默认本地部署主线
-
-### 7.2 `platform-api`
-
-主要配置来源：
-
-- `apps/platform-api/.env`
-- `apps/platform-api/.env.example`
-
-说明：
-
-- 当前只保留历史参考与兼容价值
-- 不属于正式本地演示主链
-
-## 8. 当前原则
+## 7. 当前原则
 
 - 默认正式演示链路的环境变量彼此独立维护
 - 根目录暂不新增统一 `.env`
@@ -177,5 +151,6 @@
 - `apps/interaction-data-service` 是当前正式结果域服务
 - 默认本地正式端口为 `8081 / 8123 / 2142 / 3000`
 - 可选调试端口为 `3001`
+- 本文只覆盖当前正式主链与可选调试入口；其他非主链应用配置不在这里展开
 - 后续如果确实需要统一入口，应先设计新的 harness contract，再决定是否引入新的编排层
 - 默认本地部署的事实源不是本文，而是 `docs/local-deployment-contract.yaml`

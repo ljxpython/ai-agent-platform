@@ -12,7 +12,11 @@ from app.core.identifiers import parse_uuid
 from app.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode
 from app.modules.project_knowledge.application.contracts import (
     DocumentsPageQuery,
+    ProjectKnowledgeDeleteEntityRequest,
+    ProjectKnowledgeDeleteRelationRequest,
+    ProjectKnowledgeEntityUpdateRequest,
     ProjectKnowledgeQueryRequest,
+    ProjectKnowledgeRelationUpdateRequest,
     UpdateProjectKnowledgeSpaceCommand,
 )
 from app.modules.project_knowledge.domain import ProjectKnowledgeSpaceView
@@ -494,6 +498,101 @@ class ProjectKnowledgeService:
             '/graphs',
             workspace_key=workspace_key,
             params={'label': label, 'max_depth': max_depth, 'max_nodes': max_nodes},
+        )
+
+    async def check_entity_exists(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        name: str,
+    ) -> dict[str, Any]:
+        workspace_key = await self._resolve_workspace_key(
+            actor=actor,
+            project_id=project_id,
+            permission=PermissionCode.PROJECT_KNOWLEDGE_READ,
+        )
+        return await self._upstream.request_json(
+            'GET',
+            '/graph/entity/exists',
+            workspace_key=workspace_key,
+            params={'name': name},
+        )
+
+    async def update_entity(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        request: ProjectKnowledgeEntityUpdateRequest,
+    ) -> dict[str, Any]:
+        workspace_key = await self._resolve_workspace_key(
+            actor=actor,
+            project_id=project_id,
+            permission=PermissionCode.PROJECT_KNOWLEDGE_WRITE,
+        )
+        return await self._upstream.request_json(
+            'POST',
+            '/graph/entity/edit',
+            workspace_key=workspace_key,
+            payload=request.model_dump(mode='json', exclude_none=True),
+        )
+
+    async def update_relation(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        request: ProjectKnowledgeRelationUpdateRequest,
+    ) -> dict[str, Any]:
+        workspace_key = await self._resolve_workspace_key(
+            actor=actor,
+            project_id=project_id,
+            permission=PermissionCode.PROJECT_KNOWLEDGE_WRITE,
+        )
+        return await self._upstream.request_json(
+            'POST',
+            '/graph/relation/edit',
+            workspace_key=workspace_key,
+            payload=request.model_dump(mode='json', exclude_none=True),
+        )
+
+    async def delete_entity(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        request: ProjectKnowledgeDeleteEntityRequest,
+    ) -> dict[str, Any]:
+        workspace_key = await self._resolve_workspace_key(
+            actor=actor,
+            project_id=project_id,
+            permission=PermissionCode.PROJECT_KNOWLEDGE_WRITE,
+        )
+        return await self._upstream.request_json(
+            'DELETE',
+            '/documents/delete_entity',
+            workspace_key=workspace_key,
+            payload=request.model_dump(mode='json', exclude_none=True),
+        )
+
+    async def delete_relation(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        request: ProjectKnowledgeDeleteRelationRequest,
+    ) -> dict[str, Any]:
+        workspace_key = await self._resolve_workspace_key(
+            actor=actor,
+            project_id=project_id,
+            permission=PermissionCode.PROJECT_KNOWLEDGE_WRITE,
+        )
+        return await self._upstream.request_json(
+            'DELETE',
+            '/documents/delete_relation',
+            workspace_key=workspace_key,
+            payload=request.model_dump(mode='json', exclude_none=True),
         )
 
     async def _resolve_workspace_key(

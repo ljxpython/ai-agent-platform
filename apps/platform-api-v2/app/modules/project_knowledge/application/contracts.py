@@ -43,3 +43,33 @@ class ProjectKnowledgeQueryRequest(BaseModel):
     include_references: bool | None = True
     include_chunk_content: bool | None = False
     stream: bool | None = False
+
+
+class ProjectKnowledgeEntityUpdateRequest(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    entity_name: str = Field(min_length=1)
+    updated_data: dict[str, Any] = Field(default_factory=dict)
+    allow_rename: bool = False
+    allow_merge: bool = False
+
+
+class ProjectKnowledgeRelationUpdateRequest(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    source_id: str = Field(min_length=1)
+    target_id: str = Field(min_length=1)
+    updated_data: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProjectKnowledgeDeleteEntityRequest(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    entity_name: str = Field(min_length=1)
+
+
+class ProjectKnowledgeDeleteRelationRequest(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    source_entity: str = Field(min_length=1)
+    target_entity: str = Field(min_length=1)

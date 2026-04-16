@@ -159,25 +159,23 @@ platform-web-vue
 - `platform-api-v2` 负责项目权限、导出、预览、聚合整形
 - `interaction-data-service` 保持结果域所有权，不变成新的控制面后端
 
-## 旧方案与历史文档怎么理解
+## 非当前事实源文档
 
-下面两类内容不要再当成当前实现事实：
+下面这些文档不用于描述当前实现事实：
 
-- 旧的 `/api/records*` 泛化入口
-- 旧的 `/api/usecase-generation/*` 业务接口
-
-它们现在的身份分别是：
-
-- `/api/records*`：早期泛化结果域设计方向，保留在 `docs/service-design.md` 中作为 `Local Design` 参考
-- `/api/usecase-generation/*`：已退役的历史方案，保留在 `docs/usecase-workflow-design.md` 中作为 `Historical-in-place` 记录
+- `docs/service-design.md`：局部设计说明，保留为 `Local Design`
+- `docs/usecase-workflow-design.md`：历史业务方案记录，保留为 `Historical-in-place`
 
 ## 推荐阅读顺序
 
 1. `README.md`
 2. `docs/README.md`
 3. `docs/test-case-service-api-design.md`
-4. `docs/service-design.md`
-5. `docs/usecase-workflow-design.md`
+
+如需补充理解设计背景，再按需查看：
+
+- `docs/service-design.md`
+- `docs/usecase-workflow-design.md`
 
 ## 当前目录建议这样理解
 

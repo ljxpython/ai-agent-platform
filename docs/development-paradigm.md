@@ -14,10 +14,10 @@
 
 补充口径：
 
-- 当前正式平台前端宿主已经切换到 `apps/platform-web-vue`
-- 当前正式平台控制面已经切换到 `apps/platform-api-v2`
-- 文中提到的 `platform-web`，如果没有特别声明，多数指历史实现、兼容入口或功能对齐参考源
-- 文中后半段若出现 `platform-api` 的历史案例表述，应理解为“当时的旧控制面链路”；当前正式口径以 `platform-api-v2` 为准
+- 当前正式平台前端宿主是 `apps/platform-web-vue`
+- 当前正式平台控制面是 `apps/platform-api-v2`
+- 当前正式平台链路是 `platform-web-vue -> platform-api-v2 -> runtime-service`
+- `runtime-web` 继续作为独立调试入口
 
 ## 1. 这个项目真正解决什么问题
 
@@ -64,7 +64,7 @@
 
 这就叫“浅封装”。
 
-这里的浅，不是说平台什么都不做，而是说平台只做上层治理和入口整合，不去改写智能体内部的运行模式。当前 `platform-api-v2` 也不是历史上那种透明透传 proxy，而是保留明确的 `/api/langgraph/*` 网关，在这里做：
+这里的浅，不是说平台什么都不做，而是说平台只做上层治理和入口整合，不去改写智能体内部的运行模式。当前 `platform-api-v2` 不是透明透传 proxy，而是保留明确的 `/api/langgraph/*` 网关，在这里做：
 
 - 显式路由
 - 必要白名单处理
@@ -83,9 +83,7 @@
 当前仓库里，每个应用的边界其实已经很明确：
 
 - `platform-web-vue`：正式平台工作台、管理页面、平台聊天入口
-- `platform-web`：历史兼容前端与功能对齐参考源
 - `platform-api-v2`：鉴权、项目治理、审计、catalog、运行时网关
-- `platform-api`：历史控制面参考源
 - `runtime-service`：graph 注册、模型参数解析、工具装配、MCP、智能体执行
 - `runtime-web`：直连 Runtime 的调试前端
 - `interaction-data-service`：结果域落库与查询
@@ -310,7 +308,7 @@ graph = create_agent(
 - `docs/project-story.md`
 - `apps/platform-api-v2/docs/README.md`
 - `apps/platform-api-v2/docs/handbook/project-handbook.md`
-- `apps/platform-web/README.md`（仅在你需要查看历史兼容入口时再读）
+- `apps/platform-web-vue/docs/control-plane-page-standard.md`
 - `apps/runtime-web/README.md`
 - `apps/runtime-service/runtime_service/docs/README.md`
 - `apps/runtime-service/runtime_service/docs/05-template-to-runnable-agent-10min.md`

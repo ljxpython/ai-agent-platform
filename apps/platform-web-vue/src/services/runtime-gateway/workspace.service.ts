@@ -426,8 +426,7 @@ export async function createRuntimeThread(
 ): Promise<ManagementThread> {
   const client = createLanggraphClient(projectId)
   const createdThread = (await client.threads.create({
-    metadata: buildThreadMetadata(target),
-    graphId: target.targetType === 'graph' ? target.graphId || target.resolvedTargetId : undefined
+    metadata: buildThreadMetadata(target)
   })) as LanggraphThread<Record<string, unknown>>
 
   return normalizeThread(createdThread)

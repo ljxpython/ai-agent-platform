@@ -76,7 +76,7 @@ async function handleSubmit() {
     <PageHeader
       eyebrow="Projects"
       title="新建项目"
-      description="创建一个新的项目工作区。这里承接旧版 `/workspace/projects/new`，并在创建成功后自动切换当前项目。"
+      description="创建一个新的项目工作区，并在创建成功后自动切换当前项目。"
     >
       <template #actions>
         <BaseButton
@@ -128,7 +128,7 @@ async function handleSubmit() {
             创建表单
           </div>
           <div class="mt-1 text-sm text-gray-500 dark:text-dark-300">
-            项目创建本身不复杂，这页重点是把创建链路落到正式工作区，而不是再留一个待迁移空位。
+            项目创建链路已纳入正式工作区，可直接在这里完成创建并切换当前项目。
           </div>
         </div>
 

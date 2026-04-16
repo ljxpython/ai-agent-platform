@@ -48,6 +48,11 @@ def test_project_knowledge_router_is_registered() -> None:
     assert '/api/projects/{project_id}/knowledge/query' in paths
     assert '/api/projects/{project_id}/knowledge/query/stream' in paths
     assert '/api/projects/{project_id}/knowledge/graph/label/popular' in paths
+    assert '/api/projects/{project_id}/knowledge/graph/entity/exists' in paths
+    assert '/api/projects/{project_id}/knowledge/graph/entity/edit' in paths
+    assert '/api/projects/{project_id}/knowledge/graph/relation/edit' in paths
+    assert '/api/projects/{project_id}/knowledge/graph/entity' in paths
+    assert '/api/projects/{project_id}/knowledge/graph/relation' in paths
 
 
 def test_project_knowledge_upload_route_uses_header_based_filename_contract() -> None:

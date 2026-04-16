@@ -43,7 +43,7 @@ const helperText = computed(() =>
   props.hasBlockingInterrupt
     ? '当前运行正在等待人工决策。你可以先编辑下一条消息草稿，处理完中断后再发送。'
     : props.isRunning
-      ? 'Agent 正在运行。你可以继续编辑下一条消息草稿，待本轮结束后再点击发送。'
+      ? 'Agent 正在实时输出。你可以继续编辑下一条消息草稿，或随时点击“停止生成”。'
       : props.lastEventAt
         ? `最近响应：${props.lastEventAt}`
         : '支持 JPEG、PNG、GIF、WEBP、PDF，也支持直接粘贴图片。'
@@ -144,8 +144,8 @@ function openFilePicker() {
             {{
               isRunning
                 ? cancelling
-                  ? '取消中...'
-                  : '取消运行'
+                  ? '停止中...'
+                  : '停止生成'
                 : sendButtonLabel
             }}
           </BaseButton>

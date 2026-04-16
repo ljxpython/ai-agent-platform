@@ -1,16 +1,16 @@
-# Platform API V2 目标架构
+# Platform API V2 架构说明
 
 文档类型：`Current Architecture`
 
-本文回答的是 `platform-api-v2` 当前和目标 control plane 形态；它描述的是服务级架构，不替代仓库级正式部署 contract。
+本文说明 `platform-api-v2` 作为当前正式 control plane 的服务级架构；它描述的是服务边界和当前组织方式，不替代仓库级正式部署 contract。
 
 这份文档只回答一个问题：
 
-> `apps/platform-api-v2` 这套新的平台控制面，最终要长成什么样。
+> `apps/platform-api-v2` 这套正式平台控制面是如何组织和演进的。
 
 ## 1. 服务定位
 
-`platform-api-v2` 是新的平台控制面后端。
+`platform-api-v2` 是当前正式平台控制面后端。
 
 它负责：
 
@@ -71,14 +71,13 @@ platform-web-vue
 当前数据库策略直接定死：
 
 - `platform-api-v2` 默认使用独立数据库或独立 schema
-- 不为了兼容旧 `platform-api` 的历史 schema 约束新设计
-- 能复用旧物理表名时复用，例如 `users`、`projects`、`project_members`
-- 不能复用旧 schema 的模块允许按新标准重建，但字段语义必须保持清晰稳定
+- 物理表名复用以当前语义清晰稳定为前提
+- 新模块按当前标准组织，字段语义必须保持清晰稳定
 
 这意味着：
 
-- `v2` 可以和旧控制面并行存在
-- 后续迁移数据时做显式迁移，不做“同库盲共存”
+- control-plane 数据边界独立维护
+- 数据演进采用显式变更，不做“同库盲共存”
 - 审计、权限、operation 这些治理能力以后接 PostgreSQL / Redis / queue 时不用推翻重来
 
 ## 3. 代码结构
@@ -342,26 +341,26 @@ action 必须语义化，例如：
 - 长任务可抽象为 `operation/job`
 - adapter 层可替换
 
-## 8. 为什么不复制一份新的前端
+## 8. 前端对接边界
 
 当前拍板：
 
-- 不新建 `platform-web-vue-v2`
 - 继续使用 `apps/platform-web-vue` 作为唯一正式前端宿主
-- 前端通过服务层与契约逐步切到 `platform-api-v2`
+- 前端通过服务层与契约接入 `platform-api-v2`
+- 不新增并行的正式前端宿主
 
 原因：
 
 - 避免双份前端维护
 - 避免模板、组件、样式体系再分叉
-- 把重构重点集中在控制面后端
+- 把演进重点集中在控制面后端与稳定契约
 
 ## 9. 当前不追求的事情
 
 - 不追求先拆微服务
 - 不追求先上复杂消息总线
-- 不追求为旧 API 兼容让新结构妥协
-- 不追求把旧模块目录整体复制一份过来
+- 不追求为了兼容遗留 API 而让当前结构妥协
+- 不追求重复复制现有模块目录
 
 ## 10. 当前阶段的验收标准
 

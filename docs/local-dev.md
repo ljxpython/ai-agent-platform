@@ -42,14 +42,9 @@
 - Runtime 落库链路：`runtime-service -> interaction-data-service`
 - 可选调试链路：`runtime-web -> runtime-service`
 
-### 1.3 正式主链之外的历史应用
+### 1.3 非主链应用说明
 
-下面这些目录仍保留在仓库里，但不属于当前正式默认本地部署主线：
-
-- `apps/platform-web`
-- `apps/platform-api`
-
-只有在回看历史实现、做迁移对照或排查兼容问题时，才需要专门进入它们。
+本文只覆盖当前正式默认本地部署主线。其他非主链应用与历史材料不在本文展开。
 
 ## 2. 配置文件口径
 
@@ -68,14 +63,9 @@
 - `apps/runtime-service/runtime_service/conf/settings.local.yaml`
 - `apps/runtime-web/.env`（仅在启用 `runtime-web` 时）
 
-### 2.2 历史兼容配置
+### 2.2 其他说明
 
-只在历史链路排查时按需查看：
-
-- `apps/platform-web/.env`
-- `apps/platform-api/.env`
-
-本地联调时，`runtime-web` 应直连 `http://localhost:8123`，不要沿用旧模板里的 `http://localhost:2024`。
+本文不展开非主链应用的配置口径。本地联调时，`runtime-web` 应直连 `http://localhost:8123`，不要把它指到控制面地址。
 
 ## 3. 推荐启动顺序
 
@@ -192,5 +182,4 @@ scripts/dev-down.sh
 - `apps/runtime-service` 是正式 runtime 执行层
 - `apps/interaction-data-service` 是正式结果域服务
 - `apps/runtime-web` 是可选调试壳，不是默认产品入口
-- `apps/platform-web` / `apps/platform-api` 仅保留历史兼容与迁移参考价值
-- 先保证正式四服务演示链路可独立运行，再处理可选调试入口和历史兼容问题
+- 先保证正式四服务演示链路可独立运行，再按需处理可选调试入口

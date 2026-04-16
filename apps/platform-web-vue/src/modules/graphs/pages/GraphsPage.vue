@@ -278,7 +278,7 @@ async function handleCopyGraphId(graph: ManagementGraph) {
 function handlePendingAction(message: string) {
   uiStore.pushToast({
     type: 'info',
-    title: '能力待迁移',
+    title: '详情暂未开放',
     message
   })
 }
@@ -305,9 +305,9 @@ function graphActions(graph: ManagementGraph): ActionMenuItem[] {
     },
     {
       key: 'detail',
-      label: '图谱详情待迁移',
+      label: '查看详情（暂未开放）',
       icon: 'eye',
-      onSelect: () => handlePendingAction(`图谱 ${graph.display_name || graph.graph_id} 的详情页仍在迁移队列中。`)
+      onSelect: () => handlePendingAction(`图谱 ${graph.display_name || graph.graph_id} 的详情页暂未开放，请先查看当前目录信息。`)
     }
   ]
 }

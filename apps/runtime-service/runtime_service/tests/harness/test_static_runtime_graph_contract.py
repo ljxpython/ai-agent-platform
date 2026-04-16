@@ -18,6 +18,7 @@ def _graph_source(relative_path: str) -> str:
         ("agents/deepagent_agent/graph.py", "create_deep_agent"),
         ("agents/research_agent/graph.py", "create_deep_agent"),
         ("services/test_case_service/graph.py", "create_deep_agent"),
+        ("services/test_case_service_v2/graph.py", "create_deep_agent"),
     ],
 )
 def test_static_runtime_graph_exports_top_level_graph_call(
@@ -57,6 +58,7 @@ def test_static_runtime_graph_exports_top_level_graph_call(
         "agents/deepagent_agent/graph.py",
         "agents/research_agent/graph.py",
         "services/test_case_service/graph.py",
+        "services/test_case_service_v2/graph.py",
     ],
 )
 def test_static_runtime_graph_declares_runtime_context_schema(
@@ -96,6 +98,7 @@ def test_static_runtime_graph_declares_runtime_context_schema(
         "agents/deepagent_agent/graph.py",
         "agents/research_agent/graph.py",
         "services/test_case_service/graph.py",
+        "services/test_case_service_v2/graph.py",
     ],
 )
 def test_static_runtime_graph_uses_runtime_request_middleware(

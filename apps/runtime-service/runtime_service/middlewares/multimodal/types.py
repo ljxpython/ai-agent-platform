@@ -13,7 +13,7 @@ DocumentAttachmentKind = Literal["doc", "docx", "xlsx"]
 
 MULTIMODAL_ATTACHMENTS_KEY = "multimodal_attachments"
 MULTIMODAL_SUMMARY_KEY = "multimodal_summary"
-DEFAULT_MULTIMODAL_MODEL_ID = "iflow_qwen3-vl-plus"
+DEFAULT_MULTIMODAL_MODEL_ID = "doubao_vision_mini"
 MULTIMODAL_PARSER_MODEL_ID_ENV = "MULTIMODAL_PARSER_MODEL_ID"
 _MULTIMODAL_PROMPT_HEADER = "## Multimodal Attachments\n"
 

@@ -19,8 +19,8 @@ const { sidebarCollapsed } = storeToRefs(uiStore)
       :class="sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64'"
     >
       <TopContextBar />
-      <main class="pw-workspace-main">
-        <div class="min-w-0 w-full">
+      <main class="pw-workspace-main flex min-h-0 flex-1 flex-col">
+        <div class="min-h-0 w-full flex-1">
           <router-view />
         </div>
       </main>

@@ -35,10 +35,7 @@ runtime-web -> runtime-service
 
 - `apps/runtime-web`
 
-历史兼容应用仍在仓库中保留，但不属于当前正式默认链路：
-
-- `apps/platform-api`
-- `apps/platform-web`
+本文只覆盖这套正式默认链路，不展开非主链应用。
 
 ### 1.3 当前正式端口
 
@@ -205,7 +202,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8123
 NEXT_PUBLIC_ASSISTANT_ID=assistant
 ```
 
-不要把它继续指向旧的 `http://localhost:2024`。
+不要把它指向控制面地址；`runtime-web` 应始终直连 `runtime-service`。
 
 ## 5. 推荐启动方式
 
@@ -317,12 +314,13 @@ curl http://127.0.0.1:2142/api/langgraph/info
 - `apps/interaction-data-service/docs/README.md`
 - `apps/interaction-data-service/app/api/**`
 
-### 8.4 看到旧 `platform-api` / `2024` / `8090` 口径
+### 8.4 看到与本文不一致的旧宿主 / 旧端口口径
 
 这通常意味着你正在读历史文档、过渡文档，或者某篇文档尚未完成收口。
 
 当前正式默认链路只认：
 
+- `platform-web-vue`
 - `platform-api-v2`
 - `2142`
 - `8081`

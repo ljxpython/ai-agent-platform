@@ -107,6 +107,12 @@ const groups = computed(() => {
           label: t('nav.testcase'),
           icon: 'testcase',
           requiredPermissions: ['project.testcase.read']
+        },
+        {
+          to: '/workspace/testcase-v2',
+          label: 'Testcase V2',
+          icon: 'testcase',
+          requiredPermissions: ['project.testcase.read']
         }
       ]
     },

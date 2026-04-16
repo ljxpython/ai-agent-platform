@@ -46,12 +46,11 @@ The repository currently provides a default four-service local bring-up path, pl
 
 ## Current Frontend Entry
 
-`apps/platform-web-vue` is now the official platform frontend host and the default place for future platform frontend development.
+`apps/platform-web-vue` is the official platform frontend host and the default place for current platform frontend development.
 
-Use the frontend apps in this repo like this:
+Use the frontend entries in this repo like this:
 
 - `apps/platform-web-vue`: official platform workspace frontend
-- `apps/platform-web`: legacy frontend kept for compatibility and migration reference
 - `apps/runtime-web`: runtime-facing debug frontend
 
 If you just want the current official local demo path, start the root scripts and open `apps/platform-web-vue`.
@@ -64,7 +63,7 @@ That harness is made of several parts working together:
 
 - `Boundaries`: platform governance, runtime execution, debug frontend, and result-domain service are separated instead of mixed together
 - `Contracts`: local deployment contract, env conventions, startup order, API naming, and demo account rules are fixed
-- `Patterns`: `runtime-service`, `platform-web-vue`, migration playbooks, and reusable examples already provide working implementation patterns
+- `Patterns`: `runtime-service`, `platform-web-vue`, control-plane standards, and reusable examples already provide working implementation patterns
 - `Delivery loop`: helper scripts, health checks, smoke tests, acceptance docs, changelog, and release runbooks form a repeatable delivery path
 
 In short, the repo is meant to let AI agents keep building inside a controlled engineering environment, not just generate random code in a vacuum.
@@ -118,10 +117,9 @@ Optional debug entry:
 - Debug path: `runtime-web -> runtime-service`
 - Result-domain path: `runtime-service -> interaction-data-service`
 
-### What The Frontends Are For
+### What The Frontend Entries Are For
 
-- `platform-web-vue`: official platform product workspace and future frontend host
-- `platform-web`: legacy frontend kept for compatibility and migration reference
+- `platform-web-vue`: official platform product workspace and the default frontend host
 - `runtime-web`: agent debugging, interaction validation, and fast runtime iteration
 
 ## Architecture Diagram
@@ -200,9 +198,7 @@ If `/api/langgraph/info` on `platform-api-v2` returns `200`, and `/_service/heal
 AITestLab/
 ├── apps/
 │   ├── interaction-data-service/
-│   ├── platform-api/
 │   ├── platform-api-v2/
-│   ├── platform-web/
 │   ├── platform-web-vue/
 │   ├── runtime-service/
 │   ├── runtime-web/
@@ -212,7 +208,7 @@ AITestLab/
 └── archive/
 ```
 
-- `apps/`: business apps, including the default local startup set and the official Vue platform frontend host
+- `apps/`: business apps, including the default local startup set and other maintained application directories
 - `docs/`: deployment, development, constraints, and background docs
 - `scripts/`: unified start, stop, and health-check scripts
 - `archive/`: historical archive notes
@@ -324,14 +320,14 @@ If this is your first time looking at the repo, the recommended reading order is
 This repo has already completed:
 
 - The default four-service startup set has been stabilized under `apps/*`
-- `apps/platform-web-vue` is now the official platform frontend host
-- `apps/platform-api-v2` is now the official platform control plane
+- `apps/platform-web-vue` is the official platform frontend host
+- `apps/platform-api-v2` is the official platform control plane
 - `runtime-service` can start
 - `interaction-data-service` can start
 - `platform-api-v2` can start
 - `platform-api-v2 -> runtime-service` integration has passed
 - `runtime-service -> interaction-data-service` has been wired into the local bring-up scripts
-- `platform-web-vue` is the formal frontend mainline, while `runtime-web` remains the optional runtime debug shell
+- `platform-web-vue` is the official platform frontend host, while `runtime-web` remains the optional runtime debug shell
 
 Current conventions that are still kept:
 

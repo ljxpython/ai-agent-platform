@@ -1,13 +1,13 @@
 # Platform API V2
 
-`apps/platform-api-v2` 是新的平台控制面后端主战场。
+`apps/platform-api-v2` 是当前正式平台控制面后端。
 
-它不是对 `apps/platform-api` 的小修小补，也不是兼容层，而是一套按最佳范式重建的控制面：
+它按当前仓库的 control-plane 范式组织：
 
 - 只负责平台治理、权限、审计、资源目录、操作中心和受控网关
 - 不承接 `runtime-service` 的 agent 执行业务逻辑
-- 不以兼容旧目录结构为目标
-- 当前平台前端 `apps/platform-web-vue` 已正式切到这一套控制面
+- 不把运行时建模、tool、graph 逻辑拉回控制面
+- 为 `apps/platform-web-vue` 提供正式平台 API
 
 当前阶段状态：
 
@@ -111,16 +111,17 @@ apps/platform-api-v2/
 9. `docs/delivery/module-delivery-template.md`
 10. `docs/delivery/runbook.md`
 
-## 和旧平台后端的关系
+## 当前定位
 
-- `apps/platform-api`：旧控制面，保留用于参考与回退
-- `apps/platform-api-v2`：新的正式重构目标
+- `apps/platform-api-v2` 是当前唯一正式控制面宿主
+- `apps/platform-web-vue` 通过这一套 control plane 使用平台治理能力
+- 运行时执行仍由 `runtime-service` 负责
 
 当前不做的事情：
 
-- 不复制旧实现继续堆功能
+- 不把控制面做成万能后端
 - 不迁入 `runtime-service` 的 graph/tool/modeling 逻辑
-- 不为了旧接口兼容而破坏新的控制面结构
+- 不新增第二套正式 control plane 宿主
 
 ## 当前最小启动目标
 
@@ -137,8 +138,7 @@ apps/platform-api-v2/
 
 - `docs/handbook/project-handbook.md`
 - `docs/handbook/development-playbook.md`
-- `docs/archive/phases/phase-3-p0-operations-worker.md`
-- `docs/archive/phases/phase-3-completion.md`
+- `docs/handbook/architecture.md`
 
 ## 一键启动
 

@@ -120,9 +120,5 @@ async function handleSubmit() {
     >
       {{ state.error }}
     </p>
-
-    <p class="text-center text-sm text-surface-500 dark:text-surface-400">
-      {{ t('auth.hint') }}
-    </p>
   </form>
 </template>

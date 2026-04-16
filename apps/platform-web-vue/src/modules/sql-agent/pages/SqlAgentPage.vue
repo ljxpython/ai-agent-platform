@@ -37,7 +37,7 @@ watchEffect(() => {
 </script>
 
 <template>
-  <section class="pw-page-shell">
+  <section class="pw-page-shell flex h-full min-h-0 flex-col">
     <EmptyState
       v-if="!activeProject"
       icon="project"

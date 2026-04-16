@@ -335,3 +335,75 @@ export async function getProjectKnowledgeGraph(
   })
   return response.data as Record<string, unknown>
 }
+
+export async function checkProjectKnowledgeEntityExists(
+  projectId: string,
+  entityName: string
+): Promise<boolean> {
+  const response = await platformHttpClient.get(resolveEndpoint(projectId, '/graph/entity/exists'), {
+    headers: buildHeaders(projectId),
+    params: {
+      name: entityName.trim()
+    }
+  })
+  return Boolean((response.data as { exists?: boolean }).exists)
+}
+
+export async function updateProjectKnowledgeEntity(
+  projectId: string,
+  payload: {
+    entity_name: string
+    updated_data: Record<string, unknown>
+    allow_rename?: boolean
+    allow_merge?: boolean
+  }
+): Promise<Record<string, unknown>> {
+  const response = await platformHttpClient.post(resolveEndpoint(projectId, '/graph/entity/edit'), payload, {
+    headers: buildHeaders(projectId)
+  })
+  return response.data as Record<string, unknown>
+}
+
+export async function updateProjectKnowledgeRelation(
+  projectId: string,
+  payload: {
+    source_id: string
+    target_id: string
+    updated_data: Record<string, unknown>
+  }
+): Promise<Record<string, unknown>> {
+  const response = await platformHttpClient.post(resolveEndpoint(projectId, '/graph/relation/edit'), payload, {
+    headers: buildHeaders(projectId)
+  })
+  return response.data as Record<string, unknown>
+}
+
+export async function deleteProjectKnowledgeEntity(
+  projectId: string,
+  entityName: string
+): Promise<Record<string, unknown>> {
+  const response = await platformHttpClient.delete(resolveEndpoint(projectId, '/graph/entity'), {
+    headers: buildHeaders(projectId),
+    data: {
+      entity_name: entityName.trim()
+    }
+  })
+  return response.data as Record<string, unknown>
+}
+
+export async function deleteProjectKnowledgeRelation(
+  projectId: string,
+  payload: {
+    source_entity: string
+    target_entity: string
+  }
+): Promise<Record<string, unknown>> {
+  const response = await platformHttpClient.delete(resolveEndpoint(projectId, '/graph/relation'), {
+    headers: buildHeaders(projectId),
+    data: {
+      source_entity: payload.source_entity.trim(),
+      target_entity: payload.target_entity.trim()
+    }
+  })
+  return response.data as Record<string, unknown>
+}

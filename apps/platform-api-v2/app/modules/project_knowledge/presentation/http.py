@@ -15,7 +15,11 @@ from app.modules.operations.bootstrap import build_operations_service
 from app.modules.operations.domain import OperationView
 from app.modules.project_knowledge.application import (
     DocumentsPageQuery,
+    ProjectKnowledgeDeleteEntityRequest,
+    ProjectKnowledgeDeleteRelationRequest,
+    ProjectKnowledgeEntityUpdateRequest,
     ProjectKnowledgeQueryRequest,
+    ProjectKnowledgeRelationUpdateRequest,
     ProjectKnowledgeService,
     UpdateProjectKnowledgeSpaceCommand,
 )
@@ -324,3 +328,67 @@ async def get_project_knowledge_graph(
         max_depth=max_depth,
         max_nodes=max_nodes,
     )
+
+
+@router.get('/graph/entity/exists')
+async def check_project_knowledge_entity_exists(
+    request: Request,
+    project_id: str,
+    name: str = Query(..., min_length=1),
+    actor: ActorContext = Depends(get_actor_context),
+    service: ProjectKnowledgeService = Depends(get_project_knowledge_service),
+) -> dict[str, Any]:
+    _bind_project_audit_scope(request, project_id)
+    return await service.check_entity_exists(
+        actor=actor,
+        project_id=project_id,
+        name=name.strip(),
+    )
+
+
+@router.post('/graph/entity/edit')
+async def update_project_knowledge_entity(
+    request: Request,
+    project_id: str,
+    payload: ProjectKnowledgeEntityUpdateRequest,
+    actor: ActorContext = Depends(get_actor_context),
+    service: ProjectKnowledgeService = Depends(get_project_knowledge_service),
+) -> dict[str, Any]:
+    _bind_project_audit_scope(request, project_id)
+    return await service.update_entity(actor=actor, project_id=project_id, request=payload)
+
+
+@router.post('/graph/relation/edit')
+async def update_project_knowledge_relation(
+    request: Request,
+    project_id: str,
+    payload: ProjectKnowledgeRelationUpdateRequest,
+    actor: ActorContext = Depends(get_actor_context),
+    service: ProjectKnowledgeService = Depends(get_project_knowledge_service),
+) -> dict[str, Any]:
+    _bind_project_audit_scope(request, project_id)
+    return await service.update_relation(actor=actor, project_id=project_id, request=payload)
+
+
+@router.delete('/graph/entity')
+async def delete_project_knowledge_entity(
+    request: Request,
+    project_id: str,
+    payload: ProjectKnowledgeDeleteEntityRequest,
+    actor: ActorContext = Depends(get_actor_context),
+    service: ProjectKnowledgeService = Depends(get_project_knowledge_service),
+) -> dict[str, Any]:
+    _bind_project_audit_scope(request, project_id)
+    return await service.delete_entity(actor=actor, project_id=project_id, request=payload)
+
+
+@router.delete('/graph/relation')
+async def delete_project_knowledge_relation(
+    request: Request,
+    project_id: str,
+    payload: ProjectKnowledgeDeleteRelationRequest,
+    actor: ActorContext = Depends(get_actor_context),
+    service: ProjectKnowledgeService = Depends(get_project_knowledge_service),
+) -> dict[str, Any]:
+    _bind_project_audit_scope(request, project_id)
+    return await service.delete_relation(actor=actor, project_id=project_id, request=payload)

@@ -9,7 +9,7 @@ const { t } = useI18n()
 const cards = [
   { title: 'Platform 基座', value: 'Phase 1', description: 'Vite / Vue / TS / Tailwind 3 已接通' },
   { title: '视觉方向', value: 'Workspace', description: '左侧主导航 + 顶部上下文条 + 主内容区' },
-  { title: '后续迁移', value: '业务模块', description: 'overview / projects / users / assistants 优先落地' }
+  { title: '核心模块', value: '业务工作区', description: 'overview / projects / users / assistants 已纳入统一入口' }
 ]
 </script>
 
@@ -17,8 +17,8 @@ const cards = [
   <section class="space-y-6">
     <PageHeader
       eyebrow="Overview"
-      title="Agent Platform 基座"
-      description="这不是最终业务页，而是 platform-web-vue 的初始化样板。后续所有模块都会在这套布局、主题和路由边界上继续迁移。"
+      title="Agent Platform 总览"
+      description="集中查看平台入口、工作区结构与核心能力分布，所有模块都会沿用同一套布局、主题与路由边界持续扩展。"
     />
 
     <div class="grid gap-4 xl:grid-cols-3">
@@ -43,13 +43,13 @@ const cards = [
         {{ t('brand.title') }}
       </h2>
       <p class="mt-3 max-w-3xl text-sm leading-7 text-surface-600 dark:text-surface-300">
-        当前工作重点是先把工程化边界搭实，再逐步把 `platform-web-v2` 的真实业务迁进来。这个壳子阶段已经具备登录页、工作台布局、项目切换、主题切换和占位路由。
+        当前工作台已经提供登录页、工作台布局、项目切换、主题切换和核心导航，后续能力会沿用同一套体验标准持续完善。
       </p>
     </SurfaceCard>
 
     <StateBanner
       title="下一步"
-      description="继续优先接 projects、users、assistants、audit 这批低风险高可见页面，再进入 runtime / graphs / sql-agent。"
+      description="继续完善 projects、users、assistants、audit 等高频页面，并补齐 runtime、graphs、sql-agent 的使用链路。"
     />
   </section>
 </template>

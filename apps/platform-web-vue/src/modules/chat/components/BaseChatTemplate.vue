@@ -22,6 +22,7 @@ import ChatMessageList from './ChatMessageList.vue'
 import ChatRunOptionsDialog from './ChatRunOptionsDialog.vue'
 import ChatThreadDrawer from './ChatThreadDrawer.vue'
 import { normalizeChatInspectorFiles } from '../inspector-view-model'
+import { buildChatLiveFollowView } from '../live-follow-view-model'
 import { createChatMessageActions } from '../message-actions'
 import { buildChatDisplayMessages } from '../message-view-model'
 import { buildChatPlanView } from '../plan-view-model'
@@ -63,6 +64,8 @@ const router = useRouter()
 const uiStore = useUiStore()
 const { activeProjectId, activeProject } = useWorkspaceProjectContext()
 
+type ChatSurfaceRef = HTMLElement | { $el?: Element | null } | null
+
 const composerInput = ref('')
 const threadSearch = ref('')
 const threadStatusFilter = ref<ChatThreadStatusFilter>('all')
@@ -70,6 +73,7 @@ const threadsDrawerOpen = ref(false)
 const contextDrawerOpen = ref(false)
 const runtimeOptionsDialogOpen = ref(false)
 const inspectorInitialTab = ref<InspectorTabKey>('overview')
+const chatSurface = ref<ChatSurfaceRef>(null)
 const messagesViewport = ref<HTMLDivElement | null>(null)
 const messagesContent = ref<HTMLDivElement | null>(null)
 const sourceNoteDismissed = ref(false)
@@ -164,34 +168,38 @@ const selectedToolsLabel = computed(() => {
   }
   return `${draftRunOptions.toolNames.length} 个工具`
 })
+const liveFollowView = computed(() =>
+  buildChatLiveFollowView({
+    autoFollowEnabled: autoFollowEnabled.value,
+    isRunning: workspace.sending.value,
+    unreadMessageCount: unreadMessageCount.value,
+    bufferedStreamActivity: bufferedStreamActivity.value
+  })
+)
+const liveFollowPillClass = computed(() => {
+  if (liveFollowView.value.tone === 'success') {
+    return 'pw-pill-soft-success'
+  }
+
+  if (liveFollowView.value.tone === 'warning') {
+    return 'pw-pill-soft-warning'
+  }
+
+  return 'pw-pill-soft-info'
+})
 const showJumpToLatestNotice = computed(
   () =>
     !contextDrawerOpen.value &&
     !runtimeOptionsDialogOpen.value &&
-    !autoFollowEnabled.value &&
-    (unreadMessageCount.value > 0 || bufferedStreamActivity.value || workspace.sending.value)
+    liveFollowView.value.noticeVisible
 )
-const jumpToLatestTitle = computed(() => {
-  if (unreadMessageCount.value > 0) {
-    return `有 ${unreadMessageCount.value} 条新消息`
-  }
-
-  if (workspace.sending.value) {
-    return 'Agent 仍在运行'
-  }
-
-  return '有新的执行更新'
-})
+const jumpToLatestTitle = computed(() => liveFollowView.value.title)
 const jumpToLatestDescription = computed(() => {
   if (isInspectingMessageMeta.value) {
     return '你正在查看工具或子任务详情，点击可回到底部继续跟随。'
   }
 
-  if (unreadMessageCount.value > 0) {
-    return '你正在查看历史内容，点击可回到底部继续跟随。'
-  }
-
-  return '当前对话仍在持续输出，点击回到底部继续跟随。'
+  return liveFollowView.value.description
 })
 
 const headerPills = computed(() => [
@@ -283,6 +291,27 @@ async function scrollMessagesToLatest(behavior: globalThis.ScrollBehavior = 'aut
   viewport.scrollTo({
     top: viewport.scrollHeight,
     behavior
+  })
+}
+
+async function scrollChatSurfaceIntoView(behavior: globalThis.ScrollBehavior = 'smooth') {
+  await nextTick()
+
+  const surfaceRef = chatSurface.value
+  const surface =
+    surfaceRef instanceof HTMLElement
+      ? surfaceRef
+      : surfaceRef && '$el' in surfaceRef && surfaceRef.$el instanceof HTMLElement
+        ? surfaceRef.$el
+        : null
+
+  if (!surface) {
+    return
+  }
+
+  surface.scrollIntoView({
+    behavior,
+    block: 'end'
   })
 }
 
@@ -560,6 +589,17 @@ watch(
 )
 
 watch(
+  () => workspace.sending.value,
+  (isSending) => {
+    if (!isSending) {
+      return
+    }
+
+    void scrollChatSurfaceIntoView('smooth')
+  }
+)
+
+watch(
   messagesContent,
   (element, _previous, onCleanup) => {
     if (!element || typeof ResizeObserver === 'undefined') {
@@ -697,6 +737,7 @@ async function handleSend() {
 
   composerInput.value = ''
   attachmentState.resetAttachments()
+  void scrollChatSurfaceIntoView('smooth')
 
   void workspace.sendMessage(draftContent, draftAttachments)
     .then((sent) => {
@@ -814,7 +855,7 @@ async function handleCancelRun() {
 </script>
 
 <template>
-  <section class="pw-page-shell">
+  <section class="pw-page-shell flex min-h-0 flex-col">
     <PageHeader
       :eyebrow="props.target?.targetType === 'graph' ? 'Graph Chat' : 'Assistant Chat'"
       :title="display.title"
@@ -951,7 +992,8 @@ async function handleCancelRun() {
 
     <SurfaceCard
       v-else
-      class="flex min-h-[680px] flex-col overflow-hidden p-0"
+      ref="chatSurface"
+      class="flex h-[680px] min-h-[680px] flex-col overflow-hidden p-0"
     >
       <div class="border-b border-gray-100 px-5 py-4 dark:border-dark-800 md:px-6 md:py-5">
         <div class="flex flex-wrap items-start justify-between gap-4">
@@ -983,6 +1025,17 @@ async function handleCancelRun() {
           </div>
 
           <div class="flex flex-wrap items-center gap-2">
+            <div
+              v-if="liveFollowView.visible"
+              class="pw-pill-soft gap-2 px-3 py-2 text-xs font-medium"
+              :class="liveFollowPillClass"
+            >
+              <BaseIcon
+                :name="liveFollowView.icon"
+                size="xs"
+              />
+              <span>{{ liveFollowView.pillLabel }}</span>
+            </div>
             <div class="flex items-center gap-1">
               <BaseButton
                 variant="secondary"
@@ -1046,18 +1099,18 @@ async function handleCancelRun() {
       </div>
 
       <div
-        class="min-h-0 flex-1 overflow-hidden"
+        class="min-h-0 flex flex-1 flex-col overflow-hidden"
         :class="showArtifacts && hasArtifactEntries ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_360px]' : ''"
       >
-        <div class="relative min-h-0">
+        <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           <div
             ref="messagesViewport"
-            class="min-h-0 h-full overflow-y-auto px-5 py-4 md:px-6 md:py-5"
+            class="min-h-0 flex-1 overflow-y-auto px-5 py-4 md:px-6 md:py-5"
             @scroll="handleMessagesScroll"
           >
             <div
               ref="messagesContent"
-              class="min-h-full"
+              class="flex min-h-full flex-col justify-end"
             >
               <div
                 v-if="workspace.loadingThreadDetail.value && renderMessages.length === 0"
@@ -1119,15 +1172,11 @@ async function handleCancelRun() {
             v-if="showJumpToLatestNotice"
             class="pointer-events-none absolute bottom-5 right-5 z-10 flex justify-end"
           >
-            <button
-              type="button"
-              class="pointer-events-auto pw-panel w-[calc(100vw-2.5rem)] px-4 py-3 text-left transition hover:border-primary-300 dark:hover:border-primary-700 sm:w-[280px]"
-              @click="handleJumpToLatest"
-            >
+            <div class="pointer-events-auto pw-panel w-[calc(100vw-2.5rem)] px-4 py-3 sm:w-[320px]">
               <div class="flex items-start gap-3">
                 <span class="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-950/30 dark:text-primary-100">
                   <BaseIcon
-                    name="chevron-down"
+                    :name="liveFollowView.icon"
                     size="sm"
                   />
                 </span>
@@ -1140,7 +1189,28 @@ async function handleCancelRun() {
                   </span>
                 </span>
               </div>
-            </button>
+              <div class="mt-3 flex flex-wrap justify-end gap-2">
+                <BaseButton
+                  v-if="liveFollowView.showStopAction"
+                  variant="danger"
+                  :disabled="workspace.cancelling.value"
+                  @click="handleCancelRun"
+                >
+                  <BaseIcon
+                    name="x"
+                    size="sm"
+                  />
+                  {{ workspace.cancelling.value ? '停止中...' : '停止生成' }}
+                </BaseButton>
+                <BaseButton @click="handleJumpToLatest">
+                  <BaseIcon
+                    name="chevron-down"
+                    size="sm"
+                  />
+                  回到最新
+                </BaseButton>
+              </div>
+            </div>
           </div>
         </div>
 

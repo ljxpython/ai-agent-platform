@@ -226,7 +226,7 @@ async function handleCopyValue(label: string, value: string) {
 function handlePendingAction(message: string) {
   uiStore.pushToast({
     type: 'info',
-    title: '能力待迁移',
+    title: '详情暂未开放',
     message
   })
 }
@@ -247,9 +247,9 @@ function toolActions(tool: RuntimeToolItem): ActionMenuItem[] {
     },
     {
       key: 'detail',
-      label: '工具详情待迁移',
+      label: '查看详情（暂未开放）',
       icon: 'eye',
-      onSelect: () => handlePendingAction(`工具 ${tool.name || tool.tool_key} 的详情页仍在迁移队列中。`)
+      onSelect: () => handlePendingAction(`工具 ${tool.name || tool.tool_key} 的详情页暂未开放，请先查看当前目录信息。`)
     }
   ]
 }
