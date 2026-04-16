@@ -18,6 +18,7 @@ const { activeProjectId, activeProject } = useWorkspaceProjectContext()
 const overview = ref<TestcaseOverview | null>(null)
 const loading = ref(false)
 const error = ref('')
+const compactChrome = ref(false)
 
 const testcaseTarget = computed(() =>
   resolveChatTarget({
@@ -75,7 +76,7 @@ watch(
 
 <template>
   <section class="pw-page-shell flex h-full min-h-0 flex-col">
-    <TestcaseWorkspaceNav />
+    <TestcaseWorkspaceNav :compact="compactChrome" />
 
     <StateBanner
       v-if="error"
@@ -84,7 +85,15 @@ watch(
       variant="warning"
     />
 
-    <TestcaseOverviewStrip :overview="overview" />
+    <div
+      class="transition-all duration-200"
+      :class="compactChrome ? 'origin-top scale-[0.985]' : ''"
+    >
+      <TestcaseOverviewStrip
+        :overview="overview"
+        :compact="compactChrome"
+      />
+    </div>
 
     <EmptyState
       v-if="!activeProject"
@@ -113,6 +122,7 @@ watch(
         showArtifacts: true,
         showContextBar: true
       }"
+      @compact-mode-change="compactChrome = $event"
     />
   </section>
 </template>

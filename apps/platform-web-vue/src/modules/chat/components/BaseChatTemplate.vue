@@ -1057,8 +1057,7 @@ async function handleCancelRun() {
             <div
               v-if="liveFollowView.visible"
               class="pw-pill-soft gap-2 px-3 py-2 text-xs font-medium"
-              :class="isCompactMode ? 'gap-1.5 px-2.5 py-1.5 text-[11px]' : ''"
-              :class="liveFollowPillClass"
+              :class="[liveFollowPillClass, isCompactMode ? 'gap-1.5 px-2.5 py-1.5 text-[11px]' : '']"
             >
               <BaseIcon
                 :name="liveFollowView.icon"
@@ -1130,7 +1129,13 @@ async function handleCancelRun() {
 
       <div
         class="min-h-0 flex flex-1 flex-col overflow-hidden"
-        :class="showArtifacts && hasArtifactEntries ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_360px]' : ''"
+        :class="
+          showArtifacts && hasArtifactEntries
+            ? isCompactMode
+              ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_320px]'
+              : 'lg:grid lg:grid-cols-[minmax(0,1fr)_360px]'
+            : ''
+        "
       >
         <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
           <div
