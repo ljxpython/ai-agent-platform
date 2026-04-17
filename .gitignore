@@ -196,10 +196,14 @@ docs/_build/
 /.playwright-mcp/
 /.spec-workflow/
 /platform-web-vue-*.png
+/chat-*.png
+/graph-*.png
+/knowledge-*.png
 /resources-*.png
 /ui-assets-*.png
 /pro-components-playground.png
 /playwright-*.txt
+/graph-login-snapshot.md
 /apps/platform-web-v2/sql-agent-debug.png
 /apps/platform-web-sub2api-base/
 /apps/platform-api-v2/.runtime/
