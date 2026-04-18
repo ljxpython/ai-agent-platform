@@ -12,9 +12,10 @@
 
 1. 代码与接口：`app/api/**`、`app/db/models.py`
 2. 当前说明：`README.md`、`docs/README.md`
-3. 当前 API 设计：`docs/test-case-service-api-design.md`
-4. 局部设计文档：`docs/service-design.md`
-5. 历史设计记录：`docs/usecase-workflow-design.md`
+3. 当前标准：`docs/standards/result-domain-boundary-standard.md`
+4. 当前 API 设计：`docs/test-case-service-api-design.md`
+5. 局部设计文档：`docs/service-design.md`
+6. 历史设计记录：`docs/usecase-workflow-design.md`
 
 ## 这个服务当前在整体架构里的位置
 

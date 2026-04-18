@@ -9,8 +9,9 @@
 1. `app/api/test_case_service/**`
 2. `app/db/models.py`
 3. 本文
-4. `docs/test-case-service-api-design.md`
-5. `docs/service-design.md`
+4. `docs/standards/result-domain-boundary-standard.md`
+5. `docs/test-case-service-api-design.md`
+6. `docs/service-design.md`
 
 ## 当前定位
 
@@ -148,6 +149,9 @@ curl "http://127.0.0.1:8081/api/test-case-service/batches?project_id=<project_id
 ```
 
 ## 文档导航
+
+- `docs/standards/result-domain-boundary-standard.md`
+  - 当前结果域边界、leaf resolver 和正式访问链路标准
 
 - `docs/test-case-service-api-design.md`
   - 当前 testcase 结果域接口设计与字段约束

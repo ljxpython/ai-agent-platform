@@ -8,6 +8,10 @@
 
 - `docs/development-paradigm.md`
 
+本应用的当前 leaf standard 再看：
+
+- `docs/standards/runtime-web-debug-standard.md`
+
 对 `runtime-web` 来说，最重要的执行原则是：
 
 1. 它是调试入口，不是正式平台管理入口

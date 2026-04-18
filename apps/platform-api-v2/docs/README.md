@@ -35,6 +35,7 @@
 - `standards/permission-standard.md`
 - `standards/audit-standard.md`
 - `standards/operations-standard.md`
+- `standards/runtime-gateway-interface-standard.md`
 
 这些文档是长期生效的规则，不是阶段性纪要。
 

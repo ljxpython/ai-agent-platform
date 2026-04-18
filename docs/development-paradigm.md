@@ -19,6 +19,12 @@
 - 当前正式平台链路是 `platform-web-vue -> platform-api-v2 -> runtime-service`
 - `runtime-web` 继续作为独立调试入口
 
+如果你要的是“现在该怎么判、怎么升级、怎么走最短链”，先读：
+
+- `docs/standards/01-ai-execution-system.md`
+
+这篇文档讲背景和范式；上面那篇讲当前标准和路由。
+
 ## 1. 这个项目真正解决什么问题
 
 很多 Agent 项目一开始都能跑 demo，但一旦进入真实工程开发，很快就会出现几类典型问题：
