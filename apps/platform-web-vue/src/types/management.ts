@@ -479,6 +479,18 @@ export type ProjectKnowledgeSpace = {
   updated_at?: string | null
 }
 
+export type KnowledgeMetadataFilters = {
+  tags_any?: string[]
+  tags_all?: string[]
+  attributes?: Record<string, string | string[]>
+}
+
+export type KnowledgeMetadataBoost = {
+  tags_any?: string[]
+  attributes?: Record<string, string | string[]>
+  weight?: number
+}
+
 export type KnowledgeDocument = {
   id: string
   content_summary: string

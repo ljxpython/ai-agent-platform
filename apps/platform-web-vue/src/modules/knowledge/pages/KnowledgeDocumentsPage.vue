@@ -7,9 +7,14 @@ import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
-import EmptyState from '@/components/platform/EmptyState.vue'
+import TablePageLayout from '@/components/layout/TablePageLayout.vue'
+import DataTable from '@/components/platform/DataTable.vue'
+import FilterToolbar from '@/components/platform/FilterToolbar.vue'
+import PaginationBar from '@/components/platform/PaginationBar.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
+import type { DataTableColumn } from '@/components/platform/data-table'
+import { usePagination } from '@/composables/usePagination'
 import { useAuthorization } from '@/composables/useAuthorization'
 import KnowledgePipelineStatusDialog from '@/modules/knowledge/components/KnowledgePipelineStatusDialog.vue'
 import KnowledgeWorkspaceNav from '@/modules/knowledge/components/KnowledgeWorkspaceNav.vue'
@@ -49,14 +54,17 @@ const error = ref('')
 const successMessage = ref('')
 const items = ref<KnowledgeDocument[]>([])
 const statusCounts = ref<Record<string, number>>({})
-const total = ref(0)
-const page = ref(1)
-const pageSize = ref(20)
+const pagination = usePagination({
+  initialPageSize: 20,
+  storageKey: 'pw:knowledge-documents:page-size',
+})
 const pipelineStatus = ref<KnowledgePipelineStatus | null>(null)
 const scanProgress = ref<KnowledgeDocumentsScanProgress | null>(null)
 const selectedTrackId = ref('')
 const trackStatus = ref<KnowledgeTrackStatus | null>(null)
 const uploadInput = ref<HTMLInputElement | null>(null)
+const uploadTagsText = ref('')
+const uploadLayer = ref('')
 const showClearConfirm = ref(false)
 const pendingDelete = ref<KnowledgeDocument | null>(null)
 const showPipelineDialog = ref(false)
@@ -66,7 +74,27 @@ const selectedDocumentDetail = ref<Record<string, unknown> | null>(null)
 const canRead = computed(() => authorization.can('project.knowledge.read', projectId.value))
 const canWrite = computed(() => authorization.can('project.knowledge.write', projectId.value))
 const canAdmin = computed(() => authorization.can('project.knowledge.admin', projectId.value))
-const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
+const documentRows = computed(() => items.value as unknown as Record<string, unknown>[])
+const uploadMetadata = computed(() => {
+  const tags = uploadTagsText.value
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  const attributes: Record<string, string> = {}
+  if (uploadLayer.value.trim()) {
+    attributes.layer = uploadLayer.value.trim()
+  }
+
+  if (!tags.length && !Object.keys(attributes).length) {
+    return undefined
+  }
+
+  return {
+    ...(tags.length ? { tags } : {}),
+    ...(Object.keys(attributes).length ? { attributes } : {}),
+  }
+})
 const failedCount = computed(() => {
   const entries = Object.entries(statusCounts.value)
   const failed = entries.find(([status]) => status.toUpperCase() === 'FAILED')
@@ -94,7 +122,7 @@ const statusSummaryCards = computed(() => {
   return statuses.map((item) => {
     const count =
       item.key === 'ALL'
-        ? total.value
+        ? pagination.total.value
         : Object.entries(statusCounts.value).find(([status]) => status.toUpperCase() === item.key)?.[1] || 0
     return {
       ...item,
@@ -103,6 +131,34 @@ const statusSummaryCards = computed(() => {
     }
   })
 })
+const columns = computed<DataTableColumn[]>(() => [
+  {
+    key: 'file_path',
+    label: '文件',
+    sortable: true,
+    alwaysVisible: true,
+    sortValue: (row) => row.file_path || row.id || '',
+    cellClass: 'max-w-[540px]',
+  },
+  {
+    key: 'status',
+    label: '状态',
+    sortable: true,
+    sortValue: (row) => row.status || '',
+  },
+  {
+    key: 'track_id',
+    label: 'Track',
+    sortable: true,
+    sortValue: (row) => row.track_id || '',
+  },
+  {
+    key: 'updated_at',
+    label: '更新时间',
+    sortable: true,
+    sortValue: (row) => row.updated_at || '',
+  },
+])
 
 function statusTone(status: string): 'neutral' | 'success' | 'warning' | 'danger' {
   const normalized = status.toUpperCase()
@@ -122,6 +178,10 @@ function openUploadDialog() {
   uploadInput.value?.click()
 }
 
+function documentFromRow(row: Record<string, unknown>) {
+  return row as KnowledgeDocument
+}
+
 async function loadTrackStatus() {
   if (!projectId.value || !canRead.value || !selectedTrackId.value.trim()) {
     trackStatus.value = null
@@ -133,7 +193,7 @@ async function loadTrackStatus() {
 async function loadDocuments() {
   if (!projectId.value || !canRead.value) {
     items.value = []
-    total.value = 0
+    pagination.setTotal(0)
     statusCounts.value = {}
     pipelineStatus.value = null
     scanProgress.value = null
@@ -146,15 +206,15 @@ async function loadDocuments() {
   try {
     const [pagePayload, pipeline, progress] = await Promise.all([
       listProjectKnowledgeDocuments(projectId.value, {
-        page: page.value,
-        page_size: pageSize.value,
+        page: pagination.page.value,
+        page_size: pagination.pageSize.value,
         status_filter: statusFilter.value || undefined,
       }),
       getProjectKnowledgePipelineStatus(projectId.value),
       getProjectKnowledgeScanProgress(projectId.value),
     ])
     items.value = pagePayload.documents
-    total.value = pagePayload.pagination.total_count
+    pagination.setTotal(pagePayload.pagination.total_count)
     statusCounts.value = pagePayload.status_counts || {}
     pipelineStatus.value = pipeline
     scanProgress.value = progress
@@ -165,7 +225,7 @@ async function loadDocuments() {
     }
   } catch (loadError) {
     items.value = []
-    total.value = 0
+    pagination.setTotal(0)
     statusCounts.value = {}
     error.value = resolvePlatformHttpErrorMessage(loadError, '知识文档加载失败', '知识文档')
   } finally {
@@ -187,7 +247,11 @@ async function handleUploadChange(event: Event) {
   try {
     let latestTrackId = ''
     for (const file of files) {
-      const result = await uploadProjectKnowledgeDocument(projectId.value, file)
+      const result = await uploadProjectKnowledgeDocument(
+        projectId.value,
+        file,
+        uploadMetadata.value,
+      )
       const trackId = String(result.track_id || '').trim()
       if (trackId) {
         latestTrackId = trackId
@@ -202,6 +266,8 @@ async function handleUploadChange(event: Event) {
       files.length === 1
         ? '文档上传已提交。'
         : `已提交 ${files.length} 份文档的上传任务。`
+    uploadTagsText.value = ''
+    uploadLayer.value = ''
     uiStore.pushToast({
       type: 'success',
       title: '上传成功',
@@ -362,7 +428,7 @@ async function confirmDelete() {
 }
 
 watch(
-  () => [projectId.value, statusFilter.value, page.value, pageSize.value],
+  () => [projectId.value, canRead.value, pagination.page.value, pagination.pageSize.value],
   () => {
     void loadDocuments()
   },
@@ -370,8 +436,21 @@ watch(
 )
 
 watch(
+  () => statusFilter.value,
+  () => {
+    if (pagination.page.value === 1) {
+      void loadDocuments()
+      return
+    }
+
+    pagination.resetPage()
+  },
+)
+
+watch(
   () => projectId.value,
   () => {
+    pagination.resetPage()
     selectedTrackId.value = ''
     trackStatus.value = null
   },
@@ -386,7 +465,7 @@ watch(
 </script>
 
 <template>
-  <section class="pw-page-shell">
+  <section class="pw-page-shell h-full min-h-0 overflow-y-auto">
     <PageHeader
       eyebrow="Knowledge"
       :title="project ? `${project.name} · 知识文档` : '知识文档'"
@@ -448,6 +527,43 @@ watch(
       :project-id="projectId"
     />
 
+    <SurfaceCard
+      v-if="projectId && canWrite"
+      class="mt-4"
+    >
+      <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-dark-200">
+          上传时附带 tags（逗号分隔，可选）
+          <input
+            v-model="uploadTagsText"
+            type="text"
+            class="pw-input"
+            placeholder="architecture, storage"
+          >
+        </label>
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-dark-200">
+          上传时附带 layer（可选）
+          <BaseSelect v-model="uploadLayer">
+            <option value="">
+              不设置
+            </option>
+            <option value="infrastructure">
+              infrastructure
+            </option>
+            <option value="application">
+              application
+            </option>
+            <option value="component">
+              component
+            </option>
+          </BaseSelect>
+        </label>
+      </div>
+      <div class="mt-3 text-xs text-gray-400 dark:text-dark-500">
+        当前上传 metadata 只会作为通用 metadata 写入，不会把 AITestLab 私有 taxonomy 固化为上游协议。
+      </div>
+    </SurfaceCard>
+
     <StateBanner
       v-if="projectId && !canRead"
       class="mt-4"
@@ -473,31 +589,17 @@ watch(
     <div class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(340px,1fr)]">
       <div class="space-y-4">
         <SurfaceCard>
-            <div class="grid gap-4 lg:grid-cols-[minmax(180px,240px)_minmax(0,1fr)]">
+          <div class="grid gap-4 lg:grid-cols-[minmax(180px,240px)_minmax(0,1fr)]">
             <div>
               <div class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
-                文档筛选
+                文档状态概览
               </div>
-              <BaseSelect v-model="statusFilter">
-                <option value="">
-                  全部状态
-                </option>
-                <option value="PENDING">
-                  PENDING
-                </option>
-                <option value="PROCESSING">
-                  PROCESSING
-                </option>
-                <option value="PREPROCESSED">
-                  PREPROCESSED
-                </option>
-                <option value="PROCESSED">
-                  PROCESSED
-                </option>
-                <option value="FAILED">
-                  FAILED
-                </option>
-              </BaseSelect>
+              <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+                {{ statusFilter || '全部状态' }}
+              </div>
+              <div class="mt-2 text-sm leading-6 text-gray-500 dark:text-dark-300">
+                筛选区、表格区和分页区统一收敛到平台列表母版，避免每个业务页重复拼装自己的列表节奏。
+              </div>
             </div>
             <div class="grid flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               <div
@@ -528,121 +630,140 @@ watch(
         </SurfaceCard>
 
         <template v-if="projectId && canRead">
-          <SurfaceCard v-if="loading">
-            <div class="text-sm text-gray-500 dark:text-dark-300">
-              正在加载知识文档…
-            </div>
-          </SurfaceCard>
-          <EmptyState
-            v-else-if="items.length === 0"
-            title="当前项目还没有知识文档"
-            description="你可以先上传文档，或触发一次目录扫描，让项目知识空间开始建立自己的文档集合。"
-            icon="file"
-            action-label="上传第一份文档"
-            @action="openUploadDialog"
-          />
-          <SurfaceCard v-else>
-            <div class="overflow-x-auto">
-              <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-dark-800">
-                <thead>
-                  <tr class="text-left text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
-                    <th class="pb-3">
-                      文件
-                    </th>
-                    <th class="pb-3">
-                      状态
-                    </th>
-                    <th class="pb-3">
-                      Track
-                    </th>
-                    <th class="pb-3">
-                      更新时间
-                    </th>
-                    <th class="pb-3">
-                      操作
-                    </th>
-                  </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100 dark:divide-dark-900/80">
-                  <tr
-                    v-for="item in items"
-                    :key="item.id"
-                  >
-                    <td class="py-3 pr-4 align-top">
-                      <div class="font-medium text-gray-900 dark:text-white">
-                        <button
-                          type="button"
-                          class="text-left hover:text-primary-600 dark:hover:text-primary-300"
-                          @click="openDocumentDetail(item)"
-                        >
-                          {{ item.file_path || item.id }}
-                        </button>
-                      </div>
-                      <div class="mt-1 text-xs text-gray-500 dark:text-dark-400">
-                        {{ item.content_summary || '暂无摘要' }}
-                      </div>
-                      <div
-                        v-if="item.error_msg"
-                        class="mt-2 text-xs text-rose-500"
-                      >
-                        {{ item.error_msg }}
-                      </div>
-                    </td>
-                    <td class="py-3 pr-4 align-top">
-                      <StatusPill :tone="statusTone(item.status)">
-                        {{ item.status }}
-                      </StatusPill>
-                    </td>
-                    <td class="py-3 pr-4 align-top">
-                      <button
-                        v-if="item.track_id"
-                        type="button"
-                        class="text-xs font-medium text-primary-600 hover:text-primary-500 dark:text-primary-300"
-                        @click="selectedTrackId = item.track_id || ''"
-                      >
-                        {{ shortId(item.track_id || '') }}
-                      </button>
+          <TablePageLayout>
+            <template #filters>
+              <FilterToolbar>
+                <div class="grid gap-4 xl:grid-cols-[minmax(220px,280px)_minmax(0,1fr)]">
+                  <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-dark-200">
+                    文档筛选
+                    <BaseSelect v-model="statusFilter">
+                      <option value="">
+                        全部状态
+                      </option>
+                      <option value="PENDING">
+                        PENDING
+                      </option>
+                      <option value="PROCESSING">
+                        PROCESSING
+                      </option>
+                      <option value="PREPROCESSED">
+                        PREPROCESSED
+                      </option>
+                      <option value="PROCESSED">
+                        PROCESSED
+                      </option>
+                      <option value="FAILED">
+                        FAILED
+                      </option>
+                    </BaseSelect>
+                  </label>
+                  <div class="flex items-end text-sm leading-6 text-gray-500 dark:text-dark-300">
+                    文档列表统一回到平台列表页母版，筛选、表格和分页都使用共享组件，不再单页手写。
+                  </div>
+                </div>
+              </FilterToolbar>
+            </template>
+
+            <template #table>
+              <DataTable
+                :columns="columns"
+                :rows="documentRows"
+                :loading="loading"
+                row-key="id"
+                sort-storage-key="pw:knowledge-documents:sort"
+                column-storage-key="pw:knowledge-documents:columns"
+                empty-title="当前项目还没有知识文档"
+                empty-description="你可以先上传文档，或触发一次目录扫描，让项目知识空间开始建立自己的文档集合。"
+                empty-icon="file"
+              >
+                <template #cell-file_path="{ row }">
+                  <div class="min-w-0 max-w-[44rem]">
+                    <button
+                      type="button"
+                      class="block w-full text-left text-sm font-semibold text-gray-900 transition hover:text-primary-600 dark:text-white dark:hover:text-primary-300"
+                      @click="openDocumentDetail(documentFromRow(row))"
+                    >
+                      {{ documentFromRow(row).file_path || documentFromRow(row).id }}
+                    </button>
+                    <div class="mt-2 flex flex-wrap gap-2 text-[11px] text-gray-500 dark:text-dark-400">
+                      <span class="rounded-full bg-gray-100 px-2 py-1 dark:bg-dark-800">
+                        id {{ shortId(documentFromRow(row).id) }}
+                      </span>
                       <span
-                        v-else
-                        class="text-xs text-gray-400"
-                      >--</span>
-                    </td>
-                    <td class="py-3 pr-4 align-top text-xs text-gray-500 dark:text-dark-400">
-                      {{ formatDateTime(item.updated_at) }}
-                    </td>
-                    <td class="py-3 align-top">
-                      <BaseButton
-                        variant="ghost"
-                        :disabled="!canWrite || actionLoading"
-                        @click="requestDelete(item)"
+                        v-if="typeof documentFromRow(row).chunks_count === 'number'"
+                        class="rounded-full bg-gray-100 px-2 py-1 dark:bg-dark-800"
                       >
-                        删除
-                      </BaseButton>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <div class="mt-4 flex items-center justify-between text-xs text-gray-500 dark:text-dark-400">
-              <span>共 {{ total }} 条 · 第 {{ page }} / {{ totalPages }} 页</span>
-              <div class="flex gap-2">
-                <BaseButton
-                  variant="secondary"
-                  :disabled="page <= 1"
-                  @click="page -= 1"
-                >
-                  上一页
-                </BaseButton>
-                <BaseButton
-                  variant="secondary"
-                  :disabled="page >= totalPages"
-                  @click="page += 1"
-                >
-                  下一页
-                </BaseButton>
-              </div>
-            </div>
-          </SurfaceCard>
+                        chunks {{ documentFromRow(row).chunks_count }}
+                      </span>
+                      <span class="rounded-full bg-gray-100 px-2 py-1 dark:bg-dark-800">
+                        {{ documentFromRow(row).content_length }} chars
+                      </span>
+                    </div>
+                    <div class="mt-2 whitespace-pre-wrap break-words text-xs leading-6 text-gray-500 dark:text-dark-400">
+                      {{ documentFromRow(row).content_summary || '暂无摘要' }}
+                    </div>
+                    <div
+                      v-if="documentFromRow(row).error_msg"
+                      class="mt-2 whitespace-pre-wrap break-words rounded-2xl border border-rose-200 bg-rose-50/80 px-3 py-2 text-xs leading-6 text-rose-600 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-300"
+                    >
+                      {{ documentFromRow(row).error_msg }}
+                    </div>
+                  </div>
+                </template>
+
+                <template #cell-status="{ row }">
+                  <StatusPill :tone="statusTone(documentFromRow(row).status)">
+                    {{ documentFromRow(row).status }}
+                  </StatusPill>
+                </template>
+
+                <template #cell-track_id="{ row }">
+                  <button
+                    v-if="documentFromRow(row).track_id"
+                    type="button"
+                    class="text-left text-xs font-medium text-primary-600 hover:text-primary-500 dark:text-primary-300"
+                    @click="selectedTrackId = documentFromRow(row).track_id || ''"
+                  >
+                    {{ shortId(documentFromRow(row).track_id || '') }}
+                  </button>
+                  <span
+                    v-else
+                    class="text-xs text-gray-400"
+                  >--</span>
+                </template>
+
+                <template #cell-updated_at="{ row }">
+                  <span class="text-xs text-gray-500 dark:text-dark-400">
+                    {{ formatDateTime(documentFromRow(row).updated_at) }}
+                  </span>
+                </template>
+
+                <template #cell-actions="{ row }">
+                  <BaseButton
+                    variant="ghost"
+                    :disabled="!canWrite || actionLoading"
+                    @click="requestDelete(documentFromRow(row))"
+                  >
+                    删除
+                  </BaseButton>
+                </template>
+              </DataTable>
+            </template>
+
+            <template
+              v-if="pagination.total.value > 0"
+              #footer
+            >
+              <PaginationBar
+                :total="pagination.total.value"
+                :page="pagination.page.value"
+                :page-size="pagination.pageSize.value"
+                :disabled="loading || actionLoading"
+                @update:page="pagination.setPage"
+                @update:page-size="pagination.setPageSize"
+              />
+            </template>
+          </TablePageLayout>
         </template>
       </div>
 
@@ -778,13 +899,17 @@ watch(
         <div class="space-y-4">
           <div class="grid gap-4 md:grid-cols-2">
             <div class="rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-3 dark:border-dark-800 dark:bg-dark-900/70">
-              <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">文件</div>
+              <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
+                文件
+              </div>
               <div class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
                 {{ selectedDocument.file_path || selectedDocument.id }}
               </div>
             </div>
             <div class="rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-3 dark:border-dark-800 dark:bg-dark-900/70">
-              <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">状态</div>
+              <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
+                状态
+              </div>
               <div class="mt-2">
                 <StatusPill :tone="statusTone(selectedDocument.status)">
                   {{ selectedDocument.status }}
@@ -792,13 +917,17 @@ watch(
               </div>
             </div>
             <div class="rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-3 dark:border-dark-800 dark:bg-dark-900/70">
-              <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">Track</div>
+              <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
+                Track
+              </div>
               <div class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
                 {{ selectedDocument.track_id || '--' }}
               </div>
             </div>
             <div class="rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-3 dark:border-dark-800 dark:bg-dark-900/70">
-              <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">更新时间</div>
+              <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
+                更新时间
+              </div>
               <div class="mt-2 text-sm font-medium text-gray-900 dark:text-white">
                 {{ formatDateTime(selectedDocument.updated_at) }}
               </div>
@@ -806,14 +935,18 @@ watch(
           </div>
 
           <div class="rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-4 dark:border-dark-800 dark:bg-dark-900/70">
-            <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">解析摘要</div>
+            <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
+              解析摘要
+            </div>
             <div class="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-700 dark:text-dark-200">
               {{ String((selectedDocumentDetail?.content_summary as string) || selectedDocument.content_summary || '当前没有更详细的内容摘要。') }}
             </div>
           </div>
 
           <div class="rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-4 dark:border-dark-800 dark:bg-dark-900/70">
-            <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">全文</div>
+            <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
+              全文
+            </div>
             <div class="mt-3 whitespace-pre-wrap text-sm leading-6 text-gray-700 dark:text-dark-200">
               {{ String((selectedDocumentDetail?.full_content as string) || '当前接口还没有返回完整全文。') }}
             </div>
@@ -823,7 +956,9 @@ watch(
             v-if="Array.isArray(selectedDocumentDetail?.chunks) && selectedDocumentDetail?.chunks.length"
             class="rounded-2xl border border-gray-100 bg-gray-50/80 px-4 py-4 dark:border-dark-800 dark:bg-dark-900/70"
           >
-            <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">Chunks</div>
+            <div class="text-xs uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
+              Chunks
+            </div>
             <div class="mt-3 space-y-3">
               <div
                 v-for="chunk in (selectedDocumentDetail?.chunks as Array<Record<string, unknown>>)"

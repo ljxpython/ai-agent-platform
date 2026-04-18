@@ -4,6 +4,8 @@ import {
   resolveAuthorizedAccessToken,
 } from '@/services/http/client'
 import type {
+  KnowledgeMetadataBoost,
+  KnowledgeMetadataFilters,
   KnowledgeDocumentsPage,
   KnowledgeDocumentsScanProgress,
   KnowledgePipelineStatus,
@@ -12,6 +14,27 @@ import type {
   ManagementOperation,
   ProjectKnowledgeSpace
 } from '@/types/management'
+
+type KnowledgeQueryRequestPayload = {
+  query: string
+  mode?: string
+  only_need_context?: boolean
+  only_need_prompt?: boolean
+  response_type?: string
+  stream?: boolean
+  top_k?: number
+  chunk_top_k?: number
+  max_entity_tokens?: number
+  max_relation_tokens?: number
+  max_total_tokens?: number
+  user_prompt?: string
+  enable_rerank?: boolean
+  include_references?: boolean
+  include_chunk_content?: boolean
+  metadata_filters?: KnowledgeMetadataFilters
+  metadata_boost?: KnowledgeMetadataBoost
+  strict_scope?: boolean
+}
 
 function buildHeaders(projectId: string) {
   return {
@@ -40,13 +63,18 @@ export async function refreshProjectKnowledgeSpace(projectId: string): Promise<P
 
 export async function uploadProjectKnowledgeDocument(
   projectId: string,
-  file: File
+  file: File,
+  metadata?: {
+    tags?: string[]
+    attributes?: Record<string, string>
+  }
 ): Promise<Record<string, unknown>> {
   const response = await platformHttpClient.post(resolveEndpoint(projectId, '/documents/upload'), file, {
     headers: {
       ...buildHeaders(projectId),
       'content-type': file.type || 'application/octet-stream',
-      'x-knowledge-filename': encodeURIComponent(file.name)
+      'x-knowledge-filename': encodeURIComponent(file.name),
+      ...(metadata ? { 'x-knowledge-metadata': JSON.stringify(metadata) } : {}),
     }
   })
   return response.data as Record<string, unknown>
@@ -177,23 +205,7 @@ export async function getProjectKnowledgeDocumentDetail(
 
 export async function queryProjectKnowledge(
   projectId: string,
-  payload: {
-    query: string
-    mode?: string
-    only_need_context?: boolean
-    only_need_prompt?: boolean
-    response_type?: string
-    stream?: boolean
-    top_k?: number
-    chunk_top_k?: number
-    max_entity_tokens?: number
-    max_relation_tokens?: number
-    max_total_tokens?: number
-    user_prompt?: string
-    enable_rerank?: boolean
-    include_references?: boolean
-    include_chunk_content?: boolean
-  }
+  payload: KnowledgeQueryRequestPayload
 ): Promise<KnowledgeQueryResult> {
   const response = await platformHttpClient.post(resolveEndpoint(projectId, '/query'), payload, {
     headers: buildHeaders(projectId)
@@ -203,23 +215,7 @@ export async function queryProjectKnowledge(
 
 export async function streamProjectKnowledgeQuery(
   projectId: string,
-  payload: {
-    query: string
-    mode?: string
-    only_need_context?: boolean
-    only_need_prompt?: boolean
-    response_type?: string
-    stream?: boolean
-    top_k?: number
-    chunk_top_k?: number
-    max_entity_tokens?: number
-    max_relation_tokens?: number
-    max_total_tokens?: number
-    user_prompt?: string
-    enable_rerank?: boolean
-    include_references?: boolean
-    include_chunk_content?: boolean
-  },
+  payload: KnowledgeQueryRequestPayload,
   handlers: {
     onReferences?: (references: KnowledgeQueryResult['references']) => void
     onChunk: (chunk: string) => void

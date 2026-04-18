@@ -17,6 +17,17 @@ export type KnowledgeQuerySettings = {
   only_need_prompt: boolean
   enable_rerank: boolean
   user_prompt: string
+  metadata_filters?: {
+    tags_any?: string[]
+    tags_all?: string[]
+    attributes?: Record<string, string | string[]>
+  }
+  metadata_boost?: {
+    tags_any?: string[]
+    attributes?: Record<string, string | string[]>
+    weight?: number
+  }
+  strict_scope?: boolean
 }
 
 const props = defineProps<{
@@ -41,14 +52,64 @@ const defaults: KnowledgeQuerySettings = {
   only_need_prompt: false,
   enable_rerank: true,
   user_prompt: '',
+  metadata_filters: {
+    tags_any: [],
+    tags_all: [],
+    attributes: {},
+  },
+  metadata_boost: undefined,
+  strict_scope: false,
 }
 
 const presetPrompts = computed(() => props.recentPrompts.filter((item) => item.trim()).slice(0, 8))
+const tagsAnyText = computed(() => (props.modelValue.metadata_filters?.tags_any || []).join(', '))
+const layerValue = computed(() => {
+  const value = props.modelValue.metadata_filters?.attributes?.layer
+  if (Array.isArray(value)) {
+    return String(value[0] || '')
+  }
+  return typeof value === 'string' ? value : ''
+})
 
 function update<K extends keyof KnowledgeQuerySettings>(key: K, value: KnowledgeQuerySettings[K]) {
   emit('update:modelValue', {
     ...props.modelValue,
     [key]: value,
+  })
+}
+
+function updateMetadataFilters(next: KnowledgeQuerySettings['metadata_filters']) {
+  update('metadata_filters', {
+    tags_any: next?.tags_any || [],
+    tags_all: next?.tags_all || [],
+    attributes: next?.attributes || {},
+  })
+}
+
+function updateTagsAny(raw: string) {
+  const tags = raw
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  updateMetadataFilters({
+    ...(props.modelValue.metadata_filters || {}),
+    tags_any: tags,
+  })
+}
+
+function updateLayer(raw: string) {
+  const nextAttributes = { ...((props.modelValue.metadata_filters?.attributes as Record<string, string | string[]>) || {}) }
+  const normalized = raw.trim()
+  if (normalized) {
+    nextAttributes.layer = normalized
+  } else {
+    delete nextAttributes.layer
+  }
+
+  updateMetadataFilters({
+    ...(props.modelValue.metadata_filters || {}),
+    attributes: nextAttributes,
   })
 }
 
@@ -160,6 +221,43 @@ function reset() {
       </label>
     </div>
 
+    <div class="space-y-4 rounded-2xl border border-dashed border-gray-200 p-4 dark:border-dark-700">
+      <div>
+        <div class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
+          Retrieval Scope
+        </div>
+        <div class="mt-2 text-sm text-gray-600 dark:text-dark-300">
+          用通用 metadata filters 缩小检索范围；当前只是 target-state UI，对应后端能力需要上游同步支持。
+        </div>
+      </div>
+
+      <div class="grid gap-4 md:grid-cols-2">
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-dark-200 md:col-span-2">
+          tags_any（逗号分隔）
+          <input
+            :value="tagsAnyText"
+            type="text"
+            class="pw-input"
+            placeholder="architecture, storage"
+            @input="updateTagsAny(($event.target as HTMLInputElement).value)"
+          >
+        </label>
+
+        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-dark-200">
+          layer
+          <BaseSelect
+            :model-value="layerValue"
+            @update:model-value="updateLayer(String($event || ''))"
+          >
+            <option value="">全部层级</option>
+            <option value="infrastructure">infrastructure</option>
+            <option value="application">application</option>
+            <option value="component">component</option>
+          </BaseSelect>
+        </label>
+      </div>
+    </div>
+
     <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-dark-200">
       自定义 user prompt
       <textarea
@@ -227,6 +325,15 @@ function reset() {
           @change="update('enable_rerank', ($event.target as HTMLInputElement).checked)"
         >
         <span class="break-words">enable_rerank</span>
+      </label>
+      <label class="flex min-w-0 items-start gap-2 rounded-lg bg-gray-50 px-3 py-2 text-sm leading-5 text-gray-700 dark:bg-dark-800/70 dark:text-dark-200">
+        <input
+          :checked="Boolean(modelValue.strict_scope)"
+          type="checkbox"
+          class="mt-0.5 shrink-0"
+          @change="update('strict_scope', ($event.target as HTMLInputElement).checked)"
+        >
+        <span class="break-words">strict_scope</span>
       </label>
     </div>
   </SurfaceCard>

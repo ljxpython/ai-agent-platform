@@ -31,6 +31,12 @@ const DEFAULT_SETTINGS: KnowledgeQuerySettings = {
   only_need_prompt: false,
   enable_rerank: true,
   user_prompt: '',
+  metadata_filters: {
+    tags_any: [],
+    tags_all: [],
+    attributes: {},
+  },
+  strict_scope: false,
 }
 
 const { projectId, project } = useKnowledgeProjectRoute()
@@ -43,8 +49,27 @@ const result = ref<KnowledgeQueryResult | null>(null)
 const querySettings = ref<KnowledgeQuerySettings>({ ...DEFAULT_SETTINGS })
 const recentQueries = ref<string[]>([])
 const recentPrompts = ref<string[]>([])
-const retrievalHistory = ref<Array<{ query: string; response: string; createdAt: string }>>([])
+const retrievalHistory = ref<Array<{ query: string; response: string; createdAt: string; scopeSummary?: string }>>([])
 const canRead = computed(() => authorization.can('project.knowledge.read', projectId.value))
+const activeScopeSummary = computed(() => {
+  const segments: string[] = []
+  const tags = querySettings.value.metadata_filters?.tags_any?.filter((item) => item.trim()) || []
+  if (tags.length) {
+    segments.push(`tags_any=${tags.join(', ')}`)
+  }
+
+  const layerValue = querySettings.value.metadata_filters?.attributes?.layer
+  const layer = Array.isArray(layerValue) ? String(layerValue[0] || '') : typeof layerValue === 'string' ? layerValue : ''
+  if (layer.trim()) {
+    segments.push(`layer=${layer}`)
+  }
+
+  if (querySettings.value.strict_scope) {
+    segments.push('strict_scope=true')
+  }
+
+  return segments.length ? segments.join(' · ') : '全项目默认范围'
+})
 
 function projectStorageKey(suffix: string) {
   return `pw:knowledge:${projectId.value || 'none'}:${suffix}`
@@ -195,6 +220,7 @@ async function runQuery() {
           query: query.value.trim(),
           response: result.value.response,
           createdAt: new Date().toISOString(),
+          scopeSummary: activeScopeSummary.value,
         },
         ...retrievalHistory.value.filter((item) => item.query !== query.value.trim()),
       ].slice(0, 12)
@@ -228,7 +254,7 @@ watch(
 </script>
 
 <template>
-  <section class="pw-page-shell">
+  <section class="pw-page-shell flex h-full min-h-0 flex-col overflow-y-auto">
     <PageHeader
       eyebrow="Knowledge"
       :title="project ? `${project.name} · 知识检索` : '知识检索'"
@@ -255,7 +281,7 @@ watch(
       variant="danger"
     />
 
-    <div class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
+    <div class="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)] xl:items-start">
       <div class="space-y-4">
         <SurfaceCard>
           <div class="space-y-4">
@@ -305,6 +331,11 @@ watch(
             <div class="text-xs font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
               响应结果
             </div>
+            <div class="mt-3">
+              <span class="inline-flex rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-xs text-primary-700 dark:border-primary-900/60 dark:bg-primary-950/30 dark:text-primary-300">
+                {{ activeScopeSummary }}
+              </span>
+            </div>
             <div class="mt-3 whitespace-pre-wrap text-sm leading-7 text-gray-700 dark:text-dark-200">
               {{ result.response }}
             </div>
@@ -337,6 +368,12 @@ watch(
               </div>
               <div class="mt-1 text-xs text-gray-400 dark:text-dark-500">
                 {{ new Date(item.createdAt).toLocaleString() }}
+              </div>
+              <div
+                v-if="item.scopeSummary"
+                class="mt-2 text-xs text-primary-700 dark:text-primary-300"
+              >
+                {{ item.scopeSummary }}
               </div>
               <div class="mt-2 line-clamp-3 text-sm leading-6 text-gray-600 dark:text-dark-300">
                 {{ item.response }}
