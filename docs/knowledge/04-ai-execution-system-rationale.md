@@ -216,9 +216,9 @@ B1/B2/B3 是 workflow depth / execution band：
 
 它可以帮助执行，但不应该成为 canonical source of truth。
 
-### 5.2 如果未来引入 root AGENTS.md，也只能做 thin routing
+### 5.2 root AGENTS.md 只能做 thin routing
 
-如果以后仓库根部真的引入 `AGENTS.md`，它应该只承担轻量路由角色，例如：
+现在仓库根部已经引入 `AGENTS.md`，但它只承担轻量路由角色，例如：
 
 - 指向现行标准入口
 - 指向知识入口

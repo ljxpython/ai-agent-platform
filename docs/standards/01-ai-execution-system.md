@@ -5,6 +5,9 @@
 
 如果你只需要背景原理，去读 `docs/development-paradigm.md` 和 `docs/knowledge/02-aitestlab-harness-blueprint.md`。  
 如果你要做当前标准判断，先读本文。
+如果你要看“以后实际该怎么给 AI 提任务、怎么按这套体系完成事情”，再读：
+
+- `docs/ai-execution-system-usage-guide.md`
 
 ---
 
@@ -30,12 +33,13 @@
 
 ### 0.2 root `AGENTS.md` 事实
 
-当前版本化仓库树里**没有 root `AGENTS.md`**；现有的 `AGENTS.md` 只出现在 `.omx/` 的会话或备份路径里。  
-所以这里不是“root AGENTS 统领一切”的模式，而是：
+当前版本化仓库树里已经有 **root `AGENTS.md`**，但它是 **thin routing only**。
+所以这里的角色分工是：
 
-- 本文负责 current-standard 路由
-- leaf 文档负责 leaf 本地事实
-- `.omx` 负责运行态协作，不负责域政策
+- root `AGENTS.md`：薄路由与执行门禁
+- 本文：current-standard
+- leaf 文档：leaf 本地事实
+- `.omx`：运行态协作与 helper surfaces，不负责域政策
 
 ---
 
