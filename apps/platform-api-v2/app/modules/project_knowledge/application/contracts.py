@@ -22,6 +22,22 @@ class DocumentsPageQuery(BaseModel):
     sort_direction: str = Field(default='desc', pattern='^(asc|desc)$')
 
 
+class KnowledgeMetadataFilters(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    tags_any: list[str] = Field(default_factory=list)
+    tags_all: list[str] = Field(default_factory=list)
+    attributes: dict[str, Any] = Field(default_factory=dict)
+
+
+class KnowledgeMetadataBoost(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    tags_any: list[str] = Field(default_factory=list)
+    attributes: dict[str, Any] = Field(default_factory=dict)
+    weight: float | None = None
+
+
 class ProjectKnowledgeQueryRequest(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -43,6 +59,9 @@ class ProjectKnowledgeQueryRequest(BaseModel):
     include_references: bool | None = True
     include_chunk_content: bool | None = False
     stream: bool | None = False
+    metadata_filters: KnowledgeMetadataFilters | None = None
+    metadata_boost: KnowledgeMetadataBoost | None = None
+    strict_scope: bool | None = None
 
 
 class ProjectKnowledgeEntityUpdateRequest(BaseModel):

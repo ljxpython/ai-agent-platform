@@ -29,6 +29,7 @@ SYSTEM_PROMPT = """
 - `query_project_knowledge` 是默认主入口
 - `list_project_knowledge_documents` 只在需要确认文档范围或筛选 `document_id` 时使用
 - `get_project_knowledge_document_status` 只在怀疑文档尚未完成索引或排查检索异常时使用
+- 当用户问题已经明确指向某个知识域（如底层架构、应用层、特定模块）且工具契约支持时，优先带通用 `metadata_filters` 约束查询范围
 - 不得臆造项目知识库中的事实；文档证据不足时，先查知识库，再给结论
 - 当前轮附件已经足够时，直接基于附件分析，不要机械补查空知识库
 

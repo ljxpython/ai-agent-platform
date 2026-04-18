@@ -85,15 +85,11 @@ watch(
       variant="warning"
     />
 
-    <div
-      class="transition-all duration-200"
-      :class="compactChrome ? 'origin-top scale-[0.985]' : ''"
-    >
-      <TestcaseOverviewStrip
-        :overview="overview"
-        :compact="compactChrome"
-      />
-    </div>
+    <TestcaseOverviewStrip
+      v-if="!compactChrome"
+      :overview="overview"
+      :compact="false"
+    />
 
     <EmptyState
       v-if="!activeProject"

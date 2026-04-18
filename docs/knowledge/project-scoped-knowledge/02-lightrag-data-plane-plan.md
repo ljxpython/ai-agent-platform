@@ -2,105 +2,280 @@
 
 ## 1. 文档目的
 
-本文只讨论 LightRAG 数据面应该怎么改，目标是把它从“单实例知识服务”收口成“可被 AITestLab 按项目安全复用的 knowledge data plane”。
+本文聚焦 LightRAG 数据面，并明确区分：
 
-## 2. 当前问题基线
+- **Current reality**：当前 LightRAG / AITestLab 公开契约现状
+- **Historical baseline（2026-04-12）**：曾经默认以 multi-workspace 为主路径的数据面思路
+- **Preferred future default**：如果可改上游，默认补齐 generic metadata-aware retrieval
 
-外部参考代码和设计稿已经给出两个关键事实：
+## 2. Current reality
 
-- LightRAG 已支持 `LIGHTRAG-WORKSPACE` 请求头解析（外部参考：`lightrag/api/lightrag_server.py:458-486`）
-- 但当前 API server 仍然以单个 `rag = LightRAG(...)` 实例初始化为中心（外部参考：`lightrag/api/lightrag_server.py:1254-1289`）
+### 2.1 当前已成立的能力
 
-LightRAG 自己的拆分稿也明确指出了现状问题：
+当前公开链路中已存在：
 
-- `workspace` 还没在所有关键 API 路径里统一生效
-- 许多流程仍偏向实例默认 workspace
-- 请求级多 workspace 还没有形成统一解析和实例复用机制
-- status 类接口需要继续核对作用域一致性
+- `LIGHTRAG-WORKSPACE` / workspace 物理隔离语义
+- AITestLab 侧 `project_id -> workspace_key` 映射
+- documents / query / graph 基于项目默认 workspace 的消费链路
 
-见外部参考：`docs/aitestlab-knowledge-lightrag-task-breakdown.md:52-97`。
+### 2.2 当前尚未成立的能力
 
-## 3. Phase 1 目标
+当前公开 HTTP API **没有** 暴露：
 
-把 LightRAG 变成：
+- 文档写入时的通用 metadata/tag 字段
+- 查询时的 `filters` / `metadata_filter` / `domain_filter`
+- soft boost / hard filter 的 query contract
 
-> **request-scoped multi-workspace knowledge data plane**
+因此本文后续关于 metadata-aware retrieval 的内容都属于 **target state**。
 
-Phase 1 完成标志：
+## 3. Historical baseline（2026-04-12）
 
-- 同一服务实例可承载多个 workspace
-- 上传、查询、图谱、删除、状态跟踪都不串 workspace
-- 平台 human-facing path 只需要传 `LIGHTRAG-WORKSPACE`
+此前的默认方向是：
 
-## 4. 推荐技术路线
+> 把 LightRAG 优先收口成 request-scoped multi-workspace knowledge data plane
 
-### 4.1 不做全链路手工传 workspace
+这在 2026-04-12 是合理的，因为当时：
 
-外部参考设计稿已经给出较合理方向：不要把整个 LightRAG 改成每个函数都显式传 `workspace`，而是在 API server 层引入 `workspace -> LightRAG instance` 的管理器（外部参考：`docs/aitestlab-knowledge-lightrag-task-breakdown.md:74-97`）。
+- workspace 是现成可用的硬隔离原语
+- metadata-aware retrieval 能力尚不存在
+- 使用多 workspace 可以快速证明隔离可控
 
-当前建议继续沿这条线：
+该路径现在被重新定位为：
 
-- 统一 header 解析与清洗
-- 引入 `LightRAGWorkspaceManager`
-- 每个请求先确定 workspace，再获取/创建对应 `LightRAG` 实例
-- 共享不可变配置，隔离 workspace 级存储与状态
+- **历史已验证基线**
+- **fallback**
+- **非默认主方案**
 
-### 4.2 第一阶段最少要完成的 LightRAG 任务
+## 4. Preferred future default
 
-- [x] 统一 request workspace 解析逻辑
-- [x] 引入 workspace manager / registry
-- [x] 覆盖 documents / query / graph / health / status 关键接口
-- [x] 固化 `track_status / pipeline_status / doc_status` 的 workspace 一致性
-- [x] 明确平台侧 service-to-service auth 边界
-- [x] 补最少两个 workspace 的 smoke test
+### 4.1 默认目标
 
-## 5. AITestLab 对 LightRAG 的输入契约
+如果可修改 LightRAG，首选补齐以下**通用**能力：
 
-AITestLab 第一阶段只向 LightRAG 施加这些输入约束：
+#### Ingest side
+- 文档 metadata/tag 写入
+- 文本与文件统一承载 metadata
 
-- `workspace_key`
-- service auth
-- human-facing path 里的请求参数
+#### Query side
+- metadata/tag filter
+- soft boost / hard filter
+- 面向 references / chunks / graph retrieval 的一致语义
 
-AITestLab 不把这些内容塞进 LightRAG：
+### 4.2 设计原则
 
-- 平台用户
-- 项目成员
-- 项目权限
-- 审计逻辑
-- 页面/导航壳层
+1. `workspace` 保持为项目/租户级物理隔离
+2. metadata/tag/filter 负责项目内知识域隔离
+3. 上游协议只提供**通用能力**，不内置 AITestLab 私有 taxonomy
+4. 现有 consumers 不被迫学习 workspace 细节
 
-## 6. 与后续 MCP 方向的关系
+## 5. 目标能力分层
 
-future runtime-side path 不走 `platform-api-v2` 的统一程序化 API，而走 **LightRAG MCP**。这对 LightRAG 有两个隐含要求：
+### 5.1 Metadata write model（target state）
 
-1. Phase 1 就不要把平台 UI 接口与 runtime tool 接口写死耦合在一起
-2. workspace / status / document query 这些核心能力以后要能同时服务 HTTP facade 和 MCP tool facade
+LightRAG 应支持在 ingest 时附带类似结构：
 
-因此推荐把未来 MCP 视为 **Phase 2**：
+```json
+{
+  "metadata": {
+    "tags": ["architecture", "storage"],
+    "attributes": {
+      "domain": "architecture",
+      "layer": "infrastructure",
+      "module": "storage"
+    }
+  }
+}
+```
 
-- Phase 1：先把 HTTP data plane 收口好
-- Phase 2：在同一数据面上加 MCP 工具层
+要求：
 
-## 7. Phase 2：LightRAG MCP 化方向
+- 协议是通用的
+- tags/attributes 只是例子，不是 AITestLab 强绑定字段
+- 公开能力不依赖 AITestLab 私有命名
 
-后续 MCP 需要至少满足：
+### 5.2 Query filter model（target state）
 
-- runtime caller 不直接拼 `workspace_key`
-- 工具输入以 `project_id` 或等价平台主标识为主，而不是让业务代码散落 workspace 规则
-- 文档查询、文档列表、索引状态、图谱/检索能力有稳定工具面
-- tool message 返回值可被现有 LangGraph / agent 链路稳定消费
+LightRAG 应支持类似：
 
-### 当前未决问题
+```json
+{
+  "query": "explain current storage architecture",
+  "filters": {
+    "tags_any": ["architecture"],
+    "attributes": {
+      "layer": ["infrastructure"],
+      "module": ["storage"]
+    }
+  }
+}
+```
 
-这里仍有一个后续阶段必须明确的问题：
+### 5.3 Retrieval behavior
 
-> 当 runtime-service 通过 LightRAG MCP 使用项目知识时，`project_id -> workspace_key` 的映射由谁在工具面内部解析？
+至少区分：
 
-当前建议把它记录为 **Phase 2 决策项**，不要把这个问题反向阻塞当前 Phase 1 的 human-facing control-plane 建设。
+- **hard filter**：严格只检索满足条件的候选
+- **soft boost**：候选可跨域，但优先本域结果
 
-## 8. 不建议做的事
+## 6. AITestLab 对 LightRAG 的要求
 
-- 现在就把 LightRAG 直接变成平台治理服务
-- 现在就为 future multi-knowledge / shared knowledge 做过重资源模型
-- 现在就为了 runtime consumption 反向设计平台 facade
+AITestLab 对上游的要求应保持通用：
+
+- 支持 metadata on ingest
+- 支持 metadata-aware retrieval
+- 支持明确的 filter/boost 语义
+
+AITestLab **不应**要求上游：
+
+- 理解 `domain/layer/module` 是平台专有概念
+- 内置平台自定义 taxonomy
+
+## 7. Fallback：什么时候退回 multi-workspace
+
+只有在以下情形下，才把 multi-workspace 作为 fallback：
+
+1. 上游不愿提供通用 metadata-aware retrieval
+2. 上游可提供，但检索污染在关键场景仍无法接受
+3. 某些知识域必须做硬隔离，soft boost / hard filter 仍不够稳
+
+此时 multi-workspace 仍然是可用路径，但应明确标为：
+
+- fallback
+- 非默认
+
+## 8. 对后续 MCP 的影响
+
+future runtime-side MCP 仍应围绕：
+
+- `project_id`
+- 通用 query filter / retrieval scope
+
+而不是让 MCP 调用方显式管理 workspace 分片策略。
+
+## 9. 结论
+
+本文件的正式结论是：
+
+- 今天的现实：workspace 是现成能力，metadata-aware retrieval 尚未公开可用
+- 2026-04-12 的 multi-workspace 路线：历史基线 + fallback
+- 未来默认：单 workspace + generic metadata-aware retrieval
+
+## 10. 接口字段最终建议版（v1）
+
+> 目标：给出一版足够稳定、足够通用、同时避免 AITestLab 私有语义泄漏的字段命名建议。
+>
+> 说明：本节仍然属于 **target state**，不是 current reality。
+
+### 10.1 设计目标
+
+字段命名应满足：
+
+1. **通用**：不绑定 AITestLab 私有 taxonomy
+2. **可扩展**：未来可支持更多 metadata 维度
+3. **前后端一致**：LightRAG / `platform-api-v2` / `platform-web-vue` / MCP 参数命名尽量对齐
+4. **最小惊讶**：不要同时引入 `scope` / `filter` / `selector` 三套近义模型
+
+### 10.2 推荐主字段
+
+#### Query request（v1）
+
+```json
+{
+  "query": "...",
+  "mode": "mix",
+  "metadata_filters": {
+    "tags_any": ["architecture"],
+    "tags_all": [],
+    "attributes": {
+      "layer": ["infrastructure"],
+      "module": ["storage"]
+    }
+  },
+  "metadata_boost": {
+    "tags_any": ["storage"],
+    "attributes": {
+      "domain": ["architecture"]
+    },
+    "weight": 1.5
+  },
+  "strict_scope": true
+}
+```
+
+#### Ingest request（v1）
+
+```json
+{
+  "metadata": {
+    "tags": ["architecture", "storage"],
+    "attributes": {
+      "layer": "infrastructure",
+      "module": "storage"
+    }
+  }
+}
+```
+
+### 10.3 字段选择理由
+
+#### `metadata_filters`
+选择它而不是 `filters` 的原因：
+- 避免和未来非 metadata 的过滤能力混淆
+- 直观表达“这是知识 metadata 层过滤”
+
+#### `metadata_boost`
+选择它而不是 `boosts` / `preferences` 的原因：
+- 语义直观：这是 metadata 层的排序偏置
+- 便于和 `metadata_filters` 配对理解
+
+#### `strict_scope`
+选择它而不是 `scope_mode` / `hard_filter` 的原因：
+- 最小布尔语义，易被前后端和 MCP 共用
+- `true/false` 易映射到“严格/偏好”交互
+
+### 10.4 不推荐的字段名
+
+不推荐：
+- `domain_filters`
+- `layer_filters`
+- `module_filters`
+- `scope_selector`
+- `knowledge_scope`
+- `knowledge_space_id`
+
+原因：
+- 容易把 AITestLab 私有 taxonomy 写进协议
+- 容易和“多 workspace / 多知识空间”语义误耦合
+
+### 10.5 `attributes` 的约束
+
+`attributes` 推荐保持：
+
+- key: `str`
+- value: `str | list[str]`
+
+这样可以兼容：
+- 单值维度
+- 多值候选
+- 上游通用 metadata 存储
+
+不建议在 v1 就引入：
+- range
+- regex
+- nested boolean expression
+
+### 10.6 v1 结论
+
+v1 正式建议字段集：
+
+- ingest：`metadata.tags`, `metadata.attributes`
+- query：`metadata_filters`, `metadata_boost`, `strict_scope`
+
+这个命名集应作为：
+
+- LightRAG target-state contract draft
+- `platform-api-v2` facade draft
+- `platform-web-vue` local state / payload draft
+- `test_case_service_v2` MCP tool parameter draft
+
+的统一参考口径。

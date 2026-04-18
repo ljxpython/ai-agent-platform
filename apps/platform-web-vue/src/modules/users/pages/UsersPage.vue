@@ -321,7 +321,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <section class="pw-page-shell">
+  <section class="pw-page-shell h-full min-h-0 overflow-y-auto">
     <PageHeader
       eyebrow="Users"
       title="用户管理"

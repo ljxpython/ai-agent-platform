@@ -154,7 +154,7 @@ watch(
 </script>
 
 <template>
-  <section class="pw-page-shell">
+  <section class="pw-page-shell h-full min-h-0 overflow-y-auto">
     <PageHeader
       eyebrow="Overview"
       title="Agent Platform 总览"

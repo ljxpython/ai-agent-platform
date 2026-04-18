@@ -34,6 +34,7 @@ class _RecordingKnowledgeUpstream:
         filename: str,
         content: bytes,
         content_type: str | None = None,
+        extra_headers: dict[str, str] | None = None,
     ) -> dict[str, object]:
         self.upload_calls.append(
             {
@@ -41,6 +42,7 @@ class _RecordingKnowledgeUpstream:
                 'filename': filename,
                 'content': content,
                 'content_type': content_type,
+                'extra_headers': extra_headers,
             }
         )
         return {'workspace_key': workspace_key, 'filename': filename}

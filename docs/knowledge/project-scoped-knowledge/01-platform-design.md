@@ -2,163 +2,161 @@
 
 ## 1. 文档目的
 
-这份文档定义 AITestLab 项目级知识库能力的正式边界。它回答的是：
+本文定义 AITestLab 项目级知识库能力在 2026-04-17 之后的正式口径，并明确区分三类内容：
 
-1. 为什么现在适合把知识库做成平台能力
-2. AITestLab 和 LightRAG 各自负责什么
-3. 第一阶段应该做到哪里，哪些先不做
-4. 为什么 future runtime-side consumption 要走 LightRAG MCP，而不是继续扩 platform API
+1. **Current reality**：今天已经成立的 repo 与公开契约事实
+2. **Historical baseline（2026-04-12）**：此前已验证、但不再作为默认推荐路径的 multi-workspace 基线
+3. **Preferred future default**：如果可修改 LightRAG，未来默认采用的单 workspace + metadata-aware retrieval 方案
 
-## 2. 当前代码事实
+## 2. Current reality
 
-### 2.1 AITestLab 已经具备 project-scoped control plane 基础
+### 2.1 AITestLab 现有边界
 
 当前仓库已经明确：
 
-- `platform-web-vue` 是正式前端宿主（`README.md:42-59`）
-- `platform-api-v2` 是正式控制面，负责治理与边界，而不是 Runtime 真执行（`docs/development-paradigm.md:58-79`, `apps/platform-api-v2/docs/handbook/project-handbook.md:32-51`）
-- 所有可查询数据必须可按 `project_id` 过滤（`docs/development-guidelines.md:30-35`）
-- `platform-api-v2` 已有 project-scoped gateway 组织范式（`apps/platform-api-v2/app/modules/runtime_gateway/presentation/http.py:17-65`）
-- `platform-web-vue` 已有唯一正式 workspace store 和 project route 模型（`apps/platform-web-vue/src/stores/workspace.ts:28-73`, `apps/platform-web-vue/src/router/routes.ts:28-48`）
+- `platform-web-vue` 是正式前端宿主
+- `platform-api-v2` 是正式控制面，负责治理、权限、审计、operation 边界
+- `runtime-service` 保持运行时项目上下文为 `project_id`
+- 当前项目知识模型仍是 `project_id -> workspace_key`
 
-### 2.2 LightRAG 已经具备 workspace 隔离基础，但还没完全平台化
+这些事实意味着：
 
-当前外部参考仓库 LightRAG 已有：
+- `project` 已经是稳定的治理边界
+- workspace 细节是 control-plane / data-plane 内部实现，不是前端或 runtime 的主语义
 
-- `LIGHTRAG-WORKSPACE` header 解析入口（外部参考：`lightrag/api/lightrag_server.py:458-486`）
-- 但服务仍以单个 `rag = LightRAG(...)` 初始化为中心（外部参考：`lightrag/api/lightrag_server.py:1254-1289`）
-- 其自身任务拆分稿也明确承认：workspace 还没有在所有关键 API 路径里统一生效，且实例复用/多 workspace 机制还没完全成型（外部参考：`docs/aitestlab-knowledge-lightrag-task-breakdown.md:52-97`）
+### 2.2 当前公开契约限制
 
-这意味着 LightRAG 已经有“对的隔离原语”，但还没有被收口成“可被 AITestLab 稳定接入的 project knowledge data plane”。
+截至本文更新时，AITestLab 与 LightRAG 公开 HTTP 契约里仍然**没有** metadata/tag/filter retrieval 字段：
 
-### 2.3 当前仓库已存在 runtime-side knowledge MCP 先例
+- `apps/platform-api-v2/app/modules/project_knowledge/application/contracts.py`
+- `apps/platform-web-vue/src/services/knowledge/knowledge.service.ts`
 
-`test_case_service` 现在已经通过私有知识库 MCP 工具接知识能力，而不是把知识检索当成平台公开业务 API 直接塞进 runtime-service 内部（`apps/runtime-service/runtime_service/services/test_case_service/DESIGN.md:66-127`）。
+因此任何关于 metadata-aware retrieval 的描述，都必须标成 **preferred future default / target state**，不能写成已实现事实。
 
-这为 future runtime-side integration 提供了一个重要方向：
+## 3. Historical baseline（2026-04-12）
 
-> future runtime-side consumption 可以优先走 MCP，而不是把平台控制面 API 和 runtime 程序化消费强行揉成一个入口。
+2026-04-12 那轮文档和计划把以下方向当成主路径：
 
-## 3. 总体目标
+- request-scoped multi-workspace data plane
+- dual-workspace isolation verification
+- multi-workspace 作为主要的项目级隔离/演进抓手
 
-目标不是把 LightRAG 当成一个独立产品嵌进 AITestLab，而是把它变成：
+这些内容仍然是**历史上真实存在并验证过的基线**，但现在的角色发生变化：
 
-> **AITestLab 项目级知识空间的数据面服务**
+- 它们不再是默认推荐路径
+- 它们只作为历史事实与 fallback 参考存在
 
-最终要形成两条明确链路：
+## 4. Preferred future default
+
+如果可以修改 LightRAG，AITestLab 的首选未来默认架构是：
 
 ```text
-Human-facing path
-platform-web-vue -> platform-api-v2 -> LightRAG
-
-Future runtime path
-runtime-service / other services -> LightRAG MCP -> LightRAG
+project = governance boundary
+workspace = default physical isolation
+metadata/tag/filter = intra-project retrieval isolation
 ```
 
-## 4. 角色边界
+### 4.1 为什么选这个默认
 
-### 4.1 AITestLab 负责
+因为用户真正要解决的是：
 
-- 项目上下文与 `project_id`
-- project-level permission / audit / operations
-- human-facing knowledge workspace UI
-- 控制面 API、错误映射、操作中心接入
-- `project_id -> workspace_key` 的治理侧绑定与维护
+- 同一项目内部，底层架构 / 应用层 / 组件 / 网络 / 存储 / 计算等知识域之间的串味
 
-### 4.2 LightRAG 负责
+这不是租户隔离问题，而是**项目内检索边界**问题。
 
-- 文档上传 / 解析 / chunk / 图谱 / 检索
-- workspace 级真实数据隔离
-- track / pipeline / status 等知识处理状态
-- future MCP 能力
+### 4.2 为什么不继续把 multi-workspace 当默认
 
-### 4.3 明确不放在 LightRAG 的内容
+把 multi-workspace 当默认会带来：
 
-- 平台用户体系
-- project membership / permission
-- 审计中心
-- 平台操作中心
-- control-plane navigation / page shell
+- 前端概念变重
+- control-plane 资源模型变重
+- runtime 更容易被 workspace 语义污染
+- 项目内多轴知识切分会快速碎片化
 
-## 5. 核心设计决策
+因此 multi-workspace 仅保留为 fallback。
 
-### 决策 A：知识库能力是 project-scoped，不是 assistant-scoped
+## 5. 角色边界
 
-当前第一阶段不做 assistant 与 knowledge base 的显式绑定关系。原因很简单：
+### 5.1 AITestLab 负责
 
-1. 现在先要解决的是 **项目级知识空间能不能稳定存在**
-2. assistant 绑定是第二层能力，会显著放大资源模型、权限和 UX 复杂度
-3. 用户已经明确第一阶段不把 assistant 作为知识库关系中心
+- `project_id` 治理主键
+- permission / audit / operations
+- 人工工作台
+- 对上游能力的消费与治理映射
 
-### 决策 B：第一阶段做“一项目一默认知识空间”
+### 5.2 LightRAG 负责
 
-第一阶段默认只落：
+- ingest / chunk / graph / retrieval
+- workspace 物理隔离
+- 如果可改，上游提供**通用** metadata-aware retrieval 能力：
+  - metadata write on ingest
+  - query filter
+  - soft boost / hard filter
 
-- 一个 project 对应一个默认 knowledge workspace
-- 一个正式 human-facing knowledge workspace
+### 5.3 明确拒绝的方向
 
-但这不等于永远不支持：
+**Rejected option**：
+- 把 AITestLab 私有的 `domain/layer/module` 语义硬编码进 LightRAG 协议字段或过滤协议
 
-- 多知识库绑定
-- 共享知识库 / 跨项目共享
+上游应提供的是**通用能力**，AITestLab 只消费并在本地定义自身 taxonomy。
 
-它们被明确定义为 **后续阶段**。
+## 6. Alternatives
 
-### 决策 C：Phase 1 先不把资源模型做重
+### Option A — Chosen
+**Single workspace + generic metadata-aware retrieval**
 
-当前第一阶段不建议直接上 `knowledge_bases + project_knowledge_bindings` 双表作为最小实现，而建议先用更轻的 `project_knowledge_spaces` 模型承接项目默认知识空间。
+Pros:
+- 最符合现有 repo 的 project-centric 边界
+- 前端/runtime 不必理解项目内多 workspace
+- 通用上游能力可被其他消费者复用
 
-原因：
+Cons:
+- 依赖上游 LightRAG 补齐通用能力
+- 当前公开 HTTP 契约尚未提供这些字段
 
-- 第一阶段尚无 assistant 绑定
-- 第一阶段尚无一项目多知识库
-- 第一阶段尚无共享知识库
-- 过早把资源模型做成多对多，会让平台 API、页面、权限和验收全面变重
+### Option B — Fallback
+**Project-internal multi-workspace**
 
-**演进策略**：
+Pros:
+- 在上游能力缺失时，能提供更强的硬隔离
 
-- Phase 1：`project_knowledge_spaces`
-- Phase 2（多知识库 / 共享知识进入正式范围时）：再拆为 `knowledge_bases` + `project_knowledge_bindings`
+Cons:
+- 概念与治理成本明显更高
+- 不应再当默认主方案
 
-### 决策 D：future runtime-side consumption 走 LightRAG MCP
+### Option C — Rejected
+**AITestLab-private taxonomy in upstream protocol**
 
-未来 `runtime-service` 或其他 agent service 需要程序化消费知识能力时，不继续扩大 `platform-api-v2` 的职责去做一套统一 runtime consumption API。
+Rejected because:
+- 污染上游通用协议
+- 把本地业务语义耦合到通用 RAG 服务
 
-原因：
+## 7. 对各服务的含义
 
-1. `platform-api-v2` 的职责是 control plane，而不是所有运行期工具都从它出发（`apps/platform-api-v2/docs/handbook/project-handbook.md:32-51`, `apps/platform-api-v2/docs/handbook/project-handbook.md:101-119`）
-2. 当前仓库已有 runtime 通过 MCP 使用知识能力的成功样式（`apps/runtime-service/runtime_service/services/test_case_service/DESIGN.md:66-127`）
-3. 把 human-facing control-plane API 与 runtime 工具 API 强行统一，会把平台和 runtime 再次耦起来
+### platform-api-v2
+- 继续 project-scoped facade
+- workspace 继续作为内部治理映射
+- future 传给上游的 query 语义优先是通用 filter/boost，不是业务私有 taxonomy 协议
 
-## 6. 第一阶段范围
+### platform-web-vue
+- 继续 project 路由组织
+- 不引入 knowledge-space chooser 作为默认主交互
+- 更适合引入 retrieval scope / filter UX，而不是多 workspace 选择器
 
-### In scope
+### runtime-service
+- 继续只信任 `project_id`
+- 不要求 runtime 持有或拼接 `workspace_key`
+- future 若支持 domain-aware retrieval，也通过通用 query filter 能力接入
 
-- LightRAG request-scoped workspace 数据面收口
-- AITestLab human-facing project knowledge control-plane module
-- `platform-web-vue` 正式知识工作台页面
-- `documents -> retrieval -> graph -> settings` 的实施顺序
-- project-scoped permission / operation / audit 接入
+## 8. 结论
 
-### Out of scope
+从现在开始，本目录的默认推荐路径是：
 
-- assistant 绑定知识库
-- 复杂审核流
-- 文档级细粒度权限
-- shared knowledge 正式上线
-- multi-knowledge binding 正式上线
-- runtime-service 通过 platform-api-v2 直接做通用程序化消费
+- **single workspace per project**
+- **generic metadata-aware retrieval as target state**
+- **multi-workspace as fallback only**
 
-## 7. 后续阶段范围
+任何继续把 multi-workspace 写成“默认主方案”的内容，都必须改写为：
 
-### Phase 2 候选
-
-- 多知识库绑定
-- 共享知识库
-- knowledge resource/binding 模型升级
-- LightRAG MCP 标准化
-- runtime-service 通过 MCP 复用项目知识空间
-
-## 8. 文档治理规则
-
-当前目录是 AITestLab 侧正式事实源。后续如果 LightRAG 仓库内的设计文档与这里冲突，以当前目录为准，并回写更新外部参考设计稿，避免双边文档长期漂移。
+- historical baseline，或
+- fallback

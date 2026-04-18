@@ -2,183 +2,350 @@
 
 ## 1. 文档目的
 
-本文只讨论 AITestLab `apps/platform-api-v2` 应该如何承接 **human-facing project knowledge workspace**。
+本文说明 `apps/platform-api-v2` 在新默认口径下如何承接 **project-scoped knowledge facade**。
 
-重点说明：
+本文同时区分：
 
-- 它是 **control-plane facade**
-- 它服务的是 `platform-web-vue` 的人工工作台和项目治理入口
-- 它 **不是** future runtime programmatic consumption 的统一入口
+- **Current reality**：今天控制面仍围绕项目默认 workspace 工作
+- **Preferred future default**：若上游支持 metadata-aware retrieval，平台控制面应透出通用 filter 语义，而不是扩散 workspace 语义
 
-## 2. 为什么仍然需要 platform-api-v2
+## 2. Current reality
 
-当前仓库已经明确：
+当前 `platform-api-v2` 的正式职责仍是：
 
-- `platform-api-v2` 管治理与边界（`apps/platform-api-v2/docs/handbook/project-handbook.md:32-51`）
-- 前端正式页面统一只走 `platform-api-v2`（`apps/platform-api-v2/docs/handbook/project-handbook.md:112-119`, `apps/platform-web-vue/docs/control-plane-page-standard.md:54-66`）
-- 当前平台已有 project-scoped gateway 先例（`apps/platform-api-v2/app/modules/runtime_gateway/presentation/http.py:17-65`）
+- `project_id` 解析
+- permission / audit / operations
+- `project_id -> workspace_key` 治理映射
+- 向 LightRAG 注入 workspace 相关上下文
 
-因此只要是 **人工工作台**、**项目内治理操作**、**需要 permission / audit / operation 的知识页面**，就仍然应该走 `platform-api-v2`。
+这条边界不变。
 
-## 3. 模块命名建议
+## 3. 默认原则
 
-第一阶段建议新增：
+### 原则 A：平台 API 仍然是 project-scoped
 
-```text
-apps/platform-api-v2/app/modules/project_knowledge/
-apps/platform-api-v2/app/adapters/knowledge/
-```
+对前端和其他 human-facing consumer：
 
-选择 `project_knowledge` 而不是单纯叫 `knowledge_gateway` 的原因：
+- 主主语义仍然是 `project_id`
+- 不新增 knowledge-space chooser 作为默认主模型
 
-- 第一阶段不只是“代理 LightRAG”，还承担 project resource / permission / operation / audit 语义
-- 该模块的正式语义是“项目知识工作台”而不是“某个透明 proxy”
+### 原则 B：workspace 继续是私有治理实现
 
-## 4. 路由前缀建议
+即使存在 fallback multi-workspace，也不应让：
 
-第一阶段建议统一走：
+- 前端直接持有 workspace 语义
+- runtime 依赖 workspace 规则
+
+### 原则 C：future 透出的是通用 retrieval contract
+
+如果 LightRAG 增加 metadata-aware retrieval，`platform-api-v2` 应优先透出：
+
+- 通用 metadata/tag/filter 查询能力
+- 通用 retrieval scope / boost 语义
+
+而不是：
+
+- AITestLab 私有 taxonomy 协议
+- 基于 workspace 的业务语义切分 API
+
+## 4. 当前现实下的 API 口径
+
+当前默认链路仍围绕：
 
 ```text
 /api/projects/{project_id}/knowledge/*
 ```
 
-这更符合当前仓库的 project-scoped control-plane 语义，也与 `project_id` 作为治理主键的事实一致（`docs/development-guidelines.md:30-35`）。
+且其现实基础仍是：
 
-## 5. 第一阶段资源模型建议
+- 项目级知识空间
+- 项目默认 workspace 映射
+- 不向调用方暴露 metadata-aware retrieval 为现成能力
 
-### 5.1 不建议第一阶段直接落双表
+## 5. Preferred future default
 
-当前第一阶段不建议直接使用：
+如果上游可改，建议 `platform-api-v2` 在 query 类接口上保留 project-scoped 外壳，同时为 future contract 预留通用能力位：
 
-- `knowledge_bases`
-- `project_knowledge_bindings`
+- `filters`
+- `retrieval_scope`
+- `boosts`
 
-作为最小实现。
+但这些字段在文档里必须标成：
 
-原因：
+- preferred future default
+- target state
+- gated on upstream LightRAG capability
 
-- 当前没有 assistant binding
-- 当前没有 multi-knowledge binding
-- 当前没有 shared knowledge 正式需求
-- 当前只需要承接“一项目一默认知识空间”
+## 6. Fallback
 
-### 5.2 Phase 1 轻量模型
+如果 future 仍不得不启用 multi-workspace，控制面也应遵守：
 
-建议第一阶段先用：
+- workspace 是平台内部映射细节
+- 前端默认仍只看 project-scoped 入口
+- 如确需内部路由或策略切分，也不应让“项目内多 workspace”成为公开主产品对象，除非另开正式决策
 
-```text
-project_knowledge_spaces
+## 7. Rejected option
+
+**Rejected**：把 AITestLab 私有 `domain/layer/module` 作为控制面到上游的协议常量。
+
+平台可以管理自己的 taxonomy，但与上游交互时优先使用通用 metadata/filter 协议表达。
+
+## 8. 结论
+
+在新默认方案下，`platform-api-v2` 的职责不是从 workspace-first 转成 taxonomy-first，而是：
+
+- 保持 project-scoped facade
+- 隐藏 workspace
+- future 暴露通用 retrieval contract
+- 维持 clear governance boundary
+
+## 9. File-level adaptation anchor: `contracts.py`
+
+为把这轮已讨论清楚的适配面真正落到 repo 内，`platform-api-v2` 这一层的 file-level 主锚点明确为：
+
+- `apps/platform-api-v2/app/modules/project_knowledge/application/contracts.py`
+- 配套透传链路：
+  - `apps/platform-api-v2/app/modules/project_knowledge/presentation/http.py`
+  - `apps/platform-api-v2/app/modules/project_knowledge/application/service.py`
+  - `apps/platform-api-v2/app/adapters/knowledge/client.py`
+
+### 9.1 Current reality
+
+当前 `ProjectKnowledgeQueryRequest` 只覆盖：
+
+- `query`
+- `mode`
+- token / top_k / chunk_top_k
+- `hl_keywords` / `ll_keywords`
+- `user_prompt`
+- `enable_rerank`
+- `include_references`
+- `include_chunk_content`
+- `stream`
+
+这意味着：
+
+- `platform-api-v2` 目前还没有正式 metadata-aware retrieval contract
+- 任何 file-level 改动设计都必须写成 **target state**，不能写成已实现事实
+
+### 9.2 Preferred future default（target state）
+
+如果 LightRAG 补齐通用 metadata-aware retrieval，上层控制面建议只做 **contract + validate + pass-through**，而不在 control-plane 内实现检索智能：
+
+#### Query contract 扩展位
+建议在 `contracts.py` 增加通用字段：
+
+- `metadata_filters`
+- `metadata_boost`
+- `strict_scope`
+
+但必须保持语义通用，例如：
+
+- `tags_any`
+- `tags_all`
+- `attributes`
+- `weight`
+
+而不是把 `domain/layer/module` 直接写死为上游协议常量。
+
+#### Ingest contract 扩展位
+如果上游提供 ingest metadata 能力，这一层需要能承载：
+
+- 文档 metadata
+- tags
+- attributes
+
+这里的职责仍然是：
+
+- 校验
+- 透传
+- 错误映射
+- 与项目治理上下文绑定
+
+### 9.3 Not recommended
+
+`platform-api-v2` **不应该**：
+
+- 把 `workspace_key` 暴露成 human-facing 主语义
+- 在 control-plane 内实现 taxonomy 推理器
+- 用 AITestLab 私有语义替代上游的通用 metadata/filter contract
+
+### 9.4 File-level implementation checklist
+
+当进入实现阶段，建议按下面顺序落：
+
+1. `contracts.py`
+   - 扩 `ProjectKnowledgeQueryRequest`
+   - 新增 metadata filter / boost model
+2. `presentation/http.py`
+   - query / stream query 接收新字段
+3. `application/service.py`
+   - 透传到 upstream client
+4. `adapters/knowledge/client.py`
+   - 原样发给 LightRAG
+
+这条链路的正式含义是：
+
+> `platform-api-v2` 负责 **项目治理 + 契约承载**，而不是负责“解释什么是底层架构/应用层/组件层”。
+
+## 10. Field-level payload draft（target state）
+
+> 注意：本节全部属于 **preferred future default / target state**。截至当前，下面这些字段还没有在现有正式 HTTP 契约中落地。
+
+### 10.1 Query payload draft
+
+建议 `ProjectKnowledgeQueryRequest` 在现有字段基础上，增加以下通用能力位：
+
+```json
+{
+  "query": "解释当前项目的存储架构",
+  "mode": "mix",
+  "metadata_filters": {
+    "tags_any": ["architecture"],
+    "tags_all": [],
+    "attributes": {
+      "layer": ["infrastructure"],
+      "module": ["storage"]
+    }
+  },
+  "metadata_boost": {
+    "tags_any": ["storage"],
+    "attributes": {
+      "domain": ["architecture"]
+    },
+    "weight": 1.5
+  },
+  "strict_scope": true,
+  "include_references": true,
+  "include_chunk_content": true
+}
 ```
 
-字段建议：
+建议语义：
 
-- `id`
-- `project_id`
-- `provider`（Phase 1 固定 `lightrag`）
-- `workspace_key`
-- `display_name`
-- `status`
-- `service_base_url`
-- `runtime_profile_json`
-- `created_at`
-- `updated_at`
+- `metadata_filters`
+  - 硬过滤，决定候选集
+- `metadata_boost`
+  - 软优先，影响排序或 rerank
+- `strict_scope`
+  - `true`：严格只查过滤域
+  - `false`：允许跨域补充，但优先本域
 
-这足以支撑：
+### 10.2 Contract model draft
 
-- project 默认知识空间
-- 项目知识设置页
-- project -> workspace_key 治理映射
-- 后续 phase 2 迁移到更重模型
+建议在 `contracts.py` 抽成通用模型，而不是让 `ProjectKnowledgeQueryRequest` 直接承载 AITestLab 私有 taxonomy：
 
-### 5.3 演进路径
+```python
+class KnowledgeMetadataFilters(BaseModel):
+    tags_any: list[str] = Field(default_factory=list)
+    tags_all: list[str] = Field(default_factory=list)
+    attributes: dict[str, str | list[str]] = Field(default_factory=dict)
 
-当以下任一需求真正进入实施范围时，再升级为：
+class KnowledgeMetadataBoost(BaseModel):
+    tags_any: list[str] = Field(default_factory=list)
+    attributes: dict[str, str | list[str]] = Field(default_factory=dict)
+    weight: float | None = None
+```
 
-- 多知识库绑定
-- 共享知识库
-- assistant 级覆盖（如果未来重新进入范围）
+然后：
 
-升级目标再转为：
+```python
+class ProjectKnowledgeQueryRequest(BaseModel):
+    ...
+    metadata_filters: KnowledgeMetadataFilters | None = None
+    metadata_boost: KnowledgeMetadataBoost | None = None
+    strict_scope: bool | None = None
+```
 
-- `knowledge_bases`
-- `project_knowledge_bindings`
+### 10.3 Upload payload draft
 
-## 6. 第一阶段 API 面
+#### Minimal-change path
 
-### 6.1 工作台与设置
+如果继续保持当前 binary upload facade，可考虑增加：
 
-- `GET /api/projects/{project_id}/knowledge`
-- `PUT /api/projects/{project_id}/knowledge`
-- `POST /api/projects/{project_id}/knowledge/refresh`
+- `x-knowledge-filename`
+- `x-knowledge-metadata`
 
-### 6.2 Documents
+例如：
 
-- `POST /api/projects/{project_id}/knowledge/documents/upload`
-- `POST /api/projects/{project_id}/knowledge/documents/scan`
-- `POST /api/projects/{project_id}/knowledge/documents/paginated`
-- `GET /api/projects/{project_id}/knowledge/documents/track-status/{track_id}`
-- `GET /api/projects/{project_id}/knowledge/documents/pipeline-status`
-- `DELETE /api/projects/{project_id}/knowledge/documents`
+```http
+x-knowledge-filename: architecture-overview.md
+x-knowledge-metadata: {"tags":["architecture","storage"],"attributes":{"layer":"infrastructure","module":"storage"}}
+```
 
-说明：AITestLab 控制面 upload 入口当前采用 **binary body + `x-knowledge-filename` header** 契约，避免平台层为单一工作台上传能力额外引入 multipart 依赖；真正对 LightRAG 的 upstream 调用仍由 adapter 侧转成 `multipart/form-data`。
+#### Long-term path
 
-### 6.3 Retrieval / Graph
+更长期更合理的方向是升级为 `multipart/form-data`：
 
-- `POST /api/projects/{project_id}/knowledge/query`
-- `GET /api/projects/{project_id}/knowledge/graph/label/list`
-- `GET /api/projects/{project_id}/knowledge/graph/label/search`
-- `GET /api/projects/{project_id}/knowledge/graphs`
+- `file`
+- `metadata`
 
-说明：第一阶段图谱 mutation 是否开放，应该作为单独风险位处理；如果没有明确业务必要性，建议先只读。
+例如：
 
-## 7. 请求处理链
+```json
+{
+  "tags": ["architecture", "storage"],
+  "attributes": {
+    "layer": "infrastructure",
+    "module": "storage"
+  }
+}
+```
 
-每个 knowledge 请求都走同一条链：
+### 10.4 Documents list filter draft
 
-1. 解析 `project_id`
-2. 校验 actor 对该项目的权限
-3. 查询 `project_knowledge_spaces`
-4. 取出 `workspace_key`
-5. 注入 `LIGHTRAG-WORKSPACE`
-6. 用 service auth 调 LightRAG
-7. 做错误映射
-8. 需要时接入 operation / audit
+`DocumentsPageQuery` 未来可选补：
 
-## 8. 权限建议
+```json
+{
+  "page": 1,
+  "page_size": 20,
+  "status_filter": "processed",
+  "metadata_filters": {
+    "tags_any": ["architecture"],
+    "attributes": {
+      "layer": ["infrastructure"]
+    }
+  }
+}
+```
 
-建议新增或复用：
+但这不是第一必需项；优先级低于 query payload 与 ingest metadata。
 
-- `project.knowledge.read`
-- `project.knowledge.write`
-- `project.knowledge.admin`
+### 10.5 platform-api-v2 的职责边界
 
-最小语义：
+即使 future 加了上述字段，`platform-api-v2` 也只负责：
 
-- read：看列表、检索、图谱、状态
-- write：上传、扫描、删除
-- admin：修改项目知识空间配置、清空文档、重建类动作
+- contract 承载
+- validate
+- pass-through
+- project governance binding
 
-补充约束：
+不负责：
 
-- `knowledge.documents.scan` 即使通过通用 operation 提交入口，也必须额外满足 `project.knowledge.write`
-- `knowledge.documents.clear` 即使通过通用 operation 提交入口，也必须额外满足 `project.knowledge.admin`
-- worker 真正执行 `clear` 时仍应再次按 `project.knowledge.admin` 校验，避免出现“提交时和执行时权限语义不一致”
+- taxonomy 推理
+- query strategy 编排
+- 物理隔离建模
 
-## 9. operations / audit 建议
+## 11. `platform-api-v2` 字段命名建议（v1）
 
-下列动作应优先 operation 化：
+为减少 future contract 漂移，`platform-api-v2` 建议直接采用与上游 target-state 一致的 v1 字段：
 
-- 扫描目录
-- 清空文档
-- 批量导入
-- 未来重建索引
+### Query request
+- `metadata_filters`
+- `metadata_boost`
+- `strict_scope`
 
-因为当前平台已经明确：超过 3 秒、需要取消/重试/保留历史的动作应纳入 operation（`apps/platform-api-v2/docs/handbook/project-handbook.md:78-93`）。
+### Ingest payload
+- `metadata`
+  - `tags`
+  - `attributes`
 
-## 10. 明确边界
+### 约束
 
-这个模块不负责：
+`platform-api-v2` 不新增 AITestLab 私有别名，例如：
+- `domain_filters`
+- `layer_filter`
+- `knowledge_scope`
 
-- future runtime-side MCP tool 暴露
-- 把 knowledge 做成公共 runtime API 产品面
-- assistant 绑定知识库
+如果前端内部想保留更贴近用户语言的本地变量名，也应在 service 层归一化后再发给控制面。

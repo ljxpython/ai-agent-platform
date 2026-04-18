@@ -1,107 +1,94 @@
-# 项目级知识库执行任务单
+# 执行任务清单
 
-> 使用方式：后续实际开发时，按阶段逐项打勾；没有验证证据的项不要提前打勾。当前仍未勾选的项，主要是需要真实联调环境继续完成的 live integration 验证。
+> 本文件只保留对 **preferred future default** 有效的任务，同时把 2026-04-12 multi-workspace-first 执行思路视为 historical baseline。
 
-## Phase 0：正式文档落地
+## A. Docs refresh（本轮必须完成）
 
-- [x] 创建 AITestLab 仓库内正式文档目录
-- [x] 固化第一阶段边界
-- [x] 固化 future runtime-side MCP 边界
-- [x] 固化实施顺序与验收清单
+### A1 三态口径改写
+- [ ] README 增加 current reality / historical baseline / preferred future default 三态说明
+- [ ] `01`-`08` 统一改写为三态口径
 
-## Phase 1：LightRAG 数据面
+### A2 新计划工件
+- [ ] 新建 `.omx/plans/prd-metadata-aware-project-knowledge-20260417.md`
+- [ ] 新建 `.omx/plans/test-spec-metadata-aware-project-knowledge-20260417.md`
+- [ ] 将 2026-04-12 PRD/test-spec 标记为 superseded historical baseline
 
-### A1 workspace 解析统一化
-- [x] 固化 `LIGHTRAG-WORKSPACE` header 规则
-- [x] 固化 workspace 清洗/拒绝策略
-- [x] 统一所有关键路由的 workspace 解析入口
+### A3 Contradiction sweep
+- [ ] 检查 README + `01`-`08` + 新 PRD/test-spec
+- [ ] 确认所有 multi-workspace wording 仅作为 historical baseline 或 fallback
 
-### A2 workspace manager
-- [x] 设计 `workspace -> LightRAG instance` 缓存对象
-- [x] 共享不可变配置
-- [x] 隔离 workspace 级状态与存储
-- [x] 明确生命周期与懒初始化策略
+## B. Preferred future default planning
 
-### A3 关键 API workspace 化
-- [x] documents upload
-- [x] documents paginated
-- [x] track status
-- [x] pipeline status
-- [x] query
-- [x] graph label list / search
-- [x] graphs
-- [x] delete / clear
+### B1 上游通用能力目标
+- [ ] ingest metadata/tag write contract
+- [ ] query metadata/tag filter contract
+- [ ] soft boost / hard filter 语义
+- [ ] 上游协议保持通用，不绑定 AITestLab taxonomy
 
-### A4 状态与 smoke test
-- [x] 校验多模态状态一致性
-- [x] 补 A/B 两个 workspace smoke test
-- [x] 记录 service auth 约束
+### B2 platform-api-v2 未来契约
+- [ ] 保持 project-scoped facade
+- [ ] future query contract 预留通用 filters/boosts
+- [ ] workspace 继续内聚在控制面
 
-## Phase 2：platform-api-v2
+### B3 platform-web-vue 未来交互
+- [ ] retrieval scope/filter UX 草案
+- [ ] documents metadata visibility 草案
+- [ ] settings 说明 future default / fallback
 
-### B1 模块骨架
-- [x] 新增 `app/modules/project_knowledge/`
-- [x] 新增 `app/adapters/knowledge/`
-- [x] 建立 presentation / application / infra 结构
+### B4 runtime MCP 边界
+- [ ] runtime 继续只认 `project_id`
+- [ ] future metadata-aware retrieval 不改变 runtime project-centric 边界
 
-### B2 资源模型
-- [x] 新增 `project_knowledge_spaces` 模型/迁移
-- [x] 实现 repository / use case
-- [x] 固化 `project_id -> workspace_key`
+## F. Fallback（仅当必要时启用）
 
-### B3 human-facing APIs
-- [x] settings / summary API
-- [x] documents APIs
-- [x] query API
-- [x] graph APIs
-- [x] 错误映射
+### F1 fallback trigger
+- [ ] 明确上游能力不足的判定条件
 
-### B4 权限 / 审计 / operation
-- [x] project knowledge permission 定义
-- [x] 上传/扫描/清空接 operation
-- [x] 关键操作审计挂点
+### F2 fallback multi-workspace
+- [ ] 若进入 fallback，再单独规划多 workspace 对 control-plane/frontend/runtime 的影响
 
-## Phase 3：platform-web-vue
+## Historical baseline note
 
-### C1 模块与路由
-- [x] 新增 `src/modules/knowledge/`
-- [x] 新增 knowledge service / types / composables
-- [x] 路由组接入 `documents/retrieval/graph/settings`
+此前围绕 workspace manager / request-scoped multi-workspace / dual-workspace acceptance 的详细任务，属于 **2026-04-12 historical baseline**，不再作为当前默认执行清单。
 
-### C2 Documents
-- [x] 上传入口
-- [x] 分页列表
-- [x] track status
-- [x] pipeline status
-- [x] 删除 / 清空
+## C. 分阶段执行清单（implementation order）
 
-### C3 Retrieval
-- [x] query 表单
-- [x] 结果 / 引用展示
-- [x] 空态 / 错态 / loading
+### C1 LightRAG（先做）
+- [ ] `/query` 支持 `metadata_filters`
+- [ ] `/query/stream` 支持 `metadata_filters`
+- [ ] ingest 支持 metadata/tag 写入
+- [ ] `strict_scope` 语义落地
 
-### C4 Graph
-- [x] label search
-- [x] 子图展示
-- [x] 属性面板
-- [x] 基础布局 / 缩放交互
+### C2 platform-api-v2（第二层）
+- [ ] `ProjectKnowledgeQueryRequest` 扩 `metadata_filters`
+- [ ] `presentation/http.py` 接收并透传 `metadata_filters`
+- [ ] `application/service.py` 透传 `metadata_filters`
+- [ ] `adapters/knowledge/client.py` 原样转发
+- [ ] upload facade 增 metadata 承载位
 
-### C5 Settings
-- [x] 默认知识空间摘要
-- [x] workspace 映射摘要
-- [x] 服务状态 / 运行说明
+### C3 platform-web-vue（第三层）
+- [ ] `knowledge.service.ts` query payload 扩 `metadata_filters`
+- [ ] `KnowledgeQuerySettingsPanel.vue` 增 filter UI
+- [ ] `KnowledgeRetrievalPage.vue` 持有 scope/filter state
+- [ ] Retrieval 结果回显当前 scope/filter
+- [ ] recent query 持久化包含 scope/filter
 
-## Phase 4：联调与验收
+### C4 runtime-service / test_case_service_v2（最后）
+- [ ] `knowledge_mcp.py` 扩 `query_project_knowledge` 可选参数
+- [ ] `prompts.py` 增“明确知识域时优先带 filter 查询”规则
+- [ ] `README.md` 记录 metadata-aware retrieval 适配边界
+- [ ] 如有必要再升级 `knowledge_query_guard_middleware.py`
 
-- [x] repo 内自动化证据已刷新（platform-api-v2 knowledge / operations targeted pytest、platform-web-vue vitest/build/lint、LightRAG workspace suite）
-- [x] project A/B 隔离联调
-- [x] platform-api-v2 facade smoke test
-- [x] platform-web-vue 页面 smoke test
-- [x] 验收清单逐项勾完（当前第一阶段 gating 项已完成；后续阶段项继续保留在 Phase 5 / 验收清单第 7 节）
+## D. 最小 MVP（优先做这 4 件事）
 
-## Phase 5：后续阶段（当前不执行）
+- [ ] LightRAG `/query` 支持 `metadata_filters`
+- [ ] platform-api-v2 query pass-through `metadata_filters`
+- [ ] platform-web-vue Retrieval 页支持 tags / layer filter
+- [ ] test_case_service_v2 在“底层架构类问题”场景自动带 filter 查询
 
-- [ ] 多知识库绑定设计重开
-- [ ] 共享知识库设计重开
-- [ ] LightRAG MCP 正式化设计
-- [ ] runtime-service MCP 接入设计
+## E. MVP 验证口径
+
+- [ ] “底层架构”类查询的应用层串味显著下降
+- [ ] 前端未引入 knowledge-space chooser
+- [ ] runtime 未学习 `workspace_key`
+- [ ] 上游协议未绑定 AITestLab 私有 taxonomy

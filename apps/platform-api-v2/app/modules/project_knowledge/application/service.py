@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 from uuid import UUID
 
@@ -174,17 +175,33 @@ class ProjectKnowledgeService:
         filename: str,
         content: bytes,
         content_type: str | None,
+        metadata_header: str | None = None,
     ) -> dict[str, Any]:
         workspace_key = await self._resolve_workspace_key(
             actor=actor,
             project_id=project_id,
             permission=PermissionCode.PROJECT_KNOWLEDGE_WRITE,
         )
+        extra_headers: dict[str, str] | None = None
+        if metadata_header and metadata_header.strip():
+            try:
+                parsed = json.loads(metadata_header)
+            except ValueError:
+                parsed = None
+            if isinstance(parsed, dict):
+                extra_headers = {
+                    'x-knowledge-metadata': json.dumps(
+                        parsed,
+                        ensure_ascii=False,
+                        separators=(',', ':'),
+                    )
+                }
         return await self._upstream.upload_document(
             workspace_key=workspace_key,
             filename=filename,
             content=content,
             content_type=content_type,
+            extra_headers=extra_headers,
         )
 
     async def trigger_scan(

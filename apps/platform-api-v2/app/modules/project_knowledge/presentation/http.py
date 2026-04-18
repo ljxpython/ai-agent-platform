@@ -97,6 +97,7 @@ async def upload_project_knowledge_document(
     request: Request,
     project_id: str,
     filename: Annotated[str, Header(alias='x-knowledge-filename')],
+    metadata_header: Annotated[str | None, Header(alias='x-knowledge-metadata')] = None,
     actor: ActorContext = Depends(get_actor_context),
     service: ProjectKnowledgeService = Depends(get_project_knowledge_service),
 ) -> dict[str, Any]:
@@ -108,6 +109,7 @@ async def upload_project_knowledge_document(
         filename=unquote(filename).strip() or 'document',
         content=content,
         content_type=request.headers.get('content-type'),
+        metadata_header=metadata_header,
     )
 
 

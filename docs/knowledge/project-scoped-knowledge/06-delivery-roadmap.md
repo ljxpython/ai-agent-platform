@@ -2,95 +2,218 @@
 
 ## 1. 文档目的
 
-本文只回答一件事：
+本文明确新默认方向下的交付顺序，并保留 2026-04-12 historical baseline 作为参考。
 
-> 在当前已澄清边界下，这个知识库平台化能力应该按什么顺序推进。
+## 2. Current reality vs historical baseline vs preferred future default
 
-## 2. 当前锁定的总顺序
+### Current reality
 
-主顺序固定为：
+今天 repo 内已成立的是：
 
-1. **先冻结 AITestLab 侧正式设计与术语**
-2. **再收口 LightRAG request-scoped workspace 数据面**
-3. **再接 AITestLab 的 human-facing project knowledge control plane**
-4. **最后交付 `platform-web-vue` 正式知识工作台**
-5. **runtime-side LightRAG MCP 放后续阶段**
+- project-scoped knowledge facade
+- 项目默认 workspace 映射
+- 前端 knowledge 工作台
+- runtime `project_id`-centric 边界
 
-## 3. 阶段清单
+### Historical baseline（2026-04-12）
 
-### Phase 0：文档与口径冻结
+历史上优先级最高的是：
 
-- [x] 完成 deep-interview 需求结晶
-- [x] 明确 human-facing path 与 future runtime path 的双链路
-- [x] 明确第一阶段不做 assistant 绑定
-- [x] 明确多知识库 / 共享知识库属于后续阶段
-- [x] 在 AITestLab 内创建正式文档目录
+- request-scoped multi-workspace data plane
+- dual-workspace isolation
+- 以 workspace 为主隔离抓手
 
-### Phase 1：LightRAG 数据面收口
+这些内容仍保留为：
 
-- [x] 统一 workspace 请求解析
-- [x] 引入 workspace manager / registry
-- [x] 让 documents / query / graph / status 真正按 request workspace 生效
-- [x] 补多 workspace smoke test
-- [x] 明确平台 service auth
+- historical baseline
+- fallback 能力基础
 
-### Phase 2：platform-api-v2 项目知识控制面
+### Preferred future default
 
-- [x] 新增 `project_knowledge` 模块
-- [x] 新增 `adapters/knowledge`
-- [x] 落 `project_knowledge_spaces` 轻量模型
-- [x] project 权限、审计、operation 接入
-- [x] human-facing knowledge APIs 跑通
+今后若可改上游，主顺序变为：
 
-### Phase 3：platform-web-vue / Documents
+1. 冻结 docs 口径与 ADR
+2. 补齐上游 generic metadata-aware retrieval 目标设计
+3. 定义 platform-api-v2 通用 retrieval contract
+4. 定义 platform-web-vue retrieval scope/filter UX
+5. 保持 runtime `project_id`-centric MCP 边界
+6. 仅在必要时启用 multi-workspace fallback
 
-- [x] 新增 knowledge 模块目录与 service
-- [x] 路由接入 `documents`
-- [x] 上传 / 分页 / 状态 / 删除 / 清空
-- [x] 对接 operation / loading / empty / error
+## 3. 当前推荐顺序
 
-### Phase 4：platform-web-vue / Retrieval
+### Phase 0 — 文档与口径冻结
+- [x] deep-interview 收敛
+- [x] ralplan 共识
+- [x] README + `01`-`08` 改写为三态口径
+- [x] 新 PRD/test-spec 落盘
 
-- [x] query 页面
-- [x] 引用 / 上下文展示
-- [x] 权限与空态校验
+### Phase 1 — 上游目标能力设计
+- [ ] 明确 ingest metadata contract（target state）
+- [ ] 明确 query filter / boost contract（target state）
+- [ ] 明确 hard filter / soft boost 语义
+- [ ] 明确不把 AITestLab 私有 taxonomy 写进上游协议
 
-### Phase 5：platform-web-vue / Graph
+### Phase 2 — platform-api-v2 未来契约设计
+- [ ] project-scoped facade 保持不变
+- [ ] future retrieval contract 预留通用 filters/boosts
+- [ ] 不泄露 workspace 语义
 
-- [x] label search
-- [x] graph display
-- [x] 属性面板
-- [x] 第一阶段默认按只读交互收口
+### Phase 3 — platform-web-vue 未来交互设计
+- [ ] retrieval scope/filter UX
+- [ ] documents metadata/tag 展示策略
+- [ ] settings 中的 current reality / future default / fallback 说明
 
-### Phase 6：platform-web-vue / Settings + 文档补完
+### Phase 4 — runtime MCP 路线固化
+- [ ] MCP 仍保持 project-centric
+- [ ] fallback 时不让 runtime 直接持有 workspace 规则
 
-- [x] 默认知识空间摘要
-- [x] workspace 映射说明
-- [x] 服务状态/运行说明
-- [x] 文档与验收清单回填
+### Phase F — Fallback multi-workspace
+只有在上游 metadata-aware retrieval 不可实现或不足时才进入：
+- [ ] fallback 策略
+- [ ] fallback 对 platform/runtime 的最小侵入设计
 
-### Phase 7：后续阶段（非当前第一阶段）
+## 4. Historical baseline 处理规则
 
-- [ ] 多知识库绑定
-- [ ] 共享知识库
-- [ ] 更重的知识资源 / 绑定模型
-- [ ] LightRAG MCP 正式化
-- [ ] runtime-service 通过 MCP 接项目知识
+以下旧路径不删除，但不再写成默认推荐：
 
-## 4. 当前推荐的最小上线顺序
+- multi-workspace-first
+- dual-workspace-first acceptance
+- workspace-first execution ordering
 
-如果按最小可见业务价值排序，建议按这个 release ladder：
+这些内容只允许在文档中作为：
 
-1. LightRAG 多 workspace 真隔离
-2. platform-api-v2 project knowledge facade
-3. Documents 页面
-4. Retrieval 页面
-5. Graph 页面
-6. Settings 页面
+- historical baseline，或
+- fallback
 
-## 5. 现在不建议做的并行动作
+## 5. 现在不建议做的事
 
-- 不要在 LightRAG 数据面没稳时提前做复杂前端
-- 不要在 first-phase 里把 assistant 绑定一起做掉
-- 不要为了 future runtime consumption 提前把 platform API 扩成大而全
-- 不要在 first-phase 就把 multi-knowledge / shared knowledge 一起落地
+- 不要把 metadata-aware retrieval 写成已实现现实
+- 不要把 multi-workspace 保留为 co-equal default
+- 不要让 frontend/runtime 主交互切成多个 knowledge spaces
+- 不要把 AITestLab 私有 taxonomy 嵌入上游协议
+
+## 6. 本轮 docs hardening（file-level adaptation pass）
+
+这轮新增的 docs hardening 只做一件事：
+
+> 把已经讨论清楚的 file-level 适配面，分别写入现有 canonical 边界文档，而不是再创建一个并行 canonical doc。
+
+### 本轮落点
+
+- `03-platform-api-v2-project-knowledge-design.md`
+  - 主锚点：`apps/platform-api-v2/app/modules/project_knowledge/application/contracts.py`
+- `04-platform-web-vue-knowledge-workspace-plan.md`
+  - 主锚点：`apps/platform-web-vue/src/services/knowledge/knowledge.service.ts`
+- `05-runtime-mcp-boundary.md`
+  - 服务落点：`apps/runtime-service/runtime_service/services/test_case_service_v2`
+  - 具体锚点：`apps/runtime-service/runtime_service/services/test_case_service_v2/knowledge_mcp.py`
+
+### 为什么不新建 canonical doc
+
+因为这轮内容本质上不是新的架构边界，而是：
+
+- 对既有 03/04/05 文档的 file-level 落地补强
+- 对 06 路线图的追踪补记
+
+如果再单独新建一个 canonical 设计稿，会引入第二份“实现适配总表”，增加冲突风险。
+
+### 本轮完成标准
+
+- [x] `03` 已写入 platform-api-v2 file-level adaptation anchor
+- [x] `04` 已写入 platform-web-vue file-level adaptation anchor
+- [x] `05` 已写入 test_case_service_v2 landing zone 与 `knowledge_mcp.py` 锚点
+- [x] `06` 已记录这轮 docs hardening pass
+- [x] 未新增新的 canonical file-level doc
+
+## 7. 分阶段实施顺序（field-level rollout order）
+
+在 file-level 适配已经讨论清楚之后，推荐实施顺序进一步收敛为：
+
+### Stage 1 — 先改 LightRAG（能力提供方）
+
+目标：先让上游具备最小可消费能力，否则下游只能继续停留在文档设计。
+
+最小必做：
+- ingest metadata/tag 写入能力
+- `/query` / `/query/stream` 支持 `metadata_filters`
+- `strict_scope` 语义成立
+
+建议后做：
+- `metadata_boost`
+- documents list 按 metadata 辅助筛选
+- 图谱检索的 domain-aware 行为增强
+
+### Stage 2 — 再改 `platform-api-v2`（contract + pass-through）
+
+目标：把上游能力收进 AITestLab 的 project-scoped facade。
+
+最小必做：
+- `ProjectKnowledgeQueryRequest` 扩 `metadata_filters`
+- `query` / `stream_query` 透传 `metadata_filters`
+- upload facade 支持 metadata 承载位
+
+建议后做：
+- `metadata_boost`
+- `strict_scope`
+- DocumentsPageQuery 的 metadata filter
+
+### Stage 3 — 再改 `platform-web-vue`（最小用户价值闭环）
+
+目标：先验证“串味是否下降”，而不是一次性把所有管理面做满。
+
+最小必做：
+- Retrieval 页支持 tags / layer 过滤
+- 结果页回显当前 scope/filter
+- query local state / localStorage 持久化包含 scope
+
+建议后做：
+- Documents 上传 metadata 输入
+- Documents 列表 metadata 展示
+- Settings 里的 taxonomy / preset 配置
+
+### Stage 4 — 最后改 `test_case_service_v2`（最小侵入适配）
+
+目标：服务继续只认 `project_id`，只补“在合适时带 filter 查”的能力。
+
+最小必做：
+- `query_project_knowledge` 工具参数扩 `metadata_filters`
+- prompt 增“有明确知识域时优先带 filter”规则
+
+建议后做：
+- `metadata_boost`
+- `strict_scope`
+- guard middleware 的 domain-aware 查询约束
+
+## 8. 最小 MVP 闭环
+
+如果只做一个最小验证闭环，推荐按下面 4 步落地：
+
+1. **LightRAG**：`/query` 支持 `metadata_filters`
+2. **platform-api-v2**：query contract 透传 `metadata_filters`
+3. **platform-web-vue**：Retrieval 页支持 tags / layer 过滤输入
+4. **test_case_service_v2**：在“底层架构类问题”场景自动带 filter 查询
+
+### MVP 成功判据
+
+- 当用户查询“底层架构”类问题时，应用层知识串味显著下降
+- `platform-web-vue` 不引入 knowledge-space chooser
+- `runtime-service` 仍不学习 `workspace_key`
+- 上游协议仍是通用 metadata filter，而不是 AITestLab 私有 taxonomy
+
+## 9. 本轮推荐优先级
+
+### P0
+- LightRAG query filter
+- platform-api-v2 pass-through
+- platform-web-vue retrieval filter UI
+
+### P1
+- ingest metadata write
+- documents metadata 展示
+- `test_case_service_v2` prompt + tool 参数适配
+
+### P2
+- metadata boost
+- settings presets
+- documents metadata filter
+- guard middleware 升级

@@ -150,6 +150,7 @@ class LightRagKnowledgeClient:
         filename: str,
         content: bytes,
         content_type: str | None = None,
+        extra_headers: Mapping[str, str] | None = None,
     ) -> dict[str, Any]:
         try:
             async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
@@ -165,6 +166,7 @@ class LightRagKnowledgeClient:
                     headers=self._headers(
                         workspace_key=workspace_key,
                         accept='application/json',
+                        extra=extra_headers,
                     ),
                 )
         except httpx.TimeoutException as exc:

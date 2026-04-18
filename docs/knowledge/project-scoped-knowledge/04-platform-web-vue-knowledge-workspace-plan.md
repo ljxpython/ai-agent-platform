@@ -2,136 +2,347 @@
 
 ## 1. 文档目的
 
-本文只讨论 `apps/platform-web-vue` 如何实现知识工作台页面。
+本文说明 `apps/platform-web-vue` 在新默认口径下如何承接知识工作台。
 
-当前页面设计必须服从正式控制面页面标准：路由入口、页面壳层、service 调用层、复用组件层四层拆分，正式页面统一只走 `platform-api-v2`（`apps/platform-web-vue/docs/control-plane-page-standard.md:11-66`）。
+重点是：
 
-## 2. 核心原则
+- 前端仍然以 `projectId` 为唯一正式上下文
+- retrieval scope/filter UX 比 workspace 选择器更符合新的默认方案
+- multi-workspace 只能作为 fallback，不应成为默认主交互
 
-### 原则 A：功能参考 LightRAG，产品壳层参考 AITestLab
+## 2. Current reality
 
-当前外部参考设计稿已经明确不应直接搬 LightRAG React UI，而应在 AITestLab 内按自己的 page shell / service 规范重做（外部参考：`docs/aitestlab-knowledge-platform-design.md:94-112`）。
+当前正式前端事实仍然成立：
 
-### 原则 B：前端只认 `project_id`
+- 路由和页面组织是 project-scoped
+- 页面不直接感知 `workspace_key`
+- 知识页面由 `platform-api-v2` 提供控制面 facade
 
-前端只在 AITestLab 项目上下文里工作，不直接感知 `workspace_key`。这也符合当前正式 workspace store 只承载唯一项目上下文的要求（`apps/platform-web-vue/src/stores/workspace.ts:28-73`, `apps/platform-web-vue/docs/control-plane-page-standard.md:70-90`）。
+## 3. Preferred future default
 
-### 原则 C：第一阶段先做真正有业务价值的页面
+### 原则 A：前端默认只认 `projectId`
 
-第一阶段建议顺序：
+这条原则不变。
 
-1. `documents`
-2. `retrieval`
-3. `graph`
-4. `settings`
+### 原则 B：项目内隔离优先做 retrieval scope / filter UX
 
-当前 **不建议** 先做 `overview`。原因是它更像一个状态壳层，而不是第一价值链路。
+在默认未来方向下，前端更合理的交互是：
 
-## 3. 路由建议
+- 文档 metadata/tag 可见性
+- retrieval scope 选择
+- filter chips / query scope presets
+- soft boost / hard filter 的结果反馈
 
-第一阶段建议新增：
+而不是默认让用户选择：
+
+- knowledge space A / B / C
+
+### 原则 C：不把 target state 当 current reality
+
+当前前端契约尚未提供 metadata-aware retrieval 字段，因此文档里所有相关设计都必须标记为 target state。
+
+## 4. 路由建议
+
+默认仍保持：
 
 - `/workspace/projects/:projectId/knowledge/documents`
 - `/workspace/projects/:projectId/knowledge/retrieval`
 - `/workspace/projects/:projectId/knowledge/graph`
 - `/workspace/projects/:projectId/knowledge/settings`
 
-可选：
+这组路由仍然有效，不需要为了新默认方案变更成多 workspace 路由模型。
 
-- `/workspace/projects/:projectId/knowledge` -> redirect 到 `documents`
+## 5. 页面重点
 
-## 4. 页面分层建议
+### Documents
 
-推荐目录：
+当前现实：
+- 仍是项目默认知识空间的文档工作台
 
-```text
-apps/platform-web-vue/src/modules/knowledge/
-  pages/
-  components/
-  services/
-  types/
-  composables/
+Preferred future default：
+- 文档列表与详情未来可展示 metadata/tag
+- 上传/导入未来可配合 metadata 编辑能力
+
+### Retrieval
+
+这是变化最大的页面。
+
+Preferred future default：
+- 支持 retrieval scope/filter 交互
+- 呈现当前使用的是 default project workspace + domain filters，而不是多 workspace
+- 能清晰提示哪些结果来自 target domain / boosted domain
+
+### Graph
+
+图谱浏览仍然保留，但 future 若图谱也需要 domain-aware 检索，应通过通用 filter 语义增强，而不是切多 workspace 图谱入口。
+
+### Settings
+
+Settings 页要明确说明三件事：
+
+- current reality：当前项目默认 workspace 映射
+- preferred future default：项目内隔离未来优先靠 metadata-aware retrieval
+- fallback：multi-workspace 仅在上游能力不足时采用
+
+## 6. Fallback UX
+
+如果 fallback multi-workspace 进入实施范围，前端应谨慎处理：
+
+- 不要直接默认暴露“多个知识库对象模型”
+- 只有当业务上必须让用户显式区分知识空间时，才单独设计该交互
+
+## 7. Rejected option
+
+**Rejected**：把 AITestLab 私有 taxonomy 直接设计成前端到上游协议字段。
+
+前端可以让用户理解“底层架构/应用层/组件/网络/存储/计算”等概念，但对外协议应经过平台层归一化成通用 metadata/filter 能力。
+
+## 8. 结论
+
+在默认未来方向下，前端知识工作台应从“workspace 映射摘要优先”转向“retrieval scope/filter UX 优先”，同时继续保持 project-scoped 页面组织。
+
+## 9. File-level adaptation anchor: `knowledge.service.ts`
+
+这轮讨论里，`platform-web-vue` 的 file-level 主锚点明确为：
+
+- `apps/platform-web-vue/src/services/knowledge/knowledge.service.ts`
+
+配套页面/组件落点为：
+
+- `apps/platform-web-vue/src/modules/knowledge/pages/KnowledgeRetrievalPage.vue`
+- `apps/platform-web-vue/src/modules/knowledge/components/KnowledgeQuerySettingsPanel.vue`
+- `apps/platform-web-vue/src/modules/knowledge/pages/KnowledgeDocumentsPage.vue`
+- `apps/platform-web-vue/src/modules/knowledge/pages/KnowledgeSettingsPage.vue`
+- `apps/platform-web-vue/src/types/management.ts`
+
+### 9.1 Current reality
+
+当前前端知识检索页已经支持：
+
+- `query`
+- `mode`
+- token / top_k / chunk_top_k
+- `user_prompt`
+- `enable_rerank`
+
+但仍然**没有**正式 metadata-aware retrieval UI：
+
+- 没有 metadata filters
+- 没有 metadata boosts
+- 没有 strict / prefer scope 交互
+- 上传链路没有正式 metadata 输入面
+
+### 9.2 Preferred future default（target state）
+
+前端默认不引入“项目内多 workspace 切换器”，而是引入：
+
+- retrieval scope / filter UX
+- metadata/tag 可见性
+- strict / prefer 模式
+- 结果域回显（当前命中了哪些过滤条件）
+
+#### Retrieval 页
+建议新增：
+
+- `metadata_filters`
+- `metadata_boost`
+- `strict_scope`
+- scope badge / current filter summary
+- recent query state 包含 scope
+
+#### Documents 页
+建议新增：
+
+- 上传时 metadata / tags 输入
+- 列表展示 metadata 摘要
+- 详情页展示 metadata
+
+#### Settings 页
+建议新增：
+
+- 推荐 taxonomy 展示
+- retrieval preset 展示
+- current reality / preferred future default / fallback 说明
+
+### 9.3 File-level implementation checklist
+
+实现顺序建议：
+
+1. `src/services/knowledge/knowledge.service.ts`
+   - query / stream query payload 扩 metadata-aware retrieval 字段
+   - upload payload 增 metadata 承载位
+2. `src/types/management.ts`
+   - 正式化 metadata filter / boost / document metadata 类型
+3. `KnowledgeQuerySettingsPanel.vue`
+   - 加 filter / strict / boost 输入控件
+4. `KnowledgeRetrievalPage.vue`
+   - 接 filter state、结果回显、localStorage
+5. `KnowledgeDocumentsPage.vue`
+   - 接 metadata 输入/展示
+6. `KnowledgeSettingsPage.vue`
+   - 补规则说明与 preset
+
+### 9.4 Not recommended
+
+`platform-web-vue` **不应该**：
+
+- 让用户默认选择多个 knowledge spaces
+- 直接持有 `workspace_key`
+- 把 AITestLab 私有 taxonomy 字段直接当成上游协议字段
+
+正式建议是：
+
+> 前端负责 **交互、展示、范围控制 UX**，不负责定义物理隔离模型。
+
+## 10. Field-level UI / payload draft（target state）
+
+> 注意：本节属于 **preferred future default / target state**，描述的是前端在上游能力就绪后的建议交互与 payload 结构。
+
+### 10.1 Retrieval settings state draft
+
+`KnowledgeQuerySettingsPanel.vue` / `KnowledgeRetrievalPage.vue` 未来建议新增这些前端状态：
+
+```ts
+metadata_filters?: {
+  tags_any?: string[]
+  tags_all?: string[]
+  attributes?: Record<string, string | string[]>
+}
+metadata_boost?: {
+  tags_any?: string[]
+  attributes?: Record<string, string | string[]>
+  weight?: number
+}
+strict_scope?: boolean
 ```
 
-## 5. Phase 1 页面定义
+建议 UI 控件：
 
-### 5.1 Documents
+- tags multi-select
+- key/value attributes editor
+- `strict scope` 开关
+- `prefer scope`（可映射到 `metadata_boost`）
+- current scope summary badge
 
-第一优先级页面，负责验证数据面链路是否真正可用。
+### 10.2 Retrieval request draft
 
-至少支持：
+由 `knowledge.service.ts` 发给控制面的 payload 建议类似：
 
-- 上传文档
-- 目录扫描
-- 分页列表
-- track status
-- pipeline status
-- 删除 / 清空
+```json
+{
+  "query": "解释当前项目的底层架构",
+  "mode": "mix",
+  "metadata_filters": {
+    "tags_any": ["architecture"],
+    "attributes": {
+      "layer": ["infrastructure"]
+    }
+  },
+  "metadata_boost": {
+    "attributes": {
+      "module": ["storage", "network", "compute"]
+    },
+    "weight": 1.2
+  },
+  "strict_scope": true,
+  "include_references": true,
+  "include_chunk_content": true
+}
+```
 
-实现要求：
+### 10.3 Retrieval UX requirements
 
-- 列表页优先使用正式控制面表格页结构（`apps/platform-web-vue/docs/control-plane-page-standard.md:29-39`）
-- 危险动作必须确认弹窗（`apps/platform-web-vue/docs/control-plane-page-standard.md:35-36`, `apps/platform-web-vue/docs/control-plane-page-standard.md:45-50`）
-- 长耗时动作优先接 operation（`apps/platform-web-vue/docs/control-plane-page-standard.md:54-66`）
+- recent query 持久化时，除了 `query` 和 `user_prompt`，还应带上当前 scope/filter
+- 结果页应展示：
+  - 当前 filter summary
+  - strict / prefer 状态
+  - references 是否主要命中当前 scope
+- 页面应允许一键回退到“全项目无过滤查询”
 
-### 5.2 Retrieval
+### 10.4 Documents upload draft
 
-第二优先级页面，负责证明“这个知识空间真的能查”。
+Documents 上传未来建议补充 metadata 录入区：
 
-至少支持：
+```ts
+{
+  tags: string[]
+  attributes: Record<string, string>
+}
+```
 
-- query 输入
-- 模式选择（如后端提供）
-- 结果展示
-- 上下文/引用展示
-- 空态 / 错态 / 加载态
+默认交互建议：
 
-### 5.3 Graph
+- 上传文件
+- 填 tags
+- 选 layer/module/domain 这类项目内推荐属性
+- 提交
 
-第三优先级页面，负责承接图谱浏览价值。
+这里的属性名可以在前端以“推荐字段”呈现，但不应被文档写成 LightRAG 只接受这些字段。
 
-第一阶段建议先只做：
+### 10.5 Document list / detail draft
 
-- label search
-- 子图展示
-- 属性面板
-- 布局 / 缩放等基本交互
+`KnowledgeDocumentsPage.vue` 未来建议：
 
-如果 graph mutation 没有明确业务必要性，先不纳入第一阶段。
+- 列表页显示 tags 摘要
+- 详情页显示完整 metadata
+- 允许按 tags / attributes 做辅助筛选（非第一优先级）
 
-### 5.4 Settings
+### 10.6 Settings draft
 
-最后补配置与说明页。
+`KnowledgeSettingsPage.vue` 未来可展示：
 
-至少支持：
+- 推荐 tags
+- 推荐 attributes
+- retrieval preset
+- 当前系统仍处于 current reality / target state / fallback 哪个阶段
 
-- 当前 project 绑定的默认知识空间
-- 当前 workspace 映射摘要
-- 服务健康 / 最近状态
-- 运行说明 / 风险说明
+### 10.7 前端边界再确认
 
-## 6. service 设计要求
+前端可以理解：
 
-推荐新增：
+- architecture
+- application
+- component
+- storage
+- network
+- compute
 
-- `src/services/knowledge/knowledge.service.ts`
+但这些在协议里应被当成：
 
-严格要求：
+- 本地 UI preset / taxonomy example
+- 而不是上游协议的硬编码字段语义
 
-- 页面不直接拼 URL（`apps/platform-web-vue/docs/control-plane-page-standard.md:54-59`）
-- 正式页面统一只走 `platform-api-v2`（`apps/platform-web-vue/docs/control-plane-page-standard.md:61-66`）
-- 新页面统一使用 `projectId` 做权限与数据上下文，不再扩散伪双上下文（`apps/platform-web-vue/docs/control-plane-page-standard.md:63-78`）
+## 11. 前端字段命名建议（v1）
 
-## 7. UI / 权限约束
+为避免前端状态名和上游协议漂移，前端建议尽量与 target-state contract 对齐：
 
-- 页面必须复用 AITestLab 共享壳，不新起 LightRAG 风格 UI
-- route 级 permission 放在 `meta.requiredPermissions`
-- 页面动作统一用 `useAuthorization()`
-- 无权限时优先导航裁剪、按钮禁用、友好提示，由后端兜底安全（`apps/platform-web-vue/docs/control-plane-page-standard.md:82-90`）
+### Retrieval local state
+- `metadata_filters`
+- `metadata_boost`
+- `strict_scope`
 
-## 8. 第一阶段不做的前端内容
+### Upload local state
+- `metadata.tags`
+- `metadata.attributes`
 
-- LightRAG 原产品主题系统迁入
-- assistant 绑定知识库页面
-- shared knowledge 页面
-- multi-knowledge binding 页面
+### 可保留的本地 UI 别名
+界面文案层可以使用：
+- 查询范围
+- 优先范围
+- 严格范围
+- 标签
+- 属性
+
+但在真正发请求前，应统一归一化成：
+- `metadata_filters`
+- `metadata_boost`
+- `strict_scope`
+- `metadata`
+
+### 不推荐
+前端不建议把本地状态命名为：
+- `selectedKnowledgeSpace`
+- `knowledgeScopeId`
+- `domainFilterPayload`
+
+因为这些名字会把交互误导向“多 workspace / 私有 taxonomy 协议”。

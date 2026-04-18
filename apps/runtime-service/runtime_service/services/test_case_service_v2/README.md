@@ -67,6 +67,7 @@
 - 把 MCP tool 返回值归一化成字符串，避免 tool message 回灌格式问题
 
 `runtime_service` 侧不处理 LightRAG 的 `workspace`、`storage_root`、项目目录映射等内部语义。
+如果 future LightRAG 增加通用 metadata-aware retrieval 能力，服务侧优先学习 `project_id + metadata_filters`，而不是学习 `workspace_key`。
 
 ## Skills 与行为
 
