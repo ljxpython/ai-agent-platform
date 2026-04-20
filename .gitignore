@@ -349,6 +349,8 @@ test_*.py
 *.test.ts
 *.spec.js
 *.spec.ts
+!apps/platform-web-vue/src/modules/knowledge/components/KnowledgeDocumentUploadDialog.spec.ts
+!apps/platform-web-vue/src/modules/knowledge/pages/KnowledgeDocumentsPage.spec.ts
 
 # 但保留重要的测试配置文件和源码目录
 !/uitest/tests/

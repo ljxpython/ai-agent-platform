@@ -98,6 +98,8 @@ runtime-service / other services -> LightRAG MCP -> LightRAG
    - docs refresh 与后续实现任务清单
 9. [adr-001-single-workspace-default.md](./adr-001-single-workspace-default.md)
    - 关键 ADR
+10. [12-knowledge-documents-upload-usage-guide.md](./12-knowledge-documents-upload-usage-guide.md)
+   - `/knowledge/documents` 上传路径、默认 tags/layer、逐文件覆盖与快速上传使用说明
 
 ### Historical / specialized follow-on docs
 

@@ -491,6 +491,11 @@ export type KnowledgeMetadataBoost = {
   weight?: number
 }
 
+export type KnowledgeUploadMetadata = {
+  tags?: string[]
+  attributes?: Record<string, string>
+}
+
 export type KnowledgeDocument = {
   id: string
   content_summary: string

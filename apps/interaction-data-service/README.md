@@ -4,6 +4,20 @@
 
 它处在仓库总哲学 `AI Harness` 之下，负责承接“运行时产出的结构化结果”和“平台需要读取、管理、展示的结果域数据”，但不接管平台治理主数据，也不反向吞并 runtime 编排职责。
 
+## 跨应用 AI 执行入口
+
+如果这是跨应用需求，或者你希望 AI 先做任务判定，再进入结果域文档，先读：
+
+1. [Root AGENTS Routing Surface](../../AGENTS.md)
+2. [AI 执行系统当前标准](../../docs/standards/01-ai-execution-system.md)
+3. [AI 执行系统使用指南](../../docs/ai-execution-system-usage-guide.md)
+
+然后再进入结果域自己的当前标准和 API 真相：
+
+- [结果域边界标准](./docs/standards/result-domain-boundary-standard.md)
+- [当前说明](./docs/README.md)
+- [test-case-service API 设计](./docs/test-case-service-api-design.md)
+
 ## 文档定位
 
 文档类型：`Current Overview`
@@ -177,6 +191,12 @@ platform-web-vue
 
 - `docs/service-design.md`
 - `docs/usecase-workflow-design.md`
+
+如果是 AI 代理先判定任务，再回头看：
+
+- [Root AGENTS Routing Surface](../../AGENTS.md)
+- [AI 执行系统当前标准](../../docs/standards/01-ai-execution-system.md)
+- [AI 执行系统使用指南](../../docs/ai-execution-system-usage-guide.md)
 
 ## 当前目录建议这样理解
 

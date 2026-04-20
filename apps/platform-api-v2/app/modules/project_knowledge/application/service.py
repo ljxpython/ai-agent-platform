@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.context.models import ActorContext
 from app.core.db import SqlAlchemyUnitOfWork
-from app.core.errors import NotFoundError, ServiceUnavailableError
+from app.core.errors import BadRequestError, NotFoundError, ServiceUnavailableError
 from app.core.identifiers import parse_uuid
 from app.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode
 from app.modules.project_knowledge.application.contracts import (
@@ -187,7 +187,10 @@ class ProjectKnowledgeService:
             try:
                 parsed = json.loads(metadata_header)
             except ValueError:
-                parsed = None
+                raise BadRequestError(
+                    code='invalid_knowledge_metadata',
+                    message='x-knowledge-metadata must be a valid JSON object',
+                )
             if isinstance(parsed, dict):
                 extra_headers = {
                     'x-knowledge-metadata': json.dumps(
@@ -196,6 +199,11 @@ class ProjectKnowledgeService:
                         separators=(',', ':'),
                     )
                 }
+            else:
+                raise BadRequestError(
+                    code='invalid_knowledge_metadata',
+                    message='x-knowledge-metadata must be a valid JSON object',
+                )
         return await self._upstream.upload_document(
             workspace_key=workspace_key,
             filename=filename,

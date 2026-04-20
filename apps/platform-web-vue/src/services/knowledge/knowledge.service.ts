@@ -6,6 +6,7 @@ import {
 import type {
   KnowledgeMetadataBoost,
   KnowledgeMetadataFilters,
+  KnowledgeUploadMetadata,
   KnowledgeDocumentsPage,
   KnowledgeDocumentsScanProgress,
   KnowledgePipelineStatus,
@@ -64,10 +65,7 @@ export async function refreshProjectKnowledgeSpace(projectId: string): Promise<P
 export async function uploadProjectKnowledgeDocument(
   projectId: string,
   file: File,
-  metadata?: {
-    tags?: string[]
-    attributes?: Record<string, string>
-  }
+  metadata?: KnowledgeUploadMetadata
 ): Promise<Record<string, unknown>> {
   const response = await platformHttpClient.post(resolveEndpoint(projectId, '/documents/upload'), file, {
     headers: {

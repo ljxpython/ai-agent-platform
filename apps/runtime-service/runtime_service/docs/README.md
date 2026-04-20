@@ -2,6 +2,16 @@
 
 `runtime_service` 是 `runtime-service` 的执行层，负责 graph 注册、运行时参数解析、模型与工具装配、鉴权以及附加能力路由。
 
+## 跨应用 AI 执行入口
+
+如果这是跨应用需求，或者你是先让 AI 判定这件事应不应该落在 `runtime-service`，先读：
+
+1. [Root AGENTS Routing Surface](../../../../AGENTS.md)
+2. [AI 执行系统当前标准](../../../../docs/standards/01-ai-execution-system.md)
+3. [AI 执行系统使用指南](../../../../docs/ai-execution-system-usage-guide.md)
+
+然后再进入 `runtime_service` 自己的 standards / knowledge / runbooks。
+
 ## 新成员先读什么
 
 推荐阅读顺序：
@@ -16,6 +26,11 @@
 8. `docs/knowledge/06-runtime-blueprint-pseudocode.md`
 9. `agents/assistant_agent/graph.py`
 10. 按专题再读鉴权、runbook、知识文档与其他资料
+
+如果你只是想知道“这个任务该不该先走 runtime-service、该怎么选验证深度”，优先回到：
+
+- [Root AGENTS Routing Surface](../../../../AGENTS.md)
+- [AI 执行系统当前标准](../../../../docs/standards/01-ai-execution-system.md)
 
 其中：
 

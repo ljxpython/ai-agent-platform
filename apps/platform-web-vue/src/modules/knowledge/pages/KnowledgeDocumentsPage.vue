@@ -16,6 +16,10 @@ import StatusPill from '@/components/platform/StatusPill.vue'
 import type { DataTableColumn } from '@/components/platform/data-table'
 import { usePagination } from '@/composables/usePagination'
 import { useAuthorization } from '@/composables/useAuthorization'
+import KnowledgeDocumentUploadDialog, {
+  type UploadBatchResult,
+  type UploadResolvedRow,
+} from '@/modules/knowledge/components/KnowledgeDocumentUploadDialog.vue'
 import KnowledgePipelineStatusDialog from '@/modules/knowledge/components/KnowledgePipelineStatusDialog.vue'
 import KnowledgeWorkspaceNav from '@/modules/knowledge/components/KnowledgeWorkspaceNav.vue'
 import { useKnowledgeProjectRoute } from '@/modules/knowledge/composables/useKnowledgeProjectRoute'
@@ -62,9 +66,9 @@ const pipelineStatus = ref<KnowledgePipelineStatus | null>(null)
 const scanProgress = ref<KnowledgeDocumentsScanProgress | null>(null)
 const selectedTrackId = ref('')
 const trackStatus = ref<KnowledgeTrackStatus | null>(null)
-const uploadInput = ref<HTMLInputElement | null>(null)
-const uploadTagsText = ref('')
-const uploadLayer = ref('')
+const quickUploadInput = ref<HTMLInputElement | null>(null)
+const showUploadDialog = ref(false)
+const uploadBatchResult = ref<UploadBatchResult | null>(null)
 const showClearConfirm = ref(false)
 const pendingDelete = ref<KnowledgeDocument | null>(null)
 const showPipelineDialog = ref(false)
@@ -75,26 +79,6 @@ const canRead = computed(() => authorization.can('project.knowledge.read', proje
 const canWrite = computed(() => authorization.can('project.knowledge.write', projectId.value))
 const canAdmin = computed(() => authorization.can('project.knowledge.admin', projectId.value))
 const documentRows = computed(() => items.value as unknown as Record<string, unknown>[])
-const uploadMetadata = computed(() => {
-  const tags = uploadTagsText.value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-
-  const attributes: Record<string, string> = {}
-  if (uploadLayer.value.trim()) {
-    attributes.layer = uploadLayer.value.trim()
-  }
-
-  if (!tags.length && !Object.keys(attributes).length) {
-    return undefined
-  }
-
-  return {
-    ...(tags.length ? { tags } : {}),
-    ...(Object.keys(attributes).length ? { attributes } : {}),
-  }
-})
 const failedCount = computed(() => {
   const entries = Object.entries(statusCounts.value)
   const failed = entries.find(([status]) => status.toUpperCase() === 'FAILED')
@@ -175,7 +159,35 @@ function statusTone(status: string): 'neutral' | 'success' | 'warning' | 'danger
 }
 
 function openUploadDialog() {
-  uploadInput.value?.click()
+  uploadBatchResult.value = null
+  showUploadDialog.value = true
+}
+
+function openQuickUpload() {
+  quickUploadInput.value?.click()
+}
+
+function buildUploadSubmittedMessage(succeeded: number) {
+  return succeeded === 1 ? '文档上传已提交。' : `已提交 ${succeeded} 份文档的上传任务。`
+}
+
+async function refreshAfterUpload(latestTrackId: string) {
+  if (latestTrackId) {
+    selectedTrackId.value = latestTrackId
+  }
+
+  await loadDocuments()
+  if (latestTrackId) {
+    await loadTrackStatus()
+  }
+}
+
+function pushUploadToast(title: string, message: string) {
+  uiStore.pushToast({
+    type: 'success',
+    title,
+    message,
+  })
 }
 
 function documentFromRow(row: Record<string, unknown>) {
@@ -233,7 +245,73 @@ async function loadDocuments() {
   }
 }
 
-async function handleUploadChange(event: Event) {
+async function handleUploadSubmit(payload: { rows: UploadResolvedRow[] }) {
+  if (!projectId.value || payload.rows.length === 0) {
+    return
+  }
+
+  actionLoading.value = true
+  error.value = ''
+  successMessage.value = ''
+
+  try {
+    let latestTrackId = ''
+    const results: UploadBatchResult['results'] = []
+
+    for (const row of payload.rows) {
+      try {
+        const result = await uploadProjectKnowledgeDocument(
+          projectId.value,
+          row.file,
+          row.metadata,
+        )
+        const trackId = String(result.track_id || '').trim()
+        results.push({
+          rowId: row.rowId,
+          status: 'success',
+          trackId: trackId || undefined,
+        })
+        if (trackId) {
+          latestTrackId = trackId
+        }
+      } catch (uploadError) {
+        results.push({
+          rowId: row.rowId,
+          status: 'failed',
+          errorMessage: resolvePlatformHttpErrorMessage(uploadError, '知识文档上传失败', '知识文档'),
+        })
+      }
+    }
+
+    const failed = results.filter((item) => item.status === 'failed').length
+    const succeeded = results.length - failed
+    uploadBatchResult.value = {
+      results,
+      latestSuccessfulTrackId: latestTrackId || undefined,
+      summary: {
+        succeeded,
+        failed,
+      },
+    }
+
+    await refreshAfterUpload(latestTrackId)
+
+    if (failed === 0) {
+      showUploadDialog.value = false
+      successMessage.value = buildUploadSubmittedMessage(succeeded)
+      pushUploadToast('上传成功', successMessage.value)
+    } else if (succeeded > 0) {
+      successMessage.value = `已成功提交 ${succeeded} 份文档，${failed} 份失败。`
+      pushUploadToast('部分上传成功', successMessage.value)
+    } else {
+      error.value = '本次上传全部失败，请在对话框中修正后重试。'
+    }
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+async function handleQuickUploadChange(event: Event) {
   const input = event.target as HTMLInputElement
   const files = Array.from(input.files || [])
   if (!projectId.value || files.length === 0) {
@@ -246,35 +324,35 @@ async function handleUploadChange(event: Event) {
 
   try {
     let latestTrackId = ''
+    let succeeded = 0
+    let failed = 0
+
     for (const file of files) {
-      const result = await uploadProjectKnowledgeDocument(
-        projectId.value,
-        file,
-        uploadMetadata.value,
-      )
-      const trackId = String(result.track_id || '').trim()
-      if (trackId) {
-        latestTrackId = trackId
+      try {
+        const result = await uploadProjectKnowledgeDocument(projectId.value, file)
+        const trackId = String(result.track_id || '').trim()
+        if (trackId) {
+          latestTrackId = trackId
+        }
+        succeeded += 1
+      } catch (uploadError) {
+        failed += 1
+        error.value = resolvePlatformHttpErrorMessage(uploadError, '知识文档上传失败', '知识文档')
       }
     }
-    if (latestTrackId) {
-      selectedTrackId.value = latestTrackId
-      await loadTrackStatus()
+
+    await refreshAfterUpload(latestTrackId)
+
+    if (failed === 0) {
+      successMessage.value = buildUploadSubmittedMessage(succeeded)
+      pushUploadToast('快速上传成功', successMessage.value)
+    } else if (succeeded > 0) {
+      error.value = ''
+      successMessage.value = `快速上传完成：${succeeded} 份成功，${failed} 份失败。`
+      pushUploadToast('快速上传部分成功', successMessage.value)
+    } else {
+      error.value = '本次快速上传全部失败，请稍后重试。'
     }
-    await loadDocuments()
-    successMessage.value =
-      files.length === 1
-        ? '文档上传已提交。'
-        : `已提交 ${files.length} 份文档的上传任务。`
-    uploadTagsText.value = ''
-    uploadLayer.value = ''
-    uiStore.pushToast({
-      type: 'success',
-      title: '上传成功',
-      message: successMessage.value,
-    })
-  } catch (uploadError) {
-    error.value = resolvePlatformHttpErrorMessage(uploadError, '知识文档上传失败', '知识文档')
   } finally {
     input.value = ''
     actionLoading.value = false
@@ -512,12 +590,19 @@ watch(
         >
           上传文档
         </BaseButton>
+        <BaseButton
+          variant="ghost"
+          :disabled="!canWrite || actionLoading"
+          @click="openQuickUpload"
+        >
+          快速上传
+        </BaseButton>
         <input
-          ref="uploadInput"
+          ref="quickUploadInput"
           class="hidden"
           type="file"
           multiple
-          @change="handleUploadChange"
+          @change="handleQuickUploadChange"
         >
       </template>
     </PageHeader>
@@ -526,43 +611,6 @@ watch(
       v-if="projectId"
       :project-id="projectId"
     />
-
-    <SurfaceCard
-      v-if="projectId && canWrite"
-      class="mt-4"
-    >
-      <div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_220px]">
-        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-dark-200">
-          上传时附带 tags（逗号分隔，可选）
-          <input
-            v-model="uploadTagsText"
-            type="text"
-            class="pw-input"
-            placeholder="architecture, storage"
-          >
-        </label>
-        <label class="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-dark-200">
-          上传时附带 layer（可选）
-          <BaseSelect v-model="uploadLayer">
-            <option value="">
-              不设置
-            </option>
-            <option value="infrastructure">
-              infrastructure
-            </option>
-            <option value="application">
-              application
-            </option>
-            <option value="component">
-              component
-            </option>
-          </BaseSelect>
-        </label>
-      </div>
-      <div class="mt-3 text-xs text-gray-400 dark:text-dark-500">
-        当前上传 metadata 只会作为通用 metadata 写入，不会把 AITestLab 私有 taxonomy 固化为上游协议。
-      </div>
-    </SurfaceCard>
 
     <StateBanner
       v-if="projectId && !canRead"
@@ -869,6 +917,14 @@ watch(
       @refresh="void loadDocuments()"
       @retry-failed="void handleRetryFailed()"
       @cancel-pipeline="void handleCancelPipeline()"
+    />
+
+    <KnowledgeDocumentUploadDialog
+      :show="showUploadDialog"
+      :submitting="actionLoading"
+      :batch-result="uploadBatchResult"
+      @close="showUploadDialog = false"
+      @submit="void handleUploadSubmit($event)"
     />
 
     <ConfirmDialog

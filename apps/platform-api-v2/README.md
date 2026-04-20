@@ -2,6 +2,21 @@
 
 `apps/platform-api-v2` 是当前正式平台控制面后端。
 
+## 跨应用 AI 执行入口
+
+如果这是一个跨应用需求，或者你是在用 AI 代理推进任务，不要直接从 app 内部 handbook 开始，先按下面顺序读：
+
+1. [Root AGENTS Routing Surface](../../AGENTS.md)
+2. [AI 执行系统当前标准](../../docs/standards/01-ai-execution-system.md)
+3. [AI 执行系统使用指南](../../docs/ai-execution-system-usage-guide.md)
+
+然后再进入本 app 的 leaf standard / handbook：
+
+- [Platform API V2 文档导航](./docs/README.md)
+- [Project Handbook](./docs/handbook/project-handbook.md)
+- [Development Playbook](./docs/handbook/development-playbook.md)
+- [Runtime Gateway / 管理接口标准](./docs/standards/runtime-gateway-interface-standard.md)
+
 它按当前仓库的 control-plane 范式组织：
 
 - 只负责平台治理、权限、审计、资源目录、操作中心和受控网关
@@ -110,6 +125,12 @@ apps/platform-api-v2/
 8. `docs/delivery/change-delivery-checklist.md`
 9. `docs/delivery/module-delivery-template.md`
 10. `docs/delivery/runbook.md`
+
+如果是 AI 代理先做任务判定，请在进入上述文档前先读：
+
+- [Root AGENTS Routing Surface](../../AGENTS.md)
+- [AI 执行系统当前标准](../../docs/standards/01-ai-execution-system.md)
+- [AI 执行系统使用指南](../../docs/ai-execution-system-usage-guide.md)
 
 ## 当前定位
 

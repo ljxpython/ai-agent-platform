@@ -2,15 +2,28 @@
 
 `apps/runtime-web` 是当前仓库里的 LangGraph 调试前端，用于直接连接 `runtime-service` 做本地交互验证。
 
+## AI / 开发入口优先级
+
+如果这是跨应用任务，或者你是先让 AI 判定该不该走 `runtime-web`，先读：
+
+1. [Root AGENTS Routing Surface](../../AGENTS.md)
+2. [AI 执行系统当前标准](../../docs/standards/01-ai-execution-system.md)
+3. [AI 执行系统使用指南](../../docs/ai-execution-system-usage-guide.md)
+
+然后再进入本 app 的当前 leaf standard：
+
+- [Runtime Web 文档导航](./docs/README.md)
+- [Runtime Web Debug Shell 标准](./docs/standards/runtime-web-debug-standard.md)
+
 ## 开发范式入口
 
 跨应用统一开发方式先看根文档：
 
-- `docs/development-paradigm.md`
+- [当前项目开发范式说明](../../docs/development-paradigm.md)
 
 本应用的当前 leaf standard 再看：
 
-- `docs/standards/runtime-web-debug-standard.md`
+- [Runtime Web Debug Shell 标准](./docs/standards/runtime-web-debug-standard.md)
 
 对 `runtime-web` 来说，最重要的执行原则是：
 

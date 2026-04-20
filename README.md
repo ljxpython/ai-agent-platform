@@ -49,6 +49,23 @@
 - `docs/local-dev.md`
 - `docs/env-matrix.md`
 
+## AI 执行入口
+
+如果你希望后续的人类开发者或 AI 代理都按同一套 Harness Engineering 体系进入任务，建议先按下面顺序阅读：
+
+1. [Root AGENTS Routing Surface](AGENTS.md)
+2. [AI 执行系统当前标准](docs/standards/01-ai-execution-system.md)
+3. [AI 执行系统使用指南](docs/ai-execution-system-usage-guide.md)
+4. [AI 执行系统设计说明](docs/knowledge/04-ai-execution-system-rationale.md)
+5. [Docs 总入口](docs/README.md)
+
+一句话理解：
+
+- `AGENTS.md`：薄路由与执行门禁
+- `docs/standards/`：当前正式标准
+- `docs/knowledge/`：背景、理由与设计哲学
+- `.omx/`：helper、模板、状态与计划，不是 canonical truth
+
 <a id="frontend-entry"></a>
 
 ## 当前前端与推荐入口
