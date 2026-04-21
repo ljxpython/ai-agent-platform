@@ -20,6 +20,10 @@ import TestcaseOverviewStrip from '@/components/platform/TestcaseOverviewStrip.v
 import TestcaseV2WorkspaceNav from '@/components/platform/TestcaseV2WorkspaceNav.vue'
 import type { ActionMenuItem, DataTableColumn } from '@/components/platform/data-table'
 import type { FilterSettingItem } from '@/components/platform/filter-settings'
+import {
+  resolveDocumentContentType,
+  resolveDocumentStoragePath
+} from '@/modules/testcase/document-preview'
 import { getOperationFailureMessage } from '@/services/operations/operations.service'
 import {
   downloadTestcaseDocument,
@@ -217,32 +221,6 @@ function stringifyJson(value: unknown) {
   return JSON.stringify(value ?? {}, null, 2)
 }
 
-function coerceText(value: unknown): string {
-  if (value == null) {
-    return ''
-  }
-  return String(value).trim()
-}
-
-function asRecord(value: unknown): Record<string, unknown> {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return {}
-  }
-  return value as Record<string, unknown>
-}
-
-function resolveStoragePath(document: TestcaseDocument | null): string {
-  if (!document) {
-    return ''
-  }
-  if (document.storage_path) {
-    return document.storage_path
-  }
-  const provenance = asRecord(document.provenance)
-  const asset = asRecord(provenance.asset)
-  return coerceText(asset.storage_path)
-}
-
 const { activeProjectId, activeProject } = useWorkspaceProjectContext()
 const uiStore = useUiStore()
 
@@ -323,8 +301,8 @@ const selectedListItem = computed(
   () => items.value.find((item) => item.id === selectedId.value) ?? null
 )
 const selectedItem = computed(() => relations.value?.document ?? selectedListItem.value)
-const storagePath = computed(() => resolveStoragePath(selectedItem.value))
-const selectedContentType = computed(() => (selectedItem.value?.content_type || '').toLowerCase())
+const storagePath = computed(() => resolveDocumentStoragePath(selectedItem.value))
+const selectedContentType = computed(() => resolveDocumentContentType(selectedItem.value).toLowerCase())
 const isPreviewSupported = computed(() => supportsInlinePreview(selectedContentType.value))
 const selectedBatchSummary = computed(
   () => batchDetail.value?.batch ?? batches.value.find((item) => item.batch_id === (selectedItem.value?.batch_id || '')) ?? null
@@ -463,9 +441,9 @@ async function handlePreview(targetDocument: TestcaseDocument | null = selectedI
   if (!projectId || !targetDocument) {
     return
   }
-  const targetContentType = (targetDocument.content_type || '').toLowerCase()
+  const targetContentType = resolveDocumentContentType(targetDocument).toLowerCase()
   if (!supportsInlinePreview(targetContentType)) {
-    detailError.value = `当前类型暂不支持在线预览：${targetDocument.content_type || 'unknown'}`
+    detailError.value = `当前类型暂不支持在线预览：${targetContentType || 'unknown'}`
     return
   }
 
@@ -478,7 +456,7 @@ async function handlePreview(targetDocument: TestcaseDocument | null = selectedI
     const download = await previewTestcaseDocument(projectId, targetDocument.id)
     await openDocumentPreview(download.blob, {
       filename: targetDocument.filename,
-      contentType: download.contentType || targetDocument.content_type,
+      contentType: download.contentType || targetContentType,
       previewWindow
     })
   } catch (previewError) {
@@ -621,8 +599,8 @@ async function handleCopyBatchId(batchId: string) {
 }
 
 function documentActions(document: TestcaseDocument): ActionMenuItem[] {
-  const path = resolveStoragePath(document)
-  const previewSupported = supportsInlinePreview((document.content_type || '').toLowerCase())
+  const path = resolveDocumentStoragePath(document)
+  const previewSupported = supportsInlinePreview(resolveDocumentContentType(document).toLowerCase())
 
   return [
     {
@@ -891,14 +869,14 @@ watch(
             <BaseButton
               variant="secondary"
               :disabled="!selectedItem || !storagePath || !isPreviewSupported || previewing"
-              @click="handlePreview"
+              @click="handlePreview()"
             >
               {{ previewing ? '预览中...' : '在线预览' }}
             </BaseButton>
             <BaseButton
               variant="secondary"
               :disabled="!selectedItem || !storagePath || downloading"
-              @click="handleDownload"
+              @click="handleDownload()"
             >
               {{ downloading ? '下载中...' : '下载原始文件' }}
             </BaseButton>

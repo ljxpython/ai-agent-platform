@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import mimetypes
 from collections.abc import Mapping
 from urllib.parse import quote
 
@@ -40,14 +41,15 @@ def _build_content_disposition(*, filename: str, inline: bool) -> str:
 
 
 def _serialize_document(row) -> dict[str, object]:
+    content_type = _resolve_content_type_from_document_row(row)
     return {
         "id": str(row.id),
         "project_id": str(row.project_id),
         "batch_id": row.batch_id,
         "idempotency_key": row.idempotency_key,
         "filename": row.filename,
-        "content_type": row.content_type,
-        "storage_path": row.storage_path,
+        "content_type": content_type,
+        "storage_path": _resolve_storage_path_from_document_row(row) or None,
         "source_kind": row.source_kind,
         "parse_status": row.parse_status,
         "summary_for_model": row.summary_for_model,
@@ -78,6 +80,54 @@ def _runtime_meta_from_document(document: Mapping[str, object]) -> dict[str, obj
     if not isinstance(runtime_meta, Mapping):
         return {}
     return {str(key): value for key, value in runtime_meta.items()}
+
+
+def _resolve_storage_path_from_document_row(row) -> str:
+    storage_path = (row.storage_path or "").strip()
+    if storage_path:
+        return storage_path
+    asset_meta = _resolve_asset_meta_from_document_row(row)
+    if not isinstance(asset_meta, Mapping):
+        return ""
+    asset_storage_path = asset_meta.get("storage_path")
+    if asset_storage_path is None:
+        return ""
+    return str(asset_storage_path).strip()
+
+
+def _resolve_asset_meta_from_document_row(row) -> Mapping[str, object]:
+    provenance = row.provenance if isinstance(row.provenance, Mapping) else {}
+    asset_meta = provenance.get("asset")
+    if not isinstance(asset_meta, Mapping):
+        return {}
+    return asset_meta
+
+
+def _resolve_content_type_from_document_row(row) -> str:
+    content_type = (row.content_type or "").strip()
+    if content_type:
+        return content_type
+
+    asset_meta = _resolve_asset_meta_from_document_row(row)
+    for key in ("content_type", "mime_type"):
+        value = asset_meta.get(key)
+        if value is None:
+            continue
+        normalized = str(value).strip()
+        if normalized:
+            return normalized
+
+    provenance = row.provenance if isinstance(row.provenance, Mapping) else {}
+    for key in ("mime_type", "content_type"):
+        value = provenance.get(key)
+        if value is None:
+            continue
+        normalized = str(value).strip()
+        if normalized:
+            return normalized
+
+    guessed, _ = mimetypes.guess_type((row.filename or "").strip())
+    return guessed or "application/octet-stream"
 
 
 @router.post("/assets", response_model=TestCaseDocumentAssetResponse)
@@ -205,7 +255,7 @@ def _build_document_asset_response(
         row = get_test_case_document(session, document_uuid)
         if row is None:
             raise HTTPException(status_code=404, detail="document_not_found")
-        storage_path = (row.storage_path or "").strip()
+        storage_path = _resolve_storage_path_from_document_row(row)
         if not storage_path:
             raise HTTPException(status_code=404, detail="document_asset_not_found")
         try:
