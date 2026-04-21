@@ -241,6 +241,18 @@ Focus on:
 - `docs/development-guidelines.md`
 - `docs/project-story.md`
 
+### I Want To Do An Official Release
+
+Start with:
+
+- `docs/releases/release-policy.md`
+- `docs/releases/v0.1.0-agent-workspace-demo-draft.md`
+- `docs/releases/v0.1.0-release-runbook.md`
+- `docs/releases/v0.1.1-agent-workspace-demo-draft.md`
+- `docs/releases/v0.1.1-release-runbook.md`
+- `docs/releases/v0.1.2-agent-workspace-demo-draft.md`
+- `docs/releases/v0.1.2-release-runbook.md`
+
 <a id="ai-deploy"></a>
 
 ### I Want An AI Agent To Help Me Deploy

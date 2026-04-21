@@ -13,7 +13,7 @@
 截至 `2026-04-05`，当前固定基线如下：
 
 - 前端：`http://127.0.0.1:3173`
-- 平台后端：`http://localhost:2024`
+- 平台后端：`http://localhost:2142`
 - LangGraph 开发服务：`http://localhost:8123`
 - 登录方式：用户名密码登录
 
@@ -22,7 +22,7 @@
 ### 1. 启动平台后端
 
 ```bash
-uv run uvicorn main:app --host 0.0.0.0 --port 2024 --reload
+uv run uvicorn main:app --host 0.0.0.0 --port 2142 --reload
 ```
 
 ### 2. 启动 LangGraph 开发服务
@@ -64,15 +64,19 @@ pnpm --dir "apps/platform-web-vue" dev --host 127.0.0.1 --port 3173
 
 ## 固定演示账号
 
-截至 `2026-04-05`，下面两组账号已通过接口验证可登录：
+当前默认保证可登录的固定账号为：
 
 - 管理员：`admin / admin123456`
-- 普通用户：`test / test`
 
 验证方式：
 
-- `POST http://localhost:2024/_management/auth/login`
-- 两组账号均返回 `200`
+- `POST http://127.0.0.1:2142/api/identity/session`
+- `admin / admin123456` 返回 `200`
+
+补充说明：
+
+- 当前正式实现只保证 bootstrap 管理员账号
+- 普通用户如果需要纳入演示，请先确认本地数据中确实存在该用户及其密码口径
 
 ## 演示前置数据要求
 
@@ -146,9 +150,9 @@ pnpm --dir "apps/platform-web-vue" dev --host 127.0.0.1 --port 3173
 
 优先检查：
 
-- `2024` 后端是否启动
+- `2142` 后端是否启动
 - 浏览器本地是否残留旧 token
-- 当前账号是否还能通过 `/_management/auth/login`
+- 当前账号是否还能通过 `/api/identity/session`
 
 ### Chat / SQL Agent 没有返回
 

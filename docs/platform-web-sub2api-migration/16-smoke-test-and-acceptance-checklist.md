@@ -31,25 +31,25 @@ pnpm --dir "apps/platform-web-vue" build
 固定校验账号：
 
 - `admin / admin123456`
-- `test / test`
+
+补充说明：
+
+- 当前正式实现只保证 bootstrap 管理员账号
+- 普通账号如果要纳入演示验证，需要先确认本地数据里确实存在该用户及其密码口径
+- 不再把固定 `test` 账号视为当前 release 的必选前置条件
 
 接口校验方式：
 
 ```bash
-curl -X POST "http://localhost:2024/_management/auth/login" \
+curl -X POST "http://127.0.0.1:2142/api/identity/session" \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123456"}'
 ```
 
-```bash
-curl -X POST "http://localhost:2024/_management/auth/login" \
-  -H "Content-Type: application/json" \
-  -d '{"username":"test","password":"test"}'
-```
-
 通过标准：
 
-- 两组账号均返回 `200`
+- `admin / admin123456` 返回 `200`
+- 如果本地额外准备了普通账号，则该账号也应返回 `200`
 
 ## 三、关键页面烟测
 
@@ -180,8 +180,8 @@ curl -X POST "http://localhost:2024/_management/auth/login" \
 
 ### 账号结果
 
-- `admin / admin123456` 登录接口返回 `200`
-- `test / test` 登录接口返回 `200`
+- `admin / admin123456` 通过 `POST /api/identity/session` 返回 `200`
+- 普通账号是否可用取决于当前本地 seed 数据，不再把固定 `test` 账号作为默认通过条件
 
 ### 主题与响应式结果
 

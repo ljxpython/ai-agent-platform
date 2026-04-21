@@ -151,7 +151,7 @@ apps/platform-api-v2/
 - `platform-api-v2` 能独立启动
 - `worker.py` 能独立启动
 - `admin / admin123456` 能登录
-- `test / test123456` 能登录
+- bootstrap 管理员账号可作为固定演示入口
 - runtime refresh 能通过 operation 真实异步执行
 - 文档与目录结构可继续作为后续开发标准
 
@@ -189,4 +189,4 @@ bash "./scripts/platform-web-vue-demo-down.sh"
 演示账号：
 
 - 管理员：`admin / admin123456`
-- 普通账号：`test / test123456`
+- 当前实现只保证 bootstrap 管理员账号；普通账号如需演示，请先在本地数据中自行创建或确认现有账号口径

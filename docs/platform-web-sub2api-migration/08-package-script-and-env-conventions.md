@@ -362,10 +362,10 @@ Vite 项目统一规则：
 | 变量名 | 必填 | 默认值 | 用途 |
 | --- | --- | --- | --- |
 | `VITE_APP_NAME` | 否 | `Agent Platform Console` | 页面标题、页签、品牌文案 |
-| `VITE_PLATFORM_API_URL` | 否 | `http://localhost:2024` | 平台后端基础地址 |
+| `VITE_PLATFORM_API_URL` | 否 | `http://localhost:2142` | 平台后端基础地址 |
 | `VITE_REQUEST_TIMEOUT_MS` | 否 | `30000` | Axios 超时时间 |
 | `VITE_DEV_PORT` | 否 | `3000` | Vite 本地启动端口 |
-| `VITE_DEV_PROXY_TARGET` | 否 | `http://localhost:2024` | 本地开发代理目标 |
+| `VITE_DEV_PROXY_TARGET` | 否 | `http://localhost:2142` | 本地开发代理目标 |
 | `VITE_LANGGRAPH_DEBUG_URL` | 否 | 空 | 仅用于少数调试工具，不作为业务主链路依赖 |
 
 ### 4. 明确不应该进入 env 的东西
@@ -419,7 +419,7 @@ Vite 项目统一规则：
 
 默认本地开发值：
 
-- `http://localhost:2024`
+- `http://localhost:2142`
 
 不要再同时并行维护：
 
@@ -450,10 +450,10 @@ Vite 项目统一规则：
 
 ```dotenv
 VITE_APP_NAME=Agent Platform Console
-VITE_PLATFORM_API_URL=http://localhost:2024
+VITE_PLATFORM_API_URL=http://localhost:2142
 VITE_REQUEST_TIMEOUT_MS=30000
 VITE_DEV_PORT=3000
-VITE_DEV_PROXY_TARGET=http://localhost:2024
+VITE_DEV_PROXY_TARGET=http://localhost:2142
 VITE_LANGGRAPH_DEBUG_URL=
 ```
 

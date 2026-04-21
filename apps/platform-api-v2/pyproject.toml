@@ -1,6 +1,6 @@
 [project]
 name = "platform-api-v2"
-version = "0.1.0"
+version = "0.1.2"
 description = "Next-generation platform control plane for AITestLab"
 readme = "README.md"
 requires-python = ">=3.13"
