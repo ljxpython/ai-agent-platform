@@ -8,12 +8,18 @@ const props = withDefaults(
     description: string
     variant?: 'info' | 'success' | 'warning' | 'danger'
     compact?: boolean
+    dismissible?: boolean
   }>(),
   {
     variant: 'info',
-    compact: false
+    compact: false,
+    dismissible: false
   }
 )
+
+const emit = defineEmits<{
+  close: []
+}>()
 
 const bannerClass = computed(() => {
   if (props.variant === 'success') {
@@ -72,7 +78,7 @@ const iconName = computed(() => {
           size="sm"
         />
       </div>
-      <div class="min-w-0">
+      <div class="min-w-0 flex-1">
         <div
           class="text-sm font-semibold text-gray-900 dark:text-white transition-all duration-200"
           :class="props.compact ? 'text-xs' : ''"
@@ -86,6 +92,18 @@ const iconName = computed(() => {
           {{ description }}
         </p>
       </div>
+      <button
+        v-if="props.dismissible"
+        type="button"
+        class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-gray-400 transition hover:bg-white/70 hover:text-gray-700 dark:hover:bg-dark-900/70 dark:hover:text-dark-100"
+        aria-label="关闭提示"
+        @click="emit('close')"
+      >
+        <BaseIcon
+          name="x"
+          size="sm"
+        />
+      </button>
     </div>
   </div>
 </template>

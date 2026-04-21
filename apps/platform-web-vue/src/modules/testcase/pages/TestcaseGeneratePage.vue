@@ -75,7 +75,7 @@ watch(
 </script>
 
 <template>
-  <section class="pw-page-shell flex h-full min-h-0 flex-col">
+  <section class="pw-page-shell pw-chat-page-shell">
     <TestcaseWorkspaceNav :compact="compactChrome" />
 
     <StateBanner

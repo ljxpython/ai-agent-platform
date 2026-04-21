@@ -135,7 +135,7 @@ function clearTarget() {
 </script>
 
 <template>
-  <section class="pw-page-shell flex h-full min-h-0 flex-col">
+  <section class="pw-page-shell pw-chat-page-shell">
     <EmptyState
       v-if="!activeProject"
       icon="project"
@@ -158,9 +158,8 @@ function clearTarget() {
         title: 'Agent Chat',
         description:
           '通用对话工作台已经接上真实 thread、run 和流式消息，不再是那个只会展示说明文案的半残页。',
-        emptyTitle: '开始第一轮 Agent 对话',
-        emptyDescription:
-          '如果你是第一次用这个目标，直接输入消息就行。系统会自动创建 thread，并把后续历史沉淀到当前项目里。'
+        emptyTitle: '',
+        emptyDescription: ''
       }"
       :features="{
         allowRunOptions: true,

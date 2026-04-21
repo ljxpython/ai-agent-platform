@@ -1,4 +1,5 @@
 import type { Message } from '@langchain/langgraph-sdk'
+import { formatThreadTime } from '@/utils/threads'
 import { getChatMessageIdentifier } from './branching'
 import { collectLinkedToolCallIds } from './tool-call-utils'
 
@@ -9,6 +10,51 @@ export type ChatDisplayMessage = {
   roleLabel: string
   bubbleClass: string
   wrapClass: string
+  timeText: string
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  return value as Record<string, unknown>
+}
+
+function resolveMessageTimestampValue(message: Message): string {
+  const messageRecord = asRecord(message)
+  const directTimestamp =
+    messageRecord.created_at || messageRecord.updated_at || messageRecord.createdAt || messageRecord.updatedAt
+
+  if (typeof directTimestamp === 'string' && directTimestamp.trim()) {
+    return directTimestamp
+  }
+
+  const metadataRecord = asRecord(messageRecord.metadata)
+  const responseMetadataRecord = asRecord(messageRecord.response_metadata)
+  const additionalKwargsRecord = asRecord(messageRecord.additional_kwargs)
+  const candidateValues = [
+    metadataRecord.created_at,
+    metadataRecord.updated_at,
+    metadataRecord.createdAt,
+    metadataRecord.updatedAt,
+    responseMetadataRecord.created_at,
+    responseMetadataRecord.updated_at,
+    responseMetadataRecord.createdAt,
+    responseMetadataRecord.updatedAt,
+    additionalKwargsRecord.created_at,
+    additionalKwargsRecord.updated_at,
+    additionalKwargsRecord.createdAt,
+    additionalKwargsRecord.updatedAt
+  ]
+
+  const matchedValue = candidateValues.find((value) => typeof value === 'string' && value.trim())
+  return typeof matchedValue === 'string' ? matchedValue : ''
+}
+
+export function getChatMessageTimeText(message: Message): string {
+  const rawTimestamp = resolveMessageTimestampValue(message)
+  return rawTimestamp ? formatThreadTime(rawTimestamp) : ''
 }
 
 export function isVisibleChatMessage(message: Message, linkedToolCallIds: Set<string>) {
@@ -49,10 +95,10 @@ export function getChatMessageWrapClass(message: Message) {
   return message.type === 'human' ? 'items-end' : 'items-start'
 }
 
-export function buildChatDisplayMessages(messages: Message[]): ChatDisplayMessage[] {
+export function buildChatDisplayMessages(messages: Message[], lastEventAt = ''): ChatDisplayMessage[] {
   const linkedToolCallIds = collectLinkedToolCallIds(messages)
 
-  return messages.reduce<ChatDisplayMessage[]>((result, message, index) => {
+  const visibleMessages = messages.reduce<ChatDisplayMessage[]>((result, message, index) => {
     if (!isVisibleChatMessage(message, linkedToolCallIds)) {
       return result
     }
@@ -63,9 +109,20 @@ export function buildChatDisplayMessages(messages: Message[]): ChatDisplayMessag
       message,
       roleLabel: getChatMessageRoleLabel(message),
       bubbleClass: getChatMessageBubbleClass(message),
-      wrapClass: getChatMessageWrapClass(message)
+      wrapClass: getChatMessageWrapClass(message),
+      timeText: getChatMessageTimeText(message)
     })
 
     return result
   }, [])
+
+  if (lastEventAt.trim()) {
+    const lastVisibleMessage =
+      visibleMessages.length > 0 ? visibleMessages[visibleMessages.length - 1] : undefined
+    if (lastVisibleMessage && !lastVisibleMessage.timeText) {
+      lastVisibleMessage.timeText = formatThreadTime(lastEventAt)
+    }
+  }
+
+  return visibleMessages
 }

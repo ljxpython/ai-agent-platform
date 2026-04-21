@@ -69,8 +69,11 @@ const emptyPlaceholderSuppressedIds = computed(() => {
         {{ displayEntry.roleLabel }}
       </div>
       <div
-        class="pw-chat-bubble max-w-[88%]"
-        :class="displayEntry.bubbleClass"
+        class="pw-chat-bubble max-w-[860px]"
+        :class="[
+          displayEntry.bubbleClass,
+          displayEntry.message.type === 'human' ? 'w-auto self-end' : 'w-full self-start'
+        ]"
       >
         <div
           v-if="getMessageAttachments(displayEntry.message.content).length > 0"
@@ -121,8 +124,12 @@ const emptyPlaceholderSuppressedIds = computed(() => {
       </div>
 
       <div
-        class="flex max-w-[88%] flex-wrap items-center gap-2 text-xs"
-        :class="displayEntry.message.type === 'human' ? 'justify-end self-end' : 'justify-start self-start'"
+        class="flex max-w-[860px] flex-wrap items-center gap-2 text-xs"
+        :class="
+          displayEntry.message.type === 'human'
+            ? 'w-auto justify-end self-end'
+            : 'w-full justify-start self-start'
+        "
       >
         <template v-if="editingMessageId === displayEntry.id">
           <button
@@ -202,6 +209,18 @@ const emptyPlaceholderSuppressedIds = computed(() => {
             </button>
           </div>
         </template>
+      </div>
+
+      <div
+        v-if="displayEntry.timeText"
+        class="max-w-[860px] text-[11px] leading-5 text-gray-400 dark:text-dark-400"
+        :class="
+          displayEntry.message.type === 'human'
+            ? 'w-auto self-end text-right'
+            : 'w-full self-start text-left'
+        "
+      >
+        {{ displayEntry.timeText }}
       </div>
     </div>
 

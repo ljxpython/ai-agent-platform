@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 
 const props = withDefaults(
@@ -16,12 +16,23 @@ const props = withDefaults(
 
 const isOpen = ref(false)
 const rootRef = ref<HTMLElement | null>(null)
+const tooltipRef = ref<HTMLElement | null>(null)
+const tooltipStyle = ref<Record<string, string>>({})
+let closeTimer: number | null = null
 
 function open() {
+  if (closeTimer !== null && typeof window !== 'undefined') {
+    window.clearTimeout(closeTimer)
+    closeTimer = null
+  }
   isOpen.value = true
 }
 
 function close() {
+  if (closeTimer !== null && typeof window !== 'undefined') {
+    window.clearTimeout(closeTimer)
+    closeTimer = null
+  }
   isOpen.value = false
 }
 
@@ -29,37 +40,96 @@ function toggle() {
   isOpen.value = !isOpen.value
 }
 
-function alignmentClass() {
-  if (props.align === 'left') {
-    return 'left-0'
+function scheduleClose() {
+  if (typeof window === 'undefined') {
+    close()
+    return
   }
-  if (props.align === 'right') {
-    return 'right-0'
+
+  if (closeTimer !== null) {
+    window.clearTimeout(closeTimer)
   }
-  return 'left-1/2 -translate-x-1/2'
+  closeTimer = window.setTimeout(() => {
+    close()
+  }, 80)
+}
+
+function updatePosition() {
+  const trigger = rootRef.value
+  const tooltip = tooltipRef.value
+  if (!trigger || !tooltip || typeof window === 'undefined') {
+    return
+  }
+
+  const rect = trigger.getBoundingClientRect()
+  const tooltipWidth = tooltip.offsetWidth
+  const tooltipHeight = tooltip.offsetHeight
+  const viewportWidth = window.innerWidth
+  const viewportHeight = window.innerHeight
+  const gap = 8
+  const viewportPadding = 16
+
+  let left = rect.left
+  if (props.align === 'center') {
+    left = rect.left + rect.width / 2 - tooltipWidth / 2
+  } else if (props.align === 'right') {
+    left = rect.right - tooltipWidth
+  }
+
+  const maxLeft = Math.max(viewportPadding, viewportWidth - tooltipWidth - viewportPadding)
+  left = Math.min(Math.max(viewportPadding, left), maxLeft)
+
+  let top = rect.bottom + gap
+  if (top + tooltipHeight > viewportHeight - viewportPadding) {
+    top = Math.max(viewportPadding, rect.top - tooltipHeight - gap)
+  }
+
+  tooltipStyle.value = {
+    top: `${top}px`,
+    left: `${left}px`
+  }
 }
 
 function handleClickOutside(event: MouseEvent) {
-  if (rootRef.value && !rootRef.value.contains(event.target as Node)) {
-    close()
+  const target = event.target as Node
+  if (rootRef.value?.contains(target) || tooltipRef.value?.contains(target)) {
+    return
   }
+
+  close()
 }
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside)
+  window.addEventListener('resize', updatePosition)
+  window.addEventListener('scroll', updatePosition, true)
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('resize', updatePosition)
+  window.removeEventListener('scroll', updatePosition, true)
+  if (closeTimer !== null && typeof window !== 'undefined') {
+    window.clearTimeout(closeTimer)
+  }
+})
+
+watch(isOpen, async (nextValue) => {
+  if (!nextValue) {
+    return
+  }
+
+  await nextTick()
+  updatePosition()
 })
 </script>
 
 <template>
   <span
     ref="rootRef"
-    class="relative inline-flex"
+    class="inline-flex"
     @mouseenter="open"
-    @mouseleave="close"
+    @mouseleave="scheduleClose"
   >
     <button
       type="button"
@@ -73,21 +143,26 @@ onBeforeUnmount(() => {
       />
     </button>
 
-    <Transition
-      enter-active-class="transition duration-150 ease-out"
-      enter-from-class="translate-y-1 opacity-0"
-      enter-to-class="translate-y-0 opacity-100"
-      leave-active-class="transition duration-120 ease-in"
-      leave-from-class="translate-y-0 opacity-100"
-      leave-to-class="translate-y-1 opacity-0"
-    >
-      <div
-        v-if="isOpen"
-        class="absolute top-full z-20 mt-2 w-[min(280px,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white px-3 py-3 text-xs leading-6 text-gray-600 shadow-lg dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200"
-        :class="alignmentClass()"
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition duration-150 ease-out"
+        enter-from-class="translate-y-1 opacity-0"
+        enter-to-class="translate-y-0 opacity-100"
+        leave-active-class="transition duration-120 ease-in"
+        leave-from-class="translate-y-0 opacity-100"
+        leave-to-class="translate-y-1 opacity-0"
       >
-        {{ text }}
-      </div>
-    </Transition>
+        <div
+          v-if="isOpen"
+          ref="tooltipRef"
+          class="fixed z-[160] w-[min(280px,calc(100vw-2rem))] rounded-2xl border border-gray-200 bg-white px-3 py-3 text-xs leading-6 text-gray-600 shadow-lg dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200"
+          :style="tooltipStyle"
+          @mouseenter="open"
+          @mouseleave="scheduleClose"
+        >
+          {{ text }}
+        </div>
+      </Transition>
+    </Teleport>
   </span>
 </template>

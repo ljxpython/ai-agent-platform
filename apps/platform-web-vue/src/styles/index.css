@@ -306,6 +306,11 @@
     @apply space-y-4;
   }
 
+  .pw-chat-page-shell {
+    @apply flex min-h-0 flex-col overflow-hidden;
+    @apply h-[calc(100vh-6rem)] md:h-[calc(100vh-6.5rem)] lg:h-[calc(100vh-7rem)];
+  }
+
   .pw-page-header {
     @apply mb-4 flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between;
   }

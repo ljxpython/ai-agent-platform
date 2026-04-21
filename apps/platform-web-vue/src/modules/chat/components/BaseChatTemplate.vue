@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import type { Message } from '@langchain/langgraph-sdk'
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import type { LocationQueryRaw } from 'vue-router'
 import { useRoute, useRouter } from 'vue-router'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
-import ButtonWithTooltip from '@/components/platform/ButtonWithTooltip.vue'
 import EmptyState from '@/components/platform/EmptyState.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import { useWorkspaceProjectContext } from '@/composables/useWorkspaceProjectContext'
@@ -75,7 +74,9 @@ const runtimeOptionsDialogOpen = ref(false)
 const inspectorInitialTab = ref<InspectorTabKey>('overview')
 const messagesViewport = ref<HTMLDivElement | null>(null)
 const messagesContent = ref<HTMLDivElement | null>(null)
-const sourceNoteDismissed = ref(false)
+const isFocusMode = ref(false)
+const workspaceHeaderCollapsed = ref(false)
+const runtimeInfoDismissed = ref(false)
 const deletingThreadId = ref('')
 const editingMessageId = ref('')
 const editingMessageValue = ref('')
@@ -107,7 +108,9 @@ const attachmentState = useChatAttachments()
 
 const currentProject = activeProject
 const renderMessages = computed(() => workspace.messages.value)
-const displayMessages = computed(() => buildChatDisplayMessages(renderMessages.value))
+const displayMessages = computed(() =>
+  buildChatDisplayMessages(renderMessages.value, workspace.lastEventAt.value)
+)
 const composerAttachments = computed(() => attachmentState.attachments.value)
 const planView = computed(() => buildChatPlanView(workspace.displayState.value))
 const inspectorFiles = computed(() => normalizeChatInspectorFiles(workspace.displayState.value))
@@ -122,7 +125,6 @@ const hasArtifactEntries = computed(() => {
 const hasComposerContent = computed(
   () => Boolean(composerInput.value.trim()) || composerAttachments.value.length > 0
 )
-const visibleSourceNote = computed(() => Boolean(props.sourceNote.trim()) && !sourceNoteDismissed.value)
 const showContinueAction = computed(
   () => !workspace.sending.value && workspace.canContinueDebug.value
 )
@@ -195,6 +197,7 @@ const compactModeView = computed(() =>
   })
 )
 const isCompactMode = computed(() => compactModeView.value.enabled)
+const isSurfaceCompact = computed(() => isCompactMode.value || isFocusMode.value)
 const showJumpToLatestNotice = computed(
   () =>
     !contextDrawerOpen.value &&
@@ -398,6 +401,42 @@ function clearExpandedMessageMeta() {
   setFollowPauseReason('messageMeta', false, { resumeBehavior: 'smooth' })
 }
 
+function applyFocusModeDocumentState(enabled: boolean) {
+  if (typeof document === 'undefined') {
+    return
+  }
+
+  document.documentElement.classList.toggle('pw-dialog-open', enabled)
+  document.body.classList.toggle('pw-dialog-open', enabled)
+}
+
+function toggleFocusMode(nextValue?: boolean) {
+  const normalizedValue = typeof nextValue === 'boolean' ? nextValue : !isFocusMode.value
+  isFocusMode.value = normalizedValue
+
+  if (!normalizedValue) {
+    return
+  }
+
+  threadsDrawerOpen.value = false
+  contextDrawerOpen.value = false
+  runtimeOptionsDialogOpen.value = false
+}
+
+function toggleWorkspaceHeaderCollapsed(nextValue?: boolean) {
+  workspaceHeaderCollapsed.value =
+    typeof nextValue === 'boolean' ? nextValue : !workspaceHeaderCollapsed.value
+}
+
+function handleFocusModeKeydown(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || !isFocusMode.value) {
+    return
+  }
+
+  event.preventDefault()
+  toggleFocusMode(false)
+}
+
 function resumeAutoFollow(behavior: globalThis.ScrollBehavior = 'auto') {
   setFollowPauseReason('manualScroll', false, { resumeBehavior: behavior })
   clearExpandedMessageMeta()
@@ -477,9 +516,33 @@ watch(
 )
 
 watch(
-  () => props.sourceNote,
-  () => {
-    sourceNoteDismissed.value = false
+  () => isFocusMode.value,
+  (nextValue) => {
+    applyFocusModeDocumentState(nextValue)
+  },
+  { immediate: true }
+)
+
+watch(
+  () => props.target,
+  (nextTarget) => {
+    if (!nextTarget) {
+      toggleFocusMode(false)
+    }
+  }
+)
+
+watch(
+  () => workspace.detailInfo.value,
+  (nextValue, previousValue) => {
+    if (!nextValue.trim()) {
+      runtimeInfoDismissed.value = false
+      return
+    }
+
+    if (nextValue !== previousValue) {
+      runtimeInfoDismissed.value = false
+    }
   }
 )
 
@@ -609,6 +672,12 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  if (typeof window !== 'undefined') {
+    window.removeEventListener('keydown', handleFocusModeKeydown)
+  }
+
+  applyFocusModeDocumentState(false)
+
   if (scheduledScrollFrameId === null || typeof window === 'undefined') {
     stopKeepPinnedToBottomLoop()
     return
@@ -617,6 +686,14 @@ onBeforeUnmount(() => {
   window.cancelAnimationFrame(scheduledScrollFrameId)
   scheduledScrollFrameId = null
   stopKeepPinnedToBottomLoop()
+})
+
+onMounted(() => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.addEventListener('keydown', handleFocusModeKeydown)
 })
 
 const messageActions = createChatMessageActions({
@@ -800,10 +877,6 @@ function applyDraftRunOptions() {
   runtimeOptionsDialogOpen.value = false
 }
 
-function handleDismissSourceNote() {
-  sourceNoteDismissed.value = true
-}
-
 function handleJumpToLatest() {
   resumeAutoFollow('smooth')
 }
@@ -842,78 +915,58 @@ async function handleCancelRun() {
 </script>
 
 <template>
-  <section class="pw-page-shell flex flex-1 min-h-0 flex-col">
-    <PageHeader
-      :eyebrow="props.target?.targetType === 'graph' ? 'Graph Chat' : 'Assistant Chat'"
-      :title="display.title"
-      :description="display.description"
-      :compact="isCompactMode"
-    />
-
+  <section
+    class="pw-page-shell flex flex-1 min-h-0 flex-col"
+    :class="
+      isFocusMode
+        ? 'fixed inset-0 z-[95] m-0 h-[100dvh] overflow-hidden bg-gray-50 p-4 dark:bg-dark-950 md:p-5 lg:p-6'
+        : ''
+    "
+  >
     <div
-      v-if="visibleSourceNote"
-      class="pw-panel-info flex flex-wrap items-center justify-between gap-3 text-sky-900 transition-all duration-200 dark:text-sky-50"
-      :class="isCompactMode ? 'gap-2 rounded-xl px-3 py-3' : ''"
+      v-if="isFocusMode"
+      class="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white/95 px-3 py-2 shadow-sm dark:border-dark-800 dark:bg-dark-900/95"
     >
-      <div
-        class="min-w-0 flex items-center gap-3 transition-all duration-200"
-        :class="isCompactMode ? 'gap-2' : ''"
-      >
-        <span
-          class="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-white/70 text-sky-600 transition-all duration-200 dark:bg-dark-900/60 dark:text-sky-200"
-          :class="isCompactMode ? 'h-8 w-8 rounded-xl' : ''"
-        >
-          <BaseIcon
-            name="info"
-            size="sm"
-          />
-        </span>
-        <div class="min-w-0">
-          <div
-            class="text-sm font-semibold text-sky-800 transition-all duration-200 dark:text-sky-100"
-            :class="isCompactMode ? 'text-xs' : ''"
-          >
-            当前目标来源已记录
-          </div>
-          <p
-            class="text-xs leading-6 text-sky-700/90 transition-all duration-200 dark:text-sky-100/80"
-            :class="isCompactMode ? 'leading-5 line-clamp-1' : ''"
-          >
-            完整说明已经收进会话详情的概览页，不再在页面顶部重复堆内容。
-          </p>
+      <div class="min-w-0 flex items-center gap-2">
+        <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
+          专注模式
+        </div>
+        <span class="text-gray-300 dark:text-dark-700">·</span>
+        <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">
+          {{ display.title }}
         </div>
       </div>
 
-      <div
-        class="flex shrink-0 items-center gap-2 transition-all duration-200"
-        :class="isCompactMode ? 'gap-1.5' : ''"
-      >
+      <div class="flex items-center gap-2">
+        <span class="hidden text-xs text-gray-400 dark:text-dark-500 md:inline">Esc 退出</span>
         <BaseButton
-          variant="ghost"
-          @click="openInspectorDrawer('overview')"
-        >
-          查看会话详情
-        </BaseButton>
-        <button
-          type="button"
-          class="inline-flex h-9 w-9 items-center justify-center rounded-xl text-sky-500 transition hover:bg-white hover:text-sky-700 dark:text-sky-200 dark:hover:bg-dark-900 dark:hover:text-white"
-          aria-label="关闭目标来源提示"
-          @click="handleDismissSourceNote"
+          variant="secondary"
+          class="h-8 px-3 text-xs"
+          @click="toggleFocusMode(false)"
         >
           <BaseIcon
             name="x"
             size="sm"
           />
-        </button>
+          退出专注模式
+        </BaseButton>
       </div>
     </div>
 
+    <PageHeader
+      v-if="!isFocusMode"
+      :eyebrow="props.target?.targetType === 'graph' ? 'Graph Chat' : 'Assistant Chat'"
+      :title="display.title"
+      :description="display.description"
+      :compact="isSurfaceCompact"
+    />
+
     <StateBanner
-      v-if="contextNotice"
+      v-if="contextNotice && !isSurfaceCompact"
       title="上下文说明"
       :description="contextNotice"
       variant="success"
-      :compact="isCompactMode"
+      :compact="isSurfaceCompact"
     />
 
     <StateBanner
@@ -921,7 +974,7 @@ async function handleCancelRun() {
       title="聊天线程加载失败"
       :description="workspace.error.value"
       variant="danger"
-      :compact="isCompactMode"
+      :compact="isSurfaceCompact"
     />
 
     <StateBanner
@@ -929,7 +982,7 @@ async function handleCancelRun() {
       title="当前对话运行失败"
       :description="activeRunFailureDescription"
       variant="danger"
-      :compact="isCompactMode"
+      :compact="isSurfaceCompact"
     />
 
     <StateBanner
@@ -937,15 +990,17 @@ async function handleCancelRun() {
       title="运行时目录加载失败"
       :description="workspace.runtimeError.value"
       variant="warning"
-      :compact="isCompactMode"
+      :compact="isSurfaceCompact"
     />
 
     <StateBanner
-      v-if="workspace.detailInfo.value"
+      v-if="workspace.detailInfo.value && !runtimeInfoDismissed"
       title="运行状态更新"
       :description="workspace.detailInfo.value"
       variant="info"
-      :compact="isCompactMode"
+      :compact="isSurfaceCompact"
+      dismissible
+      @close="runtimeInfoDismissed = true"
     />
 
     <StateBanner
@@ -953,7 +1008,7 @@ async function handleCancelRun() {
       title="会话状态部分未同步"
       :description="workspace.detailWarning.value"
       variant="warning"
-      :compact="isCompactMode"
+      :compact="isSurfaceCompact"
     />
 
     <StateBanner
@@ -961,7 +1016,7 @@ async function handleCancelRun() {
       title="Debug 已暂停"
       :description="debugStatusDescription"
       variant="info"
-      :compact="isCompactMode"
+      :compact="isSurfaceCompact"
     />
 
     <StateBanner
@@ -969,7 +1024,7 @@ async function handleCancelRun() {
       title="等待人工决策"
       description="当前运行进入 interrupt 状态。先处理下面的中断面板，再继续和 agent 交互。"
       variant="warning"
-      :compact="isCompactMode"
+      :compact="isSurfaceCompact"
     />
 
     <StateBanner
@@ -977,7 +1032,7 @@ async function handleCancelRun() {
       title="当前正在查看历史分支"
       description="你现在看到的是某个 checkpoint 分支下的消息快照。继续发送、编辑或重试时，会基于这个分支重新生成新的对话路径。"
       variant="info"
-      :compact="isCompactMode"
+      :compact="isSurfaceCompact"
     />
 
     <EmptyState
@@ -1005,59 +1060,38 @@ async function handleCancelRun() {
 
     <SurfaceCard
       v-else
-      class="flex min-h-0 flex-1 flex-col overflow-hidden p-0"
+      class="relative flex min-h-0 flex-1 flex-col overflow-hidden p-0"
     >
       <div
-        class="border-b border-gray-100 px-5 py-4 transition-all duration-200 dark:border-dark-800 md:px-6 md:py-5"
-        :class="isCompactMode ? 'px-4 py-3 md:px-5 md:py-3.5' : ''"
+        v-if="!isFocusMode"
+        class="relative shrink-0 px-4 md:px-5"
+        :class="workspaceHeaderCollapsed ? 'py-1' : 'border-b border-gray-100 py-2 dark:border-dark-800 md:py-2.5'"
       >
-        <div
-          class="flex flex-wrap items-start justify-between gap-4 transition-all duration-200"
-          :class="isCompactMode ? 'gap-3' : ''"
-        >
-          <div class="min-w-0">
-            <div
-              class="text-lg font-semibold text-gray-900 transition-all duration-200 dark:text-white"
-              :class="isCompactMode ? 'text-base' : ''"
+        <div class="flex h-8 items-center gap-3">
+          <div
+            v-if="showContextBar && !workspaceHeaderCollapsed"
+            class="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto"
+            :class="isSurfaceCompact ? 'gap-1.5' : ''"
+          >
+            <span
+              v-for="pill in headerPills"
+              :key="pill.label"
+              class="pw-pill shrink-0"
+              :class="isSurfaceCompact ? 'gap-1.5 px-2.5 py-1 text-[11px]' : 'px-2.5 py-1 text-[11px]'"
             >
-              {{ workspace.selectedThreadSummary.value?.title || display.emptyTitle || '开始一个新对话' }}
-            </div>
-            <div
-              class="mt-2 text-sm leading-7 text-gray-500 transition-all duration-200 dark:text-dark-300"
-              :class="isCompactMode ? 'mt-1 text-xs leading-5 line-clamp-2' : ''"
-            >
-              {{
-                workspace.selectedThreadSummary.value?.preview ||
-                  display.emptyDescription ||
-                  '选择历史 thread 或直接发第一条消息，消息画布会在这里持续复用。'
-              }}
-            </div>
-
-            <div
-              v-if="showContextBar"
-              class="mt-4 flex flex-wrap gap-2 transition-all duration-200"
-              :class="isCompactMode ? 'mt-3 gap-1.5' : ''"
-            >
-              <span
-                v-for="pill in headerPills"
-                :key="pill.label"
-                class="pw-pill"
-                :class="isCompactMode ? 'gap-1.5 px-2.5 py-1 text-[11px]' : ''"
-              >
-                <span class="text-gray-400 dark:text-dark-400">{{ pill.label }}</span>
-                <span class="max-w-[220px] truncate text-gray-700 dark:text-white">{{ pill.value }}</span>
-              </span>
-            </div>
+              <span class="text-gray-400 dark:text-dark-400">{{ pill.label }}</span>
+              <span class="max-w-[180px] truncate text-gray-700 dark:text-white">{{ pill.value }}</span>
+            </span>
           </div>
 
           <div
-            class="flex flex-wrap items-center gap-2 transition-all duration-200"
-            :class="isCompactMode ? 'gap-1.5' : ''"
+            class="ml-auto flex shrink-0 items-center gap-2 overflow-x-auto"
+            :class="isSurfaceCompact ? 'gap-1.5' : ''"
           >
             <div
-              v-if="liveFollowView.visible"
-              class="pw-pill-soft gap-2 px-3 py-2 text-xs font-medium"
-              :class="[liveFollowPillClass, isCompactMode ? 'gap-1.5 px-2.5 py-1.5 text-[11px]' : '']"
+              v-if="liveFollowView.visible && !workspaceHeaderCollapsed"
+              class="pw-pill-soft gap-1.5 px-2.5 py-1.5 text-[11px] font-medium"
+              :class="[liveFollowPillClass, isSurfaceCompact ? 'gap-1.5 px-2.5 py-1.5 text-[11px]' : '']"
             >
               <BaseIcon
                 :name="liveFollowView.icon"
@@ -1065,73 +1099,95 @@ async function handleCancelRun() {
               />
               <span>{{ liveFollowView.pillLabel }}</span>
             </div>
-            <div class="flex items-center gap-1">
+            <template v-if="!workspaceHeaderCollapsed">
               <BaseButton
                 variant="secondary"
-                @click="threadsDrawerOpen = true"
+                class="h-8 px-3 text-xs"
+                @click="toggleFocusMode(true)"
               >
                 <BaseIcon
-                  name="threads"
+                  name="focus"
                   size="sm"
                 />
-                会话 {{ workspace.threadItems.value.length }}
+                专注模式
               </BaseButton>
-            </div>
-            <ButtonWithTooltip
-              variant="secondary"
-              tooltip="查看当前 target、thread、运行上下文、ToDo、Files 和 checkpoint 历史，不会打断主消息区阅读。"
-              @click="openInspectorDrawer('overview')"
-            >
-              <BaseIcon
-                name="overview"
-                size="sm"
-              />
-              会话详情
-            </ButtonWithTooltip>
-            <div v-if="allowRunOptions">
-              <ButtonWithTooltip
+              <div class="flex items-center gap-1">
+                <BaseButton
+                  variant="secondary"
+                  class="h-8 px-3 text-xs"
+                  @click="threadsDrawerOpen = true"
+                >
+                  <BaseIcon
+                    name="threads"
+                    size="sm"
+                  />
+                  会话 {{ workspace.threadItems.value.length }}
+                </BaseButton>
+              </div>
+              <BaseButton
                 variant="secondary"
-                tooltip="修改后续运行要用的模型、工具、Debug Mode 和生成参数，不会回改已经开始的这轮执行。"
-                @click="openRuntimeOptionsDialog"
+                class="h-8 px-3 text-xs"
+                @click="openInspectorDrawer('overview')"
               >
                 <BaseIcon
-                  name="runtime"
+                  name="overview"
                   size="sm"
                 />
-                运行参数
-              </ButtonWithTooltip>
-            </div>
-            <ButtonWithTooltip
-              variant="secondary"
-              tooltip="重新从服务端拉取当前会话状态。适合流式中断、切页面回来后状态漂移、或你怀疑前端没跟上后端时使用。"
-              :disabled="workspace.loadingThreads.value || workspace.loadingThreadDetail.value"
-              @click="workspace.refreshActiveThread"
-            >
-              <BaseIcon
-                name="refresh"
-                size="sm"
-              />
-              重新同步
-            </ButtonWithTooltip>
+                会话详情
+              </BaseButton>
+              <div v-if="allowRunOptions">
+                <BaseButton
+                  variant="secondary"
+                  class="h-8 px-3 text-xs"
+                  @click="openRuntimeOptionsDialog"
+                >
+                  <BaseIcon
+                    name="runtime"
+                    size="sm"
+                  />
+                  运行参数
+                </BaseButton>
+              </div>
+              <BaseButton
+                variant="secondary"
+                class="h-8 px-3 text-xs"
+                :disabled="workspace.loadingThreads.value || workspace.loadingThreadDetail.value"
+                @click="workspace.refreshActiveThread"
+              >
+                <BaseIcon
+                  name="refresh"
+                  size="sm"
+                />
+                重新同步
+              </BaseButton>
+              <BaseButton
+                class="h-8 px-3 text-xs"
+                :disabled="!workspace.canStartThread.value"
+                @click="workspace.startNewThread"
+              >
+                <BaseIcon
+                  name="chat"
+                  size="sm"
+                />
+                新对话
+              </BaseButton>
+            </template>
             <BaseButton
-              :disabled="!workspace.canStartThread.value"
-              @click="workspace.startNewThread"
+              variant="secondary"
+              class="h-8 px-3 text-xs"
+              @click="toggleWorkspaceHeaderCollapsed(!workspaceHeaderCollapsed)"
             >
-              <BaseIcon
-                name="chat"
-                size="sm"
-              />
-              新对话
+              {{ workspaceHeaderCollapsed ? '打开顶部栏' : '收起顶部栏' }}
             </BaseButton>
           </div>
         </div>
       </div>
 
       <div
-        class="min-h-0 flex flex-1 flex-col overflow-hidden"
+        class="relative z-10 min-h-0 flex flex-1 flex-col overflow-hidden"
         :class="
           showArtifacts && hasArtifactEntries
-            ? isCompactMode
+            ? isSurfaceCompact
               ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_320px]'
               : 'lg:grid lg:grid-cols-[minmax(0,1fr)_360px]'
             : ''
@@ -1141,12 +1197,12 @@ async function handleCancelRun() {
           <div
             ref="messagesViewport"
             class="min-h-0 flex-1 overflow-y-auto px-5 py-4 md:px-6 md:py-5"
-            :class="isCompactMode ? 'px-4 py-3 md:px-5 md:py-4' : ''"
+            :class="isSurfaceCompact ? 'px-4 py-3 md:px-5 md:py-4' : ''"
             @scroll="handleMessagesScroll"
           >
             <div
               ref="messagesContent"
-              class="flex min-h-full flex-col justify-end"
+              class="mx-auto flex min-h-full w-full max-w-[860px] flex-col justify-end"
             >
               <div
                 v-if="workspace.loadingThreadDetail.value && renderMessages.length === 0"
@@ -1159,28 +1215,8 @@ async function handleCancelRun() {
                 />
               </div>
 
-              <div
-                v-else-if="displayMessages.length === 0"
-                class="flex h-full items-center justify-center"
-              >
-                <div class="pw-panel-muted mx-auto flex w-full max-w-xl flex-col items-center px-6 py-10 text-center">
-                  <div class="pw-empty-state-icon mb-4">
-                    <BaseIcon
-                      name="chat"
-                      size="lg"
-                    />
-                  </div>
-                  <h3 class="text-lg font-semibold text-gray-950 dark:text-white">
-                    {{ display.emptyTitle || '从这里开始第一轮对话' }}
-                  </h3>
-                  <p class="mt-3 max-w-md text-sm leading-7 text-gray-500 dark:text-dark-300">
-                    {{ display.emptyDescription || '输入框已经可用。发出第一条消息时会自动创建 thread，并把后续历史沉淀到当前项目。' }}
-                  </p>
-                </div>
-              </div>
-
               <ChatMessageList
-                v-else
+                v-else-if="displayMessages.length > 0"
                 :display-messages="displayMessages"
                 :all-messages="renderMessages"
                 :editing-message-id="editingMessageId"
@@ -1269,7 +1305,8 @@ async function handleCancelRun() {
         :send-button-label="sendButtonLabel"
         :last-event-at="workspace.lastEventAt.value"
         :on-resume-interrupted-run="workspace.resumeInterruptedRun"
-        :compact="isCompactMode"
+        :compact="isSurfaceCompact"
+        :focus-mode="isFocusMode"
         @send="handleSend"
         @cancel="handleCancelRun"
         @continue-run="handleContinue"
