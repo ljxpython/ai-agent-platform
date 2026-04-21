@@ -970,7 +970,7 @@ async function handleCancelRun() {
     />
 
     <StateBanner
-      v-if="workspace.error.value"
+      v-if="!isFocusMode && workspace.error.value"
       title="聊天线程加载失败"
       :description="workspace.error.value"
       variant="danger"
@@ -978,7 +978,7 @@ async function handleCancelRun() {
     />
 
     <StateBanner
-      v-if="activeRunFailureDescription"
+      v-if="!isFocusMode && activeRunFailureDescription"
       title="当前对话运行失败"
       :description="activeRunFailureDescription"
       variant="danger"
@@ -986,7 +986,7 @@ async function handleCancelRun() {
     />
 
     <StateBanner
-      v-if="workspace.runtimeError.value"
+      v-if="!isFocusMode && workspace.runtimeError.value"
       title="运行时目录加载失败"
       :description="workspace.runtimeError.value"
       variant="warning"
@@ -994,7 +994,7 @@ async function handleCancelRun() {
     />
 
     <StateBanner
-      v-if="workspace.detailInfo.value && !runtimeInfoDismissed"
+      v-if="!isFocusMode && workspace.detailInfo.value && !runtimeInfoDismissed"
       title="运行状态更新"
       :description="workspace.detailInfo.value"
       variant="info"
@@ -1004,7 +1004,7 @@ async function handleCancelRun() {
     />
 
     <StateBanner
-      v-if="workspace.detailWarning.value"
+      v-if="!isFocusMode && workspace.detailWarning.value"
       title="会话状态部分未同步"
       :description="workspace.detailWarning.value"
       variant="warning"
@@ -1012,7 +1012,7 @@ async function handleCancelRun() {
     />
 
     <StateBanner
-      v-if="debugStatusDescription"
+      v-if="!isFocusMode && debugStatusDescription"
       title="Debug 已暂停"
       :description="debugStatusDescription"
       variant="info"
@@ -1020,7 +1020,7 @@ async function handleCancelRun() {
     />
 
     <StateBanner
-      v-if="hasBlockingInterrupt"
+      v-if="!isFocusMode && hasBlockingInterrupt"
       title="等待人工决策"
       description="当前运行进入 interrupt 状态。先处理下面的中断面板，再继续和 agent 交互。"
       variant="warning"
@@ -1028,7 +1028,7 @@ async function handleCancelRun() {
     />
 
     <StateBanner
-      v-if="workspace.isViewingBranch.value"
+      v-if="!isFocusMode && workspace.isViewingBranch.value"
       title="当前正在查看历史分支"
       description="你现在看到的是某个 checkpoint 分支下的消息快照。继续发送、编辑或重试时，会基于这个分支重新生成新的对话路径。"
       variant="info"
