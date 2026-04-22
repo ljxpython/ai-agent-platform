@@ -202,6 +202,34 @@ scripts/dev-down.sh
 - `scripts/platform-web-vue-demo-health.sh`
 - `scripts/platform-web-vue-demo-down.sh`
 
+### Docker / Docker Compose
+
+如果你希望直接用容器方式启动，当前有 3 种常见用法：
+
+1. 只启动 `runtime-service`
+
+```bash
+docker compose -f apps/runtime-service/deploy/docker-compose.runtime-service.yml --env-file apps/runtime-service/deploy/.env.runtime-service up -d
+```
+
+2. 启动整仓 stack（无 Nginx，前后端分端口）
+
+```bash
+docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack up -d
+```
+
+3. 启动整仓 stack（带 Nginx，单入口）
+
+```bash
+docker compose -f deploy/docker-compose.stack.nginx.yml --env-file deploy/.env.stack up -d
+```
+
+建议阅读顺序：
+
+- `deploy/README.md`
+- `docs/zero-to-one-container-deploy.md`
+- `docs/runbooks/container-update-runbook.md`
+
 ### 如果你想单独启动 `platform-web-vue`
 
 根目录默认脚本已经会启动 `apps/platform-web-vue`。
