@@ -1,6 +1,6 @@
 # 前端 API 地址与本地/远端调试说明
 
-本文只说明当前正式前端 `platform-web-vue` 与可选调试壳 `runtime-web` 的地址配置方式，避免把浏览器端请求错误地指向 `localhost` 或错误宿主。
+本文只说明当前正式前端 `platform-web` 与可选调试壳 `runtime-web` 的地址配置方式，避免把浏览器端请求错误地指向 `localhost` 或错误宿主。
 
 ## 1. 核心原则
 
@@ -23,16 +23,16 @@
 
 适用场景：
 
-- 你在 Mac 上本地启动 `platform-web-vue`
-- `platform-api-v2` 也在 Mac 上
+- 你在 Mac 上本地启动 `platform-web`
+- `platform-api` 也在 Mac 上
 - `runtime-service` 也在 Mac 上
 
 推荐配置：
 
 ```env
-# apps/platform-web-vue/.env.local
+# apps/platform-web/.env.local
 VITE_PLATFORM_API_URL=http://localhost:2142
-VITE_PLATFORM_API_V2_URL=http://localhost:2142
+VITE_PLATFORM_API_RUNTIME_ENABLED=true
 VITE_DEV_PROXY_TARGET=http://localhost:2142
 VITE_DEV_PORT=3000
 ```
@@ -47,16 +47,16 @@ NEXT_PUBLIC_ASSISTANT_ID=assistant
 
 适用场景：
 
-- 你在 Mac 上运行 `platform-web-vue`
+- 你在 Mac 上运行 `platform-web`
 - 浏览器访问的是 Mac 本地前端
-- `platform-api-v2` 跑在服务器上
+- `platform-api` 跑在服务器上
 
 推荐配置：
 
 ```env
-# apps/platform-web-vue/.env.local
+# apps/platform-web/.env.local
 VITE_PLATFORM_API_URL=http://101.126.90.71:2142
-VITE_PLATFORM_API_V2_URL=http://101.126.90.71:2142
+VITE_PLATFORM_API_RUNTIME_ENABLED=true
 VITE_DEV_PROXY_TARGET=http://101.126.90.71:2142
 VITE_DEV_PORT=3000
 ```
@@ -66,14 +66,14 @@ VITE_DEV_PORT=3000
 适用场景：
 
 - 浏览器访问 `http://101.126.90.71:3000`
-- `platform-api-v2` 也部署在该服务器
+- `platform-api` 也部署在该服务器
 
 推荐配置：
 
 ```env
-# apps/platform-web-vue/.env
+# apps/platform-web/.env
 VITE_PLATFORM_API_URL=http://101.126.90.71:2142
-VITE_PLATFORM_API_V2_URL=http://101.126.90.71:2142
+VITE_PLATFORM_API_RUNTIME_ENABLED=true
 VITE_DEV_PROXY_TARGET=http://101.126.90.71:2142
 VITE_DEV_PORT=3000
 ```
@@ -101,7 +101,7 @@ VITE_PLATFORM_API_URL=http://localhost:2142
 这意味着：
 
 - `pnpm build` 之前必须先写好正确的公网地址或本地地址
-- 如果改了 `VITE_PLATFORM_API_URL` / `VITE_PLATFORM_API_V2_URL` / `VITE_DEV_PROXY_TARGET`，需要重新 `pnpm build`
+- 如果改了 `VITE_PLATFORM_API_URL` / `VITE_PLATFORM_API_RUNTIME_ENABLED` / `VITE_DEV_PROXY_TARGET`，需要重新 `pnpm build`
 - 不能指望旧的构建产物在 `pnpm preview` 时自动吃到新的 `VITE_*`
 
 ## 4. 浏览器缓存注意事项
@@ -122,18 +122,18 @@ location.reload();
 
 ## 5. 当前正式前端代码口径
 
-`platform-web-vue` 当前通过统一 env 模块和服务客户端收敛 API 地址：
+`platform-web` 当前通过统一 env 模块和服务客户端收敛 API 地址：
 
 - `VITE_PLATFORM_API_URL` 作为平台 API 基础地址
-- `VITE_PLATFORM_API_V2_URL` 作为显式 V2 基础地址
+- `VITE_PLATFORM_API_RUNTIME_ENABLED` 作为平台运行时相关能力开关
 - `VITE_DEV_PROXY_TARGET` 作为本地开发代理目标
 - `runtime-web` 继续保持直连 `runtime-service`
 
 相关文件：
 
-- `apps/platform-web-vue/src/config/env.ts`
-- `apps/platform-web-vue/src/services/http/client.ts`
-- `apps/platform-web-vue/src/services/langgraph/client.ts`
+- `apps/platform-web/src/config/env.ts`
+- `apps/platform-web/src/services/http/client.ts`
+- `apps/platform-web/src/services/langgraph/client.ts`
 
 ## 6. `runtime-web` 额外说明
 

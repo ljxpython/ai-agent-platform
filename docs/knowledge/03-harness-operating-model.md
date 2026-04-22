@@ -81,8 +81,8 @@
 
 ### 3.2 当前仓库的典型归类方式
 
-- `apps/platform-web-vue`：页面宿主、工作区、平台前端交互
-- `apps/platform-api-v2`：平台治理、网关、鉴权、项目边界
+- `apps/platform-web`：页面宿主、工作区、平台前端交互
+- `apps/platform-api`：平台治理、网关、鉴权、项目边界
 - `apps/runtime-service`：graph、middleware、runtime contract、model、tools、MCP
 - `apps/runtime-web`：Runtime 调试 UI
 - `apps/interaction-data-service`：结果持久化与查询
@@ -171,7 +171,7 @@
 - Runtime 排障：进 `apps/runtime-service/runtime_service/docs/runbooks/`
 - 仓库级思想方法：进根目录 `docs/knowledge/`
 - 调试前端通用逻辑：进 `apps/runtime-web`
-- 平台治理逻辑：进 `apps/platform-api-v2`
+- 平台治理逻辑：进 `apps/platform-api`
 
 ---
 
@@ -280,7 +280,7 @@ runtime-web -> runtime-service
 #### B. 正式平台链路验证
 
 ```text
-platform-web-vue -> platform-api-v2 -> runtime-service -> interaction-data-service
+platform-web -> platform-api -> runtime-service -> interaction-data-service
 ```
 
 适合验证：

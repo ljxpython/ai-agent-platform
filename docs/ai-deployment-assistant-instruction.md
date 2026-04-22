@@ -25,15 +25,15 @@
 
 ## 1. 作用范围
 
-- 默认本地正式启动集：`runtime-service`、`interaction-data-service`、`platform-api-v2`、`platform-web-vue`
+- 默认本地正式启动集：`runtime-service`、`interaction-data-service`、`platform-api`、`platform-web`
 - 可选调试入口：`runtime-web`
-- 历史兼容入口：`platform-web`、`platform-api`
+- 历史兼容入口：暂无默认前台平台兼容入口；如需对照历史语境，请查阅相关迁移/归档文档
 
 这里必须明确：
 
-- `platform-web-vue` 已经是当前正式平台前端宿主
-- `platform-api-v2` 已经是当前正式平台控制面宿主
-- `platform-web` 仅保留为历史兼容入口和迁移参考，不属于默认本地部署主线
+- `platform-web` 已经是当前正式平台前端宿主
+- `platform-api` 已经是当前正式平台控制面宿主
+- 默认本地部署主线已经统一收口到 `platform-web` / `platform-api`
 
 ## 2. 使用方式
 
@@ -152,7 +152,7 @@ default:
 
 ### 4.3 前端导入或 500 误判
 
-如果 `platform-web-vue`、`platform-web` 或 `runtime-web` 出现前端构建失败、500，或“缺少 import / 缺少源码文件”之类的判断，不要第一时间把问题归因为仓库源码缺文件。
+如果 `platform-web`、`platform-web` 或 `runtime-web` 出现前端构建失败、500，或“缺少 import / 缺少源码文件”之类的判断，不要第一时间把问题归因为仓库源码缺文件。
 
 至少先核实三件事：
 

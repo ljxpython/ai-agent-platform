@@ -31,7 +31,7 @@
 
 1. `interaction-data-service` 应该是结果域，不是平台控制面后端
 2. 平台治理、runtime 执行、结果域持久化应继续分层
-3. 平台读取结果时仍应优先经由 `platform-api-v2`
+3. 平台读取结果时仍应优先经由 `platform-api`
 4. 新结果域切片应先讲清接口契约、资源模型和表所有权，再扩展页面与 tool
 
 换句话说，这篇文档保留的是“抽象方向”和“边界哲学”，不是“当前 REST 路由清单”。
@@ -41,8 +41,8 @@
 当前正式架构里：
 
 ```text
-platform-web-vue
-  -> platform-api-v2
+platform-web
+  -> platform-api
     -> interaction-data-service
 
 runtime-service
@@ -80,13 +80,13 @@ runtime-service
 
 ### 3. 平台访问结果域时仍走控制面
 
-当前正式平台前端是 `platform-web-vue`，正式控制面是 `platform-api-v2`。
+当前正式平台前端是 `platform-web`，正式控制面是 `platform-api`。
 
 因此正式读取链路应继续是：
 
 ```text
-platform-web-vue
-  -> platform-api-v2
+platform-web
+  -> platform-api
     -> interaction-data-service
 ```
 

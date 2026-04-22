@@ -304,7 +304,7 @@
 说明：
 
 - `documents/export` 不在 `interaction-data-service` 直接生成 Excel
-- 导出工作仍由 `platform-api-v2` 统一完成
+- 导出工作仍由 `platform-api` 统一完成
 - 当前服务只提供稳定分页查询接口和详情/关系接口
 
 ## 二期实现边界

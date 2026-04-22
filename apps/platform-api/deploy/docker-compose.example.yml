@@ -1,0 +1,56 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    profiles: ["redis", "postgres"]
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: ["postgres"]
+    environment:
+      POSTGRES_DB: platform_api
+      POSTGRES_USER: platform
+      POSTGRES_PASSWORD: platform
+    ports:
+      - "5432:5432"
+
+  platform-api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    env_file:
+      - ../.env.example
+    environment:
+      PLATFORM_API_PLATFORM_DB_ENABLED: "true"
+      PLATFORM_API_PLATFORM_DB_AUTO_CREATE: "true"
+      PLATFORM_API_DATABASE_URL: "sqlite+pysqlite:///./.data/platform-api.db"
+      PLATFORM_API_OPERATIONS_QUEUE_BACKEND: "redis_list"
+      PLATFORM_API_OPERATIONS_REDIS_URL: "redis://redis:6379/0"
+    ports:
+      - "2142:2142"
+    depends_on:
+      - redis
+    # 如果要切到 PostgreSQL：
+    # 1. 使用 `docker compose --profile postgres up`
+    # 2. 把 PLATFORM_API_PLATFORM_DB_AUTO_CREATE 改成 "false"
+    # 3. 把 PLATFORM_API_DATABASE_URL 改成:
+    #    postgresql+psycopg://platform:platform@postgres:5432/platform_api
+
+  platform-api-worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    command: ["python", "worker.py"]
+    env_file:
+      - ../.env.example
+    environment:
+      PLATFORM_API_PLATFORM_DB_ENABLED: "true"
+      PLATFORM_API_PLATFORM_DB_AUTO_CREATE: "true"
+      PLATFORM_API_DATABASE_URL: "sqlite+pysqlite:///./.data/platform-api.db"
+      PLATFORM_API_OPERATIONS_QUEUE_BACKEND: "redis_list"
+      PLATFORM_API_OPERATIONS_REDIS_URL: "redis://redis:6379/0"
+    depends_on:
+      - redis

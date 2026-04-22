@@ -48,8 +48,8 @@
 - `docs/knowledge/project-scoped-knowledge/README.md`
 - `01-platform-design.md`
 - `02-lightrag-data-plane-plan.md`
-- `03-platform-api-v2-project-knowledge-design.md`
-- `04-platform-web-vue-knowledge-workspace-plan.md`
+- `03-platform-api-project-knowledge-design.md`
+- `04-platform-web-knowledge-workspace-plan.md`
 - `05-runtime-mcp-boundary.md`
 - `06-delivery-roadmap.md`
 - `07-acceptance-checklist.md`

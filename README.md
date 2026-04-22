@@ -78,7 +78,7 @@
 
 ## 当前前端与推荐入口
 
-`apps/platform-web-vue` 是当前正式平台前端宿主，也是仓库默认联调和后续平台前端开发的统一入口。
+`apps/platform-web` 是当前正式平台前端宿主，也是仓库默认联调和后续平台前端开发的统一入口。
 
 当前正式平台入口已经覆盖首批核心页面：
 
@@ -92,15 +92,15 @@
 
 当前正式前端相关事实源：
 
-- `apps/platform-web-vue/src/router/routes.ts`
-- `apps/platform-web-vue/docs/control-plane-page-standard.md`
-- `apps/platform-api-v2/docs/README.md`
-- `apps/platform-api-v2/docs/handbook/project-handbook.md`
-- `apps/platform-api-v2/docs/delivery/change-delivery-checklist.md`
+- `apps/platform-web/src/router/routes.ts`
+- `apps/platform-web/docs/control-plane-page-standard.md`
+- `apps/platform-api/docs/README.md`
+- `apps/platform-api/docs/handbook/project-handbook.md`
+- `apps/platform-api/docs/delivery/change-delivery-checklist.md`
 
-补充说明：上面列出的页面是当前正式前端范围中的核心入口，以 `apps/platform-web-vue/src/router/routes.ts` 为代码事实源。
+补充说明：上面列出的页面是当前正式前端范围中的核心入口，以 `apps/platform-web/src/router/routes.ts` 为代码事实源。
 
-如果你是第一次跑这个仓库，建议直接按根目录脚本启动并打开 `apps/platform-web-vue`。
+如果你是第一次跑这个仓库，建议直接按根目录脚本启动并打开 `apps/platform-web`。
 
 ## AI 持续编程 Harness
 
@@ -110,13 +110,13 @@
 
 - `边界`：平台治理、运行时执行、调试前端、结果域服务已经拆层，AI 不需要在一个大泥球里瞎改
 - `契约`：本地部署 contract、环境变量矩阵、接口命名、默认启动顺序和账号口径都已固定
-- `范式`：`runtime-service`、`platform-web-vue`、控制面页面标准与现成样例页面已经沉淀出可复用范式
+- `范式`：`runtime-service`、`platform-web`、控制面页面标准与现成样例页面已经沉淀出可复用范式
 - `闭环`：根级脚本、健康检查、烟测清单、验收文档、CHANGELOG 和 release runbook 已形成可执行交付链路
 
 平台控制面后端这部分，当前专用的落地蓝图与正式标准已经统一写入：
 
-- `apps/platform-api-v2/docs/README.md`
-- `apps/platform-api-v2/docs/handbook/project-handbook.md`
+- `apps/platform-api/docs/README.md`
+- `apps/platform-api/docs/handbook/project-handbook.md`
 
 一句话说，这个仓库已经不是“让 AI 随便写代码”，而是“让 AI 在明确边界、稳定契约和现成范式中持续完成开发”。
 
@@ -148,8 +148,8 @@
 当前根目录默认联调脚本会启动 4 个正式应用：
 
 - `apps/interaction-data-service`：结果域数据服务 / 工作流结果落库与查询
-- `apps/platform-api-v2`：正式平台后端 / 控制面 API
-- `apps/platform-web-vue`：正式平台前端宿主 / 管理台入口
+- `apps/platform-api`：正式平台后端 / 控制面 API
+- `apps/platform-web`：正式平台前端宿主 / 管理台入口
 - `apps/runtime-service`：LangGraph 执行层 / Agent Runtime
 
 可选调试入口：
@@ -158,12 +158,12 @@
 
 ### 两条主链路
 
-- 平台链路：`platform-web-vue -> platform-api-v2 -> runtime-service`
+- 平台链路：`platform-web -> platform-api -> runtime-service`
 - 调试链路：`runtime-web -> runtime-service`
 
 ### 当前两个前端入口分别做什么
 
-- `platform-web-vue`：当前正式平台工作台入口，承接 `Agent Platform Console`、Agent 页面和平台治理相关前端能力
+- `platform-web`：当前正式平台工作台入口，承接 `Agent Platform Console`、Agent 页面和平台治理相关前端能力
 - `runtime-web`：直连 `runtime-service` 的调试前端，适合做 Agent 调试、交互验证和 Runtime 快速迭代
 
 ## 架构图
@@ -178,8 +178,8 @@
 
 1. `runtime-service`
 2. `interaction-data-service`
-3. `platform-api-v2`
-4. `platform-web-vue`
+3. `platform-api`
+4. `platform-web`
 5. 如需 runtime 调试，再启动 `runtime-web`
 
 ### 根目录脚本
@@ -198,9 +198,9 @@ scripts/dev-down.sh
 
 它们现在统一代理到正式演示脚本：
 
-- `scripts/platform-web-vue-demo-up.sh`
-- `scripts/platform-web-vue-demo-health.sh`
-- `scripts/platform-web-vue-demo-down.sh`
+- `scripts/platform-web-demo-up.sh`
+- `scripts/platform-web-demo-health.sh`
+- `scripts/platform-web-demo-down.sh`
 
 ### Docker / Docker Compose
 
@@ -230,33 +230,33 @@ docker compose -f deploy/docker-compose.stack.nginx.yml --env-file deploy/.env.s
 - `docs/zero-to-one-container-deploy.md`
 - `docs/runbooks/container-update-runbook.md`
 
-### 如果你想单独启动 `platform-web-vue`
+### 如果你想单独启动 `platform-web`
 
-根目录默认脚本已经会启动 `apps/platform-web-vue`。
+根目录默认脚本已经会启动 `apps/platform-web`。
 
 如果你要单独调试平台前端，也可以这样启动：
 
 ```bash
-VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web-vue" dev
+VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web" dev
 ```
 
 然后打开：
 
-- `platform-web-vue`：`http://127.0.0.1:3002`
+- `platform-web`：`http://127.0.0.1:3002`
 
-这样不会和默认的 `platform-web-vue:3000` 端口冲突。
+这样不会和默认的 `platform-web:3000` 端口冲突。
 
 ### 默认本地端口
 
 - `interaction-data-service`：`8081`
 - `runtime-service`：`8123`
-- `platform-api-v2`：`2142`
-- `platform-web-vue`：`3000`
+- `platform-api`：`2142`
+- `platform-web`：`3000`
 - `runtime-web`：`3001`（可选）
 
 ### 成功启动后访问地址
 
-- `platform-web-vue`：`http://127.0.0.1:3000`
+- `platform-web`：`http://127.0.0.1:3000`
 - `runtime-web`：`http://127.0.0.1:3001`
 
 ### 最小健康检查
@@ -268,7 +268,7 @@ curl http://127.0.0.1:2142/_system/health
 curl http://127.0.0.1:2142/api/langgraph/info
 ```
 
-如果 `platform-api-v2` 的 `/api/langgraph/info` 返回 `200`，且 `interaction-data-service` 的 `/_service/health` 返回 `200`，说明平台链路和结果落库链路都已基本打通。
+如果 `platform-api` 的 `/api/langgraph/info` 返回 `200`，且 `interaction-data-service` 的 `/_service/health` 返回 `200`，说明平台链路和结果落库链路都已基本打通。
 
 ![本地联调启动流程图](docs/assets/local-dev-startup-flow.zh.svg)
 
@@ -278,8 +278,8 @@ curl http://127.0.0.1:2142/api/langgraph/info
 AITestLab/
 ├── apps/
 │   ├── interaction-data-service/
-│   ├── platform-api-v2/
-│   ├── platform-web-vue/
+│   ├── platform-api/
+│   ├── platform-web/
 │   ├── runtime-service/
 │   ├── runtime-web/
 │   └── ...
@@ -412,13 +412,13 @@ default:
 当前仓库已经完成：
 
 - 正式四服务演示链路已收口到 `apps/*`
-- `apps/platform-web-vue` 是当前正式平台前端宿主
+- `apps/platform-web` 是当前正式平台前端宿主
 - `runtime-service` 可启动
 - `interaction-data-service` 可启动
-- `platform-api-v2` 可启动
-- `platform-api-v2 -> runtime-service` 联调已通过
+- `platform-api` 可启动
+- `platform-api -> runtime-service` 联调已通过
 - `runtime-service -> interaction-data-service` 已接入本地联调脚本
-- `platform-web-vue` 是当前正式平台前端入口，`runtime-web` 继续作为可选调试壳
+- `platform-web` 是当前正式平台前端入口，`runtime-web` 继续作为可选调试壳
 
 当前仍保持的约定：
 

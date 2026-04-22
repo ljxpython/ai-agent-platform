@@ -14,9 +14,9 @@
 
 补充口径：
 
-- 当前正式平台前端宿主是 `apps/platform-web-vue`
-- 当前正式平台控制面是 `apps/platform-api-v2`
-- 当前正式平台链路是 `platform-web-vue -> platform-api-v2 -> runtime-service`
+- 当前正式平台前端宿主是 `apps/platform-web`
+- 当前正式平台控制面是 `apps/platform-api`
+- 当前正式平台链路是 `platform-web -> platform-api -> runtime-service`
 - `runtime-web` 继续作为独立调试入口
 
 如果你要的是“现在该怎么判、怎么升级、怎么走最短链”，先读：
@@ -42,7 +42,7 @@
 
 当前默认链路可以概括成两条：
 
-- 平台链路：`platform-web-vue -> platform-api-v2 -> runtime-service`
+- 平台链路：`platform-web -> platform-api -> runtime-service`
 - 调试链路：`runtime-web -> runtime-service`
 
 再加上一个结果域服务：
@@ -51,7 +51,7 @@
 
 这说明当前仓库不是单体 Agent Demo，而是一个明确分层的企业级 AI 平台骨架：
 
-- `platform-web-vue` / `platform-api-v2` 负责平台控制面
+- `platform-web` / `platform-api` 负责平台控制面
 - `runtime-service` 负责智能体运行时
 - `runtime-web` 负责运行时调试
 - `interaction-data-service` 负责结果域数据
@@ -64,14 +64,14 @@
 
 当前项目里，平台侧的定位很明确：
 
-- `platform-api-v2` 负责认证、项目边界、成员与权限、审计、catalog、runtime policy/capability 管理
-- `platform-web-vue` 负责平台工作台界面、管理页面、聊天入口和工作区导航
+- `platform-api` 负责认证、项目边界、成员与权限、审计、catalog、runtime policy/capability 管理
+- `platform-web` 负责平台工作台界面、管理页面、聊天入口和工作区导航
 
 而智能体真正的执行、模型装配、工具装配、MCP 接入、graph 编排，都放在 `runtime-service`。
 
 这就叫“浅封装”。
 
-这里的浅，不是说平台什么都不做，而是说平台只做上层治理和入口整合，不去改写智能体内部的运行模式。当前 `platform-api-v2` 不是透明透传 proxy，而是保留明确的 `/api/langgraph/*` 网关，在这里做：
+这里的浅，不是说平台什么都不做，而是说平台只做上层治理和入口整合，不去改写智能体内部的运行模式。当前 `platform-api` 不是透明透传 proxy，而是保留明确的 `/api/langgraph/*` 网关，在这里做：
 
 - 显式路由
 - 必要白名单处理
@@ -89,8 +89,8 @@
 
 当前仓库里，每个应用的边界其实已经很明确：
 
-- `platform-web-vue`：正式平台工作台、管理页面、平台聊天入口
-- `platform-api-v2`：鉴权、项目治理、审计、catalog、运行时网关
+- `platform-web`：正式平台工作台、管理页面、平台聊天入口
+- `platform-api`：鉴权、项目治理、审计、catalog、运行时网关
 - `runtime-service`：graph 注册、模型参数解析、工具装配、MCP、智能体执行
 - `runtime-web`：直连 Runtime 的调试前端
 - `interaction-data-service`：结果域落库与查询
@@ -116,7 +116,7 @@
 - 先验证运行时接口是不是稳定
 - 在不引入平台治理复杂度的前提下快速迭代
 
-等你把智能体在 `runtime-web` 上调通之后，再接到 `platform-web-vue` / `platform-api-v2` 里，成本就会非常低。
+等你把智能体在 `runtime-web` 上调通之后，再接到 `platform-web` / `platform-api` 里，成本就会非常低。
 
 这里所谓“零成本、无适配”，本质上指的是：
 
@@ -135,7 +135,7 @@
 - 平台主数据和结果域数据不互相污染
 - Runtime 需要持久化时，可以通过明确的 HTTP 契约写入结果域服务
 
-这样平台侧依然可以通过 `platform-api-v2` 聚合查询、做权限与项目隔离，但不需要亲自维护每一个智能体业务表。
+这样平台侧依然可以通过 `platform-api` 聚合查询、做权限与项目隔离，但不需要亲自维护每一个智能体业务表。
 
 ### 3.5 以后改成 Docker 部署会更自然
 
@@ -143,8 +143,8 @@
 
 因为当前已经把责任边界拆清楚了，所以后面如果做容器化部署：
 
-- `platform-web-vue`
-- `platform-api-v2`
+- `platform-web`
+- `platform-api`
 - `runtime-service`
 - `runtime-web`
 - `interaction-data-service`
@@ -237,7 +237,7 @@ graph = create_agent(
 
 你以后每接一个需求，先别急着写代码，先做一个最基础的判断：
 
-- 如果是权限、项目、成员、审计、catalog、平台配置，改 `platform-api-v2` / `platform-web-vue`
+- 如果是权限、项目、成员、审计、catalog、平台配置，改 `platform-api` / `platform-web`
 - 如果是 prompt、tool、MCP、graph、模型装配、Agent 行为，改 `runtime-service`
 - 如果是运行时联调和交互验证，先用 `runtime-web`
 - 如果是业务结果持久化与查询，改 `interaction-data-service`
@@ -281,7 +281,7 @@ graph = create_agent(
 
 这时候再把结果域能力放进 `interaction-data-service`，由 Runtime 的本地 tools 通过 HTTP 调用它。
 
-这套方式比把业务表直接硬塞进 `platform-api-v2` 这类平台控制面更清爽得多。
+这套方式比把业务表直接硬塞进 `platform-api` 这类平台控制面更清爽得多。
 
 ### 6.5 最后再考虑部署形态
 
@@ -301,7 +301,7 @@ graph = create_agent(
 2. 平台侧优先专注权限、管理、审计、catalog、治理能力。
 3. 智能体和 AI 相关开发，主战场永远在 `runtime-service`。
 4. `runtime-web` 是调试入口，先把智能体在这里调通，再接平台。
-5. 调试完成后，只要遵守现有契约，就可以无缝接入 `platform-api-v2` / `platform-web-vue`，不需要为平台重写一套 Agent。
+5. 调试完成后，只要遵守现有契约，就可以无缝接入 `platform-api` / `platform-web`，不需要为平台重写一套 Agent。
 6. `interaction-data-service` 负责结果域，避免平台主数据和业务结果表混成一锅粥。
 7. 后面用 Docker 独立部署，是当前解耦设计的自然延伸，不是另一套新思路。
 8. `runtime-service` 已经提供脚手架、范式和样例，后续开发优先仿照现有模式，不要重复造轮子。
@@ -313,9 +313,9 @@ graph = create_agent(
 - `README.md`
 - `docs/development-guidelines.md`
 - `docs/project-story.md`
-- `apps/platform-api-v2/docs/README.md`
-- `apps/platform-api-v2/docs/handbook/project-handbook.md`
-- `apps/platform-web-vue/docs/control-plane-page-standard.md`
+- `apps/platform-api/docs/README.md`
+- `apps/platform-api/docs/handbook/project-handbook.md`
+- `apps/platform-web/docs/control-plane-page-standard.md`
 - `apps/runtime-web/README.md`
 - `apps/runtime-service/runtime_service/docs/README.md`
 - `apps/runtime-service/runtime_service/docs/05-template-to-runnable-agent-10min.md`
@@ -323,7 +323,7 @@ graph = create_agent(
 
 ## 9. 多应用联动开发范式
 
-这一节不是抽象口号，而是把最近一轮 `test_case_service -> interaction-data-service -> platform-api-v2 -> platform-web-vue` 的真实开发、调试、联调、提交过程收敛成一套后续都能复用的方法。
+这一节不是抽象口号，而是把最近一轮 `test_case_service -> interaction-data-service -> platform-api -> platform-web` 的真实开发、调试、联调、提交过程收敛成一套后续都能复用的方法。
 
 ### 9.1 第一原则：先把要做什么讨论清楚，再开始写代码
 
@@ -355,8 +355,8 @@ graph = create_agent(
 
 1. 先把 `runtime-service` 里的 `test_case_service` 做通
 2. 再把结果落到 `interaction-data-service`
-3. 再由 `platform-api-v2` 暴露 testcase 管理接口
-4. 最后由 `platform-web-vue` 展示管理页和导出能力
+3. 再由 `platform-api` 暴露 testcase 管理接口
+4. 最后由 `platform-web` 展示管理页和导出能力
 
 不要反过来。先堆页面、再倒逼服务补能力，通常只会把边界写烂。
 
@@ -397,7 +397,7 @@ graph = create_agent(
 - 资源语义清楚
 - 不把不同业务结果揉成一个“万能接口”
 
-#### `platform-api-v2`
+#### `platform-api`
 
 只负责：
 
@@ -412,7 +412,7 @@ graph = create_agent(
 - 替 `runtime-service` 实现 prompt / tool / graph
 - 把结果域表直接挪成平台主数据
 
-#### `platform-web-vue`
+#### `platform-web`
 
 只负责：
 
@@ -423,7 +423,7 @@ graph = create_agent(
 不要负责：
 
 - 自己拼业务持久化协议
-- 绕过 `platform-api-v2` 直连结果域服务
+- 绕过 `platform-api` 直连结果域服务
 - 把导出、权限、聚合逻辑硬写在前端
 
 #### `runtime-web`
@@ -435,7 +435,7 @@ graph = create_agent(
 - 在不引入平台治理复杂度的情况下先把 Agent 调通
 
 不要拿它替代正式平台入口，但也不要低估它的价值。
-Agent 没在 `runtime-web` 或服务级脚本里调通之前，不要急着接 `platform-web-vue`。
+Agent 没在 `runtime-web` 或服务级脚本里调通之前，不要急着接 `platform-web`。
 
 ### 9.4 开发前必须写清楚的“链路图”
 
@@ -451,8 +451,8 @@ Agent 没在 `runtime-web` 或服务级脚本里调通之前，不要急着接 `
 例如 testcase 管理能力：
 
 ```text
-platform-web-vue
-  -> platform-api-v2 /_management/projects/{project_id}/testcase/*
+platform-web
+  -> platform-api /_management/projects/{project_id}/testcase/*
     -> interaction-data-service /api/test-case-service/*
       -> test_case_documents / test_cases
 ```
@@ -460,7 +460,7 @@ platform-web-vue
 例如智能体生成能力：
 
 ```text
-runtime-web 或 platform-web-vue chat
+runtime-web 或 platform-web chat
   -> runtime-service test_case_agent
     -> skills / tools / middleware
       -> interaction-data-service
@@ -490,7 +490,7 @@ runtime-web 或 platform-web-vue chat
 1. “这一轮先只做服务层，不接前端”
 2. “这一轮要把平台接口一起补上”
 3. “这一轮必须用真实 PDF / 真实模型 / 真实下游服务验证，不能 mock”
-4. “这一轮只验证到 platform-api-v2，不依赖前端”
+4. “这一轮只验证到 platform-api，不依赖前端”
 5. “这一轮要前端真实上传、真实下载，再看最终体验”
 
 这类沟通越具体，返工越少。
@@ -550,7 +550,7 @@ runtime-web 或 platform-web-vue chat
 例如：
 
 - `runtime-service` 写入后，要去查 `interaction-data-service`
-- `platform-api-v2` 导出后，要把真实下载文件重新打开校验
+- `platform-api` 导出后，要把真实下载文件重新打开校验
 
 必须查的内容包括：
 
@@ -565,13 +565,13 @@ runtime-web 或 platform-web-vue chat
 如果当前变更已经到管理面，就用真实登录和真实接口来测：
 
 - 真实登录拿 token
-- 真实请求 `platform-api-v2`
+- 真实请求 `platform-api`
 - 真实 project_id / batch_id / case_id
 - 真实下载文件或详情接口
 
 例如这轮 Excel 导出，正确做法就是：
 
-1. 登录 `platform-api-v2`
+1. 登录 `platform-api`
 2. 调 `/_management/projects/{project_id}/testcase/cases/export`
 3. 下载真实 `.xlsx`
 4. 再用 `openpyxl` 反读校验 sheet 和数据行数
@@ -599,8 +599,8 @@ runtime-web 或 platform-web-vue chat
 
 - 只改 `runtime-service`，就先在 `runtime-service` 把真实验证做透
 - 只改 `interaction-data-service`，就直接调它的接口确认读写口径
-- 只改 `platform-api-v2`，就用真实登录 + curl / 脚本做管理面验证
-- 只改 `platform-web-vue`，就在后端已经稳定的前提下看页面交互
+- 只改 `platform-api`，就用真实登录 + curl / 脚本做管理面验证
+- 只改 `platform-web`，就在后端已经稳定的前提下看页面交互
 
 不要一上来就五层一起跑，然后出了问题全靠猜。
 
@@ -722,8 +722,8 @@ runtime-web 或 platform-web-vue chat
 - 涉及应用：
   - runtime-service:
   - interaction-data-service:
-  - platform-api-v2:
-  - platform-web-vue:
+  - platform-api:
+  - platform-web:
   - runtime-web:
 - 本轮主改动层：
 - 本轮不改动层：
@@ -755,8 +755,8 @@ runtime-web 或 platform-web-vue chat
 
 - runtime-service 负责：
 - interaction-data-service 负责：
-- platform-api-v2 负责：
-- platform-web-vue 负责：
+- platform-api 负责：
+- platform-web 负责：
 - runtime-web 负责：
 
 ## 6. 接口与数据设计
@@ -843,8 +843,8 @@ runtime-web 或 platform-web-vue chat
 
 - [ ] runtime-service 已启动并健康检查通过
 - [ ] interaction-data-service 已启动并健康检查通过
-- [ ] platform-api-v2 已启动并健康检查通过
-- [ ] platform-web-vue / runtime-web 已按需启动
+- [ ] platform-api 已启动并健康检查通过
+- [ ] platform-web / runtime-web 已按需启动
 
 ## C. 服务层真实验证
 
@@ -867,7 +867,7 @@ runtime-web 或 platform-web-vue chat
 ## E. 平台接口校验
 
 - [ ] 已使用真实登录获取 token
-- [ ] 已用真实项目上下文调用 platform-api-v2
+- [ ] 已用真实项目上下文调用 platform-api
 - [ ] 已确认路由和权限正确
 - [ ] 已确认聚合结果正确
 - [ ] 已确认下载 / 导出文件可真实打开
@@ -897,7 +897,7 @@ runtime-web 或 platform-web-vue chat
 1. 先服务层真实验证
 2. 再查下游结果
 3. 再验平台接口
-4. 最后验 `platform-web-vue` 等真实前端页面
+4. 最后验 `platform-web` 等真实前端页面
 
 不要跳步骤。
 

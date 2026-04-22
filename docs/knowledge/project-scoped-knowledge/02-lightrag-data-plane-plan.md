@@ -172,7 +172,7 @@ future runtime-side MCP 仍应围绕：
 
 1. **通用**：不绑定 AITestLab 私有 taxonomy
 2. **可扩展**：未来可支持更多 metadata 维度
-3. **前后端一致**：LightRAG / `platform-api-v2` / `platform-web-vue` / MCP 参数命名尽量对齐
+3. **前后端一致**：LightRAG / `platform-api` / `platform-web` / MCP 参数命名尽量对齐
 4. **最小惊讶**：不要同时引入 `scope` / `filter` / `selector` 三套近义模型
 
 ### 10.2 推荐主字段
@@ -274,8 +274,8 @@ v1 正式建议字段集：
 这个命名集应作为：
 
 - LightRAG target-state contract draft
-- `platform-api-v2` facade draft
-- `platform-web-vue` local state / payload draft
+- `platform-api` facade draft
+- `platform-web` local state / payload draft
 - `test_case_service_v2` MCP tool parameter draft
 
 的统一参考口径。

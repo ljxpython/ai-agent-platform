@@ -7,7 +7,7 @@
 当前正式主链里，它的位置是：
 
 ```text
-platform-web-vue -> platform-api-v2 -> runtime-service
+platform-web -> platform-api -> runtime-service
 runtime-service -> interaction-data-service
 runtime-web -> runtime-service   (optional debug path)
 ```
@@ -33,7 +33,7 @@ runtime-web -> runtime-service   (optional debug path)
 2. 先在低依赖层做真实验证，再决定要不要接平台页面
 3. 关键链路优先用真实模型、真实文件、真实下游服务验证，不要用 mock 掩盖问题
 4. 如果模型会口头声称成功，必须再查真实 tool call 和远端结果，不能只信最终回复
-5. 平台真实链路下，受信上下文由 `platform-api-v2` 注入，运行时服务不再自己发明透传规则
+5. 平台真实链路下，受信上下文由 `platform-api` 注入，运行时服务不再自己发明透传规则
 
 ## 0) 前置说明（必读）
 
@@ -177,7 +177,7 @@ curl http://127.0.0.1:8123/internal/capabilities/tools
    - 真实 PDF / 图片 / 文本
    - 真实 `interaction-data-service`
    - 真实流式输出和 tool call 记录
-3. 验证通过后，再接 `runtime-web` 或 `platform-web-vue`
+3. 验证通过后，再接 `runtime-web` 或 `platform-web`
 
 推荐优先使用：
 

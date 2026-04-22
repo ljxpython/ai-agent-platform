@@ -36,8 +36,8 @@
 当前正式链路里，它主要承接两条调用路径：
 
 ```text
-platform-web-vue
-  -> platform-api-v2
+platform-web
+  -> platform-api
     -> interaction-data-service
 
 runtime-service
@@ -46,8 +46,8 @@ runtime-service
 
 其中：
 
-- `platform-web-vue` 不直接打本服务
-- `platform-api-v2` 负责项目权限、治理边界、聚合视图和协议整形
+- `platform-web` 不直接打本服务
+- `platform-api` 负责项目权限、治理边界、聚合视图和协议整形
 - `runtime-service` 负责执行期生成结果，再通过稳定 HTTP 契约写入本服务
 
 ## 当前开发范式
@@ -60,7 +60,7 @@ runtime-service
 2. 一个 runtime 业务服务一组专属接口前缀，不回退到“大一统 records 入口”
 3. 先固定资源模型、接口契约、落库存储，再继续扩展上层页面或 tool
 4. 关键链路优先用真实 HTTP 请求和真实数据验证，不靠前端 mock 兜底
-5. 平台读取结果时继续经过 `platform-api-v2`，而不是让正式前端直连本服务
+5. 平台读取结果时继续经过 `platform-api`，而不是让正式前端直连本服务
 
 ## 当前真实职责边界
 
@@ -163,15 +163,15 @@ runtime-service/test_case_service
 当前正式平台读取链路是：
 
 ```text
-platform-web-vue
-  -> platform-api-v2
+platform-web
+  -> platform-api
     -> interaction-data-service
 ```
 
 也就是说：
 
-- 正式平台前端读取 testcase 页面时，应该打 `platform-api-v2`
-- `platform-api-v2` 负责项目权限、导出、预览、聚合整形
+- 正式平台前端读取 testcase 页面时，应该打 `platform-api`
+- `platform-api` 负责项目权限、导出、预览、聚合整形
 - `interaction-data-service` 保持结果域所有权，不变成新的控制面后端
 
 ## 非当前事实源文档

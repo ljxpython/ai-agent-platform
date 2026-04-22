@@ -10,10 +10,10 @@
 
 当前正式链路与代码真相源请优先参考：
 
-- `apps/platform-web-vue/src/router/routes.ts`
-- `apps/platform-web-vue/src/modules/testcase/pages/**`
-- `apps/platform-api-v2/app/modules/testcase/presentation/http.py`
-- `apps/platform-api-v2/app/modules/testcase/application/service.py`
+- `apps/platform-web/src/router/routes.ts`
+- `apps/platform-web/src/modules/testcase/pages/**`
+- `apps/platform-api/app/modules/testcase/presentation/http.py`
+- `apps/platform-api/app/modules/testcase/application/service.py`
 - `apps/interaction-data-service/docs/README.md`
 - `apps/runtime-service/runtime_service/docs/10-test-case-service-persistence-design.md`
 
@@ -29,19 +29,19 @@
 当前正式 testcase 链路已经收敛为：
 
 ```text
-platform-web-vue /workspace/testcase/*
-  -> platform-api-v2 /api/projects/{project_id}/testcase/*
+platform-web /workspace/testcase/*
+  -> platform-api /api/projects/{project_id}/testcase/*
     -> interaction-data-service /api/test-case-service/*
 
-platform-web-vue /workspace/testcase/generate
-  -> platform-api-v2 runtime gateway
+platform-web /workspace/testcase/generate
+  -> platform-api runtime gateway
     -> runtime-service/test_case_service
 ```
 
 其中：
 
-- 正式平台前端宿主是 `platform-web-vue`，不是旧 `platform-web`
-- 正式控制面宿主是 `platform-api-v2`，不是旧 `platform-api`
+- 正式平台前端宿主是 `platform-web`，不是旧 `platform-web`
+- 正式控制面宿主是 `platform-api`，不是旧 `platform-api`
 - testcase 管理接口当前前缀是 `/api/projects/{project_id}/testcase`
 - testcase 工作区当前已经有正式路由和页面，而不是仅停留在设计阶段
 
@@ -49,7 +49,7 @@ platform-web-vue /workspace/testcase/generate
 
 ### 1. 平台工作区入口已存在
 
-当前 `platform-web-vue` 已存在：
+当前 `platform-web` 已存在：
 
 - `/workspace/testcase/generate`
 - `/workspace/testcase/cases`
@@ -61,7 +61,7 @@ platform-web-vue /workspace/testcase/generate
 
 ### 2. 控制面 testcase 模块已存在
 
-当前 `platform-api-v2` 已提供 testcase 模块接口，包括：
+当前 `platform-api` 已提供 testcase 模块接口，包括：
 
 - `GET /api/projects/{project_id}/testcase/overview`
 - `GET /api/projects/{project_id}/testcase/role`

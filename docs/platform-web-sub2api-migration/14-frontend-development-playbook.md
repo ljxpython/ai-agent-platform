@@ -4,18 +4,18 @@
 
 这份文档不是继续分析 `sub2api-base` 为什么好看，而是把我们已经收敛出来的前端开发范式正式固化下来。
 
-从这一版开始，后续开发 `apps/platform-web-vue` 的人默认遵守这份手册，不再需要每次回 `apps/platform-web-sub2api-base` 翻源码找感觉。
+从这一版开始，后续开发 `apps/platform-web` 的人默认遵守这份手册，不再需要每次回 `apps/platform-web-sub2api-base` 翻源码找感觉。
 
 这份手册要解决四件事：
 
-1. 新功能进入 `platform-web-vue` 时，应该按什么页面范式落地
+1. 新功能进入当前正式前端宿主 `platform-web` 时，应该按什么页面范式落地
 2. 哪些组件、交互和视觉规则必须统一，不允许各搞一套
 3. 什么时候借 `sub2api-base`，借什么，不借什么
 4. 如何通过当前仓库内的 `Resources` 与 `examples` 找到标准模板和推荐母版
 
 ## 一、先记住三条总原则
 
-### 1. 功能真相源来自 `apps/platform-web`
+### 1. 功能真相源来自当前正式宿主 `apps/platform-web`
 
 页面是否存在、功能是否完整、链路是否对齐，一律以：
 
@@ -23,22 +23,22 @@
 
 为真相源。
 
-`platform-web-vue` 的任务是：
+当前 `platform-web` 的任务是：
 
 - 在新的视觉与交互基座下完成正式迁移
 - 把原有能力做得更美观、更工程化、更稳定
 
 不是自由发明一个新的平台产品。
 
-### 2. 视觉与交互基线固定为当前 `apps/platform-web-vue`
+### 2. 视觉与交互基线固定为当前正式壳层 `apps/platform-web`
 
-当前正式基线已经不是 `sub2api-base`，而是：
+当前正式基线直接收口到：
 
-- `apps/platform-web-vue`
+- `apps/platform-web`
 
 也就是说：
 
-- 新功能必须长得像当前 `platform-web-vue`
+- 新功能必须长得像当前 `platform-web`
 - 不能直接把 `sub2api-base` 的业务页整页搬进来
 - 只能吸收它的壳层、交互组织和组件范式
 
@@ -387,14 +387,14 @@ Resources 不是源码档案馆，而是开发者工作台。
 4. 更统一的顶栏 dropdown 体系
 5. 更标准化的“创建/编辑/属性配置”弹窗与表单模式
 
-这些能力收口后，`platform-web-vue` 后续新增页面的工程质量会明显更稳。
+这些能力收口后，`platform-web` 后续新增页面的工程质量会明显更稳。
 
 ## 十、结论
 
 从这版开始，团队默认遵守这条开发口径：
 
 - 功能对齐看 `platform-web`
-- 风格与交互看 `platform-web-vue`
+- 风格与交互看 `platform-web`
 - 视觉资产参考看 `sub2api-base`
 - 规范和模板入口统一看当前仓库里的文档与 `Resources`
 

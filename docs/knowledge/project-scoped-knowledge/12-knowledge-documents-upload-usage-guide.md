@@ -1,11 +1,11 @@
 # 知识文档上传使用说明
 
 - Date: 2026-04-20
-- Audience: `platform-web-vue` `/knowledge/documents` 页面使用者
+- Audience: `platform-web` `/knowledge/documents` 页面使用者
 - Status: current usage guide
 - Related:
-  - `04-platform-web-vue-knowledge-workspace-plan.md`
-  - `03-platform-api-v2-project-knowledge-design.md`
+  - `04-platform-web-knowledge-workspace-plan.md`
+  - `03-platform-api-project-knowledge-design.md`
   - `.omx/plans/prd-knowledge-documents-upload-ux-20260420.md`
 
 ## 1. 这份文档解决什么问题

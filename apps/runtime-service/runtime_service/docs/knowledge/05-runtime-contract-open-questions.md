@@ -56,7 +56,7 @@
 
 待明确：
 
-- `platform-api-v2` 何时切到 `context-first`
+- `platform-api` 何时切到 `context-first`
 - `platform-web-v2` assistant 编辑页何时改成 `context/config` 双区分
 
 ## 6. 明确延期项

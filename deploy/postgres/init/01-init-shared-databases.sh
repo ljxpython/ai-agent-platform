@@ -23,5 +23,5 @@ EOSQL
 }
 
 create_user_and_db "${RUNTIME_POSTGRES_DB:-runtime_service}" "${RUNTIME_POSTGRES_USER:-runtime_service}" "${RUNTIME_POSTGRES_PASSWORD:-runtime_service}"
-create_user_and_db "${PLATFORM_API_V2_POSTGRES_DB:-platform_api_v2}" "${PLATFORM_API_V2_POSTGRES_USER:-platform_api_v2}" "${PLATFORM_API_V2_POSTGRES_PASSWORD:-platform_api_v2}"
+create_user_and_db "${PLATFORM_API_POSTGRES_DB:-platform_api}" "${PLATFORM_API_POSTGRES_USER:-platform_api}" "${PLATFORM_API_POSTGRES_PASSWORD:-platform_api}"
 create_user_and_db "${INTERACTION_DATA_SERVICE_POSTGRES_DB:-interaction_data_service}" "${INTERACTION_DATA_SERVICE_POSTGRES_USER:-interaction_data_service}" "${INTERACTION_DATA_SERVICE_POSTGRES_PASSWORD:-interaction_data_service}"

@@ -195,7 +195,7 @@ docs/_build/
 # Local debug artifacts
 /.playwright-mcp/
 /.spec-workflow/
-/platform-web-vue-*.png
+/platform-web-*.png
 /chat-*.png
 /graph-*.png
 /knowledge-*.png
@@ -206,7 +206,7 @@ docs/_build/
 /graph-login-snapshot.md
 /apps/platform-web-v2/sql-agent-debug.png
 /apps/platform-web-sub2api-base/
-/apps/platform-api-v2/.runtime/
+/apps/platform-api/.runtime/
 
 # PyBuilder
 .pybuilder/
@@ -349,13 +349,13 @@ test_*.py
 *.test.ts
 *.spec.js
 *.spec.ts
-!apps/platform-web-vue/src/modules/knowledge/components/KnowledgeDocumentUploadDialog.spec.ts
-!apps/platform-web-vue/src/modules/knowledge/pages/KnowledgeDocumentsPage.spec.ts
+!apps/platform-web/src/modules/knowledge/components/KnowledgeDocumentUploadDialog.spec.ts
+!apps/platform-web/src/modules/knowledge/pages/KnowledgeDocumentsPage.spec.ts
 
 # 但保留重要的测试配置文件和源码目录
 !/uitest/tests/
 !/uitest/tests-examples/
-!/apps/platform-api-v2/tests/test_*.py
+!/apps/platform-api/tests/test_*.py
 !/uitest/playwright.config.ts
 !/uitest/package.json
 !/tests/

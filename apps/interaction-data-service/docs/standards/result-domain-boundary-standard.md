@@ -57,13 +57,13 @@
 正式平台链路固定为：
 
 ```text
-platform-web-vue -> platform-api-v2 -> interaction-data-service
+platform-web -> platform-api -> interaction-data-service
 ```
 
 因此：
 
-- `platform-web-vue` 不应把正式页面直接接到本服务
-- `platform-api-v2` 负责治理、聚合、下载/预览代理与协议整形
+- `platform-web` 不应把正式页面直接接到本服务
+- `platform-api` 负责治理、聚合、下载/预览代理与协议整形
 
 ### 2.3 runtime 通过稳定 HTTP 契约写入结果域
 
@@ -116,7 +116,7 @@ platform-web-vue -> platform-api-v2 -> interaction-data-service
 适用于：
 
 - 结果域边界
-- 平台访问是否必须经由 `platform-api-v2`
+- 平台访问是否必须经由 `platform-api`
 - runtime 写入和平台读取的正式关系
 
 ### Leaf C：background design / future abstraction
@@ -149,7 +149,7 @@ platform-web-vue -> platform-api-v2 -> interaction-data-service
 1. 先验证本服务自己的 API / 表 / 资源行为
 2. 再验证最短相关链
    - `runtime-service -> interaction-data-service`
-   - 或 `platform-api-v2 -> interaction-data-service`
+   - 或 `platform-api -> interaction-data-service`
 3. 只有当正式平台读取行为本身被改动时，才要求完整平台链路验证
 
 不要默认把结果域验证抬升成全平台链路验证。

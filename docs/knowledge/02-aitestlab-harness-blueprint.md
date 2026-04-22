@@ -2,7 +2,7 @@
 
 文档类型：`Knowledge Blueprint`
 
-这篇蓝图解释当前仓库为什么按 `platform-web-vue -> platform-api-v2 -> runtime-service -> interaction-data-service` 这条正式主链组织，但它不是本地部署 contract 本身。
+这篇蓝图解释当前仓库为什么按 `platform-web -> platform-api -> runtime-service -> interaction-data-service` 这条正式主链组织，但它不是本地部署 contract 本身。
 
 如需当前正式部署口径，请优先看：
 
@@ -55,13 +55,13 @@
 当前仓库的正式平台链路是：
 
 ```text
-platform-web-vue -> platform-api-v2 -> runtime-service -> interaction-data-service
+platform-web -> platform-api -> runtime-service -> interaction-data-service
 ```
 
 职责分别是：
 
-- `apps/platform-web-vue`：正式平台前端宿主 / 工作台入口
-- `apps/platform-api-v2`：正式平台控制面 / 治理层 API / Runtime 网关
+- `apps/platform-web`：正式平台前端宿主 / 工作台入口
+- `apps/platform-api`：正式平台控制面 / 治理层 API / Runtime 网关
 - `apps/runtime-service`：LangGraph Runtime / Agent 执行层
 - `apps/interaction-data-service`：结果域服务 / 落库与查询
 
@@ -197,8 +197,8 @@ runtime-web -> runtime-service
 
 | 层级 | 组件 / 目录 | 角色定位 | 主要职责 | 不是它该干的事 |
 | --- | --- | --- | --- | --- |
-| 平台前端层 | `apps/platform-web-vue` | 正式工作台宿主 | 用户入口、页面工作区、平台交互、管理台 UI | 不直接承载 Agent 内部编排逻辑 |
-| 平台治理层 | `apps/platform-api-v2` | 正式控制面 / Runtime 网关 | 鉴权、项目边界、审计、catalog、能力治理、Runtime 网关 | 不改写 Runtime 内部 graph 范式 |
+| 平台前端层 | `apps/platform-web` | 正式工作台宿主 | 用户入口、页面工作区、平台交互、管理台 UI | 不直接承载 Agent 内部编排逻辑 |
+| 平台治理层 | `apps/platform-api` | 正式控制面 / Runtime 网关 | 鉴权、项目边界、审计、catalog、能力治理、Runtime 网关 | 不改写 Runtime 内部 graph 范式 |
 | Runtime 执行层 | `apps/runtime-service` | Agent Runtime Platform | graph、middleware、model、tools、MCP、运行时契约、Agent 服务 | 不吞平台治理职责 |
 | 调试前端层 | `apps/runtime-web` | 通用 Runtime 调试器 | 直连 Runtime、发送 context、快速调试与排查 | 不做 graph 专属平台逻辑 |
 | 结果域层 | `apps/interaction-data-service` | 结果数据承接层 | 结果落库、结果查询、结果域隔离 | 不反向污染平台主数据模型 |
@@ -261,8 +261,8 @@ Repo 级 Harness 要解决的是：
 
 正式主入口是：
 
-- `apps/platform-web-vue`
-- `apps/platform-api-v2`
+- `apps/platform-web`
+- `apps/platform-api`
 
 这一层要守住：
 
@@ -390,7 +390,7 @@ Repo 级 Harness 要解决的是：
 优先问：
 
 - `runtime-web -> runtime-service` 是否正常？
-- 如果调试链路正常，但平台链路异常，优先查 `platform-api-v2` 或 `platform-web-vue`
+- 如果调试链路正常，但平台链路异常，优先查 `platform-api` 或 `platform-web`
 - 如果调试链路都不正常，优先查 `runtime-service`
 
 ### 8.2 再判定是契约问题、实现问题还是数据问题

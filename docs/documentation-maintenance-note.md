@@ -114,8 +114,8 @@
 
 下面任一变化发生时，都应触发一次文档排查：
 
-- 正式宿主变化，例如 `platform-api` -> `platform-api-v2`
-- 正式前端入口变化，例如 `platform-web` -> `platform-web-vue`
+- 正式宿主变化，例如 `platform-api` -> `platform-api`
+- 正式前端入口变化，例如 `platform-web` -> `platform-web`
 - 默认端口变化
 - 默认启动顺序变化
 - 默认接口前缀变化

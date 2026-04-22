@@ -95,7 +95,7 @@ cp deploy/.env.stack.example deploy/.env.stack
 
 如果要启用可选知识依赖：
 
-- `PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_URL`
+- `PLATFORM_API_KNOWLEDGE_UPSTREAM_URL`
 - `TEST_CASE_V2_KNOWLEDGE_MCP_URL`
 
 ### 4.2 启动
@@ -151,13 +151,13 @@ nginx/1.29.8
 
 - no-nginx stack 的前端构建参数已经固定为：
   - `VITE_PLATFORM_API_URL_DIRECT=http://localhost:2142`
-  - `VITE_PLATFORM_API_V2_URL_DIRECT=http://localhost:2142`
+  - `VITE_PLATFORM_API_RUNTIME_ENABLED=true`
 
 如果你仍看到这个 404，优先做：
 
 ```bash
-docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack build platform-web-vue
-docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack up -d --force-recreate platform-web-vue
+docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack build platform-web
+docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack up -d --force-recreate platform-web
 ```
 
 然后重新刷新浏览器。
@@ -172,8 +172,8 @@ docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack u
 如果你准备从其他主机名、局域网 IP 或外网域名访问前端，需要同时调整：
 
 - `VITE_PLATFORM_API_URL_DIRECT`
-- `VITE_PLATFORM_API_V2_URL_DIRECT`
-- `PLATFORM_API_V2_CORS_ALLOW_ORIGINS`
+- `VITE_PLATFORM_API_RUNTIME_ENABLED`
+- `PLATFORM_API_CORS_ALLOW_ORIGINS`
 
 ### 4.7 停止
 
@@ -204,9 +204,9 @@ curl http://127.0.0.1:80/_system/probes/ready
 
 这时前端应走同源代理：
 
-- `/` -> `platform-web-vue`
-- `/api/` -> `platform-api-v2`
-- `/_system/` -> `platform-api-v2`
+- `/` -> `platform-web`
+- `/api/` -> `platform-api`
+- `/_system/` -> `platform-api`
 
 ### 5.3 停止
 
@@ -228,9 +228,9 @@ docker compose -f apps/runtime-service/deploy/docker-compose.runtime-service.yml
 ```bash
 docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack logs -f
 docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack logs -f runtime-service
-docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack logs -f platform-api-v2
+docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack logs -f platform-api
 docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack logs -f interaction-data-service
-docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack logs -f platform-web-vue
+docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack logs -f platform-web
 ```
 
 整仓 nginx：

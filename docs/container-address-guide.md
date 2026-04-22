@@ -49,7 +49,7 @@ http://<service-name>:<port>
 
 例如：
 
-- `http://platform-api-v2:2142`
+- `http://platform-api:2142`
 - `http://interaction-data-service:8081`
 
 ### 2.3 服务跑在外网或其他可直连机器
@@ -74,8 +74,8 @@ https://mcp.example.com/sse
 字段：
 
 ```env
-PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_URL=...
-PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_API_KEY=
+PLATFORM_API_KNOWLEDGE_UPSTREAM_URL=...
+PLATFORM_API_KNOWLEDGE_UPSTREAM_API_KEY=
 ```
 
 ### 3.2 runtime 私有 knowledge MCP
@@ -99,7 +99,7 @@ TEST_CASE_V2_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS=300
 当前这套仓库里已经验证过：
 
 - `http://host.docker.internal:9621`
-  - 可被 `platform-api-v2` 容器访问
+  - 可被 `platform-api` 容器访问
 - `http://host.docker.internal:8621/sse`
   - 可被 `runtime-service` 容器访问
 

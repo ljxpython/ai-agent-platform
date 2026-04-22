@@ -60,16 +60,16 @@ profiles:
     services:
       - runtime-service
       - interaction-data-service
-      - platform-api-v2
-      - platform-web-vue
+      - platform-api
+      - platform-web
     startup_order:
       - runtime-service
       - interaction-data-service
-      - platform-api-v2
-      - platform-web-vue
+      - platform-api
+      - platform-web
     chains:
-      - platform-web-vue -> platform-api-v2 -> runtime-service
-      - platform-api-v2 -> interaction-data-service
+      - platform-web -> platform-api -> runtime-service
+      - platform-api -> interaction-data-service
       - runtime-service -> interaction-data-service
   runtime-debug:
     description: Optional runtime debug profile
@@ -80,16 +80,14 @@ profiles:
   optional-repo-services:
     description: Services or historical apps present in the repo but outside the default local startup set
     services:
-      - platform-web
-      - platform-api
       - runtime-web
 
 global:
   ports:
     interaction-data-service: 8081
     runtime-service: 8123
-    platform-api-v2: 2142
-    platform-web-vue: 3000
+    platform-api: 2142
+    platform-web: 3000
     runtime-web: 3001
   dependencies:
     python: ">=3.13"
@@ -105,8 +103,8 @@ global:
   config_rules:
     - Do not assume a repo-root .env
     - Use app-local config files only
-    - platform-web-vue is the official platform frontend host for default local deployment
-    - platform-api-v2 is the official control-plane host for default local deployment
+    - platform-web is the official platform frontend host for default local deployment
+    - platform-api is the official control-plane host for default local deployment
     - runtime-web default local upstream is http://localhost:8123
   helper_scripts:
     - scripts/dev-up.sh
@@ -187,82 +185,62 @@ services:
       - curl http://127.0.0.1:8123/internal/capabilities/models
       - curl http://127.0.0.1:8123/internal/capabilities/tools
 
-  platform-api-v2:
+  platform-api:
     role: Official platform control-plane backend
     in_default_local: true
-    repo_path: apps/platform-api-v2
+    repo_path: apps/platform-api
     port: 2142
     upstreams:
       - runtime-service
       - interaction-data-service
     config_files:
       required:
-        - apps/platform-api-v2/.env
+        - apps/platform-api/.env
     minimum_required_env:
-      - PLATFORM_API_V2_LANGGRAPH_UPSTREAM_URL=http://127.0.0.1:8123
-      - PLATFORM_API_V2_INTERACTION_DATA_SERVICE_URL=http://127.0.0.1:8081
-      - PLATFORM_API_V2_PLATFORM_DB_ENABLED=true
-      - PLATFORM_API_V2_PLATFORM_DB_AUTO_CREATE=true
-      - PLATFORM_API_V2_DATABASE_URL=sqlite+pysqlite:///./.data/platform-api-v2.db
-      - PLATFORM_API_V2_JWT_ACCESS_SECRET
-      - PLATFORM_API_V2_JWT_REFRESH_SECRET
-      - PLATFORM_API_V2_BOOTSTRAP_ADMIN_ENABLED=true
-      - PLATFORM_API_V2_BOOTSTRAP_ADMIN_USERNAME=admin
-      - PLATFORM_API_V2_BOOTSTRAP_ADMIN_PASSWORD=admin123456
+      - PLATFORM_API_LANGGRAPH_UPSTREAM_URL=http://127.0.0.1:8123
+      - PLATFORM_API_INTERACTION_DATA_SERVICE_URL=http://127.0.0.1:8081
+      - PLATFORM_API_PLATFORM_DB_ENABLED=true
+      - PLATFORM_API_PLATFORM_DB_AUTO_CREATE=true
+      - PLATFORM_API_DATABASE_URL=sqlite+pysqlite:///./.data/platform-api.db
+      - PLATFORM_API_JWT_ACCESS_SECRET
+      - PLATFORM_API_JWT_REFRESH_SECRET
+      - PLATFORM_API_BOOTSTRAP_ADMIN_ENABLED=true
+      - PLATFORM_API_BOOTSTRAP_ADMIN_USERNAME=admin
+      - PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD=admin123456
     bootstrap_account:
       username: admin
       password: admin123456
       scope: local-only temporary use
     start:
-      workdir: apps/platform-api-v2
+      workdir: apps/platform-api
       command: uv run uvicorn main:app --host 127.0.0.1 --port 2142 --reload
     health_checks:
       - curl http://127.0.0.1:2142/_system/health
       - curl http://127.0.0.1:2142/api/langgraph/info
 
-  platform-api:
-    role: Legacy platform control-plane backend
-    in_default_local: false
-    classification: optional-repo-service
-    repo_path: apps/platform-api
-    default_profile_behavior: Do not start unless the user explicitly asks for the legacy control plane
-    notes:
-      - Historical control plane
-      - No longer the official control-plane host
-      - Default local deployment uses apps/platform-api-v2 instead
 
-  platform-web-vue:
+  platform-web:
     role: Official platform frontend workspace
     in_default_local: true
-    repo_path: apps/platform-web-vue
+    repo_path: apps/platform-web
     port: 3000
     upstreams:
-      - platform-api-v2
+      - platform-api
     config_files:
       optional:
-        - apps/platform-web-vue/.env
-        - apps/platform-web-vue/.env.local
-        - apps/platform-web-vue/.env.example
+        - apps/platform-web/.env
+        - apps/platform-web/.env.local
+        - apps/platform-web/.env.example
     minimum_required_env:
       - VITE_PLATFORM_API_URL=http://localhost:2142
-      - VITE_PLATFORM_API_V2_URL=http://localhost:2142
+      - VITE_PLATFORM_API_RUNTIME_ENABLED=true
       - VITE_DEV_PROXY_TARGET=http://localhost:2142
     start:
-      workdir: apps/platform-web-vue
+      workdir: apps/platform-web
       command: VITE_DEV_PORT=3000 pnpm dev
     access_urls:
       - http://127.0.0.1:3000
 
-  platform-web:
-    role: Legacy platform frontend kept for compatibility and migration reference
-    in_default_local: false
-    classification: optional-repo-service
-    repo_path: apps/platform-web
-    default_profile_behavior: Do not start unless the user explicitly asks for the legacy frontend
-    notes:
-      - Historical platform frontend
-      - No longer the official platform frontend host
-      - Default local deployment uses apps/platform-web-vue instead
 
   runtime-web:
     role: Runtime debug frontend
@@ -312,8 +290,8 @@ final_report:
   required_urls:
     interaction-data-service: http://127.0.0.1:8081
     runtime-service: http://127.0.0.1:8123
-    platform-api-v2: http://127.0.0.1:2142
-    platform-web-vue: http://127.0.0.1:3000
+    platform-api: http://127.0.0.1:2142
+    platform-web: http://127.0.0.1:3000
 
 forbidden_assumptions:
   - assume_repo_root_env

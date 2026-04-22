@@ -96,7 +96,7 @@
 
 先读：
 
-- `apps/platform-web-vue/docs/control-plane-page-standard.md`
+- `apps/platform-web/docs/control-plane-page-standard.md`
 - `docs/platform-web-sub2api-migration/14-frontend-development-playbook.md`
 
 适用于：
@@ -111,7 +111,7 @@
 - 如果问题是 **“runtime 真正的 contract 行为是什么？”**
   - 转到 **Leaf B**
 - 如果问题已经变成正式平台页：
-  - 转回 `platform-web-vue` 的 leaf resolver
+  - 转回 `platform-web` 的 leaf resolver
 
 ---
 
@@ -121,7 +121,7 @@
 
 1. 先确认 `runtime-service` 本地证明是否已经成立
 2. 再用 `runtime-web -> runtime-service` 做交互验证
-3. 除非需求本身升级为正式平台行为，否则不自动要求 `platform-web-vue -> platform-api-v2 -> runtime-service` 链路验证
+3. 除非需求本身升级为正式平台行为，否则不自动要求 `platform-web -> platform-api -> runtime-service` 链路验证
 
 一句话：
 

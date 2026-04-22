@@ -28,8 +28,8 @@
 
 - `apps/runtime-service`: `8123`
 - `apps/interaction-data-service`: `8081`
-- `apps/platform-api-v2`: `2142`
-- `apps/platform-web-vue`: `3000`
+- `apps/platform-api`: `2142`
+- `apps/platform-web`: `3000`
 
 可选调试入口：
 
@@ -37,8 +37,8 @@
 
 ### 1.2 当前默认链路
 
-- 平台主链：`platform-web-vue -> platform-api-v2 -> runtime-service`
-- 结果域链路：`platform-api-v2 -> interaction-data-service`
+- 平台主链：`platform-web -> platform-api -> runtime-service`
+- 结果域链路：`platform-api -> interaction-data-service`
 - Runtime 落库链路：`runtime-service -> interaction-data-service`
 - 可选调试链路：`runtime-web -> runtime-service`
 
@@ -52,11 +52,11 @@
 
 ### 2.1 当前正式主链常用配置
 
-- `apps/platform-web-vue/.env.example`
-- `apps/platform-web-vue/.env`
-- `apps/platform-web-vue/.env.local`
-- `apps/platform-api-v2/.env`
-- `apps/platform-api-v2/deploy/env/local.example.env`
+- `apps/platform-web/.env.example`
+- `apps/platform-web/.env`
+- `apps/platform-web/.env.local`
+- `apps/platform-api/.env`
+- `apps/platform-api/deploy/env/local.example.env`
 - `apps/interaction-data-service/.env`
 - `apps/runtime-service/runtime_service/.env`
 - `apps/runtime-service/runtime_service/conf/settings.yaml`
@@ -71,8 +71,8 @@
 
 1. 启动 `runtime-service`
 2. 启动 `interaction-data-service`
-3. 启动 `platform-api-v2`
-4. 启动 `platform-web-vue`
+3. 启动 `platform-api`
+4. 启动 `platform-web`
 5. 如需 runtime 调试，再启动 `runtime-web`
 
 这个顺序对应的是当前正式 harness 主链，而不是历史服务全集启动顺序。
@@ -100,18 +100,18 @@ cd apps/interaction-data-service
 uv run uvicorn main:app --host 127.0.0.1 --port 8081 --reload
 ```
 
-### 4.3 `apps/platform-api-v2`
+### 4.3 `apps/platform-api`
 
 ```bash
-cd apps/platform-api-v2
+cd apps/platform-api
 cp deploy/env/local.example.env .env
 uv run uvicorn main:app --host 127.0.0.1 --port 2142 --reload
 ```
 
-### 4.4 `apps/platform-web-vue`
+### 4.4 `apps/platform-web`
 
 ```bash
-cd apps/platform-web-vue
+cd apps/platform-web
 VITE_DEV_PORT=3000 pnpm dev
 ```
 
@@ -138,7 +138,7 @@ curl http://127.0.0.1:8123/internal/capabilities/models
 curl http://127.0.0.1:8123/internal/capabilities/tools
 ```
 
-### 5.2 `platform-api-v2`
+### 5.2 `platform-api`
 
 ```bash
 curl http://127.0.0.1:2142/_system/health
@@ -147,12 +147,12 @@ curl http://127.0.0.1:2142/api/langgraph/info
 
 ### 5.3 页面访问
 
-- `platform-web-vue`: `http://127.0.0.1:3000`
+- `platform-web`: `http://127.0.0.1:3000`
 - `runtime-web`: `http://127.0.0.1:3001`
 
-如果 `platform-api-v2` 的 `/api/langgraph/info` 返回 `200`，说明平台到 runtime 的主联调链路已经打通。
+如果 `platform-api` 的 `/api/langgraph/info` 返回 `200`，说明平台到 runtime 的主联调链路已经打通。
 
-如果 `interaction-data-service` 的 `/_service/health` 返回 `200`，说明结果域服务可用；testcase 等结果域页面是否可用，还要继续经过 `platform-api-v2` 验证项目权限与聚合读取。
+如果 `interaction-data-service` 的 `/_service/health` 返回 `200`，说明结果域服务可用；testcase 等结果域页面是否可用，还要继续经过 `platform-api` 验证项目权限与聚合读取。
 
 ## 6. 根级快捷脚本
 
@@ -177,8 +177,8 @@ scripts/dev-down.sh
 - 不共享 `.venv`
 - 不共享 Node 依赖
 - 不共享根级 `.env`
-- `apps/platform-web-vue` 是当前正式平台前端宿主
-- `apps/platform-api-v2` 是当前正式控制面宿主
+- `apps/platform-web` 是当前正式平台前端宿主
+- `apps/platform-api` 是当前正式控制面宿主
 - `apps/runtime-service` 是正式 runtime 执行层
 - `apps/interaction-data-service` 是正式结果域服务
 - `apps/runtime-web` 是可选调试壳，不是默认产品入口

@@ -64,7 +64,7 @@
 
 1. LangGraph 根据 `langgraph.json` 定位 graph 入口与自定义 HTTP app。
 2. graph 静态导出，并声明 `context_schema=RuntimeContext`。
-3. `platform-api-v2` 注入可信身份字段，run payload 通过 `context` 和 `config` 进入运行时。
+3. `platform-api` 注入可信身份字段，run payload 通过 `context` 和 `config` 进入运行时。
 4. 共享 runtime middleware / resolver 读取 `RuntimeContext`，解析模型、prompt、工具集合等动态能力。
 5. middleware 在模型调用前完成 override，工具在运行时通过 `ToolRuntime.context` 读取业务上下文。
 6. graph 用静态结构执行本次任务，不在 run 期间重建拓扑。

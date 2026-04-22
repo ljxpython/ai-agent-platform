@@ -14,8 +14,8 @@
 
 当前仓库已经明确：
 
-- `platform-web-vue` 是正式前端宿主
-- `platform-api-v2` 是正式控制面，负责治理、权限、审计、operation 边界
+- `platform-web` 是正式前端宿主
+- `platform-api` 是正式控制面，负责治理、权限、审计、operation 边界
 - `runtime-service` 保持运行时项目上下文为 `project_id`
 - 当前项目知识模型仍是 `project_id -> workspace_key`
 
@@ -28,8 +28,8 @@
 
 截至本文更新时，AITestLab 与 LightRAG 公开 HTTP 契约里仍然**没有** metadata/tag/filter retrieval 字段：
 
-- `apps/platform-api-v2/app/modules/project_knowledge/application/contracts.py`
-- `apps/platform-web-vue/src/services/knowledge/knowledge.service.ts`
+- `apps/platform-api/app/modules/project_knowledge/application/contracts.py`
+- `apps/platform-web/src/services/knowledge/knowledge.service.ts`
 
 因此任何关于 metadata-aware retrieval 的描述，都必须标成 **preferred future default / target state**，不能写成已实现事实。
 
@@ -133,12 +133,12 @@ Rejected because:
 
 ## 7. 对各服务的含义
 
-### platform-api-v2
+### platform-api
 - 继续 project-scoped facade
 - workspace 继续作为内部治理映射
 - future 传给上游的 query 语义优先是通用 filter/boost，不是业务私有 taxonomy 协议
 
-### platform-web-vue
+### platform-web
 - 继续 project 路由组织
 - 不引入 knowledge-space chooser 作为默认主交互
 - 更适合引入 retrieval scope / filter UX，而不是多 workspace 选择器

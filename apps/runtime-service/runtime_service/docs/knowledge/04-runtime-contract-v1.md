@@ -88,11 +88,11 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
 
 | 字段 | 用途 | 写入方 | 前端可改 | 备注 |
 |---|---|---|---|---|
-| `user_id` | 当前用户身份 | `platform-api-v2` 鉴权注入 | 否 | 可信只读 |
-| `tenant_id` | 当前租户作用域 | `platform-api-v2` 鉴权注入 | 否 | 可信只读 |
-| `role` | 当前角色 | `platform-api-v2` 鉴权注入 | 否 | 可信只读 |
-| `permissions` | 当前权限列表 | `platform-api-v2` 鉴权注入 | 否 | 可信只读 |
-| `project_id` | 当前项目作用域 | `platform-api-v2` 项目注入 | 否 | 前端只切项目，不直写字段 |
+| `user_id` | 当前用户身份 | `platform-api` 鉴权注入 | 否 | 可信只读 |
+| `tenant_id` | 当前租户作用域 | `platform-api` 鉴权注入 | 否 | 可信只读 |
+| `role` | 当前角色 | `platform-api` 鉴权注入 | 否 | 可信只读 |
+| `permissions` | 当前权限列表 | `platform-api` 鉴权注入 | 否 | 可信只读 |
+| `project_id` | 当前项目作用域 | `platform-api` 项目注入 | 否 | 前端只切项目，不直写字段 |
 | `model_id` | 本次运行模型 | assistant 默认值或 run 覆盖 | 是 | 主业务参数 |
 | `system_prompt` | 本次运行业务提示词 | assistant 默认值或 run 覆盖 | 是 | 主业务参数 |
 | `temperature` | 采样参数 | assistant 默认值或 run 覆盖 | 是 | 主业务参数 |
@@ -115,7 +115,7 @@ async def make_graph(config: RunnableConfig, runtime: ServerRuntime) -> Any:
 |---|---|---|---|---|
 | `recursion_limit` | 执行深度限制 | assistant 默认值或 run 覆盖 | 是 | 执行控制 |
 | `tags` | tracing / 观测标签 | 服务端或调用方 | 是 | 非业务字段 |
-| `metadata` | 搜索、审计、观测元数据 | `platform-api-v2` 主注入 | 部分 | `project_id` 可冗余存放 |
+| `metadata` | 搜索、审计、观测元数据 | `platform-api` 主注入 | 部分 | `project_id` 可冗余存放 |
 | `callbacks` | LangChain callbacks | 服务端 | 否 | 不开放给前端 |
 | `run_name` | 执行命名 | 服务端或调用方 | 可选 | 非核心字段 |
 | `max_concurrency` | 并发控制 | 服务端 | 否 | 不开放给前端 |
@@ -268,7 +268,7 @@ assistant 三段结构继续保留，但语义收紧：
 
 | 错误放法 | 原因 | 正确去向 |
 |---|---|---|
-| 前端直接写 `user_id/tenant_id/project_id` 到 `context` | 不可信 | `platform-api-v2` 注入 |
+| 前端直接写 `user_id/tenant_id/project_id` 到 `context` | 不可信 | `platform-api` 注入 |
 | 长期把 `model_id/system_prompt/tools` 放 `configurable` | 业务与平台通道混淆 | `RuntimeContext` |
 | 把 `project_id` 只放 `metadata` 当业务真源 | 语义太弱 | `RuntimeContext.project_id` |
 | 把 secrets 放 assistant `config/context` | 泄漏风险高 | `env` |
@@ -340,7 +340,7 @@ assistant 三段结构继续保留，但语义收紧：
 
 ## 9. 对应上层系统的影响
 
-### `platform-api-v2`
+### `platform-api`
 
 需要配合调整：
 

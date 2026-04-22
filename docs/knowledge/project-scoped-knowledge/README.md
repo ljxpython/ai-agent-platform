@@ -20,12 +20,12 @@
 
 当前仓库与公开 HTTP 契约的事实仍然是：
 
-- `platform-api-v2` 以 `project_id -> workspace_key` 维护项目知识空间
-- `platform-web-vue` 只认 `projectId`，不直接感知 `workspace_key`
+- `platform-api` 以 `project_id -> workspace_key` 维护项目知识空间
+- `platform-web` 只认 `projectId`，不直接感知 `workspace_key`
 - `runtime-service` 保持 `project_id`-centric，不暴露 workspace 细节
 - 当前公开 HTTP 契约 **还没有** 暴露 metadata/tag/filter retrieval 字段：
-  - `apps/platform-api-v2/app/modules/project_knowledge/application/contracts.py`
-  - `apps/platform-web-vue/src/services/knowledge/knowledge.service.ts`
+  - `apps/platform-api/app/modules/project_knowledge/application/contracts.py`
+  - `apps/platform-web/src/services/knowledge/knowledge.service.ts`
 
 ### 1.3 首选未来默认
 
@@ -61,7 +61,7 @@ one project = one workspace
 ### Human-facing path
 
 ```text
-platform-web-vue -> platform-api-v2 -> LightRAG
+platform-web -> platform-api -> LightRAG
 ```
 
 ### Future runtime path
@@ -84,9 +84,9 @@ runtime-service / other services -> LightRAG MCP -> LightRAG
    - 当前现实 / 历史基线 / 首选未来默认 的总设计稿
 2. [02-lightrag-data-plane-plan.md](./02-lightrag-data-plane-plan.md)
    - LightRAG 数据面与 metadata-aware retrieval 目标能力设计
-3. [03-platform-api-v2-project-knowledge-design.md](./03-platform-api-v2-project-knowledge-design.md)
-   - platform-api-v2 控制面契约与边界
-4. [04-platform-web-vue-knowledge-workspace-plan.md](./04-platform-web-vue-knowledge-workspace-plan.md)
+3. [03-platform-api-project-knowledge-design.md](./03-platform-api-project-knowledge-design.md)
+   - platform-api 控制面契约与边界
+4. [04-platform-web-knowledge-workspace-plan.md](./04-platform-web-knowledge-workspace-plan.md)
    - 前端知识工作台计划与检索范围 UX
 5. [05-runtime-mcp-boundary.md](./05-runtime-mcp-boundary.md)
    - runtime-side MCP 边界
@@ -105,9 +105,9 @@ runtime-service / other services -> LightRAG MCP -> LightRAG
 
 以下文档仍保留，但在本轮未整体重写，应视为 **graph-focused historical follow-on docs**，不得覆盖本目录内新的默认决策：
 
-- `09-platform-web-vue-knowledge-graph-redesign-plan.md`
-- `10-platform-web-vue-knowledge-graph-single-milestone-plan.md`
-- `11-platform-web-vue-knowledge-graph-acceptance-checklist.md`
+- `09-platform-web-knowledge-graph-redesign-plan.md`
+- `10-platform-web-knowledge-graph-single-milestone-plan.md`
+- `11-platform-web-knowledge-graph-acceptance-checklist.md`
 
 ## 4. `.omx` 计划工件
 

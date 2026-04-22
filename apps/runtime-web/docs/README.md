@@ -15,6 +15,6 @@
 
 - 这个需求是不是应该放在 `runtime-web`
 - `runtime-web` 是否应该承接某个交互或验证行为
-- 它和 `platform-web-vue`、`runtime-service` 的边界怎么分
+- 它和 `platform-web`、`runtime-service` 的边界怎么分
 
 先读 `standards/runtime-web-debug-standard.md`。

@@ -41,7 +41,7 @@
 在这个仓库里，Harness Engineering 不是一个抽象口号，而是下面这套工作方式：
 
 1. **任务先找对 locus / layer**
-   - 先判断这是 `platform-web-vue`、`platform-api-v2`、`runtime-service`、`runtime-web`、`interaction-data-service`，还是 repo 级问题
+   - 先判断这是 `platform-web`、`platform-api`、`runtime-service`、`runtime-web`、`interaction-data-service`，还是 repo 级问题
 
 2. **标准先就近解析**
    - 优先读最窄的 app-local / leaf standard
@@ -228,22 +228,22 @@ AI 在 B3 下应该：
 
 ### 第二步：按 locus 读 leaf
 
-#### `platform-web-vue`
+#### `platform-web`
 - 页面类型 / 骨架 / 组件组合  
   → `docs/platform-web-sub2api-migration/14-frontend-development-playbook.md`
 - 正式控制面页面的 service/state/permission/audit  
-  → `apps/platform-web-vue/docs/control-plane-page-standard.md`
+  → `apps/platform-web/docs/control-plane-page-standard.md`
 
-#### `platform-api-v2`
+#### `platform-api`
 - 模块归属 / 分层  
-  → `apps/platform-api-v2/docs/handbook/project-handbook.md`  
-  → `apps/platform-api-v2/docs/handbook/development-playbook.md`
+  → `apps/platform-api/docs/handbook/project-handbook.md`  
+  → `apps/platform-api/docs/handbook/development-playbook.md`
 - 权限 / 审计 / operation  
-  → `apps/platform-api-v2/docs/standards/permission-standard.md`  
-  → `apps/platform-api-v2/docs/standards/audit-standard.md`  
-  → `apps/platform-api-v2/docs/standards/operations-standard.md`
+  → `apps/platform-api/docs/standards/permission-standard.md`  
+  → `apps/platform-api/docs/standards/audit-standard.md`  
+  → `apps/platform-api/docs/standards/operations-standard.md`
 - runtime gateway / 正式管理接口  
-  → `apps/platform-api-v2/docs/standards/runtime-gateway-interface-standard.md`
+  → `apps/platform-api/docs/standards/runtime-gateway-interface-standard.md`
 
 #### `runtime-service`
 - `apps/runtime-service/runtime_service/docs/standards/*.md`

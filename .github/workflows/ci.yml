@@ -7,11 +7,11 @@ on:
   pull_request:
 
 jobs:
-  platform-api-v2:
+  platform-api:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/platform-api-v2
+        working-directory: apps/platform-api
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -22,11 +22,11 @@ jobs:
       - run: uv run python -m compileall app
       - run: uv run python -m unittest discover -s tests -p 'test*.py' -v
 
-  platform-web-vue:
+  platform-web:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/platform-web-vue
+        working-directory: apps/platform-web
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -36,7 +36,7 @@ jobs:
         with:
           node-version: "22"
           cache: "pnpm"
-          cache-dependency-path: apps/platform-web-vue/pnpm-lock.yaml
+          cache-dependency-path: apps/platform-web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck

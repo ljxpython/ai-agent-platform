@@ -25,12 +25,12 @@
 - [ ] soft boost / hard filter 语义
 - [ ] 上游协议保持通用，不绑定 AITestLab taxonomy
 
-### B2 platform-api-v2 未来契约
+### B2 platform-api 未来契约
 - [ ] 保持 project-scoped facade
 - [ ] future query contract 预留通用 filters/boosts
 - [ ] workspace 继续内聚在控制面
 
-### B3 platform-web-vue 未来交互
+### B3 platform-web 未来交互
 - [ ] retrieval scope/filter UX 草案
 - [ ] documents metadata visibility 草案
 - [ ] settings 说明 future default / fallback
@@ -59,14 +59,14 @@
 - [ ] ingest 支持 metadata/tag 写入
 - [ ] `strict_scope` 语义落地
 
-### C2 platform-api-v2（第二层）
+### C2 platform-api（第二层）
 - [ ] `ProjectKnowledgeQueryRequest` 扩 `metadata_filters`
 - [ ] `presentation/http.py` 接收并透传 `metadata_filters`
 - [ ] `application/service.py` 透传 `metadata_filters`
 - [ ] `adapters/knowledge/client.py` 原样转发
 - [ ] upload facade 增 metadata 承载位
 
-### C3 platform-web-vue（第三层）
+### C3 platform-web（第三层）
 - [ ] `knowledge.service.ts` query payload 扩 `metadata_filters`
 - [ ] `KnowledgeQuerySettingsPanel.vue` 增 filter UI
 - [ ] `KnowledgeRetrievalPage.vue` 持有 scope/filter state
@@ -82,8 +82,8 @@
 ## D. 最小 MVP（优先做这 4 件事）
 
 - [ ] LightRAG `/query` 支持 `metadata_filters`
-- [ ] platform-api-v2 query pass-through `metadata_filters`
-- [ ] platform-web-vue Retrieval 页支持 tags / layer filter
+- [ ] platform-api query pass-through `metadata_filters`
+- [ ] platform-web Retrieval 页支持 tags / layer filter
 - [ ] test_case_service_v2 在“底层架构类问题”场景自动带 filter 查询
 
 ## E. MVP 验证口径

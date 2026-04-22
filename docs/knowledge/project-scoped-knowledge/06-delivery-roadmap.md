@@ -34,8 +34,8 @@
 
 1. 冻结 docs 口径与 ADR
 2. 补齐上游 generic metadata-aware retrieval 目标设计
-3. 定义 platform-api-v2 通用 retrieval contract
-4. 定义 platform-web-vue retrieval scope/filter UX
+3. 定义 platform-api 通用 retrieval contract
+4. 定义 platform-web retrieval scope/filter UX
 5. 保持 runtime `project_id`-centric MCP 边界
 6. 仅在必要时启用 multi-workspace fallback
 
@@ -53,12 +53,12 @@
 - [ ] 明确 hard filter / soft boost 语义
 - [ ] 明确不把 AITestLab 私有 taxonomy 写进上游协议
 
-### Phase 2 — platform-api-v2 未来契约设计
+### Phase 2 — platform-api 未来契约设计
 - [ ] project-scoped facade 保持不变
 - [ ] future retrieval contract 预留通用 filters/boosts
 - [ ] 不泄露 workspace 语义
 
-### Phase 3 — platform-web-vue 未来交互设计
+### Phase 3 — platform-web 未来交互设计
 - [ ] retrieval scope/filter UX
 - [ ] documents metadata/tag 展示策略
 - [ ] settings 中的 current reality / future default / fallback 说明
@@ -100,10 +100,10 @@
 
 ### 本轮落点
 
-- `03-platform-api-v2-project-knowledge-design.md`
-  - 主锚点：`apps/platform-api-v2/app/modules/project_knowledge/application/contracts.py`
-- `04-platform-web-vue-knowledge-workspace-plan.md`
-  - 主锚点：`apps/platform-web-vue/src/services/knowledge/knowledge.service.ts`
+- `03-platform-api-project-knowledge-design.md`
+  - 主锚点：`apps/platform-api/app/modules/project_knowledge/application/contracts.py`
+- `04-platform-web-knowledge-workspace-plan.md`
+  - 主锚点：`apps/platform-web/src/services/knowledge/knowledge.service.ts`
 - `05-runtime-mcp-boundary.md`
   - 服务落点：`apps/runtime-service/runtime_service/services/test_case_service_v2`
   - 具体锚点：`apps/runtime-service/runtime_service/services/test_case_service_v2/knowledge_mcp.py`
@@ -119,8 +119,8 @@
 
 ### 本轮完成标准
 
-- [x] `03` 已写入 platform-api-v2 file-level adaptation anchor
-- [x] `04` 已写入 platform-web-vue file-level adaptation anchor
+- [x] `03` 已写入 platform-api file-level adaptation anchor
+- [x] `04` 已写入 platform-web file-level adaptation anchor
 - [x] `05` 已写入 test_case_service_v2 landing zone 与 `knowledge_mcp.py` 锚点
 - [x] `06` 已记录这轮 docs hardening pass
 - [x] 未新增新的 canonical file-level doc
@@ -143,7 +143,7 @@
 - documents list 按 metadata 辅助筛选
 - 图谱检索的 domain-aware 行为增强
 
-### Stage 2 — 再改 `platform-api-v2`（contract + pass-through）
+### Stage 2 — 再改 `platform-api`（contract + pass-through）
 
 目标：把上游能力收进 AITestLab 的 project-scoped facade。
 
@@ -157,7 +157,7 @@
 - `strict_scope`
 - DocumentsPageQuery 的 metadata filter
 
-### Stage 3 — 再改 `platform-web-vue`（最小用户价值闭环）
+### Stage 3 — 再改 `platform-web`（最小用户价值闭环）
 
 目标：先验证“串味是否下降”，而不是一次性把所有管理面做满。
 
@@ -189,14 +189,14 @@
 如果只做一个最小验证闭环，推荐按下面 4 步落地：
 
 1. **LightRAG**：`/query` 支持 `metadata_filters`
-2. **platform-api-v2**：query contract 透传 `metadata_filters`
-3. **platform-web-vue**：Retrieval 页支持 tags / layer 过滤输入
+2. **platform-api**：query contract 透传 `metadata_filters`
+3. **platform-web**：Retrieval 页支持 tags / layer 过滤输入
 4. **test_case_service_v2**：在“底层架构类问题”场景自动带 filter 查询
 
 ### MVP 成功判据
 
 - 当用户查询“底层架构”类问题时，应用层知识串味显著下降
-- `platform-web-vue` 不引入 knowledge-space chooser
+- `platform-web` 不引入 knowledge-space chooser
 - `runtime-service` 仍不学习 `workspace_key`
 - 上游协议仍是通用 metadata filter，而不是 AITestLab 私有 taxonomy
 
@@ -204,8 +204,8 @@
 
 ### P0
 - LightRAG query filter
-- platform-api-v2 pass-through
-- platform-web-vue retrieval filter UI
+- platform-api pass-through
+- platform-web retrieval filter UI
 
 ### P1
 - ingest metadata write

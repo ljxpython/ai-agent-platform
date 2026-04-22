@@ -25,18 +25,18 @@ docker compose -f apps/runtime-service/deploy/docker-compose.runtime-service.yml
 
 如果你修改了 `TEST_CASE_V2_*` 或 `INTERACTION_DATA_SERVICE_*` 这类 runtime 私有 env，也按这条重建 / 重启 `runtime-service`。
 
-整仓 `platform-api-v2` / worker 共镜像：
+整仓 `platform-api` / worker 共镜像：
 
 ```bash
-docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack build platform-api-v2
-docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack up -d --force-recreate platform-api-v2 platform-api-v2-worker
+docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack build platform-api
+docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack up -d --force-recreate platform-api platform-api-worker
 ```
 
 说明：
 
-- `platform-api-v2-worker` 会执行 `runtime.*.refresh`、`knowledge.documents.*`、`testcase.*.export`、`assistant.resync`
-- 这些异步 operation 依赖的 upstream env 必须和 `platform-api-v2` 主容器保持一致
-- 如果你改了 `PLATFORM_API_V2_LANGGRAPH_*`、`PLATFORM_API_V2_INTERACTION_DATA_SERVICE_*`、`PLATFORM_API_V2_KNOWLEDGE_*`，要同时重建 / 重启 worker
+- `platform-api-worker` 会执行 `runtime.*.refresh`、`knowledge.documents.*`、`testcase.*.export`、`assistant.resync`
+- 这些异步 operation 依赖的 upstream env 必须和 `platform-api` 主容器保持一致
+- 如果你改了 `PLATFORM_API_LANGGRAPH_*`、`PLATFORM_API_INTERACTION_DATA_SERVICE_*`、`PLATFORM_API_KNOWLEDGE_*`，要同时重建 / 重启 worker
 
 ### 2.2 仅 env / 配置变更
 

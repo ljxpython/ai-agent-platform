@@ -104,15 +104,15 @@ runtime-service/test_case_service
 正式平台读取链路是：
 
 ```text
-platform-web-vue
-  -> platform-api-v2
+platform-web
+  -> platform-api
     -> interaction-data-service
 ```
 
 因此：
 
-- `platform-web-vue` 不应把正式页面直接接到本服务
-- `platform-api-v2` 负责项目权限、下载/预览代理、导出与聚合读取
+- `platform-web` 不应把正式页面直接接到本服务
+- `platform-api` 负责项目权限、下载/预览代理、导出与聚合读取
 - 本服务只维护结果域资源语义和结果域数据所有权
 
 ## 运行与排查

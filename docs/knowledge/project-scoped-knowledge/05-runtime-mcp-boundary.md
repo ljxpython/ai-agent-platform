@@ -4,7 +4,7 @@
 
 本文继续确认一个关键边界：
 
-> future runtime-side knowledge consumption 不通过 `platform-api-v2` 扩成统一程序化 API，而是优先走 **LightRAG MCP**。
+> future runtime-side knowledge consumption 不通过 `platform-api` 扩成统一程序化 API，而是优先走 **LightRAG MCP**。
 
 在新默认方向下，这条边界不变，只是增加了一条约束：
 
@@ -53,7 +53,7 @@
 
 这份边界文档的正式结论仍是：
 
-- human-facing path：`platform-web-vue -> platform-api-v2 -> LightRAG`
+- human-facing path：`platform-web -> platform-api -> LightRAG`
 - runtime path：`runtime-service -> LightRAG MCP -> LightRAG`
 - future metadata-aware retrieval 也不能改变 runtime 的 `project_id`-centric 原则
 

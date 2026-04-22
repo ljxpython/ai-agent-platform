@@ -81,7 +81,7 @@
 B1 只做叶子内部闭环。  
 典型情况：
 
-- `platform-web-vue` 只改自己页面、自己的 payload 规范、自己的 service 适配
+- `platform-web` 只改自己页面、自己的 payload 规范、自己的 service 适配
 - `runtime-service` 只改自己的 runtime resolver、middleware、graph 装配
 
 ### 2.2 B2
@@ -90,8 +90,8 @@ B2 只走**最短相关链**，不扩散。
 
 典型链：
 
-- `platform-web-vue -> platform-api-v2`
-- `platform-api-v2 -> runtime-service`
+- `platform-web -> platform-api`
+- `platform-api -> runtime-service`
 - `runtime-web -> runtime-service`
 
 ### 2.3 B3
@@ -188,7 +188,7 @@ B3 只在下面情况出现：
 
 例子：
 
-- `platform-web-vue`：先看自己的 payload 归一化、endpoint 归一化、页面本地服务调用
+- `platform-web`：先看自己的 payload 归一化、endpoint 归一化、页面本地服务调用
 - `runtime-service`：先看自己的 runtime context 解析、settings 解析、middleware 装配
 
 ### 5.2 shortest relevant chain
@@ -197,8 +197,8 @@ B3 只在下面情况出现：
 
 例子：
 
-- `platform-web-vue -> platform-api-v2`
-- `platform-api-v2 -> runtime-service`
+- `platform-web -> platform-api`
+- `platform-api -> runtime-service`
 
 ### 5.3 formal chain only when required
 
@@ -217,9 +217,9 @@ B3 只在下面情况出现：
 
 leaf 先管 leaf 的事。
 
-### 6.1 `platform-web-vue`
+### 6.1 `platform-web`
 
-`platform-web-vue` 不能只按“前端规范”一个粗桶判断，必须按更窄的 leaf concern 解析：
+`platform-web` 不能只按“前端规范”一个粗桶判断，必须按更窄的 leaf concern 解析：
 
 #### Leaf A：页面 archetype / UI composition / template choice
 - `docs/platform-web-sub2api-migration/14-frontend-development-playbook.md`
@@ -229,13 +229,13 @@ leaf 先管 leaf 的事。
   - 页面结构和视觉/交互模板怎么选
 
 #### Leaf B：formal control-plane page behavior
-- `apps/platform-web-vue/docs/control-plane-page-standard.md`
+- `apps/platform-web/docs/control-plane-page-standard.md`
 - 适用于：
   - 页面 service / state / permission / audit / page shell 规则
   - 正式控制面页面有哪些禁止项
   - formal page 行为如何遵守平台规则
 
-#### `platform-web-vue` resolver rule
+#### `platform-web` resolver rule
 - 如果问题是 **“这是什么页面、应该用哪种页面骨架/组件组合？”**
   - 先读 **frontend playbook**
 - 如果问题是 **“这个正式页面在 service/state/permission/audit 上必须怎么做？”**
@@ -253,35 +253,35 @@ leaf 先管 leaf 的事。
 
 这里的 authoritative leaf 先是标准和 harness checks；具体代码实现只能作为**事实样本**，不能反过来升级成 current-standard 本身。
 
-### 6.3 `platform-api-v2`
+### 6.3 `platform-api`
 
-`platform-api-v2` 的 leaf authority 不能只收成“control-plane 后端”一个粗桶。
+`platform-api` 的 leaf authority 不能只收成“control-plane 后端”一个粗桶。
 
 #### Leaf A：control-plane module / ownership / code-shape
-- `apps/platform-api-v2/docs/handbook/project-handbook.md`
-- `apps/platform-api-v2/docs/handbook/development-playbook.md`
+- `apps/platform-api/docs/handbook/project-handbook.md`
+- `apps/platform-api/docs/handbook/development-playbook.md`
 - 适用于：
   - 这个能力应落在哪个模块
   - handler / use case / repository / adapter 如何分工
   - 哪层拥有该行为
 
 #### Leaf B：permission / audit / operation governance
-- `apps/platform-api-v2/docs/standards/permission-standard.md`
-- `apps/platform-api-v2/docs/standards/audit-standard.md`
-- `apps/platform-api-v2/docs/standards/operations-standard.md`
+- `apps/platform-api/docs/standards/permission-standard.md`
+- `apps/platform-api/docs/standards/audit-standard.md`
+- `apps/platform-api/docs/standards/operations-standard.md`
 - 适用于：
   - 谁能做
   - 如何追责
   - 长任务是否必须进入 operation
 
 #### Leaf C：runtime gateway / formal management interface
-- `apps/platform-api-v2/docs/standards/runtime-gateway-interface-standard.md`
+- `apps/platform-api/docs/standards/runtime-gateway-interface-standard.md`
 - 适用于：
   - 正式平台接口如何暴露 runtime 能力
   - 项目边界与 runtime gateway 的治理边界
   - 平台管理接口与 runtime public contract 的受管面判断
 
-#### `platform-api-v2` resolver rule
+#### `platform-api` resolver rule
 - 如果问题是 **“这个能力应该落在哪个模块、怎么分层？”**
   - 先读 **Leaf A**
 - 如果问题是 **“谁能做、怎么记审计、是否必须走 operation？”**
@@ -312,7 +312,7 @@ leaf 先管 leaf 的事。
 - 如果问题是 **“runtime 真正的 contract 行为是什么？”**
   - 转到 **Leaf B**
 - 如果问题已经变成正式平台页：
-  - 转回 `platform-web-vue` 的 leaf resolver
+  - 转回 `platform-web` 的 leaf resolver
 
 ### 6.5 `interaction-data-service`
 
@@ -330,7 +330,7 @@ leaf 先管 leaf 的事。
 - `apps/interaction-data-service/docs/README.md`
 - 适用于：
   - 结果域边界
-  - 平台访问是否必须经由 `platform-api-v2`
+  - 平台访问是否必须经由 `platform-api`
   - runtime 写入和平台读取的正式关系
 
 #### Leaf C：background design / future abstraction

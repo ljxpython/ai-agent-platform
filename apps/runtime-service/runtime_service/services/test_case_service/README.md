@@ -8,7 +8,7 @@
 
 - `../../docs/10-test-case-service-persistence-design.md`
 - `../../../interaction-data-service/docs/README.md`
-- `../../../platform-api-v2/app/modules/testcase/presentation/http.py`
+- `../../../platform-api/app/modules/testcase/presentation/http.py`
 
 测试用例分析智能体服务。基于 `create_deep_agent` + 私有 Skills 体系，将模糊的产品需求转化为高质量、可执行、可量化的测试资产。
 
@@ -87,7 +87,7 @@ test_case_service/
 
 - 如果 `RuntimeContext.model_id` 已显式传入，则始终优先使用调用方指定模型
 - 只有在调用方未显式传 `model_id` 时，服务才回落到 `test_case_default_model_id=deepseek_chat`
-- `project_id` 是受信运行时上下文，平台真实链路必须由 `platform-api-v2` 注入到 `context`
+- `project_id` 是受信运行时上下文，平台真实链路必须由 `platform-api` 注入到 `context`
 - `test_case_service` 只认 `RuntimeContext.project_id`，不再从 `configurable / metadata / state / system prompt` 反推项目上下文
 - 未注入 `project_id` 时，`test_case_service` 会直接报错；不再提供默认项目 fallback
 - 当前 `interaction-data-service` 的 `test-case-service` 相关接口要求 `project_id` 为 UUID 字符串；联调脚本里的 `--project-id` 也会前置校验这一点，避免把无效参数直接打成远端 `400`
@@ -155,7 +155,7 @@ Agent 通过 `SkillsMiddleware` 自动加载以下 Skills，按需激活：
 
 现象：
 
-- `platform-web-vue` 前端真实请求体已经带了 `content[].type=file` 的 PDF block
+- `platform-web` 前端真实请求体已经带了 `content[].type=file` 的 PDF block
 - agent 仍返回：`当前请求是无附件业务测试用例生成，但服务未挂载 query_project_knowledge，因此不能基于臆测继续生成。`
 
 根因：
@@ -172,7 +172,7 @@ Agent 通过 `SkillsMiddleware` 自动加载以下 Skills，按需激活：
 
 验证结论：
 
-- 前端附件上传链路正常，不是 `platform-web-vue` 把 PDF 弄丢
+- 前端附件上传链路正常，不是 `platform-web` 把 PDF 弄丢
 - `MCP` 开关不应影响“有没有识别到上传附件”，它只影响无附件/证据不足时能不能查知识库
 - 修复后，真实新线程已验证能命中 `read_multimodal_attachments`，并继续生成正式测试用例
 
@@ -226,9 +226,9 @@ uv run python runtime_service/tests/services_test_case_service_project_scope_liv
 - `services_test_case_service_document_live.py`：验证“上传即落库”的 document 链路
 - `services_test_case_service_knowledge_live.py`：验证 agent 在真实对话中会调用私有知识库 MCP 工具；加 `--require-query-tool` 可强制断言必须命中 `query_project_knowledge`
 - `services_test_case_service_persistence_live.py`：验证正式 testcase 保存与 `source_document_ids` 关联
-- `services_test_case_service_project_scope_live.py`：验证 `platform-api-v2` 项目作用域注入、缺失项目时的显式失败、以及默认项目不被脏写入
+- `services_test_case_service_project_scope_live.py`：验证 `platform-api` 项目作用域注入、缺失项目时的显式失败、以及默认项目不被脏写入
 - 所有 live 脚本的 `--project-id` 都要求传 UUID；不要再用 `test-case-persist-123456` 这种普通字符串
-- `services_test_case_service_project_scope_live.py` 需要 `platform-api-v2` 的 Bearer token；可显式传 `--platform-token`，也可通过环境变量 `PLATFORM_API_TOKEN` / `PLATFORM_ACCESS_TOKEN` 提供
+- `services_test_case_service_project_scope_live.py` 需要 `platform-api` 的 Bearer token；可显式传 `--platform-token`，也可通过环境变量 `PLATFORM_API_TOKEN` / `PLATFORM_ACCESS_TOKEN` 提供
 
 当前已验证事实：
 

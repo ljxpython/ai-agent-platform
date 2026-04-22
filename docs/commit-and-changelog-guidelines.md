@@ -36,7 +36,7 @@ Refs:
 - `type(scope)!: summary` 必填
 - `!` 仅在 **Breaking Change** 时使用
 - `Log:` 必填：1-5 条，写用户可感知的变化（不要写“重构/调整结构”这种内部细节）
-- `Test:` 必填：写本次验证手段（例如 `pnpm lint (platform-web-vue, runtime-web)`）
+- `Test:` 必填：写本次验证手段（例如 `pnpm lint (platform-web, runtime-web)`）
 - `Refs:` 可选：关联 threadId、issue、需求文档等
 
 ---
@@ -62,7 +62,7 @@ Refs:
 
 优先使用以下 scope（按改动归属选择一个主 scope）：
 
-- 应用/服务：`platform-web-vue` `platform-web` `runtime-web` `platform-api` `runtime-service` `interaction-data-service`
+- 应用/服务：`platform-web` `platform-web` `runtime-web` `platform-api` `runtime-service` `interaction-data-service`
 - UI 领域：`ui` `thread` `tool-calls` `markdown` `tasks` `history`
 - 文档：`docs`
 - 其他：`deps` `infra`
@@ -94,7 +94,7 @@ Log:
 - 取消工具卡片内部限高滚动，展开后完整展示内容
 
 Test:
-- pnpm lint (platform-web-vue, runtime-web)
+- pnpm lint (platform-web, runtime-web)
 
 Refs:
 - threadId=e2a2f86b-eeb3-4b54-a8fd-1bab83da1e87
@@ -106,8 +106,8 @@ Refs:
 
 `Test:` 至少写一种验证方式：
 
-- `pnpm lint (platform-web-vue, runtime-web)`
-- `pnpm build (platform-web-vue)`
+- `pnpm lint (platform-web, runtime-web)`
+- `pnpm build (platform-web)`
 - 手动验证：写清楚页面/路径/关键操作
 
 如果确实无法验证，也必须显式写出来（避免默默跳过）：

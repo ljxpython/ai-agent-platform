@@ -46,14 +46,14 @@ The repository currently provides a default four-service local bring-up path, pl
 
 ## Current Frontend Entry
 
-`apps/platform-web-vue` is the official platform frontend host and the default place for current platform frontend development.
+`apps/platform-web` is the official platform frontend host and the default place for current platform frontend development.
 
 Use the frontend entries in this repo like this:
 
-- `apps/platform-web-vue`: official platform workspace frontend
+- `apps/platform-web`: official platform workspace frontend
 - `apps/runtime-web`: runtime-facing debug frontend
 
-If you just want the current official local demo path, start the root scripts and open `apps/platform-web-vue`.
+If you just want the current official local demo path, start the root scripts and open `apps/platform-web`.
 
 ## AI Continuous-Coding Harness
 
@@ -63,7 +63,7 @@ That harness is made of several parts working together:
 
 - `Boundaries`: platform governance, runtime execution, debug frontend, and result-domain service are separated instead of mixed together
 - `Contracts`: local deployment contract, env conventions, startup order, API naming, and demo account rules are fixed
-- `Patterns`: `runtime-service`, `platform-web-vue`, control-plane standards, and reusable examples already provide working implementation patterns
+- `Patterns`: `runtime-service`, `platform-web`, control-plane standards, and reusable examples already provide working implementation patterns
 - `Delivery loop`: helper scripts, health checks, smoke tests, acceptance docs, changelog, and release runbooks form a repeatable delivery path
 
 In short, the repo is meant to let AI agents keep building inside a controlled engineering environment, not just generate random code in a vacuum.
@@ -103,8 +103,8 @@ That article is more frontend-oriented and is useful for quickly understanding t
 The default local bring-up currently includes four formal services:
 
 - `apps/interaction-data-service`: result-domain data service for workflow result persistence and querying
-- `apps/platform-api-v2`: official platform backend / control-plane API
-- `apps/platform-web-vue`: official platform frontend / admin workspace entry
+- `apps/platform-api`: official platform backend / control-plane API
+- `apps/platform-web`: official platform frontend / admin workspace entry
 - `apps/runtime-service`: LangGraph execution layer / Agent Runtime
 
 Optional debug entry:
@@ -113,13 +113,13 @@ Optional debug entry:
 
 ### Two Main Paths
 
-- Platform path: `platform-web-vue -> platform-api-v2 -> runtime-service`
+- Platform path: `platform-web -> platform-api -> runtime-service`
 - Debug path: `runtime-web -> runtime-service`
 - Result-domain path: `runtime-service -> interaction-data-service`
 
 ### What The Frontend Entries Are For
 
-- `platform-web-vue`: official platform product workspace and the default frontend host
+- `platform-web`: official platform product workspace and the default frontend host
 - `runtime-web`: agent debugging, interaction validation, and fast runtime iteration
 
 ## Architecture Diagram
@@ -134,8 +134,8 @@ Optional debug entry:
 
 1. `runtime-service`
 2. `interaction-data-service`
-3. `platform-api-v2`
-4. `platform-web-vue`
+3. `platform-api`
+4. `platform-web`
 5. `runtime-web` (optional)
 
 ### Root Scripts
@@ -152,31 +152,31 @@ These three scripts are:
 - Health check: `scripts/check-health.sh`
 - Stop: `scripts/dev-down.sh`
 
-### If You Want To Start `platform-web-vue` Separately
+### If You Want To Start `platform-web` Separately
 
-The root scripts already start `apps/platform-web-vue`.
+The root scripts already start `apps/platform-web`.
 
 If you want to run it alone during frontend work:
 
 ```bash
-VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web-vue" dev
+VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web" dev
 ```
 
 Then open:
 
-- `platform-web-vue`: `http://127.0.0.1:3002`
+- `platform-web`: `http://127.0.0.1:3002`
 
 ### Default Local Ports
 
 - `interaction-data-service`: `8081`
 - `runtime-service`: `8123`
-- `platform-api-v2`: `2142`
-- `platform-web-vue`: `3000`
+- `platform-api`: `2142`
+- `platform-web`: `3000`
 - `runtime-web`: `3001`
 
 ### URLs After Startup
 
-- `platform-web-vue`: `http://127.0.0.1:3000`
+- `platform-web`: `http://127.0.0.1:3000`
 - `runtime-web`: `http://127.0.0.1:3001`
 
 ### Minimum Health Checks
@@ -188,7 +188,7 @@ curl http://127.0.0.1:2142/_system/health
 curl http://127.0.0.1:2142/api/langgraph/info
 ```
 
-If `/api/langgraph/info` on `platform-api-v2` returns `200`, and `/_service/health` on `interaction-data-service` also returns `200`, the platform path and result persistence path are basically connected.
+If `/api/langgraph/info` on `platform-api` returns `200`, and `/_service/health` on `interaction-data-service` also returns `200`, the platform path and result persistence path are basically connected.
 
 ![Local Startup Flow](docs/assets/local-dev-startup-flow.en.svg)
 
@@ -198,8 +198,8 @@ If `/api/langgraph/info` on `platform-api-v2` returns `200`, and `/_service/heal
 AITestLab/
 ├── apps/
 │   ├── interaction-data-service/
-│   ├── platform-api-v2/
-│   ├── platform-web-vue/
+│   ├── platform-api/
+│   ├── platform-web/
 │   ├── runtime-service/
 │   ├── runtime-web/
 │   └── ...
@@ -332,14 +332,14 @@ If this is your first time looking at the repo, the recommended reading order is
 This repo has already completed:
 
 - The default four-service startup set has been stabilized under `apps/*`
-- `apps/platform-web-vue` is the official platform frontend host
-- `apps/platform-api-v2` is the official platform control plane
+- `apps/platform-web` is the official platform frontend host
+- `apps/platform-api` is the official platform control plane
 - `runtime-service` can start
 - `interaction-data-service` can start
-- `platform-api-v2` can start
-- `platform-api-v2 -> runtime-service` integration has passed
+- `platform-api` can start
+- `platform-api -> runtime-service` integration has passed
 - `runtime-service -> interaction-data-service` has been wired into the local bring-up scripts
-- `platform-web-vue` is the official platform frontend host, while `runtime-web` remains the optional runtime debug shell
+- `platform-web` is the official platform frontend host, while `runtime-web` remains the optional runtime debug shell
 
 Current conventions that are still kept:
 

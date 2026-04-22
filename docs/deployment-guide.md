@@ -19,9 +19,9 @@
 当前正式默认本地链路是：
 
 ```text
-platform-web-vue -> platform-api-v2 -> runtime-service
+platform-web -> platform-api -> runtime-service
 runtime-service -> interaction-data-service
-platform-api-v2 -> interaction-data-service
+platform-api -> interaction-data-service
 ```
 
 可选调试链路：
@@ -36,8 +36,8 @@ runtime-web -> runtime-service
 
 - `apps/runtime-service`
 - `apps/interaction-data-service`
-- `apps/platform-api-v2`
-- `apps/platform-web-vue`
+- `apps/platform-api`
+- `apps/platform-web`
 
 可选调试入口：
 
@@ -54,15 +54,15 @@ runtime-web -> runtime-service
 
 - `runtime-service`: `8123`
 - `interaction-data-service`: `8081`
-- `platform-api-v2`: `2142`
-- `platform-web-vue`: `3000`
+- `platform-api`: `2142`
+- `platform-web`: `3000`
 - `runtime-web`: `3001`（可选）
 
 ## 2. 这个仓库为什么这样部署
 
 当前仓库的总哲学不是“把所有代码都堆到一个服务里”，而是把它当成一套可供 AI 和人类持续协同开发的 `AI Harness`：
 
-- 平台治理层：`platform-web-vue` + `platform-api-v2`
+- 平台治理层：`platform-web` + `platform-api`
 - 运行时执行层：`runtime-service`
 - 结果域承接层：`interaction-data-service`
 - 可选调试壳：`runtime-web`
@@ -72,7 +72,7 @@ runtime-web -> runtime-service
 如果你想理解为什么架构要这么拆，先看：
 
 - `docs/development-paradigm.md`
-- `apps/platform-api-v2/docs/handbook/project-handbook.md`
+- `apps/platform-api/docs/handbook/project-handbook.md`
 
 ## 3. 系统依赖准备
 
@@ -106,7 +106,7 @@ uv python install 3.13
 证据源：
 
 - `docs/local-deployment-contract.yaml`
-- `apps/platform-web-vue/package.json`
+- `apps/platform-web/package.json`
 
 建议检查：
 
@@ -165,38 +165,38 @@ pnpm -v
 - `SERVICE_NAME=interaction-data-service`
 - `INTERACTION_DB_ENABLED=false` 或者配置有效 `DATABASE_URL`
 
-### 4.4 `apps/platform-api-v2`
+### 4.4 `apps/platform-api`
 
 必须检查：
 
-- `apps/platform-api-v2/.env`
+- `apps/platform-api/.env`
 
 关键变量包括：
 
-- `PLATFORM_API_V2_LANGGRAPH_UPSTREAM_URL=http://127.0.0.1:8123`
-- `PLATFORM_API_V2_INTERACTION_DATA_SERVICE_URL=http://127.0.0.1:8081`
-- `PLATFORM_API_V2_DATABASE_URL=sqlite+pysqlite:///./.data/platform-api-v2.db`
-- `PLATFORM_API_V2_PLATFORM_DB_ENABLED=true`
-- `PLATFORM_API_V2_PLATFORM_DB_AUTO_CREATE=true`
-- `PLATFORM_API_V2_JWT_ACCESS_SECRET`
-- `PLATFORM_API_V2_JWT_REFRESH_SECRET`
-- `PLATFORM_API_V2_BOOTSTRAP_ADMIN_ENABLED=true`
-- `PLATFORM_API_V2_BOOTSTRAP_ADMIN_USERNAME=admin`
-- `PLATFORM_API_V2_BOOTSTRAP_ADMIN_PASSWORD=admin123456`
+- `PLATFORM_API_LANGGRAPH_UPSTREAM_URL=http://127.0.0.1:8123`
+- `PLATFORM_API_INTERACTION_DATA_SERVICE_URL=http://127.0.0.1:8081`
+- `PLATFORM_API_DATABASE_URL=sqlite+pysqlite:///./.data/platform-api.db`
+- `PLATFORM_API_PLATFORM_DB_ENABLED=true`
+- `PLATFORM_API_PLATFORM_DB_AUTO_CREATE=true`
+- `PLATFORM_API_JWT_ACCESS_SECRET`
+- `PLATFORM_API_JWT_REFRESH_SECRET`
+- `PLATFORM_API_BOOTSTRAP_ADMIN_ENABLED=true`
+- `PLATFORM_API_BOOTSTRAP_ADMIN_USERNAME=admin`
+- `PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD=admin123456`
 
-### 4.5 `apps/platform-web-vue`
+### 4.5 `apps/platform-web`
 
 当前正式前端宿主可使用：
 
-- `apps/platform-web-vue/.env.example`
-- `apps/platform-web-vue/.env`
-- `apps/platform-web-vue/.env.local`
+- `apps/platform-web/.env.example`
+- `apps/platform-web/.env`
+- `apps/platform-web/.env.local`
 
 最小本地建议：
 
 ```env
 VITE_PLATFORM_API_URL=http://localhost:2142
-VITE_PLATFORM_API_V2_URL=http://localhost:2142
+VITE_PLATFORM_API_RUNTIME_ENABLED=true
 VITE_DEV_PROXY_TARGET=http://localhost:2142
 VITE_DEV_PORT=3000
 VITE_LANGGRAPH_DEBUG_URL=
@@ -231,9 +231,9 @@ scripts/dev-down.sh
 
 它们统一代理到正式 demo 脚本：
 
-- `scripts/platform-web-vue-demo-up.sh`
-- `scripts/platform-web-vue-demo-health.sh`
-- `scripts/platform-web-vue-demo-down.sh`
+- `scripts/platform-web-demo-up.sh`
+- `scripts/platform-web-demo-health.sh`
+- `scripts/platform-web-demo-down.sh`
 
 ### 5.2 手工逐服务启动顺序
 
@@ -241,8 +241,8 @@ scripts/dev-down.sh
 
 1. `runtime-service`
 2. `interaction-data-service`
-3. `platform-api-v2`
-4. `platform-web-vue`
+3. `platform-api`
+4. `platform-web`
 5. `runtime-web`（可选）
 
 ## 6. 各服务启动命令
@@ -263,17 +263,17 @@ cd apps/interaction-data-service
 uv run uvicorn main:app --host 127.0.0.1 --port 8081 --reload
 ```
 
-### 6.3 `apps/platform-api-v2`
+### 6.3 `apps/platform-api`
 
 ```bash
-cd apps/platform-api-v2
+cd apps/platform-api
 uv run uvicorn main:app --host 127.0.0.1 --port 2142 --reload
 ```
 
-### 6.4 `apps/platform-web-vue`
+### 6.4 `apps/platform-web`
 
 ```bash
-cd apps/platform-web-vue
+cd apps/platform-web
 VITE_DEV_PORT=3000 pnpm dev
 ```
 
@@ -297,11 +297,11 @@ curl http://127.0.0.1:2142/api/langgraph/info
 
 ### 7.2 页面访问
 
-- `platform-web-vue`: `http://localhost:3000`
-- `platform-web-vue` 兼容入口：`http://127.0.0.1:3000`
+- `platform-web`: `http://localhost:3000`
+- `platform-web` 兼容入口：`http://127.0.0.1:3000`
 - `runtime-web`: `http://127.0.0.1:3001`（可选）
 
-如果 `platform-api-v2` 的 `/api/langgraph/info` 返回 `200`，且 `interaction-data-service` 的 `/_service/health` 返回 `200`，说明当前正式平台链路和结果域链路已经基本打通。
+如果 `platform-api` 的 `/api/langgraph/info` 返回 `200`，且 `interaction-data-service` 的 `/_service/health` 返回 `200`，说明当前正式平台链路和结果域链路已经基本打通。
 
 ## 8. 常见排查方向
 
@@ -309,18 +309,18 @@ curl http://127.0.0.1:2142/api/langgraph/info
 
 优先检查：
 
-- `apps/platform-web-vue/.env*` 是否仍残留旧地址
-- `platform-api-v2` 是否已启动到 `2142`
+- `apps/platform-web/.env*` 是否仍残留旧地址
+- `platform-api` 是否已启动到 `2142`
 - `VITE_DEV_PROXY_TARGET` 是否指向 `http://localhost:2142`
-- 如果你不是从 `localhost:3000` 或 `127.0.0.1:3000` 访问前端，检查 `PLATFORM_API_V2_CORS_ALLOW_ORIGINS`
+- 如果你不是从 `localhost:3000` 或 `127.0.0.1:3000` 访问前端，检查 `PLATFORM_API_CORS_ALLOW_ORIGINS`
 
 ### 8.2 Runtime 可用，但平台聊天/线程链路异常
 
 优先检查：
 
-- `platform-api-v2` 的 runtime gateway 配置
+- `platform-api` 的 runtime gateway 配置
 - 当前项目上下文与权限
-- `apps/platform-web-vue/src/router/routes.ts` 对应页面是否已经属于当前正式范围
+- `apps/platform-web/src/router/routes.ts` 对应页面是否已经属于当前正式范围
 
 ### 8.3 interaction-data-service 接口正常，但文档与实现不一致
 
@@ -335,8 +335,8 @@ curl http://127.0.0.1:2142/api/langgraph/info
 
 当前正式默认链路只认：
 
-- `platform-web-vue`
-- `platform-api-v2`
+- `platform-web`
+- `platform-api`
 - `2142`
 - `8081`
 
@@ -349,7 +349,7 @@ curl http://127.0.0.1:2142/api/langgraph/info
 3. `docs/local-dev.md`
 4. `docs/env-matrix.md`
 5. `docs/development-paradigm.md`
-6. `apps/platform-api-v2/docs/handbook/project-handbook.md`
+6. `apps/platform-api/docs/handbook/project-handbook.md`
 
 如果你是要让 AI 帮你部署，入口仍然是：
 

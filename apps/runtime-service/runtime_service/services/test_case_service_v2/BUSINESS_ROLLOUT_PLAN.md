@@ -9,7 +9,7 @@
 当前真正缺少的不是 agent 内部能力，而是业务入口：
 
 - `runtime-service` 仍只注册 `test_case_agent -> v1`
-- `platform-web-vue` 的 testcase 页面仍固定绑定 `test_case_agent`
+- `platform-web` 的 testcase 页面仍固定绑定 `test_case_agent`
 - testcase 结果查询链路已经是项目级结果域，可直接复用
 
 因此，本阶段的目标不是继续改 `v2` agent 内部，而是把它作为一条独立业务线接入到前后端。
@@ -30,7 +30,7 @@
 - `runtime-service`
   - 注册 `test_case_agent_v2`
   - 补 `v2` graph 的注册/静态 contract 测试
-- `platform-web-vue`
+- `platform-web`
   - 新增 `/workspace/testcase-v2/generate`
   - 新增 `/workspace/testcase-v2/cases`
   - 新增 `/workspace/testcase-v2/documents`
@@ -47,23 +47,23 @@
 - 兼容旧 testcase 页面切换到 `v2`
 - testcase 结果域按 `v1/v2` 做隔离或分库
 - 调整 interaction-data-service API path
-- 重写 `platform-api-v2` testcase 结果域
+- 重写 `platform-api` testcase 结果域
 
 ## 代码依据
 
 - 当前 `runtime-service` 只注册了 `test_case_agent`
   - [langgraph.json](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/runtime_service/langgraph.json#L36)
 - 当前 testcase 生成页固定绑定 `test_case_agent`
-  - [TestcaseGeneratePage.vue](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-web-vue/src/modules/testcase/pages/TestcaseGeneratePage.vue#L25)
-  - [TestcaseGeneratePage.vue](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-web-vue/src/modules/testcase/pages/TestcaseGeneratePage.vue#L100)
+  - [TestcaseGeneratePage.vue](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-web/src/modules/testcase/pages/TestcaseGeneratePage.vue#L25)
+  - [TestcaseGeneratePage.vue](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-web/src/modules/testcase/pages/TestcaseGeneratePage.vue#L100)
 - 当前 testcase 路由组是成套组织的，适合直接复制一份给 `v2`
-  - [routes.ts](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-web-vue/src/router/routes.ts#L345)
+  - [routes.ts](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-web/src/router/routes.ts#L345)
 - 当前 testcase 工作区导航可直接复制
-  - [TestcaseWorkspaceNav.vue](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-web-vue/src/components/platform/TestcaseWorkspaceNav.vue)
+  - [TestcaseWorkspaceNav.vue](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-web/src/components/platform/TestcaseWorkspaceNav.vue)
 - 当前侧边栏已有 testcase 独立入口，可照此新增 `testcase-v2`
-  - [AppSidebar.vue](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-web-vue/src/components/layout/AppSidebar.vue#L106)
+  - [AppSidebar.vue](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-web/src/components/layout/AppSidebar.vue#L106)
 - testcase 结果查询是项目级结果域，不依赖 graph id
-  - [http.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-api-v2/app/modules/testcase/presentation/http.py)
+  - [http.py](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/platform-api/app/modules/testcase/presentation/http.py)
 
 ## 方案
 
@@ -78,7 +78,7 @@
   - 静态 graph contract 测试
   - `v2` graph 的模块级测试
 
-### 2. platform-web-vue 新增 testcase-v2 页面组
+### 2. platform-web 新增 testcase-v2 页面组
 
 - 新增路由组：
   - `/workspace/testcase-v2`
@@ -123,11 +123,11 @@
 ## 验收标准
 
 - `runtime-service/langgraph.json` 中存在 `test_case_agent_v2`
-- `platform-web-vue` 中存在 `/workspace/testcase-v2/generate`、`/cases`、`/documents`
+- `platform-web` 中存在 `/workspace/testcase-v2/generate`、`/cases`、`/documents`
 - `testcase-v2/generate` 固定发往 `test_case_agent_v2`
 - `testcase-v2/cases` 与 `testcase-v2/documents` 能正常读取项目级 testcase 结果
 - runtime-service 相关测试通过
-- platform-web-vue 的 build/lint/相关测试通过
+- platform-web 的 build/lint/相关测试通过
 - 至少完成一次真实 `testcase-v2` 生成验证
 
 ## 实施清单
@@ -139,7 +139,7 @@
 - [x] 补 `v2` graph 的静态 graph contract 测试
 - [x] 补 `v2` graph 注册/描述测试
 
-### B. platform-web-vue 路由与入口
+### B. platform-web 路由与入口
 
 - [x] 新增 `/workspace/testcase-v2` 路由组
 - [x] 新增 `/workspace/testcase-v2/generate`
@@ -147,7 +147,7 @@
 - [x] 新增 `/workspace/testcase-v2/documents`
 - [x] 在侧边栏新增 `testcase-v2` 入口
 
-### C. platform-web-vue 页面复制
+### C. platform-web 页面复制
 
 - [x] 复制 `TestcaseGeneratePage.vue` 为 `TestcaseV2GeneratePage.vue`
 - [x] 复制 `TestcaseCasesPage.vue` 为 `TestcaseV2CasesPage.vue`
@@ -159,8 +159,8 @@
 ### D. 验证
 
 - [x] 跑 `runtime-service` 相关测试
-- [x] 跑 `platform-web-vue` build
-- [x] 跑 `platform-web-vue` lint
+- [x] 跑 `platform-web` build
+- [x] 跑 `platform-web` lint
 - [x] 做一次真实 `testcase-v2/generate` 生成验证
 - [x] 验证 `testcase-v2/cases` 能看到项目结果
 - [x] 验证 `testcase-v2/documents` 能看到项目结果
