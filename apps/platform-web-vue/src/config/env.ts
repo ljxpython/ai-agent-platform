@@ -21,11 +21,21 @@ function normalizeApiBaseUrl(value: string | undefined): string {
   return stripTrailingSlash(normalized)
 }
 
-function resolveBrowserApiBaseUrl(value: string | undefined): string {
+type ResolveBrowserApiBaseUrlOptions = {
+  preferSameOriginLoopbackProxy?: boolean
+}
+
+export function resolveBrowserApiBaseUrl(
+  value: string | undefined,
+  options: ResolveBrowserApiBaseUrlOptions = {}
+): string {
   const normalized = normalizeApiBaseUrl(value)
   if (typeof window === 'undefined') {
     return normalized
   }
+
+  const preferSameOriginLoopbackProxy =
+    options.preferSameOriginLoopbackProxy ?? import.meta.env.DEV
 
   try {
     if (!normalized) {
@@ -34,13 +44,14 @@ function resolveBrowserApiBaseUrl(value: string | undefined): string {
 
     const configuredUrl = new URL(normalized, window.location.origin)
     if (
+      preferSameOriginLoopbackProxy &&
       /^https?:$/.test(configuredUrl.protocol) &&
       isLoopbackHostname(window.location.hostname) &&
       isLoopbackHostname(configuredUrl.hostname) &&
       configuredUrl.origin !== window.location.origin
     ) {
-      // In local dev prefer same-origin via Vite proxy, otherwise `127.0.0.1`
-      // and `localhost` will trigger cross-origin streaming/CORS problems.
+      // Only rewrite loopback API origins during Vite dev, where the proxy is
+      // expected to terminate same-origin requests for the browser.
       const sameOriginPath = configuredUrl.pathname === '/' ? '' : stripTrailingSlash(configuredUrl.pathname)
       return `${stripTrailingSlash(window.location.origin)}${sameOriginPath}`
     }

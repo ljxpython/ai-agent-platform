@@ -33,6 +33,26 @@ def _to_stored_operation(record: OperationRecord) -> StoredOperation:
     )
 
 
+def _duration_ms_expression(session: Session):
+    dialect_name = (getattr(session.bind, "dialect", None) and session.bind.dialect.name) or ""
+    if dialect_name == "postgresql":
+        return func.extract(
+            "epoch",
+            OperationRecord.finished_at - OperationRecord.started_at,
+        ) * 1000
+
+    return (
+        (
+            func.julianday(OperationRecord.finished_at)
+            - func.julianday(OperationRecord.started_at)
+        )
+        * 24
+        * 60
+        * 60
+        * 1000
+    )
+
+
 class SqlAlchemyOperationsRepository:
     def __init__(self, session: Session) -> None:
         self.session = session
@@ -338,6 +358,7 @@ class SqlAlchemyOperationsRepository:
         return updated, skipped_ids
 
     def summarize_operations(self) -> dict[str, object]:
+        duration_ms_expr = _duration_ms_expression(self.session)
         status_rows = self.session.execute(
             select(OperationRecord.status, func.count()).group_by(OperationRecord.status)
         ).all()
@@ -355,26 +376,8 @@ class SqlAlchemyOperationsRepository:
         )
         duration_stats = self.session.execute(
             select(
-                func.avg(
-                    (
-                        func.julianday(OperationRecord.finished_at)
-                        - func.julianday(OperationRecord.started_at)
-                    )
-                    * 24
-                    * 60
-                    * 60
-                    * 1000
-                ),
-                func.max(
-                    (
-                        func.julianday(OperationRecord.finished_at)
-                        - func.julianday(OperationRecord.started_at)
-                    )
-                    * 24
-                    * 60
-                    * 60
-                    * 1000
-                ),
+                func.avg(duration_ms_expr),
+                func.max(duration_ms_expr),
             ).where(
                 OperationRecord.started_at.is_not(None),
                 OperationRecord.finished_at.is_not(None),

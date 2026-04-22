@@ -1,0 +1,61 @@
+name: aitestlab-runtime-service
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 1s
+      retries: 5
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${RUNTIME_POSTGRES_DB:-runtime_service}"
+      POSTGRES_USER: "${RUNTIME_POSTGRES_USER:-runtime_service}"
+      POSTGRES_PASSWORD: "${RUNTIME_POSTGRES_PASSWORD:-runtime_service}"
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=vector
+    volumes:
+      - runtime-service-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${RUNTIME_POSTGRES_USER:-runtime_service} -d ${RUNTIME_POSTGRES_DB:-runtime_service}"]
+      start_period: 10s
+      timeout: 1s
+      retries: 5
+      interval: 60s
+
+  runtime-service:
+    image: "${RUNTIME_SERVICE_IMAGE:-aitestlab-runtime-service:local}"
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "${RUNTIME_SERVICE_PORT:-8123}:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env.runtime-service
+    environment:
+      REDIS_URI: "redis://${RUNTIME_REDIS_HOST:-redis}:${RUNTIME_REDIS_PORT:-6379}/${RUNTIME_REDIS_DB:-0}"
+      POSTGRES_URI: "postgres://${RUNTIME_POSTGRES_USER:-runtime_service}:${RUNTIME_POSTGRES_PASSWORD:-runtime_service}@${RUNTIME_POSTGRES_HOST:-postgres}:5432/${RUNTIME_POSTGRES_DB:-runtime_service}?sslmode=disable"
+    healthcheck:
+      test: ["CMD", "python", "/api/healthcheck.py"]
+      interval: 60s
+      start_period: 10s
+
+volumes:
+  runtime-service-postgres-data:
+    driver: local

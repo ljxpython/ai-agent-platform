@@ -183,7 +183,8 @@ bash "./scripts/platform-web-vue-demo-down.sh"
 
 启动成功后访问：
 
-- 前端：`http://127.0.0.1:3000`
+- 前端：`http://localhost:3000`
+- 前端兼容入口：`http://127.0.0.1:3000`
 - 平台后端 V2：`http://127.0.0.1:2142/docs`
 
 演示账号：

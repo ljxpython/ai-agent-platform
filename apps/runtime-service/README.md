@@ -65,6 +65,7 @@ cp runtime_service/.env.example runtime_service/.env
 
 - `SYSTEM_PROMPT`：运行时覆盖 prompt。若未设置，则由各个 graph 自己回退到业务默认提示词
 - `MULTIMODAL_PARSER_MODEL_ID`：共享 `MultimodalMiddleware` 的附件解析模型默认值；未显式覆盖 `parser_model_id` 的 graph 会使用它
+  - 当前容器化基线默认值：`gpt_5.4-ccr`
 - `ENABLE_TOOLS`：公共工具池总开关
 - `TOOLS`：公共工具白名单（逗号分隔，支持本地工具与 `mcp:<server>`）
 

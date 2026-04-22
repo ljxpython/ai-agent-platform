@@ -42,6 +42,10 @@
 - [环境变量矩阵](./env-matrix.md)
 - [部署文档](./deployment-guide.md)
 - [本地部署契约](./local-deployment-contract.yaml)
+- [容器化交付规划说明](../deploy/README.md)
+- [从零到一容器化部署指南](./zero-to-one-container-deploy.md)
+- [容器地址填写指南](./container-address-guide.md)
+- [容器更新 Runbook](./runbooks/container-update-runbook.md)
 
 ## 5. 如果你要看变更与提交规则
 

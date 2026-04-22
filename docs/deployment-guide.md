@@ -4,6 +4,14 @@
 
 默认本地部署的唯一事实源是 `docs/local-deployment-contract.yaml`；如果本文与 contract 冲突，以 contract 为准。
 
+如果你要看已经收敛的容器化交付方向，另见：
+
+- [`deploy/README.md`](/Users/bytedance/PycharmProjects/my_best/AITestLab/deploy/README.md)
+- [`apps/runtime-service/deploy/README.md`](/Users/bytedance/PycharmProjects/my_best/AITestLab/apps/runtime-service/deploy/README.md)
+- [`docs/zero-to-one-container-deploy.md`](/Users/bytedance/PycharmProjects/my_best/AITestLab/docs/zero-to-one-container-deploy.md)
+- [`docs/container-address-guide.md`](/Users/bytedance/PycharmProjects/my_best/AITestLab/docs/container-address-guide.md)
+- [`docs/runbooks/container-update-runbook.md`](/Users/bytedance/PycharmProjects/my_best/AITestLab/docs/runbooks/container-update-runbook.md)
+
 ## 1. 当前正式部署口径
 
 ### 1.1 正式默认链路
@@ -36,6 +44,11 @@ runtime-web -> runtime-service
 - `apps/runtime-web`
 
 本文只覆盖这套正式默认链路，不展开非主链应用。
+
+补充说明：
+
+- 本文主要说明当前本地默认部署口径
+- 容器化部署属于新增交付面，单独收敛在 `deploy/README.md`
 
 ### 1.3 当前正式端口
 
@@ -284,7 +297,8 @@ curl http://127.0.0.1:2142/api/langgraph/info
 
 ### 7.2 页面访问
 
-- `platform-web-vue`: `http://127.0.0.1:3000`
+- `platform-web-vue`: `http://localhost:3000`
+- `platform-web-vue` 兼容入口：`http://127.0.0.1:3000`
 - `runtime-web`: `http://127.0.0.1:3001`（可选）
 
 如果 `platform-api-v2` 的 `/api/langgraph/info` 返回 `200`，且 `interaction-data-service` 的 `/_service/health` 返回 `200`，说明当前正式平台链路和结果域链路已经基本打通。
@@ -298,6 +312,7 @@ curl http://127.0.0.1:2142/api/langgraph/info
 - `apps/platform-web-vue/.env*` 是否仍残留旧地址
 - `platform-api-v2` 是否已启动到 `2142`
 - `VITE_DEV_PROXY_TARGET` 是否指向 `http://localhost:2142`
+- 如果你不是从 `localhost:3000` 或 `127.0.0.1:3000` 访问前端，检查 `PLATFORM_API_V2_CORS_ALLOW_ORIGINS`
 
 ### 8.2 Runtime 可用，但平台聊天/线程链路异常
 

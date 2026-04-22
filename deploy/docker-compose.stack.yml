@@ -1,0 +1,226 @@
+name: aitestlab-stack
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    tmpfs:
+      - /data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 1s
+      retries: 5
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: "${SHARED_POSTGRES_SUPERUSER:-postgres}"
+      POSTGRES_PASSWORD: "${SHARED_POSTGRES_SUPERUSER_PASSWORD:-postgres}"
+      POSTGRES_DB: "postgres"
+      RUNTIME_POSTGRES_DB: "${RUNTIME_POSTGRES_DB:-runtime_service}"
+      RUNTIME_POSTGRES_USER: "${RUNTIME_POSTGRES_USER:-runtime_service}"
+      RUNTIME_POSTGRES_PASSWORD: "${RUNTIME_POSTGRES_PASSWORD:-runtime_service}"
+      PLATFORM_API_V2_POSTGRES_DB: "${PLATFORM_API_V2_POSTGRES_DB:-platform_api_v2}"
+      PLATFORM_API_V2_POSTGRES_USER: "${PLATFORM_API_V2_POSTGRES_USER:-platform_api_v2}"
+      PLATFORM_API_V2_POSTGRES_PASSWORD: "${PLATFORM_API_V2_POSTGRES_PASSWORD:-platform_api_v2}"
+      INTERACTION_DATA_SERVICE_POSTGRES_DB: "${INTERACTION_DATA_SERVICE_POSTGRES_DB:-interaction_data_service}"
+      INTERACTION_DATA_SERVICE_POSTGRES_USER: "${INTERACTION_DATA_SERVICE_POSTGRES_USER:-interaction_data_service}"
+      INTERACTION_DATA_SERVICE_POSTGRES_PASSWORD: "${INTERACTION_DATA_SERVICE_POSTGRES_PASSWORD:-interaction_data_service}"
+    command:
+      - postgres
+      - -c
+      - shared_preload_libraries=vector
+    volumes:
+      - stack-postgres-data:/var/lib/postgresql/data
+      - ./postgres/init/01-init-shared-databases.sh:/docker-entrypoint-initdb.d/01-init-shared-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${SHARED_POSTGRES_SUPERUSER:-postgres} -d ${RUNTIME_POSTGRES_DB:-runtime_service}"]
+      start_period: 10s
+      timeout: 1s
+      retries: 5
+      interval: 60s
+
+  runtime-service:
+    image: "${RUNTIME_SERVICE_IMAGE:-aitestlab-runtime-service:local}"
+    restart: unless-stopped
+    build:
+      context: ../apps/runtime-service
+      dockerfile: deploy/Dockerfile
+    ports:
+      - "${RUNTIME_SERVICE_PORT:-8123}:8000"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: "${APP_ENV:-test}"
+      MODEL_ID: "${MODEL_ID:-}"
+      BG_JOB_ISOLATED_LOOPS: "${BG_JOB_ISOLATED_LOOPS:-true}"
+      SYSTEM_PROMPT: "${SYSTEM_PROMPT:-}"
+      MULTIMODAL_PARSER_MODEL_ID: "${MULTIMODAL_PARSER_MODEL_ID:-gpt_5.4-ccr}"
+      ENABLE_TOOLS: "${ENABLE_TOOLS:-}"
+      TOOLS: "${TOOLS:-}"
+      MEMORY_BACKEND: "${MEMORY_BACKEND:-}"
+      STORE_BACKEND: "${STORE_BACKEND:-}"
+      PERSISTENCE_PROFILE: "${PERSISTENCE_PROFILE:-}"
+      MIDDLEWARES: "${MIDDLEWARES:-}"
+      TEST_CASE_V2_KNOWLEDGE_MCP_ENABLED: "${TEST_CASE_V2_KNOWLEDGE_MCP_ENABLED:-}"
+      TEST_CASE_V2_KNOWLEDGE_MCP_URL: "${TEST_CASE_V2_KNOWLEDGE_MCP_URL:-}"
+      TEST_CASE_V2_KNOWLEDGE_TIMEOUT_SECONDS: "${TEST_CASE_V2_KNOWLEDGE_TIMEOUT_SECONDS:-}"
+      TEST_CASE_V2_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS: "${TEST_CASE_V2_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS:-}"
+      LANGSMITH_API_KEY: "${LANGSMITH_API_KEY:-}"
+      LANGSMITH_ENDPOINT: "${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}"
+      LANGGRAPH_CLOUD_LICENSE_KEY: "${LANGGRAPH_CLOUD_LICENSE_KEY:-}"
+      SUPABASE_URL: "${SUPABASE_URL:-}"
+      SUPABASE_SERVICE_KEY: "${SUPABASE_SERVICE_KEY:-}"
+      SUPABASE_TIMEOUT_SECONDS: "${SUPABASE_TIMEOUT_SECONDS:-}"
+      INTERACTION_DATA_SERVICE_URL: "http://interaction-data-service:8081"
+      INTERACTION_DATA_SERVICE_TOKEN: "${INTERACTION_DATA_SERVICE_TOKEN:-}"
+      INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS: "${INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS:-10}"
+      REDIS_URI: "redis://${SHARED_REDIS_HOST:-redis}:${SHARED_REDIS_PORT:-6379}/${RUNTIME_REDIS_DB:-0}"
+      POSTGRES_URI: "postgres://${RUNTIME_POSTGRES_USER:-runtime_service}:${RUNTIME_POSTGRES_PASSWORD:-runtime_service}@${SHARED_POSTGRES_HOST:-postgres}:5432/${RUNTIME_POSTGRES_DB:-runtime_service}?sslmode=disable"
+    healthcheck:
+      test: ["CMD", "python", "/api/healthcheck.py"]
+      interval: 60s
+      start_period: 10s
+
+  interaction-data-service:
+    image: "${INTERACTION_DATA_SERVICE_IMAGE:-aitestlab-interaction-data-service:local}"
+    restart: unless-stopped
+    build:
+      context: ../apps/interaction-data-service
+      dockerfile: Dockerfile
+    ports:
+      - "${INTERACTION_DATA_SERVICE_PORT:-8081}:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      API_DOCS_ENABLED: "${API_DOCS_ENABLED:-true}"
+      SERVICE_CORS_ALLOW_ORIGINS: "${SERVICE_CORS_ALLOW_ORIGINS:-*}"
+      SERVICE_NAME: "${SERVICE_NAME:-interaction-data-service}"
+      SERVICE_VERSION: "${SERVICE_VERSION:-0.1.0}"
+      INTERACTION_DB_ENABLED: "${INTERACTION_DB_ENABLED:-true}"
+      INTERACTION_DB_AUTO_CREATE: "${INTERACTION_DB_AUTO_CREATE:-true}"
+      DOCUMENT_ASSET_ROOT: "${DOCUMENT_ASSET_ROOT:-./storage}"
+      DATABASE_URL: "postgresql+psycopg://${INTERACTION_DATA_SERVICE_POSTGRES_USER:-interaction_data_service}:${INTERACTION_DATA_SERVICE_POSTGRES_PASSWORD:-interaction_data_service}@${SHARED_POSTGRES_HOST:-postgres}:5432/${INTERACTION_DATA_SERVICE_POSTGRES_DB:-interaction_data_service}"
+    volumes:
+      - interaction-data-storage:/app/storage
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8081/_service/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  platform-api-v2:
+    image: "${PLATFORM_API_V2_IMAGE:-aitestlab-platform-api-v2:local}"
+    restart: unless-stopped
+    build:
+      context: ../apps/platform-api-v2
+      dockerfile: Dockerfile
+    ports:
+      - "${PLATFORM_API_V2_PORT:-2142}:2142"
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      runtime-service:
+        condition: service_started
+      interaction-data-service:
+        condition: service_healthy
+    environment:
+      PLATFORM_API_V2_APP_ENV: "${PLATFORM_API_V2_APP_ENV:-local}"
+      PLATFORM_API_V2_API_DOCS_ENABLED: "${PLATFORM_API_V2_API_DOCS_ENABLED:-true}"
+      PLATFORM_API_V2_CORS_ALLOW_ORIGINS: '${PLATFORM_API_V2_CORS_ALLOW_ORIGINS:-["http://localhost:3000","http://127.0.0.1:3000"]}'
+      PLATFORM_API_V2_LANGGRAPH_UPSTREAM_URL: "http://runtime-service:8000"
+      PLATFORM_API_V2_LANGGRAPH_UPSTREAM_TIMEOUT_SECONDS: "60"
+      PLATFORM_API_V2_INTERACTION_DATA_SERVICE_URL: "http://interaction-data-service:8081"
+      PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_URL: "${PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_URL:-}"
+      PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_API_KEY: "${PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_API_KEY:-}"
+      PLATFORM_API_V2_PLATFORM_DB_ENABLED: "true"
+      PLATFORM_API_V2_PLATFORM_DB_AUTO_CREATE: "true"
+      PLATFORM_API_V2_DATABASE_URL: "postgresql+psycopg://${PLATFORM_API_V2_POSTGRES_USER:-platform_api_v2}:${PLATFORM_API_V2_POSTGRES_PASSWORD:-platform_api_v2}@${SHARED_POSTGRES_HOST:-postgres}:5432/${PLATFORM_API_V2_POSTGRES_DB:-platform_api_v2}"
+      PLATFORM_API_V2_OPERATIONS_QUEUE_BACKEND: "redis_list"
+      PLATFORM_API_V2_OPERATIONS_REDIS_URL: "redis://${SHARED_REDIS_HOST:-redis}:${SHARED_REDIS_PORT:-6379}/${PLATFORM_API_V2_REDIS_DB:-1}"
+      PLATFORM_API_V2_AUTH_REQUIRED: "${PLATFORM_API_V2_AUTH_REQUIRED:-true}"
+      PLATFORM_API_V2_JWT_ACCESS_SECRET: "${PLATFORM_API_V2_JWT_ACCESS_SECRET:-change-me-access-secret}"
+      PLATFORM_API_V2_JWT_REFRESH_SECRET: "${PLATFORM_API_V2_JWT_REFRESH_SECRET:-change-me-refresh-secret}"
+      PLATFORM_API_V2_BOOTSTRAP_ADMIN_ENABLED: "${PLATFORM_API_V2_BOOTSTRAP_ADMIN_ENABLED:-true}"
+      PLATFORM_API_V2_BOOTSTRAP_ADMIN_USERNAME: "${PLATFORM_API_V2_BOOTSTRAP_ADMIN_USERNAME:-admin}"
+      PLATFORM_API_V2_BOOTSTRAP_ADMIN_PASSWORD: "${PLATFORM_API_V2_BOOTSTRAP_ADMIN_PASSWORD:-admin123456}"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:2142/_system/probes/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  platform-api-v2-worker:
+    image: "${PLATFORM_API_V2_IMAGE:-aitestlab-platform-api-v2:local}"
+    restart: unless-stopped
+    build:
+      context: ../apps/platform-api-v2
+      dockerfile: Dockerfile
+    command: ["python", "worker.py"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      platform-api-v2:
+        condition: service_started
+    environment:
+      PLATFORM_API_V2_APP_ENV: "${PLATFORM_API_V2_APP_ENV:-local}"
+      PLATFORM_API_V2_LANGGRAPH_UPSTREAM_URL: "http://runtime-service:8000"
+      PLATFORM_API_V2_LANGGRAPH_UPSTREAM_API_KEY: "${PLATFORM_API_V2_LANGGRAPH_UPSTREAM_API_KEY:-}"
+      PLATFORM_API_V2_LANGGRAPH_UPSTREAM_TIMEOUT_SECONDS: "60"
+      PLATFORM_API_V2_LANGGRAPH_GRAPH_SOURCE_ROOT: "${PLATFORM_API_V2_LANGGRAPH_GRAPH_SOURCE_ROOT:-}"
+      PLATFORM_API_V2_INTERACTION_DATA_SERVICE_URL: "http://interaction-data-service:8081"
+      PLATFORM_API_V2_INTERACTION_DATA_SERVICE_TOKEN: "${PLATFORM_API_V2_INTERACTION_DATA_SERVICE_TOKEN:-}"
+      PLATFORM_API_V2_INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS: "${PLATFORM_API_V2_INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS:-30}"
+      PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_URL: "${PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_URL:-}"
+      PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_API_KEY: "${PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_API_KEY:-}"
+      PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_TIMEOUT_SECONDS: "${PLATFORM_API_V2_KNOWLEDGE_UPSTREAM_TIMEOUT_SECONDS:-60}"
+      PLATFORM_API_V2_PLATFORM_DB_ENABLED: "true"
+      PLATFORM_API_V2_PLATFORM_DB_AUTO_CREATE: "true"
+      PLATFORM_API_V2_DATABASE_URL: "postgresql+psycopg://${PLATFORM_API_V2_POSTGRES_USER:-platform_api_v2}:${PLATFORM_API_V2_POSTGRES_PASSWORD:-platform_api_v2}@${SHARED_POSTGRES_HOST:-postgres}:5432/${PLATFORM_API_V2_POSTGRES_DB:-platform_api_v2}"
+      PLATFORM_API_V2_OPERATIONS_QUEUE_BACKEND: "redis_list"
+      PLATFORM_API_V2_OPERATIONS_REDIS_URL: "redis://${SHARED_REDIS_HOST:-redis}:${SHARED_REDIS_PORT:-6379}/${PLATFORM_API_V2_REDIS_DB:-1}"
+      PLATFORM_API_V2_JWT_ACCESS_SECRET: "${PLATFORM_API_V2_JWT_ACCESS_SECRET:-change-me-access-secret}"
+      PLATFORM_API_V2_JWT_REFRESH_SECRET: "${PLATFORM_API_V2_JWT_REFRESH_SECRET:-change-me-refresh-secret}"
+      PLATFORM_API_V2_BOOTSTRAP_ADMIN_ENABLED: "${PLATFORM_API_V2_BOOTSTRAP_ADMIN_ENABLED:-true}"
+      PLATFORM_API_V2_BOOTSTRAP_ADMIN_USERNAME: "${PLATFORM_API_V2_BOOTSTRAP_ADMIN_USERNAME:-admin}"
+      PLATFORM_API_V2_BOOTSTRAP_ADMIN_PASSWORD: "${PLATFORM_API_V2_BOOTSTRAP_ADMIN_PASSWORD:-admin123456}"
+
+  platform-web-vue:
+    image: "${PLATFORM_WEB_VUE_IMAGE:-aitestlab-platform-web-vue:local}"
+    restart: unless-stopped
+    build:
+      context: ../apps/platform-web-vue
+      dockerfile: Dockerfile
+      args:
+        VITE_APP_NAME: "${VITE_APP_NAME:-Agent Platform}"
+        VITE_PLATFORM_API_URL: "${VITE_PLATFORM_API_URL_DIRECT:-http://localhost:2142}"
+        VITE_PLATFORM_API_V2_URL: "${VITE_PLATFORM_API_V2_URL_DIRECT:-http://localhost:2142}"
+        VITE_PLATFORM_API_V2_RUNTIME_ENABLED: "${VITE_PLATFORM_API_V2_RUNTIME_ENABLED:-true}"
+        VITE_REQUEST_TIMEOUT_MS: "${VITE_REQUEST_TIMEOUT_MS:-30000}"
+        VITE_DEV_PORT: "${VITE_DEV_PORT:-3000}"
+        VITE_DEV_PROXY_TARGET: "${VITE_DEV_PROXY_TARGET:-http://platform-api-v2:2142}"
+        VITE_LANGGRAPH_DEBUG_URL: "${VITE_LANGGRAPH_DEBUG_URL:-}"
+    ports:
+      - "${PLATFORM_WEB_VUE_PORT:-3000}:80"
+    depends_on:
+      platform-api-v2:
+        condition: service_healthy
+
+volumes:
+  stack-postgres-data:
+    driver: local
+  interaction-data-storage:
+    driver: local

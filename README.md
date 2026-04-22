@@ -48,6 +48,14 @@
 - `docs/development-paradigm.md`
 - `docs/local-dev.md`
 - `docs/env-matrix.md`
+- `deploy/README.md`
+- `docs/runbooks/container-update-runbook.md`
+
+如果你要从零开始使用 Docker / Docker Compose 部署当前项目，优先看：
+
+- `deploy/README.md`
+- `docs/zero-to-one-container-deploy.md`
+- `docs/runbooks/container-update-runbook.md`
 
 ## AI 执行入口
 

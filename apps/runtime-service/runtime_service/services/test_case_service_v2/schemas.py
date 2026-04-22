@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -79,10 +80,19 @@ def _parse_int(value: Any, default: int) -> int:
         return default
 
 
+def _read_env_default(name: str) -> str | None:
+    value = os.getenv(name)
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
 def build_test_case_service_config(config: RunnableConfig) -> TestCaseServiceConfig:
     """从 RunnableConfig 中解析服务配置，未提供则使用默认值。"""
     private_config = dict(read_configurable(config))
     default_multimodal_parser_model_id = get_default_multimodal_model_id()
+    env_prefix = CONFIG_KEY_PREFIX.upper()
     return TestCaseServiceConfig(
         multimodal_parser_model_id=str(
             private_config.get(f"{CONFIG_KEY_PREFIX}_multimodal_parser_model_id")
@@ -106,19 +116,31 @@ def build_test_case_service_config(config: RunnableConfig) -> TestCaseServiceCon
         ),
         knowledge_mcp_enabled=_parse_bool(
             private_config.get(f"{CONFIG_KEY_PREFIX}_knowledge_mcp_enabled"),
-            DEFAULT_TEST_CASE_KNOWLEDGE_MCP_ENABLED,
+            _parse_bool(
+                _read_env_default(f"{env_prefix}_KNOWLEDGE_MCP_ENABLED"),
+                DEFAULT_TEST_CASE_KNOWLEDGE_MCP_ENABLED,
+            ),
         ),
         knowledge_mcp_url=str(
             private_config.get(f"{CONFIG_KEY_PREFIX}_knowledge_mcp_url")
+            or _read_env_default(f"{env_prefix}_KNOWLEDGE_MCP_URL")
             or DEFAULT_TEST_CASE_KNOWLEDGE_MCP_URL
         ),
         knowledge_timeout_seconds=_parse_int(
             private_config.get(f"{CONFIG_KEY_PREFIX}_knowledge_timeout_seconds"),
-            DEFAULT_TEST_CASE_KNOWLEDGE_TIMEOUT_SECONDS,
+            _parse_int(
+                _read_env_default(f"{env_prefix}_KNOWLEDGE_TIMEOUT_SECONDS"),
+                DEFAULT_TEST_CASE_KNOWLEDGE_TIMEOUT_SECONDS,
+            ),
         ),
         knowledge_sse_read_timeout_seconds=_parse_int(
             private_config.get(f"{CONFIG_KEY_PREFIX}_knowledge_sse_read_timeout_seconds"),
-            DEFAULT_TEST_CASE_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS,
+            _parse_int(
+                _read_env_default(
+                    f"{env_prefix}_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS"
+                ),
+                DEFAULT_TEST_CASE_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS,
+            ),
         ),
     )
 
