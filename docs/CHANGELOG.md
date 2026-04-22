@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 
-> 当前默认归档到下一版本：`v0.2.0`
+> 当前默认归档到下一版本：`v0.2.1`
 >
 > 维护规则：
 >
@@ -23,6 +23,31 @@
 ### Fixed
 
 - 待补充：缺陷修复、兼容性问题、联调问题、回归问题
+
+## [v0.2.0] - 2026-04-22
+
+### Added
+
+- 新增 `apps/runtime-service` 单应用容器化交付面，补齐受管 `Dockerfile`、`docker-compose.runtime-service.yml` 与 deploy 级 env 示例
+- 新增整仓 Docker Compose 交付面，覆盖无 Nginx / 带 Nginx 两种部署拓扑、共享 Postgres 初始化脚本与容器地址填写指南
+- 新增容器化从零部署指南、容器更新 runbook 与 deploy 总入口文档，形成 operator 视角的 bring-up / recreate / rollback 路径
+- 新增 `platform-web-vue` 针对 no-nginx 场景的 API base 回归测试，锁定显式 `localhost:2142` 不再被错误改写为同源 `/api`
+
+### Changed
+
+- 将根目录 README、docs 总入口和部署文档收敛到 Docker 使用路径，补充单应用 runtime、整仓 compose 无 Nginx、整仓 compose 带 Nginx 3 种启动命令
+- 将容器化基线中的共享多模态附件解析模型默认值收敛为 `MULTIMODAL_PARSER_MODEL_ID=gpt_5.4-ccr`
+- 让 `runtime-service` 的 `test_case_service_v2` 支持从 env fallback 读取私有 knowledge MCP 参数与远端持久化目标配置
+- 对 `interaction-data-service`、`platform-web-vue`、`runtime-service` 的 Docker build 上下文做瘦身，补齐 `.dockerignore` 与生产容器入口配置
+- 将 `interaction-data-service` 容器的健康检查从 `curl` 改成 Python 内建探活，移除镜像里仅为 healthcheck 引入的系统包依赖
+
+### Fixed
+
+- 修复 no-nginx 容器前端在浏览器端把显式 `http://localhost:2142` 又改写回同源 `/api`，导致登录命中 `3000/api/identity/session` 返回 `404`
+- 修复本地 `localhost:3000` 与 `127.0.0.1:3000` 访问口径不一致引发的 CORS 预检失败问题
+- 修复 `platform-api-v2-worker` 未同步主服务 upstream 配置，导致 `runtime.models.refresh`、`runtime.tools.refresh` 等异步 operation 在 worker 中报 `LangGraph upstream is unavailable`
+- 修复 `runtime-service` 容器未注入 `INTERACTION_DATA_SERVICE_URL`，导致 `test_case_service_v2` 的 `persist_test_case_results` 返回 `skipped_remote_not_configured`
+- 修复 `platform-api-v2` 的 operation 统计在 PostgreSQL 下仍使用 SQLite `julianday()` 语法的问题
 
 ## [v0.1.2] - 2026-04-21
 
