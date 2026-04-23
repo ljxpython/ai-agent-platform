@@ -14,7 +14,7 @@
 
 - 发版对象：整个仓库
 - 发版基线分支：`main`
-- 当前版本口径：`agent 工作台可演示版`
+- 当前版本口径：`平台正式宿主命名收口版`
 
 ## 2. 发版范围
 
@@ -77,9 +77,9 @@ Git tag 与 GitHub Release 标题分开处理：
 
 ## 6. 当前版本口径
 
-当前这条迁移主线对外统一口径是：
+当前这条主线对外统一口径是：
 
-> `apps/platform-web-vue` 已承接新的前端工作台宿主，当前仓库已经具备 agent 工作台可演示能力，能够完成登录、项目上下文切换、chat/sql-agent/testcase/threads 以及平台基础管理页展示。
+> 当前仓库已经把正式平台宿主统一收口为 `apps/platform-web` 与 `apps/platform-api`，并同步打通当前默认部署、CI、helper scripts、运行时链路文档与 operator 入口口径。
 
 注意：
 
@@ -187,9 +187,9 @@ GitHub Release 建议固定为以下结构：
 
 ## 12. 当前建议
 
-当前仓库的首个正式 release 建议直接做成：
+当前这一轮命名收口建议直接做成：
 
-- 版本号：`v0.1.0`
-- 标题：`v0.1.0 - Agent 工作台可演示版`
+- 版本号：`v0.3.0`
+- 标题：`v0.3.0 - 平台正式宿主命名收口版`
 - 基线分支：`main`
-- 核心亮点：`platform-web-vue` 迁移工作台 + agent 演示主线
+- 核心亮点：`platform-api` / `platform-web` 正式宿主收口 + deploy/CI/current-docs 全面对齐

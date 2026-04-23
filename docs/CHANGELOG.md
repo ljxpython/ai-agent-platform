@@ -4,7 +4,7 @@
 
 ## [Unreleased]
 
-> 当前默认归档到下一版本：`v0.2.1`
+> 当前默认归档到下一版本：`v0.3.1`
 >
 > 维护规则：
 >
@@ -23,6 +23,25 @@
 ### Fixed
 
 - 待补充：缺陷修复、兼容性问题、联调问题、回归问题
+
+## [v0.3.0] - 2026-04-23
+
+### Added
+
+- 新增 `v0.3.0` 发版草案与执行清单，固定“平台正式宿主命名收口版”的发布口径
+
+### Changed
+
+- 将当前正式平台宿主从 `platform-api-v2` / `platform-web-vue` 收口为 `platform-api` / `platform-web`
+- 将仓库级 current-standard、默认本地部署 contract、CI、Docker Compose、Nginx upstream、helper scripts 与当前 README/leaf docs 统一到新的正式名称
+- 将 `apps/platform-api-v2` / `apps/platform-web-vue` 目录整体迁移到 `apps/platform-api` / `apps/platform-web`，并同步更新前后端 env 前缀、包名、构建路径与当前主链说明
+- 将 runtime / interaction-data / runtime-web 等当前文档中的正式链路说明改为 `platform-web -> platform-api -> runtime-service`
+
+### Fixed
+
+- 修复活动面里仍残留旧正式宿主命名导致的 CI、脚本、文档与当前标准口径不一致问题
+- 修复本地 demo 脚本、Docker stack 与前端环境变量在新正式命名下的路径/服务名对齐问题
+- 修复当前主链文档仍把 `platform-api-v2` / `platform-web-vue` 视作正式宿主的漂移
 
 ## [v0.2.0] - 2026-04-22
 
