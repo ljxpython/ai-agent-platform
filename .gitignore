@@ -342,25 +342,13 @@ docs/_book
 /uitest/midscene_run/
 /uitest/node_modules/
 
-# 通用测试文件模式
-test_*.py
-*_test.py
-*.test.js
-*.test.ts
-*.spec.js
-*.spec.ts
-!apps/platform-web/src/modules/knowledge/components/KnowledgeDocumentUploadDialog.spec.ts
-!apps/platform-web/src/modules/knowledge/pages/KnowledgeDocumentsPage.spec.ts
-
 # 但保留重要的测试配置文件和源码目录
 !/uitest/tests/
 !/uitest/tests-examples/
-!/apps/platform-api/tests/test_*.py
 !/uitest/playwright.config.ts
 !/uitest/package.json
 !/tests/
 !/frontend/src/pages/test/
-!apps/platform-web/tests/platform-regression.spec.ts
 
 ### Vuejs ###
 # Recommended template: Node.gitignore
@@ -385,6 +373,7 @@ frontend.log
 # 日志文件
 logs/
 *.log
+/.playwright-cli/
 uploads
 
 # sqlite 数据库
@@ -395,6 +384,7 @@ uploads
 migrations
 
 # ==================== apps layout local env/runtime artifacts ====================
+apps/.tmp/
 apps/platform-api/.env
 apps/platform-api/.venv/
 apps/platform-api/.pytest_cache/
@@ -415,6 +405,8 @@ apps/runtime-service/.venv/
 apps/runtime-service/.pytest_cache/
 apps/runtime-service/__pycache__/
 apps/runtime-service/.langgraph_api/
+apps/runtime-service/.tmp.langgraph.docker.json
+apps/runtime-service/deploy/.env.runtime-service
 apps/runtime-service/test.log
 apps/runtime-service/test2.log
 apps/runtime-service/graph_src_v2/.env
@@ -432,5 +424,6 @@ apps/runtime-web/node_modules/
 apps/runtime-web/.next/
 !apps/runtime-web/src/lib/
 !apps/runtime-web/src/lib/**
+deploy/.env.stack
 .omx/
 .codex/

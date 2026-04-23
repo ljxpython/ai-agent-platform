@@ -327,18 +327,9 @@ docs/_book
 /uitest/midscene_run/
 /uitest/node_modules/
 
-# 通用测试文件模式
-test_*.py
-*_test.py
-*.test.js
-*.test.ts
-*.spec.js
-*.spec.ts
-
 # 但保留重要的测试配置文件和源码目录
 !/uitest/tests/
 !/uitest/tests-examples/
-!runtime_service/services/test_case_service/tests/*_test.py
 !/uitest/playwright.config.ts
 !/uitest/package.json
 !/tests/
