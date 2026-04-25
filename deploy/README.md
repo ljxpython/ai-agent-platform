@@ -137,7 +137,8 @@ nginx 前端约束：
 
 ### 2.1 LightRAG / RAG
 
-LightRAG / RAG 在首版容器化中是外部依赖，不编排进 compose。
+LightRAG 可以作为**可选仓库内服务**使用（仓库路径：`apps/lightrag-service`），也可以继续作为外部兼容依赖接入。
+当前默认的 Compose 栈**不会**自动启动它，因此基础容器栈仍保持四服务默认成员不变。
 
 支持两条可选地址：
 
@@ -153,11 +154,14 @@ LightRAG / RAG 在首版容器化中是外部依赖，不编排进 compose。
 
 当前验证结果：
 
-- `PLATFORM_API_KNOWLEDGE_UPSTREAM_URL=http://host.docker.internal:9621`
-  - 已验证容器内可达
+- repo-local host-run LightRAG MCP SSE 默认口径：`http://127.0.0.1:8621/sse`
+  - 这是宿主机直接运行可选 `apps/lightrag-service` 时的默认本地地址
 - `TEST_CASE_V2_KNOWLEDGE_MCP_URL=http://host.docker.internal:8621/sse`
+  - 这是容器内 `runtime-service` 访问宿主机上可选 `apps/lightrag-service` 时的推荐地址
   - 已被 runtime 配置正确读取
   - 已验证容器内可达，返回 `text/event-stream`
+- `PLATFORM_API_KNOWLEDGE_UPSTREAM_URL=http://host.docker.internal:9621`
+  - 如启用平台侧 LightRAG HTTP 链路，这是容器访问宿主机 LightRAG HTTP 的已验证地址
 
 如需在容器内启用这两条链路，建议改成：
 

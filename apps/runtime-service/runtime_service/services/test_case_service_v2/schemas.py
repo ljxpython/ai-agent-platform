@@ -15,10 +15,11 @@ DEFAULT_MULTIMODAL_DETAIL_TEXT_MAX_CHARS = 2000
 DEFAULT_TEST_CASE_MODEL_ID = "deepseek_chat"
 DEFAULT_TEST_CASE_PERSISTENCE_ENABLED = True
 DEFAULT_TEST_CASE_KNOWLEDGE_MCP_ENABLED = True
-DEFAULT_TEST_CASE_KNOWLEDGE_MCP_URL = "http://0.0.0.0:8000/sse"
+DEFAULT_TEST_CASE_KNOWLEDGE_MCP_URL = "http://127.0.0.1:8621/sse"
 DEFAULT_TEST_CASE_KNOWLEDGE_TIMEOUT_SECONDS = 30
 DEFAULT_TEST_CASE_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS = 300
 CONFIG_KEY_PREFIX = "test_case_v2"
+CONFIG_ENV_PREFIX = CONFIG_KEY_PREFIX.upper()
 
 
 @dataclass(frozen=True)
@@ -92,53 +93,53 @@ def build_test_case_service_config(config: RunnableConfig) -> TestCaseServiceCon
     """从 RunnableConfig 中解析服务配置，未提供则使用默认值。"""
     private_config = dict(read_configurable(config))
     default_multimodal_parser_model_id = get_default_multimodal_model_id()
-    env_prefix = CONFIG_KEY_PREFIX.upper()
+
+    def read_private_config(name: str) -> Any:
+        return private_config.get(f"{CONFIG_KEY_PREFIX}_{name}")
+
     return TestCaseServiceConfig(
         multimodal_parser_model_id=str(
-            private_config.get(f"{CONFIG_KEY_PREFIX}_multimodal_parser_model_id")
+            read_private_config("multimodal_parser_model_id")
             or default_multimodal_parser_model_id
         ),
         multimodal_detail_mode=_parse_bool(
-            private_config.get(f"{CONFIG_KEY_PREFIX}_multimodal_detail_mode"),
+            read_private_config("multimodal_detail_mode"),
             DEFAULT_MULTIMODAL_DETAIL_MODE,
         ),
         multimodal_detail_text_max_chars=_parse_int(
-            private_config.get(f"{CONFIG_KEY_PREFIX}_multimodal_detail_text_max_chars"),
+            read_private_config("multimodal_detail_text_max_chars"),
             DEFAULT_MULTIMODAL_DETAIL_TEXT_MAX_CHARS,
         ),
         default_model_id=str(
-            private_config.get(f"{CONFIG_KEY_PREFIX}_default_model_id")
-            or DEFAULT_TEST_CASE_MODEL_ID
+            read_private_config("default_model_id") or DEFAULT_TEST_CASE_MODEL_ID
         ),
         persistence_enabled=_parse_bool(
-            private_config.get(f"{CONFIG_KEY_PREFIX}_persistence_enabled"),
+            read_private_config("persistence_enabled"),
             DEFAULT_TEST_CASE_PERSISTENCE_ENABLED,
         ),
         knowledge_mcp_enabled=_parse_bool(
-            private_config.get(f"{CONFIG_KEY_PREFIX}_knowledge_mcp_enabled"),
+            read_private_config("knowledge_mcp_enabled"),
             _parse_bool(
-                _read_env_default(f"{env_prefix}_KNOWLEDGE_MCP_ENABLED"),
+                _read_env_default(f"{CONFIG_ENV_PREFIX}_KNOWLEDGE_MCP_ENABLED"),
                 DEFAULT_TEST_CASE_KNOWLEDGE_MCP_ENABLED,
             ),
         ),
         knowledge_mcp_url=str(
-            private_config.get(f"{CONFIG_KEY_PREFIX}_knowledge_mcp_url")
-            or _read_env_default(f"{env_prefix}_KNOWLEDGE_MCP_URL")
+            read_private_config("knowledge_mcp_url")
+            or _read_env_default(f"{CONFIG_ENV_PREFIX}_KNOWLEDGE_MCP_URL")
             or DEFAULT_TEST_CASE_KNOWLEDGE_MCP_URL
         ),
         knowledge_timeout_seconds=_parse_int(
-            private_config.get(f"{CONFIG_KEY_PREFIX}_knowledge_timeout_seconds"),
+            read_private_config("knowledge_timeout_seconds"),
             _parse_int(
-                _read_env_default(f"{env_prefix}_KNOWLEDGE_TIMEOUT_SECONDS"),
+                _read_env_default(f"{CONFIG_ENV_PREFIX}_KNOWLEDGE_TIMEOUT_SECONDS"),
                 DEFAULT_TEST_CASE_KNOWLEDGE_TIMEOUT_SECONDS,
             ),
         ),
         knowledge_sse_read_timeout_seconds=_parse_int(
-            private_config.get(f"{CONFIG_KEY_PREFIX}_knowledge_sse_read_timeout_seconds"),
+            read_private_config("knowledge_sse_read_timeout_seconds"),
             _parse_int(
-                _read_env_default(
-                    f"{env_prefix}_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS"
-                ),
+                _read_env_default(f"{CONFIG_ENV_PREFIX}_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS"),
                 DEFAULT_TEST_CASE_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS,
             ),
         ),

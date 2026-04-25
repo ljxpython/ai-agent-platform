@@ -4,7 +4,8 @@
 
 `test_case_service_v2` 是一个独立的 `create_deep_agent` 业务服务，面向测试用例生成与落库场景。
 
-当前实现已经完成从旧知识库 provider 到 LightRAG project-scoped MCP 的迁移，并保持 `runtime_service` 的核心范式不变：
+当前实现已经完成从旧知识库 provider 到 LightRAG project-scoped MCP 的迁移，并保持 `runtime_service` 的核心范式不变。
+这里的 LightRAG 按当前仓库文档口径被视为**仓库内知识服务**（`apps/lightrag-service`，默认本地一键启动脚本会拉起）或兼容外部服务：
 
 - 静态 `graph = create_deep_agent(...)`
 - `RuntimeContext.project_id` 是唯一可信项目上下文
@@ -53,7 +54,7 @@
 | `test_case_v2_multimodal_detail_text_max_chars` | `2000` | 详细模式字符上限 |
 | `test_case_v2_persistence_enabled` | `True` | 是否允许正式落库 |
 | `test_case_v2_knowledge_mcp_enabled` | `True` | 是否启用 LightRAG MCP |
-| `test_case_v2_knowledge_mcp_url` | `http://0.0.0.0:8000/sse` | LightRAG MCP SSE 地址 |
+| `test_case_v2_knowledge_mcp_url` | `http://127.0.0.1:8621/sse` | LightRAG MCP SSE 地址；默认本地一键启动脚本拉起的 repo-local `apps/lightrag-service` 使用该默认口径，若 `runtime-service` 跑在容器中则改用 `http://host.docker.internal:8621/sse` |
 | `test_case_v2_knowledge_timeout_seconds` | `30` | MCP 连接超时 |
 | `test_case_v2_knowledge_sse_read_timeout_seconds` | `300` | SSE 读超时 |
 
@@ -62,6 +63,7 @@
 `knowledge_mcp.py` 当前做的事情很薄：
 
 - 仅按 SSE spec 连接远端 LightRAG MCP
+- 默认文档口径按 repo-local 默认本地脚本地址 `http://127.0.0.1:8621/sse` 组织；容器场景再切换到 `host.docker.internal`
 - 要求服务端完整暴露 3 个项目级知识工具
 - 保持工具名和显式 `project_id` 参数契约不变
 - 把 MCP tool 返回值归一化成字符串，避免 tool message 回灌格式问题

@@ -33,7 +33,7 @@
 An enterprise AI agent platform architecture built on `LangGraph / LangChain`, intended as a reusable foundation for further development.  
 It separates the **platform governance layer** from the **Agent Runtime execution layer**, so the repo can support platform-side authentication, project management, audit, and catalog management, while also supporting runtime graph orchestration, model assembly, Tools / MCP / Skills integration, and rapid agent debugging.
 
-The repository currently provides a default four-service local bring-up path, plus an optional runtime debug entry. It is suitable for:
+The repository currently provides a default five-service local bring-up path, plus an optional runtime debug entry. It is suitable for:
 
 - Teams that want to build on mainstream agent infrastructure instead of inventing a closed framework
 - Projects that need both platform capabilities and agent execution capabilities
@@ -100,14 +100,15 @@ That article is more frontend-oriented and is useful for quickly understanding t
 
 ## System Overview
 
-The default local bring-up currently includes four formal services:
+The default local bring-up currently includes five formal services:
 
 - `apps/interaction-data-service`: result-domain data service for workflow result persistence and querying
 - `apps/platform-api`: official platform backend / control-plane API
 - `apps/platform-web`: official platform frontend / admin workspace entry
 - `apps/runtime-service`: LangGraph execution layer / Agent Runtime
+- `apps/lightrag-service`: in-repo knowledge service that provides both the `platform-api` LightRAG HTTP lane and the `runtime-service` project-scoped MCP lane
 
-Optional debug entry:
+Optional in-repo services:
 
 - `apps/runtime-web`: debug frontend that talks directly to the runtime
 
@@ -134,9 +135,10 @@ Optional debug entry:
 
 1. `runtime-service`
 2. `interaction-data-service`
-3. `platform-api`
-4. `platform-web`
-5. `runtime-web` (optional)
+3. `lightrag-service`
+4. `platform-api`
+5. `platform-web`
+6. `runtime-web` (optional)
 
 ### Root Scripts
 
@@ -170,6 +172,8 @@ Then open:
 
 - `interaction-data-service`: `8081`
 - `runtime-service`: `8123`
+- `lightrag-service` HTTP: `9621`
+- `lightrag-service` MCP SSE: `8621`
 - `platform-api`: `2142`
 - `platform-web`: `3000`
 - `runtime-web`: `3001`
@@ -184,6 +188,8 @@ Then open:
 ```bash
 curl http://127.0.0.1:8081/_service/health
 curl http://127.0.0.1:8123/info
+curl http://127.0.0.1:9621/health
+curl http://127.0.0.1:8621/sse
 curl http://127.0.0.1:2142/_system/health
 curl http://127.0.0.1:2142/api/langgraph/info
 ```
@@ -331,7 +337,7 @@ If this is your first time looking at the repo, the recommended reading order is
 
 This repo has already completed:
 
-- The default four-service startup set has been stabilized under `apps/*`
+- The default local startup set under `apps/*` now includes the repo-local LightRAG service lanes
 - `apps/platform-web` is the official platform frontend host
 - `apps/platform-api` is the official platform control plane
 - `runtime-service` can start
@@ -339,7 +345,9 @@ This repo has already completed:
 - `platform-api` can start
 - `platform-api -> runtime-service` integration has passed
 - `runtime-service -> interaction-data-service` has been wired into the local bring-up scripts
+- `lightrag-service` HTTP + MCP are now wired into the default local one-click startup scripts
 - `platform-web` is the official platform frontend host, while `runtime-web` remains the optional runtime debug shell
+- `apps/lightrag-service` is now part of the default local one-click bring-up, while the Compose stack still keeps it as an explicit opt-in lane
 
 Current conventions that are still kept:
 
@@ -389,6 +397,7 @@ This project has benefited from several strong open-source projects and ecosyste
 - [FastAPI](https://fastapi.tiangolo.com/): key foundation for the platform backend and service interfaces
 - [LangGraph](https://docs.langchain.com/langgraph): key foundation for agent runtime orchestration and stateful execution flows
 - [FastMCP](https://gofastmcp.com/): important reference ecosystem for MCP-based tooling and service integration
+- [HKUDS/LightRAG](https://github.com/HKUDS/LightRAG): important reference for project-scoped knowledge retrieval and the optional in-repo LightRAG MCP integration path
 
 These references are not copied blindly. They are absorbed, reorganized, and adapted around the goals and engineering boundaries of this repository.
 

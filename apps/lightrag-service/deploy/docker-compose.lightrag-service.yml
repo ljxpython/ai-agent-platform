@@ -1,0 +1,48 @@
+services:
+  lightrag-http:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    env_file:
+      - deploy/.env.lightrag-service
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "9621"
+      WORKING_DIR: "/app/data/rag_storage"
+      INPUT_DIR: "/app/data/inputs"
+      TIKTOKEN_CACHE_DIR: "/app/data/tiktoken"
+    ports:
+      - "${LIGHTRAG_HTTP_PORT:-9621}:9621"
+    volumes:
+      - ./data/rag_storage:/app/data/rag_storage
+      - ./data/inputs:/app/data/inputs
+      - ./data/tiktoken:/app/data/tiktoken
+    restart: unless-stopped
+
+  lightrag-mcp:
+    build:
+      context: .
+      dockerfile: deploy/Dockerfile
+    env_file:
+      - deploy/.env.lightrag-service
+    environment:
+      MCP_TRANSPORT: "sse"
+      MCP_HOST: "0.0.0.0"
+      MCP_PORT: "8621"
+      MCP_PATH: "/sse"
+      MCP_MESSAGE_PATH: "/messages/"
+      MCP_SHOW_BANNER: "false"
+      MCP_LOG_LEVEL: "INFO"
+      WORKING_DIR: "/app/data/rag_storage"
+      INPUT_DIR: "/app/data/inputs"
+      LIGHTRAG_MCP_STORAGE_ROOT: "/app/data/rag_storage"
+      LIGHTRAG_MCP_INPUT_ROOT: "/app/data/inputs"
+      TIKTOKEN_CACHE_DIR: "/app/data/tiktoken"
+    command: ["uv", "run", "--with", "fastmcp>=3.2.0", "python", "-m", "lightrag.mcp"]
+    ports:
+      - "${LIGHTRAG_MCP_PORT:-8621}:8621"
+    volumes:
+      - ./data/rag_storage:/app/data/rag_storage
+      - ./data/inputs:/app/data/inputs
+      - ./data/tiktoken:/app/data/tiktoken
+    restart: unless-stopped

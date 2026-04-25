@@ -33,7 +33,7 @@
 基于 `LangGraph / LangChain` 的企业级 AI 平台架构，可在此基础上进行二次开发。  
 它把**平台治理层**和**Agent Runtime 执行层**拆开，既支持平台侧的认证、项目管理、审计、catalog 管理，也支持 Agent 侧的图编排、模型装配、Tools / MCP / Skills 接入与快速调试，适合作为企业内部 AI 平台和智能体应用的基础骨架。
 
-当前仓库默认提供一套正式四服务演示链路，并保留可选 `runtime-web` 调试入口，适合：
+当前仓库默认提供一套正式五服务演示链路，并保留可选 `runtime-web` 调试入口，适合：
 
 - 想基于主流 Agent 技术栈做二次开发的团队
 - 想同时建设平台能力和 Agent 执行能力的项目
@@ -145,14 +145,15 @@
 
 ## 系统总览
 
-当前根目录默认联调脚本会启动 4 个正式应用：
+当前根目录默认联调脚本会启动 5 个正式应用：
 
 - `apps/interaction-data-service`：结果域数据服务 / 工作流结果落库与查询
 - `apps/platform-api`：正式平台后端 / 控制面 API
 - `apps/platform-web`：正式平台前端宿主 / 管理台入口
 - `apps/runtime-service`：LangGraph 执行层 / Agent Runtime
+- `apps/lightrag-service`：仓库内知识服务，同时提供 `platform-api` 侧 LightRAG HTTP 和 `runtime-service` 侧 project-scoped MCP
 
-可选调试入口：
+可选仓库内服务：
 
 - `apps/runtime-web`：直连 Runtime 的调试前端
 
@@ -178,9 +179,10 @@
 
 1. `runtime-service`
 2. `interaction-data-service`
-3. `platform-api`
-4. `platform-web`
-5. 如需 runtime 调试，再启动 `runtime-web`
+3. `lightrag-service`
+4. `platform-api`
+5. `platform-web`
+6. 如需 runtime 调试，再启动 `runtime-web`
 
 ### 根目录脚本
 
@@ -250,6 +252,8 @@ VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web" dev
 
 - `interaction-data-service`：`8081`
 - `runtime-service`：`8123`
+- `lightrag-service` HTTP：`9621`
+- `lightrag-service` MCP SSE：`8621`
 - `platform-api`：`2142`
 - `platform-web`：`3000`
 - `runtime-web`：`3001`（可选）
@@ -264,6 +268,8 @@ VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web" dev
 ```bash
 curl http://127.0.0.1:8081/_service/health
 curl http://127.0.0.1:8123/info
+curl http://127.0.0.1:9621/health
+curl http://127.0.0.1:8621/sse
 curl http://127.0.0.1:2142/_system/health
 curl http://127.0.0.1:2142/api/langgraph/info
 ```
@@ -411,14 +417,16 @@ default:
 
 当前仓库已经完成：
 
-- 正式四服务演示链路已收口到 `apps/*`
+- 正式默认本地演示链路已收口到 `apps/*`
 - `apps/platform-web` 是当前正式平台前端宿主
 - `runtime-service` 可启动
 - `interaction-data-service` 可启动
 - `platform-api` 可启动
 - `platform-api -> runtime-service` 联调已通过
 - `runtime-service -> interaction-data-service` 已接入本地联调脚本
+- `lightrag-service` 的 HTTP + MCP 已接入默认本地一键启动脚本
 - `platform-web` 是当前正式平台前端入口，`runtime-web` 继续作为可选调试壳
+- `apps/lightrag-service` 当前已进入默认本地一键启动集合，但 Compose 栈仍按需单独接入
 
 当前仍保持的约定：
 
@@ -468,6 +476,7 @@ default:
 - [FastAPI](https://fastapi.tiangolo.com/)：平台后端与服务接口层的重要基础
 - [LangGraph](https://docs.langchain.com/langgraph)：Agent Runtime、状态编排与执行流建模的重要基础
 - [FastMCP](https://gofastmcp.com/)：MCP 工具接入与服务化能力的重要参考生态
+- [HKUDS/LightRAG](https://github.com/HKUDS/LightRAG)：项目级知识检索与可选仓库内 LightRAG MCP 接入方案的重要参考
 
 这里的“参考”不是简单照搬源码，而是基于这些开源项目和技术生态，结合当前仓库的业务目标、工程边界和平台化需求，做了再组织、再封装和再落地。
 

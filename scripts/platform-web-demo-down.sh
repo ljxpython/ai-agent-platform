@@ -5,6 +5,8 @@ ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 LOG_DIR="/tmp/aitestlab-platform-web-demo"
 PID_DIR="$LOG_DIR/pids"
 
+bash "$ROOT_DIR/scripts/lightrag-service-down.sh"
+
 kill_pid() {
   local pid="$1"
 

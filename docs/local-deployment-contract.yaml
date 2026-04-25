@@ -60,17 +60,21 @@ profiles:
     services:
       - runtime-service
       - interaction-data-service
+      - lightrag-service
       - platform-api
       - platform-web
     startup_order:
       - runtime-service
       - interaction-data-service
+      - lightrag-service
       - platform-api
       - platform-web
     chains:
       - platform-web -> platform-api -> runtime-service
       - platform-api -> interaction-data-service
       - runtime-service -> interaction-data-service
+      - platform-api -> lightrag-service
+      - runtime-service -> lightrag-service
   runtime-debug:
     description: Optional runtime debug profile
     services:
@@ -78,9 +82,11 @@ profiles:
     chains:
       - runtime-web -> runtime-service
   optional-repo-services:
-    description: Services or historical apps present in the repo but outside the default local startup set
+    description: Services present in the repo but outside the default local startup set
     services:
       - runtime-web
+    chains:
+      - runtime-web -> runtime-service
 
 global:
   ports:
@@ -89,6 +95,8 @@ global:
     platform-api: 2142
     platform-web: 3000
     runtime-web: 3001
+    lightrag-service: 9621
+    lightrag-service-mcp: 8621
   dependencies:
     python: ">=3.13"
     uv: required
@@ -264,6 +272,43 @@ services:
     access_urls:
       - http://127.0.0.1:3001
 
+
+  lightrag-service:
+    role: Repo-local LightRAG knowledge service
+    in_default_local: true
+    repo_path: apps/lightrag-service
+    port: 9621
+    auxiliary_ports:
+      - 8621
+    config_files:
+      optional:
+        - apps/lightrag-service/.env
+        - apps/lightrag-service/.env.example
+        - apps/lightrag-service/deploy/.env.lightrag-service.example
+    minimum_required_env:
+      - HOST=0.0.0.0
+      - PORT=9621
+      - MCP_TRANSPORT=sse
+      - MCP_PORT=8621
+      - WORKING_DIR=./data/rag_storage (host-run default)
+      - INPUT_DIR=./data/inputs (host-run default)
+    start:
+      workdir: .
+      command: bash scripts/lightrag-service-up.sh
+    health_checks:
+      - curl http://127.0.0.1:9621/health
+      - curl http://127.0.0.1:8621/sse
+    access_urls:
+      - http://127.0.0.1:9621
+      - http://127.0.0.1:9621/health
+      - http://127.0.0.1:8621/sse
+    hard_rules:
+      - Repo-local host-run HTTP default is http://127.0.0.1:9621 and is the platform-api-side default local knowledge upstream
+      - Repo-local host-run MCP SSE default is http://127.0.0.1:8621/sse
+      - Root one-click local scripts are expected to bring up both the HTTP lane and the MCP SSE lane
+      - When platform-api runs in Docker and lightrag-service runs on the host, use http://host.docker.internal:9621
+      - When runtime-service runs in Docker and lightrag-service runs on the host, use http://host.docker.internal:8621/sse
+
 failure_handling:
   model_config_missing:
     - Real deployment cannot complete before the user provides a repo-shaped runtime config patch containing the matching settings.yaml model block and, when needed, a MODEL_ID override
@@ -290,6 +335,8 @@ final_report:
   required_urls:
     interaction-data-service: http://127.0.0.1:8081
     runtime-service: http://127.0.0.1:8123
+    lightrag-service: http://127.0.0.1:9621
+    lightrag-service-mcp: http://127.0.0.1:8621/sse
     platform-api: http://127.0.0.1:2142
     platform-web: http://127.0.0.1:3000
 

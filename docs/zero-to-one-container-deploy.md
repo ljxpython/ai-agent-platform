@@ -35,6 +35,12 @@
 - 平台侧 RAG HTTP 地址
 - runtime 私有 MCP SSE 地址
 
+补充说明：
+
+- `apps/lightrag-service` 可以作为可选仓库内知识服务单独运行
+- 它不属于默认 Compose 成员；默认四服务容器栈不会自动把它带起来
+- 宿主机直跑该可选服务时，repo-local 默认 MCP SSE 地址按 `http://127.0.0.1:8621/sse` 约定
+
 地址如何填写，另见：
 
 - [`docs/container-address-guide.md`](/Users/bytedance/PycharmProjects/my_best/AITestLab/docs/container-address-guide.md)
@@ -56,7 +62,7 @@ cp apps/runtime-service/deploy/.env.runtime-service.example apps/runtime-service
 如果要启用 runtime 私有 knowledge MCP：
 
 - `TEST_CASE_V2_KNOWLEDGE_MCP_ENABLED=true`
-- `TEST_CASE_V2_KNOWLEDGE_MCP_URL=...`
+- 宿主机直跑 LightRAG 时：`TEST_CASE_V2_KNOWLEDGE_MCP_URL=http://host.docker.internal:8621/sse`
 
 ### 3.2 启动
 
@@ -96,7 +102,7 @@ cp deploy/.env.stack.example deploy/.env.stack
 如果要启用可选知识依赖：
 
 - `PLATFORM_API_KNOWLEDGE_UPSTREAM_URL`
-- `TEST_CASE_V2_KNOWLEDGE_MCP_URL`
+- `TEST_CASE_V2_KNOWLEDGE_MCP_URL=http://host.docker.internal:8621/sse`
 
 ### 4.2 启动
 

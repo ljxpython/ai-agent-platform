@@ -199,6 +199,10 @@ start_http_service \
   "8081" \
   "$LOG_DIR/interaction-data-service.log"
 
+echo
+echo "[start] lightrag-service bundle"
+bash "$ROOT_DIR/scripts/lightrag-service-up.sh"
+
 start_http_service \
   "platform-api" \
   "platform-api" \
@@ -230,6 +234,8 @@ echo "[done] platform-web demo stack is starting"
 echo "logs:"
 echo "  $LOG_DIR/runtime-service.log"
 echo "  $LOG_DIR/interaction-data-service.log"
+echo "  /tmp/aitestlab-lightrag-service/http.log"
+echo "  /tmp/aitestlab-lightrag-service/mcp-sse.log"
 echo "  $LOG_DIR/platform-api.log"
 echo "  $LOG_DIR/platform-api-worker.log"
 echo "  $LOG_DIR/platform-web.log"

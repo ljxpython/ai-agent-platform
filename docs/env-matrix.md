@@ -32,6 +32,7 @@
 
 - `platform-api` 是正式控制面宿主
 - 平台侧 RAG / LightRAG HTTP URL 归 `platform-api`
+- `apps/lightrag-service` 当前会随默认本地一键启动脚本一起拉起，也仍可替换为外部兼容 LightRAG HTTP 服务
 - 如果该上游运行在宿主机，不应写成 `127.0.0.1:<port>`，应改成容器可达地址，例如 `host.docker.internal:<port>`
 - 当前验证通过的宿主机可达形态：`http://host.docker.internal:9621`
 
@@ -111,8 +112,9 @@
 - 当前容器化基线默认值：`gpt_5.4-ccr`
 - 上面这组 `TEST_CASE_V2_*` 变量已经接到 `test_case_service_v2` 的 env fallback
 - 它们属于 service-private runtime config，不进入公共 MCP registry
-- 若 MCP 服务运行在宿主机，不应写成 `0.0.0.0:<port>`，应改成容器可达地址，例如 `host.docker.internal:<port>`
-- 当前验证通过的宿主机可达形态：`http://host.docker.internal:8621/sse`
+- 默认本地宿主机模式下，repo-local `apps/lightrag-service` 的 MCP SSE 口径收敛为 `http://127.0.0.1:8621/sse`
+- 若 `runtime-service` 跑在容器里而 LightRAG 跑在宿主机，不应写成 `0.0.0.0:<port>`，应改成容器可达地址，例如 `host.docker.internal:<port>`
+- 当前验证通过的容器内访问形态：`http://host.docker.internal:8621/sse`
 
 ## 5. `runtime-web`
 

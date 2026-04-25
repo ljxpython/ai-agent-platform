@@ -39,6 +39,11 @@ http://host.docker.internal:<port>
 - MCP SSE：
   - `http://host.docker.internal:8621/sse`
 
+补充口径：
+
+- 如果你是在宿主机直接运行可选仓库内 `apps/lightrag-service`，repo-local 默认 MCP SSE 地址是 `http://127.0.0.1:8621/sse`
+- 默认 Compose 栈不会自动启动 `apps/lightrag-service`；只有显式启用知识链路时才需要填写这条地址
+
 ### 2.2 服务跑在同一个 Docker 网络
 
 直接用服务名：
@@ -102,6 +107,8 @@ TEST_CASE_V2_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS=300
   - 可被 `platform-api` 容器访问
 - `http://host.docker.internal:8621/sse`
   - 可被 `runtime-service` 容器访问
+- `http://127.0.0.1:8621/sse`
+  - 作为宿主机直跑可选仓库内 `apps/lightrag-service` 的 repo-local 默认 MCP SSE 口径
 
 也已经验证过下面两种写法**不可用**：
 
