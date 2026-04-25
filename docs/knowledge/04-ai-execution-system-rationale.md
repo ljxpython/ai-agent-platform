@@ -202,11 +202,11 @@ B1/B2/B3 是 workflow depth / execution band：
 
 ---
 
-## 5. 为什么仓库需要这套路由，而不是只让 AGENTS 或 .omx 自己说了算
+## 5. 为什么仓库需要这套路由，而不是只让 AGENTS 或 helper host 自己说了算
 
-### 5.1 canonical 不该放进 .omx
+### 5.1 canonical 不该放进 helper host
 
-`.omx` 更适合作为：
+当前推荐的 helper host 是 `.harness/`；历史 `.omx/` 只是上一代 helper host。helper host 更适合作为：
 
 - 模板
 - 计划草稿
@@ -251,7 +251,7 @@ B1/B2/B3 是 workflow depth / execution band：
 - 为什么需要 routing constitution
 - 为什么 B1/B2/B3 要和 L1-L4 区分
 - 为什么 canonical 应该落在 docs/standards
-- 为什么 `.omx` 只能做 helper layer
+- 为什么 helper host（当前 `.harness/`，历史 `.omx/`）只能做 helper layer
 
 本文**不**负责：
 
@@ -280,7 +280,7 @@ B1/B2/B3 是 workflow depth / execution band：
 4. **不允许 AI 编造 real secrets / real params / real datasets**
    - 真实输入必须来自用户或环境，不由 AI 想当然补齐。
 
-5. **不把 `.omx` 当 canonical**
+5. **不把 helper host（当前 `.harness/`，历史 `.omx/`）当 canonical**
    - 它是 helper/template/state layer，不是标准源。
 
 6. **不让知识文档冒充 enforceable 标准**

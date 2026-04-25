@@ -1,0 +1,98 @@
+# Containerized Deployment Context Snapshot
+
+- Timestamp: 2026-04-21T13:11:33Z
+- Task statement:
+  - Plan a B3 containerized deployment solution for this repo without implementation.
+  - Scope explicitly includes:
+    - one overall Docker Compose stack without Nginx
+    - one overall Docker Compose stack with Nginx
+    - one single-app Docker deployment plan for `apps/runtime-service`
+  - Output required now:
+    - research
+    - clarification
+    - PRD
+    - Test Spec
+    - explicit list of real user-owned inputs still needed
+
+- Desired outcome:
+  - converge on one practical containerization path
+  - avoid premature implementation
+  - identify gating decisions and real secrets/configs the user must provide
+  - define the future artifact set and verification path
+
+- Known facts / evidence:
+  - Repo current-standard requires B3 for research-heavy, cross-leaf, formal-artifact work:
+    - `docs/standards/01-ai-execution-system.md`
+  - Current default local chain is:
+    - `platform-web-vue -> platform-api-v2 -> runtime-service`
+    - `platform-api-v2 -> interaction-data-service`
+    - `runtime-service -> interaction-data-service`
+    - sources:
+      - `docs/local-deployment-contract.yaml`
+      - `docs/deployment-guide.md`
+  - `apps/runtime-service` currently runs via:
+    - `uv run langgraph dev --config runtime_service/langgraph.json --port 8123 --no-browser`
+    - source: `apps/runtime-service/README.md`
+  - `runtime-service` requires app-local `.env` plus `conf/settings.yaml`, and model config is the primary hard runtime prerequisite.
+  - `runtime-service` has no existing Dockerfile/compose assets in this repo.
+  - `platform-api-v2` already has:
+    - `apps/platform-api-v2/Dockerfile`
+    - `apps/platform-api-v2/deploy/docker-compose.example.yml`
+  - `platform-web-vue` and `interaction-data-service` do not yet have Dockerfiles in this repo.
+  - `platform-api-v2` local default is `SQLite + db_polling`, but its documented dev/staging/prod lane is `PostgreSQL + redis_list`.
+    - source: `apps/platform-api-v2/docs/delivery/runbook.md`
+  - `platform-api-v2` minimum demo still expects a separate worker process.
+    - sources:
+      - `apps/platform-api-v2/README.md`
+      - `apps/platform-api-v2/worker.py`
+      - `scripts/platform-web-vue-demo-up.sh`
+  - `interaction-data-service` can run with `INTERACTION_DB_ENABLED=false`; DB is optional in current local defaults.
+  - Official LangChain docs for standalone agent servers say:
+    - standalone deployment is supported via Docker, Docker Compose, or Kubernetes
+    - Docker / Compose examples are for local development and testing
+    - production recommendation is Kubernetes/Helm
+    - standalone server requires Redis + Postgres
+    - deployment requires `LANGSMITH_API_KEY` and `LANGGRAPH_CLOUD_LICENSE_KEY`
+    - sources:
+      - https://docs.langchain.com/langsmith/deploy-standalone-server
+      - https://docs.langchain.com/langgraph-platform/cli
+  - Prior external reference repo already uses:
+    - one compose without Nginx
+    - one compose with Nginx load-balancer
+    - one single-app LangGraph Docker pattern
+    - sources:
+      - `/Users/bytedance/PycharmProjects/my_best/langgraph_teach/docker-compose.langgraph.yml`
+      - `/Users/bytedance/PycharmProjects/my_best/langgraph_teach/docker-compose.lb.yml`
+      - `/Users/bytedance/PycharmProjects/my_best/langgraph_teach/src/docker_single/README.md`
+  - `runtime-service` README documents a blocking-IO caveat for at least:
+    - `research_demo`
+    - `deepagent_demo`
+    - `test_case_agent`
+    - source: `apps/runtime-service/README.md`
+
+- Constraints:
+  - no implementation in this turn
+  - formal artifacts must be produced first
+  - do not treat `.omx` runtime state as canonical business policy
+  - keep current default local deployment contract intact unless later explicitly promoted
+  - user-owned secrets/real infra inputs must not be invented
+
+- Unknowns / open questions:
+  - Does the intended `runtime-service` container lane have valid `LANGSMITH_API_KEY` and `LANGGRAPH_CLOUD_LICENSE_KEY`?
+  - Should first release use official standalone server topology or a dev-only `langgraph dev` container fallback?
+  - Which runtime graphs must be in scope for v1 containerization?
+  - Is Supabase OAuth required for `runtime-service` in container mode?
+  - Should Nginx variant expose only platform entrypoints, or also a direct runtime debug path?
+  - Should interaction-data-service remain filesystem/no-DB in v1, or move to Postgres in the compose stack?
+
+- Likely codebase touchpoints for future implementation:
+  - `apps/runtime-service/runtime_service/langgraph.json`
+  - `apps/runtime-service/runtime_service/langgraph_auth.json`
+  - `apps/runtime-service/runtime_service/.env.example`
+  - `apps/runtime-service/runtime_service/conf/settings.yaml.example`
+  - `apps/platform-api-v2/Dockerfile`
+  - `apps/platform-api-v2/deploy/docker-compose.example.yml`
+  - `apps/platform-api-v2/.env.example`
+  - `apps/platform-web-vue/.env.example`
+  - `apps/interaction-data-service/.env.example`
+  - repo root `deploy/` or app-local `deploy/` directories for new compose assets

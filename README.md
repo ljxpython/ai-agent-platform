@@ -72,7 +72,7 @@
 - `AGENTS.md`：薄路由与执行门禁
 - `docs/standards/`：当前正式标准
 - `docs/knowledge/`：背景、理由与设计哲学
-- `.omx/`：helper、模板、状态与计划，不是 canonical truth
+- `.harness/`：helper、模板、状态与计划，不是 canonical truth；历史 `.omx/` 只作过渡/参考
 
 <a id="frontend-entry"></a>
 

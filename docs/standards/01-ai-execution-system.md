@@ -18,7 +18,7 @@
 1. **leaf 本地文档**：先读最近的 app 文档，拿到本地事实
 2. **本仓 current-standard**：再用本文做跨 leaf 的路由和升级判断
 3. **知识文档**：只在需要背景、理由、历史折中时再读
-4. **`.omx` helper surfaces**：只看运行态状态，不当成业务政策源
+4. **`.harness` helper surfaces**：只看 helper/运行态辅助，不当成业务政策源（历史 `.omx` 只作过渡/参考）
 
 ### 0.1 权威顺序
 
@@ -27,9 +27,9 @@
 1. leaf 本地文档
 2. 本仓 current-standard
 3. 知识文档
-4. `.omx` 状态 / 计划 / 便签 / trace / wiki
+4. `.harness` context / specs / plans / reports / state
 
-`.omx` 里可以有计划和状态，但不能反过来定义本仓当前标准。
+`.harness` 里可以有计划和状态，但不能反过来定义本仓当前标准。历史 `.omx` 只作为 transition/history bucket。
 
 ### 0.2 root `AGENTS.md` 事实
 
@@ -39,7 +39,7 @@
 - root `AGENTS.md`：薄路由与执行门禁
 - 本文：current-standard
 - leaf 文档：leaf 本地事实
-- `.omx`：运行态协作与 helper surfaces，不负责域政策
+- `.harness`：helper surfaces / repo-local artifact host，不负责域政策
 
 ---
 
@@ -167,10 +167,10 @@ B3 只在下面情况出现：
 
 - current-standard：`docs/standards/<nn>-<slug>.md`
 - leaf 本地标准：leaf 自己的 `docs/*`
-- formal plan：`.omx/plans/prd-*.md`
-- formal test spec：`.omx/plans/test-spec-*.md`
+- formal plan：`.harness/plans/prd-*.md`
+- formal test spec：`.harness/plans/test-spec-*.md`
 
-`.omx` 里的计划文件是 formal chain 产物，不是 current-standard 本身。
+`.harness` 里的计划文件是 formal chain 产物，不是 current-standard 本身；历史 `.omx/plans/*` 只保留为 transition/history residue。
 
 ---
 

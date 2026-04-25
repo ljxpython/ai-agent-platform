@@ -163,6 +163,6 @@
 
 如果你要继续推进这个交付面，优先同时查看：
 
-- [PRD](/Users/bytedance/PycharmProjects/my_best/AITestLab/.omx/plans/prd-containerized-deployment-20260421.md)
-- [Test Spec](/Users/bytedance/PycharmProjects/my_best/AITestLab/.omx/plans/test-spec-containerized-deployment-20260421.md)
-- [TODO Checklist](/Users/bytedance/PycharmProjects/my_best/AITestLab/.omx/plans/todo-containerized-deployment-20260421.md)
+- [PRD](../../../.harness/plans/prd-containerized-deployment-20260421.md)
+- [Test Spec](../../../.harness/plans/test-spec-containerized-deployment-20260421.md)
+- [TODO Checklist](../../../.harness/plans/todo-containerized-deployment-20260421.md)

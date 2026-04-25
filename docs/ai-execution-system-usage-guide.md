@@ -57,7 +57,7 @@
 5. **标准、知识、helper 三层分开**
    - `docs/standards/`：当前标准
    - `docs/knowledge/`：为什么这样设计
-   - `.omx/`：helper 模板 / 运行态辅助，不是 canonical truth
+   - `.harness/`：helper 模板 / 运行态辅助，不是 canonical truth；历史 `.omx/` 只作过渡/参考
 
 ---
 
@@ -266,10 +266,10 @@ AI 在 B3 下应该：
 
 这些模板是为了让 AI 少漏字段：
 
-- `.omx/specs/ai-execution-system/locus-classification-schema.md`
-- `.omx/specs/ai-execution-system/execution-band-artifact-skeletons.md`
-- `.omx/specs/ai-execution-system/real-input-checklist.md`
-- `.omx/specs/ai-execution-system/verification-evidence-template.md`
+- `.harness/templates/ai-execution-system/locus-classification-schema.md`
+- `.harness/templates/ai-execution-system/execution-band-artifact-skeletons.md`
+- `.harness/templates/ai-execution-system/real-input-checklist.md`
+- `.harness/templates/ai-execution-system/verification-evidence-template.md`
 
 正确用法：
 
