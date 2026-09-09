@@ -12,7 +12,7 @@ from runtime_service.runtime.errors import (
     RuntimeErrorBase,
     RuntimeResolutionError,
 )
-from runtime_service.runtime.modeling import build_model
+from runtime_service.runtime.modeling import build_model, fetch_model_connection
 from runtime_service.runtime.auth import (
     RuntimeScope,
     VerifiedDelegation,
@@ -49,6 +49,7 @@ __all__ = [
     "verified_delegation_from_user",
     "RuntimeResolutionError",
     "build_model",
+    "fetch_model_connection",
     "verify_delegation_token",
     "verify_delegation_claims",
     "parse_runtime_context",

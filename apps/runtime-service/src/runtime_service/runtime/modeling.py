@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from collections.abc import Mapping
 
+import httpx
 from langchain.chat_models import init_chat_model
 from langchain_core.language_models import BaseChatModel
 from langchain_deepseek import ChatDeepSeek
@@ -87,4 +88,36 @@ def build_model(
         raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id") from exc
 
 
-__all__ = ["build_model"]
+async def fetch_model_connection(
+    reference: object,
+    *,
+    model_id: str,
+    project_id: str,
+) -> dict[str, str] | None:
+    """Resolve a server-issued opaque reference without persisting credentials."""
+    if reference is None:
+        return None
+    endpoint = os.getenv("PLATFORM_RUNTIME_MODEL_CONFIG_URL", "").strip()
+    if not isinstance(reference, str) or not reference or not endpoint or not project_id:
+        raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get(
+                endpoint,
+                headers={"x-runtime-model-ref": reference, "x-project-id": project_id},
+            )
+            response.raise_for_status()
+            payload = response.json()
+    except (httpx.HTTPError, ValueError) as exc:
+        raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id") from exc
+    required = ("provider", "base_url", "protocol", "model", "api_key")
+    if (
+        not isinstance(payload, dict)
+        or payload.get("model_id") != model_id
+        or any(not isinstance(payload.get(key), str) or not payload[key] for key in required)
+    ):
+        raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
+    return {key: payload[key] for key in required} | {"model_id": model_id}
+
+
+__all__ = ["build_model", "fetch_model_connection"]

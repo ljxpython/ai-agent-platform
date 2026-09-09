@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 
 from langchain.agents.middleware import AgentMiddleware, ModelRequest, ToolCallRequest
 from langchain_core.language_models import BaseChatModel
@@ -40,13 +40,14 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
     def __init__(
         self,
         *,
-        principal: RuntimePrincipal,
-        policy: RuntimePolicy,
+        principal: RuntimePrincipal | None = None,
+        policy: RuntimePolicy | None = None,
         defaults: AgentDefaults,
         base_model: BaseChatModel,
         model_builder: ModelBuilder = build_model,
         tool_permissions: Mapping[str, str] | None = None,
         local_fallback: bool = False,
+        tool_names: Sequence[str] | None = None,
     ) -> None:
         super().__init__()
         self._principal = principal
@@ -56,6 +57,7 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         self._model_builder = model_builder
         self._tool_permissions = tool_permissions
         self._local_fallback = local_fallback
+        self._tool_names = None if tool_names is None else frozenset(tool_names)
 
     @staticmethod
     def _user(runtime: object) -> object | None:
@@ -79,18 +81,22 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
     def _check_scope(runtime: object, facts: VerifiedDelegation) -> None:
         server_info = getattr(runtime, "server_info", None)
         execution_info = getattr(runtime, "execution_info", None)
-        if facts.scope.assistant_id is not None:
-            if server_info is None or facts.scope.assistant_id != getattr(server_info, "assistant_id", None):
-                raise RuntimeAuthError("runtime.auth.invalid_principal", "assistant_id")
-        if facts.scope.thread_id is not None:
-            if execution_info is None or facts.scope.thread_id != getattr(execution_info, "thread_id", None):
-                raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
+        if facts.scope.assistant_id is not None and (
+            server_info is None or facts.scope.assistant_id != getattr(server_info, "assistant_id", None)
+        ):
+            raise RuntimeAuthError("runtime.auth.invalid_principal", "assistant_id")
+        if facts.scope.thread_id is not None and (
+            execution_info is None or facts.scope.thread_id != getattr(execution_info, "thread_id", None)
+        ):
+            raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
 
     def _resolve(self, runtime: object) -> ResolvedRuntimeConfig:
         context = parse_runtime_context(getattr(runtime, "context", None))
         facts = self._facts(runtime)
         if facts is None:
             principal, policy = self._principal, self._policy
+            if principal is None or policy is None:
+                raise RuntimeAuthError("runtime.auth.missing_principal")
         else:
             if facts.context_hash != runtime_context_hash(context):
                 raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
@@ -109,6 +115,10 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
     async def abefore_agent(self, state: object, runtime: object) -> None:
         self._resolve(runtime)
 
+    def _allowed_tools(self, resolved: ResolvedRuntimeConfig) -> set[str]:
+        allowed = set(resolved.required_tool_names) | set(resolved.optional_tool_names)
+        return allowed if self._tool_names is None else allowed & self._tool_names
+
     async def awrap_model_call(self, request: ModelRequest, handler):
         resolved = self._resolve(request.runtime)
         model = self._base_model
@@ -120,7 +130,7 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         ):
             model = self._model_builder(resolved)
 
-        allowed = set(resolved.required_tool_names) | set(resolved.optional_tool_names)
+        allowed = self._allowed_tools(resolved)
         tools = request.tools
         if tools is not None:
             filtered = []
@@ -144,7 +154,7 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
     async def awrap_tool_call(self, request: ToolCallRequest, handler):
         resolved = self._resolve(request.runtime)
         name = request.tool_call.get("name")
-        allowed = set(resolved.required_tool_names) | set(resolved.optional_tool_names)
+        allowed = self._allowed_tools(resolved)
         if not isinstance(name, str) or name not in allowed:
             raise RuntimeResolutionError("runtime.tool.not_allowed", "tool_name")
         return await handler(request)

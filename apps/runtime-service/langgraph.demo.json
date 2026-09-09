@@ -25,6 +25,10 @@
     "backend_demo": {
       "path": "./src/runtime_service/graphs/backend_demo.py:get_agent",
       "description": "R4 in-process StateBackend demo; durable workspace isolation is not claimed."
+    },
+    "showcase_demo": {
+      "path": "./src/runtime_service/graphs/showcase_demo.py:get_agent",
+      "description": "Real Python project teaching agent with thread workspace, Docker execution, Skills, Todo, subagents and approval."
     }
   },
   "env": ".env",

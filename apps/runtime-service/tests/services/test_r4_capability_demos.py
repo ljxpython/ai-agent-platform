@@ -56,6 +56,7 @@ def test_demo_config_registers_all_r4_capability_graphs() -> None:
         "deep_agent_demo",
         "mcp_demo",
         "backend_demo",
+        "showcase_demo",
     }
     assert all(item["description"] for item in graphs.values())
     assert all("runtime_service/agents" not in item["path"] for item in graphs.values())

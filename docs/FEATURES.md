@@ -28,7 +28,7 @@
 | Graph 注册、模型参数解析、工具装配 | 已完成 | `apps/runtime-service/docs/standards/*.md` |
 | MCP 接入 | 已完成 | `apps/runtime-service/docs/knowledge/19-runtime-tool-capability-mcp-and-side-effect-design.md` |
 | Runtime 鉴权、middleware 层、reference agent | 已完成 | `apps/runtime-service/docs/knowledge/28-runtime-refactor-development-plan.md` |
-| showcase_demo — 全能力展示智能体（工具调用/HITL/子智能体/Todo/Sandbox/Skills） | 规划中 | `docs/projects/20260908-showcase-demo/` |
+| showcase_demo — 教学智能体（工具调用/HITL/子智能体/Todo/Sandbox/Skills） | 部分完成：后端已验证，远程持久化及前端待验收 | `docs/projects/20260908-showcase-demo/` |
 
 ## interaction-data-service
 
