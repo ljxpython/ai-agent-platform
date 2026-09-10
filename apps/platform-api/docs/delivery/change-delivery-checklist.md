@@ -44,7 +44,7 @@
 - [ ] `platform-web`: `pnpm lint`
 - [ ] `platform-web`: `pnpm typecheck`
 - [ ] `platform-web`: `pnpm build`
-- [ ] `bash "./scripts/check-health.sh"` 或等价健康检查
+- [ ] `bash scripts/local-stack.sh status` 或等价健康检查
 
 ---
 

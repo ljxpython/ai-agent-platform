@@ -165,12 +165,12 @@ start_managed_key() {
       ;;
     platform-api)
       start_process platform-api "$PLATFORM_API_DIR" \
-        "uv run uvicorn main:app --host 127.0.0.1 --port $(shell_quote "$PLATFORM_API_PORT") --reload" \
+        "uv run uvicorn platform_api.main:create_app --factory --host 127.0.0.1 --port $(shell_quote "$PLATFORM_API_PORT") --reload" \
         "$LOG_DIR/platform-api.log" "$PLATFORM_API_PORT"
       ;;
     platform-worker)
       start_process platform-worker "$PLATFORM_API_DIR" \
-        "uv run python worker.py" "$LOG_DIR/platform-worker.log"
+        "uv run python -m platform_api.entrypoints.worker.main" "$LOG_DIR/platform-worker.log"
       ;;
     platform-web)
       start_process platform-web "$PLATFORM_WEB_DIR" \

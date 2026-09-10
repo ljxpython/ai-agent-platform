@@ -162,7 +162,7 @@ default:
 
 ### 4.4 快捷脚本失败
 
-如果 `scripts/dev-up.sh`、`scripts/check-health.sh` 或 `scripts/dev-down.sh` 失败，回到 contract 里声明的单服务启动方式逐个排查。
+如果 `bash scripts/local-stack.sh start` 或 `bash scripts/local-stack.sh status` 失败，回到 contract 里声明的单服务启动方式逐个排查。
 
 ## 4.5 极简触发时的默认行为
 

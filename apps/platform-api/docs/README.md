@@ -6,7 +6,7 @@
 
 推荐事实源顺序：
 
-1. 代码与模块接口：`app/modules/**`
+1. 代码与模块接口：`src/platform_api/modules/**`
 2. `handbook/project-handbook.md`
 3. `handbook/architecture.md`
 4. 本导航页
@@ -84,6 +84,6 @@
 
 ## 6. 常用启动入口
 
-- 仓库根目录：`bash "./scripts/platform-web-demo-up.sh"`
-- 健康检查：`bash "./scripts/platform-web-demo-health.sh"`
-- 停止：`bash "./scripts/platform-web-demo-down.sh"`
+- 仓库根目录：`bash scripts/local-stack.sh start`
+- 健康检查：`bash scripts/local-stack.sh status`
+- 停止：`bash scripts/local-stack.sh stop`

@@ -98,10 +98,9 @@ bash "./scripts/local-stack.sh" stop
 ```
 
 该脚本使用本机 PostgreSQL/Redis，直接管理 GraphHarbor API、Worker、Platform API、Platform Worker
-和 Platform Web 的本地进程；它不影响旧的 `platform-web-demo-*` 脚本。GraphHarbor 本身没有前端，
-平台前端是 `platform-web`。`doctor` 会校验 Runtime 配置、本机 PostgreSQL/Redis、Platform upstream、
-Delegation secret 和端口；`start` 会先执行数据库迁移，再启动进程并等待 Runtime `/ready` 和 Platform API 健康检查。
-项目脚本不会自动删除 PostgreSQL 数据目录中的 `postmaster.pid`；检测到失效锁时只给出人工确认后的修复提示。
+和 Platform Web 的本地进程。GraphHarbor 本身没有前端，平台前端是 `platform-web`。`doctor` 会校验 Runtime 配置、
+本机 PostgreSQL/Redis、Platform upstream、Delegation secret 和端口；`start` 会先执行数据库迁移，再启动进程并等待
+Runtime `/ready` 和 Platform API 健康检查。项目脚本不会自动删除 PostgreSQL 数据目录中的 `postmaster.pid`；检测到失效锁时只给出人工确认后的修复提示。
 
 从本目录执行：
 

@@ -198,21 +198,19 @@ VITE_LANGGRAPH_DEBUG_URL=
 
 ## 5. 推荐启动方式
 
-### 5.1 推荐优先使用根脚本
+### 5.1 推荐优先使用本地栈脚本
 
 当前正式 bring-up 推荐入口：
 
 ```bash
-scripts/dev-up.sh
-scripts/check-health.sh
-scripts/dev-down.sh
+bash scripts/local-stack.sh doctor   # 验证环境和依赖
+bash scripts/local-stack.sh start    # 启动完整栈
+bash scripts/local-stack.sh status   # 检查服务状态
+bash scripts/local-stack.sh stop     # 停止服务
 ```
 
-它们统一代理到正式 demo 脚本：
-
-- `scripts/platform-web-demo-up.sh`
-- `scripts/platform-web-demo-health.sh`
-- `scripts/platform-web-demo-down.sh`
+该脚本直接启动 GraphHarbor API、GraphHarbor Worker、Platform API、Platform Worker 和 Platform Web；
+数据库迁移使用 `migrate` 子命令执行，日志和 PID 文件放在系统临时目录。
 
 ### 5.2 手工逐服务启动顺序
 
@@ -245,7 +243,7 @@ uv run uvicorn main:app --host 127.0.0.1 --port 8081 --reload
 
 ```bash
 cd apps/platform-api
-uv run uvicorn main:app --host 127.0.0.1 --port 2142 --reload
+uv run uvicorn platform_api.main:create_app --factory --host 127.0.0.1 --port 2142 --reload
 ```
 
 ### 6.4 `apps/platform-web`

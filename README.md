@@ -177,35 +177,15 @@
 3. `platform-api`
 4. `platform-web`
 
-### 根目录脚本
+### 本地栈启动（推荐）
+
+如果本机已经运行 PostgreSQL 和 Redis，使用本地栈脚本：
 
 ```bash
-scripts/dev-up.sh
-scripts/check-health.sh
-scripts/dev-down.sh
-```
-
-这三个脚本分别对应：
-
-- 启动：`scripts/dev-up.sh`
-- 健康检查：`scripts/check-health.sh`
-- 停止：`scripts/dev-down.sh`
-
-它们现在统一代理到正式演示脚本：
-
-- `scripts/platform-web-demo-up.sh`
-- `scripts/platform-web-demo-health.sh`
-- `scripts/platform-web-demo-down.sh`
-
-### 本地 Runtime + Platform 进程模式
-
-如果本机已经运行 PostgreSQL 和 Redis，使用新的本地进程脚本，不会修改或调用上面的旧演示脚本：
-
-```bash
-bash "./scripts/local-stack.sh" doctor
-bash "./scripts/local-stack.sh" start
-bash "./scripts/local-stack.sh" status
-bash "./scripts/local-stack.sh" stop
+bash scripts/local-stack.sh doctor   # 验证环境和依赖
+bash scripts/local-stack.sh start    # 启动完整栈
+bash scripts/local-stack.sh status   # 检查服务状态
+bash scripts/local-stack.sh stop     # 停止服务
 ```
 
 该脚本直接启动 GraphHarbor API、GraphHarbor Worker、Platform API、Platform Worker 和 Platform Web；
@@ -315,8 +295,11 @@ AITestLab/
 
 ### 我想先把环境跑起来
 
-先看：
-
+唯一支持的启动方式是使用 `local-stack.sh`：
+```bash
+bash "scripts/local-stack.sh" start
+```
+详细说明见：
 - `docs/local-deployment-contract.yaml`
 - `docs/quickstart/local-dev.md`
 - `docs/quickstart/env-matrix.md`

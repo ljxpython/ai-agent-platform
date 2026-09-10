@@ -137,17 +137,23 @@ The default local bring-up currently includes four formal services:
 
 ### Root Scripts
 
+### Local Stack Startup (Recommended)
+
+If PostgreSQL and Redis are already running locally, use the local stack script:
+
 ```bash
-scripts/dev-up.sh
-scripts/check-health.sh
-scripts/dev-down.sh
+bash scripts/local-stack.sh doctor   # Validate environment and dependencies
+bash scripts/local-stack.sh start    # Start full stack
+bash scripts/local-stack.sh status   # Check service status
+bash scripts/local-stack.sh stop     # Stop services
 ```
 
-These three scripts are:
-
-- Start: `scripts/dev-up.sh`
-- Health check: `scripts/check-health.sh`
-- Stop: `scripts/dev-down.sh`
+This script starts GraphHarbor API, GraphHarbor Worker, Platform API, Platform Worker, and Platform Web directly.
+Database migrations use the `migrate` subcommand. Logs and PID files are stored in the system temp directory.
+It won't stop or remove your local PostgreSQL/Redis, nor kill processes by port that it didn't start.
+Runtime uses `apps/runtime-service/.env`, Platform API uses `apps/platform-api/.env`.
+On first use, create local `.env` files from the corresponding `.env.example` templates, filling in real model
+credentials and local PostgreSQL credentials. Don't overwrite existing `.env` files or commit real values.
 
 ### If You Want To Start `platform-web` Separately
 

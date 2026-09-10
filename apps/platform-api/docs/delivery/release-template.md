@@ -31,8 +31,8 @@
 - [ ] CI 通过
 - [ ] `python3 -m compileall app` 通过
 - [ ] `.venv/bin/python -m unittest discover -s tests` 通过
-- [ ] `platform-web-demo-up.sh` 能启动
-- [ ] `platform-web-demo-health.sh` 全绿
+- [ ] `bash scripts/local-stack.sh start` 能启动
+- [ ] `bash scripts/local-stack.sh status` 全绿
 - [ ] 管理员账号可登录
 - [ ] chat / operations / platform-config 手动验收通过
 - [ ] 数据库已备份

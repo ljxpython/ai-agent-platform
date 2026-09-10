@@ -43,8 +43,8 @@ pnpm test
 
 **执行：**
 ```bash
-# 启动服务
-bash scripts/xxx-service-up.sh
+# 启动本地栈（Runtime + Platform API + Platform Web）
+bash scripts/local-stack.sh start
 
 # 执行集成测试场景
 curl http://localhost:8123/api/xxx
@@ -63,10 +63,16 @@ curl http://localhost:8123/api/xxx
 
 **执行：**
 ```bash
-# 启动完整栈
-bash scripts/dev-up.sh
+# 启动完整栈（Runtime + Platform API + Platform Web）
+bash scripts/local-stack.sh start
+
+# 检查服务健康状态
+bash scripts/local-stack.sh status
 
 # 在浏览器或 Postman 中测试完整流程
+# Platform Web 默认: http://localhost:3000
+# Platform API 默认: http://localhost:2142
+# Runtime Service 默认: http://localhost:8123
 ```
 
 **记录：**
@@ -302,7 +308,7 @@ ab -n 1000 -c 10 http://localhost:8123/api/xxx
    - 日志保存（如有异常）
    - 性能数据保存
 
-## 注意事项
+## 注意事这里的。项
 
 - 验证要真实执行，不能编造结果
 - 发现问题要如实记录，不要隐瞒
