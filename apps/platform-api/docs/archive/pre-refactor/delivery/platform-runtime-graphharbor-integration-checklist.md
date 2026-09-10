@@ -1,5 +1,7 @@
 # Platform API -> GraphHarbor 真实联调清单
 
+> Status: Archived. 2026-09-10被当前文档替代，仅保留历史；替代入口见[归档索引](../../README.md)。
+
 这份清单证明的是：真实的 `platform-api` HTTP 请求经过 Platform access token、项目权限和
 按操作 scope 签发的 Runtime delegation JWT 后，到达 GraphHarbor Agent Server。它不把直连
 GraphHarbor、mock upstream 或旧 `langgraph dev` 当作 Platform 集成证据。

@@ -28,4 +28,4 @@
 ## 背景
 来源于 graphharbor 业务边界分离项目（专题 04），从 graphharbor 迁移而来。
 
-参考实现：`/Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/dispatch.py`
+参考实现：`<open-swe-checkout>/agent/dispatch.py`

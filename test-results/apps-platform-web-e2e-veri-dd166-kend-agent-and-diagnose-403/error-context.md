@@ -72,7 +72,7 @@ Call log:
   48 | 
   49 |   // 3. 截图初始状态
   50 |   await page.screenshot({
-  51 |     path: '/Users/lijiaxin/.gemini/antigravity/brain/f77af44b-093b-4696-8566-55d14d41de08/assistants_initial.png',
+  51 |     path: 'test-results/assistants_initial.png',
   52 |     fullPage: true
   53 |   });
   54 | 
@@ -88,7 +88,7 @@ Call log:
   64 | 
   65 |   // 6. 截图点击后的状态
   66 |   await page.screenshot({
-  67 |     path: '/Users/lijiaxin/.gemini/antigravity/brain/f77af44b-093b-4696-8566-55d14d41de08/assistants_after_sync.png',
+  67 |     path: 'test-results/assistants_after_sync.png',
   68 |     fullPage: true
   69 |   });
   70 | 

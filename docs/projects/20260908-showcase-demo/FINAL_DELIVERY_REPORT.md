@@ -175,7 +175,7 @@ test_showcase_demo_e2e.py       # Playwright自动化测试脚本
 
 **运行测试：**
 ```bash
-cd /Users/lijiaxin/PyCharmMiscProject/ai-agent-platform
+# 在 ai-agent-platform 仓库根目录执行
 python3 test_showcase_demo_e2e.py
 ```
 
@@ -194,7 +194,7 @@ python3 test_showcase_demo_e2e.py
 
 ### 5.1 启动系统
 ```bash
-cd /Users/lijiaxin/PyCharmMiscProject/ai-agent-platform
+# 在 ai-agent-platform 仓库根目录执行
 bash scripts/local-stack.sh start
 ```
 

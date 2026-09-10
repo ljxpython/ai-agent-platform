@@ -88,10 +88,10 @@
 | `apps/runtime-service/docs/knowledge/28-runtime-refactor-development-plan.md` | R0-R6 历史仍有效，P1 细节不应继续膨胀 | Keep，只保留 P1 入口/顺序/门槛 | 否 |
 | `apps/platform-web/docs/chat-langchain-vue-migration-blueprint.md` | 迁移计划和 2026-04 联调事实已过期，部分 SDK 原则仍有效 | 提取仍有效原则后 archive | 否 |
 | `apps/platform-web/docs/chat-frontend-refinement-plan.md` | 混合历史联调状态与仍有效 UX 规则 | UX 规则并入 leaf standard，计划 archive | 否 |
-| `apps/platform-api/docs/decisions/chat-use-stream-contract.md` | 依赖旧 Runtime payload，未覆盖 GraphHarbor Context 冲突 | 新 design 批准后 Superseded/archive | 否 |
+| `apps/platform-api/docs/archive/pre-refactor/decisions/chat-use-stream-contract.md` | 依赖旧 Runtime payload，未覆盖 GraphHarbor Context 冲突 | 新 design 批准后 Superseded/archive | 否 |
 | `apps/platform-api/docs/handbook/architecture.md` | Current 架构图仍写 Platform API 直达 Runtime | Update，不能 archive | 否 |
 | `apps/platform-api/docs/standards/runtime-gateway-interface-standard.md` | 核心边界正确，但需把 compatible Agent Server/GraphHarbor 写清 | Update，不能 archive | 否 |
-| `apps/platform-api/docs/diagrams/agent-chat-flow.svg` | 需要与新时序一致 | Regenerate after contract freeze | 否 |
+| `apps/platform-api/docs/archive/pre-refactor/diagrams/agent-chat-flow.svg` | 需要与新时序一致 | Regenerate after contract freeze | 否 |
 | `apps/platform-api/docs/delivery/runtime-contract-*.md` | 历史联调 checklist，不能继续当 P1 完成依据 | 验证是否已有历史价值后 archive | 否 |
 
 建议归档到各自 leaf 的 `docs/archive/`，保留原 owner，而不是把所有历史资料搬到根目录形成新的垃圾堆。

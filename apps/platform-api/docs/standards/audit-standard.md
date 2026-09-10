@@ -1,150 +1,31 @@
-# Platform API 审计标准
+# 审计标准
 
-> 2026-09-10 边界修订：Operations、平台 Worker/队列与 artifacts 已退役。
-> 本文以下涉及 operation 强制接入、生命周期镜像、outbox/queue 预留的历史条款均不再适用。
-> 新功能遵循受控 HTTP、短事务及 Agent Server 唯一执行事实源；以本轮重构工程为准。
+审计记录HTTP行为与主体，不代替Runtime执行事实。入口为[audit模块](../../src/platform_api/modules/audit/)和[审计中间件](../../src/platform_api/entrypoints/http/middleware/audit_log.py)。
 
+## 内容与动作
 
-这份文档定义 `platform-api` 的审计标准。它不是 access log 美化版，而是能真的回答“谁在什么时间对哪个资源做了什么”的那种审计。
+`audit_logs`保存request_id、plane、action、目标类型/ID、actor_user_id/subject、tenant_id/project_id、result、method/path、status_code、duration_ms、metadata_json及created_at。
 
-## 1. 审计目标
+plane为control_plane/runtime_gateway/system_internal；result为success/failed/cancelled。动作由http_resolution.py解析，例如identity.session.created、runtime.run.item.created、runtime.command.submitted。解析器中的历史分支不等于接口公开，公开面以注册router为准。
 
-审计系统必须满足：
+新增受治理接口时更新动作、目标/项目定位与测试。使用可信actor/scope，用户治理的action override只允许代码登记的动作。
 
-- 可追责
-- 可检索
-- 可分页
-- 可做平台治理统计
-- 可支撑后续 worker / queue / 分布式演进
+## 写入与失败
 
-## 2. plane 标准
+数据库启用时，中间件在响应体消费结束后写独立短事务。HTTP状态低于400记success，否则failed；异常记500/failed，取消记499/cancelled。SSE审计时长包含订阅时间，不代表模型执行时长。
 
-后续统一只允许 3 类 plane：
+数据库写入交给线程池，用取消保护完成收尾。写入失败记录 `audit_write_failed`，不覆盖原业务响应。当前没有业务与审计原子提交、持久化重试或outbox，不能承诺审计绝不丢失。
 
-- `control_plane`
-- `runtime_gateway`
-- `system_internal`
+未配置Session时不写数据库审计；API文档、OpenAPI及favicon等路径跳过，具体范围见中间件。
 
-禁止再把控制面流量误记成 `runtime_proxy`。
+## 敏感数据
 
-## 3. action 命名标准
+仅对有Content-Length且不超过64KiB的JSON响应临时捕获以提取目标ID，不持久化整份响应或SSE正文。metadata包含query、client_ip、user_agent、目标、结果及响应大小等，额外业务metadata仅允许reason。
 
-action 统一使用：
+query当前原样进入审计，禁止在URL携带token、密码或模型密钥。不得将Authorization、Cookie、原始请求体或模型凭据加入metadata。公开响应过滤不能代替日志和审计数据最小化。
 
-`{domain}.{resource}.{verb}`
+## 查询与检查
 
-示例：
+平台审计读取受 `platform.audit.read` 控制，项目审计受 `project.audit.read` 和项目scope控制。cancel的成功ACK表示请求响应，不证明Run已终止，应读取Runtime状态。
 
-- `identity.session.created`
-- `identity.password.changed`
-- `project.member.removed`
-- `agent.updated`；历史 `assistant.updated` 仅作为旧审计记录的读取兼容
-- `catalog.graph.refresh_requested`
-- `runtime.thread.cancelled`
-- `user.credentials.reset`
-- `project.project.archived`
-- `project.project.restored`
-- `project.takeover.completed`
-- `service_account.project_grant.upserted`
-
-禁止继续用一大片 `http.request` 糊弄过去。
-
-## 4. 审计事件字段
-
-最小字段集必须有：
-
-- `request_id`
-- `plane`
-- `action`
-- `target_type`
-- `target_id`
-- `actor_user_id`
-- `actor_subject`
-- `tenant_id`
-- `project_id`
-- `result`
-- `status_code`
-- `duration_ms`
-- `created_at`
-
-可选增强字段：
-
-- `client_ip`
-- `user_agent`
-- `operation_id`
-- `trace_id`
-- `metadata`
-
-## 5. 事件写入时机
-
-### 5.1 同步请求
-
-默认在请求完成后写入一条结果事件：
-
-- 成功写 `success`
-- 失败写 `failed`
-- 取消或中断写 `cancelled`
-
-### 5.2 异步任务
-
-operation/job 必须单独记录生命周期事件：
-
-- `submitted`
-- `started`
-- `succeeded`
-- `failed`
-- `cancelled`
-
-## 6. 查询标准
-
-审计查询必须是真分页，不能再搞“先查 5000 条回来再 Python 过滤”这种土办法。
-
-至少支持这些筛选：
-
-- 时间范围
-- plane
-- action 前缀
-- actor
-- project_id
-- result
-
-默认排序：
-
-- `created_at desc`
-- 二级排序 `id desc`
-
-## 7. 脱敏与隐私
-
-这些内容禁止原文落审计：
-
-- 密码
-- token
-- cookie
-- 原始密钥
-- 完整 Authorization header
-
-需要记录时只能做掩码或 hash 摘要。
-
-项目接管允许在 metadata 中记录非空 `reason`。审计 metadata 采用允许列表，
-不得因为“方便排查”直接复制请求体。租户归属固定使用服务端默认租户，不能使用
-客户端提交的 `x-tenant-id`。
-
-## 8. 代码落点
-
-推荐收敛：
-
-- `modules/audit/domain/`：事件模型
-- `modules/audit/application/`：查询 use case
-- `modules/audit/infra/`：repository / writer
-- `core/`：request_id、trace、公共 helper
-
-handler 层只负责传上下文，不直接拼审计 payload。
-
-## 9. 分布式演进
-
-后续接 Redis、queue 或消息总线时，审计不能重写协议，只允许替换写入通道：
-
-- 当前：直写数据库
-- 后续：DB + outbox / queue sink
-
-事件 schema 保持不变，这样前端查询和治理报表不会跟着炸。
+复用test_audit_http_resolution.py和test_transaction_boundaries.py验证定位、线程和取消收尾；不为已退役平台Worker增加job生命周期事件。

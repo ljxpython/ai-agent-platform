@@ -60,3 +60,9 @@ SDK、HTTP、SSE 细节在 adapters；业务 JWT 和模型授权仍属于 Platfo
 执行命令见[服务 README](../../README.md)。本地真实验收先使用隔离库；前端、容器整体验收和完整 Server 等价性按工程计划另行推进。
 
 移动或删除包目录后，在干净工作树构建 wheel，核查产物不含已删除路径；本机旧 build/ 缓存可能被 setuptools 继续打入增量产物，源码导入通过不代表 wheel 正确。
+
+## 真实代码入口与交付
+
+同步CRUD参考[公告service](../../src/platform_api/modules/announcements/service.py)与[router](../../src/platform_api/modules/announcements/router.py)；异步远端刷新参考[catalog service](../../src/platform_api/modules/runtime_catalog/application/service.py)。示例中的load_config只是说明事务边界，不是应复制的新抽象。
+
+新增功能提交前说明接口/权限/审计/持久化变化，执行相关测试并同步活文档；跨服务影响在工程目录记录真实证据与前端交接。无需另建模块交付或发布模板。包应可冷启动导入、正常收集测试；不把HTTPException作为业务语言，使用core.errors统一错误。

@@ -126,7 +126,7 @@ showcase_demo 是一个**展示完整平台能力的真实示例**，不是fake 
 即使没有配置模型，也可以验证工具权限问题已解决：
 
 ```bash
-cd /Users/lijiaxin/PyCharmMiscProject/ai-agent-platform
+# 在 ai-agent-platform 仓库根目录执行
 
 # 1. 在Web界面创建新的showcase_demo对话
 # 2. 发送测试消息
@@ -167,7 +167,7 @@ bash scripts/local-stack.sh logs runtime-worker 2>&1 | grep "showcase_demo" | gr
 
 所有文档都在项目根目录：
 ```
-/Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/
+ai-agent-platform/
 ├── VERIFICATION_REPORT.md           # 详细技术报告
 ├── NEXT_STEPS.md                   # 操作指南
 ├── FIXES_SUMMARY.md                # 早期修复总结

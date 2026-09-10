@@ -67,7 +67,7 @@
 
 完整测试脚本位于：
 ```
-/Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/test_showcase_demo_e2e.py
+test_showcase_demo_e2e.py
 ```
 
 运行命令：

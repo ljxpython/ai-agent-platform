@@ -1,0 +1,19 @@
+{
+  "status": "passed",
+  "active_documents": 10,
+  "archived_files": 28,
+  "local_links": 123,
+  "example_config_fields": 24,
+  "settings_fields": 40,
+  "business_tables": 20,
+  "public_gateway_routes": 20,
+  "registered_permissions": 29,
+  "gateway_tests": 30,
+  "transaction_tests": 3,
+  "scoped_document_check": "passed",
+  "global_document_check": "passed after user-authorized correction of 24 personal paths in 13 files",
+  "compileall": "passed",
+  "cli_help": "both passed",
+  "app_lifespan_probes": "passed",
+  "isolated_sqlite_migration": "20260910_0001 passed"
+}

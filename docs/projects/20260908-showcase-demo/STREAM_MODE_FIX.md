@@ -218,7 +218,7 @@ React UI 渲染流式内容
    - 在 `create_thread_run` 中设置默认值
 
 ### 参考文档
-- `/Users/lijiaxin/PyCharmMiscProject/research/open-swe/docs/open-swe-learning/10-langgraph-sdk-command-and-sse.md`
+- `<open-swe-checkout>/docs/open-swe-learning/10-langgraph-sdk-command-and-sse.md`
 - open-swe 源码：`agent/dashboard/thread_api.py`
 
 ## 总结

@@ -52,7 +52,7 @@
 - [x] 修改 `apps/platform-api/tests/test_graph_parameter_schema_provider.py`
   - 补齐最终 contract 的 schema 断言
   - 保证 `context` 中出现业务字段，`configurable` 中只出现平台 / 私有字段
-- [x] 修改 `apps/platform-api/docs/decisions/chat-use-stream-contract.md`
+- [x] 修改 `apps/platform-api/docs/archive/pre-refactor/decisions/chat-use-stream-contract.md`
   - 把最终 runtime contract 口径写成正式标准
 
 ### 2.3 验收
@@ -131,7 +131,7 @@
   - 补齐 client 收平后的 base url / auth fetch 回归断言
 - [x] 修改 `apps/platform-web/docs/chat-langchain-vue-migration-blueprint.md`
   - 把 chat 提交范式更新为最终 runtime contract
-- [x] 修改 `apps/platform-api/docs/delivery/platform-web-capability-coverage.md`
+- [x] 修改 `apps/platform-api/docs/archive/pre-refactor/delivery/platform-web-capability-coverage.md`
   - 补记 runtime contract 收口后的正式能力对账
 
 ### 4.3 验收

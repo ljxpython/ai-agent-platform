@@ -8,10 +8,14 @@ Platform API 管理身份、IAM、项目、Agent、模型连接、策略、公�
 GraphHarbor 持有 Thread、Run、Checkpoint、Interrupt 的执行事实；Runtime 服务定义图、模型与工具装配。
 平台不运行图，不保存运行状态镜像，不提供 Operations/队列/Worker，也不接入知识库或测试用例产品业务。
 
-```text
-platform-web / SDK → platform-api → GraphHarbor API → Runtime graphs / Worker
-                         ↓                     ↓
-                    Platform DB           Runtime DB / Redis
+```mermaid
+flowchart LR
+    Client[浏览器 / SDK] --> Platform[Platform API]
+    Platform --> PDB[(Platform DB)]
+    Platform --> Server[GraphHarbor API]
+    Server --> Runtime[Runtime 图 / Worker]
+    Server --> RDB[(Runtime DB / Redis)]
+    Runtime --> RDB
 ```
 
 平台使用独立数据库、20 表空库 Alembic 基线；不迁移旧数据。模型连接以 UUID 引用，Agent 的执行键是 graph_id。

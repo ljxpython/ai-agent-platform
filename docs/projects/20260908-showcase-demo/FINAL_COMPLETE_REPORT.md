@@ -265,7 +265,7 @@ open http://127.0.0.1:3000
 ### 2. Playwright自动化测试
 
 ```bash
-cd /Users/lijiaxin/PyCharmMiscProject/ai-agent-platform
+# 在 ai-agent-platform 仓库根目录执行
 python3 test_showcase_demo_e2e.py
 ```
 
@@ -332,7 +332,7 @@ debug_agent_comparison.py           # Agent对比调试脚本
 
 ### 参考资料
 ```
-/Users/lijiaxin/PyCharmMiscProject/research/open-swe/
+<open-swe-checkout>/
 └── docs/open-swe-learning/10-langgraph-sdk-command-and-sse.md
 ```
 

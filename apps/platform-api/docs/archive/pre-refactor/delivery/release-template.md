@@ -1,5 +1,7 @@
 # Platform API Release Template
 
+> Status: Archived. 2026-09-10被当前文档替代，仅保留历史；替代入口见[归档索引](../../README.md)。
+
 ## 版本信息
 
 - 版本号：

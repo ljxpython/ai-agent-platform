@@ -15,9 +15,9 @@
 - **现象**：
   新项目进入 Agent 页面点击【同步后端 Agent】时，仅能同步出预先存在 Assistant 实例的 2 个图谱，未在当前项目实例化过的 `showcase_demo` 无法被发现，并在数据库 `runtime_catalog_graphs` 中被误杀标记为 `is_deleted = 1`。
 - **源码根因**：
-  1. **数据模型越权**：[`langgraph_runtime_pg/models.py:47-48`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/.venv/lib/python3.13/site-packages/langgraph_runtime_pg/models.py#L47-L48) 在底层执行引擎的数据表 `AssistantRow` 中强行耦合了上层控制面的 `tenant_id` 和 `project_id`。
-  2. **查询无差别过滤**：[`langhost/core_api.py:96-102`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/.venv/lib/python3.13/site-packages/langhost/core_api.py#L96-L102) 的 `_scope()` 函数对所有查询强制添加 `WHERE tenant_id = principal.tenant_id AND project_id = principal.project_id`。
-  3. **能力接口缺失**：GraphHarbor 底层没有暴露查看全局图谱的 `GET /graphs` 端点，而是让上层调用 `/assistants/search`；而 [`langhost/core_api.py:217-226`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/.venv/lib/python3.13/site-packages/langhost/core_api.py#L217-L226) 将 `/assistants/search` 强行套上了 `_scope()`。
+  1. **数据模型越权**：`langgraph_runtime_pg/models.py:47-48`（当时版本源码位置，历史引用） 在底层执行引擎的数据表 `AssistantRow` 中强行耦合了上层控制面的 `tenant_id` 和 `project_id`。
+  2. **查询无差别过滤**：`langhost/core_api.py:96-102`（当时版本源码位置，历史引用） 的 `_scope()` 函数对所有查询强制添加 `WHERE tenant_id = principal.tenant_id AND project_id = principal.project_id`。
+  3. **能力接口缺失**：GraphHarbor 底层没有暴露查看全局图谱的 `GET /graphs` 端点，而是让上层调用 `/assistants/search`；而 `langhost/core_api.py:217-226`（当时版本源码位置，历史引用） 将 `/assistants/search` 强行套上了 `_scope()`。
 - **业务死锁悖论**：
   全新项目无 Assistant 实例 -> 上游 `/assistants/search` 返回空 -> `RuntimeCatalogService.refresh_graphs` 执行 `mark_missing_graphs_deleted` 误删图谱 -> 控制面认为 Runtime 无可用图谱 -> 前端无法新建/选择 Agent。
 
@@ -78,7 +78,7 @@ flowchart TD
 1. **服务入口**：
    在 `apps/runtime-service/langgraph.json` 中已配置 `"http": {"app": "./src/runtime_service/webapp.py:app"}`，LangHost 启动时会自动将该 FastAPI 应用通过 `Mount("/", app=custom_app)` 挂载到根路径。
 2. **端点定义**：
-   在 [`apps/runtime-service/src/runtime_service/webapp.py`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/webapp.py) 中注册：
+   在 [`apps/runtime-service/src/runtime_service/webapp.py`](../../apps/runtime-service/src/runtime_service/webapp.py) 中注册：
    ```http
    GET /internal/capabilities/graphs
    ```
@@ -108,7 +108,7 @@ flowchart TD
 
 ### 3.2 决策二：Platform API 彻底剔除本地文件扫描
 1. **清理代码**：
-   彻底删除 [`RuntimeCatalogService._load_static_graph_configs()`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/app/modules/runtime_catalog/application/service.py#L566-L604) 中所有依赖 `Path.parents` 和磁盘扫描的本地逻辑。
+   彻底删除 `RuntimeCatalogService._load_static_graph_configs()`（当时版本源码位置，历史引用） 中所有依赖 `Path.parents` 和磁盘扫描的本地逻辑。
 2. **更新契约**：
    `RuntimeCatalogService.refresh_graphs` 改为向 upstream 发送标准的微服务 HTTP 请求：
    ```python

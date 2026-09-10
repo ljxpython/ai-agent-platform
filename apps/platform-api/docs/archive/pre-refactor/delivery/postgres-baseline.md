@@ -1,5 +1,7 @@
 # Platform API PostgreSQL 基线
 
+> Status: Archived. 2026-09-10被当前文档替代，仅保留历史；替代入口见[归档索引](../../README.md)。
+
 这份文档把 `platform-api` 的 PostgreSQL 开发基线定死，避免后面一边写模块一边乱长 schema。
 
 ## 1. 当前口径

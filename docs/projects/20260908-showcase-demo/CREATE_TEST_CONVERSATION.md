@@ -14,7 +14,7 @@ http://127.0.0.1:3000
 ## 4. 立即检查日志
 在终端运行：
 ```bash
-cd /Users/lijiaxin/PyCharmMiscProject/ai-agent-platform
+# 在 ai-agent-platform 仓库根目录执行
 bash scripts/local-stack.sh logs runtime-worker 2>&1 | grep -A 100 "showcase_demo" | tail -150
 ```
 

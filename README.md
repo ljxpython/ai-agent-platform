@@ -97,7 +97,7 @@
 - `apps/platform-web/docs/control-plane-page-standard.md`
 - `apps/platform-api/docs/README.md`
 - `apps/platform-api/docs/handbook/project-handbook.md`
-- `apps/platform-api/docs/delivery/change-delivery-checklist.md`
+- [Platform API开发规范](apps/platform-api/docs/handbook/development-playbook.md)
 
 补充说明：上面列出的页面是当前正式前端范围中的核心入口，以 `apps/platform-web/src/router/routes.ts` 为代码事实源。
 

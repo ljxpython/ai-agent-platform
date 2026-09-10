@@ -1,5 +1,7 @@
 # Platform API Runbook
 
+> Status: Archived. 2026-09-10被当前文档替代，仅保留历史；替代入口见[归档索引](../../README.md)。
+
 这份 runbook 先覆盖当前最常见的故障排查路径，目标是让值班和联调时别再一脸懵逼。
 
 ## 1. 环境基线

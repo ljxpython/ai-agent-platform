@@ -121,7 +121,7 @@ async def get_agent(_config: RunnableConfig) -> Pregel:
 
 **本地测试验证**：
 ```bash
-$ cd /Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service
+$ cd "apps/runtime-service"  # 从仓库根目录执行
 $ source .venv/bin/activate
 $ cd ../..
 $ python test_showcase_demo.py

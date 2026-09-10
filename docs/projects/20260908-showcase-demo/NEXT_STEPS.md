@@ -49,7 +49,7 @@
 即使没有配置模型，也可以通过日志确认工具权限问题已解决：
 
 ```bash
-cd /Users/lijiaxin/PyCharmMiscProject/ai-agent-platform
+# 在 ai-agent-platform 仓库根目录执行
 
 # 创建新的showcase_demo对话并发送消息后，检查日志
 bash scripts/local-stack.sh logs runtime-worker 2>&1 | grep "showcase_demo" | tail -20
@@ -65,7 +65,7 @@ bash scripts/local-stack.sh logs runtime-worker 2>&1 | grep "showcase_demo" | ta
 运行本地测试脚本：
 
 ```bash
-cd /Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service
+cd "apps/runtime-service"  # 从仓库根目录执行
 source .venv/bin/activate
 cd ../..
 python test_showcase_demo.py
@@ -105,7 +105,7 @@ bash scripts/local-stack.sh restart runtime-worker
 ## 快速验证命令
 
 ```bash
-cd /Users/lijiaxin/PyCharmMiscProject/ai-agent-platform
+# 在 ai-agent-platform 仓库根目录执行
 
 # 1. 检查服务状态
 bash scripts/local-stack.sh status

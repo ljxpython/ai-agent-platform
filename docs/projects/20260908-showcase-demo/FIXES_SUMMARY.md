@@ -122,7 +122,7 @@ grep -A 5 "if not rows:" apps/platform-api/app/modules/runtime_catalog/applicati
 
 ### 2. 重启服务
 ```bash
-cd /Users/lijiaxin/PyCharmMiscProject/ai-agent-platform
+# 在 ai-agent-platform 仓库根目录执行
 bash scripts/local-stack.sh restart runtime-worker
 ```
 

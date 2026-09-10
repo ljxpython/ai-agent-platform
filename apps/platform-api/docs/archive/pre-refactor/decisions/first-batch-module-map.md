@@ -1,5 +1,7 @@
 # Platform API 首批模块迁移地图
 
+> Status: Archived. 2026-09-10被当前文档替代，仅保留历史；替代入口见[归档索引](../../README.md)。
+
 这份文档解决一个很实际的问题：
 
 > 旧 `platform-api` 里第一批最该迁的控制面能力，到 `platform-api` 里分别落到哪里，顺序怎么排。

@@ -1,6 +1,6 @@
 # Platform API 使用手册
 
-2026-09-10 更新。安装、启动及模块清单见[服务 README](../../README.md)，代码职责见[架构说明](architecture.md)，新增功能遵循[开发规范](development-playbook.md)。
+2026-09-10 更新。安装与启动见[服务 README](../../README.md)，代码职责见[架构说明](architecture.md)，新增功能遵循[开发规范](development-playbook.md)。
 
 ## 平台负责什么
 
@@ -27,7 +27,7 @@ Operations、平台 Worker/队列、知识库与测试用例产品已退役。�
 
 浏览器经 /api/langgraph 访问 Runtime，携带当前平台认证和 x-project-id。
 Agent CRUD 使用平台记录 UUID；执行 assistant_id 使用 graph_id。换图新建 Agent，不对上游 Assistant 做同步。
-模型选项使用配置记录 UUID，同名模型可有不同地址和密钥；只展示 credential_configured，不读取或保存 API Key。
+模型选项使用配置记录 UUID，同名模型可有不同地址和密钥；公开响应只展示 credential_configured，不回显API Key；平台将密钥加密保存。
 
 发送新动作生成 Idempotency-Key，网络重试复用原 key 和 payload；409 时核查执行状态，不自动换 key 重发。
 审批从 Thread state 读取当前 interrupt ID，使用标准 command.resume 映射或 Protocol input.respond；不夹带 input/config/context。
@@ -40,3 +40,7 @@ Agent CRUD 使用平台记录 UUID；执行 assistant_id 使用 graph_id。换�
 
 [最新工程进度](../../../../docs/projects/20260910-platform-api-refactor/README.md) · [前端影响与调整](../../../../docs/projects/20260910-platform-api-refactor/05-frontend-handoff.md)。
 前端适配与浏览器验收后置；历史文档中的前端完成记录不能替代新契约验收。
+
+## 新项目接入顺序
+
+登录取得access token，选择项目并查询当前access；有目录权限的主体刷新Graph/Tool，配置模型连接，再创建项目Agent。最后按[网关标准](../standards/runtime-gateway-interface-standard.md)创建Thread/Run。模型选择使用记录UUID；Agent默认context只允许远端schema与平台白名单交集。具体参数以API schema为准。

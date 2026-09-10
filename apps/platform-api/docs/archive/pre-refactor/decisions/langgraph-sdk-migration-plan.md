@@ -1,5 +1,7 @@
 # LangGraph SDK 迁移评估与执行清单
 
+> Status: Archived. 2026-09-10被当前文档替代，仅保留历史；替代入口见[归档索引](../../README.md)。
+
 这份文档只回答一个问题：
 
 > `apps/platform-api` 里的 `runtime_gateway + assistants adapter`，要不要从“自写 HTTP adapter”切回“官方 Python SDK adapter”？

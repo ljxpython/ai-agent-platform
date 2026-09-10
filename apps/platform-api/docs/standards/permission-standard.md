@@ -1,165 +1,35 @@
-# Platform API 权限标准
+# 权限标准
 
-这份文档把 `platform-api` 的权限模型钉死，后面谁再把“项目 admin 当全局 admin”这种骚操作写回来，谁就该先回来看这份文档。
+权限来源为可信[ActorContext](../../src/platform_api/core/context/models.py)与[IamPolicyEngine](../../src/platform_api/modules/iam/application/policies.py)。认证中间件加载身份，请求体里的user_id/project_id不能作为授权证明。
 
-## 1. 权限目标
+## 角色与边界
 
-权限系统必须同时满足 4 个目标：
+平台角色：`platform_super_admin`、`platform_operator`、`platform_viewer`。项目角色：`project_admin`、`project_editor`、`project_executor`；数据库存admin/editor/executor，通过roles.py转换。
 
-- 平台级和项目级权限严格分离
-- 权限判定可测试、可复用、可审计
-- API handler 不直接堆硬编码角色判断
-- 后续接入组织、SSO、service account 时不用推翻重来
+| 项目权限 | admin | editor | executor |
+| --- | --- | --- | --- |
+| 成员读取、公告读取、Agent读取、Runtime读写 | 是 | 是 | 是 |
+| 审计读取、公告写入、Agent写入 | 是 | 是 | 否 |
+| 成员写入 | 是 | 否 | 否 |
 
-## 2. 资源分层
+平台权限以PLATFORM_PERMISSION_MAP为准：super_admin拥有登记的平台权限；operator执行允许的用户资料/状态、目录刷新、公告、配置、服务账号等操作；viewer读取允许的平台资源。角色管理、凭据重置、项目创建/修改/接管、服务账号项目授权由显式权限控制，不能概括成operator能管理所有资源。
 
-### 2.1 平台级资源
+项目权限独立判定。平台super_admin也必须拥有项目角色才能访问项目内容；接管是显式治理操作，不是网关隐式绕过。新增权限先登记PermissionCode及映射，未注册权限默认拒绝并返回内部错误。
 
-典型资源：
+## 请求流程
 
-- 用户
-- 全局审计
-- 平台配置
-- 全局 catalog refresh
-- 运维类 operation
+1. 验证平台用户token或服务账号token，加载当前身份、状态和角色。
+2. 项目请求解析 `x-project-id`；路径携带项目的业务接口按各自契约解析。
+3. service调用policy engine，按钮显隐不能代替授权。
+4. 网关额外检查Thread项目归属。新启动/resume检查当前Agent、Graph、模型和工具授权，历史Thread不能绕过禁用与撤权。
+5. Runtime委托按主体、项目、operation和必要执行上下文限定；业务授权属于Platform/Runtime，GraphHarbor保持通用。
 
-这类资源只能由平台级角色控制。
+服务账号默认通过 `x-platform-api-key` 接入；账号状态、令牌状态/过期与项目grant均参与身份加载。它不是用户JWT，平台角色不能替代项目grant，密钥不得放query string。
 
-### 2.2 项目级资源
+## 命名与验证
 
-典型资源：
+产品称Agent，权限枚举仍为 `project.assistant.read/write`，不要自行增加第二组权限。网关使用 `project.runtime.read/write`。
 
-- project
-- project member
-- Agent project policy（历史权限代码中的 `assistant` 名称仅作兼容）
-- project audit
-- runtime gateway project scope
+401为未认证，403为权限不足，缺项目scope为400。资源不存在和生命周期错误按用例处理，不能将所有404等同于越权。
 
-这类资源只能由项目级角色控制。
-
-### 2.3 铁律
-
-- 项目级角色永远不能隐式提升成平台级角色
-- 平台角色也不能跳过项目归属校验直接操作项目资源
-- handler 不允许自己拼 `if role == "admin"` 这种散装逻辑
-
-## 3. Actor 模型
-
-所有权限判定统一基于 `ActorContext`：
-
-- `user_id`
-- `subject`
-- `platform_roles`
-- 当前请求项目对应的 `project_roles`
-
-来源规则：
-
-- 身份信息由 `identity` 模块解析
-- 项目归属由 `projects` 模块按当前项目解析，不加载用户全部项目关系
-- 服务账号的项目角色来自显式 `service_account_project_grants`
-- policy engine 只消费 `ActorContext`，不依赖 FastAPI `Request`
-
-当前部署是单租户：租户固定为服务端默认租户 `__default`，客户端的
-`x-tenant-id` 不得影响授权、过滤、转发或审计归属。
-
-## 4. 默认角色基线
-
-### 4.1 平台角色
-
-- `platform_super_admin`
-- `platform_operator`
-- `platform_viewer`
-
-### 4.2 项目角色
-
-- `project_admin`
-- `project_editor`
-- `project_executor`
-
-## 5. 权限编码规范
-
-权限码统一使用：
-
-`{scope}.{resource}.{verb}`
-
-示例：
-
-- `platform.user.read`
-- `platform.user.create`
-- `platform.user.profile.write`
-- `platform.user.status.write`
-- `platform.user.credential.reset`
-- `platform.user.role.write`
-- `platform.project.read`
-- `platform.project.create`
-- `platform.project.write`
-- `platform.project.takeover`
-- `platform.service_account.grant.write`
-- `platform.audit.read`
-- `platform.operation.read`
-- `platform.operation.write`
-- `platform.config.read`
-- `platform.catalog.refresh`
-- `project.member.read`
-- `project.member.write`
-- `project.operation.read`
-- `project.operation.write`
-- `project.runtime.read`
-- `project.runtime.write`
-- `project.assistant.read`
-
-禁止直接拿角色字符串作为“权限”。
-
-## 6. 判定流程
-
-统一流程：
-
-1. 先确认 actor 是否已认证
-2. 判断权限码属于平台级还是项目级
-3. 如果是项目级，必须先拿到当前 `project_id`
-4. 用 policy engine 给出 allow/deny
-5. deny 时抛显式错误码，并落审计
-
-## 6.1 平台项目治理与项目内容
-
-- 超级管理员可以查看全局项目元数据、创建、归档、恢复、删除项目和恢复管理员。
-- 超级管理员不自动获得项目知识库、助手、测试用例或 runtime 内容权限。
-- 接管项目必须调用独立接口并填写原因；成功后建立显式 `project_admin` 成员关系。
-- 项目归档后所有项目内容权限和服务账号 grant 暂停生效，恢复后重新按原成员/grant 判定。
-- 服务账号只有在当前项目存在活动 grant 时才获得对应项目角色，平台角色不能替代 grant。
-
-## 7. 代码落点
-
-当前统一落点：
-
-- `src/platform_api/modules/iam/domain/roles.py`
-- `src/platform_api/modules/iam/application/policies.py`
-
-要求：
-
-- 角色枚举在 `domain`
-- 权限码与判定策略在 `application`
-- handler 只调用 `policy.require(...)`
-
-## 8. 测试矩阵
-
-权限测试至少覆盖：
-
-- 未登录访问平台接口
-- 项目 admin 访问平台用户管理
-- 平台 operator 访问项目成员写接口
-- project_editor 访问项目写接口
-- project_executor 访问只读项目接口
-- 缺 `project_id` 时访问项目权限接口
-
-## 9. 未来扩展口径
-
-后面即使接入这些能力，也不能改坏当前模型：
-
-- tenant / organization scope
-- service account
-- API key
-- OIDC / SSO claim mapping
-- policy cache
-
-允许扩展 scope，但不允许把 scope 混成一锅。
+[测试目录](../../tests/)中的test_security_boundaries.py、test_iam_project_governance.py、test_service_account_project_grants.py、test_runtime_gateway_http_matrix.py与test_run_requests.py覆盖关键边界。新增接口检查未登录、角色不足、跨项目及当前撤权。当前权限枚举没有Operations权限。

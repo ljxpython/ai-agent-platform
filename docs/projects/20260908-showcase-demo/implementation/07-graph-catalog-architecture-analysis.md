@@ -2,7 +2,7 @@
 
 - **日期**：2026-09-09
 - **阶段**：验收联调期发现的架构缺陷
-- **关联 ADR**：[`docs/decisions/20260909-runtime-graph-discovery-and-isolation-architecture.md`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/decisions/20260909-runtime-graph-discovery-and-isolation-architecture.md)
+- **关联 ADR**：[`docs/decisions/20260909-runtime-graph-discovery-and-isolation-architecture.md`](../../../decisions/20260909-runtime-graph-discovery-and-isolation-architecture.md)
 
 ---
 
@@ -25,7 +25,7 @@
 ## 2. 核心架构裁决
 
 针对上述两项缺陷，已建立独立技术决策文档：
-详见架构决策文档：[`docs/decisions/20260909-runtime-graph-discovery-and-isolation-architecture.md`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/decisions/20260909-runtime-graph-discovery-and-isolation-architecture.md)
+详见架构决策文档：[`docs/decisions/20260909-runtime-graph-discovery-and-isolation-architecture.md`](../../../decisions/20260909-runtime-graph-discovery-and-isolation-architecture.md)
 
 **核心要点：**
 1. **职责复位**：

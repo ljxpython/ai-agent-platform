@@ -1,5 +1,7 @@
 # Platform API 能力对账与收口清单
 
+> Status: Archived. 2026-09-10被当前文档替代，仅保留历史；替代入口见[归档索引](../../README.md)。
+
 这份文档只解决一个问题：
 
 > `apps/platform-api` 已经做出来的后端能力，哪些已经被 `apps/platform-web` 正式消费，哪些只是弱接入，哪些应该暂时收成 internal，哪些前端抽象应该继续清理。

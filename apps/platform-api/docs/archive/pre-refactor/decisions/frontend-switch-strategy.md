@@ -1,5 +1,7 @@
 # platform-web 切换到 Platform API 的策略
 
+> Status: Archived. 2026-09-10被当前文档替代，仅保留历史；替代入口见[归档索引](../../README.md)。
+
 当前决定：
 
 - 不新建新的前端 app
