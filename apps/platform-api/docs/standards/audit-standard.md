@@ -1,5 +1,10 @@
 # Platform API 审计标准
 
+> 2026-09-10 边界修订：Operations、平台 Worker/队列与 artifacts 已退役。
+> 本文以下涉及 operation 强制接入、生命周期镜像、outbox/queue 预留的历史条款均不再适用。
+> 新功能遵循受控 HTTP、短事务及 Agent Server 唯一执行事实源；以本轮重构工程为准。
+
+
 这份文档定义 `platform-api` 的审计标准。它不是 access log 美化版，而是能真的回答“谁在什么时间对哪个资源做了什么”的那种审计。
 
 ## 1. 审计目标

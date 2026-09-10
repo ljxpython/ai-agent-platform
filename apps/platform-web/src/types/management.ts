@@ -22,8 +22,6 @@ export type PermissionCode =
   | 'platform.audit.read'
   | 'platform.catalog.refresh'
   | 'platform.announcement.write'
-  | 'platform.operation.read'
-  | 'platform.operation.write'
   | 'platform.config.read'
   | 'platform.config.write'
   | 'platform.service_account.read'
@@ -38,8 +36,6 @@ export type PermissionCode =
   | 'project.assistant.write'
   | 'project.runtime.read'
   | 'project.runtime.write'
-  | 'project.operation.read'
-  | 'project.operation.write'
 
 export type PaginatedResponse<T> = {
   items: T[]
@@ -99,9 +95,6 @@ export type ManagementAssistant = {
   description: string
   graph_id: string
   runtime_base_url: string
-  sync_status: string
-  last_sync_error?: string | null
-  last_synced_at?: string | null
   status: 'active' | 'disabled'
   config: Record<string, unknown>
   context: Record<string, unknown>
@@ -123,54 +116,6 @@ export type ManagementAuditRow = {
   status_code: number
   created_at: string
   user_id: string | null
-}
-
-export type OperationStatus =
-  | 'submitted'
-  | 'running'
-  | 'succeeded'
-  | 'failed'
-  | 'cancelled'
-
-export type OperationArchiveScope = 'exclude' | 'include' | 'only'
-
-export type ManagementOperation = {
-  id: string
-  kind: string
-  status: OperationStatus
-  requested_by: string
-  tenant_id?: string | null
-  project_id?: string | null
-  idempotency_key?: string | null
-  input_payload: Record<string, unknown>
-  result_payload: Record<string, unknown>
-  error_payload: Record<string, unknown>
-  metadata: Record<string, unknown>
-  cancel_requested_at?: string | null
-  started_at?: string | null
-  finished_at?: string | null
-  archived_at?: string | null
-  created_at: string
-  updated_at: string
-}
-
-export type ManagementOperationPage = PaginatedResponse<ManagementOperation>
-
-export type OperationBulkMutationResult = {
-  requested_count: number
-  updated_count: number
-  skipped_count: number
-  updated: ManagementOperation[]
-  skipped_ids: string[]
-}
-
-export type OperationArtifactCleanupResult = {
-  storage_backend: string
-  retention_hours: number
-  scanned_count: number
-  removed_count: number
-  missing_count: number
-  bytes_reclaimed: number
 }
 
 export type RuntimeGraphPolicyValue = {
@@ -243,24 +188,6 @@ export type PlatformConfigSnapshot = {
     auto_create: boolean
     migration_strategy: string
   }
-  operations: {
-    queue_backend: string
-    worker_poll_interval_seconds: number
-    worker_idle_sleep_seconds: number
-    worker_heartbeat_interval_seconds: number
-    worker_stale_after_seconds: number
-    artifact_storage_backend: string
-    artifact_retention_hours: number
-    artifact_cleanup_batch_size: number
-    queue_depth: number
-    running_count: number
-    succeeded_count: number
-    failed_count: number
-    cancelled_count: number
-    archived_count: number
-    avg_duration_ms: number
-    max_duration_ms: number
-  }
   auth: {
     required: boolean
     bootstrap_admin_enabled: boolean
@@ -286,49 +213,9 @@ export type PlatformConfigSnapshot = {
         max_duration_ms: number
       }>
     }
-    operations: {
-      queue_backend: string
-      worker_poll_interval_seconds: number
-      worker_idle_sleep_seconds: number
-      worker_heartbeat_interval_seconds: number
-      worker_stale_after_seconds: number
-      artifact_storage_backend: string
-      artifact_retention_hours: number
-      artifact_cleanup_batch_size: number
-      queue_depth: number
-      running_count: number
-      succeeded_count: number
-      failed_count: number
-      cancelled_count: number
-      archived_count: number
-      avg_duration_ms: number
-      max_duration_ms: number
-    }
-    workers: {
-      heartbeat_interval_seconds: number
-      stale_after_seconds: number
-      healthy_count: number
-      stale_count: number
-      items: Array<{
-        worker_id: string
-        queue_backend: string
-        hostname: string
-        pid: string
-        status: string
-        current_operation_id: string | null
-        last_error: string | null
-        last_started_at: string | null
-        last_completed_at: string | null
-        last_heartbeat_at: string | null
-        age_seconds: number
-        healthy: boolean
-        metadata: Record<string, unknown>
-      }>
-    }
     trace: {
       request_id_header: string
       trace_id_header: string
-      operation_chain_source: string
     }
   }
   security: {
@@ -364,10 +251,7 @@ export type PlatformConfigSnapshot = {
     bootstrap_admin_enabled: boolean
   }
   data_governance: {
-    artifact_retention_hours: number
-    artifact_cleanup_batch_size: number
     audit_storage: string
-    export_mode: string
     delete_mode: string
   }
   feature_flags: Record<string, boolean>

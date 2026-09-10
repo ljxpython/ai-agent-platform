@@ -1,0 +1,35 @@
+{
+  "status": "passed",
+  "thread_id": "29a6cfff-6cf7-45ca-9703-68c32181f544",
+  "runs": [
+    {
+      "run_id": "35219fee-7718-4d46-9a4c-322c3ea34fd1",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "4fc43195-114d-4952-b4c6-422722d27e10",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "be82a636-2b26-4e7b-b452-3e08e36acbf6",
+      "status": "success"
+    }
+  ],
+  "restored_interrupt_ids": [
+    "fe66ac9e05e1ad14cb1404ab6c271fee"
+  ],
+  "reviewed_tools": [
+    "edit_file",
+    "write_file",
+    "execute"
+  ],
+  "independent_execution": "test_total_sales_multiplies_quantity PASSED\nTotal sales: 43.50\n",
+  "exit_code": 0,
+  "api_worker_restarted": true,
+  "platform_restarted": true,
+  "project_id": "5cc659b4-899b-432e-a17a-e89994294ec1",
+  "idempotency_conflict_verified": true,
+  "agent_revocation_verified": true,
+  "cross_project_denied": true,
+  "sse_bytes": 131427
+}

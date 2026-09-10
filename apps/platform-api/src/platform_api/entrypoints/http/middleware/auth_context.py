@@ -3,16 +3,15 @@ from __future__ import annotations
 from dataclasses import replace
 
 from fastapi import FastAPI, Request
-from sqlalchemy.orm import Session, sessionmaker
+from starlette.concurrency import run_in_threadpool
 
 from platform_api.config import Settings
 from platform_api.core.context import replace_current_request_context
 from platform_api.core.context.models import ActorContext, PlatformRequestContext
 from platform_api.core.errors.payload import build_error_response
 from platform_api.core.security import InvalidTokenError, decode_access_token
-from platform_api.modules.identity.infra.sqlalchemy.repository import SqlAlchemyIdentityRepository
-from platform_api.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
-from platform_api.modules.service_accounts.application.service import ServiceAccountsService
+from platform_api.modules.identity.actors import load_user_actor as _load_actor
+from platform_api.modules.service_accounts.service import ServiceAccountsService
 
 
 def _extract_bearer_token(authorization: str | None) -> str | None:
@@ -25,50 +24,6 @@ def _extract_bearer_token(authorization: str | None) -> str | None:
     if scheme.lower() != "bearer" or not token:
         return None
     return token
-
-
-def _load_actor(
-    *,
-    session_factory: sessionmaker[Session] | None,
-    user_id: str,
-    project_id: str | None,
-) -> ActorContext | None:
-    if session_factory is None:
-        return None
-    session = session_factory()
-    try:
-        repository = SqlAlchemyIdentityRepository(session)
-        try:
-            from uuid import UUID
-
-            normalized_user_id = UUID(user_id)
-        except ValueError:
-            return None
-        user = repository.get_user_by_id(normalized_user_id)
-        if user is None or user.status != "active":
-            return None
-        project_roles: dict[str, tuple[str, ...]] = {}
-        if project_id:
-            try:
-                project_uuid = UUID(project_id)
-            except ValueError:
-                return None
-            role = SqlAlchemyProjectsRepository(session).get_project_member_role(
-                project_id=project_uuid,
-                user_id=normalized_user_id,
-            )
-            if role is not None:
-                project_roles[project_id] = (role.value,)
-        return ActorContext(
-            user_id=str(user.id),
-            subject=user.external_subject,
-            email=user.email,
-            platform_roles=user.platform_roles,
-            must_change_password=user.must_change_password,
-            project_roles=project_roles,
-        )
-    finally:
-        session.close()
 
 
 def _replace_context_actor(
@@ -111,13 +66,19 @@ def register_auth_context_middleware(app: FastAPI, settings: Settings) -> None:
     async def auth_context_middleware(request: Request, call_next):
         header_project_id = request.headers.get("x-project-id")
         context_project_id = request.state.platform_context.project.project_id
-        path_segments = [segment for segment in request.url.path.strip("/").split("/") if segment]
+        path_segments = [
+            segment for segment in request.url.path.strip("/").split("/") if segment
+        ]
         route_project_id = (
             path_segments[2]
             if len(path_segments) >= 3 and path_segments[:2] == ["api", "projects"]
             else None
         )
-        if header_project_id and route_project_id and header_project_id.strip() != route_project_id:
+        if (
+            header_project_id
+            and route_project_id
+            and header_project_id.strip() != route_project_id
+        ):
             return build_error_response(
                 status_code=400,
                 code="project_scope_mismatch",
@@ -133,7 +94,11 @@ def register_auth_context_middleware(app: FastAPI, settings: Settings) -> None:
             return await call_next(request)
 
         token = _extract_bearer_token(request.headers.get("authorization"))
-        api_key = _extract_api_key(request, settings) if settings.service_accounts_enabled else None
+        api_key = (
+            _extract_api_key(request, settings)
+            if settings.service_accounts_enabled
+            else None
+        )
         if not token and not api_key:
             if settings.auth_required:
                 return build_error_response(
@@ -177,7 +142,8 @@ def register_auth_context_middleware(app: FastAPI, settings: Settings) -> None:
                     headers={"WWW-Authenticate": "Bearer"},
                 )
             project_id = context_project_id
-            actor = _load_actor(
+            actor = await run_in_threadpool(
+                _load_actor,
                 session_factory=session_factory,
                 user_id=user_id,
                 project_id=project_id,
@@ -190,7 +156,10 @@ def register_auth_context_middleware(app: FastAPI, settings: Settings) -> None:
                     request_id=getattr(request.state, "request_id", None),
                 )
         elif api_key:
-            actor = ServiceAccountsService(session_factory=session_factory).authenticate_api_key(
+            actor = await run_in_threadpool(
+                ServiceAccountsService(
+                    session_factory=session_factory
+                ).authenticate_api_key,
                 api_key,
                 project_id=request.state.platform_context.project.project_id,
             )

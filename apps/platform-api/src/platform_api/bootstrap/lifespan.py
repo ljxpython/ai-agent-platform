@@ -8,7 +8,7 @@ from starlette.concurrency import run_in_threadpool
 
 from platform_api.config import Settings
 from platform_api.core.db import build_engine, build_session_factory, create_core_tables
-from platform_api.modules.identity.application.service import IdentityService
+from platform_api.modules.identity.service import IdentityService
 
 
 @asynccontextmanager

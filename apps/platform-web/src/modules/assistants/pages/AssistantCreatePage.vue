@@ -12,8 +12,7 @@ import StateBanner from '@/components/platform/StateBanner.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { createAssistant, getAssistantParameterSchema } from '@/services/assistants/assistants.service'
 import {
-  submitRuntimeRefreshOperation,
-  waitForRuntimeRefreshOperation,
+  refreshRuntimeGraphs,
   listRuntimeModels
 } from '@/services/runtime/runtime.service'
 import { listGraphsPage } from '@/services/graphs/graphs.service'
@@ -218,16 +217,7 @@ async function handleSyncGraphs() {
   notice.value = ''
 
   try {
-    const operation = await submitRuntimeRefreshOperation('graphs', projectId)
-    const finalOperation = await waitForRuntimeRefreshOperation(operation.id, {
-      projectId,
-      timeoutMs: 90000
-    })
-    if (finalOperation.status !== 'succeeded') {
-      throw new Error(
-        (finalOperation.error_payload?.message as string | undefined) || '图谱目录同步未成功完成'
-      )
-    }
+    await refreshRuntimeGraphs(projectId)
 
     await loadGraphs()
     notice.value = '后端图谱同步成功，已加载最新可用 Graph'
@@ -392,7 +382,7 @@ watch(
     <template v-else>
       <StateBanner
         v-if="error"
-          title="Agent 创建失败"
+        title="Agent 创建失败"
         :description="error"
         variant="danger"
       />
@@ -462,8 +452,8 @@ watch(
               </div>
               <BaseSelect
                 id="graph-id"
-                data-testid="graph-select"
                 v-model="graphId"
+                data-testid="graph-select"
                 :disabled="submitting || graphLoading || syncingGraphs || sortedGraphOptions.length === 0"
               >
                 <option

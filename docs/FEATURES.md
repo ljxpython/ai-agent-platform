@@ -19,7 +19,7 @@
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
 | 鉴权、项目治理、审计、catalog | 已完成 | `apps/platform-api/docs/handbook/project-handbook.md` |
-| 控制面边界与代码简化重构 | 进行中：知识库/测试用例退役、可安装 src 包和远端 Graph/schema 后端已落地；真实联调、单表 Agent、新数据库、网关与 Operations 退役待完成 | `docs/projects/20260910-platform-api-refactor/` |
+| 控制面边界与代码简化重构 | 本阶段后端 done：事务/目录、Docker Showcase、真实备份恢复、混合负载及 20 条公开接口矩阵已验收；前端、整套容器部署与完整 Server 等价性 deferred | `docs/projects/20260910-platform-api-refactor/` |
 | 运行时网关（受管模型/工具/prompt 契约下发） | 已完成 | `apps/platform-api/docs/standards/runtime-gateway-interface-standard.md` |
 | 中转站维度模型管理、对话高级模型选择器 | 已完成 | （提交 8056869） |
 
@@ -30,7 +30,7 @@
 | Graph 注册、模型参数解析、工具装配 | 已完成 | `apps/runtime-service/docs/standards/*.md` |
 | MCP 接入 | 已完成 | `apps/runtime-service/docs/knowledge/19-runtime-tool-capability-mcp-and-side-effect-design.md` |
 | Runtime 鉴权、middleware 层、reference agent | 已完成 | `apps/runtime-service/docs/knowledge/28-runtime-refactor-development-plan.md` |
-| showcase_demo — 教学智能体（工具调用/HITL/子智能体/Todo/Sandbox/Skills） | 部分完成：后端教学范围已验收；平台联调/前端验收暂缓至 platform-api 重构后 | `docs/projects/20260908-showcase-demo/` |
+| showcase_demo — 教学智能体（工具调用/HITL/子智能体/Todo/Sandbox/Skills） | 部分完成：post26 平台后端真实联调、审批重启恢复与报表 43.50 已验收；前端后置 | `docs/projects/20260908-showcase-demo/` |
 
 ## interaction-data-service
 
@@ -44,3 +44,7 @@
 |---|---|---|
 | 改动分级 + Skills 自动触发（plan-project/implement-feature/verify-change） | 已完成 | `AGENTS.md` |
 | 文档一致性检查（`scripts/check_docs.py`） | 已完成 | `scripts/check_docs.py` |
+
+- Platform API：Agent/Profile ORM 已合并，空库静态基线已通过 SQLite/PostgreSQL 往返验证；完整控制面重构仍为 partial，见 [实现记录](projects/20260910-platform-api-refactor/implementation/08-agent-single-table.md)。
+
+- Agent resync / Operations：后端全链路已退役，20 表及字段收缩和真实 Runtime 验收通过；当前状态见 [11](projects/20260910-platform-api-refactor/implementation/11-backend-closeout.md)。

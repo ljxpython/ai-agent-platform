@@ -4,10 +4,10 @@
 - **目标：** 面向 apps/runtime-service 重建简约平台层，提供治理与受控网关，遵循官方 Agent Server 协议并可独立部署。
 - **负责人：** @lijiaxin
 - **级别：** 治理改动，包含跨服务契约、业务退役与全新数据库设计。
-- **状态：** 进行中（partial）。知识库/测试用例退役、新 src 包与远端目录/schema 后端已实现；GraphHarbor 0.13.0.post24 已发布，Runtime 已更新并通过本地核心测试。真实 PostgreSQL/Redis 只完成隔离联调切片；单表 Agent、新数据库、网关、完整事务治理与 Operations 全面退役尚未完成。先验证本地链路，整体开发完成后再验收容器方案。
+- **状态：** 三项收尾已完成：20 条公开网关路由矩阵、真实 PostgreSQL 备份恢复、4 路登录/列表与 2 条长 SSE 混合负载均通过。详见 [13 三项验收收尾](implementation/13-backend-acceptance-closeout.md)。本阶段后端 done；前端/浏览器、整套容器部署、完整 Server 等价性 deferred。
 - **评审记录：** 2026-09-10，用户同意此前方案，并明确允许重新设计全部代码结构、表结构和数据库；无需兼容旧逻辑或迁移旧数据，知识库与测试用例业务删除，未来有需求再加入。本记录覆盖前版文档的旧业务保留与渐进迁移约束。
 - **GraphHarbor 边界：** 只实现 LangGraph Server 通用能力及其公开接口；完整等价性专项后置，不作为本轮平台重构的扩大范围。
-- **前置顺序：** 本工程验收后，再恢复 [Showcase Demo](../20260908-showcase-demo/README.md) 的平台联调及前端验收。该 Demo 已完成的 runtime-service 验收保持有效。
+- **前置顺序：** 本次已完成 [Showcase Demo](../20260908-showcase-demo/README.md) 平台后端主链路验收；前端问题后续统一处理，不再等待浏览器验收才记录后端结果。
 
 ## 阅读顺序
 
@@ -15,6 +15,8 @@
 2. [02 运行网关与授权契约](02-runtime-gateway.md)：Run 创建、幂等、审批、事件流和治理记录的边界。
 3. [03 Agent、目录与模型配置](03-agent-catalog.md)：去除宿主路径、上游 Assistant 写入和重复配置源。
 4. [04 服务结构、新数据库与验收](04-service-structure-and-migration.md)：目录范式、新表职责、删除范围、初始化与交付步骤。
+
+5. [05 前端影响与后续调整](05-frontend-handoff.md)：接口变化、页面影响、实际调整步骤和后续验收清单（deferred）。
 
 采用多专题模板：网关、目录、服务基础设施可以分别实施和验收，各篇自带任务与验证，不再维护重复的全局 plan/tasks/verification。
 
@@ -63,3 +65,13 @@ Platform 拥有业务授权与审计；GraphHarbor 拥有 Thread/Run/Interrupt/C
 - 隔离行为探针：重复提交、上游拒绝后的占位、模型引用脱敏、历史 Thread 绕过 Agent 存在性检查均复现。它们证明本地应用逻辑，不是生产漏洞利用或完整 HTTP 链路验收。
 - PostgreSQL 空库初始化及并发、真实跨服务、独立部署和浏览器回归均留待实现阶段。
 - 源码审查覆盖所有模块的文件/导入关系，深入检查网关、目录、授权、Operations 和共享基础设施；其他业务按代表调用链检查，不宣称逐行安全审计完成。
+
+2026-09-10 更新：Agent/Profile 已合并为单表，空库基线已建立，runtime-service 已实际安装 post24。C4/C5、最终数据库表收缩和网关仍未完成，详见 [08](implementation/08-agent-single-table.md)。
+
+2026-09-10：resync 全链路、旧产品 HTTP 别名与 Agent 同步字段已删除，禁用/删除 Agent 不再借历史 Thread 绕过执行授权。Operations 主链路仍在，详见 [09 实现及验证](implementation/09-resync-retirement.md)。
+
+## 最新后端验收结论（2026-09-10）
+
+三项收尾已完成：20 条公开网关路由矩阵、真实 PostgreSQL 备份恢复、4 路登录/列表与 2 条长 SSE 混合负载均通过。详见 [13 三项验收收尾](implementation/13-backend-acceptance-closeout.md)。本阶段后端 done；前端/浏览器、整套容器部署、完整 Server 等价性 deferred。
+
+事务规范化、目录压平与完整 Docker Showcase 结果见 [12](implementation/12-transactions-and-layout.md)。本轮定向回归 49 项通过；此前全量 141 passed / 3 skipped，不把跳过计为通过。全部逐轮记录保留，当前状态以 13 为准。

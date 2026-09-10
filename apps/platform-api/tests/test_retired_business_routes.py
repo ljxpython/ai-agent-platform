@@ -15,13 +15,21 @@ class RetiredBusinessRoutesTest(unittest.TestCase):
 
         paths = app.openapi()["paths"]
         self.assertTrue(paths)
+        self.assertNotIn("/api/runtime/models/refresh", paths)
         self.assertFalse(any("knowledge" in path or "testcase" in path for path in paths))
+        self.assertFalse(any(path.endswith("/resync") for path in paths))
         with TestClient(app) as client:
             for path in (
                 "/api/projects/project-1/knowledge",
                 "/api/projects/project-1/knowledge/documents",
                 "/api/testcase/cases",
+                "/api/operations",
+                "/api/operations/stream",
                 "/api/testcase/documents",
+                "/api/agents/agent-1/resync",
+                "/api/assistants/agent-1",
+                "/api/projects/project-1/assistants",
+                "/api/assistants/agent-1/resync",
             ):
                 with self.subTest(path=path):
                     self.assertEqual(client.get(path).status_code, 404)

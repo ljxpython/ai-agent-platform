@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import asc, desc, select
+from sqlalchemy import asc, select
 from sqlalchemy.orm import Session
 
 from platform_api.modules.runtime_catalog.application.ports import (
@@ -21,17 +21,11 @@ from platform_api.modules.runtime_catalog.infra.sqlalchemy.models import (
 def _to_runtime_model(record: RuntimeCatalogModelRecord) -> StoredRuntimeModel:
     return StoredRuntimeModel(
         id=record.id,
-        runtime_id=record.runtime_id,
-        model_key=record.model_key,
         display_name=record.display_name,
-        is_default_runtime=record.is_default_runtime,
-        sync_status=record.sync_status,
-        last_seen_at=record.last_seen_at,
-        last_synced_at=record.last_synced_at,
         provider=record.provider,
         base_url=record.base_url,
         protocol=record.protocol,
-        model_name=record.model_name or record.model_key,
+        model_name=record.model_name,
         api_key_ciphertext=record.api_key_ciphertext,
         enabled=record.enabled if record.enabled is not None else True,
     )
@@ -44,6 +38,7 @@ def _to_runtime_tool(record: RuntimeCatalogToolRecord) -> StoredRuntimeTool:
         tool_key=record.tool_key,
         name=record.name,
         source=record.source,
+        permissions=tuple(record.raw_payload_json.get('permissions', [])),
         description=record.description,
         sync_status=record.sync_status,
         last_seen_at=record.last_seen_at,
@@ -73,41 +68,20 @@ class SqlAlchemyRuntimeCatalogRepository:
         record = self.session.get(RuntimeCatalogModelRecord, model_id)
         return _to_runtime_model(record) if record is not None else None
 
-    def get_model_by_key(self, *, runtime_id: str, model_key: str) -> StoredRuntimeModel | None:
-        record = self.session.scalar(
-            select(RuntimeCatalogModelRecord).where(
-                RuntimeCatalogModelRecord.runtime_id == runtime_id,
-                RuntimeCatalogModelRecord.model_key == model_key,
-                RuntimeCatalogModelRecord.is_deleted.is_(False),
-            )
+    def create_configured_model(self, *, values: dict[str, Any]) -> StoredRuntimeModel:
+        record = RuntimeCatalogModelRecord(
+            display_name=values["display_name"], provider=values["provider"],
+            base_url=values["base_url"], protocol=values["protocol"],
+            model_name=values["model"], api_key_ciphertext=values["api_key_ciphertext"],
+            enabled=values["enabled"],
         )
-        return _to_runtime_model(record) if record is not None else None
-
-    def create_configured_model(self, *, runtime_id: str, values: dict[str, Any]) -> StoredRuntimeModel:
-        record = self.session.scalar(
-            select(RuntimeCatalogModelRecord).where(
-                RuntimeCatalogModelRecord.runtime_id == runtime_id,
-                RuntimeCatalogModelRecord.model_key == values["model"],
-            )
-        )
-        if record is None:
-            record = RuntimeCatalogModelRecord(runtime_id=runtime_id, model_key=values["model"])
-            self.session.add(record)
-        record.display_name = values["display_name"]
-        record.provider = values["provider"]
-        record.base_url = values["base_url"]
-        record.protocol = values["protocol"]
-        record.model_name = values["model"]
-        record.api_key_ciphertext = values["api_key_ciphertext"]
-        record.enabled = values["enabled"]
-        record.is_deleted = False
-        record.sync_status = "ready"
+        self.session.add(record)
         self.session.flush()
         return _to_runtime_model(record)
 
     def update_configured_model(self, model_id, *, values: dict[str, Any]) -> StoredRuntimeModel | None:
         record = self.session.get(RuntimeCatalogModelRecord, model_id)
-        if record is None or record.is_deleted:
+        if record is None:
             return None
         for key, value in values.items():
             setattr(record, key, value)
@@ -122,17 +96,9 @@ class SqlAlchemyRuntimeCatalogRepository:
         record = self.session.get(RuntimeCatalogGraphRecord, graph_id)
         return _to_runtime_graph(record) if record is not None else None
 
-    def list_models(self, *, runtime_id: str) -> list[StoredRuntimeModel]:
-        stmt = (
-            select(RuntimeCatalogModelRecord)
-            .where(
-                RuntimeCatalogModelRecord.runtime_id == runtime_id,
-                RuntimeCatalogModelRecord.is_deleted.is_(False),
-            )
-            .order_by(
-                desc(RuntimeCatalogModelRecord.is_default_runtime),
-                asc(RuntimeCatalogModelRecord.model_key),
-            )
+    def list_models(self) -> list[StoredRuntimeModel]:
+        stmt = select(RuntimeCatalogModelRecord).order_by(
+            asc(RuntimeCatalogModelRecord.display_name), asc(RuntimeCatalogModelRecord.id)
         )
         return [_to_runtime_model(item) for item in self.session.scalars(stmt).all()]
 
@@ -161,36 +127,6 @@ class SqlAlchemyRuntimeCatalogRepository:
         )
         return [_to_runtime_graph(item) for item in self.session.scalars(stmt).all()]
 
-    def upsert_model_items(
-        self,
-        *,
-        runtime_id: str,
-        items: list[dict[str, Any]],
-        synced_at: datetime,
-    ) -> None:
-        for item in items:
-            model_key = str(item.get("model_id") or "").strip()
-            if not model_key:
-                continue
-
-            stmt = select(RuntimeCatalogModelRecord).where(
-                RuntimeCatalogModelRecord.runtime_id == runtime_id,
-                RuntimeCatalogModelRecord.model_key == model_key,
-            )
-            record = self.session.scalar(stmt)
-            if record is None:
-                record = RuntimeCatalogModelRecord(runtime_id=runtime_id, model_key=model_key)
-                self.session.add(record)
-
-            record.display_name = str(item.get("display_name") or model_key)
-            record.is_default_runtime = bool(item.get("is_default"))
-            record.raw_payload_json = dict(item)
-            record.sync_status = "ready"
-            record.last_seen_at = synced_at
-            record.last_synced_at = synced_at
-            record.is_deleted = False
-
-        self.session.flush()
 
     def upsert_tool_items(
         self,
@@ -267,19 +203,6 @@ class SqlAlchemyRuntimeCatalogRepository:
 
         self.session.flush()
 
-    def mark_missing_models_deleted(
-        self,
-        *,
-        runtime_id: str,
-        active_keys: set[str],
-        synced_at: datetime,
-    ) -> None:
-        stmt = select(RuntimeCatalogModelRecord).where(RuntimeCatalogModelRecord.runtime_id == runtime_id)
-        for record in self.session.scalars(stmt).all():
-            if record.model_key not in active_keys:
-                record.is_deleted = True
-                record.last_synced_at = synced_at
-        self.session.flush()
 
     def mark_missing_tools_deleted(
         self,

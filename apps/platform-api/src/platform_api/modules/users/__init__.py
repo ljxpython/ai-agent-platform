@@ -1,5 +1,15 @@
-from platform_api.modules.users.application import CreateUserCommand, ListUsersQuery, UpdateUserCommand, UsersService
-from platform_api.modules.users.domain import UserItem, UserPage, UserProjectItem, UserProjectPage
+from platform_api.modules.users.contracts import (
+    CreateUserCommand,
+    ListUsersQuery,
+    UpdateUserCommand,
+)
+from platform_api.modules.users.service import UsersService
+from platform_api.modules.users.schemas import (
+    UserItem,
+    UserPage,
+    UserProjectItem,
+    UserProjectPage,
+)
 
 __all__ = [
     "CreateUserCommand",

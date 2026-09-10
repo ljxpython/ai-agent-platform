@@ -76,11 +76,11 @@ GraphHarbor post21 已有持久化 idempotency_key 字段，但源码存在不�
 
 ## 任务拆分
 
-- [ ] G1：将 A01–A05 转为针对预期正确行为的回归测试；覆盖所有公开 Runs/commands/读面。**文件：** `tests/test_durable_run_coordinator.py`、`test_runtime_gateway_event_redaction.py`、`test_runtime_gateway_runtime_contract.py`。
-- [ ] G2：实现新请求幂等、明确拒绝收尾、Agent 启停和 resume 授权。**范围：** 新 runtime_gateway/runtime_policies，用旧 service 仅作行为核对。
-- [ ] G3：统一真实网络调用、连接生命周期、短期委托签发和 SSE 过滤。**文件：** `adapters/langgraph/`、`runtime_gateway/presentation/http.py`、app bootstrap。
-- [ ] G4：完成上游原子幂等/并发与恢复合同测试，确认可移除的平台协调逻辑。**范围：** GraphHarbor 仅修通用协议缺口，Runtime 仅修受信接入，不混入平台业务。
-- [ ] G5：实现全新 run_requests 与请求审计，删除旧运行协调器、interrupt 镜像和终态回写；解除 Operations 依赖。**文件：** 新网关 models/repository、数据库初始化基线。
+- [x] G1：将 A01–A05 转为针对预期正确行为的回归测试；覆盖所有公开 Runs/commands/读面。**文件：** `tests/test_run_requests.py`、`test_runtime_gateway_event_redaction.py`、`test_runtime_gateway_runtime_contract.py`。
+- [x] G2：实现新请求幂等、明确拒绝收尾、Agent 启停和 resume 授权。**范围：** 新 runtime_gateway/runtime_policies，用旧 service 仅作行为核对。
+- [x] G3：统一真实网络调用、连接生命周期、短期委托签发和 SSE 过滤。**文件：** `adapters/langgraph/`、`runtime_gateway/presentation/http.py`、app bootstrap。
+- [x] G4：完成上游原子幂等/并发与恢复合同测试，确认可移除的平台协调逻辑。**范围：** GraphHarbor 仅修通用协议缺口，Runtime 仅修受信接入，不混入平台业务。
+- [x] G5：实现全新 run_requests 与请求审计，删除旧运行协调器、interrupt 镜像和终态回写；解除 Operations 依赖。**文件：** 新网关 models/repository、数据库初始化基线。
 - [ ] G6：删除无入口方法和重复包装，更新网关标准及前端受影响 service/composable。
 
 ## 验证要求与记录
@@ -93,13 +93,21 @@ GraphHarbor post21 已有持久化 idempotency_key 字段，但源码存在不�
 - [ ] 两个独立 interrupt ID 按 ID approve/reject；重复、过期、错误 Thread/项目的审批被拒绝。
 - [ ] 多个 Run 的原始 ID 与审批记录可追溯；刷新、断网重连、切换会话、cancel 后再次发送语义正确。
 - [ ] 所有公开 JSON/SSE/error 中不含 API Key、delegation 和 runtime_model_ref；错误不在 HTTP 200 后伪装成功。
-- [ ] 模型引用过期/排队/重启路径有真实链路证据；Mock 不能作为该项完成依据。
-- [ ] 当前 Python SDK、前端 SDK、GraphHarbor post21 的合同固定并通过；如升级须记录实际新版本和验证。
+- [x] 模型引用过期/排队/重启路径：post26 实际等待 62 秒并轮换凭据，三进程重启恢复通过，见 11。
+- [ ] 当前 Python SDK、前端 SDK、GraphHarbor post26 的合同固定；后端 SDK 已通过，前端 SDK/浏览器验收 deferred。
 
 ### 记录
 
-2026-09-10：已完成应用逻辑审查及隔离复现；实现与上述验收均未开始。现有全量测试结果见 01。
+G2/G3/G5 已实现并通过对应回归：幂等请求记录、标准审批统一授权、SSE 状态前置及连接释放均有测试。G4 真实延迟、轮换、取消及重启已通过；G1 全公开面矩阵已闭合，具体覆盖与真实证据见 [13 三项验收收尾](implementation/13-backend-acceptance-closeout.md)；G6 前端适配验收 deferred。不以单元测试替代真实恢复证据，也不承诺所有工具副作用 exactly-once。
 
 ## 状态
 
-总体方案已确认，实施待开始。G1–G6 未实施；旧运行记录无需迁移，新链路恢复保证仍是交付条件。
+本阶段后端 done（含 G1 矩阵），前端验收 deferred。模型/Agent 字段收缩、标准审批、SSE 前置失败、真实超 TTL 排队与凭据轮换、取消重发及三进程恢复均通过，见 [11 收尾记录](implementation/11-backend-closeout.md)。不包含前端/容器验收或完整 Server 等价性；前端调整见 [05](05-frontend-handoff.md)。下方为逐轮历史。
+
+### 最新验证要求与记录（2026-09-10）
+
+本次以 HTTP/SDK 驱动真实后端完成 Showcase；最终独立执行报表 43.50、退出码 0。PostgreSQL 空库升降升、20 表 metadata 一致及请求记录并发唯一约束通过。post25 的原始记录保留在 [10](implementation/10-operations-run-requests.md)，post26 最新计数与覆盖见 [11](implementation/11-backend-closeout.md)，避免多处维护不一致的测试数字。前端及容器部署均 deferred，不计为失败，也不计作已验收。
+
+### 三项最终收尾（2026-09-10）
+
+三项收尾已完成：20 条公开网关路由矩阵、真实 PostgreSQL 备份恢复、4 路登录/列表与 2 条长 SSE 混合负载均通过。详见 [13 三项验收收尾](implementation/13-backend-acceptance-closeout.md)。本阶段后端 done；前端/浏览器、整套容器部署、完整 Server 等价性 deferred。

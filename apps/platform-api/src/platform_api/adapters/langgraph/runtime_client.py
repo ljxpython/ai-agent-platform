@@ -5,7 +5,10 @@ from typing import Any
 
 import httpx
 
-from platform_api.adapters.langgraph.sdk_client import create_runtime_upstream_error
+from platform_api.adapters.langgraph.sdk_client import (
+    create_runtime_upstream_error,
+    raise_runtime_upstream_error,
+)
 from platform_api.core.errors import PlatformApiError, UpstreamServiceError
 
 
@@ -145,43 +148,36 @@ class LangGraphRuntimeClient:
         *,
         payload: Any = None,
         params: Mapping[str, Any] | None = None,
+        forwarded_headers: Mapping[str, str] | None = None,
     ) -> AsyncIterator[bytes]:
-        async def iterator() -> AsyncIterator[bytes]:
-            json_payload = (
-                dict(payload)
-                if isinstance(payload, Mapping)
-                else payload
+        client = httpx.AsyncClient(timeout=httpx.Timeout(None, connect=self._timeout_seconds))
+        response = None
+        try:
+            request = client.build_request(
+                method, self._url(path), json=dict(payload) if isinstance(payload, Mapping) else payload,
+                params=dict(params) if params is not None else None,
+                headers=self._headers(accept="text/event-stream", forwarded_headers=forwarded_headers),
             )
-            try:
-                async with httpx.AsyncClient(timeout=None) as client:
-                    async with client.stream(
-                        method=method,
-                        url=self._url(path),
-                        json=json_payload,
-                        params=dict(params) if params is not None else None,
-                        headers=self._headers(accept="text/event-stream"),
-                    ) as response:
-                        await self._raise_for_status(response)
-                        async for chunk in response.aiter_bytes():
-                            if chunk:
-                                yield chunk
-            except PlatformApiError:
-                raise
-            except httpx.TimeoutException as exc:
-                raise UpstreamServiceError(
-                    upstream="langgraph",
-                    status_code=504,
-                    code="langgraph_upstream_timeout",
-                    message="LangGraph upstream timed out",
-                ) from exc
-            except httpx.HTTPError as exc:
-                raise UpstreamServiceError(
-                    upstream="langgraph",
-                    status_code=502,
-                    code="langgraph_upstream_unavailable",
-                    message="LangGraph upstream is unavailable",
-                ) from exc
+            response = await client.send(request, stream=True)
+            if response.status_code >= 400:
+                await response.aread()
+            await self._raise_for_status(response)
+        except BaseException as exc:
+            if response is not None:
+                await response.aclose()
+            await client.aclose()
+            if isinstance(exc, httpx.HTTPError):
+                raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_stream_failed")
+            raise
 
+        async def iterator() -> AsyncIterator[bytes]:
+            try:
+                async for chunk in response.aiter_bytes():
+                    if chunk:
+                        yield chunk
+            finally:
+                await response.aclose()
+                await client.aclose()
         return iterator()
 
     async def require_json(

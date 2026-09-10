@@ -12,8 +12,7 @@ from sqlalchemy import select
 from platform_api.bootstrap.lifespan import lifespan
 from platform_api.config import Settings
 from platform_api.core.db import build_engine, build_session_factory, create_core_tables
-from platform_api.entrypoints.worker.main import main as run_worker
-from platform_api.modules.identity.infra.sqlalchemy.models import UserRecord
+from platform_api.modules.identity.models import UserRecord
 
 
 class ResourceLifecycleTest(unittest.IsolatedAsyncioTestCase):
@@ -77,24 +76,6 @@ class ResourceLifecycleTest(unittest.IsolatedAsyncioTestCase):
             finally:
                 engine.dispose()
 
-    async def test_worker_construction_failure_disposes_engine(self) -> None:
-        settings = Settings(
-            _env_file=None,
-            platform_db_enabled=True,
-            database_url="sqlite://",
-            platform_db_auto_create=False,
-        )
-        engine = Mock()
-        with (
-            patch("platform_api.entrypoints.worker.main.load_dotenv"),
-            patch("platform_api.entrypoints.worker.main.load_settings", return_value=settings),
-            patch("platform_api.entrypoints.worker.main.build_engine", return_value=engine),
-            patch("platform_api.entrypoints.worker.main.build_session_factory"),
-            patch("platform_api.entrypoints.worker.main.build_operation_worker", side_effect=RuntimeError("worker failed")),
-            self.assertRaisesRegex(RuntimeError, "worker failed"),
-        ):
-            await run_worker()
-        engine.dispose.assert_called_once_with()
 
 
 if __name__ == "__main__":

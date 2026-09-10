@@ -1,0 +1,52 @@
+{
+  "status": "passed",
+  "scope": "full Showcase",
+  "thread_id": "02c4e533-350b-462d-ba2c-40b193b9a6c7",
+  "runs": [
+    {
+      "run_id": "182c76bc-1935-4779-9ff8-c8d8fa6737cd",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "a6f3c30c-f679-4025-b1fe-91d9665dc71b",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "3a467634-d365-4135-9128-be9463c87170",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "6007865d-8876-40c5-9aeb-41c6298737e8",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "8cb0cb80-eb75-4831-9fcd-7a9b45adf9f1",
+      "status": "success"
+    }
+  ],
+  "restored_interrupt_ids": [
+    "eb83242be8345400f9213f6e2459b118"
+  ],
+  "reviewed_tools": [
+    "edit_file",
+    "write_file",
+    "execute",
+    "edit_file",
+    "execute"
+  ],
+  "independent_execution": "1 regression test executed\nTotal sales: 43.50\n",
+  "exit_code": 0,
+  "api_worker_restarted": true,
+  "platform_restarted": true,
+  "project_id": "14f33d7a-51b6-4563-b6a3-437db7417b89",
+  "idempotency_conflict_verified": true,
+  "agent_revocation_verified": true,
+  "cross_project_denied": true,
+  "sse_bytes": 97501,
+  "queued_beyond_model_reference_ttl": true,
+  "credential_rotated_before_worker_started": true,
+  "standard_resume_verified": true,
+  "pending_cancel_and_resend_verified": true,
+  "server_reject_concurrency_verified": true,
+  "regression_function_executed": true
+}

@@ -20,8 +20,7 @@ import StatusPill from '@/components/platform/StatusPill.vue'
 import type { ActionMenuItem, DataTableColumn } from '@/components/platform/data-table'
 import { listGraphsPage } from '@/services/graphs/graphs.service'
 import {
-  submitRuntimeRefreshOperation,
-  waitForRuntimeRefreshOperation
+  refreshRuntimeGraphs
 } from '@/services/runtime/runtime.service'
 import { useUiStore } from '@/stores/ui'
 import type { ManagementGraph } from '@/types/management'
@@ -186,18 +185,8 @@ async function handleRefreshCatalog() {
   notice.value = ''
 
   try {
-    const operation = await submitRuntimeRefreshOperation('graphs', projectId)
-    notice.value = `图谱目录刷新任务已提交，任务号 ${shortId(operation.id)}`
-    const finalOperation = await waitForRuntimeRefreshOperation(operation.id, {
-      projectId,
-      timeoutMs: 90000
-    })
-    if (finalOperation.status !== 'succeeded') {
-      throw new Error(
-        (finalOperation.error_payload?.message as string | undefined) || '图谱目录刷新未成功完成'
-      )
-    }
-    const count = Number(finalOperation.result_payload?.count || 0)
+    const refreshed = await refreshRuntimeGraphs(projectId)
+    const count = refreshed.count
     notice.value = `图谱目录已刷新，当前同步 ${count} 条记录`
     await loadGraphs()
   } catch (refreshError) {

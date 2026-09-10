@@ -23,8 +23,6 @@ class PermissionCode(StrEnum):
     PLATFORM_AUDIT_READ = "platform.audit.read"
     PLATFORM_CATALOG_REFRESH = "platform.catalog.refresh"
     PLATFORM_ANNOUNCEMENT_WRITE = "platform.announcement.write"
-    PLATFORM_OPERATION_READ = "platform.operation.read"
-    PLATFORM_OPERATION_WRITE = "platform.operation.write"
     PLATFORM_CONFIG_READ = "platform.config.read"
     PLATFORM_CONFIG_WRITE = "platform.config.write"
     PLATFORM_SERVICE_ACCOUNT_READ = "platform.service_account.read"
@@ -40,8 +38,6 @@ class PermissionCode(StrEnum):
     PROJECT_ASSISTANT_WRITE = "project.assistant.write"
     PROJECT_RUNTIME_READ = "project.runtime.read"
     PROJECT_RUNTIME_WRITE = "project.runtime.write"
-    PROJECT_OPERATION_READ = "project.operation.read"
-    PROJECT_OPERATION_WRITE = "project.operation.write"
 
 
 class PolicyReason(StrEnum):
@@ -88,12 +84,6 @@ PLATFORM_PERMISSION_MAP: dict[PermissionCode, frozenset[PlatformRole]] = {
     PermissionCode.PLATFORM_ANNOUNCEMENT_WRITE: frozenset(
         {PlatformRole.SUPER_ADMIN, PlatformRole.OPERATOR}
     ),
-    PermissionCode.PLATFORM_OPERATION_READ: frozenset(
-        {PlatformRole.SUPER_ADMIN, PlatformRole.OPERATOR, PlatformRole.VIEWER}
-    ),
-    PermissionCode.PLATFORM_OPERATION_WRITE: frozenset(
-        {PlatformRole.SUPER_ADMIN, PlatformRole.OPERATOR}
-    ),
     PermissionCode.PLATFORM_CONFIG_READ: frozenset(
         {PlatformRole.SUPER_ADMIN, PlatformRole.OPERATOR, PlatformRole.VIEWER}
     ),
@@ -136,12 +126,6 @@ PROJECT_PERMISSION_MAP: dict[PermissionCode, frozenset[ProjectRole]] = {
         {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
     ),
     PermissionCode.PROJECT_RUNTIME_WRITE: frozenset(
-        {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
-    ),
-    PermissionCode.PROJECT_OPERATION_READ: frozenset(
-        {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
-    ),
-    PermissionCode.PROJECT_OPERATION_WRITE: frozenset(
         {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
     ),
 }

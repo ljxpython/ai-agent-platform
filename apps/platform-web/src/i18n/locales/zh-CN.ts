@@ -46,7 +46,6 @@ export const zhCN = {
     threads: 'Threads',
     chat: 'Chat',
     controlPlane: '控制面',
-    operations: '操作中心',
     platformConfig: '平台配置',
     serviceAccounts: '服务账号',
     systemGovernance: '系统治理',

@@ -1,3 +1,5 @@
-from platform_api.modules.runtime_catalog.infra.sqlalchemy.repository import SqlAlchemyRuntimeCatalogRepository
+from platform_api.modules.runtime_catalog.infra.sqlalchemy.repository import (
+    SqlAlchemyRuntimeCatalogRepository,
+)
 
 __all__ = ["SqlAlchemyRuntimeCatalogRepository"]

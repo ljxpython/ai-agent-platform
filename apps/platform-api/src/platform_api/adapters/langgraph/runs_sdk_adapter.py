@@ -6,6 +6,7 @@ from typing import Any
 
 from fastapi.encoders import jsonable_encoder
 
+from platform_api.adapters.langgraph.runtime_client import LangGraphRuntimeClient
 from platform_api.adapters.langgraph.sdk_client import (
     get_langgraph_client,
     raise_runtime_upstream_error,
@@ -25,9 +26,9 @@ def _to_sse_chunk(event: Any) -> bytes:
             if event.endswith("\n\n"):
                 return event.encode("utf-8")
             if event.endswith("\n"):
-                return f"{event}\n".encode("utf-8")
-            return f"{event}\n\n".encode("utf-8")
-        return f"data: {event}\n\n".encode("utf-8")
+                return f"{event}\n".encode()
+            return f"{event}\n\n".encode()
+        return f"data: {event}\n\n".encode()
 
     if isinstance(event, (list, tuple)):
         if len(event) >= 2 and isinstance(event[0], str):
@@ -50,7 +51,7 @@ def _to_sse_chunk(event: Any) -> bytes:
         separators=(",", ":"),
         ensure_ascii=False,
     )
-    return f"data: {encoded}\n\n".encode("utf-8")
+    return f"data: {encoded}\n\n".encode()
 
 
 async def _sse_stream(events: Any) -> AsyncIterator[bytes]:
@@ -102,12 +103,6 @@ class LangGraphRunsSdkAdapter:
         "action",
     )
 
-    _BULK_CANCEL_FIELDS = (
-        "thread_id",
-        "run_ids",
-        "status",
-        "action",
-    )
 
     _LIST_FIELDS = (
         "limit",
@@ -116,61 +111,6 @@ class LangGraphRunsSdkAdapter:
         "select",
     )
 
-    _CRON_CREATE_FIELDS = (
-        "schedule",
-        "input",
-        "metadata",
-        "config",
-        "context",
-        "checkpoint_during",
-        "interrupt_before",
-        "interrupt_after",
-        "webhook",
-        "on_run_completed",
-        "multitask_strategy",
-        "end_time",
-        "enabled",
-        "timezone",
-        "stream_mode",
-        "stream_subgraphs",
-        "stream_resumable",
-        "durability",
-    )
-
-    _CRON_SEARCH_FIELDS = (
-        "assistant_id",
-        "thread_id",
-        "enabled",
-        "limit",
-        "offset",
-        "sort_by",
-        "sort_order",
-        "select",
-    )
-
-    _CRON_COUNT_FIELDS = (
-        "assistant_id",
-        "thread_id",
-    )
-
-    _CRON_UPDATE_FIELDS = (
-        "schedule",
-        "end_time",
-        "input",
-        "metadata",
-        "config",
-        "context",
-        "webhook",
-        "interrupt_before",
-        "interrupt_after",
-        "on_run_completed",
-        "enabled",
-        "timezone",
-        "stream_mode",
-        "stream_subgraphs",
-        "stream_resumable",
-        "durability",
-    )
 
     _JOIN_STREAM_FIELDS = (
         "cancel_on_disconnect",
@@ -186,6 +126,10 @@ class LangGraphRunsSdkAdapter:
         timeout_seconds: float | None = None,
         forwarded_headers: Mapping[str, str] | None = None,
     ) -> None:
+        self._http = LangGraphRuntimeClient(
+            base_url=base_url, api_key=api_key, timeout_seconds=timeout_seconds or 30,
+            forwarded_headers=forwarded_headers,
+        )
         self._client = get_langgraph_client(
             base_url=base_url,
             api_key=api_key,
@@ -198,20 +142,13 @@ class LangGraphRunsSdkAdapter:
         create_payload = {
             key: payload[key] for key in self._CREATE_FIELDS if key in payload
         }
+        if payload.get("idempotency_key"):
+            create_payload["headers"] = {"Idempotency-Key": payload["idempotency_key"]}
         try:
             return await self._client.runs.create(thread_id, assistant_id, **create_payload)
         except Exception as exc:
             raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
 
-    async def create_global(self, payload: dict[str, Any]) -> Any:
-        assistant_id = payload["assistant_id"]
-        create_payload = {
-            key: payload[key] for key in self._CREATE_FIELDS if key in payload
-        }
-        try:
-            return await self._client.runs.create(None, assistant_id, **create_payload)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
 
     async def stream(self, thread_id: str, payload: dict[str, Any]) -> AsyncIterator[bytes]:
         assistant_id = payload["assistant_id"]
@@ -224,16 +161,6 @@ class LangGraphRunsSdkAdapter:
             raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_stream_failed")
         return _sse_stream(event_iter)
 
-    async def stream_global(self, payload: dict[str, Any]) -> AsyncIterator[bytes]:
-        assistant_id = payload["assistant_id"]
-        stream_payload = {
-            key: payload[key] for key in self._STREAM_FIELDS if key in payload
-        }
-        try:
-            event_iter = self._client.runs.stream(None, assistant_id, **stream_payload)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_stream_failed")
-        return _sse_stream(event_iter)
 
     async def wait(self, thread_id: str, payload: dict[str, Any]) -> Any:
         assistant_id = payload["assistant_id"]
@@ -245,21 +172,6 @@ class LangGraphRunsSdkAdapter:
         except Exception as exc:
             raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
 
-    async def wait_global(self, payload: dict[str, Any]) -> Any:
-        assistant_id = payload["assistant_id"]
-        wait_payload = {
-            key: payload[key] for key in self._WAIT_FIELDS if key in payload
-        }
-        try:
-            return await self._client.runs.wait(None, assistant_id, **wait_payload)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
-
-    async def create_batch(self, payloads: list[dict[str, Any]]) -> Any:
-        try:
-            return await self._client.runs.create_batch(payloads)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
 
     async def get(self, thread_id: str, run_id: str) -> Any:
         try:
@@ -283,16 +195,6 @@ class LangGraphRunsSdkAdapter:
         except Exception as exc:
             raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
 
-    async def cancel_many(self, payload: dict[str, Any] | None = None) -> Any:
-        cancel_many_payload = {
-            key: payload[key]
-            for key in self._BULK_CANCEL_FIELDS
-            if payload is not None and key in payload
-        }
-        try:
-            return await self._client.runs.cancel_many(**cancel_many_payload)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
 
     async def list(self, thread_id: str, payload: dict[str, Any] | None = None) -> Any:
         list_payload = {
@@ -330,75 +232,10 @@ class LangGraphRunsSdkAdapter:
             for key in self._JOIN_STREAM_FIELDS
             if payload is not None and key in payload
         }
-        join_stream_payload["cancel_on_disconnect"] = False
-        try:
-            event_iter = self._client.runs.join_stream(thread_id, run_id, **join_stream_payload)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_stream_failed")
-        return _sse_stream(event_iter)
-
-    async def create_cron(self, payload: dict[str, Any]) -> Any:
-        assistant_id = payload["assistant_id"]
-        cron_payload = {
-            key: payload[key] for key in self._CRON_CREATE_FIELDS if key in payload
-        }
-        try:
-            return await self._client.crons.create(assistant_id, **cron_payload)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_cron_request_failed")
-
-    async def search_crons(self, payload: dict[str, Any] | None = None) -> Any:
-        search_payload = {
-            key: payload[key]
-            for key in self._CRON_SEARCH_FIELDS
-            if payload is not None and key in payload
-        }
-        try:
-            return await self._client.crons.search(**search_payload)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_cron_request_failed")
-
-    async def count_crons(self, payload: dict[str, Any] | None = None) -> dict[str, int]:
-        count_payload = {
-            key: payload[key]
-            for key in self._CRON_COUNT_FIELDS
-            if payload is not None and key in payload
-        }
-        try:
-            count = await self._client.crons.count(**count_payload)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_cron_request_failed")
-        return {"count": int(count)}
-
-    async def update_cron(self, cron_id: str, payload: dict[str, Any]) -> Any:
-        update_payload = {
-            key: payload[key] for key in self._CRON_UPDATE_FIELDS if key in payload
-        }
-        try:
-            return await self._client.crons.update(cron_id, **update_payload)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_cron_request_failed")
-
-    async def delete_cron(self, cron_id: str) -> Any:
-        try:
-            return await self._client.crons.delete(cron_id)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_cron_request_failed")
-
-    async def create_cron_for_thread(
-        self,
-        thread_id: str,
-        payload: dict[str, Any],
-    ) -> Any:
-        assistant_id = payload["assistant_id"]
-        cron_payload = {
-            key: payload[key] for key in self._CRON_CREATE_FIELDS if key in payload
-        }
-        try:
-            return await self._client.crons.create_for_thread(
-                thread_id,
-                assistant_id,
-                **cron_payload,
-            )
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_cron_request_failed")
+        join_stream_payload["cancel_on_disconnect"] = "false"
+        last_event_id = join_stream_payload.pop("last_event_id", None)
+        return await self._http.stream(
+            "GET", f"/threads/{thread_id}/runs/{run_id}/stream",
+            params=join_stream_payload,
+            forwarded_headers={"Last-Event-ID": str(last_event_id)} if last_event_id is not None else None,
+        )

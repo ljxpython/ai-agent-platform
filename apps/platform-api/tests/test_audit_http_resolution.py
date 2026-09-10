@@ -2,11 +2,27 @@ from __future__ import annotations
 
 import unittest
 
-from platform_api.modules.audit.application import AuditHttpRequest, resolve_http_audit
-from platform_api.modules.audit.domain import AuditPlane, AuditResult
+from platform_api.modules.audit.http_resolution import AuditHttpRequest, resolve_http_audit
+from platform_api.modules.audit.schemas import AuditPlane, AuditResult
 
 
 class AuditHttpResolutionTest(unittest.TestCase):
+    def test_run_cancel_audits_run_id_and_unknown_paths_do_not_become_ids(self):
+        run_id = "11111111-1111-1111-1111-111111111111"
+        for path, expected in (
+            (f"/api/langgraph/threads/{run_id}/runs/{run_id}/cancel", run_id),
+            ("/api/unknown/" + "x" * 200, None),
+        ):
+            resolved = resolve_http_audit(
+                request=AuditHttpRequest(method="POST", path=path, query_params={},
+                    query_string=None, state_project_id="p", client_ip=None,
+                    user_agent=None, response_content_length=None),
+                response_payload=None, actor_user_id="u", status_code=200, result=AuditResult.SUCCESS,
+            )
+            self.assertEqual(resolved.target_id, expected)
+            if expected:
+                self.assertEqual(resolved.action, "runtime.run.item.cancelled")
+
     def test_announcement_feed_resolution_uses_project_scope(self) -> None:
         resolved = resolve_http_audit(
             request=AuditHttpRequest(

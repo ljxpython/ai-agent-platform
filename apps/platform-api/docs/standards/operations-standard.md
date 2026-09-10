@@ -1,116 +1,12 @@
-# Platform API Operation / Job 标准
+# Operations 已退役
 
-> 2026-09-10：Platform API 正在重构，知识库与测试用例平台业务已删除；Operations 待随网关替换后删除。新开发以[重构工程](../../../../docs/projects/20260910-platform-api-refactor/README.md)为准，下文尚未更新的四层/Worker 范式不得用于新增设计。
+2026-09-10 起不再使用平台通用 Operations、Worker、Redis 队列或 artifacts。
+禁止以本文件的历史版本作为开发模板。
 
-这份文档定义长任务的统一范式。后面凡是刷新、导出、批量同步这类动作，不准再直接在 HTTP 请求里傻等到结束。
+- 图和工具目录刷新：受权限保护的同步 HTTP，返回真实结果或明确错误。
+- Agent 执行：GraphHarbor Run/Worker；平台通过 run_requests 保存提交身份与幂等关联。
+- 审计：平台 HTTP 审计及最小请求记录；执行状态直接查询 Agent Server。
+- 新业务暂不引入通用异步框架；按实际需求单独评审。
 
-## 1. 什么要进 operation
-
-默认纳入 `operations` 的动作：
-
-- catalog refresh
-- batch sync
-- 批量修复
-- 大文件导入
-
-经验规则：
-
-- 超过 3 秒的动作优先考虑进 operation
-- 需要重试、取消、历史追踪的动作必须进 operation
-
-## 2. 标准状态机
-
-统一状态：
-
-- `submitted`
-- `running`
-- `succeeded`
-- `failed`
-- `cancelled`
-
-必要时允许：
-
-- `retrying`
-
-禁止每个模块自己发明一套状态词。
-
-## 3. 标准字段
-
-每个 operation 至少有：
-
-- `id`
-- `kind`
-- `status`
-- `requested_by`
-- `tenant_id`
-- `project_id`
-- `input_payload`
-- `result_payload`
-- `error_payload`
-- `started_at`
-- `finished_at`
-
-## 4. 协议建议
-
-- `POST /operations`
-- `GET /operations/{id}`
-- `POST /operations/{id}/cancel`
-
-如果是资源专属动作，也可以暴露业务入口，但最终都要映射到 operation：
-
-- `POST /catalog/graphs:refresh`
-- 返回 `202` + `operation_id`
-
-## 5. 执行器抽象
-
-为了给后续 Redis / worker / queue 留口，执行器必须抽象成 port：
-
-- `OperationDispatcher`
-- `OperationRepository`
-- `OperationExecutor`
-
-当前可以先有本地实现：
-
-- `InProcessOperationDispatcher`
-
-后续无缝接入：
-
-- Redis queue
-- Celery / RQ / Dramatiq
-- 独立 worker 进程
-
-关键点是：HTTP 层永远只负责提交，不直接承接真正执行。
-
-## 6. 幂等和重试
-
-长任务要考虑：
-
-- 同一请求是否允许重复提交
-- 重试是否覆盖原任务还是新建任务
-- 取消后是否允许恢复
-
-推荐：
-
-- 写接口支持 `idempotency_key`
-- 重试保留原 operation 关系链
-
-## 7. 审计联动
-
-operation 生命周期必须写审计：
-
-- `operation.submitted`
-- `operation.started`
-- `operation.succeeded`
-- `operation.failed`
-- `operation.cancelled`
-
-## 8. 为什么这套设计能接 Redis
-
-因为我们把边界提前钉死了：
-
-- 状态机独立
-- repository 独立
-- dispatcher 独立
-- executor 独立
-
-后面要不要上 Redis，只是换掉 dispatcher 和 worker，不需要改业务 handler 和前端协议。
+当前标准见 [运行网关](runtime-gateway-interface-standard.md) 与
+[重构工程](../../../../docs/projects/20260910-platform-api-refactor/README.md)。

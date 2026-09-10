@@ -9,8 +9,6 @@ export type SystemProbeStatus = {
   request_id?: string
   trace_id?: string
   database_ready?: string | boolean
-  healthy_workers?: string | number
-  stale_workers?: number
 }
 
 export async function getSystemHealth(): Promise<SystemProbeStatus> {

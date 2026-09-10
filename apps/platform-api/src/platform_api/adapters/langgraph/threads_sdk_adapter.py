@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from platform_api.adapters.langgraph.sdk_client import (
     get_langgraph_client,
@@ -121,27 +122,7 @@ class LangGraphThreadsSdkAdapter:
             raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_count_failed")
         return {"count": int(count)}
 
-    async def prune(self, payload: dict[str, Any] | None = None) -> Any:
-        prune_payload = {
-            key: payload[key]
-            for key in self._PRUNE_FIELDS
-            if payload is not None and key in payload
-        }
-        try:
-            return await self._client.threads.prune(**prune_payload)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_prune_failed")
 
-    async def update(self, thread_id: str, payload: dict[str, Any] | None = None) -> Any:
-        update_payload = {
-            key: payload[key]
-            for key in self._UPDATE_FIELDS
-            if payload is not None and key in payload
-        }
-        try:
-            return await self._client.threads.update(thread_id, **update_payload)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_update_failed")
 
     async def delete(self, thread_id: str) -> Any:
         try:
@@ -149,11 +130,6 @@ class LangGraphThreadsSdkAdapter:
         except Exception as exc:
             raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_delete_failed")
 
-    async def copy(self, thread_id: str) -> Any:
-        try:
-            return await self._client.threads.copy(thread_id)
-        except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_copy_failed")
 
     async def get_state(
         self,

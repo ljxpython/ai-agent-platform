@@ -1,15 +1,4 @@
-from platform_api.modules.runtime_gateway.infra.sqlalchemy.models import (
-    DurableRunInterruptRecord,
-    DurableRunRecord,
-)
-from platform_api.modules.runtime_gateway.infra.sqlalchemy.repository import (
-    SqlAlchemyDurableRunsRepository,
-    StoredDurableRun,
-)
+from .models import RunRequestRecord
+from .repository import RunRequestsRepository, StoredRunRequest
 
-__all__ = [
-    "DurableRunInterruptRecord",
-    "DurableRunRecord",
-    "SqlAlchemyDurableRunsRepository",
-    "StoredDurableRun",
-]
+__all__ = ["RunRequestRecord", "RunRequestsRepository", "StoredRunRequest"]

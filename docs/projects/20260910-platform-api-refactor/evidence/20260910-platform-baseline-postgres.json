@@ -1,0 +1,7 @@
+{
+  "status": "passed",
+  "database": "platform_schema_acceptance_8741b0e7dd",
+  "upgrade_repeat_downgrade_upgrade": true,
+  "business_tables": 20,
+  "metadata_diff": []
+}

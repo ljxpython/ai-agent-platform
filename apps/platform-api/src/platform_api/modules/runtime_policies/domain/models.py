@@ -65,8 +65,5 @@ class RuntimeModelPolicyItem(BaseModel):
     catalog_id: str
     model_id: str
     display_name: str
-    is_default_runtime: bool
-    sync_status: str
-    last_synced_at: datetime | None = None
     policy: RuntimeModelPolicyValue
 

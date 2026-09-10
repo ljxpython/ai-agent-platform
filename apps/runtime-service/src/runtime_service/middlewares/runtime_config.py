@@ -82,7 +82,10 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         server_info = getattr(runtime, "server_info", None)
         execution_info = getattr(runtime, "execution_info", None)
         if facts.scope.assistant_id is not None and (
-            server_info is None or facts.scope.assistant_id != getattr(server_info, "assistant_id", None)
+            server_info is None or facts.scope.assistant_id not in {
+                getattr(server_info, "assistant_id", None),
+                getattr(server_info, "graph_id", None),
+            }
         ):
             raise RuntimeAuthError("runtime.auth.invalid_principal", "assistant_id")
         if facts.scope.thread_id is not None and (

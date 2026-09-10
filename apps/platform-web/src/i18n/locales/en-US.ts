@@ -46,7 +46,6 @@ export const enUS = {
     threads: 'Threads',
     chat: 'Chat',
     controlPlane: 'Control Plane',
-    operations: 'Operations',
     platformConfig: 'Platform Config',
     serviceAccounts: 'Service Accounts',
     systemGovernance: 'System Governance',

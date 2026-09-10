@@ -22,13 +22,10 @@ import type { ActionMenuItem, DataTableColumn } from '@/components/platform/data
 import {
   createAssistant,
   deleteAssistant,
-  listAssistantsPage,
-  resyncAssistantByOperation
+  listAssistantsPage
 } from '@/services/assistants/assistants.service'
-import { getOperationFailureMessage } from '@/services/operations/operations.service'
 import {
-  submitRuntimeRefreshOperation,
-  waitForRuntimeRefreshOperation
+  refreshRuntimeGraphs
 } from '@/services/runtime/runtime.service'
 import { listGraphsPage } from '@/services/graphs/graphs.service'
 import { useUiStore } from '@/stores/ui'
@@ -70,22 +67,16 @@ const columns = computed<DataTableColumn[]>(() => [
     sortValue: (row) => row.graph_id || ''
   },
   {
-    key: 'sync_status',
-    label: '同步状态',
-    sortable: true,
-    sortValue: (row) => row.sync_status || ''
-  },
-  {
     key: 'status',
     label: '运行状态',
     sortable: true,
     sortValue: (row) => row.status || ''
   },
   {
-    key: 'last_synced_at',
-    label: '最近同步',
+    key: 'updated_at',
+    label: '最近更新',
     sortable: true,
-    sortValue: (row) => row.last_synced_at || row.updated_at || ''
+    sortValue: (row) => row.updated_at || ''
   },
   {
     key: 'id',
@@ -99,9 +90,6 @@ const columns = computed<DataTableColumn[]>(() => [
 const currentProject = activeProject
 const canManageAssistants = computed(() => authorization.currentProjectCan('project.assistant.write'))
 const activeCount = computed(() => items.value.filter((item) => item.status === 'active').length)
-const syncIssueCount = computed(() =>
-  items.value.filter((item) => item.sync_status !== 'synced' && item.sync_status !== 'ready').length
-)
 const stats = computed(() => [
   {
     label: '当前项目',
@@ -118,13 +106,6 @@ const stats = computed(() => [
     tone: 'success'
   },
   {
-    label: '同步异常',
-    value: syncIssueCount.value,
-    hint: 'sync_status 既不是 synced 也不是 ready 的助手',
-    icon: 'activity',
-    tone: 'warning'
-  },
-  {
     label: '已启用',
     value: activeCount.value,
     hint: '状态为 active 的助手',
@@ -137,9 +118,6 @@ function assistantFromRow(row: Record<string, unknown>) {
   return row as ManagementAssistant
 }
 
-function getSyncTone(status: string) {
-  return status === 'synced' || status === 'ready' ? 'success' : 'warning'
-}
 
 async function loadAssistants() {
   const projectId = activeProjectId.value
@@ -205,40 +183,6 @@ async function handleCopyValue(label: string, value: string) {
   })
 }
 
-async function handleResyncAssistant(assistant: ManagementAssistant) {
-  const projectId = activeProjectId.value
-  if (!projectId) {
-    return
-  }
-  if (!canManageAssistants.value) {
-    error.value = '当前账号没有助手治理写权限'
-    return
-  }
-
-  actionBusyAssistantId.value = assistant.id
-  error.value = ''
-
-  try {
-    const operation = await resyncAssistantByOperation(assistant.id, projectId, {
-      idempotencyKey: `assistant-resync:${assistant.id}`
-    })
-    if (operation.status !== 'succeeded') {
-      throw new Error(getOperationFailureMessage(operation))
-    }
-
-    uiStore.pushToast({
-      type: 'success',
-      title: '助手已重同步',
-      message: assistant.name || assistant.id
-    })
-    await loadAssistants()
-  } catch (resyncError) {
-    error.value = resyncError instanceof Error ? resyncError.message : '助手重同步失败'
-  } finally {
-    actionBusyAssistantId.value = ''
-  }
-}
-
 const syncingAgents = ref(false)
 
 async function handleSyncBackendAgents() {
@@ -255,16 +199,7 @@ async function handleSyncBackendAgents() {
   error.value = ''
 
   try {
-    const operation = await submitRuntimeRefreshOperation('graphs', projectId)
-    const finalOperation = await waitForRuntimeRefreshOperation(operation.id, {
-      projectId,
-      timeoutMs: 90000
-    })
-    if (finalOperation.status !== 'succeeded') {
-      throw new Error(
-        (finalOperation.error_payload?.message as string | undefined) || '后端图谱刷新未成功完成'
-      )
-    }
+    await refreshRuntimeGraphs(projectId)
 
     const graphCatalog = await listGraphsPage(projectId, { limit: 200, offset: 0 })
     const availableGraphs = graphCatalog.items.filter((g) => g.graph_id?.trim())
@@ -334,10 +269,6 @@ async function confirmDelete() {
   try {
     await deleteAssistant(
       assistant.id,
-      {
-        deleteRuntime: true,
-        deleteThreads: false
-      },
       projectId
     )
 
@@ -425,13 +356,6 @@ function assistantActions(assistant: ManagementAssistant): ActionMenuItem[] {
       icon: 'check',
       disabled: busy,
       onSelect: () => setAssistantAsRecentTarget(assistant)
-    },
-    {
-      key: 'resync',
-      label: '上游重同步',
-      icon: 'refresh',
-      disabled: busy || !canManageAssistants.value,
-      onSelect: () => handleResyncAssistant(assistant)
     },
     {
       key: 'copy-id',
@@ -600,11 +524,6 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
             </span>
           </template>
 
-          <template #cell-sync_status="{ row }">
-            <StatusPill :tone="getSyncTone(assistantFromRow(row).sync_status)">
-              {{ assistantFromRow(row).sync_status }}
-            </StatusPill>
-          </template>
 
           <template #cell-status="{ row }">
             <StatusPill :tone="assistantFromRow(row).status === 'active' ? 'success' : 'warning'">
@@ -612,9 +531,9 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
             </StatusPill>
           </template>
 
-          <template #cell-last_synced_at="{ row }">
+          <template #cell-updated_at="{ row }">
             <span class="text-gray-500 dark:text-dark-300">
-              {{ formatDateTime(assistantFromRow(row).last_synced_at || assistantFromRow(row).updated_at) }}
+              {{ formatDateTime(assistantFromRow(row).updated_at) }}
             </span>
           </template>
 

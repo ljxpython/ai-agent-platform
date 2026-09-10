@@ -1,12 +1,19 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
+from starlette.concurrency import run_in_threadpool
 
 from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext, RequestContext
-from platform_api.entrypoints.http.dependencies import get_actor_context, get_request_context
-from platform_api.modules.platform_config.application import PlatformConfigService, UpdateFeatureFlagsCommand
+from platform_api.entrypoints.http.dependencies import (
+    get_actor_context,
+    get_request_context,
+)
+from platform_api.modules.platform_config.service import PlatformConfigService
+from platform_api.modules.platform_config.contracts import UpdateFeatureFlagsCommand
 
 router = APIRouter(prefix="/_system", tags=["system"])
 
@@ -22,6 +29,20 @@ def get_platform_config_service(request: Request) -> PlatformConfigService:
     )
 
 
+def _database_ready(request: Request) -> bool:
+    if not request.app.state.settings.platform_db_enabled:
+        return True
+    factory = getattr(request.app.state, "db_session_factory", None)
+    if factory is None:
+        return False
+    try:
+        with factory() as session:
+            session.execute(text("SELECT 1"))
+        return True
+    except SQLAlchemyError:
+        return False
+
+
 @router.get("/health")
 async def health(
     request: Request,
@@ -29,21 +50,15 @@ async def health(
     service: PlatformConfigService = Depends(get_platform_config_service),
 ) -> dict[str, str]:
     settings = request.app.state.settings
-    session_factory = getattr(request.app.state, "db_session_factory", None)
-    database_ready = not settings.platform_db_enabled or session_factory is not None
-    observability = await service.get_observability_snapshot()
-    workers = observability["workers"]
-    healthy_workers = int(workers["healthy_count"])
-    degraded = settings.platform_db_enabled and healthy_workers == 0
+    database_ready = await run_in_threadpool(_database_ready, request)
     return {
-        "status": "degraded" if degraded else "ok",
+        "status": "ok" if database_ready else "degraded",
         "service": settings.app_name,
         "version": settings.app_version,
         "env": settings.app_env,
         "request_id": context.request_id,
         "trace_id": context.trace_id,
         "database_ready": str(database_ready).lower(),
-        "healthy_workers": str(healthy_workers),
     }
 
 
@@ -62,42 +77,34 @@ async def ready_probe(
     request: Request,
     service: PlatformConfigService = Depends(get_platform_config_service),
 ) -> dict[str, object]:
-    settings = request.app.state.settings
-    session_factory = getattr(request.app.state, "db_session_factory", None)
-    database_ready = not settings.platform_db_enabled or session_factory is not None
-    observability = await service.get_observability_snapshot()
-    workers = observability["workers"]
-    ready = database_ready and (
-        not settings.platform_db_enabled or int(workers["healthy_count"]) > 0
-    )
+    database_ready = await run_in_threadpool(_database_ready, request)
+    ready = database_ready
     return {
         "status": "ready" if ready else "not_ready",
         "database_ready": database_ready,
-        "healthy_workers": workers["healthy_count"],
-        "stale_workers": workers["stale_count"],
     }
 
 
 @router.get("/metrics")
-async def metrics(
+def metrics(
     actor: ActorContext = Depends(get_actor_context),
     service: PlatformConfigService = Depends(get_platform_config_service),
 ) -> dict[str, object]:
-    return await service.get_observability_snapshot_for_actor(actor=actor)
+    return service.get_observability_snapshot_for_actor(actor=actor)
 
 
 @router.get("/platform-config")
-async def platform_config(
+def platform_config(
     actor: ActorContext = Depends(get_actor_context),
     service: PlatformConfigService = Depends(get_platform_config_service),
 ) -> dict[str, object]:
-    return await service.get_snapshot(actor=actor)
+    return service.get_snapshot(actor=actor)
 
 
 @router.patch("/platform-config/feature-flags")
-async def update_platform_feature_flags(
+def update_platform_feature_flags(
     payload: UpdateFeatureFlagsCommand,
     actor: ActorContext = Depends(get_actor_context),
     service: PlatformConfigService = Depends(get_platform_config_service),
 ) -> dict[str, object]:
-    return await service.update_feature_flags(actor=actor, command=payload)
+    return service.update_feature_flags(actor=actor, command=payload)

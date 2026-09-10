@@ -5,14 +5,12 @@ from platform_api.modules.agents.application.contracts import (
 )
 from platform_api.modules.agents.application.ports import (
     AssistantParameterSchemaProviderProtocol,
-    AssistantsRepositoryProtocol,
     StoredAssistantAggregate,
 )
 from platform_api.modules.agents.application.service import AssistantsService
 
 __all__ = [
     "AssistantParameterSchemaProviderProtocol",
-    "AssistantsRepositoryProtocol",
     "AssistantsService",
     "CreateAssistantCommand",
     "ListAssistantsQuery",

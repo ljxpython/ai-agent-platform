@@ -12,9 +12,9 @@ from sqlalchemy import select
 from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
 from platform_api.core.security import create_access_token, hash_password
 from platform_api.main import create_app
-from platform_api.modules.audit.infra.sqlalchemy.models import AuditLogRecord
-from platform_api.modules.identity.infra.sqlalchemy.repository import SqlAlchemyIdentityRepository
-from platform_api.modules.service_accounts.infra.sqlalchemy.models import ServiceAccountTokenRecord
+from platform_api.modules.audit.models import AuditLogRecord
+from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
+from platform_api.modules.service_accounts.models import ServiceAccountTokenRecord
 
 
 class ServiceAccountProjectGrantsTest(unittest.TestCase):

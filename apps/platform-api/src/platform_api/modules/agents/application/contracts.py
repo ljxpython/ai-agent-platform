@@ -22,18 +22,13 @@ class CreateAssistantCommand(BaseModel):
     graph_id: str = Field(min_length=1, max_length=128)
     name: str = Field(min_length=1, max_length=128)
     description: str = ""
-    config: dict[str, Any] | None = None
     context: dict[str, Any] | None = None
-    metadata: dict[str, Any] | None = None
 
 
 class UpdateAssistantCommand(BaseModel):
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
-    graph_id: str | None = Field(default=None, min_length=1, max_length=128)
     name: str | None = Field(default=None, min_length=1, max_length=128)
     description: str | None = None
     status: AssistantStatus | None = None
-    config: dict[str, Any] | None = None
     context: dict[str, Any] | None = None
-    metadata: dict[str, Any] | None = None

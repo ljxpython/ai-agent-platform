@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import JSON, DateTime, ForeignKey, String, UniqueConstraint, Uuid, func
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from platform_api.core.db.base import Base
 
@@ -33,60 +33,22 @@ class AgentRecord(Base):
     )
     name: Mapped[str] = mapped_column(String(128), nullable=False)
     graph_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    runtime_base_url: Mapped[str] = mapped_column(String(512), nullable=False)
     description: Mapped[str] = mapped_column(String, nullable=False, default="")
-    sync_status: Mapped[str] = mapped_column(String(32), nullable=False, default="ready")
-    last_sync_error: Mapped[str | None] = mapped_column(String, nullable=True)
-    last_synced_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True,
-    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
     )
 
-    agent_profile: Mapped["AgentProfileRecord | None"] = relationship(
-        back_populates="agent",
-        cascade="all,delete",
-        uselist=False,
-    )
-
-
-class AgentProfileRecord(Base):
-    __tablename__ = "agent_profiles"
-
-    id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-    )
-    agent_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        ForeignKey("agents.id", ondelete="CASCADE"),
-        nullable=False,
-        unique=True,
-    )
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="active")
-    config: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     context: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    metadata_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     created_by: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
     updated_by: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        nullable=False,
-        default=lambda: datetime.now(timezone.utc),
-        server_default=func.now(),
-    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: datetime.now(UTC),
         server_default=func.now(),
         onupdate=func.now(),
     )
-
-    agent: Mapped[AgentRecord] = relationship(back_populates="agent_profile")

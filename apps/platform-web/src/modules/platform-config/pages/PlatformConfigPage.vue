@@ -19,21 +19,9 @@ type FeatureFlagMeta = {
 }
 
 const featureFlagMeta: Record<string, FeatureFlagMeta> = {
-  operations_enabled: {
-    label: 'Operations Enabled',
-    description: '是否允许前端展示和访问操作中心。'
-  },
-  operations_center_enabled: {
-    label: 'Operations Center UI',
-    description: '是否启用更完整的 operations 治理入口。'
-  },
   platform_config_enabled: {
     label: 'Platform Config UI',
     description: '是否启用平台配置治理页。'
-  },
-  runtime_catalog_refresh_async_ready: {
-    label: 'Runtime Refresh Async Ready',
-    description: 'runtime 刷新链路是否已经按异步 operation 标准接通。'
   },
   policy_overlay_registry_ready: {
     label: 'Policy Overlay Ready',
@@ -82,20 +70,6 @@ const stats = computed(() => {
       icon: 'shield',
       tone: current.database.enabled ? 'success' : 'warning'
     },
-    {
-      label: '队列后端',
-      value: current.operations.queue_backend,
-      hint: `poll ${current.operations.worker_poll_interval_seconds}s / idle ${current.operations.worker_idle_sleep_seconds}s / artifact ${current.operations.artifact_retention_hours}h`,
-      icon: 'activity',
-      tone: 'danger'
-    },
-    {
-      label: '健康 Worker',
-      value: String(current.observability.workers.healthy_count),
-      hint: `stale ${current.observability.workers.stale_count} / heartbeat ${current.observability.workers.heartbeat_interval_seconds}s`,
-      icon: 'check',
-      tone: current.observability.workers.healthy_count > 0 ? 'success' : 'warning'
-    }
   ]
 })
 
@@ -125,16 +99,6 @@ const requestMethods = computed(() => {
   return Object.entries(snapshot.value?.observability.requests.by_method || {})
 })
 
-function formatDateTime(value: string | null | undefined) {
-  if (!value) {
-    return '未记录'
-  }
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
-  }
-  return date.toLocaleString('zh-CN', { hour12: false })
-}
 
 function resetFlags() {
   editableFlags.value = { ...(snapshot.value?.feature_flags || {}) }
@@ -334,28 +298,8 @@ onMounted(() => {
                 auto create: {{ snapshot.database.auto_create ? 'true' : 'false' }}
               </div>
             </div>
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Queue
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ snapshot.operations.queue_backend }}
-              </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                {{ snapshot.operations.worker_poll_interval_seconds }}s / {{ snapshot.operations.worker_idle_sleep_seconds }}s
-              </div>
-            </div>
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Artifact Store
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ snapshot.operations.artifact_storage_backend }}
-              </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                retention {{ snapshot.operations.artifact_retention_hours }}h / cleanup {{ snapshot.operations.artifact_cleanup_batch_size }}
-              </div>
-            </div>
+
+
             <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Auth
@@ -412,17 +356,7 @@ onMounted(() => {
                 max {{ snapshot.observability.requests.max_duration_ms }} ms
               </div>
             </div>
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Trace Headers
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ snapshot.observability.trace.request_id_header }} / {{ snapshot.observability.trace.trace_id_header }}
-              </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                {{ snapshot.observability.trace.operation_chain_source }}
-              </div>
-            </div>
+
             <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Methods
@@ -475,123 +409,6 @@ onMounted(() => {
                 {{ family }} {{ count }}
               </span>
             </div>
-          </div>
-        </SurfaceCard>
-
-        <SurfaceCard class="space-y-4">
-          <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-            <BaseIcon
-              name="users"
-              size="sm"
-              class="text-primary-500"
-            />
-            Worker 与执行治理
-          </div>
-          <div class="grid gap-3 sm:items-start sm:grid-cols-2">
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Queue Depth
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ snapshot.observability.operations.queue_depth }}
-              </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                running {{ snapshot.observability.operations.running_count }} / succeeded {{ snapshot.observability.operations.succeeded_count }}
-              </div>
-            </div>
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Failure / Cancel
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ snapshot.observability.operations.failed_count }} / {{ snapshot.observability.operations.cancelled_count }}
-              </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                archived {{ snapshot.observability.operations.archived_count }}
-              </div>
-            </div>
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Duration
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ snapshot.observability.operations.avg_duration_ms }} ms
-              </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                max {{ snapshot.observability.operations.max_duration_ms }} ms
-              </div>
-            </div>
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Heartbeat
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ snapshot.observability.workers.heartbeat_interval_seconds }}s / stale {{ snapshot.observability.workers.stale_after_seconds }}s
-              </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                healthy {{ snapshot.observability.workers.healthy_count }} / stale {{ snapshot.observability.workers.stale_count }}
-              </div>
-            </div>
-          </div>
-
-          <div class="space-y-3">
-            <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-              Worker Heartbeats
-            </div>
-            <div
-              v-if="snapshot.observability.workers.items.length"
-              class="space-y-3"
-            >
-              <article
-                v-for="worker in snapshot.observability.workers.items"
-                :key="worker.worker_id"
-                class="pw-card-subtle px-4 py-3"
-              >
-                <div class="flex flex-wrap items-start justify-between gap-3">
-                  <div class="min-w-0 flex-1">
-                    <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                      {{ worker.worker_id }}
-                    </div>
-                    <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                      {{ worker.hostname }} · pid {{ worker.pid }} · {{ worker.queue_backend }}
-                    </div>
-                    <div class="mt-2 text-xs text-gray-500 dark:text-dark-300">
-                      last heartbeat: {{ formatDateTime(worker.last_heartbeat_at) }}
-                    </div>
-                    <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                      last completed: {{ formatDateTime(worker.last_completed_at) }}
-                    </div>
-                    <div
-                      v-if="worker.last_error"
-                      class="mt-2 text-xs text-rose-500 dark:text-rose-300"
-                    >
-                      {{ worker.last_error }}
-                    </div>
-                  </div>
-                  <div class="flex flex-col items-end gap-2">
-                    <span
-                      class="rounded-full px-2.5 py-1 text-xs font-semibold"
-                      :class="worker.healthy
-                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200'
-                        : 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-200'"
-                    >
-                      {{ worker.healthy ? 'healthy' : 'stale' }}
-                    </span>
-                    <span class="text-xs text-gray-500 dark:text-dark-300">
-                      {{ worker.status }} / {{ worker.age_seconds }}s
-                    </span>
-                  </div>
-                </div>
-              </article>
-            </div>
-            <EmptyState
-              v-else
-              title="还没有 worker heartbeat"
-              description="先启动 platform-api worker，再回来刷新这页。"
-              icon="activity"
-              action-label="重新加载"
-              @action="loadSnapshot"
-            />
           </div>
         </SurfaceCard>
       </div>
@@ -705,17 +522,6 @@ onMounted(() => {
           <div class="space-y-3">
             <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Artifact Retention
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ snapshot.data_governance.artifact_retention_hours }}h
-              </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                cleanup batch {{ snapshot.data_governance.artifact_cleanup_batch_size }}
-              </div>
-            </div>
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
                 Audit Storage
               </div>
               <div class="mt-2 text-sm text-gray-900 dark:text-white">
@@ -724,12 +530,9 @@ onMounted(() => {
             </div>
             <div class="pw-card-subtle p-4">
               <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Export / Delete Mode
+                Delete Mode
               </div>
               <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ snapshot.data_governance.export_mode }}
-              </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
                 {{ snapshot.data_governance.delete_mode }}
               </div>
             </div>

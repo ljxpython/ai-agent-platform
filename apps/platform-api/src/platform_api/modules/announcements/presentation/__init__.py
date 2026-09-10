@@ -1,3 +1,0 @@
-from platform_api.modules.announcements.presentation.http import router
-
-__all__ = ["router"]

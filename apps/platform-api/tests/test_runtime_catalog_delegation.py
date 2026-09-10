@@ -106,10 +106,10 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
     async def test_schema_read_checks_project_before_forwarding_delegation(self) -> None:
         upstream = SimpleNamespace(require_json=AsyncMock(return_value={"graph_id": "remote"}))
         service = self._service(upstream=upstream)
-        service._prepare_project_scope = AsyncMock()
+        service._prepare_project_scope = Mock()
         service._runtime_headers = Mock(return_value={"authorization": "Bearer delegation"})
         await service.get_graph_schema(actor=self.actor, project_id=self.project_id, graph_id="remote")
-        service._prepare_project_scope.assert_awaited_once()
+        service._prepare_project_scope.assert_called_once()
         upstream.require_json.assert_awaited_once_with(
             "GET", "/assistants/remote/schemas",
             forwarded_headers={"authorization": "Bearer delegation"},
@@ -123,16 +123,16 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
     async def test_refresh_passes_delegation_to_upstream(self) -> None:
         upstream = SimpleNamespace(require_json=AsyncMock(return_value={}))
         service = self._service(upstream=upstream)
-        service._prepare_project_scope = AsyncMock()  # type: ignore[method-assign]
+        service._prepare_project_scope = Mock()  # type: ignore[method-assign]
         service._require_refresh_access = Mock()  # type: ignore[method-assign]
         service._runtime_headers = Mock(return_value={"authorization": "Bearer delegation"})  # type: ignore[method-assign]
 
         with self.assertRaises(ServiceUnavailableError):
-            await service.refresh_models(actor=self.actor, project_id=self.project_id)
+            await service.refresh_tools(actor=self.actor, project_id=self.project_id)
 
         upstream.require_json.assert_awaited_once_with(
             "GET",
-            "/internal/capabilities/models",
+            "/internal/capabilities/tools",
             forwarded_headers={"authorization": "Bearer delegation"},
         )
 
@@ -210,7 +210,6 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
                     master_key=self.settings.model_config_master_key,
                 )
                 created = repository.create_configured_model(
-                    runtime_id="runtime",
                     values={
                         "provider": "openai",
                         "display_name": "Demo",
@@ -224,7 +223,6 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
                 updated = repository.update_configured_model(
                     created.id,
                     values={
-                        "model_key": "gpt-next",
                         "model_name": "gpt-next",
                         "enabled": False,
                     },
@@ -232,7 +230,7 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
                 session.commit()
 
             assert updated is not None
-            self.assertEqual(updated.model_key, "gpt-next")
+            self.assertEqual(updated.model_name, "gpt-next")
             self.assertFalse(updated.enabled)
             self.assertEqual(
                 decrypt_api_key(
@@ -245,7 +243,11 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
             engine.dispose()
 
     async def test_graph_catalog_uses_only_remote_registry(self) -> None:
-        engine = build_engine("sqlite+pysqlite:///:memory:")
+        from tempfile import TemporaryDirectory
+
+        directory = TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        engine = build_engine(f"sqlite:///{directory.name}/catalog.db")
         create_core_tables(engine)
         session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
         upstream = LangGraphRuntimeClient(base_url="http://runtime.test", timeout_seconds=1)
@@ -257,17 +259,17 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
             settings=self.settings,
             tenant_id="tenant-1",
         )
-        service._prepare_project_scope = AsyncMock()  # type: ignore[method-assign]
+        service._prepare_project_scope = Mock()  # type: ignore[method-assign]
         service._require_refresh_access = Mock()  # type: ignore[method-assign]
         service._runtime_headers = Mock(return_value={"authorization": "Bearer delegation"})  # type: ignore[method-assign]
 
         try:
-            catalog = await service.list_graphs(actor=self.actor, project_id=self.project_id)
+            catalog = service.list_graphs(actor=self.actor, project_id=self.project_id)
             self.assertEqual(catalog.count, 0)
             upstream.request_json.assert_not_awaited()
             result = await service.refresh_graphs(actor=self.actor, project_id=self.project_id)
             self.assertTrue(result.ok)
-            catalog = await service.list_graphs(actor=self.actor, project_id=self.project_id)
+            catalog = service.list_graphs(actor=self.actor, project_id=self.project_id)
             graph_keys = {g.graph_id for g in catalog.graphs}
             self.assertEqual(graph_keys, {"remote_agent"})
             upstream.request_json.assert_awaited_once_with(
@@ -279,11 +281,11 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
                 upstream.request_json.return_value = invalid
                 with self.assertRaises(PlatformApiError):
                     await service.refresh_graphs(actor=self.actor, project_id=self.project_id)
-                unchanged = await service.list_graphs(actor=self.actor, project_id=self.project_id)
+                unchanged = service.list_graphs(actor=self.actor, project_id=self.project_id)
                 self.assertEqual({g.graph_id for g in unchanged.graphs}, {"remote_agent"})
             upstream.request_json.return_value = []
             await service.refresh_graphs(actor=self.actor, project_id=self.project_id)
-            empty = await service.list_graphs(actor=self.actor, project_id=self.project_id)
+            empty = service.list_graphs(actor=self.actor, project_id=self.project_id)
             self.assertTrue(all(g.sync_status == "deleted" for g in empty.graphs))
         finally:
             engine.dispose()

@@ -29,7 +29,7 @@ Commands:
   restart  stop and start the local stack
   status   show managed processes and HTTP health
   logs     show recent logs; optionally pass runtime-api, runtime-worker,
-           platform-api, platform-worker, or platform-web
+           platform-api or platform-web
 EOF
 }
 
@@ -167,10 +167,6 @@ start_managed_key() {
       start_process platform-api "$PLATFORM_API_DIR" \
         "uv run uvicorn platform_api.main:create_app --factory --host 127.0.0.1 --port $(shell_quote "$PLATFORM_API_PORT") --reload" \
         "$LOG_DIR/platform-api.log" "$PLATFORM_API_PORT"
-      ;;
-    platform-worker)
-      start_process platform-worker "$PLATFORM_API_DIR" \
-        "uv run python -m platform_api.entrypoints.worker.main" "$LOG_DIR/platform-worker.log"
       ;;
     platform-web)
       start_process platform-web "$PLATFORM_WEB_DIR" \
@@ -355,8 +351,6 @@ start() {
   require_managed_process runtime-worker
   wait_http runtime-api "http://127.0.0.1:$RUNTIME_PORT/ready"
   start_managed_key platform-api
-  start_managed_key platform-worker
-  require_managed_process platform-worker
   wait_http platform-api "http://127.0.0.1:$PLATFORM_API_PORT/_system/health"
   start_managed_key platform-web
   wait_http platform-web "http://127.0.0.1:$PLATFORM_WEB_PORT"
@@ -366,7 +360,7 @@ start() {
 
 status() {
   load_runtime_env
-  for key in runtime-api runtime-worker platform-api platform-worker platform-web; do
+  for key in runtime-api runtime-worker platform-api platform-web; do
     if managed_alive "$key"; then
       printf '%-16s running\n' "$key"
     else
@@ -397,8 +391,8 @@ restart_one() {
   local key="$1"
   load_runtime_env
   case "$key" in
-    runtime-api|runtime-worker|platform-api|platform-worker|platform-web) ;;
-    *) die "restart-one requires one of runtime-api, runtime-worker, platform-api, platform-worker, platform-web" ;;
+    runtime-api|runtime-worker|platform-api|platform-web) ;;
+    *) die "restart-one requires one of runtime-api, runtime-worker, platform-api, platform-web" ;;
   esac
   stop_process "$key"
   start_managed_key "$key"
@@ -406,7 +400,7 @@ restart_one() {
     runtime-api) wait_http runtime-api "http://127.0.0.1:$RUNTIME_PORT/ready" ;;
     platform-api) wait_http platform-api "http://127.0.0.1:$PLATFORM_API_PORT/_system/health" ;;
     platform-web) wait_http platform-web "http://127.0.0.1:$PLATFORM_WEB_PORT" ;;
-    runtime-worker|platform-worker) require_managed_process "$key" ;;
+    runtime-worker) require_managed_process "$key" ;;
   esac
 }
 
@@ -417,12 +411,11 @@ case "$command" in
   start) start ;;
   stop)
     stop_process platform-web
-    stop_process platform-worker
     stop_process platform-api
     stop_process runtime-worker
     stop_process runtime-api
     ;;
-  restart) stop_process platform-web; stop_process platform-worker; stop_process platform-api; stop_process runtime-worker; stop_process runtime-api; start ;;
+  restart) stop_process platform-web; stop_process platform-api; stop_process runtime-worker; stop_process runtime-api; start ;;
   restart-one) restart_one "${2:-}" ;;
   status) status ;;
   logs) logs "${2:-}" ;;

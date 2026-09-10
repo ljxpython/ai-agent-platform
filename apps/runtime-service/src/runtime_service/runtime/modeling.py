@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import os
+import hashlib
+import hmac
+import time
 from collections.abc import Mapping
 
 import httpx
@@ -106,11 +109,19 @@ async def fetch_model_connection(
     endpoint = os.getenv("PLATFORM_RUNTIME_MODEL_CONFIG_URL", "").strip()
     if not isinstance(reference, str) or not reference or not endpoint or not project_id:
         raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
+    headers = {"x-runtime-model-ref": reference, "x-project-id": project_id}
+    secret = os.getenv("PLATFORM_RUNTIME_DELEGATION_SECRET", "")
+    if secret:
+        timestamp = str(int(time.time()))
+        headers["x-runtime-model-time"] = timestamp
+        headers["x-runtime-model-signature"] = hmac.new(
+            secret.encode(), f"{timestamp}\n{project_id}\n{reference}".encode(), hashlib.sha256
+        ).hexdigest()
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.get(
                 endpoint,
-                headers={"x-runtime-model-ref": reference, "x-project-id": project_id},
+                headers=headers,
             )
             response.raise_for_status()
             payload = response.json()

@@ -1,16 +1,11 @@
 import { platformHttpClient } from '@/services/http/client'
 import {
-  submitOperation,
-  waitForOperationTerminalState
-} from '@/services/operations/operations.service'
-import {
   normalizeAssistantRuntimePayload,
   type AssistantRuntimePayload
 } from '@/services/runtime/runtime-contract'
 import type {
   ManagementAssistant,
-  ManagementAssistantListResponse,
-  ManagementOperation
+  ManagementAssistantListResponse
 } from '@/types/management'
 
 function getProjectHeaders(projectId?: string) {
@@ -84,55 +79,11 @@ export async function updateAssistant(
   return response.data as ManagementAssistant
 }
 
-export async function resyncAssistant(
-  assistantId: string,
-  projectId?: string
-): Promise<ManagementAssistant> {
-  const response = await platformHttpClient.post(
-    `/api/agents/${assistantId}/resync`,
-    {},
-    {
-      headers: getProjectHeaders(projectId)
-    }
-  )
-
-  return response.data as ManagementAssistant
-}
-
-export async function resyncAssistantByOperation(
-  assistantId: string,
-  projectId: string,
-  options?: {
-    idempotencyKey?: string
-  }
-): Promise<ManagementOperation> {
-  const submitted = await submitOperation({
-    kind: 'assistant.resync',
-    project_id: projectId,
-    idempotency_key: options?.idempotencyKey,
-    input_payload: {
-      assistant_id: assistantId
-    }
-  })
-  return waitForOperationTerminalState(submitted.id, {
-    pollMs: 1000,
-    timeoutMs: 60000
-  })
-}
-
 export async function deleteAssistant(
   assistantId: string,
-  options?: {
-    deleteRuntime?: boolean
-    deleteThreads?: boolean
-  },
   projectId?: string
 ): Promise<{ ok: boolean }> {
   const response = await platformHttpClient.delete(`/api/agents/${assistantId}`, {
-    params: {
-      delete_runtime: options?.deleteRuntime || undefined,
-      delete_threads: options?.deleteThreads || undefined
-    },
     headers: getProjectHeaders(projectId)
   })
 
@@ -186,6 +137,5 @@ export const listAgentsPage = listAssistantsPage
 export const createAgent = createAssistant
 export const getAgent = getAssistant
 export const updateAgent = updateAssistant
-export const resyncAgent = resyncAssistant
 export const deleteAgent = deleteAssistant
 export const findAgentByTargetId = findAssistantByTargetId

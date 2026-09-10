@@ -1,4 +1,6 @@
-from platform_api.modules.runtime_policies.infra.sqlalchemy.repository import SqlAlchemyRuntimePolicyRepository
+from platform_api.modules.runtime_policies.infra.sqlalchemy.repository import (
+    SqlAlchemyRuntimePolicyRepository,
+)
 
 __all__ = ["SqlAlchemyRuntimePolicyRepository"]
 

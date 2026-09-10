@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
+import time
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import sessionmaker
 
@@ -13,8 +17,8 @@ from platform_api.modules.runtime_catalog.bootstrap import build_runtime_catalog
 from platform_api.modules.runtime_catalog.domain import (
     RuntimeCatalogRefreshResult,
     RuntimeGraphCatalogList,
-    RuntimeModelCatalogList,
     RuntimeModelCatalogItem,
+    RuntimeModelCatalogList,
     RuntimeModelCreate,
     RuntimeModelUpdate,
     RuntimeToolCatalogList,
@@ -54,7 +58,7 @@ def get_runtime_catalog_service(request: Request) -> RuntimeCatalogService:
 
 
 @router.get("/internal/model-config")
-async def get_internal_runtime_model_config(
+def get_internal_runtime_model_config(
     request: Request,
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
 ) -> dict[str, str]:
@@ -66,42 +70,51 @@ async def get_internal_runtime_model_config(
             code="runtime_model_reference_required",
             message="Runtime model reference and project scope are required",
         )
-    return await service.resolve_model_connection(reference=reference, project_id=project_id)
+    # Only a currently authenticated Runtime may redeem a reference after queue delay.
+    timestamp = request.headers.get("x-runtime-model-time", "")
+    signature = request.headers.get("x-runtime-model-signature", "")
+    secret = request.app.state.settings.runtime_delegation_secret
+    trusted_runtime = False
+    if timestamp or signature:
+        try:
+            timely = abs(time.time() - int(timestamp)) <= 60
+        except ValueError:
+            timely = False
+        expected = hmac.new(secret.encode(), f"{timestamp}\n{project_id}\n{reference}".encode(), hashlib.sha256).hexdigest()
+        if not secret or not timely or not hmac.compare_digest(signature, expected):
+            from platform_api.core.errors import ForbiddenError
+            raise ForbiddenError(code="runtime_model_signature_invalid", message="Invalid Runtime signature")
+        trusted_runtime = True
+    return service.resolve_model_connection(
+        reference=reference, project_id=project_id, trusted_runtime=trusted_runtime)
+
 
 
 @router.get("/models", response_model=RuntimeModelCatalogList)
-async def list_runtime_models(
+def list_runtime_models(
     request: Request,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
 ) -> RuntimeModelCatalogList:
     project_id = _require_project_id(request)
-    return await service.list_models(actor=actor, project_id=project_id)
+    return service.list_models(actor=actor, project_id=project_id)
 
 
-@router.post("/models/refresh", response_model=RuntimeCatalogRefreshResult)
-async def refresh_runtime_models(
-    request: Request,
-    actor: ActorContext = Depends(get_actor_context),
-    service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
-) -> RuntimeCatalogRefreshResult:
-    project_id = _require_project_id(request)
-    return await service.refresh_models(actor=actor, project_id=project_id)
 
 
 @router.post("/models", response_model=RuntimeModelCatalogItem, status_code=201)
-async def create_runtime_model(
+def create_runtime_model(
     request: Request,
     payload: RuntimeModelCreate,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
 ) -> RuntimeModelCatalogItem:
     project_id = _require_project_id(request)
-    return await service.create_model(actor=actor, project_id=project_id, payload=payload)
+    return service.create_model(actor=actor, project_id=project_id, payload=payload)
 
 
 @router.patch("/models/{model_id}", response_model=RuntimeModelCatalogItem)
-async def update_runtime_model(
+def update_runtime_model(
     model_id: str,
     request: Request,
     payload: RuntimeModelUpdate,
@@ -109,7 +122,7 @@ async def update_runtime_model(
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
 ) -> RuntimeModelCatalogItem:
     project_id = _require_project_id(request)
-    return await service.update_model(
+    return service.update_model(
         actor=actor,
         project_id=project_id,
         model_id=model_id,
@@ -118,13 +131,13 @@ async def update_runtime_model(
 
 
 @router.get("/tools", response_model=RuntimeToolCatalogList)
-async def list_runtime_tools(
+def list_runtime_tools(
     request: Request,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
 ) -> RuntimeToolCatalogList:
     project_id = _require_project_id(request)
-    return await service.list_tools(actor=actor, project_id=project_id)
+    return service.list_tools(actor=actor, project_id=project_id)
 
 
 @router.post("/tools/refresh", response_model=RuntimeCatalogRefreshResult)
@@ -138,13 +151,13 @@ async def refresh_runtime_tools(
 
 
 @router.get("/graphs", response_model=RuntimeGraphCatalogList)
-async def list_runtime_graphs(
+def list_runtime_graphs(
     request: Request,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
 ) -> RuntimeGraphCatalogList:
     project_id = _require_project_id(request)
-    return await service.list_graphs(actor=actor, project_id=project_id)
+    return service.list_graphs(actor=actor, project_id=project_id)
 
 
 @router.post("/graphs/refresh", response_model=RuntimeCatalogRefreshResult)

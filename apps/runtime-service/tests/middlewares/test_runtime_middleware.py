@@ -294,3 +294,13 @@ def test_official_tool_retry_is_limited_to_named_tool_and_attempts() -> None:
     result = asyncio.run(middleware.awrap_tool_call(request, handler))
     assert result.content == "ok"
     assert attempts == 2
+
+
+def test_scope_accepts_server_resolved_graph_alias_but_rejects_other_graph():
+    runtime = _server_runtime()
+    runtime.server_info.graph_id = "graph-a"
+    facts = SimpleNamespace(scope=SimpleNamespace(assistant_id="graph-a", thread_id="thread-a"))
+    RuntimeConfigMiddleware._check_scope(runtime, facts)
+    facts.scope.assistant_id = "graph-b"
+    with pytest.raises(RuntimeAuthError):
+        RuntimeConfigMiddleware._check_scope(runtime, facts)

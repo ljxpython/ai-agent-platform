@@ -3,7 +3,6 @@ export type WorkspaceProjectContextModule =
   | 'runtime_gateway'
   | 'assistants'
   | 'announcements'
-  | 'operations'
   | 'audit'
 
 const workspaceProjectContextRules: Array<{
@@ -17,7 +16,6 @@ const workspaceProjectContextRules: Array<{
   { prefix: '/workspace/sql-agent', module: 'runtime_gateway' },
   { prefix: '/workspace/assistants', module: 'assistants' },
   { prefix: '/workspace/announcements', module: 'announcements' },
-  { prefix: '/workspace/operations', module: 'operations' },
   { prefix: '/workspace/projects', module: 'projects' },
   { prefix: '/workspace/audit', module: 'audit' }
 ]

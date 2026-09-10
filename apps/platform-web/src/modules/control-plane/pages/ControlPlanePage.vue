@@ -11,7 +11,6 @@ import MetricCard from '@/components/platform/MetricCard.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import { listAudit } from '@/services/audit/audit.service'
-import { listOperations } from '@/services/operations/operations.service'
 import { listServiceAccounts } from '@/services/system/service-accounts.service'
 import { getPlatformConfigSnapshot } from '@/services/system/platform-config.service'
 import {
@@ -21,12 +20,11 @@ import {
 } from '@/services/system/system-governance.service'
 import type {
   ManagementAuditRow,
-  ManagementOperation,
   ManagementServiceAccount,
   PermissionCode,
   PlatformConfigSnapshot
 } from '@/types/management'
-import { formatDateTime, shortId } from '@/utils/format'
+import { formatDateTime } from '@/utils/format'
 
 type QuickLinkItem = {
   to: string
@@ -43,19 +41,10 @@ const error = ref('')
 const snapshot = ref<PlatformConfigSnapshot | null>(null)
 const health = ref<SystemProbeStatus | null>(null)
 const ready = ref<SystemProbeStatus | null>(null)
-const recentOperations = ref<ManagementOperation[]>([])
 const recentAuditRows = ref<ManagementAuditRow[]>([])
 const recentServiceAccounts = ref<ManagementServiceAccount[]>([])
 
 const quickLinks: QuickLinkItem[] = [
-  {
-    to: '/workspace/operations',
-    label: 'Operations',
-    description: '看异步任务、队列与执行结果',
-    icon: 'activity',
-    requiredPermissions: ['platform.operation.read', 'project.operation.read'],
-    permissionMode: 'any'
-  },
   {
     to: '/workspace/audit',
     label: 'Audit',
@@ -114,7 +103,7 @@ const heroStats = computed(() => {
     {
       label: 'Ready',
       value: ready.value?.status || 'unknown',
-      hint: `db ${ready.value?.database_ready ?? '--'} / workers ${ready.value?.healthy_workers ?? '--'}`,
+      hint: `db ${ready.value?.database_ready ?? '--'}`,
       icon: 'check',
       tone: ready.value?.status === 'ready' ? 'success' : 'warning'
     },
@@ -124,13 +113,6 @@ const heroStats = computed(() => {
       hint: health.value?.request_id || '未记录 request id',
       icon: 'shield',
       tone: health.value?.status === 'ok' ? 'success' : 'danger'
-    },
-    {
-      label: '队列深度',
-      value: current?.operations.queue_depth ?? 0,
-      hint: `running ${current?.operations.running_count ?? 0} / failed ${current?.operations.failed_count ?? 0}`,
-      icon: 'activity',
-      tone: (current?.operations.queue_depth ?? 0) > 0 ? 'warning' : 'primary'
     },
     {
       label: '服务账号',
@@ -152,7 +134,7 @@ const riskFlags = computed(() => {
   if (ready.value && ready.value.status !== 'ready') {
     flags.push({
       title: 'Ready 未通过',
-      description: `当前 ready = ${ready.value.status}，先看 worker 和数据库。`,
+      description: `当前 ready = ${ready.value.status}，先看 数据库。`,
       tone: 'danger'
     })
   }
@@ -165,13 +147,6 @@ const riskFlags = computed(() => {
     })
   }
 
-  if ((snapshot.value?.observability.workers.stale_count ?? 0) > 0) {
-    flags.push({
-      title: '存在 stale worker',
-      description: `${snapshot.value?.observability.workers.stale_count ?? 0} 个 worker 掉队。`,
-      tone: 'warning'
-    })
-  }
 
   if ((snapshot.value?.observability.requests.failure_rate ?? 0) >= 0.05) {
     flags.push({
@@ -192,18 +167,6 @@ const riskFlags = computed(() => {
   return flags
 })
 
-function operationTone(status: string) {
-  if (status === 'succeeded') {
-    return 'success'
-  }
-  if (status === 'failed' || status === 'cancelled') {
-    return 'danger'
-  }
-  if (status === 'running') {
-    return 'warning'
-  }
-  return 'info'
-}
 
 function auditTone(statusCode: number) {
   if (statusCode >= 500) {
@@ -224,11 +187,6 @@ async function loadControlPlane() {
     getPlatformConfigSnapshot(),
     getSystemHealth(),
     getSystemReadyProbe(),
-    listOperations({
-      limit: 6,
-      offset: 0,
-      archiveScope: 'exclude'
-    }),
     listAudit(
       null,
       {
@@ -246,7 +204,6 @@ async function loadControlPlane() {
     snapshotResult,
     healthResult,
     readyResult,
-    operationsResult,
     auditResult,
     serviceAccountsResult
   ] = results
@@ -272,12 +229,6 @@ async function loadControlPlane() {
     failedSections.push('ready')
   }
 
-  if (operationsResult.status === 'fulfilled') {
-    recentOperations.value = operationsResult.value.items
-  } else {
-    recentOperations.value = []
-    failedSections.push('operations')
-  }
 
   if (auditResult.status === 'fulfilled') {
     recentAuditRows.value = auditResult.value.items
@@ -310,7 +261,7 @@ onMounted(() => {
     <PageHeader
       eyebrow="Governance"
       title="Control Plane"
-      description="把 operations、audit、platform config、system governance、service accounts 压成一个统一组合页。演示、值班、排查先看这里，再钻到具体治理页。"
+      description="把 audit、platform config、system governance、service accounts 压成一个统一组合页。演示、值班、排查先看这里，再钻到具体治理页。"
     >
       <template #actions>
         <BaseButton
@@ -468,57 +419,10 @@ onMounted(() => {
                 oidc {{ snapshot.security.oidc.enabled ? 'enabled' : 'disabled' }} / ttl {{ snapshot.security.service_accounts.default_token_ttl_days }}d
               </div>
             </div>
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Workers
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ snapshot.observability.workers.healthy_count }} healthy / {{ snapshot.observability.workers.stale_count }} stale
-              </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                heartbeat {{ snapshot.observability.workers.heartbeat_interval_seconds }}s / stale after {{ snapshot.observability.workers.stale_after_seconds }}s
-              </div>
-            </div>
           </div>
         </SurfaceCard>
 
-        <SurfaceCard class="space-y-4">
-          <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-            <BaseIcon
-              name="activity"
-              size="sm"
-              class="text-primary-500"
-            />
-            Recent Operations
-          </div>
-          <EmptyState
-            v-if="!recentOperations.length"
-            title="暂无 operation"
-            description="当前还没有最近操作记录。"
-            icon="activity"
-          />
-          <template v-else>
-            <article
-              v-for="operation in recentOperations"
-              :key="operation.id"
-              class="pw-card-subtle px-4 py-3"
-            >
-              <div class="flex items-center justify-between gap-3">
-                <div class="min-w-0 flex-1">
-                  <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                    {{ operation.kind }}
-                  </div>
-                  <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                    {{ shortId(operation.id) }} · {{ formatDateTime(operation.created_at) }}
-                  </div>
-                </div>
-                <StatusPill :tone="operationTone(operation.status)">
-                  {{ operation.status }}
-                </StatusPill>
-              </div>
-            </article>
-          </template>
-        </SurfaceCard>
+
 
         <SurfaceCard class="space-y-4">
           <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">

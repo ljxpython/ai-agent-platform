@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from contextlib import contextmanager
-from typing import Iterator
+from contextlib import AbstractContextManager
 
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -24,14 +23,6 @@ def build_session_factory(engine: Engine) -> sessionmaker[Session]:
     )
 
 
-@contextmanager
-def session_scope(session_factory: sessionmaker[Session]) -> Iterator[Session]:
-    session = session_factory()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+def session_scope(session_factory: sessionmaker[Session]) -> AbstractContextManager[Session]:
+    """Create, commit or roll back, and close one session in its calling thread."""
+    return session_factory.begin()

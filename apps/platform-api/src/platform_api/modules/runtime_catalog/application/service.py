@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from starlette.concurrency import run_in_threadpool
+
 import ipaddress
+from datetime import UTC, datetime
 from typing import Any
-from uuid import UUID
 from urllib.parse import quote, urlparse
+from uuid import UUID
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext
-from platform_api.core.db import SqlAlchemyUnitOfWork
+from platform_api.core.db import session_scope
 from platform_api.core.errors import (
     BadRequestError,
     ForbiddenError,
@@ -19,9 +21,25 @@ from platform_api.core.errors import (
     ServiceUnavailableError,
 )
 from platform_api.core.identifiers import parse_uuid
-from platform_api.core.security import create_runtime_delegation_token, empty_runtime_context_hash
-from platform_api.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode
-from platform_api.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
+from platform_api.core.security import (
+    create_runtime_delegation_token,
+    empty_runtime_context_hash,
+)
+from platform_api.modules.iam.application import (
+    AuthorizationRequest,
+    IamPolicyEngine,
+    PermissionCode,
+)
+from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
+from platform_api.modules.runtime_catalog.application.credentials import (
+    ModelCredentialError,
+    decrypt_api_key,
+    encrypt_api_key,
+)
+from platform_api.modules.runtime_catalog.application.model_connection import (
+    ModelReferenceError,
+    parse_model_reference,
+)
 from platform_api.modules.runtime_catalog.domain import (
     RuntimeCatalogRefreshResult,
     RuntimeGraphCatalogItem,
@@ -33,17 +51,12 @@ from platform_api.modules.runtime_catalog.domain import (
     RuntimeToolCatalogItem,
     RuntimeToolCatalogList,
 )
-from platform_api.modules.runtime_catalog.application.credentials import (
-    ModelCredentialError,
-    decrypt_api_key,
-    encrypt_api_key,
+from platform_api.modules.runtime_catalog.infra import (
+    SqlAlchemyRuntimeCatalogRepository,
 )
-from platform_api.modules.runtime_catalog.application.model_connection import (
-    ModelReferenceError,
-    parse_model_reference,
+from platform_api.modules.runtime_policies.application import (
+    RuntimePolicyOverlayService,
 )
-from platform_api.modules.runtime_catalog.infra import SqlAlchemyRuntimeCatalogRepository
-from platform_api.modules.runtime_policies.application import RuntimePolicyOverlayService
 
 
 def _clean(value: Any) -> str | None:
@@ -51,6 +64,8 @@ def _clean(value: Any) -> str | None:
         return None
     normalized = str(value).strip()
     return normalized or None
+
+
 def _runtime_id(value: str) -> str:
     # Deployment identity is logical; its network address is configuration.
     return "default"
@@ -88,17 +103,17 @@ class RuntimeCatalogService:
     def _require_project_exists(
         self,
         *,
-        uow: SqlAlchemyUnitOfWork,
+        session: Session,
         project_id: str,
     ) -> UUID:
         project_uuid = parse_uuid(project_id, code="invalid_project_id")
-        repository = SqlAlchemyProjectsRepository(uow.session)
+        repository = SqlAlchemyProjectsRepository(session)
         project = repository.get_project_by_id(project_uuid)
         if project is None or project.status == "deleted":
             raise NotFoundError(message="Project not found", code="project_not_found")
         return project_uuid
 
-    async def _prepare_project_scope(
+    def _prepare_project_scope(
         self,
         *,
         actor: ActorContext,
@@ -113,8 +128,8 @@ class RuntimeCatalogService:
                 project_id=project_id,
             ),
         )
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            return self._require_project_exists(uow=uow, project_id=project_id)
+        with session_scope(session_factory) as session:
+            return self._require_project_exists(session=session, project_id=project_id)
 
     def _require_refresh_access(self, *, actor: ActorContext, project_id: str) -> None:
         try:
@@ -134,7 +149,9 @@ class RuntimeCatalogService:
                 ),
             )
 
-    def _runtime_headers(self, *, actor: ActorContext, project_id: str) -> dict[str, str]:
+    def _runtime_headers(
+        self, *, actor: ActorContext, project_id: str
+    ) -> dict[str, str]:
         subject = actor.user_id or actor.subject
         if not subject:
             raise NotAuthenticatedError()
@@ -176,42 +193,178 @@ class RuntimeCatalogService:
     def _model_item(self, item: Any) -> RuntimeModelCatalogItem:
         return RuntimeModelCatalogItem(
             id=str(item.id),
-            runtime_id=item.runtime_id,
-            model_id=item.model_key,
-            display_name=item.display_name or item.model_key,
-            is_default=item.is_default_runtime,
-            sync_status=item.sync_status,
-            last_seen_at=item.last_seen_at,
-            last_synced_at=item.last_synced_at,
+            display_name=item.display_name,
             provider=item.provider,
             base_url=item.base_url,
             protocol=item.protocol,
-            model=item.model_name or item.model_key,
+            model=item.model_name,
             enabled=item.enabled,
             credential_configured=bool(item.api_key_ciphertext),
         )
 
-    async def resolve_model_connection(
+    def _authorize_model_reference(self, values: dict, project_id: str) -> None:
+        from datetime import UTC, datetime
+
+        from platform_api.modules.agents.infra.sqlalchemy.repository import (
+            SqlAlchemyAssistantsRepository,
+        )
+        from platform_api.modules.identity.actors import load_user_actor
+        from platform_api.modules.runtime_policies.infra.sqlalchemy.repository import (
+            SqlAlchemyRuntimePolicyRepository,
+        )
+        from platform_api.modules.service_accounts.models import (
+            ServiceAccountTokenRecord,
+        )
+        from platform_api.modules.service_accounts.repository import (
+            SqlAlchemyServiceAccountsRepository,
+        )
+
+        factory = self._require_session_factory()
+        identity = values.get("actor")
+        if not isinstance(identity, dict):
+            raise ForbiddenError(
+                code="runtime_model_reference_denied",
+                message="Model reference has no principal",
+            )
+
+        with factory() as session:
+            projects = SqlAlchemyProjectsRepository(session)
+            project_uuid = parse_uuid(project_id, code="invalid_project_id")
+            project = projects.get_project_by_id(project_uuid)
+            if project is None or project.status == "deleted":
+                raise ForbiddenError(
+                    code="runtime_model_reference_denied",
+                    message="Project is unavailable",
+                )
+            if identity.get("principal_type") == "user":
+                actor = load_user_actor(
+                    session_factory=factory,
+                    user_id=identity.get("user_id") or "",
+                    project_id=project_id,
+                )
+            elif identity.get("principal_type") == "service_account":
+                token = session.get(
+                    ServiceAccountTokenRecord,
+                    parse_uuid(
+                        identity.get("credential_id") or "",
+                        code="invalid_credential_id",
+                    ),
+                )
+                if (
+                    token is None
+                    or token.status != "active"
+                    or token.revoked_at is not None
+                    or (
+                        token.expires_at is not None
+                        and token.expires_at.replace(tzinfo=UTC) <= datetime.now(UTC)
+                    )
+                ):
+                    raise ForbiddenError(
+                        code="runtime_model_reference_denied",
+                        message="Credential revoked",
+                    )
+                repo = SqlAlchemyServiceAccountsRepository(session)
+                account = repo.get_service_account_by_id(token.service_account_id)
+                role = repo.get_project_grant_role(
+                    credential_id=str(token.id), project_id=project_uuid
+                )
+                actor = (
+                    ActorContext(
+                        subject=account.name,
+                        principal_type="service_account",
+                        platform_roles=account.platform_roles,
+                        project_roles={project_id: (role.value,)} if role else {},
+                    )
+                    if account and account.status == "active"
+                    else None
+                )
+            else:
+                actor = None
+            if actor is None:
+                raise ForbiddenError(
+                    code="runtime_model_reference_denied", message="Principal revoked"
+                )
+            self._policy_engine.require(
+                actor=actor,
+                authorization=AuthorizationRequest(
+                    permission=PermissionCode.PROJECT_RUNTIME_WRITE,
+                    project_id=project_id,
+                ),
+            )
+            agent = SqlAlchemyAssistantsRepository(session).get_by_project_and_graph_id(
+                project_id=project_uuid, graph_id=values.get("agent_key") or ""
+            )
+            if agent is None or agent.status != "active":
+                raise ForbiddenError(
+                    code="runtime_target_denied", message="Agent is unavailable"
+                )
+            graph_ids = {
+                str(graph.id)
+                for graph in SqlAlchemyRuntimeCatalogRepository(session).list_graphs(
+                    runtime_id=self._runtime_id
+                )
+                if graph.graph_key == agent.graph_id
+            }
+            if any(
+                str(policy.graph_catalog_id) in graph_ids and not policy.is_enabled
+                for policy in SqlAlchemyRuntimePolicyRepository(
+                    session
+                ).list_graph_policies(project_id=project_uuid)
+            ):
+                raise ForbiddenError(
+                    code="runtime_target_denied", message="Graph permission revoked"
+                )
+            policies = SqlAlchemyRuntimePolicyRepository(session).list_model_policies(
+                project_id=project_uuid
+            )
+            if any(
+                str(policy.model_catalog_id) == values["model_id"]
+                and not policy.is_enabled
+                for policy in policies
+            ):
+                raise ForbiddenError(
+                    code="runtime_model_denied",
+                    message="Project model permission revoked",
+                )
+
+    def resolve_model_connection(
         self,
         *,
         reference: str,
         project_id: str,
+        trusted_runtime: bool = False,
     ) -> dict[str, str]:
         """Resolve one short-lived internal reference without exposing it publicly."""
-        secret = self._settings.runtime_model_config_secret or self._settings.runtime_delegation_secret
+        secret = (
+            self._settings.runtime_model_config_secret
+            or self._settings.runtime_delegation_secret
+        )
         try:
-            values = parse_model_reference(reference, secret=secret)
+            values = parse_model_reference(
+                reference, secret=secret, allow_expired=trusted_runtime
+            )
         except ModelReferenceError as exc:
-            raise ForbiddenError(code="runtime_model_reference_invalid", message="Invalid model reference") from exc
+            raise ForbiddenError(
+                code="runtime_model_reference_invalid",
+                message="Invalid model reference",
+            ) from exc
         if values["project_id"] != project_id:
-            raise ForbiddenError(code="runtime_model_reference_denied", message="Model reference project mismatch")
+            raise ForbiddenError(
+                code="runtime_model_reference_denied",
+                message="Model reference project mismatch",
+            )
 
+        self._authorize_model_reference(values, project_id)
         session_factory = self._require_session_factory()
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
-            item = repository.get_model_by_key(runtime_id=self._runtime_id, model_key=values["model_id"])
+        with session_scope(session_factory) as session:
+            repository = SqlAlchemyRuntimeCatalogRepository(session)
+            item = repository.get_model_by_id(
+                parse_uuid(values["model_id"], code="invalid_model_id")
+            )
             if item is None or not item.enabled:
-                raise NotFoundError(code="runtime_model_not_found", message="Runtime model not found")
+                raise NotFoundError(
+                    code="runtime_model_not_found", message="Runtime model not found"
+                )
             try:
                 api_key = decrypt_api_key(
                     item.api_key_ciphertext,
@@ -222,14 +375,20 @@ class RuntimeCatalogService:
                     code="model_credential_unavailable",
                     message="Model credential storage is not configured",
                 ) from exc
-            required = (item.provider, item.base_url, item.protocol, item.model_name, api_key)
+            required = (
+                item.provider,
+                item.base_url,
+                item.protocol,
+                item.model_name,
+                api_key,
+            )
             if any(not value for value in required):
                 raise ServiceUnavailableError(
                     code="runtime_model_connection_incomplete",
                     message="Runtime model connection is incomplete",
                 )
             return {
-                "model_id": item.model_key,
+                "model_id": str(item.id),
                 "provider": item.provider,
                 "base_url": item.base_url,
                 "protocol": item.protocol,
@@ -238,11 +397,19 @@ class RuntimeCatalogService:
             }
 
     @staticmethod
-    def _validated_model_values(payload: RuntimeModelCreate | RuntimeModelUpdate, *, partial: bool) -> dict[str, Any]:
+    def _validated_model_values(
+        payload: RuntimeModelCreate | RuntimeModelUpdate, *, partial: bool
+    ) -> dict[str, Any]:
         values = payload.model_dump(exclude_unset=partial)
+        if "enabled" in values and not isinstance(values["enabled"], bool):
+            raise BadRequestError(
+                code="invalid_model_enabled", message="enabled must be a boolean"
+            )
         required = ("provider", "display_name", "base_url", "protocol", "model")
         if not partial:
-            missing = [key for key in (*required, "api_key") if not _clean(values.get(key))]
+            missing = [
+                key for key in (*required, "api_key") if not _clean(values.get(key))
+            ]
             if missing:
                 raise BadRequestError(
                     message="model fields are required",
@@ -250,7 +417,9 @@ class RuntimeCatalogService:
                 )
         for key in required:
             if key in values and not _clean(values[key]):
-                raise BadRequestError(message=f"{key} is required", code="model_field_required")
+                raise BadRequestError(
+                    message=f"{key} is required", code="model_field_required"
+                )
         if "base_url" in values:
             parsed = urlparse(str(values["base_url"]).strip())
             if parsed.scheme not in {"http", "https"} or not parsed.netloc:
@@ -274,7 +443,10 @@ class RuntimeCatalogService:
             except ValueError:
                 address = None
             if address is not None and (
-                address.is_private or address.is_loopback or address.is_link_local or address.is_unspecified
+                address.is_private
+                or address.is_loopback
+                or address.is_link_local
+                or address.is_unspecified
             ):
                 raise BadRequestError(
                     message="base_url must not target a private or local address",
@@ -284,22 +456,27 @@ class RuntimeCatalogService:
         if "protocol" in values:
             values["protocol"] = str(values["protocol"]).strip().lower()
             if values["protocol"] not in _SUPPORTED_PROTOCOLS:
-                raise BadRequestError(message="unsupported model protocol", code="unsupported_model_protocol")
+                raise BadRequestError(
+                    message="unsupported model protocol",
+                    code="unsupported_model_protocol",
+                )
         for key in ("provider", "display_name", "model"):
             if key in values:
                 values[key] = str(values[key]).strip()
         if "api_key" in values and not _clean(values["api_key"]):
-            raise BadRequestError(message="api_key is required", code="model_field_required")
+            raise BadRequestError(
+                message="api_key is required", code="model_field_required"
+            )
         return values
 
-    async def create_model(
+    def create_model(
         self,
         *,
         actor: ActorContext,
         project_id: str,
         payload: RuntimeModelCreate,
     ) -> RuntimeModelCatalogItem:
-        await self._prepare_project_scope(
+        self._prepare_project_scope(
             actor=actor,
             project_id=project_id,
             permission=PermissionCode.PROJECT_RUNTIME_WRITE,
@@ -316,14 +493,13 @@ class RuntimeCatalogService:
                 message="Model credential storage is not configured",
             ) from exc
         session_factory = self._require_session_factory()
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            item = SqlAlchemyRuntimeCatalogRepository(uow.session).create_configured_model(
-                runtime_id=self._runtime_id,
+        with session_scope(session_factory) as session:
+            item = SqlAlchemyRuntimeCatalogRepository(session).create_configured_model(
                 values=values,
             )
             return self._model_item(item)
 
-    async def update_model(
+    def update_model(
         self,
         *,
         actor: ActorContext,
@@ -331,7 +507,7 @@ class RuntimeCatalogService:
         model_id: str,
         payload: RuntimeModelUpdate,
     ) -> RuntimeModelCatalogItem:
-        await self._prepare_project_scope(
+        self._prepare_project_scope(
             actor=actor,
             project_id=project_id,
             permission=PermissionCode.PROJECT_RUNTIME_WRITE,
@@ -350,14 +526,13 @@ class RuntimeCatalogService:
                 ) from exc
         if "model" in values:
             model_name = values.pop("model")
-            values["model_key"] = model_name
             values["model_name"] = model_name
         if "enabled" not in values:
             values.pop("enabled", None)
         model_uuid = parse_uuid(model_id, code="invalid_model_id")
         session_factory = self._require_session_factory()
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            item = SqlAlchemyRuntimeCatalogRepository(uow.session).update_configured_model(
+        with session_scope(session_factory) as session:
+            item = SqlAlchemyRuntimeCatalogRepository(session).update_configured_model(
                 model_uuid,
                 values=values,
             )
@@ -392,12 +567,6 @@ class RuntimeCatalogService:
         )
 
     @staticmethod
-    def _normalize_model_items(payload: Any) -> list[dict[str, Any]]:
-        if not isinstance(payload, dict) or not isinstance(payload.get("models"), list):
-            return []
-        return [item for item in payload["models"] if isinstance(item, dict)]
-
-    @staticmethod
     def _normalize_tool_items(payload: Any) -> list[dict[str, Any]]:
         if not isinstance(payload, dict) or not isinstance(payload.get("tools"), list):
             return []
@@ -418,88 +587,41 @@ class RuntimeCatalogService:
             default=None,
         )
 
-    async def list_models(
+    def list_models(
         self,
         *,
         actor: ActorContext,
         project_id: str,
     ) -> RuntimeModelCatalogList:
-        await self._prepare_project_scope(
+        self._prepare_project_scope(
             actor=actor,
             project_id=project_id,
             permission=PermissionCode.PROJECT_RUNTIME_READ,
         )
         session_factory = self._require_session_factory()
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
-            rows = repository.list_models(runtime_id=self._runtime_id)
+        with session_scope(session_factory) as session:
+            repository = SqlAlchemyRuntimeCatalogRepository(session)
+            rows = repository.list_models()
             items = [self._model_item(item) for item in rows]
             return RuntimeModelCatalogList(
                 count=len(items),
                 models=items,
-                last_synced_at=self._latest_synced_at(items),
             )
 
-    async def refresh_models(
-        self,
-        *,
-        actor: ActorContext,
-        project_id: str,
-    ) -> RuntimeCatalogRefreshResult:
-        await self._prepare_project_scope(
-            actor=actor,
-            project_id=project_id,
-            permission=PermissionCode.PROJECT_RUNTIME_READ,
-        )
-        self._require_refresh_access(actor=actor, project_id=project_id)
-
-        payload = await self._upstream.require_json(
-            "GET",
-            "/internal/capabilities/models",
-            forwarded_headers=self._runtime_headers(actor=actor, project_id=project_id),
-        )
-        items = self._normalize_model_items(payload)
-        synced_at = datetime.now(timezone.utc)
-        active_keys = {
-            model_key
-            for model_key in (_clean(item.get("model_id")) for item in items)
-            if model_key
-        }
-
-        session_factory = self._require_session_factory()
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
-            repository.upsert_model_items(
-                runtime_id=self._runtime_id,
-                items=items,
-                synced_at=synced_at,
-            )
-            repository.mark_missing_models_deleted(
-                runtime_id=self._runtime_id,
-                active_keys=active_keys,
-                synced_at=synced_at,
-            )
-
-        return RuntimeCatalogRefreshResult(
-            ok=True,
-            count=len(items),
-            last_synced_at=synced_at,
-        )
-
-    async def list_tools(
+    def list_tools(
         self,
         *,
         actor: ActorContext,
         project_id: str,
     ) -> RuntimeToolCatalogList:
-        await self._prepare_project_scope(
+        self._prepare_project_scope(
             actor=actor,
             project_id=project_id,
             permission=PermissionCode.PROJECT_RUNTIME_READ,
         )
         session_factory = self._require_session_factory()
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
+        with session_scope(session_factory) as session:
+            repository = SqlAlchemyRuntimeCatalogRepository(session)
             rows = repository.list_tools(runtime_id=self._runtime_id)
             items = [self._tool_item(item) for item in rows]
             return RuntimeToolCatalogList(
@@ -514,7 +636,8 @@ class RuntimeCatalogService:
         actor: ActorContext,
         project_id: str,
     ) -> RuntimeCatalogRefreshResult:
-        await self._prepare_project_scope(
+        await run_in_threadpool(
+            self._prepare_project_scope,
             actor=actor,
             project_id=project_id,
             permission=PermissionCode.PROJECT_RUNTIME_READ,
@@ -524,10 +647,12 @@ class RuntimeCatalogService:
         payload = await self._upstream.require_json(
             "GET",
             "/internal/capabilities/tools",
-            forwarded_headers=self._runtime_headers(actor=actor, project_id=project_id),
+            forwarded_headers=await run_in_threadpool(
+                self._runtime_headers, actor=actor, project_id=project_id
+            ),
         )
         items = self._normalize_tool_items(payload)
-        synced_at = datetime.now(timezone.utc)
+        synced_at = datetime.now(UTC)
         active_keys = {
             tool_key
             for tool_key in (
@@ -543,18 +668,22 @@ class RuntimeCatalogService:
         }
 
         session_factory = self._require_session_factory()
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
-            repository.upsert_tool_items(
-                runtime_id=self._runtime_id,
-                items=items,
-                synced_at=synced_at,
-            )
-            repository.mark_missing_tools_deleted(
-                runtime_id=self._runtime_id,
-                active_keys=active_keys,
-                synced_at=synced_at,
-            )
+
+        def persist():
+            with session_scope(session_factory) as session:
+                repository = SqlAlchemyRuntimeCatalogRepository(session)
+                repository.upsert_tool_items(
+                    runtime_id=self._runtime_id,
+                    items=items,
+                    synced_at=synced_at,
+                )
+                repository.mark_missing_tools_deleted(
+                    runtime_id=self._runtime_id,
+                    active_keys=active_keys,
+                    synced_at=synced_at,
+                )
+
+        await run_in_threadpool(persist)
 
         return RuntimeCatalogRefreshResult(
             ok=True,
@@ -563,30 +692,40 @@ class RuntimeCatalogService:
         )
 
     async def get_graph_schema(
-        self, *, actor: ActorContext, project_id: str, graph_id: str,
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        graph_id: str,
     ) -> dict[str, Any]:
-        await self._prepare_project_scope(
-            actor=actor, project_id=project_id, permission=PermissionCode.PROJECT_RUNTIME_READ,
+        await run_in_threadpool(
+            self._prepare_project_scope,
+            actor=actor,
+            project_id=project_id,
+            permission=PermissionCode.PROJECT_RUNTIME_READ,
         )
         return await self._upstream.require_json(
-            "GET", f"/assistants/{quote(graph_id, safe='')}/schemas",
-            forwarded_headers=self._runtime_headers(actor=actor, project_id=project_id),
+            "GET",
+            f"/assistants/{quote(graph_id, safe='')}/schemas",
+            forwarded_headers=await run_in_threadpool(
+                self._runtime_headers, actor=actor, project_id=project_id
+            ),
         )
 
-    async def list_graphs(
+    def list_graphs(
         self,
         *,
         actor: ActorContext,
         project_id: str,
     ) -> RuntimeGraphCatalogList:
-        await self._prepare_project_scope(
+        self._prepare_project_scope(
             actor=actor,
             project_id=project_id,
             permission=PermissionCode.PROJECT_RUNTIME_READ,
         )
         session_factory = self._require_session_factory()
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
+        with session_scope(session_factory) as session:
+            repository = SqlAlchemyRuntimeCatalogRepository(session)
             rows = repository.list_graphs(runtime_id=self._runtime_id)
 
             items = [self._graph_item(item) for item in rows]
@@ -602,7 +741,8 @@ class RuntimeCatalogService:
         actor: ActorContext,
         project_id: str,
     ) -> RuntimeCatalogRefreshResult:
-        await self._prepare_project_scope(
+        await run_in_threadpool(
+            self._prepare_project_scope,
             actor=actor,
             project_id=project_id,
             permission=PermissionCode.PROJECT_RUNTIME_READ,
@@ -610,26 +750,36 @@ class RuntimeCatalogService:
         self._require_refresh_access(actor=actor, project_id=project_id)
 
         rows = await self._upstream.list_deployed_graphs(
-            forwarded_headers=self._runtime_headers(actor=actor, project_id=project_id),
+            forwarded_headers=await run_in_threadpool(
+                self._runtime_headers, actor=actor, project_id=project_id
+            ),
         )
         items = [{**row, "display_name": row["graph_id"]} for row in rows]
-        synced_at = datetime.now(timezone.utc)
-        active_keys = {graph_id for graph_id in (_clean(item.get("graph_id")) for item in items) if graph_id}
+        synced_at = datetime.now(UTC)
+        active_keys = {
+            graph_id
+            for graph_id in (_clean(item.get("graph_id")) for item in items)
+            if graph_id
+        }
 
         session_factory = self._require_session_factory()
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
-            repository.upsert_graph_items(
-                runtime_id=self._runtime_id,
-                items=items,
-                synced_at=synced_at,
-                source_type="default_assistant",
-            )
-            repository.mark_missing_graphs_deleted(
-                runtime_id=self._runtime_id,
-                active_keys=active_keys,
-                synced_at=synced_at,
-            )
+
+        def persist():
+            with session_scope(session_factory) as session:
+                repository = SqlAlchemyRuntimeCatalogRepository(session)
+                repository.upsert_graph_items(
+                    runtime_id=self._runtime_id,
+                    items=items,
+                    synced_at=synced_at,
+                    source_type="default_assistant",
+                )
+                repository.mark_missing_graphs_deleted(
+                    runtime_id=self._runtime_id,
+                    active_keys=active_keys,
+                    synced_at=synced_at,
+                )
+
+        await run_in_threadpool(persist)
 
         return RuntimeCatalogRefreshResult(
             ok=True,

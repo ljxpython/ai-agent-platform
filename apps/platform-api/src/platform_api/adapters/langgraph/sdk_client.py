@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 import httpx
 import langgraph_sdk
@@ -40,6 +41,18 @@ def get_langgraph_client(
     )
 
 
+def redact_runtime_private_fields(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: redact_runtime_private_fields(item)
+            for key, item in value.items()
+            if not (str(key).startswith("_runtime_") or key == "runtime_model_ref")
+        }
+    if isinstance(value, list):
+        return [redact_runtime_private_fields(item) for item in value]
+    return value
+
+
 def _runtime_upstream_message(detail: Any, *, fallback_code: str) -> str:
     if isinstance(detail, str) and detail.strip():
         return detail.strip()
@@ -57,6 +70,7 @@ def create_runtime_upstream_error(
     fallback_code: str,
     upstream_path: str | None = None,
 ) -> PlatformApiError:
+    detail = redact_runtime_private_fields(detail)
     extra: dict[str, Any] = {
         "upstream": "langgraph",
         "upstream_status_code": status_code,

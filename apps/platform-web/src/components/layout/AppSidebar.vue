@@ -97,13 +97,6 @@ const groups = computed(() => {
           requiredPermissions: ['platform.config.read']
         },
         {
-          to: '/workspace/operations',
-          label: t('nav.operations'),
-          icon: 'activity',
-          requiredPermissions: ['platform.operation.read', 'project.operation.read'],
-          permissionMode: 'any'
-        },
-        {
           to: '/workspace/announcements',
           label: t('nav.announcements'),
           icon: 'bell',

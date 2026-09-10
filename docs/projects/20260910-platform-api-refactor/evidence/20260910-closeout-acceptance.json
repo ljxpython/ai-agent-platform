@@ -1,0 +1,43 @@
+{
+  "date": "2026-09-10",
+  "scope": "backend functional closeout; not whole-project structural completion",
+  "status": "done",
+  "platform_full_suite": {
+    "total": 139,
+    "passed": 136,
+    "skipped": 3,
+    "seconds": 298.964
+  },
+  "subsequent_targeted_regressions": {
+    "run_requests": 16,
+    "sdk_ack": 12,
+    "audit": 6
+  },
+  "runtime_targeted": {
+    "passed": 47,
+    "deselected": 3,
+    "seconds": 176.41
+  },
+  "model_lifecycle": {
+    "passed": 5
+  },
+  "graphharbor_schema": {
+    "passed": 4
+  },
+  "graphharbor_version": "0.13.0.post26",
+  "postgres_evidence": "20260910-closeout-postgres.json",
+  "release_evidence": "20260910-post26-sha256.json",
+  "live_evidence": "20260910-platform-showcase-post26.json",
+  "checks": {
+    "ruff_F": "passed",
+    "git_diff_check": "passed",
+    "changed_markdown": "passed"
+  },
+  "remaining": {
+    "S3_full_service_transactions_and_layout": "partial",
+    "strict_repo_lint": "partial",
+    "frontend": "deferred",
+    "container_deployment": "deferred",
+    "langgraph_server_parity": "deferred"
+  }
+}

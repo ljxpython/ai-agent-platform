@@ -1,0 +1,1 @@
+{"status": "passed", "infrastructure": "local PostgreSQL", "native_commit": true, "exception_rollback": true, "threadpool_transaction": true, "connections_released": true}

@@ -131,3 +131,27 @@ uv pip install --python <应用虚拟环境的 Python> --no-deps --target /tmp/s
 清除临时框架覆盖路径，使用 runtime-service `.venv` 中从 PyPI 安装的 post21，再运行同一真实验收脚本：**通过**。Thread `bf964ad4-bc31-4097-8c9b-33d9d9989d5a`，最终 Run `738809aa-6d08-4909-89f7-e8114dba765e` 为 success；API/Worker 重启后原 interrupt ID 和完整 messages 一致，独立运行模型生成的检查及报表均成功，输出 **43.50、退出码 0**。见 [索引安装版本证据](evidence/20260910-post21-published.json)。
 
 验证脚本已停止自己启动的 API/Worker；本轮专用 PostgreSQL/Redis 容器停止，数据与本地证据保留，原有业务服务不受影响。后端教学范围验收完成；前端、生产切流与容量验收保持独立状态。
+
+## 2026-09-10 平台后端验收与前端后置
+
+- [x] 真实 Platform API 登录/项目/目录/模型/Agent/Thread/Run/审批链路；GraphHarbor 与 Runtime 使用 post25。
+- [x] Platform API、Runtime API 和 Worker 三进程重启后恢复原 messages/interrupt；最终 Run success，独立 Docker 执行检查通过，报表 43.50、退出码 0。
+- [x] 同 key 复用、不同 payload 冲突、Agent 禁用后审批拒绝、跨项目拒绝及公开流字段检查。
+- [ ] 前端页面、token 展示、三栏 Sandbox、断线/刷新/多审批等浏览器验收：**deferred**，按用户本次决定统一后置。
+
+证据：[平台 Showcase](../20260910-platform-api-refactor/evidence/20260910-platform-showcase-post25.json)。平台后端其余缺口见 [验收四态](../20260910-platform-api-refactor/implementation/10-operations-run-requests.md)；前端影响及实施步骤见 [05 前端交接](../20260910-platform-api-refactor/05-frontend-handoff.md)。本记录更新此前“等待平台联调”的状态，历史 post21 验收仍保留；本工程整体 partial。
+
+## 2026-09-10 post26 后端收尾复验
+
+- [x] 使用 GraphHarbor/Runtime `0.13.0.post26`，平台新模型 UUID 与精简后的 Agent 契约完成真实执行。
+- [x] Run 排队实际等待 62 秒，超过默认 60 秒模型引用 TTL；轮换凭据后启动 Worker，真实模型执行成功。
+- [x] pending 并发拒绝、取消后重发、同 key 复用/冲突通过；三进程重启后消息与 interrupt 一致，标准 `command.resume` 按 ID 恢复。
+- [x] 六次真实工具审批，独立 Docker 回归测试通过，报表及 result.txt 为 43.50，SSE 读取 105030 字节。
+
+[post26 证据](../20260910-platform-api-refactor/evidence/20260910-platform-showcase-post26.json) · [收尾记录](../20260910-platform-api-refactor/implementation/11-backend-closeout.md)。本次后端功能验收 done；前端按用户决定 deferred，Showcase 项目整体仍 partial。
+
+2026-09-10 事务重构后 Docker 完整复验通过：三进程重启/标准审批/真实 execute、实际回归测试函数及报表 43.50 均通过，见 [最终证据](../20260910-platform-api-refactor/evidence/20260910-final-docker-showcase.json)。前端仍 deferred。
+
+## 2026-09-10 平台后端三项收尾
+
+平台公开接口矩阵、真实数据库备份恢复与长 SSE 混合负载均通过。恢复库读回本 Demo 的 20 条消息、61 条历史快照和五个原 Run 状态，父子请求关联一致。详见 [平台收尾记录](../20260910-platform-api-refactor/implementation/13-backend-acceptance-closeout.md)。此项不替代 Docker 工具执行证据，也不包含已后置的前端/浏览器验收。

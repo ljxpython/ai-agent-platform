@@ -3,16 +3,16 @@ from __future__ import annotations
 import importlib
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import Mock, AsyncMock
 
 from platform_api.modules.runtime_gateway.application.service import RuntimeGatewayService
 
 
 class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase):
     def test_cold_import_identity_and_projects_sqlalchemy_modules(self) -> None:
-        models_module = importlib.import_module("platform_api.modules.identity.infra.sqlalchemy.models")
+        models_module = importlib.import_module("platform_api.modules.identity.models")
         repository_module = importlib.import_module(
-            "platform_api.modules.projects.infra.sqlalchemy.repository"
+            "platform_api.modules.projects.repository"
         )
         service_module = importlib.import_module("platform_api.modules.runtime_gateway.application.service")
 
@@ -26,7 +26,7 @@ class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase
             session_factory=None,
             upstream=upstream,
         )
-        service._prepare_project_scope = AsyncMock()  # type: ignore[method-assign]
+        service._prepare_project_scope = Mock()  # type: ignore[method-assign]
 
         payload = await service.create_thread(
             actor=SimpleNamespace(),
@@ -51,102 +51,8 @@ class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase
             }
         )
 
-    async def test_thread_run_allows_legacy_graph_thread_without_graph_id(self) -> None:
-        upstream = SimpleNamespace(
-            create_thread_run=AsyncMock(return_value={"run_id": "run-1"}),
-            join_thread_run_stream=AsyncMock(return_value={"ok": True}),
-        )
-        service = RuntimeGatewayService(
-            session_factory=None,
-            upstream=upstream,
-        )
-        service._load_thread = AsyncMock(  # type: ignore[method-assign]
-            return_value={
-                "thread_id": "thread-1",
-                "metadata": {
-                    "project_id": "project-1",
-                    "target_type": "graph",
-                    "assistant_id": "test_case_agent",
-                },
-            }
-        )
-        service._project_default_model_id = AsyncMock(return_value=None)  # type: ignore[method-assign]
-        service._inject_project_scope = lambda project_id, payload: payload or {}  # type: ignore[assignment]
-        service._validate_run_options = AsyncMock()  # type: ignore[method-assign]
-        service._assert_runtime_target_allowed = AsyncMock()  # type: ignore[method-assign]
-        service._reserve_durable_run = AsyncMock(  # type: ignore[method-assign]
-            return_value=SimpleNamespace(
-                run_id=None,
-                status="submitted",
-                id="durable-1",
-                operation_id="operation-1",
-                thread_id="thread-1",
-                idempotency_key="standard:key",
-            )
-        )
-        service._mark_durable_run_started = AsyncMock()  # type: ignore[method-assign]
 
-        payload = await service.stream_thread_run(
-            actor=SimpleNamespace(),
-            project_id="project-1",
-            thread_id="thread-1",
-            payload={"assistant_id": "test_case_agent"},
-        )
 
-        self.assertEqual(payload, {"ok": True})
-        service._assert_runtime_target_allowed.assert_awaited_once_with(
-            project_id="project-1",
-            assistant_id="test_case_agent",
-            thread={
-                "thread_id": "thread-1",
-                "metadata": {
-                    "project_id": "project-1",
-                    "target_type": "graph",
-                    "assistant_id": "test_case_agent",
-                },
-            },
-        )
-
-    async def test_create_global_run_normalizes_assistant_id(self) -> None:
-        upstream = SimpleNamespace(create_global_run=AsyncMock(return_value={"ok": True}))
-        service = RuntimeGatewayService(
-            session_factory=None,
-            upstream=upstream,
-        )
-        service._prepare_project_scope = AsyncMock()  # type: ignore[method-assign]
-        service._project_default_model_id = AsyncMock(return_value=None)  # type: ignore[method-assign]
-        service._validate_run_options = AsyncMock()  # type: ignore[method-assign]
-        service._assert_runtime_target_allowed = AsyncMock()  # type: ignore[method-assign]
-
-        payload = await service.create_global_run(
-            actor=SimpleNamespace(),
-            project_id="project-1",
-            payload={"assistant_id": " assistant-1 "},
-        )
-
-        self.assertEqual(payload, {"ok": True})
-        service._assert_runtime_target_allowed.assert_awaited_once_with(
-            project_id="project-1",
-            assistant_id="assistant-1",
-        )
-
-    async def test_cancel_runs_ignores_blank_thread_id(self) -> None:
-        upstream = SimpleNamespace(cancel_runs=AsyncMock(return_value={"ok": True}))
-        service = RuntimeGatewayService(
-            session_factory=None,
-            upstream=upstream,
-        )
-        service._prepare_project_scope = AsyncMock()  # type: ignore[method-assign]
-        service._load_thread = AsyncMock()  # type: ignore[method-assign]
-
-        payload = await service.cancel_runs(
-            actor=SimpleNamespace(),
-            project_id="project-1",
-            payload={"thread_id": "   ", "status": "pending"},
-        )
-
-        self.assertEqual(payload, {"ok": True})
-        service._load_thread.assert_not_called()
 
 
 if __name__ == "__main__":

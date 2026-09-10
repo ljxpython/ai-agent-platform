@@ -31,23 +31,23 @@ def get_runtime_policy_overlay_service(request: Request) -> RuntimePolicyOverlay
 
 
 @router.get("/graphs", response_model=RuntimeGraphPolicyList)
-async def list_graph_policies(
+def list_graph_policies(
     project_id: str,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimePolicyOverlayService = Depends(get_runtime_policy_overlay_service),
 ) -> RuntimeGraphPolicyList:
-    return await service.list_graph_policies(actor=actor, project_id=project_id)
+    return service.list_graph_policies(actor=actor, project_id=project_id)
 
 
 @router.put("/graphs/{catalog_id}")
-async def upsert_graph_policy(
+def upsert_graph_policy(
     project_id: str,
     catalog_id: str,
     payload: UpsertRuntimeGraphPolicyCommand,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimePolicyOverlayService = Depends(get_runtime_policy_overlay_service),
 ):
-    return await service.upsert_graph_policy(
+    return service.upsert_graph_policy(
         actor=actor,
         project_id=project_id,
         catalog_id=catalog_id,
@@ -56,23 +56,23 @@ async def upsert_graph_policy(
 
 
 @router.get("/tools", response_model=RuntimeToolPolicyList)
-async def list_tool_policies(
+def list_tool_policies(
     project_id: str,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimePolicyOverlayService = Depends(get_runtime_policy_overlay_service),
 ) -> RuntimeToolPolicyList:
-    return await service.list_tool_policies(actor=actor, project_id=project_id)
+    return service.list_tool_policies(actor=actor, project_id=project_id)
 
 
 @router.put("/tools/{catalog_id}")
-async def upsert_tool_policy(
+def upsert_tool_policy(
     project_id: str,
     catalog_id: str,
     payload: UpsertRuntimeToolPolicyCommand,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimePolicyOverlayService = Depends(get_runtime_policy_overlay_service),
 ):
-    return await service.upsert_tool_policy(
+    return service.upsert_tool_policy(
         actor=actor,
         project_id=project_id,
         catalog_id=catalog_id,
@@ -81,23 +81,23 @@ async def upsert_tool_policy(
 
 
 @router.get("/models", response_model=RuntimeModelPolicyList)
-async def list_model_policies(
+def list_model_policies(
     project_id: str,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimePolicyOverlayService = Depends(get_runtime_policy_overlay_service),
 ) -> RuntimeModelPolicyList:
-    return await service.list_model_policies(actor=actor, project_id=project_id)
+    return service.list_model_policies(actor=actor, project_id=project_id)
 
 
 @router.put("/models/{catalog_id}")
-async def upsert_model_policy(
+def upsert_model_policy(
     project_id: str,
     catalog_id: str,
     payload: UpsertRuntimeModelPolicyCommand,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimePolicyOverlayService = Depends(get_runtime_policy_overlay_service),
 ):
-    return await service.upsert_model_policy(
+    return service.upsert_model_policy(
         actor=actor,
         project_id=project_id,
         catalog_id=catalog_id,

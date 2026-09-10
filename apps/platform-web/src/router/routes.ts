@@ -138,19 +138,6 @@ const workspaceChildren: RouteRecordRaw[] = [
     }
   },
   {
-    path: 'operations',
-    name: 'workspace-operations',
-    component: () => import('@/modules/operations/pages/OperationsPage.vue'),
-    meta: {
-      title: 'Operations',
-      eyebrow: 'Governance',
-      requiredPermissions: ['platform.operation.read', 'project.operation.read'],
-      permissionMode: 'any',
-      permissionProjectSource: 'workspace',
-      allowWithoutProject: true
-    }
-  },
-  {
     path: 'graphs',
     name: 'workspace-graphs',
     component: () => import('@/modules/graphs/pages/GraphsPage.vue'),

@@ -14,7 +14,6 @@ dependencies = [
     "sqlalchemy>=2.0.43",
     "alembic>=1.16.5",
     "psycopg[binary]>=3.3.3",
-    "redis>=6.4.0",
     "pyjwt[crypto]>=2.10.1",
 ]
 

@@ -124,8 +124,6 @@ services:
       context: ../apps/platform-api
       dockerfile: Dockerfile
     depends_on:
-      redis:
-        condition: service_healthy
       postgres:
         condition: service_healthy
       runtime-service:
@@ -141,8 +139,6 @@ services:
       PLATFORM_API_PLATFORM_DB_ENABLED: "true"
       PLATFORM_API_PLATFORM_DB_AUTO_CREATE: "true"
       PLATFORM_API_DATABASE_URL: "postgresql+psycopg://${PLATFORM_API_POSTGRES_USER:-platform_api}:${PLATFORM_API_POSTGRES_PASSWORD:-platform_api}@${SHARED_POSTGRES_HOST:-postgres}:5432/${PLATFORM_API_POSTGRES_DB:-platform_api}"
-      PLATFORM_API_OPERATIONS_QUEUE_BACKEND: "redis_list"
-      PLATFORM_API_OPERATIONS_REDIS_URL: "redis://${SHARED_REDIS_HOST:-redis}:${SHARED_REDIS_PORT:-6379}/${PLATFORM_API_REDIS_DB:-1}"
       PLATFORM_API_AUTH_REQUIRED: "${PLATFORM_API_AUTH_REQUIRED:-true}"
       PLATFORM_API_JWT_ACCESS_SECRET: "${PLATFORM_API_JWT_ACCESS_SECRET:-change-me-access-secret}"
       PLATFORM_API_JWT_REFRESH_SECRET: "${PLATFORM_API_JWT_REFRESH_SECRET:-change-me-refresh-secret}"
@@ -156,36 +152,6 @@ services:
       retries: 5
       start_period: 10s
 
-  platform-api-worker:
-    image: "${PLATFORM_API_IMAGE:-aitestlab-platform-api:local}"
-    restart: unless-stopped
-    build:
-      context: ../apps/platform-api
-      dockerfile: Dockerfile
-    command: ["python", "-m", "platform_api.entrypoints.worker.main"]
-    depends_on:
-      redis:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      platform-api:
-        condition: service_started
-    environment:
-      PLATFORM_API_APP_ENV: "${PLATFORM_API_APP_ENV:-local}"
-      PLATFORM_API_LANGGRAPH_UPSTREAM_URL: "http://runtime-service:8000"
-      PLATFORM_API_LANGGRAPH_UPSTREAM_API_KEY: "${PLATFORM_RUNTIME_MANAGEMENT_API_KEY:-}"
-      PLATFORM_API_RUNTIME_DELEGATION_SECRET: "${PLATFORM_RUNTIME_DELEGATION_SECRET:-}"
-      PLATFORM_API_LANGGRAPH_UPSTREAM_TIMEOUT_SECONDS: "60"
-      PLATFORM_API_PLATFORM_DB_ENABLED: "true"
-      PLATFORM_API_PLATFORM_DB_AUTO_CREATE: "true"
-      PLATFORM_API_DATABASE_URL: "postgresql+psycopg://${PLATFORM_API_POSTGRES_USER:-platform_api}:${PLATFORM_API_POSTGRES_PASSWORD:-platform_api}@${SHARED_POSTGRES_HOST:-postgres}:5432/${PLATFORM_API_POSTGRES_DB:-platform_api}"
-      PLATFORM_API_OPERATIONS_QUEUE_BACKEND: "redis_list"
-      PLATFORM_API_OPERATIONS_REDIS_URL: "redis://${SHARED_REDIS_HOST:-redis}:${SHARED_REDIS_PORT:-6379}/${PLATFORM_API_REDIS_DB:-1}"
-      PLATFORM_API_JWT_ACCESS_SECRET: "${PLATFORM_API_JWT_ACCESS_SECRET:-change-me-access-secret}"
-      PLATFORM_API_JWT_REFRESH_SECRET: "${PLATFORM_API_JWT_REFRESH_SECRET:-change-me-refresh-secret}"
-      PLATFORM_API_BOOTSTRAP_ADMIN_ENABLED: "${PLATFORM_API_BOOTSTRAP_ADMIN_ENABLED:-true}"
-      PLATFORM_API_BOOTSTRAP_ADMIN_USERNAME: "${PLATFORM_API_BOOTSTRAP_ADMIN_USERNAME:-admin}"
-      PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD: "${PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD:-admin123456}"
 
   platform-web:
     image: "${PLATFORM_WEB_IMAGE:-aitestlab-platform-web:local}"

@@ -32,8 +32,6 @@ const PLATFORM_PERMISSION_MAP: Partial<Record<PermissionCode, readonly PlatformR
   'platform.audit.read': ['platform_super_admin', 'platform_operator', 'platform_viewer'],
   'platform.catalog.refresh': ['platform_super_admin', 'platform_operator'],
   'platform.announcement.write': ['platform_super_admin', 'platform_operator'],
-  'platform.operation.read': ['platform_super_admin', 'platform_operator', 'platform_viewer'],
-  'platform.operation.write': ['platform_super_admin', 'platform_operator'],
   'platform.config.read': ['platform_super_admin', 'platform_operator', 'platform_viewer'],
   'platform.config.write': ['platform_super_admin', 'platform_operator'],
   'platform.service_account.read': ['platform_super_admin', 'platform_operator', 'platform_viewer'],

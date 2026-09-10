@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -201,7 +200,7 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
                 "allowed_tool_names": ["read_reference"],
                 "runtime_permissions": ["runtime.tool.read"],
             }
-            asyncio.run(get_runtime_gateway_service(request, actor))
+            get_runtime_gateway_service(request, actor)
 
         forwarded = upstream_factory.call_args.kwargs["forwarded_headers"]
         self.assertEqual(set(forwarded), {"authorization", "x-request-id"})

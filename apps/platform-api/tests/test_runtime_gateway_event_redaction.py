@@ -3,7 +3,9 @@ from __future__ import annotations
 import unittest
 from collections.abc import AsyncIterator
 
-from platform_api.modules.runtime_gateway.presentation.http import _redact_protocol_event_stream
+from platform_api.modules.runtime_gateway.presentation.http import (
+    _redact_protocol_event_stream,
+)
 
 
 async def _chunks(*values: bytes) -> AsyncIterator[bytes]:
@@ -12,7 +14,9 @@ async def _chunks(*values: bytes) -> AsyncIterator[bytes]:
 
 
 class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
-    async def test_redacts_sensitive_fields_without_changing_protocol_shape(self) -> None:
+    async def test_redacts_sensitive_fields_without_changing_protocol_shape(
+        self,
+    ) -> None:
         stream = _redact_protocol_event_stream(
             _chunks(
                 b'data: {"seq":7,"method":"messages","params":{"data":{"token":"secret","text":"visible"}}}\n\n'
@@ -35,4 +39,26 @@ class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
 
         result = [chunk async for chunk in stream]
 
-        self.assertEqual(result, [b"event: keep\ndata: not-json\n\n", b": heartbeat\n\n"])
+        self.assertEqual(
+            result, [b"event: keep\ndata: not-json\n\n", b": heartbeat\n\n"]
+        )
+
+    async def test_every_chunk_boundary_preserves_utf8_crlf_and_multiline_data(self):
+        raw = (
+            'id: 42\r\nevent: values\r\ndata: {"context":{"runtime_model_ref":"private"},\r\n'
+            'data: "text":"金额 token 原文"}\r\n\r\n: heartbeat\r\n\r\n'
+        ).encode()
+        expected = (
+            'id: 42\nevent: values\ndata: {"context":{},"text":"金额 token 原文"}\n\n'
+            ": heartbeat\n\n"
+        ).encode()
+        for boundary in range(len(raw)):
+            result = b"".join(
+                [
+                    part
+                    async for part in _redact_protocol_event_stream(
+                        _chunks(raw[:boundary], raw[boundary:])
+                    )
+                ]
+            )
+            self.assertEqual(result, expected, boundary)

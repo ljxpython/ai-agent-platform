@@ -31,7 +31,7 @@ tests/                       新平台的可执行契约与回归测试
 
 这是职责示意，不要求每个模块凑齐文件。模块按身份/IAM、项目、用户、服务账号、公告、Agent、模型、目录、策略、网关、审计和系统设置的实际职责划分。需要拆分时再从 main.py 提取装配函数，不预建 bootstrap 框架。包名变更同步更新启动命令、测试、镜像与脚本，不保留 app 的兼容重导出。
 
-常规 CRUD 使用 SQLAlchemy 和 Pydantic。删除无消费 Protocol、伪异步 UoW 和机械四层目录；不引入 BaseService、通用 CRUD Repository、DI 容器、插件系统或事件总线。跨模块由应用入口装配，目录只读能力不反向依赖策略签发；网关组合目录与授权决议。
+常规 CRUD 使用 SQLAlchemy 和 Pydantic。删除无消费 Protocol、伪异步 UoW 和简单模块的机械四层目录；复杂模块保留必要分工；不引入 BaseService、通用 CRUD Repository、DI 容器、插件系统或事件总线。跨模块由应用入口装配，目录只读能力不反向依赖策略签发；网关组合目录与授权决议。
 
 ### 新数据库职责
 
@@ -81,9 +81,9 @@ tests/                       新平台的可执行契约与回归测试
 | 前端 Operations 与假同步 | Operations 页面/services，Agent resync 按钮、任务轮询；runtime/assistants service 解除 Operations 依赖，Graph/Tool 目录改直接受控读取/刷新 |
 | 旧兼容与无入口包装 | assistants 产品别名、旧导入包、无效删除参数、AST schema、本地源码查找、无入口 SDK 包装、未消费接口 |
 
-现有 `modules/operations/bootstrap.py` 注册任务已核查：Run reconciliation、模型/工具/Graph 刷新、Assistant resync、两类 testcase 导出、knowledge scan/clear。业务退役与网关收缩后，剩余目录读取/刷新是有限时长 HTTP 请求，无需通用后台任务框架。
+初始审查核查了现已删除的 `modules/operations/bootstrap.py` 注册任务：Run reconciliation、模型/工具/Graph 刷新、Assistant resync、两类 testcase 导出、knowledge scan/clear。业务退役与网关收缩后，剩余目录读取/刷新是有限时长 HTTP 请求，无需通用后台任务框架。
 
-`entrypoints/http/system.py` 当前将平台 Worker 心跳计入健康状态，`modules/platform_config/application/service.py` 也读取 Operations 快照。退役时一并改为新 API 的实际存活/就绪检查，移除失效 feature flag，避免删掉 Worker 后平台永久显示不健康。
+初始实现中，`entrypoints/http/system.py` 将平台 Worker 心跳计入健康状态，`modules/platform_config/application/service.py` 也读取 Operations 快照。退役时一并改为新 API 的实际存活/就绪检查，移除失效 feature flag，避免删掉 Worker 后平台永久显示不健康。
 
 删除范围是平台层及其前端接入；`apps/interaction-data-service`、独立知识服务和 GraphHarbor API/Worker/Redis 不在本次删除范围。不预留空 knowledge/testcase/operations 模块；未来出现真实需求再设计。
 
@@ -104,12 +104,12 @@ tests/                       新平台的可执行契约与回归测试
 
 ## 任务拆分
 
-- [ ] S1：落实新职责、入口与开发规范，更新 platform-api README、handbook、standards 和 CI；README 说明各部分用途与新增功能方式。**进行中：** README 与活规范已标注新范围；正式包、启动入口与 CI 已切换，业务层规范继续随用例简化。
-- [ ] S2：删除知识库、测试用例与 Operations 全链路及专属依赖，清理前端入口、环境示例和部署进程。**进行中：** 知识库/测试用例前后端、任务、权限、配置、依赖已移除；Operations 剩余 Run/目录/假同步及 Worker 待 G5/C5 收尾。
-- [ ] S3：建立 src 包、同步短事务与 HTTP 生命周期，消除无效接口、空模块、机械四层和循环装配。**进行中：** 可安装 src/platform_api、配置/工厂入口、启动资源清理已落地；删除 Assistant 导入兼容包与 NullUnitOfWork；全服务事务/HTTP 与模块压平尚未完成。
-- [ ] S4：实现新表、约束、Alembic 初始化、管理员初始化及独立镜像，不编写旧数据迁移。
-- [ ] S5：完成 02/03 合同及核心业务集成，执行安全负面矩阵、真实链路和必要负载验证，逐专题记录结果。
-- [ ] S6：按验收结果汇总四态；平台完成后恢复 Showcase 后续工作。
+- [x] S1：落实新职责、入口与开发规范，更新 platform-api README、handbook、standards 和 CI；README 说明各部分用途与新增功能方式。**done：** README、三份活手册、正式包、启动入口与 CI 已更新，事务与目录范式见 12。
+- [ ] S2：删除知识库、测试用例与 Operations 全链路及专属依赖，清理前端入口、环境示例和部署进程。**进行中：** 知识库/测试用例前后端、任务、权限、配置、依赖已移除；Operations 后端模块、队列、Worker、路由和配置已退役；前端整体复验 deferred。
+- [x] S3：建立 src 包、同步短事务与 HTTP 生命周期，消除无效接口、空模块、机械四层和循环装配。**done（按用户批准的必要精简范围）：** 删除 async UoW、同步 CRUD/完整事务线程池、认证与审计线程边界、7 个简单模块压平；复杂模块保留必要分工。见 [12](implementation/12-transactions-and-layout.md)。
+- [ ] S4：新表、约束、Alembic 和管理员初始化已验收（20 表升降升、metadata 无差异）；整套容器部署按用户决定 deferred，不编写旧数据迁移。
+- [x] S5：完成 02/03 合同及核心业务集成，执行安全负面矩阵、真实链路和必要负载验证，逐专题记录结果。
+- [x] S6：按验收结果汇总四态；平台完成后恢复 Showcase 后续工作。
 
 ## 验证要求与记录
 
@@ -128,9 +128,9 @@ tests/                       新平台的可执行契约与回归测试
 - [ ] 退役检查：无知识库、测试用例、Operations 路由/菜单/轮询；无专属配置、平台 Redis/导出依赖；目录刷新不产生任务。
 - [ ] 前端：新 Agent/Models/Chat 和保留页面通过 typecheck、相关组件测试与关键浏览器链路，不扩展视觉重设计。
 - [ ] 独立镜像：无 Runtime 源码或宿主绝对路径挂载，可发现真实 Graph/schema、初始化数据库并正确关闭资源。
-- [ ] 负载：并发登录/列表与长 SSE 共存；记录并发量、p95、错误率、连接数和事件循环延迟，不编造 QPS 目标。
-- [ ] 新平台备份恢复/重启演练：已提交请求可确认、无重复副作用、已关联 Run 可追溯，不依赖旧表。
-- [ ] 文档链接与 git diff --check；新旧工程状态一致，真实链路缺失时不标 done。
+- [x] 负载：并发登录/列表与长 SSE 共存；记录并发量、p95、错误率、连接数和事件循环延迟，不编造 QPS 目标。
+- [x] 新平台备份恢复/重启演练：已提交请求可确认、无重复副作用、已关联 Run 可追溯，不依赖旧表。
+- [x] 文档链接与 git diff --check；新旧工程状态一致，真实链路缺失时不标 done。
 
 ### 本次规划修订
 
@@ -164,4 +164,16 @@ tests/                       新平台的可执行契约与回归测试
 
 ## 状态
 
-进行中（partial）。知识库/测试用例退役、可安装包、启动资源清理和独立镜像已取得局部验证证据；S1–S4 尚未全部完成，S5/S6、02/03 尚待实施与验收。
+本阶段后端 done。20 表及模型/Agent 字段收缩、Operations/resync 退役、真实 Runtime/Showcase 后端验收完成；S3 事务规范化和必要目录精简 done，本地 PG/Redis 真实链路通过；完整 Docker 工具复验已通过，见 [12](implementation/12-transactions-and-layout.md)。前端、容器整体验收 deferred。当前证据见 [11 收尾记录](implementation/11-backend-closeout.md)，下方保留逐轮历史，不代表最新缺口。
+
+### Agent 单表与新空库基线切片
+
+2026-09-10：已合并 Agent/Profile ORM 与仓储，增加真实 SQLite 生命周期测试；旧 Alembic 链已替换为空库静态基线。Operations/Run 表及同步字段仍待退役，本专题保持 partial。详见 [08 实现记录](implementation/08-agent-single-table.md)。
+
+### 最新验证要求与记录（2026-09-10）
+
+本次以 HTTP/SDK 驱动真实后端完成 Showcase；最终独立执行报表 43.50、退出码 0。PostgreSQL 空库升降升、20 表 metadata 一致及请求记录并发唯一约束通过。详细测试计数、失败修复与未覆盖矩阵统一记在 [10](implementation/10-operations-run-requests.md)，避免多处维护不一致的测试数字。前端及容器部署均 deferred，不计为失败，也不计作已验收。
+
+三项收尾已完成：20 条公开网关路由矩阵、真实 PostgreSQL 备份恢复、4 路登录/列表与 2 条长 SSE 混合负载均通过。详见 [13 三项验收收尾](implementation/13-backend-acceptance-closeout.md)。本阶段后端 done；前端/浏览器、整套容器部署、完整 Server 等价性 deferred。
+
+S2/S4 清单中的未勾选部分只保留前端整体复验与整套容器部署（deferred），对应后端退役和数据库初始化已 done。历史未勾选场景须结合 11/12/13 的分层证据阅读，不代表新增开发缺口。备份恢复的范围和静止窗口限制见 13。

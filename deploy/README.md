@@ -59,7 +59,6 @@
 
 - `runtime-service`
 - `platform-api`
-- `platform-api-worker`
 - `interaction-data-service`
 - `platform-web`
 - `redis`
@@ -88,7 +87,6 @@
 
 - `interaction-data-service` healthy
 - `platform-api` ready
-- `platform-api-worker` running
 - `platform-web` 可访问
 - `runtime-service` `/info`、models、tools 可访问
 
@@ -234,8 +232,6 @@ runtime 上游认证配置：
 
 注意：
 
-- `platform-api` 主容器和 `platform-api-worker` 必须共享同一组 upstream 配置
-- 只改主容器 env、不重建 worker，会导致页面主链路正常，但异步 operation 失败
 
 ### 3.3 `interaction-data-service`
 

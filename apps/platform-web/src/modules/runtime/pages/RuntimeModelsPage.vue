@@ -19,9 +19,7 @@ import type { ActionMenuItem, DataTableColumn } from '@/components/platform/data
 import {
   createRuntimeModel,
   listRuntimeModels,
-  submitRuntimeRefreshOperation,
   updateRuntimeModel,
-  waitForRuntimeRefreshOperation
 } from '@/services/runtime/runtime.service'
 import { listRuntimeModelPolicies, updateRuntimeModelPolicy } from '@/services/runtime-policies/runtime-policies.service'
 import { useUiStore } from '@/stores/ui'
@@ -50,7 +48,6 @@ const policies = ref<Record<string, RuntimeModelPolicyValue>>({})
 const queryInput = ref('')
 const query = ref('')
 const loading = ref(false)
-const refreshing = ref(false)
 const error = ref('')
 const notice = ref('')
 const editorOpen = ref(false)
@@ -68,9 +65,6 @@ const pagination = usePagination({
   initialPageSize: 20,
   storageKey: 'pw:runtime-models:page-size'
 })
-const canRefreshCatalog = computed(() =>
-  authorization.can('platform.catalog.refresh') || authorization.currentProjectCan('project.runtime.write')
-)
 const canManageModels = computed(() => authorization.currentProjectCan('project.runtime.write'))
 const modelRows = computed(() => filteredItems.value as unknown as Record<string, unknown>[])
 const columns = computed<DataTableColumn[]>(() => [
@@ -237,38 +231,6 @@ async function loadModels() {
     error.value = loadError instanceof Error ? loadError.message : 'Runtime 模型目录加载失败'
   } finally {
     loading.value = false
-  }
-}
-
-async function handleRefreshCatalog() {
-  const projectId = activeProjectId.value
-  if (!canRefreshCatalog.value) {
-    error.value = '当前账号没有刷新 Runtime 目录的权限'
-    return
-  }
-  refreshing.value = true
-  error.value = ''
-  notice.value = ''
-
-  try {
-    const operation = await submitRuntimeRefreshOperation('models', projectId)
-    notice.value = `模型目录刷新任务已提交，任务号 ${shortId(operation.id)}`
-    const finalOperation = await waitForRuntimeRefreshOperation(operation.id, {
-      projectId,
-      timeoutMs: 90000
-    })
-    if (finalOperation.status !== 'succeeded') {
-      throw new Error(
-        (finalOperation.error_payload?.message as string | undefined) || 'Runtime 模型目录刷新未成功完成'
-      )
-    }
-    const count = Number(finalOperation.result_payload?.count || 0)
-    notice.value = `Runtime 模型目录已刷新，当前同步 ${count} 条记录`
-    await loadModels()
-  } catch (refreshError) {
-    error.value = refreshError instanceof Error ? refreshError.message : 'Runtime 模型目录刷新失败'
-  } finally {
-    refreshing.value = false
   }
 }
 
@@ -469,17 +431,6 @@ watch(
       description="模型目录页负责把 model_id、display_name、默认项和同步状态都拉到新工作台，不再依赖旧页面排查配置。"
     >
       <template #actions>
-        <BaseButton
-          variant="secondary"
-          :disabled="refreshing || !canRefreshCatalog"
-          @click="handleRefreshCatalog"
-        >
-          <BaseIcon
-            name="refresh"
-            size="sm"
-          />
-          {{ canRefreshCatalog ? (refreshing ? '刷新中...' : '刷新目录') : '当前账号只读' }}
-        </BaseButton>
         <BaseButton
           v-if="canManageModels"
           @click="openCreateModel"
@@ -689,7 +640,7 @@ watch(
           :total="pagination.total.value"
           :page="pagination.page.value"
           :page-size="pagination.pageSize.value"
-          :disabled="loading || refreshing"
+          :disabled="loading"
           @update:page="pagination.setPage"
           @update:page-size="pagination.setPageSize"
         />

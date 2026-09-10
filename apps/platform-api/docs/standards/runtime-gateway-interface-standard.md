@@ -1,5 +1,10 @@
 # Platform API Runtime Gateway / 管理接口标准
 
+> 2026-09-10 边界修订：Operations、平台 Worker/队列与 artifacts 已退役。
+> 本文以下涉及 operation 强制接入、生命周期镜像、outbox/queue 预留的历史条款均不再适用。
+> 新功能遵循受控 HTTP、短事务及 Agent Server 唯一执行事实源；以本轮重构工程为准。
+
+
 文档类型：`Current Standard`
 
 这份文档定义 `platform-api` 在 **runtime gateway / formal platform management interface** 上的当前标准。
@@ -190,3 +195,7 @@ Run `context`，不向浏览器、GraphHarbor、日志或审计详情暴露连�
 模型连接配置由 Platform Catalog 唯一持有。Run 创建时 Gateway 只向 Agent Server 传递短期 opaque
 `_runtime_model_ref`；Runtime 通过受控内部端点按项目校验引用并读取解密连接。API key 不得进入浏览器响应、Run
 快照、GraphHarbor 持久化或普通日志。
+
+## 5. 公开面回归要求
+
+新增或修改公开网关路由时，更新 `tests/test_runtime_gateway_http_matrix.py` 的显式清单，并保持与路由注册集合相等。每条接口覆盖项目作用域、授权失败及公开响应过滤；SSE 的前置失败必须保持非 200。幂等、审批、取消与重连语义继续由 request/service/SDK 用例及真实 Runtime 链路证明，不以 router 替身替代真实执行验收。

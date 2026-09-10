@@ -1,11 +1,11 @@
-from platform_api.modules.announcements.application import (
+from platform_api.modules.announcements.contracts import (
     AnnouncementFeedQuery,
-    AnnouncementsService,
     CreateAnnouncementCommand,
     ListAnnouncementsQuery,
     UpdateAnnouncementCommand,
 )
-from platform_api.modules.announcements.domain import (
+from platform_api.modules.announcements.service import AnnouncementsService
+from platform_api.modules.announcements.schemas import (
     AnnouncementItem,
     AnnouncementPage,
     AnnouncementScopeType,

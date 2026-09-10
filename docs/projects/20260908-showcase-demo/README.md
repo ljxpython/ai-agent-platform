@@ -2,7 +2,7 @@
 
 - **启动时间：** 2026-09-08
 - **重评时间：** 2026-09-09
-- **状态：** partial（runtime-service 教学范围已验收完成；平台联调与前端验收 deferred，等待 platform-api 重构）
+- **状态：** partial（runtime-service 与平台后端 Showcase 主链路已验收；前端按用户决定 deferred）
 - **范围：** runtime-service 的 showcase_demo、必要的公共运行时接入、部署配置和验证。
 - **级别：** 治理改动（授权与执行边界）。
 - **评审依据：** 用户在本轮审查后明确采纳建议，要求保持简约、去除模拟、修复路径可移植性，并授权按规划实施。具体实现选择及限制见 plan.md。
@@ -42,3 +42,11 @@
 ## 后续顺序调整（2026-09-10）
 
 按用户要求，先推进 [Platform API 重构工程](../20260910-platform-api-refactor/README.md) 的方案讨论、实施与验收，再恢复本工程的平台联调和前端验收。已有 runtime-service 验收不撤销；本工程整体不标 done，后续待办保持 deferred。
+
+## 平台后端联调验收（2026-09-10）
+
+GraphHarbor post25 下真实平台 → Runtime → 模型/工具链路通过，审批期间重启 Platform API、Runtime API/Worker 后恢复，最终独立执行输出 43.50。见 [验证记录](verification.md) 和 [前端调整清单](../20260910-platform-api-refactor/05-frontend-handoff.md)。本次只验收后端，前端统一后置；整体保持 partial。
+
+post26 收尾复验已通过：实际超 TTL 排队、凭据轮换、取消重发、标准审批与三进程恢复均成功，独立报表仍为 43.50。[最新验证记录](verification.md#2026-09-10-post26-后端收尾复验)。前端继续 deferred。
+
+2026-09-10 事务重构后 Docker 完整复验通过：三进程重启/标准审批/真实 execute、实际回归测试函数及报表 43.50 均通过，见 [最终证据](../20260910-platform-api-refactor/evidence/20260910-final-docker-showcase.json)。前端仍 deferred。

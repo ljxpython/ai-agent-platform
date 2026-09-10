@@ -3,17 +3,13 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
-from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
 from platform_api.main import create_app
 from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
 from platform_api.core.security import create_access_token, hash_password
-from platform_api.modules.identity.infra.sqlalchemy.repository import SqlAlchemyIdentityRepository
-from platform_api.modules.operations.application.execution import OperationExecutorRegistry
-from platform_api.modules.operations.application.heartbeat import OperationWorkerHeartbeatReporter
-from platform_api.modules.operations.application.worker import OperationWorker
+from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
 
 
 class Phase4ObservabilityAndServiceAccountsTest(unittest.TestCase):
@@ -112,8 +108,8 @@ class Phase4ObservabilityAndServiceAccountsTest(unittest.TestCase):
         self.assertEqual(metrics_response.status_code, 200, metrics_response.text)
         payload = metrics_response.json()
         self.assertIn("requests", payload)
-        self.assertIn("operations", payload)
-        self.assertIn("workers", payload)
+        self.assertNotIn("operations", payload)
+        self.assertNotIn("workers", payload)
 
         users_response = self.client.get(
             "/api/users",
@@ -124,35 +120,10 @@ class Phase4ObservabilityAndServiceAccountsTest(unittest.TestCase):
         forbidden_response = self.client.patch(
             "/_system/platform-config/feature-flags",
             headers={"x-platform-api-key": api_key},
-            json={"feature_flags": {"operations_enabled": False}},
+            json={"feature_flags": {"platform_config_enabled": False}},
         )
         self.assertEqual(forbidden_response.status_code, 403, forbidden_response.text)
 
-    def test_ready_probe_turns_ready_after_worker_heartbeat(self) -> None:
-        initial_ready = self.client.get("/_system/probes/ready")
-        self.assertEqual(initial_ready.status_code, 200, initial_ready.text)
-        self.assertEqual(initial_ready.json()["status"], "not_ready")
-
-        worker = OperationWorker(
-            session_factory=self._session_factory,
-            executor_registry=OperationExecutorRegistry(()),
-            poll_interval_seconds=0.01,
-            idle_sleep_seconds=0.01,
-            heartbeat_reporter=OperationWorkerHeartbeatReporter(
-                session_factory=self._session_factory,
-                queue_backend="db_polling",
-                heartbeat_interval_seconds=5.0,
-            ),
-        )
-        self.assertFalse(self._run_async(worker.run_once()))
-
-        ready_response = self.client.get("/_system/probes/ready")
-        self.assertEqual(ready_response.status_code, 200, ready_response.text)
-        self.assertEqual(ready_response.json()["status"], "ready")
-
-        health_response = self.client.get("/_system/health")
-        self.assertEqual(health_response.status_code, 200, health_response.text)
-        self.assertEqual(health_response.json()["status"], "ok")
 
     def test_operator_cannot_manage_super_admin_service_account_credentials(self) -> None:
         _, operator_token = self._create_operator_user()

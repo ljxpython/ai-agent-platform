@@ -45,10 +45,14 @@ def create_model_reference(
     model_id: str,
     secret: str,
     ttl_seconds: int = 60,
+    actor: dict[str, str | None] | None = None,
+    agent_key: str | None = None,
 ) -> str:
     payload = _encode(
         {
             "v": 1,
+            "actor": actor,
+            "agent_key": agent_key,
             "project_id": project_id,
             "model_id": model_id,
             "exp": int(time.time()) + max(10, min(ttl_seconds, 300)),
@@ -58,7 +62,7 @@ def create_model_reference(
     return f"v1.{payload}.{_signature(payload, secret)}"
 
 
-def parse_model_reference(reference: str, *, secret: str) -> dict[str, Any]:
+def parse_model_reference(reference: str, *, secret: str, allow_expired: bool = False) -> dict[str, Any]:
     if not isinstance(reference, str):
         raise ModelReferenceError("invalid model reference")
     try:
@@ -70,7 +74,7 @@ def parse_model_reference(reference: str, *, secret: str) -> dict[str, Any]:
     values = _decode(payload)
     if values.get("v") != 1 or not isinstance(values.get("project_id"), str) or not isinstance(values.get("model_id"), str):
         raise ModelReferenceError("invalid model reference")
-    if not isinstance(values.get("exp"), int) or values["exp"] < int(time.time()):
+    if not isinstance(values.get("exp"), int) or (not allow_expired and values["exp"] < int(time.time())):
         raise ModelReferenceError("expired model reference")
     if not isinstance(values.get("nonce"), str) or not values["nonce"]:
         raise ModelReferenceError("invalid model reference")

@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "database": "platform_final_schema_e36041642f",
+  "upgrade_repeat_downgrade_upgrade": true,
+  "business_tables": 20,
+  "metadata_diff": [],
+  "model_columns": [
+    "id",
+    "display_name",
+    "provider",
+    "base_url",
+    "protocol",
+    "model_name",
+    "api_key_ciphertext",
+    "enabled",
+    "created_at",
+    "updated_at"
+  ],
+  "agent_columns": [
+    "id",
+    "project_id",
+    "name",
+    "graph_id",
+    "description",
+    "created_at",
+    "status",
+    "context",
+    "created_by",
+    "updated_by",
+    "updated_at"
+  ]
+}

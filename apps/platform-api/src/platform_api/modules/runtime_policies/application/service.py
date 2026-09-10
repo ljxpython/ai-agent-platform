@@ -8,12 +8,18 @@ from uuid import UUID
 from sqlalchemy.orm import Session, sessionmaker
 
 from platform_api.core.context.models import ActorContext
-from platform_api.core.db import SqlAlchemyUnitOfWork
+from platform_api.core.db import session_scope
 from platform_api.core.errors import NotFoundError, ServiceUnavailableError
 from platform_api.core.identifiers import parse_uuid
-from platform_api.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode
-from platform_api.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
-from platform_api.modules.runtime_catalog.infra import SqlAlchemyRuntimeCatalogRepository
+from platform_api.modules.iam.application import (
+    AuthorizationRequest,
+    IamPolicyEngine,
+    PermissionCode,
+)
+from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
+from platform_api.modules.runtime_catalog.infra import (
+    SqlAlchemyRuntimeCatalogRepository,
+)
 from platform_api.modules.runtime_policies.application.contracts import (
     RuntimeGraphPolicyList,
     RuntimeModelPolicyList,
@@ -30,10 +36,10 @@ from platform_api.modules.runtime_policies.domain import (
     RuntimeToolPolicyItem,
     RuntimeToolPolicyValue,
 )
-from platform_api.modules.runtime_policies.infra import SqlAlchemyRuntimePolicyRepository
+from platform_api.modules.runtime_policies.infra import (
+    SqlAlchemyRuntimePolicyRepository,
+)
 
-
-_DELEGATION_TOOL_PERMISSIONS = {"read_reference": "runtime.tool.read"}
 _NO_ENABLED_MODEL_SENTINEL = "platform:no-enabled-model"
 
 
@@ -63,21 +69,25 @@ class RuntimePolicyOverlayService:
         with session_factory() as session:
             catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
             policy_repository = SqlAlchemyRuntimePolicyRepository(session)
-            models = catalog_repository.list_models(runtime_id=self._runtime_id)
+            models = catalog_repository.list_models()
             tools = catalog_repository.list_tools(runtime_id=self._runtime_id)
             model_policies = {
                 str(item.model_catalog_id): item
-                for item in policy_repository.list_model_policies(project_id=project_uuid)
+                for item in policy_repository.list_model_policies(
+                    project_id=project_uuid
+                )
             }
             tool_policies = {
                 str(item.tool_catalog_id): item
-                for item in policy_repository.list_tool_policies(project_id=project_uuid)
+                for item in policy_repository.list_tool_policies(
+                    project_id=project_uuid
+                )
             }
 
             allowed_model_ids = sorted(
-                item.model_key
+                str(item.id)
                 for item in models
-                if item.sync_status == "ready" and item.enabled
+                if item.enabled
                 and (
                     str(item.id) not in model_policies
                     or model_policies[str(item.id)].is_enabled
@@ -102,18 +112,31 @@ class RuntimePolicyOverlayService:
             "models": allowed_model_ids,
             "tools": allowed_tool_names,
         }
-        revision = "platform-policy-" + hashlib.sha256(
-            json.dumps(revision_payload, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest()[:32]
+        revision = (
+            "platform-policy-"
+            + hashlib.sha256(
+                json.dumps(
+                    revision_payload, sort_keys=True, separators=(",", ":")
+                ).encode()
+            ).hexdigest()[:32]
+        )
         return {
             "version": revision,
             "allowed_model_ids": allowed_model_ids,
             "allowed_tool_names": allowed_tool_names,
             "runtime_permissions": sorted(
                 {
-                    _DELEGATION_TOOL_PERMISSIONS[tool_name]
-                    for tool_name in allowed_tool_names
-                    if tool_name in _DELEGATION_TOOL_PERMISSIONS
+                    permission
+                    for tool in tools
+                    if tool.tool_key in allowed_tool_names
+                    for permission in tool.permissions
+                    if permission
+                    in {
+                        "runtime.tool.read",
+                        "runtime.tool.write",
+                        "runtime.tool.execute",
+                        "runtime.tool.delegate",
+                    }
                 }
             ),
         }
@@ -125,36 +148,46 @@ class RuntimePolicyOverlayService:
         project_id: str,
         write: bool,
     ) -> UUID:
-        permission = PermissionCode.PROJECT_RUNTIME_WRITE if write else PermissionCode.PROJECT_RUNTIME_READ
+        permission = (
+            PermissionCode.PROJECT_RUNTIME_WRITE
+            if write
+            else PermissionCode.PROJECT_RUNTIME_READ
+        )
         self._policy_engine.require(
             actor=actor,
-            authorization=AuthorizationRequest(permission=permission, project_id=project_id),
+            authorization=AuthorizationRequest(
+                permission=permission, project_id=project_id
+            ),
         )
         return parse_uuid(project_id, code="invalid_project_id")
 
     @staticmethod
-    def _ensure_project_exists(uow: SqlAlchemyUnitOfWork, project_uuid: UUID) -> None:
-        repository = SqlAlchemyProjectsRepository(uow.session)
+    def _ensure_project_exists(session: Session, project_uuid: UUID) -> None:
+        repository = SqlAlchemyProjectsRepository(session)
         project = repository.get_project_by_id(project_uuid)
         if project is None or project.status == "deleted":
             raise NotFoundError(message="Project not found", code="project_not_found")
 
-    async def list_graph_policies(
+    def list_graph_policies(
         self,
         *,
         actor: ActorContext,
         project_id: str,
     ) -> RuntimeGraphPolicyList:
         session_factory = self._require_session_factory()
-        project_uuid = self._require_project_access(actor=actor, project_id=project_id, write=False)
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            self._ensure_project_exists(uow, project_uuid)
-            catalog_repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
-            policy_repository = SqlAlchemyRuntimePolicyRepository(uow.session)
+        project_uuid = self._require_project_access(
+            actor=actor, project_id=project_id, write=False
+        )
+        with session_scope(session_factory) as session:
+            self._ensure_project_exists(session, project_uuid)
+            catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
+            policy_repository = SqlAlchemyRuntimePolicyRepository(session)
             catalog_rows = catalog_repository.list_graphs(runtime_id=self._runtime_id)
             policy_rows = {
                 str(item.graph_catalog_id): item
-                for item in policy_repository.list_graph_policies(project_id=project_uuid)
+                for item in policy_repository.list_graph_policies(
+                    project_id=project_uuid
+                )
             }
             items = [
                 RuntimeGraphPolicyItem(
@@ -172,14 +205,16 @@ class RuntimePolicyOverlayService:
                         display_order=policy_rows.get(str(row.id)).display_order
                         if policy_rows.get(str(row.id))
                         else None,
-                        note=policy_rows.get(str(row.id)).note if policy_rows.get(str(row.id)) else None,
+                        note=policy_rows.get(str(row.id)).note
+                        if policy_rows.get(str(row.id))
+                        else None,
                     ),
                 )
                 for row in catalog_rows
             ]
             return RuntimeGraphPolicyList(items=items, total=len(items))
 
-    async def upsert_graph_policy(
+    def upsert_graph_policy(
         self,
         *,
         actor: ActorContext,
@@ -188,14 +223,18 @@ class RuntimePolicyOverlayService:
         command: UpsertRuntimeGraphPolicyCommand,
     ) -> RuntimeGraphPolicyValue:
         session_factory = self._require_session_factory()
-        project_uuid = self._require_project_access(actor=actor, project_id=project_id, write=True)
+        project_uuid = self._require_project_access(
+            actor=actor, project_id=project_id, write=True
+        )
         catalog_uuid = parse_uuid(catalog_id, code="invalid_catalog_id")
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            self._ensure_project_exists(uow, project_uuid)
-            catalog_repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
+        with session_scope(session_factory) as session:
+            self._ensure_project_exists(session, project_uuid)
+            catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
             if catalog_repository.get_graph_by_id(catalog_uuid) is None:
-                raise NotFoundError(message="Graph catalog not found", code="graph_catalog_not_found")
-            policy_repository = SqlAlchemyRuntimePolicyRepository(uow.session)
+                raise NotFoundError(
+                    message="Graph catalog not found", code="graph_catalog_not_found"
+                )
+            policy_repository = SqlAlchemyRuntimePolicyRepository(session)
             row = policy_repository.upsert_graph_policy(
                 project_id=project_uuid,
                 graph_catalog_id=catalog_uuid,
@@ -211,22 +250,26 @@ class RuntimePolicyOverlayService:
                 updated_at=row.updated_at,
             )
 
-    async def list_tool_policies(
+    def list_tool_policies(
         self,
         *,
         actor: ActorContext,
         project_id: str,
     ) -> RuntimeToolPolicyList:
         session_factory = self._require_session_factory()
-        project_uuid = self._require_project_access(actor=actor, project_id=project_id, write=False)
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            self._ensure_project_exists(uow, project_uuid)
-            catalog_repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
-            policy_repository = SqlAlchemyRuntimePolicyRepository(uow.session)
+        project_uuid = self._require_project_access(
+            actor=actor, project_id=project_id, write=False
+        )
+        with session_scope(session_factory) as session:
+            self._ensure_project_exists(session, project_uuid)
+            catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
+            policy_repository = SqlAlchemyRuntimePolicyRepository(session)
             catalog_rows = catalog_repository.list_tools(runtime_id=self._runtime_id)
             policy_rows = {
                 str(item.tool_catalog_id): item
-                for item in policy_repository.list_tool_policies(project_id=project_uuid)
+                for item in policy_repository.list_tool_policies(
+                    project_id=project_uuid
+                )
             }
             items = [
                 RuntimeToolPolicyItem(
@@ -244,14 +287,16 @@ class RuntimePolicyOverlayService:
                         display_order=policy_rows.get(str(row.id)).display_order
                         if policy_rows.get(str(row.id))
                         else None,
-                        note=policy_rows.get(str(row.id)).note if policy_rows.get(str(row.id)) else None,
+                        note=policy_rows.get(str(row.id)).note
+                        if policy_rows.get(str(row.id))
+                        else None,
                     ),
                 )
                 for row in catalog_rows
             ]
             return RuntimeToolPolicyList(items=items, total=len(items))
 
-    async def upsert_tool_policy(
+    def upsert_tool_policy(
         self,
         *,
         actor: ActorContext,
@@ -260,14 +305,18 @@ class RuntimePolicyOverlayService:
         command: UpsertRuntimeToolPolicyCommand,
     ) -> RuntimeToolPolicyValue:
         session_factory = self._require_session_factory()
-        project_uuid = self._require_project_access(actor=actor, project_id=project_id, write=True)
+        project_uuid = self._require_project_access(
+            actor=actor, project_id=project_id, write=True
+        )
         catalog_uuid = parse_uuid(catalog_id, code="invalid_catalog_id")
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            self._ensure_project_exists(uow, project_uuid)
-            catalog_repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
+        with session_scope(session_factory) as session:
+            self._ensure_project_exists(session, project_uuid)
+            catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
             if catalog_repository.get_tool_by_id(catalog_uuid) is None:
-                raise NotFoundError(message="Tool catalog not found", code="tool_catalog_not_found")
-            policy_repository = SqlAlchemyRuntimePolicyRepository(uow.session)
+                raise NotFoundError(
+                    message="Tool catalog not found", code="tool_catalog_not_found"
+                )
+            policy_repository = SqlAlchemyRuntimePolicyRepository(session)
             row = policy_repository.upsert_tool_policy(
                 project_id=project_uuid,
                 tool_catalog_id=catalog_uuid,
@@ -283,50 +332,57 @@ class RuntimePolicyOverlayService:
                 updated_at=row.updated_at,
             )
 
-    async def list_model_policies(
+    def list_model_policies(
         self,
         *,
         actor: ActorContext,
         project_id: str,
     ) -> RuntimeModelPolicyList:
         session_factory = self._require_session_factory()
-        project_uuid = self._require_project_access(actor=actor, project_id=project_id, write=False)
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            self._ensure_project_exists(uow, project_uuid)
-            catalog_repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
-            policy_repository = SqlAlchemyRuntimePolicyRepository(uow.session)
-            catalog_rows = catalog_repository.list_models(runtime_id=self._runtime_id)
+        project_uuid = self._require_project_access(
+            actor=actor, project_id=project_id, write=False
+        )
+        with session_scope(session_factory) as session:
+            self._ensure_project_exists(session, project_uuid)
+            catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
+            policy_repository = SqlAlchemyRuntimePolicyRepository(session)
+            catalog_rows = catalog_repository.list_models()
             policy_rows = {
                 str(item.model_catalog_id): item
-                for item in policy_repository.list_model_policies(project_id=project_uuid)
+                for item in policy_repository.list_model_policies(
+                    project_id=project_uuid
+                )
             }
             items = [
                 RuntimeModelPolicyItem(
                     catalog_id=str(row.id),
-                    model_id=row.model_key,
-                    display_name=row.display_name or row.model_key,
-                    is_default_runtime=row.is_default_runtime,
-                    sync_status=row.sync_status,
-                    last_synced_at=row.last_synced_at,
+                    model_id=str(row.id),
+                    display_name=row.display_name or str(row.id),
                     policy=RuntimeModelPolicyValue(
                         is_enabled=policy_rows.get(str(row.id)).is_enabled
                         if policy_rows.get(str(row.id))
                         else True,
-                        is_default_for_project=policy_rows.get(str(row.id)).is_default_for_project
+                        is_default_for_project=policy_rows.get(
+                            str(row.id)
+                        ).is_default_for_project
                         if policy_rows.get(str(row.id))
                         else False,
-                        temperature_default=float(policy_rows.get(str(row.id)).temperature_default)
+                        temperature_default=float(
+                            policy_rows.get(str(row.id)).temperature_default
+                        )
                         if policy_rows.get(str(row.id))
                         and policy_rows.get(str(row.id)).temperature_default is not None
                         else None,
-                        note=policy_rows.get(str(row.id)).note if policy_rows.get(str(row.id)) else None,
+                        note=policy_rows.get(str(row.id)).note
+                        if policy_rows.get(str(row.id))
+                        else None,
                     ),
                 )
                 for row in catalog_rows
             ]
             return RuntimeModelPolicyList(items=items, total=len(items))
 
-    async def upsert_model_policy(
+    def upsert_model_policy(
         self,
         *,
         actor: ActorContext,
@@ -335,14 +391,18 @@ class RuntimePolicyOverlayService:
         command: UpsertRuntimeModelPolicyCommand,
     ) -> RuntimeModelPolicyValue:
         session_factory = self._require_session_factory()
-        project_uuid = self._require_project_access(actor=actor, project_id=project_id, write=True)
+        project_uuid = self._require_project_access(
+            actor=actor, project_id=project_id, write=True
+        )
         catalog_uuid = parse_uuid(catalog_id, code="invalid_catalog_id")
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            self._ensure_project_exists(uow, project_uuid)
-            catalog_repository = SqlAlchemyRuntimeCatalogRepository(uow.session)
+        with session_scope(session_factory) as session:
+            self._ensure_project_exists(session, project_uuid)
+            catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
             if catalog_repository.get_model_by_id(catalog_uuid) is None:
-                raise NotFoundError(message="Model catalog not found", code="model_catalog_not_found")
-            policy_repository = SqlAlchemyRuntimePolicyRepository(uow.session)
+                raise NotFoundError(
+                    message="Model catalog not found", code="model_catalog_not_found"
+                )
+            policy_repository = SqlAlchemyRuntimePolicyRepository(session)
             row = policy_repository.upsert_model_policy(
                 project_id=project_uuid,
                 model_catalog_id=catalog_uuid,
@@ -357,7 +417,9 @@ class RuntimePolicyOverlayService:
             return RuntimeModelPolicyValue(
                 is_enabled=row.is_enabled,
                 is_default_for_project=row.is_default_for_project,
-                temperature_default=float(row.temperature_default) if row.temperature_default is not None else None,
+                temperature_default=float(row.temperature_default)
+                if row.temperature_default is not None
+                else None,
                 note=row.note,
                 updated_at=row.updated_at,
             )

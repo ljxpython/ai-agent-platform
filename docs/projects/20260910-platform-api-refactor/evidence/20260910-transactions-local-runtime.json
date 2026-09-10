@@ -1,0 +1,21 @@
+{
+  "status": "passed",
+  "scope": "local PG/Redis and read-only real Showcase",
+  "thread_id": "db150c90-1ccd-4b6a-afdc-eb1996f69f74",
+  "project_id": "814b2a00-1781-407d-a541-7a2c0ebfccd3",
+  "runs": [
+    {
+      "run_id": "d35719ed-cb20-46ca-99a8-18bf0a6e8f25",
+      "status": "success"
+    }
+  ],
+  "sse_bytes": 335102,
+  "queued_beyond_model_reference_ttl": true,
+  "credential_rotated_before_worker_started": true,
+  "idempotency_conflict_verified": true,
+  "cross_project_denied": true,
+  "pending_cancel_and_resend_verified": true,
+  "server_reject_concurrency_verified": true,
+  "docker_tool_execution": "not tested; Docker disabled",
+  "restart_resume": "not tested in this read-only probe"
+}

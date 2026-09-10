@@ -1,5 +1,6 @@
-from platform_api.modules.audit.application import AuditEventPage, AuditService, ListAuditEventsQuery
-from platform_api.modules.audit.domain import AuditEvent, AuditPlane, AuditResult
+from platform_api.modules.audit.contracts import AuditEventPage, ListAuditEventsQuery
+from platform_api.modules.audit.service import AuditService
+from platform_api.modules.audit.schemas import AuditEvent, AuditPlane, AuditResult
 
 __all__ = [
     "AuditEvent",

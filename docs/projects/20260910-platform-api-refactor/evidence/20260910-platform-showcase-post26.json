@@ -1,0 +1,55 @@
+{
+  "status": "passed",
+  "thread_id": "59c3270e-7cf8-4cf9-bfee-ea7fe162cb7c",
+  "runs": [
+    {
+      "run_id": "3f8b5278-2272-468a-8ad4-9a530139a472",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "8ca8d9be-5d27-4be4-b136-de0ad360d02f",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "ad5167ac-12e1-44ae-a4dc-dc2412d88d2a",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "b05d4b6d-ef5e-43eb-b037-449664ddf191",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "d0a3ed09-9621-4a3e-9632-1be3ff9aaf7b",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "895ff817-32ce-4727-869e-b0ffd42045c1",
+      "status": "success"
+    }
+  ],
+  "restored_interrupt_ids": [
+    "867106896f9fb0d6d8d3c29d6b30fcdb"
+  ],
+  "reviewed_tools": [
+    "edit_file",
+    "write_file",
+    "execute",
+    "execute",
+    "write_file",
+    "execute"
+  ],
+  "independent_execution": ".\n----------------------------------------------------------------------\nRan 1 test in 0.140s\n\nOK\nTotal sales: 43.50\n",
+  "exit_code": 0,
+  "api_worker_restarted": true,
+  "platform_restarted": true,
+  "project_id": "541257ac-67dd-48f7-92a2-edab28e4ad73",
+  "idempotency_conflict_verified": true,
+  "agent_revocation_verified": true,
+  "cross_project_denied": true,
+  "sse_bytes": 105030,
+  "queued_beyond_model_reference_ttl": true,
+  "credential_rotated_before_worker_started": true,
+  "standard_resume_verified": true,
+  "pending_cancel_and_resend_verified": true,
+  "server_reject_concurrency_verified": true
+}

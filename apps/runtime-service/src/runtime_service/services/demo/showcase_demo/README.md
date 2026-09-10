@@ -121,7 +121,7 @@ Platform 通过认证网关调用；不要为了演示跳过 JWT/Delegation 或�
 普通只依赖 StateBackend 的 Agent 应优先静态编译。schema/state 探测使用相同拓扑的不可执行图，
 不创建线程目录、不请求模型 catalog、不启动 Docker。
 checkpointer 由 Agent Server 注入，不在服务里创建进程内 saver。
-本例锁定 GraphHarbor `0.13.0.post21`：Worker 通过官方参数传递 Context，状态和历史接口通过 LangGraph 还原增量 messages、待执行节点及审批。
+本例锁定 GraphHarbor `0.13.0.post26`：Worker 通过官方参数传递 Context，状态和历史接口通过 LangGraph 还原增量 messages、待执行节点及审批。
 
 流式调用使用官方参数：
 

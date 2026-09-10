@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
-import BaseDrawer from '@/components/base/BaseDrawer.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -20,15 +19,12 @@ import {
 } from '@/services/system/system-governance.service'
 import { useUiStore } from '@/stores/ui'
 import type { PlatformConfigSnapshot } from '@/types/management'
-import { formatDateTime, shortId } from '@/utils/format'
 import { resolvePlatformHttpErrorMessage } from '@/utils/http-error'
 
 type MetricsHistoryPoint = {
   at: number
   requestTotal: number
   requestFailed: number
-  queueDepth: number
-  healthyWorkers: number
 }
 
 type RiskFlag = {
@@ -47,8 +43,6 @@ const metrics = ref<PlatformConfigSnapshot['observability'] | null>(null)
 const autoRefresh = ref(true)
 const lastReadyStatus = ref<string | null>(null)
 const metricsHistory = ref<MetricsHistoryPoint[]>([])
-const workerDrawerOpen = ref(false)
-const selectedWorkerId = ref('')
 let refreshTimer: number | null = null
 
 const stats = computed(() => {
@@ -64,7 +58,7 @@ const stats = computed(() => {
     {
       label: 'Ready',
       value: ready.value?.status || 'unknown',
-      hint: '数据库与 worker 是否就绪',
+      hint: '数据库 是否就绪',
       icon: 'check',
       tone: ready.value?.status === 'ready' ? 'success' : 'warning'
     },
@@ -91,7 +85,7 @@ const riskFlags = computed<RiskFlag[]>(() => {
   if (ready.value && ready.value.status !== 'ready') {
     flags.push({
       title: 'Ready 未就绪',
-      description: `当前 ready = ${ready.value.status}，优先检查数据库连接和 worker 心跳。`,
+      description: `当前 ready = ${ready.value.status}，优先检查数据库连接。`,
       tone: 'danger'
     })
   }
@@ -104,13 +98,6 @@ const riskFlags = computed<RiskFlag[]>(() => {
     })
   }
 
-  if ((metrics.value?.workers.stale_count ?? 0) > 0) {
-    flags.push({
-      title: '存在 stale worker',
-      description: `${metrics.value?.workers.stale_count ?? 0} 个 worker 已掉队，需要确认进程、网络或队列状态。`,
-      tone: 'warning'
-    })
-  }
 
   if ((metrics.value?.requests.failure_rate ?? 0) >= 0.05) {
     flags.push({
@@ -120,18 +107,11 @@ const riskFlags = computed<RiskFlag[]>(() => {
     })
   }
 
-  if ((metrics.value?.operations.queue_depth ?? 0) >= 10) {
-    flags.push({
-      title: '队列积压',
-      description: `当前 queue depth = ${metrics.value?.operations.queue_depth ?? 0}，需要确认 worker 消费速度。`,
-      tone: 'warning'
-    })
-  }
 
   if (flags.length === 0 && metrics.value) {
     flags.push({
       title: '当前没有明显风险',
-      description: 'live / ready / health / workers 口径都正常，可以继续观测趋势。',
+      description: 'live / ready / health 口径都正常，可以继续观测趋势。',
       tone: 'success'
     })
   }
@@ -158,58 +138,26 @@ const trendCards = computed(() => {
       stroke: '#dc2626',
       fill: 'rgba(220, 38, 38, 0.12)'
     },
-    {
-      label: 'Queue Depth',
-      value: metrics.value?.operations.queue_depth ?? 0,
-      hint: '当前操作队列堆积',
-      series: history.map((item) => item.queueDepth),
-      stroke: '#d97706',
-      fill: 'rgba(217, 119, 6, 0.12)'
-    },
-    {
-      label: 'Healthy Workers',
-      value: metrics.value?.workers.healthy_count ?? 0,
-      hint: '健康 worker 数量',
-      series: history.map((item) => item.healthyWorkers),
-      stroke: '#059669',
-      fill: 'rgba(5, 150, 105, 0.12)'
-    }
   ]
 })
 
-const workerItems = computed(() => metrics.value?.workers.items || [])
 
-const selectedWorker = computed(() => {
-  return workerItems.value.find((item) => item.worker_id === selectedWorkerId.value) ?? null
-})
 
 function formatPercent(value: number | undefined) {
   return `${((value ?? 0) * 100).toFixed(2)}%`
 }
 
-function formatMetadata(value: Record<string, unknown> | undefined) {
-  if (!value || Object.keys(value).length === 0) {
-    return '{}'
-  }
-  return JSON.stringify(value, null, 2)
-}
 
 function appendMetricsHistory(nextMetrics: PlatformConfigSnapshot['observability']) {
   const nextPoint: MetricsHistoryPoint = {
     at: Date.now(),
     requestTotal: nextMetrics.requests.total,
     requestFailed: nextMetrics.requests.failed,
-    queueDepth: nextMetrics.operations.queue_depth,
-    healthyWorkers: nextMetrics.workers.healthy_count
   }
 
   metricsHistory.value = [...metricsHistory.value.slice(-17), nextPoint]
 }
 
-function openWorkerDetail(workerId: string) {
-  selectedWorkerId.value = workerId
-  workerDrawerOpen.value = true
-}
 
 async function loadSystemState() {
   loading.value = true
@@ -314,7 +262,7 @@ onUnmounted(() => {
     <GuidePanel
       guide-id="system-governance"
       title="值班视角说明"
-      description="这页展示的是控制面本身的可用性，不是业务页面的 UI 健康检查。先看风险提示，再看趋势，最后进 worker heartbeat 明细查原因。"
+      description="这页展示的是控制面本身的可用性，不是业务页面的 UI 健康检查。先看风险提示，再看趋势，最后查看请求明细查原因。"
       tone="info"
     />
 
@@ -448,7 +396,7 @@ onUnmounted(() => {
                 </StatusPill>
               </div>
               <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                database {{ ready?.database_ready }} / healthy workers {{ ready?.healthy_workers }}
+                database {{ ready?.database_ready }}
               </div>
             </div>
             <div class="pw-card-subtle p-4">
@@ -532,154 +480,7 @@ onUnmounted(() => {
             </article>
           </div>
         </SurfaceCard>
-
-        <SurfaceCard class="space-y-4">
-          <div class="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-white">
-            <BaseIcon
-              name="users"
-              size="sm"
-              class="text-primary-500"
-            />
-            Worker Metrics
-          </div>
-          <div class="grid gap-3 sm:items-start sm:grid-cols-2">
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Queue Depth
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ metrics.operations.queue_depth }}
-              </div>
-            </div>
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Heartbeats
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ metrics.workers.healthy_count }} healthy / {{ metrics.workers.stale_count }} stale
-              </div>
-            </div>
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Success / Fail
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ metrics.operations.succeeded_count }} / {{ metrics.operations.failed_count }}
-              </div>
-            </div>
-            <div class="pw-card-subtle p-4">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Duration
-              </div>
-              <div class="mt-2 text-sm text-gray-900 dark:text-white">
-                {{ metrics.operations.avg_duration_ms }} ms
-              </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                max {{ metrics.operations.max_duration_ms }} ms
-              </div>
-            </div>
-          </div>
-
-          <div class="space-y-2">
-            <div class="flex items-center justify-between gap-3">
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Worker Heartbeats
-              </div>
-              <div class="text-xs text-gray-500 dark:text-dark-300">
-                stale after {{ metrics.workers.stale_after_seconds }}s
-              </div>
-            </div>
-
-            <EmptyState
-              v-if="!workerItems.length"
-              title="当前没有 worker 心跳"
-              description="还没有任何 worker 上报心跳，先确认 worker 进程已启动。"
-              icon="users"
-            />
-
-            <template v-else>
-              <button
-                v-for="worker in workerItems"
-                :key="worker.worker_id"
-                type="button"
-                class="pw-card-subtle flex w-full items-start justify-between gap-3 px-4 py-3 text-left transition-colors hover:border-primary-200 hover:bg-primary-50/60 dark:hover:border-primary-900/40 dark:hover:bg-primary-950/20"
-                @click="openWorkerDetail(worker.worker_id)"
-              >
-                <div class="min-w-0 flex-1">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                      {{ shortId(worker.worker_id) }}
-                    </div>
-                    <StatusPill :tone="worker.healthy ? 'success' : 'warning'">
-                      {{ worker.healthy ? 'healthy' : 'stale' }}
-                    </StatusPill>
-                  </div>
-                  <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                    {{ worker.hostname }} · pid {{ worker.pid }} · {{ worker.queue_backend }}
-                  </div>
-                  <div class="mt-2 text-xs text-gray-500 dark:text-dark-300">
-                    heartbeat {{ formatDateTime(worker.last_heartbeat_at) }} / age {{ worker.age_seconds.toFixed(1) }}s
-                  </div>
-                </div>
-                <BaseIcon
-                  name="chevron-right"
-                  size="sm"
-                  class="mt-1 text-gray-400"
-                />
-              </button>
-            </template>
-          </div>
-        </SurfaceCard>
       </div>
     </template>
-
-    <BaseDrawer
-      :show="workerDrawerOpen"
-      title="Worker Heartbeat 详情"
-      width="wide"
-      @close="workerDrawerOpen = false"
-    >
-      <div
-        v-if="selectedWorker"
-        class="space-y-5"
-      >
-        <div class="pw-card p-5">
-          <div class="flex flex-wrap items-center gap-2">
-            <div class="text-base font-semibold text-gray-900 dark:text-white">
-              {{ selectedWorker.worker_id }}
-            </div>
-            <StatusPill :tone="selectedWorker.healthy ? 'success' : 'warning'">
-              {{ selectedWorker.status }}
-            </StatusPill>
-          </div>
-          <div class="mt-4 grid gap-2 text-sm text-gray-600 dark:text-dark-200">
-            <div>Hostname: {{ selectedWorker.hostname }}</div>
-            <div>PID: {{ selectedWorker.pid }}</div>
-            <div>Queue Backend: {{ selectedWorker.queue_backend }}</div>
-            <div>Current Operation: {{ selectedWorker.current_operation_id || '--' }}</div>
-            <div>Last Heartbeat: {{ formatDateTime(selectedWorker.last_heartbeat_at) }}</div>
-            <div>Last Started: {{ formatDateTime(selectedWorker.last_started_at) }}</div>
-            <div>Last Completed: {{ formatDateTime(selectedWorker.last_completed_at) }}</div>
-            <div>Age Seconds: {{ selectedWorker.age_seconds.toFixed(1) }}</div>
-          </div>
-        </div>
-
-        <SurfaceCard class="space-y-3">
-          <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-            Last Error
-          </div>
-          <div class="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:bg-dark-800/80 dark:text-dark-200">
-            {{ selectedWorker.last_error || '当前没有记录错误。' }}
-          </div>
-        </SurfaceCard>
-
-        <SurfaceCard class="space-y-3">
-          <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-            Metadata
-          </div>
-          <pre class="overflow-x-auto rounded-2xl bg-slate-950 px-4 py-4 text-xs leading-6 text-slate-100">{{ formatMetadata(selectedWorker.metadata) }}</pre>
-        </SurfaceCard>
-      </div>
-    </BaseDrawer>
   </section>
 </template>

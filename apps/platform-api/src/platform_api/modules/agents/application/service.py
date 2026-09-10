@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from starlette.concurrency import run_in_threadpool
+
 from typing import Any
-from uuid import UUID
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from platform_api.core.context.models import ActorContext
-from platform_api.core.db import SqlAlchemyUnitOfWork
+from platform_api.core.db import session_scope
 from platform_api.core.errors import (
     BadRequestError,
     ConflictError,
@@ -17,8 +17,8 @@ from platform_api.core.errors import (
 )
 from platform_api.core.identifiers import parse_actor_user_id, parse_uuid
 from platform_api.core.runtime_contract import (
-    normalize_runtime_contract,
     normalize_runtime_object,
+    validate_runtime_option_values,
 )
 from platform_api.modules.agents.application.contracts import (
     CreateAssistantCommand,
@@ -33,33 +33,36 @@ from platform_api.modules.agents.domain import (
     AssistantItem,
     AssistantPage,
     AssistantStatus,
-    AssistantSyncStatus,
 )
-from platform_api.modules.agents.infra.sqlalchemy.repository import SqlAlchemyAssistantsRepository
-from platform_api.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode
-from platform_api.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
-
-def _now() -> datetime:
-    return datetime.now(timezone.utc)
+from platform_api.modules.agents.infra.sqlalchemy.repository import (
+    SqlAlchemyAssistantsRepository,
+)
+from platform_api.modules.iam.application import (
+    AuthorizationRequest,
+    IamPolicyEngine,
+    PermissionCode,
+)
+from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
 
 
 def _normalize_object(value: dict[str, Any] | None) -> dict[str, Any]:
     return normalize_runtime_object(value)
 
 
-def _normalize_assistant_runtime_contract(
-    *,
-    config: dict[str, Any],
-    context: dict[str, Any],
-    metadata: dict[str, Any],
-    project_id: str,
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
-    return normalize_runtime_contract(
-        config=config,
-        context=context,
-        metadata=metadata,
-        project_id=project_id,
-    )
+def _normalize_agent_context(
+    context: dict[str, Any] | None, project_id: str
+) -> dict[str, Any]:
+    normalized = _normalize_object(context)
+    allowed = {"model_id", "temperature", "max_tokens", "top_p", "tools"}
+    if set(normalized) - allowed:
+        raise BadRequestError(
+            code="invalid_agent_context", message="Unsupported Agent default"
+        )
+    try:
+        validate_runtime_option_values(normalized)
+    except ValueError as exc:
+        raise BadRequestError(code="invalid_agent_context", message=str(exc)) from exc
+    return normalized
 
 
 class AssistantsService:
@@ -67,12 +70,10 @@ class AssistantsService:
         self,
         *,
         session_factory: sessionmaker[Session] | None,
-        runtime_base_url: str,
         schema_provider: AssistantParameterSchemaProviderProtocol,
         policy_engine: IamPolicyEngine | None = None,
     ) -> None:
         self._session_factory = session_factory
-        self._runtime_base_url = runtime_base_url.rstrip("/")
         self._schema_provider = schema_provider
         self._policy_engine = policy_engine or IamPolicyEngine()
 
@@ -86,10 +87,6 @@ class AssistantsService:
 
     def _assistant_item(self, item: StoredAssistantAggregate) -> AssistantItem:
         try:
-            sync_status = AssistantSyncStatus(item.sync_status)
-        except ValueError:
-            sync_status = AssistantSyncStatus.READY
-        try:
             status = AssistantStatus(item.status)
         except ValueError:
             status = AssistantStatus.ACTIVE
@@ -99,14 +96,8 @@ class AssistantsService:
             name=item.name,
             description=item.description,
             graph_id=item.graph_id,
-            runtime_base_url=item.runtime_base_url,
-            sync_status=sync_status,
-            last_sync_error=item.last_sync_error,
-            last_synced_at=item.last_synced_at,
             status=status,
-            config=dict(item.config),
             context=dict(item.context),
-            metadata=dict(item.metadata),
             created_by=str(item.created_by) if item.created_by else None,
             updated_by=str(item.updated_by) if item.updated_by else None,
             created_at=item.created_at,
@@ -116,16 +107,16 @@ class AssistantsService:
     def _require_project_exists(
         self,
         *,
-        uow: SqlAlchemyUnitOfWork,
+        session: Session,
         project_id: str,
     ) -> None:
         project_uuid = parse_uuid(project_id, code="invalid_project_id")
-        projects_repository = SqlAlchemyProjectsRepository(uow.session)
+        projects_repository = SqlAlchemyProjectsRepository(session)
         project = projects_repository.get_project_by_id(project_uuid)
         if project is None or project.status == "deleted":
             raise NotFoundError(message="Project not found", code="project_not_found")
 
-    async def list_assistants(
+    def list_assistants(
         self,
         *,
         actor: ActorContext,
@@ -140,9 +131,9 @@ class AssistantsService:
                 project_id=project_id,
             ),
         )
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            self._require_project_exists(uow=uow, project_id=project_id)
-            repository = SqlAlchemyAssistantsRepository(uow.session)
+        with session_scope(session_factory) as session:
+            self._require_project_exists(session=session, project_id=project_id)
+            repository = SqlAlchemyAssistantsRepository(session)
             items, total = repository.list_project_assistants(
                 project_id=parse_uuid(project_id, code="invalid_project_id"),
                 limit=query.limit,
@@ -171,43 +162,35 @@ class AssistantsService:
                 project_id=project_id,
             ),
         )
-        user_config = _normalize_object(command.config)
-        user_context = _normalize_object(command.context)
-        user_metadata = _normalize_object(command.metadata)
-        user_config, user_context, user_metadata = _normalize_assistant_runtime_contract(
-            config=user_config,
-            context=user_context,
-            metadata=user_metadata,
-            project_id=project_id,
+        user_context = _normalize_agent_context(command.context, project_id)
+        await self.get_parameter_schema(
+            actor=actor, graph_id=command.graph_id, project_id=project_id
         )
 
         try:
-            async with SqlAlchemyUnitOfWork(session_factory) as uow:
-                self._require_project_exists(uow=uow, project_id=project_id)
-                repository = SqlAlchemyAssistantsRepository(uow.session)
-                created = repository.create_assistant(
-                    project_id=parse_uuid(project_id, code="invalid_project_id"),
-                    name=command.name.strip(),
-                    description=command.description.strip(),
-                    graph_id=command.graph_id.strip(),
-                    runtime_base_url=self._runtime_base_url,
-                )
-                item = repository.upsert_assistant_profile(
-                    assistant_id=created.id,
-                    status=AssistantStatus.ACTIVE.value,
-                    config=user_config,
-                    context=user_context,
-                    metadata=user_metadata,
-                    actor_user_id=actor_user_id,
-                )
-                return self._assistant_item(item)
+
+            def persist():
+                with session_scope(session_factory) as session:
+                    self._require_project_exists(session=session, project_id=project_id)
+                    repository = SqlAlchemyAssistantsRepository(session)
+                    item = repository.create_assistant(
+                        project_id=parse_uuid(project_id, code="invalid_project_id"),
+                        name=command.name.strip(),
+                        description=command.description.strip(),
+                        graph_id=command.graph_id.strip(),
+                        context=user_context,
+                        actor_user_id=actor_user_id,
+                    )
+                    return self._assistant_item(item)
+
+            return await run_in_threadpool(persist)
         except IntegrityError as exc:
             raise ConflictError(
                 code="assistant_name_conflict",
                 message="Assistant name already exists in this project",
             ) from exc
 
-    async def get_assistant(
+    def get_assistant(
         self,
         *,
         actor: ActorContext,
@@ -215,8 +198,8 @@ class AssistantsService:
     ) -> AssistantItem:
         session_factory = self._require_session_factory()
         assistant_uuid = parse_uuid(assistant_id, code="invalid_assistant_id")
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            repository = SqlAlchemyAssistantsRepository(uow.session)
+        with session_scope(session_factory) as session:
+            repository = SqlAlchemyAssistantsRepository(session)
             item = repository.get_assistant_by_id(assistant_uuid)
             if item is None:
                 raise NotFoundError(
@@ -232,7 +215,7 @@ class AssistantsService:
             )
             return self._assistant_item(item)
 
-    async def update_assistant(
+    def update_assistant(
         self,
         *,
         actor: ActorContext,
@@ -242,8 +225,8 @@ class AssistantsService:
         session_factory = self._require_session_factory()
         actor_user_id = parse_actor_user_id(actor)
         assistant_uuid = parse_uuid(assistant_id, code="invalid_assistant_id")
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            repository = SqlAlchemyAssistantsRepository(uow.session)
+        with session_scope(session_factory) as session:
+            repository = SqlAlchemyAssistantsRepository(session)
             current = repository.get_assistant_by_id(assistant_uuid)
             if current is None:
                 raise NotFoundError(
@@ -260,11 +243,7 @@ class AssistantsService:
             )
 
             fields_set = command.model_fields_set
-            next_graph_id = (
-                command.graph_id.strip()
-                if "graph_id" in fields_set and isinstance(command.graph_id, str)
-                else current.graph_id
-            )
+            next_graph_id = current.graph_id
             next_name = (
                 command.name.strip()
                 if "name" in fields_set and isinstance(command.name, str)
@@ -280,26 +259,9 @@ class AssistantsService:
                 if "status" in fields_set and command.status is not None
                 else current.status
             )
-            next_config = (
-                _normalize_object(command.config)
-                if "config" in fields_set
-                else dict(current.config)
-            )
-            next_context = (
-                _normalize_object(command.context)
-                if "context" in fields_set
-                else dict(current.context)
-            )
-            next_metadata = (
-                _normalize_object(command.metadata)
-                if "metadata" in fields_set
-                else dict(current.metadata)
-            )
-            next_config, next_context, next_metadata = _normalize_assistant_runtime_contract(
-                config=next_config,
-                context=next_context,
-                metadata=next_metadata,
-                project_id=project_id,
+            next_context = _normalize_agent_context(
+                command.context if "context" in fields_set else current.context,
+                project_id,
             )
 
             repository.update_assistant_runtime_fields(
@@ -307,30 +269,25 @@ class AssistantsService:
                 graph_id=next_graph_id,
                 name=next_name,
                 description=next_description,
-                runtime_base_url=self._runtime_base_url,
             )
-            item = repository.upsert_assistant_profile(
+            item = repository.update_assistant_configuration(
                 assistant_id=assistant_uuid,
                 status=next_status,
-                config=next_config,
                 context=next_context,
-                metadata=next_metadata,
                 actor_user_id=actor_user_id,
             )
             return self._assistant_item(item)
 
-    async def delete_assistant(
+    def delete_assistant(
         self,
         *,
         actor: ActorContext,
         assistant_id: str,
-        delete_runtime: bool,
-        delete_threads: bool,
     ) -> str:
         session_factory = self._require_session_factory()
         assistant_uuid = parse_uuid(assistant_id, code="invalid_assistant_id")
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            repository = SqlAlchemyAssistantsRepository(uow.session)
+        with session_scope(session_factory) as session:
+            repository = SqlAlchemyAssistantsRepository(session)
             current = repository.get_assistant_by_id(assistant_uuid)
             if current is None:
                 raise NotFoundError(
@@ -347,48 +304,6 @@ class AssistantsService:
             )
             repository.delete_assistant(assistant_id=assistant_uuid)
             return project_id
-
-    async def resync_assistant(
-        self,
-        *,
-        actor: ActorContext,
-        assistant_id: str,
-    ) -> AssistantItem:
-        session_factory = self._require_session_factory()
-        actor_user_id = parse_actor_user_id(actor)
-        assistant_uuid = parse_uuid(assistant_id, code="invalid_assistant_id")
-        async with SqlAlchemyUnitOfWork(session_factory) as uow:
-            repository = SqlAlchemyAssistantsRepository(uow.session)
-            current = repository.get_assistant_by_id(assistant_uuid)
-            if current is None:
-                raise NotFoundError(
-                    message="Assistant not found",
-                    code="assistant_not_found",
-                )
-            project_id = str(current.project_id)
-            self._policy_engine.require(
-                actor=actor,
-                authorization=AuthorizationRequest(
-                    permission=PermissionCode.PROJECT_ASSISTANT_WRITE,
-                    project_id=project_id,
-                ),
-            )
-
-            repository.update_assistant_sync_state(
-                assistant_id=assistant_uuid,
-                sync_status=AssistantSyncStatus.READY.value,
-                last_sync_error=None,
-                last_synced_at=_now(),
-            )
-            item = repository.upsert_assistant_profile(
-                assistant_id=assistant_uuid,
-                status=current.status,
-                config=dict(current.config),
-                context=dict(current.context),
-                metadata=dict(current.metadata),
-                actor_user_id=actor_user_id,
-            )
-            return self._assistant_item(item)
 
     async def get_parameter_schema(
         self,
@@ -419,5 +334,7 @@ class AssistantsService:
             )
 
         return await self._schema_provider.build_schema(
-            normalized_graph_id, actor=actor, project_id=project_id,
+            normalized_graph_id,
+            actor=actor,
+            project_id=project_id,
         )

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -17,11 +18,19 @@ from platform_api.core.errors import (
     NotAuthenticatedError,
     ServiceUnavailableError,
 )
-from platform_api.core.security import create_runtime_delegation_token, empty_runtime_context_hash
+from platform_api.core.security import (
+    create_runtime_delegation_token,
+    empty_runtime_context_hash,
+)
 from platform_api.entrypoints.http.dependencies import get_actor_context
-from platform_api.modules.runtime_gateway.application.service import RuntimeGatewayService
-from platform_api.modules.operations.infra import RedisListOperationQueue
-from platform_api.modules.runtime_policies.application import RuntimePolicyOverlayService
+from platform_api.modules.runtime_gateway.application.service import (
+    RuntimeGatewayService,
+    _normalize_protocol_lifecycle_frame,
+    _redact_runtime_private_fields,
+)
+from platform_api.modules.runtime_policies.application import (
+    RuntimePolicyOverlayService,
+)
 
 router = APIRouter(prefix="/api/langgraph", tags=["runtime-gateway"])
 
@@ -43,7 +52,7 @@ def _normalize_ack(value: Any) -> Any:
         return {"ok": True}
     if isinstance(value, dict) and not value:
         return {"ok": True}
-    return value
+    return _redact_runtime_private_fields(value)
 
 
 def _redact_event_value(value: Any) -> Any:
@@ -55,16 +64,19 @@ def _redact_event_value(value: Any) -> Any:
         key: "[REDACTED]"
         if key.lower().replace("-", "_") in _SENSITIVE_EVENT_KEYS
         else _redact_event_value(item)
-        for key, item in value.items()
+        for key, item in _redact_runtime_private_fields(value).items()
     }
 
 
 def _redact_sse_frame(frame: bytes) -> bytes:
+    frame, _ = _normalize_protocol_lifecycle_frame(frame)
     try:
-        lines = frame.decode("utf-8").split("\n")
+        lines = frame.decode("utf-8").splitlines()
     except UnicodeDecodeError:
         return frame
-    data_positions = [index for index, line in enumerate(lines) if line.startswith("data:")]
+    data_positions = [
+        index for index, line in enumerate(lines) if line.startswith("data:")
+    ]
     if not data_positions:
         return frame
     data = "\n".join(lines[index][5:].lstrip() for index in data_positions)
@@ -72,7 +84,9 @@ def _redact_sse_frame(frame: bytes) -> bytes:
         payload = json.loads(data)
     except ValueError:
         return frame
-    encoded = json.dumps(_redact_event_value(payload), ensure_ascii=False, separators=(",", ":"))
+    encoded = json.dumps(
+        _redact_event_value(payload), ensure_ascii=False, separators=(",", ":")
+    )
     first_data_position = data_positions[0]
     redacted_lines = [
         f"data: {encoded}" if index == first_data_position else line
@@ -82,16 +96,22 @@ def _redact_sse_frame(frame: bytes) -> bytes:
     return "\n".join(redacted_lines).encode("utf-8")
 
 
-async def _redact_protocol_event_stream(stream: AsyncIterator[bytes]) -> AsyncIterator[bytes]:
+async def _redact_protocol_event_stream(
+    stream: AsyncIterator[bytes],
+) -> AsyncIterator[bytes]:
     buffer = b""
-    async for chunk in stream:
-        buffer += chunk.replace(b"\r\n", b"\n")
-        frames = buffer.split(b"\n\n")
-        buffer = frames.pop()
-        for frame in frames:
-            yield _redact_sse_frame(frame) + b"\n\n"
-    if buffer:
-        yield _redact_sse_frame(buffer)
+    try:
+        async for chunk in stream:
+            buffer += chunk
+            while boundary := re.search(rb"\r?\n\r?\n", buffer):
+                frame = buffer[: boundary.start()].replace(b"\r\n", b"\n")
+                buffer = buffer[boundary.end() :]
+                yield _redact_sse_frame(frame) + b"\n\n"
+        if buffer:
+            yield _redact_sse_frame(buffer.replace(b"\r\n", b"\n"))
+    finally:
+        if hasattr(stream, "aclose"):
+            await stream.aclose()
 
 
 def _require_project_id(request: Request) -> str:
@@ -114,7 +134,7 @@ def _delegation_operation(request: Request) -> str:
     return "read"
 
 
-async def get_runtime_gateway_service(
+def get_runtime_gateway_service(
     request: Request,
     actor: ActorContext = Depends(get_actor_context),
 ) -> RuntimeGatewayService:
@@ -199,23 +219,17 @@ async def get_runtime_gateway_service(
             settings=settings,
         )
         return {"authorization": f"Bearer {scoped}"}
+
     upstream = LangGraphRuntimeGatewayUpstream(
         base_url=settings.langgraph_upstream_url,
         api_key=settings.langgraph_upstream_api_key,
         timeout_seconds=settings.langgraph_upstream_timeout_seconds,
         forwarded_headers=forwarded_headers,
     )
-    operation_dispatcher = None
-    if settings.operations_queue_backend == "redis_list":
-        operation_dispatcher = RedisListOperationQueue(
-            redis_url=settings.operations_redis_url or "",
-            queue_name=settings.operations_redis_queue_name,
-        )
     return RuntimeGatewayService(
         session_factory=session_factory,
         upstream=upstream,
         runtime_base_url=settings.langgraph_upstream_url,
-        operation_dispatcher=operation_dispatcher,
         delegation_headers_factory=delegation_headers_factory,
         runtime_model_config_secret=(
             settings.runtime_model_config_secret or settings.runtime_delegation_secret
@@ -230,7 +244,9 @@ async def get_runtime_info(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.get_info(actor=actor, project_id=project_id)
+    return _redact_runtime_private_fields(
+        await service.get_info(actor=actor, project_id=project_id)
+    )
 
 
 @router.post("/graphs/search")
@@ -241,10 +257,12 @@ async def search_graphs(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.search_graphs(
-        actor=actor,
-        project_id=project_id,
-        payload=payload,
+    return _redact_runtime_private_fields(
+        await service.search_graphs(
+            actor=actor,
+            project_id=project_id,
+            payload=payload,
+        )
     )
 
 
@@ -256,10 +274,12 @@ async def count_graphs(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.count_graphs(
-        actor=actor,
-        project_id=project_id,
-        payload=payload,
+    return _redact_runtime_private_fields(
+        await service.count_graphs(
+            actor=actor,
+            project_id=project_id,
+            payload=payload,
+        )
     )
 
 
@@ -271,10 +291,12 @@ async def create_thread(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.create_thread(
-        actor=actor,
-        project_id=project_id,
-        payload=payload,
+    return _redact_runtime_private_fields(
+        await service.create_thread(
+            actor=actor,
+            project_id=project_id,
+            payload=payload,
+        )
     )
 
 
@@ -286,10 +308,12 @@ async def search_threads(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.search_threads(
-        actor=actor,
-        project_id=project_id,
-        payload=payload,
+    return _redact_runtime_private_fields(
+        await service.search_threads(
+            actor=actor,
+            project_id=project_id,
+            payload=payload,
+        )
     )
 
 
@@ -301,10 +325,12 @@ async def count_threads(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.count_threads(
-        actor=actor,
-        project_id=project_id,
-        payload=payload,
+    return _redact_runtime_private_fields(
+        await service.count_threads(
+            actor=actor,
+            project_id=project_id,
+            payload=payload,
+        )
     )
 
 
@@ -316,10 +342,12 @@ async def get_thread(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.get_thread(
-        actor=actor,
-        project_id=project_id,
-        thread_id=thread_id,
+    return _redact_runtime_private_fields(
+        await service.get_thread(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+        )
     )
 
 
@@ -354,11 +382,13 @@ async def get_thread_state(
     if checkpoint_id is not None:
         params["checkpoint_id"] = checkpoint_id
     project_id = _require_project_id(request)
-    return await service.get_thread_state(
-        actor=actor,
-        project_id=project_id,
-        thread_id=thread_id,
-        params=params,
+    return _redact_runtime_private_fields(
+        await service.get_thread_state(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            params=params,
+        )
     )
 
 
@@ -371,11 +401,13 @@ async def update_thread_state(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.update_thread_state(
-        actor=actor,
-        project_id=project_id,
-        thread_id=thread_id,
-        payload=payload,
+    return _redact_runtime_private_fields(
+        await service.update_thread_state(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            payload=payload,
+        )
     )
 
 
@@ -388,11 +420,13 @@ async def get_thread_history(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.get_thread_history(
-        actor=actor,
-        project_id=project_id,
-        thread_id=thread_id,
-        payload=payload,
+    return _redact_runtime_private_fields(
+        await service.get_thread_history(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            payload=payload,
+        )
     )
 
 
@@ -405,11 +439,14 @@ async def create_thread_run(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.create_thread_run(
-        actor=actor,
-        project_id=project_id,
-        thread_id=thread_id,
-        payload=payload,
+    return _redact_runtime_private_fields(
+        await service.create_thread_run(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            payload=payload,
+            idempotency_key=request.headers.get("Idempotency-Key"),
+        )
     )
 
 
@@ -427,8 +464,11 @@ async def stream_thread_run(
         project_id=project_id,
         thread_id=thread_id,
         payload=payload,
+        idempotency_key=request.headers.get("Idempotency-Key"),
     )
-    return StreamingResponse(stream, media_type="text/event-stream")
+    return StreamingResponse(
+        _redact_protocol_event_stream(stream), media_type="text/event-stream"
+    )
 
 
 @router.post("/threads/{thread_id}/commands")
@@ -440,12 +480,14 @@ async def send_thread_command(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.send_thread_command(
-        actor=actor,
-        project_id=project_id,
-        thread_id=thread_id,
-        payload=payload,
-        idempotency_key=request.headers.get("Idempotency-Key"),
+    return _redact_runtime_private_fields(
+        await service.send_thread_command(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            payload=payload,
+            idempotency_key=request.headers.get("Idempotency-Key"),
+        )
     )
 
 
@@ -464,7 +506,9 @@ async def stream_thread_events(
         thread_id=thread_id,
         payload=payload,
     )
-    return StreamingResponse(_redact_protocol_event_stream(stream), media_type="text/event-stream")
+    return StreamingResponse(
+        _redact_protocol_event_stream(stream), media_type="text/event-stream"
+    )
 
 
 @router.get("/threads/{thread_id}/runs/{run_id}")
@@ -476,11 +520,13 @@ async def get_thread_run(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.get_thread_run(
-        actor=actor,
-        project_id=project_id,
-        thread_id=thread_id,
-        run_id=run_id,
+    return _redact_runtime_private_fields(
+        await service.get_thread_run(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            run_id=run_id,
+        )
     )
 
 
@@ -505,11 +551,13 @@ async def list_thread_runs(
     if select is not None:
         params["select"] = select
     project_id = _require_project_id(request)
-    return await service.list_thread_runs(
-        actor=actor,
-        project_id=project_id,
-        thread_id=thread_id,
-        params=params,
+    return _redact_runtime_private_fields(
+        await service.list_thread_runs(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            params=params,
+        )
     )
 
 
@@ -522,11 +570,13 @@ async def join_thread_run(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     project_id = _require_project_id(request)
-    return await service.join_thread_run(
-        actor=actor,
-        project_id=project_id,
-        thread_id=thread_id,
-        run_id=run_id,
+    return _redact_runtime_private_fields(
+        await service.join_thread_run(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            run_id=run_id,
+        )
     )
 
 
@@ -556,7 +606,9 @@ async def join_thread_run_stream(
         run_id=run_id,
         params=params,
     )
-    return StreamingResponse(stream, media_type="text/event-stream")
+    return StreamingResponse(
+        _redact_protocol_event_stream(stream), media_type="text/event-stream"
+    )
 
 
 @router.post("/threads/{thread_id}/runs/{run_id}/cancel")

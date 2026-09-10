@@ -2,26 +2,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Protocol
 from uuid import UUID
 
 
 @dataclass(frozen=True, slots=True)
 class StoredRuntimeModel:
     id: UUID
-    runtime_id: str
-    model_key: str
-    display_name: str | None
-    is_default_runtime: bool
-    sync_status: str
-    last_seen_at: datetime | None
-    last_synced_at: datetime | None
-    provider: str | None = None
-    base_url: str | None = None
-    protocol: str | None = None
-    model_name: str | None = None
-    api_key_ciphertext: str | None = None
-    enabled: bool = True
+    display_name: str
+    provider: str
+    base_url: str
+    protocol: str
+    model_name: str
+    api_key_ciphertext: str
+    enabled: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,6 +28,7 @@ class StoredRuntimeTool:
     sync_status: str
     last_seen_at: datetime | None
     last_synced_at: datetime | None
+    permissions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,60 +42,3 @@ class StoredRuntimeGraph:
     sync_status: str
     last_seen_at: datetime | None
     last_synced_at: datetime | None
-
-
-class RuntimeCatalogRepositoryProtocol(Protocol):
-    def list_models(self, *, runtime_id: str) -> list[StoredRuntimeModel]: ...
-
-    def list_tools(self, *, runtime_id: str) -> list[StoredRuntimeTool]: ...
-
-    def list_graphs(self, *, runtime_id: str) -> list[StoredRuntimeGraph]: ...
-
-    def upsert_model_items(
-        self,
-        *,
-        runtime_id: str,
-        items: list[dict[str, Any]],
-        synced_at: datetime,
-    ) -> None: ...
-
-    def upsert_tool_items(
-        self,
-        *,
-        runtime_id: str,
-        items: list[dict[str, Any]],
-        synced_at: datetime,
-    ) -> None: ...
-
-    def upsert_graph_items(
-        self,
-        *,
-        runtime_id: str,
-        items: list[dict[str, Any]],
-        synced_at: datetime,
-        source_type: str,
-    ) -> None: ...
-
-    def mark_missing_models_deleted(
-        self,
-        *,
-        runtime_id: str,
-        active_keys: set[str],
-        synced_at: datetime,
-    ) -> None: ...
-
-    def mark_missing_tools_deleted(
-        self,
-        *,
-        runtime_id: str,
-        active_keys: set[str],
-        synced_at: datetime,
-    ) -> None: ...
-
-    def mark_missing_graphs_deleted(
-        self,
-        *,
-        runtime_id: str,
-        active_keys: set[str],
-        synced_at: datetime,
-    ) -> None: ...

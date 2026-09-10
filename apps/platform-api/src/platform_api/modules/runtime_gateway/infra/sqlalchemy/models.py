@@ -1,80 +1,45 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 
-from sqlalchemy import JSON, DateTime, ForeignKey, String, UniqueConstraint, Uuid, func
+from sqlalchemy import JSON, DateTime, String, UniqueConstraint, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from platform_api.core.db.base import Base
 
 
-class DurableRunRecord(Base):
-    __tablename__ = "runtime_runs"
+class RunRequestRecord(Base):
+    """Submission audit and idempotency; execution state belongs to Agent Server."""
+
+    __tablename__ = "run_requests"
     __table_args__ = (
         UniqueConstraint(
-            "project_id",
-            "thread_id",
-            "idempotency_key",
-            name="uq_runtime_runs_project_thread_idempotency",
-        ),
-        UniqueConstraint(
-            "project_id",
-            "thread_id",
-            "active_key",
-            name="uq_runtime_runs_project_thread_active",
+            "project_id", "thread_id", "idempotency_key", name="uq_run_requests_key"
         ),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     project_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     thread_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    agent_key: Mapped[str] = mapped_column(String(128), nullable=False, index=True, default="")
-    context_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    context_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    policy_version: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    agent_key: Mapped[str] = mapped_column(String(128), nullable=False)
+    requested_by: Mapped[str] = mapped_column(String(255), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
     request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    context_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
+    config_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    context_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     run_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
-    operation_id: Mapped[uuid.UUID] = mapped_column(
-        Uuid(as_uuid=True),
-        ForeignKey("operations.id", ondelete="RESTRICT"),
-        nullable=False,
-        unique=True,
+    parent_run_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    interrupt_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    submission_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="submitted"
     )
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="submitted", index=True)
-    active_key: Mapped[str | None] = mapped_column(String(1), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), index=True
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
-    )
-
-
-class DurableRunInterruptRecord(Base):
-    """Internal interrupt-to-run index; payloads stay in LangGraph checkpoints."""
-
-    __tablename__ = "runtime_run_interrupts"
-    __table_args__ = (
-        UniqueConstraint(
-            "project_id",
-            "thread_id",
-            "run_id",
-            "interrupt_id",
-            name="uq_runtime_run_interrupt_identity",
-        ),
-    )
-
-    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    project_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    thread_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    run_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    interrupt_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), index=True
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now(), onupdate=func.now()
     )

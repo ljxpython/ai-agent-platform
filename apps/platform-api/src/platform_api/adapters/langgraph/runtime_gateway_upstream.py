@@ -6,7 +6,9 @@ from typing import Any
 from platform_api.adapters.langgraph.graphs_sdk_adapter import LangGraphGraphsSdkAdapter
 from platform_api.adapters.langgraph.runs_sdk_adapter import LangGraphRunsSdkAdapter
 from platform_api.adapters.langgraph.runtime_client import LangGraphRuntimeClient
-from platform_api.adapters.langgraph.threads_sdk_adapter import LangGraphThreadsSdkAdapter
+from platform_api.adapters.langgraph.threads_sdk_adapter import (
+    LangGraphThreadsSdkAdapter,
+)
 from platform_api.core.errors import PlatformApiError
 
 
@@ -50,7 +52,7 @@ class LangGraphRuntimeGatewayUpstream:
 
     def with_forwarded_headers(
         self, forwarded_headers: Mapping[str, str]
-    ) -> "LangGraphRuntimeGatewayUpstream":
+    ) -> LangGraphRuntimeGatewayUpstream:
         """Return a request-scoped upstream with a freshly minted delegation."""
         headers = dict(self._forwarded_headers)
         headers.update(forwarded_headers)
@@ -79,8 +81,6 @@ class LangGraphRuntimeGatewayUpstream:
     async def count_threads(self, payload: dict[str, Any] | None = None) -> Any:
         return await self._threads.count(payload)
 
-    async def prune_threads(self, payload: dict[str, Any] | None = None) -> Any:
-        return await self._threads.prune(payload)
 
     async def get_thread(self, thread_id: str) -> dict[str, Any]:
         value = await self._threads.get(thread_id)
@@ -92,21 +92,10 @@ class LangGraphRuntimeGatewayUpstream:
             message="LangGraph upstream returned an invalid thread payload",
         )
 
-    async def update_thread(self, thread_id: str, payload: dict[str, Any] | None = None) -> Any:
-        return await self._threads.update(thread_id, payload)
 
     async def delete_thread(self, thread_id: str) -> Any:
         return await self._threads.delete(thread_id)
 
-    async def copy_thread(self, thread_id: str) -> Any:
-        value = await self._threads.copy(thread_id)
-        if value is None or isinstance(value, dict):
-            return value
-        raise PlatformApiError(
-            code="langgraph_upstream_invalid_response",
-            status_code=502,
-            message="LangGraph upstream returned an invalid thread copy payload",
-        )
 
     async def get_thread_state(
         self,
@@ -129,38 +118,15 @@ class LangGraphRuntimeGatewayUpstream:
     ) -> Any:
         return await self._threads.get_history(thread_id, payload)
 
-    async def create_global_run(self, payload: dict[str, Any] | None = None) -> Any:
-        return await self._runs.create_global(payload or {})
 
-    async def stream_global_run(
-        self,
-        payload: dict[str, Any] | None = None,
-    ) -> AsyncIterator[bytes]:
-        return await self._runs.stream_global(payload or {})
 
-    async def wait_global_run(self, payload: dict[str, Any] | None = None) -> Any:
-        return await self._runs.wait_global(payload or {})
 
-    async def create_batch_runs(self, payloads: list[dict[str, Any]]) -> Any:
-        return await self._runs.create_batch(payloads)
 
-    async def cancel_runs(self, payload: dict[str, Any] | None = None) -> Any:
-        return await self._runs.cancel_many(payload)
 
-    async def create_cron(self, payload: dict[str, Any] | None = None) -> Any:
-        return await self._runs.create_cron(payload or {})
 
-    async def search_crons(self, payload: dict[str, Any] | None = None) -> Any:
-        return await self._runs.search_crons(payload)
 
-    async def count_crons(self, payload: dict[str, Any] | None = None) -> Any:
-        return await self._runs.count_crons(payload)
 
-    async def update_cron(self, cron_id: str, payload: dict[str, Any] | None = None) -> Any:
-        return await self._runs.update_cron(cron_id, payload or {})
 
-    async def delete_cron(self, cron_id: str) -> Any:
-        return await self._runs.delete_cron(cron_id)
 
     async def create_thread_run(
         self,
@@ -198,12 +164,6 @@ class LangGraphRuntimeGatewayUpstream:
             payload=payload,
         )
 
-    async def wait_thread_run(
-        self,
-        thread_id: str,
-        payload: dict[str, Any] | None = None,
-    ) -> Any:
-        return await self._runs.wait(thread_id, payload or {})
 
     async def get_thread_run(self, thread_id: str, run_id: str) -> Any:
         return await self._runs.get(thread_id, run_id)
@@ -229,12 +189,6 @@ class LangGraphRuntimeGatewayUpstream:
     ) -> AsyncIterator[bytes]:
         return await self._runs.join_stream(thread_id, run_id, params)
 
-    async def create_thread_run_cron(
-        self,
-        thread_id: str,
-        payload: dict[str, Any] | None = None,
-    ) -> Any:
-        return await self._runs.create_cron_for_thread(thread_id, payload or {})
 
     async def cancel_thread_run(
         self,

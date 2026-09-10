@@ -1,0 +1,7 @@
+{
+  "status": "passed",
+  "metadata_diff": [],
+  "table_count": 20,
+  "concurrent_request_ids_equal": true,
+  "database": "platform_acceptance_3e99c4a5b4"
+}

@@ -139,7 +139,7 @@ async def run(args: argparse.Namespace) -> dict:
     try:
         api, worker = await start("serve", 1), await start("worker", 1)
         async with httpx.AsyncClient(
-            base_url=f"http://127.0.0.1:{args.port}", timeout=15, trust_env=False
+            base_url=f"http://127.0.0.1:{args.port}", timeout=60, trust_env=False
         ) as client:
             await _wait_for(
                 client, "/ready", lambda x: x.get("ready") is True, 120, api

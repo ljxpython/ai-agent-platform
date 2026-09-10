@@ -16,10 +16,8 @@ import {
   deleteAssistant,
   getAssistant,
   getAssistantParameterSchema,
-  resyncAssistantByOperation,
   updateAssistant
 } from '@/services/assistants/assistants.service'
-import { getOperationFailureMessage } from '@/services/operations/operations.service'
 import { normalizeAssistantRuntimePayload } from '@/services/runtime/runtime-contract'
 import { useUiStore } from '@/stores/ui'
 import type { ManagementAssistant } from '@/types/management'
@@ -59,7 +57,6 @@ const item = ref<ManagementAssistant | null>(null)
 const schema = ref<ParameterSchemaResponse | null>(null)
 const loading = ref(false)
 const saving = ref(false)
-const resyncing = ref(false)
 const deleting = ref(false)
 const schemaLoading = ref(false)
 const error = ref('')
@@ -121,13 +118,6 @@ const stats = computed(() => {
       hint: assistant?.graph_id ? shortId(assistant.graph_id) : '未绑定',
       icon: 'graph',
       tone: 'success'
-    },
-    {
-      label: '同步状态',
-      value: assistant?.sync_status || '--',
-      hint: assistant?.last_synced_at ? formatDateTime(assistant.last_synced_at) : '未同步',
-      icon: 'activity',
-      tone: assistant?.sync_status === 'ready' ? 'success' : 'warning'
     },
     {
       label: '运行状态',
@@ -297,36 +287,6 @@ async function handleSave() {
   }
 }
 
-async function handleResync() {
-  const projectId = activeProjectId.value
-  if (!projectId || !assistantId.value) {
-    return
-  }
-  if (!canManageAssistant.value) {
-    error.value = '当前账号没有助手治理写权限'
-    return
-  }
-
-  resyncing.value = true
-  error.value = ''
-  notice.value = ''
-
-  try {
-    const operation = await resyncAssistantByOperation(assistantId.value, projectId, {
-      idempotencyKey: `assistant-resync:${assistantId.value}`
-    })
-    if (operation.status !== 'succeeded') {
-      throw new Error(getOperationFailureMessage(operation))
-    }
-    await loadAssistantDetail()
-    notice.value = '助手已完成上游重同步'
-  } catch (resyncError) {
-    error.value = resyncError instanceof Error ? resyncError.message : '助手重同步失败'
-  } finally {
-    resyncing.value = false
-  }
-}
-
 function openDeleteDialog() {
   if (!item.value || !canManageAssistant.value) {
     return
@@ -354,10 +314,6 @@ async function confirmDelete() {
   try {
     await deleteAssistant(
       currentItem.id,
-      {
-        deleteRuntime: true,
-        deleteThreads: false
-      },
       projectId
     )
 
@@ -523,26 +479,12 @@ watch([configPropertyDefs, editConfig], () => {
             </div>
             <div class="flex flex-wrap gap-2">
               <BaseButton
-                variant="secondary"
-                :disabled="resyncing || !item || !canManageAssistant"
-                @click="handleResync"
-              >
-                {{ canManageAssistant ? (resyncing ? '同步中...' : '上游重同步') : '当前账号只读' }}
-              </BaseButton>
-              <BaseButton
                 :disabled="saving || !item || !canManageAssistant"
                 @click="handleSave"
               >
                 {{ canManageAssistant ? (saving ? '保存中...' : '保存') : '当前账号只读' }}
               </BaseButton>
             </div>
-          </div>
-
-          <div
-            v-if="item?.last_sync_error"
-            class="rounded-2xl border border-amber-100 bg-amber-50/80 px-4 py-4 text-sm leading-7 text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100"
-          >
-            {{ item.last_sync_error }}
           </div>
 
           <div class="grid gap-4 md:grid-cols-2">
