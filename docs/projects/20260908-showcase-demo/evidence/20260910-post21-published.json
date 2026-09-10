@@ -1,0 +1,48 @@
+{
+  "status": "passed",
+  "thread_id": "bf964ad4-bc31-4097-8c9b-33d9d9989d5a",
+  "runs": [
+    {
+      "run_id": "5c09496b-2506-499c-9351-afa0e2cc5941",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "e85738e6-c1e1-47c2-93e1-416a40b77172",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "9683613e-8821-49c4-96a3-60162f86d16a",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "2feb23e4-7406-4b8e-86da-b592fbbb4b57",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "d25b0e4b-a131-474d-861a-da4589363727",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "20b3ef0e-5d12-4a32-a9df-e787f89c679c",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "738809aa-6d08-4909-89f7-e8114dba765e",
+      "status": "success"
+    }
+  ],
+  "restored_interrupt_ids": [
+    "06f45245045fba15a1eeb078b3a5875b"
+  ],
+  "reviewed_tools": [
+    "edit_file",
+    "edit_file",
+    "edit_file",
+    "write_file",
+    "write_file",
+    "execute"
+  ],
+  "independent_execution": "OK: total sales = 43.50\nTotal sales: 43.50\n",
+  "exit_code": 0,
+  "api_worker_restarted": true
+}

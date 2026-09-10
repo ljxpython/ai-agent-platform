@@ -2,7 +2,7 @@
 
 - **启动时间：** 2026-09-08
 - **重评时间：** 2026-09-09
-- **状态：** partial（后端核心实现及本地真实验证完成，远程持久化和前端待验收）
+- **状态：** partial（runtime-service 教学范围已验收完成；平台联调与前端验收 deferred，等待 platform-api 重构）
 - **范围：** runtime-service 的 showcase_demo、必要的公共运行时接入、部署配置和验证。
 - **级别：** 治理改动（授权与执行边界）。
 - **评审依据：** 用户在本轮审查后明确采纳建议，要求保持简约、去除模拟、修复路径可移植性，并授权按规划实施。具体实现选择及限制见 plan.md。
@@ -32,3 +32,13 @@
 ## 本轮结果（2026-09-09）
 
 已完成官方 Todo/Skills/子 Agent/HITL 接入、Runtime 授权、可移植包资源、线程工作区、真实 Docker 执行和受限文档抓取。相关回归 151 passed，真实模型只读分析 1 passed；干净 wheel 安装后的资源和探测验证通过。具体命令、限制与未验收项见 verification.md。
+
+## 后端收尾（2026-09-10）
+
+真实模型完整修复、多个独立审批和 API/Worker 重启后的持久化恢复均已通过。验收发现并修复 GraphHarbor 的 Context 传递及增量状态读取问题，已发布并安装 `0.13.0.post21`。升级后 runtime-service 回归 152 passed，正式索引安装版本的真实重启验收通过。
+
+后端完成范围与前端待办以 [验证记录](verification.md) 为准；实现细节见 [收尾记录](implementation/09-backend-acceptance.md)。
+
+## 后续顺序调整（2026-09-10）
+
+按用户要求，先推进 [Platform API 重构工程](../20260910-platform-api-refactor/README.md) 的方案讨论、实施与验收，再恢复本工程的平台联调和前端验收。已有 runtime-service 验收不撤销；本工程整体不标 done，后续待办保持 deferred。

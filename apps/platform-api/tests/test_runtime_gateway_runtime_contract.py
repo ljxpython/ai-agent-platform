@@ -4,8 +4,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-from app.core.errors import BadRequestError, ForbiddenError
-from app.modules.runtime_gateway.application.service import (
+from platform_api.core.errors import BadRequestError, ForbiddenError
+from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
     _merge_runtime_context,
     _normalize_protocol_lifecycle_frame,
@@ -127,8 +127,8 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
             }
         )
         with (
-            patch("app.modules.runtime_gateway.application.service.SqlAlchemyUnitOfWork", return_value=_Uow()),
-            patch("app.modules.runtime_gateway.application.service.SqlAlchemyAssistantsRepository") as repository,
+            patch("platform_api.modules.runtime_gateway.application.service.SqlAlchemyUnitOfWork", return_value=_Uow()),
+            patch("platform_api.modules.runtime_gateway.application.service.SqlAlchemyAssistantsRepository") as repository,
         ):
             repository.return_value.get_by_project_and_graph_id.return_value = agent
             result = await service._inject_project_default_model(
@@ -502,9 +502,9 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
         service._runtime_id = "runtime-1"  # type: ignore[attr-defined]
         item = SimpleNamespace(enabled=True)
         with (
-            patch("app.modules.runtime_gateway.application.service.SqlAlchemyUnitOfWork", return_value=_Uow()),
-            patch("app.modules.runtime_gateway.application.service.SqlAlchemyRuntimeCatalogRepository") as repository,
-            patch("app.modules.runtime_gateway.application.service.create_model_reference", return_value="v1.opaque.sig"),
+            patch("platform_api.modules.runtime_gateway.application.service.SqlAlchemyUnitOfWork", return_value=_Uow()),
+            patch("platform_api.modules.runtime_gateway.application.service.SqlAlchemyRuntimeCatalogRepository") as repository,
+            patch("platform_api.modules.runtime_gateway.application.service.create_model_reference", return_value="v1.opaque.sig"),
         ):
             repository.return_value.get_model_by_key.return_value = item
             result = await service._attach_runtime_model_reference(

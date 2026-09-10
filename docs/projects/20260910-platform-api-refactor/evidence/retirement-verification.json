@@ -1,0 +1,34 @@
+{
+  "date": "2026-09-10",
+  "scope": "S2 first slice: platform knowledge/testcase retirement",
+  "backend": {
+    "command": "PLATFORM_RUNTIME_INTEGRATION=0 .venv/bin/python -m unittest discover -s tests -p 'test*.py' -q",
+    "total": 155,
+    "passed": 151,
+    "failed": 1,
+    "skipped": 3,
+    "duration_seconds": 294.314,
+    "known_failure": "RuntimeCatalogDelegationTest.test_refresh_graphs_preserves_static_graphs",
+    "new_failures": 0
+  },
+  "frontend": {
+    "targeted_vitest_passed": 10,
+    "changed_file_eslint": "passed",
+    "typecheck": "passed",
+    "production_build": "passed (vue-tsc and Vite; 3m 1s Vite build)",
+    "full_eslint": "passed"
+  },
+  "python_compileall": "passed",
+  "lockfiles": {
+    "uv": "updated",
+    "pnpm": "updated; frozen offline lockfile check passed"
+  },
+  "deployment_config": "both Compose stacks passed config --quiet",
+  "status": "partial",
+  "not_verified": [
+    "browser end-to-end",
+    "real Runtime integration",
+    "new schema initialization",
+    "new gateway recovery"
+  ]
+}

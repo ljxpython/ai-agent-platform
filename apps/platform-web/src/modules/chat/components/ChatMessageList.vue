@@ -44,7 +44,19 @@ function getOriginalMessage(id: string): Message | undefined {
   return props.allMessages.find(m => m.id === id)
 }
 
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
+
+// 强制刷新key，每次displayMessages变化时递增
+const forceRefreshKey = ref(0)
+
+watch(
+  () => props.displayMessages,
+  () => {
+    // 每次messages更新时立即触发DOM刷新
+    forceRefreshKey.value++
+  },
+  { deep: true }
+)
 
 const visibleDisplayMessages = computed(() =>
   props.displayMessages.filter((entry) => entry.chunks && entry.chunks.length > 0)
@@ -60,7 +72,7 @@ function getParentCheckpointId(messageId: string, runtimeMetadata?: MessageMetad
 </script>
 
 <template>
-  <div class="space-y-8">
+  <div class="space-y-8" :key="forceRefreshKey">
     <ChatMessageRuntimeMetadata
       v-for="displayEntry in visibleDisplayMessages"
       :key="displayEntry.id"

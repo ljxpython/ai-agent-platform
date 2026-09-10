@@ -24,6 +24,7 @@ export type ChatWorkspaceFeatures = {
   allowRunOptions?: boolean
   showHistory?: boolean
   showArtifacts?: boolean
+  showSandbox?: boolean
   showContextBar?: boolean
 }
 

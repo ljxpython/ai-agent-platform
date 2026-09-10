@@ -1,5 +1,7 @@
 # Platform API Development Playbook
 
+> 2026-09-10：Platform API 正在重构，知识库与测试用例平台业务已删除；Operations 待随网关替换后删除。新开发以[重构工程](../../../../docs/projects/20260910-platform-api-refactor/README.md)为准，下文尚未更新的四层/Worker 范式不得用于新增设计。
+
 这份文档把原来的工程标准和 Harness 玩法收成一份正式开发手册。
 
 目标只有一个：
@@ -33,7 +35,7 @@
 
 ## 3. 目录和分层规则
 
-`app/` 下只允许这几类主目录承担核心职责：
+`src/platform_api/` 下只允许这几类主目录承担核心职责：
 
 - `core/`
 - `modules/`

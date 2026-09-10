@@ -86,7 +86,7 @@ test('reproduce user scenario: send gpt -> stop -> switch model -> send again', 
   await page.waitForTimeout(8000);
 
   // 9. Verify error toast or message does NOT appear
-  const conflictError = page.locator('text=当前线程已有运行中的任务');
+  const conflictError = page.locator('text=当前线程已有运行中的任务').first();
   await expect(conflictError).not.toBeVisible();
 
   // Take screenshot

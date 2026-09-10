@@ -1,5 +1,7 @@
 # Platform API Project Handbook
 
+> 2026-09-10：Platform API 正在重构，知识库与测试用例平台业务已删除；Operations 待随网关替换后删除。新开发以[重构工程](../../../../docs/projects/20260910-platform-api-refactor/README.md)为准，下文尚未更新的四层/Worker 范式不得用于新增设计。
+
 文档类型：`Current Handbook`
 
 这份手册说明当前 `platform-api` 作为正式 control plane 的职责、使用方式和治理边界。
@@ -104,7 +106,6 @@
 | 用户、项目、成员管理 | `users` / `projects` | 属于平台治理主数据 |
 | 公告、审计、平台配置、服务账号 | `announcements` / `audit` / `platform_config` / `service_accounts` | 属于平台治理能力 |
 | Agent、graph、thread、chat、运行入口 | `agents`（当前由 `assistants` 兼容实现）+ `runtime_gateway` + `runtime_catalog` | 平台负责受控访问和上下文注入，不直接替代 runtime |
-| testcase 管理、导出、预览 | `testcase` | 结果数据仍在 `interaction-data-service` |
 | 长耗时刷新、导出、批处理 | `operations` | 通过 operation/job 跟踪状态，不在 HTTP 里硬等 |
 
 ### 4.1 前端如何用
@@ -181,16 +182,6 @@
 2. `platform-api` 只负责项目边界、身份上下文、错误映射和受控转发
 3. 前端调用 `platform-api` 的 gateway 接口，而不是直打 runtime
 
-#### 场景 C：要保存 AI 运行结果
-
-比如 testcase 跑完后要保存批次、结果、文档。
-
-正确做法：
-
-1. 结果域放进 `interaction-data-service`
-2. `platform-api` 负责项目权限、聚合视图、导出、下载、预览整形
-3. 前端只认 `platform-api` 暴露的治理接口
-
 ## 5. 为什么要这样拆
 
 如果不拆，平台侧最后一定会烂成一锅：
@@ -213,7 +204,7 @@
 
 ```text
 apps/platform-api/
-├── app/
+├── src/platform_api/
 │   ├── adapters/
 │   ├── bootstrap/
 │   ├── core/
@@ -225,7 +216,7 @@ apps/platform-api/
 └── scripts/
 ```
 
-### 6.1 `app/core`
+### 6.1 `src/platform_api/core`
 
 放全局共享能力：
 
@@ -237,7 +228,7 @@ apps/platform-api/
 - observability
 - security primitives
 
-### 6.2 `app/modules`
+### 6.2 `src/platform_api/modules`
 
 放业务模块，每个模块都按下面四层收：
 
@@ -256,7 +247,7 @@ module/
 - `infra`：repository、SQLAlchemy、外部依赖落地
 - `presentation`：HTTP DTO 与 router
 
-### 6.3 `app/adapters`
+### 6.3 `src/platform_api/adapters`
 
 放外部系统接入：
 
@@ -264,7 +255,7 @@ module/
 - `interaction_data`
 - 后续可扩展 `redis`、`object_storage`、`notification`
 
-### 6.4 `app/entrypoints`
+### 6.4 `src/platform_api/entrypoints`
 
 放协议入口：
 
@@ -291,7 +282,6 @@ module/
 | `agents`（实现目录 `assistants`） | Agent 平台主数据和治理字段；旧目录仅作迁移兼容 | 不直接执行 runtime run |
 | `runtime_catalog` | graph/model/tool 的受控目录视图 | 不篡改 runtime 真相源 |
 | `runtime_gateway` | 受控代理 runtime upstream | 不承接平台主数据 |
-| `testcase` | testcase 控制面接口、导出聚合 | 不持有结果域真实数据 |
 | `announcements` | 公告管理与可见性 | 不碰权限主逻辑 |
 | `audit` | 审计查询与事件模型 | 不只记 access log |
 | `operations` | 长任务、重试、取消、artifact | 不在 HTTP 中直接把任务跑完 |
@@ -341,7 +331,6 @@ module/
 - 项目资源读写
 - 项目成员
 - Agent project scope
-- testcase project scope
 - runtime gateway 的项目边界
 
 ### 8.4 典型例子
@@ -480,24 +469,7 @@ module/
 
 - `../standards/operations-standard.md`
 
-### 10.1 一条典型 operation 链路
-
-比如“导出 testcase 文档包”：
-
-1. 前端点击导出
-2. 控制面创建一个 `testcase.export` operation
-3. 返回 `operation_id`
-4. worker 异步执行导出
-5. 导出完成后写 `artifact`
-6. 前端轮询 operation，拿到下载入口
-
-这比同步导出好太多，因为它至少具备：
-
-- 可重试
-- 可取消
-- 可审计
-- 可追踪失败原因
-- 后续可平滑切队列
+Operations 已纳入退役范围，不再提供导出或新业务任务范式。
 
 ## 11. 新功能应该怎么开发
 

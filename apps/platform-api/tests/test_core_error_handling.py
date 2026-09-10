@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
-from app.core.errors import PlatformApiError, register_exception_handlers
+from platform_api.core.errors import PlatformApiError, register_exception_handlers
 
 
 class _ValidationPayload(BaseModel):

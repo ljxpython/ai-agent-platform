@@ -11,9 +11,13 @@ import MetricCard from '@/components/platform/MetricCard.vue'
 import StateBanner from '@/components/platform/StateBanner.vue'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import { createAssistant, getAssistantParameterSchema } from '@/services/assistants/assistants.service'
+import {
+  submitRuntimeRefreshOperation,
+  waitForRuntimeRefreshOperation,
+  listRuntimeModels
+} from '@/services/runtime/runtime.service'
 import { listGraphsPage } from '@/services/graphs/graphs.service'
 import { buildAssistantDraftPayload } from '@/services/runtime/runtime-contract'
-import { listRuntimeModels } from '@/services/runtime/runtime.service'
 import type { ManagementGraph, RuntimeModelItem } from '@/types/management'
 
 type SchemaProperty = {
@@ -200,6 +204,40 @@ async function loadGraphs() {
     graphOptions.value = []
   } finally {
     graphLoading.value = false
+  }
+}
+
+const syncingGraphs = ref(false)
+
+async function handleSyncGraphs() {
+  const projectId = activeProjectId.value
+  if (!projectId) return
+
+  syncingGraphs.value = true
+  error.value = ''
+  notice.value = ''
+
+  try {
+    const operation = await submitRuntimeRefreshOperation('graphs', projectId)
+    const finalOperation = await waitForRuntimeRefreshOperation(operation.id, {
+      projectId,
+      timeoutMs: 90000
+    })
+    if (finalOperation.status !== 'succeeded') {
+      throw new Error(
+        (finalOperation.error_payload?.message as string | undefined) || '图谱目录同步未成功完成'
+      )
+    }
+
+    await loadGraphs()
+    notice.value = '后端图谱同步成功，已加载最新可用 Graph'
+    if (sortedGraphOptions.value.length > 0 && (!graphId.value || graphId.value === 'assistant')) {
+      graphId.value = sortedGraphOptions.value[0].graph_id
+    }
+  } catch (syncError) {
+    error.value = syncError instanceof Error ? syncError.message : '图谱目录同步失败'
+  } finally {
+    syncingGraphs.value = false
   }
 }
 
@@ -405,17 +443,34 @@ watch(
           </div>
 
           <div class="grid gap-4 md:grid-cols-2">
-            <label class="block">
-              <span class="pw-input-label">Graph ID</span>
+            <div class="block">
+              <div class="flex items-center justify-between pb-1">
+                <span class="pw-input-label !pb-0">Graph ID</span>
+                <button
+                  type="button"
+                  class="text-xs text-brand-600 hover:text-brand-700 dark:text-brand-400 font-medium inline-flex items-center gap-1 disabled:opacity-50"
+                  :disabled="syncingGraphs || graphLoading || submitting"
+                  @click="handleSyncGraphs"
+                >
+                  <BaseIcon
+                    name="refresh"
+                    size="xs"
+                    :class="{ 'animate-spin': syncingGraphs }"
+                  />
+                  {{ syncingGraphs ? '同步中...' : '同步后端 Graph' }}
+                </button>
+              </div>
               <BaseSelect
+                id="graph-id"
+                data-testid="graph-select"
                 v-model="graphId"
-                :disabled="submitting || graphLoading || sortedGraphOptions.length === 0"
+                :disabled="submitting || graphLoading || syncingGraphs || sortedGraphOptions.length === 0"
               >
                 <option
                   v-if="sortedGraphOptions.length === 0"
                   value=""
                 >
-                  {{ graphLoading ? '加载图目录中...' : '当前没有可选 graph' }}
+                  {{ graphLoading ? '加载图目录中...' : syncingGraphs ? '正在同步后端图谱...' : '当前没有可选 graph（请点击上方同步）' }}
                 </option>
                 <option
                   v-for="option in sortedGraphOptions"
@@ -425,7 +480,7 @@ watch(
                   {{ option.description?.trim() ? `${option.graph_id} - ${option.description}` : option.graph_id }}
                 </option>
               </BaseSelect>
-            </label>
+            </div>
 
             <label class="block">
               <span class="pw-input-label">名称</span>

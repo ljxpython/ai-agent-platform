@@ -32,7 +32,6 @@
 - project
 - project member
 - Agent project policy（历史权限代码中的 `assistant` 名称仅作兼容）
-- testcase project data
 - project audit
 - runtime gateway project scope
 
@@ -107,7 +106,7 @@
 - `project.operation.write`
 - `project.runtime.read`
 - `project.runtime.write`
-- `project.testcase.read`
+- `project.assistant.read`
 
 禁止直接拿角色字符串作为“权限”。
 
@@ -133,8 +132,8 @@
 
 当前统一落点：
 
-- `app/modules/iam/domain/roles.py`
-- `app/modules/iam/application/policies.py`
+- `src/platform_api/modules/iam/domain/roles.py`
+- `src/platform_api/modules/iam/application/policies.py`
 
 要求：
 

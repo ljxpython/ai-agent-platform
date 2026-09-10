@@ -25,12 +25,17 @@ export type UsePlatformChatStreamOptions = {
   onRefreshThread: (threadId: string, loadOptions?: { preserveInfo?: boolean }) => Promise<void>
 }
 
+export type PlatformChatStreamSubmitOptions = StreamSubmitOptions<ChatState> & {
+  streamMode?: string[]
+  streamSubgraphs?: boolean
+}
+
 export type PlatformChatStreamLike = {
   messages: Readonly<Ref<BaseMessage[]>>
   stop: (options?: StreamStopOptions) => Promise<void>
   submit: (
     payload?: Record<string, unknown> | null,
-    options?: StreamSubmitOptions<ChatState>
+    options?: PlatformChatStreamSubmitOptions
   ) => Promise<void>
   respond: (response: unknown, options?: StreamRespondOptions) => Promise<void>
   respondAll: (responsesById: Record<string, unknown>, options?: StreamRespondAllOptions) => Promise<void>

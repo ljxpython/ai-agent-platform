@@ -48,6 +48,26 @@ def test_build_deepseek_uses_proxy_settings(monkeypatch: pytest.MonkeyPatch) -> 
     assert calls["temperature"] == 0.0
 
 
+def test_build_deepseek_without_prefix_uses_proxy_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: dict[str, object] = {}
+
+    def fake_constructor(**kwargs: object) -> object:
+        calls.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(modeling, "ChatDeepSeek", fake_constructor)
+    model = modeling.build_model(
+        _resolved("DeepSeek-V4-Flash"),
+        env={"DEEPSEEK_PROXY_API_KEY": "key", "DEEPSEEK_PROXY_URL": "https://deepseek.test/v1"},
+    )
+
+    assert model is not None
+    assert calls["model"] == "DeepSeek-V4-Flash"
+    assert calls["api_key"] == "key"
+    assert calls["base_url"] == "https://deepseek.test/v1"
+    assert calls["temperature"] == 0.0
+
+
 def test_build_openai_uses_gpt_proxy_settings(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 

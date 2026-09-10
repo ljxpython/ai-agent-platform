@@ -78,7 +78,7 @@ cd apps/platform-api
 PLATFORM_API_PLATFORM_DB_ENABLED=true \
 PLATFORM_API_PLATFORM_DB_AUTO_CREATE=false \
 PLATFORM_API_DATABASE_URL=postgresql+psycopg://bytedance@127.0.0.1:5432/agent_platform \
-uv run uvicorn main:app --host 127.0.0.1 --port 3035
+uv run uvicorn platform_api.main:create_app --factory --host 127.0.0.1 --port 3035
 ```
 
 本地开发如果要保留 bootstrap admin：

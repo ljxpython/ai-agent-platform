@@ -5,12 +5,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
-from app.core.errors import PlatformApiError
-from app.adapters.langgraph.runs_sdk_adapter import LangGraphRunsSdkAdapter
-from app.adapters.langgraph.runtime_client import LangGraphRuntimeClient
-from app.adapters.langgraph.runtime_gateway_upstream import LangGraphRuntimeGatewayUpstream
-from app.adapters.langgraph.threads_sdk_adapter import LangGraphThreadsSdkAdapter
-from app.modules.runtime_gateway.presentation.http import router
+from platform_api.core.errors import PlatformApiError
+from platform_api.adapters.langgraph.runs_sdk_adapter import LangGraphRunsSdkAdapter
+from platform_api.adapters.langgraph.runtime_client import LangGraphRuntimeClient
+from platform_api.adapters.langgraph.runtime_gateway_upstream import LangGraphRuntimeGatewayUpstream
+from platform_api.adapters.langgraph.threads_sdk_adapter import LangGraphThreadsSdkAdapter
+from platform_api.modules.runtime_gateway.presentation.http import router
 
 
 async def _collect_chunks(stream):
@@ -33,7 +33,7 @@ class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
             )
         )
         with patch(
-            "app.adapters.langgraph.threads_sdk_adapter.get_langgraph_client",
+            "platform_api.adapters.langgraph.threads_sdk_adapter.get_langgraph_client",
             return_value=fake_client,
         ):
             adapter = LangGraphThreadsSdkAdapter(base_url="http://example.com")
@@ -53,7 +53,7 @@ class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
             )
         )
         with patch(
-            "app.adapters.langgraph.runs_sdk_adapter.get_langgraph_client",
+            "platform_api.adapters.langgraph.runs_sdk_adapter.get_langgraph_client",
             return_value=fake_client,
         ):
             adapter = LangGraphRunsSdkAdapter(base_url="http://example.com")
@@ -84,7 +84,7 @@ class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
             )
         )
         with patch(
-            "app.adapters.langgraph.runs_sdk_adapter.get_langgraph_client",
+            "platform_api.adapters.langgraph.runs_sdk_adapter.get_langgraph_client",
             return_value=fake_client,
         ):
             adapter = LangGraphRunsSdkAdapter(base_url="http://example.com")
@@ -104,7 +104,7 @@ class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
     async def test_runs_join_stream_rejects_disconnect_cancellation(self) -> None:
         fake_client = SimpleNamespace(runs=SimpleNamespace(join_stream=Mock()))
         with patch(
-            "app.adapters.langgraph.runs_sdk_adapter.get_langgraph_client",
+            "platform_api.adapters.langgraph.runs_sdk_adapter.get_langgraph_client",
             return_value=fake_client,
         ):
             adapter = LangGraphRunsSdkAdapter(base_url="http://example.com")
@@ -124,7 +124,7 @@ class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
             )
         )
         with patch(
-            "app.adapters.langgraph.runs_sdk_adapter.get_langgraph_client",
+            "platform_api.adapters.langgraph.runs_sdk_adapter.get_langgraph_client",
             return_value=fake_client,
         ):
             adapter = LangGraphRunsSdkAdapter(base_url="http://example.com")
@@ -139,7 +139,7 @@ class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
             )
         )
         with patch(
-            "app.adapters.langgraph.runs_sdk_adapter.get_langgraph_client",
+            "platform_api.adapters.langgraph.runs_sdk_adapter.get_langgraph_client",
             return_value=fake_client,
         ):
             adapter = LangGraphRunsSdkAdapter(base_url="http://example.com")

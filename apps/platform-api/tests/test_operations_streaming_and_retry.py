@@ -10,23 +10,23 @@ from uuid import UUID
 import httpx
 import uvicorn
 
-from app.factory import create_app
-from app.core.context.models import ActorContext
-from app.core.db import build_engine, build_session_factory, create_core_tables, session_scope
-from app.core.security import create_access_token, hash_password
-from app.modules.operations.application import CreateOperationCommand, ListOperationsQuery, OperationsService
-from app.modules.operations.application.execution import DatabasePollingOperationDispatcher, OperationExecutorRegistry
-from app.modules.operations.application.ports import OperationExecutionResult, StoredOperation
-from app.modules.operations.application.service import build_operation_page_signature
-from app.modules.operations.application.worker import OperationWorker
-from app.modules.operations.domain import OperationPage, OperationStatus
-from app.modules.identity.infra.sqlalchemy.repository import SqlAlchemyIdentityRepository
-from app.modules.iam.domain import ProjectRole
-from app.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
+from platform_api.main import create_app
+from platform_api.core.context.models import ActorContext
+from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
+from platform_api.core.security import create_access_token, hash_password
+from platform_api.modules.operations.application import CreateOperationCommand, ListOperationsQuery, OperationsService
+from platform_api.modules.operations.application.execution import DatabasePollingOperationDispatcher, OperationExecutorRegistry
+from platform_api.modules.operations.application.ports import OperationExecutionResult, StoredOperation
+from platform_api.modules.operations.application.service import build_operation_page_signature
+from platform_api.modules.operations.application.worker import OperationWorker
+from platform_api.modules.operations.domain import OperationPage, OperationStatus
+from platform_api.modules.identity.infra.sqlalchemy.repository import SqlAlchemyIdentityRepository
+from platform_api.modules.iam.domain import ProjectRole
+from platform_api.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
 
 
 class _FlakyExecutor:
-    kind = "unstable.echo"
+    kind = "runtime.tools.refresh"
 
     def __init__(self, *, succeed_on_attempt: int) -> None:
         self._attempt = 0
@@ -112,7 +112,7 @@ class OperationsStreamingAndRetryTest(unittest.IsolatedAsyncioTestCase):
         submitted = await self.service.submit_operation(
             actor=self.actor,
             command=CreateOperationCommand(
-                kind="unstable.echo",
+                kind="runtime.tools.refresh",
                 project_id=self.project_id,
                 input_payload={"value": "ping"},
                 metadata={"_retry_policy": {"max_attempts": 3}},
@@ -158,14 +158,15 @@ class OperationsStreamingAndRetryTest(unittest.IsolatedAsyncioTestCase):
             await self.service.submit_operation(
                 actor=self.actor,
                 command=CreateOperationCommand(
-                    kind="unstable.echo",
+                    kind="runtime.tools.refresh",
                     project_id=self.project_id,
                     input_payload={"value": "watch"},
                 ),
             )
 
         submit_task = asyncio.create_task(submit_later())
-        next_page = await asyncio.wait_for(anext(watch_stream), timeout=0.5)
+        # CI and slower local event loops can need more than one poll interval.
+        next_page = await asyncio.wait_for(anext(watch_stream), timeout=2.0)
         await watch_stream.aclose()
         await submit_task
 
@@ -207,7 +208,7 @@ class OperationsStreamingAndRetryTest(unittest.IsolatedAsyncioTestCase):
 
             self.assertTrue(base_url, "uvicorn test server did not start in time")
 
-            async with httpx.AsyncClient(base_url=base_url, timeout=2.0) as client:
+            async with httpx.AsyncClient(base_url=base_url, timeout=2.0, trust_env=False) as client:
                 async with client.stream(
                     "GET",
                     "/api/operations/stream",

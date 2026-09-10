@@ -374,9 +374,6 @@ onMounted(() => {
               <div class="mt-2 break-all text-sm text-gray-900 dark:text-white">
                 {{ snapshot.runtime.langgraph_upstream_url }}
               </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                IDS: {{ snapshot.runtime.interaction_data_service_configured ? 'configured' : 'missing' }}
-              </div>
             </div>
           </div>
         </SurfaceCard>

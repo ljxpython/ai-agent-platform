@@ -121,6 +121,7 @@ Platform 通过认证网关调用；不要为了演示跳过 JWT/Delegation 或�
 普通只依赖 StateBackend 的 Agent 应优先静态编译。schema/state 探测使用相同拓扑的不可执行图，
 不创建线程目录、不请求模型 catalog、不启动 Docker。
 checkpointer 由 Agent Server 注入，不在服务里创建进程内 saver。
+本例锁定 GraphHarbor `0.13.0.post21`：Worker 通过官方参数传递 Context，状态和历史接口通过 LangGraph 还原增量 messages、待执行节点及审批。
 
 流式调用使用官方参数：
 
@@ -159,6 +160,23 @@ RUNTIME_SHOWCASE_LIVE_TEST=1 uv run pytest tests/services/showcase_demo/test_age
 测试断言真实 Todo 状态、Skills 内容、文件变更、授权拒绝、子图事件和审批恢复。
 外部模型可以在测试中替换为官方 fake model，以稳定覆盖分支；正式工具不替换为假实现。
 完整进度与远程/前端验收边界见仓库 `docs/projects/20260908-showcase-demo/verification.md`。
+
+### 真实服务重启验收
+
+使用专用测试 PostgreSQL 数据库与 Redis 地址，先完成迁移，再运行验收脚本：
+
+```bash
+# DATABASE_URI、REDIS_URI 必须指向专用测试基础设施
+uv run graphharbor migrate upgrade
+uv run python scripts/showcase_acceptance.py --output /tmp/showcase-acceptance-new
+```
+
+脚本启动独立 API 和 Worker，在真实模型提出修改审批时停止并重启两个进程，
+确认原 interrupt ID 和完整 messages 保持一致，然后恢复审批、运行模型生成的检查并独立执行报表。
+脚本仅在这个隔离验证流程中自动批准工作区修改/执行；正式 Demo 仍由调用方人工审批。
+运行需要 Docker、本地执行镜像和 `.env` 中的模型连接；输出目录必须不存在。
+验证完成后脚本停止自己启动的进程，保留证据、日志及工作区，不删除数据库或已有服务。
+
 
 框架参考：[Deep Agents](https://docs.langchain.com/oss/python/deepagents/overview)、
 [Backends](https://docs.langchain.com/oss/python/deepagents/backends)、

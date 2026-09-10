@@ -9,14 +9,14 @@ from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from app.core.context import build_request_context
-from app.adapters.langgraph import build_forward_headers
-from app.core.db import build_engine, create_core_tables, session_scope
-from app.core.security import hash_password
-from app.entrypoints.http.middleware.audit_log import _should_capture_response
-from app.factory import create_app
-from app.modules.audit.infra.sqlalchemy.models import AuditLogRecord
-from app.modules.identity.infra.sqlalchemy.repository import SqlAlchemyIdentityRepository
+from platform_api.core.context import build_request_context
+from platform_api.adapters.langgraph import build_forward_headers
+from platform_api.core.db import build_engine, create_core_tables, session_scope
+from platform_api.core.security import hash_password
+from platform_api.entrypoints.http.middleware.audit_log import _should_capture_response
+from platform_api.main import create_app
+from platform_api.modules.audit.infra.sqlalchemy.models import AuditLogRecord
+from platform_api.modules.identity.infra.sqlalchemy.repository import SqlAlchemyIdentityRepository
 
 
 class SecurityBoundariesTest(unittest.TestCase):

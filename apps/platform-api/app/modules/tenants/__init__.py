@@ -1,1 +1,0 @@
-"""Tenant and organization module."""

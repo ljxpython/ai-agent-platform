@@ -190,7 +190,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         backend = StateBackend()
     else:
         root_value = os.environ.get("GRAPHHARBOR_WORKSPACE_ROOT", "").strip()
-        from langgraph_runtime_pg.deepagent_workspace import build_deepagent_workspace
+        from runtime_service.workspace import build_deepagent_workspace
 
         backend = build_deepagent_workspace(
             Path(root_value),

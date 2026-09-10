@@ -59,7 +59,7 @@ const pagePatterns = [
   {
     title: '列表页',
     structure: 'PageHeader → 提示区 → 筛选区 → DataTable → BulkActionsBar → PaginationBar',
-    usage: 'projects / users / assistants / audit / graphs / testcase',
+    usage: 'projects / users / assistants / audit / graphs',
     note: '禁止每页自己发明搜索框、分页条和空态。'
   },
   {
@@ -77,7 +77,7 @@ const pagePatterns = [
   {
     title: '工作区页',
     structure: '上下文说明 → 主工作区 → 抽屉/侧栏辅助区 → 执行态/中断/错误分层展示',
-    usage: 'chat / sql-agent / runtime / threads / testcase generate',
+    usage: 'chat / sql-agent / runtime / threads',
     note: '主路径永远优先，调试信息不要常驻主界面。'
   },
   {

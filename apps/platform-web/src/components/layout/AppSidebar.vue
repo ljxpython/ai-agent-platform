@@ -4,7 +4,6 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import { useAuthorization } from '@/composables/useAuthorization'
-import { useWorkspaceProjectContext } from '@/composables/useWorkspaceProjectContext'
 import { appMeta } from '@/config/app-meta'
 import BrandMark from '@/components/layout/BrandMark.vue'
 import { useThemeStore } from '@/stores/theme'
@@ -17,7 +16,6 @@ const uiStore = useUiStore()
 const themeStore = useThemeStore()
 const isDev = import.meta.env.DEV
 const authorization = useAuthorization()
-const { activeProjectId } = useWorkspaceProjectContext()
 
 type SidebarItem = {
   to: string
@@ -36,10 +34,6 @@ type SidebarGroup = {
 }
 
 const groups = computed(() => {
-  const resolveKnowledgePath = (suffix: 'documents' | 'retrieval' | 'graph' | 'settings') =>
-    activeProjectId.value
-      ? `/workspace/projects/${activeProjectId.value}/knowledge/${suffix}`
-      : '/workspace/projects'
   const baseGroups: SidebarGroup[] = [
     {
       id: 'workspace',
@@ -89,48 +83,6 @@ const groups = computed(() => {
           icon: 'sql-agent',
           sectionTitle: t('nav.agentApps'),
           requiredPermissions: ['project.runtime.read']
-        },
-        {
-          to: '/workspace/testcase',
-          label: t('nav.testcase'),
-          icon: 'testcase',
-          requiredPermissions: ['project.testcase.read']
-        },
-        {
-          to: '/workspace/testcase-v2',
-          label: 'Testcase V2',
-          icon: 'testcase',
-          requiredPermissions: ['project.testcase.read']
-        }
-      ]
-    },
-    {
-      id: 'knowledge',
-      label: 'Knowledge',
-      items: [
-        {
-          to: resolveKnowledgePath('documents'),
-          label: '知识文档',
-          icon: 'file',
-          requiredPermissions: ['project.knowledge.read']
-        },
-        {
-          to: resolveKnowledgePath('retrieval'),
-          label: '知识检索',
-          icon: 'search',
-          requiredPermissions: ['project.knowledge.read']
-        },
-        {
-          to: resolveKnowledgePath('graph'),
-          label: '知识图谱',
-          icon: 'graph',
-          requiredPermissions: ['project.knowledge.read']
-        },
-        {
-          to: resolveKnowledgePath('settings'),
-          label: '知识设置',
-          icon: 'shield',
-          requiredPermissions: ['project.knowledge.read']
         }
       ]
     },

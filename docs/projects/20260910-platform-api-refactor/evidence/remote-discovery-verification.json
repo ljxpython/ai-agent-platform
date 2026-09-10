@@ -1,0 +1,35 @@
+{
+  "date": "2026-09-10",
+  "status": "partial",
+  "scope": "remote Graph discovery and parameter schemas",
+  "platform_full_suite": {
+    "command": "uv run --frozen python -m unittest discover -s tests -q",
+    "total": 156,
+    "passed": 153,
+    "skipped": 3,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 227.15
+  },
+  "subsequent_targeted_checks": {
+    "schema_and_search": {"passed": 3, "seconds": 0.226},
+    "catalog_and_authorization": {"passed": 12, "seconds": 5.607},
+    "note": "Two tests added after full suite discovery; verified in their respective files."
+  },
+  "graphharbor": {
+    "graph_discovery_and_thread_projection": {"passed": 4, "seconds": 10.94},
+    "server_and_discovery_test_ruff": "passed",
+    "core_api_ruff": "existing undefined policy and unused os/RuntimeContextError imports",
+    "package_published": false,
+    "runtime_installed_package_replaced": false
+  },
+  "remaining": [
+    "Deliver compatible GraphHarbor dependency to Runtime",
+    "Real Runtime factory probes with no external side effects",
+    "New Agent table and model decisions",
+    "Agent page and browser acceptance",
+    "New database baseline and gateway refactor",
+    "Retire Operations and old aliases"
+  ],
+  "container_verification": "deferred until overall implementation is complete"
+}

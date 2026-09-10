@@ -1,0 +1,59 @@
+{
+  "date": "2026-09-10",
+  "scope": "installable platform_api package and startup resource lifecycle",
+  "project_status": "partial",
+  "full_suite": {
+    "total": 158,
+    "passed": 153,
+    "failures": 1,
+    "errors": 1,
+    "skipped": 3,
+    "seconds": 473.506,
+    "known_failure": "RuntimeCatalogDelegationTest.test_refresh_graphs_preserves_static_graphs",
+    "error": "Local Operations SSE HTTP test used environment proxy and timed out"
+  },
+  "sse_recheck": {
+    "file": "apps/platform-api/tests/test_operations_streaming_and_retry.py",
+    "fix": "Set trust_env=False on the local HTTP test client",
+    "passed": 3,
+    "seconds": 21.247,
+    "full_suite_rerun": false
+  },
+  "resource_lifecycle": {"passed": 3, "seconds": 9.403},
+  "packaging": {
+    "frozen_offline_sync": "passed",
+    "wheel_build": "passed",
+    "isolated_wheel_install_smoke": "passed",
+    "source_files_without_legacy_app_imports": 215,
+    "docker_build": "passed",
+    "image": "platform-api:refactor-check",
+    "image_id": "sha256:3fa57a5435259895369e44df90ce7cc61a02e3ebcb3e45cc42de2f408152897a",
+    "container_smoke": {
+      "network": "none",
+      "source_mounts": false,
+      "working_directory": "/tmp",
+      "database_enabled": false,
+      "site_packages_import": "passed",
+      "lifespan": "passed",
+      "live_probe_status": 200,
+      "unauthenticated_projects_status": 401,
+      "alembic_heads": "20260907_0007",
+      "database_upgrade_executed": false
+    }
+  },
+  "checks": {
+    "compileall": "passed",
+    "startup_shell_syntax": "passed",
+    "compose_standard": "passed",
+    "compose_nginx": "passed",
+    "project_documentation": "passed",
+    "git_diff_check": "passed"
+  },
+  "not_verified": [
+    "New database baseline and PostgreSQL constraints",
+    "Remote Graph and schema discovery",
+    "Real Runtime and browser end-to-end flows",
+    "Full service transaction and HTTP lifecycle refactor",
+    "Operations retirement and gateway replacement"
+  ]
+}

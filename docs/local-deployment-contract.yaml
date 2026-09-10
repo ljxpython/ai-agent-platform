@@ -71,9 +71,7 @@ profiles:
       - platform-web
     chains:
       - platform-web -> platform-api -> runtime-service
-      - platform-api -> interaction-data-service
       - runtime-service -> interaction-data-service
-      - platform-api -> lightrag-service
       - runtime-service -> lightrag-service
 
 global:
@@ -188,7 +186,6 @@ services:
     port: 2142
     upstreams:
       - runtime-service
-      - interaction-data-service
     config_files:
       required:
         - apps/platform-api/.env
@@ -198,7 +195,6 @@ services:
       - PLATFORM_API_RUNTIME_DELEGATION_SECRET matches PLATFORM_RUNTIME_DELEGATION_SECRET
       - PLATFORM_API_RUNTIME_DELEGATION_ISSUER=platform-api
       - PLATFORM_API_RUNTIME_DELEGATION_AUDIENCE=runtime-service
-      - PLATFORM_API_INTERACTION_DATA_SERVICE_URL=http://127.0.0.1:8081
       - PLATFORM_API_PLATFORM_DB_ENABLED=true
       - PLATFORM_API_PLATFORM_DB_AUTO_CREATE=true
       - PLATFORM_API_DATABASE_URL=sqlite+pysqlite:///./.data/platform-api.db
@@ -213,7 +209,7 @@ services:
       scope: local-only temporary use
     start:
       workdir: apps/platform-api
-      command: uv run uvicorn main:app --host 127.0.0.1 --port 2142 --reload
+      command: uv run uvicorn platform_api.main:create_app --factory --host 127.0.0.1 --port 2142 --reload
     health_checks:
       - curl http://127.0.0.1:2142/_system/health
       - curl http://127.0.0.1:2142/api/langgraph/info

@@ -254,6 +254,7 @@ async function handleRefreshCatalog() {
     const operation = await submitRuntimeRefreshOperation('models', projectId)
     notice.value = `模型目录刷新任务已提交，任务号 ${shortId(operation.id)}`
     const finalOperation = await waitForRuntimeRefreshOperation(operation.id, {
+      projectId,
       timeoutMs: 90000
     })
     if (finalOperation.status !== 'succeeded') {

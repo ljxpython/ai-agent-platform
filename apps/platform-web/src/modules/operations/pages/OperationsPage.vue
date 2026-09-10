@@ -228,19 +228,6 @@ function inferResourceRoute(operation: ManagementOperation) {
     const assistantId = String(operation.result_payload.id || operation.input_payload.assistant_id || '').trim()
     return assistantId ? `/workspace/assistants/${encodeURIComponent(assistantId)}` : '/workspace/assistants'
   }
-  if (operation.kind === 'testcase.documents.export') {
-    return '/workspace/testcase/documents'
-  }
-  if (operation.kind === 'testcase.cases.export') {
-    return '/workspace/testcase/cases'
-  }
-  if (
-    (operation.kind === 'knowledge.documents.scan' ||
-      operation.kind === 'knowledge.documents.clear') &&
-    operation.project_id
-  ) {
-    return `/workspace/projects/${operation.project_id}/knowledge/documents`
-  }
   return ''
 }
 
@@ -374,11 +361,11 @@ function resetFilters() {
   pagination.resetPage()
 }
 
-async function openOperationDetail(operationId: string) {
+async function openOperationDetail(operationId: string, projectId?: string | null) {
   detailDialogOpen.value = true
   detailLoading.value = true
   try {
-    selectedOperation.value = await getOperationDetail(operationId)
+    selectedOperation.value = await getOperationDetail(operationId, projectId || activeProjectId.value)
   } catch (detailError) {
     selectedOperation.value = null
     error.value = resolvePlatformHttpErrorMessage(detailError, '操作详情加载失败', '操作中心')
@@ -402,7 +389,7 @@ async function handleCancel(operation: ManagementOperation) {
   notice.value = ''
 
   try {
-    const updated = await cancelOperation(operation.id)
+    const updated = await cancelOperation(operation.id, operation.project_id || activeProjectId.value)
     notice.value = `操作 ${shortId(updated.id)} 已取消`
     uiStore.pushToast({
       type: 'success',
@@ -526,7 +513,10 @@ async function handleCleanupExpiredArtifacts() {
     })
     await loadOperations({ silent: true })
     if (selectedOperation.value) {
-      selectedOperation.value = await getOperationDetail(selectedOperation.value.id)
+      selectedOperation.value = await getOperationDetail(
+        selectedOperation.value.id,
+        selectedOperation.value.project_id || activeProjectId.value
+      )
     }
   } catch (cleanupError) {
     error.value = resolvePlatformHttpErrorMessage(cleanupError, '清理过期产物失败', '操作产物')
@@ -547,7 +537,10 @@ async function handleSingleArchive(operation: ManagementOperation) {
     notice.value = `已归档 ${result.updated_count} 个操作`
     await loadOperations()
     if (selectedOperation.value?.id === operation.id) {
-      selectedOperation.value = await getOperationDetail(operation.id)
+      selectedOperation.value = await getOperationDetail(
+        operation.id,
+        operation.project_id || activeProjectId.value
+      )
     }
   } catch (archiveError) {
     error.value = resolvePlatformHttpErrorMessage(archiveError, '归档操作失败', '操作中心')
@@ -568,7 +561,10 @@ async function handleSingleRestore(operation: ManagementOperation) {
     notice.value = `已恢复 ${result.updated_count} 个操作`
     await loadOperations()
     if (selectedOperation.value?.id === operation.id) {
-      selectedOperation.value = await getOperationDetail(operation.id)
+      selectedOperation.value = await getOperationDetail(
+        operation.id,
+        operation.project_id || activeProjectId.value
+      )
     }
   } catch (restoreError) {
     error.value = resolvePlatformHttpErrorMessage(restoreError, '恢复归档失败', '操作中心')
@@ -593,7 +589,7 @@ function operationActions(operation: ManagementOperation): ActionMenuItem[] {
       key: 'detail',
       label: '查看详情',
       icon: 'eye',
-      onSelect: () => void openOperationDetail(operation.id)
+      onSelect: () => void openOperationDetail(operation.id, operation.project_id)
     },
     {
       key: 'audit',
@@ -699,7 +695,7 @@ function startRefreshTimer() {
     if (shouldRefreshList || shouldRefreshDetail) {
       void loadOperations({ silent: true })
       if (shouldRefreshDetail && selectedOperation.value) {
-        void openOperationDetail(selectedOperation.value.id)
+        void openOperationDetail(selectedOperation.value.id, selectedOperation.value.project_id)
       }
     }
   }, 3000)
@@ -842,7 +838,7 @@ onBeforeUnmount(() => {
     <PageHeader
       eyebrow="Governance"
       title="Operations Center"
-      description="所有异步或长耗时动作最终都应该回流到这里。现在 runtime refresh、assistant resync 和 testcase export 都已经统一接到同一条治理链路里。"
+      description="查看目录刷新与 Agent 同步的操作状态。"
     >
       <template #actions>
         <BaseButton
@@ -1004,7 +1000,7 @@ onBeforeUnmount(() => {
           sort-storage-key="pw:operations:sort"
           column-storage-key="pw:operations:columns"
           empty-title="没有操作记录"
-          empty-description="当前筛选范围下还没有操作记录。可以先去 Runtime、Assistants 或 Testcase 触发一次真实异步动作。"
+          empty-description="当前筛选范围下还没有操作记录。可以先去 Runtime 或 Agent 页面发起操作。"
           empty-icon="activity"
           @update:selected-row-keys="updateSelectedOperationIds"
         >

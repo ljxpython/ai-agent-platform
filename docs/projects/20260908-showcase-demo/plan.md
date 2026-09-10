@@ -46,3 +46,7 @@ graphs/showcase_demo.py 只导出 get_agent。服务内按实际职责保留：
 
 showcase_demo 注册到独立 langgraph.demo.json，生产配置移除 showcase_demo。保持现有其他 graph 的配置不动。
 验证顺序：授权与资源拒绝测试 → 官方工具/State/HITL/子图组合测试 → 真实 Docker 文件执行与隔离 → 可用环境下的远程调用。未通过或缺外部条件的项如实标为 partial/blocked。
+
+## 验收落地（2026-09-10）
+
+后端教学范围已完成并验收（`done`）；项目整体仍为 `partial`，前端留后续联调。GraphHarbor post21 通过官方 `context=` 传递执行 Context，并用 `aget_state/aget_state_history` 还原增量消息和审批；Worker 记录实际 graph ID。修复放在框架适配层，Demo 不增加兼容封装或放宽授权。发布及验收证据见 verification.md。

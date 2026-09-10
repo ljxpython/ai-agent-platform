@@ -56,8 +56,14 @@ export async function listOperations(options?: ListOperationsOptions): Promise<M
   return response.data as ManagementOperationPage
 }
 
-export async function getOperationDetail(operationId: string): Promise<ManagementOperation> {
-  const response = await platformHttpClient.get(`/api/operations/${encodeURIComponent(operationId)}`)
+export async function getOperationDetail(
+  operationId: string,
+  projectId?: string | null
+): Promise<ManagementOperation> {
+  const normalizedProjectId = projectId?.trim()
+  const response = await platformHttpClient.get(`/api/operations/${encodeURIComponent(operationId)}`, {
+    headers: normalizedProjectId ? { 'x-project-id': normalizedProjectId } : undefined
+  })
   return response.data as ManagementOperation
 }
 
@@ -69,8 +75,18 @@ export async function submitOperation(payload: SubmitOperationPayload): Promise<
   return response.data as ManagementOperation
 }
 
-export async function cancelOperation(operationId: string): Promise<ManagementOperation> {
-  const response = await platformHttpClient.post(`/api/operations/${encodeURIComponent(operationId)}/cancel`)
+export async function cancelOperation(
+  operationId: string,
+  projectId?: string | null
+): Promise<ManagementOperation> {
+  const normalizedProjectId = projectId?.trim()
+  const response = await platformHttpClient.post(
+    `/api/operations/${encodeURIComponent(operationId)}/cancel`,
+    undefined,
+    {
+      headers: normalizedProjectId ? { 'x-project-id': normalizedProjectId } : undefined
+    }
+  )
   return response.data as ManagementOperation
 }
 
@@ -303,6 +319,7 @@ function isTerminalStatus(status: OperationStatus) {
 export async function waitForOperationTerminalState(
   operationId: string,
   options?: {
+    projectId?: string | null
     pollMs?: number
     timeoutMs?: number
   }
@@ -312,7 +329,7 @@ export async function waitForOperationTerminalState(
   const startedAt = Date.now()
 
   while (true) {
-    const current = await getOperationDetail(operationId)
+    const current = await getOperationDetail(operationId, options?.projectId)
     if (isTerminalStatus(current.status)) {
       return current
     }

@@ -60,9 +60,9 @@
 
 范围内：
 
-- `app/modules/identity`
-- `app/modules/projects`
-- `app/modules/runtime_gateway`
+- `src/platform_api/modules/identity`
+- `src/platform_api/modules/projects`
+- `src/platform_api/modules/runtime_gateway`
 - 相关测试与文档
 
 范围外：
@@ -92,7 +92,7 @@
 
 ### P2 收包级导出
 
-- [x] 收敛 `app/modules/*/__init__.py`
+- [x] 收敛 `src/platform_api/modules/*/__init__.py`
 - [x] 收敛 `application/__init__.py`
 - [x] 收敛 `infra/__init__.py`
 - [x] 禁止在包级 `__init__.py` 中 eager import `Service`

@@ -67,7 +67,6 @@ const recoveryUserId = ref('')
 const canManageProject = computed(() => authorization.can('platform.project.write'))
 const canTakeoverProject = computed(() => authorization.can('platform.project.takeover'))
 const canReadMembers = computed(() => authorization.currentProjectCan('project.member.read'))
-const canReadKnowledge = computed(() => authorization.currentProjectCan('project.knowledge.read'))
 const canReadAudit = computed(() =>
   authorization.can('platform.audit.read') || authorization.currentProjectCan('project.audit.read')
 )
@@ -139,15 +138,6 @@ async function openAudit() {
 
   await setActiveProjectId(project.value.id)
   void router.push('/workspace/audit')
-}
-
-async function openKnowledgeWorkspace() {
-  if (!project.value || !canReadKnowledge.value) {
-    return
-  }
-
-  await setActiveProjectId(project.value.id)
-  void router.push(`/workspace/projects/${project.value.id}/knowledge/documents`)
 }
 
 async function refreshProjectAccess() {
@@ -328,7 +318,7 @@ watch(
         </BaseButton>
         <BaseButton
           variant="secondary"
-          :disabled="!project || !canReadKnowledge"
+          :disabled="!project"
           @click="handleCopyProjectId"
         >
           <BaseIcon
@@ -346,17 +336,6 @@ watch(
             size="sm"
           />
           设为当前项目
-        </BaseButton>
-        <BaseButton
-          variant="secondary"
-          :disabled="!project"
-          @click="openKnowledgeWorkspace"
-        >
-          <BaseIcon
-            name="file"
-            size="sm"
-          />
-          知识库工作台
         </BaseButton>
         <BaseButton
           v-if="canTakeoverProject"

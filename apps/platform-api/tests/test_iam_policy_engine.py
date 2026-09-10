@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import unittest
 
-from app.core.context.models import ActorContext
-from app.core.errors import BadRequestError, ForbiddenError, NotAuthenticatedError, PlatformApiError
-from app.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode, PolicyReason
+from platform_api.core.context.models import ActorContext
+from platform_api.core.errors import BadRequestError, ForbiddenError, NotAuthenticatedError, PlatformApiError
+from platform_api.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode, PolicyReason
 
 
 class IamPolicyEngineTest(unittest.TestCase):
@@ -138,7 +138,7 @@ class IamPolicyEngineTest(unittest.TestCase):
                 self.engine.evaluate(
                     actor=actor,
                     authorization=AuthorizationRequest(
-                        permission=PermissionCode.PROJECT_TESTCASE_WRITE,
+                        permission=PermissionCode.PROJECT_ASSISTANT_WRITE,
                         project_id="p-1",
                     ),
                 ).allowed,

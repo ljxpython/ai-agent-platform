@@ -1,5 +1,7 @@
 # Platform API 架构说明
 
+> 2026-09-10：Platform API 正在重构，知识库与测试用例平台业务已删除；Operations 待随网关替换后删除。新开发以[重构工程](../../../../docs/projects/20260910-platform-api-refactor/README.md)为准，下文尚未更新的四层/Worker 范式不得用于新增设计。
+
 文档类型：`Current Architecture`
 
 本文说明 `platform-api` 作为当前正式 control plane 的服务级架构；它描述的是服务边界和当前组织方式，不替代仓库级正式部署 contract。
@@ -81,7 +83,7 @@ platform-web
 ## 3. 代码结构
 
 ```text
-app/
+src/platform_api/
   core/
   modules/
   adapters/
@@ -113,7 +115,6 @@ app/
 - `agents`（实现目录当前保留 `assistants` 兼容路径）
 - `runtime_catalog`
 - `runtime_gateway`
-- `testcase`
 - `announcements`
 - `audit`
 - `operations`
@@ -228,19 +229,6 @@ fixture 和 migration 证据齐备后，才允许物理迁移目录和删除兼�
 - 项目边界校验
 - 统一错误映射
 - SSE / streaming 包装
-
-### 4.7 `testcase`
-
-负责：
-
-- testcase 平台管理接口
-- 协议整形
-- 导出聚合
-- interaction-data-service 权限边界收口
-
-不负责：
-
-- 结果域主数据持久化
 
 ### 4.8 `announcements`
 

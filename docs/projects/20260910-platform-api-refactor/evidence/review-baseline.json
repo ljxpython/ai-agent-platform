@@ -1,0 +1,38 @@
+{
+  "date": "2026-09-10",
+  "git_head": "75e5f42",
+  "basis": "working tree; includes pre-existing uncommitted changes",
+  "tests": {
+    "runner": "unittest",
+    "total": 167,
+    "passed": 163,
+    "failed": 1,
+    "skipped": 3,
+    "seconds": 255.21,
+    "failed_test": "RuntimeCatalogDelegationTest.test_refresh_graphs_preserves_static_graphs",
+    "external_http_integration": false
+  },
+  "versions": {
+    "langgraph-sdk": "0.4.2",
+    "fastapi": "0.135.3",
+    "sqlalchemy": "2.0.49"
+  },
+  "probes": {
+    "upstream": "mocked",
+    "database": "temporary SQLite",
+    "confirmed": [
+      "standard identical submissions reuse a run",
+      "422 leaves active submitted record",
+      "Run reads and event filter retain runtime_model_ref",
+      "historical metadata permits a missing agent"
+    ],
+    "production_exploitation_tested": false
+  },
+  "source_sha256": {
+    "apps/platform-api/app/modules/runtime_gateway/application/service.py": "49401e55c1a6f683cac051d6ea8100ea638d067ea9b8cd45ecce658244069b05",
+    "apps/platform-api/app/modules/runtime_gateway/presentation/http.py": "380bb3ddaf12424a91420128392436e7bffbc96d269d9aea1c9d9dbc72064c7d",
+    "apps/platform-api/app/modules/runtime_catalog/application/service.py": "0517bbe774d9a752b4f1173d053a622a39aea6833858214cf7973e1f116dbe39",
+    "apps/platform-api/app/core/db/uow.py": "fd4c9fb196ed0a5a81861772a9156cae65760c03258caef81bac2e7f996b7156",
+    "apps/platform-api/tests/test_runtime_catalog_delegation.py": "2a3c55b20646a5b7fcd46dcc04b010399d403be279bac2395455d1bb20fc275b"
+  }
+}

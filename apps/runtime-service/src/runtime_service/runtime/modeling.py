@@ -47,6 +47,12 @@ def build_model(
     settings = os.environ if env is None else env
     provider, separator, model_name = config.model_id.partition(":")
     model_name = model_name if separator else config.model_id
+    if not separator:
+        if "deepseek" in config.model_id.lower():
+            provider = "deepseek"
+        elif "gpt" in config.model_id.lower() or "openai" in config.model_id.lower():
+            provider = "openai"
+    provider = provider.strip().lower()
     protocol = ""
 
     if connection is not None:

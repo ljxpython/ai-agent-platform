@@ -1,5 +1,7 @@
 # Platform API Operation / Job 标准
 
+> 2026-09-10：Platform API 正在重构，知识库与测试用例平台业务已删除；Operations 待随网关替换后删除。新开发以[重构工程](../../../../docs/projects/20260910-platform-api-refactor/README.md)为准，下文尚未更新的四层/Worker 范式不得用于新增设计。
+
 这份文档定义长任务的统一范式。后面凡是刷新、导出、批量同步这类动作，不准再直接在 HTTP 请求里傻等到结束。
 
 ## 1. 什么要进 operation
@@ -7,7 +9,6 @@
 默认纳入 `operations` 的动作：
 
 - catalog refresh
-- testcase export
 - batch sync
 - 批量修复
 - 大文件导入

@@ -13,6 +13,7 @@ import { copyText } from '@/utils/clipboard'
 import { shortId } from '@/utils/format'
 import { getMessageText } from '@/utils/threads'
 import ChatArtifactPanel from './ChatArtifactPanel.vue'
+import ChatTasksFilesPanel from './ChatTasksFilesPanel.vue'
 import ChatComposer from './ChatComposer.vue'
 import ChatContextDrawer from './ChatContextDrawer.vue'
 import ChatInterruptPanel from './ChatInterruptPanel.vue'
@@ -121,6 +122,11 @@ const defaultModelDisplayName = computed(() => {
 const allowRunOptions = computed(() => props.features?.allowRunOptions ?? true)
 const showHistory = computed(() => props.features?.showHistory ?? true)
 const showArtifacts = computed(() => props.features?.showArtifacts ?? true)
+const showSandbox = computed(() => props.features?.showSandbox ?? true)
+const hasSandboxFiles = computed(() => {
+  const values = workspace.displayState.value
+  return !!(values?.todos || values?.tasks || values?.files)
+})
 const showContextBar = computed(() => props.features?.showContextBar ?? true)
 const hasArtifactEntries = computed(() => {
   const rawEntries = workspace.displayState.value?.ui
@@ -1152,11 +1158,15 @@ async function handleStartNewThread() {
       <div
         class="relative z-10 min-h-0 flex flex-1 flex-col overflow-hidden"
         :class="
-          showArtifacts && hasArtifactEntries
+          (showArtifacts && hasArtifactEntries) && (showSandbox && hasSandboxFiles)
             ? isSurfaceCompact
-              ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_320px]'
-              : 'lg:grid lg:grid-cols-[minmax(0,1fr)_360px]'
-            : ''
+              ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_300px_320px]'
+              : 'lg:grid lg:grid-cols-[minmax(0,1fr)_300px_360px]'
+            : (showArtifacts && hasArtifactEntries) || (showSandbox && hasSandboxFiles)
+              ? isSurfaceCompact
+                ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_320px]'
+                : 'lg:grid lg:grid-cols-[minmax(0,1fr)_360px]'
+              : ''
         "
       >
         <div class="relative flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -1291,6 +1301,13 @@ async function handleStartNewThread() {
           </div>
         </div>
 
+        <ChatTasksFilesPanel
+          v-if="showSandbox && hasSandboxFiles"
+          :values="workspace.displayState.value"
+          :is-running="workspace.sending.value"
+          :has-interrupt="hasBlockingInterrupt"
+          :on-update-state="workspace.updateThreadStatePatch"
+        />
         <ChatArtifactPanel
           v-if="showArtifacts && hasArtifactEntries"
           :values="workspace.displayState.value"

@@ -1,0 +1,50 @@
+{
+  "status": "passed",
+  "thread_id": "061d5e0e-53d8-4b15-9618-f39eae2e3440",
+  "runs": [
+    {
+      "run_id": "ef0661a5-31d1-4e2f-b517-1163966768f2",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "87a60f30-53bf-4b56-b8d8-d7feae182779",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "de7c2193-9086-4328-9bfc-18dc1ec1426e",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "326a4a87-fa19-4f75-b3c9-c320f24d0393",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "7cedb82c-466c-4e80-9907-4070e002fa4d",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "998d7e3f-e1e7-46a0-b052-5b57db418b6c",
+      "status": "interrupted"
+    },
+    {
+      "run_id": "26b9865b-ccbc-4260-9880-9aed3a1cc138",
+      "status": "success"
+    }
+  ],
+  "restored_interrupt_ids": [
+    "41b2a82231e842ce062cb42fb7389874"
+  ],
+  "reviewed_tools": [
+    "edit_file",
+    "write_file",
+    "execute",
+    "write_file",
+    "edit_file",
+    "edit_file",
+    "write_file",
+    "execute"
+  ],
+  "independent_execution": "...\n----------------------------------------------------------------------\nRan 3 tests in 0.004s\n\nOK\nTotal sales: 43.50\n",
+  "exit_code": 0,
+  "api_worker_restarted": true
+}

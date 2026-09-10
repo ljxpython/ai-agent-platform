@@ -184,7 +184,7 @@ watch(
     <GuidePanel
       guide-id="overview-demo-path"
       title="建议演示路径"
-      description="如果你要快速演示当前成果，优先按这个顺序走：1. 选项目 2. 打开 SQL Agent 或 Chat 3. 查看 Testcase 生成 / 文档链路 4. 回到 Resources 看沉淀的 UI 模板。"
+      description="如果你要快速演示当前成果，优先按这个顺序走：1. 选项目 2. 打开 SQL Agent 或 Chat 3. 回到 Resources 查看 UI 模板。"
       tone="success"
     >
       <template #actions>
@@ -199,12 +199,6 @@ watch(
           to="/workspace/chat"
         >
           去 Chat
-        </router-link>
-        <router-link
-          class="pw-btn pw-btn-secondary"
-          to="/workspace/testcase/generate"
-        >
-          去 Testcase Generate
         </router-link>
         <router-link
           class="pw-btn pw-btn-secondary"

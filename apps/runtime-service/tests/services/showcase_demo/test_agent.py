@@ -535,3 +535,66 @@ def test_live_model_reads_real_project_and_streams(monkeypatch, tmp_path):
         assert "43.5" in str(messages[-1].content)
 
     asyncio.run(run())
+
+
+def test_parallel_subagent_interrupts_resume_by_id(build):
+    async def run():
+        delegates = AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "name": "task",
+                    "args": {
+                        "subagent_type": "general-purpose",
+                        "description": f"Write /workspace/{name}.txt",
+                    },
+                    "id": name,
+                }
+                for name in ("first", "second")
+            ],
+        )
+        graph, cfg, _ = await build(
+            [
+                delegates,
+                call(
+                    "write_file",
+                    {"file_path": "/workspace/first.txt", "content": "first"},
+                    "write-first",
+                ),
+                call(
+                    "write_file",
+                    {"file_path": "/workspace/second.txt", "content": "second"},
+                    "write-second",
+                ),
+                AIMessage(content="Child done."),
+                AIMessage(content="Child done."),
+                AIMessage(content="Parent done."),
+            ]
+        )
+        result = await graph.ainvoke(
+            {"messages": [("user", "Delegate both tasks")]}, cfg, context={}
+        )
+        pending = result["__interrupt__"]
+        assert len(pending) == 2
+        assert len({item.id for item in pending}) == 2
+        root = (
+            DockerWorkspaceBackend("tenant", "project", "teaching-thread").cwd
+            / "workspace"
+        )
+        assert not (root / "first.txt").exists()
+        assert not (root / "second.txt").exists()
+        decisions = {}
+        for item in reversed(pending):
+            action = item.value["action_requests"][0]
+            approved = action["args"]["file_path"] == "/workspace/first.txt"
+            decisions[item.id] = {
+                "decisions": [{"type": "approve" if approved else "reject"}]
+            }
+        result = await graph.ainvoke(Command(resume=decisions), cfg, context={})
+        assert not result.get("__interrupt__")
+        assert not (await graph.aget_state(cfg)).next
+        assert (root / "first.txt").read_text() == "first"
+        assert not (root / "second.txt").exists()
+        assert result["messages"][-1].content == "Parent done."
+
+    asyncio.run(run())

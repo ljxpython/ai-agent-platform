@@ -6,15 +6,15 @@ import unittest
 from pathlib import Path
 from uuid import uuid4
 
-from app.core.context.models import ActorContext
-from app.core.db import build_engine, build_session_factory, create_core_tables, session_scope
-from app.modules.operations.application import CreateOperationCommand, OperationsService
-from app.modules.operations.application.execution import OperationExecutorRegistry
-from app.modules.operations.application.execution import actor_from_operation
-from app.modules.operations.application.ports import OperationExecutionResult, StoredOperation
-from app.modules.operations.application.worker import OperationWorker
-from app.modules.operations.domain import OperationStatus
-from app.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
+from platform_api.core.context.models import ActorContext
+from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
+from platform_api.modules.operations.application import CreateOperationCommand, OperationsService
+from platform_api.modules.operations.application.execution import OperationExecutorRegistry
+from platform_api.modules.operations.application.execution import actor_from_operation
+from platform_api.modules.operations.application.ports import OperationExecutionResult, StoredOperation
+from platform_api.modules.operations.application.worker import OperationWorker
+from platform_api.modules.operations.domain import OperationStatus
+from platform_api.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
 
 
 class _InMemoryQueue:
@@ -34,7 +34,7 @@ class _InMemoryQueue:
 
 
 class _FlakyQueueExecutor:
-    kind = "queue.flaky"
+    kind = "runtime.tools.refresh"
 
     def __init__(self) -> None:
         self.attempts = 0
@@ -104,7 +104,7 @@ class OperationsQueueBackendTest(unittest.IsolatedAsyncioTestCase):
         submitted = await self.service.submit_operation(
             actor=self.actor,
             command=CreateOperationCommand(
-                kind="queue.flaky",
+                kind="runtime.tools.refresh",
                 project_id=self.project_id,
                 input_payload={"value": "queued"},
                 metadata={"_retry_policy": {"max_attempts": 2}},
@@ -113,7 +113,7 @@ class OperationsQueueBackendTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertNotIn("actor_snapshot", submitted.metadata)
         with session_scope(self._session_factory) as session:
-            from app.modules.operations.infra.sqlalchemy.repository import SqlAlchemyOperationsRepository
+            from platform_api.modules.operations.infra.sqlalchemy.repository import SqlAlchemyOperationsRepository
 
             stored = SqlAlchemyOperationsRepository(session).get_by_id(submitted.id)
             self.assertIsNotNone(stored)

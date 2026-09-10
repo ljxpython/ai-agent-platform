@@ -5,8 +5,8 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from app.core.config import Settings
-from app.factory import create_app
+from platform_api.config import Settings
+from platform_api.main import create_app
 
 
 class CorsMiddlewareOrderTest(unittest.TestCase):
@@ -17,7 +17,7 @@ class CorsMiddlewareOrderTest(unittest.TestCase):
             cors_allow_origins=("http://127.0.0.1:3000",),
         )
 
-        with patch("app.factory.load_settings", return_value=settings):
+        with patch("platform_api.main.load_settings", return_value=settings):
             app = create_app()
 
         client = TestClient(app)

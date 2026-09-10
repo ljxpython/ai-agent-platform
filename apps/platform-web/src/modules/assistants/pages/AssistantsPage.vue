@@ -20,11 +20,17 @@ import StateBanner from '@/components/platform/StateBanner.vue'
 import StatusPill from '@/components/platform/StatusPill.vue'
 import type { ActionMenuItem, DataTableColumn } from '@/components/platform/data-table'
 import {
+  createAssistant,
   deleteAssistant,
   listAssistantsPage,
   resyncAssistantByOperation
 } from '@/services/assistants/assistants.service'
 import { getOperationFailureMessage } from '@/services/operations/operations.service'
+import {
+  submitRuntimeRefreshOperation,
+  waitForRuntimeRefreshOperation
+} from '@/services/runtime/runtime.service'
+import { listGraphsPage } from '@/services/graphs/graphs.service'
 import { useUiStore } from '@/stores/ui'
 import type { ManagementAssistant } from '@/types/management'
 import { copyText } from '@/utils/clipboard'
@@ -233,6 +239,74 @@ async function handleResyncAssistant(assistant: ManagementAssistant) {
   }
 }
 
+const syncingAgents = ref(false)
+
+async function handleSyncBackendAgents() {
+  const projectId = activeProjectId.value
+  if (!projectId) {
+    return
+  }
+  if (!canManageAssistants.value) {
+    error.value = '当前账号没有助手治理写权限'
+    return
+  }
+
+  syncingAgents.value = true
+  error.value = ''
+
+  try {
+    const operation = await submitRuntimeRefreshOperation('graphs', projectId)
+    const finalOperation = await waitForRuntimeRefreshOperation(operation.id, {
+      projectId,
+      timeoutMs: 90000
+    })
+    if (finalOperation.status !== 'succeeded') {
+      throw new Error(
+        (finalOperation.error_payload?.message as string | undefined) || '后端图谱刷新未成功完成'
+      )
+    }
+
+    const graphCatalog = await listGraphsPage(projectId, { limit: 200, offset: 0 })
+    const availableGraphs = graphCatalog.items.filter((g) => g.graph_id?.trim())
+
+    const existingPayload = await listAssistantsPage(projectId, { limit: 200, offset: 0 })
+    const existingGraphIds = new Set(
+      existingPayload.items.map((a) => a.graph_id?.trim()).filter(Boolean)
+    )
+
+    const toImport = availableGraphs.filter((g) => !existingGraphIds.has(g.graph_id.trim()))
+    let importedCount = 0
+
+    for (const graph of toImport) {
+      try {
+        await createAssistant(projectId, {
+          graph_id: graph.graph_id.trim(),
+          name: graph.display_name?.trim() || graph.graph_id.trim(),
+          description: graph.description?.trim() || `Auto-synced from ${graph.graph_id.trim()}`
+        })
+        importedCount += 1
+      } catch (createErr) {
+        console.warn(`Failed to auto-import assistant for ${graph.graph_id}:`, createErr)
+      }
+    }
+
+    uiStore.pushToast({
+      type: 'success',
+      title: '后端 Agent 同步完成',
+      message:
+        importedCount > 0
+          ? `图谱已刷新，新导入 ${importedCount} 个 Agent（如 ${toImport.map((g) => g.graph_id).join(', ')}）`
+          : `图谱已刷新，当前 ${availableGraphs.length} 个后端 Agent 已全部就绪`
+    })
+
+    await loadAssistants()
+  } catch (syncError) {
+    error.value = syncError instanceof Error ? syncError.message : '同步后端 Agent 失败'
+  } finally {
+    syncingAgents.value = false
+  }
+}
+
 function openDeleteDialog(assistant: ManagementAssistant) {
   if (!canManageAssistants.value) {
     return
@@ -429,14 +503,15 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
         </BaseButton>
         <BaseButton
           variant="secondary"
-          :disabled="!currentProject"
-          @click="loadAssistants"
+          :disabled="!currentProject || !canManageAssistants || syncingAgents"
+          @click="handleSyncBackendAgents"
         >
           <BaseIcon
             name="refresh"
             size="sm"
+            :class="{ 'animate-spin': syncingAgents }"
           />
-          刷新
+          {{ syncingAgents ? '同步中...' : '同步后端 Agent' }}
         </BaseButton>
       </template>
     </PageHeader>

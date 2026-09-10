@@ -189,6 +189,7 @@ async function handleRefreshCatalog() {
     const operation = await submitRuntimeRefreshOperation('graphs', projectId)
     notice.value = `图谱目录刷新任务已提交，任务号 ${shortId(operation.id)}`
     const finalOperation = await waitForRuntimeRefreshOperation(operation.id, {
+      projectId,
       timeoutMs: 90000
     })
     if (finalOperation.status !== 'succeeded') {

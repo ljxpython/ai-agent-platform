@@ -8,20 +8,20 @@ from unittest.mock import patch
 import jwt
 from fastapi import FastAPI, Request
 
-from app.core.config import Settings
-from app.core.context.models import (
+from platform_api.config import Settings
+from platform_api.core.context.models import (
     ActorContext,
     PlatformRequestContext,
     ProjectContext,
     RequestContext,
     TenantContext,
 )
-from app.core.runtime_contract import (
+from platform_api.core.runtime_contract import (
     normalize_protocol_v2_command,
     normalize_protocol_v2_event_request,
 )
-from app.core.security import create_runtime_delegation_token, empty_runtime_context_hash
-from app.modules.runtime_gateway.presentation.http import get_runtime_gateway_service
+from platform_api.core.security import create_runtime_delegation_token, empty_runtime_context_hash
+from platform_api.modules.runtime_gateway.presentation.http import get_runtime_gateway_service
 
 
 class RuntimeDelegationTokenTest(unittest.TestCase):
@@ -190,10 +190,10 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
         )
 
         with patch(
-            "app.modules.runtime_gateway.presentation.http.LangGraphRuntimeGatewayUpstream",
+            "platform_api.modules.runtime_gateway.presentation.http.LangGraphRuntimeGatewayUpstream",
             return_value=SimpleNamespace(),
         ) as upstream_factory, patch(
-            "app.modules.runtime_gateway.presentation.http.RuntimePolicyOverlayService",
+            "platform_api.modules.runtime_gateway.presentation.http.RuntimePolicyOverlayService",
         ) as policy_factory:
             policy_factory.return_value.build_delegation_policy.return_value = {
                 "version": "policy-1",

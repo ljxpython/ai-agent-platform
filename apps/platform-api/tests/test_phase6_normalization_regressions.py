@@ -5,17 +5,16 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from app.modules.runtime_gateway.application.service import RuntimeGatewayService
-from app.modules.testcase.application.service import TestcaseService
+from platform_api.modules.runtime_gateway.application.service import RuntimeGatewayService
 
 
 class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase):
     def test_cold_import_identity_and_projects_sqlalchemy_modules(self) -> None:
-        models_module = importlib.import_module("app.modules.identity.infra.sqlalchemy.models")
+        models_module = importlib.import_module("platform_api.modules.identity.infra.sqlalchemy.models")
         repository_module = importlib.import_module(
-            "app.modules.projects.infra.sqlalchemy.repository"
+            "platform_api.modules.projects.infra.sqlalchemy.repository"
         )
-        service_module = importlib.import_module("app.modules.runtime_gateway.application.service")
+        service_module = importlib.import_module("platform_api.modules.runtime_gateway.application.service")
 
         self.assertIsNotNone(models_module)
         self.assertTrue(hasattr(repository_module, "SqlAlchemyProjectsRepository"))
@@ -148,22 +147,6 @@ class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase
 
         self.assertEqual(payload, {"ok": True})
         service._load_thread.assert_not_called()
-
-
-class TestcaseNormalizationRegressionTest(unittest.TestCase):
-    def test_ensure_project_match_normalizes_project_id(self) -> None:
-        service = TestcaseService(
-            session_factory=None,
-            upstream=SimpleNamespace(),
-        )
-
-        payload = service._ensure_project_match(
-            {"project_id": " project-1 ", "id": "doc-1"},
-            project_id="project-1",
-            code="document_not_found",
-        )
-
-        self.assertEqual(payload["id"], "doc-1")
 
 
 if __name__ == "__main__":

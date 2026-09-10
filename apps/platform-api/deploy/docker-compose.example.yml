@@ -43,7 +43,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
-    command: ["python", "worker.py"]
+    command: ["python", "-m", "platform_api.entrypoints.worker.main"]
     env_file:
       - ../.env.example
     environment:

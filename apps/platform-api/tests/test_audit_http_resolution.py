@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import unittest
 
-from app.modules.audit.application import AuditHttpRequest, resolve_http_audit
-from app.modules.audit.domain import AuditPlane, AuditResult
+from platform_api.modules.audit.application import AuditHttpRequest, resolve_http_audit
+from platform_api.modules.audit.domain import AuditPlane, AuditResult
 
 
 class AuditHttpResolutionTest(unittest.TestCase):

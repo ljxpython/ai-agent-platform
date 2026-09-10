@@ -5,9 +5,10 @@ import unittest
 from pathlib import Path
 from uuid import uuid4
 
-from app.core.context.models import ActorContext
-from app.core.db import build_engine, build_session_factory, create_core_tables, session_scope
-from app.modules.operations.application import (
+from platform_api.core.context.models import ActorContext
+from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
+from platform_api.core.errors import BadRequestError
+from platform_api.modules.operations.application import (
     BulkArchiveOperationsCommand,
     BulkCancelOperationsCommand,
     BulkRestoreOperationsCommand,
@@ -15,9 +16,9 @@ from app.modules.operations.application import (
     ListOperationsQuery,
     OperationsService,
 )
-from app.modules.operations.application.execution import DatabasePollingOperationDispatcher
-from app.modules.operations.domain import OperationArchiveScope, OperationStatus
-from app.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
+from platform_api.modules.operations.application.execution import DatabasePollingOperationDispatcher
+from platform_api.modules.operations.domain import OperationArchiveScope, OperationStatus
+from platform_api.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
 
 
 class OperationsBulkArchiveTest(unittest.IsolatedAsyncioTestCase):
@@ -65,7 +66,7 @@ class OperationsBulkArchiveTest(unittest.IsolatedAsyncioTestCase):
         )
         if status != OperationStatus.SUBMITTED:
             with session_scope(self._session_factory) as session:
-                from app.modules.operations.infra.sqlalchemy.repository import SqlAlchemyOperationsRepository
+                from platform_api.modules.operations.infra.sqlalchemy.repository import SqlAlchemyOperationsRepository
 
                 repository = SqlAlchemyOperationsRepository(session)
                 repository.update_status(
@@ -74,10 +75,31 @@ class OperationsBulkArchiveTest(unittest.IsolatedAsyncioTestCase):
                 )
         return operation.id
 
+    async def test_rejects_unregistered_tasks_without_persisting_operations(self) -> None:
+        for kind in (
+            "knowledge.documents.scan",
+            "knowledge.documents.clear",
+            "testcase.documents.export",
+            "testcase.cases.export",
+            "unregistered.task",
+        ):
+            with self.subTest(kind=kind), self.assertRaises(BadRequestError) as error:
+                await self.service.submit_operation(
+                    actor=self.actor,
+                    command=CreateOperationCommand(kind=kind, project_id=self.project_id),
+                )
+            self.assertEqual(error.exception.code, "unsupported_operation_kind")
+
+        page = await self.service.list_operations(
+            actor=self.actor,
+            query=ListOperationsQuery(project_id=self.project_id),
+        )
+        self.assertEqual(page.total, 0)
+
     async def test_bulk_cancel_archive_restore_and_list_filters(self) -> None:
         running_id = await self._submit_operation(kind="runtime.models.refresh", status=OperationStatus.RUNNING)
         succeeded_id = await self._submit_operation(kind="assistant.resync", status=OperationStatus.SUCCEEDED)
-        failed_id = await self._submit_operation(kind="testcase.cases.export", status=OperationStatus.FAILED)
+        failed_id = await self._submit_operation(kind="runtime.graphs.refresh", status=OperationStatus.FAILED)
 
         cancel_result = await self.service.bulk_cancel_operations(
             actor=self.actor,
@@ -117,7 +139,7 @@ class OperationsBulkArchiveTest(unittest.IsolatedAsyncioTestCase):
                 project_id=self.project_id,
                 archive_scope=OperationArchiveScope.ONLY,
                 statuses=(OperationStatus.FAILED, OperationStatus.CANCELLED),
-                kinds=("runtime.models.refresh", "testcase.cases.export"),
+                kinds=("runtime.models.refresh", "runtime.graphs.refresh"),
             ),
         )
         self.assertEqual(filtered_page.total, 2)

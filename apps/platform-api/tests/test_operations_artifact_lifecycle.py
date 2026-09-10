@@ -7,10 +7,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from uuid import uuid4
 
-from app.core.context.models import ActorContext
-from app.core.db import build_engine, build_session_factory, create_core_tables
-from app.modules.operations.application.artifacts import LocalOperationArtifactStore
-from app.modules.operations.application.service import OperationsService
+from platform_api.core.context.models import ActorContext
+from platform_api.core.db import build_engine, build_session_factory, create_core_tables
+from platform_api.modules.operations.application.artifacts import LocalOperationArtifactStore
+from platform_api.modules.operations.application.service import OperationsService
 
 
 class OperationsArtifactLifecycleTest(unittest.IsolatedAsyncioTestCase):

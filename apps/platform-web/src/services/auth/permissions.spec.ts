@@ -40,7 +40,7 @@ describe('auth permissions', () => {
     expect(hasPlatformRole(user, 'platform_super_admin')).toBe(true)
     expect(primaryPlatformRole(user)).toBe('platform_super_admin')
     expect(hasPermission(user, 'platform.config.read')).toBe(true)
-    expect(hasPermission(user, 'project.testcase.read')).toBe(false)
+    expect(hasPermission(user, 'project.assistant.read')).toBe(false)
   })
 
   it('normalizes legacy super admin payloads into the platform role list', () => {

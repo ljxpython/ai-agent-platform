@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.core.config import load_settings
-from app.core.db import build_engine, create_core_tables
+from platform_api.config import load_settings
+from platform_api.core.db import build_engine, create_core_tables
 
 
 def main() -> None:
@@ -9,7 +9,10 @@ def main() -> None:
     if not settings.database_url:
         raise SystemExit("PLATFORM_API_DATABASE_URL is required")
     engine = build_engine(settings.database_url)
-    create_core_tables(engine)
+    try:
+        create_core_tables(engine)
+    finally:
+        engine.dispose()
     print("platform-api database initialized")
 
 

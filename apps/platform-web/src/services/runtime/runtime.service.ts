@@ -89,6 +89,7 @@ export async function submitRuntimeRefreshOperation(
 export async function waitForRuntimeRefreshOperation(
   operationId: string,
   options?: {
+    projectId?: string | null
     pollMs?: number
     timeoutMs?: number
   }

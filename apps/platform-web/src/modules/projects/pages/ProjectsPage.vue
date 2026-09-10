@@ -370,7 +370,7 @@ onMounted(() => {
     <GuidePanel
       guide-id="projects-entry-guide"
       title="项目页怎么用最快"
-      description="推荐这样用：1. 新建项目 2. 设为当前项目 3. 进入项目详情看成员和审计入口。后面 assistants、graphs、chat、testcase 都会跟着当前项目上下文走。"
+      description="推荐这样用：1. 新建项目 2. 设为当前项目 3. 进入项目详情看成员和审计入口。后面 Agent、Graphs、Chat 都会跟着当前项目上下文走。"
       tone="info"
     >
       <template #actions>

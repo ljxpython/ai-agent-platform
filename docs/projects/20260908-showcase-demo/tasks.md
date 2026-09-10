@@ -21,10 +21,19 @@
 ## 仍需独立证据的能力
 
 - [x] 真实 Docker 集成：写文件 → 审批 → 执行 → 检查产物与退出码。
-- [ ] 远程 Agent Server 的持久化/重启后恢复。
+- [x] 远程 Agent Server 的持久化/重启后恢复（审批暂停期间，真实 API/Worker + PostgreSQL/Redis）。
 - [ ] platform-web → platform-api → runtime-service 真实界面联调。
 - [ ] 前端子智能体 token、Sandbox 文件界面、推理 token 展示。
 
 以上项目不会因代码装配完成自动打勾。
 
-本轮 T1–T9 于 2026-09-09 完成；真实模型只读流式分析也已通过。剩余远程持久化和前端项保持未验收，项目整体为 `partial`。
+本轮 T1–T9 于 2026-09-09 完成；真实模型只读流式分析也已通过。当时剩余远程持久化和前端项未验收，项目整体为 `partial`；后续结果见下。
+
+## 后端收尾（2026-09-10）
+
+- [x] T10：两个并行子 Agent 的独立 interrupt ID 映射恢复与真实副作用检查。
+- [x] T11：真实模型修复 → 审批 → 执行；审批期间重启 API/Worker 后恢复完整消息和原审批。
+- [x] T12：修复框架 Context/增量状态/graph 关联，发布 post21，更新依赖锁与索引安装后复验。
+- [x] T13：教学 README、状态、结构化证据和实现记录同步。
+
+runtime-service 教学范围：`done`。整体项目：`partial`，仅保留本轮范围之外的前端验收项。

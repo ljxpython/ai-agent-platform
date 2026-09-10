@@ -6,25 +6,25 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import jwt
 from cryptography.fernet import Fernet
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
-from app.adapters.langgraph.runtime_client import LangGraphRuntimeClient
-from app.core.config import Settings
-from app.core.context.models import ActorContext
-from app.core.db import build_engine, create_core_tables
-from app.core.errors import BadRequestError, NotAuthenticatedError, ServiceUnavailableError
-from app.modules.runtime_catalog.infra.sqlalchemy.repository import (
+from platform_api.adapters.langgraph.runtime_client import LangGraphRuntimeClient
+from platform_api.config import Settings
+from platform_api.core.context.models import ActorContext
+from platform_api.core.db import build_engine, create_core_tables
+from platform_api.core.errors import BadRequestError, NotAuthenticatedError, ServiceUnavailableError, PlatformApiError
+from platform_api.modules.runtime_catalog.infra.sqlalchemy.repository import (
     SqlAlchemyRuntimeCatalogRepository,
 )
-from app.modules.runtime_catalog.application.service import (
+from platform_api.modules.runtime_catalog.application.service import (
     RuntimeCatalogService,
 )
-from app.modules.runtime_catalog.application.credentials import (
+from platform_api.modules.runtime_catalog.application.credentials import (
     ModelCredentialError,
     decrypt_api_key,
     encrypt_api_key,
 )
-from app.modules.runtime_catalog.domain import RuntimeModelCreate
+from platform_api.modules.runtime_catalog.domain import RuntimeModelCreate
 
 
 class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
@@ -51,7 +51,7 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
     def test_runtime_headers_use_project_delegation(self) -> None:
         service = self._service()
         with patch(
-            "app.modules.runtime_catalog.application.service.RuntimePolicyOverlayService"
+            "platform_api.modules.runtime_catalog.application.service.RuntimePolicyOverlayService"
         ) as policy_factory:
             policy_factory.return_value.build_delegation_policy.return_value = {
                 "version": "policy-1",
@@ -76,7 +76,7 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
     def test_runtime_headers_include_permissions_for_allowed_runtime_tool(self) -> None:
         service = self._service()
         with patch(
-            "app.modules.runtime_catalog.application.service.RuntimePolicyOverlayService"
+            "platform_api.modules.runtime_catalog.application.service.RuntimePolicyOverlayService"
         ) as policy_factory:
             policy_factory.return_value.build_delegation_policy.return_value = {
                 "version": "policy-1",
@@ -102,6 +102,23 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
     def test_runtime_headers_reject_missing_subject(self) -> None:
         with self.assertRaises(NotAuthenticatedError):
             self._service()._runtime_headers(actor=ActorContext(), project_id=self.project_id)
+
+    async def test_schema_read_checks_project_before_forwarding_delegation(self) -> None:
+        upstream = SimpleNamespace(require_json=AsyncMock(return_value={"graph_id": "remote"}))
+        service = self._service(upstream=upstream)
+        service._prepare_project_scope = AsyncMock()
+        service._runtime_headers = Mock(return_value={"authorization": "Bearer delegation"})
+        await service.get_graph_schema(actor=self.actor, project_id=self.project_id, graph_id="remote")
+        service._prepare_project_scope.assert_awaited_once()
+        upstream.require_json.assert_awaited_once_with(
+            "GET", "/assistants/remote/schemas",
+            forwarded_headers={"authorization": "Bearer delegation"},
+        )
+        upstream.require_json.reset_mock()
+        service._prepare_project_scope.side_effect = NotAuthenticatedError()
+        with self.assertRaises(NotAuthenticatedError):
+            await service.get_graph_schema(actor=self.actor, project_id=self.project_id, graph_id="remote")
+        upstream.require_json.assert_not_awaited()
 
     async def test_refresh_passes_delegation_to_upstream(self) -> None:
         upstream = SimpleNamespace(require_json=AsyncMock(return_value={}))
@@ -224,6 +241,50 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
                 ),
                 "provider-secret",
             )
+        finally:
+            engine.dispose()
+
+    async def test_graph_catalog_uses_only_remote_registry(self) -> None:
+        engine = build_engine("sqlite+pysqlite:///:memory:")
+        create_core_tables(engine)
+        session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+        upstream = LangGraphRuntimeClient(base_url="http://runtime.test", timeout_seconds=1)
+        upstream.request_json = AsyncMock(return_value=[{"graph_id": "remote_agent"}])
+        service = RuntimeCatalogService(
+            session_factory=session_factory,
+            upstream=upstream,
+            runtime_base_url="http://runtime.test",
+            settings=self.settings,
+            tenant_id="tenant-1",
+        )
+        service._prepare_project_scope = AsyncMock()  # type: ignore[method-assign]
+        service._require_refresh_access = Mock()  # type: ignore[method-assign]
+        service._runtime_headers = Mock(return_value={"authorization": "Bearer delegation"})  # type: ignore[method-assign]
+
+        try:
+            catalog = await service.list_graphs(actor=self.actor, project_id=self.project_id)
+            self.assertEqual(catalog.count, 0)
+            upstream.request_json.assert_not_awaited()
+            result = await service.refresh_graphs(actor=self.actor, project_id=self.project_id)
+            self.assertTrue(result.ok)
+            catalog = await service.list_graphs(actor=self.actor, project_id=self.project_id)
+            graph_keys = {g.graph_id for g in catalog.graphs}
+            self.assertEqual(graph_keys, {"remote_agent"})
+            upstream.request_json.assert_awaited_once_with(
+                "POST", "/assistants/search",
+                payload={"metadata": {"created_by": "system"}, "limit": 1000, "offset": 0},
+                forwarded_headers={"authorization": "Bearer delegation"}
+            )
+            for invalid in ({}, None, [{}]):
+                upstream.request_json.return_value = invalid
+                with self.assertRaises(PlatformApiError):
+                    await service.refresh_graphs(actor=self.actor, project_id=self.project_id)
+                unchanged = await service.list_graphs(actor=self.actor, project_id=self.project_id)
+                self.assertEqual({g.graph_id for g in unchanged.graphs}, {"remote_agent"})
+            upstream.request_json.return_value = []
+            await service.refresh_graphs(actor=self.actor, project_id=self.project_id)
+            empty = await service.list_graphs(actor=self.actor, project_id=self.project_id)
+            self.assertTrue(all(g.sync_status == "deleted" for g in empty.graphs))
         finally:
             engine.dispose()
 

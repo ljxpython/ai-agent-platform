@@ -43,7 +43,7 @@
 
 排查顺序：
 
-1. 确认 `uv run python worker.py` 是否已启动
+1. 确认 `uv run python -m platform_api.entrypoints.worker.main` 是否已启动
 2. 看 worker 日志里是否有 heartbeat 相关输出
 3. 看 `operations_queue_backend` 是否与部署环境一致
 4. 如果是 `redis_list`，确认 Redis 可连通

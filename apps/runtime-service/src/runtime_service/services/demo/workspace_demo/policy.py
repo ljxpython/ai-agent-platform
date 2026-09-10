@@ -11,7 +11,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 
-from langgraph_runtime_pg.deepagent_workspace import resolve_workspace_virtual_path
+from runtime_service.workspace import resolve_workspace_virtual_path
 
 
 @dataclass(frozen=True, slots=True)

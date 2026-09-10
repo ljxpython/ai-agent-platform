@@ -5,23 +5,21 @@ import unittest
 from pathlib import Path
 from uuid import uuid4
 
-from app.core.context.models import ActorContext
-from app.core.db import build_engine, build_session_factory, create_core_tables, session_scope
-from app.modules.assistants.domain import AssistantItem
-from app.modules.operations.application import CreateOperationCommand, OperationsService
-from app.modules.operations.application.artifacts import LocalOperationArtifactStore
-from app.modules.operations.application.execution import (
+from platform_api.core.context.models import ActorContext
+from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
+from platform_api.modules.agents.domain import AssistantItem
+from platform_api.modules.operations.application import CreateOperationCommand, OperationsService
+from platform_api.modules.operations.application.artifacts import LocalOperationArtifactStore
+from platform_api.modules.operations.application.execution import (
     DatabasePollingOperationDispatcher,
     OperationExecutorRegistry,
 )
-from app.modules.operations.application.executors import (
+from platform_api.modules.operations.application.executors import (
     AssistantResyncExecutor,
-    TestcaseCasesExportExecutor,
-    TestcaseDocumentsExportExecutor,
 )
-from app.modules.operations.application.worker import OperationWorker
-from app.modules.operations.domain import OperationStatus
-from app.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
+from platform_api.modules.operations.application.worker import OperationWorker
+from platform_api.modules.operations.domain import OperationStatus
+from platform_api.modules.projects.infra.sqlalchemy.repository import SqlAlchemyProjectsRepository
 
 
 class _FakeAssistantsService:
@@ -34,28 +32,6 @@ class _FakeAssistantsService:
             graph_id="research_demo",
             runtime_base_url="http://127.0.0.1:8123",
             metadata={"source": "worker-test"},
-        )
-
-
-class _FakeTestcaseService:
-    def __init__(self) -> None:
-        self.last_documents_query = None
-        self.last_cases_query = None
-
-    async def export_documents(self, *, actor: ActorContext, project_id: str, query):  # type: ignore[no-untyped-def]
-        self.last_documents_query = query
-        return (
-            "testcase-documents.xlsx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            b"documents-export",
-        )
-
-    async def export_cases(self, *, actor: ActorContext, project_id: str, query):  # type: ignore[no-untyped-def]
-        self.last_cases_query = query
-        return (
-            "testcase-cases.xlsx",
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            b"cases-export",
         )
 
 
@@ -75,7 +51,6 @@ class OperationsArtifactFlowTest(unittest.IsolatedAsyncioTestCase):
         )
         self.artifact_store = LocalOperationArtifactStore(str(Path(self._tmpdir.name) / "artifacts"))
         self.fake_assistants = _FakeAssistantsService()
-        self.fake_testcase = _FakeTestcaseService()
         self.service = OperationsService(
             session_factory=self._session_factory,
             dispatcher=DatabasePollingOperationDispatcher(),
@@ -86,14 +61,6 @@ class OperationsArtifactFlowTest(unittest.IsolatedAsyncioTestCase):
             executor_registry=OperationExecutorRegistry(
                 (
                     AssistantResyncExecutor(service=self.fake_assistants),  # type: ignore[arg-type]
-                    TestcaseDocumentsExportExecutor(
-                        service=self.fake_testcase,  # type: ignore[arg-type]
-                        artifact_store=self.artifact_store,
-                    ),
-                    TestcaseCasesExportExecutor(
-                        service=self.fake_testcase,  # type: ignore[arg-type]
-                        artifact_store=self.artifact_store,
-                    ),
                 )
             ),
             poll_interval_seconds=0.01,
@@ -132,67 +99,6 @@ class OperationsArtifactFlowTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(final.status, OperationStatus.SUCCEEDED)
         self.assertEqual(final.result_payload["id"], "assistant-123")
         self.assertEqual(final.result_payload["name"], "Research Demo")
-
-    async def test_testcase_documents_export_operation_persists_artifact(self) -> None:
-        submitted = await self.service.submit_operation(
-            actor=self.actor,
-            command=CreateOperationCommand(
-                kind="testcase.documents.export",
-                project_id=self.project_id,
-                input_payload={
-                    "batch_id": "batch-1",
-                    "parse_status": "parsed",
-                    "query": "invoice",
-                },
-            ),
-        )
-
-        processed = await self.worker.run_once()
-        final = await self.service.get_operation(actor=self.actor, operation_id=submitted.id)
-        artifact = await self.service.get_operation_artifact(actor=self.actor, operation_id=submitted.id)
-
-        self.assertTrue(processed)
-        self.assertEqual(final.status, OperationStatus.SUCCEEDED)
-        self.assertEqual(self.fake_testcase.last_documents_query.batch_id, "batch-1")
-        self.assertEqual(self.fake_testcase.last_documents_query.parse_status, "parsed")
-        self.assertEqual(self.fake_testcase.last_documents_query.query, "invoice")
-        self.assertTrue(final.result_payload["artifact_ready"])
-        self.assertEqual(final.result_payload["artifact_storage_backend"], "local")
-        self.assertTrue(final.result_payload["artifact_expires_at"])
-        self.assertEqual(artifact.filename, "testcase-documents.xlsx")
-        self.assertEqual(artifact.path.read_bytes(), b"documents-export")
-
-    async def test_testcase_cases_export_operation_persists_artifact(self) -> None:
-        submitted = await self.service.submit_operation(
-            actor=self.actor,
-            command=CreateOperationCommand(
-                kind="testcase.cases.export",
-                project_id=self.project_id,
-                input_payload={
-                    "batch_id": "batch-2",
-                    "status": "active",
-                    "query": "login",
-                    "columns": ["title", "priority", "status"],
-                },
-            ),
-        )
-
-        processed = await self.worker.run_once()
-        final = await self.service.get_operation(actor=self.actor, operation_id=submitted.id)
-        artifact = await self.service.get_operation_artifact(actor=self.actor, operation_id=submitted.id)
-
-        self.assertTrue(processed)
-        self.assertEqual(final.status, OperationStatus.SUCCEEDED)
-        self.assertEqual(self.fake_testcase.last_cases_query.batch_id, "batch-2")
-        self.assertEqual(self.fake_testcase.last_cases_query.status, "active")
-        self.assertEqual(self.fake_testcase.last_cases_query.query, "login")
-        self.assertEqual(self.fake_testcase.last_cases_query.columns, ("title", "priority", "status"))
-        self.assertTrue(final.result_payload["artifact_ready"])
-        self.assertEqual(final.result_payload["artifact_storage_backend"], "local")
-        self.assertTrue(final.result_payload["artifact_expires_at"])
-        self.assertEqual(artifact.filename, "testcase-cases.xlsx")
-        self.assertEqual(artifact.path.read_bytes(), b"cases-export")
-
 
 if __name__ == "__main__":
     unittest.main()

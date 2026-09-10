@@ -54,7 +54,7 @@ def _workspace(config: RunnableConfig):
         base = Path(base_value)
         if not base.is_absolute():
             raise ValueError("workspace root must be absolute")
-        from langgraph_runtime_pg.deepagent_workspace import build_deepagent_workspace
+        from runtime_service.workspace import build_deepagent_workspace
 
         return build_deepagent_workspace(
             base,

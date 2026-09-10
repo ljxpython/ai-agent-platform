@@ -277,7 +277,14 @@ export function streamMessagesToUi(
       const reasoning = reasoningText(raw)
       if (reasoning) chunks.push({ kind: 'reasoning', text: reasoning })
       const text = typeof raw.content === 'string' ? raw.content.trim() : ''
-      if (text) chunks.push({ kind: 'text', text })
+      if (text) {
+        const name = typeof raw.name === 'string' ? raw.name.trim() : ''
+        if (name) {
+          chunks.push({ kind: 'text', text: `**[${name}]**\n${text}` })
+        } else {
+          chunks.push({ kind: 'text', text })
+        }
+      }
 
       const rawToolCalls = raw.tool_calls || raw.additional_kwargs?.tool_calls || []
       for (const toolCall of rawToolCalls) {

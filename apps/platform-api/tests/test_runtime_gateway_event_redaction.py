@@ -3,7 +3,7 @@ from __future__ import annotations
 import unittest
 from collections.abc import AsyncIterator
 
-from app.modules.runtime_gateway.presentation.http import _redact_protocol_event_stream
+from platform_api.modules.runtime_gateway.presentation.http import _redact_protocol_event_stream
 
 
 async def _chunks(*values: bytes) -> AsyncIterator[bytes]:

@@ -92,6 +92,8 @@ export function createPlatformChatStreamActions(deps: PlatformChatStreamActionDe
           threadId,
           forkFrom: checkpointId || undefined,
           ...runtimeSubmitOptions,
+          streamMode: ['values', 'updates', 'messages'],
+          streamSubgraphs: true,
           onError: (submitError: unknown) => {
             deps.detailError.value = normalizeRuntimeGatewayError(submitError, '对话发送失败').message
           }

@@ -4,10 +4,10 @@ import unittest
 
 from pydantic import ValidationError
 
-from app.modules.assistants.application.service import (
+from platform_api.modules.agents.application.service import (
     _normalize_assistant_runtime_contract,
 )
-from app.modules.assistants.application.contracts import CreateAssistantCommand
+from platform_api.modules.agents.application.contracts import CreateAssistantCommand
 
 
 class AssistantsRuntimeContractTest(unittest.TestCase):

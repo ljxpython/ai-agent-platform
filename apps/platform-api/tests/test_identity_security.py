@@ -10,11 +10,11 @@ from uuid import UUID
 import jwt
 from fastapi.testclient import TestClient
 
-from app.core.db import build_engine, build_session_factory, create_core_tables, session_scope
-from app.core.security import InvalidTokenError, create_access_token, decode_access_token, hash_password
-from app.factory import create_app
-from app.modules.identity.infra.sqlalchemy.models import UserRecord
-from app.modules.identity.infra.sqlalchemy.repository import SqlAlchemyIdentityRepository
+from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
+from platform_api.core.security import InvalidTokenError, create_access_token, decode_access_token, hash_password
+from platform_api.main import create_app
+from platform_api.modules.identity.infra.sqlalchemy.models import UserRecord
+from platform_api.modules.identity.infra.sqlalchemy.repository import SqlAlchemyIdentityRepository
 
 
 class IdentitySecurityTest(unittest.TestCase):

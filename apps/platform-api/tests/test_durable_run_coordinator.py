@@ -9,17 +9,17 @@ from unittest.mock import AsyncMock
 
 from sqlalchemy import select
 
-from app.core.context.models import ActorContext
-from app.core.db import build_engine, build_session_factory, create_core_tables
-from app.core.db import SqlAlchemyUnitOfWork
-from app.core.errors import ConflictError, ForbiddenError, UpstreamServiceError
-from app.modules.audit.infra.sqlalchemy.models import AuditLogRecord
-from app.modules.operations.infra.sqlalchemy.repository import SqlAlchemyOperationsRepository
-from app.modules.operations.application.execution import OperationExecutorRegistry
-from app.modules.operations.application.worker import OperationWorker
-from app.modules.runtime_gateway.application.executor import RuntimeDurableRunReconciliationExecutor
-from app.modules.runtime_gateway.application.service import RuntimeGatewayService
-from app.modules.runtime_gateway.infra.sqlalchemy.repository import SqlAlchemyDurableRunsRepository
+from platform_api.core.context.models import ActorContext
+from platform_api.core.db import build_engine, build_session_factory, create_core_tables
+from platform_api.core.db import SqlAlchemyUnitOfWork
+from platform_api.core.errors import ConflictError, ForbiddenError, UpstreamServiceError
+from platform_api.modules.audit.infra.sqlalchemy.models import AuditLogRecord
+from platform_api.modules.operations.infra.sqlalchemy.repository import SqlAlchemyOperationsRepository
+from platform_api.modules.operations.application.execution import OperationExecutorRegistry
+from platform_api.modules.operations.application.worker import OperationWorker
+from platform_api.modules.runtime_gateway.application.executor import RuntimeDurableRunReconciliationExecutor
+from platform_api.modules.runtime_gateway.application.service import RuntimeGatewayService
+from platform_api.modules.runtime_gateway.infra.sqlalchemy.repository import SqlAlchemyDurableRunsRepository
 
 
 class DurableRunCoordinatorTest(unittest.IsolatedAsyncioTestCase):

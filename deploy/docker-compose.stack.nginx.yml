@@ -130,8 +130,6 @@ services:
         condition: service_healthy
       runtime-service:
         condition: service_started
-      interaction-data-service:
-        condition: service_healthy
     environment:
       PLATFORM_API_APP_ENV: "${PLATFORM_API_APP_ENV:-local}"
       PLATFORM_API_API_DOCS_ENABLED: "${PLATFORM_API_API_DOCS_ENABLED:-true}"
@@ -140,9 +138,6 @@ services:
       PLATFORM_API_LANGGRAPH_UPSTREAM_TIMEOUT_SECONDS: "60"
       PLATFORM_API_LANGGRAPH_UPSTREAM_API_KEY: "${PLATFORM_RUNTIME_MANAGEMENT_API_KEY:-}"
       PLATFORM_API_RUNTIME_DELEGATION_SECRET: "${PLATFORM_RUNTIME_DELEGATION_SECRET:-}"
-      PLATFORM_API_INTERACTION_DATA_SERVICE_URL: "http://interaction-data-service:8081"
-      PLATFORM_API_KNOWLEDGE_UPSTREAM_URL: "${PLATFORM_API_KNOWLEDGE_UPSTREAM_URL:-}"
-      PLATFORM_API_KNOWLEDGE_UPSTREAM_API_KEY: "${PLATFORM_API_KNOWLEDGE_UPSTREAM_API_KEY:-}"
       PLATFORM_API_PLATFORM_DB_ENABLED: "true"
       PLATFORM_API_PLATFORM_DB_AUTO_CREATE: "true"
       PLATFORM_API_DATABASE_URL: "postgresql+psycopg://${PLATFORM_API_POSTGRES_USER:-platform_api}:${PLATFORM_API_POSTGRES_PASSWORD:-platform_api}@${SHARED_POSTGRES_HOST:-postgres}:5432/${PLATFORM_API_POSTGRES_DB:-platform_api}"
@@ -155,7 +150,7 @@ services:
       PLATFORM_API_BOOTSTRAP_ADMIN_USERNAME: "${PLATFORM_API_BOOTSTRAP_ADMIN_USERNAME:-admin}"
       PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD: "${PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD:-admin123456}"
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:2142/_system/probes/ready"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:2142/_system/probes/ready', timeout=5)"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -167,7 +162,7 @@ services:
     build:
       context: ../apps/platform-api
       dockerfile: Dockerfile
-    command: ["python", "worker.py"]
+    command: ["python", "-m", "platform_api.entrypoints.worker.main"]
     depends_on:
       redis:
         condition: service_healthy
@@ -181,13 +176,6 @@ services:
       PLATFORM_API_LANGGRAPH_UPSTREAM_API_KEY: "${PLATFORM_RUNTIME_MANAGEMENT_API_KEY:-}"
       PLATFORM_API_RUNTIME_DELEGATION_SECRET: "${PLATFORM_RUNTIME_DELEGATION_SECRET:-}"
       PLATFORM_API_LANGGRAPH_UPSTREAM_TIMEOUT_SECONDS: "60"
-      PLATFORM_API_LANGGRAPH_GRAPH_SOURCE_ROOT: "${PLATFORM_API_LANGGRAPH_GRAPH_SOURCE_ROOT:-}"
-      PLATFORM_API_INTERACTION_DATA_SERVICE_URL: "http://interaction-data-service:8081"
-      PLATFORM_API_INTERACTION_DATA_SERVICE_TOKEN: "${PLATFORM_API_INTERACTION_DATA_SERVICE_TOKEN:-}"
-      PLATFORM_API_INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS: "${PLATFORM_API_INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS:-30}"
-      PLATFORM_API_KNOWLEDGE_UPSTREAM_URL: "${PLATFORM_API_KNOWLEDGE_UPSTREAM_URL:-}"
-      PLATFORM_API_KNOWLEDGE_UPSTREAM_API_KEY: "${PLATFORM_API_KNOWLEDGE_UPSTREAM_API_KEY:-}"
-      PLATFORM_API_KNOWLEDGE_UPSTREAM_TIMEOUT_SECONDS: "${PLATFORM_API_KNOWLEDGE_UPSTREAM_TIMEOUT_SECONDS:-60}"
       PLATFORM_API_PLATFORM_DB_ENABLED: "true"
       PLATFORM_API_PLATFORM_DB_AUTO_CREATE: "true"
       PLATFORM_API_DATABASE_URL: "postgresql+psycopg://${PLATFORM_API_POSTGRES_USER:-platform_api}:${PLATFORM_API_POSTGRES_PASSWORD:-platform_api}@${SHARED_POSTGRES_HOST:-postgres}:5432/${PLATFORM_API_POSTGRES_DB:-platform_api}"
