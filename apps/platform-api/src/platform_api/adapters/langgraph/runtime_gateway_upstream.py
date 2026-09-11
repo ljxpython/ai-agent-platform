@@ -81,6 +81,15 @@ class LangGraphRuntimeGatewayUpstream:
     async def count_threads(self, payload: dict[str, Any] | None = None) -> Any:
         return await self._threads.count(payload)
 
+    async def enqueue_thread_message(self, thread_id: str, payload: dict[str, Any]) -> Any:
+        """Forward a running-thread message through the scoped Runtime delegation."""
+        return await self._http.require_json(
+            "POST", f"/internal/threads/{thread_id}/messages", payload=payload
+        )
+
+    async def list_thread_messages(self, thread_id: str) -> Any:
+        return await self._http.require_json("GET", f"/internal/threads/{thread_id}/messages")
+
 
     async def get_thread(self, thread_id: str) -> dict[str, Any]:
         value = await self._threads.get(thread_id)

@@ -2,9 +2,9 @@
 
 ## 范围与状态
 
-2026-09-10 用户明确调整顺序：本次先做后端验收，前端问题后续统一解决。本专题状态为 **deferred**；已有前端删除与接口改动保留，但不据此宣称页面或浏览器验收完成。本次不继续扩展前端实现。
+2026-09-10 后端阶段曾将本专题 deferred；随后用户批准独立 Platform Web 重构，现由 [前端项目](../20260910-platform-web-refactor/README.md) 接续实现和验收。当前字段/页面/Chat 对接已完成，最终证据见 [前端收尾](../20260910-platform-web-refactor/implementation/11-closeout.md)；双浏览器消息入队、完整文件/Skills API、PTY 仍后置。
 
-后端当前契约与收尾证据见 [11 收尾记录](implementation/11-backend-closeout.md)，前一轮主链路证据保留在 [10](implementation/10-operations-run-requests.md)。以下记录收缩后的实际接口，前端实现与验收尚未覆盖这些新字段。
+后端当前契约与收尾证据见 [11 收尾记录](implementation/11-backend-closeout.md)，前一轮主链路证据保留在 [10](implementation/10-operations-run-requests.md)。以下保留收缩后的实际接口；前端当前已消费新字段。
 
 ## 影响与对应调整
 
@@ -63,24 +63,24 @@ Protocol 审批路径：`POST /api/langgraph/threads/{thread_id}/commands`。当
 - 标准 Runs 只允许公开 config.recursion_limit（1–1000，缺省 25）；原参数重试复用首次冻结值，审批不传 config/context/input。多 interrupt 使用一个 command.resume ID 映射；已经处理的同一 ID 不能靠换 HTTP key 再执行。
 - Run JSON 的上游状态和 Protocol lifecycle 映射是不同接口，不能仅凭 SSE 中 `completed` 推断所有 JSON 状态也被改名。
 
-## 已改动与尚待验收
+## 原后端交接时的实现基线（历史记录）
 
 已有前端代码移除了 Operations、resync、模型刷新及部分控制面卡片，并改为直接刷新 Graph。上一阶段 Vitest 35 文件、121 项通过，vue-tsc 与相关页面 ESLint 通过；这些仅是代码检查证据，没有本轮浏览器验收。
 
-后续从以下位置检查实际调用与交互，不重新搭建前端架构：
+原交接检查位置如下；用户随后授权重写前端架构，旧 assistants service 已由 services/agents 替代：
 
 - `apps/platform-web/src/services/assistants/assistants.service.ts`、`services/runtime/runtime.service.ts`：产品 CRUD、目录刷新、模型配置。
 - `apps/platform-web/src/services/platform/workspace-context.ts`、`services/system/system-governance.service.ts`、router/sidebar/permissions：移除退役能力和任务依赖。
 - Agent 列表/创建、Graphs、RuntimeModels、Chat/审批，以及 ControlPlane、PlatformConfig、SystemGovernance 页面：空态、错误态、加载态和失效缓存。
 
-## 后续前端验收清单
+## 前端接续验收清单（2026-09-11）
 
-- [ ] 全站没有 Operations/resync/模型远端刷新/知识库/测试用例入口或后台请求；控制台无相关 404 与未处理异常。
-- [ ] 新库登录、项目选择、模型密钥只写、Graph/Tool 刷新、Agent 创建/启停与 schema 表单正常。
-- [ ] 新动作新 key，同动作重试同 key；409 不自动重复执行；两个项目的缓存与订阅隔离。
-- [ ] Showcase 发送、真实流式、刷新恢复、审批 approve/reject/edit、多 interrupt 按 ID、撤权后拒绝、取消后再次发送通过。
-- [ ] 浏览器响应、日志和本地存储没有内部凭据；SSE 断线不会自动取消或自动批准。
-- [ ] Vue 类型、组件测试及真实浏览器回归通过后，才将本专题从 deferred 更新为 done。
+- [x] 全站没有 Operations/resync/模型远端刷新/知识库/测试用例入口或后台请求；控制台无相关 404 与未处理异常。
+- [x] 新库登录、项目选择、模型密钥只写、Graph/Tool 刷新、Agent 创建/启停与 schema 表单正常。
+- [x] 新动作新 key，同动作重试同 key；409 不自动重复执行；两个项目的缓存与订阅隔离。
+- [x] Showcase 发送、真实流式、刷新恢复、审批 approve/reject/edit、多 interrupt 按 ID、撤权后拒绝、取消后再次发送通过。
+- [x] 浏览器响应、日志和本地存储没有内部凭据；SSE 断线不会自动取消或自动批准。
+- [x] Vue 类型、组件测试及真实浏览器回归通过后，才将本专题从 deferred 更新为 done。
 
 2026-09-10 后端收尾修订：以上新字段契约替换上一轮遗留字段说明。实际实现及证据见 [11 收尾记录](implementation/11-backend-closeout.md)。前端仍 deferred；不能把先前类型检查结果套用到收缩后的字段契约。
 
@@ -88,7 +88,7 @@ Protocol 审批路径：`POST /api/langgraph/threads/{thread_id}/commands`。当
 
 ## 文档归档时保留的前端复核项（2026-09-10）
 
-旧平台前端对账/切换清单已被当前契约替代，归档不代表其前端验收完成。以下继续deferred，在前端阶段复核：
+旧平台前端对账/切换清单已被当前契约替代，归档不代表其前端验收完成。以下已在前端阶段通过统一路由权限、项目上下文和页面迁移复核：
 
 - 平台角色与项目角色完整消费，统一can/路由/导航/按钮权限；不退回is_super_admin单布尔判断。
 - 项目删除/归档/恢复后的确认、权限、上下文清理和审计反馈；以当前项目接口为准，不照搬旧删除语义。
@@ -96,3 +96,5 @@ Protocol 审批路径：`POST /api/langgraph/threads/{thread_id}/commands`。当
 - 复用现有页面组件与通用Chat基座，覆盖无权限、空态和错误态；公开后端接口不自动等于需要新增一级菜单。
 
 旧Testcase文档/批次详情、Operations和旧双token迁移要求随业务退役，不恢复成新待办。前端开发规范仍在platform-web，不另建平台API侧的前端执行单。
+
+2026-09-11：旧 35 文件/121 测试仅作历史基线；当前 Web 74 passed/1 skipped（另补迟到 Run 单测），真实网络/模型、PG 队列和产物恢复结果以独立前端项目 11 为准。首期对接 done，既定扩展 deferred；本记录不代表生产已部署。

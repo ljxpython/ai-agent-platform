@@ -25,6 +25,7 @@
 - [更新日志](./CHANGELOG.md)
 - [发布记录](./releases/)
 - [功能现状总览](./FEATURES.md) —— 按服务分组的当前功能清单，看仓库现在有什么直接看这份
+- [Platform Web 架构与 Agent Chat 重构](./projects/20260910-platform-web-refactor/README.md) —— 原前端六专题已批准、待实施；第 07 专题多端队列与 Runtime Middleware 最后完成，记录 GraphHarbor 仓库位置及通用引擎边界
 
 链路/治理改动的项目文档统一放在 [projects/](./projects/) 下，AI 判断出对应级别后自动用 `plan-project` Skill 创建，无需手动调用；单服务改动的留痕记录见对应 `apps/{app}/docs/changes/`，仓库级/工具链改动见 [changes/](./changes/)。三者的选择标准见 `AGENTS.md` 的「文档组织」。
 

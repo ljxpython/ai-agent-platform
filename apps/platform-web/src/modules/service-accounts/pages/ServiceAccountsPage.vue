@@ -689,7 +689,7 @@ onMounted(() => {
     </SurfaceCard>
 
     <EmptyState
-      v-if="!filteredAccounts.length && !loading"
+      v-if="!filteredAccounts.length && !loading && !error"
       title="当前没有 service account"
       description="先创建一个平台级 service account，再用 token 去接 metrics、脚本或自动化调用。"
       icon="users"

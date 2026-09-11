@@ -90,6 +90,13 @@ def get_internal_runtime_model_config(
 
 
 
+@router.get("/internal/message-authorization")
+def authorize_runtime_message(request: Request, thread_id: str, run_id: str,
+                              service: RuntimeCatalogService = Depends(get_runtime_catalog_service)) -> dict:
+    return service.authorize_message(request.headers.get("x-runtime-message-ref", ""),
+                                     thread_id=thread_id, run_id=run_id)
+
+
 @router.get("/models", response_model=RuntimeModelCatalogList)
 def list_runtime_models(
     request: Request,

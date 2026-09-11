@@ -67,6 +67,7 @@ def test_reference_agent_declares_reliability_middleware_in_order(monkeypatch) -
         "ToolErrorMiddleware",
         "ToolRetryMiddleware",
         "ModelCallTimeoutMiddleware",
+        "MessageQueueMiddleware",
     ]
 
 
@@ -92,12 +93,13 @@ def test_reference_agent_explicitly_composes_model_reliability_adapters(monkeypa
     )
 
     middleware = captured["middleware"]
-    assert [type(item).__name__ for item in middleware][-5:] == [
+    assert [type(item).__name__ for item in middleware][-6:] == [
         "ToolErrorMiddleware",
         "ToolRetryMiddleware",
         "ModelFallbackMiddleware",
         "ModelRetryMiddleware",
         "ModelCallTimeoutMiddleware",
+        "MessageQueueMiddleware",
     ]
 
 

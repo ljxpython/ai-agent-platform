@@ -1,13 +1,32 @@
 from __future__ import annotations
 
 import asyncio
+from unittest.mock import AsyncMock
 
 import pytest
-from runtime_service.runtime import RuntimeAuthError, RuntimeContext, RuntimeResolutionError
+from runtime_service.runtime import (
+    RuntimeAuthError,
+    RuntimeContext,
+    RuntimeResolutionError,
+)
 from runtime_service.runtime.resolver import runtime_context_hash
 from runtime_service.services.reference_agent import agent
 from runtime_service.services.reference_agent.tools import read_reference
 from support import BindableFakeChatModel
+
+
+def test_model_connection_uses_current_gateway_reference(monkeypatch):
+    connection = {"model_id": "model-uuid", "model": "actual-model"}
+    fetch = AsyncMock(return_value=connection)
+    monkeypatch.setattr(agent, "fetch_model_connection", fetch)
+    result = asyncio.run(agent._runtime_model_connection(
+        {"configurable": {"runtime_model_ref": "opaque-reference"}},
+        model_id="model-uuid", project_id="project-uuid",
+    ))
+    assert result == connection
+    fetch.assert_awaited_once_with(
+        "opaque-reference", model_id="model-uuid", project_id="project-uuid",
+    )
 
 
 def _config(model: BindableFakeChatModel, context: object | None = None) -> dict[str, object]:
@@ -173,7 +192,7 @@ def test_context_policy_violation_fails_before_fake_model_use() -> None:
 def test_default_path_does_not_fallback_to_fake_model(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def missing_provider(_: object) -> FakeListChatModel:
+    def missing_provider(_: object) -> BindableFakeChatModel:
         raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
 
     monkeypatch.setattr(agent, "build_model", missing_provider)

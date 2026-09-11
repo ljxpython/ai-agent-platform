@@ -63,6 +63,7 @@ const iconName = computed(() => {
 <template>
   <div
     class="pw-banner transition-all duration-200"
+    :role="variant === 'danger' || variant === 'warning' ? 'alert' : 'status'"
     :class="[bannerClass, props.compact ? 'rounded-xl px-3 py-2' : '']"
   >
     <div

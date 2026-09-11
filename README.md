@@ -81,6 +81,8 @@
 
 `apps/platform-web` 是当前正式平台前端宿主，也是仓库默认联调和后续平台前端开发的统一入口。
 
+前端架构与 Agent Chat 重构原方案已获用户批准，保留 Vue/官方 SDK、允许 SDK 升级并沿用现有视觉，尚未实施；多端消息队列与 Runtime Middleware 按用户要求最后完成，不阻塞前端主体验收，见 [重构方案与验收计划](docs/projects/20260910-platform-web-refactor/README.md)。
+
 当前正式平台入口已经覆盖首批核心页面：
 
 - `overview`

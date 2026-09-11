@@ -16,6 +16,7 @@ from langchain_openai import ChatOpenAI
 from langgraph.pregel import Pregel
 
 from runtime_service.middlewares import (
+    MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     RuntimeConfigMiddleware,
 )
@@ -162,6 +163,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             ),
             *middleware(_DEFAULTS.optional_tool_names),
             TodoListMiddleware(),
+            MessageQueueMiddleware(),
         ],
         context_schema=RuntimeContext,
         name="showcase_demo",

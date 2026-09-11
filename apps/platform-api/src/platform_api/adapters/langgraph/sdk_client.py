@@ -46,7 +46,7 @@ def redact_runtime_private_fields(value: Any) -> Any:
         return {
             key: redact_runtime_private_fields(item)
             for key, item in value.items()
-            if not (str(key).startswith("_runtime_") or key == "runtime_model_ref")
+            if not (str(key).startswith("_runtime_") or key in {"runtime_model_ref", "runtime_message_claim", "authorization_ref"})
         }
     if isinstance(value, list):
         return [redact_runtime_private_fields(item) for item in value]
@@ -139,4 +139,3 @@ def raise_runtime_upstream_error(exc: Exception, *, fallback_detail: str) -> Non
         code="langgraph_upstream_unavailable",
         message="LangGraph upstream is unavailable",
     ) from exc
-

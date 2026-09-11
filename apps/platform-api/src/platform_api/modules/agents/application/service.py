@@ -134,12 +134,17 @@ class AssistantsService:
         with session_scope(session_factory) as session:
             self._require_project_exists(session=session, project_id=project_id)
             repository = SqlAlchemyAssistantsRepository(session)
+            authorized_graph_ids = repository.align_authorized_graphs(
+                project_id=parse_uuid(project_id, code="invalid_project_id"),
+                actor_user_id=parse_actor_user_id(actor),
+            )
             items, total = repository.list_project_assistants(
                 project_id=parse_uuid(project_id, code="invalid_project_id"),
                 limit=query.limit,
                 offset=query.offset,
                 query=query.query,
                 graph_id=query.graph_id,
+                authorized_graph_ids=authorized_graph_ids,
             )
             return AssistantPage(
                 items=[self._assistant_item(item) for item in items],

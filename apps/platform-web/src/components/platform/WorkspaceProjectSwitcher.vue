@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/components/base/BaseIcon.vue'
@@ -38,7 +38,7 @@ const currentProjectLabel = computed(
 )
 
 async function ensureProjectOptions() {
-  if (refreshing.value) {
+  if (refreshing.value || workspaceStore.contextLoaded && !workspaceStore.error) {
     return
   }
 
@@ -67,32 +67,16 @@ async function selectProject(projectId: string) {
     return
   }
 
-  const currentRouteProjectId = typeof route.params.projectId === 'string' ? route.params.projectId.trim() : ''
-  if (currentRouteProjectId) {
-    await router.replace({
-      name: String(route.name || ''),
-      params: {
-        ...route.params,
-        projectId,
-      },
-      query: route.query,
-      hash: route.hash,
-    })
-  } else if (route.name === 'workspace-chat') {
-    const nextQuery = { ...route.query }
-    delete nextQuery.threadId
-    // Project changes must start a blank chat. Keep the intent in the URL so
-    // both the old-project and new-project watchers skip historical threads.
-    nextQuery.startNew = '1'
-    await router.replace({
-      name: String(route.name),
-      query: nextQuery,
-      hash: route.hash
-    })
-    await nextTick()
-    await setActiveProjectId(projectId)
-  } else {
-    await setActiveProjectId(projectId)
+  try {
+    if (typeof route.params.projectId === 'string') {
+      const section = route.path.match(/\/projects\/[^/]+\/(agents|chat|models|graphs|members)/)?.[1]
+      await router.replace(`/workspace/projects/${encodeURIComponent(projectId)}${section ? `/${section}` : ''}`)
+    } else {
+      await setActiveProjectId(projectId)
+    }
+  } catch {
+    // The store exposes the loading error; keep the selector available to retry.
+    return
   }
 
   close()

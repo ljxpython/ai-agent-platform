@@ -5,8 +5,10 @@ import re
 from collections.abc import AsyncIterator
 from typing import Any
 
+from anyio import CancelScope
 from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi.responses import StreamingResponse
+from starlette.types import Send
 
 from platform_api.adapters.langgraph import (
     LangGraphRuntimeGatewayUpstream,
@@ -33,6 +35,16 @@ from platform_api.modules.runtime_policies.application import (
 )
 
 router = APIRouter(prefix="/api/langgraph", tags=["runtime-gateway"])
+
+
+class RuntimeStreamingResponse(StreamingResponse):
+    async def stream_response(self, send: Send) -> None:
+        try:
+            await super().stream_response(send)
+        finally:
+            # Close suspended generators before GC can finalize nested streams concurrently.
+            with CancelScope(shield=True):
+                await self.body_iterator.aclose()
 
 _SENSITIVE_EVENT_KEYS = {
     "access_token",
@@ -129,6 +141,8 @@ def _require_project_id(request: Request) -> str:
 def _delegation_operation(request: Request) -> str:
     """Keep read and run creation credentials separate at the gateway boundary."""
     path = request.url.path
+    if path.endswith("/messages"):
+        return "message-enqueue" if request.method == "POST" else "message-read"
     if request.method == "POST" and (path.endswith("/commands") or "/runs" in path):
         return "run-create"
     return "read"
@@ -194,6 +208,7 @@ def get_runtime_gateway_service(
         agent_key: str,
         thread_id: str,
         context_hash: str,
+        operation: str = "run-create",
     ) -> dict[str, str]:
         scoped = create_runtime_delegation_token(
             subject=subject,
@@ -213,7 +228,7 @@ def get_runtime_gateway_service(
                 "project_id": project_id,
                 "assistant_id": agent_key,
                 "thread_id": thread_id,
-                "operation": "run-create",
+                "operation": operation,
             },
             context_hash=context_hash,
             settings=settings,
@@ -367,6 +382,30 @@ async def delete_thread(
     return _normalize_ack(result)
 
 
+@router.post("/threads/{thread_id}/messages", status_code=202)
+async def enqueue_thread_message(
+    request: Request,
+    thread_id: str,
+    payload: dict[str, Any] = Body(...),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    project_id = _require_project_id(request)
+    allowed = {"client_message_id", "target_run_id", "content"}
+    if set(payload) - allowed:
+        raise BadRequestError(code="invalid_message_payload", message="Only message fields are accepted")
+    return _redact_runtime_private_fields(await service.enqueue_thread_message(
+        actor=actor, project_id=project_id, thread_id=thread_id, payload=payload,
+        idempotency_key=request.headers.get("Idempotency-Key")))
+
+
+@router.get("/threads/{thread_id}/messages")
+async def list_thread_messages(request: Request, thread_id: str,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service)) -> Any:
+    return _redact_runtime_private_fields(await service.list_thread_messages(
+        actor=actor, project_id=_require_project_id(request), thread_id=thread_id))
+
 @router.get("/threads/{thread_id}/state")
 async def get_thread_state(
     request: Request,
@@ -466,7 +505,7 @@ async def stream_thread_run(
         payload=payload,
         idempotency_key=request.headers.get("Idempotency-Key"),
     )
-    return StreamingResponse(
+    return RuntimeStreamingResponse(
         _redact_protocol_event_stream(stream), media_type="text/event-stream"
     )
 
@@ -506,7 +545,7 @@ async def stream_thread_events(
         thread_id=thread_id,
         payload=payload,
     )
-    return StreamingResponse(
+    return RuntimeStreamingResponse(
         _redact_protocol_event_stream(stream), media_type="text/event-stream"
     )
 
@@ -606,7 +645,7 @@ async def join_thread_run_stream(
         run_id=run_id,
         params=params,
     )
-    return StreamingResponse(
+    return RuntimeStreamingResponse(
         _redact_protocol_event_stream(stream), media_type="text/event-stream"
     )
 

@@ -1,169 +1,184 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import BaseButton from '@/components/base/BaseButton.vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import type { RuntimeModelItem } from '@/types/management'
-import { CHAT_ATTACHMENT_ACCEPT, type ChatAttachmentBlock } from '@/utils/chat-content'
-import ChatAttachmentPreview from './ChatAttachmentPreview.vue'
-import ChatModelSelector from './ChatModelSelector.vue'
+import { computed, nextTick, onMounted, ref, watch } from "vue";
+import BaseButton from "@/components/base/BaseButton.vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import {
+  CHAT_ATTACHMENT_ACCEPT,
+  type ChatAttachmentBlock,
+} from "@/utils/chat-content";
+import ChatAttachmentPreview from "./ChatAttachmentPreview.vue";
+import ChatModelSelector from "./ChatModelSelector.vue";
+import type { RuntimeModelItem } from "@/types/management";
 
 const props = defineProps<{
-  modelValue: string
-  attachments: ChatAttachmentBlock[]
-  isRunning: boolean
-  hasBlockingInterrupt: boolean
-  canStartThread: boolean
-  showContinueAction: boolean
-  canSendFreshMessage: boolean
-  cancelling: boolean
-  sendButtonLabel: string
-  lastEventAt: string
-  compact?: boolean
-  focusMode?: boolean
-  models?: RuntimeModelItem[]
-  selectedModelId?: string
-  defaultModelName?: string
-}>()
+  modelValue: string;
+  attachments: ChatAttachmentBlock[];
+  isRunning: boolean;
+  hasBlockingInterrupt: boolean;
+  canSendFreshMessage: boolean;
+  cancelling: boolean;
+  sendButtonLabel: string;
+  compact?: boolean;
+  focusMode?: boolean;
+  models?: RuntimeModelItem[];
+  selectedModelId?: string;
+  defaultModelName?: string;
+  projectId?: string;
+}>();
 
 const emit = defineEmits<{
-  'update:modelValue': [value: string]
-  'update:selectedModelId': [value: string]
-  'send': []
-  'cancel': []
-  'continue-run': []
-  'new-thread': []
-  'file-input-change': [event: Event]
-  'composer-paste': [event: ClipboardEvent]
-  'remove-attachment': [index: number]
-}>()
+  "update:modelValue": [value: string];
+  send: [];
+  cancel: [];
+  "file-input-change": [event: Event];
+  "composer-paste": [event: ClipboardEvent];
+  "remove-attachment": [index: number];
+  "update:selectedModelId": [value: string];
+}>();
 
-const fileInputRef = ref<HTMLInputElement | null>(null)
-const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const fileInputRef = ref<HTMLInputElement | null>(null);
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
 
 const composerModel = computed({
   get: () => props.modelValue,
-  set: (value: string) => emit('update:modelValue', value)
-})
+  set: (value: string) => emit("update:modelValue", value),
+});
 
-const isDenseMode = computed(() => Boolean(props.compact))
-const isFocusMode = computed(() => Boolean(props.focusMode))
+const isDenseMode = computed(() => Boolean(props.compact));
+const isFocusMode = computed(() => Boolean(props.focusMode));
 
 const composerCollapsedHeight = computed(() => {
   if (isDenseMode.value) {
-    return 28
+    return 28;
   }
 
-  return 32
-})
-const composerMinHeight = computed(() => composerCollapsedHeight.value)
+  return 32;
+});
+const composerMinHeight = computed(() => composerCollapsedHeight.value);
 const composerMaxHeight = computed(() => {
   if (isFocusMode.value) {
-    return 132
+    return 132;
   }
 
   if (isDenseMode.value) {
-    return 112
+    return 112;
   }
 
-  return 120
-})
+  return 120;
+});
 
 const helperText = computed(() =>
   props.hasBlockingInterrupt
-    ? '当前运行正在等待人工决策。你可以先编辑下一条消息草稿，处理完中断后再发送。'
+    ? "当前运行正在等待人工决策。你可以先编辑下一条消息草稿，处理完中断后再发送。"
     : props.isRunning
-      ? 'Agent 正在实时输出。你可以继续编辑下一条消息草稿，或随时点击“停止生成”。'
-      : ''
-)
+      ? "Agent 正在实时输出。你可以继续编辑下一条消息草稿，或随时点击“停止生成”。"
+      : "",
+);
 
 function handleComposerPaste(event: ClipboardEvent) {
-  emit('composer-paste', event)
+  emit("composer-paste", event);
 }
 
 function openFilePicker() {
-  fileInputRef.value?.click()
+  fileInputRef.value?.click();
 }
 
 function applyTextareaHeight(nextHeight: number) {
-  const textarea = textareaRef.value
+  const textarea = textareaRef.value;
   if (!textarea) {
-    return
+    return;
   }
 
-  textarea.style.height = `${nextHeight}px`
+  textarea.style.height = `${nextHeight}px`;
 }
 
 function clampComposerHeight(nextHeight: number) {
-  return Math.max(composerMinHeight.value, Math.min(nextHeight, composerMaxHeight.value))
+  return Math.max(
+    composerMinHeight.value,
+    Math.min(nextHeight, composerMaxHeight.value),
+  );
 }
 
 async function syncTextareaHeight() {
-  await nextTick()
+  await nextTick();
 
-  const textarea = textareaRef.value
+  const textarea = textareaRef.value;
   if (!textarea) {
-    return
+    return;
   }
 
-  textarea.style.height = '0px'
+  textarea.style.height = "0px";
   const nextHeight =
     composerModel.value.trim().length === 0
       ? composerCollapsedHeight.value
-      : clampComposerHeight(Math.max(composerCollapsedHeight.value, textarea.scrollHeight))
-  applyTextareaHeight(nextHeight)
+      : clampComposerHeight(
+          Math.max(composerCollapsedHeight.value, textarea.scrollHeight),
+        );
+  applyTextareaHeight(nextHeight);
 }
 
 watch(
   () => props.modelValue,
   async () => {
-    await syncTextareaHeight()
+    await syncTextareaHeight();
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 watch(
   () => props.attachments.length,
   async () => {
-    await syncTextareaHeight()
-  }
-)
+    await syncTextareaHeight();
+  },
+);
 
 watch(
   () => props.compact,
   async () => {
-    await syncTextareaHeight()
+    await syncTextareaHeight();
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 watch(
   () => props.focusMode,
   async () => {
-    await syncTextareaHeight()
-  }
-)
+    await syncTextareaHeight();
+  },
+);
 
 function handleKeydown(event: KeyboardEvent) {
-  if (event.key === 'Enter' && !event.shiftKey) {
+  if (event.key === "Enter" && !event.shiftKey) {
     if (event.isComposing) {
-      return
+      return;
     }
-    event.preventDefault()
-    if (!props.isRunning && (composerModel.value.trim().length > 0 || props.attachments.length > 0)) {
-      emit('send')
+    event.preventDefault();
+    if (
+      props.canSendFreshMessage &&
+      !props.isRunning &&
+      !props.hasBlockingInterrupt &&
+      (composerModel.value.trim().length > 0 || props.attachments.length > 0)
+    ) {
+      emit("send");
     }
   }
 }
 
 onMounted(async () => {
-  await syncTextareaHeight()
-})
+  await syncTextareaHeight();
+});
 </script>
 
 <template>
   <div
     class="pw-chat-composer-wrap transition-all duration-200"
-    :class="isFocusMode ? 'px-3 pb-3 pt-2 md:px-4' : props.compact ? 'px-4 pb-3 pt-2 md:px-5' : ''"
+    :class="
+      isFocusMode
+        ? 'px-3 pb-3 pt-2 md:px-4'
+        : props.compact
+          ? 'px-4 pb-3 pt-2 md:px-5'
+          : ''
+    "
   >
     <div
       class="pw-chat-composer transition-all duration-200"
@@ -191,9 +206,10 @@ onMounted(async () => {
           isDenseMode
             ? 'min-h-[28px] max-h-[112px] overflow-y-auto text-sm leading-6'
             : 'min-h-[32px] max-h-[120px] overflow-y-auto text-sm leading-6',
-          isFocusMode ? 'text-sm leading-6' : ''
+          isFocusMode ? 'text-sm leading-6' : '',
         ]"
         placeholder="输入消息，Enter 发送，Shift + Enter 换行。"
+        aria-label="消息草稿"
         @keydown="handleKeydown"
         @paste="handleComposerPaste"
       />
@@ -211,13 +227,14 @@ onMounted(async () => {
               type="button"
               class="pw-table-tool-button h-8 shrink-0 rounded-lg px-3 text-xs"
               :disabled="isRunning || hasBlockingInterrupt"
+              aria-label="上传图片 / PDF"
               @click="openFilePicker"
             >
               <BaseIcon
                 name="paperclip"
                 size="sm"
               />
-              <span>上传图片 / PDF</span>
+              <span class="hidden sm:inline">上传图片 / PDF</span>
             </button>
             <input
               ref="fileInputRef"
@@ -227,11 +244,10 @@ onMounted(async () => {
               :accept="CHAT_ATTACHMENT_ACCEPT"
               @change="emit('file-input-change', $event)"
             >
-
-            <!-- Model Selector (Luxury Popover) -->
             <ChatModelSelector
-              v-if="models && models.length > 0"
+              v-if="models && projectId"
               :models="models"
+              :project-id="projectId"
               :selected-model-id="selectedModelId"
               :default-model-name="defaultModelName"
               :disabled="isRunning || hasBlockingInterrupt"
@@ -243,15 +259,6 @@ onMounted(async () => {
             class="ml-auto flex shrink-0 items-center gap-2"
             :class="isFocusMode || props.compact ? 'gap-2' : 'gap-2.5'"
           >
-            <BaseButton
-              v-if="showContinueAction"
-              variant="secondary"
-              class="h-8 px-3 text-xs"
-              :disabled="isRunning || cancelling"
-              @click="emit('continue-run')"
-            >
-              继续
-            </BaseButton>
             <BaseButton
               :variant="isRunning ? 'danger' : 'primary'"
               class="h-8 px-3 text-xs"
@@ -265,8 +272,8 @@ onMounted(async () => {
               {{
                 isRunning
                   ? cancelling
-                    ? '停止中...'
-                    : '停止生成'
+                    ? "停止中..."
+                    : "停止生成"
                   : sendButtonLabel
               }}
             </BaseButton>

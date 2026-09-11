@@ -318,7 +318,7 @@ class RuntimeCatalogService:
                 project_id=project_uuid
             )
             if any(
-                str(policy.model_catalog_id) == values["model_id"]
+                str(policy.model_catalog_id) == values.get("model_id")
                 and not policy.is_enabled
                 for policy in policies
             ):
@@ -326,6 +326,21 @@ class RuntimeCatalogService:
                     code="runtime_model_denied",
                     message="Project model permission revoked",
                 )
+
+    def authorize_message(self, reference: str, *, thread_id: str, run_id: str) -> dict:
+        import jwt
+        secret = self._settings.runtime_model_config_secret or self._settings.runtime_delegation_secret
+        if not secret:
+            raise ForbiddenError(code="message_authorization_unavailable", message="Message authorization is not configured")
+        try:
+            values = jwt.decode(reference, secret, algorithms=["HS256"], audience="runtime-message",
+                                options={"require": ["exp", "project_id", "thread_id", "run_id", "actor"]})
+        except jwt.InvalidTokenError as exc:
+            raise ForbiddenError(code="message_authorization_invalid", message="Invalid message authorization") from exc
+        if values["thread_id"] != thread_id or values["run_id"] != run_id:
+            raise ForbiddenError(code="message_scope_denied", message="Message scope mismatch")
+        self._authorize_model_reference(values, values["project_id"])
+        return {"allowed": True, "project_id": values["project_id"]}
 
     def resolve_model_connection(
         self,

@@ -7,8 +7,9 @@ import { downloadBlob } from '@/utils/browser-download'
 import { copyText } from '@/utils/clipboard'
 import { getHistoryEntryId, getHistoryEntryPreviewText, getHistoryEntryTime, toPrettyJson } from '@/utils/threads'
 import { buildChatHistoryView } from '../history-view-model'
-import type { ChatInspectorFile } from '../inspector-view-model'
-import { type ChatPlanTodo, type ChatPlanView } from '../plan-view-model'
+type ChatInspectorFile = { path: string; content: string; lineCount: number; completeness: string }
+type ChatPlanTodo = { id: string; content: string; status: 'pending' | 'in_progress' | 'completed' }
+type ChatPlanView = { planTodos: ChatPlanTodo[]; ephemeralTodos: ChatPlanTodo[]; activeTask: ChatPlanTodo | null; totalTasks: number; completedTasks: number; allTasksCompleted: boolean; hasFrozenPlan: boolean }
 import type { ThreadHistoryEntry } from '@/types/management'
 
 type InspectorTabKey = 'overview' | 'tasks' | 'files' | 'history'
@@ -35,13 +36,19 @@ const props = defineProps<{
   hasInterrupt: boolean
   sourceNote: string
   contextNotice?: string
-  onUpdateState: (values: Record<string, unknown>) => Promise<boolean>
+  onUpdateState?: (values: Record<string, unknown>) => Promise<boolean>
+  historyLoading?: boolean
+  hasMoreHistory?: boolean
+  canExecute?: boolean
+  run?: unknown
 }>()
 
 const emit = defineEmits<{
   close: []
   'select-branch': [branchId: string]
   'reset-target': []
+  'load-history': []
+  'fork': []
 }>()
 
 const uiStore = useUiStore()
@@ -209,7 +216,7 @@ function handleCancelEdit() {
 }
 
 async function handleSaveEdit() {
-  if (!selectedFile.value) {
+  if (!selectedFile.value || !props.onUpdateState) {
     return
   }
 
@@ -265,6 +272,7 @@ async function handleSaveEdit() {
   <BaseDrawer
     :show="show"
     title="会话详情"
+    class="z-[100]"
     side="right"
     width="full"
     @close="emit('close')"
@@ -281,6 +289,7 @@ async function handleSaveEdit() {
               ? 'pw-chip-toggle-active'
               : ''
           "
+          :aria-label="tab.label"
           @click="activeTab = tab.key"
         >
           <span>{{ tab.label }}</span>
@@ -394,6 +403,12 @@ async function handleSaveEdit() {
           </div>
         </div>
 
+        <details class="pw-panel">
+          <summary class="cursor-pointer text-sm font-medium">
+            运行详情
+          </summary>
+          <pre class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">{{ toPrettyJson(run) }}</pre>
+        </details>
         <div
           v-if="props.sourceNote"
           class="pw-panel-info text-sm leading-7 text-sky-800 dark:text-sky-100"
@@ -622,7 +637,7 @@ async function handleSaveEdit() {
                   {{ selectedFile.path }}
                 </div>
                 <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                  {{ selectedFile.lineCount }} 行
+                  {{ selectedFile.lineCount }} 行 · {{ selectedFile.completeness }}
                 </div>
               </div>
 
@@ -640,7 +655,7 @@ async function handleSaveEdit() {
                   下载
                 </BaseButton>
                 <BaseButton
-                  v-if="!isEditing"
+                  v-if="!isEditing && onUpdateState"
                   variant="ghost"
                   @click="handleStartEdit"
                 >
@@ -869,6 +884,26 @@ async function handleSaveEdit() {
             </div>
           </div>
         </template>
+      </div>
+      <div
+        v-if="activeTab === 'history'"
+        class="flex flex-wrap gap-2"
+      >
+        <BaseButton
+          v-if="hasMoreHistory"
+          :disabled="historyLoading"
+          variant="secondary"
+          @click="emit('load-history')"
+        >
+          {{ historyLoading ? '加载中' : '加载更多' }}
+        </BaseButton>
+        <BaseButton
+          v-if="isViewingBranch"
+          :disabled="!canExecute"
+          @click="emit('fork')"
+        >
+          从此检查点重新执行
+        </BaseButton>
       </div>
     </div>
   </BaseDrawer>

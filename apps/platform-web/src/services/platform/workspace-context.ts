@@ -10,15 +10,11 @@ const workspaceProjectContextRules: Array<{
   module: WorkspaceProjectContextModule
 }> = [
   { prefix: '/workspace/overview', module: 'projects' },
-  { prefix: '/workspace/runtime', module: 'runtime_gateway' },
-  { prefix: '/workspace/chat', module: 'runtime_gateway' },
-  { prefix: '/workspace/threads', module: 'runtime_gateway' },
-  { prefix: '/workspace/sql-agent', module: 'runtime_gateway' },
-  { prefix: '/workspace/assistants', module: 'assistants' },
-  { prefix: '/workspace/announcements', module: 'announcements' },
   { prefix: '/workspace/projects', module: 'projects' },
+  { prefix: '/workspace/announcements', module: 'announcements' },
   { prefix: '/workspace/audit', module: 'audit' }
 ]
+
 
 export function getWorkspaceProjectContextModule(path: string): WorkspaceProjectContextModule | null {
   const match = workspaceProjectContextRules.find(

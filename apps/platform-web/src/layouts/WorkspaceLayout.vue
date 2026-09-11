@@ -3,8 +3,10 @@ import { storeToRefs } from 'pinia'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import TopContextBar from '@/components/layout/TopContextBar.vue'
 import { useUiStore } from '@/stores/ui'
+import { useAuthStore } from '@/stores/auth'
 
 const uiStore = useUiStore()
+const authStore = useAuthStore()
 const { sidebarCollapsed } = storeToRefs(uiStore)
 </script>
 
@@ -21,7 +23,7 @@ const { sidebarCollapsed } = storeToRefs(uiStore)
       <TopContextBar />
       <main class="pw-workspace-main flex min-h-0 flex-1 flex-col">
         <div class="min-h-0 w-full flex-1">
-          <router-view />
+          <router-view :key="authStore.sessionEpoch" />
         </div>
       </main>
     </div>

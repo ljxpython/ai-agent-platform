@@ -586,6 +586,7 @@ onMounted(() => {
 
         <template #table>
           <DataTable
+            :error="error"
             :columns="columns"
             :rows="announcementsRows"
             :loading="loading"

@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@langchain/langgraph-sdk@1.10.2':
+    hash: 2a96f9ddd6bd885886c7055637ffcc7dee547eb5cc2db36b5a82872ee0fe07b5
+    path: patches/@langchain__langgraph-sdk@1.10.2.patch
+
 importers:
 
   .:
@@ -12,14 +17,11 @@ importers:
         specifier: ^1.2.3
         version: 1.2.3(ws@8.20.0)
       '@langchain/langgraph-sdk':
-        specifier: 1.9.28
-        version: 1.9.28(@langchain/core@1.2.3(ws@8.20.0))(vue@3.5.40(typescript@5.7.3))
+        specifier: 1.10.2
+        version: 1.10.2(patch_hash=2a96f9ddd6bd885886c7055637ffcc7dee547eb5cc2db36b5a82872ee0fe07b5)(@langchain/core@1.2.3(ws@8.20.0))
       '@langchain/vue':
-        specifier: 1.0.29
-        version: 1.0.29(@langchain/core@1.2.3(ws@8.20.0))(vue@3.5.40(typescript@5.7.3))
-      '@tanstack/vue-virtual':
-        specifier: ^3.13.12
-        version: 3.13.23(vue@3.5.40(typescript@5.7.3))
+        specifier: 1.0.35
+        version: 1.0.35(@langchain/core@1.2.3(ws@8.20.0))(vue@3.5.40(typescript@5.7.3))
       '@vueuse/core':
         specifier: ^10.11.1
         version: 10.11.1(vue@3.5.40(typescript@5.7.3))
@@ -435,29 +437,23 @@ packages:
     resolution: {integrity: sha512-F+L5SsciykwDl7eDxacnhDTcWe1IF6jetzfkvI5PPfq6ogWHO7xcjU90SGh/3lqbbS0tgun+qF01KIqxawrCsA==}
     engines: {node: '>=20'}
 
-  '@langchain/langgraph-sdk@1.9.28':
-    resolution: {integrity: sha512-4j3XuM0PvtmAbL8mPfBS99ez3+ytRfgbOpAR/nOeaejTRF3Q9dNw2QnaGLGng8wLPtGLoSj+SYgUOVxy9Bv9vg==}
+  '@langchain/langgraph-sdk@1.10.2':
+    resolution: {integrity: sha512-86qsfdBZWu1ZgywLN8AThU/jXi9rjPDZPWcTJp4SA1A/L62ypTNoSXbvtiwZt1odokXccYTxK1XWS8tmVdvEmw==}
     peerDependencies:
       '@langchain/core': ^1.1.48
       react: ^18 || ^19
       react-dom: ^18 || ^19
-      svelte: ^4.0.0 || ^5.0.0
-      vue: ^3.0.0
     peerDependenciesMeta:
       react:
         optional: true
       react-dom:
         optional: true
-      svelte:
-        optional: true
-      vue:
-        optional: true
 
-  '@langchain/protocol@0.0.18':
-    resolution: {integrity: sha512-XW1egQtPfsGI41w2AMZNFZrUIwFSQHTjVMZs0OaTpCAvht/QLoaPN8FQcsysMVypOhupG28J29yOorrc70otBQ==}
+  '@langchain/protocol@0.0.19':
+    resolution: {integrity: sha512-9hKcRrH7cBX6gfutdfXPoft1OCchHe4FEpALoDJMl5Qu+n/YG5ynZmyu8+8cxORlPwHBoKTxggvXz+76M1yX1Q==}
 
-  '@langchain/vue@1.0.29':
-    resolution: {integrity: sha512-cyrPk+HUcp+YH4jrRT0VPExjW6LDaJ4gE4n+ZO7/sMlqMCCbhlLFajRHiJdQO/9U+5k8UKlXIIInWbe57Rqd3Q==}
+  '@langchain/vue@1.0.35':
+    resolution: {integrity: sha512-l/hkkozxGHdBzWimYiIa67k97mwflDVbvpv90q7DtIBWZaXDYD1yh6qaK3mF/hIub8scdZwLOT28geSCixIcoQ==}
     peerDependencies:
       '@langchain/core': ^1.1.48
       vue: ^3.0.0
@@ -613,14 +609,6 @@ packages:
 
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
-
-  '@tanstack/virtual-core@3.13.23':
-    resolution: {integrity: sha512-zSz2Z2HNyLjCplANTDyl3BcdQJc2k1+yyFoKhNRmCr7V7dY8o8q5m8uFTI1/Pg1kL+Hgrz6u3Xo6eFUB7l66cg==}
-
-  '@tanstack/vue-virtual@3.13.23':
-    resolution: {integrity: sha512-b5jPluAR6U3eOq6GWAYSpj3ugnAIZgGR0e6aGAgyRse0Yu6MVQQ0ZWm9SArSXWtageogn6bkVD8D//c4IjW3xQ==}
-    peerDependencies:
-      vue: ^2.7.0 || ^3.0.0
 
   '@types/esrecurse@4.3.1':
     resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
@@ -2631,27 +2619,24 @@ snapshots:
       - openai
       - ws
 
-  '@langchain/langgraph-sdk@1.9.28(@langchain/core@1.2.3(ws@8.20.0))(vue@3.5.40(typescript@5.7.3))':
+  '@langchain/langgraph-sdk@1.10.2(patch_hash=2a96f9ddd6bd885886c7055637ffcc7dee547eb5cc2db36b5a82872ee0fe07b5)(@langchain/core@1.2.3(ws@8.20.0))':
     dependencies:
       '@langchain/core': 1.2.3(ws@8.20.0)
-      '@langchain/protocol': 0.0.18
+      '@langchain/protocol': 0.0.19
       '@types/json-schema': 7.0.15
       p-queue: 9.1.1
       p-retry: 7.1.1
-    optionalDependencies:
-      vue: 3.5.40(typescript@5.7.3)
 
-  '@langchain/protocol@0.0.18': {}
+  '@langchain/protocol@0.0.19': {}
 
-  '@langchain/vue@1.0.29(@langchain/core@1.2.3(ws@8.20.0))(vue@3.5.40(typescript@5.7.3))':
+  '@langchain/vue@1.0.35(@langchain/core@1.2.3(ws@8.20.0))(vue@3.5.40(typescript@5.7.3))':
     dependencies:
       '@langchain/core': 1.2.3(ws@8.20.0)
-      '@langchain/langgraph-sdk': 1.9.28(@langchain/core@1.2.3(ws@8.20.0))(vue@3.5.40(typescript@5.7.3))
+      '@langchain/langgraph-sdk': 1.10.2(patch_hash=2a96f9ddd6bd885886c7055637ffcc7dee547eb5cc2db36b5a82872ee0fe07b5)(@langchain/core@1.2.3(ws@8.20.0))
       vue: 3.5.40(typescript@5.7.3)
     transitivePeerDependencies:
       - react
       - react-dom
-      - svelte
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -2750,13 +2735,6 @@ snapshots:
     optional: true
 
   '@standard-schema/spec@1.1.0': {}
-
-  '@tanstack/virtual-core@3.13.23': {}
-
-  '@tanstack/vue-virtual@3.13.23(vue@3.5.40(typescript@5.7.3))':
-    dependencies:
-      '@tanstack/virtual-core': 3.13.23
-      vue: 3.5.40(typescript@5.7.3)
 
   '@types/esrecurse@4.3.1': {}
 

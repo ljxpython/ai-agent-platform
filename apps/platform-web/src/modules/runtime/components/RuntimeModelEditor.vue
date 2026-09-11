@@ -1,293 +1,301 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import BaseButton from '@/components/base/BaseButton.vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import BaseSelect from '@/components/base/BaseSelect.vue'
-import type { RuntimeModelItem } from '@/types/management'
+import { computed, ref, watch } from "vue";
+import BaseButton from "@/components/base/BaseButton.vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import BaseSelect from "@/components/base/BaseSelect.vue";
+import type { RuntimeModelItem } from "@/types/management";
 
 export interface ModelRowDraft {
-  id: string
-  name: string
+  id: string;
+  name: string;
 }
 
 export interface ModelEditorSubmitPayload {
-  isEdit: boolean
-  editingId?: string
-  provider: string
-  display_name: string
-  base_url: string
-  protocol: string
-  api_key: string
-  enabled: boolean
-  models: ModelRowDraft[]
+  isEdit: boolean;
+  editingId?: string;
+  provider: string;
+  display_name: string;
+  base_url: string;
+  protocol: string;
+  api_key: string;
+  enabled: boolean;
+  models: ModelRowDraft[];
 }
 
 const props = withDefaults(
   defineProps<{
-    editingModel?: RuntimeModelItem | null
-    initialStation?: { provider: string; baseUrl: string; protocol: string } | null
-    busy?: boolean
+    editingModel?: RuntimeModelItem | null;
+    initialStation?: {
+      provider: string;
+      baseUrl: string;
+      protocol: string;
+    } | null;
+    busy?: boolean;
   }>(),
   {
     editingModel: null,
     initialStation: null,
-    busy: false
-  }
-)
+    busy: false,
+  },
+);
 
 const emit = defineEmits<{
-  close: []
-  submit: [payload: ModelEditorSubmitPayload]
-}>()
+  close: [];
+  submit: [payload: ModelEditorSubmitPayload];
+}>();
 
 interface ProviderPreset {
-  id: string
-  name: string
-  defaultBaseUrl: string
-  defaultProtocol: string
-  placeholderKey: string
-  recommendedModels: ModelRowDraft[]
+  id: string;
+  name: string;
+  defaultBaseUrl: string;
+  defaultProtocol: string;
+  placeholderKey: string;
+  recommendedModels: ModelRowDraft[];
 }
 
 const PROVIDER_PRESETS: ProviderPreset[] = [
   {
-    id: 'deepseek',
-    name: 'DeepSeek',
-    defaultBaseUrl: 'https://api.deepseek.com/v1',
-    defaultProtocol: 'openai-compatible',
-    placeholderKey: 'sk-... (DeepSeek 开放平台 API Key)',
+    id: "deepseek",
+    name: "DeepSeek",
+    defaultBaseUrl: "https://api.deepseek.com/v1",
+    defaultProtocol: "openai-compatible",
+    placeholderKey: "sk-... (DeepSeek 开放平台 API Key)",
     recommendedModels: [
-      { id: 'deepseek-chat', name: 'DeepSeek V3' },
-      { id: 'deepseek-reasoner', name: 'DeepSeek R1' }
-    ]
+      { id: "deepseek-chat", name: "DeepSeek V3" },
+      { id: "deepseek-reasoner", name: "DeepSeek R1" },
+    ],
   },
   {
-    id: 'openai',
-    name: 'OpenAI',
-    defaultBaseUrl: 'https://api.openai.com/v1',
-    defaultProtocol: 'openai-compatible',
-    placeholderKey: 'sk-... (OpenAI API Key)',
+    id: "openai",
+    name: "OpenAI",
+    defaultBaseUrl: "https://api.openai.com/v1",
+    defaultProtocol: "openai-compatible",
+    placeholderKey: "sk-... (OpenAI API Key)",
     recommendedModels: [
-      { id: 'gpt-4o', name: 'GPT-4o' },
-      { id: 'gpt-4o-mini', name: 'GPT-4o Mini' },
-      { id: 'o3-mini', name: 'o3-mini' }
-    ]
+      { id: "gpt-4o", name: "GPT-4o" },
+      { id: "gpt-4o-mini", name: "GPT-4o Mini" },
+      { id: "o3-mini", name: "o3-mini" },
+    ],
   },
   {
-    id: 'ollama',
-    name: 'Ollama (本地/局域网)',
-    defaultBaseUrl: 'http://localhost:11434/v1',
-    defaultProtocol: 'openai-compatible',
-    placeholderKey: 'ollama (本地无需或填任意值)',
+    id: "ollama",
+    name: "Ollama (本地/局域网)",
+    defaultBaseUrl: "http://localhost:11434/v1",
+    defaultProtocol: "openai-compatible",
+    placeholderKey: "ollama (本地无需或填任意值)",
     recommendedModels: [
-      { id: 'deepseek-r1:8b', name: 'DeepSeek R1 8B' },
-      { id: 'llama3.3', name: 'Llama 3.3' }
-    ]
+      { id: "deepseek-r1:8b", name: "DeepSeek R1 8B" },
+      { id: "llama3.3", name: "Llama 3.3" },
+    ],
   },
   {
-    id: 'qwen',
-    name: '通义千问 (DashScope)',
-    defaultBaseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-    defaultProtocol: 'openai-compatible',
-    placeholderKey: 'sk-... (阿里云百炼 API Key)',
+    id: "qwen",
+    name: "通义千问 (DashScope)",
+    defaultBaseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    defaultProtocol: "openai-compatible",
+    placeholderKey: "sk-... (阿里云百炼 API Key)",
     recommendedModels: [
-      { id: 'qwen-max', name: 'Qwen Max' },
-      { id: 'qwen-plus', name: 'Qwen Plus' },
-      { id: 'qwen-turbo', name: 'Qwen Turbo' }
-    ]
+      { id: "qwen-max", name: "Qwen Max" },
+      { id: "qwen-plus", name: "Qwen Plus" },
+      { id: "qwen-turbo", name: "Qwen Turbo" },
+    ],
   },
   {
-    id: 'glm',
-    name: '智谱清言 (GLM)',
-    defaultBaseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-    defaultProtocol: 'openai-compatible',
-    placeholderKey: '智谱 BigModel API Key',
+    id: "glm",
+    name: "智谱清言 (GLM)",
+    defaultBaseUrl: "https://open.bigmodel.cn/api/paas/v4",
+    defaultProtocol: "openai-compatible",
+    placeholderKey: "智谱 BigModel API Key",
     recommendedModels: [
-      { id: 'glm-4-plus', name: 'GLM-4 Plus' },
-      { id: 'glm-4-flash', name: 'GLM-4 Flash' }
-    ]
+      { id: "glm-4-plus", name: "GLM-4 Plus" },
+      { id: "glm-4-flash", name: "GLM-4 Flash" },
+    ],
   },
   {
-    id: 'anthropic',
-    name: 'Anthropic Claude',
-    defaultBaseUrl: 'https://api.anthropic.com/v1',
-    defaultProtocol: 'anthropic',
-    placeholderKey: 'sk-ant-... (Anthropic API Key)',
+    id: "anthropic",
+    name: "Anthropic Claude",
+    defaultBaseUrl: "https://api.anthropic.com/v1",
+    defaultProtocol: "anthropic",
+    placeholderKey: "sk-ant-... (Anthropic API Key)",
     recommendedModels: [
-      { id: 'claude-3-7-sonnet-20250219', name: 'Claude 3.7 Sonnet' },
-      { id: 'claude-3-5-haiku-20241022', name: 'Claude 3.5 Haiku' }
-    ]
+      { id: "claude-3-7-sonnet-20250219", name: "Claude 3.7 Sonnet" },
+      { id: "claude-3-5-haiku-20241022", name: "Claude 3.5 Haiku" },
+    ],
   },
   {
-    id: 'custom',
-    name: '自定义提供商 (Custom)',
-    defaultBaseUrl: '',
-    defaultProtocol: 'openai-compatible',
-    placeholderKey: 'API Key',
-    recommendedModels: [
-      { id: '', name: '' }
-    ]
-  }
-]
+    id: "custom",
+    name: "自定义提供商 (Custom)",
+    defaultBaseUrl: "",
+    defaultProtocol: "openai-compatible",
+    placeholderKey: "API Key",
+    recommendedModels: [{ id: "", name: "" }],
+  },
+];
 
 const providerOptions = PROVIDER_PRESETS.map((p) => ({
   value: p.id,
-  label: p.name
-}))
+  label: p.name,
+}));
 
 const PROTOCOL_OPTIONS = [
-  { value: 'openai-compatible', label: 'openai-compatible (主流兼容网关)' },
-  { value: 'anthropic', label: 'anthropic (Claude 原生网关)' }
-]
+  { value: "deepseek", label: "deepseek" },
+  { value: "openai", label: "openai" },
+  { value: "openai-compatible", label: "openai-compatible (主流兼容网关)" },
+  { value: "anthropic", label: "anthropic (Claude 原生网关)" },
+];
 
-const selectedPreset = ref('deepseek')
-const customProviderName = ref('')
-const baseUrl = ref('https://api.deepseek.com/v1')
-const protocol = ref('openai-compatible')
-const apiKey = ref('')
-const enabled = ref(true)
-const showApiKey = ref(false)
-const showAdvanced = ref(false)
-const formError = ref('')
+const selectedPreset = ref("deepseek");
+const customProviderName = ref("");
+const baseUrl = ref("https://api.deepseek.com/v1");
+const protocol = ref("openai-compatible");
+const apiKey = ref("");
+const enabled = ref(true);
+const showApiKey = ref(false);
+const showAdvanced = ref(false);
+const formError = ref("");
 
 // 编辑模式下的单模型字段
-const editSingleModelId = ref('')
-const editSingleDisplayName = ref('')
+const editSingleModelId = ref("");
+const editSingleDisplayName = ref("");
 
 // 新增模式下的多模型列表
 const modelList = ref<ModelRowDraft[]>([
-  { id: 'deepseek-chat', name: 'DeepSeek V3' },
-  { id: 'deepseek-reasoner', name: 'DeepSeek R1' }
-])
+  { id: "deepseek-chat", name: "DeepSeek V3" },
+  { id: "deepseek-reasoner", name: "DeepSeek R1" },
+]);
 
-const isEditMode = computed(() => Boolean(props.editingModel?.id))
+const isEditMode = computed(() => Boolean(props.editingModel?.id));
 
 const activeProviderKey = computed(() => {
-  if (selectedPreset.value === 'custom') {
-    return customProviderName.value.trim() || 'custom'
+  if (selectedPreset.value === "custom") {
+    return customProviderName.value.trim() || "custom";
   }
-  return selectedPreset.value
-})
+  return selectedPreset.value;
+});
 
 const activePlaceholderKey = computed(() => {
-  const preset = PROVIDER_PRESETS.find((p) => p.id === selectedPreset.value)
-  return preset?.placeholderKey || '请输入 API Key'
-})
+  const preset = PROVIDER_PRESETS.find((p) => p.id === selectedPreset.value);
+  return preset?.placeholderKey || "请输入 API Key";
+});
 
 function handlePresetChange(presetId: string) {
-  selectedPreset.value = presetId
-  const found = PROVIDER_PRESETS.find((p) => p.id === presetId)
-  if (!found) return
+  selectedPreset.value = presetId;
+  const found = PROVIDER_PRESETS.find((p) => p.id === presetId);
+  if (!found) return;
 
-  if (presetId !== 'custom') {
-    baseUrl.value = found.defaultBaseUrl
-    protocol.value = found.defaultProtocol
+  if (presetId !== "custom") {
+    baseUrl.value = found.defaultBaseUrl;
+    protocol.value = found.defaultProtocol;
     if (!isEditMode.value) {
-      modelList.value = found.recommendedModels.map((m) => ({ ...m }))
+      modelList.value = found.recommendedModels.map((m) => ({ ...m }));
     }
   } else {
     if (!baseUrl.value) {
-      baseUrl.value = 'https://'
+      baseUrl.value = "https://";
     }
   }
 }
 
 function addModelRow() {
-  modelList.value.push({ id: '', name: '' })
+  modelList.value.push({ id: "", name: "" });
 }
 
 function removeModelRow(index: number) {
-  if (modelList.value.length <= 1) return
-  modelList.value.splice(index, 1)
+  if (modelList.value.length <= 1) return;
+  modelList.value.splice(index, 1);
 }
 
 function initForm() {
-  formError.value = ''
-  showApiKey.value = false
-  showAdvanced.value = false
+  formError.value = "";
+  showApiKey.value = false;
+  showAdvanced.value = false;
 
   if (props.editingModel) {
-    const m = props.editingModel
-    editSingleModelId.value = m.model || m.model_id || ''
-    editSingleDisplayName.value = m.display_name || ''
-    baseUrl.value = m.base_url || ''
-    protocol.value = m.protocol === 'anthropic' ? 'anthropic' : 'openai-compatible'
-    apiKey.value = ''
-    enabled.value = m.enabled !== false
+    const m = props.editingModel;
+    editSingleModelId.value = m.model;
+    editSingleDisplayName.value = m.display_name || "";
+    baseUrl.value = m.base_url || "";
+    protocol.value = m.protocol;
+    apiKey.value = "";
+    enabled.value = m.enabled !== false;
 
-    const matchedPreset = PROVIDER_PRESETS.find((p) => p.id === m.provider?.toLowerCase())
+    const matchedPreset = PROVIDER_PRESETS.find(
+      (p) => p.id === m.provider?.toLowerCase(),
+    );
     if (matchedPreset) {
-      selectedPreset.value = matchedPreset.id
-      customProviderName.value = ''
+      selectedPreset.value = matchedPreset.id;
+      customProviderName.value = "";
     } else {
-      selectedPreset.value = 'custom'
-      customProviderName.value = m.provider || ''
+      selectedPreset.value = "custom";
+      customProviderName.value = m.provider || "";
     }
   } else if (props.initialStation) {
-    const s = props.initialStation
-    const matchedPreset = PROVIDER_PRESETS.find((p) => p.id === s.provider?.toLowerCase())
+    const s = props.initialStation;
+    const matchedPreset = PROVIDER_PRESETS.find(
+      (p) => p.id === s.provider?.toLowerCase(),
+    );
     if (matchedPreset) {
-      selectedPreset.value = matchedPreset.id
-      customProviderName.value = ''
+      selectedPreset.value = matchedPreset.id;
+      customProviderName.value = "";
     } else {
-      selectedPreset.value = 'custom'
-      customProviderName.value = s.provider || ''
+      selectedPreset.value = "custom";
+      customProviderName.value = s.provider || "";
     }
-    baseUrl.value = s.baseUrl || ''
-    protocol.value = s.protocol === 'anthropic' ? 'anthropic' : 'openai-compatible'
-    apiKey.value = ''
-    enabled.value = true
-    editSingleModelId.value = ''
-    editSingleDisplayName.value = ''
-    modelList.value = [
-      { id: '', name: '' }
-    ]
+    baseUrl.value = s.baseUrl || "";
+    protocol.value =
+      s.protocol === "anthropic" ? "anthropic" : "openai-compatible";
+    apiKey.value = "";
+    enabled.value = true;
+    editSingleModelId.value = "";
+    editSingleDisplayName.value = "";
+    modelList.value = [{ id: "", name: "" }];
   } else {
-    selectedPreset.value = 'deepseek'
-    customProviderName.value = ''
-    baseUrl.value = 'https://api.deepseek.com/v1'
-    protocol.value = 'openai-compatible'
-    apiKey.value = ''
-    enabled.value = true
-    editSingleModelId.value = ''
-    editSingleDisplayName.value = ''
+    selectedPreset.value = "deepseek";
+    customProviderName.value = "";
+    baseUrl.value = "https://api.deepseek.com/v1";
+    protocol.value = "openai-compatible";
+    apiKey.value = "";
+    enabled.value = true;
+    editSingleModelId.value = "";
+    editSingleDisplayName.value = "";
     modelList.value = [
-      { id: 'deepseek-chat', name: 'DeepSeek V3' },
-      { id: 'deepseek-reasoner', name: 'DeepSeek R1' }
-    ]
+      { id: "deepseek-chat", name: "DeepSeek V3" },
+      { id: "deepseek-reasoner", name: "DeepSeek R1" },
+    ];
   }
 }
 
 watch(
   [() => props.editingModel, () => props.initialStation],
   () => {
-    initForm()
+    initForm();
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 function handleSubmit() {
-  formError.value = ''
-  const provider = activeProviderKey.value.trim()
-  const trimmedBaseUrl = baseUrl.value.trim()
+  if (props.busy) return;
+  formError.value = "";
+  const provider = activeProviderKey.value.trim();
+  const trimmedBaseUrl = baseUrl.value.trim();
 
   if (!provider) {
-    formError.value = '请提供有效的 Provider 标识'
-    return
+    formError.value = "请提供有效的 Provider 标识";
+    return;
   }
   if (!trimmedBaseUrl) {
-    formError.value = 'Base URL 不能为空'
-    return
+    formError.value = "Base URL 不能为空";
+    return;
   }
 
   if (isEditMode.value) {
-    const singleId = editSingleModelId.value.trim()
+    const singleId = editSingleModelId.value.trim();
     if (!singleId) {
-      formError.value = 'Model ID 不能为空'
-      return
+      formError.value = "Model ID 不能为空";
+      return;
     }
 
-    emit('submit', {
+    emit("submit", {
       isEdit: true,
       editingId: props.editingModel?.id,
       provider,
@@ -296,29 +304,29 @@ function handleSubmit() {
       protocol: protocol.value,
       api_key: apiKey.value.trim(),
       enabled: enabled.value,
-      models: [{ id: singleId, name: editSingleDisplayName.value.trim() }]
-    })
-    return
+      models: [{ id: singleId, name: editSingleDisplayName.value.trim() }],
+    });
+    return;
   }
 
   // 新增多模型模式
   const validModels = modelList.value
     .map((m) => ({ id: m.id.trim(), name: m.name.trim() }))
-    .filter((m) => m.id.length > 0)
+    .filter((m) => m.id.length > 0);
 
   if (validModels.length === 0) {
-    formError.value = '请至少添加一个有效的模型（填写 Model ID）'
-    return
+    formError.value = "请至少添加一个有效的模型（填写 Model ID）";
+    return;
   }
 
   // 检查 API Key
-  const trimmedKey = apiKey.value.trim()
-  if (!trimmedKey && selectedPreset.value !== 'ollama') {
-    formError.value = '请输入该提供商的 API Key'
-    return
+  const trimmedKey = apiKey.value.trim();
+  if (!trimmedKey && selectedPreset.value !== "ollama") {
+    formError.value = "请输入该提供商的 API Key";
+    return;
   }
 
-  emit('submit', {
+  emit("submit", {
     isEdit: false,
     provider,
     display_name: validModels[0]?.name || validModels[0]?.id || provider,
@@ -326,17 +334,23 @@ function handleSubmit() {
     protocol: protocol.value,
     api_key: trimmedKey,
     enabled: enabled.value,
-    models: validModels
-  })
+    models: validModels,
+  });
 }
 </script>
 
 <template>
-  <section class="pw-panel border border-gray-200 bg-white shadow-sm dark:border-dark-700 dark:bg-dark-900">
+  <section
+    class="pw-panel border border-gray-200 bg-white shadow-sm dark:border-dark-700 dark:bg-dark-900"
+  >
     <!-- Header -->
-    <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-800">
+    <div
+      class="flex items-center justify-between border-b border-gray-100 px-6 py-4 dark:border-dark-800"
+    >
       <div class="flex items-center gap-2.5">
-        <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400">
+        <div
+          class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400"
+        >
           <BaseIcon
             name="sparkle"
             size="sm"
@@ -344,10 +358,14 @@ function handleSubmit() {
         </div>
         <div>
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">
-            {{ isEditMode ? '编辑模型配置' : '添加提供商与模型' }}
+            {{ isEditMode ? "编辑模型配置" : "添加提供商与模型" }}
           </h2>
           <p class="text-xs text-gray-500 dark:text-dark-400">
-            {{ isEditMode ? '修改已配置模型的接入地址、凭据或显示名称' : '配置提供商凭据，批量导入推荐模型或自定义模型清单' }}
+            {{
+              isEditMode
+                ? "修改已配置模型的接入地址、凭据或显示名称"
+                : "配置提供商凭据，批量导入推荐模型或自定义模型清单"
+            }}
           </p>
         </div>
       </div>
@@ -383,7 +401,9 @@ function handleSubmit() {
       <!-- 第一行：提供方选择 (使用 BaseSelect 美化下拉框) 与 API Key -->
       <div class="grid gap-5 md:grid-cols-2">
         <div>
-          <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+          <label
+            class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+          >
             提供商 (Provider)
           </label>
           <BaseSelect
@@ -406,8 +426,10 @@ function handleSubmit() {
         </div>
 
         <div>
-          <label class="mb-1.5 flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-dark-200">
-            <span>API Key {{ isEditMode ? '(留空表示沿用现有凭据)' : '' }}</span>
+          <label
+            class="mb-1.5 flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-dark-200"
+          >
+            <span>API Key {{ isEditMode ? "(留空表示沿用现有凭据)" : "" }}</span>
             <button
               type="button"
               class="flex items-center gap-1 text-[11px] font-normal text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200"
@@ -417,7 +439,7 @@ function handleSubmit() {
                 :name="showApiKey ? 'eye-off' : 'eye'"
                 size="xs"
               />
-              {{ showApiKey ? '隐藏' : '显示' }}
+              {{ showApiKey ? "隐藏" : "显示" }}
             </button>
           </label>
           <div class="relative">
@@ -540,7 +562,9 @@ function handleSubmit() {
       </div>
 
       <!-- 第三部分：高级设置 (折叠面板，收纳 Base URL, 协议 Protocol 美化下拉框) -->
-      <div class="overflow-hidden rounded-xl border border-gray-200/70 bg-white dark:border-dark-800 dark:bg-dark-900">
+      <div
+        class="overflow-hidden rounded-xl border border-gray-200/70 bg-white dark:border-dark-800 dark:bg-dark-900"
+      >
         <button
           type="button"
           class="flex w-full items-center justify-between px-4 py-3 text-left text-xs font-medium text-gray-700 transition hover:bg-gray-50 dark:text-dark-200 dark:hover:bg-dark-800"
@@ -568,7 +592,9 @@ function handleSubmit() {
         >
           <div class="grid gap-4 md:grid-cols-2">
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 Base URL (API 接入端点)
               </label>
               <input
@@ -581,7 +607,9 @@ function handleSubmit() {
             </div>
 
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 Protocol 协议
               </label>
               <BaseSelect
@@ -593,7 +621,9 @@ function handleSubmit() {
           </div>
 
           <div class="flex items-center gap-2 pt-1">
-            <label class="flex cursor-pointer select-none items-center gap-2 text-xs text-gray-700 dark:text-dark-200">
+            <label
+              class="flex cursor-pointer select-none items-center gap-2 text-xs text-gray-700 dark:text-dark-200"
+            >
               <input
                 v-model="enabled"
                 type="checkbox"
@@ -608,7 +638,9 @@ function handleSubmit() {
     </div>
 
     <!-- Footer -->
-    <div class="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50/50 px-6 py-3.5 dark:border-dark-800 dark:bg-dark-950/40">
+    <div
+      class="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50/50 px-6 py-3.5 dark:border-dark-800 dark:bg-dark-950/40"
+    >
       <BaseButton
         variant="ghost"
         :disabled="busy"
@@ -626,7 +658,9 @@ function handleSubmit() {
           size="sm"
           class="animate-spin"
         />
-        <span>{{ busy ? '保存中...' : (isEditMode ? '保存修改' : '批量添加并启用') }}</span>
+        <span>{{
+          busy ? "保存中..." : isEditMode ? "保存修改" : "批量添加并启用"
+        }}</span>
       </BaseButton>
     </div>
   </section>

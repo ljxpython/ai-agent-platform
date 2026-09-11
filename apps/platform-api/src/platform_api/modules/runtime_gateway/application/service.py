@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from platform_api.core.security import empty_runtime_context_hash
+
 import hashlib
 import json
 from collections.abc import Callable, Mapping
@@ -708,6 +710,50 @@ class RuntimeGatewayService:
         self._assert_thread_project_scope(project_id=project_id, thread=thread)
         return thread
 
+    async def enqueue_thread_message(self, *, actor: ActorContext, project_id: str,
+                                     thread_id: str, payload: dict[str, Any],
+                                     idempotency_key: str | None) -> Any:
+        if not idempotency_key or len(idempotency_key) > 128:
+            raise BadRequestError(code="idempotency_key_required", message="Idempotency-Key header is required")
+        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=True)
+        metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        agent_key = clean_str(metadata.get("graph_id"))
+        if not agent_key:
+            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+        if agent_key not in {"reference_agent", "showcase_demo"}:
+            raise ConflictError(code="queue_not_supported", message="Graph does not support queued messages")
+        target_run_id = clean_str(payload.get("target_run_id"))
+        if not target_run_id:
+            raise BadRequestError(code="target_run_required", message="Target Run is required")
+        await self._upstream.get_thread_run(thread_id, target_run_id)
+        upstream = self._upstream
+        if self._delegation_headers_factory:
+            upstream = upstream.with_forwarded_headers(self._delegation_headers_factory(
+                project_id=project_id, agent_key=agent_key, thread_id=thread_id,
+                context_hash=empty_runtime_context_hash(), operation="message-enqueue"))
+        import jwt
+        import time
+        if not self._runtime_model_config_secret:
+            raise ServiceUnavailableError(code="message_auth_unavailable", message="Message authorization is not configured")
+        reference = jwt.encode({
+            "aud": "runtime-message", "exp": int(time.time()) + 86400,
+            "project_id": project_id, "thread_id": thread_id, "run_id": target_run_id,
+            "agent_key": agent_key, "actor": {"user_id": actor.user_id,
+                "principal_type": actor.principal_type, "credential_id": actor.credential_id},
+        }, self._runtime_model_config_secret, algorithm="HS256")
+        return await upstream.enqueue_thread_message(thread_id, {
+            **payload, "idempotency_key": idempotency_key, "authorization_ref": reference,
+        })
+
+    async def list_thread_messages(self, *, actor: ActorContext, project_id: str, thread_id: str) -> Any:
+        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=False)
+        metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        agent_key = clean_str(metadata.get("graph_id"))
+        upstream = self._upstream
+        if self._delegation_headers_factory:
+            upstream = upstream.with_forwarded_headers(self._delegation_headers_factory(project_id=project_id, agent_key=agent_key, thread_id=thread_id, context_hash=empty_runtime_context_hash(), operation="message-read"))
+        return await upstream.list_thread_messages(thread_id)
+
     def _assistant_belongs_project(
         self,
         *,
@@ -777,6 +823,8 @@ class RuntimeGatewayService:
         interrupt_id: str | None = None,
     ) -> tuple[StoredRunRequest, Any]:
         """Persist submission identity; Agent Server owns execution and concurrency."""
+        if upstream_payload.get("assistant_id") in {"reference_agent", "showcase_demo"}:
+            upstream_payload = {**upstream_payload, "durability": "sync"}
         key = _normalize_idempotency_key(idempotency_key)
         actor_id = (
             clean_str(actor.user_id)

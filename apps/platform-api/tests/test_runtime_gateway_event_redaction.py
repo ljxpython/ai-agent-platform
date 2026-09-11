@@ -3,7 +3,10 @@ from __future__ import annotations
 import unittest
 from collections.abc import AsyncIterator
 
+import anyio
+import anyio.lowlevel
 from platform_api.modules.runtime_gateway.presentation.http import (
+    RuntimeStreamingResponse,
     _redact_protocol_event_stream,
 )
 
@@ -14,6 +17,26 @@ async def _chunks(*values: bytes) -> AsyncIterator[bytes]:
 
 
 class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
+    async def test_disconnect_closes_suspended_upstream_before_response_returns(self):
+        closed = []
+
+        async def upstream():
+            try:
+                yield b": heartbeat\n\n"
+            finally:
+                await anyio.lowlevel.checkpoint()
+                closed.append(True)
+
+        with anyio.CancelScope() as scope:
+            async def send(message):
+                if message["type"] == "http.response.body":
+                    scope.cancel()
+                    await anyio.lowlevel.checkpoint()
+
+            response = RuntimeStreamingResponse(_redact_protocol_event_stream(upstream()))
+            await response.stream_response(send)
+        self.assertEqual(closed, [True])
+
     async def test_redacts_sensitive_fields_without_changing_protocol_shape(
         self,
     ) -> None:

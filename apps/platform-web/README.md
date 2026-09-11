@@ -26,7 +26,7 @@
 - 直接替代 `runtime-service` 的运行时调试入口
 - 绕过 `platform-api` 直连正式治理链路
 
-Chat 真实链路验收使用 [Chat 前端 Harness](./docs/chat-frontend-harness.md)，入口为 `pnpm harness:chat`。
+Chat 真实链路验收使用 [Chat 前端 Harness](./docs/chat-frontend-harness.md)，使用 `pnpm exec playwright test e2e/chat-refactor.spec.ts`；消息专项由 Runtime 的 `scripts/q5_message_acceptance.py` 启动隔离环境。
 
 ## 推荐读路径
 
@@ -41,3 +41,9 @@ Chat 真实链路验收使用 [Chat 前端 Harness](./docs/chat-frontend-harness
 
 - 正式控制面页面在 service/state/permission/audit 上应该怎么做  
   → 优先看 control-plane 页面标准
+
+## Chat 与验收
+
+保留 Vue 与官方 SDK，运行目标是 graph_id，Agent CRUD 使用管理 ID。消息、审批与队列投递分别走公开契约，所有浏览器请求经 Platform API。资源模板站和内嵌参考源码已退役。
+
+开发与验收事实源：[重构项目](../../docs/projects/20260910-platform-web-refactor/README.md)。基础检查：`pnpm test:run`、`pnpm typecheck`、`pnpm lint --max-warnings 0`、`pnpm build`。真实链路测试须先准备授权测试项目及已部署图，不以 mock 目录代替真实接口。

@@ -25,9 +25,8 @@
   },
   "dependencies": {
     "@langchain/core": "^1.2.3",
-    "@langchain/langgraph-sdk": "1.9.28",
-    "@langchain/vue": "1.0.29",
-    "@tanstack/vue-virtual": "^3.13.12",
+    "@langchain/langgraph-sdk": "1.10.2",
+    "@langchain/vue": "1.0.35",
     "@vueuse/core": "^10.11.1",
     "axios": "^1.8.4",
     "markdown-it": "^14.1.1",
@@ -64,5 +63,10 @@
     "vue-eslint-parser": "^9.4.3",
     "vue-tsc": "^2.2.0"
   },
-  "packageManager": "pnpm@10.5.1"
+  "packageManager": "pnpm@10.5.1",
+  "pnpm": {
+    "patchedDependencies": {
+      "@langchain/langgraph-sdk@1.10.2": "patches/@langchain__langgraph-sdk@1.10.2.patch"
+    }
+  }
 }

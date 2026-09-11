@@ -3,9 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-import os
-
-import httpx
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
@@ -18,9 +15,11 @@ from langchain.agents.middleware import (
 )
 from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import RunnableConfig
+from langchain_openai import ChatOpenAI
 from langgraph.pregel import Pregel
 
 from runtime_service.middlewares import (
+    MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     RuntimeConfigMiddleware,
 )
@@ -40,6 +39,7 @@ from runtime_service.runtime import (
 )
 from runtime_service.runtime.auth import VerifiedDelegation
 from runtime_service.runtime.errors import RuntimeAuthError
+from runtime_service.runtime.modeling import fetch_model_connection
 from runtime_service.services.reference_agent.prompts import SYSTEM_PROMPT
 from runtime_service.services.reference_agent.tools import read_reference
 
@@ -120,29 +120,11 @@ async def _runtime_model_connection(
     configurable = config.get("configurable") or {}
     if not isinstance(configurable, Mapping):
         return None
-    reference = configurable.get("_runtime_model_ref")
-    endpoint = os.getenv("PLATFORM_RUNTIME_MODEL_CONFIG_URL", "").strip()
-    if not reference or not endpoint or not project_id:
-        return None
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get(
-                endpoint,
-                headers={
-                    "x-runtime-model-ref": str(reference),
-                    "x-project-id": project_id,
-                },
-            )
-            response.raise_for_status()
-            payload = response.json()
-    except (httpx.HTTPError, ValueError) as exc:
-        raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id") from exc
-    if not isinstance(payload, dict) or payload.get("model_id") != model_id:
-        raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
-    required = ("provider", "base_url", "protocol", "model", "api_key")
-    if any(not isinstance(payload.get(key), str) or not payload[key] for key in required):
-        raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
-    return {key: payload[key] for key in required} | {"model_id": model_id}
+    return await fetch_model_connection(
+        configurable.get("runtime_model_ref"),
+        model_id=model_id,
+        project_id=project_id,
+    )
 
 
 def _runtime_identity_and_policy(
@@ -155,31 +137,38 @@ def _runtime_identity_and_policy(
 async def get_agent(config: RunnableConfig) -> Pregel:
     """Resolve Runtime values and return the compiled reference graph."""
 
-    runtime_model = _runtime_model(config)
     configurable = config.get("configurable") or {}
+    probe_only = bool(configurable) and set(configurable) <= {
+        "graph_id", "thread_id", "checkpoint_id", "checkpoint_ns",
+    }
+    runtime_model = _runtime_model(config)
     local_test_auth = (
         isinstance(configurable, Mapping)
         and configurable.get("_runtime_test_local_auth") is True
     )
-    facts = _runtime_facts(config)
-    principal, policy = facts.principal, facts.policy
-    raw_context = config.get("context")
-    context = parse_runtime_context(raw_context)
-    if raw_context is not None and facts.context_hash != runtime_context_hash(context):
-        raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
-    resolved = resolve_runtime_config(
-        principal=principal,
-        context=context,
-        policy=policy,
-        defaults=_DEFAULTS,
-        tool_permissions=_TOOL_PERMISSIONS,
+    facts = None if probe_only else _runtime_facts(config)
+    principal, policy = (facts.principal, facts.policy) if facts else (None, None)
+    connection = None
+    resolved = None
+    if facts:
+        raw_context = config.get("context")
+        context = parse_runtime_context(raw_context)
+        if raw_context is not None and facts.context_hash != runtime_context_hash(context):
+            raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
+        resolved = resolve_runtime_config(
+            principal=principal,
+            context=context,
+            policy=policy,
+            defaults=_DEFAULTS,
+            tool_permissions=_TOOL_PERMISSIONS,
+        )
+        connection = None if runtime_model is not None else await _runtime_model_connection(
+            config, model_id=resolved.model_id, project_id=principal.project_id,
+        )
+    model = (
+        ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
+        if probe_only else runtime_model or _build_runtime_model(resolved, connection)
     )
-    connection = None if runtime_model is not None else await _runtime_model_connection(
-        config,
-        model_id=resolved.model_id,
-        project_id=principal.project_id,
-    )
-    model = runtime_model or _build_runtime_model(resolved, connection)
     fallback_model = _runtime_fallback_model(config) if runtime_model is not None else None
     model_retry_enabled = (
         runtime_model is not None
@@ -196,7 +185,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         return None
 
     def model_builder(next_config):
-        next_connection = connection if next_config.model_id == resolved.model_id else None
+        next_connection = connection if resolved and next_config.model_id == resolved.model_id else None
         return _build_runtime_model(next_config, next_connection)
 
     middleware = [
@@ -208,6 +197,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             model_builder=model_builder,
             tool_permissions=_TOOL_PERMISSIONS,
             local_fallback=runtime_model is not None or local_test_auth,
+            probe_only=probe_only,
         ),
         ModelCallLimitMiddleware(run_limit=10, exit_behavior="end"),
         ToolCallLimitMiddleware(run_limit=10, exit_behavior="error"),
@@ -239,6 +229,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             else []
         ),
         ModelCallTimeoutMiddleware(timeout_seconds=30),
+        MessageQueueMiddleware(),
     ]
     agent = create_agent(
         model=model,
@@ -248,6 +239,9 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         context_schema=RuntimeContext,
         name="reference_agent",
     )
+
+    if probe_only:
+        return agent
 
     bound_config = dict(config)
     configurable = dict(bound_config.get("configurable") or {})

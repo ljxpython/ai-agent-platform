@@ -15,6 +15,7 @@ const props = withDefaults(
     columns: DataTableColumn[]
     rows: DataRow[]
     loading?: boolean
+    error?: string
     rowKey?: string | ((row: DataRow, index: number) => string | number)
     rowClass?: (
       row: DataRow,
@@ -38,6 +39,7 @@ const props = withDefaults(
   }>(),
   {
     loading: false,
+    error: '',
     rowKey: 'id',
     rowClass: undefined,
     page: 0,
@@ -514,6 +516,7 @@ watch([pageAllSelected, pagePartiallySelected], () => {
   <div
     ref="rootRef"
     class="pw-data-table-root"
+    :aria-busy="loading"
   >
     <div
       v-if="$slots.toolbar || (showColumnSettings && toggleableColumns.length)"
@@ -577,7 +580,14 @@ watch([pageAllSelected, pagePartiallySelected], () => {
     </div>
 
     <div
-      v-if="!loading && !sortedRows.length"
+      v-if="error && !loading"
+      role="alert"
+      class="p-4 text-sm text-red-600"
+    >
+      列表读取失败，请重试。
+    </div>
+    <div
+      v-else-if="!loading && !sortedRows.length"
       class="p-4"
     >
       <EmptyState

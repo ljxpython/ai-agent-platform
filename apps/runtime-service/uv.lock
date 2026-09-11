@@ -583,7 +583,7 @@ wheels = [
 
 [[package]]
 name = "graphharbor"
-version = "0.13.0.post26"
+version = "0.13.0.post27"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -594,14 +594,14 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "uvicorn", extra = ["standard"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/50/31/a6aeb5f2526a8c7610fffa1813fdf8ddb3b1257cc662d1e2718cf5368163/graphharbor-0.13.0.post26.tar.gz", hash = "sha256:5f8b92f3a2614bc3a7f2882609ce99fd1812ddd2a89d2004845a2928b21febfc", size = 40601, upload-time = "2026-09-10T10:04:40.197Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/e7/f7/ca1833cc170cf4efa1d94a67f821010aacf707810f483996f98188a521f3/graphharbor-0.13.0.post27.tar.gz", hash = "sha256:b5b97b6984b32b2e8ee3b36f0420ab93215f546ca370bd2aae0475094f238e24", size = 40658, upload-time = "2026-09-11T01:34:50.301Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/05/d6/7ac4a0162d3e1a19cae911c89acb2df602ef8c1e98ec016215ac9cacdc15/graphharbor-0.13.0.post26-py3-none-any.whl", hash = "sha256:5dc28c8d1b1850226686cb422cc85b9ffe60fab808c5691bd2cbc1a64bbd7771", size = 39231, upload-time = "2026-09-10T10:04:38.684Z" },
+    { url = "https://files.pythonhosted.org/packages/72/92/1d397168c6f790e63c9fc16da73aa017d11cbac8e35346dbf8b8973c4355/graphharbor-0.13.0.post27-py3-none-any.whl", hash = "sha256:1de3f8dd34634fa3ef8598310b095f7303ce73bcbac079e4a00ec05d1add0197", size = 39260, upload-time = "2026-09-11T01:34:49.092Z" },
 ]
 
 [[package]]
 name = "graphharbor-runtime"
-version = "0.13.0.post26"
+version = "0.13.0.post27"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "alembic" },
@@ -618,9 +618,9 @@ dependencies = [
     { name = "starlette" },
     { name = "structlog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d3/5a/4a73648d066d91f268c3b46a5d565aaa7a350d34d2cd3306e64e97779ea0/graphharbor_runtime-0.13.0.post26.tar.gz", hash = "sha256:a5eeba85a20ef38da5804b41677666473f2a594d9d2a18953851607bc715dd62", size = 126253, upload-time = "2026-09-10T10:04:36.269Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/dc/aa/c90276c9d0a2f347f66238c9fce4b83847e73b20bfbfaa997e55f8fbe1a5/graphharbor_runtime-0.13.0.post27.tar.gz", hash = "sha256:75ee1869b56a8b47fb0d92ef20cff586e76a01ccc97a6c6140e799d50e4134a3", size = 127100, upload-time = "2026-09-11T01:34:47.095Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/57/ba/c3cc189b6562351d1572c0f347a25e09f54fa9b299c98fb1835bc159302b/graphharbor_runtime-0.13.0.post26-py3-none-any.whl", hash = "sha256:d552a2830ca9bcbd6b9e761d874a0120c79efef27a6ea00a385d313e3608ab70", size = 106106, upload-time = "2026-09-10T10:04:34.722Z" },
+    { url = "https://files.pythonhosted.org/packages/fc/dc/5d31efdc6437b640061552f53758c44ee8f4ebc660b7acb4749361c21d50/graphharbor_runtime-0.13.0.post27-py3-none-any.whl", hash = "sha256:2058cedeb0e7bceba12e5a41d30ceb2e6e5511651ecbc9ca038b3dc8bb317fa3", size = 106283, upload-time = "2026-09-11T01:34:45.305Z" },
 ]
 
 [[package]]
@@ -1137,6 +1137,7 @@ dependencies = [
     { name = "langgraph-sdk" },
     { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "pillow" },
+    { name = "psycopg", extra = ["binary"] },
     { name = "pyjwt", extra = ["crypto"] },
     { name = "pymupdf4llm" },
     { name = "python-dotenv" },
@@ -1153,7 +1154,7 @@ dev = [
 requires-dist = [
     { name = "deepagents", specifier = ">=0.4.4" },
     { name = "fastapi", specifier = ">=0.133.1" },
-    { name = "graphharbor", specifier = "==0.13.0.post26" },
+    { name = "graphharbor", specifier = "==0.13.0.post27" },
     { name = "langchain", extras = ["openai"], specifier = ">=1.2.10" },
     { name = "langchain-community", specifier = ">=0.4.1" },
     { name = "langchain-deepseek", specifier = ">=1.0.1" },
@@ -1165,6 +1166,7 @@ requires-dist = [
     { name = "langgraph-sdk", specifier = "==0.4.3" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.42.1,<2" },
     { name = "pillow", specifier = ">=10.0.0" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.2.0" },
     { name = "pyjwt", extras = ["crypto"], specifier = ">=2.10.1" },
     { name = "pymupdf4llm", specifier = ">=0.1.0,<0.2.0" },
     { name = "python-dotenv", specifier = ">=1.2.1" },

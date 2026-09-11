@@ -1,172 +1,20 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/components/base/BaseIcon.vue'
-import { useAuthorization } from '@/composables/useAuthorization'
+import { useNavigation } from '@/composables/useNavigation'
 import { appMeta } from '@/config/app-meta'
 import BrandMark from '@/components/layout/BrandMark.vue'
 import { useThemeStore } from '@/stores/theme'
 import { useUiStore } from '@/stores/ui'
-import type { PermissionCode } from '@/types/management'
 
 const route = useRoute()
 const { t } = useI18n()
 const uiStore = useUiStore()
 const themeStore = useThemeStore()
-const isDev = import.meta.env.DEV
-const authorization = useAuthorization()
 
-type SidebarItem = {
-  to: string
-  label: string
-  icon: string
-  sectionTitle?: string
-  exact?: boolean
-  requiredPermissions?: PermissionCode[]
-  permissionMode?: 'all' | 'any'
-}
-
-type SidebarGroup = {
-  id: string
-  label: string
-  items: SidebarItem[]
-}
-
-const groups = computed(() => {
-  const baseGroups: SidebarGroup[] = [
-    {
-      id: 'workspace',
-      label: 'Workspace',
-      items: [
-        { to: '/workspace/overview', label: t('nav.overview'), icon: 'overview' },
-        { to: '/workspace/projects', label: t('nav.projects'), icon: 'folder' },
-        {
-          to: '/workspace/users',
-          label: t('nav.users'),
-          icon: 'users',
-          requiredPermissions: ['platform.user.read']
-        }
-      ]
-    },
-    {
-      id: 'agent',
-      label: 'Agent Workspace',
-      items: [
-        {
-          to: '/workspace/assistants',
-          label: t('nav.assistants'),
-          icon: 'assistant',
-          requiredPermissions: ['project.assistant.read']
-        },
-        {
-          to: '/workspace/models',
-          label: 'Models',
-          icon: 'runtime',
-          requiredPermissions: ['project.runtime.read']
-        },
-        {
-          to: '/workspace/chat',
-          label: t('nav.chat'),
-          icon: 'chat',
-          requiredPermissions: ['project.runtime.read']
-        },
-        {
-          to: '/workspace/threads',
-          label: t('nav.threads'),
-          icon: 'threads',
-          requiredPermissions: ['project.runtime.read']
-        },
-        {
-          to: '/workspace/sql-agent',
-          label: t('nav.sqlAgent'),
-          icon: 'sql-agent',
-          sectionTitle: t('nav.agentApps'),
-          requiredPermissions: ['project.runtime.read']
-        }
-      ]
-    },
-    {
-      id: 'governance',
-      label: 'Governance',
-      items: [
-        {
-          to: '/workspace/control-plane',
-          label: t('nav.controlPlane'),
-          icon: 'overview',
-          requiredPermissions: ['platform.config.read']
-        },
-        {
-          to: '/workspace/announcements',
-          label: t('nav.announcements'),
-          icon: 'bell',
-          requiredPermissions: ['platform.announcement.write', 'project.announcement.write'],
-          permissionMode: 'any'
-        },
-        {
-          to: '/workspace/platform-config',
-          label: t('nav.platformConfig'),
-          icon: 'lock',
-          requiredPermissions: ['platform.config.read']
-        },
-        {
-          to: '/workspace/service-accounts',
-          label: t('nav.serviceAccounts'),
-          icon: 'users',
-          requiredPermissions: ['platform.service_account.read']
-        },
-        {
-          to: '/workspace/system-governance',
-          label: t('nav.systemGovernance'),
-          icon: 'shield',
-          requiredPermissions: ['platform.config.read']
-        },
-        {
-          to: '/workspace/audit',
-          label: t('nav.audit'),
-          icon: 'audit',
-          requiredPermissions: ['platform.audit.read', 'project.audit.read'],
-          permissionMode: 'any'
-        }
-      ]
-    },
-  ]
-
-  if (isDev) {
-    baseGroups.push({
-      id: 'resources',
-      label: 'Resources',
-      items: [
-        { to: '/workspace/resources', label: t('nav.resourcesOverview'), icon: 'sparkle', exact: true },
-        { to: '/workspace/resources/playbook', label: t('nav.resourcePlaybook'), icon: 'overview' },
-        { to: '/workspace/resources/pages', label: t('nav.resourcePages'), icon: 'folder' },
-        { to: '/workspace/resources/components', label: t('nav.resourceComponents'), icon: 'users' },
-        { to: '/workspace/resources/engineering', label: t('nav.resourceEngineering'), icon: 'runtime' }
-      ]
-    })
-  }
-
-  return baseGroups
-    .map((group) => ({
-      ...group,
-      items: group.items.filter((item) => {
-        if (!item.requiredPermissions?.length) {
-          return true
-        }
-
-        const mode = item.permissionMode === 'any' ? 'any' : 'all'
-        const evaluator = (permission: PermissionCode) =>
-          permission.startsWith('project.')
-            ? authorization.currentProjectCan(permission) || authorization.canAnyProject(permission)
-            : authorization.can(permission)
-
-        return mode === 'any'
-          ? item.requiredPermissions.some((permission) => evaluator(permission))
-          : item.requiredPermissions.every((permission) => evaluator(permission))
-      })
-    }))
-    .filter((group) => group.items.length > 0)
-})
+const groups = useNavigation()
 
 function isActive(path: string, exact = false): boolean {
   if (exact) {
@@ -184,7 +32,7 @@ function isGroupExpanded(groupId: string): boolean {
   return uiStore.isSidebarGroupExpanded(groupId)
 }
 
-function isGroupActive(group: SidebarGroup): boolean {
+function isGroupActive(group: (typeof groups.value)[number]): boolean {
   return group.items.some((item) => isActive(item.to, item.exact))
 }
 

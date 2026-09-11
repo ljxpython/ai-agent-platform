@@ -384,6 +384,7 @@ onMounted(() => {
 
       <template #table>
         <DataTable
+          :error="error"
           :columns="columns"
           :rows="auditRows"
           :loading="loading"

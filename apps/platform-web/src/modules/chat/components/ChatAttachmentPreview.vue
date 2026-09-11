@@ -1,31 +1,33 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
+import { computed } from "vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
 import {
   getChatAttachmentDataUrl,
   getChatAttachmentName,
-  type ChatAttachmentBlock
-} from '@/utils/chat-content'
+  type ChatAttachmentBlock,
+} from "@/utils/chat-content";
 
 const props = withDefaults(
   defineProps<{
-    block: ChatAttachmentBlock
-    removable?: boolean
-    compact?: boolean
+    block: ChatAttachmentBlock;
+    removable?: boolean;
+    compact?: boolean;
   }>(),
   {
     removable: false,
-    compact: false
-  }
-)
+    compact: false,
+  },
+);
 
 const emit = defineEmits<{
-  remove: []
-}>()
+  remove: [];
+}>();
 
-const isImage = computed(() => props.block.type === 'image')
-const attachmentName = computed(() => getChatAttachmentName(props.block))
-const imageUrl = computed(() => (isImage.value ? getChatAttachmentDataUrl(props.block) : ''))
+const isImage = computed(() => props.block.type === "image");
+const attachmentName = computed(() => getChatAttachmentName(props.block));
+const imageUrl = computed(() =>
+  isImage.value ? getChatAttachmentDataUrl(props.block) : "",
+);
 </script>
 
 <template>
@@ -53,21 +55,27 @@ const imageUrl = computed(() => (isImage.value ? getChatAttachmentDataUrl(props.
         class="block w-full object-cover"
         :class="compact ? 'h-28' : 'h-36'"
       >
-      <div class="border-t border-gray-100 px-3 py-2 text-xs font-medium text-gray-600 dark:border-dark-700 dark:text-dark-200">
+      <div
+        class="border-t border-gray-100 px-3 py-2 text-xs font-medium text-gray-600 dark:border-dark-700 dark:text-dark-200"
+      >
         {{ attachmentName }}
       </div>
     </template>
 
     <template v-else>
       <div class="flex items-start gap-3 px-3 py-3">
-        <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 dark:bg-primary-950/30 dark:text-primary-200">
+        <span
+          class="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 dark:bg-primary-950/30 dark:text-primary-200"
+        >
           <BaseIcon
             name="file"
             size="md"
           />
         </span>
         <div class="min-w-0">
-          <div class="break-all text-sm font-semibold text-gray-900 dark:text-white">
+          <div
+            class="break-all text-sm font-semibold text-gray-900 dark:text-white"
+          >
             {{ attachmentName }}
           </div>
           <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">

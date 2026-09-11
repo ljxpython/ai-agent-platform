@@ -9,9 +9,12 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| 正式聊天 v2（LangChain 流式运行时、线程续接、工具调用与中断展示） | 已完成 | `docs/projects/20260908-platform-chat-rewrite/` |
-| 独立调试工作台（运行级模型/工具/提示词配置） | 已完成 | `docs/projects/20260908-platform-chat-rewrite/` |
-| 控制面核心页面（overview/projects/users/assistants/me/security/audit） | 已完成 | `apps/platform-web/docs/control-plane-page-standard.md` |
+| 正式聊天 v2（LangChain 流式运行时、线程续接、工具调用与中断展示） | 已重写：官方 SDK 会话、按轮渲染、多 ID 审批、历史分支及移动工作区；最终验收见项目记录 | [Chat 重构](projects/20260910-platform-web-refactor/04-chat-session-and-interaction.md) |
+| 运行级调试配置 | 已完成：公开 Context/config 白名单、schema 参数校验；不保留旧提示词覆盖 | [接入契约](projects/20260910-platform-web-refactor/03-api-contracts.md) |
+| 控制面核心页面（overview/projects/users/agents/me/security/audit） | 已迁移：Agent/模型新契约、统一权限导航、列表四态；全路由浏览器验收见项目记录 | [现状与目标架构](projects/20260910-platform-web-refactor/02-architecture-and-ui.md) |
+| 旧 Chat 视觉与统一 Agent 入口 | 部分完成：Agent 归一已交付；旧工作台组件已直接取回；37 项定向测试及三尺寸回归通过；摘要数据与部分专项验收仍待补齐 | [09 还原功能核对](projects/20260910-platform-web-refactor/09-chat-workbench-restoration-audit.md) |
+| Platform Web 架构与 Agent Chat 重构 | 01—07 非后置范围已完成；旧展示组件已取回，专项验收边界见 09；双浏览器入队/完整文件与 Skills API/PTY 后置 | [项目概览](projects/20260910-platform-web-refactor/README.md) |
+| 运行中补充消息（多端入口、Runtime 队列与 Middleware） | 已实现：根模型注入、持久回执/恢复、权限复核与 Web 重试；网络取消/移动回归通过，双浏览器后置，GraphHarbor post27 发布包复验通过 | [队列与消费设计](projects/20260910-platform-web-refactor/07-message-queue-and-middleware.md) |
 | 知识库、测试用例工作台退役 | 已移除页面、路由、菜单与专属依赖；整体平台重构进行中 | `docs/projects/20260910-platform-api-refactor/` |
 
 ## platform-api
@@ -43,6 +46,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 本地栈进程启停 | 已修复：本仓库手工启动服务识别、失效 PID 复核、子进程停止；实测启停通过 | [实施与验收](projects/20260910-platform-web-refactor/implementation/12-visual-agent-and-local-stack.md) |
 | 改动分级 + Skills 自动触发（plan-project/implement-feature/verify-change） | 已完成 | `AGENTS.md` |
 | 文档一致性检查（`scripts/check_docs.py`） | 已完成 | `scripts/check_docs.py` |
 

@@ -24,8 +24,8 @@ Usage: bash scripts/local-stack.sh <command>
 Commands:
   doctor   validate local env, dependencies, config, and ports
   migrate  run GraphHarbor database migrations
-  start    start Runtime API/Worker, Platform API/Worker, and Platform Web
-  stop     stop only processes started by this script
+  start    start Runtime API/Worker, Platform API, and Platform Web
+  stop     stop this repository's stack, including manually started dev servers
   restart  stop and start the local stack
   status   show managed processes and HTTP health
   logs     show recent logs; optionally pass runtime-api, runtime-worker,
@@ -91,7 +91,7 @@ pid_alive() {
 managed_alive() {
   local pid
   pid="$(read_pid "$1" 2>/dev/null || true)"
-  pid_alive "$pid"
+  pid_alive "$pid" && python3 "$ROOT_DIR/scripts/local_stack_processes.py" "$ROOT_DIR" "$1" "$pid"
 }
 
 port_in_use() {
@@ -181,18 +181,10 @@ start_managed_key() {
 
 stop_process() {
   local key="$1"
-  local pid
-  pid="$(read_pid "$key" 2>/dev/null || true)"
+  # PID files can be stale or absent after a manual dev start. Resolve ownership
+  # from the app directory and executable; never kill an unrelated port owner.
+  python3 "$ROOT_DIR/scripts/local_stack_processes.py" "$ROOT_DIR" "$key"
   rm -f "$(pid_file "$key")"
-  [ -n "$pid" ] || return 0
-  pid_alive "$pid" || return 0
-  printf '[stop] %s pid=%s\n' "$key" "$pid"
-  kill -TERM -- "-$pid" >/dev/null 2>&1 || kill -TERM "$pid" >/dev/null 2>&1 || true
-  for _ in {1..20}; do
-    pid_alive "$pid" || return 0
-    sleep 0.25
-  done
-  kill -KILL -- "-$pid" >/dev/null 2>&1 || kill -KILL "$pid" >/dev/null 2>&1 || true
 }
 
 wait_http() {
@@ -339,6 +331,7 @@ migrate() {
   validate_runtime
   check_postgres
   (cd "$RUNTIME_DIR" && uv run --frozen graphharbor migrate upgrade)
+  (cd "$RUNTIME_DIR" && uv run --frozen python -m runtime_service.messaging)
 }
 
 start() {

@@ -10,7 +10,7 @@ service/state/permission/audit 规则仍由 `control-plane-page-standard.md` 管
 
 - 功能、路由和当前实现：`apps/platform-web`
 - 视觉与交互基线：当前 `apps/platform-web` 壳层和共享组件
-- `platform-web-sub2api-base`：仅作历史参考，不是开发宿主
+- 外部参考 `../research/open-swe` 只借鉴交互；正式构建不内嵌参考源码
 - Chat 的 live messages/tools/interrupt/loading/error/lifecycle 由官方 SDK controller 维护；线程
   列表、历史快照和当前流订阅分离，页面不得再建立第二套运行状态机。
 
@@ -63,8 +63,14 @@ service/state/permission/audit 规则仍由 `control-plane-page-standard.md` 管
 
 按改动范围选择：
 
-- B1：目标页面 lint/typecheck/build 或最小交互证明
-- B2：本地验证后，再验证 `platform-web -> platform-api` 最短链
-- B3：公开管理行为、权限或契约变更按 OpenSpec change 验证
+- 单项目：对应测试、lint、类型检查。
+- 链路：加上 `platform-web -> platform-api -> runtime-service` 最短链。
+- 治理：按 `docs/projects/20260910-platform-web-refactor/06-delivery-and-acceptance.md` 的关键链路、安全、性能和回退门禁验收。
 
 页面完成必须同时满足响应式布局、错误态、空态、加载态和基本可访问性。
+
+## 6. Chat 实现边界
+
+`ChatPage` 负责 URL/目标/列表；`ChatSession` 与 `useChatSession` 绑定固定身份/项目/Thread，官方 SDK 持有实时投影；`run-actions` 只持有动作幂等快照。`Transcript` 保留消息顺序和稳定 ID，`SubtaskDetail` 展开时订阅 scoped 数据，详情只用一个 Inspector。
+
+普通消息、审批 resume、运行中消息入队是三个动作。审批禁止覆盖运行配置；入队 ACK 不等于消费，unknown 必须复用原 ID/key/body。历史 checkpoint 只在用户打开时读取，不覆盖实时消息。

@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from uuid import uuid4
 
 from cryptography.fernet import Fernet
 from platform_api.config import Settings
@@ -27,6 +28,13 @@ from platform_api.modules.runtime_policies.infra.sqlalchemy.models import (
 
 
 class ModelConnectionLifecycleTest(unittest.IsolatedAsyncioTestCase):
+    def test_queue_private_state_is_redacted_recursively(self):
+        from platform_api.adapters.langgraph.sdk_client import redact_runtime_private_fields
+        self.assertEqual(redact_runtime_private_fields({"values": {
+            "runtime_message_claim": {"token": "secret"},
+            "messages": [{"content": "hello", "authorization_ref": "secret"}],
+        }}), {"values": {"messages": [{"content": "hello"}]}})
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
@@ -56,6 +64,32 @@ class ModelConnectionLifecycleTest(unittest.IsolatedAsyncioTestCase):
         self.reference = create_model_reference(project_id=str(self.project), model_id=str(self.model),
             secret=self.settings.runtime_delegation_secret, agent_key="demo",
             actor={"user_id": str(self.user), "principal_type": "user", "credential_id": None})
+
+    async def test_message_authorization_rechecks_membership_and_scope(self):
+        import jwt
+        import time
+        from sqlalchemy import delete
+        reference = jwt.encode({
+            "aud": "runtime-message", "exp": int(time.time()) + 60,
+            "project_id": str(self.project), "thread_id": "thread", "run_id": "run",
+            "agent_key": "demo", "actor": {"user_id": str(self.user), "principal_type": "user"},
+        }, self.settings.runtime_delegation_secret, algorithm="HS256")
+        self.assertTrue(self.service.authorize_message(reference, thread_id="thread", run_id="run")["allowed"])
+        claims = jwt.decode(reference, self.settings.runtime_delegation_secret, algorithms=["HS256"], audience="runtime-message")
+        for change in ({"aud": "runtime-model"}, {"exp": int(time.time()) - 1},
+                       {"project_id": str(uuid4())}, {"run_id": "other"}):
+            invalid = jwt.encode({**claims, **change}, self.settings.runtime_delegation_secret, algorithm="HS256")
+            with self.assertRaises(ForbiddenError):
+                self.service.authorize_message(invalid, thread_id="thread", run_id="run")
+        forged = jwt.encode(claims, "different-secret-long-enough-for-hs256", algorithm="HS256")
+        with self.assertRaises(ForbiddenError):
+            self.service.authorize_message(forged, thread_id="thread", run_id="run")
+        with self.assertRaises(ForbiddenError):
+            self.service.authorize_message(reference, thread_id="other", run_id="run")
+        with self.factory.begin() as session:
+            session.execute(delete(ProjectMemberRecord).where(ProjectMemberRecord.user_id == self.user))
+        with self.assertRaises(ForbiddenError):
+            self.service.authorize_message(reference, thread_id="thread", run_id="run")
 
     async def resolve(self):
         return self.service.resolve_model_connection(reference=self.reference, project_id=str(self.project))

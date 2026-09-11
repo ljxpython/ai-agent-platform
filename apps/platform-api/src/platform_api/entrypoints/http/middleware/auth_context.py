@@ -57,6 +57,7 @@ def register_auth_context_middleware(app: FastAPI, settings: Settings) -> None:
         "/api/identity/session",
         "/api/identity/session/refresh",
         "/api/runtime/internal/model-config",
+        "/api/runtime/internal/message-authorization",
     }
     public_path_methods = {
         ("DELETE", "/api/identity/session"),

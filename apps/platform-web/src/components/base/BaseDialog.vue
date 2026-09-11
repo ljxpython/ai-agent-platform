@@ -1,3 +1,7 @@
+<script lang="ts">
+const openDialogs = new Set<symbol>()
+</script>
+
 <script setup lang="ts">
 import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -27,6 +31,11 @@ const emit = defineEmits<{
 const { t } = useI18n()
 const dialogRef = ref<HTMLElement | null>(null)
 let previousActiveElement: HTMLElement | null = null
+const dialogId = Symbol('dialog')
+function releaseScrollLock() {
+  openDialogs.delete(dialogId)
+  document.body.classList.toggle('pw-dialog-open', openDialogs.size > 0)
+}
 
 function widthClass(width: DialogWidth) {
   switch (width) {
@@ -46,8 +55,24 @@ function closeDialog() {
 }
 
 function handleEscape(event: KeyboardEvent) {
-  if (props.show && props.closeOnEscape && event.key === 'Escape') {
+  const dialogs = document.querySelectorAll('[role="dialog"]')
+  if (!props.show || !dialogs[dialogs.length - 1]?.contains(dialogRef.value)) return
+  if (props.closeOnEscape && event.key === 'Escape') {
+    event.preventDefault()
     emit('close')
+  }
+  if (event.key === 'Tab' && dialogRef.value) {
+    const elements = [...dialogRef.value.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]'
+    )].filter(element => element.getClientRects().length > 0)
+    const first = elements[0]
+    const last = elements[elements.length - 1]
+    if (!first) { event.preventDefault(); dialogRef.value.focus() }
+    else if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.value)) {
+      event.preventDefault(); last?.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault(); first.focus()
+    }
   }
 }
 
@@ -60,13 +85,14 @@ watch(
 
     if (isOpen) {
       previousActiveElement = document.activeElement as HTMLElement | null
+      openDialogs.add(dialogId)
       document.body.classList.add('pw-dialog-open')
       await nextTick()
       dialogRef.value?.focus()
       return
     }
 
-    document.body.classList.remove('pw-dialog-open')
+    releaseScrollLock()
     previousActiveElement?.focus?.()
     previousActiveElement = null
   },
@@ -79,7 +105,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   document.removeEventListener('keydown', handleEscape)
-  document.body.classList.remove('pw-dialog-open')
+  releaseScrollLock()
 })
 </script>
 
@@ -97,6 +123,7 @@ onUnmounted(() => {
         v-if="show"
         class="fixed inset-0 z-[90] flex items-start justify-center overflow-y-auto bg-slate-950/30 p-3 backdrop-blur-sm sm:items-center sm:p-4"
         role="dialog"
+        :aria-label="title"
         aria-modal="true"
         @click.self="closeOnClickOutside ? closeDialog() : undefined"
       >

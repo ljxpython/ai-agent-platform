@@ -156,7 +156,7 @@ const riskFlags = computed(() => {
     })
   }
 
-  if (flags.length === 0 && snapshot.value) {
+  if (flags.length === 0 && snapshot.value && !error.value && !loading.value) {
     flags.push({
       title: '控制面状态稳定',
       description: '当前可作为演示基线，未发现明显风险项。',
@@ -291,6 +291,12 @@ onMounted(() => {
       description="先看上方五个核心指标，再看风险项，然后顺着快捷入口进入具体治理页。这样汇报和排障都不会乱。"
       tone="success"
     />
+    <p
+      v-if="loading"
+      role="status"
+    >
+      正在读取控制面…
+    </p>
 
     <div class="grid gap-4 xl:grid-cols-5">
       <MetricCard
@@ -434,7 +440,7 @@ onMounted(() => {
             Recent Audit
           </div>
           <EmptyState
-            v-if="!recentAuditRows.length"
+            v-if="!recentAuditRows.length && !loading && !error"
             title="暂无审计记录"
             description="当前还没有最近审计轨迹。"
             icon="audit"

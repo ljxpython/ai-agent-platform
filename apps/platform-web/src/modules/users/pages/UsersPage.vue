@@ -413,6 +413,7 @@ onMounted(() => {
 
       <template #table>
         <DataTable
+          :error="error"
           :columns="columns"
           :rows="userRows"
           :loading="loading"

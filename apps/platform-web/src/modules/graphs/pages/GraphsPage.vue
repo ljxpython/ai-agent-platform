@@ -1,323 +1,307 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import BaseButton from '@/components/base/BaseButton.vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import { useAuthorization } from '@/composables/useAuthorization'
-import { useWorkspaceProjectContext } from '@/composables/useWorkspaceProjectContext'
-import PageHeader from '@/components/layout/PageHeader.vue'
-import TablePageLayout from '@/components/layout/TablePageLayout.vue'
-import { usePagination } from '@/composables/usePagination'
-import ActionMenu from '@/components/platform/ActionMenu.vue'
-import DataTable from '@/components/platform/DataTable.vue'
-import EmptyState from '@/components/platform/EmptyState.vue'
-import FilterToolbar from '@/components/platform/FilterToolbar.vue'
-import MetricCard from '@/components/platform/MetricCard.vue'
-import PaginationBar from '@/components/platform/PaginationBar.vue'
-import SearchInput from '@/components/platform/SearchInput.vue'
-import StateBanner from '@/components/platform/StateBanner.vue'
-import StatusPill from '@/components/platform/StatusPill.vue'
-import type { ActionMenuItem, DataTableColumn } from '@/components/platform/data-table'
-import { listGraphsPage } from '@/services/graphs/graphs.service'
-import {
-  refreshRuntimeGraphs
-} from '@/services/runtime/runtime.service'
-import { useUiStore } from '@/stores/ui'
-import type { ManagementGraph } from '@/types/management'
-import { copyText } from '@/utils/clipboard'
-import { writeRecentChatTarget } from '@/utils/chatTarget'
-import { formatDateTime, shortId } from '@/utils/format'
-import { resolvePlatformHttpErrorMessage } from '@/utils/http-error'
+import { computed, onScopeDispose, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import BaseButton from "@/components/base/BaseButton.vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import { useAuthorization } from "@/composables/useAuthorization";
+import { useWorkspaceProjectContext } from "@/composables/useWorkspaceProjectContext";
+import PageHeader from "@/components/layout/PageHeader.vue";
+import TablePageLayout from "@/components/layout/TablePageLayout.vue";
+import { usePagination } from "@/composables/usePagination";
+import ActionMenu from "@/components/platform/ActionMenu.vue";
+import DataTable from "@/components/platform/DataTable.vue";
+import EmptyState from "@/components/platform/EmptyState.vue";
+import FilterToolbar from "@/components/platform/FilterToolbar.vue";
+import MetricCard from "@/components/platform/MetricCard.vue";
+import PaginationBar from "@/components/platform/PaginationBar.vue";
+import SearchInput from "@/components/platform/SearchInput.vue";
+import StateBanner from "@/components/platform/StateBanner.vue";
+import StatusPill from "@/components/platform/StatusPill.vue";
+import type {
+  ActionMenuItem,
+  DataTableColumn,
+} from "@/components/platform/data-table";
+import { listAgents } from "@/services/agents/agents.service";
+import { listGraphsPage } from "@/services/graphs/graphs.service";
+import { refreshRuntimeGraphs } from "@/services/runtime/runtime.service";
+import { useUiStore } from "@/stores/ui";
+import type { ManagementGraph } from "@/types/management";
+import { copyText } from "@/utils/clipboard";
+import { formatDateTime, shortId } from "@/utils/format";
+import { resolvePlatformHttpErrorMessage } from "@/utils/http-error";
 
-function getSyncTone(status: string): 'neutral' | 'success' | 'warning' | 'danger' {
-  if (status === 'synced' || status === 'ready') {
-    return 'success'
+function getSyncTone(
+  status: string,
+): "neutral" | "success" | "warning" | "danger" {
+  if (status === "synced" || status === "ready") {
+    return "success";
   }
-  if (status === 'failed' || status === 'error') {
-    return 'danger'
+  if (status === "failed" || status === "error") {
+    return "danger";
   }
-  if (status === 'pending') {
-    return 'warning'
+  if (status === "pending") {
+    return "warning";
   }
-  return 'neutral'
+  return "neutral";
 }
 
-const { activeProjectId, activeProject } = useWorkspaceProjectContext()
-const uiStore = useUiStore()
-const router = useRouter()
-const authorization = useAuthorization()
+const { activeProjectId, activeProject } = useWorkspaceProjectContext();
+const uiStore = useUiStore();
+const router = useRouter();
+const authorization = useAuthorization();
 
-const items = ref<ManagementGraph[]>([])
-const queryInput = ref('')
-const query = ref('')
-const loading = ref(false)
-const refreshing = ref(false)
-const error = ref('')
-const notice = ref('')
-const lastSyncedAt = ref<string | null>(null)
-const graphRows = computed(() => items.value as unknown as Record<string, unknown>[])
+const items = ref<ManagementGraph[]>([]);
+const queryInput = ref("");
+const query = ref("");
+const loading = ref(false);
+const refreshing = ref(false);
+const error = ref("");
+const notice = ref("");
+const lastSyncedAt = ref<string | null>(null);
+const graphRows = computed(
+  () => items.value as unknown as Record<string, unknown>[],
+);
 const pagination = usePagination({
   initialPageSize: 20,
-  storageKey: 'pw:graphs:page-size'
-})
+  storageKey: "pw:graphs:page-size",
+});
 const columns = computed<DataTableColumn[]>(() => [
   {
-    key: 'graph_id',
-    label: 'Graph',
+    key: "graph_id",
+    label: "Graph",
     sortable: true,
     alwaysVisible: true,
-    sortValue: (row) => row.graph_id || ''
+    sortValue: (row) => row.graph_id || "",
   },
   {
-    key: 'display_name',
-    label: 'Display Name',
+    key: "display_name",
+    label: "Display Name",
     sortable: true,
-    sortValue: (row) => row.display_name || row.graph_id || ''
+    sortValue: (row) => row.display_name || row.graph_id || "",
   },
   {
-    key: 'description',
-    label: 'Description',
+    key: "description",
+    label: "Description",
     sortable: true,
-    cellClass: 'max-w-[360px]',
-    sortValue: (row) => row.description || ''
+    cellClass: "max-w-[360px]",
+    sortValue: (row) => row.description || "",
   },
   {
-    key: 'source_type',
-    label: 'Source',
+    key: "source_type",
+    label: "Source",
     sortable: true,
-    sortValue: (row) => row.source_type || ''
+    sortValue: (row) => row.source_type || "",
   },
   {
-    key: 'sync_status',
-    label: '同步状态',
+    key: "sync_status",
+    label: "同步状态",
     sortable: true,
-    sortValue: (row) => row.sync_status || ''
-  }
-])
+    sortValue: (row) => row.sync_status || "",
+  },
+]);
 
-const currentProject = activeProject
-const canRefreshCatalog = computed(() =>
-  authorization.can('platform.catalog.refresh') || authorization.currentProjectCan('project.runtime.write')
-)
-const syncedCount = computed(() =>
-  items.value.filter((item) => item.sync_status === 'synced' || item.sync_status === 'ready').length
-)
+const currentProject = activeProject;
+const canRefreshCatalog = computed(
+  () =>
+    authorization.can("platform.catalog.refresh") ||
+    authorization.currentProjectCan("project.runtime.write"),
+);
+const syncedCount = computed(
+  () =>
+    items.value.filter(
+      (item) => item.sync_status === "synced" || item.sync_status === "ready",
+    ).length,
+);
 const stats = computed(() => [
   {
-    label: '当前项目',
-    value: currentProject.value?.name || '未选择',
-    hint: '图谱目录严格跟随当前项目上下文',
-    icon: 'project',
-    tone: 'primary'
+    label: "当前项目",
+    value: currentProject.value?.name || "未选择",
+    hint: "图谱目录严格跟随当前项目上下文",
+    icon: "project",
+    tone: "primary",
   },
   {
-    label: '当前结果',
+    label: "当前结果",
     value: items.value.length,
     hint: `当前结果集总数 ${pagination.total.value}`,
-    icon: 'graph',
-    tone: 'success'
+    icon: "graph",
+    tone: "success",
   },
   {
-    label: '已同步',
+    label: "已同步",
     value: syncedCount.value,
-    hint: 'sync_status 为 synced 或 ready 的图谱',
-    icon: 'shield',
-    tone: 'warning'
+    hint: "sync_status 为 synced 或 ready 的图谱",
+    icon: "shield",
+    tone: "warning",
   },
   {
-    label: '最近同步',
-    value: lastSyncedAt.value ? formatDateTime(lastSyncedAt.value) : '--',
-    hint: '图谱目录最近一次同步时间',
-    icon: 'activity',
-    tone: 'danger'
-  }
-])
+    label: "最近同步",
+    value: lastSyncedAt.value ? formatDateTime(lastSyncedAt.value) : "--",
+    hint: "图谱目录最近一次同步时间",
+    icon: "activity",
+    tone: "danger",
+  },
+]);
 
 function graphFromRow(row: Record<string, unknown>) {
-  return row as ManagementGraph
+  return row as ManagementGraph;
 }
 
+let loadEpoch = 0;
+onScopeDispose(() => {
+  ++loadEpoch;
+});
+
 async function loadGraphs() {
-  const projectId = activeProjectId.value
+  const requestEpoch = ++loadEpoch;
+  const projectId = activeProjectId.value;
   if (!projectId) {
-    items.value = []
-    pagination.setTotal(0)
-    lastSyncedAt.value = null
-    error.value = ''
-    loading.value = false
-    return
+    items.value = [];
+    pagination.setTotal(0);
+    lastSyncedAt.value = null;
+    error.value = "";
+    loading.value = false;
+    return;
   }
 
-  loading.value = true
-  error.value = ''
+  loading.value = true;
+  error.value = "";
 
   try {
     const payload = await listGraphsPage(projectId, {
       limit: pagination.pageSize.value,
       offset: pagination.offset.value,
-      query: query.value
-    })
+      query: query.value,
+    });
 
-    items.value = payload.items
-    pagination.setTotal(payload.total)
-    lastSyncedAt.value = payload.last_synced_at ?? null
+    if (requestEpoch !== loadEpoch) return;
+    items.value = payload.items;
+    pagination.setTotal(payload.total);
+    lastSyncedAt.value = payload.last_synced_at ?? null;
   } catch (loadError) {
-    items.value = []
-    pagination.setTotal(0)
-    lastSyncedAt.value = null
-    error.value = loadError instanceof Error ? loadError.message : '图谱目录加载失败'
+    if (requestEpoch !== loadEpoch) return;
+    items.value = [];
+    pagination.setTotal(0);
+    lastSyncedAt.value = null;
+    error.value =
+      loadError instanceof Error ? loadError.message : "图谱目录加载失败";
   } finally {
-    loading.value = false
+    if (requestEpoch === loadEpoch) loading.value = false;
   }
 }
 
 async function handleRefreshCatalog() {
-  const projectId = activeProjectId.value
+  const projectId = activeProjectId.value;
   if (!projectId || !canRefreshCatalog.value) {
     if (!canRefreshCatalog.value) {
-      error.value = '当前账号没有刷新图目录的权限'
+      error.value = "当前账号没有刷新图目录的权限";
     }
-    return
+    return;
   }
 
-  refreshing.value = true
-  error.value = ''
-  notice.value = ''
+  refreshing.value = true;
+  error.value = "";
+  notice.value = "";
 
   try {
-    const refreshed = await refreshRuntimeGraphs(projectId)
-    const count = refreshed.count
-    notice.value = `图谱目录已刷新，当前同步 ${count} 条记录`
-    await loadGraphs()
+    const refreshed = await refreshRuntimeGraphs(projectId);
+    if (projectId !== activeProjectId.value) return;
+    const count = refreshed.count;
+    notice.value = `图谱目录已刷新，当前同步 ${count} 条记录`;
+    await loadGraphs();
   } catch (refreshError) {
-    error.value = resolvePlatformHttpErrorMessage(refreshError, '图谱目录刷新失败', '图谱目录')
+    if (projectId !== activeProjectId.value) return;
+    error.value = resolvePlatformHttpErrorMessage(
+      refreshError,
+      "图谱目录刷新失败",
+      "图谱目录",
+    );
   } finally {
-    refreshing.value = false
+    refreshing.value = false;
   }
 }
 
 function applyFilters() {
-  query.value = queryInput.value.trim()
+  query.value = queryInput.value.trim();
   if (pagination.page.value === 1) {
-    void loadGraphs()
-    return
+    void loadGraphs();
+    return;
   }
 
-  pagination.resetPage()
+  pagination.resetPage();
 }
 
 function resetFilters() {
-  queryInput.value = ''
-  query.value = ''
+  queryInput.value = "";
+  query.value = "";
   if (pagination.page.value === 1) {
-    void loadGraphs()
-    return
+    void loadGraphs();
+    return;
   }
 
-  pagination.resetPage()
+  pagination.resetPage();
 }
 
-function setAsRecentChatTarget(graph: ManagementGraph) {
-  const projectId = activeProjectId.value
-  if (!projectId) {
-    return
+async function openGraphChat(graph: ManagementGraph) {
+  const projectId = activeProjectId.value;
+  if (!projectId) return;
+  try {
+    const aligned = await listAgents(projectId, { graphId: graph.graph_id, limit: 1 });
+    if (projectId !== activeProjectId.value) return;
+    const agent = aligned.items[0];
+    if (!agent || agent.status !== "active") throw new Error("该智能体不可用或已停用");
+    await router.push({
+      path: `/workspace/projects/${encodeURIComponent(projectId)}/chat`,
+      query: { agentId: agent.id },
+    });
+  } catch (cause) {
+    if (projectId === activeProjectId.value)
+      error.value = cause instanceof Error ? cause.message : "打开对话失败";
   }
-
-  writeRecentChatTarget(projectId, {
-    targetType: 'graph',
-    graphId: graph.graph_id,
-    graphName: graph.display_name || graph.graph_id
-  })
-  uiStore.pushToast({
-    type: 'success',
-    title: '已设为聊天目标',
-    message: graph.display_name || graph.graph_id
-  })
-}
-
-function openGraphChat(graph: ManagementGraph) {
-  const projectId = activeProjectId.value
-
-  if (projectId) {
-    writeRecentChatTarget(projectId, {
-      targetType: 'graph',
-      graphId: graph.graph_id,
-      graphName: graph.display_name || graph.graph_id
-    })
-  }
-
-  void router.push({
-    path: '/workspace/chat',
-    query: {
-      targetType: 'graph',
-      graphId: graph.graph_id,
-      graphName: graph.display_name || graph.graph_id
-    }
-  })
 }
 
 async function handleCopyGraphId(graph: ManagementGraph) {
-  const copied = await copyText(graph.graph_id)
+  const copied = await copyText(graph.graph_id);
   uiStore.pushToast({
-    type: copied ? 'success' : 'warning',
-    title: copied ? '已复制 Graph ID' : '复制失败',
-    message: copied ? graph.graph_id : '当前环境不支持自动复制，请手动复制。'
-  })
-}
-
-function handlePendingAction(message: string) {
-  uiStore.pushToast({
-    type: 'info',
-    title: '详情暂未开放',
-    message
-  })
+    type: copied ? "success" : "warning",
+    title: copied ? "已复制 Graph ID" : "复制失败",
+    message: copied ? graph.graph_id : "当前环境不支持自动复制，请手动复制。",
+  });
 }
 
 function graphActions(graph: ManagementGraph): ActionMenuItem[] {
   return [
     {
-      key: 'open-chat',
-      label: '打开聊天',
-      icon: 'chat',
-      onSelect: () => openGraphChat(graph)
+      key: "open-chat",
+      label: "打开聊天",
+      icon: "chat",
+      onSelect: () => openGraphChat(graph),
     },
     {
-      key: 'focus-chat-target',
-      label: '设为聊天目标',
-      icon: 'chat',
-      onSelect: () => setAsRecentChatTarget(graph)
+      key: "copy-graph-id",
+      label: "复制 Graph ID",
+      icon: "copy",
+      onSelect: () => handleCopyGraphId(graph),
     },
-    {
-      key: 'copy-graph-id',
-      label: '复制 Graph ID',
-      icon: 'copy',
-      onSelect: () => handleCopyGraphId(graph)
-    },
-    {
-      key: 'detail',
-      label: '查看详情（暂未开放）',
-      icon: 'eye',
-      onSelect: () => handlePendingAction(`图谱 ${graph.display_name || graph.graph_id} 的详情页暂未开放，请先查看当前目录信息。`)
-    }
-  ]
+  ];
 }
 
 watch(
   () => activeProjectId.value,
   () => {
     if (pagination.page.value !== 1) {
-      pagination.resetPage()
-      return
+      pagination.resetPage();
+      return;
     }
 
-    void loadGraphs()
+    void loadGraphs();
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
-  void loadGraphs()
-})
+  void loadGraphs();
+});
 </script>
 
 <template>
@@ -325,7 +309,7 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
     <PageHeader
       eyebrow="Graphs"
       title="Graphs"
-      description="图谱目录页先承接 catalog 可见性、搜索和聊天目标预设。助手、Threads 和 Chat 后续都会继续消费这套目录数据。"
+      description="浏览当前项目已授权的执行图，直接开始对话。"
     >
       <template #actions>
         <BaseButton
@@ -337,7 +321,13 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
             name="refresh"
             size="sm"
           />
-          {{ canRefreshCatalog ? (refreshing ? '刷新中...' : '刷新目录') : '当前账号只读' }}
+          {{
+            canRefreshCatalog
+              ? refreshing
+                ? "刷新中..."
+                : "刷新目录"
+              : "当前账号只读"
+          }}
         </BaseButton>
       </template>
     </PageHeader>
@@ -372,7 +362,7 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
       v-if="!currentProject"
       icon="project"
       title="请先选择项目"
-      description="图谱目录是项目级能力。不带 project 上下文去看 catalog，会把后续 Chat 和 Threads 的目标绑定全搞乱。"
+      description="选择项目后查看已授权的执行图。"
     />
 
     <TablePageLayout v-else>
@@ -398,6 +388,7 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
 
       <template #table>
         <DataTable
+          :error="error"
           :columns="columns"
           :rows="graphRows"
           :loading="loading"
@@ -425,20 +416,20 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
 
           <template #cell-description="{ row }">
             <span class="text-gray-500 dark:text-dark-300">
-              {{ graphFromRow(row).description?.trim() || '暂无描述' }}
+              {{ graphFromRow(row).description?.trim() || "暂无描述" }}
             </span>
           </template>
 
           <template #cell-source_type="{ row }">
             <span class="text-gray-500 dark:text-dark-300">
-              {{ graphFromRow(row).source_type || '--' }}
+              {{ graphFromRow(row).source_type || "--" }}
             </span>
           </template>
 
           <template #cell-sync_status="{ row }">
             <div class="space-y-2">
               <StatusPill :tone="getSyncTone(graphFromRow(row).sync_status)">
-                {{ graphFromRow(row).sync_status || 'unknown' }}
+                {{ graphFromRow(row).sync_status || "unknown" }}
               </StatusPill>
               <div class="text-xs text-gray-400 dark:text-dark-400">
                 {{ formatDateTime(graphFromRow(row).last_synced_at) }}

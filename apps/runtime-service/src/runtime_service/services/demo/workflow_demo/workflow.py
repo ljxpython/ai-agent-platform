@@ -9,6 +9,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
 from runtime_service.runtime.contracts import RuntimeContext
+from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.services.demo.workflow_demo.schemas import WorkflowState
 
 
@@ -133,6 +134,7 @@ def build_graph(
     *,
     model_config: Mapping[str, object] | None = None,
     runtime_context: RuntimeContext | None = None,
+    probe_only: bool = False,
 ):
     async def respond(state: WorkflowState, runtime) -> dict[str, object]:
         messages = state.get("messages", [])
@@ -160,13 +162,15 @@ def build_graph(
     def after_prepare(state: WorkflowState) -> Literal["confirm", "route"]:
         return "confirm" if state.get("requires_confirmation", False) else "route"
 
-    graph = StateGraph(WorkflowState)
-    graph.add_node("prepare", prepare)
-    graph.add_node("confirm", confirm)
-    graph.add_node("route", select_route)
-    graph.add_node("approve", approve)
-    graph.add_node("reject", reject)
-    graph.add_node("respond", respond)
+    def unavailable_node(state: WorkflowState) -> dict[str, object]:
+        raise RuntimeAuthError("runtime.graph.probe_only")
+
+    graph = StateGraph(WorkflowState, context_schema=RuntimeContext)
+    for name, node in (
+        ("prepare", prepare), ("confirm", confirm), ("route", select_route),
+        ("approve", approve), ("reject", reject), ("respond", respond),
+    ):
+        graph.add_node(name, unavailable_node if probe_only else node)
     graph.add_edge(START, "prepare")
     graph.add_conditional_edges(
         "prepare",

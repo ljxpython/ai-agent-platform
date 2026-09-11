@@ -34,7 +34,7 @@ const ANNOUNCEMENT_SEED: AnnouncementItem[] = [
     id: 'chat-history',
     title: 'Chat 历史时间线已补齐 checkpoint 可视化',
     summary: '会话详情里已经能直接查看当前快照、分叉组和分支切换入口。',
-    body: '这轮补齐了 checkpoint history 时间线、小屏抽屉全屏展开与分支快照切换提示，chat/sql-agent 的产品完成度明显提高。',
+    body: '这轮补齐了 checkpoint history 时间线、小屏抽屉全屏展开与分支快照切换提示，Chat 工作台的产品完成度明显提高。',
     tone: 'success',
     createdAt: '2026-04-05T09:20:00+08:00',
     isRead: false

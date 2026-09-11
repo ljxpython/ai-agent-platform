@@ -48,6 +48,7 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         tool_permissions: Mapping[str, str] | None = None,
         local_fallback: bool = False,
         tool_names: Sequence[str] | None = None,
+        probe_only: bool = False,
     ) -> None:
         super().__init__()
         self._principal = principal
@@ -58,6 +59,7 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         self._tool_permissions = tool_permissions
         self._local_fallback = local_fallback
         self._tool_names = None if tool_names is None else frozenset(tool_names)
+        self._probe_only = probe_only
 
     @staticmethod
     def _user(runtime: object) -> object | None:
@@ -94,6 +96,8 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
             raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
 
     def _resolve(self, runtime: object) -> ResolvedRuntimeConfig:
+        if self._probe_only:
+            raise RuntimeAuthError("runtime.graph.probe_only")
         context = parse_runtime_context(getattr(runtime, "context", None))
         facts = self._facts(runtime)
         if facts is None:

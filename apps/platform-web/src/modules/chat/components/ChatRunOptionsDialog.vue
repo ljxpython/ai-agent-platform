@@ -2,13 +2,14 @@
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
-import type { ChatRunOptions } from '../types'
+type ChatRunOptions = { modelId: string; temperature: string; maxTokens: string }
 import type { RuntimeModelItem } from '@/types/management'
 
 const props = defineProps<{
   show: boolean
   draftRunOptions: ChatRunOptions
   runtimeModels: RuntimeModelItem[]
+  error?: string
 }>()
 
 const emit = defineEmits<{
@@ -34,6 +35,13 @@ function getInputValue(event: Event) {
     @close="emit('close')"
   >
     <div class="space-y-5">
+      <p
+        v-if="error"
+        role="alert"
+        class="text-sm text-red-600"
+      >
+        {{ error }}
+      </p>
       <div class="pw-card-highlight px-4 py-4 text-sm leading-7 text-primary-900 dark:text-primary-100">
         这里的设置只影响后续发送、继续执行或新建出来的下一次运行，不会回改已经开始的这轮会话。
       </div>
@@ -61,9 +69,9 @@ function getInputValue(event: Event) {
           <option
             v-for="model in props.runtimeModels"
             :key="model.id"
-            :value="model.model_id"
+            :value="model.id"
           >
-            {{ model.display_name || model.model_id }}
+            {{ model.display_name || model.model }}
           </option>
         </BaseSelect>
       </label>

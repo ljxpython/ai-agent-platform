@@ -319,6 +319,14 @@ export function buildChatMessageMetadata(
 
     const checkpointId = firstSeenState?.checkpoint?.checkpoint_id ?? undefined
     let branch = checkpointId ? branchContext.branchByCheckpoint[checkpointId] : undefined
+    // Workflow routing nodes may fork without adding a new message. Attach
+    // that fork to the last visible message at its checkpoint as well.
+    const forkState = findLast(branchContext.flatHistory, (state) => {
+      const messages = getStateMessages(state)
+      return messages[messages.length - 1]?.id === messageId &&
+        Boolean(branchContext.branchByCheckpoint[state.checkpoint.checkpoint_id ?? '']?.branchOptions?.length)
+    })
+    if (forkState) branch = branchContext.branchByCheckpoint[forkState.checkpoint.checkpoint_id ?? '']
 
     const optionsShown = branch?.branchOptions?.join(',')
     if (optionsShown) {

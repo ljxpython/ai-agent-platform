@@ -7,8 +7,22 @@ vi.mock('@/services/http/client', () => ({
 }))
 
 import { createLanggraphAuthorizedFetch, getLanggraphApiUrl } from './client'
+import { clearTokenSet } from '@/services/auth/token'
 
 describe('createLanggraphAuthorizedFetch', () => {
+  it('rejects late SDK responses after logout and does not reuse the old client', async () => {
+    let complete!: (response: Response) => void
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementationOnce(() => new Promise(resolve => { complete = resolve }))
+    const client = createLanggraphAuthorizedFetch({ fetchImpl, getAccessToken: () => 'old' })
+    const request = client('https://example.com/threads')
+    const result = expect(request).rejects.toThrow('登录会话已变更')
+    await vi.waitFor(() => expect(complete).toBeTypeOf('function'))
+    clearTokenSet()
+    complete(new Response('{}'))
+    await result
+    await expect(client('https://example.com/threads')).rejects.toThrow('登录会话已变更')
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
   beforeEach(() => {
     vi.clearAllMocks()
   })

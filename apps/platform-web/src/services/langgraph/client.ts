@@ -4,12 +4,13 @@ import {
   refreshAccessToken,
   resolveAuthorizedAccessToken
 } from '@/services/http/client'
-import { getAccessToken } from '@/services/auth/token'
+import { getAccessToken, getSessionGeneration } from '@/services/auth/token'
 import { handleSessionExpired, hasStoredSession } from '@/services/auth/session-expiry'
 
 function getLanggraphApiUrl() {
   const normalizedBase = platformApiBaseUrl.replace(/\/+$/, '')
-  return normalizedBase.endsWith('/api/langgraph') ? normalizedBase : `${normalizedBase}/api/langgraph`
+  const path = normalizedBase.endsWith('/api/langgraph') ? normalizedBase : `${normalizedBase}/api/langgraph`
+  return new URL(path, window.location.origin).toString().replace(/\/+$/, '')
 }
 
 type LanggraphAuthorizedFetchOptions = {
@@ -110,6 +111,7 @@ async function normalizeProtocolErrorResponse(response: Response): Promise<Respo
 }
 
 export function createLanggraphAuthorizedFetch(options: LanggraphAuthorizedFetchOptions = {}) {
+  const generation = getSessionGeneration()
   const fetchImpl = options.fetchImpl ?? fetch
   const readAccessToken = options.getAccessToken ?? getAccessToken
   const renewAccessToken = options.refreshAccessToken ?? refreshAccessToken
@@ -117,15 +119,21 @@ export function createLanggraphAuthorizedFetch(options: LanggraphAuthorizedFetch
   const expireSession = options.onSessionExpired ?? handleSessionExpired
 
   return async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
-    const requestInit = withCommandIdempotencyKey(input, init)
+    if (generation !== getSessionGeneration()) throw new Error('登录会话已变更')
+    const headers = new Headers(input instanceof Request ? input.headers : undefined)
+    new Headers(init?.headers).forEach((value, key) => headers.set(key, value))
+    const requestInit = withCommandIdempotencyKey(input, { ...init, headers })
     const initialToken =
       (await resolveAuthorizedAccessToken()).trim() || readAccessToken().trim()
+    if (generation !== getSessionGeneration()) throw new Error('登录会话已变更')
     const initialResponse = await fetchImpl(input, withAccessToken(requestInit, initialToken))
+    if (generation !== getSessionGeneration()) throw new Error('登录会话已变更')
     if (initialResponse.status !== 401) {
       return normalizeProtocolErrorResponse(initialResponse)
     }
 
     const nextAccessToken = (await renewAccessToken()).trim()
+    if (generation !== getSessionGeneration()) throw new Error('登录会话已变更')
     if (!nextAccessToken) {
       if (readStoredSession()) {
         expireSession()
@@ -134,6 +142,7 @@ export function createLanggraphAuthorizedFetch(options: LanggraphAuthorizedFetch
     }
 
     const retryResponse = await fetchImpl(input, withAccessToken(requestInit, nextAccessToken))
+    if (generation !== getSessionGeneration()) throw new Error('登录会话已变更')
     if (retryResponse.status === 401 && readStoredSession()) {
       expireSession()
     }

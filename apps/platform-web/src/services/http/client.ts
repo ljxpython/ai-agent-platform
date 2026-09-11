@@ -4,6 +4,7 @@ import { env } from '@/config/env'
 import {
   getAccessToken,
   getRefreshToken,
+  getSessionGeneration,
   isAccessTokenExpiringSoon,
   setTokenSet
 } from '@/services/auth/token'
@@ -12,9 +13,11 @@ import type { AuthTokenSet } from '@/types/management'
 
 type RetriableRequest = InternalAxiosRequestConfig & {
   _retry?: boolean
+  _sessionGeneration?: number
 }
 
 let refreshPromise: Promise<string> | null = null
+let refreshGeneration = -1
 
 export const platformApiBaseUrl = env.platformApiUrl
 export const authRefreshPath = '/api/identity/session/refresh'
@@ -33,6 +36,7 @@ function mapRefreshPayload(payload: {
 
 export async function refreshAccessToken(): Promise<string> {
   const refreshToken = getRefreshToken()
+  const generation = getSessionGeneration()
   const hadSession = hasStoredSession()
 
   if (!refreshToken) {
@@ -42,11 +46,12 @@ export async function refreshAccessToken(): Promise<string> {
     return ''
   }
 
-  if (refreshPromise) {
+  if (refreshPromise && refreshGeneration === generation) {
     return refreshPromise
   }
 
-  refreshPromise = (async () => {
+  refreshGeneration = generation
+  const pending = (async () => {
     try {
       const response = await axios.post<{
         access_token: string
@@ -64,23 +69,24 @@ export async function refreshAccessToken(): Promise<string> {
       )
 
       const tokenSet = mapRefreshPayload(response.data)
-
+      if (getRefreshToken() !== refreshToken) return ''
       setTokenSet(tokenSet)
       return tokenSet.accessToken
     } catch {
-      if (hadSession) {
+      if (hadSession && getRefreshToken() === refreshToken) {
         handleSessionExpired()
       }
       return ''
     } finally {
-      refreshPromise = null
+      if (refreshGeneration === generation) refreshPromise = null
     }
   })()
-
-  return refreshPromise
+  refreshPromise = pending
+  return pending
 }
 
 export async function resolveAuthorizedAccessToken(skewSeconds = 30): Promise<string> {
+  const generation = getSessionGeneration()
   const currentToken = getAccessToken()
   if (currentToken && !isAccessTokenExpiringSoon(currentToken, skewSeconds)) {
     return currentToken
@@ -91,6 +97,7 @@ export async function resolveAuthorizedAccessToken(skewSeconds = 30): Promise<st
   }
 
   const refreshedToken = (await refreshAccessToken()).trim()
+  if (generation !== getSessionGeneration()) throw new Error('登录会话已变更')
   return refreshedToken || currentToken
 }
 
@@ -104,6 +111,9 @@ function createPlatformHttpClient() {
   })
 
   client.interceptors.request.use(async (config) => {
+    const request = config as RetriableRequest
+    request._sessionGeneration ??= getSessionGeneration()
+    if (request._sessionGeneration !== getSessionGeneration()) throw new Error('登录会话已变更')
     const token = await resolveAuthorizedAccessToken()
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
@@ -112,9 +122,15 @@ function createPlatformHttpClient() {
   })
 
   client.interceptors.response.use(
-    (response) => response,
+    (response) => {
+      if ((response.config as RetriableRequest)._sessionGeneration !== getSessionGeneration()) {
+        return Promise.reject(new Error('登录会话已变更'))
+      }
+      return response
+    },
     async (error: AxiosError) => {
       const originalRequest = error.config as RetriableRequest | undefined
+      if (originalRequest?._sessionGeneration !== getSessionGeneration()) return Promise.reject(error)
 
       if (error.response?.status === 401 && originalRequest?._retry && hasStoredSession()) {
         handleSessionExpired()

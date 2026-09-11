@@ -1,323 +1,309 @@
-import type { RouteRecordRaw } from 'vue-router'
-import { h } from 'vue'
-import { RouterView } from 'vue-router'
+import type { RouteRecordRaw } from "vue-router";
 
 const workspaceChildren: RouteRecordRaw[] = [
   {
-    path: '',
-    redirect: '/workspace/overview'
+    path: ":pathMatch(.*)*",
+    name: "workspace-not-found",
+    component: () => import("@/views/workspace/AccessUnavailableView.vue"),
+    meta: { title: "页面不存在" },
   },
   {
-    path: 'overview',
-    name: 'workspace-overview',
-    component: () => import('@/modules/overview/pages/OverviewPage.vue'),
-    meta: { title: '总览', eyebrow: 'Overview' }
-  },
-  {
-    path: 'projects',
-    name: 'workspace-projects',
-    component: () => import('@/modules/projects/pages/ProjectsPage.vue'),
-    meta: { title: '项目', eyebrow: 'Projects' }
-  },
-  {
-    path: 'projects/new',
-    name: 'workspace-project-create',
-    component: () => import('@/modules/projects/pages/ProjectCreatePage.vue'),
-    meta: { title: '新建项目', eyebrow: 'Projects', requiredPermissions: ['platform.project.create'] }
-  },
-  {
-    path: 'projects/:projectId',
-    name: 'workspace-project-detail',
-    component: () => import('@/modules/projects/pages/ProjectDetailPage.vue'),
+    path: "projects/:projectId/agents",
+    name: "workspace-agents",
+    component: () => import("@/modules/agents/pages/AgentsPage.vue"),
     meta: {
-      title: '项目详情',
-      eyebrow: 'Projects',
-      requiredPermissions: ['platform.project.read', 'project.member.read'],
-      permissionMode: 'any',
-      permissionProjectSource: 'route'
-    }
+      title: "Agents",
+      requiredPermissions: ["project.assistant.read"],
+      permissionProjectSource: "route",
+    },
   },
   {
-    path: 'projects/:projectId/members',
-    name: 'workspace-project-members',
-    component: () => import('@/modules/projects/pages/ProjectMembersPage.vue'),
+    path: "projects/:projectId/agents/:agentId",
+    name: "workspace-agent-detail",
+    component: () => import("@/modules/agents/pages/AgentEditorPage.vue"),
     meta: {
-      title: '项目成员',
-      eyebrow: 'Projects',
-      requiredPermissions: ['project.member.read'],
-      permissionProjectSource: 'route'
-    }
+      title: "Agent 详情",
+      requiredPermissions: ["project.assistant.read"],
+      permissionProjectSource: "route",
+    },
   },
   {
-    path: 'users',
-    name: 'workspace-users',
-    component: () => import('@/modules/users/pages/UsersPage.vue'),
-    meta: { title: '用户', eyebrow: 'Users', requiredPermissions: ['platform.user.read'] }
-  },
-  {
-    path: 'users/new',
-    name: 'workspace-user-create',
-    component: () => import('@/modules/users/pages/UserCreatePage.vue'),
-    meta: { title: '新建用户', eyebrow: 'Users', requiredPermissions: ['platform.user.create'] }
-  },
-  {
-    path: 'users/:userId',
-    name: 'workspace-user-detail',
-    component: () => import('@/modules/users/pages/UserDetailPage.vue'),
-    meta: { title: '用户详情', eyebrow: 'Users', requiredPermissions: ['platform.user.read'] }
-  },
-  {
-    path: 'assistants',
-    name: 'workspace-assistants',
-    component: () => import('@/modules/assistants/pages/AssistantsPage.vue'),
+    path: "projects/:projectId/models",
+    name: "workspace-models",
+    component: () => import("@/modules/runtime/pages/RuntimeModelsPage.vue"),
     meta: {
-      title: 'Agent',
-      eyebrow: 'Agents',
-      requiredPermissions: ['project.assistant.read'],
-      permissionProjectSource: 'workspace',
-      allowWithoutProject: true
-    }
+      title: "Models",
+      requiredPermissions: ["project.runtime.read"],
+      permissionProjectSource: "route",
+    },
   },
   {
-    path: 'assistants/new',
-    name: 'workspace-assistant-create',
-    component: () => import('@/modules/assistants/pages/AssistantCreatePage.vue'),
+    path: "projects/:projectId/graphs",
+    name: "workspace-graphs",
+    component: () => import("@/modules/graphs/pages/GraphsPage.vue"),
     meta: {
-      title: '新建 Agent',
-      eyebrow: 'Agents',
-      requiredPermissions: ['project.assistant.write'],
-      permissionProjectSource: 'workspace',
-      allowWithoutProject: true
-    }
+      title: "Graphs",
+      requiredPermissions: ["project.runtime.read"],
+      permissionProjectSource: "route",
+    },
   },
   {
-    path: 'assistants/:assistantId',
-    name: 'workspace-assistant-detail',
-    component: () => import('@/modules/assistants/pages/AssistantDetailPage.vue'),
+    path: "projects/:projectId/chat/:threadId?",
+    name: "workspace-chat",
+    component: () => import("@/modules/chat/pages/ChatPage.vue"),
     meta: {
-      title: 'Agent 详情',
-      eyebrow: 'Agents',
-      requiredPermissions: ['project.assistant.read'],
-      permissionProjectSource: 'workspace',
-      allowWithoutProject: true
-    }
+      title: "Chat",
+      requiredPermissions: ["project.runtime.read"],
+      permissionProjectSource: "route",
+    },
   },
   {
-    path: 'models',
-    name: 'workspace-models',
-    component: () => import('@/modules/runtime/pages/RuntimeModelsPage.vue'),
+    path: "access-unavailable",
+    name: "workspace-access-unavailable",
+    component: () => import("@/views/workspace/AccessUnavailableView.vue"),
+    meta: { title: "无法访问" },
+  },
+  {
+    path: "",
+    redirect: "/workspace/overview",
+  },
+  {
+    path: "overview",
+    name: "workspace-overview",
+    component: () => import("@/modules/overview/pages/OverviewPage.vue"),
+    meta: { title: "总览", eyebrow: "Overview" },
+  },
+  {
+    path: "projects",
+    name: "workspace-projects",
+    component: () => import("@/modules/projects/pages/ProjectsPage.vue"),
+    meta: { title: "项目", eyebrow: "Projects" },
+  },
+  {
+    path: "projects/new",
+    name: "workspace-project-create",
+    component: () => import("@/modules/projects/pages/ProjectCreatePage.vue"),
     meta: {
-      title: 'Models',
-      eyebrow: 'Models',
-      requiredPermissions: ['project.runtime.read'],
-      permissionProjectSource: 'workspace',
-      allowWithoutProject: true
-    }
+      title: "新建项目",
+      eyebrow: "Projects",
+      requiredPermissions: ["platform.project.create"],
+    },
   },
   {
-    path: 'runtime',
-    redirect: '/workspace/models'
-  },
-  {
-    path: 'runtime/models',
-    redirect: '/workspace/models'
-  },
-  {
-    path: 'runtime/policies',
-    redirect: '/workspace/models'
-  },
-  {
-    path: 'control-plane',
-    name: 'workspace-control-plane',
-    component: () => import('@/modules/control-plane/pages/ControlPlanePage.vue'),
+    path: "projects/:projectId",
+    name: "workspace-project-detail",
+    component: () => import("@/modules/projects/pages/ProjectDetailPage.vue"),
     meta: {
-      title: 'Control Plane',
-      eyebrow: 'Governance',
-      requiredPermissions: ['platform.config.read'],
-      permissionMode: 'any'
-    }
+      title: "项目详情",
+      eyebrow: "Projects",
+      requiredPermissions: ["platform.project.read", "project.member.read"],
+      permissionMode: "any",
+      permissionProjectSource: "route",
+    },
   },
   {
-    path: 'graphs',
-    name: 'workspace-graphs',
-    component: () => import('@/modules/graphs/pages/GraphsPage.vue'),
+    path: "projects/:projectId/members",
+    name: "workspace-project-members",
+    component: () => import("@/modules/projects/pages/ProjectMembersPage.vue"),
     meta: {
-      title: 'Graphs',
-      eyebrow: 'Graphs',
-      requiredPermissions: ['project.runtime.read'],
-      permissionProjectSource: 'workspace',
-      allowWithoutProject: true
-    }
+      title: "项目成员",
+      eyebrow: "Projects",
+      requiredPermissions: ["project.member.read"],
+      permissionProjectSource: "route",
+    },
   },
   {
-    path: 'sql-agent',
-    name: 'workspace-sql-agent',
-    component: () => import('@/modules/sql-agent/pages/SqlAgentPage.vue'),
+    path: "users",
+    name: "workspace-users",
+    component: () => import("@/modules/users/pages/UsersPage.vue"),
     meta: {
-      title: 'SQL Agent',
-      eyebrow: 'Agent',
-      requiredPermissions: ['project.runtime.read'],
-      permissionProjectSource: 'workspace',
-      allowWithoutProject: true
-    }
+      title: "用户",
+      eyebrow: "Users",
+      requiredPermissions: ["platform.user.read"],
+    },
   },
   {
-    path: 'threads',
-    name: 'workspace-threads',
-    component: () => import('@/modules/threads/pages/ThreadsPage.vue'),
+    path: "users/new",
+    name: "workspace-user-create",
+    component: () => import("@/modules/users/pages/UserCreatePage.vue"),
     meta: {
-      title: 'Threads',
-      eyebrow: 'Threads',
-      requiredPermissions: ['project.runtime.read'],
-      permissionProjectSource: 'workspace',
-      allowWithoutProject: true
-    }
+      title: "新建用户",
+      eyebrow: "Users",
+      requiredPermissions: ["platform.user.create"],
+    },
   },
   {
-    path: 'chat',
-    name: 'workspace-chat',
-    component: () => import('@/modules/chat/pages/ChatPage.vue'),
+    path: "users/:userId",
+    name: "workspace-user-detail",
+    component: () => import("@/modules/users/pages/UserDetailPage.vue"),
     meta: {
-      title: 'Chat',
-      eyebrow: 'Chat',
-      requiredPermissions: ['project.runtime.read'],
-      permissionProjectSource: 'workspace',
-      allowWithoutProject: true
-    }
+      title: "用户详情",
+      eyebrow: "Users",
+      requiredPermissions: ["platform.user.read"],
+    },
   },
+
   {
-    path: 'resources',
-    component: { render: () => h(RouterView) },
-    children: [
-      {
-        path: '',
-        name: 'workspace-resources-overview',
-        component: () => import('@/modules/examples/pages/UiAssetsPage.vue'),
-        meta: { title: '资源总览', eyebrow: 'Resources' }
-      },
-      {
-        path: 'playbook',
-        name: 'workspace-resources-playbook',
-        component: () => import('@/modules/examples/pages/ResourcePlaybookPage.vue'),
-        meta: { title: '前端开发范式', eyebrow: 'Resources' }
-      },
-      {
-        path: 'pages',
-        name: 'workspace-resources-pages',
-        component: () => import('@/modules/examples/pages/ResourcePageTemplatesPage.vue'),
-        meta: { title: '页面模板', eyebrow: 'Resources' }
-      },
-      {
-        path: 'components',
-        name: 'workspace-resources-components',
-        component: () => import('@/modules/examples/pages/ResourceComponentTemplatesPage.vue'),
-        meta: { title: '组件模板', eyebrow: 'Resources' }
-      },
-      {
-        path: 'engineering',
-        name: 'workspace-resources-engineering',
-        component: () => import('@/modules/examples/pages/ResourceEngineeringTemplatesPage.vue'),
-        meta: { title: '工程模板', eyebrow: 'Resources' }
-      },
-      {
-        path: 'top-picks',
-        name: 'workspace-resources-top-picks',
-        component: () => import('@/modules/examples/pages/ResourceTopPicksPage.vue'),
-        meta: { title: '团队推荐 Top 10', eyebrow: 'Resources' }
-      }
-    ]
-  },
-  {
-    path: 'ui-assets',
-    redirect: '/workspace/resources',
-    meta: { title: '资源总览', eyebrow: 'Resources' }
-  },
-  {
-    path: 'announcements',
-    name: 'workspace-announcements',
-    component: () => import('@/modules/announcements/pages/AnnouncementsPage.vue'),
+    path: "control-plane",
+    name: "workspace-control-plane",
+    component: () =>
+      import("@/modules/control-plane/pages/ControlPlanePage.vue"),
     meta: {
-      title: '公告管理',
-      eyebrow: 'Announcements',
-      requiredPermissions: ['platform.announcement.write', 'project.announcement.write'],
-      permissionMode: 'any',
-      permissionProjectSource: 'workspace',
-      allowWithoutProject: true
-    }
+      title: "Control Plane",
+      eyebrow: "Governance",
+      requiredPermissions: ["platform.config.read"],
+      permissionMode: "any",
+    },
   },
+
   {
-    path: 'me',
-    name: 'workspace-me',
-    component: () => import('@/modules/account/pages/ProfilePage.vue'),
-    meta: { title: '我的信息', eyebrow: 'Account' }
-  },
-  {
-    path: 'security',
-    name: 'workspace-security',
-    component: () => import('@/modules/account/pages/SecurityPage.vue'),
-    meta: { title: '安全设置', eyebrow: 'Account' }
-  },
-  {
-    path: 'audit',
-    name: 'workspace-audit',
-    component: () => import('@/modules/audit/pages/AuditPage.vue'),
+    path: "announcements",
+    name: "workspace-announcements",
+    component: () =>
+      import("@/modules/announcements/pages/AnnouncementsPage.vue"),
     meta: {
-      title: '审计日志',
-      eyebrow: 'Audit',
-      requiredPermissions: ['platform.audit.read', 'project.audit.read'],
-      permissionMode: 'any',
-      permissionProjectSource: 'workspace',
-      allowWithoutProject: true
-    }
+      title: "公告管理",
+      eyebrow: "Announcements",
+      requiredPermissions: [
+        "platform.announcement.write",
+        "project.announcement.write",
+      ],
+      permissionMode: "any",
+      permissionProjectSource: "workspace",
+      allowWithoutProject: true,
+    },
   },
   {
-    path: 'platform-config',
-    name: 'workspace-platform-config',
-    component: () => import('@/modules/platform-config/pages/PlatformConfigPage.vue'),
-    meta: { title: '平台配置', eyebrow: 'Governance', requiredPermissions: ['platform.config.read'] }
+    path: "me",
+    name: "workspace-me",
+    component: () => import("@/modules/account/pages/ProfilePage.vue"),
+    meta: { title: "我的信息", eyebrow: "Account" },
   },
   {
-    path: 'service-accounts',
-    name: 'workspace-service-accounts',
-    component: () => import('@/modules/service-accounts/pages/ServiceAccountsPage.vue'),
+    path: "security",
+    name: "workspace-security",
+    component: () => import("@/modules/account/pages/SecurityPage.vue"),
+    meta: { title: "安全设置", eyebrow: "Account" },
+  },
+  {
+    path: "audit",
+    name: "workspace-audit",
+    component: () => import("@/modules/audit/pages/AuditPage.vue"),
     meta: {
-      title: 'Service Accounts',
-      eyebrow: 'Governance',
-      requiredPermissions: ['platform.service_account.read']
-    }
+      title: "审计日志",
+      eyebrow: "Audit",
+      requiredPermissions: ["platform.audit.read", "project.audit.read"],
+      permissionMode: "any",
+      permissionProjectSource: "workspace",
+      allowWithoutProject: true,
+    },
   },
   {
-    path: 'system-governance',
-    name: 'workspace-system-governance',
-    component: () => import('@/modules/system-governance/pages/SystemGovernancePage.vue'),
-    meta: { title: 'System Probes', eyebrow: 'Governance', requiredPermissions: ['platform.config.read'] }
-  }
-]
+    path: "platform-config",
+    name: "workspace-platform-config",
+    component: () =>
+      import("@/modules/platform-config/pages/PlatformConfigPage.vue"),
+    meta: {
+      title: "平台配置",
+      eyebrow: "Governance",
+      requiredPermissions: ["platform.config.read"],
+    },
+  },
+  {
+    path: "service-accounts",
+    name: "workspace-service-accounts",
+    component: () =>
+      import("@/modules/service-accounts/pages/ServiceAccountsPage.vue"),
+    meta: {
+      title: "Service Accounts",
+      eyebrow: "Governance",
+      requiredPermissions: ["platform.service_account.read"],
+    },
+  },
+  {
+    path: "system-governance",
+    name: "workspace-system-governance",
+    component: () =>
+      import("@/modules/system-governance/pages/SystemGovernancePage.vue"),
+    meta: {
+      title: "System Probes",
+      eyebrow: "Governance",
+      requiredPermissions: ["platform.config.read"],
+    },
+  },
+];
+
+const navigation: Record<
+  string,
+  { group: string; label: string; icon: string }
+> = {
+  "workspace-overview": { group: "工作区", label: "总览", icon: "overview" },
+  "workspace-projects": { group: "工作区", label: "项目", icon: "folder" },
+  "workspace-agents": { group: "项目管理", label: "Agents", icon: "assistant" },
+  "workspace-chat": { group: "项目管理", label: "Chat", icon: "chat" },
+  "workspace-models": {
+    group: "项目管理",
+    label: "模型与工具",
+    icon: "runtime",
+  },
+  "workspace-graphs": { group: "项目管理", label: "Graphs", icon: "graph" },
+  "workspace-users": { group: "平台管理", label: "用户", icon: "users" },
+  "workspace-control-plane": {
+    group: "平台管理",
+    label: "控制面",
+    icon: "overview",
+  },
+  "workspace-announcements": { group: "平台管理", label: "公告", icon: "bell" },
+  "workspace-platform-config": {
+    group: "平台管理",
+    label: "平台配置",
+    icon: "lock",
+  },
+  "workspace-service-accounts": {
+    group: "平台管理",
+    label: "服务账号",
+    icon: "users",
+  },
+  "workspace-system-governance": {
+    group: "平台管理",
+    label: "系统探测",
+    icon: "shield",
+  },
+  "workspace-audit": { group: "平台管理", label: "审计", icon: "audit" },
+};
+for (const route of workspaceChildren) {
+  const item = navigation[String(route.name)];
+  if (item) route.meta = { ...route.meta, navigation: item };
+}
 
 export const routes: RouteRecordRaw[] = [
   {
-    path: '/',
-    redirect: '/workspace'
+    path: "/:pathMatch(.*)*",
+    redirect: "/workspace/not-found",
   },
   {
-    path: '/auth',
-    component: () => import('@/layouts/AuthLayout.vue'),
+    path: "/",
+    redirect: "/workspace",
+  },
+  {
+    path: "/auth",
+    component: () => import("@/layouts/AuthLayout.vue"),
     children: [
       {
-        path: 'login',
-        name: 'auth-login',
-        component: () => import('@/views/auth/LoginView.vue')
+        path: "login",
+        name: "auth-login",
+        component: () => import("@/views/auth/LoginView.vue"),
       },
       {
-        path: 'callback',
-        name: 'auth-callback',
-        component: () => import('@/views/auth/AuthCallbackView.vue')
-      }
-    ]
+        path: "callback",
+        name: "auth-callback",
+        component: () => import("@/views/auth/AuthCallbackView.vue"),
+      },
+    ],
   },
   {
-    path: '/workspace',
-    component: () => import('@/layouts/WorkspaceLayout.vue'),
-    children: workspaceChildren
-  }
-]
+    path: "/workspace",
+    component: () => import("@/layouts/WorkspaceLayout.vue"),
+    children: workspaceChildren,
+  },
+];

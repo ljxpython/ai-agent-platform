@@ -10,8 +10,9 @@
 
 ## 1. 页面结构
 
-正式产品命名使用 Agent。旧 Assistant 路由和字段只作为迁移兼容，不得在新页面或新 service 中扩散；
-运行目标只使用 `agent_key`，SDK 的 `assistantId` 仅是上游标准字段名。
+正式产品命名使用 Agent。Agent 管理 ID 与执行目标分离；
+执行目标使用部署 `graph_id`，SDK 的 `assistantId` 保留上游字段名。旧 Assistant 路由不提供兼容。
+已授权 Graph 自动对齐为项目 Agent；Chat 只让用户选 Agent，Graphs 页也解析对应 Agent 后进入 Chat。Agents 页面用于展示及配置编辑，不提供手工创建/删除。
 
 每个正式页面默认拆成 4 层：
 
@@ -36,7 +37,7 @@
 - 说明块、批次上下文块、详情弹窗块、聊天检查面板统一使用 `pw-panel*` 系列
 - 列表页优先使用统一筛选区、统计卡、表格区三段结构
 - 风险动作必须有确认弹窗
-- loading / empty / error 不能省
+- loading / empty / error / forbidden 不能省
 - 大屏下内容区必须撑满，不允许出现残缺留白
 - 深色模式和浅色模式都要保持首屏一致性
 - 禁止页面继续扩散散装的玻璃态、重阴影、大圆角壳
@@ -66,7 +67,7 @@
 - 项目上下文统一通过 `useWorkspaceProjectContext`
 - 不再维护 `runtimeProjectId / runtimeScopedProject / runtimeProjects` 这类伪独立上下文别名
 - 页面不要再自行判断 `resolvePlatformClientScope(...) === 'v2'`
-- 长耗时导出、刷新、重同步优先走 `operations`
+- 目录刷新使用公开同步 refresh 接口；不调用已退役的 Operations/resync/模型远端刷新接口
 
 ---
 
@@ -78,7 +79,7 @@
 - 不把一次性弹窗状态塞进全局 store
 - 不维护双 token、双项目上下文、双控制面状态
 - `workspace` store 只承载唯一正式项目上下文
-- 过渡期别名只能作为兼容层存在，新增页面禁止继续扩散
+- 身份与项目切换立即清理旧数据；迟到响应按 epoch 丢弃，不建立过渡期别名
 
 ---
 

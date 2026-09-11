@@ -1,6 +1,9 @@
 import type { AuthTokenSet } from '@/types/management'
 
 const TOKEN_STORAGE_KEY = 'pw:auth:token-set'
+let sessionGeneration = 0
+
+export function getSessionGeneration() { return sessionGeneration }
 
 function parseTokenSet(raw: string): AuthTokenSet | null {
   try {
@@ -41,11 +44,12 @@ export function setTokenSet(tokenSet: AuthTokenSet): void {
 }
 
 export function clearTokenSet(): void {
+  sessionGeneration += 1
   clearStoredTokenSet()
 }
 
 export function clearAllTokenSets(): void {
-  clearStoredTokenSet()
+  clearTokenSet()
 }
 
 export function getAccessToken(): string {

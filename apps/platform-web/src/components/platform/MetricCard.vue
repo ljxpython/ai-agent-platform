@@ -46,7 +46,7 @@ const iconClass = computed(() => {
       <div class="mt-1.5 text-[24px] font-semibold tracking-tight text-gray-950 dark:text-white">
         {{ value }}
       </div>
-      <p class="mt-1.5 text-sm leading-6 text-gray-500 dark:text-dark-300">
+      <p class="mt-1.5 break-all text-sm leading-6 text-gray-500 dark:text-dark-300">
         {{ hint }}
       </p>
     </div>

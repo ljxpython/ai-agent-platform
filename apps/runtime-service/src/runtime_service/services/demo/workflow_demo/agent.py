@@ -137,6 +137,12 @@ async def _catalog_connection(
 async def get_agent(config: RunnableConfig) -> Pregel:
     """Build the real model-backed workflow Agent with optional HITL routing."""
 
+    configurable = _configurable(config)
+    if configurable and set(configurable) <= {"graph_id", "thread_id", "checkpoint_id", "checkpoint_ns"}:
+        async def unavailable_model(_state):
+            raise RuntimeAuthError("runtime.graph.probe_only")
+        return build_graph(unavailable_model, probe_only=True)
+
     facts, local = _facts(config)
     context = parse_runtime_context(config.get("context"))
     raw_context = config.get("context")

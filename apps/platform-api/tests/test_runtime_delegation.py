@@ -23,6 +23,20 @@ from platform_api.core.security import create_runtime_delegation_token, empty_ru
 from platform_api.modules.runtime_gateway.presentation.http import get_runtime_gateway_service
 
 
+class MessagePayloadBoundaryTest(unittest.IsolatedAsyncioTestCase):
+    async def test_sender_source_policy_and_approval_cannot_enter_as_message_fields(self):
+        from unittest.mock import AsyncMock
+        from platform_api.core.errors import BadRequestError
+        from platform_api.modules.runtime_gateway.presentation.http import enqueue_thread_message
+        request = Request({"type": "http", "headers": [(b"x-project-id", b"project")]})
+        request.state.platform_context = SimpleNamespace(project=ProjectContext(project_id="project"))
+        service = SimpleNamespace(enqueue_thread_message=AsyncMock())
+        for field in ("sender", "sender_id", "source", "config", "context", "resume", "authorization_ref"):
+            with self.subTest(field=field), self.assertRaises(BadRequestError):
+                await enqueue_thread_message(request, "thread", {"content": "text", field: "forged"}, ActorContext(), service)
+        service.enqueue_thread_message.assert_not_called()
+
+
 class RuntimeDelegationTokenTest(unittest.TestCase):
     def test_signs_runtime_service_claim_contract(self) -> None:
         settings = Settings(
@@ -107,29 +121,30 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
                 settings=Settings(runtime_delegation_secret=""),
             )
 
-    def test_operation_scope_is_restricted_to_read_or_run_create(self) -> None:
+    def test_operation_scope_accepts_only_execution_and_message_operations(self) -> None:
         settings = Settings(
             runtime_delegation_secret="runtime-delegation-secret-at-least-32-bytes"
         )
-        token = create_runtime_delegation_token(
-            subject="user-1",
-            tenant_id="__default",
-            project_id="project-1",
-            role="project_editor",
-            permissions=["project.runtime.read"],
-            policy_version="policy-1",
-            allowed_model_ids=[],
-            allowed_tool_names=[],
-            scope={
-                "tenant_id": "__default",
-                "project_id": "project-1",
-                "operation": "read",
-            },
-            settings=settings,
-        )
-        claims = jwt.decode(token, settings.runtime_delegation_secret, algorithms=["HS256"], options={"verify_signature": False})
-        self.assertEqual(claims["scope"]["operation"], "read")
-        with self.assertRaisesRegex(ValueError, "operation must be read or run-create"):
+        for operation in ("read", "run-create", "message-enqueue", "message-read"):
+            token = create_runtime_delegation_token(
+                subject="user-1",
+                tenant_id="__default",
+                project_id="project-1",
+                role="project_editor",
+                permissions=["project.runtime.read"],
+                policy_version="policy-1",
+                allowed_model_ids=[],
+                allowed_tool_names=[],
+                scope={
+                    "tenant_id": "__default",
+                    "project_id": "project-1",
+                    "operation": operation,
+                },
+                settings=settings,
+            )
+            claims = jwt.decode(token, settings.runtime_delegation_secret, algorithms=["HS256"], options={"verify_signature": False})
+            self.assertEqual(claims["scope"]["operation"], operation)
+        with self.assertRaisesRegex(ValueError, "operation is unsupported"):
             create_runtime_delegation_token(
                 subject="user-1",
                 tenant_id="__default",

@@ -4,6 +4,7 @@ from collections.abc import AsyncIterator, Mapping
 from typing import Any
 
 import httpx
+from anyio import CancelScope
 
 from platform_api.adapters.langgraph.sdk_client import (
     create_runtime_upstream_error,
@@ -163,9 +164,10 @@ class LangGraphRuntimeClient:
                 await response.aread()
             await self._raise_for_status(response)
         except BaseException as exc:
-            if response is not None:
-                await response.aclose()
-            await client.aclose()
+            with CancelScope(shield=True):
+                if response is not None:
+                    await response.aclose()
+                await client.aclose()
             if isinstance(exc, httpx.HTTPError):
                 raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_stream_failed")
             raise
@@ -176,8 +178,9 @@ class LangGraphRuntimeClient:
                     if chunk:
                         yield chunk
             finally:
-                await response.aclose()
-                await client.aclose()
+                with CancelScope(shield=True):
+                    await response.aclose()
+                    await client.aclose()
         return iterator()
 
     async def require_json(

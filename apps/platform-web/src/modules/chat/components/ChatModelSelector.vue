@@ -10,6 +10,7 @@ const props = withDefaults(
     selectedModelId?: string
     defaultModelName?: string
     disabled?: boolean
+    projectId: string
   }>(),
   {
     models: () => [],
@@ -34,10 +35,11 @@ function formatProviderLabel(provider: string): string {
   const lower = provider.toLowerCase()
   if (lower.includes('deepseek-proxy')) return 'DeepSeek 中转渠道'
   if (lower.includes('gpt-proxy')) return 'GPT 中转渠道'
-  if (lower.includes('deepseek')) return 'DeepSeek 官方'
-  if (lower.includes('openai')) return 'OpenAI 官方'
+  if (lower.includes('deepseek')) return 'DeepSeek 渠道'
+  if (lower.includes('openai')) return 'OpenAI 渠道'
   if (lower.includes('ollama')) return 'Ollama 本地服务'
   if (lower.includes('qwen')) return '通义千问 (DashScope)'
+  if (lower.includes('doubao')) return '豆包 (火山引擎)'
   if (lower.includes('glm')) return '智谱 GLM'
   if (lower.includes('anthropic')) return 'Anthropic Claude'
   return `${provider.toUpperCase()} 渠道`
@@ -52,7 +54,7 @@ const filteredGroupedModels = computed(() => {
   const map = new Map<string, RuntimeModelItem[]>()
   for (const item of props.models) {
     if (query) {
-      const matchId = item.model_id?.toLowerCase().includes(query)
+      const matchId = item.model?.toLowerCase().includes(query)
       const matchName = item.display_name?.toLowerCase().includes(query)
       const matchProvider = item.provider?.toLowerCase().includes(query)
       if (!matchId && !matchName && !matchProvider) continue
@@ -73,12 +75,12 @@ const filteredGroupedModels = computed(() => {
 
 const selectedModel = computed(() => {
   if (!props.selectedModelId) return null
-  return props.models?.find((m) => m.model_id === props.selectedModelId) ?? null
+  return props.models?.find((m) => m.id === props.selectedModelId) ?? null
 })
 
 const currentDisplayLabel = computed(() => {
   if (!props.selectedModelId) {
-    return props.defaultModelName ? `默认: ${props.defaultModelName}` : '系统默认模型'
+    return props.defaultModelName ? `默认: ${props.defaultModelName}` : '项目默认模型'
   }
   return selectedModel.value?.display_name || props.selectedModelId
 })
@@ -133,6 +135,7 @@ function open() {
 
 function close() {
   isOpen.value = false
+  triggerRef.value?.focus()
 }
 
 function toggle() {
@@ -193,6 +196,9 @@ onBeforeUnmount(() => {
       class="group relative inline-flex h-8 items-center gap-2 rounded-lg border border-gray-200/90 bg-white/90 px-2.5 text-xs text-gray-700 shadow-xs transition-all hover:border-primary-400/80 hover:bg-white hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-700 dark:bg-dark-800/90 dark:text-dark-200 dark:hover:border-primary-500/80 dark:hover:bg-dark-800 dark:hover:text-white"
       :class="isOpen ? 'border-primary-500 bg-white ring-2 ring-primary-500/20 dark:border-primary-500 dark:bg-dark-800' : ''"
       title="选择对话运行模型"
+      aria-label="选择对话运行模型"
+      aria-haspopup="dialog"
+      :aria-expanded="isOpen"
       @click="toggle"
     >
       <!-- Sparkle 图标装饰 -->
@@ -204,7 +210,7 @@ onBeforeUnmount(() => {
       </span>
 
       <!-- 当前模型名称 -->
-      <span class="font-medium truncate max-w-[140px] sm:max-w-[180px]">
+      <span class="font-medium truncate max-w-[110px] sm:max-w-[180px]">
         {{ currentDisplayLabel }}
       </span>
 
@@ -238,6 +244,8 @@ onBeforeUnmount(() => {
         <div
           v-if="isOpen"
           ref="dropdownRef"
+          role="dialog"
+          aria-label="切换对话模型"
           :style="dropdownStyle"
           class="flex max-h-[460px] flex-col overflow-hidden rounded-2xl border border-gray-200/90 bg-white/95 shadow-2xl backdrop-blur-xl dark:border-dark-700 dark:bg-dark-900/95 dark:shadow-black/70"
         >
@@ -268,13 +276,15 @@ onBeforeUnmount(() => {
                 ref="searchInputRef"
                 v-model="searchQuery"
                 type="text"
+                aria-label="搜索模型"
                 placeholder="快速搜索模型名称、ID 或渠道..."
                 class="w-full rounded-xl border border-gray-200/80 bg-white py-1.5 pl-8 pr-7 text-xs text-gray-900 placeholder:text-gray-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 dark:border-dark-700 dark:bg-dark-900 dark:text-white dark:placeholder:text-dark-500"
-              />
+              >
               <button
                 v-if="searchQuery"
                 type="button"
                 class="absolute right-2 text-gray-400 hover:text-gray-600 dark:hover:text-dark-200"
+                aria-label="清除搜索"
                 @click="searchQuery = ''"
               >
                 <BaseIcon
@@ -294,6 +304,10 @@ onBeforeUnmount(() => {
               :class="!selectedModelId
                 ? 'border-primary-300 bg-primary-50/70 text-primary-900 dark:border-primary-900/60 dark:bg-primary-950/40 dark:text-primary-200'
                 : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50/80 dark:border-dark-800 dark:hover:border-dark-700 dark:hover:bg-dark-800/60'"
+              role="button"
+              tabindex="0"
+              @keydown.enter.prevent="selectModel('')"
+              @keydown.space.prevent="selectModel('')"
               @click="selectModel('')"
             >
               <div class="flex items-center gap-2.5 min-w-0">
@@ -311,14 +325,14 @@ onBeforeUnmount(() => {
                 <div class="min-w-0">
                   <div class="flex items-center gap-1.5">
                     <span class="text-xs font-semibold text-gray-900 dark:text-white">
-                      跟随系统默认配置
+                      跟随项目默认配置
                     </span>
                     <span class="rounded bg-emerald-50 px-1.5 py-0.2 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300">
                       推荐
                     </span>
                   </div>
                   <p class="truncate text-[11px] text-gray-500 dark:text-dark-400 mt-0.5">
-                    {{ defaultModelName ? `当前生效: ${defaultModelName}` : '使用平台全局设定的默认模型' }}
+                    {{ defaultModelName ? `当前生效: ${defaultModelName}` : '使用项目默认模型' }}
                   </p>
                 </div>
               </div>
@@ -359,32 +373,36 @@ onBeforeUnmount(() => {
               <!-- 模型卡片 -->
               <div
                 v-for="model in group.items"
-                :key="model.id || model.model_id"
+                :key="model.id"
                 class="group flex cursor-pointer items-center justify-between rounded-xl px-2.5 py-2 transition"
-                :class="selectedModelId === model.model_id
+                :class="selectedModelId === model.id
                   ? 'bg-primary-50/80 text-primary-900 ring-1 ring-primary-500/30 dark:bg-primary-950/50 dark:text-primary-200 dark:ring-primary-600/40'
                   : 'hover:bg-gray-100/70 dark:hover:bg-dark-800/60'"
-                @click="selectModel(model.model_id)"
+                role="button"
+                tabindex="0"
+                @keydown.enter.prevent="selectModel(model.id)"
+                @keydown.space.prevent="selectModel(model.id)"
+                @click="selectModel(model.id)"
               >
                 <div class="min-w-0 pr-2">
                   <div class="flex items-center gap-1.5">
                     <span
                       class="text-xs font-medium truncate"
-                      :class="selectedModelId === model.model_id
+                      :class="selectedModelId === model.id
                         ? 'font-semibold text-primary-900 dark:text-white'
                         : 'text-gray-800 dark:text-dark-200'"
                     >
-                      {{ model.display_name || model.model_id }}
+                      {{ model.display_name || model.model }}
                     </span>
                     <span
-                      v-if="model.is_default"
+                      v-if="model.display_name === defaultModelName"
                       class="shrink-0 rounded bg-emerald-50 px-1.5 py-0.2 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
                     >
                       默认
                     </span>
                   </div>
                   <div class="flex items-center gap-1.5 mt-0.5 text-[11px] font-mono text-gray-400 dark:text-dark-400">
-                    <span class="truncate max-w-[210px]">{{ model.model_id }}</span>
+                    <span class="truncate max-w-[210px]">{{ model.model }}</span>
                     <span
                       v-if="model.protocol"
                       class="text-[10px] opacity-70"
@@ -394,7 +412,7 @@ onBeforeUnmount(() => {
 
                 <div class="shrink-0">
                   <BaseIcon
-                    v-if="selectedModelId === model.model_id"
+                    v-if="selectedModelId === model.id"
                     name="check"
                     size="sm"
                     class="text-primary-600 dark:text-primary-400"
@@ -418,7 +436,7 @@ onBeforeUnmount(() => {
               需要管理中转端点？
             </span>
             <RouterLink
-              to="/workspace/models"
+              :to="`/workspace/projects/${projectId}/models`"
               class="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
               @click="close"
             >

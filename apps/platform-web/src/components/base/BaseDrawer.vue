@@ -60,8 +60,26 @@ function closeDrawer() {
 }
 
 function handleEscape(event: KeyboardEvent) {
-  if (props.show && props.closeOnEscape && event.key === 'Escape') {
+  const dialogs = document.querySelectorAll('[role="dialog"]')
+  if (!props.show || !dialogs[dialogs.length - 1]?.contains(drawerRef.value)) return
+  if (props.closeOnEscape && event.key === 'Escape') {
+    event.preventDefault()
     emit('close')
+  }
+  if (event.key === 'Tab' && drawerRef.value) {
+    const elements = [...drawerRef.value.querySelectorAll<HTMLElement>(
+      'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]'
+    )].filter(element => element.getClientRects().length > 0)
+    const first = elements[0]
+    const last = elements[elements.length - 1]
+    if (!first) { event.preventDefault(); drawerRef.value.focus() }
+    else if (!drawerRef.value.contains(document.activeElement)) {
+      event.preventDefault(); (event.shiftKey ? last : first)?.focus()
+    } else if (event.shiftKey && (document.activeElement === first || document.activeElement === drawerRef.value)) {
+      event.preventDefault(); last?.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault(); first.focus()
+    }
   }
 }
 
@@ -106,11 +124,13 @@ onUnmounted(() => {
       leave-active-class="transition duration-150 ease-in"
       leave-from-class="opacity-100"
       leave-to-class="opacity-0"
+      @after-enter="drawerRef?.focus()"
     >
       <div
         v-if="show"
         class="fixed inset-0 z-[90] bg-slate-950/30 backdrop-blur-sm"
         role="dialog"
+        :aria-label="title"
         aria-modal="true"
         @click.self="closeOnClickOutside ? closeDrawer() : undefined"
       >

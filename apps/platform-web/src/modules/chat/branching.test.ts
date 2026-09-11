@@ -93,4 +93,16 @@ describe('chat branching', () => {
       branchOptions: ['checkpoint-ai-original', 'checkpoint-ai-retry']
     })
   })
+
+  it('无新增消息的路由节点分叉仍挂到最后一条可见消息', () => {
+    const routed = [
+      createState('retry', 'route', [humanMessage, retriedAiMessage]),
+      createState('original', 'route', [humanMessage, originalAiMessage]),
+      createState('route', 'human', [humanMessage]),
+      createState('human', 'root', [humanMessage]),
+      createState('root', null, [])
+    ]
+    const context = getChatBranchContext('', routed)
+    expect(buildChatMessageMetadata([humanMessage, retriedAiMessage], routed, context)['human-1']?.branchOptions).toEqual(['original', 'retry'])
+  })
 })

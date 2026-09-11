@@ -1,87 +1,63 @@
 <script setup lang="ts">
-import type { Message } from '@langchain/langgraph-sdk'
-import type { AssembledToolCall, AnyStream, MessageMetadata } from '@langchain/vue'
-import MarkdownContent from '@/components/platform/MarkdownContent.vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import type { ChatMessageMetadata } from '../branching'
-import type { AgentDisplayMessage } from '../agent-types'
-import ChatToolCallCard from './ChatToolCallCard.vue'
-import ChatReasoningBlock from './ChatReasoningBlock.vue'
-import ChatMessageRuntimeMetadata from './ChatMessageRuntimeMetadata.vue'
-
+import { computed, ref } from "vue";
+import type { BaseMessage } from "@langchain/core/messages";
+import type { AssembledToolCall } from "@langchain/vue";
+import type { ChatMessageMetadata } from "../branching";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import MessageContent from "./MessageContent.vue";
+import ToolResult from "./ToolResult.vue";
+import { buildTranscript, type MessageItem, type ToolItem } from "../transcript";
 const props = defineProps<{
-  displayMessages: AgentDisplayMessage[]
-  allMessages: Message[]
-  editingMessageId: string
-  editingMessageValue: string
-  isRunning: boolean
-  streamHandle: AnyStream
-  toolCalls: AssembledToolCall[]
-  getMessageMeta: (messageId: string) => ChatMessageMetadata | undefined
-  getMessageBranchIndex: (messageId: string) => number
-  hasBranchSwitcher: (messageId: string) => boolean
-  canEditMessage: (message: Message, messageId: string, parentCheckpointId?: string) => boolean
-  canRetryMessage: (message: Message, messageId: string, parentCheckpointId?: string) => boolean
-}>()
-
+  messages: readonly BaseMessage[];
+  calls: readonly AssembledToolCall[];
+  isRunning: boolean;
+  canEdit?: boolean;
+  metadata?: Record<string, ChatMessageMetadata>;
+  editingMessageId?: string;
+  editingMessageValue?: string;
+}>();
 const emit = defineEmits<{
-  'update:editingMessageValue': [value: string]
-  'copy-message': [message: Message]
-  'cancel-edit': []
-  'submit-edit': [message: Message, messageId: string, parentCheckpointId?: string]
-  'start-edit': [message: Message, messageId: string]
-  'retry-message': [messageId: string, parentCheckpointId?: string]
-  'select-previous-branch': [messageId: string]
-  'select-next-branch': [messageId: string]
-  'message-meta-expanded-change': [messageId: string, expanded: boolean]
-}>()
-
-function handleEditingInput(event: Event) {
-  emit('update:editingMessageValue', (event.target as HTMLTextAreaElement | null)?.value || '')
+  inspect: [tool: ToolItem]; edit: [id: string, text: string]; retry: [id: string];
+  "select-branch": [branch: string];
+  "update:editingMessageValue": [value: string]; "cancel-edit": []; "submit-edit": [];
+}>();
+const text = (items: MessageItem[]) => items.flatMap(item => item.blocks.filter(block => block.kind === "text").map(block => block.text)).join("\n\n");
+const visibleDisplayMessages = computed(() => buildTranscript(props.messages, props.calls, props.isRunning).flatMap(turn => {
+  const user = turn.user;
+  const entries = [];
+  if (user) entries.push({ id: user.id ?? user.key, messageId: user.id, author: "user", work: [], content: [user], text: text([user]), userId: user.id, userText: text([user]) });
+  if (turn.work.length || turn.answer.length) entries.push({ id: turn.key + ":agent", messageId: turn.answer[turn.answer.length - 1]?.id, author: "agent", work: turn.work, content: turn.answer, text: text(turn.answer), userId: user?.id, userText: user ? text([user]) : "" });
+  return entries;
+}));
+function getMessageMeta(id: string) { return props.metadata?.[id]; }
+function getMessageBranchIndex(id: string) {
+  const meta = getMessageMeta(id); return meta?.branchOptions?.indexOf(meta.branch || "") ?? -1;
 }
-
-function getOriginalMessage(id: string): Message | undefined {
-  return props.allMessages.find(m => m.id === id)
+function hasBranchSwitcher(id: string) { return (getMessageMeta(id)?.branchOptions?.length ?? 0) > 1; }
+function selectBranch(id: string, offset: number) {
+  const path = getMessageMeta(id)?.branchOptions?.[getMessageBranchIndex(id) + offset];
+  if (path) emit("select-branch", path);
 }
-
-import { computed, ref, watch } from 'vue'
-
-// 强制刷新key，每次displayMessages变化时递增
-const forceRefreshKey = ref(0)
-
-watch(
-  () => props.displayMessages,
-  () => {
-    // 每次messages更新时立即触发DOM刷新
-    forceRefreshKey.value++
-  },
-  { deep: true }
-)
-
-const visibleDisplayMessages = computed(() =>
-  props.displayMessages.filter((entry) => entry.chunks && entry.chunks.length > 0)
-)
-
-function getParentCheckpointId(messageId: string, runtimeMetadata?: MessageMetadata) {
-  return (
-    runtimeMetadata?.parentCheckpointId?.trim() ||
-    props.getMessageMeta(messageId)?.parentCheckpoint?.checkpoint_id?.trim() ||
-    undefined
-  )
+function handleEditingInput(event: Event) { emit("update:editingMessageValue", (event.target as HTMLTextAreaElement).value); }
+const copyError = ref("");
+async function copy(value: string) {
+  try { await navigator.clipboard.writeText(value); copyError.value = ""; }
+  catch { copyError.value = "复制失败，请手动选择文本复制"; }
 }
 </script>
 
 <template>
-  <div class="space-y-8" :key="forceRefreshKey">
-    <ChatMessageRuntimeMetadata
+  <div
+    class="space-y-8"
+    data-testid="transcript"
+  >
+    <template
       v-for="displayEntry in visibleDisplayMessages"
       :key="displayEntry.id"
-      v-slot="{ metadata }"
-      :stream="streamHandle"
-      :message-id="displayEntry.id"
     >
       <article
         class="pw-chat-turn"
+        :data-author="displayEntry.author"
         :class="displayEntry.author === 'user' ? 'items-end' : 'items-start'"
       >
         <div
@@ -90,7 +66,10 @@ function getParentCheckpointId(messageId: string, runtimeMetadata?: MessageMetad
         >
           <template v-if="displayEntry.author === 'agent'">
             <span class="pw-chat-agent-mark">
-              <BaseIcon name="chat" size="sm" />
+              <BaseIcon
+                name="chat"
+                size="sm"
+              />
             </span>
             <span class="font-semibold text-gray-900 dark:text-white">Agent</span>
           </template>
@@ -103,7 +82,7 @@ function getParentCheckpointId(messageId: string, runtimeMetadata?: MessageMetad
           class="max-w-[780px]"
           :class="[
             displayEntry.author === 'user'
-              ? 'w-auto self-end rounded-2xl rounded-tr-sm border border-primary-200 bg-primary-50/90 px-5 py-3.5 shadow-xs text-primary-950'
+              ? 'w-auto self-end rounded-2xl rounded-tr-sm border border-primary-200 bg-primary-50/90 px-5 py-3.5 shadow-xs text-primary-950 dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-100'
               : 'w-full self-start rounded-2xl border border-gray-200/90 bg-white p-5 shadow-xs dark:border-dark-800 dark:bg-dark-900'
           ]"
         >
@@ -116,93 +95,139 @@ function getParentCheckpointId(messageId: string, runtimeMetadata?: MessageMetad
             @input="handleEditingInput"
           />
 
-          <!-- View Chunks -->
           <template v-else>
             <div class="space-y-4">
-              <div v-for="(chunk, idx) in (displayEntry.chunks || [])" :key="`${displayEntry.id}-chunk-${idx}`">
-                <!-- Text -->
-                <MarkdownContent v-if="chunk.kind === 'text'" :content="chunk.text" />
-                <!-- Reasoning -->
-                <ChatReasoningBlock
-                  v-else-if="chunk.kind === 'reasoning'"
-                  :content="chunk.text"
-                />
-                <!-- Image -->
-                <div v-else-if="chunk.kind === 'image'">
-                  <img :src="`data:${chunk.mimeType};base64,${chunk.base64}`" class="max-w-xs rounded shadow" />
+              <details
+                v-if="displayEntry.work.length"
+                :open="isRunning"
+              >
+                <summary class="cursor-pointer text-xs text-gray-500">
+                  工作过程 · {{ displayEntry.work.length }} 项
+                </summary>
+                <div
+                  v-for="item in displayEntry.work"
+                  :key="item.key"
+                  class="mt-3 space-y-3"
+                >
+                  <MessageContent :blocks="item.blocks" />
+                  <ToolResult
+                    v-for="tool in item.tools"
+                    :key="tool.key"
+                    :tool="tool"
+                    @inspect="emit('inspect', $event)"
+                  />
                 </div>
-                <!-- Tool Execution -->
-                <ChatToolCallCard v-else-if="chunk.kind === 'tool-execution'" :chunk="chunk" />
+              </details>
+              <div
+                v-for="item in displayEntry.content"
+                :key="item.key"
+                class="space-y-3"
+              >
+                <MessageContent :blocks="item.blocks" />
+                <ToolResult
+                  v-for="tool in item.tools"
+                  :key="tool.key"
+                  :tool="tool"
+                  @inspect="emit('inspect', $event)"
+                />
               </div>
             </div>
           </template>
         </div>
 
-        <!-- Toolbar -->
-        <div v-if="getOriginalMessage(displayEntry.id)" class="flex max-w-[780px] flex-wrap items-center gap-2 text-xs" :class="displayEntry.author === 'user' ? 'w-auto justify-end self-end' : 'w-full justify-start self-start'">
+        <div
+          class="flex max-w-[780px] flex-wrap items-center gap-2 text-xs"
+          :class="displayEntry.author === 'user' ? 'w-auto justify-end self-end' : 'w-full justify-start self-start'"
+        >
           <template v-if="editingMessageId === displayEntry.id">
-            <button type="button" class="pw-table-tool-button h-8 rounded-lg px-3 text-xs" @click="emit('cancel-edit')">
+            <button
+              type="button"
+              class="pw-table-tool-button h-8 rounded-lg px-3 text-xs"
+              @click="emit('cancel-edit')"
+            >
               取消编辑
             </button>
             <button
               type="button"
               class="pw-btn-primary inline-flex h-8 items-center justify-center rounded-lg px-3 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="isRunning"
-              @click="emit('submit-edit', getOriginalMessage(displayEntry.id)!, displayEntry.id, getParentCheckpointId(displayEntry.id, metadata))"
+              :disabled="!canEdit || !editingMessageValue?.trim()"
+              @click="emit('submit-edit')"
             >
               提交重发
             </button>
           </template>
-
           <template v-else>
-            <button type="button" class="pw-table-tool-button h-8 rounded-lg px-3 text-xs" @click="emit('copy-message', getOriginalMessage(displayEntry.id)!)">
+            <button
+              type="button"
+              class="pw-table-tool-button h-8 rounded-lg px-3 text-xs"
+              @click="copy(displayEntry.text)"
+            >
               复制
             </button>
             <button
-              v-if="canEditMessage(getOriginalMessage(displayEntry.id)!, displayEntry.id, getParentCheckpointId(displayEntry.id, metadata))"
+              v-if="displayEntry.author === 'user' && canEdit && displayEntry.messageId"
               type="button"
               class="pw-table-tool-button h-8 rounded-lg px-3 text-xs"
-              @click="emit('start-edit', getOriginalMessage(displayEntry.id)!, displayEntry.id)"
+              @click="emit('edit', displayEntry.messageId, displayEntry.text)"
             >
               编辑
             </button>
             <button
-              v-if="canRetryMessage(getOriginalMessage(displayEntry.id)!, displayEntry.id, getParentCheckpointId(displayEntry.id, metadata))"
+              v-if="displayEntry.author === 'agent' && canEdit && displayEntry.messageId"
               type="button"
               class="pw-table-tool-button h-8 rounded-lg px-3 text-xs"
-              @click="emit('retry-message', displayEntry.id, getParentCheckpointId(displayEntry.id, metadata))"
+              @click="emit('retry', displayEntry.messageId!)"
             >
               重试
             </button>
-
-            <div v-if="hasBranchSwitcher(displayEntry.id)" class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1">
+            <div
+              v-if="hasBranchSwitcher(displayEntry.messageId || '')"
+              class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1"
+            >
               <button
                 type="button"
                 class="rounded-md p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-40"
-                :disabled="getMessageBranchIndex(displayEntry.id) <= 0 || isRunning"
-                @click="emit('select-previous-branch', displayEntry.id)"
+                :disabled="getMessageBranchIndex(displayEntry.messageId || '') <= 0 || isRunning"
+                aria-label="上一个分支"
+                @click="selectBranch(displayEntry.messageId || '', -1)"
               >
-                <BaseIcon name="chevron-left" size="xs" />
+                <BaseIcon
+                  name="chevron-left"
+                  size="xs"
+                />
               </button>
               <span class="min-w-[64px] text-center font-medium text-gray-500">
-                {{ getMessageBranchIndex(displayEntry.id) + 1 }} / {{ getMessageMeta(displayEntry.id)?.branchOptions?.length }}
+                {{ getMessageBranchIndex(displayEntry.messageId || '') + 1 }} / {{ getMessageMeta(displayEntry.messageId || '')?.branchOptions?.length }}
               </span>
               <button
                 type="button"
                 class="rounded-md p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-40"
-                :disabled="getMessageBranchIndex(displayEntry.id) >= ((getMessageMeta(displayEntry.id)?.branchOptions?.length ?? 1) - 1) || isRunning"
-                @click="emit('select-next-branch', displayEntry.id)"
+                :disabled="getMessageBranchIndex(displayEntry.messageId || '') >= ((getMessageMeta(displayEntry.messageId || '')?.branchOptions?.length ?? 1) - 1) || isRunning"
+                aria-label="下一个分支"
+                @click="selectBranch(displayEntry.messageId || '', 1)"
               >
-                <BaseIcon name="chevron-right" size="xs" />
+                <BaseIcon
+                  name="chevron-right"
+                  size="xs"
+                />
               </button>
             </div>
           </template>
         </div>
-
       </article>
-    </ChatMessageRuntimeMetadata>
+    </template>
 
-    <div v-if="isRunning" class="pw-chat-live-step">
+    <p
+      v-if="copyError"
+      role="alert"
+      class="text-xs text-red-600"
+    >
+      {{ copyError }}
+    </p>
+    <div
+      v-if="isRunning"
+      class="pw-chat-live-step"
+    >
       <span class="pw-chat-live-dot animate-pulse" />
       <span>Agent 正在处理当前回合</span>
     </div>

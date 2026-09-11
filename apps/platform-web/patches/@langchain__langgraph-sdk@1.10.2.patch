@@ -1,0 +1,96 @@
+diff --git a/dist/client/stream/index.cjs b/dist/client/stream/index.cjs
+index 358b698df9aca6d1a9b4da639348b779d52f088e..e67fe43ca207129aec3f6d565bfe668243b76a2c 100644
+--- a/dist/client/stream/index.cjs
++++ b/dist/client/stream/index.cjs
+@@ -1426,6 +1426,7 @@ var ThreadStream = class {
+ 			if (this.#closed) return;
+ 			for (const [id, subscription] of this.#subscriptions) {
+ 				if (id === this.#lifecycleSubId) continue;
++				if (subscription.pauseOnTerminal === false) continue;
+ 				if (terminalSeq != null && subscription.registeredAfterSeq != null && subscription.registeredAfterSeq >= terminalSeq) continue;
+ 				subscription.pause();
+ 			}
+diff --git a/dist/client/stream/index.js b/dist/client/stream/index.js
+index 7c92040702fcf8ae2c980b02f006688c641745b7..8c42f08f87903f0a38d46c0d17bf3987a3f5c3cb 100644
+--- a/dist/client/stream/index.js
++++ b/dist/client/stream/index.js
+@@ -1426,6 +1426,7 @@ var ThreadStream = class {
+ 			if (this.#closed) return;
+ 			for (const [id, subscription] of this.#subscriptions) {
+ 				if (id === this.#lifecycleSubId) continue;
++				if (subscription.pauseOnTerminal === false) continue;
+ 				if (terminalSeq != null && subscription.registeredAfterSeq != null && subscription.registeredAfterSeq >= terminalSeq) continue;
+ 				subscription.pause();
+ 			}
+diff --git a/dist/stream/projections/messages.cjs b/dist/stream/projections/messages.cjs
+index cd275c856ca207692b12f3c8cf3416286eaca73d..dc8e1c01cb2d199049b5048e370b0eaf5beedd7d 100644
+--- a/dist/stream/projections/messages.cjs
++++ b/dist/stream/projections/messages.cjs
+@@ -101,6 +101,8 @@ function messagesProjection(namespace) {
+ 					channels: ["messages", "values"],
+ 					namespace: ns,
+ 					onEvent(event) {
++						// Scoped messages belong to this node; descendant values must not replace them.
++						if (event.params.namespace.length !== ns.length || ns.some((part, index) => event.params.namespace[index] !== part)) return;
+ 						if (event.method === "messages") applyEvent(event);
+ 						else if (event.method === "values") applyValuesEvent(event);
+ 					}
+diff --git a/dist/stream/projections/messages.js b/dist/stream/projections/messages.js
+index 0245f0c968ec06c3e9940fd8c4546f04c4220cc7..0966e65e9ea2b4a7e86988d6077a7bfa56a0c8ad 100644
+--- a/dist/stream/projections/messages.js
++++ b/dist/stream/projections/messages.js
+@@ -101,6 +101,8 @@ function messagesProjection(namespace) {
+ 					channels: ["messages", "values"],
+ 					namespace: ns,
+ 					onEvent(event) {
++						// Scoped messages belong to this node; descendant values must not replace them.
++						if (event.params.namespace.length !== ns.length || ns.some((part, index) => event.params.namespace[index] !== part)) return;
+ 						if (event.method === "messages") applyEvent(event);
+ 						else if (event.method === "values") applyValuesEvent(event);
+ 					}
+diff --git a/dist/stream/projections/runtime.cjs b/dist/stream/projections/runtime.cjs
+index a3f61562b08ada2e22cbee84bb65d40569002780..5eb2a7ecee5dbd96c9390d43a39fd0119c60c02c 100644
+--- a/dist/stream/projections/runtime.cjs
++++ b/dist/stream/projections/runtime.cjs
+@@ -2,7 +2,7 @@
+ /**
+ * Shared async subscription lifecycle for projection runtimes.
+ */
+-function openProjectionSubscription({ thread, channels, namespace, depth = 1, resumeOnPause = false, onSubscribe, onEvent, onFinally }) {
++function openProjectionSubscription({ thread, channels, namespace, depth = 1, resumeOnPause = true, onSubscribe, onEvent, onFinally }) {
+ 	let handle;
+ 	let disposed = false;
+ 	const start = async () => {
+@@ -14,6 +14,9 @@ function openProjectionSubscription({ thread, channels, namespace, depth = 1, re
+ 			};
+ 			const subscription = await thread.subscribe(subscribeParams);
+ 			handle = subscription;
++			// UI projections live until disposal, including replay racing a root terminal.
++			subscription.pauseOnTerminal = !resumeOnPause;
++			if (resumeOnPause) subscription.resume();
+ 			if (disposed) {
+ 				await subscription.unsubscribe();
+ 				return;
+diff --git a/dist/stream/projections/runtime.js b/dist/stream/projections/runtime.js
+index e9731b389d5ae4cca2265ce090f4d112fde41b39..c9a53be00043b90c2cd6b369a186227e10fb3b51 100644
+--- a/dist/stream/projections/runtime.js
++++ b/dist/stream/projections/runtime.js
+@@ -2,7 +2,7 @@
+ /**
+ * Shared async subscription lifecycle for projection runtimes.
+ */
+-function openProjectionSubscription({ thread, channels, namespace, depth = 1, resumeOnPause = false, onSubscribe, onEvent, onFinally }) {
++function openProjectionSubscription({ thread, channels, namespace, depth = 1, resumeOnPause = true, onSubscribe, onEvent, onFinally }) {
+ 	let handle;
+ 	let disposed = false;
+ 	const start = async () => {
+@@ -14,6 +14,9 @@ function openProjectionSubscription({ thread, channels, namespace, depth = 1, re
+ 			};
+ 			const subscription = await thread.subscribe(subscribeParams);
+ 			handle = subscription;
++			// UI projections live until disposal, including replay racing a root terminal.
++			subscription.pauseOnTerminal = !resumeOnPause;
++			if (resumeOnPause) subscription.resume();
+ 			if (disposed) {
+ 				await subscription.unsubscribe();
+ 				return;

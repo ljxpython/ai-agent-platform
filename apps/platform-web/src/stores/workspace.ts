@@ -30,7 +30,12 @@ export const useWorkspaceStore = defineStore('workspace', {
     currentProjectId: '',
     projects: [] as ManagementProject[],
     currentProjectAccess: null as ProjectAccess | null,
-    loading: false
+    loading: false,
+    accessLoading: false,
+    contextLoaded: false,
+    error: '',
+    accessEpoch: 0,
+    contextEpoch: 0
   }),
   getters: {
     currentProject(state) {
@@ -42,16 +47,32 @@ export const useWorkspaceStore = defineStore('workspace', {
       this.currentProjectId = readProjectPreference(PROJECT_STORAGE_KEY)
     },
     async setProjectId(projectId: string) {
-      this.currentProjectId = projectId
-      writeProjectPreference(PROJECT_STORAGE_KEY, projectId.trim())
-      this.currentProjectAccess = projectId ? await getProjectAccess(projectId) : null
+      const id = projectId.trim()
+      const epoch = ++this.accessEpoch
+      this.currentProjectId = id
+      this.currentProjectAccess = null
+      this.accessLoading = Boolean(id)
+      this.error = ''
+      writeProjectPreference(PROJECT_STORAGE_KEY, id)
+      try {
+        const access = id ? await getProjectAccess(id) : null
+        if (epoch === this.accessEpoch) this.currentProjectAccess = access
+      } catch (error) {
+        if (epoch === this.accessEpoch) this.error = '项目权限加载失败，请重试'
+        throw error
+      } finally {
+        if (epoch === this.accessEpoch) this.accessLoading = false
+      }
     },
     async hydrateContext() {
+      const epoch = ++this.contextEpoch
       this.loading = true
+      this.error = ''
 
       try {
         this.hydrateProjectPreference()
         const rows = await listProjects()
+        if (epoch !== this.contextEpoch) return
         this.projects = rows
 
         const nextProjectId =
@@ -61,16 +82,23 @@ export const useWorkspaceStore = defineStore('workspace', {
 
         await this.setProjectId(nextProjectId)
       } catch {
+        if (epoch !== this.contextEpoch) return
         this.projects = []
         await this.setProjectId('')
+        this.error = '项目列表或权限加载失败，请重试'
       } finally {
-        this.loading = false
+        if (epoch === this.contextEpoch) {
+          this.loading = false
+          this.contextLoaded = true
+        }
       }
     },
     reset() {
+      this.contextEpoch += 1
       this.projects = []
       void this.setProjectId('')
       this.loading = false
+      this.contextLoaded = false
     }
   }
 })

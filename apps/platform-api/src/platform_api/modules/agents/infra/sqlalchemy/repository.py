@@ -4,10 +4,17 @@ from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import desc, func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from platform_api.modules.agents.application.ports import StoredAssistantAggregate
 from platform_api.modules.agents.infra.sqlalchemy.models import AgentRecord
+from platform_api.modules.runtime_catalog.infra.sqlalchemy.models import (
+    RuntimeCatalogGraphRecord,
+)
+from platform_api.modules.runtime_policies.infra.sqlalchemy.models import (
+    ProjectGraphPolicyRecord,
+)
 
 
 def _to_aggregate(
@@ -35,6 +42,61 @@ class SqlAlchemyAssistantsRepository:
     def _get_agent(self, assistant_id: UUID) -> AgentRecord | None:
         return self.session.get(AgentRecord, assistant_id)
 
+    def align_authorized_graphs(
+        self, *, project_id: UUID, actor_user_id: UUID
+    ) -> list[str]:
+        """Materialize missing project defaults; never overwrite existing configuration."""
+        graphs = self.session.scalars(
+            select(RuntimeCatalogGraphRecord)
+            .outerjoin(
+                ProjectGraphPolicyRecord,
+                (
+                    ProjectGraphPolicyRecord.graph_catalog_id
+                    == RuntimeCatalogGraphRecord.id
+                )
+                & (ProjectGraphPolicyRecord.project_id == project_id),
+            )
+            .where(
+                RuntimeCatalogGraphRecord.runtime_id == "default",
+                RuntimeCatalogGraphRecord.is_deleted.is_(False),
+                RuntimeCatalogGraphRecord.sync_status == "ready",
+                func.coalesce(ProjectGraphPolicyRecord.is_enabled, True).is_(True),
+            )
+            .order_by(RuntimeCatalogGraphRecord.graph_key)
+        ).all()
+        existing = self.session.scalars(
+            select(AgentRecord).where(AgentRecord.project_id == project_id)
+        ).all()
+        known = {row.graph_id for row in existing}
+        names = {row.name for row in existing}
+        for graph in graphs:
+            if graph.graph_key in known:
+                continue
+            name = (graph.display_name or graph.graph_key)[:200]
+            if name in names:
+                name = f"{name[:155]} ({graph.id})"
+            try:
+                with self.session.begin_nested():
+                    self.create_assistant(
+                        project_id=project_id,
+                        name=name,
+                        description=graph.description or "",
+                        graph_id=graph.graph_key,
+                        context={},
+                        actor_user_id=actor_user_id,
+                    )
+            except IntegrityError:
+                # Another request may have materialized the same project/graph.
+                if (
+                    self.get_by_project_and_graph_id(
+                        project_id=project_id, graph_id=graph.graph_key
+                    )
+                    is None
+                ):
+                    raise
+            names.add(name)
+        return [graph.graph_key for graph in graphs]
+
     def list_project_assistants(
         self,
         *,
@@ -43,8 +105,11 @@ class SqlAlchemyAssistantsRepository:
         offset: int,
         query: str | None,
         graph_id: str | None,
+        authorized_graph_ids: list[str] | None = None,
     ) -> tuple[list[StoredAssistantAggregate], int]:
         base_stmt = select(AgentRecord).where(AgentRecord.project_id == project_id)
+        if authorized_graph_ids is not None:
+            base_stmt = base_stmt.where(AgentRecord.graph_id.in_(authorized_graph_ids))
         if query and query.strip():
             normalized = f"%{query.strip().lower()}%"
             base_stmt = base_stmt.where(

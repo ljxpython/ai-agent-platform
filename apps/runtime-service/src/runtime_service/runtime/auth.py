@@ -93,7 +93,7 @@ def _parse_scope(raw: object) -> RuntimeScope:
         if value is not None and (not isinstance(value, str) or not value or value != value.strip()):
             raise _invalid("runtime.auth.invalid_principal", field)
         values[field] = value
-    if values["operation"] is not None and values["operation"] not in {"read", "run-create"}:
+    if values["operation"] is not None and values["operation"] not in {"read", "run-create", "message-enqueue", "message-read"}:
         raise _invalid("runtime.auth.invalid_principal", "operation")
     return RuntimeScope(
         tenant_id=values["tenant_id"] or "",
