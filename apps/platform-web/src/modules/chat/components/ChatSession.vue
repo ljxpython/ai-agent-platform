@@ -89,6 +89,7 @@ const session = useChatSession({
   onRefresh: () => emit("refresh"),
   onReconnect: () => emit("reconnect"),
   onAccepted: () => {
+    optimisticUserMessage.value = null;
     if (props.draft === submittedDraft) emit("update:draft", "");
     attachments.value = attachments.value.filter(
       (item) => !submittedAttachments.has(item),
@@ -151,7 +152,35 @@ const drawerOpen = ref(false);
 const drawerTab = ref<"overview" | "tasks" | "files" | "history">("overview");
 function openDrawer() { drawerOpen.value = true; drawerTab.value = "overview"; void loadHistory(true); }
 const snapshotMessages = shallowRef<BaseMessage[] | null>(null);
-const displayedMessages = computed(() => snapshotMessages.value ?? messages.value);
+const optimisticUserMessage = shallowRef<BaseMessage | null>(null);
+const displayedMessages = computed(() => {
+  const base = snapshotMessages.value ?? messages.value;
+  if (!optimisticUserMessage.value) return base;
+  const hasEchoed = base.some(
+    (m) =>
+      m.id === optimisticUserMessage.value?.id ||
+      (m.type === "human" &&
+        typeof m.content === "string" &&
+        typeof optimisticUserMessage.value?.content === "string" &&
+        m.content.trim() === optimisticUserMessage.value?.content.trim()),
+  );
+  if (hasEchoed) return base;
+  return [...base, optimisticUserMessage.value];
+});
+watch([messages, busy], ([currentMessages, isBusy]) => {
+  if (!optimisticUserMessage.value) return;
+  const hasEchoed = currentMessages.some(
+    (m) =>
+      m.id === optimisticUserMessage.value?.id ||
+      (m.type === "human" &&
+        typeof m.content === "string" &&
+        typeof optimisticUserMessage.value?.content === "string" &&
+        m.content.trim() === optimisticUserMessage.value?.content.trim()),
+  );
+  if (hasEchoed || (!isBusy && !action.value)) {
+    optimisticUserMessage.value = null;
+  }
+});
 const branchPath = ref("");
 const branchContext = computed(() => getChatBranchContext(branchPath.value, history.value));
 const messageMetadata = computed(() => buildChatMessageMetadata(displayedMessages.value as unknown as Message[], history.value, branchContext.value));
@@ -211,8 +240,33 @@ async function send(queued = false) {
   const content = attachments.value.length
     ? [{ type: "text", text: props.draft }, ...attachments.value]
     : props.draft;
-  if (queued) await session.queueMessage(content);
-  else await session.send(content, recursionLimit.value);
+
+  follow();
+
+  if (queued) {
+    await session.queueMessage(content);
+  } else {
+    optimisticUserMessage.value = coerceMessageLikeToMessage({
+      id: `optimistic-${Date.now()}`,
+      type: "human",
+      content,
+    });
+    emit("update:draft", "");
+    attachments.value = [];
+    void nextTick(() => requestSmoothScrollToBottom());
+    try {
+      const ok = await session.send(content, recursionLimit.value);
+      if (!ok && session.error.value) {
+        throw new Error(session.error.value);
+      }
+    } catch {
+      optimisticUserMessage.value = null;
+      if (submittedDraft !== undefined) emit("update:draft", submittedDraft);
+      attachments.value = Array.from(submittedAttachments) as ChatAttachmentBlock[];
+      submittedDraft = undefined;
+      submittedAttachments = new Set();
+    }
+  }
 }
 
 function restoreQueuedDraft(content?: unknown) {
@@ -241,8 +295,19 @@ const liveFollowView = computed(() => buildChatLiveFollowView({
   autoFollowEnabled: following.value && !drawerOpen.value && !optionsOpen.value && !inspector.value,
   isRunning: busy.value, unreadMessageCount: unreadMessageCount.value, bufferedStreamActivity: bufferedStreamActivity.value,
 }));
+let scrollRafId: number | null = null;
+function requestSmoothScrollToBottom() {
+  if (!following.value || drawerOpen.value || optionsOpen.value || inspector.value || snapshotMessages.value) return;
+  if (scrollRafId !== null) return;
+  scrollRafId = requestAnimationFrame(() => {
+    scrollRafId = null;
+    if (viewport.value) {
+      viewport.value.scrollTop = viewport.value.scrollHeight;
+    }
+  });
+}
 watch(
-  messages,
+  displayedMessages,
   async (next, previous) => {
     lastEventAt.value = new Date().toISOString();
     if (!following.value) {
@@ -251,49 +316,45 @@ watch(
     }
     if (following.value && !drawerOpen.value && !optionsOpen.value && !inspector.value && !snapshotMessages.value) {
       await nextTick();
-      if (viewport.value)
-        viewport.value.scrollTop = viewport.value.scrollHeight;
+      requestSmoothScrollToBottom();
     }
   },
-  { flush: "post" },
+  { flush: "post", deep: true },
 );
 function follow() {
   following.value = true;
   unreadMessageCount.value = 0;
   bufferedStreamActivity.value = false;
-  if (viewport.value) viewport.value.scrollTop = viewport.value.scrollHeight;
+  requestSmoothScrollToBottom();
 }
 
 const expanded = ref<Record<string, boolean>>({});
 const subtasks = computed(() => {
   const agents = [...stream.subagents.value.values()];
-  const known = new Set(agents.map((agent) => JSON.stringify(agent.namespace)));
-  const tasks = [
-    ...agents.map((agent) => ({
-      ...agent,
-      key: JSON.stringify(agent.namespace),
-      label: agent.name,
-      description: agent.taskInput,
-      parent: agent.parentId,
-    })),
-    ...[...stream.subgraphs.value.values()]
-      .filter((graph) => !known.has(JSON.stringify(graph.namespace)))
-      .map((graph) => ({
-        ...graph,
-        key: JSON.stringify(graph.namespace),
-        label: graph.nodeName,
-        description: undefined,
-        parent: undefined,
-      })),
-  ];
-  return tasks.map(task => {
-    const parent = tasks.filter(candidate => candidate.key !== task.key &&
-      candidate.namespace.length < task.namespace.length &&
-      candidate.namespace.every((part, index) => task.namespace[index] === part))
-      .sort((a, b) => b.namespace.length - a.namespace.length)[0];
-    return { ...task, parent: task.parent ?? parent?.label,
-      depth: Math.max(0, task.namespace.length - 1) };
-  }).sort((a, b) => a.key.localeCompare(b.key));
+  const tasks = agents.map((agent) => ({
+    ...agent,
+    key: JSON.stringify(agent.namespace),
+    label: agent.name,
+    description: agent.taskInput,
+    parent: agent.parentId,
+  }));
+  return tasks
+    .map((task) => {
+      const parent = tasks
+        .filter(
+          (candidate) =>
+            candidate.key !== task.key &&
+            candidate.namespace.length < task.namespace.length &&
+            candidate.namespace.every((part, index) => task.namespace[index] === part),
+        )
+        .sort((a, b) => b.namespace.length - a.namespace.length)[0];
+      return {
+        ...task,
+        parent: task.parent ?? parent?.label,
+        depth: Math.max(0, task.namespace.length - 1),
+      };
+    })
+    .sort((a, b) => a.key.localeCompare(b.key));
 });
 const todos = computed(() =>
   Array.isArray(stream.values.value.todos)
@@ -428,6 +489,7 @@ function visibilityChanged() {
 document.addEventListener("visibilitychange", visibilityChanged);
 onScopeDispose(() => {
   disposed = true;
+  if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
   document.removeEventListener("visibilitychange", visibilityChanged);
 });
 </script>
@@ -533,7 +595,7 @@ onScopeDispose(() => {
       class="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden"
       :class="hasArtifacts ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_320px]' : ''"
     >
-      <div class="relative flex min-w-0 flex-1 flex-col">
+      <div class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <div
           ref="viewport"
           class="pw-chat-stream overscroll-contain"

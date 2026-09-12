@@ -33,7 +33,7 @@ export function safeContentUrl(
 }
 export type ContentItem = {
   key: string;
-  kind: "text" | "reasoning" | "image" | "file" | "unknown";
+  kind: "text" | "reasoning" | "image" | "file" | "loading" | "unknown";
   text: string;
   url?: string;
 };
@@ -61,6 +61,21 @@ export type Turn = {
   answer: MessageItem[];
 };
 
+export function extractReasoningFromMessage(message: BaseMessage): string {
+  const raw = message as unknown as Record<string, unknown>;
+  const extra = raw.additional_kwargs;
+  if (extra && typeof extra === "object" && typeof (extra as Record<string, unknown>).reasoning_content === "string") {
+    const text = ((extra as Record<string, unknown>).reasoning_content as string).trim();
+    if (text) return text;
+  }
+  const respMeta = raw.response_metadata;
+  if (respMeta && typeof respMeta === "object" && typeof (respMeta as Record<string, unknown>).reasoning_content === "string") {
+    const text = ((respMeta as Record<string, unknown>).reasoning_content as string).trim();
+    if (text) return text;
+  }
+  return "";
+}
+
 export function contentItems(content: unknown, key: string): ContentItem[] {
   const values =
     typeof content === "string"
@@ -68,28 +83,49 @@ export function contentItems(content: unknown, key: string): ContentItem[] {
       : Array.isArray(content)
         ? content
         : [content];
-  return values
+  const items: ContentItem[] = [];
+  values
     .filter((value) => value != null)
-    .map((value, index) => {
+    .forEach((value, index) => {
       const block =
         typeof value === "string"
           ? { type: "text", text: value }
           : asObject(value);
       const itemKey = `${key}:${index}`;
-      if (block.type === "text" || block.type === "text-plain")
-        return { key: itemKey, kind: "text", text: String(block.text ?? "") };
-      if (["document", "markdown"].includes(String(block.type)) && typeof block.content === "string")
-        return { key: itemKey, kind: "text", text: block.content };
+      if (block.type === "text" || block.type === "text-plain") {
+        const text = String(block.text ?? "");
+        const thinkMatch = /<(?:think|thinking)>([\s\S]*?)(?:<\/(?:think|thinking)>|$)/i.exec(text);
+        if (thinkMatch) {
+          const thinkContent = thinkMatch[1].trim();
+          const remainder = text.replace(/<(?:think|thinking)>[\s\S]*?(?:<\/(?:think|thinking)>|$)/i, "").trim();
+          if (thinkContent) {
+            items.push({ key: `${itemKey}:think`, kind: "reasoning", text: thinkContent });
+          }
+          if (remainder || !thinkContent) {
+            items.push({ key: itemKey, kind: "text", text: remainder });
+          }
+          return;
+        }
+        items.push({ key: itemKey, kind: "text", text });
+        return;
+      }
+      if (["document", "markdown"].includes(String(block.type)) && typeof block.content === "string") {
+        items.push({ key: itemKey, kind: "text", text: block.content });
+        return;
+      }
       if (block.type === "code" && typeof block.code === "string") {
         const fence = "`".repeat(Math.max(3, ...[...block.code.matchAll(/`+/g)].map(match => match[0].length + 1)));
-        return { key: itemKey, kind: "text", text: `${fence}${String(block.language ?? "text").replace(/[^\w-]/g, "")}\n${block.code}\n${fence}` };
+        items.push({ key: itemKey, kind: "text", text: `${fence}${String(block.language ?? "text").replace(/[^\w-]/g, "")}\n${block.code}\n${fence}` });
+        return;
       }
-      if (block.type === "reasoning")
-        return {
+      if (block.type === "reasoning") {
+        items.push({
           key: itemKey,
           kind: "reasoning",
           text: readable(block.reasoning ?? block.text ?? block.summary),
-        };
+        });
+        return;
+      }
       if (["image", "image_url"].includes(String(block.type))) {
         const image = block.image_url;
         const rawUrl =
@@ -98,24 +134,28 @@ export function contentItems(content: unknown, key: string): ContentItem[] {
           (typeof block.data === "string"
             ? `data:${block.mime_type ?? block.mimeType};base64,${block.data}`
             : undefined);
-        return {
+        items.push({
           key: itemKey,
           kind: "image",
           text: String(asObject(block.metadata).name ?? "图片"),
           url: safeContentUrl(rawUrl, true),
-        };
+        });
+        return;
       }
-      if (block.type === "file")
-        return {
+      if (block.type === "file") {
+        items.push({
           key: itemKey,
           kind: "file",
           text: String(
             block.filename ?? asObject(block.metadata).filename ?? "文件",
           ),
           url: safeContentUrl(block.url),
-        };
-      return { key: itemKey, kind: "unknown", text: readable(value) };
+        });
+        return;
+      }
+      items.push({ key: itemKey, kind: "unknown", text: readable(value) });
     });
+  return items;
 }
 
 /** A pure view of SDK messages and calls; no event accumulation or state mutation. */
@@ -174,21 +214,30 @@ export function buildTranscript(
       turns.push(turn);
     }
     const blocks = message.contentBlocks ?? message.content;
+    const parsedBlocks = contentItems(
+      Array.isArray(blocks)
+        ? blocks.filter(
+            (block) =>
+              !["tool_call", "tool_call_chunk"].includes(
+                String(asObject(block).type),
+              ),
+          )
+        : blocks,
+      key,
+    );
+    const extraReasoning = extractReasoningFromMessage(message);
+    if (extraReasoning && !parsedBlocks.some((b) => b.kind === "reasoning")) {
+      parsedBlocks.unshift({
+        key: `${key}:reasoning:extra`,
+        kind: "reasoning",
+        text: extraReasoning,
+      });
+    }
     const item: MessageItem = {
       key,
       id: message.id,
       role: message.type,
-      blocks: contentItems(
-        Array.isArray(blocks)
-          ? blocks.filter(
-              (block) =>
-                !["tool_call", "tool_call_chunk"].includes(
-                  String(asObject(block).type),
-                ),
-            )
-          : blocks,
-        key,
-      ),
+      blocks: parsedBlocks,
       tools: [],
     };
     const requested = asObject(message).tool_calls;

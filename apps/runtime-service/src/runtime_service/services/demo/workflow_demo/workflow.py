@@ -157,7 +157,13 @@ def build_graph(
         )
         response_message = result["messages"][-1]
         response = _message_text(response_message).strip()
-        return {"response": response, "messages": [response_message]}
+        result_messages = result.get("messages", [])
+        new_messages = (
+            result_messages[len(messages):]
+            if len(result_messages) > len(messages)
+            else [response_message]
+        )
+        return {"response": response, "messages": new_messages}
 
     def after_prepare(state: WorkflowState) -> Literal["confirm", "route"]:
         return "confirm" if state.get("requires_confirmation", False) else "route"

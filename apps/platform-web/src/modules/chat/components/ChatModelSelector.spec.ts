@@ -21,3 +21,35 @@ it("selects model UUIDs and restores focus after keyboard selection", async () =
     expect(document.activeElement).toBe(wrapper.get("button").element);
   } finally { wrapper.unmount(); }
 });
+
+it("does not steal focus from external inputs when clicked outside", async () => {
+  const externalInput = document.createElement("textarea");
+  document.body.appendChild(externalInput);
+  externalInput.focus();
+
+  const wrapper = mount(ChatModelSelector, {
+    attachTo: document.body,
+    props: {
+      projectId: "project-a",
+      models: [{ id: "model-uuid", model: "qwen-plus", display_name: "Qwen", provider: "qwen", protocol: "openai-compatible", base_url: "https://example.com/v1", enabled: true, credential_configured: true }],
+    },
+    global: { stubs: { RouterLink: true } },
+  });
+
+  try {
+    // 1. When closed: clicking externalInput triggers document click but must NOT steal focus
+    externalInput.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(document.activeElement).toBe(externalInput);
+
+    // 2. Open selector, then click externalInput to dismiss: must NOT steal focus back to trigger button
+    await wrapper.get("button").trigger("click");
+    expect(document.querySelector('[role="dialog"]')).toBeTruthy();
+
+    externalInput.focus();
+    externalInput.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    expect(document.activeElement).toBe(externalInput);
+  } finally {
+    wrapper.unmount();
+    externalInput.remove();
+  }
+});

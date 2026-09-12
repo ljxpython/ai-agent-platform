@@ -45,3 +45,29 @@ it("uses exact-scope final values when late replay leaves a partial message", ()
     expect(messages.value.map(message => message.content)).toEqual(["LEFT_PRIVATE complete"]);
   } finally { scope.stop(); }
 });
+
+it("preserves tool calls and tool messages from execution subgraphs", () => {
+  const toolCallMsg = new AIMessage({
+    id: "tool-call-1",
+    content: "",
+    tool_calls: [{ name: "read_reference", args: { topic: "test" }, id: "call-1" }],
+  });
+  const stream = {
+    messages: shallowRef([toolCallMsg]),
+    values: shallowRef({ messages: [] }),
+    isLoading: shallowRef(true),
+    subgraphs: shallowRef(new Map([["child", { namespace: ["respond:child"] }]])),
+    subagents: shallowRef(new Map()),
+  };
+  const scope = effectScope();
+  try {
+    const messages = scope.run(() => useTranscriptMessages(stream as unknown as AnyStream))!;
+    hooks.onEvent({
+      method: "messages",
+      params: { namespace: ["respond:child"], data: { event: "message-start", id: "tool-call-1" } },
+    });
+    expect(messages.value.map((m) => m.id)).toEqual(["tool-call-1"]);
+  } finally {
+    scope.stop();
+  }
+});

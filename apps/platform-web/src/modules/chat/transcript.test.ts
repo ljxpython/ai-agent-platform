@@ -67,4 +67,40 @@ describe("SDK transcript projection", () => {
     expect(safeContentUrl("https://user:secret@example.com")).toBeUndefined();
     expect(safeContentUrl("data:image/png;base64,AAAA", true)).toBeDefined();
   });
+
+  it("extracts reasoning content from additional_kwargs and splits thinking tags", () => {
+    const aiWithKwargs = new AIMessage({
+      content: "正式回答",
+      additional_kwargs: { reasoning_content: "逐步思考第一步" },
+    });
+    const [turn1] = buildTranscript([aiWithKwargs], [], false);
+    expect(turn1?.answer[0]?.blocks.map(b => ({ kind: b.kind, text: b.text }))).toEqual([
+      { kind: "reasoning", text: "逐步思考第一步" },
+      { kind: "text", text: "正式回答" },
+    ]);
+
+    const aiWithTags = new AIMessage({
+      content: "<think>正在推理复杂逻辑</think>这是正文内容",
+    });
+    const [turn2] = buildTranscript([aiWithTags], [], false);
+    expect(turn2?.answer[0]?.blocks.map(b => ({ kind: b.kind, text: b.text }))).toEqual([
+      { kind: "reasoning", text: "正在推理复杂逻辑" },
+      { kind: "text", text: "这是正文内容" },
+    ]);
+  });
+
+  it("handles multi-turn conversations properly", () => {
+    const messages = [
+      new HumanMessage({ id: "h1", content: "你好" }),
+      new AIMessage({ id: "a1", content: [{ type: "reasoning", reasoning: "think 1" }, { type: "text", text: "你好！" }] }),
+      new HumanMessage({ id: "h2", content: "你叫什么名字呀？" }),
+      new AIMessage({ id: "a2", content: [{ type: "reasoning", reasoning: "think 2" }, { type: "text", text: "我叫 Demo" }] }),
+    ];
+    const turns = buildTranscript(messages, [], false);
+    expect(turns.length).toBe(2);
+    expect(turns[0].user?.blocks[0]?.text).toBe("你好");
+    expect(turns[0].answer[0]?.blocks.some(b => b.text === "你好！")).toBe(true);
+    expect(turns[1].user?.blocks[0]?.text).toBe("你叫什么名字呀？");
+    expect(turns[1].answer[0]?.blocks.some(b => b.text === "我叫 Demo")).toBe(true);
+  });
 });

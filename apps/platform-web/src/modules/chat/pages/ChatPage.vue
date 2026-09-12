@@ -189,6 +189,7 @@ watch(
     if (threadId && threadId === ownThread && target.value) {
       ownThread = undefined;
       selectedThread.value = threadId;
+      mountedThread.value = threadId;
       return;
     }
     const requestEpoch = ++epoch;
@@ -296,7 +297,7 @@ onScopeDispose(() => {
 
 <template>
   <section
-    class="pw-page-shell pw-chat-page-shell"
+    class="pw-chat-page-shell"
     :class="focusMode ? 'fixed inset-0 z-[85] m-0 !h-[100dvh] overflow-hidden bg-gray-50 p-4 dark:bg-dark-950 md:p-5 lg:p-6' : ''"
   >
     <EmptyState
@@ -383,7 +384,7 @@ onScopeDispose(() => {
       >
         该智能体已停用或未授权，当前仅可查看历史消息和投递状态。
       </p>
-      <div class="!mt-0 flex min-h-0 flex-1 gap-4">
+      <div class="!mt-0 flex min-h-0 flex-1 gap-4 overflow-hidden">
         <ChatThreadSidebar
           v-if="!sidebarCollapsed && !focusMode"
           v-model:search="threadQuery"

@@ -191,7 +191,7 @@
   }
 
   .pw-chat-stream-content {
-    @apply mx-auto flex min-h-full w-full max-w-[780px] flex-col justify-end;
+    @apply mx-auto flex min-h-full w-full max-w-4xl lg:max-w-5xl flex-col justify-start pb-10;
   }
 
   .pw-chat-turn {
@@ -248,12 +248,12 @@
   }
 
   .pw-chat-composer {
-    @apply mx-auto w-full max-w-[812px] rounded-[22px] border border-gray-200 bg-white px-3 py-2.5 shadow-sm;
+    @apply mx-auto w-full max-w-4xl lg:max-w-5xl rounded-[22px] border border-gray-200 bg-white px-3 py-2.5 shadow-sm;
     @apply dark:border-dark-700 dark:bg-dark-900;
   }
 
   .pw-chat-empty-state {
-    @apply mx-auto flex w-full max-w-[680px] flex-1 flex-col items-center justify-center pb-16 text-center;
+    @apply mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center pb-16 text-center;
   }
 
   .pw-chat-empty-mark {
@@ -393,8 +393,7 @@
   }
 
   .pw-chat-page-shell {
-    @apply flex min-h-0 flex-col overflow-hidden;
-    @apply h-[calc(100vh-6rem)] md:h-[calc(100vh-6.5rem)] lg:h-[calc(100vh-7rem)];
+    @apply flex h-full min-h-0 flex-1 flex-col overflow-hidden;
   }
 
   .pw-page-header {

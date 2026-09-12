@@ -209,6 +209,16 @@ export function createRunActions(
     });
   };
 
+  function acknowledge(key?: string, runId?: string) {
+    if (disposed) return;
+    if (!current.value || (key && current.value.key !== key)) return;
+    current.value = Object.freeze({
+      ...current.value,
+      runId: runId ?? current.value.runId,
+      status: "acknowledged",
+    });
+  }
+
   function rejectUnsent() {
     if (current.value?.status === "submitting" && !current.value.body) {
       current.value = Object.freeze({ ...current.value, status: "rejected" });
@@ -249,6 +259,7 @@ export function createRunActions(
     fetch,
     retry,
     fork,
+    acknowledge,
     rejectUnsent,
     dispose,
   };

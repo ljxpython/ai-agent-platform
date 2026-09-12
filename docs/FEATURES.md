@@ -16,6 +16,7 @@
 | Platform Web 架构与 Agent Chat 重构 | 01—07 非后置范围已完成；旧展示组件已取回，专项验收边界见 09；双浏览器入队/完整文件与 Skills API/PTY 后置 | [项目概览](projects/20260910-platform-web-refactor/README.md) |
 | 运行中补充消息（多端入口、Runtime 队列与 Middleware） | 已实现：根模型注入、持久回执/恢复、权限复核与 Web 重试；网络取消/移动回归通过，双浏览器后置，GraphHarbor post27 发布包复验通过 | [队列与消费设计](projects/20260910-platform-web-refactor/07-message-queue-and-middleware.md) |
 | 知识库、测试用例工作台退役 | 已移除页面、路由、菜单与专属依赖；整体平台重构进行中 | `docs/projects/20260910-platform-api-refactor/` |
+| Chat 流式输出标准化与 open-swe 架构对齐 | 部分完成：流式管道、思考链剥离、CSS脉冲打字机光标与rAF平滑滚底已全量测试通过；待启动本地服务栈真实验收 | [流式标准化](projects/20260912-chat-streaming-standardization/README.md) |
 
 ## platform-api
 

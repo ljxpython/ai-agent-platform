@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   list: vi.fn(),
   stream: vi.fn(),
   run: vi.fn(),
+  runs: vi.fn(),
   actions: vi.fn(),
 }));
 vi.mock("@langchain/vue", () => ({ useStream: mocks.stream }));
@@ -16,7 +17,9 @@ vi.mock("@/services/threads/messages.service", () => ({
 vi.mock("@/services/threads/session.service", () => ({
   createSessionService: () => ({
     client: {},
-    runs: async () => [{ run_id: "run", status: "running" }],
+    runs: mocks.runs.getMockImplementation()
+      ? mocks.runs
+      : async () => [{ run_id: "run", status: "running" }],
     run: mocks.run,
   }),
 }));
@@ -122,3 +125,51 @@ it("receipt before POST ACK confirms once, and disposed sessions ignore late rec
   await refresh;
   expect(session.receipts.value).toEqual([consumed]);
 });
+
+it("coalesces concurrent verify calls on completion so canSend resets to true", async () => {
+  mocks.runs.mockResolvedValue([{ run_id: "run-0", status: "success" }]);
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+  });
+  const current = ref<{ key: string; kind: string; runId: string; status: string } | null>(null);
+  mocks.actions.mockReturnValue({ current, dispose: vi.fn() });
+  mocks.run.mockResolvedValue({ run_id: "run-1", status: "success" });
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "p",
+      graphId: "workflow_demo",
+      threadId: "t-1",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    expect(session.canSend.value).toBe(true);
+
+    // 模拟并发调用：stream 的 onCompleted 与本地 verify(true) 同时触发
+    current.value = { key: "send-1", kind: "send", runId: "run-1", status: "acknowledged" };
+    const p1 = mocks.stream.mock.lastCall![0].onCompleted();
+    const p2 = session.verify(true);
+
+    await Promise.all([p1, p2]);
+    await flushPromises();
+
+    expect(session.verified.value).toBe(true);
+    expect(session.checking.value).toBe(false);
+    expect(session.canSend.value).toBe(true);
+  } finally {
+    scope.stop();
+  }
+});
+

@@ -21,14 +21,74 @@ const emit = defineEmits<{
   "select-branch": [branch: string];
   "update:editingMessageValue": [value: string]; "cancel-edit": []; "submit-edit": [];
 }>();
-const text = (items: MessageItem[]) => items.flatMap(item => item.blocks.filter(block => block.kind === "text").map(block => block.text)).join("\n\n");
-const visibleDisplayMessages = computed(() => buildTranscript(props.messages, props.calls, props.isRunning).flatMap(turn => {
-  const user = turn.user;
-  const entries = [];
-  if (user) entries.push({ id: user.id ?? user.key, messageId: user.id, author: "user", work: [], content: [user], text: text([user]), userId: user.id, userText: text([user]) });
-  if (turn.work.length || turn.answer.length) entries.push({ id: turn.key + ":agent", messageId: turn.answer[turn.answer.length - 1]?.id, author: "agent", work: turn.work, content: turn.answer, text: text(turn.answer), userId: user?.id, userText: user ? text([user]) : "" });
-  return entries;
-}));
+const text = (items: MessageItem[]) =>
+  items
+    .flatMap((item) =>
+      item.blocks
+        .filter((block) => block.kind === "text")
+        .map((block) => block.text),
+    )
+    .join("\n\n");
+const visibleDisplayMessages = computed(() => {
+  const turns = buildTranscript(props.messages, props.calls, props.isRunning);
+  return turns.flatMap((turn, turnIndex) => {
+    const isLastTurn = turnIndex === turns.length - 1;
+    const user = turn.user;
+    const entries = [];
+    if (user) {
+      entries.push({
+        id: user.id ?? user.key,
+        messageId: user.id,
+        author: "user" as const,
+        work: [],
+        content: [user],
+        text: text([user]),
+        userId: user.id,
+        userText: text([user]),
+        isStreaming: false,
+      });
+    }
+    if (turn.work.length || turn.answer.length) {
+      entries.push({
+        id: turn.key + ":agent",
+        messageId: turn.answer[turn.answer.length - 1]?.id,
+        author: "agent" as const,
+        work: turn.work,
+        content: turn.answer,
+        text: text(turn.answer),
+        userId: user?.id,
+        userText: user ? text([user]) : "",
+        isStreaming: props.isRunning && isLastTurn,
+      });
+    } else if (props.isRunning && user && isLastTurn) {
+      entries.push({
+        id: turn.key + ":agent:loading",
+        messageId: undefined,
+        author: "agent" as const,
+        work: [],
+        content: [
+          {
+            key: turn.key + ":pending",
+            role: "ai",
+            blocks: [
+              {
+                key: turn.key + ":pending:loading",
+                kind: "loading" as const,
+                text: "Agent 正在组织答复...",
+              },
+            ],
+            tools: [],
+          },
+        ],
+        text: "",
+        userId: user.id,
+        userText: text([user]),
+        isStreaming: true,
+      });
+    }
+    return entries;
+  });
+});
 function getMessageMeta(id: string) { return props.metadata?.[id]; }
 function getMessageBranchIndex(id: string) {
   const meta = getMessageMeta(id); return meta?.branchOptions?.indexOf(meta.branch || "") ?? -1;
@@ -79,10 +139,9 @@ async function copy(value: string) {
         </div>
 
         <div
-          class="max-w-[780px]"
           :class="[
             displayEntry.author === 'user'
-              ? 'w-auto self-end rounded-2xl rounded-tr-sm border border-primary-200 bg-primary-50/90 px-5 py-3.5 shadow-xs text-primary-950 dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-100'
+              ? 'w-auto max-w-[85%] self-end rounded-2xl rounded-tr-sm border border-primary-200 bg-primary-50/90 px-5 py-3.5 shadow-xs text-primary-950 dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-100'
               : 'w-full self-start rounded-2xl border border-gray-200/90 bg-white p-5 shadow-xs dark:border-dark-800 dark:bg-dark-900'
           ]"
         >
@@ -109,7 +168,10 @@ async function copy(value: string) {
                   :key="item.key"
                   class="mt-3 space-y-3"
                 >
-                  <MessageContent :blocks="item.blocks" />
+                  <MessageContent
+                    :blocks="item.blocks"
+                    :is-streaming="displayEntry.isStreaming"
+                  />
                   <ToolResult
                     v-for="tool in item.tools"
                     :key="tool.key"
@@ -123,7 +185,10 @@ async function copy(value: string) {
                 :key="item.key"
                 class="space-y-3"
               >
-                <MessageContent :blocks="item.blocks" />
+                <MessageContent
+                  :blocks="item.blocks"
+                  :is-streaming="displayEntry.isStreaming"
+                />
                 <ToolResult
                   v-for="tool in item.tools"
                   :key="tool.key"

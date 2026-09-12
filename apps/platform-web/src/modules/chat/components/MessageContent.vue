@@ -3,7 +3,10 @@ import { ref } from "vue";
 import MarkdownContent from "@/components/platform/MarkdownContent.vue";
 import type { ContentItem } from "../transcript";
 
-defineProps<{ blocks: ContentItem[] }>();
+defineProps<{
+  blocks: ContentItem[];
+  isStreaming?: boolean;
+}>();
 const expanded = ref<Record<string, boolean>>({});
 </script>
 
@@ -13,18 +16,56 @@ const expanded = ref<Record<string, boolean>>({});
       v-for="block in blocks"
       :key="block.key"
     >
-      <MarkdownContent
-        v-if="block.kind === 'text'"
-        :content="block.text.length > 12000 && !expanded[block.key] ? block.text.slice(0, 12000) : block.text"
-      />
+      <div
+        v-if="block.kind === 'loading'"
+        class="flex items-center gap-2 text-xs text-gray-500 dark:text-dark-400 py-1"
+      >
+        <span class="inline-block h-2 w-2 animate-ping rounded-full bg-primary-500" />
+        <span>Agent 正在组织答复...</span>
+      </div>
+      <div
+        v-else-if="block.kind === 'text'"
+        class="relative"
+      >
+        <MarkdownContent
+          :content="block.text.length > 12000 && !expanded[block.key] ? block.text.slice(0, 12000) : block.text"
+        />
+        <span
+          v-if="isStreaming"
+          class="inline-block h-4 w-1.5 translate-y-0.5 animate-pulse bg-primary-600 dark:bg-primary-400 ml-0.5 align-middle"
+          aria-hidden="true"
+        />
+      </div>
       <details
-        v-else-if="block.kind === 'reasoning' || block.kind === 'unknown'"
+        v-else-if="block.kind === 'reasoning'"
+        class="rounded-lg border border-gray-200 bg-gray-50/60 p-2.5 dark:border-dark-700 dark:bg-dark-800/50 text-xs"
+        :open="expanded[block.key] ?? !!isStreaming"
+        @toggle="
+          expanded[block.key] = ($event.target as HTMLDetailsElement).open
+        "
+      >
+        <summary class="cursor-pointer font-medium text-gray-600 dark:text-dark-300 select-none flex items-center gap-1.5">
+          <span
+            v-if="isStreaming"
+            class="inline-block h-1.5 w-1.5 animate-ping rounded-full bg-amber-500"
+          />
+          <span>{{ isStreaming ? "正在思考中..." : "思考过程" }}</span>
+        </summary>
+        <div
+          class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap text-xs text-gray-700 dark:text-dark-200 border-t border-gray-200/60 pt-2 dark:border-dark-700"
+        >
+          {{ block.text }}
+        </div>
+      </details>
+      <details
+        v-else-if="block.kind === 'unknown'"
+        class="text-xs text-gray-500"
         @toggle="
           expanded[block.key] = ($event.target as HTMLDetailsElement).open
         "
       >
         <summary class="cursor-pointer text-xs text-gray-500">
-          {{ block.kind === "reasoning" ? "公开推理" : "其他内容" }}
+          其他内容
         </summary>
         <pre
           v-if="expanded[block.key]"

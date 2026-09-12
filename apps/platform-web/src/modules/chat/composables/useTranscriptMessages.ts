@@ -31,7 +31,10 @@ export function useTranscriptMessages(stream: AnyStream, namespace: readonly str
   return computed(() => {
     // stream.values includes the SDK's merged message projection; only an exact
     // values event proves that the graph explicitly returned a child message.
-    const snapshot = scopedSnapshot.value;
+    const rawValues = namespace.length === 0 && Array.isArray((stream.values.value as { messages?: unknown })?.messages)
+      ? coerce((stream.values.value as { messages?: unknown }).messages)
+      : [];
+    const snapshot = scopedSnapshot.value.length ? scopedSnapshot.value : rawValues;
     const owned = new Map(snapshot.filter(message => message.id).map(message => [message.id!, message]));
     // Finished values are authoritative. Late replay chunks can leave the SDK's
     // message projection shorter than the checkpoint, even after the Run ends.
@@ -39,6 +42,7 @@ export function useTranscriptMessages(stream: AnyStream, namespace: readonly str
       ? owned.get(message.id)! : message);
     const seen = new Set(current.map(message => message.id));
     for (const message of snapshot) if (message.id && !seen.has(message.id)) current.push(message);
+    const subagents = [...stream.subagents.value.values()].map(agent => agent.namespace);
     const children = [...stream.subgraphs.value.values(), ...stream.subagents.value.values()]
       .map(graph => graph.namespace)
       .filter(child => child.length > namespace.length && namespace.every((part, index) => child[index] === part));
@@ -46,6 +50,11 @@ export function useTranscriptMessages(stream: AnyStream, namespace: readonly str
       // A child result explicitly returned in parent values is a parent reply.
       if (message.id && owned.has(message.id)) return true;
       const source = message.id ? sources.get(message.id) : undefined;
+      const isFromSubagent = !!source && subagents.some(sub => sub.length > namespace.length && sub.every((part, index) => source[index] === part));
+      if (isFromSubagent) return false;
+      const rawMsg = message as unknown as Record<string, unknown>;
+      if (Array.isArray(rawMsg.tool_calls) && rawMsg.tool_calls.length > 0) return true;
+      if (message.type === "tool") return true;
       return !source || !children.some(child => child.every((part, index) => source[index] === part));
     });
   });

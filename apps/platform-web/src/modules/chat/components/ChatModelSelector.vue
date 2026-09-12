@@ -133,14 +133,17 @@ function open() {
   })
 }
 
-function close() {
+function close(restoreFocus = true) {
+  if (!isOpen.value) return
   isOpen.value = false
-  triggerRef.value?.focus()
+  if (restoreFocus) {
+    triggerRef.value?.focus()
+  }
 }
 
 function toggle() {
   if (isOpen.value) {
-    close()
+    close(true)
   } else {
     open()
   }
@@ -148,20 +151,21 @@ function toggle() {
 
 function selectModel(modelId: string) {
   emit('update:selectedModelId', modelId)
-  close()
+  close(true)
 }
 
 function handleClickOutside(event: MouseEvent) {
+  if (!isOpen.value) return
   const target = event.target as Node
   if (triggerRef.value?.contains(target) || dropdownRef.value?.contains(target)) {
     return
   }
-  close()
+  close(false)
 }
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape' && isOpen.value) {
-    close()
+    close(true)
   }
 }
 
@@ -438,7 +442,7 @@ onBeforeUnmount(() => {
             <RouterLink
               :to="`/workspace/projects/${projectId}/models`"
               class="inline-flex items-center gap-1 text-[11px] font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-              @click="close"
+              @click="close(false)"
             >
               <span>管理模型与中转站</span>
               <BaseIcon

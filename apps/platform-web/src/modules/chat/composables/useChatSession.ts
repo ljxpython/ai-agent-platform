@@ -53,6 +53,14 @@ export function useChatSession(options: {
   );
   const service = createSessionService(actions.fetch);
   const threadId = ref(options.threadId ?? null);
+  watch(
+    () => options.threadId,
+    (next) => {
+      if (next && next !== threadId.value) {
+        threadId.value = next;
+      }
+    },
+  );
   const run = shallowRef<Run | null>(null);
   const checking = ref(true);
   const verified = ref(false);
@@ -64,7 +72,7 @@ export function useChatSession(options: {
   let releaseWait: (() => void) | undefined;
   const stream = useStream<ChatState>({
     assistantId: options.graphId,
-    threadId: options.threadId ?? null,
+    threadId: computed(() => threadId.value),
     client: service.client,
     fetch: actions.fetch,
     onCompleted: () => {
@@ -110,8 +118,13 @@ export function useChatSession(options: {
     if (!disposed)
       error.value = cause instanceof Error ? cause.message : "请求失败，请重试";
   }
-  async function verify(waitForTerminal = false) {
+  let activeVerifyPromise: Promise<boolean> | undefined;
+  let activeVerifyTerminal = false;
+  async function verify(waitForTerminal = false): Promise<boolean> {
     if (disposed) return false;
+    if (activeVerifyPromise && (!waitForTerminal || activeVerifyTerminal)) {
+      return activeVerifyPromise;
+    }
     const epoch = ++checkEpoch;
     clearTimeout(timer);
     releaseWait?.();
@@ -123,38 +136,47 @@ export function useChatSession(options: {
     }
     verified.value = false;
     checking.value = true;
+    activeVerifyTerminal = waitForTerminal;
     const id = threadId.value;
     const deadline = Date.now() + 30000;
-    try {
-      let attempt = 0;
-      do {
-        const knownId = waitForTerminal
-          ? (actions.current.value?.runId ?? run.value?.run_id)
-          : undefined;
-        const latest = knownId
-          ? await service.run(id, knownId)
-          : ((await service.runs(id))[0] ?? null);
-        if (disposed || epoch !== checkEpoch) return;
-        run.value = latest;
-        if (!active(latest) || !waitForTerminal) break;
-        if (document.hidden || Date.now() >= deadline)
-          throw new Error("运行结果尚未确认，请恢复连接后核实");
-        await new Promise<void>((resolve) => {
-          releaseWait = resolve;
-          timer = setTimeout(resolve, Math.min(500 * 2 ** attempt++, 4000));
-        });
-      } while (!disposed && epoch === checkEpoch);
-      if (!disposed && epoch === checkEpoch) {
-        verified.value = true;
-        error.value = "";
-        options.onRefresh();
-        return true;
+    const p = (async () => {
+      try {
+        let attempt = 0;
+        do {
+          const knownId = waitForTerminal
+            ? (actions.current.value?.runId ?? run.value?.run_id)
+            : undefined;
+          const latest = knownId
+            ? await service.run(id, knownId)
+            : ((await service.runs(id))[0] ?? null);
+          if (disposed || epoch !== checkEpoch) return false;
+          run.value = latest;
+          if (!active(latest) || !waitForTerminal) break;
+          if (document.hidden || Date.now() >= deadline)
+            throw new Error("运行结果尚未确认，请恢复连接后核实");
+          await new Promise<void>((resolve) => {
+            releaseWait = resolve;
+            timer = setTimeout(resolve, Math.min(500 * 2 ** attempt++, 4000));
+          });
+        } while (!disposed && epoch === checkEpoch);
+        if (!disposed && epoch === checkEpoch) {
+          verified.value = true;
+          error.value = "";
+          options.onRefresh();
+          return true;
+        }
+        return false;
+      } catch (cause) {
+        if (epoch === checkEpoch) fail(cause);
+        return false;
+      } finally {
+        if (!disposed && epoch === checkEpoch) checking.value = false;
+        activeVerifyPromise = undefined;
+        activeVerifyTerminal = false;
       }
-    } catch (cause) {
-      if (epoch === checkEpoch) fail(cause);
-    } finally {
-      if (!disposed && epoch === checkEpoch) checking.value = false;
-    }
+    })();
+    activeVerifyPromise = p;
+    return p;
   }
 
   const supportsQueue = ["reference_agent", "showcase_demo"].includes(
@@ -343,7 +365,7 @@ export function useChatSession(options: {
       const input = {
         messages: [{ id: crypto.randomUUID(), type: "human", content }],
       };
-      actions.begin(threadId.value, "send", input);
+      const action = actions.begin(threadId.value, "send", input);
       // The public submit override binds a newly created thread without remounting.
       const completion = stream.submit(input, {
         threadId: threadId.value,
@@ -354,8 +376,8 @@ export function useChatSession(options: {
       });
       checking.value = false;
       await completion;
-      actions.rejectUnsent();
       if (stream.error.value) throw stream.error.value;
+      actions.acknowledge(action.key, run.value?.run_id);
       await verify(true);
       return actions.current.value?.status === "acknowledged";
     } catch (cause) {
@@ -515,6 +537,7 @@ export function useChatSession(options: {
     run,
     reviews,
     checking,
+    verified,
     cancelling,
     error,
     busy,
