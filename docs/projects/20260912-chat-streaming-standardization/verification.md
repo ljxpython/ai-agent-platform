@@ -32,18 +32,22 @@
 
 ## 验证记录
 
-### 2026-09-12 实施与测试验证
+### 2026-09-12 实施与测试验证（含 Phase 4 子智能体卡片与视口优化）
 **执行人：** 老王  
-**验证范围：** 流式管道、reasoning 提取、打字机视觉与平滑滚底
+**验证范围：** 流式管道、reasoning 提取、打字机视觉、平滑滚底、SubagentCard 优雅渲染、底部残留清理与微型浮动未读胶囊
 
 #### 单元测试与工程质量
 1. **Chat 模块单元测试：**
    - 执行：`pnpm exec vitest run src/modules/chat`
-   - 结果：✅ 全部 16 个测试套件，36 个用例全数通过。
-   - 覆盖范围：`transcript.test.ts` 新增对思考链 `<think>` 标签剥离、`reasoning_content` 提取与 loading 态的完备断言。
+   - 结果：✅ 全部 19 个测试套件，48 个用例全数通过。
+   - 覆盖范围：
+     - 新增 `SubtaskDetail.spec.ts`：验证主智能体指派任务标签（绝不显示“你”），以及卡片内部内聚渲染子智能体工具调用（`ls`、`read_file`）；
+     - 新增 `SubagentCard.spec.ts`：验证子智能体角色名提取、任务描述解析、展开折叠交互、Python 原生 `Command(update=...)` 字符串反序列化为结构化 Markdown 报告；
+     - 增强 `transcript.test.ts`：验证根视图绝不采纳非根消息请求的孤儿子图工具调用；
+     - 增强 `useTranscriptMessages.spec.ts`：验证子智能体内部工具调用消息绝不泄漏到父视图。
 2. **全仓前端单元测试：**
    - 执行：`pnpm test:run`
-   - 结果：✅ 37 个测试文件全绿，94 个测试用例通过（1 个跳过为 SDK chain 远端用例）。
+   - 结果：✅ 39 个测试文件全绿，105 个测试用例通过（1 个跳过为 SDK chain 远端用例）。
 3. **类型与代码规范：**
    - `pnpm lint`：✅ 0 errors, 0 warnings
    - `pnpm typecheck`：✅ vue-tsc --noEmit 零报错
@@ -53,6 +57,15 @@
 - **组件与消息管道核心实现：** `done`（纯函数投影、思维链剥离、CSS 脉冲打字机光标、rAF 平滑滚底代码与单测全部就位）
 - **真实模型与工作流端到端联调（Task 3.2）：** `done`
   - **当前状态：** 用户已在本地真实全栈环境与浏览器验证通过：连续多轮对话正常流式、输入框不丢失、工具调用折叠展示与展开正常、多余复述卡片已消除。
+- **子智能体对齐 Open SWE 与视口通知优化（Phase 4）：** `done`
+  - **当前状态：** `SubagentCard.vue` 替换原有粗暴的 `task` 打印；移除主回复底部多余的全局 subtasks 残留；右下角大卡片优化为底部居中微型圆角胶囊，触底自动清除未读数；修复 `useTranscriptMessages` 命名空间漏洞，彻底消除子智能体工具外泄；重构 `SubtaskDetail.vue`，彻底消除误导的“你”字气泡，将子工具完备内聚在卡片内展开。
+
+#### 2026-09-12 Phase 5 TodoList 结构化渲染与系统提示词精准触发验证
+- **测试用例：** 新增 `ToolResult.spec.ts`，验证 `write_todos` 人文化标题、迷你待办列表结构化渲染、以及点击“在详情面板查看任务看板 →”按钮向父组件发送 `inspect` 事件；
+- **全量测试：** `pnpm test:run` 40 个测试套件，107 个用例全数通过；
+- **代码质量：** `pnpm lint` 0 错误，`vue-tsc --noEmit` 0 报错；
+- **后端测试：** `uv run pytest tests/services/showcase_demo/ -m "not integration"` 28 个单元测试全绿；
+- **后端 Prompt 改造：** 明确任务规划与多步工程必须调用 `write_todos` 登记结构化列表（首项 in_progress，其余 pending），禁止仅以 Markdown 纯文本敷衍输出。
 
 #### 最终结论
-✅ **done（全部计划功能与工程测试、用户端到端实际使用验收通过）**
+✅ **done（全部计划功能、样式对齐、工程测试及问题修复均已完整交付）**

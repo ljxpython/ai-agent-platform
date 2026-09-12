@@ -13,6 +13,10 @@
     "workflow_demo": {
       "path": "./src/runtime_service/graphs/workflow_demo.py:get_agent",
       "description": "Model-backed workflow Agent with optional human confirmation interrupt."
+    },
+    "showcase_demo": {
+      "path": "./src/runtime_service/graphs/showcase_demo.py:get_agent",
+      "description": "Real Python project teaching agent with thread workspace, Docker execution, Skills, Todo, subagents and approval."
     }
   },
   "env": ".env",

@@ -10,6 +10,7 @@
 - [整体方案](plan.md)
 - [任务拆分](tasks.md)
 - [验证记录](verification.md)
+- [Showcase Demo 矩阵评估与逐项触发指南](showcase-matrix-trigger-guide.md)
 
 ## 改动范围
 - **影响服务：** `platform-web`（主要消息管道与渲染优化）、`platform-api`（流模式参数核验）

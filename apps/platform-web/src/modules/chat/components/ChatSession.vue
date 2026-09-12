@@ -41,7 +41,6 @@ import { isChatViewportNearBottom } from "../scroll-state";
 import ChatComposer from "./ChatComposer.vue";
 import ChatMessageList from "./ChatMessageList.vue";
 import ApprovalPanel from "./ApprovalPanel.vue";
-import SubtaskDetail from "./SubtaskDetail.vue";
 import MessageContent from "./MessageContent.vue";
 
 const props = defineProps<{
@@ -328,34 +327,16 @@ function follow() {
   requestSmoothScrollToBottom();
 }
 
-const expanded = ref<Record<string, boolean>>({});
-const subtasks = computed(() => {
-  const agents = [...stream.subagents.value.values()];
-  const tasks = agents.map((agent) => ({
-    ...agent,
-    key: JSON.stringify(agent.namespace),
-    label: agent.name,
-    description: agent.taskInput,
-    parent: agent.parentId,
-  }));
-  return tasks
-    .map((task) => {
-      const parent = tasks
-        .filter(
-          (candidate) =>
-            candidate.key !== task.key &&
-            candidate.namespace.length < task.namespace.length &&
-            candidate.namespace.every((part, index) => task.namespace[index] === part),
-        )
-        .sort((a, b) => b.namespace.length - a.namespace.length)[0];
-      return {
-        ...task,
-        parent: task.parent ?? parent?.label,
-        depth: Math.max(0, task.namespace.length - 1),
-      };
-    })
-    .sort((a, b) => a.key.localeCompare(b.key));
-});
+function handleViewportScroll() {
+  if (!viewport.value) return;
+  const nearBottom = isChatViewportNearBottom(viewport.value);
+  following.value = nearBottom;
+  if (nearBottom) {
+    unreadMessageCount.value = 0;
+    bufferedStreamActivity.value = false;
+  }
+}
+
 const todos = computed(() =>
   Array.isArray(stream.values.value.todos)
     ? stream.values.value.todos
@@ -394,6 +375,11 @@ const inspector = shallowRef<{
   value: unknown;
 } | null>(null);
 function inspect(tool: ToolItem) {
+  if (tool.name === "write_todos") {
+    drawerTab.value = "tasks";
+    drawerOpen.value = true;
+    return;
+  }
   const path = asObject(tool.input).file_path ?? asObject(tool.input).path;
   inspector.value = {
     title: tool.name === "read_file" && typeof path === "string" && path.startsWith("/skills/") ? "已读取技能" : tool.name,
@@ -599,9 +585,7 @@ onScopeDispose(() => {
         <div
           ref="viewport"
           class="pw-chat-stream overscroll-contain"
-          @scroll="
-            following = viewport ? isChatViewportNearBottom(viewport) : true
-          "
+          @scroll="handleViewportScroll"
         >
           <div class="pw-chat-stream-content space-y-6">
             <ChatAgentStatusBar
@@ -632,6 +616,7 @@ onScopeDispose(() => {
               </p>
             </div>
             <ChatMessageList
+              :stream="stream"
               :messages="displayedMessages"
               :calls="snapshotMessages ? [] : calls"
               :is-running="busy && !snapshotMessages"
@@ -720,60 +705,6 @@ onScopeDispose(() => {
                 刷新投递状态
               </button>
             </section>
-            <div
-              v-if="subtasks.length"
-              class="space-y-2"
-              aria-label="子任务"
-            >
-              <section
-                v-for="task in subtasks"
-                :key="task.key"
-                :style="{ marginLeft: `${Math.min(task.depth, 3) * 12}px` }"
-                class="rounded-lg border border-gray-200 p-3 dark:border-dark-700"
-              >
-                <button
-                  class="flex w-full items-center justify-between gap-3 text-left text-sm"
-                  :aria-expanded="!!expanded[task.key]"
-                  @click="expanded[task.key] = !expanded[task.key]"
-                >
-                  <span>{{ task.label }}
-                    <span class="text-xs text-gray-400">{{
-                      task.status === "running"
-                        ? busy
-                          ? "执行中"
-                          : "未完成"
-                        : task.status === "error"
-                          ? "失败"
-                          : "已返回"
-                    }}</span></span>
-                  <span aria-hidden="true">{{
-                    expanded[task.key] ? "▾" : "▸"
-                  }}</span>
-                </button>
-                <p
-                  v-if="task.description"
-                  class="mt-1 text-xs text-gray-500"
-                >
-                  {{ task.description }}
-                </p>
-                <div
-                  v-if="expanded[task.key]"
-                  class="mt-3 space-y-3"
-                >
-                  <p class="break-all text-xs text-gray-400">
-                    {{ task.namespace.join(" / ")
-                    }}<span v-if="task.parent">
-                      · 父任务 {{ task.parent }}</span>
-                  </p>
-                  <SubtaskDetail
-                    :stream="stream"
-                    :namespace="task.namespace"
-                    :running="busy && task.status === 'running'"
-                    @inspect="inspect"
-                  />
-                </div>
-              </section>
-            </div>
             <div ref="approvalElement">
               <ApprovalPanel
                 :reviews="reviews"
@@ -791,45 +722,41 @@ onScopeDispose(() => {
         </div>
         <div
           v-if="liveFollowView.noticeVisible && !drawerOpen && !optionsOpen"
-          class="pointer-events-none absolute bottom-5 right-5 z-10 flex justify-end"
+          class="pointer-events-none absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 justify-center"
         >
-          <div class="pointer-events-auto pw-panel w-[calc(100vw-2.5rem)] px-4 py-3 sm:w-[320px]">
-            <div class="flex items-start gap-3">
-              <span class="mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-950/30 dark:text-primary-100">
-                <BaseIcon
-                  :name="liveFollowView.icon"
-                  size="sm"
-                />
-              </span>
-              <span class="min-w-0 flex-1">
-                <span class="block text-sm font-semibold text-gray-900 dark:text-white">
-                  {{ liveFollowView.title }}
-                </span>
-                <span class="mt-1 block text-xs leading-6 text-gray-500 dark:text-dark-300">
-                  {{ liveFollowView.description }}
-                </span>
-              </span>
-            </div>
-            <div class="mt-3 flex flex-wrap justify-end gap-2">
-              <BaseButton
+          <div class="pointer-events-auto flex items-center gap-2.5 rounded-full border border-primary-200/90 bg-white/95 px-4 py-1.5 shadow-lg backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/95">
+            <span class="flex items-center gap-1.5 text-xs font-medium text-primary-950 dark:text-primary-100">
+              <BaseIcon
+                :name="liveFollowView.icon"
+                class="h-3.5 w-3.5 text-primary-600 dark:text-primary-400"
+              />
+              {{ liveFollowView.title }}
+            </span>
+            <div class="flex items-center gap-1.5 border-l border-gray-200 pl-2 dark:border-dark-700">
+              <button
                 v-if="liveFollowView.showStopAction"
-                variant="danger"
+                type="button"
+                class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
                 :disabled="cancelling"
                 @click="session.stop"
               >
                 <BaseIcon
                   name="x"
-                  size="sm"
+                  class="h-3 w-3"
                 />
-                {{ cancelling ? '停止中...' : '停止生成' }}
-              </BaseButton>
-              <BaseButton @click="follow">
+                {{ cancelling ? '停止中...' : '停止' }}
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded-full bg-primary-600 px-2.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600"
+                @click="follow"
+              >
                 <BaseIcon
                   name="chevron-down"
-                  size="sm"
+                  class="h-3 w-3"
                 />
                 回到最新
-              </BaseButton>
+              </button>
             </div>
           </div>
         </div>

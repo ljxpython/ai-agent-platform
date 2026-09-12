@@ -406,6 +406,7 @@ apps/platform-web/test-results/
 !apps/platform-web/src/lib/
 !apps/platform-web/src/lib/**
 
+apps/runtime-service/.runtime/
 apps/runtime-service/.venv/
 apps/runtime-service/.pytest_cache/
 apps/runtime-service/__pycache__/

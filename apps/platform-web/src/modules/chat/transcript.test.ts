@@ -103,4 +103,50 @@ describe("SDK transcript projection", () => {
     expect(turns[1].user?.blocks[0]?.text).toBe("你叫什么名字呀？");
     expect(turns[1].answer[0]?.blocks.some(b => b.text === "我叫 Demo")).toBe(true);
   });
+
+  it("never displays subagent internal orphan tool calls at the root transcript level, but preserves them in scoped view", () => {
+    const rootAiMsg = new AIMessage({
+      id: "ai-delegate",
+      content: "委派 research 分析",
+      tool_calls: [{ id: "task-call-1", name: "task", args: { subagent_type: "research" } }],
+    });
+
+    const calls = [
+      {
+        id: "task-call-1",
+        callId: "task-call-1",
+        name: "task",
+        input: { subagent_type: "research" },
+        status: "finished" as const,
+      },
+      // Subagent internal tool calls that reached global stream.toolCalls
+      {
+        id: "sub-read-call",
+        callId: "sub-read-call",
+        name: "read_file",
+        input: { path: "/workspace/report.py" },
+        status: "finished" as const,
+      },
+      {
+        id: "sub-ls-call",
+        callId: "sub-ls-call",
+        name: "ls",
+        input: { path: "/workspace" },
+        status: "finished" as const,
+      },
+    ];
+
+    // 1. Root level transcript view (namespace: [])
+    const rootTurns = buildTranscript([rootAiMsg], calls, false, []);
+    const rootToolNames = rootTurns.flatMap(t => t.work.flatMap(item => item.tools.map(tool => tool.name)));
+    // Root level must ONLY contain the 'task' tool call, NEVER orphan sub-tools!
+    expect(rootToolNames).toEqual(["task"]);
+
+    // 2. Scoped level transcript view for subagent (namespace: ["tools:task-call-1"])
+    const scopedTurns = buildTranscript([], calls, false, ["tools:task-call-1"]);
+    const scopedToolNames = scopedTurns.flatMap(t => t.work.flatMap(item => item.tools.map(tool => tool.name)));
+    // Scoped subagent view preserves the subagent's tool calls
+    expect(scopedToolNames).toContain("read_file");
+    expect(scopedToolNames).toContain("ls");
+  });
 });

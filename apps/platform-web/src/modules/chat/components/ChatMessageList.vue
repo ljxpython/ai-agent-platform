@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { BaseMessage } from "@langchain/core/messages";
-import type { AssembledToolCall } from "@langchain/vue";
+import type { AnyStream, AssembledToolCall } from "@langchain/vue";
 import type { ChatMessageMetadata } from "../branching";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import MessageContent from "./MessageContent.vue";
@@ -15,6 +15,7 @@ const props = defineProps<{
   metadata?: Record<string, ChatMessageMetadata>;
   editingMessageId?: string;
   editingMessageValue?: string;
+  stream?: AnyStream;
 }>();
 const emit = defineEmits<{
   inspect: [tool: ToolItem]; edit: [id: string, text: string]; retry: [id: string];
@@ -176,6 +177,7 @@ async function copy(value: string) {
                     v-for="tool in item.tools"
                     :key="tool.key"
                     :tool="tool"
+                    :stream="stream"
                     @inspect="emit('inspect', $event)"
                   />
                 </div>
@@ -193,6 +195,7 @@ async function copy(value: string) {
                   v-for="tool in item.tools"
                   :key="tool.key"
                   :tool="tool"
+                  :stream="stream"
                   @inspect="emit('inspect', $event)"
                 />
               </div>

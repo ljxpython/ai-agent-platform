@@ -269,6 +269,11 @@ export function buildTranscript(
   }
   for (const call of calls)
     if (!shown.has(call.callId)) {
+      // In the root transcript view (namespace is empty), NEVER display orphan tool calls
+      // that were not explicitly requested by root messages (e.g. subagent internal tools).
+      if (namespace.length === 0 && !requestedIds.has(call.callId)) {
+        continue;
+      }
       if (!turn) {
         turn = { key: `${prefix}:tools`, work: [], answer: [] };
         turns.push(turn);

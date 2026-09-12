@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { BaseMessage } from "@langchain/core/messages";
-import type { AssembledToolCall } from "@langchain/vue";
+import type { AnyStream, AssembledToolCall } from "@langchain/vue";
 import { buildTranscript, type ToolItem } from "../transcript";
 import MessageContent from "./MessageContent.vue";
 import ToolResult from "./ToolResult.vue";
@@ -13,6 +13,7 @@ const props = defineProps<{
   running: boolean;
   namespace?: readonly string[];
   canEdit?: boolean;
+  stream?: AnyStream;
 }>();
 const emit = defineEmits<{
   inspect: [tool: ToolItem];
@@ -120,6 +121,7 @@ async function copy(text: string) {
             v-for="tool in item.tools"
             :key="tool.key"
             :tool="tool"
+            :stream="stream"
             @inspect="emit('inspect', $event)"
           />
         </div>

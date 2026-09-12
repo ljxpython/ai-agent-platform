@@ -43,7 +43,41 @@
 - **内容：** 验证长文本真实打字机流式、思考过程展开、中途停止、分支导航和抽屉完整可用。
 - **状态：** 已完成 ✅ (2026-09-12 用户真实环境联调验收通过)
 
+---
+
+## Phase 4: 子智能体卡片对齐 Open SWE 与视口通知体验优化
+
+### Task 4.1: 新增 `SubagentCard.vue` 专用组件与单测
+- **文件：** `apps/platform-web/src/modules/chat/components/SubagentCard.vue`、`SubagentCard.spec.ts`
+- **内容：** 提取角色名、子智能体标签、描述与状态，反序列化清洗 Python Command 输出，并编写完整单测。
+- **状态：** 已完成 ✅ (2026-09-12)
+
+### Task 4.2: `ToolResult.vue` 拦截分发 `task` 工具
+- **文件：** `apps/platform-web/src/modules/chat/components/ToolResult.vue`
+- **内容：** 当工具名称为 `task` 时委派给 `SubagentCard`。
+- **状态：** 已完成 ✅ (2026-09-12)
+
+### Task 4.3: `ChatSession.vue` 消除底部残留与未读胶囊化
+- **文件：** `apps/platform-web/src/modules/chat/components/ChatSession.vue`
+- **内容：** 移除消息列表外部硬编码的重复全局 `subtasks`；重构未读通知为底部居中微型胶囊，触底即重置未读数。
+- **状态：** 已完成 ✅ (2026-09-12)
+
+## Phase 5: TodoList 结构化渲染与系统提示词精准触发
+
+### Task 5.1: 后端 `prompts.py` 强化多步工程与 TodoList 触发规则
+- **文件：** `apps/runtime-service/src/runtime_service/services/demo/showcase_demo/prompts.py`
+- **内容：** 明确任务规划与多步工程必须调用 `write_todos` 登记结构化列表（首项 in_progress，其余 pending），禁止仅以 Markdown 纯文本敷衍输出。
+- **状态：** 已完成 ✅ (2026-09-12)
+
+### Task 5.2: 前端 `ToolResult.vue` 增加 `write_todos` 专属结构化展示与抽屉联动
+- **文件：** `apps/platform-web/src/modules/chat/components/ToolResult.vue`、`ToolResult.spec.ts`、`ChatSession.vue`
+- **内容：** 标题转译为“更新任务清单 · 共 N 项”；展开渲染迷你待办条目与状态圆点；增加“在详情面板查看任务看板 →”一键唤起抽屉并切到 ToDo 标签页。
+- **状态：** 已完成 ✅ (2026-09-12)
+
 ## 进度追踪
 - [x] Phase 1 完成
 - [x] Phase 2 完成
 - [x] Phase 3 完成
+- [x] Phase 4 完成
+- [x] Phase 5 完成
+
