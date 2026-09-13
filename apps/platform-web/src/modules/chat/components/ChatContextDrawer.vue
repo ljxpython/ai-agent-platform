@@ -104,14 +104,18 @@ const historyView = computed(() =>
 )
 
 const showOnlyMilestones = ref(true)
+const historyRoleFilter = ref<'all' | 'user' | 'agent' | 'tool'>('all')
 
 const displayedHistoryItems = computed(() => {
-  const allItems = historyView.value.items
-  if (!showOnlyMilestones.value) {
-    return allItems
+  let list = historyView.value.items
+  if (showOnlyMilestones.value) {
+    const milestones = list.filter((item) => item.isKeyMilestone)
+    list = milestones.length > 0 ? milestones : list
   }
-  const milestones = allItems.filter((item) => item.isKeyMilestone)
-  return milestones.length > 0 ? milestones : allItems
+  if (historyRoleFilter.value !== 'all') {
+    list = list.filter((item) => item.role === historyRoleFilter.value)
+  }
+  return list
 })
 
 watch(
@@ -786,43 +790,100 @@ async function handleSaveEdit() {
             </div>
           </div>
 
-          <div class="flex items-center justify-between gap-3 pt-1">
-            <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs dark:border-dark-700 dark:bg-dark-800">
+          <div class="space-y-2 pt-1">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs dark:border-dark-700 dark:bg-dark-800">
+                <button
+                  type="button"
+                  class="rounded-md px-2.5 py-1 font-medium transition-all"
+                  :class="
+                    showOnlyMilestones
+                      ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-900 dark:text-white'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'
+                  "
+                  @click="showOnlyMilestones = true"
+                >
+                  🎯 关键节点 ({{ historyView.keyMilestoneCount }})
+                </button>
+                <button
+                  type="button"
+                  class="rounded-md px-2.5 py-1 font-medium transition-all"
+                  :class="
+                    !showOnlyMilestones
+                      ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-900 dark:text-white'
+                      : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'
+                  "
+                  @click="showOnlyMilestones = false"
+                >
+                  全部 Steps ({{ historyView.totalEntries }})
+                </button>
+              </div>
+              <span class="text-xs text-gray-400 dark:text-dark-400">
+                {{ showOnlyMilestones ? '已过滤纯内部系统检查点' : '展示全部原始中间步骤' }}
+              </span>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-1.5 pt-1">
+              <span class="text-xs text-gray-400 dark:text-dark-400 mr-1">角色筛选:</span>
               <button
                 type="button"
-                class="rounded-md px-2.5 py-1 font-medium transition-all"
+                class="rounded-md px-2 py-0.5 text-xs transition-colors"
                 :class="
-                  showOnlyMilestones
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-900 dark:text-white'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'
+                  historyRoleFilter === 'all'
+                    ? 'bg-primary-100 text-primary-800 dark:bg-primary-950/60 dark:text-primary-200 font-semibold shadow-xs'
+                    : 'text-gray-600 hover:bg-gray-100 dark:text-dark-300 dark:hover:bg-dark-800'
                 "
-                @click="showOnlyMilestones = true"
+                @click="historyRoleFilter = 'all'"
               >
-                🎯 关键节点 ({{ historyView.keyMilestoneCount }})
+                全部
               </button>
               <button
                 type="button"
-                class="rounded-md px-2.5 py-1 font-medium transition-all"
+                class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs transition-colors"
                 :class="
-                  !showOnlyMilestones
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-900 dark:text-white'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'
+                  historyRoleFilter === 'user'
+                    ? 'bg-primary-100 text-primary-800 dark:bg-primary-950/60 dark:text-primary-200 font-semibold shadow-xs'
+                    : 'text-gray-600 hover:bg-gray-100 dark:text-dark-300 dark:hover:bg-dark-800'
                 "
-                @click="showOnlyMilestones = false"
+                @click="historyRoleFilter = 'user'"
               >
-                全部 Steps ({{ historyView.totalEntries }})
+                <span>👤 用户提问</span>
+                <span class="rounded-full bg-gray-200/80 px-1 text-[10px] dark:bg-dark-700">{{ historyView.userCount }}</span>
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs transition-colors"
+                :class="
+                  historyRoleFilter === 'agent'
+                    ? 'bg-primary-100 text-primary-800 dark:bg-primary-950/60 dark:text-primary-200 font-semibold shadow-xs'
+                    : 'text-gray-600 hover:bg-gray-100 dark:text-dark-300 dark:hover:bg-dark-800'
+                "
+                @click="historyRoleFilter = 'agent'"
+              >
+                <span>🤖 Agent 回复</span>
+                <span class="rounded-full bg-gray-200/80 px-1 text-[10px] dark:bg-dark-700">{{ historyView.agentCount }}</span>
+              </button>
+              <button
+                type="button"
+                class="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs transition-colors"
+                :class="
+                  historyRoleFilter === 'tool'
+                    ? 'bg-primary-100 text-primary-800 dark:bg-primary-950/60 dark:text-primary-200 font-semibold shadow-xs'
+                    : 'text-gray-600 hover:bg-gray-100 dark:text-dark-300 dark:hover:bg-dark-800'
+                "
+                @click="historyRoleFilter = 'tool'"
+              >
+                <span>🛠️ 工具调用</span>
+                <span class="rounded-full bg-gray-200/80 px-1 text-[10px] dark:bg-dark-700">{{ historyView.toolCount }}</span>
               </button>
             </div>
-            <span class="text-xs text-gray-400 dark:text-dark-400">
-              {{ showOnlyMilestones ? '已过滤纯内部系统检查点' : '展示全部原始中间步骤' }}
-            </span>
           </div>
 
           <div
             v-if="displayedHistoryItems.length === 0"
             class="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-sm leading-7 text-gray-500 dark:border-dark-700 dark:text-dark-300"
           >
-            当前 thread 还没有 checkpoint 历史，或者还没开始对话。
+            {{ historyRoleFilter !== 'all' ? '未找到符合当前筛选条件的检查点，请切换其他角色或点击「全部」。' : '当前 thread 还没有 checkpoint 历史，或者还没开始对话。' }}
           </div>
 
           <div
@@ -865,6 +926,20 @@ async function handleSaveEdit() {
                   </div>
 
                   <div class="mt-3 flex flex-wrap gap-2">
+                    <span
+                      class="pw-pill-soft font-medium"
+                      :class="
+                        item.role === 'user'
+                          ? 'border-primary-200 bg-primary-50 text-primary-700 dark:border-primary-900/40 dark:bg-primary-950/30 dark:text-primary-200'
+                          : item.role === 'agent'
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200'
+                            : item.role === 'tool'
+                              ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/40 dark:bg-sky-950/30 dark:text-sky-200'
+                              : 'pw-pill-soft-neutral'
+                      "
+                    >
+                      {{ item.roleLabel }}
+                    </span>
                     <span
                       v-if="item.isLatest"
                       class="pw-pill-soft pw-pill-soft-success"

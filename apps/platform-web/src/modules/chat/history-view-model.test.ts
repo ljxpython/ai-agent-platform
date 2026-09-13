@@ -174,6 +174,62 @@ describe('chat history view model', () => {
     expect(view.keyMilestoneCount).toBe(4)
     expect(view.totalEntries).toBe(6)
   })
+
+  it('能够精准识别 checkpoint 的角色归属（用户提问/Agent回复/工具/系统）并准确统计', () => {
+    const view = buildChatHistoryView({
+      items: [
+        {
+          checkpoint_id: 'cp-user',
+          metadata: { step: 1 },
+          values: {
+            messages: [{ type: 'human', content: '用户说第一句话' }]
+          }
+        },
+        {
+          checkpoint_id: 'cp-tool',
+          metadata: { step: 2 },
+          values: {
+            messages: [
+              { type: 'human', content: '用户说第一句话' },
+              { type: 'ai', tool_calls: [{ name: 'read_file' }] }
+            ]
+          }
+        },
+        {
+          checkpoint_id: 'cp-agent',
+          metadata: { step: 3 },
+          values: {
+            messages: [
+              { type: 'human', content: '用户说第一句话' },
+              { type: 'ai', content: '这是最终结论' }
+            ]
+          }
+        },
+        {
+          checkpoint_id: 'cp-sys',
+          metadata: { step: 4 },
+          tasks: [{ name: 'PregelMiddleware' }],
+          values: { messages: [] }
+        }
+      ],
+      selectedBranch: '',
+      isViewingBranch: false
+    })
+
+    expect(view.items[0]?.role).toBe('user')
+    expect(view.items[0]?.roleLabel).toBe('用户提问')
+    expect(view.items[1]?.role).toBe('tool')
+    expect(view.items[1]?.roleLabel).toBe('工具调用')
+    expect(view.items[2]?.role).toBe('agent')
+    expect(view.items[2]?.roleLabel).toBe('Agent 回复')
+    expect(view.items[3]?.role).toBe('system')
+    expect(view.items[3]?.roleLabel).toBe('系统检查点')
+
+    expect(view.userCount).toBe(1)
+    expect(view.toolCount).toBe(1)
+    expect(view.agentCount).toBe(1)
+    expect(view.systemCount).toBe(1)
+  })
 })
 
 

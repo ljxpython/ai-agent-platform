@@ -1,7 +1,9 @@
 import type { ThreadHistoryEntry } from '@/types/management'
 import { getHistoryEntryId, getHistoryEntryPreviewText, getHistoryEntryTime } from '@/utils/threads'
 
-type ChatHistoryViewItem = {
+export type CheckpointRole = 'user' | 'agent' | 'tool' | 'system'
+
+export type ChatHistoryViewItem = {
   id: string
   parentId: string
   preview: string
@@ -17,6 +19,8 @@ type ChatHistoryViewItem = {
   isCurrent: boolean
   isInSelectedPath: boolean
   isKeyMilestone: boolean
+  role: CheckpointRole
+  roleLabel: string
   selectLabel: string
   rawEntry: ThreadHistoryEntry
 }
@@ -25,6 +29,10 @@ export type ChatHistoryView = {
   totalEntries: number
   branchGroupCount: number
   keyMilestoneCount: number
+  userCount: number
+  agentCount: number
+  toolCount: number
+  systemCount: number
   activeCheckpointId: string
   selectedPathIds: string[]
   items: ChatHistoryViewItem[]
@@ -209,6 +217,55 @@ function isKeyMilestoneEntry(
   return false
 }
 
+export function extractHistoryEntryRole(entry: ThreadHistoryEntry): CheckpointRole {
+  if (Array.isArray(entry.interrupts) && entry.interrupts.length > 0) {
+    return 'system'
+  }
+  const tasks = Array.isArray(entry.tasks) ? (entry.tasks as Record<string, unknown>[]) : []
+  const isPureMiddleware =
+    tasks.length > 0 &&
+    tasks.every((t) => {
+      const name = String(t?.name || '')
+      return name.includes('Middleware') || name.includes('__pregel')
+    })
+  if (isPureMiddleware) {
+    return 'system'
+  }
+  const messages = getMessagesList(entry)
+  if (messages.length > 0) {
+    const latestMsg = messages[messages.length - 1]
+    if (latestMsg) {
+      const msgType = String(latestMsg.type || '').toLowerCase()
+      const toolCalls = Array.isArray(latestMsg.tool_calls)
+        ? latestMsg.tool_calls
+        : Array.isArray(asRecord(latestMsg.additional_kwargs).tool_calls)
+          ? (asRecord(latestMsg.additional_kwargs).tool_calls as unknown[])
+          : []
+      if (toolCalls.length > 0 || msgType === 'tool') {
+        return 'tool'
+      }
+      if (msgType === 'human') {
+        return 'user'
+      }
+      if (msgType === 'ai') {
+        return 'agent'
+      }
+    }
+  }
+  const source = extractSource(entry).toLowerCase()
+  if (source === 'input') {
+    return 'user'
+  }
+  return 'system'
+}
+
+const roleLabels: Record<CheckpointRole, string> = {
+  user: '用户提问',
+  agent: 'Agent 回复',
+  tool: '工具调用',
+  system: '系统检查点'
+}
+
 export function buildChatHistoryView(options: {
   items: ThreadHistoryEntry[]
   selectedBranch: string
@@ -263,6 +320,9 @@ export function buildChatHistoryView(options: {
       directParent
     )
 
+    const role = extractHistoryEntryRole(entry)
+    const roleLabel = roleLabels[role]
+
     return {
       id,
       parentId,
@@ -279,17 +339,27 @@ export function buildChatHistoryView(options: {
       isCurrent,
       isInSelectedPath,
       isKeyMilestone,
+      role,
+      roleLabel,
       selectLabel: isCurrent ? '当前快照' : childCount > 0 || siblingCount > 1 ? '查看此分支' : '查看此快照',
       rawEntry: entry
     }
   })
 
   const keyMilestoneCount = items.filter((item) => item.isKeyMilestone).length
+  const userCount = items.filter((item) => item.role === 'user').length
+  const agentCount = items.filter((item) => item.role === 'agent').length
+  const toolCount = items.filter((item) => item.role === 'tool').length
+  const systemCount = items.filter((item) => item.role === 'system').length
 
   return {
     totalEntries: options.items.length,
     branchGroupCount,
     keyMilestoneCount,
+    userCount,
+    agentCount,
+    toolCount,
+    systemCount,
     activeCheckpointId,
     selectedPathIds,
     items
