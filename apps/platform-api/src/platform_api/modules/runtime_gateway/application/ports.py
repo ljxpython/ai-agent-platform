@@ -125,7 +125,19 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
         body: AsyncIterator[bytes],
     ) -> dict[str, Any]: ...
 
-    async def read_thread_image(
+    async def upload_thread_file(
+        self,
+        *,
+        graph_id: str,
+        thread_id: str,
+        sha256: str,
+        content_type: str,
+        content_length: int,
+        body: AsyncIterator[bytes],
+        file_name: str | None = None,
+    ) -> dict[str, Any]: ...
+
+    async def read_thread_file(
         self,
         *,
         graph_id: str,

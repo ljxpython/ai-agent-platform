@@ -145,6 +145,10 @@ def _delegation_operation(request: Request) -> str:
         return "image-upload"
     if "/images/content" in path:
         return "image-read"
+    if "/files/uploads" in path:
+        return "workspace-file-upload"
+    if "/files/content" in path:
+        return "workspace-file-read"
     if path.endswith("/messages"):
         return "message-enqueue" if request.method == "POST" else "message-read"
     if request.method == "POST" and (path.endswith("/commands") or "/runs" in path):
@@ -465,6 +469,70 @@ async def read_thread_image(
     return RuntimeStreamingResponse(
         payload.body,
         media_type=payload.content_type,
+        headers=headers,
+    )
+
+
+@router.put("/threads/{thread_id}/files/uploads/{sha256}")
+async def upload_thread_file(
+    request: Request,
+    thread_id: str,
+    sha256: str,
+    file_name: str | None = Query(default=None),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    project_id = _require_project_id(request)
+    content_type = request.headers.get("content-type", "")
+    content_length_str = request.headers.get("content-length")
+    try:
+        content_length = int(content_length_str) if content_length_str is not None else 0
+    except ValueError:
+        content_length = 0
+
+    ref = await service.upload_thread_file(
+        actor=actor,
+        project_id=project_id,
+        thread_id=thread_id,
+        sha256=sha256,
+        content_type=content_type,
+        content_length=content_length,
+        body=request.stream(),
+        file_name=file_name,
+    )
+    return _redact_runtime_private_fields(ref)
+
+
+@router.get("/threads/{thread_id}/files/content")
+async def read_thread_file(
+    request: Request,
+    thread_id: str,
+    path: str = Query(..., description="Workspace file path"),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> StreamingResponse:
+    project_id = _require_project_id(request)
+    payload = await service.read_thread_file(
+        actor=actor,
+        project_id=project_id,
+        thread_id=thread_id,
+        path=path,
+    )
+    headers: dict[str, str] = {}
+    if payload.content_length is not None:
+        headers["content-length"] = str(payload.content_length)
+    if payload.etag:
+        headers["etag"] = payload.etag
+    if payload.cache_control:
+        headers["cache-control"] = payload.cache_control
+    headers["content-disposition"] = f'inline; filename="{path.rsplit("/", 1)[-1]}"'
+    media_type = payload.content_type
+    if media_type in ("text/plain", "text/markdown", "text/csv", "application/json"):
+        media_type = f"{media_type}; charset=utf-8"
+
+    return RuntimeStreamingResponse(
+        payload.body,
+        media_type=media_type,
         headers=headers,
     )
 

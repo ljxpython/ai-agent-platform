@@ -44,18 +44,29 @@
   - `transcript.ts`：从 artifact、structured_content 提取图片，通过正则从历史输出中恢复图表弱引用；
   - `ApprovalPanel.vue`：文生图人机协同中文审批卡片渲染。
 
+### 2.4 平台通用文档全链路（10 号专题）
+- **Runtime 服务验证：**
+  - 命令：`pytest tests/services/showcase_demo/test_documents.py`（2 passed）
+  - 覆盖：放开通用 assistant_id 文件操作授权、PDF 页码精确抽取、截断与越界处理。
+- **Platform API 网关验证：**
+  - 命令：`pytest apps/platform-api/tests/test_runtime_gateway_files.py apps/platform-api/tests/test_runtime_gateway_images.py`（9 passed）
+  - 覆盖：PUT `/threads/{id}/files/uploads/{sha256}` 透传 `file_name`、MIME/20MB 大小校验、GET 流式代理、路径穿越防御、`workspace-file-upload`/`workspace-file-read` 权限签发。
+- **Platform Web 前端验证：**
+  - 命令：`pnpm test:run`（44 文件 127 passed，含 `files.service.spec.ts` 4 项）、`pnpm typecheck`（0 error）、`pnpm build`（零警告打包通过）。
+  - 覆盖：`files.service.ts` 校验与 SHA-256 流式哈希、`ThreadFile.vue` 附件卡片渲染、新标签页内置 PDF Viewer 预览与下载、`ToolResult.vue` 针对 `parse_document` 的页码与截断警告结构化渲染。
+
 ---
 
 ## 3. 安全矩阵核对
 
 | 检查项 | 预期行为 | 验证状态 | 证据 / 覆盖用例 |
 |---|---|---|---|
-| 错租户 / 错项目 | 拒绝访问，不泄露路径与正文 | ✅ 已通过 | `test_runtime_gateway_images.py`: `test_upload_image_cross_project_rejected` |
-| 路径穿越 | `..`、双编码、绝对宿主路径拒绝 | ✅ 已通过 | `test_image_http.py`, `test_runtime_gateway_images.py` |
+| 错租户 / 错项目 | 拒绝访问，不泄露路径与正文 | ✅ 已通过 | `test_runtime_gateway_images.py`, `test_runtime_gateway_files.py` |
+| 路径穿越 | `..`、双编码、绝对宿主路径拒绝 | ✅ 已通过 | `test_image_http.py`, `test_runtime_gateway_files.py` |
 | symlink 逃逸 | 阻断软链接指向工作区外 | ✅ 已通过 | `test_image_workspace_storage.py`: `test_symlink_defense` |
-| MIME 与伪造扩展名 | 校验 magic bytes，非图片 415 | ✅ 已通过 | `test_image_http.py`: `test_upload_invalid_mime` |
-| 消息防膨胀 | 消息体与数据库存储零 Base64 | ✅ 已通过 | `implementation/02-g0-contract-verification.md` 七节点穿透 |
-| 内存泄漏防御 | 组件卸载/路径变更即刻 revokeObjectURL | ✅ 已通过 | `ThreadImage.vue`: `watch`, `onBeforeUnmount`, `onUnmounted` |
+| MIME 与伪造扩展名 | 校验 magic bytes / 扩展名白名单 | ✅ 已通过 | `test_image_http.py`, `test_runtime_gateway_files.py` |
+| 消息防膨胀 | 消息体与数据库存储零 Base64 | ✅ 已通过 | `implementation/02-g0-contract-verification.md` 与前端 `chat-content.ts` |
+| 内存泄漏防御 | 组件卸载/路径变更即刻 revokeObjectURL | ✅ 已通过 | `ThreadImage.vue`, `ThreadFile.vue`, `files.service.ts` |
 
 ---
 
@@ -65,6 +76,7 @@
 - [x] **P1：Runtime 图片运输层** - 已完成（存储、HTTP、中间件、工具链全部落地）
 - [x] **P2：Platform API 图片网关** - 已完成（流式代理、权限校验、熔断、矩阵测试全绿）
 - [x] **P3：Platform Web 体验层** - 已完成（Blob 管理、上传排队、审批卡片、图表展示全绿）
+- [x] **P5：平台通用文档全链路（10 号专题）** - 已完成（Runtime、Platform API、Platform Web 前后打通，测试与生产构建全绿）
 - [ ] **P4：生产环境真实模型 Smoke 验收** - 待配置生产环境真实 API Key（豆包、GPT Image、AntV MCP）后执行最终联调
 
-**结论：** 核心开发任务与自动化测试矩阵 100% 验收达标，状态标为 **“部分完成（代码与自动化验收已完成，待生产凭据联调）”**。
+**结论：** 图片、图表与通用文档的核心开发任务与自动化测试矩阵 100% 验收达标，状态标为 **“部分完成（代码与自动化验收已全部完成，待生产凭据联调）”**。

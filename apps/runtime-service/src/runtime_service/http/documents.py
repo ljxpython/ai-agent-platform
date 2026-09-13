@@ -17,7 +17,7 @@ async def _auth(thread_id: str, authorization: str | None, operation: str) -> tu
     scope = facts.get("runtime_scope", {})
     if scope.get("operation") != operation or scope.get("thread_id") != thread_id:
         raise HTTPException(403, {"code": "file_scope_denied", "message": "File scope denied"})
-    if scope.get("assistant_id") != "showcase_demo" or not scope.get("tenant_id") or not scope.get("project_id"):
+    if not scope.get("assistant_id") or not scope.get("tenant_id") or not scope.get("project_id"):
         raise HTTPException(403, {"code": "file_target_denied", "message": "File target denied"})
     return scope["tenant_id"], scope["project_id"]
 
@@ -45,6 +45,14 @@ async def upload_thread_file(thread_id: str, sha256: str, request: Request, auth
         raise HTTPException(exc.status_code, {"code": exc.code, "message": str(exc)}) from exc
 
 
+TEXT_CHARSET_MIMES = {
+    "text/plain": "text/plain; charset=utf-8",
+    "text/markdown": "text/markdown; charset=utf-8",
+    "text/csv": "text/csv; charset=utf-8",
+    "application/json": "application/json; charset=utf-8",
+}
+
+
 @router.get("/content")
 async def read_thread_file(thread_id: str, path: str = Query(...), authorization: str | None = Header(default=None)) -> Response:
     tenant, project = await _auth(thread_id, authorization, "workspace-file-read")
@@ -53,4 +61,5 @@ async def read_thread_file(thread_id: str, path: str = Query(...), authorization
         data, ref = await asyncio.to_thread(DocumentWorkspace(root).read, path)
     except DocumentError as exc:
         raise HTTPException(exc.status_code, {"code": exc.code, "message": str(exc)}) from exc
-    return Response(data, media_type=ref["mime_type"], headers={"Content-Length": str(len(data)), "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+    media_type = TEXT_CHARSET_MIMES.get(ref["mime_type"], ref["mime_type"])
+    return Response(data, media_type=media_type, headers={"Content-Length": str(len(data)), "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})

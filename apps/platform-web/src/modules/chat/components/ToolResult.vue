@@ -96,17 +96,45 @@ const displayTitle = computed(() => {
   if (props.tool.name === "analyze_image") {
     return "图像识别分析";
   }
+  if (props.tool.name === "parse_document") {
+    return "解析文档";
+  }
   return props.tool.name;
 });
 const displaySubtitle = computed(() => {
   if (props.tool.name === "write_todos") {
     return todoItems.value.length ? ` · 共 ${todoItems.value.length} 项` : "";
   }
+  if (props.tool.name === "parse_document") {
+    const filePath = typeof input.value.file_path === "string" ? input.value.file_path : "";
+    const fileName = filePath.split("/").pop() || filePath;
+    const pages = Array.isArray(result.value.matched_pages) ? result.value.matched_pages : [];
+    if (pages.length > 0) {
+      return ` · ${fileName} (第 ${pages.join("、")} 页)`;
+    }
+    return fileName ? ` · ${fileName}` : "";
+  }
   if (runtimeImages.value.length) {
     return ` · 产物: ${runtimeImages.value[0]?.path}`;
   }
   return path.value ? ` · ${path.value}` : "";
 });
+
+function formatDocumentWarning(w: string, query?: unknown): string {
+  if (w === "no_query_match_in_selected_range") {
+    return query && typeof query === "string"
+      ? `在指定页码范围内未匹配到关键词 "${query}"`
+      : "在指定页码范围内未匹配到关键词内容";
+  }
+  if (w === "csv_row_limit_2000") {
+    return "CSV 达到 2000 行上限，超出部分已受控截断";
+  }
+  const match = /^page_(\d+)_no_text_layer_ocr_required$/.exec(w);
+  if (match) {
+    return `第 ${match[1]} 页无文本层（纯扫描页），需要 OCR 识别`;
+  }
+  return w;
+}
 </script>
 
 <template>
@@ -258,6 +286,75 @@ const displaySubtitle = computed(() => {
           </div>
         </div>
       </template>
+      <template v-else-if="tool.name === 'parse_document'">
+        <div class="space-y-3">
+          <!-- 顶部文档信息与页码 -->
+          <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs dark:border-dark-700 dark:bg-dark-800/60">
+            <div class="flex items-center gap-2">
+              <BaseIcon name="file" size="xs" class="text-primary-600 dark:text-primary-400" />
+              <span class="font-medium text-slate-900 dark:text-white">
+                {{ input.file_path ? String(input.file_path).split('/').pop() : '文档' }}
+              </span>
+              <span v-if="result.format" class="rounded bg-slate-200/80 px-1.5 py-0.5 text-[10px] uppercase text-slate-700 dark:bg-dark-700 dark:text-dark-300">
+                {{ result.format }}
+              </span>
+            </div>
+            <div class="flex items-center gap-3 text-slate-500 dark:text-dark-300">
+              <span v-if="typeof result.pages === 'number'">共 {{ result.pages }} 页</span>
+              <span v-if="Array.isArray(result.matched_pages) && result.matched_pages.length" class="text-primary-600 dark:text-primary-400 font-medium">
+                已命中第 {{ result.matched_pages.join('、') }} 页
+              </span>
+            </div>
+          </div>
+
+          <!-- 截断提示 -->
+          <div
+            v-if="result.truncated"
+            class="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300 flex items-center gap-1.5"
+          >
+            <BaseIcon name="alert" size="xs" />
+            <span>内容已截断，可继续指定 page_start 和 page_end 查询后续页码</span>
+          </div>
+
+          <!-- 警告/过滤提示 -->
+          <div
+            v-if="Array.isArray(result.warnings) && result.warnings.length"
+            class="space-y-1.5"
+          >
+            <div
+              v-for="(w, idx) in result.warnings"
+              :key="idx"
+              class="flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/70 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300"
+            >
+              <BaseIcon name="alert" size="xs" class="shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>{{ formatDocumentWarning(w, input.query) }}</span>
+            </div>
+          </div>
+
+          <!-- 解析结果 chunks 列表 -->
+          <div v-if="Array.isArray(result.chunks) && result.chunks.length" class="space-y-2">
+            <div
+              v-for="(chunk, idx) in result.chunks"
+              :key="idx"
+              class="rounded-lg border border-gray-100 bg-gray-50/50 p-2.5 text-xs dark:border-dark-700 dark:bg-dark-800/40"
+            >
+              <div class="mb-1 flex items-center justify-between font-mono text-[10px] text-gray-500 dark:text-dark-400">
+                <span v-if="typeof chunk.page === 'number'">第 {{ chunk.page }} 页</span>
+              </div>
+              <div class="whitespace-pre-wrap leading-relaxed text-gray-800 dark:text-dark-200">
+                {{ chunk.text }}
+              </div>
+            </div>
+          </div>
+          <!-- 兜底文本 -->
+          <div
+            v-else-if="result.text"
+            class="rounded-lg border border-gray-100 bg-gray-50/50 p-3 text-xs whitespace-pre-wrap leading-relaxed dark:border-dark-700 dark:bg-dark-800/40 text-gray-800 dark:text-dark-200 max-h-80 overflow-auto"
+          >
+            {{ result.text }}
+          </div>
+        </div>
+      </template>
       <template v-else>
         <p class="text-xs text-gray-500">
           参数
@@ -267,7 +364,7 @@ const displaySubtitle = computed(() => {
         }}</pre>
       </template>
       <div
-        v-if="tool.output !== undefined && tool.name !== 'write_todos'"
+        v-if="tool.output !== undefined && !['write_todos', 'parse_document'].includes(tool.name)"
         class="max-h-96 overflow-auto"
       >
         <p class="mb-2 text-xs text-gray-500">
@@ -285,7 +382,7 @@ const displaySubtitle = computed(() => {
         </div>
       </div>
       <p
-        v-else-if="tool.name !== 'write_todos'"
+        v-else-if="!['write_todos', 'parse_document'].includes(tool.name)"
         class="text-xs text-gray-500"
       >
         尚无公开结果

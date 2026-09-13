@@ -3,6 +3,7 @@ import { ref } from "vue";
 import MarkdownContent from "@/components/platform/MarkdownContent.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import ThreadImage from "./ThreadImage.vue";
+import ThreadFile from "./ThreadFile.vue";
 import type { ContentItem } from "../transcript";
 
 defineProps<{
@@ -121,6 +122,17 @@ const expanded = ref<Record<string, boolean>>({});
           referrerpolicy="no-referrer"
           class="max-h-96 w-full object-contain bg-gray-50 dark:bg-dark-900"
         >
+      </div>
+      <div
+        v-else-if="block.kind === 'file' && block.fileRef"
+        class="my-1"
+      >
+        <ThreadFile
+          :project-id="projectId || ''"
+          :thread-id="threadId || ''"
+          :file-ref="block.fileRef"
+          :alt="block.text"
+        />
       </div>
       <a
         v-else-if="block.kind === 'file' && block.url"

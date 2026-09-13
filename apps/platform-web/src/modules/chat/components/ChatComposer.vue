@@ -232,7 +232,7 @@ defineExpose({
               type="button"
               class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white transition-colors"
               :disabled="isRunning || hasBlockingInterrupt"
-              aria-label="上传图片 / PDF"
+              aria-label="上传附件（图片/文档）"
               @click="openFilePicker"
             >
               <BaseIcon

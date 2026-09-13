@@ -921,6 +921,144 @@ class RuntimeGatewayService:
             path=path,
         )
 
+    async def upload_thread_file(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        sha256: str,
+        content_type: str,
+        content_length: int,
+        body: AsyncIterator[bytes],
+        file_name: str | None = None,
+    ) -> dict[str, Any]:
+        sha256 = clean_str(sha256).lower()
+        if len(sha256) != 64 or any(c not in "0123456789abcdef" for c in sha256):
+            raise BadRequestError(code="invalid_file_ref", message="Invalid file sha256")
+
+        media_type = content_type.split(";")[0].strip().lower()
+        allowed_mimes = {
+            "application/pdf",
+            "text/plain",
+            "text/markdown",
+            "application/json",
+            "text/csv",
+        }
+        if media_type not in allowed_mimes:
+            raise PlatformApiError(
+                code="unsupported_file_type",
+                status_code=415,
+                message=f"Unsupported document type: {content_type}",
+            )
+
+        if content_length <= 0:
+            raise BadRequestError(code="file_length_required", message="Content-Length must be a positive integer")
+        if content_length > 20 * 1024 * 1024:
+            raise PlatformApiError(
+                code="file_too_large",
+                status_code=413,
+                message="File upload exceeds 20 MiB limit",
+            )
+
+        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=True)
+        metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        agent_key = clean_str(metadata.get("graph_id"))
+        if not agent_key:
+            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+
+        upstream = self._upstream
+        if self._delegation_headers_factory:
+            upstream = upstream.with_forwarded_headers(
+                self._delegation_headers_factory(
+                    project_id=project_id,
+                    agent_key=agent_key,
+                    thread_id=thread_id,
+                    context_hash=empty_runtime_context_hash(),
+                    operation="workspace-file-upload",
+                )
+            )
+
+        ref = await upstream.upload_thread_file(
+            graph_id=agent_key,
+            thread_id=thread_id,
+            sha256=sha256,
+            content_type=media_type,
+            content_length=content_length,
+            body=body,
+            file_name=file_name,
+        )
+
+        version = ref.get("version") if isinstance(ref, dict) else None
+        mime_type = (ref.get("mime_type") or ref.get("mime")) if isinstance(ref, dict) else None
+        path = ref.get("path") if isinstance(ref, dict) else None
+        ref_sha256 = ref.get("sha256") if isinstance(ref, dict) else None
+        size_bytes = ref.get("size_bytes") if isinstance(ref, dict) else None
+        stored_file_name = ref.get("file_name") if isinstance(ref, dict) else None
+
+        if (
+            not isinstance(ref, dict)
+            or version not in (1, "v1")
+            or not isinstance(path, str)
+            or not isinstance(ref_sha256, str)
+            or not isinstance(mime_type, str)
+            or not isinstance(size_bytes, int)
+            or size_bytes <= 0
+        ):
+            raise PlatformApiError(
+                code="runtime_invalid_file_response",
+                status_code=502,
+                message="Invalid FileRef from runtime",
+            )
+
+        return {
+            "version": 1,
+            "path": path,
+            "file_name": stored_file_name or (file_name or path.rsplit("/", 1)[-1]),
+            "mime_type": mime_type,
+            "size_bytes": size_bytes,
+            "sha256": ref_sha256,
+        }
+
+    async def read_thread_file(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        path: str,
+    ) -> BinaryPayload:
+        path = clean_str(path)
+        if not path or ".." in path or "\\" in path:
+            raise BadRequestError(code="invalid_file_ref", message="Invalid file path")
+
+        if not path.startswith("/workspace/uploads/"):
+            raise BadRequestError(code="invalid_file_ref", message="Path must be in /workspace/uploads/")
+
+        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=False)
+        metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        agent_key = clean_str(metadata.get("graph_id"))
+        if not agent_key:
+            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+
+        upstream = self._upstream
+        if self._delegation_headers_factory:
+            upstream = upstream.with_forwarded_headers(
+                self._delegation_headers_factory(
+                    project_id=project_id,
+                    agent_key=agent_key,
+                    thread_id=thread_id,
+                    context_hash=empty_runtime_context_hash(),
+                    operation="workspace-file-read",
+                )
+            )
+
+        return await upstream.read_thread_file(
+            graph_id=agent_key,
+            thread_id=thread_id,
+            path=path,
+        )
+
     def _assistant_belongs_project(
         self,
         *,

@@ -3,22 +3,15 @@ import { useUiStore } from "@/stores/ui";
 import {
   fileToChatAttachmentBlock,
   getChatAttachmentName,
+  isDocumentFile,
   type ChatAttachmentBlock,
   SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES,
+  SUPPORTED_FILE_EXTENSIONS,
 } from "@/utils/chat-content";
 
 function isDuplicateFile(file: File, attachments: ChatAttachmentBlock[]) {
   return attachments.some((attachment) => {
-    if (attachment.type === "image" && !file.type.startsWith("image/")) {
-      return false;
-    }
-    if (attachment.type === "file" && file.type !== "application/pdf") {
-      return false;
-    }
-    return (
-      attachment.mimeType === file.type &&
-      getChatAttachmentName(attachment) === file.name
-    );
+    return getChatAttachmentName(attachment) === file.name;
   });
 }
 
@@ -63,39 +56,51 @@ export function useChatAttachments(
         return 0;
       }
     }
+
+    const exceedsSizeLimit = files.some((file) => {
+      const isDoc = isDocumentFile(file);
+      const limit = isDoc ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+      return file.size > limit;
+    });
+
+    const totalExistingBytes = attachments.value.reduce((sum, item) => {
+      if (item.file?.size) return sum + item.file.size;
+      if (item.data) return sum + item.data.length * 0.75;
+      return sum;
+    }, 0);
+
+    const incomingTotalBytes = files.reduce((sum, file) => sum + file.size, 0);
+
     if (
-      files.some((file) => file.size > 5 * 1024 * 1024) ||
+      exceedsSizeLimit ||
       files.length + attachments.value.length > 8 ||
-      files.reduce((sum, file) => sum + file.size, 0) +
-        attachments.value.reduce(
-          (sum, file) => sum + file.data.length * 0.75,
-          0,
-        ) >
-        20 * 1024 * 1024
+      totalExistingBytes + incomingTotalBytes > 30 * 1024 * 1024
     ) {
       uiStore.pushToast({
         type: "warning",
         title: "附件超过限制",
-        message: "每个文件最多 5 MB，每条消息最多 8 个附件、合计 20 MB。",
+        message: "图片最多 5 MB，文档最多 20 MB，每条消息最多 8 个附件。",
       });
       return 0;
     }
 
-    const validFiles = files.filter((file) =>
-      SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES.includes(
+    const isSupported = (file: File) => {
+      const name = file.name.toLowerCase();
+      if (SUPPORTED_FILE_EXTENSIONS.some((ext) => name.endsWith(ext))) {
+        return true;
+      }
+      return SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES.includes(
         file.type as (typeof SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES)[number],
-      ),
-    );
-    const invalidFiles = files.filter(
-      (file) =>
-        !SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES.includes(
-          file.type as (typeof SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES)[number],
-        ),
-    );
+      );
+    };
+
+    const validFiles = files.filter(isSupported);
+    const invalidFiles = files.filter((file) => !isSupported(file));
+
     const seen = new Set<string>();
     const duplicateFiles: File[] = [];
     const uniqueFiles = validFiles.filter((file) => {
-      const key = JSON.stringify([file.name, file.type]);
+      const key = JSON.stringify([file.name, file.size]);
       if (seen.has(key) || isDuplicateFile(file, attachments.value)) {
         duplicateFiles.push(file);
         return false;
@@ -108,7 +113,7 @@ export function useChatAttachments(
       uiStore.pushToast({
         type: "warning",
         title: "存在不支持的附件",
-        message: "当前聊天只支持 JPEG、PNG、GIF、WEBP 图片以及 PDF 文档。",
+        message: "当前聊天支持图片（JPEG/PNG/WEBP）以及文档（PDF/TXT/MD/JSON/CSV）。",
       });
     }
 

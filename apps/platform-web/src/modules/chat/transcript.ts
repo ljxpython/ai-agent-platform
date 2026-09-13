@@ -4,6 +4,10 @@ import {
   isValidImageRef,
   type RuntimeImageRef,
 } from "@/services/threads/images.service";
+import {
+  isValidFileRef,
+  type RuntimeFileRef,
+} from "@/services/threads/files.service";
 
 export function asObject(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -41,6 +45,7 @@ export type ContentItem = {
   text: string;
   url?: string;
   imageRef?: RuntimeImageRef;
+  fileRef?: RuntimeFileRef;
 };
 export type ToolItem = {
   key: string;
@@ -137,6 +142,16 @@ export function contentItems(
               kind: "image",
               text: String(block.text ?? ""),
               imageRef: runtimeImage,
+            });
+            return;
+          }
+          const runtimeFile = (block.extras as Record<string, unknown>).runtime_file;
+          if (isValidFileRef(runtimeFile)) {
+            items.push({
+              key: itemKey,
+              kind: "file",
+              text: String(block.text ?? ""),
+              fileRef: runtimeFile,
             });
             return;
           }

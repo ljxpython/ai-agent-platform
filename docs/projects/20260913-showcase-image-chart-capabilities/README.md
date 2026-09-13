@@ -58,3 +58,4 @@
 3. **P2 Platform API 网关**：已完成并归档至 [03-platform-api-gateway.md](implementation/03-platform-api-gateway.md)，全网关 157 项单测和全路由矩阵 100% 绿灯。
 4. **P3 Platform Web 交互体验**：已完成并归档至 [04-platform-web-experience.md](implementation/04-platform-web-experience.md)，全量 123 项测试通过，生产构建打包完成。
 5. **P4 全链路验收**：详见 [verification.md](verification.md)，确定性测试全过，待生产凭证注入进行最终 Smoke 联调。
+6. **P5 平台文档全链路打通（10 号专题）**：Runtime（放开通用 Agent 限制）、Platform API（文件上传/读取网关与 scope）和 Platform Web（文件无 Base64 上传、新标签页预览、下载、`parse_document` 工具结果解析）已全部落地并通过自动化测试与生产构建。

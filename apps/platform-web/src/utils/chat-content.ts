@@ -1,4 +1,5 @@
 import { isValidImageRef, type RuntimeImageRef } from '@/services/threads/images.service'
+import { isValidFileRef, type RuntimeFileRef } from '@/services/threads/files.service'
 
 type ChatTextBlock = {
   type: 'text'
@@ -10,6 +11,14 @@ export type ChatRuntimeImageTextBlock = {
   text: string
   extras: {
     runtime_image: RuntimeImageRef
+  }
+}
+
+export type ChatRuntimeFileTextBlock = {
+  type: 'text'
+  text: string
+  extras: {
+    runtime_file: RuntimeFileRef
   }
 }
 
@@ -27,7 +36,11 @@ export type ChatImageAttachmentBlock = {
 export type ChatFileAttachmentBlock = {
   type: 'file'
   mimeType: string
-  data: string
+  data?: string
+  file?: File
+  uploadStatus?: 'pending' | 'hashing' | 'uploading' | 'uploaded' | 'failed'
+  runtimeFileRef?: RuntimeFileRef
+  errorMessage?: string
   metadata?: Record<string, unknown>
 }
 
@@ -58,15 +71,81 @@ export function createRuntimeImageTextBlock(filename: string, ref: RuntimeImageR
   }
 }
 
+export function isRuntimeFileTextBlock(value: unknown): value is ChatRuntimeFileTextBlock {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false
+  }
+  const obj = value as Record<string, unknown>
+  if (obj.type !== 'text' || typeof obj.text !== 'string') {
+    return false
+  }
+  const extras = obj.extras
+  if (!extras || typeof extras !== 'object' || Array.isArray(extras)) {
+    return false
+  }
+  return isValidFileRef((extras as Record<string, unknown>).runtime_file)
+}
+
+export function createRuntimeFileTextBlock(filename: string, ref: RuntimeFileRef): ChatRuntimeFileTextBlock {
+  return {
+    type: 'text',
+    text: `[文档附件] ${filename}\n${ref.path}`,
+    extras: {
+      runtime_file: ref,
+    },
+  }
+}
+
 export const SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES = [
   'image/jpeg',
   'image/png',
   'image/gif',
   'image/webp',
-  'application/pdf'
+  'application/pdf',
+  'text/plain',
+  'text/markdown',
+  'application/json',
+  'text/csv',
 ] as const
 
-export const CHAT_ATTACHMENT_ACCEPT = SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES.join(',')
+export const SUPPORTED_FILE_EXTENSIONS = [
+  '.pdf',
+  '.txt',
+  '.md',
+  '.markdown',
+  '.json',
+  '.csv',
+] as const
+
+export const CHAT_ATTACHMENT_ACCEPT = [
+  ...SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES,
+  ...SUPPORTED_FILE_EXTENSIONS,
+].join(',')
+
+export function isDocumentFile(file: File): boolean {
+  const name = file.name.toLowerCase()
+  if (SUPPORTED_FILE_EXTENSIONS.some((ext) => name.endsWith(ext))) {
+    return true
+  }
+  const mime = (file.type || '').split(';')[0].trim().toLowerCase()
+  return [
+    'application/pdf',
+    'text/plain',
+    'text/markdown',
+    'application/json',
+    'text/csv',
+  ].includes(mime)
+}
+
+export function resolveDocumentMime(file: File): string {
+  const name = file.name.toLowerCase()
+  if (name.endsWith('.pdf')) return 'application/pdf'
+  if (name.endsWith('.txt')) return 'text/plain'
+  if (name.endsWith('.md') || name.endsWith('.markdown')) return 'text/markdown'
+  if (name.endsWith('.json')) return 'application/json'
+  if (name.endsWith('.csv')) return 'text/csv'
+  return file.type || 'application/octet-stream'
+}
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -91,10 +170,10 @@ export function isChatTextBlock(value: unknown): value is ChatTextBlock {
 export function isChatAttachmentBlock(value: unknown): value is ChatAttachmentBlock {
   const block = asRecord(value)
   if (block.type === 'image') {
-    return typeof block.mimeType === 'string' && block.mimeType.startsWith('image/') && typeof block.data === 'string'
+    return typeof block.mimeType === 'string' && block.mimeType.startsWith('image/')
   }
   if (block.type === 'file') {
-    return typeof block.mimeType === 'string' && block.mimeType === 'application/pdf' && typeof block.data === 'string'
+    return typeof block.mimeType === 'string'
   }
   return false
 }
@@ -112,32 +191,40 @@ export async function fileToBase64(file: File): Promise<string> {
 }
 
 export async function fileToChatAttachmentBlock(file: File): Promise<ChatAttachmentBlock> {
-  if (!SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES.includes(file.type as (typeof SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES)[number])) {
-    throw new Error(`暂不支持 ${file.type || 'unknown'} 文件`)
+  const mime = (file.type || '').split(';')[0].trim().toLowerCase()
+  const isDoc = isDocumentFile(file)
+  const isImg = file.type.startsWith('image/') || ['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(mime)
+
+  if (!isDoc && !isImg) {
+    throw new Error(`暂不支持 ${file.name || '此格式'} 文件`)
   }
 
-  const data = await fileToBase64(file)
-
-  if (file.type.startsWith('image/')) {
+  if (isImg) {
+    const data = await fileToBase64(file)
     return {
       type: 'image',
-      mimeType: file.type,
+      mimeType: file.type || 'image/png',
       data,
       file,
       uploadStatus: 'pending',
       metadata: {
-        name: file.name
-      }
+        name: file.name,
+      },
     }
   }
 
+  // 文档类型不转 Base64，杜绝内存膨胀
   return {
     type: 'file',
-    mimeType: 'application/pdf',
-    data,
+    mimeType: resolveDocumentMime(file),
+    data: '',
+    file,
+    uploadStatus: 'pending',
     metadata: {
-      filename: file.name
-    }
+      filename: file.name,
+      name: file.name,
+      size: file.size,
+    },
   }
 }
 
@@ -153,11 +240,15 @@ export function getChatAttachmentName(block: ChatAttachmentBlock): string {
     return name
   }
 
-  return block.type === 'image' ? 'image' : 'document.pdf'
+  if (block.file?.name) {
+    return block.file.name
+  }
+
+  return block.type === 'image' ? 'image' : 'document'
 }
 
 export function getChatAttachmentDataUrl(block: ChatAttachmentBlock): string {
-  return `data:${block.mimeType};base64,${block.data}`
+  return block.data ? `data:${block.mimeType};base64,${block.data}` : ''
 }
 
 export function getMessageText(content: unknown): string {
@@ -206,7 +297,7 @@ export function summarizeMessageContent(content: unknown): string {
     return attachments
       .map((block) => {
         const name = getChatAttachmentName(block)
-        return block.type === 'image' ? `[图片] ${name}` : `[PDF] ${name}`
+        return block.type === 'image' ? `[图片] ${name}` : `[文档] ${name}`
       })
       .join(' · ')
   }

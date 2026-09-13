@@ -30,10 +30,17 @@ import {
   type ReviewDraft,
 } from "../approvals";
 import {
-  calculateFileSha256,
+  calculateFileSha256 as calculateImageSha256,
   uploadThreadImage,
 } from "@/services/threads/images.service";
-import { createRuntimeImageTextBlock } from "@/utils/chat-content";
+import {
+  calculateFileSha256,
+  uploadThreadFile,
+} from "@/services/threads/files.service";
+import {
+  createRuntimeFileTextBlock,
+  createRuntimeImageTextBlock,
+} from "@/utils/chat-content";
 
 const active = (run: Run | null) =>
   run != null && ["pending", "running"].includes(run.status);
@@ -142,7 +149,7 @@ export function useChatSession(options: {
     checking.value = true;
     activeVerifyTerminal = waitForTerminal;
     const id = threadId.value;
-    const deadline = Date.now() + 30000;
+    let deadline = Date.now() + 30000;
     const p = (async () => {
       try {
         let attempt = 0;
@@ -156,11 +163,20 @@ export function useChatSession(options: {
           if (disposed || epoch !== checkEpoch) return false;
           run.value = latest;
           if (!active(latest) || !waitForTerminal) break;
-          if (document.hidden || Date.now() >= deadline)
+          // 流式通道活跃时持续顺延超时判定，避免长任务或多步图输出过程中误判
+          if (stream.isLoading.value) {
+            deadline = Date.now() + 30000;
+          }
+          // 仅在数据流已非传输状态且超时后，才提示未能确认运行结果；切标签页（document.hidden）不再误判
+          if (!stream.isLoading.value && Date.now() >= deadline) {
             throw new Error("运行结果尚未确认，请恢复连接后核实");
+          }
+          const delay = document.hidden
+            ? 3000
+            : Math.min(500 * 2 ** attempt++, 4000);
           await new Promise<void>((resolve) => {
             releaseWait = resolve;
-            timer = setTimeout(resolve, Math.min(500 * 2 ** attempt++, 4000));
+            timer = setTimeout(resolve, delay);
           });
         } while (!disposed && epoch === checkEpoch);
         if (!disposed && epoch === checkEpoch) {
@@ -270,14 +286,13 @@ export function useChatSession(options: {
       receiptTimer = setTimeout(() => void refreshReceipts(false), 3000);
   }
 
-  function hasImageAttachmentsToUpload(rawContent: unknown): boolean {
-    if (options.graphId !== "showcase_demo") return false;
+  function hasAttachmentsToUpload(rawContent: unknown): boolean {
     if (!Array.isArray(rawContent)) return false;
     return rawContent.some(
       (item) =>
         item &&
         typeof item === "object" &&
-        (item as Record<string, unknown>).type === "image" &&
+        ["image", "file"].includes((item as Record<string, unknown>).type as string) &&
         (item as Record<string, unknown>).file instanceof Blob,
     );
   }
@@ -299,7 +314,7 @@ export function useChatSession(options: {
               : typeof metadata.filename === "string"
                 ? metadata.filename
                 : "image.png";
-          const sha256 = await calculateFileSha256(file);
+          const sha256 = await calculateImageSha256(file);
           const ref = await uploadThreadImage(
             options.projectId,
             targetThreadId,
@@ -307,6 +322,24 @@ export function useChatSession(options: {
             file,
           );
           return createRuntimeImageTextBlock(filename, ref);
+        }
+        if (block.type === "file" && block.file instanceof Blob) {
+          const file = block.file as File;
+          const metadata = (block.metadata || {}) as Record<string, unknown>;
+          const filename =
+            typeof metadata.name === "string"
+              ? metadata.name
+              : typeof metadata.filename === "string"
+                ? metadata.filename
+                : file.name || "document";
+          const sha256 = await calculateFileSha256(file);
+          const ref = await uploadThreadFile(
+            options.projectId,
+            targetThreadId,
+            sha256,
+            file,
+          );
+          return createRuntimeFileTextBlock(filename, ref);
         }
         return item;
       }),
@@ -318,7 +351,7 @@ export function useChatSession(options: {
     targetThreadId: string,
     rawContent: unknown,
   ): unknown | Promise<unknown> {
-    if (!hasImageAttachmentsToUpload(rawContent)) {
+    if (!hasAttachmentsToUpload(rawContent)) {
       return rawContent;
     }
     return uploadAttachmentsAsync(targetThreadId, rawContent as unknown[]);
@@ -400,8 +433,16 @@ export function useChatSession(options: {
   }
   function receiptVisibility() {
     clearTimeout(receiptTimer);
-    if (document.hidden) receiptController?.abort();
-    else void refreshReceipts();
+    if (document.hidden) {
+      receiptController?.abort();
+    } else {
+      void refreshReceipts();
+      if (releaseWait) {
+        clearTimeout(timer);
+        releaseWait();
+        releaseWait = undefined;
+      }
+    }
   }
   document.addEventListener("visibilitychange", receiptVisibility);
   watch(run, () => void refreshReceipts());

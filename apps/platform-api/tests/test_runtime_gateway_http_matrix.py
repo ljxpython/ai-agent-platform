@@ -45,6 +45,8 @@ CASES = [
     ("POST", "/threads/{thread_id}/messages", "enqueue_thread_message"),
     ("PUT", "/threads/{thread_id}/images/uploads/{sha256}", "upload_thread_image"),
     ("GET", "/threads/{thread_id}/images/content", "read_thread_image"),
+    ("PUT", "/threads/{thread_id}/files/uploads/{sha256}", "upload_thread_file"),
+    ("GET", "/threads/{thread_id}/files/content", "read_thread_file"),
 ]
 
 
@@ -79,6 +81,9 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
         async def image_bytes():
             yield b"yes-image-bytes"
 
+        async def file_bytes():
+            yield b"yes-file-bytes"
+
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
@@ -94,6 +99,11 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             ret_val = BinaryPayload(
                                 body=image_bytes(),
                                 content_type="image/png",
+                            )
+                        elif name == "read_thread_file":
+                            ret_val = BinaryPayload(
+                                body=file_bytes(),
+                                content_type="application/pdf",
                             )
                         elif streaming:
                             ret_val = events()
@@ -111,8 +121,10 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         headers = {"Idempotency-Key": "request-1"}
                         if outcome != "missing_scope":
                             headers["x-project-id"] = "project-1"
-                        if method == "PUT" and "images" in path:
-                            headers["content-type"] = "image/png"
+                        if method == "PUT" and ("images" in path or "files" in path):
+                            headers["content-type"] = (
+                                "application/pdf" if "files" in path else "image/png"
+                            )
                             headers["content-length"] = "10"
                         post_payload = (
                             {"content": "hello"}
@@ -125,6 +137,8 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         req_params = (
                             {"path": "/workspace/uploads/test.png"}
                             if name == "read_thread_image"
+                            else {"path": "/workspace/uploads/test.pdf"}
+                            if name == "read_thread_file"
                             else None
                         )
                         response = await client.request(
@@ -196,14 +210,18 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         req_params = (
                             {"path": "/workspace/uploads/test.png"}
                             if name == "read_thread_image"
+                            else {"path": "/workspace/uploads/test.pdf"}
+                            if name == "read_thread_file"
                             else None
                         )
                         headers = {
                             "x-project-id": "project-1",
                             "Idempotency-Key": "request-1",
                         }
-                        if method == "PUT" and "images" in path:
-                            headers["content-type"] = "image/png"
+                        if method == "PUT" and ("images" in path or "files" in path):
+                            headers["content-type"] = (
+                                "application/pdf" if "files" in path else "image/png"
+                            )
                             headers["content-length"] = "10"
                         response = await client.request(
                             method,
@@ -233,14 +251,18 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                     req_params = (
                         {"path": "/workspace/uploads/test.png"}
                         if name == "read_thread_image"
+                        else {"path": "/workspace/uploads/test.pdf"}
+                        if name == "read_thread_file"
                         else None
                     )
                     headers = {
                         "x-project-id": "project-1",
                         "Idempotency-Key": "request-1",
                     }
-                    if method == "PUT" and "images" in path:
-                        headers["content-type"] = "image/png"
+                    if method == "PUT" and ("images" in path or "files" in path):
+                        headers["content-type"] = (
+                            "application/pdf" if "files" in path else "image/png"
+                        )
                         headers["content-length"] = "10"
                     response = await client.request(
                         method,

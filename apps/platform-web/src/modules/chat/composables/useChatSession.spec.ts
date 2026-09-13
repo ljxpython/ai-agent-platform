@@ -173,3 +173,64 @@ it("coalesces concurrent verify calls on completion so canSend resets to true", 
   }
 });
 
+it("does NOT throw unconfirmed error while stream is loading even if document is hidden", async () => {
+  const isLoading = ref(true);
+  mocks.stream.mockReturnValue({
+    isLoading,
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+  });
+  const current = ref<{ key: string; kind: string; runId: string; status: string } | null>({
+    key: "action-1",
+    kind: "send",
+    runId: "run-active",
+    status: "acknowledged",
+  });
+  mocks.actions.mockReturnValue({ current, dispose: vi.fn() });
+  mocks.run.mockResolvedValue({ run_id: "run-active", status: "running" });
+
+  const originalHidden = Object.getOwnPropertyDescriptor(document, "hidden");
+  Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "p",
+      graphId: "workflow_demo",
+      threadId: "t-hidden",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    // 触发 verify(true)，在后台运行且 stream 仍在 loading
+    void session.verify(true);
+    await flushPromises();
+
+    // 绝不能报错为“运行结果尚未确认”
+    expect(session.error.value).toBe("");
+    expect(session.busy.value).toBe(true);
+
+    // 随后后端 run 完成且流式结束
+    mocks.run.mockResolvedValueOnce({ run_id: "run-active", status: "success" });
+    isLoading.value = false;
+    await session.verify(true);
+    await flushPromises();
+
+    expect(session.error.value).toBe("");
+    expect(session.verified.value).toBe(true);
+  } finally {
+    if (originalHidden) {
+      Object.defineProperty(document, "hidden", originalHidden);
+    }
+    scope.stop();
+  }
+});
+

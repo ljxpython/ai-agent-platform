@@ -28,6 +28,27 @@ const attachmentName = computed(() => getChatAttachmentName(props.block));
 const imageUrl = computed(() =>
   isImage.value ? getChatAttachmentDataUrl(props.block) : "",
 );
+
+function formatBytes(bytes?: number): string {
+  if (bytes == null || bytes <= 0) return "";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const fileTypeLabel = computed(() => {
+  if (isImage.value) return "图片";
+  const name = attachmentName.value.toLowerCase();
+  const mime = (props.block.mimeType || "").toLowerCase();
+  let label = "文本文档";
+  if (name.endsWith(".pdf") || mime.includes("pdf")) label = "PDF 文档";
+  else if (name.endsWith(".csv") || mime.includes("csv")) label = "CSV 表格";
+  else if (name.endsWith(".json") || mime.includes("json")) label = "JSON 数据";
+  else if (name.endsWith(".md") || name.endsWith(".markdown")) label = "Markdown";
+
+  const sizeStr = formatBytes(props.block.file?.size);
+  return sizeStr ? `${label} · ${sizeStr}` : label;
+});
 </script>
 
 <template>
@@ -79,7 +100,7 @@ const imageUrl = computed(() =>
             {{ attachmentName }}
           </div>
           <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-            PDF 文档
+            {{ fileTypeLabel }}
           </div>
         </div>
       </div>

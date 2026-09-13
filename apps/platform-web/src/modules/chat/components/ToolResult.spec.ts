@@ -80,4 +80,47 @@ describe("ToolResult.vue", () => {
     expect(wrapper.emitted("inspect")).toBeTruthy();
     expect(wrapper.emitted("inspect")![0]).toEqual([tool]);
   });
+
+  it("renders parse_document warnings with humanized localized messages", async () => {
+    const tool: ToolItem = {
+      key: "doc-tool-1",
+      id: "call-doc-1",
+      name: "parse_document",
+      input: {
+        file_path: "/workspace/uploads/contract.pdf",
+        query: "付款条件",
+      },
+      output: JSON.stringify({
+        version: 1,
+        pages: 2,
+        format: "pdf",
+        matched_pages: [],
+        chunks: [],
+        text: "",
+        truncated: false,
+        warnings: ["no_query_match_in_selected_range"],
+      }),
+      status: "finished",
+    };
+
+    const wrapper = mount(ToolResult, {
+      props: { tool },
+      global: {
+        stubs: {
+          SubagentCard: true,
+          MessageContent: true,
+          BaseIcon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("解析文档");
+    expect(wrapper.text()).toContain("contract.pdf");
+
+    // 点击展开
+    const toggleButton = wrapper.find("button");
+    await toggleButton.trigger("click");
+
+    expect(wrapper.text()).toContain('在指定页码范围内未匹配到关键词 "付款条件"');
+  });
 });
