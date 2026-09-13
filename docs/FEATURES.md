@@ -16,6 +16,8 @@
 | Platform Web 架构与 Agent Chat 重构 | 01—07 非后置范围已完成；旧展示组件已取回，专项验收边界见 09；双浏览器入队/完整文件与 Skills API/PTY 后置 | [项目概览](projects/20260910-platform-web-refactor/README.md) |
 | 运行中补充消息（多端入口、Runtime 队列与 Middleware） | 已实现：根模型注入、持久回执/恢复、权限复核与 Web 重试；网络取消/移动回归通过，双浏览器后置，GraphHarbor post27 发布包复验通过 | [队列与消费设计](projects/20260910-platform-web-refactor/07-message-queue-and-middleware.md) |
 | Chat 流式输出标准化与 open-swe 架构对齐 | 已完成：流式管道、打字机光标、平滑滚底、Open SWE 子智能体卡片特化与微型居中未读胶囊已全量交付通过 | [流式标准化](projects/20260912-chat-streaming-standardization/README.md) |
+| 任务进度条收起与时间旅行动作标题精准化 | 已完成：任务胶囊可随时 ✕ 收起且折叠为右上角微型恢复徽标彻底消除正文遮挡，时间旅行历史基于当前 Step 动作精准呈现标题 | [任务胶囊与时间旅行优化](../apps/platform-web/docs/changes/20260912-task-pill-dismiss-and-history-preview.md) |
+| 历史关键节点过滤、多步长翻页与消息编辑分叉 | 已完成：白名单精准识别业务里程碑并剔除无新动作系统流转帧；支持 +20/+50/+100 快速翻页；编辑消息即时响应与本地内存回溯杜绝卡死 | [关键节点与编辑分叉修复](../apps/platform-web/docs/changes/20260912-history-milestone-filter-and-edit-branch-fix.md) |
 
 ## platform-api
 
@@ -26,6 +28,7 @@
 | 控制面边界与代码简化重构 | 本阶段后端 done：事务/目录、Docker Showcase、真实备份恢复、混合负载及 20 条公开接口矩阵已验收；前端、整套容器部署与完整 Server 等价性 deferred | `docs/projects/20260910-platform-api-refactor/` |
 | 运行时网关（受管模型/工具/prompt 契约下发） | 已完成 | `apps/platform-api/docs/standards/runtime-gateway-interface-standard.md` |
 | 中转站维度模型管理、对话高级模型选择器 | 已完成 | （提交 8056869） |
+| 运行时网关 Checkpoint 分叉白名单与恢复透传 | 已完成：支持 checkpoint_id/checkpoint_ns 校验与提级转发，拦截恶意字段 | [网关分支支持](../apps/platform-api/docs/changes/20260913-gateway-checkpoint-configurable-whitelist.md) |
 
 ## runtime-service
 
@@ -45,8 +48,7 @@
 ## 仓库级 / 工具链
 
 | 功能 | 状态 | 关联文档 |
-|---|---|---|
-| 本地栈进程启停 | 已修复：本仓库手工启动服务识别、失效 PID 复核、子进程停止；实测启停通过 | [实施与验收](projects/20260910-platform-web-refactor/implementation/12-visual-agent-and-local-stack.md) |
+| 本地栈进程启停 | 已优化：真实进程与端口归属识别、孤儿 worker 深度清理、端口占用自动回收与外部进程安全隔离 | `docs/changes/20260913-local-stack-real-process-management.md` |
 | 改动分级 + Skills 自动触发（plan-project/implement-feature/verify-change） | 已完成 | `AGENTS.md` |
 | 文档一致性检查（`scripts/check_docs.py`） | 已完成 | `scripts/check_docs.py` |
 

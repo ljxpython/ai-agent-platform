@@ -16,12 +16,15 @@ type ChatHistoryViewItem = {
   isLatest: boolean
   isCurrent: boolean
   isInSelectedPath: boolean
+  isKeyMilestone: boolean
   selectLabel: string
+  rawEntry: ThreadHistoryEntry
 }
 
 export type ChatHistoryView = {
   totalEntries: number
   branchGroupCount: number
+  keyMilestoneCount: number
   activeCheckpointId: string
   selectedPathIds: string[]
   items: ChatHistoryViewItem[]
@@ -83,6 +86,129 @@ function extractSource(entry: ThreadHistoryEntry) {
   return typeof source === 'string' && source.trim() ? source.trim() : ''
 }
 
+function getMessagesList(entry: ThreadHistoryEntry): Record<string, unknown>[] {
+  const values = asRecord(entry.values)
+  if (Array.isArray(values.messages)) {
+    return values.messages as Record<string, unknown>[]
+  }
+  const channelValues = asRecord(asRecord(entry.checkpoint).channel_values)
+  if (Array.isArray(channelValues.messages)) {
+    return channelValues.messages as Record<string, unknown>[]
+  }
+  return []
+}
+
+function hasMeaningfulActionMessage(message: Record<string, unknown>): boolean {
+  const type = String(message.type || '').toLowerCase()
+  const toolCalls = Array.isArray(message.tool_calls)
+    ? message.tool_calls
+    : Array.isArray(asRecord(message.additional_kwargs).tool_calls)
+      ? (asRecord(message.additional_kwargs).tool_calls as unknown[])
+      : []
+
+  if (toolCalls.length > 0) return true
+  if (type === 'tool' || type === 'human') return true
+  if (type === 'ai') {
+    const text = typeof message.content === 'string' ? message.content.trim() : ''
+    return text.length > 0
+  }
+  return false
+}
+
+function isSameActionMessage(a?: Record<string, unknown>, b?: Record<string, unknown>): boolean {
+  if (!a || !b) return false
+  if (a.id && b.id && a.id === b.id) return true
+  const aType = String(a.type || '').toLowerCase()
+  const bType = String(b.type || '').toLowerCase()
+  if (aType !== bType) return false
+
+  const aCalls = Array.isArray(a.tool_calls)
+    ? a.tool_calls
+    : Array.isArray(asRecord(a.additional_kwargs).tool_calls)
+      ? (asRecord(a.additional_kwargs).tool_calls as unknown[])
+      : []
+  const bCalls = Array.isArray(b.tool_calls)
+    ? b.tool_calls
+    : Array.isArray(asRecord(b.additional_kwargs).tool_calls)
+      ? (asRecord(b.additional_kwargs).tool_calls as unknown[])
+      : []
+
+  if (aCalls.length !== bCalls.length) return false
+
+  const aContent = typeof a.content === 'string' ? a.content : JSON.stringify(a.content ?? '')
+  const bContent = typeof b.content === 'string' ? b.content : JSON.stringify(b.content ?? '')
+  return aContent === bContent
+}
+
+function isKeyMilestoneEntry(
+  entry: ThreadHistoryEntry,
+  info: {
+    isLatest: boolean
+    hasInterrupts: boolean
+    childCount: number
+    siblingCount: number
+  },
+  directParent?: ThreadHistoryEntry
+): boolean {
+  if (info.isLatest) return true
+  if (info.hasInterrupts) return true
+  if (info.childCount > 0 || info.siblingCount > 1) return true
+
+  const tasks = Array.isArray(entry.tasks) ? (entry.tasks as Record<string, unknown>[]) : []
+  const isPureMiddleware =
+    tasks.length > 0 &&
+    tasks.every((t) => {
+      const name = String(t?.name || '')
+      return name.includes('Middleware') || name.includes('__pregel')
+    })
+
+  if (isPureMiddleware) {
+    return false
+  }
+
+  // 若存在明确父节点，检查是否完全没有产生新的动作消息且无业务 task
+  if (directParent) {
+    const currentMessages = getMessagesList(entry)
+    const parentMessages = getMessagesList(directParent)
+    const latestMsg = currentMessages[currentMessages.length - 1]
+    const parentLatestMsg = parentMessages[parentMessages.length - 1]
+
+    const hasNoNewMessages =
+      currentMessages.length <= parentMessages.length &&
+      isSameActionMessage(latestMsg, parentLatestMsg)
+
+    if (hasNoNewMessages) {
+      const hasBusinessTask = tasks.some((t) => {
+        const name = String(t?.name || '')
+        return name && !name.includes('Middleware') && !name.includes('__pregel')
+      })
+      if (!hasBusinessTask) {
+        return false
+      }
+    }
+  }
+
+  // 检查是否包含有意义的业务动作消息（用户输入、工具发起、工具完成、AI实质回复）
+  const currentMessages = getMessagesList(entry)
+  if (currentMessages.length > 0) {
+    const latestMsg = currentMessages[currentMessages.length - 1]
+    if (latestMsg && hasMeaningfulActionMessage(latestMsg)) {
+      return true
+    }
+  }
+
+  // 检查是否有实质性业务 Task
+  const hasBusinessTask = tasks.some((t) => {
+    const name = String(t?.name || '')
+    return name && !name.includes('Middleware') && !name.includes('__pregel')
+  })
+  if (hasBusinessTask) {
+    return true
+  }
+
+  return false
+}
+
 export function buildChatHistoryView(options: {
   items: ThreadHistoryEntry[]
   selectedBranch: string
@@ -94,6 +220,11 @@ export function buildChatHistoryView(options: {
     : options.items.length > 0
       ? getHistoryEntryId(options.items[0], 0)
       : ''
+
+  const entryById = new Map<string, ThreadHistoryEntry>()
+  options.items.forEach((entry, index) => {
+    entryById.set(getHistoryEntryId(entry, index), entry)
+  })
 
   const childrenByParent = options.items.reduce<Record<string, string[]>>((result, entry, index) => {
     const parentId = extractParentCheckpointId(entry)
@@ -116,6 +247,21 @@ export function buildChatHistoryView(options: {
     const isLatest = index === 0
     const isCurrent = activeCheckpointId ? activeCheckpointId === id : isLatest
     const isInSelectedPath = selectedPathIds.includes(id)
+    const hasInterrupts = extractHasInterrupts(entry)
+
+    // 仅基于明确的 directParent 进行无变化状态帧剔除
+    const directParent = parentId ? entryById.get(parentId) : undefined
+
+    const isKeyMilestone = isKeyMilestoneEntry(
+      entry,
+      {
+        isLatest,
+        hasInterrupts,
+        childCount,
+        siblingCount
+      },
+      directParent
+    )
 
     return {
       id,
@@ -126,19 +272,24 @@ export function buildChatHistoryView(options: {
       taskCount: extractTaskCount(entry),
       step: extractStep(entry),
       source: extractSource(entry),
-      hasInterrupts: extractHasInterrupts(entry),
+      hasInterrupts,
       siblingCount,
       childCount,
       isLatest,
       isCurrent,
       isInSelectedPath,
-      selectLabel: isCurrent ? '当前快照' : childCount > 0 || siblingCount > 1 ? '查看此分支' : '查看此快照'
+      isKeyMilestone,
+      selectLabel: isCurrent ? '当前快照' : childCount > 0 || siblingCount > 1 ? '查看此分支' : '查看此快照',
+      rawEntry: entry
     }
   })
+
+  const keyMilestoneCount = items.filter((item) => item.isKeyMilestone).length
 
   return {
     totalEntries: options.items.length,
     branchGroupCount,
+    keyMilestoneCount,
     activeCheckpointId,
     selectedPathIds,
     items

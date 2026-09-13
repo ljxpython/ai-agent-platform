@@ -1,6 +1,6 @@
 # Showcase Demo 渲染能力矩阵评估与逐项触发指南
 
-本文档对照 `/Users/lijiaxin/PyCharmMiscProject/research/open-swe/docs/frontend-rendering-matrix.md` 中定义的 **13 项核心前端渲染能力**，对当前 `platform-web` 结合 `showcase_demo` 真实执行环境的落地现状进行了全面技术对齐，并提供**可逐项动手触发的测试提示词与操作指引**。
+本文档对照 Open-SWE 前端渲染能力矩阵定义（`frontend-rendering-matrix.md`）中的 **13 项核心前端渲染能力**，对当前 `platform-web` 结合 `showcase_demo` 真实执行环境的落地现状进行了全面技术对齐，并提供**可逐项动手触发的测试提示词与操作指引**。
 
 ---
 

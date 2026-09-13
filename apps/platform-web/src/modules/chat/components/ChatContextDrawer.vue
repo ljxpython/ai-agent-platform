@@ -5,7 +5,7 @@ import BaseDrawer from '@/components/base/BaseDrawer.vue'
 import { useUiStore } from '@/stores/ui'
 import { downloadBlob } from '@/utils/browser-download'
 import { copyText } from '@/utils/clipboard'
-import { getHistoryEntryId, getHistoryEntryPreviewText, getHistoryEntryTime, toPrettyJson } from '@/utils/threads'
+import { toPrettyJson } from '@/utils/threads'
 import { buildChatHistoryView } from '../history-view-model'
 type ChatInspectorFile = { path: string; content: string; lineCount: number; completeness: string }
 type ChatPlanTodo = { id: string; content: string; status: 'pending' | 'in_progress' | 'completed' }
@@ -47,7 +47,7 @@ const emit = defineEmits<{
   close: []
   'select-branch': [branchId: string]
   'reset-target': []
-  'load-history': []
+  'load-history': [limit?: number]
   'fork': []
 }>()
 
@@ -102,6 +102,17 @@ const historyView = computed(() =>
     isViewingBranch: props.isViewingBranch
   })
 )
+
+const showOnlyMilestones = ref(true)
+
+const displayedHistoryItems = computed(() => {
+  const allItems = historyView.value.items
+  if (!showOnlyMilestones.value) {
+    return allItems
+  }
+  const milestones = allItems.filter((item) => item.isKeyMilestone)
+  return milestones.length > 0 ? milestones : allItems
+})
 
 watch(
   () => [props.initialTab, props.showHistory, props.show] as const,
@@ -740,7 +751,7 @@ async function handleSaveEdit() {
           >
             <div class="min-w-0">
               <div class="font-semibold text-gray-900 dark:text-white">
-                {{ props.isViewingBranch ? '当前正在查看历史分支' : '当前正在查看最新线程头' }}
+                {{ props.isViewingBranch ? '当前正在查看历史快照' : '当前正在查看最新线程头' }}
               </div>
               <div class="mt-1 break-all text-xs leading-6 text-gray-500 dark:text-dark-300">
                 {{
@@ -750,17 +761,65 @@ async function handleSaveEdit() {
                 }}
               </div>
             </div>
-            <BaseButton
+            <div
               v-if="props.isViewingBranch"
-              variant="ghost"
-              @click="emit('select-branch', '')"
+              class="flex flex-wrap items-center gap-2 shrink-0"
             >
-              返回最新
-            </BaseButton>
+              <BaseButton
+                :disabled="!canExecute"
+                @click="emit('fork')"
+              >
+                从此快照重新执行
+              </BaseButton>
+              <BaseButton
+                variant="secondary"
+                @click="emit('close')"
+              >
+                关闭抽屉查看
+              </BaseButton>
+              <BaseButton
+                variant="ghost"
+                @click="emit('select-branch', '')"
+              >
+                返回最新
+              </BaseButton>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between gap-3 pt-1">
+            <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs dark:border-dark-700 dark:bg-dark-800">
+              <button
+                type="button"
+                class="rounded-md px-2.5 py-1 font-medium transition-all"
+                :class="
+                  showOnlyMilestones
+                    ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-900 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'
+                "
+                @click="showOnlyMilestones = true"
+              >
+                🎯 关键节点 ({{ historyView.keyMilestoneCount }})
+              </button>
+              <button
+                type="button"
+                class="rounded-md px-2.5 py-1 font-medium transition-all"
+                :class="
+                  !showOnlyMilestones
+                    ? 'bg-white text-gray-900 shadow-sm dark:bg-dark-900 dark:text-white'
+                    : 'text-gray-500 hover:text-gray-700 dark:text-dark-300 dark:hover:text-white'
+                "
+                @click="showOnlyMilestones = false"
+              >
+                全部 Steps ({{ historyView.totalEntries }})
+              </button>
+            </div>
+            <span class="text-xs text-gray-400 dark:text-dark-400">
+              {{ showOnlyMilestones ? '已过滤纯内部系统检查点' : '展示全部原始中间步骤' }}
+            </span>
           </div>
 
           <div
-            v-if="props.historyItems.length === 0"
+            v-if="displayedHistoryItems.length === 0"
             class="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-sm leading-7 text-gray-500 dark:border-dark-700 dark:text-dark-300"
           >
             当前 thread 还没有 checkpoint 历史，或者还没开始对话。
@@ -771,19 +830,19 @@ async function handleSaveEdit() {
             class="space-y-4"
           >
             <div
-              v-for="(entry, historyIndex) in props.historyItems"
-              :key="getHistoryEntryId(entry, historyIndex)"
+              v-for="item in displayedHistoryItems"
+              :key="item.id"
               class="relative pl-6"
             >
               <span class="absolute left-0 top-7 h-full w-px bg-gray-200 dark:bg-dark-700" />
               <span
                 class="absolute left-[-4px] top-6 inline-flex h-3 w-3 rounded-full border-2 border-white dark:border-dark-950"
                 :class="
-                  historyView.items[historyIndex]?.isCurrent
+                  item.isCurrent
                     ? 'bg-primary-500'
-                    : historyView.items[historyIndex]?.isInSelectedPath
+                    : item.isInSelectedPath
                       ? 'bg-sky-500'
-                      : historyView.items[historyIndex]?.childCount
+                      : item.childCount
                         ? 'bg-amber-500'
                         : 'bg-gray-300 dark:bg-dark-500'
                 "
@@ -794,68 +853,68 @@ async function handleSaveEdit() {
                   <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div class="min-w-0">
                       <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">
-                        {{ historyView.items[historyIndex]?.preview || getHistoryEntryPreviewText(entry, historyIndex) }}
+                        {{ item.preview }}
                       </div>
                       <div class="mt-1 truncate text-xs text-gray-400 dark:text-dark-400">
-                        {{ historyView.items[historyIndex]?.id || getHistoryEntryId(entry, historyIndex) }}
+                        {{ item.id }}
                       </div>
                     </div>
                     <div class="shrink-0 text-xs text-gray-400 dark:text-dark-400">
-                      {{ historyView.items[historyIndex]?.time || getHistoryEntryTime(entry) }}
+                      {{ item.time }}
                     </div>
                   </div>
 
                   <div class="mt-3 flex flex-wrap gap-2">
                     <span
-                      v-if="historyView.items[historyIndex]?.isLatest"
+                      v-if="item.isLatest"
                       class="pw-pill-soft pw-pill-soft-success"
                     >
                       latest
                     </span>
                     <span
-                      v-if="historyView.items[historyIndex]?.isCurrent"
+                      v-if="item.isCurrent"
                       class="pw-pill-soft pw-pill-soft-primary"
                     >
                       当前快照
                     </span>
                     <span
-                      v-if="historyView.items[historyIndex]?.isInSelectedPath && !historyView.items[historyIndex]?.isCurrent"
+                      v-if="item.isInSelectedPath && !item.isCurrent"
                       class="pw-pill-soft pw-pill-soft-info"
                     >
                       当前分支路径
                     </span>
                     <span
-                      v-if="(historyView.items[historyIndex]?.siblingCount || 0) > 1"
+                      v-if="(item.siblingCount || 0) > 1"
                       class="pw-pill-soft pw-pill-soft-warning"
                     >
-                      分叉组 {{ historyView.items[historyIndex]?.siblingCount }}
+                      分叉组 {{ item.siblingCount }}
                     </span>
                     <span
-                      v-if="(historyView.items[historyIndex]?.childCount || 0) > 0"
+                      v-if="(item.childCount || 0) > 0"
                       class="pw-pill-soft border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900/40 dark:bg-violet-950/20 dark:text-violet-200"
                     >
-                      后续分支 {{ historyView.items[historyIndex]?.childCount }}
+                      后续分支 {{ item.childCount }}
                     </span>
                     <span class="pw-pill-soft pw-pill-soft-neutral">
-                      {{ historyView.items[historyIndex]?.step || '--' }}
+                      {{ item.step || '--' }}
                     </span>
                     <span
-                      v-if="historyView.items[historyIndex]?.source"
+                      v-if="item.source"
                       class="pw-pill-soft pw-pill-soft-neutral"
                     >
-                      {{ historyView.items[historyIndex]?.source }}
+                      {{ item.source }}
                     </span>
                     <span class="pw-pill-soft pw-pill-soft-neutral">
-                      messages {{ historyView.items[historyIndex]?.messageCount || 0 }}
+                      messages {{ item.messageCount || 0 }}
                     </span>
                     <span
-                      v-if="(historyView.items[historyIndex]?.taskCount || 0) > 0"
+                      v-if="(item.taskCount || 0) > 0"
                       class="pw-pill-soft pw-pill-soft-neutral"
                     >
-                      tasks {{ historyView.items[historyIndex]?.taskCount || 0 }}
+                      tasks {{ item.taskCount || 0 }}
                     </span>
                     <span
-                      v-if="historyView.items[historyIndex]?.hasInterrupts"
+                      v-if="item.hasInterrupts"
                       class="pw-pill-soft pw-pill-soft-danger"
                     >
                       interrupts
@@ -865,21 +924,40 @@ async function handleSaveEdit() {
 
                 <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div class="text-xs leading-6 text-gray-500 dark:text-dark-300">
-                    <span v-if="historyView.items[historyIndex]?.parentId">
-                      parent: {{ historyView.items[historyIndex]?.parentId }}
+                    <span v-if="item.parentId">
+                      parent: {{ item.parentId }}
                     </span>
                     <span v-else>根 checkpoint</span>
                   </div>
-                  <BaseButton
-                    variant="ghost"
-                    :disabled="historyView.items[historyIndex]?.isCurrent"
-                    @click="emit('select-branch', historyView.items[historyIndex]?.id || getHistoryEntryId(entry, historyIndex))"
-                  >
-                    {{ historyView.items[historyIndex]?.selectLabel || '查看此快照' }}
-                  </BaseButton>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <template v-if="item.isCurrent && props.isViewingBranch">
+                      <BaseButton
+                        size="sm"
+                        :disabled="!canExecute"
+                        @click="emit('fork')"
+                      >
+                        从此快照重新执行
+                      </BaseButton>
+                      <BaseButton
+                        variant="secondary"
+                        size="sm"
+                        @click="emit('close')"
+                      >
+                        关闭抽屉查看
+                      </BaseButton>
+                    </template>
+                    <BaseButton
+                      v-else
+                      variant="ghost"
+                      :disabled="item.isCurrent"
+                      @click="emit('select-branch', item.id)"
+                    >
+                      {{ item.selectLabel || '查看此快照' }}
+                    </BaseButton>
+                  </div>
                 </div>
 
-                <pre class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-gray-950 px-3 py-3 text-xs leading-6 text-gray-100 dark:bg-black/50">{{ toPrettyJson(entry) }}</pre>
+                <pre class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-gray-950 px-3 py-3 text-xs leading-6 text-gray-100 dark:bg-black/50">{{ toPrettyJson(item.rawEntry) }}</pre>
               </details>
             </div>
           </div>
@@ -887,16 +965,37 @@ async function handleSaveEdit() {
       </div>
       <div
         v-if="activeTab === 'history'"
-        class="flex flex-wrap gap-2"
+        class="flex flex-wrap items-center gap-2"
       >
-        <BaseButton
-          v-if="hasMoreHistory"
-          :disabled="historyLoading"
-          variant="secondary"
-          @click="emit('load-history')"
+        <template v-if="hasMoreHistory">
+          <BaseButton
+            :disabled="historyLoading"
+            variant="secondary"
+            @click="emit('load-history', 20)"
+          >
+            {{ historyLoading ? '加载中...' : '加载更多 (+20)' }}
+          </BaseButton>
+          <BaseButton
+            :disabled="historyLoading"
+            variant="secondary"
+            @click="emit('load-history', 50)"
+          >
+            +50 条
+          </BaseButton>
+          <BaseButton
+            :disabled="historyLoading"
+            variant="secondary"
+            @click="emit('load-history', 100)"
+          >
+            +100 条 (快速翻页)
+          </BaseButton>
+        </template>
+        <span
+          v-else
+          class="text-xs text-gray-400 dark:text-dark-400"
         >
-          {{ historyLoading ? '加载中' : '加载更多' }}
-        </BaseButton>
+          已加载全部历史记录 (共 {{ historyView.totalEntries }} 条)
+        </span>
         <BaseButton
           v-if="isViewingBranch"
           :disabled="!canExecute"

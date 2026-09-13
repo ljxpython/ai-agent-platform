@@ -342,3 +342,56 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
             thread_id="thread-1", payload={"command": {"resume": {"interrupt-1": "approve"}}})
         parent = next(r for r in self.records() if r.run_id == "resumed-run").parent_run_id
         self.assertEqual(parent, "run-1")
+
+    async def test_fork_and_checkpoint_execution_config_allowed_and_preserved(self):
+        await self.start()
+        self.upstream.create_thread_run.return_value = {"run_id": "fork-run"}
+        # 1. 验证合法 checkpoint_id 允许通过并转发给 upstream
+        await self.service.create_thread_run(
+            actor=self.actor,
+            project_id="project-1",
+            thread_id="thread-1",
+            payload={
+                "assistant_id": "agent-1",
+                "config": {
+                    "configurable": {
+                        "checkpoint_id": "cp-target-root",
+                        "checkpoint_ns": "sub",
+                    },
+                },
+            },
+            idempotency_key="key-fork-1",
+        )
+        call_args = self.upstream.create_thread_run.call_args[0]
+        upstream_payload = call_args[1]
+        self.assertEqual(upstream_payload.get("checkpoint_id"), "cp-target-root")
+        self.assertEqual(
+            upstream_payload["config"]["configurable"].get("checkpoint_id"),
+            "cp-target-root",
+        )
+
+        # 2. 验证非法空字符串 checkpoint_id 抛出 BadRequestError
+        with self.assertRaises(BadRequestError):
+            await self.service.create_thread_run(
+                actor=self.actor,
+                project_id="project-1",
+                thread_id="thread-1",
+                payload={
+                    "assistant_id": "agent-1",
+                    "config": {"configurable": {"checkpoint_id": "   "}},
+                },
+                idempotency_key="key-fork-invalid",
+            )
+
+        # 3. 验证未知字段如 api_key 依然被严格拦截
+        with self.assertRaises(BadRequestError):
+            await self.service.create_thread_run(
+                actor=self.actor,
+                project_id="project-1",
+                thread_id="thread-1",
+                payload={
+                    "assistant_id": "agent-1",
+                    "config": {"configurable": {"api_key": "attacker_key"}},
+                },
+                idempotency_key="key-fork-hack",
+            )

@@ -11,7 +11,6 @@ import { useStream } from "@langchain/vue";
 import type { Checkpoint, Run } from "@langchain/langgraph-sdk";
 import {
   createLanggraphAuthorizedFetch,
-  getLanggraphApiUrl,
 } from "@/services/langgraph/client";
 import {
   createSessionService,
@@ -466,32 +465,64 @@ export function useChatSession(options: {
     }
   }
 
-  async function fork(checkpoint: Checkpoint, content?: string) {
-    if (!canSend.value || !threadId.value) return;
+  async function fork(
+    checkpoint: Checkpoint,
+    content?: unknown,
+    recursionLimit = 25,
+  ) {
+    if (!canSend.value || !threadId.value || !checkpoint?.checkpoint_id) return false;
+    const checkpointId = checkpoint.checkpoint_id;
+    error.value = "";
+    checking.value = true;
     try {
-      const response = await actions.fork(
-        getLanggraphApiUrl(),
-        threadId.value,
-        {
-          assistant_id: options.graphId,
-          checkpoint_id: checkpoint.checkpoint_id,
-          context: parseAgentContext(options.context.value),
-          ...(content === undefined
-            ? {}
-            : {
-                input: {
-                  messages: [
-                    { id: crypto.randomUUID(), role: "user", content },
-                  ],
-                },
-              }),
+      if (
+        !Number.isInteger(recursionLimit) ||
+        recursionLimit < 1 ||
+        recursionLimit > 1000
+      )
+        throw new Error("执行步数须为 1–1000 的整数");
+
+      const hasContent =
+        content !== undefined &&
+        (typeof content === "string"
+          ? Boolean(content.trim())
+          : Array.isArray(content) && Boolean(content.length));
+
+      const input = hasContent
+        ? {
+            messages: [{ id: crypto.randomUUID(), type: "human", content }],
+          }
+        : null;
+
+      const context = parseAgentContext(options.context.value);
+      const action = actions.begin(threadId.value, "fork", {
+        input,
+        checkpoint_id: checkpointId,
+      });
+
+      const completion = stream.submit(input, {
+        threadId: threadId.value,
+        forkFrom: checkpointId,
+        config: {
+          recursion_limit: recursionLimit,
+          configurable: {
+            platform_runtime: context,
+            checkpoint_id: checkpointId,
+          },
         },
-      );
-      if (!response.ok || actions.current.value?.status !== "acknowledged")
-        throw new Error("创建历史分支结果尚未确认，请核实原请求");
-      if (!disposed) options.onReconnect();
+      });
+      checking.value = false;
+      await completion;
+      if (stream.error.value) throw stream.error.value;
+      actions.acknowledge(action.key, run.value?.run_id);
+      await verify(true);
+      return actions.current.value?.status === "acknowledged";
     } catch (cause) {
+      actions.rejectUnsent();
       fail(cause);
+      return false;
+    } finally {
+      if (!disposed) checking.value = false;
     }
   }
 
@@ -501,7 +532,7 @@ export function useChatSession(options: {
       action?.status === "acknowledged" &&
       (previous?.key !== action.key || previous.status !== "acknowledged")
     ) {
-      if (action.kind === "send") options.onAccepted?.();
+      if (action.kind === "send" || action.kind === "fork") options.onAccepted?.();
       options.onRefresh();
     }
   });

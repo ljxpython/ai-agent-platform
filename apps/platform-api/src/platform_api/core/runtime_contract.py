@@ -262,12 +262,21 @@ def normalize_protocol_v2_command(
             "durability",
             "stream_resumable",
             "on_disconnect",
+            "checkpoint_id",
+            "checkpoint_ns",
+            "checkpoint",
         }
     )
     if unknown_run_fields:
         raise ValueError(
             "Unsupported run.start fields: " + ", ".join(unknown_run_fields)
         )
+
+    if "checkpoint_id" in run_params:
+        cid = run_params["checkpoint_id"]
+        if not isinstance(cid, str) or not cid.strip():
+            raise ValueError("run.start checkpoint_id must be a non-empty string")
+        run_params["checkpoint_id"] = cid.strip()
 
     run_params.setdefault("durability", "sync")
     run_params.setdefault("stream_resumable", True)

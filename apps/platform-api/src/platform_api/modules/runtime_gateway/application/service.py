@@ -89,22 +89,52 @@ def _request_digest(command: dict[str, Any]) -> str:
     return hashlib.sha256(encoded.encode()).hexdigest()
 
 
+_ALLOWED_CONFIGURABLE_KEYS = {
+    "platform_runtime",
+    "project_id",
+    "checkpoint_id",
+    "checkpoint_ns",
+}
+
+
 def _execution_config(payload: dict[str, Any]) -> dict[str, Any]:
     config = ensure_dict(payload.get("config"))
     # Only recursion_limit is a supported non-Context execution override.
     # Identity and credentials are created by the server, never persisted here.
     unknown = set(config) - {"recursion_limit", "configurable"}
     configurable = ensure_dict(config.get("configurable"))
-    if unknown or set(configurable) - {"platform_runtime", "project_id"}:
+    if unknown or set(configurable) - _ALLOWED_CONFIGURABLE_KEYS:
         raise BadRequestError(
             code="unsupported_run_config", message="Unsupported execution config"
+        )
+    checkpoint_id = configurable.get("checkpoint_id")
+    if checkpoint_id is not None and (
+        not isinstance(checkpoint_id, str) or not clean_str(checkpoint_id)
+    ):
+        raise BadRequestError(
+            code="invalid_checkpoint_id",
+            message="checkpoint_id must be a non-empty string",
+        )
+    checkpoint_ns = configurable.get("checkpoint_ns")
+    if checkpoint_ns is not None and not isinstance(checkpoint_ns, str):
+        raise BadRequestError(
+            code="invalid_checkpoint_ns",
+            message="checkpoint_ns must be a string",
         )
     limit = config.get("recursion_limit", 25)
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 1000:
         raise BadRequestError(
             code="invalid_recursion_limit", message="recursion_limit must be 1..1000"
         )
-    return {"recursion_limit": limit}
+    result: dict[str, Any] = {"recursion_limit": limit}
+    config_configurable: dict[str, Any] = {}
+    if checkpoint_id is not None:
+        config_configurable["checkpoint_id"] = clean_str(checkpoint_id)
+    if checkpoint_ns is not None:
+        config_configurable["checkpoint_ns"] = checkpoint_ns
+    if config_configurable:
+        result["configurable"] = config_configurable
+    return result
 
 
 def _runtime_context_snapshot(command: dict[str, Any]) -> tuple[str, dict[str, Any]]:
@@ -246,6 +276,14 @@ def _promote_protocol_run_start(params: dict[str, Any]) -> dict[str, Any]:
         )
         if key in params
     }
+    if "checkpoint_id" not in promoted and "checkpoint_id" in configurable:
+        cid = clean_str(configurable["checkpoint_id"])
+        if cid:
+            promoted["checkpoint_id"] = cid
+    if "checkpoint_ns" not in promoted and "checkpoint_ns" in configurable:
+        cns = configurable["checkpoint_ns"]
+        if isinstance(cns, str):
+            promoted["checkpoint_ns"] = cns
     promoted["context"] = context
     if next_config:
         promoted["config"] = next_config
@@ -892,6 +930,11 @@ class RuntimeGatewayService:
         payload["multitask_strategy"] = "reject"
         payload["context"] = dict(record.context_snapshot)
         payload["config"] = dict(record.config_snapshot)
+        config_configurable = ensure_dict(payload["config"].get("configurable"))
+        if "checkpoint_id" not in payload and "checkpoint_id" in config_configurable:
+            payload["checkpoint_id"] = config_configurable["checkpoint_id"]
+        if "checkpoint_ns" not in payload and "checkpoint_ns" in config_configurable:
+            payload["checkpoint_ns"] = config_configurable["checkpoint_ns"]
         payload = await run_in_threadpool(
             self._attach_runtime_model_reference,
             project_id=project_id,

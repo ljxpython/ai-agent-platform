@@ -105,3 +105,69 @@ def test_model_reference_is_validated_without_leaking_credentials(monkeypatch):
             )
         )
     assert "test-only-secret" not in str(error.value)
+
+
+def test_html_to_markdown_cleans_noise_and_preserves_structure():
+    raw_html = """
+    <!DOCTYPE html>
+    <html>
+    <head><title>Doc</title><script>alert('evil')</script><style>body { color: red; }</style></head>
+    <body>
+        <nav><a href="/home">Home</a></nav>
+        <header>Header Bar</header>
+        <h1>Module Documentation</h1>
+        <p>This is a <code>code_snippet</code> inside a paragraph.</p>
+        <pre>def test_func():
+    return True
+</pre>
+        <ul>
+            <li>First item</li>
+            <li>Second item</li>
+        </ul>
+        <footer>Copyright 2026</footer>
+    </body>
+    </html>
+    """
+    md = tools.html_to_markdown(raw_html)
+    assert "<script>" not in md
+    assert "<style>" not in md
+    assert "alert('evil')" not in md
+    assert "Header Bar" not in md
+    assert "Copyright 2026" not in md
+    assert "# Module Documentation" in md
+    assert "`code_snippet`" in md
+    assert "def test_func():\n    return True" in md
+    assert "- First item" in md
+    assert "- Second item" in md
+
+
+def test_documentation_fetch_converts_html_response_to_markdown(monkeypatch):
+    html_content = (
+        "<html><head><script>bad()</script></head>"
+        "<body><h1>CSV Module</h1><p>Reading tabular data.</p></body></html>"
+    )
+
+    def handler(request):
+        return httpx.Response(
+            200,
+            text=html_content,
+            headers={"content-type": "text/html; charset=utf-8"},
+        )
+
+    real_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        tools.httpx,
+        "AsyncClient",
+        lambda **kwargs: real_client(**kwargs, transport=httpx.MockTransport(handler)),
+    )
+    result = asyncio.run(
+        fetch_documentation.ainvoke(
+            {"url": "https://docs.python.org/3/library/csv.html"}
+        )
+    )
+    assert "<script>" not in result
+    assert "bad()" not in result
+    assert "<html>" not in result
+    assert "# CSV Module" in result
+    assert "Reading tabular data." in result
+

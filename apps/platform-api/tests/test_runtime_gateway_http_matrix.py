@@ -40,6 +40,8 @@ CASES = [
     ("GET", "/threads/{thread_id}/runs/{run_id}/join", "join_thread_run"),
     ("GET", "/threads/{thread_id}/runs/{run_id}/stream", "join_thread_run_stream"),
     ("POST", "/threads/{thread_id}/runs/{run_id}/cancel", "cancel_thread_run"),
+    ("GET", "/threads/{thread_id}/messages", "list_thread_messages"),
+    ("POST", "/threads/{thread_id}/messages", "enqueue_thread_message"),
 ]
 
 
@@ -100,15 +102,24 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         headers = {"Idempotency-Key": "request-1"}
                         if outcome != "missing_scope":
                             headers["x-project-id"] = "project-1"
+                        post_payload = (
+                            {"content": "hello"}
+                            if path.endswith("/messages")
+                            else {"probe": "body"}
+                        )
                         response = await client.request(
                             method,
                             "/api/langgraph"
                             + path.format(thread_id="thread-1", run_id="run-1"),
-                            json={"probe": "body"} if method == "POST" else None,
+                            json=post_payload if method == "POST" else None,
                             headers=headers,
                         )
                         expected = {
-                            "success": 200,
+                            "success": (
+                                202
+                                if (method == "POST" and path.endswith("/messages"))
+                                else 200
+                            ),
                             "forbidden": 403,
                             "missing_scope": 400,
                         }[outcome]
@@ -124,11 +135,12 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             if "{" + key + "}" in path:
                                 self.assertEqual(kwargs[key], key.replace("_id", "-1"))
                         if method == "POST":
-                            self.assertEqual(kwargs["payload"], {"probe": "body"})
+                            self.assertEqual(kwargs["payload"], post_payload)
                         if name in {
                             "create_thread_run",
                             "stream_thread_run",
                             "send_thread_command",
+                            "enqueue_thread_message",
                         }:
                             self.assertEqual(kwargs["idempotency_key"], "request-1")
                         if outcome == "success":
@@ -161,7 +173,10 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             "/api/langgraph"
                             + path.format(thread_id="thread-1", run_id="run-1"),
                             json={} if method == "POST" else None,
-                            headers={"x-project-id": "project-1"},
+                            headers={
+                                "x-project-id": "project-1",
+                                "Idempotency-Key": "request-1",
+                            },
                         )
                         self.assertEqual(response.status_code, expected, response.text)
             self.assertEqual(upstream.mock_calls, [])
@@ -182,7 +197,10 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         "/api/langgraph"
                         + path.format(thread_id="thread-1", run_id="run-1"),
                         json={} if method == "POST" else None,
-                        headers={"x-project-id": "project-1"},
+                        headers={
+                            "x-project-id": "project-1",
+                            "Idempotency-Key": "request-1",
+                        },
                     )
                     self.assertEqual(response.status_code, 403, response.text)
                     self.assertEqual(

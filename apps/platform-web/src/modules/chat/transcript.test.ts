@@ -149,4 +149,29 @@ describe("SDK transcript projection", () => {
     expect(scopedToolNames).toContain("read_file");
     expect(scopedToolNames).toContain("ls");
   });
+
+  it("consolidates adjacent text blocks and cleans orphan leading line break after reasoning", () => {
+    // 1. 模拟思考过程后紧跟首字符单换行
+    const itemsWithOrphanBreak = contentItems(
+      "<think>Let me think</think>\n已\n定位缺陷并核对了正确结果。",
+      "msg-1",
+    );
+    expect(itemsWithOrphanBreak).toHaveLength(2);
+    expect(itemsWithOrphanBreak[0]?.kind).toBe("reasoning");
+    expect(itemsWithOrphanBreak[0]?.text).toBe("Let me think");
+    expect(itemsWithOrphanBreak[1]?.kind).toBe("text");
+    expect(itemsWithOrphanBreak[1]?.text).toBe("已定位缺陷并核对了正确结果。");
+
+    // 2. 模拟流式推送产生的相邻连续 text blocks 被拆散的情况
+    const itemsAdjacent = contentItems(
+      [
+        { type: "text", text: "已" },
+        { type: "text", text: "定位缺陷并核对了正确结果。" },
+      ],
+      "msg-2",
+    );
+    expect(itemsAdjacent).toHaveLength(1);
+    expect(itemsAdjacent[0]?.kind).toBe("text");
+    expect(itemsAdjacent[0]?.text).toBe("已定位缺陷并核对了正确结果。");
+  });
 });

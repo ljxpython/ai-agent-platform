@@ -13,6 +13,7 @@ import { coerceMessageLikeToMessage, type BaseMessage } from "@langchain/core/me
 import { parseAgentContext } from "@/services/agents/context";
 import ChatRunOptionsDialog from "./ChatRunOptionsDialog.vue";
 import ChatContextDrawer from "./ChatContextDrawer.vue";
+import ChatStickyTaskPill from "./ChatStickyTaskPill.vue";
 import ChatArtifactPanel from "./ChatArtifactPanel.vue";
 import ChatAgentStatusBar from "./ChatAgentStatusBar.vue";
 import { RouterLink } from "vue-router";
@@ -121,7 +122,7 @@ const streamError = computed(() =>
 );
 const canSubmit = computed(
   () =>
-    canSend.value && !snapshotMessages.value &&
+    canSend.value &&
     !modelsLoading.value && !!models.value.length &&
     !attachmentsLoading.value &&
     (!!props.draft.trim() || !!attachments.value.length),
@@ -224,6 +225,24 @@ void Promise.all([listRuntimeModels(props.projectId), listRuntimeModelPolicies(p
     if (!disposed) localError.value = "模型列表读取失败，可恢复连接后重试";
   }).finally(() => { if (!disposed) modelsLoading.value = false; });
 
+const composerRef = ref<{ focus: () => void } | null>(null);
+function focusComposer() {
+  void nextTick(() => {
+    composerRef.value?.focus();
+  });
+}
+
+function handleSnapshotFork() {
+  if (!selectedCheckpoint.value || !canSend.value) return;
+  if (props.draft.trim() || attachments.value.length) {
+    void send();
+  } else {
+    drawerOpen.value = false;
+    localError.value = "已选定当前快照，请在下方输入新指令开始分叉执行";
+    focusComposer();
+  }
+}
+
 async function send(queued = false) {
   if (
     queued
@@ -244,6 +263,33 @@ async function send(queued = false) {
 
   if (queued) {
     await session.queueMessage(content);
+  } else if (selectedCheckpoint.value) {
+    const targetCheckpoint = selectedCheckpoint.value.checkpoint;
+    optimisticUserMessage.value = coerceMessageLikeToMessage({
+      id: `optimistic-${Date.now()}`,
+      type: "human",
+      content,
+    });
+    emit("update:draft", "");
+    attachments.value = [];
+    selectSnapshot("");
+    void nextTick(() => requestSmoothScrollToBottom());
+    try {
+      const ok = await session.fork(
+        targetCheckpoint,
+        content,
+        recursionLimit.value,
+      );
+      if (!ok && session.error.value) {
+        throw new Error(session.error.value);
+      }
+    } catch {
+      optimisticUserMessage.value = null;
+      if (submittedDraft !== undefined) emit("update:draft", submittedDraft);
+      attachments.value = Array.from(submittedAttachments) as ChatAttachmentBlock[];
+      submittedDraft = undefined;
+      submittedAttachments = new Set();
+    }
   } else {
     optimisticUserMessage.value = coerceMessageLikeToMessage({
       id: `optimistic-${Date.now()}`,
@@ -388,17 +434,74 @@ function inspect(tool: ToolItem) {
   };
 }
 
+function cancelEdit() {
+  editCheckpoint.value = null;
+  editingMessageId.value = "";
+  editDraft.value = "";
+  editLoading.value = false;
+}
+
+function findParentCheckpointForMessage(messageId: string, messageText: string): Checkpoint | null {
+  // 1. 优先查预计算的 messageMetadata
+  const meta = messageMetadata.value[messageId];
+  if (meta?.parentCheckpoint?.checkpoint_id) {
+    return meta.parentCheckpoint;
+  }
+
+  // 2. 本地历史按时间正序回溯查找
+  const matchMsg = (msg: unknown) => {
+    const obj = asObject(msg);
+    if (obj.id && obj.id === messageId) return true;
+    if (obj.key && obj.key === messageId) return true;
+    const type = String(obj.type || obj.role || "").toLowerCase();
+    if ((type === "human" || type === "user") && messageText) {
+      const content = typeof obj.content === "string" ? obj.content : "";
+      if (content.trim() && content.trim() === messageText.trim()) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const states = [...history.value].reverse();
+  const firstSeenIndex = states.findIndex((state) =>
+    (state.values.messages ?? []).some(matchMsg)
+  );
+
+  if (firstSeenIndex > 0) {
+    return states[firstSeenIndex - 1].checkpoint;
+  }
+
+  if (firstSeenIndex === 0) {
+    const firstState = states[0];
+    if (firstState.parent_checkpoint?.checkpoint_id) {
+      return firstState.parent_checkpoint;
+    }
+  }
+
+  return null;
+}
+
 async function submitEditedBranch() {
-  const checkpoint = editCheckpoint.value;
-  if (!checkpoint) return;
-  await session.fork(checkpoint, editDraft.value);
-  if (actions.current.value?.status === "acknowledged") { editCheckpoint.value = null; editingMessageId.value = ""; }
+  if (!editDraft.value.trim()) return;
+  let checkpoint = editCheckpoint.value;
+  if (!checkpoint && editingMessageId.value) {
+    checkpoint = findParentCheckpointForMessage(editingMessageId.value, editDraft.value);
+    if (checkpoint) editCheckpoint.value = checkpoint;
+  }
+  if (!checkpoint) {
+    localError.value = "未找到该消息之前可恢复的检查点，无法安全创建分支";
+    return;
+  }
+  const draftText = editDraft.value;
+  cancelEdit();
+  await session.fork(checkpoint, draftText, recursionLimit.value);
 }
 const historyLoading = ref(false);
 const history = shallowRef<ChatCheckpoint[]>([]);
 const hasMoreHistory = ref(true);
 const selectedCheckpoint = shallowRef<ChatCheckpoint | null>(null);
-async function loadHistory(reset = false) {
+async function loadHistory(reset = false, limit = 20) {
   if (!session.threadId.value || historyLoading.value) return;
   historyLoading.value = true;
   localError.value = "";
@@ -406,10 +509,11 @@ async function loadHistory(reset = false) {
     const rows = await session.service.history(
       session.threadId.value,
       reset ? undefined : history.value[history.value.length - 1]?.checkpoint,
+      limit
     );
     if (disposed) return;
     history.value = reset ? rows : [...history.value, ...rows];
-    hasMoreHistory.value = rows.length === 20;
+    hasMoreHistory.value = rows.length === limit;
   } catch (cause) {
     if (!disposed)
       localError.value =
@@ -424,24 +528,56 @@ const editingMessageId = ref("");
 async function retryMessage(id: string) {
   await edit(id, "");
   if (!disposed && editCheckpoint.value) {
-    await session.fork(editCheckpoint.value);
-    if (actions.current.value?.status === "acknowledged") { editCheckpoint.value = null; editingMessageId.value = ""; }
+    const ok = await session.fork(editCheckpoint.value);
+    if (ok) { cancelEdit(); }
   }
 }
 const editCheckpoint = shallowRef<Checkpoint | null>(null);
 const editLoading = ref(false);
 async function edit(messageId: string, text: string) {
-  if (!canSend.value || !session.threadId.value || editLoading.value) return;
-  editLoading.value = true;
+  if (!canSend.value || !session.threadId.value) return;
   localError.value = "";
+  // 即时响应：先进入编辑模式展开输入框，给用户最流畅的交互体验
+  editingMessageId.value = messageId;
+  editDraft.value = text;
+  editCheckpoint.value = null;
+
+  // 1. 优先本地内存秒级回溯检查点
+  let targetCheckpoint = findParentCheckpointForMessage(messageId, text);
+  if (targetCheckpoint) {
+    editCheckpoint.value = targetCheckpoint;
+    return;
+  }
+
+  // 2. 本地历史若未命中，仅拉取单次更早历史补充后重试
+  editLoading.value = true;
   try {
-    // Walk the current branch only; timestamps from other branches cannot locate an edit.
+    const rows = await session.service.history(session.threadId.value, undefined, 100);
+    if (disposed) return;
+    if (rows && rows.length > 0) {
+      history.value = rows;
+      targetCheckpoint = findParentCheckpointForMessage(messageId, text);
+      if (targetCheckpoint) {
+        editCheckpoint.value = targetCheckpoint;
+        return;
+      }
+    }
+
+    // 3. 兜底浅层回溯（最多 10 次，严禁死循环）
     let current = await session.service.state(session.threadId.value);
     const contains = (state: ChatCheckpoint) =>
-      (state.values.messages ?? []).some(
-        (message) => asObject(message).id === messageId,
-      );
-    for (let depth = 0; depth < 200 && !disposed; depth++) {
+      (state.values.messages ?? []).some((m) => {
+        const obj = asObject(m);
+        return (
+          obj.id === messageId ||
+          obj.key === messageId ||
+          ((obj.type === "human" || obj.role === "user") &&
+            typeof obj.content === "string" &&
+            text &&
+            obj.content.trim() === text.trim())
+        );
+      });
+    for (let depth = 0; depth < 10 && !disposed; depth++) {
       if (!contains(current) || !current.parent_checkpoint) break;
       const parent = await session.service.state(
         session.threadId.value,
@@ -449,14 +585,14 @@ async function edit(messageId: string, text: string) {
       );
       if (!contains(parent)) {
         editCheckpoint.value = parent.checkpoint;
-        editDraft.value = text;
-        editingMessageId.value = messageId;
         return;
       }
       current = parent;
     }
-    if (!disposed)
+
+    if (!disposed && !editCheckpoint.value) {
       localError.value = "未找到该消息之前可恢复的检查点，无法安全创建分支";
+    }
   } catch (cause) {
     if (!disposed)
       localError.value =
@@ -525,15 +661,36 @@ onScopeDispose(() => {
     >{{ status }}<span v-if="!canWrite"> · 只读</span></span>
     <div
       v-if="snapshotMessages"
-      class="pw-panel-info mx-5 mt-3 flex items-center justify-between gap-3 text-sm"
+      class="pw-panel-info mx-5 mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm"
     >
-      正在查看历史快照
-      <BaseButton
-        variant="ghost"
-        @click="selectSnapshot('')"
-      >
-        返回最新
-      </BaseButton>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex h-2 w-2 rounded-full bg-sky-500 animate-pulse" />
+        <span class="font-medium text-gray-900 dark:text-white">
+          正在查看历史快照（只读预览模式）
+        </span>
+        <span
+          v-if="selectedCheckpoint?.checkpoint.checkpoint_id"
+          class="text-xs text-gray-500 dark:text-dark-300 font-mono"
+        >
+          {{ selectedCheckpoint.checkpoint.checkpoint_id }}
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        <BaseButton
+          size="sm"
+          :disabled="!canSend"
+          @click="handleSnapshotFork"
+        >
+          从此快照重新执行
+        </BaseButton>
+        <BaseButton
+          variant="secondary"
+          size="sm"
+          @click="selectSnapshot('')"
+        >
+          返回最新对话
+        </BaseButton>
+      </div>
     </div>
     <div
       v-if="!modelsLoading && !models.length"
@@ -598,6 +755,10 @@ onScopeDispose(() => {
               @cancel="session.stop"
               @resume="approvalElement?.scrollIntoView({ block: 'center', behavior: 'smooth' })"
             />
+            <ChatStickyTaskPill
+              :plan-view="planView"
+              @open-tasks="drawerTab = 'tasks'; drawerOpen = true;"
+            />
             <div
               v-if="!messages.length && !checking"
               class="pw-chat-empty-state"
@@ -620,7 +781,7 @@ onScopeDispose(() => {
               :messages="displayedMessages"
               :calls="snapshotMessages ? [] : calls"
               :is-running="busy && !snapshotMessages"
-              :can-edit="canSend && !editLoading && !snapshotMessages"
+              :can-edit="canSend && !snapshotMessages"
               :metadata="messageMetadata"
               :editing-message-id="editingMessageId"
               :editing-message-value="editDraft"
@@ -629,7 +790,7 @@ onScopeDispose(() => {
               @edit="edit"
               @retry="retryMessage"
               @update:editing-message-value="editDraft = $event"
-              @cancel-edit="editCheckpoint = null; editingMessageId = ''"
+              @cancel-edit="cancelEdit"
               @submit-edit="submitEditedBranch"
             />
             <section
@@ -775,6 +936,7 @@ onScopeDispose(() => {
       回到最新
     </button>
     <ChatComposer
+      ref="composerRef"
       :model-value="draft"
       :attachments="attachments"
       :is-running="busy && !reviews.length"
@@ -786,7 +948,8 @@ onScopeDispose(() => {
           action?.status === 'submitting' ||
           action?.status === 'unknown'
       "
-      send-button-label="发送"
+      :send-button-label="selectedCheckpoint ? '分叉执行' : '发送'"
+      :placeholder="selectedCheckpoint ? '当前处于快照分叉模式，输入新指令即可从此快照分叉执行...' : undefined"
       compact
       :focus-mode="focusMode"
       :models="models"
@@ -854,8 +1017,8 @@ onScopeDispose(() => {
       :run="session.run.value"
       @close="drawerOpen = false"
       @select-branch="selectSnapshot"
-      @load-history="loadHistory()"
-      @fork="selectedCheckpoint && session.fork(selectedCheckpoint.checkpoint)"
+      @load-history="loadHistory(false, $event)"
+      @fork="handleSnapshotFork"
     />
     <BaseDialog
       :show="!!inspector"

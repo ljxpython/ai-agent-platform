@@ -203,18 +203,89 @@ export function getHistoryEntryTime(entry: ThreadHistoryEntry): string {
   return '--'
 }
 
+function formatMessageActionPreview(message: ThreadMessage): string {
+  const messageRecord = asRecord(message)
+  const messageType = String(message.type || '').toLowerCase()
+
+  // 1. 如果有 tool_calls (AI 决策发起工具调用)
+  const toolCalls = Array.isArray(messageRecord.tool_calls)
+    ? messageRecord.tool_calls
+    : Array.isArray(asRecord(messageRecord.additional_kwargs).tool_calls)
+      ? (asRecord(messageRecord.additional_kwargs).tool_calls as unknown[])
+      : []
+
+  if (toolCalls.length > 0) {
+    const firstCall = asRecord(toolCalls[0])
+    const callName = String(firstCall.name || asRecord(firstCall.function).name || '工具')
+    const callArgs = asRecord(firstCall.args || asRecord(firstCall.function).arguments)
+    const target =
+      coerceText(callArgs.path) ||
+      coerceText(callArgs.file_path) ||
+      coerceText(callArgs.command) ||
+      coerceText(callArgs.url) ||
+      coerceText(callArgs.query)
+    const targetSuffix = target ? ` (${target.length > 25 ? target.slice(0, 22) + '...' : target})` : ''
+    return `🔧 调用工具: ${callName}${targetSuffix}`
+  }
+
+  // 2. 如果是 tool 消息 (工具返回结果)
+  if (messageType === 'tool') {
+    const toolName = coerceText(messageRecord.name) || '工具'
+    const contentText = normalizePreviewText(summarizeMessageContent(message.content))
+    const detail = contentText ? `: ${contentText}` : ''
+    return `📥 工具完成 [${toolName}]${detail}`
+  }
+
+  // 3. 如果是 human 消息 (用户提问)
+  if (messageType === 'human') {
+    const text = normalizePreviewText(summarizeMessageContent(message.content))
+    return text ? `👤 用户: ${text}` : '👤 用户输入'
+  }
+
+  // 4. 如果是 ai 消息 (Agent 输出)
+  if (messageType === 'ai') {
+    const text = normalizePreviewText(summarizeMessageContent(message.content))
+    return text ? `🤖 Agent: ${text}` : '🤖 Agent 组织答复'
+  }
+
+  const text = normalizePreviewText(summarizeMessageContent(message.content))
+  return text || ''
+}
+
 export function getHistoryEntryPreviewText(entry: ThreadHistoryEntry, index: number): string {
+  if (Array.isArray(entry.interrupts) && entry.interrupts.length > 0) {
+    return '🛑 等待审批: 需要人工确认操作'
+  }
+
+  const tasks = Array.isArray(entry.tasks) ? (entry.tasks as Record<string, unknown>[]) : []
+  const isPureMiddleware =
+    tasks.length > 0 &&
+    tasks.every((t) => {
+      const name = String(t?.name || '')
+      return name.includes('Middleware') || name.includes('__pregel')
+    })
+
+  if (isPureMiddleware) {
+    const firstTaskName = String(tasks[0]?.name || '')
+    const shortName = firstTaskName.split('.')[0] || '系统状态'
+    return `⚙️ 系统检查点 [${shortName}]`
+  }
+
   const messages = extractMessages(entry)
   if (messages.length > 0) {
-    const firstConversationMessage =
-      messages.find((item) => item?.type === 'human') ||
-      messages.find((item) => item?.type === 'ai') ||
-      messages[0]
-
-    const preview = normalizePreviewText(summarizeMessageContent(firstConversationMessage?.content))
-    if (preview) {
-      return preview
+    const latestMessage = messages[messages.length - 1]
+    if (latestMessage) {
+      const actionText = formatMessageActionPreview(latestMessage)
+      if (actionText) {
+        return actionText
+      }
     }
+  }
+
+  const metadata = asRecord(entry.metadata)
+  const langgraphNode = coerceText(metadata.langgraph_node) || coerceText(metadata.node)
+  if (langgraphNode) {
+    return `节点执行: ${langgraphNode}`
   }
 
   const valuesRecord = asRecord(entry.values)

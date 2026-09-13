@@ -62,6 +62,7 @@ PY
   set +a
   RUNTIME_PORT="${RUNTIME_PORT:-${RUNTIME_SERVICE_PORT:-8123}}"
   GRAPH_CONFIG="${RUNTIME_GRAPH_CONFIG_PATH:-$RUNTIME_DIR/langgraph.json}"
+  export RUNTIME_PORT PLATFORM_API_PORT PLATFORM_WEB_PORT
 }
 
 require_command() {
@@ -89,9 +90,13 @@ pid_alive() {
 }
 
 managed_alive() {
+  local key="$1"
   local pid
-  pid="$(read_pid "$1" 2>/dev/null || true)"
-  pid_alive "$pid" && python3 "$ROOT_DIR/scripts/local_stack_processes.py" "$ROOT_DIR" "$1" "$pid"
+  pid="$(read_pid "$key" 2>/dev/null || true)"
+  if pid_alive "$pid" && python3 "$ROOT_DIR/scripts/local_stack_processes.py" "$ROOT_DIR" "$key" "$pid" >/dev/null 2>&1; then
+    return 0
+  fi
+  return 1
 }
 
 port_in_use() {
@@ -101,9 +106,41 @@ port_in_use() {
 check_port() {
   local key="$1"
   local port="$2"
-  if port_in_use "$port" && ! managed_alive "$key"; then
-    die "port $port is already in use; refusing to kill an unmanaged process"
+  if ! port_in_use "$port"; then
+    return 0
   fi
+
+  if managed_alive "$key"; then
+    return 0
+  fi
+
+  local owner_status
+  owner_status="$(python3 "$ROOT_DIR/scripts/local_stack_processes.py" port-owner "$ROOT_DIR" "$key" "$port" 2>/dev/null || true)"
+  case "$owner_status" in
+    owned*)
+      local stale_pid
+      stale_pid="$(echo "$owner_status" | awk '{print $2}')"
+      printf '[cleanup] port %s is in use by stale %s (pid=%s); terminating real process...\n' "$port" "$key" "$stale_pid"
+      stop_process "$key" "$port"
+      for _ in {1..30}; do
+        if ! port_in_use "$port"; then
+          break
+        fi
+        sleep 0.1
+      done
+      if port_in_use "$port"; then
+        die "port $port is still in use after terminating $key (pid=$stale_pid)"
+      fi
+      ;;
+    external*)
+      local ext_detail
+      ext_detail="$(echo "$owner_status" | cut -d' ' -f2-)"
+      die "port $port is already in use by external process ($ext_detail); refusing to kill external process"
+      ;;
+    *)
+      die "port $port is already in use; refusing to kill an unmanaged process"
+      ;;
+  esac
 }
 
 spawn_detached() {
@@ -181,9 +218,21 @@ start_managed_key() {
 
 stop_process() {
   local key="$1"
+  local port="${2:-}"
+  if [ -z "$port" ]; then
+    case "$key" in
+      runtime-api) port="$RUNTIME_PORT" ;;
+      platform-api) port="$PLATFORM_API_PORT" ;;
+      platform-web) port="$PLATFORM_WEB_PORT" ;;
+    esac
+  fi
   # PID files can be stale or absent after a manual dev start. Resolve ownership
-  # from the app directory and executable; never kill an unrelated port owner.
-  python3 "$ROOT_DIR/scripts/local_stack_processes.py" "$ROOT_DIR" "$key"
+  # from the app directory, listening port, and executable; never kill an unrelated port owner.
+  if [ -n "$port" ]; then
+    python3 "$ROOT_DIR/scripts/local_stack_processes.py" stop "$ROOT_DIR" "$key" "$port"
+  else
+    python3 "$ROOT_DIR/scripts/local_stack_processes.py" stop "$ROOT_DIR" "$key"
+  fi
   rm -f "$(pid_file "$key")"
 }
 
@@ -357,7 +406,13 @@ status() {
     if managed_alive "$key"; then
       printf '%-16s running\n' "$key"
     else
-      printf '%-16s stopped\n' "$key"
+      local real_pids
+      real_pids="$(python3 "$ROOT_DIR/scripts/local_stack_processes.py" find "$ROOT_DIR" "$key" 2>/dev/null || true)"
+      if [ -n "$real_pids" ]; then
+        printf '%-16s running (untracked pid: %s)\n' "$key" "$real_pids"
+      else
+        printf '%-16s stopped\n' "$key"
+      fi
     fi
   done
   curl -fsS --max-time 2 "http://127.0.0.1:$RUNTIME_PORT/ready" >/dev/null 2>&1 \

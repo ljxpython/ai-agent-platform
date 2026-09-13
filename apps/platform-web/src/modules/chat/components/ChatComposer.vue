@@ -23,6 +23,7 @@ const props = defineProps<{
   models?: RuntimeModelItem[];
   selectedModelId?: string;
   defaultModelName?: string;
+  placeholder?: string;
   projectId?: string;
 }>();
 
@@ -167,6 +168,10 @@ function handleKeydown(event: KeyboardEvent) {
 onMounted(async () => {
   await syncTextareaHeight();
 });
+
+defineExpose({
+  focus: () => textareaRef.value?.focus(),
+});
 </script>
 
 <template>
@@ -208,7 +213,7 @@ onMounted(async () => {
             : 'min-h-[32px] max-h-[120px] overflow-y-auto text-sm leading-6',
           isFocusMode ? 'text-sm leading-6' : '',
         ]"
-        placeholder="输入消息，Enter 发送，Shift + Enter 换行。"
+        :placeholder="props.placeholder || '输入消息，Enter 发送，Shift + Enter 换行。'"
         aria-label="消息草稿"
         @keydown="handleKeydown"
         @paste="handleComposerPaste"

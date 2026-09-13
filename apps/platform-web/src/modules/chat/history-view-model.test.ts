@@ -81,4 +81,99 @@ describe('chat history view model', () => {
     expect(view.items[0]?.isCurrent).toBe(true)
     expect(view.items[1]?.isCurrent).toBe(false)
   })
+
+  it('能够基于当前 step 的最新动作精准生成预览标题', () => {
+    const view = buildChatHistoryView({
+      items: [
+        // 1. 等待审批 step
+        {
+          checkpoint_id: 'cp-interrupt',
+          interrupts: [{ value: 'approval required' }],
+          values: {
+            messages: [{ type: 'human', content: '初始提问' }]
+          }
+        },
+        // 2. 工具调用 step
+        {
+          checkpoint_id: 'cp-tool-call',
+          values: {
+            messages: [
+              { type: 'human', content: '初始提问' },
+              {
+                type: 'ai',
+                content: '',
+                tool_calls: [
+                  {
+                    name: 'write_file',
+                    args: { file_path: 'report.py' }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        // 3. 工具执行完成 step
+        {
+          checkpoint_id: 'cp-tool-result',
+          values: {
+            messages: [
+              { type: 'human', content: '初始提问' },
+              { type: 'tool', name: 'write_file', content: '成功写入 45 行代码' }
+            ]
+          }
+        },
+        // 4. Agent 回复文本 step
+        {
+          checkpoint_id: 'cp-ai-reply',
+          values: {
+            messages: [
+              { type: 'human', content: '初始提问' },
+              { type: 'ai', content: '已完成缺陷修复与代码验证' }
+            ]
+          }
+        },
+        // 5. 纯内部中间件 step (例如 ModelCallLimitMiddleware 流转)
+        {
+          checkpoint_id: 'cp-middleware-internal',
+          tasks: [{ name: 'ModelCallLimitMiddleware.after_model' }],
+          values: {
+            messages: [
+              { type: 'human', content: '初始提问' },
+              { type: 'ai', content: '已完成缺陷修复与代码验证' }
+            ]
+          }
+        },
+        // 6. 空 tasks 且无新消息的纯系统 step (对应用户实际遇到的中间步骤)
+        {
+          checkpoint_id: 'cp-system-internal-frame',
+          parent_checkpoint_id: 'cp-ai-reply',
+          metadata: { step: 181 },
+          values: {
+            messages: [
+              { type: 'human', content: '初始提问' },
+              { type: 'ai', content: '已完成缺陷修复与代码验证' }
+            ]
+          }
+        }
+      ],
+      selectedBranch: '',
+      isViewingBranch: false
+    })
+
+    expect(view.items[0]?.preview).toBe('🛑 等待审批: 需要人工确认操作')
+    expect(view.items[0]?.isKeyMilestone).toBe(true)
+    expect(view.items[1]?.preview).toContain('🔧 调用工具: write_file (report.py)')
+    expect(view.items[1]?.isKeyMilestone).toBe(true)
+    expect(view.items[2]?.preview).toContain('📥 工具完成 [write_file]: 成功写入 45 行代码')
+    expect(view.items[2]?.isKeyMilestone).toBe(true)
+    expect(view.items[3]?.preview).toContain('🤖 Agent: 已完成缺陷修复与代码验证')
+    expect(view.items[3]?.isKeyMilestone).toBe(true)
+    expect(view.items[4]?.preview).toBe('⚙️ 系统检查点 [ModelCallLimitMiddleware]')
+    expect(view.items[4]?.isKeyMilestone).toBe(false)
+    expect(view.items[5]?.isKeyMilestone).toBe(false)
+    expect(view.keyMilestoneCount).toBe(4)
+    expect(view.totalEntries).toBe(6)
+  })
 })
+
+

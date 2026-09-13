@@ -155,7 +155,27 @@ export function contentItems(content: unknown, key: string): ContentItem[] {
       }
       items.push({ key: itemKey, kind: "unknown", text: readable(value) });
     });
-  return items;
+
+  function cleanLeadingOrphanLineBreak(text: string): string {
+    return text.replace(/^([\u4e00-\u9fa5\w])\r?\n(?!\r?\n)([\u4e00-\u9fa5\w])/g, "$1$2");
+  }
+
+  const consolidated: ContentItem[] = [];
+  for (const item of items) {
+    const last = consolidated[consolidated.length - 1];
+    if (item.kind === "text" && last && last.kind === "text") {
+      last.text += item.text;
+      last.text = cleanLeadingOrphanLineBreak(last.text);
+    } else {
+      consolidated.push(
+        item.kind === "text"
+          ? { ...item, text: cleanLeadingOrphanLineBreak(item.text) }
+          : { ...item },
+      );
+    }
+  }
+
+  return consolidated;
 }
 
 /** A pure view of SDK messages and calls; no event accumulation or state mutation. */

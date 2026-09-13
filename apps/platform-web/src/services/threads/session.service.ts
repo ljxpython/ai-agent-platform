@@ -22,7 +22,7 @@ export function createSessionService(fetch: typeof globalThis.fetch, projectId?:
     // The gateway exposes checkpoint_id on GET state, not the SDK's extra checkpoint route.
     state: (threadId: string, checkpoint?: Checkpoint) => read<ThreadState<ChatState> & { interrupts?: Interrupt[] }>(`/threads/${encodeURIComponent(threadId)}/state${checkpoint?.checkpoint_id ? `?checkpoint_id=${encodeURIComponent(checkpoint.checkpoint_id)}` : ''}`),
     // SDK 1.10 types before as Config; the public wire contract requires a Checkpoint.
-    history: (threadId: string, before?: Checkpoint) => read<ChatCheckpoint[]>(`/threads/${encodeURIComponent(threadId)}/history`, { method: 'POST', body: JSON.stringify({ limit: 20, before }) }),
+    history: (threadId: string, before?: Checkpoint, limit = 20) => read<ChatCheckpoint[]>(`/threads/${encodeURIComponent(threadId)}/history`, { method: 'POST', body: JSON.stringify({ limit, before }) }),
     list: (offset = 0) => client.threads.search({ limit: 20, offset, sortBy: 'updated_at', sortOrder: 'desc', select: ['thread_id', 'metadata', 'status', 'created_at', 'updated_at'] }),
     count: () => client.threads.count(),
     remove: (threadId: string) => client.threads.delete(threadId),
