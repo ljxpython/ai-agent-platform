@@ -10,6 +10,7 @@ from platform_api.adapters.langgraph.threads_sdk_adapter import (
     LangGraphThreadsSdkAdapter,
 )
 from platform_api.core.errors import PlatformApiError
+from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
 
 
 class LangGraphRuntimeGatewayUpstream:
@@ -206,3 +207,33 @@ class LangGraphRuntimeGatewayUpstream:
         payload: dict[str, Any] | None = None,
     ) -> Any:
         return await self._runs.cancel(thread_id, run_id, payload)
+
+    async def upload_thread_image(
+        self,
+        *,
+        graph_id: str,
+        thread_id: str,
+        sha256: str,
+        content_type: str,
+        content_length: int,
+        body: AsyncIterator[bytes],
+    ) -> dict[str, Any]:
+        return await self._http.upload_image(
+            f"/internal/threads/{thread_id}/images/uploads/{sha256}",
+            body=body,
+            content_type=content_type,
+            content_length=content_length,
+        )
+
+    async def read_thread_image(
+        self,
+        *,
+        graph_id: str,
+        thread_id: str,
+        path: str,
+    ) -> BinaryPayload:
+        return await self._http.read_image(
+            f"/internal/threads/{thread_id}/images/content",
+            params={"path": path},
+        )
+

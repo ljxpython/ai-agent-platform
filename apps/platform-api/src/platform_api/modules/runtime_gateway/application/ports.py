@@ -1,7 +1,17 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 from typing import Any, Protocol
+
+
+@dataclass(frozen=True)
+class BinaryPayload:
+    body: AsyncIterator[bytes]
+    content_type: str
+    content_length: int | None = None
+    etag: str | None = None
+    cache_control: str | None = None
 
 
 class RuntimeGatewayUpstreamProtocol(Protocol):
@@ -103,3 +113,23 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
         run_id: str,
         payload: dict[str, Any] | None = None,
     ) -> Any: ...
+
+    async def upload_thread_image(
+        self,
+        *,
+        graph_id: str,
+        thread_id: str,
+        sha256: str,
+        content_type: str,
+        content_length: int,
+        body: AsyncIterator[bytes],
+    ) -> dict[str, Any]: ...
+
+    async def read_thread_image(
+        self,
+        *,
+        graph_id: str,
+        thread_id: str,
+        path: str,
+    ) -> BinaryPayload: ...
+

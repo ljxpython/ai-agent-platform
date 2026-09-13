@@ -40,9 +40,11 @@ build-backend = "setuptools.build_meta"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"runtime_service.services.demo.showcase_demo" = ["skills/*/SKILL.md", "examples/*", "README.md"]
+"runtime_service.services.demo.showcase_demo" = ["skills/*/SKILL.md", "examples/*", "README.md", "chart-schemas.json"]
 
 [tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+pythonpath = ["src", "tests"]
 markers = [
     "e2e: real-model or real-service end-to-end tests",
     "integration: requires a running Agent Server",

@@ -12,13 +12,19 @@ from contextlib import asynccontextmanager
 from uuid import UUID
 
 import httpx
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+from langgraph_sdk.auth import exceptions as auth_exceptions
 
 from runtime_service.auth.platform import authenticate
+from runtime_service.http.images import router as images_router
+from runtime_service.http.documents import router as documents_router
 from runtime_service.messaging import MessageInbox
 from runtime_service.messaging.reconcile import reconcile_run
 from runtime_service.observability import close_langfuse, initialize_langfuse
+from runtime_service.workspace.image_refs import validate_image_ref
+from runtime_service.workspace.file_refs import validate_file_ref
 
 
 @asynccontextmanager
@@ -31,6 +37,15 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(images_router)
+app.include_router(documents_router)
+
+
+@app.exception_handler(auth_exceptions.HTTPException)
+async def auth_exception_handler(request: Request, exc: auth_exceptions.HTTPException) -> JSONResponse:
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,6 +70,21 @@ class EnqueueMessage(BaseModel):
                     block.get("text"), str
                 ):
                     continue
+                if (
+                    set(block) <= {"type", "text", "extras"}
+                    and isinstance(block.get("text"), str)
+                    and isinstance(block.get("extras"), dict)
+                ):
+                    extras = block["extras"]
+                    if set(extras) == {"runtime_file"}:
+                        validate_file_ref(extras["runtime_file"])
+                        continue
+                    if set(extras) <= {"runtime_image"} and "runtime_image" in extras:
+                        try:
+                            validate_image_ref(extras["runtime_image"])
+                            continue
+                        except Exception:
+                            pass
             elif block.get("type") in {"image", "file"}:
                 allowed = (
                     {"image/jpeg", "image/png", "image/gif", "image/webp"}

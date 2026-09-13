@@ -79,8 +79,17 @@ def create_runtime_upstream_error(
         extra["upstream_path"] = upstream_path
     if detail not in (None, ""):
         extra["upstream_detail"] = detail
+
+    code = fallback_code
+    if isinstance(detail, Mapping):
+        inner_detail = detail.get("detail")
+        if isinstance(inner_detail, Mapping) and isinstance(inner_detail.get("code"), str):
+            code = inner_detail["code"]
+        elif isinstance(detail.get("code"), str):
+            code = detail["code"]
+
     return PlatformApiError(
-        code=fallback_code,
+        code=code,
         status_code=status_code,
         message=_runtime_upstream_message(detail, fallback_code=fallback_code),
         extra=extra,

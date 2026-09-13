@@ -24,6 +24,9 @@ function isDuplicateFile(file: File, attachments: ChatAttachmentBlock[]) {
 
 export function useChatAttachments(
   attachments: Ref<ChatAttachmentBlock[]> = ref([]),
+  options?: {
+    graphId?: Ref<string> | string;
+  },
 ) {
   const uiStore = useUiStore();
   const loading = ref(false);
@@ -42,6 +45,24 @@ export function useChatAttachments(
       return 0;
     }
     if (loading.value || disposed) return 0;
+
+    const currentGraphId =
+      typeof options?.graphId === "object"
+        ? options.graphId.value
+        : options?.graphId;
+    if (currentGraphId === "showcase_demo") {
+      const gifFiles = files.filter(
+        (f) => f.type === "image/gif" || f.name.toLowerCase().endsWith(".gif"),
+      );
+      if (gifFiles.length > 0) {
+        uiStore.pushToast({
+          type: "warning",
+          title: "不支持 GIF 图片",
+          message: "不支持动态 GIF，请转换为 PNG/JPEG/WEBP 后上传。",
+        });
+        return 0;
+      }
+    }
     if (
       files.some((file) => file.size > 5 * 1024 * 1024) ||
       files.length + attachments.value.length > 8 ||

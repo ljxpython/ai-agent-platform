@@ -16,6 +16,9 @@ const props = defineProps<{
   editingMessageId?: string;
   editingMessageValue?: string;
   stream?: AnyStream;
+  targetName?: string;
+  projectId?: string;
+  threadId?: string;
 }>();
 const emit = defineEmits<{
   inspect: [tool: ToolItem]; edit: [id: string, text: string]; retry: [id: string];
@@ -101,15 +104,28 @@ function selectBranch(id: string, offset: number) {
 }
 function handleEditingInput(event: Event) { emit("update:editingMessageValue", (event.target as HTMLTextAreaElement).value); }
 const copyError = ref("");
-async function copy(value: string) {
-  try { await navigator.clipboard.writeText(value); copyError.value = ""; }
-  catch { copyError.value = "复制失败，请手动选择文本复制"; }
+const copiedId = ref("");
+let copyTimeout: ReturnType<typeof setTimeout> | null = null;
+async function copy(value: string, id?: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    copyError.value = "";
+    if (id) {
+      copiedId.value = id;
+      if (copyTimeout) clearTimeout(copyTimeout);
+      copyTimeout = setTimeout(() => {
+        copiedId.value = "";
+      }, 2000);
+    }
+  } catch {
+    copyError.value = "复制失败，请手动选择文本复制";
+  }
 }
 </script>
 
 <template>
   <div
-    class="space-y-8"
+    class="space-y-7"
     data-testid="transcript"
   >
     <template
@@ -117,33 +133,35 @@ async function copy(value: string) {
       :key="displayEntry.id"
     >
       <article
-        class="pw-chat-turn"
+        class="group relative pw-chat-turn transition-all duration-200"
         :data-author="displayEntry.author"
         :class="displayEntry.author === 'user' ? 'items-end' : 'items-start'"
       >
         <div
-          class="pw-chat-turn-heading"
+          class="pw-chat-turn-heading mb-1.5"
           :class="displayEntry.author === 'user' ? 'self-end' : 'self-start'"
         >
           <template v-if="displayEntry.author === 'agent'">
-            <span class="pw-chat-agent-mark">
+            <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-tr from-primary-600 to-indigo-500 text-white shadow-xs">
               <BaseIcon
-                name="chat"
-                size="sm"
+                name="sparkle"
+                size="xs"
               />
             </span>
-            <span class="font-semibold text-gray-900 dark:text-white">Agent</span>
+            <span class="text-xs font-semibold text-gray-900 dark:text-white">{{ targetName || 'Agent' }}</span>
           </template>
           <template v-else>
-            <span class="font-medium text-gray-500 dark:text-dark-300">你</span>
+            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-primary-700 dark:bg-primary-950/80 dark:text-primary-300 text-xs font-semibold">
+              你
+            </span>
           </template>
         </div>
 
         <div
           :class="[
             displayEntry.author === 'user'
-              ? 'w-auto max-w-[85%] self-end rounded-2xl rounded-tr-sm border border-primary-200 bg-primary-50/90 px-5 py-3.5 shadow-xs text-primary-950 dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-100'
-              : 'w-full self-start rounded-2xl border border-gray-200/90 bg-white p-5 shadow-xs dark:border-dark-800 dark:bg-dark-900'
+              ? 'w-auto max-w-[85%] self-end rounded-2xl rounded-tr-sm border border-primary-200/90 bg-gradient-to-br from-primary-50/90 to-primary-100/40 px-4.5 py-3 shadow-2xs text-primary-950 dark:border-primary-800/60 dark:bg-gradient-to-br dark:from-primary-950/40 dark:to-dark-900 dark:text-primary-50'
+              : 'w-full self-start rounded-2xl border border-gray-200/80 bg-white/95 p-5 shadow-2xs transition-shadow hover:shadow-xs dark:border-dark-800/80 dark:bg-dark-900/95'
           ]"
         >
           <!-- Editing -->
@@ -160,24 +178,35 @@ async function copy(value: string) {
               <details
                 v-if="displayEntry.work.length"
                 :open="isRunning"
+                class="group/work rounded-xl border border-gray-200/70 bg-gray-50/60 p-3 transition-colors dark:border-dark-800 dark:bg-dark-950/40"
               >
-                <summary class="cursor-pointer text-xs text-gray-500">
-                  工作过程 · {{ displayEntry.work.length }} 项
+                <summary class="cursor-pointer select-none text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-dark-400 dark:hover:text-dark-200 flex items-center justify-between">
+                  <span class="flex items-center gap-2">
+                    <span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400 text-[10px] font-bold">
+                      {{ displayEntry.work.length }}
+                    </span>
+                    <span>执行步骤与工具调用</span>
+                  </span>
+                  <span class="text-[11px] text-gray-400 dark:text-dark-500">点击展开/收起</span>
                 </summary>
                 <div
                   v-for="item in displayEntry.work"
                   :key="item.key"
-                  class="mt-3 space-y-3"
+                  class="mt-3 space-y-3 pt-2 border-t border-gray-200/50 dark:border-dark-800/60"
                 >
                   <MessageContent
                     :blocks="item.blocks"
                     :is-streaming="displayEntry.isStreaming"
+                    :project-id="projectId"
+                    :thread-id="threadId"
                   />
                   <ToolResult
                     v-for="tool in item.tools"
                     :key="tool.key"
                     :tool="tool"
                     :stream="stream"
+                    :project-id="projectId"
+                    :thread-id="threadId"
                     @inspect="emit('inspect', $event)"
                   />
                 </div>
@@ -190,12 +219,16 @@ async function copy(value: string) {
                 <MessageContent
                   :blocks="item.blocks"
                   :is-streaming="displayEntry.isStreaming"
+                  :project-id="projectId"
+                  :thread-id="threadId"
                 />
                 <ToolResult
                   v-for="tool in item.tools"
                   :key="tool.key"
                   :tool="tool"
                   :stream="stream"
+                  :project-id="projectId"
+                  :thread-id="threadId"
                   @inspect="emit('inspect', $event)"
                 />
               </div>
@@ -204,20 +237,25 @@ async function copy(value: string) {
         </div>
 
         <div
-          class="flex max-w-[780px] flex-wrap items-center gap-2 text-xs"
-          :class="displayEntry.author === 'user' ? 'w-auto justify-end self-end' : 'w-full justify-start self-start'"
+          class="flex max-w-[780px] flex-wrap items-center gap-1.5 pt-1 text-xs transition-all duration-200"
+          :class="[
+            displayEntry.author === 'user' ? 'w-auto justify-end self-end' : 'w-full justify-start self-start',
+            editingMessageId === displayEntry.id || copiedId === displayEntry.id
+              ? 'opacity-100'
+              : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+          ]"
         >
           <template v-if="editingMessageId === displayEntry.id">
             <button
               type="button"
-              class="pw-table-tool-button h-8 rounded-lg px-3 text-xs"
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs text-gray-600 transition hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-300"
               @click="emit('cancel-edit')"
             >
               取消编辑
             </button>
             <button
               type="button"
-              class="pw-btn-primary inline-flex h-8 items-center justify-center rounded-lg px-3 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-50"
+              class="pw-btn-primary inline-flex h-7 items-center justify-center rounded-lg px-3 text-xs font-medium shadow-xs disabled:cursor-not-allowed disabled:opacity-50"
               :disabled="!canEdit || !editingMessageValue?.trim()"
               @click="emit('submit-edit')"
             >
@@ -227,36 +265,53 @@ async function copy(value: string) {
           <template v-else>
             <button
               type="button"
-              class="pw-table-tool-button h-8 rounded-lg px-3 text-xs"
-              @click="copy(displayEntry.text)"
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-200/80 bg-white/90 px-2 py-1 text-xs text-gray-500 shadow-2xs transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white"
+              :class="copiedId === displayEntry.id ? '!border-emerald-500 !text-emerald-600 dark:!text-emerald-400' : ''"
+              :title="copiedId === displayEntry.id ? '已复制' : '复制'"
+              @click="copy(displayEntry.text, displayEntry.id)"
             >
-              复制
+              <BaseIcon
+                :name="copiedId === displayEntry.id ? 'check' : 'copy'"
+                size="xs"
+              />
+              <span class="text-[11px]">{{ copiedId === displayEntry.id ? '已复制' : '复制' }}</span>
             </button>
             <button
               v-if="displayEntry.author === 'user' && canEdit && displayEntry.messageId"
               type="button"
-              class="pw-table-tool-button h-8 rounded-lg px-3 text-xs"
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-200/80 bg-white/90 px-2 py-1 text-xs text-gray-500 shadow-2xs transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white"
+              title="编辑"
               @click="emit('edit', displayEntry.messageId, displayEntry.text)"
             >
-              编辑
+              <BaseIcon
+                name="pencil"
+                size="xs"
+              />
+              <span class="text-[11px]">编辑</span>
             </button>
             <button
               v-if="displayEntry.author === 'agent' && canEdit && displayEntry.messageId"
               type="button"
-              class="pw-table-tool-button h-8 rounded-lg px-3 text-xs"
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-200/80 bg-white/90 px-2 py-1 text-xs text-gray-500 shadow-2xs transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white"
+              title="重试"
               @click="emit('retry', displayEntry.messageId!)"
             >
-              重试
+              <BaseIcon
+                name="refresh"
+                size="xs"
+              />
+              <span class="text-[11px]">重试</span>
             </button>
             <div
               v-if="hasBranchSwitcher(displayEntry.messageId || '')"
-              class="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-2 py-1"
+              class="inline-flex items-center gap-1 rounded-lg border border-gray-200/80 bg-white/90 px-1.5 py-0.5 shadow-2xs dark:border-dark-700/80 dark:bg-dark-800/90"
             >
               <button
                 type="button"
-                class="rounded-md p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-40"
+                class="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30 dark:hover:bg-dark-700 dark:hover:text-dark-200"
                 :disabled="getMessageBranchIndex(displayEntry.messageId || '') <= 0 || isRunning"
                 aria-label="上一个分支"
+                title="上一个分支"
                 @click="selectBranch(displayEntry.messageId || '', -1)"
               >
                 <BaseIcon
@@ -264,14 +319,15 @@ async function copy(value: string) {
                   size="xs"
                 />
               </button>
-              <span class="min-w-[64px] text-center font-medium text-gray-500">
+              <span class="min-w-[48px] text-center font-mono text-[11px] font-medium text-gray-500 dark:text-dark-300">
                 {{ getMessageBranchIndex(displayEntry.messageId || '') + 1 }} / {{ getMessageMeta(displayEntry.messageId || '')?.branchOptions?.length }}
               </span>
               <button
                 type="button"
-                class="rounded-md p-1 text-gray-500 hover:bg-gray-100 disabled:opacity-40"
+                class="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30 dark:hover:bg-dark-700 dark:hover:text-dark-200"
                 :disabled="getMessageBranchIndex(displayEntry.messageId || '') >= ((getMessageMeta(displayEntry.messageId || '')?.branchOptions?.length ?? 1) - 1) || isRunning"
                 aria-label="下一个分支"
+                title="下一个分支"
                 @click="selectBranch(displayEntry.messageId || '', 1)"
               >
                 <BaseIcon

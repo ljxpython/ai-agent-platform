@@ -31,8 +31,9 @@
 | 文件 | 职责 | 开发新 Agent 时怎么借鉴 |
 | --- | --- | --- |
 | `agent.py` | 唯一组合根：校验身份和 Context，取得模型，组合官方 Agent/中间件，接入追踪 | 保持显式装配，不实现工具或 HTTP client |
-| `prompts.py` | 主 Agent、只读研究助手、实现助手的指令 | 只放纯文本或纯渲染函数，不读环境变量和网络 |
-| `subagents.py` | 两个明确的内部角色及最小工具、权限、审批 | 角色复杂前使用声明式 SubAgent，不增加第二个 graph ID |
+| `prompts.py` | 主 Agent、只读研究助手、实现助手、图表助手的指令 | 只放纯文本或纯渲染函数，不读环境变量和网络 |
+| `subagents.py` | 三个明确的内部角色及最小工具、权限、审批 | 角色复杂前使用声明式 SubAgent，不增加第二个 graph ID |
+| `chart.py` / `chart-schemas.json` | 固定版本 AntV 工具与线程图片落盘 | 使用官方 MCP adapter，schema 探测不启动外部进程 |
 | `backend.py` | 线程工作区初始化、官方 FilesystemBackend 与 Docker 执行适配 | 只实现框架缺少的资源边界，不重写文件和搜索工具 |
 | `tools.py` | 受限 HTTPS 文档抓取 | 只放本服务特有的真实业务动作 |
 | `skills/showcase-notes/SKILL.md` | 可按需读取的任务指南 | Skills 是资源，不是工具，也不能授予权限 |
@@ -66,11 +67,12 @@
 显式使用官方默认角色名，避免框架另加一个权限不清楚的通用子 Agent；不修改全局模型 HarnessProfile。
 
 主/子 Agent 都接入 `RuntimeConfigMiddleware`。它在模型可见工具及实际调用边界检查：
-可信身份、Context 哈希、assistant/thread scope、平台 allowlist 与该角色的显式工具集。
+可信身份、Context 哈希、assistant/thread scope 与该角色的显式工具集；原有工具使用平台 allowlist，新增图片/MCP 工具由 Runtime 固定声明。
 `WorkspaceMiddleware` 再确认资源所属 tenant/project/thread，防止把已绑定的图复用于另一个租户。
 
 `RuntimeContext` 仍只有平台标准的 `model_id/temperature/max_tokens/top_p/tools`。
-`tools=[]` 表示禁用工具；省略则使用服务默认工具清单，平台必须授权对应工具及权限。
+`tools=[]` 表示禁用原有受平台管理工具；省略则使用原有服务默认工具清单，平台必须授权这些工具及权限。
+新增图片/MCP 工具独立由 Runtime 启用，不受该字段管理，具体边界见下方图片能力说明。
 `execute` 是可修改整个线程工作区的能力，不能授予只读角色；审批只代表用户同意，不能替代 Runtime 授权。
 
 当前权限映射在 `agent.py` 的 `_TOOL_PERMISSIONS` 中显式列出。
@@ -145,6 +147,48 @@ async for event in graph.astream(
 调用方应在提交前校验数量和决定类型；非法 resume 会由官方 Middleware 抛错，不能承诺原地重试任意错误 payload。
 
 ## 验证
+
+### 公共图片工具与图表 MCP
+
+主 Agent 挂载公共 `ImageToolsMiddleware`：`generate_image(prompt)` 每次需人工批准
+（支持批准/拒绝），`analyze_image(image_path, question)` 无需审批且不写分析文件。
+生成结果保存在 `/workspace/generated/`，识图只接受线程内 PNG/JPEG/WebP 文件。
+图片限制 20 MiB、2500 万像素；生成最多等待 180 秒，识图 60 秒，不自动重试付费请求。
+
+`chart-agent` 使用 `@antv/mcp-server-chart@0.9.10`，通过原生 `task` 委派。
+图表子智能体仅具备图表工具和只读文件工具，无法执行 shell、任意写文件或再次委派。
+图表工具的图片 URL 由 Runtime 转存至 `/workspace/charts/`；电子表格工具不在本图片演示范围。
+AntV 默认会使用外部图表服务，数据并非只在本地 stdio 进程内处理。
+
+示例：
+- “生成一张白底蓝色圆形图片。” → 文生图审批 → 返回实际路径。
+- “识别刚才生成的图片。” → 豆包识图 → 返回文本。
+- “把 A=12、B=23 交给图表助手画成条形图。” → task → chart-agent → MCP → 图表路径。
+
+这些新增工具由 Runtime 组合根固定启用和按角色授权，不加入上层 Context 工具名单。
+`Context.tools=[]` 仅禁用既有的受平台管理工具；新增图片工具仍可用，委派仍需既有 `task` 授权。
+身份、Context 哈希及 tenant/project/thread 检查仍然执行。不要将内部工具名单来源改成用户输入。
+公共工具通过绑定 `ImageWorkspace` 复用，不依赖 showcase 模块。
+
+测试用凭据放在应用 `.env`，由启动器注入；工具不自行读取用户主目录：
+
+| 环境变量 | 用途 |
+| --- | --- |
+| `IMAGE_25_URL` / `IMAGE_25_KEY` / `IMAGE_25_MODEL` | 文生图兼容接口、凭据、模型 |
+| `RUNTIME_IMAGE_ASSET_HOSTS` | 文生图返回图片的 HTTPS 下载域名，逗号分隔；不跟随重定向 |
+| `DOUBAO_API_BASE` / `DOUBAO_API_KEY` / `DOUBAO_MODEL` | 豆包 ChatOpenAI 兼容接口 |
+| `DOUBAO_MAX_TOKENS` | 识图输出 token 上限，最多 4096 |
+
+`/workspace/...` 是 Agent/容器路径，不是网页 URL。实际位置是
+`RUNTIME_SHOWCASE_WORKSPACE_ROOT/<scope-hash>/workspace/`；默认根目录相对服务进程工作目录解析。
+MCP schema 随包发布，构图与 schema 探测均不会启动 npx；每次真正调用才通过官方适配器开关会话。
+升级 MCP 版本时须同步工具 schema 并重新验证返回格式。
+
+```bash
+uv run pytest tests/services/showcase_demo/test_images_chart.py -m "not e2e"
+# 显式启用：一次真实文生图、豆包识图、主子图委派和 AntV MCP，测试会自动批准这一次生成。
+RUNTIME_IMAGE_LIVE_TEST=1 uv run pytest tests/services/showcase_demo/test_images_chart.py -k live -s
+```
 
 ```bash
 # 确定性模型驱动真实 Graph/文件工具；不调用外部模型和 Docker

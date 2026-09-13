@@ -16,6 +16,7 @@ from deepagents.backends.protocol import ExecuteResponse, SandboxBackendProtocol
 from langchain.agents.middleware import AgentMiddleware
 
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
+from runtime_service.workspace.scoped import hashed_thread_root, thread_scope_hash
 
 _PACKAGE = "runtime_service.services.demo.showcase_demo"
 _MAX_OUTPUT = 128 * 1024
@@ -26,11 +27,9 @@ class DockerWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
 
     def __init__(self, tenant_id: str, project_id: str, thread_id: str) -> None:
         self.scope = (tenant_id, project_id, thread_id)
-        self._id = hashlib.sha256(json.dumps(self.scope).encode()).hexdigest()
-        base = Path(
-            os.getenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", ".runtime/showcase")
-        ).resolve()
-        root = base / self._id
+        self._id = thread_scope_hash(tenant_id, project_id, thread_id)
+        base = os.getenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", ".runtime/showcase")
+        root = hashed_thread_root(base, tenant_id, project_id, thread_id)
         if root.is_symlink():
             raise RuntimeAuthError("runtime.workspace.invalid_path")
         super().__init__(root_dir=root, virtual_mode=True)

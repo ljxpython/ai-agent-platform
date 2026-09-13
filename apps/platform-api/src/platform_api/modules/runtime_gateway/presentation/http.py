@@ -141,6 +141,10 @@ def _require_project_id(request: Request) -> str:
 def _delegation_operation(request: Request) -> str:
     """Keep read and run creation credentials separate at the gateway boundary."""
     path = request.url.path
+    if "/images/uploads" in path:
+        return "image-upload"
+    if "/images/content" in path:
+        return "image-read"
     if path.endswith("/messages"):
         return "message-enqueue" if request.method == "POST" else "message-read"
     if request.method == "POST" and (path.endswith("/commands") or "/runs" in path):
@@ -405,6 +409,65 @@ async def list_thread_messages(request: Request, thread_id: str,
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service)) -> Any:
     return _redact_runtime_private_fields(await service.list_thread_messages(
         actor=actor, project_id=_require_project_id(request), thread_id=thread_id))
+
+
+@router.put("/threads/{thread_id}/images/uploads/{sha256}")
+async def upload_thread_image(
+    request: Request,
+    thread_id: str,
+    sha256: str,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    project_id = _require_project_id(request)
+    content_type = request.headers.get("content-type", "")
+    content_length_str = request.headers.get("content-length")
+    try:
+        content_length = int(content_length_str) if content_length_str is not None else 0
+    except ValueError:
+        content_length = 0
+
+    ref = await service.upload_thread_image(
+        actor=actor,
+        project_id=project_id,
+        thread_id=thread_id,
+        sha256=sha256,
+        content_type=content_type,
+        content_length=content_length,
+        body=request.stream(),
+    )
+    return _redact_runtime_private_fields(ref)
+
+
+@router.get("/threads/{thread_id}/images/content")
+async def read_thread_image(
+    request: Request,
+    thread_id: str,
+    path: str = Query(..., description="Workspace image path"),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> StreamingResponse:
+    project_id = _require_project_id(request)
+    payload = await service.read_thread_image(
+        actor=actor,
+        project_id=project_id,
+        thread_id=thread_id,
+        path=path,
+    )
+    headers: dict[str, str] = {}
+    if payload.content_length is not None:
+        headers["content-length"] = str(payload.content_length)
+    if payload.etag:
+        headers["etag"] = payload.etag
+    if payload.cache_control:
+        headers["cache-control"] = payload.cache_control
+
+    return RuntimeStreamingResponse(
+        payload.body,
+        media_type=payload.content_type,
+        headers=headers,
+    )
+
 
 @router.get("/threads/{thread_id}/state")
 async def get_thread_state(

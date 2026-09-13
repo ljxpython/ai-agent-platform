@@ -74,7 +74,9 @@ const {
   handleInputChange,
   handlePaste,
   removeAttachment,
-} = useChatAttachments(draftAttachments);
+} = useChatAttachments(draftAttachments, {
+  graphId: computed(() => props.graphId),
+});
 let submittedDraft: string | undefined;
 let submittedAttachments = new Set<unknown>();
 const session = useChatSession({
@@ -230,6 +232,32 @@ function focusComposer() {
   void nextTick(() => {
     composerRef.value?.focus();
   });
+}
+
+const copiedThread = ref(false);
+let threadCopyTimeout: ReturnType<typeof setTimeout> | null = null;
+async function copyThreadId() {
+  if (!session.threadId.value) return;
+  try {
+    await navigator.clipboard.writeText(session.threadId.value);
+    copiedThread.value = true;
+    if (threadCopyTimeout) clearTimeout(threadCopyTimeout);
+    threadCopyTimeout = setTimeout(() => {
+      copiedThread.value = false;
+    }, 2000);
+  } catch { /* ignore */ }
+}
+
+const quickPrompts = [
+  { icon: 'sparkle', title: '分析当前项目', desc: '全面梳理代码库结构与模块依赖关系' },
+  { icon: 'assistant', title: '设计功能方案', desc: '根据业务需求给出优雅的架构与接口设计' },
+  { icon: 'shield', title: '审查代码规范', desc: '排查潜在异常、安全漏洞与代码坏味道' },
+  { icon: 'activity', title: '调试系统问题', desc: '定位错误调用栈并提供直接可用的修复补丁' },
+];
+
+function applyQuickPrompt(title: string, desc: string) {
+  emit('update:draft', `${title}：${desc}`);
+  focusComposer();
 }
 
 function handleSnapshotFork() {
@@ -627,30 +655,55 @@ onScopeDispose(() => {
       <div class="flex min-h-8 flex-wrap items-center gap-2 xl:flex-nowrap">
         <div class="flex min-w-0 items-center gap-2">
           <slot name="target" />
-          <span class="pw-pill shrink-0 px-2.5 py-1 text-[11px]"><span class="text-gray-400">Thread</span><span>{{ session.threadId.value?.slice(0, 8) || '未创建' }}</span></span>
+          <button
+            v-if="session.threadId.value"
+            type="button"
+            class="group inline-flex items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 py-1 text-[11px] text-gray-500 shadow-2xs hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white transition-colors"
+            title="点击复制完整 Thread ID"
+            @click="copyThreadId"
+          >
+            <span class="font-mono text-gray-400 dark:text-dark-400">#</span>
+            <span class="font-mono font-medium">{{ session.threadId.value.slice(0, 8) }}</span>
+            <BaseIcon
+              :name="copiedThread ? 'check' : 'copy'"
+              size="xs"
+              class="text-gray-400 group-hover:text-gray-600 dark:text-dark-400 dark:group-hover:text-dark-200"
+              :class="copiedThread ? '!text-emerald-500' : ''"
+            />
+          </button>
+          <span
+            v-else
+            class="inline-flex items-center rounded-lg border border-dashed border-gray-200 bg-gray-50/50 px-2 py-1 text-[11px] text-gray-400 dark:border-dark-700 dark:bg-dark-900/50"
+          >
+            新会话
+          </span>
         </div>
         <div class="ml-auto flex flex-wrap items-center gap-2 xl:flex-nowrap">
           <slot name="actions" />
-          <BaseButton
-            variant="secondary"
-            class="h-8 shrink-0 px-3 text-xs"
+          <button
+            type="button"
+            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:text-white transition-colors"
+            title="查看会话上下文与历史"
             @click="openDrawer"
           >
             <BaseIcon
               name="overview"
-              size="sm"
-            />会话详情
-          </BaseButton>
-          <BaseButton
-            variant="secondary"
-            class="h-8 shrink-0 px-3 text-xs"
+              size="xs"
+            />
+            <span class="hidden sm:inline">详情</span>
+          </button>
+          <button
+            type="button"
+            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:text-white transition-colors"
+            title="配置运行参数"
             @click="openOptions"
           >
             <BaseIcon
               name="runtime"
-              size="sm"
-            />运行参数
-          </BaseButton>
+              size="xs"
+            />
+            <span class="hidden sm:inline">参数</span>
+          </button>
         </div>
       </div>
     </header>
@@ -761,28 +814,54 @@ onScopeDispose(() => {
             />
             <div
               v-if="!messages.length && !checking"
-              class="pw-chat-empty-state"
+              class="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center py-12 px-4 text-center"
             >
-              <span class="pw-chat-empty-mark">
+              <span class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-500 text-white shadow-md mb-4">
                 <BaseIcon
-                  name="chat"
+                  name="sparkle"
                   size="lg"
                 />
               </span>
-              <h2 class="mt-4 text-xl font-semibold text-gray-900 dark:text-white">
-                开始新的对话
+              <h2 class="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
+                {{ targetName ? `${targetName}` : '开始新的会话' }}
               </h2>
-              <p class="mt-2 max-w-lg text-sm leading-7 text-gray-500 dark:text-dark-300">
-                输入任务目标后，Agent 会在这里展示回复、执行步骤与需要你确认的操作。
+              <p class="mt-2 max-w-md text-xs leading-5 text-gray-500 dark:text-dark-400">
+                输入任务目标或点击下方常用场景卡片，Agent 将在这里展示执行细节与产物。
               </p>
+
+              <div class="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2 text-left">
+                <button
+                  v-for="(item, idx) in quickPrompts"
+                  :key="idx"
+                  type="button"
+                  class="group flex flex-col justify-between rounded-xl border border-gray-200/80 bg-white/85 p-3.5 shadow-2xs hover:border-primary-400 hover:bg-white hover:shadow-xs dark:border-dark-800 dark:bg-dark-900/80 dark:hover:border-primary-500/80 dark:hover:bg-dark-800 transition-all text-xs"
+                  @click="applyQuickPrompt(item.title, item.desc)"
+                >
+                  <div class="flex items-center gap-2 mb-1 font-semibold text-gray-800 dark:text-gray-100 group-hover:text-primary-600 dark:group-hover:text-primary-400">
+                    <span class="flex h-5 w-5 items-center justify-center rounded-md bg-gray-100 text-gray-600 dark:bg-dark-800 dark:text-dark-300 group-hover:bg-primary-50 group-hover:text-primary-600 dark:group-hover:bg-primary-950/60 dark:group-hover:text-primary-400 transition-colors">
+                      <BaseIcon
+                        :name="item.icon as any"
+                        size="xs"
+                      />
+                    </span>
+                    <span>{{ item.title }}</span>
+                  </div>
+                  <p class="text-[11px] text-gray-400 dark:text-dark-400 leading-normal">
+                    {{ item.desc }}
+                  </p>
+                </button>
+              </div>
             </div>
             <ChatMessageList
+              :project-id="projectId"
+              :thread-id="session.threadId.value || threadId || ''"
               :stream="stream"
               :messages="displayedMessages"
               :calls="snapshotMessages ? [] : calls"
               :is-running="busy && !snapshotMessages"
               :can-edit="canSend && !snapshotMessages"
               :metadata="messageMetadata"
+              :target-name="targetName"
               :editing-message-id="editingMessageId"
               :editing-message-value="editDraft"
               @select-branch="selectMessageBranch"

@@ -155,7 +155,14 @@ def create_runtime_delegation_token(
         if value is not None
     }
     operation = normalized_scope.get("operation")
-    if operation is not None and operation not in {"read", "run-create", "message-enqueue", "message-read"}:
+    if operation is not None and operation not in {
+        "read",
+        "run-create",
+        "message-enqueue",
+        "message-read",
+        "image-upload",
+        "image-read",
+    }:
         raise ValueError("runtime delegation scope operation is unsupported")
     if (
         normalized_scope.get("tenant_id") != tenant_id

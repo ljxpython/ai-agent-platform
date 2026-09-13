@@ -19,6 +19,9 @@
 | 任务进度条收起与时间旅行动作标题精准化 | 已完成：任务胶囊可随时 ✕ 收起且折叠为右上角微型恢复徽标彻底消除正文遮挡，时间旅行历史基于当前 Step 动作精准呈现标题 | [任务胶囊与时间旅行优化](../apps/platform-web/docs/changes/20260912-task-pill-dismiss-and-history-preview.md) |
 | 历史关键节点过滤、多步长翻页与消息编辑分叉 | 已完成：白名单精准识别业务里程碑并剔除无新动作系统流转帧；支持 +20/+50/+100 快速翻页；编辑消息即时响应与本地内存回溯杜绝卡死 | [关键节点与编辑分叉修复](../apps/platform-web/docs/changes/20260912-history-milestone-filter-and-edit-branch-fix.md) |
 | 时间旅行抽屉角色筛选与历史发问分叉 | 已完成：抽屉按用户/Agent/工具多维筛选与统计，可与关键节点组合，秒级定位发问检查点并分叉重新执行 | [时间旅行角色筛选](../apps/platform-web/docs/changes/20260913-history-checkpoint-role-filter.md) |
+| 前端对话页面美化与交互体验重构 | 已完成：Hover 浮动工具栏、复制反馈、高质感 Agent 胶囊选择器、Agent Hero 欢迎看板与快捷 Prompt、代码 Diff/终端卡片及输入框光晕微交互已全量交付通过 | [对话页面美化](projects/20260913-chat-ui-aesthetic-optimization/README.md) |
+| 对话正文与工具卡片工作区图片自动解析与渲染 | 已完成：聊天正文自动扫描工作区图片路径并派生渲染大图卡片，支持放大与下载；工具卡片中文别名与产物感知增强 | [图片自动渲染](../apps/platform-web/docs/changes/20260913-workspace-image-auto-render.md) |
+
 
 
 ## platform-api
@@ -38,6 +41,8 @@
 |---|---|---|
 | Graph 注册、模型参数解析、工具装配 | 已完成 | `apps/runtime-service/docs/standards/*.md` |
 | MCP 接入 | 已完成 | `apps/runtime-service/docs/knowledge/19-runtime-tool-capability-mcp-and-side-effect-design.md` |
+| 公共图片工具 Middleware、Showcase 图表 MCP 子智能体与平台图片链路 | 部分完成：G0 契约、Runtime 运输层、Platform API 网关与 Platform Web 前端交互及确定性自动化测试全部通过；待配置真实生产环境模型凭据进行线上 Smoke 联调 | [图片与图表能力方案](projects/20260913-showcase-image-chart-capabilities/README.md) |
+| Runtime Service 图片编辑（图生图 `edit_image`）与内容安全审核友好提示 | 已完成：支持基于已有图片执行图像编辑/风格转换，接入 HITL 人工审批，结构化捕获并友好提示 `content_policy_violation` | [图片编辑能力](../apps/runtime-service/docs/changes/20260913-image-editing-capability.md) |
 | Runtime 鉴权、middleware 层、reference agent | 已完成 | `apps/runtime-service/docs/knowledge/28-runtime-refactor-development-plan.md` |
 | showcase_demo — 教学智能体（工具调用/HITL/子智能体/Todo/Sandbox/Skills） | 部分完成：post26 平台后端真实联调、审批重启恢复与报表 43.50 已验收；前端后置 | `docs/projects/20260908-showcase-demo/` |
 

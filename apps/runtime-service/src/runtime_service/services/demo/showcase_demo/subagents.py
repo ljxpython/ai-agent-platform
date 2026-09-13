@@ -1,4 +1,4 @@
-"""Two explicit roles; no model-global profiles or implicit extra subagent."""
+"""Explicit research, implementation and chart roles with separate tool scopes."""
 
 from collections.abc import Callable, Sequence
 
@@ -7,8 +7,10 @@ from deepagents.backends.protocol import BackendProtocol
 from deepagents.middleware import FilesystemMiddleware, FilesystemPermission
 from langchain.agents.middleware import AgentMiddleware
 from langchain_core.language_models import BaseChatModel
+from langchain_core.tools import BaseTool
 
 from runtime_service.services.demo.showcase_demo.prompts import (
+    CHART_PROMPT,
     IMPLEMENTOR_PROMPT,
     RESEARCH_PROMPT,
 )
@@ -28,8 +30,9 @@ def build_subagents(
     model: BaseChatModel,
     backend: BackendProtocol,
     middleware: Callable[[Sequence[str]], list[AgentMiddleware]],
+    chart_tools: Sequence[BaseTool] = (),
 ) -> list[SubAgent]:
-    return [
+    agents = [
         {
             "name": "research",
             "description": "只读分析实际项目，返回问题依据与最小修改建议。",
@@ -65,3 +68,19 @@ def build_subagents(
             ],
         },
     ]
+    if chart_tools:
+        agents.append({
+            "name": "chart-agent",
+            "description": "根据委派的数据，用 AntV MCP 生成图表并返回 /workspace/charts/ 图片路径。",
+            "system_prompt": CHART_PROMPT,
+            "model": model,
+            "tools": list(chart_tools),
+            "permissions": PERMISSIONS,
+            "interrupt_on": {},
+            "middleware": [
+                FilesystemMiddleware(backend=backend, tools=list(READ_TOOLS),
+                                     _permissions=PERMISSIONS),
+                *middleware((*READ_TOOLS, *(tool.name for tool in chart_tools))),
+            ],
+        })
+    return agents

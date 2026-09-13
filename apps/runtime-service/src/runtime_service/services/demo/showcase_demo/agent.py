@@ -19,7 +19,9 @@ from runtime_service.middlewares import (
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     RuntimeConfigMiddleware,
+    DocumentToolsMiddleware,
 )
+from runtime_service.middlewares.images import ImageToolsMiddleware
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.runtime import (
     AgentDefaults,
@@ -38,6 +40,7 @@ from runtime_service.services.demo.showcase_demo.backend import (
     WorkspaceMiddleware,
     build_backend,
 )
+from runtime_service.services.demo.showcase_demo.chart import build_chart_tools
 from runtime_service.services.demo.showcase_demo.prompts import SYSTEM_PROMPT
 from runtime_service.services.demo.showcase_demo.subagents import (
     APPROVALS,
@@ -46,11 +49,12 @@ from runtime_service.services.demo.showcase_demo.subagents import (
     build_subagents,
 )
 from runtime_service.services.demo.showcase_demo.tools import fetch_documentation
+from runtime_service.tools.images import ImageWorkspace
 
 _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
     system_prompt=SYSTEM_PROMPT,
-    prompt_version="showcase-demo-v2",
+    prompt_version="showcase-demo-v3",
     optional_tool_names=(*WORK_TOOLS, "task", "write_todos", "fetch_documentation"),
 )
 _TOOL_PERMISSIONS = {
@@ -120,6 +124,15 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         model = ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
 
     backend = build_backend(workspace)
+    image_workspace = ImageWorkspace(None if workspace is None else workspace.cwd / "workspace")
+    image_middleware = ImageToolsMiddleware(image_workspace)
+    document_middleware = DocumentToolsMiddleware(
+        None if workspace is None else workspace.cwd / "workspace"
+    )
+    chart_tools = build_chart_tools(image_workspace)
+    image_names = tuple(tool.name for tool in image_middleware.tools)
+    document_names = tuple(tool.name for tool in document_middleware.tools)
+    internal_names = (*image_names, *document_names, *(tool.name for tool in chart_tools))
 
     def model_builder(next_config):
         if resolved is None:
@@ -138,6 +151,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 model_builder=model_builder,
                 tool_permissions=_TOOL_PERMISSIONS,
                 tool_names=tool_names,
+                internal_tool_names=internal_names,
             ),
             WorkspaceMiddleware(workspace),
             ModelCallLimitMiddleware(run_limit=12, exit_behavior="error"),
@@ -153,7 +167,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         skills=["/skills/"],
         permissions=PERMISSIONS,
         interrupt_on=APPROVALS,
-        subagents=build_subagents(model, backend, middleware),
+        subagents=build_subagents(model, backend, middleware, chart_tools),
         middleware=[
             FilesystemMiddleware(
                 backend=backend,
@@ -161,7 +175,9 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 _permissions=PERMISSIONS,
                 max_execute_timeout=60,
             ),
-            *middleware(_DEFAULTS.optional_tool_names),
+            *middleware((*_DEFAULTS.optional_tool_names, *image_names, *document_names)),
+            image_middleware,
+            document_middleware,
             TodoListMiddleware(),
             MessageQueueMiddleware(),
         ],

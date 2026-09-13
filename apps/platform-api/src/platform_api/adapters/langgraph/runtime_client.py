@@ -11,6 +11,7 @@ from platform_api.adapters.langgraph.sdk_client import (
     raise_runtime_upstream_error,
 )
 from platform_api.core.errors import PlatformApiError, UpstreamServiceError
+from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
 
 
 class LangGraphRuntimeClient:
@@ -206,3 +207,139 @@ class LangGraphRuntimeClient:
             status_code=502,
             message="LangGraph upstream returned an invalid object payload",
         )
+
+    async def upload_image(
+        self,
+        path: str,
+        *,
+        body: AsyncIterator[bytes],
+        content_type: str,
+        content_length: int,
+        forwarded_headers: Mapping[str, str] | None = None,
+    ) -> dict[str, Any]:
+        headers = self._headers(
+            accept="application/json",
+            forwarded_headers=forwarded_headers,
+        )
+        headers["content-type"] = content_type
+        headers["content-length"] = str(content_length)
+
+        try:
+            async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+                response = await client.request(
+                    method="PUT",
+                    url=self._url(path),
+                    content=body,
+                    headers=headers,
+                )
+        except httpx.TimeoutException as exc:
+            raise UpstreamServiceError(
+                upstream="langgraph",
+                status_code=504,
+                code="langgraph_upstream_timeout",
+                message="LangGraph upstream timed out",
+            ) from exc
+        except httpx.HTTPError as exc:
+            raise UpstreamServiceError(
+                upstream="langgraph",
+                status_code=502,
+                code="langgraph_upstream_unavailable",
+                message="LangGraph upstream is unavailable",
+            ) from exc
+
+        await self._raise_for_status(response)
+
+        try:
+            return response.json()
+        except ValueError:
+            raise PlatformApiError(
+                code="langgraph_upstream_invalid_response",
+                status_code=502,
+                message="LangGraph upstream returned an invalid JSON response",
+            )
+
+    async def read_image(
+        self,
+        path: str,
+        *,
+        params: Mapping[str, Any] | None = None,
+        forwarded_headers: Mapping[str, str] | None = None,
+    ) -> BinaryPayload:
+        client = httpx.AsyncClient(timeout=httpx.Timeout(None, connect=self._timeout_seconds))
+        response = None
+        try:
+            request = client.build_request(
+                "GET",
+                self._url(path),
+                params=dict(params) if params is not None else None,
+                headers=self._headers(forwarded_headers=forwarded_headers),
+            )
+            response = await client.send(request, stream=True)
+            if response.status_code >= 400:
+                await response.aread()
+                await self._raise_for_status(response)
+        except BaseException as exc:
+            with CancelScope(shield=True):
+                if response is not None:
+                    await response.aclose()
+                await client.aclose()
+            if isinstance(exc, (PlatformApiError, UpstreamServiceError)):
+                raise
+            if isinstance(exc, httpx.HTTPError):
+                raise_runtime_upstream_error(exc, fallback_detail="langgraph_image_read_failed")
+            raise
+
+        content_type = response.headers.get("content-type", "")
+        media_type = content_type.split(";")[0].strip().lower()
+        if media_type not in {"image/png", "image/jpeg", "image/webp"}:
+            with CancelScope(shield=True):
+                await response.aclose()
+                await client.aclose()
+            raise PlatformApiError(
+                code="runtime_invalid_image_response",
+                status_code=502,
+                message=f"Unsupported image content type: {content_type}",
+            )
+
+        content_length_str = response.headers.get("content-length")
+        content_length = int(content_length_str) if content_length_str and content_length_str.isdigit() else None
+        if content_length is not None and content_length > 20 * 1024 * 1024:
+            with CancelScope(shield=True):
+                await response.aclose()
+                await client.aclose()
+            raise PlatformApiError(
+                code="runtime_invalid_image_response",
+                status_code=502,
+                message="Image content length exceeds 20 MiB limit",
+            )
+
+        etag = response.headers.get("etag")
+        cache_control = response.headers.get("cache-control")
+        max_bytes = 20 * 1024 * 1024
+
+        async def body_stream() -> AsyncIterator[bytes]:
+            total = 0
+            try:
+                async for chunk in response.aiter_bytes():
+                    if chunk:
+                        total += len(chunk)
+                        if total > max_bytes:
+                            raise PlatformApiError(
+                                code="runtime_invalid_image_response",
+                                status_code=502,
+                                message="Image stream exceeded 20 MiB limit",
+                            )
+                        yield chunk
+            finally:
+                with CancelScope(shield=True):
+                    await response.aclose()
+                    await client.aclose()
+
+        return BinaryPayload(
+            body=body_stream(),
+            content_type=content_type,
+            content_length=content_length,
+            etag=etag,
+            cache_control=cache_control,
+        )
+

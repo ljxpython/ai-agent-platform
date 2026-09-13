@@ -1,12 +1,26 @@
+import { isValidImageRef, type RuntimeImageRef } from '@/services/threads/images.service'
+
 type ChatTextBlock = {
   type: 'text'
   text: string
+}
+
+export type ChatRuntimeImageTextBlock = {
+  type: 'text'
+  text: string
+  extras: {
+    runtime_image: RuntimeImageRef
+  }
 }
 
 export type ChatImageAttachmentBlock = {
   type: 'image'
   mimeType: string
   data: string
+  file?: File
+  uploadStatus?: 'pending' | 'hashing' | 'uploading' | 'uploaded' | 'failed'
+  runtimeImageRef?: RuntimeImageRef
+  errorMessage?: string
   metadata?: Record<string, unknown>
 }
 
@@ -18,6 +32,31 @@ export type ChatFileAttachmentBlock = {
 }
 
 export type ChatAttachmentBlock = ChatImageAttachmentBlock | ChatFileAttachmentBlock
+
+export function isRuntimeImageTextBlock(value: unknown): value is ChatRuntimeImageTextBlock {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false
+  }
+  const obj = value as Record<string, unknown>
+  if (obj.type !== 'text' || typeof obj.text !== 'string') {
+    return false
+  }
+  const extras = obj.extras
+  if (!extras || typeof extras !== 'object' || Array.isArray(extras)) {
+    return false
+  }
+  return isValidImageRef((extras as Record<string, unknown>).runtime_image)
+}
+
+export function createRuntimeImageTextBlock(filename: string, ref: RuntimeImageRef): ChatRuntimeImageTextBlock {
+  return {
+    type: 'text',
+    text: `[图片附件] ${filename}\n${ref.path}`,
+    extras: {
+      runtime_image: ref,
+    },
+  }
+}
 
 export const SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES = [
   'image/jpeg',
@@ -84,6 +123,8 @@ export async function fileToChatAttachmentBlock(file: File): Promise<ChatAttachm
       type: 'image',
       mimeType: file.type,
       data,
+      file,
+      uploadStatus: 'pending',
       metadata: {
         name: file.name
       }

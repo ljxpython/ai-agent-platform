@@ -49,6 +49,7 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         local_fallback: bool = False,
         tool_names: Sequence[str] | None = None,
         probe_only: bool = False,
+        internal_tool_names: Sequence[str] = (),
     ) -> None:
         super().__init__()
         self._principal = principal
@@ -60,6 +61,8 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         self._local_fallback = local_fallback
         self._tool_names = None if tool_names is None else frozenset(tool_names)
         self._probe_only = probe_only
+        # Trusted composition-root declarations, never taken from Context/claims.
+        self._internal_tool_names = frozenset(internal_tool_names)
 
     @staticmethod
     def _user(runtime: object) -> object | None:
@@ -123,7 +126,8 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         self._resolve(runtime)
 
     def _allowed_tools(self, resolved: ResolvedRuntimeConfig) -> set[str]:
-        allowed = set(resolved.required_tool_names) | set(resolved.optional_tool_names)
+        allowed = (set(resolved.required_tool_names) | set(resolved.optional_tool_names)
+                   | self._internal_tool_names)
         return allowed if self._tool_names is None else allowed & self._tool_names
 
     async def awrap_model_call(self, request: ModelRequest, handler):

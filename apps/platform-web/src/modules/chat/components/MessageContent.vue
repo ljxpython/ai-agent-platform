@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import MarkdownContent from "@/components/platform/MarkdownContent.vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import ThreadImage from "./ThreadImage.vue";
 import type { ContentItem } from "../transcript";
 
 defineProps<{
   blocks: ContentItem[];
   isStreaming?: boolean;
+  projectId?: string;
+  threadId?: string;
 }>();
 const expanded = ref<Record<string, boolean>>({});
 </script>
@@ -18,48 +22,71 @@ const expanded = ref<Record<string, boolean>>({});
     >
       <div
         v-if="block.kind === 'loading'"
-        class="flex items-center gap-2 text-xs text-gray-500 dark:text-dark-400 py-1"
+        class="flex items-center gap-2 text-xs text-primary-600 dark:text-primary-400 py-1 font-medium"
       >
-        <span class="inline-block h-2 w-2 animate-ping rounded-full bg-primary-500" />
+        <span class="relative flex h-2 w-2">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
+          <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500" />
+        </span>
         <span>Agent 正在组织答复...</span>
       </div>
       <div
         v-else-if="block.kind === 'text'"
-        class="relative"
+        class="relative leading-relaxed"
       >
         <MarkdownContent
           :content="block.text.length > 12000 && !expanded[block.key] ? block.text.slice(0, 12000) : block.text"
         />
         <span
           v-if="isStreaming"
-          class="inline-block h-4 w-1.5 translate-y-0.5 animate-pulse bg-primary-600 dark:bg-primary-400 ml-0.5 align-middle"
+          class="inline-block h-4 w-1.5 translate-y-0.5 animate-pulse bg-primary-600 dark:bg-primary-400 ml-0.5 align-middle rounded-xs"
           aria-hidden="true"
         />
       </div>
       <details
         v-else-if="block.kind === 'reasoning'"
-        class="rounded-lg border border-gray-200 bg-gray-50/60 p-2.5 dark:border-dark-700 dark:bg-dark-800/50 text-xs"
+        class="group/reasoning rounded-xl border border-amber-200/70 bg-amber-50/40 p-3 text-xs dark:border-amber-900/40 dark:bg-amber-950/20 transition-all"
         :open="expanded[block.key] ?? !!isStreaming"
         @toggle="
           expanded[block.key] = ($event.target as HTMLDetailsElement).open
         "
       >
-        <summary class="cursor-pointer font-medium text-gray-600 dark:text-dark-300 select-none flex items-center gap-1.5">
-          <span
-            v-if="isStreaming"
-            class="inline-block h-1.5 w-1.5 animate-ping rounded-full bg-amber-500"
-          />
-          <span>{{ isStreaming ? "正在思考中..." : "思考过程" }}</span>
+        <summary class="cursor-pointer font-medium text-amber-900/90 dark:text-amber-200/90 select-none flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span
+              v-if="isStreaming"
+              class="relative flex h-2 w-2"
+            >
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+            </span>
+            <span
+              v-else
+              class="inline-flex h-4 w-4 items-center justify-center rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
+            >
+              <BaseIcon
+                name="sparkle"
+                size="xs"
+              />
+            </span>
+            <span>{{ isStreaming ? "正在思考中..." : "思考过程" }}</span>
+          </div>
+          <span class="text-[11px] text-amber-700/70 dark:text-amber-400/70 group-open/reasoning:rotate-180 transition-transform duration-200">
+            <BaseIcon
+              name="chevron-down"
+              size="xs"
+            />
+          </span>
         </summary>
         <div
-          class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap text-xs text-gray-700 dark:text-dark-200 border-t border-gray-200/60 pt-2 dark:border-dark-700"
+          class="mt-2.5 max-h-96 overflow-auto whitespace-pre-wrap text-xs text-gray-700 dark:text-dark-200 border-t border-amber-200/50 pt-2.5 dark:border-amber-900/30 leading-relaxed font-mono"
         >
           {{ block.text }}
         </div>
       </details>
       <details
         v-else-if="block.kind === 'unknown'"
-        class="text-xs text-gray-500"
+        class="rounded-lg border border-gray-200 p-2.5 text-xs text-gray-500 dark:border-dark-700"
         @toggle="
           expanded[block.key] = ($event.target as HTMLDetailsElement).open
         "
@@ -69,24 +96,45 @@ const expanded = ref<Record<string, boolean>>({});
         </summary>
         <pre
           v-if="expanded[block.key]"
-          class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap text-xs"
+          class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap text-xs font-mono"
         >{{ block.text }}</pre>
       </details>
-      <img
-        v-else-if="block.kind === 'image' && block.url"
-        :src="block.url"
-        :alt="block.text"
-        loading="lazy"
-        referrerpolicy="no-referrer"
-        class="max-h-96 max-w-full rounded-lg"
+      <div
+        v-else-if="block.kind === 'image' && block.imageRef"
+        class="my-1"
       >
+        <ThreadImage
+          :project-id="projectId || ''"
+          :thread-id="threadId || ''"
+          :image-ref="block.imageRef"
+          :alt="block.text"
+        />
+      </div>
+      <div
+        v-else-if="block.kind === 'image' && block.url"
+        class="overflow-hidden rounded-xl border border-gray-200 shadow-xs dark:border-dark-700 max-w-md my-1"
+      >
+        <img
+          :src="block.url"
+          :alt="block.text"
+          loading="lazy"
+          referrerpolicy="no-referrer"
+          class="max-h-96 w-full object-contain bg-gray-50 dark:bg-dark-900"
+        >
+      </div>
       <a
         v-else-if="block.kind === 'file' && block.url"
         :href="block.url"
         target="_blank"
         rel="noopener noreferrer"
-        class="text-primary-600 underline"
-      >{{ block.text }}</a>
+        class="inline-flex items-center gap-1.5 rounded-lg border border-primary-200/80 bg-primary-50/60 px-3 py-1.5 text-xs font-medium text-primary-700 hover:bg-primary-100/80 transition-colors dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-300"
+      >
+        <BaseIcon
+          name="file"
+          size="xs"
+        />
+        <span>{{ block.text }}</span>
+      </a>
       <p
         v-else
         class="text-xs text-gray-500"
@@ -95,7 +143,7 @@ const expanded = ref<Record<string, boolean>>({});
       </p>
       <button
         v-if="block.kind === 'text' && block.text.length > 12000"
-        class="text-xs underline"
+        class="text-xs underline text-primary-600 dark:text-primary-400"
         :aria-expanded="!!expanded[block.key]"
         @click="expanded[block.key] = !expanded[block.key]"
       >

@@ -1,5 +1,9 @@
 import type { BaseMessage } from "@langchain/core/messages";
 import type { AssembledToolCall } from "@langchain/langgraph-sdk/stream";
+import {
+  isValidImageRef,
+  type RuntimeImageRef,
+} from "@/services/threads/images.service";
 
 export function asObject(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value)
@@ -36,6 +40,7 @@ export type ContentItem = {
   kind: "text" | "reasoning" | "image" | "file" | "loading" | "unknown";
   text: string;
   url?: string;
+  imageRef?: RuntimeImageRef;
 };
 export type ToolItem = {
   key: string;
@@ -76,7 +81,38 @@ export function extractReasoningFromMessage(message: BaseMessage): string {
   return "";
 }
 
-export function contentItems(content: unknown, key: string): ContentItem[] {
+export const WORKSPACE_IMAGE_PATH_REGEX =
+  /\/workspace\/(?:charts|generated|uploads)\/[a-zA-Z0-9_-]+\.(?:png|jpg|jpeg|webp)/gi;
+
+export function extractWorkspaceImageRefs(text: string): RuntimeImageRef[] {
+  if (!text || typeof text !== "string") return [];
+  const matches = text.match(WORKSPACE_IMAGE_PATH_REGEX);
+  if (!matches) return [];
+  const uniquePaths = Array.from(new Set(matches));
+  return uniquePaths.map((p) => {
+    const lower = p.toLowerCase();
+    const ext = lower.endsWith(".png")
+      ? "png"
+      : lower.endsWith(".webp")
+        ? "webp"
+        : "jpeg";
+    return {
+      version: 1,
+      path: p,
+      mime_type: `image/${ext}` as RuntimeImageRef["mime_type"],
+      size_bytes: 1,
+      sha256: "0".repeat(64),
+    };
+  });
+}
+
+export const WORKSPACE_CHART_PATH_REGEX = WORKSPACE_IMAGE_PATH_REGEX;
+export const extractChartWeakImageRefs = extractWorkspaceImageRefs;
+
+export function contentItems(
+  content: unknown,
+  key: string,
+): ContentItem[] {
   const values =
     typeof content === "string"
       ? [{ type: "text", text: content }]
@@ -93,6 +129,18 @@ export function contentItems(content: unknown, key: string): ContentItem[] {
           : asObject(value);
       const itemKey = `${key}:${index}`;
       if (block.type === "text" || block.type === "text-plain") {
+        if (block.extras && typeof block.extras === "object") {
+          const runtimeImage = (block.extras as Record<string, unknown>).runtime_image;
+          if (isValidImageRef(runtimeImage)) {
+            items.push({
+              key: itemKey,
+              kind: "image",
+              text: String(block.text ?? ""),
+              imageRef: runtimeImage,
+            });
+            return;
+          }
+        }
         const text = String(block.text ?? "");
         const thinkMatch = /<(?:think|thinking)>([\s\S]*?)(?:<\/(?:think|thinking)>|$)/i.exec(text);
         if (thinkMatch) {
@@ -175,7 +223,33 @@ export function contentItems(content: unknown, key: string): ContentItem[] {
     }
   }
 
-  return consolidated;
+  const result: ContentItem[] = [];
+  const existingImagePaths = new Set<string>();
+  for (const item of consolidated) {
+    if (item.kind === "image" && item.imageRef?.path) {
+      existingImagePaths.add(item.imageRef.path);
+    }
+  }
+
+  for (const item of consolidated) {
+    result.push(item);
+    if (item.kind === "text" && item.text) {
+      const weakImages = extractWorkspaceImageRefs(item.text);
+      weakImages.forEach((img, imgIdx) => {
+        if (!existingImagePaths.has(img.path)) {
+          existingImagePaths.add(img.path);
+          result.push({
+            key: `${item.key}:img:${imgIdx}`,
+            kind: "image",
+            text: img.path,
+            imageRef: img,
+          });
+        }
+      });
+    }
+  }
+
+  return result;
 }
 
 /** A pure view of SDK messages and calls; no event accumulation or state mutation. */
@@ -307,3 +381,55 @@ export function buildTranscript(
     }
   return turns;
 }
+
+
+export function extractRuntimeImages(contentOrArtifact: unknown): RuntimeImageRef[] {
+  const refs: RuntimeImageRef[] = [];
+  const seen = new Set<string>();
+
+  function add(ref: unknown) {
+    if (isValidImageRef(ref)) {
+      const key = `${ref.path}:${ref.sha256}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        refs.push(ref);
+      }
+    }
+  }
+
+  function walk(val: unknown) {
+    if (!val || typeof val !== "object") return;
+    if (isValidImageRef(val)) {
+      add(val);
+      return;
+    }
+    if (Array.isArray(val)) {
+      for (const item of val) walk(item);
+      return;
+    }
+    const obj = val as Record<string, unknown>;
+    if (obj.extras && typeof obj.extras === "object") {
+      const extras = obj.extras as Record<string, unknown>;
+      if (extras.runtime_image) {
+        add(extras.runtime_image);
+      }
+    }
+    if (Array.isArray(obj.runtime_images)) {
+      for (const item of obj.runtime_images) add(item);
+    }
+    const structured = obj.structured_content || obj.structuredContent;
+    if (structured && typeof structured === "object") {
+      const sObj = structured as Record<string, unknown>;
+      if (Array.isArray(sObj.runtime_images)) {
+        for (const item of sObj.runtime_images) add(item);
+      }
+    }
+    for (const key of ["artifact", "content"]) {
+      if (obj[key]) walk(obj[key]);
+    }
+  }
+
+  walk(contentOrArtifact);
+  return refs;
+}
+

@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { AnyStream } from "@langchain/vue";
-import { asObject, contentItems, readable, type ToolItem } from "../transcript";
+import { asObject, contentItems, extractRuntimeImages, extractWorkspaceImageRefs, readable, type ToolItem } from "../transcript";
 import MessageContent from "./MessageContent.vue";
 import SubagentCard from "./SubagentCard.vue";
+import ThreadImage from "./ThreadImage.vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
 
 const props = defineProps<{
   tool: ToolItem;
   stream?: AnyStream;
+  projectId?: string;
+  threadId?: string;
 }>();
 const emit = defineEmits<{ inspect: [tool: ToolItem] }>();
 const expanded = ref(false);
@@ -72,15 +76,34 @@ const todoItems = computed<Array<{ content: string; status: string }>>(() => {
 const activeTodo = computed(() =>
   todoItems.value.find((t) => t.status === "in_progress"),
 );
+const runtimeImages = computed(() => {
+  const explicit = extractRuntimeImages(props.tool.artifact);
+  if (explicit.length > 0) return explicit;
+  return extractWorkspaceImageRefs(
+    typeof props.tool.output === "string" ? props.tool.output : "",
+  );
+});
 const displayTitle = computed(() => {
   if (props.tool.name === "write_todos") {
     return "更新任务清单";
+  }
+  if (props.tool.name === "generate_image") {
+    return "文生图";
+  }
+  if (props.tool.name === "edit_image") {
+    return "图像编辑/图生图";
+  }
+  if (props.tool.name === "analyze_image") {
+    return "图像识别分析";
   }
   return props.tool.name;
 });
 const displaySubtitle = computed(() => {
   if (props.tool.name === "write_todos") {
     return todoItems.value.length ? ` · 共 ${todoItems.value.length} 项` : "";
+  }
+  if (runtimeImages.value.length) {
+    return ` · 产物: ${runtimeImages.value[0]?.path}`;
   }
   return path.value ? ` · ${path.value}` : "";
 });
@@ -91,64 +114,95 @@ const displaySubtitle = computed(() => {
     v-if="tool.name === 'task'"
     :tool="tool"
     :stream="stream"
+    :project-id="projectId"
+    :thread-id="threadId"
     @inspect="emit('inspect', $event)"
   />
   <div
     v-else
-    class="rounded-lg border border-gray-200 text-sm dark:border-dark-700"
+    class="rounded-xl border border-gray-200/90 bg-white/95 text-sm shadow-2xs dark:border-dark-700/80 dark:bg-dark-900/90 overflow-hidden"
   >
     <button
       type="button"
-      class="flex w-full items-center gap-3 p-3 text-left focus-visible:ring-2"
+      class="flex w-full items-center gap-2.5 p-3 text-left transition-colors hover:bg-gray-50/80 focus-visible:ring-2 dark:hover:bg-dark-800/60"
       :aria-expanded="expanded"
       @click="expanded = !expanded"
     >
-      <span aria-hidden="true">{{ expanded ? "▾" : "▸" }}</span>
-      <span class="min-w-0 flex-1 truncate font-medium">{{ displayTitle }}
+      <BaseIcon
+        name="chevron-down"
+        size="xs"
+        class="text-gray-400 transition-transform duration-200 shrink-0"
+        :class="expanded ? 'rotate-0' : '-rotate-90'"
+      />
+      <span class="min-w-0 flex-1 truncate font-medium text-gray-800 dark:text-gray-200">{{ displayTitle }}
         <span
           v-if="displaySubtitle"
-          class="font-normal text-gray-500"
+          class="font-normal text-gray-400 dark:text-dark-400"
         >{{ displaySubtitle }}</span></span>
       <span
-        class="shrink-0 text-xs"
-        :class="tool.status === 'error' ? 'text-red-600' : 'text-gray-500'"
+        class="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium"
+        :class="{
+          'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400': tool.status === 'error',
+          'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400': tool.status === 'finished',
+          'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 animate-pulse': tool.status === 'running',
+          'bg-gray-100 text-gray-600 dark:bg-dark-800 dark:text-dark-300': tool.status === 'incomplete'
+        }"
       >{{ labels[tool.status] }}</span>
     </button>
     <p
       v-if="tool.status === 'error'"
-      class="px-3 pb-2 text-red-600"
+      class="px-3 pb-2 text-xs text-red-600 dark:text-red-400"
     >
       {{ tool.error || "工具执行失败，展开查看结果" }}
     </p>
     <div
       v-if="expanded"
-      class="space-y-3 border-t border-gray-200 p-3 dark:border-dark-700"
+      class="space-y-3 border-t border-gray-100 p-3.5 dark:border-dark-800"
     >
       <template v-if="diff">
-        <p class="text-xs text-gray-500">
-          修改片段 ·
-          {{
-            tool.status === "finished"
-              ? "工具已返回，请结合结果确认"
-              : "拟修改，尚未确认执行"
-          }}
-        </p>
-        <div class="grid gap-2 md:grid-cols-2">
-          <pre
-            class="max-h-80 overflow-auto rounded bg-red-50 p-2 text-xs text-gray-900"
-          >{{ input.old_string }}</pre>
-          <pre
-            class="max-h-80 overflow-auto rounded bg-green-50 p-2 text-xs text-gray-900"
-          >{{ input.new_string }}</pre>
+        <div class="space-y-2">
+          <div class="flex items-center justify-between text-xs text-gray-500 dark:text-dark-400">
+            <span>代码修改对比 (Diff)</span>
+            <span class="font-mono text-[11px]">{{ path }}</span>
+          </div>
+          <div class="grid gap-2 overflow-hidden rounded-xl border border-gray-200 text-xs font-mono dark:border-dark-700 md:grid-cols-2">
+            <div class="bg-red-50/50 p-2.5 dark:bg-red-950/20">
+              <div class="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold text-red-600 dark:text-red-400">
+                <span class="rounded bg-red-100 px-1 dark:bg-red-900/60">- 原内容</span>
+              </div>
+              <pre class="max-h-80 overflow-auto whitespace-pre-wrap text-red-900 dark:text-red-200">{{ input.old_string }}</pre>
+            </div>
+            <div class="bg-emerald-50/50 p-2.5 dark:bg-emerald-950/20">
+              <div class="mb-1.5 flex items-center gap-1.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                <span class="rounded bg-emerald-100 px-1 dark:bg-emerald-900/60">+ 新内容</span>
+              </div>
+              <pre class="max-h-80 overflow-auto whitespace-pre-wrap text-emerald-900 dark:text-emerald-200">{{ input.new_string }}</pre>
+            </div>
+          </div>
         </div>
       </template>
       <template
         v-else-if="tool.name === 'execute' && typeof input.command === 'string'"
       >
-        <pre
-          class="max-h-40 overflow-auto rounded bg-gray-950 p-3 text-xs text-gray-100"
-        >{{ input.command }}</pre>
-        <p class="text-xs text-gray-500">
+        <div class="overflow-hidden rounded-xl border border-gray-800 bg-gray-950 text-xs text-gray-100 shadow-sm font-mono">
+          <div class="flex items-center justify-between border-b border-gray-800/80 bg-gray-900/80 px-3 py-1.5 text-[11px] text-gray-400">
+            <div class="flex items-center gap-1.5">
+              <span class="h-2 w-2 rounded-full bg-red-500/80 inline-block" />
+              <span class="h-2 w-2 rounded-full bg-amber-500/80 inline-block" />
+              <span class="h-2 w-2 rounded-full bg-emerald-500/80 inline-block" />
+              <span class="ml-2 text-gray-300 font-sans">Terminal</span>
+            </div>
+            <span
+              v-if="typeof result.exit_code === 'number'"
+              class="text-[10px]"
+              :class="result.exit_code === 0 ? 'text-emerald-400' : 'text-red-400'"
+            >
+              退出码: {{ result.exit_code }}
+            </span>
+          </div>
+          <pre class="max-h-48 overflow-auto p-3 text-gray-100 leading-relaxed">$ {{ input.command }}</pre>
+        </div>
+        <p class="text-[11px] text-gray-400 dark:text-dark-400">
           非交互命令 · 执行结束后返回<span
             v-if="typeof result.exit_code === 'number'"
           >
@@ -157,7 +211,7 @@ const displaySubtitle = computed(() => {
       </template>
       <template v-else-if="tool.name === 'write_todos' && todoItems.length">
         <div class="space-y-2.5">
-          <div class="flex items-center justify-between text-xs text-gray-500">
+          <div class="flex items-center justify-between text-xs text-gray-500 dark:text-dark-400">
             <span>待办计划 · 共 {{ todoItems.length }} 项</span>
             <span
               v-if="activeTodo"
@@ -219,7 +273,16 @@ const displaySubtitle = computed(() => {
         <p class="mb-2 text-xs text-gray-500">
           结果
         </p>
-        <MessageContent :blocks="output" />
+        <MessageContent :blocks="output" :project-id="projectId" :thread-id="threadId" />
+        <div v-if="runtimeImages.length" class="space-y-2 mt-2">
+          <ThreadImage
+            v-for="img in runtimeImages"
+            :key="img.path"
+            :project-id="projectId || ''"
+            :thread-id="threadId || ''"
+            :image-ref="img"
+          />
+        </div>
       </div>
       <p
         v-else-if="tool.name !== 'write_todos'"
@@ -230,7 +293,7 @@ const displaySubtitle = computed(() => {
       <button
         v-if="tool.artifact != null || path || tool.name === 'write_todos'"
         type="button"
-        class="pw-table-tool-button"
+        class="pw-table-tool-button h-8 rounded-lg px-3 text-xs"
         @click="emit('inspect', tool)"
       >
         {{ tool.name === 'write_todos' ? '在详情面板查看任务看板 →' : '在详情面板查看' }}

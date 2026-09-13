@@ -18,6 +18,7 @@ import BaseIcon from "@/components/base/BaseIcon.vue";
 import EmptyState from "@/components/platform/EmptyState.vue";
 import ChatSession from "../components/ChatSession.vue";
 import ChatThreadSidebar from "../components/ChatThreadSidebar.vue";
+import ChatAgentSelector from "../components/ChatAgentSelector.vue";
 import { buildChatThreadListView, type ChatThreadStatusFilter } from "../thread-list-view-model";
 import { formatThreadTime } from "@/utils/threads";
 
@@ -444,84 +445,85 @@ onScopeDispose(() => {
           <template #target>
             <button
               v-if="sidebarCollapsed && !focusMode"
-              class="pw-table-tool-button h-8 px-2 text-xs"
+              class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:text-white transition-colors"
+              title="展开历史会话"
               @click="sidebarCollapsed = false"
             >
-              展开历史
+              <BaseIcon
+                name="columns"
+                size="xs"
+              />
+              <span class="hidden sm:inline">历史</span>
             </button>
-            <select
-              :value="selectedTarget"
-              aria-label="对话目标"
-              class="pw-input h-8 max-w-[150px] py-1 text-xs"
-              @change="choose(($event.target as HTMLSelectElement).value)"
-            >
-              <option
-                value=""
-                disabled
-              >
-                选择智能体
-              </option>
-              <option
-                v-for="agent in agents"
-                :key="agent.id"
-                :value="agent.id"
-              >
-                {{ agent.name }}
-              </option>
-            </select>
+            <ChatAgentSelector
+              :agents="agents"
+              :selected-agent-id="selectedTarget"
+              @select="choose"
+            />
           </template>
           <template #actions>
             <button
-              class="pw-table-tool-button h-8 px-3 text-xs"
+              class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:text-white transition-colors"
+              :title="focusMode ? '退出专注模式' : '专注模式'"
               @click="focusMode = !focusMode"
             >
-              {{ focusMode ? '退出专注模式' : '专注模式' }}
+              <BaseIcon
+                name="focus"
+                size="xs"
+              />
+              <span class="hidden sm:inline">{{ focusMode ? '退出' : '专注' }}</span>
             </button>
             <button
-              class="pw-table-tool-button h-8 px-3 text-xs"
+              class="pw-btn-primary inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium shadow-xs disabled:cursor-not-allowed disabled:opacity-50 transition-transform active:scale-[0.98]"
               :disabled="!target"
+              title="新建会话"
               @click="newThread"
             >
-              新对话
+              <BaseIcon
+                name="chat"
+                size="xs"
+              />
+              <span>新对话</span>
             </button>
             <button
               v-if="selectedThread && canWrite"
-              class="lg:hidden pw-table-tool-button h-8 px-3 text-xs"
+              class="lg:hidden inline-flex h-8 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 text-xs font-medium text-red-600 shadow-2xs hover:bg-red-50 dark:border-red-900/50 dark:bg-dark-800 dark:text-red-400 dark:hover:bg-red-950/30 transition-colors"
+              title="删除此会话"
               @click="requestDelete(selectedThread)"
             >
-              删除对话
+              <BaseIcon
+                name="trash"
+                size="xs"
+              />
+              <span class="hidden sm:inline">删除</span>
             </button>
           </template>
         </ChatSession>
         <div
           v-else
-          class="flex min-w-0 flex-1 flex-col items-center justify-center gap-4"
+          class="flex min-w-0 flex-1 flex-col items-center justify-center p-6 text-center"
         >
-          <select
-            :value="selectedTarget"
-            aria-label="对话目标"
-            class="pw-input h-8 max-w-[150px] py-1 text-xs"
-            @change="choose(($event.target as HTMLSelectElement).value)"
-          >
-            <option
-              value=""
-              disabled
-            >
-              选择智能体
-            </option>
-            <option
-              v-for="agent in agents"
-              :key="agent.id"
-              :value="agent.id"
-            >
-              {{ agent.name }}
-            </option>
-          </select>
-          <EmptyState
-            icon="chat"
-            title="选择一个对话目标"
-            description="选择项目已授权的智能体，开始新的对话。"
-          />
+          <div class="mx-auto w-full max-w-md rounded-2xl border border-gray-200/80 bg-white/95 p-8 shadow-sm dark:border-dark-800 dark:bg-dark-900/90">
+            <span class="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-500 text-white shadow-md">
+              <BaseIcon
+                name="assistant"
+                size="md"
+              />
+            </span>
+            <h2 class="mt-4 text-base font-semibold text-gray-900 dark:text-white">
+              请选择一个对话智能体
+            </h2>
+            <p class="mt-2 text-xs text-gray-500 dark:text-dark-400">
+              从当前项目已授权的 Agent 中挑选一个，立即开启智能会话。
+            </p>
+            <div class="mt-6 flex justify-center">
+              <ChatAgentSelector
+                :agents="agents"
+                :selected-agent-id="selectedTarget"
+                @select="choose"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </template>

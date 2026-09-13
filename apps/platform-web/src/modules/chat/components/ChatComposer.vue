@@ -186,7 +186,7 @@ defineExpose({
     "
   >
     <div
-      class="pw-chat-composer transition-all duration-200"
+      class="pw-chat-composer transition-all duration-200 focus-within:border-primary-500/80 focus-within:ring-2 focus-within:ring-primary-500/15 focus-within:shadow-md"
       :class="isFocusMode ? 'max-w-[780px]' : ''"
     >
       <div
@@ -230,16 +230,16 @@ defineExpose({
           >
             <button
               type="button"
-              class="pw-table-tool-button h-8 shrink-0 rounded-lg px-3 text-xs"
+              class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white transition-colors"
               :disabled="isRunning || hasBlockingInterrupt"
               aria-label="上传图片 / PDF"
               @click="openFilePicker"
             >
               <BaseIcon
                 name="paperclip"
-                size="sm"
+                size="xs"
               />
-              <span class="hidden sm:inline">上传图片 / PDF</span>
+              <span class="hidden sm:inline">附件</span>
             </button>
             <input
               ref="fileInputRef"
@@ -264,9 +264,13 @@ defineExpose({
             class="ml-auto flex shrink-0 items-center gap-2"
             :class="isFocusMode || props.compact ? 'gap-2' : 'gap-2.5'"
           >
+            <span class="hidden md:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-dark-400 font-mono select-none">
+              <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] dark:border-dark-700 dark:bg-dark-800">↵</kbd>
+              <span>发送</span>
+            </span>
             <BaseButton
               :variant="isRunning ? 'danger' : 'primary'"
-              class="h-8 px-3 text-xs"
+              class="h-8 px-3 text-xs shadow-xs transition-transform active:scale-[0.98]"
               :disabled="isRunning ? cancelling : !canSendFreshMessage"
               @click="isRunning ? emit('cancel') : emit('send')"
             >

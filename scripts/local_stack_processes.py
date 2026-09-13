@@ -140,7 +140,10 @@ def owned(
     for pid, (_, args) in rows.items():
         if not args:
             continue
-        is_candidate = matches(key, args) or any(dir_str in a for a in args)
+        if key.startswith("runtime-"):
+            is_candidate = matches(key, args)
+        else:
+            is_candidate = matches(key, args) or any(dir_str in a for a in args)
         if is_candidate:
             proc_cwd = cwd(pid)
             if proc_cwd == directory or is_within(proc_cwd, directory):
@@ -183,7 +186,10 @@ def owned(
         parent_pid = rows.get(pid, (0, []))[0]
         if parent_pid > 1 and parent_pid in rows and parent_pid not in selected:
             p_args = rows[parent_pid][1]
-            if matches(key, p_args) or any(dir_str in a for a in p_args):
+            candidate_parent = matches(key, p_args) or (
+                not key.startswith("runtime-") and any(dir_str in a for a in p_args)
+            )
+            if candidate_parent:
                 p_cwd = cwd(parent_pid)
                 if p_cwd == directory or is_within(p_cwd, directory):
                     selected.add(parent_pid)

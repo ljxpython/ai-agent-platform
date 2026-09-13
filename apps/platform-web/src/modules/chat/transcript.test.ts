@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
-import { buildTranscript, contentItems, safeContentUrl } from "./transcript";
+import {
+  buildTranscript,
+  contentItems,
+  extractChartWeakImageRefs,
+  extractRuntimeImages,
+  safeContentUrl,
+} from "./transcript";
 
 describe("SDK transcript projection", () => {
   it("keeps all text and associates reversed results without duplicate tools", () => {
@@ -173,5 +179,40 @@ describe("SDK transcript projection", () => {
     expect(itemsAdjacent).toHaveLength(1);
     expect(itemsAdjacent[0]?.kind).toBe("text");
     expect(itemsAdjacent[0]?.text).toBe("已定位缺陷并核对了正确结果。");
+  });
+
+  it("extracts runtime images from artifacts and extracts weak refs from text", () => {
+    const validRef = {
+      version: 1 as const,
+      path: "/workspace/generated/generated.png",
+      mime_type: "image/png" as const,
+      size_bytes: 1024,
+      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    };
+    // 1. Direct artifact
+    expect(extractRuntimeImages(validRef)).toEqual([validRef]);
+    expect(extractRuntimeImages({ runtime_images: [validRef] })).toEqual([validRef]);
+    expect(extractRuntimeImages(null)).toEqual([]);
+
+    // 2. Weak refs from text (charts, generated, uploads)
+    const textChart = "图表保存在 /workspace/charts/0123456789abcdef0123456789abcdef.png，请查收。";
+    const weakRefsChart = extractChartWeakImageRefs(textChart);
+    expect(weakRefsChart).toHaveLength(1);
+    expect(weakRefsChart[0]?.path).toBe("/workspace/charts/0123456789abcdef0123456789abcdef.png");
+    expect(weakRefsChart[0]?.mime_type).toBe("image/png");
+
+    const textGenerated = "成品路径：/workspace/generated/a03f0e9d6cdf49c4b1189865fefde01b.png";
+    const weakRefsGen = extractChartWeakImageRefs(textGenerated);
+    expect(weakRefsGen).toHaveLength(1);
+    expect(weakRefsGen[0]?.path).toBe("/workspace/generated/a03f0e9d6cdf49c4b1189865fefde01b.png");
+    expect(weakRefsGen[0]?.mime_type).toBe("image/png");
+
+    // 3. contentItems automatically appends image block when text contains workspace image path
+    const items = contentItems(textGenerated, "msg-generated");
+    expect(items).toHaveLength(2);
+    expect(items[0]?.kind).toBe("text");
+    expect(items[0]?.text).toBe(textGenerated);
+    expect(items[1]?.kind).toBe("image");
+    expect(items[1]?.imageRef?.path).toBe("/workspace/generated/a03f0e9d6cdf49c4b1189865fefde01b.png");
   });
 });

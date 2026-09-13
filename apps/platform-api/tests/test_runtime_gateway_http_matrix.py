@@ -9,6 +9,7 @@ from fastapi import FastAPI
 
 from platform_api.core.errors import ForbiddenError, register_exception_handlers
 from platform_api.core.context.models import ActorContext
+from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
 )
@@ -42,6 +43,8 @@ CASES = [
     ("POST", "/threads/{thread_id}/runs/{run_id}/cancel", "cancel_thread_run"),
     ("GET", "/threads/{thread_id}/messages", "list_thread_messages"),
     ("POST", "/threads/{thread_id}/messages", "enqueue_thread_message"),
+    ("PUT", "/threads/{thread_id}/images/uploads/{sha256}", "upload_thread_image"),
+    ("GET", "/threads/{thread_id}/images/content", "read_thread_image"),
 ]
 
 
@@ -73,6 +76,9 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
         async def events():
             yield b'data: {"visible":"yes","runtime_model_ref":"opaque"}\n\n'
 
+        async def image_bytes():
+            yield b"yes-image-bytes"
+
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
@@ -84,16 +90,19 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             "stream_thread_events",
                             "join_thread_run_stream",
                         }
-                        callback = AsyncMock(
-                            return_value=(
-                                events()
-                                if streaming
-                                else {
-                                    "visible": "yes",
-                                    "nested": {"runtime_model_ref": "opaque"},
-                                }
+                        if name == "read_thread_image":
+                            ret_val = BinaryPayload(
+                                body=image_bytes(),
+                                content_type="image/png",
                             )
-                        )
+                        elif streaming:
+                            ret_val = events()
+                        else:
+                            ret_val = {
+                                "visible": "yes",
+                                "nested": {"runtime_model_ref": "opaque"},
+                            }
+                        callback = AsyncMock(return_value=ret_val)
                         if outcome == "forbidden":
                             callback.side_effect = ForbiddenError(
                                 code="scope_denied", message="Denied"
@@ -102,16 +111,28 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         headers = {"Idempotency-Key": "request-1"}
                         if outcome != "missing_scope":
                             headers["x-project-id"] = "project-1"
+                        if method == "PUT" and "images" in path:
+                            headers["content-type"] = "image/png"
+                            headers["content-length"] = "10"
                         post_payload = (
                             {"content": "hello"}
                             if path.endswith("/messages")
                             else {"probe": "body"}
                         )
+                        url_path = "/api/langgraph" + path.format(
+                            thread_id="thread-1", run_id="run-1", sha256="a" * 64
+                        )
+                        req_params = (
+                            {"path": "/workspace/uploads/test.png"}
+                            if name == "read_thread_image"
+                            else None
+                        )
                         response = await client.request(
                             method,
-                            "/api/langgraph"
-                            + path.format(thread_id="thread-1", run_id="run-1"),
+                            url_path,
+                            params=req_params,
                             json=post_payload if method == "POST" else None,
+                            content=b"0123456789" if method == "PUT" else None,
                             headers=headers,
                         )
                         expected = {
@@ -131,9 +152,10 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         kwargs = callback.call_args.kwargs
                         self.assertIs(kwargs["actor"], actor)
                         self.assertEqual(kwargs["project_id"], "project-1")
-                        for key in ("thread_id", "run_id"):
+                        for key in ("thread_id", "run_id", "sha256"):
                             if "{" + key + "}" in path:
-                                self.assertEqual(kwargs[key], key.replace("_id", "-1"))
+                                expected_val = "a" * 64 if key == "sha256" else key.replace("_id", "-1")
+                                self.assertEqual(kwargs[key], expected_val)
                         if method == "POST":
                             self.assertEqual(kwargs["payload"], post_payload)
                         if name in {
@@ -166,17 +188,30 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                 (ActorContext(user_id="outsider"), 403),
             ):
                 actor = principal
-                for method, path, _ in CASES:
+                for method, path, name in CASES:
                     with self.subTest(route=path, principal=principal.user_id):
+                        url_path = "/api/langgraph" + path.format(
+                            thread_id="thread-1", run_id="run-1", sha256="a" * 64
+                        )
+                        req_params = (
+                            {"path": "/workspace/uploads/test.png"}
+                            if name == "read_thread_image"
+                            else None
+                        )
+                        headers = {
+                            "x-project-id": "project-1",
+                            "Idempotency-Key": "request-1",
+                        }
+                        if method == "PUT" and "images" in path:
+                            headers["content-type"] = "image/png"
+                            headers["content-length"] = "10"
                         response = await client.request(
                             method,
-                            "/api/langgraph"
-                            + path.format(thread_id="thread-1", run_id="run-1"),
+                            url_path,
+                            params=req_params,
                             json={} if method == "POST" else None,
-                            headers={
-                                "x-project-id": "project-1",
-                                "Idempotency-Key": "request-1",
-                            },
+                            content=b"0123456789" if method == "PUT" else None,
+                            headers=headers,
                         )
                         self.assertEqual(response.status_code, expected, response.text)
             self.assertEqual(upstream.mock_calls, [])
@@ -188,19 +223,32 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                 return_value={"metadata": {"project_id": "other-project"}}
             )
             actor = ActorContext(user_id="member")
-            for method, path, _ in CASES:
+            for method, path, name in CASES:
                 if "{thread_id}" not in path:
                     continue
                 with self.subTest(cross_project=path, method=method):
+                    url_path = "/api/langgraph" + path.format(
+                        thread_id="thread-1", run_id="run-1", sha256="a" * 64
+                    )
+                    req_params = (
+                        {"path": "/workspace/uploads/test.png"}
+                        if name == "read_thread_image"
+                        else None
+                    )
+                    headers = {
+                        "x-project-id": "project-1",
+                        "Idempotency-Key": "request-1",
+                    }
+                    if method == "PUT" and "images" in path:
+                        headers["content-type"] = "image/png"
+                        headers["content-length"] = "10"
                     response = await client.request(
                         method,
-                        "/api/langgraph"
-                        + path.format(thread_id="thread-1", run_id="run-1"),
+                        url_path,
+                        params=req_params,
                         json={} if method == "POST" else None,
-                        headers={
-                            "x-project-id": "project-1",
-                            "Idempotency-Key": "request-1",
-                        },
+                        content=b"0123456789" if method == "PUT" else None,
+                        headers=headers,
                     )
                     self.assertEqual(response.status_code, 403, response.text)
                     self.assertEqual(

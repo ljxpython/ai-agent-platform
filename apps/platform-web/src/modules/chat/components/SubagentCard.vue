@@ -1,14 +1,23 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import type { AnyStream } from "@langchain/vue";
-import { asObject, contentItems, type ToolItem } from "../transcript";
+import {
+  asObject,
+  contentItems,
+  extractChartWeakImageRefs,
+  extractRuntimeImages,
+  type ToolItem,
+} from "../transcript";
 import MessageContent from "./MessageContent.vue";
 import SubtaskDetail from "./SubtaskDetail.vue";
+import ThreadImage from "./ThreadImage.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 
 const props = defineProps<{
   tool: ToolItem;
   stream?: AnyStream;
+  projectId?: string;
+  threadId?: string;
 }>();
 
 const emit = defineEmits<{ inspect: [tool: ToolItem] }>();
@@ -89,6 +98,17 @@ const outputBlocks = computed(() => {
     return contentItems(props.tool.output, `${props.tool.key}:output`);
   }
   return [];
+});
+
+const runtimeImages = computed(() => {
+  const explicit = extractRuntimeImages(props.tool.artifact);
+  if (explicit.length > 0) {
+    return explicit;
+  }
+  return extractChartWeakImageRefs(
+    cleanedOutput.value ||
+      (typeof props.tool.output === "string" ? props.tool.output : ""),
+  );
 });
 </script>
 
@@ -192,7 +212,28 @@ const outputBlocks = computed(() => {
           分析结果汇报
         </p>
         <div class="max-h-96 overflow-auto rounded-lg border border-gray-200 bg-white p-3.5 dark:border-dark-700 dark:bg-dark-900">
-          <MessageContent :blocks="outputBlocks" />
+          <MessageContent
+            :blocks="outputBlocks"
+            :project-id="projectId"
+            :thread-id="threadId"
+          />
+        </div>
+      </div>
+      <div
+        v-if="runtimeImages.length"
+        class="space-y-1.5"
+      >
+        <p class="text-[11px] font-medium text-gray-500 dark:text-dark-400">
+          生成图表 / 产物图片
+        </p>
+        <div class="grid grid-cols-1 gap-2">
+          <ThreadImage
+            v-for="img in runtimeImages"
+            :key="img.path"
+            :image-ref="img"
+            :project-id="projectId || ''"
+            :thread-id="threadId || ''"
+          />
         </div>
       </div>
       <p

@@ -4,7 +4,7 @@ from platform_api.core.security import empty_runtime_context_hash
 
 import hashlib
 import json
-from collections.abc import Callable, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -52,6 +52,7 @@ from platform_api.modules.runtime_catalog.infra.sqlalchemy.repository import (
     SqlAlchemyRuntimeCatalogRepository,
 )
 from platform_api.modules.runtime_gateway.application.ports import (
+    BinaryPayload,
     RuntimeGatewayUpstreamProtocol,
 )
 from platform_api.modules.runtime_gateway.infra.sqlalchemy.repository import (
@@ -791,6 +792,134 @@ class RuntimeGatewayService:
         if self._delegation_headers_factory:
             upstream = upstream.with_forwarded_headers(self._delegation_headers_factory(project_id=project_id, agent_key=agent_key, thread_id=thread_id, context_hash=empty_runtime_context_hash(), operation="message-read"))
         return await upstream.list_thread_messages(thread_id)
+
+    async def upload_thread_image(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        sha256: str,
+        content_type: str,
+        content_length: int,
+        body: AsyncIterator[bytes],
+    ) -> dict[str, Any]:
+        sha256 = clean_str(sha256).lower()
+        if len(sha256) != 64 or any(c not in "0123456789abcdef" for c in sha256):
+            raise BadRequestError(code="image_hash_invalid", message="Invalid image sha256")
+
+        media_type = content_type.split(";")[0].strip().lower()
+        if media_type not in {"image/png", "image/jpeg", "image/webp"}:
+            raise PlatformApiError(
+                code="image_mime_unsupported",
+                status_code=415,
+                message=f"Unsupported image content type: {content_type}",
+            )
+
+        if content_length <= 0:
+            raise BadRequestError(code="image_length_required", message="Content-Length must be a positive integer")
+        if content_length > 5 * 1024 * 1024:
+            raise PlatformApiError(
+                code="image_too_large",
+                status_code=413,
+                message="Image upload exceeds 5 MiB limit",
+            )
+
+        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=True)
+        metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        agent_key = clean_str(metadata.get("graph_id"))
+        if not agent_key:
+            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+
+        upstream = self._upstream
+        if self._delegation_headers_factory:
+            upstream = upstream.with_forwarded_headers(
+                self._delegation_headers_factory(
+                    project_id=project_id,
+                    agent_key=agent_key,
+                    thread_id=thread_id,
+                    context_hash=empty_runtime_context_hash(),
+                    operation="image-upload",
+                )
+            )
+
+        ref = await upstream.upload_thread_image(
+            graph_id=agent_key,
+            thread_id=thread_id,
+            sha256=sha256,
+            content_type=media_type,
+            content_length=content_length,
+            body=body,
+        )
+
+        version = ref.get("version") if isinstance(ref, dict) else None
+        mime_type = (ref.get("mime_type") or ref.get("mime")) if isinstance(ref, dict) else None
+        path = ref.get("path") if isinstance(ref, dict) else None
+        ref_sha256 = ref.get("sha256") if isinstance(ref, dict) else None
+        size_bytes = ref.get("size_bytes") if isinstance(ref, dict) else None
+
+        if (
+            not isinstance(ref, dict)
+            or version not in (1, "v1")
+            or not isinstance(path, str)
+            or not isinstance(ref_sha256, str)
+            or not isinstance(mime_type, str)
+            or not isinstance(size_bytes, int)
+            or size_bytes <= 0
+        ):
+            raise PlatformApiError(
+                code="runtime_invalid_image_response",
+                status_code=502,
+                message="Invalid ImageRef from runtime",
+            )
+
+        return {
+            "version": 1,
+            "path": path,
+            "mime_type": mime_type,
+            "size_bytes": size_bytes,
+            "sha256": ref_sha256,
+        }
+
+    async def read_thread_image(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        path: str,
+    ) -> BinaryPayload:
+        path = clean_str(path)
+        if not path or ".." in path or "\\" in path:
+            raise BadRequestError(code="image_path_invalid", message="Invalid image path")
+
+        allowed_prefixes = ("/workspace/uploads/", "/workspace/generated/", "/workspace/charts/")
+        if not any(path.startswith(prefix) for prefix in allowed_prefixes):
+            raise BadRequestError(code="image_path_invalid", message="Path must be in allowed workspace image directories")
+
+        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=False)
+        metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        agent_key = clean_str(metadata.get("graph_id"))
+        if not agent_key:
+            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+
+        upstream = self._upstream
+        if self._delegation_headers_factory:
+            upstream = upstream.with_forwarded_headers(
+                self._delegation_headers_factory(
+                    project_id=project_id,
+                    agent_key=agent_key,
+                    thread_id=thread_id,
+                    context_hash=empty_runtime_context_hash(),
+                    operation="image-read",
+                )
+            )
+
+        return await upstream.read_thread_image(
+            graph_id=agent_key,
+            thread_id=thread_id,
+            path=path,
+        )
 
     def _assistant_belongs_project(
         self,

@@ -94,6 +94,8 @@ function getActionTitle(name: string): string {
       return "写入文件";
     case "execute":
       return "执行系统命令";
+    case "generate_image":
+      return "生成图片需要确认";
     default:
       return name;
   }
@@ -227,7 +229,36 @@ const currentDecisionSummary = computed(() => {
             </div>
           </template>
 
-          <!-- 4. 普通参数呈现（兜底） -->
+          <!-- 4. 文生图参数呈现 (针对 generate_image) -->
+          <template v-else-if="action.name === 'generate_image'">
+            <div class="min-w-0 max-w-full space-y-2 rounded-lg border border-purple-200/80 bg-purple-50/40 p-3 text-xs dark:border-purple-900/40 dark:bg-purple-950/20">
+              <div class="flex items-center justify-between text-purple-900 dark:text-purple-200 font-medium">
+                <span class="flex items-center gap-1.5">
+                  <BaseIcon name="sparkle" class="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <span>文生图生成参数确认</span>
+                </span>
+                <span class="text-[11px] text-purple-700/70 dark:text-purple-400/70">批准后将调用图片生成模型并写入工作区</span>
+              </div>
+              <div class="grid grid-cols-1 gap-2 pt-1">
+                <div>
+                  <span class="text-gray-500 dark:text-dark-400">提示词 (prompt): </span>
+                  <span class="font-medium text-gray-900 dark:text-white">{{ asObject(action.args).prompt || "(无)" }}</span>
+                </div>
+                <div v-if="asObject(action.args).size || asObject(action.args).aspect_ratio" class="flex gap-4">
+                  <div v-if="asObject(action.args).size">
+                    <span class="text-gray-500 dark:text-dark-400">尺寸: </span>
+                    <span class="font-mono text-gray-800 dark:text-dark-200">{{ asObject(action.args).size }}</span>
+                  </div>
+                  <div v-if="asObject(action.args).aspect_ratio">
+                    <span class="text-gray-500 dark:text-dark-400">比例: </span>
+                    <span class="font-mono text-gray-800 dark:text-dark-200">{{ asObject(action.args).aspect_ratio }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- 5. 普通参数呈现（兜底） -->
           <template v-else>
             <div class="min-w-0 max-w-full space-y-1">
               <span class="text-xs text-gray-500">调用参数</span>

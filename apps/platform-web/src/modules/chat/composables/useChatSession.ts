@@ -29,6 +29,11 @@ import {
   parseReviews,
   type ReviewDraft,
 } from "../approvals";
+import {
+  calculateFileSha256,
+  uploadThreadImage,
+} from "@/services/threads/images.service";
+import { createRuntimeImageTextBlock } from "@/utils/chat-content";
 
 const active = (run: Run | null) =>
   run != null && ["pending", "running"].includes(run.status);
@@ -264,6 +269,61 @@ export function useChatSession(options: {
     if (!disposed && !document.hidden && Date.now() < receiptDeadline)
       receiptTimer = setTimeout(() => void refreshReceipts(false), 3000);
   }
+
+  function hasImageAttachmentsToUpload(rawContent: unknown): boolean {
+    if (options.graphId !== "showcase_demo") return false;
+    if (!Array.isArray(rawContent)) return false;
+    return rawContent.some(
+      (item) =>
+        item &&
+        typeof item === "object" &&
+        (item as Record<string, unknown>).type === "image" &&
+        (item as Record<string, unknown>).file instanceof Blob,
+    );
+  }
+
+  async function uploadAttachmentsAsync(
+    targetThreadId: string,
+    rawContent: unknown[],
+  ): Promise<unknown> {
+    const prepared = await Promise.all(
+      rawContent.map(async (item) => {
+        if (!item || typeof item !== "object") return item;
+        const block = item as Record<string, unknown>;
+        if (block.type === "image" && block.file instanceof Blob) {
+          const file = block.file;
+          const metadata = (block.metadata || {}) as Record<string, unknown>;
+          const filename =
+            typeof metadata.name === "string"
+              ? metadata.name
+              : typeof metadata.filename === "string"
+                ? metadata.filename
+                : "image.png";
+          const sha256 = await calculateFileSha256(file);
+          const ref = await uploadThreadImage(
+            options.projectId,
+            targetThreadId,
+            sha256,
+            file,
+          );
+          return createRuntimeImageTextBlock(filename, ref);
+        }
+        return item;
+      }),
+    );
+    return prepared;
+  }
+
+  function prepareMessageAttachments(
+    targetThreadId: string,
+    rawContent: unknown,
+  ): unknown | Promise<unknown> {
+    if (!hasImageAttachmentsToUpload(rawContent)) {
+      return rawContent;
+    }
+    return uploadAttachmentsAsync(targetThreadId, rawContent as unknown[]);
+  }
+
   async function queueMessage(content?: unknown) {
     if (
       !supportsQueue ||
@@ -277,16 +337,32 @@ export function useChatSession(options: {
     if (!pendingMessage.value) {
       const targetRunId = actions.current.value?.runId ?? run.value?.run_id;
       if (!busy.value || !targetRunId) return false;
-      const id = crypto.randomUUID();
-      pendingMessage.value = {
-        payload: {
-          client_message_id: id,
-          target_run_id: targetRunId,
-          content: JSON.parse(JSON.stringify(content)),
-        },
-        key: `message:${id}`,
-        status: "sending",
-      };
+      const messageContent = prepareMessageAttachments(threadId.value, content);
+      if (messageContent instanceof Promise) {
+        const resolved = await messageContent;
+        if (disposed) return false;
+        const id = crypto.randomUUID();
+        pendingMessage.value = {
+          payload: {
+            client_message_id: id,
+            target_run_id: targetRunId,
+            content: JSON.parse(JSON.stringify(resolved)),
+          },
+          key: `message:${id}`,
+          status: "sending",
+        };
+      } else {
+        const id = crypto.randomUUID();
+        pendingMessage.value = {
+          payload: {
+            client_message_id: id,
+            target_run_id: targetRunId,
+            content: JSON.parse(JSON.stringify(messageContent)),
+          },
+          key: `message:${id}`,
+          status: "sending",
+        };
+      }
     }
     const pending = pendingMessage.value;
     pending.status = "sending";
@@ -361,8 +437,10 @@ export function useChatSession(options: {
         options.onThread(thread.thread_id);
       }
       if (disposed || !options.canWrite.value) return false;
+      const messageContent = await prepareMessageAttachments(threadId.value, content);
+      if (disposed || !options.canWrite.value) return false;
       const input = {
-        messages: [{ id: crypto.randomUUID(), type: "human", content }],
+        messages: [{ id: crypto.randomUUID(), type: "human", content: messageContent }],
       };
       const action = actions.begin(threadId.value, "send", input);
       // The public submit override binds a newly created thread without remounting.
@@ -488,9 +566,13 @@ export function useChatSession(options: {
           ? Boolean(content.trim())
           : Array.isArray(content) && Boolean(content.length));
 
+      const messageContent = hasContent
+        ? await prepareMessageAttachments(threadId.value, content)
+        : null;
+
       const input = hasContent
         ? {
-            messages: [{ id: crypto.randomUUID(), type: "human", content }],
+            messages: [{ id: crypto.randomUUID(), type: "human", content: messageContent }],
           }
         : null;
 
