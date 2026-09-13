@@ -29,6 +29,8 @@ GraphHarbor Durable Core 已在隔离 PostgreSQL/Redis 环境取得部分真实�
 16. `knowledge/27-platform-runtime-integration-phased-design.md`：Runtime 与 Platform 分阶段整合
 17. `knowledge/31-runtime-refactor-alignment-audit.md`：设计、源码、测试和真实证据对齐审计
 
+新开发者先读当前生效规范：`standards/README.md`。其中说明官方 MCP/外部资料查询入口、knowledge 借鉴地图、Showcase Demo 复用边界，以及开发和验证流程。
+
 R4 Demo 快速入口：`src/runtime_service/services/demo/deep_agent_services/demo/README.md`、
 `src/runtime_service/services/demo/mcp_services/demo/README.md`、
 `src/runtime_service/services/demo/backend_services/demo/README.md`。

@@ -12,13 +12,13 @@
 - 测试分层：组合测试验证装配，集成测试验证 Agent Server，E2E 验证真实链路。
 
 ## 任务拆分
-- [ ] 从 Showcase README 提炼标准模板和反例。
-- [ ] 编写 Agent、Tool、Backend、Middleware、Skill、Subagent 小节。
-- [ ] 增加安全、资源隔离、错误和可观测性检查清单。
+- [x] 从 Showcase README 提炼标准模板和反例。
+- [x] 编写 Agent、Tool、Backend、Middleware、Skill、Subagent 小节。
+- [x] 增加安全、资源隔离、错误和可观测性检查清单。
 
 ## 验证要求与记录
 - [ ] 新增 Demo 可按范式完成 import、composition、integration 验证。
 - [ ] 文档示例命令在应用目录可执行。
 
 ## 状态
-规划中
+已完成
