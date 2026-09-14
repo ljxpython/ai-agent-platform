@@ -190,7 +190,9 @@ function buildPreviewHtml(fileName: string, type: "csv" | "markdown" | "text" | 
     let formatted = textContent;
     try {
       formatted = JSON.stringify(JSON.parse(textContent), null, 2);
-    } catch {}
+    } catch {
+      // 保持原始未格式化内容
+    }
     bodyContent = `
       <div class="content-header">
         <span class="badge badge-json">JSON</span>

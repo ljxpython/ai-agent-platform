@@ -131,8 +131,17 @@ async function handleDownload(event: MouseEvent) {
           title="在新标签页预览文档"
           @click="handlePreviewInNewTab"
         >
-          <BaseIcon v-if="!actionLoading" name="sparkle" size="xs" />
-          <BaseIcon v-else name="refresh" size="xs" class="animate-spin" />
+          <BaseIcon
+            v-if="!actionLoading"
+            name="sparkle"
+            size="xs"
+          />
+          <BaseIcon
+            v-else
+            name="refresh"
+            size="xs"
+            class="animate-spin"
+          />
           <span>预览</span>
         </button>
 
@@ -143,7 +152,10 @@ async function handleDownload(event: MouseEvent) {
           title="下载文档"
           @click="handleDownload"
         >
-          <BaseIcon name="download" size="xs" />
+          <BaseIcon
+            name="download"
+            size="xs"
+          />
           <span>下载</span>
         </button>
       </div>
@@ -155,7 +167,10 @@ async function handleDownload(event: MouseEvent) {
       class="mt-2 rounded-lg border border-red-200 bg-red-50/70 px-2.5 py-1.5 text-xs text-red-600 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400 flex items-center justify-between"
     >
       <div class="flex items-center gap-1.5">
-        <BaseIcon name="alert" size="xs" />
+        <BaseIcon
+          name="alert"
+          size="xs"
+        />
         <span>{{ error }}</span>
       </div>
       <button

@@ -22,6 +22,8 @@
 | 时间旅行抽屉角色筛选与历史发问分叉 | 已完成：抽屉按用户/Agent/工具多维筛选与统计，可与关键节点组合，秒级定位发问检查点并分叉重新执行 | [时间旅行角色筛选](../apps/platform-web/docs/changes/20260913-history-checkpoint-role-filter.md) |
 | 前端对话页面美化与交互体验重构 | 已完成：Hover 浮动工具栏、复制反馈、高质感 Agent 胶囊选择器、Agent Hero 欢迎看板与快捷 Prompt、代码 Diff/终端卡片及输入框光晕微交互已全量交付通过 | [对话页面美化](projects/20260913-chat-ui-aesthetic-optimization/README.md) |
 | 对话正文与工具卡片工作区图片自动解析与渲染 | 已完成：聊天正文自动扫描工作区图片路径并派生渲染大图卡片，支持放大与下载；工具卡片中文别名与产物感知增强 | [图片自动渲染](../apps/platform-web/docs/changes/20260913-workspace-image-auto-render.md) |
+| DeepSeek Harness 轨迹视图迁移（双视图切换、事件流水账与 Master-Detail 检查器） | 已完成：支持对话/轨迹模式随时切换；按轮次/步数分组呈现思考链、工具入参与返回、错误高亮及 Raw JSON 深度排障；适配层带安全降级 | [轨迹视图迁移](projects/20260914-deepseek-trajectory-migration/README.md) |
+| 轨迹排障 DevTools 体验深度对齐（三层甘特时间线、树状贯穿线、紧凑单行表格与 Summary 内联预览） | 已完成：多通道横向甘特条（Input/Model/Tools）、Turn Rail 树状节点与连线、微型彩色徽章、左侧 3px 指示竖条、实时搜索与性能指标底栏 | [轨迹 DevTools 体验对齐](../apps/platform-web/docs/changes/20260914-trajectory-devtools-layout-alignment.md) |
 
 
 

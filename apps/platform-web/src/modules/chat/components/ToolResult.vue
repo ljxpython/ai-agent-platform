@@ -291,17 +291,27 @@ function formatDocumentWarning(w: string, query?: unknown): string {
           <!-- 顶部文档信息与页码 -->
           <div class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs dark:border-dark-700 dark:bg-dark-800/60">
             <div class="flex items-center gap-2">
-              <BaseIcon name="file" size="xs" class="text-primary-600 dark:text-primary-400" />
+              <BaseIcon
+                name="file"
+                size="xs"
+                class="text-primary-600 dark:text-primary-400"
+              />
               <span class="font-medium text-slate-900 dark:text-white">
                 {{ input.file_path ? String(input.file_path).split('/').pop() : '文档' }}
               </span>
-              <span v-if="result.format" class="rounded bg-slate-200/80 px-1.5 py-0.5 text-[10px] uppercase text-slate-700 dark:bg-dark-700 dark:text-dark-300">
+              <span
+                v-if="result.format"
+                class="rounded bg-slate-200/80 px-1.5 py-0.5 text-[10px] uppercase text-slate-700 dark:bg-dark-700 dark:text-dark-300"
+              >
                 {{ result.format }}
               </span>
             </div>
             <div class="flex items-center gap-3 text-slate-500 dark:text-dark-300">
               <span v-if="typeof result.pages === 'number'">共 {{ result.pages }} 页</span>
-              <span v-if="Array.isArray(result.matched_pages) && result.matched_pages.length" class="text-primary-600 dark:text-primary-400 font-medium">
+              <span
+                v-if="Array.isArray(result.matched_pages) && result.matched_pages.length"
+                class="text-primary-600 dark:text-primary-400 font-medium"
+              >
                 已命中第 {{ result.matched_pages.join('、') }} 页
               </span>
             </div>
@@ -312,7 +322,10 @@ function formatDocumentWarning(w: string, query?: unknown): string {
             v-if="result.truncated"
             class="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300 flex items-center gap-1.5"
           >
-            <BaseIcon name="alert" size="xs" />
+            <BaseIcon
+              name="alert"
+              size="xs"
+            />
             <span>内容已截断，可继续指定 page_start 和 page_end 查询后续页码</span>
           </div>
 
@@ -326,13 +339,20 @@ function formatDocumentWarning(w: string, query?: unknown): string {
               :key="idx"
               class="flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/70 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-300"
             >
-              <BaseIcon name="alert" size="xs" class="shrink-0 text-amber-600 dark:text-amber-400" />
+              <BaseIcon
+                name="alert"
+                size="xs"
+                class="shrink-0 text-amber-600 dark:text-amber-400"
+              />
               <span>{{ formatDocumentWarning(w, input.query) }}</span>
             </div>
           </div>
 
           <!-- 解析结果 chunks 列表 -->
-          <div v-if="Array.isArray(result.chunks) && result.chunks.length" class="space-y-2">
+          <div
+            v-if="Array.isArray(result.chunks) && result.chunks.length"
+            class="space-y-2"
+          >
             <div
               v-for="(chunk, idx) in result.chunks"
               :key="idx"
@@ -370,8 +390,15 @@ function formatDocumentWarning(w: string, query?: unknown): string {
         <p class="mb-2 text-xs text-gray-500">
           结果
         </p>
-        <MessageContent :blocks="output" :project-id="projectId" :thread-id="threadId" />
-        <div v-if="runtimeImages.length" class="space-y-2 mt-2">
+        <MessageContent
+          :blocks="output"
+          :project-id="projectId"
+          :thread-id="threadId"
+        />
+        <div
+          v-if="runtimeImages.length"
+          class="space-y-2 mt-2"
+        >
           <ThreadImage
             v-for="img in runtimeImages"
             :key="img.path"

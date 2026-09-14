@@ -234,7 +234,10 @@ const currentDecisionSummary = computed(() => {
             <div class="min-w-0 max-w-full space-y-2 rounded-lg border border-purple-200/80 bg-purple-50/40 p-3 text-xs dark:border-purple-900/40 dark:bg-purple-950/20">
               <div class="flex items-center justify-between text-purple-900 dark:text-purple-200 font-medium">
                 <span class="flex items-center gap-1.5">
-                  <BaseIcon name="sparkle" class="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <BaseIcon
+                    name="sparkle"
+                    class="h-4 w-4 text-purple-600 dark:text-purple-400"
+                  />
                   <span>文生图生成参数确认</span>
                 </span>
                 <span class="text-[11px] text-purple-700/70 dark:text-purple-400/70">批准后将调用图片生成模型并写入工作区</span>
@@ -244,7 +247,10 @@ const currentDecisionSummary = computed(() => {
                   <span class="text-gray-500 dark:text-dark-400">提示词 (prompt): </span>
                   <span class="font-medium text-gray-900 dark:text-white">{{ asObject(action.args).prompt || "(无)" }}</span>
                 </div>
-                <div v-if="asObject(action.args).size || asObject(action.args).aspect_ratio" class="flex gap-4">
+                <div
+                  v-if="asObject(action.args).size || asObject(action.args).aspect_ratio"
+                  class="flex gap-4"
+                >
                   <div v-if="asObject(action.args).size">
                     <span class="text-gray-500 dark:text-dark-400">尺寸: </span>
                     <span class="font-mono text-gray-800 dark:text-dark-200">{{ asObject(action.args).size }}</span>

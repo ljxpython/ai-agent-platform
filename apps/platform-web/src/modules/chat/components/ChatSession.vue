@@ -43,6 +43,9 @@ import ChatComposer from "./ChatComposer.vue";
 import ChatMessageList from "./ChatMessageList.vue";
 import ApprovalPanel from "./ApprovalPanel.vue";
 import MessageContent from "./MessageContent.vue";
+import TrajectoryView from "./trajectory/TrajectoryView.vue";
+
+const activeView = ref<"chat" | "trajectory">("chat");
 
 const props = defineProps<{
   projectId: string;
@@ -679,6 +682,44 @@ onScopeDispose(() => {
           </span>
         </div>
         <div class="ml-auto flex flex-wrap items-center gap-2 xl:flex-nowrap">
+          <div
+            class="inline-flex items-center rounded-lg border border-gray-200/80 bg-gray-100/80 p-0.5 text-xs font-medium dark:border-dark-700/80 dark:bg-dark-800/80"
+          >
+            <button
+              type="button"
+              class="flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors"
+              :class="
+                activeView === 'chat'
+                  ? 'bg-white text-gray-900 shadow-2xs dark:bg-dark-900 dark:text-white'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-white'
+              "
+              title="切换至对话消息流视图"
+              @click="activeView = 'chat'"
+            >
+              <BaseIcon
+                name="chat"
+                size="xs"
+              />
+              <span class="hidden sm:inline">对话</span>
+            </button>
+            <button
+              type="button"
+              class="flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors"
+              :class="
+                activeView === 'trajectory'
+                  ? 'bg-white text-gray-900 shadow-2xs dark:bg-dark-900 dark:text-white'
+                  : 'text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-white'
+              "
+              title="切换至轨迹排障与事件分析视图"
+              @click="activeView = 'trajectory'"
+            >
+              <BaseIcon
+                name="activity"
+                size="xs"
+              />
+              <span class="hidden sm:inline">轨迹</span>
+            </button>
+          </div>
           <slot name="actions" />
           <button
             type="button"
@@ -792,7 +833,14 @@ onScopeDispose(() => {
       :class="hasArtifacts ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_320px]' : ''"
     >
       <div class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <TrajectoryView
+          v-if="activeView === 'trajectory'"
+          :messages="displayedMessages"
+          :calls="snapshotMessages ? [] : calls"
+          :is-running="busy"
+        />
         <div
+          v-else
           ref="viewport"
           class="pw-chat-stream overscroll-contain"
           @scroll="handleViewportScroll"

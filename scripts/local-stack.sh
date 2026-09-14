@@ -239,14 +239,20 @@ stop_process() {
 wait_http() {
   local name="$1"
   local url="$2"
-  for _ in {1..40}; do
+  local timeout="${3:-60}"
+  local elapsed=0
+  while [ "$elapsed" -lt "$timeout" ]; do
     if curl -fsS --max-time 2 "$url" >/dev/null 2>&1; then
-      printf '[ready] %s %s\n' "$name" "$url"
+      printf '[ready] %s %s (%ss)\n' "$name" "$url" "$elapsed"
       return
     fi
     sleep 1
+    elapsed=$((elapsed + 1))
+    if [ $((elapsed % 10)) -eq 0 ]; then
+      printf '[wait] %s still starting (%ss/%ss)...\n' "$name" "$elapsed" "$timeout"
+    fi
   done
-  die "$name did not become ready: $url"
+  die "$name did not become ready within ${timeout}s: $url"
 }
 
 require_managed_process() {
@@ -391,7 +397,7 @@ start() {
   start_managed_key runtime-api
   start_managed_key runtime-worker
   require_managed_process runtime-worker
-  wait_http runtime-api "http://127.0.0.1:$RUNTIME_PORT/ready"
+  wait_http runtime-api "http://127.0.0.1:$RUNTIME_PORT/ready" 120
   start_managed_key platform-api
   wait_http platform-api "http://127.0.0.1:$PLATFORM_API_PORT/_system/health"
   start_managed_key platform-web
@@ -445,7 +451,7 @@ restart_one() {
   stop_process "$key"
   start_managed_key "$key"
   case "$key" in
-    runtime-api) wait_http runtime-api "http://127.0.0.1:$RUNTIME_PORT/ready" ;;
+    runtime-api) wait_http runtime-api "http://127.0.0.1:$RUNTIME_PORT/ready" 120 ;;
     platform-api) wait_http platform-api "http://127.0.0.1:$PLATFORM_API_PORT/_system/health" ;;
     platform-web) wait_http platform-web "http://127.0.0.1:$PLATFORM_WEB_PORT" ;;
     runtime-worker) require_managed_process "$key" ;;
