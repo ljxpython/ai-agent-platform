@@ -177,13 +177,13 @@
   }
 
   .pw-chat-workspace {
-    @apply relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-gray-200 bg-gray-50/70 shadow-sm;
-    @apply dark:border-dark-800 dark:bg-dark-950/45;
+    @apply relative flex min-h-0 flex-1 flex-col overflow-hidden bg-white;
+    @apply dark:bg-dark-950;
   }
 
   .pw-chat-workspace-header {
-    @apply relative z-10 shrink-0 border-b border-gray-200/80 bg-white px-4 py-2 md:px-5;
-    @apply dark:border-dark-800 dark:bg-dark-900;
+    @apply relative z-10 shrink-0 border-b border-gray-100 bg-white px-4 py-2.5 md:px-6;
+    @apply dark:border-dark-800/80 dark:bg-dark-950;
   }
 
   .pw-chat-stream {
@@ -248,8 +248,8 @@
   }
 
   .pw-chat-composer {
-    @apply mx-auto w-full max-w-4xl lg:max-w-5xl rounded-[22px] border border-gray-200 bg-white px-3 py-2.5 shadow-sm;
-    @apply dark:border-dark-700 dark:bg-dark-900;
+    @apply mx-auto w-full max-w-4xl lg:max-w-5xl rounded-[20px] border border-gray-200/90 bg-white px-3.5 py-2.5 shadow-[0_2px_10px_rgba(0,0,0,0.03)];
+    @apply dark:border-dark-700/80 dark:bg-dark-900;
   }
 
   .pw-chat-empty-state {

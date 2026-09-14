@@ -138,30 +138,23 @@ async function copy(value: string, id?: string) {
         :class="displayEntry.author === 'user' ? 'items-end' : 'items-start'"
       >
         <div
-          class="pw-chat-turn-heading mb-1.5"
-          :class="displayEntry.author === 'user' ? 'self-end' : 'self-start'"
+          v-if="displayEntry.author === 'agent'"
+          class="pw-chat-turn-heading mb-1.5 flex items-center gap-2"
         >
-          <template v-if="displayEntry.author === 'agent'">
-            <span class="inline-flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-tr from-primary-600 to-indigo-500 text-white shadow-xs">
-              <BaseIcon
-                name="sparkle"
-                size="xs"
-              />
-            </span>
-            <span class="text-xs font-semibold text-gray-900 dark:text-white">{{ targetName || 'Agent' }}</span>
-          </template>
-          <template v-else>
-            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-primary-100 text-primary-700 dark:bg-primary-950/80 dark:text-primary-300 text-xs font-semibold">
-              你
-            </span>
-          </template>
+          <span class="inline-flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs">
+            <BaseIcon
+              name="sparkle"
+              size="xs"
+            />
+          </span>
+          <span class="text-xs font-semibold text-gray-800 dark:text-gray-200">{{ targetName || 'Agent' }}</span>
         </div>
 
         <div
           :class="[
             displayEntry.author === 'user'
-              ? 'w-auto max-w-[85%] self-end rounded-2xl rounded-tr-sm border border-primary-200/90 bg-gradient-to-br from-primary-50/90 to-primary-100/40 px-4.5 py-3 shadow-2xs text-primary-950 dark:border-primary-800/60 dark:bg-gradient-to-br dark:from-primary-950/40 dark:to-dark-900 dark:text-primary-50'
-              : 'w-full self-start rounded-2xl border border-gray-200/80 bg-white/95 p-5 shadow-2xs transition-shadow hover:shadow-xs dark:border-dark-800/80 dark:bg-dark-900/95'
+              ? 'w-auto max-w-[85%] sm:max-w-[75%] self-end rounded-2xl rounded-tr-xs bg-blue-50/85 text-gray-900 border border-blue-100/90 px-4 py-2.5 shadow-2xs dark:bg-blue-950/40 dark:border-blue-900/50 dark:text-gray-100'
+              : 'w-full self-start border-0 bg-transparent p-0 shadow-none'
           ]"
         >
           <!-- Editing -->
@@ -265,8 +258,8 @@ async function copy(value: string, id?: string) {
           <template v-else>
             <button
               type="button"
-              class="inline-flex items-center gap-1 rounded-lg border border-gray-200/80 bg-white/90 px-2 py-1 text-xs text-gray-500 shadow-2xs transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white"
-              :class="copiedId === displayEntry.id ? '!border-emerald-500 !text-emerald-600 dark:!text-emerald-400' : ''"
+              class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-700 hover:bg-gray-100/80 dark:text-dark-400 dark:hover:text-gray-200 dark:hover:bg-dark-800/80 transition-colors"
+              :class="copiedId === displayEntry.id ? '!text-emerald-600 dark:!text-emerald-400' : ''"
               :title="copiedId === displayEntry.id ? '已复制' : '复制'"
               @click="copy(displayEntry.text, displayEntry.id)"
             >
@@ -279,7 +272,7 @@ async function copy(value: string, id?: string) {
             <button
               v-if="displayEntry.author === 'user' && canEdit && displayEntry.messageId"
               type="button"
-              class="inline-flex items-center gap-1 rounded-lg border border-gray-200/80 bg-white/90 px-2 py-1 text-xs text-gray-500 shadow-2xs transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white"
+              class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-700 hover:bg-gray-100/80 dark:text-dark-400 dark:hover:text-gray-200 dark:hover:bg-dark-800/80 transition-colors"
               title="编辑"
               @click="emit('edit', displayEntry.messageId, displayEntry.text)"
             >
@@ -290,11 +283,11 @@ async function copy(value: string, id?: string) {
               <span class="text-[11px]">编辑</span>
             </button>
             <button
-              v-if="displayEntry.author === 'agent' && canEdit && displayEntry.messageId"
+              v-if="displayEntry.author === 'agent' && displayEntry.messageId"
               type="button"
-              class="inline-flex items-center gap-1 rounded-lg border border-gray-200/80 bg-white/90 px-2 py-1 text-xs text-gray-500 shadow-2xs transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white"
+              class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-700 hover:bg-gray-100/80 dark:text-dark-400 dark:hover:text-gray-200 dark:hover:bg-dark-800/80 transition-colors"
               title="重试"
-              @click="emit('retry', displayEntry.messageId!)"
+              @click="emit('retry', displayEntry.messageId)"
             >
               <BaseIcon
                 name="refresh"
@@ -304,7 +297,7 @@ async function copy(value: string, id?: string) {
             </button>
             <div
               v-if="hasBranchSwitcher(displayEntry.messageId || '')"
-              class="inline-flex items-center gap-1 rounded-lg border border-gray-200/80 bg-white/90 px-1.5 py-0.5 shadow-2xs dark:border-dark-700/80 dark:bg-dark-800/90"
+              class="inline-flex items-center gap-1 rounded-md border border-gray-200/60 bg-white/70 px-1 py-0.5 text-xs dark:border-dark-800 dark:bg-dark-900/60"
             >
               <button
                 type="button"

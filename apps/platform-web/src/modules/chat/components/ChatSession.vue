@@ -645,6 +645,31 @@ onScopeDispose(() => {
   if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
   document.removeEventListener("visibilitychange", visibilityChanged);
 });
+
+const chatMetrics = computed(() => {
+  const allMsgs = displayedMessages.value;
+  let turns = 0;
+  const steps = allMsgs.length;
+  let inTok = 0;
+  let outTok = 0;
+  for (const m of allMsgs) {
+    if (m.type === "human") turns++;
+    const raw = m as unknown as Record<string, unknown>;
+    const usage =
+      (raw.usage_metadata as Record<string, number> | undefined) ||
+      ((raw.response_metadata as Record<string, unknown> | undefined)?.token_usage as Record<string, number> | undefined);
+    if (usage) {
+      if (typeof usage.input_tokens === "number") inTok += usage.input_tokens;
+      if (typeof usage.output_tokens === "number") outTok += usage.output_tokens;
+    }
+  }
+  return {
+    turns: Math.max(turns, 1),
+    steps,
+    inputTokens: inTok,
+    outputTokens: outTok,
+  };
+});
 </script>
 
 <template>
@@ -681,50 +706,40 @@ onScopeDispose(() => {
             新会话
           </span>
         </div>
-        <div class="ml-auto flex flex-wrap items-center gap-2 xl:flex-nowrap">
-          <div
-            class="inline-flex items-center rounded-lg border border-gray-200/80 bg-gray-100/80 p-0.5 text-xs font-medium dark:border-dark-700/80 dark:bg-dark-800/80"
-          >
+        <div class="ml-auto flex flex-wrap items-center gap-3 xl:flex-nowrap">
+          <div class="flex items-center gap-3 text-xs font-medium">
             <button
               type="button"
-              class="flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors"
+              class="relative pb-1 transition-colors"
               :class="
                 activeView === 'chat'
-                  ? 'bg-white text-gray-900 shadow-2xs dark:bg-dark-900 dark:text-white'
-                  : 'text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-white'
+                  ? 'font-semibold text-blue-600 dark:text-blue-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 dark:after:bg-blue-400'
+                  : 'text-gray-400 hover:text-gray-700 dark:text-dark-400 dark:hover:text-gray-200'
               "
-              title="切换至对话消息流视图"
+              title="切换至对话视图"
               @click="activeView = 'chat'"
             >
-              <BaseIcon
-                name="chat"
-                size="xs"
-              />
-              <span class="hidden sm:inline">对话</span>
+              对话
             </button>
             <button
               type="button"
-              class="flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-colors"
+              class="relative pb-1 transition-colors"
               :class="
                 activeView === 'trajectory'
-                  ? 'bg-white text-gray-900 shadow-2xs dark:bg-dark-900 dark:text-white'
-                  : 'text-gray-500 hover:text-gray-900 dark:text-dark-400 dark:hover:text-white'
+                  ? 'font-semibold text-blue-600 dark:text-blue-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 dark:after:bg-blue-400'
+                  : 'text-gray-400 hover:text-gray-700 dark:text-dark-400 dark:hover:text-gray-200'
               "
-              title="切换至轨迹排障与事件分析视图"
+              title="切换至轨迹排障视图"
               @click="activeView = 'trajectory'"
             >
-              <BaseIcon
-                name="activity"
-                size="xs"
-              />
-              <span class="hidden sm:inline">轨迹</span>
+              轨迹
             </button>
           </div>
           <slot name="actions" />
           <button
             type="button"
-            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:text-white transition-colors"
-            title="查看会话上下文与历史"
+            class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
+            title="查看会话详情与上下文"
             @click="openDrawer"
           >
             <BaseIcon
@@ -735,7 +750,7 @@ onScopeDispose(() => {
           </button>
           <button
             type="button"
-            class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:text-white transition-colors"
+            class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
             title="配置运行参数"
             @click="openOptions"
           >
@@ -1091,6 +1106,18 @@ onScopeDispose(() => {
       @composer-paste="handlePaste"
       @remove-attachment="removeAttachment"
     />
+    <div
+      v-if="messages.length && activeView === 'chat'"
+      class="mt-1 pb-2.5 text-center font-mono text-[11px] text-gray-400 select-none dark:text-dark-500"
+    >
+      <span>{{ chatMetrics.turns }} 轮 · {{ chatMetrics.steps }} 步</span>
+      <span class="mx-2 opacity-40">|</span>
+      <span>LLM 就绪</span>
+      <template v-if="chatMetrics.inputTokens > 0 || chatMetrics.outputTokens > 0">
+        <span class="mx-2 opacity-40">|</span>
+        <span>输入 {{ chatMetrics.inputTokens.toLocaleString() }} tok · 输出 {{ chatMetrics.outputTokens.toLocaleString() }} tok</span>
+      </template>
+    </div>
     <button
       v-if="
         session.supportsQueue &&

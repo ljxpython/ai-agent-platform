@@ -46,41 +46,34 @@ const expanded = ref<Record<string, boolean>>({});
       </div>
       <details
         v-else-if="block.kind === 'reasoning'"
-        class="group/reasoning rounded-xl border border-amber-200/70 bg-amber-50/40 p-3 text-xs dark:border-amber-900/40 dark:bg-amber-950/20 transition-all"
+        class="group/reasoning my-1 select-none transition-all"
         :open="expanded[block.key] ?? !!isStreaming"
         @toggle="
           expanded[block.key] = ($event.target as HTMLDetailsElement).open
         "
       >
-        <summary class="cursor-pointer font-medium text-amber-900/90 dark:text-amber-200/90 select-none flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span
-              v-if="isStreaming"
-              class="relative flex h-2 w-2"
-            >
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
-            </span>
-            <span
-              v-else
-              class="inline-flex h-4 w-4 items-center justify-center rounded-md bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
-            >
-              <BaseIcon
-                name="sparkle"
-                size="xs"
-              />
-            </span>
-            <span>{{ isStreaming ? "正在思考中..." : "思考过程" }}</span>
-          </div>
-          <span class="text-[11px] text-amber-700/70 dark:text-amber-400/70 group-open/reasoning:rotate-180 transition-transform duration-200">
-            <BaseIcon
-              name="chevron-down"
-              size="xs"
-            />
+        <summary class="inline-flex max-w-full cursor-pointer items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 dark:text-dark-400 dark:hover:text-gray-200 transition-colors">
+          <span
+            v-if="isStreaming"
+            class="relative flex h-2 w-2 mr-0.5"
+          >
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+            <span class="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+          </span>
+          <span
+            v-else
+            class="text-[13px] opacity-70"
+          >
+            ⚛
+          </span>
+          <span class="font-medium text-gray-600 dark:text-dark-300">Think</span>
+          <span class="text-gray-400 dark:text-dark-500">·</span>
+          <span class="truncate font-mono text-[11px] text-gray-400 dark:text-dark-400 max-w-[500px]">
+            {{ block.text }}
           </span>
         </summary>
         <div
-          class="mt-2.5 max-h-96 overflow-auto whitespace-pre-wrap text-xs text-gray-700 dark:text-dark-200 border-t border-amber-200/50 pt-2.5 dark:border-amber-900/30 leading-relaxed font-mono"
+          class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50/50 p-3 text-xs text-gray-600 dark:border-dark-800 dark:bg-dark-900/40 dark:text-dark-300 leading-relaxed font-mono select-text"
         >
           {{ block.text }}
         </div>
