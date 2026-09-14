@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Dear Agent 专属前端 | 规划中：独立模块复用 Chat；F0—F7 交付子任务、23 Skills 与生产展示；已细化官方提问表单／审批恢复及网关预校验，尚未实施 | [前端与契约规划](projects/20260913-dearflow-agent/08-web-and-platform-contracts.md) |
 | 正式聊天 v2（LangChain 流式运行时、线程续接、工具调用与中断展示） | 已重写：官方 SDK 会话、按轮渲染、多 ID 审批、历史分支及移动工作区；最终验收见项目记录 | [Chat 重构](projects/20260910-platform-web-refactor/04-chat-session-and-interaction.md) |
 | 运行级调试配置 | 已完成：公开 Context/config 白名单、schema 参数校验；不保留旧提示词覆盖 | [接入契约](projects/20260910-platform-web-refactor/03-api-contracts.md) |
 | 控制面核心页面（overview/projects/users/agents/me/security/audit） | 已迁移：Agent/模型新契约、统一权限导航、列表四态；全路由浏览器验收见项目记录 | [现状与目标架构](projects/20260910-platform-web-refactor/02-architecture-and-ui.md) |
@@ -39,6 +40,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| DearFlowAgent（普通子 Agent 复用与展示缺陷修复；独立取消、独立 child Run、完整 usage 后置）：Deep Agents 能力迁移与生产化 | 规划中：第二版总纲与逐章接续、10 个专题、23 个 Skills；独立 Dear Agent 前端随 P0—P7 交付；待治理评审，尚未实施 | [项目规划](projects/20260913-dearflow-agent/README.md) |
 | Graph 注册、模型参数解析、工具装配 | 已完成 | `apps/runtime-service/docs/standards/*.md` |
 | MCP 接入 | 已完成 | `apps/runtime-service/docs/knowledge/19-runtime-tool-capability-mcp-and-side-effect-design.md` |
 | 公共图片工具 Middleware、Showcase 图表 MCP 子智能体与平台图片链路 | 部分完成：G0 契约、Runtime 运输层、Platform API 网关与 Platform Web 前端交互及确定性自动化测试全部通过；待配置真实生产环境模型凭据进行线上 Smoke 联调 | [图片与图表能力方案](projects/20260913-showcase-image-chart-capabilities/README.md) |

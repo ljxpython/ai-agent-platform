@@ -65,6 +65,8 @@
 1. [AGENTS.md](AGENTS.md) —— 开发流程、改动分级标准（单项目/链路/治理改动）
 2. [Docs 总入口](docs/README.md)
 
+当前规划：[Dear Agent 总纲与能力迁移](docs/projects/20260913-dearflow-agent/README.md)（第二版：独立前端、前后端基础框架与逐章实施接续；治理方案待评审，尚未实施）。
+
 一句话理解：
 
 - `AGENTS.md`：开发规范入口，定义分级标准和验证要求
