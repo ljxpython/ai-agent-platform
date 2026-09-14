@@ -1,13 +1,18 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import AppSidebar from '@/components/layout/AppSidebar.vue'
 import TopContextBar from '@/components/layout/TopContextBar.vue'
 import { useUiStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
 
+const route = useRoute()
 const uiStore = useUiStore()
 const authStore = useAuthStore()
 const { sidebarCollapsed } = storeToRefs(uiStore)
+
+const isImmersive = computed(() => route.name === 'workspace-chat' || Boolean(route.meta?.immersive))
 </script>
 
 <template>
@@ -20,9 +25,18 @@ const { sidebarCollapsed } = storeToRefs(uiStore)
       class="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-all duration-300"
       :class="sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64'"
     >
-      <TopContextBar class="shrink-0" />
-      <main class="pw-workspace-main flex min-h-0 flex-1 flex-col overflow-hidden">
-        <div class="flex min-h-0 w-full flex-1 flex-col overflow-y-auto">
+      <TopContextBar
+        v-if="!isImmersive"
+        class="shrink-0"
+      />
+      <main
+        class="flex min-h-0 flex-1 flex-col overflow-hidden"
+        :class="isImmersive ? 'p-0 m-0' : 'pw-workspace-main'"
+      >
+        <div
+          class="flex min-h-0 w-full flex-1 flex-col"
+          :class="isImmersive ? 'overflow-hidden' : 'overflow-y-auto'"
+        >
           <router-view :key="authStore.sessionEpoch" />
         </div>
       </main>

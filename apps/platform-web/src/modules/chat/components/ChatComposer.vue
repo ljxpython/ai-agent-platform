@@ -179,9 +179,9 @@ defineExpose({
     class="pw-chat-composer-wrap transition-all duration-200"
     :class="
       isFocusMode
-        ? 'px-3 pb-3 pt-2 md:px-4'
+        ? 'px-3 pb-2 pt-1 md:px-4'
         : props.compact
-          ? 'px-4 pb-3 pt-2 md:px-5'
+          ? 'px-3 pb-2 pt-1 md:px-4'
           : ''
     "
   >

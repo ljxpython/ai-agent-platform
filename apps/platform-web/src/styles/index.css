@@ -244,7 +244,7 @@
   }
 
   .pw-chat-composer-wrap {
-    @apply shrink-0 px-4 pb-4 pt-2 md:px-5 md:pb-5;
+    @apply shrink-0 px-3 pb-2 pt-1.5 md:px-4 md:pb-2.5;
   }
 
   .pw-chat-composer {

@@ -16,6 +16,8 @@ import BaseDialog from "@/components/base/BaseDialog.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import EmptyState from "@/components/platform/EmptyState.vue";
+import WorkspaceProjectSwitcher from "@/components/platform/WorkspaceProjectSwitcher.vue";
+import UserMenu from "@/components/layout/UserMenu.vue";
 import ChatSession from "../components/ChatSession.vue";
 import ChatThreadSidebar from "../components/ChatThreadSidebar.vue";
 import ChatAgentSelector from "../components/ChatAgentSelector.vue";
@@ -41,17 +43,13 @@ const target = shallowRef<ChatTarget | null>(null);
 const agents = ref<Agent[]>([]);
 const threads = ref<ChatThread[]>([]);
 const threadQuery = ref("");
-const sidebarCollapsed = ref(false);
+const sidebarCollapsed = ref(typeof window !== "undefined" ? window.innerWidth < 1024 : false);
 const focusMode = ref(false);
 const threadStatus = ref<ChatThreadStatusFilter>("all");
 const statusFilters = [{ value: "all", label: "全部" }, { value: "interrupted", label: "待处理" }, { value: "busy", label: "运行中" }, { value: "idle", label: "空闲" }, { value: "error", label: "异常" }] as const;
 function exitFocus(event: KeyboardEvent) { if (event.key === "Escape") focusMode.value = false; }
 document.addEventListener("keydown", exitFocus);
 onScopeDispose(() => document.removeEventListener("keydown", exitFocus));
-const visibleThreads = computed(() => {
-  const query = threadQuery.value.trim().toLocaleLowerCase();
-  return threads.value.filter(thread => (threadStatus.value === "all" || thread.status === threadStatus.value) && (!query || `${thread.metadata?.title ?? ""} ${thread.thread_id}`.toLocaleLowerCase().includes(query)));
-});
 const threadListView = computed(() => buildChatThreadListView({
   items: threads.value.map(thread => ({ id: thread.thread_id, title: String(thread.metadata?.title || "未命名对话"), preview: String(thread.metadata?.preview || ""), updatedAt: thread.updated_at, time: formatThreadTime(thread.updated_at), status: thread.status })),
   query: threadQuery.value, statusFilter: threadStatus.value,
@@ -262,12 +260,15 @@ watch(
 );
 
 function choose(value: string) {
+  if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;
   void router.push({ path: chatPath.value, query: { agentId: value } });
 }
 function openThread(id: string) {
+  if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;
   void router.push(`${chatPath.value}/${encodeURIComponent(id)}`);
 }
 function newThread() {
+  if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;
   if (target.value) choose(selectedTarget.value);
   if (!selectedThread.value) {
     resetDraft();
@@ -326,71 +327,26 @@ onScopeDispose(() => {
           />退出专注模式
         </BaseButton>
       </div>
-      <input
-        v-if="threads.length && !focusMode"
-        v-model="threadQuery"
-        aria-label="筛选已加载对话"
-        placeholder="筛选已加载对话"
-        class="pw-input mb-3 lg:hidden"
-      >
-      <div
-        v-if="threads.length && !focusMode"
-        class="mb-3 flex gap-2 lg:hidden"
-      >
-        <select
-          aria-label="历史对话"
-          class="pw-input min-w-0 flex-1"
-          :value="selectedThread || ''"
-          @change="openThread(($event.target as HTMLSelectElement).value)"
-        >
-          <option
-            value=""
-            disabled
-          >
-            选择历史对话
-          </option>
-          <option
-            v-for="thread in visibleThreads"
-            :key="thread.thread_id"
-            :value="thread.thread_id"
-          >
-            {{ thread.metadata?.title || '未命名对话' }}
-          </option>
-        </select>
-        <button
-          v-if="hasMore"
-          class="pw-table-tool-button"
-          :disabled="listLoading"
-          @click="loadThreads(false)"
-        >
-          加载更多
-        </button>
-      </div>
-      <p
-        v-if="listError"
-        role="alert"
-        class="mb-2 text-sm text-red-600 lg:hidden"
-      >
-        {{ listError }} <button
-          class="underline"
-          @click="loadThreads()"
-        >
-          重试
-        </button>
-      </p>
       <p
         v-if="target?.disabled"
         role="status"
-        class="mb-3 text-sm text-gray-500"
+        class="mb-2 px-4 py-1.5 text-xs bg-amber-50 text-amber-700 border-b border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50"
       >
         该智能体已停用或未授权，当前仅可查看历史消息和投递状态。
       </p>
-      <div class="!mt-0 flex min-h-0 flex-1 gap-4 overflow-hidden">
+      <div class="!mt-0 relative flex min-h-0 flex-1 gap-0 overflow-hidden">
+        <!-- 移动端抽屉蒙层 -->
+        <div
+          v-if="!sidebarCollapsed && !focusMode"
+          class="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs lg:hidden"
+          @click="sidebarCollapsed = true"
+        />
+
         <ChatThreadSidebar
           v-if="!sidebarCollapsed && !focusMode"
           v-model:search="threadQuery"
           v-model:status-filter="threadStatus"
-          class="hidden lg:flex"
+          class="fixed inset-y-0 left-0 z-50 shadow-2xl lg:static lg:z-auto lg:shadow-none"
           :show-context-bar="true"
           :target-text="target?.name || ''"
           target-type-text="Agent"
@@ -444,16 +400,21 @@ onScopeDispose(() => {
         >
           <template #target>
             <button
-              v-if="sidebarCollapsed && !focusMode"
-              class="inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:text-white transition-colors"
-              title="展开历史会话"
-              @click="sidebarCollapsed = false"
+              v-if="!focusMode"
+              class="inline-flex h-7 items-center gap-1 rounded-md border px-2 text-xs font-medium shadow-2xs transition-colors"
+              :class="
+                sidebarCollapsed
+                  ? 'border-gray-200/80 bg-white/90 text-gray-600 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:text-white'
+                  : 'border-primary-200/80 bg-primary-50/70 text-primary-700 hover:bg-primary-100/70 dark:border-primary-800/60 dark:bg-primary-950/40 dark:text-primary-300'
+              "
+              :title="sidebarCollapsed ? '展开历史会话' : '收起历史会话'"
+              @click="sidebarCollapsed = !sidebarCollapsed"
             >
               <BaseIcon
                 name="columns"
                 size="xs"
               />
-              <span class="hidden sm:inline">历史</span>
+              <span class="hidden sm:inline">{{ sidebarCollapsed ? '历史' : '收起' }}</span>
             </button>
             <ChatAgentSelector
               :agents="agents"
@@ -487,7 +448,7 @@ onScopeDispose(() => {
             </button>
             <button
               v-if="selectedThread && canWrite"
-              class="lg:hidden inline-flex h-8 items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 text-xs font-medium text-red-600 shadow-2xs hover:bg-red-50 dark:border-red-900/50 dark:bg-dark-800 dark:text-red-400 dark:hover:bg-red-950/30 transition-colors"
+              class="lg:hidden inline-flex h-7 items-center gap-1 rounded-md border border-red-200 bg-white px-2 text-xs font-medium text-red-600 shadow-2xs hover:bg-red-50 dark:border-red-900/50 dark:bg-dark-800 dark:text-red-400 dark:hover:bg-red-950/30 transition-colors"
               title="删除此会话"
               @click="requestDelete(selectedThread)"
             >
@@ -497,6 +458,11 @@ onScopeDispose(() => {
               />
               <span class="hidden sm:inline">删除</span>
             </button>
+            <div class="h-3.5 w-px bg-gray-200 dark:bg-dark-700 mx-0.5 hidden lg:block" />
+            <div class="hidden lg:flex items-center gap-1.5">
+              <WorkspaceProjectSwitcher />
+              <UserMenu />
+            </div>
           </template>
         </ChatSession>
         <div

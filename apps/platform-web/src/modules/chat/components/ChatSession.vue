@@ -706,7 +706,7 @@ const chatMetrics = computed(() => {
             新会话
           </span>
         </div>
-        <div class="ml-auto flex flex-wrap items-center gap-3 xl:flex-nowrap">
+        <div class="ml-auto flex items-center gap-2">
           <div class="flex items-center gap-3 text-xs font-medium">
             <button
               type="button"
@@ -1108,7 +1108,7 @@ const chatMetrics = computed(() => {
     />
     <div
       v-if="messages.length && activeView === 'chat'"
-      class="mt-1 pb-2.5 text-center font-mono text-[11px] text-gray-400 select-none dark:text-dark-500"
+      class="mt-0.5 pb-1.5 text-center font-mono text-[11px] text-gray-400 select-none dark:text-dark-500"
     >
       <span>{{ chatMetrics.turns }} 轮 · {{ chatMetrics.steps }} 步</span>
       <span class="mx-2 opacity-40">|</span>

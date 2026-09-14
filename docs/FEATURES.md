@@ -25,6 +25,7 @@
 | DeepSeek Harness 轨迹视图迁移（双视图切换、事件流水账与 Master-Detail 检查器） | 已完成：支持对话/轨迹模式随时切换；按轮次/步数分组呈现思考链、工具入参与返回、错误高亮及 Raw JSON 深度排障；适配层带安全降级 | [轨迹视图迁移](projects/20260914-deepseek-trajectory-migration/README.md) |
 | 轨迹排障 DevTools 体验深度对齐（三层甘特时间线、树状贯穿线、紧凑单行表格与 Summary 内联预览） | 已完成：多通道横向甘特条（Input/Model/Tools）、Turn Rail 树状节点与连线、微型彩色徽章、左侧 3px 指示竖条、实时搜索与性能指标底栏 | [轨迹 DevTools 体验对齐](../apps/platform-web/docs/changes/20260914-trajectory-devtools-layout-alignment.md) |
 | 前端主对话流极简化与高级感对齐（无界通透主视窗、灰色原子 Think 条、无头像用户气泡与工业指标底栏） | 已完成：去除卡片套娃大框、Think 改为极简灰色单行、去头像气泡、下划线视图 Tab 与性能小字底栏 | [主对话流极简对齐](../apps/platform-web/docs/changes/20260914-chat-ui-minimalist-deepseek-alignment.md) |
+| 对话工作台通透无界大视野与布局重构（单层沉浸顶栏、消除底部死留白、自适应平滑滚动与侧栏一键折叠） | 已完成：消灭双 Header 套娃释放 56px 高度、下沉项目与用户切换器、消灭底部大留白、移除会话侧栏分页器并常驻一键折叠 | [通透无界布局重构](../apps/platform-web/docs/changes/20260914-chat-workspace-borderless-layout-redesign.md) |
 
 
 

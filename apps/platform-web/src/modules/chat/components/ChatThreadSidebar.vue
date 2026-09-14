@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed } from 'vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import type { ChatThreadStatusFilter, ChatThreadSummaryGroup } from '../thread-list-view-model'
@@ -40,41 +40,6 @@ const emit = defineEmits<{
 const searchModel = computed({
   get: () => props.search,
   set: (value: string) => emit('update:search', value)
-})
-
-const currentPage = ref(1)
-const pageSize = 10
-
-watch(() => props.filteredCount, () => { currentPage.value = Math.min(currentPage.value, Math.max(1, Math.ceil(props.filteredCount / pageSize))) })
-
-const totalPages = computed(() => Math.max(1, Math.ceil(props.filteredCount / pageSize)))
-
-watch([() => props.search, () => props.statusFilter], () => {
-  currentPage.value = 1
-})
-
-const paginatedGroups = computed(() => {
-  let currentItemIndex = 0
-  const start = (currentPage.value - 1) * pageSize
-  const end = start + pageSize
-  const result: ChatThreadSummaryGroup[] = []
-
-  for (const group of props.groups) {
-    const groupItems: typeof group.items = []
-    for (const item of group.items) {
-      if (currentItemIndex >= start && currentItemIndex < end) {
-        groupItems.push(item)
-      }
-      currentItemIndex++
-    }
-    if (groupItems.length > 0) {
-      result.push({
-        ...group,
-        items: groupItems
-      })
-    }
-  }
-  return result
 })
 </script>
 
@@ -159,12 +124,12 @@ const paginatedGroups = computed(() => {
 
       <div
         v-else
-        class="space-y-5"
+        class="space-y-4"
       >
         <div
-          v-for="group in paginatedGroups"
+          v-for="group in groups"
           :key="group.key"
-          class="space-y-2"
+          class="space-y-1.5"
         >
           <div class="px-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-dark-500">
             {{ group.label }}
@@ -178,44 +143,44 @@ const paginatedGroups = computed(() => {
             >
               <button
                 type="button"
-                class="w-full rounded-lg px-3 py-2.5 text-left transition-colors flex flex-col gap-1"
+                class="w-full rounded-lg px-2.5 py-2 text-left transition-colors flex flex-col gap-0.5"
                 :class="
                   item.id === activeThreadId
-                    ? 'bg-primary-50 dark:bg-primary-950/30 border border-primary-100 dark:border-primary-900/50'
-                    : 'border border-transparent hover:bg-gray-50 dark:hover:bg-dark-800/50'
+                    ? 'bg-primary-50/80 dark:bg-primary-950/40 border border-primary-100/80 dark:border-primary-900/50'
+                    : 'border border-transparent hover:bg-gray-100/80 dark:hover:bg-dark-800/60'
                 "
                 :aria-label="item.title"
                 @click="emit('select-thread', item.id)"
               >
                 <div class="flex items-start justify-between gap-2">
                   <div
-                    class="truncate text-sm font-medium"
-                    :class="item.id === activeThreadId ? 'text-primary-900 dark:text-primary-100' : 'text-gray-900 dark:text-gray-100'"
+                    class="truncate text-xs font-medium"
+                    :class="item.id === activeThreadId ? 'text-primary-900 dark:text-primary-100 font-semibold' : 'text-gray-800 dark:text-gray-200'"
                   >
                     {{ item.title }}
                   </div>
                 </div>
                 
-                <div class="line-clamp-2 text-xs text-gray-500 dark:text-dark-400 min-h-[1.5rem]">
+                <div class="line-clamp-1 text-[11px] text-gray-400 dark:text-dark-400">
                   {{ item.preview || '(无内容)' }}
                 </div>
                 
-                <div class="flex items-center justify-between text-[10px] text-gray-400 dark:text-dark-500 uppercase tracking-wide mt-1">
+                <div class="flex items-center justify-between text-[10px] text-gray-400 dark:text-dark-500 mt-0.5">
                   <span>{{ item.time }}</span>
                   <div class="flex items-center gap-1">
                     <span
                       v-if="item.status === 'interrupted'"
-                      class="w-2 h-2 rounded-full bg-amber-500"
+                      class="w-1.5 h-1.5 rounded-full bg-amber-500"
                       title="等待确认"
                     />
                     <span
                       v-else-if="item.status === 'error'"
-                      class="w-2 h-2 rounded-full bg-red-500"
+                      class="w-1.5 h-1.5 rounded-full bg-red-500"
                       title="错误"
                     />
                     <span
                       v-else-if="item.status === 'busy'"
-                      class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"
+                      class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"
                       title="运行中"
                     />
                   </div>
@@ -243,40 +208,18 @@ const paginatedGroups = computed(() => {
       </div>
     </div>
 
-    <button
-      v-if="hasMore"
-      type="button"
-      class="pw-table-tool-button mx-3 mb-2"
-      :disabled="loading"
-      @click="emit('load-more')"
-    >
-      加载更多
-    </button>
-    <!-- Pagination Footer -->
+    <!-- Minimalist Load More Footer -->
     <div
-      v-if="filteredCount > 0"
-      class="border-t border-gray-200 dark:border-dark-800 px-3 py-2 flex items-center justify-between text-xs text-gray-500 dark:text-dark-400 shrink-0 bg-gray-50/50 dark:bg-dark-900/50"
+      v-if="hasMore"
+      class="border-t border-gray-100 dark:border-dark-800 p-2 shrink-0 bg-gray-50/50 dark:bg-dark-900/50 text-center"
     >
       <button
         type="button"
-        class="pw-table-tool-button px-2 py-1 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-        :disabled="currentPage <= 1"
-        @click="currentPage--"
+        class="w-full py-1 text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:bg-primary-50/60 dark:hover:bg-primary-950/40 rounded-lg transition-colors font-medium disabled:opacity-50"
+        :disabled="loading"
+        @click="emit('load-more')"
       >
-        上一页
-      </button>
-
-      <span class="text-[11px] font-medium text-gray-600 dark:text-dark-300">
-        {{ currentPage }} / {{ totalPages }} 页 (共 {{ filteredCount }} 条已加载)
-      </span>
-
-      <button
-        type="button"
-        class="pw-table-tool-button px-2 py-1 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
-        :disabled="currentPage >= totalPages"
-        @click="currentPage++"
-      >
-        下一页
+        {{ loading ? '加载中...' : '加载更多会话' }}
       </button>
     </div>
   </aside>

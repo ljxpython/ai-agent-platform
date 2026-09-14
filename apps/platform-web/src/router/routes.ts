@@ -55,6 +55,7 @@ const workspaceChildren: RouteRecordRaw[] = [
       title: "Chat",
       requiredPermissions: ["project.runtime.read"],
       permissionProjectSource: "route",
+      immersive: true,
     },
   },
   {
