@@ -23,6 +23,7 @@ const props = defineProps<{
   activeThreadId: string
   deletingThreadId: string
   groups: ChatThreadSummaryGroup[]
+  currentPage?: number
   hasMore?: boolean
   canDelete?: boolean
 }>()
@@ -34,6 +35,7 @@ const emit = defineEmits<{
   'select-thread': [threadId: string]
   'delete-thread': [threadId: string]
   'collapse': []
+  'page-change': [page: number]
   'load-more': []
 }>()
 
@@ -208,19 +210,54 @@ const searchModel = computed({
       </div>
     </div>
 
-    <!-- Minimalist Load More Footer -->
+    <!-- 极简高质感微型分页器 (Compact Pagination) -->
     <div
-      v-if="hasMore"
-      class="border-t border-gray-100 dark:border-dark-800 p-2 shrink-0 bg-gray-50/50 dark:bg-dark-900/50 text-center"
+      v-if="currentPage !== undefined || hasMore"
+      class="border-t border-gray-100 dark:border-dark-800 px-3 py-2 shrink-0 bg-gray-50/70 dark:bg-dark-900/60 flex items-center justify-between font-mono text-[11px] text-gray-500 select-none"
     >
-      <button
-        type="button"
-        class="w-full py-1 text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:bg-primary-50/60 dark:hover:bg-primary-950/40 rounded-lg transition-colors font-medium disabled:opacity-50"
-        :disabled="loading"
-        @click="emit('load-more')"
-      >
-        {{ loading ? '加载中...' : '加载更多会话' }}
-      </button>
+      <div class="flex items-center gap-1.5 text-gray-400 dark:text-dark-400">
+        <span>第 <strong class="text-gray-700 dark:text-dark-200 font-semibold">{{ currentPage || 1 }}</strong> 页</span>
+        <span
+          v-if="filteredCount > 0"
+          class="text-[10px]"
+        >({{ filteredCount }} 条)</span>
+      </div>
+
+      <div class="flex items-center gap-1">
+        <button
+          type="button"
+          class="flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-white text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed dark:border-dark-700 dark:bg-dark-800 dark:text-dark-300 dark:hover:bg-dark-700 transition-colors"
+          :disabled="(currentPage || 1) <= 1 || loading"
+          title="上一页"
+          aria-label="上一页"
+          @click="emit('page-change', (currentPage || 1) - 1)"
+        >
+          <BaseIcon
+            name="chevron-left"
+            size="xs"
+          />
+        </button>
+
+        <span
+          class="flex h-6 min-w-6 items-center justify-center rounded border border-blue-200 bg-blue-50 px-1.5 font-semibold text-blue-700 shadow-2xs dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300 text-[11px]"
+        >
+          {{ currentPage || 1 }}
+        </span>
+
+        <button
+          type="button"
+          class="flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-white text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed dark:border-dark-700 dark:bg-dark-800 dark:text-dark-300 dark:hover:bg-dark-700 transition-colors"
+          :disabled="!hasMore || loading"
+          title="下一页"
+          aria-label="下一页"
+          @click="emit('page-change', (currentPage || 1) + 1)"
+        >
+          <BaseIcon
+            name="chevron-right"
+            size="xs"
+          />
+        </button>
+      </div>
     </div>
   </aside>
 </template>

@@ -28,6 +28,9 @@ const selectedRecordId = ref<string | null>(null);
 const isInspectorOpen = ref(true);
 const filter = ref<"all" | "tools" | "errors">("all");
 const searchQuery = ref("");
+const actualDuration = ref(true);
+const allTurnsCollapsed = ref(false);
+const allCallsCollapsed = ref(false);
 
 // 统计信息
 const stats = computed(() => {
@@ -83,22 +86,76 @@ function handleCloseInspector() {
     class="flex h-full w-full flex-col overflow-hidden bg-white dark:bg-dark-950 font-sans"
     data-testid="trajectory-view"
   >
-    <!-- 1. Top Toolbar: Indicators + Search + Filter -->
+    <!-- 1. Top Toolbar: Indicators + Controls + Search + Filter -->
     <div class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200/90 bg-white px-3.5 py-2 select-none dark:border-dark-800 dark:bg-dark-900">
-      <!-- Left: Indicators -->
-      <div class="flex items-center gap-3 text-xs">
-        <div class="flex items-center gap-1.5 font-mono text-[11px] text-gray-500 dark:text-dark-400">
-          <span class="font-semibold text-gray-900 dark:text-white">
-            {{ stats.turns }} 轮 · {{ stats.steps }} 步
-          </span>
-          <span>·</span>
-          <span>{{ stats.tools }} 工具</span>
-          <span
-            v-if="stats.errors > 0"
-            class="text-red-600 dark:text-red-400 font-semibold"
+      <!-- Left: Duration / Turns / Calls Controls + Stats -->
+      <div class="flex items-center gap-2 text-xs">
+        <div class="flex items-center gap-1.5">
+          <button
+            type="button"
+            class="inline-flex h-6.5 items-center gap-1 rounded border px-2 text-[11px] font-mono transition-colors"
+            :class="
+              actualDuration
+                ? 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300 font-semibold'
+                : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-400'
+            "
+            :title="actualDuration ? '切换为等宽模式 (Use Equal Width)' : '切换为真实耗时模式 (Use Actual Duration)'"
+            @click="actualDuration = !actualDuration"
           >
-            · {{ stats.errors }} 异常
-          </span>
+            <svg
+              class="h-3 w-3 fill-none stroke-current stroke-[2]"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+              />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M12 7v5l3 2"
+              />
+            </svg>
+            <span>Duration</span>
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex h-6.5 items-center gap-1 rounded border border-gray-200 bg-white px-2 text-[11px] font-mono text-gray-600 shadow-2xs hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-300 dark:hover:bg-dark-800 transition-colors"
+            :class="{ 'border-blue-300 bg-blue-50/60 text-blue-700 font-semibold dark:border-blue-800/60 dark:bg-blue-950/40 dark:text-blue-300': allTurnsCollapsed }"
+            :title="allTurnsCollapsed ? '展开所有轮次 (Expand Turns)' : '折叠所有轮次 (Collapse Turns)'"
+            @click="allTurnsCollapsed = !allTurnsCollapsed"
+          >
+            <span class="font-mono text-xs">{{ allTurnsCollapsed ? '⊞' : '⊟' }}</span>
+            <span>Turns</span>
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex h-6.5 items-center gap-1 rounded border border-gray-200 bg-white px-2 text-[11px] font-mono text-gray-600 shadow-2xs hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-300 dark:hover:bg-dark-800 transition-colors"
+            :class="{ 'border-amber-300 bg-amber-50/60 text-amber-800 font-semibold dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300': allCallsCollapsed }"
+            :title="allCallsCollapsed ? '展开所有工具调用 (Expand Calls)' : '折叠所有工具调用 (Collapse Calls)'"
+            @click="allCallsCollapsed = !allCallsCollapsed"
+          >
+            <span class="font-mono text-xs">{{ allCallsCollapsed ? '⊞' : '⊟' }}</span>
+            <span>Calls</span>
+          </button>
+        </div>
+
+        <div class="h-3.5 w-px bg-gray-200 dark:bg-dark-700 mx-1 hidden sm:block" />
+
+        <!-- Stats Overview Banner (图 3 同款) -->
+        <div class="flex items-center gap-1.5 font-mono text-xs text-gray-900 dark:text-white font-semibold">
+          <span>{{ stats.turns }} 轮</span>
+          <span>·</span>
+          <span>{{ stats.steps }} 步</span>
+          <span>·</span>
+          <span :class="stats.tools > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400 dark:text-dark-500'">{{ stats.tools }} 工具</span>
+          <template v-if="stats.errors > 0">
+            <span>·</span>
+            <span class="text-red-600 dark:text-red-400">{{ stats.errors }} 异常</span>
+          </template>
         </div>
       </div>
 
@@ -166,6 +223,7 @@ function handleCloseInspector() {
     <TrajectoryTimeline
       :records="records"
       :selected-record-id="selectedRecordId"
+      :actual-duration="actualDuration"
       @select="handleSelect"
     />
 
@@ -183,6 +241,8 @@ function handleCloseInspector() {
           :selected-record-id="selectedRecordId"
           :filter="filter"
           :search-query="searchQuery"
+          :all-turns-collapsed="allTurnsCollapsed"
+          :all-calls-collapsed="allCallsCollapsed"
           @select="handleSelect"
         />
       </div>

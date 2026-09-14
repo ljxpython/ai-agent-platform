@@ -61,7 +61,7 @@ describe("TrajectoryView component", () => {
     expect(wrapper.text()).toContain("Turn 1");
 
     // 点击 list_dir 工具行
-    const rows = wrapper.findAll("[data-testid='trajectory-ledger'] .cursor-pointer");
+    const rows = wrapper.findAll("[data-testid='trajectory-record-row']");
     const toolRow = rows.find((r) => r.text().includes("list_dir"));
     expect(toolRow).toBeDefined();
 
@@ -106,6 +106,6 @@ describe("TrajectoryView component", () => {
     await toolsFilterBtn?.trigger("click");
     expect(wrapper.text()).toContain("tool1");
     // 不再显示被过滤的用户消息
-    expect(wrapper.findAll("[data-testid='trajectory-ledger'] .cursor-pointer").length).toBe(1);
+    expect(wrapper.findAll("[data-testid='trajectory-record-row']").length).toBe(1);
   });
 });

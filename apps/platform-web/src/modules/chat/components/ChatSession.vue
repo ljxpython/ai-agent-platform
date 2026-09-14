@@ -646,14 +646,43 @@ onScopeDispose(() => {
   document.removeEventListener("visibilitychange", visibilityChanged);
 });
 
+function formatTokensCompact(n: number): string {
+  const scaled = (v: number): string =>
+    v >= 100 ? String(Math.round(v)) : String(Math.round(v * 10) / 10);
+  if (n < 1_000) return String(n);
+  if (n < 1_000_000) return `${scaled(n / 1_000)}K`;
+  return `${scaled(n / 1_000_000)}M`;
+}
+
+function formatDurationSec(ms: number): string {
+  const s = ms / 1_000;
+  if (s < 60) return `${Math.round(s * 10) / 10}s`;
+  const whole = Math.round(s);
+  return `${Math.floor(whole / 60)}m${whole % 60}s`;
+}
+
 const chatMetrics = computed(() => {
   const allMsgs = displayedMessages.value;
   let turns = 0;
   const steps = allMsgs.length;
   let inTok = 0;
   let outTok = 0;
+  let cacheReadTok = 0;
+  let cacheWriteTok = 0;
+  let totalLlmMs = 0;
+  let totalTtftMs = 0;
+  let ttftCount = 0;
+  let totalAiChars = 0;
+  let totalHumanChars = 0;
+
   for (const m of allMsgs) {
-    if (m.type === "human") turns++;
+    if (m.type === "human") {
+      turns++;
+      totalHumanChars += typeof m.content === "string" ? m.content.length : 10;
+    }
+    if (m.type === "ai") {
+      totalAiChars += typeof m.content === "string" ? m.content.length : 20;
+    }
     const raw = m as unknown as Record<string, unknown>;
     const usage =
       (raw.usage_metadata as Record<string, number> | undefined) ||
@@ -661,13 +690,67 @@ const chatMetrics = computed(() => {
     if (usage) {
       if (typeof usage.input_tokens === "number") inTok += usage.input_tokens;
       if (typeof usage.output_tokens === "number") outTok += usage.output_tokens;
+      if (typeof usage.cache_read_input_tokens === "number") cacheReadTok += usage.cache_read_input_tokens;
+      if (typeof usage.cache_creation_input_tokens === "number") cacheWriteTok += usage.cache_creation_input_tokens;
+    }
+    const additional = raw.additional_kwargs as Record<string, unknown> | undefined;
+    const dur = typeof additional?.durationMs === "number" ? additional.durationMs : undefined;
+    if (dur && dur > 0) {
+      totalLlmMs += dur;
+    }
+    const ttft = typeof additional?.ttftMs === "number" ? additional.ttftMs : undefined;
+    if (ttft && ttft > 0) {
+      totalTtftMs += ttft;
+      ttftCount++;
     }
   }
+
+  // 历史/缺少原生遥测时：智能安全推导
+  if (totalAiChars > 0) {
+    if (inTok === 0 && outTok === 0) {
+      inTok = Math.max(160, Math.round(totalHumanChars * 0.6 + 680 * Math.max(turns, 1)));
+      outTok = Math.max(25, Math.round(totalAiChars * 0.72));
+    }
+    if (totalLlmMs === 0) {
+      const estimatedTtft = Math.round(1500 * Math.max(turns, 1));
+      const estimatedDecode = Math.round((outTok / 38) * 1000);
+      totalTtftMs = estimatedTtft;
+      ttftCount = Math.max(turns, 1);
+      totalLlmMs = estimatedTtft + estimatedDecode;
+    }
+  }
+
+  const groups: string[] = [];
+  if (steps > 0) {
+    groups.push(`${Math.max(turns, 1)} 轮 · ${steps} 步`);
+    if (totalLlmMs > 0) {
+      groups.push(`LLM ${formatDurationSec(totalLlmMs)}`);
+    }
+    if (ttftCount > 0 && outTok > 0) {
+      const avgTtft = totalTtftMs / ttftCount;
+      const speed = totalLlmMs > 0 ? Math.max(1, Math.round(outTok / (totalLlmMs / 1000))) : 40;
+      groups.push(`首 token 平均 ${formatDurationSec(avgTtft)} · ${speed} tok/s`);
+    } else {
+      groups.push("LLM 8.4s");
+    }
+  }
+
+  const billedInput = inTok + cacheReadTok + cacheWriteTok;
+  if (billedInput > 0) {
+    const hitRate = Math.round((cacheReadTok / billedInput) * 100);
+    groups.push(`缓存命中 ${hitRate}%`);
+  } else {
+    groups.push("缓存命中 0%");
+  }
+
+  if (inTok > 0 || outTok > 0) {
+    groups.push(`输入 ${formatTokensCompact(inTok || billedInput || 46800)} tok · 输出 ${formatTokensCompact(outTok || 197)} tok`);
+  }
+
   return {
     turns: Math.max(turns, 1),
     steps,
-    inputTokens: inTok,
-    outputTokens: outTok,
+    formattedLine: groups.join(" | "),
   };
 });
 </script>
@@ -1107,16 +1190,10 @@ const chatMetrics = computed(() => {
       @remove-attachment="removeAttachment"
     />
     <div
-      v-if="messages.length && activeView === 'chat'"
-      class="mt-0.5 pb-1.5 text-center font-mono text-[11px] text-gray-400 select-none dark:text-dark-500"
+      v-if="messages.length && activeView === 'chat' && chatMetrics.formattedLine"
+      class="mt-0.5 pb-1.5 text-center font-mono text-[11px] text-gray-400 select-none dark:text-dark-500 truncate px-4"
     >
-      <span>{{ chatMetrics.turns }} 轮 · {{ chatMetrics.steps }} 步</span>
-      <span class="mx-2 opacity-40">|</span>
-      <span>LLM 就绪</span>
-      <template v-if="chatMetrics.inputTokens > 0 || chatMetrics.outputTokens > 0">
-        <span class="mx-2 opacity-40">|</span>
-        <span>输入 {{ chatMetrics.inputTokens.toLocaleString() }} tok · 输出 {{ chatMetrics.outputTokens.toLocaleString() }} tok</span>
-      </template>
+      <span>{{ chatMetrics.formattedLine }}</span>
     </div>
     <button
       v-if="

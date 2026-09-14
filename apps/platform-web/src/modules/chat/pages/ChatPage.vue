@@ -124,18 +124,42 @@ const textParam = (value: unknown) =>
   typeof value === "string" ? value : undefined;
 const selectedTarget = computed(() => target.value?.agentId ?? "");
 
+const pageSize = 20;
+const currentPage = computed(() => Math.floor(offset.value / pageSize) + 1);
+
 async function loadThreads(reset = true) {
   if (!activeProjectId.value) return;
   const requestEpoch = ++listEpoch;
-  const nextOffset = reset ? 0 : offset.value + 20;
+  const nextOffset = reset ? 0 : offset.value + pageSize;
   listLoading.value = true;
   listError.value = "";
   try {
     const rows = await service.value.list(nextOffset);
     if (requestEpoch !== listEpoch) return;
-    threads.value = reset ? rows : [...threads.value, ...rows];
+    threads.value = rows;
     offset.value = nextOffset;
-    hasMore.value = rows.length === 20;
+    hasMore.value = rows.length === pageSize;
+  } catch (cause) {
+    if (requestEpoch === listEpoch)
+      listError.value =
+        cause instanceof Error ? cause.message : "对话列表读取失败";
+  } finally {
+    if (requestEpoch === listEpoch) listLoading.value = false;
+  }
+}
+
+async function handlePageChange(targetPage: number) {
+  if (targetPage < 1 || !activeProjectId.value) return;
+  const requestEpoch = ++listEpoch;
+  const nextOffset = (targetPage - 1) * pageSize;
+  listLoading.value = true;
+  listError.value = "";
+  try {
+    const rows = await service.value.list(nextOffset);
+    if (requestEpoch !== listEpoch) return;
+    threads.value = rows;
+    offset.value = nextOffset;
+    hasMore.value = rows.length === pageSize;
   } catch (cause) {
     if (requestEpoch === listEpoch)
       listError.value =
@@ -358,12 +382,14 @@ onScopeDispose(() => {
           :active-thread-id="selectedThread || ''"
           :deleting-thread-id="deleting ? deleteId || '' : ''"
           :groups="threadListView.groups"
+          :current-page="currentPage"
           :has-more="hasMore"
           :can-delete="canWrite"
           @start-new-thread="newThread"
           @select-thread="openThread"
           @delete-thread="requestDelete"
           @collapse="sidebarCollapsed = true"
+          @page-change="handlePageChange"
           @load-more="loadThreads(false)"
         />
         <EmptyState

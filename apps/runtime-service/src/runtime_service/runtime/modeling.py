@@ -74,6 +74,7 @@ def build_model(
                 model=model_name,
                 api_key=conn_api_key or _required(settings, "DEEPSEEK_PROXY_API_KEY"),
                 base_url=conn_base_url or _required(settings, "DEEPSEEK_PROXY_URL"),
+                stream_usage=True,
                 **kwargs,
             )
         if provider in ("openai", "gpt-proxy") or protocol in ("openai", "openai-compatible", "openai_compatible"):
@@ -81,6 +82,7 @@ def build_model(
                 model=model_name,
                 api_key=conn_api_key or settings.get("GPT_PROXY_API_KEY") or "EMPTY",
                 base_url=conn_base_url or _required(settings, "GPT_PROXY_URL"),
+                stream_usage=True,
                 **kwargs,
             )
         if connection is not None and conn_base_url:
@@ -88,6 +90,7 @@ def build_model(
                 model=model_name,
                 api_key=conn_api_key or "EMPTY",
                 base_url=conn_base_url,
+                stream_usage=True,
                 **kwargs,
             )
         return init_chat_model(config.model_id, **kwargs)

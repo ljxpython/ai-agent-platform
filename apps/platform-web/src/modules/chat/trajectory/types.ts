@@ -38,6 +38,10 @@ export interface TrajectoryRecord {
   startedAt?: string | number | null;
   /** 执行耗时 (毫秒) */
   durationMs?: number | null;
+  /** 首 Token 延迟 (毫秒) */
+  ttftMs?: number | null;
+  /** 解码耗时 (毫秒) */
+  decodingMs?: number | null;
   /** Token 消耗统计 */
   tokens?: TrajectoryTokens;
   /** 输入载荷或提问文本 */

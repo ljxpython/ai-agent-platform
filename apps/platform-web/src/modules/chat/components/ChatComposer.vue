@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from "vue";
-import BaseButton from "@/components/base/BaseButton.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import {
   CHAT_ATTACHMENT_ACCEPT,
@@ -268,24 +267,44 @@ defineExpose({
               <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] dark:border-dark-700 dark:bg-dark-800">↵</kbd>
               <span>发送</span>
             </span>
-            <BaseButton
-              :variant="isRunning ? 'danger' : 'primary'"
-              class="h-8 px-3 text-xs shadow-xs transition-transform active:scale-[0.98]"
+            <!-- 原版球形微交互发送/停止按钮 (图 2 同款) -->
+            <button
+              type="button"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white shadow-xs transition-all duration-150 active:scale-90 disabled:opacity-35 disabled:cursor-not-allowed"
+              :class="
+                isRunning
+                  ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
+                  : 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500 shadow-blue-500/25'
+              "
               :disabled="isRunning ? cancelling : !canSendFreshMessage"
+              :title="isRunning ? (cancelling ? '停止中...' : '停止生成') : sendButtonLabel"
+              :aria-label="isRunning ? '停止生成' : sendButtonLabel"
               @click="isRunning ? emit('cancel') : emit('send')"
             >
+              <svg
+                v-if="!isRunning"
+                class="h-4 w-4 fill-none stroke-current stroke-[2.5]"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 19V5m0 0l-6 6m6-6l6 6"
+                />
+              </svg>
               <BaseIcon
-                :name="isRunning ? 'x' : 'chat'"
-                size="sm"
+                v-else
+                name="x"
+                size="xs"
               />
-              {{
+              <span class="sr-only">{{
                 isRunning
                   ? cancelling
                     ? "停止中..."
                     : "停止生成"
                   : sendButtonLabel
-              }}
-            </BaseButton>
+              }}</span>
+            </button>
           </div>
         </div>
 
