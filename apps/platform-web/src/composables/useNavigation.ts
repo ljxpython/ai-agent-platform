@@ -34,7 +34,7 @@ const groups = computed(() => {
     group.items.push({ to: item.path.replace(':projectId', encodeURIComponent(projectId)).replace('/:threadId?', ''), label: nav.label, icon: nav.icon, exact: item.name === 'workspace-projects' })
     result.set(nav.group, group)
   }
-  return ['工作区', '项目管理', '平台管理'].flatMap(key => result.has(key) ? [result.get(key)!] : [])
+  return ['工作区', 'Dear Agent', '项目管理', '平台管理'].flatMap(key => result.has(key) ? [result.get(key)!] : [])
 })
 
 return groups

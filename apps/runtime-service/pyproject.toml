@@ -42,6 +42,8 @@ where = ["src"]
 [tool.setuptools.package-data]
 "runtime_service.services.demo.showcase_demo" = ["skills/*/SKILL.md", "examples/*", "README.md", "chart-schemas.json"]
 
+"runtime_service.services.dearflow_agent" = ["skills/*/SKILL.md", "skills/*/*.py"]
+
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
 pythonpath = ["src", "tests"]

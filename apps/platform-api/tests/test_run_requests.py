@@ -14,6 +14,7 @@ from platform_api.core.errors import (
     ConflictError,
     ForbiddenError,
     UpstreamServiceError,
+    PlatformApiError,
 )
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
@@ -28,6 +29,44 @@ from sqlalchemy import select
 
 
 class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
+    async def test_capabilities_checks_target_before_query(self):
+        self.upstream.get_graph_capabilities = AsyncMock(return_value={"execution_modes": ["standard"]})
+        result = await self.service.get_thread_capabilities(
+            actor=self.actor, project_id="project-1", thread_id="thread-1")
+        self.assertEqual(result["execution_modes"], ["standard"])
+        self.upstream.get_graph_capabilities.assert_awaited_once_with("agent-1")
+        self.service._assert_runtime_target_allowed.side_effect = ForbiddenError()
+        with self.assertRaises(ForbiddenError):
+            await self.service.get_thread_capabilities(
+                actor=self.actor, project_id="project-1", thread_id="thread-1")
+        self.assertEqual(self.upstream.get_graph_capabilities.await_count, 1)
+
+    async def test_clarification_validation_precedes_resume_creation(self):
+        await self.start()
+        self.upstream.get_thread_state.return_value = {
+            "metadata": {"run_id": "run-1"},
+            "tasks": [{"interrupts": [{"id": "interrupt-1", "value": {
+                "kind": "clarification", "schema_version": 1,
+                "fields": [{"name": "language", "type": "select", "required": True,
+                            "options": [{"value": "zh"}]}],
+            }}]}],
+        }
+        self.upstream.get_thread_run.return_value = {"run_id": "run-1", "status": "interrupted"}
+        answer = {"schema_version": 1, "status": "answered", "values": {"language": "bad"}}
+        payload = {"id": 2, "method": "input.respond",
+                   "params": {"interrupt_id": "interrupt-1", "response": answer}}
+        with self.assertRaises(PlatformApiError) as failure:
+            await self.service.send_thread_command(actor=self.actor, project_id="project-1",
+                                                  thread_id="thread-1", payload=payload)
+        self.assertEqual(failure.exception.status_code, 422)
+        self.assertEqual(self.upstream.create_thread_run.await_count, 1)
+        self.assertEqual(len(self.records()), 1)
+        answer["values"]["language"] = "zh"
+        self.upstream.create_thread_run.return_value = {"run_id": "run-2"}
+        await self.service.send_thread_command(actor=self.actor, project_id="project-1",
+                                              thread_id="thread-1", payload=payload)
+        self.assertEqual(self.upstream.create_thread_run.await_count, 2)
+
     def setUp(self) -> None:
         self._tmpdir = tempfile.TemporaryDirectory()
         database_path = Path(self._tmpdir.name) / "durable-runs.db"
@@ -288,7 +327,8 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
     async def test_standard_multi_resume_uses_parent_config_and_current_authorization(self):
         await self.service.create_thread_run(
             actor=self.actor, project_id="project-1", thread_id="thread-1",
-            payload={"assistant_id": "agent-1", "config": {"recursion_limit": 100}, "input": {}},
+            payload={"assistant_id": "agent-1", "context": {"execution_mode": "pro"},
+                     "config": {"recursion_limit": 100}, "input": {}},
             idempotency_key="initial")
         self.upstream.get_thread_state.return_value = {"metadata": {"run_id": "run-1"}, "interrupts": [{"id": "a"}, {"id": "b"}]}
         self.upstream.get_thread_run.return_value = {"run_id": "run-1", "status": "interrupted"}
@@ -299,13 +339,15 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
             thread_id="thread-1", payload=resume)
         sent = self.upstream.create_thread_run.call_args.args[1]
         self.assertEqual(sent["config"], {"recursion_limit": 100})
+        self.assertEqual(sent["context"]["execution_mode"], "pro")
         self.assertEqual(sent["command"], resume["command"])
         self.assertEqual(next(r for r in self.records() if r.run_id == "run-2").parent_run_id, "run-1")
         count = self.upstream.create_thread_run.await_count
         await self.service.create_thread_run(actor=self.actor, project_id="project-1",
             thread_id="thread-1", payload=resume)
         self.assertEqual(self.upstream.create_thread_run.await_count, count)
-        for extra in ({"context": {"model_id": "other"}}, {"input": {}}, {"config": {"recursion_limit": 1}}):
+        for extra in ({"context": {"model_id": "other"}}, {"context": {"execution_mode": "ultra"}},
+                      {"input": {}}, {"config": {"recursion_limit": 1}}):
             with self.assertRaises(BadRequestError):
                 await self.service.create_thread_run(actor=self.actor, project_id="project-1",
                     thread_id="thread-1", payload={**resume, **extra})
@@ -394,4 +436,44 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
                     "config": {"configurable": {"api_key": "attacker_key"}},
                 },
                 idempotency_key="key-fork-hack",
+            )
+
+    async def test_sdk_injected_thread_id_execution_config_allowed(self):
+        await self.start()
+        self.upstream.create_thread_run.return_value = {"run_id": "stream-run"}
+        # 验证 SDK 自动注入的 thread_id 正常通过并在 configurable 中保留
+        await self.service.create_thread_run(
+            actor=self.actor,
+            project_id="project-1",
+            thread_id="thread-1",
+            payload={
+                "assistant_id": "agent-1",
+                "config": {
+                    "recursion_limit": 25,
+                    "configurable": {
+                        "platform_runtime": {},
+                        "thread_id": "thread-1",
+                    },
+                },
+            },
+            idempotency_key="key-stream-1",
+        )
+        call_args = self.upstream.create_thread_run.call_args[0]
+        upstream_payload = call_args[1]
+        self.assertEqual(
+            upstream_payload["config"]["configurable"].get("thread_id"),
+            "thread-1",
+        )
+
+        # 验证非法空字符串 thread_id 抛出 BadRequestError
+        with self.assertRaises(BadRequestError):
+            await self.service.create_thread_run(
+                actor=self.actor,
+                project_id="project-1",
+                thread_id="thread-1",
+                payload={
+                    "assistant_id": "agent-1",
+                    "config": {"configurable": {"thread_id": "   "}},
+                },
+                idempotency_key="key-stream-invalid",
             )

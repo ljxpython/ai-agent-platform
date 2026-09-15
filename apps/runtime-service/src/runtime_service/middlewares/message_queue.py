@@ -58,7 +58,7 @@ class MessageQueueMiddleware(AgentMiddleware):
         if not endpoint:
             raise RuntimeError("Message authorization callback is not configured")
         authorized = []
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
             for row in rows:
                 response = await client.get(
                     endpoint,

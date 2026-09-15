@@ -10,8 +10,8 @@
 - **实施阶段：** P0 最小协议试验；P5 必需长任务；Goal／定时／持久批次后置建议待 D4。
 - **必读前置：** [01 运行边界](01-architecture-and-boundaries.md)、[05 child 区别](05-subagents-and-lifecycle.md)、[04 媒体产物](04-workspace-sandbox-and-artifacts.md)、[08 C09／F5](08-web-and-platform-contracts.md)、[07 K16](07-skills-migration.md)。
 - **输入 → 输出／对接：** 已授权外部调用、远端 handle → 持久恢复／真实远端状态／产物／经官方 Run 交付；不接管根 Run 状态机。
-- **当前切片／最近证据：** 2026-09-14 规划第二版；业务未实施，无实施验证记录；本文末尾只记录文档调研情况。
-- **下一任务：** 09/B02 最小试验；P5 再实现 B03—B06，先于 K16 实际迁移。
+- **当前切片／最近证据：** 2026-09-14，B02 可控 MCP 风险试验通过，见 [05 收口记录](implementation/05-p0-p1-deployment-verification.md)；正式外部任务业务未实现。
+- **下一任务：** P5 实现 B03—B06，先于 K16 实际迁移；活动根 Run 的队列依赖先在 P2 完成。
 - **结束回填：** 更新本章任务／验证／状态及此处游标，按总纲登记最近 implementation 记录、契约变化和下一精确任务；部分切片通过不勾选整章完成。
 
 ## 方案设计
@@ -106,7 +106,7 @@ sequenceDiagram
 ## 任务拆分
 
 - [ ] B01：D4 确认后将 Goal 自动续跑／定时／持久批次标 deferred，记录触发其未来实施的具体业务条件；不创建空实现。
-- [ ] B02：以真实异步视频服务或可控 MCP 任务服务完成提交、ACK 丢失、取消与重启 Spike，冻结官方通知方式及供应商幂等边界。
+- [x] B02：官方 MCP 1.26.0 可控服务完成提交、ACK 丢失、取消与重启 Spike；冻结官方 Run 通知路径及供应商自定义幂等边界，见 05。正式通知 outbox、活动根队列和真实媒体供应商验收仍属 P2／P5。
 - [ ] B03：实现最小持久任务、租约／fence、提交未知处理与 outbox，拟新增 `apps/runtime-service/tests/services/dearflow_agent/test_external_tasks.py`。
 - [ ] B04：实现受信查询／取消、审批保持、文件下载与官方 Run 结果续接，拟新增 `apps/runtime-service/tests/integration/test_dearflow_external_tasks.py`。
 - [ ] B05：真实数据库／双 worker 故障测试，拟新增 `apps/runtime-service/tests/durable/test_dearflow_external_tasks.py`；不得只用内存 fake 证明持久性。
@@ -123,4 +123,4 @@ sequenceDiagram
 
 ## 状态
 
-规划中。必要的外部长任务恢复纳入实施建议；Goal 自动续跑、定时任务、持久批次编排建议后置，待 D4 评审。
+部分完成（partial）：B02 最小协议试验通过，1 passed in 37.06s；B03—B06 业务持久化、双 Worker 和供应商交付未实施。具体文件、命令、故障注入与能力边界见 [05](implementation/05-p0-p1-deployment-verification.md)。不将可控 MCP 服务的通过冒称真实媒体长任务已交付。

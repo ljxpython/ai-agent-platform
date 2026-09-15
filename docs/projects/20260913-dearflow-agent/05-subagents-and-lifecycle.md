@@ -10,7 +10,7 @@
 - **实施阶段：** P1/P2 普通子图复用与缺陷修复；独立 child 能力后置。
 - **必读前置：** [01 底座证据](01-architecture-and-boundaries.md)、[02 模式／权限](02-agent-composition-and-modes.md)、[04 子任务资源](04-workspace-sandbox-and-artifacts.md)、[08 C05／C06／F3](08-web-and-platform-contracts.md)。
 - **输入 → 输出／对接：** 父 Run／有效角色／作用域／预算 → 普通子图或独立 child Run、归属／取消／结果／用量；UI 只能消费真实引擎状态。
-- **当前切片／最近证据：** 2026-09-14 规划第二版；业务未实施，无实施验证记录；本文末尾只记录文档调研情况。
+- **当前切片／最近证据：** P3 后端并发、来源隔离、权限拒绝、callback／usage及native／GraphHarbor事件关联回归通过；真实父取消通过，完整成功运行仍超时，F3 deferred。代码与证据见 [07 实施记录](implementation/07-p3-subagents-and-observability.md)，施工入口为 [P3 执行包](phases/P3-子%20Agent%20展示与观测.md)。
 - **下一任务：** 先完成 S-A/S-B 的普通子图复用与稳定关联；不能把暂不具备的独立控制能力伪装成交付。
 - **结束回填：** 更新本章任务／验证／状态及此处游标，按总纲登记最近 implementation 记录、契约变化和下一精确任务；部分切片通过不勾选整章完成。
 
@@ -22,7 +22,7 @@ DeerFlow 源码根为 `backend/packages/harness/deerflow/`，下列路径相对�
 
 | 能力点 | 源码／符号 | 目标实现 |
 |---|---|---|
-| 角色定义 | `subagents/config.py:SubagentConfig`、`subagents/registry.py` | `apps/runtime-service/src/runtime_service/services/dearflow_agent/subagents.py:build_subagents`（拟新增）；声明式官方 SubAgent，不建全局 Registry |
+| 角色定义 | `subagents/config.py:SubagentConfig`、`subagents/registry.py` | 已有 `apps/runtime-service/src/runtime_service/services/dearflow_agent/subagents/researcher.py:researcher`；声明式官方 SubAgent，不建全局 Registry，不改成单文件 subagents.py |
 | 委派与返回 | `tools/builtins/task_tool.py:task_tool`、`subagents/executor.py:SubagentExecutor` | 常规任务用官方 `task`，可独立控制任务走官方 SDK Thread／Run；不搬后台线程池和隔离事件循环 |
 | 父上下文快照 | `subagents/context_snapshot.py:ParentContextSnapshot.from_state` | 默认只传任务、必要证据／文件引用；明确需要时传受控快照，不传系统权限、凭据、全部状态或同级消息 |
 | 并发与总量 | `subagents/capacity.py`、`agents/middlewares/subagent_limit_middleware.py:SubagentLimitMiddleware` | 服务声明预算＋工具调用边界限制；进程内 semaphore 仅限制单进程，跨 worker 容量由实际任务存储／执行资源原子裁决 |
@@ -57,6 +57,8 @@ DeerFlow 源码根为 `backend/packages/harness/deerflow/`，下列路径相对�
 若官方 Middleware 没有公开的逐请求注入点，推荐服务私有 `delegation.py` 用官方 `langgraph_sdk` 显式实现 launch／get／cancel 所需业务调用，返回标准 ToolMessage／Command。它只处理授权、归属和幂等，不自己运行 Agent、建线程池、轮询模型或模拟官方 API。该分支须在 S2 结果中写明，不能伪称直接使用 AsyncSubAgent 就已满足全部条件。
 
 ### 4. 标识、持久化和资源
+
+本节独立 child Run、task_links 表、迁移与独立写目录均是 **deferred 方案**，不属于 P3 施工清单。P3 普通只读研究子图复用线程工作区和现有证据 namespace，无新增数据库表或子任务持久化服务。只有展示关联键规则当前适用。
 
 - 展示／调用关联键使用 `(parent_run_id, namespace, tool_call_id)`；provider tool_call_id 单独不全局唯一。
 - 独立 child Thread／Run ID 由引擎产生；服务端 task ID 是业务归属键，不能由模型自选 owner。
@@ -102,4 +104,4 @@ DeerFlow 源码根为 `backend/packages/harness/deerflow/`，下列路径相对�
 
 ## 状态
 
-规划中。当前交付普通子图复用与展示缺陷修复；独立取消、独立 child Run、完整 usage 和结果验收后置。
+P3 partial：后端复用与追踪字段修复落地，39项回归通过、1项真实搜索按开关跳过；真实父取消通过，双子任务完整成功仍触发 Worker 超时，外部观测导出未验收。S-A—S-D 上方包含前端展示的整项仍不勾完成；F3 按用户要求 deferred，详见前端交接。独立取消、独立 child Run、完整 usage 和结构化结果验收后置。

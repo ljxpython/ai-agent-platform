@@ -225,15 +225,18 @@ def request_information(question: str, fields: list[dict], context: str = "") ->
 ## 任务拆分
 
 - [ ] C01：实现 `get_agent`、纯提示词和不可执行探测图；拟新增测试 `tests/services/dearflow_agent/test_agent.py`。
-- [ ] C02：实现 `modes.py` 与预算解析，双重委派 guard；拟新增 `test_modes.py`，覆盖并行不同模式互不污染。
+- [x] C02 后端组合：`modes.py`、`agent.py`、`subagents/researcher.py` 实现模式预算、工具暴露和调用双重校验；`test_modes.py`／`test_research.py` 验证四模式并发及 Ultra 受限委派。真实模型部署状态见 P2 执行包。
 - [ ] C03：完成 Context v2 双端签发／验证／恢复与 Web 参数，新增测试向量，覆盖每一个哈希调用者。
+  - [x] P2 后端：双端 v1/v2 哈希、Pro 恢复不可变、真实平台 Worker 重启后恢复通过，证据见 06；Web 参数交互仍后置。
 - [ ] C04：官方人机交互完整交付，按以下切片执行，全部通过才能勾选。
   - [ ] C04-a／P0：确认官方动态 interrupt、HITL／respond、guard 顺序、重复中断 ID 与现有 resume 幂等；形成锁版本证据。
   - [ ] C04-b／P1：`human_input.py`／schemas、text／select、工具审批、混批执行前保护；对接 08/W05 的预校验与统一恢复、F1 卡片。
-  - [ ] C04-c／P2：全部七种字段、多字段校验、畸形请求修正／预算、前端表单和未知版本处理。
+- [ ] C04-c／P2：全部七种字段、多字段校验、畸形请求修正／预算、前端表单和未知版本处理。
+  - [x] 后端七字段及网关答案预校验：`schemas.py`／Platform `clarification.py`，同组跨服务向量 `test_p2_contracts.py` 通过；畸形请求明确失败，不建立自动修正循环。前端仍后置，故父项不勾选。
   - [ ] C04-d：根／普通子图的中断归属和多 ID；独立 child 中断、单任务取消及授权续期 deferred。
   - [ ] C04-e／P7：重启、双窗口回答竞态、超时未知、旧协议升级／排空、无重复副作用联合验收。
 - [ ] C05：记录装配快照中的有效模型、模式、prompt／skills／policy 哈希；日志不含正文或凭据。
+  - [x] P2 代码：`agent.py` 补齐受信元数据及 policy_hash，`modes.py` 仅追踪所应用的推理控制字段；test_modes 2 passed、重建图澄清回归1 passed。外部 Langfuse 导出因网络未验收，父项保留未完成。
 
 ## 验证要求与记录
 

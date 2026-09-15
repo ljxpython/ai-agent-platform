@@ -36,7 +36,7 @@ class GraphParameterSchemaProvider:
             )
         # These are the existing public model overrides. Tool grants, identity,
         # internal model references and arbitrary configurable fields are not editable.
-        editable = {"model_id", "temperature", "max_tokens", "top_p"}
+        editable = {"model_id", "temperature", "max_tokens", "top_p", "execution_mode"}
         return {
             "graph_id": graph_id,
             "schema_version": "remote-v1",

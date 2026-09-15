@@ -68,6 +68,17 @@ class SqlAlchemyRuntimeCatalogRepository:
         record = self.session.get(RuntimeCatalogModelRecord, model_id)
         return _to_runtime_model(record) if record is not None else None
 
+    def find_model_by_endpoint_and_name(
+        self, *, provider: str, base_url: str, model_name: str
+    ) -> StoredRuntimeModel | None:
+        stmt = select(RuntimeCatalogModelRecord).where(
+            RuntimeCatalogModelRecord.provider == provider,
+            RuntimeCatalogModelRecord.base_url == base_url,
+            RuntimeCatalogModelRecord.model_name == model_name,
+        )
+        record = self.session.scalar(stmt)
+        return _to_runtime_model(record) if record is not None else None
+
     def create_configured_model(self, *, values: dict[str, Any]) -> StoredRuntimeModel:
         record = RuntimeCatalogModelRecord(
             display_name=values["display_name"], provider=values["provider"],

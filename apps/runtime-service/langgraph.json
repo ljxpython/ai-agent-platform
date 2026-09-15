@@ -1,7 +1,9 @@
 {
   "$schema": "https://langgra.ph/schema.json",
   "python_version": "3.13",
-  "dependencies": ["."],
+  "dependencies": [
+    "."
+  ],
   "http": {
     "app": "./src/runtime_service/webapp.py:app"
   },
@@ -17,6 +19,10 @@
     "showcase_demo": {
       "path": "./src/runtime_service/graphs/showcase_demo.py:get_agent",
       "description": "Real Python project teaching agent with thread workspace, Docker execution, Skills, Todo, subagents and approval."
+    },
+    "dearflow_agent": {
+      "path": "./src/runtime_service/graphs/dearflow_agent.py:get_agent",
+      "description": "Dear Agent Standard: scoped TXT workspace, clarification, approvals and immutable artifacts."
     }
   },
   "env": ".env",

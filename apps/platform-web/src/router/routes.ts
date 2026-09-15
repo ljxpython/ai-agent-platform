@@ -59,10 +59,52 @@ const workspaceChildren: RouteRecordRaw[] = [
     },
   },
   {
+    path: "projects/:projectId/dear-agent/:threadId?",
+    name: "workspace-dear-agent",
+    component: () => import("@/modules/dear-agent/pages/DearAgentPage.vue"),
+    meta: {
+      title: "Dear Agent 对话",
+      requiredPermissions: ["project.runtime.read"],
+      permissionProjectSource: "route",
+      immersive: true,
+    },
+  },
+  {
+    path: "projects/:projectId/dear-agent-skills",
+    name: "workspace-dear-agent-skills",
+    component: () => import("@/modules/dear-agent/pages/DearAgentSkillsPage.vue"),
+    meta: {
+      title: "Dear Agent Skills",
+      requiredPermissions: ["project.runtime.read"],
+      permissionProjectSource: "route",
+    },
+  },
+  {
+    path: "projects/:projectId/dear-agent-artifacts",
+    name: "workspace-dear-agent-artifacts",
+    component: () => import("@/modules/dear-agent/pages/DearAgentArtifactsPage.vue"),
+    meta: {
+      title: "Dear Agent 成果",
+      requiredPermissions: ["project.runtime.read"],
+      permissionProjectSource: "route",
+    },
+  },
+  {
+    path: "projects/:projectId/dear-agent-memory",
+    name: "workspace-dear-agent-memory",
+    component: () => import("@/modules/dear-agent/pages/DearAgentMemoryPage.vue"),
+    meta: {
+      title: "Dear Agent 记忆",
+      requiredPermissions: ["project.runtime.read"],
+      permissionProjectSource: "route",
+    },
+  },
+  {
     path: "access-unavailable",
     name: "workspace-access-unavailable",
     component: () => import("@/views/workspace/AccessUnavailableView.vue"),
     meta: { title: "无法访问" },
+
   },
   {
     path: "",
@@ -242,6 +284,26 @@ const navigation: Record<
   "workspace-projects": { group: "工作区", label: "项目", icon: "folder" },
   "workspace-agents": { group: "项目管理", label: "Agents", icon: "assistant" },
   "workspace-chat": { group: "项目管理", label: "Chat", icon: "chat" },
+  "workspace-dear-agent": {
+    group: "Dear Agent",
+    label: "对话工作台",
+    icon: "chat",
+  },
+  "workspace-dear-agent-skills": {
+    group: "Dear Agent",
+    label: "Skills 技能",
+    icon: "sparkle",
+  },
+  "workspace-dear-agent-artifacts": {
+    group: "Dear Agent",
+    label: "任务成果",
+    icon: "folder",
+  },
+  "workspace-dear-agent-memory": {
+    group: "Dear Agent",
+    label: "长期记忆",
+    icon: "shield",
+  },
   "workspace-models": {
     group: "项目管理",
     label: "模型与工具",

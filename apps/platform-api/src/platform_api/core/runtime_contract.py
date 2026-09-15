@@ -25,6 +25,7 @@ PROJECT_SCOPE_ALIAS_KEYS = (
 )
 
 RUNTIME_CONTEXT_BUSINESS_KEYS = (
+    "execution_mode",
     "model_id",
     "system_prompt",
     "temperature",
@@ -35,6 +36,7 @@ RUNTIME_CONTEXT_BUSINESS_KEYS = (
 )
 
 RUNTIME_OPTION_KEYS = (
+    "execution_mode",
     "model_id",
     "temperature",
     "max_tokens",
@@ -59,6 +61,9 @@ PROTOCOL_V2_RUN_DISCONNECT = {"cancel", "continue"}
 
 
 def _validate_runtime_option_values(options: dict[str, Any]) -> None:
+    mode = options.get("execution_mode")
+    if mode is not None and (not isinstance(mode, str) or mode not in {"flash", "standard", "pro", "ultra"}):
+        raise ValueError("execution_mode must be flash, standard, pro or ultra")
     string_keys = ("model_id", "system_prompt", "multimodal_parser_model_id")
     for key in string_keys:
         value = options.get(key)
@@ -106,6 +111,7 @@ RUNTIME_CONTEXT_PROPERTY_TYPES: dict[str, str] = {
 }
 
 RUNTIME_OPTION_PROPERTY_TYPES: dict[str, str] = {
+    "execution_mode": "string",
     "model_id": "string",
     "system_prompt": "string",
     "temperature": "number",
@@ -295,7 +301,7 @@ def normalize_protocol_v2_command(
     config = ensure_dict(run_params.get("config"))
     context = ensure_dict(run_params.get("context"))
     unknown_context_keys = sorted(
-        set(context) - {"model_id", "temperature", "max_tokens", "top_p", "tools"}
+        set(context) - set(RUNTIME_OPTION_KEYS)
     )
     if unknown_context_keys:
         raise ValueError(

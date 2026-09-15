@@ -55,6 +55,7 @@ from platform_api.modules.runtime_gateway.application.ports import (
     BinaryPayload,
     RuntimeGatewayUpstreamProtocol,
 )
+from platform_api.modules.runtime_gateway.application.clarification import validate_clarification_resumes
 from platform_api.modules.runtime_gateway.infra.sqlalchemy.repository import (
     RunRequestsRepository,
     StoredRunRequest,
@@ -95,6 +96,7 @@ _ALLOWED_CONFIGURABLE_KEYS = {
     "project_id",
     "checkpoint_id",
     "checkpoint_ns",
+    "thread_id",
 }
 
 
@@ -122,6 +124,14 @@ def _execution_config(payload: dict[str, Any]) -> dict[str, Any]:
             code="invalid_checkpoint_ns",
             message="checkpoint_ns must be a string",
         )
+    thread_id = configurable.get("thread_id")
+    if thread_id is not None and (
+        not isinstance(thread_id, str) or not clean_str(thread_id)
+    ):
+        raise BadRequestError(
+            code="invalid_thread_id",
+            message="thread_id must be a non-empty string",
+        )
     limit = config.get("recursion_limit", 25)
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 1000:
         raise BadRequestError(
@@ -133,6 +143,8 @@ def _execution_config(payload: dict[str, Any]) -> dict[str, Any]:
         config_configurable["checkpoint_id"] = clean_str(checkpoint_id)
     if checkpoint_ns is not None:
         config_configurable["checkpoint_ns"] = checkpoint_ns
+    if thread_id is not None:
+        config_configurable["thread_id"] = clean_str(thread_id)
     if config_configurable:
         result["configurable"] = config_configurable
     return result
@@ -166,8 +178,11 @@ def _runtime_context_snapshot(command: dict[str, Any]) -> tuple[str, dict[str, A
         ),
         "tools": tools,
     }
+    mode = merged.get("execution_mode")
+    if mode is not None:
+        snapshot["execution_mode"] = mode
     encoded = json.dumps(
-        {"schema": "runtime-context/v1", **snapshot},
+        {"schema": "runtime-context/v2" if mode is not None else "runtime-context/v1", **snapshot},
         ensure_ascii=False,
         allow_nan=False,
         separators=(",", ":"),
@@ -562,6 +577,7 @@ class RuntimeGatewayService:
                                 "max_tokens",
                                 "top_p",
                                 "tools",
+                                "execution_mode",
                             )
                             if key in agent.context
                         }
@@ -573,6 +589,8 @@ class RuntimeGatewayService:
             agent_defaults=profile_defaults,
             requested=context,
         )
+        if assistant_id == "dearflow_agent" and merged.get("execution_mode") is None:
+            merged["execution_mode"] = "standard"
         if merged == context:
             next_payload = payload
         else:
@@ -759,7 +777,7 @@ class RuntimeGatewayService:
         agent_key = clean_str(metadata.get("graph_id"))
         if not agent_key:
             raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
-        if agent_key not in {"reference_agent", "showcase_demo"}:
+        if agent_key not in {"reference_agent", "showcase_demo", "dearflow_agent"}:
             raise ConflictError(code="queue_not_supported", message="Graph does not support queued messages")
         target_run_id = clean_str(payload.get("target_run_id"))
         if not target_run_id:
@@ -1020,6 +1038,27 @@ class RuntimeGatewayService:
             "sha256": ref_sha256,
         }
 
+    async def get_thread_capabilities(
+        self, *, actor: ActorContext, project_id: str, thread_id: str,
+    ) -> dict[str, Any]:
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=False
+        )
+        agent_key = clean_str(ensure_dict(thread.get("metadata")).get("graph_id"))
+        if not agent_key:
+            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+        await run_in_threadpool(
+            self._assert_runtime_target_allowed, project_id=project_id,
+            assistant_id=agent_key, thread=thread,
+        )
+        upstream = self._upstream
+        if self._delegation_headers_factory:
+            upstream = upstream.with_forwarded_headers(self._delegation_headers_factory(
+                project_id=project_id, agent_key=agent_key, thread_id=thread_id,
+                context_hash=empty_runtime_context_hash(), operation="read",
+            ))
+        return await upstream.get_graph_capabilities(agent_key)
+
     async def read_thread_file(
         self,
         *,
@@ -1032,8 +1071,8 @@ class RuntimeGatewayService:
         if not path or ".." in path or "\\" in path:
             raise BadRequestError(code="invalid_file_ref", message="Invalid file path")
 
-        if not path.startswith("/workspace/uploads/"):
-            raise BadRequestError(code="invalid_file_ref", message="Path must be in /workspace/uploads/")
+        if not path.startswith(("/workspace/uploads/", "/workspace/outputs/")):
+            raise BadRequestError(code="invalid_file_ref", message="Path must be in uploads or published outputs")
 
         thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=False)
         metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
@@ -1128,7 +1167,7 @@ class RuntimeGatewayService:
         interrupt_id: str | None = None,
     ) -> tuple[StoredRunRequest, Any]:
         """Persist submission identity; Agent Server owns execution and concurrency."""
-        if upstream_payload.get("assistant_id") in {"reference_agent", "showcase_demo"}:
+        if upstream_payload.get("assistant_id") in {"reference_agent", "showcase_demo", "dearflow_agent"}:
             upstream_payload = {**upstream_payload, "durability": "sync"}
         key = _normalize_idempotency_key(idempotency_key)
         actor_id = (
@@ -1658,6 +1697,7 @@ class RuntimeGatewayService:
                         message="Checkpoint has no originating Run",
                     )
                 parent = await run_in_threadpool(load_request, checkpoint_run_id)
+                validate_clarification_resumes(state, resumes)
             if parent is None:
                 raise ConflictError(
                     code="run_request_missing",

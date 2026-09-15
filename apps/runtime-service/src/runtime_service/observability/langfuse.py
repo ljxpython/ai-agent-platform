@@ -46,6 +46,10 @@ _TRUSTED_METADATA = frozenset(
         "prompt_version",
         "prompt_hash",
         "policy_version",
+        "policy_hash",
+        "skills_hash",
+        "execution_mode",
+        "effective_reasoning",
         "request_id",
         "platform_trace_id",
     }

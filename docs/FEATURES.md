@@ -9,7 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| Dear Agent 专属前端 | 规划中：独立模块复用 Chat；F0—F7 交付子任务、23 Skills 与生产展示；已细化官方提问表单／审批恢复及网关预校验，尚未实施 | [前端与契约规划](projects/20260913-dearflow-agent/08-web-and-platform-contracts.md) |
+| Dear Agent 专属前端 | 进行中：F1/P1 已完成（专属模块 `src/modules/dear-agent/`、独立路由、澄清表单交互卡片、审批面板与输入锁定已落地并通过 50 套全量回归）；F2—F7 后续推进 | [前端交接与实施](projects/20260913-dearflow-agent/frontend-handoff.md) |
 | 正式聊天 v2（LangChain 流式运行时、线程续接、工具调用与中断展示） | 已重写：官方 SDK 会话、按轮渲染、多 ID 审批、历史分支及移动工作区；最终验收见项目记录 | [Chat 重构](projects/20260910-platform-web-refactor/04-chat-session-and-interaction.md) |
 | 运行级调试配置 | 已完成：公开 Context/config 白名单、schema 参数校验；不保留旧提示词覆盖 | [接入契约](projects/20260910-platform-web-refactor/03-api-contracts.md) |
 | 控制面核心页面（overview/projects/users/agents/me/security/audit） | 已迁移：Agent/模型新契约、统一权限导航、列表四态；全路由浏览器验收见项目记录 | [现状与目标架构](projects/20260910-platform-web-refactor/02-architecture-and-ui.md) |
@@ -38,14 +38,15 @@
 | 重构后文档体系重建 | done：10篇活文档、28文件归档与引用修复，配置/契约核对及33项相关测试通过 | [文档工程](projects/20260910-platform-api-docs-rebuild/README.md) |
 | 控制面边界与代码简化重构 | 本阶段后端 done：事务/目录、Docker Showcase、真实备份恢复、混合负载及 20 条公开接口矩阵已验收；前端、整套容器部署与完整 Server 等价性 deferred | `docs/projects/20260910-platform-api-refactor/` |
 | 运行时网关（受管模型/工具/prompt 契约下发） | 已完成 | `apps/platform-api/docs/standards/runtime-gateway-interface-standard.md` |
-| 中转站维度模型管理、对话高级模型选择器 | 已完成 | （提交 8056869） |
+| 中转站维度模型管理、对话高级模型选择器 | 已完成：支持端点防重与单项目默认模型互斥 | [模型防重与单默认策略](../apps/platform-api/docs/changes/20260915-model-uniqueness-and-single-default-policy.md) |
 | 运行时网关 Checkpoint 分叉白名单与恢复透传 | 已完成：支持 checkpoint_id/checkpoint_ns 校验与提级转发，拦截恶意字段 | [网关分支支持](../apps/platform-api/docs/changes/20260913-gateway-checkpoint-configurable-whitelist.md) |
+| 运行时网关执行配置 SDK thread_id 白名单支持 | 已完成：白名单支持 SDK 自动注入的 thread_id 校验与快照保留，彻底解决浏览器端 400 Unsupported execution config 报错 | [网关 thread_id 支持](../apps/platform-api/docs/changes/20260914-gateway-thread-id-configurable-whitelist.md) |
 
 ## runtime-service
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| DearFlowAgent（普通子 Agent 复用与展示缺陷修复；独立取消、独立 child Run、完整 usage 后置）：Deep Agents 能力迁移与生产化 | 规划中：第二版总纲与逐章接续、10 个专题、23 个 Skills；独立 Dear Agent 前端随 P0—P7 交付；待治理评审，尚未实施 | [项目规划](projects/20260913-dearflow-agent/README.md) |
+| DearFlowAgent：Deep Agents 能力迁移与生产化 | 部分完成：P0/P1 后端 done，P2 已有研究闭环；P3 并发／只读隔离／事件关联／usage回归39项通过，受信追踪字段丢失已修复，真实父取消通过；双子任务完整运行超时、外部观测未验，前端只交接，23 Skills与生产联合验收未完成 | [P3 完成项、代码与测试](projects/20260913-dearflow-agent/phases/P3-子%20Agent%20展示与观测.md) |
 | Graph 注册、模型参数解析、工具装配 | 已完成 | `apps/runtime-service/docs/standards/*.md` |
 | MCP 接入 | 已完成 | `apps/runtime-service/docs/knowledge/19-runtime-tool-capability-mcp-and-side-effect-design.md` |
 | 公共图片工具 Middleware、Showcase 图表 MCP 子智能体与平台图片链路 | 部分完成：G0 契约、Runtime 运输层、Platform API 网关与 Platform Web 前端交互及确定性自动化测试全部通过；待配置真实生产环境模型凭据进行线上 Smoke 联调 | [图片与图表能力方案](projects/20260913-showcase-image-chart-capabilities/README.md) |

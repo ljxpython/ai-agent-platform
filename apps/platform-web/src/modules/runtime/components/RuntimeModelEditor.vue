@@ -29,6 +29,7 @@ const props = withDefaults(
       provider: string;
       baseUrl: string;
       protocol: string;
+      models?: RuntimeModelItem[];
     } | null;
     busy?: boolean;
   }>(),
@@ -295,6 +296,18 @@ function handleSubmit() {
       return;
     }
 
+    if (props.initialStation?.models) {
+      const isDuplicate = props.initialStation.models.some(
+        (item: RuntimeModelItem) =>
+          item.id !== props.editingModel?.id &&
+          item.model.toLowerCase() === singleId.toLowerCase(),
+      );
+      if (isDuplicate) {
+        formError.value = `Model ID "${singleId}" 在当前中转站已存在，请勿重复设置`;
+        return;
+      }
+    }
+
     emit("submit", {
       isEdit: true,
       editingId: props.editingModel?.id,
@@ -317,6 +330,30 @@ function handleSubmit() {
   if (validModels.length === 0) {
     formError.value = "请至少添加一个有效的模型（填写 Model ID）";
     return;
+  }
+
+  // 检查录入列表中是否有自身重复
+  const seenIds = new Set<string>();
+  for (const m of validModels) {
+    const lower = m.id.toLowerCase();
+    if (seenIds.has(lower)) {
+      formError.value = `填写的模型列表中存在重复的 Model ID: "${m.id}"`;
+      return;
+    }
+    seenIds.add(lower);
+  }
+
+  // 检查是否与当前中转站已存在的模型重复
+  if (props.initialStation?.models) {
+    const existingModelNames = new Set(
+      props.initialStation.models.map((item: RuntimeModelItem) => item.model.toLowerCase()),
+    );
+    for (const m of validModels) {
+      if (existingModelNames.has(m.id.toLowerCase())) {
+        formError.value = `Model ID "${m.id}" 在当前中转站已存在，请勿重复添加`;
+        return;
+      }
+    }
   }
 
   // 检查 API Key

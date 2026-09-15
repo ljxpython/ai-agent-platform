@@ -87,6 +87,8 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
     ) -> AsyncIterator[bytes]: ...
 
 
+    async def get_graph_capabilities(self, graph_id: str) -> dict[str, Any]: ...
+
     async def get_thread_run(self, thread_id: str, run_id: str) -> Any: ...
 
     async def list_thread_runs(
@@ -144,4 +146,3 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
         thread_id: str,
         path: str,
     ) -> BinaryPayload: ...
-

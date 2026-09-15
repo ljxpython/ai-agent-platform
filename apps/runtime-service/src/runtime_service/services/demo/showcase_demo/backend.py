@@ -3,13 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
-import json
 import os
-import subprocess
 from importlib.resources import files
-from pathlib import Path
-from uuid import uuid4
 
 from deepagents.backends import CompositeBackend, FilesystemBackend, StateBackend
 from deepagents.backends.protocol import ExecuteResponse, SandboxBackendProtocol
@@ -19,7 +14,6 @@ from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_u
 from runtime_service.workspace.scoped import hashed_thread_root, thread_scope_hash
 
 _PACKAGE = "runtime_service.services.demo.showcase_demo"
-_MAX_OUTPUT = 128 * 1024
 
 
 class DockerWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
@@ -57,76 +51,17 @@ class DockerWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
         marker.touch()
 
     def execute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
-        if not isinstance(command, str) or not command.strip() or len(command) > 32_768:
-            raise ValueError("command must be non-empty and at most 32768 characters")
-        seconds = 30 if timeout is None else timeout
-        if (
-            not isinstance(seconds, int)
-            or isinstance(seconds, bool)
-            or not 1 <= seconds <= 60
-        ):
-            raise ValueError("timeout must be between 1 and 60 seconds")
-        workspace = self.cwd / "workspace"
-        if workspace.is_symlink() or not workspace.is_dir():
-            raise RuntimeAuthError("runtime.workspace.not_ready")
-        container = f"showcase-{uuid4().hex}"
-        # Capture inside bounded tmpfs, not in an unbounded host-side PIPE.
-        wrapper = (
-            'timeout -s KILL "$1" sh -c "$2" > /tmp/output 2>&1; result=$?; '
-            f'head -c {_MAX_OUTPUT} /tmp/output; exit "$result"'
-        )
-        args = [
-            "docker",
-            "run",
-            "--rm",
-            "--pull=never",
-            "--name",
-            container,
-            "--network=none",
-            "--read-only",
-            "--cap-drop=ALL",
-            "--user",
-            f"{os.getuid()}:{os.getgid()}",
-            "--security-opt=no-new-privileges",
-            "--pids-limit=64",
-            "--memory=256m",
-            "--cpus=1",
-            "--ulimit",
-            "fsize=8388608:8388608",
-            "--tmpfs",
-            "/tmp:rw,nosuid,nodev,size=16777216",
-            "--mount",
-            f"type=bind,src={workspace},dst=/workspace",
-            "--workdir",
-            "/workspace",
-            os.getenv("RUNTIME_SHOWCASE_IMAGE", "python:3.13-slim"),
-            "sh",
-            "-c",
-            wrapper,
-            "showcase",
-            str(seconds),
-            command,
-        ]
+        return asyncio.run(self.aexecute(command, timeout=timeout))
+
+    async def aexecute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
+        from runtime_service.workspace.execution import execute_in_workspace
         try:
-            result = subprocess.run(
-                args, capture_output=True, timeout=seconds + 15, check=False
+            return await execute_in_workspace(
+                self.cwd / "workspace", command,
+                image=os.getenv("RUNTIME_SHOWCASE_IMAGE", "python:3.13-slim"), timeout=timeout,
             )
-        except FileNotFoundError as exc:
-            raise RuntimeError("Docker CLI is required for showcase execution") from exc
-        except subprocess.TimeoutExpired:
-            subprocess.run(
-                ["docker", "rm", "-f", container],
-                capture_output=True,
-                timeout=10,
-                check=False,
-            )
+        except TimeoutError:
             return ExecuteResponse(output="Execution timed out.", exit_code=124)
-        output = result.stdout + result.stderr
-        return ExecuteResponse(
-            output=output[:_MAX_OUTPUT].decode("utf-8", errors="replace"),
-            exit_code=result.returncode,
-            truncated=len(output) >= _MAX_OUTPUT,
-        )
 
 
 def build_backend(workspace: DockerWorkspaceBackend | None) -> CompositeBackend:

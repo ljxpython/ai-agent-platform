@@ -87,7 +87,7 @@ Deep Agents 的 `memory=[...]` 是启动时读取文件加入 Prompt，适合人
 
 ## 任务拆分
 
-- [ ] M01：摘要／大结果／循环保护的官方能力组合测试，拟新增 `apps/runtime-service/tests/services/dearflow_agent/test_context.py`。
+- [x] M01：官方摘要／大结果／循环保护已组合。`apps/runtime-service/tests/services/dearflow_agent/test_context.py` 2 passed；`test_research.py` 验证来源正文外置。代码为 `services/dearflow_agent/agent.py` 与 `workspace/backend.py`。预算采用保守整线程累计上限；不实现独立 child 预算账本。
 - [ ] M02：S3 与并发一致性 Spike，冻结 Store／最小原子写方案和 namespace；不创建多后端工厂。
 - [ ] M03：显式记忆 CRUD／检索／Web 管理，拟新增 `test_memory.py`，覆盖 scope 与 revision。
 - [ ] M04：自动候选提取、确定性门、幂等与摘要协作，拟新增 `test_memory_extraction.py`。

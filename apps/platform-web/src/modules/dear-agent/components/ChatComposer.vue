@@ -1,0 +1,313 @@
+<script setup lang="ts">
+import { computed, nextTick, onMounted, ref, watch } from "vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import {
+  CHAT_ATTACHMENT_ACCEPT,
+  type ChatAttachmentBlock,
+} from "@/utils/chat-content";
+import ChatAttachmentPreview from "./ChatAttachmentPreview.vue";
+import ChatModelSelector from "./ChatModelSelector.vue";
+import type { RuntimeModelItem } from "@/types/management";
+
+const props = defineProps<{
+  modelValue: string;
+  attachments: ChatAttachmentBlock[];
+  isRunning: boolean;
+  hasBlockingInterrupt: boolean;
+  canSendFreshMessage: boolean;
+  cancelling: boolean;
+  sendButtonLabel: string;
+  compact?: boolean;
+  focusMode?: boolean;
+  models?: RuntimeModelItem[];
+  selectedModelId?: string;
+  defaultModelName?: string;
+  placeholder?: string;
+  projectId?: string;
+}>();
+
+const emit = defineEmits<{
+  "update:modelValue": [value: string];
+  send: [];
+  cancel: [];
+  "file-input-change": [event: Event];
+  "composer-paste": [event: ClipboardEvent];
+  "remove-attachment": [index: number];
+  "update:selectedModelId": [value: string];
+}>();
+
+const fileInputRef = ref<HTMLInputElement | null>(null);
+const textareaRef = ref<HTMLTextAreaElement | null>(null);
+
+const composerModel = computed({
+  get: () => props.modelValue,
+  set: (value: string) => emit("update:modelValue", value),
+});
+
+const isDenseMode = computed(() => Boolean(props.compact));
+const isFocusMode = computed(() => Boolean(props.focusMode));
+
+const composerCollapsedHeight = computed(() => {
+  if (isDenseMode.value) {
+    return 28;
+  }
+  return 32;
+});
+const composerMinHeight = computed(() => composerCollapsedHeight.value);
+const composerMaxHeight = computed(() => {
+  if (isFocusMode.value) {
+    return 132;
+  }
+  if (isDenseMode.value) {
+    return 112;
+  }
+  return 120;
+});
+
+const helperText = computed(() =>
+  props.hasBlockingInterrupt
+    ? "当前运行正在等待人工决策或信息补充。请先处理待办卡片，中断恢复后再发送。"
+    : props.isRunning
+      ? "Agent 正在实时输出。你可以继续编辑下一条消息草稿，或随时点击“停止生成”。"
+      : "",
+);
+
+function handleComposerPaste(event: ClipboardEvent) {
+  emit("composer-paste", event);
+}
+
+function openFilePicker() {
+  fileInputRef.value?.click();
+}
+
+function applyTextareaHeight(nextHeight: number) {
+  const textarea = textareaRef.value;
+  if (!textarea) {
+    return;
+  }
+  textarea.style.height = `${nextHeight}px`;
+}
+
+function clampComposerHeight(nextHeight: number) {
+  return Math.max(
+    composerMinHeight.value,
+    Math.min(nextHeight, composerMaxHeight.value),
+  );
+}
+
+async function syncTextareaHeight() {
+  await nextTick();
+  const textarea = textareaRef.value;
+  if (!textarea) {
+    return;
+  }
+  textarea.style.height = "0px";
+  const nextHeight =
+    composerModel.value.trim().length === 0
+      ? composerCollapsedHeight.value
+      : clampComposerHeight(
+          Math.max(composerCollapsedHeight.value, textarea.scrollHeight),
+        );
+  applyTextareaHeight(nextHeight);
+}
+
+watch(
+  () => props.modelValue,
+  async () => {
+    await syncTextareaHeight();
+  },
+  { immediate: true },
+);
+
+watch(
+  () => props.attachments.length,
+  async () => {
+    await syncTextareaHeight();
+  },
+);
+
+watch(
+  () => props.compact,
+  async () => {
+    await syncTextareaHeight();
+  },
+  { immediate: true },
+);
+
+watch(
+  () => props.focusMode,
+  async () => {
+    await syncTextareaHeight();
+  },
+);
+
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === "Enter" && !event.shiftKey) {
+    if (event.isComposing) {
+      return;
+    }
+    event.preventDefault();
+    if (
+      props.canSendFreshMessage &&
+      !props.isRunning &&
+      !props.hasBlockingInterrupt &&
+      (composerModel.value.trim().length > 0 || props.attachments.length > 0)
+    ) {
+      emit("send");
+    }
+  }
+}
+
+onMounted(async () => {
+  await syncTextareaHeight();
+});
+
+defineExpose({
+  focus: () => textareaRef.value?.focus(),
+});
+</script>
+
+<template>
+  <div
+    class="pw-chat-composer-wrap transition-all duration-200"
+    :class="
+      isFocusMode
+        ? 'px-3 pb-2 pt-1 md:px-4'
+        : props.compact
+          ? 'px-3 pb-2 pt-1 md:px-4'
+          : ''
+    "
+  >
+    <div
+      class="pw-chat-composer transition-all duration-200 focus-within:border-primary-500/80 focus-within:ring-2 focus-within:ring-primary-500/15 focus-within:shadow-md"
+      :class="isFocusMode ? 'max-w-[780px]' : ''"
+    >
+      <div
+        v-if="attachments.length > 0"
+        class="mb-4 flex flex-wrap gap-3"
+      >
+        <ChatAttachmentPreview
+          v-for="(attachment, index) in attachments"
+          :key="`composer-attachment-${index}`"
+          :block="attachment"
+          removable
+          @remove="emit('remove-attachment', index)"
+        />
+      </div>
+
+      <textarea
+        ref="textareaRef"
+        v-model="composerModel"
+        :rows="1"
+        class="pw-input resize-none border-0 bg-transparent px-0 py-0 shadow-none focus:ring-0"
+        :class="[
+          isDenseMode
+            ? 'min-h-[28px] max-h-[112px] overflow-y-auto text-sm leading-6'
+            : 'min-h-[32px] max-h-[120px] overflow-y-auto text-sm leading-6',
+          isFocusMode ? 'text-sm leading-6' : '',
+        ]"
+        :placeholder="props.placeholder || '输入消息，Enter 发送，Shift + Enter 换行。'"
+        aria-label="消息草稿"
+        @keydown="handleKeydown"
+        @paste="handleComposerPaste"
+      />
+
+      <div class="mt-2 space-y-1.5 transition-all duration-200">
+        <div
+          class="flex flex-wrap items-center justify-between gap-2 transition-all duration-200 sm:flex-nowrap"
+          :class="isFocusMode || props.compact ? '' : 'sm:gap-3'"
+        >
+          <div
+            class="flex min-w-0 basis-full items-center gap-2 overflow-x-auto pb-1 sm:basis-auto"
+            :class="isFocusMode || props.compact ? 'gap-2' : 'gap-2.5'"
+          >
+            <button
+              type="button"
+              class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white transition-colors"
+              :disabled="isRunning || hasBlockingInterrupt"
+              aria-label="上传附件（图片/文档）"
+              @click="openFilePicker"
+            >
+              <BaseIcon
+                name="paperclip"
+                size="xs"
+              />
+              <span class="hidden sm:inline">附件</span>
+            </button>
+            <input
+              ref="fileInputRef"
+              type="file"
+              class="hidden"
+              multiple
+              :accept="CHAT_ATTACHMENT_ACCEPT"
+              @change="emit('file-input-change', $event)"
+            >
+            <ChatModelSelector
+              v-if="models && projectId"
+              :models="models"
+              :project-id="projectId"
+              :selected-model-id="selectedModelId"
+              :default-model-name="defaultModelName"
+              :disabled="isRunning || hasBlockingInterrupt"
+              @update:selected-model-id="emit('update:selectedModelId', $event)"
+            />
+          </div>
+
+          <div
+            class="ml-auto flex shrink-0 items-center gap-2"
+            :class="isFocusMode || props.compact ? 'gap-2' : 'gap-2.5'"
+          >
+            <span class="hidden md:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-dark-400 font-mono select-none">
+              <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] dark:border-dark-700 dark:bg-dark-800">↵</kbd>
+              <span>发送</span>
+            </span>
+            <button
+              type="button"
+              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white shadow-xs transition-all duration-150 active:scale-90 disabled:opacity-35 disabled:cursor-not-allowed"
+              :class="
+                isRunning
+                  ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
+                  : 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500 shadow-blue-500/25'
+              "
+              :disabled="isRunning ? cancelling : !canSendFreshMessage"
+              :title="isRunning ? (cancelling ? '停止中...' : '停止生成') : sendButtonLabel"
+              :aria-label="isRunning ? '停止生成' : sendButtonLabel"
+              @click="isRunning ? emit('cancel') : emit('send')"
+            >
+              <svg
+                v-if="!isRunning"
+                class="h-4 w-4 fill-none stroke-current stroke-[2.5]"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M12 19V5m0 0l-6 6m6-6l6 6"
+                />
+              </svg>
+              <BaseIcon
+                v-else
+                name="x"
+                size="xs"
+              />
+              <span class="sr-only">{{
+                isRunning
+                  ? cancelling
+                    ? "停止中..."
+                    : "停止生成"
+                  : sendButtonLabel
+              }}</span>
+            </button>
+          </div>
+        </div>
+
+        <p
+          v-if="!isFocusMode && helperText"
+          class="px-0.5 text-[11px] leading-5 text-gray-400 dark:text-dark-400"
+        >
+          {{ helperText }}
+        </p>
+      </div>
+    </div>
+  </div>
+</template>

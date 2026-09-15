@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import asc, desc, select
+from sqlalchemy import asc, desc, select, update
 from sqlalchemy.orm import Session
 
 from platform_api.modules.runtime_catalog.infra.sqlalchemy.models import (
@@ -127,6 +127,16 @@ class SqlAlchemyRuntimePolicyRepository:
         if row is None:
             row = ProjectModelPolicyRecord(project_id=project_id, model_catalog_id=model_catalog_id)
             self.session.add(row)
+        if is_default_for_project:
+            self.session.execute(
+                update(ProjectModelPolicyRecord)
+                .where(
+                    ProjectModelPolicyRecord.project_id == project_id,
+                    ProjectModelPolicyRecord.model_catalog_id != model_catalog_id,
+                    ProjectModelPolicyRecord.is_default_for_project.is_(True),
+                )
+                .values(is_default_for_project=False)
+            )
         row.is_enabled = is_enabled
         row.is_default_for_project = is_default_for_project
         row.temperature_default = temperature_default

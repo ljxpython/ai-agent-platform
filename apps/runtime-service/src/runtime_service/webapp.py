@@ -1,7 +1,5 @@
 """Agent Server application lifespan owned by Runtime Service."""
 
-from __future__ import annotations
-
 import asyncio
 import base64
 import binascii
@@ -117,7 +115,7 @@ async def enqueue_message(
         scope.get("operation") != "message-enqueue"
         or scope.get("thread_id") != thread_id
         or scope.get("project_id") is None
-        or scope.get("assistant_id") not in {"reference_agent", "showcase_demo"}
+        or scope.get("assistant_id") not in {"reference_agent", "showcase_demo", "dearflow_agent"}
     ):
         raise HTTPException(403, "thread scope denied")
     dsn = os.getenv("DATABASE_URI")
@@ -136,6 +134,7 @@ async def enqueue_message(
         base_url=os.getenv("RUNTIME_SELF_URL", "http://127.0.0.1:8123"),
         headers={"authorization": authorization},
         timeout=10,
+        trust_env=False,
     ) as client:
         response = await client.get(
             f"/threads/{thread_id}/runs/{payload.target_run_id}"
@@ -195,6 +194,7 @@ async def list_messages(
         base_url=os.getenv("RUNTIME_SELF_URL", "http://127.0.0.1:8123"),
         headers={"authorization": authorization},
         timeout=10,
+        trust_env=False,
     ) as client:
         for run_id in pending_runs:
             response = await client.get(f"/threads/{thread_id}/runs/{run_id}")
@@ -222,9 +222,9 @@ async def list_messages(
 async def tool_catalog(authorization: str | None = Header(default=None)) -> dict:
     """Runtime owns tool capabilities; the platform owns project grants."""
     await authenticate(authorization)
-    from runtime_service.services.demo.showcase_demo.agent import _TOOL_PERMISSIONS
+    from runtime_service.runtime.capabilities import tool_permissions
 
-    permissions = {"read_reference": "runtime.tool.read", **_TOOL_PERMISSIONS}
+    permissions = tool_permissions()
     return {
         "tools": [
             {
@@ -239,3 +239,12 @@ async def tool_catalog(authorization: str | None = Header(default=None)) -> dict
 
 
 __all__ = ["app", "lifespan"]
+
+
+@app.get("/internal/capabilities/graphs/{graph_id}")
+async def graph_capability(graph_id: str, authorization: str | None = Header(default=None)) -> dict:
+    from runtime_service.runtime.capabilities import graph_capabilities
+    facts = await authenticate(authorization)
+    if facts.get("runtime_scope", {}).get("assistant_id") != graph_id:
+        raise HTTPException(403, "graph scope denied")
+    return graph_capabilities(graph_id)

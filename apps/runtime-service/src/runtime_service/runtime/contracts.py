@@ -19,6 +19,7 @@ class RuntimeContext:
     max_tokens: int | None = None
     top_p: float | None = None
     tools: tuple[str, ...] | None = None
+    execution_mode: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,3 +54,4 @@ class ResolvedRuntimeConfig:
     prompt_hash: str
     policy_version: str
     config_hash: str
+    execution_mode: str | None = None

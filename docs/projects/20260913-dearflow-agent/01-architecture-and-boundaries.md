@@ -10,8 +10,8 @@
 - **实施阶段：** P0—P1；先完成本章第一轮实施包，再让后续专题复用底座。
 - **必读前置：** 无已实现前置；阅读 [08 前端／契约](08-web-and-platform-contracts.md) 的 F0／F1 与 C01—C05、[10 阶段](10-delivery-and-production-verification.md) 的 P0／P1。
 - **输入 → 输出／对接：** 仓库开发范式、参考锁版本、现有鉴权／Chat／workspace → 冻结目录与作用域、Spike 证据、前后端最小闭环。
-- **当前切片／最近证据：** 2026-09-14 规划第二版；业务未实施，无实施验证记录；本文末尾只记录文档调研情况。
-- **下一任务：** 01/A01 → A02（含 08/F0）；实施范围须先获批准。
+- **当前切片／最近证据：** P0/P1 当前授权后端范围完成，完整平台文件／Worker 重启、契约和 MCP 风险证据见 [05](implementation/05-p0-p1-deployment-verification.md)。
+- **下一任务：** 按 P2 执行包推进研究与交互基础；本轮不修改或验收前端。
 - **结束回填：** 更新本章任务／验证／状态及此处游标，按总纲登记最近 implementation 记录、契约变化和下一精确任务；部分切片通过不勾选整章完成。
 
 ## 方案设计
@@ -75,7 +75,7 @@ flowchart LR
 |---|---|
 | `apps/runtime-service/src/runtime_service/graphs/dearflow_agent.py`（拟新增） | 只重导出 `get_agent`，P1 注册 |
 | `apps/runtime-service/src/runtime_service/services/dearflow_agent/`（拟新增目录） | Dear Agent 业务模块边界；按专题拆分文件，禁止把所有装配、工具和策略堆进单文件 |
-| `.../agent.py` | 唯一组合根 `get_agent`；只负责调用 `create_agent`、装配已解析的模型／工具／Middleware，不承载具体工具实现 |
+| `.../agent.py` | 唯一组合根 `get_agent`；调用 `create_deep_agent` 装配已解析的模型／工具／Middleware，不承载具体工具实现 |
 | `.../modes.py`、`.../context.py`、`.../prompts.py` | 执行模式、Context 解析和纯提示词；不读 HTTP、数据库或宿主环境 |
 | `.../middleware/` | Dear Agent 专属中间件按职责拆分（澄清、保护、观测）；通用中间件仍放公共 Runtime |
 | `.../tools/`、`.../subagents/` | 工具装配与实现、子 Agent 角色定义／委派策略；按增长拆模块，不建全局 Registry |
@@ -84,7 +84,7 @@ flowchart LR
 | `.../schemas.py`、`.../errors.py` | 业务证据、结果、记忆候选和领域错误；不复制完整 AgentState 或公共 API DTO |
 | `apps/runtime-service/src/runtime_service/services/dearflow_agent/skills/<skill>/`（拟新增） | 23 个 Skill 逐个落地，资源用 `importlib.resources` 装载，随 wheel 分发 |
 | `apps/runtime-service/src/runtime_service/workspace/`（现有） | 公共 scope、文件引用和 I/O；Showcase 与新 Agent 的真实复用边界 |
-| `apps/runtime-service/src/runtime_service/runtime/capabilities.py`（拟新增） | 小型不可变能力描述与纯校验，共 HTTP／组合根使用；不做插件扫描或 Tool Registry |
+| `apps/runtime-service/src/runtime_service/services/dearflow_agent/capabilities.py` | 能力声明按用户确认归 Dear Agent；`runtime/capabilities.py` 暂保留兼容导出，供 HTTP／工作区解析使用；不做插件扫描或 Tool Registry |
 | `apps/runtime-service/src/runtime_service/middlewares/`（现有） | 已有共享鉴权、图片、文档、队列等；只有 DearFlow 使用的补充 Middleware 留在其服务内 |
 | `apps/runtime-service/src/runtime_service/observability/`（现有） | 统一 tracing、用量事实及脱敏；不持有 Run 终态 |
 | `apps/platform-api/src/platform_api/modules/runtime_gateway/`（现有） | 公开请求授权、幂等、受信资源代理；新增路由先定义契约 |
@@ -159,4 +159,4 @@ P1 出口之后，按 10 的 P2—P7 迭代：先收紧工具和模式，再完�
 
 ## 状态
 
-规划中，待人工评审。方案中的底座能力未实现，不作生产可用声明。
+P0/P1 当前授权后端范围已完成；构图、权限与恢复修复见 [04](implementation/04-p0-p1-foundation-closeout.md)，本机完整部署、契约及风险收口见 [05](implementation/05-p0-p1-deployment-verification.md)。前端本轮不验，整体项目仍进行中，不作全项目生产可用声明。

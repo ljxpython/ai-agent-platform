@@ -503,6 +503,19 @@ async def upload_thread_file(
     return _redact_runtime_private_fields(ref)
 
 
+@router.get("/threads/{thread_id}/capabilities")
+async def get_thread_capabilities(
+    request: Request,
+    thread_id: str,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    result = await service.get_thread_capabilities(
+        actor=actor, project_id=_require_project_id(request), thread_id=thread_id,
+    )
+    return _redact_runtime_private_fields(result)
+
+
 @router.get("/threads/{thread_id}/files/content")
 async def read_thread_file(
     request: Request,

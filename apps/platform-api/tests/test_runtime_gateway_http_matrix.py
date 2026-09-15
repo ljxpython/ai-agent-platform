@@ -47,6 +47,7 @@ CASES = [
     ("GET", "/threads/{thread_id}/images/content", "read_thread_image"),
     ("PUT", "/threads/{thread_id}/files/uploads/{sha256}", "upload_thread_file"),
     ("GET", "/threads/{thread_id}/files/content", "read_thread_file"),
+    ("GET", "/threads/{thread_id}/capabilities", "get_thread_capabilities"),
 ]
 
 

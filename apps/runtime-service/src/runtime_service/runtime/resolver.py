@@ -18,7 +18,7 @@ from runtime_service.runtime.contracts import (
 )
 from runtime_service.runtime.errors import RuntimeResolutionError
 
-_CONTEXT_FIELDS = frozenset({"model_id", "temperature", "max_tokens", "top_p", "tools"})
+_CONTEXT_FIELDS = frozenset({"model_id", "temperature", "max_tokens", "top_p", "tools", "execution_mode"})
 _IDENTITY_FIELDS = frozenset(
     {"user_id", "tenant_id", "project_id", "role", "permissions", "secret", "token", "api_key"}
 )
@@ -131,6 +131,7 @@ def parse_runtime_context(raw: Mapping[str, Any] | RuntimeContext | None) -> Run
             max_tokens=raw.get("max_tokens"),
             top_p=raw.get("top_p"),
             tools=None if tools is None else tuple(tools),
+            execution_mode=raw.get("execution_mode"),
         )
     )
 
@@ -178,6 +179,11 @@ def parse_runtime_policy(raw: Mapping[str, Any] | RuntimePolicy) -> RuntimePolic
 def _validate_context(value: RuntimeContext) -> RuntimeContext:
     if not isinstance(value, RuntimeContext):
         raise _fail("runtime.context.invalid_shape")
+    if value.execution_mode is not None and (
+        not isinstance(value.execution_mode, str)
+        or value.execution_mode not in {"flash", "standard", "pro", "ultra"}
+    ):
+        raise _fail("runtime.context.invalid_value", "execution_mode")
     model_id = None if value.model_id is None else _identifier(value.model_id, "model_id", "runtime.context.invalid_value")
     temperature = _number(value.temperature, "temperature", minimum=0, maximum=2)
     top_p = _number(value.top_p, "top_p", minimum=0, maximum=1)
@@ -258,6 +264,8 @@ def runtime_context_hash(raw: Mapping[str, Any] | RuntimeContext | None) -> str:
         "top_p": context.top_p,
         "tools": None if context.tools is None else list(context.tools),
     }
+    if context.execution_mode is not None:
+        payload.update(schema="runtime-context/v2", execution_mode=context.execution_mode)
     return _sha256(_canonical_json(payload))
 
 
@@ -281,6 +289,8 @@ def _config_hash(config: ResolvedRuntimeConfig) -> str:
         "prompt_hash": config.prompt_hash,
         "policy_version": config.policy_version,
     }
+    if config.execution_mode is not None:
+        payload.update(schema="runtime-config/v2", execution_mode=config.execution_mode)
     canonical = json.dumps(payload, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":"))
     return _sha256(canonical)
 
@@ -349,6 +359,7 @@ def resolve_runtime_config(
         prompt_hash=prompt_hash,
         policy_version=policy.version,
         config_hash="",
+        execution_mode=context.execution_mode,
     )
     return replace(resolved, config_hash=_config_hash(resolved))
 
@@ -359,7 +370,8 @@ def runtime_config_snapshot(config: ResolvedRuntimeConfig) -> dict[str, object]:
     if not isinstance(config, ResolvedRuntimeConfig):
         raise _fail("runtime.snapshot.invalid")
     return {
-        "schema": "runtime-config/v1",
+        "schema": "runtime-config/v2" if config.execution_mode is not None else "runtime-config/v1",
+        **({"execution_mode": config.execution_mode} if config.execution_mode is not None else {}),
         "principal": {
             "user_id": config.principal.user_id,
             "tenant_id": config.principal.tenant_id,
@@ -397,7 +409,11 @@ def resolved_runtime_config_from_snapshot(raw: Mapping[str, Any]) -> ResolvedRun
         "policy_version",
         "config_hash",
     }
-    if not isinstance(raw, Mapping) or set(raw) != expected or raw.get("schema") != "runtime-config/v1":
+    if isinstance(raw, Mapping) and raw.get("schema") == "runtime-config/v2":
+        expected.add("execution_mode")
+        if raw.get("execution_mode") not in ("flash", "standard", "pro", "ultra"):
+            raise _fail("runtime.snapshot.invalid")
+    if not isinstance(raw, Mapping) or set(raw) != expected or raw.get("schema") not in {"runtime-config/v1", "runtime-config/v2"}:
         raise _fail("runtime.snapshot.invalid")
     principal = parse_runtime_principal(raw["principal"])
     try:
@@ -413,6 +429,7 @@ def resolved_runtime_config_from_snapshot(raw: Mapping[str, Any]) -> ResolvedRun
             prompt_hash=_identifier(raw["prompt_hash"], "prompt_hash", "runtime.snapshot.invalid"),
             policy_version=_text(raw["policy_version"], "policy_version", "runtime.snapshot.invalid"),
             config_hash=_identifier(raw["config_hash"], "config_hash", "runtime.snapshot.invalid"),
+            execution_mode=raw.get("execution_mode"),
         )
     except (KeyError, TypeError):
         raise _fail("runtime.snapshot.invalid") from None

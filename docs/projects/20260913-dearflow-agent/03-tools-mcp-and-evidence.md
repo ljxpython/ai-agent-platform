@@ -73,12 +73,14 @@ MCP 初始化只在真实运行／需要时发生；Schema 探测从已验证的
 
 ## 任务拆分
 
-- [ ] T-A：实现 T01／T02，`test_search.py` 覆盖响应解析、来源、超时、重定向和 SSRF；至少一次真实检索链路。
+- [x] T-A／P2：`services/dearflow_agent/tools/search.py` 实现固定 Tavily 搜索／提取，`tests/services/dearflow_agent/test_research.py` 已完成真实 API 调用及来源／错误／大小／危险 URL 校验；DNS／目标站重定向由 Tavily 处理，Runtime 不直连任意目标。整份平台报告发布仍由 P2 最终门禁验收。
 - [ ] T-B：实现 T08，`test_mcp_tools.py` 覆盖探测无 I/O、工具冲突、授权、会话关闭、断线和 scope；T09 只有 schema 预算证明必要才实施。
+  - [x] P2 普通只读 MCP：`tools/mcp.py` 复用 resource binding 和官方适配器；`test_mcp_tools.py` 独立 HTTP MCP 服务真实调用通过，覆盖冲突／scope／写工具拒绝／断连。官方上下文管理会话，未单独断言远端会话计数；不把本项等同所有 MCP 供应商接入。
 - [ ] T-C：统一图片、图表和文件返回契约；生产业务不 import Showcase；相关共享修改补旧能力回归。
 - [ ] T-D：T07 随 K14—K16 逐个供应商接入；`test_media.py` 覆盖真实错误和 unknown，付费 smoke 显式开启。
 - [ ] T-E：实现 T10—T12，`test_evidence.py` 检查伪造文件、错误 hash、无证据成功、截断／外置失败。
-- [ ] T-F：将服务端工具能力和权限映射同步到 08 的 catalog，不在前端维护平行列表。
+  - [x] P2 研究切片：`test_research.py` 验证只读来源／哈希／截断／大正文，`test_platform.py:test_completed_research_delivery` 真实平台报告哈希、来源和补充消息核验1 passed（49.83s）。媒体／多格式证据仍随后续阶段交付。
+- [x] T-F／P2：`services/dearflow_agent/capabilities.py:tool_permissions` 统一内置／MCP 声明与权限；`agent.py` 复用同一映射。MCP 的 allowed_tools 是服务端配置，执行前仍验证受信绑定及权限。
 
 所有拟新增测试完整根目录为 `apps/runtime-service/tests/services/dearflow_agent/`。
 

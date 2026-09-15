@@ -17,13 +17,24 @@ export function createSessionService(fetch: typeof globalThis.fetch, projectId?:
   }
   return {
     client,
-    create: (graphId: string, agentId: string | undefined, title: string) => client.threads.create({ graphId, metadata: { agent_id: agentId, title } }),
+    create: (graphId: string, agentId: string | undefined, title: string) => client.threads.create({ graphId, metadata: { graph_id: graphId, agent_id: agentId, title } }),
     get: (threadId: string) => client.threads.get(threadId),
     // The gateway exposes checkpoint_id on GET state, not the SDK's extra checkpoint route.
     state: (threadId: string, checkpoint?: Checkpoint) => read<ThreadState<ChatState> & { interrupts?: Interrupt[] }>(`/threads/${encodeURIComponent(threadId)}/state${checkpoint?.checkpoint_id ? `?checkpoint_id=${encodeURIComponent(checkpoint.checkpoint_id)}` : ''}`),
     // SDK 1.10 types before as Config; the public wire contract requires a Checkpoint.
     history: (threadId: string, before?: Checkpoint, limit = 20) => read<ChatCheckpoint[]>(`/threads/${encodeURIComponent(threadId)}/history`, { method: 'POST', body: JSON.stringify({ limit, before }) }),
-    list: (offset = 0) => client.threads.search({ limit: 20, offset, sortBy: 'updated_at', sortOrder: 'desc', select: ['thread_id', 'metadata', 'status', 'created_at', 'updated_at'] }),
+    list: (options: number | { offset?: number; metadata?: Record<string, unknown> } = 0) => {
+      const offset = typeof options === 'number' ? options : options.offset ?? 0
+      const metadata = typeof options === 'object' && options.metadata ? options.metadata : undefined
+      return client.threads.search({
+        limit: 20,
+        offset,
+        sortBy: 'updated_at',
+        sortOrder: 'desc',
+        select: ['thread_id', 'metadata', 'status', 'created_at', 'updated_at'],
+        ...(metadata ? { metadata } : {})
+      })
+    },
     count: () => client.threads.count(),
     remove: (threadId: string) => client.threads.delete(threadId),
     runs: (threadId: string): Promise<Run[]> => client.runs.list(threadId, { limit: 20 }),

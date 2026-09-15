@@ -53,7 +53,7 @@ def _normalize_agent_context(
     context: dict[str, Any] | None, project_id: str
 ) -> dict[str, Any]:
     normalized = _normalize_object(context)
-    allowed = {"model_id", "temperature", "max_tokens", "top_p", "tools"}
+    allowed = {"model_id", "temperature", "max_tokens", "top_p", "tools", "execution_mode"}
     if set(normalized) - allowed:
         raise BadRequestError(
             code="invalid_agent_context", message="Unsupported Agent default"

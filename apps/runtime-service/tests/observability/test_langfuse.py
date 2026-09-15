@@ -106,6 +106,17 @@ def test_untrusted_identity_is_not_added_to_trace(monkeypatch: pytest.MonkeyPatc
     assert "langfuse_user_id" not in metadata
 
 
+def test_dear_assembly_metadata_requires_trusted_boundary(monkeypatch):
+    monkeypatch.setattr(langfuse, "_new_callback", lambda: object())
+    fields = {"policy_hash": "policy", "skills_hash": "skills", "execution_mode": "ultra",
+              "effective_reasoning": {"reasoning": "model_default"}}
+    graph = _Graph()
+    langfuse.with_langfuse_tracing(graph, {"metadata": fields}, graph_id="dearflow_agent")
+    assert not set(fields) & graph.bound["metadata"].keys()
+    langfuse.with_langfuse_tracing(graph, {}, graph_id="dearflow_agent", trusted_metadata=fields)
+    assert all(graph.bound["metadata"][key] == value for key, value in fields.items())
+
+
 def test_diagnostics_include_runtime_identifiers(caplog: pytest.LogCaptureFixture) -> None:
     callback = langfuse._RuntimeDiagnosticsCallback(
         "demo",

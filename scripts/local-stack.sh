@@ -192,12 +192,12 @@ start_managed_key() {
   case "$key" in
     runtime-api)
       start_process runtime-api "$RUNTIME_DIR" \
-        "uv run --frozen graphharbor serve --host 127.0.0.1 --port $(shell_quote "$RUNTIME_PORT") --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 0" \
+        "env RUNTIME_SELF_URL=http://127.0.0.1:$(shell_quote "$RUNTIME_PORT") uv run --frozen graphharbor serve --host 127.0.0.1 --port $(shell_quote "$RUNTIME_PORT") --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 0" \
         "$LOG_DIR/runtime-api.log" "$RUNTIME_PORT"
       ;;
     runtime-worker)
       start_process runtime-worker "$RUNTIME_DIR" \
-        "uv run --frozen graphharbor worker --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 1" \
+        "env PLATFORM_RUNTIME_MESSAGE_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/message-authorization uv run --frozen graphharbor worker --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 1" \
         "$LOG_DIR/runtime-worker.log"
       ;;
     platform-api)

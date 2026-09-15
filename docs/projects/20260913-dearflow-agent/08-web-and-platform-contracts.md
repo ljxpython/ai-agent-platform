@@ -10,8 +10,8 @@
 - **实施阶段：** P0—P7 全程参与，前端明细 F0—F7；P1 就交独立入口。
 - **必读前置：** [01 第一轮实施包](01-architecture-and-boundaries.md)、[10 切片导航](10-delivery-and-production-verification.md)；按当前功能查 02 模式、04 文件、05 子任务、06 记忆、07 Skills、09 外部任务。
 - **输入 → 输出／对接：** Runtime 实现能力＋Platform 当前授权＋官方 SDK → Dear Agent 专属 UI；本章 C01—C09 管跨章节契约落点，F 表管前端交付。
-- **当前切片／最近证据：** 2026-09-14 规划第二版；业务未实施，无实施验证记录；本文末尾只记录文档调研情况。
-- **下一任务：** 08/F0 核对复制边界；P1 完成 F1、W01／W03／W05 基础、W07；不等整章后端完成才接页面。
+- **当前切片／最近证据：** P1 最小后端契约与平台 HTTP 文件／恢复链路通过，见 [05](implementation/05-p0-p1-deployment-verification.md)。历史前端实现单列，本轮未改或重验。
+- **下一任务：** P2 扩展模式／表单／队列契约；前端对接前提前告知，浏览器验收另行安排。
 - **结束回填：** 更新本章任务／验证／状态及此处游标，按总纲登记最近 implementation 记录、契约变化和下一精确任务；部分切片通过不勾选整章完成。
 
 ## 方案设计
@@ -173,7 +173,7 @@
 | F0／P0 | 尚不开放产品；确认路由、Chat 复用边界和契约样例 | 01 的 S0—S4；当前 ChatPage／ChatSession／session service；08 W01—W07 | 形成接口／文件落点记录；验证只有一个根 controller；目录不含空业务壳 |
 | F1／P1 | 独立 Dear Agent 导航与页面；新建／续接会话，基础上传、官方审批、文本／单选澄清、文件下载 | 02/C04-b；04 工作区；W01 最小能力、W03 文件、W05 基础交互、W07 目标列表；提问区域最小 slot 本阶段即交付 | 专属 URL 刷新可用；TXT→澄清 resume→受限处理→审批→下载；两类中断不混用，无双 controller，通用 Chat 回归 |
 | F2／P2 | 专属欢迎区／布局、Flash／Standard／Pro、全部七种字段表单、有效模型／格式提示、引用、补充消息 | 02/C04-c 与 Context v2；03 搜索／证据；W01 扩展能力、W02 模式、W05 队列／表单 | 字段校验／错误恢复／多字段回答正确；Ultra 未就绪不开放；引用可定位、queued 不误标 consumed |
-| F3／P3 | Ultra、任务计划、普通子任务列表／详情、父 Run 取消反馈、结果证据、已有用量 | 05 全生命周期与 W04；普通 namespace 和独立 child Run 分开 | 同角色两个任务不串线，单取消不影响另一个，刷新还原，取消中／未知／部分完成准确显示 |
+| F3／P3 | Ultra、任务计划、普通子任务列表／详情、父 Run 取消反馈、结果证据、已有用量；本轮 deferred，只交接 | 05 普通子图与 W04；实际 native／GraphHarbor debug 字段及限制见 frontend-handoff.md | 同角色两个任务不串线，父取消保留已完成结果，刷新还原，取消中／未知／部分完成准确显示；不提供单子任务取消 |
 | F4／P4 | K01—K11 对应研究／表格／图表／网页成果；技能只读目录与运行选中版本；成果 Inspector | 07 顺序验收＋03 EvidenceRef＋04 格式矩阵；SkillsPanel 仅只读，写入留 P6 | 每 K 在 Dear Agent 页面真实交付后才启用；PDF／表格／图片／网页隔离预览或真实下载；来源与产物关联正确 |
 | F5／P5 | K12—K16 图片、PPT 页图、音频／视频播放与下载、外部任务进度／取消／恢复 | 09 持久外部任务＋04 Range／媒体＋付费审批 | MP3／MP4 能播放与断点读取；重启能找回同一任务；外部提交未知不诱导重复付费；PPT 正确标图片型 |
 | F6／P6 | K17—K23 技能审查／评估／发布／回退、记忆查看修改／删除、引导偏好、组合任务和审批发布 | 06 记忆；07 管理底座；W06 管理接口；D5 改写范围获批 | 候选不自动执行，发布绑定 hash；版本冲突有反馈；记忆不串用户项目／删除不复活；K22 外发经审批、K23 按批准口径验收 |
@@ -189,11 +189,11 @@ F4—F6 的每个 Skill 先复用消息／工具卡片／文件预览已有表�
 
 | 契约 | 事实所有者 → 消费方 | 设计来源／冻结与交付阶段 | 当前状态 |
 |---|---|---|---|
-| C01 目标、路由、线程列表／绑定 | Platform Agent 目录＋Runtime Thread → Dear Agent 页面 | 本章 §6；P0 冻结、P1 交付；W07／F1 | 待开始 |
-| C02 Graph 有效能力 | Runtime 静态声明＋Platform 授权 → 前端 | 本章 §2；P1 先交付文件／Standard 最小描述，P2 扩展；W01 | 待开始 |
-| C03 运行 Context／模式 | Platform 签发＋Runtime 校验 → 官方 SDK | 02；P0 确认兼容策略、P2 v2，P1 用当前批准版本；W02 | 待开始 |
-| C04 文件／产物 | Runtime workspace → Platform 文件代理 → 前端 | 04；P0 冻结基础引用、P1 基础文件、P4／P5 扩格式；W03 | 待开始 |
-| C05 流／审批／提问／消息队列 | 官方引擎／既有 Runtime 队列 → SDK／Chat 复用层 | 02 §6／05／本章 §11；P1 文本／单选与工具审批，P2 完整表单／队列，P3 子图；W05 | 待开始 |
+| C01 目标、路由、线程列表／绑定 | Platform Agent 目录＋Runtime Thread → Dear Agent 页面 | 本章 §6；P0 冻结、P1 交付；W07／F1 | P1 后端注册／创建／绑定通过；页面筛选分页另验，见 05 |
+| C02 Graph 有效能力 | Runtime 静态声明＋Platform 授权 → 前端 | 本章 §2；P1 先交付文件／Standard 最小描述，P2 扩展；W01 | P2 保持 schema_version=1，增加 execution_modes、clarification_field_types、research、message_queue；代码 capabilities.py，前端交接见 frontend-handoff.md |
+| C03 运行 Context／模式 | Platform 签发＋Runtime 校验 → 官方 SDK | 02；P0 确认兼容策略、P2 v2，P1 用当前批准版本；W02 | P2 双端 v2 哈希与模式恢复不可变测试通过；旧无模式继续 v1，新 Dear 默认 standard；真实部署门禁见 P2 执行包 |
+| C04 文件／产物 | Runtime workspace → Platform 文件代理 → 前端 | 04；P0 冻结基础引用、P1 基础文件、P4／P5 扩格式；W03 | P1 TXT／ArtifactRef v1 完整 HTTP 上传下载及哈希通过，见 05 |
+| C05 流／审批／提问／消息队列 | 官方引擎／既有 Runtime 队列 → SDK／Chat 复用层 | 02 §6／05／本章 §11；P1 文本／单选与工具审批，P2 完整表单／队列，P3 子图；W05 | P2 后端七字段及 queued/consumed 接入完成；保持官方 interrupt ID/resume，不新增终止协议；前端七字段／来源／队列后置，部署证据见 06 |
 | C06 child 展示归属／基础用量 | 普通子图 namespace＋调用 ID → Platform → TaskPanel | 05；P1/P2 复用与修复；独立控制和独立用量 deferred | 待开始 |
 | C07 技能版本／发布 | Runtime 技能存储＋Platform 授权 → SkillsPanel | 07；P4 只读，P6 管理／发布；W06 | 待开始 |
 | C08 记忆／偏好 | Runtime 唯一事实存储＋Platform 授权 → MemoryPanel | 06；P0 存储风险验证、P6 CRUD 与提取；W06 | 待开始 |
@@ -292,7 +292,7 @@ P1 slot 只为真实提问消费者引入；P2 再扩欢迎／选项／Inspector
 - [ ] F0：P0 完成 §6—§9 的前端复用／契约检查记录。
 - [ ] F1：P1 完成独立页面与真实基础链路，新增 `DearAgentPage.spec.ts` 和既定 E2E 文件。
 - [ ] F2：P2 完成最小 Chat 扩展点、专属工作区／欢迎区／模式／引用／队列。
-- [ ] F3：P3 完成任务与子任务专属展示／控制，补共享 Chat 组件回归。
+- [ ] F3 deferred：用户确认本轮只做后端，前端保留交接；需接普通子图关联／父取消／usage，补已有 Chat 回归。实际字段及缺 discovery 降级见 [前端交接](frontend-handoff.md)，不将后端测试计为浏览器验收。
 - [ ] F4：P4 随 K01—K11 逐个验收成果区和只读技能目录。
 - [ ] F5：P5 随 K12—K16 完成长任务和媒体交付体验。
 - [ ] F6：P6 完成技能／记忆管理及 K17—K23 专属交互。
@@ -313,4 +313,11 @@ P1 slot 只为真实提问消费者引入；P2 再扩欢迎／选项／Inspector
 
 ## 状态
 
-规划中；正式契约版本和精确新增路由在底座 Spike 后冻结，实施前遵循跨服务／治理评审。
+### P1 当前落点更新
+
+- `GET /api/langgraph/threads/{thread_id}/capabilities` 已接入线程／目标授权、签名委托与 Runtime 内部能力接口，响应走现有脱敏逻辑。
+- `input.respond` 在创建恢复 Run 前校验 text/select 澄清回答；失败为 422／`invalid_clarification_answer`，不消耗回答、不创建恢复 Run。
+- Dear Run 使用 `durability=sync`。产物读取仍走既有 `files/content` 路由，支持 outputs；缺失文件 404、错误哈希 409。
+- 代码路径、测试类型和未覆盖部署边界见 [04 实施记录](implementation/04-p0-p1-foundation-closeout.md)。本轮没有前端改动，原规划中的完整前端联调不因此勾选完成。
+
+部分完成：P1 最小后端契约和精确路由已冻结，真实平台文件及 Worker 重启链路通过，见 [05 契约与部署证据](implementation/05-p0-p1-deployment-verification.md)。前端浏览器联调、C06—C09 正式业务及后续扩展不据此标为通过。

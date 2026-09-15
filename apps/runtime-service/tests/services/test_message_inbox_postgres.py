@@ -533,7 +533,9 @@ asyncio.run(main())
         stderr=subprocess.PIPE,
     )
     try:
-        deadline = time.monotonic() + 25
+        # Cold imports on the development host can exceed 25s (measured 46.5s).
+        # This bounds setup, not message processing or the crash recovery contract.
+        deadline = time.monotonic() + 90
         while (
             not marker.exists()
             and time.monotonic() < deadline
@@ -556,7 +558,7 @@ asyncio.run(main())
         env={**env, "PROBE_STAGE": "resume"},
         capture_output=True,
         text=True,
-        timeout=25,
+        timeout=90,
     )
     assert resumed.returncode == 0, resumed.stderr[-3000:]
     assert inbox.list(thread_id=thread, sender_id="u")[0].status == "consumed"

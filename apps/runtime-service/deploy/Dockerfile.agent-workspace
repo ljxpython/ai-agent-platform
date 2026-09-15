@@ -1,0 +1,5 @@
+FROM python:3.13-slim
+# Build and pin the resulting image digest in the deployment environment.
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+WORKDIR /workspace/work
+USER 65534:65534

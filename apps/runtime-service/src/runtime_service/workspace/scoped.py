@@ -33,3 +33,16 @@ def get_showcase_workspace_root(
     base = os.getenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", ".runtime/showcase")
     thread_root = hashed_thread_root(base, tenant_id, project_id, thread_id)
     return thread_root / "workspace"
+
+
+def resolve_thread_workspace(tenant_id: str, project_id: str, thread_id: str, graph_id: str) -> Path:
+    """Resolve only a server-verified graph binding; never accept a client path."""
+    from runtime_service.runtime.capabilities import graph_capabilities
+
+    capability = graph_capabilities(graph_id)
+    if not capability["files"]:
+        raise ValueError("workspace_capability_unavailable")
+    if graph_id == "showcase_demo":
+        return get_showcase_workspace_root(tenant_id, project_id, thread_id)
+    base = Path(os.getenv("RUNTIME_WORKSPACE_ROOT", ".runtime/workspaces")) / graph_id
+    return hashed_thread_root(base, tenant_id, project_id, thread_id) / "workspace"

@@ -15,6 +15,7 @@ from platform_api.core.context.models import ActorContext
 from platform_api.core.db import session_scope
 from platform_api.core.errors import (
     BadRequestError,
+    ConflictError,
     ForbiddenError,
     NotAuthenticatedError,
     NotFoundError,
@@ -509,7 +510,18 @@ class RuntimeCatalogService:
             ) from exc
         session_factory = self._require_session_factory()
         with session_scope(session_factory) as session:
-            item = SqlAlchemyRuntimeCatalogRepository(session).create_configured_model(
+            repository = SqlAlchemyRuntimeCatalogRepository(session)
+            existing = repository.find_model_by_endpoint_and_name(
+                provider=values["provider"],
+                base_url=values["base_url"],
+                model_name=values["model"],
+            )
+            if existing is not None:
+                raise ConflictError(
+                    code="duplicate_model",
+                    message=f"Model '{values['model']}' already exists for provider '{values['provider']}' at endpoint '{values['base_url']}'",
+                )
+            item = repository.create_configured_model(
                 values=values,
             )
             return self._model_item(item)
@@ -547,7 +559,24 @@ class RuntimeCatalogService:
         model_uuid = parse_uuid(model_id, code="invalid_model_id")
         session_factory = self._require_session_factory()
         with session_scope(session_factory) as session:
-            item = SqlAlchemyRuntimeCatalogRepository(session).update_configured_model(
+            repository = SqlAlchemyRuntimeCatalogRepository(session)
+            current = repository.get_model_by_id(model_uuid)
+            if current is None:
+                raise NotFoundError(message="Model not found", code="model_not_found")
+            target_provider = values.get("provider", current.provider)
+            target_base_url = values.get("base_url", current.base_url)
+            target_model_name = values.get("model_name", current.model)
+            existing = repository.find_model_by_endpoint_and_name(
+                provider=target_provider,
+                base_url=target_base_url,
+                model_name=target_model_name,
+            )
+            if existing is not None and existing.id != str(model_uuid):
+                raise ConflictError(
+                    code="duplicate_model",
+                    message=f"Model '{target_model_name}' already exists for provider '{target_provider}' at endpoint '{target_base_url}'",
+                )
+            item = repository.update_configured_model(
                 model_uuid,
                 values=values,
             )

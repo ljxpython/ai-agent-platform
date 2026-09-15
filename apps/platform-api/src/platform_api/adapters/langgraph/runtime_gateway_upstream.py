@@ -67,6 +67,12 @@ class LangGraphRuntimeGatewayUpstream:
     async def get_info(self) -> dict[str, Any]:
         return await self._http.require_json("GET", "/info")
 
+    async def get_graph_capabilities(self, graph_id: str) -> dict[str, Any]:
+        from urllib.parse import quote
+        return await self._http.require_json(
+            "GET", f"/internal/capabilities/graphs/{quote(graph_id, safe='')}"
+        )
+
     async def search_graphs(self, payload: dict[str, Any] | None = None) -> Any:
         return await self._graphs.search(payload)
 
@@ -268,4 +274,3 @@ class LangGraphRuntimeGatewayUpstream:
             f"/internal/threads/{thread_id}/files/content",
             params={"path": path},
         )
-
