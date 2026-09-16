@@ -7,7 +7,8 @@ from dataclasses import asdict, replace
 import hashlib
 import json
 import os
-from importlib.resources import files
+import asyncio
+from datetime import datetime, timezone
 
 from deepagents import create_deep_agent
 from deepagents.middleware import FilesystemMiddleware
@@ -43,18 +44,31 @@ from runtime_service.services.dearflow_agent.workspace.backend import (
     DearWorkspaceBackend,
     WorkspaceMiddleware,
     build_backend,
+    skills_hash,
 )
 from deepagents.middleware import FilesystemPermission
 from runtime_service.services.dearflow_agent.prompts import SYSTEM_PROMPT
 from runtime_service.services.dearflow_agent.tools.human_input import request_information
 from runtime_service.services.dearflow_agent.tools.artifacts import build_artifact_tool
 from runtime_service.services.dearflow_agent.middleware.clarification import ClarificationBatchGuard
-from runtime_service.services.dearflow_agent.capabilities import tool_permissions
+from runtime_service.services.dearflow_agent.capabilities import tool_permissions, CHART_NAMES
+from runtime_service.tools.chart import build_chart_tools
+from runtime_service.tools.images import ImageWorkspace
+from runtime_service.services.dearflow_agent.tools.media import build_media_tools, MEDIA_TOOLS
+from runtime_service.services.dearflow_agent.tools.web_guidelines import fetch_web_guidelines
 from runtime_service.services.dearflow_agent.modes import resolve_mode, apply_reasoning
 from runtime_service.services.dearflow_agent.tools.search import build_research_tools
+from runtime_service.services.dearflow_agent.tools.github import build_github_tool
+from runtime_service.services.dearflow_agent.tools.arxiv_search import build_arxiv_tool
 from runtime_service.services.dearflow_agent.tools.mcp import load_mcp_tools
 from runtime_service.services.dearflow_agent.subagents.researcher import researcher
 from runtime_service.services.dearflow_agent.middleware.delegation import DelegationConcurrencyMiddleware
+from runtime_service.services.dearflow_agent.tools.memory import build_memory_tools, MEMORY_READ_TOOLS, MEMORY_WRITE_TOOLS
+from runtime_service.services.dearflow_agent.tools.skills import build_skill_tools, SKILL_READ_TOOLS, SKILL_WRITE_TOOLS
+from runtime_service.services.dearflow_agent.middleware.memory import MemoryContextMiddleware
+from runtime_service.services.dearflow_agent.skill_governance import SkillStorage
+from runtime_service.services.dearflow_agent.workspace.backend import prepare_custom_skills
+from runtime_service.services.dearflow_agent.tools.deployment import build_deployment_tool
 
 WORK_TOOLS = ("ls", "read_file", "glob", "grep", "write_file", "edit_file", "execute")
 PERMISSIONS = [
@@ -62,13 +76,13 @@ PERMISSIONS = [
     FilesystemPermission(operations=["write"], paths=["/conversation_history/**", "/large_tool_results/**"], mode="deny"),
 ]
 APPROVALS = {name: {"allowed_decisions": ["approve", "edit", "reject"]}
-             for name in ("write_file", "edit_file", "execute", "present_artifacts")}
+             for name in ("write_file", "edit_file", "execute", "present_artifacts", "generate_image", "edit_image", "deploy_preview", *CHART_NAMES, *MEMORY_WRITE_TOOLS, *SKILL_WRITE_TOOLS)}
 
 _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
     system_prompt=SYSTEM_PROMPT,
     prompt_version="dearflow-research-p2",
-    optional_tool_names=(*WORK_TOOLS, "request_information", "present_artifacts", "parse_document", "search_web", "fetch_page", "write_todos", "task"),
+    optional_tool_names=(*WORK_TOOLS, *CHART_NAMES, *MEDIA_TOOLS, *MEMORY_READ_TOOLS, *MEMORY_WRITE_TOOLS, *SKILL_READ_TOOLS, *SKILL_WRITE_TOOLS, "deploy_preview", "fetch_web_guidelines", "request_information", "present_artifacts", "parse_document", "search_web", "fetch_page", "github_query", "arxiv_search", "write_todos", "task"),
 )
 _TOOL_PERMISSIONS = tool_permissions()
 _EXECUTION_KEYS = {
@@ -101,6 +115,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     permissions = dict(_TOOL_PERMISSIONS)
     mcp_tools = []
     reasoning = {"reasoning": "probe_only"}
+    governance = os.environ.get("RUNTIME_DEAR_GOVERNANCE_ENABLED") == "1"
     if executing:
         thread_id = configurable.get("thread_id")
         if not isinstance(thread_id, str) or not thread_id:
@@ -135,6 +150,10 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         workspace = DearWorkspaceBackend(
             facts.principal.tenant_id, facts.principal.project_id, thread_id
         )
+        if governance:
+            custom = await asyncio.to_thread(SkillStorage().freeze,
+                (facts.principal.tenant_id, facts.principal.project_id, facts.principal.user_id), thread_id)
+            await asyncio.to_thread(prepare_custom_skills, workspace, custom)
     else:
         # Schema-only client: no request is sent, and WorkspaceMiddleware rejects invocation.
         model = ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
@@ -143,7 +162,15 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     document_middleware = DocumentToolsMiddleware(None if workspace is None else workspace.root)
     artifact_tool = build_artifact_tool(None if workspace is None else workspace.root)
     research_tools = build_research_tools(workspace)
+    github_tool = build_github_tool(workspace)
+    arxiv_tool = build_arxiv_tool(workspace)
+    chart_tools = [t for t in build_chart_tools(ImageWorkspace(None if workspace is None else workspace.root), include_spreadsheet=True) if t.name in CHART_NAMES]
+    media_tools = build_media_tools(ImageWorkspace(None if workspace is None else workspace.root))
     available = set(defaults.optional_tool_names)
+    if not governance:
+        available.difference_update((*MEMORY_READ_TOOLS, *MEMORY_WRITE_TOOLS, *SKILL_READ_TOOLS, *SKILL_WRITE_TOOLS))
+    if os.environ.get("RUNTIME_DEAR_PREVIEW_DEPLOY_ENABLED") != "1":
+        available.discard("deploy_preview")
     if not mode.planning:
         available.discard("write_todos")
     if not mode.delegation:
@@ -176,15 +203,17 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                                     thread_limit=24 if child else mode.model_limit, exit_behavior="error"),
             ToolCallLimitMiddleware(run_limit=48 if child else mode.tool_limit,
                                    thread_limit=48 if child else mode.tool_limit, exit_behavior="error"),
-            ModelCallTimeoutMiddleware(timeout_seconds=30),
+            # Bound the whole reasoning response, not just the time to its first token.
+            ModelCallTimeoutMiddleware(timeout_seconds=120),
         ]
 
     agent = create_deep_agent(
         model=model,
-        system_prompt=SYSTEM_PROMPT,
-        tools=[request_information, artifact_tool, *research_tools, *mcp_tools],
+        system_prompt=SYSTEM_PROMPT + "\n<current_date>" + datetime.now(timezone.utc).date().isoformat() + " UTC</current_date>",
+        tools=[request_information, artifact_tool, *research_tools, github_tool, arxiv_tool, fetch_web_guidelines, *chart_tools, *media_tools, *mcp_tools,
+               *build_memory_tools(), *build_skill_tools(workspace, model), build_deployment_tool(workspace)],
         backend=backend,
-        skills=["/skills/"],
+        skills=["/skills/", "/skills/custom/"] if governance else ["/skills/"],
         permissions=PERMISSIONS,
         interrupt_on=APPROVALS,
         subagents=[researcher(
@@ -203,11 +232,12 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             ),
             *middleware(available),
             *([TodoListMiddleware()] if mode.planning else []),
-            ToolCallLimitMiddleware(tool_name="task", run_limit=8, thread_limit=8, exit_behavior="error"),
+            ToolCallLimitMiddleware(tool_name="task", run_limit=10, thread_limit=10, exit_behavior="error"),
             DelegationConcurrencyMiddleware(),
             MessageQueueMiddleware(),
             ClarificationBatchGuard(),
             document_middleware,
+            *([MemoryContextMiddleware(model)] if governance else []),
 
         ],
         context_schema=RuntimeContext,
@@ -221,7 +251,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     bound["configurable"] = {
         key: value for key, value in configurable.items() if key in _EXECUTION_KEYS
     }
-    bound["recursion_limit"] = min(config.get("recursion_limit", 100), 100)
+    bound["recursion_limit"] = min(max(int(config.get("recursion_limit", 1000)), 1), 1000)
     agent = agent.with_config(bound)
     if not executing:
         return agent
@@ -244,7 +274,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             "platform_trace_id": facts.platform_trace_id,
             "execution_mode": mode.name,
             "effective_reasoning": reasoning,
-            "skills_hash": hashlib.sha256(files("runtime_service.services.dearflow_agent").joinpath("skills/runtime-smoke/SKILL.md").read_bytes()).hexdigest(),
+            "skills_hash": skills_hash(),
         },
     )
 

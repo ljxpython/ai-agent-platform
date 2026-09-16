@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildClarificationResponse,
   isClarificationInterrupt,
+  normalizeClarificationValues,
   parseClarifications,
   validateClarificationValues,
   type ClarificationField,
@@ -106,6 +107,85 @@ describe("human-input", () => {
       keyword: "Agent",
     });
     expect(Object.keys(err3)).toHaveLength(0);
+  });
+
+  it("validates all 7 clarification field types including checkbox false and date format", () => {
+    const fields: ClarificationField[] = [
+      { name: "name", type: "text", label: "姓名", required: true },
+      { name: "requirement", type: "textarea", label: "需求", required: true },
+      { name: "budget", type: "number", label: "预算", required: true },
+      {
+        name: "level",
+        type: "select",
+        label: "级别",
+        required: true,
+        options: [
+          { label: "基础", value: "basic" },
+          { label: "高级", value: "advanced" },
+        ],
+      },
+      {
+        name: "channels",
+        type: "multi_select",
+        label: "渠道",
+        required: true,
+        options: [
+          { label: "网页", value: "web" },
+          { label: "邮件", value: "email" },
+        ],
+      },
+      { name: "notify", type: "checkbox", label: "通知", required: true },
+      { name: "delivery_date", type: "date", label: "交付日期", required: true },
+    ];
+
+    // Missing all required
+    const errEmpty = validateClarificationValues(fields, {});
+    expect(errEmpty.name).toBe("请填写姓名");
+    expect(errEmpty.requirement).toBe("请填写需求");
+    expect(errEmpty.budget).toBe("请填写有效的预算数值");
+    expect(errEmpty.level).toBe("请填写级别");
+    expect(errEmpty.channels).toBe("请选择渠道");
+    expect(errEmpty.notify).toBe("请确认通知");
+    expect(errEmpty.delivery_date).toBe("请填写交付日期");
+
+    // Invalid format cases
+    const errInvalid = validateClarificationValues(fields, {
+      name: "张三",
+      requirement: "系统开发",
+      budget: "not-a-number",
+      level: "invalid-level",
+      channels: ["invalid-channel"],
+      notify: "yes", // should be boolean
+      delivery_date: "2026/09/16", // invalid date format
+    });
+    expect(errInvalid.budget).toBe("请填写有效的预算数值");
+    expect(errInvalid.level).toBe("请选择有效的选项");
+    expect(errInvalid.channels).toBe("存在无效的选项");
+    expect(errInvalid.notify).toBe("请确认通知");
+    expect(errInvalid.delivery_date).toBe("请输入有效的日期格式 (YYYY-MM-DD)");
+
+    // Valid values (critical: notify=false is valid!)
+    const validRaw = {
+      name: "李四",
+      requirement: "重构模块",
+      budget: 120,
+      level: "basic",
+      channels: ["web"],
+      notify: false,
+      delivery_date: "2026-09-16",
+    };
+    const errValid = validateClarificationValues(fields, validRaw);
+    expect(Object.keys(errValid)).toHaveLength(0);
+
+    // Normalize values
+    const normalized = normalizeClarificationValues(fields, {
+      ...validRaw,
+      budget: "120",
+    });
+    expect(normalized.budget).toBe(120);
+    expect(normalized.notify).toBe(false);
+    expect(normalized.channels).toEqual(["web"]);
+    expect(normalized.delivery_date).toBe("2026-09-16");
   });
 
   it("builds clarification response conforming to contract", () => {

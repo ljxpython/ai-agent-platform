@@ -447,7 +447,7 @@ export function useChatSession(options: {
   document.addEventListener("visibilitychange", receiptVisibility);
   watch(run, () => void refreshReceipts());
 
-  async function send(content: unknown, recursionLimit = 25) {
+  async function send(content: unknown, recursionLimit = 1000) {
     if (!canSend.value) return false;
     error.value = "";
     checking.value = true;
@@ -587,7 +587,7 @@ export function useChatSession(options: {
   async function fork(
     checkpoint: Checkpoint,
     content?: unknown,
-    recursionLimit = 25,
+    recursionLimit = 1000,
   ) {
     if (!canSend.value || !threadId.value || !checkpoint?.checkpoint_id) return false;
     const checkpointId = checkpoint.checkpoint_id;

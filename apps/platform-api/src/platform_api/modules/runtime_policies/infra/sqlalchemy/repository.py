@@ -106,7 +106,33 @@ class SqlAlchemyRuntimePolicyRepository:
                 RuntimeCatalogModelRecord.enabled.is_(True),
             )
         )
-        return str(model_id) if model_id else None
+        if model_id:
+            return str(model_id)
+        # Fallback 1: 若未显式标记 is_default_for_project，取该项目已启用的首个模型策略
+        fallback_project_model = self.session.scalar(
+            select(RuntimeCatalogModelRecord.id).join(
+                ProjectModelPolicyRecord,
+                ProjectModelPolicyRecord.model_catalog_id == RuntimeCatalogModelRecord.id,
+            ).where(
+                ProjectModelPolicyRecord.project_id == project_id,
+                ProjectModelPolicyRecord.is_enabled.is_(True),
+                RuntimeCatalogModelRecord.enabled.is_(True),
+            ).order_by(asc(ProjectModelPolicyRecord.updated_at))
+        )
+        if fallback_project_model:
+            return str(fallback_project_model)
+        # Fallback 2: 若项目无任何 policy 记录，取全局已启用的首个模型
+        disabled_subq = select(ProjectModelPolicyRecord.model_catalog_id).where(
+            ProjectModelPolicyRecord.project_id == project_id,
+            ProjectModelPolicyRecord.is_enabled.is_(False),
+        )
+        fallback_global = self.session.scalar(
+            select(RuntimeCatalogModelRecord.id).where(
+                RuntimeCatalogModelRecord.enabled.is_(True),
+                RuntimeCatalogModelRecord.id.not_in(disabled_subq),
+            ).order_by(asc(RuntimeCatalogModelRecord.created_at))
+        )
+        return str(fallback_global) if fallback_global else None
 
     def upsert_model_policy(
         self,

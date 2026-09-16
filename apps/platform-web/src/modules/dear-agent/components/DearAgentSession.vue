@@ -142,21 +142,85 @@ const modelsLoading = ref(true);
 const defaultModelName = ref("");
 const optionsOpen = ref(false);
 const optionsError = ref("");
+type ExecutionMode = 'flash' | 'standard' | 'pro' | 'ultra';
 const initialContext = { ...context.value };
-const draftRunOptions = reactive({ modelId: "", temperature: "", maxTokens: "" });
+const draftRunOptions = reactive<{
+  modelId: string;
+  temperature: string;
+  maxTokens: string;
+  recursionLimit: string;
+  executionMode: ExecutionMode;
+}>({
+  modelId: "",
+  temperature: "",
+  maxTokens: "",
+  recursionLimit: recursionLimit.value.toString(),
+  executionMode: (context.value.execution_mode as ExecutionMode) ?? "standard",
+});
+
+const currentExecutionMode = computed<ExecutionMode>(() => {
+  return (context.value.execution_mode as ExecutionMode) ?? "standard";
+});
+
+const isModeLocked = computed(
+  () => busy.value || hasPendingInterrupts.value || checking.value,
+);
+
 function resetOptions(value: AgentContext) {
-  Object.assign(draftRunOptions, { modelId: value.model_id ?? "", temperature: value.temperature?.toString() ?? "", maxTokens: value.max_tokens?.toString() ?? "" });
+  Object.assign(draftRunOptions, {
+    modelId: value.model_id ?? "",
+    temperature: value.temperature?.toString() ?? "",
+    maxTokens: value.max_tokens?.toString() ?? "",
+    recursionLimit: recursionLimit.value.toString(),
+    executionMode: (value.execution_mode as ExecutionMode) ?? "standard",
+  });
   optionsError.value = "";
 }
-function openOptions() { resetOptions(context.value); optionsOpen.value = true; }
+function openOptions() {
+  resetOptions(context.value);
+  optionsOpen.value = true;
+}
 function applyOptions() {
   try {
-    const updated = parseAgentContext({ ...context.value, model_id: draftRunOptions.modelId || undefined,
-      temperature: draftRunOptions.temperature.trim() ? Number(draftRunOptions.temperature) : undefined,
-      max_tokens: draftRunOptions.maxTokens.trim() ? Number(draftRunOptions.maxTokens) : undefined });
+    const nextMode = isModeLocked.value
+      ? ((context.value.execution_mode as ExecutionMode) ?? "standard")
+      : (draftRunOptions.executionMode || "standard");
+
+    if (draftRunOptions.recursionLimit?.trim()) {
+      const limitNum = Number(draftRunOptions.recursionLimit);
+      if (!Number.isInteger(limitNum) || limitNum < 1 || limitNum > 1000) {
+        optionsError.value = "最大步数预算必须是 1 到 1000 之间的整数";
+        return;
+      }
+      recursionLimit.value = limitNum;
+    }
+
+    const fallbackModel = models.value.find(m => m.display_name === defaultModelName.value) ?? models.value[0];
+    const resolvedModelId = draftRunOptions.modelId || fallbackModel?.id;
+
+    const updated = parseAgentContext({
+      ...context.value,
+      model_id: resolvedModelId || undefined,
+      temperature: draftRunOptions.temperature.trim()
+        ? Number(draftRunOptions.temperature)
+        : undefined,
+      max_tokens: draftRunOptions.maxTokens.trim()
+        ? Number(draftRunOptions.maxTokens)
+        : undefined,
+      execution_mode: nextMode,
+    });
     context.value = updated;
+
+    if (
+      (nextMode === "pro" || nextMode === "ultra") &&
+      recursionLimit.value < 100
+    ) {
+      recursionLimit.value = 100;
+    }
     optionsOpen.value = false;
-  } catch (cause) { optionsError.value = cause instanceof Error ? cause.message : "运行参数无效"; }
+  } catch (cause) {
+    optionsError.value = cause instanceof Error ? cause.message : "运行参数无效";
+  }
 }
 const drawerOpen = ref(false);
 const drawerTab = ref<"overview" | "tasks" | "files" | "history">("overview");
@@ -229,11 +293,29 @@ void Promise.all([listRuntimeModels(props.projectId), listRuntimeModelPolicies(p
     if (disposed) return;
     models.value = value.models.filter((model) => model.enabled && model.credential_configured && policies.items.find(item => item.catalog_id === model.id)?.policy.is_enabled !== false);
     const projectDefault = policies.items.find(item => item.policy.is_default_for_project);
-    defaultModelName.value = models.value.find(model => model.id === projectDefault?.catalog_id)?.display_name ?? "";
+    const defaultModel = models.value.find(model => model.id === projectDefault?.catalog_id) ?? models.value[0];
+    defaultModelName.value = defaultModel?.display_name ?? "";
+    if (!context.value.model_id && defaultModel) {
+      context.value = {
+        ...context.value,
+        model_id: defaultModel.id,
+      };
+      draftRunOptions.modelId = defaultModel.id;
+    }
   })
   .catch(() => {
     if (!disposed) localError.value = "模型列表读取失败，可恢复连接后重试";
   }).finally(() => { if (!disposed) modelsLoading.value = false; });
+
+function handleModelChange(selectedId: string) {
+  const projectDefault = models.value.find(m => m.display_name === defaultModelName.value) ?? models.value[0];
+  const targetId = selectedId || projectDefault?.id || "";
+  context.value = {
+    ...context.value,
+    model_id: targetId || undefined,
+  };
+  draftRunOptions.modelId = targetId;
+}
 
 const composerRef = ref<{ focus: () => void } | null>(null);
 function focusComposer() {
@@ -311,6 +393,15 @@ async function send(queued = false) {
     selectSnapshot("");
     void nextTick(() => requestSmoothScrollToBottom());
     try {
+      if (!context.value.model_id && models.value.length > 0) {
+        const defaultModel = models.value.find(m => m.display_name === defaultModelName.value) ?? models.value[0];
+        if (defaultModel) {
+          context.value = {
+            ...context.value,
+            model_id: defaultModel.id,
+          };
+        }
+      }
       const ok = await session.fork(
         targetCheckpoint,
         content,
@@ -336,7 +427,21 @@ async function send(queued = false) {
     attachments.value = [];
     void nextTick(() => requestSmoothScrollToBottom());
     try {
-      const ok = await session.send(content, recursionLimit.value);
+      if (!context.value.model_id && models.value.length > 0) {
+        const defaultModel = models.value.find(m => m.display_name === defaultModelName.value) ?? models.value[0];
+        if (defaultModel) {
+          context.value = {
+            ...context.value,
+            model_id: defaultModel.id,
+          };
+        }
+      }
+      const effectiveLimit =
+        currentExecutionMode.value === "pro" ||
+        currentExecutionMode.value === "ultra"
+          ? Math.max(recursionLimit.value, 100)
+          : recursionLimit.value;
+      const ok = await session.send(content, effectiveLimit);
       if (!ok && session.error.value) {
         throw new Error(session.error.value);
       }
@@ -824,6 +929,40 @@ const chatMetrics = computed(() => {
             </button>
           </div>
           <slot name="actions" />
+          <!-- 当前执行模式指示胶囊 (点击直达模式与参数配置) -->
+          <button
+            type="button"
+            class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-all shadow-2xs"
+            :class="[
+              currentExecutionMode === 'ultra'
+                ? 'border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-800/80 dark:bg-purple-950/40 dark:text-purple-300'
+                : currentExecutionMode === 'pro'
+                  ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800/80 dark:bg-blue-950/40 dark:text-blue-300'
+                  : currentExecutionMode === 'flash'
+                    ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-300'
+                    : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200'
+            ]"
+            title="点击切换执行模式与参数"
+            @click="openOptions"
+          >
+            <span
+              class="inline-block h-1.5 w-1.5 rounded-full"
+              :class="[
+                currentExecutionMode === 'ultra' ? 'bg-purple-500' :
+                currentExecutionMode === 'pro' ? 'bg-blue-500' :
+                currentExecutionMode === 'flash' ? 'bg-amber-500' : 'bg-emerald-500'
+              ]"
+            />
+            <span class="font-semibold uppercase tracking-wider text-[10px]">
+              {{ currentExecutionMode }}
+            </span>
+            <span
+              v-if="currentExecutionMode === 'pro' || currentExecutionMode === 'ultra'"
+              class="text-[10px] opacity-75 font-mono"
+            >
+              100步
+            </span>
+          </button>
           <button
             type="button"
             class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
@@ -1192,6 +1331,7 @@ const chatMetrics = computed(() => {
           action?.status === 'submitting' ||
           action?.status === 'unknown'
       "
+      :can-queue="session.supportsQueue && canWrite && !reviews.length && !session.pendingMessage.value"
       :send-button-label="selectedCheckpoint ? '分叉执行' : '发送'"
       :placeholder="selectedCheckpoint ? '当前处于快照分叉模式，输入新指令即可从此快照分叉执行...' : undefined"
       compact
@@ -1200,9 +1340,10 @@ const chatMetrics = computed(() => {
       :project-id="projectId"
       :selected-model-id="context.model_id"
       :default-model-name="defaultModelName"
-      @update:selected-model-id="context.model_id = $event || undefined"
+      @update:selected-model-id="handleModelChange($event)"
       @update:model-value="emit('update:draft', $event)"
       @send="send()"
+      @queue="send(true)"
       @cancel="session.stop"
       @file-input-change="handleInputChange"
       @composer-paste="handlePaste"
@@ -1214,30 +1355,18 @@ const chatMetrics = computed(() => {
     >
       <span>{{ chatMetrics.formattedLine }}</span>
     </div>
-    <button
-      v-if="
-        session.supportsQueue &&
-          busy &&
-          canWrite &&
-          !reviews.length &&
-          props.draft.trim()
-      "
-      type="button"
-      class="mx-4 mb-3 rounded-lg border px-3 py-2 text-xs"
-      :disabled="cancelling || !!session.pendingMessage.value"
-      @click="send(true)"
-    >
-      排队发送当前草稿
-    </button>
     <ChatRunOptionsDialog
       :show="optionsOpen"
       :draft-run-options="draftRunOptions"
       :runtime-models="models"
+      :mode-disabled="isModeLocked"
       :error="optionsError"
       @close="optionsOpen = false"
+      @update:execution-mode="draftRunOptions.executionMode = $event"
       @update:model-id="draftRunOptions.modelId = $event"
       @update:temperature="draftRunOptions.temperature = $event"
       @update:max-tokens="draftRunOptions.maxTokens = $event"
+      @update:recursion-limit="draftRunOptions.recursionLimit = $event"
       @restore="resetOptions(initialContext)"
       @apply="applyOptions"
     />

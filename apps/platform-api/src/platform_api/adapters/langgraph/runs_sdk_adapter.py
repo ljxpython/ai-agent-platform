@@ -145,6 +145,15 @@ class LangGraphRunsSdkAdapter:
         if payload.get("idempotency_key"):
             create_payload["headers"] = {"Idempotency-Key": payload["idempotency_key"]}
         try:
+            if "version" in payload:
+                # The pinned SDK create() lacks version, although the Server
+                # accepts it and uses the saved value when replaying the Run.
+                headers = create_payload.pop("headers", None)
+                return await self._http.request_json(
+                    "POST", f"/threads/{thread_id}/runs",
+                    payload={"assistant_id": assistant_id, **create_payload, "version": payload["version"]},
+                    forwarded_headers=headers,
+                )
             return await self._client.runs.create(thread_id, assistant_id, **create_payload)
         except Exception as exc:
             raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")

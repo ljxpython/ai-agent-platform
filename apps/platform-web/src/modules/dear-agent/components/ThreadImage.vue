@@ -12,6 +12,11 @@ const props = defineProps<{
   threadId: string;
   imageRef: RuntimeImageRef;
   alt?: string;
+  kind?: "reference" | "generated" | "slide";
+  status?: "succeeded" | "failed" | "unknown" | "running";
+  taskId?: string;
+  slideIndex?: number;
+  slideTotal?: number;
 }>();
 
 const loading = ref(true);
@@ -86,6 +91,58 @@ function downloadImage(event: MouseEvent) {
 
 <template>
   <div class="thread-image-container my-2 max-w-md rounded-lg border border-slate-200 bg-slate-50 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900/50">
+    <!-- 1. unknown 状态防御告警卡片 -->
+    <div
+      v-if="status === 'unknown'"
+      class="mb-2 rounded-lg border border-amber-300 bg-amber-50/80 p-2.5 text-xs text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200"
+    >
+      <div class="flex items-center gap-1.5 font-medium text-[11px]">
+        <BaseIcon
+          name="alert"
+          size="xs"
+          class="text-amber-600 dark:text-amber-400 shrink-0"
+        />
+        <span>任务状态未知 (unknown)</span>
+      </div>
+      <p class="mt-1 text-[10px] leading-relaxed text-amber-800/90 dark:text-amber-300/90">
+        由于远程服务响应超时，生图状态暂未确认。<span v-if="taskId">任务 ID: <code class="font-mono">{{ taskId }}</code>。</span>
+        请刷新核对历史，<strong>切勿盲目重复点击生成</strong>，避免重复扣费。
+      </p>
+    </div>
+
+    <!-- 2. 图片类型/幻灯片分页徽标 -->
+    <div
+      v-if="kind || slideIndex"
+      class="mb-2 flex items-center justify-between text-[10px]"
+    >
+      <span
+        v-if="kind === 'reference'"
+        class="rounded bg-blue-100 px-1.5 py-0.5 font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800"
+      >
+        📷 参考原图
+      </span>
+      <span
+        v-else-if="kind === 'generated'"
+        class="rounded bg-emerald-100 px-1.5 py-0.5 font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+      >
+        ✨ 生成结果
+      </span>
+      <span
+        v-else-if="kind === 'slide' || slideIndex"
+        class="rounded bg-purple-100 px-1.5 py-0.5 font-medium text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200 dark:border-purple-800"
+      >
+        📽️ 幻灯片第 {{ slideIndex || 1 }} 页<span v-if="slideTotal"> (共 {{ slideTotal }} 页)</span>
+      </span>
+
+      <span
+        v-if="status === 'failed'"
+        class="text-red-500 font-medium"
+      >
+        局部生成失败（已保留成功页面）
+      </span>
+    </div>
+
+    <!-- 3. 加载态 -->
     <div
       v-if="loading"
       class="flex h-48 w-full items-center justify-center rounded-md bg-slate-100 dark:bg-slate-800 animate-pulse text-slate-400"
@@ -97,6 +154,7 @@ function downloadImage(event: MouseEvent) {
       <span class="text-xs">加载图片中...</span>
     </div>
 
+    <!-- 4. 错误态 -->
     <div
       v-else-if="error"
       class="flex flex-col items-center justify-center rounded-md border border-dashed border-red-200 bg-red-50/50 p-4 text-center dark:border-red-900/50 dark:bg-red-950/20"
@@ -119,6 +177,7 @@ function downloadImage(event: MouseEvent) {
       </button>
     </div>
 
+    <!-- 5. 成功渲染图片 -->
     <div
       v-else-if="blobUrl"
       class="group relative overflow-hidden rounded-md"

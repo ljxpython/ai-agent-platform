@@ -50,8 +50,12 @@ async def upload_thread_file(thread_id: str, sha256: str, request: Request, auth
 
 
 TEXT_CHARSET_MIMES = {
+    "text/html": "text/html; charset=utf-8",
+    "text/css": "text/css; charset=utf-8",
+    "text/javascript": "text/javascript; charset=utf-8",
     "text/plain": "text/plain; charset=utf-8",
     "text/markdown": "text/markdown; charset=utf-8",
+    "text/x-bibtex": "text/x-bibtex; charset=utf-8",
     "text/csv": "text/csv; charset=utf-8",
     "application/json": "application/json; charset=utf-8",
 }
@@ -66,4 +70,4 @@ async def read_thread_file(thread_id: str, path: str = Query(...), authorization
     except DocumentError as exc:
         raise HTTPException(exc.status_code, {"code": exc.code, "message": str(exc)}) from exc
     media_type = TEXT_CHARSET_MIMES.get(ref["mime_type"], ref["mime_type"])
-    return Response(data, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{ref["file_name"]}"', "Content-Length": str(len(data)), "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+    return Response(data, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{ref["file_name"]}"', "Content-Length": str(len(data)), "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox; default-src 'none'"})

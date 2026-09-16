@@ -192,6 +192,49 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(resp.status_code, 403)
             self.assertEqual(resp.json()["error"]["code"], "thread_project_denied")
 
+    async def test_zip_upload_and_bibtex_download(self):
+        data = b"test zip transport; runtime validates archive"
+        sha = hashlib.sha256(data).hexdigest()
+        self.upstream.get_thread = AsyncMock(return_value={"metadata": {"project_id": "proj-1", "graph_id": "dearflow_agent"}})
+        self.upstream.upload_thread_file = AsyncMock(return_value={"version": 1, "path": f"/workspace/uploads/{sha}.zip",
+            "sha256": sha, "file_name": "source.zip", "mime_type": "application/zip", "size_bytes": len(data)})
+        async def body():
+            yield b"@misc{paper,title={Test}}"
+        self.upstream.read_thread_file = AsyncMock(return_value=BinaryPayload(body=body(), content_type="text/x-bibtex", content_length=24))
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+            uploaded = await client.put(f"/api/langgraph/threads/thread-1/files/uploads/{sha}", content=data,
+                                        headers={"x-project-id": "proj-1", "content-type": "application/zip"})
+            self.assertEqual(uploaded.status_code, 200)
+            response = await client.get("/api/langgraph/threads/thread-1/files/content", params={"path": f"/workspace/outputs/{sha}.bib"}, headers={"x-project-id": "proj-1"})
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.headers["content-type"].startswith("text/x-bibtex"))
+
+    async def test_excel_and_web_file_contract(self):
+        self.upstream.get_thread = AsyncMock(return_value={"metadata": {"project_id": "proj-1", "graph_id": "dearflow_agent"}})
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+            for ext, mime in (("xls", "application/vnd.ms-excel"),
+                              ("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+                              ("html", "text/html"), ("css", "text/css"), ("js", "text/javascript")):
+                data = b"gateway fixture; runtime validates bytes"
+                sha = hashlib.sha256(data).hexdigest()
+                self.upstream.upload_thread_file = AsyncMock(return_value={
+                    "version": 1, "path": f"/workspace/uploads/{sha}.{ext}", "sha256": sha,
+                    "file_name": f"source.{ext}", "mime_type": mime, "size_bytes": len(data),
+                })
+                uploaded = await client.put(f"/api/langgraph/threads/thread-1/files/uploads/{sha}", content=data,
+                    headers={"x-project-id": "proj-1", "content-type": mime})
+                self.assertEqual(uploaded.status_code, 200, uploaded.text)
+            async def body():
+                yield b"<script>parent.document.cookie</script>"
+            self.upstream.read_thread_file = AsyncMock(return_value=BinaryPayload(body=body(), content_type="text/html"))
+            response = await client.get("/api/langgraph/threads/thread-1/files/content",
+                params={"path": f"/workspace/outputs/{sha}.html"}, headers={"x-project-id": "proj-1"})
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.headers["content-type"].startswith("text/html"))
+            self.assertIn("attachment", response.headers["content-disposition"])
+            self.assertEqual(response.headers["x-content-type-options"], "nosniff")
+            self.assertIn("sandbox", response.headers["content-security-policy"])
+
     async def test_read_file_success(self):
         self.upstream.get_thread = AsyncMock(
             return_value={"metadata": {"project_id": "proj-1", "graph_id": "showcase_demo"}}
@@ -224,7 +267,9 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.headers["content-length"], "22")
         self.assertEqual(response.headers["etag"], '"abcdef"')
         self.assertEqual(response.headers["cache-control"], "private, no-store")
-        self.assertIn("inline", response.headers["content-disposition"])
+        self.assertIn("attachment", response.headers["content-disposition"])
+        self.assertEqual(response.headers["x-content-type-options"], "nosniff")
+        self.assertIn("sandbox", response.headers["content-security-policy"])
         self.assertEqual(response.content, b"%PDF-1.4 file content")
 
         # 验证 delegation token 为 workspace-file-read

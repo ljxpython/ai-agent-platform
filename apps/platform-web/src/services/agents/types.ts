@@ -4,6 +4,7 @@ export type AgentContext = {
   max_tokens?: number
   top_p?: number
   tools?: string[]
+  execution_mode?: 'flash' | 'standard' | 'pro' | 'ultra'
 }
 
 export type Agent = {

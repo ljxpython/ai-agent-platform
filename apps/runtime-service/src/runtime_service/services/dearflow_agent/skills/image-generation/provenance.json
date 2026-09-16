@@ -1,0 +1,16 @@
+{
+  "upstream": "https://github.com/bytedance/deer-flow",
+  "commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "source": "skills/public/image-generation",
+  "revision": "dear-p5-v1",
+  "source_files": {
+    "SKILL.md": "9e5f4d09a8440ef6cca6f3b0ec35777259b6eadd027bfa5db9baa4ee13812f4e",
+    "scripts/generate.py": "4fb9303fb9908365f92c50dd3499d2f36cc7656af80aef4183bb210fda8871c7",
+    "templates/doraemon.md": "b223740973e3f5a83031533f5bbc95c1af0700d756ca6431623f7e98d9ea0fe0"
+  },
+  "adapted_files": [
+    "SKILL.md",
+    "scripts/generate.py"
+  ],
+  "license_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1"
+}

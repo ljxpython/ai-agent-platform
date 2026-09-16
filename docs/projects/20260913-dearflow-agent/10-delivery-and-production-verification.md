@@ -26,14 +26,16 @@
 | P1 前后端最小真实底座 | P0 关键架构通过并获后续实施批准 | 按 01 第一轮实施包：graph／组合根、Standard、文件 Backend、官方 HITL、最小能力目录／文件代理；08/F1 独立目录与路由复用 ChatSession | 从 Dear Agent 专属路由真实“TXT 输入→受限处理→审批→下载→刷新恢复”；隔离、拒绝、重启及通用 Chat／Showcase 回归通过 | 10—15 |
 | P2 研究与专属交互基础 | P1 通过 | 搜索／抓取、证据、MCP、工具权限、Context v2；08/F2 专属工作区／欢迎／模式／来源／队列，最小 Chat 扩展点 | 检索可复查，模式不串配置；单一会话 controller；新旧前端共用基础而产品布局独立 | 9—13 |
 | P3 子 Agent 展示与观测 | P2 通过 | 普通官方子图、稳定归属、父 Run 取消反馈、已有 tracing／usage；08/F3 详情 | 两个同角色并发不串线、刷新恢复、缺失 usage 显示未知；不显示独立 child cancel | 9—13 |
-| P4 研究与数据 Skills | P3 通过 | K01—K11 按顺序迁移；格式按需要先补 PDF／Excel／项目包；图表 26 类对照 | 每一 K 独立确定性测试＋真实 Web E2E＋负例通过，才进入下一 K；前 11 项均完成 | 12—18 |
-| P5 生成与长任务 | P4 通过，所用供应商可用 | 09 持久外部任务、媒体输入／输出／播放，K12—K16 逐个交付 | 图片／PPT／播客／音乐／视频真实产物；付费审批、提交未知、worker 重启和下载恢复通过 | 12—18 |
-| P6 记忆与技能治理 | P5 通过；D5 口径已明确 | 显式记忆／自定义 Skill 存储底座，再 K17—K23；08/F6 SkillsPanel 管理与 MemoryPanel；自动提取单独验收 | 专属前端技能审查／评估／发布／回退、偏好修正删除闭环；23 项均有实际结论，K23 差异获确认 | 13—20 |
+| P4 研究与数据 Skills | P3约定后端通过；F3后置单列 | K01—K11按顺序迁移，格式按需补；图表26类对照；分别记录后端／交接／页面验收 | 用户批准K02—K07、K08—K11分批先实现后集中验证，每K独立记录证据；Web E2E后置，最终11项完整完成仍需页面验收 | 12—18 |
+| P5 生成与长任务 | P4遗留阻塞已登记；所用图片供应商可用 | 当前K12/K13、图片回执与PPTX交付；K14/K15延期，K16视频与音视频大文件后续实施（deferred），完整长MCP按实际需求后置 | 确定性／Docker／平台分段证据见12；K13完整AI三页通过；K12多参考图连接异常仍partial，不能勾选全阶段 | 原12—18；延期部分不纳入本批 |
+| P6 记忆与技能治理 | P5无关遗留已登记、不阻塞；K23用户明确后置 | 显式记忆／自定义 Skill 存储底座，再 K17—K23；08/F6 SkillsPanel 管理与 MemoryPanel；自动提取单独验收 | 专属前端技能审查／评估／发布／回退、偏好修正删除闭环；23 项均有实际结论，K23按用户决定deferred | 13—20 |
 | P7 生产联合验收与展示 | 各专题必需项完成 | 08/F7 专属前端收口和展示场景；安全、负载、恢复、升级回滚、监控与运维证据 | V01—V12 及 F7 全部通过；Dear Agent 独立入口与通用 Chat 并存，人工验收与发布流程完成 | 7—12 |
 
 第二版初估合计 **77—116 人天**；不是日历工期承诺。原 69—104 人天已含通用 Web 接入，本版增加独立前端组合、Chat 扩展点、路由／线程筛选及双入口回归，暂增加 8—12 人天，未重复计入媒体或 Skill 全部后端工作。P0 再依据实际复用难度校准。额外供应商、全可编辑 PPT、音视频理解、浏览器操作、Goal／定时功能不包含在估算内。
 
 P1 的验证用 Skill 是本项目最小烟测资源，不计入上游 23 项、不对外宣称业务迁移完成。P2 可用固定工具场景验证研究链路，K01 的正式迁移在 P4 开始，避免阶段记录重复记账。
+
+2026-09-15接续：GraphHarbor post30后端已完成并接入，当前进入P4后端准备；用户确认前端仅交接、页面后置。以下F4与Web要求保留为最终完整阶段验收，不作为本轮后端开始的阻塞。P4执行包三类进度表是逐项交付入口，07台账仍记录Skill整体状态。
 
 P2 可展示四模式；Ultra 使用普通同步子 Agent，受父 Run 生命周期约束，不提供单 child 独立取消。P6 应先交付 K17—K20 依赖的存储／授权／记忆，再开始相应 Skill；依赖补齐不违反逐项迁移原则。
 
@@ -50,7 +52,7 @@ P2 可展示四模式；Ultra 使用普通同步子 Agent，受父 Run 生命周
 | P2 | 02／03 | 02/C02—C05；03 研究／MCP／证据；06/M01 基础保护；08/W01 扩展、W02、W05 队列、F2 | 模式／检索／来源／队列可用；Ultra 使用普通同步子 Agent |
 | P3 | 05 | 05/S-A—S-D；04 子任务工作区隔离；08/W04、F3 | 普通子任务专属详情、稳定关联和父 Run 取消反馈 |
 | P4 | 07/K01—K11 | 各 K 卡片前置的 03 工具、04 格式；08/F4、C07 只读 | 每个 K 的产物／UI／测试记录，下一项精确编号 |
-| P5 | 09 → 07/K12—K16 | 09/B02—B06；03 媒体；04 媒体格式／Range；08/F5 | 长任务重启证据与逐项媒体交付 |
+| P5 | 07/K12/K13 → 04/08；09图片回执 | K12/K13及F5；K14/K15延期，K16／大文件后置 | 图片／PPTX证据、明确未知提交；完整长MCP按实际需求后置 |
 | P6 | 06／07 | 06/M02—M05；07 管理底座及 K17—K23；08/W06、F6 | 记忆／技能治理闭环和 23 项实际台账 |
 | P7 | 10 | 所有未通过关键门禁、08/F7、07 全量复核 | 生产展示验收、支持边界、发布回滚记录 |
 
@@ -85,10 +87,10 @@ uv run pytest tests/services/dearflow_agent -m "not integration and not durable 
 uv run pytest tests/services/showcase_demo tests/runtime tests/middlewares -m "not integration and not durable and not e2e"
 uv run pytest tests/integration/test_dearflow_external_tasks.py -m integration
 uv run pytest tests/durable/test_dearflow_external_tasks.py -m durable
-uv run pytest tests/e2e/test_dearflow_skills.py -m e2e -k K01
+DEAR_SKILL_E2E=1 uv run pytest tests/e2e/test_dearflow_skills.py -m e2e -k K01
 ```
 
-最后一条要求未来测试参数 ID 显式使用 K01—K23；每次只跑当前迁移技能，最终再运行完整受支持集合。P0／P1／P3 同样补与其行为相符的真实引擎 integration／durable 测试，不只跑外部任务用例。
+最后一条从runtime-service目录执行，会创建隔离测试项目并调用真实模型与搜索；未设置环境变量时跳过，不能计为通过。目前参数ID仅K01，后续逐项扩展至K23；每次只跑当前迁移技能，最终再运行完整受支持集合。P0／P1／P3 同样补与其行为相符的真实引擎 integration／durable 测试，不只跑外部任务用例。
 
 Platform 命令在 `apps/platform-api/` 执行，优先已有契约／安全／网关回归，加本项目新增的边界用例：
 
@@ -116,7 +118,7 @@ Python 当前 pyproject 未定义统一 lint／typecheck 命令，P0 核对现�
 | V02 授权与隔离 | 两租户、两项目、同名字线程／子任务；伪造 scope 与 URL | 模型、MCP、文件、记忆、Skills、child 操作均不能越权；SSRF／路径穿越／secret 外发负例 |
 | V03 官方交互 | 澄清／七种字段、工具审批、多 interrupt、混批、回答校验、重复 resume、撤权 | 02 §6／08 §11 矩阵通过；提问前混批工具不执行，422 不消费回答，恢复不覆盖 Context，过期／不同答案重放被拒 |
 | V04 子任务 | 同角色并发、父取消、断线／刷新恢复 | 状态以引擎为准，消息／审批／文件正确归属；无独立 child cancel，usage 缺失显示未知 |
-| V05 文件链路 | 04 全格式矩阵、大文件 Range、HTML、下载／分叉 | 真文件内容和 hash 校验，内存有界，旧引用有效，时间旅行不伪称工作区自动回滚 |
+| V05 文件链路 | 04 当前范围格式矩阵、HTML、下载／分叉；音视频大文件／Range本批后置、后续单独验收 | 真文件内容和 hash 校验，内存有界，旧引用有效，时间旅行不伪称工作区自动回滚 |
 | V06 所有 Skills | K01—K23 个别与最终组合回归 | 每个独立证据齐全；缺凭据、外部服务不可用如实 blocked，任何静默缩水阻止全量完成 |
 | V07 记忆与上下文 | 摘要、提取、并发编辑／删除、重启、清空 | 来源与 revision 正确，不串 scope，不复活被删事实，不把一次审批存成永久权限 |
 | V08 外部副作用 | 提交 ACK 丢失、超时、重复通知、lease／fence、撤权 | 不盲目重复付费；真实 unknown／取消边界可见；续接经官方 API 且幂等 |
@@ -158,9 +160,9 @@ P0 记录 CPU／内存、磁盘、网络、worker 数、模型与供应商、输
 - [ ] P1 浏览器入口端到端与 08/F1 联合验收：本轮按用户要求后置，历史前端单测不替代真实页面链路。
 - [ ] P2：工具、模式、catalog 与 Context v2，完成授权与兼容回归。
   - [x] 本轮后端功能与一次真实闭环完成，逐项代码及测试见 [P2 执行包](phases/P2-研究与交互基础.md)／[06](implementation/06-p2-research-and-interaction.md)。父项不勾选：重复运行发生 Redis／Worker 超时，外部观测导出未验收，F2 前端本轮后置。
-- [ ] P3 partial：后端并发／隔离／关联／usage回归39项通过，真实父取消通过；完整成功运行超时，外部观测未验；F3按用户要求deferred，V04未全通过。独立 child Run／取消／完整 usage 后置，详见[07](implementation/07-p3-subagents-and-observability.md)。
-- [ ] P4：K01—K11 顺序交付，逐项登记证据。
-- [ ] P5：长任务／媒体底座与 K12—K16，V08 通过。
+- [ ] P3 partial：本轮约定后端范围done，39项回归、真实v2/v3双任务成功、生命周期回放、父取消与Langfuse回读通过；F3 deferred，V04浏览器及生产稳定性门禁未全通过。独立child Run／取消／完整usage账本后置，逐项代码与证据见[08](implementation/08-p3-server-verification-closeout.md)。
+- [ ] P4：K01—K11已实现；K01/K02/K04报告/K06/K07后端done，K03/K05外部限流blocked；K08/K10/K11后端done，K09累计25/26图型与代表模型链路通过、双轴远端blocked，见[11批次](implementation/11-p4-k08-k11-batch.md)。前端交接done、页面deferred，不勾选整阶段。
+- [ ] P5（partial）：K12/K13与图片回执代码已完成；K13完整AI三页真实交付done；K12文生图／单图编辑成功，多参考图连接异常待验，见[12](implementation/12-p5-media-and-tasks.md)；K14/K15及实际长MCP延期；K16视频与音视频大文件／Range由用户明确后续实施（deferred）；前端仅交接。
 - [ ] P6：记忆／技能治理及 K17—K23，V07、23 项台账完整。
 - [ ] P7：V01—V12 与 08/F7 联合验证、专属前端展示、通用 Chat 并存回归、发布／回滚演练及人工业务验收。
 
@@ -215,3 +217,5 @@ mock 通过不能代替真实模型、真实 SDK／引擎、真实数据库或�
 ## 状态
 
 P0/P1 当前授权后端范围已完成：最小契约、完整平台文件／Worker 重启与 MCP B02 风险试验见 [05](implementation/05-p0-p1-deployment-verification.md)，业务修复定位见 [04](implementation/04-p0-p1-foundation-closeout.md)。整体项目仍进行中，前端浏览器验收本轮后置；P2—P7、正式长任务业务和 23 Skills 不冒称完成。此前“未实施／待批准”是历史规划状态，不作为当前进度。
+
+2026-09-16 P7收尾更新：多机压测按用户决定移除；Runtime库恢复后历史线程逐表摘要一致，随后按授权删除恢复库/备份并清空当前对话数据。K19本地发现链路及V08接单断连/重复提交通过，详见[15](implementation/15-cleanup-k19-and-v08.md)。不等于所有V门禁或F7已完成。

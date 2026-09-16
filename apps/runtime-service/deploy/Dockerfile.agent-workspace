@@ -1,5 +1,6 @@
 FROM python:3.13-slim
 # Build and pin the resulting image digest in the deployment environment.
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+RUN pip install --no-cache-dir duckdb==1.4.4 openpyxl==3.1.5 xlrd==2.0.2 defusedxml==0.7.1 Pillow==11.3.0 python-pptx==1.0.2
 WORKDIR /workspace/work
 USER 65534:65534

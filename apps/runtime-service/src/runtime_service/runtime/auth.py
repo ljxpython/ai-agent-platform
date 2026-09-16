@@ -102,6 +102,8 @@ def _parse_scope(raw: object) -> RuntimeScope:
         "image-read",
         "workspace-file-upload",
         "workspace-file-read",
+        "dear-governance-read",
+        "dear-governance-write",
     }:
         raise _invalid("runtime.auth.invalid_principal", "operation")
     return RuntimeScope(

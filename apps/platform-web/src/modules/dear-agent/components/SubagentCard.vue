@@ -45,18 +45,13 @@ const subagent = computed(() => {
   const map = props.stream.subagents.value;
   return (
     map.get(props.tool.id) ||
-    [...map.values()].find(
-      (a) => a.id === props.tool.id || a.name === subagentType.value,
-    )
+    [...map.values()].find((a) => a.id === props.tool.id)
   );
 });
 
 const namespace = computed(() => {
   if (subagent.value?.namespace && subagent.value.namespace.length > 0) {
     return subagent.value.namespace;
-  }
-  if (props.tool.id) {
-    return [`tools:${props.tool.id}`];
   }
   return [];
 });
@@ -238,7 +233,7 @@ const runtimeImages = computed(() => {
         v-else-if="!stream || !namespace.length"
         class="text-xs text-gray-500 dark:text-dark-400"
       >
-        {{ tool.status === 'running' ? '子任务正在运行中...' : '尚无公开汇报结果' }}
+        {{ tool.status === 'running' ? '子任务已分派，正在建立执行作用域...' : '关联未知 / 历史恢复中（仅主流程汇总返回）' }}
       </p>
 
       <button

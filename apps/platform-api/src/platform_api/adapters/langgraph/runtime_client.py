@@ -81,7 +81,7 @@ class LangGraphRuntimeClient:
             else payload
         )
         try:
-            async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+            async with httpx.AsyncClient(trust_env=False, timeout=self._timeout_seconds) as client:
                 response = await client.request(
                     method=method,
                     url=self._url(path),
@@ -152,7 +152,7 @@ class LangGraphRuntimeClient:
         params: Mapping[str, Any] | None = None,
         forwarded_headers: Mapping[str, str] | None = None,
     ) -> AsyncIterator[bytes]:
-        client = httpx.AsyncClient(timeout=httpx.Timeout(None, connect=self._timeout_seconds))
+        client = httpx.AsyncClient(trust_env=False, timeout=httpx.Timeout(None, connect=self._timeout_seconds))
         response = None
         try:
             request = client.build_request(
@@ -225,7 +225,7 @@ class LangGraphRuntimeClient:
         headers["content-length"] = str(content_length)
 
         try:
-            async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+            async with httpx.AsyncClient(trust_env=False, timeout=self._timeout_seconds) as client:
                 response = await client.request(
                     method="PUT",
                     url=self._url(path),
@@ -265,7 +265,7 @@ class LangGraphRuntimeClient:
         params: Mapping[str, Any] | None = None,
         forwarded_headers: Mapping[str, str] | None = None,
     ) -> BinaryPayload:
-        client = httpx.AsyncClient(timeout=httpx.Timeout(None, connect=self._timeout_seconds))
+        client = httpx.AsyncClient(trust_env=False, timeout=httpx.Timeout(None, connect=self._timeout_seconds))
         response = None
         try:
             request = client.build_request(
@@ -361,7 +361,7 @@ class LangGraphRuntimeClient:
         headers["content-length"] = str(content_length)
 
         try:
-            async with httpx.AsyncClient(timeout=self._timeout_seconds) as client:
+            async with httpx.AsyncClient(trust_env=False, timeout=self._timeout_seconds) as client:
                 response = await client.request(
                     method="PUT",
                     url=self._url(path),
@@ -402,7 +402,7 @@ class LangGraphRuntimeClient:
         params: Mapping[str, Any] | None = None,
         forwarded_headers: Mapping[str, str] | None = None,
     ) -> BinaryPayload:
-        client = httpx.AsyncClient(timeout=httpx.Timeout(None, connect=self._timeout_seconds))
+        client = httpx.AsyncClient(trust_env=False, timeout=httpx.Timeout(None, connect=self._timeout_seconds))
         response = None
         try:
             request = client.build_request(
@@ -429,11 +429,19 @@ class LangGraphRuntimeClient:
         content_type = response.headers.get("content-type", "")
         media_type = content_type.split(";")[0].strip().lower()
         allowed_mimes = {
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "application/pdf",
             "text/plain",
             "text/markdown",
             "application/json",
             "text/csv",
+            "text/x-bibtex",
+            "application/zip",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "text/html",
+            "text/css",
+            "text/javascript",
         }
         if media_type not in allowed_mimes:
             with CancelScope(shield=True):
@@ -486,4 +494,3 @@ class LangGraphRuntimeClient:
             etag=etag,
             cache_control=cache_control,
         )
-

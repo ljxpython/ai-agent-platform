@@ -7,18 +7,64 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class Option(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
-    value: str = Field(min_length=1, max_length=200)
-    label: str = Field(min_length=1, max_length=200)
+    model_config = ConfigDict(extra="ignore")
+    value: str = Field(default="", min_length=1, max_length=200)
+    label: str = Field(default="", min_length=1, max_length=200)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize(cls, data):
+        if isinstance(data, str):
+            val = data.strip()
+            return {"value": val, "label": val}
+        if isinstance(data, dict):
+            val = str(data.get("value") or "").strip()
+            lbl = str(data.get("label") or "").strip()
+            if not val and lbl:
+                val = lbl
+            elif not lbl and val:
+                lbl = val
+            data = dict(data)
+            data["value"] = val
+            data["label"] = lbl
+            return data
+        return data
 
 
 class ClarificationField(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
+    model_config = ConfigDict(extra="ignore")
     name: str = Field(min_length=1, max_length=200)
     label: str = Field(min_length=1, max_length=200)
     type: Literal["text", "textarea", "number", "select", "multi_select", "checkbox", "date"]
     required: bool = True
     options: list[Option] = Field(default_factory=list, max_length=24)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _pre_validate(cls, data):
+        if not isinstance(data, dict):
+            return data
+        data = dict(data)
+        if not data.get("label") and data.get("name"):
+            data["label"] = str(data["name"])
+        raw_options = data.get("options")
+        if isinstance(raw_options, list):
+            seen = set()
+            deduped = []
+            for opt in raw_options:
+                key = None
+                if isinstance(opt, str):
+                    key = opt.strip()
+                elif isinstance(opt, dict):
+                    key = str(opt.get("value") or opt.get("label") or "").strip()
+                if key:
+                    if key not in seen:
+                        seen.add(key)
+                        deduped.append(opt)
+                else:
+                    deduped.append(opt)
+            data["options"] = deduped
+        return data
 
     @model_validator(mode="after")
     def valid(self):
@@ -33,7 +79,7 @@ class ClarificationField(BaseModel):
 
 
 class ClarificationRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
+    model_config = ConfigDict(extra="ignore")
     kind: Literal["clarification"] = "clarification"
     schema_version: Literal[1] = 1
     question: str = Field(min_length=1, max_length=2000)

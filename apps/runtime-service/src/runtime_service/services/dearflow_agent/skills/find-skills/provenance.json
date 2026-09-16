@@ -1,0 +1,29 @@
+{
+  "upstream_commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "revision": "dear-p6-v1",
+  "files": [
+    {
+      "path": "LICENSE",
+      "source": "LICENSE",
+      "source_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+      "sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+      "adapted": false
+    },
+    {
+      "path": "SKILL.md",
+      "source": "skills/public/find-skills/SKILL.md",
+      "source_sha256": "0fccfaeacc4c71bfc93aeabf06d2d5d17480d4a09cb024c643a90b14dc024aba",
+      "sha256": "41498d5badc551806d3ed418d328ba8aa86d146d7936e4cc807c4251241694c9",
+      "adapted": true
+    },
+    {
+      "path": "scripts/install-skill.sh",
+      "source": "skills/public/find-skills/scripts/install-skill.sh",
+      "source_sha256": "f38bf4bb68115be6a5cf3211c2885114d70864f396197a53653f852d567261fb",
+      "sha256": "61de3c71314db4c5fff651c74d36fc0427fb524384e7f1c2cb646b855bf46f1a",
+      "adapted": true
+    }
+  ],
+  "behavior_changes": "Use find_skills(query) for the current catalog and authorized search_web/github_query for remote discovery. To import, resolve an exact GitHub 40-character commit and use import_skill(repository,commit,directory). The result is an inactive candidate: review_skill_package, evaluate_skill_candidate and separately approved publish_skill must follow. No npx/installer/global installs. Unknown or unavailable sources are a reported failure.",
+  "verification": "pending; docs/projects/20260913-dearflow-agent/implementation/13-p6-memory-and-skills.md"
+}

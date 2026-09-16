@@ -77,7 +77,7 @@ MCP 初始化只在真实运行／需要时发生；Schema 探测从已验证的
 - [ ] T-B：实现 T08，`test_mcp_tools.py` 覆盖探测无 I/O、工具冲突、授权、会话关闭、断线和 scope；T09 只有 schema 预算证明必要才实施。
   - [x] P2 普通只读 MCP：`tools/mcp.py` 复用 resource binding 和官方适配器；`test_mcp_tools.py` 独立 HTTP MCP 服务真实调用通过，覆盖冲突／scope／写工具拒绝／断连。官方上下文管理会话，未单独断言远端会话计数；不把本项等同所有 MCP 供应商接入。
 - [ ] T-C：统一图片、图表和文件返回契约；生产业务不 import Showcase；相关共享修改补旧能力回归。
-- [ ] T-D：T07 随 K14—K16 逐个供应商接入；`test_media.py` 覆盖真实错误和 unknown，付费 smoke 显式开启。
+- [ ] T-D：T07 随延期的K14/K15恢复时按需接入；K16视频后续实施（deferred）；`test_media.py` 覆盖真实错误和 unknown，付费 smoke 显式开启。
 - [ ] T-E：实现 T10—T12，`test_evidence.py` 检查伪造文件、错误 hash、无证据成功、截断／外置失败。
   - [x] P2 研究切片：`test_research.py` 验证只读来源／哈希／截断／大正文，`test_platform.py:test_completed_research_delivery` 真实平台报告哈希、来源和补充消息核验1 passed（49.83s）。媒体／多格式证据仍随后续阶段交付。
 - [x] T-F／P2：`services/dearflow_agent/capabilities.py:tool_permissions` 统一内置／MCP 声明与权限；`agent.py` 复用同一映射。MCP 的 allowed_tools 是服务端配置，执行前仍验证受信绑定及权限。

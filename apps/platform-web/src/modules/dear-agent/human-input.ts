@@ -3,7 +3,25 @@ export type ClarificationFieldOption = {
   value: string;
 };
 
-export type ClarificationFieldType = "text" | "select" | string;
+export type ClarificationFieldType =
+  | "text"
+  | "textarea"
+  | "number"
+  | "select"
+  | "multi_select"
+  | "checkbox"
+  | "date"
+  | string;
+
+export const SUPPORTED_CLARIFICATION_TYPES = new Set<string>([
+  "text",
+  "textarea",
+  "number",
+  "select",
+  "multi_select",
+  "checkbox",
+  "date",
+]);
 
 export type ClarificationField = {
   name: string;
@@ -43,7 +61,7 @@ function isObject(value: unknown): value is Record<string, unknown> {
 
 export function isClarificationInterrupt(value: unknown): boolean {
   if (!isObject(value)) return false;
-  if (value.kind === "clarification") return true;
+  if (value.kind === "clarification" || value.type === "clarification") return true;
   return typeof value.question === "string" && Array.isArray(value.fields);
 }
 
@@ -71,11 +89,21 @@ export function parseClarifications(
       const options: ClarificationFieldOption[] = [];
       if (Array.isArray(f.options)) {
         for (const opt of f.options) {
-          if (isObject(opt) && typeof opt.value !== "undefined") {
-            options.push({
-              label: typeof opt.label === "string" ? opt.label : String(opt.value),
-              value: String(opt.value),
-            });
+          if (isObject(opt)) {
+            const rawVal =
+              typeof opt.value !== "undefined"
+                ? String(opt.value)
+                : typeof opt.label === "string"
+                  ? opt.label
+                  : "";
+            const rawLabel =
+              typeof opt.label === "string" ? opt.label : rawVal;
+            if (rawVal) {
+              options.push({
+                label: rawLabel,
+                value: rawVal,
+              });
+            }
           }
         }
       }
@@ -107,10 +135,10 @@ export function parseClarifications(
         ? interrupt.value.schema_version
         : 1;
 
-    // P1: support text and select
+    // Support all 7 official clarification field types
     const supported =
       fields.length > 0 &&
-      fields.every((field) => ["text", "select"].includes(field.type));
+      fields.every((field) => SUPPORTED_CLARIFICATION_TYPES.has(field.type));
 
     result.push({
       id: interrupt.id,
@@ -137,20 +165,80 @@ export function validateClarificationValues(
 
   for (const field of fields) {
     const rawVal = values[field.name];
-    const val = typeof rawVal === "string" ? rawVal.trim() : rawVal;
 
+    // Check if field type is supported
+    if (!SUPPORTED_CLARIFICATION_TYPES.has(field.type)) {
+      errors[field.name] = `不支持的字段类型: ${field.type}`;
+      continue;
+    }
+
+    // Required check
     if (field.required) {
-      if (val === undefined || val === null || val === "") {
-        errors[field.name] = `请填写${field.label || field.name}`;
-        continue;
+      if (field.type === "checkbox") {
+        if (typeof rawVal !== "boolean") {
+          errors[field.name] = `请确认${field.label || field.name}`;
+          continue;
+        }
+      } else if (field.type === "multi_select") {
+        if (!Array.isArray(rawVal) || rawVal.length === 0) {
+          errors[field.name] = `请选择${field.label || field.name}`;
+          continue;
+        }
+      } else if (field.type === "number") {
+        const num =
+          typeof rawVal === "number"
+            ? rawVal
+            : typeof rawVal === "string" && rawVal.trim() !== ""
+              ? Number(rawVal)
+              : NaN;
+        if (!Number.isFinite(num)) {
+          errors[field.name] = `请填写有效的${field.label || field.name}数值`;
+          continue;
+        }
+      } else {
+        const val = typeof rawVal === "string" ? rawVal.trim() : rawVal;
+        if (val === undefined || val === null || val === "") {
+          errors[field.name] = `请填写${field.label || field.name}`;
+          continue;
+        }
       }
     }
 
-    if (val !== undefined && val !== null && val !== "") {
-      if (field.type === "select" && field.options && field.options.length > 0) {
-        const matched = field.options.some((opt) => opt.value === String(val));
+    // Format & value checks when present
+    if (rawVal !== undefined && rawVal !== null && rawVal !== "") {
+      if (field.type === "number") {
+        const num =
+          typeof rawVal === "number"
+            ? rawVal
+            : typeof rawVal === "string" && rawVal.trim() !== ""
+              ? Number(rawVal)
+              : NaN;
+        if (!Number.isFinite(num)) {
+          errors[field.name] = `请填写有效的${field.label || field.name}数值`;
+        }
+      } else if (field.type === "date") {
+        const dateStr = String(rawVal).trim();
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+          errors[field.name] = "请输入有效的日期格式 (YYYY-MM-DD)";
+        }
+      } else if (field.type === "select" && field.options && field.options.length > 0) {
+        const matched = field.options.some((opt) => opt.value === String(rawVal));
         if (!matched) {
-          errors[field.name] = `请选择有效的选项`;
+          errors[field.name] = "请选择有效的选项";
+        }
+      } else if (field.type === "multi_select") {
+        if (!Array.isArray(rawVal)) {
+          errors[field.name] = "请选择有效选项";
+        } else if (field.options && field.options.length > 0) {
+          const validValues = new Set(field.options.map((opt) => opt.value));
+          const hasInvalid = rawVal.some((v) => !validValues.has(String(v)));
+          if (hasInvalid) {
+            errors[field.name] = "存在无效的选项";
+          }
+        }
+      } else if (field.type === "checkbox") {
+        if (typeof rawVal !== "boolean") {
+          errors[field.name] = "必须为布尔值";
         }
       }
     }
@@ -171,4 +259,35 @@ export function buildClarificationResponse(
       values,
     },
   };
+}
+
+export function normalizeClarificationValues(
+  fields: ClarificationField[],
+  values: Record<string, unknown>,
+): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+  for (const field of fields) {
+    const rawVal = values[field.name];
+    if (rawVal === undefined || rawVal === null) {
+      continue;
+    }
+    if (field.type === "number") {
+      const num = typeof rawVal === "number" ? rawVal : Number(rawVal);
+      normalized[field.name] = Number.isFinite(num) ? num : rawVal;
+    } else if (field.type === "checkbox") {
+      normalized[field.name] = Boolean(rawVal);
+    } else if (field.type === "multi_select") {
+      normalized[field.name] = Array.isArray(rawVal) ? rawVal.map(String) : [];
+    } else if (
+      field.type === "date" ||
+      field.type === "select" ||
+      field.type === "text" ||
+      field.type === "textarea"
+    ) {
+      normalized[field.name] = String(rawVal);
+    } else {
+      normalized[field.name] = rawVal;
+    }
+  }
+  return normalized;
 }

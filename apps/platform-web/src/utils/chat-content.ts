@@ -106,6 +106,13 @@ export const SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES = [
   'text/markdown',
   'application/json',
   'text/csv',
+  'application/zip',
+  'application/x-zip-compressed',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/vnd.ms-excel',
+  'text/html',
+  'text/css',
+  'text/javascript',
 ] as const
 
 export const SUPPORTED_FILE_EXTENSIONS = [
@@ -115,6 +122,13 @@ export const SUPPORTED_FILE_EXTENSIONS = [
   '.markdown',
   '.json',
   '.csv',
+  '.zip',
+  '.xlsx',
+  '.xls',
+  '.html',
+  '.htm',
+  '.css',
+  '.js',
 ] as const
 
 export const CHAT_ATTACHMENT_ACCEPT = [
@@ -128,13 +142,7 @@ export function isDocumentFile(file: File): boolean {
     return true
   }
   const mime = (file.type || '').split(';')[0].trim().toLowerCase()
-  return [
-    'application/pdf',
-    'text/plain',
-    'text/markdown',
-    'application/json',
-    'text/csv',
-  ].includes(mime)
+  return (SUPPORTED_CHAT_ATTACHMENT_MIME_TYPES as readonly string[]).includes(mime)
 }
 
 export function resolveDocumentMime(file: File): string {
@@ -144,6 +152,12 @@ export function resolveDocumentMime(file: File): string {
   if (name.endsWith('.md') || name.endsWith('.markdown')) return 'text/markdown'
   if (name.endsWith('.json')) return 'application/json'
   if (name.endsWith('.csv')) return 'text/csv'
+  if (name.endsWith('.zip')) return 'application/zip'
+  if (name.endsWith('.xlsx')) return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  if (name.endsWith('.xls')) return 'application/vnd.ms-excel'
+  if (name.endsWith('.html') || name.endsWith('.htm')) return 'text/html'
+  if (name.endsWith('.css')) return 'text/css'
+  if (name.endsWith('.js')) return 'text/javascript'
   return file.type || 'application/octet-stream'
 }
 

@@ -10,18 +10,27 @@
 - **实施阶段：** P4 K01—K11；P5 K12—K16；P6 K17—K23；各 K 逐个迁移／验证／启用。
 - **必读前置：** [01 底座](01-architecture-and-boundaries.md)、[03 工具](03-tools-mcp-and-evidence.md)、[04 格式](04-workspace-sandbox-and-artifacts.md)、[08 C07 与 F4—F6](08-web-and-platform-contracts.md)；按当前卡片补 06／09 前置。
 - **输入 → 输出／对接：** 上游资源／provenance、已授权工具／格式 → 已验证 Skill 版本、真实产物及专属 Web 交付；候选管理不能绕过权限。
-- **当前切片／最近证据：** 2026-09-14 规划第二版；业务未实施，无实施验证记录；本文末尾只记录文档调研情况。
-- **下一任务：** 当前下一项 07/K01，需先通过 P1—P3；K-G 共同底座按实际依赖先补。
+- **当前切片／最近证据：** 2026-09-15进入P4后端准备；P3后端及GraphHarbor post30链路已通过，正式Skills尚未迁移。底座证据不计Skill完成。
+- **下一任务：** 07/K02及其论文输入依赖；K01约定后端与交接done、页面deferred，证据见09。不提前建设K-G3/K-G4。
 - **结束回填：** 更新本章任务／验证／状态及此处游标，按总纲登记最近 implementation 记录、契约变化和下一精确任务；部分切片通过不勾选整章完成。
 
 ## 方案设计
+
+### 迁移原则：原样复制优先，实际不兼容处最小修改
+
+用户已确认此原则适用于后续23项迁移：先检查原始资源能否在当前环境直接使用，能用就原样复制；确有工具、路径、参数或运行机制不兼容时才做最小适配。保留原slug、研究方法、模板、参考资料与业务输出要求，不先重写再声称等价。
+
+- 独立脚本先核对依赖、网络与沙箱边界，兼容就复用；不复制DeerFlow服务、配置系统、宿主执行器或工具兼容框架。
+- 修改工具名、工作区引用与官方HITL接入时，逐处记录原值、新值和必要原因；不以迁移为由重构相邻公共模块。
+- 每项记录原样复制文件、适配文件、来源提交／SHA256／许可证、能力差异、实际验证证据。复制成功不等于行为准确；真实模型仍需验证技能读取、工具事实和真实产物。
+- 原资源有当前平台无法支持的行为时明确partial／deferred，不静默删除，不用模拟成功补足。
 
 ### 1. 统一加载、发布与文件规则
 
 - 来源根为 `../research/deer-flow/`，以下来源路径相对此根。固定调研提交见 01；逐文件记录实际哈希、上游路径、修改原因和许可证。
 - 全部公共资源拟放在 `apps/runtime-service/src/runtime_service/services/dearflow_agent/skills/<slug>/`。保持原 slug；内部脚本按原 `scripts/`、参考资料按 `references/`、模板按 `templates/` 放置，不散落到仓库根或 Showcase。
 - 使用官方 `SkillsMiddleware` 的渐进加载：先给模型名称与描述，被选中后读取完整指令，随后按需读取参考资料。技能描述不得隐式开放新工具；实际权限仍按 03 裁决。
-- 构建时更新 `apps/runtime-service/pyproject.toml` 的 package-data，验证 wheel 包含深层脚本、模板、许可证。运行时通过 `importlib.resources` 定位，Backend 映射到只读 `/skills/public/`；不能假定源码 checkout 一直存在。
+- 构建时更新 `apps/runtime-service/pyproject.toml` 的 package-data，验证 wheel 包含深层脚本、模板、许可证。运行时通过 `importlib.resources` 定位；当前包内资源沿用只读 `/skills/<slug>/`，不为public分类引入重复路径。`/skills/custom/`在P6按需交付；不能假定源码checkout一直存在。
 - 公共 Skill 来源记录拟为各目录 `provenance.json`，至少含来源提交、原始文件 SHA-256、适用 license、行为变化、验证记录链接。根 MIT 不覆盖所有子目录：`frontend-design` 和 `skill-creator` 自带 Apache-2.0，必须保留适用声明。
 - 用户／项目创建的 Skill 存 Runtime 持久业务存储及只读版本资源，映射 `/skills/custom/`；不得修改部署包、个人 Codex Skill 目录或本仓库 `AGENTS.md`。
 - 自定义技能流程为候选包 → 静态审查 → 离线行为验证 → 真实模型验收 → 授权启用；发布和替换走官方 HITL。运行开始冻结选用版本，运行中升级不能替换其内容。回退恢复上一已验证版本，不恢复已撤销的权限。
@@ -166,6 +175,8 @@
 
 #### K14 podcast-generation — 多角色播客
 
+> 2026-09-15 用户决定 deferred：本批不接入供应商、不启用工具或Skill、不执行真实付费验收；恢复开发时仍按下方完整设计验收。
+
 - **能力拆分：** 编写对白脚本、分角色 TTS、混音拼接、MP3 与文字稿交付。
 - **参考：** `skills/public/podcast-generation/SKILL.md`、`scripts/generate.py` 的 `ScriptLine`／`Script`／`tts_node`／`mix_audio`／`generate_markdown`／`generate_podcast`／`text_to_speech_volcengine`／`text_to_speech_minimax`。
 - **目标：** `apps/runtime-service/src/runtime_service/services/dearflow_agent/skills/podcast-generation/`。
@@ -175,6 +186,8 @@
 
 #### K15 music-generation — 音乐生成
 
+> 2026-09-15 用户决定 deferred：本批不接入供应商、不启用工具或Skill、不执行真实付费验收；恢复开发时仍按下方完整设计验收。
+
 - **能力拆分：** 音乐描述、可选歌词、远端生成、MP3 交付。
 - **参考：** `skills/public/music-generation/SKILL.md`、`scripts/generate.py` 的 `generate_music`（MiniMax）。
 - **目标：** `apps/runtime-service/src/runtime_service/services/dearflow_agent/skills/music-generation/`。
@@ -182,14 +195,15 @@
 - **前置：** K14、音乐服务凭据／配额与音频链路。
 - **验收：** 固定 API 响应验证音频 MIME／长度与错误处理；真实短音乐可播放／下载。付费后网络断开显示结果未知并核对，不伪称失败后自动重新购买。
 
-#### K16 video-generation — 异步视频生成
+#### K16 video-generation — 异步视频生成（后续实施）
 
-- **能力拆分：** 文本／参考图描述、提交视频任务、跟踪远端状态、取回 MP4。
+用户澄清：**K16与音视频大文件／Range是后续做，不是取消**。状态deferred，保留在23个公共Skills迁移清单，本批不实现。
+
+- **能力：** 文本／参考图描述、提交任务、持久化远端handle、跟踪状态、取回MP4。
 - **参考：** `skills/public/video-generation/SKILL.md`、`scripts/generate.py` 的 `_poll_video_task`／`_retrieve_file_url`／`_generate_video_minimax`／`_generate_video_gemini`／`generate_video`。
-- **目标：** `apps/runtime-service/src/runtime_service/services/dearflow_agent/skills/video-generation/`。
-- **实现：** 不让模型持续轮询，也不复制脚本长循环；提交与查询交由 09 的持久外部任务记录和官方 Run 续接。保留远端 task ID、取消能力边界、受控下载和 MP4 校验。Gemini Veo／MiniMax 分别记供应商验收状态。
-- **前置：** K15、09 的持久任务、MP4／Range 读取与视频预算。
-- **验收：** 模拟供应商提交后 worker 重启仍定位同一任务；真实短视频下载播放。ACK 丢失、远端失败、过期 URL、取消不支持、重复完成通知均不得产生虚假成功或重复付费。
+- **实现：** 工具审批后提交，复用09的持久任务、租约／fence、未知提交保护与授权续接；不在模型中长循环轮询。供应商密钥不进沙箱。
+- **前置：** 09完整长任务与供应商协议验证；04音视频大文件／Range授权传输；08前端播放／任务交接。
+- **验收：** 真实短视频、重启后取回同一任务、MP4内容／哈希、Range；ACK丢失、取消不支持、远端失败、重复通知不重复付费或虚假成功。
 
 #### K17 skill-reviewer — 技能包安全与质量审查
 
@@ -197,7 +211,7 @@
 - **参考：** `skills/public/skill-reviewer/SKILL.md`、同目录 `references/` 与 eval 资源；工具入口为 `backend/packages/harness/deerflow/tools/builtins/review_skill_package_tool.py`。分析实现目录为 `backend/packages/harness/deerflow/skills/review/`，读取其中 `analyzer.py`、`readers.py`、`models.py`、`renderer.py`、`resource_graph.py`。
 - **目标：** `apps/runtime-service/src/runtime_service/services/dearflow_agent/skills/skill-reviewer/`；按实际逻辑量拟新增服务私有 `skill_review.py`。
 - **实现：** 重写 `review_skill_package` 为本平台受限只读工具；可复用适用纯分析逻辑及规则资源，不导入 Harness。候选技能内容按不可信数据审查，不加载进运行技能列表、不执行候选脚本；静态阻断项和已验证行为分开。
-- **前置：** K16、安全解包与候选包资源读取；K01—K16 在此之前由开发验收流程审查，不依赖尚未迁移的 reviewer 自审。
+- **前置：** P5约定范围及安全解包与候选包资源读取；已纳入范围的K01—K15 在此之前由开发验收流程审查，不依赖尚未迁移的 reviewer 自审。
 - **验收：** 固定良性包／路径穿越／远端脚本／伪造工具权限／提示注入包，规则结果可复查；真实上传技能包得到报告。报告必须明确“静态通过不代表运行效果验证通过”。
 
 #### K18 skill-creator — 创建、改进和打包技能
@@ -261,36 +275,39 @@
 
 - [ ] K-G1：实现官方技能加载、只读挂载与 wheel 资源验证，目标为服务组合根／Backend 及 `pyproject.toml`。
 - [ ] K-G2：实现来源清单、版本冻结、测试输入和 per-skill 验收记录；只保存实际采用资源，不顺手导入上游整个工具链。
+- [x] K-G1/K-G2的K01必需切片：官方加载／只读工具保护、MIT与provenance、原文最小差异哈希、干净wheel打包与安装后资源读取通过；各后续Skill的资源／版本验收及自定义技能冻结仍逐项完成，见09。
 - [ ] K-G3：K17 前完成候选包审查工具，K18 前完成自定义版本存储／隔离评估／发布授权；代码留服务私有模块。
 - [ ] K-G4：K20 前交付记忆／偏好底座；K23 前确认 D5。依赖工作可以先做，但不得将未验收技能提前启用。
 
 ### 逐项执行台账
 
+P4当前执行口径：每项的“后端实现与验证／前端交接／页面验收”分别见[P4三类进度表](phases/P4-研究与数据%20Skills.md#三类进度与推进规则)。本台账是整体状态：后端通过而页面后置时仍为partial；本轮允许在后端验证及交接完成后推进下一K，不将后置Web验收伪装成通过。下面所有未执行项维持未勾选。
+
 | 任务 | 技能 | 当前状态 | 实施／验证记录 |
 |---|---|---|---|
-| [ ] K01 | deep-research | 待开始 | 未执行 |
-| [ ] K02 | academic-paper-review | 待开始 | 未执行 |
-| [ ] K03 | github-deep-research | 待开始 | 未执行 |
-| [ ] K04 | consulting-analysis | 待开始 | 未执行 |
-| [ ] K05 | systematic-literature-review | 待开始 | 未执行 |
-| [ ] K06 | code-documentation | 待开始 | 未执行 |
-| [ ] K07 | newsletter-generation | 待开始 | 未执行 |
-| [ ] K08 | data-analysis | 待开始 | 未执行 |
-| [ ] K09 | chart-visualization | 待开始 | 未执行 |
-| [ ] K10 | frontend-design | 待开始 | 未执行 |
-| [ ] K11 | web-design-guidelines | 待开始 | 未执行 |
-| [ ] K12 | image-generation | 待开始 | 未执行 |
-| [ ] K13 | ppt-generation | 待开始 | 未执行 |
-| [ ] K14 | podcast-generation | 待开始 | 未执行 |
-| [ ] K15 | music-generation | 待开始 | 未执行 |
-| [ ] K16 | video-generation | 待开始 | 未执行 |
-| [ ] K17 | skill-reviewer | 待开始 | 未执行 |
-| [ ] K18 | skill-creator | 待开始 | 未执行 |
-| [ ] K19 | find-skills | 待开始 | 未执行 |
-| [ ] K20 | bootstrap | 待开始 | 未执行 |
-| [ ] K21 | surprise-me | 待开始 | 未执行 |
-| [ ] K22 | vercel-deploy-claimable | 待开始，外部发布通道待验证 | 未执行 |
-| [ ] K23 | claude-to-deerflow | 待 D5 改写范围评审 | 未执行 |
+| [ ] K01 | deep-research | partial：后端done、交接done；页面deferred | [09资源、改动与证据](implementation/09-p4-k01-deep-research.md) |
+| [ ] K02 | academic-paper-review | partial：后端done／交接done／页面deferred | [10批次记录](implementation/10-p4-k02-k07-batch.md) |
+| [ ] K03 | github-deep-research | blocked：组合通过、GitHub匿名配额耗尽403；交接done／页面deferred | [10批次记录](implementation/10-p4-k02-k07-batch.md) |
+| [ ] K04 | consulting-analysis | partial：报告范围done、图表依赖K09；交接done／页面deferred | [10批次记录](implementation/10-p4-k02-k07-batch.md) |
+| [ ] K05 | systematic-literature-review | blocked：组合通过、arXiv 429／超时；交接done／页面deferred | [10批次记录](implementation/10-p4-k02-k07-batch.md) |
+| [ ] K06 | code-documentation | partial：后端done、交接done；页面deferred | [10批次记录](implementation/10-p4-k02-k07-batch.md) |
+| [ ] K07 | newsletter-generation | 后端done：正文fetch定向复验通过；交接done／页面deferred | [10批次记录](implementation/10-p4-k02-k07-batch.md) |
+| [ ] K08 | data-analysis | 后端done：Docker／两表SQL／导出下载；交接done／页面deferred | [11批次记录](implementation/11-p4-k08-k11-batch.md) |
+| [ ] K09 | chart-visualization | partial：25/26图型与代表模型链路通过，双轴远端blocked；交接done／页面deferred | [11批次记录](implementation/11-p4-k08-k11-batch.md) |
+| [ ] K10 | frontend-design | 后端done：HTML/ZIP生成与只读下载复核；交接done／页面deferred | [11批次记录](implementation/11-p4-k08-k11-batch.md) |
+| [ ] K11 | web-design-guidelines | 后端done：规范版本与file:line评审下载；交接done／页面deferred | [11批次记录](implementation/11-p4-k08-k11-batch.md) |
+| [ ] K12 | image-generation | 后端partial、供应商blocked／交接done／页面deferred | 文生图、单图编辑成功；多参考图APIConnectionError待验，旧unknown不重提，见[12](implementation/12-p5-media-and-tasks.md) |
+| [ ] K13 | ppt-generation | 后端done／交接done／页面deferred | Docker、上传图及三次AI生成→完整PPTX发布下载均通过，见[12](implementation/12-p5-media-and-tasks.md) |
+| [ ] K14 | podcast-generation | deferred | 用户2026-09-15明确延迟开发；供应商及实际需要的长任务后置；视频和大文件另按K16后续计划实施 |
+| [ ] K15 | music-generation | deferred | 用户2026-09-15明确延迟开发；供应商及实际需要的长任务后置；视频和大文件另按K16后续计划实施 |
+| [ ] K16 | video-generation | deferred | 用户澄清为后续实施；保留完整任务及验收，不在本批实现 |
+| [ ] K17 | skill-reviewer | 后端静态审查链路done；交接done／页面deferred | [13记录](implementation/13-p6-memory-and-skills.md) |
+| [ ] K18 | skill-creator | 后端真实创建/候选/审查/文本评估复验done（1 passed，613.76s）；交接done／页面deferred | [14复验记录](implementation/14-p7-production-gates.md) |
+| [ ] K19 | find-skills | 本地发现/候选导入/查询/报告done；远端导入未验；交接done／页面deferred | [15](implementation/15-cleanup-k19-and-v08.md) |
+| [ ] K20 | bootstrap | 后端澄清→保存→新会话注入真实通过；交接done／页面deferred | [13记录](implementation/13-p6-memory-and-skills.md) |
+| [ ] K21 | surprise-me | 后端推荐与网页/规范组合真实通过；交接done／页面deferred | [13记录](implementation/13-p6-memory-and-skills.md) |
+| [ ] K22 | vercel-deploy-claimable | 静态包/审批/幂等已实现；默认关闭、真实发布未验、动态框架未实现；交接done／页面deferred | [13记录](implementation/13-p6-memory-and-skills.md) |
+| [ ] K23 | claude-to-deerflow | deferred：用户明确后置 | 不复制、不实现、不启用 |
 
 ## 验证要求与记录
 
@@ -302,4 +319,6 @@
 
 ## 状态
 
-规划中；23 项均未实施。K23 的改写口径待人工评审，其他项仍须按顺序逐个验收。
+K01—K02后端与交接done；K03/K05外部限流blocked，K04报告范围及K06后端done，K07正文证据已通过；K08/K10/K11后端done、K09累计25/26图型通过且双轴远端blocked，见11记录；K12/K13代码已完成，K13完整AI三页链路done，K12单图成功、多参考图连接异常仍partial，K14/K15用户deferred，K16及音视频大文件用户明确后续实施（deferred），K17/K18/K20/K21约定后端链路通过，K19本地发现通过/远端导入未验，K22默认关闭且真实发布未验，K23 deferred。逐项完整完成数仍为0（页面未验收）。K23由用户明确后置；前端页面按用户要求后置，后端／交接／页面分别登记。
+
+2026-09-15复核更新：K18单项真实平台验收1 passed（613.76s），见[14记录](implementation/14-p7-production-gates.md)。K19旧失败为产物发布后的模型节点触发本地30秒超时；2026-09-16已在Dear组合根调整为120秒，本地发现/候选导入/查询/报告真实复验1 passed（269.27s），远端导入未验，见[15记录](implementation/15-cleanup-k19-and-v08.md)。

@@ -1,0 +1,15 @@
+{
+  "upstream": "https://github.com/bytedance/deer-flow",
+  "commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "source": "skills/public/frontend-design",
+  "revision": "dear-k10-v1",
+  "platform_notes": "Original resources retained; SKILL and execution boundaries minimally adapted. See implementation/11-p4-k08-k11-batch.md.",
+  "license_sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+  "source_files": {
+    "LICENSE.txt": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "SKILL.md": "f187caf13081bd3b5509f4c7424b7b507e3140020daaf3454b9181d1af4f61ca"
+  },
+  "adapted_files": [
+    "SKILL.md"
+  ]
+}

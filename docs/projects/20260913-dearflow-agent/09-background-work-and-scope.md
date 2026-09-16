@@ -1,5 +1,12 @@
 # 09 Goal、定时任务与长耗时外部调用
 
+## 当前范围调整（2026-09-15）
+
+用户最终决定K14播客、K15音乐延期；K16异步视频和音视频大文件后续实施（deferred）。完整长任务仅在后续明确采用任务式MCP或音频供应商需要时实施，当前deferred；视频专属提交／恢复／交付／验收后置。
+本批仅实现K12需要的持久图片回执、审批去重、提交unknown和fence保护，位于 `services/dearflow_agent/external_task_storage.py`；这是部分基础，不勾选B03—B06。
+旧B02在P4复验中超时，仍保留历史失败；本批不以旧通过记录声明现有长MCP恢复可靠。后续启用确有长调用需求的K14/K15或MCP前先修复／验证协议，再按本文剩余设计落实，不预建未使用worker。
+具体代码与证据见[12](implementation/12-p5-media-and-tasks.md)。
+
 ## 目标
 
 明确哪些图外生命周期是本次必要依赖，哪些没有当前业务场景，应后置。对必要能力做到可恢复、可取消、可核验，不迁移 DeerFlow 的完整后台调度系统，不再创建一套 Agent 运行引擎。
@@ -8,10 +15,10 @@
 
 - **总入口：** [项目总纲与交接规则](README.md)。独立开发本章时先读总纲，不以聊天历史代替依赖证据。
 - **实施阶段：** P0 最小协议试验；P5 必需长任务；Goal／定时／持久批次后置建议待 D4。
-- **必读前置：** [01 运行边界](01-architecture-and-boundaries.md)、[05 child 区别](05-subagents-and-lifecycle.md)、[04 媒体产物](04-workspace-sandbox-and-artifacts.md)、[08 C09／F5](08-web-and-platform-contracts.md)、[07 K16](07-skills-migration.md)。
+- **必读前置：** [01 运行边界](01-architecture-and-boundaries.md)、[05 child 区别](05-subagents-and-lifecycle.md)、[04 媒体产物](04-workspace-sandbox-and-artifacts.md)、[08 C09／F5](08-web-and-platform-contracts.md)、[07 当前技能范围](07-skills-migration.md)。
 - **输入 → 输出／对接：** 已授权外部调用、远端 handle → 持久恢复／真实远端状态／产物／经官方 Run 交付；不接管根 Run 状态机。
 - **当前切片／最近证据：** 2026-09-14，B02 可控 MCP 风险试验通过，见 [05 收口记录](implementation/05-p0-p1-deployment-verification.md)；正式外部任务业务未实现。
-- **下一任务：** P5 实现 B03—B06，先于 K16 实际迁移；活动根 Run 的队列依赖先在 P2 完成。
+- **下一任务：** B03—B05及长MCP矩阵按实际需求后置；B06视频验收后置，恢复K16时实施。
 - **结束回填：** 更新本章任务／验证／状态及此处游标，按总纲登记最近 implementation 记录、契约变化和下一精确任务；部分切片通过不勾选整章完成。
 
 ## 方案设计
@@ -26,7 +33,7 @@
 | 运行中补充消息 | 用户在根 Agent 工作期间追加要求 | `backend/packages/harness/deerflow/runtime/runs/` | 必须复用本项目 `messaging/inbox.py`、`reconcile.py` 与现有 MessageQueueMiddleware，扩展能力声明 |
 | 独立子任务 | 分别启动、取消、恢复、核验结果 | `backend/app/subagent_batches/service.py`、`backend/packages/harness/deerflow/subagents/batch_service.py` | 后置；当前普通 `task` 不进入外部任务表 |
 | 持久批次 DAG／汇聚 | 多任务形成可跨 Run 的批次、完成条件和汇总 | 同上 | 建议后置；普通并行子 Agent 不进入持久批次系统；批次编排后置 |
-| 长 MCP／生成任务 | 远端返回 handle，数分钟后完成，进程重启仍能取回 | `backend/app/mcp_tasks/service.py`、`backend/packages/harness/deerflow/mcp/tasks/driver.py`、`runtime.py`、`ordinary.py`、`models.py` | 必须，支撑 K16 视频及实际采用的长 MCP；按协议能力启用 |
+| 长 MCP／生成任务 | 远端返回 handle，数分钟后完成，进程重启仍能取回 | `backend/app/mcp_tasks/service.py`、`backend/packages/harness/deerflow/mcp/tasks/driver.py`、`runtime.py`、`ordinary.py`、`models.py` | K16视频和实际采用的任务式MCP需要此能力；当前后置 |
 | Goal 完成判定 | 检查已完成条件、预算、缺项与证据 | `backend/packages/harness/deerflow/runtime/goal.py` | 在单次 Agent 内纳入 03 的结果验证，交付诚实完成状态 |
 | Goal 自动续跑 | 一轮结束后后台自动发起下一轮直至达标 | `backend/packages/harness/deerflow/runtime/goal.py`、`runtime/runs/worker.py` | 建议后置；暂无无人值守目标场景，不能用隐藏 while 循环悄悄增加费用 |
 | 定时任务 | 到时创建新任务、重试、时区与错过执行处理 | `backend/app/scheduler/service.py` | 建议后置；用户要求当前 Web 产品，尚无周期研究／日报投递需求 |
@@ -61,7 +68,7 @@ sequenceDiagram
 
 ### 3. 持久记录与唯一状态归属
 
-拟新增服务私有 `apps/runtime-service/src/runtime_service/services/dearflow_agent/external_tasks.py`；数据库访问按实际需要放同服务 `external_task_storage.py`，迁移放同服务 `migrations/` 并接现有显式部署迁移流程。先服务首个实际视频／MCP 调用，不造多供应商插件框架。
+拟新增服务私有 `apps/runtime-service/src/runtime_service/services/dearflow_agent/external_tasks.py`；数据库访问按实际需要放同服务 `external_task_storage.py`，迁移放同服务 `migrations/` 并接现有显式部署迁移流程。先服务首个实际任务式MCP调用，不造多供应商插件框架。
 
 最小任务表字段建议：
 
@@ -107,20 +114,22 @@ sequenceDiagram
 
 - [ ] B01：D4 确认后将 Goal 自动续跑／定时／持久批次标 deferred，记录触发其未来实施的具体业务条件；不创建空实现。
 - [x] B02：官方 MCP 1.26.0 可控服务完成提交、ACK 丢失、取消与重启 Spike；冻结官方 Run 通知路径及供应商自定义幂等边界，见 05。正式通知 outbox、活动根队列和真实媒体供应商验收仍属 P2／P5。
-- [ ] B03：实现最小持久任务、租约／fence、提交未知处理与 outbox，拟新增 `apps/runtime-service/tests/services/dearflow_agent/test_external_tasks.py`。
-- [ ] B04：实现受信查询／取消、审批保持、文件下载与官方 Run 结果续接，拟新增 `apps/runtime-service/tests/integration/test_dearflow_external_tasks.py`。
-- [ ] B05：真实数据库／双 worker 故障测试，拟新增 `apps/runtime-service/tests/durable/test_dearflow_external_tasks.py`；不得只用内存 fake 证明持久性。
-- [ ] B06：K16 真实视频闭环及长 MCP 协议矩阵，记录供应商支持／不支持／未知状态和上线运维说明。
+- [ ] B03（deferred，用户2026-09-15随音视频后置）：实现最小持久任务、租约／fence、提交未知处理与 outbox，拟新增 `apps/runtime-service/tests/services/dearflow_agent/test_external_tasks.py`。
+- [ ] B04（deferred，用户2026-09-15随音视频后置）：实现受信查询／取消、审批保持、文件下载与官方 Run 结果续接，拟新增 `apps/runtime-service/tests/integration/test_dearflow_external_tasks.py`。
+- [ ] B05（deferred，用户2026-09-15随音视频后置）：真实数据库／双 worker 故障测试，拟新增 `apps/runtime-service/tests/durable/test_dearflow_external_tasks.py`；不得只用内存 fake 证明持久性。
+- [ ] B06（deferred，用户2026-09-15随音视频后置）：视频闭环随K16后续实施；实际采用长 MCP 时验证协议矩阵，记录供应商支持／不支持／未知状态和上线运维说明。
 
 ## 验证要求与记录
 
 - [ ] 创建意图、远端提交、保存 handle、记录终态、发送通知各个边界注入崩溃，恢复不盲目重复付费。
 - [ ] 双 worker、租约过期、重复消息／迟到结果、权限撤销、线程删除、取消与完成竞态。
 - [ ] 主 Run 活动／空闲／interrupted／已删除四类情形的结果交付符合既定官方路径。
-- [ ] 真实视频或长 MCP 重启后取回同一任务和产物；不支持远端幂等／取消时准确展示边界。
+- [ ] 实际采用的长 MCP 重启后取回同一任务和产物（视频随K16后续实施）；不支持远端幂等／取消时准确展示边界。
 - [ ] 不直接写引擎 checkpoint／runs 表，不新增私有 Agent executor，不泄露凭据到持久消息。
 - 2026-09-13：完成必要性与恢复协议规划；无任务服务、数据库迁移或真实供应商验证已经执行。
 
 ## 状态
 
 部分完成（partial）：B02 最小协议试验通过，1 passed in 37.06s；B03—B06 业务持久化、双 Worker 和供应商交付未实施。具体文件、命令、故障注入与能力边界见 [05](implementation/05-p0-p1-deployment-verification.md)。不将可控 MCP 服务的通过冒称真实媒体长任务已交付。
+
+2026-09-15更新：B03图片付费回执切片已有真实PostgreSQL去重／fence／过期unknown测试；完整长MCP按实际需求deferred，B06视频部分随K16后续实施。B02旧探针P4复验超时仍未修复。见[12](implementation/12-p5-media-and-tasks.md)，不将同步回执标为后台恢复worker。

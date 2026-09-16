@@ -138,14 +138,27 @@ const defaultModelName = ref("");
 const optionsOpen = ref(false);
 const optionsError = ref("");
 const initialContext = { ...context.value };
-const draftRunOptions = reactive({ modelId: "", temperature: "", maxTokens: "" });
+const draftRunOptions = reactive({ modelId: "", temperature: "", maxTokens: "", recursionLimit: "1000" });
 function resetOptions(value: AgentContext) {
-  Object.assign(draftRunOptions, { modelId: value.model_id ?? "", temperature: value.temperature?.toString() ?? "", maxTokens: value.max_tokens?.toString() ?? "" });
+  Object.assign(draftRunOptions, {
+    modelId: value.model_id ?? "",
+    temperature: value.temperature?.toString() ?? "",
+    maxTokens: value.max_tokens?.toString() ?? "",
+    recursionLimit: recursionLimit.value.toString(),
+  });
   optionsError.value = "";
 }
 function openOptions() { resetOptions(context.value); optionsOpen.value = true; }
 function applyOptions() {
   try {
+    if (draftRunOptions.recursionLimit.trim()) {
+      const limitNum = Number(draftRunOptions.recursionLimit);
+      if (!Number.isInteger(limitNum) || limitNum < 1 || limitNum > 1000) {
+        optionsError.value = "最大步数必须是 1 到 1000 之间的整数";
+        return;
+      }
+      recursionLimit.value = limitNum;
+    }
     const updated = parseAgentContext({ ...context.value, model_id: draftRunOptions.modelId || undefined,
       temperature: draftRunOptions.temperature.trim() ? Number(draftRunOptions.temperature) : undefined,
       max_tokens: draftRunOptions.maxTokens.trim() ? Number(draftRunOptions.maxTokens) : undefined });
@@ -224,7 +237,11 @@ void Promise.all([listRuntimeModels(props.projectId), listRuntimeModelPolicies(p
     if (disposed) return;
     models.value = value.models.filter((model) => model.enabled && model.credential_configured && policies.items.find(item => item.catalog_id === model.id)?.policy.is_enabled !== false);
     const projectDefault = policies.items.find(item => item.policy.is_default_for_project);
-    defaultModelName.value = models.value.find(model => model.id === projectDefault?.catalog_id)?.display_name ?? "";
+    const defaultModel = models.value.find(model => model.id === projectDefault?.catalog_id) ?? models.value[0];
+    defaultModelName.value = defaultModel?.display_name ?? "";
+    if (!context.value.model_id && defaultModel) {
+      context.value = { ...context.value, model_id: defaultModel.id };
+    }
   })
   .catch(() => {
     if (!disposed) localError.value = "模型列表读取失败，可恢复连接后重试";
@@ -284,6 +301,12 @@ async function send(queued = false) {
       : !canSubmit.value
   )
     return;
+  if (!context.value.model_id && models.value.length) {
+    const fallbackModel = models.value.find((m) => m.display_name === defaultModelName.value) ?? models.value[0];
+    if (fallbackModel) {
+      context.value = { ...context.value, model_id: fallbackModel.id };
+    }
+  }
   submittedDraft = props.draft;
   submittedAttachments = new Set(attachments.value);
   const content = attachments.value.length
@@ -1219,6 +1242,7 @@ const chatMetrics = computed(() => {
       @update:model-id="draftRunOptions.modelId = $event"
       @update:temperature="draftRunOptions.temperature = $event"
       @update:max-tokens="draftRunOptions.maxTokens = $event"
+      @update:recursion-limit="draftRunOptions.recursionLimit = $event"
       @restore="resetOptions(initialContext)"
       @apply="applyOptions"
     />

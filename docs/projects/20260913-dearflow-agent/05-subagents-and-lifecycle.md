@@ -10,7 +10,7 @@
 - **实施阶段：** P1/P2 普通子图复用与缺陷修复；独立 child 能力后置。
 - **必读前置：** [01 底座证据](01-architecture-and-boundaries.md)、[02 模式／权限](02-agent-composition-and-modes.md)、[04 子任务资源](04-workspace-sandbox-and-artifacts.md)、[08 C05／C06／F3](08-web-and-platform-contracts.md)。
 - **输入 → 输出／对接：** 父 Run／有效角色／作用域／预算 → 普通子图或独立 child Run、归属／取消／结果／用量；UI 只能消费真实引擎状态。
-- **当前切片／最近证据：** P3 后端并发、来源隔离、权限拒绝、callback／usage及native／GraphHarbor事件关联回归通过；真实父取消通过，完整成功运行仍超时，F3 deferred。代码与证据见 [07 实施记录](implementation/07-p3-subagents-and-observability.md)，施工入口为 [P3 执行包](phases/P3-子%20Agent%20展示与观测.md)。
+- **当前切片／最近证据：** P3本轮后端范围done：并发／隔离／权限／usage回归、真实v2/v3双任务成功、父取消与Langfuse回读通过。GraphHarbor post28修复子lifecycle丢失，平台显式v3贯通；F3 deferred，历史延迟根因未证实。代码与证据见 [08实施记录](implementation/08-p3-server-verification-closeout.md)，施工入口为 [P3执行包](phases/P3-子%20Agent%20展示与观测.md)。
 - **下一任务：** 先完成 S-A/S-B 的普通子图复用与稳定关联；不能把暂不具备的独立控制能力伪装成交付。
 - **结束回填：** 更新本章任务／验证／状态及此处游标，按总纲登记最近 implementation 记录、契约变化和下一精确任务；部分切片通过不勾选整章完成。
 
@@ -104,4 +104,4 @@ DeerFlow 源码根为 `backend/packages/harness/deerflow/`，下列路径相对�
 
 ## 状态
 
-P3 partial：后端复用与追踪字段修复落地，39项回归通过、1项真实搜索按开关跳过；真实父取消通过，双子任务完整成功仍触发 Worker 超时，外部观测导出未验收。S-A—S-D 上方包含前端展示的整项仍不勾完成；F3 按用户要求 deferred，详见前端交接。独立取消、独立 child Run、完整 usage 和结构化结果验收后置。
+P3 partial：本轮约定后端范围done；39项回归、真实v2/v3双子任务成功、生命周期回放、父取消和Langfuse导出回读通过，详见08。S-A—S-D包含前端展示的整项仍不勾完成；F3 deferred，生产稳定性门禁保留。独立取消、独立child Run、完整usage账本和结构化结果验收后置。

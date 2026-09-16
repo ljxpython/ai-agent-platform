@@ -1,7 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
-from uuid import uuid4, UUID
+from uuid import UUID
 
 from cryptography.fernet import Fernet
 from platform_api.config import Settings
@@ -12,7 +12,7 @@ from platform_api.modules.identity.repository import SqlAlchemyIdentityRepositor
 from platform_api.modules.projects.models import ProjectMemberRecord
 from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
 from platform_api.modules.runtime_catalog.application.service import RuntimeCatalogService
-from platform_api.modules.runtime_catalog.domain.models import RuntimeModelCreate
+from platform_api.modules.runtime_catalog.domain.models import RuntimeModelCreate, RuntimeModelUpdate
 from platform_api.modules.runtime_policies.infra.sqlalchemy.repository import (
     SqlAlchemyRuntimePolicyRepository,
 )
@@ -75,6 +75,15 @@ class ModelCatalogAndPolicyUniquenessTest(unittest.TestCase):
             payload=payload,
         )
         self.assertEqual(item.model, "DeepSeek-V4-Flash")
+
+        updated = self.service.update_model(
+            actor=self.actor,
+            project_id=str(self.project),
+            model_id=item.id,
+            payload=RuntimeModelUpdate(enabled=False),
+        )
+        self.assertFalse(updated.enabled)
+        self.assertEqual(updated.model, item.model)
 
         duplicate_payload = RuntimeModelCreate(
             provider="deepseek",

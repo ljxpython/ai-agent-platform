@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "skill_id": "K01",
+  "slug": "deep-research",
+  "revision": "dear-k01-v1",
+  "repository": "https://github.com/bytedance/deer-flow",
+  "commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "source": "skills/public/deep-research/SKILL.md",
+  "source_sha256": "04712f4daa7937cc1f8dabc1a086a9549e670eb3fa3f1a8d30abdc3ea8b31a79",
+  "license": "MIT",
+  "license_source": "LICENSE",
+  "license_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+  "changes": [
+    {
+      "from": "WebSearch",
+      "to": "search_web",
+      "reason": "Use the existing authorized search tool."
+    },
+    {
+      "from": "web_fetch",
+      "to": "fetch_page",
+      "reason": "Use existing extracted page evidence; no browser or DeerFlow dependency."
+    }
+  ],
+  "verification": "docs/projects/20260913-dearflow-agent/implementation/09-p4-k01-deep-research.md"
+}

@@ -46,7 +46,8 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| DearFlowAgent：Deep Agents 能力迁移与生产化 | 部分完成：P0/P1 后端 done，P2 已有研究闭环；P3 并发／只读隔离／事件关联／usage回归39项通过，受信追踪字段丢失已修复，真实父取消通过；双子任务完整运行超时、外部观测未验，前端只交接，23 Skills与生产联合验收未完成 | [P3 完成项、代码与测试](projects/20260913-dearflow-agent/phases/P3-子%20Agent%20展示与观测.md) |
+| GraphHarbor官方v3对齐与平台迁移 | 后端完成：post30已发布／接入，生命周期／并行中断／恢复版本／步数限制修复，真实研究、文件、子任务、父取消及观测已验；前端交接完成，浏览器与默认切换后置，默认仍v2 | [完成项与代码证据](projects/20260915-graphharbor-v3-alignment/README.md) |
+| DearFlowAgent：Deep Agents 能力迁移与生产化 | 部分完成：P0/P1/P3约定后端done，post30已接入；P4 K01—K11已实现，K01/K02/K04报告/K06/K07后端证据通过，K03/K05外部限流blocked，K08/K10/K11后端done，K09累计25/26图型通过、双轴远端blocked；P5代码已交付：完整AI三页PPTX链路done；文生图与单图编辑成功，多参考图连接异常待验；K14/K15延期，K16视频及音视频大文件后续实施（deferred）；前端页面及生产联合验收后置 | [P5逐项进度与证据](projects/20260913-dearflow-agent/phases/P5-生成与长任务.md) |
 | Graph 注册、模型参数解析、工具装配 | 已完成 | `apps/runtime-service/docs/standards/*.md` |
 | MCP 接入 | 已完成 | `apps/runtime-service/docs/knowledge/19-runtime-tool-capability-mcp-and-side-effect-design.md` |
 | 公共图片工具 Middleware、Showcase 图表 MCP 子智能体与平台图片链路 | 部分完成：G0 契约、Runtime 运输层、Platform API 网关与 Platform Web 前端交互及确定性自动化测试全部通过；待配置真实生产环境模型凭据进行线上 Smoke 联调 | [图片与图表能力方案](projects/20260913-showcase-image-chart-capabilities/README.md) |
@@ -71,3 +72,5 @@
 - Platform API：Agent/Profile ORM 已合并，空库静态基线已通过 SQLite/PostgreSQL 往返验证；完整控制面重构仍为 partial，见 [实现记录](projects/20260910-platform-api-refactor/implementation/08-agent-single-table.md)。
 
 - Agent resync / Operations：后端全链路已退役，20 表及字段收缩和真实 Runtime 验收通过；当前状态见 [11](projects/20260910-platform-api-refactor/implementation/11-backend-closeout.md)。
+
+| Dear Agent P6 记忆与技能治理 | K18/K19本地链路与V08防重提交已验收；远端导入等边界见执行包，K23 deferred；前端仅交接 | [P6执行包](projects/20260913-dearflow-agent/phases/P6-记忆与技能治理.md) |

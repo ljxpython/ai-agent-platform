@@ -340,9 +340,11 @@ def build_image_tools(workspace: ImageWorkspace):
                 "Please modify the prompt to avoid sensitive, school uniform, violence, or restricted words and try again."
             )
         status_code = getattr(exc, "status_code", None)
-        return ToolException(
+        error = ToolException(
             f"{operation} failed ({type(exc).__name__}, status={status_code}); no successful artifact was returned."
         )
+        error.code = f"image_provider_{type(exc).__name__}_{status_code}"
+        return error
 
     @tool(response_format="content_and_artifact")
     async def generate_image(prompt: str) -> tuple[str, dict[str, Any]]:
@@ -368,16 +370,23 @@ def build_image_tools(workspace: ImageWorkspace):
 
     @tool(response_format="content_and_artifact")
     async def edit_image(
-        image_path: str, prompt: str
+        image_path: str, prompt: str, reference_images: list[str] | None = None
     ) -> tuple[str, dict[str, Any]]:
         """Edit or transform an existing image in /workspace based on prompt after human approval; return its /workspace path."""
         if not prompt.strip() or len(prompt) > 8000:
             raise ToolException("Prompt must contain 1 to 8000 characters.")
+        if len(reference_images or []) > 3:
+            raise ToolException("At most three additional reference images are supported.")
         try:
             data = await asyncio.to_thread(workspace.read, image_path)
             _, mime = image_type(data)
             ext = "png" if mime == "image/png" else ("jpg" if mime == "image/jpeg" else "webp")
             file_tuple = (f"image.{ext}", data, mime)
+            files = [file_tuple]
+            for index, path in enumerate(reference_images or []):
+                reference = await asyncio.to_thread(workspace.read, path)
+                extension, content_type = image_type(reference)
+                files.append((f"reference-{index}.{extension}", reference, content_type))
             async with AsyncOpenAI(
                 api_key=setting("IMAGE_25_KEY"),
                 base_url=setting("IMAGE_25_URL"),
@@ -386,7 +395,7 @@ def build_image_tools(workspace: ImageWorkspace):
             ) as client:
                 result = await client.images.edit(
                     model=setting("IMAGE_25_MODEL"),
-                    image=file_tuple,
+                    image=files if reference_images else file_tuple,
                     prompt=prompt,
                     n=1,
                     size="1024x1024",

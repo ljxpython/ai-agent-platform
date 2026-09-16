@@ -355,6 +355,9 @@ def _resolve_action(
             )
 
     if len(segments) >= 2 and segments[:2] == ["api", "langgraph"]:
+        if len(segments) == 6 and segments[2] == "threads" and segments[4] == "dear" and segments[5] in {"memory", "skills"} and method in {"GET", "POST"}:
+            action = "read" if method == "GET" else "changed"
+            return f"runtime.dear.{segments[5]}.{action}", "thread", clean_str(segments[3])
         if segments[2:] == ["info"] and method == "GET":
             return "runtime.info.read", "runtime", "info"
         if segments[2:] == ["graphs", "search"] and method == "POST":

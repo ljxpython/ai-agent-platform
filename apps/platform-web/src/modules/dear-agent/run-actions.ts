@@ -126,6 +126,7 @@ export function createRunActions(
         ...init,
         method: "POST",
         headers,
+        body: action.body,
         signal: init.signal
           ? AbortSignal.any([controller.signal, init.signal])
           : controller.signal,

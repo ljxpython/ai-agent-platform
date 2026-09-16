@@ -1,0 +1,16 @@
+{
+  "upstream": "https://github.com/bytedance/deer-flow",
+  "commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "source": "skills/public/data-analysis",
+  "revision": "dear-k08-v1",
+  "platform_notes": "Original resources retained; SKILL and execution boundaries minimally adapted. See implementation/11-p4-k08-k11-batch.md.",
+  "license_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+  "source_files": {
+    "SKILL.md": "d9383f31df40250c7dd58b31f3518bc80c95f670eada6e8222c7925d80a0b3a1",
+    "scripts/analyze.py": "42b393b7e2892e57ffe04a077e1858ee463d8c7e126b73ecbfb250998d49dd9b"
+  },
+  "adapted_files": [
+    "SKILL.md",
+    "scripts/analyze.py"
+  ]
+}

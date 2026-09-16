@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
+import shutil
+import tempfile
 from importlib.resources import files
 from pathlib import Path
 
 from deepagents.backends import CompositeBackend, FilesystemBackend, StateBackend
-from deepagents.backends.protocol import SandboxBackendProtocol, ExecuteResponse, WriteResult, EditResult
+from deepagents.backends.protocol import SandboxBackendProtocol, ExecuteResponse, WriteResult, EditResult, FileUploadResponse
 from langchain.agents.middleware import AgentMiddleware
 
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
@@ -18,10 +21,22 @@ from runtime_service.workspace.execution import execute_in_workspace
 PACKAGE = "runtime_service.services.dearflow_agent"
 
 
+def skills_hash() -> str:
+    """Fingerprint packaged skill resources, including provenance and licenses."""
+    root = Path(str(files(PACKAGE).joinpath("skills")))
+    digest = hashlib.sha256()
+    for path in sorted(root.rglob("*")):
+        if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc":
+            digest.update(path.relative_to(root).as_posix().encode() + b"\0")
+            digest.update(hashlib.sha256(path.read_bytes()).digest())
+    return digest.hexdigest()
+
+
 class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
     def __init__(self, tenant: str, project: str, thread: str):
         self.scope = (tenant, project, thread)
         self.root = resolve_thread_workspace(tenant, project, thread, "dearflow_agent")
+        self.skills_root = Path(str(files(PACKAGE).joinpath("skills")))
         super().__init__(root_dir=self.root.parent, virtual_mode=True)
 
     @property
@@ -60,18 +75,63 @@ class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
         try:
             return await execute_in_workspace(
                 self.root, command, timeout=timeout, protected=True,
-                image=os.getenv("RUNTIME_WORKSPACE_IMAGE", "runtime-agent-workspace:p1"),
-                skills=Path(str(files(PACKAGE).joinpath("skills"))),
+                image=os.getenv("RUNTIME_WORKSPACE_IMAGE", "runtime-agent-workspace:p5"),
+                skills=self.skills_root,
             )
         except TimeoutError:
             return ExecuteResponse(output="Execution timed out.", exit_code=124)
+
+
+def prepare_custom_skills(workspace, documents):
+    if not documents:
+        return
+    workspace.prepare()
+    import json
+    fingerprint = hashlib.sha256(json.dumps(documents, sort_keys=True).encode()).hexdigest()
+    root = workspace.root.parent / ("skills-" + fingerprint)
+    if root.is_symlink():
+        raise RuntimeAuthError("runtime.skill.snapshot_mismatch")
+    if not root.exists():
+        with tempfile.TemporaryDirectory(prefix=".skills-", dir=workspace.root.parent) as staging:
+            staged = Path(staging) / "snapshot"
+            shutil.copytree(Path(str(files(PACKAGE).joinpath("skills"))), staged)
+            for document in documents:
+                directory = staged / "custom" / document["slug"]
+                for name, content in document["files"].items():
+                    path = directory / name
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text(content)
+            try:
+                staged.rename(root)
+            except OSError:
+                if not root.is_dir():
+                    raise
+    for document in documents:
+        directory = root / "custom" / document["slug"]
+        for name, content in document["files"].items():
+            path = directory / name
+            if (any(parent.is_symlink() for parent in (path, *path.parents))
+                    or path.read_text() != content):
+                raise RuntimeAuthError("runtime.skill.snapshot_mismatch")
+    workspace.skills_root = root
+
+
+class ReadOnlySkillsBackend(FilesystemBackend):
+    def write(self, file_path, content):
+        return WriteResult(error="skill_resource_read_only")
+
+    def edit(self, file_path, old_string, new_string, replace_all=False):
+        return EditResult(error="skill_resource_read_only")
+
+    def upload_files(self, files):
+        return [FileUploadResponse(path=path, error="permission_denied") for path, _ in files]
 
 
 def build_backend(workspace):
     return CompositeBackend(
         default=workspace if workspace is not None else StateBackend(),
         routes={
-            "/skills/": FilesystemBackend(root_dir=str(files(PACKAGE).joinpath("skills")), virtual_mode=True),
+            "/skills/": ReadOnlySkillsBackend(root_dir=str(workspace.skills_root if workspace else files(PACKAGE).joinpath("skills")), virtual_mode=True),
             "/conversation_history/": StateBackend(),
             "/large_tool_results/": StateBackend(),
         },

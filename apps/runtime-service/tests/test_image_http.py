@@ -62,17 +62,19 @@ def setup_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_SECRET", SECRET)
     monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_ISSUER", "runtime-test")
     monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_AUDIENCE", "runtime-service")
-    monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path))
+    monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path / "showcase"))
+    monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path / "shared"))
 
 
 @pytest.mark.anyio
-async def test_upload_and_read_image_flow():
+@pytest.mark.parametrize("graph_id", ["showcase_demo", "dearflow_agent"])
+async def test_upload_and_read_image_flow(graph_id):
     png_bytes = make_test_png()
     sha256 = hashlib.sha256(png_bytes).hexdigest()
     thread_id = "thread-1"
 
-    upload_token = _make_token(thread_id=thread_id, operation="image-upload")
-    read_token = _make_token(thread_id=thread_id, operation="image-read")
+    upload_token = _make_token(thread_id=thread_id, operation="image-upload", assistant_id=graph_id)
+    read_token = _make_token(thread_id=thread_id, operation="image-read", assistant_id=graph_id)
 
     async with httpx.AsyncClient(
         transport=httpx.ASGITransport(app=app), base_url="http://test"
@@ -112,6 +114,13 @@ async def test_upload_and_read_image_flow():
         assert resp_read.headers["Content-Type"] == "image/png"
         assert resp_read.headers["Content-Length"] == str(len(png_bytes))
         assert resp_read.headers["Cache-Control"] == "private, no-store"
+        other = "dearflow_agent" if graph_id == "showcase_demo" else "showcase_demo"
+        isolated = await client.get(
+            f"/internal/threads/{thread_id}/images/content", params={"path": ref["path"]},
+            headers={"Authorization": "Bearer " + _make_token(thread_id=thread_id, operation="image-read", assistant_id=other)},
+        )
+        assert isolated.status_code == 404
+
 
 
 @pytest.mark.anyio

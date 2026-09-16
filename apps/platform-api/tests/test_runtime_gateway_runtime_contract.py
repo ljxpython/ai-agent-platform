@@ -343,9 +343,37 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result, {"values": {"message": "hello"}})
 
+    def test_merge_runtime_context_protects_defaults_against_empty_values(self) -> None:
+        merged = _merge_runtime_context(
+            project_default_model="11111111-1111-1111-1111-111111111111",
+            agent_defaults={"temperature": 0.5},
+            requested={"model_id": "", "temperature": None},
+        )
+        self.assertEqual(merged["model_id"], "11111111-1111-1111-1111-111111111111")
+        self.assertEqual(merged["temperature"], 0.5)
 
+    def test_inject_project_default_model_populates_both_context_and_configurable(self) -> None:
+        service = RuntimeGatewayService(session_factory=None, upstream=SimpleNamespace())
+        service._project_default_model_id = Mock(return_value="22222222-2222-2222-2222-222222222222")  # type: ignore[method-assign]
 
+        payload = {
+            "assistant_id": "generic_chat",
+            "config": {
+                "configurable": {
+                    "platform_runtime": {"model_id": ""},
+                },
+            },
+            "context": {},
+        }
+        injected = service._inject_project_default_model(project_id="test-proj", payload=payload)
+
+        self.assertEqual(injected["context"]["model_id"], "22222222-2222-2222-2222-222222222222")
+        self.assertEqual(
+            injected["config"]["configurable"]["platform_runtime"]["model_id"],
+            "22222222-2222-2222-2222-222222222222",
+        )
 
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -267,6 +267,7 @@ def normalize_protocol_v2_command(
             "metadata",
             "durability",
             "stream_resumable",
+            "version",
             "on_disconnect",
             "checkpoint_id",
             "checkpoint_ns",

@@ -20,12 +20,22 @@ const result = computed(() => {
   if (typeof props.tool.output !== "string") return asObject(props.tool.output);
   try { return asObject(JSON.parse(props.tool.output)); } catch { return {}; }
 });
-const labels = {
-  running: "执行中",
-  finished: "已返回",
-  error: "失败",
-  incomplete: "未完成 / 已中止",
-};
+const labels = computed(() => {
+  if (props.tool.name === "request_information") {
+    return {
+      running: "等待补充信息",
+      finished: "已补充信息",
+      error: "失败",
+      incomplete: "未完成 / 已中止",
+    };
+  }
+  return {
+    running: "执行中",
+    finished: "已返回",
+    error: "失败",
+    incomplete: "未完成 / 已中止",
+  };
+});
 const fileTools = [
   "read_file",
   "write_file",
@@ -99,6 +109,12 @@ const displayTitle = computed(() => {
   if (props.tool.name === "parse_document") {
     return "解析文档";
   }
+  if (props.tool.name === "chart_visualization" || props.tool.name === "render_chart") {
+    return "数据图表可视化";
+  }
+  if (props.tool.name === "ppt_generation" || props.tool.name === "generate_ppt") {
+    return "制作演示文稿 (PPTX)";
+  }
   return props.tool.name;
 });
 const displaySubtitle = computed(() => {
@@ -134,6 +150,96 @@ function formatDocumentWarning(w: string, query?: unknown): string {
     return `第 ${match[1]} 页无文本层（纯扫描页），需要 OCR 识别`;
   }
   return w;
+}
+
+export type EvidenceSourceItem = {
+  source_url?: string;
+  title?: string;
+  kind?: string;
+  content_hash?: string;
+  path?: string;
+  observed_at?: string;
+  searched_at?: string;
+  preview?: string;
+  truncated?: boolean;
+  read_scope?: string;
+};
+
+const evidenceSources = computed<EvidenceSourceItem[]>(() => {
+  const list: EvidenceSourceItem[] = [];
+  const artifactObj = asObject(props.tool.artifact);
+  if (Array.isArray(artifactObj.sources)) {
+    for (const s of artifactObj.sources) {
+      if (s && typeof s === "object") list.push(s as EvidenceSourceItem);
+    }
+  }
+  const res = result.value;
+  if (Array.isArray(res.sources)) {
+    for (const s of res.sources) {
+      if (
+        s &&
+        typeof s === "object" &&
+        !list.some(
+          (existing) =>
+            existing.content_hash &&
+            existing.content_hash === (s as Record<string, unknown>).content_hash,
+        )
+      ) {
+        list.push(s as EvidenceSourceItem);
+      }
+    }
+  }
+  if (res.evidence && typeof res.evidence === "object") {
+    const s = res.evidence as EvidenceSourceItem;
+    if (
+      !list.some(
+        (existing) =>
+          existing.content_hash && existing.content_hash === s.content_hash,
+      )
+    ) {
+      list.push(s);
+    }
+  }
+  return list;
+});
+
+const sourcesExpanded = ref(false);
+
+function getSourceKindBadge(source: EvidenceSourceItem): {
+  label: string;
+  class: string;
+} {
+  const kind = source.kind || source.read_scope || "";
+  if (kind.includes("page_text") || kind === "full_text") {
+    return {
+      label: "正文证据",
+      class:
+        "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
+    };
+  }
+  if (
+    kind.includes("arxiv") ||
+    kind.includes("academic") ||
+    kind === "abstract_only"
+  ) {
+    return {
+      label: "论文摘要",
+      class:
+        "bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200 dark:border-purple-800",
+    };
+  }
+  if (kind.includes("snippet") || kind.includes("search")) {
+    return {
+      label: "搜索摘要",
+      class:
+        "bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-800",
+    };
+  }
+  return {
+    label: "证据来源",
+    class:
+      "bg-gray-50 text-gray-700 dark:bg-gray-800 dark:text-gray-300 border-gray-200 dark:border-gray-700",
+  };
 }
 </script>
 
@@ -178,10 +284,10 @@ function formatDocumentWarning(w: string, query?: unknown): string {
       >{{ labels[tool.status] }}</span>
     </button>
     <p
-      v-if="tool.status === 'error'"
+      v-if="tool.status === 'error' && tool.error && !tool.error.includes('Interrupt(')"
       class="px-3 pb-2 text-xs text-red-600 dark:text-red-400"
     >
-      {{ tool.error || "工具执行失败，展开查看结果" }}
+      {{ tool.error }}
     </p>
     <div
       v-if="expanded"
@@ -390,17 +496,149 @@ function formatDocumentWarning(w: string, query?: unknown): string {
           :project-id="projectId"
           :thread-id="threadId"
         />
+        <!-- 生图/生成任务 unknown 状态告警防御 -->
+        <div
+          v-if="result.status === 'unknown' && !runtimeImages.length"
+          class="mb-3 rounded-lg border border-amber-300 bg-amber-50/80 p-3 text-xs text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-200"
+        >
+          <div class="flex items-center gap-1.5 font-medium text-xs">
+            <BaseIcon
+              name="alert"
+              size="xs"
+              class="text-amber-600 dark:text-amber-400 shrink-0"
+            />
+            <span>生成任务终态未知 (unknown)</span>
+          </div>
+          <p class="mt-1 text-[11px] leading-relaxed text-amber-800/90 dark:text-amber-300/90">
+            由于远程供应商响应超时，当前生成任务终态尚未确认。<span v-if="result.task_id">任务凭据 ID: <code class="font-mono">{{ result.task_id }}</code>。</span>
+            请先刷新会话历史或核对账单，<strong>切勿盲目重复点击生成</strong>，避免重复计费！
+          </p>
+        </div>
+
         <div
           v-if="runtimeImages.length"
           class="space-y-2 mt-2"
         >
           <ThreadImage
-            v-for="img in runtimeImages"
+            v-for="(img, imgIdx) in runtimeImages"
             :key="img.path"
             :project-id="projectId || ''"
             :thread-id="threadId || ''"
             :image-ref="img"
+            :kind="tool.name === 'ppt_generation' ? 'slide' : (tool.name === 'edit_image' && imgIdx === 0 && runtimeImages.length > 1 ? 'reference' : 'generated')"
+            :status="typeof result.status === 'string' ? (result.status as any) : undefined"
+            :task-id="typeof result.task_id === 'string' ? result.task_id : undefined"
+            :slide-index="tool.name === 'ppt_generation' ? imgIdx + 1 : undefined"
+            :slide-total="tool.name === 'ppt_generation' ? runtimeImages.length : undefined"
           />
+        </div>
+
+        <!-- 结构化证据来源层级展示 (Evidence Sources) -->
+        <div
+          v-if="evidenceSources.length"
+          class="mt-3 rounded-lg border border-primary-100/90 bg-primary-50/30 p-3 dark:border-primary-950/50 dark:bg-primary-950/20"
+        >
+          <div
+            class="flex cursor-pointer items-center justify-between text-xs"
+            @click="sourcesExpanded = !sourcesExpanded"
+          >
+            <div class="flex items-center gap-2 font-medium text-primary-800 dark:text-primary-300">
+              <BaseIcon
+                name="sparkle"
+                size="xs"
+              />
+              <span>核实的证据来源 · 共 {{ evidenceSources.length }} 条</span>
+            </div>
+            <div class="flex items-center gap-1.5 text-[11px] text-primary-600 dark:text-primary-400">
+              <span>{{ sourcesExpanded ? '收起' : '展开查看来源' }}</span>
+              <BaseIcon
+                name="chevron-down"
+                size="xs"
+                class="transition-transform duration-200"
+                :class="sourcesExpanded ? 'rotate-180' : 'rotate-0'"
+              />
+            </div>
+          </div>
+
+          <div
+            v-if="sourcesExpanded"
+            class="mt-2.5 space-y-2.5 border-t border-primary-100/60 pt-2.5 dark:border-primary-900/40"
+          >
+            <div
+              v-for="(src, sIdx) in evidenceSources"
+              :key="src.content_hash || sIdx"
+              class="rounded-md border border-gray-200/80 bg-white p-2.5 text-xs shadow-2xs dark:border-dark-700 dark:bg-dark-800"
+            >
+              <div class="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
+                <div class="flex items-center gap-1.5">
+                  <span
+                    class="rounded border px-1.5 py-0.5 text-[10px] font-medium"
+                    :class="getSourceKindBadge(src).class"
+                  >
+                    {{ getSourceKindBadge(src).label }}
+                  </span>
+                  <a
+                    v-if="src.source_url"
+                    :href="src.source_url"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="font-medium text-blue-600 hover:underline dark:text-blue-400 truncate max-w-[280px] sm:max-w-md inline-flex items-center gap-1"
+                    :title="src.title || src.source_url"
+                  >
+                    <span>{{ src.title || src.source_url }}</span>
+                    <svg
+                      class="h-3 w-3 shrink-0 opacity-70 fill-none stroke-current stroke-2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                      <polyline points="15 3 21 3 21 9" />
+                      <line
+                        x1="10"
+                        y1="14"
+                        x2="21"
+                        y2="3"
+                      />
+                    </svg>
+                  </a>
+                  <span
+                    v-else
+                    class="font-medium text-gray-800 dark:text-gray-200"
+                  >
+                    {{ src.title || "未知来源" }}
+                  </span>
+                </div>
+                <div class="flex items-center gap-2 text-[10px] text-gray-400 dark:text-dark-400 font-mono">
+                  <span v-if="src.observed_at || src.searched_at">
+                    {{ (src.observed_at || src.searched_at)?.slice(0, 19).replace('T', ' ') }}
+                  </span>
+                  <span
+                    v-if="src.content_hash"
+                    :title="src.content_hash"
+                  >
+                    #{{ src.content_hash.slice(0, 8) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- 摘要 / 正文预览 -->
+              <p
+                v-if="src.preview"
+                class="leading-relaxed text-gray-600 dark:text-dark-300 line-clamp-4 whitespace-pre-wrap bg-gray-50/70 dark:bg-dark-900/60 p-2 rounded text-[11px]"
+              >
+                {{ src.preview }}
+              </p>
+
+              <!-- 底部状态指示（明确标注为只读证据，绝不放置下载按钮） -->
+              <div class="mt-1.5 flex items-center justify-between text-[10px] text-gray-400 dark:text-dark-400">
+                <span>
+                  {{ src.truncated ? "⚠️ 内容已达单源阈值受控截断" : "✅ 完整凭据已登记" }}
+                </span>
+                <span class="font-mono text-[10px] text-gray-400">
+                  来源凭据不可下载 · 仅供正文引用核实
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
       <p

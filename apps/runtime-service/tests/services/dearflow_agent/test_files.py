@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import json
 
 import httpx
 import pytest
@@ -8,6 +9,26 @@ from runtime_service.workspace.artifact_refs import ArtifactWorkspace
 from runtime_service.workspace.scoped import resolve_thread_workspace
 from runtime_service.webapp import app
 from test_image_http import _make_token, SECRET
+
+
+def test_artifact_tool_returns_recoverable_error_then_publishes(tmp_path):
+    from runtime_service.services.dearflow_agent.tools.artifacts import build_artifact_tool
+
+    tool = build_artifact_tool(tmp_path)
+
+    async def run():
+        rejected = await tool.ainvoke({"type": "tool_call", "id": "bad", "name": tool.name,
+                                      "args": {"file_path": "/workspace/generated/image.png"}})
+        assert rejected.status == "error"
+        assert rejected.content == "artifact_source_denied"
+        (tmp_path / "work").mkdir()
+        (tmp_path / "work/report.md").write_text("Image reference report")
+        published = await tool.ainvoke({"type": "tool_call", "id": "good", "name": tool.name,
+                                       "args": {"file_path": "/workspace/work/report.md"}})
+        assert published.status == "success"
+        assert json.loads(published.content)["mime_type"] == "text/markdown"
+
+    asyncio.run(run())
 
 
 def test_signed_upload_artifact_download_and_scope_isolation(monkeypatch, tmp_path):

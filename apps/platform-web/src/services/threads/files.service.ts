@@ -15,6 +15,13 @@ export const ALLOWED_DOCUMENT_MIMES = [
   "text/markdown",
   "application/json",
   "text/csv",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-excel",
+  "text/html",
+  "text/css",
+  "text/javascript",
 ] as const;
 
 export const ALLOWED_DOCUMENT_EXTENSIONS = [
@@ -24,6 +31,13 @@ export const ALLOWED_DOCUMENT_EXTENSIONS = [
   ".markdown",
   ".json",
   ".csv",
+  ".zip",
+  ".xlsx",
+  ".xls",
+  ".html",
+  ".htm",
+  ".css",
+  ".js",
 ] as const;
 
 export function isValidFileRef(val: unknown): val is RuntimeFileRef {
@@ -37,7 +51,10 @@ export function isValidFileRef(val: unknown): val is RuntimeFileRef {
   if (typeof obj.path !== "string" || !obj.path) {
     return false;
   }
-  if (!obj.path.startsWith("/workspace/uploads/")) {
+  if (
+    !obj.path.startsWith("/workspace/uploads/") &&
+    !obj.path.startsWith("/workspace/outputs/")
+  ) {
     return false;
   }
   if (typeof obj.mime_type !== "string" || !obj.mime_type) {
@@ -374,9 +391,22 @@ export async function previewThreadFileInNewTab(
   path: string,
   fileName?: string,
 ): Promise<void> {
-  const blob = await getThreadFileBlob(projectId, threadId, path);
   const name = fileName || path.split("/").pop() || "document";
   const lower = name.toLowerCase();
+
+  // ZIP/PPTX/Excel 等二进制文件禁止文本预览，直接走安全原字节下载
+  if (
+    lower.endsWith(".zip") ||
+    lower.endsWith(".pptx") ||
+    lower.endsWith(".xlsx") ||
+    lower.endsWith(".xls") ||
+    lower.endsWith(".bin")
+  ) {
+    await downloadThreadFile(projectId, threadId, path, fileName);
+    return;
+  }
+
+  const blob = await getThreadFileBlob(projectId, threadId, path);
   const mime = (blob.type || "").toLowerCase();
 
   let targetBlob: Blob;

@@ -18,6 +18,7 @@ from langgraph_sdk.auth import exceptions as auth_exceptions
 from runtime_service.auth.platform import authenticate
 from runtime_service.http.images import router as images_router
 from runtime_service.http.documents import router as documents_router
+from runtime_service.http.dear_governance import router as dear_governance_router
 from runtime_service.messaging import MessageInbox
 from runtime_service.messaging.reconcile import reconcile_run
 from runtime_service.observability import close_langfuse, initialize_langfuse
@@ -37,6 +38,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(lifespan=lifespan)
 app.include_router(images_router)
 app.include_router(documents_router)
+app.include_router(dear_governance_router)
 
 
 @app.exception_handler(auth_exceptions.HTTPException)

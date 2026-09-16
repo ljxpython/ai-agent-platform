@@ -29,6 +29,50 @@ from sqlalchemy import select
 
 
 class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
+    async def test_stream_creation_preserves_version_and_join_uses_saved_run(self):
+        self.upstream.join_thread_run_stream = AsyncMock(return_value="stream")
+        for index, version in enumerate((None, "v2", "v3")):
+            payload = {"assistant_id": "agent-1", "input": {"x": index}}
+            if version is not None:
+                payload["version"] = version
+            stream = await self.service.stream_thread_run(
+                actor=self.actor, project_id="project-1", thread_id="thread-1",
+                payload=payload, idempotency_key=f"stream-{index}",
+            )
+            self.assertEqual(stream, "stream")
+            submitted = self.upstream.create_thread_run.call_args.args[1]
+            self.assertEqual(submitted.get("version", "v2"), version or "v2")
+            self.assertNotIn("version", submitted["context"])
+            self.assertEqual(self.upstream.join_thread_run_stream.call_args.args[:2], ("thread-1", "run-1"))
+        with self.assertRaises(BadRequestError):
+            await self.service.stream_thread_run(
+                actor=self.actor, project_id="project-1", thread_id="thread-1",
+                payload={"assistant_id": "agent-1", "version": "v99"},
+            )
+        self.assertEqual(self.upstream.create_thread_run.await_count, 3)
+
+    async def test_explicit_stream_version_survives_run_creation(self):
+        for version in ("v2", "v3"):
+            await self.service.create_thread_run(
+                actor=self.actor, project_id="project-1", thread_id="thread-1",
+                payload={"assistant_id": "agent-1", "input": {"x": 1}, "version": version},
+            )
+            self.assertEqual(self.upstream.create_thread_run.call_args.args[1]["version"], version)
+        with self.assertRaises(BadRequestError):
+            await self.service.create_thread_run(
+                actor=self.actor, project_id="project-1", thread_id="thread-1",
+                payload={"assistant_id": "agent-1", "version": "v99"},
+            )
+        self.assertEqual(self.upstream.create_thread_run.await_count, 2)
+
+        command = self._command()
+        command["params"]["version"] = "v3"
+        await self.service.send_thread_command(
+            actor=self.actor, project_id="project-1", thread_id="thread-1",
+            payload=command, idempotency_key="explicit-v3",
+        )
+        self.assertEqual(self.upstream.create_thread_run.call_args.args[1]["version"], "v3")
+
     async def test_capabilities_checks_target_before_query(self):
         self.upstream.get_graph_capabilities = AsyncMock(return_value={"execution_modes": ["standard"]})
         result = await self.service.get_thread_capabilities(
@@ -205,7 +249,7 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
     async def test_resume_maps_interrupt_and_preserves_both_run_ids(self):
         await self.start()
         self.upstream.create_thread_run.return_value = {"run_id": "run-2"}
-        self.upstream.get_thread_run.return_value = {"run_id": "run-1", "status": "interrupted"}
+        self.upstream.get_thread_run.return_value = {"run_id": "run-1", "status": "interrupted", "kwargs": {"version": "v3"}}
         response = {
             "id": 2,
             "method": "input.respond",
@@ -225,6 +269,7 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
 
         await resume(response)
         sent = self.upstream.create_thread_run.call_args.args[1]
+        self.assertEqual(sent["version"], "v3")
         self.assertEqual(
             sent["command"], {"resume": {"interrupt-1": {"decision": "approve"}}}
         )
@@ -251,6 +296,28 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         )
         with self.assertRaises(ForbiddenError):
             await resume(response)
+
+    async def test_resume_retry_after_restart_uses_source_run_version(self):
+        await self.start()
+        source = {"run_id": "run-1", "status": "interrupted", "kwargs": {"version": "v3"}}
+        self.upstream.get_thread_run.return_value = source
+        self.upstream.create_thread_run.side_effect = TimeoutError("response lost")
+        payload = {"id": 2, "method": "input.respond", "params": {"resume": {"interrupt-1": True}}}
+        with self.assertRaises(TimeoutError):
+            await self.service.send_thread_command(actor=self.actor, project_id="project-1",
+                                                  thread_id="thread-1", payload=payload)
+        previous = self.service
+        self.service = RuntimeGatewayService(session_factory=self._session_factory, upstream=self.upstream)
+        for name in ("_load_thread", "_project_default_model_id", "_assert_runtime_options_allowed", "_assert_runtime_target_allowed"):
+            setattr(self.service, name, getattr(previous, name))
+        self.upstream.get_thread_state.return_value = {"tasks": []}
+        self.upstream.create_thread_run.side_effect = None
+        self.upstream.create_thread_run.return_value = {"run_id": "resumed"}
+        await self.service.send_thread_command(actor=self.actor, project_id="project-1",
+                                              thread_id="thread-1", payload=payload)
+        sent = self.upstream.create_thread_run.call_args.args[1]
+        self.assertEqual(sent["version"], "v3")
+        self.upstream.get_thread_run.assert_awaited_with("thread-1", "run-1")
 
     async def test_model_revocation_rechecks_saved_context(self):
         self.service._project_default_model_id.return_value = "model-old"
@@ -477,3 +544,40 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
                 },
                 idempotency_key="key-stream-invalid",
             )
+
+    async def test_resume_with_sdk_native_responses_format(self):
+        await self.start()
+        self.upstream.create_thread_run.return_value = {"run_id": "run-resume-native"}
+        self.upstream.get_thread_run.return_value = {
+            "run_id": "run-1",
+            "status": "interrupted",
+            "kwargs": {"version": "v2"},
+        }
+        # 模拟官方 SDK 发出的原生 responses 数组以及 namespace 字段
+        sdk_payload = {
+            "id": 99,
+            "method": "input.respond",
+            "params": {
+                "responses": [
+                    {
+                        "interrupt_id": "interrupt-1",
+                        "namespace": ["task:subgraph"],
+                        "response": {"user_decision": "confirmed"},
+                    }
+                ],
+                "namespace": ["task:subgraph"],
+            },
+        }
+        res = await self.service.send_thread_command(
+            actor=self.actor,
+            project_id="project-1",
+            thread_id="thread-1",
+            payload=sdk_payload,
+        )
+        self.assertEqual(res["type"], "success")
+        sent = self.upstream.create_thread_run.call_args.args[1]
+        self.assertEqual(
+            sent["command"],
+            {"resume": {"interrupt-1": {"user_decision": "confirmed"}}},
+        )
+

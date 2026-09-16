@@ -1,0 +1,29 @@
+{
+  "upstream_commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "revision": "dear-p6-v1",
+  "files": [
+    {
+      "path": "LICENSE",
+      "source": "LICENSE",
+      "source_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+      "sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+      "adapted": false
+    },
+    {
+      "path": "SKILL.md",
+      "source": "skills/public/vercel-deploy-claimable/SKILL.md",
+      "source_sha256": "92e8165ce59f1da03f7850fc698ee7b4182cbd87e05e8857b555b649d7ee1965",
+      "sha256": "0e23956cfd7511070a9d493f9e0b5cb83cc162a5ec8c3cc419a5c2912a659ee7",
+      "adapted": true
+    },
+    {
+      "path": "scripts/deploy.sh",
+      "source": "skills/public/vercel-deploy-claimable/scripts/deploy.sh",
+      "source_sha256": "ba5f1d87d4a5d5680a78f17e68eab47493b33153eda3205037dbfcd637308009",
+      "sha256": "3e47862b8f0a736d9cf394e19c4dfb44db459a5e3594c71438237c204b69dbb8",
+      "adapted": true
+    }
+  ],
+  "behavior_changes": "Do not run deploy.sh. Current adapter accepts a published, verified static web ZIP. Show precise approved_files, ZIP sha256 and target https://claude-skills-deploy.vercel.com/api/deploy before calling deploy_preview. The tool is deployment-gated and requires HITL approval. No host build, automatic install or dynamic framework detection. Unknown outcomes are not resubmitted. A local ZIP is not a deployed preview. A claim URL is private to its owner. Dynamic framework deployment remains unverified.",
+  "verification": "pending; docs/projects/20260913-dearflow-agent/implementation/13-p6-memory-and-skills.md"
+}

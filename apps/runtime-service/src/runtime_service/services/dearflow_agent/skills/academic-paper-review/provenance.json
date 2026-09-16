@@ -1,0 +1,25 @@
+{
+  "upstream_commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "upstream_path": "skills/public/academic-paper-review",
+  "platform_notes": "PDF via parse_document with page/range/OCR limits; Markdown publication.",
+  "revision": "dear-k02-v1",
+  "source_files": {
+    "SKILL.md": "a0285baaeacc916bf45751c06db37745b195ddd4ec30e271ec1472f6cd48e8aa"
+  },
+  "license_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+  "adaptations": [
+    {
+      "from": "web_fetch",
+      "to": "fetch_page"
+    },
+    {
+      "from": "present_files",
+      "to": "present_artifacts"
+    },
+    {
+      "from": "/mnt/user-data/outputs/",
+      "to": "/workspace/work/"
+    }
+  ],
+  "implementation": "docs/projects/20260913-dearflow-agent/implementation/10-p4-k02-k07-batch.md"
+}

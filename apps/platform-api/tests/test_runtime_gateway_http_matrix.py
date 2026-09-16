@@ -48,6 +48,8 @@ CASES = [
     ("PUT", "/threads/{thread_id}/files/uploads/{sha256}", "upload_thread_file"),
     ("GET", "/threads/{thread_id}/files/content", "read_thread_file"),
     ("GET", "/threads/{thread_id}/capabilities", "get_thread_capabilities"),
+    ("GET", "/threads/{thread_id}/dear/{resource}", "dear_governance"),
+    ("POST", "/threads/{thread_id}/dear/{resource}", "dear_governance"),
 ]
 
 
@@ -133,7 +135,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             else {"probe": "body"}
                         )
                         url_path = "/api/langgraph" + path.format(
-                            thread_id="thread-1", run_id="run-1", sha256="a" * 64
+                            thread_id="thread-1", run_id="run-1", sha256="a" * 64, resource="memory"
                         )
                         req_params = (
                             {"path": "/workspace/uploads/test.png"}
@@ -206,7 +208,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                 for method, path, name in CASES:
                     with self.subTest(route=path, principal=principal.user_id):
                         url_path = "/api/langgraph" + path.format(
-                            thread_id="thread-1", run_id="run-1", sha256="a" * 64
+                            thread_id="thread-1", run_id="run-1", sha256="a" * 64, resource="memory"
                         )
                         req_params = (
                             {"path": "/workspace/uploads/test.png"}
@@ -247,7 +249,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                     continue
                 with self.subTest(cross_project=path, method=method):
                     url_path = "/api/langgraph" + path.format(
-                        thread_id="thread-1", run_id="run-1", sha256="a" * 64
+                        thread_id="thread-1", run_id="run-1", sha256="a" * 64, resource="memory"
                     )
                     req_params = (
                         {"path": "/workspace/uploads/test.png"}

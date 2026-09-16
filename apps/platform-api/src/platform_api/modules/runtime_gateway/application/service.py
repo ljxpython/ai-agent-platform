@@ -132,7 +132,7 @@ def _execution_config(payload: dict[str, Any]) -> dict[str, Any]:
             code="invalid_thread_id",
             message="thread_id must be a non-empty string",
         )
-    limit = config.get("recursion_limit", 25)
+    limit = config.get("recursion_limit", 1000)
     if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 1000:
         raise BadRequestError(
             code="invalid_recursion_limit", message="recursion_limit must be 1..1000"
@@ -274,6 +274,7 @@ def _promote_protocol_run_start(params: dict[str, Any]) -> dict[str, Any]:
             "input",
             "command",
             "stream_mode",
+            "version",
             "stream_subgraphs",
             "stream_resumable",
             "metadata",
@@ -449,9 +450,21 @@ def _merge_runtime_context(
     requested: dict[str, Any],
 ) -> dict[str, Any]:
     defaults = dict(agent_defaults)
-    if project_default_model and "model_id" not in defaults:
+    if project_default_model and not clean_str(defaults.get("model_id")):
         defaults["model_id"] = project_default_model
-    return {**defaults, **requested}
+    merged = dict(defaults)
+    for key, value in requested.items():
+        if key == "model_id":
+            cleaned = clean_str(value)
+            if cleaned:
+                merged[key] = cleaned
+            elif "model_id" not in merged and project_default_model:
+                merged[key] = project_default_model
+        elif value is not None:
+            merged[key] = value
+    if project_default_model and not clean_str(merged.get("model_id")):
+        merged["model_id"] = project_default_model
+    return merged
 
 
 class RuntimeGatewayService:
@@ -553,6 +566,9 @@ class RuntimeGatewayService:
         default_model_id: str | None = None,
     ) -> dict[str, Any]:
         context = ensure_dict(payload.get("context"))
+        config = ensure_dict(payload.get("config"))
+        configurable = ensure_dict(config.get("configurable"))
+        runtime_options = ensure_dict(configurable.get("platform_runtime"))
         assistant_id = clean_str(payload.get("assistant_id"))
         profile_defaults: dict[str, Any] = {}
         if assistant_id and self._session_factory is not None:
@@ -582,20 +598,33 @@ class RuntimeGatewayService:
                             if key in agent.context
                         }
 
-        if default_model_id is None and not clean_str(context.get("model_id")):
+        requested_model = clean_str(context.get("model_id") or runtime_options.get("model_id"))
+        if default_model_id is None and not requested_model:
             default_model_id = self._project_default_model_id(project_id=project_id)
+
+        combined_requested = {**context, **{k: v for k, v in runtime_options.items() if v is not None}}
         merged = _merge_runtime_context(
             project_default_model=default_model_id,
             agent_defaults=profile_defaults,
-            requested=context,
+            requested=combined_requested,
         )
         if assistant_id == "dearflow_agent" and merged.get("execution_mode") is None:
             merged["execution_mode"] = "standard"
-        if merged == context:
-            next_payload = payload
-        else:
-            next_payload = dict(payload)
-            next_payload["context"] = merged
+
+        next_payload = dict(payload)
+        next_payload["context"] = merged
+
+        if merged.get("model_id"):
+            next_config = dict(config)
+            next_configurable = dict(configurable)
+            next_runtime_options = dict(runtime_options)
+            next_runtime_options["model_id"] = merged["model_id"]
+            if merged.get("execution_mode") and "execution_mode" not in next_runtime_options:
+                next_runtime_options["execution_mode"] = merged["execution_mode"]
+            next_configurable["platform_runtime"] = next_runtime_options
+            next_config["configurable"] = next_configurable
+            next_payload["config"] = next_config
+
         return next_payload
 
     def _project_default_model_id(self, *, project_id: str) -> str | None:
@@ -957,6 +986,10 @@ class RuntimeGatewayService:
 
         media_type = content_type.split(";")[0].strip().lower()
         allowed_mimes = {
+            "application/zip",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "text/html", "text/css", "text/javascript",
             "application/pdf",
             "text/plain",
             "text/markdown",
@@ -1037,6 +1070,24 @@ class RuntimeGatewayService:
             "size_bytes": size_bytes,
             "sha256": ref_sha256,
         }
+
+    async def dear_governance(self, *, actor: ActorContext, project_id: str, thread_id: str,
+                              resource: str, payload: dict | None = None, query: str = "") -> dict:
+        if resource not in {"memory", "skills"}:
+            raise BadRequestError(code="invalid_dear_resource", message="Unknown Dear resource")
+        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=payload is not None)
+        agent_key = clean_str(ensure_dict(thread.get("metadata")).get("graph_id"))
+        if agent_key != "dearflow_agent":
+            raise BadRequestError(code="dear_agent_required", message="Dear Agent thread required")
+        await run_in_threadpool(self._assert_runtime_target_allowed, project_id=project_id,
+                                assistant_id=agent_key, thread=thread)
+        if not self._delegation_headers_factory:
+            raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
+        upstream = self._upstream.with_forwarded_headers(self._delegation_headers_factory(
+            project_id=project_id, agent_key=agent_key, thread_id=thread_id,
+            context_hash=empty_runtime_context_hash(),
+            operation="dear-governance-write" if payload is not None else "dear-governance-read"))
+        return await upstream.dear_governance(thread_id, resource, payload=payload, query=query)
 
     async def get_thread_capabilities(
         self, *, actor: ActorContext, project_id: str, thread_id: str,
@@ -1167,6 +1218,8 @@ class RuntimeGatewayService:
         interrupt_id: str | None = None,
     ) -> tuple[StoredRunRequest, Any]:
         """Persist submission identity; Agent Server owns execution and concurrency."""
+        if "version" in upstream_payload and upstream_payload["version"] not in ("v2", "v3"):
+            raise BadRequestError(code="invalid_stream_version", message="version must be v2 or v3")
         if upstream_payload.get("assistant_id") in {"reference_agent", "showcase_demo", "dearflow_agent"}:
             upstream_payload = {**upstream_payload, "durability": "sync"}
         key = _normalize_idempotency_key(idempotency_key)
@@ -1528,7 +1581,7 @@ class RuntimeGatewayService:
         # Set default stream_mode for Protocol v2 SSE events if not specified
         next_payload.setdefault("stream_mode", list(_DEFAULT_STREAM_MODES))
         next_payload.setdefault("stream_resumable", True)
-        command = {"method": "run.start", "params": payload}
+        command = {"method": "run.start", "params": next_payload}
         _, result = await self.launch_runtime_run(
             actor=actor,
             project_id=project_id,
@@ -1640,15 +1693,31 @@ class RuntimeGatewayService:
             }
         if command["method"] == "input.respond":
             params = ensure_dict(command["params"])
-            if set(params) - {"interrupt_id", "response", "resume", "assistant_id"}:
+            if set(params) - {
+                "interrupt_id",
+                "response",
+                "resume",
+                "assistant_id",
+                "responses",
+                "namespace",
+            }:
                 raise BadRequestError(
                     code="resume_configuration_override",
                     message="Resume cannot change execution configuration",
                 )
             resumes = params.get("resume")
             if resumes is None:
-                interrupt_id = clean_str(params.get("interrupt_id"))
-                resumes = {interrupt_id: params.get("response")} if interrupt_id else {}
+                if isinstance(params.get("responses"), list):
+                    resumes = {
+                        clean_str(item.get("interrupt_id") or item.get("id")): item.get("response")
+                        for item in params["responses"]
+                        if isinstance(item, dict)
+                        and clean_str(item.get("interrupt_id") or item.get("id"))
+                        and "response" in item
+                    }
+                else:
+                    interrupt_id = clean_str(params.get("interrupt_id"))
+                    resumes = {interrupt_id: params.get("response")} if interrupt_id else {}
             if (
                 not isinstance(resumes, dict)
                 or not resumes
@@ -1703,10 +1772,9 @@ class RuntimeGatewayService:
                     code="run_request_missing",
                     message="Original authorized request is required",
                 )
+            source_run_id = previous.parent_run_id if previous else parent.run_id
+            parent_run = await self._upstream.get_thread_run(thread_id, source_run_id)
             if previous is None:
-                parent_run = await self._upstream.get_thread_run(
-                    thread_id, parent.run_id
-                )
                 if (
                     not isinstance(parent_run, dict)
                     or parent_run.get("status") != "interrupted"
@@ -1732,6 +1800,7 @@ class RuntimeGatewayService:
             resume_payload = {
                 "assistant_id": parent.agent_key,
                 "command": {"resume": resumes},
+                "version": ensure_dict(ensure_dict(parent_run).get("kwargs")).get("version", "v2"),
                 "context": dict(parent.context_snapshot),
                 "config": dict(parent.config_snapshot),
                 "multitask_strategy": "reject",

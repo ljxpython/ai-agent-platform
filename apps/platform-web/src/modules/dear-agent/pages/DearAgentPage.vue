@@ -74,13 +74,13 @@ function restoreDraft(projectId: string, agentId: string, threadId?: string) {
 }
 const draftAttachments = ref<ChatAttachmentBlock[]>([]);
 const runContext = ref<AgentContext>({});
-const recursionLimit = ref(25);
+const recursionLimit = ref(1000);
 function resetDraft() {
   draftStorageKey = "";
   draft.value = "";
   draftAttachments.value = [];
   runContext.value = { ...target.value?.context };
-  recursionLimit.value = 25;
+  recursionLimit.value = 1000;
 }
 const selectedThread = ref<string>();
 const deleting = ref(false);

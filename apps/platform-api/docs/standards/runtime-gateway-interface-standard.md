@@ -68,3 +68,12 @@ Protocol lifecycle可能规范化为completed；Run JSON保留上游状态，不
 ## 变更验证
 
 新增路由更新20条显式清单，覆盖scope、授权拒绝、字段过滤与参数；业务语义由run_requests/SDK/事件测试以及[真实验收](../../../../docs/projects/20260910-platform-api-refactor/implementation/13-backend-acceptance-closeout.md)证明。router替身不能替代真实执行，前端适配见[交接](../../../../docs/projects/20260910-platform-api-refactor/05-frontend-handoff.md)。
+
+### Dear Agent 治理资源（P6）
+
+`GET/POST /api/langgraph/threads/{thread_id}/dear/{resource}`仅允许`memory`和`skills`。
+平台先验证项目读/写权限、线程归属、Dear graph与项目Agent启用关系，再签发
+`dear-governance-read`或`dear-governance-write`短时委托，调用Runtime的
+`/internal/threads/{thread_id}/dear/{resource}`。不得直接代理用户自填tenant/user或证据裁决。
+Runtime保有私有表和revision规则；GraphHarbor不实现此业务。记忆/技能更新冲突保持409。
+具体字段与前端限制见[Dear P6交接](../../../../docs/projects/20260913-dearflow-agent/frontend-handoff.md)。

@@ -1,0 +1,25 @@
+{
+  "upstream_commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "upstream_path": "skills/public/code-documentation",
+  "platform_notes": "parse_document reads ZIP in memory; no host extraction or execution; member paths and truncation explicit.",
+  "revision": "dear-k06-v1",
+  "source_files": {
+    "SKILL.md": "75721d7bc1b294592dc31a1e1d92ff9c390115af4b08ed42e7e0a2b094060676"
+  },
+  "license_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+  "adaptations": [
+    {
+      "from": "present_files",
+      "to": "present_artifacts"
+    },
+    {
+      "from": "/mnt/user-data/outputs/",
+      "to": "/workspace/work/"
+    },
+    {
+      "from": "/mnt/user-data/uploads/",
+      "to": "/workspace/uploads/"
+    }
+  ],
+  "implementation": "docs/projects/20260913-dearflow-agent/implementation/10-p4-k02-k07-batch.md"
+}

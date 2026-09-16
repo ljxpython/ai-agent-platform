@@ -1,0 +1,15 @@
+{
+  "upstream": "https://github.com/bytedance/deer-flow",
+  "commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "source": "skills/public/ppt-generation",
+  "revision": "dear-p5-v1",
+  "source_files": {
+    "SKILL.md": "1c3e00433b754365390c9ffca4fcc12061f42993cc612b68bf77cd778affc090",
+    "scripts/generate.py": "4c0fee8460190228ecf38479fcc5201c1f9181f5b5b0cd7823e3a19675274b04"
+  },
+  "adapted_files": [
+    "SKILL.md",
+    "scripts/generate.py"
+  ],
+  "license_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1"
+}

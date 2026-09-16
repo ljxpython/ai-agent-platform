@@ -1,0 +1,106 @@
+{
+  "upstream_commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "revision": "dear-p6-v1",
+  "files": [
+    {
+      "path": "LICENSE",
+      "source": "LICENSE",
+      "source_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+      "sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+      "adapted": false
+    },
+    {
+      "path": "SKILL.md",
+      "source": "skills/public/skill-reviewer/SKILL.md",
+      "source_sha256": "68cff70a729660fed0fbf01b9ff4ec408bab83ea4e5997811508dc394e1c185d",
+      "sha256": "ccfe8353891a57046e3cd383ca3380bbee833d3faf31fddd26d6d167117769fc",
+      "adapted": true
+    },
+    {
+      "path": "evals/evals.json",
+      "source": "skills/public/skill-reviewer/evals/evals.json",
+      "source_sha256": "b931b0e0f4021f5a32f92be6664ee9e9ed225346f6e82e144c9b36304cd7c629",
+      "sha256": "b931b0e0f4021f5a32f92be6664ee9e9ed225346f6e82e144c9b36304cd7c629",
+      "adapted": false
+    },
+    {
+      "path": "evals/fixtures/blocked/SKILL.md",
+      "source": "skills/public/skill-reviewer/evals/fixtures/blocked/SKILL.md",
+      "source_sha256": "2b218374fb2c01b0ab9febcd0f02b88079171fd429100f98153c85726dd91429",
+      "sha256": "2b218374fb2c01b0ab9febcd0f02b88079171fd429100f98153c85726dd91429",
+      "adapted": false
+    },
+    {
+      "path": "evals/fixtures/needs-revision/SKILL.md",
+      "source": "skills/public/skill-reviewer/evals/fixtures/needs-revision/SKILL.md",
+      "source_sha256": "832194fa8ffbc7450506e8a3c9b3aadb183c887564be28e5b738e940ed48c494",
+      "sha256": "832194fa8ffbc7450506e8a3c9b3aadb183c887564be28e5b738e940ed48c494",
+      "adapted": false
+    },
+    {
+      "path": "evals/fixtures/partial-package/SKILL.md",
+      "source": "skills/public/skill-reviewer/evals/fixtures/partial-package/SKILL.md",
+      "source_sha256": "8d8cf194cc8ceae402b047910bd3877c23d6d5410912e20f52de91a6401f5b21",
+      "sha256": "8d8cf194cc8ceae402b047910bd3877c23d6d5410912e20f52de91a6401f5b21",
+      "adapted": false
+    },
+    {
+      "path": "evals/fixtures/prompt-injection/SKILL.md",
+      "source": "skills/public/skill-reviewer/evals/fixtures/prompt-injection/SKILL.md",
+      "source_sha256": "c7d39f299d498ec0b6adc6d83be6edf1e4d4ace19b33469e7cb8ce97a6cbbe32",
+      "sha256": "c7d39f299d498ec0b6adc6d83be6edf1e4d4ace19b33469e7cb8ce97a6cbbe32",
+      "adapted": false
+    },
+    {
+      "path": "evals/fixtures/publish-candidate/SKILL.md",
+      "source": "skills/public/skill-reviewer/evals/fixtures/publish-candidate/SKILL.md",
+      "source_sha256": "a40326488673a38f54c20bdf91537a30c255971d2b0a5c383aa86863b4984ea8",
+      "sha256": "a40326488673a38f54c20bdf91537a30c255971d2b0a5c383aa86863b4984ea8",
+      "adapted": false
+    },
+    {
+      "path": "evals/fixtures/zh-output/SKILL.md",
+      "source": "skills/public/skill-reviewer/evals/fixtures/zh-output/SKILL.md",
+      "source_sha256": "99817247c6a8b63d35325382f0618eddbec8856c8ac88705eea477c5ba51c588",
+      "sha256": "99817247c6a8b63d35325382f0618eddbec8856c8ac88705eea477c5ba51c588",
+      "adapted": false
+    },
+    {
+      "path": "references/effect-verification.md",
+      "source": "skills/public/skill-reviewer/references/effect-verification.md",
+      "source_sha256": "fbc5e9f0799b6db88527b896da131b8db6cdf7308ccfb7a21efb28bde534dbb9",
+      "sha256": "fbc5e9f0799b6db88527b896da131b8db6cdf7308ccfb7a21efb28bde534dbb9",
+      "adapted": false
+    },
+    {
+      "path": "references/eval-design.md",
+      "source": "skills/public/skill-reviewer/references/eval-design.md",
+      "source_sha256": "4d5368c79f48a8b8dc6402766a4f3049510b41ccb55d83c67c113260a5449c40",
+      "sha256": "4d5368c79f48a8b8dc6402766a4f3049510b41ccb55d83c67c113260a5449c40",
+      "adapted": false
+    },
+    {
+      "path": "references/report-rendering.md",
+      "source": "skills/public/skill-reviewer/references/report-rendering.md",
+      "source_sha256": "e0db208b91c0bb889f1f96ab77bd2c44b51297aa8c559dc06f2fcfac26ac5e2a",
+      "sha256": "e0db208b91c0bb889f1f96ab77bd2c44b51297aa8c559dc06f2fcfac26ac5e2a",
+      "adapted": false
+    },
+    {
+      "path": "references/review-checklist.md",
+      "source": "skills/public/skill-reviewer/references/review-checklist.md",
+      "source_sha256": "357d6f5dbd597f3971c33666913dea8a83ac074bfc148e3f96fadb53f8d28001",
+      "sha256": "357d6f5dbd597f3971c33666913dea8a83ac074bfc148e3f96fadb53f8d28001",
+      "adapted": false
+    },
+    {
+      "path": "references/review-rubric.md",
+      "source": "skills/public/skill-reviewer/references/review-rubric.md",
+      "source_sha256": "f7137b2a78dcb4195f16d02c73056f72c5e4cee1c8f6fef218ebb053e2642be0",
+      "sha256": "f7137b2a78dcb4195f16d02c73056f72c5e4cee1c8f6fef218ebb053e2642be0",
+      "adapted": false
+    }
+  ],
+  "behavior_changes": "Use create_skill_candidate to import a ZIP first. Review only by review_skill_package(slug, digest), using the returned untrusted_content and manifest. The review is static_only; it never means scripts or model behavior passed. Candidate static review cannot activate a skill. Use the preserved rubric and report structure. Do not use upstream target/profile/include_content parameters.",
+  "verification": "pending; docs/projects/20260913-dearflow-agent/implementation/13-p6-memory-and-skills.md"
+}

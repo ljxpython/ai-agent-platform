@@ -45,6 +45,29 @@ def validate_document(data: bytes, mime: str) -> None:
         raise DocumentError("file_too_large", 413)
     if mime not in MIME_EXT:
         raise DocumentError("unsupported_file_type", 415)
+    if mime == "application/vnd.ms-excel":
+        if not data.startswith(bytes.fromhex("d0cf11e0a1b11ae1")):
+            raise DocumentError("invalid_xls_magic", 415)
+        # Full workbook parsing belongs to the resource-limited execution process.
+        return
+    if mime == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
+        from runtime_service.workspace.archives import read_zip
+        try:
+            names = {name for name, _ in read_zip(data)}
+            if not {"[Content_Types].xml", "xl/workbook.xml"} <= names:
+                raise ValueError("invalid_xlsx")
+            if any(name.lower().endswith("vbaproject.bin") for name in names):
+                raise ValueError("macro_workbook_denied")
+        except ValueError as exc:
+            raise DocumentError(str(exc), 422) from exc
+        return
+    if mime == "application/zip":
+        from runtime_service.workspace.archives import read_zip
+        try:
+            read_zip(data)
+        except ValueError as exc:
+            raise DocumentError(str(exc), 422) from exc
+        return
     if mime == "application/pdf":
         with open_pdf(data):
             pass

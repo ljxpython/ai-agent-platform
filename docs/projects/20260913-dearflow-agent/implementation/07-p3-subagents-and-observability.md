@@ -1,5 +1,7 @@
 # P3 子 Agent 展示与观测实施记录
 
+> 本文件保留初期成功／失败证据。2026-09-15后续验证以[08收口记录](08-p3-server-verification-closeout.md)为准：默认数据库配置已解决，旧Worker可成功运行；此前`MAX(sequence)`根因推断不成立、游标优化已撤回。post28修复的是通用子图lifecycle丢失；外部Langfuse已取得真实父子与用量证据。
+
 用户已批准实施 P3。入口为 [P3 执行包](../phases/P3-子%20Agent%20展示与观测.md)，本记录逐项更新代码与证据。当前 partial：后端代码与组合回归完成，真实完整成功运行和外部观测尚未通过；前端明确 deferred。
 
 ## 范围与起点
@@ -57,7 +59,7 @@
 - 最新平台复测：`DEAR_PLATFORM_TEST=1 DEAR_PLATFORM_SUBAGENT_TEST=1 .venv/bin/python -m pytest -q tests/services/dearflow_agent/test_platform.py -k creates_and_completes --tb=short -s`，**1 failed、1 deselected，324.94s**。project `c23027df-033b-4232-a490-d5857b0f3440`／thread `a195d61a-6c83-4d75-98c5-6d546472791d`／run `aea09889-f4f1-402c-9f85-4851e67865e2`。终态 timeout，不能勾选完整成功验收。
 - 对上述 Run 只读查询 `runtime_events`：194条持久事件，包含2条 tools、71条 debug、63条 messages；子消息确实带独立 `tools:<执行任务 ID>` namespace。开始生命周期为00:12:03，task工具事件到00:15:38才持久化，00:17:06终态超时。仅证明本次事件时间线和真实子图 scope，不据此直接归因模型或数据库。
 - 进一步对照 debug 的 `data.timestamp` 与数据库 `created_at`：子图 `tools:f5a42289-837e-d03b-4955-9859141cb401` 的 model task 在00:15:42.728生成，00:17:02.240才持久化，约79.5秒滞后；另一个子图 model task 约58秒滞后。注意外层 `params.timestamp` 是转换时间，不能代替原始 debug 产生时间。已确认事件消费／持久化链路存在显著积压，仍未量化各段贡献。
-- 依赖排查落点（相对 `apps/runtime-service/.venv/lib/python3.13/site-packages/`）：`langgraph_runtime_pg/production_worker.py:on_event` 每条事件先 `_cancel_requested`（Redis＋DB），再 `_publish_event`（DB＋Redis fanout）；`graph_executor.py:invoke_graph` 顺序等待 on_event。应在 GraphHarbor 上游量化这些环节后修复并发布锁版本，当前项目不修改 site-packages，不削掉事件或放宽300秒限制掩盖问题。
+- 依赖排查落点（Runtime 虚拟环境安装包）：`langgraph_runtime_pg/production_worker.py:on_event` 每条事件先 `_cancel_requested`（Redis＋DB），再 `_publish_event`（DB＋Redis fanout）；`graph_executor.py:invoke_graph` 顺序等待 on_event。应在 GraphHarbor 上游量化这些环节后修复并发布锁版本，当前项目不修改 site-packages，不削掉事件或放宽300秒限制掩盖问题。
 - 仓库根执行 `python3 scripts/check_docs.py` 和 `git diff --check`：均通过。
 
 ### 四态与剩余工作
@@ -78,10 +80,10 @@
 
 经用户确认后，优化范围扩展到 GraphHarbor 通用 Server，但不带入 DearFlow 业务逻辑。
 
-- 修改 `/Users/lijiaxin/PyCharmMiscProject/graphharbor/libs/langgraph-runtime-pg/src/langgraph_runtime_pg/run_store.py:record_event`：事件序列号优先使用已加行锁的 `thread.event_seq`／`run.event_seq`，避免每条事件扫描 `MAX(runtime_events.sequence)`；仅在游标为0时执行一次旧数据修复查询，保持迁移前数据兼容。
+- 曾修改 GraphHarbor `libs/langgraph-runtime-pg/src/langgraph_runtime_pg/run_store.py:record_event` 尝试优化事件序列号；因非零旧游标回归失败已撤回，未发布。
 - GraphHarbor 原有 `_publish_event`、取消检查、事件 envelope 和业务边界均未改变；没有添加 DearFlow、租户、技能或 Agent 专属字段。
 - GraphHarbor Worker 观测测试 `libs/langgraph-runtime-pg/tests/test_observability.py -k worker`：**2 passed**。数据库合同测试因本机默认 PostgreSQL 角色 `postgres` 不存在而 blocked；代码保留 `test_record_event_repairs_stale_sequence_counters` 的旧游标修复语义，待 GraphHarbor 测试数据库可用后重跑。
-- 该优化尚未发布到当前运行中的 Worker；需在 GraphHarbor 仓库完成其自身测试、构建和发布，再重启 Runtime Worker，随后重跑 DearFlow 双子任务成功链路。不能把源码修改当成线上性能修复已生效。
+- 当前发布内容不含上述序列号尝试；post28实际发布的是通用子图 lifecycle 修复。需继续重跑 DearFlow 的成功回放链路，不能把事件修复当成性能优化已生效。
 
 ### 后续验证进展
 

@@ -1,5 +1,7 @@
 # 04 工作区、沙箱与文件产物
 
+P4批次实际增量见[10实施记录](implementation/10-p4-k02-k07-batch.md)：ZIP输入通过现有上传和parse_document在内存静态读取，不落解包目录、不执行用户项目；MD/BibTeX通过现有不可变产物发布／下载。ZIP限20MiB总展开、256条、单文件2MiB、100倍压缩比；其他规划格式不因此宣称完成。前端只交接、页面验收后置。
+
 ## 目标
 
 解除 Showcase 耦合，让所有声明支持文件能力的 Agent 使用一致的授权、路径和产物契约；为 23 个 Skills 提供可复现、隔离、有预算且可恢复的执行环境。
@@ -76,8 +78,8 @@
 | DOCX | 段落／表格提取和生成 | 下载、文本提取预览 | 需要时锁定 python-docx；属于格式补全，不默认引入 Office 全套服务 |
 | PPTX | 文本与页信息读取；PPT Skill 输出 | 下载＋生成时随附的页图预览 | python-pptx、Pillow；保留上游图片型幻灯片，暂不声称所有元素可编辑 |
 | PNG／JPEG／WebP | 复用图片上传、识图及生成 | 图片预览、下载 | 魔数、像素总数、大小；GIF 明确拒绝直传并可提供显式转换，不偷偷截第一帧 |
-| MP3／WAV | 上传为资源；不自动承诺转录 | 原生 audio、Range 下载、转写稿文本 | 生成及混音时 ffmpeg／ffprobe；有界时长和解码资源 |
-| MP4 | 上传为资源；不自动承诺视频理解 | 原生 video、Range 下载 | 视频 provider 输出与 ffprobe 验证；不读取远程任意 URL 播放 |
+| MP3／WAV | K14/K15延期，当前不支持 | 后续仅按明确短音频场景交付；大文件／Range后续实施（deferred） | 恢复开发时验证有界时长和解码资源 |
+| MP4 | deferred：随K16后续接入 | 后续视频播放／授权Range下载 | 供应商输出内容与哈希校验、受控下载、断点读取；本批不实现 |
 | HTML／CSS／JS | 代码资源或生成项目 | 下载；需要互动预览时独立 sandbox iframe | 禁止同源任意 JS；CSP、无平台 cookie、无 top navigation、默认禁外网 |
 | ZIP／TGZ／.skill | 项目／技能包的显式导入 | 下载／安装候选包 | 单独受控解包：拒绝穿越、软链接、设备文件、过量条目及膨胀；不因上传而执行 |
 
@@ -90,7 +92,7 @@
 拟新增 `apps/runtime-service/src/runtime_service/http/artifacts.py` 只做 HTTP 参数／授权与流式传输，公共 I/O 在 workspace；发布业务校验由服务工具执行。
 
 - `present_artifacts` 先检查文件存在、普通文件类型、scope、MIME、字节数、hash，再返回引用；发布后文件以内容 hash 固定，覆盖产生新引用。
-- 预览／下载经 Platform 重新授权；支持 Range、Content-Disposition、nosniff；大文件流式传输，不 base64 整体放进 JSON／messages。
+- 预览／下载经 Platform 重新授权；保留Content-Disposition、nosniff和有界传输；音视频大文件／Range本批后置，保留后续需求，不将文件整体base64写入messages。
 - 文件删除与 Thread 删除有明确生命周期，活跃运行／引用不能被后台清理截断。下载授权变化及时生效。
 - 参考 `apps/runtime-service/src/runtime_service/workspace/documents.py:DocumentWorkspace.put` 的原子写与描述符 I/O；抽取通用部分后图片和文档都复用，避免多个不一致的路径检查器。
 
@@ -129,10 +131,17 @@
 - [ ] 所有矩阵格式分别验证输入、处理、输出、预览；旧 XLS、压缩炸弹、超大图片、加密／损坏文档有真实样本。
 - [ ] 容器内 Skill 脚本可读但不可修改；上传原件不可覆盖，输出真实且可下载。
 - [ ] 取消后 10 秒内正常清理（拟定门槛）；超时／worker 崩溃后可定位并回收，不能删除他人活跃资源。
-- [ ] HTML 不得读取平台 cookie 或顶层页面；大媒体下载 Range 正确，内存有界。
+- [ ] HTML 不得读取平台 cookie 或顶层页面；现有文件读取内存有界。音视频大文件／Range按用户决定后续实施（deferred）。
 - [ ] 备份／恢复后引用不悬空；磁盘耗尽明确失败，无半文件成功回执。
 - 2026-09-13：仅完成设计，生产隔离、性能及格式测试未执行。
 
 ## 状态
 
 规划中，P1 基础必需；格式按 Skill 顺序补齐，生产发布受 10 门禁约束。
+
+2026-09-15 K08—K11增量：Excel两类输入、HTML/CSS/JS源码、CSV/JSON/ZIP产物、Dear图片授权下载，以及文件attachment／nosniff／sandbox响应已接入。验证边界与代码位置见[11批次记录](implementation/11-p4-k08-k11-batch.md)，前端只交接，隔离预览未实现。
+## P5当前格式切片（2026-09-15）
+
+PPTX输出已加入`workspace/artifact_refs.py`与Platform文件代理MIME白名单；`workspace/media.py`验证安全ZIP/XML、真实页关系、1—20页，拒绝宏／外部关系。固定Pillow/python-pptx在p5隔离镜像执行，保留20MiB文件读取／既有ZIP限制及8MiB沙箱单文件限额。真实Docker三页、尺寸／顺序、缺图验证通过；实际平台链路见[12-P5](implementation/12-p5-media-and-tasks.md)。PPTX仅是图片型幻灯片，不能标原生可编辑。
+
+用户最终明确：K14播客、K15音乐仍deferred；**K16异步视频和音视频大文件／Range后续实施（deferred）**。没有加入对应格式白名单、ffmpeg或前端播放器。图片输入／下载仍走既有图片scope与HTTP链路；前端只交接，页面验收后置。

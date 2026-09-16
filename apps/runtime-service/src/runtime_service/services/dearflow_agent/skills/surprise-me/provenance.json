@@ -1,0 +1,22 @@
+{
+  "upstream_commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "revision": "dear-p6-v1",
+  "files": [
+    {
+      "path": "LICENSE",
+      "source": "LICENSE",
+      "source_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+      "sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+      "adapted": false
+    },
+    {
+      "path": "SKILL.md",
+      "source": "skills/public/surprise-me/SKILL.md",
+      "source_sha256": "e93e72ca445d112fa46c8b4d1b355cd97a51448ad20693f1279296523944d01a",
+      "sha256": "4706685235646cb8a5fabc11ca19b39873b04ec367128798ffeee5979fe356e4",
+      "adapted": true
+    }
+  ],
+  "behavior_changes": "Use list_skills and the current available tools before selecting. Only choose known verified capabilities; candidates, revoked versions, deferred audio/video, external deployment without approval are unavailable. If fewer than two usable skills exist, explain the limitation. Read full chosen instructions and retain ordinary tool/HITL permissions; surprise is not approval.",
+  "verification": "pending; docs/projects/20260913-dearflow-agent/implementation/13-p6-memory-and-skills.md"
+}

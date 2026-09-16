@@ -292,26 +292,49 @@ export function buildTranscript(
       }
   }
   const shown = new Set<string>();
+  function isInterruptError(err: unknown): boolean {
+    if (typeof err !== "string") return false;
+    return err.includes("Interrupt(") || err.includes("GraphInterrupt");
+  }
+
   function tool(id: string, name: string, input: unknown): ToolItem {
     shown.add(id);
     const call = callMap.get(id);
     const result = results.get(id);
-    const status =
-      call?.status ??
-      (result
-        ? asObject(result).status === "error"
-          ? "error"
-          : "finished"
-        : "running");
+    const resolvedName = call?.name ?? name;
+    const isClarification = resolvedName === "request_information";
+
+    const resultObj = asObject(result);
+    const hasResult = Boolean(result);
+    const resultIsError = hasResult && resultObj.status === "error";
+
+    let rawError = call?.error;
+    if (isInterruptError(rawError)) {
+      rawError = undefined;
+    }
+
+    let status: "running" | "finished" | "error" | "incomplete";
+    if (hasResult) {
+      status = resultIsError ? "error" : "finished";
+    } else if (rawError) {
+      status = "error";
+    } else if (call?.status && call.status !== "error") {
+      status = call.status;
+    } else if (isClarification) {
+      status = "running";
+    } else {
+      status = call?.status ?? "running";
+    }
+
     return {
       key: `${prefix}:tool:${id}`,
       id,
-      name: call?.name ?? name,
+      name: resolvedName,
       input: call?.input ?? input,
       output: call?.output ?? result?.content,
-      artifact: asObject(result).artifact,
-      status: status === "running" && !running ? "incomplete" : status,
-      error: call?.error,
+      artifact: resultObj.artifact,
+      status: status === "running" && !running && !isClarification ? "incomplete" : status,
+      error: rawError,
     };
   }
   const turns: Turn[] = [];

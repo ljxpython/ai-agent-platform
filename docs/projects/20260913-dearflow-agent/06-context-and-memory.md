@@ -28,7 +28,7 @@ DeerFlow 的完整参考根为 `backend/packages/harness/deerflow/`。
 | 大工具输出 | `agents/middlewares/tool_output_budget_middleware.py` | 03 的有界预览＋工作区外置；官方文件工具可按需读取 |
 | 技能和任务延续 | `agents/middlewares/durable_context_middleware.py`、`skill_activation_middleware.py` | 保留活动 Skill 版本引用、任务目标与证据索引；按需重新读资源，不能把全部技能正文永久压入系统消息 |
 | 防死循环 | `agents/middlewares/loop_detection_middleware.py:LoopDetectionMiddleware` | 官方调用限制先兜底，必要时服务私有 Middleware 识别连续同参数同失败结果；阈值与退出理由可观测 |
-| 长期记忆接口 | `agents/memory/manager.py:MemoryManager`、`agents/memory/tools.py` | 服务私有 memory 模块＋官方 BaseStore，不复制多后端插件工厂 |
+| 长期记忆接口 | `agents/memory/manager.py:MemoryManager`、`agents/memory/tools.py` | 服务私有 memory 模块＋Runtime私有PostgreSQL表（P6已冻结），不复制多后端插件工厂 |
 | 自动提取 | `agents/memory/backends/deermem/deermem/core/updater.py`、`agents/middlewares/memory_middleware.py` | 结构化候选提取＋确定性 scope／授权门，模型经平台模型入口；记忆调用单独计量 |
 | 检索与容量 | `agents/memory/backends/deermem/deermem/core/storage.py`、`core/eviction.py` | Store namespace 内检索、有限条数／Token 注入；先明确删除与修正策略，向量检索只有实际质量证据需要时启用 |
 | 用户查看／修正 | DeerFlow `backend/app/gateway/routers/memory.py` | 08 的 Web 管理与授权 API；用户修正优先于推断，删除／导出可验收 |
@@ -37,13 +37,13 @@ DeerFlow 的完整参考根为 `backend/packages/harness/deerflow/`。
 
 1. **线程状态：** messages、todos、当前任务、证据引用与中断，由 checkpoint 持有。
 2. **资源状态：** 上传文件、输出文件、Skill 版本，由工作区和资源绑定持有；checkpoint 只保存引用。
-3. **长期记忆：** 跨线程的用户偏好／明确事实，由持久 Store 持有；读取与写入都按 scope 校验。
+3. **长期记忆：** 跨线程的用户偏好／明确事实，由Runtime私有PostgreSQL表持有；读取与写入都按 scope 校验。
 
 Deep Agents 的 `memory=[...]` 是启动时读取文件加入 Prompt，适合人工维护的运行指南，不等于自动记忆系统。用户推断事实优先以标明来源的上下文数据注入，不能混进系统权限指令。
 
 ### 3. 记忆 namespace 与数据模型
 
-拟新增 `apps/runtime-service/src/runtime_service/services/dearflow_agent/memory.py`，从工具 runtime 注入的官方 Store 读取；S3 未验证前不声称已有跨进程持久化。
+已新增 `apps/runtime-service/src/runtime_service/services/dearflow_agent/memory.py`，作用域来自已验证的工具runtime；canonical facts唯一存储为Runtime私有PostgreSQL表。真实PG隔离与CAS测试通过，证据见[13](implementation/13-p6-memory-and-skills.md)。
 
 默认 namespace 为 `("dearflow", "v1", tenant_id, project_id, user_id, "facts")`，实现跨当前项目的线程记忆，不默认跨项目共享。若后续要用户全局偏好，单独提供显式 opt-in 的 tenant／user namespace，并清楚显示作用域。
 
@@ -88,7 +88,7 @@ Deep Agents 的 `memory=[...]` 是启动时读取文件加入 Prompt，适合人
 ## 任务拆分
 
 - [x] M01：官方摘要／大结果／循环保护已组合。`apps/runtime-service/tests/services/dearflow_agent/test_context.py` 2 passed；`test_research.py` 验证来源正文外置。代码为 `services/dearflow_agent/agent.py` 与 `workspace/backend.py`。预算采用保守整线程累计上限；不实现独立 child 预算账本。
-- [ ] M02：S3 与并发一致性 Spike，冻结 Store／最小原子写方案和 namespace；不创建多后端工厂。
+- [x] M02：S3 与并发一致性 Spike，冻结 Store／最小原子写方案和 namespace；不创建多后端工厂。
 - [ ] M03：显式记忆 CRUD／检索／Web 管理，拟新增 `test_memory.py`，覆盖 scope 与 revision。
 - [ ] M04：自动候选提取、确定性门、幂等与摘要协作，拟新增 `test_memory_extraction.py`。
 - [ ] M05：真实跨会话检索质量、容量／过期／清除／恢复与 Token 预算；结果记入本专题。
@@ -105,4 +105,8 @@ Deep Agents 的 `memory=[...]` 是启动时读取文件加入 Prompt，适合人
 
 ## 状态
 
-规划中。长期记忆纳入建议范围，先显式工具后自动提取；一致性实现与生产 Store 接入待 Spike。
+P6进行中：M02已验证；M03/M04后端代码完成，M05容量/过期/恢复/上下文预算测试通过；真实跨会话模型验证进行中。前端交接done、页面deferred，不勾选包含Web管理的整项。
+
+### P6 存储选择与证据（2026-09-15）
+
+官方BaseStore未提供CAS保证，本阶段选择上文允许的Runtime自有表方案：`dear_memory`，使用事务advisory lock+document revision；作用域为tenant/project/user。唯一事实源，不双写BaseStore，不改GraphHarbor。显式恢复为追加事实，自动候选默认关闭；删除和清空提高epoch。代码/测试逐项见[13实现记录](implementation/13-p6-memory-and-skills.md)。

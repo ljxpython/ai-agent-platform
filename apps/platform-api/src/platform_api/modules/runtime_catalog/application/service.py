@@ -565,13 +565,13 @@ class RuntimeCatalogService:
                 raise NotFoundError(message="Model not found", code="model_not_found")
             target_provider = values.get("provider", current.provider)
             target_base_url = values.get("base_url", current.base_url)
-            target_model_name = values.get("model_name", current.model)
+            target_model_name = values.get("model_name", current.model_name)
             existing = repository.find_model_by_endpoint_and_name(
                 provider=target_provider,
                 base_url=target_base_url,
                 model_name=target_model_name,
             )
-            if existing is not None and existing.id != str(model_uuid):
+            if existing is not None and existing.id != model_uuid:
                 raise ConflictError(
                     code="duplicate_model",
                     message=f"Model '{target_model_name}' already exists for provider '{target_provider}' at endpoint '{target_base_url}'",

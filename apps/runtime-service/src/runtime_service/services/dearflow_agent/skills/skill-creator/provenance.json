@@ -1,0 +1,148 @@
+{
+  "upstream_commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "revision": "dear-p6-v1",
+  "files": [
+    {
+      "path": "LICENSE.txt",
+      "source": "skills/public/skill-creator/LICENSE.txt",
+      "source_sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+      "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd",
+      "adapted": false
+    },
+    {
+      "path": "SKILL.md",
+      "source": "skills/public/skill-creator/SKILL.md",
+      "source_sha256": "313a95a145d9926693f8c053b63047212dd1db217c061891865b6546c4e70d02",
+      "sha256": "9358ca323b2ce8caaecc3ae22e9f712b7dc0742e8a8e73e444e53e01ad8f0edd",
+      "adapted": true
+    },
+    {
+      "path": "agents/analyzer.md",
+      "source": "skills/public/skill-creator/agents/analyzer.md",
+      "source_sha256": "bf68f4cac5a56c673a928c2e6d619586c5b93ea364026ab37547772cb45a663a",
+      "sha256": "bf68f4cac5a56c673a928c2e6d619586c5b93ea364026ab37547772cb45a663a",
+      "adapted": false
+    },
+    {
+      "path": "agents/comparator.md",
+      "source": "skills/public/skill-creator/agents/comparator.md",
+      "source_sha256": "fe1fc9787c495d864c5d6eada47396478572325fde1b33a96d78bf4b849b7a3e",
+      "sha256": "fe1fc9787c495d864c5d6eada47396478572325fde1b33a96d78bf4b849b7a3e",
+      "adapted": false
+    },
+    {
+      "path": "agents/grader.md",
+      "source": "skills/public/skill-creator/agents/grader.md",
+      "source_sha256": "57134da0c1a4eea33fbd74a1c9c44aa814f07d6bc64de303edb586f941e5d21a",
+      "sha256": "57134da0c1a4eea33fbd74a1c9c44aa814f07d6bc64de303edb586f941e5d21a",
+      "adapted": false
+    },
+    {
+      "path": "assets/eval_review.html",
+      "source": "skills/public/skill-creator/assets/eval_review.html",
+      "source_sha256": "ce477dcc74dc1c0d1d3352646a79167b5a63634e936b1019160025065974e452",
+      "sha256": "ce477dcc74dc1c0d1d3352646a79167b5a63634e936b1019160025065974e452",
+      "adapted": false
+    },
+    {
+      "path": "eval-viewer/generate_review.py",
+      "source": "skills/public/skill-creator/eval-viewer/generate_review.py",
+      "source_sha256": "96352a1e25e82e4ce843af793e360e9f16ed897efae41565a01f227c839f448f",
+      "sha256": "96352a1e25e82e4ce843af793e360e9f16ed897efae41565a01f227c839f448f",
+      "adapted": false
+    },
+    {
+      "path": "eval-viewer/viewer.html",
+      "source": "skills/public/skill-creator/eval-viewer/viewer.html",
+      "source_sha256": "a53213426ee1100441d701a3a0d49cda7a842f992d2c36463f4d3cc0258575fa",
+      "sha256": "a53213426ee1100441d701a3a0d49cda7a842f992d2c36463f4d3cc0258575fa",
+      "adapted": false
+    },
+    {
+      "path": "references/output-patterns.md",
+      "source": "skills/public/skill-creator/references/output-patterns.md",
+      "source_sha256": "d6027800b9d8c26589edba85b42901a41ac36d753b4e9cebc7f4cbb03cdcf0a4",
+      "sha256": "d6027800b9d8c26589edba85b42901a41ac36d753b4e9cebc7f4cbb03cdcf0a4",
+      "adapted": false
+    },
+    {
+      "path": "references/schemas.md",
+      "source": "skills/public/skill-creator/references/schemas.md",
+      "source_sha256": "8e8876180a8989b406a4d3edddf875b04cdfd5805cc8616686d552b11ce4455f",
+      "sha256": "8e8876180a8989b406a4d3edddf875b04cdfd5805cc8616686d552b11ce4455f",
+      "adapted": false
+    },
+    {
+      "path": "references/workflows.md",
+      "source": "skills/public/skill-creator/references/workflows.md",
+      "source_sha256": "ef4846877d5dab47511a01a6cf31476ad64f5bc5945635459295794575338980",
+      "sha256": "ef4846877d5dab47511a01a6cf31476ad64f5bc5945635459295794575338980",
+      "adapted": false
+    },
+    {
+      "path": "scripts/aggregate_benchmark.py",
+      "source": "skills/public/skill-creator/scripts/aggregate_benchmark.py",
+      "source_sha256": "43da1f7801e20656d07cbc72001a563884f41d32080cae291be5d48c51e2e635",
+      "sha256": "43da1f7801e20656d07cbc72001a563884f41d32080cae291be5d48c51e2e635",
+      "adapted": false
+    },
+    {
+      "path": "scripts/generate_report.py",
+      "source": "skills/public/skill-creator/scripts/generate_report.py",
+      "source_sha256": "a4b0f1278c22b2300e0fe05f2422464ec4c818daa932f333e69c1af2acc4f08a",
+      "sha256": "a4b0f1278c22b2300e0fe05f2422464ec4c818daa932f333e69c1af2acc4f08a",
+      "adapted": false
+    },
+    {
+      "path": "scripts/improve_description.py",
+      "source": "skills/public/skill-creator/scripts/improve_description.py",
+      "source_sha256": "2877bde08bf3f437b9dae3d57585a0840b9b1024736d2e5c6c657b71899269d0",
+      "sha256": "2877bde08bf3f437b9dae3d57585a0840b9b1024736d2e5c6c657b71899269d0",
+      "adapted": false
+    },
+    {
+      "path": "scripts/init_skill.py",
+      "source": "skills/public/skill-creator/scripts/init_skill.py",
+      "source_sha256": "6c0560581022d9372fc2bddc1db35b7c63a4805545e5d180b1b9a797a875f997",
+      "sha256": "6c0560581022d9372fc2bddc1db35b7c63a4805545e5d180b1b9a797a875f997",
+      "adapted": false
+    },
+    {
+      "path": "scripts/package_skill.py",
+      "source": "skills/public/skill-creator/scripts/package_skill.py",
+      "source_sha256": "1a33059b0db1ef73375d46d513e5ea81369d2e8838c970597b0d52ddef8d1c0f",
+      "sha256": "1a33059b0db1ef73375d46d513e5ea81369d2e8838c970597b0d52ddef8d1c0f",
+      "adapted": false
+    },
+    {
+      "path": "scripts/quick_validate.py",
+      "source": "skills/public/skill-creator/scripts/quick_validate.py",
+      "source_sha256": "03691b657b27cf3989a3ab5c5696a2c36a87fcbea9fc39349e5866edf794d676",
+      "sha256": "03691b657b27cf3989a3ab5c5696a2c36a87fcbea9fc39349e5866edf794d676",
+      "adapted": false
+    },
+    {
+      "path": "scripts/run_eval.py",
+      "source": "skills/public/skill-creator/scripts/run_eval.py",
+      "source_sha256": "ea2521ba41c8fd16b2900758c890bb6c6d2b4b01da10b4a860facb8587ed0bde",
+      "sha256": "ea2521ba41c8fd16b2900758c890bb6c6d2b4b01da10b4a860facb8587ed0bde",
+      "adapted": false
+    },
+    {
+      "path": "scripts/run_loop.py",
+      "source": "skills/public/skill-creator/scripts/run_loop.py",
+      "source_sha256": "1cbdf9fd3eef1e03da344282cc318a1a852524f3041323078d690e014394687f",
+      "sha256": "1cbdf9fd3eef1e03da344282cc318a1a852524f3041323078d690e014394687f",
+      "adapted": false
+    },
+    {
+      "path": "scripts/utils.py",
+      "source": "skills/public/skill-creator/scripts/utils.py",
+      "source_sha256": "ac4b79e5b3aeb9e9689ed9f066a7d64de4ed9a7bff69e44b4cf5a3b752a62dc2",
+      "sha256": "ac4b79e5b3aeb9e9689ed9f066a7d64de4ed9a7bff69e44b4cf5a3b752a62dc2",
+      "adapted": false
+    }
+  ],
+  "behavior_changes": "Draft files only under /workspace/work/, package a root SKILL.md ZIP with execute, publish the ZIP using present_artifacts, then create_skill_candidate(file_path). Updating means a new immutable candidate, never editing an installed version. review_skill_package precedes evaluate_skill_candidate(slug,digest,cases); each case has prompt, expected, forbidden. Evaluation is text-only without tools; script behavior, trigger optimization, blind baseline comparison and external CLI runners are not supported by this first evaluator and must be reported unverified. publish_skill(slug,digest,expected_revision) requires separate approval. Candidates are not auto-enabled. Use request_information for interviews. Use preserved templates and report assets, but no claude CLI, skill_manage, host/global installation or local browser server.",
+  "verification": "pending; docs/projects/20260913-dearflow-agent/implementation/13-p6-memory-and-skills.md"
+}

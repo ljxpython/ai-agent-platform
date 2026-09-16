@@ -1,0 +1,14 @@
+{
+  "upstream": "https://github.com/bytedance/deer-flow",
+  "commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "source": "skills/public/web-design-guidelines",
+  "revision": "dear-k11-v1",
+  "platform_notes": "Original resources retained; SKILL and execution boundaries minimally adapted. See implementation/11-p4-k08-k11-batch.md.",
+  "license_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+  "source_files": {
+    "SKILL.md": "f4647ca866a3accf763777f83e7682954f0187cd6bea7eea0399796652414e8f"
+  },
+  "adapted_files": [
+    "SKILL.md"
+  ]
+}

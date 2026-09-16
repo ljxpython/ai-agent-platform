@@ -1,0 +1,41 @@
+{
+  "upstream": "https://github.com/bytedance/deer-flow",
+  "commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "source": "skills/public/chart-visualization",
+  "revision": "dear-k09-v1",
+  "platform_notes": "Original resources retained; SKILL and execution boundaries minimally adapted. See implementation/11-p4-k08-k11-batch.md.",
+  "license_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+  "source_files": {
+    "SKILL.md": "eb44160e5a51bc0951696c65c13623bb7f686c140b6fd44e6e588b43c9911840",
+    "references/generate_area_chart.md": "0ac564c28376e5b025b1cb816b5651a1ca0497c9b3c9893cd58e0809bf3a3120",
+    "references/generate_bar_chart.md": "dd485e9218e111c93cf34957c763a2e6c863e6f9c77a577a4219287bd4656898",
+    "references/generate_boxplot_chart.md": "084c938314b71ee0f856a6e7ea95b37e3ce5d5d6124d80769b7c4eb04e86cf31",
+    "references/generate_column_chart.md": "f2f33273d5e9347be1cb5111fddff204a32756d3568c67964193afbb67107d9f",
+    "references/generate_district_map.md": "3062a4302d11209cf781740f20b1591cfe7e18dd0c34ef243fafb3bc3100ef5c",
+    "references/generate_dual_axes_chart.md": "25dd5b71ceadffb6dc68d3b1ba28ebc4de46f22deb1bc19e74df752f93fa5f20",
+    "references/generate_fishbone_diagram.md": "9a00f607c1b925952ed13bb9a706e4bc6ec75784c973910cf47805a167e81c41",
+    "references/generate_flow_diagram.md": "dac4bb359eff6147ab751762b92cf9c85ab9f758816fb829660e4f6f5d3df342",
+    "references/generate_funnel_chart.md": "73cab2e2685397e1c7dc6f09ac556bf8d905358a174da9abe7194347b3bd08f6",
+    "references/generate_histogram_chart.md": "c969b081d8befea33245e234a33d62114188654721ad46c27aea71f3b9b9af51",
+    "references/generate_line_chart.md": "5e693337100d825cea7b7f0c58330de348bf0b3c6f2233e3c9859def3c9fd12d",
+    "references/generate_liquid_chart.md": "be7d7c57a0134e2b4c993f4ee4ca56b400040286dcd1890ef862542fe796f6e9",
+    "references/generate_mind_map.md": "1577e8658f85635a711724bbf8c143cdd579dbd461fbdbc30735d6fd93a890de",
+    "references/generate_network_graph.md": "ca96018532580896485a635c68c6b1a0e126c0faea38a06ae12f45f8955940c7",
+    "references/generate_organization_chart.md": "76977dba9f4819f35627979dd39211ddf9e2487e6615514131980c1de4ea6c91",
+    "references/generate_path_map.md": "8d9fabdb4dcc10d57de51f97dbd228fad11acce5993ce23514d1e9ae75c82213",
+    "references/generate_pie_chart.md": "7453168d65f97b5cc0a686e379e799f65290b44814b783f30023e59c89100c40",
+    "references/generate_pin_map.md": "77ea6c009a4fb7413c08f6dfe86fcfee9c901ba8fa6187575d0f5530d839fcd4",
+    "references/generate_radar_chart.md": "a41811420bf776129bd183d9dea12764e60e5f463b36fa0a8a620c04ba398330",
+    "references/generate_sankey_chart.md": "e0a819dc949221e47dcc9dea4889af8336f2aa85bda7e9d60523d87d7ad38687",
+    "references/generate_scatter_chart.md": "545c2eb328ece019f46c6b1199581e67665fd3e50438133f4b9d41a4f751f7c8",
+    "references/generate_spreadsheet.md": "3c03cc0794265126f4b4a0c9a3f610e5cfd0ff107437c6bf354d77517011819d",
+    "references/generate_treemap_chart.md": "c42d07bb652c9e8ca6e972b99177412f21dd2165a12243b97fac53ffb12f001e",
+    "references/generate_venn_chart.md": "e50f71ccb14ba780c267414cae8c4f2aa447136d1b1d8e62b9a74d8d924884cf",
+    "references/generate_violin_chart.md": "ca1b6901c7f40e9d97e2a5d4c32cfffe4edc23a5998acfb3b558602b87fd32a0",
+    "references/generate_word_cloud_chart.md": "e13e276578491492db7efd10faf7d08f0f4609d76016bb6eb3f005103a0a851d",
+    "scripts/generate.js": "1204e0facf80d0941a77aea96b9ac81fd0b449738289302496cf5c0327c69f47"
+  },
+  "adapted_files": [
+    "SKILL.md"
+  ]
+}

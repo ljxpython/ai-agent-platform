@@ -17,6 +17,7 @@ const props = defineProps<{
   canSendFreshMessage: boolean;
   cancelling: boolean;
   sendButtonLabel: string;
+  canQueue?: boolean;
   compact?: boolean;
   focusMode?: boolean;
   models?: RuntimeModelItem[];
@@ -29,6 +30,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   "update:modelValue": [value: string];
   send: [];
+  queue: [];
   cancel: [];
   "file-input-change": [event: Event];
   "composer-paste": [event: ClipboardEvent];
@@ -68,7 +70,9 @@ const helperText = computed(() =>
   props.hasBlockingInterrupt
     ? "当前运行正在等待人工决策或信息补充。请先处理待办卡片，中断恢复后再发送。"
     : props.isRunning
-      ? "Agent 正在实时输出。你可以继续编辑下一条消息草稿，或随时点击“停止生成”。"
+      ? props.canQueue && composerModel.value.trim()
+        ? "Agent 正在运行中。你可以按 Enter 或点击“补充要求”将新指令加入执行队列。"
+        : "Agent 正在实时输出。你可以输入补充指令排队发送，或点击“停止生成”。"
       : "",
 );
 
@@ -154,6 +158,13 @@ function handleKeydown(event: KeyboardEvent) {
       (composerModel.value.trim().length > 0 || props.attachments.length > 0)
     ) {
       emit("send");
+    } else if (
+      props.isRunning &&
+      !props.hasBlockingInterrupt &&
+      props.canQueue &&
+      composerModel.value.trim().length > 0
+    ) {
+      emit("queue");
     }
   }
 }
@@ -257,47 +268,84 @@ defineExpose({
             class="ml-auto flex shrink-0 items-center gap-2"
             :class="isFocusMode || props.compact ? 'gap-2' : 'gap-2.5'"
           >
-            <span class="hidden md:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-dark-400 font-mono select-none">
-              <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] dark:border-dark-700 dark:bg-dark-800">↵</kbd>
-              <span>发送</span>
-            </span>
-            <button
-              type="button"
-              class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white shadow-xs transition-all duration-150 active:scale-90 disabled:opacity-35 disabled:cursor-not-allowed"
-              :class="
-                isRunning
-                  ? 'bg-red-500 hover:bg-red-600 shadow-red-500/20'
-                  : 'bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-500 shadow-blue-500/25'
-              "
-              :disabled="isRunning ? cancelling : !canSendFreshMessage"
-              :title="isRunning ? (cancelling ? '停止中...' : '停止生成') : sendButtonLabel"
-              :aria-label="isRunning ? '停止生成' : sendButtonLabel"
-              @click="isRunning ? emit('cancel') : emit('send')"
-            >
-              <svg
-                v-if="!isRunning"
-                class="h-4 w-4 fill-none stroke-current stroke-[2.5]"
-                viewBox="0 0 24 24"
+            <!-- 运行中且有输入：支持一键补充要求排队，并保留停止按钮 -->
+            <template v-if="isRunning && canQueue && composerModel.trim().length > 0">
+              <span class="hidden md:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-dark-400 font-mono select-none">
+                <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] dark:border-dark-700 dark:bg-dark-800">↵</kbd>
+                <span>排队</span>
+              </span>
+              <button
+                type="button"
+                class="flex h-8 items-center gap-1.5 rounded-full bg-blue-600 px-3 text-xs font-medium text-white shadow-xs transition-all hover:bg-blue-700 active:scale-95 disabled:opacity-50"
+                :disabled="cancelling"
+                title="排队加入执行队列"
+                @click="emit('queue')"
               >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  d="M12 19V5m0 0l-6 6m6-6l6 6"
+                <BaseIcon
+                  name="sparkle"
+                  size="xs"
                 />
-              </svg>
-              <BaseIcon
-                v-else
-                name="x"
-                size="xs"
-              />
-              <span class="sr-only">{{
-                isRunning
-                  ? cancelling
-                    ? "停止中..."
-                    : "停止生成"
-                  : sendButtonLabel
-              }}</span>
-            </button>
+                <span>补充要求</span>
+              </button>
+              <button
+                type="button"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500 text-white shadow-xs transition-all duration-150 hover:bg-red-600 active:scale-90 disabled:opacity-35"
+                :disabled="cancelling"
+                :title="cancelling ? '停止中...' : '停止生成'"
+                @click="emit('cancel')"
+              >
+                <BaseIcon
+                  name="x"
+                  size="xs"
+                />
+                <span class="sr-only">停止生成</span>
+              </button>
+            </template>
+
+            <!-- 运行中但无输入：仅展示停止生成按钮 -->
+            <template v-else-if="isRunning">
+              <button
+                type="button"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500 text-white shadow-xs transition-all duration-150 hover:bg-red-600 active:scale-90 disabled:opacity-35"
+                :disabled="cancelling"
+                :title="cancelling ? '停止中...' : '停止生成'"
+                @click="emit('cancel')"
+              >
+                <BaseIcon
+                  name="x"
+                  size="xs"
+                />
+                <span class="sr-only">{{ cancelling ? '停止中...' : '停止生成' }}</span>
+              </button>
+            </template>
+
+            <!-- 常规非运行状态：发送按钮 -->
+            <template v-else>
+              <span class="hidden md:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-dark-400 font-mono select-none">
+                <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] dark:border-dark-700 dark:bg-dark-800">↵</kbd>
+                <span>发送</span>
+              </span>
+              <button
+                type="button"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-xs transition-all duration-150 hover:bg-blue-600 active:scale-90 disabled:opacity-35 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-500 shadow-blue-500/25"
+                :disabled="!canSendFreshMessage"
+                :title="sendButtonLabel"
+                :aria-label="sendButtonLabel"
+                @click="emit('send')"
+              >
+                <svg
+                  class="h-4 w-4 fill-none stroke-current stroke-[2.5]"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M12 19V5m0 0l-6 6m6-6l6 6"
+                  />
+                </svg>
+                <span class="sr-only">{{ sendButtonLabel }}</span>
+              </button>
+            </template>
           </div>
         </div>
 

@@ -8,7 +8,7 @@ from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 from runtime_service.auth.platform import authenticate
 from runtime_service.tools.images import ImageWorkspace, ImageWorkspaceError
 from runtime_service.workspace.image_refs import UPLOAD_MAX_BYTES, ImageRef
-from runtime_service.workspace.scoped import get_showcase_workspace_root
+from runtime_service.workspace.scoped import resolve_thread_workspace
 
 router = APIRouter(prefix="/internal/threads/{thread_id}/images", tags=["images"])
 
@@ -17,7 +17,7 @@ async def _authorize_image_request(
     thread_id: str,
     authorization: str | None,
     expected_operation: str,
-) -> tuple[str, str]:
+) -> tuple[str, str, str]:
     facts = await authenticate(authorization)
     scope = facts.get("runtime_scope", {})
     if scope.get("operation") != expected_operation:
@@ -30,7 +30,7 @@ async def _authorize_image_request(
             status_code=403,
             detail={"code": "runtime_target_denied", "message": "Thread ID mismatch"},
         )
-    if scope.get("assistant_id") != "showcase_demo":
+    if scope.get("assistant_id") not in {"showcase_demo", "dearflow_agent"}:
         raise HTTPException(
             status_code=409,
             detail={
@@ -45,7 +45,7 @@ async def _authorize_image_request(
             status_code=403,
             detail={"code": "thread_project_denied", "message": "Tenant and project required"},
         )
-    return tenant_id, project_id
+    return tenant_id, project_id, scope["assistant_id"]
 
 
 @router.put("/uploads/{sha256}")
@@ -55,7 +55,7 @@ async def upload_thread_image(
     request: Request,
     authorization: str | None = Header(default=None),
 ) -> ImageRef:
-    tenant_id, project_id = await _authorize_image_request(
+    tenant_id, project_id, graph_id = await _authorize_image_request(
         thread_id, authorization, "image-upload"
     )
 
@@ -71,7 +71,7 @@ async def upload_thread_image(
         chunks.append(chunk)
 
     data = b"".join(chunks)
-    workspace_root = get_showcase_workspace_root(tenant_id, project_id, thread_id)
+    workspace_root = resolve_thread_workspace(tenant_id, project_id, thread_id, graph_id)
     ws = ImageWorkspace(workspace_root)
 
     try:
@@ -90,11 +90,11 @@ async def read_thread_image(
     path: str = Query(...),
     authorization: str | None = Header(default=None),
 ) -> Response:
-    tenant_id, project_id = await _authorize_image_request(
+    tenant_id, project_id, graph_id = await _authorize_image_request(
         thread_id, authorization, "image-read"
     )
 
-    workspace_root = get_showcase_workspace_root(tenant_id, project_id, thread_id)
+    workspace_root = resolve_thread_workspace(tenant_id, project_id, thread_id, graph_id)
     ws = ImageWorkspace(workspace_root)
 
     try:

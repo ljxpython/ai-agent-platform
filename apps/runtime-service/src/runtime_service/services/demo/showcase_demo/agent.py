@@ -192,7 +192,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     bound["configurable"] = {
         key: value for key, value in configurable.items() if key in _EXECUTION_KEYS
     }
-    bound["recursion_limit"] = min(config.get("recursion_limit", 100), 100)
+    bound["recursion_limit"] = min(max(int(config.get("recursion_limit", 1000)), 1), 1000)
     agent = agent.with_config(bound)
     if not executing:
         return agent

@@ -132,6 +132,13 @@ def test_parallel_children_are_isolated_and_follow_parent_cancel(monkeypatch, tm
             graph.checkpointer = InMemorySaver()
             await invoke_graph(graph, {"messages": [("user", "parent-private-input")]},
                                config=cfg, on_event=receive)
+            lifecycle_links = {
+                event["data"]["cause"]["tool_call_id"]: tuple(event["data"]["namespace"])
+                for event in transported
+                if event["event"] == "lifecycle" and event["data"].get("cause", {}).get("type") == "toolCall"
+            }
+            assert set(lifecycle_links) == {"dispatch-alpha", "dispatch-beta"}
+            assert len(set(lifecycle_links.values())) == 2
             dispatch = {}
             child_namespaces = set()
             for event in transported:
@@ -148,3 +155,46 @@ def test_parallel_children_are_isolated_and_follow_parent_cancel(monkeypatch, tm
         assert callbacks and all(parent != "None" for parent, _ in callbacks.values())
 
     asyncio.run(run())
+
+
+def test_live_subagent_trace():
+    """Read back actual exported child observations; never invent per-task costs."""
+    import os
+
+    import httpx
+    from dotenv import dotenv_values
+
+    thread_id = os.environ.get("DEAR_SUBAGENT_TRACE_THREAD")
+    if not thread_id:
+        pytest.skip("DEAR_SUBAGENT_TRACE_THREAD enables read-only Langfuse verification")
+    settings = {**dotenv_values(".env"), **os.environ}
+    with httpx.Client(base_url=settings["LANGFUSE_BASE_URL"].rstrip("/"),
+                      auth=(settings["LANGFUSE_PUBLIC_KEY"], settings["LANGFUSE_SECRET_KEY"]),
+                      timeout=30, trust_env=False) as client:
+        response = client.get("/api/public/traces", params={"sessionId": thread_id, "limit": 20})
+        response.raise_for_status()
+        traces = response.json()["data"]
+        assert traces, "No exported trace for this verified thread"
+        detail = client.get("/api/public/traces/" + traces[0]["id"])
+        detail.raise_for_status()
+        trace = detail.json()
+        assert trace["metadata"]["execution_mode"] == "ultra"
+        assert all(trace["metadata"].get(key) for key in ("policy_hash", "skills_hash", "effective_reasoning"))
+        observations = {item["id"]: item for item in trace["observations"]}
+        children = {key for key, item in observations.items() if item.get("name") == "general-purpose"}
+        assert len(children) == 2
+        attributed = set()
+        for item in observations.values():
+            if item.get("type") != "GENERATION":
+                continue
+            parent = item.get("parentObservationId")
+            visited = set()
+            while parent in observations and parent not in visited:
+                visited.add(parent)
+                if parent in children:
+                    assert item["usage"]["total"] > 0
+                    attributed.add(parent)
+                    break
+                parent = observations[parent].get("parentObservationId")
+        assert attributed == children
+        print(f"Langfuse trace={trace['id']} children={len(children)} actual_usage_verified")

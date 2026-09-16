@@ -1,0 +1,25 @@
+{
+  "upstream_commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "upstream_path": "skills/public/newsletter-generation",
+  "platform_notes": "Download only, no email; unknown dates, deduplication and excluded/old candidates explicit.",
+  "revision": "dear-k07-v1",
+  "source_files": {
+    "SKILL.md": "cc66adb99053a781d6b5ce65f5e698c62384b8793421d15067d880e7b32538dc"
+  },
+  "license_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+  "adaptations": [
+    {
+      "from": "web_fetch",
+      "to": "fetch_page"
+    },
+    {
+      "from": "present_files",
+      "to": "present_artifacts"
+    },
+    {
+      "from": "/mnt/user-data/outputs/",
+      "to": "/workspace/work/"
+    }
+  ],
+  "implementation": "docs/projects/20260913-dearflow-agent/implementation/10-p4-k02-k07-batch.md"
+}

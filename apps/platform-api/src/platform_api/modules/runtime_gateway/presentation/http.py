@@ -516,6 +516,26 @@ async def get_thread_capabilities(
     return _redact_runtime_private_fields(result)
 
 
+@router.get("/threads/{thread_id}/dear/{resource}")
+async def read_dear_governance(request: Request, thread_id: str, resource: str, query: str = Query(default="", max_length=500),
+                               actor: ActorContext = Depends(get_actor_context),
+                               service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    result = await service.dear_governance(actor=actor, project_id=_require_project_id(request),
+                                          thread_id=thread_id, resource=resource, query=query)
+    return _redact_runtime_private_fields(result)
+
+
+@router.post("/threads/{thread_id}/dear/{resource}")
+async def write_dear_governance(request: Request, thread_id: str, resource: str, payload: dict = Body(...),
+                                actor: ActorContext = Depends(get_actor_context),
+                                service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    if len(json.dumps(payload).encode()) > 1500000:
+        raise BadRequestError(code="dear_payload_too_large", message="Dear payload too large")
+    result = await service.dear_governance(actor=actor, project_id=_require_project_id(request),
+                                          thread_id=thread_id, resource=resource, payload=payload)
+    return _redact_runtime_private_fields(result)
+
+
 @router.get("/threads/{thread_id}/files/content")
 async def read_thread_file(
     request: Request,
@@ -538,9 +558,11 @@ async def read_thread_file(
         headers["etag"] = payload.etag
     if payload.cache_control:
         headers["cache-control"] = payload.cache_control
-    headers["content-disposition"] = f'inline; filename="{path.rsplit("/", 1)[-1]}"'
+    headers["content-disposition"] = f'attachment; filename="{path.rsplit("/", 1)[-1]}"'
+    headers["x-content-type-options"] = "nosniff"
+    headers["content-security-policy"] = "sandbox; default-src 'none'"
     media_type = payload.content_type
-    if media_type in ("text/plain", "text/markdown", "text/csv", "application/json"):
+    if media_type in ("text/html", "text/css", "text/javascript", "text/plain", "text/markdown", "text/x-bibtex", "text/csv", "application/json"):
         media_type = f"{media_type}; charset=utf-8"
 
     return RuntimeStreamingResponse(

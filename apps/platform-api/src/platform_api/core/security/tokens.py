@@ -164,6 +164,8 @@ def create_runtime_delegation_token(
         "image-read",
         "workspace-file-upload",
         "workspace-file-read",
+        "dear-governance-read",
+        "dear-governance-write",
     }:
         raise ValueError("runtime delegation scope operation is unsupported")
     if (

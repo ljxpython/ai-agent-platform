@@ -1,0 +1,12 @@
+{
+  "upstream_commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "upstream_path": "skills/public/consulting-analysis",
+  "platform_notes": "Official clarification, missing-data/chart limits; chart generation remains K09.",
+  "revision": "dear-k04-v1",
+  "source_files": {
+    "SKILL.md": "5bc99df7e5f8af5471eaa5d20b85fc46e99895cf3f2642fa9da94108d03ca13e"
+  },
+  "license_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+  "adaptations": [],
+  "implementation": "docs/projects/20260913-dearflow-agent/implementation/10-p4-k02-k07-batch.md"
+}

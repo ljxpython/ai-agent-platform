@@ -6,7 +6,10 @@ from typing import TypedDict
 MAX_FILE_BYTES = 20 * 1024 * 1024
 MIME_EXT = {
     "application/pdf": "pdf", "text/plain": "txt", "text/markdown": "md",
-    "application/json": "json", "text/csv": "csv",
+    "application/json": "json", "text/csv": "csv", "application/zip": "zip",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
+    "application/vnd.ms-excel": "xls",
+    "text/html": "html", "text/css": "css", "text/javascript": "js",
 }
 
 
@@ -20,7 +23,7 @@ class FileRef(TypedDict):
 
 
 def validate_file_path(path: object) -> tuple[str, str]:
-    match = re.fullmatch(r"/workspace/uploads/([0-9a-f]{64})\.(pdf|txt|md|json|csv)", path) if isinstance(path, str) else None
+    match = re.fullmatch(r"/workspace/uploads/([0-9a-f]{64})\.(pdf|txt|md|json|csv|zip|xlsx|xls|html|css|js)", path) if isinstance(path, str) else None
     if match is None:
         raise ValueError("invalid_file_ref")
     return match.group(1), match.group(2)

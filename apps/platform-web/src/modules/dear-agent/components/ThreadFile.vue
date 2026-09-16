@@ -35,7 +35,16 @@ const fileBadge = computed(() => {
   if (mime.includes("csv") || name.endsWith(".csv")) return { text: "CSV", bg: "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/50" };
   if (mime.includes("json") || name.endsWith(".json")) return { text: "JSON", bg: "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300 border-amber-200 dark:border-amber-900/50" };
   if (name.endsWith(".md") || name.endsWith(".markdown")) return { text: "MD", bg: "bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300 border-blue-200 dark:border-blue-900/50" };
-  return { text: "TXT", bg: "bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700" };
+  if (name.endsWith(".zip")) return { text: "ZIP", bg: "bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300 border-purple-200 dark:border-purple-900/50" };
+  if (name.endsWith(".pptx")) return { text: "PPT", bg: "bg-orange-50 text-orange-600 dark:bg-orange-950/40 dark:text-orange-300 border-orange-200 dark:border-orange-900/50" };
+  if (name.endsWith(".xlsx") || name.endsWith(".xls")) return { text: "XLS", bg: "bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-300 border-green-200 dark:border-green-900/50" };
+  if (name.endsWith(".html") || name.endsWith(".htm")) return { text: "HTML", bg: "bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300 border-sky-200 dark:border-sky-900/50" };
+  return { text: "FILE", bg: "bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700" };
+});
+
+const isPreviewable = computed(() => {
+  const name = filename.value.toLowerCase();
+  return !name.endsWith(".zip") && !name.endsWith(".pptx") && !name.endsWith(".xlsx") && !name.endsWith(".xls") && !name.endsWith(".bin");
 });
 
 async function handlePreviewInNewTab() {
@@ -125,6 +134,7 @@ async function handleDownload(event: MouseEvent) {
       <!-- 操作按钮 -->
       <div class="flex shrink-0 items-center gap-1.5">
         <button
+          v-if="isPreviewable"
           type="button"
           :disabled="actionLoading"
           class="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 dark:border-dark-600 dark:bg-dark-700 dark:text-dark-200 dark:hover:bg-dark-600 dark:hover:text-white transition-colors"

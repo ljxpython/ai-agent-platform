@@ -1,0 +1,23 @@
+{
+  "upstream_commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "upstream_path": "skills/public/github-deep-research",
+  "platform_notes": "github_query replaces CLI execution; public-only, pagination/truncation and evidence. Support files unchanged.",
+  "revision": "dear-k03-v1",
+  "source_files": {
+    "SKILL.md": "7add6956b424fbe5d4fcf85ea977b7b663ad2d810b3157a69953401db9c7acdb",
+    "scripts/github_api.py": "2c1fabca90c8555c0e1f55a3cdfffc90cef6b9e175fe1a4f63b231dc51f8ec5f",
+    "assets/report_template.md": "fdd14d2ebf049ef7bf7bb839ac76c259bd4cfa05614a22b844a4e97210f62502"
+  },
+  "license_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+  "adaptations": [
+    {
+      "from": "web_search",
+      "to": "search_web"
+    },
+    {
+      "from": "web_fetch",
+      "to": "fetch_page"
+    }
+  ],
+  "implementation": "docs/projects/20260913-dearflow-agent/implementation/10-p4-k02-k07-batch.md"
+}

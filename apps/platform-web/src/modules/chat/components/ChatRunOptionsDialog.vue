@@ -2,7 +2,7 @@
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
-type ChatRunOptions = { modelId: string; temperature: string; maxTokens: string }
+type ChatRunOptions = { modelId: string; temperature: string; maxTokens: string; recursionLimit?: string }
 import type { RuntimeModelItem } from '@/types/management'
 
 const props = defineProps<{
@@ -17,6 +17,7 @@ const emit = defineEmits<{
   'update:model-id': [value: string]
   'update:temperature': [value: string]
   'update:max-tokens': [value: string]
+  'update:recursion-limit': [value: string]
   restore: []
   apply: []
 }>()
@@ -97,6 +98,19 @@ function getInputValue(event: Event) {
           >
         </label>
       </div>
+
+      <label class="block">
+        <span class="pw-input-label">最大步数预算 (Recursion Limit)</span>
+        <input
+          :value="props.draftRunOptions.recursionLimit"
+          class="pw-input"
+          placeholder="默认 1000，支持 1..1000"
+          @input="emit('update:recursion-limit', getInputValue($event))"
+        >
+        <span class="mt-1 block text-xs text-gray-400 dark:text-dark-400">
+          控制单次运行允许的最大图执行步数（1~1000）。复杂多步骤 Agent（如 showcase_demo）默认提供 1000 步充裕预算。
+        </span>
+      </label>
     </div>
 
     <template #footer>

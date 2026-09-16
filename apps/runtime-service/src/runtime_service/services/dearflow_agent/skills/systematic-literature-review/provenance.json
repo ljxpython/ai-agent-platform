@@ -1,0 +1,31 @@
+{
+  "upstream_commit": "44ae750545caff29506906f4b0b1ebf79cb23fa7",
+  "upstream_path": "skills/public/systematic-literature-review",
+  "platform_notes": "arxiv_search replaces CLI; copied pure parsers in tools/arxiv.py. Ultra/task and official ToolMessage replace DeerFlow config/prefixes. Three concurrent tasks, ten-task budget; dedup/date/read_scope and optional BibTeX.",
+  "revision": "dear-k05-v1",
+  "source_files": {
+    "SKILL.md": "9fe4891e86b29d0f0f192bddab4ff913b123ffd764a2af737a4d6bb334209b6a",
+    "evals/evals.json": "c2f0ac1f53f6599567034c81fad7b358c512b44595c65791268feda4d9eb61e9",
+    "evals/trigger_eval_set.json": "b04f49c4bc252d1465b4577310874927a1e449e7f4c346805ea8a80f17029597",
+    "scripts/arxiv_search.py": "8394239ec2e4be19f3cfe9e430bc02b53b921fc4692d93873656841e64dc1605",
+    "templates/ieee.md": "fb07cf49613508fa1bc53de0a6179e3c8647af6c1fe1e047390db8e1562782f2",
+    "templates/bibtex.md": "1c4d2fafb49231513ecc59f7224f45817000573d07e3fdf1453784c0533c5fe7",
+    "templates/apa.md": "eec7beba46eaa6b9693110e83c90dd5b7a899c693101f1e79930b5a0ccd37c0b"
+  },
+  "license_sha256": "b23dff4d4bac8d17b6efaaa7e88c2b730149c4dda45699ce676b719cfdffe7e1",
+  "adaptations": [
+    {
+      "from": "present_files",
+      "to": "present_artifacts"
+    },
+    {
+      "from": "/mnt/user-data/outputs/",
+      "to": "/workspace/work/"
+    },
+    {
+      "from": "/mnt/skills/public/",
+      "to": "/skills/"
+    }
+  ],
+  "implementation": "docs/projects/20260913-dearflow-agent/implementation/10-p4-k02-k07-batch.md"
+}

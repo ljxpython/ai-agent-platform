@@ -14,7 +14,7 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import ToolException, tool
 from langgraph.types import Command
 from PIL import Image
-from runtime_service.services.demo.showcase_demo import chart
+from runtime_service.tools import chart
 from runtime_service.tools import images
 from .test_agent import build as graph_builder
 from .test_agent import call, config
@@ -368,7 +368,7 @@ def test_chart_interceptor_downloads_into_workspace(monkeypatch, tmp_path):
             ]
         )
 
-    result = asyncio.run(intercepted[0](None, handler))
+    result = asyncio.run(intercepted[0](SimpleNamespace(name="generate_bar_chart", args={"data": [{"category": "A", "value": 12}]}), handler))
     assert result.content[0].text.startswith("/workspace/charts/")
     assert len(list((tmp_path / "charts").glob("*.png"))) == 1
 
@@ -564,3 +564,139 @@ def test_live_image_approval_vision_and_chart_delegation(build, monkeypatch):
         print("LIVE_WORKSPACE=" + str(workspace.root))
 
     asyncio.run(run())
+
+
+def test_normalize_chart_args_flow_diagram():
+    # 1. 顶层 edges 缺失 data 与 nodes，包含残缺边与重复边
+    raw_args = {
+        "edges": [
+            {"name": "broken", "source": "A"},  # 缺少 target
+            {"name": "step1", "source": "A", "target": "B"},
+            {"name": "step2", "source": "A", "target": "B"},  # 重复边
+            {"name": "step3", "source": "B", "target": "C"},
+        ],
+        "title": "Test Flow",
+    }
+    normalized = chart.normalize_chart_args("generate_flow_diagram", raw_args)
+    assert "data" in normalized
+    data = normalized["data"]
+    # 验证重复边已合并
+    assert len(data["edges"]) == 2
+    edge_ab = next(e for e in data["edges"] if e["source"] == "A" and e["target"] == "B")
+    assert edge_ab["name"] == "step1 / step2"
+    # 验证自动推导补齐了 nodes
+    node_names = {n["name"] for n in data["nodes"]}
+    assert node_names == {"A", "B", "C"}
+    # 验证 title 等其它属性保留
+    assert normalized["title"] == "Test Flow"
+
+
+def test_normalize_chart_args_tree_and_items():
+    # 2. 针对思维导图平铺参数
+    tree_args = {
+        "name": "Root",
+        "children": [{"name": "Child1"}],
+    }
+    normalized_tree = chart.normalize_chart_args("generate_mind_map", tree_args)
+    assert normalized_tree["data"]["name"] == "Root"
+    assert normalized_tree["data"]["children"] == [{"name": "Child1"}]
+
+    # 3. 针对 items 平铺到常规图表
+    bar_args = {"items": [{"category": "X", "value": 10}]}
+    normalized_bar = chart.normalize_chart_args("generate_bar_chart", bar_args)
+    assert normalized_bar["data"] == [{"category": "X", "value": 10}]
+
+
+def test_chart_flow_diagram_interceptor_normalizes_and_succeeds(monkeypatch, tmp_path):
+    from mcp.types import CallToolResult, TextContent
+
+    intercepted = []
+
+    def convert(*args, **kwargs):
+        intercepted.extend(kwargs["tool_interceptors"])
+
+    async def download(url, **kwargs):
+        return png()
+
+    monkeypatch.setattr(chart, "convert_mcp_tool_to_langchain_tool", convert)
+    monkeypatch.setattr(chart, "download_image", download)
+    chart.build_chart_tools(images.ImageWorkspace(tmp_path))
+
+    received_request = None
+
+    async def handler(request):
+        nonlocal received_request
+        received_request = request
+        return CallToolResult(
+            content=[
+                TextContent(type="text", text="https://mdn.alipayobjects.com/chart.png")
+            ]
+        )
+
+    # 传入大模型常犯错的平铺 edges（无 data，无 nodes，有重复边）
+    raw_input = {
+        "edges": [
+            {"source": "支付服务", "target": "订单服务", "name": "支付地址"},
+            {"source": "支付服务", "target": "订单服务", "name": "支付回调"},
+        ]
+    }
+    result = asyncio.run(
+        intercepted[0](
+            SimpleNamespace(name="generate_flow_diagram", args=raw_input),
+            handler,
+        )
+    )
+    assert not result.isError
+    assert result.content[0].text.startswith("/workspace/charts/")
+    # 验证透传给底层 handler 的参数已自动规范化与去重
+    assert len(received_request.args["data"]["edges"]) == 1
+    assert received_request.args["data"]["edges"][0]["name"] == "支付地址 / 支付回调"
+    assert len(received_request.args["data"]["nodes"]) == 2
+
+
+def test_chart_validation_error_returns_friendly_message(monkeypatch, tmp_path):
+    intercepted = []
+
+    def convert(*args, **kwargs):
+        intercepted.extend(kwargs["tool_interceptors"])
+
+    monkeypatch.setattr(chart, "convert_mcp_tool_to_langchain_tool", convert)
+    chart.build_chart_tools(images.ImageWorkspace(tmp_path))
+
+    async def handler(request):
+        raise AssertionError("handler should not be called on validation error")
+
+    # 传入无效类型的参数（非法的 width）
+    result = asyncio.run(
+        intercepted[0](
+            SimpleNamespace(name="generate_bar_chart", args={"data": [{"category": "A", "value": 1}], "width": "invalid_number"}),
+            handler,
+        )
+    )
+    assert result.isError
+    assert "Chart argument validation failed" in result.content[0].text
+
+
+def test_chart_mcp_error_returns_friendly_message(monkeypatch, tmp_path):
+    from mcp.shared.exceptions import McpError
+    from mcp.types import ErrorData
+
+    intercepted = []
+
+    def convert(*args, **kwargs):
+        intercepted.extend(kwargs["tool_interceptors"])
+
+    monkeypatch.setattr(chart, "convert_mcp_tool_to_langchain_tool", convert)
+    chart.build_chart_tools(images.ImageWorkspace(tmp_path))
+
+    async def handler(request):
+        raise McpError(ErrorData(code=-32603, message="Failed to generate chart: Something went wrong in AntV\nError: internal stack"))
+
+    result = asyncio.run(
+        intercepted[0](
+            SimpleNamespace(name="generate_bar_chart", args={"data": [{"category": "A", "value": 1}]}),
+            handler,
+        )
+    )
+    assert result.isError
+    assert "Chart generation failed: Failed to generate chart: Something went wrong in AntV" in result.content[0].text

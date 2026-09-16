@@ -67,6 +67,14 @@ class LangGraphRuntimeGatewayUpstream:
     async def get_info(self) -> dict[str, Any]:
         return await self._http.require_json("GET", "/info")
 
+    async def dear_governance(self, thread_id: str, resource: str, *, payload: dict | None = None, query: str = "") -> dict:
+        from urllib.parse import quote
+        return await self._http.require_json(
+            "GET" if payload is None else "POST",
+            f"/internal/threads/{quote(thread_id, safe='')}/dear/{resource}",
+            payload=payload, params={"query": query} if resource == "memory" and payload is None else None,
+        )
+
     async def get_graph_capabilities(self, graph_id: str) -> dict[str, Any]:
         from urllib.parse import quote
         return await self._http.require_json(
