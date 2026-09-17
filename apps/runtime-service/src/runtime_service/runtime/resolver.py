@@ -187,7 +187,7 @@ def _validate_context(value: RuntimeContext) -> RuntimeContext:
         raise _fail("runtime.context.invalid_value", "execution_mode")
     if value.access_policy is not None and (
         not isinstance(value.access_policy, str)
-        or value.access_policy not in {"review", "workspace_write"}
+        or value.access_policy not in {"review", "workspace_write", "full_access"}
     ):
         raise _fail("runtime.context.invalid_value", "access_policy")
     model_id = None if value.model_id is None else _identifier(value.model_id, "model_id", "runtime.context.invalid_value")

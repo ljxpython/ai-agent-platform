@@ -66,8 +66,8 @@ def _validate_runtime_option_values(options: dict[str, Any]) -> None:
     if mode is not None and (not isinstance(mode, str) or mode not in {"flash", "standard", "pro", "ultra"}):
         raise ValueError("execution_mode must be flash, standard, pro or ultra")
     policy = options.get("access_policy")
-    if policy is not None and policy not in {"review", "workspace_write"}:
-        raise ValueError("access_policy must be review or workspace_write")
+    if policy is not None and policy not in {"review", "workspace_write", "full_access"}:
+        raise ValueError("access_policy must be review, workspace_write or full_access")
     string_keys = ("model_id", "system_prompt", "multimodal_parser_model_id")
     for key in string_keys:
         value = options.get(key)

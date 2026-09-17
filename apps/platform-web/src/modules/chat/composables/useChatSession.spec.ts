@@ -361,4 +361,69 @@ it("updates access policy for existing thread via API and handles failure gracef
   }
 });
 
+it("supports draft state full_access staging and keeps full_access after refresh", async () => {
+  const submitFn = vi.fn();
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+    submit: submitFn,
+  });
+  mocks.runs.mockResolvedValue([]);
+  mocks.createThread.mockResolvedValue({ thread_id: "created-thread-full" });
+  mocks.getThread.mockResolvedValue({
+    thread_id: "created-thread-full",
+    metadata: { access_policy: "full_access" },
+  });
+  mocks.updateAccessPolicy.mockResolvedValue({
+    thread_id: "created-thread-full",
+    access_policy: "full_access",
+  });
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "reference_agent",
+      threadId: undefined, // 草稿态
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    expect(session.accessPolicy.value).toBe("review");
+
+    // 1. 草稿态预选 full_access
+    const switched = await session.setAccessPolicy("full_access");
+    expect(switched).toBe(true);
+    expect(session.accessPolicy.value).toBe("full_access");
+    expect(mocks.updateAccessPolicy).not.toHaveBeenCalled();
+
+    // 2. 发送首条消息，触发创建线程并补发 PATCH "full_access"
+    await session.send("Build architecture design");
+    await flushPromises();
+
+    expect(mocks.createThread).toHaveBeenCalled();
+    expect(mocks.updateAccessPolicy).toHaveBeenCalledWith(
+      "proj-1",
+      "created-thread-full",
+      "full_access",
+    );
+    expect(submitFn).toHaveBeenCalled();
+
+    // 3. 模拟工具调用中断后触发 refreshAccessPolicy，验证策略坚定常驻为 full_access，绝不退化为 review
+    await session.refreshAccessPolicy();
+    expect(session.accessPolicy.value).toBe("full_access");
+  } finally {
+    scope.stop();
+  }
+});
+
 

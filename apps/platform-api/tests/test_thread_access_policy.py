@@ -27,3 +27,15 @@ class ThreadAccessPolicyTest(unittest.IsolatedAsyncioTestCase):
             "t", {"metadata": {"project_id": "p", "graph_id": "showcase_demo", "access_policy": "workspace_write"}}
         )
 
+    async def test_policy_update_supports_full_access(self) -> None:
+        upstream = SimpleNamespace(update_thread=AsyncMock())
+        service = RuntimeGatewayService(session_factory=None, upstream=upstream)
+        service._load_thread = AsyncMock(return_value={"metadata": {"project_id": "p", "graph_id": "showcase_demo"}})  # type: ignore[method-assign]
+        result = await service.update_thread_access_policy(
+            actor=SimpleNamespace(), project_id="p", thread_id="t", policy="full_access"
+        )
+        self.assertEqual(result, {"thread_id": "t", "access_policy": "full_access"})
+        upstream.update_thread.assert_awaited_once_with(
+            "t", {"metadata": {"project_id": "p", "graph_id": "showcase_demo", "access_policy": "full_access"}}
+        )
+

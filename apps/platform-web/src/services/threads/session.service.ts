@@ -1,7 +1,7 @@
 import { Client, type Checkpoint, type Interrupt, type Run, type Thread, type ThreadState } from '@langchain/langgraph-sdk'
 import { getLanggraphApiUrl } from '@/services/langgraph/client'
 
-export type AccessPolicy = 'review' | 'workspace_write'
+export type AccessPolicy = 'review' | 'workspace_write' | 'full_access'
 export type ChatState = Record<string, unknown> & { messages: unknown[] }
 export type ChatThread = Thread<ChatState>
 export type ChatCheckpoint = ThreadState<ChatState>

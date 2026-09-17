@@ -830,7 +830,15 @@ const chatMetrics = computed(() => {
             新会话
           </span>
           <span
-            v-if="session.accessPolicy.value === 'workspace_write'"
+            v-if="session.accessPolicy.value === 'full_access'"
+            class="inline-flex items-center gap-1 rounded-md border border-red-300/80 bg-red-50/80 px-2 py-0.5 text-[10px] font-medium text-red-800 dark:border-red-800/80 dark:bg-red-950/40 dark:text-red-300"
+            title="当前会话启用全权负责模式：默认放行所有工具审批"
+          >
+            <span class="h-1.5 w-1.5 rounded-full bg-red-500" />
+            全权负责
+          </span>
+          <span
+            v-else-if="session.accessPolicy.value === 'workspace_write'"
             class="inline-flex items-center gap-1 rounded-md border border-amber-300/80 bg-amber-50/80 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-300"
             title="当前会话启用工作区免审策略"
           >

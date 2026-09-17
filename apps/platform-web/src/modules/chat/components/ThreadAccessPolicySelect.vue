@@ -28,6 +28,7 @@ const emit = defineEmits<{
 
 const isOpen = ref(false);
 const showRiskDialog = ref(false);
+const pendingTargetPolicy = ref<AccessPolicy>("workspace_write");
 const triggerRef = ref<HTMLButtonElement | null>(null);
 const dropdownRef = ref<HTMLElement | null>(null);
 const dropdownStyle = ref<CSSProperties>({});
@@ -35,25 +36,28 @@ const dropdownStyle = ref<CSSProperties>({});
 const currentPolicy = computed<AccessPolicy>(() => props.modelValue || "review");
 
 const isWorkspaceWrite = computed(() => currentPolicy.value === "workspace_write");
+const isFullAccess = computed(() => currentPolicy.value === "full_access");
 
-const currentLabel = computed(() =>
-  isWorkspaceWrite.value ? "允许工作区操作" : "审阅每项操作",
-);
+const currentLabel = computed(() => {
+  if (isFullAccess.value) return "全权负责 (Full access)";
+  if (isWorkspaceWrite.value) return "允许工作区操作";
+  return "审阅每项操作";
+});
 
 const effectiveTooltip = computed(() => {
   if (props.tooltip) return props.tooltip;
   if (!props.canWrite) return "无项目写权限，无法调整访问策略";
   if (props.disabled) return "当前状态下不可更改策略";
-  return isWorkspaceWrite.value
-    ? "当前为受控工作区免审模式：写文件与执行命令无需确认"
-    : "当前为逐项审阅模式：写文件与执行命令须人工确认";
+  if (isFullAccess.value) return "当前为全权负责模式：所有工具审批默认全部放行，极高自主权";
+  if (isWorkspaceWrite.value) return "当前为受控工作区免审模式：写文件与执行命令无需确认";
+  return "当前为逐项审阅模式：写文件与执行命令须人工确认";
 });
 
 function updateDropdownPosition() {
   if (!isOpen.value || !triggerRef.value) return;
 
   const rect = triggerRef.value.getBoundingClientRect();
-  const menuHeight = 180;
+  const menuHeight = 240;
   const spaceBelow = window.innerHeight - rect.bottom;
   const showAbove = spaceBelow < menuHeight && rect.top > menuHeight;
 
@@ -62,7 +66,7 @@ function updateDropdownPosition() {
     left: `${Math.max(12, Math.min(rect.left, window.innerWidth - 300))}px`,
     top: showAbove ? "auto" : `${rect.bottom + 6}px`,
     bottom: showAbove ? `${window.innerHeight - rect.top + 6}px` : "auto",
-    width: "290px",
+    width: "300px",
     zIndex: 9999,
   };
 }
@@ -98,7 +102,8 @@ function selectPolicy(target: AccessPolicy) {
   isOpen.value = false;
   if (target === currentPolicy.value) return;
 
-  if (target === "workspace_write") {
+  if (target === "workspace_write" || target === "full_access") {
+    pendingTargetPolicy.value = target;
     showRiskDialog.value = true;
     return;
   }
@@ -109,9 +114,10 @@ function selectPolicy(target: AccessPolicy) {
 }
 
 function confirmRiskUpgrade() {
+  const target = pendingTargetPolicy.value;
   showRiskDialog.value = false;
-  emit("update:modelValue", "workspace_write");
-  emit("change", "workspace_write");
+  emit("update:modelValue", target);
+  emit("change", target);
 }
 
 onMounted(() => {
@@ -136,9 +142,11 @@ onBeforeUnmount(() => {
       type="button"
       class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium shadow-2xs transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:cursor-not-allowed disabled:opacity-50"
       :class="[
-        isWorkspaceWrite
-          ? 'border-amber-300 bg-amber-50/80 text-amber-900 hover:bg-amber-100/70 hover:border-amber-400 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-900/60'
-          : 'border-gray-200/80 bg-white/90 text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white',
+        isFullAccess
+          ? 'border-red-300 bg-red-50/80 text-red-900 hover:bg-red-100/70 hover:border-red-400 dark:border-red-800/80 dark:bg-red-950/40 dark:text-red-200 dark:hover:bg-red-900/60'
+          : isWorkspaceWrite
+            ? 'border-amber-300 bg-amber-50/80 text-amber-900 hover:bg-amber-100/70 hover:border-amber-400 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-900/60'
+            : 'border-gray-200/80 bg-white/90 text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white',
         isOpen ? 'ring-2 ring-primary-500/20 border-primary-500' : ''
       ]"
       :disabled="disabled || loading"
@@ -151,11 +159,46 @@ onBeforeUnmount(() => {
       <!-- Shield 图标: 根据当前档位切换 (借鉴 deepseek-harness 设计) -->
       <span
         class="flex h-3.5 w-3.5 shrink-0 items-center justify-center"
-        :class="isWorkspaceWrite ? 'text-amber-600 dark:text-amber-400' : 'text-blue-500 dark:text-blue-400'"
+        :class="[
+          isFullAccess
+            ? 'text-red-600 dark:text-red-400'
+            : isWorkspaceWrite
+              ? 'text-amber-600 dark:text-amber-400'
+              : 'text-blue-500 dark:text-blue-400'
+        ]"
       >
+        <!-- Full access: 盾牌 + 感叹号 (图 1 同款) -->
+        <svg
+          v-if="isFullAccess"
+          width="14"
+          height="14"
+          viewBox="0 0 16 16"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M8.20554 0.899994L14.7901 3.36857V7.01026C14.7901 12 11.0466 14.2103 8.20554 15.3C5.36446 14.2103 1.62012 12 1.62012 7.01026V3.36857L8.20554 0.899994Z"
+            stroke="currentColor"
+            stroke-width="1.3"
+            stroke-linejoin="round"
+          />
+          <path
+            d="M8 5V8.5"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+          />
+          <circle
+            cx="8"
+            cy="11"
+            r="0.8"
+            fill="currentColor"
+          />
+        </svg>
+
         <!-- Workspace write: 盾牌 + 编辑铅笔 -->
         <svg
-          v-if="isWorkspaceWrite"
+          v-else-if="isWorkspaceWrite"
           width="14"
           height="14"
           viewBox="0 0 16 16"
@@ -192,7 +235,7 @@ onBeforeUnmount(() => {
         </svg>
       </span>
 
-      <span class="truncate max-w-[110px]">{{ currentLabel }}</span>
+      <span class="truncate max-w-[130px]">{{ currentLabel }}</span>
 
       <!-- 旋转的小箭头 -->
       <span
@@ -233,7 +276,7 @@ onBeforeUnmount(() => {
             type="button"
             class="w-full text-left rounded-lg p-2 transition-colors flex items-start gap-2.5 group"
             :class="
-              !isWorkspaceWrite
+              currentPolicy === 'review'
                 ? 'bg-blue-50/70 text-blue-900 dark:bg-blue-950/40 dark:text-blue-200'
                 : 'hover:bg-gray-50 dark:hover:bg-dark-800 text-gray-800 dark:text-dark-100'
             "
@@ -257,7 +300,7 @@ onBeforeUnmount(() => {
               </p>
             </div>
             <BaseIcon
-              v-if="!isWorkspaceWrite"
+              v-if="currentPolicy === 'review'"
               name="check"
               size="xs"
               class="shrink-0 text-blue-600 dark:text-blue-400 mt-1"
@@ -269,7 +312,7 @@ onBeforeUnmount(() => {
             type="button"
             class="w-full text-left rounded-lg p-2 transition-colors flex items-start gap-2.5 group"
             :class="
-              isWorkspaceWrite
+              currentPolicy === 'workspace_write'
                 ? 'bg-amber-50/80 text-amber-950 dark:bg-amber-950/40 dark:text-amber-200'
                 : 'hover:bg-gray-50 dark:hover:bg-dark-800 text-gray-800 dark:text-dark-100'
             "
@@ -294,10 +337,47 @@ onBeforeUnmount(() => {
               </p>
             </div>
             <BaseIcon
-              v-if="isWorkspaceWrite"
+              v-if="currentPolicy === 'workspace_write'"
               name="check"
               size="xs"
               class="shrink-0 text-amber-600 dark:text-amber-400 mt-1"
+            />
+          </button>
+
+          <!-- Option: Full access (全权负责，图 1 同款) -->
+          <button
+            type="button"
+            class="w-full text-left rounded-lg p-2 transition-colors flex items-start gap-2.5 group"
+            :class="
+              currentPolicy === 'full_access'
+                ? 'bg-red-50/80 text-red-950 dark:bg-red-950/40 dark:text-red-200'
+                : 'hover:bg-gray-50 dark:hover:bg-dark-800 text-gray-800 dark:text-dark-100'
+            "
+            role="menuitem"
+            data-testid="policy-option-full-access"
+            @click="selectPolicy('full_access')"
+          >
+            <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-red-600 dark:text-red-400">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                <path d="M8.20554 0.899994L14.7901 3.36857V7.01026C14.7901 12 11.0466 14.2103 8.20554 15.3C5.36446 14.2103 1.62012 12 1.62012 7.01026V3.36857L8.20554 0.899994Z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" />
+                <path d="M8 5V8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+                <circle cx="8" cy="11" r="0.8" fill="currentColor" />
+              </svg>
+            </span>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-semibold text-red-600 dark:text-red-400">Full access (全权负责)</span>
+                <span class="text-[10px] text-red-600 dark:text-red-400 font-medium">全放行</span>
+              </div>
+              <p class="text-[11px] text-gray-500 dark:text-dark-400 leading-normal mt-0.5">
+                默认放行所有工具审批，AI 拥有最高自主权，不暂停任务。
+              </p>
+            </div>
+            <BaseIcon
+              v-if="currentPolicy === 'full_access'"
+              name="check"
+              size="xs"
+              class="shrink-0 text-red-600 dark:text-red-400 mt-1"
             />
           </button>
         </div>
@@ -308,6 +388,7 @@ onBeforeUnmount(() => {
     <ThreadAccessRiskDialog
       :show="showRiskDialog"
       :busy="loading"
+      :target-policy="pendingTargetPolicy"
       @close="showRiskDialog = false"
       @confirm="confirmRiskUpgrade"
     />

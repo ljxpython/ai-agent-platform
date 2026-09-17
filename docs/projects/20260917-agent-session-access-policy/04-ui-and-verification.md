@@ -48,11 +48,12 @@
 
 ### 验证要求
 - [x] 初始线程及新会话默认显示 `review`。
-- [x] 草稿态预选 `workspace_write` 并在弹窗确认后发送首条消息，新建线程成功后自动应用该策略，首轮写入免审。
-- [x] 既有线程切换到 `workspace_write` 需强制勾选弹窗复选框确认；确认后刷新页面仍正确显示。
+- [x] 草稿态预选 `workspace_write` 或 `full_access` 并在弹窗确认后发送首条消息，新建线程成功后自动应用该策略，首轮免审。
+- [x] 既有线程切换到 `workspace_write` 或 `full_access` 需强制勾选对应弹窗复选框确认；确认后刷新页面仍正确显示。
+- [x] 输入框工具栏布局优化：左侧放置权限与附件，右侧放置模型选择器与发送按钮。
 - [x] 运行中（busy）、审批中断（interrupted）或无写权限（!canWrite）时，选择器禁用。
 - [x] 请求失败时不乐观伪造状态，正确回滚并展示错误提示。
-- [ ] E2E 覆盖 `platform-web -> platform-api -> runtime-service`：写入免审，高风险操作仍审批。
+- [ ] E2E 覆盖 `platform-web -> platform-api -> runtime-service`：写入免审、全权负责免全部审批，高风险操作按策略放行。
 - [ ] 回归现有审批面板和恢复 run 流程。
 
 ### 验证记录
@@ -62,20 +63,20 @@
 - **验证范围：** `platform-web` 访问策略组件、服务层、会话 Composable 与构建链路。
 - **单元测试：**
   - ✅ `src/services/threads/access-policy.service.spec.ts` (1 项通过)
-  - ✅ `src/modules/chat/components/ThreadAccessRiskDialog.spec.ts` (2 项通过)
-  - ✅ `src/modules/chat/components/ThreadAccessPolicySelect.spec.ts` (3 项通过)
-  - ✅ `src/modules/chat/components/ChatComposer.spec.ts` (3 项通过)
+  - ✅ `src/modules/chat/components/ThreadAccessRiskDialog.spec.ts` (3 项通过，含 Full access 专用警告与文案测试)
+  - ✅ `src/modules/chat/components/ThreadAccessPolicySelect.spec.ts` (4 项通过，含 Full access 弹窗与确认流程测试)
+  - ✅ `src/modules/chat/components/ChatComposer.spec.ts` (3 项通过，含工具栏新布局验证)
   - ✅ `src/modules/chat/composables/useChatSession.spec.ts` (7 项通过)
-  - **总计：** 5 个测试文件，16 个单元用例全部通过。
+  - **总计：** 5 个测试文件，18 个单元用例全部通过。
 - **质量检查：**
   - ✅ `vue-tsc --noEmit`：0 错误，严格类型检查通过。
   - ✅ `eslint`：0 错误通过。
-  - ✅ `vite build`：生产环境打包成功（25.32s 完成）。
+  - ✅ `vite build`：生产环境打包成功。
 - **四态判定：** `partial`
   - 前端组件、状态流转与单元契约已全部实现并通过验证；
   - 跨容器真实浏览器 E2E 联动（`local-stack.sh` + Playwright）需待本地完整服务栈启动后执行。
 
 ## 状态
 
-部分完成：前端开发与单元验证已完成，待全栈联调与 E2E 验收。
+部分完成：全权负责 (Full access) 端到端与前端新排版已落地，待全栈联调与 E2E 验收。
 

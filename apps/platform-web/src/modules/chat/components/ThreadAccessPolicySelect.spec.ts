@@ -76,6 +76,47 @@ it("opens risk dialog when selecting workspace_write from review", async () => {
   }
 });
 
+it("opens risk dialog when selecting full_access from review and confirms", async () => {
+  const wrapper = mount(ThreadAccessPolicySelect, {
+    attachTo: document.body,
+    props: { modelValue: "review" },
+  });
+
+  try {
+    const trigger = wrapper.get('[data-testid="access-policy-trigger"]');
+    await trigger.trigger("click");
+    const fullOption = document.querySelector<HTMLButtonElement>(
+      '[data-testid="policy-option-full-access"]',
+    )!;
+    expect(fullOption).toBeTruthy();
+
+    fullOption.click();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.emitted("update:modelValue")).toBeUndefined();
+
+    const checkbox = document.querySelector<HTMLInputElement>(
+      '[data-testid="risk-acknowledge-checkbox"]',
+    )!;
+    expect(checkbox).toBeTruthy();
+    checkbox.checked = true;
+    checkbox.dispatchEvent(new Event("change", { bubbles: true }));
+    await wrapper.vm.$nextTick();
+
+    const confirmBtn = document.querySelector<HTMLButtonElement>(
+      '[data-testid="risk-confirm-button"]',
+    )!;
+    expect(confirmBtn.textContent).toContain("启用 Full access");
+    confirmBtn.click();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.emitted("update:modelValue")).toEqual([["full_access"]]);
+    expect(wrapper.emitted("change")).toEqual([["full_access"]]);
+  } finally {
+    wrapper.unmount();
+  }
+});
+
 it("disables trigger button when disabled prop is set", async () => {
   const wrapper = mount(ThreadAccessPolicySelect, {
     props: { modelValue: "review", disabled: true },

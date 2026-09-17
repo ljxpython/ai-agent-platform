@@ -67,7 +67,7 @@ from platform_api.modules.runtime_policies.infra import (
 _THREAD_PROJECT_ID_KEYS = PROJECT_SCOPE_ALIAS_KEYS
 _THREAD_GRAPH_ID_KEYS = ("graph_id", "graphId")
 _ACCESS_POLICY_KEY = "access_policy"
-_ACCESS_POLICIES = frozenset(("review", "workspace_write"))
+_ACCESS_POLICIES = frozenset(("review", "workspace_write", "full_access"))
 _SDK_LIFECYCLE_EVENTS = {
     "started": "running",
     "success": "completed",
@@ -1523,11 +1523,70 @@ class RuntimeGatewayService:
         )
         return await self._upstream.delete_thread(thread_id)
 
+    async def fork_thread(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        checkpoint_id: str,
+        title: str | None,
+    ) -> dict[str, Any]:
+        checkpoint_id = clean_str(checkpoint_id)
+        if not checkpoint_id:
+            raise BadRequestError(
+                code="invalid_checkpoint_id",
+                message="checkpoint_id must be a non-empty string",
+            )
+        source = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=True
+        )
+        graph_id = _thread_graph_id(source)
+        if not graph_id:
+            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+        state = await self._upstream.get_thread_state(
+            thread_id, {"checkpoint_id": checkpoint_id}
+        )
+        values = ensure_dict(ensure_dict(state).get("values"))
+        if not values:
+            raise PlatformApiError(
+                code="runtime_invalid_checkpoint_state",
+                status_code=502,
+                message="Runtime returned no checkpoint state",
+            )
+        metadata: dict[str, Any] = {
+            "project_id": project_id,
+            "graph_id": graph_id,
+            _ACCESS_POLICY_KEY: _thread_access_policy(source),
+            "forked_from": {"thread_id": thread_id, "checkpoint_id": checkpoint_id},
+        }
+        if title := clean_str(title):
+            metadata["title"] = title
+        target = await self._upstream.create_thread(
+            {"metadata": metadata, "graph_id": graph_id}
+        )
+        target_id = clean_str(ensure_dict(target).get("thread_id"))
+        if not target_id:
+            raise PlatformApiError(
+                code="runtime_invalid_fork_thread",
+                status_code=502,
+                message="Runtime returned no fork thread ID",
+            )
+        try:
+            await self._upstream.update_thread_state(target_id, {"values": values})
+        except Exception:
+            try:
+                await self._upstream.delete_thread(target_id)
+            except Exception:
+                pass
+            raise
+        return ensure_dict(target)
+
     async def update_thread_access_policy(
         self, *, actor: ActorContext, project_id: str, thread_id: str, policy: str
     ) -> dict[str, str]:
         if not isinstance(policy, str) or policy not in _ACCESS_POLICIES:
-            raise BadRequestError(code="invalid_access_policy", message="access_policy must be review or workspace_write")
+            raise BadRequestError(code="invalid_access_policy", message="access_policy must be review, workspace_write or full_access")
         thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=True)
         metadata = _thread_metadata(thread)
         metadata[_ACCESS_POLICY_KEY] = policy

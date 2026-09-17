@@ -35,6 +35,7 @@ CASES = [
     ("POST", "/threads/count", "count_threads"),
     ("GET", "/threads/{thread_id}", "get_thread"),
     ("DELETE", "/threads/{thread_id}", "delete_thread"),
+    ("POST", "/threads/{thread_id}/fork", "fork_thread"),
     ("PATCH", "/threads/{thread_id}/access-policy", "update_thread_access_policy"),
     ("GET", "/threads/{thread_id}/state", "get_thread_state"),
     ("POST", "/threads/{thread_id}/state", "update_thread_state"),
@@ -150,6 +151,8 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             headers["content-length"] = "10"
                         post_payload = (
                             terminal_payload(path) if name == "thread_terminal" else
+                            {"checkpoint_id": "checkpoint-1"}
+                            if name == "fork_thread" else
                             {"access_policy": "workspace_write"}
                             if name == "update_thread_access_policy" else
                             {"content": "hello"}
@@ -196,7 +199,11 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                                 expected_val = "a" * 64 if key == "sha256" else key.replace("_id", "-1")
                                 self.assertEqual(kwargs[key], expected_val)
                         if method == "POST":
-                            self.assertEqual(kwargs["payload"], post_payload)
+                            if name == "fork_thread":
+                                self.assertEqual(kwargs["checkpoint_id"], "checkpoint-1")
+                                self.assertIsNone(kwargs["title"])
+                            else:
+                                self.assertEqual(kwargs["payload"], post_payload)
                         if name in {
                             "create_thread_run",
                             "stream_thread_run",
@@ -254,6 +261,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             params=req_params,
                             json=(
                                 terminal_payload(path) if name == "thread_terminal"
+                                else {"checkpoint_id": "checkpoint-1"} if name == "fork_thread"
                                 else {"access_policy": "review"} if name == "update_thread_access_policy"
                                 else {}
                             ) if method in {"POST", "PATCH"} else None,
@@ -299,6 +307,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         params=req_params,
                         json=(
                             terminal_payload(path) if name == "thread_terminal"
+                            else {"checkpoint_id": "checkpoint-1"} if name == "fork_thread"
                             else {"access_policy": "review"} if name == "update_thread_access_policy"
                             else {}
                         ) if method in {"POST", "PATCH"} else None,

@@ -66,3 +66,22 @@ it("emits close and resets checkbox on cancel", async () => {
     wrapper.unmount();
   }
 });
+
+it("renders full_access title and button label when targetPolicy is full_access", () => {
+  const wrapper = mount(ThreadAccessRiskDialog, {
+    attachTo: document.body,
+    props: { show: true, targetPolicy: "full_access" },
+  });
+
+  try {
+    const dialog = document.body.textContent;
+    expect(dialog).toContain("确认启用 Full access？");
+    expect(dialog).toContain("全权负责模式（Full access）");
+    const confirmBtn = document.querySelector<HTMLButtonElement>(
+      '[data-testid="risk-confirm-button"]',
+    );
+    expect(confirmBtn?.textContent).toContain("启用 Full access");
+  } finally {
+    wrapper.unmount();
+  }
+});

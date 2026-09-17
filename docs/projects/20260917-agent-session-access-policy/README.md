@@ -11,6 +11,7 @@
 2. [可信契约与审计](02-trusted-contract-and-audit.md)：定义前端请求、Platform API 签发和持久化审计。
 3. [Runtime 执行](03-runtime-enforcement.md)：让已签发的档位决定 Agent 的 `interrupt_on`，而非相信浏览器。
 4. [前端交互与验证](04-ui-and-verification.md)：选择器、升级确认、兼容策略及测试路径。
+5. [安全审批与澄清边界及全权常驻](05-clarification-vs-approval-boundary.md)：严格厘清安全审批与业务澄清输入边界，确立全权负责常驻机制。
 
 ## 改动范围
 - **影响服务：** `platform-web`、`platform-api`、`runtime-service`
@@ -22,3 +23,4 @@
 2. 会话档位由 Platform API 校验、写入线程元数据并纳入 delegation token/context hash；Runtime 只信任该签发结果。
 3. 高风险外部副作用（部署、发布、凭据、权限变更）始终保留审批，不能被会话档位关闭。
 4. Platform Web 采用方案 A（ChatComposer 工具栏挂载，对齐 deepseek-harness）与方案 1（草稿态暂存与首发前置补发），已集成并完成类型与单元验证。
+5. 全权负责 (Full access) 仅豁免安全动作审批，绝不豁免人机协作信息补充（如 `request_information`）；人机交互填表后策略必须强一致常驻，禁止意外降级回审阅模式。

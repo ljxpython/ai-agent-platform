@@ -49,6 +49,12 @@ class RuntimeStreamingResponse(StreamingResponse):
             with CancelScope(shield=True):
                 await self.body_iterator.aclose()
 
+
+class ThreadForkBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    checkpoint_id: str = Field(min_length=1, max_length=512)
+    title: str | None = Field(default=None, max_length=200)
+
 _SENSITIVE_EVENT_KEYS = {
     "access_token",
     "api_key",
@@ -395,6 +401,25 @@ async def delete_thread(
     return _normalize_ack(result)
 
 
+@router.post("/threads/{thread_id}/fork")
+async def fork_thread(
+    request: Request,
+    thread_id: str,
+    payload: ThreadForkBody,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    return _redact_runtime_private_fields(
+        await service.fork_thread(
+            actor=actor,
+            project_id=_require_project_id(request),
+            thread_id=thread_id,
+            checkpoint_id=payload.checkpoint_id,
+            title=payload.title,
+        )
+    )
+
+
 @router.patch("/threads/{thread_id}/access-policy")
 async def update_thread_access_policy(
     request: Request,
@@ -404,7 +429,7 @@ async def update_thread_access_policy(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     if not isinstance(payload, dict) or set(payload) != {"access_policy"} or not isinstance(payload["access_policy"], str):
-        raise BadRequestError(code="invalid_access_policy", message="access_policy must be review or workspace_write")
+        raise BadRequestError(code="invalid_access_policy", message="access_policy must be review, workspace_write or full_access")
     request.state.audit_metadata = {"access_policy": payload["access_policy"]}
     return _redact_runtime_private_fields(
         await service.update_thread_access_policy(

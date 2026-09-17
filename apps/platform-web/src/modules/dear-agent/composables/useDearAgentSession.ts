@@ -79,7 +79,11 @@ export function useDearAgentSession(options: {
       const thread = await service.get(threadId.value);
       if (!disposed && thread?.metadata && typeof thread.metadata === "object") {
         const policy = (thread.metadata as Record<string, unknown>).access_policy;
-        accessPolicy.value = policy === "workspace_write" ? "workspace_write" : "review";
+        if (policy === "workspace_write" || policy === "full_access") {
+          accessPolicy.value = policy;
+        } else {
+          accessPolicy.value = "review";
+        }
       } else if (!disposed) {
         accessPolicy.value = "review";
       }
@@ -553,12 +557,12 @@ export function useDearAgentSession(options: {
         threadId.value = thread.thread_id;
         options.onThread(thread.thread_id);
 
-        if (accessPolicy.value === "workspace_write") {
+        if (accessPolicy.value !== "review") {
           try {
             await updateThreadAccessPolicy(
               options.projectId,
               thread.thread_id,
-              "workspace_write",
+              accessPolicy.value,
             );
           } catch (cause) {
             accessPolicy.value = "review";
