@@ -13,6 +13,7 @@ RUNTIME_PORT="${RUNTIME_PORT:-}"
 PLATFORM_API_PORT="${PLATFORM_API_PORT:-2142}"
 PLATFORM_WEB_PORT="${PLATFORM_WEB_PORT:-3000}"
 GRAPH_CONFIG=""
+SHOWCASE_BACKEND_OVERRIDE="${RUNTIME_SHOWCASE_BACKEND-}"
 STARTED_KEYS=()
 
 mkdir -p "$PID_DIR" "$LOG_DIR"
@@ -30,6 +31,9 @@ Commands:
   status   show managed processes and HTTP health
   logs     show recent logs; optionally pass runtime-api, runtime-worker,
            platform-api or platform-web
+
+Environment:
+  RUNTIME_SHOWCASE_BACKEND=local|docker (default: local)
 EOF
 }
 
@@ -60,6 +64,12 @@ PY
   # shellcheck disable=SC1090
   . "$RUNTIME_ENV_FILE"
   set +a
+  export RUNTIME_SHOWCASE_BACKEND="${SHOWCASE_BACKEND_OVERRIDE:-${RUNTIME_SHOWCASE_BACKEND:-local}}"
+  case "$RUNTIME_SHOWCASE_BACKEND" in
+    local|docker) ;;
+    *) die "RUNTIME_SHOWCASE_BACKEND must be local or docker" ;;
+  esac
+  printf '[config] Showcase backend: %s (changes require Runtime API/Worker restart)\n' "$RUNTIME_SHOWCASE_BACKEND"
   RUNTIME_PORT="${RUNTIME_PORT:-${RUNTIME_SERVICE_PORT:-8123}}"
   GRAPH_CONFIG="${RUNTIME_GRAPH_CONFIG_PATH:-$RUNTIME_DIR/langgraph.json}"
   export RUNTIME_PORT PLATFORM_API_PORT PLATFORM_WEB_PORT

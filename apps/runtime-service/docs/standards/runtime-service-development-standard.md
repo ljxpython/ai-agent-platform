@@ -15,7 +15,7 @@
 1. 先查本导航、相关 knowledge、官方 MCP 文档和现有调用者，再改代码。
 2. 优先使用 LangChain/LangGraph/Deep Agents 官方能力，不自建 Agent 循环、Tool Registry、Builder 或审批 State。
 3. 信任边界必须校验：身份、Context 哈希、tenant/project/thread scope、工具 allowlist 和审批动作。
-4. 文件和命令执行必须限制在当前线程工作区；禁止回退到宿主机 shell，禁止把凭据或绝对路径放进 Prompt/Context。
+4. 正式环境文件和命令执行必须限制在当前线程工作区；禁止回退到宿主机 shell，禁止把凭据或绝对路径放进 Prompt/Context。Showcase 经评审允许受信任本地开发显式选择 LocalShellBackend（本地栈默认 local），该模式不提供 shell 隔离，不用于生产或多租户环境；独立 Runtime 默认仍为 Docker。
 5. 新增能力必须有单元或组合测试；跨边界改动补集成测试和至少一条 E2E 链路。
 6. 变更保持最小：不为未来需求预留抽象，不复制旧 Runtime，不新增兼容 Adapter。
 7. 影响功能现状时同步 `docs/FEATURES.md`；治理或跨服务改动更新 `docs/projects/` 记录。

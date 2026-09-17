@@ -16,10 +16,10 @@ from langchain_openai import ChatOpenAI
 from langgraph.pregel import Pregel
 
 from runtime_service.middlewares import (
+    DocumentToolsMiddleware,
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     RuntimeConfigMiddleware,
-    DocumentToolsMiddleware,
 )
 from runtime_service.middlewares.images import ImageToolsMiddleware
 from runtime_service.observability import with_langfuse_tracing
@@ -36,9 +36,9 @@ from runtime_service.runtime import (
     verified_delegation_from_user,
 )
 from runtime_service.services.demo.showcase_demo.backend import (
-    DockerWorkspaceBackend,
     WorkspaceMiddleware,
     build_backend,
+    create_workspace,
 )
 from runtime_service.services.demo.showcase_demo.chart import build_chart_tools
 from runtime_service.services.demo.showcase_demo.prompts import SYSTEM_PROMPT
@@ -116,9 +116,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             project_id=facts.principal.project_id,
         )
         model = build_model(resolved, connection=connection)
-        workspace = DockerWorkspaceBackend(
-            facts.principal.tenant_id, facts.principal.project_id, thread_id
-        )
+        workspace = create_workspace(facts.principal.tenant_id, facts.principal.project_id, thread_id)
     else:
         # Schema-only client: no request is sent, and WorkspaceMiddleware rejects invocation.
         model = ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)

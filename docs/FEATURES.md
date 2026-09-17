@@ -54,7 +54,7 @@
 | Runtime Service 图片编辑（图生图 `edit_image`）与内容安全审核友好提示 | 已完成：支持基于已有图片执行图像编辑/风格转换，接入 HITL 人工审批，结构化捕获并友好提示 `content_policy_violation` | [图片编辑能力](../apps/runtime-service/docs/changes/20260913-image-editing-capability.md) |
 | Runtime 鉴权、middleware 层、reference agent | 已完成 | `apps/runtime-service/docs/knowledge/28-runtime-refactor-development-plan.md` |
 | Runtime Service 开发文档体系（资料导航、开发范式、介入与验证） | 已完成：正式指南位于 `docs/standards/`，以 Showcase Demo 和 tests 为可执行范式 | `apps/runtime-service/docs/standards/README.md` |
-| showcase_demo — 教学智能体（工具调用/HITL/子智能体/Todo/Sandbox/Skills） | 部分完成：post26 平台后端真实联调、审批重启恢复与报表 43.50 已验收；前端后置 | `docs/projects/20260908-showcase-demo/` |
+| showcase_demo — 教学智能体（工具调用/HITL/子智能体/Todo/Sandbox/Skills） | 部分完成：Docker 正式执行与 LocalShellBackend 本地开发模式均支持；前端后置 | `docs/projects/20260908-showcase-demo/`、`docs/projects/20260917-showcase-local-sandbox/` |
 
 ## interaction-data-service
 

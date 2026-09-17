@@ -1,7 +1,7 @@
 # Showcase：真实项目教学 Agent
 
 这个服务演示如何在 LangChain、LangGraph、Deep Agents 的原生能力上，增加少量平台运行时接入。
-它可以分析和修改实际文件，通过人工审批后在 Docker 中运行 Python。正式工具不返回模拟成功结果。
+它可以分析和修改实际文件，通过人工审批后运行 Python。正式模式使用 Docker；本地栈默认使用 LocalShellBackend 便于开发调试。正式工具不返回模拟成功结果。
 
 ## 从一个真实任务开始
 
@@ -34,7 +34,7 @@
 | `prompts.py` | 主 Agent、只读研究助手、实现助手、图表助手的指令 | 只放纯文本或纯渲染函数，不读环境变量和网络 |
 | `subagents.py` | 三个明确的内部角色及最小工具、权限、审批 | 角色复杂前使用声明式 SubAgent，不增加第二个 graph ID |
 | `chart.py` / `chart-schemas.json` | 固定版本 AntV 工具与线程图片落盘 | 使用官方 MCP adapter，schema 探测不启动外部进程 |
-| `backend.py` | 线程工作区初始化、官方 FilesystemBackend 与 Docker 执行适配 | 只实现框架缺少的资源边界，不重写文件和搜索工具 |
+| `backend.py` | 线程工作区初始化、官方 FilesystemBackend、Docker 与本地执行适配 | local 仅限受信任开发机，正式环境使用 Docker |
 | `tools.py` | 受限 HTTPS 文档抓取 | 只放本服务特有的真实业务动作 |
 | `skills/showcase-notes/SKILL.md` | 可按需读取的任务指南 | Skills 是资源，不是工具，也不能授予权限 |
 | `examples/` | 初次使用线程时复制的 CSV 项目 | 测试夹具与模型 mock 不进入正式工具 |
@@ -80,22 +80,27 @@
 
 ## 路径、存储和真实执行
 
-模型看到的文件和 shell 路径都是 `/workspace/...`；shell 工作目录也是 `/workspace`。
+文件工具使用 `/workspace/...` 虚拟路径；shell 已位于线程工作区，统一使用相对路径，例如 `python report.py`。
+Docker 内该目录是 `/workspace`，local 模式中是线程对应的宿主目录；local 不映射 shell 中的 `/workspace/...` 绝对路径。
 Skills 通过 `/skills/` 访问，由 `importlib.resources` 定位安装包资源，随 wheel 发布。
 **不把开发机绝对路径放进 Prompt、Context 或 Skills 参数。**
 
 | 部署变量 | 默认值 | 用途 |
 | --- | --- | --- |
+| `RUNTIME_SHOWCASE_BACKEND` | `docker`（本地栈默认 `local`） | `docker` 或 `local`；非法值报错 |
 | `RUNTIME_SHOWCASE_WORKSPACE_ROOT` | `.runtime/showcase` | 专用数据根目录，可配置相对或绝对路径 |
 | `RUNTIME_SHOWCASE_IMAGE` | `python:3.13-slim` | Docker 执行镜像；正式环境建议固定镜像 digest |
 
 线程目录由可信 tenant/project/thread 的摘要派生。初始化不会覆盖用户已修改的样例文件。
-命令容器只绑定当前线程的 `/workspace`，不挂载源代码、凭据或 Docker socket。
+Docker 模式的命令容器只绑定当前线程的 `/workspace`，不挂载源代码、凭据或 Docker socket。
 容器关闭网络、使用只读根文件系统、去除 capabilities，限制 CPU、内存、进程、文件大小和输出量。
 命令默认 30 秒，最多 60 秒；返回真实 stdout/stderr 合并输出及退出码，最多 128 KiB。
 异步执行沿用官方线程适配；取消 Run 不保证立即终止正在执行的命令，容器内命令仍受最多 60 秒限制。
 执行 worker 面向 Linux/macOS，使用宿主进程 UID/GID；Windows 原生运行未验证。
 Docker 不可用或镜像缺失会明确失败，**不会回退到宿主机 shell**。
+
+local 模式使用官方 `LocalShellBackend` 在宿主机运行，仅供受信任本地开发。文件工具和审批仍保留，但 shell 没有文件、网络、CPU/内存隔离，不能保证只能访问自己的线程目录。
+不继承父进程环境；仅提供 Runtime Python 所在目录及系统 PATH、线程 HOME 和独立 Git 配置路径。默认超时 30 秒，允许 1–60 秒，输出沿用官方截断行为（不是内存上限）；取消 Run 不保证终止本地命令及其子进程。
 
 官方文件工具直接读写受限的线程目录；shell 在容器中读写同一目录。
 Shell 授权覆盖整个该工作区，不宣称按 shell 文本实现逐文件权限。
@@ -107,6 +112,18 @@ Skills 只读规则作用在独立的非执行 Backend 路由上；容器不能�
 建议在安装 Docker 的专用 worker 主机运行；若 runtime 自身在容器内，需要配置专用执行部署，不能直接照搬默认生产镜像。
 
 ## 本地运行与调用
+
+在仓库根目录启动本地栈，默认使用 local：
+
+```bash
+bash scripts/local-stack.sh start
+# 显式切换已有栈（Runtime API 和 Worker 都需重启）
+RUNTIME_SHOWCASE_BACKEND=docker bash scripts/local-stack.sh restart
+RUNTIME_SHOWCASE_BACKEND=local bash scripts/local-stack.sh restart
+```
+
+选择优先级：调用脚本时的环境变量 > Runtime `.env` > 本地栈默认 `local`。
+`start` 不会替换已有进程，切换模式应使用 `restart`。仅影响 Showcase；DearFlow 仍使用自己的 Docker 后端。
 
 在 `apps/runtime-service` 目录，按应用 `.env.example` 配置模型与 Runtime 认证，并准备 Docker：
 

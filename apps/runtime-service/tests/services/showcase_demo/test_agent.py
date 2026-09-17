@@ -97,6 +97,29 @@ def build(monkeypatch, tmp_path):
     return create
 
 
+@pytest.mark.parametrize("decision", ["approve", "reject"])
+def test_local_execute_requires_approval(build, monkeypatch, tmp_path, decision):
+    monkeypatch.setenv("RUNTIME_SHOWCASE_BACKEND", "local")
+
+    async def run():
+        graph, cfg, _ = await build([
+            call("execute", {"command": "python report.py > result.txt"}),
+            AIMessage(content="done"),
+        ])
+        result = await graph.ainvoke({"messages": [("user", "run report")]}, cfg, context={})
+        assert result["__interrupt__"][0].value["action_requests"][0]["name"] == "execute"
+        assert not list(tmp_path.rglob("result.txt"))
+        result = await graph.ainvoke(
+            Command(resume={"decisions": [{"type": decision}]}), cfg, context={}
+        )
+        outputs = list(tmp_path.rglob("result.txt"))
+        assert bool(outputs) == (decision == "approve")
+        if outputs:
+            assert "27.00" in outputs[0].read_text()
+
+    asyncio.run(run())
+
+
 def test_skills_discovered_read_and_todos_streamed(build):
     async def run():
         pending = [{"content": "Inspect report", "status": "pending"}]

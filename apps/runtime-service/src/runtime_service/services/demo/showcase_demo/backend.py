@@ -1,12 +1,19 @@
-"""Official filesystem backend plus isolated Docker execution for one thread."""
+"""Thread workspaces with Docker and local development execution modes."""
 
 from __future__ import annotations
 
 import asyncio
 import os
+import sys
 from importlib.resources import files
+from pathlib import Path
 
-from deepagents.backends import CompositeBackend, FilesystemBackend, StateBackend
+from deepagents.backends import (
+    CompositeBackend,
+    FilesystemBackend,
+    LocalShellBackend,
+    StateBackend,
+)
 from deepagents.backends.protocol import ExecuteResponse, SandboxBackendProtocol
 from langchain.agents.middleware import AgentMiddleware
 
@@ -16,9 +23,10 @@ from runtime_service.workspace.scoped import hashed_thread_root, thread_scope_ha
 _PACKAGE = "runtime_service.services.demo.showcase_demo"
 
 
-class DockerWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
-    """File operations stay native; only shell execution crosses into Docker."""
+_LOCAL_MAX_OUTPUT = 128 * 1024
 
+
+class _ThreadWorkspaceBackend(FilesystemBackend):
     def __init__(self, tenant_id: str, project_id: str, thread_id: str) -> None:
         self.scope = (tenant_id, project_id, thread_id)
         self._id = thread_scope_hash(tenant_id, project_id, thread_id)
@@ -50,6 +58,10 @@ class DockerWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
                     pass
         marker.touch()
 
+
+class DockerWorkspaceBackend(_ThreadWorkspaceBackend, SandboxBackendProtocol):
+    """File operations stay native; only shell execution crosses into Docker."""
+
     def execute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
         return asyncio.run(self.aexecute(command, timeout=timeout))
 
@@ -64,7 +76,41 @@ class DockerWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
             return ExecuteResponse(output="Execution timed out.", exit_code=124)
 
 
-def build_backend(workspace: DockerWorkspaceBackend | None) -> CompositeBackend:
+class LocalWorkspaceBackend(_ThreadWorkspaceBackend, SandboxBackendProtocol):
+    """Local-only development backend; shell commands run on the host."""
+
+    def __init__(self, tenant_id: str, project_id: str, thread_id: str) -> None:
+        super().__init__(tenant_id, project_id, thread_id)
+        env = {
+            "PATH": os.pathsep.join((str(Path(sys.executable).parent), os.defpath)),
+            "HOME": str(self.cwd / "workspace"),
+            "GIT_CONFIG_GLOBAL": str(self.cwd / ".gitconfig-sandbox"),
+        }
+        self._local = LocalShellBackend(
+            root_dir=self.cwd / "workspace", virtual_mode=True,
+            inherit_env=False, env=env, timeout=30, max_output_bytes=_LOCAL_MAX_OUTPUT,
+        )
+
+    def execute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
+        if not isinstance(command, str) or not command.strip() or len(command) > 32768:
+            raise ValueError("command must be non-empty and at most 32768 characters")
+        if timeout is not None and (type(timeout) is not int or not 1 <= timeout <= 60):
+            raise ValueError("timeout must be between 1 and 60 seconds")
+        return self._local.execute(command, timeout=timeout)
+
+    async def aexecute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
+        return await asyncio.to_thread(self.execute, command, timeout=timeout)
+
+
+def create_workspace(tenant_id: str, project_id: str, thread_id: str):
+    kind = os.getenv("RUNTIME_SHOWCASE_BACKEND", "docker")
+    backend_class = {"local": LocalWorkspaceBackend, "docker": DockerWorkspaceBackend}.get(kind)
+    if backend_class is None:
+        raise RuntimeAuthError("runtime.workspace.invalid_backend")
+    return backend_class(tenant_id, project_id, thread_id)
+
+
+def build_backend(workspace: _ThreadWorkspaceBackend | None) -> CompositeBackend:
     """Resource paths are package-relative; model-visible paths stay portable."""
     return CompositeBackend(
         default=workspace
@@ -82,7 +128,7 @@ def build_backend(workspace: DockerWorkspaceBackend | None) -> CompositeBackend:
 class WorkspaceMiddleware(AgentMiddleware):
     """Check the bound scope before initializing any thread-owned resources."""
 
-    def __init__(self, workspace: DockerWorkspaceBackend | None) -> None:
+    def __init__(self, workspace: _ThreadWorkspaceBackend | None) -> None:
         self.workspace = workspace
 
     async def abefore_agent(self, state, runtime) -> None:

@@ -2,7 +2,8 @@
 
 SYSTEM_PROMPT = """你是一个可以真实处理小型 Python 项目的工程助手。
 先读取 /skills/showcase-notes/SKILL.md，了解工作区与验证方法。
-文件工具和 shell 使用 /workspace 路径，shell 当前目录也是 /workspace。
+文件工具使用 /workspace/... 虚拟路径；shell 当前目录已是线程工作区。
+shell 使用相对路径，如 python report.py，不使用 /workspace/... 绝对路径。
 
 根据用户的实际目标选择行动，不按关键词强制执行整个流程：
 - 任务规划与多步工程：当用户要求制定执行计划、拆解待办事项，或面对超过 2 步的
@@ -32,7 +33,8 @@ RESEARCH_PROMPT = """你是只读项目分析助手。用文件工具检查 /wor
 """
 
 IMPLEMENTOR_PROMPT = """你是项目实现助手。只完成委派任务要求的最小改动。
-文件和 shell 路径均为 /workspace；文件修改与 execute 需要审批。
+文件工具使用 /workspace/...；shell 在同一线程工作区使用相对路径，如 python report.py。
+文件修改与 execute 需要审批。
 优先使用 Python 标准库。运行真实检查，根据退出码和输出判断成功；
 拒绝审批后停止相应操作，不用 shell 绕过拒绝的文件修改。
 最终返回修改文件、执行命令、实际结果以及尚未验证的内容。

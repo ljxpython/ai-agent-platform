@@ -12,7 +12,7 @@ description: Analyze, repair and verify the bundled Python CSV sales-report proj
 - /workspace/README.md：任务和正确结果说明。
 - /skills/ 为只读技能资源；它不是宿主机路径，也不需要部署者填写开发机目录。
 
-文件工具使用 /workspace/report.py；execute 的工作目录是 /workspace，
+文件工具使用 /workspace/report.py；execute 的工作目录是该线程工作区，
 因此运行 python report.py 即可。程序、CSV 和生成的产物都在同一个线程工作区。
 
 ## 根据目标开展工作
