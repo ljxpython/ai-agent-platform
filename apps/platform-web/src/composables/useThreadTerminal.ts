@@ -33,11 +33,9 @@ export function useThreadTerminal(
   // 会话状态维护
   const sessionOffsets = new Map<string, number>();
   const sessionDecoders = new Map<string, TextDecoder>();
-  const inputQueues = new Map<
-    string,
-    { sequence: number; bytes: Uint8Array; base64: string }[]
-  >();
+  const pendingInputBuffers = new Map<string, Uint8Array>();
   const inFlightInput = new Map<string, boolean>();
+  const retryCountMap = new Map<string, number>();
 
   let pollingTimer: ReturnType<typeof setTimeout> | null = null;
   let isBackground = false;
@@ -116,8 +114,9 @@ export function useThreadTerminal(
       sessions.value = sessions.value.filter((s) => s.terminal_id !== terminalId);
       sessionOffsets.delete(terminalId);
       sessionDecoders.delete(terminalId);
-      inputQueues.delete(terminalId);
+      pendingInputBuffers.delete(terminalId);
       inFlightInput.delete(terminalId);
+      retryCountMap.delete(terminalId);
 
       if (activeTerminalId.value === terminalId) {
         activeTerminalId.value = sessions.value[0]?.terminal_id || '';
@@ -125,7 +124,22 @@ export function useThreadTerminal(
     }
   }
 
-  // 输入单飞串行队列发送
+  function concatBytes(a: Uint8Array, b: Uint8Array): Uint8Array {
+    const res = new Uint8Array(a.length + b.length);
+    res.set(a, 0);
+    res.set(b, a.length);
+    return res;
+  }
+
+  function bytesToBase64(bytes: Uint8Array): string {
+    let binaryStr = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binaryStr += String.fromCharCode(bytes[i]);
+    }
+    return btoa(binaryStr);
+  }
+
+  // 输入发送入口（带批处理合并缓冲池）
   async function sendInput(terminalId: string, textOrBytes: string | Uint8Array) {
     if (!projectId.value || !threadId.value || disposed) return;
 
@@ -138,39 +152,38 @@ export function useThreadTerminal(
 
     if (rawBytes.length === 0) return;
 
-    // 找到会话以获取 next_input_sequence
     const session = sessions.value.find((s) => s.terminal_id === terminalId);
     if (!session || session.status === 'exited') return;
 
-    let queue = inputQueues.get(terminalId);
-    if (!queue) {
-      queue = [];
-      inputQueues.set(terminalId, queue);
+    // 追加到待发送缓冲池
+    const existing = pendingInputBuffers.get(terminalId);
+    if (existing && existing.length > 0) {
+      pendingInputBuffers.set(terminalId, concatBytes(existing, rawBytes));
+    } else {
+      pendingInputBuffers.set(terminalId, rawBytes);
     }
 
-    // 转 Base64
-    let binaryStr = '';
-    for (let i = 0; i < rawBytes.length; i++) {
-      binaryStr += String.fromCharCode(rawBytes[i]);
-    }
-    const b64 = btoa(binaryStr);
-
-    queue.push({
-      sequence: session.next_input_sequence,
-      bytes: rawBytes,
-      base64: b64,
-    });
-
-    void processInputQueue(terminalId);
+    void flushInputBuffer(terminalId);
   }
 
-  async function processInputQueue(terminalId: string) {
-    if (inFlightInput.get(terminalId)) return;
-    const queue = inputQueues.get(terminalId);
-    if (!queue || queue.length === 0) return;
+  async function flushInputBuffer(terminalId: string) {
+    if (inFlightInput.get(terminalId) || disposed) return;
 
-    const item = queue[0];
+    const pending = pendingInputBuffers.get(terminalId);
+    if (!pending || pending.length === 0) return;
+
+    const session = sessions.value.find((s) => s.terminal_id === terminalId);
+    if (!session || session.status === 'exited') {
+      pendingInputBuffers.delete(terminalId);
+      return;
+    }
+
+    // 从缓冲池提取本批次并清空
+    pendingInputBuffers.delete(terminalId);
     inFlightInput.set(terminalId, true);
+
+    const b64 = bytesToBase64(pending);
+    const seq = session.next_input_sequence;
 
     try {
       const ack = await sendTerminalInput(
@@ -178,37 +191,73 @@ export function useThreadTerminal(
         threadId.value,
         terminalId,
         {
-          sequence: item.sequence,
-          data_base64: item.base64,
+          sequence: seq,
+          data_base64: b64,
         },
       );
 
-      // 更新会话的 sequence
-      const session = sessions.value.find((s) => s.terminal_id === terminalId);
-      if (session) {
-        session.next_input_sequence = ack.next_input_sequence;
-      }
+      // 请求成功，重置重试计数
+      retryCountMap.set(terminalId, 0);
 
-      // 如果全部确认
-      if (ack.accepted_bytes >= item.bytes.byteLength) {
-        queue.shift();
-      } else {
-        // 部分确认，保留剩余字节
-        const remaining = item.bytes.subarray(ack.accepted_bytes);
-        let binaryStr = '';
-        for (let i = 0; i < remaining.length; i++) {
-          binaryStr += String.fromCharCode(remaining[i]);
+      // 更新最新序列号
+      session.next_input_sequence = ack.next_input_sequence;
+
+      // 如果后端只接收了部分字节，将未消费的字节插回缓冲区头部
+      if (ack.accepted_bytes < pending.length) {
+        const remaining = pending.subarray(ack.accepted_bytes);
+        const currentPending = pendingInputBuffers.get(terminalId);
+        if (currentPending && currentPending.length > 0) {
+          pendingInputBuffers.set(terminalId, concatBytes(remaining, currentPending));
+        } else {
+          pendingInputBuffers.set(terminalId, remaining);
         }
-        item.bytes = remaining;
-        item.base64 = btoa(binaryStr);
-        item.sequence = ack.next_input_sequence;
       }
     } catch (err: unknown) {
       console.warn('终端输入发送异常:', err);
+      const httpError = err as { response?: { status?: number; data?: { code?: string } } };
+      const status = httpError?.response?.status;
+      const code = httpError?.response?.data?.code;
+
+      if (status === 409) {
+        if (code === 'terminal_exited') {
+          session.status = 'exited';
+          pendingInputBuffers.delete(terminalId);
+        } else if (code === 'terminal_input_sequence' || code === 'terminal_input_conflict') {
+          const retries = (retryCountMap.get(terminalId) || 0) + 1;
+          retryCountMap.set(terminalId, retries);
+          if (retries <= 3) {
+            const currentPending = pendingInputBuffers.get(terminalId);
+            pendingInputBuffers.set(
+              terminalId,
+              currentPending ? concatBytes(pending, currentPending) : pending,
+            );
+          } else {
+            console.error(`终端 ${terminalId} 序号冲突超出重试上限，丢弃冲突缓冲`);
+            pendingInputBuffers.delete(terminalId);
+            retryCountMap.set(terminalId, 0);
+          }
+        }
+      } else {
+        const retries = (retryCountMap.get(terminalId) || 0) + 1;
+        retryCountMap.set(terminalId, retries);
+        if (retries <= 2) {
+          const currentPending = pendingInputBuffers.get(terminalId);
+          pendingInputBuffers.set(
+            terminalId,
+            currentPending ? concatBytes(pending, currentPending) : pending,
+          );
+        } else {
+          pendingInputBuffers.delete(terminalId);
+          retryCountMap.set(terminalId, 0);
+        }
+      }
     } finally {
       inFlightInput.set(terminalId, false);
-      if (queue.length > 0) {
-        void processInputQueue(terminalId);
+      const remaining = pendingInputBuffers.get(terminalId);
+      if (remaining && remaining.length > 0) {
+        setTimeout(() => {
+          void flushInputBuffer(terminalId);
+        }, 50);
       }
     }
   }
@@ -313,8 +362,9 @@ export function useThreadTerminal(
         activeTerminalId.value = '';
         sessionOffsets.clear();
         sessionDecoders.clear();
-        inputQueues.clear();
+        pendingInputBuffers.clear();
         inFlightInput.clear();
+        retryCountMap.clear();
 
         if (newProject && newThread) {
           void refreshSessions();

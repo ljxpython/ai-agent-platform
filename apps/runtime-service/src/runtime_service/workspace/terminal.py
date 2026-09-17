@@ -35,7 +35,7 @@ RETAIN_SECONDS = 300
 
 
 def terminal_enabled() -> bool:
-    return os.name == "posix" and os.getenv("RUNTIME_TERMINAL_ENABLED", "0") == "1"
+    return os.name == "posix" and os.getenv("RUNTIME_TERMINAL_ENABLED", "1") == "1"
 
 
 class TerminalSession:
@@ -215,7 +215,9 @@ class TerminalSession:
                         break
                     raise
                 if not data:
-                    break
+                    if self.process.poll() is not None:
+                        break
+                    continue
                 with self.lock:
                     self.buffer.extend(data)
                     excess = max(0, len(self.buffer) - BUFFER_BYTES)
@@ -370,6 +372,8 @@ class TerminalManager:
         self.janitor = None
 
     def create(self, owner, request_id, rows, cols):
+        if not terminal_enabled():
+            raise DocumentError("terminal_disabled", 409)
         with self.lock:
             for session in self.sessions.values():
                 if session.owner == owner and session.request_id == request_id:

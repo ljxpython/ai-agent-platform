@@ -280,7 +280,7 @@ async def get_runtime_info(
 @router.post("/graphs/search")
 async def search_graphs(
     request: Request,
-    payload: dict[str, Any] = Body(...),
+    payload: dict[str, Any] | None = Body(default=None),
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
@@ -393,6 +393,27 @@ async def delete_thread(
         thread_id=thread_id,
     )
     return _normalize_ack(result)
+
+
+@router.patch("/threads/{thread_id}/access-policy")
+async def update_thread_access_policy(
+    request: Request,
+    thread_id: str,
+    payload: dict[str, Any] | None = Body(default=None),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    if not isinstance(payload, dict) or set(payload) != {"access_policy"} or not isinstance(payload["access_policy"], str):
+        raise BadRequestError(code="invalid_access_policy", message="access_policy must be review or workspace_write")
+    request.state.audit_metadata = {"access_policy": payload["access_policy"]}
+    return _redact_runtime_private_fields(
+        await service.update_thread_access_policy(
+            actor=actor,
+            project_id=_require_project_id(request),
+            thread_id=thread_id,
+            policy=payload["access_policy"],
+        )
+    )
 
 
 @router.post("/threads/{thread_id}/messages", status_code=202)

@@ -20,6 +20,7 @@ class RuntimeContext:
     top_p: float | None = None
     tools: tuple[str, ...] | None = None
     execution_mode: str | None = None
+    access_policy: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

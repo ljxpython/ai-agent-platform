@@ -35,6 +35,7 @@ from runtime_service.runtime.resource_bindings import (
     resolve_resource_binding,
     thread_resource_metadata,
 )
+from runtime_service.runtime.access_policy import interrupts_for_access_policy
 
 __all__ = [
     "AgentDefaults",
@@ -63,4 +64,5 @@ __all__ = [
     "RuntimeResourceBinding",
     "resolve_resource_binding",
     "thread_resource_metadata",
+    "interrupts_for_access_policy",
 ]

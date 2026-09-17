@@ -130,6 +130,13 @@ class LangGraphThreadsSdkAdapter:
         except Exception as exc:
             raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_delete_failed")
 
+    async def update(self, thread_id: str, payload: dict[str, Any]) -> Any:
+        update_payload = {key: payload[key] for key in self._UPDATE_FIELDS if key in payload}
+        try:
+            return await self._client.threads.update(thread_id, **update_payload)
+        except Exception as exc:
+            raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_update_failed")
+
 
     async def get_state(
         self,

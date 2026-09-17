@@ -35,6 +35,7 @@ CASES = [
     ("POST", "/threads/count", "count_threads"),
     ("GET", "/threads/{thread_id}", "get_thread"),
     ("DELETE", "/threads/{thread_id}", "delete_thread"),
+    ("PATCH", "/threads/{thread_id}/access-policy", "update_thread_access_policy"),
     ("GET", "/threads/{thread_id}/state", "get_thread_state"),
     ("POST", "/threads/{thread_id}/state", "update_thread_state"),
     ("POST", "/threads/{thread_id}/history", "get_thread_history"),
@@ -149,6 +150,8 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             headers["content-length"] = "10"
                         post_payload = (
                             terminal_payload(path) if name == "thread_terminal" else
+                            {"access_policy": "workspace_write"}
+                            if name == "update_thread_access_policy" else
                             {"content": "hello"}
                             if path.endswith("/messages")
                             else {"probe": "body"}
@@ -167,7 +170,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             method,
                             url_path,
                             params=req_params,
-                            json=post_payload if method == "POST" else None,
+                            json=post_payload if method in {"POST", "PATCH"} else None,
                             content=b"0123456789" if method == "PUT" else None,
                             headers=headers,
                         )
@@ -249,7 +252,11 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             method,
                             url_path,
                             params=req_params,
-                            json=(terminal_payload(path) if name == "thread_terminal" else {}) if method == "POST" else None,
+                            json=(
+                                terminal_payload(path) if name == "thread_terminal"
+                                else {"access_policy": "review"} if name == "update_thread_access_policy"
+                                else {}
+                            ) if method in {"POST", "PATCH"} else None,
                             content=b"0123456789" if method == "PUT" else None,
                             headers=headers,
                         )
@@ -290,7 +297,11 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         method,
                         url_path,
                         params=req_params,
-                        json=(terminal_payload(path) if name == "thread_terminal" else {}) if method == "POST" else None,
+                        json=(
+                            terminal_payload(path) if name == "thread_terminal"
+                            else {"access_policy": "review"} if name == "update_thread_access_policy"
+                            else {}
+                        ) if method in {"POST", "PATCH"} else None,
                         content=b"0123456789" if method == "PUT" else None,
                         headers=headers,
                     )

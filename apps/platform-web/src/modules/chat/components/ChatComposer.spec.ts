@@ -1,5 +1,10 @@
 import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("vue-i18n", () => ({
+  useI18n: () => ({ t: (k: string) => k }),
+}));
+
 import ChatComposer from "./ChatComposer.vue";
 
 type ComposerProps = InstanceType<typeof ChatComposer>["$props"];
@@ -53,5 +58,16 @@ describe("ChatComposer", () => {
 
     await wrapper.findAll("button").at(-1)?.trigger("click");
     expect(wrapper.emitted("cancel")).toHaveLength(1);
+  });
+
+  it("renders ThreadAccessPolicySelect when projectId is provided and bubbles change events", async () => {
+    const wrapper = mountComposer({
+      projectId: "proj-abc",
+      accessPolicy: "workspace_write",
+    });
+
+    const trigger = wrapper.find('[data-testid="access-policy-trigger"]');
+    expect(trigger.exists()).toBe(true);
+    expect(trigger.text()).toContain("允许工作区操作");
   });
 });

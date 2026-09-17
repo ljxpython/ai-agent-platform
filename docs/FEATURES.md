@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Agent 会话访问策略（逐项审批 / 工作区免审批） | 部分完成：前后端与 Runtime 均已实现受控策略、前端输入框选择器与草稿态同步；待全栈启动后跑最终 E2E 验收 | [方案](projects/20260917-agent-session-access-policy/README.md) |
 | Dear Agent 专属前端 | 进行中：F1/P1 已完成（专属模块 `src/modules/dear-agent/`、独立路由、澄清表单交互卡片、审批面板与输入锁定已落地并通过 50 套全量回归）；F2—F7 后续推进 | [前端交接与实施](projects/20260913-dearflow-agent/frontend-handoff.md) |
 | 正式聊天 v2（LangChain 流式运行时、线程续接、工具调用与中断展示） | 已重写：官方 SDK 会话、按轮渲染、多 ID 审批、历史分支及移动工作区；最终验收见项目记录 | [Chat 重构](projects/20260910-platform-web-refactor/04-chat-session-and-interaction.md) |
 | 运行级调试配置 | 已完成：公开 Context/config 白名单、schema 参数校验；不保留旧提示词覆盖 | [接入契约](projects/20260910-platform-web-refactor/03-api-contracts.md) |

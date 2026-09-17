@@ -37,6 +37,8 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
 
     async def delete_thread(self, thread_id: str) -> Any: ...
 
+    async def update_thread(self, thread_id: str, payload: dict[str, Any]) -> Any: ...
+
 
     async def get_thread_state(
         self,

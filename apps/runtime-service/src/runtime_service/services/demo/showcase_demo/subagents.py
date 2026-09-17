@@ -14,6 +14,7 @@ from runtime_service.services.demo.showcase_demo.prompts import (
     IMPLEMENTOR_PROMPT,
     RESEARCH_PROMPT,
 )
+from runtime_service.runtime import interrupts_for_access_policy
 
 READ_TOOLS = ("ls", "read_file", "glob", "grep")
 WORK_TOOLS = (*READ_TOOLS, "write_file", "edit_file", "execute")
@@ -31,6 +32,7 @@ def build_subagents(
     backend: BackendProtocol,
     middleware: Callable[[Sequence[str]], list[AgentMiddleware]],
     chart_tools: Sequence[BaseTool] = (),
+    access_policy: str | None = None,
 ) -> list[SubAgent]:
     agents = [
         {
@@ -56,7 +58,7 @@ def build_subagents(
             "model": model,
             "tools": [],
             "permissions": PERMISSIONS,
-            "interrupt_on": APPROVALS,
+            "interrupt_on": interrupts_for_access_policy(access_policy, APPROVALS),
             "middleware": [
                 FilesystemMiddleware(
                     backend=backend,

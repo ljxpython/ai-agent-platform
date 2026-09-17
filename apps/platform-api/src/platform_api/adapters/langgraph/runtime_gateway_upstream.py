@@ -146,6 +146,9 @@ class LangGraphRuntimeGatewayUpstream:
     async def delete_thread(self, thread_id: str) -> Any:
         return await self._threads.delete(thread_id)
 
+    async def update_thread(self, thread_id: str, payload: dict[str, Any]) -> Any:
+        return await self._threads.update(thread_id, payload)
+
 
     async def get_thread_state(
         self,

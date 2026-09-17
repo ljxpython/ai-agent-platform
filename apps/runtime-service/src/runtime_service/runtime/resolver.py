@@ -18,7 +18,7 @@ from runtime_service.runtime.contracts import (
 )
 from runtime_service.runtime.errors import RuntimeResolutionError
 
-_CONTEXT_FIELDS = frozenset({"model_id", "temperature", "max_tokens", "top_p", "tools", "execution_mode"})
+_CONTEXT_FIELDS = frozenset({"model_id", "temperature", "max_tokens", "top_p", "tools", "execution_mode", "access_policy"})
 _IDENTITY_FIELDS = frozenset(
     {"user_id", "tenant_id", "project_id", "role", "permissions", "secret", "token", "api_key"}
 )
@@ -132,6 +132,7 @@ def parse_runtime_context(raw: Mapping[str, Any] | RuntimeContext | None) -> Run
             top_p=raw.get("top_p"),
             tools=None if tools is None else tuple(tools),
             execution_mode=raw.get("execution_mode"),
+            access_policy=raw.get("access_policy"),
         )
     )
 
@@ -184,6 +185,11 @@ def _validate_context(value: RuntimeContext) -> RuntimeContext:
         or value.execution_mode not in {"flash", "standard", "pro", "ultra"}
     ):
         raise _fail("runtime.context.invalid_value", "execution_mode")
+    if value.access_policy is not None and (
+        not isinstance(value.access_policy, str)
+        or value.access_policy not in {"review", "workspace_write"}
+    ):
+        raise _fail("runtime.context.invalid_value", "access_policy")
     model_id = None if value.model_id is None else _identifier(value.model_id, "model_id", "runtime.context.invalid_value")
     temperature = _number(value.temperature, "temperature", minimum=0, maximum=2)
     top_p = _number(value.top_p, "top_p", minimum=0, maximum=1)
@@ -266,6 +272,8 @@ def runtime_context_hash(raw: Mapping[str, Any] | RuntimeContext | None) -> str:
     }
     if context.execution_mode is not None:
         payload.update(schema="runtime-context/v2", execution_mode=context.execution_mode)
+    if context.access_policy is not None:
+        payload.update(schema="runtime-context/v3", access_policy=context.access_policy)
     return _sha256(_canonical_json(payload))
 
 

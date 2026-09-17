@@ -916,6 +916,14 @@ const chatMetrics = computed(() => {
           >
             新会话
           </span>
+          <span
+            v-if="session.accessPolicy.value === 'workspace_write'"
+            class="inline-flex items-center gap-1 rounded-md border border-amber-300/80 bg-amber-50/80 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-300"
+            title="当前会话启用工作区免审策略"
+          >
+            <span class="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            工作区免审
+          </span>
         </div>
         <div class="ml-auto flex items-center gap-2">
           <div class="flex items-center gap-3 text-xs font-medium">
@@ -1373,6 +1381,11 @@ const chatMetrics = computed(() => {
       :project-id="projectId"
       :selected-model-id="context.model_id"
       :default-model-name="defaultModelName"
+      :access-policy="session.accessPolicy.value"
+      :access-policy-updating="session.accessPolicyUpdating.value"
+      :can-write="canWrite"
+      @update:access-policy="session.setAccessPolicy"
+      @change:access-policy="session.setAccessPolicy"
       @update:selected-model-id="handleModelChange($event)"
       @update:model-value="emit('update:draft', $event)"
       @send="send()"

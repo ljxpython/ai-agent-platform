@@ -189,6 +189,23 @@ def test_skills_discovered_read_and_todos_streamed(build):
     asyncio.run(run())
 
 
+def test_workspace_write_skips_file_approval(build):
+    async def run():
+        graph, cfg, _ = await build(
+            [
+                call("write_file", {"file_path": "/workspace/new.txt", "content": "approved by policy"}),
+                AIMessage(content="done"),
+            ],
+            config(context={"access_policy": "workspace_write"}),
+        )
+        result = await graph.ainvoke({"messages": [("user", "write")]}, cfg, context=cfg["context"])
+        assert not result.get("__interrupt__")
+        workspace = DockerWorkspaceBackend("tenant", "project", "teaching-thread").cwd / "workspace"
+        assert (workspace / "new.txt").read_text() == "approved by policy"
+
+    asyncio.run(run())
+
+
 @pytest.mark.parametrize("decision", ["approve", "reject", "edit"])
 def test_approval_controls_actual_file_effects(build, decision):
     async def run():

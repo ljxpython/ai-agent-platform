@@ -14,8 +14,10 @@ import {
 } from "@/services/langgraph/client";
 import {
   createSessionService,
+  type AccessPolicy,
   type ChatState,
 } from "@/services/threads/session.service";
+import { updateThreadAccessPolicy } from "@/services/threads/access-policy.service";
 import type { AgentContext } from "@/services/agents/types";
 import { parseAgentContext } from "@/services/agents/context";
 import {
@@ -68,13 +70,71 @@ export function useDearAgentSession(options: {
   );
   const service = createSessionService(actions.fetch);
   const threadId = ref(options.threadId ?? null);
+  const accessPolicy = ref<AccessPolicy>("review");
+  const accessPolicyUpdating = ref(false);
+
+  async function refreshAccessPolicy() {
+    if (!threadId.value) return;
+    try {
+      const thread = await service.get(threadId.value);
+      if (!disposed && thread?.metadata && typeof thread.metadata === "object") {
+        const policy = (thread.metadata as Record<string, unknown>).access_policy;
+        accessPolicy.value = policy === "workspace_write" ? "workspace_write" : "review";
+      } else if (!disposed) {
+        accessPolicy.value = "review";
+      }
+    } catch {
+      /* 保持原值或默认 review */
+    }
+  }
+
+  async function setAccessPolicy(policy: AccessPolicy) {
+    if (policy === accessPolicy.value) return true;
+    if (!options.canWrite.value) {
+      fail(new Error("无项目写权限，无法更改会话策略"));
+      return false;
+    }
+    if (busy.value || reviews.value.length || checking.value) {
+      fail(new Error("会话执行或待审批中，无法切换访问策略"));
+      return false;
+    }
+
+    if (!threadId.value) {
+      accessPolicy.value = policy;
+      return true;
+    }
+
+    accessPolicyUpdating.value = true;
+    try {
+      await updateThreadAccessPolicy(options.projectId, threadId.value, policy);
+      if (!disposed) {
+        accessPolicy.value = policy;
+      }
+      return true;
+    } catch (cause) {
+      if (!disposed) {
+        fail(cause);
+      }
+      return false;
+    } finally {
+      if (!disposed) {
+        accessPolicyUpdating.value = false;
+      }
+    }
+  }
+
   watch(
     () => options.threadId,
     (next) => {
       if (next && next !== threadId.value) {
         threadId.value = next;
+        void refreshAccessPolicy();
+      } else if (!next) {
+        threadId.value = null;
+        accessPolicy.value = "review";
       }
     },
+    { immediate: true },
   );
   const run = shallowRef<Run | null>(null);
   const checking = ref(true);
@@ -195,6 +255,7 @@ export function useDearAgentSession(options: {
           verified.value = true;
           error.value = "";
           options.onRefresh();
+          void refreshAccessPolicy();
           return true;
         }
         return false;
@@ -491,6 +552,20 @@ export function useDearAgentSession(options: {
         if (disposed) return false;
         threadId.value = thread.thread_id;
         options.onThread(thread.thread_id);
+
+        if (accessPolicy.value === "workspace_write") {
+          try {
+            await updateThreadAccessPolicy(
+              options.projectId,
+              thread.thread_id,
+              "workspace_write",
+            );
+          } catch (cause) {
+            accessPolicy.value = "review";
+            fail(cause);
+            return false;
+          }
+        }
       }
       if (disposed || !options.canWrite.value) return false;
       const messageContent = await prepareMessageAttachments(threadId.value, content);
@@ -737,6 +812,10 @@ export function useDearAgentSession(options: {
     service,
     actions,
     threadId,
+    accessPolicy,
+    accessPolicyUpdating,
+    setAccessPolicy,
+    refreshAccessPolicy,
     run,
     reviews,
     clarifications,

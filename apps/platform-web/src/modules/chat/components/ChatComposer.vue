@@ -7,7 +7,9 @@ import {
 } from "@/utils/chat-content";
 import ChatAttachmentPreview from "./ChatAttachmentPreview.vue";
 import ChatModelSelector from "./ChatModelSelector.vue";
+import ThreadAccessPolicySelect from "./ThreadAccessPolicySelect.vue";
 import type { RuntimeModelItem } from "@/types/management";
+import type { AccessPolicy } from "@/services/threads/session.service";
 
 const props = defineProps<{
   modelValue: string;
@@ -24,6 +26,9 @@ const props = defineProps<{
   defaultModelName?: string;
   placeholder?: string;
   projectId?: string;
+  accessPolicy?: AccessPolicy;
+  accessPolicyUpdating?: boolean;
+  canWrite?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -34,6 +39,8 @@ const emit = defineEmits<{
   "composer-paste": [event: ClipboardEvent];
   "remove-attachment": [index: number];
   "update:selectedModelId": [value: string];
+  "update:accessPolicy": [value: AccessPolicy];
+  "change:accessPolicy": [value: AccessPolicy];
 }>();
 
 const fileInputRef = ref<HTMLInputElement | null>(null);
@@ -227,6 +234,15 @@ defineExpose({
             class="flex min-w-0 basis-full items-center gap-2 overflow-x-auto pb-1 sm:basis-auto"
             :class="isFocusMode || props.compact ? 'gap-2' : 'gap-2.5'"
           >
+            <ThreadAccessPolicySelect
+              v-if="projectId"
+              :model-value="accessPolicy || 'review'"
+              :disabled="isRunning || hasBlockingInterrupt || canWrite === false"
+              :loading="accessPolicyUpdating"
+              :can-write="canWrite !== false"
+              @update:model-value="emit('update:accessPolicy', $event)"
+              @change="emit('change:accessPolicy', $event)"
+            />
             <button
               type="button"
               class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white transition-colors"
@@ -248,6 +264,12 @@ defineExpose({
               :accept="CHAT_ATTACHMENT_ACCEPT"
               @change="emit('file-input-change', $event)"
             >
+          </div>
+
+          <div
+            class="ml-auto flex shrink-0 items-center gap-2"
+            :class="isFocusMode || props.compact ? 'gap-2' : 'gap-2.5'"
+          >
             <ChatModelSelector
               v-if="models && projectId"
               :models="models"
@@ -257,12 +279,6 @@ defineExpose({
               :disabled="isRunning || hasBlockingInterrupt"
               @update:selected-model-id="emit('update:selectedModelId', $event)"
             />
-          </div>
-
-          <div
-            class="ml-auto flex shrink-0 items-center gap-2"
-            :class="isFocusMode || props.compact ? 'gap-2' : 'gap-2.5'"
-          >
             <span class="hidden md:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-dark-400 font-mono select-none">
               <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] dark:border-dark-700 dark:bg-dark-800">↵</kbd>
               <span>发送</span>

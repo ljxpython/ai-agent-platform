@@ -56,6 +56,7 @@ const {
   setBackground,
 } = useThreadTerminal(projectIdRef, threadIdRef, {
   onOutputChunk: handleOutputChunk,
+  onSessionExited: handleSessionExited,
 });
 
 // 监听前后台状态切换（借鉴 open-swe）
@@ -130,6 +131,14 @@ function handleOutputChunk(chunk: TerminalOutputChunk) {
   const instance = xtermInstances.get(chunk.terminalId);
   if (instance) {
     instance.term.write(chunk.data);
+  }
+}
+
+function handleSessionExited(info: { terminal_id: string; exit_code: number | null }) {
+  const instance = xtermInstances.get(info.terminal_id);
+  if (instance) {
+    const code = info.exit_code ?? 0;
+    instance.term.writeln(`\r\n\x1b[33m[终端进程已结束 (代码: ${code})] 点击上方 '+' 可新建终端\x1b[0m`);
   }
 }
 

@@ -66,6 +66,8 @@ from platform_api.modules.runtime_policies.infra import (
 
 _THREAD_PROJECT_ID_KEYS = PROJECT_SCOPE_ALIAS_KEYS
 _THREAD_GRAPH_ID_KEYS = ("graph_id", "graphId")
+_ACCESS_POLICY_KEY = "access_policy"
+_ACCESS_POLICIES = frozenset(("review", "workspace_write"))
 _SDK_LIFECYCLE_EVENTS = {
     "started": "running",
     "success": "completed",
@@ -181,8 +183,11 @@ def _runtime_context_snapshot(command: dict[str, Any]) -> tuple[str, dict[str, A
     mode = merged.get("execution_mode")
     if mode is not None:
         snapshot["execution_mode"] = mode
+    if merged.get("access_policy") is not None:
+        snapshot["access_policy"] = merged["access_policy"]
+    schema = "runtime-context/v3" if "access_policy" in snapshot else "runtime-context/v2" if mode is not None else "runtime-context/v1"
     encoded = json.dumps(
-        {"schema": "runtime-context/v2" if mode is not None else "runtime-context/v1", **snapshot},
+        {"schema": schema, **snapshot},
         ensure_ascii=False,
         allow_nan=False,
         separators=(",", ":"),
@@ -427,6 +432,11 @@ def _thread_graph_id(thread: dict[str, Any]) -> str | None:
     return None
 
 
+def _thread_access_policy(thread: dict[str, Any]) -> str:
+    value = _thread_metadata(thread).get(_ACCESS_POLICY_KEY)
+    return value if value in _ACCESS_POLICIES else "review"
+
+
 def _promote_thread_graph_id(payload: dict[str, Any]) -> dict[str, Any]:
     next_payload = dict(payload)
     if clean_str(next_payload.get("graph_id")):
@@ -625,6 +635,22 @@ class RuntimeGatewayService:
             next_config["configurable"] = next_configurable
             next_payload["config"] = next_config
 
+        return next_payload
+
+    @staticmethod
+    def _inject_thread_access_policy(*, thread: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+        policy = _thread_access_policy(thread)
+        next_payload = dict(payload)
+        context = dict(ensure_dict(next_payload.get("context")))
+        context[_ACCESS_POLICY_KEY] = policy
+        next_payload["context"] = context
+        config = dict(ensure_dict(next_payload.get("config")))
+        configurable = dict(ensure_dict(config.get("configurable")))
+        runtime_options = dict(ensure_dict(configurable.get("platform_runtime")))
+        runtime_options[_ACCESS_POLICY_KEY] = policy
+        configurable["platform_runtime"] = runtime_options
+        config["configurable"] = configurable
+        next_payload["config"] = config
         return next_payload
 
     def _project_default_model_id(self, *, project_id: str) -> str | None:
@@ -1432,6 +1458,9 @@ class RuntimeGatewayService:
         next_payload = self._inject_project_metadata(
             project_id=project_id, payload=payload
         )
+        metadata = dict(ensure_dict(next_payload.get("metadata")))
+        metadata[_ACCESS_POLICY_KEY] = "review"
+        next_payload["metadata"] = metadata
         next_payload = _promote_thread_graph_id(next_payload)
         return await self._upstream.create_thread(next_payload)
 
@@ -1493,6 +1522,17 @@ class RuntimeGatewayService:
             write=True,
         )
         return await self._upstream.delete_thread(thread_id)
+
+    async def update_thread_access_policy(
+        self, *, actor: ActorContext, project_id: str, thread_id: str, policy: str
+    ) -> dict[str, str]:
+        if not isinstance(policy, str) or policy not in _ACCESS_POLICIES:
+            raise BadRequestError(code="invalid_access_policy", message="access_policy must be review or workspace_write")
+        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=True)
+        metadata = _thread_metadata(thread)
+        metadata[_ACCESS_POLICY_KEY] = policy
+        await self._upstream.update_thread(thread_id, {"metadata": metadata})
+        return {"thread_id": thread_id, _ACCESS_POLICY_KEY: policy}
 
     async def get_thread_state(
         self,
@@ -1616,6 +1656,7 @@ class RuntimeGatewayService:
             project_id=project_id,
             payload=next_payload,
         )
+        next_payload = self._inject_thread_access_policy(thread=thread, payload=next_payload)
         assistant_id = clean_str(next_payload.get("assistant_id"))
         await run_in_threadpool(
             self._assert_runtime_target_allowed,
@@ -1698,6 +1739,7 @@ class RuntimeGatewayService:
                 project_id=project_id,
                 payload=raw_params,
             )
+            raw_params = self._inject_thread_access_policy(thread=thread, payload=raw_params)
         raw_payload["params"] = raw_params
         default_model_id = clean_str(
             ensure_dict(raw_params.get("context")).get("model_id")

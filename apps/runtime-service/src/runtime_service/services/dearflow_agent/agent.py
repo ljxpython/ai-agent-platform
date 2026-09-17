@@ -34,6 +34,7 @@ from runtime_service.runtime import (
     RuntimeContext,
     build_model,
     fetch_model_connection,
+    interrupts_for_access_policy,
     parse_runtime_context,
     reject_untrusted_configurable,
     resolve_runtime_config,
@@ -215,7 +216,9 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         backend=backend,
         skills=["/skills/", "/skills/custom/"] if governance else ["/skills/"],
         permissions=PERMISSIONS,
-        interrupt_on=APPROVALS,
+        interrupt_on=interrupts_for_access_policy(
+            context.access_policy if executing else None, APPROVALS
+        ),
         subagents=[researcher(
             research_tools if mode.delegation else [],
             [

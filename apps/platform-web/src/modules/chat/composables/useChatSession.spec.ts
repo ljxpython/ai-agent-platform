@@ -8,11 +8,17 @@ const mocks = vi.hoisted(() => ({
   run: vi.fn(),
   runs: vi.fn(),
   actions: vi.fn(),
+  updateAccessPolicy: vi.fn(),
+  getThread: vi.fn(),
+  createThread: vi.fn(),
 }));
 vi.mock("@langchain/vue", () => ({ useStream: mocks.stream }));
 vi.mock("@/services/threads/messages.service", () => ({
   enqueueThreadMessage: mocks.enqueue,
   listThreadMessages: mocks.list,
+}));
+vi.mock("@/services/threads/access-policy.service", () => ({
+  updateThreadAccessPolicy: mocks.updateAccessPolicy,
 }));
 vi.mock("@/services/threads/session.service", () => ({
   createSessionService: () => ({
@@ -21,6 +27,12 @@ vi.mock("@/services/threads/session.service", () => ({
       ? mocks.runs
       : async () => [{ run_id: "run", status: "running" }],
     run: mocks.run,
+    get: mocks.getThread.getMockImplementation()
+      ? mocks.getThread
+      : async () => ({ thread_id: "t", metadata: { access_policy: "review" } }),
+    create: mocks.createThread.getMockImplementation()
+      ? mocks.createThread
+      : async () => ({ thread_id: "new-thread" }),
   }),
 }));
 vi.mock("@/services/langgraph/client", () => ({
@@ -28,10 +40,10 @@ vi.mock("@/services/langgraph/client", () => ({
   getLanggraphApiUrl: () => "",
 }));
 vi.mock("../run-actions", () => ({
-  createRunActions: () => mocks.actions() ?? ({ current: ref(null), dispose: vi.fn() }),
+  createRunActions: () => mocks.actions() ?? ({ current: ref(null), begin: vi.fn(() => ({ key: "k" })), acknowledge: vi.fn(), rejectUnsent: vi.fn(), dispose: vi.fn() }),
 }));
 import { useChatSession } from "./useChatSession";
-afterEach(() => { vi.restoreAllMocks(); mocks.actions.mockReset(); sessionStorage.clear(); });
+afterEach(() => { vi.restoreAllMocks(); mocks.actions.mockReset(); mocks.updateAccessPolicy.mockReset(); sessionStorage.clear(); });
 it("unknown queue retry freezes original payload and key and clears draft only on ACK", async () => {
   mocks.stream.mockReturnValue({
     isLoading: ref(true),
@@ -233,4 +245,120 @@ it("does NOT throw unconfirmed error while stream is loading even if document is
     scope.stop();
   }
 });
+
+it("supports draft state policy staging and sends PATCH before starting run on new thread", async () => {
+  const submitFn = vi.fn().mockResolvedValue(undefined);
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+    submit: submitFn,
+  });
+  mocks.runs.mockResolvedValue([]);
+  mocks.updateAccessPolicy.mockResolvedValue({
+    thread_id: "created-thread-1",
+    access_policy: "workspace_write",
+  });
+  mocks.createThread.mockResolvedValue({ thread_id: "created-thread-1" });
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "reference_agent",
+      threadId: undefined, // 草稿态
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    expect(session.accessPolicy.value).toBe("review");
+
+    // 1. 草稿态预选 workspace_write
+    const switched = await session.setAccessPolicy("workspace_write");
+    expect(switched).toBe(true);
+    expect(session.accessPolicy.value).toBe("workspace_write");
+    // 此时尚未创建线程，不应调用 API
+    expect(mocks.updateAccessPolicy).not.toHaveBeenCalled();
+
+    // 2. 发送首条消息，触发创建线程并补发 PATCH
+    await session.send("Hello agent");
+    await flushPromises();
+
+    expect(mocks.createThread).toHaveBeenCalled();
+    expect(mocks.updateAccessPolicy).toHaveBeenCalledWith(
+      "proj-1",
+      "created-thread-1",
+      "workspace_write",
+    );
+    expect(submitFn).toHaveBeenCalled();
+  } finally {
+    scope.stop();
+  }
+});
+
+it("updates access policy for existing thread via API and handles failure gracefully", async () => {
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+  });
+  mocks.runs.mockResolvedValue([]);
+  mocks.getThread.mockResolvedValue({
+    thread_id: "thread-existing",
+    metadata: { access_policy: "review" },
+  });
+  mocks.updateAccessPolicy.mockResolvedValue({
+    thread_id: "thread-existing",
+    access_policy: "workspace_write",
+  });
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "reference_agent",
+      threadId: "thread-existing",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    expect(session.accessPolicy.value).toBe("review");
+
+    // 成功切换
+    const success = await session.setAccessPolicy("workspace_write");
+    expect(success).toBe(true);
+    expect(session.accessPolicy.value).toBe("workspace_write");
+    expect(mocks.updateAccessPolicy).toHaveBeenCalledWith(
+      "proj-1",
+      "thread-existing",
+      "workspace_write",
+    );
+
+    // 切换失败时保留原值
+    mocks.updateAccessPolicy.mockRejectedValueOnce(new Error("409 Conflict"));
+    const failed = await session.setAccessPolicy("review");
+    expect(failed).toBe(false);
+    expect(session.accessPolicy.value).toBe("workspace_write"); // 保持原值，不乐观伪造
+    expect(session.error.value).toContain("409 Conflict");
+  } finally {
+    scope.stop();
+  }
+});
+
 

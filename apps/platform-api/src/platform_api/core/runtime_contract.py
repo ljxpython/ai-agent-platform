@@ -42,6 +42,7 @@ RUNTIME_OPTION_KEYS = (
     "max_tokens",
     "top_p",
     "tools",
+    "access_policy",
 )
 
 PROTOCOL_V2_EVENT_CHANNELS = {
@@ -64,6 +65,9 @@ def _validate_runtime_option_values(options: dict[str, Any]) -> None:
     mode = options.get("execution_mode")
     if mode is not None and (not isinstance(mode, str) or mode not in {"flash", "standard", "pro", "ultra"}):
         raise ValueError("execution_mode must be flash, standard, pro or ultra")
+    policy = options.get("access_policy")
+    if policy is not None and policy not in {"review", "workspace_write"}:
+        raise ValueError("access_policy must be review or workspace_write")
     string_keys = ("model_id", "system_prompt", "multimodal_parser_model_id")
     for key in string_keys:
         value = options.get(key)
@@ -120,6 +124,7 @@ RUNTIME_OPTION_PROPERTY_TYPES: dict[str, str] = {
     "enable_tools": "boolean",
     "tools": "array[string]",
     "multimodal_parser_model_id": "string",
+    "access_policy": "string",
 }
 
 EXECUTION_CONFIG_PROPERTIES: dict[str, dict[str, Any]] = {
