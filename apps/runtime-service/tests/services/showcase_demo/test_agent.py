@@ -82,6 +82,37 @@ def call(name, args, identifier="t1"):
     )
 
 
+@pytest.mark.parametrize("decision", ["approve", "reject"])
+def test_artifact_publication_approval_and_checkpoint(build, decision):
+    import json
+
+    from runtime_service.workspace.artifact_refs import ArtifactWorkspace
+    from runtime_service.workspace.scoped import resolve_thread_workspace
+
+    async def run():
+        graph, cfg, _ = await build([
+            call("present_artifacts", {"file_path": "/workspace/work/payment.yaml"}),
+            AIMessage(content="Publication handled."),
+        ])
+        root = resolve_thread_workspace("tenant", "project", "teaching-thread", "showcase_demo")
+        (root / "work").mkdir(parents=True, exist_ok=True)
+        (root / "work/payment.yaml").write_text("openapi: 3.1.0")
+        result = await graph.ainvoke({"messages": [("user", "Publish the OpenAPI file")]}, cfg)
+        assert result["__interrupt__"][0].value["action_requests"][0]["name"] == "present_artifacts"
+        assert not (root / "outputs").exists()
+        result = await graph.ainvoke(Command(resume={"decisions": [{"type": decision}]}), cfg)
+        if decision == "approve":
+            message = next(m for m in result["messages"] if isinstance(m, ToolMessage) and m.name == "present_artifacts")
+            ref = json.loads(message.content)
+            assert ArtifactWorkspace(root).read(ref["path"])[0] == b"openapi: 3.1.0"
+            restored = await graph.aget_state(cfg)
+            assert any(isinstance(m, ToolMessage) and ref["path"] in str(m.content) for m in restored.values["messages"])
+        else:
+            assert not (root / "outputs").exists()
+
+    asyncio.run(run())
+
+
 @pytest.fixture
 def build(monkeypatch, tmp_path):
     monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path))

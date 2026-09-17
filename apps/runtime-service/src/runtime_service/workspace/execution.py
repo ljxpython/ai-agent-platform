@@ -13,20 +13,13 @@ MAX_OUTPUT = 128 * 1024
 logger = logging.getLogger(__name__)
 
 
-async def execute_in_workspace(
-    workspace: Path, command: str, *, image: str, timeout: int | None = None,
-    skills: Path | None = None, protected: bool = False,
-) -> ExecuteResponse:
-    if not isinstance(command, str) or not command.strip() or len(command) > 32768:
-        raise ValueError("command must be non-empty and at most 32768 characters")
-    seconds = 30 if timeout is None else timeout
-    if type(seconds) is not int or not 1 <= seconds <= 60:
-        raise ValueError("timeout must be between 1 and 60 seconds")
+def docker_workspace_args(workspace: Path, *, image: str, name: str,
+                          skills: Path | None = None, protected: bool = False) -> list[str]:
+    """Share the same mount and resource policy between commands and terminals."""
     if not workspace.is_dir() or workspace.is_symlink():
         raise ValueError("workspace not ready")
     if not image or image.startswith("-"):
         raise ValueError("execution image required")
-    name = f"runtime-{uuid4().hex}"
     args = ["docker", "run", "--rm", "--pull=never", "--name", name,
             "--network=none", "--read-only", "--cap-drop=ALL",
             "--user", f"{os.getuid()}:{os.getgid()}",
@@ -38,7 +31,21 @@ async def execute_in_workspace(
         args += ["--mount", f"type=bind,src={workspace / 'work'},dst=/workspace/work"]
     if skills is not None:
         args += ["--mount", f"type=bind,src={skills},dst=/skills,readonly"]
-    args += ["--workdir", "/workspace/work" if protected else "/workspace", image,
+    return [*args, "--workdir", "/workspace/work" if protected else "/workspace", image]
+
+
+async def execute_in_workspace(
+    workspace: Path, command: str, *, image: str, timeout: int | None = None,
+    skills: Path | None = None, protected: bool = False,
+) -> ExecuteResponse:
+    if not isinstance(command, str) or not command.strip() or len(command) > 32768:
+        raise ValueError("command must be non-empty and at most 32768 characters")
+    seconds = 30 if timeout is None else timeout
+    if type(seconds) is not int or not 1 <= seconds <= 60:
+        raise ValueError("timeout must be between 1 and 60 seconds")
+    name = f"runtime-{uuid4().hex}"
+    args = docker_workspace_args(workspace, image=image, name=name, skills=skills, protected=protected)
+    args += [
              "sh", "-c", 'timeout -s KILL "$1" sh -c "$2" > /tmp/output 2>&1; result=$?; '
              + f'head -c {MAX_OUTPUT} /tmp/output; exit "$result"', "runtime", str(seconds), command]
     process = await asyncio.create_subprocess_exec(*args, stdout=asyncio.subprocess.PIPE,

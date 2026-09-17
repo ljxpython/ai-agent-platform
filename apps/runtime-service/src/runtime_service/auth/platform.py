@@ -85,7 +85,7 @@ async def authenticate(authorization: str | None = None) -> Auth.types.MinimalUs
 async def deny_image_scope_on_server_resources(ctx: Auth.types.AuthContext, value: dict) -> None:
     """Explicitly reject image scoped tokens from invoking native LangGraph Server operations."""
     scope = ctx.user.get("runtime_scope", {}) if isinstance(ctx.user, dict) else {}
-    if scope.get("operation") in {"image-upload", "image-read", "workspace-file-upload", "workspace-file-read", "dear-governance-read", "dear-governance-write"}:
+    if scope.get("operation") in {"image-upload", "image-read", "workspace-file-upload", "workspace-file-read", "dear-governance-read", "dear-governance-write", "terminal-read", "terminal-write"}:
         raise Auth.exceptions.HTTPException(
             status_code=403,
             detail="image scoped tokens cannot access native LangGraph server resources",

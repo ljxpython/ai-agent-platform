@@ -7,6 +7,27 @@ from platform_api.modules.audit.schemas import AuditPlane, AuditResult
 
 
 class AuditHttpResolutionTest(unittest.TestCase):
+    def test_terminal_operations_have_audit_actions_without_output(self):
+        for method, suffix, action in (
+            ("POST", "", "created"), ("GET", "", "listed"),
+            ("GET", "/session/output", "output.read"),
+            ("POST", "/session/input", "input.sent"),
+            ("POST", "/session/resize", "resized"),
+            ("DELETE", "/session", "closed"),
+        ):
+            with self.subTest(action=action):
+                resolved = resolve_http_audit(
+                    request=AuditHttpRequest(method=method,
+                        path="/api/langgraph/threads/thread-1/terminals" + suffix,
+                        query_params={}, query_string=None, state_project_id="p",
+                        client_ip=None, user_agent=None, response_content_length=None),
+                    response_payload={"data_base64": "private-output"},
+                    actor_user_id="u", status_code=200, result=AuditResult.SUCCESS,
+                )
+                self.assertEqual(resolved.action, "runtime.terminal." + action)
+                self.assertEqual(resolved.target_id, "thread-1")
+                self.assertNotIn("private-output", str(resolved.metadata))
+
     def test_run_cancel_audits_run_id_and_unknown_paths_do_not_become_ids(self):
         run_id = "11111111-1111-1111-1111-111111111111"
         for path, expected in (

@@ -429,6 +429,10 @@ class LangGraphRuntimeClient:
         content_type = response.headers.get("content-type", "")
         media_type = content_type.split(";")[0].strip().lower()
         allowed_mimes = {
+            "application/octet-stream", "application/yaml", "text/yaml", "application/toml",
+            "application/xml", "application/sql", "image/svg+xml", "image/png", "image/jpeg", "image/webp",
+            "text/x-python", "text/x-shellscript", "text/typescript", "text/x-java-source",
+            "text/x-c", "text/x-c++src", "text/x-rust", "text/jsx", "text/tsx",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "application/pdf",
             "text/plain",

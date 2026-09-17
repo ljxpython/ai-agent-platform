@@ -1,0 +1,207 @@
+import base64
+import io
+import json
+import os
+import zipfile
+
+import pytest
+from PIL import Image
+from runtime_service.workspace.artifact_refs import ARTIFACT_MIMES, ArtifactWorkspace
+from runtime_service.workspace.browser import PREVIEW_BYTES, WorkspaceBrowser
+from runtime_service.workspace.documents import DocumentError, DocumentWorkspace
+from runtime_service.workspace.html_preview import safe_html
+
+
+def test_tree_pagination_mutation_and_unsafe_files(tmp_path):
+    (tmp_path / "work").mkdir()
+    for name in ("a.yaml", "b.py", "c.md"):
+        (tmp_path / "work" / name).write_text("value: 1")
+    (tmp_path / "work/link").symlink_to("/etc/passwd")
+    os.mkfifo(tmp_path / "work/pipe")
+    browser = WorkspaceBrowser(tmp_path)
+    page = browser.list_directory("/workspace/work", limit=2)
+    assert [x.name for x in page.items] == ["a.yaml", "b.py"]
+    assert (
+        browser.list_directory("/workspace/work", cursor=page.next_cursor).items[0].name
+        == "c.md"
+    )
+    (tmp_path / "work/d.txt").write_text("new")
+    with pytest.raises(DocumentError, match="workspace_directory_changed"):
+        browser.list_directory("/workspace/work", cursor=page.next_cursor)
+    for path in (
+        "/etc/passwd",
+        "/workspace/../x",
+        "/workspace/work/link",
+        "/workspace/work/pipe",
+        "/workspace/work/./a.yaml",
+        "/workspace/work/a\x00",
+    ):
+        with pytest.raises(DocumentError):
+            browser.read_file(path)
+    for cursor in ("invalid!", base64.b64encode(b"[]").decode()):
+        with pytest.raises(DocumentError, match="invalid_workspace_cursor"):
+            browser.list_directory("/workspace/work", cursor=cursor)
+
+
+def test_preview_download_and_limits(tmp_path):
+    browser = WorkspaceBrowser(tmp_path)
+    (tmp_path / "code.py").write_text("x = 1")
+    preview, mime = browser.preview("/workspace/code.py")
+    assert mime == "application/json"
+    assert json.loads(preview)["text"] == "x = 1"
+    (tmp_path / "big.txt").write_text("中" * PREVIEW_BYTES)
+    payload = json.loads(browser.preview("/workspace/big.txt")[0])
+    assert payload["truncated"] and "�" not in payload["text"]
+    (tmp_path / "data.bin").write_bytes(b"\0\1")
+    assert (
+        browser.read_file("/workspace/data.bin")[1]["mime_type"]
+        == "application/octet-stream"
+    )
+    with pytest.raises(DocumentError, match="preview_unsupported"):
+        browser.preview("/workspace/data.bin")
+    (tmp_path / "bad.txt").write_bytes(b"\0")
+    with pytest.raises(DocumentError, match="invalid_document"):
+        browser.preview("/workspace/bad.txt")
+    with (tmp_path / "huge.txt").open("wb") as target:
+        target.truncate(20 * 1024 * 1024 + 1)
+    with pytest.raises(DocumentError, match="file_too_large"):
+        browser.read_file("/workspace/huge.txt")
+
+
+@pytest.mark.parametrize(
+    "extension",
+    [
+        "yaml",
+        "yml",
+        "toml",
+        "xml",
+        "py",
+        "sh",
+        "sql",
+        "ts",
+        "jsx",
+        "tsx",
+        "vue",
+        "svg",
+        "java",
+        "c",
+        "cpp",
+        "rs",
+        "md",
+        "html",
+        "css",
+        "js",
+        "txt",
+        "bib",
+        "csv",
+        "json",
+    ],
+)
+def test_text_artifacts_persist_and_publish_idempotently(tmp_path, extension):
+    (tmp_path / "work").mkdir()
+    source = tmp_path / "work" / ("payment." + extension)
+    source.write_text('{"value": 1}')
+    store = ArtifactWorkspace(tmp_path)
+    ref = store.publish("/workspace/work/" + source.name)
+    assert ref == store.publish("/workspace/work/" + source.name)
+    assert ref["mime_type"] == ARTIFACT_MIMES[extension]
+    assert ArtifactWorkspace(tmp_path).list_artifacts()["items"] == [ref]
+    assert ArtifactWorkspace(tmp_path).read(ref["path"])[0] == source.read_bytes()
+    source.write_text('{"value": 2}')
+    assert store.publish("/workspace/work/" + source.name)["sha256"] != ref["sha256"]
+
+
+@pytest.mark.parametrize(
+    "extension,format",
+    [("png", "PNG"), ("jpg", "JPEG"), ("jpeg", "JPEG"), ("webp", "WEBP")],
+)
+def test_generated_images_and_type_mismatch(tmp_path, extension, format):
+    (tmp_path / "generated").mkdir()
+    source = tmp_path / "generated" / ("image." + extension)
+    image = Image.new("RGB", (2, 2))
+    image.save(source, format=format)
+    assert (
+        ArtifactWorkspace(tmp_path).publish("/workspace/generated/" + source.name)[
+            "preview_kind"
+        ]
+        == "image"
+    )
+    buffer = io.BytesIO()
+    image.save(buffer, format="PNG" if format != "PNG" else "JPEG")
+    source.write_bytes(buffer.getvalue())
+    with pytest.raises(DocumentError, match="type_mismatch"):
+        ArtifactWorkspace(tmp_path).publish("/workspace/generated/" + source.name)
+
+
+def test_html_has_no_active_navigation_or_script():
+    html = safe_html(
+        '<meta http-equiv="refresh" content="0;url=https://evil.test">'
+        '<base href="https://evil.test"><script>fetch("https://evil.test")</script>'
+        '<a href="https://evil.test"><b onclick="alert(1)">hello</b></a>'
+        '<iframe src="https://evil.test"></iframe><img src="https://evil.test/a">'
+        '<div style="color:red">diagram</div>'
+    )
+    assert "https://evil.test" not in html
+    assert "onclick" not in html and "<script" not in html and "<iframe" not in html
+    assert "Content-Security-Policy" in html and "diagram" in html
+
+
+def test_upload_policy_does_not_expand_with_artifacts(tmp_path):
+    with pytest.raises(DocumentError, match="unsupported_file_type"):
+        DocumentWorkspace(tmp_path).put(b"x: 1", "a" * 64, "application/yaml")
+
+
+def test_document_and_archive_publication(tmp_path):
+    import fitz
+
+    (tmp_path / "work").mkdir()
+    with fitz.open() as pdf:
+        pdf.new_page()
+        pdf.save(tmp_path / "work/report.pdf")
+    with zipfile.ZipFile(tmp_path / "work/source.zip", "w") as archive:
+        archive.writestr("main.py", "print(1)")
+    with zipfile.ZipFile(tmp_path / "work/book.xlsx", "w") as archive:
+        archive.writestr("[Content_Types].xml", "<Types/>")
+        archive.writestr("xl/workbook.xml", "<workbook/>")
+    (tmp_path / "work/book.xls").write_bytes(
+        bytes.fromhex("d0cf11e0a1b11ae1") + b"fixture"
+    )
+    with zipfile.ZipFile(tmp_path / "work/deck.pptx", "w") as archive:
+        archive.writestr("[Content_Types].xml", "<Types/>")
+        archive.writestr(
+            "ppt/presentation.xml",
+            '<p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:sldIdLst><p:sldId r:id="r1"/></p:sldIdLst></p:presentation>',
+        )
+        archive.writestr(
+            "ppt/_rels/presentation.xml.rels",
+            '<Relationships><Relationship Id="r1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/></Relationships>',
+        )
+        archive.writestr("ppt/slides/slide1.xml", "<slide/>")
+    store = ArtifactWorkspace(tmp_path)
+    for name in ("report.pdf", "source.zip", "book.xlsx", "book.xls", "deck.pptx"):
+        ref = store.publish("/workspace/work/" + name)
+        assert ref["preview_kind"] == "download"
+        assert store.read(ref["path"])[0] == (tmp_path / "work" / name).read_bytes()
+
+
+def test_directory_replaced_with_symlink_is_not_followed(tmp_path, monkeypatch):
+    work = tmp_path / "work"
+    work.mkdir()
+    (work / "result.txt").write_text("inside")
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "result.txt").write_text("outside")
+    browser = WorkspaceBrowser(tmp_path)
+    open_directory = browser.io._directory
+
+    def replace_after_open(parts, **kwargs):
+        fd = open_directory(parts, **kwargs)
+        work.rename(tmp_path / "old-work")
+        work.symlink_to(outside, target_is_directory=True)
+        return fd
+
+    monkeypatch.setattr(browser.io, "_directory", replace_after_open)
+    assert browser.read_file("/workspace/work/result.txt")[0] == b"inside"
+    monkeypatch.setattr(browser.io, "_directory", open_directory)
+    with pytest.raises(DocumentError):
+        browser.read_file("/workspace/work/result.txt")

@@ -3,12 +3,15 @@ from __future__ import annotations
 import json
 import re
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, Literal
+from uuid import UUID
+from urllib.parse import quote
 
 from anyio import CancelScope
 from fastapi import APIRouter, Body, Depends, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from starlette.types import Send
+from pydantic import BaseModel, ConfigDict, Field
 
 from platform_api.adapters.langgraph import (
     LangGraphRuntimeGatewayUpstream,
@@ -141,13 +144,15 @@ def _require_project_id(request: Request) -> str:
 def _delegation_operation(request: Request) -> str:
     """Keep read and run creation credentials separate at the gateway boundary."""
     path = request.url.path
+    if "/terminals" in path:
+        return "terminal-read" if request.method == "GET" else "terminal-write"
     if "/images/uploads" in path:
         return "image-upload"
     if "/images/content" in path:
         return "image-read"
     if "/files/uploads" in path:
         return "workspace-file-upload"
-    if "/files/content" in path:
+    if "/files/content" in path or "/workspace/" in path or path.endswith("/artifacts"):
         return "workspace-file-read"
     if path.endswith("/messages"):
         return "message-enqueue" if request.method == "POST" else "message-read"
@@ -570,6 +575,110 @@ async def read_thread_file(
         media_type=media_type,
         headers=headers,
     )
+
+
+class TerminalCreateBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    request_id: UUID
+    acknowledge_execution: Literal[True]
+    rows: int = Field(default=24, ge=2, le=200)
+    cols: int = Field(default=80, ge=2, le=400)
+
+
+class TerminalInputBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    data_base64: str = Field(min_length=1, max_length=5464)
+    sequence: int = Field(ge=0)
+
+
+class TerminalResizeBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    rows: int = Field(ge=2, le=200)
+    cols: int = Field(ge=2, le=400)
+
+
+async def _terminal_response(request, thread_id, actor, service, action, *, terminal_id=None, payload=None, offset=0):
+    result = await service.thread_terminal(actor=actor, project_id=_require_project_id(request), thread_id=thread_id,
+                                           action=action, terminal_id=terminal_id, payload=payload, offset=offset)
+    return JSONResponse(_redact_runtime_private_fields(result), headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+
+
+@router.post("/threads/{thread_id}/terminals")
+async def create_terminal(request: Request, thread_id: str, payload: TerminalCreateBody,
+                          actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await _terminal_response(request, thread_id, actor, service, "create", payload=payload.model_dump(mode="json"))
+
+
+@router.get("/threads/{thread_id}/terminals")
+async def list_terminals(request: Request, thread_id: str, actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await _terminal_response(request, thread_id, actor, service, "list")
+
+
+@router.get("/threads/{thread_id}/terminals/{terminal_id}/output")
+async def terminal_output(request: Request, thread_id: str, terminal_id: str, offset: int = Query(default=0, ge=0),
+                          actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await _terminal_response(request, thread_id, actor, service, "output", terminal_id=terminal_id, offset=offset)
+
+
+@router.post("/threads/{thread_id}/terminals/{terminal_id}/input")
+async def terminal_input(request: Request, thread_id: str, terminal_id: str, payload: TerminalInputBody,
+                         actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await _terminal_response(request, thread_id, actor, service, "input", terminal_id=terminal_id, payload=payload.model_dump())
+
+
+@router.post("/threads/{thread_id}/terminals/{terminal_id}/resize")
+async def terminal_resize(request: Request, thread_id: str, terminal_id: str, payload: TerminalResizeBody,
+                          actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await _terminal_response(request, thread_id, actor, service, "resize", terminal_id=terminal_id, payload=payload.model_dump())
+
+
+@router.delete("/threads/{thread_id}/terminals/{terminal_id}")
+async def close_terminal(request: Request, thread_id: str, terminal_id: str,
+                         actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await _terminal_response(request, thread_id, actor, service, "close", terminal_id=terminal_id)
+
+
+@router.get("/threads/{thread_id}/workspace/tree")
+async def workspace_tree(request: Request, thread_id: str, path: str = Query(default="/workspace", max_length=4096),
+                         cursor: str | None = Query(default=None, max_length=8192), limit: int = Query(default=100, ge=1, le=200),
+                         actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    result = await service.thread_workspace(actor=actor, project_id=_require_project_id(request), thread_id=thread_id,
+                                          resource="workspace/tree", path=path, cursor=cursor, limit=limit)
+    return JSONResponse(_redact_runtime_private_fields(result), headers={"Cache-Control": "private, no-store"})
+
+
+@router.get("/threads/{thread_id}/artifacts")
+async def thread_artifacts(request: Request, thread_id: str, cursor: str | None = Query(default=None, max_length=8192),
+                           limit: int = Query(default=100, ge=1, le=200), actor: ActorContext = Depends(get_actor_context),
+                           service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    result = await service.thread_workspace(actor=actor, project_id=_require_project_id(request), thread_id=thread_id,
+                                          resource="artifacts", cursor=cursor, limit=limit)
+    return JSONResponse(_redact_runtime_private_fields(result), headers={"Cache-Control": "private, no-store"})
+
+
+async def _workspace_response(request, thread_id, path, actor, service, *, preview):
+    payload = await service.thread_workspace(actor=actor, project_id=_require_project_id(request), thread_id=thread_id,
+                                             resource="workspace/preview" if preview else "workspace/content", path=path)
+    headers = {"cache-control": "private, no-store", "x-content-type-options": "nosniff",
+               "referrer-policy": "no-referrer", "content-security-policy": "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'",
+               "content-disposition": "inline" if preview else "attachment; filename*=UTF-8''" + quote(path.rsplit("/", 1)[-1], safe="")}
+    if payload.content_length is not None:
+        headers["content-length"] = str(payload.content_length)
+    if payload.etag:
+        headers["etag"] = payload.etag
+    return RuntimeStreamingResponse(payload.body, media_type=payload.content_type, headers=headers)
+
+
+@router.get("/threads/{thread_id}/workspace/content")
+async def workspace_content(request: Request, thread_id: str, path: str = Query(..., max_length=4096),
+                            actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await _workspace_response(request, thread_id, path, actor, service, preview=False)
+
+
+@router.get("/threads/{thread_id}/workspace/preview")
+async def workspace_preview(request: Request, thread_id: str, path: str = Query(..., max_length=4096),
+                            actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await _workspace_response(request, thread_id, path, actor, service, preview=True)
 
 
 @router.get("/threads/{thread_id}/state")

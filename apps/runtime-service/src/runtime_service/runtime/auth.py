@@ -102,6 +102,8 @@ def _parse_scope(raw: object) -> RuntimeScope:
         "image-read",
         "workspace-file-upload",
         "workspace-file-read",
+        "terminal-read",
+        "terminal-write",
         "dear-governance-read",
         "dear-governance-write",
     }:

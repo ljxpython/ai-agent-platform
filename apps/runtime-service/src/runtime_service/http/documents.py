@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 
 from runtime_service.auth.platform import authenticate
-from runtime_service.workspace.scoped import resolve_thread_workspace
-from pathlib import Path
 from runtime_service.workspace.artifact_refs import ArtifactWorkspace
 from runtime_service.workspace.documents import DocumentError, DocumentWorkspace
-from runtime_service.workspace.file_refs import MAX_FILE_BYTES as MAX_BYTES, MIME_EXT
+from runtime_service.workspace.file_refs import MAX_FILE_BYTES as MAX_BYTES
+from runtime_service.workspace.file_refs import MIME_EXT
+from runtime_service.workspace.scoped import resolve_thread_workspace
 
 router = APIRouter(prefix="/internal/threads/{thread_id}/files", tags=["documents"])
 
@@ -58,6 +59,16 @@ TEXT_CHARSET_MIMES = {
     "text/x-bibtex": "text/x-bibtex; charset=utf-8",
     "text/csv": "text/csv; charset=utf-8",
     "application/json": "application/json; charset=utf-8",
+    "application/yaml": "application/yaml; charset=utf-8",
+    "text/yaml": "text/yaml; charset=utf-8",
+    "application/toml": "application/toml; charset=utf-8",
+    "application/xml": "application/xml; charset=utf-8",
+    "text/xml": "text/xml; charset=utf-8",
+    "text/x-python": "text/x-python; charset=utf-8",
+    "text/x-shellscript": "text/x-shellscript; charset=utf-8",
+    "application/sql": "application/sql; charset=utf-8",
+    "text/x-sql": "text/x-sql; charset=utf-8",
+    "text/typescript": "text/typescript; charset=utf-8",
 }
 
 

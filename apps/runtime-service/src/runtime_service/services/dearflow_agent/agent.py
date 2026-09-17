@@ -49,7 +49,7 @@ from runtime_service.services.dearflow_agent.workspace.backend import (
 from deepagents.middleware import FilesystemPermission
 from runtime_service.services.dearflow_agent.prompts import SYSTEM_PROMPT
 from runtime_service.services.dearflow_agent.tools.human_input import request_information
-from runtime_service.services.dearflow_agent.tools.artifacts import build_artifact_tool
+from runtime_service.tools.artifacts import build_artifact_tool
 from runtime_service.services.dearflow_agent.middleware.clarification import ClarificationBatchGuard
 from runtime_service.services.dearflow_agent.capabilities import tool_permissions, CHART_NAMES
 from runtime_service.tools.chart import build_chart_tools

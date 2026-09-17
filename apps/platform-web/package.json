@@ -28,6 +28,8 @@
     "@langchain/langgraph-sdk": "1.10.2",
     "@langchain/vue": "1.0.35",
     "@vueuse/core": "^10.11.1",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
     "axios": "^1.8.4",
     "markdown-it": "^14.1.1",
     "pinia": "^2.3.1",

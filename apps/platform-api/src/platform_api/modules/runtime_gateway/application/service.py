@@ -1110,6 +1110,51 @@ class RuntimeGatewayService:
             ))
         return await upstream.get_graph_capabilities(agent_key)
 
+    async def thread_terminal(self, *, actor: ActorContext, project_id: str, thread_id: str,
+                              action: str, terminal_id: str | None = None, payload: dict | None = None,
+                              offset: int = 0) -> dict:
+        if action not in {"create", "list", "output", "input", "resize", "close"}:
+            raise BadRequestError(code="invalid_terminal_action", message="Unknown terminal action")
+        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=True)
+        agent_key = clean_str(ensure_dict(thread.get("metadata")).get("graph_id"))
+        await run_in_threadpool(self._assert_runtime_target_allowed, project_id=project_id,
+                                assistant_id=agent_key, thread=thread)
+        if not self._delegation_headers_factory:
+            raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
+        upstream = self._upstream.with_forwarded_headers(self._delegation_headers_factory(
+            project_id=project_id, agent_key=agent_key, thread_id=thread_id,
+            context_hash=empty_runtime_context_hash(),
+            operation="terminal-read" if action in {"list", "output"} else "terminal-write"))
+        return await upstream.terminal_request(thread_id, action, terminal_id=terminal_id, payload=payload, offset=offset)
+
+    async def thread_workspace(self, *, actor: ActorContext, project_id: str, thread_id: str,
+                               resource: str, path: str = "/workspace", cursor: str | None = None,
+                               limit: int = 100) -> Any:
+        if resource not in {"workspace/tree", "workspace/content", "workspace/preview", "artifacts"}:
+            raise BadRequestError(code="invalid_workspace_resource", message="Unknown workspace resource")
+        if (len(path) > 4096 or "\\" in path or any(ord(c) < 32 or ord(c) == 127 for c in path)
+            or path != "/workspace" and (not path.startswith("/workspace/") or any(p in {"", ".", ".."} for p in path[11:].split("/")))):
+            raise BadRequestError(code="invalid_workspace_path", message="Invalid workspace path")
+        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=False)
+        agent_key = clean_str(ensure_dict(thread.get("metadata")).get("graph_id"))
+        if not agent_key:
+            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+        await run_in_threadpool(self._assert_runtime_target_allowed, project_id=project_id,
+                                assistant_id=agent_key, thread=thread)
+        if not self._delegation_headers_factory:
+            raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
+        upstream = self._upstream.with_forwarded_headers(self._delegation_headers_factory(
+            project_id=project_id, agent_key=agent_key, thread_id=thread_id,
+            context_hash=empty_runtime_context_hash(), operation="workspace-file-read"))
+        if resource in {"workspace/content", "workspace/preview"}:
+            return await upstream.workspace_file(thread_id, resource, path)
+        params = {"limit": limit}
+        if resource == "workspace/tree":
+            params["path"] = path
+        if cursor:
+            params["cursor"] = cursor
+        return await upstream.workspace_json(thread_id, resource, params)
+
     async def read_thread_file(
         self,
         *,

@@ -1,7 +1,9 @@
 """Dear Agent capability declarations."""
-import os
 import json
+import os
 from importlib.resources import files
+
+from runtime_service.workspace.artifact_refs import ARTIFACT_MIMES
 
 CHART_NAMES = tuple(sorted(p.stem for p in files("runtime_service.services.dearflow_agent").joinpath("skills/chart-visualization/references").iterdir() if p.name.endswith(".md")))
 
@@ -37,12 +39,14 @@ def graph_capabilities(graph_id: str) -> dict:
         "schema_version": 1,
         "graph_id": graph_id,
         "files": graph_id in {"showcase_demo", "dearflow_agent"},
+        "workspace": graph_id in {"showcase_demo", "dearflow_agent"},
+        "terminal": graph_id in {"showcase_demo", "dearflow_agent"} and os.name == "posix" and os.getenv("RUNTIME_TERMINAL_ENABLED", "0") == "1",
         "images": graph_id in {"showcase_demo", "dearflow_agent"},
         "message_queue": graph_id in {"reference_agent", "showcase_demo", "dearflow_agent"},
         "execution_modes": ["flash", "standard", "pro", "ultra"] if graph_id == "dearflow_agent" else [],
         "clarification_field_types": ["text", "textarea", "number", "select", "multi_select", "checkbox", "date"] if graph_id == "dearflow_agent" else [],
         "research": bool(os.environ.get("TAVILY_API_KEY")) if graph_id == "dearflow_agent" else False,
-        "artifacts": ["text/plain", "text/markdown", "text/x-bibtex", "text/csv", "application/json", "text/html", "text/css", "text/javascript", "application/zip", "application/vnd.openxmlformats-officedocument.presentationml.presentation"] if graph_id == "dearflow_agent" else [],
+        "artifacts": sorted(set(ARTIFACT_MIMES.values())) if graph_id in {"dearflow_agent", "showcase_demo"} else [],
         "independent_subagent_cancel": False,
         "memory": graph_id == "dearflow_agent" and os.environ.get("RUNTIME_DEAR_GOVERNANCE_ENABLED") == "1",
         "skill_management": graph_id == "dearflow_agent" and os.environ.get("RUNTIME_DEAR_GOVERNANCE_ENABLED") == "1",

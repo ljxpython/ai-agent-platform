@@ -27,6 +27,7 @@
 | 前端主对话流极简化与高级感对齐（无界通透主视窗、灰色原子 Think 条、无头像用户气泡与工业指标底栏） | 已完成：去除卡片套娃大框、Think 改为极简灰色单行、去头像气泡、下划线视图 Tab 与性能小字底栏 | [主对话流极简对齐](../apps/platform-web/docs/changes/20260914-chat-ui-minimalist-deepseek-alignment.md) |
 | 对话工作台通透无界大视野与布局重构（单层沉浸顶栏、消除底部死留白、自适应平滑滚动与侧栏一键折叠） | 已完成：消灭双 Header 套娃释放 56px 高度、下沉项目与用户切换器、消灭底部大留白、移除会话侧栏分页器并常驻一键折叠 | [通透无界布局重构](../apps/platform-web/docs/changes/20260914-chat-workspace-borderless-layout-redesign.md) |
 | 轨迹排障三合一控制器、微交互与工业级指标栏对齐（Duration/Turns/Calls、甘特 Tooltip、概览大字与圆球发送气泡） | 已完成：实装 Duration 真实耗时模式、Turns 批量折叠、Calls 工具隐藏、时间轴色块 hover 黑底白字气泡、顶栏 X 轮 Y 步 Z 工具统揽、完整 LLM/TTFT/tok/s 指标栏及圆球向上箭头微交互 | [控制器与指标栏对齐](../apps/platform-web/docs/changes/20260914-trajectory-controllers-and-metrics-strip-alignment.md) |
+| Showcase / DearFlow 沙箱工作区、文件树、安全HTML/Markdown预览与多终端会话 | 已完成：借鉴 open-swe 架构，弹性拖拽宽度与全屏最大化、单层懒加载文件树、HTML/Markdown/Code统一预览、xterm多终端会话保活、终端划词一键入Chat及全链路Agent终态静默刷新已全量交付通过 | [工作区前端实现](projects/20260917-showcase-artifact-workspace/implementation/04-platform-web-workspace.md) |
 
 
 
@@ -46,6 +47,8 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Showcase / DearFlow 沙箱文件树与产物预览下载 | 第一阶段后端已完成：文件树、普通文件/产物预览下载、格式扩展与审批；两服务 HTTP、重启读取与双浏览器静态 HTML 隔离通过；前端设计已交付、开发后置 | [实现版接入契约](projects/20260917-showcase-artifact-workspace/05-frontend-handoff.md) |
+| Showcase / DearFlow 人工交互 Terminal | 后端 done：local/Docker PTY、六类鉴权 HTTP、字节重放、输入幂等、配额/过期/清理、审计；前端 deferred，对接设计已交付；local 是宿主开发模式，多 Runtime 进程须粘性路由 | [Terminal 实施与验证](projects/20260917-showcase-artifact-workspace/06-terminal-backend.md) |
 | GraphHarbor官方v3对齐与平台迁移 | 后端完成：post30已发布／接入，生命周期／并行中断／恢复版本／步数限制修复，真实研究、文件、子任务、父取消及观测已验；前端交接完成，浏览器与默认切换后置，默认仍v2 | [完成项与代码证据](projects/20260915-graphharbor-v3-alignment/README.md) |
 | DearFlowAgent：Deep Agents 能力迁移与生产化 | 部分完成：P0/P1/P3约定后端done，post30已接入；P4 K01—K11已实现，K01/K02/K04报告/K06/K07后端证据通过，K03/K05外部限流blocked，K08/K10/K11后端done，K09累计25/26图型通过、双轴远端blocked；P5代码已交付：完整AI三页PPTX链路done；文生图与单图编辑成功，多参考图连接异常待验；K14/K15延期，K16视频及音视频大文件后续实施（deferred）；前端页面及生产联合验收后置 | [P5逐项进度与证据](projects/20260913-dearflow-agent/phases/P5-生成与长任务.md) |
 | Graph 注册、模型参数解析、工具装配 | 已完成 | `apps/runtime-service/docs/standards/*.md` |

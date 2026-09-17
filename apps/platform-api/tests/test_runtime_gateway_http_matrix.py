@@ -21,6 +21,12 @@ from platform_api.modules.runtime_gateway.presentation.http import (
 
 # Explicit inventory: a newly exposed route must receive a matrix case.
 CASES = [
+    ("POST", "/threads/{thread_id}/terminals", "thread_terminal"),
+    ("GET", "/threads/{thread_id}/terminals", "thread_terminal"),
+    ("GET", "/threads/{thread_id}/terminals/{terminal_id}/output", "thread_terminal"),
+    ("POST", "/threads/{thread_id}/terminals/{terminal_id}/input", "thread_terminal"),
+    ("POST", "/threads/{thread_id}/terminals/{terminal_id}/resize", "thread_terminal"),
+    ("DELETE", "/threads/{thread_id}/terminals/{terminal_id}", "thread_terminal"),
     ("GET", "/info", "get_info"),
     ("POST", "/graphs/search", "search_graphs"),
     ("POST", "/graphs/count", "count_graphs"),
@@ -48,9 +54,21 @@ CASES = [
     ("PUT", "/threads/{thread_id}/files/uploads/{sha256}", "upload_thread_file"),
     ("GET", "/threads/{thread_id}/files/content", "read_thread_file"),
     ("GET", "/threads/{thread_id}/capabilities", "get_thread_capabilities"),
+    ("GET", "/threads/{thread_id}/workspace/tree", "thread_workspace"),
+    ("GET", "/threads/{thread_id}/workspace/content", "thread_workspace"),
+    ("GET", "/threads/{thread_id}/workspace/preview", "thread_workspace"),
+    ("GET", "/threads/{thread_id}/artifacts", "thread_workspace"),
     ("GET", "/threads/{thread_id}/dear/{resource}", "dear_governance"),
     ("POST", "/threads/{thread_id}/dear/{resource}", "dear_governance"),
 ]
+
+
+def terminal_payload(path):
+    if path.endswith("/terminals"):
+        return {"request_id": "00000000-0000-4000-8000-000000000001", "acknowledge_execution": True, "rows": 24, "cols": 80}
+    if path.endswith("/input"):
+        return {"data_base64": "eA==", "sequence": 0}
+    return {"rows": 24, "cols": 80}
 
 
 class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
@@ -103,7 +121,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                                 body=image_bytes(),
                                 content_type="image/png",
                             )
-                        elif name == "read_thread_file":
+                        elif name == "read_thread_file" or path.endswith(("/workspace/content", "/workspace/preview")):
                             ret_val = BinaryPayload(
                                 body=file_bytes(),
                                 content_type="application/pdf",
@@ -130,18 +148,19 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             )
                             headers["content-length"] = "10"
                         post_payload = (
+                            terminal_payload(path) if name == "thread_terminal" else
                             {"content": "hello"}
                             if path.endswith("/messages")
                             else {"probe": "body"}
                         )
                         url_path = "/api/langgraph" + path.format(
-                            thread_id="thread-1", run_id="run-1", sha256="a" * 64, resource="memory"
+                            thread_id="thread-1", run_id="run-1", sha256="a" * 64, resource="memory", terminal_id="terminal-1"
                         )
                         req_params = (
                             {"path": "/workspace/uploads/test.png"}
                             if name == "read_thread_image"
                             else {"path": "/workspace/uploads/test.pdf"}
-                            if name == "read_thread_file"
+                            if name in {"read_thread_file", "thread_workspace"}
                             else None
                         )
                         response = await client.request(
@@ -208,13 +227,13 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                 for method, path, name in CASES:
                     with self.subTest(route=path, principal=principal.user_id):
                         url_path = "/api/langgraph" + path.format(
-                            thread_id="thread-1", run_id="run-1", sha256="a" * 64, resource="memory"
+                            thread_id="thread-1", run_id="run-1", sha256="a" * 64, resource="memory", terminal_id="terminal-1"
                         )
                         req_params = (
                             {"path": "/workspace/uploads/test.png"}
                             if name == "read_thread_image"
                             else {"path": "/workspace/uploads/test.pdf"}
-                            if name == "read_thread_file"
+                            if name in {"read_thread_file", "thread_workspace"}
                             else None
                         )
                         headers = {
@@ -230,7 +249,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             method,
                             url_path,
                             params=req_params,
-                            json={} if method == "POST" else None,
+                            json=(terminal_payload(path) if name == "thread_terminal" else {}) if method == "POST" else None,
                             content=b"0123456789" if method == "PUT" else None,
                             headers=headers,
                         )
@@ -249,13 +268,13 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                     continue
                 with self.subTest(cross_project=path, method=method):
                     url_path = "/api/langgraph" + path.format(
-                        thread_id="thread-1", run_id="run-1", sha256="a" * 64, resource="memory"
+                        thread_id="thread-1", run_id="run-1", sha256="a" * 64, resource="memory", terminal_id="terminal-1"
                     )
                     req_params = (
                         {"path": "/workspace/uploads/test.png"}
                         if name == "read_thread_image"
                         else {"path": "/workspace/uploads/test.pdf"}
-                        if name == "read_thread_file"
+                        if name in {"read_thread_file", "thread_workspace"}
                         else None
                     )
                     headers = {
@@ -271,7 +290,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         method,
                         url_path,
                         params=req_params,
-                        json={} if method == "POST" else None,
+                        json=(terminal_payload(path) if name == "thread_terminal" else {}) if method == "POST" else None,
                         content=b"0123456789" if method == "PUT" else None,
                         headers=headers,
                     )

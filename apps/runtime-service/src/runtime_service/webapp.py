@@ -18,6 +18,8 @@ from langgraph_sdk.auth import exceptions as auth_exceptions
 from runtime_service.auth.platform import authenticate
 from runtime_service.http.images import router as images_router
 from runtime_service.http.documents import router as documents_router
+from runtime_service.http.workspace import router as workspace_router
+from runtime_service.http.terminal import router as terminal_router
 from runtime_service.http.dear_governance import router as dear_governance_router
 from runtime_service.messaging import MessageInbox
 from runtime_service.messaging.reconcile import reconcile_run
@@ -32,12 +34,16 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     try:
         yield
     finally:
+        from runtime_service.workspace.terminal import terminals
+        await asyncio.to_thread(terminals.shutdown)
         close_langfuse(timeout_seconds=5.0)
 
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(images_router)
 app.include_router(documents_router)
+app.include_router(workspace_router)
+app.include_router(terminal_router)
 app.include_router(dear_governance_router)
 
 

@@ -4,21 +4,24 @@ import json
 
 import httpx
 import pytest
+from PIL import Image
+from test_image_http import SECRET, _make_token
 
+from runtime_service.webapp import app
 from runtime_service.workspace.artifact_refs import ArtifactWorkspace
 from runtime_service.workspace.scoped import resolve_thread_workspace
-from runtime_service.webapp import app
-from test_image_http import _make_token, SECRET
 
 
 def test_artifact_tool_returns_recoverable_error_then_publishes(tmp_path):
-    from runtime_service.services.dearflow_agent.tools.artifacts import build_artifact_tool
+    from runtime_service.services.dearflow_agent.tools.artifacts import (
+        build_artifact_tool,
+    )
 
     tool = build_artifact_tool(tmp_path)
 
     async def run():
         rejected = await tool.ainvoke({"type": "tool_call", "id": "bad", "name": tool.name,
-                                      "args": {"file_path": "/workspace/generated/image.png"}})
+                                      "args": {"file_path": "/workspace/uploads/image.png"}})
         assert rejected.status == "error"
         assert rejected.content == "artifact_source_denied"
         (tmp_path / "work").mkdir()
@@ -27,6 +30,29 @@ def test_artifact_tool_returns_recoverable_error_then_publishes(tmp_path):
                                        "args": {"file_path": "/workspace/work/report.md"}})
         assert published.status == "success"
         assert json.loads(published.content)["mime_type"] == "text/markdown"
+
+        for extension, expected_mime in (
+            ("yaml", "application/yaml"),
+            ("yml", "text/yaml"),
+            ("toml", "application/toml"),
+            ("xml", "application/xml"),
+            ("py", "text/x-python"),
+            ("sql", "application/sql"),
+            ("ts", "text/typescript"),
+        ):
+            path = tmp_path / "work" / f"payment_openapi.{extension}"
+            path.write_text("openapi: 3.1.0\n" if extension in {"yaml", "yml"} else "<root/>\n" if extension == "xml" else "select 1;\n" if extension == "sql" else "value = 1\n")
+            published = await tool.ainvoke({"type": "tool_call", "id": extension, "name": tool.name,
+                                          "args": {"file_path": f"/workspace/work/payment_openapi.{extension}"}})
+            assert published.status == "success", published.content
+            assert json.loads(published.content)["mime_type"] == expected_mime
+
+        image = tmp_path / "work" / "architecture.png"
+        Image.new("RGB", (2, 2), "blue").save(image)
+        published = await tool.ainvoke({"type": "tool_call", "id": "png", "name": tool.name,
+                                      "args": {"file_path": "/workspace/work/architecture.png"}})
+        assert published.status == "success"
+        assert json.loads(published.content)["mime_type"] == "image/png"
 
     asyncio.run(run())
 
@@ -72,6 +98,7 @@ def test_signed_upload_artifact_download_and_scope_isolation(monkeypatch, tmp_pa
 
 def test_artifact_symlink_and_corruption_rejected(tmp_path):
     from langchain_core.tools import ToolException
+
     from runtime_service.workspace.documents import DocumentError
     (tmp_path / "work").mkdir()
     (tmp_path / "work/secret.txt").symlink_to("/etc/passwd")

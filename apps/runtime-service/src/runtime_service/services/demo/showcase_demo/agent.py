@@ -49,13 +49,14 @@ from runtime_service.services.demo.showcase_demo.subagents import (
     build_subagents,
 )
 from runtime_service.services.demo.showcase_demo.tools import fetch_documentation
+from runtime_service.tools.artifacts import build_artifact_tool
 from runtime_service.tools.images import ImageWorkspace
 
 _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
     system_prompt=SYSTEM_PROMPT,
     prompt_version="showcase-demo-v3",
-    optional_tool_names=(*WORK_TOOLS, "task", "write_todos", "fetch_documentation"),
+    optional_tool_names=(*WORK_TOOLS, "task", "write_todos", "fetch_documentation", "present_artifacts"),
 )
 _TOOL_PERMISSIONS = {
     **{
@@ -64,7 +65,7 @@ _TOOL_PERMISSIONS = {
     },
     **{
         name: "runtime.tool.write"
-        for name in ("write_file", "edit_file", "write_todos")
+        for name in ("write_file", "edit_file", "write_todos", "present_artifacts")
     },
     "execute": "runtime.tool.execute",
     "task": "runtime.tool.delegate",
@@ -160,11 +161,11 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     agent = create_deep_agent(
         model=model,
         system_prompt=SYSTEM_PROMPT,
-        tools=[fetch_documentation],
+        tools=[fetch_documentation, build_artifact_tool(image_workspace.root)],
         backend=backend,
         skills=["/skills/"],
         permissions=PERMISSIONS,
-        interrupt_on=APPROVALS,
+        interrupt_on={**APPROVALS, "present_artifacts": {"allowed_decisions": ["approve", "edit", "reject"]}},
         subagents=build_subagents(model, backend, middleware, chart_tools),
         middleware=[
             FilesystemMiddleware(

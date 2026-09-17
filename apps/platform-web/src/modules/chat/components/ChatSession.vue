@@ -14,7 +14,7 @@ import { parseAgentContext } from "@/services/agents/context";
 import ChatRunOptionsDialog from "./ChatRunOptionsDialog.vue";
 import ChatContextDrawer from "./ChatContextDrawer.vue";
 import ChatStickyTaskPill from "./ChatStickyTaskPill.vue";
-import ChatArtifactPanel from "./ChatArtifactPanel.vue";
+import WorkspacePanel from "@/components/workspace/WorkspacePanel.vue";
 import ChatAgentStatusBar from "./ChatAgentStatusBar.vue";
 import { RouterLink } from "vue-router";
 import { buildChatMessageMetadata, getChatBranchContext } from "../branching";
@@ -230,6 +230,24 @@ const planView = computed(() => {
   return { planTodos, ephemeralTodos: [], activeTask: planTodos.find(todo => todo.status === "in_progress") ?? null, totalTasks: planTodos.length, completedTasks, allTasksCompleted: !!planTodos.length && completedTasks === planTodos.length, hasFrozenPlan: false };
 });
 const hasArtifacts = computed(() => Array.isArray(stream.values.value.ui) && stream.values.value.ui.length > 0);
+const showWorkspace = ref(false);
+const workspacePanelRef = ref<InstanceType<typeof WorkspacePanel> | null>(null);
+
+watch(hasArtifacts, (has) => {
+  if (has) {
+    showWorkspace.value = true;
+  }
+});
+
+watch(busy, (isBusy, wasBusy) => {
+  if (wasBusy && !isBusy) {
+    workspacePanelRef.value?.refresh({ notifyNew: true });
+  }
+});
+
+function handleAddToChat(text: string) {
+  emit('update:draft', props.draft ? `${props.draft}\n\n${text}` : text);
+}
 const localError = ref("");
 let disposed = false;
 void Promise.all([listRuntimeModels(props.projectId), listRuntimeModelPolicies(props.projectId)])
@@ -844,6 +862,19 @@ const chatMetrics = computed(() => {
           <slot name="actions" />
           <button
             type="button"
+            class="relative inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
+            :class="showWorkspace ? 'border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400' : ''"
+            title="沙箱工作区与产物面板"
+            @click="showWorkspace = !showWorkspace"
+          >
+            <BaseIcon
+              name="folder"
+              size="xs"
+            />
+            <span class="hidden sm:inline">工作区</span>
+          </button>
+          <button
+            type="button"
             class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
             title="查看会话详情与上下文"
             @click="openDrawer"
@@ -950,8 +981,7 @@ const chatMetrics = computed(() => {
       </button>
     </div>
     <div
-      class="relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden"
-      :class="hasArtifacts ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_320px]' : ''"
+      class="relative z-10 flex min-h-0 flex-1 overflow-hidden"
     >
       <div class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <TrajectoryView
@@ -1170,10 +1200,13 @@ const chatMetrics = computed(() => {
           </div>
         </div>
       </div>
-      <ChatArtifactPanel
-        v-if="hasArtifacts"
-        :values="stream.values.value"
-        class="hidden lg:flex"
+      <WorkspacePanel
+        v-if="showWorkspace && threadId"
+        ref="workspacePanelRef"
+        :project-id="projectId"
+        :thread-id="threadId"
+        @close="showWorkspace = false"
+        @add-to-chat="handleAddToChat"
       />
     </div>
     <button

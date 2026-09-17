@@ -67,6 +67,32 @@ class LangGraphRuntimeGatewayUpstream:
     async def get_info(self) -> dict[str, Any]:
         return await self._http.require_json("GET", "/info")
 
+    async def terminal_request(self, thread_id: str, action: str, *, terminal_id: str | None = None,
+                               payload: dict | None = None, offset: int = 0) -> dict:
+        from urllib.parse import quote
+        methods = {"create": "POST", "list": "GET", "output": "GET", "input": "POST", "resize": "POST", "close": "DELETE"}
+        if action not in methods:
+            raise ValueError("invalid_terminal_action")
+        path = f"/internal/threads/{quote(thread_id, safe='')}/terminals"
+        if action not in {"create", "list"}:
+            path += "/" + quote(terminal_id or "", safe="")
+            if action != "close":
+                path += "/" + action
+        return await self._http.require_json(methods[action], path, payload=payload,
+                                            params={"offset": offset} if action == "output" else None)
+
+    async def workspace_json(self, thread_id: str, resource: str, params: dict[str, Any]) -> dict[str, Any]:
+        from urllib.parse import quote
+        if resource not in {"workspace/tree", "artifacts"}:
+            raise ValueError("invalid_workspace_resource")
+        return await self._http.require_json("GET", f"/internal/threads/{quote(thread_id, safe='')}/{resource}", params=params)
+
+    async def workspace_file(self, thread_id: str, resource: str, path: str) -> BinaryPayload:
+        from urllib.parse import quote
+        if resource not in {"workspace/content", "workspace/preview"}:
+            raise ValueError("invalid_workspace_resource")
+        return await self._http.read_file(f"/internal/threads/{quote(thread_id, safe='')}/{resource}", params={"path": path})
+
     async def dear_governance(self, thread_id: str, resource: str, *, payload: dict | None = None, query: str = "") -> dict:
         from urllib.parse import quote
         return await self._http.require_json(

@@ -201,7 +201,10 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
         for mime in ("text/x-bibtex", "application/zip", "application/vnd.ms-excel",
                      "application/vnd.openxmlformats-officedocument.presentationml.presentation",
                      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                     "text/html", "text/css", "text/javascript"):
+                     "text/html", "text/css", "text/javascript", "application/yaml", "text/yaml", "application/toml",
+                     "application/xml", "application/sql", "image/svg+xml", "image/png", "image/jpeg", "image/webp",
+                     "text/x-python", "text/x-shellscript", "text/typescript", "text/x-java-source", "text/x-c",
+                     "text/x-c++src", "text/x-rust", "text/jsx", "text/tsx", "application/octet-stream"):
             transport = httpx.MockTransport(lambda request: httpx.Response(
                 200, content=b"fixture", headers={"content-type": mime}, request=request))
             with patch("platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient",

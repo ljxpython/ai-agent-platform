@@ -2,10 +2,24 @@
 from runtime_service.workspace.documents import DocumentError
 
 MAX_MEDIA_BYTES = 20 * 1024 * 1024
-MEDIA_MIMES = {"pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation"}
+MEDIA_MIMES = {
+    "pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp",
+}
 
 
 def validate_media(data: bytes, extension: str) -> None:
+    if extension in {"png", "jpg", "jpeg", "webp"}:
+        from langchain_core.tools import ToolException
+
+        from runtime_service.tools.images import image_type
+        try:
+            _, mime = image_type(data)
+        except ToolException as exc:
+            raise DocumentError("invalid_artifact_image", 415) from exc
+        if mime != MEDIA_MIMES[extension]:
+            raise DocumentError("artifact_image_type_mismatch", 415)
+        return
     if extension != "pptx" or not data or len(data) > MAX_MEDIA_BYTES:
         raise DocumentError("presentation_size_or_type", 413)
     import posixpath
