@@ -26,15 +26,18 @@ it("binds the original message toolbar to current message IDs and copies only th
     expect(wrapper.emitted("submit-edit")).toHaveLength(1);
 
     // Fork button tests: visible for completed agent messages
-    // 初始带上 metadata，模拟真实场景（已完成轮次必有 checkpointId）
-    await wrapper.setProps({
-      metadata: { "answer-1": { messageId: "answer-1", checkpointId: "cp-123" } }
-    });
     const forkBtn = wrapper.findAll("button").find(item => item.text() === "分支")!;
     expect(forkBtn.exists()).toBe(true);
     expect(forkBtn.attributes("title")).toBe("在新对话中分支");
     await forkBtn.trigger("click");
-    expect(wrapper.emitted("fork")).toEqual([["answer-1", "cp-123"]]);
+    expect(wrapper.emitted("fork")).toEqual([["answer-1", undefined]]);
+
+    // Emits checkpointId when available in metadata
+    await wrapper.setProps({
+      metadata: { "answer-1": { messageId: "answer-1", checkpointId: "cp-123" } }
+    });
+    await forkBtn.trigger("click");
+    expect(wrapper.emitted("fork")?.[1]).toEqual(["answer-1", "cp-123"]);
 
     // Disabled when isRunning
     await wrapper.setProps({ isRunning: true });

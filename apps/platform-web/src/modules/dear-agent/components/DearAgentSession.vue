@@ -732,7 +732,21 @@ function findForkCheckpointForMessage(messageId: string): string | undefined {
     return !hasSubsequent;
   });
 
-  return matched?.checkpoint?.checkpoint_id || undefined;
+  if (matched?.checkpoint?.checkpoint_id) {
+    return matched.checkpoint.checkpoint_id;
+  }
+
+  // 新分支开局防护：新分支通过快照初始化时通常仅有 1 个 checkpoint
+  // 只要目标消息后无后续用户消息（属于当前落定最新轮次），直接返回该唯一 checkpoint
+  const subsequentMsgs = targetIndex >= 0 ? allMsgs.slice(targetIndex + 1) : [];
+  const hasSubsequentHuman = subsequentMsgs.some(
+    (m) => m.type === "human" || (m as any).role === "user" || (m as any).role === "human"
+  );
+  if (!hasSubsequentHuman && history.value.length === 1 && history.value[0]?.checkpoint?.checkpoint_id) {
+    return history.value[0].checkpoint.checkpoint_id;
+  }
+
+  return undefined;
 }
 
 const forkingCheckpointId = ref<string>();
@@ -780,19 +794,38 @@ async function forkToNewThread(messageId: string, checkpointId?: string) {
       }
     }
 
-    // 兜底保护：只有当目标消息确实是当前会话中的最后一条消息时，才允许使用最新会话状态兜底
+    // 兜底保护：只要目标消息后面没有后续的用户提问（HumanMessage），它就是当前会话落定的最新轮次，安全采用当前状态快照
     if (!resolvedCheckpointId) {
       const allMsgs = displayedMessages.value;
       const targetIndex = allMsgs.findIndex(
         (m) => m.id === messageId || (m as any).key === messageId
       );
-      const isLatestTurn =
-        targetIndex === -1 || targetIndex === allMsgs.length - 1;
+      const subsequentMsgs = targetIndex >= 0 ? allMsgs.slice(targetIndex + 1) : [];
+      const hasSubsequentHuman = subsequentMsgs.some(
+        (m) => m.type === "human" || (m as any).role === "user" || (m as any).role === "human"
+      );
+      const isLatestTurn = targetIndex === -1 || !hasSubsequentHuman;
       if (isLatestTurn) {
-        const currentState = await session.service.state(currentThreadId);
-        resolvedCheckpointId =
-          currentState?.checkpoint?.checkpoint_id || undefined;
+        // 1. 优先采用本地历史的首个快照
+        resolvedCheckpointId = history.value[0]?.checkpoint?.checkpoint_id || undefined;
+        // 2. 本地无历史时，向服务端查询当前 thread 的最新状态
+        if (!resolvedCheckpointId) {
+          try {
+            const currentState = await session.service.state(currentThreadId);
+            resolvedCheckpointId =
+              currentState?.checkpoint?.checkpoint_id ||
+              (currentState as any)?.checkpoint_id ||
+              undefined;
+          } catch {
+            /* ignore state fetch error */
+          }
+        }
       }
+    }
+
+    // 终极保障：在单快照新分支中，若仍未命中但本地已有快照，直接采用该基线快照
+    if (!resolvedCheckpointId && history.value.length === 1 && history.value[0]?.checkpoint?.checkpoint_id) {
+      resolvedCheckpointId = history.value[0].checkpoint.checkpoint_id || undefined;
     }
 
     if (!resolvedCheckpointId) {

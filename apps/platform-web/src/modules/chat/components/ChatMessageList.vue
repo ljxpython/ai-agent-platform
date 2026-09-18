@@ -305,9 +305,9 @@ async function copy(value: string, id?: string) {
               v-if="displayEntry.author === 'agent' && displayEntry.messageId"
               type="button"
               class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-700 hover:bg-gray-100/80 disabled:cursor-not-allowed disabled:opacity-40 dark:text-dark-400 dark:hover:text-gray-200 dark:hover:bg-dark-800/80 transition-colors"
-              :disabled="isRunning || displayEntry.isStreaming || Boolean(forkingCheckpointId) || !getForkCheckpointId(displayEntry)"
+              :disabled="isRunning || displayEntry.isStreaming || Boolean(forkingCheckpointId)"
               aria-label="在新对话中分支"
-              :title="isRunning || displayEntry.isStreaming ? '仅可从已完成轮次分支' : !getForkCheckpointId(displayEntry) ? '暂无可用历史快照' : '在新对话中分支'"
+              :title="isRunning || displayEntry.isStreaming ? '仅可从已完成轮次分支' : '在新对话中分支'"
               @click="emit('fork', displayEntry.messageId!, getForkCheckpointId(displayEntry))"
             >
               <BaseIcon
