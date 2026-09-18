@@ -684,11 +684,24 @@ export function useChatSession(options: {
       return;
     cancelling.value = true;
     try {
+      // stream 仍在传输时，服务端 run 可能已终态但前端尚未感知；
+      // 优先复用已知 runId，跳过前置 verify 避免把终态覆写进 run.value。
+      const knownRunId = actions.current.value?.runId ?? run.value?.run_id;
+      if (knownRunId && stream.isLoading.value) {
+        await service.cancel(threadId.value, knownRunId);
+        await verify(true);
+        if (!disposed && !active(run.value)) options.onReconnect();
+        return;
+      }
       if (!(await verify())) return;
       if (disposed || !options.canWrite.value) return;
       const runId = run.value?.run_id;
-      if (!runId || !active(run.value))
-        throw new Error("未找到可停止的当前运行");
+      // run 已终态说明 Agent 刚刚执行完，停止操作自然完成，静默刷新即可。
+      if (!runId || !active(run.value)) {
+        await verify(true);
+        if (!disposed && !active(run.value)) options.onReconnect();
+        return;
+      }
       await service.cancel(threadId.value, runId);
       await verify(true);
       if (!disposed && !active(run.value)) options.onReconnect();

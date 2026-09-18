@@ -54,7 +54,18 @@ export function createSessionService(fetch: typeof globalThis.fetch, projectId?:
         ...(metadata ? { metadata } : {})
       })
     },
-    count: () => client.threads.count(),
+    count: async (options?: { metadata?: Record<string, unknown>; status?: import('@langchain/langgraph-sdk').ThreadStatus }): Promise<number> => {
+      const metadata = options?.metadata
+      const status = options?.status
+      const response = (await client.threads.count(metadata || status ? { metadata, status } : undefined)) as unknown
+      if (typeof response === 'number' && !Number.isNaN(response)) return response
+      if (typeof response === 'object' && response !== null) {
+        const payload = response as { count?: unknown; total?: unknown }
+        if (typeof payload.count === 'number' && !Number.isNaN(payload.count)) return payload.count
+        if (typeof payload.total === 'number' && !Number.isNaN(payload.total)) return payload.total
+      }
+      return 0
+    },
     remove: (threadId: string) => client.threads.delete(threadId),
     runs: (threadId: string): Promise<Run[]> => client.runs.list(threadId, { limit: 20 }),
     run: (threadId: string, runId: string) => client.runs.get(threadId, runId),

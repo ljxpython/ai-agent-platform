@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
 import type { ChatThreadStatusFilter, ChatThreadSummaryGroup } from '../thread-list-view-model'
@@ -24,6 +24,8 @@ const props = defineProps<{
   deletingThreadId: string
   groups: ChatThreadSummaryGroup[]
   currentPage?: number
+  totalPages?: number
+  totalCount?: number
   hasMore?: boolean
   canDelete?: boolean
 }>()
@@ -43,6 +45,29 @@ const searchModel = computed({
   get: () => props.search,
   set: (value: string) => emit('update:search', value)
 })
+
+const inputPage = ref(String(props.currentPage || 1))
+
+watch(
+  () => props.currentPage,
+  (newPage) => {
+    inputPage.value = String(newPage || 1)
+  }
+)
+
+function jumpToPage() {
+  const parsed = parseInt(inputPage.value, 10)
+  const max = props.totalPages || 1
+  if (Number.isNaN(parsed) || parsed < 1) {
+    inputPage.value = String(props.currentPage || 1)
+    return
+  }
+  const target = Math.min(Math.max(1, parsed), max)
+  inputPage.value = String(target)
+  if (target !== (props.currentPage || 1)) {
+    emit('page-change', target)
+  }
+}
 </script>
 
 <template>
@@ -212,18 +237,29 @@ const searchModel = computed({
 
     <!-- 极简高质感微型分页器 (Compact Pagination) -->
     <div
-      v-if="currentPage !== undefined || hasMore"
+      v-if="currentPage !== undefined || hasMore || (totalCount !== undefined && totalCount > 0)"
       class="border-t border-gray-100 dark:border-dark-800 px-3 py-2 shrink-0 bg-gray-50/70 dark:bg-dark-900/60 flex items-center justify-between font-mono text-[11px] text-gray-500 select-none"
     >
-      <div class="flex items-center gap-1.5 text-gray-400 dark:text-dark-400">
-        <span>第 <strong class="text-gray-700 dark:text-dark-200 font-semibold">{{ currentPage || 1 }}</strong> 页</span>
-        <span
-          v-if="filteredCount > 0"
-          class="text-[10px]"
-        >({{ filteredCount }} 条)</span>
+      <div class="flex items-center gap-1 text-gray-400 dark:text-dark-400 min-w-0">
+        <span class="truncate">
+          共 <strong class="text-gray-700 dark:text-dark-200 font-semibold">{{ totalCount !== undefined ? totalCount : threadCount }}</strong> 条<template v-if="filteredCount !== threadCount"> (筛选 {{ filteredCount }} 条)</template>
+        </span>
       </div>
 
-      <div class="flex items-center gap-1">
+      <div class="flex items-center gap-1 shrink-0">
+        <!-- 首页 (跳转第一页) -->
+        <button
+          type="button"
+          class="flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-white text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed dark:border-dark-700 dark:bg-dark-800 dark:text-dark-300 dark:hover:bg-dark-700 transition-colors text-xs font-bold leading-none"
+          :disabled="(currentPage || 1) <= 1 || loading"
+          title="首页"
+          aria-label="首页"
+          @click="emit('page-change', 1)"
+        >
+          «
+        </button>
+
+        <!-- 上一页 -->
         <button
           type="button"
           class="flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-white text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed dark:border-dark-700 dark:bg-dark-800 dark:text-dark-300 dark:hover:bg-dark-700 transition-colors"
@@ -238,16 +274,27 @@ const searchModel = computed({
           />
         </button>
 
-        <span
-          class="flex h-6 min-w-6 items-center justify-center rounded border border-blue-200 bg-blue-50 px-1.5 font-semibold text-blue-700 shadow-2xs dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300 text-[11px]"
-        >
-          {{ currentPage || 1 }}
-        </span>
+        <!-- 当前页输入框 / 总页数 -->
+        <div class="flex items-center gap-1 px-0.5">
+          <input
+            v-model="inputPage"
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            class="h-6 w-8 rounded border border-blue-200 bg-blue-50/70 px-0.5 text-center font-mono text-[11px] font-bold text-blue-700 shadow-2xs outline-none focus:border-blue-500 focus:bg-white focus:ring-1 focus:ring-blue-500 dark:border-blue-900/60 dark:bg-blue-950/40 dark:text-blue-300 dark:focus:bg-dark-800 transition-colors"
+            title="输入页码回车跳转"
+            aria-label="输入页码跳转"
+            @keydown.enter="jumpToPage"
+            @blur="jumpToPage"
+          >
+          <span class="text-gray-400 dark:text-dark-500">/ {{ totalPages || 1 }}</span>
+        </div>
 
+        <!-- 下一页 -->
         <button
           type="button"
           class="flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-white text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed dark:border-dark-700 dark:bg-dark-800 dark:text-dark-300 dark:hover:bg-dark-700 transition-colors"
-          :disabled="!hasMore || loading"
+          :disabled="(totalPages ? (currentPage || 1) >= totalPages : !hasMore) || loading"
           title="下一页"
           aria-label="下一页"
           @click="emit('page-change', (currentPage || 1) + 1)"
@@ -256,6 +303,18 @@ const searchModel = computed({
             name="chevron-right"
             size="xs"
           />
+        </button>
+
+        <!-- 末页 (跳转最后一页) -->
+        <button
+          type="button"
+          class="flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-white text-gray-600 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed dark:border-dark-700 dark:bg-dark-800 dark:text-dark-300 dark:hover:bg-dark-700 transition-colors text-xs font-bold leading-none"
+          :disabled="(totalPages ? (currentPage || 1) >= totalPages : !hasMore) || loading"
+          title="末页"
+          aria-label="末页"
+          @click="emit('page-change', totalPages || 1)"
+        >
+          »
         </button>
       </div>
     </div>

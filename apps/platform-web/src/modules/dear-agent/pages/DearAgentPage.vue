@@ -129,9 +129,17 @@ const chatPath = computed(
 const textParam = (value: unknown) =>
   typeof value === "string" ? value : undefined;
 const selectedTarget = computed(() => target.value?.agentId ?? "");
+const currentFilterAgentId = computed(() => target.value?.agentId || textParam(route.query?.agentId) || "");
 
+const totalThreads = ref<number | undefined>(undefined);
 const pageSize = 20;
 const currentPage = computed(() => Math.floor(offset.value / pageSize) + 1);
+const totalPages = computed(() => {
+  if (totalThreads.value !== undefined) {
+    return Math.max(1, Math.ceil(totalThreads.value / pageSize));
+  }
+  return Math.max(1, currentPage.value + (hasMore.value ? 1 : 0));
+});
 
 async function loadThreads(reset = true) {
   if (!activeProjectId.value) return;
@@ -139,20 +147,31 @@ async function loadThreads(reset = true) {
   const nextOffset = reset ? 0 : offset.value + pageSize;
   listLoading.value = true;
   listError.value = "";
+  const filterAgent = currentFilterAgentId.value;
+  const metadata = filterAgent
+    ? { agent_id: filterAgent }
+    : { graph_id: "dearflow_agent" };
   try {
-    const rows = await service.value.list({
-      offset: nextOffset,
-      metadata: { graph_id: "dearflow_agent" },
-    });
+    const [rows, countRes] = await Promise.all([
+      service.value.list({ offset: nextOffset, metadata }),
+      reset
+        ? service.value.count({ metadata }).catch(() => undefined)
+        : Promise.resolve(undefined),
+    ]);
     if (requestEpoch !== listEpoch) return;
-    threads.value = rows.filter(
-      (thread) =>
-        !thread.metadata?.graph_id ||
-        thread.metadata.graph_id === "dearflow_agent" ||
-        (target.value?.agentId && thread.metadata.agent_id === target.value.agentId),
-    );
+    threads.value = rows.filter((thread) => {
+      if (filterAgent) {
+        return thread.metadata?.agent_id === filterAgent;
+      }
+      return !thread.metadata?.graph_id || thread.metadata.graph_id === "dearflow_agent";
+    });
     offset.value = nextOffset;
     hasMore.value = rows.length === pageSize;
+    if (typeof countRes === "number") {
+      totalThreads.value = countRes;
+    } else if (reset && rows.length < pageSize) {
+      totalThreads.value = threads.value.length;
+    }
   } catch (cause) {
     if (requestEpoch === listEpoch)
       listError.value =
@@ -168,18 +187,19 @@ async function handlePageChange(targetPage: number) {
   const nextOffset = (targetPage - 1) * pageSize;
   listLoading.value = true;
   listError.value = "";
+  const filterAgent = currentFilterAgentId.value;
+  const metadata = filterAgent
+    ? { agent_id: filterAgent }
+    : { graph_id: "dearflow_agent" };
   try {
-    const rows = await service.value.list({
-      offset: nextOffset,
-      metadata: { graph_id: "dearflow_agent" },
-    });
+    const rows = await service.value.list({ offset: nextOffset, metadata });
     if (requestEpoch !== listEpoch) return;
-    threads.value = rows.filter(
-      (thread) =>
-        !thread.metadata?.graph_id ||
-        thread.metadata.graph_id === "dearflow_agent" ||
-        (target.value?.agentId && thread.metadata.agent_id === target.value.agentId),
-    );
+    threads.value = rows.filter((thread) => {
+      if (filterAgent) {
+        return thread.metadata?.agent_id === filterAgent;
+      }
+      return !thread.metadata?.graph_id || thread.metadata.graph_id === "dearflow_agent";
+    });
     offset.value = nextOffset;
     hasMore.value = rows.length === pageSize;
   } catch (cause) {
@@ -216,7 +236,20 @@ watch(
       );
     if (results.some((result) => result.status === "rejected"))
       listError.value = "部分目标目录读取失败，请刷新重试";
-    void loadThreads();
+  },
+  { immediate: true },
+);
+
+watch(
+  [activeProjectId, () => auth.sessionEpoch, currentFilterAgentId],
+  ([projectId]) => {
+    if (!projectId) {
+      threads.value = [];
+      totalThreads.value = undefined;
+      return;
+    }
+    totalThreads.value = undefined;
+    void loadThreads(true);
   },
   { immediate: true },
 );
@@ -429,6 +462,8 @@ onScopeDispose(() => {
           :deleting-thread-id="deleting ? deleteId || '' : ''"
           :groups="threadListView.groups"
           :current-page="currentPage"
+          :total-pages="totalPages"
+          :total-count="totalThreads"
           :has-more="hasMore"
           :can-delete="canWrite"
           @start-new-thread="newThread"

@@ -19,3 +19,32 @@ it('uses SDK graphId and the public checkpoint wire contract', async () => {
   expect(requests[3]?.body).toEqual({ checkpoint_id: 'check', title: '分支标题' })
   expect(requests.every(request => request.headers.get('x-project-id') === 'project')).toBe(true)
 })
+
+it('passes metadata and pagination options to search and count', async () => {
+  const requests: Array<{ url: string; body?: Record<string, unknown> }> = []
+  const transport = vi.fn<typeof fetch>(async (input, init) => {
+    requests.push({ url: String(input), body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined })
+    return new Response(JSON.stringify([{ thread_id: 't-1' }]), { headers: { 'content-type': 'application/json' } })
+  })
+  const service = createSessionService(transport, 'project')
+  await service.list({ offset: 20, metadata: { agent_id: 'agent-1' } })
+  await service.count({ metadata: { agent_id: 'agent-1' } })
+
+  expect(requests[0]?.url).toMatch(/\/threads\/search$/)
+  expect(requests[0]?.body?.offset).toBe(20)
+  expect(requests[0]?.body?.metadata).toEqual({ agent_id: 'agent-1' })
+
+  expect(requests[1]?.url).toMatch(/\/threads\/count$/)
+  expect(requests[1]?.body?.metadata).toEqual({ agent_id: 'agent-1' })
+})
+
+it('unwraps object response into integer count', async () => {
+  const transport = vi.fn<typeof fetch>(async () => {
+    return new Response(JSON.stringify({ count: 42 }), { headers: { 'content-type': 'application/json' } })
+  })
+  const service = createSessionService(transport, 'project')
+  const count = await service.count({ metadata: { agent_id: 'agent-1' } })
+  expect(count).toBe(42)
+})
+
+
