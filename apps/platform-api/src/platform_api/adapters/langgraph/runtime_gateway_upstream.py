@@ -93,6 +93,11 @@ class LangGraphRuntimeGatewayUpstream:
             raise ValueError("invalid_workspace_resource")
         return await self._http.read_file(f"/internal/threads/{quote(thread_id, safe='')}/{resource}", params={"path": path})
 
+    async def workspace_zip(self, thread_id: str) -> BinaryPayload:
+        from urllib.parse import quote
+        return await self._http.read_file(f"/internal/threads/{quote(thread_id, safe='')}/workspace/zip")
+
+
     async def fork_thread_workspace(self, target_thread_id: str, source_thread_id: str) -> dict[str, Any]:
         from urllib.parse import quote
         return await self._http.require_json(

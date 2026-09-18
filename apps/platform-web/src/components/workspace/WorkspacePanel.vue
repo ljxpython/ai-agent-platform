@@ -5,6 +5,7 @@ import WorkspaceTree from './WorkspaceTree.vue';
 import WorkspacePreview from './WorkspacePreview.vue';
 import TerminalPanel from './TerminalPanel.vue';
 import { useThreadWorkspace } from '@/composables/useThreadWorkspace';
+import { useUiStore } from '@/stores/ui';
 
 const props = defineProps<{
   projectId: string;
@@ -17,6 +18,8 @@ const emit = defineEmits<{
   (e: 'update:collapsed', val: boolean): void;
   (e: 'addToChat', text: string): void;
 }>();
+
+const uiStore = useUiStore();
 
 const projectIdRef = ref(props.projectId);
 const threadIdRef = ref(props.threadId || '');
@@ -47,12 +50,26 @@ const {
   loadingPreview,
   previewError,
   refreshing,
+  downloadingArchive,
   toggleDirectory,
   selectFile,
   downloadCurrentFile,
+  downloadAllFiles,
   refresh,
   clearNewArtifactNotice,
 } = useThreadWorkspace(projectIdRef, threadIdRef);
+
+async function handleDownloadAll() {
+  try {
+    await downloadAllFiles();
+  } catch (err: unknown) {
+    uiStore.pushToast({
+      type: 'error',
+      title: '打包下载失败',
+      message: err instanceof Error ? err.message : '请稍后重试',
+    });
+  }
+}
 
 // 选项卡：'files' | 'artifacts' | 'terminal'
 type TabKey = 'files' | 'artifacts' | 'terminal';
@@ -286,6 +303,22 @@ defineExpose({
 
       <!-- 右侧控制按钮组 -->
       <div class="flex items-center gap-1">
+        <!-- 打包下载全部文件按钮 -->
+        <button
+          v-if="activeTab === 'files'"
+          type="button"
+          class="rounded p-1 text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-40 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200 transition-colors"
+          :disabled="downloadingArchive || refreshing"
+          :title="downloadingArchive ? '正在打包下载...' : '打包下载全部文件 (Zip)'"
+          @click="handleDownloadAll"
+        >
+          <BaseIcon
+            name="download"
+            class="h-3.5 w-3.5"
+            :class="downloadingArchive ? 'animate-bounce text-primary-600 dark:text-primary-400' : ''"
+          />
+        </button>
+
         <!-- 刷新按钮 -->
         <button
           type="button"

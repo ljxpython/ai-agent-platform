@@ -727,6 +727,32 @@ async def workspace_preview(request: Request, thread_id: str, path: str = Query(
     return await _workspace_response(request, thread_id, path, actor, service, preview=True)
 
 
+@router.get("/threads/{thread_id}/workspace/zip")
+async def workspace_zip(
+    request: Request,
+    thread_id: str,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    payload = await service.thread_workspace(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=thread_id,
+        resource="workspace/zip",
+    )
+    headers = {
+        "cache-control": "private, no-store",
+        "x-content-type-options": "nosniff",
+        "content-disposition": payload.content_disposition or f"attachment; filename*=UTF-8''workspace-{quote(thread_id[:8], safe='')}.zip",
+    }
+    if payload.content_length is not None:
+        headers["content-length"] = str(payload.content_length)
+    if payload.etag:
+        headers["etag"] = payload.etag
+    return RuntimeStreamingResponse(payload.body, media_type=payload.content_type, headers=headers)
+
+
+
 @router.get("/threads/{thread_id}/state")
 async def get_thread_state(
     request: Request,

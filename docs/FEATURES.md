@@ -30,6 +30,7 @@
 | 对话工作台通透无界大视野与布局重构（单层沉浸顶栏、消除底部死留白、自适应平滑滚动与侧栏一键折叠） | 已完成：消灭双 Header 套娃释放 56px 高度、下沉项目与用户切换器、消灭底部大留白、移除会话侧栏分页器并常驻一键折叠 | [通透无界布局重构](../apps/platform-web/docs/changes/20260914-chat-workspace-borderless-layout-redesign.md) |
 | 轨迹排障三合一控制器、微交互与工业级指标栏对齐（Duration/Turns/Calls、甘特 Tooltip、概览大字与圆球发送气泡） | 已完成：实装 Duration 真实耗时模式、Turns 批量折叠、Calls 工具隐藏、时间轴色块 hover 黑底白字气泡、顶栏 X 轮 Y 步 Z 工具统揽、完整 LLM/TTFT/tok/s 指标栏及圆球向上箭头微交互 | [控制器与指标栏对齐](../apps/platform-web/docs/changes/20260914-trajectory-controllers-and-metrics-strip-alignment.md) |
 | Showcase / DearFlow 沙箱工作区、文件树、安全HTML/Markdown预览与多终端会话 | 已完成：借鉴 open-swe 架构，弹性拖拽宽度与全屏最大化、单层懒加载文件树、HTML/Markdown/Code统一预览、xterm多终端会话保活、终端划词一键入Chat及全链路Agent终态静默刷新已全量交付通过 | [工作区前端实现](projects/20260917-showcase-artifact-workspace/implementation/04-platform-web-workspace.md) |
+| 工作区全量文件打包下载（.zip） | 已完成：后端标准库流式 Zip 打包、网关安全透传及前端一键下载与 loading/toast 提示全量交付通过 | [工作区全量打包下载](projects/20260918-workspace-archive-download/README.md) |
 
 
 

@@ -89,6 +89,28 @@ async def content(
     )
 
 
+@router.get("/workspace/zip")
+async def zip_archive(
+    thread_id: str,
+    authorization: str | None = Header(default=None),
+):
+    data, file_name = await _call(
+        thread_id,
+        authorization,
+        lambda root, **kw: WorkspaceBrowser(root).create_archive(**kw),
+    )
+    return Response(
+        data,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": "attachment; filename*=UTF-8''"
+            + quote(file_name, safe=""),
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
+
+
 @router.get("/workspace/preview")
 async def preview(
     thread_id: str,

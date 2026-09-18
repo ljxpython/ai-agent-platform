@@ -1156,11 +1156,12 @@ class RuntimeGatewayService:
     async def thread_workspace(self, *, actor: ActorContext, project_id: str, thread_id: str,
                                resource: str, path: str = "/workspace", cursor: str | None = None,
                                limit: int = 100) -> Any:
-        if resource not in {"workspace/tree", "workspace/content", "workspace/preview", "artifacts"}:
+        if resource not in {"workspace/tree", "workspace/content", "workspace/preview", "artifacts", "workspace/zip"}:
             raise BadRequestError(code="invalid_workspace_resource", message="Unknown workspace resource")
-        if (len(path) > 4096 or "\\" in path or any(ord(c) < 32 or ord(c) == 127 for c in path)
-            or path != "/workspace" and (not path.startswith("/workspace/") or any(p in {"", ".", ".."} for p in path[11:].split("/")))):
-            raise BadRequestError(code="invalid_workspace_path", message="Invalid workspace path")
+        if resource != "workspace/zip":
+            if (len(path) > 4096 or "\\" in path or any(ord(c) < 32 or ord(c) == 127 for c in path)
+                or path != "/workspace" and (not path.startswith("/workspace/") or any(p in {"", ".", ".."} for p in path[11:].split("/")))):
+                raise BadRequestError(code="invalid_workspace_path", message="Invalid workspace path")
         thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=False)
         agent_key = clean_str(ensure_dict(thread.get("metadata")).get("graph_id"))
         if not agent_key:
@@ -1174,6 +1175,8 @@ class RuntimeGatewayService:
             context_hash=empty_runtime_context_hash(), operation="workspace-file-read"))
         if resource in {"workspace/content", "workspace/preview"}:
             return await upstream.workspace_file(thread_id, resource, path)
+        if resource == "workspace/zip":
+            return await upstream.workspace_zip(thread_id)
         params = {"limit": limit}
         if resource == "workspace/tree":
             params["path"] = path

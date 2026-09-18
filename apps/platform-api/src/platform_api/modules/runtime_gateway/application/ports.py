@@ -12,6 +12,8 @@ class BinaryPayload:
     content_length: int | None = None
     etag: str | None = None
     cache_control: str | None = None
+    content_disposition: str | None = None
+
 
 
 class RuntimeGatewayUpstreamProtocol(Protocol):
@@ -156,6 +158,7 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
     async def workspace_json(self, thread_id: str, resource: str, params: dict[str, Any]) -> dict[str, Any]: ...
 
     async def workspace_file(self, thread_id: str, resource: str, path: str) -> BinaryPayload: ...
+    async def workspace_zip(self, thread_id: str) -> BinaryPayload: ...
     async def fork_thread_workspace(self, target_thread_id: str, source_thread_id: str) -> dict[str, Any]: ...
 
     async def terminal_request(self, thread_id: str, action: str, *, terminal_id: str | None = None,

@@ -184,3 +184,34 @@ export function triggerBlobDownload(blob: Blob, fileName: string): void {
     URL.revokeObjectURL(objectUrl);
   }, 1000);
 }
+
+export async function downloadWorkspaceZip(
+  projectId: string,
+  threadId: string,
+  signal?: AbortSignal,
+): Promise<void> {
+  const res = await platformHttpClient.get(
+    `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/zip`,
+    {
+      headers: { 'x-project-id': projectId },
+      responseType: 'blob',
+      signal,
+    },
+  );
+
+  let fileName = `workspace-${threadId.slice(0, 8)}.zip`;
+  const disposition = res.headers['content-disposition'];
+  if (typeof disposition === 'string') {
+    const match = disposition.match(/filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i);
+    if (match?.[1]) {
+      try {
+        fileName = decodeURIComponent(match[1]);
+      } catch {
+        fileName = match[1];
+      }
+    }
+  }
+
+  triggerBlobDownload(res.data as Blob, fileName);
+}
+

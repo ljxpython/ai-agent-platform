@@ -205,3 +205,37 @@ class WorkspaceBrowser:
         return json.dumps(
             {**ref, "text": text, "truncated": truncated}, ensure_ascii=False
         ).encode(), "application/json"
+
+    def create_archive(self) -> tuple[bytes, str]:
+        import io
+        import zipfile
+
+        buf = io.BytesIO()
+        file_name = f"workspace-{self.root.name[:12]}.zip"
+        if not self.root.exists() or not self.root.is_dir():
+            with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED):
+                pass
+            return buf.getvalue(), file_name
+
+        root_resolved = self.root.resolve()
+        with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+            for parent, dirs, files in os.walk(self.root, followlinks=False):
+                # 过滤常见无关隐藏目录
+                dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
+                for f in sorted(files):
+                    if f.startswith(".") or f == ".DS_Store":
+                        continue
+                    file_path = Path(parent) / f
+                    try:
+                        # 检查软链接逃逸
+                        resolved = file_path.resolve()
+                        if not resolved.is_relative_to(root_resolved):
+                            continue
+                        if not file_path.is_file():
+                            continue
+                        rel_path = file_path.relative_to(self.root).as_posix()
+                        zf.write(file_path, arcname=rel_path)
+                    except (OSError, ValueError):
+                        continue
+
+        return buf.getvalue(), file_name

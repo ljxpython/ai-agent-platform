@@ -59,6 +59,7 @@ CASES = [
     ("GET", "/threads/{thread_id}/workspace/tree", "thread_workspace"),
     ("GET", "/threads/{thread_id}/workspace/content", "thread_workspace"),
     ("GET", "/threads/{thread_id}/workspace/preview", "thread_workspace"),
+    ("GET", "/threads/{thread_id}/workspace/zip", "thread_workspace"),
     ("GET", "/threads/{thread_id}/artifacts", "thread_workspace"),
     ("GET", "/threads/{thread_id}/dear/{resource}", "dear_governance"),
     ("POST", "/threads/{thread_id}/dear/{resource}", "dear_governance"),
@@ -123,7 +124,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                                 body=image_bytes(),
                                 content_type="image/png",
                             )
-                        elif name == "read_thread_file" or path.endswith(("/workspace/content", "/workspace/preview")):
+                        elif name == "read_thread_file" or path.endswith(("/workspace/content", "/workspace/preview", "/workspace/zip")):
                             ret_val = BinaryPayload(
                                 body=file_bytes(),
                                 content_type="application/pdf",

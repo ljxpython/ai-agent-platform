@@ -21,6 +21,7 @@ from fastapi import FastAPI
 from platform_api.adapters.langgraph.runtime_gateway_upstream import (
     LangGraphRuntimeGatewayUpstream,
 )
+from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
 from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import register_exception_handlers
 from platform_api.modules.runtime_gateway.application.service import (
@@ -49,6 +50,16 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
         )
         self.upstream.workspace_json = AsyncMock(
             return_value={"items": [], "next_cursor": None}
+        )
+        async def fake_zip_stream():
+            yield b"PK\x03\x04mock-zip"
+
+        self.upstream.workspace_zip = AsyncMock(
+            return_value=BinaryPayload(
+                body=fake_zip_stream(),
+                content_type="application/zip",
+                content_disposition="attachment; filename*=UTF-8''workspace-thread-1.zip",
+            )
         )
         self.upstream.with_forwarded_headers = Mock(return_value=self.upstream)
         self.service = RuntimeGatewayService(
@@ -104,7 +115,7 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
             transport=httpx.ASGITransport(app=self.app), base_url="http://test"
         ) as client:
             prefix = "/api/langgraph/threads/thread-1"
-            for route in ("/workspace/tree", "/artifacts"):
+            for route in ("/workspace/tree", "/artifacts", "/workspace/zip"):
                 response = await client.get(
                     prefix + route, headers={"x-project-id": "project-a"}
                 )
@@ -322,6 +333,15 @@ uvicorn.run('runtime_service.webapp:app', fd=int(sys.argv[1]), log_level='error'
                             hashlib.sha256(downloaded.content).hexdigest(),
                             ref["sha256"],
                         )
+                        zip_resp = await client.get(prefix + "/workspace/zip")
+                        self.assertEqual(zip_resp.status_code, 200, zip_resp.text)
+                        self.assertEqual(zip_resp.headers["content-type"], "application/zip")
+                        self.assertIn("attachment; filename*=", zip_resp.headers.get("content-disposition", ""))
+                        import io, zipfile
+                        with zipfile.ZipFile(io.BytesIO(zip_resp.content)) as archive:
+                            names = archive.namelist()
+                            self.assertIn("work/payment.yaml", names)
+                            self.assertIn("work/view.html", names)
                 finally:
                     server.should_exit = True
                     await asyncio.to_thread(thread.join, timeout=5)

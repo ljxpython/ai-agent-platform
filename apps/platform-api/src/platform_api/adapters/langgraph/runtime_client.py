@@ -471,6 +471,7 @@ class LangGraphRuntimeClient:
 
         etag = response.headers.get("etag")
         cache_control = response.headers.get("cache-control")
+        content_disposition = response.headers.get("content-disposition")
         max_bytes = 20 * 1024 * 1024
 
         async def body_stream() -> AsyncIterator[bytes]:
@@ -497,4 +498,5 @@ class LangGraphRuntimeClient:
             content_length=content_length,
             etag=etag,
             cache_control=cache_control,
+            content_disposition=content_disposition,
         )

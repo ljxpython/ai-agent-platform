@@ -13,6 +13,7 @@ vi.mock('@/services/http/client', () => ({
 }));
 
 import {
+  downloadWorkspaceZip,
   getArtifacts,
   getWorkspaceCapabilities,
   getWorkspaceContentBlob,
@@ -152,4 +153,31 @@ describe('workspace.service', () => {
     expect(result.fileName).toBe('test.txt');
     expect(result.blob).toBe(contentBlob);
   });
+
+  it('downloads workspace zip and triggers download', async () => {
+    const zipBlob = new Blob(['mock-zip-bytes'], { type: 'application/zip' });
+    platformHttpClientMock.get.mockResolvedValueOnce({
+      data: zipBlob,
+      headers: {
+        'content-type': 'application/zip',
+        'content-disposition': "attachment; filename*=UTF-8''workspace-thread-1.zip",
+      },
+    });
+
+    const createObjectURLMock = vi.fn().mockReturnValue('blob:http://localhost/mock-uuid');
+    const revokeObjectURLMock = vi.fn();
+    window.URL.createObjectURL = createObjectURLMock;
+    window.URL.revokeObjectURL = revokeObjectURLMock;
+
+    await downloadWorkspaceZip('proj-1', 'thread-1');
+    expect(platformHttpClientMock.get).toHaveBeenCalledWith(
+      '/api/langgraph/threads/thread-1/workspace/zip',
+      expect.objectContaining({
+        headers: { 'x-project-id': 'proj-1' },
+        responseType: 'blob',
+      }),
+    );
+    expect(createObjectURLMock).toHaveBeenCalledWith(zipBlob);
+  });
 });
+

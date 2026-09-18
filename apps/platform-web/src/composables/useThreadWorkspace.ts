@@ -5,6 +5,7 @@ import type {
   WorkspaceEntry,
 } from '@/types/workspace';
 import {
+  downloadWorkspaceZip,
   getArtifacts,
   getWorkspaceCapabilities,
   getWorkspaceContentBlob,
@@ -173,6 +174,22 @@ export function useThreadWorkspace(
     }
   }
 
+  const downloadingArchive = ref(false);
+
+  // 打包下载工作区全部文件
+  async function downloadAllFiles() {
+    if (!projectId.value || !threadId.value || downloadingArchive.value) return;
+    downloadingArchive.value = true;
+    try {
+      await downloadWorkspaceZip(projectId.value, threadId.value);
+    } catch (err: unknown) {
+      console.error('打包下载工作区文件失败:', err);
+      throw err;
+    } finally {
+      downloadingArchive.value = false;
+    }
+  }
+
   const refreshing = ref(false);
 
   // 刷新工作区（包含根目录与所有已展开的子目录、产物列表、以及当前预览文件）
@@ -247,6 +264,7 @@ export function useThreadWorkspace(
     loadingPreview,
     previewError,
     refreshing,
+    downloadingArchive,
     // 方法
     loadCapabilities,
     loadDirectory,
@@ -254,6 +272,7 @@ export function useThreadWorkspace(
     toggleDirectory,
     selectFile,
     downloadCurrentFile,
+    downloadAllFiles,
     refresh,
     clearNewArtifactNotice,
   };
