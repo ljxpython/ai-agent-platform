@@ -36,6 +36,7 @@ CASES = [
     ("GET", "/threads/{thread_id}", "get_thread"),
     ("DELETE", "/threads/{thread_id}", "delete_thread"),
     ("PATCH", "/threads/{thread_id}", "update_thread"),
+    ("POST", "/threads/{thread_id}/title/summarize", "summarize_thread_title"),
     ("POST", "/threads/{thread_id}/fork", "fork_thread"),
     ("PATCH", "/threads/{thread_id}/access-policy", "update_thread_access_policy"),
     ("GET", "/threads/{thread_id}/state", "get_thread_state"),

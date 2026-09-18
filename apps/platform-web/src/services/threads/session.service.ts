@@ -80,6 +80,15 @@ export function createSessionService(fetch: typeof globalThis.fetch, projectId?:
       read<ChatThread>(`/threads/${encodeURIComponent(threadId)}`, {
         method: 'PATCH',
         body: JSON.stringify(metadata)
-      })
+      }),
+    summarizeTitle: (threadId: string, messages?: Array<{ role: string; content: string }>) =>
+      read<{ thread_id: string; title: string; metadata?: Record<string, unknown> }>(
+        `/threads/${encodeURIComponent(threadId)}/title/summarize`,
+        {
+          method: 'POST',
+          body: JSON.stringify(messages ? { messages } : {})
+        }
+      )
   }
 }
+

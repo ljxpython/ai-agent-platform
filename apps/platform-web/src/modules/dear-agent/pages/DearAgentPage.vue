@@ -121,6 +121,25 @@ async function handleRenameThread(threadId: string, newTitle: string) {
     listError.value = cause instanceof Error ? cause.message : "重命名会话失败";
   }
 }
+const summarizingThreadId = ref<string | null>(null);
+async function handleAiSummarizeTitle(threadId: string) {
+  if (!canWrite.value || summarizingThreadId.value) return;
+  summarizingThreadId.value = threadId;
+  try {
+    const res = await service.value.summarizeTitle(threadId);
+    if (res?.title) {
+      const match = threads.value.find((t) => t.thread_id === threadId);
+      if (match) {
+        match.metadata = { ...match.metadata, title: res.title };
+        threads.value = [...threads.value];
+      }
+    }
+  } catch (cause) {
+    listError.value = cause instanceof Error ? cause.message : "智能提炼标题失败";
+  } finally {
+    summarizingThreadId.value = null;
+  }
+}
 const mountedThread = ref<string>();
 const mountVersion = ref(0);
 const offset = ref(0);
@@ -478,10 +497,12 @@ onScopeDispose(() => {
           :total-count="totalThreads"
           :has-more="hasMore"
           :can-delete="canWrite"
+          :summarizing-thread-id="summarizingThreadId || ''"
           @start-new-thread="newThread"
           @select-thread="openThread"
           @delete-thread="requestDelete"
           @rename-thread="handleRenameThread"
+          @ai-summarize-title="handleAiSummarizeTitle"
           @collapse="sidebarCollapsed = true"
           @page-change="handlePageChange"
           @load-more="loadThreads(false)"

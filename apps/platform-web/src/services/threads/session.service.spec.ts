@@ -67,4 +67,25 @@ it('updates thread metadata with PATCH request', async () => {
   expect(requests[0]?.body).toEqual({ title: '新标题', preview: '消息摘要' })
 })
 
+it('summarizes thread title with POST request', async () => {
+  const requests: Array<{ url: string; method?: string; body?: Record<string, unknown> }> = []
+  const transport = vi.fn<typeof fetch>(async (input, init) => {
+    requests.push({
+      url: String(input),
+      method: init?.method,
+      body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
+    })
+    return new Response(JSON.stringify({ thread_id: 'thread-1', title: '智能标题' }), {
+      headers: { 'content-type': 'application/json' }
+    })
+  })
+  const service = createSessionService(transport, 'project')
+  const res = await service.summarizeTitle('thread-1', [{ role: 'user', content: '测试消息' }])
+
+  expect(requests[0]?.url).toMatch(/\/threads\/thread-1\/title\/summarize$/)
+  expect(requests[0]?.method).toBe('POST')
+  expect(requests[0]?.body).toEqual({ messages: [{ role: 'user', content: '测试消息' }] })
+  expect(res.title).toBe('智能标题')
+})
+
 

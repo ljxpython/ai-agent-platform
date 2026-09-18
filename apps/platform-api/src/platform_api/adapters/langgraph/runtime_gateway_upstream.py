@@ -162,6 +162,13 @@ class LangGraphRuntimeGatewayUpstream:
     async def update_thread(self, thread_id: str, payload: dict[str, Any]) -> Any:
         return await self._threads.update(thread_id, payload)
 
+    async def summarize_thread_title(
+        self, thread_id: str, payload: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        return await self._http.require_json(
+            "POST", f"/internal/threads/{thread_id}/title/summarize", payload=payload or {}
+        )
+
 
     async def get_thread_state(
         self,

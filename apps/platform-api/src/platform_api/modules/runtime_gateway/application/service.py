@@ -4,9 +4,12 @@ from platform_api.core.security import empty_runtime_context_hash
 
 import hashlib
 import json
+import logging
 from collections.abc import AsyncIterator, Callable, Mapping
 from typing import Any
 from uuid import UUID, uuid4
+
+logger = logging.getLogger(__name__)
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
@@ -1648,6 +1651,61 @@ class RuntimeGatewayService:
             )
         await self._upstream.update_thread(thread_id, {"metadata": metadata})
         return {"thread_id": thread_id, "metadata": metadata}
+
+    async def summarize_thread_title(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        payload: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=True
+        )
+        upstream_payload = dict(payload or {})
+        if not upstream_payload.get("messages") and hasattr(self._upstream, "get_thread_state"):
+            try:
+                state = await self._upstream.get_thread_state(thread_id)
+                if isinstance(state, dict):
+                    values = state.get("values")
+                    if isinstance(values, dict) and isinstance(values.get("messages"), list):
+                        extracted_msgs = []
+                        for m in values["messages"]:
+                            if isinstance(m, dict):
+                                role = m.get("type") or m.get("role") or "user"
+                                content = m.get("content", "")
+                                if isinstance(content, list):
+                                    text_parts = [
+                                        b.get("text", "")
+                                        for b in content
+                                        if isinstance(b, dict) and b.get("type") == "text"
+                                    ]
+                                    content = " ".join(text_parts)
+                                if content and str(content).strip():
+                                    extracted_msgs.append({"role": str(role), "content": str(content).strip()})
+                            elif hasattr(m, "content"):
+                                role = getattr(m, "type", "user")
+                                content = getattr(m, "content", "")
+                                if content and str(content).strip():
+                                    extracted_msgs.append({"role": str(role), "content": str(content).strip()})
+                        if extracted_msgs:
+                            upstream_payload["messages"] = extracted_msgs
+            except Exception as exc:
+                logger.warning(
+                    "summarize_thread_title: failed to extract messages from thread state: %s", exc
+                )
+
+        summary_result = await self._upstream.summarize_thread_title(
+            thread_id, upstream_payload
+        )
+        generated_title = summary_result.get("title") if isinstance(summary_result, dict) else None
+        if generated_title and isinstance(generated_title, str) and generated_title.strip():
+            metadata = _thread_metadata(thread)
+            metadata["title"] = generated_title.strip()
+            await self._upstream.update_thread(thread_id, {"metadata": metadata})
+            return {"thread_id": thread_id, "title": generated_title.strip(), "metadata": metadata}
+        return {"thread_id": thread_id, "title": "新对话"}
 
     async def get_thread_state(
         self,

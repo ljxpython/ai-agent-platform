@@ -23,7 +23,6 @@ import { parseAgentContext } from "@/services/agents/context";
 import {
   deriveMessagePreview,
   deriveThreadTitle,
-  extractLastMessagePreview,
 } from "@/utils/thread-title";
 import {
   enqueueThreadMessage,
@@ -161,13 +160,6 @@ export function useDearAgentSession(options: {
     onCompleted: () => {
       if (!disposed) {
         void verify(true);
-        const msgs = stream.messages?.value;
-        if (threadId.value && Array.isArray(msgs) && msgs.length) {
-          const lastPreview = extractLastMessagePreview(msgs);
-          if (lastPreview) {
-            void service.update(threadId.value, { preview: lastPreview }).catch(() => {});
-          }
-        }
       }
     },
   });

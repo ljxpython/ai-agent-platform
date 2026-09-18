@@ -470,6 +470,25 @@ async def update_thread(
     )
 
 
+@router.post("/threads/{thread_id}/title/summarize")
+async def summarize_thread_title(
+    request: Request,
+    thread_id: str,
+    payload: dict[str, Any] | None = Body(default=None),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    request.state.audit_metadata = {"action": "summarize_title"}
+    return _redact_runtime_private_fields(
+        await service.summarize_thread_title(
+            actor=actor,
+            project_id=_require_project_id(request),
+            thread_id=thread_id,
+            payload=payload,
+        )
+    )
+
+
 @router.post("/threads/{thread_id}/messages", status_code=202)
 async def enqueue_thread_message(
     request: Request,

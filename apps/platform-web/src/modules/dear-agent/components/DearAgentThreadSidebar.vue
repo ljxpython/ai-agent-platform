@@ -23,6 +23,7 @@ const props = defineProps<{
   activeThreadId: string
   deletingThreadId: string
   groups: ChatThreadSummaryGroup[]
+  summarizingThreadId?: string
   currentPage?: number
   totalPages?: number
   totalCount?: number
@@ -37,6 +38,7 @@ const emit = defineEmits<{
   'select-thread': [threadId: string]
   'delete-thread': [threadId: string]
   'rename-thread': [threadId: string, newTitle: string]
+  'ai-summarize-title': [threadId: string]
   'collapse': []
   'page-change': [page: number]
   'load-more': []
@@ -246,14 +248,7 @@ function jumpToPage() {
                     </div>
                   </div>
                   
-                  <div
-                    v-if="item.preview"
-                    class="line-clamp-1 text-[11px] text-gray-400 dark:text-dark-400"
-                  >
-                    {{ item.preview }}
-                  </div>
-                  
-                  <div class="flex items-center justify-between text-[10px] text-gray-400 dark:text-dark-500 mt-0.5">
+                  <div class="flex items-center justify-between text-[10px] text-gray-400 dark:text-dark-500 mt-1">
                     <span>{{ item.time }}</span>
                     <div class="flex items-center gap-1">
                       <span
@@ -275,7 +270,26 @@ function jumpToPage() {
                   </div>
                 </button>
 
-                <div class="absolute right-2 top-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
+                <div
+                  class="absolute right-2 top-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition"
+                  :class="summarizingThreadId === item.id ? '!opacity-100' : ''"
+                >
+                  <button
+                    type="button"
+                    class="rounded p-1 text-gray-400 transition hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-purple-950/40 dark:hover:text-purple-300 disabled:opacity-50"
+                    :class="summarizingThreadId === item.id ? '!opacity-100 text-purple-600 dark:text-purple-400' : ''"
+                    :disabled="summarizingThreadId === item.id"
+                    :aria-label="summarizingThreadId === item.id ? '正在智能生成标题...' : `AI智能生成标题：${item.title}`"
+                    :title="summarizingThreadId === item.id ? '正在智能生成标题...' : 'AI 智能生成标题'"
+                    @click.stop="emit('ai-summarize-title', item.id)"
+                  >
+                    <BaseIcon
+                      :name="summarizingThreadId === item.id ? 'refresh' : 'sparkle'"
+                      size="xs"
+                      :class="{ 'animate-spin': summarizingThreadId === item.id }"
+                    />
+                  </button>
+
                   <button
                     type="button"
                     class="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-dark-700 dark:hover:text-gray-200"

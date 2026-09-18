@@ -130,4 +130,26 @@ describe('ChatThreadSidebar thread items and renaming', () => {
     await input.trigger('keydown.enter')
     expect(wrapper.emitted('rename-thread')?.[0]).toEqual(['th-1', '更新后的标题'])
   })
+
+  it('triggers ai-summarize-title when magic wand button is clicked', async () => {
+    const wrapper = mount(ChatThreadSidebar, { props: itemProps })
+    const aiBtn = wrapper.find('button[title="AI 智能生成标题"]')
+    expect(aiBtn.exists()).toBe(true)
+
+    await aiBtn.trigger('click')
+    expect(wrapper.emitted('ai-summarize-title')?.[0]).toEqual(['th-1'])
+  })
+
+  it('disables ai button and shows spinning icon when thread is summarizing', () => {
+    const wrapper = mount(ChatThreadSidebar, {
+      props: {
+        ...itemProps,
+        summarizingThreadId: 'th-1',
+      },
+    })
+    const aiBtn = wrapper.find('button[title="正在智能生成标题..."]')
+    expect(aiBtn.exists()).toBe(true)
+    expect(aiBtn.attributes('disabled')).toBeDefined()
+  })
 })
+
