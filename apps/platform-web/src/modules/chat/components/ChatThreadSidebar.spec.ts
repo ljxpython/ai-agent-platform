@@ -78,3 +78,56 @@ describe('ChatThreadSidebar pagination', () => {
     expect(wrapper.emitted('page-change')?.[0]).toEqual([5])
   })
 })
+
+describe('ChatThreadSidebar thread items and renaming', () => {
+  const itemProps = {
+    showContextBar: false,
+    targetText: 'test-target',
+    targetTypeText: 'Agent',
+    search: '',
+    statusFilter: 'all' as const,
+    filters: [{ value: 'all' as const, label: '全部' }],
+    loading: false,
+    threadCount: 1,
+    filteredCount: 1,
+    canStartThread: true,
+    activeThreadId: '',
+    deletingThreadId: '',
+    groups: [
+      {
+        key: 'today',
+        label: '今天',
+        items: [
+          {
+            id: 'th-1',
+            title: '架构设计讨论',
+            preview: '',
+            updatedAt: '2026-09-18T10:00:00Z',
+            time: '10:00',
+            status: 'idle'
+          }
+        ]
+      }
+    ],
+    canDelete: true,
+  }
+
+  it('does not render (无内容) when preview is empty', () => {
+    const wrapper = mount(ChatThreadSidebar, { props: itemProps })
+    expect(wrapper.text()).not.toContain('(无内容)')
+  })
+
+  it('triggers rename-thread on inline edit confirmation', async () => {
+    const wrapper = mount(ChatThreadSidebar, { props: itemProps })
+    const renameBtn = wrapper.find('button[title="重命名会话"]')
+    expect(renameBtn.exists()).toBe(true)
+
+    await renameBtn.trigger('click')
+    const input = wrapper.find('input[placeholder="会话标题"]')
+    expect(input.exists()).toBe(true)
+
+    await input.setValue('更新后的标题')
+    await input.trigger('keydown.enter')
+    expect(wrapper.emitted('rename-thread')?.[0]).toEqual(['th-1', '更新后的标题'])
+  })
+})

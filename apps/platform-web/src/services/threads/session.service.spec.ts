@@ -47,4 +47,24 @@ it('unwraps object response into integer count', async () => {
   expect(count).toBe(42)
 })
 
+it('updates thread metadata with PATCH request', async () => {
+  const requests: Array<{ url: string; method?: string; body?: Record<string, unknown> }> = []
+  const transport = vi.fn<typeof fetch>(async (input, init) => {
+    requests.push({
+      url: String(input),
+      method: init?.method,
+      body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
+    })
+    return new Response(JSON.stringify({ thread_id: 'thread-1', metadata: { title: '新标题' } }), {
+      headers: { 'content-type': 'application/json' }
+    })
+  })
+  const service = createSessionService(transport, 'project')
+  await service.update('thread-1', { title: '新标题', preview: '消息摘要' })
+
+  expect(requests[0]?.url).toMatch(/\/threads\/thread-1$/)
+  expect(requests[0]?.method).toBe('PATCH')
+  expect(requests[0]?.body).toEqual({ title: '新标题', preview: '消息摘要' })
+})
+
 

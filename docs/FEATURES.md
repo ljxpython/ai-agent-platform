@@ -33,6 +33,7 @@
 | 工作区全量文件打包下载（.zip） | 已完成：后端标准库流式 Zip 打包、网关安全透传及前端一键下载与 loading/toast 提示全量交付通过 | [工作区全量打包下载](projects/20260918-workspace-archive-download/README.md) |
 | 对话历史按智能体过滤与极简微型分页器优化（首页/末页直达 + 跳页输入） | 已完成：选择特定 Agent 时列表仅展示该 Agent 的历史会话并实时联动，支持总数呈现、«/» 极端直达与数字直接跳页 | [会话按 Agent 过滤与分页优化](../apps/platform-web/docs/changes/20260918-chat-agent-history-filter-and-pagination.md) |
 | Agent 与工具界面优化及权限治理（创建 Agent、详情高级化、工具卡片化与权限收紧） | 已完成：新增 Agent 创建全流程与 `/agents/new` 路由；修复 execution_mode 下拉渲染 bug 与布局；升级工具卡片与同步；收紧 PROJECT_RUNTIME_WRITE 排除 EXECUTOR | [项目概览](projects/20260918-agent-tool-ui-overhaul/README.md) |
+| 会话标题识别与消息预览优化（手动重命名、消除(无内容)、模板词清洗与最新预览同步） | 进行中：Phase 1 已全量交付（网关 PATCH 接口、前端侧边栏内联重命名、(无内容)消除与消息自动更新 preview）；Phase 2 智能 LLM 标题生成待开始 | [会话标题与预览优化](projects/20260918-thread-title-and-preview-enhancement/README.md) |
 
 
 

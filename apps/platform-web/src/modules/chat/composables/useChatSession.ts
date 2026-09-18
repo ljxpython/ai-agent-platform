@@ -21,6 +21,11 @@ import { updateThreadAccessPolicy } from "@/services/threads/access-policy.servi
 import type { AgentContext } from "@/services/agents/types";
 import { parseAgentContext } from "@/services/agents/context";
 import {
+  deriveMessagePreview,
+  deriveThreadTitle,
+  extractLastMessagePreview,
+} from "@/utils/thread-title";
+import {
   enqueueThreadMessage,
   listThreadMessages,
   type MessageReceipt,
@@ -154,7 +159,16 @@ export function useChatSession(options: {
     client: service.client,
     fetch: actions.fetch,
     onCompleted: () => {
-      if (!disposed) void verify(true);
+      if (!disposed) {
+        void verify(true);
+        const msgs = stream.messages?.value;
+        if (threadId.value && Array.isArray(msgs) && msgs.length) {
+          const lastPreview = extractLastMessagePreview(msgs);
+          if (lastPreview) {
+            void service.update(threadId.value, { preview: lastPreview }).catch(() => {});
+          }
+        }
+      }
     },
   });
   const rawInterrupts = computed(() => stream.interrupts.value);
@@ -543,13 +557,14 @@ export function useChatSession(options: {
         throw new Error("请输入消息");
       const context = parseAgentContext(options.context.value);
       if (!threadId.value) {
-        const title =
-          typeof content === "string" ? content.slice(0, 80) : "新对话";
+        const title = deriveThreadTitle(content);
+        const preview = deriveMessagePreview(content);
         const thread = await service.create(
           options.graphId,
           options.agentId,
           title,
           accessPolicy.value,
+          preview,
         );
         if (disposed) return false;
         threadId.value = thread.thread_id;

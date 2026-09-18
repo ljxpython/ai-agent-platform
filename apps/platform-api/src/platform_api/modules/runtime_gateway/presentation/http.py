@@ -441,6 +441,35 @@ async def update_thread_access_policy(
     )
 
 
+@router.patch("/threads/{thread_id}")
+async def update_thread(
+    request: Request,
+    thread_id: str,
+    payload: dict[str, Any] | None = Body(default=None),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    if not isinstance(payload, dict):
+        raise BadRequestError(code="invalid_payload", message="payload must be a JSON object")
+    metadata_updates: dict[str, Any] = {}
+    if "metadata" in payload and isinstance(payload["metadata"], dict):
+        metadata_updates.update(payload["metadata"])
+    for key in ("title", "preview"):
+        if key in payload:
+            metadata_updates[key] = payload[key]
+    if not metadata_updates:
+        raise BadRequestError(code="invalid_payload", message="No valid fields to update")
+    request.state.audit_metadata = {"updated_fields": list(metadata_updates.keys())}
+    return _redact_runtime_private_fields(
+        await service.update_thread(
+            actor=actor,
+            project_id=_require_project_id(request),
+            thread_id=thread_id,
+            metadata_updates=metadata_updates,
+        )
+    )
+
+
 @router.post("/threads/{thread_id}/messages", status_code=202)
 async def enqueue_thread_message(
     request: Request,

@@ -103,6 +103,18 @@ async function deleteThread() {
     if (requestEpoch === epoch) listError.value = cause instanceof Error ? cause.message : "删除对话失败";
   } finally { deleting.value = false; }
 }
+async function handleRenameThread(threadId: string, newTitle: string) {
+  if (!canWrite.value || !newTitle.trim()) return;
+  try {
+    await service.value.update(threadId, { title: newTitle.trim() });
+    const match = threads.value.find((t) => t.thread_id === threadId);
+    if (match) {
+      match.metadata = { ...match.metadata, title: newTitle.trim() };
+    }
+  } catch (cause) {
+    listError.value = cause instanceof Error ? cause.message : "重命名会话失败";
+  }
+}
 const mountedThread = ref<string>();
 const mountVersion = ref(0);
 const offset = ref(0);
@@ -437,6 +449,7 @@ onScopeDispose(() => {
           @start-new-thread="newThread"
           @select-thread="openThread"
           @delete-thread="requestDelete"
+          @rename-thread="handleRenameThread"
           @collapse="sidebarCollapsed = true"
           @page-change="handlePageChange"
           @load-more="loadThreads(false)"

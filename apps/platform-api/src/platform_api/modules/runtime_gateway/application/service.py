@@ -1620,6 +1620,35 @@ class RuntimeGatewayService:
         await self._upstream.update_thread(thread_id, {"metadata": metadata})
         return {"thread_id": thread_id, _ACCESS_POLICY_KEY: policy}
 
+    async def update_thread(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        metadata_updates: dict[str, Any],
+    ) -> dict[str, Any]:
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=True
+        )
+        metadata = _thread_metadata(thread)
+        updated_fields: dict[str, Any] = {}
+        for key in ("title", "preview"):
+            if key in metadata_updates:
+                val = metadata_updates[key]
+                if val is not None and not isinstance(val, str):
+                    raise BadRequestError(
+                        code="invalid_metadata", message=f"{key} must be a string"
+                    )
+                metadata[key] = val
+                updated_fields[key] = val
+        if not updated_fields:
+            raise BadRequestError(
+                code="invalid_metadata", message="No supported metadata fields provided"
+            )
+        await self._upstream.update_thread(thread_id, {"metadata": metadata})
+        return {"thread_id": thread_id, "metadata": metadata}
+
     async def get_thread_state(
         self,
         *,

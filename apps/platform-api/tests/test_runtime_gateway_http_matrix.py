@@ -35,6 +35,7 @@ CASES = [
     ("POST", "/threads/count", "count_threads"),
     ("GET", "/threads/{thread_id}", "get_thread"),
     ("DELETE", "/threads/{thread_id}", "delete_thread"),
+    ("PATCH", "/threads/{thread_id}", "update_thread"),
     ("POST", "/threads/{thread_id}/fork", "fork_thread"),
     ("PATCH", "/threads/{thread_id}/access-policy", "update_thread_access_policy"),
     ("GET", "/threads/{thread_id}/state", "get_thread_state"),
@@ -156,6 +157,8 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             if name == "fork_thread" else
                             {"access_policy": "workspace_write"}
                             if name == "update_thread_access_policy" else
+                            {"title": "new-title"}
+                            if name == "update_thread" else
                             {"content": "hello"}
                             if path.endswith("/messages")
                             else {"probe": "body"}
@@ -264,6 +267,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                                 terminal_payload(path) if name == "thread_terminal"
                                 else {"checkpoint_id": "checkpoint-1"} if name == "fork_thread"
                                 else {"access_policy": "review"} if name == "update_thread_access_policy"
+                                else {"title": "new-title"} if name == "update_thread"
                                 else {}
                             ) if method in {"POST", "PATCH"} else None,
                             content=b"0123456789" if method == "PUT" else None,
@@ -310,6 +314,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             terminal_payload(path) if name == "thread_terminal"
                             else {"checkpoint_id": "checkpoint-1"} if name == "fork_thread"
                             else {"access_policy": "review"} if name == "update_thread_access_policy"
+                            else {"title": "new-title"} if name == "update_thread"
                             else {}
                         ) if method in {"POST", "PATCH"} else None,
                         content=b"0123456789" if method == "PUT" else None,

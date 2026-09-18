@@ -27,13 +27,14 @@ export function createSessionService(fetch: typeof globalThis.fetch, projectId?:
   }
   return {
     client,
-    create: (graphId: string, agentId: string | undefined, title: string, accessPolicy?: AccessPolicy) =>
+    create: (graphId: string, agentId: string | undefined, title: string, accessPolicy?: AccessPolicy, preview?: string) =>
       client.threads.create({
         graphId,
         metadata: {
           graph_id: graphId,
           agent_id: agentId,
           title,
+          ...(preview ? { preview } : {}),
           ...(accessPolicy ? { access_policy: accessPolicy } : {}),
         },
       }),
@@ -74,6 +75,11 @@ export function createSessionService(fetch: typeof globalThis.fetch, projectId?:
       read<ChatThread>(`/threads/${encodeURIComponent(threadId)}/fork`, {
         method: 'POST',
         body: JSON.stringify({ checkpoint_id: checkpointId, ...(title ? { title } : {}) })
+      }),
+    update: (threadId: string, metadata: { title?: string; preview?: string }) =>
+      read<ChatThread>(`/threads/${encodeURIComponent(threadId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(metadata)
       })
   }
 }

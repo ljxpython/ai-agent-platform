@@ -36,10 +36,33 @@ const emit = defineEmits<{
   'start-new-thread': []
   'select-thread': [threadId: string]
   'delete-thread': [threadId: string]
+  'rename-thread': [threadId: string, newTitle: string]
   'collapse': []
   'page-change': [page: number]
   'load-more': []
 }>()
+
+const editingThreadId = ref<string | null>(null)
+const editingTitle = ref('')
+
+function startRename(item: { id: string; title: string }) {
+  editingThreadId.value = item.id
+  editingTitle.value = item.title
+}
+
+function cancelRename() {
+  editingThreadId.value = null
+  editingTitle.value = ''
+}
+
+function confirmRename(threadId: string) {
+  const nextTitle = editingTitle.value.trim()
+  if (nextTitle) {
+    emit('rename-thread', threadId, nextTitle)
+  }
+  editingThreadId.value = null
+  editingTitle.value = ''
+}
 
 const searchModel = computed({
   get: () => props.search,
@@ -168,67 +191,121 @@ function jumpToPage() {
               :key="item.id"
               class="group relative"
             >
-              <button
-                type="button"
-                class="w-full rounded-lg px-2.5 py-2 text-left transition-colors flex flex-col gap-0.5"
-                :class="
-                  item.id === activeThreadId
-                    ? 'bg-primary-50/80 dark:bg-primary-950/40 border border-primary-100/80 dark:border-primary-900/50'
-                    : 'border border-transparent hover:bg-gray-100/80 dark:hover:bg-dark-800/60'
-                "
-                :aria-label="item.title"
-                @click="emit('select-thread', item.id)"
+              <!-- 编辑模式 -->
+              <div
+                v-if="editingThreadId === item.id"
+                class="w-full rounded-lg p-1.5 border border-primary-500 bg-white dark:bg-dark-800 shadow-sm flex items-center gap-1.5"
+                @click.stop
               >
-                <div class="flex items-start justify-between gap-2">
-                  <div
-                    class="truncate text-xs font-medium"
-                    :class="item.id === activeThreadId ? 'text-primary-900 dark:text-primary-100 font-semibold' : 'text-gray-800 dark:text-gray-200'"
-                  >
-                    {{ item.title }}
-                  </div>
-                </div>
-                
-                <div class="line-clamp-1 text-[11px] text-gray-400 dark:text-dark-400">
-                  {{ item.preview || '(无内容)' }}
-                </div>
-                
-                <div class="flex items-center justify-between text-[10px] text-gray-400 dark:text-dark-500 mt-0.5">
-                  <span>{{ item.time }}</span>
-                  <div class="flex items-center gap-1">
-                    <span
-                      v-if="item.status === 'interrupted'"
-                      class="w-1.5 h-1.5 rounded-full bg-amber-500"
-                      title="等待确认"
-                    />
-                    <span
-                      v-else-if="item.status === 'error'"
-                      class="w-1.5 h-1.5 rounded-full bg-red-500"
-                      title="错误"
-                    />
-                    <span
-                      v-else-if="item.status === 'busy'"
-                      class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"
-                      title="运行中"
-                    />
-                  </div>
-                </div>
-              </button>
-
-              <button
-                v-if="canDelete"
-                type="button"
-                class="absolute right-2 top-2 rounded p-1 text-gray-400 opacity-0 transition hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 focus:opacity-100 dark:hover:bg-red-900/30 dark:hover:text-red-400"
-                :class="deletingThreadId === item.id ? 'opacity-100' : ''"
-                :disabled="deletingThreadId === item.id"
-                :aria-label="`删除会话：${item.title}`"
-                title="删除会话"
-                @click.stop="emit('delete-thread', item.id)"
-              >
-                <BaseIcon
-                  name="x"
-                  size="xs"
+                <input
+                  v-model="editingTitle"
+                  type="text"
+                  class="flex-1 min-w-0 text-xs px-2 py-1 rounded border border-gray-300 dark:border-dark-600 bg-transparent text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-primary-500 font-medium"
+                  placeholder="会话标题"
+                  autofocus
+                  @keydown.enter.prevent="confirmRename(item.id)"
+                  @keydown.esc.prevent="cancelRename"
                 />
-              </button>
+                <button
+                  type="button"
+                  class="p-1 rounded text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-950/50"
+                  title="确认"
+                  @click.stop="confirmRename(item.id)"
+                >
+                  <BaseIcon name="check" size="xs" />
+                </button>
+                <button
+                  type="button"
+                  class="p-1 rounded text-gray-400 hover:bg-gray-100 dark:hover:bg-dark-700"
+                  title="取消"
+                  @click.stop="cancelRename"
+                >
+                  <BaseIcon name="x" size="xs" />
+                </button>
+              </div>
+
+              <!-- 常规展示模式 -->
+              <template v-else>
+                <button
+                  type="button"
+                  class="w-full rounded-lg px-2.5 py-2 text-left transition-colors flex flex-col gap-0.5 pr-14"
+                  :class="
+                    item.id === activeThreadId
+                      ? 'bg-primary-50/80 dark:bg-primary-950/40 border border-primary-100/80 dark:border-primary-900/50'
+                      : 'border border-transparent hover:bg-gray-100/80 dark:hover:bg-dark-800/60'
+                  "
+                  :aria-label="item.title"
+                  @click="emit('select-thread', item.id)"
+                >
+                  <div class="flex items-start justify-between gap-2">
+                    <div
+                      class="truncate text-xs font-medium"
+                      :class="item.id === activeThreadId ? 'text-primary-900 dark:text-primary-100 font-semibold' : 'text-gray-800 dark:text-gray-200'"
+                    >
+                      {{ item.title }}
+                    </div>
+                  </div>
+                  
+                  <div
+                    v-if="item.preview"
+                    class="line-clamp-1 text-[11px] text-gray-400 dark:text-dark-400"
+                  >
+                    {{ item.preview }}
+                  </div>
+                  
+                  <div class="flex items-center justify-between text-[10px] text-gray-400 dark:text-dark-500 mt-0.5">
+                    <span>{{ item.time }}</span>
+                    <div class="flex items-center gap-1">
+                      <span
+                        v-if="item.status === 'interrupted'"
+                        class="w-1.5 h-1.5 rounded-full bg-amber-500"
+                        title="等待确认"
+                      />
+                      <span
+                        v-else-if="item.status === 'error'"
+                        class="w-1.5 h-1.5 rounded-full bg-red-500"
+                        title="错误"
+                      />
+                      <span
+                        v-else-if="item.status === 'busy'"
+                        class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"
+                        title="运行中"
+                      />
+                    </div>
+                  </div>
+                </button>
+
+                <div class="absolute right-2 top-2 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition">
+                  <button
+                    type="button"
+                    class="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-dark-700 dark:hover:text-gray-200"
+                    :aria-label="`重命名会话：${item.title}`"
+                    title="重命名会话"
+                    @click.stop="startRename(item)"
+                  >
+                    <BaseIcon
+                      name="pencil"
+                      size="xs"
+                    />
+                  </button>
+
+                  <button
+                    v-if="canDelete"
+                    type="button"
+                    class="rounded p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                    :class="deletingThreadId === item.id ? 'opacity-100' : ''"
+                    :disabled="deletingThreadId === item.id"
+                    :aria-label="`删除会话：${item.title}`"
+                    title="删除会话"
+                    @click.stop="emit('delete-thread', item.id)"
+                  >
+                    <BaseIcon
+                      name="x"
+                      size="xs"
+                    />
+                  </button>
+                </div>
+              </template>
             </div>
           </div>
         </div>
