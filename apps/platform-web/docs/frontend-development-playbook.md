@@ -42,9 +42,15 @@ service/state/permission/audit 规则仍由 `control-plane-page-standard.md` 管
 
 ### Create/Edit
 
-`PageHeader -> grouped form -> validation/error summary -> actions`
+`PageHeader -> [Form (左) + Live Inspector / Preview (右)] -> actions`
 
-字段、默认值和失败语义必须来自 leaf contract，不在页面里自行发明。
+- **表单布局**：字段较多（≥4 个）时严禁单列空洞平铺，优先采用双栏工作台布局：
+  - **左侧 (约 1.25fr)**：按领域将输入项收敛入独立 `SurfaceCard`（如基础信息、推理参数、能力权限），下拉统一强制使用 `<BaseSelect>`，范围微调使用滑块双向联动，大额数字提供药丸预设。
+  - **右侧 (约 0.75fr)**：所见即所得呈现当前实体的实时卡片预览、绑定底层资源特性及审计元数据，消灭空白留白。
+- **字段契约**：字段、默认值和失败语义必须来自 leaf contract，不在页面里自行发明。
+- **标杆代码样本**：
+  - 创建/编辑页标杆：`src/modules/agents/pages/AgentEditorPage.vue`（双栏、BaseSelect、滑块、Token预设、实时卡片透视）
+  - 列表页标杆：`src/modules/agents/pages/AgentsPage.vue`（防挤压搜索、卡片列表、首字母头像、权限按钮）
 
 ### Workspace
 

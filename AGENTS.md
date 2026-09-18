@@ -95,6 +95,7 @@ plan-project → 方案评审（人工） → 批准 → 实施 → 全面验证
 **标准文档：**
 - `apps/platform-web/docs/frontend-development-playbook.md`
 - `apps/platform-web/docs/control-plane-page-standard.md`
+- `apps/platform-web/docs/frontend-visual-baseline-standard.md`
 
 ### platform-api
 **职责：** 鉴权、项目治理、审计、catalog、运行时网关
