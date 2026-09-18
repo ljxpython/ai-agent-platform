@@ -243,10 +243,10 @@ class ImageWorkspace:
                 raise ImageWorkspaceError("image_type_unsupported", str(exc), status_code=415) from exc
 
             actual_sha = hashlib.sha256(data).hexdigest()
-            if folder == "uploads":
+            if folder in {"uploads", "outputs"}:
                 stem = filename.rsplit(".", 1)[0]
                 if stem != actual_sha:
-                    raise ImageWorkspaceError("image_content_conflict", "File content does not match uploads digest", status_code=409)
+                    raise ImageWorkspaceError("image_content_conflict", f"File content does not match {folder} digest", status_code=409)
 
             ref = ImageRef(
                 version=1,

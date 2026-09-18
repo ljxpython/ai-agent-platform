@@ -54,7 +54,7 @@ def validate_image_path(path: str) -> tuple[str, str]:
         raise ImageRefValidationError("path must be a direct child of allowed folders")
 
     folder, filename = parts
-    if folder not in {"uploads", "generated", "charts"}:
+    if folder not in {"uploads", "generated", "charts", "outputs"}:
         raise ImageRefValidationError(f"invalid image folder: {folder}")
 
     if "." not in filename:
@@ -64,9 +64,9 @@ def validate_image_path(path: str) -> tuple[str, str]:
     if ext not in {"png", "jpg", "jpeg", "webp"}:
         raise ImageRefValidationError(f"unsupported extension: {ext}")
 
-    if folder == "uploads":
+    if folder in {"uploads", "outputs"}:
         if not _HEX64_RE.match(name_stem):
-            raise ImageRefValidationError("uploads filename must be 64-hex SHA-256")
+            raise ImageRefValidationError(f"{folder} filename must be 64-hex SHA-256")
     elif folder in {"generated", "charts"}:
         if not _HEX32_RE.match(name_stem):
             raise ImageRefValidationError(f"{folder} filename must be 32-hex UUID")
@@ -106,10 +106,10 @@ def validate_image_ref(
     if not isinstance(sha256, str) or not _HEX64_RE.match(sha256):
         raise ImageRefValidationError("sha256 must be 64 lowercase hex digits")
 
-    if folder == "uploads":
+    if folder in {"uploads", "outputs"}:
         name_stem, _ = filename.rsplit(".", 1)
         if name_stem != sha256:
-            raise ImageRefValidationError("uploads filename does not match sha256 claim")
+            raise ImageRefValidationError(f"{folder} filename does not match sha256 claim")
 
     return ImageRef(
         version=1,

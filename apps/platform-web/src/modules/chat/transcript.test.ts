@@ -216,4 +216,65 @@ describe("SDK transcript projection", () => {
     expect(items[1]?.kind).toBe("image");
     expect(items[1]?.imageRef?.path).toBe("/workspace/generated/a03f0e9d6cdf49c4b1189865fefde01b.png");
   });
+
+  it("renders images beneath inline code paths while keeping text intact, and protects code blocks and links", () => {
+    // 1. 行内代码反引号包裹的路径：保留完整代码文本并在下方插入图片卡片
+    const codeSpanText = [
+      "已再次发布 ✅",
+      "",
+      "图片地址：`/workspace/outputs/a9d3bf46bcc2988ed652743d4223c6f3f161dffd75f4fcf6fe7cf12d5dedf64a.png`",
+      "",
+      "就是上面的预览图——那只暖色夕阳下的白鹈鹕。还需要别的调整尽管说！",
+    ].join("\n");
+
+    const weakRefs = extractChartWeakImageRefs(codeSpanText);
+    expect(weakRefs).toHaveLength(1);
+    expect(weakRefs[0]?.path).toBe(
+      "/workspace/outputs/a9d3bf46bcc2988ed652743d4223c6f3f161dffd75f4fcf6fe7cf12d5dedf64a.png",
+    );
+
+    const items = contentItems(codeSpanText, "msg-code-spans");
+    expect(items).toHaveLength(3);
+    // 第 1 块：包含反引号在内的前段文本，完整保留代码展示
+    expect(items[0]?.kind).toBe("text");
+    expect(items[0]?.text).toContain("图片地址：`/workspace/outputs/a9d3bf46bcc2988ed652743d4223c6f3f161dffd75f4fcf6fe7cf12d5dedf64a.png`");
+    // 第 2 块：紧随其后放在该路径下方的图片卡片
+    expect(items[1]?.kind).toBe("image");
+    expect(items[1]?.imageRef?.path).toBe(
+      "/workspace/outputs/a9d3bf46bcc2988ed652743d4223c6f3f161dffd75f4fcf6fe7cf12d5dedf64a.png",
+    );
+    // 第 3 块：图片下方的后续说明文字
+    expect(items[2]?.kind).toBe("text");
+    expect(items[2]?.text).toContain("就是上面的预览图");
+
+    // 2. 多行围栏代码块中的路径不得触发图片生成
+    const blockCodeText = [
+      "```bash",
+      "cp /workspace/generated/test.png /workspace/outputs/dest.png",
+      "```",
+    ].join("\n");
+    expect(extractChartWeakImageRefs(blockCodeText)).toEqual([]);
+    const blockItems = contentItems(blockCodeText, "msg-block");
+    expect(blockItems).toHaveLength(1);
+    expect(blockItems[0]?.kind).toBe("text");
+
+    // 3. 普通 Markdown 链接不得作为内嵌图片提取或切碎
+    const linkText = "点击查看原图：[查看原图](/workspace/outputs/a9d3bf46bcc2988ed652743d4223c6f3f161dffd75f4fcf6fe7cf12d5dedf64a.png)。";
+    expect(extractChartWeakImageRefs(linkText)).toEqual([]);
+    const linkItems = contentItems(linkText, "msg-link");
+    expect(linkItems).toHaveLength(1);
+    expect(linkItems[0]?.kind).toBe("text");
+    expect(linkItems[0]?.text).toBe(linkText);
+
+    // 4. 显式 Markdown 图片语法 ![alt](path) 正常原地切块
+    const markdownImgText = "这是说明：![大嘴鸟](/workspace/generated/pelican.png) 请查收。";
+    const imgItems = contentItems(markdownImgText, "msg-md-img");
+    expect(imgItems).toHaveLength(3);
+    expect(imgItems[0]?.kind).toBe("text");
+    expect(imgItems[0]?.text).toBe("这是说明：");
+    expect(imgItems[1]?.kind).toBe("image");
+    expect(imgItems[1]?.imageRef?.path).toBe("/workspace/generated/pelican.png");
+    expect(imgItems[2]?.kind).toBe("text");
+    expect(imgItems[2]?.text).toBe("请查收。");
+  });
 });

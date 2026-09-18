@@ -969,7 +969,12 @@ class RuntimeGatewayService:
         if not path or ".." in path or "\\" in path:
             raise BadRequestError(code="image_path_invalid", message="Invalid image path")
 
-        allowed_prefixes = ("/workspace/uploads/", "/workspace/generated/", "/workspace/charts/")
+        allowed_prefixes = (
+            "/workspace/uploads/",
+            "/workspace/generated/",
+            "/workspace/charts/",
+            "/workspace/outputs/",
+        )
         if not any(path.startswith(prefix) for prefix in allowed_prefixes):
             raise BadRequestError(code="image_path_invalid", message="Path must be in allowed workspace image directories")
 

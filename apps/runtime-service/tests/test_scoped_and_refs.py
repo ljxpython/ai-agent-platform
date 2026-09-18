@@ -33,6 +33,10 @@ def test_validate_image_path():
     assert folder == "generated"
     assert filename == "0123456789abcdef0123456789abcdef.webp"
 
+    folder, filename = validate_image_path("/workspace/outputs/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png")
+    assert folder == "outputs"
+    assert filename == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png"
+
     # Invalid paths
     with pytest.raises(ImageRefValidationError):
         validate_image_path("../outside.png")

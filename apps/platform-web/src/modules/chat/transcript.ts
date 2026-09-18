@@ -87,12 +87,62 @@ export function extractReasoningFromMessage(message: BaseMessage): string {
 }
 
 export const WORKSPACE_IMAGE_PATH_REGEX =
-  /\/workspace\/(?:charts|generated|uploads|outputs)\/[a-zA-Z0-9_\-]+\.(?:png|jpg|jpeg|webp)/gi;
+  /\/workspace\/(?:charts|generated|uploads|outputs)\/[a-zA-Z0-9_-]+\.(?:png|jpg|jpeg|webp)/gi;
+
+/**
+ * 提取文本中的多行代码块区间（```...``` 或 ~~~...~~~）与普通非图片超链接 URL。
+ * 处于多行代码块内部或普通链接 URL 的路径不应触发图片生成。
+ */
+export function getFencedCodeAndLinkRanges(text: string): Array<[number, number]> {
+  if (!text) return [];
+  const ranges: Array<[number, number]> = [];
+
+  // 1. 多行代码块：```...``` 或 ~~~...~~~
+  const codeBlockRegex = /(```+|~~~+)[\s\S]*?(?:\1|$)/g;
+  let match: RegExpExecArray | null;
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    ranges.push([match.index, match.index + match[0].length]);
+  }
+
+  // 2. 普通 Markdown 链接 [text](url)，但排除图片语法 ![alt](url)
+  const linkRegex = /(?:^|[^!])\[[^\]]*\]\(([^)\s]+)\)/g;
+  while ((match = linkRegex.exec(text)) !== null) {
+    const fullMatch = match[0];
+    const url = match[1];
+    if (url) {
+      const urlOffset = fullMatch.lastIndexOf(`(${url})`) + 1;
+      const start = match.index + urlOffset;
+      ranges.push([start, start + url.length]);
+    }
+  }
+
+  return ranges;
+}
+
+export const getMarkdownProtectedRanges = getFencedCodeAndLinkRanges;
+
+export function isOffsetProtected(
+  start: number,
+  end: number,
+  ranges: Array<[number, number]>,
+): boolean {
+  return ranges.some(([rStart, rEnd]) => start >= rStart && end <= rEnd);
+}
 
 export function extractWorkspaceImageRefs(text: string): RuntimeImageRef[] {
   if (!text || typeof text !== "string") return [];
-  const matches = text.match(WORKSPACE_IMAGE_PATH_REGEX);
-  if (!matches) return [];
+  const protectedRanges = getFencedCodeAndLinkRanges(text);
+  const matches: string[] = [];
+  let match: RegExpExecArray | null;
+  WORKSPACE_IMAGE_PATH_REGEX.lastIndex = 0;
+  while ((match = WORKSPACE_IMAGE_PATH_REGEX.exec(text)) !== null) {
+    const start = match.index;
+    const end = start + match[0].length;
+    if (!isOffsetProtected(start, end, protectedRanges)) {
+      matches.push(match[0]);
+    }
+  }
+  if (matches.length === 0) return [];
   const uniquePaths = Array.from(new Set(matches));
   return uniquePaths.map((p) => {
     const lower = p.toLowerCase();
@@ -238,9 +288,13 @@ export function contentItems(
     }
   }
 
-  // Markdown 图片语法（带或不带 alt），或裸路径，统一用于原地切块扫描
+  // Markdown 图片语法（带或不带 alt）、行内代码反引号包裹的路径、或裸路径
+  // group 1: Markdown 图片路径
+  // group 2: 行内代码反引号
+  // group 4: 行内代码反引号内的图片路径
+  // group 5: 裸路径
   const INLINE_IMAGE_BLOCK_REGEX =
-    /!\[[^\]]*\]\((\/workspace\/(?:charts|generated|uploads|outputs)\/[a-zA-Z0-9_\-]+\.(?:png|jpg|jpeg|webp))\)|(\/workspace\/(?:charts|generated|uploads|outputs)\/[a-zA-Z0-9_\-]+\.(?:png|jpg|jpeg|webp))/gi;
+    /!\[[^\]]*\]\((\/workspace\/(?:charts|generated|uploads|outputs)\/[a-zA-Z0-9_-]+\.(?:png|jpg|jpeg|webp))\)|(`+)([^`\n]*?(\/workspace\/(?:charts|generated|uploads|outputs)\/[a-zA-Z0-9_-]+\.(?:png|jpg|jpeg|webp))[^`\n]*?)\2|(\/workspace\/(?:charts|generated|uploads|outputs)\/[a-zA-Z0-9_-]+\.(?:png|jpg|jpeg|webp))/gi;
 
   /** 把一段含 workspace 图片路径的文本切成有序的文本块 + 图片块序列 */
   function splitTextByImages(
@@ -248,6 +302,7 @@ export function contentItems(
     existingImagePaths: Set<string>,
   ): ContentItem[] {
     const { text, key } = item;
+    const protectedRanges = getFencedCodeAndLinkRanges(text);
     const segments: ContentItem[] = [];
     let lastIndex = 0;
     let imgIdx = 0;
@@ -255,17 +310,35 @@ export function contentItems(
     INLINE_IMAGE_BLOCK_REGEX.lastIndex = 0;
 
     while ((match = INLINE_IMAGE_BLOCK_REGEX.exec(text)) !== null) {
-      // group 1：![alt](path)，group 2：裸路径
-      const imagePath = match[1] ?? match[2];
-      if (!imagePath) continue;
+      const matchStart = match.index;
+      const matchEnd = matchStart + match[0].length;
 
-      // 图片前的文本段
-      const before = text.slice(lastIndex, match.index).trimEnd();
-      if (before) {
-        segments.push({ key: `${key}:seg:${imgIdx}:pre`, kind: "text", text: before });
+      // 如果处于多行代码块或普通链接保护区间，跳过不处理
+      if (isOffsetProtected(matchStart, matchEnd, protectedRanges)) {
+        continue;
       }
 
-      // 图片块（已出现过的路径跳过，避免重复）
+      const isCodeSpanImage = Boolean(match[2]);
+      const imagePath = match[1] ?? match[4] ?? match[5];
+      if (!imagePath) continue;
+
+      if (isCodeSpanImage) {
+        // 行内反引号包裹的路径：保留完整代码文本，并将图片卡片紧随其后放在该路径下方
+        const before = text.slice(lastIndex, matchEnd).trimEnd();
+        if (before) {
+          segments.push({ key: `${key}:seg:${imgIdx}:pre`, kind: "text", text: before });
+        }
+        lastIndex = matchEnd;
+      } else {
+        // 显式 Markdown 图片或裸路径：将标记从文本中剥离，原位插入图片块
+        const before = text.slice(lastIndex, matchStart).trimEnd();
+        if (before) {
+          segments.push({ key: `${key}:seg:${imgIdx}:pre`, kind: "text", text: before });
+        }
+        lastIndex = matchEnd;
+      }
+
+      // 图片块（已出现过的路径跳过，避免重复渲染）
       if (!existingImagePaths.has(imagePath)) {
         existingImagePaths.add(imagePath);
         const lower = imagePath.toLowerCase();
@@ -284,7 +357,6 @@ export function contentItems(
         });
       }
 
-      lastIndex = match.index + match[0].length;
       imgIdx++;
     }
 
