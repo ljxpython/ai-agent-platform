@@ -1,3 +1,5 @@
+import { isClarificationInterrupt } from "./human-input";
+
 export type DecisionKind = "approve" | "reject" | "edit";
 export type ReviewAction = {
   name: string;
@@ -40,7 +42,9 @@ export function parseReviews(
     ns?: readonly string[];
   }[],
 ): PendingReview[] {
-  return interrupts.map((interrupt) => {
+  return interrupts
+    .filter((interrupt) => !isClarificationInterrupt(interrupt.value))
+    .map((interrupt) => {
     const value = object(interrupt.value) ? interrupt.value : {};
     const requests = Array.isArray(value.action_requests)
       ? value.action_requests

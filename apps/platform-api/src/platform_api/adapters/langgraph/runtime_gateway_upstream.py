@@ -93,6 +93,14 @@ class LangGraphRuntimeGatewayUpstream:
             raise ValueError("invalid_workspace_resource")
         return await self._http.read_file(f"/internal/threads/{quote(thread_id, safe='')}/{resource}", params={"path": path})
 
+    async def fork_thread_workspace(self, target_thread_id: str, source_thread_id: str) -> dict[str, Any]:
+        from urllib.parse import quote
+        return await self._http.require_json(
+            "POST",
+            f"/internal/threads/{quote(target_thread_id, safe='')}/workspace/fork",
+            payload={"source_thread_id": source_thread_id},
+        )
+
     async def dear_governance(self, thread_id: str, resource: str, *, payload: dict | None = None, query: str = "") -> dict:
         from urllib.parse import quote
         return await self._http.require_json(

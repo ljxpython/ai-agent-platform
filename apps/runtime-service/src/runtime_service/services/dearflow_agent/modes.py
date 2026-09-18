@@ -18,10 +18,10 @@ class AgentMode:
 
 
 MODES: dict[ModeName, AgentMode] = {
-    "flash": AgentMode("flash", False, False, None, 12, 24),
-    "standard": AgentMode("standard", False, False, None, 24, 48),
-    "pro": AgentMode("pro", True, False, "medium", 48, 96),
-    "ultra": AgentMode("ultra", True, True, "high", 48, 96),
+    "flash": AgentMode("flash", False, False, None, 24, 50),
+    "standard": AgentMode("standard", False, False, None, 50, 100),
+    "pro": AgentMode("pro", True, False, "medium", 100, 200),
+    "ultra": AgentMode("ultra", True, True, "high", 200, 500),
 }
 
 

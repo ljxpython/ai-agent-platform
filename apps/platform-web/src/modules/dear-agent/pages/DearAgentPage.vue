@@ -83,6 +83,13 @@ function resetDraft() {
   recursionLimit.value = 1000;
 }
 const selectedThread = ref<string>();
+const activeThreadTitle = computed(() => {
+  if (!selectedThread.value) return "";
+  return (
+    (threads.value.find((item) => item.thread_id === selectedThread.value)
+      ?.metadata?.title as string | undefined) || ""
+  );
+});
 const deleting = ref(false);
 const deleteOpen = ref(false);
 const deleteId = ref<string>();
@@ -448,6 +455,7 @@ onScopeDispose(() => {
           :graph-id="target.graphId"
           :agent-id="target.agentId"
           :thread-id="mountedThread"
+          :thread-title="activeThreadTitle"
           :can-write="canWrite && !target.disabled"
           :draft="draft"
           @update:draft="draft = $event"

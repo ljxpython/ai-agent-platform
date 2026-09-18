@@ -49,9 +49,27 @@ it("fails closed for unknown reviews, missing choices, changed types and extra c
     ).toThrow();
   }
   expect(
-    parseReviews([{ id: "unknown", value: { question: "yes?" } }])[0]
+    parseReviews([{ id: "unknown", value: { unknown_action: true } }])[0]
       ?.supported,
   ).toBe(false);
+});
+
+it("filters out clarification and question interrupts from review panel", () => {
+  const clarificationValue = {
+    questions: [
+      {
+        question: "还有哪些其他内容需要我补充？",
+        options: ["nfr (非功能性需求)", "document (完整设计文档)"],
+        is_multi_select: true,
+      },
+    ],
+  };
+  const reviews = parseReviews([
+    { id: "clarify-1", value: clarificationValue },
+    { id: "rev-1", value },
+  ]);
+  expect(reviews).toHaveLength(1);
+  expect(reviews[0].id).toBe("rev-1");
 });
 
 it("compares review content independently of JSON object key order", () => {

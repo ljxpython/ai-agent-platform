@@ -30,7 +30,9 @@ import {
   isChatAttachmentBlock,
   type ChatAttachmentBlock,
 } from "@/utils/chat-content";
-import type { ChatCheckpoint } from "@/services/threads/session.service";
+import { createSessionService, type ChatCheckpoint } from "@/services/threads/session.service";
+import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
+import { increasedForkTitle } from "@/utils/threads";
 import { listRuntimeModels } from "@/services/runtime/runtime.service";
 import type { RuntimeModelItem } from "@/types/management";
 import { listRuntimeModelPolicies } from "@/services/runtime-policies/runtime-policies.service";
@@ -58,6 +60,7 @@ const props = defineProps<{
   focusMode?: boolean;
   targetName?: string;
   projectName?: string;
+  threadTitle?: string;
 }>();
 const emit = defineEmits<{
   thread: [id: string];
@@ -691,6 +694,132 @@ async function retryMessage(id: string) {
     if (ok) { cancelEdit(); }
   }
 }
+
+function findForkCheckpointForMessage(messageId: string): string | undefined {
+  const meta = messageMetadata.value[messageId];
+  if (meta?.checkpointId) {
+    return meta.checkpointId;
+  }
+  const allMsgs = displayedMessages.value;
+  const targetIndex = allMsgs.findIndex(
+    (m) => m.id === messageId || (m as any).key === messageId
+  );
+  const subsequentIds = new Set<string>();
+  if (targetIndex >= 0) {
+    for (let i = targetIndex + 1; i < allMsgs.length; i++) {
+      const id = allMsgs[i]?.id || (allMsgs[i] as any)?.key;
+      if (id) subsequentIds.add(id);
+    }
+  }
+
+  const matchMsg = (msg: unknown) => {
+    const obj = asObject(msg);
+    return obj.id === messageId || obj.key === messageId;
+  };
+
+  // 在倒序历史中查找：必须包含目标消息，且绝不包含目标消息之后的后续消息
+  const matched = history.value.find((state) => {
+    const msgs = (state.values.messages ?? []) as unknown[];
+    const hasTarget = msgs.some(matchMsg);
+    if (!hasTarget) return false;
+    if (subsequentIds.size === 0) return true;
+    const hasSubsequent = msgs.some((msg) => {
+      const obj = asObject(msg);
+      const id = (obj.id || obj.key) as string;
+      return Boolean(id && subsequentIds.has(id));
+    });
+    return !hasSubsequent;
+  });
+
+  return matched?.checkpoint?.checkpoint_id || undefined;
+}
+
+const forkingCheckpointId = ref<string>();
+async function forkToNewThread(messageId: string, checkpointId?: string) {
+  const currentThreadId = session.threadId.value || props.threadId;
+  if (!currentThreadId || !messageId || forkingCheckpointId.value) return;
+  if (busy.value && !snapshotMessages.value) return;
+
+  forkingCheckpointId.value = checkpointId || messageId;
+  localError.value = "";
+  try {
+    let resolvedCheckpointId: string | undefined =
+      checkpointId || findForkCheckpointForMessage(messageId);
+
+    // 如果未命中且历史尚未完全拉取，向前分页循环拉取更早历史进行定位
+    if (!resolvedCheckpointId) {
+      let pageCount = 0;
+      while (!resolvedCheckpointId && pageCount < 5) {
+        pageCount++;
+        const oldestCheckpoint =
+          history.value[history.value.length - 1]?.checkpoint;
+        try {
+          const rows = await session.service.history(
+            currentThreadId,
+            oldestCheckpoint,
+            50
+          );
+          if (disposed || !rows || rows.length === 0) break;
+          const existingIds = new Set(
+            history.value
+              .map((s) => s.checkpoint?.checkpoint_id)
+              .filter(Boolean)
+          );
+          const newRows = rows.filter(
+            (r) =>
+              r.checkpoint?.checkpoint_id &&
+              !existingIds.has(r.checkpoint.checkpoint_id)
+          );
+          if (newRows.length === 0) break;
+          history.value = [...history.value, ...newRows];
+          resolvedCheckpointId = findForkCheckpointForMessage(messageId);
+        } catch {
+          break;
+        }
+      }
+    }
+
+    // 兜底保护：只有当目标消息确实是当前会话中的最后一条消息时，才允许使用最新会话状态兜底
+    if (!resolvedCheckpointId) {
+      const allMsgs = displayedMessages.value;
+      const targetIndex = allMsgs.findIndex(
+        (m) => m.id === messageId || (m as any).key === messageId
+      );
+      const isLatestTurn =
+        targetIndex === -1 || targetIndex === allMsgs.length - 1;
+      if (isLatestTurn) {
+        const currentState = await session.service.state(currentThreadId);
+        resolvedCheckpointId =
+          currentState?.checkpoint?.checkpoint_id || undefined;
+      }
+    }
+
+    if (!resolvedCheckpointId) {
+      throw new Error("未找到该轮次有效的历史快照，无法创建分支（请刷新后重试）");
+    }
+
+    const sessionService = createSessionService(
+      createLanggraphAuthorizedFetch(),
+      props.projectId
+    );
+    const newTitle = increasedForkTitle(props.threadTitle);
+    const target = await sessionService.fork(
+      currentThreadId,
+      resolvedCheckpointId,
+      newTitle
+    );
+    if (!target?.thread_id) {
+      throw new Error("未能获取新分支会话 ID");
+    }
+    emit("thread", target.thread_id);
+    emit("refresh");
+  } catch (cause) {
+    localError.value = cause instanceof Error ? cause.message : "创建分支失败";
+  } finally {
+    forkingCheckpointId.value = undefined;
+  }
+}
+
 const editCheckpoint = shallowRef<Checkpoint | null>(null);
 const editLoading = ref(false);
 async function edit(messageId: string, text: string) {
@@ -1200,10 +1329,12 @@ const chatMetrics = computed(() => {
               :target-name="targetName"
               :editing-message-id="editingMessageId"
               :editing-message-value="editDraft"
+              :forking-checkpoint-id="forkingCheckpointId"
               @select-branch="selectMessageBranch"
               @inspect="inspect"
               @edit="edit"
               @retry="retryMessage"
+              @fork="forkToNewThread"
               @update:editing-message-value="editDraft = $event"
               @cancel-edit="cancelEdit"
               @submit-edit="submitEditedBranch"

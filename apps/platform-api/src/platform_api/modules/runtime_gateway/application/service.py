@@ -1459,7 +1459,9 @@ class RuntimeGatewayService:
             project_id=project_id, payload=payload
         )
         metadata = dict(ensure_dict(next_payload.get("metadata")))
-        metadata[_ACCESS_POLICY_KEY] = "review"
+        policy = metadata.get(_ACCESS_POLICY_KEY)
+        if policy in _ACCESS_POLICIES:
+            metadata[_ACCESS_POLICY_KEY] = policy
         next_payload["metadata"] = metadata
         next_payload = _promote_thread_graph_id(next_payload)
         return await self._upstream.create_thread(next_payload)
@@ -1560,6 +1562,9 @@ class RuntimeGatewayService:
             _ACCESS_POLICY_KEY: _thread_access_policy(source),
             "forked_from": {"thread_id": thread_id, "checkpoint_id": checkpoint_id},
         }
+        source_metadata = _thread_metadata(source)
+        if agent_id := clean_str(source_metadata.get("agent_id")):
+            metadata["agent_id"] = agent_id
         if title := clean_str(title):
             metadata["title"] = title
         target = await self._upstream.create_thread(
@@ -1580,6 +1585,25 @@ class RuntimeGatewayService:
             except Exception:
                 pass
             raise
+
+        if self._delegation_headers_factory:
+            try:
+                fork_upstream = self._upstream.with_forwarded_headers(
+                    self._delegation_headers_factory(
+                        project_id=project_id,
+                        agent_key=graph_id,
+                        thread_id=target_id,
+                        context_hash=empty_runtime_context_hash(),
+                        operation="workspace-fork",
+                    )
+                )
+                if hasattr(fork_upstream, "fork_thread_workspace"):
+                    await fork_upstream.fork_thread_workspace(
+                        target_thread_id=target_id, source_thread_id=thread_id
+                    )
+            except Exception:
+                pass
+
         return ensure_dict(target)
 
     async def update_thread_access_policy(

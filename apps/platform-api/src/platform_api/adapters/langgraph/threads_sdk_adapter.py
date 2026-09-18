@@ -142,12 +142,20 @@ class LangGraphThreadsSdkAdapter:
         self,
         thread_id: str,
         payload: dict[str, Any] | None = None,
+        *,
+        checkpoint_id: str | None = None,
+        **kwargs: Any,
     ) -> Any:
         state_payload = {
             key: payload[key]
             for key in self._STATE_FIELDS
             if payload is not None and key in payload
         }
+        if checkpoint_id:
+            state_payload["checkpoint_id"] = str(checkpoint_id).strip()
+        for key in self._STATE_FIELDS:
+            if key in kwargs and kwargs[key] is not None:
+                state_payload[key] = kwargs[key]
         try:
             return await self._client.threads.get_state(thread_id, **state_payload)
         except Exception as exc:

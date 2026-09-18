@@ -164,6 +164,7 @@ def create_runtime_delegation_token(
         "image-read",
         "workspace-file-upload",
         "workspace-file-read",
+        "workspace-fork",
         "terminal-read",
         "terminal-write",
         "dear-governance-read",

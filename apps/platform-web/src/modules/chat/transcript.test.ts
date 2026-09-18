@@ -207,11 +207,12 @@ describe("SDK transcript projection", () => {
     expect(weakRefsGen[0]?.path).toBe("/workspace/generated/a03f0e9d6cdf49c4b1189865fefde01b.png");
     expect(weakRefsGen[0]?.mime_type).toBe("image/png");
 
-    // 3. contentItems automatically appends image block when text contains workspace image path
+    // 3. contentItems splits text inline: [text-before] → [image block] when text contains workspace image path
     const items = contentItems(textGenerated, "msg-generated");
+    // 原地切块：路径前的文本 + 图片块（路径从文本中移除）
     expect(items).toHaveLength(2);
     expect(items[0]?.kind).toBe("text");
-    expect(items[0]?.text).toBe(textGenerated);
+    expect(items[0]?.text).toBe("成品路径：");
     expect(items[1]?.kind).toBe("image");
     expect(items[1]?.imageRef?.path).toBe("/workspace/generated/a03f0e9d6cdf49c4b1189865fefde01b.png");
   });

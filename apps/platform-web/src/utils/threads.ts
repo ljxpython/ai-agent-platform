@@ -319,3 +319,20 @@ export function getThreadStateValues(
 
   return state
 }
+
+export function increasedForkTitle(title?: string | null): string {
+  const clean = typeof title === 'string' ? title.trim() : ''
+  if (!clean) return '新对话 (1)'
+  const ascii = /^(.*?)\s*\((\d+)\)$/u.exec(clean)
+  if (ascii?.[1] !== undefined && ascii[2] !== undefined) {
+    const base = ascii[1].trim()
+    return `${base} (${BigInt(ascii[2]) + 1n})`
+  }
+  const fullWidth = /^(.*?)\s*（(\d+)）$/u.exec(clean)
+  if (fullWidth?.[1] !== undefined && fullWidth[2] !== undefined) {
+    const base = fullWidth[1].trim()
+    return `${base}（${BigInt(fullWidth[2]) + 1n}）`
+  }
+  return `${clean} (1)`
+}
+

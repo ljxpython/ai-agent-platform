@@ -13,12 +13,30 @@ export function createSessionService(fetch: typeof globalThis.fetch, projectId?:
     if (projectId) headers.set('x-project-id', projectId)
     headers.set('content-type', 'application/json')
     const response = await fetch(`${getLanggraphApiUrl()}${path}`, { ...init, headers })
-    if (!response.ok) throw new Error(`读取会话失败（${response.status}）`)
+    if (!response.ok) {
+      let detail = ''
+      try {
+        const body = (await response.clone().json()) as { message?: string; detail?: string }
+        detail = body?.message || body?.detail || ''
+      } catch {
+        // ignore json parse error
+      }
+      throw new Error(detail ? `${detail}（${response.status}）` : `读取会话失败（${response.status}）`)
+    }
     return response.json() as Promise<T>
   }
   return {
     client,
-    create: (graphId: string, agentId: string | undefined, title: string) => client.threads.create({ graphId, metadata: { graph_id: graphId, agent_id: agentId, title } }),
+    create: (graphId: string, agentId: string | undefined, title: string, accessPolicy?: AccessPolicy) =>
+      client.threads.create({
+        graphId,
+        metadata: {
+          graph_id: graphId,
+          agent_id: agentId,
+          title,
+          ...(accessPolicy ? { access_policy: accessPolicy } : {}),
+        },
+      }),
     get: (threadId: string) => client.threads.get(threadId),
     // The gateway exposes checkpoint_id on GET state, not the SDK's extra checkpoint route.
     state: (threadId: string, checkpoint?: Checkpoint) => read<ThreadState<ChatState> & { interrupts?: Interrupt[] }>(`/threads/${encodeURIComponent(threadId)}/state${checkpoint?.checkpoint_id ? `?checkpoint_id=${encodeURIComponent(checkpoint.checkpoint_id)}` : ''}`),
@@ -40,6 +58,11 @@ export function createSessionService(fetch: typeof globalThis.fetch, projectId?:
     remove: (threadId: string) => client.threads.delete(threadId),
     runs: (threadId: string): Promise<Run[]> => client.runs.list(threadId, { limit: 20 }),
     run: (threadId: string, runId: string) => client.runs.get(threadId, runId),
-    cancel: (threadId: string, runId: string) => client.runs.cancel(threadId, runId, false, 'interrupt')
+    cancel: (threadId: string, runId: string) => client.runs.cancel(threadId, runId, false, 'interrupt'),
+    fork: (threadId: string, checkpointId: string, title?: string) =>
+      read<ChatThread>(`/threads/${encodeURIComponent(threadId)}/fork`, {
+        method: 'POST',
+        body: JSON.stringify({ checkpoint_id: checkpointId, ...(title ? { title } : {}) })
+      })
   }
 }

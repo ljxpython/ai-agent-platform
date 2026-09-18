@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import BaseIcon from '@/components/base/BaseIcon.vue';
 import WorkspaceTree from './WorkspaceTree.vue';
 import WorkspacePreview from './WorkspacePreview.vue';
@@ -46,6 +46,7 @@ const {
   previewResult,
   loadingPreview,
   previewError,
+  refreshing,
   toggleDirectory,
   selectFile,
   downloadCurrentFile,
@@ -71,7 +72,14 @@ const isResizing = ref(false);
 const sidebarWidth = ref(240);
 const isSidebarResizing = ref(false);
 
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && isMaximized.value) {
+    isMaximized.value = false;
+  }
+}
+
 onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown);
   const saved = localStorage.getItem('workspace_panel_width');
   if (saved) {
     const num = parseInt(saved, 10);
@@ -86,6 +94,10 @@ onMounted(() => {
       sidebarWidth.value = num;
     }
   }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
 });
 
 function startResize(e: MouseEvent) {
@@ -175,14 +187,17 @@ defineExpose({
 </script>
 
 <template>
-  <aside
-    class="relative flex h-full min-h-0 flex-col border-l border-gray-200 bg-white transition-[width] duration-75 select-none dark:border-dark-800 dark:bg-dark-900"
-    :class="[
-      isMaximized ? '!fixed inset-0 z-50 w-full' : '',
-      isResizing ? 'select-none' : '',
-    ]"
-    :style="isMaximized ? {} : { width: `${panelWidth}px` }"
-  >
+  <Teleport to="body" :disabled="!isMaximized">
+    <aside
+      class="flex h-full min-h-0 flex-col select-none transition-[width] duration-75"
+      :class="[
+        isMaximized
+          ? 'fixed inset-0 z-[100] h-screen w-screen bg-white shadow-2xl dark:bg-dark-900'
+          : 'relative border-l border-gray-200 bg-white dark:border-dark-800 dark:bg-dark-900',
+        isResizing ? 'select-none' : '',
+      ]"
+      :style="isMaximized ? {} : { width: `${panelWidth}px` }"
+    >
     <!-- 左侧可拖拽调整尺寸边框手柄 -->
     <div
       v-if="!isMaximized"
@@ -274,13 +289,15 @@ defineExpose({
         <!-- 刷新按钮 -->
         <button
           type="button"
-          class="rounded p-1 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200"
-          title="刷新工作区"
+          class="rounded p-1 text-gray-500 hover:bg-gray-200 hover:text-gray-700 disabled:opacity-40 dark:text-dark-400 dark:hover:bg-dark-800 dark:hover:text-dark-200 transition-colors"
+          :disabled="refreshing"
+          :title="refreshing ? '正在刷新...' : '刷新工作区'"
           @click="() => refresh()"
         >
           <BaseIcon
             name="refresh"
             class="h-3.5 w-3.5"
+            :class="refreshing ? 'animate-spin text-primary-600 dark:text-primary-400' : ''"
           />
         </button>
 
@@ -492,4 +509,5 @@ defineExpose({
       </div>
     </div>
   </aside>
+</Teleport>
 </template>

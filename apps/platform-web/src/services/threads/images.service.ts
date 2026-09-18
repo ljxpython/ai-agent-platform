@@ -29,6 +29,7 @@ export function isValidImageRef(val: unknown): val is RuntimeImageRef {
     "/workspace/uploads/",
     "/workspace/generated/",
     "/workspace/charts/",
+    "/workspace/outputs/",
   ];
   if (!allowedPrefixes.some((p) => (obj.path as string).startsWith(p))) {
     return false;

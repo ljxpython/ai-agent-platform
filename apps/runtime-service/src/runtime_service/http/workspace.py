@@ -112,3 +112,63 @@ async def preview(
             "Content-Security-Policy": "sandbox; " + HTML_CSP,
         },
     )
+
+
+from pydantic import BaseModel, Field
+
+
+class ForkWorkspacePayload(BaseModel):
+    source_thread_id: str = Field(..., min_length=1, max_length=256)
+
+
+@router.post("/workspace/fork")
+async def fork_workspace(
+    thread_id: str,
+    payload: ForkWorkspacePayload,
+    authorization: str | None = Header(default=None),
+) -> dict:
+    import shutil
+    from runtime_service.workspace.scoped import resolve_thread_workspace
+    from runtime_service.http.documents import _auth_scope
+
+    target_root, scope = await _auth_scope(thread_id, authorization, "workspace-fork")
+    source_thread_id = payload.source_thread_id.strip()
+    if not source_thread_id:
+        raise HTTPException(400, {"code": "invalid_source_thread_id", "message": "source_thread_id is required"})
+
+    if source_thread_id == thread_id:
+        return {
+            "forked": True,
+            "source_thread_id": source_thread_id,
+            "target_thread_id": thread_id,
+            "files_copied": 0,
+        }
+
+    try:
+        source_root = resolve_thread_workspace(
+            scope["tenant_id"], scope["project_id"], source_thread_id, scope["assistant_id"]
+        )
+    except ValueError as exc:
+        raise HTTPException(409, {"code": "workspace_capability_unavailable"}) from exc
+
+    def _do_copy() -> int:
+        target_root.mkdir(parents=True, exist_ok=True)
+        if source_root.exists() and source_root.is_dir():
+            shutil.copytree(
+                source_root,
+                target_root,
+                dirs_exist_ok=True,
+                symlinks=False,
+                ignore_dangling_symlinks=True,
+            )
+            return sum(1 for p in target_root.rglob("*") if p.is_file())
+        return 0
+
+    copied = await asyncio.to_thread(_do_copy)
+    return {
+        "forked": True,
+        "source_thread_id": source_thread_id,
+        "target_thread_id": thread_id,
+        "files_copied": copied,
+    }
+

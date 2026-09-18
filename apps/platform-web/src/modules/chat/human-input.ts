@@ -59,6 +59,9 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
+/**
+ * 判断是否为用户澄清/问答中断（区别于文件修改、终端执行等工具安全审批）
+ */
 export function isClarificationInterrupt(value: unknown): boolean {
   if (!isObject(value)) return false;
   if (value.kind === "clarification" || value.type === "clarification") return true;
@@ -70,6 +73,7 @@ export function isClarificationInterrupt(value: unknown): boolean {
   ) {
     return true;
   }
+  // 如果是纯 question 并且不包含 action_requests / review_configs
   if (
     typeof value.question === "string" &&
     !Array.isArray(value.action_requests) &&
@@ -126,6 +130,7 @@ export function parseClarifications(
     const schemaVersion =
       typeof val.schema_version === "number" ? val.schema_version : 1;
 
+    // 格式分支 1: 标准 fields 数组
     if (Array.isArray(val.fields)) {
       if (typeof val.question === "string" && val.question.trim()) {
         topQuestion = val.question.trim();
@@ -144,7 +149,9 @@ export function parseClarifications(
           default: f.default,
         });
       }
-    } else if (Array.isArray(val.questions) && val.questions.length > 0) {
+    }
+    // 格式分支 2: questions 数组 (如 Agent 提问工具中抛出的结构)
+    else if (Array.isArray(val.questions) && val.questions.length > 0) {
       const qList = val.questions;
       if (typeof val.question === "string" && val.question.trim()) {
         topQuestion = val.question.trim();
@@ -179,7 +186,9 @@ export function parseClarifications(
           default: isMulti ? [] : options[0]?.value ?? "",
         });
       });
-    } else if (typeof val.question === "string") {
+    }
+    // 格式分支 3: 单个顶层 question + options
+    else if (typeof val.question === "string") {
       topQuestion = val.question.trim();
       const options = parseFieldOptions(val.options);
       const isMulti = Boolean(val.is_multi_select);

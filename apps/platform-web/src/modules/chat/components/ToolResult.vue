@@ -79,6 +79,8 @@ const activeTodo = computed(() =>
 const runtimeImages = computed(() => {
   const explicit = extractRuntimeImages(props.tool.artifact);
   if (explicit.length > 0) return explicit;
+  const fromOutput = extractRuntimeImages(props.tool.output);
+  if (fromOutput.length > 0) return fromOutput;
   return extractWorkspaceImageRefs(
     typeof props.tool.output === "string" ? props.tool.output : "",
   );

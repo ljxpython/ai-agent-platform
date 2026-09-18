@@ -87,7 +87,7 @@ export function extractReasoningFromMessage(message: BaseMessage): string {
 }
 
 export const WORKSPACE_IMAGE_PATH_REGEX =
-  /\/workspace\/(?:charts|generated|uploads)\/[a-zA-Z0-9_-]+\.(?:png|jpg|jpeg|webp)/gi;
+  /\/workspace\/(?:charts|generated|uploads|outputs)\/[a-zA-Z0-9_\-]+\.(?:png|jpg|jpeg|webp)/gi;
 
 export function extractWorkspaceImageRefs(text: string): RuntimeImageRef[] {
   if (!text || typeof text !== "string") return [];
@@ -238,6 +238,65 @@ export function contentItems(
     }
   }
 
+  // Markdown 图片语法（带或不带 alt），或裸路径，统一用于原地切块扫描
+  const INLINE_IMAGE_BLOCK_REGEX =
+    /!\[[^\]]*\]\((\/workspace\/(?:charts|generated|uploads|outputs)\/[a-zA-Z0-9_\-]+\.(?:png|jpg|jpeg|webp))\)|(\/workspace\/(?:charts|generated|uploads|outputs)\/[a-zA-Z0-9_\-]+\.(?:png|jpg|jpeg|webp))/gi;
+
+  /** 把一段含 workspace 图片路径的文本切成有序的文本块 + 图片块序列 */
+  function splitTextByImages(
+    item: ContentItem,
+    existingImagePaths: Set<string>,
+  ): ContentItem[] {
+    const { text, key } = item;
+    const segments: ContentItem[] = [];
+    let lastIndex = 0;
+    let imgIdx = 0;
+    let match: RegExpExecArray | null;
+    INLINE_IMAGE_BLOCK_REGEX.lastIndex = 0;
+
+    while ((match = INLINE_IMAGE_BLOCK_REGEX.exec(text)) !== null) {
+      // group 1：![alt](path)，group 2：裸路径
+      const imagePath = match[1] ?? match[2];
+      if (!imagePath) continue;
+
+      // 图片前的文本段
+      const before = text.slice(lastIndex, match.index).trimEnd();
+      if (before) {
+        segments.push({ key: `${key}:seg:${imgIdx}:pre`, kind: "text", text: before });
+      }
+
+      // 图片块（已出现过的路径跳过，避免重复）
+      if (!existingImagePaths.has(imagePath)) {
+        existingImagePaths.add(imagePath);
+        const lower = imagePath.toLowerCase();
+        const ext = lower.endsWith(".png") ? "png" : lower.endsWith(".webp") ? "webp" : "jpeg";
+        segments.push({
+          key: `${key}:img:${imgIdx}`,
+          kind: "image",
+          text: imagePath,
+          imageRef: {
+            version: 1,
+            path: imagePath,
+            mime_type: `image/${ext}` as RuntimeImageRef["mime_type"],
+            size_bytes: 1,
+            sha256: "0".repeat(64),
+          },
+        });
+      }
+
+      lastIndex = match.index + match[0].length;
+      imgIdx++;
+    }
+
+    // 图片后剩余的文本段
+    const tail = text.slice(lastIndex).trimStart();
+    if (tail) {
+      segments.push({ key: `${key}:seg:${imgIdx}:post`, kind: "text", text: tail });
+    }
+
+    return segments.length > 0 ? segments : [item];
+  }
+
   const result: ContentItem[] = [];
   const existingImagePaths = new Set<string>();
   for (const item of consolidated) {
@@ -247,20 +306,11 @@ export function contentItems(
   }
 
   for (const item of consolidated) {
-    result.push(item);
-    if (item.kind === "text" && item.text) {
-      const weakImages = extractWorkspaceImageRefs(item.text);
-      weakImages.forEach((img, imgIdx) => {
-        if (!existingImagePaths.has(img.path)) {
-          existingImagePaths.add(img.path);
-          result.push({
-            key: `${item.key}:img:${imgIdx}`,
-            kind: "image",
-            text: img.path,
-            imageRef: img,
-          });
-        }
-      });
+    WORKSPACE_IMAGE_PATH_REGEX.lastIndex = 0;
+    if (item.kind === "text" && item.text && WORKSPACE_IMAGE_PATH_REGEX.test(item.text)) {
+      result.push(...splitTextByImages(item, existingImagePaths));
+    } else {
+      result.push(item);
     }
   }
 

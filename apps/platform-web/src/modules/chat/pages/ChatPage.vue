@@ -120,6 +120,10 @@ const service = computed(() => {
 const chatPath = computed(
   () => `/workspace/projects/${encodeURIComponent(activeProjectId.value)}/chat`,
 );
+const activeThreadTitle = computed(() => {
+  const current = threads.value.find((t) => t.thread_id === mountedThread.value);
+  return typeof current?.metadata?.title === "string" ? current.metadata.title : "";
+});
 const textParam = (value: unknown) =>
   typeof value === "string" ? value : undefined;
 const selectedTarget = computed(() => target.value?.agentId ?? "");
@@ -417,6 +421,7 @@ onScopeDispose(() => {
           :graph-id="target.graphId"
           :agent-id="target.agentId"
           :thread-id="mountedThread"
+          :thread-title="activeThreadTitle"
           :can-write="canWrite && !target.disabled"
           :draft="draft"
           @update:draft="draft = $event"

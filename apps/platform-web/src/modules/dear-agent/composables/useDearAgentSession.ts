@@ -135,7 +135,6 @@ export function useDearAgentSession(options: {
         void refreshAccessPolicy();
       } else if (!next) {
         threadId.value = null;
-        accessPolicy.value = "review";
       }
     },
     { immediate: true },
@@ -552,6 +551,7 @@ export function useDearAgentSession(options: {
           options.graphId,
           options.agentId,
           title,
+          accessPolicy.value,
         );
         if (disposed) return false;
         threadId.value = thread.thread_id;

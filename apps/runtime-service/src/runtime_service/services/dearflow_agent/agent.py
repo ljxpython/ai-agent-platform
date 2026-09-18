@@ -97,6 +97,17 @@ _EXECUTION_KEYS = {
 }
 
 
+def _get_env_limit(key: str, fallback: int) -> int:
+    try:
+        val = os.getenv(key)
+        if val is not None and val.strip():
+            parsed = int(val.strip())
+            return parsed if parsed > 0 else fallback
+    except (ValueError, TypeError):
+        pass
+    return fallback
+
+
 async def get_agent(config: RunnableConfig) -> Pregel:
     """Bind a thread backend for runs; introspection never creates external resources."""
     configurable = config.get("configurable") or {}
@@ -190,6 +201,16 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         )
 
     def middleware(tool_names: Sequence[str], *, child=False):
+        default_run_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_RUN", 100)
+        default_thread_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_THREAD", 1000)
+        default_run_model = _get_env_limit("AGENT_MODEL_CALL_LIMIT_PER_RUN", 50)
+        default_thread_model = _get_env_limit("AGENT_MODEL_CALL_LIMIT_PER_THREAD", 500)
+
+        run_tool = min(48, default_run_tool) if child else max(mode.tool_limit, default_run_tool)
+        thread_tool = min(48, default_thread_tool) if child else max(mode.tool_limit * 10, default_thread_tool)
+        run_model = min(24, default_run_model) if child else max(mode.model_limit, default_run_model)
+        thread_model = min(24, default_thread_model) if child else max(mode.model_limit * 10, default_thread_model)
+
         return [
             RuntimeConfigMiddleware(
                 defaults=defaults,
@@ -200,10 +221,16 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 internal_tool_names=internal_names,
             ),
             WorkspaceMiddleware(workspace),
-            ModelCallLimitMiddleware(run_limit=24 if child else mode.model_limit,
-                                    thread_limit=24 if child else mode.model_limit, exit_behavior="error"),
-            ToolCallLimitMiddleware(run_limit=48 if child else mode.tool_limit,
-                                   thread_limit=48 if child else mode.tool_limit, exit_behavior="error"),
+            ModelCallLimitMiddleware(
+                run_limit=run_model,
+                thread_limit=thread_model,
+                exit_behavior="error",
+            ),
+            ToolCallLimitMiddleware(
+                run_limit=run_tool,
+                thread_limit=thread_tool,
+                exit_behavior="error",
+            ),
             # Bound the whole reasoning response, not just the time to its first token.
             ModelCallTimeoutMiddleware(timeout_seconds=120),
         ]

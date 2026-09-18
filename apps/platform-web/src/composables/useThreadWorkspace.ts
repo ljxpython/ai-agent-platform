@@ -173,20 +173,31 @@ export function useThreadWorkspace(
     }
   }
 
-  // 静默刷新（Agent 产生产物或终态触发）
+  const refreshing = ref(false);
+
+  // 刷新工作区（包含根目录与所有已展开的子目录、产物列表、以及当前预览文件）
   async function refresh(options: { notifyNew?: boolean } = {}) {
-    if (!projectId.value || !threadId.value) return;
-    const oldArtifactCount = artifacts.value.length;
-    await Promise.all([
-      loadDirectory('/workspace'),
-      loadArtifacts(),
-    ]);
-    if (options.notifyNew && artifacts.value.length > oldArtifactCount) {
-      hasNewArtifactNotice.value = true;
-    }
-    // 如果当前选中的文件存在，静默刷新其预览
-    if (selectedPath.value) {
-      void selectFile(selectedPath.value);
+    if (!projectId.value || !threadId.value || refreshing.value) return;
+    refreshing.value = true;
+    try {
+      const oldArtifactCount = artifacts.value.length;
+      // 收集所有需要刷新的目录：根目录 + 用户当前已展开的所有子目录
+      const pathsToRefresh = Array.from(new Set(['/workspace', ...expandedPaths.value]));
+      const directoryLoads = pathsToRefresh.map((dirPath) => loadDirectory(dirPath));
+
+      await Promise.all([
+        ...directoryLoads,
+        loadArtifacts(),
+      ]);
+      if (options.notifyNew && artifacts.value.length > oldArtifactCount) {
+        hasNewArtifactNotice.value = true;
+      }
+      // 如果当前选中的文件存在，刷新其最新预览
+      if (selectedPath.value) {
+        void selectFile(selectedPath.value);
+      }
+    } finally {
+      refreshing.value = false;
     }
   }
 
@@ -235,6 +246,7 @@ export function useThreadWorkspace(
     previewResult,
     loadingPreview,
     previewError,
+    refreshing,
     // 方法
     loadCapabilities,
     loadDirectory,

@@ -26,9 +26,11 @@ const props = defineProps<{
   targetName?: string;
   projectId?: string;
   threadId?: string;
+  forkingCheckpointId?: string;
 }>();
 const emit = defineEmits<{
   inspect: [tool: ToolItem]; edit: [id: string, text: string]; retry: [id: string];
+  fork: [messageId: string, checkpointId?: string];
   "select-branch": [branch: string];
   "update:editingMessageValue": [value: string]; "cancel-edit": []; "submit-edit": [];
 }>();
@@ -108,6 +110,10 @@ function hasBranchSwitcher(id: string) { return (getMessageMeta(id)?.branchOptio
 function selectBranch(id: string, offset: number) {
   const path = getMessageMeta(id)?.branchOptions?.[getMessageBranchIndex(id) + offset];
   if (path) emit("select-branch", path);
+}
+function getForkCheckpointId(entry: (typeof visibleDisplayMessages.value)[number]): string | undefined {
+  if (entry.author !== "agent" || !entry.messageId) return undefined;
+  return getMessageMeta(entry.messageId)?.checkpointId;
 }
 function handleEditingInput(event: Event) { emit("update:editingMessageValue", (event.target as HTMLTextAreaElement).value); }
 const copyError = ref("");
@@ -301,6 +307,22 @@ async function copy(value: string, id?: string) {
                 size="xs"
               />
               <span class="text-[11px]">重试</span>
+            </button>
+            <button
+              v-if="displayEntry.author === 'agent' && displayEntry.messageId"
+              type="button"
+              class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-700 hover:bg-gray-100/80 disabled:cursor-not-allowed disabled:opacity-40 dark:text-dark-400 dark:hover:text-gray-200 dark:hover:bg-dark-800/80 transition-colors"
+              :disabled="isRunning || displayEntry.isStreaming || Boolean(forkingCheckpointId)"
+              aria-label="在新对话中分支"
+              :title="isRunning || displayEntry.isStreaming ? '仅可从已完成轮次分支' : '在新对话中分支'"
+              @click="emit('fork', displayEntry.messageId!, getForkCheckpointId(displayEntry))"
+            >
+              <BaseIcon
+                name="branch"
+                size="xs"
+                :class="forkingCheckpointId && (forkingCheckpointId === getForkCheckpointId(displayEntry) || forkingCheckpointId === displayEntry.messageId) ? 'animate-spin' : ''"
+              />
+              <span class="text-[11px]">分支</span>
             </button>
             <div
               v-if="hasBranchSwitcher(displayEntry.messageId || '')"

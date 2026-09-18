@@ -32,6 +32,10 @@ import {
   type ReviewDraft,
 } from "../approvals";
 import {
+  buildClarificationResponse,
+  parseClarifications,
+} from "../human-input";
+import {
   calculateFileSha256 as calculateImageSha256,
   uploadThreadImage,
 } from "@/services/threads/images.service";
@@ -131,7 +135,6 @@ export function useChatSession(options: {
         void refreshAccessPolicy();
       } else if (!next) {
         threadId.value = null;
-        accessPolicy.value = "review";
       }
     },
     { immediate: true },
@@ -154,7 +157,14 @@ export function useChatSession(options: {
       if (!disposed) void verify(true);
     },
   });
-  const reviews = computed(() => parseReviews(stream.interrupts.value));
+  const rawInterrupts = computed(() => stream.interrupts.value);
+  const reviews = computed(() => parseReviews(rawInterrupts.value));
+  const clarifications = computed(() =>
+    parseClarifications(rawInterrupts.value),
+  );
+  const hasPendingInterrupts = computed(
+    () => reviews.value.length > 0 || clarifications.value.length > 0,
+  );
   const pendingAction = computed(() =>
     ["submitting", "unknown"].includes(actions.current.value?.status ?? ""),
   );
@@ -169,24 +179,26 @@ export function useChatSession(options: {
       !pendingAction.value &&
       !pendingMessage.value &&
       !busy.value &&
-      !reviews.value.length,
+      !hasPendingInterrupts.value,
   );
   const status = computed(() =>
     cancelling.value
       ? "正在停止"
       : reviews.value.length
         ? "等待审批"
-        : actions.current.value?.status === "unknown"
-          ? "提交结果待确认"
-          : checking.value
-            ? "正在核实会话"
-            : actions.current.value?.status === "submitting"
-              ? "正在发送"
-              : busy.value
-                ? "正在执行"
-                : error.value || stream.error.value
-                  ? "连接或执行异常"
-                  : "可以发送",
+        : clarifications.value.length
+          ? "等待补充信息"
+          : actions.current.value?.status === "unknown"
+            ? "提交结果待确认"
+            : checking.value
+              ? "正在核实会话"
+              : actions.current.value?.status === "submitting"
+                ? "正在发送"
+                : busy.value
+                  ? "正在执行"
+                  : error.value || stream.error.value
+                    ? "连接或执行异常"
+                    : "可以发送",
   );
 
   function fail(cause: unknown) {
@@ -537,6 +549,7 @@ export function useChatSession(options: {
           options.graphId,
           options.agentId,
           title,
+          accessPolicy.value,
         );
         if (disposed) return false;
         threadId.value = thread.thread_id;
@@ -617,6 +630,41 @@ export function useChatSession(options: {
       const responses = buildReviewResponses(current, drafts);
       actions.begin(threadId.value, "resume", responses);
       await stream.respondAll(responses);
+      await verify(true);
+    } catch (cause) {
+      actions.rejectUnsent();
+      fail(cause);
+    } finally {
+      if (!disposed) checking.value = false;
+    }
+  }
+
+  async function answerClarification(
+    interruptId: string,
+    values: Record<string, unknown>,
+  ) {
+    if (
+      !options.canWrite.value ||
+      checking.value ||
+      pendingAction.value ||
+      !threadId.value
+    )
+      return;
+    const targetClarification = clarifications.value.find(
+      (c) => c.id === interruptId,
+    );
+    if (!targetClarification) return;
+    checking.value = true;
+    error.value = "";
+    try {
+      const response = buildClarificationResponse(
+        targetClarification.id,
+        values,
+        targetClarification.request.schema_version,
+        targetClarification.raw,
+      );
+      actions.begin(threadId.value, "resume", response);
+      await stream.respondAll(response);
       await verify(true);
     } catch (cause) {
       actions.rejectUnsent();
@@ -773,6 +821,8 @@ export function useChatSession(options: {
     refreshAccessPolicy,
     run,
     reviews,
+    clarifications,
+    hasPendingInterrupts,
     checking,
     verified,
     cancelling,
@@ -782,6 +832,7 @@ export function useChatSession(options: {
     status,
     send,
     approve,
+    answerClarification,
     stop,
     retry,
     fork,

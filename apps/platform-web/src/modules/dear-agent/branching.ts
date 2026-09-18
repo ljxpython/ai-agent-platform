@@ -311,13 +311,21 @@ export function buildChatMessageMetadata(
 
   return messages.reduce<Record<string, ChatMessageMetadata>>((result, message, index) => {
     const messageId = getChatMessageIdentifier(message, index)
-    const firstSeenState = findLast(history, (state) =>
-      getStateMessages(state)
-        .map((item, messageIndex) => getChatMessageIdentifier(item, messageIndex))
-        .includes(messageId)
+    const subsequentIds = new Set(
+      messages.slice(index + 1).map((m, mIdx) => getChatMessageIdentifier(m, index + 1 + mIdx))
     )
 
-    const checkpointId = firstSeenState?.checkpoint?.checkpoint_id ?? undefined
+    const targetState = history.find((state) => {
+      const stateMsgIds = getStateMessages(state).map((item, messageIndex) =>
+        getChatMessageIdentifier(item, messageIndex)
+      )
+      const containsCurrent = stateMsgIds.includes(messageId)
+      if (!containsCurrent) return false
+      if (subsequentIds.size === 0) return true
+      return !stateMsgIds.some((id) => subsequentIds.has(id))
+    })
+
+    const checkpointId = targetState?.checkpoint?.checkpoint_id ?? undefined
     let branch = checkpointId ? branchContext.branchByCheckpoint[checkpointId] : undefined
     // Workflow routing nodes may fork without adding a new message. Attach
     // that fork to the last visible message at its checkpoint as well.
@@ -340,11 +348,12 @@ export function buildChatMessageMetadata(
     result[messageId] = {
       messageId,
       checkpointId,
-      firstSeenState,
-      parentCheckpoint: firstSeenState?.parent_checkpoint,
+      firstSeenState: targetState,
+      parentCheckpoint: targetState?.parent_checkpoint,
       branch: branch?.branch,
       branchOptions: branch?.branchOptions
     }
+
 
     return result
   }, {})

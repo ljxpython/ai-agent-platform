@@ -15,7 +15,7 @@ from runtime_service.workspace.scoped import resolve_thread_workspace
 router = APIRouter(prefix="/internal/threads/{thread_id}/files", tags=["documents"])
 
 
-async def _auth(thread_id: str, authorization: str | None, operation: str) -> Path:
+async def _auth_scope(thread_id: str, authorization: str | None, operation: str) -> tuple[Path, dict]:
     facts = await authenticate(authorization)
     scope = facts.get("runtime_scope", {})
     if scope.get("operation") != operation or scope.get("thread_id") != thread_id:
@@ -23,9 +23,15 @@ async def _auth(thread_id: str, authorization: str | None, operation: str) -> Pa
     if not scope.get("assistant_id") or not scope.get("tenant_id") or not scope.get("project_id"):
         raise HTTPException(403, {"code": "file_target_denied", "message": "File target denied"})
     try:
-        return resolve_thread_workspace(scope["tenant_id"], scope["project_id"], thread_id, scope["assistant_id"])
+        path = resolve_thread_workspace(scope["tenant_id"], scope["project_id"], thread_id, scope["assistant_id"])
+        return path, scope
     except ValueError as exc:
         raise HTTPException(409, {"code": "workspace_capability_unavailable"}) from exc
+
+
+async def _auth(thread_id: str, authorization: str | None, operation: str) -> Path:
+    path, _ = await _auth_scope(thread_id, authorization, operation)
+    return path
 
 
 @router.put("/uploads/{sha256}")
