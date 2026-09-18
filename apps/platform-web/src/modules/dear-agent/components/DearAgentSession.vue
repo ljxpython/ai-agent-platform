@@ -64,6 +64,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
   thread: [id: string];
+  "fork-thread": [id: string];
   refresh: [];
   reconnect: [];
   "update:draft": [value: string];
@@ -811,7 +812,7 @@ async function forkToNewThread(messageId: string, checkpointId?: string) {
     if (!target?.thread_id) {
       throw new Error("未能获取新分支会话 ID");
     }
-    emit("thread", target.thread_id);
+    emit("fork-thread", target.thread_id);
     emit("refresh");
   } catch (cause) {
     localError.value = cause instanceof Error ? cause.message : "创建分支失败";

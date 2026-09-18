@@ -315,6 +315,14 @@ function created(id: string) {
     query: route.query,
   });
 }
+function handleForkThread(id: string) {
+  if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;
+  selectedThread.value = id;
+  void router.push({
+    path: `${chatPath.value}/${encodeURIComponent(id)}`,
+    query: route.query,
+  });
+}
 function reconnect() {
   mountedThread.value = selectedThread.value;
   ++mountVersion.value;
@@ -426,6 +434,7 @@ onScopeDispose(() => {
           :draft="draft"
           @update:draft="draft = $event"
           @thread="created"
+          @fork-thread="handleForkThread"
           @refresh="loadThreads()"
           @reconnect="reconnect"
         >
