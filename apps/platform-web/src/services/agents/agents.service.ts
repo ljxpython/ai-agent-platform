@@ -1,5 +1,5 @@
 import { platformHttpClient } from '@/services/http/client'
-import type { Agent, AgentPage, UpdateAgentInput } from './types'
+import type { Agent, AgentPage, CreateAgentInput, UpdateAgentInput } from './types'
 
 function scoped(projectId: string) {
   if (!projectId.trim()) throw new Error('请选择项目')
@@ -21,6 +21,15 @@ export async function listAgents(projectId: string, options: {
 
 export async function getAgent(projectId: string, agentId: string): Promise<Agent> {
   const { data } = await platformHttpClient.get<Agent>(`/api/agents/${encodeURIComponent(agentId)}`, scoped(projectId))
+  return data
+}
+
+export async function createAgent(projectId: string, input: CreateAgentInput): Promise<Agent> {
+  const { data } = await platformHttpClient.post<Agent>(
+    `/api/projects/${encodeURIComponent(projectId)}/agents`,
+    input,
+    scoped(projectId),
+  )
   return data
 }
 

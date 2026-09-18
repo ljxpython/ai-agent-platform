@@ -2,10 +2,10 @@
 import { computed, onScopeDispose, ref, watch } from "vue";
 import BaseButton from "@/components/base/BaseButton.vue";
 import PageHeader from "@/components/layout/PageHeader.vue";
-import SurfaceCard from "@/components/base/SurfaceCard.vue";
 import PaginationBar from "@/components/platform/PaginationBar.vue";
 import SearchInput from "@/components/platform/SearchInput.vue";
 import StateBanner from "@/components/platform/StateBanner.vue";
+import StatusPill from "@/components/platform/StatusPill.vue";
 import { useAuthorization } from "@/composables/useAuthorization";
 import { useWorkspaceProjectContext } from "@/composables/useWorkspaceProjectContext";
 import { useAuthStore } from "@/stores/auth";
@@ -13,6 +13,7 @@ import type { ActionMenuItem } from "@/components/platform/data-table";
 import {
   createRuntimeModel,
   listRuntimeModels,
+  refreshRuntimeTools,
   updateRuntimeModel,
   type RuntimeModelInput,
 } from "@/services/runtime/runtime.service";
@@ -253,6 +254,26 @@ async function mutate(action: (project: string) => Promise<unknown>) {
     if (requestEpoch === epoch) saving.value = false;
   }
 }
+
+async function doRefreshTools() {
+  if (saving.value || loading.value) return;
+  const requestEpoch = epoch;
+  saving.value = true;
+  error.value = "";
+  notice.value = "";
+  try {
+    const result = await refreshRuntimeTools(activeProjectId.value);
+    if (requestEpoch !== epoch) return;
+    notice.value = `工具同步完成，共 ${result.count} 个工具`;
+    saving.value = false;
+    await load();
+  } catch (cause) {
+    if (requestEpoch === epoch)
+      error.value = cause instanceof Error ? cause.message : "工具同步失败";
+  } finally {
+    if (requestEpoch === epoch) saving.value = false;
+  }
+}
 function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
   const actions: ActionMenuItem[] = [
     {
@@ -328,6 +349,14 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
           刷新
         </BaseButton>
         <BaseButton
+          v-if="canManage && tab === 'tools'"
+          variant="secondary"
+          :disabled="saving || loading"
+          @click="doRefreshTools"
+        >
+          同步工具
+        </BaseButton>
+        <BaseButton
           v-if="canManage && tab === 'models'"
           :disabled="saving"
           @click="edit()"
@@ -400,37 +429,72 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
           @add-model="edit(null, $event)"
         />
       </template>
-      <SurfaceCard v-else>
-        <div
+      <!-- 工具卡片列表 -->
+      <div
+        v-else
+        class="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
+      >
+        <article
           v-for="tool in visibleTools"
           :key="tool.catalog_id"
-          class="flex items-center justify-between gap-4 border-b border-gray-100 py-4 dark:border-dark-800"
+          class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-dark-800 dark:bg-dark-950"
         >
-          <div>
-            <h2 class="font-medium">
-              {{ tool.name || tool.tool_key }}
-            </h2>
-            <p class="mt-1 text-sm text-gray-500">
-              {{ tool.description }}
-            </p>
-            <p class="mt-1 text-xs text-gray-400">
-              {{ tool.tool_key }} · {{ tool.source }}
-            </p>
+          <!-- 顶部：名称 + 状态 -->
+          <div class="flex items-start justify-between gap-3">
+            <div class="min-w-0 flex-1">
+              <h3 class="truncate font-semibold text-gray-900 dark:text-white">
+                {{ tool.name || tool.tool_key }}
+              </h3>
+              <span class="mt-1 inline-block rounded-md bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-500 dark:bg-dark-800 dark:text-dark-300">
+                {{ tool.tool_key }}
+              </span>
+            </div>
+            <StatusPill :tone="tool.policy.is_enabled ? 'success' : 'warning'">
+              {{ tool.policy.is_enabled ? "已授权" : "已禁用" }}
+            </StatusPill>
           </div>
-          <label class="flex shrink-0 items-center gap-2 text-sm"><input
-            type="checkbox"
-            :checked="tool.policy.is_enabled"
-            :disabled="!canManage || saving"
-            @change="
-              mutate((project) =>
-                updateRuntimeToolPolicy(project, tool.catalog_id, {
-                  is_enabled: !tool.policy.is_enabled,
-                }),
-              )
-            "
-          >项目授权</label>
-        </div>
-      </SurfaceCard>
+          <!-- 描述 -->
+          <p class="mt-3 line-clamp-2 text-sm text-gray-500 dark:text-dark-300">
+            {{ tool.description || "暂无描述" }}
+          </p>
+          <!-- 底部：source + sync 状态 + 操作 -->
+          <div class="mt-4 flex items-center justify-between gap-2">
+            <div class="flex flex-wrap gap-2">
+              <span
+                class="text-xs text-gray-400 dark:text-dark-400"
+                :title="tool.source"
+              >
+                {{ tool.source || "—" }}
+              </span>
+              <StatusPill
+                :tone="
+                  tool.sync_status === 'ready'
+                    ? 'success'
+                    : tool.sync_status === 'error'
+                      ? 'danger'
+                      : 'warning'
+                "
+              >
+                {{ tool.sync_status }}
+              </StatusPill>
+            </div>
+            <BaseButton
+              v-if="canManage"
+              :variant="tool.policy.is_enabled ? 'ghost' : 'secondary'"
+              :disabled="saving"
+              @click="
+                mutate((project) =>
+                  updateRuntimeToolPolicy(project, tool.catalog_id, {
+                    is_enabled: !tool.policy.is_enabled,
+                  }),
+                )
+              "
+            >
+              {{ tool.policy.is_enabled ? "撤销授权" : "授权" }}
+            </BaseButton>
+          </div>
+        </article>
+      </div>
       <PaginationBar
         :total="total"
         :page="page"

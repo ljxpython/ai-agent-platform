@@ -18,6 +18,16 @@ const workspaceChildren: RouteRecordRaw[] = [
     },
   },
   {
+    path: "projects/:projectId/agents/new",
+    name: "workspace-agent-new",
+    component: () => import("@/modules/agents/pages/AgentEditorPage.vue"),
+    meta: {
+      title: "创建 Agent",
+      requiredPermissions: ["project.assistant.write"],
+      permissionProjectSource: "route",
+    },
+  },
+  {
     path: "projects/:projectId/agents/:agentId",
     name: "workspace-agent-detail",
     component: () => import("@/modules/agents/pages/AgentEditorPage.vue"),

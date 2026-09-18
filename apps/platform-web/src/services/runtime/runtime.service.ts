@@ -65,3 +65,10 @@ export async function refreshRuntimeGraphs(projectId: string): Promise<{ count: 
   })
   return response.data
 }
+
+export async function refreshRuntimeTools(projectId: string): Promise<{ count: number }> {
+  const response = await platformHttpClient.post('/api/runtime/tools/refresh', undefined, {
+    headers: buildRuntimeHeaders(projectId)
+  })
+  return response.data
+}

@@ -126,7 +126,7 @@ PROJECT_PERMISSION_MAP: dict[PermissionCode, frozenset[ProjectRole]] = {
         {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
     ),
     PermissionCode.PROJECT_RUNTIME_WRITE: frozenset(
-        {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
+        {ProjectRole.ADMIN, ProjectRole.EDITOR}
     ),
 }
 

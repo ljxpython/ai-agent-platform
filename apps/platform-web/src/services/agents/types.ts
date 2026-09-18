@@ -15,10 +15,19 @@ export type Agent = {
   description: string
   status: 'active' | 'disabled'
   context: AgentContext
+  created_by?: string | null
+  updated_by?: string | null
   created_at?: string | null
   updated_at?: string | null
 }
 
 export type UpdateAgentInput = Partial<Pick<Agent, 'name' | 'description' | 'status' | 'context'>>
+
+export type CreateAgentInput = {
+  graph_id: string
+  name: string
+  description?: string
+  context?: AgentContext
+}
 
 export type AgentPage = { items: Agent[]; total: number }

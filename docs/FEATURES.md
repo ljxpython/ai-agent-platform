@@ -32,6 +32,7 @@
 | Showcase / DearFlow 沙箱工作区、文件树、安全HTML/Markdown预览与多终端会话 | 已完成：借鉴 open-swe 架构，弹性拖拽宽度与全屏最大化、单层懒加载文件树、HTML/Markdown/Code统一预览、xterm多终端会话保活、终端划词一键入Chat及全链路Agent终态静默刷新已全量交付通过 | [工作区前端实现](projects/20260917-showcase-artifact-workspace/implementation/04-platform-web-workspace.md) |
 | 工作区全量文件打包下载（.zip） | 已完成：后端标准库流式 Zip 打包、网关安全透传及前端一键下载与 loading/toast 提示全量交付通过 | [工作区全量打包下载](projects/20260918-workspace-archive-download/README.md) |
 | 对话历史按智能体过滤与极简微型分页器优化（首页/末页直达 + 跳页输入） | 已完成：选择特定 Agent 时列表仅展示该 Agent 的历史会话并实时联动，支持总数呈现、«/» 极端直达与数字直接跳页 | [会话按 Agent 过滤与分页优化](../apps/platform-web/docs/changes/20260918-chat-agent-history-filter-and-pagination.md) |
+| Agent 与工具界面优化及权限治理（创建 Agent、详情高级化、工具卡片化与权限收紧） | 已完成：新增 Agent 创建全流程与 `/agents/new` 路由；修复 execution_mode 下拉渲染 bug 与布局；升级工具卡片与同步；收紧 PROJECT_RUNTIME_WRITE 排除 EXECUTOR | [项目概览](projects/20260918-agent-tool-ui-overhaul/README.md) |
 
 
 
