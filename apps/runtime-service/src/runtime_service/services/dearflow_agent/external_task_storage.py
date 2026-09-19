@@ -3,25 +3,22 @@ from __future__ import annotations
 
 import hashlib
 import json
-from pathlib import Path
 from uuid import UUID, uuid4
 
-import psycopg
-from psycopg.rows import dict_row
+from runtime_service.db import connect, normalize_dsn, upgrade
 from psycopg.types.json import Jsonb
 
 
 class ExternalTaskStorage:
     def __init__(self, dsn: str):
-        self.dsn = dsn.replace("postgresql+asyncpg://", "postgresql://").replace("postgresql+psycopg://", "postgresql://")
+        self.dsn = normalize_dsn(dsn)
 
     def connect(self):
-        return psycopg.connect(self.dsn, row_factory=dict_row)
+        return connect(self.dsn)
 
     def initialize(self):
-        """Explicit deployment command only, never called by a request/lifespan."""
-        with self.connect() as db:
-            db.execute(Path(__file__).with_name("migrations").joinpath("001_external_tasks.sql").read_text())
+        """Explicit deployment command only."""
+        upgrade(self.dsn)
 
     def create(self, scope: tuple[str, str, str, str], key: str, operation: str,
                request: dict, *, run_id: str, approval_ref: str) -> tuple[dict, bool]:

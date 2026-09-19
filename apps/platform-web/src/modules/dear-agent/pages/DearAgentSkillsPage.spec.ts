@@ -4,11 +4,12 @@ import { ref } from "vue";
 import DearAgentSkillsPage from "./DearAgentSkillsPage.vue";
 import * as skillsService from "@/services/dear-agent/skills.service";
 
+vi.mock("vue-i18n", () => ({
+  useI18n: () => ({ t: (key: string) => key }),
+}));
+
 const mockActiveProjectId = ref("proj-1");
-const mockActiveThreadId = ref("th-1");
-const mockHasThreads = ref(true);
-const mockThreads = ref([{ thread_id: "th-1", metadata: { title: "会话1", graph_id: "dearflow_agent" } }]);
-const mockCreateInitialThread = vi.fn();
+const mockActiveProject = ref({ id: "proj-1", name: "测试项目" });
 const mockCanWrite = ref(true);
 
 vi.mock("@/composables/useAuthorization", () => ({
@@ -17,17 +18,10 @@ vi.mock("@/composables/useAuthorization", () => ({
   }),
 }));
 
-vi.mock("../composables/useDearGovernanceContext", () => ({
-  useDearGovernanceContext: () => ({
-    activeProject: ref({ id: "proj-1", name: "测试项目" }),
+vi.mock("@/composables/useWorkspaceProjectContext", () => ({
+  useWorkspaceProjectContext: () => ({
+    activeProject: mockActiveProject,
     activeProjectId: mockActiveProjectId,
-    threads: mockThreads,
-    activeThreadId: mockActiveThreadId,
-    hasThreads: mockHasThreads,
-    loading: ref(false),
-    isCreatingThread: ref(false),
-    switchThread: vi.fn(),
-    createInitialThread: mockCreateInitialThread,
   }),
 }));
 
@@ -35,134 +29,239 @@ vi.mock("@/services/dear-agent/skills.service", async () => {
   const actual = await vi.importActual<typeof skillsService>("@/services/dear-agent/skills.service");
   return {
     ...actual,
-    listCustomSkills: vi.fn(),
-    uploadCandidateSkillPackage: vi.fn(),
-    activateSkillVersion: vi.fn(),
-    revokeSkillVersion: vi.fn(),
+    getDearSkills: vi.fn(),
+    getDearSkillDetail: vi.fn(),
+    getDearSkillContent: vi.fn(),
+    createCustomSkill: vi.fn(),
+    updateCustomSkill: vi.fn(),
+    toggleCustomSkill: vi.fn(),
+    deleteCustomSkill: vi.fn(),
   };
 });
 
-describe("DearAgentSkillsPage.vue", () => {
+describe("DearAgentSkillsPage.vue (去会话化与全新管理)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCanWrite.value = true;
-    mockHasThreads.value = true;
-    mockActiveThreadId.value = "th-1";
+    mockActiveProjectId.value = "proj-1";
+    mockActiveProject.value = { id: "proj-1", name: "测试项目" };
   });
 
-  it("默认展示 8 大官方平台公共技能卡片", async () => {
-    (skillsService.listCustomSkills as any).mockResolvedValueOnce([]);
+  function getMockSkillsList(): skillsService.DearSkillsListResponse {
+    return {
+      items: [
+        {
+          source: "public",
+          slug: "deep-research",
+          name: "深度研究 (Deep Research)",
+          description: "多步规划与深度研究",
+          revision: "rev-pub-1",
+          updated_at: null,
+          backend_verified: true,
+          recommendable: true,
+        },
+        {
+          source: "custom",
+          slug: "custom-sql-tool",
+          name: "自定义 SQL 审查工具",
+          description: "自定义 SQL 检查与清洗",
+          digest: "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+          revision: "rev-cus-1",
+          origin: "explicit-management",
+          warnings: [],
+          enabled: true,
+          updated_at: "2026-09-19T08:00:00Z",
+        },
+      ],
+      capabilities: {
+        can_read: true,
+        can_write: true,
+        custom_management_enabled: true,
+      },
+      limits: {
+        package_bytes: 1048576,
+        unpacked_bytes: 1048576,
+        file_bytes: 262144,
+        entries: 100,
+        custom_skills: 50,
+      },
+    };
+  }
+
+  it("默认加载并展示公共技能卡片，且无会话下拉框", async () => {
+    (skillsService.getDearSkills as any).mockResolvedValueOnce(getMockSkillsList());
 
     const wrapper = mount(DearAgentSkillsPage);
     await flushPromises();
 
-    expect(wrapper.text()).toContain("Skills 技能版本治理");
-    expect(wrapper.text()).toContain("平台公共技能");
+    expect(wrapper.text()).toContain("Skills 技能管理");
+    expect(wrapper.text()).toContain("测试项目");
+    // 不应存在老旧的“治理上下文”
+    expect(wrapper.text()).not.toContain("治理上下文");
+    // 渲染公共技能卡片
     expect(wrapper.text()).toContain("深度研究 (Deep Research)");
-    expect(wrapper.text()).toContain("学术论文审查 (Academic Paper Review)");
     expect(wrapper.text()).toContain("已通过验收");
   });
 
-  it("切换到自定义技能专区并展开文件清单", async () => {
-    (skillsService.listCustomSkills as any).mockResolvedValue([
-      {
-        slug: "custom-sql-tool",
-        description: "自定义 SQL 审查工具",
-        digest: "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
-        revision: 1,
-        status: "candidate",
-        warnings: [],
-        manifest: [
-          { path: "SKILL.md", sha256: "hash123456789012" },
-          { path: "scripts/run.py", sha256: "hash987654321012" },
-        ],
-        review: { passed: true },
-        evaluation: { passed: true },
-      },
-    ]);
+  it("切换到自定义技能专区并展示自定义卡片与状态", async () => {
+    (skillsService.getDearSkills as any).mockResolvedValueOnce(getMockSkillsList());
+
+    const wrapper = mount(DearAgentSkillsPage);
+    await flushPromises();
+
+    const customTabBtn = wrapper.findAll("button").find((b) => b.text().includes("自定义技能管理"));
+    expect(customTabBtn).toBeDefined();
+    await customTabBtn!.trigger("click");
+    await flushPromises();
+
+    expect(wrapper.text()).toContain("自定义 SQL 审查工具");
+    expect(wrapper.text()).toContain("启用中 (Active)");
+    expect(wrapper.text()).toContain("b94d27b9934d");
+  });
+
+  it("启停 Switch 操作正确调用 toggleCustomSkill", async () => {
+    const mockList = getMockSkillsList();
+    (skillsService.getDearSkills as any).mockResolvedValueOnce(mockList);
+    const toggledSkill: skillsService.SkillDetail = {
+      ...mockList.items[1] as skillsService.CustomSkillItem,
+      enabled: false,
+      revision: "rev-cus-2",
+      manifest: [{ path: "SKILL.md", size: 100, readable: true }],
+    };
+    (skillsService.toggleCustomSkill as any).mockResolvedValueOnce(toggledSkill);
 
     const wrapper = mount(DearAgentSkillsPage);
     await flushPromises();
 
     // 切换到自定义专区
-    const customTabBtn = wrapper.findAll("button").find((b) => b.text().includes("自定义版本治理"));
-    expect(customTabBtn).toBeDefined();
+    const customTabBtn = wrapper.findAll("button").find((b) => b.text().includes("自定义技能管理"));
     await customTabBtn!.trigger("click");
     await flushPromises();
 
-    expect(wrapper.text()).toContain("custom-sql-tool");
-    expect(wrapper.text()).toContain("待定候选 (Candidate)");
-    expect(wrapper.text()).toContain("✓ 通过");
-
-    // 点击文件清单
-    const manifestBtn = wrapper.findAll("button").find((b) => b.text().includes("文件清单"));
-    expect(manifestBtn).toBeDefined();
-    await manifestBtn!.trigger("click");
+    // 找到 switch 开关
+    const switchBtn = wrapper.find('button[role="switch"]');
+    expect(switchBtn.exists()).toBe(true);
+    await switchBtn.trigger("click");
     await flushPromises();
 
-    expect(wrapper.text()).toContain("Package Manifest 文件列表");
-    expect(wrapper.text()).toContain("SKILL.md");
-    expect(wrapper.text()).toContain("scripts/run.py");
+    expect(skillsService.toggleCustomSkill).toHaveBeenCalledWith(
+      "proj-1",
+      "custom-sql-tool",
+      false, // 从 true 变为 false
+      "rev-cus-1",
+    );
   });
 
-  it("当 review 和 evaluation 均通过时允许点击启用版本", async () => {
-    (skillsService.listCustomSkills as any).mockResolvedValue([
-      {
-        slug: "custom-sql-tool",
-        description: "自定义 SQL 审查工具",
-        digest: "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
-        revision: 1,
-        status: "candidate",
-        warnings: [],
-        manifest: [],
-        review: { passed: true },
-        evaluation: { passed: true },
-      },
-    ]);
-    (skillsService.activateSkillVersion as any).mockResolvedValueOnce({
-      slug: "custom-sql-tool",
-      status: "active",
-      revision: 2,
+  it("点击查看详情打开 BaseDrawer 并默认加载 SKILL.md", async () => {
+    const mockList = getMockSkillsList();
+    (skillsService.getDearSkills as any).mockResolvedValueOnce(mockList);
+    const mockDetail: skillsService.SkillDetail = {
+      ...mockList.items[0] as skillsService.PublicSkillItem,
+      manifest: [
+        { path: "SKILL.md", size: 50, readable: true },
+        { path: "run.py", size: 200, readable: true },
+      ],
+    };
+    (skillsService.getDearSkillDetail as any).mockResolvedValueOnce(mockDetail);
+    (skillsService.getDearSkillContent as any).mockResolvedValueOnce({
+      path: "SKILL.md",
+      content: "# Deep Research Guide",
+      revision: "rev-pub-1",
     });
 
     const wrapper = mount(DearAgentSkillsPage);
     await flushPromises();
 
-    const customTabBtn = wrapper.findAll("button").find((b) => b.text().includes("自定义版本治理"));
+    const detailBtn = wrapper.findAll("button").find((b) => b.text().includes("查看详情"));
+    expect(detailBtn).toBeDefined();
+    await detailBtn!.trigger("click");
+    await flushPromises();
+
+    expect(skillsService.getDearSkillDetail).toHaveBeenCalledWith(
+      "proj-1",
+      "public",
+      "deep-research",
+    );
+    expect(skillsService.getDearSkillContent).toHaveBeenCalledWith(
+      "proj-1",
+      "public",
+      "deep-research",
+      "SKILL.md",
+      "rev-pub-1",
+    );
+
+    // 测试侧边栏收起与展开（BaseDrawer teleport 到了 body）
+    const collapseBtn = document.body.querySelector<HTMLButtonElement>("button[title='收起文件清单']");
+    expect(collapseBtn).toBeTruthy();
+    collapseBtn!.click();
+    await flushPromises();
+
+    // 收起后应展示展开按钮
+    const expandBtn = document.body.querySelector<HTMLButtonElement>("button[title='展开文件清单']");
+    expect(expandBtn).toBeTruthy();
+    expandBtn!.click();
+    await flushPromises();
+
+    expect(document.body.querySelector("button[title='收起文件清单']")).toBeTruthy();
+    wrapper.unmount();
+  });
+
+  it("点击删除按钮弹出二次确认框，确认后调用 deleteCustomSkill", async () => {
+    const mockList = getMockSkillsList();
+    (skillsService.getDearSkills as any).mockResolvedValueOnce(mockList);
+    (skillsService.deleteCustomSkill as any).mockResolvedValueOnce(undefined);
+    (skillsService.getDearSkills as any).mockResolvedValueOnce({
+      ...mockList,
+      items: [mockList.items[0]],
+    });
+
+    const wrapper = mount(DearAgentSkillsPage, { attachTo: document.body });
+    await flushPromises();
+
+    // 切换到自定义
+    const customTabBtn = wrapper.findAll("button").find((b) => b.text().includes("自定义技能管理"));
     await customTabBtn!.trigger("click");
     await flushPromises();
 
-    const activateBtn = wrapper.findAll("button").find((b) => b.text().includes("启用版本"));
-    expect(activateBtn).toBeDefined();
-    expect(activateBtn!.attributes("disabled")).toBeUndefined();
-
-    await activateBtn!.trigger("click");
+    const deleteBtn = wrapper.findAll("button").find((b) => b.text().includes("删除"));
+    expect(deleteBtn).toBeDefined();
+    await deleteBtn!.trigger("click");
     await flushPromises();
 
-    expect(wrapper.text()).toContain("启用技能版本确认");
-    const confirmBtn = wrapper.findAll("button").find((b) => b.text().includes("确认启用"));
+    // 确认弹窗应该处于可见状态 (Teleport 到 document.body)
+    expect(document.body.textContent).toContain("彻底删除自定义技能确认");
+
+    // 触发删除确认
+    const confirmBtn = [...document.querySelectorAll("button")].find((b) => b.textContent?.includes("确认删除"));
     expect(confirmBtn).toBeDefined();
-    await confirmBtn!.trigger("click");
+    confirmBtn!.click();
     await flushPromises();
 
-    expect(skillsService.activateSkillVersion).toHaveBeenCalledWith(
+    expect(skillsService.deleteCustomSkill).toHaveBeenCalledWith(
       "proj-1",
-      "th-1",
       "custom-sql-tool",
-      "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
-      1
+      "rev-cus-1",
     );
+    wrapper.unmount();
   });
 
-  it("无写权限时展示只读提示并禁用上传按钮", async () => {
+  it("只读用户下展示只读横幅且禁用操作按钮", async () => {
     mockCanWrite.value = false;
-    (skillsService.listCustomSkills as any).mockResolvedValueOnce([]);
+    const mockList = getMockSkillsList();
+    (skillsService.getDearSkills as any).mockResolvedValueOnce({
+      ...mockList,
+      capabilities: {
+        can_read: true,
+        can_write: false,
+        custom_management_enabled: true,
+      },
+    });
 
     const wrapper = mount(DearAgentSkillsPage);
     await flushPromises();
 
-    expect(wrapper.text()).toContain("当前项目处于只读模式（缺少 project.runtime.write 权限）");
-    const uploadBtn = wrapper.findAll("button").find((b) => b.text().includes("导入候选 ZIP"));
-    expect(uploadBtn?.attributes("disabled")).toBeDefined();
+    expect(wrapper.text()).toContain("当前项目处于只读模式");
+    const importBtn = wrapper.findAll("button").find((b) => b.text().includes("导入技能包"));
+    expect(importBtn?.attributes("disabled")).toBeDefined();
   });
 });

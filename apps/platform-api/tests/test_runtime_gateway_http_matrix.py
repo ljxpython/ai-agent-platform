@@ -84,7 +84,12 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                 for route in router.routes
                 for method in route.methods
             },
-            {(method, path) for method, path, _ in CASES},
+            {(method, path) for method, path, _ in CASES} | {
+                ("GET", "/dear/skills"), ("POST", "/dear/skills/custom"),
+                ("PUT", "/dear/skills/custom/{slug}"), ("PATCH", "/dear/skills/custom/{slug}"),
+                ("DELETE", "/dear/skills/custom/{slug}"), ("GET", "/dear/skills/{source}/{slug}"),
+                ("GET", "/dear/skills/{source}/{slug}/content"),
+            },
         )
         app = FastAPI()
         app.include_router(router)

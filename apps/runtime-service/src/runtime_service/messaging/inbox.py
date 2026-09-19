@@ -9,6 +9,9 @@ from dataclasses import dataclass
 from typing import Any
 
 import psycopg
+from psycopg.rows import tuple_row
+
+from runtime_service.db import connect, normalize_dsn, upgrade
 
 
 @dataclass(frozen=True)
@@ -24,27 +27,10 @@ class MessageReceipt:
 
 class MessageInbox:
     def __init__(self, dsn: str) -> None:
-        self.dsn = dsn.replace("postgresql+asyncpg://", "postgresql://").replace(
-            "postgresql+psycopg://", "postgresql://"
-        )
+        self.dsn = normalize_dsn(dsn)
 
     def initialize(self) -> None:
-        with psycopg.connect(self.dsn) as connection:
-            connection.execute(
-                """CREATE TABLE IF NOT EXISTS runtime_message_inbox (
-                message_id uuid PRIMARY KEY, thread_id text NOT NULL,
-                target_run_id text NOT NULL, sender_id text NOT NULL,
-                authorization_ref text, idem_key text NOT NULL, payload jsonb NOT NULL, digest text NOT NULL,
-                sequence bigint NOT NULL, status text NOT NULL DEFAULT 'queued',
-                reason text, claim_token uuid, claim_until timestamptz,
-                consumed_checkpoint_id text, created_at timestamptz NOT NULL DEFAULT now(),
-                updated_at timestamptz NOT NULL DEFAULT now(),
-                UNIQUE(thread_id, sender_id, idem_key), UNIQUE(thread_id, sequence))"""
-            )
-
-            connection.execute(
-                "ALTER TABLE runtime_message_inbox ADD COLUMN IF NOT EXISTS authorization_ref text"
-            )
+        upgrade(self.dsn)
 
     def enqueue(
         self,
@@ -71,7 +57,7 @@ class MessageInbox:
             ).encode()
         ).hexdigest()
         message_id = uuid.UUID(client_message_id)
-        with psycopg.connect(self.dsn) as connection:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
             # Lock before reading idempotency as well as allocating sequence.
             connection.execute(
                 "SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))", (thread_id,)
@@ -137,7 +123,7 @@ class MessageInbox:
         lease_seconds: int = 30,
     ) -> tuple[str, list[dict[str, Any]]]:
         token = str(uuid.uuid4())
-        with psycopg.connect(self.dsn) as connection:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
             connection.execute(
                 "UPDATE runtime_message_inbox SET status='queued', claim_token=NULL, claim_until=NULL WHERE thread_id=%s AND target_run_id=%s AND status='claimed' AND claim_until <= now()",
                 (thread_id, target_run_id),
@@ -164,7 +150,7 @@ class MessageInbox:
     def ack(self, *, token: str, message_ids: list[str], checkpoint_id: str) -> int:
         if not message_ids:
             return 0
-        with psycopg.connect(self.dsn) as connection:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
             result = connection.execute(
                 """UPDATE runtime_message_inbox SET status='consumed', consumed_checkpoint_id=%s,
                 claim_token=NULL, claim_until=NULL, updated_at=now()
@@ -175,7 +161,7 @@ class MessageInbox:
             return result.rowcount
 
     def reclaim_expired(self) -> int:
-        with psycopg.connect(self.dsn) as connection:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
             result = connection.execute(
                 "UPDATE runtime_message_inbox SET status='queued', claim_token=NULL, claim_until=NULL, updated_at=now() WHERE status='claimed' AND claim_until <= now()"
             )
@@ -184,7 +170,7 @@ class MessageInbox:
     def list(
         self, *, thread_id: str, sender_id: str, limit: int = 100
     ) -> list[MessageReceipt]:
-        with psycopg.connect(self.dsn) as connection:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
             rows = connection.execute(
                 "SELECT message_id,target_run_id,sequence,status,reason,payload FROM runtime_message_inbox WHERE thread_id=%s AND sender_id=%s ORDER BY (status IN ('queued','claimed')) DESC, sequence DESC LIMIT %s",
                 (thread_id, sender_id, min(max(limit, 1), 100)),
@@ -207,7 +193,7 @@ class MessageInbox:
         """Acknowledge only IDs observed in a committed checkpoint snapshot."""
         if not checkpoint_id or not message_ids:
             return 0
-        with psycopg.connect(self.dsn) as connection:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
             result = connection.execute(
                 """UPDATE runtime_message_inbox SET status='consumed', consumed_checkpoint_id=%s,
                 claim_token=NULL, claim_until=NULL, updated_at=now()
@@ -221,7 +207,7 @@ class MessageInbox:
         self, *, thread_id: str, target_run_id: str, reason: str
     ) -> int:
         """Close undelivered records when a target run reaches a terminal state."""
-        with psycopg.connect(self.dsn) as connection:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
             result = connection.execute(
                 """UPDATE runtime_message_inbox SET status='not_consumed', reason=%s,
                 claim_token=NULL, claim_until=NULL, updated_at=now()
@@ -231,7 +217,7 @@ class MessageInbox:
             return result.rowcount
 
     def reject(self, *, token: str, message_id: str, reason: str) -> int:
-        with psycopg.connect(self.dsn) as connection:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
             return connection.execute(
                 "UPDATE runtime_message_inbox SET status='rejected', reason=%s, claim_token=NULL, claim_until=NULL, updated_at=now() WHERE message_id=%s AND claim_token=%s AND status='claimed' AND claim_until > now()",
                 (reason, message_id, token),
@@ -239,7 +225,7 @@ class MessageInbox:
 
     def stats(self) -> dict[str, int | float]:
         """Operational aggregates only; never expose message text or sender IDs."""
-        with psycopg.connect(self.dsn) as connection:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
             row = connection.execute(
                 """SELECT count(*) FILTER (WHERE status IN ('queued','claimed')),
                 COALESCE(max(extract(epoch FROM now()-created_at)) FILTER
@@ -273,7 +259,7 @@ class MessageInbox:
         This is an explicit Runtime maintenance operation against its configured
         GraphHarbor PG database. A missing engine schema fails closed.
         """
-        with psycopg.connect(self.dsn) as connection:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
             return connection.execute(
                 """DELETE FROM runtime_message_inbox AS inbox
                 WHERE inbox.updated_at < now() - interval '24 hours'
@@ -285,7 +271,7 @@ class MessageInbox:
             ).rowcount
 
     def pending_runs(self, *, thread_id: str, sender_id: str) -> list[str]:
-        with psycopg.connect(self.dsn) as connection:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
             return [
                 row[0]
                 for row in connection.execute(
@@ -295,7 +281,7 @@ class MessageInbox:
             ]
 
     def has_message(self, *, thread_id: str, sender_id: str, message_id: str) -> bool:
-        with psycopg.connect(self.dsn) as connection:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
             return (
                 connection.execute(
                     "SELECT 1 FROM runtime_message_inbox WHERE thread_id=%s AND sender_id=%s AND message_id=%s",

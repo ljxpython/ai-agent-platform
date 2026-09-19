@@ -18,7 +18,7 @@ _TOOL_PERMISSIONS = {
     "get_media_task": "runtime.tool.read",
     "deploy_preview": "runtime.tool.write",
     **dict.fromkeys(("search_memory", "list_skills", "review_skill_package", "find_skills"), "runtime.tool.read"),
-    **dict.fromkeys(("manage_memory", "create_skill_candidate", "evaluate_skill_candidate", "publish_skill", "revoke_skill", "import_skill"), "runtime.tool.write"),
+    **dict.fromkeys(("manage_memory", "upload_skill", "update_skill", "set_skill_enabled", "delete_skill", "import_skill"), "runtime.tool.write"),
 }
 
 

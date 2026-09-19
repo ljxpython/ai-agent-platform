@@ -30,6 +30,8 @@ RUN pip install --no-cache-dir "uv==0.9.9" \
        "pillow>=10.0.0" \
        "pymupdf4llm>=0.1.0,<0.2.0" \
        "pyjwt[crypto]>=2.10.1" \
+       "alembic>=1.16,<2" \
+       "psycopg[binary]>=3.2.0" \
        "opentelemetry-exporter-otlp-proto-http>=1.42.1,<2" \
     && rm -rf /root/.cache \
     && python -c "import importlib.metadata as m; assert m.version('graphharbor') == '0.13.0.post20'; assert m.version('graphharbor-runtime') == '0.13.0.post20'"

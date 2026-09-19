@@ -7,7 +7,6 @@ from dataclasses import asdict, replace
 import hashlib
 import json
 import os
-import asyncio
 from datetime import datetime, timezone
 
 from deepagents import create_deep_agent
@@ -67,8 +66,7 @@ from runtime_service.services.dearflow_agent.middleware.delegation import Delega
 from runtime_service.services.dearflow_agent.tools.memory import build_memory_tools, MEMORY_READ_TOOLS, MEMORY_WRITE_TOOLS
 from runtime_service.services.dearflow_agent.tools.skills import build_skill_tools, SKILL_READ_TOOLS, SKILL_WRITE_TOOLS
 from runtime_service.services.dearflow_agent.middleware.memory import MemoryContextMiddleware
-from runtime_service.services.dearflow_agent.skill_governance import SkillStorage
-from runtime_service.services.dearflow_agent.workspace.backend import prepare_custom_skills
+from runtime_service.services.dearflow_agent.middleware.skills import ExecutionSkillsMiddleware
 from runtime_service.services.dearflow_agent.tools.deployment import build_deployment_tool
 
 WORK_TOOLS = ("ls", "read_file", "glob", "grep", "write_file", "edit_file", "execute")
@@ -162,10 +160,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         workspace = DearWorkspaceBackend(
             facts.principal.tenant_id, facts.principal.project_id, thread_id
         )
-        if governance:
-            custom = await asyncio.to_thread(SkillStorage().freeze,
-                (facts.principal.tenant_id, facts.principal.project_id, facts.principal.user_id), thread_id)
-            await asyncio.to_thread(prepare_custom_skills, workspace, custom)
     else:
         # Schema-only client: no request is sent, and WorkspaceMiddleware rejects invocation.
         model = ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
@@ -241,7 +235,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         tools=[request_information, artifact_tool, *research_tools, github_tool, arxiv_tool, fetch_web_guidelines, *chart_tools, *media_tools, *mcp_tools,
                *build_memory_tools(), *build_skill_tools(workspace, model), build_deployment_tool(workspace)],
         backend=backend,
-        skills=["/skills/", "/skills/custom/"] if governance else ["/skills/"],
+        skills=None,
         permissions=PERMISSIONS,
         interrupt_on=interrupts_for_access_policy(
             context.access_policy if executing else None, APPROVALS
@@ -254,6 +248,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             ],
         )],
         middleware=[
+            ExecutionSkillsMiddleware(workspace, backend, custom_enabled=governance),
             FilesystemMiddleware(
                 backend=backend,
                 tools=list(WORK_TOOLS),

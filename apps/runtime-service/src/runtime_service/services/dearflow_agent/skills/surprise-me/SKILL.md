@@ -5,7 +5,7 @@ description: Create a delightful, unexpected "wow" experience for the user by dy
 
 ## Current platform adapter (takes precedence over upstream environment instructions)
 
-Use list_skills and the current available tools before selecting. Only choose known verified capabilities; candidates, revoked versions, deferred audio/video, external deployment without approval are unavailable. If fewer than two usable skills exist, explain the limitation. Read full chosen instructions and retain ordinary tool/HITL permissions; surprise is not approval.
+Use list_skills and current available tools before selecting. The catalog is fully visible; visibility does not imply verified capability. Prefer known verified capabilities and enabled private skills; disabled private skills, deferred audio/video and unapproved external deployment are unavailable for new executions. If fewer than two usable skills exist, explain the limitation. Read full chosen instructions and retain ordinary tool/HITL permissions; surprise is not approval.
 
 
 # Surprise Me

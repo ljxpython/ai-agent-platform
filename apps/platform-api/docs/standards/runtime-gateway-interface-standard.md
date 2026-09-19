@@ -71,9 +71,15 @@ Protocol lifecycle可能规范化为completed；Run JSON保留上游状态，不
 
 ### Dear Agent 治理资源（P6）
 
-`GET/POST /api/langgraph/threads/{thread_id}/dear/{resource}`仅允许`memory`和`skills`。
+`GET/POST /api/langgraph/threads/{thread_id}/dear/{resource}`仅允许`memory`。
 平台先验证项目读/写权限、线程归属、Dear graph与项目Agent启用关系，再签发
 `dear-governance-read`或`dear-governance-write`短时委托，调用Runtime的
 `/internal/threads/{thread_id}/dear/{resource}`。不得直接代理用户自填tenant/user或证据裁决。
-Runtime保有私有表和revision规则；GraphHarbor不实现此业务。记忆/技能更新冲突保持409。
+Runtime保有记忆私有表和revision规则；GraphHarbor不实现此业务。记忆更新冲突保持409。
+
+技能管理改为不依赖会话的 `/api/langgraph/dear/skills`（列表、详情、正文、上传、更新、启停、删除）。
+委托 operation 为 `dear-skills-read/write`，thread_id 为空，assistant_id 固定为 dearflow_agent；
+平台校验项目读写和 Agent 目录授权，Runtime 从签名身份提取 tenant/project/user。
+当前技能使用不透明 revision 做 CAS；旧 thread skills 入口不兼容，memory 保留。
+完整契约见 [前端交接](../../../../docs/projects/20260919-skills-page-improvement/07-frontend-handoff.md)。
 具体字段与前端限制见[Dear P6交接](../../../../docs/projects/20260913-dearflow-agent/frontend-handoff.md)。

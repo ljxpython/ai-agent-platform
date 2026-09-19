@@ -710,6 +710,8 @@ def test_limits_sender_isolation_metrics_and_additive_recovery(inbox):
     # Exercise the actual migration from a legacy schema, preserving existing data.
     with psycopg.connect(inbox.dsn) as c:
         c.execute("ALTER TABLE runtime_message_inbox DROP COLUMN authorization_ref")
+        # Legacy deployments predate the application Alembic chain.
+        c.execute("DROP TABLE runtime_app_alembic_version")
     inbox.initialize()
     inbox.initialize()
     assert inbox.enqueue(**request) == original

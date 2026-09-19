@@ -105,6 +105,8 @@ def _parse_scope(raw: object) -> RuntimeScope:
         "workspace-fork",
         "terminal-read",
         "terminal-write",
+        "dear-skills-read",
+        "dear-skills-write",
         "dear-governance-read",
         "dear-governance-write",
     }:

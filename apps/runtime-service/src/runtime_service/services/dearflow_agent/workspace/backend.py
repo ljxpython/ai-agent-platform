@@ -10,7 +10,7 @@ from importlib.resources import files
 from pathlib import Path
 
 from deepagents.backends import CompositeBackend, FilesystemBackend, StateBackend
-from deepagents.backends.protocol import SandboxBackendProtocol, ExecuteResponse, WriteResult, EditResult, FileUploadResponse
+from deepagents.backends.protocol import SandboxBackendProtocol, ExecuteResponse, WriteResult, EditResult, DeleteResult, FileUploadResponse
 from langchain.agents.middleware import AgentMiddleware
 
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
@@ -21,11 +21,13 @@ from runtime_service.workspace.execution import execute_in_workspace
 PACKAGE = "runtime_service.services.dearflow_agent"
 
 
-def skills_hash() -> str:
+def skills_hash(root=None) -> str:
     """Fingerprint packaged skill resources, including provenance and licenses."""
-    root = Path(str(files(PACKAGE).joinpath("skills")))
+    root = Path(root) if root is not None else Path(str(files(PACKAGE).joinpath("skills")))
     digest = hashlib.sha256()
     for path in sorted(root.rglob("*")):
+        if path.is_symlink():
+            raise RuntimeAuthError("runtime.skill.snapshot_mismatch")
         if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc":
             digest.update(path.relative_to(root).as_posix().encode() + b"\0")
             digest.update(hashlib.sha256(path.read_bytes()).digest())
@@ -83,11 +85,22 @@ class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
 
 
 def prepare_custom_skills(workspace, documents):
-    if not documents:
-        return
     workspace.prepare()
-    import json
-    fingerprint = hashlib.sha256(json.dumps(documents, sort_keys=True).encode()).hexdigest()
+    public_root = Path(str(files(PACKAGE).joinpath("skills")))
+    expected = {}
+    for path in public_root.rglob("*"):
+        if path.is_symlink():
+            raise RuntimeAuthError("runtime.skill.snapshot_mismatch")
+        if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc":
+            expected[path.relative_to(public_root).as_posix()] = hashlib.sha256(path.read_bytes()).digest()
+    for document in documents:
+        for name, content in document["files"].items():
+            expected[f"custom/{document['slug']}/{name}"] = hashlib.sha256(content.encode()).digest()
+    digest = hashlib.sha256()
+    for name, hashed in sorted(expected.items()):
+        digest.update(name.encode() + b"\0")
+        digest.update(hashed)
+    fingerprint = digest.hexdigest()
     root = workspace.root.parent / ("skills-" + fingerprint)
     if root.is_symlink():
         raise RuntimeAuthError("runtime.skill.snapshot_mismatch")
@@ -106,17 +119,15 @@ def prepare_custom_skills(workspace, documents):
             except OSError:
                 if not root.is_dir():
                     raise
-    for document in documents:
-        directory = root / "custom" / document["slug"]
-        for name, content in document["files"].items():
-            path = directory / name
-            if (any(parent.is_symlink() for parent in (path, *path.parents))
-                    or path.read_text() != content):
-                raise RuntimeAuthError("runtime.skill.snapshot_mismatch")
+    if skills_hash(root) != fingerprint:
+        raise RuntimeAuthError("runtime.skill.snapshot_mismatch")
     workspace.skills_root = root
 
 
 class ReadOnlySkillsBackend(FilesystemBackend):
+    def delete(self, file_path):
+        return DeleteResult(error="skill_resource_read_only")
+
     def write(self, file_path, content):
         return WriteResult(error="skill_resource_read_only")
 

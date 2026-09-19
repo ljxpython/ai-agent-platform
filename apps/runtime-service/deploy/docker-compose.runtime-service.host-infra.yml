@@ -12,11 +12,15 @@ services:
     environment:
       DATABASE_URI: "${DATABASE_URI:?DATABASE_URI is required}"
       REDIS_URI: "${REDIS_URI:?REDIS_URI is required}"
-    command: ["migrate", "upgrade"]
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["graphharbor migrate upgrade && python -m runtime_service.db upgrade"]
 
   runtime-service:
     image: "${RUNTIME_SERVICE_IMAGE:-aitestlab-runtime-service:local}"
     restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     build:
       context: ..
       dockerfile: deploy/Dockerfile
@@ -39,6 +43,9 @@ services:
   worker:
     image: "${RUNTIME_SERVICE_IMAGE:-aitestlab-runtime-service:local}"
     restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     build:
       context: ..
       dockerfile: deploy/Dockerfile

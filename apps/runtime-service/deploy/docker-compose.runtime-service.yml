@@ -37,7 +37,8 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    command: ["migrate", "upgrade"]
+    entrypoint: ["/bin/sh", "-c"]
+    command: ["graphharbor migrate upgrade && python -m runtime_service.db upgrade"]
     depends_on:
       postgres:
         condition: service_healthy

@@ -190,7 +190,7 @@ uv run python scripts/validate_runtime_config.py \
 - [`.env.runtime-service.host-infra.example`](./.env.runtime-service.host-infra.example)
 
 该文件只声明 `migrate`、`runtime-service` 和 `worker`，不声明 PostgreSQL、Redis、对应 volume
-或 `depends_on`。先完成 migration，再启动 API/Worker；三者从同一份 host-infra env file 接收同一
+服务依赖；API/Worker 通过 `depends_on` 等待迁移成功。先完成 migration，再启动 API/Worker；三者从同一份 host-infra env file 接收同一
 组 `DATABASE_URI` / `REDIS_URI`：
 
 ```bash
@@ -198,7 +198,7 @@ cp deploy/.env.runtime-service.host-infra.example deploy/.env.runtime-service.ho
 uv run python scripts/validate_runtime_config.py \
   --env-file deploy/.env.runtime-service.host-infra
 docker compose --env-file deploy/.env.runtime-service.host-infra \
-  -f deploy/docker-compose.runtime-service.host-infra.yml run --rm migrate upgrade
+  -f deploy/docker-compose.runtime-service.host-infra.yml run --rm migrate
 docker compose --env-file deploy/.env.runtime-service.host-infra \
   -f deploy/docker-compose.runtime-service.host-infra.yml up -d runtime-service worker
 ```
@@ -227,3 +227,32 @@ Redis 和 Workspace 数据，确认旧版本 lockfile 与 migration 兼容后再
 
 - [`docs/solve_problem/r6-validation-harness-and-failure-prevention.md`](../../../docs/solve_problem/r6-validation-harness-and-failure-prevention.md)
 - [`docs/runbooks/container-update-runbook.md`](../../../docs/runbooks/container-update-runbook.md)
+
+
+## Runtime 应用表迁移（2026-09-19）
+
+服务内两个 Compose 的 `migrate` job 依次执行 `graphharbor migrate upgrade` 和
+`python -m runtime_service.db upgrade`；任一失败，API/Worker 不应启动。
+应用迁移位于 `src/runtime_service/db/migrations/`，版本表为 `runtime_app_alembic_version`，
+不修改 GraphHarbor 迁移链。Alembic 是直接依赖，业务查询继续使用 psycopg。
+
+宿主部署在已配置 `DATABASE_URI` 的 Runtime 环境执行：
+
+```bash
+uv run graphharbor migrate upgrade
+uv run python -m runtime_service.db upgrade
+```
+
+应用表包括 `dear_memory`、`dear_external_tasks`、`runtime_message_inbox`、`dear_skills`。
+已有保留表在基线迁移时检查列类型、主键和必要唯一约束；不符则回滚并失败，不自动修补未知结构。
+迁移使用事务和 advisory lock；重复执行不会重复建表，也不修改业务数据。
+旧 `dear_skill_versions`、`dear_skill_bindings` 不导入、不双写、不自动删除；需要的技能重新上传。
+旧散落 SQL 已退出代码，三个历史初始化入口统一委托应用迁移，不在 HTTP/Agent 请求中建表。
+
+切换前排空旧程序运行，执行迁移后启动两端新后端。旧前端的技能治理请求不再受支持，
+前端按 [交接文档](../../../docs/projects/20260919-skills-page-improvement/07-frontend-handoff.md) 一同切换。
+保留 Workspace 卷及其快照目录；恢复缺失或损坏快照时明确失败，不读取当前技能代替。
+不支持破坏性 downgrade 或旧技能模型无损回切。生产发布尚未执行。
+根目录 `scripts/local-stack.sh` 和 `deploy/` 未自动接入本应用迁移，使用它们部署时必须额外执行上述应用命令。
+
+对话工具仍遵守项目工具策略；若配置了显式工具白名单，部署后刷新工具目录并按原审批方式授权 `upload_skill/update_skill/set_skill_enabled/delete_skill`。不自动扩大用户权限。

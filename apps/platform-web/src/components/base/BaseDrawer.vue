@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 
 type DrawerSide = 'left' | 'right'
-type DrawerWidth = 'narrow' | 'normal' | 'wide' | 'full'
+type DrawerWidth = 'narrow' | 'normal' | 'wide' | 'xl' | '2xl' | 'full'
 
 const props = withDefaults(
   defineProps<{
@@ -12,12 +12,14 @@ const props = withDefaults(
     title: string
     side?: DrawerSide
     width?: DrawerWidth
+    flush?: boolean
     closeOnEscape?: boolean
     closeOnClickOutside?: boolean
   }>(),
   {
     side: 'right',
     width: 'normal',
+    flush: false,
     closeOnEscape: true,
     closeOnClickOutside: true
   }
@@ -37,8 +39,12 @@ function widthClass(width: DrawerWidth) {
       return 'w-screen sm:w-[320px] sm:max-w-[92vw]'
     case 'wide':
       return 'w-screen sm:w-[520px] sm:max-w-[96vw]'
+    case 'xl':
+      return 'w-screen sm:w-[min(840px,96vw)]'
+    case '2xl':
+      return 'w-screen sm:w-[min(1040px,96vw)]'
     case 'full':
-      return 'w-screen sm:w-[min(720px,100vw)]'
+      return 'w-screen sm:w-[min(1280px,98vw)]'
     default:
       return 'w-screen sm:w-[420px] sm:max-w-[94vw]'
   }
@@ -166,7 +172,10 @@ onUnmounted(() => {
               </button>
             </div>
 
-            <div class="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+            <div
+              class="min-h-0 flex-1"
+              :class="flush ? 'flex flex-col overflow-hidden p-0' : 'overflow-y-auto px-6 py-5'"
+            >
               <slot />
             </div>
 

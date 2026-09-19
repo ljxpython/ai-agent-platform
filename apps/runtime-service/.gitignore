@@ -367,6 +367,10 @@ uploads
 **/aitestlab.db
 **/migrations
 migrations
+!src/runtime_service/db/migrations/
+!src/runtime_service/db/migrations/*.py
+!src/runtime_service/db/migrations/versions/
+!src/runtime_service/db/migrations/versions/*.py
 /.langgraph_api
 /data
 src/anything_rag_demo/output

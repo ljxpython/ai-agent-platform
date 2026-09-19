@@ -98,3 +98,12 @@ def test_platform_auth_requires_audience_configuration(monkeypatch: pytest.Monke
         asyncio.run(authenticate(authorization=f"Bearer {_token()}"))
 
     assert error.value.status_code == 500
+
+
+@pytest.mark.parametrize("operation", ["dear-skills-read", "dear-skills-write"])
+def test_skill_tokens_cannot_use_server_resources(operation):
+    from types import SimpleNamespace
+    from runtime_service.auth.platform import deny_image_scope_on_server_resources
+    with pytest.raises(Auth.exceptions.HTTPException) as error:
+        asyncio.run(deny_image_scope_on_server_resources(SimpleNamespace(user={"runtime_scope": {"operation": operation}}), {}))
+    assert error.value.status_code == 403

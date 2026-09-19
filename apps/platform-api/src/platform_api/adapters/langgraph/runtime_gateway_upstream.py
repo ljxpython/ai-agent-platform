@@ -106,6 +106,9 @@ class LangGraphRuntimeGatewayUpstream:
             payload={"source_thread_id": source_thread_id},
         )
 
+    async def dear_skills(self, method: str, suffix: str = "", *, payload=None, params=None):
+        return await self._http.request_json(method, "/internal/dear/skills" + suffix, payload=payload, params=params)
+
     async def dear_governance(self, thread_id: str, resource: str, *, payload: dict | None = None, query: str = "") -> dict:
         from urllib.parse import quote
         return await self._http.require_json(

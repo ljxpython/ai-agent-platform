@@ -401,6 +401,16 @@ def _interrupt_ids(state: Any) -> set[str]:
 
 
 def _normalize_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
+    def check(value):
+        if isinstance(value, dict):
+            if "dear_skill_snapshot" in value:
+                raise BadRequestError(code="runtime_private_state", message="Skill execution state is server-owned")
+            for item in value.values():
+                check(item)
+        elif isinstance(value, list):
+            for item in value:
+                check(item)
+    check(payload)
     return ensure_dict(payload)
 
 
@@ -1105,9 +1115,30 @@ class RuntimeGatewayService:
             "sha256": ref_sha256,
         }
 
+    async def dear_skills(self, *, actor: ActorContext, project_id: str, method: str,
+                          suffix: str = "", payload: dict | None = None, params: dict | None = None):
+        write = method != "GET"
+        await run_in_threadpool(self._prepare_project_scope, actor=actor, project_id=project_id, write=write)
+        await run_in_threadpool(self._assert_runtime_target_allowed, project_id=project_id, assistant_id="dearflow_agent")
+        if not self._delegation_headers_factory:
+            raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
+        upstream = self._upstream.with_forwarded_headers(self._delegation_headers_factory(
+            project_id=project_id, agent_key="dearflow_agent", thread_id=None,
+            context_hash=empty_runtime_context_hash(),
+            operation="dear-skills-write" if write else "dear-skills-read"))
+        result = await upstream.dear_skills(method, suffix, payload=payload, params=params)
+        if method == "GET" and not suffix:
+            can_write = True
+            try:
+                await run_in_threadpool(self._authorize, actor=actor, project_id=project_id, write=True)
+            except ForbiddenError:
+                can_write = False
+            result["capabilities"]["can_write"] = can_write and result["capabilities"]["custom_management_enabled"]
+        return result
+
     async def dear_governance(self, *, actor: ActorContext, project_id: str, thread_id: str,
                               resource: str, payload: dict | None = None, query: str = "") -> dict:
-        if resource not in {"memory", "skills"}:
+        if resource != "memory":
             raise BadRequestError(code="invalid_dear_resource", message="Unknown Dear resource")
         thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=payload is not None)
         agent_key = clean_str(ensure_dict(thread.get("metadata")).get("graph_id"))
@@ -1300,6 +1331,7 @@ class RuntimeGatewayService:
         interrupt_id: str | None = None,
     ) -> tuple[StoredRunRequest, Any]:
         """Persist submission identity; Agent Server owns execution and concurrency."""
+        _normalize_payload(upstream_payload)
         if "version" in upstream_payload and upstream_payload["version"] not in ("v2", "v3"):
             raise BadRequestError(code="invalid_stream_version", message="version must be v2 or v3")
         if upstream_payload.get("assistant_id") in {"reference_agent", "showcase_demo", "dearflow_agent"}:

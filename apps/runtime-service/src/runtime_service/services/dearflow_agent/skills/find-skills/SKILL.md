@@ -5,7 +5,7 @@ description: Helps users discover and install agent skills when they ask questio
 
 ## Current platform adapter (takes precedence over upstream environment instructions)
 
-Use find_skills(query) for the current catalog and authorized search_web/github_query for remote discovery. To import, resolve an exact GitHub 40-character commit and use import_skill(repository,commit,directory). The result is an inactive candidate: review_skill_package, evaluate_skill_candidate and separately approved publish_skill must follow. No npx/installer/global installs. Unknown or unavailable sources are a reported failure.
+Use find_skills(query) for the full current catalog and authorized search_web/github_query for remote discovery. To import, resolve an exact GitHub 40-character commit and use import_skill(repository,commit,directory) after approval. Validation and static checks run before storing a new enabled private skill; it is available on the next new execution. Existing names require explicit update_skill, not implicit overwrite. review_skill_package(slug) is optional and read-only. No npx/installer/global installs. Unknown or unavailable sources are a reported failure.
 
 
 # Find Skills

@@ -125,7 +125,7 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
         settings = Settings(
             runtime_delegation_secret="runtime-delegation-secret-at-least-32-bytes"
         )
-        for operation in ("read", "run-create", "message-enqueue", "message-read"):
+        for operation in ("read", "run-create", "message-enqueue", "message-read", "dear-skills-read", "dear-skills-write"):
             token = create_runtime_delegation_token(
                 subject="user-1",
                 tenant_id="__default",

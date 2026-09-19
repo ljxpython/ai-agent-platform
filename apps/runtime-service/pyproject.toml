@@ -25,6 +25,7 @@ dependencies = [
     "pymupdf4llm>=0.1.0,<0.2.0",
     "pyjwt[crypto]>=2.10.1",
     "psycopg[binary]>=3.2.0",
+    "alembic>=1.16,<2",
     "opentelemetry-exporter-otlp-proto-http>=1.42.1,<2",
 ]
 
@@ -44,7 +45,7 @@ where = ["src"]
 "runtime_service.tools" = ["chart-schemas.json"]
 "runtime_service.services.demo.showcase_demo" = ["skills/*/SKILL.md", "examples/*", "README.md"]
 
-"runtime_service.services.dearflow_agent" = ["skills/**/*", "migrations/*.sql"]
+"runtime_service.services.dearflow_agent" = ["skills/**/*"]
 
 [tool.setuptools.exclude-package-data]
 "runtime_service.services.dearflow_agent" = ["skills/**/__pycache__/*", "skills/**/*.pyc"]

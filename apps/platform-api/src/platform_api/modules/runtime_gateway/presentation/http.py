@@ -9,7 +9,7 @@ from urllib.parse import quote
 
 from anyio import CancelScope
 from fastapi import APIRouter, Body, Depends, Query, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse, Response
 from starlette.types import Send
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -225,7 +225,7 @@ def get_runtime_gateway_service(
         *,
         project_id: str,
         agent_key: str,
-        thread_id: str,
+        thread_id: str | None,
         context_hash: str,
         operation: str = "run-create",
     ) -> dict[str, str]:
@@ -613,6 +613,57 @@ async def get_thread_capabilities(
         actor=actor, project_id=_require_project_id(request), thread_id=thread_id,
     )
     return _redact_runtime_private_fields(result)
+
+
+class SkillUploadBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    package_base64: str = Field(min_length=1, max_length=1398104)
+
+
+class SkillUpdateBody(SkillUploadBody):
+    expected_revision: str = Field(min_length=1, max_length=64)
+
+
+class SkillToggleBody(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    enabled: bool
+    expected_revision: str = Field(min_length=1, max_length=64)
+
+
+@router.get("/dear/skills")
+async def list_dear_skills(request: Request, actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="GET")
+
+
+@router.post("/dear/skills/custom", status_code=201)
+async def create_dear_skill(request: Request, payload: SkillUploadBody, actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="POST", suffix="/custom", payload=payload.model_dump())
+
+
+@router.put("/dear/skills/custom/{slug}")
+async def update_dear_skill(request: Request, slug: str, payload: SkillUpdateBody, actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="PUT", suffix="/custom/" + quote(slug, safe=""), payload=payload.model_dump())
+
+
+@router.patch("/dear/skills/custom/{slug}")
+async def toggle_dear_skill(request: Request, slug: str, payload: SkillToggleBody, actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="PATCH", suffix="/custom/" + quote(slug, safe=""), payload=payload.model_dump())
+
+
+@router.delete("/dear/skills/custom/{slug}", status_code=204)
+async def delete_dear_skill(request: Request, slug: str, expected_revision: str = Query(min_length=1, max_length=64), actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="DELETE", suffix="/custom/" + quote(slug, safe=""), params={"expected_revision": expected_revision})
+    return Response(status_code=204)
+
+
+@router.get("/dear/skills/{source}/{slug}")
+async def detail_dear_skill(request: Request, source: Literal["public", "custom"], slug: str, actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="GET", suffix=f"/{source}/" + quote(slug, safe=""))
+
+
+@router.get("/dear/skills/{source}/{slug}/content")
+async def content_dear_skill(request: Request, source: Literal["public", "custom"], slug: str, path: str = Query(min_length=1, max_length=1024), revision: str = Query(min_length=1, max_length=64), actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="GET", suffix=f"/{source}/" + quote(slug, safe="") + "/content", params={"path": path, "revision": revision})
 
 
 @router.get("/threads/{thread_id}/dear/{resource}")

@@ -355,6 +355,10 @@ def _resolve_action(
             )
 
     if len(segments) >= 2 and segments[:2] == ["api", "langgraph"]:
+        if segments[2:4] == ["dear", "skills"]:
+            action = {"GET": "read", "POST": "created", "PUT": "updated", "PATCH": "enabled.changed", "DELETE": "deleted"}.get(method)
+            if action:
+                return f"runtime.dear.skills.{action}", "skill", clean_str(segments[5]) if len(segments) > 5 else None
         if len(segments) >= 5 and segments[2] == "threads" and segments[4] == "terminals":
             action = {(5, "POST"): "created", (5, "GET"): "listed", (6, "DELETE"): "closed"}.get((len(segments), method))
             if len(segments) == 7:

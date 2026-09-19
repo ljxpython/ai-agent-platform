@@ -248,3 +248,13 @@ project 的 Worker 收敛为唯一运行实例，再用 `recovery_demo` 执行�
 
 `docs/standards/` 将在 R0 完成后，根据绿色重构后的实际实现重新生成；在此之前不要引用归档
 目录中的旧标准。
+
+
+### 当前技能管理与应用迁移
+
+技能目录与用户上传/更新/启停/删除由 Runtime 自有接口提供，平台入口为
+`/api/langgraph/dear/skills`；身份按 tenant/project/user 隔离，不要求会话。
+执行使用只读技能快照，中断恢复沿用原内容；下一次新输入读取当前启用集合。
+初始化应用表使用 `uv run python -m runtime_service.db upgrade`，不再执行 Dear Agent 目录下的 SQL。
+部署顺序见 [deploy/README.md](deploy/README.md)，接口与验证见
+[Skills 项目交接](../../docs/projects/20260919-skills-page-improvement/07-frontend-handoff.md)。
