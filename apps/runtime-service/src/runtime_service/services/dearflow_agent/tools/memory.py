@@ -8,9 +8,6 @@ from runtime_service.runtime import verified_delegation_from_user
 from runtime_service.services.dearflow_agent.memory import MemoryCommand, MemoryStorage
 from runtime_service.workspace.documents import DocumentError
 
-MEMORY_READ_TOOLS = ("search_memory",)
-MEMORY_WRITE_TOOLS = ("manage_memory",)
-
 
 def memory_scope(runtime):
     facts = verified_delegation_from_user(runtime.server_info.user)

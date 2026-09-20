@@ -27,10 +27,12 @@ import {
   listRuntimeModels,
   listRuntimeTools,
 } from "@/services/runtime/runtime.service";
+import { listToolRestrictions } from "@/services/runtime-policies/runtime-policies.service";
 import type {
   ManagementGraph,
   RuntimeModelItem,
   RuntimeToolItem,
+  ToolRestrictionItem,
 } from "@/types/management";
 
 const EXECUTION_MODES = [
@@ -66,11 +68,10 @@ const name = ref("");
 const description = ref("");
 const status = ref<Agent["status"]>("active");
 const context = ref<Record<string, unknown>>({});
-const toolMode = ref<"inherit" | "select">("inherit");
-const selectedTools = ref<string[]>([]);
 const graphs = ref<ManagementGraph[]>([]);
 const models = ref<RuntimeModelItem[]>([]);
 const tools = ref<RuntimeToolItem[]>([]);
+const restrictions = ref<ToolRestrictionItem[]>([]);
 const fields = ref<ContextField[]>([]);
 const loading = ref(true);
 const saving = ref(false);
@@ -104,6 +105,49 @@ const currentGraphItem = computed(() =>
   graphs.value.find((g) => g.graph_id === graphId.value),
 );
 
+// 当前 Graph 下声明的工具
+const declaredToolsForGraph = computed(() => {
+  const currentGraph = graphId.value?.trim();
+  if (!currentGraph) return [];
+  return tools.value.filter((t) => (t.graph_ids || []).includes(currentGraph));
+});
+
+// 当前 Graph 适用的禁用规则映射 (key: tool_name)
+const restrictionsForCurrentGraph = computed(() => {
+  const currentGraph = graphId.value?.trim();
+  if (!currentGraph) return new Map<string, ToolRestrictionItem[]>();
+  const map = new Map<string, ToolRestrictionItem[]>();
+  for (const r of restrictions.value) {
+    if (r.graph_id === currentGraph) {
+      const list = map.get(r.tool_name) || [];
+      list.push(r);
+      map.set(r.tool_name, list);
+    }
+  }
+  return map;
+});
+
+function getToolRestriction(toolKey: string): ToolRestrictionItem | null {
+  const matches = restrictionsForCurrentGraph.value.get(toolKey);
+  if (!matches || matches.length === 0) return null;
+  // 优先匹配全员项目级禁用，其次取单人禁用
+  return matches.find((r) => r.subject_type === "project") || matches[0];
+}
+
+// 统计当前声明工具的可用与禁用数量
+const toolsStats = computed(() => {
+  let restricted = 0;
+  let available = 0;
+  for (const t of declaredToolsForGraph.value) {
+    if (getToolRestriction(t.tool_key)) {
+      restricted++;
+    } else {
+      available++;
+    }
+  }
+  return { available, restricted };
+});
+
 const statusOptions = [
   { value: "active", label: "启用 (Active)" },
   { value: "disabled", label: "停用 (Disabled)" },
@@ -126,20 +170,16 @@ const executionModeOptions = [
   ...EXECUTION_MODES,
 ];
 
-const toolModeOptions = [
-  { value: "inherit", label: "使用已授权的默认工具（继承项目策略）" },
-  { value: "select", label: "自定义选择工具范围（明确限定可用工具）" },
-];
-
 function fill(agent: Agent) {
   original.value = agent;
   graphId.value = agent.graph_id;
   name.value = agent.name;
   description.value = agent.description;
   status.value = agent.status;
-  context.value = { ...agent.context };
-  toolMode.value = agent.context.tools === undefined ? "inherit" : "select";
-  selectedTools.value = [...(agent.context.tools ?? [])];
+  const cleanContext = { ...agent.context };
+  delete (cleanContext as any).tools;
+  delete (cleanContext as any).enable_tools;
+  context.value = cleanContext;
 }
 
 async function load() {
@@ -151,12 +191,11 @@ async function load() {
   fields.value = [];
   name.value = "";
   description.value = "";
-  selectedTools.value = [];
-  toolMode.value = "inherit";
   status.value = "active";
   saving.value = false;
   models.value = [];
   tools.value = [];
+  restrictions.value = [];
   graphs.value = [];
   error.value = "";
   notice.value = "";
@@ -164,16 +203,18 @@ async function load() {
   const project = activeProjectId.value;
   try {
     if (!project) throw new Error("请先选择项目");
-    const [graphList, modelList, toolList, agent] = await Promise.all([
+    const [graphList, modelList, toolList, agent, restrictionsData] = await Promise.all([
       listGraphsPage(project, { limit: 500 }),
       listRuntimeModels(project),
       listRuntimeTools(project),
       agentId.value ? getAgent(project, agentId.value) : Promise.resolve(null),
+      listToolRestrictions(project).catch(() => ({ items: [] })),
     ]);
     if (requestEpoch !== epoch) return;
     graphs.value = graphList.items;
-    models.value = modelList.models.filter((model) => model.enabled);
+    models.value = modelList.models.filter((model: RuntimeModelItem) => model.enabled);
     tools.value = toolList.tools;
+    restrictions.value = restrictionsData.items || [];
     if (agent) fill(agent);
     else graphId.value = graphs.value[0]?.graph_id ?? "";
   } catch (cause) {
@@ -230,10 +271,11 @@ async function save() {
     const nextContext: AgentContext = parseAgentContext(
       {
         ...context.value,
-        tools: toolMode.value === "select" ? selectedTools.value : undefined,
       },
       fields.value,
     );
+    delete (nextContext as any).tools;
+    delete (nextContext as any).enable_tools;
     if (isNew.value) {
       const created = await createAgent(project, {
         graph_id: graphId.value,
@@ -291,16 +333,6 @@ function copyAgentId() {
   setTimeout(() => {
     copiedId.value = false;
   }, 2000);
-}
-
-function toggleTool(toolKey: string) {
-  const set = new Set(selectedTools.value);
-  if (set.has(toolKey)) {
-    set.delete(toolKey);
-  } else {
-    set.add(toolKey);
-  }
-  selectedTools.value = Array.from(set);
 }
 
 function applyTokenPreset(tokens: number | undefined) {
@@ -665,88 +697,81 @@ onScopeDispose(() => {
                 </div>
                 <div>
                   <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
-                    工具访问控制
+                    已声明工具能力
                   </h2>
                   <p class="text-xs text-gray-500 dark:text-dark-300">
-                    管理该智能体被允许调用的平台工具集
+                    该智能体归属 Graph 声明的工具列表（由运行时统一治理并受项目禁用规则管控）
                   </p>
                 </div>
               </div>
               <span class="text-xs text-gray-400">
-                {{ toolMode === 'inherit' ? '已继承全部授权工具' : `已选 ${selectedTools.length} 项工具` }}
+                共 {{ declaredToolsForGraph.length }} 项工具
+                <template v-if="declaredToolsForGraph.length">
+                  （<span class="text-emerald-600 dark:text-emerald-400">{{ toolsStats.available }} 可用</span>
+                  <template v-if="toolsStats.restricted > 0">
+                    · <span class="text-rose-600 dark:text-rose-400">{{ toolsStats.restricted }} 已禁用</span>
+                  </template>）
+                </template>
               </span>
             </div>
 
-            <div>
-              <label class="pw-input-label">工具范围策略</label>
-              <BaseSelect
-                :model-value="toolMode"
-                :options="toolModeOptions"
-                @update:model-value="val => { toolMode = (val as 'inherit' | 'select') || 'inherit' }"
-              />
-            </div>
-
-            <!-- 自定义选择工具的卡片网格 -->
-            <div
-              v-if="toolMode === 'select'"
-              class="space-y-3 pt-2"
-            >
-              <div class="flex items-center justify-between text-xs text-gray-500">
-                <span>点击卡片选择/取消该工具</span>
-                <div class="flex gap-2">
-                  <button
-                    type="button"
-                    class="text-primary-600 hover:underline dark:text-primary-400"
-                    @click="selectedTools = tools.map(t => t.tool_key)"
-                  >
-                    全选
-                  </button>
-                  <span>·</span>
-                  <button
-                    type="button"
-                    class="text-gray-400 hover:underline"
-                    @click="selectedTools = []"
-                  >
-                    清空
-                  </button>
-                </div>
-              </div>
-
-              <div class="grid gap-2.5 sm:grid-cols-2">
+            <!-- 工具卡片网格（只读展示） -->
+            <div class="space-y-3 pt-2">
+              <div
+                v-if="declaredToolsForGraph.length"
+                class="grid gap-2.5 sm:grid-cols-2"
+              >
                 <div
-                  v-for="tool in tools"
+                  v-for="tool in declaredToolsForGraph"
                   :key="tool.tool_key"
-                  class="group relative flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition-all duration-150"
-                  :class="selectedTools.includes(tool.tool_key)
-                    ? 'border-primary-500 bg-primary-50/40 ring-1 ring-primary-500/20 dark:border-primary-600 dark:bg-primary-950/20'
-                    : 'border-gray-150 hover:border-gray-300 hover:bg-gray-50/60 dark:border-dark-800 dark:hover:border-dark-700'"
-                  @click="toggleTool(tool.tool_key)"
+                  class="relative flex items-start gap-3 rounded-xl border p-3 transition-all"
+                  :class="
+                    getToolRestriction(tool.tool_key)
+                      ? 'border-rose-200/80 bg-rose-50/30 dark:border-rose-900/40 dark:bg-rose-950/20'
+                      : 'border-gray-150 bg-gray-50/40 dark:border-dark-800 dark:bg-dark-900/40'
+                  "
                 >
-                  <!-- 勾选状态圆标 -->
+                  <!-- 可用状态：对勾（绿色）；禁用状态：叉号（红色） -->
                   <div
-                    class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors"
-                    :class="selectedTools.includes(tool.tool_key)
-                      ? 'border-primary-600 bg-primary-600 text-white'
-                      : 'border-gray-300 bg-white dark:border-dark-600 dark:bg-dark-900'"
+                    class="mt-0.5 flex h-4.5 w-4.5 shrink-0 items-center justify-center rounded-full"
+                    :class="
+                      getToolRestriction(tool.tool_key)
+                        ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
+                        : 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
+                    "
                   >
                     <BaseIcon
-                      v-if="selectedTools.includes(tool.tool_key)"
-                      name="check"
+                      :name="getToolRestriction(tool.tool_key) ? 'x' : 'check'"
                       size="xs"
                     />
                   </div>
 
                   <div class="min-w-0 flex-1">
                     <div class="flex items-center justify-between gap-1">
-                      <span class="truncate text-xs font-semibold text-gray-900 dark:text-white">
+                      <span
+                        class="truncate text-xs font-semibold"
+                        :class="
+                          getToolRestriction(tool.tool_key)
+                            ? 'text-gray-700 line-through dark:text-dark-300'
+                            : 'text-gray-900 dark:text-white'
+                        "
+                      >
                         {{ tool.name || tool.tool_key }}
                       </span>
-                      <span
-                        v-if="tool.source"
-                        class="shrink-0 rounded bg-gray-100 px-1 py-0.2 text-[10px] text-gray-500 dark:bg-dark-800"
-                      >
-                        {{ tool.source }}
-                      </span>
+                      <div class="flex items-center gap-1 shrink-0">
+                        <span
+                          v-if="getToolRestriction(tool.tool_key)"
+                          class="rounded-full bg-rose-100 px-1.5 py-0.2 text-[10px] font-medium text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
+                        >
+                          {{ getToolRestriction(tool.tool_key)?.subject_type === 'project' ? '项目禁用' : '成员禁用' }}
+                        </span>
+                        <span
+                          v-if="tool.source"
+                          class="rounded bg-gray-100 px-1 py-0.2 text-[10px] text-gray-500 dark:bg-dark-800"
+                        >
+                          {{ tool.source }}
+                        </span>
+                      </div>
                     </div>
                     <p class="mt-0.5 font-mono text-[11px] text-gray-400">
                       {{ tool.tool_key }}
@@ -757,15 +782,22 @@ onScopeDispose(() => {
                     >
                       {{ tool.description }}
                     </p>
+                    <!-- 禁用原因清晰展示 -->
+                    <div
+                      v-if="getToolRestriction(tool.tool_key)"
+                      class="mt-2 rounded-lg bg-rose-50/80 px-2 py-1 text-[11px] text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
+                    >
+                      <span class="font-medium">原因：</span>{{ getToolRestriction(tool.tool_key)?.reason }}
+                    </div>
                   </div>
                 </div>
               </div>
 
               <p
-                v-if="!tools.length"
+                v-else
                 class="py-6 text-center text-xs text-gray-400"
               >
-                当前项目暂无已接入的工具
+                {{ graphId ? '所选 Graph 当前未声明任何工具' : '请先选择 Graph 以查看声明工具' }}
               </p>
             </div>
           </SurfaceCard>
@@ -849,9 +881,9 @@ onScopeDispose(() => {
                 </p>
               </div>
               <div class="rounded-lg bg-white p-2 dark:bg-dark-900">
-                <span class="text-[10px] text-gray-400">工具调用配额</span>
+                <span class="text-[10px] text-gray-400">已声明工具</span>
                 <p class="font-semibold text-gray-800 dark:text-gray-200">
-                  {{ toolMode === 'inherit' ? '全量继承' : `${selectedTools.length} 项限定` }}
+                  {{ declaredToolsForGraph.length ? `${declaredToolsForGraph.length} 项` : '无' }}
                 </p>
               </div>
             </div>

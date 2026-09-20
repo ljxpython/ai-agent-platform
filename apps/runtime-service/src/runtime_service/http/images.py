@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any
 
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 
 from runtime_service.auth.platform import authenticate
+from runtime_service.runtime.tool_access import require_tool_access
 from runtime_service.tools.images import ImageWorkspace, ImageWorkspaceError
 from runtime_service.workspace.image_refs import UPLOAD_MAX_BYTES, ImageRef
 from runtime_service.workspace.scoped import resolve_thread_workspace
@@ -38,6 +38,7 @@ async def _authorize_image_request(
                 "message": "Graph does not support image workspace",
             },
         )
+    require_tool_access(facts, "write_file" if expected_operation == "image-upload" else "read_file")
     tenant_id = scope.get("tenant_id")
     project_id = scope.get("project_id")
     if not tenant_id or not project_id:

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import FrozenInstanceError
+from dataclasses import FrozenInstanceError, replace
 import json
 import builtins
 from math import inf, nan
@@ -13,7 +13,6 @@ from runtime_service.runtime import (
     RuntimePolicy,
     RuntimePrincipal,
     RuntimeResolutionError,
-    ResolvedRuntimeConfig,
     parse_runtime_context,
     resolved_runtime_config_from_snapshot,
     resolve_runtime_config,
@@ -29,7 +28,7 @@ def _inputs() -> tuple[RuntimePrincipal, RuntimePolicy, AgentDefaults]:
         RuntimePolicy(
             "policy-1",
             ("deepseek:deepseek-chat",),
-            ("read_project", "search"),
+            (), "test-tools-v2",
         ),
         AgentDefaults(
             model_id="deepseek:deepseek-chat",
@@ -45,14 +44,14 @@ def test_contracts_are_frozen() -> None:
     principal, policy, defaults = _inputs()
     resolved = resolve_runtime_config(
         principal=principal,
-        context=RuntimeContext(tools=()),
+        context=RuntimeContext(),
         policy=policy,
         defaults=defaults,
     )
     values = [
         RuntimePrincipal("user-a", "tenant-a", "project-a", "developer", ()),
         RuntimeContext(),
-        RuntimePolicy("p1", ("test:model",), ()),
+        RuntimePolicy("p1", ("test:model",), (), "test-tools-v2"),
         AgentDefaults("test:model", "prompt", "v1"),
         resolved,
     ]
@@ -76,17 +75,17 @@ def test_context_parser_rejects_unknown_and_identity_fields() -> None:
     assert legacy.value.code == "runtime.context.unknown_field"
 
 
-def test_resolver_merges_context_and_preserves_empty_tools() -> None:
+def test_resolver_merges_context_and_uses_declared_tools() -> None:
     principal, policy, defaults = _inputs()
     resolved = resolve_runtime_config(
         principal=principal,
-        context=RuntimeContext(temperature=0, tools=()),
+        context=RuntimeContext(temperature=0),
         policy=policy,
         defaults=defaults,
     )
 
     assert resolved.temperature == 0.0
-    assert resolved.optional_tool_names == ()
+    assert resolved.optional_tool_names == ("read_project", "search")
     assert resolved.required_tool_names == ()
     assert resolved.prompt_hash.startswith("sha256:")
     assert resolved.config_hash.startswith("sha256:")
@@ -129,14 +128,8 @@ def test_resolver_rejects_model_and_tool_policy_violations() -> None:
         )
     assert model_error.value.code == "runtime.model.not_allowed"
 
-    with pytest.raises(RuntimeResolutionError) as tool_error:
-        resolve_runtime_config(
-            principal=principal,
-            context=RuntimeContext(tools=("unknown",)),
-            policy=policy,
-            defaults=defaults,
-        )
-    assert tool_error.value.code == "runtime.optional_tool.not_declared"
+    with pytest.raises(RuntimeResolutionError):
+        parse_runtime_context({"tools": ["unknown"]})
 
 
 @pytest.mark.parametrize(
@@ -157,44 +150,29 @@ def test_context_parser_rejects_invalid_generation_values(field: str, value: obj
         parse_runtime_context({field: value})
 
 
-def test_resolver_enforces_actor_tool_permissions() -> None:
+def test_resolver_applies_denials_and_keeps_required_strict() -> None:
     principal, policy, defaults = _inputs()
-    with pytest.raises(RuntimeResolutionError) as error:
-        resolve_runtime_config(
-            principal=principal,
-            context=RuntimeContext(),
-            policy=policy,
-            defaults=defaults,
-            tool_permissions={"search": "tool.search", "read_project": "tool.read"},
-        )
-    assert error.value.code == "runtime.optional_tool.not_allowed"
-
-    with pytest.raises(RuntimeResolutionError) as required_error:
-        resolve_runtime_config(
-            principal=principal,
-            context=RuntimeContext(),
-            policy=policy,
-            defaults=AgentDefaults(
-                model_id=defaults.model_id,
-                system_prompt=defaults.system_prompt,
-                prompt_version=defaults.prompt_version,
-                required_tool_names=("search",),
-            ),
-            tool_permissions={"search": "tool.search"},
-        )
-    assert required_error.value.code == "runtime.required_tool.not_allowed"
+    denied = replace(policy, denied_tool_names=("search",))
+    resolved = resolve_runtime_config(principal=principal, context=RuntimeContext(), policy=denied, defaults=defaults)
+    assert resolved.optional_tool_names == ("read_project",)
+    with pytest.raises(RuntimeResolutionError, match="runtime.required_tool.not_allowed"):
+        resolve_runtime_config(principal=principal, context=RuntimeContext(), policy=denied,
+            defaults=replace(defaults, required_tool_names=("search",), optional_tool_names=("read_project",)))
+    with pytest.raises(RuntimeResolutionError, match="runtime.tool.restriction_unknown"):
+        resolve_runtime_config(principal=principal, context=RuntimeContext(),
+            policy=replace(policy, denied_tool_names=("typo",)), defaults=defaults)
 
 
 def test_runtime_context_hash_and_snapshot_are_safe_and_stable() -> None:
-    context = {"temperature": 0, "tools": ["search"]}
+    context = {"temperature": 0}
     assert runtime_context_hash(context) == runtime_context_hash(
-        RuntimeContext(temperature=0.0, tools=("search",))
+        RuntimeContext(temperature=0.0)
     )
 
     principal, policy, defaults = _inputs()
     resolved = resolve_runtime_config(
         principal=principal,
-        context=RuntimeContext(tools=()),
+        context=RuntimeContext(),
         policy=policy,
         defaults=defaults,
     )
@@ -221,7 +199,7 @@ def test_runtime_context_hash_changes_with_semantics() -> None:
 
 def test_resolver_does_not_mutate_inputs_or_perform_io(monkeypatch: pytest.MonkeyPatch) -> None:
     principal, policy, defaults = _inputs()
-    context = {"temperature": 0, "tools": ["read_project"]}
+    context = {"temperature": 0}
     original_context = json.loads(json.dumps(context))
 
     def fail_io(*_: object, **__: object) -> object:
@@ -236,4 +214,4 @@ def test_resolver_does_not_mutate_inputs_or_perform_io(monkeypatch: pytest.Monke
     )
 
     assert context == original_context
-    assert resolved.optional_tool_names == ("read_project",)
+    assert resolved.optional_tool_names == ("read_project", "search")

@@ -40,4 +40,4 @@
 - `platform-api`：对外统一鉴权/项目隔离；需要时转发/聚合 `interaction-data-service`。
 - `platform-web`：当前正式平台前端宿主，按 domain 做页面入口与管理能力。
 
-本地部署补充说明：默认本地部署成员以 `docs/local-deployment-contract.yaml` 为准；当前默认本地启动集已经包含 `interaction-data-service` 与 `platform-web`。
+本地部署补充说明：默认本地部署成员以 `docs/local-deployment-contract.yaml` 为准；当前默认进程为 Runtime API/Worker、Platform API 和 Platform Web；`interaction-data-service` 按需独立启动。

@@ -37,7 +37,7 @@
 
 产品Agent执行键为graph_id，标准SDK字段仍为assistant_id；平台不创建/同步上游Assistant。Graph/Tool刷新是有限超时HTTP，普通目录只读快照；schema从远端读取，不扫描宿主源码。
 
-model_id使用平台模型记录UUID，不是provider:model或模型名称。默认值按项目→Agent→本次显式参数覆盖，仍受策略约束。Agent公开context为model_id、temperature、max_tokens、top_p、tools；不能从客户端注入身份或内部模型引用。
+model_id使用平台模型记录UUID，不是provider:model或模型名称。默认值按项目→Agent→本次显式参数覆盖，仍受策略约束。Agent公开context为model_id、temperature、max_tokens、top_p；不能从客户端注入身份或内部模型引用。
 
 公开运行config只允许recursion_limit（1–1000，默认25）。内部委托与模型引用由服务端构造，模型凭据不进入浏览器、Run快照或普通日志。Runtime通过受信内部接口按当前权限兑换连接；master key只由Platform持有。
 
@@ -83,3 +83,7 @@ Runtime保有记忆私有表和revision规则；GraphHarbor不实现此业务。
 当前技能使用不透明 revision 做 CAS；旧 thread skills 入口不兼容，memory 保留。
 完整契约见 [前端交接](../../../../docs/projects/20260919-skills-page-improvement/07-frontend-handoff.md)。
 具体字段与前端限制见[Dear P6交接](../../../../docs/projects/20260913-dearflow-agent/frontend-handoff.md)。
+
+## 工具治理（2026-09-20）
+
+Runtime 代码声明工具上限；工具 Catalog 仅展示。Platform 从 runtime_tool_restrictions 求项目/用户拒绝并集，签发 delegation_version=2、false-only tool_overrides 和 tool_policy_version。每次具体操作重新求值，查询失败不签空规则。浏览器的 tools/enable_tools/授权字段拒绝；旧工具策略接口已退役。管理接口及前端接入见[交接文档](../../../../docs/projects/20260920-runtime-optional-tool-resolution/frontend-handoff.md)。

@@ -36,7 +36,7 @@ def test_both_services_use_same_context_hash_and_answer_vectors():
             with pytest.raises(ValueError):
                 validate_answer(request, answer)
         answers.append((answer, valid))
-    context = {"execution_mode": "pro", "tools": ["read_file", "search_web"], "temperature": 1}
+    context = {"execution_mode": "pro", "temperature": 1}
     expected = runtime_context_hash(context)
     repo = Path(__file__).resolve().parents[5]
     script = '''

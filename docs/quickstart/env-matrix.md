@@ -1,136 +1,95 @@
-# 环境变量矩阵
+# 非 Docker 配置矩阵
 
-文档类型：`Operational`
+2026-09-21 收口，按实际脚本、配置类核对。操作见[部署手册](deployment-guide.md)。
+仅记录名称和占位符，真实密码、JWT secret、模型 Key、token 只存私有配置。
 
-本文只做配置文件与关键变量索引。
+## 读取规则
 
-默认本地部署的服务成员、启动顺序、端口和链路，以 [`docs/local-deployment-contract.yaml`](../local-deployment-contract.yaml) 为准。
+| 文件 | 使用者 | 注意 |
+|---|---|---|
+| apps/runtime-service/.env | 脚本、GraphHarbor API/Worker | 被 bash source，必须正确引用特殊字符 |
+| apps/platform-api/.env | Settings、database.py | dotenv 读取，进程环境优先，不直接 source |
+| apps/platform-web/.env.local | Vite | 仅公开参数；脚本覆盖 API、代理、端口 |
+| apps/interaction-data-service/.env | 可选结果域 | 默认不启动 |
+| 根目录 .env | 私有保留文件 | 非统一启动配置，不整体注入 |
 
-## 1. `platform-api`
+旧 Runtime 嵌套目录和 conf/settings*.yaml 已退出默认链路，模型来源是平台模型目录。
 
-主要配置来源：
+## Runtime
 
-- `apps/platform-api/.env`
-- `apps/platform-api/.env.example`
-- `deploy/.env.stack.example`
+| 字段 | 推荐值 / 规则 |
+|---|---|
+| DATABASE_URI | postgresql://runtime_service:<URI编码密码>@127.0.0.1:5432/runtime_service |
+| REDIS_URI | redis://127.0.0.1:6379/7；认证按现有环境 |
+| PLATFORM_RUNTIME_DELEGATION_SECRET | 与平台同值，至少 32 字节 |
+| PLATFORM_RUNTIME_DELEGATION_ISSUER | platform-api |
+| PLATFORM_RUNTIME_DELEGATION_AUDIENCE | runtime-service |
+| PLATFORM_RUNTIME_MODEL_CONFIG_URL | http://127.0.0.1:2142/api/runtime/internal/model-config |
+| GRAPHHARBOR_RUNTIME_CONTEXT_SECRET | 独立随机值，至少 32 字符，API/Worker 共用 |
+| GRAPHHARBOR_RUNTIME_CONTEXT_ISSUER | https://runtime-service.local，身份标识，无需建站 |
+| GRAPHHARBOR_RUNTIME_CONTEXT_AUDIENCE | graphharbor-worker |
+| GRAPHHARBOR_RUN_TIMEOUT_SECONDS | 300 |
+| GRAPHHARBOR_WORKSPACE_ROOT | 可写绝对路径，推荐持久目录；本地原值 /tmp/aitestlab-runtime-workspaces |
+| RUNTIME_WORKSPACE_MAX_FILE_BYTES | 10485760 |
+| RUNTIME_WORKSPACE_MAX_FILES | 10000 |
+| RUNTIME_WORKSPACE_MAX_TOTAL_BYTES | 1073741824 |
+| RUNTIME_WORKSPACE_TTL_SECONDS | 604800 |
+| RUNTIME_SHOWCASE_BACKEND | local |
+| RUNTIME_TERMINAL_BACKEND | local |
+| RUNTIME_TERMINAL_ENABLED | 1，工具以应用用户权限执行 |
+| RUNTIME_GRAPH_CONFIG_PATH | 可选，默认 apps/runtime-service/langgraph.json |
 
-关键变量：
+LANGFUSE_ENABLED=true 时必须提供 LANGFUSE_PUBLIC_KEY、LANGFUSE_SECRET_KEY、LANGFUSE_BASE_URL。
+LANGSMITH_API_KEY、图片、搜索、MCP 凭据按功能提供。
+DEEPSEEK_PROXY_* / GPT_PROXY_* 供独立 smoke 等使用，不会创建平台模型目录。
+不要求 LANGGRAPH_CLOUD_LICENSE_KEY、旧 MODEL_ID 或 YAML profile。
 
-- `PLATFORM_API_LANGGRAPH_UPSTREAM_URL`
-- `PLATFORM_API_LANGGRAPH_UPSTREAM_API_KEY`
-- `PLATFORM_API_RUNTIME_DELEGATION_SECRET`
-- `PLATFORM_API_RUNTIME_DELEGATION_KID`
-- `PLATFORM_API_RUNTIME_DELEGATION_ISSUER`
-- `PLATFORM_API_RUNTIME_DELEGATION_AUDIENCE`
-- `PLATFORM_API_RUNTIME_DELEGATION_TTL_SECONDS`
-- `PLATFORM_API_INTERACTION_DATA_SERVICE_URL`
-- `PLATFORM_API_KNOWLEDGE_UPSTREAM_URL`
-- `PLATFORM_API_KNOWLEDGE_UPSTREAM_API_KEY`
-- `PLATFORM_API_DATABASE_URL`：本地 `postgresql+psycopg://platform_api:<password>@127.0.0.1:5432/platform_api`，见[数据库运维规范](../guides/database-operations.md)
-- `PLATFORM_API_PLATFORM_DB_ENABLED`
-- `PLATFORM_API_PLATFORM_DB_AUTO_CREATE`
-- `PLATFORM_API_AUTH_REQUIRED`
-- `PLATFORM_API_JWT_ACCESS_SECRET`
-- `PLATFORM_API_JWT_REFRESH_SECRET`
-- `PLATFORM_API_BOOTSTRAP_ADMIN_ENABLED`
+以上名称与通用 .env.example 对齐；收到个人交接时按其账号映射替换库名和角色。
+业务连接必须实际使用 SCRAM，.pgpass（600）只负责提供客户端凭据，不替代服务端认证。
+具体正反向验收见[部署手册第 6 节](deployment-guide.md#6-建库密码认证和验收按顺序完成)。
 
-说明：
+## Platform API
 
-- `platform-api` 是正式控制面宿主
-- 平台侧 RAG / LightRAG HTTP URL 归 `platform-api`
-- 如果该上游运行在宿主机，不应写成 `127.0.0.1:<port>`，应改成容器可达地址，例如 `host.docker.internal:<port>`
-- 当前验证通过的宿主机可达形态：`http://host.docker.internal:9621`
+下表字段都加 PLATFORM_API_ 前缀：
 
-## 2. `interaction-data-service`
+| 后缀 | 推荐值 / 规则 |
+|---|---|
+| APP_ENV | local，仅受控开发 |
+| PLATFORM_DB_ENABLED | true |
+| PLATFORM_DB_AUTO_CREATE | false |
+| DATABASE_URL | postgresql+psycopg://platform_api:<URI编码密码>@127.0.0.1:5432/platform_api |
+| LANGGRAPH_UPSTREAM_URL | http://127.0.0.1:8123 |
+| RUNTIME_DELEGATION_SECRET | 与 Runtime 同值 |
+| RUNTIME_DELEGATION_ISSUER | platform-api |
+| RUNTIME_DELEGATION_AUDIENCE | runtime-service |
+| MODEL_CONFIG_MASTER_KEY | 有效 Fernet 密钥，持久保存 |
+| RUNTIME_MODEL_CONFIG_SECRET | 可选，默认复用委托密钥 |
+| JWT_ACCESS_SECRET / JWT_REFRESH_SECRET | 两个独立随机值，不能保留模板值 |
+| AUTH_REQUIRED | true |
+| BOOTSTRAP_ADMIN_ENABLED | 首次 true，确认后可关闭 |
+| BOOTSTRAP_ADMIN_USERNAME | admin |
+| BOOTSTRAP_ADMIN_PASSWORD | 私有密码，不写公开文档 |
+| CORS_ALLOW_ORIGINS | JSON 数组；推荐前端同源代理 |
 
-主要配置来源：
+LANGGRAPH_UPSTREAM_API_KEY 可选，不是当前 GraphHarbor 委托认证必填项。
+旧 OPERATIONS_* 已不代表平台 Worker，创建新环境可省略。
+完整规则见[平台配置](../../apps/platform-api/docs/handbook/configuration.md)。
 
-- `apps/interaction-data-service/.env`
-- `apps/interaction-data-service/.env.example`
-- `deploy/.env.stack.example`
+## Platform Web
 
-关键变量：
+```dotenv
+VITE_PLATFORM_API_URL=/
+VITE_PLATFORM_API_RUNTIME_ENABLED=true
+VITE_DEV_PROXY_TARGET=http://127.0.0.1:2142
+VITE_DEV_PORT=3000
+VITE_LANGGRAPH_DEBUG_URL=
+```
 
-- `SERVICE_NAME`
-- `INTERACTION_DB_ENABLED`
-- `INTERACTION_DB_AUTO_CREATE`
-- `DATABASE_URL`
-- `DOCUMENT_ASSET_ROOT`
+VITE_* 会进入浏览器，不放密钥。SSH 只转发前端即可。
 
-说明：
+## 可选结果域
 
-- 它是结果域服务，不承载平台治理主数据
-- 容器化 stack 默认 `INTERACTION_DB_ENABLED=true`
-
-## 3. `platform-web`
-
-主要配置来源：
-
-- `apps/platform-web/.env.example`
-- `apps/platform-web/.env.local`
-- `deploy/.env.stack.example`
-
-关键变量：
-
-- `VITE_PLATFORM_API_URL`
-- `VITE_PLATFORM_API_RUNTIME_ENABLED`
-- `VITE_DEV_PROXY_TARGET`
-- `VITE_DEV_PORT`
-- `VITE_LANGGRAPH_DEBUG_URL`
-
-说明：
-
-- `platform-web` 是正式平台前端宿主
-- 正常情况下应通过 `platform-api` 访问平台能力
-
-## 4. `runtime-service`
-
-主要配置来源：
-
-- `apps/runtime-service/runtime_service/.env`
-- `apps/runtime-service/runtime_service/.env.example`
-- `apps/runtime-service/runtime_service/conf/settings.yaml`
-- `apps/runtime-service/runtime_service/conf/settings.local.yaml`
-- `apps/runtime-service/deploy/.env.runtime-service.example`
-- `deploy/.env.stack.example`
-
-关键变量：
-
-- `APP_ENV`
-- `MODEL_ID`
-- `MULTIMODAL_PARSER_MODEL_ID`
-- `ENABLE_TOOLS`
-- `TOOLS`
-- `LANGSMITH_API_KEY`
-- `LANGSMITH_ENDPOINT`
-- `LANGGRAPH_CLOUD_LICENSE_KEY`
-- `TEST_CASE_V2_KNOWLEDGE_MCP_ENABLED`
-- `TEST_CASE_V2_KNOWLEDGE_MCP_URL`
-- `TEST_CASE_V2_KNOWLEDGE_TIMEOUT_SECONDS`
-- `TEST_CASE_V2_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS`
-- `PLATFORM_RUNTIME_DELEGATION_SECRET`
-- `PLATFORM_RUNTIME_DELEGATION_ISSUER`
-- `PLATFORM_RUNTIME_DELEGATION_AUDIENCE`
-- `PLATFORM_RUNTIME_MANAGEMENT_API_KEY`
-- `PYTHON_VERSION=3.13`
-
-说明：
-
-- `MODEL_ID` 建议默认留空，让 `settings.yaml` 的 `default_model_id` 生效
-- `PLATFORM_API_RUNTIME_DELEGATION_SECRET` 与 `PLATFORM_RUNTIME_DELEGATION_SECRET` 必须相同且至少 32 bytes
-- `PLATFORM_API_LANGGRAPH_UPSTREAM_API_KEY` 与 `PLATFORM_RUNTIME_MANAGEMENT_API_KEY` 必须相同且至少 32 bytes
-- `MULTIMODAL_PARSER_MODEL_ID` 控制共享 `MultimodalMiddleware` 的附件解析模型默认值
-- 当前容器化基线默认值：`gpt_5.4-ccr`
-- 上面这组 `TEST_CASE_V2_*` 变量已经接到 `test_case_service_v2` 的 env fallback
-- 它们属于 service-private runtime config，不进入公共 MCP registry
-- 若 `runtime-service` 跑在容器里而 LightRAG 跑在宿主机，不应写成 `0.0.0.0:<port>`，应改成容器可达地址，例如 `host.docker.internal:<port>`
-- 当前验证通过的容器内访问形态：`http://host.docker.internal:8621/sse`
-
-## 5. 当前原则
-
-- 默认正式演示链路的环境变量彼此独立维护
-- 根目录不新增统一 `.env`
-- `apps/platform-web` 是正式平台前端宿主
-- `apps/platform-api` 是正式控制面宿主
-- `apps/runtime-service` 是正式执行层
-- `apps/interaction-data-service` 是正式结果域服务
+SERVICE_NAME=interaction-data-service，当前本地 INTERACTION_DB_ENABLED=false、
+INTERACTION_DB_AUTO_CREATE=false、DATABASE_URL 为空。
+启用时使用独立库 interaction_data_service 和同名角色，按结果域自己的规范建表；
+控制面 Alembic 不管理这些表。

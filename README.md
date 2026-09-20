@@ -34,7 +34,7 @@
 基于 `LangGraph / LangChain` 的企业级 AI 平台架构，可在此基础上进行二次开发。  
 它把**平台治理层**和**Agent Runtime 执行层**拆开，既支持平台侧的认证、项目管理、审计、catalog 管理，也支持 Agent 侧的图编排、模型装配、Tools / MCP / Skills 接入与快速调试，适合作为企业内部 AI 平台和智能体应用的基础骨架。
 
-当前仓库默认提供一套正式五服务演示链路，适合：
+当前仓库提供原生进程开发链路，结果域按需独立启用，适合：
 
 - 想基于主流 Agent 技术栈做二次开发的团队
 - 想同时建设平台能力和 Agent 执行能力的项目
@@ -67,11 +67,17 @@
 
 当前规划：[Dear Agent 总纲与能力迁移](docs/projects/20260913-dearflow-agent/README.md)（第二版：独立前端、前后端基础框架与逐章实施接续；治理方案待评审，尚未实施）。
 
+成果专项：[Dear Agent 成果页分层规划](docs/projects/20260920-dear-agent-artifacts-alignment/README.md)（本方负责后端/Runtime，前端由其他同事实现；[接口与测试交接](docs/projects/20260920-dear-agent-artifacts-alignment/04-frontend-handoff.md)已细化，仅规划未实施）。
+
+新增专项：[Runtime 工具治理收敛](docs/projects/20260920-runtime-optional-tool-resolution/README.md)（方案已批准，待实施；Runtime 执行、平台管理禁用例外、Catalog 仅展示；旧功能直接退役，不维护或迁移旧项目）。
+
+记忆专项：[Dear Agent 记忆闭环补齐](docs/projects/20260920-dear-agent-memory/README.md)（已细化源码参考、目录、Runtime/Platform实施、接口与测试；前端仅交接给其他同事；规划待评审，尚未实施）。
+
 一句话理解：
 
 - `AGENTS.md`：开发规范入口，定义分级标准和验证要求
-- `docs/projects/`：链路/治理改动的项目文档（方案、任务、验证记录）
 - [数据库部署与迁移规范](docs/guides/database-operations.md)：新服务器建库、未来迁移与本地 PG 开发
+- `docs/projects/`：链路/治理改动的项目文档（方案、任务、验证记录）
 - 各 app/service 自己的 `docs/`：服务内部标准
 
 改动分级由 AI 自动判断（不需要手动调用命令），依据见 `AGENTS.md`。
@@ -151,7 +157,7 @@
 
 ## 系统总览
 
-当前根目录默认联调脚本会启动 4 个正式应用：
+仓库包含以下应用；默认脚本启动 Runtime API、Runtime Worker、Platform API 和 Platform Web，结果域按需单独启动：
 
 - `apps/interaction-data-service`：结果域数据服务 / 工作流结果落库与查询
 - `apps/platform-api`：正式平台后端 / 控制面 API
@@ -175,31 +181,30 @@
 
 ## 快速开始
 
-### 默认启动顺序
+### 非 Docker 本地 / 服务器开发（推荐）
 
-1. `runtime-service`
-2. `interaction-data-service`
-3. `platform-api`
-4. `platform-web`
+首次部署直接按[非 Docker 部署手册](docs/quickstart/deployment-guide.md)操作：
+原生依赖安装 → 账号和空库 → app-local 配置 → 迁移 → 启动 → SSH 访问 → 登录和模型验收。
+通用账号与 app-local 示例对齐，个人交接另附实际账号映射；密码和模型 Key 只保存在私有配置。
+本地 PostgreSQL 的[认证与回退验证](docs/projects/20260920-local-postgres-password/README.md)已完成；服务器由运维按[交接与回执](docs/quickstart/operator-handoff.md)部署并独立验收。
 
-### 本地栈启动（推荐）
+默认启动顺序：Runtime API、Runtime Worker、Platform API、Platform Web。
+PostgreSQL 和 Redis 必需且预先运行；没有 Platform Worker，结果域不由默认脚本管理。
 
-如果本机已经运行 PostgreSQL 和 Redis，使用本地栈脚本：
+完成首次配置后，在仓库根目录执行：
 
 ```bash
-bash scripts/local-stack.sh doctor   # 验证环境和依赖
-bash scripts/local-stack.sh start    # 启动完整栈
-bash scripts/local-stack.sh status   # 检查服务状态
-bash scripts/local-stack.sh stop     # 停止服务
+source "apps/runtime-service/.venv/bin/activate"
+bash "scripts/local-stack.sh" doctor
+bash "scripts/local-stack.sh" start
+bash "scripts/local-stack.sh" status
+bash "scripts/local-stack.sh" stop
 ```
 
-该脚本直接启动 GraphHarbor API、GraphHarbor Worker、Platform API、Platform Worker 和 Platform Web；
-数据库迁移使用 `migrate` 子命令执行，日志和 PID 文件放在系统临时目录。它不会停止或删除本机
-PostgreSQL、Redis，也不会按端口杀掉不属于自己的进程。启动前会检查 `DATABASE_URI` 对应的 PostgreSQL
-和 `REDIS_URI`，发现失效 PostgreSQL 锁文件时不会自动删除。Runtime 使用
-`apps/runtime-service/.env`，Platform API 使用 `apps/platform-api/.env`。
-首次使用时，分别从对应的 `.env.example` 创建本地 `.env`，填入真实模型凭据和本机 PostgreSQL
-账号；不要覆盖已有 `.env`，也不要提交真实值。
+脚本使用各应用自己的配置，先执行平台、GraphHarbor 和 Runtime 应用表迁移，再启动进程。
+它不是基础设施安装器，也不安装前端依赖；doctor 可能回收属于本仓库的旧占用进程。
+不复制跨系统的 .venv/node_modules，不将根目录 .env 作为统一运行配置。
+新空库需初始化管理员、创建项目，并在平台模型目录配置连接；旧聊天等数据不随配置复制。
 
 ### Docker / Docker Compose
 
@@ -247,7 +252,7 @@ VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web" dev
 
 ### 默认本地端口
 
-- `interaction-data-service`：`8081`
+- `interaction-data-service`（可选）：`8081`
 - `runtime-service`：`8123`
 - `platform-api`：`2142`
 - `platform-web`：`3000`
@@ -259,16 +264,13 @@ VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web" dev
 ### 最小健康检查
 
 ```bash
-curl http://127.0.0.1:8081/_service/health
-curl http://127.0.0.1:8123/info
-curl http://127.0.0.1:2142/_system/health
-curl http://127.0.0.1:2142/api/langgraph/info
+curl -fsS "http://127.0.0.1:8123/ready"
+curl -fsS "http://127.0.0.1:2142/_system/health"
 ```
 
-如果 `platform-api` 的 `/api/langgraph/info` 和 `interaction-data-service` 的
-`/_service/health` 都返回成功，说明平台链路和结果落库主链已经基本打通。
-
-![本地联调启动流程图](docs/assets/local-dev-startup-flow.zh.svg)
+检查返回内容，并在登录后创建项目、配置模型、完成一次真实 Run。
+结果域仅在单独启动后检查 8081；默认启动成功不代表结果域落库已验收。
+旧架构图用于服务边界参考，实际启动成员以部署契约和脚本为准。
 
 ## 仓库结构
 
@@ -300,7 +302,7 @@ AITestLab/
 
 ### 我想先把环境跑起来
 
-唯一支持的启动方式是使用 `local-stack.sh`：
+推荐使用统一启动入口 `local-stack.sh`：
 ```bash
 bash "scripts/local-stack.sh" start
 ```
@@ -346,33 +348,9 @@ bash "scripts/local-stack.sh" start
 阅读 `docs/guides/ai-deployment-assistant-instruction.md` 帮我部署环境。
 ```
 
-如果你已经知道本地要用哪套模型，建议把模型配置也一次性发给代理。这样代理更容易一次把环境配好，而不是启动到一半再回头追问 runtime 模型配置。
-
-更推荐直接发这段（把占位符替换成你自己的真实配置，且只让代理写入本地 `settings.local.yaml`，不要把真实 key 提交回仓库）：
-
-```text
-阅读 `docs/guides/ai-deployment-assistant-instruction.md` 帮我部署环境。
-
-默认推理模型使用 `<YOUR_REASONING_MODEL_ID>`。
-当前多模态链路需要的模型一并配置为 `<YOUR_MULTIMODAL_MODEL_ID>`。
-如果本地缺少 runtime 模型配置，请把下面内容写入 `apps/runtime-service/runtime_service/conf/settings.local.yaml`，并继续完成部署、启动与验证；不要把真实 API Key 提交回仓库。
-
-default:
-  default_model_id: <YOUR_REASONING_MODEL_ID>
-  models:
-    <YOUR_MULTIMODAL_MODEL_ID>:
-      alias: <OPTIONAL_MULTIMODAL_ALIAS>
-      model_provider: openai
-      model: <YOUR_MULTIMODAL_MODEL_NAME>
-      base_url: <YOUR_PROVIDER_BASE_URL>
-      api_key: <YOUR_API_KEY>
-    <YOUR_REASONING_MODEL_ID>:
-      alias: <OPTIONAL_REASONING_ALIAS>
-      model_provider: openai
-      model: <YOUR_REASONING_MODEL_NAME>
-      base_url: <YOUR_PROVIDER_BASE_URL>
-      api_key: <YOUR_API_KEY>
-```
+模型连接通过平台模型目录管理；在私有交接中提供 provider、base URL、模型名和 Key，
+登录后配置连接与项目/Agent 模型选择。当前不再向旧 Runtime settings.local.yaml 写模型。
+配置文件本身不能迁移数据库中的项目、用户和模型目录。实际命令与验收见[部署手册](docs/quickstart/deployment-guide.md)。
 
 ## 实操参考
 
@@ -416,7 +394,7 @@ default:
 - `interaction-data-service` 可启动
 - `platform-api` 可启动
 - `platform-api -> runtime-service` 联调已通过
-- `runtime-service -> interaction-data-service` 已接入本地联调脚本
+- `interaction-data-service` 可按需独立启动，默认本地栈不管理该进程
 - `platform-web` 是当前正式平台前端入口
 - 开发流程已收口到 `AGENTS.md`：改动分级（单项目/链路/治理）由 AI 自动判断并按需自动调用 `plan-project`/`implement-feature`/`verify-change` Skills
 - 当前正式版本为 [`v0.3.1`](https://github.com/ljxpython/ai-agent-platform/releases/tag/v0.3.1)

@@ -13,20 +13,19 @@ import type { ActionMenuItem } from "@/components/platform/data-table";
 import {
   createRuntimeModel,
   listRuntimeModels,
+  listRuntimeTools,
   refreshRuntimeTools,
   updateRuntimeModel,
   type RuntimeModelInput,
 } from "@/services/runtime/runtime.service";
 import {
   listRuntimeModelPolicies,
-  listRuntimeToolPolicies,
   updateRuntimeModelPolicy,
-  updateRuntimeToolPolicy,
 } from "@/services/runtime-policies/runtime-policies.service";
 import type {
   RuntimeModelItem,
   RuntimeModelPolicyValue,
-  RuntimeToolPolicyItem,
+  RuntimeToolItem,
 } from "@/types/management";
 import RuntimeModelEditor, {
   type ModelEditorSubmitPayload,
@@ -35,6 +34,7 @@ import RuntimeModelDetailDialog from "../components/RuntimeModelDetailDialog.vue
 import ProviderStationCard, {
   type ProviderStation,
 } from "../components/ProviderStationCard.vue";
+import ToolRestrictionsPanel from "../components/ToolRestrictionsPanel.vue";
 
 const { activeProjectId } = useWorkspaceProjectContext();
 const auth = useAuthStore();
@@ -42,11 +42,15 @@ const { can } = useAuthorization();
 const canManage = computed(() => can("project.runtime.write"));
 const items = ref<RuntimeModelItem[]>([]);
 const policies = ref<Record<string, RuntimeModelPolicyValue>>({});
-const tools = ref<RuntimeToolPolicyItem[]>([]);
+const tools = ref<RuntimeToolItem[]>([]);
+const toolRestrictionsOpen = ref(false);
 const tab = ref<"models" | "tools">("models");
 const query = ref("");
 const page = ref(1);
-const pageSize = ref(20);
+const pageSize = ref(24);
+const pageSizeOptions = computed(() =>
+  tab.value === "tools" ? [12, 24, 48, 96] : [10, 20, 50, 100],
+);
 const loading = ref(false);
 const saving = ref(false);
 const error = ref("");
@@ -130,17 +134,17 @@ async function load() {
   tools.value = [];
   try {
     if (!project) throw new Error("请先选择项目");
-    const [models, modelPolicies, toolPolicies] = await Promise.all([
+    const [models, modelPolicies, toolData] = await Promise.all([
       listRuntimeModels(project),
       listRuntimeModelPolicies(project),
-      listRuntimeToolPolicies(project),
+      listRuntimeTools(project),
     ]);
     if (requestEpoch !== epoch) return;
     items.value = models.models;
     policies.value = Object.fromEntries(
       modelPolicies.items.map((item) => [item.catalog_id, item.policy]),
     );
-    tools.value = toolPolicies.items;
+    tools.value = toolData.tools;
   } catch (cause) {
     if (requestEpoch === epoch)
       error.value = cause instanceof Error ? cause.message : "目录读取失败";
@@ -163,7 +167,11 @@ watch(
   },
   { immediate: true },
 );
-watch([tab, query, pageSize], () => {
+watch(tab, (newTab) => {
+  page.value = 1;
+  pageSize.value = newTab === "tools" ? 24 : 20;
+});
+watch([query, pageSize], () => {
   page.value = 1;
 });
 onScopeDispose(() => {
@@ -338,7 +346,7 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
     <PageHeader
       eyebrow="Models & Tools"
       title="模型与工具"
-      description="维护模型连接，并管理当前项目的模型与工具授权。"
+      description="维护模型连接与项目模型授权，查看运行时已声明的工具目录。"
     >
       <template #actions>
         <BaseButton
@@ -355,6 +363,14 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
           @click="doRefreshTools"
         >
           同步工具
+        </BaseButton>
+        <BaseButton
+          v-if="canManage && tab === 'tools'"
+          variant="primary"
+          :disabled="saving || loading"
+          @click="toolRestrictionsOpen = true"
+        >
+          管理禁用规则
         </BaseButton>
         <BaseButton
           v-if="canManage && tab === 'models'"
@@ -396,11 +412,11 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
         :variant="tab === 'tools' ? 'primary' : 'secondary'"
         @click="tab = 'tools'"
       >
-        工具授权
+        工具目录
       </BaseButton>
       <SearchInput
         v-model="query"
-        :placeholder="tab === 'models' ? '搜索名称、提供商或端点' : '搜索工具'"
+        :placeholder="tab === 'models' ? '搜索名称、提供商或端点' : '搜索工具名称或 tool_key'"
         class="ml-auto max-w-sm"
       />
     </div>
@@ -429,17 +445,17 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
           @add-model="edit(null, $event)"
         />
       </template>
-      <!-- 工具卡片列表 -->
+      <!-- 工具卡片列表（只读目录） -->
       <div
         v-else
         class="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
       >
         <article
           v-for="tool in visibleTools"
-          :key="tool.catalog_id"
+          :key="tool.id || tool.tool_key"
           class="rounded-xl border border-gray-100 bg-white p-4 shadow-sm dark:border-dark-800 dark:bg-dark-950"
         >
-          <!-- 顶部：名称 + 状态 -->
+          <!-- 顶部：名称 + 标识 -->
           <div class="flex items-start justify-between gap-3">
             <div class="min-w-0 flex-1">
               <h3 class="truncate font-semibold text-gray-900 dark:text-white">
@@ -449,49 +465,48 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
                 {{ tool.tool_key }}
               </span>
             </div>
-            <StatusPill :tone="tool.policy.is_enabled ? 'success' : 'warning'">
-              {{ tool.policy.is_enabled ? "已授权" : "已禁用" }}
+            <StatusPill
+              :tone="
+                tool.sync_status === 'ready'
+                  ? 'success'
+                  : tool.sync_status === 'error'
+                    ? 'danger'
+                    : 'warning'
+              "
+            >
+              {{ tool.sync_status }}
             </StatusPill>
           </div>
+
+          <!-- 归属 Graph 标签 -->
+          <div
+            v-if="tool.graph_ids && tool.graph_ids.length"
+            class="mt-2.5 flex flex-wrap items-center gap-1.5"
+          >
+            <span class="text-[11px] text-gray-400 dark:text-dark-500">归属:</span>
+            <span
+              v-for="gid in tool.graph_ids"
+              :key="gid"
+              class="rounded bg-primary-50 px-1.5 py-0.5 font-mono text-[11px] text-primary-700 dark:bg-primary-950/40 dark:text-primary-300"
+            >
+              {{ gid }}
+            </span>
+          </div>
+
           <!-- 描述 -->
           <p class="mt-3 line-clamp-2 text-sm text-gray-500 dark:text-dark-300">
             {{ tool.description || "暂无描述" }}
           </p>
-          <!-- 底部：source + sync 状态 + 操作 -->
-          <div class="mt-4 flex items-center justify-between gap-2">
-            <div class="flex flex-wrap gap-2">
-              <span
-                class="text-xs text-gray-400 dark:text-dark-400"
-                :title="tool.source"
-              >
-                {{ tool.source || "—" }}
-              </span>
-              <StatusPill
-                :tone="
-                  tool.sync_status === 'ready'
-                    ? 'success'
-                    : tool.sync_status === 'error'
-                      ? 'danger'
-                      : 'warning'
-                "
-              >
-                {{ tool.sync_status }}
-              </StatusPill>
-            </div>
-            <BaseButton
-              v-if="canManage"
-              :variant="tool.policy.is_enabled ? 'ghost' : 'secondary'"
-              :disabled="saving"
-              @click="
-                mutate((project) =>
-                  updateRuntimeToolPolicy(project, tool.catalog_id, {
-                    is_enabled: !tool.policy.is_enabled,
-                  }),
-                )
-              "
+
+          <!-- 底部：source + 同步时间 -->
+          <div class="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs text-gray-400 dark:border-dark-800 dark:text-dark-400">
+            <span>来源: {{ tool.source || "—" }}</span>
+            <span
+              v-if="tool.last_seen_at"
+              class="text-[11px]"
             >
-              {{ tool.policy.is_enabled ? "撤销授权" : "授权" }}
-            </BaseButton>
+              同步于 {{ new Date(tool.last_seen_at).toLocaleDateString() }}
+            </span>
           </div>
         </article>
       </div>
@@ -499,6 +514,7 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
         :total="total"
         :page="page"
         :page-size="pageSize"
+        :page-size-options="pageSizeOptions"
         :disabled="loading || saving"
         @update:page="page = $event"
         @update:page-size="pageSize = $event"
@@ -511,6 +527,13 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
       :is-project-default="!!detailModel && defaultIds.includes(detailModel.id)"
       @close="detailModel = null"
       @edit="edit($event)"
+    />
+    <ToolRestrictionsPanel
+      :show="toolRestrictionsOpen"
+      :project-id="activeProjectId"
+      :tools="tools"
+      :can-manage="canManage"
+      @close="toolRestrictionsOpen = false"
     />
   </section>
 </template>

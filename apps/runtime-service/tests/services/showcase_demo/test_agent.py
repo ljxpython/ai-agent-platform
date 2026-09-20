@@ -41,7 +41,7 @@ class RecordingModel(BindableFakeMessagesChatModel):
         return super()._generate(messages, stop=stop, run_manager=run_manager, **kwargs)
 
 
-def config(*, context=None, thread_id="teaching-thread"):
+def config(*, context=None, thread_id="teaching-thread", denied=()):
     context = context or {}
     user = User(
         runtime_principal={
@@ -49,12 +49,12 @@ def config(*, context=None, thread_id="teaching-thread"):
             "tenant_id": "tenant",
             "project_id": "project",
             "role": "developer",
-            "permissions": sorted(set(agent._TOOL_PERMISSIONS.values())),
+            "permissions": [],
         },
         runtime_policy={
             "version": "test-v1",
             "allowed_model_ids": [agent._DEFAULTS.model_id],
-            "allowed_tool_names": list(agent._DEFAULTS.optional_tool_names),
+            "tool_overrides": dict.fromkeys(denied, False), "tool_policy_version": "test-tools-v2",
         },
         runtime_scope={
             "tenant_id": "tenant",
@@ -385,7 +385,7 @@ def test_subagent_write_interrupt_can_resume(build):
 
 def test_empty_tool_allowlist_and_wrong_context_fail_closed(build):
     async def run():
-        cfg = config(context={"tools": []})
+        cfg = config(denied=agent._DEFAULTS.optional_tool_names)
         graph, cfg, _ = await build([call("write_todos", {"todos": []})], cfg)
         with pytest.raises(RuntimeResolutionError, match="runtime.tool.not_allowed"):
             await graph.ainvoke(
@@ -467,7 +467,7 @@ def test_skill_write_and_edited_unauthorized_action_are_denied(build):
             for m in result["messages"]
         )
 
-        cfg = config(context={"tools": ["write_file"]}, thread_id="edited-action")
+        cfg = config(denied=("execute",), thread_id="edited-action")
         graph, cfg, _ = await build(
             [
                 call(
@@ -575,7 +575,7 @@ def test_live_model_reads_real_project_and_streams(monkeypatch, tmp_path):
 
     async def run():
         cfg = config(
-            context={"tools": ["read_file", "ls", "grep", "glob"]},
+            denied=("write_file", "edit_file", "execute"),
             thread_id="live-model",
         )
         graph = await agent.get_agent(cfg)

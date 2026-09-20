@@ -10,17 +10,23 @@ async def load_mcp_tools(config, principal, requested, reserved):
     names = {name for name in requested if name.startswith("mcp_")}
     if not names:
         return []
+    metadata = config.get("metadata") or {}
+    thread_metadata = metadata.get("__graphharbor_thread_metadata") or {}
+    bindings = thread_metadata.get("runtime_resource_bindings") or {}
+    if "mcp" not in bindings:
+        return []
     binding = resolve_resource_binding(config, principal, "mcp")
     try:
         connections = json.loads(os.environ.get("RUNTIME_MCP_CONNECTIONS_JSON", "{}"))
         connection = dict(connections[binding.resource_id])
         allowed = connection.pop("allowed_tools", [])
-        if names - set(allowed):
-            raise ValueError()
+        names.intersection_update(allowed)
         if binding.provider != "mcp_http" or connection.get("transport") != "streamable_http":
             raise ValueError()
     except (KeyError, TypeError, ValueError) as exc:
         raise RuntimeResolutionError("runtime.mcp.recovery_failed") from exc
+    if not names:
+        return []
     # Connections/headers are server configuration, never Context or tool arguments.
     client = MultiServerMCPClient({"bound": connection}, tool_name_prefix=False)
     tools = await client.get_tools()

@@ -1,6 +1,7 @@
 """Composition root for the model-backed workflow agent."""
 
 from __future__ import annotations
+from runtime_service.runtime.capabilities import REFERENCE_TOOLS
 
 from collections.abc import Mapping
 import os
@@ -46,9 +47,8 @@ _DEFAULTS = AgentDefaults(
         "Answer the user's current question clearly and naturally."
     ),
     prompt_version="workflow-demo-v2",
-    optional_tool_names=("read_reference",),
+    optional_tool_names=REFERENCE_TOOLS,
 )
-_TOOL_PERMISSIONS = {"read_reference": "runtime.tool.read"}
 
 
 def _local_test_facts() -> VerifiedDelegation:
@@ -63,7 +63,8 @@ def _local_test_facts() -> VerifiedDelegation:
         RuntimePolicy(
             "workflow-demo-local-v2",
             (_DEFAULTS.model_id,),
-            _DEFAULTS.optional_tool_names,
+            (),
+            "local-tools-v2",
         ),
         RuntimeScope("local-tenant", "workflow-project"),
         "",
@@ -153,7 +154,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         context=context,
         policy=facts.policy,
         defaults=_DEFAULTS,
-        tool_permissions=_TOOL_PERMISSIONS,
     )
     injected = _runtime_model(config, local=local)
     async def model_agent_for(state: Mapping[str, object]) -> object:

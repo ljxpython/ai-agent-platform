@@ -534,45 +534,47 @@ onScopeDispose(() => {
             />
           </template>
           <template #actions>
-            <button
-              class="inline-flex h-7 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
-              :title="focusMode ? '退出专注模式' : '专注模式'"
-              @click="focusMode = !focusMode"
-            >
-              <BaseIcon
-                name="focus"
-                size="xs"
-              />
-              <span class="hidden sm:inline">{{ focusMode ? '退出' : '专注' }}</span>
-            </button>
-            <button
-              class="inline-flex h-7 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-200 dark:hover:text-white transition-colors"
-              :disabled="!target"
-              title="新建会话"
-              @click="newThread"
-            >
-              <BaseIcon
-                name="chat"
-                size="xs"
-              />
-              <span>新对话</span>
-            </button>
-            <button
-              v-if="selectedThread && canWrite"
-              class="lg:hidden inline-flex h-7 items-center gap-1 rounded-md border border-red-200 bg-white px-2 text-xs font-medium text-red-600 shadow-2xs hover:bg-red-50 dark:border-red-900/50 dark:bg-dark-800 dark:text-red-400 dark:hover:bg-red-950/30 transition-colors"
-              title="删除此会话"
-              @click="requestDelete(selectedThread)"
-            >
-              <BaseIcon
-                name="trash"
-                size="xs"
-              />
-              <span class="hidden sm:inline">删除</span>
-            </button>
-            <div class="h-3.5 w-px bg-gray-200 dark:bg-dark-700 mx-0.5 hidden lg:block" />
-            <div class="hidden lg:flex items-center gap-1.5">
-              <WorkspaceProjectSwitcher />
-              <UserMenu />
+            <div class="flex shrink-0 items-center gap-1.5">
+              <button
+                class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
+                :title="focusMode ? '退出专注模式' : '专注模式'"
+                @click="focusMode = !focusMode"
+              >
+                <BaseIcon
+                  name="focus"
+                  size="xs"
+                />
+                <span class="hidden sm:inline">专注</span>
+              </button>
+              <button
+                class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-200 dark:hover:text-white transition-colors"
+                :disabled="!target"
+                title="新建会话"
+                @click="newThread"
+              >
+                <BaseIcon
+                  name="chat"
+                  size="xs"
+                />
+                <span class="whitespace-nowrap">新对话</span>
+              </button>
+              <button
+                v-if="selectedThread && canWrite"
+                class="lg:hidden inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-red-200 bg-white px-2 text-xs font-medium text-red-600 shadow-2xs hover:bg-red-50 dark:border-red-900/50 dark:bg-dark-800 dark:text-red-400 dark:hover:bg-red-950/30 transition-colors"
+                title="删除此会话"
+                @click="requestDelete(selectedThread)"
+              >
+                <BaseIcon
+                  name="trash"
+                  size="xs"
+                />
+                <span class="hidden sm:inline">删除</span>
+              </button>
+              <div class="h-3.5 w-px bg-gray-200 dark:bg-dark-700 mx-0.5 hidden lg:block shrink-0" />
+              <div class="hidden lg:flex items-center gap-1.5 shrink-0">
+                <WorkspaceProjectSwitcher compact />
+                <UserMenu compact />
+              </div>
             </div>
           </template>
         </ChatSession>

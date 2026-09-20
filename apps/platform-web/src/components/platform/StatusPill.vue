@@ -37,14 +37,14 @@ const dotClass = computed(() => {
 
 <template>
   <span
-    class="inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium"
+    class="inline-flex shrink-0 items-center gap-2 whitespace-nowrap rounded-full border px-2.5 py-1 text-xs font-medium"
     :class="pillClass"
   >
     <span
-      class="h-2 w-2 rounded-full"
+      class="h-2 w-2 shrink-0 rounded-full"
       :class="dotClass"
     />
-    <span>
+    <span class="whitespace-nowrap">
       <slot />
     </span>
   </span>

@@ -70,7 +70,7 @@ def test_generate_requires_approval_without_platform_permission(
     calls = fake_image_client(monkeypatch)
 
     async def run():
-        cfg = config(context={"tools": []})
+        cfg = config()
         graph, cfg, model = await build(
             [
                 call("generate_image", {"prompt": "red square"}),
@@ -115,7 +115,7 @@ def test_edit_image_requires_approval_and_edits_existing_image(
         backend.prepare()
         path = images.ImageWorkspace(backend.cwd / "workspace").save(png(), "generated")
 
-        cfg = config(context={"tools": []})
+        cfg = config()
         graph, cfg, model = await build(
             [
                 call("edit_image", {"image_path": path, "prompt": "turn anime"}),

@@ -14,15 +14,6 @@ class RuntimeGraphPolicyValue(BaseModel):
     updated_at: datetime | None = None
 
 
-class RuntimeToolPolicyValue(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    is_enabled: bool = True
-    display_order: int | None = None
-    note: str | None = None
-    updated_at: datetime | None = None
-
-
 class RuntimeModelPolicyValue(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -44,19 +35,6 @@ class RuntimeGraphPolicyItem(BaseModel):
     sync_status: str
     last_synced_at: datetime | None = None
     policy: RuntimeGraphPolicyValue
-
-
-class RuntimeToolPolicyItem(BaseModel):
-    model_config = ConfigDict(frozen=True)
-
-    catalog_id: str
-    tool_key: str
-    name: str
-    source: str
-    description: str
-    sync_status: str
-    last_synced_at: datetime | None = None
-    policy: RuntimeToolPolicyValue
 
 
 class RuntimeModelPolicyItem(BaseModel):

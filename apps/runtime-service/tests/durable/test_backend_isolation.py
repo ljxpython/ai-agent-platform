@@ -38,18 +38,10 @@ def test_backend_demo_keeps_thread_checkpoints_isolated(
 
 async def _test_backend_isolation(base_url: str, assistant_id: str) -> None:
     durable_client = get_authenticated_client(
-        base_url,
+        base_url, assistant_id=assistant_id,
         permissions=["runtime.tool.read", "runtime.tool.write"],
         allowed_model_ids=["deepseek:DeepSeek-V4-Flash"],
-        allowed_tool_names=[
-            "delete",
-            "edit_file",
-            "glob",
-            "grep",
-            "ls",
-            "read_file",
-            "write_file",
-        ],
+        tool_overrides={}, tool_policy_version="test-tools-v2",
     )
     thread_ids = [_thread_id(), _thread_id()]
     try:
@@ -100,9 +92,9 @@ def test_workspace_reconnect_and_tenant_thread_isolation(
 async def _test_workspace_reconnect_and_isolation(
     base_url: str, assistant_id: str
 ) -> None:
-    client = get_authenticated_client(base_url)
+    client = get_authenticated_client(base_url, assistant_id=assistant_id)
     other_tenant = get_authenticated_client(
-        base_url,
+        base_url, assistant_id=assistant_id,
         tenant_id="r6-other-tenant",
         project_id="r6-other-project",
         user_id="r6-other-user",

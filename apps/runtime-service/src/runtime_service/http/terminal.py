@@ -10,6 +10,7 @@ from fastapi import APIRouter, Header, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from runtime_service.auth.platform import authenticate
+from runtime_service.runtime.tool_access import require_tool_access
 from runtime_service.workspace.documents import DocumentError
 from runtime_service.workspace.terminal import terminal_enabled, terminals
 
@@ -36,7 +37,7 @@ class TerminalResize(BaseModel):
     cols: int = Field(ge=2, le=400)
 
 
-async def _owner(thread_id, authorization, *, write):
+async def _owner(thread_id, authorization, *, write, closing=False):
     facts = await authenticate(authorization)
     scope = facts.get("runtime_scope", {})
     operation = "terminal-write" if write else "terminal-read"
@@ -48,11 +49,9 @@ async def _owner(thread_id, authorization, *, write):
         or scope.get("assistant_id") not in {"showcase_demo", "dearflow_agent"}
     ):
         raise HTTPException(403, {"code": "terminal_scope_denied"})
-    if "runtime.tool.execute" not in facts.get(
-        "permissions", []
-    ) or "execute" not in facts.get("allowed_tool_names", []):
-        raise HTTPException(403, {"code": "terminal_execute_denied"})
-    if not terminal_enabled():
+    if not closing:
+        require_tool_access(facts, "execute")
+    if not closing and not terminal_enabled():
         raise HTTPException(409, {"code": "terminal_disabled"})
     return (
         scope["tenant_id"],
@@ -152,5 +151,5 @@ async def close(
     response: Response,
     authorization: str | None = Header(default=None),
 ):
-    owner = await _owner(thread_id, authorization, write=True)
+    owner = await _owner(thread_id, authorization, write=True, closing=True)
     return await _call(response, lambda: terminals.get(owner, terminal_id).close())

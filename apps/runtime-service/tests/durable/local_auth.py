@@ -16,14 +16,16 @@ def _local_token(
     user_id: str | None = None,
     permissions: list[str] | None = None,
     allowed_model_ids: list[str] | None = None,
-    allowed_tool_names: list[str] | None = None,
+    tool_overrides: dict[str, bool] | None = None,
+    tool_policy_version: str = "test-tools-v2",
+    assistant_id: str | None = None,
 ) -> str:
     now = datetime.now(UTC)
     tenant_id = tenant_id or os.getenv("R6_TEST_TENANT", "r6-smoke-tenant")
     project_id = project_id or os.getenv("R6_TEST_PROJECT", "r6-smoke-project")
     return jwt.encode(
         {
-            "type": "runtime_delegation",
+            "type": "runtime_delegation", "delegation_version": 2,
             "sub": user_id or os.getenv("R6_TEST_USER", "r6-smoke-user"),
             "tenant_id": tenant_id,
             "project_id": project_id,
@@ -31,12 +33,12 @@ def _local_token(
             "permissions": permissions or ["runtime.tool.read"],
             "policy_version": "r6-smoke-v1",
             "allowed_model_ids": allowed_model_ids or ["deepseek:DeepSeek-V4-Flash"],
-            "allowed_tool_names": allowed_tool_names or ["read_reference"],
+            "tool_overrides": tool_overrides or {}, "tool_policy_version": tool_policy_version,
             "iat": int(now.timestamp()),
             "exp": int((now + timedelta(minutes=5)).timestamp()),
             "iss": os.getenv("PLATFORM_RUNTIME_DELEGATION_ISSUER", "platform-api"),
             "aud": os.getenv("PLATFORM_RUNTIME_DELEGATION_AUDIENCE", "runtime-service"),
-            "scope": {"tenant_id": tenant_id, "project_id": project_id},
+            "scope": {"operation": "run-create" if assistant_id else "read", "tenant_id": tenant_id, "project_id": project_id, "assistant_id": assistant_id},
             "context_hash": runtime_context_hash(None),
         },
         os.getenv(
@@ -58,7 +60,9 @@ def get_authenticated_client(
     user_id: str | None = None,
     permissions: list[str] | None = None,
     allowed_model_ids: list[str] | None = None,
-    allowed_tool_names: list[str] | None = None,
+    tool_overrides: dict[str, bool] | None = None,
+    tool_policy_version: str = "test-tools-v2",
+    assistant_id: str | None = None,
 ):
     token = _local_token(
         tenant_id=tenant_id,
@@ -66,7 +70,7 @@ def get_authenticated_client(
         user_id=user_id,
         permissions=permissions,
         allowed_model_ids=allowed_model_ids,
-        allowed_tool_names=allowed_tool_names,
+        tool_overrides=tool_overrides, tool_policy_version=tool_policy_version, assistant_id=assistant_id,
     )
     return get_client(
         url=base_url,

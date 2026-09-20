@@ -13,14 +13,11 @@ from runtime_service.services.dearflow_agent.external_task_storage import (
 )
 from runtime_service.tools.images import ImageWorkspace, build_image_tools
 
-MEDIA_TOOLS = ("generate_image", "edit_image", "get_media_task")
-
 
 def receipt(row):
     return {"task_id": str(row["id"]), "operation": row["operation"], "status": row["status"],
             "result": row["result"], "error_code": row["error_code"],
             "notice": "Outcome unknown. No background recovery is running. Stop polling, report missing output and task_id; do not resubmit." if row["status"] == "unknown" else None}
-
 
 
 def build_media_tools(workspace: ImageWorkspace):

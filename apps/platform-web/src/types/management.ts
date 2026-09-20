@@ -136,22 +136,26 @@ export type RuntimeGraphPolicyItem = {
   policy: RuntimeGraphPolicyValue
 }
 
-export type RuntimeToolPolicyValue = {
-  is_enabled: boolean
-  display_order?: number | null
-  note?: string | null
-  updated_at?: string | null
+export type ToolRestrictionSubjectType = 'project' | 'user'
+
+export type CreateToolRestrictionPayload = {
+  graph_id: string
+  subject_type: ToolRestrictionSubjectType
+  subject_id: string
+  tool_name: string
+  reason: string
 }
 
-export type RuntimeToolPolicyItem = {
-  catalog_id: string
-  tool_key: string
-  name: string
-  source: string
-  description: string
-  sync_status: string
-  last_synced_at?: string | null
-  policy: RuntimeToolPolicyValue
+export type ToolRestrictionItem = CreateToolRestrictionPayload & {
+  id: string
+  project_id: string
+  created_by: string
+  created_at: string
+}
+
+export type ToolRestrictionListResponse = {
+  items: ToolRestrictionItem[]
+  total: number
 }
 
 export type RuntimeModelPolicyValue = {
@@ -173,7 +177,6 @@ export type RuntimeModelPolicyItem = {
 }
 
 export type RuntimeGraphPolicyListResponse = PaginatedResponse<RuntimeGraphPolicyItem>
-export type RuntimeToolPolicyListResponse = PaginatedResponse<RuntimeToolPolicyItem>
 export type RuntimeModelPolicyListResponse = PaginatedResponse<RuntimeModelPolicyItem>
 
 export type PlatformConfigSnapshot = {
@@ -334,6 +337,7 @@ export type RuntimeToolItem = {
   id: string
   runtime_id: string
   tool_key: string
+  graph_ids: string[]
   name: string
   source: string
   description: string

@@ -20,7 +20,7 @@ def token(operation="terminal-write", **changes):
         algorithms=["HS256"],
         options={"verify_aud": False},
     )
-    claims.update(permissions=["runtime.tool.execute"], allowed_tool_names=["execute"])
+    claims.update(permissions=["runtime.tool.execute"], tool_overrides={}, tool_policy_version="test-tools-v2")
     claims.update(changes)
     return "Bearer " + jwt.encode(claims, SECRET, algorithm="HS256")
 
@@ -45,7 +45,7 @@ def test_signed_terminal_routes(monkeypatch, tmp_path):
             assert (
                 await client.post(prefix, json=body, headers=read)
             ).status_code == 403
-            for changes in ({"permissions": []}, {"allowed_tool_names": []}):
+            for changes in ({"tool_overrides": {"execute": False}}, {"tool_overrides": {"unknown": False}}):
                 assert (
                     await client.post(
                         prefix, json=body, headers={"authorization": token(**changes)}
@@ -102,7 +102,9 @@ def test_signed_terminal_routes(monkeypatch, tmp_path):
                 )
             ).status_code == 403
             assert (await client.get(url + "/output", headers=read)).status_code == 200
-            assert (await client.delete(url, headers=write)).json()[
+            revoked = {"authorization": token("terminal-write", tool_overrides={"execute": False})}
+            assert (await client.post(url + "/input", json=payload, headers=revoked)).status_code == 403
+            assert (await client.delete(url, headers=revoked)).json()[
                 "status"
             ] == "exited"
             monkeypatch.setenv("RUNTIME_TERMINAL_ENABLED", "0")

@@ -172,11 +172,11 @@ def test_arxiv_version_dedup_missing_fields_and_date_query(tmp_path, monkeypatch
     asyncio.run(run())
 
 
-def test_new_tools_require_explicit_context_permission(build):
+def test_new_tools_obey_signed_denial(build):
     async def run():
         for name, args in [("github_query", {"owner": "owner", "repo": "repo"}), ("arxiv_search", {"query": "test"})]:
             cfg = config()
-            cfg["context"] = {"tools": ["read_file"]}
+            cfg["configurable"]["langgraph_auth_user"]["runtime_policy"]["tool_overrides"] = {name: False}
             cfg["configurable"]["langgraph_auth_user"]["runtime_context_hash"] = runtime_context_hash(cfg["context"])
             graph, cfg = await build([call(name, args)], cfg)
             with pytest.raises(RuntimeResolutionError, match="runtime.tool.not_allowed"):

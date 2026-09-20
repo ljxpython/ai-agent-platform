@@ -1054,13 +1054,13 @@ const chatMetrics = computed(() => {
       v-if="!focusMode"
       class="pw-chat-workspace-header"
     >
-      <div class="flex min-h-8 flex-wrap items-center gap-2 xl:flex-nowrap">
-        <div class="flex min-w-0 items-center gap-2">
+      <div class="flex min-h-8 items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+        <div class="flex min-w-0 shrink items-center gap-2">
           <slot name="target" />
           <button
             v-if="session.threadId.value"
             type="button"
-            class="group inline-flex items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 py-1 text-[11px] text-gray-500 shadow-2xs hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white transition-colors"
+            class="group inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 py-1 text-[11px] text-gray-500 shadow-2xs hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white transition-colors"
             title="点击复制完整 Thread ID"
             @click="copyThreadId"
           >
@@ -1075,13 +1075,13 @@ const chatMetrics = computed(() => {
           </button>
           <span
             v-else
-            class="inline-flex items-center rounded-lg border border-dashed border-gray-200 bg-gray-50/50 px-2 py-1 text-[11px] text-gray-400 dark:border-dark-700 dark:bg-dark-900/50"
+            class="inline-flex shrink-0 items-center rounded-lg border border-dashed border-gray-200 bg-gray-50/50 px-2 py-1 text-[11px] text-gray-400 dark:border-dark-700 dark:bg-dark-900/50"
           >
             新会话
           </span>
           <span
             v-if="session.accessPolicy.value === 'full_access'"
-            class="inline-flex items-center gap-1 rounded-md border border-red-300/80 bg-red-50/80 px-2 py-0.5 text-[10px] font-medium text-red-800 dark:border-red-800/80 dark:bg-red-950/40 dark:text-red-300"
+            class="inline-flex shrink-0 items-center gap-1 rounded-md border border-red-300/80 bg-red-50/80 px-2 py-0.5 text-[10px] font-medium text-red-800 dark:border-red-800/80 dark:bg-red-950/40 dark:text-red-300"
             title="当前会话启用全权负责模式：默认放行所有工具审批"
           >
             <span class="h-1.5 w-1.5 rounded-full bg-red-500" />
@@ -1089,18 +1089,18 @@ const chatMetrics = computed(() => {
           </span>
           <span
             v-else-if="session.accessPolicy.value === 'workspace_write'"
-            class="inline-flex items-center gap-1 rounded-md border border-amber-300/80 bg-amber-50/80 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-300"
+            class="inline-flex shrink-0 items-center gap-1 rounded-md border border-amber-300/80 bg-amber-50/80 px-2 py-0.5 text-[10px] font-medium text-amber-800 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-300"
             title="当前会话启用工作区免审策略"
           >
             <span class="h-1.5 w-1.5 rounded-full bg-amber-500" />
             工作区免审
           </span>
         </div>
-        <div class="ml-auto flex items-center gap-2">
-          <div class="flex items-center gap-3 text-xs font-medium">
+        <div class="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <div class="flex shrink-0 items-center gap-2 text-xs font-medium">
             <button
               type="button"
-              class="relative pb-1 transition-colors"
+              class="relative pb-1 whitespace-nowrap transition-colors"
               :class="
                 activeView === 'chat'
                   ? 'font-semibold text-blue-600 dark:text-blue-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 dark:after:bg-blue-400'
@@ -1113,7 +1113,7 @@ const chatMetrics = computed(() => {
             </button>
             <button
               type="button"
-              class="relative pb-1 transition-colors"
+              class="relative pb-1 whitespace-nowrap transition-colors"
               :class="
                 activeView === 'trajectory'
                   ? 'font-semibold text-blue-600 dark:text-blue-400 after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-blue-600 dark:after:bg-blue-400'
@@ -1128,7 +1128,7 @@ const chatMetrics = computed(() => {
           <slot name="actions" />
           <button
             type="button"
-            class="relative inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
+            class="relative inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
             :class="showWorkspace ? 'border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400' : ''"
             title="沙箱工作区与产物面板"
             @click="showWorkspace = !showWorkspace"
@@ -1142,7 +1142,7 @@ const chatMetrics = computed(() => {
           <!-- 当前执行模式指示胶囊 (点击直达模式与参数配置) -->
           <button
             type="button"
-            class="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs font-medium transition-all shadow-2xs"
+            class="inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs font-medium transition-all shadow-2xs"
             :class="[
               currentExecutionMode === 'ultra'
                 ? 'border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-800/80 dark:bg-purple-950/40 dark:text-purple-300'

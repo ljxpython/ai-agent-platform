@@ -2,12 +2,14 @@
 
 文档类型：当前生效的运维规范。适用于控制面 PostgreSQL；Runtime 与结果域沿用各自迁移工具，不能让控制面 Alembic 接管其表。实施证据和剩余验收项见[迁移专项](../projects/20260920-platform-api-postgresql-migration/README.md)。
 
+首次非 Docker 新机部署从[完整手册](../quickstart/deployment-guide.md)开始；本页重点是数据库职责和运维。
+
 ## 1. 存储边界
 
 | 服务 | 推荐数据库 / 角色 | 建表与升级 |
 |---|---|---|
 | platform-api | `platform_api` / `platform_api` | SQLAlchemy 模型 + Alembic；关闭自动建表 |
-| runtime-service | `runtime_service` / `runtime_service`；本地已有环境可保留独立的 `graphharbor_acceptance` | GraphHarbor / Runtime 自己的迁移 |
+| runtime-service | 通用模板 `runtime_service` / `runtime_service`；个人交接可另指定独立库/角色 | GraphHarbor / Runtime 自己的迁移 |
 | interaction-data-service | `interaction_data_service` / 同名角色 | 由结果域维护；不能套用控制面基线 |
 
 可以共享 PG 实例，必须分库和使用独立非超级用户角色。控制面角色不授予其他库业务表访问权限。开发、测试、生产也必须隔离；测试不能指向业务库。库名以各环境配置为准，脚本不凭库名前缀推断“可以删除”。
@@ -121,7 +123,7 @@ uv run --frozen python scripts/database.py check
 ## 4. 本地开发明确使用本地 PG
 
 - 正式本地开发与联调连接本机 `127.0.0.1:5432` 的独立控制面库 `platform_api`；不能借用 Runtime 的 `graphharbor_acceptance`，不能连共享生产库。
-- 本机安装 PG 或启动只绑定回环地址的 PG 容器均可；本机若使用 trust 认证，配置 URL 密码不代表密码会被校验，服务器必须另行配置受控的密码认证；用第 2.3 节脚本创建控制面库，再设置 app 自己的 `.env`。根目录不维护统一开发 `.env`。
+- 本机安装 PG 或启动只绑定回环地址的 PG 容器均可；本地与服务器都应实际使用 SCRAM 密码认证，不能仅在 URL 中填密码而保留 trust。当前本机已完成 socket/IPv4/IPv6 收紧和正确/缺失/错误密码测试，见[认证记录](../projects/20260920-local-postgres-password/README.md)。当前用户 `.pgpass` 权限 600，仅用于客户端提供凭据；新客户端仍需配置。用第 2.3 节创建控制面库，再设置 app 自己的 `.env`。根目录 `.env` 不作为统一开发配置源。
 - `.env.example` 默认 PG、关闭自动建表。已有 SQLite 开发数据先走第 3.2 节；复制新示例覆盖旧 `.env` 不是数据迁移。
 - 在仓库根目录只通过本地栈入口启停：
 

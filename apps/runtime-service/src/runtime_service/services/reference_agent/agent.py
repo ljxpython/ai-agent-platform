@@ -1,6 +1,7 @@
 """Composition root for the Runtime-aware reference agent."""
 
 from __future__ import annotations
+from runtime_service.runtime.capabilities import REFERENCE_TOOLS
 
 from collections.abc import Mapping
 
@@ -47,9 +48,8 @@ _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
     system_prompt=SYSTEM_PROMPT,
     prompt_version="reference-agent-v3",
-    optional_tool_names=("read_reference",),
+    optional_tool_names=REFERENCE_TOOLS,
 )
-_TOOL_PERMISSIONS = {"read_reference": "runtime.tool.read"}
 
 
 def _local_test_facts() -> VerifiedDelegation:
@@ -64,7 +64,8 @@ def _local_test_facts() -> VerifiedDelegation:
         RuntimePolicy(
             "reference-agent-local-v1",
             ("deepseek:DeepSeek-V4-Flash",),
-            ("read_reference",),
+            (),
+            "local-tools-v2",
         ),
         RuntimeScope("local-tenant", "reference-project"),
         "",
@@ -160,7 +161,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             context=context,
             policy=policy,
             defaults=_DEFAULTS,
-            tool_permissions=_TOOL_PERMISSIONS,
         )
         connection = None if runtime_model is not None else await _runtime_model_connection(
             config, model_id=resolved.model_id, project_id=principal.project_id,
@@ -195,7 +195,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             defaults=_DEFAULTS,
             base_model=model,
             model_builder=model_builder,
-            tool_permissions=_TOOL_PERMISSIONS,
             local_fallback=runtime_model is not None or local_test_auth,
             probe_only=probe_only,
         ),

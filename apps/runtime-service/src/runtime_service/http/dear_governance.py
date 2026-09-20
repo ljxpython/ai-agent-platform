@@ -5,6 +5,7 @@ import os
 from fastapi import APIRouter, Header, HTTPException, Query
 
 from runtime_service.auth.platform import authenticate
+from runtime_service.runtime.tool_access import require_tool_access
 from runtime_service.services.dearflow_agent.memory import MemoryCommand, MemoryStorage
 from runtime_service.workspace.documents import DocumentError
 
@@ -22,6 +23,7 @@ async def authorize(thread_id, authorization, *, write):
             or not all(principal.get(k) for k in ("tenant_id", "project_id", "user_id"))
             or scope.get("tenant_id") != principal["tenant_id"] or scope.get("project_id") != principal["project_id"]):
         raise HTTPException(403, {"code": "dear_governance_scope_denied"})
+    require_tool_access(facts, "manage_memory" if write else "search_memory")
     return tuple(principal[k] for k in ("tenant_id", "project_id", "user_id"))
 
 

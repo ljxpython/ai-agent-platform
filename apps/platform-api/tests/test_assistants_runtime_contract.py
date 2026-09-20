@@ -19,8 +19,8 @@ class AssistantsRuntimeContractTest(unittest.TestCase):
                     UpdateAssistantCommand(**{field: {}})
 
     def test_agent_context_only_allows_public_execution_defaults(self):
-        self.assertEqual(_normalize_agent_context({"temperature": 0.2, "tools": []}, "p"),
-                         {"temperature": 0.2, "tools": []})
-        for context in ({"unknown": 1}, {"runtime_model_ref": "secret"}, {"temperature": 3}):
+        self.assertEqual(_normalize_agent_context({"temperature": 0.2}, "p"),
+                         {"temperature": 0.2})
+        for context in ({"tools": []}, {"tool_overrides": {}}, {"unknown": 1}, {"runtime_model_ref": "secret"}, {"temperature": 3}):
             with self.subTest(context=context), self.assertRaises(BadRequestError):
                 _normalize_agent_context(context, "p")

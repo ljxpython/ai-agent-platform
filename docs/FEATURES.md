@@ -9,9 +9,11 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 全平台菜单、页面与角色权限治理 | 规划中（deferred）：独立立项，讨论与实施后置；不纳入本次工具治理开发 | [后置专项](projects/20260920-platform-access-governance/README.md) |
 | Agent 回复新对话分支 | 进行中：Platform API 受控分叉和 Runtime 隔离验证实施中；前端已完成对接设计、待接入 | [项目规划](projects/20260917-agent-conversation-fork/README.md) |
 | Agent 会话访问策略（逐项审批 / 工作区免审批 / 全权负责） | 部分完成：前后端与 Runtime 均已实现三档策略（review/workspace_write/full_access）、输入框左右布局对齐与草稿态同步；待全栈启动后跑最终 E2E 验收 | [方案](projects/20260917-agent-session-access-policy/README.md) |
 | Dear Agent 专属前端 | 进行中：F1/P1 已完成（专属模块 `src/modules/dear-agent/`、独立路由、澄清表单交互卡片、审批面板与输入锁定已落地并通过 50 套全量回归）；F2—F7 后续推进 | [前端交接与实施](projects/20260913-dearflow-agent/frontend-handoff.md) |
+| Dear Agent 独立成果页闭环 | 规划中：已形成分层源码对照、Runtime/Platform 施工与后端验证方案；前端交由其他同事，接口/样例/错误/测试交接已编写；业务未实施 | [分层规划](projects/20260920-dear-agent-artifacts-alignment/README.md) · [前端交接](projects/20260920-dear-agent-artifacts-alignment/04-frontend-handoff.md) |
 | Dear Agent Skills 页面改进与治理简化 | 前后端最高/已完成：无会话技能目录与详情、用户上传/更新/启停/删除、执行快照恢复、独立Alembic；前端组件重构、详情抽屉与单测全量通过，待浏览器联合演练 | [进度总览](projects/20260919-skills-page-improvement/README.md) |
 | 正式聊天 v2（LangChain 流式运行时、线程续接、工具调用与中断展示） | 已重写：官方 SDK 会话、按轮渲染、多 ID 审批、历史分支及移动工作区；最终验收见项目记录 | [Chat 重构](projects/20260910-platform-web-refactor/04-chat-session-and-interaction.md) |
 | 运行级调试配置 | 已完成：公开 Context/config 白名单、schema 参数校验；不保留旧提示词覆盖 | [接入契约](projects/20260910-platform-web-refactor/03-api-contracts.md) |
@@ -57,6 +59,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Runtime 工具治理收敛与平台禁用例外 | 后端/Runtime 开发及本轮验证完成；前端由用户接入，联合发布待执行：Runtime 执行、平台管理禁用例外、Catalog 仅展示，旧功能不兼容 | [专项方案](projects/20260920-runtime-optional-tool-resolution/README.md) |
 | Showcase / DearFlow 沙箱文件树与产物预览下载 | 第一阶段后端已完成：文件树、普通文件/产物预览下载、格式扩展与审批；两服务 HTTP、重启读取与双浏览器静态 HTML 隔离通过；前端设计已交付、开发后置 | [实现版接入契约](projects/20260917-showcase-artifact-workspace/05-frontend-handoff.md) |
 | Showcase / DearFlow 人工交互 Terminal | 后端 done：local/Docker PTY、六类鉴权 HTTP、字节重放、输入幂等、配额/过期/清理、审计；前端 deferred，对接设计已交付；local 是宿主开发模式，多 Runtime 进程须粘性路由 | [Terminal 实施与验证](projects/20260917-showcase-artifact-workspace/06-terminal-backend.md) |
 | GraphHarbor官方v3对齐与平台迁移 | 后端完成：post30已发布／接入，生命周期／并行中断／恢复版本／步数限制修复，真实研究、文件、子任务、父取消及观测已验；前端交接完成，浏览器与默认切换后置，默认仍v2 | [完成项与代码证据](projects/20260915-graphharbor-v3-alignment/README.md) |
@@ -78,6 +81,9 @@
 ## 仓库级 / 工具链
 
 | 功能 | 状态 | 关联文档 |
+|---|---|---|
+| 非 Docker 新机开发环境交接 | 文档已收口：通用模板与私有账号映射分开，建库/SCRAM/反向验收连续步骤，补齐运维回执；目标机实际部署待执行 | [部署手册](quickstart/deployment-guide.md) · [运维交接](quickstart/operator-handoff.md) · [收口记录](changes/20260921-native-deployment-operator-handoff.md) |
+| 本地 PostgreSQL 密码认证 | 本地已完成：SCRAM、18 项认证检查、9 项兼容检查、重连和回退通过；云端交接更新因 SSH 超时待补 | [认证记录](projects/20260920-local-postgres-password/README.md) |
 | 本地项目清理 | 已支持：按 UUID 保留项目；显式历史清理先备份，支持失效令牌、会话/审计及指定测试库；测试退出回收项目 | [运维规范](guides/database-operations.md#本地项目清理) |
 | 本地栈进程启停 | 已优化：真实进程与端口归属识别、孤儿 worker 深度清理、端口占用自动回收与外部进程安全隔离 | `docs/changes/20260913-local-stack-real-process-management.md` |
 | 改动分级 + Skills 自动触发（plan-project/implement-feature/verify-change） | 已完成 | `AGENTS.md` |
@@ -88,3 +94,4 @@
 - Agent resync / Operations：后端全链路已退役，20 表及字段收缩和真实 Runtime 验收通过；当前状态见 [11](projects/20260910-platform-api-refactor/implementation/11-backend-closeout.md)。
 
 | Dear Agent P6 记忆与技能治理 | 记忆与外部任务原有验收保留；技能已由当前记录和执行快照替代旧版本治理，见Skills改进项目；前端待接入 | [P6执行包](projects/20260913-dearflow-agent/phases/P6-记忆与技能治理.md) |
+| Dear Agent 个人记忆管理与跨会话闭环 | 已有页面 CRUD、PG 存储、候选与注入；分层实施/接口/测试规划待评审，后端与Runtime负责实现，前端仅交接给同事；首轮旧前端15测试通过，新链路未实施 | [记忆专项与前端交接](projects/20260920-dear-agent-memory/README.md) |

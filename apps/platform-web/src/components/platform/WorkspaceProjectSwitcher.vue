@@ -82,6 +82,15 @@ async function selectProject(projectId: string) {
   close()
 }
 
+withDefaults(
+  defineProps<{
+    compact?: boolean
+  }>(),
+  {
+    compact: false
+  }
+)
+
 onMounted(() => {
   if (projectOptions.value.length <= 1) {
     void ensureProjectOptions()
@@ -97,19 +106,23 @@ onMounted(() => {
     <button
       ref="triggerRef"
       type="button"
-      class="pw-topbar-action min-h-9 min-w-0 max-w-full justify-start gap-1.5 px-2.5"
-      :class="isOpen ? 'pw-topbar-action-active' : ''"
+      class="pw-topbar-action min-w-0 max-w-full justify-start gap-1.5 shrink-0"
+      :class="[
+        isOpen ? 'pw-topbar-action-active' : '',
+        compact ? '!min-h-7 !h-7 !px-2 !gap-1 text-xs' : 'min-h-9 px-2.5'
+      ]"
       :disabled="refreshing || !projectOptions.length"
       :aria-label="t('common.project')"
       @click="void toggle()"
     >
       <BaseIcon
         name="project"
-        size="sm"
+        size="xs"
         class="shrink-0 text-gray-400 dark:text-dark-400"
       />
       <span
-        class="max-w-[min(112px,28vw)] truncate text-sm font-medium text-gray-800 dark:text-gray-100 sm:max-w-[120px]"
+        class="truncate font-medium text-gray-800 dark:text-gray-100"
+        :class="compact ? 'max-w-[80px] 2xl:max-w-[120px] text-xs' : 'max-w-[min(112px,28vw)] text-sm sm:max-w-[120px]'"
         :title="currentProjectLabel"
       >
         {{ currentProjectLabel }}

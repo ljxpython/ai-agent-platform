@@ -55,7 +55,8 @@ async def authenticate(authorization: str | None = None) -> Auth.types.MinimalUs
         "permissions": list(principal.permissions),
         "policy_version": policy.version,
         "allowed_model_ids": list(policy.allowed_model_ids),
-        "allowed_tool_names": list(policy.allowed_tool_names),
+        "tool_overrides": dict.fromkeys(policy.denied_tool_names, False),
+        "tool_policy_version": policy.tool_policy_version,
         "runtime_principal": {
             "user_id": principal.user_id,
             "tenant_id": principal.tenant_id,
@@ -66,7 +67,8 @@ async def authenticate(authorization: str | None = None) -> Auth.types.MinimalUs
         "runtime_policy": {
             "version": policy.version,
             "allowed_model_ids": list(policy.allowed_model_ids),
-            "allowed_tool_names": list(policy.allowed_tool_names),
+            "tool_overrides": dict.fromkeys(policy.denied_tool_names, False),
+            "tool_policy_version": policy.tool_policy_version,
         },
         "runtime_scope": {
             "tenant_id": verified.scope.tenant_id,

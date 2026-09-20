@@ -7,6 +7,21 @@ from platform_api.modules.audit.schemas import AuditPlane, AuditResult
 
 
 class AuditHttpResolutionTest(unittest.TestCase):
+    def test_tool_restriction_records_target_and_safe_rule_metadata(self):
+        metadata = {"graph_id": "reference_agent", "subject_type": "user", "subject_id": "u", "tool_name": "read_reference", "reason": "test", "token": "secret"}
+        for method, suffix, action in (("POST", "", "created"), ("DELETE", "/restriction", "deleted")):
+            resolved = resolve_http_audit(
+                request=AuditHttpRequest(method=method, path="/api/projects/p/runtime-policies/tool-restrictions" + suffix,
+                    query_params={}, query_string=None, state_project_id="p", client_ip=None, user_agent=None,
+                    response_content_length=None, metadata=metadata),
+                response_payload={"id": "restriction"}, actor_user_id="admin", status_code=201,
+                result=AuditResult.SUCCESS)
+            self.assertEqual(resolved.action, "runtime.tool_restriction." + action)
+            self.assertEqual(resolved.target_id, "restriction")
+            self.assertEqual(resolved.metadata["tool_name"], "read_reference")
+            self.assertEqual(resolved.metadata["subject_id"], "u")
+            self.assertNotIn("token", resolved.metadata)
+
     def test_terminal_operations_have_audit_actions_without_output(self):
         for method, suffix, action in (
             ("POST", "", "created"), ("GET", "", "listed"),

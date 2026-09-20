@@ -1,73 +1,44 @@
-# 本地开发与联调说明
+# 本地开发与联调
 
-文档类型：`Operational`（仓库级 supporting doc）
+2026-09-20 核对。新机安装、账号、配置和远程访问见[非 Docker 部署手册](deployment-guide.md)。
 
-本文是给人快速浏览的本地联调摘要；AI 代理在读取 contract 后，也可以继续读取本文来补齐启动、验证和脚本使用细节。
+默认：platform-web:3000 → platform-api:2142 → runtime-api:8123 → runtime-worker。
+PostgreSQL、Redis 必需；结果域 8081 按需单独启动，LightRAG 不在当前默认范围。
+没有 Platform Worker，不沿用 SQLite 或 langgraph dev 的旧启动说明。
 
-默认本地部署的唯一事实源是 `docs/local-deployment-contract.yaml`；如果本文与 contract 冲突，以 contract 为准。
+## 首次配置完成后
 
-## 1. 当前正式本地链路
-
-以下内容对应 contract 中的正式本地演示 profile。
-
-### 1.1 固定端口
-
-- `apps/runtime-service`: `8123`
-- `apps/interaction-data-service`: `8081`
-- `apps/platform-api`: `2142`
-- `apps/platform-web`: `3000`
-
-### 1.2 当前默认链路
-
-- 平台主链：`platform-web -> platform-api -> runtime-service`
-- 结果域链路：`platform-api -> interaction-data-service`
-- Runtime 落库链路：`runtime-service -> interaction-data-service`
-
-## 2. 配置文件口径
-
-根目录不维护统一 `.env`，本地调试时只使用各应用自己的配置文件。
-
-## 3. 启动说明 (唯一支持方式)
-
-控制面本地开发统一使用本机 PostgreSQL 独立库 `platform_api`，关闭自动建表。先按[数据库运维规范](../guides/database-operations.md)完成建库及配置；已有 SQLite 数据先迁移，不直接覆盖配置。启动脚本会执行控制面 preflight 和 Alembic，PG 不可用时不会回退 SQLite。
-
-**注意：本项目唯一支持的本地启动方式是使用 `local-stack.sh` 脚本。** 不要手动使用 `uvicorn` 或 `pnpm dev` 启动单个服务，否则会导致环境变量和服务发现异常。
-
-启动整个开发环境：
+在仓库根目录：
 
 ```bash
+source "apps/runtime-service/.venv/bin/activate"
+bash "scripts/local-stack.sh" doctor
 bash "scripts/local-stack.sh" start
-```
-
-该脚本会自动处理依赖安装、环境变量注入和多进程管理。
-
-停止服务：
-
-```bash
+bash "scripts/local-stack.sh" status
 bash "scripts/local-stack.sh" stop
 ```
 
-查看状态：
+脚本加载 Runtime app-local .env，读取平台委托密钥，检查依赖、执行迁移并管理四个进程。
+不安装 PG/Redis，不生成配置、不安装前端依赖。doctor 可能清理本仓库旧占用进程，不是纯只读。
+
+- Runtime：apps/runtime-service/.env，API/Worker 共用。
+- 平台：apps/platform-api/.env，PG 独立库，关闭自动建表。
+- 前端：apps/platform-web/.env.local，脚本强制同源 API / 和本地代理。
+- 根目录 .env 不是统一配置源，不整体 source。
+
+migrate 包括平台 Alembic、GraphHarbor 和 Runtime 应用表，start 也先执行它们。
+优先使用脚本；隔离排障才用单服务命令，并保持相同配置和环境。
+
+## 验收
 
 ```bash
-bash "scripts/local-stack.sh" status
+curl -fsS "http://127.0.0.1:8123/ready"
+curl -fsS "http://127.0.0.1:2142/_system/health"
 ```
 
-## 4. 最小健康检查
+本机访问 http://localhost:3000；远程用 SSH 转发到本机 13000，见完整手册。
+健康检查不替代登录、建项目、配模型和真实 Run。
+模型连接在平台数据库；旧 Runtime settings.yaml/settings.local.yaml 不参与正式模型解析。
 
-使用 `local-stack.sh status` 可以查看各服务状态。如果需要手动检查：
-
-- `interaction-data-service`: `curl http://127.0.0.1:8081/_service/health`
-- `runtime-service`: `curl http://127.0.0.1:8123/info`
-- `platform-api`: `curl http://127.0.0.1:2142/_system/health`
-- `platform-web`: 浏览器访问 `http://127.0.0.1:3000`
-
-## 5. 当前约定
-
-- 不共享 `.venv`
-- 不共享 Node 依赖
-- 不共享根级 `.env`
-- `apps/platform-web` 是当前正式平台前端宿主
-- `apps/platform-api` 是当前正式控制面宿主
-- `apps/runtime-service` 是正式 runtime 执行层
-- `apps/interaction-data-service` 是正式结果域服务
+各应用独立 .venv/锁文件，不搬跨系统依赖目录。
+另见[配置矩阵](env-matrix.md)、[数据库规范](../guides/database-operations.md)。

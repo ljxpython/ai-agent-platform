@@ -105,7 +105,6 @@ def _build_agent(
         context=parse_runtime_context(config.get("context")),
         policy=facts.policy,
         defaults=defaults,
-        tool_permissions={tool.name: permission},
     )
     agent = create_agent(
         model=model,
@@ -117,7 +116,6 @@ def _build_agent(
                 policy=facts.policy,
                 defaults=defaults,
                 base_model=model,
-                tool_permissions={tool.name: permission},
                 local_fallback=True,
             )
         ],
@@ -165,7 +163,6 @@ async def get_timeout_agent(config: RunnableConfig) -> Pregel:
         context=parse_runtime_context(config.get("context")),
         policy=facts.policy,
         defaults=_TIMEOUT_DEFAULTS,
-        tool_permissions={"slow_tool": "runtime.tool.write"},
     )
     builder = StateGraph(_TimeoutState)
     builder.add_node("slow_tool", _run_slow_tool)

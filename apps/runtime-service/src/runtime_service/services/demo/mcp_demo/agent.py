@@ -47,7 +47,6 @@ _DEFAULTS = AgentDefaults(
     prompt_version="mcp-demo-v1",
     optional_tool_names=("mcp_read",),
 )
-_TOOL_PERMISSIONS = {"mcp_read": "runtime.tool.read"}
 
 
 def _local_test_facts() -> VerifiedDelegation:
@@ -62,7 +61,8 @@ def _local_test_facts() -> VerifiedDelegation:
         RuntimePolicy(
             "mcp-demo-local-v1",
             (_DEFAULTS.model_id,),
-            _DEFAULTS.optional_tool_names,
+            (),
+            "local-tools-v2",
         ),
         RuntimeScope("local-tenant", "mcp-project"),
         "",
@@ -114,7 +114,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         context=context,
         policy=facts.policy,
         defaults=_DEFAULTS,
-        tool_permissions=_TOOL_PERMISSIONS,
     )
     model = _runtime_model(config, local=local) or build_model(resolved)
     tools = (
@@ -137,7 +136,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 policy=facts.policy,
                 defaults=_DEFAULTS,
                 base_model=model,
-                tool_permissions=_TOOL_PERMISSIONS,
                 local_fallback=local,
             )
         ],

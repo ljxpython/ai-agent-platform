@@ -16,6 +16,12 @@ from platform_api.modules.runtime_gateway.application.service import (
 
 
 class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
+    def test_standard_run_rejects_tool_fields_with_client_error(self):
+        service = RuntimeGatewayService(session_factory=None, upstream=SimpleNamespace())
+        for field in ("tools", "enable_tools", "tool_overrides", "tool_policy_version"):
+            with self.subTest(field=field), self.assertRaises(BadRequestError):
+                service._inject_project_scope(project_id="p", payload={"context": {field: {}}})
+
     def test_protocol_lifecycle_is_normalized_for_frontend_sdk(self) -> None:
         frame, terminal = _normalize_protocol_lifecycle_frame(
             b'data: {"seq":4,"method":"lifecycle","params":{"namespace":[],"data":{"event":"success","status":"success"},"run_id":"run-1"}}'
@@ -34,7 +40,7 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(terminal)
 
-    def test_context_hash_matches_runtime_context_v1_canonicalization(self) -> None:
+    def test_context_hash_matches_runtime_context_v4_canonicalization(self) -> None:
         context_hash, snapshot = _runtime_context_snapshot(
             {
                 "params": {
@@ -43,13 +49,11 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
                         "temperature": 0.2,
                         "top_p": 1,
                         "max_tokens": 128,
-                        "tools": ["search"],
                     },
                     "config": {
                         "configurable": {
                             "platform_runtime": {
                                 "temperature": 0,
-                                "tools": ["utc_now", "search"],
                             }
                         }
                     },
@@ -59,7 +63,7 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             context_hash,
-            "sha256:67b573b27851ae07ed231facfcccf00fe7450a6aab56541e4a9cc790da0c8864",
+            "sha256:6919616740ad060d6785d7e2604f2487f1d109fca3dd207dd1107cb8a4281dc2",
         )
         self.assertEqual(
             snapshot,
@@ -68,7 +72,6 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
                 "temperature": 0.0,
                 "top_p": 1.0,
                 "max_tokens": 128,
-                "tools": ["search", "utc_now"],
             },
         )
 
@@ -162,8 +165,6 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
                     "configurable": {
                         "thread_id": "thread-1",
                         "checkpoint_id": "checkpoint-1",
-                        "enable_tools": True,
-                        "tools": ["utc_now"],
                         "project_id": "legacy-project",
                         "tenant_id": "tenant-1",
                     },
@@ -181,8 +182,6 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
                 "context": {
                     "system_prompt": "context prompt",
                     "model_id": "config-model",
-                    "enable_tools": True,
-                    "tools": ["utc_now"],
                 },
                 "config": {
                     "recursion_limit": 12,
@@ -376,4 +375,3 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

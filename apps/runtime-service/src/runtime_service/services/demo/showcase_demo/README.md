@@ -75,7 +75,7 @@
 新增图片/MCP 工具独立由 Runtime 启用，不受该字段管理，具体边界见下方图片能力说明。
 `execute` 是可修改整个线程工作区的能力，不能授予只读角色；审批只代表用户同意，不能替代 Runtime 授权。
 
-当前权限映射在 `agent.py` 的 `_TOOL_PERMISSIONS` 中显式列出。
+工具声明在 `runtime/capabilities.py` 的 `SHOWCASE_TOOLS` 中统一定义，Platform 签名禁用项由 Runtime 执行。
 每个角色最多 12 次模型调用、24 次工具调用；模型调用超时 30 秒。
 
 ## 路径、存储和真实执行
@@ -183,7 +183,7 @@ AntV 默认会使用外部图表服务，数据并非只在本地 stdio 进程�
 - “把 A=12、B=23 交给图表助手画成条形图。” → task → chart-agent → MCP → 图表路径。
 
 这些新增工具由 Runtime 组合根固定启用和按角色授权，不加入上层 Context 工具名单。
-`Context.tools=[]` 仅禁用既有的受平台管理工具；新增图片工具仍可用，委派仍需既有 `task` 授权。
+Context 不接受 tools；图片、图表和 task 均属于 Runtime 声明，受签名禁用与子 Agent 上限约束，不存在 internal 绕过。
 身份、Context 哈希及 tenant/project/thread 检查仍然执行。不要将内部工具名单来源改成用户输入。
 公共工具通过绑定 `ImageWorkspace` 复用，不依赖 showcase 模块。
 

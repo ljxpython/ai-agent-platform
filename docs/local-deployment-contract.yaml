@@ -1,315 +1,152 @@
-version: 1
+version: 2
 kind: local-deployment-contract
-name: ai-agent-test-platform
+name: ai-agent-platform
 source_of_truth: true
-scope: local-deployment
-purpose: >
-  Canonical local deployment contract for AI agents and human operators.
-  Normal local deployment must use this file instead of app READMEs or source-code discovery.
+scope: non-docker-development
+reviewed_on: "2026-09-21"
 
 document_precedence:
   canonical:
     - docs/local-deployment-contract.yaml
+    - docs/quickstart/deployment-guide.md
   supporting:
-    - docs/guides/ai-deployment-assistant-instruction.md
-    - README.md
     - docs/quickstart/local-dev.md
     - docs/quickstart/env-matrix.md
-    - docs/quickstart/deployment-guide.md
-    - docs/guides/development-guidelines.md
-  rule: >
-    If any supporting document conflicts with this contract on default local deployment,
-    this contract wins.
+    - docs/guides/database-operations.md
+  rule: Documents must agree with scripts/local-stack.sh and app config; report drift instead of executing obsolete commands.
 
 agent_entrypoint:
+  guide: docs/guides/ai-deployment-assistant-instruction.md
   one_line_user_prompt: 阅读 docs/guides/ai-deployment-assistant-instruction.md 帮我部署环境
-  normal_first_read_path:
-    - docs/guides/ai-deployment-assistant-instruction.md
-    - docs/local-deployment-contract.yaml
-  supporting_docs_are_not_default_prerequisites: true
-  behavior:
-    - Treat the one-line user prompt as sufficient start signal
-    - Do not ask the user to rewrite the prompt into a longer template
-    - Read the guide and this contract before consulting any other supporting doc
-    - Continue into relevant root supporting docs on your own when dependency prep, env locations, startup details, or troubleshooting details are needed
-    - Do not ask the user which root doc to read next
-    - Ask the user for missing required materials only when blocked steps truly depend on them
-
-preflight:
-  first_actions:
-    - Read docs/guides/ai-deployment-assistant-instruction.md
-    - Read docs/local-deployment-contract.yaml
-    - Inspect whether required local config files and user-supplied deployment materials already exist
-  supporting_doc_autoread:
-    - If more root context is needed, continue reading README.md, docs/quickstart/local-dev.md, docs/quickstart/deployment-guide.md, or docs/quickstart/env-matrix.md without asking the user to name them
-    - Stop expanding only when the next concrete deployment step is clear or a real blocker remains
-  startup_strategy:
-    - For normal minimal-input deployment, validate required config first and then prefer root helper scripts for the first standard bring-up
-    - If helper scripts fail, service state is ambiguous, or diagnosis needs isolation, fall back to per-service startup and debugging
-  ask_if_missing_user_materials:
-    - If any real deployment prerequisite is missing, ask once for the complete repo-shaped config package
-    - The request must consolidate all missing required items instead of asking scattered follow-up questions
-    - After asking, pause only the blocked deployment steps and continue safe checks where possible
-  ask_if_blocked:
-    - Ask the user only after reading the relevant root docs and checking local files still cannot unblock the next concrete step
-    - Each blocker round must consolidate all currently knowable missing user-owned materials or decisions into one question
 
 profiles:
   default-local:
-    description: Official local demo and integration profile
-    services:
-      - runtime-service
-      - interaction-data-service
-      - lightrag-service
-      - platform-api
-      - platform-web
-    startup_order:
-      - runtime-service
-      - interaction-data-service
-      - lightrag-service
-      - platform-api
-      - platform-web
+    description: Native processes on a local or SSH-accessed development host
+    services: [runtime-service, platform-api, platform-web]
+    processes: [runtime-api, runtime-worker, platform-api, platform-web]
+    startup_order: [runtime-api, runtime-worker, platform-api, platform-web]
+    optional_services: [interaction-data-service]
     chains:
-      - platform-web -> platform-api -> runtime-service
-      - runtime-service -> interaction-data-service
-      - runtime-service -> lightrag-service
+      - platform-web -> platform-api -> runtime-api -> runtime-worker
+    excluded:
+      - platform-worker
+      - lightrag-service
 
 global:
-  ports:
-    interaction-data-service: 8081
-    runtime-service: 8123
-    platform-api: 2142
-    platform-web: 3000
-    lightrag-service: 9621
-    lightrag-service-mcp: 8621
   dependencies:
-    python: ">=3.13"
+    python: "3.13"
     uv: required
     node: "22.x"
     pnpm: "10.5.1"
-    postgresql:
-      required: false
-      host: 127.0.0.1
-      port: 5432
-      database: agent_platform
-      user: agent
-  config_rules:
-    - Do not assume a repo-root .env
-    - Use app-local config files only
-    - platform-web is the official platform frontend host for default local deployment
-    - platform-api is the official control-plane host for default local deployment
-  helper_scripts:
-    - scripts/dev-up.sh
-    - scripts/check-health.sh
-    - scripts/dev-down.sh
-  helper_script_rule: Scripts are shortcuts for standard bring-up, not config generators.
+    postgresql: {required: true, recommended_major: 17, host: 127.0.0.1, port: 5432, authentication: scram-sha-256}
+    redis: {required: true, recommended_major: 7, host: 127.0.0.1, port: 6379, db: 7}
+    shell_tools: [bash, python3, curl, lsof, pg_isready]
+    bootstrap_python_module: dotenv
+  helper_scripts: [scripts/local-stack.sh]
+  commands: [doctor, migrate, start, status, logs, restart-one, restart, stop]
+  rules:
+    - Install dependencies first; doctor is not an installer and can reclaim stale owned processes.
+    - Activate Runtime venv before running the script if system python3 lacks dotenv.
+    - Do not source the repo-root or Platform API .env.
+    - Runtime .env is shell-sourced and must use shell-compatible quoting.
+    - Do not copy venv, node_modules, databases, Redis state or workspaces across machines.
+    - Default startup manages exactly four processes; PostgreSQL and Redis are external prerequisites.
+    - Use one active stack per user; temporary PID/log paths are shared across repository copies.
+    - This is a development profile, not an approved production deployment.
 
 services:
-  interaction-data-service:
-    role: Result-domain service
-    in_default_local: true
-    repo_path: apps/interaction-data-service
-    port: 8081
-    config_files:
-      required:
-        - apps/interaction-data-service/.env
-    minimum_required_env:
-      - SERVICE_NAME=interaction-data-service
-      - INTERACTION_DB_ENABLED=false or a valid DATABASE_URL when true
-    start:
-      workdir: apps/interaction-data-service
-      command: uv run uvicorn main:app --host 127.0.0.1 --port 8081 --reload
-    health_checks:
-      - curl http://127.0.0.1:8081/_service/health
-
   runtime-service:
-    role: LangGraph runtime service
-    in_default_local: true
     repo_path: apps/runtime-service
     port: 8123
-    config_files:
-      required:
-        - apps/runtime-service/runtime_service/.env
-        - apps/runtime-service/runtime_service/conf/settings.yaml
-      optional:
-        - apps/runtime-service/runtime_service/conf/settings.local.yaml
-    minimum_required_checks:
-      - APP_ENV exists in apps/runtime-service/runtime_service/.env
-      - MODEL_ID in apps/runtime-service/runtime_service/.env is either blank or a valid model key from settings.yaml
-      - default.default_model_id exists in apps/runtime-service/runtime_service/conf/settings.yaml
-      - default.models.<model_id> exists in apps/runtime-service/runtime_service/conf/settings.yaml
-      - PLATFORM_RUNTIME_DELEGATION_SECRET is at least 32 bytes and matches platform-api
-      - PLATFORM_RUNTIME_MANAGEMENT_API_KEY is at least 32 bytes and matches platform-api upstream API key
-    model_contract:
-      real_deployment_prerequisites:
-        - User decides whether apps/runtime-service/runtime_service/.env should leave MODEL_ID blank or explicitly override the default model
-        - User-provided default.models.<model_id> block for apps/runtime-service/runtime_service/conf/settings.yaml
-        - If multiple models are needed, the user reply should include all model blocks and identify the default model
-      missing_material_request:
-        - MODEL_ID override only when it differs from default_model_id
-        - settings.yaml model block in repo shape
-        - default_model_id when it differs from MODEL_ID
-      required_fields:
-        - model_provider
-        - model
-        - base_url
-        - api_key
-      required_user_reply_template:
-        - "Please reply once with a repo-shaped runtime config patch:"
-        - |
-            # apps/runtime-service/runtime_service/.env
-            # Leave MODEL_ID empty to use default_model_id.
-            MODEL_ID=
-
-            # apps/runtime-service/runtime_service/conf/settings.yaml
-            default:
-              default_model_id: <your_model_id>
-              models:
-                <your_model_id>:
-                  alias: <optional_display_name>
-                  model_provider: <provider>
-                  model: <model_name>
-                  base_url: <provider_base_url>
-                  api_key: <your_api_key>
-    start:
-      workdir: apps/runtime-service
-      command: uv run langgraph dev --config langgraph.json --port 8123 --no-browser
-    health_checks:
-      - curl -H "x-api-key: $PLATFORM_RUNTIME_MANAGEMENT_API_KEY" http://127.0.0.1:8123/info
-      - curl -H "x-api-key: $PLATFORM_RUNTIME_MANAGEMENT_API_KEY" http://127.0.0.1:8123/internal/capabilities/models
-      - curl -H "x-api-key: $PLATFORM_RUNTIME_MANAGEMENT_API_KEY" http://127.0.0.1:8123/internal/capabilities/tools
-
+    config_files: [apps/runtime-service/.env, apps/runtime-service/langgraph.json]
+    database: {name: runtime_service, user: runtime_service}
+    database_rule: Generic names match .env.example; a private handoff may override both names. Require SCRAM and non-superuser application roles; do not copy developer superuser privileges.
+    required_env:
+      - DATABASE_URI
+      - REDIS_URI
+      - PLATFORM_RUNTIME_DELEGATION_SECRET
+      - PLATFORM_RUNTIME_DELEGATION_ISSUER
+      - PLATFORM_RUNTIME_DELEGATION_AUDIENCE
+      - PLATFORM_RUNTIME_MODEL_CONFIG_URL
+      - GRAPHHARBOR_RUNTIME_CONTEXT_SECRET
+      - GRAPHHARBOR_RUNTIME_CONTEXT_ISSUER
+      - GRAPHHARBOR_RUNTIME_CONTEXT_AUDIENCE
+      - GRAPHHARBOR_WORKSPACE_ROOT
+      - GRAPHHARBOR_RUN_TIMEOUT_SECONDS
+      - RUNTIME_WORKSPACE_MAX_FILE_BYTES
+      - RUNTIME_WORKSPACE_MAX_FILES
+      - RUNTIME_WORKSPACE_MAX_TOTAL_BYTES
+      - RUNTIME_WORKSPACE_TTL_SECONDS
+    execution: {showcase_backend: local, terminal_backend: local}
+    migrations:
+      - graphharbor migrate upgrade
+      - python -m runtime_service.messaging
+    migration_note: messaging initializes the Runtime application Alembic chain via upgrade(); includes skills, memory and inbox.
+    health_checks: ["http://127.0.0.1:8123/ready"]
+    model_source: Platform model catalog; old settings.yaml/settings.local.yaml are not loaded.
   platform-api:
-    role: Official platform control-plane backend
-    in_default_local: true
     repo_path: apps/platform-api
     port: 2142
-    upstreams:
-      - runtime-service
-    config_files:
-      required:
-        - apps/platform-api/.env
-    minimum_required_env:
-      - PLATFORM_API_LANGGRAPH_UPSTREAM_URL=http://127.0.0.1:8123
-      - PLATFORM_API_LANGGRAPH_UPSTREAM_API_KEY matches PLATFORM_RUNTIME_MANAGEMENT_API_KEY
-      - PLATFORM_API_RUNTIME_DELEGATION_SECRET matches PLATFORM_RUNTIME_DELEGATION_SECRET
-      - PLATFORM_API_RUNTIME_DELEGATION_ISSUER=platform-api
-      - PLATFORM_API_RUNTIME_DELEGATION_AUDIENCE=runtime-service
-      - PLATFORM_API_PLATFORM_DB_ENABLED=true
-      - PLATFORM_API_PLATFORM_DB_AUTO_CREATE=false
-      - PLATFORM_API_DATABASE_URL=postgresql+psycopg://platform_api:<password>@127.0.0.1:5432/platform_api
+    config_files: [apps/platform-api/.env]
+    database: {name: platform_api, user: platform_api}
+    required_env:
+      - PLATFORM_API_DATABASE_URL
+      - PLATFORM_API_PLATFORM_DB_ENABLED
+      - PLATFORM_API_PLATFORM_DB_AUTO_CREATE
+      - PLATFORM_API_RUNTIME_DELEGATION_SECRET
+      - PLATFORM_API_LANGGRAPH_UPSTREAM_URL
+      - PLATFORM_API_MODEL_CONFIG_MASTER_KEY
       - PLATFORM_API_JWT_ACCESS_SECRET
       - PLATFORM_API_JWT_REFRESH_SECRET
-      - PLATFORM_API_BOOTSTRAP_ADMIN_ENABLED=true
-      - PLATFORM_API_BOOTSTRAP_ADMIN_USERNAME=admin
-      - PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD=admin123456
-    bootstrap_account:
-      username: admin
-      password: admin123456
-      scope: local-only temporary use
-    start:
-      workdir: apps/platform-api
-      command: uv run uvicorn platform_api.main:create_app --factory --host 127.0.0.1 --port 2142 --reload
-    health_checks:
-      - curl http://127.0.0.1:2142/_system/health
-      - curl http://127.0.0.1:2142/api/langgraph/info
-
-
+      - PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD
+    database_enabled: true
+    auto_create: false
+    bootstrap_admin: {username: admin, password_source: private-app-env}
+    migrations: ["python scripts/database.py upgrade"]
+    migration_check: python scripts/database.py check
+    health_checks: ["http://127.0.0.1:2142/_system/health"]
   platform-web:
-    role: Official platform frontend workspace
-    in_default_local: true
     repo_path: apps/platform-web
     port: 3000
-    upstreams:
-      - platform-api
-    config_files:
-      optional:
-        - apps/platform-web/.env
-        - apps/platform-web/.env.local
-        - apps/platform-web/.env.example
-    minimum_required_env:
-      - VITE_PLATFORM_API_URL=http://localhost:2142
-      - VITE_PLATFORM_API_RUNTIME_ENABLED=true
-      - VITE_DEV_PROXY_TARGET=http://localhost:2142
-    start:
-      workdir: apps/platform-web
-      command: VITE_DEV_PORT=3000 pnpm dev
-    access_urls:
-      - http://127.0.0.1:3000
+    config_files: [apps/platform-web/.env.local]
+    env:
+      VITE_PLATFORM_API_URL: /
+      VITE_PLATFORM_API_RUNTIME_ENABLED: "true"
+      VITE_DEV_PROXY_TARGET: http://127.0.0.1:2142
+      VITE_DEV_PORT: "3000"
+    remote_access: SSH local forwarding 13000 -> server 127.0.0.1:3000
+  interaction-data-service:
+    repo_path: apps/interaction-data-service
+    port: 8081
+    in_default_local: false
+    config_files: [apps/interaction-data-service/.env]
+    database_enabled_by_default: false
+    health_checks: ["http://127.0.0.1:8081/_service/health"]
+    note: Optional independent startup; health does not prove result persistence.
 
+preflight:
+  - Inventory existing infrastructure and installation sources; do not install conflicting instances.
+  - Verify approved destination before uploading private configuration.
+  - Keep secrets out of public docs, command arguments, logs and Git.
+  - Create missing databases and roles before migrations; do not alter existing passwords or owners implicitly.
+  - Verify database and Redis endpoints, delegation matching and workspace permissions.
+  - Verify correct-password success and missing/wrong-password rejection with password files isolated.
+  - Preserve management access and existing databases; scope HBA changes to approved application roles.
+  - Ask only for missing materials that block the next step.
 
-  lightrag-service:
-    role: Repo-local LightRAG knowledge service
-    in_default_local: true
-    repo_path: apps/lightrag-service
-    port: 9621
-    auxiliary_ports:
-      - 8621
-    config_files:
-      optional:
-        - apps/lightrag-service/.env
-        - apps/lightrag-service/.env.example
-        - apps/lightrag-service/deploy/.env.lightrag-service.example
-    minimum_required_env:
-      - HOST=0.0.0.0
-      - PORT=9621
-      - MCP_TRANSPORT=sse
-      - MCP_PORT=8621
-      - WORKING_DIR=./data/rag_storage (host-run default)
-      - INPUT_DIR=./data/inputs (host-run default)
-    start:
-      workdir: .
-      command: echo "lightrag-service is optional and not started by default"
-    health_checks:
-      - curl http://127.0.0.1:9621/health
-      - curl http://127.0.0.1:8621/sse
-    access_urls:
-      - http://127.0.0.1:9621
-      - http://127.0.0.1:9621/health
-      - http://127.0.0.1:8621/sse
-    hard_rules:
-      - Repo-local host-run HTTP default is http://127.0.0.1:9621 and is the platform-api-side default local knowledge upstream
-      - Repo-local host-run MCP SSE default is http://127.0.0.1:8621/sse
-      - Root one-click local scripts are expected to bring up both the HTTP lane and the MCP SSE lane
-      - When platform-api runs in Docker and lightrag-service runs on the host, use http://host.docker.internal:9621
-      - When runtime-service runs in Docker and lightrag-service runs on the host, use http://host.docker.internal:8621/sse
+acceptance:
+  - Platform migration is at head; GraphHarbor and Runtime application migrations succeeded.
+  - Runtime API, Runtime Worker, Platform API and Platform Web are running.
+  - Readiness JSON contents are successful.
+  - Bootstrap login and new project creation work.
+  - Configure model connection and project/Agent model selection in the platform.
+  - A real new chat streams and completes; refresh shows only newly created history.
+  - Report optional services and real-model checks not performed.
 
-failure_handling:
-  model_config_missing:
-    - Real deployment cannot complete before the user provides a repo-shaped runtime config patch containing the matching settings.yaml model block and, when needed, a MODEL_ID override
-    - Ask the user once for the complete repo-shaped config package before retrying blocked runtime steps
-    - Continue non-model setup and verification where possible
-    - Report exact missing fields
-    - Mark runtime-service as blocked
-    - Do not claim full deployment success
-  helper_script_failure:
-    - Return to per-service startup and debugging
-  general_blocker_rule:
-    - Do not ask the user for a better prompt or for the next document to read
-    - Ask once only when the next concrete step is still blocked after root-doc reading and local verification
-
-final_report:
-  required_items:
-    - tasks_completed
-    - files_read_or_written
-    - services_started_successfully
-    - blocked_services_and_reasons
-    - local_access_urls
-    - bootstrap_account_if_used
-    - recommended_restart_method
-  required_urls:
-    interaction-data-service: http://127.0.0.1:8081
-    runtime-service: http://127.0.0.1:8123
-    lightrag-service: http://127.0.0.1:9621
-    lightrag-service-mcp: http://127.0.0.1:8621/sse
-    platform-api: http://127.0.0.1:2142
-    platform-web: http://127.0.0.1:3000
-
-forbidden_assumptions:
-  - assume_repo_root_env
-  - read_source_code_for_normal_local_deploy
-  - require_app_readme_for_normal_local_deploy
-  - treat_platform_api_2024_as_official_control_plane
-  - invent_model_credentials
-  - claim_frontend_source_missing_without_verifying_target_file_and_alias
-  - omit_blocked_reasons_in_summary
+handoff:
+  operator_guide: docs/quickstart/operator-handoff.md
+  environment_overrides: Read the private handoff README for actual accounts, paths and code revision.
+  data_policy: fresh databases; no old users, projects, chats, checkpoints, Redis or workspace data
+  config_policy: privately copy app env; root env preserved separately, never used as shared runtime config
+  source_policy: workspace snapshot or clone; no cross-platform dependency directories
+  completion_policy: uploading files does not mean deployment has been executed

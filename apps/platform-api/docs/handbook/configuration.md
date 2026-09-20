@@ -13,7 +13,7 @@
 | API_DOCS_ENABLED | true | prod/production必须false |
 | CORS_ALLOW_ORIGINS | ["*"] | 明确前端来源，推荐JSON数组 |
 | PLATFORM_DB_ENABLED | false | 业务需要开启；开启时DATABASE_URL必填 |
-| PLATFORM_DB_AUTO_CREATE | false | 仅本地SQLite快速开发可开启，PG用Alembic |
+| PLATFORM_DB_AUTO_CREATE | false | 正式开发保持 false，PG 用 Alembic；SQLite 仅用于隔离测试或历史迁移源 |
 | DATABASE_URL | 无 | 同步SQLAlchemy URL，如postgresql+psycopg://user:password@127.0.0.1:5432/platform |
 
 ## 用户与服务账号

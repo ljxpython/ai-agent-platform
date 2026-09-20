@@ -172,15 +172,12 @@ class RuntimeCatalogService:
                 tenant_id=self._tenant_id,
                 project_id=project_id,
                 role=project_roles[0],
-                permissions=[
-                    "project.runtime.read",
-                    "project.runtime.write",
-                    *policy["runtime_permissions"],
-                ],
+                permissions=[],
                 policy_version=str(policy["version"]),
                 allowed_model_ids=policy["allowed_model_ids"],
-                allowed_tool_names=policy["allowed_tool_names"],
-                scope={"tenant_id": self._tenant_id, "project_id": project_id},
+                tool_overrides={},
+                tool_policy_version="unscoped-read-v2",
+                scope={"tenant_id": self._tenant_id, "project_id": project_id, "operation": "read"},
                 context_hash=empty_runtime_context_hash(),
                 settings=self._settings,
             )
@@ -589,6 +586,7 @@ class RuntimeCatalogService:
             id=str(item.id),
             runtime_id=item.runtime_id,
             tool_key=item.tool_key,
+            graph_ids=list(item.graph_ids),
             name=item.name,
             source=item.source or "",
             description=item.description or "",
@@ -612,9 +610,32 @@ class RuntimeCatalogService:
 
     @staticmethod
     def _normalize_tool_items(payload: Any) -> list[dict[str, Any]]:
+        def invalid():
+            return ServiceUnavailableError(code="runtime_tool_catalog_invalid", message="Invalid Runtime tool declarations")
         if not isinstance(payload, dict) or not isinstance(payload.get("tools"), list):
-            return []
-        return [item for item in payload["tools"] if isinstance(item, dict)]
+            raise invalid()
+        seen = set()
+        for item in payload["tools"]:
+            if not isinstance(item, dict):
+                raise invalid()
+            for key in ("tool_key", "name"):
+                value = item.get(key)
+                if not isinstance(value, str) or not value or len(value) > 128 or value != value.strip():
+                    raise invalid()
+            graphs = item.get("graph_ids")
+            if (item["tool_key"] != item["name"] or item["tool_key"] in seen or
+                    not isinstance(graphs, list) or not graphs or
+                    any(not isinstance(g, str) or not g or len(g) > 128 for g in graphs)):
+                raise invalid()
+            seen.add(item["tool_key"])
+        return payload["tools"]
+
+    async def read_tool_declarations(self, *, actor: ActorContext, project_id: str) -> list[dict]:
+        await run_in_threadpool(self._prepare_project_scope, actor=actor, project_id=project_id,
+                                permission=PermissionCode.PROJECT_RUNTIME_READ)
+        payload = await self._upstream.require_json("GET", "/internal/capabilities/tools",
+            forwarded_headers=await run_in_threadpool(self._runtime_headers, actor=actor, project_id=project_id))
+        return self._normalize_tool_items(payload)
 
     @staticmethod
     def _normalize_graph_items(payload: Any) -> list[dict[str, Any]]:
@@ -697,19 +718,7 @@ class RuntimeCatalogService:
         )
         items = self._normalize_tool_items(payload)
         synced_at = datetime.now(UTC)
-        active_keys = {
-            tool_key
-            for tool_key in (
-                _clean(item.get("tool_key"))
-                or (
-                    f"{_clean(item.get('source'))}:{_clean(item.get('name'))}"
-                    if _clean(item.get("source")) and _clean(item.get("name"))
-                    else _clean(item.get("name"))
-                )
-                for item in items
-            )
-            if tool_key
-        }
+        active_keys = {item["tool_key"] for item in items}
 
         session_factory = self._require_session_factory()
 

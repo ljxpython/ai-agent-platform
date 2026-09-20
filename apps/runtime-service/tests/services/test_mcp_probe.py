@@ -22,9 +22,9 @@ def _config() -> dict[str, Any]:
                 "runtime_policy": {
                     "version": "mcp-probe-test-v1",
                     "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-                    "allowed_tool_names": ["mcp_read"],
+                    "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
                 },
-                "runtime_scope": {"tenant_id": "tenant", "project_id": "project"},
+                "runtime_scope": {"operation": "read", "tenant_id": "tenant", "project_id": "project"},
                 "runtime_context_hash": runtime_context_hash(None),
             },
         },

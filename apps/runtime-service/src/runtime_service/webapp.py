@@ -232,22 +232,10 @@ async def list_messages(
 
 @app.get("/internal/capabilities/tools")
 async def tool_catalog(authorization: str | None = Header(default=None)) -> dict:
-    """Runtime owns tool capabilities; the platform owns project grants."""
+    """Display declarations only; catalog freshness never grants tools."""
     await authenticate(authorization)
-    from runtime_service.runtime.capabilities import tool_permissions
-
-    permissions = tool_permissions()
-    return {
-        "tools": [
-            {
-                "tool_key": name,
-                "name": name,
-                "source": "runtime",
-                "permissions": [permission],
-            }
-            for name, permission in sorted(permissions.items())
-        ]
-    }
+    from runtime_service.runtime.capabilities import tool_catalog as catalog
+    return catalog()
 
 
 __all__ = ["app", "lifespan"]

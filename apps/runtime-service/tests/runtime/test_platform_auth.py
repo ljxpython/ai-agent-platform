@@ -16,7 +16,7 @@ SECRET = "r1-test-secret-with-at-least-32-bytes"
 def _token(*, request_id: str | None = None, platform_trace_id: str | None = None) -> str:
     now = int(time.time())
     claims = {
-            "type": "runtime_delegation",
+            "type": "runtime_delegation", "delegation_version": 2,
             "sub": "user-a",
             "tenant_id": "tenant-a",
             "project_id": "project-a",
@@ -24,12 +24,12 @@ def _token(*, request_id: str | None = None, platform_trace_id: str | None = Non
             "permissions": ["runtime.tool.read"],
             "policy_version": "policy-1",
             "allowed_model_ids": ["deepseek:deepseek-chat"],
-            "allowed_tool_names": ["read_reference"],
+            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
             "iat": now,
             "exp": now + 60,
             "iss": "runtime-test",
             "aud": "runtime-service",
-            "scope": {"tenant_id": "tenant-a", "project_id": "project-a"},
+            "scope": {"tenant_id": "tenant-a", "project_id": "project-a", "operation": "read"},
             "context_hash": runtime_context_hash(None),
     }
     if request_id is not None:
@@ -51,7 +51,8 @@ def test_platform_auth_returns_runtime_facts_without_token(monkeypatch: pytest.M
     assert user["role"] == "developer"
     assert user["policy_version"] == "policy-1"
     assert user["allowed_model_ids"] == ["deepseek:deepseek-chat"]
-    assert user["allowed_tool_names"] == ["read_reference"]
+    assert user["tool_overrides"] == {}
+    assert user["tool_policy_version"] == "test-tools-v2"
     assert user["runtime_principal"]["tenant_id"] == "tenant-a"
     assert user["runtime_policy"]["version"] == "policy-1"
     assert user["runtime_context_hash"].startswith("sha256:")

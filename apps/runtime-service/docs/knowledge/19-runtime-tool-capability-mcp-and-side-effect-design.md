@@ -106,7 +106,7 @@ get_agent() 又选择一份 Tool
 
 ```text
 get_agent() 显式工具列表        # Agent 实际具备什么能力
-RuntimePolicy.allowed_tool_names # 当前调用方最多允许请求什么能力
+RuntimePolicy.denied_tool_names # Platform 签名的项目/用户禁用并集
 ```
 
 `AgentDefaults.required_tool_names` 和 `optional_tool_names` 只用于运行时决议、版本摘要和严格
@@ -131,23 +131,22 @@ Deep Agents 还会组合文件 Tool、`execute` 和 `task`。Service 必须通�
 ```text
 get_agent() 已装配的业务 Tool + 明确保留的 Deep Agents 内置 Tool
   ∩ AgentDefaults 声明
-  ∩ RuntimePolicy.allowed_tool_names
-  ∩ RuntimeContext 本次 Optional Tool 选择
+  ∩ 本轮环境/模式/受控资源可用能力
+  − RuntimePolicy.denied_tool_names
   = 本次模型可见 Tool
 ```
 
 规则如下：
 
-- Required Tool 不在 Policy allowlist：Run 直接失败；
-- 请求了 Agent 未装配或未声明的 Optional Tool：Run 直接失败；
-- 请求了 Policy 不允许的 Tool：Run 直接失败；
-- 不静默裁剪非法请求，避免调用方误以为能力已经启用；
-- `wrap_tool_call` 在执行前按名称再次检查，防止伪造 Tool Call 或恢复旧 Run 绕过限制；
-- `RuntimeContext` 只表达“本次希望使用什么”，不能携带身份、权限或 Tool 实现。
-- Runtime Policy 和执行前复核必须覆盖 Deep Agents 内置 Tool，不能只检查 Service 业务 Tool。
+- Required 被禁用或不可用直接失败；Optional 禁用只移除。
+- 未知禁用名称失败；Context 不再接受 tools/enable_tools 或授权字段。
+- Middleware 同时过滤模型 schema、拒绝模型伪造调用、检查实际 handler；internal 不绕过。
+- 子 Agent 继承父签名限制；MCP 只装配受控绑定中未禁用的名字，全部禁用不连接。
+- 工具 Catalog 是代码声明的展示投影，不参与授权，也不承诺当前环境可用。
+- Terminal、Skills、Memory、Workspace、图片 HTTP 按相应工具规则检查并保留 scope/所有权。
+- 审批不能覆盖禁用；工具名禁用不等同于 execute/MCP 能触及的资源动作隔离。
 
-审批不属于 Tool allowlist。allowlist 表示调用方有资格请求 Tool；HITL 根据实际 Tool Call 和
-参数决定这一次调用是否执行。
+详见 [工具治理专项](../../../../docs/projects/20260920-runtime-optional-tool-resolution/README.md)。
 
 ## 6. Agent Service 接入规范
 

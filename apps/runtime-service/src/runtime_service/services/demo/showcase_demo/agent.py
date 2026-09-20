@@ -1,6 +1,7 @@
 """The only composition root: official Deep Agents plus Runtime policy and tracing."""
 
 from __future__ import annotations
+from runtime_service.runtime.capabilities import SHOWCASE_TOOLS
 
 from collections.abc import Mapping, Sequence
 
@@ -57,20 +58,8 @@ _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
     system_prompt=SYSTEM_PROMPT,
     prompt_version="showcase-demo-v3",
-    optional_tool_names=(*WORK_TOOLS, "task", "write_todos", "fetch_documentation", "present_artifacts"),
+    optional_tool_names=SHOWCASE_TOOLS,
 )
-_TOOL_PERMISSIONS = {
-    **{
-        name: "runtime.tool.read"
-        for name in ("ls", "read_file", "glob", "grep", "fetch_documentation")
-    },
-    **{
-        name: "runtime.tool.write"
-        for name in ("write_file", "edit_file", "write_todos", "present_artifacts")
-    },
-    "execute": "runtime.tool.execute",
-    "task": "runtime.tool.delegate",
-}
 _EXECUTION_KEYS = {
     "thread_id",
     "assistant_id",
@@ -110,7 +99,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             context=context,
             policy=facts.policy,
             defaults=_DEFAULTS,
-            tool_permissions=_TOOL_PERMISSIONS,
         )
         connection = await fetch_model_connection(
             configurable.get("runtime_model_ref"),
@@ -132,7 +120,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     chart_tools = build_chart_tools(image_workspace)
     image_names = tuple(tool.name for tool in image_middleware.tools)
     document_names = tuple(tool.name for tool in document_middleware.tools)
-    internal_names = (*image_names, *document_names, *(tool.name for tool in chart_tools))
 
     def model_builder(next_config):
         if resolved is None:
@@ -149,9 +136,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 defaults=_DEFAULTS,
                 base_model=model,
                 model_builder=model_builder,
-                tool_permissions=_TOOL_PERMISSIONS,
                 tool_names=tool_names,
-                internal_tool_names=internal_names,
             ),
             WorkspaceMiddleware(workspace),
             ModelCallLimitMiddleware(run_limit=12, exit_behavior="error"),

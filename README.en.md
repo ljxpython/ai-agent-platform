@@ -34,7 +34,7 @@
 An enterprise AI agent platform architecture built on `LangGraph / LangChain`, intended as a reusable foundation for further development.  
 It separates the **platform governance layer** from the **Agent Runtime execution layer**, so the repo can support platform-side authentication, project management, audit, and catalog management, while also supporting runtime graph orchestration, model assembly, Tools / MCP / Skills integration, and rapid agent debugging.
 
-The repository currently provides a default four-service local bring-up path, plus an optional runtime debug entry. It is suitable for:
+The repository provides a native development stack with four processes and an optional result-domain service. It is suitable for:
 
 - Teams that want to build on mainstream agent infrastructure instead of inventing a closed framework
 - Projects that need both platform capabilities and agent execution capabilities
@@ -104,7 +104,7 @@ That article is more frontend-oriented and is useful for quickly understanding t
 
 ## System Overview
 
-The default local bring-up currently includes four formal services:
+The repository includes the following applications; the result-domain service is started separately when needed:
 
 - `apps/interaction-data-service`: result-domain data service for workflow result persistence and querying
 - `apps/platform-api`: official platform backend / control-plane API
@@ -130,27 +130,29 @@ The default local bring-up currently includes four formal services:
 
 ### Default Startup Order
 
-1. `runtime-service`
-2. `interaction-data-service`
-3. `platform-api`
-4. `platform-web`
+1. Runtime API
+2. Runtime Worker
+3. Platform API
+4. Platform Web
 
 ### Root Scripts
 
 ### Local Stack Startup (Recommended)
 
-If PostgreSQL and Redis are already running locally, use the local stack script:
+For first-time setup, follow the [native Linux development guide](docs/quickstart/deployment-guide.md).
+PostgreSQL and Redis are required. After installing dependencies and configuring app-local env files:
 
 ```bash
+source "apps/runtime-service/.venv/bin/activate"
 bash scripts/local-stack.sh doctor   # Validate environment and dependencies
 bash scripts/local-stack.sh start    # Start full stack
 bash scripts/local-stack.sh status   # Check service status
 bash scripts/local-stack.sh stop     # Stop services
 ```
 
-This script starts GraphHarbor API, GraphHarbor Worker, Platform API, Platform Worker, and Platform Web directly.
+This script starts GraphHarbor API, GraphHarbor Worker, Platform API, and Platform Web directly. The result-domain service is optional and started separately.
 Database migrations use the `migrate` subcommand. Logs and PID files are stored in the system temp directory.
-It won't stop or remove your local PostgreSQL/Redis, nor kill processes by port that it didn't start.
+It does not install PostgreSQL/Redis or frontend dependencies. It may reclaim stale development processes owned by this repository.
 Runtime uses `apps/runtime-service/.env`, Platform API uses `apps/platform-api/.env`.
 On first use, create local `.env` files from the corresponding `.env.example` templates, filling in real model
 credentials and local PostgreSQL credentials. Don't overwrite existing `.env` files or commit real values.
@@ -183,17 +185,13 @@ Then open:
 ### Minimum Health Checks
 
 ```bash
-curl http://127.0.0.1:8081/_service/health
-curl http://127.0.0.1:8123/info
-curl http://127.0.0.1:2142/_system/health
-curl http://127.0.0.1:2142/api/langgraph/info
+curl -fsS "http://127.0.0.1:8123/ready"
+curl -fsS "http://127.0.0.1:2142/_system/health"
 ```
 
-If `/api/langgraph/info` on `platform-api` and `/_service/health` on
-`interaction-data-service` both succeed, the platform and result persistence paths are
-basically connected.
-
-![Local Startup Flow](docs/assets/local-dev-startup-flow.en.svg)
+Inspect the response body, then verify login, project creation, model configuration and a real Run.
+Port 8081 is only checked when the optional result-domain service is started.
+Architecture diagrams illustrate service boundaries; the deployment contract defines actual startup members.
 
 ## Repo Structure
 
@@ -268,33 +266,9 @@ If you only want to trigger the standard local deployment flow, this sentence is
 Read `docs/guides/ai-deployment-assistant-instruction.md` and help me deploy the environment.
 ```
 
-If you already know which models should be used locally, it is better to provide the model configuration to the agent in the same message. That makes it much easier for the agent to finish the bring-up in one pass instead of stopping midway to ask for runtime model settings.
-
-This fuller prompt is the recommended version. Replace the placeholders with your real values, and only let the agent write them into local `settings.local.yaml`. Do not commit real secrets back into the repo.
-
-```text
-Read `docs/guides/ai-deployment-assistant-instruction.md` and help me deploy the environment.
-
-Use `<YOUR_REASONING_MODEL_ID>` as the default reasoning model.
-Also configure `<YOUR_MULTIMODAL_MODEL_ID>` for the current multimodal pipeline.
-If runtime model config is missing locally, write the following into `apps/runtime-service/runtime_service/conf/settings.local.yaml`, then continue deployment, startup, and verification. Do not commit the real API key back to the repo.
-
-default:
-  default_model_id: <YOUR_REASONING_MODEL_ID>
-  models:
-    <YOUR_MULTIMODAL_MODEL_ID>:
-      alias: <OPTIONAL_MULTIMODAL_ALIAS>
-      model_provider: openai
-      model: <YOUR_MULTIMODAL_MODEL_NAME>
-      base_url: <YOUR_PROVIDER_BASE_URL>
-      api_key: <YOUR_API_KEY>
-    <YOUR_REASONING_MODEL_ID>:
-      alias: <OPTIONAL_REASONING_ALIAS>
-      model_provider: openai
-      model: <YOUR_REASONING_MODEL_NAME>
-      base_url: <YOUR_PROVIDER_BASE_URL>
-      api_key: <YOUR_API_KEY>
-```
+Model connections are configured through the platform model catalog after login, with private provider credentials.
+Legacy Runtime settings.local.yaml is no longer used. Copying env files does not copy users, projects, chats or model connections.
+See the [deployment guide](docs/quickstart/deployment-guide.md) for fresh databases, accounts, SSH access and acceptance checks.
 
 ## Practical References
 
@@ -339,7 +313,7 @@ This repo has already completed:
 - `interaction-data-service` can start
 - `platform-api` can start
 - `platform-api -> runtime-service` integration has passed
-- `runtime-service -> interaction-data-service` has been wired into the local bring-up scripts
+- `interaction-data-service` can be started independently; the default local stack does not manage it
 - `platform-web` is the official platform frontend host
 - The development workflow is collapsed into `AGENTS.md`: change levels (single-project/chain/governed) are judged automatically by the AI, which calls `plan-project`/`implement-feature`/`verify-change` Skills as needed
 - The current release is [`v0.3.1`](https://github.com/ljxpython/ai-agent-platform/releases/tag/v0.3.1)

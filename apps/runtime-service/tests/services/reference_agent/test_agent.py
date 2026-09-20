@@ -50,9 +50,9 @@ def _auth_user(context: object | None = None) -> dict[str, object]:
         "runtime_policy": {
             "version": "reference-agent-local-v1",
             "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-            "allowed_tool_names": ["read_reference"],
+            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
         },
-        "runtime_scope": {"tenant_id": "local-tenant", "project_id": "reference-project"},
+        "runtime_scope": {"operation": "read", "tenant_id": "local-tenant", "project_id": "reference-project"},
         "runtime_context_hash": runtime_context_hash(context),
     }
 
@@ -87,9 +87,9 @@ def test_authenticated_identity_and_policy_are_used_per_run() -> None:
                     "runtime_policy": {
                         "version": "policy-b",
                         "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-                        "allowed_tool_names": ["read_reference"],
+                        "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
                     },
-                    "runtime_scope": {"tenant_id": "tenant-b", "project_id": "project-b"},
+                    "runtime_scope": {"operation": "read", "tenant_id": "tenant-b", "project_id": "project-b"},
                     "runtime_context_hash": runtime_context_hash(None),
                 },
             }

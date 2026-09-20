@@ -3,8 +3,6 @@ from platform_api.modules.runtime_policies.domain.models import (
     RuntimeGraphPolicyValue,
     RuntimeModelPolicyItem,
     RuntimeModelPolicyValue,
-    RuntimeToolPolicyItem,
-    RuntimeToolPolicyValue,
 )
 
 __all__ = [
@@ -12,7 +10,5 @@ __all__ = [
     "RuntimeGraphPolicyValue",
     "RuntimeModelPolicyItem",
     "RuntimeModelPolicyValue",
-    "RuntimeToolPolicyItem",
-    "RuntimeToolPolicyValue",
 ]
 

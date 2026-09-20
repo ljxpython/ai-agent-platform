@@ -16,7 +16,7 @@ def _read_token(thread_id: str) -> str:
     now = int(time.time())
     return jwt.encode(
         {
-            "type": "runtime_delegation",
+            "type": "runtime_delegation", "delegation_version": 2,
             "sub": "user-a",
             "tenant_id": "tenant-a",
             "project_id": "project-a",
@@ -24,7 +24,7 @@ def _read_token(thread_id: str) -> str:
             "permissions": ["runtime.tool.read"],
             "policy_version": "policy-1",
             "allowed_model_ids": ["deepseek:deepseek-chat"],
-            "allowed_tool_names": ["read_reference"],
+            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
             "iat": now,
             "exp": now + 60,
             "iss": "runtime-test",

@@ -9,7 +9,7 @@ Platform使用同步SQLAlchemy，与Runtime执行数据库分离。[20260910_000
 | 服务账号 | service_accounts、service_account_tokens、service_account_project_grants | 机器身份、令牌摘要与项目授权 |
 | Agent | agents | 项目graph配置、启停、context默认值 |
 | 目录 | runtime_catalog_graphs、runtime_catalog_tools、runtime_catalog_models | 能力快照与模型连接 |
-| 策略 | project_graph_policies、project_tool_policies、project_model_policies | 项目执行限制 |
+| 策略 | project_graph_policies、runtime_tool_restrictions、project_model_policies | 项目执行限制 |
 | 请求 | run_requests | 幂等摘要、授权/config快照、Run与父Run关联 |
 | 公告 | announcements、announcement_reads | 公告与已读 |
 | 治理 | audit_logs、platform_config_entries | 审计与配置 |

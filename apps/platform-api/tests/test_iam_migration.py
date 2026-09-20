@@ -44,8 +44,10 @@ class PlatformBaselineTest(unittest.TestCase):
                 model_columns = {c["name"] for c in inspect(engine).get_columns("runtime_catalog_models")}
                 self.assertFalse({"runtime_id", "model_key", "sync_status", "is_default_runtime", "raw_payload_json"} & model_columns)
                 self.assertIn("config_snapshot", {c["name"] for c in inspect(engine).get_columns("run_requests")})
-                command.downgrade(config, "base")
-                self.assertEqual(inspect(engine).get_table_names(), ["alembic_version"])
+                self.assertIn("runtime_tool_restrictions", tables)
+                self.assertNotIn("project_tool_policies", tables)
+                with self.assertRaisesRegex(RuntimeError, "not recoverable"):
+                    command.downgrade(config, "base")
                 command.upgrade(config, "head")
                 self.assertIn("agents", inspect(engine).get_table_names())
             finally:

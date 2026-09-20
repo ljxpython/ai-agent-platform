@@ -163,9 +163,6 @@ def _runtime_context_snapshot(command: dict[str, Any]) -> tuple[str, dict[str, A
     context = ensure_dict(params.get("context"))
     # Protocol promotion applies platform_runtime over the submitted context.
     merged = {**context, **runtime_options}
-    tools = merged.get("tools")
-    if tools is not None:
-        tools = sorted(tools)
     snapshot = {
         "model_id": merged.get("model_id"),
         "temperature": (
@@ -181,14 +178,13 @@ def _runtime_context_snapshot(command: dict[str, Any]) -> tuple[str, dict[str, A
             and not isinstance(merged.get("top_p"), bool)
             else merged.get("top_p")
         ),
-        "tools": tools,
     }
     mode = merged.get("execution_mode")
     if mode is not None:
         snapshot["execution_mode"] = mode
     if merged.get("access_policy") is not None:
         snapshot["access_policy"] = merged["access_policy"]
-    schema = "runtime-context/v3" if "access_policy" in snapshot else "runtime-context/v2" if mode is not None else "runtime-context/v1"
+    schema = "runtime-context/v4"
     encoded = json.dumps(
         {"schema": schema, **snapshot},
         ensure_ascii=False,
@@ -579,7 +575,10 @@ class RuntimeGatewayService:
         project_id: str,
         payload: dict[str, Any] | None,
     ) -> dict[str, Any]:
-        return normalize_runtime_payload(payload=payload, project_id=project_id)
+        try:
+            return normalize_runtime_payload(payload=payload, project_id=project_id)
+        except ValueError as exc:
+            raise BadRequestError(code="invalid_runtime_payload", message=str(exc)) from exc
 
     def _inject_project_default_model(
         self,
@@ -615,7 +614,6 @@ class RuntimeGatewayService:
                                 "temperature",
                                 "max_tokens",
                                 "top_p",
-                                "tools",
                                 "execution_mode",
                             )
                             if key in agent.context
@@ -707,34 +705,6 @@ class RuntimeGatewayService:
                 raise ForbiddenError(
                     code="runtime_model_denied",
                     message="Requested runtime model is not enabled for this project",
-                )
-
-            tool_policies = {
-                str(item.tool_catalog_id): item
-                for item in policy_repository.list_tool_policies(
-                    project_id=project_uuid
-                )
-            }
-            allowed_tools = {
-                item.tool_key
-                for item in catalog_repository.list_tools(runtime_id=self._runtime_id)
-                if str(item.id) not in tool_policies
-                or tool_policies[str(item.id)].is_enabled
-            }
-            requested_tools = {
-                name
-                for name in (
-                    clean_str(item)
-                    for item in options.get("tools", [])
-                    if isinstance(item, str)
-                )
-                if name
-            }
-            denied_tools = sorted(requested_tools - allowed_tools)
-            if denied_tools:
-                raise ForbiddenError(
-                    code="runtime_tools_denied",
-                    message="Requested runtime tools are not enabled for this project",
                 )
 
     def _validate_run_options(
@@ -853,7 +823,7 @@ class RuntimeGatewayService:
         await self._upstream.get_thread_run(thread_id, target_run_id)
         upstream = self._upstream
         if self._delegation_headers_factory:
-            upstream = upstream.with_forwarded_headers(self._delegation_headers_factory(
+            upstream = upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,
                 project_id=project_id, agent_key=agent_key, thread_id=thread_id,
                 context_hash=empty_runtime_context_hash(), operation="message-enqueue"))
         import jwt
@@ -876,7 +846,7 @@ class RuntimeGatewayService:
         agent_key = clean_str(metadata.get("graph_id"))
         upstream = self._upstream
         if self._delegation_headers_factory:
-            upstream = upstream.with_forwarded_headers(self._delegation_headers_factory(project_id=project_id, agent_key=agent_key, thread_id=thread_id, context_hash=empty_runtime_context_hash(), operation="message-read"))
+            upstream = upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,project_id=project_id, agent_key=agent_key, thread_id=thread_id, context_hash=empty_runtime_context_hash(), operation="message-read"))
         return await upstream.list_thread_messages(thread_id)
 
     async def upload_thread_image(
@@ -920,7 +890,7 @@ class RuntimeGatewayService:
         upstream = self._upstream
         if self._delegation_headers_factory:
             upstream = upstream.with_forwarded_headers(
-                self._delegation_headers_factory(
+                await run_in_threadpool(self._delegation_headers_factory,
                     project_id=project_id,
                     agent_key=agent_key,
                     thread_id=thread_id,
@@ -997,7 +967,7 @@ class RuntimeGatewayService:
         upstream = self._upstream
         if self._delegation_headers_factory:
             upstream = upstream.with_forwarded_headers(
-                self._delegation_headers_factory(
+                await run_in_threadpool(self._delegation_headers_factory,
                     project_id=project_id,
                     agent_key=agent_key,
                     thread_id=thread_id,
@@ -1065,7 +1035,7 @@ class RuntimeGatewayService:
         upstream = self._upstream
         if self._delegation_headers_factory:
             upstream = upstream.with_forwarded_headers(
-                self._delegation_headers_factory(
+                await run_in_threadpool(self._delegation_headers_factory,
                     project_id=project_id,
                     agent_key=agent_key,
                     thread_id=thread_id,
@@ -1122,7 +1092,7 @@ class RuntimeGatewayService:
         await run_in_threadpool(self._assert_runtime_target_allowed, project_id=project_id, assistant_id="dearflow_agent")
         if not self._delegation_headers_factory:
             raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
-        upstream = self._upstream.with_forwarded_headers(self._delegation_headers_factory(
+        upstream = self._upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,
             project_id=project_id, agent_key="dearflow_agent", thread_id=None,
             context_hash=empty_runtime_context_hash(),
             operation="dear-skills-write" if write else "dear-skills-read"))
@@ -1148,7 +1118,7 @@ class RuntimeGatewayService:
                                 assistant_id=agent_key, thread=thread)
         if not self._delegation_headers_factory:
             raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
-        upstream = self._upstream.with_forwarded_headers(self._delegation_headers_factory(
+        upstream = self._upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,
             project_id=project_id, agent_key=agent_key, thread_id=thread_id,
             context_hash=empty_runtime_context_hash(),
             operation="dear-governance-write" if payload is not None else "dear-governance-read"))
@@ -1169,7 +1139,7 @@ class RuntimeGatewayService:
         )
         upstream = self._upstream
         if self._delegation_headers_factory:
-            upstream = upstream.with_forwarded_headers(self._delegation_headers_factory(
+            upstream = upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,
                 project_id=project_id, agent_key=agent_key, thread_id=thread_id,
                 context_hash=empty_runtime_context_hash(), operation="read",
             ))
@@ -1186,7 +1156,7 @@ class RuntimeGatewayService:
                                 assistant_id=agent_key, thread=thread)
         if not self._delegation_headers_factory:
             raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
-        upstream = self._upstream.with_forwarded_headers(self._delegation_headers_factory(
+        upstream = self._upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,
             project_id=project_id, agent_key=agent_key, thread_id=thread_id,
             context_hash=empty_runtime_context_hash(),
             operation="terminal-read" if action in {"list", "output"} else "terminal-write"))
@@ -1209,7 +1179,7 @@ class RuntimeGatewayService:
                                 assistant_id=agent_key, thread=thread)
         if not self._delegation_headers_factory:
             raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
-        upstream = self._upstream.with_forwarded_headers(self._delegation_headers_factory(
+        upstream = self._upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,
             project_id=project_id, agent_key=agent_key, thread_id=thread_id,
             context_hash=empty_runtime_context_hash(), operation="workspace-file-read"))
         if resource in {"workspace/content", "workspace/preview"}:
@@ -1247,7 +1217,7 @@ class RuntimeGatewayService:
         upstream = self._upstream
         if self._delegation_headers_factory:
             upstream = upstream.with_forwarded_headers(
-                self._delegation_headers_factory(
+                await run_in_threadpool(self._delegation_headers_factory,
                     project_id=project_id,
                     agent_key=agent_key,
                     thread_id=thread_id,
@@ -1426,7 +1396,7 @@ class RuntimeGatewayService:
             upstream, "with_forwarded_headers"
         ):
             upstream = upstream.with_forwarded_headers(
-                self._delegation_headers_factory(
+                await run_in_threadpool(self._delegation_headers_factory,
                     project_id=project_id,
                     agent_key=agent_key,
                     thread_id=thread_id,
@@ -1632,7 +1602,7 @@ class RuntimeGatewayService:
         if self._delegation_headers_factory:
             try:
                 fork_upstream = self._upstream.with_forwarded_headers(
-                    self._delegation_headers_factory(
+                    await run_in_threadpool(self._delegation_headers_factory,
                         project_id=project_id,
                         agent_key=graph_id,
                         thread_id=target_id,

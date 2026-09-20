@@ -18,11 +18,6 @@ def _principal() -> RuntimePrincipal:
 def _config(
     kind: str, provider: str, resource_id: str = "resource-a"
 ) -> dict[str, object]:
-    allowed_tools = (
-        ["delete", "edit_file", "glob", "grep", "ls", "read_file", "write_file"]
-        if kind == "backend"
-        else []
-    )
     permissions = (
         ["runtime.tool.read", "runtime.tool.write"] if kind == "backend" else []
     )
@@ -40,9 +35,9 @@ def _config(
                 "runtime_policy": {
                     "version": "resource-test-v1",
                     "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-                    "allowed_tool_names": allowed_tools,
+                    "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
                 },
-                "runtime_scope": {"tenant_id": "tenant", "project_id": "project"},
+                "runtime_scope": {"operation": "read", "tenant_id": "tenant", "project_id": "project"},
                 "runtime_context_hash": runtime_context_hash(None),
             },
         },

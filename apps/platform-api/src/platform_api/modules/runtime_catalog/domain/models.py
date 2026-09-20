@@ -51,6 +51,7 @@ class RuntimeToolCatalogItem(BaseModel):
     id: str
     runtime_id: str
     tool_key: str
+    graph_ids: list[str]
     name: str
     source: str = ""
     description: str = ""

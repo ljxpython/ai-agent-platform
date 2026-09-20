@@ -1,11 +1,12 @@
 import { platformHttpClient } from '@/services/http/client'
 import type {
+  CreateToolRestrictionPayload,
   RuntimeGraphPolicyListResponse,
   RuntimeGraphPolicyValue,
   RuntimeModelPolicyListResponse,
   RuntimeModelPolicyValue,
-  RuntimeToolPolicyListResponse,
-  RuntimeToolPolicyValue
+  ToolRestrictionItem,
+  ToolRestrictionListResponse
 } from '@/types/management'
 
 function runtimePolicyPath(projectId: string, suffix: string) {
@@ -33,25 +34,24 @@ export async function updateRuntimeGraphPolicy(
   return response.data as RuntimeGraphPolicyValue
 }
 
-export async function listRuntimeToolPolicies(projectId: string): Promise<RuntimeToolPolicyListResponse> {
-  const response = await platformHttpClient.get(runtimePolicyPath(projectId, 'tools'))
-  return response.data as RuntimeToolPolicyListResponse
+export async function listToolRestrictions(projectId: string): Promise<ToolRestrictionListResponse> {
+  const response = await platformHttpClient.get(runtimePolicyPath(projectId, 'tool-restrictions'))
+  return response.data as ToolRestrictionListResponse
 }
 
-export async function updateRuntimeToolPolicy(
+export async function createToolRestriction(
   projectId: string,
-  catalogId: string,
-  payload: {
-    is_enabled: boolean
-    display_order?: number | null
-    note?: string | null
-  }
-): Promise<RuntimeToolPolicyValue> {
-  const response = await platformHttpClient.put(
-    runtimePolicyPath(projectId, `tools/${encodeURIComponent(catalogId)}`),
-    payload
-  )
-  return response.data as RuntimeToolPolicyValue
+  payload: CreateToolRestrictionPayload
+): Promise<ToolRestrictionItem> {
+  const response = await platformHttpClient.post(runtimePolicyPath(projectId, 'tool-restrictions'), payload)
+  return response.data as ToolRestrictionItem
+}
+
+export async function deleteToolRestriction(
+  projectId: string,
+  restrictionId: string
+): Promise<void> {
+  await platformHttpClient.delete(runtimePolicyPath(projectId, `tool-restrictions/${encodeURIComponent(restrictionId)}`))
 }
 
 export async function listRuntimeModelPolicies(projectId: string): Promise<RuntimeModelPolicyListResponse> {

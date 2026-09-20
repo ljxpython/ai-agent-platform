@@ -52,8 +52,8 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
             permissions=["project.runtime.write", "project.runtime.read"],
             policy_version="policy-1",
             allowed_model_ids=["model-1"],
-            allowed_tool_names=["tool-1"],
-            scope={"tenant_id": "__default", "project_id": "project-1"},
+            tool_overrides={}, tool_policy_version="test-tools-v2",
+            scope={"tenant_id": "__default", "project_id": "project-1", "operation": "read"},
             context_hash=empty_runtime_context_hash(),
             settings=settings,
         )
@@ -80,7 +80,7 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
                     "type",
                     "policy_version",
                     "allowed_model_ids",
-                    "allowed_tool_names",
+                    "tool_overrides", "tool_policy_version", "delegation_version",
                     "scope",
                     "context_hash",
                 ]
@@ -97,10 +97,11 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
         self.assertEqual(claims["type"], "runtime_delegation")
         self.assertEqual(claims["policy_version"], "policy-1")
         self.assertEqual(claims["allowed_model_ids"], ["model-1"])
-        self.assertEqual(claims["allowed_tool_names"], ["tool-1"])
+        self.assertEqual(claims["tool_overrides"], {})
+        self.assertEqual(claims["delegation_version"], 2)
         self.assertEqual(
             claims["scope"],
-            {"tenant_id": "__default", "project_id": "project-1"},
+            {"tenant_id": "__default", "project_id": "project-1", "operation": "read"},
         )
         self.assertTrue(claims["context_hash"].startswith("sha256:"))
         self.assertEqual(jwt.get_unverified_header(token)["kid"], "runtime-delegation-v1")
@@ -115,8 +116,8 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
                 permissions=[],
                 policy_version="policy-1",
                 allowed_model_ids=["model-1"],
-                allowed_tool_names=[],
-                scope={"tenant_id": "__default", "project_id": "project-1"},
+                tool_overrides={}, tool_policy_version="test-tools-v2",
+                scope={"tenant_id": "__default", "project_id": "project-1", "operation": "read"},
                 context_hash=empty_runtime_context_hash(),
                 settings=Settings(runtime_delegation_secret=""),
             )
@@ -134,11 +135,12 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
                 permissions=["project.runtime.read"],
                 policy_version="policy-1",
                 allowed_model_ids=[],
-                allowed_tool_names=[],
+                tool_overrides={}, tool_policy_version="test-tools-v2",
                 scope={
                     "tenant_id": "__default",
                     "project_id": "project-1",
                     "operation": operation,
+                    "assistant_id": "reference_agent",
                 },
                 settings=settings,
             )
@@ -153,7 +155,7 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
                 permissions=["project.runtime.read"],
                 policy_version="policy-1",
                 allowed_model_ids=[],
-                allowed_tool_names=[],
+                tool_overrides={}, tool_policy_version="test-tools-v2",
                 scope={
                     "tenant_id": "__default",
                     "project_id": "project-1",
@@ -212,7 +214,7 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
             policy_factory.return_value.build_delegation_policy.return_value = {
                 "version": "policy-1",
                 "allowed_model_ids": ["model-1"],
-                "allowed_tool_names": ["read_reference"],
+                "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
                 "runtime_permissions": ["runtime.tool.read"],
             }
             get_runtime_gateway_service(request, actor)
@@ -233,11 +235,26 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
         self.assertEqual(claims["policy_version"], "policy-1")
         self.assertEqual(
             claims["permissions"],
-            ["project.runtime.read", "project.runtime.write", "runtime.tool.read"],
+            [],
         )
 
 
 class ProtocolV2RuntimeNormalizationTest(unittest.TestCase):
+    def test_rejects_client_tool_authorization_in_all_control_locations(self):
+        for field in ("tools", "enable_tools", "tool_overrides", "tool_policy_version"):
+            for location in ("context", "metadata", "config", "configurable", "platform_runtime", "config_metadata"):
+                with self.subTest(field=field, location=location), self.assertRaises(ValueError):
+                    value = {field: {}}
+                    if location == "configurable":
+                        params = {"config": {"configurable": value}}
+                    elif location == "platform_runtime":
+                        params = {"config": {"configurable": {"platform_runtime": value}}}
+                    elif location == "config_metadata":
+                        params = {"config": {"metadata": value}}
+                    else:
+                        params = {location: value}
+                    normalize_protocol_v2_command(payload={"id": 1, "method": "run.start", "params": {"assistant_id": "reference_agent", **params}})
+
     def test_moves_runtime_options_into_standard_config_namespace(self) -> None:
         normalized = normalize_protocol_v2_command(
             payload={
@@ -251,7 +268,6 @@ class ProtocolV2RuntimeNormalizationTest(unittest.TestCase):
                         "temperature": 0.2,
                         "configurable": {
                             "checkpoint_id": "checkpoint-1",
-                            "tools": ["utc_now"],
                         },
                     },
                 },
@@ -268,7 +284,6 @@ class ProtocolV2RuntimeNormalizationTest(unittest.TestCase):
                     "platform_runtime": {
                         "model_id": "project-default",
                         "temperature": 0.2,
-                        "tools": ["utc_now"],
                     },
                 },
             },
@@ -295,7 +310,7 @@ class ProtocolV2RuntimeNormalizationTest(unittest.TestCase):
             )
 
     def test_rejects_invalid_runtime_option_shape(self) -> None:
-        with self.assertRaisesRegex(ValueError, "tools must be an array"):
+        with self.assertRaisesRegex(ValueError, "fields: tools"):
             normalize_protocol_v2_command(
                 payload={
                     "id": 10,

@@ -132,7 +132,8 @@ def create_runtime_delegation_token(
     permissions: list[str] | tuple[str, ...],
     policy_version: str,
     allowed_model_ids: Sequence[str],
-    allowed_tool_names: Sequence[str],
+    tool_overrides: Mapping[str, bool],
+    tool_policy_version: str,
     scope: Mapping[str, str | None],
     settings: Settings,
     context_hash: str | None = None,
@@ -143,7 +144,13 @@ def create_runtime_delegation_token(
     if not isinstance(policy_version, str) or not policy_version.strip():
         raise ValueError("runtime delegation policy_version must not be empty")
     model_ids = _runtime_names(allowed_model_ids, "allowed_model_ids")
-    tool_names = _runtime_names(allowed_tool_names, "allowed_tool_names")
+    if not isinstance(tool_overrides, dict) or len(tool_overrides) > 128 or any(v is not False for v in tool_overrides.values()):
+        raise ValueError("tool_overrides must contain only false values")
+    _runtime_names(list(tool_overrides), "tool_overrides")
+    if len(json.dumps(tool_overrides, separators=(",", ":")).encode()) > 4096:
+        raise ValueError("tool_overrides exceeds token budget")
+    if not isinstance(tool_policy_version, str) or not tool_policy_version:
+        raise ValueError("tool_policy_version is required")
     if not isinstance(scope, Mapping):
         raise ValueError("runtime delegation scope must be an object")
     scope_keys = {"tenant_id", "project_id", "assistant_id", "thread_id", "operation"}
@@ -155,7 +162,7 @@ def create_runtime_delegation_token(
         if value is not None
     }
     operation = normalized_scope.get("operation")
-    if operation is not None and operation not in {
+    if operation not in {
         "read",
         "run-create",
         "message-enqueue",
@@ -173,6 +180,8 @@ def create_runtime_delegation_token(
         "dear-governance-write",
     }:
         raise ValueError("runtime delegation scope operation is unsupported")
+    if operation != "read" and not normalized_scope.get("assistant_id"):
+        raise ValueError("runtime delegation execution requires assistant_id")
     if (
         normalized_scope.get("tenant_id") != tenant_id
         or normalized_scope.get("project_id") != project_id
@@ -212,7 +221,9 @@ def create_runtime_delegation_token(
         "permissions": sorted({item.strip() for item in permissions if item.strip()}),
         "policy_version": policy_version.strip(),
         "allowed_model_ids": model_ids,
-        "allowed_tool_names": tool_names,
+        "delegation_version": 2,
+        "tool_overrides": dict(sorted(tool_overrides.items())),
+        "tool_policy_version": tool_policy_version,
         "type": "runtime_delegation",
         "jti": uuid.uuid4().hex,
         "iss": settings.runtime_delegation_issuer,
@@ -238,7 +249,7 @@ def _runtime_names(values: Sequence[str], field: str) -> list[str]:
         raise ValueError(f"runtime delegation {field} must be an array")
     normalized = []
     for value in values:
-        if not isinstance(value, str) or not value.strip() or value != value.strip():
+        if not isinstance(value, str) or not value.strip() or value != value.strip() or len(value) > 128:
             raise ValueError(f"runtime delegation {field} contains an invalid name")
         if not value.isascii() or any(char.isspace() or not char.isprintable() for char in value):
             raise ValueError(f"runtime delegation {field} contains an invalid name")
@@ -250,12 +261,11 @@ def _runtime_names(values: Sequence[str], field: str) -> list[str]:
 
 def empty_runtime_context_hash() -> str:
     payload = {
-        "schema": "runtime-context/v1",
+        "schema": "runtime-context/v4",
         "model_id": None,
         "temperature": None,
         "max_tokens": None,
         "top_p": None,
-        "tools": None,
     }
     encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return "sha256:" + hashlib.sha256(encoded.encode("utf-8")).hexdigest()

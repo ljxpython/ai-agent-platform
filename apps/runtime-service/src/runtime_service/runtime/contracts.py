@@ -18,7 +18,6 @@ class RuntimeContext:
     temperature: float | None = None
     max_tokens: int | None = None
     top_p: float | None = None
-    tools: tuple[str, ...] | None = None
     execution_mode: str | None = None
     access_policy: str | None = None
 
@@ -27,7 +26,8 @@ class RuntimeContext:
 class RuntimePolicy:
     version: str
     allowed_model_ids: tuple[str, ...]
-    allowed_tool_names: tuple[str, ...]
+    denied_tool_names: tuple[str, ...]
+    tool_policy_version: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,4 +55,6 @@ class ResolvedRuntimeConfig:
     prompt_hash: str
     policy_version: str
     config_hash: str
+    tool_policy_version: str
+    tool_declaration_version: str
     execution_mode: str | None = None

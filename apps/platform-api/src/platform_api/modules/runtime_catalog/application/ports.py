@@ -28,7 +28,7 @@ class StoredRuntimeTool:
     sync_status: str
     last_seen_at: datetime | None
     last_synced_at: datetime | None
-    permissions: tuple[str, ...] = ()
+    graph_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

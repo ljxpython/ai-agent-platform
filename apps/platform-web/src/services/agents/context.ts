@@ -34,9 +34,5 @@ export function parseAgentContext(input: Record<string, unknown>, allowed = fiel
       result[field.key] = number
     }
   }
-  if (input.tools !== undefined) {
-    if (!Array.isArray(input.tools) || input.tools.some(tool => typeof tool !== 'string' || !tool.trim())) throw new Error('工具选择无效')
-    result.tools = [...new Set(input.tools as string[])]
-  }
   return result
 }

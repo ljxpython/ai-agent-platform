@@ -43,7 +43,7 @@ def test_worker_restart_recovers_scheduled_run(
 
 
 async def _test_worker_restart(base_url: str, assistant_id: str, compose_file: str) -> None:
-    client = get_authenticated_client(base_url)
+    client = get_authenticated_client(base_url, assistant_id=assistant_id)
     thread_id = _thread_id()
     try:
         await client.threads.create(thread_id=thread_id, if_exists="raise")
@@ -87,7 +87,7 @@ def test_sigterm_drain_keeps_run_recoverable(
 
 
 async def _test_sigterm(base_url: str, assistant_id: str, compose_file: str) -> None:
-    client = get_authenticated_client(base_url)
+    client = get_authenticated_client(base_url, assistant_id=assistant_id)
     thread_id = _thread_id()
     try:
         await client.threads.create(thread_id=thread_id, if_exists="raise")

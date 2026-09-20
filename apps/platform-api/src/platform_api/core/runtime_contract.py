@@ -9,6 +9,8 @@ RUNTIME_CONTEXT_READONLY_KEYS = (
     "tenant_id",
     "role",
     "permissions",
+    "tool_overrides",
+    "tool_policy_version",
     "project_id",
 )
 
@@ -31,8 +33,6 @@ RUNTIME_CONTEXT_BUSINESS_KEYS = (
     "temperature",
     "max_tokens",
     "top_p",
-    "enable_tools",
-    "tools",
 )
 
 RUNTIME_OPTION_KEYS = (
@@ -41,7 +41,6 @@ RUNTIME_OPTION_KEYS = (
     "temperature",
     "max_tokens",
     "top_p",
-    "tools",
     "access_policy",
 )
 
@@ -95,17 +94,6 @@ def _validate_runtime_option_values(options: dict[str, Any]) -> None:
     ):
         raise ValueError("platform_runtime.max_tokens must be a positive integer")
 
-    enable_tools = options.get("enable_tools")
-    if enable_tools is not None and not isinstance(enable_tools, bool):
-        raise ValueError("platform_runtime.enable_tools must be a boolean")
-
-    tools = options.get("tools")
-    if tools is not None and (
-        not isinstance(tools, list)
-        or any(not isinstance(tool, str) or not tool.strip() for tool in tools)
-    ):
-        raise ValueError("platform_runtime.tools must be an array of non-empty strings")
-
 RUNTIME_CONTEXT_PROPERTY_TYPES: dict[str, str] = {
     "user_id": "string",
     "tenant_id": "string",
@@ -121,8 +109,6 @@ RUNTIME_OPTION_PROPERTY_TYPES: dict[str, str] = {
     "temperature": "number",
     "max_tokens": "number",
     "top_p": "number",
-    "enable_tools": "boolean",
-    "tools": "array[string]",
     "multimodal_parser_model_id": "string",
     "access_policy": "string",
 }
@@ -169,6 +155,9 @@ def normalize_runtime_contract(
     metadata: dict[str, Any],
     project_id: str,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    for value in (config, context, metadata, ensure_dict(config.get("configurable"))):
+        if set(value) & {"tools", "enable_tools", "tool_overrides", "tool_policy_version"}:
+            raise ValueError("Client tool configuration is not supported")
     next_context = strip_keys(context, TRUSTED_RUNTIME_CONTEXT_KEYS)
 
     next_config = strip_keys(config, PROJECT_SCOPE_ALIAS_KEYS)
@@ -322,11 +311,12 @@ def normalize_protocol_v2_command(
     forbidden_locations = (
         ("metadata", ensure_dict(run_params.get("metadata"))),
         ("config", config),
+        ("config.metadata", ensure_dict(config.get("metadata"))),
         ("config.configurable", configurable),
         ("config.configurable.platform_runtime", runtime_options),
     )
     for location, value in forbidden_locations:
-        forbidden = sorted(set(value).intersection(TRUSTED_RUNTIME_CONTEXT_KEYS))
+        forbidden = sorted(set(value).intersection((*TRUSTED_RUNTIME_CONTEXT_KEYS, "tools", "enable_tools")))
         if forbidden:
             raise ValueError(
                 f"{location} must not contain trusted identity fields: "

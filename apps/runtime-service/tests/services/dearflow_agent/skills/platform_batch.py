@@ -216,23 +216,9 @@ def run_batch_case(client, thread_id, model_id, skill_id):
                                   headers={"Content-Type": "image/png"})
             assert response.status_code == 200, response.text[:200]
             question += f" {color}: " + response.json()["path"]
-    tools = ["read_file", "parse_document", "write_file", "present_artifacts", "write_todos", "request_information"]
-    tools += {"K03": ["github_query"], "K05": ["arxiv_search", "task"], "K07": ["search_web", "fetch_page"], "K08": ["execute"], "K09": ["generate_bar_chart", "generate_pin_map"], "K10": ["execute"], "K11": ["fetch_web_guidelines"]}.get(skill_id, [])
-    if skill_id in {"K12", "K13"}:
-        tools += ["generate_image", "get_media_task"] + (["edit_image"] if skill_id == "K12" else ["execute"])
-    if skill_id == "K12_EDIT":
-        tools += ["edit_image", "get_media_task"]
-    if skill_id == "K13_UPLOAD":
-        tools += ["execute"]
-    if skill_id in {"K17", "K18", "K19", "K20", "K21"}:
-        tools += {"K17": ["create_skill_candidate", "review_skill_package"],
-                  "K18": ["execute", "create_skill_candidate", "review_skill_package", "evaluate_skill_candidate"],
-                  "K19": ["create_skill_candidate", "find_skills"],
-                  "K20": ["search_memory", "manage_memory"],
-                  "K21": ["list_skills", "fetch_web_guidelines"]}[skill_id]
     response = client.post(root + "/runs", headers={"Idempotency-Key": uuid4().hex}, json={
         "assistant_id": "dearflow_agent", "version": "v3", "stream_subgraphs": skill_id == "K05",
-        "config": {"recursion_limit": 100}, "context": {"model_id": model_id, "tools": tools, "execution_mode": "ultra" if skill_id == "K05" else ("flash" if skill_id in {"K08", "K09", "K10", "K11", "K12", "K13", "K12_EDIT", "K13_UPLOAD"} else "pro")},
+        "config": {"recursion_limit": 100}, "context": {"model_id": model_id, "execution_mode": "ultra" if skill_id == "K05" else ("flash" if skill_id in {"K08", "K09", "K10", "K11", "K12", "K13", "K12_EDIT", "K13_UPLOAD"} else "pro")},
         "input": {"messages": [{"role": "user", "content": question + " First read the appropriate skill in full. Keep the report concise (under 900 words). Write Markdown under /workspace/work/ and publish with present_artifacts. Use only authorized tools; quote real source or upload evidence. Do not invent unavailable data. The scope above is confirmed."}]}})
     assert response.status_code in (200, 201), response.text[:200]
     run_id = response.json().get("run_id") or response.json()["id"]
@@ -336,7 +322,7 @@ def complete_batch_case(client, thread_id, model_id, skill_id, run_id):
         inherited = client.get(second_root + "/dear/memory")
         assert inherited.status_code == 200 and inherited.json()["facts"] == memory.json()["facts"]
         second_run = client.post(second_root + "/runs", json={"assistant_id": "dearflow_agent", "version": "v3",
-            "context": {"model_id": model_id, "tools": [], "execution_mode": "flash"},
+            "context": {"model_id": model_id, "execution_mode": "flash"},
             "input": {"messages": [{"role": "user", "content": "你记得我偏好怎样的回复风格吗？只答一句，不调用工具。"}]}})
         assert second_run.status_code in {200, 201}
         second_run_id = second_run.json().get("run_id") or second_run.json()["id"]

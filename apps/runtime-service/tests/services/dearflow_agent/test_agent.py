@@ -33,12 +33,12 @@ def config():
                 runtime_principal={
                     "user_id": "dear-test", "tenant_id": "tenant",
                     "project_id": "project", "role": "developer",
-                    "permissions": sorted(set(agent._TOOL_PERMISSIONS.values())),
+                    "permissions": [],
                 },
                 runtime_policy={
                     "version": "test-v1",
                     "allowed_model_ids": [agent._DEFAULTS.model_id],
-                    "allowed_tool_names": list(agent._DEFAULTS.optional_tool_names),
+                    "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
                 },
                 runtime_scope={
                     "tenant_id": "tenant", "project_id": "project",
@@ -229,4 +229,22 @@ def test_consecutive_clarifications_have_distinct_interrupt_ids(build):
         assert first.id != second.id
         result = await graph.ainvoke(Command(resume={second.id: answer}), cfg, context={})
         assert result["messages"][-1].content == "done"
+    asyncio.run(run())
+
+
+def test_new_signed_denial_blocks_pending_approval_after_rebuild(build):
+    async def run():
+        saver = InMemorySaver()
+        graph, cfg = await build([
+            call("write_file", {"file_path": "/workspace/work/revoked.txt", "content": "denied"}),
+            AIMessage(content="done"),
+        ], saver=saver)
+        result = await graph.ainvoke({"messages": [("user", "write")]}, cfg, context={})
+        assert result["__interrupt__"]
+        cfg["configurable"]["langgraph_auth_user"]["runtime_policy"]["tool_overrides"] = {"write_file": False}
+        graph, cfg = await build([AIMessage(content="done")], cfg, saver)
+        with pytest.raises(RuntimeResolutionError, match="runtime.tool.not_allowed"):
+            await graph.ainvoke(Command(resume={"decisions": [{"type": "approve"}]}), cfg, context={})
+        root = DearWorkspaceBackend("tenant", "project", "dear-thread").root
+        assert not (root / "work/revoked.txt").exists()
     asyncio.run(run())

@@ -18,7 +18,7 @@ from runtime_service.runtime.contracts import (
 )
 from runtime_service.runtime.errors import RuntimeResolutionError
 
-_CONTEXT_FIELDS = frozenset({"model_id", "temperature", "max_tokens", "top_p", "tools", "execution_mode", "access_policy"})
+_CONTEXT_FIELDS = frozenset({"model_id", "temperature", "max_tokens", "top_p", "execution_mode", "access_policy"})
 _IDENTITY_FIELDS = frozenset(
     {"user_id", "tenant_id", "project_id", "role", "permissions", "secret", "token", "api_key"}
 )
@@ -40,6 +40,8 @@ _FORBIDDEN_CONFIGURABLE_FIELDS = frozenset(
         "token",
         "tool",
         "tool_impl",
+        "tool_overrides",
+        "tool_policy_version",
         "tools",
     }
 )
@@ -121,16 +123,12 @@ def parse_runtime_context(raw: Mapping[str, Any] | RuntimeContext | None) -> Run
     unknown = keys - _CONTEXT_FIELDS
     if unknown:
         raise _fail("runtime.context.unknown_field", sorted(unknown)[0])
-    tools = raw.get("tools")
-    if tools is not None and not isinstance(tools, (list, tuple)):
-        raise _fail("runtime.context.invalid_field_type", "tools")
     return _validate_context(
         RuntimeContext(
             model_id=raw.get("model_id"),
             temperature=raw.get("temperature"),
             max_tokens=raw.get("max_tokens"),
             top_p=raw.get("top_p"),
-            tools=None if tools is None else tuple(tools),
             execution_mode=raw.get("execution_mode"),
             access_policy=raw.get("access_policy"),
         )
@@ -156,12 +154,21 @@ def parse_runtime_principal(raw: Mapping[str, Any] | RuntimePrincipal) -> Runtim
     )
 
 
+def parse_tool_overrides(raw: object) -> tuple[str, ...]:
+    if not isinstance(raw, dict) or len(raw) > 128 or any(value is not False for value in raw.values()):
+        raise _fail("runtime.auth.invalid_claim", "tool_overrides")
+    names = _names(list(raw), "tool_overrides", "runtime.auth.invalid_claim")
+    if len(json.dumps(raw, separators=(",", ":")).encode()) > 4096:
+        raise _fail("runtime.auth.invalid_claim", "tool_overrides")
+    return names
+
+
 def parse_runtime_policy(raw: Mapping[str, Any] | RuntimePolicy) -> RuntimePolicy:
     if isinstance(raw, RuntimePolicy):
         return _validate_policy(raw)
     if not isinstance(raw, Mapping):
         raise _fail("runtime.auth.invalid_claim")
-    expected = {"version", "allowed_model_ids", "allowed_tool_names"}
+    expected = {"version", "allowed_model_ids", "tool_overrides", "tool_policy_version"}
     if set(raw) != expected:
         raise _fail("runtime.auth.invalid_claim")
     return _validate_policy(
@@ -170,9 +177,8 @@ def parse_runtime_policy(raw: Mapping[str, Any] | RuntimePolicy) -> RuntimePolic
             allowed_model_ids=tuple(raw["allowed_model_ids"])
             if isinstance(raw["allowed_model_ids"], list)
             else raw["allowed_model_ids"],
-            allowed_tool_names=tuple(raw["allowed_tool_names"])
-            if isinstance(raw["allowed_tool_names"], list)
-            else raw["allowed_tool_names"],
+            denied_tool_names=parse_tool_overrides(raw["tool_overrides"]),
+            tool_policy_version=raw["tool_policy_version"],
         )
     )
 
@@ -196,8 +202,7 @@ def _validate_context(value: RuntimeContext) -> RuntimeContext:
     if top_p == 0:
         raise _fail("runtime.context.invalid_value", "top_p")
     max_tokens = _max_tokens(value.max_tokens)
-    tools = None if value.tools is None else _names(value.tools, "tools", "runtime.context.invalid_value")
-    return replace(value, model_id=model_id, temperature=temperature, max_tokens=max_tokens, top_p=top_p, tools=tools)
+    return replace(value, model_id=model_id, temperature=temperature, max_tokens=max_tokens, top_p=top_p)
 
 
 def _validate_principal(value: RuntimePrincipal) -> RuntimePrincipal:
@@ -216,12 +221,13 @@ def _validate_principal(value: RuntimePrincipal) -> RuntimePrincipal:
 def _validate_policy(value: RuntimePolicy) -> RuntimePolicy:
     if not isinstance(value, RuntimePolicy):
         raise _fail("runtime.auth.invalid_claim")
-    version = _text(value.version, "policy_version", "runtime.auth.invalid_claim")
+    _text(value.version, "policy_version", "runtime.auth.invalid_claim")
     models = _names(value.allowed_model_ids, "allowed_model_ids", "runtime.auth.invalid_claim")
     if not models:
         raise _fail("runtime.auth.invalid_claim", "allowed_model_ids")
-    tools = _names(value.allowed_tool_names, "allowed_tool_names", "runtime.auth.invalid_claim")
-    return replace(value, version=version, allowed_model_ids=models, allowed_tool_names=tools)
+    denied = _names(value.denied_tool_names, "tool_overrides", "runtime.auth.invalid_claim")
+    version = _text(value.tool_policy_version, "tool_policy_version", "runtime.auth.invalid_claim")
+    return replace(value, allowed_model_ids=models, denied_tool_names=denied, tool_policy_version=version)
 
 
 def _validate_defaults(value: AgentDefaults) -> AgentDefaults:
@@ -263,23 +269,22 @@ def runtime_context_hash(raw: Mapping[str, Any] | RuntimeContext | None) -> str:
 
     context = parse_runtime_context(raw)
     payload = {
-        "schema": "runtime-context/v1",
+        "schema": "runtime-context/v4",
         "model_id": context.model_id,
         "temperature": context.temperature,
         "max_tokens": context.max_tokens,
         "top_p": context.top_p,
-        "tools": None if context.tools is None else list(context.tools),
     }
     if context.execution_mode is not None:
-        payload.update(schema="runtime-context/v2", execution_mode=context.execution_mode)
+        payload.update(schema="runtime-context/v4", execution_mode=context.execution_mode)
     if context.access_policy is not None:
-        payload.update(schema="runtime-context/v3", access_policy=context.access_policy)
+        payload.update(schema="runtime-context/v4", access_policy=context.access_policy)
     return _sha256(_canonical_json(payload))
 
 
 def _config_hash(config: ResolvedRuntimeConfig) -> str:
     payload = {
-        "schema": "runtime-config/v1",
+        "schema": "runtime-config/v3",
         "principal": {
             "tenant_id": config.principal.tenant_id,
             "project_id": config.principal.project_id,
@@ -296,9 +301,11 @@ def _config_hash(config: ResolvedRuntimeConfig) -> str:
         "prompt_version": config.prompt_version,
         "prompt_hash": config.prompt_hash,
         "policy_version": config.policy_version,
+        "tool_policy_version": config.tool_policy_version,
+        "tool_declaration_version": config.tool_declaration_version,
     }
     if config.execution_mode is not None:
-        payload.update(schema="runtime-config/v2", execution_mode=config.execution_mode)
+        payload.update(schema="runtime-config/v3", execution_mode=config.execution_mode)
     canonical = json.dumps(payload, ensure_ascii=False, allow_nan=False, sort_keys=True, separators=(",", ":"))
     return _sha256(canonical)
 
@@ -309,7 +316,7 @@ def resolve_runtime_config(
     context: RuntimeContext,
     policy: RuntimePolicy,
     defaults: AgentDefaults,
-    tool_permissions: Mapping[str, str] | None = None,
+    available_tool_names: tuple[str, ...] | frozenset[str] | None = None,
 ) -> ResolvedRuntimeConfig:
     """Validate, merge and hash a single Run without side effects."""
 
@@ -317,13 +324,6 @@ def resolve_runtime_config(
     context = _validate_context(context)
     policy = _validate_policy(policy)
     defaults = _validate_defaults(defaults)
-    permission_map = {} if tool_permissions is None else dict(tool_permissions)
-    if any(
-        not isinstance(name, str) or not isinstance(permission, str) or not permission
-        for name, permission in permission_map.items()
-    ):
-        raise _fail("runtime.tool.permission_invalid", "tool_permissions")
-
     model_id = context.model_id if context.model_id is not None else defaults.model_id
     # Keep provider-prefixed defaults compatible with catalog keys after the
     # Platform has already restricted the delegation allowlist.
@@ -338,21 +338,16 @@ def resolve_runtime_config(
     top_p = context.top_p if context.top_p is not None else defaults.top_p
 
     required = defaults.required_tool_names
-    optional_source = context.tools if context.tools is not None else defaults.optional_tool_names
-    optional = _names(optional_source, "optional_tool_names", "runtime.optional_tool.not_declared")
-    if set(required) & set(optional):
-        raise _fail("runtime.tool.duplicate", "tool_names")
-    if any(name not in policy.allowed_tool_names for name in required):
+    declared = set(required) | set(defaults.optional_tool_names)
+    denied = set(policy.denied_tool_names)
+    if denied - declared:
+        raise _fail("runtime.tool.restriction_unknown", "tool_overrides")
+    if denied & set(required):
         raise _fail("runtime.required_tool.not_allowed", "required_tool_names")
-    if any(name not in defaults.optional_tool_names for name in optional):
-        raise _fail("runtime.optional_tool.not_declared", "optional_tool_names")
-    if any(name not in policy.allowed_tool_names for name in optional):
-        raise _fail("runtime.optional_tool.not_allowed", "optional_tool_names")
-    for name in (*required, *optional):
-        permission = permission_map.get(name, name)
-        if permission not in principal.permissions:
-            code = "runtime.required_tool.not_allowed" if name in required else "runtime.optional_tool.not_allowed"
-            raise _fail(code, "required_tool_names" if name in required else "optional_tool_names")
+    available = declared if available_tool_names is None else set(available_tool_names)
+    if set(required) - available:
+        raise _fail("runtime.required_tool.unavailable", "required_tool_names")
+    optional = tuple(name for name in defaults.optional_tool_names if name not in denied and name in available)
 
     prompt_hash = _sha256(defaults.system_prompt)
     resolved = ResolvedRuntimeConfig(
@@ -367,6 +362,8 @@ def resolve_runtime_config(
         prompt_hash=prompt_hash,
         policy_version=policy.version,
         config_hash="",
+        tool_policy_version=policy.tool_policy_version,
+        tool_declaration_version=_sha256(_canonical_json([defaults.required_tool_names, defaults.optional_tool_names])),
         execution_mode=context.execution_mode,
     )
     return replace(resolved, config_hash=_config_hash(resolved))
@@ -378,7 +375,7 @@ def runtime_config_snapshot(config: ResolvedRuntimeConfig) -> dict[str, object]:
     if not isinstance(config, ResolvedRuntimeConfig):
         raise _fail("runtime.snapshot.invalid")
     return {
-        "schema": "runtime-config/v2" if config.execution_mode is not None else "runtime-config/v1",
+        "schema": "runtime-config/v3",
         **({"execution_mode": config.execution_mode} if config.execution_mode is not None else {}),
         "principal": {
             "user_id": config.principal.user_id,
@@ -396,6 +393,8 @@ def runtime_config_snapshot(config: ResolvedRuntimeConfig) -> dict[str, object]:
         "prompt_version": config.prompt_version,
         "prompt_hash": config.prompt_hash,
         "policy_version": config.policy_version,
+        "tool_policy_version": config.tool_policy_version,
+        "tool_declaration_version": config.tool_declaration_version,
         "config_hash": config.config_hash,
     }
 
@@ -415,13 +414,15 @@ def resolved_runtime_config_from_snapshot(raw: Mapping[str, Any]) -> ResolvedRun
         "prompt_version",
         "prompt_hash",
         "policy_version",
+        "tool_policy_version",
+        "tool_declaration_version",
         "config_hash",
     }
-    if isinstance(raw, Mapping) and raw.get("schema") == "runtime-config/v2":
+    if isinstance(raw, Mapping) and "execution_mode" in raw:
         expected.add("execution_mode")
         if raw.get("execution_mode") not in ("flash", "standard", "pro", "ultra"):
             raise _fail("runtime.snapshot.invalid")
-    if not isinstance(raw, Mapping) or set(raw) != expected or raw.get("schema") not in {"runtime-config/v1", "runtime-config/v2"}:
+    if not isinstance(raw, Mapping) or set(raw) != expected or raw.get("schema") != "runtime-config/v3":
         raise _fail("runtime.snapshot.invalid")
     principal = parse_runtime_principal(raw["principal"])
     try:
@@ -436,6 +437,8 @@ def resolved_runtime_config_from_snapshot(raw: Mapping[str, Any]) -> ResolvedRun
             prompt_version=_text(raw["prompt_version"], "prompt_version", "runtime.snapshot.invalid"),
             prompt_hash=_identifier(raw["prompt_hash"], "prompt_hash", "runtime.snapshot.invalid"),
             policy_version=_text(raw["policy_version"], "policy_version", "runtime.snapshot.invalid"),
+            tool_policy_version=_text(raw["tool_policy_version"], "tool_policy_version", "runtime.snapshot.invalid"),
+            tool_declaration_version=_identifier(raw["tool_declaration_version"], "tool_declaration_version", "runtime.snapshot.invalid"),
             config_hash=_identifier(raw["config_hash"], "config_hash", "runtime.snapshot.invalid"),
             execution_mode=raw.get("execution_mode"),
         )

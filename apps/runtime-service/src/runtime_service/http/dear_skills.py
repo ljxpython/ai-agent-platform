@@ -8,6 +8,7 @@ from fastapi import APIRouter, Header, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
 from runtime_service.auth.platform import authenticate
+from runtime_service.runtime.tool_access import require_tool_access
 from runtime_service.http.dear_governance import call
 from runtime_service.services.dearflow_agent import skill_catalog as catalog
 from runtime_service.services.dearflow_agent.skill_governance import SkillStorage
@@ -31,7 +32,7 @@ class Toggle(BaseModel):
     expected_revision: str = Field(min_length=1, max_length=64)
 
 
-async def authorize(authorization, *, write=False):
+async def authorize(authorization, *, write=False, tool_name="list_skills"):
     facts = await authenticate(authorization)
     scope, principal = facts.get("runtime_scope", {}), facts.get("runtime_principal", {})
     if (scope.get("operation") != ("dear-skills-write" if write else "dear-skills-read")
@@ -39,6 +40,7 @@ async def authorize(authorization, *, write=False):
             or not all(principal.get(k) for k in ("tenant_id", "project_id", "user_id"))
             or any(scope.get(k) != principal.get(k) for k in ("tenant_id", "project_id"))):
         raise HTTPException(403, {"code": "dear_skills_scope_denied"})
+    require_tool_access(facts, tool_name)
     if write and not enabled():
         raise HTTPException(409, {"code": "dear_skills_disabled"})
     return tuple(principal[k] for k in ("tenant_id", "project_id", "user_id"))
@@ -68,25 +70,25 @@ async def list_skills(authorization: str | None = Header(default=None)):
 
 @router.post("/custom", status_code=201)
 async def create(command: Upload, authorization: str | None = Header(default=None)):
-    scope = await authorize(authorization, write=True)
+    scope = await authorize(authorization, write=True, tool_name="upload_skill")
     return await call(SkillStorage().create, scope, decode(command), source="explicit-management")
 
 
 @router.put("/custom/{slug}")
 async def update(slug: str, command: Update, authorization: str | None = Header(default=None)):
-    scope = await authorize(authorization, write=True)
+    scope = await authorize(authorization, write=True, tool_name="update_skill")
     return await call(SkillStorage().update, scope, slug, decode(command), expected_revision=command.expected_revision)
 
 
 @router.patch("/custom/{slug}")
 async def toggle(slug: str, command: Toggle, authorization: str | None = Header(default=None)):
-    scope = await authorize(authorization, write=True)
+    scope = await authorize(authorization, write=True, tool_name="set_skill_enabled")
     return await call(SkillStorage().set_enabled, scope, slug, **command.model_dump())
 
 
 @router.delete("/custom/{slug}", status_code=204)
 async def delete(slug: str, expected_revision: str = Query(min_length=1, max_length=64), authorization: str | None = Header(default=None)):
-    scope = await authorize(authorization, write=True)
+    scope = await authorize(authorization, write=True, tool_name="delete_skill")
     await call(SkillStorage().delete, scope, slug, expected_revision=expected_revision)
     return Response(status_code=204)
 

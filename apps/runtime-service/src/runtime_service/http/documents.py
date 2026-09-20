@@ -6,6 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 
 from runtime_service.auth.platform import authenticate
+from runtime_service.runtime.tool_access import require_tool_access
 from runtime_service.workspace.artifact_refs import ArtifactWorkspace
 from runtime_service.workspace.documents import DocumentError, DocumentWorkspace
 from runtime_service.workspace.file_refs import MAX_FILE_BYTES as MAX_BYTES
@@ -22,6 +23,8 @@ async def _auth_scope(thread_id: str, authorization: str | None, operation: str)
         raise HTTPException(403, {"code": "file_scope_denied", "message": "File scope denied"})
     if not scope.get("assistant_id") or not scope.get("tenant_id") or not scope.get("project_id"):
         raise HTTPException(403, {"code": "file_target_denied", "message": "File target denied"})
+    names = ("read_file", "write_file") if operation == "workspace-fork" else (("write_file",) if operation == "workspace-file-upload" else ("read_file",))
+    require_tool_access(facts, *names)
     try:
         path = resolve_thread_workspace(scope["tenant_id"], scope["project_id"], thread_id, scope["assistant_id"])
         return path, scope

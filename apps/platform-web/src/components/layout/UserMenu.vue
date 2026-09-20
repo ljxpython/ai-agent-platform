@@ -27,6 +27,15 @@ const {
   fallbackWidth: 256,
   minWidth: 256
 })
+withDefaults(
+  defineProps<{
+    compact?: boolean
+  }>(),
+  {
+    compact: false
+  }
+)
+
 const initials = computed(() => (authStore.user?.username || 'PW').slice(0, 2).toUpperCase())
 const roleLabel = computed(() => authorization.roleLabel.value || t('common.member'))
 
@@ -49,30 +58,45 @@ async function handleLogout() {
 <template>
   <div
     ref="rootRef"
-    class="relative"
+    class="relative shrink-0"
   >
     <button
       ref="triggerRef"
       type="button"
-      class="pw-topbar-user-trigger"
-      :class="isOpen ? 'pw-topbar-user-trigger-active' : ''"
+      class="pw-topbar-user-trigger shrink-0"
+      :class="[
+        isOpen ? 'pw-topbar-user-trigger-active' : '',
+        compact ? '!min-h-7 !h-7 !px-1.5 !gap-1.5' : ''
+      ]"
       @click="toggle"
     >
-      <div class="pw-topbar-user-avatar">
+      <div
+        class="pw-topbar-user-avatar shrink-0"
+        :class="compact ? '!h-6 !w-6 !rounded-lg !text-[10px]' : ''"
+      >
         {{ initials }}
       </div>
-      <div class="pw-topbar-user-copy">
-        <div class="max-w-[120px] truncate text-sm font-medium text-gray-900 dark:text-white">
+      <div
+        class="pw-topbar-user-copy"
+        :class="compact ? '!block' : ''"
+      >
+        <div
+          class="truncate text-sm font-medium text-gray-900 dark:text-white"
+          :class="compact ? 'max-w-[76px] !text-xs' : 'max-w-[120px]'"
+        >
           {{ authStore.user?.username ?? t('common.loading') }}
         </div>
-        <div class="text-xs text-gray-500 dark:text-dark-400">
+        <div
+          v-if="!compact"
+          class="text-xs text-gray-500 dark:text-dark-400"
+        >
           {{ roleLabel }}
         </div>
       </div>
       <BaseIcon
         name="chevron-down"
         size="xs"
-        class="text-gray-400 transition"
+        class="text-gray-400 transition shrink-0"
         :class="isOpen ? 'rotate-180' : ''"
       />
     </button>
@@ -103,7 +127,7 @@ async function handleLogout() {
                   {{ authStore.user?.username ?? t('common.loading') }}
                 </div>
                 <div class="truncate text-xs text-gray-500 dark:text-dark-400">
-                  {{ authStore.user?.email || t('common.unavailable') }}
+                  {{ authStore.user?.email || '未绑定邮箱' }}
                 </div>
               </div>
             </div>

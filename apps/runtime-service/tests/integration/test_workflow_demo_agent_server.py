@@ -29,7 +29,7 @@ def _token() -> str:
     now = int(time.time())
     return jwt.encode(
         {
-            "type": "runtime_delegation",
+            "type": "runtime_delegation", "delegation_version": 2,
             "sub": "workflow-integration-user",
             "tenant_id": "workflow-integration-tenant",
             "project_id": "workflow-integration-project",
@@ -37,12 +37,12 @@ def _token() -> str:
             "permissions": [],
             "policy_version": "workflow-integration-policy-v1",
             "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-            "allowed_tool_names": [],
+            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
             "iat": now,
             "exp": now + 60,
             "iss": ISSUER,
             "aud": AUDIENCE,
-            "scope": {
+            "scope": {"operation": "run-create", "assistant_id": "workflow_demo",
                 "tenant_id": "workflow-integration-tenant",
                 "project_id": "workflow-integration-project",
             },

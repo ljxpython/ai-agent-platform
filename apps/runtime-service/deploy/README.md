@@ -54,7 +54,7 @@ R6 hard gate 单独验收。
 
 - `apps/runtime-service/deploy/.env.runtime-service`
 
-宿主机 `apps/runtime-service/.env` 只供本地 Python 测试读取，`.dockerignore` 会排除它，不能作为
+宿主机 `apps/runtime-service/.env` 供原生开发栈及本地 Python 测试读取，`.dockerignore` 会排除它，不能作为
 容器部署来源。`runtime_service/conf/settings.local.yaml` 当前也不参与 Runtime 配置加载。
 模型凭据必须通过部署 env file 或 secret store 注入，不能写入镜像。
 
@@ -225,7 +225,7 @@ Redis 和 Workspace 数据，确认旧版本 lockfile 与 migration 兼容后再
 
 环境问题和一次性验收门禁统一见：
 
-- [`docs/solve_problem/r6-validation-harness-and-failure-prevention.md`](../../../docs/solve_problem/r6-validation-harness-and-failure-prevention.md)
+- [非 Docker 部署与排障](../../../docs/quickstart/deployment-guide.md)
 - [`docs/runbooks/container-update-runbook.md`](../../../docs/runbooks/container-update-runbook.md)
 
 
@@ -253,6 +253,6 @@ uv run python -m runtime_service.db upgrade
 前端按 [交接文档](../../../docs/projects/20260919-skills-page-improvement/07-frontend-handoff.md) 一同切换。
 保留 Workspace 卷及其快照目录；恢复缺失或损坏快照时明确失败，不读取当前技能代替。
 不支持破坏性 downgrade 或旧技能模型无损回切。生产发布尚未执行。
-根目录 `scripts/local-stack.sh` 和 `deploy/` 未自动接入本应用迁移，使用它们部署时必须额外执行上述应用命令。
+根目录 `scripts/local-stack.sh` 通过 `python -m runtime_service.messaging` 调用同一应用 `upgrade()`；根级 Compose 中相同命令也会执行应用迁移。独立手工启动仍须先执行上述迁移。
 
 对话工具仍遵守项目工具策略；若配置了显式工具白名单，部署后刷新工具目录并按原审批方式授权 `upload_skill/update_skill/set_skill_enabled/delete_skill`。不自动扩大用户权限。

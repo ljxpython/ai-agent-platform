@@ -34,9 +34,9 @@ def _config(model_id: str, tool_name: str) -> dict[str, object]:
                 "runtime_policy": {
                     "version": "failure-demo-local-v1",
                     "allowed_model_ids": [model_id],
-                    "allowed_tool_names": [tool_name],
+                    "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
                 },
-                "runtime_scope": {"tenant_id": "tenant", "project_id": "project"},
+                "runtime_scope": {"operation": "read", "tenant_id": "tenant", "project_id": "project"},
                 "runtime_context_hash": runtime_context_hash(None),
             }
         }

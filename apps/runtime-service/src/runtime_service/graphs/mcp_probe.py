@@ -58,7 +58,6 @@ async def mcp_probe(state: MCPProbeState, config: RunnableConfig) -> MCPProbeSta
             context=parse_runtime_context(config.get("context")),
             policy=facts.policy,
             defaults=_DEFAULTS,
-            tool_permissions={"mcp_read": "runtime.tool.read"},
         )
         tools = await load_mcp_tools(
             allowed_names=resolved.optional_tool_names,

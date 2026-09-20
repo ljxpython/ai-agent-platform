@@ -3,7 +3,6 @@ export type AgentContext = {
   temperature?: number
   max_tokens?: number
   top_p?: number
-  tools?: string[]
   execution_mode?: 'flash' | 'standard' | 'pro' | 'ultra'
 }
 

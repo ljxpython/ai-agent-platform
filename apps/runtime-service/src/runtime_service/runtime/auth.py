@@ -26,7 +26,9 @@ _REQUIRED_CLAIMS = (
     "permissions",
     "policy_version",
     "allowed_model_ids",
-    "allowed_tool_names",
+    "delegation_version",
+    "tool_overrides",
+    "tool_policy_version",
     "iat",
     "exp",
     "scope",
@@ -93,7 +95,7 @@ def _parse_scope(raw: object) -> RuntimeScope:
         if value is not None and (not isinstance(value, str) or not value or value != value.strip()):
             raise _invalid("runtime.auth.invalid_principal", field)
         values[field] = value
-    if values["operation"] is not None and values["operation"] not in {
+    if values["operation"] not in {
         "read",
         "run-create",
         "message-enqueue",
@@ -155,6 +157,8 @@ def verify_delegation_claims(
     unknown = set(claims) - _ALLOWED_CLAIMS
     if unknown:
         raise _invalid(field=min(unknown))
+    if type(claims.get("delegation_version")) is not int or claims["delegation_version"] != 2:
+        raise _invalid(field="delegation_version")
     if claims.get("type") != "runtime_delegation":
         raise _invalid(field="type")
 
@@ -172,7 +176,8 @@ def verify_delegation_claims(
             {
                 "version": claims["policy_version"],
                 "allowed_model_ids": claims["allowed_model_ids"],
-                "allowed_tool_names": claims["allowed_tool_names"],
+                "tool_overrides": claims["tool_overrides"],
+                "tool_policy_version": claims["tool_policy_version"],
             }
         )
     except RuntimeResolutionError as exc:
@@ -185,6 +190,8 @@ def verify_delegation_claims(
     scope = _parse_scope(claims["scope"])
     if scope.tenant_id != principal.tenant_id or scope.project_id != principal.project_id:
         raise _invalid("runtime.auth.invalid_principal", "scope")
+    if scope.operation != "read" and not scope.assistant_id:
+        raise _invalid(field="scope")
     context_claim = claims["context_hash"]
     if not isinstance(context_claim, str) or not _HASH_PATTERN.fullmatch(context_claim):
         raise _invalid("runtime.auth.invalid_claim", "context_hash")
@@ -196,6 +203,7 @@ def verify_delegation_claims(
             "project_id": scope.project_id,
             "assistant_id": scope.assistant_id,
             "thread_id": scope.thread_id,
+            "operation": scope.operation,
         }
         if any(actual.get(key) != value for key, value in expected_scope.items()):
             raise _invalid("runtime.auth.invalid_principal", "scope")

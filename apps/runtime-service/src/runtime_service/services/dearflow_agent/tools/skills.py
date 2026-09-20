@@ -17,9 +17,6 @@ from runtime_service.services.dearflow_agent.tools.memory import memory_scope
 from runtime_service.workspace.artifact_refs import ArtifactWorkspace
 from runtime_service.workspace.documents import DocumentError, DocumentWorkspace
 
-SKILL_READ_TOOLS = ("list_skills", "review_skill_package", "find_skills")
-SKILL_WRITE_TOOLS = ("upload_skill", "update_skill", "set_skill_enabled", "delete_skill", "import_skill")
-
 
 async def read_bounded(client, url, limit, **kwargs):
     try:

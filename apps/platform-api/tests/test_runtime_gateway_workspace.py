@@ -84,7 +84,7 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
     def delegation(self, *, project_id, agent_key, thread_id, context_hash, operation):
         now = int(time.time())
         claims = {
-            "type": "runtime_delegation",
+            "type": "runtime_delegation", "delegation_version": 2,
             "sub": "user-a",
             "tenant_id": "tenant-a",
             "project_id": project_id,
@@ -92,7 +92,7 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
             "permissions": ["runtime.tool.read", "runtime.tool.execute"],
             "policy_version": "test-1",
             "allowed_model_ids": ["deepseek:deepseek-chat"],
-            "allowed_tool_names": ["read_file", "execute"],
+            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
             "iat": now,
             "exp": now + 60,
             "iss": "runtime-test",

@@ -41,7 +41,7 @@ uv run --frozen graphharbor --version
 安装和启动使用 `.venv/bin/...` 或 `uv run --frozen ...`，不依赖相邻 GraphHarbor 源码仓库、
 本地 wheel 或 `tool.uv.sources` override。
 
-直接 Runtime Provider smoke 使用项目根 `.env`。正式 Platform Run 不读取这些变量，而是使用
+直接 Runtime Provider smoke 使用本应用目录的 `.env`（`apps/runtime-service/.env`），不是仓库根文件。正式 Platform Run 不读取这些变量，而是使用
 Platform Models 目录签发的短期引用，并通过 `PLATFORM_RUNTIME_MODEL_CONFIG_URL` 获取连接配置。
 该文件已加入 Git 忽略，变量从本机 `~/.my_best/.env` 注入：
 
@@ -81,11 +81,14 @@ RUNTIME_R5=1 uv run pytest tests/e2e/test_langfuse_real.py -m e2e -q
 
 ## GraphHarbor 启动
 
+新机器或远程 Linux 开发先按[非 Docker 部署手册](../../docs/quickstart/deployment-guide.md)安装、建库和配置。
+
 ### 本地进程模式
 
 需要同时启动 Runtime 和 Platform 时，从仓库根目录执行：
 
 ```bash
+source "apps/runtime-service/.venv/bin/activate"
 bash "./scripts/local-stack.sh" doctor
 bash "./scripts/local-stack.sh" start
 ```
@@ -97,7 +100,7 @@ bash "./scripts/local-stack.sh" status
 bash "./scripts/local-stack.sh" stop
 ```
 
-该脚本使用本机 PostgreSQL/Redis，直接管理 GraphHarbor API、Worker、Platform API、Platform Worker
+该脚本使用本机 PostgreSQL/Redis，直接管理 GraphHarbor API、Worker、Platform API
 和 Platform Web 的本地进程。GraphHarbor 本身没有前端，平台前端是 `platform-web`。`doctor` 会校验 Runtime 配置、
 本机 PostgreSQL/Redis、Platform upstream、Delegation secret 和端口；`start` 会先执行数据库迁移，再启动进程并等待
 Runtime `/ready` 和 Platform API 健康检查。项目脚本不会自动删除 PostgreSQL 数据目录中的 `postmaster.pid`；检测到失效锁时只给出人工确认后的修复提示。
@@ -118,7 +121,7 @@ uv run --frozen graphharbor serve --host 127.0.0.1 --port 8124 --config ./langgr
 启动后检查：
 
 ```bash
-curl http://127.0.0.1:8123/info
+curl -fsS "http://127.0.0.1:8123/ready"
 ```
 
 测试 fake model 只说明 Service 可以脱离 Provider 执行；正式 `reference_agent` 和 `workflow_demo`

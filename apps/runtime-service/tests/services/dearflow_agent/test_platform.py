@@ -123,14 +123,11 @@ def test_platform_creates_and_completes_dear_run():
         if files_mode or subagent_mode:
             refreshed = client.post("/api/runtime/tools/refresh", json={})
             assert refreshed.status_code == 200
-        tools = ["read_file", "execute", "request_information", "present_artifacts"] if files_mode else []
-        if research_mode:
-            tools += ["search_web", "fetch_page", "write_todos", "write_file"]
-        context = {"model_id": model_id, "tools": tools}
+        context = {"model_id": model_id}
         if research_mode:
             context["execution_mode"] = "pro"
         if subagent_mode:
-            context.update(execution_mode="ultra", tools=["task", "read_file"])
+            context.update(execution_mode="ultra")
         try:
             batch_id = os.environ.get("DEAR_PLATFORM_SKILL_TEST")
             if batch_id in {"K02", "K03", "K04", "K05", "K06", "K07", "K08", "K09", "K10", "K11", "K12", "K13", "K12_EDIT", "K13_UPLOAD", "K17", "K18", "K19", "K20", "K21"}:
@@ -192,7 +189,6 @@ def test_platform_creates_and_completes_dear_run():
                 run_payload["config"] = {"recursion_limit": 100}
             if failure_mode:
                 run_payload["config"] = {"recursion_limit": 1}
-                run_payload["context"]["tools"] = ["read_file"]
                 run_payload["input"]["messages"][0]["content"] = (
                     "请先调用 read_file 读取 /skills/runtime-smoke/SKILL.md，然后总结内容。"
                 )

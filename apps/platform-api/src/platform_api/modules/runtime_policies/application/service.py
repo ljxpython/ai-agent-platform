@@ -5,11 +5,13 @@ import json
 from decimal import Decimal
 from uuid import UUID
 
+from sqlalchemy import select, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import session_scope
-from platform_api.core.errors import NotFoundError, ServiceUnavailableError
+from platform_api.core.errors import NotFoundError, ServiceUnavailableError, BadRequestError, ConflictError
 from platform_api.core.identifiers import parse_uuid
 from platform_api.modules.iam.application import (
     AuthorizationRequest,
@@ -23,22 +25,21 @@ from platform_api.modules.runtime_catalog.infra import (
 from platform_api.modules.runtime_policies.application.contracts import (
     RuntimeGraphPolicyList,
     RuntimeModelPolicyList,
-    RuntimeToolPolicyList,
     UpsertRuntimeGraphPolicyCommand,
     UpsertRuntimeModelPolicyCommand,
-    UpsertRuntimeToolPolicyCommand,
 )
 from platform_api.modules.runtime_policies.domain import (
     RuntimeGraphPolicyItem,
     RuntimeGraphPolicyValue,
     RuntimeModelPolicyItem,
     RuntimeModelPolicyValue,
-    RuntimeToolPolicyItem,
-    RuntimeToolPolicyValue,
 )
 from platform_api.modules.runtime_policies.infra import (
     SqlAlchemyRuntimePolicyRepository,
 )
+
+from platform_api.modules.runtime_policies.infra.sqlalchemy.models import RuntimeToolRestrictionRecord
+from platform_api.modules.runtime_policies.application.contracts import CreateToolRestriction, ToolRestrictionItem, ToolRestrictionList
 
 _NO_ENABLED_MODEL_SENTINEL = "platform:no-enabled-model"
 
@@ -70,20 +71,12 @@ class RuntimePolicyOverlayService:
             catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
             policy_repository = SqlAlchemyRuntimePolicyRepository(session)
             models = catalog_repository.list_models()
-            tools = catalog_repository.list_tools(runtime_id=self._runtime_id)
             model_policies = {
                 str(item.model_catalog_id): item
                 for item in policy_repository.list_model_policies(
                     project_id=project_uuid
                 )
             }
-            tool_policies = {
-                str(item.tool_catalog_id): item
-                for item in policy_repository.list_tool_policies(
-                    project_id=project_uuid
-                )
-            }
-
             allowed_model_ids = sorted(
                 str(item.id)
                 for item in models
@@ -97,20 +90,9 @@ class RuntimePolicyOverlayService:
             # the Gateway still rejects any run before contacting the upstream.
             if not allowed_model_ids:
                 allowed_model_ids = [_NO_ENABLED_MODEL_SENTINEL]
-            allowed_tool_names = sorted(
-                item.tool_key
-                for item in tools
-                if item.sync_status == "ready"
-                and (
-                    str(item.id) not in tool_policies
-                    or tool_policies[str(item.id)].is_enabled
-                )
-            )
-
         revision_payload = {
             "runtime_id": self._runtime_id,
             "models": allowed_model_ids,
-            "tools": allowed_tool_names,
         }
         revision = (
             "platform-policy-"
@@ -123,23 +105,73 @@ class RuntimePolicyOverlayService:
         return {
             "version": revision,
             "allowed_model_ids": allowed_model_ids,
-            "allowed_tool_names": allowed_tool_names,
-            "runtime_permissions": sorted(
-                {
-                    permission
-                    for tool in tools
-                    if tool.tool_key in allowed_tool_names
-                    for permission in tool.permissions
-                    if permission
-                    in {
-                        "runtime.tool.read",
-                        "runtime.tool.write",
-                        "runtime.tool.execute",
-                        "runtime.tool.delegate",
-                    }
-                }
-            ),
         }
+
+    def resolve_tool_overrides(self, *, project_id: str, user_id: str | None, graph_id: str) -> dict:
+        project = parse_uuid(project_id, code="invalid_project_id")
+        user = parse_uuid(user_id, code="invalid_user_id") if user_id is not None else None
+        with self._require_session_factory()() as session:
+            self._ensure_project_exists(session, project)
+            names = session.scalars(select(RuntimeToolRestrictionRecord.tool_name).where(
+                RuntimeToolRestrictionRecord.project_id == project,
+                RuntimeToolRestrictionRecord.graph_id == graph_id,
+                or_(
+                    (RuntimeToolRestrictionRecord.subject_type == "project") & (RuntimeToolRestrictionRecord.subject_id == project),
+                    (RuntimeToolRestrictionRecord.subject_type == "user") & (RuntimeToolRestrictionRecord.subject_id == user),
+                ),
+            )).all()
+        overrides = dict.fromkeys(sorted(set(names)), False)
+        payload = json.dumps([project_id, user_id, graph_id, overrides], separators=(",", ":"))
+        if len(overrides) > 128 or len(json.dumps(overrides, separators=(",", ":")).encode()) > 4096:
+            raise ServiceUnavailableError(code="tool_policy_too_large", message="Tool restrictions exceed delegation budget")
+        return {"tool_overrides": overrides,
+                "tool_policy_version": "sha256:" + hashlib.sha256(payload.encode()).hexdigest()}
+
+    def list_tool_restrictions(self, *, actor: ActorContext, project_id: str) -> ToolRestrictionList:
+        project = self._require_project_access(actor=actor, project_id=project_id, write=True)
+        with self._require_session_factory()() as session:
+            self._ensure_project_exists(session, project)
+            rows = session.scalars(select(RuntimeToolRestrictionRecord).where(
+                RuntimeToolRestrictionRecord.project_id == project
+            ).order_by(RuntimeToolRestrictionRecord.created_at, RuntimeToolRestrictionRecord.id)).all()
+            return ToolRestrictionList(items=[ToolRestrictionItem.model_validate(row) for row in rows], total=len(rows))
+
+    def validate_restriction_subject(self, *, actor: ActorContext, project_id: str, command: CreateToolRestriction) -> None:
+        project = self._require_project_access(actor=actor, project_id=project_id, write=True)
+        with self._require_session_factory()() as session:
+            self._ensure_project_exists(session, project)
+            repository = SqlAlchemyProjectsRepository(session)
+            if command.subject_type == "project":
+                valid = command.subject_id == project
+            else:
+                valid = repository.user_exists(user_id=command.subject_id) and repository.get_project_member_role(
+                    project_id=project, user_id=command.subject_id) is not None
+            if not valid:
+                raise BadRequestError(code="invalid_restriction_subject", message="Restriction subject must belong to the project")
+
+    def create_tool_restriction(self, *, actor: ActorContext, project_id: str,
+                                command: CreateToolRestriction) -> ToolRestrictionItem:
+        self.validate_restriction_subject(actor=actor, project_id=project_id, command=command)
+        try:
+            with session_scope(self._require_session_factory()) as session:
+                row = RuntimeToolRestrictionRecord(project_id=parse_uuid(project_id, code="invalid_project_id"),
+                    **command.model_dump(), created_by=actor.user_id or actor.subject)
+                session.add(row)
+                session.flush()
+                return ToolRestrictionItem.model_validate(row)
+        except IntegrityError as exc:
+            raise ConflictError(code="tool_restriction_exists", message="Restriction already exists") from exc
+
+    def delete_tool_restriction(self, *, actor: ActorContext, project_id: str, restriction_id: str) -> ToolRestrictionItem:
+        project = self._require_project_access(actor=actor, project_id=project_id, write=True)
+        with session_scope(self._require_session_factory()) as session:
+            self._ensure_project_exists(session, project)
+            row = session.get(RuntimeToolRestrictionRecord, parse_uuid(restriction_id, code="invalid_restriction_id"))
+            if row is None or row.project_id != project:
+                raise NotFoundError(code="tool_restriction_not_found", message="Restriction not found")
+            deleted = ToolRestrictionItem.model_validate(row)
+            session.delete(row)
+            return deleted
 
     def _require_project_access(
         self,
@@ -250,87 +282,6 @@ class RuntimePolicyOverlayService:
                 updated_at=row.updated_at,
             )
 
-    def list_tool_policies(
-        self,
-        *,
-        actor: ActorContext,
-        project_id: str,
-    ) -> RuntimeToolPolicyList:
-        session_factory = self._require_session_factory()
-        project_uuid = self._require_project_access(
-            actor=actor, project_id=project_id, write=False
-        )
-        with session_scope(session_factory) as session:
-            self._ensure_project_exists(session, project_uuid)
-            catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
-            policy_repository = SqlAlchemyRuntimePolicyRepository(session)
-            catalog_rows = catalog_repository.list_tools(runtime_id=self._runtime_id)
-            policy_rows = {
-                str(item.tool_catalog_id): item
-                for item in policy_repository.list_tool_policies(
-                    project_id=project_uuid
-                )
-            }
-            items = [
-                RuntimeToolPolicyItem(
-                    catalog_id=str(row.id),
-                    tool_key=row.tool_key,
-                    name=row.name,
-                    source=row.source or "",
-                    description=row.description or "",
-                    sync_status=row.sync_status,
-                    last_synced_at=row.last_synced_at,
-                    policy=RuntimeToolPolicyValue(
-                        is_enabled=policy_rows.get(str(row.id)).is_enabled
-                        if policy_rows.get(str(row.id))
-                        else True,
-                        display_order=policy_rows.get(str(row.id)).display_order
-                        if policy_rows.get(str(row.id))
-                        else None,
-                        note=policy_rows.get(str(row.id)).note
-                        if policy_rows.get(str(row.id))
-                        else None,
-                    ),
-                )
-                for row in catalog_rows
-            ]
-            return RuntimeToolPolicyList(items=items, total=len(items))
-
-    def upsert_tool_policy(
-        self,
-        *,
-        actor: ActorContext,
-        project_id: str,
-        catalog_id: str,
-        command: UpsertRuntimeToolPolicyCommand,
-    ) -> RuntimeToolPolicyValue:
-        session_factory = self._require_session_factory()
-        project_uuid = self._require_project_access(
-            actor=actor, project_id=project_id, write=True
-        )
-        catalog_uuid = parse_uuid(catalog_id, code="invalid_catalog_id")
-        with session_scope(session_factory) as session:
-            self._ensure_project_exists(session, project_uuid)
-            catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
-            if catalog_repository.get_tool_by_id(catalog_uuid) is None:
-                raise NotFoundError(
-                    message="Tool catalog not found", code="tool_catalog_not_found"
-                )
-            policy_repository = SqlAlchemyRuntimePolicyRepository(session)
-            row = policy_repository.upsert_tool_policy(
-                project_id=project_uuid,
-                tool_catalog_id=catalog_uuid,
-                is_enabled=command.is_enabled,
-                display_order=command.display_order,
-                note=command.note,
-                updated_by=actor.user_id,
-            )
-            return RuntimeToolPolicyValue(
-                is_enabled=row.is_enabled,
-                display_order=row.display_order,
-                note=row.note,
-                updated_at=row.updated_at,
-            )
 
     def list_model_policies(
         self,

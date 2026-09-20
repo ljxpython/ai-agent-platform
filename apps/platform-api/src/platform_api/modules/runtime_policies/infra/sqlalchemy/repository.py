@@ -12,7 +12,6 @@ from platform_api.modules.runtime_catalog.infra.sqlalchemy.models import (
 from platform_api.modules.runtime_policies.infra.sqlalchemy.models import (
     ProjectGraphPolicyRecord,
     ProjectModelPolicyRecord,
-    ProjectToolPolicyRecord,
 )
 
 
@@ -53,38 +52,6 @@ class SqlAlchemyRuntimePolicyRepository:
         self.session.flush()
         return row
 
-    def list_tool_policies(self, *, project_id: UUID) -> list[ProjectToolPolicyRecord]:
-        stmt = (
-            select(ProjectToolPolicyRecord)
-            .where(ProjectToolPolicyRecord.project_id == project_id)
-            .order_by(asc(ProjectToolPolicyRecord.display_order), asc(ProjectToolPolicyRecord.updated_at))
-        )
-        return list(self.session.scalars(stmt).all())
-
-    def upsert_tool_policy(
-        self,
-        *,
-        project_id: UUID,
-        tool_catalog_id: UUID,
-        is_enabled: bool,
-        display_order: int | None,
-        note: str | None,
-        updated_by: str | None,
-    ) -> ProjectToolPolicyRecord:
-        stmt = select(ProjectToolPolicyRecord).where(
-            ProjectToolPolicyRecord.project_id == project_id,
-            ProjectToolPolicyRecord.tool_catalog_id == tool_catalog_id,
-        )
-        row = self.session.scalar(stmt)
-        if row is None:
-            row = ProjectToolPolicyRecord(project_id=project_id, tool_catalog_id=tool_catalog_id)
-            self.session.add(row)
-        row.is_enabled = is_enabled
-        row.display_order = display_order
-        row.note = note
-        row.updated_by = updated_by
-        self.session.flush()
-        return row
 
     def list_model_policies(self, *, project_id: UUID) -> list[ProjectModelPolicyRecord]:
         stmt = (

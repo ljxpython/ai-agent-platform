@@ -59,6 +59,13 @@ export async function listRuntimeTools(projectId?: string): Promise<RuntimeTools
   return response.data as RuntimeToolsResponse
 }
 
+export async function listRuntimeGraphs(projectId?: string): Promise<{ count: number; graphs: Array<{ graph_id: string; display_name?: string }> }> {
+  const response = await platformHttpClient.get('/api/runtime/graphs', {
+    headers: buildRuntimeHeaders(projectId)
+  })
+  return response.data
+}
+
 export async function refreshRuntimeGraphs(projectId: string): Promise<{ count: number }> {
   const response = await platformHttpClient.post('/api/runtime/graphs/refresh', undefined, {
     headers: buildRuntimeHeaders(projectId)

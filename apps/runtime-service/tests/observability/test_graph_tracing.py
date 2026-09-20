@@ -291,9 +291,9 @@ def test_concurrent_real_graphs_keep_principal_and_run_metadata_isolated(monkeyp
                     "runtime_policy": {
                         "version": f"policy-{index}",
                         "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-                        "allowed_tool_names": ["read_reference"],
+                        "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
                     },
-                    "runtime_scope": {
+                    "runtime_scope": {"operation": "read",
                         "tenant_id": f"tenant-{index}",
                         "project_id": f"project-{index}",
                     },

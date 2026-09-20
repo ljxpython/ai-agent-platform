@@ -58,7 +58,7 @@ def test_async_and_exit_runs_persist_terminal_state(
 async def _test_durability_mode(
     base_url: str, assistant_id: str, durability: str
 ) -> None:
-    durable_client = get_authenticated_client(base_url)
+    durable_client = get_authenticated_client(base_url, assistant_id=assistant_id)
     thread_id = _thread_id()
     try:
         await durable_client.threads.create(thread_id=thread_id, if_exists="raise")
@@ -80,7 +80,7 @@ async def _test_durability_mode(
 
 
 async def _test_sync_run(base_url: str, assistant_id: str) -> None:
-    durable_client = get_authenticated_client(base_url)
+    durable_client = get_authenticated_client(base_url, assistant_id=assistant_id)
     thread_id = _thread_id()
     try:
         await durable_client.threads.create(thread_id=thread_id, if_exists="raise")
@@ -109,7 +109,7 @@ def test_interrupt_before_and_resume_keep_thread_scope(
     asyncio.run(_test_interrupt_before_and_resume(durable_url, durable_assistant_id))
 
 async def _test_interrupt_before_and_resume(base_url: str, assistant_id: str) -> None:
-    durable_client = get_authenticated_client(base_url)
+    durable_client = get_authenticated_client(base_url, assistant_id=assistant_id)
     thread_id = _thread_id()
     try:
         await durable_client.threads.create(thread_id=thread_id, if_exists="raise")
@@ -145,7 +145,7 @@ def test_two_sequential_workflow_interrupts_resume_in_order(
 async def _test_two_sequential_workflow_interrupts(
     base_url: str, assistant_id: str
 ) -> None:
-    durable_client = get_authenticated_client(base_url)
+    durable_client = get_authenticated_client(base_url, assistant_id=assistant_id)
     thread_id = _thread_id()
     try:
         await durable_client.threads.create(thread_id=thread_id, if_exists="raise")
@@ -205,7 +205,7 @@ def test_resumable_stream_replays_without_duplicate_event_ids(
     asyncio.run(_test_resumable_stream(durable_url, durable_assistant_id))
 
 async def _test_resumable_stream(base_url: str, assistant_id: str) -> None:
-    durable_client = get_authenticated_client(base_url)
+    durable_client = get_authenticated_client(base_url, assistant_id=assistant_id)
     thread_id = _thread_id()
     try:
         await durable_client.threads.create(thread_id=thread_id, if_exists="raise")
@@ -255,7 +255,7 @@ def test_sse_disconnect_does_not_cancel_run(
 
 
 async def _test_sse_disconnect(base_url: str, assistant_id: str) -> None:
-    durable_client = get_authenticated_client(base_url)
+    durable_client = get_authenticated_client(base_url, assistant_id=assistant_id)
     thread_id = _thread_id()
     try:
         await durable_client.threads.create(thread_id=thread_id, if_exists="raise")
@@ -285,7 +285,7 @@ def test_cancel_is_idempotent(durable_url: str, durable_assistant_id: str) -> No
     asyncio.run(_test_cancel(durable_url, durable_assistant_id))
 
 async def _test_cancel(base_url: str, assistant_id: str) -> None:
-    durable_client = get_authenticated_client(base_url)
+    durable_client = get_authenticated_client(base_url, assistant_id=assistant_id)
     thread_id = _thread_id()
     try:
         await durable_client.threads.create(thread_id=thread_id, if_exists="raise")
@@ -311,7 +311,7 @@ def test_invalid_checkpoint_is_rejected(durable_url: str, durable_assistant_id: 
     asyncio.run(_test_invalid_checkpoint(durable_url, durable_assistant_id))
 
 async def _test_invalid_checkpoint(base_url: str, assistant_id: str) -> None:
-    durable_client = get_authenticated_client(base_url)
+    durable_client = get_authenticated_client(base_url, assistant_id=assistant_id)
     thread_id = _thread_id()
     try:
         await durable_client.threads.create(thread_id=thread_id, if_exists="raise")
@@ -335,10 +335,10 @@ def test_unrecoverable_input_is_reported_as_run_failure(
 
 async def _test_failure(base_url: str, assistant_id: str) -> None:
     durable_client = get_authenticated_client(
-        base_url,
+        base_url, assistant_id=assistant_id,
         permissions=["runtime.tool.write"],
         allowed_model_ids=["runtime:failure-demo"],
-        allowed_tool_names=["unrecoverable_tool"],
+        tool_overrides={}, tool_policy_version="test-tools-v2",
     )
     thread_id = _thread_id()
     try:
@@ -375,10 +375,10 @@ def test_run_timeout_is_reported_once(
 
 async def _test_timeout(base_url: str, assistant_id: str) -> None:
     durable_client = get_authenticated_client(
-        base_url,
+        base_url, assistant_id=assistant_id,
         permissions=["runtime.tool.write"],
         allowed_model_ids=["runtime:timeout-demo"],
-        allowed_tool_names=["slow_tool"],
+        tool_overrides={}, tool_policy_version="test-tools-v2",
     )
     thread_id = _thread_id()
     try:

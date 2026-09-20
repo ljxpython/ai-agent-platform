@@ -38,7 +38,7 @@ def _to_runtime_tool(record: RuntimeCatalogToolRecord) -> StoredRuntimeTool:
         tool_key=record.tool_key,
         name=record.name,
         source=record.source,
-        permissions=tuple(record.raw_payload_json.get('permissions', [])),
+        graph_ids=tuple(record.raw_payload_json.get('graph_ids', [])),
         description=record.description,
         sync_status=record.sync_status,
         last_seen_at=record.last_seen_at,

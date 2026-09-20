@@ -120,7 +120,7 @@ flowchart LR
 | 输入 | 来源 | 信任级别 | 允许承载 | 不允许承载 |
 | --- | --- | --- | --- | --- |
 | `RuntimePrincipal` | verified Agent Server Auth | 可信 | 用户、租户、项目、角色、权限 | Run 参数、Prompt、Tool 实现 |
-| `RuntimePolicy` | 签名 Delegation claims | 可信 snapshot | policy version、allowed model/tool | 未签名的数据库查询结果 |
+| `RuntimePolicy` | 签名 Delegation claims | 可信 snapshot | 模型允许集、工具禁用集及各自版本 | 未签名的数据库查询结果 |
 | `RuntimeContext` | Assistant + Run payload | 不可信候选值 | model、生成参数、Optional Tools | 身份、权限、secret、任意字段 |
 | `AgentDefaults` | Service 代码 | 可信发布值 | 默认模型、Prompt、Required/Optional Tool | 当前用户身份、请求状态 |
 | `RunnableConfig` | Agent Server / SDK | 按字段判断 | thread、assistant、run、trace 控制 | 公共业务配置的第二真源 |
@@ -153,14 +153,14 @@ class RuntimeContext:
     temperature: float | None = None
     max_tokens: int | None = None
     top_p: float | None = None
-    tools: tuple[str, ...] | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class RuntimePolicy:
     version: str
     allowed_model_ids: tuple[str, ...]
-    allowed_tool_names: tuple[str, ...]
+    denied_tool_names: tuple[str, ...]
+    tool_policy_version: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -187,6 +187,8 @@ class ResolvedRuntimeConfig:
     prompt_version: str
     prompt_hash: str
     policy_version: str
+    tool_policy_version: str
+    tool_declaration_version: str
     config_hash: str
 ```
 
@@ -207,14 +209,12 @@ class ResolvedRuntimeConfig:
 - `ResolvedRuntimeConfig` 不保存完整 Prompt。Middleware 使用同一个 `AgentDefaults` 实例
   绑定 Prompt，并先核对 `prompt_hash`；持久化审计只写 version/hash。
 
-本 14 号文档是新 Runtime 契约的准则。旧知识文档中出现的 `enable_tools` 不再进入新
-`RuntimeContext`：`tools=None` 表示继承 Optional Tools，`tools=()` 表示本次禁用全部
-Optional Tools，避免两个开关表达同一语义。旧文档只作为历史讨论材料，不作为实现依据。
+RuntimeContext 不接受 tools/enable_tools；工具规则只能来自签名委托，见本专项。
 
 ### 4.2 为什么 Policy 不放进 RuntimeContext
 
 `RuntimeContext` 来自 Assistant/Run payload，天然是不可信输入。若把 `allowed_model_ids`
-或 `allowed_tool_names` 放在里面，调用方就能把“请求什么”和“允许什么”写成同一份数据。
+或 `tool_overrides` 放在里面，调用方就能把“请求什么”和“允许什么”写成同一份数据。
 `RuntimePolicy` 必须来自已验证签名凭证；其变更通过 `version` 体现，Runtime 不自行查询控制面。
 
 ### 4.3 Project 默认模型与 temperature 的唯一归属
@@ -264,7 +264,7 @@ permissions         -> permissions
 1. 确认输入是 object/mapping；`None` 只在入口被转换为全默认 Context。
 2. 检查字段集合与白名单完全相等；出现未知字段直接拒绝。
 3. 对每个字段做精确类型校验；`bool` 不得当作 `int` 或 `float` 接受。
-4. 将 tools 列表规范化为 tuple；列表元素必须是非空字符串。
+4. 拒绝 tools、enable_tools、tool_overrides、tool_policy_version。
 5. 拒绝 `user_id`、`tenant_id`、`project_id`、`role`、`permissions`、`secret`、`token`、
    `api_key` 等身份或凭证字段，即使调用方试图通过额外字段传入。
 
@@ -280,34 +280,12 @@ runtime.context.identity_field_forbidden
 
 ### 5.3 `RuntimePolicy`
 
-Policy 在 Auth 层验证签名、issuer、audience、时间窗口和 `type=runtime_delegation` 后构造。
-Resolver 仍要防御性检查：
-
-- `version` 非空；allowlist 不含空值和重复值；
-- `version` 是 Runtime 不解释格式的 opaque string，但只要相关 allowlist 变化就必须变化；
-- 当前选择的 model/tool 必须能在 allowlist 中找到；
-- JWT 不允许出现 Runtime 代码不认识的 policy claim 变体；
-- claims 中的 scope ID 必须与 `RuntimePrincipal` 的 tenant/project 一致。
-
-首期 Delegation claims 最小增加：
-
-```json
-{
-  "type": "runtime_delegation",
-  "policy_version": "project-policy-2026-08-29T01",
-  "allowed_model_ids": ["openai:gpt-5.5"],
-  "allowed_tool_names": ["search", "read_project"]
-}
-```
-
-这些 allowlist 是签发时由 Platform Gateway 计算的最终结果，已包含 Project Policy、
-Actor permissions 和发布配置约束。Runtime 不需要再引入 `CapabilityProfile`、
-`ToolCapability` 或公共 Tool Registry。RuntimePrincipal.permissions 仍保留用于工具执行期
-的防御性检查和审计，但不能让 JWT 自相矛盾地同时声明“权限没有”和“tool 已允许”。
-
-首期继续使用紧凑 JWT，不增加 Policy 查询服务。跨服务测试必须验证 claims 在部署网关的
-Header 大小限制内；只有真实 allowlist 超出限制时，才讨论签名 snapshot reference，且不能
-让 Resolver 自己发起网络查询。
+新版 delegation_version=2 必填 policy_version、allowed_model_ids、tool_overrides、tool_policy_version。
+tool_overrides 是最多 128 项、紧凑 JSON 不超过 4096 字节的 false-only 对象，值必须 `is False`。
+空对象合法；缺字段、旧 allowed_tool_names、非法布尔、坏签名、过期或 scope 不匹配均拒绝。
+解析后用不可变 denied_tool_names 表示；工具禁用名称必须属于该 Agent 声明。
+operation 必填，非 read 操作必须绑定 assistant_id；身份与项目 scope 必须一致。
+Platform 只求值项目与用户拒绝并集；Catalog 不参与工具签发，Runtime 不维护用户权限表。
 
 ### 5.4 `context_schema` 的版本门禁
 
@@ -342,13 +320,10 @@ Service Defaults
 | `temperature` | 继承上一层 | 覆盖生成参数 | `0` 是有效覆盖 |
 | `max_tokens` | 继承上一层 | 覆盖生成参数 | 必须为正整数 |
 | `top_p` | 继承上一层 | 覆盖生成参数 | 必须在范围内 |
-| `tools` | `None` | tuple（含空 tuple） | 整体替换 Optional Tools |
 
 特别规则：
 
-- `tools=None`：继承 Assistant/Service 的 Optional Tools。
-- `tools=()`：本次禁用全部 Optional Tools。
-- Required Tools 不受 `tools` 控制；若 Policy 禁用 Required Tool，Run 直接失败。
+- Optional Tools 从 Agent 声明减去环境不可用和签名禁用项；required 不可用直接失败。
 - Tool 列表整体替换，不隐式追加 Assistant 列表，也不按用户顺序改变 Service 的稳定
   catalog 顺序。
 - Run Context 不得覆盖 `system_prompt`；用户任务应进入 messages/state。
@@ -403,110 +378,27 @@ class RuntimeResolutionError(ValueError):
 `runtime/__init__.py` 只公开五类契约、`RuntimeResolutionError` 和
 `resolve_runtime_config`；parser、hash helper 和绑定实现保持包内私有。
 
-### 7.2 决议伪代码
+### 7.2 工具决议
 
-```python
-def resolve_runtime_config(*, principal, context, policy, defaults):
-    validate_principal(principal)
-    validate_context(context)
-    validate_policy(policy)
-    validate_defaults(defaults)
-
-    model_id = context.model_id if context.model_id is not None else defaults.model_id
-    if model_id not in policy.allowed_model_ids:
-        raise RuntimeResolutionError("runtime.model.not_allowed", model_id)
-
-    temperature = (
-        context.temperature
-        if context.temperature is not None
-        else defaults.temperature
-    )
-    max_tokens = (
-        context.max_tokens
-        if context.max_tokens is not None
-        else defaults.max_tokens
-    )
-    top_p = context.top_p if context.top_p is not None else defaults.top_p
-    validate_generation_params(temperature, max_tokens, top_p)
-
-    required = require_canonical_names(defaults.required_tool_names)
-    optional_candidate = (
-        context.tools
-        if context.tools is not None
-        else defaults.optional_tool_names
-    )
-    optional = require_canonical_names(optional_candidate)
-
-    if any(name not in policy.allowed_tool_names for name in required):
-        raise RuntimeResolutionError("runtime.required_tool.not_allowed")
-    if any(name not in defaults.optional_tool_names for name in optional):
-        raise RuntimeResolutionError("runtime.optional_tool.not_declared")
-    if any(name not in policy.allowed_tool_names for name in optional):
-        raise RuntimeResolutionError("runtime.optional_tool.not_allowed")
-
-    prompt_hash = sha256_utf8(defaults.system_prompt)
-    resolved = ResolvedRuntimeConfig(
-        principal=principal,
-        model_id=model_id,
-        temperature=temperature,
-        max_tokens=max_tokens,
-        top_p=top_p,
-        required_tool_names=required,
-        optional_tool_names=optional,
-        prompt_version=defaults.prompt_version,
-        prompt_hash=prompt_hash,
-        policy_version=policy.version,
-        config_hash="",  # computed from canonical execution fields below
-    )
-    return replace(resolved, config_hash=hash_resolved(resolved))
-```
-
-首期实现保持为一个公开函数和少量私有校验函数，不建立 `ConfigMerger`、
-`PolicyResolver` 或其他对象层次。校验、合并、规范化和 hash 是 Resolver 的全部职责；
-任何外部 I/O 都不属于 Resolver。
-
-这里没有把无权限 Optional Tool 静默裁剪掉。静默裁剪会造成“模型以为能力存在”和“实际
-能力不存在”的隐性分叉，也会让调用方误以为策略生效。拒绝请求更容易观测、重试和审计。
-
-### 7.3 Tool 权限的来源
-
-首期不在 Runtime 中增加第六个公共类型。Platform Gateway 在签发 Policy snapshot 时计算
-Actor 和 Project 允许请求的最大 Tool 集合；Service 代码再通过显式工具列表定义当前 Agent
-真正具备的能力：
+`runtime/resolver.py:resolve_runtime_config()` 是唯一纯函数决议入口。模型与生成参数的覆盖规则保持。
 
 ```text
-allowed_tool_names
-  = Project Tool Policy
-  ∩ Actor Permissions
-  ∩ Published Assistant Policy
+declared = required ∪ optional
+effective = declared ∩ available − signed_denials
 ```
 
-审批不进入这个 allowlist。`allowed_tool_names` 表示调用方有权请求某个 Tool；针对具体参数的
-审批发生在模型产生 Tool Call 之后，由 HITL 在执行前判断。
+未知禁用名称失败；required 被禁用或不在本轮 available 中失败；optional 被禁用只移除。
+没有工具的有效配置仍可普通对话。available 来自 Runtime 的 mode、环境、受控 MCP 绑定及子 Agent 上限。
+模型 schema、模型输出、实际 handler 共用 effective，internal 工具不例外。
+审批只决定具体调用是否执行，不能越过禁用；子 Agent 继承主体禁用并进一步收缩。
+HTTP 的文件/图片读写、Terminal、Skills、Memory 映射到同一工具检查，保留操作 scope 和所有权隔离。
 
-Runtime 的有效 Tool 集合来自：
+### 7.3 版本与可信来源
 
-```text
-get_agent() 已显式装配的 Tool
-  ∩ AgentDefaults 声明的 Required / Optional Tool
-  ∩ RuntimePolicy.allowed_tool_names
-  ∩ RuntimeContext 本次选择
-```
-
-Runtime 仍在以下两个时点做精确匹配：
-
-1. Middleware 将 Optional Tools 暴露给 Model 前；
-2. 实际 Tool 调用和恢复 Run 前。
-
-Service 组合时必须拒绝重名 Tool。名字失效、allowlist 过期或 JWT claims 自相矛盾时
-fail-closed。
-
-Deep Agents 自动加入的 `task`、filesystem 和 `execute` 等内置 Tool 也必须显式分类：
-
-- Agent 正常语义离不开的能力写入 `required_tool_names`；
-- 可按 Run 关闭的能力写入 `optional_tool_names`，并通过 Deep Agents 官方 harness/profile
-  或 Middleware 真正从模型可见列表和执行通道同时移除；
-- 未声明的内置 Tool 不得因为由框架自动创建就绕过 Runtime Policy。
+Platform 签名 tool_policy_version；Runtime 对完整声明计算 tool_declaration_version。
+两者及 effective 工具进入 runtime-config/v3 哈希。runtime-context/v4 不包含 tools。
+旧 Context.tools、旧 JWT、旧配置快照直接拒绝，不做兼容和旧项目授权转换。
+活跃 Run 使用签名快照；新 Run/审批恢复重新签发当前禁用。紧急撤销仍须取消运行和关闭终端。
 
 ## 8. Prompt、Model 和 Tool 绑定
 
@@ -617,7 +509,7 @@ SHA-256(canonical JSON)
 canonical JSON 规则：
 
 - UTF-8 编码；
-- payload 固定包含 schema marker `runtime-config/v1`；
+- payload 固定包含 schema marker `runtime-config/v3`；
 - `sort_keys=True`；
 - 紧凑 separators `(',', ':')`；
 - `ensure_ascii=False`、`allow_nan=False`；
@@ -632,7 +524,7 @@ canonical JSON 规则：
 
 ```json
 {
-  "schema": "runtime-config/v1",
+  "schema": "runtime-config/v3",
   "principal": {
     "tenant_id": "tenant-a",
     "project_id": "project-a",
@@ -810,10 +702,10 @@ config_hash
 
 Platform API 负责：
 
-1. 根据 Actor、Project、Graph/Tool/Model catalog 和 policy 计算最终 allowlist；
+1. 模型策略保留；工具从独立 restriction 表求项目/用户拒绝并集，工具 Catalog 只展示；
 2. 将 Assistant Context 和 Run Context 合并、严格校验并物化；
 3. 签发短期 Delegation JWT，增加 `policy_version`、`allowed_model_ids`、
-   `allowed_tool_names`；
+   `delegation_version=2`、`tool_overrides`、`tool_policy_version`；
 4. 在 Gateway 层尽早拒绝明显的 model/tool 请求，但不替代 Runtime 的最终校验；
 5. 不把 Runtime Service Python 类型作为 import 依赖，双方通过版本化 JSON/claims 和跨服务
    契约测试对齐。
@@ -874,7 +766,7 @@ Auth、Context、Middleware、stream 和 checkpoint。两者共享同一组 fixt
 
 - Context model 覆盖优先于 Defaults；缺省时继承 Defaults；
 - `temperature=0`、`top_p=1` 等边界值不丢失；
-- `tools=None` 继承 Optional Tools；`tools=()` 禁用 Optional Tools；
+- 无工具禁用则默认启用声明内可用工具；显式 false 从有效集合移除；
 - Required Tool 不受 Optional 覆盖影响；Required 被 Policy 禁用时 fail-closed；
 - 未声明、未 allowlist 或未授权 Tool 均返回稳定错误码；
 - Resolver 无网络、数据库、模型实例化和输入变更。
@@ -884,7 +776,7 @@ Auth、Context、Middleware、stream 和 checkpoint。两者共享同一组 fixt
 - `create_agent`、`create_deep_agent`、`StateGraph` 都能通过 `get_agent(config)` 暴露；
 - 静态 graph 在 introspection 和多次 Run 间保持 topology；
 - 动态 factory 只在实际执行上下文初始化 Sandbox/MCP；
-- Runtime Context 传播到 Deep Agents Subagent，子调用仍执行 Tool allowlist 检查；
+- 可信 Runtime Policy 传播到 Deep Agents Subagent，子调用仍执行签名禁用与子集上限检查；
 - 重放/恢复 Run 在 Policy 变化后不会绕过二次校验；
 - stream/checkpoint/trace 只输出审计投影，不输出 secret 或完整 Prompt；
 - 本地 JWT + GraphHarbor Agent Server 不依赖 Platform API 即可完成 Durable 调试；服务端仍必须
@@ -976,3 +868,6 @@ R1 capability-chain-complete-graphharbor-durable / platform-cutover-deferred
 到 RuntimeContext、Resolver、真实 DeepSeek Model 的链路也已通过。未覆盖的是 Platform 正式
 签发链和生产切流，因此 R1 结论是 `capability-chain-complete-graphharbor-durable /
 platform-cutover-deferred`。
+
+
+2026-09-20 工具治理实现与本次验证以 [专项记录](../../../../docs/projects/20260920-runtime-optional-tool-resolution/README.md) 为准；下方早期 R1 证据仅描述当时版本，不作为新版工具授权契约。

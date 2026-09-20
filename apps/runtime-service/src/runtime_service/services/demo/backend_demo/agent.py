@@ -66,12 +66,6 @@ _DEFAULTS = AgentDefaults(
         "write_file",
     ),
 )
-_TOOL_PERMISSIONS = {
-    name: "runtime.tool.write"
-    if name in {"delete", "edit_file", "write_file"}
-    else "runtime.tool.read"
-    for name in _DEFAULTS.optional_tool_names
-}
 _FILESYSTEM_TOOLS = [
     "ls",
     "read_file",
@@ -100,12 +94,13 @@ def _local_test_facts() -> VerifiedDelegation:
             "local-tenant",
             "backend-project",
             "developer",
-            tuple(sorted(set(_TOOL_PERMISSIONS.values()))),
+            (),
         ),
         RuntimePolicy(
             "backend-demo-local-v1",
             (_DEFAULTS.model_id,),
-            _DEFAULTS.optional_tool_names,
+            (),
+            "local-tools-v2",
         ),
         RuntimeScope("local-tenant", "backend-project"),
         "",
@@ -183,7 +178,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         context=parse_runtime_context(config.get("context")),
         policy=facts.policy,
         defaults=_DEFAULTS,
-        tool_permissions=_TOOL_PERMISSIONS,
     )
     model = _runtime_model(config, local=local) or build_model(resolved)
     if local:
@@ -212,7 +206,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 policy=facts.policy,
                 defaults=_DEFAULTS,
                 base_model=model,
-                tool_permissions=_TOOL_PERMISSIONS,
                 local_fallback=local,
             ),
         ],

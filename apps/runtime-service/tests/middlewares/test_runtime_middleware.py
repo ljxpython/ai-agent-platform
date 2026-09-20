@@ -6,7 +6,6 @@ from types import SimpleNamespace
 import pytest
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import HumanMessage
-from langchain_core.runnables import RunnableConfig
 from langgraph.runtime import Runtime
 
 from runtime_service.middlewares import ModelCallTimeoutMiddleware, RuntimeConfigMiddleware
@@ -45,7 +44,7 @@ def write_tool(topic: str) -> str:
 
 def _middleware(*, builder=None) -> RuntimeConfigMiddleware:
     principal = RuntimePrincipal("u", "t", "p", "developer", ("read_tool",))
-    policy = RuntimePolicy("p1", ("test:model",), ("read_tool",))
+    policy = RuntimePolicy("p1", ("test:model",), (), "test-tools-v2")
     defaults = AgentDefaults(
         model_id="test:model",
         system_prompt="prompt",
@@ -137,7 +136,7 @@ def _server_runtime(*, context_hash: str | None = None, operation: str | None = 
         "runtime_policy": {
             "version": "server-policy",
             "allowed_model_ids": ["test:model"],
-            "allowed_tool_names": ["read_tool"],
+            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
         },
         "runtime_scope": {
             "tenant_id": "server-tenant",
@@ -156,7 +155,7 @@ def _server_runtime(*, context_hash: str | None = None, operation: str | None = 
 def test_runtime_middleware_uses_verified_server_user_facts() -> None:
     middleware = RuntimeConfigMiddleware(
         principal=RuntimePrincipal("constructor-user", "t", "p", "developer", ()),
-        policy=RuntimePolicy("constructor-policy", ("test:model",), ()),
+        policy=RuntimePolicy("constructor-policy", ("test:model",), (), "test-tools-v2"),
         defaults=AgentDefaults("test:model", "prompt", "v1", optional_tool_names=("read_tool",)),
         base_model=FakeListChatModel(responses=["ok"]),
         local_fallback=False,
@@ -196,7 +195,7 @@ def test_runtime_middleware_rejects_context_hash_mismatch() -> None:
 def test_runtime_middleware_rejects_read_delegation_before_handler() -> None:
     middleware = RuntimeConfigMiddleware(
         principal=RuntimePrincipal("constructor-user", "t", "p", "developer", ()),
-        policy=RuntimePolicy("constructor-policy", ("test:model",), ()),
+        policy=RuntimePolicy("constructor-policy", ("test:model",), (), "test-tools-v2"),
         defaults=AgentDefaults("test:model", "prompt", "v1"),
         base_model=FakeListChatModel(responses=["ok"]),
         local_fallback=False,

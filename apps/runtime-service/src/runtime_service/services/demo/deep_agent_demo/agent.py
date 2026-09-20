@@ -52,13 +52,6 @@ _DEFAULTS = AgentDefaults(
     prompt_version="deep-agent-demo-v1",
     optional_tool_names=("glob", "grep", "ls", "read_file", "task"),
 )
-_TOOL_PERMISSIONS = {
-    "glob": "runtime.tool.read",
-    "grep": "runtime.tool.read",
-    "ls": "runtime.tool.read",
-    "read_file": "runtime.tool.read",
-    "task": "runtime.tool.delegate",
-}
 _FILESYSTEM_TOOLS = ["ls", "read_file", "glob", "grep"]
 _SKILL_READ_ONLY = [
     FilesystemPermission(operations=["write"], paths=["/skills/**"], mode="deny")
@@ -72,12 +65,13 @@ def _local_test_facts() -> VerifiedDelegation:
             "local-tenant",
             "deep-agent-project",
             "developer",
-            tuple(sorted(set(_TOOL_PERMISSIONS.values()))),
+            (),
         ),
         RuntimePolicy(
             "deep-agent-demo-local-v1",
             (_DEFAULTS.model_id,),
-            _DEFAULTS.optional_tool_names,
+            (),
+            "local-tools-v2",
         ),
         RuntimeScope("local-tenant", "deep-agent-project"),
         "",
@@ -138,7 +132,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         context=context,
         policy=facts.policy,
         defaults=_DEFAULTS,
-        tool_permissions=_TOOL_PERMISSIONS,
     )
     model = _runtime_model(config, local=local) or build_model(resolved)
     backend = StateBackend()
@@ -175,7 +168,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 policy=facts.policy,
                 defaults=_DEFAULTS,
                 base_model=model,
-                tool_permissions=_TOOL_PERMISSIONS,
                 local_fallback=local,
             ),
         ],

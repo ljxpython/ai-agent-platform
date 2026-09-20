@@ -1,36 +1,37 @@
 """Dear Agent capability declarations."""
 import json
 import os
+import re
 from importlib.resources import files
 
 from runtime_service.workspace.artifact_refs import ARTIFACT_MIMES
 
 CHART_NAMES = tuple(sorted(p.stem for p in files("runtime_service.services.dearflow_agent").joinpath("skills/chart-visualization/references").iterdir() if p.name.endswith(".md")))
 
-_TOOL_PERMISSIONS = {
-    **dict.fromkeys(("ls", "read_file", "glob", "grep", "parse_document", "fetch_documentation", "read_reference", "request_information", "search_web", "fetch_page", "github_query", "arxiv_search", "fetch_web_guidelines"), "runtime.tool.read"),
-    **dict.fromkeys(("write_file", "edit_file", "write_todos", "present_artifacts"), "runtime.tool.write"),
-    **dict.fromkeys(CHART_NAMES, "runtime.tool.write"),
-    "execute": "runtime.tool.execute",
-    "task": "runtime.tool.delegate",
-    "generate_image": "runtime.tool.write",
-    "edit_image": "runtime.tool.write",
-    "get_media_task": "runtime.tool.read",
-    "deploy_preview": "runtime.tool.write",
-    **dict.fromkeys(("search_memory", "list_skills", "review_skill_package", "find_skills"), "runtime.tool.read"),
-    **dict.fromkeys(("manage_memory", "upload_skill", "update_skill", "set_skill_enabled", "delete_skill", "import_skill"), "runtime.tool.write"),
-}
+WORK_TOOLS = ("ls", "read_file", "glob", "grep", "write_file", "edit_file", "execute")
+MEMORY_READ_TOOLS = ("search_memory",)
+MEMORY_WRITE_TOOLS = ("manage_memory",)
+SKILL_READ_TOOLS = ("list_skills", "review_skill_package", "find_skills")
+SKILL_WRITE_TOOLS = ("upload_skill", "update_skill", "set_skill_enabled", "delete_skill", "import_skill")
+MEDIA_TOOLS = ("generate_image", "edit_image", "get_media_task")
+DEAR_TOOLS = (*WORK_TOOLS, *CHART_NAMES, *MEDIA_TOOLS, *MEMORY_READ_TOOLS,
+              *MEMORY_WRITE_TOOLS, *SKILL_READ_TOOLS, *SKILL_WRITE_TOOLS,
+              "deploy_preview", "fetch_web_guidelines", "request_information",
+              "present_artifacts", "parse_document", "search_web", "fetch_page",
+              "github_query", "arxiv_search", "write_todos", "task")
 
 
-def tool_permissions() -> dict[str, str]:
-    result = dict(_TOOL_PERMISSIONS)
+def configured_mcp_names() -> tuple[str, ...]:
     configured = json.loads(os.environ.get("RUNTIME_MCP_CONNECTIONS_JSON", "{}"))
-    for connection in configured.values():
-        for name in connection.get("allowed_tools", []):
-            if not isinstance(name, str) or not name.startswith("mcp_") or name in result:
-                raise ValueError("invalid_or_duplicate_mcp_tool_name")
-            result[name] = "runtime.tool.read"
-    return result
+    if not isinstance(configured, dict) or any(
+        not isinstance(connection, dict) or not isinstance(connection.get("allowed_tools", []), list)
+        for connection in configured.values()
+    ):
+        raise ValueError("invalid_mcp_tool_declarations")
+    names = [name for connection in configured.values() for name in connection.get("allowed_tools", [])]
+    if any(not isinstance(n, str) or len(n) > 128 or not re.fullmatch(r"mcp_[A-Za-z0-9_.:-]+", n) for n in names) or len(names) != len(set(names)):
+        raise ValueError("invalid_or_duplicate_mcp_tool_name")
+    return tuple(sorted(names))
 
 
 def graph_capabilities(graph_id: str) -> dict:

@@ -56,7 +56,7 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
             policy_factory.return_value.build_delegation_policy.return_value = {
                 "version": "policy-1",
                 "allowed_model_ids": ["model-1"],
-                "allowed_tool_names": [],
+                "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
                 "runtime_permissions": [],
             }
             headers = service._runtime_headers(actor=self.actor, project_id=self.project_id)
@@ -71,7 +71,7 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(claims["sub"], "user-1")
         self.assertEqual(claims["project_id"], self.project_id)
-        self.assertEqual(claims["scope"], {"tenant_id": "tenant-1", "project_id": self.project_id})
+        self.assertEqual(claims["scope"], {"tenant_id": "tenant-1", "project_id": self.project_id, "operation": "read"})
 
     def test_runtime_headers_include_permissions_for_allowed_runtime_tool(self) -> None:
         service = self._service()
@@ -81,7 +81,7 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
             policy_factory.return_value.build_delegation_policy.return_value = {
                 "version": "policy-1",
                 "allowed_model_ids": ["model-1"],
-                "allowed_tool_names": ["read_reference"],
+                "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
                 "runtime_permissions": ["runtime.tool.read"],
             }
             headers = service._runtime_headers(actor=self.actor, project_id=self.project_id)
@@ -96,7 +96,7 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(
             claims["permissions"],
-            ["project.runtime.read", "project.runtime.write", "runtime.tool.read"],
+            [],
         )
 
     def test_runtime_headers_reject_missing_subject(self) -> None:
@@ -135,6 +135,27 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
             "/internal/capabilities/tools",
             forwarded_headers={"authorization": "Bearer delegation"},
         )
+
+    async def test_tool_refresh_rejects_bad_snapshot_and_accepts_empty(self):
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as directory:
+            engine = build_engine(f"sqlite:///{directory}/catalog.db")
+            self.addCleanup(engine.dispose)
+            create_core_tables(engine)
+            upstream = SimpleNamespace(require_json=AsyncMock(return_value={"tools": [{"tool_key": "read_reference", "name": "read_reference", "graph_ids": ["reference_agent"]}]}))
+            service = RuntimeCatalogService(session_factory=sessionmaker(engine), upstream=upstream, runtime_base_url="http://runtime", settings=self.settings)
+            service._prepare_project_scope = Mock()
+            service._require_refresh_access = Mock()
+            service._runtime_headers = Mock(return_value={})
+            await service.refresh_tools(actor=self.actor, project_id=self.project_id)
+            for payload in ({}, {"tools": [None]}, {"tools": [{"name": "bad"}]}, {"tools": [{"tool_key": "x", "name": "y", "graph_ids": ["reference_agent"]}]}):
+                upstream.require_json.return_value = payload
+                with self.assertRaises(ServiceUnavailableError):
+                    await service.refresh_tools(actor=self.actor, project_id=self.project_id)
+                self.assertEqual(service.list_tools(actor=self.actor, project_id=self.project_id).tools[0].sync_status, "ready")
+            upstream.require_json.return_value = {"tools": []}
+            await service.refresh_tools(actor=self.actor, project_id=self.project_id)
+            self.assertTrue(all(item.sync_status == "deleted" for item in service.list_tools(actor=self.actor, project_id=self.project_id).tools))
 
     def test_model_credential_round_trip_is_not_returned(self) -> None:
         secret = "provider-secret"

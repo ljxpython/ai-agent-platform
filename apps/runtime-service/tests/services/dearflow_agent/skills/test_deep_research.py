@@ -98,7 +98,7 @@ def test_k01_loading_does_not_grant_search_permission(build, monkeypatch):
 
     async def run():
         cfg = config()
-        cfg["context"] = {"tools": ["read_file"]}
+        cfg["configurable"]["langgraph_auth_user"]["runtime_policy"]["tool_overrides"] = {"search_web": False}
         cfg["configurable"]["langgraph_auth_user"]["runtime_context_hash"] = runtime_context_hash(cfg["context"])
         graph, cfg = await build([
             call("read_file", {"file_path": "/skills/deep-research/SKILL.md"}, "skill"),

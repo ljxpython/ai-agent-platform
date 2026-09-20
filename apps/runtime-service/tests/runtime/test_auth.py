@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import time
-import json
 
 import jwt
 import pytest
@@ -17,7 +16,7 @@ SECRET = "r1-test-secret-with-at-least-32-bytes"
 def _token(**overrides: object) -> str:
     now = int(time.time())
     claims: dict[str, object] = {
-        "type": "runtime_delegation",
+        "type": "runtime_delegation", "delegation_version": 2,
         "sub": "user-a",
         "tenant_id": "tenant-a",
         "project_id": "project-a",
@@ -25,12 +24,12 @@ def _token(**overrides: object) -> str:
         "permissions": ["runtime.read"],
         "policy_version": "policy-1",
         "allowed_model_ids": ["deepseek:deepseek-chat"],
-        "allowed_tool_names": ["search"],
+        "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
         "iat": now,
         "exp": now + 60,
         "iss": "runtime-test",
         "aud": "runtime-service",
-        "scope": {"tenant_id": "tenant-a", "project_id": "project-a"},
+        "scope": {"tenant_id": "tenant-a", "project_id": "project-a", "operation": "read"},
         "context_hash": runtime_context_hash(None),
     }
     claims.update(overrides)
@@ -86,19 +85,29 @@ def test_unknown_claim_is_rejected() -> None:
     assert error.value.code == "runtime.auth.invalid_claim"
 
 
+def test_old_or_incomplete_tool_delegations_are_rejected():
+    claims = jwt.decode(_token(), options={"verify_signature": False})
+    for field in ("delegation_version", "tool_overrides", "tool_policy_version"):
+        missing = {key: value for key, value in claims.items() if key != field}
+        with pytest.raises(RuntimeAuthError):
+            _verify(jwt.encode(missing, SECRET, algorithm="HS256"))
+    for override in ({"delegation_version": 1}, {"delegation_version": True},
+                     {"allowed_tool_names": ["read_reference"]}, {"tool_overrides": {"read_reference": 0}}):
+        with pytest.raises(RuntimeAuthError):
+            _verify(_token(**override))
+
+
 @pytest.mark.parametrize(
     "overrides",
     [
-        {"scope": {"tenant_id": "tenant-b", "project_id": "project-a"}},
-        {"scope": {"tenant_id": "tenant-a", "project_id": "project-a", "thread_id": 1}},
+        {"scope": {"operation": "read", "tenant_id": "tenant-b", "project_id": "project-a"}},
+        {"scope": {"operation": "read", "tenant_id": "tenant-a", "project_id": "project-a", "thread_id": 1}},
         {"context_hash": "sha256:wrong"},
         {"scope": {"tenant_id": "tenant-a", "project_id": "project-a"}},
         {"scope": {"tenant_id": "tenant-a", "project_id": "project-a", "operation": "admin"}},
     ],
 )
 def test_scope_and_context_hash_claims_fail_closed(overrides: dict[str, object]) -> None:
-    if "scope" in overrides and overrides["scope"] == {"tenant_id": "tenant-a", "project_id": "project-a"}:
-        overrides = {"scope": {"tenant_id": "tenant-a"}}
     with pytest.raises(RuntimeAuthError):
         _verify(_token(**overrides))
 
@@ -106,6 +115,7 @@ def test_scope_and_context_hash_claims_fail_closed(overrides: dict[str, object])
 def test_scope_and_context_are_checked_against_execution_inputs() -> None:
     token = _token(
         scope={
+            "operation": "run-create",
             "tenant_id": "tenant-a",
             "project_id": "project-a",
             "assistant_id": "assistant-a",
@@ -119,6 +129,7 @@ def test_scope_and_context_are_checked_against_execution_inputs() -> None:
         audience="runtime-service",
         context=RuntimeContext(),
         expected_scope={
+            "operation": "run-create",
             "tenant_id": "tenant-a",
             "project_id": "project-a",
             "assistant_id": "assistant-a",
@@ -154,6 +165,7 @@ def test_scope_operation_is_preserved() -> None:
             "tenant_id": "tenant-a",
             "project_id": "project-a",
             "operation": "run-create",
+            "assistant_id": "reference_agent",
         }
     )
     verified = verify_delegation_claims(

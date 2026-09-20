@@ -51,10 +51,10 @@ from runtime_service.services.dearflow_agent.prompts import SYSTEM_PROMPT
 from runtime_service.services.dearflow_agent.tools.human_input import request_information
 from runtime_service.tools.artifacts import build_artifact_tool
 from runtime_service.services.dearflow_agent.middleware.clarification import ClarificationBatchGuard
-from runtime_service.services.dearflow_agent.capabilities import tool_permissions, CHART_NAMES
+from runtime_service.services.dearflow_agent.capabilities import CHART_NAMES, DEAR_TOOLS, WORK_TOOLS, MEMORY_READ_TOOLS, MEMORY_WRITE_TOOLS, SKILL_READ_TOOLS, SKILL_WRITE_TOOLS, configured_mcp_names
 from runtime_service.tools.chart import build_chart_tools
 from runtime_service.tools.images import ImageWorkspace
-from runtime_service.services.dearflow_agent.tools.media import build_media_tools, MEDIA_TOOLS
+from runtime_service.services.dearflow_agent.tools.media import build_media_tools
 from runtime_service.services.dearflow_agent.tools.web_guidelines import fetch_web_guidelines
 from runtime_service.services.dearflow_agent.modes import resolve_mode, apply_reasoning
 from runtime_service.services.dearflow_agent.tools.search import build_research_tools
@@ -63,13 +63,12 @@ from runtime_service.services.dearflow_agent.tools.arxiv_search import build_arx
 from runtime_service.services.dearflow_agent.tools.mcp import load_mcp_tools
 from runtime_service.services.dearflow_agent.subagents.researcher import researcher
 from runtime_service.services.dearflow_agent.middleware.delegation import DelegationConcurrencyMiddleware
-from runtime_service.services.dearflow_agent.tools.memory import build_memory_tools, MEMORY_READ_TOOLS, MEMORY_WRITE_TOOLS
-from runtime_service.services.dearflow_agent.tools.skills import build_skill_tools, SKILL_READ_TOOLS, SKILL_WRITE_TOOLS
+from runtime_service.services.dearflow_agent.tools.memory import build_memory_tools
+from runtime_service.services.dearflow_agent.tools.skills import build_skill_tools
 from runtime_service.services.dearflow_agent.middleware.memory import MemoryContextMiddleware
 from runtime_service.services.dearflow_agent.middleware.skills import ExecutionSkillsMiddleware
 from runtime_service.services.dearflow_agent.tools.deployment import build_deployment_tool
 
-WORK_TOOLS = ("ls", "read_file", "glob", "grep", "write_file", "edit_file", "execute")
 PERMISSIONS = [
     FilesystemPermission(operations=["write"], paths=["/skills/**"], mode="deny"),
     FilesystemPermission(operations=["write"], paths=["/conversation_history/**", "/large_tool_results/**"], mode="deny"),
@@ -81,9 +80,8 @@ _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
     system_prompt=SYSTEM_PROMPT,
     prompt_version="dearflow-research-p2",
-    optional_tool_names=(*WORK_TOOLS, *CHART_NAMES, *MEDIA_TOOLS, *MEMORY_READ_TOOLS, *MEMORY_WRITE_TOOLS, *SKILL_READ_TOOLS, *SKILL_WRITE_TOOLS, "deploy_preview", "fetch_web_guidelines", "request_information", "present_artifacts", "parse_document", "search_web", "fetch_page", "github_query", "arxiv_search", "write_todos", "task"),
+    optional_tool_names=(*DEAR_TOOLS, *configured_mcp_names()),
 )
-_TOOL_PERMISSIONS = tool_permissions()
 _EXECUTION_KEYS = {
     "thread_id",
     "assistant_id",
@@ -121,8 +119,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     resolved = None
     connection = None
     mode = resolve_mode(None)
-    defaults = _DEFAULTS
-    permissions = dict(_TOOL_PERMISSIONS)
+    defaults = replace(_DEFAULTS, optional_tool_names=(*DEAR_TOOLS, *configured_mcp_names()))
     mcp_tools = []
     reasoning = {"reasoning": "probe_only"}
     governance = os.environ.get("RUNTIME_DEAR_GOVERNANCE_ENABLED") == "1"
@@ -138,18 +135,15 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
         if facts.scope.thread_id is not None and facts.scope.thread_id != thread_id:
             raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
-        requested_mcp = tuple(name for name in (context.tools or ()) if name.startswith("mcp_"))
+        requested_mcp = tuple(n for n in configured_mcp_names() if n not in facts.policy.denied_tool_names)
         # Authorize requested names before any MCP connection or schema discovery.
-        defaults = replace(_DEFAULTS, optional_tool_names=(*_DEFAULTS.optional_tool_names, *requested_mcp))
-        permissions.update({name: "runtime.tool.read" for name in requested_mcp})
         resolved = resolve_runtime_config(
             principal=facts.principal,
             context=context,
             policy=facts.policy,
             defaults=defaults,
-            tool_permissions=permissions,
         )
-        mcp_tools = await load_mcp_tools(config, facts.principal, requested_mcp, _DEFAULTS.optional_tool_names)
+        mcp_tools = await load_mcp_tools(config, facts.principal, requested_mcp, DEAR_TOOLS)
         connection = await fetch_model_connection(
             configurable.get("runtime_model_ref"),
             model_id=resolved.model_id,
@@ -183,7 +177,14 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         available.discard("task")
     if not os.environ.get("TAVILY_API_KEY"):
         available.difference_update({"search_web", "fetch_page"})
-    internal_names = ()
+
+    if executing:
+        available.difference_update(configured_mcp_names())
+        available.update(tool.name for tool in mcp_tools)
+        resolved = resolve_runtime_config(
+            principal=facts.principal, context=context, policy=facts.policy,
+            defaults=defaults, available_tool_names=frozenset(available),
+        )
 
     def model_builder(next_config):
         if resolved is None:
@@ -210,9 +211,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 defaults=defaults,
                 base_model=model,
                 model_builder=model_builder,
-                tool_permissions=permissions,
                 tool_names=tool_names,
-                internal_tool_names=internal_names,
             ),
             WorkspaceMiddleware(workspace),
             ModelCallLimitMiddleware(

@@ -562,7 +562,7 @@ onScopeDispose(() => {
             <div class="inline-flex shrink-0 items-center gap-2 rounded-lg border border-purple-200/80 bg-purple-50/70 px-2.5 py-1 text-xs font-semibold text-purple-700 shadow-2xs dark:border-purple-800/60 dark:bg-purple-950/40 dark:text-purple-300">
               <span class="inline-flex h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
               <span class="tracking-wide">✨ Dear Agent</span>
-              <span class="hidden md:inline rounded bg-purple-200/50 px-1 py-0.5 text-[10px] font-medium text-purple-800 dark:bg-purple-900/60 dark:text-purple-200">专属工作台</span>
+              <span class="hidden 2xl:inline rounded bg-purple-200/50 px-1 py-0.5 text-[10px] font-medium text-purple-800 dark:bg-purple-900/60 dark:text-purple-200">专属工作台</span>
             </div>
           </template>
           <template #actions>
@@ -576,7 +576,7 @@ onScopeDispose(() => {
                   name="focus"
                   size="xs"
                 />
-                <span class="hidden sm:inline">{{ focusMode ? '退出' : '专注' }}</span>
+                <span class="hidden sm:inline">专注</span>
               </button>
               <button
                 class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-200 dark:hover:text-white transition-colors"
@@ -588,7 +588,7 @@ onScopeDispose(() => {
                   name="chat"
                   size="xs"
                 />
-                <span>新对话</span>
+                <span class="whitespace-nowrap">新对话</span>
               </button>
               <button
                 v-if="selectedThread && canWrite"
@@ -602,10 +602,10 @@ onScopeDispose(() => {
                 />
                 <span class="hidden sm:inline">删除</span>
               </button>
-              <div class="h-3.5 w-px bg-gray-200 dark:bg-dark-700 mx-0.5 hidden lg:block" />
+              <div class="h-3.5 w-px bg-gray-200 dark:bg-dark-700 mx-0.5 hidden lg:block shrink-0" />
               <div class="hidden lg:flex items-center gap-1.5 shrink-0">
-                <WorkspaceProjectSwitcher />
-                <UserMenu />
+                <WorkspaceProjectSwitcher compact />
+                <UserMenu compact />
               </div>
             </div>
           </template>

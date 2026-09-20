@@ -194,18 +194,15 @@ def get_runtime_gateway_service(
             tenant_id=context.tenant.tenant_id or "__default",
             project_id=project_id,
             role=project_roles[0],
-            permissions=[
-                "project.runtime.read",
-                "project.runtime.write",
-                *policy["runtime_permissions"],
-            ],
+            permissions=[],
             policy_version=str(policy["version"]),
             allowed_model_ids=policy["allowed_model_ids"],
-            allowed_tool_names=policy["allowed_tool_names"],
+            tool_overrides={},
+            tool_policy_version="unscoped-read-v2",
             scope={
                 "tenant_id": context.tenant.tenant_id or "__default",
                 "project_id": project_id,
-                "operation": _delegation_operation(request),
+                "operation": "read",
             },
             context_hash=empty_runtime_context_hash(),
             settings=settings,
@@ -229,19 +226,17 @@ def get_runtime_gateway_service(
         context_hash: str,
         operation: str = "run-create",
     ) -> dict[str, str]:
+        restrictions = RuntimePolicyOverlayService(session_factory=session_factory, runtime_base_url=settings.langgraph_upstream_url).resolve_tool_overrides(
+            project_id=project_id, user_id=actor.user_id, graph_id=agent_key)
         scoped = create_runtime_delegation_token(
             subject=subject,
             tenant_id=context.tenant.tenant_id or "__default",
             project_id=project_id,
             role=project_roles[0],
-            permissions=[
-                "project.runtime.read",
-                "project.runtime.write",
-                *policy["runtime_permissions"],
-            ],
+            permissions=[],
             policy_version=str(policy["version"]),
             allowed_model_ids=policy["allowed_model_ids"],
-            allowed_tool_names=policy["allowed_tool_names"],
+            **restrictions,
             scope={
                 "tenant_id": context.tenant.tenant_id or "__default",
                 "project_id": project_id,
@@ -849,7 +844,6 @@ async def workspace_zip(
     if payload.etag:
         headers["etag"] = payload.etag
     return RuntimeStreamingResponse(payload.body, media_type=payload.content_type, headers=headers)
-
 
 
 @router.get("/threads/{thread_id}/state")

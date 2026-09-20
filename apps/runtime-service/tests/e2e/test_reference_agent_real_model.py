@@ -28,9 +28,9 @@ def _auth_user() -> dict[str, object]:
         "runtime_policy": {
             "version": "e2e-policy-v1",
             "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-            "allowed_tool_names": ["read_reference"],
+            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
         },
-        "runtime_scope": {
+        "runtime_scope": {"operation": "read",
             "tenant_id": "e2e-tenant",
             "project_id": "e2e-project",
         },

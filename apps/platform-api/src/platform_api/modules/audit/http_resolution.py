@@ -331,20 +331,16 @@ def _resolve_action(
         project_id = clean_str(segments[2])
         if len(segments) == 5 and segments[4] == "models" and method == "GET":
             return "runtime.policy.model.listed", "runtime_policy_model", project_id
-        if len(segments) == 5 and segments[4] == "tools" and method == "GET":
-            return "runtime.policy.tool.listed", "runtime_policy_tool", project_id
+        if segments[4] == "tool-restrictions" and method in {"GET", "POST", "DELETE"}:
+            action = {"GET": "listed", "POST": "created", "DELETE": "deleted"}[method]
+            target = clean_str(segments[5]) if len(segments) == 6 else (project_id if method == "GET" else None)
+            return f"runtime.tool_restriction.{action}", "runtime_tool_restriction", target
         if len(segments) == 5 and segments[4] == "graphs" and method == "GET":
             return "runtime.policy.graph.listed", "runtime_policy_graph", project_id
         if len(segments) == 6 and segments[4] == "models" and method == "PUT":
             return (
                 "runtime.policy.model.updated",
                 "runtime_policy_model",
-                clean_str(segments[5]),
-            )
-        if len(segments) == 6 and segments[4] == "tools" and method == "PUT":
-            return (
-                "runtime.policy.tool.updated",
-                "runtime_policy_tool",
                 clean_str(segments[5]),
             )
         if len(segments) == 6 and segments[4] == "graphs" and method == "PUT":
@@ -567,6 +563,8 @@ def _resolve_target_id_from_payload(
     payload: dict[str, Any] | None,
     actor_user_id: str | None,
 ) -> str | None:
+    if method == "POST" and path.endswith("/runtime-policies/tool-restrictions"):
+        return _nested_value(payload, "id")
     segments = _route_segments(path)
     if len(segments) >= 2 and segments[:2] == ["api", "identity"]:
         if segments[2:] == ["session"] and method == "POST":
@@ -628,7 +626,7 @@ def _resolve_metadata(
             {
                 str(key): value
                 for key, value in request.metadata.items()
-                if key in {"reason"} and isinstance(value, (str, int, float, bool))
+                if key in {"reason", "graph_id", "subject_type", "subject_id", "tool_name"} and isinstance(value, (str, int, float, bool))
             }
         )
     return {key: value for key, value in metadata.items() if value is not None}

@@ -17,7 +17,7 @@ def _resolved(model_id: str):
     return resolve_runtime_config(
         principal=RuntimePrincipal("u", "t", "p", "developer", ()),
         context=RuntimeContext(),
-        policy=RuntimePolicy("p1", (model_id,), ()),
+        policy=RuntimePolicy("p1", (model_id,), (), "test-tools-v2"),
         defaults=AgentDefaults(
             model_id=model_id,
             system_prompt="prompt",

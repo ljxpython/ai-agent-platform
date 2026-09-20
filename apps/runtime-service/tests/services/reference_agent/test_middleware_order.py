@@ -27,9 +27,9 @@ def _auth_user() -> dict[str, object]:
         "runtime_policy": {
             "version": "reference-agent-local-v1",
             "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-            "allowed_tool_names": ["read_reference"],
+            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
         },
-        "runtime_scope": {"tenant_id": "local-tenant", "project_id": "reference-project"},
+        "runtime_scope": {"operation": "read", "tenant_id": "local-tenant", "project_id": "reference-project"},
         "runtime_context_hash": runtime_context_hash(None),
     }
 
