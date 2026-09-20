@@ -123,4 +123,101 @@ describe("ToolResult.vue", () => {
 
     expect(wrapper.text()).toContain('在指定页码范围内未匹配到关键词 "付款条件"');
   });
+
+  it("renders generated image only once when both output text and artifact contain the same image path", async () => {
+    const imagePath = "/workspace/generated/29e6f9b9523246afba17dcc8b17f2747.png";
+    const tool: ToolItem = {
+      key: "img-tool-1",
+      id: "call-img-1",
+      name: "edit_image",
+      input: {
+        image_path: "/workspace/uploads/original.png",
+        prompt: "添加迪迦奥特曼",
+      },
+      output: imagePath,
+      artifact: {
+        runtime_images: [
+          {
+            version: 1,
+            path: imagePath,
+            mime_type: "image/png",
+            size_bytes: 1024,
+            sha256: "0".repeat(64),
+          },
+        ],
+      },
+      status: "finished",
+    };
+
+    const wrapper = mount(ToolResult, {
+      props: { tool },
+      global: {
+        stubs: {
+          SubagentCard: true,
+          BaseIcon: true,
+          ThreadImage: {
+            template: '<div class="stub-thread-image" :data-path="imageRef?.path">image</div>',
+            props: ["imageRef"],
+          },
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("图像编辑/图生图");
+    expect(wrapper.text()).toContain(`· 产物: ${imagePath}`);
+
+    // 点击展开
+    const toggleButton = wrapper.find("button");
+    await toggleButton.trigger("click");
+
+    // 关键断言：卡片展开后，ThreadImage 只被渲染恰好 1 次，坚决杜绝双重渲染
+    const renderedImages = wrapper.findAll(".stub-thread-image");
+    expect(renderedImages.length).toBe(1);
+    expect(renderedImages[0].attributes("data-path")).toBe(imagePath);
+  });
+
+  it("renders image via fallback runtimeImages section when output is plain text without image path", async () => {
+    const imagePath = "/workspace/generated/fallback.png";
+    const tool: ToolItem = {
+      key: "img-tool-2",
+      id: "call-img-2",
+      name: "generate_image",
+      input: { prompt: "画一只可爱的猫" },
+      output: "已成功执行生图操作",
+      artifact: {
+        runtime_images: [
+          {
+            version: 1,
+            path: imagePath,
+            mime_type: "image/png",
+            size_bytes: 1024,
+            sha256: "0".repeat(64),
+          },
+        ],
+      },
+      status: "finished",
+    };
+
+    const wrapper = mount(ToolResult, {
+      props: { tool },
+      global: {
+        stubs: {
+          SubagentCard: true,
+          BaseIcon: true,
+          ThreadImage: {
+            template: '<div class="stub-thread-image" :data-path="imageRef?.path">image</div>',
+            props: ["imageRef"],
+          },
+        },
+      },
+    });
+
+    // 点击展开
+    const toggleButton = wrapper.find("button");
+    await toggleButton.trigger("click");
+
+    const renderedImages = wrapper.findAll(".stub-thread-image");
+    expect(renderedImages.length).toBe(1);
+    expect(renderedImages[0].attributes("data-path")).toBe(imagePath);
+  });
 });

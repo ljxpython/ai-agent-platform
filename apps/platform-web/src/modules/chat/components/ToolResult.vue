@@ -85,6 +85,14 @@ const runtimeImages = computed(() => {
     typeof props.tool.output === "string" ? props.tool.output : "",
   );
 });
+const unrenderedRuntimeImages = computed(() => {
+  const renderedPaths = new Set(
+    output.value
+      .filter((b) => b.kind === "image" && b.imageRef?.path)
+      .map((b) => b.imageRef!.path),
+  );
+  return runtimeImages.value.filter((img) => !renderedPaths.has(img.path));
+});
 const displayTitle = computed(() => {
   if (props.tool.name === "write_todos") {
     return "更新任务清单";
@@ -398,11 +406,11 @@ function formatDocumentWarning(w: string, query?: unknown): string {
           :thread-id="threadId"
         />
         <div
-          v-if="runtimeImages.length"
+          v-if="unrenderedRuntimeImages.length"
           class="space-y-2 mt-2"
         >
           <ThreadImage
-            v-for="img in runtimeImages"
+            v-for="img in unrenderedRuntimeImages"
             :key="img.path"
             :project-id="projectId || ''"
             :thread-id="threadId || ''"

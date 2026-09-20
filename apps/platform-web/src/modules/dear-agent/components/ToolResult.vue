@@ -93,6 +93,14 @@ const runtimeImages = computed(() => {
     typeof props.tool.output === "string" ? props.tool.output : "",
   );
 });
+const unrenderedRuntimeImages = computed(() => {
+  const renderedPaths = new Set(
+    output.value
+      .filter((b) => b.kind === "image" && b.imageRef?.path)
+      .map((b) => b.imageRef!.path),
+  );
+  return runtimeImages.value.filter((img) => !renderedPaths.has(img.path));
+});
 const displayTitle = computed(() => {
   if (props.tool.name === "write_todos") {
     return "更新任务清单";
@@ -516,20 +524,20 @@ function getSourceKindBadge(source: EvidenceSourceItem): {
         </div>
 
         <div
-          v-if="runtimeImages.length"
+          v-if="unrenderedRuntimeImages.length"
           class="space-y-2 mt-2"
         >
           <ThreadImage
-            v-for="(img, imgIdx) in runtimeImages"
+            v-for="(img, imgIdx) in unrenderedRuntimeImages"
             :key="img.path"
             :project-id="projectId || ''"
             :thread-id="threadId || ''"
             :image-ref="img"
-            :kind="tool.name === 'ppt_generation' ? 'slide' : (tool.name === 'edit_image' && imgIdx === 0 && runtimeImages.length > 1 ? 'reference' : 'generated')"
+            :kind="tool.name === 'ppt_generation' ? 'slide' : (tool.name === 'edit_image' && imgIdx === 0 && unrenderedRuntimeImages.length > 1 ? 'reference' : 'generated')"
             :status="typeof result.status === 'string' ? (result.status as any) : undefined"
             :task-id="typeof result.task_id === 'string' ? result.task_id : undefined"
             :slide-index="tool.name === 'ppt_generation' ? imgIdx + 1 : undefined"
-            :slide-total="tool.name === 'ppt_generation' ? runtimeImages.length : undefined"
+            :slide-total="tool.name === 'ppt_generation' ? unrenderedRuntimeImages.length : undefined"
           />
         </div>
 
