@@ -7,22 +7,24 @@ import socket
 import subprocess
 import tempfile
 import threading
+import time
 import unittest
 import zipfile
 from pathlib import Path
-from uuid import uuid4
 from unittest.mock import Mock
+from uuid import uuid4
 
 import httpx
 import psycopg
+import test_runtime_gateway_workspace as workspace_tests
 import uvicorn
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
 
-import test_runtime_gateway_workspace as workspace_tests
-
 SECRET = workspace_tests.SECRET
-from platform_api.adapters.langgraph.runtime_gateway_upstream import LangGraphRuntimeGatewayUpstream
+from platform_api.adapters.langgraph.runtime_gateway_upstream import (
+    LangGraphRuntimeGatewayUpstream,
+)
 from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import ForbiddenError
 
@@ -86,7 +88,8 @@ class SkillsGatewayTest(unittest.IsolatedAsyncioTestCase):
                 return subprocess.Popen([str(runtime_dir / ".venv/bin/python"), "-c", script, str(runtime_socket.fileno())],
                     cwd=runtime_dir, env=env, pass_fds=(runtime_socket.fileno(),), stdout=log, stderr=log)
             async def ready():
-                for _ in range(150):
+                deadline = time.monotonic() + 120
+                while time.monotonic() < deadline:
                     if process.poll() is not None:
                         log.seek(0)
                         self.fail(log.read().decode())

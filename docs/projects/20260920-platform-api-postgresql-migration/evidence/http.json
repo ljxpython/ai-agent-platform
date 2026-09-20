@@ -1,0 +1,10 @@
+{
+  "project_id": "87284790-ece4-46c0-b3b0-3c328f6633af",
+  "thread_id": "c06fb1a3-5ab9-4c47-8502-7493bb239e4e",
+  "run_id": "b021dabb-6600-4190-a4af-b1b6b2b0ca6a",
+  "run_status": "success",
+  "idempotent_same_run": true,
+  "conflict_status": 409,
+  "tool_messages": 1,
+  "history_count": 5
+}

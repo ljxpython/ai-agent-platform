@@ -29,6 +29,8 @@
 
 ## 3. 启动说明 (唯一支持方式)
 
+控制面本地开发统一使用本机 PostgreSQL 独立库 `platform_api`，关闭自动建表。先按[数据库运维规范](../guides/database-operations.md)完成建库及配置；已有 SQLite 数据先迁移，不直接覆盖配置。启动脚本会执行控制面 preflight 和 Alembic，PG 不可用时不会回退 SQLite。
+
 **注意：本项目唯一支持的本地启动方式是使用 `local-stack.sh` 脚本。** 不要手动使用 `uvicorn` 或 `pnpm dev` 启动单个服务，否则会导致环境变量和服务发现异常。
 
 启动整个开发环境：

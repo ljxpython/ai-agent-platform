@@ -7,6 +7,7 @@
 | 服务、模块与数据归属 | [架构](handbook/architecture.md) |
 | 新增接口、用例或表 | [开发规范](handbook/development-playbook.md) |
 | 配置数据库、认证和Runtime | [配置](handbook/configuration.md) |
+| 新服务器建库、数据迁移、本地 PG | [数据库运维规范](../../../docs/guides/database-operations.md) |
 | 初始化与变更数据库 | [数据库](handbook/database.md) |
 | 排障、发布和恢复 | [运维](handbook/runbook.md) |
 | 角色、项目与服务账号 | [权限标准](standards/permission-standard.md) |

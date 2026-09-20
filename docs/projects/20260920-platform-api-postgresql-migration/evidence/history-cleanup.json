@@ -1,0 +1,101 @@
+{
+  "backup": "apps/platform-api/.data/backups/20260920T022351647053Z-history-cleanup",
+  "results": {
+    "platform_api": {
+      "action": "platform",
+      "counts": {
+        "expired_or_revoked_tokens": 127,
+        "run_requests": 23,
+        "audit_logs": 1033
+      },
+      "completed": true
+    },
+    "graphharbor_acceptance": {
+      "action": "runtime",
+      "counts": {
+        "runtime_events": 980,
+        "run_leases": 0,
+        "retry_counters": 0,
+        "runtime_message_inbox": 0,
+        "dear_external_tasks": 2,
+        "dear_skill_bindings": 33,
+        "checkpoint_writes": 289,
+        "checkpoint_blobs": 100,
+        "checkpoints": 170,
+        "runs": 23,
+        "threads": 10
+      },
+      "completed": true
+    },
+    "platform_migration_test_quiet_20260920": {
+      "action": "drop",
+      "counts": {},
+      "completed": true
+    },
+    "platform_migration_test_load_20260920": {
+      "action": "drop",
+      "counts": {},
+      "completed": true
+    },
+    "platform_migration_test_forbidden_20260920": {
+      "action": "drop",
+      "counts": {},
+      "completed": true
+    },
+    "platform_migration_test_unversioned_20260920": {
+      "action": "drop",
+      "counts": {},
+      "completed": true
+    },
+    "platform_migration_test_recovery_platform_20260920": {
+      "action": "drop",
+      "counts": {},
+      "completed": true
+    },
+    "platform_migration_test_recovery_runtime_20260920": {
+      "action": "drop",
+      "counts": {},
+      "completed": true
+    }
+  },
+  "redis_streams_removed": 875,
+  "redis_other_keys_retained": 54,
+  "verification": {
+    "platform_counts_before_login": {
+      "refresh_tokens": 218,
+      "audit_logs": 1,
+      "run_requests": 0,
+      "projects": 119,
+      "agents": 171,
+      "runtime_catalog_graphs": 4,
+      "runtime_catalog_models": 7
+    },
+    "runtime_counts": {
+      "threads": 0,
+      "runs": 0,
+      "checkpoints": 0,
+      "checkpoint_blobs": 0,
+      "checkpoint_writes": 0,
+      "runtime_events": 0,
+      "dear_memory": 2,
+      "dear_skills": 1
+    },
+    "project_total": 1,
+    "test_agents": 4,
+    "threads_http": [],
+    "six_test_databases_absent": true
+  },
+  "restore_verification": {
+    "platform_api": {
+      "projects": 119,
+      "agents": 171,
+      "audit_logs": 1033
+    },
+    "graphharbor_acceptance": {
+      "threads": 10,
+      "runs": 23,
+      "checkpoints": 170
+    }
+  },
+  "redis_backup_compressed_bytes": 2237604794
+}

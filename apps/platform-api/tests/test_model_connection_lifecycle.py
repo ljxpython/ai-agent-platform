@@ -29,7 +29,9 @@ from platform_api.modules.runtime_policies.infra.sqlalchemy.models import (
 
 class ModelConnectionLifecycleTest(unittest.IsolatedAsyncioTestCase):
     def test_queue_private_state_is_redacted_recursively(self):
-        from platform_api.adapters.langgraph.sdk_client import redact_runtime_private_fields
+        from platform_api.adapters.langgraph.sdk_client import (
+            redact_runtime_private_fields,
+        )
         self.assertEqual(redact_runtime_private_fields({"values": {
             "runtime_message_claim": {"token": "secret"},
             "messages": [{"content": "hello", "authorization_ref": "secret"}],
@@ -44,9 +46,9 @@ class ModelConnectionLifecycleTest(unittest.IsolatedAsyncioTestCase):
         create_core_tables(self.engine)
         self.settings = Settings(runtime_delegation_secret="x" * 32,
                                  model_config_master_key=Fernet.generate_key().decode())
-        self.values = dict(provider="openai", display_name="A", base_url="https://example.com",
-                           protocol="openai", model="same-model", enabled=True,
-                           api_key_ciphertext=encrypt_api_key("old", master_key=self.settings.model_config_master_key))
+        self.values = {"provider": "openai", "display_name": "A", "base_url": "https://example.com",
+                       "protocol": "openai", "model": "same-model", "enabled": True,
+                       "api_key_ciphertext": encrypt_api_key("old", master_key=self.settings.model_config_master_key)}
         with self.factory.begin() as session:
             projects = SqlAlchemyProjectsRepository(session)
             tenant = projects.get_or_create_default_tenant()
@@ -66,8 +68,9 @@ class ModelConnectionLifecycleTest(unittest.IsolatedAsyncioTestCase):
             actor={"user_id": str(self.user), "principal_type": "user", "credential_id": None})
 
     async def test_message_authorization_rechecks_membership_and_scope(self):
-        import jwt
         import time
+
+        import jwt
         from sqlalchemy import delete
         reference = jwt.encode({
             "aud": "runtime-message", "exp": int(time.time()) + 60,
@@ -138,7 +141,11 @@ class ModelConnectionLifecycleTest(unittest.IsolatedAsyncioTestCase):
             await self.resolve()
 
     async def test_service_account_revoked_token_is_not_reusable(self):
-        from platform_api.modules.service_accounts.models import ServiceAccountRecord, ServiceAccountTokenRecord, ServiceAccountProjectGrantRecord
+        from platform_api.modules.service_accounts.models import (
+            ServiceAccountProjectGrantRecord,
+            ServiceAccountRecord,
+            ServiceAccountTokenRecord,
+        )
         with self.factory.begin() as session:
             account = ServiceAccountRecord(name="worker", status="active")
             session.add(account)
@@ -153,6 +160,14 @@ class ModelConnectionLifecycleTest(unittest.IsolatedAsyncioTestCase):
         self.reference = create_model_reference(project_id=str(self.project), model_id=str(self.model),
             secret=self.settings.runtime_delegation_secret, agent_key="demo",
             actor={"principal_type": "service_account", "credential_id": str(credential_id)})
+        # Executor no longer has runtime write permission; first verify that boundary.
+        with self.assertRaises(ForbiddenError):
+            await self.resolve()
+        with self.factory.begin() as session:
+            from sqlalchemy import select
+            grant = session.scalar(select(ServiceAccountProjectGrantRecord).where(
+                ServiceAccountProjectGrantRecord.project_id == self.project))
+            grant.role = "editor"
         await self.resolve()
         with self.factory.begin() as session:
             session.get(ServiceAccountTokenRecord, credential_id).status = "revoked"

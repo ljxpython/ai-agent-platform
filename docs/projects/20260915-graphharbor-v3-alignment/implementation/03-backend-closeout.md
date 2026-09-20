@@ -4,7 +4,7 @@
 
 ## 本轮修改
 
-以下GraphHarbor路径相对`/Users/lijiaxin/PyCharmMiscProject/graphharbor`：
+以下GraphHarbor路径相对`../graphharbor（相对仓库根目录的外部参考源码）`：
 
 | 文件／函数 | 行为及原因 | 当前证据 |
 |---|---|---|

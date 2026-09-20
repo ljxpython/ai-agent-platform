@@ -1,0 +1,12 @@
+{
+  "workers": 2,
+  "clients": 10,
+  "seconds": 300.814491475001,
+  "requests": 5878,
+  "p95_ms": 1065.309931000229,
+  "requests_per_second": 19.54028202291075,
+  "errors": [],
+  "created_and_persisted": 2864,
+  "audit_rows_written": 5880,
+  "database_connection_peak": 12
+}

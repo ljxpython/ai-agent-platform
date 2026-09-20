@@ -71,6 +71,7 @@
 
 - `AGENTS.md`：开发规范入口，定义分级标准和验证要求
 - `docs/projects/`：链路/治理改动的项目文档（方案、任务、验证记录）
+- [数据库部署与迁移规范](docs/guides/database-operations.md)：新服务器建库、未来迁移与本地 PG 开发
 - 各 app/service 自己的 `docs/`：服务内部标准
 
 改动分级由 AI 自动判断（不需要手动调用命令），依据见 `AGENTS.md`。

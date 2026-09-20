@@ -45,6 +45,7 @@
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
 | 鉴权、项目治理、审计、catalog | 已完成 | `apps/platform-api/docs/handbook/project-handbook.md` |
+| 控制面 SQLite → PostgreSQL 迁移 | 已完成：本地 PG 真实切换，20 表一致；浏览器、容器重启、性能复测及双库恢复读回通过 | [迁移专项](projects/20260920-platform-api-postgresql-migration/README.md) · [运维规范](guides/database-operations.md) |
 | 重构后文档体系重建 | done：10篇活文档、28文件归档与引用修复，配置/契约核对及33项相关测试通过 | [文档工程](projects/20260910-platform-api-docs-rebuild/README.md) |
 | 控制面边界与代码简化重构 | 本阶段后端 done：事务/目录、Docker Showcase、真实备份恢复、混合负载及 20 条公开接口矩阵已验收；前端、整套容器部署与完整 Server 等价性 deferred | `docs/projects/20260910-platform-api-refactor/` |
 | 运行时网关（受管模型/工具/prompt 契约下发） | 已完成 | `apps/platform-api/docs/standards/runtime-gateway-interface-standard.md` |
@@ -77,6 +78,7 @@
 ## 仓库级 / 工具链
 
 | 功能 | 状态 | 关联文档 |
+| 本地项目清理 | 已支持：按 UUID 保留项目；显式历史清理先备份，支持失效令牌、会话/审计及指定测试库；测试退出回收项目 | [运维规范](guides/database-operations.md#本地项目清理) |
 | 本地栈进程启停 | 已优化：真实进程与端口归属识别、孤儿 worker 深度清理、端口占用自动回收与外部进程安全隔离 | `docs/changes/20260913-local-stack-real-process-management.md` |
 | 改动分级 + Skills 自动触发（plan-project/implement-feature/verify-change） | 已完成 | `AGENTS.md` |
 | 文档一致性检查（`scripts/check_docs.py`） | 已完成 | `scripts/check_docs.py` |

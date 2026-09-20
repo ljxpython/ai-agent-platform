@@ -4,6 +4,7 @@ import json
 import os
 import subprocess
 import time
+from contextlib import ExitStack
 from pathlib import Path
 from uuid import uuid4
 
@@ -36,10 +37,31 @@ def assert_k01_report(messages, report):
     return sources
 
 
+def _delete_test_project(client, project_id):
+    client.delete(f"/api/projects/{project_id}").raise_for_status()
+
+
+def test_project_cleanup_on_failure():
+    requests = []
+
+    def respond(request):
+        requests.append((request.method, request.url.path))
+        return httpx.Response(204)
+
+    with (
+        httpx.Client(base_url="http://test", transport=httpx.MockTransport(respond)) as client,
+        pytest.raises(RuntimeError),
+        ExitStack() as cleanup,
+    ):
+        cleanup.callback(_delete_test_project, client, "test-id")
+        raise RuntimeError("setup or run failed")
+    assert requests == [("DELETE", "/api/projects/test-id")]
+
+
 def test_platform_creates_and_completes_dear_run():
     if os.environ.get("DEAR_PLATFORM_TEST") != "1":
         pytest.skip("DEAR_PLATFORM_TEST=1 enables local Platform writes and real model usage")
-    with httpx.Client(base_url="http://127.0.0.1:2142", timeout=45, trust_env=False) as client:
+    with httpx.Client(base_url="http://127.0.0.1:2142", timeout=45, trust_env=False) as client, ExitStack() as cleanup:
         # Same development account as scripts/local_stack_l2_runtime_smoke.py.
         login = client.post("/api/identity/session", json={"username": "admin", "password": "admin123456"})
         assert login.status_code == 200, f"local login HTTP {login.status_code}"
@@ -48,6 +70,7 @@ def test_platform_creates_and_completes_dear_run():
         project = client.post("/api/projects", json={"name": "dear-p1-verification-" + uuid4().hex[:10]})
         assert project.status_code == 200, f"project create HTTP {project.status_code}"
         project_id = project.json()["id"]
+        cleanup.callback(_delete_test_project, client, project_id)
         client.headers["X-Project-Id"] = project_id
         refresh = client.post("/api/runtime/graphs/refresh", json={})
         assert refresh.status_code == 200, f"catalog refresh HTTP {refresh.status_code}"

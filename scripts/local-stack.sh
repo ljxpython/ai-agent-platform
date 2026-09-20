@@ -25,7 +25,7 @@ Usage: bash scripts/local-stack.sh <command>
 
 Commands:
   doctor   validate local env, dependencies, config, and ports
-  migrate  run GraphHarbor database migrations
+  migrate  run Platform API and GraphHarbor database migrations
   start    start Runtime API/Worker, Platform API, and Platform Web
   stop     stop this repository's stack, including manually started dev servers
   restart  stop and start the local stack
@@ -366,6 +366,7 @@ PY
 validate_stack() {
   validate_runtime
   check_postgres
+  (cd "$PLATFORM_API_DIR" && uv run --frozen python scripts/database.py preflight)
   check_redis
   require_command curl
   require_command lsof
@@ -403,6 +404,7 @@ PY
 migrate() {
   validate_runtime
   check_postgres
+  (cd "$PLATFORM_API_DIR" && uv run --frozen python scripts/database.py upgrade)
   (cd "$RUNTIME_DIR" && uv run --frozen graphharbor migrate upgrade)
   (cd "$RUNTIME_DIR" && uv run --frozen python -m runtime_service.messaging)
 }
@@ -466,6 +468,9 @@ restart_one() {
     runtime-api|runtime-worker|platform-api|platform-web) ;;
     *) die "restart-one requires one of runtime-api, runtime-worker, platform-api, platform-web" ;;
   esac
+  if [ "$key" = "platform-api" ]; then
+    (cd "$PLATFORM_API_DIR" && uv run --frozen python scripts/database.py upgrade)
+  fi
   stop_process "$key"
   start_managed_key "$key"
   case "$key" in

@@ -96,4 +96,4 @@
 | [04 源码核对与讨论](04-deep-discussion.md) | 旧链路、DeerFlow 对照及历史讨论 |
 | [01 公共目录](01-public-skills-completeness.md)、[02 详情](02-skill-detail-view.md)、[03 UI](03-ui-polish.md) | 原始问题及早期备选；被后续批准取代的方案不作为任务 |
 
-参考源码：`/Users/lijiaxin/PyCharmMiscProject/research/deer-flow`。历史“前端 8 项 / 内置 20 个目录”仅是调研时点数据，最终验收按实际有效目录全量枚举，不硬编码数量。
+参考源码：`../research/deer-flow（相对仓库根目录的外部参考源码）`。历史“前端 8 项 / 内置 20 个目录”仅是调研时点数据，最终验收按实际有效目录全量枚举，不硬编码数量。

@@ -1,0 +1,92 @@
+{
+  "cutover_at": "2026-09-19T17:46:01.552977+00:00",
+  "target_database": "platform_api",
+  "tables": {
+    "audit_logs": {
+      "rows": 5,
+      "sha256": "d3f1ad19708dc4651fa25cb85f2318b2e8964a28b894b0e6a3ae000be1f5a84b"
+    },
+    "platform_config_entries": {
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "run_requests": {
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "runtime_catalog_graphs": {
+      "rows": 4,
+      "sha256": "646584bb16430ee37c9fd120101512a1f4425fed708d0809db9af4c0d3e3a9e9"
+    },
+    "runtime_catalog_models": {
+      "rows": 7,
+      "sha256": "c78a2b25a64ccb408f60d592ee1fde82c1c05889ca1cb7ec66352b54ff5a8179"
+    },
+    "runtime_catalog_tools": {
+      "rows": 63,
+      "sha256": "6f13053e59d5edf6d541d834f97f57378faebf61ac53058a06bdcf6b10a48615"
+    },
+    "service_accounts": {
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "tenants": {
+      "rows": 1,
+      "sha256": "f83ec09f77d6ecc17941a4fd51b2510b5cdcb928b7cabd748a004f03d0f3d182"
+    },
+    "users": {
+      "rows": 1,
+      "sha256": "132fb47329d5dbde29cd2cb25509df85c814eb8ad4a35490b72f6e5e5a2cca91"
+    },
+    "projects": {
+      "rows": 108,
+      "sha256": "d664f4f5f7e8ea29c93fff148803e94e9d0f2aef8c919a645d39ea565d17feaa"
+    },
+    "refresh_tokens": {
+      "rows": 324,
+      "sha256": "470eed6d85cc321af4bb9dffdfb040ff5fb34d5ad35e655cb10691a7a57adcab"
+    },
+    "service_account_tokens": {
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "agents": {
+      "rows": 127,
+      "sha256": "3a33958967d805d8c7aded2f8fd12d0d0e374c57da92e2d8dd035543555b4984"
+    },
+    "announcements": {
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "project_graph_policies": {
+      "rows": 11,
+      "sha256": "e4873c014cd94397494af69cabea7cf373b2538050acb0c97e54e17bf88e9e4b"
+    },
+    "project_members": {
+      "rows": 108,
+      "sha256": "a7615ce16ad2c138b84dec33133c11b939075cfb5fd47e390ddea31e4ee63bb4"
+    },
+    "project_model_policies": {
+      "rows": 20,
+      "sha256": "207ff39a92238d7ab387c5bd1d1102dd67081cc281af92307ff9149a67dcda23"
+    },
+    "project_tool_policies": {
+      "rows": 13,
+      "sha256": "5083b1f7bf0f52565e3d4f52ef643be8137e4011a804005997267212a8a661b5"
+    },
+    "service_account_project_grants": {
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "announcement_reads": {
+      "rows": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "model_credentials_decrypted": 7,
+  "runtime_states_before": [],
+  "sqlite_backup_sha256": "2b42b55b1bf4747536aeb46c91f6a1097dad82aebb8e379048b60af76cea4fa2",
+  "runtime_backup_sha256": "7d866833c46cc01f4e8d858a28593c1b1380791b6af71f7accfc52408c77beb1",
+  "elapsed_seconds": 55.405,
+  "configuration_switched": true
+}

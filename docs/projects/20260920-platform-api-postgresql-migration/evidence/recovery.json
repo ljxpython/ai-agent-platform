@@ -1,0 +1,214 @@
+{
+  "scope": "quiescent platform/runtime database pair; original services restart on PG",
+  "databases": {
+    "platform": {
+      "restored_database": "platform_migration_test_recovery_platform_20260920",
+      "tables": {
+        "public.agents": {
+          "rows": 163,
+          "sha256": "730160d7586bc7e526e3b720a063a904c4f840b089444dc90770a6d1e8f2274b"
+        },
+        "public.alembic_version": {
+          "rows": 1,
+          "sha256": "d54859fe7784dd5940b53c78c9904b836a0f291f95a042e7dab2f41e38d57b25"
+        },
+        "public.announcement_reads": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "public.announcements": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "public.audit_logs": {
+          "rows": 685,
+          "sha256": "f217581431d8225ae7eed8df1c1f9a0803b215c91ff7a98495345421039ef9cc"
+        },
+        "public.platform_config_entries": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "public.project_graph_policies": {
+          "rows": 20,
+          "sha256": "908556a1d1cda7da13a9e6da7ab6a008ddaa3175d5bf0301ded5191f0d51cc9c"
+        },
+        "public.project_members": {
+          "rows": 117,
+          "sha256": "c6bb3b0063859bfac6b7342721b7aacc9959796c8dc7baf454ea2f598b02b9fc"
+        },
+        "public.project_model_policies": {
+          "rows": 29,
+          "sha256": "e0734f1ffc61b1914c483fd96cd11aa55b5aabf8bab6c8869643bd3ba70771fd"
+        },
+        "public.project_tool_policies": {
+          "rows": 22,
+          "sha256": "7c4f3af65ddbd3c0d42390e1f69b94f142c1a77b3cf950426af77669aa48fc97"
+        },
+        "public.projects": {
+          "rows": 117,
+          "sha256": "e333e229905f5e277b23bfc0e1e33ca3ba6a1010fc1e8a50558fadda8e53f9eb"
+        },
+        "public.refresh_tokens": {
+          "rows": 335,
+          "sha256": "db3c2d08fbdae9167992ccbe3df4f33fb7af4a1a60ec7b50b1fb2d7e637aff78"
+        },
+        "public.run_requests": {
+          "rows": 13,
+          "sha256": "4025284628fb9d66b2475fe304f3875d107d240ca14e8ce266ca7a4e23fe0730"
+        },
+        "public.runtime_catalog_graphs": {
+          "rows": 4,
+          "sha256": "e343cdb57b53417946def25a67b224dcd79ab1c910644c248b2311d02ba5db23"
+        },
+        "public.runtime_catalog_models": {
+          "rows": 7,
+          "sha256": "25a159ccf48b91702d7a8e27aec0656b5e9345dc4c42cbfe6946a6cef800815d"
+        },
+        "public.runtime_catalog_tools": {
+          "rows": 63,
+          "sha256": "fff10de38ef1ed6f376c24bfb5ea8c872a0a2de1273b8b3047cc63fbb40a0489"
+        },
+        "public.service_account_project_grants": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "public.service_account_tokens": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "public.service_accounts": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "public.tenants": {
+          "rows": 1,
+          "sha256": "0f63aeff175d63ac03537411d9bf693c0500dfc65b2ac8778a3c99fdb38dd6fa"
+        },
+        "public.users": {
+          "rows": 1,
+          "sha256": "8db406f11253f4c095c1753edca091e82ed812fd1165d77a84c4192df7e9a568"
+        }
+      },
+      "all_rows_match": true,
+      "backup_sha256": "93dfc1da17f481f0594dfb11e917095065d04eb935fb001f66b1c888c40f4c2b",
+      "dump_restore_seconds": 4.480319747002795
+    },
+    "runtime": {
+      "restored_database": "platform_migration_test_recovery_runtime_20260920",
+      "tables": {
+        "public.alembic_version": {
+          "rows": 1,
+          "sha256": "6941189019ab8a4c04aecd0a3f02ac30147862e90da13f46e9f705ccae7f9b28"
+        },
+        "public.assistant_versions": {
+          "rows": 66,
+          "sha256": "901836f47928af1650c8ccaaaf56cc2ccf8c767d9cb37427015420866a4c775d"
+        },
+        "public.assistants": {
+          "rows": 66,
+          "sha256": "e72bceff5ec64ece14476fb287d2788c7fa60d67e6bbcc79646ff5b97689ec8b"
+        },
+        "public.checkpoint_blobs": {
+          "rows": 62,
+          "sha256": "a07fcccffb473531230f86d98a7ad7981e6ac523d255a493cca249b56e2c657f"
+        },
+        "public.checkpoint_migrations": {
+          "rows": 10,
+          "sha256": "e039dd3c70bdc914cd5c84ad28b6f4c2ec20665c8a0baa9c88a9be909721f01d"
+        },
+        "public.checkpoint_writes": {
+          "rows": 179,
+          "sha256": "a785396d656caddc0af4e35f65ba675e343ef20a80228113a85a92f474d340a8"
+        },
+        "public.checkpoints": {
+          "rows": 104,
+          "sha256": "98adffc1059c13a50bce76ef2f775d7403ae65a94a75a4982fe137d0bcf74a63"
+        },
+        "public.crons": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "public.dear_external_tasks": {
+          "rows": 2,
+          "sha256": "d075049b880f8d8544589cc8b0e1aba1674fc7f72455aca9897422d9fa3897b0"
+        },
+        "public.dear_memory": {
+          "rows": 2,
+          "sha256": "b0e6bb76cdc8d2237859f0b47501a45487c7b1103829fdaffb9e48836ca8d478"
+        },
+        "public.dear_skill_bindings": {
+          "rows": 33,
+          "sha256": "8130844d91e1bf18aa26072cbd1867327eba6e91b2bf009775c4c3c66332a5c0"
+        },
+        "public.dear_skill_versions": {
+          "rows": 6,
+          "sha256": "420d9295044d6e4639dc6e6a675c33b2755f105a232f5a85a94cfa4c1407f69c"
+        },
+        "public.dear_skills": {
+          "rows": 1,
+          "sha256": "a28dd223c68d18d3856c0497bceef17bdb9828529d8a0991e6a068796ed114b8"
+        },
+        "public.retry_counters": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "public.run_leases": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "public.runs": {
+          "rows": 13,
+          "sha256": "2f53b942fafd124e5a040768547490943e0f31ff9de8d71aecbc11d9e7d9d24c"
+        },
+        "public.runtime_app_alembic_version": {
+          "rows": 1,
+          "sha256": "923003331bd07d327e0cc9123637affb23a9e4113f10fbe4c866f80a6aa80933"
+        },
+        "public.runtime_events": {
+          "rows": 606,
+          "sha256": "af369c3be6527eb475df8f9e6632450ee768e08a60555453b29b9fcbc61ee7d9"
+        },
+        "public.runtime_message_inbox": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "public.runtime_schema": {
+          "rows": 1,
+          "sha256": "96e8a287dbbcf57812f5fb03a059cfe91f285103e0a238da001dacb44ebeb03d"
+        },
+        "public.store": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "public.store_items": {
+          "rows": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "public.store_migrations": {
+          "rows": 4,
+          "sha256": "0addf274c15b761ccb1f53f63940a4f583f0e87f3797d1bda2f0f40764ce5a75"
+        },
+        "public.threads": {
+          "rows": 7,
+          "sha256": "80443028812334d93fc76d08eb287f3df3e51505fac39a299699822ae21359dc"
+        }
+      },
+      "all_rows_match": true,
+      "backup_sha256": "4ff7d1484210fb0278fc980bc96ad209c9dd6f8380f6b9fd587357480eaafd3e",
+      "dump_restore_seconds": 8.417652536998503
+    }
+  },
+  "new_pg_write_preserved": {
+    "project_id": "87284790-ece4-46c0-b3b0-3c328f6633af",
+    "thread_id": "c06fb1a3-5ab9-4c47-8502-7493bb239e4e",
+    "run_id": "b021dabb-6600-4190-a4af-b1b6b2b0ca6a",
+    "run_status": "success",
+    "idempotent_same_run": true,
+    "conflict_status": 409,
+    "tool_messages": 1,
+    "history_count": 5
+  },
+  "workspace_files_unchanged": 0,
+  "redis_restore": "not replayed; all database runs quiescent; original Redis retained",
+  "stop_backup_restore_restart_seconds": 363.4613211130054
+}

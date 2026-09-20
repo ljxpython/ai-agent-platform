@@ -4,7 +4,7 @@
 在每个“已完成的 Assistant 回复”下提供与 DeepSeek Harness 同类的“在新对话中分支”按钮（Branch into a new conversation），并在成功后进入新会话，基于该回复的 LangGraph 完整状态继续对话。
 
 ## 参考设计（DeepSeek Harness 对齐）
-参考 `/Users/lijiaxin/PyCharmMiscProject/research/deepseek-harness` 的成熟实践：
+参考 `../research/deepseek-harness（相对仓库根目录的外部参考源码）` 的成熟实践：
 1. **交互形态**：位于已完成轮次 Assistant 消息尾部（Turn Tail）操作栏中，与复制、点赞/点踩并列；纯图标按钮，悬停/聚焦展示 Tooltip **“在新对话中分支”**。
 2. **可用性限制**：流式生成中（`isStreaming`）、会话运行中（`isRunning`）、快照回放模式或无有效 checkpoint 时禁用/不显示。
 3. **会话标题递增**：复用 Harness 的 `increasedForkTitle` 算法，从原会话标题自动派生序号（如 `需求方案` -> `需求方案 (1)` -> `需求方案 (2)`）。

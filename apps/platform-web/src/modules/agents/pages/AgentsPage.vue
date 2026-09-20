@@ -86,7 +86,7 @@ onScopeDispose(() => {
     <PageHeader
       eyebrow="Agents"
       title="Agent 管理"
-      description="管理项目内的智能体，可创建、查看配置并开始对话。"
+      description="管理当前项目的独立 Agent 配置。已启用的全局 Graph 会自动生成同名 Agent，各项目配置独立。"
     >
       <template #actions>
         <BaseButton

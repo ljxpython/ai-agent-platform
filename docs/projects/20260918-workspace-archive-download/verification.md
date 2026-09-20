@@ -8,7 +8,7 @@
 ## 验证记录
 
 ### 1. runtime-service 单元测试
-- **测试命令**：`/Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/.venv/bin/pytest apps/runtime-service/tests/test_workspace_zip.py`
+- **测试命令**：`apps/runtime-service/.venv/bin/pytest apps/runtime-service/tests/test_workspace_zip.py`
 - **测试结果**：`3 passed, 5 warnings in 5.48s`
 - **覆盖场景**：
   - 空目录打包生成合法 zip 格式

@@ -345,11 +345,17 @@ export function buildChatMessageMetadata(
       }
     }
 
+    // Routing checkpoints can repeat a message before the next reply arrives.
+    // Editing must resume before its first occurrence, not before the latest copy.
+    const firstSeenState = findLast(history, state => getStateMessages(state).some(
+      (item, messageIndex) => getChatMessageIdentifier(item, messageIndex) === messageId
+    ))
+
     result[messageId] = {
       messageId,
       checkpointId,
-      firstSeenState: targetState,
-      parentCheckpoint: targetState?.parent_checkpoint,
+      firstSeenState,
+      parentCheckpoint: firstSeenState?.parent_checkpoint,
       branch: branch?.branch,
       branchOptions: branch?.branchOptions
     }

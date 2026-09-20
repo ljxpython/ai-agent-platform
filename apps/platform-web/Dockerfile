@@ -19,6 +19,7 @@ ENV VITE_APP_NAME=$VITE_APP_NAME \
     VITE_LANGGRAPH_DEBUG_URL=$VITE_LANGGRAPH_DEBUG_URL
 
 COPY package.json pnpm-lock.yaml ./
+COPY patches ./patches
 RUN corepack enable && pnpm install --frozen-lockfile
 
 COPY . .

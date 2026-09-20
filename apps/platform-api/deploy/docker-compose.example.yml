@@ -1,15 +1,19 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16-alpine
-    profiles: ["postgres"]
     environment:
       POSTGRES_DB: platform_api
       POSTGRES_USER: platform
       POSTGRES_PASSWORD: platform
     ports:
       - "5432:5432"
+    volumes:
+      - platform-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U platform -d platform_api"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   platform-api:
     build:
@@ -19,12 +23,14 @@ services:
       - ../.env.example
     environment:
       PLATFORM_API_PLATFORM_DB_ENABLED: "true"
-      PLATFORM_API_PLATFORM_DB_AUTO_CREATE: "true"
-      PLATFORM_API_DATABASE_URL: "sqlite+pysqlite:///./.data/platform-api.db"
+      PLATFORM_API_PLATFORM_DB_AUTO_CREATE: "false"
+      PLATFORM_API_DATABASE_URL: "postgresql+psycopg://platform:platform@postgres:5432/platform_api"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["sh", "-c", "python scripts/database.py upgrade && exec uvicorn platform_api.main:create_app --factory --host 0.0.0.0 --port 2142"]
     ports:
       - "2142:2142"
-    # 如果要切到 PostgreSQL：
-    # 1. 使用 `docker compose --profile postgres up`
-    # 2. 把 PLATFORM_API_PLATFORM_DB_AUTO_CREATE 改成 "false"
-    # 3. 把 PLATFORM_API_DATABASE_URL 改成:
-    #    postgresql+psycopg://platform:platform@postgres:5432/platform_api
+
+volumes:
+  platform-postgres-data:

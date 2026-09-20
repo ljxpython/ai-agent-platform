@@ -1,0 +1,13 @@
+{
+  "restored": {
+    "run_status": "success",
+    "history_count": 5,
+    "tool_result_retained": true
+  },
+  "original_restarted": {
+    "run_status": "success",
+    "history_count": 5,
+    "tool_result_retained": true
+  },
+  "restored_worker_jobs": 0
+}

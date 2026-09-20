@@ -90,7 +90,7 @@
 - `apps/platform-web/src/modules/dear-agent/pages/DearAgentSkillsPage.vue`、`apps/platform-web/src/services/dear-agent/skills.service.ts`。
 - `scripts/local-stack.sh`、`apps/runtime-service/src/runtime_service/messaging/{__main__.py,inbox.py}`。
 
-参考项目证据（相对 `/Users/lijiaxin/PyCharmMiscProject/research/deer-flow`）：
+参考项目证据（相对 `../research/deer-flow（相对仓库根目录的外部参考源码）`）：
 
 - `backend/app/gateway/routers/skills.py`：安装、内容、编辑、历史、回滚和开关路由。
 - `backend/packages/harness/deerflow/tools/builtins/review_skill_package_tool.py`：真实存在的只读审查工具。

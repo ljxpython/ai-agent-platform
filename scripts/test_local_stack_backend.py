@@ -8,6 +8,46 @@ from pathlib import Path
 
 
 class LocalStackBackendTest(unittest.TestCase):
+    def test_failed_platform_migration_blocks_start(self):
+        script = Path(__file__).with_name("local-stack.sh").resolve()
+        with tempfile.TemporaryDirectory() as directory:
+            result = subprocess.run([
+                "bash", "-c", """
+source "$1" help >/dev/null
+PLATFORM_API_DIR="$2"
+RUNTIME_DIR="$2"
+validate_stack() { :; }
+validate_runtime() { :; }
+check_postgres() { :; }
+uv() { printf '%s\n' "$*"; return 17; }
+start_managed_key() { printf 'UNEXPECTED START\n'; }
+start
+""", "test", str(script), directory,
+            ], env={**os.environ, "TMPDIR": directory}, capture_output=True, text=True, timeout=10, check=False)
+            self.assertEqual(result.returncode, 17, result.stderr)
+            self.assertIn("scripts/database.py upgrade", result.stdout)
+            self.assertNotIn("UNEXPECTED START", result.stdout)
+            self.assertNotIn("graphharbor migrate", result.stdout)
+
+    def test_cleanup_preview_preserves_database_and_backups(self):
+        script = Path(__file__).with_name("cleanup_env.sh").resolve()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "scripts").mkdir()
+            local_script = root / "scripts/cleanup_env.sh"
+            local_script.write_text(script.read_text())
+            data = root / "apps/platform-api/.data/backups"
+            data.mkdir(parents=True)
+            protected = [data / "recovery.db", data.parent / "platform-api.db"]
+            for path in protected:
+                path.write_bytes(b"must remain unchanged")
+            result = subprocess.run(["bash", str(local_script), "--dry-run"], capture_output=True, text=True, timeout=10, check=False)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            for path in protected:
+                self.assertEqual(path.read_bytes(), b"must remain unchanged")
+            self.assertNotIn("DROP DATABASE", local_script.read_text())
+            self.assertNotIn("CASCADE", local_script.read_text())
+
     def test_terminal_switch(self):
         script = Path(__file__).with_name("local-stack.sh").resolve()
         for override, configured, expected in (

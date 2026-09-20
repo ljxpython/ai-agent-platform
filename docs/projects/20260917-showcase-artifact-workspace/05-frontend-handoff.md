@@ -115,7 +115,7 @@ x-project-id: <当前项目>
 
 # 前端架构与交互方案设计（参考借鉴 open-swe）
 
-本设计参考 `/Users/lijiaxin/PyCharmMiscProject/research/open-swe`（以下简称 open-swe）中关于 `AgentRightPanel`、`RightPanelTabs`、`TerminalPanel` 和 `SandboxedHtmlFrame` 的成熟工程实践，结合平台现有 Vue 3 技术栈与后端契约进行对齐。
+本设计参考 `../research/open-swe（相对仓库根目录的外部参考源码）`（以下简称 open-swe）中关于 `AgentRightPanel`、`RightPanelTabs`、`TerminalPanel` 和 `SandboxedHtmlFrame` 的成熟工程实践，结合平台现有 Vue 3 技术栈与后端契约进行对齐。
 
 ## 1. 整体面板容器与布局（解决固定 320px 挤爆问题）
 

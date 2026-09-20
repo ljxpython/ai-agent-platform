@@ -13,6 +13,7 @@ RUN uv sync --frozen --no-dev --no-install-project
 
 COPY src ./src
 COPY migrations ./migrations
+COPY scripts/database.py ./scripts/database.py
 COPY alembic.ini ./
 RUN uv sync --frozen --no-dev --no-editable
 

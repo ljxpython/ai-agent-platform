@@ -76,8 +76,8 @@ for (const viewport of [
       await expect(
         reviews.getByRole("button", { name: "提交所选决策" }),
       ).toBeDisabled();
-      await reviews.getByLabel("处理方式").selectOption("approve");
-      await reviews.getByRole("button", { name: "提交所选决策" }).click();
+      await reviews.getByRole("button", { name: "批准 (Approve)" }).click();
+      await reviews.getByRole("button", { name: "确认批准所选操作" }).click();
       await expect(reviews).not.toBeVisible({ timeout: 90000 });
       await expect(
         page.getByRole("button", { name: "发送", exact: true }).and(page.locator(":enabled")),
@@ -116,7 +116,7 @@ for (const viewport of [
       await page.screenshot({
         path: "/tmp/platform-web-chat-failure.png",
         fullPage: true,
-      });
+      }).catch(() => undefined);
       expect(browserErrors).toEqual([]);
       throw error;
     } finally {

@@ -3,11 +3,10 @@ from __future__ import annotations
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import engine_from_config, pool
-
 from platform_api.config import load_settings
 from platform_api.core.db.base import Base
 from platform_api.core.db.init_db import import_core_models
+from sqlalchemy import engine_from_config, pool
 
 config = context.config
 if config.config_file_name is not None:
@@ -15,7 +14,7 @@ if config.config_file_name is not None:
 
 settings = load_settings()
 if not config.get_main_option("sqlalchemy.url") and settings.database_url:
-    config.set_main_option("sqlalchemy.url", settings.database_url)
+    config.set_main_option("sqlalchemy.url", settings.database_url.replace("%", "%%"))
 
 import_core_models()
 target_metadata = Base.metadata

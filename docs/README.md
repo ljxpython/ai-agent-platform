@@ -11,6 +11,7 @@
 
 ## 2. 启动、部署和运维
 
+- [数据库部署、迁移与本地开发规范](./guides/database-operations.md)
 - [本地开发说明](./quickstart/local-dev.md)
 - [环境变量矩阵](./quickstart/env-matrix.md)
 - [部署文档](./quickstart/deployment-guide.md)
@@ -25,6 +26,7 @@
 - [更新日志](./CHANGELOG.md)
 - [发布记录](./releases/)
 - [功能现状总览](./FEATURES.md) —— 按服务分组的当前功能清单，看仓库现在有什么直接看这份
+- [Platform API PostgreSQL 迁移专项](./projects/20260920-platform-api-postgresql-migration/README.md) —— 已完成本地切换、完整验收及历史清理；部署、迁移与恢复规范已交付
 - [GraphHarbor v3 对齐与平台迁移](./projects/20260915-graphharbor-v3-alignment/README.md) —— 已批准实施；A及B1/B2完成，Server补验与平台恢复接入进行中，前端本轮只交接
 - [Dear Agent 总纲与能力迁移](./projects/20260913-dearflow-agent/README.md) —— 第二版规划；先搭前后端框架，独立前端复用 Chat，逐章接续与 23 个 Skills 验收，待治理评审
 - [Platform Web 架构与 Agent Chat 重构](./projects/20260910-platform-web-refactor/README.md) —— 原前端六专题已批准、待实施；第 07 专题多端队列与 Runtime Middleware 最后完成，记录 GraphHarbor 仓库位置及通用引擎边界

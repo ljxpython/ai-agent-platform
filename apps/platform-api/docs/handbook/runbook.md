@@ -52,6 +52,8 @@ uv run --frozen python -m unittest discover -s tests/integration -p 'test_*.py'
 
 ## 备份与恢复
 
+新服务器建库、SQLite 导入、后续 schema 迁移和本地 PG 的统一入口见[数据库运维规范](../../../../docs/guides/database-operations.md)。
+
 1. 停止接入写请求并停止Runtime Worker，确认在途请求结束、两库处于稳定窗口。
 2. 使用与PG服务端匹配的pg_dump客户端，以custom格式分别备份Platform/Runtime；数据库凭据走环境或安全凭据文件。备份包含敏感数据，限制访问。
 3. 单独保存master key、签发/验证秘密及工具工作区。PG dump不包含Redis队列或外部副作用。

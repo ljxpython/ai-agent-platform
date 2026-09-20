@@ -1,0 +1,25 @@
+{
+  "project_id": "1955cec7-35f3-4c34-af42-d3d50a01052d",
+  "thread_id": "d1769658-c809-4aa0-8c2c-e0a948e02b7b",
+  "runtime_version": "0.13.0",
+  "web_http": 200,
+  "document": {
+    "id": "5cf8f14e-73ad-4dea-b7df-c9a7775e86f8",
+    "project_id": "1955cec7-35f3-4c34-af42-d3d50a01052d",
+    "batch_id": "pg-migration-20260920",
+    "idempotency_key": "pg-compose-result",
+    "filename": "acceptance.txt",
+    "content_type": "text/plain",
+    "storage_path": null,
+    "source_kind": "upload",
+    "parse_status": "success",
+    "summary_for_model": "migration acceptance",
+    "parsed_text": "PostgreSQL result retained",
+    "structured_data": null,
+    "provenance": {},
+    "confidence": null,
+    "error": null,
+    "created_at": "2026-09-19T18:38:02.877681+00:00"
+  },
+  "restart_data_retained": true
+}

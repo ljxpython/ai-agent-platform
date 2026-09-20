@@ -17,6 +17,8 @@
 
 为准。
 
+首次建库脚本、空卷/已有卷差异、Alembic 初始化和后续迁移，统一遵循[数据库运维规范](../docs/guides/database-operations.md)。控制面关闭自动建表，Compose 在 API 启动前执行 Alembic。
+
 ## 1. 目标拓扑
 
 ### 1.1 单应用 `runtime-service`

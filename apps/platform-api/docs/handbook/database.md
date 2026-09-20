@@ -35,7 +35,7 @@ uv run --frozen alembic current
 
 不支持旧平台库直接升级，不能用stamp冒充迁移。启动时bootstrap按配置创建管理员，不将密码写入迁移文件。
 
-本地SQLite可以使用示例自动建表或 `uv run --frozen python scripts/init_db.py`；这不是Alembic迁移或PG验收。确认目标库后执行，禁止用初始化工具修补真实数据。
+正式本地开发使用本机独立 PostgreSQL，示例关闭自动建表。SQLite 仅用于隔离测试和迁移源；建库脚本、首次服务器部署及后续迁移遵循[数据库运维规范](../../../../docs/guides/database-operations.md)。
 
 ## 表变更与事务
 

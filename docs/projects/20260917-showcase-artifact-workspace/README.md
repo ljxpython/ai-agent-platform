@@ -21,7 +21,7 @@
 ## 改动范围
 
 - **影响服务：** runtime-service、platform-api、platform-web
-- **参考项目：** `/Users/lijiaxin/PyCharmMiscProject/research/open-swe`
+- **参考项目：** `../research/open-swe（相对仓库根目录的外部参考源码）`
 - **预计工作量：** 8–12 人日，分阶段交付
 
 ## 实施顺序

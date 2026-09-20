@@ -196,8 +196,8 @@ services:
       - PLATFORM_API_RUNTIME_DELEGATION_ISSUER=platform-api
       - PLATFORM_API_RUNTIME_DELEGATION_AUDIENCE=runtime-service
       - PLATFORM_API_PLATFORM_DB_ENABLED=true
-      - PLATFORM_API_PLATFORM_DB_AUTO_CREATE=true
-      - PLATFORM_API_DATABASE_URL=sqlite+pysqlite:///./.data/platform-api.db
+      - PLATFORM_API_PLATFORM_DB_AUTO_CREATE=false
+      - PLATFORM_API_DATABASE_URL=postgresql+psycopg://platform_api:<password>@127.0.0.1:5432/platform_api
       - PLATFORM_API_JWT_ACCESS_SECRET
       - PLATFORM_API_JWT_REFRESH_SECRET
       - PLATFORM_API_BOOTSTRAP_ADMIN_ENABLED=true

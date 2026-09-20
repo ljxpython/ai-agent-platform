@@ -1,0 +1,8 @@
+{
+  "sqlite_p95_ms": 870.2139179949882,
+  "postgresql_p95_ms": 1065.309931000229,
+  "p95_ratio": 1.224193165577897,
+  "postgresql_errors": 0,
+  "sqlite_errors": 0,
+  "scope": "Real HTTP login/list/create and audit; gateway idempotency verified separately."
+}

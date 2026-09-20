@@ -1,0 +1,40 @@
+{
+  "project_counts": [
+    {
+      "status": "active",
+      "count": 1
+    },
+    {
+      "status": "deleted",
+      "count": 118
+    }
+  ],
+  "preserved_table_counts": {
+    "agents": 171,
+    "project_members": 119,
+    "runtime_catalog_graphs": 4,
+    "runtime_catalog_models": 7,
+    "audit_logs": 1032,
+    "run_requests": 23
+  },
+  "test_agents_unchanged": true,
+  "backup": "apps/platform-api/.data/backups/20260920T015830Z-project-cleanup",
+  "independent_agent_ids": true,
+  "same_global_graph_catalog": true,
+  "keep_agents_unchanged": true,
+  "deleted_project_agents_status": 404,
+  "projects": {
+    "items": [
+      {
+        "id": "5a5b7239-43e3-40e6-bba3-e64d96057607",
+        "tenant_id": "4e5f16c5-e666-4711-a149-7e85a0781a5c",
+        "name": "test",
+        "description": "测试",
+        "status": "active",
+        "created_at": "2026-09-11T13:18:36+08:00",
+        "updated_at": "2026-09-11T13:18:36+08:00"
+      }
+    ],
+    "total": 1
+  }
+}

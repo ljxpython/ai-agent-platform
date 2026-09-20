@@ -309,7 +309,7 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
     <PageHeader
       eyebrow="Graphs"
       title="Graphs"
-      description="浏览当前项目已授权的执行图，直接开始对话。"
+      description="浏览全局 Graph 目录；各项目共享执行图定义，运行权限由当前项目策略控制。"
     >
       <template #actions>
         <BaseButton
@@ -362,7 +362,7 @@ watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
       v-if="!currentProject"
       icon="project"
       title="请先选择项目"
-      description="选择项目后查看已授权的执行图。"
+      description="选择项目作为权限上下文后查看全局执行图目录。"
     />
 
     <TablePageLayout v-else>

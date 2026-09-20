@@ -1,0 +1,26 @@
+{
+  "wrong_password": {
+    "exit_code": 1,
+    "message": "Database operation failed: OperationalError"
+  },
+  "missing_database": {
+    "exit_code": 1,
+    "message": "Database operation failed: OperationalError"
+  },
+  "unreachable": {
+    "exit_code": 1,
+    "message": "Database operation failed: OperationalError"
+  },
+  "permission_denied": {
+    "exit_code": 1,
+    "message": "Database operation failed: OperationalError"
+  },
+  "unmigrated": {
+    "exit_code": 1,
+    "message": "Database operation failed: Database is not at Alembic head; run the explicit upgrade first."
+  },
+  "runtime_data_isolation": {
+    "denied": true,
+    "error_type": "ProgrammingError"
+  }
+}

@@ -43,6 +43,8 @@ services:
       interval: 60s
 
   runtime-service:
+    entrypoint: ["sh", "-c"]
+    command: ["graphharbor migrate upgrade && python -m runtime_service.messaging && exec graphharbor serve --host 0.0.0.0 --port 8000 --config /app/langgraph.json --env-file /dev/null --no-browser"]
     image: "${RUNTIME_SERVICE_IMAGE:-aitestlab-runtime-service:local}"
     restart: unless-stopped
     build:
@@ -61,6 +63,9 @@ services:
       PLATFORM_RUNTIME_DELEGATION_ISSUER: "platform-api"
       PLATFORM_RUNTIME_DELEGATION_AUDIENCE: "runtime-service"
       PLATFORM_RUNTIME_MANAGEMENT_API_KEY: "${PLATFORM_RUNTIME_MANAGEMENT_API_KEY:-}"
+      PLATFORM_RUNTIME_MODEL_CONFIG_URL: "http://platform-api:2142/api/runtime/internal/model-config"
+      PLATFORM_RUNTIME_MESSAGE_AUTH_URL: "http://platform-api:2142/api/runtime/internal/message-authorization"
+      RUNTIME_SELF_URL: "http://127.0.0.1:8000"
       SYSTEM_PROMPT: "${SYSTEM_PROMPT:-}"
       MULTIMODAL_PARSER_MODEL_ID: "${MULTIMODAL_PARSER_MODEL_ID:-gpt_5.4-ccr}"
       ENABLE_TOOLS: "${ENABLE_TOOLS:-}"
@@ -80,9 +85,9 @@ services:
       INTERACTION_DATA_SERVICE_TOKEN: "${INTERACTION_DATA_SERVICE_TOKEN:-}"
       INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS: "${INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS:-10}"
       REDIS_URI: "redis://${SHARED_REDIS_HOST:-redis}:${SHARED_REDIS_PORT:-6379}/${RUNTIME_REDIS_DB:-0}"
-      POSTGRES_URI: "postgres://${RUNTIME_POSTGRES_USER:-runtime_service}:${RUNTIME_POSTGRES_PASSWORD:-runtime_service}@${SHARED_POSTGRES_HOST:-postgres}:5432/${RUNTIME_POSTGRES_DB:-runtime_service}?sslmode=disable"
+      DATABASE_URI: "postgres://${RUNTIME_POSTGRES_USER:-runtime_service}:${RUNTIME_POSTGRES_PASSWORD:-runtime_service}@${SHARED_POSTGRES_HOST:-postgres}:5432/${RUNTIME_POSTGRES_DB:-runtime_service}?sslmode=disable"
     healthcheck:
-      test: ["CMD", "python", "/api/healthcheck.py"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ok', timeout=5).read()"]
       interval: 60s
       start_period: 10s
 
@@ -118,6 +123,7 @@ services:
       start_period: 10s
 
   platform-api:
+    command: ["sh", "-c", "python scripts/database.py upgrade && exec uvicorn platform_api.main:create_app --factory --host 0.0.0.0 --port 2142"]
     image: "${PLATFORM_API_IMAGE:-aitestlab-platform-api:local}"
     restart: unless-stopped
     build:
@@ -136,8 +142,9 @@ services:
       PLATFORM_API_LANGGRAPH_UPSTREAM_TIMEOUT_SECONDS: "60"
       PLATFORM_API_LANGGRAPH_UPSTREAM_API_KEY: "${PLATFORM_RUNTIME_MANAGEMENT_API_KEY:-}"
       PLATFORM_API_RUNTIME_DELEGATION_SECRET: "${PLATFORM_RUNTIME_DELEGATION_SECRET:-}"
+      PLATFORM_API_MODEL_CONFIG_MASTER_KEY: "${PLATFORM_API_MODEL_CONFIG_MASTER_KEY:-}"
       PLATFORM_API_PLATFORM_DB_ENABLED: "true"
-      PLATFORM_API_PLATFORM_DB_AUTO_CREATE: "true"
+      PLATFORM_API_PLATFORM_DB_AUTO_CREATE: "false"
       PLATFORM_API_DATABASE_URL: "postgresql+psycopg://${PLATFORM_API_POSTGRES_USER:-platform_api}:${PLATFORM_API_POSTGRES_PASSWORD:-platform_api}@${SHARED_POSTGRES_HOST:-postgres}:5432/${PLATFORM_API_POSTGRES_DB:-platform_api}"
       PLATFORM_API_AUTH_REQUIRED: "${PLATFORM_API_AUTH_REQUIRED:-true}"
       PLATFORM_API_JWT_ACCESS_SECRET: "${PLATFORM_API_JWT_ACCESS_SECRET:-change-me-access-secret}"

@@ -104,6 +104,9 @@ describe('chat branching', () => {
     ]
     const context = getChatBranchContext('', routed)
     expect(buildChatMessageMetadata([humanMessage, retriedAiMessage], routed, context)['human-1']?.branchOptions).toEqual(['original', 'retry'])
+    const metadata = buildChatMessageMetadata([humanMessage, retriedAiMessage], routed, context)
+    expect(metadata['human-1']?.parentCheckpoint?.checkpoint_id).toBe('root')
+    expect(metadata['human-1']?.firstSeenState?.checkpoint.checkpoint_id).toBe('human')
   })
 
   it('多轮对话中定位历史消息的 checkpointId，且绝对不包含后续轮次的消息', () => {
@@ -140,5 +143,4 @@ describe('chat branching', () => {
     expect(truncatedMeta['a1']?.checkpointId).toBeUndefined()
   })
 })
-
 
