@@ -67,7 +67,7 @@
 
 当前规划：[Dear Agent 总纲与能力迁移](docs/projects/20260913-dearflow-agent/README.md)（第二版：独立前端、前后端基础框架与逐章实施接续；治理方案待评审，尚未实施）。
 
-成果专项：[Dear Agent 成果页分层规划](docs/projects/20260920-dear-agent-artifacts-alignment/README.md)（本方负责后端/Runtime，前端由其他同事实现；[接口与测试交接](docs/projects/20260920-dear-agent-artifacts-alignment/04-frontend-handoff.md)已细化，仅规划未实施）。
+成果专项：[Dear Agent 成果页分层规划](docs/projects/20260920-dear-agent-artifacts-alignment/README.md)（本方负责后端/Runtime，前端由其他同事实现；[接口与测试交接](docs/projects/20260920-dear-agent-artifacts-alignment/04-frontend-handoff.md)已完成，后端/Runtime 验证完成；前端页面及联合浏览器验收暂未实施）。
 
 新增专项：[Runtime 工具治理收敛](docs/projects/20260920-runtime-optional-tool-resolution/README.md)（方案已批准，待实施；Runtime 执行、平台管理禁用例外、Catalog 仅展示；旧功能直接退役，不维护或迁移旧项目）。
 

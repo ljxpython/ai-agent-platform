@@ -102,6 +102,8 @@ function resolveWorkspacePath(imageSrc: string, baseFilePath: string): string {
   return normalized.startsWith('/workspace') ? normalized : `/workspace${normalized}`;
 }
 
+let markdownTaskSeq = 0;
+
 watch(
   [
     () => props.previewResult?.textPreview?.text,
@@ -110,6 +112,7 @@ watch(
     () => props.threadId,
   ],
   async ([rawText, currentPath, projId, thId]) => {
+    const taskId = ++markdownTaskSeq;
     cleanupMarkdownBlobUrls();
 
     if (!rawText || props.previewResult?.kind !== 'markdown') {
@@ -141,23 +144,40 @@ watch(
       return;
     }
 
-    let modifiedText = rawText;
-    const newBlobUrls: string[] = [];
-
-    for (const src of candidates) {
+    // 并发请求所有图片 Blob
+    const loadTasks = Array.from(candidates).map(async (src) => {
       const workspaceTarget = resolveWorkspacePath(src, currentPath);
-      if (!workspaceTarget) continue;
-
+      if (!workspaceTarget) return null;
       try {
         const preview = await getWorkspacePreview(projId, thId, workspaceTarget);
         if (preview.kind === 'image' && preview.imageBlob) {
           const blobUrl = URL.createObjectURL(preview.imageBlob);
-          newBlobUrls.push(blobUrl);
-          // 全局替换该图片路径为本地 Object URL
-          modifiedText = modifiedText.split(src).join(blobUrl);
+          return { src, blobUrl };
         }
       } catch {
         // 单张图片拉取失败不影响其它图片及文本渲染
+      }
+      return null;
+    });
+
+    const results = await Promise.allSettled(loadTasks);
+
+    // 代际检查：若期间已切换文件，立即销毁所有新创建的 Object URL，杜绝泄漏与串台
+    if (taskId !== markdownTaskSeq) {
+      for (const res of results) {
+        if (res.status === 'fulfilled' && res.value?.blobUrl) {
+          URL.revokeObjectURL(res.value.blobUrl);
+        }
+      }
+      return;
+    }
+
+    let modifiedText = rawText;
+    const newBlobUrls: string[] = [];
+    for (const res of results) {
+      if (res.status === 'fulfilled' && res.value) {
+        newBlobUrls.push(res.value.blobUrl);
+        modifiedText = modifiedText.split(res.value.src).join(res.value.blobUrl);
       }
     }
 

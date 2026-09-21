@@ -9,11 +9,12 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 对话流式超时容错与 Transcript 解析优化 | 规划中：解决长推理超时截断与前端幽灵步骤假折叠问题 | [项目概览](projects/20260921-chat-stream-timeout-and-retry-optimization/README.md) |
 | 全平台菜单、页面与角色权限治理 | 规划中（deferred）：独立立项，讨论与实施后置；不纳入本次工具治理开发 | [后置专项](projects/20260920-platform-access-governance/README.md) |
 | Agent 回复新对话分支 | 进行中：Platform API 受控分叉和 Runtime 隔离验证实施中；前端已完成对接设计、待接入 | [项目规划](projects/20260917-agent-conversation-fork/README.md) |
 | Agent 会话访问策略（逐项审批 / 工作区免审批 / 全权负责） | 部分完成：前后端与 Runtime 均已实现三档策略（review/workspace_write/full_access）、输入框左右布局对齐与草稿态同步；待全栈启动后跑最终 E2E 验收 | [方案](projects/20260917-agent-session-access-policy/README.md) |
 | Dear Agent 专属前端 | 进行中：F1/P1 已完成（专属模块 `src/modules/dear-agent/`、独立路由、澄清表单交互卡片、审批面板与输入锁定已落地并通过 50 套全量回归）；F2—F7 后续推进 | [前端交接与实施](projects/20260913-dearflow-agent/frontend-handoff.md) |
-| Dear Agent 独立成果页闭环 | 规划中：已形成分层源码对照、Runtime/Platform 施工与后端验证方案；前端交由其他同事，接口/样例/错误/测试交接已编写；业务未实施 | [分层规划](projects/20260920-dear-agent-artifacts-alignment/README.md) · [前端交接](projects/20260920-dear-agent-artifacts-alignment/04-frontend-handoff.md) |
+| Dear Agent 独立成果页闭环 | 已完成：后端与前端核心对接全链路完成。前端实现独立 useArtifacts、右侧滑出抽屉（Drawer）、download 拦截、Axios Blob 错误解包，27 项单元测试及生产构建打包验证通过 | [分层规划](projects/20260920-dear-agent-artifacts-alignment/README.md) · [前端交接](projects/20260920-dear-agent-artifacts-alignment/04-frontend-handoff.md) |
 | Dear Agent Skills 页面改进与治理简化 | 前后端最高/已完成：无会话技能目录与详情、用户上传/更新/启停/删除、执行快照恢复、独立Alembic；前端组件重构、详情抽屉与单测全量通过，待浏览器联合演练 | [进度总览](projects/20260919-skills-page-improvement/README.md) |
 | 正式聊天 v2（LangChain 流式运行时、线程续接、工具调用与中断展示） | 已重写：官方 SDK 会话、按轮渲染、多 ID 审批、历史分支及移动工作区；最终验收见项目记录 | [Chat 重构](projects/20260910-platform-web-refactor/04-chat-session-and-interaction.md) |
 | 运行级调试配置 | 已完成：公开 Context/config 白名单、schema 参数校验；不保留旧提示词覆盖 | [接入契约](projects/20260910-platform-web-refactor/03-api-contracts.md) |

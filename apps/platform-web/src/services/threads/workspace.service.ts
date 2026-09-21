@@ -16,19 +16,72 @@ export interface WorkspacePreviewResult {
   downloadOnly?: boolean;
 }
 
+export interface WorkspaceServiceError extends Error {
+  code?: string;
+  requestId?: string;
+  status?: number;
+}
+
+export async function unwrapWorkspaceError(err: unknown): Promise<WorkspaceServiceError> {
+  if (err && typeof err === 'object') {
+    const maybeAxios = err as {
+      response?: {
+        data?: unknown;
+        status?: number;
+      };
+      message?: string;
+    };
+    const response = maybeAxios.response;
+    if (response) {
+      const status = response.status;
+      if (response.data instanceof Blob) {
+        try {
+          const text = await response.data.text();
+          const json = JSON.parse(text);
+          if (json && typeof json === 'object') {
+            const errObj = (json as Record<string, unknown>).error as Record<string, unknown> | undefined;
+            const message = (errObj?.message as string) || (json as Record<string, unknown>).message || maybeAxios.message || '请求失败';
+            const customErr = new Error(String(message)) as WorkspaceServiceError;
+            customErr.code = (errObj?.code as string) || undefined;
+            customErr.requestId = ((json as Record<string, unknown>).request_id as string) || undefined;
+            customErr.status = status;
+            return customErr;
+          }
+        } catch {
+          // 非 JSON blob，降级回退
+        }
+      } else if (response.data && typeof response.data === 'object') {
+        const json = response.data as Record<string, unknown>;
+        const errObj = json.error as Record<string, unknown> | undefined;
+        const message = (errObj?.message as string) || (json.message as string) || maybeAxios.message || '请求失败';
+        const customErr = new Error(String(message)) as WorkspaceServiceError;
+        customErr.code = (errObj?.code as string) || undefined;
+        customErr.requestId = (json.request_id as string) || undefined;
+        customErr.status = status;
+        return customErr;
+      }
+    }
+  }
+  return (err instanceof Error ? err : new Error(String(err))) as WorkspaceServiceError;
+}
+
 export async function getWorkspaceCapabilities(
   projectId: string,
   threadId: string,
   signal?: AbortSignal,
 ): Promise<WorkspaceCapabilities> {
-  const res = await platformHttpClient.get<WorkspaceCapabilities>(
-    `/api/langgraph/threads/${encodeURIComponent(threadId)}/capabilities`,
-    {
-      headers: { 'x-project-id': projectId },
-      signal,
-    },
-  );
-  return res.data;
+  try {
+    const res = await platformHttpClient.get<WorkspaceCapabilities>(
+      `/api/langgraph/threads/${encodeURIComponent(threadId)}/capabilities`,
+      {
+        headers: { 'x-project-id': projectId },
+        signal,
+      },
+    );
+    return res.data;
+  } catch (err) {
+    throw await unwrapWorkspaceError(err);
+  }
 }
 
 export async function getWorkspaceTree(
@@ -37,19 +90,23 @@ export async function getWorkspaceTree(
   params: { path?: string; limit?: number; cursor?: string } = {},
   signal?: AbortSignal,
 ): Promise<WorkspacePage<WorkspaceEntry>> {
-  const res = await platformHttpClient.get<WorkspacePage<WorkspaceEntry>>(
-    `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/tree`,
-    {
-      params: {
-        path: params.path || '/workspace',
-        ...(params.limit ? { limit: params.limit } : {}),
-        ...(params.cursor ? { cursor: params.cursor } : {}),
+  try {
+    const res = await platformHttpClient.get<WorkspacePage<WorkspaceEntry>>(
+      `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/tree`,
+      {
+        params: {
+          path: params.path || '/workspace',
+          ...(params.limit ? { limit: params.limit } : {}),
+          ...(params.cursor ? { cursor: params.cursor } : {}),
+        },
+        headers: { 'x-project-id': projectId },
+        signal,
       },
-      headers: { 'x-project-id': projectId },
-      signal,
-    },
-  );
-  return res.data;
+    );
+    return res.data;
+  } catch (err) {
+    throw await unwrapWorkspaceError(err);
+  }
 }
 
 export async function getArtifacts(
@@ -58,18 +115,22 @@ export async function getArtifacts(
   params: { limit?: number; cursor?: string } = {},
   signal?: AbortSignal,
 ): Promise<WorkspacePage<ArtifactRef>> {
-  const res = await platformHttpClient.get<WorkspacePage<ArtifactRef>>(
-    `/api/langgraph/threads/${encodeURIComponent(threadId)}/artifacts`,
-    {
-      params: {
-        ...(params.limit ? { limit: params.limit } : {}),
-        ...(params.cursor ? { cursor: params.cursor } : {}),
+  try {
+    const res = await platformHttpClient.get<WorkspacePage<ArtifactRef>>(
+      `/api/langgraph/threads/${encodeURIComponent(threadId)}/artifacts`,
+      {
+        params: {
+          ...(params.limit ? { limit: params.limit } : {}),
+          ...(params.cursor ? { cursor: params.cursor } : {}),
+        },
+        headers: { 'x-project-id': projectId },
+        signal,
       },
-      headers: { 'x-project-id': projectId },
-      signal,
-    },
-  );
-  return res.data;
+    );
+    return res.data;
+  } catch (err) {
+    throw await unwrapWorkspaceError(err);
+  }
 }
 
 export async function getWorkspacePreview(
@@ -78,15 +139,20 @@ export async function getWorkspacePreview(
   path: string,
   signal?: AbortSignal,
 ): Promise<WorkspacePreviewResult> {
-  const res = await platformHttpClient.get(
-    `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/preview`,
-    {
-      params: { path },
-      headers: { 'x-project-id': projectId },
-      responseType: 'blob',
-      signal,
-    },
-  );
+  let res;
+  try {
+    res = await platformHttpClient.get(
+      `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/preview`,
+      {
+        params: { path },
+        headers: { 'x-project-id': projectId },
+        responseType: 'blob',
+        signal,
+      },
+    );
+  } catch (err) {
+    throw await unwrapWorkspaceError(err);
+  }
 
   const contentType = (res.headers['content-type'] as string) || '';
 
@@ -143,15 +209,20 @@ export async function getWorkspaceContentBlob(
   path: string,
   signal?: AbortSignal,
 ): Promise<{ blob: Blob; fileName: string }> {
-  const res = await platformHttpClient.get(
-    `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/content`,
-    {
-      params: { path },
-      headers: { 'x-project-id': projectId },
-      responseType: 'blob',
-      signal,
-    },
-  );
+  let res;
+  try {
+    res = await platformHttpClient.get(
+      `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/content`,
+      {
+        params: { path },
+        headers: { 'x-project-id': projectId },
+        responseType: 'blob',
+        signal,
+      },
+    );
+  } catch (err) {
+    throw await unwrapWorkspaceError(err);
+  }
 
   let fileName = path.split('/').filter(Boolean).pop() || 'file';
   const disposition = res.headers['content-disposition'];
@@ -190,14 +261,19 @@ export async function downloadWorkspaceZip(
   threadId: string,
   signal?: AbortSignal,
 ): Promise<void> {
-  const res = await platformHttpClient.get(
-    `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/zip`,
-    {
-      headers: { 'x-project-id': projectId },
-      responseType: 'blob',
-      signal,
-    },
-  );
+  let res;
+  try {
+    res = await platformHttpClient.get(
+      `/api/langgraph/threads/${encodeURIComponent(threadId)}/workspace/zip`,
+      {
+        headers: { 'x-project-id': projectId },
+        responseType: 'blob',
+        signal,
+      },
+    );
+  } catch (err) {
+    throw await unwrapWorkspaceError(err);
+  }
 
   let fileName = `workspace-${threadId.slice(0, 8)}.zip`;
   const disposition = res.headers['content-disposition'];
@@ -214,4 +290,3 @@ export async function downloadWorkspaceZip(
 
   triggerBlobDownload(res.data as Blob, fileName);
 }
-

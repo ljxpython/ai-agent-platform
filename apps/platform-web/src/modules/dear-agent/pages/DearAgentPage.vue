@@ -160,7 +160,6 @@ const chatPath = computed(
 const textParam = (value: unknown) =>
   typeof value === "string" ? value : undefined;
 const selectedTarget = computed(() => target.value?.agentId ?? "");
-const currentFilterAgentId = computed(() => target.value?.agentId || textParam(route.query?.agentId) || "");
 
 const totalThreads = ref<number | undefined>(undefined);
 const pageSize = 20;
@@ -178,24 +177,19 @@ async function loadThreads(reset = true) {
   const nextOffset = reset ? 0 : offset.value + pageSize;
   listLoading.value = true;
   listError.value = "";
-  const filterAgent = currentFilterAgentId.value;
-  const metadata = filterAgent
-    ? { agent_id: filterAgent }
-    : { graph_id: "dearflow_agent" };
+  const metadata = { graph_id: "dearflow_agent" };
   try {
     const [rows, countRes] = await Promise.all([
       service.value.list({ offset: nextOffset, metadata }),
-      reset
+      reset && typeof service.value.count === "function"
         ? service.value.count({ metadata }).catch(() => undefined)
         : Promise.resolve(undefined),
     ]);
     if (requestEpoch !== listEpoch) return;
-    threads.value = rows.filter((thread) => {
-      if (filterAgent) {
-        return thread.metadata?.agent_id === filterAgent;
-      }
-      return !thread.metadata?.graph_id || thread.metadata.graph_id === "dearflow_agent";
-    });
+    threads.value = rows.filter(
+      (thread) =>
+        !thread.metadata?.graph_id || thread.metadata.graph_id === "dearflow_agent",
+    );
     offset.value = nextOffset;
     hasMore.value = rows.length === pageSize;
     if (typeof countRes === "number") {
@@ -218,19 +212,14 @@ async function handlePageChange(targetPage: number) {
   const nextOffset = (targetPage - 1) * pageSize;
   listLoading.value = true;
   listError.value = "";
-  const filterAgent = currentFilterAgentId.value;
-  const metadata = filterAgent
-    ? { agent_id: filterAgent }
-    : { graph_id: "dearflow_agent" };
+  const metadata = { graph_id: "dearflow_agent" };
   try {
     const rows = await service.value.list({ offset: nextOffset, metadata });
     if (requestEpoch !== listEpoch) return;
-    threads.value = rows.filter((thread) => {
-      if (filterAgent) {
-        return thread.metadata?.agent_id === filterAgent;
-      }
-      return !thread.metadata?.graph_id || thread.metadata.graph_id === "dearflow_agent";
-    });
+    threads.value = rows.filter(
+      (thread) =>
+        !thread.metadata?.graph_id || thread.metadata.graph_id === "dearflow_agent",
+    );
     offset.value = nextOffset;
     hasMore.value = rows.length === pageSize;
   } catch (cause) {
@@ -272,7 +261,7 @@ watch(
 );
 
 watch(
-  [activeProjectId, () => auth.sessionEpoch, currentFilterAgentId],
+  [activeProjectId, () => auth.sessionEpoch],
   ([projectId]) => {
     if (!projectId) {
       threads.value = [];
@@ -324,11 +313,11 @@ watch(
         if (
           !storedGraph ||
           (graphId && graphId !== storedGraph) ||
-          (agentId && storedAgent !== agentId)
+          (agentId && storedAgent && storedAgent !== agentId)
         )
           throw new Error("对话与所选目标不一致");
         graphId = storedGraph;
-        agentId = storedAgent;
+        agentId = storedAgent || agentId;
       }
       if (!agentId && !graphId) {
         const dearflowAgent = agents.value.find((a) => a.graph_id === "dearflow_agent");

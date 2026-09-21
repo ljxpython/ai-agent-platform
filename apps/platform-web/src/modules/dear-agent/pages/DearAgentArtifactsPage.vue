@@ -1,52 +1,31 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceProjectContext } from "@/composables/useWorkspaceProjectContext";
+import { useArtifacts } from "@/composables/useArtifacts";
 import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
 import {
   createSessionService,
   type ChatThread,
 } from "@/services/threads/session.service";
-import {
-  downloadThreadFile,
-  previewThreadFileInNewTab,
-  type RuntimeFileRef,
-} from "@/services/threads/files.service";
-import {
-  getThreadImageBlob,
-  type RuntimeImageRef,
-} from "@/services/threads/images.service";
+import type { ArtifactRef } from "@/types/workspace";
 import { formatThreadTime } from "@/utils/threads";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import BaseInput from "@/components/base/BaseInput.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
+import WorkspacePreview from "@/components/workspace/WorkspacePreview.vue";
 
 export type ArtifactCategory = "all" | "document" | "code_data" | "chart_media" | "presentation";
-
-export interface SessionArtifactItem {
-  id: string;
-  name: string;
-  path: string;
-  category: "document" | "code_data" | "chart_media" | "presentation";
-  extension: string;
-  sizeBytes?: number;
-  sha256?: string;
-  isBinary: boolean;
-  isImage: boolean;
-  isPresentation: boolean;
-  threadId: string;
-  runId?: string;
-  step?: string;
-  time?: string;
-}
 
 const route = useRoute();
 const router = useRouter();
 const { activeProjectId } = useWorkspaceProjectContext();
 
-const service = computed(() =>
-  createSessionService(createLanggraphAuthorizedFetch()),
-);
+// 1. 服务装配：动态依赖 activeProjectId，带 x-project-id 请求头
+const service = computed(() => {
+  if (!activeProjectId.value) return null;
+  return createSessionService(createLanggraphAuthorizedFetch(), activeProjectId.value);
+});
 
 // 会话列表状态
 const threads = ref<ChatThread[]>([]);
@@ -54,17 +33,38 @@ const listLoading = ref(false);
 const listError = ref("");
 const threadSearch = ref("");
 const selectedThreadId = ref<string>("");
+const deepLinkError = ref("");
+const threadOffset = ref(0);
+const hasMoreThreads = ref(true);
+const loadingMoreThreads = ref(false);
 
-// 成果列表状态
-const artifactsLoading = ref(false);
-const artifactsError = ref("");
-const artifacts = ref<SessionArtifactItem[]>([]);
+// 2. 成果列表状态：复用专用的 useArtifacts
+const {
+  artifacts,
+  loading: artifactsLoading,
+  error: artifactsError,
+  hasMore: hasMoreArtifacts,
+  selectedArtifact,
+  selectedPath,
+  previewResult,
+  loadingPreview,
+  previewError,
+  downloadingPath,
+  loadInitial: loadArtifacts,
+  loadMore: loadMoreArtifacts,
+  refresh: refreshArtifacts,
+  selectArtifact,
+  clearSelection,
+  downloadArtifact,
+} = useArtifacts(activeProjectId, selectedThreadId);
+
+// 筛选与交互状态
 const selectedCategory = ref<ArtifactCategory>("all");
 const artifactSearch = ref("");
-const downloadingPath = ref<string | null>(null);
 const copiedHash = ref<string | null>(null);
+const isDrawerOpen = ref(false);
 
-// 过滤后的会话
+// 过滤后的会话列表
 const filteredThreads = computed(() => {
   const q = threadSearch.value.trim().toLowerCase();
   if (!q) return threads.value;
@@ -75,22 +75,43 @@ const filteredThreads = computed(() => {
   });
 });
 
-// 选中的会话详情
+// 当前选中的会话详情
 const currentThread = computed(() =>
   threads.value.find((t) => t.thread_id === selectedThreadId.value),
 );
 
-// 分类筛选成果
+// 成果分类解析函数
+function categorizeArtifact(item: ArtifactRef): "document" | "code_data" | "chart_media" | "presentation" {
+  const ext = item.file_name.split(".").pop()?.toLowerCase() || "";
+  const mime = item.mime_type.toLowerCase();
+  if (ext === "pptx" || mime.includes("presentation")) return "presentation";
+  if (
+    ["png", "jpg", "jpeg", "webp", "gif", "svg"].includes(ext) ||
+    mime.startsWith("image/") ||
+    item.kind === "chart"
+  ) {
+    return "chart_media";
+  }
+  if (
+    ["zip", "tar", "gz", "json", "py", "ts", "js", "html", "css", "sql", "csv", "xlsx", "xls"].includes(ext) ||
+    ["code", "data", "archive"].includes(item.kind)
+  ) {
+    return "code_data";
+  }
+  return "document";
+}
+
+// 分类与关键词过滤成果
 const filteredArtifacts = computed(() => {
   let list = artifacts.value;
   if (selectedCategory.value !== "all") {
-    list = list.filter((a) => a.category === selectedCategory.value);
+    list = list.filter((a) => categorizeArtifact(a) === selectedCategory.value);
   }
   const q = artifactSearch.value.trim().toLowerCase();
   if (q) {
     list = list.filter(
       (a) =>
-        a.name.toLowerCase().includes(q) ||
+        a.file_name.toLowerCase().includes(q) ||
         a.path.toLowerCase().includes(q) ||
         (a.sha256 && a.sha256.toLowerCase().includes(q)),
     );
@@ -108,203 +129,84 @@ const categoryCounts = computed(() => {
     presentation: 0,
   };
   for (const a of artifacts.value) {
-    counts[a.category]++;
+    counts[categorizeArtifact(a)]++;
   }
   return counts;
 });
 
-// 加载 Dear 会话列表
-async function loadThreads() {
-  if (!activeProjectId.value) return;
-  listLoading.value = true;
+// 加载会话列表（支持分页 offset=0, 20...）
+async function loadThreads(reset = false) {
+  if (!service.value) return;
+  if (reset) {
+    threadOffset.value = 0;
+    threads.value = [];
+    hasMoreThreads.value = true;
+    listLoading.value = true;
+  } else {
+    loadingMoreThreads.value = true;
+  }
   listError.value = "";
+  deepLinkError.value = "";
+
   try {
     const rows = await service.value.list({
-      offset: 0,
+      offset: threadOffset.value,
       metadata: { graph_id: "dearflow_agent" },
     });
-    threads.value = rows.filter(
+
+    const dearThreads = rows.filter(
       (t) => !t.metadata?.graph_id || t.metadata.graph_id === "dearflow_agent",
     );
 
-    // 确定选中的会话 ID
+    if (reset) {
+      threads.value = dearThreads;
+    } else {
+      threads.value = [...threads.value, ...dearThreads];
+    }
+
+    if (dearThreads.length < 20) {
+      hasMoreThreads.value = false;
+    } else {
+      threadOffset.value += dearThreads.length;
+    }
+
+    // 路由深链处理
     const routeThreadId = route.query.threadId as string;
-    if (routeThreadId && threads.value.some((t) => t.thread_id === routeThreadId)) {
-      selectedThreadId.value = routeThreadId;
-    } else if (threads.value.length > 0 && !selectedThreadId.value) {
+    if (routeThreadId && !selectedThreadId.value) {
+      const exists = threads.value.find((t) => t.thread_id === routeThreadId);
+      if (exists) {
+        selectedThreadId.value = routeThreadId;
+      } else {
+        // 非首屏深链：独立 get 校验并置顶放入列表
+        try {
+          const detail = await service.value.get(routeThreadId);
+          if (detail && (!detail.metadata?.graph_id || detail.metadata.graph_id === "dearflow_agent")) {
+            threads.value = [detail, ...threads.value];
+            selectedThreadId.value = routeThreadId;
+          } else {
+            deepLinkError.value = "指定的会话不存在或不属于当前项目";
+          }
+        } catch {
+          deepLinkError.value = "指定的会话不存在或无权访问";
+        }
+      }
+    } else if (threads.value.length > 0 && !selectedThreadId.value && !routeThreadId) {
       selectedThreadId.value = threads.value[0].thread_id;
     }
   } catch (err) {
     listError.value = err instanceof Error ? err.message : "获取会话列表失败";
   } finally {
     listLoading.value = false;
-  }
-}
-
-// 解析成果类型
-function categorizePath(filePath: string): "document" | "code_data" | "chart_media" | "presentation" {
-  const lower = filePath.toLowerCase();
-  if (lower.endsWith(".pptx")) return "presentation";
-  if (
-    lower.endsWith(".png") ||
-    lower.endsWith(".jpg") ||
-    lower.endsWith(".jpeg") ||
-    lower.endsWith(".webp") ||
-    filePath.includes("/workspace/charts/") ||
-    filePath.includes("/workspace/generated/")
-  ) {
-    return "chart_media";
-  }
-  if (
-    lower.endsWith(".zip") ||
-    lower.endsWith(".csv") ||
-    lower.endsWith(".xlsx") ||
-    lower.endsWith(".xls") ||
-    lower.endsWith(".sql") ||
-    lower.endsWith(".html") ||
-    lower.endsWith(".css") ||
-    lower.endsWith(".js") ||
-    lower.endsWith(".py") ||
-    lower.endsWith(".ts") ||
-    lower.endsWith(".json")
-  ) {
-    return "code_data";
-  }
-  return "document";
-}
-
-function isBinaryExtension(ext: string): boolean {
-  return [".zip", ".xlsx", ".xls", ".pptx", ".pdf", ".png", ".jpg", ".jpeg", ".webp", ".bin"].includes(
-    ext.toLowerCase(),
-  );
-}
-
-// 加载选中会话的成果交付物
-async function loadSessionArtifacts(threadId: string) {
-  if (!activeProjectId.value || !threadId) {
-    artifacts.value = [];
-    return;
-  }
-  artifactsLoading.value = true;
-  artifactsError.value = "";
-  try {
-    const history = await service.value.history(threadId);
-    const discovered = new Map<string, SessionArtifactItem>();
-
-    // 遍历历史检查点中的消息与工具调用
-    for (const entry of history) {
-      const values = (entry.values || {}) as Record<string, unknown>;
-      const messages = Array.isArray(values.messages) ? values.messages : [];
-      const rawEntry = entry as unknown as Record<string, unknown>;
-      const step = typeof rawEntry.metadata === "object" &&
-        rawEntry.metadata !== null &&
-        (rawEntry.metadata as Record<string, unknown>).step !== undefined
-        ? `Step ${(rawEntry.metadata as Record<string, unknown>).step}`
-        : undefined;
-      const rawCheckpoint = rawEntry.checkpoint as Record<string, unknown> | undefined;
-      const checkpointId = String(rawEntry.checkpoint_id || rawCheckpoint?.checkpoint_id || "");
-      const time = checkpointId ? formatThreadTime(checkpointId) : undefined;
-
-      for (const msg of messages) {
-        if (!msg || typeof msg !== "object") continue;
-        const rawMsg = msg as Record<string, unknown>;
-
-        // 1. 检查 contentBlocks / content 中的 extras 与 fileRef / imageRef
-        const blocks = Array.isArray(rawMsg.contentBlocks)
-          ? rawMsg.contentBlocks
-          : Array.isArray(rawMsg.content)
-            ? rawMsg.content
-            : [];
-
-        for (const block of blocks) {
-          if (!block || typeof block !== "object") continue;
-          const b = block as Record<string, unknown>;
-
-          // 从 extras 中解析
-          const extras = (b.extras || {}) as Record<string, unknown>;
-          if (extras.runtime_file && typeof extras.runtime_file === "object") {
-            const rf = extras.runtime_file as RuntimeFileRef;
-            if (rf.path && rf.path.startsWith("/workspace/outputs/")) {
-              const ext = "." + (rf.file_name?.split(".").pop() || rf.path.split(".").pop() || "txt");
-              discovered.set(rf.path, {
-                id: rf.path,
-                name: rf.file_name || rf.path.split("/").pop() || "output",
-                path: rf.path,
-                category: categorizePath(rf.path),
-                extension: ext,
-                sizeBytes: rf.size_bytes,
-                sha256: rf.sha256,
-                isBinary: isBinaryExtension(ext),
-                isImage: false,
-                isPresentation: ext.toLowerCase() === ".pptx",
-                threadId,
-                step,
-                time,
-              });
-            }
-          }
-
-          if (extras.runtime_image && typeof extras.runtime_image === "object") {
-            const ri = extras.runtime_image as RuntimeImageRef;
-            if (ri.path && (ri.path.startsWith("/workspace/outputs/") || ri.path.includes("/workspace/charts/") || ri.path.includes("/workspace/generated/"))) {
-              const ext = "." + (ri.path.split(".").pop() || "png");
-              discovered.set(ri.path, {
-                id: ri.path,
-                name: ri.path.split("/").pop() || "chart.png",
-                path: ri.path,
-                category: "chart_media",
-                extension: ext,
-                sizeBytes: ri.size_bytes,
-                sha256: ri.sha256,
-                isBinary: true,
-                isImage: true,
-                isPresentation: false,
-                threadId,
-                step,
-                time,
-              });
-            }
-          }
-        }
-
-        // 2. 文本中正则扫描受控输出路径
-        const textContent =
-          typeof rawMsg.content === "string"
-            ? rawMsg.content
-            : JSON.stringify(rawMsg.content || "");
-        const outputMatches = textContent.match(/\/workspace\/outputs\/[a-zA-Z0-9_.-]+/g) || [];
-        for (const p of outputMatches) {
-          if (!discovered.has(p)) {
-            const ext = "." + (p.split(".").pop() || "txt");
-            discovered.set(p, {
-              id: p,
-              name: p.split("/").pop() || "file",
-              path: p,
-              category: categorizePath(p),
-              extension: ext,
-              isBinary: isBinaryExtension(ext),
-              isImage: [".png", ".jpg", ".jpeg", ".webp"].includes(ext.toLowerCase()),
-              isPresentation: ext.toLowerCase() === ".pptx",
-              threadId,
-              step,
-              time,
-            });
-          }
-        }
-      }
-    }
-
-    artifacts.value = Array.from(discovered.values());
-  } catch (err) {
-    artifactsError.value = err instanceof Error ? err.message : "读取会话成果失败";
-  } finally {
-    artifactsLoading.value = false;
+    loadingMoreThreads.value = false;
   }
 }
 
 // 切换会话
 function selectThread(threadId: string) {
+  if (selectedThreadId.value === threadId) return;
+  closeDrawer();
   selectedThreadId.value = threadId;
+  deepLinkError.value = "";
   void router.replace({
     path: route.path,
     query: { ...route.query, threadId },
@@ -320,51 +222,28 @@ function copyHash(hash: string) {
   }, 2000);
 }
 
+// 打开右侧滑出抽屉预览成果
+function openPreview(item: ArtifactRef) {
+  void selectArtifact(item);
+  isDrawerOpen.value = true;
+}
+
+// 关闭右侧滑出抽屉
+function closeDrawer() {
+  isDrawerOpen.value = false;
+  clearSelection();
+}
+
 // 安全下载
-async function handleDownload(item: SessionArtifactItem) {
-  if (!activeProjectId.value || downloadingPath.value) return;
-  downloadingPath.value = item.path;
+async function handleDownload(item: ArtifactRef) {
   try {
-    if (item.isImage) {
-      const blob = await getThreadImageBlob(
-        activeProjectId.value,
-        item.threadId,
-        item.path,
-      );
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = item.name;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 10000);
-    } else {
-      await downloadThreadFile(
-        activeProjectId.value,
-        item.threadId,
-        item.path,
-        item.name,
-      );
-    }
+    await downloadArtifact(item);
   } catch (err) {
     alert("下载失败：" + (err instanceof Error ? err.message : "未知错误"));
-  } finally {
-    downloadingPath.value = null;
   }
 }
 
-// 快速预览
-function handlePreview(item: SessionArtifactItem) {
-  if (!activeProjectId.value) return;
-  if (item.isBinary) {
-    void handleDownload(item);
-    return;
-  }
-  previewThreadFileInNewTab(activeProjectId.value, item.threadId, item.path);
-}
-
-// 格式化大小
+// 格式化字节大小
 function formatBytes(bytes?: number): string {
   if (bytes === undefined || bytes === null || bytes <= 0) return "--";
   if (bytes < 1024) return `${bytes} B`;
@@ -372,32 +251,35 @@ function formatBytes(bytes?: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-// 监听项目切换，彻底清理缓存防止数据串扰
+// 键盘事件：Esc 退出抽屉
+function handleKeyDown(e: KeyboardEvent) {
+  if (e.key === "Escape" && isDrawerOpen.value) {
+    closeDrawer();
+  }
+}
+
+// 监听项目切换，清理所有状态
 watch(activeProjectId, () => {
+  closeDrawer();
   threads.value = [];
-  artifacts.value = [];
   selectedThreadId.value = "";
   threadSearch.value = "";
   artifactSearch.value = "";
-  void loadThreads();
-});
-
-// 监听会话切换
-watch(selectedThreadId, (nextId) => {
-  if (nextId) {
-    void loadSessionArtifacts(nextId);
-  } else {
-    artifacts.value = [];
-  }
+  void loadThreads(true);
 });
 
 onMounted(() => {
-  void loadThreads();
+  window.addEventListener("keydown", handleKeyDown);
+  void loadThreads(true);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("keydown", handleKeyDown);
 });
 </script>
 
 <template>
-  <div class="flex h-full w-full overflow-hidden bg-zinc-50 dark:bg-zinc-950">
+  <div class="relative flex h-full w-full overflow-hidden bg-zinc-50 dark:bg-zinc-950">
     <!-- 左侧：Dear 会话切换栏 -->
     <aside class="flex w-72 shrink-0 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 lg:w-80">
       <!-- 头部 -->
@@ -415,7 +297,7 @@ onMounted(() => {
         </p>
         <BaseInput
           v-model="threadSearch"
-          placeholder="搜索会话标题..."
+          placeholder="搜索会话标题或 ID..."
           size="sm"
         />
       </div>
@@ -432,30 +314,44 @@ onMounted(() => {
         <div v-else-if="filteredThreads.length === 0" class="p-6 text-center text-xs text-zinc-400">
           暂无 Dear 会话
         </div>
-        <button
-          v-for="th in filteredThreads"
-          :key="th.thread_id"
-          type="button"
-          class="flex w-full flex-col gap-1 rounded-xl p-3 text-left text-xs transition-colors"
-          :class="
-            th.thread_id === selectedThreadId
-              ? 'bg-primary-50 text-primary-900 font-medium dark:bg-primary-950/50 dark:text-primary-200'
-              : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/60'
-          "
-          @click="selectThread(th.thread_id)"
-        >
-          <div class="flex items-center justify-between gap-1 w-full">
-            <span class="truncate font-medium">
-              {{ th.metadata?.title || "未命名会话" }}
+        <template v-else>
+          <button
+            v-for="th in filteredThreads"
+            :key="th.thread_id"
+            type="button"
+            class="flex w-full flex-col gap-1 rounded-xl p-3 text-left text-xs transition-colors"
+            :class="
+              th.thread_id === selectedThreadId
+                ? 'bg-primary-50 text-primary-900 font-medium dark:bg-primary-950/50 dark:text-primary-200'
+                : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/60'
+            "
+            @click="selectThread(th.thread_id)"
+          >
+            <div class="flex items-center justify-between gap-1 w-full">
+              <span class="truncate font-medium">
+                {{ th.metadata?.title || "未命名会话" }}
+              </span>
+              <span class="text-[10px] text-zinc-400 shrink-0 font-mono">
+                {{ formatThreadTime(th.updated_at) }}
+              </span>
+            </div>
+            <span class="font-mono text-[10px] text-zinc-400 truncate w-full">
+              {{ th.thread_id }}
             </span>
-            <span class="text-[10px] text-zinc-400 shrink-0 font-mono">
-              {{ formatThreadTime(th.updated_at) }}
-            </span>
+          </button>
+
+          <!-- 加载更多会话按钮 -->
+          <div v-if="hasMoreThreads && !threadSearch" class="pt-2 pb-1 text-center">
+            <button
+              type="button"
+              class="text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium disabled:opacity-50"
+              :disabled="loadingMoreThreads"
+              @click="loadThreads(false)"
+            >
+              {{ loadingMoreThreads ? "正在加载更多..." : "加载更多会话" }}
+            </button>
           </div>
-          <span class="font-mono text-[10px] text-zinc-400 truncate w-full">
-            {{ th.thread_id }}
-          </span>
-        </button>
+        </template>
       </div>
     </aside>
 
@@ -487,8 +383,18 @@ onMounted(() => {
             size="sm"
             class="w-64"
           />
+          <button
+            type="button"
+            class="inline-flex items-center gap-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            title="刷新成果列表"
+            @click="refreshArtifacts"
+          >
+            <BaseIcon name="refresh" size="xs" :class="{ 'animate-spin': artifactsLoading }" />
+            <span>刷新</span>
+          </button>
           <router-link
-            :to="{ path: `/workspace/projects/${activeProjectId}/dear-agent/${selectedThreadId || ''}` }"
+            v-if="selectedThreadId"
+            :to="{ path: `/workspace/projects/${activeProjectId}/dear-agent/${selectedThreadId}` }"
             class="inline-flex items-center gap-1 text-xs font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400 px-3 py-1.5 rounded-lg border border-primary-200 hover:bg-primary-50 dark:border-primary-900 dark:hover:bg-primary-950/40"
           >
             <span>进入该会话</span>
@@ -563,15 +469,32 @@ onMounted(() => {
 
       <!-- 成果卡片展示网格 -->
       <section class="flex-1 overflow-y-auto p-6">
-        <div v-if="artifactsLoading" class="flex h-64 items-center justify-center text-xs text-zinc-400">
+        <!-- 深链错误提示 -->
+        <div v-if="deepLinkError" class="p-8 text-center text-sm text-red-500">
+          <BaseIcon name="alert" size="md" class="mx-auto mb-2 text-red-500" />
+          <p>{{ deepLinkError }}</p>
+        </div>
+
+        <!-- 成果加载中 -->
+        <div v-else-if="artifactsLoading" class="flex h-64 items-center justify-center text-xs text-zinc-400">
           <BaseIcon name="refresh" size="md" class="animate-spin mr-2" />
-          <span>正在检索会话历史成果...</span>
+          <span>正在检索会话成果...</span>
         </div>
 
+        <!-- 成果加载报错 -->
         <div v-else-if="artifactsError" class="p-8 text-center text-sm text-red-500">
-          {{ artifactsError }}
+          <BaseIcon name="alert" size="md" class="mx-auto mb-2 text-amber-500" />
+          <p>{{ artifactsError }}</p>
+          <button
+            type="button"
+            class="mt-3 inline-flex items-center gap-1 rounded-lg border border-red-200 px-3 py-1.5 text-xs text-red-600 hover:bg-red-50"
+            @click="loadArtifacts(true)"
+          >
+            重试
+          </button>
         </div>
 
+        <!-- 空数据状态 -->
         <div
           v-else-if="filteredArtifacts.length === 0"
           class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-300 py-16 text-center dark:border-zinc-800"
@@ -591,100 +514,180 @@ onMounted(() => {
           </p>
         </div>
 
-        <div
-          v-else
-          class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3"
-        >
-          <article
-            v-for="item in filteredArtifacts"
-            :key="item.id"
-            class="flex flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xs transition-all hover:border-zinc-300 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
-          >
-            <div>
-              <!-- 顶部类型徽标与文件名 -->
-              <div class="flex items-start justify-between gap-2 mb-2">
-                <div class="flex items-center gap-2 min-w-0">
-                  <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 font-mono text-[11px] font-bold uppercase">
-                    {{ item.extension.slice(1, 5) || "FILE" }}
+        <!-- 网格列表 -->
+        <div v-else class="space-y-6">
+          <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <article
+              v-for="item in filteredArtifacts"
+              :key="item.path"
+              class="flex flex-col justify-between rounded-2xl border border-zinc-200 bg-white p-4 shadow-2xs transition-all hover:border-zinc-300 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700 cursor-pointer"
+              @click="openPreview(item)"
+            >
+              <div>
+                <!-- 顶部类型徽标与文件名 -->
+                <div class="flex items-start justify-between gap-2 mb-2">
+                  <div class="flex items-center gap-2 min-w-0">
+                    <span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 font-mono text-[11px] font-bold uppercase">
+                      {{ item.file_name.split(".").pop()?.slice(0, 4) || "FILE" }}
+                    </span>
+                    <div class="min-w-0">
+                      <h3 class="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100" :title="item.file_name">
+                        {{ item.file_name }}
+                      </h3>
+                      <p class="truncate font-mono text-[10px] text-zinc-400" :title="item.path">
+                        {{ item.path }}
+                      </p>
+                    </div>
+                  </div>
+
+                  <!-- 专属特色标签 -->
+                  <span
+                    v-if="categorizeArtifact(item) === 'presentation'"
+                    class="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/80 dark:border-amber-900/60"
+                  >
+                    幻灯片
                   </span>
-                  <div class="min-w-0">
-                    <h3 class="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100" :title="item.name">
-                      {{ item.name }}
-                    </h3>
-                    <p class="truncate font-mono text-[10px] text-zinc-400" :title="item.path">
-                      {{ item.path }}
-                    </p>
+                  <span
+                    v-else-if="item.preview_kind === 'download'"
+                    class="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                  >
+                    二进制交付
+                  </span>
+                  <span
+                    v-else
+                    class="shrink-0 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300"
+                  >
+                    可预览
+                  </span>
+                </div>
+
+                <!-- 成果属性信息 -->
+                <div class="mt-3 space-y-1.5 rounded-lg bg-zinc-50/70 p-2.5 text-[11px] text-zinc-600 dark:bg-zinc-800/40 dark:text-zinc-400 font-mono">
+                  <div class="flex items-center justify-between">
+                    <span>文件大小</span>
+                    <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ formatBytes(item.size_bytes) }}</span>
+                  </div>
+                  <div v-if="item.sha256" class="flex items-center justify-between gap-1">
+                    <span>SHA256</span>
+                    <button
+                      type="button"
+                      class="hover:underline flex items-center gap-1 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+                      :title="'点击复制完整哈希: ' + item.sha256"
+                      @click.stop="copyHash(item.sha256)"
+                    >
+                      <span>#{{ item.sha256.slice(0, 10) }}</span>
+                      <span v-if="copiedHash === item.sha256" class="text-emerald-500 text-[10px]">已复制</span>
+                    </button>
                   </div>
                 </div>
-
-                <!-- 专属特色标签 -->
-                <span
-                  v-if="item.isPresentation"
-                  class="shrink-0 rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200/80 dark:border-amber-900/60"
-                >
-                  图片型 PPTX
-                </span>
-                <span
-                  v-else-if="item.isBinary"
-                  class="shrink-0 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
-                >
-                  二进制产物
-                </span>
               </div>
 
-              <!-- 成果属性信息 -->
-              <div class="mt-3 space-y-1.5 rounded-lg bg-zinc-50/70 p-2.5 text-[11px] text-zinc-600 dark:bg-zinc-800/40 dark:text-zinc-400 font-mono">
-                <div class="flex items-center justify-between">
-                  <span>文件大小</span>
-                  <span class="font-medium text-zinc-800 dark:text-zinc-200">{{ formatBytes(item.sizeBytes) }}</span>
-                </div>
-                <div v-if="item.sha256" class="flex items-center justify-between gap-1">
-                  <span>SHA256</span>
-                  <button
-                    type="button"
-                    class="hover:underline flex items-center gap-1 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-                    :title="'点击复制完整哈希: ' + item.sha256"
-                    @click="copyHash(item.sha256)"
-                  >
-                    <span>#{{ item.sha256.slice(0, 10) }}</span>
-                    <span v-if="copiedHash === item.sha256" class="text-emerald-500 text-[10px]">已复制</span>
-                  </button>
-                </div>
+              <!-- 底部操作按钮 -->
+              <div class="mt-4 flex items-center justify-between gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                <button
+                  type="button"
+                  class="inline-flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 font-medium"
+                  @click.stop="openPreview(item)"
+                >
+                  <BaseIcon name="eye" size="xs" />
+                  <span>{{ item.preview_kind === 'download' ? '查看详情' : '在线预览' }}</span>
+                </button>
+
+                <BaseButton
+                  size="sm"
+                  variant="primary"
+                  :disabled="downloadingPath === item.path"
+                  @click.stop="handleDownload(item)"
+                >
+                  <BaseIcon
+                    :name="downloadingPath === item.path ? 'refresh' : 'download'"
+                    size="xs"
+                    :class="{ 'animate-spin': downloadingPath === item.path }"
+                  />
+                  <span>{{ downloadingPath === item.path ? "下载中..." : "安全下载" }}</span>
+                </BaseButton>
               </div>
-            </div>
+            </article>
+          </div>
 
-            <!-- 底部操作按钮 -->
-            <div class="mt-4 flex items-center justify-between gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
-              <button
-                v-if="!item.isBinary"
-                type="button"
-                class="inline-flex items-center gap-1 text-xs text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                @click="handlePreview(item)"
-              >
-                <BaseIcon name="eye" size="xs" />
-                <span>在线预览</span>
-              </button>
-              <span v-else class="text-[10px] text-zinc-400">
-                受控原字节交付
-              </span>
-
-              <BaseButton
-                size="sm"
-                variant="primary"
-                :disabled="downloadingPath === item.path"
-                @click="handleDownload(item)"
-              >
-                <BaseIcon
-                  :name="downloadingPath === item.path ? 'refresh' : 'download'"
-                  size="xs"
-                  :class="{ 'animate-spin': downloadingPath === item.path }"
-                />
-                <span>{{ downloadingPath === item.path ? "下载中..." : "安全下载" }}</span>
-              </BaseButton>
-            </div>
-          </article>
+          <!-- 分页加载更多成果 -->
+          <div v-if="hasMoreArtifacts" class="text-center pt-2">
+            <BaseButton
+              variant="secondary"
+              size="sm"
+              :disabled="artifactsLoading"
+              @click="loadMoreArtifacts"
+            >
+              <BaseIcon v-if="artifactsLoading" name="refresh" size="xs" class="animate-spin mr-1" />
+              <span>加载更多成果...</span>
+            </BaseButton>
+          </div>
         </div>
       </section>
     </main>
+
+    <!-- 右侧滑出抽屉（Drawer / Slide-over） -->
+    <Transition
+      enter-active-class="transition-opacity duration-300 ease-out"
+      enter-from-class="opacity-0"
+      enter-to-class="opacity-100"
+      leave-active-class="transition-opacity duration-200 ease-in"
+      leave-from-class="opacity-100"
+      leave-to-class="opacity-0"
+    >
+      <div
+        v-if="isDrawerOpen"
+        class="fixed inset-0 z-40 bg-black/40 backdrop-blur-2xs"
+        @click="closeDrawer"
+      />
+    </Transition>
+
+    <Transition
+      enter-active-class="transition-transform duration-300 ease-out"
+      enter-from-class="translate-x-full"
+      enter-to-class="translate-x-0"
+      leave-active-class="transition-transform duration-200 ease-in"
+      leave-from-class="translate-x-0"
+      leave-to-class="translate-x-full"
+    >
+      <div
+        v-if="isDrawerOpen"
+        class="fixed inset-y-0 right-0 z-50 flex w-full max-w-2xl flex-col bg-white shadow-2xl dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800"
+      >
+        <!-- 抽屉顶部栏 -->
+        <div class="flex h-12 items-center justify-between border-b border-zinc-200 px-4 dark:border-zinc-800 shrink-0">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="rounded bg-primary-50 px-2 py-0.5 text-xs font-semibold text-primary-700 dark:bg-primary-950/50 dark:text-primary-300">
+              成果预览
+            </span>
+            <span class="truncate text-xs font-medium text-zinc-600 dark:text-zinc-300" :title="selectedPath">
+              {{ selectedArtifact?.file_name || selectedPath }}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            class="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition-colors"
+            title="关闭预览 (Esc)"
+            @click="closeDrawer"
+          >
+            <BaseIcon name="x" size="sm" />
+          </button>
+        </div>
+
+        <!-- 抽屉预览核心主体：内嵌 WorkspacePreview -->
+        <div class="flex-1 overflow-hidden min-h-0">
+          <WorkspacePreview
+            :project-id="activeProjectId"
+            :thread-id="selectedThreadId"
+            :path="selectedPath"
+            :preview-result="previewResult ?? null"
+            :loading="loadingPreview"
+            :error="previewError"
+            @download="() => selectedArtifact && handleDownload(selectedArtifact)"
+          />
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>

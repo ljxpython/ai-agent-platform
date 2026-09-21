@@ -60,6 +60,11 @@ def _runtime_upstream_message(detail: Any, *, fallback_code: str) -> str:
         message = detail.get("message") or detail.get("detail")
         if isinstance(message, str) and message.strip():
             return message.strip()
+        inner = detail.get("detail")
+        if isinstance(inner, Mapping):
+            message = inner.get("message")
+            if isinstance(message, str) and message.strip():
+                return message.strip()
     return fallback_code.replace("_", " ")
 
 

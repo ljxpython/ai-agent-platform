@@ -118,30 +118,30 @@ if isinstance(inner, Mapping):
 4. Platform fixture thread.metadata.graph_id 改为 dearflow_agent；签名 scope 由同一 graph 派生，禁止根目录来自浏览器输入。
 5. 调列表→预览→下载→Runtime 重启→再次读取，保留字节/sha256 断言。
 
-**证据边界：** 现有测试把 actor、catalog、project scope 方法替换为固定值，真实的是两服务 HTTP、委托验签与 workspace I/O；不是完整真实账号权限验收。G2 的真实平台 HTTP smoke 另补。
+**证据边界：** 双服务测试把 actor、catalog、project scope 方法替换为固定值，真实的是两服务 HTTP、委托验签与 workspace I/O；不能单独证明真实账号权限。G2 已另用真实平台登录、A/B 项目和非成员用户验证，见实现记录。
 
 ### B04 资源和错误出口验收
 
 `runtime_client.py:read_file`：白名单 MIME；声明 Content-Length 超 20 MiB 拒绝；无长度时累计字节上限；异常和流结束通过 shield 关闭 response/client。
 
-- 增加/复用 tests/test_runtime_gateway_files.py 中流关闭、坏 MIME、超限断言。
+- 复用 tests/test_runtime_gateway_files.py；新增资源关闭、坏 MIME、超限及断流组合用例实际位于 tests/test_runtime_gateway_sdk_adapters.py:test_file_stream_limits_and_cleanup。
 - 对“响应头已发送后发生流错误”只保证终止并关闭资源；不承诺浏览器还能收到整齐的 502 JSON。前端将截断下载视为失败，不能 toast 成功。
 - CSP 与附件响应头以平台实际重建值断言，不测试“所有上游头一模一样”。
 
 ### B05 生成给前端的交付包
 
-完成后更新 04：实际 backend commit/构建标识、可用测试项目/thread、成功样本、错误样本、限制、环境、命令结果。实际 ID 去敏共享，token 不写 Markdown；前端自己登录获取会话。当前只有静态合同草案，不能填写“后端验收通过”。
+已更新 04：工作树基线、可用测试项目/thread、成功与错误样本、限制、环境和命令结果。token 不写 Markdown；前端自己登录获取会话。前端签收、页面实现及浏览器验收暂未实施。
 
 ## 6. 任务、逐项验证与状态
 
 | 任务 | 文件/函数 | 完成条件 | 当前状态 |
 |---|---|---|---|
-| B01 合同锁定 | http.py/thread_artifacts、tests/test_runtime_gateway_workspace.py | DTO、查询边界、列表脱敏断言 | 待开始 |
-| B02 嵌套消息保真 | sdk_client.py/_runtime_upstream_message | 修前失败/修后通过，其他 mapper 分支回归 | 待开始 |
-| B03 Dear 双服务专测 | tests/test_runtime_gateway_workspace.py | 真 HTTP/验签/I/O/重启；明确替身边界 | 待开始 |
-| B04 字节代理验证 | runtime_client.py/read_file、tests/test_runtime_gateway_files.py | MIME/长度/断流/资源关闭/安全头 | 待开始 |
-| B05 前端交付资料 | 本项目 04 与 implementation/ | 接口可用证据、版本、限制齐全 | 待开始 |
+| B01 合同锁定 | http.py/thread_artifacts、tests/test_runtime_gateway_workspace.py | DTO、查询边界、列表脱敏断言 | 完成 |
+| B02 嵌套消息保真 | sdk_client.py/_runtime_upstream_message | 修前失败/修后通过，其他 mapper 分支回归 | 完成 |
+| B03 Dear 双服务专测 | tests/test_runtime_gateway_workspace.py | 真 HTTP/验签/I/O/重启；明确替身边界 | 完成 |
+| B04 字节代理验证 | runtime_client.py/read_file、tests/test_runtime_gateway_sdk_adapters.py | MIME/长度/断流/资源关闭/安全头 | 完成 |
+| B05 前端交付资料 | 本项目 04 与 implementation/ | 接口可用证据、版本、限制齐全 | 完成；前端签收暂未实施 |
 
 本方后端完成不要求本方修改任何 Vue/TypeScript 文件。前端页面仍可能保留缺头 bug，必须在交接状态中明确“前端待接入”，不能据后端成功标整个成果页完成。
 
-状态：规划中；本节没有任何新增实现或测试执行记录。
+状态：完成（done）。唯一生产修改是共享错误 helper 补嵌套 message 提取；无新接口、无 schema 迁移、无放宽授权。详见 [实现记录](implementation/01-backend-artifact-delivery.md) 与 [05 验证结果](05-backend-verification.md)。

@@ -37,7 +37,7 @@
 | Platform test_routes_scope_paths_and_capability | workspace 路由、非法路径、跨项目、目标限制 | 缺头原始 envelope、同 code 不同客户端包装、全部 preview 分支 |
 | Platform test_real_two_service_http | 真 Runtime 子进程、I/O、下载 hash、重启；身份/catalog 为 fixture | Dear 专测、真实平台登录 API smoke；不照搬全部 Terminal 场景 |
 
-以上不是本次已通过记录。实施时先运行基线，保留结果；已有覆盖通过就不重复写相同测试。
+以上为规划阶段的覆盖核查。2026-09-21 已按缺口补齐并实际执行，基线和修改后结果见 §10 与实现记录；已有覆盖沿用，未另造镜像测试。
 
 ## 4. Runtime 用例施工表
 
@@ -60,7 +60,7 @@
 | 编号/建议用例 | 操作 | 必须断言 |
 |---|---|---|
 | B-T01 缺头 | 用已认证 fixture 调 artifacts，不带项目 | 400/error.code=project_id_required，不到 workspace upstream |
-| B-T02 越权 | A 用户+B项目头，或 A头+B线程，或目标 graph 禁止 | 403，对应服务 code；Runtime 文件读取未发生 |
+| B-T02 越权 | A 用户+B项目头，或 A头+B线程，或目标 graph 禁止 | Platform guard 为 403；真实 Agent Server 可先隐藏跨项目线程并返回 404/langgraph_thread_get_failed；Runtime 文件读取未发生 |
 | B-T03 嵌套错误 | create_runtime_upstream_error 收 detail.code/message | status/code/消息保留；空/坏类型有 fallback；私有字段已脱敏 |
 | B-T04 参数 | limit0/201、坏 cursor、无 path、过长 path | 422或既有400，按 route/service 所属层断言，不混为一种 |
 | B-T05 类型转发 | JSON preview/image preview/HTML preview/content | Content-Type 正确、no-store/nosniff/CSP，下载 attachment与ETag |
@@ -69,7 +69,7 @@
 | B-T08 重启 | 停同测试拥有的 Runtime，再原根启动，不seed | 原引用列表与下载hash不变；不是仅重新new对象 |
 | B-T09 真账号 smoke | 已配置本地栈真实登录及A/B项目 | 真项目权限与线程归属生效、资源可以获取、跨scope拒绝 |
 
-错误消息回归最小示例（拟放现有 SDK adapter 测试或独立 unittest）：
+错误消息回归最小示例（已实现于独立 `test_runtime_upstream_errors.py`，下方为设计示意）：
 
 ```python
 def test_nested_runtime_message(self):
@@ -85,7 +85,7 @@ def test_nested_runtime_message(self):
     self.assertEqual(error.message, "Directory changed")
 ```
 
-在改 B02 前运行此例应暴露 message 退化；必须确认真实 baseline 失败结果，不能把文档推断记录成已跑失败。
+实际先新增测试运行，得到 2 项失败；补齐 helper 后 2 项通过，完整记录见 implementation。
 
 ## 6. 可执行的确定性检查示例
 
@@ -118,7 +118,7 @@ with TemporaryDirectory(prefix="artifact-contract-") as directory:
 PY
 ```
 
-当前文档里的样本 hash 是计算样例，不是该命令本轮已执行通过的记录。
+上述独立示例未作为验收命令运行；同一组 9 字节 MD 已由真实 Agent 发布并下载核验，实际 thread/path 见 04 §11。
 
 ## 7. 正式验证命令
 
@@ -156,7 +156,7 @@ PY
 | graph_id | 线程服务端 metadata | 是，不能由客户端替代授权 |
 | artifact path/hash | publish 回执与 list | 是 |
 
-按顺序请求：合法A列表→合法预览→合法下载校验hash→去掉项目头400→B项目读A线程拒绝→权限受限用户拒绝。记录 request_id 便于定位，不打印 token 或完整上游私有详情。
+已按顺序请求：合法 A 列表→预览→下载校验 hash→去项目头 400→B 项目读 A 线程 404→非成员 403。request_id 见 04 §11，不记录 token。注意真实跨项目 404 和 fixture guard 403 是不同拦截层，不能统一写死 403。
 
 ## 8. 前端和联合验证的责任
 
@@ -183,10 +183,24 @@ G4 联合场景：
 
 ## 10. 结果记录、回滚与当前状态
 
-后续每批 `implementation/` 记录必须包含：修改文件/函数、为何修改、commit或工作树标识、命令/退出码、成功失败数、替身范围、实际请求/截图/样本位置、已知限制、交付给谁。当前不创建虚假的实现记录。
+本批实现与测试证据见 [implementation/01-backend-artifact-delivery.md](implementation/01-backend-artifact-delivery.md)，包括修改文件/函数、工作树基线、命令/结果、替身范围、实际请求样本和限制。前端接手人待团队指定，不虚填签收。
 
 首批无数据库/文件格式迁移。生产回滚只回退本次网关错误 helper 等代码；不删 outputs，不覆盖 hash 文件。前端由其负责人单独回退；原接口和旧聊天消费者仍须可用。
 
-当前记录：2026-09-20，完成源码核查和分层文档；G1/G2/G3/G4 全部未执行。阶段状态可写“后端 done、前端待接入”；只有 G4 完成才写整个成果页闭环 done。后置友好名称/Office/编辑不得被包含在 done 宣称里。
+### 2026-09-21 实际验收
 
-本轮实际执行的文档检查：9 份文档相对链接有效；5 段 JSON 可解析；3 段完整 Python 示例可编译（03 的局部伪代码不当成完整程序检查）；9 字节样例 SHA256 一致；`git diff --check` 通过。未运行示例业务逻辑，这些检查不计入 G1—G4。
+执行人：Codex；用户已批准方案实施。本方后端 **done**，整体 **partial**。
+
+| 门禁/检查 | 状态 | 本期实际证据 |
+|---|---|---|
+| G1 确定性后端合同 | 完成（done） | Runtime 42 passed；Platform 全量 214 项中 207 通过/7 skipped，包含 shared mapper/files/HTTP matrix 回归 |
+| G2 后端交付 | 完成（done） | Dear/Showcase 双服务测试 4 项通过；真实部署登录、Dear 模型两次发布、预览/下载摘要、A/B 与非成员拒绝 smoke 1 passed/52.17s；本地 runtime-api/platform-api 重启后两份原成果仍可下载且 hash 一致 |
+| G3 前端接入 | 暂未实施 | F01—F08 由前端同事完成；不能计入本次后端通过数 |
+| G4 完整页面链路 | 暂未实施 | API 部分已有证据，尚缺前端页面、下载交互、竞态、浏览器与 Showcase UI 回归 |
+| 语法检查 | 完成 | Platform src/tests 与 Runtime 涉及目录 compileall 退出 0；未宣称 lint/typecheck |
+| 性能基准/Range/大文件扩容 | 延后（deferred） | 本期未改性能架构或文件上限；后续扩容专项再做，不影响当前限制内交付 |
+| 数据迁移/回滚数据库 | 不做（本阶段） | 本期没有数据库或文件格式迁移；代码回滚不删除成果文件 |
+
+Runtime 42 项中含 5 条既有 warning；Platform 7 个 skip 是既有集成配置门禁，不算 pass，不代表整个仓库所有部署集成都验过。全量回归命令与其依赖写在实现记录。真实 smoke 的两次开发中失败预期也记录在其中，最终通过不能抹掉试验过程。
+
+2026-09-20 的静态文档检查属于历史基线；本期文档与 diff 检查另在实现记录记录，不把文档检查计为业务验收。G4 完成前，页面 HTTP 400 的用户问题仍由前端 F01 待解决。

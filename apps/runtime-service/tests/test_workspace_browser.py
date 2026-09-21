@@ -205,3 +205,56 @@ def test_directory_replaced_with_symlink_is_not_followed(tmp_path, monkeypatch):
     monkeypatch.setattr(browser.io, "_directory", open_directory)
     with pytest.raises(DocumentError):
         browser.read_file("/workspace/work/result.txt")
+
+
+def test_published_versions_and_tampering(tmp_path):
+    from runtime_service.tools.artifacts import build_artifact_tool
+
+    (tmp_path / "work").mkdir()
+    source = tmp_path / "work/report.md"
+    source.write_bytes(b"# report\n")
+    store = ArtifactWorkspace(tmp_path)
+    assert store.list_artifacts()["items"] == []
+    ref = build_artifact_tool(tmp_path).invoke({"file_path": "/workspace/work/report.md"})
+    source.write_bytes(b"# changed\n")
+    newer = store.publish("/workspace/work/report.md")
+    assert newer["path"] != ref["path"]
+    assert store.read(ref["path"])[0] == b"# report\n"
+    (tmp_path / "work/report.txt").write_bytes(b"# report\n")
+    alternate = store.publish("/workspace/work/report.txt")
+    assert alternate["artifact_id"] == ref["artifact_id"]
+    assert {item["path"] for item in store.list_artifacts()["items"]} == {
+        item["path"] for item in (ref, newer, alternate)
+    }
+    (tmp_path / ref["path"].removeprefix("/workspace/")).write_bytes(b"tampered")
+    with pytest.raises(DocumentError) as error:
+        store.read(ref["path"])
+    assert (error.value.code, error.value.status_code) == ("artifact_hash_mismatch", 409)
+
+
+def test_artifact_pagination_and_failed_publication(tmp_path):
+    (tmp_path / "work").mkdir()
+    source = tmp_path / "work/report.md"
+    store = ArtifactWorkspace(tmp_path)
+    expected = set()
+    for index in range(101):
+        source.write_text(f"report {index}")
+        expected.add(store.publish("/workspace/work/report.md")["path"])
+    first = store.list_artifacts(limit=100)
+    second = store.list_artifacts(cursor=first["next_cursor"], limit=100)
+    assert len(first["items"]) == 100 and len(second["items"]) == 1
+    assert second["next_cursor"] is None
+    paths = [item["path"] for item in first["items"] + second["items"]]
+    assert paths == sorted(expected)
+    revision = (tmp_path / "outputs").stat().st_mtime_ns
+    source.write_text("another report")
+    store.publish("/workspace/work/report.md")
+    # Deterministic even on filesystems with coarse timestamp resolution.
+    os.utime(tmp_path / "outputs", ns=(revision + 1_000_000_000,) * 2)
+    with pytest.raises(DocumentError, match="workspace_directory_changed"):
+        store.list_artifacts(cursor=first["next_cursor"])
+    before = set((tmp_path / "outputs").iterdir())
+    (tmp_path / "work/bad.png").write_bytes(b"not an image")
+    with pytest.raises(DocumentError):
+        store.publish("/workspace/work/bad.png")
+    assert set((tmp_path / "outputs").iterdir()) == before

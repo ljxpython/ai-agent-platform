@@ -2,13 +2,13 @@
 
 ## 本文目标与责任
 
-本版按用户最新要求修订：本方负责 Platform API、Runtime 后续实现与后端验证；platform-web 的全部生产代码、组件测试和浏览器自动化由前端同事负责。本轮仍仅编写规划。本文中的前端方案是交接要求，不是本方开发任务。
+本方负责 Platform API、Runtime 实现与后端验证；platform-web 的全部生产代码、组件测试和浏览器自动化由前端同事负责。用户已于 2026-09-21 审阅并批准实施；本方实施结果见 [实现记录](implementation/01-backend-artifact-delivery.md)。本文中的前端方案是交接要求，不是本方开发任务。
 
 本文负责产品范围与源码对照；Runtime 施工见 [02](02-runtime-server.md)，Platform API 施工见 [03](03-platform-api.md)，前端独立交接见 [04](04-frontend-handoff.md)，后端验收与交付批次见 [05](05-backend-verification.md)。
 
 ## 1. 证据范围与 400 根因
 
-本轮读取两个本地工作树，未修改业务代码、未启动服务、未重放用户现场请求。用户提供的 request_id 为 `eae3f734fd4b4a50b47ed4d8fcd18917`；未通过日志关联它，以下是可直接核查的静态代码因果链。
+2026-09-20 规划阶段读取两个本地工作树。用户提供的 request_id 为 `eae3f734fd4b4a50b47ed4d8fcd18917`；未通过日志关联它，以下是静态代码因果链。2026-09-21 已另用真实平台请求验证缺项目头返回 400，不能把新请求冒称原现场日志复现。
 
 参考仓库：`deer-flow`，读取时 HEAD 为 `44ae750545caff29506906f4b0b1ebf79cb23fa7`。结论针对该本地版本，不代表其他 DeerFlow 版本。
 
@@ -92,9 +92,9 @@ flowchart LR
 - `apps/platform-web/src/modules/dear-agent/pages/DearAgentArtifactsPage.vue`：项目上下文、会话列表/分页、query 深链、分类/搜索、选中项、错误展示与回到会话。
 - `apps/platform-web/src/services/threads/session.service.ts`：复用 list/get 与现有项目参数；不为成果扫描新增历史解析。
 - `apps/platform-web/src/services/threads/workspace.service.ts`：复用 getArtifacts/getWorkspaceCapabilities/getWorkspacePreview/getWorkspaceContentBlob/triggerBlobDownload，已有 signal 参数真正接入。
-- `apps/platform-web/src/composables/useThreadWorkspace.ts`：统一分页、刷新、scope 与异步生命周期、错误状态。为独立页增加一个默认开启的目录加载开关（例如 includeTree，独立页关闭），只避免无用目录请求，不新增通用数据框架。
+- `apps/platform-web/src/composables/useArtifacts.ts`：[独立抽象] 统一管理成果分页、游标追加、刷新、scope 代际生命周期与选中状态；阻断已知 download 类型的 preview 请求。供独立成果页与工作区面板共同复用，解耦目录树与终端逻辑。
 - `apps/platform-web/src/components/workspace/WorkspacePreview.vue`、`SandboxedHtmlFrame.vue`：统一渲染、Blob 生命周期、安全 iframe。保留 Markdown 渲染/源码切换；支持下载型卡片，无须对已知 download 类型请求 preview 再报 415。
-- `apps/platform-web/src/components/workspace/WorkspacePanel.vue` 与 `apps/platform-web/src/modules/dear-agent/components/DearAgentSession.vue`：同步共享错误/分页与新成果通知。新成果用 path 集合差异判断，不能仅比较条数。
+- `apps/platform-web/src/components/workspace/WorkspacePanel.vue` 与 `apps/platform-web/src/modules/dear-agent/components/DearAgentSession.vue`：复用 `useArtifacts` 共享错误/分页与新成果通知。新成果用 path 集合差异判断，不能仅比较条数。
 
 列表唯一键：`projectId + threadId + path`；同字节不同扩展名可共享 artifact_id，不能仅以 artifact_id 去重。显示分类可按 MIME/扩展名，预览策略以 preview_kind 为准。
 
@@ -198,5 +198,4 @@ D13/D14 已确认文件存在；本轮主要核对生产函数，不将参考测
 - [ ] 前端同事 F01—F08：见 04；本方不编写这些业务代码。
 - [ ] 后端交付门禁 G1/G2、前端 G3、联合 G4：见 05。
 
-状态：规划中，源码核查完成；后端/前端实现及功能测试均未开始。元数据、Office 和动态内容增强仍为后置项。
-
+状态：范围与源码对照完成；后端实施/验证/接口交接完成，前端及联合页面验收暂未实施，整体 partial。元数据、Office 等增强延后；动态 HTML 本阶段不做。

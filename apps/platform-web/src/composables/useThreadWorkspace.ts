@@ -1,6 +1,7 @@
 import { ref, shallowRef, watch, type Ref } from 'vue';
 import type {
   ArtifactRef,
+  PreviewKind,
   WorkspaceCapabilities,
   WorkspaceEntry,
 } from '@/types/workspace';
@@ -129,12 +130,29 @@ export function useThreadWorkspace(
   }
 
   // 选中并预览文件
-  async function selectFile(path: string) {
+  async function selectFile(
+    path: string,
+    entryOrArtifact?: { preview_kind?: PreviewKind | null },
+  ) {
     if (!projectId.value || !threadId.value || !path) return;
     selectedPath.value = path;
     previewError.value = null;
     loadingPreview.value = true;
     previewResult.value = null;
+
+    // 若已知为 download 类型，直接装配下载结果，绝不请求 preview 避免 415 报错
+    const knownArtifact = artifacts.value.find((a) => a.path === path);
+    const kind = entryOrArtifact?.preview_kind ?? knownArtifact?.preview_kind;
+    if (kind === 'download') {
+      if (selectedPath.value === path) {
+        previewResult.value = {
+          kind: 'download',
+          downloadOnly: true,
+        };
+        loadingPreview.value = false;
+      }
+      return;
+    }
 
     try {
       const result = await getWorkspacePreview(

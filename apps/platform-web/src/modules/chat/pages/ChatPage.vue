@@ -158,7 +158,36 @@ const activeThreadTitle = computed(() => {
 const textParam = (value: unknown) =>
   typeof value === "string" ? value : undefined;
 const selectedTarget = computed(() => target.value?.agentId ?? "");
-const currentFilterAgentId = computed(() => target.value?.agentId || textParam(route.query.agentId) || "");
+
+const currentSelectedAgent = computed(() => {
+  const agentId = target.value?.agentId || textParam(route.query.agentId);
+  if (!agentId) return null;
+  const match = agents.value.find((a) => a.id === agentId);
+  return {
+    agentId,
+    graphId: target.value?.graphId || match?.graph_id,
+  };
+});
+const currentSelectedAgentKey = computed(() => currentSelectedAgent.value?.agentId || "");
+
+function isThreadBelongToAgent(
+  thread: ChatThread,
+  selected: { agentId: string; graphId?: string } | null,
+): boolean {
+  if (!selected) return true;
+  const threadAgentId =
+    typeof thread.metadata?.agent_id === "string" ? thread.metadata.agent_id : undefined;
+  const threadGraphId =
+    typeof thread.metadata?.graph_id === "string" ? thread.metadata.graph_id : undefined;
+
+  if (threadAgentId) {
+    return threadAgentId === selected.agentId;
+  }
+  if (threadGraphId && selected.graphId) {
+    return threadGraphId === selected.graphId;
+  }
+  return false;
+}
 
 const totalThreads = ref<number | undefined>(undefined);
 const pageSize = 20;
@@ -176,17 +205,21 @@ async function loadThreads(reset = true) {
   const nextOffset = reset ? 0 : offset.value + pageSize;
   listLoading.value = true;
   listError.value = "";
-  const filterAgent = currentFilterAgentId.value;
-  const metadata = filterAgent ? { agent_id: filterAgent } : undefined;
+  const selected = currentSelectedAgent.value;
+  const metadata = selected?.graphId
+    ? { graph_id: selected.graphId }
+    : selected?.agentId
+      ? { agent_id: selected.agentId }
+      : undefined;
   try {
     const [rows, countRes] = await Promise.all([
       service.value.list({ offset: nextOffset, metadata }),
-      reset
-        ? service.value.count({ metadata }).catch(() => undefined)
+      reset && typeof service.value.count === "function"
+        ? service.value.count(metadata ? { metadata } : undefined).catch(() => undefined)
         : Promise.resolve(undefined),
     ]);
     if (requestEpoch !== listEpoch) return;
-    threads.value = rows.filter((thread) => !filterAgent || thread.metadata?.agent_id === filterAgent);
+    threads.value = rows.filter((thread) => isThreadBelongToAgent(thread, selected));
     offset.value = nextOffset;
     hasMore.value = rows.length === pageSize;
     if (typeof countRes === "number") {
@@ -209,12 +242,16 @@ async function handlePageChange(targetPage: number) {
   const nextOffset = (targetPage - 1) * pageSize;
   listLoading.value = true;
   listError.value = "";
-  const filterAgent = currentFilterAgentId.value;
-  const metadata = filterAgent ? { agent_id: filterAgent } : undefined;
+  const selected = currentSelectedAgent.value;
+  const metadata = selected?.graphId
+    ? { graph_id: selected.graphId }
+    : selected?.agentId
+      ? { agent_id: selected.agentId }
+      : undefined;
   try {
     const rows = await service.value.list({ offset: nextOffset, metadata });
     if (requestEpoch !== listEpoch) return;
-    threads.value = rows.filter((thread) => !filterAgent || thread.metadata?.agent_id === filterAgent);
+    threads.value = rows.filter((thread) => isThreadBelongToAgent(thread, selected));
     offset.value = nextOffset;
     hasMore.value = rows.length === pageSize;
   } catch (cause) {
@@ -256,7 +293,7 @@ watch(
 );
 
 watch(
-  [activeProjectId, () => auth.sessionEpoch, currentFilterAgentId],
+  [activeProjectId, () => auth.sessionEpoch, currentSelectedAgentKey],
   ([projectId]) => {
     if (!projectId) {
       threads.value = [];
@@ -308,11 +345,11 @@ watch(
         if (
           !storedGraph ||
           (graphId && graphId !== storedGraph) ||
-          (agentId && storedAgent !== agentId)
+          (agentId && storedAgent && storedAgent !== agentId)
         )
           throw new Error("对话与所选目标不一致");
         graphId = storedGraph;
-        agentId = storedAgent;
+        agentId = storedAgent || agentId;
       }
       // Graph links resolve the same project Agent; there is no second execution mode.
       if (!agentId && graphId) {
@@ -355,7 +392,11 @@ watch(
 
 function choose(value: string) {
   if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;
-  void router.push({ path: chatPath.value, query: { agentId: value } });
+  if (!value) {
+    void router.push({ path: chatPath.value });
+  } else {
+    void router.push({ path: chatPath.value, query: { agentId: value } });
+  }
 }
 function openThread(id: string) {
   if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;

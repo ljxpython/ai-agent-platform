@@ -4,7 +4,7 @@
 
 本方负责本层。仓库实际服务名为 `runtime-service`，本文 Runtime Server 指同一层。交付目标是让 Platform API 能稳定读取真实发布成果，并提供可直接给前端使用的类型、限制和错误事实。
 
-**当前状态：生产能力已在既有仓库实现；本专项尚未修改、尚未复验。** 不因本期有开发任务就重复造一套文件发布服务。必做工作是补缺口测试、核对工具链、生成确定性联调样本；生产逻辑仅修复测试实际发现的问题。新增友好名称等持久元数据不在首批范围。
+**当前状态：完成。本专项复用既有生产能力，新增回归和真实 Agent 验收；没有改 Runtime 生产逻辑。** 发布、摘要、分页、预览与隔离通过验证，无需重复建设文件服务。新增友好名称等持久元数据延后。
 
 ## 2. 当前代码目录（与本专项相关的真实子集）
 
@@ -123,7 +123,7 @@ ${RUNTIME_WORKSPACE_ROOT:-.runtime/workspaces}/dearflow_agent/
 
 ### R02 给 ArtifactWorkspace 补精确回归
 
-修改现有 `tests/test_workspace_browser.py`。建议新增一个组合用例，示意如下（文档示例，尚未写入测试文件）：
+已修改 `tests/test_workspace_browser.py`，新增 `test_published_versions_and_tampering` 与 `test_artifact_pagination_and_failed_publication`。下方保留设计示意；实际可执行用例以上述文件为准：
 
 ```python
 def test_published_artifacts_are_real_and_immutable(tmp_path):
@@ -175,14 +175,14 @@ def test_published_artifacts_are_real_and_immutable(tmp_path):
 
 | 任务 | 状态 | 必需验证 | 给下游的交付物 |
 |---|---|---|---|
-| R01 发布工具链核对 | 待开始 | 真实 Dear run 有成功 present_artifacts 回执，引用可读 | 去敏 run/thread/path 证据 |
-| R02 发布/摘要/分页缺口回归 | 待开始 | 真文件、101 项分页、同 hash 不同 ext、篡改 409 | pytest 结果与固定样本 |
-| R03 内部 HTTP/隔离回归 | 待开始 | scope、422/404/409/413/415、各 preview 类型 | 内部接口实测响应 |
-| R04 重启与样本交付 | 待开始 | 重启后原 path/sha256 一致 | 05 中双服务证据 |
-| R05 证据驱动修复与收尾 | 待开始 | 若无生产缺陷则注明无需改；有则全部回归 | 实现记录、版本与限制 |
+| R01 发布工具链核对 | 完成 | 真实 Dear run 有两次成功 present_artifacts 回执，MD/CSV 可读 | 实现记录与 04 样本 |
+| R02 发布/摘要/分页缺口回归 | 完成 | 真文件、101 项分页、同 hash 不同 ext、篡改 409 | Runtime 42 项通过 |
+| R03 内部 HTTP/隔离回归 | 完成 | scope、422/404/409/413/415、各 preview 类型 | test_dear_artifact_types_errors_and_scope |
+| R04 重启与样本交付 | 完成 | Dear/Showcase 真 Runtime 子进程重启后原 path/sha256 一致 | 05 与实现记录 |
+| R05 证据驱动修复与收尾 | 完成 | 回归未发现 Runtime 生产缺陷，无需改生产逻辑 | 实现记录；新增持久元数据延后 |
 
 验证命令、前置环境和用例覆盖细表见 [05](05-backend-verification.md)。输出给前端的正式公开接口通过 Platform API，内部 HTTP 不作为前端交接地址。
 
 ## 6. 当前状态
 
-规划中。已核查现有代码和测试覆盖；新增用例、实际运行、生产修复均未执行。R01 的模型与工具策略依赖如果阻塞，必须单列，不能由 R02 的直接发布成功替代。
+完成（done）：单元/内部 HTTP、Dear/Showcase 双服务重启与真实模型工具发布证据见 [05](05-backend-verification.md) 和 [实现记录](implementation/01-backend-artifact-delivery.md)。不包含前端浏览器验收。真实模型测试位于 `apps/runtime-service/tests/services/dearflow_agent/test_artifact_platform.py`，默认跳过，显式开启才创建合成测试项目、非成员用户并调用现有模型。

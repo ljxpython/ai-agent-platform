@@ -179,5 +179,34 @@ describe('workspace.service', () => {
     );
     expect(createObjectURLMock).toHaveBeenCalledWith(zipBlob);
   });
+
+  it('unwraps error from Blob response when HTTP request fails', async () => {
+    const errorPayload = JSON.stringify({
+      request_id: 'req-400-abc',
+      error: {
+        code: 'project_id_required',
+        message: 'x-project-id header is required',
+      },
+    });
+    const errorBlob = new Blob([errorPayload], { type: 'application/json' });
+    const axiosError = {
+      isAxiosError: true,
+      message: 'Request failed with status code 400',
+      response: {
+        status: 400,
+        data: errorBlob,
+      },
+    };
+    platformHttpClientMock.get.mockRejectedValueOnce(axiosError);
+
+    await expect(
+      getWorkspacePreview('proj-1', 'thread-1', '/workspace/outputs/bad.md'),
+    ).rejects.toMatchObject({
+      message: 'x-project-id header is required',
+      code: 'project_id_required',
+      requestId: 'req-400-abc',
+      status: 400,
+    });
+  });
 });
 

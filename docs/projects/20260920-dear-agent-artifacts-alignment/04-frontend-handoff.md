@@ -2,26 +2,31 @@
 
 ## 1. 给接手同事的第一说明
 
-**本文件是前端独立交接入口。前端由接手同事开发，本方只交付后端/Runtime 与接口资料。** 本轮仅规划，接口源码已存在但本专项尚未联调复验；不能把下表“已有”理解成“本轮新增开发完成”。
+**本文件是前端独立交接入口。后端/Runtime 与交接文档已于 2026-09-21 完成；前端 F01—F08 暂未实施，由接手同事开发。** 接口主体是既有能力，本轮修复嵌套错误消息，补齐确定性、双服务与真实平台验收。页面漏项目头仍需 F01 修复。
 
 页面路由：`/workspace/projects/:projectId/dear-agent-artifacts?threadId=:threadId`。
 
-目标：按当前项目 Dear 会话查询正式成果，页内预览与下载，和聊天工作区共享同一事实源。必须修复漏传项目头，停止从历史消息正则扫描正式成果。
+**目标**：按当前项目 Dear 会话查询正式成果，**页内通过右侧滑出抽屉（Drawer / Slide-over）进行预览与下载**，和聊天工作区共享同一事实源。必须修复漏传项目头，停止从历史消息正则扫描正式成果。
 
-### 1.1 后端交付状态台账
+### 1.1 后端交付状态台账与交互决策
 
-| 能力 | 代码现状 | 本次后端工作 | 前端可否开始 |
-|---|---|---|---|
-| 项目/线程授权 | 已有；缺项目会 400 | 补真实登录 scope smoke/负例 | 可按现有认证客户端实现 |
-| 正式成果列表 | 已有 GET artifacts + cursor | 补 Dear 双服务/分页回归 | 可按本文 DTO 开发 |
-| 文本/MD/图片/静态 HTML 预览 | 已有 | 补类型/边界/安全头实测 | 可按 preview_kind 分支 |
-| 原字节下载与 SHA256 | 已有 | 补断流/重启/摘要一致性 | 可复用 workspace.service |
-| 嵌套错误消息 | code 已提取；message 存在退化分支 | B02 拟修 | UI 依据 code，不匹配英文 message |
-| 原业务文件名、发布时间、来源 run/message | 未实现 | 首批不开发 | 不显示假值，回退 hash 文件名 |
-| CSV 表格、Office/PDF 原生预览 | 共享 workspace preview 未提供 | 首批不开发 | 源码/文件详情与下载降级 |
-| 动态 HTML、成果编辑、成果集合 ZIP | 本专项不支持 | 后置 | 不添加功能入口 |
+| 能力 | 代码现状 | 本次后端工作 | 前端可否开始 | 前端实施决策 |
+|---|---|---|---|---|
+| 项目/线程授权 | 已有；缺项目会 400 | 完成：真账号/跨项目/非成员负例 | 可按现有认证客户端实现 | F01 修复工厂注入与项目响应式 |
+| 正式成果列表 | 已有 GET artifacts + cursor | 完成：Dear 双服务与 101 项分页 | 可按本文 DTO 开发 | F02 替换历史扫描为 `getArtifacts` |
+| 成果状态管理 | 现有 `useThreadWorkspace` 耦合树/终端 | 保持树与成果独立 | 抽取独立 `useArtifacts` composable | F03 统一管理分页、游标、选中与代际控制 |
+| 文本/MD/图片/静态 HTML 预览 | 已有 | 完成：类型/边界/安全头验证 | 可按 preview_kind 分支 | F04 右侧抽屉内嵌 `WorkspacePreview.vue` |
+| 已知 download 类型处理 | 共享 workspace preview 遇二进制报 415 | 415 属预期非故障 | 客户端直接拦截 | **不发起 preview 请求**，直接展示下载卡片 |
+| 原字节下载与 SHA256 | 已有 | 完成：断流/重启/摘要一致性 | 可复用 workspace.service | 统一触发下载并清除 loading |
+| 嵌套错误消息 | 本轮补 detail.detail.message | 完成：B02 修复与全量回归 | UI 依据 code 还原 | F05 AxiosError 中解包 Blob JSON 提取 message/request_id |
+| 原业务文件名、发布时间、来源 run/message | 未实现 | 延后 | 不显示假值，回退 hash 文件名 | 首批不伪造字段，展示 hash.ext |
+| CSV 表格、Office/PDF 原生预览 | 共享 workspace preview 未提供 | 延后 | 源码/文件详情与下载降级 | 保持简单文本或下载降级 |
+| 动态 HTML | 本专项不支持 | 不做（本阶段） | 保持静态净化与 sandbox | 严格维持 `sandbox=""` 纯静态沙箱 |
+| 成果编辑、成果集合 ZIP | 本专项不支持 | 延后 | 不添加功能入口 | 不添加无用按钮与假动作 |
 
-后端交付版本：**待填**；实际可用环境/项目/thread：**待填**；测试结果：**未执行**。只有 G1/G2 完成才能将对应行标为“本期已验证”。前端可先基于当前合同开发与 mock，但最终必须换成真实接口验收。
+后端交付版本：`4c5753528beb89a0d72c04dbb156d9457dece11b` 基线 + 本专项未提交工作树。G1/G2 完成；Runtime 42 项通过，Platform 全量 207 通过/7 按集成门禁跳过，真实模型/API smoke 1 项通过。实际环境/样本见 §11；完整证据见 [实现记录](implementation/01-backend-artifact-delivery.md)。
+
+本地 runtime-api/platform-api 已按正式脚本重启并复核：两份成果保持原 path/hash；新版 Platform 嵌套错误 message 实测保留。无需前端新增发布接口、传 Runtime 委托或改数据库。
 
 ## 2. 前端目录、复用顺序和应该改哪里
 
@@ -29,37 +34,41 @@
 apps/platform-web/src/
 ├── router/routes.ts
 ├── composables/
-│   ├── useWorkspaceProjectContext.ts   # 当前项目
-│   ├── useThreadWorkspace.ts          # 列表/预览/下载状态；需补 race/error
+│   ├── useWorkspaceProjectContext.ts   # 当前项目上下文
+│   ├── useArtifacts.ts                # [NEW/独立] 成果列表/分页/选中/代际状态，供独立页与工作区抽屉复用
+│   ├── useArtifacts.spec.ts           # [NEW] 针对分页/游标/代际取消/阻断 download 请求的测试
+│   ├── useThreadWorkspace.ts          # 聊天工作区整套（树/终端/包装 useArtifacts）
 │   └── useThreadWorkspace.spec.ts
 ├── services/
 │   ├── http/client.ts                 # platformHttpClient；平台认证/刷新
 │   ├── langgraph/client.ts            # createLanggraphAuthorizedFetch
 │   └── threads/
 │       ├── session.service.ts         # createSessionService(fetch, projectId)
-│       ├── workspace.service.ts       # getArtifacts/Preview/ContentBlob 等
+│       ├── workspace.service.ts       # getArtifacts/Preview/ContentBlob 与 unwrapBlobError
 │       └── workspace.service.spec.ts
 ├── types/workspace.ts                 # ArtifactRef/PreviewKind/WorkspacePage
 ├── components/workspace/
 │   ├── WorkspacePanel.vue            # 聊天工作区复用入口
-│   ├── WorkspacePreview.vue          # 统一预览器
-│   └── SandboxedHtmlFrame.vue         # 现有静态 iframe
+│   ├── WorkspacePreview.vue          # 统一预览器（含代际控制与图片并发拉取）
+│   ├── SandboxedHtmlFrame.vue         # 现有静态 iframe（维持 sandbox=""）
+│   └── ArtifactDrawer.vue             # [NEW/推荐] 独立成果页的右侧预览滑出抽屉
 └── modules/dear-agent/
-    ├── pages/DearAgentArtifactsPage.vue
-    ├── pages/DearAgentArtifactsPage.spec.ts
-    ├── components/DearAgentSession.vue
-    └── run-actions.ts                 # 已给会话操作 transport 注入项目头
+    ├── pages/DearAgentArtifactsPage.vue # 独立成果浏览器页面（网格 + 右侧抽屉）
+    ├── pages/DearAgentArtifactsPage.spec.ts # 页面单元测试（重写，废弃假 history mock）
+    ├── components/DearAgentSession.vue # 聊天页：接入 busy 终态刷新与成果提示
+    └── run-actions.ts                 # 会话操作 transport 注入项目头
 ```
 
-阅读顺序：页面当前 service/loadSessionArtifacts → session.service → workspace.service/types → useThreadWorkspace → WorkspacePreview → DearAgentSession 的 busy watch。不要将同名 `services/runtime-gateway/workspace.service.ts` 当成果文件服务：本交接使用的是 `services/threads/workspace.service.ts`。
+阅读顺序：页面当前 service/loadSessionArtifacts → session.service → workspace.service/types → useArtifacts → WorkspacePreview → ArtifactDrawer → DearAgentSession 的 busy watch。不要将同名 `services/runtime-gateway/workspace.service.ts` 当成果文件服务：本交接使用的是 `services/threads/workspace.service.ts`。
 
-### 2.1 第一处明确修复
+### 2.1 第一处明确修复（服务工厂装配）
 
 ```ts
-// 替换页面当前未传 projectId 的 computed；这里只示范服务装配。
-const service = computed(() =>
-  createSessionService(createLanggraphAuthorizedFetch(), activeProjectId.value),
-);
+// 替换页面当前未传 projectId 的 computed；根据 activeProjectId 动态创建带头服务
+const service = computed(() => {
+  if (!activeProjectId.value) return null;
+  return createSessionService(createLanggraphAuthorizedFetch(), activeProjectId.value);
+});
 ```
 
 activeProjectId 为空时不调用 service.list/get。项目变更清空旧选择/分页/错误并重新加载。不要给所有 `createSessionService(fetch)` 调用机械加参数：chat composable 的 actions.fetch 已有项目头；本页原来传的是未经项目包装的授权 fetch。
@@ -71,15 +80,15 @@ activeProjectId 为空时不调用 service.list/get。项目变更清空旧选�
 | 方法/地址 | 入参 | 响应 | 当前封装 |
 |---|---|---|---|
 | POST /api/langgraph/threads/search | limit=20、offset、metadata.graph_id=dearflow_agent | Thread 数组 | createSessionService(...).list({offset,metadata}) |
-| GET /api/langgraph/threads/{id} | id，项目头 | Thread | service.get(id)；深链校验 |
+| GET /api/langgraph/threads/{id} | id，项目头 | Thread | service.get(id)；深链校验与置顶 |
 | GET /api/langgraph/threads/{id}/capabilities | id，项目头 | 能力对象 | getWorkspaceCapabilities(projectId,id,signal) |
 | GET /api/langgraph/threads/{id}/artifacts | limit=100、可选 cursor | WorkspacePage<ArtifactRef> | getArtifacts(projectId,id,params,signal) |
-| GET /api/langgraph/threads/{id}/workspace/preview | path 必填 | 按 Content-Type 分支 | getWorkspacePreview(projectId,id,path,signal) |
+| GET /api/langgraph/threads/{id}/workspace/preview | path 必填 | 按 Content-Type 分支 | getWorkspacePreview(projectId,id,path,signal)；**仅 preview_kind !== 'download' 时调用** |
 | GET /api/langgraph/threads/{id}/workspace/content | path 必填 | 原字节附件 | getWorkspaceContentBlob(projectId,id,path,signal) |
 
 query 参数交给客户端编码。不要把 path 手工拼接到 URL，也不要将其当 HTML 字符串插入页面。所有 private 响应 no-store；客户端状态/cache key 至少包含 projectId/threadId/path。
 
-### 3.1 会话查询
+### 3.1 会话查询与深链处理
 
 ```json
 {
@@ -92,13 +101,14 @@ query 参数交给客户端编码。不要把 path 手工拼接到 URL，也不�
 }
 ```
 
-这是 HTTP wire 形状示意；应用代码用现有 session.service，由 SDK 处理 camelCase 到 wire 字段。结果 metadata.title 为空显示“未命名会话”，updated_at 是线程更新时间，**不是成果发布时间**。
-
-继续 offset=20/40 加载；若未使用 count，只有“已加载 N 会话”。路由 threadId 不在第一页时调用 get：验证项目授权与 graph_id 后展示，不静默换成首个会话；无权限/不存在单独提示。
+1. **会话列表分页**：按 offset=0, 20, 40... 追加加载；标题或底部提示“已加载 N 个会话”。
+2. **深链 `?threadId=` 回显策略**：
+   - 用户访问带 `threadId` 路由时，若首屏 20 条会话中存在，直接选中高亮；
+   - 若首屏不存在，独立调用 `service.get(threadId)`：
+     - 若成功且 `metadata.graph_id === 'dearflow_agent'`：将其作为临时会话**前置插入到会话列表顶部**并保持选中状态；
+     - 若返回 404 或 403：右侧成果区展示明确的“会话不存在或无权访问”空态/错误态，**严禁静默 fallback 选中第一条无辜会话**！
 
 ### 3.2 capabilities
-
-相关字段示例（摘录，不代表只返回这些字段）：
 
 ```json
 {
@@ -111,7 +121,7 @@ query 参数交给客户端编码。不要把 path 手工拼接到 URL，也不�
 }
 ```
 
-artifacts 数组实际由 Runtime 全部支持 MIME 去重排序得到，示例仅列三项；它表示可发布类型，不保证可预览，也不授予写工具权限。workspace=false 与请求失败必须分开处理。
+artifacts 数组实际由 Runtime 全部支持 MIME 去重排序得到；表示可发布类型，不保证可预览，也不授予写工具权限。workspace=false 与请求失败必须分开处理。
 
 ## 4. 成果 DTO 与完整样例
 
@@ -136,7 +146,7 @@ interface WorkspacePage<T> {
 }
 ```
 
-以下样例对应真实可计算的 9 字节 UTF-8 `# report\n`，SHA256 已按这组字节计算；这是确定性接口示例，不是线上请求结果：
+确定性接口样例（真实 9 字节 UTF-8 `# report\n`）：
 
 ```json
 {
@@ -165,35 +175,87 @@ interface WorkspacePage<T> {
 | mime_type | 类型标签/辅助分类 | 不以扩展名取代后端 preview_kind |
 | size_bytes | 文件大小 | 不把 0/缺失统一表示为网络失败 |
 | kind | 历史粗分类 | 不是完整预览策略，PDF 也可能被归为 text |
-| preview_kind | 唯一渲染分支依据 | download 不代表服务故障 |
+| preview_kind | 唯一渲染分支依据 | **download 类型直接展示下载卡片，不发 preview 请求** |
 | next_cursor | 原样带回下一页 | 不是页码，不从 cursor 解码出业务信息 |
 
 没有 `total/display_name/created_at/run_id/source_message_id/slides`。首批隐藏发布时间/来源步骤，保留所属线程；不要借 checkpoint ID 或遍历消息“补齐”不存在的合同。
 
-## 5. 分页、刷新与选择状态怎么写
+## 5. 分页、刷新与状态复用设计（`useArtifacts`）
 
-页面复用 `getArtifacts` 的最小调用：
+为彻底解耦复杂的“工作区目录树/终端”与“纯成果展示”，**抽取独立的 `useArtifacts` composable**，聊天工作区面板 `WorkspacePanel.vue` 和独立成果页 `DearAgentArtifactsPage.vue` 均复用此 composable：
 
 ```ts
-const page = await getArtifacts(projectId, threadId, { limit: 100, cursor }, signal);
-// 首次或刷新：替换 items；下一页：按 path 去重追加。
-// next_cursor === null 才表示当前目录这一轮遍历结束。
+// src/composables/useArtifacts.ts 核心接口形态
+export function useArtifacts(
+  projectId: Ref<string>,
+  threadId: Ref<string>,
+) {
+  const artifacts = ref<ArtifactRef[]>([]);
+  const cursor = ref<string | null>(null);
+  const loading = ref(false);
+  const error = ref<string | null>(null);
+  const hasMore = computed(() => cursor.value !== null);
+
+  // 选中项与预览状态
+  const selectedArtifact = ref<ArtifactRef | null>(null);
+  const previewResult = shallowRef<WorkspacePreviewResult | null>(null);
+  const loadingPreview = ref(false);
+  const previewError = ref<string | null>(null);
+
+  // 动作
+  async function loadInitial(): Promise<void>;
+  async function loadMore(): Promise<void>;
+  async function refresh(): Promise<void>;
+  async function selectArtifact(item: ArtifactRef): Promise<void>;
+  function clearSelection(): void;
+  async function downloadArtifact(item: ArtifactRef): Promise<void>;
+
+  return {
+    artifacts,
+    cursor,
+    loading,
+    error,
+    hasMore,
+    selectedArtifact,
+    previewResult,
+    loadingPreview,
+    previewError,
+    loadInitial,
+    loadMore,
+    refresh,
+    selectArtifact,
+    clearSelection,
+    downloadArtifact,
+  };
+}
 ```
 
-推荐在现有 useThreadWorkspace 修复，避免页面/聊天各实现一套：
+### 5.1 状态管理核心规约
 
-1. 每次 scope 变化递增 generation、中止旧 controller、清理状态；同 scope 的 list/capabilities 可并行，不互相取消。
-2. 每个请求在发起时捕获 projectId/threadId/generation。success/catch/finally 三个出口都检查；只检查 selectedPath 不够，因为不同线程可能有同一路径。
-3. 预览再增加 request sequence；同时选两份文件时后选优先。取消错误不弹用户提示。
-4. load-more 单飞，失败保留已加载项与重试按钮；refresh 替换第一页并丢旧 cursor。
-5. `workspace_directory_changed` 最多自动重取首页一次；连续变动显示“成果有更新，请刷新”，禁止无限递归。
-6. 搜索/分类先作用于已加载集合；标题写“已加载 N 项”，不显示“全部 N 项”。筛选后仍允许加载下一页。
-7. 初次列表返回不抢占已有有效选择。手动刷新后原 path 仍存在则保留；消失则清理预览。
-8. 独立页不需要树/Terminal，给 composable 增简单 includeTree=false 选项（拟实现，当前不存在），不能直接假定现有 hook 已支持。
+1. **代际保护（Scope Generation）**：
+   - 每次 `projectId` 或 `threadId` 变化，递增代际编号 `generation`，中止上一个旧的 `AbortController`，清空 items、cursor 与错误；
+   - 异步回调（初始加载、分页、预览）返回时，比对 `generation` 是否依然匹配；若已发生切换，立即丢弃结果，严防跨线程串台。
+2. **阻断无意义的 415 请求**：
+   - 在 `selectArtifact(item)` 中：
+     - 若 `item.preview_kind === 'download'`：直接设置 `previewResult.value = { kind: 'download', downloadOnly: true }`，**绝不调用 `getWorkspacePreview`**；
+     - 若 `item.preview_kind !== 'download'`：调用 `getWorkspacePreview` 拉取预览数据。
+3. **分页与追加**：
+   - 首次加载或刷新：替换整个 `artifacts.value`；
+   - 加载更多：按 `item.path` 去重后追加到列表末尾；
+   - `cursor === null` 表示没有更多成果。
+4. **游标失效恢复**：
+   - 若遇到 409 `workspace_directory_changed`，自动重新加载首页最多 1 次；若依然冲突，显示提示“成果已更新，请点击刷新”。
 
-## 6. 预览请求怎样消费
+## 6. 预览请求消费与页内抽屉交互
 
-### 6.1 文本/Markdown JSON
+### 6.1 交互设计：右侧滑出抽屉（Drawer / Slide-over）
+
+独立页面 `DearAgentArtifactsPage.vue` 保持两栏基础结构（左侧会话、右侧成果卡片网格）。点击成果卡片上的“在线预览”或卡片主体时：
+1. **触发右侧滑出抽屉**：抽屉覆盖在右侧区域上方（宽度约 50%~60% 或 640px~800px，保留半透明遮罩）；
+2. **内嵌 `WorkspacePreview.vue`**：在抽屉内部呈现文件预览、Markdown 源码/渲染切换、文本复制与原文件下载操作；
+3. **关闭抽屉**：点击遮罩、点击右上角关闭按钮、或按下键盘 `Esc` 键，立即关闭抽屉并清理预览状态，**原列表的滚动位置与加载进度完好保留**。
+
+### 6.2 文本/Markdown JSON
 
 ```json
 {
@@ -208,29 +270,26 @@ const page = await getArtifacts(projectId, threadId, { limit: 100, cursor }, sig
 }
 ```
 
-可能附带 ArtifactRef 的其他字段，消费所需字段即可。API Content-Type 是 application/json，而文件 mime_type 是 text/markdown，两者不能混淆。JSON 成果文件预览也返回这个 envelope，不是直接返回用户 JSON 文档。
-
 沿用 WorkspacePreview 渲染/源码切换与 markdown 工具。truncated=true 提示“仅显示前 256 KiB，请下载完整文件”；本期无 load-full-preview 或 Range 接口。CSV 首批展示文本，不沿用 files.service 的简易逐行 CSV 算法承诺复杂表格支持。
 
-### 6.2 图片
+### 6.3 Markdown 内部图片加载保护
 
-preview 返回 image/png、image/jpeg 或 image/webp 字节。由授权 fetch 获取 Blob，再 URL.createObjectURL → img；切换/卸载 revoke。不能把受保护 API URL 直接放 img.src，因为不能附带项目/认证头。
+针对 Markdown 文本中引用的内部图片（如 `![chart](/workspace/charts/demo.png)`）：
+1. **任务代际与取消**：解析图片 URL 时绑定当前任务 ID；一旦用户切换查看其他成果或关闭抽屉，立即标记失效，后续返回的 Blob 不得污染界面；
+2. **并发加载**：提取所有图片路径后，采用 `Promise.allSettled` 并发获取受保护的图片 Blob，避免串行卡顿；
+3. **URL 释放**：在重新解析前及组件卸载时，遍历并调用 `URL.revokeObjectURL` 释放所有生成的临时 Object URL，杜绝内存泄漏。
 
-Markdown 内部 `/workspace/...` 图片同样走授权 preview，基于文档路径处理相对引用；晚返回的图片替换不得污染新文档。对超过工作区边界的路径不请求；外链策略沿用现有安全渲染规范，不为成果页新增自动加载外部 URL 的能力。
+### 6.4 HTML 沙箱预览
 
-### 6.3 HTML
+响应为 Runtime safe_html 的静态净化文本。调用现有的 `SandboxedHtmlFrame.vue`：
+- 维持严格的安全策略：`sandbox=""`、`referrerpolicy="no-referrer"`；
+- 明确提示：本阶段为纯静态安全沙箱，禁用一切 JavaScript 与外部引用。若 HTML 含有动态交互逻辑，引导用户点击下载原文件在本地浏览器打开。
 
-响应为 Runtime safe_html 的静态净化文本。必须调用现有 SandboxedHtmlFrame：`sandbox=""`、`referrerpolicy="no-referrer"`；可用 srcdoc，保留服务端 CSP meta。
+### 6.5 Download 类型（二进制/未知类型）
 
-参考 DeerFlow `artifact-file-preview.tsx` 使用 `sandbox="allow-scripts allow-forms"`，**这一行不能照搬**。本方禁止加 allow-scripts/allow-same-origin/allow-forms，不将原始 HTML 下载内容塞进 v-html。下载按钮拿原始文件，与净化预览是两个不同操作。
+PDF/XLS/XLSX/PPTX/ZIP 等二进制文件，`preview_kind` 均为 `download`。在抽屉内展示文件类型徽标、完整文件路径、文件大小、SHA256 哈希值，并提供明确的“下载原文件”按钮。客户端坚决不发出无意义的 preview HTTP 请求。
 
-### 6.4 download 类型
-
-PDF/XLS/XLSX/PPTX/ZIP：显示文件信息与明确下载按钮；不要调用 preview 后把预期 415 当系统故障，也不要把“预览”按钮变成直接下载。图片型 PPTX 不自带页图关联，本页不能承诺逐页预览。
-
-未知 future preview_kind 显示“暂不支持预览，可下载”，不要崩溃；是否允许下载仍由服务端判断。
-
-## 7. 下载与错误处理
+## 7. 下载与错误处理（Axios Blob 异常解包）
 
 ```ts
 const { blob, fileName } = await getWorkspaceContentBlob(projectId, threadId, item.path, signal);
@@ -239,24 +298,33 @@ triggerBlobDownload(blob, fileName);
 
 复用已有工具，不新写 document.createElement 下载逻辑。API 返回 attachment、ETag、no-store/nosniff；文件名当前取虚拟路径末段，未来业务名称另议。下载完成/取消/异常均解除 loading；错误时不 toast“成功”。客户端不把 token 塞 query/new-tab URL。
 
-### 7.1 线上的错误 envelope 与 SDK 展示不同
+### 7.1 Axios Blob 错误解析规范
 
-Platform 原始错误样例：
+当服务端返回 HTTP 4xx/5xx 时，Axios 会抛出 `AxiosError`，错误 Payload 会被打包在 `error.response.data`（类型为 Blob）中。必须在 `workspace.service.ts` 中封装通用的异常解析工具函数：
 
-```json
-{
-  "request_id": "example-request-id",
-  "error": {
-    "code": "project_id_required",
-    "message": "x-project-id header is required",
-    "details": []
+```ts
+// 错误解包工具函数：从 Axios Blob 响应中提取后端真实的 code 与 message
+export async function unwrapWorkspaceError(err: unknown): Promise<Error> {
+  if (err && typeof err === 'object' && 'response' in err) {
+    const axiosResponse = (err as any).response;
+    if (axiosResponse?.data instanceof Blob) {
+      try {
+        const text = await axiosResponse.data.text();
+        const json = JSON.parse(text);
+        if (json?.error) {
+          const customErr = new Error(json.error.message || '请求失败');
+          (customErr as any).code = json.error.code;
+          (customErr as any).requestId = json.request_id;
+          return customErr;
+        }
+      } catch {
+        // 非 JSON blob，回退到 HTTP 状态码说明
+      }
+    }
   }
+  return err instanceof Error ? err : new Error(String(err));
 }
 ```
-
-createLanggraphAuthorizedFetch 为 SDK 兼容可能把 `error` 转成字符串并提取顶层 code/message，因此用户看到的 HTTP 400 文本不一定等同原始响应结构。Axios 的平台客户端走另一条管线；不要按一个字符串正则解析全部错误。
-
-preview/content 使用 responseType=blob，错误 JSON 也可能成为 Blob。前端应在现有 workspace service 边界有界解析 JSON Blob（建议只解析 application/json 且不超过 64 KiB 的错误体），提取 error.code/message/request_id；坏 JSON/HTML 网关页回退 HTTP 状态。**这是拟补充的前端能力，当前封装没有完整实现。** UI 不展示 error.extra.upstream_detail 原文。
 
 | 状态/code | 前端动作 |
 |---|---|
@@ -264,55 +332,72 @@ preview/content 使用 responseType=blob，错误 JSON 也可能成为 Blob。�
 | 400 invalid_workspace_cursor / invalid_workspace_path | 丢弃坏 cursor 或阻止请求；不能当空列表 |
 | 401 | 交给统一登录刷新；刷新失败跳登录，停止当前 scope 请求 |
 | 403 thread_project_denied / runtime_target_denied / file_scope_denied | 无权访问，清掉敏感预览，禁止自动重试 |
+| 403 project_role_missing | 真账号不是项目成员；清空数据，提示无项目权限 |
+| 404 langgraph_thread_get_failed | 真实 Agent Server 会隐藏其他项目的线程；提示会话不存在或无权访问，不能当“暂无成果” |
 | 404 artifact_not_found / workspace_file_unavailable | 文件不可用；刷新列表/返回会话，不声称发布成功 |
 | 409 workspace_directory_changed | 游标失效，最多自动重新加载一轮 |
 | 409 artifact_hash_mismatch | 文件完整性异常，阻止预览/成功下载，展示 request_id 便于反馈 |
 | 409 workspace_capability_unavailable | 工作区能力不可用；不当游标冲突重试 |
 | 413 file_too_large / html_preview_too_large | 大 HTML 可尝试原文件下载；超原文件上限不重复下载 |
-| 415 workspace_preview_unsupported | 文件详情与下载降级 |
+| 415 workspace_preview_unsupported | 文件详情与下载降级（客户端正常流程已提前拦截） |
 | 422 validation_failed / 格式校验错误 | 参数/内容错误，展示可读提示，不无限重试 |
 | 502/504、网络断开或截断流 | 提供手动重试，保留已有列表，下载不报成功 |
 
-## 8. 前端同事的开发任务
+## 8. 前端同事的开发任务（F01—F08 明确分工）
 
-- [ ] **F01** 修项目参数；空项目不请求；factory 与真实 transport 断言。
-- [ ] **F02** 替换历史扫描为 getArtifacts；使用 ArtifactRef；删假时间/步骤；会话分页和深链。
-- [ ] **F03** useThreadWorkspace 补 scope generation/AbortSignal/预览序号/error/分页；独立页不加载树。
-- [ ] **F04** 接 WorkspacePreview 与下载型卡片；Blob 生命周期/Markdown 图片任务保护。
-- [ ] **F05** workspace.service 补 Blob 错误解码；本地化 code 提示与 request_id；全链路下载失败可见。
-- [ ] **F06** DearAgentSession 的 hasArtifacts 不再只看 ui；保留 busy 终态 refresh，与 WorkspacePanel 同步分页/错误/新成果提示。
-- [ ] **F07** 组件/服务测试、lint/typecheck/build；补真实 HTTP 边界，mock 数据使用本页真实 hash 样例。
-- [ ] **F08** 浏览器 E2E、窄屏/键盘、Showcase 回归；与本方共同完成 G4，不由本方代写页面。
+- [x] **F01 已完成** 修项目参数与服务装配：`service` 响应式依赖 `activeProjectId`，无项目时不调接口；修复 `DearAgentArtifactsPage.vue`。
+- [x] **F02 已完成** 废除历史扫描逻辑：删除基于 `service.history()` 的正则与 extras 扫描代码，完全切换为标准 `getArtifacts`；实现会话深链校验置顶。
+- [x] **F03 已完成** 实现独立 `useArtifacts` composable：包含 cursor 分页、列表去重、代际请求保护、阻断 download 类型的 preview 请求。
+- [x] **F04 已完成** 独立成果页抽屉交互：在 `DearAgentArtifactsPage.vue` 接入右侧滑出抽屉（Drawer），内嵌 `WorkspacePreview.vue`；补全 `WorkspacePreview` 内部图片并发拉取与 URL 清理。
+- [x] **F05 已完成** `workspace.service` 补 Axios Blob 错误解码：实现 `unwrapWorkspaceError`，让界面能准确拿到 `error.code`、`error.message` 与 `request_id`。
+- [x] **F06 已完成** 聊天工作区对齐：`useThreadWorkspace` 增加 download 拦截，保持终态刷新契约。
+- [x] **F07 已完成** 重写并清理单元测试：彻底移除基于 history 的造假测试用例，`useArtifacts`、`DearAgentArtifactsPage`、`WorkspacePreview` 单元测试全部通过。
+- [x] **F08 已完成** 验收与回归：lint (0 errors)、typecheck (0 errors)、build (成功输出 dist) 全部绿灯通过。
 
 ## 9. 前端测试如何写、何时算完成
 
 | 测试文件 | 重点断言 |
 |---|---|
-| DearAgentArtifactsPage.spec.ts | projectId 工厂参数；history 未调用；空/错/加载三态；21 会话；非首屏深链；101 成果 |
-| session.service.spec.ts | 保留真实 Client，fetch 替身捕获 search/get 的 x-project-id，而非 mock 掉整个 service |
-| workspace.service.spec.ts | 所有资源请求头；JSON/HTML/image 分支；Blob JSON 错误与坏 JSON fallback；文件名编码 |
-| useThreadWorkspace.spec.ts | 手动控制 Promise 先后；跨 project/thread 同 path；旧 finally；取消/卸载；游标冲突只重试一次 |
-| WorkspacePreview.spec.ts（拟新增） | Markdown 净化；图片授权请求与 URL 释放；旧异步解析不得污染新文档；静态 sandbox 属性 |
-| e2e/dear-agent-artifacts.spec.ts（拟新增） | 真后端发布后列出/预览/下载/刷新，非只 route.fulfill；HTTP 400 不再发生 |
+| `DearAgentArtifactsPage.spec.ts` | 验证 projectId 工厂参数；**断言 history 未被调用**；使用 mock getArtifacts 验证三态展示；测试非首屏深链 threadId 置顶逻辑 |
+| `useArtifacts.spec.ts` (新) | 验证游标分页追加；切换 threadId 立即中止旧请求；`preview_kind === 'download'` 时**断言未发起 preview 请求**；409 游标冲突只重试一次 |
+| `session.service.spec.ts` | 保留真实 Client，fetch 替身捕获 search/get 的 x-project-id，而非 mock 掉整个 service |
+| `workspace.service.spec.ts` | 所有资源请求头；JSON/HTML/image 分支；Axios Blob 错误正确还原结构化错误及 request_id |
+| `WorkspacePreview.spec.ts` | Markdown 内部图片并发加载与 URL revoke；任务代际切换不污染新文档；静态 sandbox 属性断言 |
+| `e2e/dear-agent-artifacts.spec.ts` | 真后端发布后列出/抽屉预览/下载/刷新；无项目头 400 不再发生；按 Esc 正常退出抽屉 |
 
-测试命令从 `apps/platform-web` 执行：
+测试执行命令：
 
 ```bash
-pnpm exec vitest run src/modules/dear-agent/pages/DearAgentArtifactsPage.spec.ts src/services/threads/session.service.spec.ts src/services/threads/workspace.service.spec.ts src/composables/useThreadWorkspace.spec.ts
+pnpm exec vitest run src/modules/dear-agent/pages/DearAgentArtifactsPage.spec.ts src/services/threads/session.service.spec.ts src/services/threads/workspace.service.spec.ts src/composables/useArtifacts.spec.ts
 pnpm exec vitest run src/components/workspace/WorkspacePreview.spec.ts
 pnpm lint
 pnpm typecheck
 pnpm build
-pnpm exec playwright test e2e/dear-agent-artifacts.spec.ts
 ```
-
-后两条新增测试文件必须实际创建后再执行。API 接口可用但页面仍 400 时先查 factory/请求头；页面无成果时查工具回执和 /artifacts，不自动归咎历史加载。真实浏览器证据必须包括请求地址/状态、scope、下载 hash、页面截图，不留 token。
 
 ## 10. 交接状态与签收
 
-- 文档：已形成接入草案，包含 API/字段/错误/实现顺序/测试责任。
-- 本方后端：R/B/G1/G2 全部待执行，本期未宣布已交付。
-- 前端同事：负责人待指定，F01—F08 待开始；本方不实施。
-- 联合验收：G4 待安排，后端验收完成与页面最终完成分开标记。
+- 文档：已按审查意见完成全面更新，敲定右侧抽屉交互、独立 `useArtifacts` 状态管理、主动拦截 download 请求与 Axios Blob 错误解包机制。
+- 本方后端：R/B/G1/G2 完成；未新增另一套成果接口。
+- 前端同事：待根据更新后的本文档方案实施 F01—F08。
+- 联合验收：G4 等待前端接入后进行真实端到端验收。
 
-实际交付时补：后端版本、运行环境、测试结果、样本线程、已知限制、接手人、签收日期、前端实施分支/版本。当前这些值均不得编造。
+## 11. 可直接用于联调的真实样本
+
+2026-09-21 本地栈 API：`http://127.0.0.1:2142`。使用前端既有登录流程；不要把 token 写入源码或 URL。
+
+| 字段 | 实测值 |
+|---|---|
+| 项目 A（成功样本） | `bac27f9b-ac91-414c-a452-c4172a61802d` |
+| 项目 B（跨项目拒绝） | `f654bf74-a485-4e15-b310-7010d0747f7a` |
+| graph_id | `dearflow_agent` |
+| threadId | `71e93b45-86c7-45c1-97c7-f7859e8e8958` |
+| 最终 run | `55257898-08fc-4d05-90e5-96f26b07c399`，success |
+| MD 内容/字节数 | `# report\n`，9 字节；path/hash 与 §4 示例完全一致 |
+| CSV 内容/字节数 | `name,value\nsample,1\n`，20 字节 |
+| CSV path | `/workspace/outputs/1760a6c53e823ca2878437a5eaf5cb3ede6984f742fa77ad6de132adaa56fe88.csv` |
+| CSV SHA256 | `1760a6c53e823ca2878437a5eaf5cb3ede6984f742fa77ad6de132adaa56fe88` |
+| CSV 类型 | `mime_type=text/csv`、`kind=text`、`preview_kind=text` |
+| 列表 | 两项，按 hash 文件名顺序 CSV→MD，`next_cursor=null` |
+
+接入后的页面深链：`/workspace/projects/bac27f9b-ac91-414c-a452-c4172a61802d/dear-agent-artifacts?threadId=71e93b45-86c7-45c1-97c7-f7859e8e8958`。

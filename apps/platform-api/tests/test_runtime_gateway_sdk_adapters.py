@@ -195,6 +195,57 @@ class RuntimeGatewayRouterSmokeTest(unittest.TestCase):
 
 
 class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
+    async def test_file_stream_limits_and_cleanup(self):
+        original = httpx.AsyncClient
+        runtime = LangGraphRuntimeClient(base_url="http://runtime", timeout_seconds=1)
+
+        class Stream(httpx.AsyncByteStream):
+            closed = False
+
+            def __init__(self, mode):
+                self.mode = mode
+
+            async def __aiter__(self):
+                yield b"start"
+                if self.mode == "overflow":
+                    yield b"x" * (20 * 1024 * 1024)
+                if self.mode == "disconnect":
+                    raise httpx.ReadError("connection lost")
+
+            async def aclose(self):
+                self.closed = True
+
+        for mode in ("success", "bad_mime", "bad_length", "overflow", "disconnect", "cancel"):
+            with self.subTest(mode=mode):
+                stream = Stream(mode)
+                headers = {"content-type": "text/plain"}
+                if mode == "bad_mime":
+                    headers["content-type"] = "application/x-unsupported"
+                if mode == "bad_length":
+                    headers["content-length"] = str(20 * 1024 * 1024 + 1)
+                transport = httpx.MockTransport(lambda request: httpx.Response(200, headers=headers, stream=stream))
+                client = original(transport=transport)
+                with patch("platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient", return_value=client):
+                    try:
+                        if mode in {"bad_mime", "bad_length"}:
+                            with self.assertRaises(PlatformApiError) as error:
+                                await runtime.read_file("/internal/threads/t/workspace/content")
+                            self.assertEqual(error.exception.status_code, 502)
+                        else:
+                            payload = await runtime.read_file("/internal/threads/t/workspace/content")
+                            if mode == "cancel":
+                                self.assertEqual(await anext(payload.body), b"start")
+                                await payload.body.aclose()
+                            elif mode in {"overflow", "disconnect"}:
+                                with self.assertRaises(PlatformApiError if mode == "overflow" else httpx.ReadError):
+                                    _ = b"".join([chunk async for chunk in payload.body])
+                            else:
+                                self.assertEqual(b"".join([chunk async for chunk in payload.body]), b"start")
+                        self.assertTrue(stream.closed)
+                        self.assertTrue(client.is_closed)
+                    finally:
+                        await client.aclose()
+
     async def test_file_adapter_accepts_all_delivered_formats(self):
         original = httpx.AsyncClient
         runtime = LangGraphRuntimeClient(base_url="http://runtime", timeout_seconds=1)

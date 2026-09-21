@@ -175,6 +175,50 @@ onBeforeUnmount(() => {
 
           <div class="max-h-60 overflow-y-auto space-y-0.5">
             <button
+              v-if="!searchQuery.trim()"
+              type="button"
+              class="flex w-full items-center justify-between gap-2 rounded-lg px-2.5 py-2 text-left text-xs transition-colors"
+              :class="
+                !selectedAgentId
+                  ? 'bg-primary-50 text-primary-900 font-medium dark:bg-primary-950/40 dark:text-primary-100'
+                  : 'text-gray-700 hover:bg-gray-100 dark:text-dark-200 dark:hover:bg-dark-700/60 dark:hover:text-white'
+              "
+              @click="select('')"
+            >
+              <div class="flex min-w-0 items-center gap-2">
+                <span class="flex h-5 w-5 items-center justify-center rounded-md bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-dark-300">
+                  <BaseIcon
+                    name="threads"
+                    size="xs"
+                  />
+                </span>
+                <div class="min-w-0 flex-1">
+                  <p class="truncate font-medium">
+                    全部智能体
+                  </p>
+                  <p class="truncate text-[10px] text-gray-400 dark:text-dark-400">
+                    查看所有智能体的会话
+                  </p>
+                </div>
+              </div>
+
+              <span
+                v-if="!selectedAgentId"
+                class="text-primary-600 dark:text-primary-400 shrink-0"
+              >
+                <BaseIcon
+                  name="check"
+                  size="xs"
+                />
+              </span>
+            </button>
+
+            <div
+              v-if="!searchQuery.trim() && filteredAgents.length > 0"
+              class="my-1 border-t border-gray-100 dark:border-dark-700"
+            />
+
+            <button
               v-for="agent in filteredAgents"
               :key="agent.id"
               type="button"

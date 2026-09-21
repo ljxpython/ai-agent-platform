@@ -143,7 +143,38 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 403)
             self.assertEqual(response.json()["error"]["code"], "runtime_target_denied")
 
+    async def test_artifact_request_boundaries_and_pagination(self):
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+            prefix = "/api/langgraph/threads/thread-1"
+            response = await client.get(prefix + "/artifacts")
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.json()["error"]["code"], "project_id_required")
+            self.upstream.workspace_json.assert_not_awaited()
+            client.headers["x-project-id"] = "project-a"
+            for params in ({"limit": 0}, {"limit": 201}, {"cursor": "x" * 8193}):
+                response = await client.get(prefix + "/artifacts", params=params)
+                self.assertEqual(response.status_code, 422)
+            response = await client.get(prefix + "/workspace/preview")
+            self.assertEqual(response.status_code, 422)
+            self.upstream.workspace_json.assert_not_awaited()
+            self.upstream.workspace_json.return_value = {
+                "items": [{"path": "/workspace/outputs/test.md", "_runtime_private": "hidden"}],
+                "next_cursor": "opaque",
+            }
+            response = await client.get(prefix + "/artifacts", params={"limit": 17, "cursor": "opaque"})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.json(), {"items": [{"path": "/workspace/outputs/test.md"}], "next_cursor": "opaque"})
+            self.assertEqual(response.headers["cache-control"], "private, no-store")
+            self.upstream.workspace_json.assert_awaited_once_with("thread-1", "artifacts", {"limit": 17, "cursor": "opaque"})
+
     async def test_real_two_service_http(self):
+        await self._check_two_service_http("showcase_demo", terminal=True)
+
+    async def test_dear_artifacts_two_service_http(self):
+        await self._check_two_service_http("dearflow_agent", terminal=False)
+
+    async def _check_two_service_http(self, graph, *, terminal):
+        self.upstream.get_thread.return_value["metadata"]["graph_id"] = graph
         runtime_dir = Path(__file__).resolve().parents[2] / "runtime-service"
         interpreter = runtime_dir / ".venv/bin/python"
         self.assertTrue(
@@ -157,6 +188,8 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
             env = {
                 **os.environ,
                 "RUNTIME_SHOWCASE_WORKSPACE_ROOT": directory,
+                "RUNTIME_WORKSPACE_ROOT": directory,
+                "ARTIFACT_TEST_GRAPH": graph,
                 "RUNTIME_SHOWCASE_BACKEND": "local",
                 "RUNTIME_TERMINAL_ENABLED": "1",
                 "PLATFORM_RUNTIME_DELEGATION_SECRET": SECRET,
@@ -164,11 +197,11 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
                 "PLATFORM_RUNTIME_DELEGATION_AUDIENCE": "runtime-service",
             }
             script = """
-import sys, uvicorn
+import sys, os, uvicorn
 from runtime_service.workspace.scoped import resolve_thread_workspace
 from runtime_service.workspace.artifact_refs import ArtifactWorkspace
 if len(sys.argv) > 2:
-    root = resolve_thread_workspace('tenant-a', 'project-a', 'thread-1', 'showcase_demo')
+    root = resolve_thread_workspace('tenant-a', 'project-a', 'thread-1', os.environ['ARTIFACT_TEST_GRAPH'])
     (root / 'work').mkdir(parents=True)
     (root / 'work/payment.yaml').write_text('openapi: 3.1.0')
     (root / 'work/view.html').write_text('<h1>Architecture</h1><script>fetch(\"https://evil.test\")</script>')
@@ -277,33 +310,36 @@ uvicorn.run('runtime_service.webapp:app', fd=int(sys.argv[1]), log_level='error'
                             params={"path": "/workspace/work/missing.txt"},
                         )
                         self.assertEqual(result.status_code, 404, result.text)
-                        body = {"request_id": "00000000-0000-4000-8000-000000000001", "acknowledge_execution": True}
-                        created = await client.post(prefix + "/terminals", json=body)
-                        self.assertEqual(created.status_code, 200, created.text)
-                        terminal_id = created.json()["terminal_id"]
-                        terminal_url = prefix + "/terminals/" + terminal_id
-                        repeated = await client.post(prefix + "/terminals", json=body)
-                        self.assertEqual(repeated.json()["terminal_id"], terminal_id)
-                        entered = await client.post(terminal_url + "/input", json={"sequence": 0,
-                            "data_base64": base64.b64encode(b"printf 'terminal-http-ok\\n'\n").decode()})
-                        self.assertEqual(entered.status_code, 200, entered.text)
-                        output = b""
-                        offset = 0
-                        for _ in range(100):
-                            response = await client.get(terminal_url + "/output", params={"offset": offset})
-                            self.assertEqual(response.status_code, 200, response.text)
-                            output += base64.b64decode(response.json()["data_base64"])
-                            offset = response.json()["next_offset"]
-                            if b"\r\nterminal-http-ok\r\n" in output:
-                                break
-                            await asyncio.sleep(0.05)
-                        self.assertIn(b"\r\nterminal-http-ok\r\n", output)
-                        replay = await client.get(terminal_url + "/output", params={"offset": 0})
-                        self.assertIn(output, base64.b64decode(replay.json()["data_base64"]))
-                        resized = await client.post(terminal_url + "/resize", json={"rows": 40, "cols": 120})
-                        self.assertEqual(resized.json()["rows"], 40)
-                        closed = await client.delete(terminal_url)
-                        self.assertEqual(closed.json()["status"], "exited")
+                        self.assertEqual(result.json()["error"]["message"], "workspace_file_unavailable")
+                        self.assertEqual(result.json()["error"]["code"], "workspace_file_unavailable")
+                        if terminal:
+                            body = {"request_id": "00000000-0000-4000-8000-000000000001", "acknowledge_execution": True}
+                            created = await client.post(prefix + "/terminals", json=body)
+                            self.assertEqual(created.status_code, 200, created.text)
+                            terminal_id = created.json()["terminal_id"]
+                            terminal_url = prefix + "/terminals/" + terminal_id
+                            repeated = await client.post(prefix + "/terminals", json=body)
+                            self.assertEqual(repeated.json()["terminal_id"], terminal_id)
+                            entered = await client.post(terminal_url + "/input", json={"sequence": 0,
+                                "data_base64": base64.b64encode(b"printf 'terminal-http-ok\\n'\n").decode()})
+                            self.assertEqual(entered.status_code, 200, entered.text)
+                            output = b""
+                            offset = 0
+                            for _ in range(100):
+                                response = await client.get(terminal_url + "/output", params={"offset": offset})
+                                self.assertEqual(response.status_code, 200, response.text)
+                                output += base64.b64decode(response.json()["data_base64"])
+                                offset = response.json()["next_offset"]
+                                if b"\r\nterminal-http-ok\r\n" in output:
+                                    break
+                                await asyncio.sleep(0.05)
+                            self.assertIn(b"\r\nterminal-http-ok\r\n", output)
+                            replay = await client.get(terminal_url + "/output", params={"offset": 0})
+                            self.assertIn(output, base64.b64decode(replay.json()["data_base64"]))
+                            resized = await client.post(terminal_url + "/resize", json={"rows": 40, "cols": 120})
+                            self.assertEqual(resized.json()["rows"], 40)
+                            closed = await client.delete(terminal_url)
+                            self.assertEqual(closed.json()["status"], "exited")
                         # Restart the real Runtime process without seeding or publishing again.
                         process.terminate()
                         await asyncio.to_thread(process.wait, timeout=5)
@@ -322,8 +358,9 @@ uvicorn.run('runtime_service.webapp:app', fd=int(sys.argv[1]), log_level='error'
                             stderr=log,
                         )
                         await wait_ready()
-                        lost = await client.get(terminal_url + "/output")
-                        self.assertEqual(lost.status_code, 409, lost.text)
+                        if terminal:
+                            lost = await client.get(terminal_url + "/output")
+                            self.assertEqual(lost.status_code, 409, lost.text)
                         restored = await client.get(prefix + "/artifacts")
                         self.assertEqual(restored.json()["items"][0], ref)
                         downloaded = await client.get(

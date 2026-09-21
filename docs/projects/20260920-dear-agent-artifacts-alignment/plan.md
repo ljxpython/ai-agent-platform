@@ -8,4 +8,4 @@
 - [04 前端接口与实施交接](04-frontend-handoff.md)
 - [05 后端测试与交付验收](05-backend-verification.md)
 
-本方只实施后端/Runtime；前端交由其他同事。本轮仅规划，业务未实施。
+本方只实施后端/Runtime；前端交由其他同事。本方后端与交接文档完成；前端及联合页面验收暂未实施，整体 partial。
