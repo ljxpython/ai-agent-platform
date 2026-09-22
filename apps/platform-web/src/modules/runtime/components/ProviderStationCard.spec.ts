@@ -166,4 +166,27 @@ describe("ProviderStationCard", () => {
     expect(wrapper.text()).not.toContain("部分凭据未配置");
     expect(wrapper.text()).not.toContain("configured");
   });
+
+  it("renders delete station button and emits delete-station when canManage is true", async () => {
+    const wrapper = createWrapper({
+      canManage: true,
+    });
+    const deleteBtn = wrapper
+      .findAll("button")
+      .find((b) => b.attributes("title") === "删除提供商" || b.attributes("aria-label") === "删除提供商");
+    expect(deleteBtn).toBeDefined();
+    await deleteBtn?.trigger("click");
+    expect(wrapper.emitted("delete-station")).toBeDefined();
+    expect(wrapper.emitted("delete-station")?.[0][0]).toEqual(mockStation);
+  });
+
+  it("hides delete station button when canManage is false", () => {
+    const wrapper = createWrapper({
+      canManage: false,
+    });
+    const deleteBtn = wrapper
+      .findAll("button")
+      .find((b) => b.attributes("title") === "删除提供商");
+    expect(deleteBtn).toBeUndefined();
+  });
 });

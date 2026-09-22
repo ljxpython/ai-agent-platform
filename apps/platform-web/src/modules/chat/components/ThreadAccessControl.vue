@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
+import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseDialog from '@/components/base/BaseDialog.vue'
 import BaseSelect from '@/components/base/BaseSelect.vue'
 import { listProjectMembers } from '@/services/members/members.service'
@@ -90,23 +91,33 @@ async function save(revoke = false) {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center gap-2">
-    <BaseButton
+  <div class="inline-flex shrink-0 items-center gap-1.5">
+    <button
       v-if="canShare"
-      variant="secondary"
-      size="sm"
+      type="button"
+      class="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-200 dark:hover:text-white transition-colors"
+      title="分享此会话给项目成员"
       @click="openShare"
     >
-      共享权限
-    </BaseButton>
-    <BaseButton
+      <BaseIcon
+        name="users"
+        size="xs"
+      />
+      <span>分享</span>
+    </button>
+    <button
       v-if="canTakeover"
-      variant="secondary"
-      size="sm"
+      type="button"
+      class="inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-amber-200/80 bg-amber-50/70 px-2 text-xs font-medium text-amber-800 shadow-2xs hover:bg-amber-100/70 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/40 transition-colors"
+      title="管理员临时安全接管此会话"
       @click="mode = 'takeover'; error = ''; notice = ''"
     >
-      临时访问
-    </BaseButton>
+      <BaseIcon
+        name="shield"
+        size="xs"
+      />
+      <span>临时访问</span>
+    </button>
     <BaseDialog
       :show="mode !== null"
       :title="mode === 'share' ? '会话共享权限' : '管理员临时读取'"

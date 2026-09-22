@@ -294,6 +294,60 @@ async function handleDeleteModel() {
   }
 }
 
+const deleteStationDialogState = ref<{
+  open: boolean;
+  station: ProviderStation | null;
+  busy: boolean;
+}>({
+  open: false,
+  station: null,
+  busy: false,
+});
+
+function confirmDeleteStation(station: ProviderStation) {
+  deleteStationDialogState.value = {
+    open: true,
+    station,
+    busy: false,
+  };
+}
+
+async function handleDeleteStation() {
+  const station = deleteStationDialogState.value.station;
+  if (!station) return;
+  deleteStationDialogState.value.busy = true;
+  const project = activeProjectId.value;
+  try {
+    const results = await Promise.allSettled(
+      station.models.map((m) => deleteRuntimeModel(project, m.id)),
+    );
+    const failed = results.filter((r) => r.status === "rejected");
+    if (failed.length === 0) {
+      notice.value = `已成功删除提供商「${station.name}」及其包含的全部 ${station.models.length} 个模型`;
+    } else if (failed.length < station.models.length) {
+      notice.value = `提供商「${station.name}」部分模型删除成功（${station.models.length - failed.length}/${station.models.length}）`;
+    } else {
+      const firstErr = failed[0] as PromiseRejectedResult;
+      throw new Error(
+        firstErr.reason instanceof Error ? firstErr.reason.message : "删除提供商失败",
+      );
+    }
+    deleteStationDialogState.value.open = false;
+    deleteStationDialogState.value.station = null;
+    await load();
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : "删除提供商失败";
+  } finally {
+    deleteStationDialogState.value.busy = false;
+  }
+}
+
+function closeDeleteStationDialog() {
+  if (!deleteStationDialogState.value.busy) {
+    deleteStationDialogState.value.open = false;
+  }
+}
+
 async function save(payload: ModelEditorSubmitPayload) {
   if (!canManage.value || saving.value) return;
   const isPlatform = platformMode.value;
@@ -658,6 +712,7 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
               :can-manage="canManagePlatform && !saving"
               :get-model-actions="modelActions"
               @add-model="edit(null, $event)"
+              @delete-station="confirmDeleteStation"
             />
           </div>
         </template>
@@ -705,6 +760,7 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
                 :can-manage="canManagePrivate && !saving"
                 :get-model-actions="modelActions"
                 @add-model="edit(null, $event)"
+                @delete-station="confirmDeleteStation"
               />
 
               <!-- 私有模型列表下方的并排新增按钮 -->
@@ -955,6 +1011,71 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
             @click="handleDeleteModel"
           >
             {{ deleteDialogState.busy ? "正在删除…" : "确认删除" }}
+          </BaseButton>
+        </div>
+      </template>
+    </BaseDialog>
+    <BaseDialog
+      :show="deleteStationDialogState.open"
+      :title="`删除提供商「${deleteStationDialogState.station?.name || ''}」`"
+      width="normal"
+      @close="closeDeleteStationDialog"
+    >
+      <div class="space-y-3 text-sm text-gray-600 dark:text-dark-300">
+        <p>
+          确定要删除提供商
+          <strong class="font-semibold text-gray-900 dark:text-white">
+            {{ deleteStationDialogState.station?.name }}
+          </strong>
+          <span class="font-mono text-xs text-gray-500">
+            ({{ deleteStationDialogState.station?.provider }})
+          </span>
+          及其包含的全部
+          <strong class="text-rose-600 dark:text-rose-400">
+            {{ deleteStationDialogState.station?.models.length || 0 }} 个模型配置
+          </strong>
+          吗？
+        </p>
+        <div
+          v-if="deleteStationDialogState.station?.models.length"
+          class="max-h-36 overflow-y-auto rounded-lg border border-gray-100 bg-gray-50 p-2 text-xs font-mono dark:border-dark-800 dark:bg-dark-900"
+        >
+          <div
+            v-for="m in deleteStationDialogState.station.models"
+            :key="m.id"
+            class="flex items-center justify-between py-1 border-b border-gray-100 last:border-0 dark:border-dark-800"
+          >
+            <span class="truncate text-gray-800 dark:text-dark-200">
+              {{ m.display_name || m.model }}
+            </span>
+            <span class="text-gray-400 dark:text-dark-500 text-[11px] ml-2 shrink-0">
+              {{ m.model }}
+            </span>
+          </div>
+        </div>
+        <p class="text-xs text-rose-600 dark:text-rose-400">
+          ⚠️ 此操作将永久移除该提供商下的所有模型接入及凭据。若有智能体正绑定这些模型，可能会导致调用失败。
+        </p>
+      </div>
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <BaseButton
+            variant="secondary"
+            :disabled="deleteStationDialogState.busy"
+            @click="deleteStationDialogState.open = false"
+          >
+            取消
+          </BaseButton>
+          <BaseButton
+            variant="danger"
+            :disabled="deleteStationDialogState.busy"
+            @click="handleDeleteStation"
+          >
+            {{
+              deleteStationDialogState.busy
+                ? "正在删除…"
+                : `确认删除 (${deleteStationDialogState.station?.models.length || 0} 个模型)`
+            }}
           </BaseButton>
         </div>
       </template>

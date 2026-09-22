@@ -47,6 +47,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   "add-model": [station: ProviderStation];
   "view-detail": [model: RuntimeModelItem];
+  "delete-station": [station: ProviderStation];
 }>();
 
 const uiStore = useUiStore();
@@ -197,6 +198,20 @@ async function handleCopy(label: string, text: string) {
             />
             <span>添加模型</span>
           </BaseButton>
+
+          <button
+            v-if="canManage"
+            type="button"
+            class="flex h-8 w-8 items-center justify-center rounded-lg border border-transparent text-gray-400 transition hover:border-gray-200/70 hover:bg-rose-50 hover:text-rose-600 dark:text-dark-400 dark:hover:border-dark-700 dark:hover:bg-rose-950/30 dark:hover:text-rose-400"
+            title="删除提供商"
+            aria-label="删除提供商"
+            @click="emit('delete-station', station)"
+          >
+            <BaseIcon
+              name="trash"
+              size="xs"
+            />
+          </button>
 
           <button
             type="button"

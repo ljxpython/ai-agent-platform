@@ -461,15 +461,6 @@ onScopeDispose(() => {
       description="选择项目后开始对话。"
     />
     <template v-else>
-      <ThreadAccessControl
-        v-if="selectedThread && (threadCan(selectedThread, 'share') || canTakeover)"
-        class="px-4 py-2"
-        :project-id="activeProjectId"
-        :thread-id="selectedThread"
-        :can-share="threadCan(selectedThread, 'share')"
-        :can-takeover="canTakeover"
-        @updated="accessRevision++; loadThreads()"
-      />
       <div
         v-if="focusMode"
         class="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-dark-800 dark:bg-dark-900"
@@ -595,6 +586,14 @@ onScopeDispose(() => {
           </template>
           <template #actions>
             <div class="flex shrink-0 items-center gap-1.5">
+              <ThreadAccessControl
+                v-if="selectedThread && (threadCan(selectedThread, 'share') || canTakeover)"
+                :project-id="activeProjectId"
+                :thread-id="selectedThread"
+                :can-share="threadCan(selectedThread, 'share')"
+                :can-takeover="canTakeover"
+                @updated="accessRevision++; loadThreads()"
+              />
               <button
                 class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
                 :title="focusMode ? '退出专注模式' : '专注模式'"
