@@ -259,7 +259,7 @@ let disposed = false;
 void Promise.all([listRuntimeModels(props.projectId), listRuntimeModelPolicies(props.projectId)])
   .then(([value, policies]) => {
     if (disposed) return;
-    models.value = value.models.filter((model) => model.enabled && model.credential_configured && policies.items.find(item => item.catalog_id === model.id)?.policy.is_enabled !== false);
+    models.value = value.models.filter((model) => model.enabled && policies.items.find(item => item.catalog_id === model.id)?.policy.is_enabled !== false);
     const projectDefault = policies.items.find(item => item.policy.is_default_for_project);
     const defaultModel = models.value.find(model => model.id === projectDefault?.catalog_id) ?? models.value[0];
     defaultModelName.value = defaultModel?.display_name ?? "";
@@ -963,6 +963,21 @@ const chatMetrics = computed(() => {
 
 <template>
   <div
+    v-if="!session.canRead.value"
+    role="status"
+    class="p-4 text-sm"
+  >
+    无法读取此会话，权限可能已撤销或正在确认。请切换会话，或联系所有者重新授权。
+    <BaseButton
+      variant="secondary"
+      size="sm"
+      @click="session.refreshAccessPolicy()"
+    >
+      重新检查
+    </BaseButton>
+  </div>
+  <div
+    v-else
     class="pw-chat-workspace min-w-0"
   >
     <header
@@ -1327,13 +1342,16 @@ const chatMetrics = computed(() => {
                 刷新投递状态
               </button>
             </section>
-            <div v-if="clarifications.length" class="space-y-3">
+            <div
+              v-if="clarifications.length"
+              class="space-y-3"
+            >
               <ClarificationCard
                 v-for="clarification in clarifications"
                 :key="clarification.id"
                 :clarification="clarification"
                 :submitting="
-                  !canWrite ||
+                  !session.canApprove.value ||
                     checking ||
                     cancelling ||
                     action?.status === 'unknown' ||
@@ -1342,11 +1360,14 @@ const chatMetrics = computed(() => {
                 @submit="(values) => session.answerClarification(clarification.id, values)"
               />
             </div>
-            <div v-if="reviews.length" ref="approvalElement">
+            <div
+              v-if="reviews.length"
+              ref="approvalElement"
+            >
               <ApprovalPanel
                 :reviews="reviews"
                 :disabled="
-                  !canWrite ||
+                  !session.canApprove.value ||
                     checking ||
                     cancelling ||
                     action?.status === 'unknown' ||
@@ -1438,6 +1459,8 @@ const chatMetrics = computed(() => {
       :access-policy="session.accessPolicy.value"
       :access-policy-updating="session.accessPolicyUpdating.value"
       :can-write="canWrite"
+      :can-set-policy="session.canSetPolicy.value"
+      :can-full-access="session.canFullAccess.value"
       @update:access-policy="session.setAccessPolicy"
       @change:access-policy="session.setAccessPolicy"
       @update:selected-model-id="context.model_id = $event || undefined"

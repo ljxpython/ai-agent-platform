@@ -72,7 +72,7 @@ def _runtime_id(value: str) -> str:
     return "default"
 
 
-_SUPPORTED_PROTOCOLS = {"openai", "openai-compatible", "deepseek"}
+_SUPPORTED_PROTOCOLS = {"openai", "openai-compatible", "deepseek", "anthropic"}
 
 
 class RuntimeCatalogService:
@@ -133,35 +133,28 @@ class RuntimeCatalogService:
             return self._require_project_exists(session=session, project_id=project_id)
 
     def _require_refresh_access(self, *, actor: ActorContext, project_id: str) -> None:
-        try:
-            self._policy_engine.require(
-                actor=actor,
-                authorization=AuthorizationRequest(
-                    permission=PermissionCode.PLATFORM_CATALOG_REFRESH,
-                ),
-            )
-            return
-        except ForbiddenError:
-            self._policy_engine.require(
-                actor=actor,
-                authorization=AuthorizationRequest(
-                    permission=PermissionCode.PROJECT_RUNTIME_WRITE,
-                    project_id=project_id,
-                ),
-            )
+        self._policy_engine.require(
+            actor=actor,
+            authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_CATALOG_REFRESH),
+        )
 
     def _runtime_headers(
-        self, *, actor: ActorContext, project_id: str
+        self, *, actor: ActorContext, project_id: str, catalog_refresh: bool = False
     ) -> dict[str, str]:
         subject = actor.user_id or actor.subject
         if not subject:
             raise NotAuthenticatedError()
         project_roles = actor.project_role_set(project_id)
-        if not project_roles:
+        if catalog_refresh:
+            self._require_refresh_access(actor=actor, project_id=project_id)
+            role = "platform_super_admin" if actor.has_platform_role("platform_super_admin") else "platform_operator"
+        elif not project_roles:
             raise ForbiddenError(
                 code="project_role_missing",
                 message="Project role missing",
             )
+        else:
+            role = project_roles[0]
         try:
             policy = RuntimePolicyOverlayService(
                 session_factory=self._session_factory,
@@ -171,7 +164,7 @@ class RuntimeCatalogService:
                 subject=subject,
                 tenant_id=self._tenant_id,
                 project_id=project_id,
-                role=project_roles[0],
+                role=role,
                 permissions=[],
                 policy_version=str(policy["version"]),
                 allowed_model_ids=policy["allowed_model_ids"],
@@ -189,6 +182,8 @@ class RuntimeCatalogService:
         return {"authorization": f"Bearer {delegation}"}
 
     def _model_item(self, item: Any) -> RuntimeModelCatalogItem:
+        scope_type = getattr(item, "scope_type", "platform") or "platform"
+        project_id = getattr(item, "project_id", None)
         return RuntimeModelCatalogItem(
             id=str(item.id),
             display_name=item.display_name,
@@ -198,6 +193,8 @@ class RuntimeCatalogService:
             model=item.model_name,
             enabled=item.enabled,
             credential_configured=bool(item.api_key_ciphertext),
+            scope_type=scope_type,
+            project_id=str(project_id) if project_id else None,
         )
 
     def _authorize_model_reference(self, values: dict, project_id: str) -> None:
@@ -268,7 +265,7 @@ class RuntimeCatalogService:
                 )
                 actor = (
                     ActorContext(
-                        subject=account.name,
+                        subject=f"service-account:{account.id}",
                         principal_type="service_account",
                         platform_roles=account.platform_roles,
                         project_roles={project_id: (role.value,)} if role else {},
@@ -282,13 +279,21 @@ class RuntimeCatalogService:
                 raise ForbiddenError(
                     code="runtime_model_reference_denied", message="Principal revoked"
                 )
-            self._policy_engine.require(
-                actor=actor,
-                authorization=AuthorizationRequest(
-                    permission=PermissionCode.PROJECT_RUNTIME_WRITE,
-                    project_id=project_id,
-                ),
-            )
+            from platform_api.modules.runtime_gateway.application import thread_access
+
+            action = values.get("thread_action", "comment")
+            if action not in {"comment", "approve"}:
+                raise ForbiddenError(code="thread_action_denied", message="Invalid execution action")
+            access = thread_access.get(factory, values.get("thread_id") or "")
+            thread_access.require_action(actor, project_id, access, action)
+            if action != "approve":
+                self._policy_engine.require(
+                    actor=actor,
+                    authorization=AuthorizationRequest(
+                        permission=PermissionCode.PROJECT_RUNTIME_EXECUTE,
+                        project_id=project_id,
+                    ),
+                )
             agent = SqlAlchemyAssistantsRepository(session).get_by_project_and_graph_id(
                 project_id=project_uuid, graph_id=values.get("agent_key") or ""
             )
@@ -377,6 +382,11 @@ class RuntimeCatalogService:
             if item is None or not item.enabled:
                 raise NotFoundError(
                     code="runtime_model_not_found", message="Runtime model not found"
+                )
+            if item.scope_type == "project" and str(item.project_id) != project_id:
+                raise ForbiddenError(
+                    code="runtime_model_reference_denied",
+                    message="Model reference project mismatch",
                 )
             try:
                 api_key = decrypt_api_key(
@@ -489,12 +499,30 @@ class RuntimeCatalogService:
         project_id: str,
         payload: RuntimeModelCreate,
     ) -> RuntimeModelCatalogItem:
-        self._prepare_project_scope(
-            actor=actor,
-            project_id=project_id,
-            permission=PermissionCode.PROJECT_RUNTIME_WRITE,
-        )
+        scope_type = payload.scope_type or "platform"
+        target_project_uuid: UUID | None = None
+        if scope_type == "project":
+            effective_project_id = _clean(project_id or payload.project_id)
+            if not effective_project_id:
+                raise BadRequestError(
+                    code="project_id_required",
+                    message="project_id is required for project scoped models",
+                )
+            self._prepare_project_scope(
+                actor=actor,
+                project_id=effective_project_id,
+                permission=PermissionCode.PROJECT_RUNTIME_WRITE,
+            )
+            target_project_uuid = parse_uuid(effective_project_id, code="invalid_project_id")
+        else:
+            self._policy_engine.require(
+                actor=actor,
+                authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_MODEL_WRITE),
+            )
+
         values = self._validated_model_values(payload, partial=False)
+        values["scope_type"] = scope_type
+        values["project_id"] = target_project_uuid
         try:
             values["api_key_ciphertext"] = encrypt_api_key(
                 payload.api_key,
@@ -512,6 +540,8 @@ class RuntimeCatalogService:
                 provider=values["provider"],
                 base_url=values["base_url"],
                 model_name=values["model"],
+                scope_type=scope_type,
+                project_id=target_project_uuid,
             )
             if existing is not None:
                 raise ConflictError(
@@ -531,28 +561,6 @@ class RuntimeCatalogService:
         model_id: str,
         payload: RuntimeModelUpdate,
     ) -> RuntimeModelCatalogItem:
-        self._prepare_project_scope(
-            actor=actor,
-            project_id=project_id,
-            permission=PermissionCode.PROJECT_RUNTIME_WRITE,
-        )
-        values = self._validated_model_values(payload, partial=True)
-        if "api_key" in values:
-            try:
-                values["api_key_ciphertext"] = encrypt_api_key(
-                    values.pop("api_key"),
-                    master_key=self._settings.model_config_master_key,
-                )
-            except ModelCredentialError as exc:
-                raise ServiceUnavailableError(
-                    code="model_credential_unavailable",
-                    message="Model credential storage is not configured",
-                ) from exc
-        if "model" in values:
-            model_name = values.pop("model")
-            values["model_name"] = model_name
-        if "enabled" not in values:
-            values.pop("enabled", None)
         model_uuid = parse_uuid(model_id, code="invalid_model_id")
         session_factory = self._require_session_factory()
         with session_scope(session_factory) as session:
@@ -560,6 +568,48 @@ class RuntimeCatalogService:
             current = repository.get_model_by_id(model_uuid)
             if current is None:
                 raise NotFoundError(message="Model not found", code="model_not_found")
+
+            if current.scope_type == "project":
+                current_project_str = str(current.project_id)
+                req_project_id = _clean(project_id)
+                if req_project_id and req_project_id != current_project_str:
+                    raise ForbiddenError(
+                        code="project_mismatch",
+                        message="Cannot modify a model belonging to another project",
+                    )
+                self._prepare_project_scope(
+                    actor=actor,
+                    project_id=current_project_str,
+                    permission=PermissionCode.PROJECT_RUNTIME_WRITE,
+                )
+            else:
+                self._policy_engine.require(
+                    actor=actor,
+                    authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_MODEL_WRITE),
+                )
+
+            values = self._validated_model_values(payload, partial=True)
+            if "api_key" in values:
+                try:
+                    values["api_key_ciphertext"] = encrypt_api_key(
+                        values.pop("api_key"),
+                        master_key=self._settings.model_config_master_key,
+                    )
+                except ModelCredentialError as exc:
+                    raise ServiceUnavailableError(
+                        code="model_credential_unavailable",
+                        message="Model credential storage is not configured",
+                    ) from exc
+            if "model" in values:
+                model_name = values.pop("model")
+                values["model_name"] = model_name
+            if "enabled" not in values:
+                values.pop("enabled", None)
+
+            # Prevent mutating scope_type or project_id via update
+            values.pop("scope_type", None)
+            values.pop("project_id", None)
+
             target_provider = values.get("provider", current.provider)
             target_base_url = values.get("base_url", current.base_url)
             target_model_name = values.get("model_name", current.model_name)
@@ -567,6 +617,8 @@ class RuntimeCatalogService:
                 provider=target_provider,
                 base_url=target_base_url,
                 model_name=target_model_name,
+                scope_type=current.scope_type,
+                project_id=current.project_id,
             )
             if existing is not None and existing.id != model_uuid:
                 raise ConflictError(
@@ -580,6 +632,42 @@ class RuntimeCatalogService:
             if item is None:
                 raise NotFoundError(message="Model not found", code="model_not_found")
             return self._model_item(item)
+
+    def delete_model(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        model_id: str,
+    ) -> None:
+        model_uuid = parse_uuid(model_id, code="invalid_model_id")
+        session_factory = self._require_session_factory()
+        with session_scope(session_factory) as session:
+            repository = SqlAlchemyRuntimeCatalogRepository(session)
+            current = repository.get_model_by_id(model_uuid)
+            if current is None:
+                raise NotFoundError(message="Model not found", code="model_not_found")
+
+            if current.scope_type == "project":
+                current_project_str = str(current.project_id)
+                req_project_id = _clean(project_id)
+                if req_project_id and req_project_id != current_project_str:
+                    raise ForbiddenError(
+                        code="project_mismatch",
+                        message="Cannot delete a model belonging to another project",
+                    )
+                self._prepare_project_scope(
+                    actor=actor,
+                    project_id=current_project_str,
+                    permission=PermissionCode.PROJECT_RUNTIME_WRITE,
+                )
+            else:
+                self._policy_engine.require(
+                    actor=actor,
+                    authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_MODEL_WRITE),
+                )
+
+            repository.delete_configured_model(model_uuid)
 
     def _tool_item(self, item: Any) -> RuntimeToolCatalogItem:
         return RuntimeToolCatalogItem(
@@ -657,17 +745,47 @@ class RuntimeCatalogService:
         *,
         actor: ActorContext,
         project_id: str,
+        platform: bool = False,
     ) -> RuntimeModelCatalogList:
-        self._prepare_project_scope(
-            actor=actor,
-            project_id=project_id,
-            permission=PermissionCode.PROJECT_RUNTIME_READ,
-        )
+        target_project_uuid: UUID | None = None
+        scope_filter: str | None = None
+        if platform:
+            self._policy_engine.require(
+                actor=actor,
+                authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_MODEL_READ),
+            )
+            scope_filter = "platform"
+        else:
+            self._prepare_project_scope(
+                actor=actor,
+                project_id=project_id,
+                permission=PermissionCode.PROJECT_RUNTIME_READ,
+            )
+            target_project_uuid = parse_uuid(project_id, code="invalid_project_id")
+
         session_factory = self._require_session_factory()
         with session_scope(session_factory) as session:
             repository = SqlAlchemyRuntimeCatalogRepository(session)
-            rows = repository.list_models()
+            rows = repository.list_models(
+                scope_type=scope_filter,
+                project_id=target_project_uuid,
+            )
             items = [self._model_item(item) for item in rows]
+            if not platform:
+                result_items = []
+                for item in items:
+                    if item.scope_type == "platform":
+                        result_items.append(
+                            item.model_copy(
+                                update={
+                                    "base_url": "",
+                                    "credential_configured": item.credential_configured,
+                                }
+                            )
+                        )
+                    else:
+                        result_items.append(item)
+                items = result_items
             return RuntimeModelCatalogList(
                 count=len(items),
                 models=items,
@@ -705,7 +823,7 @@ class RuntimeCatalogService:
             self._prepare_project_scope,
             actor=actor,
             project_id=project_id,
-            permission=PermissionCode.PROJECT_RUNTIME_READ,
+            permission=PermissionCode.PLATFORM_CATALOG_REFRESH,
         )
         self._require_refresh_access(actor=actor, project_id=project_id)
 
@@ -713,7 +831,7 @@ class RuntimeCatalogService:
             "GET",
             "/internal/capabilities/tools",
             forwarded_headers=await run_in_threadpool(
-                self._runtime_headers, actor=actor, project_id=project_id
+                self._runtime_headers, actor=actor, project_id=project_id, catalog_refresh=True
             ),
         )
         items = self._normalize_tool_items(payload)
@@ -798,13 +916,13 @@ class RuntimeCatalogService:
             self._prepare_project_scope,
             actor=actor,
             project_id=project_id,
-            permission=PermissionCode.PROJECT_RUNTIME_READ,
+            permission=PermissionCode.PLATFORM_CATALOG_REFRESH,
         )
         self._require_refresh_access(actor=actor, project_id=project_id)
 
         rows = await self._upstream.list_deployed_graphs(
             forwarded_headers=await run_in_threadpool(
-                self._runtime_headers, actor=actor, project_id=project_id
+                self._runtime_headers, actor=actor, project_id=project_id, catalog_refresh=True
             ),
         )
         items = [{**row, "display_name": row["graph_id"]} for row in rows]

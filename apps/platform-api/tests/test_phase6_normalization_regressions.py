@@ -4,6 +4,8 @@ import importlib
 import unittest
 from types import SimpleNamespace
 from unittest.mock import Mock, AsyncMock
+from platform_api.core.context.models import ActorContext
+from tests.thread_acl_fixture import thread_acl_factory
 
 from platform_api.modules.runtime_gateway.application.service import RuntimeGatewayService
 
@@ -21,15 +23,16 @@ class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase
         self.assertTrue(hasattr(service_module, "RuntimeGatewayService"))
 
     async def test_create_thread_promotes_graph_id_from_legacy_graph_metadata(self) -> None:
-        upstream = SimpleNamespace(create_thread=AsyncMock(return_value={"ok": True}))
+        actor = ActorContext(user_id="owner", project_roles={"project-1": ("project_executor",)})
+        upstream = SimpleNamespace(create_thread=AsyncMock(side_effect=lambda payload: {"thread_id": payload["thread_id"], "metadata": payload["metadata"]}))
         service = RuntimeGatewayService(
-            session_factory=None,
+            session_factory=thread_acl_factory(self, actor=actor, project_id="project-1"),
             upstream=upstream,
         )
         service._prepare_project_scope = Mock()  # type: ignore[method-assign]
 
         payload = await service.create_thread(
-            actor=SimpleNamespace(),
+            actor=actor,
             project_id="project-1",
             payload={
                 "metadata": {
@@ -39,7 +42,7 @@ class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase
             },
         )
 
-        self.assertEqual(payload, {"ok": True})
+        self.assertEqual(payload["metadata"]["owner_user_id"], "owner")
         upstream.create_thread.assert_awaited_once_with(
             {
                 "metadata": {
@@ -48,6 +51,8 @@ class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase
                     "project_id": "project-1",
                 },
                 "graph_id": "test_case_agent",
+                "thread_id": payload["thread_id"],
+                "if_exists": "raise",
             }
         )
 

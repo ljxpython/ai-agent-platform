@@ -10,7 +10,7 @@
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
 | 对话流式超时容错与 Transcript 解析优化 | 规划中：解决长推理超时截断与前端幽灵步骤假折叠问题 | [项目概览](projects/20260921-chat-stream-timeout-and-retry-optimization/README.md) |
-| 全平台菜单、页面与角色权限治理 | 规划中（deferred）：独立立项，讨论与实施后置；不纳入本次工具治理开发 | [后置专项](projects/20260920-platform-access-governance/README.md) |
+| 全平台菜单、页面与角色权限治理 | 人工验收中：技术实现与自动化 Final done；固定角色、平台/对象授权、撤权、P1 隔离、治理边界及项目内个人记忆入口完成；共享/跨项目记忆等 deferred | [分章方案与进度](projects/20260920-platform-access-governance/README.md) · [人工验收用例](projects/20260920-platform-access-governance/08-manual-acceptance.md) |
 | Agent 回复新对话分支 | 进行中：Platform API 受控分叉和 Runtime 隔离验证实施中；前端已完成对接设计、待接入 | [项目规划](projects/20260917-agent-conversation-fork/README.md) |
 | Agent 会话访问策略（逐项审批 / 工作区免审批 / 全权负责） | 部分完成：前后端与 Runtime 均已实现三档策略（review/workspace_write/full_access）、输入框左右布局对齐与草稿态同步；待全栈启动后跑最终 E2E 验收 | [方案](projects/20260917-agent-session-access-policy/README.md) |
 | Dear Agent 专属前端 | 进行中：F1/P1 已完成（专属模块 `src/modules/dear-agent/`、独立路由、澄清表单交互卡片、审批面板与输入锁定已落地并通过 50 套全量回归）；F2—F7 后续推进 | [前端交接与实施](projects/20260913-dearflow-agent/frontend-handoff.md) |
@@ -39,6 +39,7 @@
 | 对话历史按智能体过滤与极简微型分页器优化（首页/末页直达 + 跳页输入） | 已完成：选择特定 Agent 时列表仅展示该 Agent 的历史会话并实时联动，支持总数呈现、«/» 极端直达与数字直接跳页 | [会话按 Agent 过滤与分页优化](../apps/platform-web/docs/changes/20260918-chat-agent-history-filter-and-pagination.md) |
 | Agent 与工具界面优化及权限治理（创建 Agent、详情高级化、工具卡片化与权限收紧） | 已完成：新增 Agent 创建全流程与 `/agents/new` 路由；修复 execution_mode 下拉渲染 bug 与布局；升级工具卡片与同步；收紧 PROJECT_RUNTIME_WRITE 排除 EXECUTOR | [项目概览](projects/20260918-agent-tool-ui-overhaul/README.md) |
 | 会话标题识别与消息预览优化（手动重命名、消除(无内容)、模板词清洗、最新预览同步与 LLM ✨ 魔法棒智能标题提炼） | 已完成：Phase 1 手动重命名/预览修复/模板词清洗与 Phase 2 基于 DeepSeek create_agent 10字标题 ✨ 魔法棒手动提炼全链路已全量交付通过 | [会话标题与预览优化](projects/20260918-thread-title-and-preview-enhancement/README.md) |
+| 新建用户一页流与多项目分配 | 已完成：彻底重构为一页流，支持动态添加/移除多个所属项目并独立指定角色，补充确认密码一致性校验与防自动填充 | [变更记录](../apps/platform-web/docs/changes/20260922-user-create-single-form-multi-project.md) |
 
 
 
@@ -86,7 +87,7 @@
 | 非 Docker 新机开发环境交接 | 文档已收口：通用模板与私有账号映射分开，建库/SCRAM/反向验收连续步骤，补齐运维回执；目标机实际部署待执行 | [部署手册](quickstart/deployment-guide.md) · [运维交接](quickstart/operator-handoff.md) · [收口记录](changes/20260921-native-deployment-operator-handoff.md) |
 | 本地 PostgreSQL 密码认证 | 本地已完成：SCRAM、18 项认证检查、9 项兼容检查、重连和回退通过；云端交接更新因 SSH 超时待补 | [认证记录](projects/20260920-local-postgres-password/README.md) |
 | 本地项目清理 | 已支持：按 UUID 保留项目；显式历史清理先备份，支持失效令牌、会话/审计及指定测试库；测试退出回收项目 | [运维规范](guides/database-operations.md#本地项目清理) |
-| 本地栈进程启停 | 已优化：真实进程与端口归属识别、孤儿 worker 深度清理、端口占用自动回收与外部进程安全隔离 | `docs/changes/20260913-local-stack-real-process-management.md` |
+| 本地栈进程启停 | 已优化：进程/端口归属隔离；Runtime 单服务重启在停进程前预检，恢复 audience 配置后真实审批通过 | [重启预检修复](changes/20260922-local-stack-runtime-preflight.md) · `docs/changes/20260913-local-stack-real-process-management.md` |
 | 改动分级 + Skills 自动触发（plan-project/implement-feature/verify-change） | 已完成 | `AGENTS.md` |
 | 文档一致性检查（`scripts/check_docs.py`） | 已完成 | `scripts/check_docs.py` |
 

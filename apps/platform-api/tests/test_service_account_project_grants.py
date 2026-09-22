@@ -85,7 +85,7 @@ class ServiceAccountProjectGrantsTest(unittest.TestCase):
         account = self.client.post(
             "/api/service-accounts",
             headers=self._admin_headers(),
-            json={"name": "machine-reader", "platform_roles": ["platform_viewer"]},
+            json={"name": "machine reader", "platform_roles": ["platform_viewer"]},
         ).json()
         token = self.client.post(
             f"/api/service-accounts/{account['id']}/tokens",
@@ -97,6 +97,7 @@ class ServiceAccountProjectGrantsTest(unittest.TestCase):
         before = self.client.get(f"/api/projects/{project['id']}/access", headers=api_headers)
         self.assertEqual(before.status_code, 200, before.text)
         self.assertEqual(before.json()["roles"], [])
+        self.assertEqual(before.headers["x-user-subject"], f"service-account:{account['id']}")
 
         grant = self.client.put(
             f"/api/service-accounts/{account['id']}/project-grants/{project['id']}",

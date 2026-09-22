@@ -64,6 +64,26 @@ export const useWorkspaceStore = defineStore('workspace', {
         if (epoch === this.accessEpoch) this.accessLoading = false
       }
     },
+    async refreshCurrentProjectAccess() {
+      const projectId = this.currentProjectId
+      if (!projectId) {
+        this.currentProjectAccess = null
+        return
+      }
+      const epoch = ++this.accessEpoch
+      try {
+        const access = await getProjectAccess(projectId)
+        if (epoch === this.accessEpoch && projectId === this.currentProjectId) {
+          this.currentProjectAccess = access
+        }
+      } catch (error) {
+        if (epoch === this.accessEpoch && projectId === this.currentProjectId) {
+          this.currentProjectAccess = null
+          this.error = '项目权限刷新失败，请重试'
+        }
+        throw error
+      }
+    },
     async hydrateContext() {
       const epoch = ++this.contextEpoch
       this.loading = true

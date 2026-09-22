@@ -19,8 +19,15 @@ export async function listProjectsPage(options?: {
 
 export async function listProjects(
 ): Promise<ManagementProject[]> {
-  const payload = await listProjectsPage()
-  return payload.items
+  const items: ManagementProject[] = []
+  let offset = 0
+
+  while (true) {
+    const payload = await listProjectsPage({ limit: 200, offset })
+    items.push(...payload.items)
+    offset += payload.items.length
+    if (offset >= payload.total || payload.items.length === 0) return items
+  }
 }
 
 export async function listRuntimeProjectsPage(options?: {

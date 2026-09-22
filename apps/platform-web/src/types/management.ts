@@ -27,6 +27,7 @@ export type PermissionCode =
   | 'platform.service_account.read'
   | 'platform.service_account.write'
   | 'platform.service_account.grant.write'
+  | 'platform.super_admin.manage'
   | 'project.member.read'
   | 'project.member.write'
   | 'project.audit.read'
@@ -36,6 +37,9 @@ export type PermissionCode =
   | 'project.assistant.write'
   | 'project.runtime.read'
   | 'project.runtime.write'
+  | 'project.runtime.execute'
+  | 'platform.model.read'
+  | 'platform.model.write'
 
 export type PaginatedResponse<T> = {
   items: T[]
@@ -48,6 +52,7 @@ export type ManagementUser = {
   status: string
   is_super_admin: boolean
   platform_roles: PlatformRole[]
+  permissions?: PermissionCode[]
   must_change_password: boolean
   email?: string | null
   created_at?: string | null
@@ -326,6 +331,8 @@ export type RuntimeModelItem = {
   model: string
   enabled: boolean
   credential_configured: boolean
+  scope_type?: 'platform' | 'project'
+  project_id?: string | null
 }
 
 export type RuntimeModelsResponse = {

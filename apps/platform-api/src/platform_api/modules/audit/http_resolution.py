@@ -611,7 +611,6 @@ def _resolve_metadata(
 ) -> dict[str, Any]:
     metadata: dict[str, Any] = {
         "route_kind": plane.value,
-        "query": request.query_string or None,
         "client_ip": request.client_ip,
         "user_agent": request.user_agent,
         "target_type": target_type,

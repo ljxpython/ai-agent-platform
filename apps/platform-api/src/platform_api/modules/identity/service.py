@@ -75,17 +75,29 @@ class IdentityService:
         return SqlAlchemyIdentityRepository(session)
 
     def _user_profile(self, user: StoredUser) -> UserProfile:
+        from platform_api.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode
+
         status = (
             UserStatus.ACTIVE
             if user.status == UserStatus.ACTIVE.value
             else UserStatus.DISABLED
         )
+        actor = ActorContext(user_id=str(user.id), platform_roles=user.platform_roles)
+        policy_engine = IamPolicyEngine()
         return UserProfile(
             id=str(user.id),
             username=user.username,
             email=user.email,
             status=status,
             platform_roles=user.platform_roles,
+            permissions=tuple(
+                permission.value for permission in PermissionCode
+                if status == UserStatus.ACTIVE and permission.value.startswith("platform.")
+                and policy_engine.evaluate(
+                    actor=actor,
+                    authorization=AuthorizationRequest(permission=permission),
+                ).allowed
+            ),
             must_change_password=user.must_change_password,
         )
 

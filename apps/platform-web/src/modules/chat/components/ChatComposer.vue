@@ -29,6 +29,8 @@ const props = defineProps<{
   accessPolicy?: AccessPolicy;
   accessPolicyUpdating?: boolean;
   canWrite?: boolean;
+  canSetPolicy?: boolean;
+  canFullAccess?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -237,9 +239,10 @@ defineExpose({
             <ThreadAccessPolicySelect
               v-if="projectId"
               :model-value="accessPolicy || 'review'"
-              :disabled="isRunning || hasBlockingInterrupt || canWrite === false"
+              :disabled="isRunning || hasBlockingInterrupt || canSetPolicy === false || canWrite === false"
               :loading="accessPolicyUpdating"
               :can-write="canWrite !== false"
+              :can-full-access="canFullAccess"
               @update:model-value="emit('update:accessPolicy', $event)"
               @change="emit('change:accessPolicy', $event)"
             />

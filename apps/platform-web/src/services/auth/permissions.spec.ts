@@ -27,7 +27,8 @@ describe('auth permissions', () => {
   it('does not infer project content permissions from super admin', () => {
     const user = buildUser({
       is_super_admin: true,
-      platform_roles: ['platform_super_admin']
+      platform_roles: ['platform_super_admin'],
+      permissions: ['platform.project.takeover']
     })
 
     expect(hasPermission(user, 'project.runtime.read')).toBe(false)
@@ -39,7 +40,7 @@ describe('auth permissions', () => {
 
     expect(hasPlatformRole(user, 'platform_super_admin')).toBe(true)
     expect(primaryPlatformRole(user)).toBe('platform_super_admin')
-    expect(hasPermission(user, 'platform.config.read')).toBe(true)
+    expect(hasPermission(user, 'platform.config.read')).toBe(false)
     expect(hasPermission(user, 'project.assistant.read')).toBe(false)
   })
 
@@ -64,13 +65,21 @@ describe('auth permissions', () => {
   })
 
   it('keeps operator and super-admin governance capabilities distinct', () => {
-    const operator = buildUser({ platform_roles: ['platform_operator'] })
-    const superAdmin = buildUser({ platform_roles: ['platform_super_admin'] })
+    const operator = buildUser({ platform_roles: ['platform_operator'], permissions: ['platform.user.create'] })
+    const superAdmin = buildUser({ platform_roles: ['platform_super_admin'], permissions: ['platform.user.credential.reset', 'platform.service_account.grant.write'] })
 
     expect(hasPermission(operator, 'platform.user.create')).toBe(true)
     expect(hasPermission(operator, 'platform.user.credential.reset')).toBe(false)
     expect(hasPermission(operator, 'platform.service_account.grant.write')).toBe(false)
     expect(hasPermission(superAdmin, 'platform.user.credential.reset')).toBe(true)
     expect(hasPermission(superAdmin, 'platform.service_account.grant.write')).toBe(true)
+  })
+
+  it('uses the latest server permissions and denies missing or disabled profiles', () => {
+    const user = buildUser({ platform_roles: ['platform_super_admin'], permissions: ['platform.model.write'] })
+    expect(hasPermission(user, 'platform.model.write')).toBe(true)
+    expect(hasPermission({ ...user, permissions: [] }, 'platform.model.write')).toBe(false)
+    expect(hasPermission({ ...user, status: 'disabled' }, 'platform.model.write')).toBe(false)
+    expect(normalizeManagementUser({ ...user, permissions: ['project.runtime.execute'] }).permissions).toEqual([])
   })
 })

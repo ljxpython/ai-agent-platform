@@ -468,6 +468,10 @@ restart_one() {
     runtime-api|runtime-worker|platform-api|platform-web) ;;
     *) die "restart-one requires one of runtime-api, runtime-worker, platform-api, platform-web" ;;
   esac
+  # Reject invalid Runtime configuration before stopping a healthy process.
+  case "$key" in
+    runtime-api|runtime-worker) validate_runtime ;;
+  esac
   if [ "$key" = "platform-api" ]; then
     (cd "$PLATFORM_API_DIR" && uv run --frozen python scripts/database.py upgrade)
   fi

@@ -103,8 +103,7 @@ const columns = computed<DataTableColumn[]>(() => [
 const currentProject = activeProject;
 const canRefreshCatalog = computed(
   () =>
-    authorization.can("platform.catalog.refresh") ||
-    authorization.currentProjectCan("project.runtime.write"),
+    authorization.can("platform.catalog.refresh"),
 );
 const syncedCount = computed(
   () =>

@@ -117,7 +117,7 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         self._engine = build_engine(f"sqlite:///{database_path}")
         self._session_factory = build_session_factory(self._engine)
         create_core_tables(self._engine)
-        self.actor = ActorContext(user_id="user-1", subject="user-1")
+        self.actor = ActorContext(user_id="user-1", subject="user-1", project_roles={"project-1": ("project_admin",)})
         run_start = AsyncMock(return_value={"run_id": "run-1"})
         self.upstream = SimpleNamespace(
             create_thread_run=run_start,
@@ -580,4 +580,3 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
             sent["command"],
             {"resume": {"interrupt-1": {"user_decision": "confirmed"}}},
         )
-

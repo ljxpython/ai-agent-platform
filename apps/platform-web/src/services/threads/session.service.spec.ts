@@ -12,11 +12,14 @@ it('uses SDK graphId and the public checkpoint wire contract', async () => {
   await service.state('thread', { checkpoint_id: 'check', checkpoint_ns: '' })
   await service.history('thread', { checkpoint_id: 'check', checkpoint_ns: '' })
   await service.fork('thread', 'check', '分支标题')
+  await service.resume('thread', { approval: { decisions: [{ type: 'approve' }] } })
   expect(requests[0]?.body?.metadata).toEqual({ graph_id: 'workflow_demo', agent_id: 'agent', title: '标题' })
   expect(requests[1]?.url).toMatch(/\/threads\/thread\/state\?checkpoint_id=check$/)
   expect(requests[2]?.body?.before).toEqual({ checkpoint_id: 'check', checkpoint_ns: '' })
   expect(requests[3]?.url).toMatch(/\/threads\/thread\/fork$/)
   expect(requests[3]?.body).toEqual({ checkpoint_id: 'check', title: '分支标题' })
+  expect(requests[4]?.url).toMatch(/\/threads\/thread\/runs$/)
+  expect(requests[4]?.body).toEqual({ command: { resume: { approval: { decisions: [{ type: 'approve' }] } } } })
   expect(requests.every(request => request.headers.get('x-project-id') === 'project')).toBe(true)
 })
 
@@ -87,5 +90,4 @@ it('summarizes thread title with POST request', async () => {
   expect(requests[0]?.body).toEqual({ messages: [{ role: 'user', content: '测试消息' }] })
   expect(res.title).toBe('智能标题')
 })
-
 

@@ -7,6 +7,8 @@ from sqlalchemy import (
     JSON,
     Boolean,
     DateTime,
+    ForeignKey,
+    Index,
     String,
     Text,
     UniqueConstraint,
@@ -20,6 +22,10 @@ from platform_api.core.db.base import Base
 
 class RuntimeCatalogModelRecord(Base):
     __tablename__ = "runtime_catalog_models"
+    __table_args__ = (
+        Index("ix_runtime_catalog_models_scope_project", "scope_type", "project_id"),
+    )
+
     id: Mapped[uuid.UUID] = mapped_column(
         Uuid(as_uuid=True),
         primary_key=True,
@@ -32,6 +38,14 @@ class RuntimeCatalogModelRecord(Base):
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     api_key_ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    scope_type: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="platform", server_default="platform"
+    )
+    project_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("projects.id", ondelete="CASCADE", name="fk_runtime_catalog_models_project_id"),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,

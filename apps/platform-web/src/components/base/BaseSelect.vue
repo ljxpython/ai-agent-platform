@@ -168,12 +168,17 @@ function open() {
   isOpen.value = true
 }
 
+let lastClosedByOutsideAt = 0
+
 function close() {
   isOpen.value = false
   focusedIndex.value = -1
 }
 
 function toggle() {
+  if (Date.now() - lastClosedByOutsideAt < 200) {
+    return
+  }
   if (isOpen.value) {
     close()
     return
@@ -331,7 +336,10 @@ function handleClickOutside(event: MouseEvent) {
   const clickedInsideDropdown = dropdownRef.value?.contains(target)
 
   if (!clickedInsideTrigger && !clickedInsideDropdown) {
-    close()
+    if (isOpen.value) {
+      lastClosedByOutsideAt = Date.now()
+      close()
+    }
   }
 }
 

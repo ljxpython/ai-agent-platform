@@ -213,8 +213,32 @@ function handleEdit() {
               "
             >
               {{
-                model.credential_configured ? "API 凭据已配置" : "未检测到凭据"
+                model.credential_configured
+                  ? (model.scope_type === "project" ? "私有凭据已配置" : "平台托管已配置")
+                  : "未检测到凭据"
               }}
+            </span>
+          </div>
+        </div>
+
+        <div
+          class="rounded-lg border border-gray-100 bg-white p-3 shadow-sm dark:border-dark-800 dark:bg-dark-900"
+        >
+          <div class="text-gray-500 dark:text-dark-400">
+            归属作用域
+          </div>
+          <div class="mt-1 flex items-center gap-1.5 font-medium">
+            <span
+              v-if="model.scope_type === 'project'"
+              class="inline-flex items-center rounded-md bg-purple-50 px-2 py-0.5 text-xs font-semibold text-purple-700 dark:bg-purple-950/50 dark:text-purple-300"
+            >
+              项目私有模型 (BYOK)
+            </span>
+            <span
+              v-else
+              class="inline-flex items-center rounded-md bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+            >
+              平台公共托管模型
             </span>
           </div>
         </div>

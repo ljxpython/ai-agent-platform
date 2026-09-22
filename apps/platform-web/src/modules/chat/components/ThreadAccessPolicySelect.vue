@@ -10,6 +10,7 @@ const props = withDefaults(
     disabled?: boolean;
     loading?: boolean;
     canWrite?: boolean;
+    canFullAccess?: boolean;
     tooltip?: string;
   }>(),
   {
@@ -99,6 +100,7 @@ function handleKeyDown(event: KeyboardEvent) {
 }
 
 function selectPolicy(target: AccessPolicy) {
+  if (!props.canWrite || (target === "full_access" && props.canFullAccess === false)) return;
   isOpen.value = false;
   if (target === currentPolicy.value) return;
 
@@ -116,6 +118,7 @@ function selectPolicy(target: AccessPolicy) {
 function confirmRiskUpgrade() {
   const target = pendingTargetPolicy.value;
   showRiskDialog.value = false;
+  if (!props.canWrite || (target === "full_access" && props.canFullAccess === false)) return;
   emit("update:modelValue", target);
   emit("change", target);
 }
@@ -355,6 +358,7 @@ onBeforeUnmount(() => {
             "
             role="menuitem"
             data-testid="policy-option-full-access"
+            :disabled="canFullAccess === false"
             @click="selectPolicy('full_access')"
           >
             <span class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center text-red-600 dark:text-red-400">
@@ -370,7 +374,7 @@ onBeforeUnmount(() => {
                 <span class="text-[10px] text-red-600 dark:text-red-400 font-medium">全放行</span>
               </div>
               <p class="text-[11px] text-gray-500 dark:text-dark-400 leading-normal mt-0.5">
-                默认放行所有工具审批，AI 拥有最高自主权，不暂停任务。
+                {{ canFullAccess === false ? '仅私人会话所有者可启用；共享不会授予此权限。' : '默认放行所有工具审批，AI 拥有最高自主权，不暂停任务。' }}
               </p>
             </div>
             <BaseIcon

@@ -35,6 +35,10 @@ from platform_api.modules.iam.application import (
     IamPolicyEngine,
     PermissionCode,
 )
+from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
+from platform_api.modules.service_accounts.repository import (
+    SqlAlchemyServiceAccountsRepository,
+)
 
 
 def _now() -> datetime:
@@ -133,6 +137,42 @@ class AnnouncementsService:
             ),
         )
 
+    def _actor_with_project_role(
+        self,
+        *,
+        session: Session,
+        actor: ActorContext,
+        project_id: str | None,
+    ) -> ActorContext:
+        if not project_id or actor.project_role_set(project_id):
+            return actor
+
+        role = None
+        project_uuid = self._resolve_scope_project_id(project_id)
+        if actor.user_id:
+            role = SqlAlchemyProjectsRepository(session).get_project_member_role(
+                project_id=project_uuid,
+                user_id=parse_actor_user_id(actor),
+            )
+        elif actor.credential_id:
+            role = SqlAlchemyServiceAccountsRepository(session).get_project_grant_role(
+                credential_id=actor.credential_id,
+                project_id=project_uuid,
+            )
+        if role is None:
+            return actor
+        return ActorContext(
+            user_id=actor.user_id,
+            subject=actor.subject,
+            email=actor.email,
+            principal_type=actor.principal_type,
+            authentication_type=actor.authentication_type,
+            credential_id=actor.credential_id,
+            must_change_password=actor.must_change_password,
+            platform_roles=actor.platform_roles,
+            project_roles={**actor.project_roles, project_id: (role.value,)},
+        )
+
     def list_admin_announcements(
         self,
         *,
@@ -141,27 +181,22 @@ class AnnouncementsService:
     ) -> AnnouncementPage:
         session_factory = self._require_session_factory()
         scope_project_uuid = self._resolve_scope_project_id(query.project_id)
-        if not actor.has_platform_role("platform_super_admin"):
-            if not query.project_id:
-                raise BadRequestError(
-                    code="project_scope_required",
-                    message="project_id is required for non-platform announcement management",
-                )
-            self._policy_engine.require(
-                actor=actor,
-                authorization=AuthorizationRequest(
-                    permission=PermissionCode.PROJECT_ANNOUNCEMENT_WRITE,
-                    project_id=query.project_id,
-                ),
-            )
+        scope_type = AnnouncementScopeType.PROJECT if query.project_id else AnnouncementScopeType.GLOBAL
+        if query.scope_type is not None and query.scope_type != scope_type:
+            raise BadRequestError(code="announcement_scope_mismatch", message="Choose a project for project announcements, or clear it for global announcements")
         with session_scope(session_factory) as session:
+            self._require_manage_access(
+                actor=self._actor_with_project_role(session=session, actor=actor, project_id=query.project_id),
+                scope_type=scope_type,
+                scope_project_id=query.project_id,
+            )
             repository = SqlAlchemyAnnouncementsRepository(session)
             items, total = repository.list_admin_announcements(
                 limit=query.limit,
                 offset=query.offset,
                 query=query.query,
                 status=query.status.value if query.status else None,
-                scope_type=query.scope_type.value if query.scope_type else None,
+                scope_type=scope_type.value,
                 scope_project_id=scope_project_uuid,
             )
             return AnnouncementPage(
@@ -237,11 +272,40 @@ class AnnouncementsService:
                 scope_project_id = None
             if scope_project_id:
                 self._resolve_scope_project_id(scope_project_id)
+            current_scope_type = AnnouncementScopeType(current.scope_type)
+            current_scope_project_id = (
+                str(current.scope_project_id) if current.scope_project_id else None
+            )
+            scope_changed = (
+                scope_type != current_scope_type
+                or scope_project_id != current_scope_project_id
+            )
+            if scope_changed:
+                # 迁移公告必须同时具备源和目标 scope 的管理权限，避免
+                # 仅凭目标项目权限把别的项目内容搬过来。
+                self._require_manage_access(
+                    actor=self._actor_with_project_role(
+                        session=session,
+                        actor=actor,
+                        project_id=current_scope_project_id,
+                    ),
+                    scope_type=current_scope_type,
+                    scope_project_id=current_scope_project_id,
+                )
             self._require_manage_access(
-                actor=actor,
+                actor=self._actor_with_project_role(
+                    session=session,
+                    actor=actor,
+                    project_id=scope_project_id,
+                ),
                 scope_type=scope_type,
                 scope_project_id=scope_project_id,
             )
+            if scope_changed:
+                raise BadRequestError(
+                    code="announcement_scope_immutable",
+                    message="Announcement scope cannot be changed by editing; create an announcement in the intended scope",
+                )
             updated = repository.update_announcement(
                 announcement_id=announcement_uuid,
                 title=command.title.strip()

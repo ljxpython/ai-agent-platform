@@ -8,6 +8,24 @@ from pathlib import Path
 
 
 class LocalStackBackendTest(unittest.TestCase):
+    def test_runtime_restart_preflight_runs_before_stop(self):
+        script = Path(__file__).with_name("local-stack.sh").resolve()
+        for key in ("runtime-api", "runtime-worker"):
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as directory:
+                result = subprocess.run([
+                    "bash", "-c", '''
+source "$1" help >/dev/null
+load_runtime_env() { :; }
+validate_runtime() { printf 'CONFIG_ERROR audience missing\\n'; return 17; }
+stop_process() { printf 'UNEXPECTED STOP\\n'; }
+start_managed_key() { printf 'UNEXPECTED START\\n'; }
+restart_one "$2"
+''', "test", str(script), key,
+                ], env={**os.environ, "TMPDIR": directory}, capture_output=True, text=True, timeout=10, check=False)
+                self.assertEqual(result.returncode, 17, result.stderr)
+                self.assertIn("CONFIG_ERROR", result.stdout)
+                self.assertNotIn("UNEXPECTED", result.stdout)
+
     def test_failed_platform_migration_blocks_start(self):
         script = Path(__file__).with_name("local-stack.sh").resolve()
         with tempfile.TemporaryDirectory() as directory:

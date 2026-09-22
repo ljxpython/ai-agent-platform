@@ -7,6 +7,7 @@ import BaseInput from '@/components/base/BaseInput.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { SESSION_EXPIRED_REASON } from '@/services/auth/session-expiry'
+import { defaultWorkspacePath } from '@/services/auth/permissions'
 
 const router = useRouter()
 const route = useRoute()
@@ -56,7 +57,7 @@ async function handleSubmit() {
     const redirectPath =
       typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/workspace')
         ? route.query.redirect
-        : '/workspace/overview'
+        : defaultWorkspacePath(authStore.user)
 
     await redirectToWorkspace(redirectPath)
   } catch (error) {

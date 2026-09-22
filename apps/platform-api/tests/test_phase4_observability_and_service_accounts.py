@@ -152,6 +152,14 @@ class Phase4ObservabilityAndServiceAccountsTest(unittest.TestCase):
         self.assertEqual(admin_create_response.status_code, 200, admin_create_response.text)
         account_id = admin_create_response.json()["id"]
 
+        admin_token_response = self.client.post(
+            f"/api/service-accounts/{account_id}/tokens",
+            headers=self._auth_headers(),
+            json={"name": "protected-token"},
+        )
+        self.assertEqual(admin_token_response.status_code, 200, admin_token_response.text)
+        token_id = admin_token_response.json()["token"]["id"]
+
         token_response = self.client.post(
             f"/api/service-accounts/{account_id}/tokens",
             headers=operator_headers,
@@ -165,6 +173,49 @@ class Phase4ObservabilityAndServiceAccountsTest(unittest.TestCase):
             json={"platform_roles": ["platform_viewer"]},
         )
         self.assertEqual(demote_response.status_code, 403, demote_response.text)
+
+        disable_response = self.client.patch(
+            f"/api/service-accounts/{account_id}",
+            headers=operator_headers,
+            json={"status": "disabled"},
+        )
+        self.assertEqual(disable_response.status_code, 403, disable_response.text)
+
+        revoke_response = self.client.delete(
+            f"/api/service-accounts/{account_id}/tokens/{token_id}",
+            headers=operator_headers,
+        )
+        self.assertEqual(revoke_response.status_code, 403, revoke_response.text)
+
+    def test_platform_audit_filters_projects_without_exposing_private_metadata(self) -> None:
+        from uuid import uuid4
+        from platform_api.modules.audit.models import AuditLogRecord
+
+        project_id = str(uuid4())
+        with session_scope(self._session_factory) as session:
+            session.add(AuditLogRecord(
+                request_id="audit-privacy-test", plane="runtime_gateway", action="thread.read",
+                project_id=project_id, result="success", method="GET", path="/api/langgraph/threads/thread",
+                status_code=200, duration_ms=1,
+                metadata_json={"query": "memory=private", "body": "private text", "api_key": "secret",
+                               "reason": "support", "graph_id": "demo"},
+            ))
+        _, token = self._create_operator_user()
+        response = self.client.get("/api/audit", params={"project_id": project_id},
+                                   headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(response.status_code, 200, response.text)
+        item = next(item for item in response.json()["items"] if item["request_id"] == "audit-privacy-test")
+        self.assertEqual(item["metadata"], {"reason": "support", "graph_id": "demo"})
+
+    def test_identity_profile_exposes_authoritative_platform_permissions(self) -> None:
+        _, token = self._create_operator_user()
+        response = self.client.get("/api/identity/me", headers={"Authorization": f"Bearer {token}"})
+        self.assertEqual(response.status_code, 200, response.text)
+        permissions = response.json()["permissions"]
+        self.assertIn("platform.model.write", permissions)
+        self.assertIn("platform.user.create", permissions)
+        self.assertNotIn("platform.user.role.write", permissions)
+        self.assertTrue(all(value.startswith("platform.") for value in permissions))
 
 
     @staticmethod

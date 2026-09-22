@@ -103,6 +103,10 @@ class ServiceAccountsService:
             actor=actor, permission=PermissionCode.PLATFORM_SUPER_ADMIN_MANAGE
         )
 
+    def _require_protected_account_access(self, *, actor: ActorContext, account) -> None:
+        if PlatformRole.SUPER_ADMIN.value in account.platform_roles:
+            self._require_super_admin_role_permission(actor=actor)
+
     def _token_item(self, item) -> ServiceAccountTokenItem:
         return ServiceAccountTokenItem(
             id=str(item.id),
@@ -225,6 +229,7 @@ class ServiceAccountsService:
                 if command.platform_roles is not None
                 else current.platform_roles
             )
+            self._require_protected_account_access(actor=actor, account=current)
             if (PlatformRole.SUPER_ADMIN.value in current.platform_roles) != (
                 PlatformRole.SUPER_ADMIN.value in next_roles
             ):
@@ -276,8 +281,7 @@ class ServiceAccountsService:
                     code="service_account_not_found",
                     message="Service account not found",
                 )
-            if PlatformRole.SUPER_ADMIN.value in account.platform_roles:
-                self._require_super_admin_role_permission(actor=actor)
+            self._require_protected_account_access(actor=actor, account=account)
             token = repository.create_token(
                 service_account_id=account_uuid,
                 name=_normalize_name(command.name),
@@ -306,6 +310,13 @@ class ServiceAccountsService:
         token_uuid = parse_uuid(token_id, code="invalid_service_account_token_id")
         with session_scope(session_factory) as session:
             repository = SqlAlchemyServiceAccountsRepository(session)
+            account = repository.get_service_account_by_id(account_uuid)
+            if account is None:
+                raise NotFoundError(
+                    code="service_account_not_found",
+                    message="Service account not found",
+                )
+            self._require_protected_account_access(actor=actor, account=account)
             revoked = repository.revoke_token(
                 service_account_id=account_uuid, token_id=token_uuid
             )
@@ -436,7 +447,7 @@ class ServiceAccountsService:
                 if role is not None:
                     project_roles[project_id] = (role.value,)
             return ActorContext(
-                subject=account.name,
+                subject=f"service-account:{account.id}",
                 platform_roles=account.platform_roles,
                 principal_type="service_account",
                 authentication_type="api_key",

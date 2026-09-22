@@ -725,7 +725,7 @@ onMounted(() => {
               <span class="pw-input-label">范围</span>
               <BaseSelect
                 v-model="form.scopeType"
-                :disabled="!canManageGlobalAnnouncements"
+                :disabled="!!editingAnnouncement || !canManageGlobalAnnouncements"
               >
                 <option
                   v-if="canManageGlobalAnnouncements"
@@ -743,7 +743,7 @@ onMounted(() => {
               <span class="pw-input-label">项目</span>
               <BaseSelect
                 v-model="form.scopeProjectId"
-                :disabled="form.scopeType !== 'project'"
+                :disabled="!!editingAnnouncement || form.scopeType !== 'project'"
               >
                 <option value="">选择项目</option>
                 <option

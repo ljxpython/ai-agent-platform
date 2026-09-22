@@ -77,6 +77,9 @@ function withCommandIdempotencyKey(
 }
 
 async function normalizeProtocolErrorResponse(response: Response): Promise<Response> {
+  if (response.status === 403 && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('platform-access-denied'))
+  }
   if (response.ok) {
     return response
   }

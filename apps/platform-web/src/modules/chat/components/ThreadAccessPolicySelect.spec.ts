@@ -79,7 +79,7 @@ it("opens risk dialog when selecting workspace_write from review", async () => {
 it("opens risk dialog when selecting full_access from review and confirms", async () => {
   const wrapper = mount(ThreadAccessPolicySelect, {
     attachTo: document.body,
-    props: { modelValue: "review" },
+    props: { modelValue: "review", canFullAccess: true },
   });
 
   try {

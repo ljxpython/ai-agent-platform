@@ -152,6 +152,30 @@ class IamPolicyEngineTest(unittest.TestCase):
                 authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_AUDIT_READ),
             )
 
+    def test_execution_and_governance_are_separate(self) -> None:
+        for role in ("project_admin", "project_editor", "project_executor"):
+            actor = ActorContext(user_id=role, project_roles={"p": (role,)})
+            for permission, allowed in (
+                (PermissionCode.PROJECT_RUNTIME_EXECUTE, True),
+                (PermissionCode.PROJECT_RUNTIME_WRITE, role == "project_admin"),
+                (PermissionCode.PLATFORM_MODEL_WRITE, False),
+                (PermissionCode.PLATFORM_CATALOG_REFRESH, False),
+            ):
+                with self.subTest(role=role, permission=permission):
+                    self.assertEqual(self.engine.evaluate(actor=actor, authorization=AuthorizationRequest(
+                        permission=permission, project_id="p",
+                    )).allowed, allowed)
+            self.assertFalse(self.engine.evaluate(actor=actor, authorization=AuthorizationRequest(
+                permission=PermissionCode.PROJECT_RUNTIME_EXECUTE, project_id="other",
+            )).allowed)
+        operator = ActorContext(user_id="op", platform_roles=("platform_operator",))
+        self.assertTrue(self.engine.evaluate(actor=operator, authorization=AuthorizationRequest(
+            permission=PermissionCode.PLATFORM_MODEL_WRITE,
+        )).allowed)
+        self.assertFalse(self.engine.evaluate(actor=operator, authorization=AuthorizationRequest(
+            permission=PermissionCode.PROJECT_RUNTIME_EXECUTE, project_id="p",
+        )).allowed)
+
     def test_require_raises_for_unregistered_permission(self) -> None:
         actor = ActorContext(
             user_id="user-1",

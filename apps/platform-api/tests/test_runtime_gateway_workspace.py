@@ -18,6 +18,7 @@ import httpx
 import jwt
 import uvicorn
 from fastapi import FastAPI
+from tests.thread_acl_fixture import thread_acl_factory
 from platform_api.adapters.langgraph.runtime_gateway_upstream import (
     LangGraphRuntimeGatewayUpstream,
 )
@@ -41,7 +42,7 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
         self.app = FastAPI()
         self.app.include_router(router)
         register_exception_handlers(self.app)
-        self.actor = ActorContext(user_id="user-a")
+        self.actor = ActorContext(user_id="user-a", project_roles={"project-a": ("project_admin",)})
         self.upstream = Mock()
         self.upstream.get_thread = AsyncMock(
             return_value={
@@ -63,7 +64,7 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
         )
         self.upstream.with_forwarded_headers = Mock(return_value=self.upstream)
         self.service = RuntimeGatewayService(
-            session_factory=Mock(),
+            session_factory=thread_acl_factory(self, actor=self.actor, project_id="project-a"),
             upstream=self.upstream,
             delegation_headers_factory=self.delegation,
         )
@@ -244,7 +245,9 @@ uvicorn.run('runtime_service.webapp:app', fd=int(sys.argv[1]), log_level='error'
                 thread.start()
 
                 async def wait_ready():
-                    for _ in range(150):
+                    # Cold Runtime SDK imports can exceed 45s on a loaded dev host.
+                    deadline = time.monotonic() + 120
+                    while time.monotonic() < deadline:
                         if process.poll() is not None:
                             log.seek(0)
                             self.fail(log.read().decode())
@@ -260,7 +263,8 @@ uvicorn.run('runtime_service.webapp:app', fd=int(sys.argv[1]), log_level='error'
                             pass
                         await asyncio.sleep(0.1)
                     else:
-                        self.fail("Local HTTP services did not start")
+                        log.seek(0)
+                        self.fail("Local HTTP services did not start\n" + log.read().decode())
 
                 try:
                     await wait_ready()

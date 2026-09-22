@@ -27,7 +27,7 @@ import ConfirmDialog from "@/components/base/ConfirmDialog.vue";
 
 const { activeProject, activeProjectId } = useWorkspaceProjectContext();
 const { can } = useAuthorization();
-const canWrite = computed(() => can("project.runtime.write", activeProjectId.value));
+const canWrite = computed(() => can("project.runtime.execute", activeProjectId.value));
 
 // 专区切换
 const activeTab = ref<"public" | "custom">("public");
@@ -679,7 +679,7 @@ onMounted(() => {
         class="flex items-center gap-2 rounded-xl bg-amber-50 px-4 py-3 text-xs font-medium text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
       >
         <BaseIcon name="shield" size="xs" class="text-amber-600 dark:text-amber-400" />
-        <span>当前项目处于只读模式（缺少 project.runtime.write 权限），技能导入、启停与删除操作已锁定。</span>
+        <span>当前项目仅允许查看。个人技能的导入、启停与删除需要项目执行权限，请联系项目管理员。</span>
       </div>
 
       <!-- 成功提示 -->

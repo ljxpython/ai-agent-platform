@@ -3,13 +3,16 @@ import { computed, onMounted } from 'vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { hasStoredAuthSession } from '@/services/auth/token'
+import { defaultWorkspacePath } from '@/services/auth/permissions'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
+const auth = useAuthStore()
 
 const redirectPath = computed(() => {
   const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
-  return redirect.startsWith('/workspace') ? redirect : '/workspace/overview'
+  return redirect.startsWith('/workspace') ? redirect : defaultWorkspacePath(auth.user)
 })
 
 const fallbackTarget = computed(() =>
@@ -25,6 +28,7 @@ const fallbackTarget = computed(() =>
 
 onMounted(async () => {
   if (hasStoredAuthSession()) {
+    await auth.hydrate()
     await router.replace(redirectPath.value)
     return
   }

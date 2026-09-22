@@ -9,6 +9,19 @@ from sqlalchemy.orm import Mapped, mapped_column
 from platform_api.core.db.base import Base
 
 
+class ThreadAccessRecord(Base):
+    """Authoritative Platform ACL; no business role policy is stored in Runtime."""
+
+    __tablename__ = "thread_access"
+    thread_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    owner_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    visibility: Mapped[str] = mapped_column(String(16), nullable=False, default="private")
+    shared_actions: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    project_actions: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    takeovers: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+
+
 class RunRequestRecord(Base):
     """Submission audit and idempotency; execution state belongs to Agent Server."""
 

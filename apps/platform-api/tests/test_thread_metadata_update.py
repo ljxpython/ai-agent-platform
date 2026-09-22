@@ -27,8 +27,6 @@ class ThreadMetadataUpdateTest(unittest.IsolatedAsyncioTestCase):
             "th-1",
             {
                 "metadata": {
-                    "project_id": "proj-1",
-                    "graph_id": "reference_agent",
                     "title": "新标题",
                     "preview": "最新消息摘要",
                 }
@@ -87,7 +85,7 @@ class ThreadMetadataUpdateTest(unittest.IsolatedAsyncioTestCase):
             "th-1", {"messages": [{"role": "user", "content": "帮我设计注册系统"}]}
         )
         upstream.update_thread.assert_awaited_once_with(
-            "th-1", {"metadata": {"project_id": "proj-1", "title": "用户注册架构"}}
+            "th-1", {"metadata": {"title": "用户注册架构"}}
         )
 
     async def test_summarize_thread_title_handles_empty_title_fallback(self) -> None:
@@ -143,6 +141,5 @@ class ThreadMetadataUpdateTest(unittest.IsolatedAsyncioTestCase):
             }
         )
         upstream.update_thread.assert_awaited_once_with(
-            "th-1", {"metadata": {"project_id": "proj-1", "title": "画鹈鹕"}}
+            "th-1", {"metadata": {"title": "画鹈鹕"}}
         )
-

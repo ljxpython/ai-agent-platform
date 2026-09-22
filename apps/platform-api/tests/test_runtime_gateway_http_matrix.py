@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock
 
 import httpx
 from fastapi import FastAPI
+from tests.thread_acl_fixture import thread_acl_factory
 
 from platform_api.core.errors import ForbiddenError, register_exception_handlers
 from platform_api.core.context.models import ActorContext
@@ -21,6 +22,9 @@ from platform_api.modules.runtime_gateway.presentation.http import (
 
 # Explicit inventory: a newly exposed route must receive a matrix case.
 CASES = [
+    ("DELETE", "/threads/{thread_id}/takeover", "end_thread_takeover"),
+    ("PUT", "/threads/{thread_id}/shares", "share_thread"),
+    ("POST", "/threads/{thread_id}/takeover", "takeover_thread"),
     ("POST", "/threads/{thread_id}/terminals", "thread_terminal"),
     ("GET", "/threads/{thread_id}/terminals", "thread_terminal"),
     ("GET", "/threads/{thread_id}/terminals/{terminal_id}/output", "thread_terminal"),
@@ -74,6 +78,12 @@ def terminal_payload(path):
     if path.endswith("/input"):
         return {"data_base64": "eA==", "sequence": 0}
     return {"rows": 24, "cols": 80}
+
+
+def governance_payload(name):
+    if name == "share_thread":
+        return {"actions": ["read"]}
+    return {"category": "user_support", "reason": "Explicit user requested support", "reference": "CASE-1", "duration_minutes": 15}
 
 
 class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
@@ -158,6 +168,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             )
                             headers["content-length"] = "10"
                         post_payload = (
+                            governance_payload(name) if name in {"share_thread", "takeover_thread"} else
                             terminal_payload(path) if name == "thread_terminal" else
                             {"checkpoint_id": "checkpoint-1"}
                             if name == "fork_thread" else
@@ -183,8 +194,8 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             method,
                             url_path,
                             params=req_params,
-                            json=post_payload if method in {"POST", "PATCH"} else None,
-                            content=b"0123456789" if method == "PUT" else None,
+                            json=post_payload if method in {"POST", "PATCH"} or name == "share_thread" else None,
+                            content=b"0123456789" if method == "PUT" and name != "share_thread" else None,
                             headers=headers,
                         )
                         expected = {
@@ -212,7 +223,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             if name == "fork_thread":
                                 self.assertEqual(kwargs["checkpoint_id"], "checkpoint-1")
                                 self.assertIsNone(kwargs["title"])
-                            else:
+                            elif name != "takeover_thread":
                                 self.assertEqual(kwargs["payload"], post_payload)
                         if name in {
                             "create_thread_run",
@@ -270,13 +281,14 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             url_path,
                             params=req_params,
                             json=(
+                                governance_payload(name) if name in {"share_thread", "takeover_thread"} else
                                 terminal_payload(path) if name == "thread_terminal"
                                 else {"checkpoint_id": "checkpoint-1"} if name == "fork_thread"
                                 else {"access_policy": "review"} if name == "update_thread_access_policy"
                                 else {"title": "new-title"} if name == "update_thread"
                                 else {}
-                            ) if method in {"POST", "PATCH"} else None,
-                            content=b"0123456789" if method == "PUT" else None,
+                            ) if method in {"POST", "PATCH"} or name == "share_thread" else None,
+                            content=b"0123456789" if method == "PUT" and name != "share_thread" else None,
                             headers=headers,
                         )
                         self.assertEqual(response.status_code, expected, response.text)
@@ -288,9 +300,10 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
             upstream.get_thread = AsyncMock(
                 return_value={"metadata": {"project_id": "other-project"}}
             )
-            actor = ActorContext(user_id="member")
+            actor = ActorContext(user_id="member", project_roles={"project-1": ("project_admin",)})
+            service._session_factory = thread_acl_factory(self, actor=actor, project_id="project-1")
             for method, path, name in CASES:
-                if "{thread_id}" not in path:
+                if "{thread_id}" not in path or name in {"takeover_thread", "end_thread_takeover"}:
                     continue
                 with self.subTest(cross_project=path, method=method):
                     url_path = "/api/langgraph" + path.format(
@@ -317,13 +330,14 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         url_path,
                         params=req_params,
                         json=(
+                            governance_payload(name) if name == "share_thread" else
                             terminal_payload(path) if name == "thread_terminal"
                             else {"checkpoint_id": "checkpoint-1"} if name == "fork_thread"
                             else {"access_policy": "review"} if name == "update_thread_access_policy"
                             else {"title": "new-title"} if name == "update_thread"
                             else {}
-                        ) if method in {"POST", "PATCH"} else None,
-                        content=b"0123456789" if method == "PUT" else None,
+                        ) if method in {"POST", "PATCH"} or name == "share_thread" else None,
+                        content=b"0123456789" if method == "PUT" and name != "share_thread" else None,
                         headers=headers,
                     )
                     self.assertEqual(response.status_code, 403, response.text)

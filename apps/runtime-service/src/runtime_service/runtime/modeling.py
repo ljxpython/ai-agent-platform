@@ -14,6 +14,11 @@ from langchain_core.language_models import BaseChatModel
 from langchain_deepseek import ChatDeepSeek
 from langchain_openai import ChatOpenAI
 
+try:
+    from langchain_anthropic import ChatAnthropic
+except ImportError:  # pragma: no cover
+    ChatAnthropic = None  # type: ignore[assignment, misc]
+
 from runtime_service.runtime.contracts import ResolvedRuntimeConfig
 from runtime_service.runtime.errors import RuntimeResolutionError
 
@@ -82,6 +87,20 @@ def build_model(
                 model=model_name,
                 api_key=conn_api_key or settings.get("GPT_PROXY_API_KEY") or "EMPTY",
                 base_url=conn_base_url or _required(settings, "GPT_PROXY_URL"),
+                stream_usage=True,
+                **kwargs,
+            )
+        if (
+            protocol in ("anthropic", "anthropic-messages")
+            or (connection is not None and provider in ("anthropic", "claude", "anthropic-proxy"))
+            or provider == "anthropic-proxy"
+        ):
+            if ChatAnthropic is None:
+                raise RuntimeResolutionError("runtime.model.initialization_failed", "langchain-anthropic not installed")
+            return ChatAnthropic(
+                model=model_name,
+                api_key=conn_api_key or settings.get("ANTHROPIC_PROXY_API_KEY") or settings.get("ANTHROPIC_API_KEY") or "EMPTY",
+                base_url=conn_base_url or settings.get("ANTHROPIC_PROXY_URL") or settings.get("ANTHROPIC_API_URL") or "https://api.anthropic.com",
                 stream_usage=True,
                 **kwargs,
             )

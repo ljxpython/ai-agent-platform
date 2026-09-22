@@ -88,4 +88,82 @@ describe("ProviderStationCard", () => {
     expect(wrapper.emitted("add-model")).toBeDefined();
     expect(wrapper.emitted("add-model")?.[0][0]).toEqual(mockStation);
   });
+
+  it("displays policy columns and tags when showPolicy is true", () => {
+    const wrapper = createWrapper({
+      showPolicy: true,
+      defaultModelIds: ["m-1"],
+      authorizedModelIds: ["m-1"],
+    });
+    expect(wrapper.text()).toContain("默认项");
+    expect(wrapper.text()).toContain("项目授权");
+    expect(wrapper.text()).toContain("已授权");
+    expect(wrapper.text()).toContain("未授权");
+    expect(wrapper.text()).toContain("包含默认模型");
+  });
+
+  it("hides policy columns and tags when showPolicy is false", () => {
+    const wrapper = createWrapper({
+      showPolicy: false,
+      defaultModelIds: ["m-1"],
+      authorizedModelIds: ["m-1"],
+    });
+    expect(wrapper.text()).not.toContain("默认项");
+    expect(wrapper.text()).not.toContain("项目授权");
+    expect(wrapper.text()).not.toContain("包含默认模型");
+  });
+
+  it("displays credentials indicator and column when showCredentials is true", () => {
+    const wrapper = createWrapper({
+      showCredentials: true,
+    });
+    expect(wrapper.text()).toContain("平台托管就绪");
+    expect(wrapper.text()).toContain("凭据");
+    expect(wrapper.text()).toContain("托管就绪");
+  });
+
+  it("displays BYOK badge and private credential labels for project private stations", () => {
+    const wrapper = createWrapper({
+      showCredentials: true,
+      showPolicy: true,
+      station: {
+        ...mockStation,
+        scopeType: "project",
+        models: mockStation.models.map((m) => ({
+          ...m,
+          scope_type: "project" as const,
+        })),
+      },
+    });
+    expect(wrapper.text()).toContain("私有 BYOK");
+    expect(wrapper.text()).toContain("私有凭据已配置");
+    expect(wrapper.text()).toContain("私有已配置");
+  });
+
+  it("displays platform托管 badge and platform托管就绪 for platform stations in project view", () => {
+    const wrapper = createWrapper({
+      showCredentials: true,
+      showPolicy: true,
+      station: {
+        ...mockStation,
+        scopeType: "platform",
+        models: mockStation.models.map((m) => ({
+          ...m,
+          scope_type: "platform" as const,
+        })),
+      },
+    });
+    expect(wrapper.text()).toContain("平台托管");
+    expect(wrapper.text()).toContain("平台托管就绪");
+    expect(wrapper.text()).toContain("托管就绪");
+  });
+
+  it("hides credentials indicator and column when showCredentials is false", () => {
+    const wrapper = createWrapper({
+      showCredentials: false,
+    });
+    expect(wrapper.text()).not.toContain("凭据均已配置");
+    expect(wrapper.text()).not.toContain("部分凭据未配置");
+    expect(wrapper.text()).not.toContain("configured");
+  });
 });

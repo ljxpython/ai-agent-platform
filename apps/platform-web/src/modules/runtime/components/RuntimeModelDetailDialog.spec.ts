@@ -58,7 +58,7 @@ describe("RuntimeModelDetailDialog", () => {
     expect(wrapper.text()).toContain("openai-compatible");
     expect(wrapper.text()).toContain("默认模型");
     expect(wrapper.text()).toContain("已启用");
-    expect(wrapper.text()).toContain("API 凭据已配置");
+    expect(wrapper.text()).toContain("平台托管已配置");
   });
 
   it("emits edit event when clicking edit button in footer", async () => {

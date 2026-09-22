@@ -2,6 +2,27 @@ import type { RouteRecordRaw } from "vue-router";
 
 const workspaceChildren: RouteRecordRaw[] = [
   {
+    path: "thread-governance",
+    name: "workspace-thread-governance",
+    component: () => import("@/modules/chat/pages/ThreadGovernancePage.vue"),
+    meta: { title: "会话治理", requiredPermissions: ["platform.super_admin.manage"] },
+  },
+  {
+    path: "projects/:projectId/thread-governance",
+    name: "workspace-project-thread-governance",
+    component: () => import("@/modules/chat/pages/ThreadGovernancePage.vue"),
+    meta: { title: "项目会话治理", requiredPermissions: ["project.runtime.write"], permissionProjectSource: "route" },
+  },
+  {
+    path: "models",
+    name: "workspace-platform-models",
+    component: () => import("@/modules/runtime/pages/RuntimeModelsPage.vue"),
+    meta: {
+      title: "全局模型连接",
+      requiredPermissions: ["platform.model.read"],
+    },
+  },
+  {
     path: ":pathMatch(.*)*",
     name: "workspace-not-found",
     component: () => import("@/views/workspace/AccessUnavailableView.vue"),
@@ -321,6 +342,9 @@ const navigation: Record<
   },
   "workspace-graphs": { group: "项目管理", label: "Graphs", icon: "graph" },
   "workspace-users": { group: "平台管理", label: "用户", icon: "users" },
+  "workspace-platform-models": { group: "平台管理", label: "模型连接", icon: "runtime" },
+  "workspace-thread-governance": { group: "平台管理", label: "会话治理", icon: "shield" },
+  "workspace-project-thread-governance": { group: "项目管理", label: "会话治理", icon: "shield" },
   "workspace-control-plane": {
     group: "平台管理",
     label: "控制面",

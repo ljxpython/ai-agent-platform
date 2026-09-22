@@ -34,3 +34,20 @@ it('logout invalidates in-flight hydration', async () => {
   expect(store.currentProjectAccess).toBeNull()
   expect(store.currentProjectId).toBe('')
 })
+
+it('clears revoked permissions when the periodic access refresh is rejected', async () => {
+  api.getProjectAccess
+    .mockResolvedValueOnce({
+      project_id: 'A',
+      permissions: ['project.runtime.write'],
+      roles: ['project_executor']
+    })
+    .mockRejectedValueOnce(new Error('forbidden'))
+  const store = useWorkspaceStore()
+  await store.setProjectId('A')
+
+  await expect(store.refreshCurrentProjectAccess()).rejects.toThrow('forbidden')
+
+  expect(store.currentProjectAccess).toBeNull()
+  expect(store.error).toBe('项目权限刷新失败，请重试')
+})

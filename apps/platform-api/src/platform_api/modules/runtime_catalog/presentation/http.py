@@ -39,6 +39,16 @@ def _require_project_id(request: Request) -> str:
     return normalized
 
 
+def _optional_project_id(request: Request) -> str:
+    platform_context = getattr(request.state, "platform_context", None)
+    project = getattr(platform_context, "project", None)
+    project_id = getattr(project, "project_id", None)
+    normalized = project_id.strip() if isinstance(project_id, str) else ""
+    if normalized:
+        request.state.audit_project_id = normalized
+    return normalized
+
+
 def get_runtime_catalog_service(request: Request) -> RuntimeCatalogService:
     settings: Settings = request.app.state.settings
     session_factory = getattr(request.app.state, "db_session_factory", None)
@@ -107,6 +117,14 @@ def list_runtime_models(
     return service.list_models(actor=actor, project_id=project_id)
 
 
+@router.get("/platform-models", response_model=RuntimeModelCatalogList)
+def list_platform_models(
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
+) -> RuntimeModelCatalogList:
+    return service.list_models(actor=actor, project_id="", platform=True)
+
+
 
 
 @router.post("/models", response_model=RuntimeModelCatalogItem, status_code=201)
@@ -116,7 +134,7 @@ def create_runtime_model(
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
 ) -> RuntimeModelCatalogItem:
-    project_id = _require_project_id(request)
+    project_id = _optional_project_id(request)
     return service.create_model(actor=actor, project_id=project_id, payload=payload)
 
 
@@ -128,12 +146,27 @@ def update_runtime_model(
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
 ) -> RuntimeModelCatalogItem:
-    project_id = _require_project_id(request)
+    project_id = _optional_project_id(request)
     return service.update_model(
         actor=actor,
         project_id=project_id,
         model_id=model_id,
         payload=payload,
+    )
+
+
+@router.delete("/models/{model_id}", status_code=204)
+def delete_runtime_model(
+    model_id: str,
+    request: Request,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
+) -> None:
+    project_id = _optional_project_id(request)
+    service.delete_model(
+        actor=actor,
+        project_id=project_id,
+        model_id=model_id,
     )
 
 

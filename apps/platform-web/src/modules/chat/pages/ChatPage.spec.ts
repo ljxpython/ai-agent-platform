@@ -62,7 +62,8 @@ const mockList = vi.fn().mockImplementation((options?: { metadata?: Record<strin
   return Promise.resolve(mockThreads);
 });
 
-vi.mock("@/services/threads/session.service", () => ({
+vi.mock("@/services/threads/session.service", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/services/threads/session.service")>(),
   createSessionService: () => ({
     list: mockList,
     count: vi.fn().mockImplementation((options?: { metadata?: Record<string, unknown> }) => {

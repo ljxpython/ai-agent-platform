@@ -1,6 +1,6 @@
 import { platformHttpClient } from '@/services/http/client'
 import { normalizeManagementUser } from '@/services/auth/permissions'
-import type { ManagementUser } from '@/types/management'
+import type { ManagementUser, PermissionCode } from '@/types/management'
 
 type RuntimeUserProfile = {
   id: string
@@ -8,6 +8,7 @@ type RuntimeUserProfile = {
   email?: string | null
   status: string
   platform_roles?: string[]
+  permissions?: PermissionCode[]
   must_change_password?: boolean
   is_super_admin?: boolean
   created_at?: string | null

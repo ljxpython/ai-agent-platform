@@ -1,6 +1,7 @@
 import type { Router } from "vue-router";
 import {
   hasPermission,
+  defaultWorkspacePath,
   isProjectPermission,
 } from "@/services/auth/permissions";
 import { getAccessToken, hasStoredAuthSession } from "@/services/auth/token";
@@ -84,7 +85,7 @@ export function registerRouterGuards(router: Router) {
         return to.query.redirect;
       }
 
-      return "/workspace/overview";
+      return defaultWorkspacePath(authStore.user);
     }
 
     if (

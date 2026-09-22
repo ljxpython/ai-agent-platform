@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onScopeDispose, ref } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
+import BaseSelect from '@/components/base/BaseSelect.vue'
 import SurfaceCard from '@/components/base/SurfaceCard.vue'
 import { useAuthorization } from '@/composables/useAuthorization'
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -25,6 +26,8 @@ import type {
   PlatformConfigSnapshot
 } from '@/types/management'
 import { formatDateTime } from '@/utils/format'
+import { useWorkspaceStore } from '@/stores/workspace'
+import { refreshRuntimeGraphs, refreshRuntimeTools } from '@/services/runtime/runtime.service'
 
 type QuickLinkItem = {
   to: string
@@ -36,6 +39,31 @@ type QuickLinkItem = {
 }
 
 const authorization = useAuthorization()
+const workspace = useWorkspaceStore()
+const catalogProjectId = ref('')
+const catalogBusy = ref(false)
+const catalogError = ref('')
+const catalogNotice = ref('')
+const catalogProjects = computed(() => workspace.projects.filter(project => project.status === 'active')
+  .map(project => ({ value: project.id, label: project.name })))
+let disposed = false
+onScopeDispose(() => { disposed = true })
+
+async function refreshCatalog(kind: 'graphs' | 'tools') {
+  const projectId = catalogProjectId.value
+  if (catalogBusy.value || !authorization.can('platform.catalog.refresh') || !catalogProjects.value.some(project => project.value === projectId)) return
+  catalogBusy.value = true
+  catalogError.value = ''
+  catalogNotice.value = ''
+  try {
+    const result = await (kind === 'graphs' ? refreshRuntimeGraphs(projectId) : refreshRuntimeTools(projectId))
+    if (!disposed && authorization.can('platform.catalog.refresh')) catalogNotice.value = `${kind === 'graphs' ? 'Graph' : '工具'}全局目录已刷新，共 ${result.count} 项。`
+  } catch (cause) {
+    if (!disposed) catalogError.value = cause instanceof Error ? cause.message : '目录刷新失败'
+  } finally {
+    if (!disposed) catalogBusy.value = false
+  }
+}
 const loading = ref(false)
 const error = ref('')
 const snapshot = ref<PlatformConfigSnapshot | null>(null)
@@ -277,6 +305,73 @@ onMounted(() => {
         </BaseButton>
       </template>
     </PageHeader>
+
+    <SurfaceCard v-if="authorization.can('platform.catalog.refresh')">
+      <div class="space-y-3 p-4">
+        <h2 class="font-semibold">
+          全局目录同步
+        </h2>
+        <p class="text-sm text-gray-500 dark:text-dark-300">
+          同步平台共享的执行图和工具定义。选择一个现有项目作为同步范围，无需加入项目，也不会获得聊天或执行权限。
+        </p>
+        <p
+          v-if="!catalogProjects.length"
+          role="status"
+          class="text-sm"
+        >
+          暂无可用项目，请联系平台管理员先创建项目。
+        </p>
+        <label
+          v-else
+          class="block text-sm"
+        >
+          同步范围
+          <BaseSelect
+            v-model="catalogProjectId"
+            :options="catalogProjects"
+            :disabled="catalogBusy"
+            placeholder="选择项目"
+          />
+        </label>
+        <div class="flex flex-wrap gap-2">
+          <BaseButton
+            variant="secondary"
+            :disabled="catalogBusy || !catalogProjectId"
+            @click="refreshCatalog('graphs')"
+          >
+            同步 Graph 目录
+          </BaseButton>
+          <BaseButton
+            variant="secondary"
+            :disabled="catalogBusy || !catalogProjectId"
+            @click="refreshCatalog('tools')"
+          >
+            同步工具目录
+          </BaseButton>
+        </div>
+        <p
+          v-if="catalogBusy"
+          role="status"
+          class="text-sm"
+        >
+          正在同步目录…
+        </p>
+        <p
+          v-if="catalogError"
+          role="alert"
+          class="text-sm text-red-600"
+        >
+          {{ catalogError }}
+        </p>
+        <p
+          v-if="catalogNotice"
+          role="status"
+          class="text-sm text-green-700"
+        >
+          {{ catalogNotice }}
+        </p>
+      </div>
+    </SurfaceCard>
 
     <StateBanner
       v-if="error"

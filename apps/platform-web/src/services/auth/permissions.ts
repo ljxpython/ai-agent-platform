@@ -17,28 +17,6 @@ const PROJECT_ROLES: ProjectRole[] = [
   'project_executor'
 ]
 
-const PLATFORM_PERMISSION_MAP: Partial<Record<PermissionCode, readonly PlatformRole[]>> = {
-  'platform.user.read': ['platform_super_admin', 'platform_operator', 'platform_viewer'],
-  'platform.user.write': ['platform_super_admin', 'platform_operator'],
-  'platform.user.create': ['platform_super_admin', 'platform_operator'],
-  'platform.user.profile.write': ['platform_super_admin', 'platform_operator'],
-  'platform.user.status.write': ['platform_super_admin', 'platform_operator'],
-  'platform.user.credential.reset': ['platform_super_admin'],
-  'platform.user.role.write': ['platform_super_admin'],
-  'platform.project.read': ['platform_super_admin', 'platform_operator', 'platform_viewer'],
-  'platform.project.create': ['platform_super_admin'],
-  'platform.project.write': ['platform_super_admin'],
-  'platform.project.takeover': ['platform_super_admin'],
-  'platform.audit.read': ['platform_super_admin', 'platform_operator', 'platform_viewer'],
-  'platform.catalog.refresh': ['platform_super_admin', 'platform_operator'],
-  'platform.announcement.write': ['platform_super_admin', 'platform_operator'],
-  'platform.config.read': ['platform_super_admin', 'platform_operator', 'platform_viewer'],
-  'platform.config.write': ['platform_super_admin', 'platform_operator'],
-  'platform.service_account.read': ['platform_super_admin', 'platform_operator', 'platform_viewer'],
-  'platform.service_account.write': ['platform_super_admin', 'platform_operator'],
-  'platform.service_account.grant.write': ['platform_super_admin']
-}
-
 export function normalizePlatformRole(value: unknown): PlatformRole | null {
   return typeof value === 'string' && PLATFORM_ROLES.includes(value as PlatformRole)
     ? (value as PlatformRole)
@@ -85,6 +63,9 @@ export function normalizeManagementUser(payload: ManagementUserPayload): Managem
       ? ['platform_super_admin', ...platformRoles]
       : platformRoles,
     must_change_password: Boolean(payload.must_change_password),
+    permissions: Array.isArray(payload.permissions)
+      ? payload.permissions.filter(permission => typeof permission === 'string' && permission.startsWith('platform.'))
+      : [],
     created_at: payload.created_at ?? null,
     updated_at: payload.updated_at ?? null
   }
@@ -110,16 +91,11 @@ export function hasPermission(
   user: ManagementUser | null | undefined,
   permission: PermissionCode
 ): boolean {
-  if (!user) {
+  if (!user || user.status !== 'active' || isProjectPermission(permission)) {
     return false
   }
 
-  const platformRoles = PLATFORM_PERMISSION_MAP[permission]
-  if (platformRoles) {
-    return platformRoles.some((role) => hasPlatformRole(user, role))
-  }
-
-  return false
+  return user.permissions?.includes(permission) ?? false
 }
 
 export function formatPlatformRoleLabel(role: PlatformRole): string {
@@ -165,6 +141,10 @@ export function formatProjectRoleLabel(role: ProjectRole | null | undefined): st
 export function describePlatformRole(user: ManagementUser | null | undefined): string {
   const role = primaryPlatformRole(user)
   return role ? formatPlatformRoleLabel(role) : '成员'
+}
+
+export function defaultWorkspacePath(user: ManagementUser | null | undefined): string {
+  return hasPlatformRole(user, 'platform_operator') ? '/workspace/control-plane' : '/workspace/overview'
 }
 
 export function describePrimaryRole(

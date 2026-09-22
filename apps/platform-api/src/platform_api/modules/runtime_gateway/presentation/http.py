@@ -55,6 +55,20 @@ class ThreadForkBody(BaseModel):
     checkpoint_id: str = Field(min_length=1, max_length=512)
     title: str | None = Field(default=None, max_length=200)
 
+
+class ThreadShareBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    user_id: UUID | None = None
+    actions: list[Literal["read", "comment", "edit", "share", "delete"]] = Field(max_length=5)
+
+
+class ThreadTakeoverBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    category: Literal["security_incident", "compliance", "user_support", "handover"]
+    reason: str = Field(min_length=10, max_length=1000)
+    reference: str = Field(min_length=3, max_length=200)
+    duration_minutes: int = Field(default=15, ge=1, le=60, strict=True)
+
 _SENSITIVE_EVENT_KEYS = {
     "access_token",
     "api_key",
@@ -179,7 +193,11 @@ def get_runtime_gateway_service(
     if not subject:
         raise NotAuthenticatedError()
     project_roles = actor.project_role_set(project_id)
-    if not project_roles:
+    object_governance = (
+        actor.principal_type == "user" and actor.has_platform_role("platform_super_admin")
+        and "thread_id" in request.path_params
+    )
+    if not project_roles and not object_governance:
         raise ForbiddenError(
             code="project_role_missing",
             message="Project role missing",
@@ -193,7 +211,7 @@ def get_runtime_gateway_service(
             subject=subject,
             tenant_id=context.tenant.tenant_id or "__default",
             project_id=project_id,
-            role=project_roles[0],
+            role=project_roles[0] if project_roles else "platform_super_admin",
             permissions=[],
             policy_version=str(policy["version"]),
             allowed_model_ids=policy["allowed_model_ids"],
@@ -232,7 +250,7 @@ def get_runtime_gateway_service(
             subject=subject,
             tenant_id=context.tenant.tenant_id or "__default",
             project_id=project_id,
-            role=project_roles[0],
+            role=project_roles[0] if project_roles else "platform_super_admin",
             permissions=[],
             policy_version=str(policy["version"]),
             allowed_model_ids=policy["allowed_model_ids"],
@@ -394,6 +412,36 @@ async def delete_thread(
         thread_id=thread_id,
     )
     return _normalize_ack(result)
+
+
+@router.put("/threads/{thread_id}/shares")
+async def share_thread(
+    request: Request, thread_id: str, payload: ThreadShareBody,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    return _redact_runtime_private_fields(await service.share_thread(actor=actor, project_id=_require_project_id(request),
+        thread_id=thread_id, user_id=str(payload.user_id) if payload.user_id else None, actions=payload.actions))
+
+
+@router.post("/threads/{thread_id}/takeover")
+async def takeover_thread(
+    request: Request, thread_id: str, payload: ThreadTakeoverBody,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    return _redact_runtime_private_fields(await service.takeover_thread(actor=actor, project_id=_require_project_id(request),
+        thread_id=thread_id, **payload.model_dump()))
+
+
+@router.delete("/threads/{thread_id}/takeover")
+async def end_thread_takeover(
+    request: Request, thread_id: str,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    return _redact_runtime_private_fields(await service.end_thread_takeover(
+        actor=actor, project_id=_require_project_id(request), thread_id=thread_id))
 
 
 @router.post("/threads/{thread_id}/fork")

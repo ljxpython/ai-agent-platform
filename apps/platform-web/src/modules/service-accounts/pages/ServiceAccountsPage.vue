@@ -92,6 +92,10 @@ const pagination = usePagination({
   storageKey: 'pw:service-accounts:page-size'
 })
 const canManageServiceAccounts = computed(() => authorization.can('platform.service_account.write'))
+function canManageAccount(account: ManagementServiceAccount | null | undefined) {
+  return Boolean(account && canManageServiceAccounts.value &&
+    (!account.platform_roles.includes('platform_super_admin') || authorization.can('platform.super_admin.manage')))
+}
 const canManageProjectGrants = computed(() => authorization.can('platform.service_account.grant.write'))
 
 const createForm = ref({
@@ -275,7 +279,7 @@ function openCreateDialog() {
 }
 
 function openEditDialog(account: ManagementServiceAccount) {
-  if (!canManageServiceAccounts.value) {
+  if (!canManageAccount(account)) {
     return
   }
   selectedAccount.value = account
@@ -417,7 +421,7 @@ async function submitEditForm() {
   if (!selectedAccount.value) {
     return
   }
-  if (!canManageServiceAccounts.value) {
+  if (!canManageAccount(selectedAccount.value)) {
     error.value = '当前账号没有 service account 写权限'
     return
   }
@@ -447,7 +451,7 @@ async function submitEditForm() {
 }
 
 async function toggleAccountStatus(account: ManagementServiceAccount) {
-  if (!canManageServiceAccounts.value) {
+  if (!canManageAccount(account)) {
     error.value = '当前账号没有 service account 写权限'
     return
   }
@@ -474,7 +478,7 @@ async function toggleAccountStatus(account: ManagementServiceAccount) {
 }
 
 function openTokenDialog(account: ManagementServiceAccount) {
-  if (!canManageServiceAccounts.value) {
+  if (!canManageAccount(account)) {
     return
   }
   selectedAccount.value = account
@@ -490,7 +494,7 @@ async function submitTokenForm() {
   if (!selectedAccount.value) {
     return
   }
-  if (!canManageServiceAccounts.value) {
+  if (!canManageAccount(selectedAccount.value)) {
     error.value = '当前账号没有 service account 写权限'
     return
   }
@@ -515,7 +519,7 @@ async function submitTokenForm() {
 }
 
 function requestRevokeToken(account: ManagementServiceAccount, token: ManagementServiceAccountToken) {
-  if (!canManageServiceAccounts.value) {
+  if (!canManageAccount(account)) {
     return
   }
   pendingRevokeTarget.value = {
@@ -532,7 +536,7 @@ async function confirmRevokeToken() {
   if (!target) {
     return
   }
-  if (!canManageServiceAccounts.value) {
+  if (!canManageAccount(accounts.value.find(account => account.id === target.accountId))) {
     error.value = '当前账号没有 service account 写权限'
     return
   }
@@ -738,6 +742,10 @@ onMounted(() => {
             </div>
             <div class="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-xs text-gray-500 dark:text-dark-300">
               <span>ID {{ shortId(account.id) }}</span>
+              <span
+                v-if="account.platform_roles.includes('platform_super_admin') && !canManageAccount(account)"
+                class="text-amber-700 dark:text-amber-300"
+              >高权限账号：仅平台管理员可编辑、停用或管理 Token</span>
               <span>创建于 {{ formatDateTime(account.created_at) }}</span>
               <span>最近使用 {{ formatDateTime(account.last_used_at) }}</span>
             </div>
@@ -751,21 +759,21 @@ onMounted(() => {
             </BaseButton>
             <BaseButton
               variant="secondary"
-              :disabled="!canManageServiceAccounts"
+              :disabled="!canManageAccount(account)"
               @click="openEditDialog(account)"
             >
               编辑
             </BaseButton>
             <BaseButton
               variant="secondary"
-              :disabled="!canManageServiceAccounts"
+              :disabled="!canManageAccount(account)"
               @click="openTokenDialog(account)"
             >
               发 Token
             </BaseButton>
             <BaseButton
               variant="secondary"
-              :disabled="!canManageServiceAccounts"
+              :disabled="!canManageAccount(account)"
               @click="toggleAccountStatus(account)"
             >
               {{ account.status === 'active' ? '停用' : '启用' }}
@@ -868,7 +876,7 @@ onMounted(() => {
             title="该账号暂无 token"
             description="当前 service account 还没有可用 token。"
             icon="lock"
-            action-label="发 Token"
+            :action-label="canManageAccount(account) ? '发 Token' : ''"
             @action="openTokenDialog(account)"
           />
           <div
@@ -897,7 +905,7 @@ onMounted(() => {
                 </div>
                 <BaseButton
                   variant="secondary"
-                  :disabled="token.status !== 'active' || !canManageServiceAccounts"
+                  :disabled="token.status !== 'active' || !canManageAccount(account)"
                   @click="requestRevokeToken(account, token)"
                 >
                   撤销
@@ -1005,7 +1013,7 @@ onMounted(() => {
             取消
           </BaseButton>
           <BaseButton
-            :disabled="savingAccount || !canManageServiceAccounts"
+            :disabled="savingAccount || !canManageAccount(selectedAccount)"
             @click="submitEditForm"
           >
             {{ savingAccount ? '保存中...' : '确认保存' }}
@@ -1073,7 +1081,7 @@ onMounted(() => {
             关闭
           </BaseButton>
           <BaseButton
-            :disabled="submitting || !tokenForm.name.trim() || !canManageServiceAccounts"
+            :disabled="submitting || !tokenForm.name.trim() || !canManageAccount(selectedAccount)"
             @click="submitTokenForm"
           >
             {{ submitting ? '创建中...' : '确认创建' }}
@@ -1115,14 +1123,14 @@ onMounted(() => {
             <div class="flex flex-wrap gap-2">
               <BaseButton
                 variant="secondary"
-                :disabled="!canManageServiceAccounts"
+                :disabled="!canManageAccount(selectedAccount)"
                 @click="openEditDialog(selectedAccount)"
               >
                 编辑
               </BaseButton>
               <BaseButton
                 variant="secondary"
-                :disabled="!canManageServiceAccounts"
+                :disabled="!canManageAccount(selectedAccount)"
                 @click="openTokenDialog(selectedAccount)"
               >
                 发 Token
@@ -1177,7 +1185,7 @@ onMounted(() => {
             title="该账号暂无 token"
             description="还没有签发任何 token。"
             icon="lock"
-            action-label="发 Token"
+            :action-label="canManageAccount(selectedAccount) ? '发 Token' : ''"
             @action="openTokenDialog(selectedAccount)"
           />
 
@@ -1211,7 +1219,7 @@ onMounted(() => {
                 </div>
                 <BaseButton
                   variant="secondary"
-                  :disabled="token.status !== 'active' || !canManageServiceAccounts"
+                  :disabled="token.status !== 'active' || !canManageAccount(selectedAccount)"
                   @click="requestRevokeToken(selectedAccount, token)"
                 >
                   撤销

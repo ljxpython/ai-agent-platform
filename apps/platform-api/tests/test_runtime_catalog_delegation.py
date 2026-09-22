@@ -36,6 +36,7 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
         )
         self.actor = ActorContext(
             user_id="user-1",
+            platform_roles=("platform_operator",),
             project_roles={self.project_id: ("project_editor",)},
         )
 

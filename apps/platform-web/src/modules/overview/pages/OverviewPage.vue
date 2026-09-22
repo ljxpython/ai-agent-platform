@@ -100,6 +100,13 @@ onScopeDispose(() => {
       variant="warning"
     />
     <SurfaceCard>
+      <StateBanner
+        v-if="!canReadChat"
+        title="尚未获得项目对话权限"
+        description="平台治理身份不自动包含项目访问资格。请选择已加入的项目，或联系项目管理员添加成员并授予执行权限。"
+        variant="info"
+      />
+      <router-link v-if="can('platform.config.read')" class="pw-btn pw-btn-secondary mt-3" to="/workspace/control-plane">进入平台治理 / 健康视图</router-link>
       <div class="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h2 class="text-xl font-semibold">

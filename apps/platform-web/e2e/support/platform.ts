@@ -49,7 +49,7 @@ export async function createPlatformFixture(graphId = 'workflow_demo') {
         await request(`/api/projects/${projectId}/runtime-policies/tools/${tool.id}`, 'PUT', { is_enabled: true })
       }
     }
-    const models = await request<{ models: Array<{ id: string; enabled: boolean; credential_configured: boolean }> }>('/api/runtime/models')
+    const models = await request<{ models: Array<{ id: string; enabled: boolean; credential_configured: boolean }> }>('/api/runtime/platform-models')
     let model = models.models.find((item) => item.enabled && item.credential_configured)
     if (!model && process.env.Q5_QUEUE_FIXTURE === '1') {
       model = await request('/api/runtime/models', 'POST', {

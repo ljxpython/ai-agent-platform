@@ -16,6 +16,8 @@ class RuntimeModelCatalogItem(BaseModel):
     model: str
     enabled: bool
     credential_configured: bool
+    scope_type: str = "platform"
+    project_id: str | None = None
 
 
 class RuntimeModelCreate(BaseModel):
@@ -26,6 +28,8 @@ class RuntimeModelCreate(BaseModel):
     model: str
     api_key: str
     enabled: bool = True
+    scope_type: str = "platform"
+    project_id: str | None = None
 
 
 class RuntimeModelUpdate(BaseModel):

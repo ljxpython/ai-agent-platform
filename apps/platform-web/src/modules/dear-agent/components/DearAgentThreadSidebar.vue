@@ -29,6 +29,8 @@ const props = defineProps<{
   totalCount?: number
   hasMore?: boolean
   canDelete?: boolean
+  canDeleteThread?: (threadId: string) => boolean
+  canEditThread?: (threadId: string) => boolean
 }>()
 
 const emit = defineEmits<{
@@ -278,7 +280,7 @@ function jumpToPage() {
                     type="button"
                     class="rounded p-1 text-gray-400 transition hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-purple-950/40 dark:hover:text-purple-300 disabled:opacity-50"
                     :class="summarizingThreadId === item.id ? '!opacity-100 text-purple-600 dark:text-purple-400' : ''"
-                    :disabled="summarizingThreadId === item.id"
+                    :disabled="summarizingThreadId === item.id || (canEditThread ? !canEditThread(item.id) : false)"
                     :aria-label="summarizingThreadId === item.id ? '正在智能生成标题...' : `AI智能生成标题：${item.title}`"
                     :title="summarizingThreadId === item.id ? '正在智能生成标题...' : 'AI 智能生成标题'"
                     @click.stop="emit('ai-summarize-title', item.id)"
@@ -295,6 +297,7 @@ function jumpToPage() {
                     class="rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-dark-700 dark:hover:text-gray-200"
                     :aria-label="`重命名会话：${item.title}`"
                     title="重命名会话"
+                    :disabled="canEditThread ? !canEditThread(item.id) : false"
                     @click.stop="startRename(item)"
                   >
                     <BaseIcon
@@ -304,7 +307,7 @@ function jumpToPage() {
                   </button>
 
                   <button
-                    v-if="canDelete"
+                    v-if="canDeleteThread ? canDeleteThread(item.id) : canDelete"
                     type="button"
                     class="rounded p-1 text-gray-400 transition hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400"
                     :class="deletingThreadId === item.id ? 'opacity-100' : ''"

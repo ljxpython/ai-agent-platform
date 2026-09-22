@@ -13,6 +13,8 @@ export type RuntimeModelInput = {
   model: string
   api_key?: string
   enabled?: boolean
+  scope_type?: 'platform' | 'project'
+  project_id?: string | null
 }
 
 function buildRuntimeHeaders(projectId?: string) {
@@ -28,6 +30,11 @@ export async function listRuntimeModels(projectId?: string): Promise<RuntimeMode
   const response = await platformHttpClient.get('/api/runtime/models', {
     headers: buildRuntimeHeaders(projectId)
   })
+  return response.data as RuntimeModelsResponse
+}
+
+export async function listPlatformModels(): Promise<RuntimeModelsResponse> {
+  const response = await platformHttpClient.get('/api/runtime/platform-models')
   return response.data as RuntimeModelsResponse
 }
 
@@ -50,6 +57,15 @@ export async function updateRuntimeModel(
     headers: buildRuntimeHeaders(projectId)
   })
   return response.data as RuntimeModelItem
+}
+
+export async function deleteRuntimeModel(
+  projectId: string | undefined,
+  modelId: string
+): Promise<void> {
+  await platformHttpClient.delete(`/api/runtime/models/${encodeURIComponent(modelId)}`, {
+    headers: buildRuntimeHeaders(projectId)
+  })
 }
 
 export async function listRuntimeTools(projectId?: string): Promise<RuntimeToolsResponse> {

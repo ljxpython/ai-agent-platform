@@ -18,6 +18,7 @@ class UserProfile(BaseModel):
     email: str | None = None
     status: UserStatus = UserStatus.ACTIVE
     platform_roles: tuple[str, ...] = ()
+    permissions: tuple[str, ...] = ()
     must_change_password: bool = False
 
 

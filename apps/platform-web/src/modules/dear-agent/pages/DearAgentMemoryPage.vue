@@ -30,7 +30,7 @@ const {
 } = useDearGovernanceContext();
 
 const { can } = useAuthorization();
-const canWrite = computed(() => can("project.runtime.write", activeProjectId.value));
+const canWrite = computed(() => can("project.runtime.execute", activeProjectId.value));
 
 // 记忆数据与状态
 const memoryDoc = ref<MemoryDocument | null>(null);

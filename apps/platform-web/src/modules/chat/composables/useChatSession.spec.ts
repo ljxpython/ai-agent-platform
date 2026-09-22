@@ -20,7 +20,8 @@ vi.mock("@/services/threads/messages.service", () => ({
 vi.mock("@/services/threads/access-policy.service", () => ({
   updateThreadAccessPolicy: mocks.updateAccessPolicy,
 }));
-vi.mock("@/services/threads/session.service", () => ({
+vi.mock("@/services/threads/session.service", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/services/threads/session.service")>(),
   createSessionService: () => ({
     client: {},
     runs: mocks.runs.getMockImplementation()
@@ -29,10 +30,10 @@ vi.mock("@/services/threads/session.service", () => ({
     run: mocks.run,
     get: mocks.getThread.getMockImplementation()
       ? mocks.getThread
-      : async () => ({ thread_id: "t", metadata: { access_policy: "review" } }),
+      : async () => ({ thread_id: "t", metadata: { access_policy: "review", allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] } }),
     create: mocks.createThread.getMockImplementation()
       ? mocks.createThread
-      : async () => ({ thread_id: "new-thread" }),
+      : async () => ({ thread_id: "new-thread", metadata: { allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] } }),
   }),
 }));
 vi.mock("@/services/langgraph/client", () => ({
@@ -43,7 +44,63 @@ vi.mock("../run-actions", () => ({
   createRunActions: () => mocks.actions() ?? ({ current: ref(null), begin: vi.fn(() => ({ key: "k" })), acknowledge: vi.fn(), rejectUnsent: vi.fn(), dispose: vi.fn() }),
 }));
 import { useChatSession } from "./useChatSession";
+import { useDearAgentSession } from "../../dear-agent/composables/useDearAgentSession";
+vi.mock("../../dear-agent/run-actions", () => ({
+  createRunActions: () => ({ current: ref(null), begin: vi.fn(), dispose: vi.fn() }),
+}));
+it.each([useChatSession, useDearAgentSession])("revokes visible Thread content and disconnects on the 60-second ACL refresh (%#)", async (useSession) => {
+  vi.useFakeTimers();
+  const disconnect = vi.fn();
+  mocks.stream.mockReturnValue({ isLoading: ref(false), error: ref(null), interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()), disconnect });
+  mocks.runs.mockResolvedValue([]);
+  mocks.list.mockResolvedValue([]);
+  mocks.getThread.mockResolvedValue({ thread_id: "t", metadata: { allowed_actions: ["read", "comment"] } });
+  const scope = effectScope();
+  const session = scope.run(() => useSession({ projectId: "p", graphId: "reference_agent", threadId: "t",
+    context: ref({}), canWrite: ref(true), onThread: vi.fn(), onRefresh: vi.fn(), onReconnect: vi.fn() }))!;
+  try {
+    await flushPromises();
+    expect(session.canRead.value).toBe(true);
+    mocks.getThread.mockRejectedValue(new Error("Forbidden"));
+    await vi.advanceTimersByTimeAsync(60_000);
+    await flushPromises();
+    expect(session.canRead.value).toBe(false);
+    expect(session.canComment.value).toBe(false);
+    expect(disconnect).toHaveBeenCalled();
+  } finally {
+    scope.stop();
+    mocks.getThread.mockReset();
+    mocks.runs.mockReset();
+    vi.useRealTimers();
+  }
+});
 afterEach(() => { vi.restoreAllMocks(); mocks.actions.mockReset(); mocks.updateAccessPolicy.mockReset(); sessionStorage.clear(); });
+it.each([useChatSession, useDearAgentSession])("ignores an ACL response issued before a sharing change (%#)", async useSession => {
+  mocks.stream.mockReturnValue({ isLoading: ref(false), error: ref(null), interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()), disconnect: vi.fn() });
+  mocks.runs.mockResolvedValue([]);
+  mocks.list.mockResolvedValue([]);
+  const allowed = { thread_id: "t", metadata: { allowed_actions: ["read", "comment"] } };
+  mocks.getThread.mockResolvedValue(allowed);
+  const scope = effectScope();
+  const session = scope.run(() => useSession({ projectId: "p", graphId: "reference_agent", threadId: "t",
+    context: ref({}), canWrite: ref(true), onThread: vi.fn(), onRefresh: vi.fn(), onReconnect: vi.fn() }))!;
+  try {
+    await flushPromises();
+    let resolveOld!: (value: typeof allowed) => void;
+    mocks.getThread.mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve; }));
+    const oldRequest = session.refreshAccessPolicy();
+    window.dispatchEvent(new Event('thread-access-updated'));
+    expect(session.canRead.value).toBe(false);
+    mocks.getThread.mockRejectedValue(new Error('Forbidden'));
+    resolveOld(allowed);
+    await oldRequest;
+    await flushPromises();
+    expect(session.canRead.value).toBe(false);
+    expect(session.canComment.value).toBe(false);
+  } finally { scope.stop(); mocks.getThread.mockReset(); mocks.runs.mockReset(); }
+});
 it("unknown queue retry freezes original payload and key and clears draft only on ACK", async () => {
   mocks.stream.mockReturnValue({
     isLoading: ref(true),
@@ -261,7 +318,7 @@ it("supports draft state policy staging and sends PATCH before starting run on n
     thread_id: "created-thread-1",
     access_policy: "workspace_write",
   });
-  mocks.createThread.mockResolvedValue({ thread_id: "created-thread-1" });
+  mocks.createThread.mockResolvedValue({ thread_id: "created-thread-1", metadata: { allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] } });
 
   const scope = effectScope();
   const session = scope.run(() =>
@@ -315,7 +372,7 @@ it("updates access policy for existing thread via API and handles failure gracef
   mocks.runs.mockResolvedValue([]);
   mocks.getThread.mockResolvedValue({
     thread_id: "thread-existing",
-    metadata: { access_policy: "review" },
+    metadata: { access_policy: "review", allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] },
   });
   mocks.updateAccessPolicy.mockResolvedValue({
     thread_id: "thread-existing",
@@ -372,10 +429,10 @@ it("supports draft state full_access staging and keeps full_access after refresh
     submit: submitFn,
   });
   mocks.runs.mockResolvedValue([]);
-  mocks.createThread.mockResolvedValue({ thread_id: "created-thread-full" });
+  mocks.createThread.mockResolvedValue({ thread_id: "created-thread-full", metadata: { allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] } });
   mocks.getThread.mockResolvedValue({
     thread_id: "created-thread-full",
-    metadata: { access_policy: "full_access" },
+    metadata: { access_policy: "full_access", allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] },
   });
   mocks.updateAccessPolicy.mockResolvedValue({
     thread_id: "created-thread-full",
@@ -425,5 +482,3 @@ it("supports draft state full_access staging and keeps full_access after refresh
     scope.stop();
   }
 });
-
-

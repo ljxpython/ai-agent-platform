@@ -5,6 +5,12 @@ export type AccessPolicy = 'review' | 'workspace_write' | 'full_access'
 export type ChatState = Record<string, unknown> & { messages: unknown[] }
 export type ChatThread = Thread<ChatState>
 export type ChatCheckpoint = ThreadState<ChatState>
+export type ThreadAction = 'read' | 'comment' | 'edit' | 'share' | 'delete' | 'approve' | 'terminal' | 'full_access'
+
+export function hasThreadAction(thread: Pick<ChatThread, 'metadata'> | undefined, action: ThreadAction): boolean {
+  const actions = thread?.metadata?.allowed_actions
+  return Array.isArray(actions) && actions.includes(action)
+}
 
 export function createSessionService(fetch: typeof globalThis.fetch, projectId?: string) {
   const client = new Client<ChatState>({ apiUrl: getLanggraphApiUrl(), callerOptions: { fetch, maxRetries: 0 }, defaultHeaders: projectId ? { 'x-project-id': projectId } : undefined })
@@ -68,6 +74,10 @@ export function createSessionService(fetch: typeof globalThis.fetch, projectId?:
       return 0
     },
     remove: (threadId: string) => client.threads.delete(threadId),
+    resume: (threadId: string, resume: Record<string, unknown>) =>
+      read<{ thread_id: string; run_id: string }>(`/threads/${encodeURIComponent(threadId)}/runs`, {
+        method: 'POST', body: JSON.stringify({ command: { resume } }),
+      }),
     runs: (threadId: string): Promise<Run[]> => client.runs.list(threadId, { limit: 20 }),
     run: (threadId: string, runId: string) => client.runs.get(threadId, runId),
     cancel: (threadId: string, runId: string) => client.runs.cancel(threadId, runId, false, 'interrupt'),
@@ -91,4 +101,3 @@ export function createSessionService(fetch: typeof globalThis.fetch, projectId?:
       )
   }
 }
-

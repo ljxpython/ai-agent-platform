@@ -132,6 +132,10 @@ function createPlatformHttpClient() {
       const originalRequest = error.config as RetriableRequest | undefined
       if (originalRequest?._sessionGeneration !== getSessionGeneration()) return Promise.reject(error)
 
+      if (error.response?.status === 403 && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('platform-access-denied'))
+      }
+
       if (error.response?.status === 401 && originalRequest?._retry && hasStoredSession()) {
         handleSessionExpired()
       }

@@ -42,7 +42,11 @@ class AuditService:
         query: ListAuditEventsQuery,
     ) -> AuditEventPage:
         session_factory = self._require_session_factory()
-        if query.project_id:
+        platform_access = self._policy_engine.evaluate(
+            actor=actor,
+            authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_AUDIT_READ),
+        ).allowed
+        if query.project_id and not platform_access:
             self._policy_engine.require(
                 actor=actor,
                 authorization=AuthorizationRequest(
@@ -76,6 +80,13 @@ class AuditService:
                 offset=query.offset,
             )
             return AuditEventPage(
-                items=[AuditEvent(**asdict(item)) for item in items],
+                items=[AuditEvent(**{
+                    **asdict(item),
+                    "metadata": {key: value for key, value in item.metadata.items()
+                                 if key in {"route_kind", "client_ip", "user_agent", "target_type", "target_id",
+                                            "result", "response_size", "is_error", "reason", "graph_id",
+                                            "subject_type", "subject_id", "tool_name"}
+                                 and isinstance(value, (str, int, float, bool))},
+                }) for item in items],
                 total=total,
             )

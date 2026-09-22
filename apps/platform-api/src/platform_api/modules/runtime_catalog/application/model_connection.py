@@ -47,12 +47,16 @@ def create_model_reference(
     ttl_seconds: int = 60,
     actor: dict[str, str | None] | None = None,
     agent_key: str | None = None,
+    thread_id: str | None = None,
+    thread_action: str = "comment",
 ) -> str:
     payload = _encode(
         {
             "v": 1,
             "actor": actor,
             "agent_key": agent_key,
+            "thread_id": thread_id,
+            "thread_action": thread_action,
             "project_id": project_id,
             "model_id": model_id,
             "exp": int(time.time()) + max(10, min(ttl_seconds, 300)),

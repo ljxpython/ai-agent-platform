@@ -198,3 +198,26 @@ def test_build_model_supports_proxy_providers_and_protocols(monkeypatch: pytest.
     assert openai_calls["api_key"] == "relay-key"
     assert openai_calls["base_url"] == "http://relay.test/v1"
 
+    # 4. anthropic 原生协议与提供商
+    anthropic_calls: dict[str, object] = {}
+
+    def fake_anthropic(**kwargs: object) -> object:
+        anthropic_calls.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(modeling, "ChatAnthropic", fake_anthropic)
+    modeling.build_model(
+        _resolved("claude-3-7-sonnet"),
+        env={},
+        connection={
+            "provider": "anthropic",
+            "base_url": "https://api.anthropic.com/v1",
+            "protocol": "anthropic",
+            "model": "claude-3-7-sonnet",
+            "api_key": "sk-ant-test",
+        },
+    )
+    assert anthropic_calls["model"] == "claude-3-7-sonnet"
+    assert anthropic_calls["api_key"] == "sk-ant-test"
+    assert anthropic_calls["base_url"] == "https://api.anthropic.com/v1"
+

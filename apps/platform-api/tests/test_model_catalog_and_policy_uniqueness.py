@@ -56,6 +56,7 @@ class ModelCatalogAndPolicyUniquenessTest(unittest.TestCase):
         )
         self.actor = ActorContext(
             user_id=str(self.user),
+            platform_roles=("platform_super_admin",),
             project_roles={str(self.project): ("project_admin",)},
         )
 

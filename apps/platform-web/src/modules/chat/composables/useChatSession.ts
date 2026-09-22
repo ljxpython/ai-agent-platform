@@ -14,6 +14,9 @@ import {
 } from "@/services/langgraph/client";
 import {
   createSessionService,
+  hasThreadAction,
+  type ChatThread,
+  type ThreadAction,
   type AccessPolicy,
   type ChatState,
 } from "@/services/threads/session.service";
@@ -76,11 +79,28 @@ export function useChatSession(options: {
   const threadId = ref(options.threadId ?? null);
   const accessPolicy = ref<AccessPolicy>("review");
   const accessPolicyUpdating = ref(false);
+  const accessThread = shallowRef<ChatThread>();
+  const canRead = computed(() => !threadId.value || hasThreadAction(accessThread.value, "read"));
+  let accessRefreshing = false;
+  let accessEpoch = 0;
+  const canAct = (action: ThreadAction) => threadId.value
+    ? hasThreadAction(accessThread.value, action)
+    : options.canWrite.value;
+  const canComment = computed(() => options.canWrite.value && canAct("comment"));
+  const canApprove = computed(() => canAct("approve"));
+  const canEdit = computed(() => options.canWrite.value && canAct("edit"));
+  const canSetPolicy = computed(() => options.canWrite.value && canAct("share"));
+  const canFullAccess = computed(() => options.canWrite.value && canAct("full_access"));
 
   async function refreshAccessPolicy() {
-    if (!threadId.value) return;
+    if (!threadId.value || disposed || accessRefreshing) return;
+    const requestedThread = threadId.value;
+    const requestedEpoch = accessEpoch;
+    accessRefreshing = true;
     try {
-      const thread = await service.get(threadId.value);
+      const thread = await service.get(requestedThread);
+      if (disposed || threadId.value !== requestedThread || accessEpoch !== requestedEpoch) return;
+      if (!disposed) accessThread.value = thread;
       if (!disposed && thread?.metadata && typeof thread.metadata === "object") {
         const policy = (thread.metadata as Record<string, unknown>).access_policy;
         if (policy === "workspace_write" || policy === "full_access") {
@@ -92,14 +112,27 @@ export function useChatSession(options: {
         accessPolicy.value = "review";
       }
     } catch {
-      /* 保持原值或默认 review */
+      if (!disposed && threadId.value === requestedThread && accessEpoch === requestedEpoch) {
+        accessThread.value = undefined;
+        accessPolicy.value = "review";
+        verified.value = false;
+        receipts.value = [];
+        pendingMessage.value = null;
+        clearTimeout(receiptTimer);
+        receiptController?.abort();
+        receiptController = undefined;
+        void stream.disconnect();
+      }
+    } finally {
+      accessRefreshing = false;
+      if (!disposed && (accessEpoch !== requestedEpoch || threadId.value !== requestedThread)) void refreshAccessPolicy();
     }
   }
 
   async function setAccessPolicy(policy: AccessPolicy) {
     if (policy === accessPolicy.value) return true;
-    if (!options.canWrite.value) {
-      fail(new Error("无项目写权限，无法更改会话策略"));
+    if (!canSetPolicy.value || (policy === "full_access" && !canFullAccess.value)) {
+      fail(new Error("没有此会话的策略管理权限；全权模式仅限私人会话所有者"));
       return false;
     }
     if (busy.value || reviews.value.length || checking.value) {
@@ -177,7 +210,7 @@ export function useChatSession(options: {
   const busy = computed(() => stream.isLoading.value || active(run.value));
   const canSend = computed(
     () =>
-      options.canWrite.value &&
+      canComment.value &&
       verified.value &&
       !stream.error.value &&
       !checking.value &&
@@ -265,7 +298,7 @@ export function useChatSession(options: {
           verified.value = true;
           error.value = "";
           options.onRefresh();
-          void refreshAccessPolicy();
+          await refreshAccessPolicy();
           return true;
         }
         return false;
@@ -350,7 +383,7 @@ export function useChatSession(options: {
         threadId.value,
         controller.signal,
       );
-      if (disposed || controller !== receiptController) return;
+      if (disposed || controller !== receiptController || !canRead.value) return;
       receipts.value = rows;
       receiptError.value = "";
       const pending = pendingMessage.value;
@@ -443,7 +476,7 @@ export function useChatSession(options: {
   async function queueMessage(content?: unknown) {
     if (
       !supportsQueue ||
-      !options.canWrite.value ||
+      !canComment.value ||
       !threadId.value ||
       cancelling.value ||
       reviews.value.length ||
@@ -528,6 +561,19 @@ export function useChatSession(options: {
     }
   }
   document.addEventListener("visibilitychange", receiptVisibility);
+  const refreshVisibleAccess = () => {
+    if (!document.hidden) void refreshAccessPolicy();
+  };
+  const accessChanged = () => {
+    ++accessEpoch;
+    accessThread.value = undefined;
+    refreshVisibleAccess();
+  };
+  const accessTimer = setInterval(refreshVisibleAccess, 60_000);
+  document.addEventListener("visibilitychange", refreshVisibleAccess);
+  window.addEventListener("focus", refreshVisibleAccess);
+  window.addEventListener("platform-access-denied", refreshVisibleAccess);
+  window.addEventListener("thread-access-updated", accessChanged);
   watch(run, () => void refreshReceipts());
 
   async function send(content: unknown, recursionLimit = 1000) {
@@ -560,6 +606,7 @@ export function useChatSession(options: {
         );
         if (disposed) return false;
         threadId.value = thread.thread_id;
+        accessThread.value = thread;
         options.onThread(thread.thread_id);
 
         if (accessPolicy.value !== "review") {
@@ -576,9 +623,9 @@ export function useChatSession(options: {
           }
         }
       }
-      if (disposed || !options.canWrite.value) return false;
+      if (disposed || !canComment.value) return false;
       const messageContent = await prepareMessageAttachments(threadId.value, content);
-      if (disposed || !options.canWrite.value) return false;
+      if (disposed || !canComment.value) return false;
       const input = {
         messages: [{ id: crypto.randomUUID(), type: "human", content: messageContent }],
       };
@@ -608,7 +655,7 @@ export function useChatSession(options: {
 
   async function approve(drafts: Record<string, ReviewDraft[]>) {
     if (
-      !options.canWrite.value ||
+      !canApprove.value ||
       checking.value ||
       pendingAction.value ||
       !threadId.value
@@ -619,7 +666,7 @@ export function useChatSession(options: {
     error.value = "";
     try {
       const state = await service.state(threadId.value);
-      if (disposed || !options.canWrite.value) return;
+      if (disposed || !canApprove.value) return;
       const current = parseReviews(state.interrupts ?? []);
       if (
         current.length !== before.length ||
@@ -651,7 +698,7 @@ export function useChatSession(options: {
     values: Record<string, unknown>,
   ) {
     if (
-      !options.canWrite.value ||
+      !canApprove.value ||
       checking.value ||
       pendingAction.value ||
       !threadId.value
@@ -683,7 +730,7 @@ export function useChatSession(options: {
 
   async function stop() {
     if (
-      !options.canWrite.value ||
+      !canEdit.value ||
       cancelling.value ||
       pendingAction.value ||
       !threadId.value
@@ -701,7 +748,7 @@ export function useChatSession(options: {
         return;
       }
       if (!(await verify())) return;
-      if (disposed || !options.canWrite.value) return;
+      if (disposed || !canEdit.value) return;
       const runId = run.value?.run_id;
       // run 已终态说明 Agent 刚刚执行完，停止操作自然完成，静默刷新即可。
       if (!runId || !active(run.value)) {
@@ -720,7 +767,7 @@ export function useChatSession(options: {
   }
 
   async function retry() {
-    if (!options.canWrite.value) return;
+    if (actions.current.value?.kind === "resume" ? !canApprove.value : !canComment.value) return;
     try {
       const response = await actions.retry();
       if (!response.ok || actions.current.value?.status !== "acknowledged")
@@ -819,12 +866,18 @@ export function useChatSession(options: {
     clearTimeout(receiptTimer);
     receiptController?.abort();
     document.removeEventListener("visibilitychange", receiptVisibility);
+    clearInterval(accessTimer);
+    document.removeEventListener("visibilitychange", refreshVisibleAccess);
+    window.removeEventListener("focus", refreshVisibleAccess);
+    window.removeEventListener("platform-access-denied", refreshVisibleAccess);
+    window.removeEventListener("thread-access-updated", accessChanged);
     clearTimeout(timer);
     releaseWait?.();
     void stream.disconnect();
     actions.dispose();
   });
   return {
+    canRead, canComment, canApprove, canEdit, canSetPolicy, canFullAccess,
     supportsQueue,
     receipts,
     pendingMessage,

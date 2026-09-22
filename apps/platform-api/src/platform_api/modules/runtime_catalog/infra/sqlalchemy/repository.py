@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import asc, select
+from sqlalchemy import and_, asc, or_, select
 from sqlalchemy.orm import Session
 
 from platform_api.modules.runtime_catalog.application.ports import (
@@ -28,6 +28,8 @@ def _to_runtime_model(record: RuntimeCatalogModelRecord) -> StoredRuntimeModel:
         model_name=record.model_name,
         api_key_ciphertext=record.api_key_ciphertext,
         enabled=record.enabled if record.enabled is not None else True,
+        scope_type=record.scope_type or "platform",
+        project_id=record.project_id,
     )
 
 
@@ -69,22 +71,36 @@ class SqlAlchemyRuntimeCatalogRepository:
         return _to_runtime_model(record) if record is not None else None
 
     def find_model_by_endpoint_and_name(
-        self, *, provider: str, base_url: str, model_name: str
+        self,
+        *,
+        provider: str,
+        base_url: str,
+        model_name: str,
+        scope_type: str = "platform",
+        project_id: Any | None = None,
     ) -> StoredRuntimeModel | None:
         stmt = select(RuntimeCatalogModelRecord).where(
             RuntimeCatalogModelRecord.provider == provider,
             RuntimeCatalogModelRecord.base_url == base_url,
             RuntimeCatalogModelRecord.model_name == model_name,
+            RuntimeCatalogModelRecord.scope_type == scope_type,
         )
+        if scope_type == "project":
+            stmt = stmt.where(RuntimeCatalogModelRecord.project_id == project_id)
         record = self.session.scalar(stmt)
         return _to_runtime_model(record) if record is not None else None
 
     def create_configured_model(self, *, values: dict[str, Any]) -> StoredRuntimeModel:
         record = RuntimeCatalogModelRecord(
-            display_name=values["display_name"], provider=values["provider"],
-            base_url=values["base_url"], protocol=values["protocol"],
-            model_name=values["model"], api_key_ciphertext=values["api_key_ciphertext"],
+            display_name=values["display_name"],
+            provider=values["provider"],
+            base_url=values["base_url"],
+            protocol=values["protocol"],
+            model_name=values["model"],
+            api_key_ciphertext=values["api_key_ciphertext"],
             enabled=values["enabled"],
+            scope_type=values.get("scope_type", "platform"),
+            project_id=values.get("project_id"),
         )
         self.session.add(record)
         self.session.flush()
@@ -99,6 +115,14 @@ class SqlAlchemyRuntimeCatalogRepository:
         self.session.flush()
         return _to_runtime_model(record)
 
+    def delete_configured_model(self, model_id) -> bool:
+        record = self.session.get(RuntimeCatalogModelRecord, model_id)
+        if record is None:
+            return False
+        self.session.delete(record)
+        self.session.flush()
+        return True
+
     def get_tool_by_id(self, tool_id) -> StoredRuntimeTool | None:
         record = self.session.get(RuntimeCatalogToolRecord, tool_id)
         return _to_runtime_tool(record) if record is not None else None
@@ -107,9 +131,28 @@ class SqlAlchemyRuntimeCatalogRepository:
         record = self.session.get(RuntimeCatalogGraphRecord, graph_id)
         return _to_runtime_graph(record) if record is not None else None
 
-    def list_models(self) -> list[StoredRuntimeModel]:
-        stmt = select(RuntimeCatalogModelRecord).order_by(
-            asc(RuntimeCatalogModelRecord.display_name), asc(RuntimeCatalogModelRecord.id)
+    def list_models(
+        self,
+        *,
+        scope_type: str | None = None,
+        project_id: Any | None = None,
+    ) -> list[StoredRuntimeModel]:
+        stmt = select(RuntimeCatalogModelRecord)
+        if scope_type == "platform":
+            stmt = stmt.where(RuntimeCatalogModelRecord.scope_type == "platform")
+        elif project_id is not None:
+            stmt = stmt.where(
+                or_(
+                    RuntimeCatalogModelRecord.scope_type == "platform",
+                    and_(
+                        RuntimeCatalogModelRecord.scope_type == "project",
+                        RuntimeCatalogModelRecord.project_id == project_id,
+                    ),
+                )
+            )
+        stmt = stmt.order_by(
+            asc(RuntimeCatalogModelRecord.display_name),
+            asc(RuntimeCatalogModelRecord.id),
         )
         return [_to_runtime_model(item) for item in self.session.scalars(stmt).all()]
 

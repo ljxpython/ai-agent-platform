@@ -13,6 +13,7 @@ dependencies = [
     "langgraph-sdk==0.4.3",
     "deepagents>=0.4.4",
     "langchain-deepseek>=1.0.1",
+    "langchain-anthropic>=1.0.0",
     "fastapi>=0.133.1",
     "uvicorn[standard]>=0.41.0",
     "requests>=2.32.5",

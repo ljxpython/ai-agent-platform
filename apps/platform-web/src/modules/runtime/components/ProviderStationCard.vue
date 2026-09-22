@@ -20,6 +20,7 @@ export interface ProviderStation {
   enabledCount: number;
   models: RuntimeModelItem[];
   isDefaultStation: boolean;
+  scopeType?: "platform" | "project";
 }
 
 const props = withDefaults(
@@ -30,12 +31,16 @@ const props = withDefaults(
     canManage?: boolean;
     defaultModelIds?: string[];
     authorizedModelIds?: string[];
+    showPolicy?: boolean;
+    showCredentials?: boolean;
   }>(),
   {
     defaultExpanded: true,
     canManage: false,
     defaultModelIds: () => [],
     authorizedModelIds: () => [],
+    showPolicy: true,
+    showCredentials: true,
   },
 );
 
@@ -87,12 +92,24 @@ async function handleCopy(label: string, text: string) {
                 {{ station.provider }}
               </span>
               <span
+                v-if="station.scopeType === 'project'"
+                class="rounded-md bg-purple-50 px-2 py-0.5 text-[11px] font-medium text-purple-700 dark:bg-purple-950/40 dark:text-purple-300"
+              >
+                私有 BYOK
+              </span>
+              <span
+                v-else-if="showPolicy"
+                class="rounded-md bg-blue-50 px-2 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-950/40 dark:text-blue-300"
+              >
+                平台托管
+              </span>
+              <span
                 class="rounded-md bg-sky-50 px-2 py-0.5 text-[11px] font-medium text-sky-700 dark:bg-sky-950/40 dark:text-sky-300"
               >
                 {{ station.protocol }}
               </span>
               <span
-                v-if="station.isDefaultStation"
+                v-if="showPolicy && station.isDefaultStation"
                 class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
               >
                 <BaseIcon
@@ -130,6 +147,7 @@ async function handleCopy(label: string, text: string) {
         <!-- 右侧：凭据、模型数及快捷操作 -->
         <div class="flex items-center gap-2.5">
           <div
+            v-if="showCredentials"
             class="flex items-center gap-1.5 rounded-lg border border-gray-200/70 bg-white px-2.5 py-1 text-xs dark:border-dark-700 dark:bg-dark-800"
           >
             <span
@@ -146,7 +164,17 @@ async function handleCopy(label: string, text: string) {
               "
             >
               {{
-                station.credentialConfigured ? "凭据均已配置" : "部分凭据未配置"
+                station.credentialConfigured
+                  ? (station.scopeType === "project"
+                    ? "私有凭据已配置"
+                    : showPolicy
+                      ? "平台托管就绪"
+                      : "凭据均已配置")
+                  : (station.scopeType === "project"
+                    ? "私有凭据未配置"
+                    : showPolicy
+                      ? "平台待配置"
+                      : "部分凭据未配置")
               }}
             </span>
           </div>
@@ -213,16 +241,25 @@ async function handleCopy(label: string, text: string) {
               <th class="px-4 py-2.5">
                 Display Name
               </th>
-              <th class="px-3 py-2.5">
+              <th
+                v-if="showPolicy"
+                class="px-3 py-2.5"
+              >
                 默认项
               </th>
-              <th class="px-3 py-2.5">
+              <th
+                v-if="showPolicy"
+                class="px-3 py-2.5"
+              >
                 项目授权
               </th>
               <th class="px-3 py-2.5">
                 状态
               </th>
-              <th class="px-3 py-2.5">
+              <th
+                v-if="showCredentials"
+                class="px-3 py-2.5"
+              >
                 凭据
               </th>
               <th class="px-4 py-2.5 text-right">
@@ -259,7 +296,10 @@ async function handleCopy(label: string, text: string) {
               >
                 {{ model.display_name || "--" }}
               </td>
-              <td class="px-3 py-3">
+              <td
+                v-if="showPolicy"
+                class="px-3 py-3"
+              >
                 <span
                   v-if="defaultModelIds.includes(model.id)"
                   class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
@@ -277,10 +317,17 @@ async function handleCopy(label: string, text: string) {
                   --
                 </span>
               </td>
-              <td class="px-3 py-3">
-                {{
-                  authorizedModelIds.includes(model.id) ? "已授权" : "未授权"
-                }}
+              <td
+                v-if="showPolicy"
+                class="px-3 py-3"
+              >
+                <StatusPill
+                  :tone="authorizedModelIds.includes(model.id) ? 'success' : 'neutral'"
+                >
+                  {{
+                    authorizedModelIds.includes(model.id) ? "已授权" : "未授权"
+                  }}
+                </StatusPill>
               </td>
               <td class="px-3 py-3">
                 <StatusPill
@@ -289,11 +336,22 @@ async function handleCopy(label: string, text: string) {
                   {{ model.enabled === false ? "disabled" : "enabled" }}
                 </StatusPill>
               </td>
-              <td class="px-3 py-3">
+              <td
+                v-if="showCredentials"
+                class="px-3 py-3"
+              >
                 <StatusPill
                   :tone="model.credential_configured ? 'success' : 'warning'"
                 >
-                  {{ model.credential_configured ? "configured" : "missing" }}
+                  {{
+                    model.credential_configured
+                      ? (model.scope_type === "project"
+                        ? "私有已配置"
+                        : showPolicy
+                          ? "托管就绪"
+                          : "configured")
+                      : (model.scope_type === "project" ? "未配置" : "missing")
+                  }}
                 </StatusPill>
               </td>
               <td class="px-4 py-3 text-right">

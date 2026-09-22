@@ -10,9 +10,12 @@ import type { ChatAttachmentBlock } from "@/utils/chat-content";
 import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
 import {
   createSessionService,
+  hasThreadAction,
+  type ThreadAction,
   type ChatThread,
 } from "@/services/threads/session.service";
 import BaseDialog from "@/components/base/BaseDialog.vue";
+import ThreadAccessControl from "@/modules/chat/components/ThreadAccessControl.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import EmptyState from "@/components/platform/EmptyState.vue";
@@ -30,8 +33,10 @@ const auth = useAuthStore();
 const { activeProjectId, activeProject } = useWorkspaceProjectContext();
 const { can } = useAuthorization();
 const canWrite = computed(() =>
-  can("project.runtime.write", activeProjectId.value),
+  can("project.runtime.execute", activeProjectId.value),
 );
+const canTakeover = computed(() => can("project.runtime.write", activeProjectId.value) || can("platform.super_admin.manage"));
+const accessRevision = ref(0);
 type ChatTarget = {
   graphId: string;
   agentId?: string;
@@ -42,6 +47,9 @@ type ChatTarget = {
 const target = shallowRef<ChatTarget | null>(null);
 const agents = ref<Agent[]>([]);
 const threads = ref<ChatThread[]>([]);
+function threadCan(id: string, action: ThreadAction) {
+  return hasThreadAction(threads.value.find(thread => thread.thread_id === id), action);
+}
 const threadQuery = ref("");
 const sidebarCollapsed = ref(typeof window !== "undefined" ? window.innerWidth < 1024 : false);
 const focusMode = ref(false);
@@ -89,7 +97,7 @@ const deleteOpen = ref(false);
 const deleteId = ref<string>();
 function requestDelete(id: string) { deleteId.value = id; deleteOpen.value = true; }
 async function deleteThread() {
-  if (!deleteId.value || !canWrite.value || deleting.value) return;
+  if (!deleteId.value || !threadCan(deleteId.value, "delete") || deleting.value) return;
   const id = deleteId.value;
   const requestEpoch = epoch;
   deleting.value = true;
@@ -104,7 +112,7 @@ async function deleteThread() {
   } finally { deleting.value = false; }
 }
 async function handleRenameThread(threadId: string, newTitle: string) {
-  if (!canWrite.value || !newTitle.trim()) return;
+  if (!canWrite.value || !threadCan(threadId, "edit") || !newTitle.trim()) return;
   try {
     await service.value.update(threadId, { title: newTitle.trim() });
     const match = threads.value.find((t) => t.thread_id === threadId);
@@ -117,7 +125,7 @@ async function handleRenameThread(threadId: string, newTitle: string) {
 }
 const summarizingThreadId = ref<string | null>(null);
 async function handleAiSummarizeTitle(threadId: string) {
-  if (!canWrite.value || summarizingThreadId.value) return;
+  if (!canWrite.value || !threadCan(threadId, "edit") || summarizingThreadId.value) return;
   summarizingThreadId.value = threadId;
   try {
     const res = await service.value.summarizeTitle(threadId);
@@ -313,6 +321,7 @@ watch(
     () => route.query.agentId,
     () => route.query.graphId,
     () => route.params.threadId,
+    accessRevision,
   ],
   async ([projectId, _session, agent, graph, thread]) => {
     const threadId = textParam(thread);
@@ -452,6 +461,15 @@ onScopeDispose(() => {
       description="选择项目后开始对话。"
     />
     <template v-else>
+      <ThreadAccessControl
+        v-if="selectedThread && (threadCan(selectedThread, 'share') || canTakeover)"
+        class="px-4 py-2"
+        :project-id="activeProjectId"
+        :thread-id="selectedThread"
+        :can-share="threadCan(selectedThread, 'share')"
+        :can-takeover="canTakeover"
+        @updated="accessRevision++; loadThreads()"
+      />
       <div
         v-if="focusMode"
         class="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-dark-800 dark:bg-dark-900"
@@ -505,7 +523,8 @@ onScopeDispose(() => {
           :total-pages="totalPages"
           :total-count="totalThreads"
           :has-more="hasMore"
-          :can-delete="canWrite"
+          :can-delete-thread="(id: string) => threadCan(id, 'delete')"
+          :can-edit-thread="(id: string) => canWrite && threadCan(id, 'edit')"
           :summarizing-thread-id="summarizingThreadId || ''"
           @start-new-thread="newThread"
           @select-thread="openThread"
@@ -600,7 +619,7 @@ onScopeDispose(() => {
                 <span class="whitespace-nowrap">新对话</span>
               </button>
               <button
-                v-if="selectedThread && canWrite"
+                v-if="selectedThread && threadCan(selectedThread, 'delete')"
                 class="lg:hidden inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-red-200 bg-white px-2 text-xs font-medium text-red-600 shadow-2xs hover:bg-red-50 dark:border-red-900/50 dark:bg-dark-800 dark:text-red-400 dark:hover:bg-red-950/30 transition-colors"
                 title="删除此会话"
                 @click="requestDelete(selectedThread)"

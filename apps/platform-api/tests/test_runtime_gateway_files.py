@@ -8,6 +8,7 @@ from unittest.mock import AsyncMock, Mock
 import httpx
 import jwt
 from fastapi import FastAPI
+from tests.thread_acl_fixture import thread_acl_factory
 
 from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import (
@@ -31,10 +32,10 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
         self.app.include_router(router)
         register_exception_handlers(self.app)
 
-        self.actor = ActorContext(user_id="user-1")
+        self.actor = ActorContext(user_id="user-1", project_roles={"proj-1": ("project_executor",)})
         self.upstream = Mock()
         self.upstream.with_forwarded_headers = Mock(return_value=self.upstream)
-        self.session_factory = Mock()
+        self.session_factory = thread_acl_factory(self, actor=self.actor, project_id="proj-1")
 
         self.delegation_calls = []
 

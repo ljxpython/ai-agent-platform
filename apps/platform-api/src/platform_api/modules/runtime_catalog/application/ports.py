@@ -15,6 +15,8 @@ class StoredRuntimeModel:
     model_name: str
     api_key_ciphertext: str
     enabled: bool
+    scope_type: str = "platform"
+    project_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)

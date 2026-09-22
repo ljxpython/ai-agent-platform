@@ -260,7 +260,7 @@ describe("DearAgentSkillsPage.vue (去会话化与全新管理)", () => {
     const wrapper = mount(DearAgentSkillsPage);
     await flushPromises();
 
-    expect(wrapper.text()).toContain("当前项目处于只读模式");
+    expect(wrapper.text()).toContain("当前项目仅允许查看");
     const importBtn = wrapper.findAll("button").find((b) => b.text().includes("导入技能包"));
     expect(importBtn?.attributes("disabled")).toBeDefined();
   });
