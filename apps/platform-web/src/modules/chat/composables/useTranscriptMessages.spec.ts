@@ -176,3 +176,44 @@ it("filters out subagent internal tool calls and tool messages from root transcr
     scope.stop();
   }
 });
+
+it("drops uncommitted timed-out retry AI messages both during streaming and after completion", () => {
+  const userMsg = new HumanMessage({ id: "user-1", content: "你喜欢哪一段剧情呢？" });
+  const abortedAttempt1 = new AIMessage({ id: "lc_run--retry-1", content: "司法岛篇（半截超时废稿1）" });
+  const abortedAttempt2 = new AIMessage({ id: "lc_run--retry-2", content: "司法岛篇（半截超时废稿2）" });
+  const finalAttempt3 = new AIMessage({ id: "lc_run--retry-3", content: "司法岛篇（完整回答）" });
+
+  const stream = {
+    messages: shallowRef([userMsg, abortedAttempt1, abortedAttempt2, finalAttempt3]),
+    values: shallowRef({ messages: [userMsg] }),
+    isLoading: shallowRef(true),
+    subgraphs: shallowRef(new Map()),
+    subagents: shallowRef(new Map()),
+  };
+
+  const scope = effectScope();
+  try {
+    const rootMessages = scope.run(() => useTranscriptMessages(stream as unknown as AnyStream))!;
+    for (const id of ["lc_run--retry-1", "lc_run--retry-2", "lc_run--retry-3"]) {
+      hooks.onEvent({
+        method: "messages",
+        params: { namespace: [], data: { event: "message-start", id } },
+      });
+    }
+
+    // While still loading, retry-1 and retry-2 are immediately superseded by retry-3
+    expect(rootMessages.value.map(m => m.id)).toEqual(["user-1", "lc_run--retry-3"]);
+
+    // Once the run finishes and values snapshot only contains committed messages
+    stream.values.value = { messages: [userMsg, finalAttempt3] };
+    hooks.onEvent({
+      method: "values",
+      params: { namespace: [], data: { messages: [userMsg, finalAttempt3] } },
+    });
+    stream.isLoading.value = false;
+    expect(rootMessages.value.map(m => m.id)).toEqual(["user-1", "lc_run--retry-3"]);
+  } finally {
+    scope.stop();
+  }
+});
+

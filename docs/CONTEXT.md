@@ -5,10 +5,11 @@
 
 ## 最后更新
 
-2026-09-23 | Runtime 成果识别兼容 `/workspace/outputs/` 下普通可读文件名并保留原始文件名展示与下载，重启 `runtime-api` 生效并通过 43 项工作区单测
+2026-09-23 | 修复 OpenAI 兼容模型流式阶段 `content_blocks` 被 `openai` translator 屏蔽导致思考内容等对话结束才弹出的问题；修复对话栏模型选择器双层同名模型去重与 `defaultModelId` 精准匹配
 
 ## 活跃项目
 
+- [模型思考内容输出排查](projects/20260923-model-reasoning-output/README.md)：done；`ChatOpenAIWithReasoning` 显式标记 `model_provider="openai_compatible"` 使流式 `AIMessageChunk.content_blocks` 实时产出 `reasoning` 块，配合 `MessageContent.vue` 流式默认展开修复，流式实时展示与完成态均通过。
 - [前端代码冗余清理与结构化重构](projects/20260923-platform-web-codebase-refactor/README.md)：✅ 已完成（子专题 01~04 全部 `done`，净减 11,760 行代码，`pnpm build` 与 88 套单测全绿）
 - [跨服务规范治理](projects/20260922-cross-service-governance/README.md)：🔴 规划中（待人工评审）
 - [全平台权限治理](projects/20260920-platform-access-governance/README.md)：技术实现与自动化 Final done，用户人工验收中；完整手工用例、证据模板和清理清单见 08。仅项目内个人记忆入口治理；共享/跨项目记忆、自定义角色等 deferred。未提交或生产部署。
@@ -17,9 +18,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-09-23 | 本地栈 `RUNTIME_BACKEND=local` 统一控制 Showcase、Dear Agent execute 和终端；`ArtifactWorkspace` 与 `WorkspaceBrowser` 已兼容 `/workspace/outputs/` 下可读文件名成果识别与动态 SHA256 计算；GraphHarbor `0.13.0.post32`，`dearflow_agent` 单步推理超时 `240s` |
+| runtime-service | 2026-09-23 | `ChatOpenAIWithReasoning` 现设置 `model_provider="openai_compatible"`，确保流式 `AIMessageChunk.content_blocks` 实时输出 `{"type": "reasoning", ...}` 供 LangGraph v2 `messages` 频道推送；`RuntimeConfigMiddleware` 强制执行 `tool_calls` 连续性与截断自愈 |
 | platform-api | 2026-09-22 | BYOK 双层模型架构 Phase 2 落地；0004 迁移、双层模型 RBAC、私有模型自主 CRUD/注销与网关代理安全打通，测试全绿 |
-| platform-web | 2026-09-23 | 完成全仓结构化重构；消除会话切换/刷新 4 步串行请求与 `stop()` 触发组件销毁重挂载导致的「正在核验会话访问权限...」弹窗卡顿；支持 `initialThread` 零延迟水合与项目级模型缓存 |
+| platform-web | 2026-09-23 | `MessageContent.vue` 修复 `<details>` 原生 `@toggle` 干扰流式自动展开问题；`ChatModelSelector.vue` 支持同渠道同名模型自动去重（优先保留项目私有/选中项）、展示 `项目私有`/`平台` 徽标并按 `defaultModelId` 精准匹配默认标签 |
 | interaction-data-service | — | — |
 | AI Harness（AGENTS.md + Skills） | 2026-09-21 | 今日完成全面优化，详见 docs/changes/20260921-harness-optimization.md |
 

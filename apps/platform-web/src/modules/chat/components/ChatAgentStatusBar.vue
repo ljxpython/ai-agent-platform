@@ -33,7 +33,7 @@ const statusIcon = computed(() => {
 
 <template>
   <div
-    v-if="isRunning || isInterrupted || error"
+    v-if="isInterrupted || error"
     class="flex flex-wrap sm:flex-nowrap items-center justify-between p-3 rounded-lg border shadow-sm transition-all"
     :class="{
       'bg-blue-50 border-blue-200': isRunning,

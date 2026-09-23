@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
 
 from langchain.agents.middleware import AgentMiddleware, ModelRequest, ToolCallRequest
 from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessage, BaseMessage, RemoveMessage, ToolMessage
 from langchain_core.tools import BaseTool
+from langgraph.graph.message import REMOVE_ALL_MESSAGES
 
 from runtime_service.runtime import (
     AgentDefaults,
@@ -32,6 +35,151 @@ def _tool_name(tool: BaseTool | Callable[..., object] | dict[str, object]) -> st
     else:
         value = getattr(tool, "name", None) or getattr(tool, "__name__", None)
     return value if isinstance(value, str) else None
+
+
+def _is_synthetic_cancelled_tool_message(msg: ToolMessage) -> bool:
+    content = getattr(msg, "content", None)
+    return isinstance(content, str) and (
+        "was cancelled" in content or "could not be executed" in content
+    )
+
+
+def _normalize_ai_message_tool_calls(
+    msg: AIMessage,
+) -> tuple[AIMessage, list[tuple[str, str, bool]]]:
+    """Ensure AIMessage only carries tool calls with valid string IDs and return (tc_id, name, is_invalid)."""
+    valid_tool_calls: list[dict[str, Any]] = []
+    valid_invalid_calls: list[dict[str, Any]] = []
+    extracted: list[tuple[str, str, bool]] = []
+    seen_ids: set[str] = set()
+    mutated = False
+
+    for tc in getattr(msg, "tool_calls", None) or ():
+        tc_id = tc.get("id") if isinstance(tc, Mapping) else getattr(tc, "id", None)
+        tc_name = (
+            (tc.get("name") if isinstance(tc, Mapping) else getattr(tc, "name", None))
+            or "unknown"
+        )
+        if isinstance(tc_id, str) and tc_id.strip():
+            valid_tool_calls.append(tc)
+            if tc_id not in seen_ids:
+                seen_ids.add(tc_id)
+                extracted.append((tc_id, str(tc_name), False))
+        else:
+            mutated = True
+
+    for tc in getattr(msg, "invalid_tool_calls", None) or ():
+        tc_id = tc.get("id") if isinstance(tc, Mapping) else getattr(tc, "id", None)
+        tc_name = (
+            (tc.get("name") if isinstance(tc, Mapping) else getattr(tc, "name", None))
+            or "unknown"
+        )
+        if isinstance(tc_id, str) and tc_id.strip():
+            valid_invalid_calls.append(tc)
+            if tc_id not in seen_ids:
+                seen_ids.add(tc_id)
+                extracted.append((tc_id, str(tc_name), True))
+        else:
+            mutated = True
+
+    additional = dict(getattr(msg, "additional_kwargs", None) or {})
+    if not extracted and ("tool_calls" in additional or "function_call" in additional):
+        raw_calls = additional.get("tool_calls")
+        if isinstance(raw_calls, Sequence):
+            for raw_tc in raw_calls:
+                if not isinstance(raw_tc, Mapping):
+                    continue
+                tc_id = raw_tc.get("id")
+                fn = raw_tc.get("function")
+                tc_name = (
+                    fn.get("name")
+                    if isinstance(fn, Mapping) and isinstance(fn.get("name"), str)
+                    else "unknown"
+                )
+                if isinstance(tc_id, str) and tc_id.strip() and tc_id not in seen_ids:
+                    seen_ids.add(tc_id)
+                    extracted.append((tc_id, tc_name, False))
+        if not extracted:
+            additional.pop("tool_calls", None)
+            additional.pop("function_call", None)
+            mutated = True
+    elif not valid_tool_calls and not valid_invalid_calls and (
+        "tool_calls" in additional or "function_call" in additional
+    ):
+        additional.pop("tool_calls", None)
+        additional.pop("function_call", None)
+        mutated = True
+
+    if mutated:
+        fallback_content = msg.content if msg.content else "[Interrupted tool call]"
+        msg = msg.model_copy(
+            update={
+                "content": fallback_content,
+                "tool_calls": valid_tool_calls,
+                "invalid_tool_calls": valid_invalid_calls,
+                "additional_kwargs": additional,
+            }
+        )
+    return msg, extracted
+
+
+def sanitize_tool_call_messages(
+    messages: Sequence[BaseMessage],
+) -> tuple[list[BaseMessage], bool]:
+    """Repair interrupted, non-contiguous, duplicate, or orphaned tool-call message sequences."""
+    if not messages:
+        return [], False
+
+    tool_messages_by_id: dict[str, ToolMessage] = {}
+    for msg in messages:
+        if isinstance(msg, ToolMessage):
+            tc_id = getattr(msg, "tool_call_id", None)
+            if isinstance(tc_id, str) and tc_id.strip():
+                existing = tool_messages_by_id.get(tc_id)
+                if existing is None or (
+                    _is_synthetic_cancelled_tool_message(existing)
+                    and not _is_synthetic_cancelled_tool_message(msg)
+                ):
+                    tool_messages_by_id[tc_id] = msg
+
+    sanitized: list[BaseMessage] = []
+    emitted_tool_call_ids: set[str] = set()
+
+    for msg in messages:
+        if isinstance(msg, ToolMessage):
+            # All valid ToolMessages are emitted contiguously right after their parent AIMessage.
+            continue
+        if isinstance(msg, AIMessage):
+            norm_msg, tool_calls = _normalize_ai_message_tool_calls(msg)
+            sanitized.append(norm_msg)
+            for tc_id, tc_name, is_invalid in tool_calls:
+                if tc_id in emitted_tool_call_ids:
+                    continue
+                emitted_tool_call_ids.add(tc_id)
+                existing_tool_msg = tool_messages_by_id.get(tc_id)
+                if existing_tool_msg is not None:
+                    sanitized.append(existing_tool_msg)
+                else:
+                    content = (
+                        f"Tool call {tc_name} with id {tc_id} could not be executed - arguments were malformed or truncated."
+                        if is_invalid
+                        else f"Tool call {tc_name} with id {tc_id} was cancelled - another message came in before it could be completed."
+                    )
+                    sanitized.append(
+                        ToolMessage(
+                            content=content,
+                            name=tc_name,
+                            tool_call_id=tc_id,
+                            status="error",
+                        )
+                    )
+        else:
+            sanitized.append(msg)
+
+    changed = len(sanitized) != len(messages) or any(
+        a is not b for a, b in zip(sanitized, messages)
+    )
+    return sanitized, changed
 
 
 class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
@@ -116,8 +264,31 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
             available_tool_names=self._tool_names,
         )
 
-    async def abefore_agent(self, state: object, runtime: object) -> None:
+    @staticmethod
+    def _sanitize_state_messages(state: object) -> dict[str, Any] | None:
+        if not isinstance(state, Mapping):
+            return None
+        raw_messages = state.get("messages")
+        if not isinstance(raw_messages, Sequence):
+            return None
+        sanitized, changed = sanitize_tool_call_messages(raw_messages)
+        if not changed:
+            return None
+        return {"messages": [RemoveMessage(id=REMOVE_ALL_MESSAGES), *sanitized]}
+
+    def before_agent(self, state: object, runtime: object) -> dict[str, Any] | None:
         self._resolve(runtime)
+        return self._sanitize_state_messages(state)
+
+    async def abefore_agent(self, state: object, runtime: object) -> dict[str, Any] | None:
+        self._resolve(runtime)
+        return self._sanitize_state_messages(state)
+
+    def before_model(self, state: object, runtime: object) -> dict[str, Any] | None:
+        return self._sanitize_state_messages(state)
+
+    async def abefore_model(self, state: object, runtime: object) -> dict[str, Any] | None:
+        return self._sanitize_state_messages(state)
 
     def _allowed_tools(self, resolved: ResolvedRuntimeConfig) -> set[str]:
         return set(resolved.required_tool_names) | set(resolved.optional_tool_names)
@@ -143,7 +314,13 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
                     continue
                 filtered.append(tool)
             tools = filtered
-        response = await handler(request.override(model=model, tools=tools))
+        sanitized_messages, messages_changed = sanitize_tool_call_messages(
+            getattr(request, "messages", None) or ()
+        )
+        override_kwargs: dict[str, Any] = {"model": model, "tools": tools}
+        if messages_changed:
+            override_kwargs["messages"] = sanitized_messages
+        response = await handler(request.override(**override_kwargs))
         messages = getattr(response, "result", None)
         if messages is None:
             messages = [response]
@@ -163,4 +340,4 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         return await handler(request)
 
 
-__all__ = ["RuntimeConfigMiddleware"]
+__all__ = ["RuntimeConfigMiddleware", "sanitize_tool_call_messages"]

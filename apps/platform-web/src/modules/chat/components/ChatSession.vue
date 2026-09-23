@@ -193,6 +193,7 @@ const canSubmit = computed(
 );
 const models = ref<RuntimeModelItem[]>([]);
 const modelsLoading = ref(true);
+const defaultModelId = ref("");
 const defaultModelName = ref("");
 const optionsOpen = ref(false);
 const optionsError = ref("");
@@ -369,6 +370,7 @@ void loadProjectModelBundle(props.projectId)
     models.value = value.models.filter((model) => model.enabled && policies.items.find(item => item.catalog_id === model.id)?.policy.is_enabled !== false);
     const projectDefault = policies.items.find(item => item.policy.is_default_for_project);
     const defaultModel = models.value.find(model => model.id === projectDefault?.catalog_id) ?? models.value[0];
+    defaultModelId.value = defaultModel?.id ?? "";
     defaultModelName.value = defaultModel?.display_name ?? "";
     if (!context.value.model_id && defaultModel) {
       context.value = { ...context.value, model_id: defaultModel.id };
@@ -457,12 +459,20 @@ function extractMessageText(raw: unknown): string {
 }
 
 watch(
-  [() => displayedMessages.value, () => promptQueue.queue.value.length],
+  [() => displayedMessages.value, () => promptQueue.queue.value.length, () => session.stream.values?.value],
   ([msgs]) => {
     if (promptQueue.queue.value.length === 0 || isDrainingQueue.value) return;
+    const rawValuesMessages = (session.stream.values?.value as { messages?: Array<{ id?: string }> } | undefined)?.messages;
+    const committedIds = Array.isArray(rawValuesMessages) && rawValuesMessages.length > 0
+      ? new Set(rawValuesMessages.map((m) => m?.id).filter(Boolean))
+      : null;
     const persistedHumanTexts = new Set(
       msgs
-        .filter((m) => m.type === "human" && !String(m.id ?? "").startsWith("optimistic-"))
+        .filter((m) => {
+          if (m.type !== "human" || String(m.id ?? "").startsWith("optimistic-")) return false;
+          if (committedIds) return Boolean(m.id && committedIds.has(m.id));
+          return !busy.value && !checking.value;
+        })
         .slice(-6)
         .map((m) => extractMessageText(m.content))
         .filter(Boolean),
@@ -581,7 +591,9 @@ async function send(queued = false) {
     return;
   }
   if (!context.value.model_id && models.value.length) {
-    const fallbackModel = models.value.find((m) => m.display_name === defaultModelName.value) ?? models.value[0];
+    const fallbackModel =
+      models.value.find((m) => (defaultModelId.value ? m.id === defaultModelId.value : m.display_name === defaultModelName.value)) ??
+      models.value[0];
     if (fallbackModel) {
       context.value = { ...context.value, model_id: fallbackModel.id };
     }
@@ -1729,6 +1741,7 @@ defineExpose({
       :models="models"
       :project-id="projectId"
       :selected-model-id="context.model_id"
+      :default-model-id="defaultModelId"
       :default-model-name="defaultModelName"
       :access-policy="session.accessPolicy.value"
       :access-policy-updating="session.accessPolicyUpdating.value"

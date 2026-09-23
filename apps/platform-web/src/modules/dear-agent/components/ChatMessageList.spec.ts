@@ -56,12 +56,15 @@ it("hides 'Agent 正在处理当前回合' when assistant answer is complete and
     // 助手已完成回复且 stream 已经非 loading，即使底层 isRunning 因后台校验仍为 true，也不应挂着“处理当前回合”
     expect(wrapper.text()).not.toContain("Agent 正在处理当前回合");
 
-    // 若正在流式传输中且只有用户消息，则应当展示
+    // 若正在流式传输中且只有用户消息，由 :agent:loading 占位块展示“Agent 正在组织答复...”，底部不重复叠加“Agent 正在处理当前回合”
     await wrapper.setProps({
       messages: [new HumanMessage({ id: "user-1", content: "请写一份方案" })],
       stream: { isLoading: { value: true } } as any,
     });
-    expect(wrapper.text()).toContain("Agent 正在处理当前回合");
+    expect(wrapper.findAllComponents({ name: "MessageContent" })[1]?.props("blocks")).toEqual([
+      expect.objectContaining({ kind: "loading", text: "Agent 正在组织答复..." }),
+    ]);
+    expect(wrapper.text()).not.toContain("Agent 正在处理当前回合");
   } finally {
     wrapper.unmount();
   }

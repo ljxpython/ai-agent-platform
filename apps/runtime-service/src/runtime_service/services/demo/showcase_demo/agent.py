@@ -130,6 +130,11 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             else build_model(next_config, connection=connection)
         )
 
+    def _env_int(name: str, default: int) -> int:
+        import os
+        raw = os.getenv(name, "").strip()
+        return int(raw) if raw.isdigit() and int(raw) > 0 else default
+
     def middleware(tool_names: Sequence[str]):
         return [
             RuntimeConfigMiddleware(
@@ -139,9 +144,17 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 tool_names=tool_names,
             ),
             WorkspaceMiddleware(workspace),
-            ModelCallLimitMiddleware(run_limit=12, exit_behavior="error"),
-            ToolCallLimitMiddleware(run_limit=24, exit_behavior="error"),
-            ModelCallTimeoutMiddleware(timeout_seconds=30),
+            ModelCallLimitMiddleware(
+                run_limit=_env_int("AGENT_MODEL_CALL_LIMIT_PER_RUN", 50),
+                thread_limit=_env_int("AGENT_MODEL_CALL_LIMIT_PER_THREAD", 500),
+                exit_behavior="error",
+            ),
+            ToolCallLimitMiddleware(
+                run_limit=_env_int("AGENT_TOOL_CALL_LIMIT_PER_RUN", 100),
+                thread_limit=_env_int("AGENT_TOOL_CALL_LIMIT_PER_THREAD", 1000),
+                exit_behavior="error",
+            ),
+            ModelCallTimeoutMiddleware(),
         ]
 
     agent = create_deep_agent(

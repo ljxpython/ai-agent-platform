@@ -1,18 +1,37 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import MarkdownContent from "@/components/platform/MarkdownContent.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import ThreadImage from "./ThreadImage.vue";
 import ThreadFile from "./ThreadFile.vue";
 import type { ContentItem } from "../transcript";
 
-defineProps<{
+const props = defineProps<{
   blocks: ContentItem[];
   isStreaming?: boolean;
   projectId?: string;
   threadId?: string;
 }>();
 const expanded = ref<Record<string, boolean>>({});
+
+const hasTextOutput = computed(() =>
+  props.blocks.some((b) => b.kind === "text" && b.text.trim().length > 0),
+);
+
+function isReasoningActivelyStreaming(): boolean {
+  return Boolean(props.isStreaming && !hasTextOutput.value);
+}
+
+function isReasoningOpen(key: string): boolean {
+  if (expanded.value[key] !== undefined) {
+    return expanded.value[key];
+  }
+  return true;
+}
+
+function toggleReasoning(key: string) {
+  expanded.value[key] = !isReasoningOpen(key);
+}
 </script>
 
 <template>
@@ -46,15 +65,15 @@ const expanded = ref<Record<string, boolean>>({});
       </div>
       <details
         v-else-if="block.kind === 'reasoning'"
-        class="group/reasoning my-1 select-none transition-all"
-        :open="expanded[block.key] ?? !!isStreaming"
-        @toggle="
-          expanded[block.key] = ($event.target as HTMLDetailsElement).open
-        "
+        class="group/reasoning my-1 select-none transition-all duration-200"
+        :open="isReasoningOpen(block.key)"
       >
-        <summary class="inline-flex max-w-full cursor-pointer items-center gap-1.5 text-xs text-gray-500 hover:text-gray-800 dark:text-dark-400 dark:hover:text-gray-200 transition-colors">
+        <summary
+          class="inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-md px-1.5 py-0.5 -mx-1.5 text-xs text-gray-500 hover:bg-gray-100/70 hover:text-gray-800 dark:text-dark-400 dark:hover:bg-dark-800/60 dark:hover:text-gray-200 transition-colors"
+          @click.prevent="toggleReasoning(block.key)"
+        >
           <span
-            v-if="isStreaming"
+            v-if="isReasoningActivelyStreaming()"
             class="relative flex h-2 w-2 mr-0.5"
           >
             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
@@ -66,14 +85,16 @@ const expanded = ref<Record<string, boolean>>({});
           >
             ⚛
           </span>
-          <span class="font-medium text-gray-600 dark:text-dark-300">Think</span>
-          <span class="text-gray-400 dark:text-dark-500">·</span>
-          <span class="truncate font-mono text-[11px] text-gray-400 dark:text-dark-400 max-w-[500px]">
+          <span class="font-medium text-gray-600 dark:text-dark-300">
+            {{ isReasoningActivelyStreaming() ? '正在思考...' : 'Think' }}
+          </span>
+          <span class="text-gray-400 dark:text-dark-500 group-open/reasoning:hidden">·</span>
+          <span class="truncate font-mono text-[11px] text-gray-400 dark:text-dark-400 max-w-[500px] group-open/reasoning:hidden">
             {{ block.text }}
           </span>
         </summary>
         <div
-          class="mt-2 max-h-96 overflow-auto whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50/50 p-3 text-xs text-gray-600 dark:border-dark-800 dark:bg-dark-900/40 dark:text-dark-300 leading-relaxed font-mono select-text"
+          class="mt-2 max-h-96 overflow-y-auto whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50/50 p-3 text-xs text-gray-600 dark:border-dark-800 dark:bg-dark-900/40 dark:text-dark-300 leading-relaxed font-mono select-text transition-all duration-200"
         >
           {{ block.text }}
         </div>

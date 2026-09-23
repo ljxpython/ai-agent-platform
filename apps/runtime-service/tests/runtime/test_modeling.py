@@ -9,9 +9,9 @@ from runtime_service.runtime import (
     RuntimePolicy,
     RuntimePrincipal,
     RuntimeResolutionError,
+    modeling,
     resolve_runtime_config,
 )
-from runtime_service.runtime import modeling
 
 
 @pytest.mark.parametrize(
@@ -247,3 +247,40 @@ def test_build_model_supports_proxy_providers_and_protocols(monkeypatch: pytest.
     assert anthropic_calls["model"] == "claude-3-7-sonnet"
     assert anthropic_calls["api_key"] == "sk-ant-test"
     assert anthropic_calls["base_url"] == "https://api.anthropic.com/v1"
+
+
+def test_chat_openai_with_reasoning_exposes_streaming_reasoning_content_blocks() -> None:
+    from langchain_core.messages import AIMessageChunk
+
+    model = modeling.ChatOpenAIWithReasoning(
+        model="glm-5.3",
+        api_key="test-key",
+        base_url="https://relay.example.com/v1",
+    )
+    gen_chunk = model._convert_chunk_to_generation_chunk(
+        {
+            "id": "chatcmpl-1",
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {
+                        "role": "assistant",
+                        "content": "",
+                        "reasoning_content": "The user is asking a simple identity question.",
+                    },
+                }
+            ],
+        },
+        AIMessageChunk,
+        {},
+    )
+    assert gen_chunk is not None
+    assert gen_chunk.message.additional_kwargs["reasoning_content"] == (
+        "The user is asking a simple identity question."
+    )
+    assert gen_chunk.message.content_blocks == [
+        {
+            "type": "reasoning",
+            "reasoning": "The user is asking a simple identity question.",
+        }
+    ]

@@ -103,20 +103,23 @@ const shouldShowLiveStep = computed(() => {
   const lastEntry = turns[turns.length - 1];
 
   if (lastEntry?.author === "user") return true;
+  if (lastEntry?.id?.endsWith(":agent:loading")) return false;
 
   const hasRunningTools = lastEntry?.work?.some((w) =>
     w.tools?.some((t) => t.status === "running")
   );
   if (hasRunningTools) return true;
 
-  const hasCompletedAnswer = Boolean(lastEntry?.text && lastEntry.text.trim().length > 0);
-  if (hasCompletedAnswer) {
-    if (props.stream?.isLoading && !props.stream.isLoading.value) {
-      return false;
-    }
-  }
+  const hasVisibleBlocks = lastEntry?.content?.some((item) =>
+    item.blocks?.some(
+      (b) =>
+        b.kind === "loading" ||
+        ((b.kind === "reasoning" || b.kind === "text") && b.text.trim().length > 0),
+    ),
+  );
+  if (hasVisibleBlocks) return false;
 
-  return !hasCompletedAnswer;
+  return true;
 });
 
 function getMessageMeta(id: string) { return props.metadata?.[id]; }

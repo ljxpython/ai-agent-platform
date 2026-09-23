@@ -5,8 +5,15 @@ test("provider reasoning is visible separately from the final answer", async ({ 
   await page.evaluate(() => (window as unknown as { renderFixture: { setReasoning(): Promise<void> } }).renderFixture.setReasoning());
   for (const text of ["Qwen 思考内容", "DeepSeek 思考内容"]) {
     const reasoning = page.locator("details").filter({ hasText: text });
-    await expect(reasoning.locator("summary")).toBeVisible();
+    const summary = reasoning.locator("summary");
+    const preview = summary.locator(".truncate");
+    if (await reasoning.evaluate(element => (element as HTMLDetailsElement).open)) {
+      await summary.click();
+    }
+    await expect(preview).toBeVisible();
     await reasoning.locator("summary").click();
+    await expect(preview).toBeHidden();
+    await expect(reasoning.locator("div")).toBeVisible();
     await expect(reasoning.locator("div")).toHaveText(text);
   }
   await expect(page.getByText("Qwen OK", { exact: true })).toBeVisible();

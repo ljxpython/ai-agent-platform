@@ -8,6 +8,7 @@ const props = withDefaults(
   defineProps<{
     models?: RuntimeModelItem[]
     selectedModelId?: string
+    defaultModelId?: string
     defaultModelName?: string
     disabled?: boolean
     projectId: string
@@ -15,6 +16,7 @@ const props = withDefaults(
   {
     models: () => [],
     selectedModelId: '',
+    defaultModelId: '',
     defaultModelName: '',
     disabled: false
   }
@@ -47,12 +49,44 @@ function formatProviderLabel(provider: string): string {
 
 const searchNormalized = computed(() => searchQuery.value.trim().toLowerCase())
 
-const filteredGroupedModels = computed(() => {
+function isDefaultModel(model: RuntimeModelItem): boolean {
+  if (props.defaultModelId) {
+    return model.id === props.defaultModelId
+  }
+  return Boolean(props.defaultModelName && model.display_name === props.defaultModelName)
+}
+
+const deduplicatedModels = computed(() => {
   if (!props.models || props.models.length === 0) return []
+  const bySignature = new Map<string, RuntimeModelItem>()
+
+  for (const item of props.models) {
+    const providerKey = (item.provider || 'default').trim().toLowerCase()
+    const nameKey = (item.model || item.display_name || item.id).trim().toLowerCase()
+    const sig = `${providerKey}::${nameKey}`
+    const existing = bySignature.get(sig)
+    if (!existing) {
+      bySignature.set(sig, item)
+      continue
+    }
+    const itemIsPinned = item.id === props.selectedModelId || isDefaultModel(item)
+    const existingIsPinned = existing.id === props.selectedModelId || isDefaultModel(existing)
+    if (itemIsPinned && !existingIsPinned) {
+      bySignature.set(sig, item)
+    } else if (!existingIsPinned && item.scope_type === 'project' && existing.scope_type !== 'project') {
+      bySignature.set(sig, item)
+    }
+  }
+
+  return Array.from(bySignature.values())
+})
+
+const filteredGroupedModels = computed(() => {
+  if (deduplicatedModels.value.length === 0) return []
   const query = searchNormalized.value
 
   const map = new Map<string, RuntimeModelItem[]>()
-  for (const item of props.models) {
+  for (const item of deduplicatedModels.value) {
     if (query) {
       const matchId = item.model?.toLowerCase().includes(query)
       const matchName = item.display_name?.toLowerCase().includes(query)
@@ -265,7 +299,7 @@ onBeforeUnmount(() => {
                 <span>切换对话模型</span>
               </div>
               <span class="rounded-full bg-gray-200/70 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-dark-800 dark:text-dark-400">
-                共 {{ models?.length || 0 }} 款模型
+                共 {{ deduplicatedModels.length }} 款模型
               </span>
             </div>
 
@@ -399,10 +433,22 @@ onBeforeUnmount(() => {
                       {{ model.display_name || model.model }}
                     </span>
                     <span
-                      v-if="model.display_name === defaultModelName"
+                      v-if="isDefaultModel(model)"
                       class="shrink-0 rounded bg-emerald-50 px-1.5 py-0.2 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400"
                     >
                       默认
+                    </span>
+                    <span
+                      v-if="model.scope_type === 'project'"
+                      class="shrink-0 rounded bg-blue-50 px-1.5 py-0.2 text-[10px] font-medium text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"
+                    >
+                      项目私有
+                    </span>
+                    <span
+                      v-else-if="model.scope_type === 'platform'"
+                      class="shrink-0 rounded bg-gray-100 px-1.5 py-0.2 text-[10px] font-medium text-gray-500 dark:bg-dark-800 dark:text-dark-400"
+                    >
+                      平台
                     </span>
                   </div>
                   <div class="flex items-center gap-1.5 mt-0.5 text-[11px] font-mono text-gray-400 dark:text-dark-400">

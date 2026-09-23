@@ -7,3 +7,5 @@
 3. 验证模型适配、前端转换和完整消息链路。
 
 契约：思考内容沿 LangChain 消息 `additional_kwargs` 或标准 `content_blocks` 到达 Web，且不会混入最终回答正文。
+
+状态：partial。已确认 `ChatOpenAI` 丢弃第三方推理字段；正式平台聊天链路尚待运行中模型目录的实测。

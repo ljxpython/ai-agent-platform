@@ -417,8 +417,8 @@ export function useChatSession(options: {
             }
             break;
           }
-          // 流式通道活跃时持续顺延超时判定，避免长任务或多步图输出过程中误判
-          if (stream.isLoading.value) {
+          // 流式通道活跃或服务端明确返回 run 仍处于 active (running/pending) 状态时，持续顺延超时判定，避免长任务或后台轮询过程中误判
+          if (stream.isLoading.value || active(latest)) {
             deadline = Date.now() + 30000;
           }
           // 仅在数据流已非传输状态且超时后，才提示未能确认运行结果；切标签页（document.hidden）不再误判
@@ -777,8 +777,15 @@ export function useChatSession(options: {
       }
       const messageContent = await prepareMessageAttachments(threadId.value, content);
       if (disposed || !canComment.value) return false;
+      const inputMessageId = crypto.randomUUID();
       const input = {
-        messages: [{ id: crypto.randomUUID(), type: "human", content: messageContent }],
+        messages: [{ id: inputMessageId, type: "human", content: messageContent }],
+      };
+      const removeUncommittedMessage = () => {
+        const streamMessages = (stream as unknown as { messages?: { value?: Array<{ id?: string }> } }).messages;
+        if (streamMessages && Array.isArray(streamMessages.value)) {
+          streamMessages.value = streamMessages.value.filter((m) => m?.id !== inputMessageId);
+        }
       };
       const isFromQueue = Boolean(sendOptions?.fromQueue);
       let attempts = 0;
@@ -818,6 +825,7 @@ export function useChatSession(options: {
           const is409 = raw.includes("409 Conflict") || raw.includes("pending or running run");
           if (is409 && attempts < maxAttempts) {
             actions.rejectUnsent();
+            removeUncommittedMessage();
             console.warn(`[session] 遇到服务端短暂运行冲突 (409)，正在进行第 ${attempts} 次退避重试...`);
             error.value = "";
             try {
@@ -830,6 +838,7 @@ export function useChatSession(options: {
           }
           if (is409) {
             actions.rejectUnsent();
+            removeUncommittedMessage();
             error.value = "";
             try {
               (stream.error as unknown as { value: unknown }).value = null;
@@ -861,6 +870,7 @@ export function useChatSession(options: {
             return true;
           }
           actions.rejectUnsent();
+          removeUncommittedMessage();
           fail(cause);
           return false;
         }

@@ -81,11 +81,46 @@ export function useTranscriptMessages(stream: AnyStream, namespace: readonly str
       }
     }
 
+    const isSameNamespace = (source?: readonly string[]) =>
+      !source || (source.length === namespace.length && source.every((part, index) => namespace[index] === part));
+    const getMsgType = (msg: BaseMessage) =>
+      msg.type || (typeof (msg as unknown as { _getType?: () => string })._getType === "function"
+        ? (msg as unknown as { _getType: () => string })._getType()
+        : "");
+    const hasToolCalls = (msg: BaseMessage) => {
+      const raw = msg as unknown as Record<string, unknown>;
+      return Array.isArray(raw.tool_calls) && raw.tool_calls.length > 0;
+    };
+
+    // Detect mid-stream model retries: if an uncommitted tool-less AI message in the current
+    // namespace is followed by another AI message before any human/tool message, the earlier
+    // attempt timed out or failed and was superseded by the retry.
+    const supersededRetryIds = new Set<string>();
+    let pendingToollessAiId: string | undefined;
+    for (const msg of current) {
+      const type = getMsgType(msg);
+      const source = msg.id ? sources.get(msg.id) : undefined;
+      if (!isSameNamespace(source)) continue;
+      if (type === "human" || type === "tool") {
+        pendingToollessAiId = undefined;
+      } else if (type === "ai") {
+        if (pendingToollessAiId) supersededRetryIds.add(pendingToollessAiId);
+        pendingToollessAiId = msg.id && !owned.has(msg.id) && !hasToolCalls(msg) ? msg.id : undefined;
+      }
+    }
+
     return current.filter(message => {
       // 1. A child result explicitly promoted to parent values is an owned parent reply.
       if (message.id && owned.has(message.id)) return true;
 
+      // Drop aborted/retried AI messages superseded by a subsequent retry attempt.
+      if (message.id && supersededRetryIds.has(message.id)) return false;
+
       const source = message.id ? sources.get(message.id) : undefined;
+
+      // Once a run finishes and authoritative values snapshot is present, any same-scope
+      // message missing from snapshot is an uncommitted/aborted draft and must be dropped.
+      if (!stream.isLoading.value && snapshot.length > 0 && isSameNamespace(source)) return false;
 
       // 2. Subagent messages (originating from stream.subagents, or tools:/task: namespaces)
       // MUST NEVER leak into the parent transcript view, whether tool call, tool result, or text.
@@ -96,7 +131,7 @@ export function useTranscriptMessages(stream: AnyStream, namespace: readonly str
       if (isFromSubagent) return false;
 
       // 3. Filter out subagent task input HumanMessages from parent/root view even before source resolution
-      const isHuman = message.type === "human" || (typeof (message as unknown as Record<string, unknown>)._getType === "function" && (message as unknown as { _getType: () => string })._getType() === "human");
+      const isHuman = getMsgType(message) === "human";
       if (isHuman) {
         const text = typeof message.content === "string"
           ? message.content.trim()
@@ -108,8 +143,7 @@ export function useTranscriptMessages(stream: AnyStream, namespace: readonly str
       }
 
       // 4. Execution subgraphs (non-subagent internal graph nodes) tool calls are preserved for root visibility
-      const rawMsg = message as unknown as Record<string, unknown>;
-      if (Array.isArray(rawMsg.tool_calls) && rawMsg.tool_calls.length > 0) return true;
+      if (hasToolCalls(message)) return true;
       if (message.type === "tool") return true;
 
       // 5. Default: include if it has no descendant source and is not from a child scope

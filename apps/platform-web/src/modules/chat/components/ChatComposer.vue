@@ -25,6 +25,7 @@ const props = defineProps<{
   focusMode?: boolean;
   models?: RuntimeModelItem[];
   selectedModelId?: string;
+  defaultModelId?: string;
   defaultModelName?: string;
   placeholder?: string;
   projectId?: string;
@@ -311,6 +312,7 @@ defineExpose({
               :models="models"
               :project-id="projectId"
               :selected-model-id="selectedModelId"
+              :default-model-id="defaultModelId"
               :default-model-name="defaultModelName"
               :disabled="isRunning || hasBlockingInterrupt"
               @update:selected-model-id="emit('update:selectedModelId', $event)"

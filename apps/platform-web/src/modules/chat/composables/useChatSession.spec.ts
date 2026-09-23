@@ -700,5 +700,85 @@ it("seeds accessThread from initialThread with zero accessLoading and stops in-p
   }
 });
 
+it("removes uncommitted HumanMessage from stream.messages on 409 and extends verify deadline while backend run is active", async () => {
+  vi.useFakeTimers();
+  const streamMessages = ref<Array<{ id?: string; type?: string; content?: unknown }>>([]);
+  const submitFn = vi.fn().mockImplementation(async (input: { messages: Array<{ id?: string; type?: string; content?: unknown }> }) => {
+    streamMessages.value = [...streamMessages.value, ...input.messages];
+    throw new Error("409 Conflict: pending or running run");
+  });
+
+  mocks.runs.mockResolvedValue([{ run_id: "run-active-44s", status: "running" }]);
+  mocks.run.mockResolvedValue({ run_id: "run-active-44s", status: "running" });
+  mocks.stream.mockReturnValue({
+    messages: streamMessages,
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    submit: submitFn,
+    disconnect: vi.fn(),
+  });
+  const current = ref<{ key: string; kind: string; runId?: string; status: string } | null>(null);
+  mocks.actions.mockReturnValue({
+    current,
+    begin: vi.fn((_tid: string, kind: string) => {
+      const action = { key: "act-409", kind, status: "submitting" };
+      current.value = action;
+      return action;
+    }),
+    rejectUnsent: vi.fn(() => {
+      current.value = null;
+    }),
+    acknowledge: vi.fn(),
+    dispose: vi.fn(),
+  });
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "showcase_demo",
+      threadId: "t-409",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    const sendPromise = session.send("你再换另一个人物给我讲一下", 1000, { fromQueue: true });
+    await flushPromises();
+    const ok = await sendPromise;
+
+    // 1. 遇到 409 返回 false 交由队列等待，且 stream.messages 中注入的未提交消息必须被清除，不留假气泡
+    expect(ok).toBe(false);
+    expect(streamMessages.value).toEqual([]);
+
+    // 2. 即使 stream.isLoading=false，只要服务端轮询返回 status="running"，超过 30 秒也绝不能报错“运行结果尚未确认”
+    void session.verify(true);
+    for (let i = 0; i < 10; i++) {
+      await vi.advanceTimersByTimeAsync(4000);
+      await flushPromises();
+    }
+    expect(session.error.value).toBe("");
+
+    mocks.run.mockResolvedValueOnce({ run_id: "run-active-44s", status: "success" });
+    await vi.advanceTimersByTimeAsync(4000);
+    await flushPromises();
+    expect(session.verified.value).toBe(true);
+    expect(session.error.value).toBe("");
+  } finally {
+    scope.stop();
+    vi.useRealTimers();
+    mocks.runs.mockReset();
+    mocks.run.mockReset();
+  }
+});
+
+
 
 

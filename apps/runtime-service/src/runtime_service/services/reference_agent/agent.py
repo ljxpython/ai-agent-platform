@@ -227,7 +227,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             if model_retry_enabled
             else []
         ),
-        ModelCallTimeoutMiddleware(timeout_seconds=30),
+        ModelCallTimeoutMiddleware(),
         MessageQueueMiddleware(),
     ]
     agent = create_agent(

@@ -2,17 +2,17 @@
 
 from __future__ import annotations
 
-import os
 import hashlib
 import hmac
+import os
 import time
 from collections.abc import Mapping
 
 import httpx
 import openai
 from langchain.chat_models import init_chat_model
-from langchain_core.messages import AIMessageChunk
 from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import AIMessageChunk
 from langchain_core.outputs import ChatGenerationChunk, ChatResult
 from langchain_deepseek import ChatDeepSeek
 from langchain_openai import ChatOpenAI
@@ -49,6 +49,10 @@ class ChatOpenAIWithReasoning(ChatOpenAI):
         result = super()._create_chat_result(response, generation_info)
         data = response if isinstance(response, dict) else response.model_dump()
         for choice, generation in zip(data.get("choices", []), result.generations):
+            generation.message.response_metadata = {
+                **generation.message.response_metadata,
+                "model_provider": "openai_compatible",
+            }
             reasoning = _reasoning_text(choice.get("message", {}))
             if reasoning:
                 generation.message.additional_kwargs["reasoning_content"] = reasoning
@@ -59,6 +63,10 @@ class ChatOpenAIWithReasoning(ChatOpenAI):
     ) -> ChatGenerationChunk | None:
         result = super()._convert_chunk_to_generation_chunk(chunk, default_chunk_class, base_generation_info)
         if result and isinstance(result.message, AIMessageChunk) and chunk.get("choices"):
+            result.message.response_metadata = {
+                **result.message.response_metadata,
+                "model_provider": "openai_compatible",
+            }
             reasoning = _reasoning_text(chunk["choices"][0].get("delta") or {})
             if reasoning:
                 result.message.additional_kwargs["reasoning_content"] = reasoning

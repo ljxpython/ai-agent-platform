@@ -53,3 +53,49 @@ it("does not steal focus from external inputs when clicked outside", async () =>
     externalInput.remove();
   }
 });
+
+it("deduplicates same-provider models preferring project scope and matches defaultModelId", async () => {
+  const wrapper = mount(ChatModelSelector, {
+    attachTo: document.body,
+    props: {
+      projectId: "project-a",
+      defaultModelId: "proj-id-1",
+      defaultModelName: "deepseek-v4.1-flash",
+      models: [
+        {
+          id: "plat-id-1",
+          model: "deepseek-v4.1-flash",
+          display_name: "deepseek-v4.1-flash",
+          provider: "maomaoai",
+          protocol: "openai-compatible",
+          base_url: "",
+          enabled: true,
+          credential_configured: true,
+          scope_type: "platform",
+        },
+        {
+          id: "proj-id-1",
+          model: "deepseek-v4.1-flash",
+          display_name: "deepseek-v4.1-flash",
+          provider: "maomaoai",
+          protocol: "openai-compatible",
+          base_url: "https://api.maomaoai.test/v1",
+          enabled: true,
+          credential_configured: true,
+          scope_type: "project",
+        },
+      ],
+    },
+    global: { stubs: { RouterLink: true } },
+  });
+  try {
+    await wrapper.get("button").trigger("click");
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!;
+    expect(dialog.textContent).toContain("共 1 款模型");
+    expect(dialog.textContent).toContain("项目私有");
+    expect(dialog.textContent).toContain("默认");
+  } finally {
+    wrapper.unmount();
+  }
+});
+

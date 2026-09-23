@@ -241,6 +241,15 @@ def test_model_call_timeout_does_not_swallow_cancellation() -> None:
         asyncio.run(middleware.awrap_model_call(object(), handler))
 
 
+def test_model_call_timeout_reads_env_and_defaults_to_600(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("AGENT_MODEL_CALL_TIMEOUT_SECONDS", raising=False)
+    assert ModelCallTimeoutMiddleware().timeout_seconds == 600.0
+
+    monkeypatch.setenv("AGENT_MODEL_CALL_TIMEOUT_SECONDS", "900")
+    assert ModelCallTimeoutMiddleware().timeout_seconds == 900.0
+
+
+
 def test_official_tool_error_only_handles_explicit_exception() -> None:
     request = ToolCallRequest(
         tool_call={"name": "read_tool", "args": {}, "id": "call-1", "type": "tool_call"},
@@ -303,3 +312,97 @@ def test_scope_accepts_server_resolved_graph_alias_but_rejects_other_graph():
     facts.scope.assistant_id = "graph-b"
     with pytest.raises(RuntimeAuthError):
         RuntimeConfigMiddleware._check_scope(runtime, facts)
+
+
+def test_runtime_middleware_repairs_interrupted_and_non_contiguous_tool_calls() -> None:
+    from langchain_core.messages import AIMessage
+    from langchain_openai.chat_models.base import _convert_message_to_dict
+
+    middleware = _middleware()
+    ai_msg = AIMessage(
+        content="",
+        tool_calls=[
+            {"name": "read_tool", "args": {"topic": "a"}, "id": "call-1", "type": "tool_call"},
+            {"name": "read_tool", "args": {"topic": "b"}, "id": "call-2", "type": "tool_call"},
+        ],
+    )
+    # Simulate a stopped/interrupted parallel tool execution where call-2 was patched or missing
+    # and call-1 arrived after an injected HumanMessage.
+    broken_messages = [
+        HumanMessage(content="start"),
+        ai_msg,
+        HumanMessage(content="follow-up after stop"),
+        ToolMessage(content="real-result-1", name="read_tool", tool_call_id="call-1"),
+    ]
+
+    state_patch = asyncio.run(
+        middleware.abefore_model({"messages": broken_messages}, Runtime(context=RuntimeContext()))
+    )
+    assert state_patch is not None
+    repaired_state_msgs = state_patch["messages"][1:]
+    assert [type(m).__name__ for m in repaired_state_msgs] == [
+        "HumanMessage",
+        "AIMessage",
+        "ToolMessage",
+        "ToolMessage",
+        "HumanMessage",
+    ]
+    assert repaired_state_msgs[2].tool_call_id == "call-1"
+    assert repaired_state_msgs[2].content == "real-result-1"
+    assert repaired_state_msgs[3].tool_call_id == "call-2"
+    assert "was cancelled" in repaired_state_msgs[3].content
+
+    # Also verify awrap_model_call repairs request.messages before sending to provider
+    request = ModelRequest(
+        model=FakeListChatModel(responses=["ok"]),
+        messages=broken_messages,
+        tools=[read_tool],
+        runtime=Runtime(context=RuntimeContext()),
+    )
+    called: list[ModelRequest] = []
+
+    async def handler(value: ModelRequest):
+        called.append(value)
+        return "response"
+
+    asyncio.run(middleware.awrap_model_call(request, handler))
+    sent_messages = called[0].messages
+    assert [type(m).__name__ for m in sent_messages] == [
+        "HumanMessage",
+        "AIMessage",
+        "ToolMessage",
+        "ToolMessage",
+        "HumanMessage",
+    ]
+    openai_dicts = [_convert_message_to_dict(m) for m in sent_messages]
+    assert openai_dicts[1]["role"] == "assistant"
+    assert [tc["id"] for tc in openai_dicts[1]["tool_calls"]] == ["call-1", "call-2"]
+    assert openai_dicts[2]["role"] == "tool" and openai_dicts[2]["tool_call_id"] == "call-1"
+    assert openai_dicts[3]["role"] == "tool" and openai_dicts[3]["tool_call_id"] == "call-2"
+    assert openai_dicts[4]["role"] == "user"
+
+
+def test_sanitize_tool_call_messages_strips_idless_truncated_tool_calls_and_orphan_tools() -> None:
+    from langchain_core.messages import AIMessage
+    from langchain_openai.chat_models.base import _convert_message_to_dict
+    from runtime_service.middlewares import sanitize_tool_call_messages
+
+    truncated_ai = AIMessage(
+        content="",
+        invalid_tool_calls=[
+            {"name": "read_tool", "args": '{"topic": "unclosed', "id": None, "error": "truncated", "type": "invalid_tool_call"}
+        ],
+        additional_kwargs={"tool_calls": [{"id": None, "type": "function", "function": {"name": "read_tool", "arguments": ""}}]},
+    )
+    orphan_tool = ToolMessage(content="stale", name="read_tool", tool_call_id="orphan-id")
+    sanitized, changed = sanitize_tool_call_messages([
+        orphan_tool,
+        HumanMessage(content="hello"),
+        truncated_ai,
+        HumanMessage(content="retry"),
+    ])
+    assert changed is True
+    assert len(sanitized) == 3
+    openai_dicts = [_convert_message_to_dict(m) for m in sanitized]
+    assert "tool_calls" not in openai_dicts[1]
+    assert [d["role"] for d in openai_dicts] == ["user", "assistant", "user"]

@@ -170,7 +170,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             system_prompt=_DEFAULTS.system_prompt,
             middleware=[
                 ModelCallLimitMiddleware(run_limit=10, exit_behavior="end"),
-                ModelCallTimeoutMiddleware(timeout_seconds=30),
+                ModelCallTimeoutMiddleware(),
             ],
             context_schema=RuntimeContext,
             name="workflow_demo_model",

@@ -225,7 +225,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 exit_behavior="error",
             ),
             # Bound the whole reasoning response, not just the time to its first token.
-            ModelCallTimeoutMiddleware(timeout_seconds=240),
+            ModelCallTimeoutMiddleware(),
         ]
 
     agent = create_deep_agent(

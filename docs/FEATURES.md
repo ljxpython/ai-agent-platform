@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 模型思考内容展示与 OpenAI 兼容字段保留 | 部分完成：Qwen/DeepSeek 真实模型、LangGraph 消息流和浏览器 Think 展示通过；正式平台模型目录聊天链路待验 | [排查与验证](projects/20260923-model-reasoning-output/README.md) |
 | 对话流式超时容错与 Transcript 解析优化 | 规划中：解决长推理超时截断与前端幽灵步骤假折叠问题 | [项目概览](projects/20260921-chat-stream-timeout-and-retry-optimization/README.md) |
 | 全平台菜单、页面与角色权限治理 | 人工验收中：技术实现与自动化 Final done；固定角色、平台/对象授权、撤权、P1 隔离、治理边界及项目内个人记忆入口完成；共享/跨项目记忆等 deferred | [分章方案与进度](projects/20260920-platform-access-governance/README.md) · [人工验收用例](projects/20260920-platform-access-governance/08-manual-acceptance.md) |
 | Agent 回复新对话分支 | 进行中：Platform API 受控分叉和 Runtime 隔离验证实施中；前端已完成对接设计、待接入 | [项目规划](projects/20260917-agent-conversation-fork/README.md) |
