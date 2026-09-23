@@ -28,7 +28,8 @@ def sanitize_table_name(name):
 
 def safe_path(value, *, output=False):
     path = Path(value)
-    bases = [Path("/workspace/work")] if output else [Path("/workspace/uploads"), Path("/workspace/work")]
+    root = Path(os.getenv("RUNTIME_WORKSPACE_ROOT", "/workspace"))
+    bases = [root / "work"] if output else [root / "uploads", root / "work"]
     resolved = path.resolve()
     if not any(resolved.is_relative_to(base) for base in bases) or path.is_symlink():
         raise ValueError("analysis_path_denied")

@@ -191,7 +191,7 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
                 "RUNTIME_SHOWCASE_WORKSPACE_ROOT": directory,
                 "RUNTIME_WORKSPACE_ROOT": directory,
                 "ARTIFACT_TEST_GRAPH": graph,
-                "RUNTIME_SHOWCASE_BACKEND": "local",
+                "RUNTIME_BACKEND": "local",
                 "RUNTIME_TERMINAL_ENABLED": "1",
                 "PLATFORM_RUNTIME_DELEGATION_SECRET": SECRET,
                 "PLATFORM_RUNTIME_DELEGATION_ISSUER": "runtime-test",

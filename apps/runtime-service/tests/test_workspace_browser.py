@@ -258,3 +258,31 @@ def test_artifact_pagination_and_failed_publication(tmp_path):
     with pytest.raises(DocumentError):
         store.publish("/workspace/work/bad.png")
     assert set((tmp_path / "outputs").iterdir()) == before
+
+
+def test_readable_filename_artifacts_in_outputs(tmp_path):
+    outputs = tmp_path / "outputs"
+    outputs.mkdir()
+    doc = outputs / "01-header-and-strategy.md"
+    doc.write_text("# Architecture Design\n", encoding="utf-8")
+    (outputs / ".publish-temp").write_text("ignored", encoding="utf-8")
+
+    store = ArtifactWorkspace(tmp_path)
+    listed = store.list_artifacts()
+    assert len(listed["items"]) == 1
+    item = listed["items"][0]
+    assert item["file_name"] == "01-header-and-strategy.md"
+    assert item["path"] == "/workspace/outputs/01-header-and-strategy.md"
+    assert item["preview_kind"] == "markdown"
+    assert len(item["sha256"]) == 64
+
+    browser = WorkspaceBrowser(tmp_path)
+    raw_bytes, ref = browser.read_file(item["path"])
+    assert raw_bytes == b"# Architecture Design\n"
+    assert ref["file_name"] == "01-header-and-strategy.md"
+    assert ref["sha256"] == item["sha256"]
+
+    preview_bytes, mime = browser.preview(item["path"])
+    assert mime == "application/json"
+    assert json.loads(preview_bytes)["text"] == "# Architecture Design\n"
+

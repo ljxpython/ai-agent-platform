@@ -1,7 +1,7 @@
 import json
 import os
-from pathlib import Path
 from io import BytesIO
+from pathlib import Path
 
 from PIL import Image
 from pptx import Presentation
@@ -26,7 +26,8 @@ def generate_ppt(
     """
     def scoped(path: str, *, output=False):
         resolved = Path(path).resolve()
-        base = Path("/workspace/work" if output else "/workspace")
+        root = Path(os.getenv("RUNTIME_WORKSPACE_ROOT", "/workspace"))
+        base = root / "work" if output else root
         if not resolved.is_relative_to(base):
             raise ValueError("Presentation paths must stay in the thread workspace")
         return resolved

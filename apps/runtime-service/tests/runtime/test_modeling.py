@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from langchain_core.messages import AIMessageChunk
 
 from runtime_service.runtime import (
     AgentDefaults,
@@ -11,6 +12,32 @@ from runtime_service.runtime import (
     resolve_runtime_config,
 )
 from runtime_service.runtime import modeling
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("reasoning_content", "Qwen thought"),
+        ("reasoning", "DeepSeek thought"),
+        ("reasoning_details", [{"type": "reasoning.text", "text": "detail thought"}]),
+    ],
+)
+def test_openai_compatible_preserves_reasoning(field: str, value: object) -> None:
+    model = modeling.ChatOpenAIWithReasoning(model="test", api_key="test")
+    response = {
+        "model": "test",
+        "choices": [{"message": {"role": "assistant", "content": "OK", field: value}, "finish_reason": "stop"}],
+    }
+    expected = value[0]["text"] if isinstance(value, list) else value
+    message = model._create_chat_result(response).generations[0].message
+    assert message.content == "OK"
+    assert message.additional_kwargs["reasoning_content"] == expected
+
+    chunk = model._convert_chunk_to_generation_chunk(
+        {"choices": [{"delta": {"role": "assistant", field: value}}]}, AIMessageChunk, None
+    )
+    assert chunk is not None
+    assert chunk.message.additional_kwargs["reasoning_content"] == expected
 
 
 def _resolved(model_id: str):
@@ -75,7 +102,7 @@ def test_build_openai_uses_gpt_proxy_settings(monkeypatch: pytest.MonkeyPatch) -
         calls.update(kwargs)
         return object()
 
-    monkeypatch.setattr(modeling, "ChatOpenAI", fake_constructor)
+    monkeypatch.setattr(modeling, "ChatOpenAIWithReasoning", fake_constructor)
     modeling.build_model(
         _resolved("openai:gpt-5.5"),
         env={"GPT_PROXY_API_KEY": "key", "GPT_PROXY_URL": "https://gpt.test/v1"},
@@ -147,7 +174,7 @@ def test_build_model_supports_proxy_providers_and_protocols(monkeypatch: pytest.
         return object()
 
     monkeypatch.setattr(modeling, "ChatDeepSeek", fake_deepseek)
-    monkeypatch.setattr(modeling, "ChatOpenAI", fake_openai)
+    monkeypatch.setattr(modeling, "ChatOpenAIWithReasoning", fake_openai)
 
     # 1. deepseek-proxy
     modeling.build_model(
@@ -220,4 +247,3 @@ def test_build_model_supports_proxy_providers_and_protocols(monkeypatch: pytest.
     assert anthropic_calls["model"] == "claude-3-7-sonnet"
     assert anthropic_calls["api_key"] == "sk-ant-test"
     assert anthropic_calls["base_url"] == "https://api.anthropic.com/v1"
-

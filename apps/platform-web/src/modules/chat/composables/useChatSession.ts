@@ -3,6 +3,7 @@ import {
   onScopeDispose,
   ref,
   shallowRef,
+  unref,
   watch,
   type Ref,
 } from "vue";
@@ -39,12 +40,25 @@ import { useSessionInterrupts } from "./useSessionInterrupts";
 const active = (run: Run | null) =>
   run != null && ["pending", "running"].includes(run.status);
 
+function hasResolvedAccess(
+  thread: ChatThread | undefined,
+  expectedThreadId: string | null,
+): thread is ChatThread {
+  return Boolean(
+    expectedThreadId &&
+      thread &&
+      thread.thread_id === expectedThreadId &&
+      Array.isArray(thread.metadata?.allowed_actions),
+  );
+}
+
 export function useChatSession(options: {
   projectId: string;
   userId?: string;
   graphId: string;
   agentId?: string;
   threadId?: string;
+  initialThread?: ChatThread | Ref<ChatThread | undefined>;
   context: Ref<AgentContext>;
   canWrite: Ref<boolean>;
   onThread: (id: string) => void;
@@ -61,10 +75,39 @@ export function useChatSession(options: {
   const accessPolicy = ref<AccessPolicy>("review");
   const accessPolicyUpdating = ref(false);
   const accessThread = shallowRef<ChatThread>();
-  const accessLoading = ref(Boolean(threadId.value));
+
+  function applyAccessThread(thread: ChatThread | undefined) {
+    accessThread.value = thread;
+    if (thread?.metadata && typeof thread.metadata === "object") {
+      const policy = (thread.metadata as Record<string, unknown>).access_policy;
+      if (policy === "workspace_write" || policy === "full_access") {
+        accessPolicy.value = policy;
+      } else {
+        accessPolicy.value = "review";
+      }
+    } else {
+      accessPolicy.value = "review";
+    }
+  }
+
+  const initialSeeded = unref(options.initialThread);
+  if (hasResolvedAccess(initialSeeded, threadId.value)) {
+    applyAccessThread(initialSeeded);
+  }
+  const accessLoading = ref(Boolean(threadId.value && !accessThread.value));
   const canRead = computed(() => !threadId.value || hasThreadAction(accessThread.value, "read"));
   let accessRefreshing = false;
   let accessEpoch = 0;
+  const run = shallowRef<Run | null>(null);
+  const checking = ref(true);
+  const verified = ref(false);
+  const cancelling = ref(false);
+  const error = ref("");
+  let disposed = false;
+  let checkEpoch = 0;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let releaseWait: (() => void) | undefined;
+
   const canAct = (action: ThreadAction) => threadId.value
     ? hasThreadAction(accessThread.value, action)
     : options.canWrite.value;
@@ -83,17 +126,7 @@ export function useChatSession(options: {
     try {
       const thread = await service.get(requestedThread);
       if (disposed || threadId.value !== requestedThread || accessEpoch !== requestedEpoch) return;
-      if (!disposed) accessThread.value = thread;
-      if (!disposed && thread?.metadata && typeof thread.metadata === "object") {
-        const policy = (thread.metadata as Record<string, unknown>).access_policy;
-        if (policy === "workspace_write" || policy === "full_access") {
-          accessPolicy.value = policy;
-        } else {
-          accessPolicy.value = "review";
-        }
-      } else if (!disposed) {
-        accessPolicy.value = "review";
-      }
+      if (!disposed) applyAccessThread(thread);
     } catch {
       if (!disposed && threadId.value === requestedThread && accessEpoch === requestedEpoch) {
         accessThread.value = undefined;
@@ -155,9 +188,23 @@ export function useChatSession(options: {
       if (next && next !== threadId.value) {
         threadId.value = next;
         hydrated.value = false;
-        accessThread.value = undefined;
-        accessLoading.value = true;
-        void refreshAccessPolicy();
+        const seeded = unref(options.initialThread);
+        if (hasResolvedAccess(seeded, next)) {
+          applyAccessThread(seeded);
+          accessLoading.value = false;
+        } else {
+          accessThread.value = undefined;
+          accessLoading.value = true;
+          void refreshAccessPolicy();
+        }
+      } else if (next && !accessThread.value) {
+        const seeded = unref(options.initialThread);
+        if (hasResolvedAccess(seeded, next)) {
+          applyAccessThread(seeded);
+          accessLoading.value = false;
+        } else {
+          void refreshAccessPolicy();
+        }
       } else if (!next) {
         threadId.value = null;
         hydrated.value = true;
@@ -167,15 +214,6 @@ export function useChatSession(options: {
     },
     { immediate: true },
   );
-  const run = shallowRef<Run | null>(null);
-  const checking = ref(true);
-  const verified = ref(false);
-  const cancelling = ref(false);
-  const error = ref("");
-  let disposed = false;
-  let checkEpoch = 0;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let releaseWait: (() => void) | undefined;
   const stream = useStream<ChatState>({
     assistantId: options.graphId,
     threadId: computed(() => threadId.value),
@@ -400,8 +438,14 @@ export function useChatSession(options: {
         if (!disposed && epoch === checkEpoch) {
           verified.value = true;
           error.value = "";
-          options.onRefresh();
-          await refreshAccessPolicy();
+          if (waitForTerminal) {
+            options.onRefresh();
+          }
+          if (!accessThread.value) {
+            await refreshAccessPolicy();
+          } else if (waitForTerminal) {
+            void refreshAccessPolicy();
+          }
           if (active(run.value) && !stream.isLoading.value) {
             scheduleBackgroundRunPoll(id);
           }
@@ -842,8 +886,8 @@ export function useChatSession(options: {
       const knownRunId = actions.current.value?.runId ?? run.value?.run_id;
       if (knownRunId && stream.isLoading.value) {
         await service.cancel(threadId.value, knownRunId);
+        void stream.disconnect();
         await verify(true);
-        if (!disposed && !active(run.value)) options.onReconnect();
         return;
       }
       if (!(await verify())) return;
@@ -851,13 +895,13 @@ export function useChatSession(options: {
       const runId = run.value?.run_id;
       // run 已终态说明 Agent 刚刚执行完，停止操作自然完成，静默刷新即可。
       if (!runId || !active(run.value)) {
+        void stream.disconnect();
         await verify(true);
-        if (!disposed && !active(run.value)) options.onReconnect();
         return;
       }
       await service.cancel(threadId.value, runId);
+      void stream.disconnect();
       await verify(true);
-      if (!disposed && !active(run.value)) options.onReconnect();
     } catch (cause) {
       fail(cause);
     } finally {

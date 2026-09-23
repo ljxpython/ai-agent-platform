@@ -1,3 +1,41 @@
+<script lang="ts">
+import { listRuntimeModels } from "@/services/runtime/runtime.service";
+import { listRuntimeModelPolicies } from "@/services/runtime-policies/runtime-policies.service";
+
+const projectModelBundleCache = new Map<
+  string,
+  {
+    expiresAt: number;
+    promise: Promise<
+      [
+        Awaited<ReturnType<typeof listRuntimeModels>>,
+        Awaited<ReturnType<typeof listRuntimeModelPolicies>>,
+      ]
+    >;
+  }
+>();
+
+function loadProjectModelBundle(projectId: string) {
+  const now = Date.now();
+  const cached = projectModelBundleCache.get(projectId);
+  if (cached && cached.expiresAt > now) {
+    return cached.promise;
+  }
+  const promise = Promise.all([
+    listRuntimeModels(projectId),
+    listRuntimeModelPolicies(projectId),
+  ]).catch((err) => {
+    projectModelBundleCache.delete(projectId);
+    throw err;
+  });
+  projectModelBundleCache.set(projectId, {
+    expiresAt: now + 60_000,
+    promise,
+  });
+  return promise;
+}
+</script>
+
 <script setup lang="ts">
 import {
   computed,
@@ -30,12 +68,14 @@ import {
   isChatAttachmentBlock,
   type ChatAttachmentBlock,
 } from "@/utils/chat-content";
-import { createSessionService, type ChatCheckpoint } from "@/services/threads/session.service";
+import {
+  createSessionService,
+  type ChatCheckpoint,
+  type ChatThread,
+} from "@/services/threads/session.service";
 import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
 import { increasedForkTitle } from "@/utils/threads";
-import { listRuntimeModels } from "@/services/runtime/runtime.service";
 import type { RuntimeModelItem } from "@/types/management";
-import { listRuntimeModelPolicies } from "@/services/runtime-policies/runtime-policies.service";
 import { useChatSession } from "../composables/useChatSession";
 import { useChatAttachments } from "../composables/useChatAttachments";
 import { useTranscriptMessages } from "../composables/useTranscriptMessages";
@@ -57,6 +97,7 @@ const props = defineProps<{
   graphId: string;
   agentId?: string;
   threadId?: string;
+  initialThread?: ChatThread;
   canWrite: boolean;
   draft: string;
   focusMode?: boolean;
@@ -96,6 +137,7 @@ const session = useChatSession({
   graphId: props.graphId,
   agentId: props.agentId,
   threadId: props.threadId,
+  initialThread: toRef(props, "initialThread"),
   context,
   canWrite: toRef(props, "canWrite"),
   onThread: (id) => emit("thread", id),
@@ -321,7 +363,7 @@ function handleAddToChat(text: string) {
 }
 const localError = ref("");
 let disposed = false;
-void Promise.all([listRuntimeModels(props.projectId), listRuntimeModelPolicies(props.projectId)])
+void loadProjectModelBundle(props.projectId)
   .then(([value, policies]) => {
     if (disposed) return;
     models.value = value.models.filter((model) => model.enabled && policies.items.find(item => item.catalog_id === model.id)?.policy.is_enabled !== false);
@@ -1219,7 +1261,7 @@ defineExpose({
 
 <template>
   <div
-    v-if="session.accessLoading.value"
+    v-if="session.accessLoading.value && !displayedMessages.length"
     role="status"
     class="flex flex-1 h-full min-h-[calc(100vh-160px)] w-full flex-col items-center justify-center p-8 text-sm text-gray-500 space-y-3 dark:text-dark-400"
   >

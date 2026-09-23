@@ -5,7 +5,7 @@
 
 ## 最后更新
 
-2026-09-23 | platform-web 全面完成前端代码冗余清理与结构化重构（4 个子专题全部 `done`：双生会话模块合并、useChatSession 拆解、三大超长控制面页面拆分、HTTP 错误解包收敛），净减 11,760 行重复代码；`pnpm build`（vue-tsc + vite build）与 Vitest 88 套单测（355 用例）100% 通过，本地运行恢复正常
+2026-09-23 | Runtime 成果识别兼容 `/workspace/outputs/` 下普通可读文件名并保留原始文件名展示与下载，重启 `runtime-api` 生效并通过 43 项工作区单测
 
 ## 活跃项目
 
@@ -17,9 +17,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-09-23 | 升级 `graphharbor` / `graphharbor-runtime` 至 `0.13.0.post32`（修复 `ProductionWorker` 多槽位并发 `slot-0..3` 及 `_StreamEventBuffer` 32条/50ms 批量写库）；`dearflow_agent` 单步推理超时提升至 `240s` |
+| runtime-service | 2026-09-23 | 本地栈 `RUNTIME_BACKEND=local` 统一控制 Showcase、Dear Agent execute 和终端；`ArtifactWorkspace` 与 `WorkspaceBrowser` 已兼容 `/workspace/outputs/` 下可读文件名成果识别与动态 SHA256 计算；GraphHarbor `0.13.0.post32`，`dearflow_agent` 单步推理超时 `240s` |
 | platform-api | 2026-09-22 | BYOK 双层模型架构 Phase 2 落地；0004 迁移、双层模型 RBAC、私有模型自主 CRUD/注销与网关代理安全打通，测试全绿 |
-| platform-web | 2026-09-23 | 完成全仓结构化重构（净减 11,760 行重复代码）；优化工具卡片状态机区分 LLM「正在生成参数 · 已生成 X.Xk 字符」与「执行中」阶段并支持 `write_file` 流式预览 |
+| platform-web | 2026-09-23 | 完成全仓结构化重构；消除会话切换/刷新 4 步串行请求与 `stop()` 触发组件销毁重挂载导致的「正在核验会话访问权限...」弹窗卡顿；支持 `initialThread` 零延迟水合与项目级模型缓存 |
 | interaction-data-service | — | — |
 | AI Harness（AGENTS.md + Skills） | 2026-09-21 | 今日完成全面优化，详见 docs/changes/20260921-harness-optimization.md |
 

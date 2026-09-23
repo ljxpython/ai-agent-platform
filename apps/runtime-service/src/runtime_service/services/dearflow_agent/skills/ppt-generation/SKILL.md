@@ -5,15 +5,17 @@ description: Use this skill when the user requests to generate, create, or make 
 
 ## Runtime integration (authoritative)
 
+For `execute`, replace `/workspace` with `$RUNTIME_WORKSPACE_ROOT` and `/skills` with `$RUNTIME_SKILLS_ROOT` in the commands below. File tools and `present_artifacts` still use virtual paths.
+
 Generate slide images using the approved `generate_image`/`edit_image`
 tools and keep completed image references if a later slide fails or is
 cancelled. Do not regenerate successful slides on retry.
-Use `/skills/ppt-generation/scripts/generate.py` in the sandbox, then
+Use `/skills/ppt-generation/scripts/generate.py` through `execute`, then
 `present_artifacts` to publish the PPTX. Inputs must belong to this
 thread's `/workspace/`; output must be under `/workspace/work/`.
 Maximum 20 slides; the plan must contain exactly one item per image.
 This is an image-based presentation, not editable native text/charts.
-The execution image already provides Pillow and python-pptx. Do not pip install.
+The configured execution environment must provide Pillow and python-pptx. Do not pip install.
 Outputs are not deliverable until the immutable artifact reference is returned.
 
 

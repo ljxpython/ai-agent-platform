@@ -130,7 +130,7 @@ def build(monkeypatch, tmp_path):
 
 @pytest.mark.parametrize("decision", ["approve", "reject"])
 def test_local_execute_requires_approval(build, monkeypatch, tmp_path, decision):
-    monkeypatch.setenv("RUNTIME_SHOWCASE_BACKEND", "local")
+    monkeypatch.setenv("RUNTIME_BACKEND", "local")
 
     async def run():
         graph, cfg, _ = await build([

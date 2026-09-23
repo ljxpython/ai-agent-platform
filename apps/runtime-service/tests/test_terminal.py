@@ -15,7 +15,7 @@ OWNER = ("tenant", "project", "thread", "showcase_demo", "user")
 @pytest.fixture
 def manager(monkeypatch, tmp_path):
     monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path))
-    monkeypatch.setenv("RUNTIME_SHOWCASE_BACKEND", "local")
+    monkeypatch.setenv("RUNTIME_BACKEND", "local")
     monkeypatch.setenv("RUNTIME_TERMINAL_ENABLED", "1")
     monkeypatch.setenv("SHOULD_NOT_LEAK", "private-marker")
     manager = TerminalManager()
@@ -151,7 +151,7 @@ def test_docker_terminal_real(manager, monkeypatch):
         ).returncode
     ):
         pytest.skip("Docker daemon unavailable")
-    monkeypatch.setenv("RUNTIME_SHOWCASE_BACKEND", "docker")
+    monkeypatch.setenv("RUNTIME_BACKEND", "docker")
     session = manager.get(
         OWNER, manager.create(OWNER, str(uuid4()), 24, 80)["terminal_id"]
     )
@@ -174,6 +174,17 @@ def test_docker_terminal_real(manager, monkeypatch):
         ).returncode
         != 0
     )
+
+
+def test_dearflow_local_terminal_uses_shared_backend(manager, monkeypatch, tmp_path):
+    monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path / "dear"))
+    owner = (*OWNER[:3], "dearflow_agent", OWNER[4])
+    ref = manager.create(owner, str(uuid4()), 24, 80)
+    assert ref["backend"] == "local"
+    session = manager.get(owner, ref["terminal_id"])
+    session.write(b"printf 'local-dear' > work/result.txt; cat work/result.txt\n", 0)
+    wait_output(session, b"local-dear")
+    assert (session.root / "work/result.txt").read_text() == "local-dear"
 
 
 def test_dearflow_terminal_mount_policy(manager, monkeypatch, tmp_path):

@@ -160,7 +160,8 @@ def test_approved_write_cannot_modify_protected_files(build, path):
     asyncio.run(run())
 
 
-def test_real_container_process_and_publish_after_approval(build):
+def test_local_execute_and_publish_after_approval(build, monkeypatch):
+    monkeypatch.setenv("RUNTIME_BACKEND", "local")
     async def run():
         graph, cfg = await build([
             call("read_file", {"file_path": "/skills/runtime-smoke/SKILL.md"}, "skill"),

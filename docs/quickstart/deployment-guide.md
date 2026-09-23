@@ -169,8 +169,7 @@ Platform .env 按 dotenv 解析，不要直接 source（应用名称等可能有
 DATABASE_URI=postgresql://runtime_service:<URI编码密码>@127.0.0.1:5432/runtime_service
 REDIS_URI=redis://127.0.0.1:6379/7
 PLATFORM_RUNTIME_MODEL_CONFIG_URL=http://127.0.0.1:2142/api/runtime/internal/model-config
-RUNTIME_SHOWCASE_BACKEND=local
-RUNTIME_TERMINAL_BACKEND=local
+RUNTIME_BACKEND=local
 RUNTIME_TERMINAL_ENABLED=1
 
 # apps/platform-api/.env

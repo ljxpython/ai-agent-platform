@@ -109,12 +109,12 @@ start_managed_key runtime-worker
                 root = Path(directory)
                 env_file = root / ".env"
                 env_file.write_text(
-                    f"RUNTIME_SHOWCASE_BACKEND={configured}\n" if configured else ""
+                    f"RUNTIME_BACKEND={configured}\n" if configured else ""
                 )
                 env = {**os.environ, "TMPDIR": directory}
-                env.pop("RUNTIME_SHOWCASE_BACKEND", None)
+                env.pop("RUNTIME_BACKEND", None)
                 if override is not None:
-                    env["RUNTIME_SHOWCASE_BACKEND"] = override
+                    env["RUNTIME_BACKEND"] = override
                 result = subprocess.run([
                     "bash", "-c", '''
 source "$1" help >/dev/null
@@ -122,7 +122,7 @@ RUNTIME_ENV_FILE="$2/.env"
 PLATFORM_API_DIR="$2"
 python3() { printf 'test-secret'; }
 load_runtime_env
-start_process() { bash -c 'printf "mode=%s\\n" "$RUNTIME_SHOWCASE_BACKEND"'; }
+start_process() { bash -c 'printf "mode=%s\\n" "$RUNTIME_BACKEND"'; }
 start_managed_key runtime-api
 start_managed_key runtime-worker
 ''', "test", str(script), directory,

@@ -24,7 +24,7 @@ from langchain_core.tools import ToolException
 
 from runtime_service.tools.images import ImageWorkspace
 from runtime_service.workspace.documents import DocumentError
-from runtime_service.workspace.execution import docker_workspace_args
+from runtime_service.workspace.execution import docker_workspace_args, runtime_backend
 from runtime_service.workspace.scoped import resolve_thread_workspace
 
 BUFFER_BYTES = 1024 * 1024
@@ -55,13 +55,9 @@ class TerminalSession:
         self.rows, self.cols = rows, cols
         tenant, project, thread, graph, _ = owner
         self.root = resolve_thread_workspace(tenant, project, thread, graph)
-        default_backend = os.getenv("RUNTIME_TERMINAL_BACKEND", "docker")
-        self.backend = (
-            os.getenv("RUNTIME_SHOWCASE_BACKEND", default_backend)
-            if graph == "showcase_demo"
-            else os.getenv("RUNTIME_DEARFLOW_BACKEND", default_backend)
-        )
-        if self.backend not in {"local", "docker"}:
+        try:
+            self.backend = runtime_backend()
+        except ValueError:
             raise DocumentError("terminal_backend_invalid", 409)
         io = ImageWorkspace(self.root)
         try:

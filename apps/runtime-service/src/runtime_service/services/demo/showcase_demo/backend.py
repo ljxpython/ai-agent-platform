@@ -18,6 +18,7 @@ from deepagents.backends.protocol import ExecuteResponse, SandboxBackendProtocol
 from langchain.agents.middleware import AgentMiddleware
 
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
+from runtime_service.workspace.execution import runtime_backend
 from runtime_service.workspace.scoped import hashed_thread_root, thread_scope_hash
 
 _PACKAGE = "runtime_service.services.demo.showcase_demo"
@@ -103,10 +104,11 @@ class LocalWorkspaceBackend(_ThreadWorkspaceBackend, SandboxBackendProtocol):
 
 
 def create_workspace(tenant_id: str, project_id: str, thread_id: str):
-    kind = os.getenv("RUNTIME_SHOWCASE_BACKEND", "docker")
-    backend_class = {"local": LocalWorkspaceBackend, "docker": DockerWorkspaceBackend}.get(kind)
-    if backend_class is None:
+    try:
+        kind = runtime_backend()
+    except ValueError:
         raise RuntimeAuthError("runtime.workspace.invalid_backend")
+    backend_class = {"local": LocalWorkspaceBackend, "docker": DockerWorkspaceBackend}[kind]
     return backend_class(tenant_id, project_id, thread_id)
 
 

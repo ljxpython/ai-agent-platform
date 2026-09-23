@@ -1,5 +1,18 @@
 import { expect, test } from "@playwright/test";
 
+test("provider reasoning is visible separately from the final answer", async ({ page }) => {
+  await page.goto("/e2e/render-fixture.html");
+  await page.evaluate(() => (window as unknown as { renderFixture: { setReasoning(): Promise<void> } }).renderFixture.setReasoning());
+  for (const text of ["Qwen 思考内容", "DeepSeek 思考内容"]) {
+    const reasoning = page.locator("details").filter({ hasText: text });
+    await expect(reasoning.locator("summary")).toBeVisible();
+    await reasoning.locator("summary").click();
+    await expect(reasoning.locator("div")).toHaveText(text);
+  }
+  await expect(page.getByText("Qwen OK", { exact: true })).toBeVisible();
+  await expect(page.getByText("DeepSeek OK", { exact: true })).toBeVisible();
+});
+
 test("rendering security, error semantics, keyboard and stable long transcript", async ({ page }) => {
   test.setTimeout(120000);
   await page.goto("/e2e/render-fixture.html");

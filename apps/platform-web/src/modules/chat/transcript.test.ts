@@ -95,6 +95,21 @@ describe("SDK transcript projection", () => {
     ]);
   });
 
+  it("renders alternate provider reasoning fields separately from the answer", () => {
+    for (const additional_kwargs of [
+      { reasoning: "DeepSeek thought" },
+      { reasoning_details: [{ type: "reasoning.text", text: "DeepSeek thought" }] },
+    ]) {
+      const [turn] = buildTranscript([
+        new AIMessage({ content: "OK", additional_kwargs }),
+      ], [], false);
+      expect(turn?.answer[0]?.blocks.map(({ kind, text }) => ({ kind, text }))).toEqual([
+        { kind: "reasoning", text: "DeepSeek thought" },
+        { kind: "text", text: "OK" },
+      ]);
+    }
+  });
+
   it("handles multi-turn conversations properly", () => {
     const messages = [
       new HumanMessage({ id: "h1", content: "你好" }),
@@ -324,4 +339,3 @@ describe("SDK transcript projection", () => {
     expect(executingTool?.streamingChars).toBeUndefined();
   });
 });
-

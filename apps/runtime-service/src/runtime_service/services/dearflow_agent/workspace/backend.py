@@ -5,18 +5,35 @@ import asyncio
 import hashlib
 import os
 import shutil
+import sys
 import tempfile
 from importlib.resources import files
 from pathlib import Path
 
-from deepagents.backends import CompositeBackend, FilesystemBackend, StateBackend
-from deepagents.backends.protocol import SandboxBackendProtocol, ExecuteResponse, WriteResult, EditResult, DeleteResult, FileUploadResponse
+from deepagents.backends import (
+    CompositeBackend,
+    FilesystemBackend,
+    LocalShellBackend,
+    StateBackend,
+)
+from deepagents.backends.protocol import (
+    DeleteResult,
+    EditResult,
+    ExecuteResponse,
+    FileUploadResponse,
+    SandboxBackendProtocol,
+    WriteResult,
+)
 from langchain.agents.middleware import AgentMiddleware
 
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
 from runtime_service.tools.images import ImageWorkspace
+from runtime_service.workspace.execution import (
+    MAX_OUTPUT,
+    execute_in_workspace,
+    runtime_backend,
+)
 from runtime_service.workspace.scoped import resolve_thread_workspace, thread_scope_hash
-from runtime_service.workspace.execution import execute_in_workspace
 
 PACKAGE = "runtime_service.services.dearflow_agent"
 
@@ -74,6 +91,23 @@ class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
         return asyncio.run(self.aexecute(command, timeout=timeout))
 
     async def aexecute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
+        if runtime_backend() == "local":
+            if not isinstance(command, str) or not command.strip() or len(command) > 32768:
+                raise ValueError("command must be non-empty and at most 32768 characters")
+            if timeout is not None and (type(timeout) is not int or not 1 <= timeout <= 60):
+                raise ValueError("timeout must be between 1 and 60 seconds")
+            shell = LocalShellBackend(
+                root_dir=self.root / "work", virtual_mode=True, inherit_env=False,
+                env={
+                    "PATH": os.pathsep.join((str(Path(sys.executable).parent), os.defpath)),
+                    "HOME": str(self.root / "work"),
+                    "GIT_CONFIG_GLOBAL": "/dev/null",
+                    "RUNTIME_WORKSPACE_ROOT": str(self.root),
+                    "RUNTIME_SKILLS_ROOT": str(self.skills_root),
+                },
+                timeout=30, max_output_bytes=MAX_OUTPUT,
+            )
+            return await asyncio.to_thread(shell.execute, command, timeout=timeout)
         try:
             return await execute_in_workspace(
                 self.root, command, timeout=timeout, protected=True,

@@ -85,16 +85,16 @@ def test_local_backend_executes_in_thread_workspace_without_secret_env(monkeypat
     ("docker", DockerWorkspaceBackend), ("local", LocalWorkspaceBackend)])
 def test_backend_selection(monkeypatch, tmp_path, kind, expected):
     monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path))
-    monkeypatch.delenv("RUNTIME_SHOWCASE_BACKEND", raising=False)
+    monkeypatch.delenv("RUNTIME_BACKEND", raising=False)
     if kind is not None:
-        monkeypatch.setenv("RUNTIME_SHOWCASE_BACKEND", kind)
+        monkeypatch.setenv("RUNTIME_BACKEND", kind)
     workspace = create_workspace("tenant", "project", "thread")
     assert isinstance(workspace, expected)
     assert not workspace.cwd.exists()
 
 
 def test_backend_selection_rejects_unknown(monkeypatch):
-    monkeypatch.setenv("RUNTIME_SHOWCASE_BACKEND", "typo")
+    monkeypatch.setenv("RUNTIME_BACKEND", "typo")
     with pytest.raises(RuntimeAuthError, match="runtime.workspace.invalid_backend"):
         create_workspace("tenant", "project", "thread")
 

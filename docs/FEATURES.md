@@ -66,8 +66,9 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 智能体 execute 与交互终端统一后端 | 已实现：`RUNTIME_BACKEND=local` 供受信任本地开发使用，Showcase、Dear Agent 与终端不依赖 Docker；独立 Runtime 默认 Docker，保留执行审批 | [项目记录](projects/20260923-dear-agent-local-execute/README.md) |
 | Runtime 工具治理收敛与平台禁用例外 | 后端/Runtime 开发及本轮验证完成；前端由用户接入，联合发布待执行：Runtime 执行、平台管理禁用例外、Catalog 仅展示，旧功能不兼容 | [专项方案](projects/20260920-runtime-optional-tool-resolution/README.md) |
-| Showcase / DearFlow 沙箱文件树与产物预览下载 | 第一阶段后端已完成：文件树、普通文件/产物预览下载、格式扩展与审批；两服务 HTTP、重启读取与双浏览器静态 HTML 隔离通过；前端设计已交付、开发后置 | [实现版接入契约](projects/20260917-showcase-artifact-workspace/05-frontend-handoff.md) |
+| Showcase / DearFlow 沙箱文件树与产物预览下载 | 第一阶段后端已完成：文件树、普通文件/产物预览下载、格式扩展与审批；兼容 `/workspace/outputs/` 下 SHA256 命名与普通可读文件名成果识别及动态哈希计算；两服务 HTTP、重启读取与双浏览器静态 HTML 隔离通过 | [实现版接入契约](projects/20260917-showcase-artifact-workspace/05-frontend-handoff.md) · [可读文件名兼容](../apps/runtime-service/docs/changes/20260923-artifact-readable-filenames-support.md) |
 | Showcase / DearFlow 人工交互 Terminal | 后端 done：local/Docker PTY、六类鉴权 HTTP、字节重放、输入幂等、配额/过期/清理、审计；前端 deferred，对接设计已交付；local 是宿主开发模式，多 Runtime 进程须粘性路由 | [Terminal 实施与验证](projects/20260917-showcase-artifact-workspace/06-terminal-backend.md) |
 | GraphHarbor官方v3对齐与平台迁移 | 后端完成：post30已发布／接入，生命周期／并行中断／恢复版本／步数限制修复，真实研究、文件、子任务、父取消及观测已验；前端交接完成，浏览器与默认切换后置，默认仍v2 | [完成项与代码证据](projects/20260915-graphharbor-v3-alignment/README.md) |
 | DearFlowAgent：Deep Agents 能力迁移与生产化 | 部分完成：P0/P1/P3约定后端done，post30已接入；P4 K01—K11已实现，K01/K02/K04报告/K06/K07后端证据通过，K03/K05外部限流blocked，K08/K10/K11后端done，K09累计25/26图型通过、双轴远端blocked；P5代码已交付：完整AI三页PPTX链路done；文生图与单图编辑成功，多参考图连接异常待验；K14/K15延期，K16视频及音视频大文件后续实施（deferred）；前端页面及生产联合验收后置 | [P5逐项进度与证据](projects/20260913-dearflow-agent/phases/P5-生成与长任务.md) |

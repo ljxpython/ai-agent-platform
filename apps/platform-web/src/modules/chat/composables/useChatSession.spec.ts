@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   stream: vi.fn(),
   run: vi.fn(),
   runs: vi.fn(),
+  cancel: vi.fn(),
   actions: vi.fn(),
   updateAccessPolicy: vi.fn(),
   getThread: vi.fn(),
@@ -28,6 +29,7 @@ vi.mock("@/services/threads/session.service", async (importOriginal) => ({
       ? mocks.runs
       : async () => [{ run_id: "run", status: "running" }],
     run: mocks.run,
+    cancel: mocks.cancel,
     get: mocks.getThread.getMockImplementation()
       ? mocks.getThread
       : async () => ({ thread_id: "t", metadata: { access_policy: "review", allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] } }),
@@ -628,5 +630,75 @@ it.each([useChatSession, useDearAgentSession])(
     mocks.runs.mockReset();
   }
 });
+
+it("seeds accessThread from initialThread with zero accessLoading and stops in-place without calling onReconnect", async () => {
+  const disconnect = vi.fn();
+  const onReconnect = vi.fn();
+  const isLoading = ref(true);
+  mocks.stream.mockReturnValue({
+    isLoading,
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect,
+  });
+  mocks.runs.mockResolvedValue([{ run_id: "run-active-1", status: "running" }]);
+  mocks.run.mockResolvedValue({ run_id: "run-active-1", status: "interrupted" });
+  mocks.cancel.mockResolvedValue(undefined);
+  mocks.list.mockResolvedValue([]);
+  mocks.getThread.mockClear();
+
+  const preloadedThread = {
+    thread_id: "t-seeded",
+    created_at: "2026-09-23T00:00:00Z",
+    updated_at: "2026-09-23T00:00:00Z",
+    status: "busy" as const,
+    values: { messages: [] },
+    metadata: {
+      access_policy: "workspace_write",
+      allowed_actions: ["read", "comment", "edit", "approve", "share"],
+    },
+  };
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "dearflow_agent",
+      threadId: "t-seeded",
+      initialThread: ref(preloadedThread),
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect,
+    }),
+  )!;
+
+  try {
+    // 1. 挂载第 0 帧即完成权限水合，绝不触发 accessLoading 遮罩，也不重复请求 getThread
+    expect(session.accessLoading.value).toBe(false);
+    expect(session.canRead.value).toBe(true);
+    expect(session.accessPolicy.value).toBe("workspace_write");
+    expect(mocks.getThread).not.toHaveBeenCalled();
+
+    await flushPromises();
+    expect(session.accessLoading.value).toBe(false);
+    expect(mocks.getThread).not.toHaveBeenCalled();
+
+    // 2. 点击停止时，原地取消 run 并断开流，绝不触发 onReconnect 重建组件或开启 accessLoading
+    await session.stop();
+    expect(mocks.cancel).toHaveBeenCalledWith("t-seeded", "run-active-1");
+    expect(disconnect).toHaveBeenCalled();
+    expect(onReconnect).not.toHaveBeenCalled();
+    expect(session.accessLoading.value).toBe(false);
+  } finally {
+    scope.stop();
+    mocks.runs.mockReset();
+    mocks.run.mockReset();
+    mocks.cancel.mockReset();
+  }
+});
+
 
 

@@ -13,7 +13,7 @@ RUNTIME_PORT="${RUNTIME_PORT:-}"
 PLATFORM_API_PORT="${PLATFORM_API_PORT:-2142}"
 PLATFORM_WEB_PORT="${PLATFORM_WEB_PORT:-3000}"
 GRAPH_CONFIG=""
-SHOWCASE_BACKEND_OVERRIDE="${RUNTIME_SHOWCASE_BACKEND-}"
+RUNTIME_BACKEND_OVERRIDE="${RUNTIME_BACKEND-}"
 TERMINAL_ENABLED_OVERRIDE="${RUNTIME_TERMINAL_ENABLED-}"
 STARTED_KEYS=()
 
@@ -34,7 +34,7 @@ Commands:
            platform-api or platform-web
 
 Environment:
-  RUNTIME_SHOWCASE_BACKEND=local|docker (default: local)
+  RUNTIME_BACKEND=local|docker (default: local)
   RUNTIME_TERMINAL_ENABLED=0|1 (default: 1 for local stack)
 EOF
 }
@@ -66,18 +66,17 @@ PY
   # shellcheck disable=SC1090
   . "$RUNTIME_ENV_FILE"
   set +a
-  export RUNTIME_SHOWCASE_BACKEND="${SHOWCASE_BACKEND_OVERRIDE:-${RUNTIME_SHOWCASE_BACKEND:-local}}"
-  export RUNTIME_TERMINAL_BACKEND="${RUNTIME_TERMINAL_BACKEND:-local}"
+  export RUNTIME_BACKEND="${RUNTIME_BACKEND_OVERRIDE:-${RUNTIME_BACKEND:-local}}"
   export RUNTIME_TERMINAL_ENABLED="${TERMINAL_ENABLED_OVERRIDE:-${RUNTIME_TERMINAL_ENABLED:-1}}"
   case "$RUNTIME_TERMINAL_ENABLED" in
     0|1) ;;
     *) die "RUNTIME_TERMINAL_ENABLED must be 0 or 1" ;;
   esac
-  case "$RUNTIME_SHOWCASE_BACKEND" in
+  case "$RUNTIME_BACKEND" in
     local|docker) ;;
-    *) die "RUNTIME_SHOWCASE_BACKEND must be local or docker" ;;
+    *) die "RUNTIME_BACKEND must be local or docker" ;;
   esac
-  printf '[config] Showcase backend: %s (changes require Runtime API/Worker restart)\n' "$RUNTIME_SHOWCASE_BACKEND"
+  printf '[config] Runtime backend: %s (changes require Runtime API/Worker restart)\n' "$RUNTIME_BACKEND"
   RUNTIME_PORT="${RUNTIME_PORT:-${RUNTIME_SERVICE_PORT:-8123}}"
   GRAPH_CONFIG="${RUNTIME_GRAPH_CONFIG_PATH:-$RUNTIME_DIR/langgraph.json}"
   export RUNTIME_PORT PLATFORM_API_PORT PLATFORM_WEB_PORT

@@ -1,5 +1,6 @@
 import type { BaseMessage } from "@langchain/core/messages";
 import type { AssembledToolCall } from "@langchain/vue";
+import { extractReasoningFromMessage } from "../transcript";
 import type {
   TrajectoryRecord,
   TrajectoryRecordStatus,
@@ -31,30 +32,7 @@ function compactArgs(args: unknown): string {
 }
 
 export function extractReasoning(message: BaseMessage): string {
-  const raw = message as unknown as Record<string, unknown>;
-  const extra = raw.additional_kwargs;
-  if (
-    extra &&
-    typeof extra === "object" &&
-    typeof (extra as Record<string, unknown>).reasoning_content === "string"
-  ) {
-    const text = (
-      (extra as Record<string, unknown>).reasoning_content as string
-    ).trim();
-    if (text) return text;
-  }
-  const respMeta = raw.response_metadata;
-  if (
-    respMeta &&
-    typeof respMeta === "object" &&
-    typeof (respMeta as Record<string, unknown>).reasoning_content === "string"
-  ) {
-    const text = (
-      (respMeta as Record<string, unknown>).reasoning_content as string
-    ).trim();
-    if (text) return text;
-  }
-  return "";
+  return extractReasoningFromMessage(message);
 }
 
 export function extractTokens(message: BaseMessage): TrajectoryTokens | undefined {

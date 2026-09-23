@@ -9,8 +9,11 @@ import time
 from collections.abc import Mapping
 
 import httpx
+import openai
 from langchain.chat_models import init_chat_model
+from langchain_core.messages import AIMessageChunk
 from langchain_core.language_models import BaseChatModel
+from langchain_core.outputs import ChatGenerationChunk, ChatResult
 from langchain_deepseek import ChatDeepSeek
 from langchain_openai import ChatOpenAI
 
@@ -21,6 +24,45 @@ except ImportError:  # pragma: no cover
 
 from runtime_service.runtime.contracts import ResolvedRuntimeConfig
 from runtime_service.runtime.errors import RuntimeResolutionError
+
+
+def _reasoning_text(message: Mapping[str, object]) -> str:
+    for field in ("reasoning_content", "reasoning"):
+        value = message.get(field)
+        if isinstance(value, str) and value:
+            return value
+    details = message.get("reasoning_details")
+    if isinstance(details, list):
+        return "".join(
+            item["text"] for item in details
+            if isinstance(item, dict) and isinstance(item.get("text"), str)
+        )
+    return ""
+
+
+class ChatOpenAIWithReasoning(ChatOpenAI):
+    """Preserve reasoning fields returned by OpenAI-compatible providers."""
+
+    def _create_chat_result(
+        self, response: dict | openai.BaseModel, generation_info: dict | None = None
+    ) -> ChatResult:
+        result = super()._create_chat_result(response, generation_info)
+        data = response if isinstance(response, dict) else response.model_dump()
+        for choice, generation in zip(data.get("choices", []), result.generations):
+            reasoning = _reasoning_text(choice.get("message", {}))
+            if reasoning:
+                generation.message.additional_kwargs["reasoning_content"] = reasoning
+        return result
+
+    def _convert_chunk_to_generation_chunk(
+        self, chunk: dict, default_chunk_class: type, base_generation_info: dict | None
+    ) -> ChatGenerationChunk | None:
+        result = super()._convert_chunk_to_generation_chunk(chunk, default_chunk_class, base_generation_info)
+        if result and isinstance(result.message, AIMessageChunk) and chunk.get("choices"):
+            reasoning = _reasoning_text(chunk["choices"][0].get("delta") or {})
+            if reasoning:
+                result.message.additional_kwargs["reasoning_content"] = reasoning
+        return result
 
 
 def _generation_kwargs(config: ResolvedRuntimeConfig) -> dict[str, object]:
@@ -83,7 +125,7 @@ def build_model(
                 **kwargs,
             )
         if provider in ("openai", "gpt-proxy") or protocol in ("openai", "openai-compatible", "openai_compatible"):
-            return ChatOpenAI(
+            return ChatOpenAIWithReasoning(
                 model=model_name,
                 api_key=conn_api_key or settings.get("GPT_PROXY_API_KEY") or "EMPTY",
                 base_url=conn_base_url or _required(settings, "GPT_PROXY_URL"),
@@ -105,7 +147,7 @@ def build_model(
                 **kwargs,
             )
         if connection is not None and conn_base_url:
-            return ChatOpenAI(
+            return ChatOpenAIWithReasoning(
                 model=model_name,
                 api_key=conn_api_key or "EMPTY",
                 base_url=conn_base_url,

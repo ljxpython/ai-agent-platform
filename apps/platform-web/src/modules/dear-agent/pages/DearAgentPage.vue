@@ -243,29 +243,41 @@ async function handlePageChange(targetPage: number) {
   }
 }
 
+const activeThreadObj = shallowRef<ChatThread | undefined>(undefined);
+let agentsLoadPromise: Promise<Agent[]> | null = null;
+let lastAccessRevision = accessRevision.value;
+
 watch(
   [activeProjectId, () => auth.sessionEpoch],
   async ([projectId], _old, onCleanup) => {
     agents.value = [];
     threads.value = [];
+    activeThreadObj.value = undefined;
     threadQuery.value = "";
     resetDraft();
     ++listEpoch;
-    if (!projectId) return;
+    if (!projectId) {
+      agentsLoadPromise = null;
+      return;
+    }
     let cancelled = false;
     onCleanup(() => {
       cancelled = true;
     });
-    const results = await Promise.allSettled([
+    const loadPromise = (
       can("project.assistant.read", projectId)
         ? listAgents(projectId, { limit: 200 })
-        : Promise.resolve({ items: [] }),
-    ]);
+        : Promise.resolve({ items: [] as Agent[] })
+    ).then((res) => {
+      const activeItems = res.items.filter((agent) => agent.status === "active");
+      if (!cancelled) {
+        agents.value = activeItems;
+      }
+      return activeItems;
+    });
+    agentsLoadPromise = loadPromise;
+    const results = await Promise.allSettled([loadPromise]);
     if (cancelled) return;
-    if (results[0].status === "fulfilled")
-      agents.value = results[0].value.items.filter(
-        (agent) => agent.status === "active",
-      );
     if (results.some((result) => result.status === "rejected"))
       listError.value = "部分目标目录读取失败，请刷新重试";
   },
@@ -297,6 +309,8 @@ watch(
   ],
   async ([projectId, _session, agent, graph, thread]) => {
     const threadId = textParam(thread);
+    const forceThreadRefresh = accessRevision.value !== lastAccessRevision;
+    lastAccessRevision = accessRevision.value;
     if (threadId && threadId === ownThread && target.value) {
       ownThread = undefined;
       selectedThread.value = threadId;
@@ -304,23 +318,33 @@ watch(
       return;
     }
     const requestEpoch = ++epoch;
-    ++mountVersion.value;
-    target.value = null;
     selectedThread.value = threadId;
-    mountedThread.value = threadId;
-    resetDraft();
     error.value = "";
     if (!projectId) {
+      target.value = null;
+      activeThreadObj.value = undefined;
+      mountedThread.value = undefined;
       loading.value = false;
       return;
     }
-    loading.value = true;
+    const cachedThread =
+      threadId && !forceThreadRefresh
+        ? threads.value.find((t) => t.thread_id === threadId)
+        : undefined;
+    const hasSyncThread =
+      !threadId || Boolean(cachedThread && textParam(cachedThread.metadata?.graph_id));
+    if (!hasSyncThread || !target.value) {
+      loading.value = !hasSyncThread;
+    }
     try {
       let agentId = textParam(agent);
       let graphId = textParam(graph);
+      let storedThread: ChatThread | undefined = cachedThread;
       if (threadId) {
-        const stored = await service.value.get(threadId);
-        const metadata = stored.metadata ?? {};
+        if (!storedThread || !textParam(storedThread.metadata?.graph_id)) {
+          storedThread = await service.value.get(threadId);
+        }
+        const metadata = storedThread.metadata ?? {};
         const storedGraph = textParam(metadata.graph_id);
         const storedAgent = textParam(metadata.agent_id);
         if (
@@ -332,38 +356,62 @@ watch(
         graphId = storedGraph;
         agentId = storedAgent || agentId;
       }
+      const activeAgents =
+        agents.value.length > 0
+          ? agents.value
+          : agentsLoadPromise
+            ? await agentsLoadPromise.catch(() => [] as Agent[])
+            : [];
       if (!agentId && !graphId) {
-        const dearflowAgent = agents.value.find((a) => a.graph_id === "dearflow_agent");
+        const dearflowAgent = activeAgents.find((a) => a.graph_id === "dearflow_agent");
         if (dearflowAgent) {
           agentId = dearflowAgent.id;
           graphId = dearflowAgent.graph_id;
-        } else if (agents.value.length > 0) {
-          agentId = agents.value[0]?.id;
-          graphId = agents.value[0]?.graph_id;
+        } else if (activeAgents.length > 0) {
+          agentId = activeAgents[0]?.id;
+          graphId = activeAgents[0]?.graph_id;
         } else {
           graphId = "dearflow_agent";
         }
       } else if (!agentId && graphId) {
-        const aligned = await listAgents(projectId, { graphId, limit: 1 });
-        agentId = aligned.items[0]?.id;
+        const matchedInMemory = activeAgents.find((a) => a.graph_id === graphId);
+        if (matchedInMemory) {
+          agentId = matchedInMemory.id;
+        } else {
+          const aligned = await listAgents(projectId, { graphId, limit: 1 });
+          agentId = aligned.items[0]?.id;
+        }
       }
       let resolved: ChatTarget | null = null;
       if (agentId) {
-        const item = await getAgent(projectId, agentId);
-        if (item.status !== "active" && !threadId)
-          throw new Error("该 Agent 已停用");
-        if (graphId && item.graph_id !== graphId)
-          throw new Error("Agent 与对话的执行目标不一致");
-        const available = await listAgents(projectId, { graphId: item.graph_id, limit: 1 });
-        const authorized = available.items.some(agent => agent.id === item.id);
-        if (!authorized && !threadId) throw new Error("执行目标不可用或未授权");
-        resolved = {
-          graphId: item.graph_id,
-          agentId: item.id,
-          name: item.name || "Dear Agent",
-          context: item.context,
-          disabled: item.status !== "active" || !authorized,
-        };
+        const cachedAgent = activeAgents.find((a) => a.id === agentId);
+        if (cachedAgent) {
+          if (graphId && cachedAgent.graph_id !== graphId)
+            throw new Error("Agent 与对话的执行目标不一致");
+          resolved = {
+            graphId: cachedAgent.graph_id,
+            agentId: cachedAgent.id,
+            name: cachedAgent.name || "Dear Agent",
+            context: cachedAgent.context ?? {},
+            disabled: false,
+          };
+        } else {
+          const item = await getAgent(projectId, agentId);
+          if (item.status !== "active" && !threadId)
+            throw new Error("该 Agent 已停用");
+          if (graphId && item.graph_id !== graphId)
+            throw new Error("Agent 与对话的执行目标不一致");
+          const available = await listAgents(projectId, { graphId: item.graph_id, limit: 1 });
+          const authorized = available.items.some(a => a.id === item.id);
+          if (!authorized && !threadId) throw new Error("执行目标不可用或未授权");
+          resolved = {
+            graphId: item.graph_id,
+            agentId: item.id,
+            name: item.name || "Dear Agent",
+            context: item.context,
+            disabled: item.status !== "active" || !authorized,
+          };
+        }
       } else if (graphId) {
         resolved = {
           graphId,
@@ -373,13 +421,20 @@ watch(
         };
       }
       if (requestEpoch === epoch) {
+        activeThreadObj.value = storedThread;
+        mountedThread.value = threadId;
+        ++mountVersion.value;
         target.value = resolved;
+        resetDraft();
         runContext.value = { ...resolved?.context };
         if (resolved?.agentId) restoreDraft(projectId, resolved.agentId, threadId);
       }
     } catch (cause) {
-      if (requestEpoch === epoch)
+      if (requestEpoch === epoch) {
+        target.value = null;
+        activeThreadObj.value = undefined;
         error.value = cause instanceof Error ? cause.message : "对话读取失败";
+      }
     } finally {
       if (requestEpoch === epoch) loading.value = false;
     }
@@ -548,6 +603,7 @@ onScopeDispose(() => {
           :graph-id="target.graphId"
           :agent-id="target.agentId"
           :thread-id="mountedThread"
+          :initial-thread="activeThreadObj"
           :thread-title="activeThreadTitle"
           :can-write="canWrite && !target.disabled"
           :draft="draft"

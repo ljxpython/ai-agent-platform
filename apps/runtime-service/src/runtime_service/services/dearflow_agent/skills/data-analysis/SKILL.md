@@ -5,6 +5,8 @@ description: Use this skill when the user uploads Excel (.xlsx/.xls) or CSV file
 
 # Data Analysis Skill
 
+For `execute`, replace `/workspace` with `$RUNTIME_WORKSPACE_ROOT` and `/skills` with `$RUNTIME_SKILLS_ROOT` in the commands below. This works in both Docker and local development.
+
 ## Overview
 
 This skill analyzes user-uploaded Excel/CSV files using DuckDB — an in-process analytical SQL engine. It supports schema inspection, SQL-based querying, statistical summaries, and result export, all through a single Python script.

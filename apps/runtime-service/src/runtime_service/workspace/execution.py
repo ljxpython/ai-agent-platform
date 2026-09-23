@@ -13,6 +13,13 @@ MAX_OUTPUT = 128 * 1024
 logger = logging.getLogger(__name__)
 
 
+def runtime_backend() -> str:
+    backend = os.getenv("RUNTIME_BACKEND", "docker")
+    if backend not in {"local", "docker"}:
+        raise ValueError("RUNTIME_BACKEND must be local or docker")
+    return backend
+
+
 def docker_workspace_args(workspace: Path, *, image: str, name: str,
                           skills: Path | None = None, protected: bool = False) -> list[str]:
     """Share the same mount and resource policy between commands and terminals."""
@@ -29,6 +36,7 @@ def docker_workspace_args(workspace: Path, *, image: str, name: str,
             "--mount", f"type=bind,src={workspace},dst=/workspace" + (",readonly" if protected else "")]
     if protected:
         args += ["--mount", f"type=bind,src={workspace / 'work'},dst=/workspace/work"]
+        args += ["--env", "RUNTIME_WORKSPACE_ROOT=/workspace", "--env", "RUNTIME_SKILLS_ROOT=/skills"]
     if skills is not None:
         args += ["--mount", f"type=bind,src={skills},dst=/skills,readonly"]
     return [*args, "--workdir", "/workspace/work" if protected else "/workspace", image]

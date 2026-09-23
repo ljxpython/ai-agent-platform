@@ -106,7 +106,8 @@ class WorkspaceBrowser:
                     extension = Path(entry.name).suffix[1:].lower()
                     artifact = (
                         parts == ("outputs",)
-                        and bool(re.fullmatch(r"[0-9a-f]{64}\.[a-z0-9]+", entry.name))
+                        and not entry.name.startswith(".")
+                        and bool(Path(entry.name).stem)
                         and extension in ARTIFACT_MIMES
                         and not is_dir
                     )
@@ -155,7 +156,8 @@ class WorkspaceBrowser:
         if (
             len(parts) == 2
             and parts[0] == "outputs"
-            and re.fullmatch(r"[0-9a-f]{64}\.[a-z0-9]+", parts[1])
+            and not parts[1].startswith(".")
+            and Path(parts[1]).suffix[1:].lower() in ARTIFACT_MIMES
         ):
             return ArtifactWorkspace(self.root).read(path)
         try:

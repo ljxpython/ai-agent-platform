@@ -74,19 +74,21 @@ export type Turn = {
   answer: MessageItem[];
 };
 
+function reasoningText(value: unknown): string {
+  const fields = asObject(value);
+  for (const name of ["reasoning_content", "reasoning"]) {
+    const text = fields[name];
+    if (typeof text === "string" && text.trim()) return text.trim();
+  }
+  const details = fields.reasoning_details;
+  return Array.isArray(details)
+    ? details.map((item) => asObject(item).text).filter((text): text is string => typeof text === "string").join("").trim()
+    : "";
+}
+
 export function extractReasoningFromMessage(message: BaseMessage): string {
   const raw = message as unknown as Record<string, unknown>;
-  const extra = raw.additional_kwargs;
-  if (extra && typeof extra === "object" && typeof (extra as Record<string, unknown>).reasoning_content === "string") {
-    const text = ((extra as Record<string, unknown>).reasoning_content as string).trim();
-    if (text) return text;
-  }
-  const respMeta = raw.response_metadata;
-  if (respMeta && typeof respMeta === "object" && typeof (respMeta as Record<string, unknown>).reasoning_content === "string") {
-    const text = ((respMeta as Record<string, unknown>).reasoning_content as string).trim();
-    if (text) return text;
-  }
-  return "";
+  return reasoningText(raw.additional_kwargs) || reasoningText(raw.response_metadata);
 }
 
 export const WORKSPACE_IMAGE_PATH_REGEX =
@@ -647,4 +649,3 @@ export function extractRuntimeImages(contentOrArtifact: unknown): RuntimeImageRe
   walk(contentOrArtifact);
   return refs;
 }
-

@@ -31,7 +31,7 @@ def test_signed_terminal_routes(monkeypatch, tmp_path):
     monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_AUDIENCE", "runtime-service")
     monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path))
     monkeypatch.setenv("RUNTIME_TERMINAL_ENABLED", "1")
-    monkeypatch.setenv("RUNTIME_SHOWCASE_BACKEND", "local")
+    monkeypatch.setenv("RUNTIME_BACKEND", "local")
 
     async def run():
         async with httpx.AsyncClient(

@@ -40,6 +40,13 @@ const setLong = async () => {
 Object.assign(window, {
   renderFixture: {
     setLong,
+    async setReasoning() {
+      messages.value = [
+        new AIMessage({ id: "qwen", content: "Qwen OK", additional_kwargs: { reasoning_content: "Qwen 思考内容" } }),
+        new AIMessage({ id: "deepseek", content: "DeepSeek OK", additional_kwargs: { reasoning: "DeepSeek 思考内容" } }),
+      ];
+      await nextTick();
+    },
     async tick(i: number) {
       messages.value = [...messages.value.slice(0, -1), new AIMessage({ id: "a499", content: `stream ${i}` })];
       await nextTick();

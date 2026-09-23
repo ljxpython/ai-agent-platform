@@ -40,6 +40,8 @@ describe("trajectory-adapter", () => {
 
     expect(extractReasoning(msg1)).toBe("首先需要检查项目规范，然后查看代码目录结构");
 
+    expect(extractReasoning({ additional_kwargs: { reasoning: "另一种格式" } } as BaseMessage)).toBe("另一种格式");
+
     const msg2 = {
       type: "ai",
       content: "<think>这是内嵌的思考过程</think>最终回复来了",

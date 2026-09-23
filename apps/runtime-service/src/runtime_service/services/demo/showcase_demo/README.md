@@ -87,7 +87,7 @@ Skills 通过 `/skills/` 访问，由 `importlib.resources` 定位安装包资�
 
 | 部署变量 | 默认值 | 用途 |
 | --- | --- | --- |
-| `RUNTIME_SHOWCASE_BACKEND` | `docker`（本地栈默认 `local`） | `docker` 或 `local`；非法值报错 |
+| `RUNTIME_BACKEND` | `docker`（本地栈默认 `local`） | 控制所有智能体 execute 与交互终端；非法值报错 |
 | `RUNTIME_SHOWCASE_WORKSPACE_ROOT` | `.runtime/showcase` | 专用数据根目录，可配置相对或绝对路径 |
 | `RUNTIME_SHOWCASE_IMAGE` | `python:3.13-slim` | Docker 执行镜像；正式环境建议固定镜像 digest |
 
@@ -118,12 +118,12 @@ Skills 只读规则作用在独立的非执行 Backend 路由上；容器不能�
 ```bash
 bash scripts/local-stack.sh start
 # 显式切换已有栈（Runtime API 和 Worker 都需重启）
-RUNTIME_SHOWCASE_BACKEND=docker bash scripts/local-stack.sh restart
-RUNTIME_SHOWCASE_BACKEND=local bash scripts/local-stack.sh restart
+RUNTIME_BACKEND=docker bash scripts/local-stack.sh restart
+RUNTIME_BACKEND=local bash scripts/local-stack.sh restart
 ```
 
 选择优先级：调用脚本时的环境变量 > Runtime `.env` > 本地栈默认 `local`。
-`start` 不会替换已有进程，切换模式应使用 `restart`。仅影响 Showcase；DearFlow 仍使用自己的 Docker 后端。
+`start` 不会替换已有进程，切换模式应使用 `restart`。同一变量控制 Showcase、Dear Agent 与交互终端。
 
 在 `apps/runtime-service` 目录，按应用 `.env.example` 配置模型与 Runtime 认证，并准备 Docker：
 

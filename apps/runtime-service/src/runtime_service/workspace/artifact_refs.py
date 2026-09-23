@@ -55,10 +55,24 @@ class ArtifactWorkspace:
         self.io = ImageWorkspace(root)
 
     def read(self, path: str) -> tuple[bytes, dict]:
-        extensions = "|".join(sorted(ARTIFACT_MIMES))
-        match = re.fullmatch(rf"/workspace/outputs/([0-9a-f]{{64}})\.({extensions})", path)
-        if match is None:
+        if (
+            not isinstance(path, str)
+            or not path.startswith("/workspace/outputs/")
+            or ".." in path.split("/")
+            or "\\" in path
+            or any(ord(ch) < 32 or ord(ch) == 127 for ch in path)
+        ):
             raise DocumentError("invalid_artifact_ref")
+        filename = path[len("/workspace/outputs/") :]
+        if "/" in filename or not filename or filename.startswith("."):
+            raise DocumentError("invalid_artifact_ref")
+        extension = Path(filename).suffix.lstrip(".").lower()
+        if extension not in ARTIFACT_MIMES:
+            raise DocumentError("invalid_artifact_ref")
+        stem = filename[: -(len(extension) + 1)]
+        if not stem:
+            raise DocumentError("invalid_artifact_ref")
+        expected_hash = stem if re.fullmatch(r"[0-9a-f]{64}", stem) else None
         try:
             data = self.io.read(path)
         except ToolException as exc:
@@ -67,14 +81,20 @@ class ArtifactWorkspace:
         if len(data) > MAX_FILE_BYTES:
             raise DocumentError("file_too_large", 413)
         digest = hashlib.sha256(data).hexdigest()
-        if digest != match[1]:
+        if expected_hash is not None and digest != expected_hash:
             raise DocumentError("artifact_hash_mismatch", 409)
-        validate_artifact(data, match[2])
-        return data, {"version": 1, "artifact_id": digest, "path": path,
-                      "file_name": digest + "." + match[2], "mime_type": ARTIFACT_MIMES[match[2]],
-                      "size_bytes": len(data), "sha256": digest,
-                      "preview_kind": preview_kind(ARTIFACT_MIMES[match[2]]),
-                      "kind": "media" if match[2] in MEDIA_MIMES else "archive" if match[2] == "zip" else "text"}
+        validate_artifact(data, extension)
+        return data, {
+            "version": 1,
+            "artifact_id": digest,
+            "path": path,
+            "file_name": filename,
+            "mime_type": ARTIFACT_MIMES[extension],
+            "size_bytes": len(data),
+            "sha256": digest,
+            "preview_kind": preview_kind(ARTIFACT_MIMES[extension]),
+            "kind": "media" if extension in MEDIA_MIMES else "archive" if extension == "zip" else "text",
+        }
 
     def publish(self, path: str) -> dict:
         if not path.startswith(("/workspace/work/", "/workspace/generated/", "/workspace/charts/")) or ".." in path.split("/") or "\\" in path or any(ord(ch) < 32 for ch in path):
@@ -109,12 +129,31 @@ class ArtifactWorkspace:
         _, ref = self.read("/workspace/outputs/" + filename)
         return ref
 
+    def _resolve_entry_sha256(self, item) -> str:
+        stem = Path(item.name).stem
+        if re.fullmatch(r"[0-9a-f]{64}", stem):
+            return stem
+        try:
+            return hashlib.sha256(self.io.read(item.path)).hexdigest()
+        except Exception:
+            return hashlib.sha256(item.name.encode("utf-8")).hexdigest()
+
     def list_artifacts(self, *, cursor: str | None = None, limit: int = 100) -> dict:
         from runtime_service.workspace.browser import WorkspaceBrowser
         page = WorkspaceBrowser(self.io.root).list_directory("/workspace/outputs", cursor=cursor, limit=limit, artifacts_only=True)
-        return {"items": [{"version": 1, "artifact_id": item.name.split(".")[0],
-                           "path": item.path, "file_name": item.name, "mime_type": item.mime_type,
-                           "size_bytes": item.size_bytes, "sha256": item.name.split(".")[0],
-                           "preview_kind": item.preview_kind,
-                           "kind": "media" if item.name.rsplit(".", 1)[-1] in MEDIA_MIMES else "archive" if item.name.endswith(".zip") else "text"}
-                          for item in page.items], "next_cursor": page.next_cursor}
+        items = []
+        for item in page.items:
+            digest = self._resolve_entry_sha256(item)
+            ext = item.name.rsplit(".", 1)[-1].lower() if "." in item.name else ""
+            items.append({
+                "version": 1,
+                "artifact_id": digest,
+                "path": item.path,
+                "file_name": item.name,
+                "mime_type": item.mime_type,
+                "size_bytes": item.size_bytes,
+                "sha256": digest,
+                "preview_kind": item.preview_kind,
+                "kind": "media" if ext in MEDIA_MIMES else "archive" if ext == "zip" else "text",
+            })
+        return {"items": items, "next_cursor": page.next_cursor}
