@@ -381,27 +381,25 @@ function extractMessageText(raw: unknown): string {
 }
 
 watch(
-  () => displayedMessages.value,
-  (msgs) => {
+  [() => displayedMessages.value, () => promptQueue.queue.value.length],
+  ([msgs]) => {
     if (promptQueue.queue.value.length === 0 || isDrainingQueue.value) return;
     const persistedHumanTexts = new Set(
       msgs
         .filter((m) => m.type === "human" && !String(m.id ?? "").startsWith("optimistic-"))
-        .slice(-2)
+        .slice(-6)
         .map((m) => extractMessageText(m.content))
         .filter(Boolean),
     );
     if (persistedHumanTexts.size === 0) return;
-    while (promptQueue.queue.value.length > 0) {
-      const head = promptQueue.queue.value[0];
-      const headText = extractMessageText(head?.content);
-      if (head && headText && persistedHumanTexts.has(headText)) {
-        promptQueue.remove(head.id);
-      } else {
-        break;
+    for (const item of [...promptQueue.queue.value]) {
+      const itemText = extractMessageText(item?.content);
+      if (item && itemText && persistedHumanTexts.has(itemText)) {
+        promptQueue.remove(item.id);
       }
     }
   },
+  { immediate: true },
 );
 
 async function sendQueuedContent(content: unknown) {
@@ -559,6 +557,9 @@ async function send(queued = false) {
     try {
       const ok = await session.send(content, recursionLimit.value);
       if (!ok) {
+        if (disposed) {
+          return;
+        }
         if (session.error.value) {
           throw new Error(session.error.value);
         }

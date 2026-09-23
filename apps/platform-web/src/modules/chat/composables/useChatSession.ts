@@ -294,6 +294,7 @@ export function useChatSession(options: {
   );
   const hasFatalStreamError = computed(() => {
     if (!stream.error.value) return false;
+    if (!stream.isLoading.value && !active(run.value)) return false;
     return !isNonFatalStreamError(stream.error.value);
   });
 
@@ -862,9 +863,15 @@ export function useChatSession(options: {
           });
           checking.value = false;
           await completion;
+          if (disposed) {
+            return true;
+          }
           if (stream.error.value) throw stream.error.value;
           actions.acknowledge(action.key, actions.current.value?.runId);
           await verify(true);
+          if (disposed) {
+            return true;
+          }
           return actions.current.value?.status === "acknowledged";
         } catch (cause) {
           const raw = cause instanceof Error ? cause.message : String(cause);
@@ -1127,7 +1134,7 @@ export function useChatSession(options: {
     }
   });
   watch(stream.error, (cause) => {
-    if (cause && !disposed) {
+    if (cause && !disposed && !isNonFatalStreamError(cause)) {
       fail(cause);
       void verify(true);
     }
