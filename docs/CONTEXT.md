@@ -17,7 +17,7 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-09-23 | 将 `dearflow_agent` 的 `ModelCallTimeoutMiddleware` 单步推理超时从 `120s` 提升至 `240s`，并将 `scripts/local-stack.sh` 中 `runtime-worker` 的 `--n-jobs-per-worker` 从 `1` 提升至 `4`，消除多会话并发阻塞与长文流式截断 |
+| runtime-service | 2026-09-23 | 升级 `graphharbor` / `graphharbor-runtime` 至 `0.13.0.post32`（修复 `ProductionWorker` 多槽位并发 `slot-0..3` 及 `_StreamEventBuffer` 32条/50ms 批量写库）；`dearflow_agent` 单步推理超时提升至 `240s` |
 | platform-api | 2026-09-22 | BYOK 双层模型架构 Phase 2 落地；0004 迁移、双层模型 RBAC、私有模型自主 CRUD/注销与网关代理安全打通，测试全绿 |
 | platform-web | 2026-09-23 | 完成全仓结构化重构（净减 11,760 行重复代码）；优化工具卡片状态机区分 LLM「正在生成参数 · 已生成 X.Xk 字符」与「执行中」阶段并支持 `write_file` 流式预览 |
 | interaction-data-service | — | — |
