@@ -201,6 +201,7 @@ export function useChatSession(options: {
     threadId: computed(() => threadId.value),
     client: service.client,
     fetch: actions.fetch,
+    optimistic: false,
     onCompleted: () => {
       if (!disposed) {
         void verify(true);
@@ -208,24 +209,29 @@ export function useChatSession(options: {
     },
   });
   const resolvedClarificationIds = ref<Set<string>>(new Set());
-  const isTerminalNonInterruptedRun = computed(
-    () =>
-      run.value != null &&
-      run.value.status !== "interrupted" &&
-      !active(run.value) &&
-      !stream.isLoading.value &&
-      actions.current.value?.status !== "submitting",
+  const isInterruptAllowed = computed(() => {
+    if (threadId.value && (!hydrated.value || !verified.value)) return false;
+    if (run.value != null && run.value.status !== "interrupted") return false;
+    return true;
+  });
+  watch(
+    () => stream.interrupts.value?.length ?? 0,
+    (len, prevLen) => {
+      if (len > 0 && len !== prevLen && run.value?.status !== "interrupted" && !checking.value && threadId.value) {
+        void verify(false);
+      }
+    },
   );
   const rawInterrupts = computed(() => stream.interrupts.value);
   const reviews = computed(() => {
-    if (isTerminalNonInterruptedRun.value) return [];
+    if (!isInterruptAllowed.value) return [];
     return parseReviews(rawInterrupts.value);
   });
   const rawClarifications = computed(() =>
     parseClarifications(rawInterrupts.value),
   );
   const clarifications = computed(() => {
-    if (isTerminalNonInterruptedRun.value) return [];
+    if (!isInterruptAllowed.value) return [];
     const rawMessages =
       Array.isArray((stream.values?.value as { messages?: unknown })?.messages)
         ? ((stream.values?.value as { messages?: unknown }).messages as readonly unknown[])
@@ -260,16 +266,35 @@ export function useChatSession(options: {
       actions.current.value?.status === "submitting"
     );
   });
+  const isNonFatalStreamError = (err: unknown): boolean => {
+    if (!err) return true;
+    const raw = err instanceof Error ? err.message : String(err);
+    return (
+      raw.includes("409 Conflict") ||
+      raw.includes("pending or running run") ||
+      raw.includes("Upstream stream ended before terminal chunk") ||
+      raw.includes("AbortError") ||
+      raw.includes("BodyStreamBuffer")
+    );
+  };
+  watch(
+    () => stream.error.value,
+    (err) => {
+      if (err && isNonFatalStreamError(err)) {
+        try {
+          (stream.error as unknown as { value: unknown }).value = null;
+        } catch {
+          // ignore
+        }
+        if (!disposed && threadId.value && !checking.value) {
+          void verify(false);
+        }
+      }
+    },
+  );
   const hasFatalStreamError = computed(() => {
     if (!stream.error.value) return false;
-    const raw =
-      stream.error.value instanceof Error
-        ? stream.error.value.message
-        : String(stream.error.value);
-    if (raw.includes("409 Conflict") || raw.includes("pending or running run")) {
-      return false;
-    }
-    return true;
+    return !isNonFatalStreamError(stream.error.value);
   });
 
   const canSend = computed(
@@ -327,6 +352,7 @@ export function useChatSession(options: {
         const nextLatest = list.find((r) => active(r)) ?? list[0] ?? null;
         run.value = nextLatest;
         if (active(nextLatest)) {
+          options.onRefresh();
           scheduleBackgroundRunPoll(targetThreadId);
         } else {
           options.onRefresh();
@@ -803,11 +829,8 @@ export function useChatSession(options: {
       }
       if (disposed || !canComment.value) return false;
       if (threadId.value && (busy.value || active(run.value) || actions.current.value?.status === "submitting")) {
-        if (sendOptions?.fromQueue) {
+        if (sendOptions?.fromQueue || supportsQueue) {
           return false;
-        }
-        if (supportsQueue) {
-          return await queueMessage(content);
         }
         throw new Error("当前回合正在执行中，请等待完成或停止后再发送");
       }
@@ -844,10 +867,10 @@ export function useChatSession(options: {
           await verify(true);
           return actions.current.value?.status === "acknowledged";
         } catch (cause) {
-          actions.rejectUnsent();
           const raw = cause instanceof Error ? cause.message : String(cause);
           const is409 = raw.includes("409 Conflict") || raw.includes("pending or running run");
           if (is409 && attempts < maxAttempts) {
+            actions.rejectUnsent();
             console.warn(`[session] 遇到服务端短暂运行冲突 (409)，正在进行第 ${attempts} 次退避重试...`);
             error.value = "";
             try {
@@ -859,24 +882,38 @@ export function useChatSession(options: {
             continue;
           }
           if (is409) {
+            actions.rejectUnsent();
             error.value = "";
             try {
               (stream.error as unknown as { value: unknown }).value = null;
             } catch {
               // ignore
             }
-            // 同步服务端真实 active run 状态并开启后台轮询（防止前端 busy=false 导致队列死循环）
+            // 同步服务端真实 active run 状态并开启后台轮询，直接返回 false 交由前端待执行消息队列（promptQueue）统一排队，避免写入 runtime_message_inbox 造成消息在回合结束后丢失或提前滞留气泡
             await verify(false);
-            if (isFromQueue) {
-              console.warn("[session] 队列消息发送遇到后台仍在运行 (409)，保留在前端队列等待后台回合完结");
-              return false;
-            }
-            if (supportsQueue) {
-              console.warn("[session] 多次重试后仍冲突，转为安全排队");
-              return await queueMessage(content, { allowFallbackSend: false });
-            }
             return false;
           }
+          const isMidStreamDisconnect =
+            raw.includes("Upstream stream ended before terminal chunk") ||
+            raw.includes("AbortError") ||
+            raw.includes("BodyStreamBuffer") ||
+            disposed;
+          if (isMidStreamDisconnect) {
+            error.value = "";
+            try {
+              (stream.error as unknown as { value: unknown }).value = null;
+            } catch {
+              // ignore
+            }
+            if (!disposed) {
+              await verify(true);
+            }
+            if (actions.current.value?.key) {
+              actions.acknowledge(actions.current.value.key, actions.current.value?.runId ?? run.value?.run_id);
+            }
+            return true;
+          }
+          actions.rejectUnsent();
           fail(cause);
           return false;
         }

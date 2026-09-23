@@ -360,10 +360,49 @@ const isSessionRunning = computed(() => {
     isDrainingQueue.value ||
     checking.value ||
     actions.current.value?.status === "submitting" ||
-    Boolean(optimisticUserMessage.value) ||
-    promptQueue.queue.value.length > 0
+    Boolean(optimisticUserMessage.value)
   );
 });
+
+function extractMessageText(raw: unknown): string {
+  if (typeof raw === "string") return raw.trim();
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) =>
+        item && typeof item === "object" && typeof (item as { text?: unknown }).text === "string"
+          ? (item as { text: string }).text
+          : "",
+      )
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+  }
+  return "";
+}
+
+watch(
+  () => displayedMessages.value,
+  (msgs) => {
+    if (promptQueue.queue.value.length === 0 || isDrainingQueue.value) return;
+    const persistedHumanTexts = new Set(
+      msgs
+        .filter((m) => m.type === "human" && !String(m.id ?? "").startsWith("optimistic-"))
+        .slice(-2)
+        .map((m) => extractMessageText(m.content))
+        .filter(Boolean),
+    );
+    if (persistedHumanTexts.size === 0) return;
+    while (promptQueue.queue.value.length > 0) {
+      const head = promptQueue.queue.value[0];
+      const headText = extractMessageText(head?.content);
+      if (head && headText && persistedHumanTexts.has(headText)) {
+        promptQueue.remove(head.id);
+      } else {
+        break;
+      }
+    }
+  },
+);
 
 async function sendQueuedContent(content: unknown) {
   if (!content) return false;
@@ -407,11 +446,11 @@ async function drainNextQueuedItem() {
     nextItem = promptQueue.dequeue();
     if (!nextItem) return;
     const ok = await sendQueuedContent(nextItem.content);
-    if (!ok) {
+    if (!ok && !disposed) {
       promptQueue.queue.value = [nextItem, ...promptQueue.queue.value];
     }
   } catch {
-    if (nextItem) {
+    if (nextItem && !disposed) {
       promptQueue.queue.value = [nextItem, ...promptQueue.queue.value];
     }
   } finally {
@@ -436,6 +475,7 @@ async function send(queued = false) {
   const isAgentActive =
     busy.value ||
     checking.value ||
+    (Boolean(session.threadId.value) && !session.verified.value) ||
     isSessionRunning.value ||
     promptQueue.queue.value.length > 0 ||
     actions.current.value?.status === "submitting" ||
@@ -518,8 +558,14 @@ async function send(queued = false) {
     void nextTick(() => requestSmoothScrollToBottom());
     try {
       const ok = await session.send(content, recursionLimit.value);
-      if (!ok && session.error.value) {
-        throw new Error(session.error.value);
+      if (!ok) {
+        if (session.error.value) {
+          throw new Error(session.error.value);
+        }
+        optimisticUserMessage.value = null;
+        submittedDraft = undefined;
+        submittedAttachments = new Set();
+        promptQueue.enqueue(content);
       }
     } catch {
       optimisticUserMessage.value = null;
@@ -1423,7 +1469,7 @@ defineExpose({
               :stream="stream"
               :messages="displayedMessages"
               :calls="snapshotMessages ? [] : calls"
-              :is-running="isSessionRunning"
+              :is-running="isSessionRunning && !hasPendingInterrupts"
               :can-edit="canSend && !snapshotMessages"
               :metadata="messageMetadata"
               :target-name="targetName"
@@ -1438,23 +1484,6 @@ defineExpose({
               @update:editing-message-value="editDraft = $event"
               @cancel-edit="cancelEdit"
               @submit-edit="submitEditedBranch"
-            />
-            <QueuedMessagesBanner
-              :queue-items="promptQueue.queue.value"
-              :receipts="visibleReceipts"
-              :pending-message="session.pendingMessage.value"
-              :receipt-error="session.receiptError.value"
-              :can-write="canWrite"
-              :can-send="session.canSend.value"
-              :is-draining="isDrainingQueue"
-              @move-up="promptQueue.moveUp"
-              @move-down="promptQueue.moveDown"
-              @remove-item="promptQueue.remove"
-              @clear-queue="promptQueue.clear"
-              @retry-pending="session.queueMessage()"
-              @restore-draft="restoreQueuedDraft"
-              @resend-as-new="resendQueuedMessage"
-              @refresh="session.refreshReceipts()"
             />
             <div
               v-if="clarifications.length"
@@ -1490,6 +1519,23 @@ defineExpose({
                 @submit="session.approve"
               />
             </div>
+            <QueuedMessagesBanner
+              :queue-items="promptQueue.queue.value"
+              :receipts="visibleReceipts"
+              :pending-message="session.pendingMessage.value"
+              :receipt-error="session.receiptError.value"
+              :can-write="canWrite"
+              :can-send="session.canSend.value"
+              :is-draining="isDrainingQueue"
+              @move-up="promptQueue.moveUp"
+              @move-down="promptQueue.moveDown"
+              @remove-item="promptQueue.remove"
+              @clear-queue="promptQueue.clear"
+              @retry-pending="session.queueMessage()"
+              @restore-draft="restoreQueuedDraft"
+              @resend-as-new="resendQueuedMessage"
+              @refresh="session.refreshReceipts()"
+            />
           </div>
         </div>
         <div

@@ -201,6 +201,7 @@ export function useDearAgentSession(options: {
     threadId: computed(() => threadId.value),
     client: service.client,
     fetch: actions.fetch,
+    optimistic: false,
     onCompleted: () => {
       if (!disposed) {
         void verify(true);
@@ -208,30 +209,32 @@ export function useDearAgentSession(options: {
     },
   });
   const resolvedClarificationIds = ref<Set<string>>(new Set());
-  const isTerminalNonInterruptedRun = computed(
-    () =>
-      run.value != null &&
-      run.value.status !== "interrupted" &&
-      !active(run.value) &&
-      !stream.isLoading.value &&
-      actions.current.value?.status !== "submitting",
+  const isInterruptAllowed = computed(() => {
+    if (threadId.value && (!hydrated.value || !verified.value)) return false;
+    if (run.value != null && run.value.status !== "interrupted") return false;
+    return true;
+  });
+  watch(
+    () => stream.interrupts.value?.length ?? 0,
+    (len, prevLen) => {
+      if (len > (prevLen ?? 0) && !disposed && run.value?.status !== "interrupted") {
+        void verify(false);
+      }
+    },
   );
   const reviews = computed(() => {
-    if (isTerminalNonInterruptedRun.value) return [];
+    if (!isInterruptAllowed.value) return [];
     return parseReviews(stream.interrupts.value);
   });
   const rawClarifications = computed(() =>
     parseClarifications(stream.interrupts.value),
   );
   const clarifications = computed(() => {
-    if (isTerminalNonInterruptedRun.value) return [];
+    if (!isInterruptAllowed.value) return [];
     const rawMessages =
       Array.isArray((stream.values?.value as { messages?: unknown })?.messages)
         ? ((stream.values?.value as { messages?: unknown }).messages as readonly unknown[])
         : (stream.messages?.value ?? []);
-    if (threadId.value && (!hydrated.value || (checking.value && !run.value)) && rawMessages.length === 0) {
-      return [];
-    }
     return filterActiveClarifications(
       rawClarifications.value,
       rawMessages,
@@ -259,16 +262,35 @@ export function useDearAgentSession(options: {
       actions.current.value?.status === "submitting"
     );
   });
+  const isNonFatalStreamError = (err: unknown): boolean => {
+    if (!err) return true;
+    const raw = err instanceof Error ? err.message : String(err);
+    return (
+      raw.includes("409 Conflict") ||
+      raw.includes("pending or running run") ||
+      raw.includes("Upstream stream ended before terminal chunk") ||
+      raw.includes("AbortError") ||
+      raw.includes("BodyStreamBuffer")
+    );
+  };
+  watch(
+    () => stream.error.value,
+    (err) => {
+      if (err && isNonFatalStreamError(err)) {
+        try {
+          (stream.error as unknown as { value: unknown }).value = null;
+        } catch {
+          // ignore
+        }
+        if (!disposed && threadId.value && !checking.value) {
+          void verify(false);
+        }
+      }
+    },
+  );
   const hasFatalStreamError = computed(() => {
     if (!stream.error.value) return false;
-    const raw =
-      stream.error.value instanceof Error
-        ? stream.error.value.message
-        : String(stream.error.value);
-    if (raw.includes("409 Conflict") || raw.includes("pending or running run")) {
-      return false;
-    }
-    return true;
+    return !isNonFatalStreamError(stream.error.value);
   });
 
   const canSend = computed(
@@ -325,10 +347,10 @@ export function useDearAgentSession(options: {
         if (disposed || threadId.value !== targetThreadId) return;
         const nextLatest = list.find((r) => active(r)) ?? list[0] ?? null;
         run.value = nextLatest;
+        options.onRefresh();
         if (active(nextLatest)) {
           scheduleBackgroundRunPoll(targetThreadId);
         } else {
-          options.onRefresh();
           await refreshAccessPolicy();
         }
       } catch {
@@ -799,11 +821,8 @@ export function useDearAgentSession(options: {
       }
       if (disposed || !canComment.value) return false;
       if (threadId.value && (busy.value || active(run.value) || actions.current.value?.status === "submitting")) {
-        if (sendOptions?.fromQueue) {
+        if (sendOptions?.fromQueue || supportsQueue) {
           return false;
-        }
-        if (supportsQueue) {
-          return await queueMessage(content, { allowFallbackSend: false });
         }
         throw new Error("当前回合正在执行中，请等待完成或停止后再发送");
       }
@@ -842,45 +861,44 @@ export function useDearAgentSession(options: {
           await verify(true);
           return actions.current.value?.status === "acknowledged";
         } catch (cause) {
-          actions.rejectUnsent();
           const raw = cause instanceof Error ? cause.message : String(cause);
           const is409 = raw.includes("409 Conflict") || raw.includes("pending or running run");
-          if (is409 && sendOptions?.fromQueue) {
-            console.warn("[session] 队列出队消息遇到服务端运行中冲突(409)，退回前端队列等待当前回合结束");
-            error.value = "";
-            try {
-              (stream.error as unknown as { value: unknown }).value = null;
-            } catch {
-              // ignore
-            }
-            void verify(false);
-            return false;
-          }
-          if (is409 && attempts < maxAttempts) {
-            console.warn(`[session] 遇到服务端短暂运行冲突 (409)，正在进行第 ${attempts} 次退避重试...`);
-            error.value = "";
-            try {
-              (stream.error as unknown as { value: unknown }).value = null;
-            } catch {
-              // ignore
-            }
-            await new Promise((r) => setTimeout(r, attempts * 350));
-            continue;
-          }
           if (is409) {
-            console.warn("[session] 多次重试后仍冲突，转为安全排队");
+            actions.rejectUnsent();
+            console.warn("[session] 发送消息遇到服务端运行中冲突(409)，同步后台运行状态并交由前端队列排队等待");
             error.value = "";
             try {
               (stream.error as unknown as { value: unknown }).value = null;
             } catch {
               // ignore
             }
-            void verify(false);
-            if (supportsQueue) {
-              return await queueMessage(content, { allowFallbackSend: false });
-            }
+            await verify(false);
             return false;
           }
+          const isMidStreamDisconnect =
+            raw.includes("Upstream stream ended before terminal chunk") ||
+            raw.includes("AbortError") ||
+            raw.includes("BodyStreamBuffer") ||
+            disposed;
+          if (isMidStreamDisconnect) {
+            error.value = "";
+            try {
+              (stream.error as unknown as { value: unknown }).value = null;
+            } catch {
+              // ignore
+            }
+            if (!disposed) {
+              await verify(true);
+            }
+            if (actions.current.value?.key) {
+              actions.acknowledge(
+                actions.current.value.key,
+                run.value?.run_id,
+              );
+            }
+            return true;
+          }
+          actions.rejectUnsent();
           fail(cause);
           return false;
         }

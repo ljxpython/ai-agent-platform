@@ -408,10 +408,18 @@ export function isClarificationActive(
     }
   }
 
-  // 2. 检查 messages 中是否存在匹配该澄清的 request_information 调用
+  // 2. 检查 messages 中是否存在匹配该澄清的工具调用（兼容 request_information / ask_user_question 等，以及 interrupt.id 与 tool_call.id 不一致的场景）
+  const clarificationToolNames = new Set([
+    "request_information",
+    "ask_user_question",
+    "ask_question",
+    "clarify",
+  ]);
   let foundMatchingCall = false;
   let hasPendingMatchingCall = false;
   let clarifyingAiIndex = -1;
+  let lastClarificationCallAiIndex = -1;
+  let lastClarificationCallCompleted = false;
 
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
@@ -426,16 +434,28 @@ export function isClarificationActive(
       for (const rawCall of m.tool_calls) {
         if (!rawCall || typeof rawCall !== "object") continue;
         const call = rawCall as Record<string, unknown>;
-        if (call.name === "request_information") {
+        const callName = typeof call.name === "string" ? call.name.trim() : "";
+        const args = (call.args && typeof call.args === "object" ? call.args : {}) as Record<string, unknown>;
+        if (clarificationToolNames.has(callName) || isClarificationInterrupt(args)) {
           const callId = typeof call.id === "string" ? call.id.trim() : "";
-          const args = (call.args && typeof call.args === "object" ? call.args : {}) as Record<string, unknown>;
+          const isCompleted = Boolean(callId && completedToolCallIds.has(callId));
+          if (lastClarificationCallAiIndex === -1) {
+            lastClarificationCallAiIndex = i;
+            lastClarificationCallCompleted = isCompleted;
+          }
+
           const qText = typeof args.question === "string" ? args.question.trim() : "";
+          const firstQ =
+            Array.isArray(args.questions) && isObject(args.questions[0]) && typeof args.questions[0].question === "string"
+              ? args.questions[0].question.trim()
+              : "";
           const clarQText = clarification.request.question.trim();
 
           const matches =
             (callId && callId === clarification.id) ||
             (!callId && !clarQText) ||
             (qText && clarQText && qText === clarQText) ||
+            (firstQ && clarQText && firstQ === clarQText) ||
             (callId && clarification.id.includes(callId));
 
           if (matches) {
@@ -457,9 +477,15 @@ export function isClarificationActive(
     return false;
   }
 
-  // 3. 检查回合推进：如果该澄清所在 AI 消息之后已有新的人类输入，说明该轮次早已结束
-  if (clarifyingAiIndex !== -1) {
-    for (let i = clarifyingAiIndex + 1; i < messages.length; i++) {
+  // 如果 interrupt.id 与 tool_call.id 不同导致未精确命中，但消息历史中最后一次澄清工具调用已有 ToolMessage 结果，说明也已被消费
+  if (!foundMatchingCall && lastClarificationCallAiIndex !== -1 && lastClarificationCallCompleted) {
+    return false;
+  }
+
+  // 3. 检查回合推进：如果该澄清所在 AI 消息（或最后一次澄清调用）之后已有新的人类输入，说明该轮次早已结束
+  const anchorAiIndex = clarifyingAiIndex !== -1 ? clarifyingAiIndex : lastClarificationCallAiIndex;
+  if (anchorAiIndex !== -1) {
+    for (let i = anchorAiIndex + 1; i < messages.length; i++) {
       const msg = messages[i];
       if (!msg || typeof msg !== "object") continue;
       const m = msg as Record<string, unknown>;
