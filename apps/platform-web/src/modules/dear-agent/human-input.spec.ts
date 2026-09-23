@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildClarificationResponse,
+  filterActiveClarifications,
+  isClarificationActive,
   isClarificationInterrupt,
   normalizeClarificationValues,
   parseClarifications,
@@ -203,6 +205,97 @@ describe("human-input", () => {
           note: "季度汇总",
         },
       },
+    });
+  });
+
+  describe("filterActiveClarifications & isClarificationActive", () => {
+    const mockClarification = {
+      id: "call_req_1",
+      namespace: [],
+      supported: true,
+      raw: {},
+      request: {
+        question: "请提供现场信息",
+        fields: [{ name: "error", type: "text", label: "错误" }],
+        schema_version: 1,
+      },
+    };
+
+    it("filters out clarification when resolvedIds contains it", () => {
+      const resolved = new Set(["call_req_1"]);
+      expect(isClarificationActive(mockClarification, [], resolved)).toBe(false);
+      expect(filterActiveClarifications([mockClarification], [], resolved)).toHaveLength(0);
+    });
+
+    it("keeps clarification when it is pending in current turn without tool output", () => {
+      const messages = [
+        { type: "human", content: "帮我定位错误" },
+        {
+          type: "ai",
+          content: "",
+          tool_calls: [
+            {
+              id: "call_req_1",
+              name: "request_information",
+              args: { question: "请提供现场信息" },
+            },
+          ],
+        },
+      ];
+      expect(isClarificationActive(mockClarification, messages)).toBe(true);
+      expect(filterActiveClarifications([mockClarification], messages)).toHaveLength(1);
+    });
+
+    it("filters out clarification when matching request_information already has tool output", () => {
+      const messages = [
+        { type: "human", content: "帮我定位错误" },
+        {
+          type: "ai",
+          content: "",
+          tool_calls: [
+            {
+              id: "call_req_1",
+              name: "request_information",
+              args: { question: "请提供现场信息" },
+            },
+          ],
+        },
+        {
+          type: "tool",
+          name: "request_information",
+          tool_call_id: "call_req_1",
+          content: JSON.stringify({ status: "answered", values: { error: "NullPointerException" } }),
+        },
+        {
+          type: "ai",
+          content: "收到错误日志，正在为您生成补丁...",
+        },
+      ];
+      expect(isClarificationActive(mockClarification, messages)).toBe(false);
+      expect(filterActiveClarifications([mockClarification], messages)).toHaveLength(0);
+    });
+
+    it("filters out historical clarification when a subsequent user message has advanced the turn", () => {
+      const messages = [
+        { type: "human", content: "帮我定位错误" },
+        {
+          type: "ai",
+          content: "",
+          tool_calls: [
+            {
+              id: "call_req_1",
+              name: "request_information",
+              args: { question: "请提供现场信息" },
+            },
+          ],
+        },
+        {
+          type: "human",
+          content: "算了，不要排查这个了，帮我写个新脚本",
+        },
+      ];
+      expect(isClarificationActive(mockClarification, messages)).toBe(false);
+      expect(filterActiveClarifications([mockClarification], messages)).toHaveLength(0);
     });
   });
 });

@@ -40,6 +40,7 @@ import {
 } from "../approvals";
 import {
   buildClarificationResponse,
+  filterActiveClarifications,
   parseClarifications,
 } from "../human-input";
 import {
@@ -167,16 +168,19 @@ export function useDearAgentSession(options: {
     }
   }
 
+  const hydrated = ref(!threadId.value);
   watch(
     () => options.threadId,
     (next) => {
       if (next && next !== threadId.value) {
         threadId.value = next;
+        hydrated.value = false;
         accessThread.value = undefined;
         accessLoading.value = true;
         void refreshAccessPolicy();
       } else if (!next) {
         threadId.value = null;
+        hydrated.value = true;
         accessThread.value = undefined;
         accessLoading.value = false;
       }
@@ -203,10 +207,37 @@ export function useDearAgentSession(options: {
       }
     },
   });
-  const reviews = computed(() => parseReviews(stream.interrupts.value));
-  const clarifications = computed(() =>
+  const resolvedClarificationIds = ref<Set<string>>(new Set());
+  const isTerminalNonInterruptedRun = computed(
+    () =>
+      run.value != null &&
+      run.value.status !== "interrupted" &&
+      !active(run.value) &&
+      !stream.isLoading.value &&
+      actions.current.value?.status !== "submitting",
+  );
+  const reviews = computed(() => {
+    if (isTerminalNonInterruptedRun.value) return [];
+    return parseReviews(stream.interrupts.value);
+  });
+  const rawClarifications = computed(() =>
     parseClarifications(stream.interrupts.value),
   );
+  const clarifications = computed(() => {
+    if (isTerminalNonInterruptedRun.value) return [];
+    const rawMessages =
+      Array.isArray((stream.values?.value as { messages?: unknown })?.messages)
+        ? ((stream.values?.value as { messages?: unknown }).messages as readonly unknown[])
+        : (stream.messages?.value ?? []);
+    if (threadId.value && (!hydrated.value || (checking.value && !run.value)) && rawMessages.length === 0) {
+      return [];
+    }
+    return filterActiveClarifications(
+      rawClarifications.value,
+      rawMessages,
+      resolvedClarificationIds.value,
+    );
+  });
   const hasPendingInterrupts = computed(
     () => reviews.value.length > 0 || clarifications.value.length > 0,
   );
@@ -243,6 +274,7 @@ export function useDearAgentSession(options: {
   const canSend = computed(
     () =>
       canComment.value &&
+      hydrated.value &&
       verified.value &&
       !hasFatalStreamError.value &&
       !checking.value &&
@@ -281,6 +313,32 @@ export function useDearAgentSession(options: {
   }
   let activeVerifyPromise: Promise<boolean> | undefined;
   let activeVerifyTerminal = false;
+  let backgroundRunTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function scheduleBackgroundRunPoll(targetThreadId: string) {
+    clearTimeout(backgroundRunTimer);
+    if (disposed || threadId.value !== targetThreadId || !active(run.value)) return;
+    backgroundRunTimer = setTimeout(async () => {
+      if (disposed || threadId.value !== targetThreadId || stream.isLoading.value) return;
+      try {
+        const list = await service.runs(targetThreadId);
+        if (disposed || threadId.value !== targetThreadId) return;
+        const nextLatest = list.find((r) => active(r)) ?? list[0] ?? null;
+        run.value = nextLatest;
+        if (active(nextLatest)) {
+          scheduleBackgroundRunPoll(targetThreadId);
+        } else {
+          options.onRefresh();
+          await refreshAccessPolicy();
+        }
+      } catch {
+        if (!disposed && threadId.value === targetThreadId && active(run.value)) {
+          scheduleBackgroundRunPoll(targetThreadId);
+        }
+      }
+    }, 1500);
+  }
+
   async function verify(waitForTerminal = false): Promise<boolean> {
     if (disposed) return false;
     if (activeVerifyPromise && (!waitForTerminal || activeVerifyTerminal)) {
@@ -288,6 +346,7 @@ export function useDearAgentSession(options: {
     }
     const epoch = ++checkEpoch;
     clearTimeout(timer);
+    clearTimeout(backgroundRunTimer);
     releaseWait?.();
     releaseWait = undefined;
     if (!threadId.value) {
@@ -304,16 +363,27 @@ export function useDearAgentSession(options: {
       try {
         let attempt = 0;
         do {
+          const actionRunId = actions.current.value?.runId;
+          const activeKnownId = active(run.value) ? run.value?.run_id : undefined;
           const knownId = waitForTerminal
-            ? (actions.current.value?.runId ?? run.value?.run_id)
+            ? (actionRunId ?? activeKnownId)
             : undefined;
-          const latest = knownId
-            ? await service.run(id, knownId)
-            : ((await service.runs(id))[0] ?? null);
+          let latest: Run | null = null;
+          if (knownId) {
+            latest = await service.run(id, knownId);
+          } else {
+            const list = await service.runs(id);
+            latest = list.find((r) => active(r)) ?? list[0] ?? null;
+          }
           if (disposed || epoch !== checkEpoch) return false;
           run.value = latest;
           if (!active(latest) || !waitForTerminal) {
-            if (!active(latest) && stream.isLoading.value) {
+            if (
+              !active(latest) &&
+              stream.isLoading.value &&
+              actions.current.value?.status !== "submitting" &&
+              (!actionRunId || latest?.run_id === actionRunId)
+            ) {
               void stream.disconnect();
             }
             break;
@@ -341,6 +411,9 @@ export function useDearAgentSession(options: {
           error.value = "";
           options.onRefresh();
           await refreshAccessPolicy();
+          if (active(run.value) && !stream.isLoading.value) {
+            scheduleBackgroundRunPoll(id);
+          }
           return true;
         }
         return false;
@@ -518,7 +591,10 @@ export function useDearAgentSession(options: {
     return uploadAttachmentsAsync(targetThreadId, rawContent as unknown[]);
   }
 
-  async function queueMessage(content?: unknown): Promise<boolean> {
+  async function queueMessage(
+    content?: unknown,
+    queueOptions?: { allowFallbackSend?: boolean },
+  ): Promise<boolean> {
     if (
       !supportsQueue ||
       !canComment.value ||
@@ -534,13 +610,14 @@ export function useDearAgentSession(options: {
       ? run.value.run_id
       : (actions.current.value?.status === "submitting" ? actions.current.value.runId : undefined);
 
-    // 2. 如果本地缓存未命中但会话指示 busy，向服务端获取处于 running/pending 态的运行
-    if (!targetRunId && busy.value) {
+    // 2. 如果本地缓存未命中，向服务端获取处于 running/pending 态的运行
+    if (!targetRunId && (busy.value || queueOptions?.allowFallbackSend === false)) {
       try {
-        const list = await service.client.runs.list(threadId.value, { limit: 5 });
+        const list = await service.client?.runs?.list?.(threadId.value, { limit: 5 }) ?? await service.runs(threadId.value);
         const runningItem = list?.find((r) => r.status === "running" || r.status === "pending");
         if (runningItem) {
           targetRunId = runningItem.run_id;
+          run.value = runningItem;
         }
       } catch {
         // ignore
@@ -549,7 +626,11 @@ export function useDearAgentSession(options: {
 
     // 3. 若根本无 active/running 的运行回合，说明当前会话已空闲或上一轮已完结：
     //    借鉴 open-swe 理念：不再强行向已结束的 run 队列塞消息，直接无感自愈转为常规 send 发起新回合！
+    //    但若当前是从 send() 的 409 冲突分支降级进来（allowFallbackSend === false），绝不反向递归调用 send()！
     if (!targetRunId) {
+      if (queueOptions?.allowFallbackSend === false) {
+        return false;
+      }
       console.info("[session] 没有活跃中的运行回合，将排队消息自愈回退为直接发送");
       return await send(content);
     }
@@ -618,6 +699,9 @@ export function useDearAgentSession(options: {
         pendingMessage.value = null;
         error.value = "";
         void verify(true);
+        if (queueOptions?.allowFallbackSend === false) {
+          return false;
+        }
         const fallbackContent = pending.payload.content ?? content;
         return await send(fallbackContent);
       }
@@ -662,7 +746,11 @@ export function useDearAgentSession(options: {
   window.addEventListener("thread-access-updated", accessChanged);
   watch(run, () => void refreshReceipts());
 
-  async function send(content: unknown, recursionLimit = 1000): Promise<boolean> {
+  async function send(
+    content: unknown,
+    recursionLimit = 1000,
+    sendOptions?: { fromQueue?: boolean },
+  ): Promise<boolean> {
     if (!canSend.value) return false;
     error.value = "";
     checking.value = true;
@@ -711,8 +799,11 @@ export function useDearAgentSession(options: {
       }
       if (disposed || !canComment.value) return false;
       if (threadId.value && (busy.value || active(run.value) || actions.current.value?.status === "submitting")) {
+        if (sendOptions?.fromQueue) {
+          return false;
+        }
         if (supportsQueue) {
-          return await queueMessage(content);
+          return await queueMessage(content, { allowFallbackSend: false });
         }
         throw new Error("当前回合正在执行中，请等待完成或停止后再发送");
       }
@@ -722,7 +813,7 @@ export function useDearAgentSession(options: {
         messages: [{ id: crypto.randomUUID(), type: "human", content: messageContent }],
       };
       let attempts = 0;
-      const maxAttempts = 3;
+      const maxAttempts = sendOptions?.fromQueue ? 1 : 2;
       while (attempts < maxAttempts) {
         attempts++;
         try {
@@ -744,13 +835,27 @@ export function useDearAgentSession(options: {
           checking.value = false;
           await completion;
           if (stream.error.value) throw stream.error.value;
-          actions.acknowledge(action.key, run.value?.run_id);
+          actions.acknowledge(
+            action.key,
+            active(run.value) ? run.value?.run_id : undefined,
+          );
           await verify(true);
           return actions.current.value?.status === "acknowledged";
         } catch (cause) {
           actions.rejectUnsent();
           const raw = cause instanceof Error ? cause.message : String(cause);
           const is409 = raw.includes("409 Conflict") || raw.includes("pending or running run");
+          if (is409 && sendOptions?.fromQueue) {
+            console.warn("[session] 队列出队消息遇到服务端运行中冲突(409)，退回前端队列等待当前回合结束");
+            error.value = "";
+            try {
+              (stream.error as unknown as { value: unknown }).value = null;
+            } catch {
+              // ignore
+            }
+            void verify(false);
+            return false;
+          }
           if (is409 && attempts < maxAttempts) {
             console.warn(`[session] 遇到服务端短暂运行冲突 (409)，正在进行第 ${attempts} 次退避重试...`);
             error.value = "";
@@ -770,10 +875,11 @@ export function useDearAgentSession(options: {
             } catch {
               // ignore
             }
+            void verify(false);
             if (supportsQueue) {
-              await queueMessage(content);
-              return true;
+              return await queueMessage(content, { allowFallbackSend: false });
             }
+            return false;
           }
           fail(cause);
           return false;
@@ -840,6 +946,7 @@ export function useDearAgentSession(options: {
       (c) => c.id === interruptId,
     );
     if (!targetClarification) return;
+    resolvedClarificationIds.value.add(interruptId);
     checking.value = true;
     error.value = "";
     try {
@@ -852,6 +959,7 @@ export function useDearAgentSession(options: {
       await stream.respondAll(response);
       await verify(true);
     } catch (cause) {
+      resolvedClarificationIds.value.delete(interruptId);
       actions.rejectUnsent();
       fail(cause);
     } finally {
@@ -962,7 +1070,10 @@ export function useDearAgentSession(options: {
       checking.value = false;
       await completion;
       if (stream.error.value) throw stream.error.value;
-      actions.acknowledge(action.key, run.value?.run_id);
+      actions.acknowledge(
+        action.key,
+        active(run.value) ? run.value?.run_id : undefined,
+      );
       await verify(true);
       return actions.current.value?.status === "acknowledged";
     } catch (cause) {
@@ -990,11 +1101,20 @@ export function useDearAgentSession(options: {
       void verify(true);
     }
   });
-  void stream.hydrationPromise.value.then(() => verify()).catch(fail);
+  void stream.hydrationPromise.value
+    .then(async () => {
+      if (!disposed) hydrated.value = true;
+      await verify();
+    })
+    .catch((cause) => {
+      if (!disposed) hydrated.value = true;
+      fail(cause);
+    });
   onScopeDispose(() => {
     disposed = true;
     ++checkEpoch;
     clearTimeout(receiptTimer);
+    clearTimeout(backgroundRunTimer);
     receiptController?.abort();
     document.removeEventListener("visibilitychange", receiptVisibility);
     clearInterval(accessTimer);

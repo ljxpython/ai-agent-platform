@@ -214,7 +214,7 @@ export function createRunActions(
     if (!current.value || (key && current.value.key !== key)) return;
     current.value = Object.freeze({
       ...current.value,
-      runId: runId ?? current.value.runId,
+      runId: current.value.runId ?? runId,
       status: "acknowledged",
     });
   }

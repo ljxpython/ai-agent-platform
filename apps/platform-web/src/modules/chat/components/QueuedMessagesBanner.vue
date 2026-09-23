@@ -203,30 +203,21 @@ const hasWarning = computed(() => {
         <div class="flex items-center justify-between gap-2 flex-wrap">
           <div class="flex items-center gap-2 min-w-0">
             <span
-              class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-tight"
+              class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tracking-tight bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/30"
               :class="
                 index === 0
-                  ? isDraining
-                    ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 ring-1 ring-blue-500/30'
-                    : 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/30'
-                  : 'bg-muted text-muted-foreground'
+                  ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 ring-1 ring-emerald-500/30'
+                  : 'bg-muted text-muted-foreground ring-0'
               "
             >
               <span
                 v-if="index === 0"
-                class="h-1.5 w-1.5 rounded-full"
-                :class="isDraining ? 'bg-blue-500 animate-ping' : 'bg-emerald-500 animate-pulse'"
+                class="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"
               />
-              {{
-                index === 0
-                  ? isDraining
-                    ? "#1 正在调取执行中..."
-                    : "#1 下一步自动执行"
-                  : `#${index + 1} 排队等待中`
-              }}
+              {{ index === 0 ? "#1 等待自动执行" : `#${index + 1} 排队等待中` }}
             </span>
-            <span v-if="index === 0" class="text-muted-foreground text-[11px] hidden sm:inline">
-              {{ isDraining ? "· 正在建立会话连接" : "· 本轮结束后立即发送" }}
+            <span class="text-muted-foreground text-[11px] hidden sm:inline">
+              {{ index === 0 ? "· 当前轮次完成后自动发送" : "· 顺延等待处理" }}
             </span>
           </div>
 
@@ -236,8 +227,7 @@ const hasWarning = computed(() => {
             <button
               v-if="index > 0"
               type="button"
-              class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-border/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              :disabled="isDraining && index <= 1"
+              class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-border/50 transition-colors"
               title="上移执行顺序"
               @click="emit('moveUp', index)"
             >
@@ -249,8 +239,7 @@ const hasWarning = computed(() => {
             <button
               v-if="index < queueItems.length - 1"
               type="button"
-              class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-border/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              :disabled="isDraining && index === 0"
+              class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-border/50 transition-colors"
               title="下移执行顺序"
               @click="emit('moveDown', index)"
             >
@@ -261,8 +250,7 @@ const hasWarning = computed(() => {
             <!-- Restore to Draft -->
             <button
               type="button"
-              class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-border/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              :disabled="isDraining && index === 0"
+              class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted border border-border/50 transition-colors"
               title="移出队列并填入输入框"
               @click="emit('restoreDraft', item.content, item.id)"
             >
@@ -273,8 +261,7 @@ const hasWarning = computed(() => {
             <!-- Delete -->
             <button
               type="button"
-              class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-destructive/80 hover:text-destructive hover:bg-destructive/10 border border-destructive/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              :disabled="isDraining && index === 0"
+              class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium text-destructive/80 hover:text-destructive hover:bg-destructive/10 border border-destructive/20 transition-colors"
               title="从队列中删除"
               @click="emit('removeItem', item.id)"
             >

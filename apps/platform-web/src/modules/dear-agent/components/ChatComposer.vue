@@ -20,6 +20,7 @@ const props = defineProps<{
   cancelling: boolean;
   sendButtonLabel: string;
   canQueue?: boolean;
+  hasQueuedItems?: boolean;
   compact?: boolean;
   focusMode?: boolean;
   models?: RuntimeModelItem[];
@@ -75,13 +76,19 @@ const composerMaxHeight = computed(() => {
   return 120;
 });
 
+const isQueueMode = computed(() => {
+  return (props.isRunning || Boolean(props.hasQueuedItems)) && Boolean(props.canQueue);
+});
+
 const helperText = computed(() =>
   props.hasBlockingInterrupt
     ? "当前运行正在等待人工决策或信息补充。请先处理待办卡片，中断恢复后再发送。"
-    : props.isRunning
-      ? props.canQueue && composerModel.value.trim()
-        ? "Agent 正在运行中。你可以按 Enter 或点击“补充要求”将新指令加入执行队列。"
-        : "Agent 正在实时输出。你可以输入补充指令排队发送，或点击“停止生成”。"
+    : isQueueMode.value
+      ? composerModel.value.trim()
+        ? "你可以按 Enter 或点击“补充要求”将新指令加入执行队列，按顺序执行。"
+        : props.isRunning
+          ? "Agent 正在实时输出。你可以输入补充指令排队发送，或点击“停止生成”。"
+          : "当前队列中有待执行消息。你可以输入补充指令加入队列，等待自动执行。"
       : "",
 );
 
@@ -183,10 +190,8 @@ function handleKeydown(event: KeyboardEvent) {
     if (!hasContent) {
       return;
     }
-    if (props.isRunning) {
-      if (props.canQueue) {
-        emit("queue");
-      }
+    if (isQueueMode.value) {
+      emit("queue");
     } else {
       if (props.canSendFreshMessage || props.canQueue) {
         emit("send");
@@ -304,8 +309,8 @@ defineExpose({
               :disabled="isRunning || hasBlockingInterrupt"
               @update:selected-model-id="emit('update:selectedModelId', $event)"
             />
-            <!-- 运行中且有输入：支持一键补充要求排队，并保留停止按钮 -->
-            <template v-if="isRunning && canQueue && composerModel.trim().length > 0">
+            <!-- 排队模式且有输入：支持一键补充要求排队，并保留停止按钮（若处于运行中） -->
+            <template v-if="isQueueMode && composerModel.trim().length > 0">
               <span class="hidden md:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-dark-400 font-mono select-none">
                 <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] dark:border-dark-700 dark:bg-dark-800">↵</kbd>
                 <span>排队</span>
@@ -324,6 +329,7 @@ defineExpose({
                 <span>补充要求</span>
               </button>
               <button
+                v-if="isRunning"
                 type="button"
                 class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500 text-white shadow-xs transition-all duration-150 hover:bg-red-600 active:scale-90 disabled:opacity-35"
                 :disabled="cancelling"

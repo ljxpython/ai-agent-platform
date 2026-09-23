@@ -5,7 +5,7 @@
 
 ## 最后更新
 
-2026-09-23 | platform-web 会话状态机与排队出队执行态感知优化完成
+2026-09-23 | platform-web 修复切回会话界面时历史需求澄清卡片闪现及消息队列 409 抢跑排空无回复缺陷，单元测试与类型检查全绿
 
 ## 活跃项目
 
@@ -18,7 +18,7 @@
 |---|---|---|
 | runtime-service | 2026-09-22 | 按用户批准恢复本机/示例 audience 配置，API/Worker 重启及真实审批通过；业务代码未改 |
 | platform-api | 2026-09-22 | BYOK 双层模型架构 Phase 2 落地；0004 迁移、双层模型 RBAC、私有模型自主 CRUD/注销与网关代理安全打通，测试全绿 |
-| platform-web | 2026-09-23 | 统一 isSessionRunning 状态机；解决消息出队/即时发送时无“AI 正在执行”和“组织答复”卡片的问题，增强出队动画与操作保护，193 项单测与类型检查全绿 |
+| platform-web | 2026-09-23 | 修复 acknowledge 旧 runId 覆盖、切回界面历史澄清卡片闪现、后台活跃 run 轮询与前端队列 409 抢跑排空重复气泡问题；测试与 vue-tsc 0 报错 |
 | interaction-data-service | — | — |
 | AI Harness（AGENTS.md + Skills） | 2026-09-21 | 今日完成全面优化，详见 docs/changes/20260921-harness-optimization.md |
 

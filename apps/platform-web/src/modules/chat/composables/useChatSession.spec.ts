@@ -542,3 +542,91 @@ it.each([useChatSession, useDearAgentSession])("self-heals and fallbacks to dire
   }
 });
 
+it.each([useChatSession, useDearAgentSession])(
+  "suppresses historical clarification flash during hydration/completed run and keeps queued item when send fromQueue hits 409 (%#)",
+  async (useSession) => {
+    let resolveHydration!: () => void;
+  const hydrationDeferred = new Promise<void>((resolve) => {
+    resolveHydration = resolve;
+  });
+
+  const submitFn = vi.fn(async () => {
+    throw new Error("409 Conflict: Cannot start a new run while thread has a pending or running run.");
+  });
+
+  mocks.stream.mockReturnValue({
+    values: ref({ messages: [] }),
+    messages: ref([]),
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([
+      {
+        id: "hist-clarification-1",
+        value: {
+          action_requests: [
+            {
+              name: "ask_user_question",
+              args: {
+                schema_version: 1,
+                title: "历史需求澄清",
+                questions: [{ id: "q1", label: "选择方向", type: "text" }],
+              },
+            },
+          ],
+        },
+      },
+    ]),
+    hydrationPromise: ref(hydrationDeferred),
+    disconnect: vi.fn(),
+    submit: submitFn,
+  });
+
+  // 初始 hydrate 完成时后端返回最新已完结 run（success）
+  mocks.runs.mockResolvedValue([{ run_id: "run-completed-old", status: "success" }]);
+  mocks.list.mockResolvedValue([]);
+  mocks.getThread.mockResolvedValue({
+    thread_id: "t-switch-back",
+    metadata: { allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] },
+  });
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useSession({
+      projectId: "proj-switch",
+      graphId: "reference_agent",
+      threadId: "t-switch-back",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    // 1. Hydration 尚未完成、messages 为空时，历史中断绝不可闪现为澄清卡片
+    expect(session.clarifications.value).toHaveLength(0);
+
+    resolveHydration();
+    await flushPromises();
+
+    // 2. Hydration 完成后，当前最新 run 为 success 终态（非 interrupted），历史中断同样绝不可闪现
+    expect(session.clarifications.value).toHaveLength(0);
+
+    // 3. 模拟后台其实有一个新启动的 active run 正在执行，前端队列尝试弹出第一条消息发送（fromQueue: true）遇到 409
+    mocks.runs.mockResolvedValue([{ run_id: "run-active-bg", status: "running" }]);
+    const ok = await session.send("queued message 1", 1000, { fromQueue: true });
+
+    // 必须返回 false 以便前端队列将消息放回队首等待，且只尝试 1 次不产生递归重复气泡
+    expect(ok).toBe(false);
+    expect(submitFn).toHaveBeenCalledTimes(1);
+    expect(session.error.value).toBe("");
+    // 并且 verify(true) 已将后台 running 状态同步回前端，busy 恢复为 true 阻止后续队列继续抢跑
+    expect(session.busy.value).toBe(true);
+  } finally {
+    scope.stop();
+    mocks.runs.mockReset();
+  }
+});
+
+

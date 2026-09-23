@@ -13,7 +13,7 @@
 | 全平台菜单、页面与角色权限治理 | 人工验收中：技术实现与自动化 Final done；固定角色、平台/对象授权、撤权、P1 隔离、治理边界及项目内个人记忆入口完成；共享/跨项目记忆等 deferred | [分章方案与进度](projects/20260920-platform-access-governance/README.md) · [人工验收用例](projects/20260920-platform-access-governance/08-manual-acceptance.md) |
 | Agent 回复新对话分支 | 进行中：Platform API 受控分叉和 Runtime 隔离验证实施中；前端已完成对接设计、待接入 | [项目规划](projects/20260917-agent-conversation-fork/README.md) |
 | Agent 会话访问策略（逐项审批 / 工作区免审批 / 全权负责） | 部分完成：前后端与 Runtime 均已实现三档策略（review/workspace_write/full_access）、输入框左右布局对齐与草稿态同步；待全栈启动后跑最终 E2E 验收 | [方案](projects/20260917-agent-session-access-policy/README.md) |
-| Dear Agent 专属前端 | 进行中：F1/P1 已完成（专属模块 `src/modules/dear-agent/`、独立路由、澄清表单交互卡片、审批面板与输入锁定已落地并通过 50 套全量回归）；F2—F7 后续推进 | [前端交接与实施](projects/20260913-dearflow-agent/frontend-handoff.md) |
+| Dear Agent 专属前端 | 进行中：F1/P1 已完成（专属模块 `src/modules/dear-agent/`、独立路由、澄清表单交互卡片、审批面板与输入锁定、历史僵尸澄清过滤与实例隔离已落地并通过 50 套全量回归）；F2—F7 后续推进 | [前端交接与实施](projects/20260913-dearflow-agent/frontend-handoff.md) · [澄清复活修复](apps/platform-web/docs/changes/20260923-fix-zombie-clarification-on-thread-switch.md) |
 | Dear Agent 独立成果页闭环 | 已完成：后端与前端核心对接全链路完成。前端实现独立 useArtifacts、右侧滑出抽屉（Drawer）、download 拦截、Axios Blob 错误解包，27 项单元测试及生产构建打包验证通过 | [分层规划](projects/20260920-dear-agent-artifacts-alignment/README.md) · [前端交接](projects/20260920-dear-agent-artifacts-alignment/04-frontend-handoff.md) |
 | Dear Agent Skills 页面改进与治理简化 | 前后端最高/已完成：无会话技能目录与详情、用户上传/更新/启停/删除、执行快照恢复、独立Alembic；前端组件重构、详情抽屉与单测全量通过，待浏览器联合演练 | [进度总览](projects/20260919-skills-page-improvement/README.md) |
 | 正式聊天 v2（LangChain 流式运行时、线程续接、工具调用与中断展示） | 已重写：官方 SDK 会话、按轮渲染、多 ID 审批、历史分支及移动工作区；最终验收见项目记录 | [Chat 重构](projects/20260910-platform-web-refactor/04-chat-session-and-interaction.md) |
@@ -21,7 +21,7 @@
 | 控制面核心页面（overview/projects/users/agents/me/security/audit） | 已迁移：Agent/模型新契约、统一权限导航、列表四态；全路由浏览器验收见项目记录 | [现状与目标架构](projects/20260910-platform-web-refactor/02-architecture-and-ui.md) |
 | 旧 Chat 视觉与统一 Agent 入口 | 部分完成：Agent 归一已交付；旧工作台组件已直接取回；37 项定向测试及三尺寸回归通过；摘要数据与部分专项验收仍待补齐 | [09 还原功能核对](projects/20260910-platform-web-refactor/09-chat-workbench-restoration-audit.md) |
 | Platform Web 架构与 Agent Chat 重构 | 01—07 非后置范围已完成；旧展示组件已取回，专项验收边界见 09；双浏览器入队/完整文件与 Skills API/PTY 后置 | [项目概览](projects/20260910-platform-web-refactor/README.md) |
-| 运行中补充消息（多端入口、Runtime 队列与 Middleware） | 已实现：根模型注入、持久回执/恢复、权限复核与 Web 重试；网络取消/移动回归通过，双浏览器后置，GraphHarbor post27 发布包复验通过 | [队列与消费设计](projects/20260910-platform-web-refactor/07-message-queue-and-middleware.md) |
+| 运行中补充消息（多端入口、Runtime 队列与 Middleware） | 已实现：根模型注入、持久回执/恢复、权限复核与 Web 重试；前端待执行消息队列与输入框排队模式严密分流，切回页面防澄清闪现与防 409 抢跑排空已落地，横幅状态文案准确对齐，网络取消/移动回归通过，双浏览器后置，GraphHarbor post27 发布包复验通过 | [队列与消费设计](projects/20260910-platform-web-refactor/07-message-queue-and-middleware.md) · [前端排队守卫修复](../apps/platform-web/docs/changes/20260923-fix-prompt-queue-routing-and-banner-state.md) · [切回防闪现与防排空修复](../apps/platform-web/docs/changes/20260923-fix-queue-drain-and-clarification-flash-on-switch.md) |
 | Chat 流式输出标准化与 open-swe 架构对齐 | 已完成：流式管道、打字机光标、平滑滚底、Open SWE 子智能体卡片特化与微型居中未读胶囊已全量交付通过 | [流式标准化](projects/20260912-chat-streaming-standardization/README.md) |
 | 任务进度条收起与时间旅行动作标题精准化 | 已完成：任务胶囊可随时 ✕ 收起且折叠为右上角微型恢复徽标彻底消除正文遮挡，时间旅行历史基于当前 Step 动作精准呈现标题 | [任务胶囊与时间旅行优化](../apps/platform-web/docs/changes/20260912-task-pill-dismiss-and-history-preview.md) |
 | 历史关键节点过滤、多步长翻页与消息编辑分叉 | 已完成：白名单精准识别业务里程碑并剔除无新动作系统流转帧；支持 +20/+50/+100 快速翻页；编辑消息即时响应与本地内存回溯杜绝卡死 | [关键节点与编辑分叉修复](../apps/platform-web/docs/changes/20260912-history-milestone-filter-and-edit-branch-fix.md) |

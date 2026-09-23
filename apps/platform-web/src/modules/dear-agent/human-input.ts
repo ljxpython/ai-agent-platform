@@ -369,3 +369,110 @@ export function normalizeClarificationValues(
   }
   return normalized;
 }
+
+export function isClarificationActive(
+  clarification: PendingClarification,
+  messages: readonly unknown[],
+  resolvedIds?: ReadonlySet<string>,
+): boolean {
+  if (resolvedIds?.has(clarification.id)) {
+    return false;
+  }
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return true;
+  }
+
+  // 1. 收集所有已完成的 ToolMessage tool_call_id
+  const completedToolCallIds = new Set<string>();
+  for (const msg of messages) {
+    if (!msg || typeof msg !== "object") continue;
+    const m = msg as Record<string, unknown>;
+    const type =
+      typeof m._getType === "function"
+        ? (m as { _getType: () => string })._getType()
+        : m.type;
+    if (type === "tool") {
+      const toolCallId = m.tool_call_id;
+      if (typeof toolCallId === "string" && toolCallId.trim()) {
+        completedToolCallIds.add(toolCallId.trim());
+      }
+    }
+  }
+
+  // 2. 检查 messages 中是否存在匹配该澄清的 request_information 调用
+  let foundMatchingCall = false;
+  let hasPendingMatchingCall = false;
+  let clarifyingAiIndex = -1;
+
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (!msg || typeof msg !== "object") continue;
+    const m = msg as Record<string, unknown>;
+    const type =
+      typeof m._getType === "function"
+        ? (m as { _getType: () => string })._getType()
+        : m.type;
+
+    if (type === "ai" && Array.isArray(m.tool_calls)) {
+      for (const rawCall of m.tool_calls) {
+        if (!rawCall || typeof rawCall !== "object") continue;
+        const call = rawCall as Record<string, unknown>;
+        if (call.name === "request_information") {
+          const callId = typeof call.id === "string" ? call.id.trim() : "";
+          const args = (call.args && typeof call.args === "object" ? call.args : {}) as Record<string, unknown>;
+          const qText = typeof args.question === "string" ? args.question.trim() : "";
+          const clarQText = clarification.request.question.trim();
+
+          const matches =
+            (callId && callId === clarification.id) ||
+            (!callId && !clarQText) ||
+            (qText && clarQText && qText === clarQText) ||
+            (callId && clarification.id.includes(callId));
+
+          if (matches) {
+            foundMatchingCall = true;
+            if (clarifyingAiIndex === -1) {
+              clarifyingAiIndex = i;
+            }
+            if (!callId || !completedToolCallIds.has(callId)) {
+              hasPendingMatchingCall = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // 如果找到了匹配该澄清的工具调用，且已全部有 ToolMessage 结果，说明已被回答消费
+  if (foundMatchingCall && !hasPendingMatchingCall) {
+    return false;
+  }
+
+  // 3. 检查回合推进：如果该澄清所在 AI 消息之后已有新的人类输入，说明该轮次早已结束
+  if (clarifyingAiIndex !== -1) {
+    for (let i = clarifyingAiIndex + 1; i < messages.length; i++) {
+      const msg = messages[i];
+      if (!msg || typeof msg !== "object") continue;
+      const m = msg as Record<string, unknown>;
+      const type =
+        typeof m._getType === "function"
+          ? (m as { _getType: () => string })._getType()
+          : m.type;
+      if (type === "human") {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+export function filterActiveClarifications(
+  clarifications: readonly PendingClarification[],
+  messages: readonly unknown[],
+  resolvedIds?: ReadonlySet<string>,
+): PendingClarification[] {
+  return clarifications.filter((c) =>
+    isClarificationActive(c, messages, resolvedIds),
+  );
+}

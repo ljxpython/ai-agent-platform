@@ -97,4 +97,20 @@ describe("ChatComposer", () => {
     await wrapper.find("textarea").trigger("keydown", { key: "Enter", shiftKey: false });
     expect(wrapper.emitted("queue")).toHaveLength(1);
   });
+
+  it("emits queue on Enter and shows queue button when hasQueuedItems is true even if isRunning is false", async () => {
+    const wrapper = mountComposer({
+      modelValue: "队列里已有消息时的后续补充",
+      canSendFreshMessage: false,
+      canQueue: true,
+      isRunning: false,
+      hasQueuedItems: true,
+    });
+
+    expect(wrapper.text()).toContain("补充要求");
+    expect(wrapper.text()).toContain("排队");
+    await wrapper.find("textarea").trigger("keydown", { key: "Enter", shiftKey: false });
+    expect(wrapper.emitted("queue")).toHaveLength(1);
+    expect(wrapper.emitted("send")).toBeUndefined();
+  });
 });

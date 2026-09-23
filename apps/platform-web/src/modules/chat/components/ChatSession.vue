@@ -184,10 +184,32 @@ function applyOptions() {
 const drawerOpen = ref(false);
 const drawerTab = ref<"overview" | "tasks" | "files" | "history">("overview");
 function openDrawer() { drawerOpen.value = true; drawerTab.value = "overview"; void loadHistory(true); }
+const historyLoading = ref(false);
+const history = shallowRef<ChatCheckpoint[]>([]);
+const hasMoreHistory = ref(true);
+const selectedCheckpoint = shallowRef<ChatCheckpoint | null>(null);
+const latestHistoryMessages = computed<BaseMessage[]>(() => {
+  const headRaw = history.value[0]?.values?.messages;
+  if (!Array.isArray(headRaw) || headRaw.length === 0) return [];
+  try {
+    return headRaw.map((m) =>
+      coerceMessageLikeToMessage(m as Parameters<typeof coerceMessageLikeToMessage>[0]),
+    );
+  } catch {
+    return [];
+  }
+});
 const snapshotMessages = shallowRef<BaseMessage[] | null>(null);
 const optimisticUserMessage = shallowRef<BaseMessage | null>(null);
 const displayedMessages = computed(() => {
-  const base = snapshotMessages.value ?? messages.value;
+  let base = snapshotMessages.value ?? messages.value;
+  if (
+    !snapshotMessages.value &&
+    !stream.isLoading.value &&
+    latestHistoryMessages.value.length > base.length
+  ) {
+    base = latestHistoryMessages.value;
+  }
   if (!optimisticUserMessage.value) return base;
   const hasEchoed = base.some(
     (m) =>
@@ -338,7 +360,8 @@ const isSessionRunning = computed(() => {
     isDrainingQueue.value ||
     checking.value ||
     actions.current.value?.status === "submitting" ||
-    Boolean(optimisticUserMessage.value)
+    Boolean(optimisticUserMessage.value) ||
+    promptQueue.queue.value.length > 0
   );
 });
 
@@ -353,7 +376,7 @@ async function sendQueuedContent(content: unknown) {
   optimisticUserMessage.value = optimistic;
   void nextTick(() => requestSmoothScrollToBottom());
   try {
-    const ok = await session.send(content, recursionLimit.value);
+    const ok = await session.send(content, recursionLimit.value, { fromQueue: true });
     if (!ok) {
       optimisticUserMessage.value = null;
       return false;
@@ -410,7 +433,13 @@ watch(
 );
 
 async function send(queued = false) {
-  const isAgentActive = busy.value || actions.current.value?.status === "submitting";
+  const isAgentActive =
+    busy.value ||
+    checking.value ||
+    isSessionRunning.value ||
+    promptQueue.queue.value.length > 0 ||
+    actions.current.value?.status === "submitting" ||
+    Boolean(optimisticUserMessage.value);
   const shouldQueue = queued || isAgentActive;
   if (shouldQueue) {
     if (!props.canWrite || cancelling.value || reviews.value.length || (!props.draft.trim() && !attachments.value.length)) {
@@ -720,10 +749,6 @@ async function submitEditedBranch() {
   cancelEdit();
   await session.fork(checkpoint, draftText, recursionLimit.value);
 }
-const historyLoading = ref(false);
-const history = shallowRef<ChatCheckpoint[]>([]);
-const hasMoreHistory = ref(true);
-const selectedCheckpoint = shallowRef<ChatCheckpoint | null>(null);
 async function loadHistory(reset = false, limit = 20) {
   if (!session.threadId.value || historyLoading.value) return;
   historyLoading.value = true;
@@ -1530,6 +1555,7 @@ defineExpose({
       :attachments="attachments"
       :is-running="isSessionRunning && !reviews.length"
       :has-blocking-interrupt="!!reviews.length"
+      :has-queued-items="promptQueue.queue.value.length > 0"
       :can-send-fresh-message="canSubmit"
       :can-queue="canWrite && !selectedCheckpoint"
       :cancelling="

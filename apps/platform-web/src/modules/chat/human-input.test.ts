@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildClarificationResponse,
+  filterActiveClarifications,
+  isClarificationActive,
   isClarificationInterrupt,
   parseClarifications,
   validateClarificationValues,
@@ -114,5 +116,73 @@ describe("chat/human-input", () => {
     expect(payload.values).toEqual({ selection: ["A"] });
     expect(payload.answers).toEqual([["A"]]);
     expect(payload.answer).toEqual(["A"]);
+  });
+
+  describe("filterActiveClarifications & isClarificationActive", () => {
+    const mockClarification = {
+      id: "call_req_chat_1",
+      namespace: [],
+      supported: true,
+      raw: {},
+      request: {
+        question: "请选择分析环境",
+        fields: [{ name: "env", type: "select", label: "环境" }],
+        schema_version: 1,
+      },
+    };
+
+    it("filters out clarification when resolvedIds contains it", () => {
+      const resolved = new Set(["call_req_chat_1"]);
+      expect(isClarificationActive(mockClarification, [], resolved)).toBe(false);
+      expect(filterActiveClarifications([mockClarification], [], resolved)).toHaveLength(0);
+    });
+
+    it("keeps clarification when it is pending in current turn without tool output", () => {
+      const messages = [
+        { type: "human", content: "部署项目" },
+        {
+          type: "ai",
+          content: "",
+          tool_calls: [
+            {
+              id: "call_req_chat_1",
+              name: "request_information",
+              args: { question: "请选择分析环境" },
+            },
+          ],
+        },
+      ];
+      expect(isClarificationActive(mockClarification, messages)).toBe(true);
+      expect(filterActiveClarifications([mockClarification], messages)).toHaveLength(1);
+    });
+
+    it("filters out clarification when matching request_information already has tool output", () => {
+      const messages = [
+        { type: "human", content: "部署项目" },
+        {
+          type: "ai",
+          content: "",
+          tool_calls: [
+            {
+              id: "call_req_chat_1",
+              name: "request_information",
+              args: { question: "请选择分析环境" },
+            },
+          ],
+        },
+        {
+          type: "tool",
+          name: "request_information",
+          tool_call_id: "call_req_chat_1",
+          content: JSON.stringify({ status: "answered", values: { env: "prod" } }),
+        },
+        {
+          type: "ai",
+          content: "开始在生产环境执行...",
+        },
+      ];
+      expect(isClarificationActive(mockClarification, messages)).toBe(false);
+      expect(filterActiveClarifications([mockClarification], messages)).toHaveLength(0);
+    });
   });
 });

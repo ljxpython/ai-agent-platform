@@ -115,7 +115,8 @@ describe("QueuedMessagesBanner.vue", () => {
 
     expect(wrapper.text()).toContain("待执行消息队列");
     expect(wrapper.text()).toContain("3");
-    expect(wrapper.text()).toContain("#1 下一步自动执行");
+    expect(wrapper.text()).toContain("#1 等待自动执行");
+    expect(wrapper.text()).toContain("· 当前轮次完成后自动发送");
     expect(wrapper.text()).toContain("#2 排队等待中");
     expect(wrapper.text()).toContain("#3 排队等待中");
     expect(wrapper.text()).toContain("第一条待执行指令");
@@ -152,16 +153,15 @@ describe("QueuedMessagesBanner.vue", () => {
     expect(wrapper.emitted("clearQueue")).toBeDefined();
   });
 
-  it("renders draining status for first item when isDraining is true and disables first item actions", () => {
+  it("renders pure waiting status for queued items", () => {
     const queueItems = [
-      { id: "q-1", content: "第一条待出队指令", createdAt: 1000 },
+      { id: "q-1", content: "第一条待执行指令", createdAt: 1000 },
       { id: "q-2", content: "第二条等待中指令", createdAt: 2000 },
     ];
 
     const wrapper = mount(QueuedMessagesBanner, {
       props: {
         queueItems,
-        isDraining: true,
         canWrite: true,
         canSend: true,
       },
@@ -172,19 +172,10 @@ describe("QueuedMessagesBanner.vue", () => {
       },
     });
 
-    expect(wrapper.text()).toContain("#1 正在调取执行中...");
-    expect(wrapper.text()).toContain("· 正在建立会话连接");
+    expect(wrapper.text()).toContain("#1 等待自动执行");
+    expect(wrapper.text()).toContain("· 当前轮次完成后自动发送");
     expect(wrapper.text()).toContain("#2 排队等待中");
-
-    // Action buttons for item 0 should be disabled
-    const downBtns = wrapper.findAll("button").filter((b) => b.text().includes("下移"));
-    expect(downBtns[0]?.attributes("disabled")).toBeDefined();
-
-    const restoreBtns = wrapper.findAll("button").filter((b) => b.text().includes("恢复草稿"));
-    expect(restoreBtns[0]?.attributes("disabled")).toBeDefined();
-
-    const deleteBtns = wrapper.findAll("button").filter((b) => b.text().includes("删除"));
-    expect(deleteBtns[0]?.attributes("disabled")).toBeDefined();
+    expect(wrapper.text()).toContain("· 顺延等待处理");
   });
 });
 
