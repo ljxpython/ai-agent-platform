@@ -129,4 +129,43 @@ describe("Dear Agent transcript projection", () => {
       "/workspace/outputs/a9d3bf46bcc2988ed652743d4223c6f3f161dffd75f4fcf6fe7cf12d5dedf64a.png",
     );
   });
+
+  it("preserves running state for sensitive tools awaiting review interrupt rather than marking them incomplete", () => {
+    const messages = [
+      new AIMessage({
+        id: "a1",
+        content: "先做，再解释。",
+        tool_calls: [
+          {
+            id: "call-write-1",
+            name: "write_file",
+            args: { file_path: "/workspace/work/harmonograph/index.html" },
+          },
+        ],
+      }),
+    ];
+
+    const calls: AssembledToolCall[] = [
+      {
+        id: "call-write-1",
+        callId: "call-write-1",
+        name: "write_file",
+        namespace: [],
+        input: { file_path: "/workspace/work/harmonograph/index.html" },
+        args: { file_path: "/workspace/work/harmonograph/index.html" },
+        status: "error" as any,
+        error: "(Interrupt(value={'action_requests': [{'name': 'write_file'}]}),)",
+        output: Promise.resolve(null),
+      } as unknown as AssembledToolCall,
+    ];
+
+    const [turn] = buildTranscript(messages, calls, false);
+    const tools = turn?.work.flatMap((item) => item.tools) ?? [];
+    expect(tools).toHaveLength(1);
+    const tool = tools[0]!;
+    expect(tool.name).toBe("write_file");
+    expect(tool.error).toBeUndefined();
+    // 审批中断挂起时必须保持 running，绝不能误标为 incomplete（未完成 / 已中止）
+    expect(tool.status).toBe("running");
+  });
 });

@@ -5,7 +5,7 @@
 
 ## 最后更新
 
-2026-09-22 | 启动跨服务规范治理项目（5个子专题）
+2026-09-23 | platform-web 会话状态机与排队出队执行态感知优化完成
 
 ## 活跃项目
 
@@ -18,7 +18,7 @@
 |---|---|---|
 | runtime-service | 2026-09-22 | 按用户批准恢复本机/示例 audience 配置，API/Worker 重启及真实审批通过；业务代码未改 |
 | platform-api | 2026-09-22 | BYOK 双层模型架构 Phase 2 落地；0004 迁移、双层模型 RBAC、私有模型自主 CRUD/注销与网关代理安全打通，测试全绿 |
-| platform-web | 2026-09-22 | BYOK 前端交互 Phase 3 落地；项目视图支持私有模型 (BYOK) 与平台公共模型清晰双板块呈现，新增私有模型接入抽屉、智能凭据状态与删除确认，打包与单测全绿 |
+| platform-web | 2026-09-23 | 统一 isSessionRunning 状态机；解决消息出队/即时发送时无“AI 正在执行”和“组织答复”卡片的问题，增强出队动画与操作保护，193 项单测与类型检查全绿 |
 | interaction-data-service | — | — |
 | AI Harness（AGENTS.md + Skills） | 2026-09-21 | 今日完成全面优化，详见 docs/changes/20260921-harness-optimization.md |
 

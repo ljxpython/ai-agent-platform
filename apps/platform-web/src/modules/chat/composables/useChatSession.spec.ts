@@ -46,7 +46,7 @@ vi.mock("../run-actions", () => ({
 import { useChatSession } from "./useChatSession";
 import { useDearAgentSession } from "../../dear-agent/composables/useDearAgentSession";
 vi.mock("../../dear-agent/run-actions", () => ({
-  createRunActions: () => ({ current: ref(null), begin: vi.fn(), dispose: vi.fn() }),
+  createRunActions: () => ({ current: ref(null), begin: vi.fn(() => ({ key: "k" })), acknowledge: vi.fn(), rejectUnsent: vi.fn(), dispose: vi.fn() }),
 }));
 it.each([useChatSession, useDearAgentSession])("revokes visible Thread content and disconnects on the 60-second ACL refresh (%#)", async (useSession) => {
   vi.useFakeTimers();
@@ -482,3 +482,63 @@ it("supports draft state full_access staging and keeps full_access after refresh
     scope.stop();
   }
 });
+
+it.each([useChatSession, useDearAgentSession])("self-heals and fallbacks to direct send when queueMessage encounters 409 run_changed (%#)", async (useSession) => {
+  const submitFn = vi.fn().mockResolvedValue({});
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+    submit: submitFn,
+  });
+  mocks.runs.mockResolvedValue([{ run_id: "run-ended-1", status: "success" }]);
+  mocks.list.mockResolvedValue([]);
+  mocks.getThread.mockResolvedValue({
+    thread_id: "t-heal",
+    metadata: { allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] },
+  });
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useSession({
+      projectId: "proj-heal",
+      graphId: "reference_agent",
+      threadId: "t-heal",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+
+    // 1. 无 active run 时调用 queueMessage，直接自愈回退到 direct send，不抛错
+    await session.queueMessage("hello when idle");
+    expect(submitFn).toHaveBeenCalledTimes(1);
+    expect(session.error.value).toBe("");
+
+    // 2. 模拟运行中有 active run，但向后端排队时后端判定 run 已结束返回 409 run_changed
+    mocks.enqueue.mockRejectedValueOnce(
+      Object.assign(new Error("Request failed with status code 409"), {
+        isAxiosError: true,
+        response: { status: 409, data: { detail: "run_changed" } },
+      }),
+    );
+
+    await session.queueMessage("second message after run ended");
+    // 验证无感自愈转为发起新回合 send()，因此 submit 被再次调用
+    expect(submitFn).toHaveBeenCalledTimes(2);
+    // 验证绝不将 409 冒泡为顶部大红框报错
+    expect(session.error.value).toBe("");
+  } finally {
+    scope.stop();
+    mocks.enqueue.mockReset();
+    mocks.runs.mockReset();
+  }
+});
+

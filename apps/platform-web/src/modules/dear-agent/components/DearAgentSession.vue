@@ -47,6 +47,8 @@ import ApprovalPanel from "./ApprovalPanel.vue";
 import ClarificationCard from "./ClarificationCard.vue";
 import MessageContent from "./MessageContent.vue";
 import TrajectoryView from "./trajectory/TrajectoryView.vue";
+import QueuedMessagesBanner from "@/modules/chat/components/QueuedMessagesBanner.vue";
+import { usePromptQueue } from "@/modules/chat/composables/usePromptQueue";
 
 const activeView = ref<"chat" | "trajectory">("chat");
 
@@ -126,13 +128,19 @@ const action = actions.current;
 const messages = useTranscriptMessages(stream);
 const calls = stream.toolCalls;
 const approvalElement = ref<HTMLElement | null>(null);
-const streamError = computed(() =>
-  stream.error.value instanceof Error
-    ? stream.error.value.message === "[object Object]" ? "运行失败，请检查模型与工具授权，或打开运行详情查看原因" : stream.error.value.message
-    : stream.error.value
-      ? "流连接异常，请恢复连接"
-      : "",
-);
+const streamError = computed(() => {
+  if (!stream.error.value) return "";
+  const raw =
+    stream.error.value instanceof Error
+      ? stream.error.value.message === "[object Object]"
+        ? "运行失败，请检查模型与工具授权，或打开运行详情查看原因"
+        : stream.error.value.message
+      : String(stream.error.value);
+  if (raw.includes("409 Conflict") || raw.includes("pending or running run")) {
+    return "";
+  }
+  return raw;
+});
 const canSubmit = computed(
   () =>
     canSend.value &&
@@ -383,16 +391,128 @@ function handleSnapshotFork() {
   }
 }
 
-async function send(queued = false) {
+const promptQueueKey = computed(() =>
+  session.threadId.value ? `prompt_queue:${props.projectId}:${session.threadId.value}` : ""
+);
+const promptQueue = usePromptQueue(promptQueueKey);
+
+const isDrainingQueue = ref(false);
+
+const isSessionRunning = computed(() => {
+  if (snapshotMessages.value) return false;
+  return (
+    busy.value ||
+    isDrainingQueue.value ||
+    checking.value ||
+    actions.current.value?.status === "submitting" ||
+    Boolean(optimisticUserMessage.value)
+  );
+});
+
+async function sendQueuedContent(content: unknown): Promise<boolean> {
+  if (!content) return false;
+  follow();
+  optimisticUserMessage.value = coerceMessageLikeToMessage({
+    id: `optimistic-${Date.now()}`,
+    type: "human",
+    content: content as any,
+  });
+  void nextTick(() => requestSmoothScrollToBottom());
+  try {
+    if (!context.value.model_id && models.value.length > 0) {
+      const defaultModel = models.value.find(m => m.display_name === defaultModelName.value) ?? models.value[0];
+      if (defaultModel) {
+        context.value = {
+          ...context.value,
+          model_id: defaultModel.id,
+        };
+      }
+    }
+    const effectiveLimit =
+      currentExecutionMode.value === "pro" ||
+      currentExecutionMode.value === "ultra"
+        ? Math.max(recursionLimit.value, 100)
+        : recursionLimit.value;
+    const ok = await session.send(content, effectiveLimit);
+    if (!ok) {
+      optimisticUserMessage.value = null;
+      return false;
+    }
+    return true;
+  } catch {
+    optimisticUserMessage.value = null;
+    return false;
+  }
+}
+
+async function drainNextQueuedItem() {
+  if (isDrainingQueue.value) return;
   if (
-    queued
-      ? !props.canWrite ||
-        cancelling.value ||
-        reviews.value.length ||
-        !props.draft.trim()
-      : !canSubmit.value
-  )
+    busy.value ||
+    !canSend.value ||
+    cancelling.value ||
+    hasPendingInterrupts.value ||
+    reviews.value.length > 0
+  ) {
     return;
+  }
+  if (promptQueue.queue.value.length === 0) return;
+
+  isDrainingQueue.value = true;
+  try {
+    const nextItem = promptQueue.dequeue();
+    if (!nextItem) return;
+    const ok = await sendQueuedContent(nextItem.content);
+    if (!ok) {
+      promptQueue.queue.value.unshift(nextItem);
+    }
+  } finally {
+    isDrainingQueue.value = false;
+  }
+}
+
+watch(
+  [busy, canSend, hasPendingInterrupts, () => promptQueue.queue.value.length],
+  async ([isBusy, isCanSend, hasInterrupt, queueLen]) => {
+    if (!isBusy && isCanSend && !hasInterrupt && queueLen > 0 && !cancelling.value) {
+      await new Promise((r) => setTimeout(r, 350));
+      if (!busy.value && canSend.value && !hasPendingInterrupts.value && promptQueue.queue.value.length > 0) {
+        await drainNextQueuedItem();
+      }
+    }
+  },
+  { flush: "post" },
+);
+
+async function send(queued = false) {
+  const isAgentActive = busy.value || actions.current.value?.status === "submitting";
+  const shouldQueue = queued || isAgentActive;
+  if (shouldQueue) {
+    if (!props.canWrite || cancelling.value || reviews.value.length || (!props.draft.trim() && !attachments.value.length)) {
+      return;
+    }
+    const content = attachments.value.length
+      ? [{ type: "text", text: props.draft }, ...attachments.value]
+      : props.draft;
+    emit("update:draft", "");
+    attachments.value = [];
+    follow();
+    promptQueue.enqueue(content);
+    return;
+  }
+  if (!canSubmit.value) {
+    // 降级保护：如果当前暂时不可直接发送（例如刚结束正在收尾），但用户输入了内容，自动放入队列排队
+    if (props.canWrite && !cancelling.value && !reviews.value.length && (props.draft.trim() || attachments.value.length)) {
+      const content = attachments.value.length
+        ? [{ type: "text", text: props.draft }, ...attachments.value]
+        : props.draft;
+      emit("update:draft", "");
+      attachments.value = [];
+      follow();
+      promptQueue.enqueue(content);
+    }
+    return;
+  }
   submittedDraft = props.draft;
   submittedAttachments = new Set(attachments.value);
   const content = attachments.value.length
@@ -401,9 +521,7 @@ async function send(queued = false) {
 
   follow();
 
-  if (queued) {
-    await session.queueMessage(content);
-  } else if (selectedCheckpoint.value) {
+  if (selectedCheckpoint.value) {
     const targetCheckpoint = selectedCheckpoint.value.checkpoint;
     optimisticUserMessage.value = coerceMessageLikeToMessage({
       id: `optimistic-${Date.now()}`,
@@ -477,7 +595,20 @@ async function send(queued = false) {
   }
 }
 
-function restoreQueuedDraft(content?: unknown) {
+const dismissedReceiptIds = ref<Set<string>>(new Set());
+const visibleReceipts = computed(() =>
+  session.receipts.value.filter(
+    (r) =>
+      !dismissedReceiptIds.value.has(r.message_id) &&
+      (r.status === "queued" || r.status === "claimed"),
+  ),
+);
+
+function restoreQueuedDraft(content?: unknown, messageId?: string) {
+  if (messageId) {
+    dismissedReceiptIds.value.add(messageId);
+    promptQueue.remove(messageId);
+  }
   const restoringPending = content === undefined;
   content ??= session.pendingMessage.value?.payload.content;
   const append = (text: string) => emit("update:draft", props.draft === text ? text : [props.draft, text].filter(Boolean).join("\n"));
@@ -492,6 +623,33 @@ function restoreQueuedDraft(content?: unknown) {
     attachments.value = [...attachments.value, ...content.filter(isChatAttachmentBlock)];
   }
   if (restoringPending) session.pendingMessage.value = null;
+}
+
+async function resendQueuedMessage(content: unknown, messageId?: string) {
+  if (!content) return;
+  if (messageId) dismissedReceiptIds.value.add(messageId);
+  if (content === session.pendingMessage.value?.payload.content) {
+    session.pendingMessage.value = null;
+  }
+  optimisticUserMessage.value = coerceMessageLikeToMessage({
+    id: `optimistic-${Date.now()}`,
+    type: "human",
+    content: content as any,
+  });
+  void nextTick(() => requestSmoothScrollToBottom());
+  try {
+    const effectiveLimit =
+      currentExecutionMode.value === "pro" ||
+      currentExecutionMode.value === "ultra"
+        ? Math.max(recursionLimit.value, 100)
+        : recursionLimit.value;
+    const ok = await session.send(content, effectiveLimit);
+    if (!ok && session.error.value) {
+      throw new Error(session.error.value);
+    }
+  } catch {
+    optimisticUserMessage.value = null;
+  }
 }
 
 const viewport = ref<HTMLElement | null>(null);
@@ -1044,15 +1202,39 @@ const chatMetrics = computed(() => {
     formattedLine: groups.join(" | "),
   };
 });
+
+defineExpose({
+  openDrawer,
+  openOptions,
+});
 </script>
 
 <template>
   <div
-    v-if="!session.canRead.value"
+    v-if="session.accessLoading.value"
     role="status"
-    class="p-4 text-sm"
+    class="flex flex-1 h-full min-h-[calc(100vh-160px)] w-full flex-col items-center justify-center p-8 text-sm text-gray-500 space-y-3 dark:text-dark-400"
   >
-    无法读取此会话，权限可能已撤销或正在确认。请切换会话，或联系所有者重新授权。
+    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+      <BaseIcon name="refresh" size="sm" class="animate-spin" />
+    </div>
+    <div class="text-center space-y-1">
+      <p class="font-medium text-gray-800 text-sm dark:text-gray-200">正在核验会话访问权限...</p>
+      <p class="text-xs text-gray-400 dark:text-dark-400">正在同步会话策略与目标配置</p>
+    </div>
+  </div>
+  <div
+    v-else-if="!session.canRead.value"
+    role="status"
+    class="flex flex-1 h-full min-h-[calc(100vh-160px)] w-full flex-col items-center justify-center p-8 text-sm text-gray-500 space-y-3 dark:text-dark-400"
+  >
+    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+      <BaseIcon name="alert" size="sm" />
+    </div>
+    <div class="text-center space-y-1">
+      <p class="font-medium text-gray-800 text-sm dark:text-gray-200">无法读取此会话</p>
+      <p class="text-xs text-gray-500 max-w-sm dark:text-dark-400">权限可能已撤销或会话已被移除。请切换其他会话，或联系所有者重新授权。</p>
+    </div>
     <BaseButton
       variant="secondary"
       size="sm"
@@ -1140,20 +1322,6 @@ const chatMetrics = computed(() => {
               轨迹
             </button>
           </div>
-          <slot name="actions" />
-          <button
-            type="button"
-            class="relative inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
-            :class="showWorkspace ? 'border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400' : ''"
-            title="沙箱工作区与产物面板"
-            @click="showWorkspace = !showWorkspace"
-          >
-            <BaseIcon
-              name="folder"
-              size="xs"
-            />
-            <span class="hidden sm:inline">工作区</span>
-          </button>
           <!-- 当前执行模式指示胶囊 (点击直达模式与参数配置) -->
           <button
             type="button"
@@ -1190,28 +1358,18 @@ const chatMetrics = computed(() => {
           </button>
           <button
             type="button"
-            class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
-            title="查看会话详情与上下文"
-            @click="openDrawer"
+            class="relative inline-flex h-7 shrink-0 items-center gap-1 whitespace-nowrap rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
+            :class="showWorkspace ? 'border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400' : ''"
+            title="沙箱工作区与产物面板"
+            @click="showWorkspace = !showWorkspace"
           >
             <BaseIcon
-              name="overview"
+              name="folder"
               size="xs"
             />
-            <span class="hidden sm:inline">详情</span>
+            <span class="hidden sm:inline">工作区</span>
           </button>
-          <button
-            type="button"
-            class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
-            title="配置运行参数"
-            @click="openOptions"
-          >
-            <BaseIcon
-              name="runtime"
-              size="xs"
-            />
-            <span class="hidden sm:inline">参数</span>
-          </button>
+          <slot name="actions" />
         </div>
       </div>
     </header>
@@ -1303,7 +1461,7 @@ const chatMetrics = computed(() => {
           v-if="activeView === 'trajectory'"
           :messages="displayedMessages"
           :calls="snapshotMessages ? [] : calls"
-          :is-running="busy"
+          :is-running="isSessionRunning"
         />
         <div
           v-else
@@ -1314,7 +1472,7 @@ const chatMetrics = computed(() => {
           <div class="pw-chat-stream-content space-y-6">
             <ChatAgentStatusBar
               class="sticky top-0 z-10 mb-4"
-              :is-running="busy"
+              :is-running="isSessionRunning"
               :is-interrupted="!!reviews.length"
               :last-event-at="lastEventAt"
               :error="error || streamError"
@@ -1372,7 +1530,7 @@ const chatMetrics = computed(() => {
               :stream="stream"
               :messages="displayedMessages"
               :calls="snapshotMessages ? [] : calls"
-              :is-running="busy && !snapshotMessages"
+              :is-running="isSessionRunning"
               :can-edit="canSend && !snapshotMessages"
               :metadata="messageMetadata"
               :target-name="targetName"
@@ -1388,79 +1546,23 @@ const chatMetrics = computed(() => {
               @cancel-edit="cancelEdit"
               @submit-edit="submitEditedBranch"
             />
-            <section
-              v-if="
-                session.receipts.value.length ||
-                  session.pendingMessage.value ||
-                  session.receiptError.value
-              "
-              aria-label="消息投递状态"
-              class="space-y-2 rounded-lg border p-3 text-sm"
-            >
-              <p
-                v-if="session.receiptError.value"
-                role="alert"
-              >
-                {{ session.receiptError.value }}
-              </p>
-              <p
-                v-if="session.pendingMessage.value"
-                role="status"
-              >
-                {{
-                  session.pendingMessage.value.status === "sending"
-                    ? "补充消息发送中"
-                    : session.pendingMessage.value.status === "rejected"
-                      ? "补充消息被拒绝，草稿已保留"
-                      : "补充消息结果待确认，原请求已保留"
-                }}
-                <button
-                  v-if="session.pendingMessage.value.status === 'unknown'"
-                  class="underline"
-                  :disabled="!canWrite"
-                  @click="session.queueMessage()"
-                >
-                  重试原消息
-                </button>
-              </p>
-              <button
-                v-if="session.pendingMessage.value?.status === 'rejected'"
-                class="underline"
-                @click="restoreQueuedDraft()"
-              >
-                恢复草稿
-              </button>
-              <p
-                v-for="receipt in session.receipts.value"
-                :key="receipt.message_id"
-                role="status"
-              >
-                补充消息 #{{ receipt.sequence }} ·
-                {{
-                  {
-                    queued: "排队中",
-                    claimed: "正在注入",
-                    consumed: "已写入上下文",
-                    rejected: "已拒绝",
-                    not_consumed: "未消费",
-                  }[receipt.status]
-                }}
-                <span v-if="receipt.reason"> · {{ receipt.reason }}</span>
-                <button
-                  v-if="['rejected', 'not_consumed'].includes(receipt.status) && receipt.content != null"
-                  class="ml-2 underline"
-                  @click="restoreQueuedDraft(receipt.content)"
-                >
-                  恢复到输入框
-                </button>
-              </p>
-              <button
-                class="underline"
-                @click="session.refreshReceipts()"
-              >
-                刷新投递状态
-              </button>
-            </section>
+            <QueuedMessagesBanner
+              :queue-items="promptQueue.queue.value"
+              :receipts="visibleReceipts"
+              :pending-message="session.pendingMessage.value"
+              :receipt-error="session.receiptError.value"
+              :can-write="canWrite"
+              :can-send="session.canSend.value"
+              :is-draining="isDrainingQueue"
+              @move-up="promptQueue.moveUp"
+              @move-down="promptQueue.moveDown"
+              @remove-item="promptQueue.remove"
+              @clear-queue="promptQueue.clear"
+              @retry-pending="session.queueMessage()"
+              @restore-draft="restoreQueuedDraft"
+              @resend-as-new="resendQueuedMessage"
+              @refresh="session.refreshReceipts()"
+            />
             <!-- HITL Clarification Interrupt Cards -->
             <div
               v-if="clarifications.length > 0"
@@ -1551,7 +1653,7 @@ const chatMetrics = computed(() => {
       ref="composerRef"
       :model-value="draft"
       :attachments="attachments"
-      :is-running="busy && !hasPendingInterrupts"
+      :is-running="isSessionRunning && !hasPendingInterrupts"
       :has-blocking-interrupt="hasPendingInterrupts"
       :can-send-fresh-message="canSubmit"
       :cancelling="
@@ -1560,7 +1662,7 @@ const chatMetrics = computed(() => {
           action?.status === 'submitting' ||
           action?.status === 'unknown'
       "
-      :can-queue="session.supportsQueue && session.canComment.value && !reviews.length && !session.pendingMessage.value"
+      :can-queue="props.canWrite && !cancelling && !reviews.length"
       :send-button-label="selectedCheckpoint ? '分叉执行' : '发送'"
       :placeholder="selectedCheckpoint ? '当前处于快照分叉模式，输入新指令即可从此快照分叉执行...' : undefined"
       compact
@@ -1623,7 +1725,7 @@ const chatMetrics = computed(() => {
       :plan-view="planView"
       :files="drawerFiles"
       :values="stream.values.value"
-      :is-running="busy"
+      :is-running="isSessionRunning"
       :has-interrupt="!!reviews.length"
       source-note=""
       :history-loading="historyLoading"

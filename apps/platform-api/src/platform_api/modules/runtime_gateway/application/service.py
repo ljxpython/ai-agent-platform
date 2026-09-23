@@ -1417,7 +1417,7 @@ class RuntimeGatewayService:
             return record, await self._upstream.get_thread_run(thread_id, record.run_id)
 
         payload = dict(upstream_payload)
-        payload["multitask_strategy"] = "reject"
+        payload["multitask_strategy"] = str(upstream_payload.get("multitask_strategy") or "reject")
         payload["context"] = dict(record.context_snapshot)
         payload["config"] = dict(record.config_snapshot)
         config_configurable = ensure_dict(payload["config"].get("configurable"))
@@ -1568,6 +1568,7 @@ class RuntimeGatewayService:
                 if thread_id not in batch_ids:
                     raise ForbiddenError(code="thread_search_scope_denied", message="Runtime returned an unexpected Thread")
                 self._assert_thread_project_scope(project_id=project_id, thread=row)
+                row.pop("values", None)
                 rows.append(self._thread_with_access(actor, project_id, row, records[thread_id]))
         return rows
 
@@ -1991,6 +1992,7 @@ class RuntimeGatewayService:
         # Set default stream_mode for Protocol v2 SSE events if not specified
         next_payload.setdefault("stream_mode", list(_DEFAULT_STREAM_MODES))
         next_payload.setdefault("stream_resumable", True)
+        next_payload.setdefault("multitask_strategy", "interrupt")
         command = {"method": "run.start", "params": next_payload}
         _, result = await self.launch_runtime_run(
             actor=actor,

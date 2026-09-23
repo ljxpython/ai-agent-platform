@@ -446,3 +446,8 @@ deploy/.env.stack
 !/.codex/skills/implement-feature/SKILL.md
 !/.codex/skills/verify-change/
 !/.codex/skills/verify-change/SKILL.md
+
+# Local sqlite databases
+*.db
+*.sqlite
+*.sqlite3

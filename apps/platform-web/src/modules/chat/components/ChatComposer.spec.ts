@@ -70,4 +70,31 @@ describe("ChatComposer", () => {
     expect(trigger.exists()).toBe(true);
     expect(trigger.text()).toContain("允许工作区操作");
   });
+
+  it("enables send button and triggers send on Enter when canQueue is true even if canSendFreshMessage is false", async () => {
+    const wrapper = mountComposer({
+      modelValue: "连续提问不卡顿",
+      canSendFreshMessage: false,
+      canQueue: true,
+      isRunning: false,
+    });
+
+    const sendBtn = wrapper.findAll("button").at(-1);
+    expect(sendBtn?.attributes("disabled")).toBeUndefined();
+
+    await wrapper.find("textarea").trigger("keydown", { key: "Enter", shiftKey: false });
+    expect(wrapper.emitted("send")).toHaveLength(1);
+  });
+
+  it("emits queue on Enter when running and canQueue is true with input", async () => {
+    const wrapper = mountComposer({
+      modelValue: "补充新的要求",
+      canSendFreshMessage: false,
+      canQueue: true,
+      isRunning: true,
+    });
+
+    await wrapper.find("textarea").trigger("keydown", { key: "Enter", shiftKey: false });
+    expect(wrapper.emitted("queue")).toHaveLength(1);
+  });
 });

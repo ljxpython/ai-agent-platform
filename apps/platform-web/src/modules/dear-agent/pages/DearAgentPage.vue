@@ -16,6 +16,7 @@ import {
 } from "@/services/threads/session.service";
 import BaseDialog from "@/components/base/BaseDialog.vue";
 import ThreadAccessControl from "@/modules/chat/components/ThreadAccessControl.vue";
+import ThreadActionsMenu from "@/modules/chat/components/ThreadActionsMenu.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import EmptyState from "@/components/platform/EmptyState.vue";
@@ -25,6 +26,9 @@ import DearAgentSession from "../components/DearAgentSession.vue";
 import DearAgentThreadSidebar from "../components/DearAgentThreadSidebar.vue";
 import { buildChatThreadListView, type ChatThreadStatusFilter } from "../thread-list-view-model";
 import { formatThreadTime } from "@/utils/threads";
+
+const sessionRef = ref<InstanceType<typeof DearAgentSession> | null>(null);
+const accessControlRef = ref<InstanceType<typeof ThreadAccessControl> | null>(null);
 
 const route = useRoute();
 const router = useRouter();
@@ -423,7 +427,18 @@ function reconnect() {
   mountedThread.value = selectedThread.value;
   ++mountVersion.value;
 }
+function handleKeydown(e: KeyboardEvent) {
+  if (e.key === "Escape" && focusMode.value) {
+    focusMode.value = false;
+  }
+}
+if (typeof window !== "undefined") {
+  window.addEventListener("keydown", handleKeydown);
+}
 onScopeDispose(() => {
+  if (typeof window !== "undefined") {
+    window.removeEventListener("keydown", handleKeydown);
+  }
   ++epoch;
   ++listEpoch;
 });
@@ -432,7 +447,7 @@ onScopeDispose(() => {
 <template>
   <section
     class="pw-chat-page-shell"
-    :class="focusMode ? 'fixed inset-0 z-[85] m-0 !h-[100dvh] overflow-hidden bg-gray-50 p-4 dark:bg-dark-950 md:p-5 lg:p-6' : ''"
+    :class="focusMode ? 'fixed inset-0 z-[85] m-0 !h-[100dvh] overflow-hidden bg-gray-50 dark:bg-dark-950 p-0' : ''"
   >
     <EmptyState
       v-if="!activeProject"
@@ -441,24 +456,25 @@ onScopeDispose(() => {
       description="选择项目后开始对话。"
     />
     <template v-else>
-      <div
+      <!-- 专注模式右上角悬浮还原按钮（完全不占用垂直流高度，最大化空间利用率） -->
+      <button
         v-if="focusMode"
-        class="flex items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-3 py-2 shadow-sm dark:border-dark-800 dark:bg-dark-900"
+        type="button"
+        class="fixed top-3.5 right-4 z-[90] group inline-flex h-8 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2 text-xs font-medium text-gray-500 shadow-md backdrop-blur-md hover:border-gray-300 hover:bg-white hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-900/90 dark:text-dark-400 dark:hover:border-dark-600 dark:hover:bg-dark-800 dark:hover:text-white transition-all"
+        title="还原退出专注模式 (ESC)"
+        aria-label="还原退出专注模式"
+        @click="focusMode = false"
       >
-        <div class="flex min-w-0 items-center gap-2">
-          <span class="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400">专注模式</span><span>·</span><span class="truncate text-sm font-semibold">{{ target?.name }}</span>
-        </div>
-        <BaseButton
-          variant="secondary"
-          class="h-8 px-3 text-xs"
-          @click="focusMode = false"
-        >
-          <BaseIcon
-            name="x"
-            size="sm"
-          />退出专注模式
-        </BaseButton>
-      </div>
+        <BaseIcon
+          name="minimize"
+          size="xs"
+          class="text-gray-500 group-hover:text-purple-600 dark:text-dark-400 dark:group-hover:text-purple-400 transition-colors"
+        />
+        <span class="text-[11px] hidden sm:group-hover:inline font-medium">还原</span>
+        <kbd class="hidden sm:group-hover:inline-flex items-center rounded border border-gray-200 bg-gray-50 px-1 py-0.5 font-mono text-[9px] text-gray-400 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-500">
+          ESC
+        </kbd>
+      </button>
       <p
         v-if="target?.disabled"
         role="status"
@@ -520,6 +536,7 @@ onScopeDispose(() => {
         />
         <DearAgentSession
           v-else-if="target"
+          ref="sessionRef"
           :key="`${activeProjectId}:${auth.sessionEpoch}:${mountVersion}`"
           v-model:context="runContext"
           v-model:attachments="draftAttachments"
@@ -566,25 +583,6 @@ onScopeDispose(() => {
           </template>
           <template #actions>
             <div class="flex shrink-0 items-center gap-1.5">
-              <ThreadAccessControl
-                v-if="selectedThread && (threadCan(selectedThread, 'share') || canTakeover)"
-                :project-id="activeProjectId"
-                :thread-id="selectedThread"
-                :can-share="threadCan(selectedThread, 'share')"
-                :can-takeover="canTakeover"
-                @updated="accessRevision++; loadThreads()"
-              />
-              <button
-                class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
-                :title="focusMode ? '退出专注模式' : '专注模式'"
-                @click="focusMode = !focusMode"
-              >
-                <BaseIcon
-                  name="focus"
-                  size="xs"
-                />
-                <span class="hidden sm:inline">专注</span>
-              </button>
               <button
                 class="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-700 shadow-2xs hover:bg-gray-50 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-200 dark:hover:text-white transition-colors"
                 :disabled="!target"
@@ -597,20 +595,28 @@ onScopeDispose(() => {
                 />
                 <span class="whitespace-nowrap">新对话</span>
               </button>
-              <button
-                v-if="selectedThread && threadCan(selectedThread, 'delete')"
-                class="lg:hidden inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-red-200 bg-white px-2 text-xs font-medium text-red-600 shadow-2xs hover:bg-red-50 dark:border-red-900/50 dark:bg-dark-800 dark:text-red-400 dark:hover:bg-red-950/30 transition-colors"
-                title="删除此会话"
-                @click="requestDelete(selectedThread)"
-              >
-                <BaseIcon
-                  name="trash"
-                  size="xs"
-                />
-                <span class="hidden sm:inline">删除</span>
-              </button>
-              <div class="h-3.5 w-px bg-gray-200 dark:bg-dark-700 mx-0.5 hidden lg:block shrink-0" />
-              <div class="hidden lg:flex items-center gap-1.5 shrink-0">
+              <ThreadAccessControl
+                v-if="selectedThread && (threadCan(selectedThread, 'share') || canTakeover)"
+                ref="accessControlRef"
+                :project-id="activeProjectId"
+                :thread-id="selectedThread"
+                :can-share="threadCan(selectedThread, 'share')"
+                :can-takeover="canTakeover"
+                :show-takeover-button="false"
+                @updated="accessRevision++; loadThreads()"
+              />
+              <ThreadActionsMenu
+                :focus-mode="focusMode"
+                :can-takeover="canTakeover"
+                :can-delete="Boolean(selectedThread && threadCan(selectedThread, 'delete'))"
+                @toggle-focus="focusMode = !focusMode"
+                @open-drawer="sessionRef?.openDrawer()"
+                @open-options="sessionRef?.openOptions()"
+                @open-takeover="accessControlRef?.openTakeover()"
+                @delete-thread="selectedThread && requestDelete(selectedThread)"
+              />
+              <div class="h-4 w-px bg-gray-200 dark:bg-dark-700 mx-1 hidden sm:block shrink-0" />
+              <div class="hidden sm:flex items-center gap-1.5 shrink-0">
                 <WorkspaceProjectSwitcher compact />
                 <UserMenu compact />
               </div>

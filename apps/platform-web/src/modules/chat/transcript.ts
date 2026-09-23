@@ -414,26 +414,45 @@ export function buildTranscript(
       }
   }
   const shown = new Set<string>();
+  function isInterruptError(err: unknown): boolean {
+    if (typeof err !== "string") return false;
+    return err.includes("Interrupt(") || err.includes("GraphInterrupt");
+  }
+
   function tool(id: string, name: string, input: unknown): ToolItem {
     shown.add(id);
     const call = callMap.get(id);
     const result = results.get(id);
-    const status =
+    const resolvedName = call?.name ?? name;
+    const isClarification = resolvedName === "request_information";
+    const isInterrupt = isInterruptError(call?.error);
+    let rawError = call?.error;
+    if (isInterrupt) {
+      rawError = undefined;
+    }
+
+    let status =
       call?.status ??
       (result
         ? asObject(result).status === "error"
           ? "error"
           : "finished"
         : "running");
+    if (isClarification || isInterrupt) {
+      status = "running";
+    }
+
+    const isPending = isClarification || isInterrupt;
+
     return {
       key: `${prefix}:tool:${id}`,
       id,
-      name: call?.name ?? name,
+      name: resolvedName,
       input: call?.input ?? input,
       output: call?.output ?? result?.content,
       artifact: asObject(result).artifact,
-      status: status === "running" && !running ? "incomplete" : status,
-      error: call?.error,
+      status: status === "running" && !running && !isPending ? "incomplete" : status,
+      error: rawError,
     };
   }
   const turns: Turn[] = [];

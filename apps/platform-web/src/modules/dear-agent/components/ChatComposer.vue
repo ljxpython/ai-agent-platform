@@ -154,26 +154,43 @@ watch(
   },
 );
 
+const canSubmitFreshOrQueue = computed(() => {
+  if (props.cancelling || props.hasBlockingInterrupt) {
+    return false;
+  }
+  const hasContent =
+    composerModel.value.trim().length > 0 || props.attachments.length > 0;
+  if (!hasContent) {
+    return false;
+  }
+  if (props.canQueue) {
+    return true;
+  }
+  return props.canSendFreshMessage;
+});
+
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === "Enter" && !event.shiftKey) {
     if (event.isComposing) {
       return;
     }
     event.preventDefault();
-    if (
-      props.canSendFreshMessage &&
-      !props.isRunning &&
-      !props.hasBlockingInterrupt &&
-      (composerModel.value.trim().length > 0 || props.attachments.length > 0)
-    ) {
-      emit("send");
-    } else if (
-      props.isRunning &&
-      !props.hasBlockingInterrupt &&
-      props.canQueue &&
-      composerModel.value.trim().length > 0
-    ) {
-      emit("queue");
+    if (props.hasBlockingInterrupt || props.cancelling) {
+      return;
+    }
+    const hasContent =
+      composerModel.value.trim().length > 0 || props.attachments.length > 0;
+    if (!hasContent) {
+      return;
+    }
+    if (props.isRunning) {
+      if (props.canQueue) {
+        emit("queue");
+      }
+    } else {
+      if (props.canSendFreshMessage || props.canQueue) {
+        emit("send");
+      }
     }
   }
 }
@@ -347,7 +364,7 @@ defineExpose({
               <button
                 type="button"
                 class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-500 text-white shadow-xs transition-all duration-150 hover:bg-blue-600 active:scale-90 disabled:opacity-35 disabled:cursor-not-allowed dark:bg-blue-600 dark:hover:bg-blue-500 shadow-blue-500/25"
-                :disabled="!canSendFreshMessage"
+                :disabled="!canSubmitFreshOrQueue"
                 :title="sendButtonLabel"
                 :aria-label="sendButtonLabel"
                 @click="emit('send')"

@@ -102,6 +102,30 @@ const visibleDisplayMessages = computed(() => {
     return entries;
   });
 });
+
+const shouldShowLiveStep = computed(() => {
+  if (!props.isRunning) return false;
+  const turns = visibleDisplayMessages.value;
+  if (!turns.length) return true;
+  const lastEntry = turns[turns.length - 1];
+
+  if (lastEntry?.author === "user") return true;
+
+  const hasRunningTools = lastEntry?.work?.some((w) =>
+    w.tools?.some((t) => t.status === "running")
+  );
+  if (hasRunningTools) return true;
+
+  const hasCompletedAnswer = Boolean(lastEntry?.text && lastEntry.text.trim().length > 0);
+  if (hasCompletedAnswer) {
+    if (props.stream?.isLoading && !props.stream.isLoading.value) {
+      return false;
+    }
+  }
+
+  return !hasCompletedAnswer;
+});
+
 function getMessageMeta(id: string) { return props.metadata?.[id]; }
 function getMessageBranchIndex(id: string) {
   const meta = getMessageMeta(id); return meta?.branchOptions?.indexOf(meta.branch || "") ?? -1;
@@ -371,7 +395,7 @@ async function copy(value: string, id?: string) {
       {{ copyError }}
     </p>
     <div
-      v-if="isRunning"
+      v-if="shouldShowLiveStep"
       class="pw-chat-live-step"
     >
       <span class="pw-chat-live-dot animate-pulse" />

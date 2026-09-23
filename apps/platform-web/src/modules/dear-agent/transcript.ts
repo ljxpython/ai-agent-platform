@@ -429,9 +429,9 @@ export function buildTranscript(
     const resultObj = asObject(result);
     const hasResult = Boolean(result);
     const resultIsError = hasResult && resultObj.status === "error";
-
+    const isInterrupt = isInterruptError(call?.error);
     let rawError = call?.error;
-    if (isInterruptError(rawError)) {
+    if (isInterrupt) {
       rawError = undefined;
     }
 
@@ -442,11 +442,13 @@ export function buildTranscript(
       status = "error";
     } else if (call?.status && call.status !== "error") {
       status = call.status;
-    } else if (isClarification) {
+    } else if (isClarification || isInterrupt) {
       status = "running";
     } else {
       status = call?.status ?? "running";
     }
+
+    const isPending = isClarification || isInterrupt;
 
     return {
       key: `${prefix}:tool:${id}`,
@@ -455,7 +457,7 @@ export function buildTranscript(
       input: call?.input ?? input,
       output: call?.output ?? result?.content,
       artifact: resultObj.artifact,
-      status: status === "running" && !running && !isClarification ? "incomplete" : status,
+      status: status === "running" && !running && !isPending ? "incomplete" : status,
       error: rawError,
     };
   }

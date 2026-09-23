@@ -20,6 +20,21 @@ const result = computed(() => {
   if (typeof props.tool.output !== "string") return asObject(props.tool.output);
   try { return asObject(JSON.parse(props.tool.output)); } catch { return {}; }
 });
+const isAwaitingReview = computed(() => {
+  if (props.tool.status !== "running" && props.tool.status !== "incomplete") return false;
+  const interrupts = props.stream?.interrupts?.value;
+  if (!Array.isArray(interrupts) || interrupts.length === 0) return false;
+  return interrupts.some((int: unknown) => {
+    const val = int && typeof int === "object" && "value" in int ? (int as Record<string, unknown>).value : null;
+    if (!val || typeof val !== "object") return false;
+    const reqs = (val as Record<string, unknown>).action_requests;
+    if (Array.isArray(reqs)) {
+      return reqs.some((r) => r && typeof r === "object" && (r as Record<string, unknown>).name === props.tool.name);
+    }
+    return false;
+  });
+});
+
 const labels = computed(() => {
   if (props.tool.name === "request_information") {
     return {
@@ -30,10 +45,10 @@ const labels = computed(() => {
     };
   }
   return {
-    running: "执行中",
+    running: isAwaitingReview.value ? "等待审批" : "执行中",
     finished: "已返回",
     error: "失败",
-    incomplete: "未完成 / 已中止",
+    incomplete: isAwaitingReview.value ? "等待审批" : "未完成 / 已中止",
   };
 });
 const fileTools = [
@@ -286,8 +301,9 @@ function getSourceKindBadge(source: EvidenceSourceItem): {
         :class="{
           'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400': tool.status === 'error',
           'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400': tool.status === 'finished',
-          'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 animate-pulse': tool.status === 'running',
-          'bg-gray-100 text-gray-600 dark:bg-dark-800 dark:text-dark-300': tool.status === 'incomplete'
+          'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 animate-pulse': isAwaitingReview,
+          'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 animate-pulse': tool.status === 'running' && !isAwaitingReview,
+          'bg-gray-100 text-gray-600 dark:bg-dark-800 dark:text-dark-300': tool.status === 'incomplete' && !isAwaitingReview
         }"
       >{{ labels[tool.status] }}</span>
     </button>

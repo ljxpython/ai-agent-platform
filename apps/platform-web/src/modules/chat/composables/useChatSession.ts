@@ -80,6 +80,7 @@ export function useChatSession(options: {
   const accessPolicy = ref<AccessPolicy>("review");
   const accessPolicyUpdating = ref(false);
   const accessThread = shallowRef<ChatThread>();
+  const accessLoading = ref(Boolean(threadId.value));
   const canRead = computed(() => !threadId.value || hasThreadAction(accessThread.value, "read"));
   let accessRefreshing = false;
   let accessEpoch = 0;
@@ -97,6 +98,7 @@ export function useChatSession(options: {
     const requestedThread = threadId.value;
     const requestedEpoch = accessEpoch;
     accessRefreshing = true;
+    if (!accessThread.value) accessLoading.value = true;
     try {
       const thread = await service.get(requestedThread);
       if (disposed || threadId.value !== requestedThread || accessEpoch !== requestedEpoch) return;
@@ -125,6 +127,7 @@ export function useChatSession(options: {
       }
     } finally {
       accessRefreshing = false;
+      if (!disposed && requestedEpoch === accessEpoch) accessLoading.value = false;
       if (!disposed && (accessEpoch !== requestedEpoch || threadId.value !== requestedThread)) void refreshAccessPolicy();
     }
   }
@@ -169,9 +172,13 @@ export function useChatSession(options: {
     (next) => {
       if (next && next !== threadId.value) {
         threadId.value = next;
+        accessThread.value = undefined;
+        accessLoading.value = true;
         void refreshAccessPolicy();
       } else if (!next) {
         threadId.value = null;
+        accessThread.value = undefined;
+        accessLoading.value = false;
       }
     },
     { immediate: true },
@@ -207,16 +214,42 @@ export function useChatSession(options: {
   const pendingAction = computed(() =>
     ["submitting", "unknown"].includes(actions.current.value?.status ?? ""),
   );
-  const busy = computed(() => stream.isLoading.value || active(run.value));
+  const busy = computed(() => {
+    if (
+      run.value &&
+      !active(run.value) &&
+      !hasPendingInterrupts.value &&
+      actions.current.value?.status !== "submitting"
+    ) {
+      return false;
+    }
+    return (
+      stream.isLoading.value ||
+      active(run.value) ||
+      actions.current.value?.status === "submitting"
+    );
+  });
+  const hasFatalStreamError = computed(() => {
+    if (!stream.error.value) return false;
+    const raw =
+      stream.error.value instanceof Error
+        ? stream.error.value.message
+        : String(stream.error.value);
+    if (raw.includes("409 Conflict") || raw.includes("pending or running run")) {
+      return false;
+    }
+    return true;
+  });
+
   const canSend = computed(
     () =>
       canComment.value &&
       verified.value &&
-      !stream.error.value &&
+      !hasFatalStreamError.value &&
       !checking.value &&
       !cancelling.value &&
       !pendingAction.value &&
-      !pendingMessage.value &&
+      !(pendingMessage.value?.status === "sending") &&
       !busy.value &&
       !hasPendingInterrupts.value,
   );
@@ -237,12 +270,15 @@ export function useChatSession(options: {
                   ? "正在执行"
                   : error.value || stream.error.value
                     ? "连接或执行异常"
-                    : "可以发送",
+                    : run.value?.status === "timeout"
+                      ? "上一回合执行超时"
+                      : "可以发送",
   );
 
   function fail(cause: unknown) {
-    if (!disposed)
+    if (!disposed) {
       error.value = cause instanceof Error ? cause.message : "请求失败，请重试";
+    }
   }
   let activeVerifyPromise: Promise<boolean> | undefined;
   let activeVerifyTerminal = false;
@@ -277,7 +313,12 @@ export function useChatSession(options: {
             : ((await service.runs(id))[0] ?? null);
           if (disposed || epoch !== checkEpoch) return false;
           run.value = latest;
-          if (!active(latest) || !waitForTerminal) break;
+          if (!active(latest) || !waitForTerminal) {
+            if (!active(latest) && stream.isLoading.value) {
+              void stream.disconnect();
+            }
+            break;
+          }
           // 流式通道活跃时持续顺延超时判定，避免长任务或多步图输出过程中误判
           if (stream.isLoading.value) {
             deadline = Date.now() + 30000;
@@ -288,7 +329,9 @@ export function useChatSession(options: {
           }
           const delay = document.hidden
             ? 3000
-            : Math.min(500 * 2 ** attempt++, 4000);
+            : attempt++ === 0
+              ? 150
+              : Math.min(500 * 2 ** (attempt - 2), 4000);
           await new Promise<void>((resolve) => {
             releaseWait = resolve;
             timer = setTimeout(resolve, delay);
@@ -315,9 +358,12 @@ export function useChatSession(options: {
     return p;
   }
 
-  const supportsQueue = ["reference_agent", "showcase_demo"].includes(
-    options.graphId,
-  );
+  const supportsQueue = [
+    "dearflow_agent",
+    "dear_agent",
+    "reference_agent",
+    "showcase_demo",
+  ].includes(options.graphId);
   const receipts = ref<MessageReceipt[]>([]);
   const pendingMessage = ref<{
     payload: {
@@ -473,7 +519,7 @@ export function useChatSession(options: {
     return uploadAttachmentsAsync(targetThreadId, rawContent as unknown[]);
   }
 
-  async function queueMessage(content?: unknown) {
+  async function queueMessage(content?: unknown): Promise<boolean> {
     if (
       !supportsQueue ||
       !canComment.value ||
@@ -483,9 +529,33 @@ export function useChatSession(options: {
       pendingMessage.value?.status === "sending"
     )
       return false;
+
+    // 1. 严格检查活跃 run：只有明确处于 active 态的 run 才能作为追加目标
+    let targetRunId = (run.value && active(run.value))
+      ? run.value.run_id
+      : (actions.current.value?.status === "submitting" ? actions.current.value.runId : undefined);
+
+    // 2. 如果本地缓存未命中但会话指示 busy，向服务端获取处于 running/pending 态的运行
+    if (!targetRunId && busy.value) {
+      try {
+        const list = await service.client.runs.list(threadId.value, { limit: 5 });
+        const runningItem = list?.find((r) => r.status === "running" || r.status === "pending");
+        if (runningItem) {
+          targetRunId = runningItem.run_id;
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // 3. 若根本无 active/running 的运行回合，说明当前会话已空闲或上一轮已完结：
+    //    借鉴 open-swe 理念：不再强行向已结束的 run 队列塞消息，直接无感自愈转为常规 send 发起新回合！
+    if (!targetRunId) {
+      console.info("[session] 没有活跃中的运行回合，将排队消息自愈回退为直接发送");
+      return await send(content);
+    }
+
     if (!pendingMessage.value) {
-      const targetRunId = actions.current.value?.runId ?? run.value?.run_id;
-      if (!busy.value || !targetRunId) return false;
       const messageContent = prepareMessageAttachments(threadId.value, content);
       if (messageContent instanceof Promise) {
         const resolved = await messageContent;
@@ -536,6 +606,23 @@ export function useChatSession(options: {
     } catch (cause) {
       if (disposed) return false;
       if (pendingMessage.value !== pending) return true;
+
+      // 4. 关键自愈机制（对齐 open-swe）：
+      // 若后端返回 409（run_changed 或 thread 不在 running 态），说明上一回合在发送间隙恰好完结！
+      // 此时绝不弹大红框报错，不把消息标记为 rejected，而是清除 pending 并无感自愈转为发起新回合 send()！
+      const is409RunEnded =
+        isAxiosError(cause) &&
+        cause.response?.status === 409;
+
+      if (is409RunEnded) {
+        console.warn("[session] 目标回合已结束(409)，排队消息无感自愈转为新回合发送");
+        pendingMessage.value = null;
+        error.value = "";
+        void verify(true);
+        const fallbackContent = pending.payload.content ?? content;
+        return await send(fallbackContent);
+      }
+
       pending.status =
         isAxiosError(cause) &&
         cause.response &&
@@ -576,7 +663,7 @@ export function useChatSession(options: {
   window.addEventListener("thread-access-updated", accessChanged);
   watch(run, () => void refreshReceipts());
 
-  async function send(content: unknown, recursionLimit = 1000) {
+  async function send(content: unknown, recursionLimit = 1000): Promise<boolean> {
     if (!canSend.value) return false;
     error.value = "";
     checking.value = true;
@@ -624,29 +711,75 @@ export function useChatSession(options: {
         }
       }
       if (disposed || !canComment.value) return false;
+      if (threadId.value && (busy.value || active(run.value) || actions.current.value?.status === "submitting")) {
+        if (supportsQueue) {
+          return await queueMessage(content);
+        }
+        throw new Error("当前回合正在执行中，请等待完成或停止后再发送");
+      }
       const messageContent = await prepareMessageAttachments(threadId.value, content);
       if (disposed || !canComment.value) return false;
       const input = {
         messages: [{ id: crypto.randomUUID(), type: "human", content: messageContent }],
       };
-      const action = actions.begin(threadId.value, "send", input);
-      // The public submit override binds a newly created thread without remounting.
-      const completion = stream.submit(input, {
-        threadId: threadId.value,
-        config: {
-          recursion_limit: recursionLimit,
-          configurable: { platform_runtime: context },
-        },
-      });
-      checking.value = false;
-      await completion;
-      if (stream.error.value) throw stream.error.value;
-      actions.acknowledge(action.key, run.value?.run_id);
-      await verify(true);
-      return actions.current.value?.status === "acknowledged";
-    } catch (cause) {
-      actions.rejectUnsent();
-      fail(cause);
+      let attempts = 0;
+      const maxAttempts = 3;
+      while (attempts < maxAttempts) {
+        attempts++;
+        try {
+          if (stream.error.value) {
+            try {
+              (stream.error as unknown as { value: unknown }).value = null;
+            } catch {
+              // ignore
+            }
+          }
+          const action = actions.begin(threadId.value, "send", input);
+          const completion = stream.submit(input, {
+            threadId: threadId.value,
+            config: {
+              recursion_limit: recursionLimit,
+              configurable: { platform_runtime: context },
+            },
+          });
+          checking.value = false;
+          await completion;
+          if (stream.error.value) throw stream.error.value;
+          actions.acknowledge(action.key, run.value?.run_id);
+          await verify(true);
+          return actions.current.value?.status === "acknowledged";
+        } catch (cause) {
+          actions.rejectUnsent();
+          const raw = cause instanceof Error ? cause.message : String(cause);
+          const is409 = raw.includes("409 Conflict") || raw.includes("pending or running run");
+          if (is409 && attempts < maxAttempts) {
+            console.warn(`[session] 遇到服务端短暂运行冲突 (409)，正在进行第 ${attempts} 次退避重试...`);
+            error.value = "";
+            try {
+              (stream.error as unknown as { value: unknown }).value = null;
+            } catch {
+              // ignore
+            }
+            await new Promise((r) => setTimeout(r, attempts * 350));
+            continue;
+          }
+          if (is409) {
+            console.warn("[session] 多次重试后仍冲突，转为安全排队");
+            error.value = "";
+            try {
+              (stream.error as unknown as { value: unknown }).value = null;
+            } catch {
+              // ignore
+            }
+            if (supportsQueue) {
+              await queueMessage(content);
+              return true;
+            }
+          }
+          fail(cause);
+          return false;
+        }
+      }
       return false;
     } finally {
       if (!disposed) checking.value = false;
@@ -878,6 +1011,7 @@ export function useChatSession(options: {
   });
   return {
     canRead, canComment, canApprove, canEdit, canSetPolicy, canFullAccess,
+    accessLoading,
     supportsQueue,
     receipts,
     pendingMessage,

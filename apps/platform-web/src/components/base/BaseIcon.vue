@@ -47,6 +47,7 @@ type IconName =
   | 'zoom-in'
   | 'zoom-out'
   | 'maximize'
+  | 'minimize'
   | 'rotate-cw'
   | 'rotate-ccw'
   | 'focus'
@@ -128,6 +129,7 @@ const paths = computed(() => {
     'zoom-out': ['M11 5a6 6 0 1 0 0 12a6 6 0 0 0 0-12Z', 'm20 20-3.5-3.5', 'M8.5 11h5'],
     'zoom-in': ['M11 5a6 6 0 1 0 0 12a6 6 0 0 0 0-12Z', 'm20 20-3.5-3.5', 'M11 8.5v5', 'M8.5 11h5'],
     maximize: ['M8 3H5a2 2 0 0 0-2 2v3', 'M16 3h3a2 2 0 0 1 2 2v3', 'M8 21H5a2 2 0 0 1-2-2v-3', 'M16 21h3a2 2 0 0 0 2-2v-3'],
+    minimize: ['M4 14h6v6', 'M20 10h-6V4', 'M14 4v6h6', 'M4 10h6V4', 'M14 20v-6h6'],
     'rotate-cw': ['M21 12a9 9 0 1 1-9-9c2.5 0 4.8 1 6.5 2.7L21 8', 'M21 3v5h-5'],
     'rotate-ccw': ['M3 12a9 9 0 1 0 9-9c-2.5 0-4.8 1-6.5 2.7L3 8', 'M3 3v5h5'],
     focus: ['M12 9a3 3 0 1 0 0 6a3 3 0 0 0 0-6Z', 'M3 7V5a2 2 0 0 1 2-2h2', 'M17 3h2a2 2 0 0 1 2 2v2', 'M21 17v2a2 2 0 0 1-2 2h-2', 'M7 21H5a2 2 0 0 1-2-2v-2'],
