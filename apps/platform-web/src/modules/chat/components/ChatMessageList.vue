@@ -11,6 +11,7 @@ const props = defineProps<{
   messages: readonly BaseMessage[];
   calls: readonly AssembledToolCall[];
   isRunning: boolean;
+  isInterrupted?: boolean;
   canEdit?: boolean;
   metadata?: Record<string, ChatMessageMetadata>;
   editingMessageId?: string;
@@ -36,7 +37,11 @@ const text = (items: MessageItem[]) =>
     )
     .join("\n\n");
 const visibleDisplayMessages = computed(() => {
-  const turns = buildTranscript(props.messages, props.calls, props.isRunning);
+  const turns = buildTranscript(
+    props.messages,
+    props.calls,
+    props.isRunning || Boolean(props.isInterrupted),
+  );
   return turns.flatMap((turn, turnIndex) => {
     const isLastTurn = turnIndex === turns.length - 1;
     const user = turn.user;
@@ -54,42 +59,56 @@ const visibleDisplayMessages = computed(() => {
         isStreaming: false,
       });
     }
-    if (turn.work.length || turn.answer.length) {
+    const hasVisibleAgentOutput =
+      turn.work.some(
+        (item) =>
+          (item.tools?.length ?? 0) > 0 ||
+          item.blocks?.some(
+            (b) =>
+              b.kind === "loading" ||
+              b.kind === "image" ||
+              b.kind === "file" ||
+              b.kind === "unknown" ||
+              ((b.kind === "reasoning" || b.kind === "text") && b.text.trim().length > 0),
+          ),
+      ) ||
+      turn.answer.some((item) =>
+        item.blocks?.some(
+          (b) =>
+            b.kind === "loading" ||
+            b.kind === "image" ||
+            b.kind === "file" ||
+            b.kind === "unknown" ||
+            ((b.kind === "reasoning" || b.kind === "text") && b.text.trim().length > 0),
+        ),
+      );
+    const showPendingPlaceholder =
+      props.isRunning && Boolean(user) && isLastTurn && !hasVisibleAgentOutput;
+    if (turn.work.length || turn.answer.length || showPendingPlaceholder) {
+      const pendingContent = [
+        {
+          key: turn.key + ":pending",
+          role: "ai" as const,
+          blocks: [
+            {
+              key: turn.key + ":pending:loading",
+              kind: "loading" as const,
+              text: "Agent 正在组织答复...",
+            },
+          ],
+          tools: [],
+        },
+      ];
       entries.push({
         id: turn.key + ":agent",
         messageId: turn.answer[turn.answer.length - 1]?.id,
         author: "agent" as const,
         work: turn.work,
-        content: turn.answer,
+        content: showPendingPlaceholder ? pendingContent : turn.answer,
         text: text(turn.answer),
         userId: user?.id,
         userText: user ? text([user]) : "",
         isStreaming: props.isRunning && isLastTurn,
-      });
-    } else if (props.isRunning && user && isLastTurn) {
-      entries.push({
-        id: turn.key + ":agent:loading",
-        messageId: undefined,
-        author: "agent" as const,
-        work: [],
-        content: [
-          {
-            key: turn.key + ":pending",
-            role: "ai",
-            blocks: [
-              {
-                key: turn.key + ":pending:loading",
-                kind: "loading" as const,
-                text: "Agent 正在组织答复...",
-              },
-            ],
-            tools: [],
-          },
-        ],
-        text: "",
-        userId: user.id,
-        userText: text([user]),
-        isStreaming: true,
       });
     }
     return entries;
@@ -103,7 +122,6 @@ const shouldShowLiveStep = computed(() => {
   const lastEntry = turns[turns.length - 1];
 
   if (lastEntry?.author === "user") return true;
-  if (lastEntry?.id?.endsWith(":agent:loading")) return false;
 
   const hasRunningTools = lastEntry?.work?.some((w) =>
     w.tools?.some((t) => t.status === "running")
@@ -118,6 +136,17 @@ const shouldShowLiveStep = computed(() => {
     ),
   );
   if (hasVisibleBlocks) return false;
+
+  const hasVisibleWorkReasoningOrText = lastEntry?.work?.some((item) =>
+    item.blocks?.some(
+      (b) =>
+        b.kind === "loading" ||
+        ((b.kind === "reasoning" || b.kind === "text") && b.text.trim().length > 0),
+    ),
+  );
+  if (hasVisibleWorkReasoningOrText && !lastEntry?.work?.some((w) => (w.tools?.length ?? 0) > 0)) {
+    return false;
+  }
 
   return true;
 });
@@ -138,6 +167,13 @@ function getForkCheckpointId(entry: (typeof visibleDisplayMessages.value)[number
 function handleEditingInput(event: Event) { emit("update:editingMessageValue", (event.target as HTMLTextAreaElement).value); }
 const copyError = ref("");
 const copiedId = ref("");
+const workOpenState = ref<Record<string, boolean>>({});
+function isWorkOpen(entryId: string): boolean {
+  return workOpenState.value[entryId] ?? true;
+}
+function toggleWork(entryId: string) {
+  workOpenState.value[entryId] = !isWorkOpen(entryId);
+}
 let copyTimeout: ReturnType<typeof setTimeout> | null = null;
 async function copy(value: string, id?: string) {
   try {
@@ -166,7 +202,7 @@ async function copy(value: string, id?: string) {
       :key="displayEntry.id"
     >
       <article
-        class="group relative pw-chat-turn transition-all duration-200"
+        class="group relative pw-chat-turn transition-colors duration-200"
         :data-author="displayEntry.author"
         :class="displayEntry.author === 'user' ? 'items-end' : 'items-start'"
       >
@@ -203,10 +239,13 @@ async function copy(value: string, id?: string) {
             <div class="space-y-4">
               <details
                 v-if="displayEntry.work.length"
-                :open="isRunning"
+                :open="isWorkOpen(displayEntry.id)"
                 class="group/work rounded-xl border border-gray-200/70 bg-gray-50/60 p-3 transition-colors dark:border-dark-800 dark:bg-dark-950/40"
               >
-                <summary class="cursor-pointer select-none text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-dark-400 dark:hover:text-dark-200 flex items-center justify-between">
+                <summary
+                  class="cursor-pointer select-none text-xs font-medium text-gray-500 hover:text-gray-800 dark:text-dark-400 dark:hover:text-dark-200 flex items-center justify-between"
+                  @click.prevent="toggleWork(displayEntry.id)"
+                >
                   <span class="flex items-center gap-2">
                     <span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400 text-[10px] font-bold">
                       {{ displayEntry.work.length }}

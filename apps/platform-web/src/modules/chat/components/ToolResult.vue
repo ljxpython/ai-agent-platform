@@ -25,13 +25,16 @@ const isAwaitingReview = computed(() => {
   const interrupts = props.stream?.interrupts?.value;
   if (!Array.isArray(interrupts) || interrupts.length === 0) return false;
   return interrupts.some((int: unknown) => {
-    const val = int && typeof int === "object" && "value" in int ? (int as Record<string, unknown>).value : null;
+    const val = int && typeof int === "object" && "value" in int ? (int as Record<string, unknown>).value : int;
     if (!val || typeof val !== "object") return false;
     const reqs = (val as Record<string, unknown>).action_requests;
     if (Array.isArray(reqs)) {
-      return reqs.some((r) => r && typeof r === "object" && (r as Record<string, unknown>).name === props.tool.name);
+      return (
+        reqs.length === 0 ||
+        reqs.some((r) => r && typeof r === "object" && (r as Record<string, unknown>).name === props.tool.name)
+      );
     }
-    return false;
+    return true;
   });
 });
 

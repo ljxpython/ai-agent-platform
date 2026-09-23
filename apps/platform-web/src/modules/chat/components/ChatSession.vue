@@ -278,6 +278,19 @@ const latestHistoryMessages = computed<BaseMessage[]>(() => {
 });
 const snapshotMessages = shallowRef<BaseMessage[] | null>(null);
 const optimisticUserMessage = shallowRef<BaseMessage | null>(null);
+function hasOptimisticEchoed(list: readonly BaseMessage[], optimistic: BaseMessage | null): boolean {
+  if (!optimistic) return false;
+  if (optimistic.id && list.some((m) => m.id === optimistic.id)) return true;
+  const lastMsg = list[list.length - 1];
+  return Boolean(
+    lastMsg &&
+      lastMsg.type === "human" &&
+      typeof lastMsg.content === "string" &&
+      typeof optimistic.content === "string" &&
+      lastMsg.content.trim() === optimistic.content.trim(),
+  );
+}
+
 const displayedMessages = computed(() => {
   let base = snapshotMessages.value ?? messages.value;
   if (
@@ -288,28 +301,12 @@ const displayedMessages = computed(() => {
     base = latestHistoryMessages.value;
   }
   if (!optimisticUserMessage.value) return base;
-  const hasEchoed = base.some(
-    (m) =>
-      m.id === optimisticUserMessage.value?.id ||
-      (m.type === "human" &&
-        typeof m.content === "string" &&
-        typeof optimisticUserMessage.value?.content === "string" &&
-        m.content.trim() === optimisticUserMessage.value?.content.trim()),
-  );
-  if (hasEchoed) return base;
+  if (hasOptimisticEchoed(base, optimisticUserMessage.value)) return base;
   return [...base, optimisticUserMessage.value];
 });
 watch([messages, busy], ([currentMessages, isBusy]) => {
   if (!optimisticUserMessage.value) return;
-  const hasEchoed = currentMessages.some(
-    (m) =>
-      m.id === optimisticUserMessage.value?.id ||
-      (m.type === "human" &&
-        typeof m.content === "string" &&
-        typeof optimisticUserMessage.value?.content === "string" &&
-        m.content.trim() === optimisticUserMessage.value?.content.trim()),
-  );
-  if (hasEchoed || (!isBusy && !action.value)) {
+  if (hasOptimisticEchoed(currentMessages, optimisticUserMessage.value) || (!isBusy && !action.value)) {
     optimisticUserMessage.value = null;
   }
 });
@@ -491,15 +488,16 @@ watch(
 async function sendQueuedContent(content: unknown) {
   if (!content) return false;
   follow();
+  const messageId = crypto.randomUUID();
   const optimistic = coerceMessageLikeToMessage({
-    id: `optimistic-${Date.now()}`,
+    id: messageId,
     type: "human",
     content: content as any,
   });
   optimisticUserMessage.value = optimistic;
   void nextTick(() => requestSmoothScrollToBottom());
   try {
-    const ok = await session.send(content, recursionLimit.value, { fromQueue: true });
+    const ok = await session.send(content, recursionLimit.value, { fromQueue: true, messageId });
     if (!ok) {
       optimisticUserMessage.value = null;
       return false;
@@ -608,8 +606,9 @@ async function send(queued = false) {
 
   if (selectedCheckpoint.value) {
     const targetCheckpoint = selectedCheckpoint.value.checkpoint;
+    const messageId = crypto.randomUUID();
     optimisticUserMessage.value = coerceMessageLikeToMessage({
-      id: `optimistic-${Date.now()}`,
+      id: messageId,
       type: "human",
       content,
     });
@@ -622,6 +621,7 @@ async function send(queued = false) {
         targetCheckpoint,
         content,
         recursionLimit.value,
+        { messageId },
       );
       if (!ok && session.error.value) {
         throw new Error(session.error.value);
@@ -634,8 +634,9 @@ async function send(queued = false) {
       submittedAttachments = new Set();
     }
   } else {
+    const messageId = crypto.randomUUID();
     optimisticUserMessage.value = coerceMessageLikeToMessage({
-      id: `optimistic-${Date.now()}`,
+      id: messageId,
       type: "human",
       content,
     });
@@ -643,7 +644,7 @@ async function send(queued = false) {
     attachments.value = [];
     void nextTick(() => requestSmoothScrollToBottom());
     try {
-      const ok = await session.send(content, recursionLimit.value);
+      const ok = await session.send(content, recursionLimit.value, { messageId });
       if (!ok) {
         if (disposed) {
           return;
@@ -702,14 +703,15 @@ async function resendQueuedMessage(content: unknown, messageId?: string) {
   if (content === session.pendingMessage.value?.payload.content) {
     session.pendingMessage.value = null;
   }
+  const nextMessageId = crypto.randomUUID();
   optimisticUserMessage.value = coerceMessageLikeToMessage({
-    id: `optimistic-${Date.now()}`,
+    id: nextMessageId,
     type: "human",
     content: content as any,
   });
   void nextTick(() => requestSmoothScrollToBottom());
   try {
-    const ok = await session.send(content, recursionLimit.value);
+    const ok = await session.send(content, recursionLimit.value, { messageId: nextMessageId });
     if (!ok && session.error.value) {
       throw new Error(session.error.value);
     }
@@ -1593,6 +1595,7 @@ defineExpose({
               :messages="displayedMessages"
               :calls="snapshotMessages ? [] : calls"
               :is-running="isSessionRunning && !hasPendingInterrupts"
+              :is-interrupted="hasPendingInterrupts || session.run.value?.status === 'interrupted'"
               :can-edit="canSend && !snapshotMessages"
               :metadata="messageMetadata"
               :target-name="targetName"

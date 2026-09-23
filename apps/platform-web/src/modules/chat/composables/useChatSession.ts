@@ -229,6 +229,7 @@ export function useChatSession(options: {
   const pendingAction = computed(() =>
     ["submitting", "unknown"].includes(actions.current.value?.status ?? ""),
   );
+  const streamInFlight = ref(false);
   const {
     reviews,
     clarifications,
@@ -246,6 +247,7 @@ export function useChatSession(options: {
     canApprove,
     pendingAction,
     isDisposed: () => disposed,
+    streamInFlight,
     stream,
     service,
     actions,
@@ -253,8 +255,15 @@ export function useChatSession(options: {
     fail: (cause: unknown) => fail(cause),
   });
   const busy = computed(() => {
+    const isStaleRun = Boolean(
+      actions.current.value?.runId &&
+        run.value &&
+        run.value.run_id !== actions.current.value.runId,
+    );
     if (
+      !streamInFlight.value &&
       run.value &&
+      !isStaleRun &&
       !active(run.value) &&
       !hasPendingInterrupts.value &&
       actions.current.value?.status !== "submitting"
@@ -263,6 +272,7 @@ export function useChatSession(options: {
     }
     return (
       stream.isLoading.value ||
+      streamInFlight.value ||
       active(run.value) ||
       actions.current.value?.status === "submitting"
     );
@@ -410,6 +420,7 @@ export function useChatSession(options: {
             if (
               !active(latest) &&
               stream.isLoading.value &&
+              !streamInFlight.value &&
               actions.current.value?.status !== "submitting" &&
               (!actionRunId || latest?.run_id === actionRunId)
             ) {
@@ -720,7 +731,7 @@ export function useChatSession(options: {
   async function send(
     content: unknown,
     recursionLimit = 1000,
-    sendOptions?: { fromQueue?: boolean },
+    sendOptions?: { fromQueue?: boolean; messageId?: string },
   ): Promise<boolean> {
     if (!canSend.value) return false;
     error.value = "";
@@ -777,7 +788,7 @@ export function useChatSession(options: {
       }
       const messageContent = await prepareMessageAttachments(threadId.value, content);
       if (disposed || !canComment.value) return false;
-      const inputMessageId = crypto.randomUUID();
+      const inputMessageId = sendOptions?.messageId || crypto.randomUUID();
       const input = {
         messages: [{ id: inputMessageId, type: "human", content: messageContent }],
       };
@@ -801,6 +812,10 @@ export function useChatSession(options: {
             }
           }
           const action = actions.begin(threadId.value, "send", input);
+          streamInFlight.value = true;
+          if (run.value && !active(run.value)) {
+            run.value = null;
+          }
           const completion = stream.submit(input, {
             threadId: threadId.value,
             config: {
@@ -821,6 +836,7 @@ export function useChatSession(options: {
           }
           return actions.current.value?.status === "acknowledged";
         } catch (cause) {
+          streamInFlight.value = false;
           const raw = cause instanceof Error ? cause.message : String(cause);
           const is409 = raw.includes("409 Conflict") || raw.includes("pending or running run");
           if (is409 && attempts < maxAttempts) {
@@ -877,6 +893,7 @@ export function useChatSession(options: {
       }
       return false;
     } finally {
+      streamInFlight.value = false;
       if (!disposed) checking.value = false;
     }
   }
@@ -935,6 +952,7 @@ export function useChatSession(options: {
     checkpoint: Checkpoint,
     content?: unknown,
     recursionLimit = 1000,
+    forkOptions?: { messageId?: string },
   ) {
     if (!canSend.value || !threadId.value || !checkpoint?.checkpoint_id) return false;
     const checkpointId = checkpoint.checkpoint_id;
@@ -960,7 +978,7 @@ export function useChatSession(options: {
 
       const input = hasContent
         ? {
-            messages: [{ id: crypto.randomUUID(), type: "human", content: messageContent }],
+            messages: [{ id: forkOptions?.messageId || crypto.randomUUID(), type: "human", content: messageContent }],
           }
         : null;
 
@@ -969,6 +987,10 @@ export function useChatSession(options: {
         input,
         checkpoint_id: checkpointId,
       });
+      streamInFlight.value = true;
+      if (run.value && !active(run.value)) {
+        run.value = null;
+      }
 
       const completion = stream.submit(input, {
         threadId: threadId.value,
@@ -992,6 +1014,7 @@ export function useChatSession(options: {
       fail(cause);
       return false;
     } finally {
+      streamInFlight.value = false;
       if (!disposed) checking.value = false;
     }
   }

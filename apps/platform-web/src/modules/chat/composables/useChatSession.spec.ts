@@ -779,6 +779,82 @@ it("removes uncommitted HumanMessage from stream.messages on 409 and extends ver
   }
 });
 
+it("keeps busy true throughout subsequent send() stream even when previous run in run.value was terminal", async () => {
+  const isLoading = ref(false);
+  let resolveStream!: () => void;
+  const current = ref<{ key: string; kind: string; runId?: string; status: string } | null>(null);
+  const submitFn = vi.fn().mockImplementation(() => {
+    isLoading.value = true;
+    // Simulate POST /commands returning 200 OK immediately with the new runId
+    current.value = { key: "act-2", kind: "send", runId: "run-turn-2", status: "acknowledged" };
+    return new Promise<void>((resolve) => {
+      resolveStream = () => {
+        isLoading.value = false;
+        resolve();
+      };
+    });
+  });
 
+  mocks.runs.mockResolvedValue([{ run_id: "run-turn-1", status: "success" }]);
+  mocks.run.mockResolvedValue({ run_id: "run-turn-2", status: "success" });
+  mocks.stream.mockReturnValue({
+    isLoading,
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    submit: submitFn,
+    disconnect: vi.fn(),
+  });
+  mocks.actions.mockReturnValue({
+    current,
+    begin: vi.fn((_tid: string, kind: string) => {
+      const action = { key: "act-2", kind, status: "submitting" };
+      current.value = action;
+      return action;
+    }),
+    rejectUnsent: vi.fn(),
+    acknowledge: vi.fn(),
+    dispose: vi.fn(),
+  });
 
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "dearflow_agent",
+      threadId: "t-multi-turn",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    // Turn 1 finished: run.value is run-turn-1 (status: "success"), busy is false
+    expect(session.run.value?.run_id).toBe("run-turn-1");
+    expect(session.busy.value).toBe(false);
+
+    // Start Turn 2: POST /commands acknowledges run-turn-2 while stream is still running
+    const sendPromise = session.send("开始执行工具调用");
+    await flushPromises();
+
+    // Crucial assertion: while Turn 2 is streaming and executing tools, busy MUST remain true
+    // so ChatMessageList never receives isRunning=false and never marks active tools as "incomplete" (未完成/已中止)
+    expect(session.busy.value).toBe(true);
+
+    resolveStream();
+    await sendPromise;
+    await flushPromises();
+
+    expect(session.run.value?.run_id).toBe("run-turn-2");
+    expect(session.busy.value).toBe(false);
+  } finally {
+    scope.stop();
+    mocks.runs.mockReset();
+    mocks.run.mockReset();
+  }
+});
 

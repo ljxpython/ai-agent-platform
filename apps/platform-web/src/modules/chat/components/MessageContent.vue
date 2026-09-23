@@ -65,7 +65,7 @@ function toggleReasoning(key: string) {
       </div>
       <details
         v-else-if="block.kind === 'reasoning'"
-        class="group/reasoning my-1 select-none transition-all duration-200"
+        class="group/reasoning my-1 select-none transition-colors duration-200"
         :open="isReasoningOpen(block.key)"
       >
         <summary
@@ -94,9 +94,13 @@ function toggleReasoning(key: string) {
           </span>
         </summary>
         <div
-          class="mt-2 max-h-96 overflow-y-auto whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50/50 p-3 text-xs text-gray-600 dark:border-dark-800 dark:bg-dark-900/40 dark:text-dark-300 leading-relaxed font-mono select-text transition-all duration-200"
+          class="mt-2 max-h-96 overflow-y-auto whitespace-pre-wrap rounded-lg border border-gray-100 bg-gray-50/50 p-3 text-xs text-gray-600 dark:border-dark-800 dark:bg-dark-900/40 dark:text-dark-300 leading-relaxed font-mono select-text transition-colors duration-200"
         >
-          {{ block.text }}
+          <span>{{ block.text }}</span><span
+            v-if="isReasoningActivelyStreaming()"
+            class="inline-block h-3.5 w-1 translate-y-0.5 animate-pulse bg-blue-500 dark:bg-blue-400 ml-0.5 align-middle rounded-xs"
+            aria-hidden="true"
+          />
         </div>
       </details>
       <details

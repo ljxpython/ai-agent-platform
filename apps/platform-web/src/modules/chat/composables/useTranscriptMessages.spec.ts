@@ -217,3 +217,51 @@ it("drops uncommitted timed-out retry AI messages both during streaming and afte
   }
 });
 
+it("streams follow-up root AI reasoning and text in real time even when thread has prior subagents", () => {
+  const turn1User = new HumanMessage({ id: "u-1", content: "我想学习一下 Go" });
+  const turn1Reply = new AIMessage({ id: "ai-1", content: "Go 学习路线已完成" });
+  const turn2User = new HumanMessage({ id: "u-2", content: "哎，你喜欢什么游戏啊？" });
+  const turn2StreamingAi = new AIMessage({
+    id: "ai-2-streaming",
+    content: [
+      { type: "reasoning", reasoning: "用户问我喜欢什么游戏..." },
+      { type: "text", text: "作为一个 AI，如果非要选的话..." },
+    ],
+  });
+
+  const stream = {
+    messages: shallowRef([turn1User, turn1Reply, turn2User, turn2StreamingAi]),
+    values: shallowRef({ messages: [turn1User, turn1Reply, turn2User] }),
+    isLoading: shallowRef(true),
+    subgraphs: shallowRef(new Map()),
+    subagents: shallowRef(new Map([
+      ["call-sub-1", {
+        id: "call-sub-1",
+        name: "general-purpose",
+        namespace: ["tools:3583a98c-c8e5-c578-6aae-982cf23554dd"],
+      }],
+    ])),
+  };
+
+  const scope = effectScope();
+  try {
+    const rootMessages = scope.run(() => useTranscriptMessages(stream as unknown as AnyStream))!;
+    // Root SSE message-start sets source to [] (empty namespace array)
+    hooks.onEvent({
+      method: "messages",
+      params: { namespace: [], data: { event: "message-start", id: "ai-2-streaming" } },
+    });
+
+    // Must stream live BEFORE the final values event arrives!
+    expect(rootMessages.value.map(m => m.id)).toEqual([
+      "u-1",
+      "ai-1",
+      "u-2",
+      "ai-2-streaming",
+    ]);
+  } finally {
+    scope.stop();
+  }
+});
+
+

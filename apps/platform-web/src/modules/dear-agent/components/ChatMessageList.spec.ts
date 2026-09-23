@@ -69,3 +69,51 @@ it("hides 'Agent 正在处理当前回合' when assistant answer is complete and
     wrapper.unmount();
   }
 });
+
+it("keeps '执行步骤与工具调用' expanded after tool execution completes until user manually collapses it", async () => {
+  const wrapper = mount(ChatMessageList, {
+    props: {
+      messages: [
+        new HumanMessage({ id: "user-1", content: "批准，把剩余的完成吧" }),
+        new AIMessage({
+          id: "agent-step-1",
+          content: "先运行检查",
+          tool_calls: [{ name: "execute", args: { command: "python report.py" }, id: "call-1" }],
+        }),
+        new AIMessage({ id: "agent-final", content: "已修复完成" }),
+      ],
+      calls: [
+        {
+          id: "call-1",
+          name: "execute",
+          args: { command: "python report.py" },
+          status: "completed",
+          result: "ok",
+        } as any,
+      ],
+      isRunning: true,
+    },
+    global: { stubs: { MessageContent: true, ToolResult: true } },
+  });
+
+  try {
+    const details = wrapper.find("details");
+    expect(details.exists()).toBe(true);
+    expect(details.attributes("open")).toBeDefined();
+
+    // 工具调用与回合全部完成后 (isRunning = false)，依然保持展开，不自动折叠
+    await wrapper.setProps({ isRunning: false });
+    expect(details.attributes("open")).toBeDefined();
+
+    // 用户手动点击 summary 后才收起
+    await details.find("summary").trigger("click");
+    expect(details.attributes("open")).toBeUndefined();
+
+    // 用户再次点击可重新展开
+    await details.find("summary").trigger("click");
+    expect(details.attributes("open")).toBeDefined();
+  } finally {
+    wrapper.unmount();
+  }
+});
+

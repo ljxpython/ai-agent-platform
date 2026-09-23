@@ -23,6 +23,7 @@ export function useSessionInterrupts(deps: {
   canApprove: ComputedRef<boolean>;
   pendingAction: ComputedRef<boolean>;
   isDisposed: () => boolean;
+  streamInFlight?: Ref<boolean>;
   stream: {
     interrupts: Ref<
       readonly { id?: string; value?: unknown; ns?: readonly string[] }[] | undefined
@@ -127,12 +128,15 @@ export function useSessionInterrupts(deps: {
       }
       const responses = buildReviewResponses(current, drafts);
       deps.actions.begin(deps.threadId.value, "resume", responses);
+      if (deps.streamInFlight) deps.streamInFlight.value = true;
+      deps.run.value = null;
       await deps.stream.respondAll(responses);
       await deps.verify(true);
     } catch (cause) {
       deps.actions.rejectUnsent();
       deps.fail(cause);
     } finally {
+      if (deps.streamInFlight) deps.streamInFlight.value = false;
       if (!deps.isDisposed()) deps.checking.value = false;
     }
   }
@@ -163,6 +167,8 @@ export function useSessionInterrupts(deps: {
         targetClarification.raw,
       );
       deps.actions.begin(deps.threadId.value, "resume", response);
+      if (deps.streamInFlight) deps.streamInFlight.value = true;
+      deps.run.value = null;
       await deps.stream.respondAll(response);
       await deps.verify(true);
     } catch (cause) {
@@ -170,6 +176,7 @@ export function useSessionInterrupts(deps: {
       deps.actions.rejectUnsent();
       deps.fail(cause);
     } finally {
+      if (deps.streamInFlight) deps.streamInFlight.value = false;
       if (!deps.isDisposed()) deps.checking.value = false;
     }
   }

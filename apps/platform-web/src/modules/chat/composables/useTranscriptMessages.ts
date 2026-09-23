@@ -122,11 +122,13 @@ export function useTranscriptMessages(stream: AnyStream, namespace: readonly str
       // message missing from snapshot is an uncommitted/aborted draft and must be dropped.
       if (!stream.isLoading.value && snapshot.length > 0 && isSameNamespace(source)) return false;
 
-      // 2. Subagent messages (originating from stream.subagents, or tools:/task: namespaces)
+      // 2. Subagent messages (originating from child namespaces in stream.subagents, or child tools:/task: namespaces)
       // MUST NEVER leak into the parent transcript view, whether tool call, tool result, or text.
-      const isFromSubagent = !!source && (
-        subagents.some(sub => sub.length >= source.length && source.every((part, index) => sub[index] === part)) ||
-        source.some(part => part.startsWith("tools:") || part.startsWith("task:"))
+      // Note: root/same-namespace messages have source.length <= namespace.length (e.g. source = []),
+      // and [].every(...) is vacuously true in JS, so we MUST require source.length > namespace.length.
+      const isFromSubagent = !!source && source.length > namespace.length && (
+        subagents.some(sub => sub.length > namespace.length && sub.length >= source.length && source.every((part, index) => sub[index] === part)) ||
+        source.slice(namespace.length).some(part => part.startsWith("tools:") || part.startsWith("task:"))
       );
       if (isFromSubagent) return false;
 

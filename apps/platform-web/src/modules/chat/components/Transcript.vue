@@ -25,10 +25,7 @@ const turns = computed(() =>
 const copyError = ref("");
 const expanded = ref<Record<string, boolean>>({});
 function workOpen(key: string) {
-  return (
-    expanded.value[key] ??
-    (props.running && turns.value[turns.value.length - 1]?.key === key)
-  );
+  return expanded.value[key] ?? true;
 }
 async function copy(text: string) {
   try {
