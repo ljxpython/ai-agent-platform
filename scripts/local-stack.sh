@@ -215,7 +215,7 @@ start_managed_key() {
       ;;
     runtime-worker)
       start_process runtime-worker "$RUNTIME_DIR" \
-        "env PLATFORM_RUNTIME_MESSAGE_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/message-authorization uv run --frozen graphharbor worker --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 1" \
+        "env PLATFORM_RUNTIME_MESSAGE_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/message-authorization uv run --frozen graphharbor worker --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 4" \
         "$LOG_DIR/runtime-worker.log"
       ;;
     platform-api)

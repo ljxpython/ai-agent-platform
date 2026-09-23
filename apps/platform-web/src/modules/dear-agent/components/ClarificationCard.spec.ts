@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mount } from "@vue/test-utils";
-import ClarificationCard from "./ClarificationCard.vue";
+import ClarificationCard from "@/modules/chat/components/ClarificationCard.vue";
 import type { PendingClarification } from "../human-input";
 
 describe("ClarificationCard.vue", () => {

@@ -277,4 +277,51 @@ describe("SDK transcript projection", () => {
     expect(imgItems[2]?.kind).toBe("text");
     expect(imgItems[2]?.text).toBe("请查收。");
   });
+
+  it("distinguishes streaming tool call arguments from active tool execution", () => {
+    const partialAiMsg = new AIMessage({
+      id: "ai-streaming-write",
+      content: "正在撰写最终报告...",
+      tool_calls: [
+        {
+          id: "call-write-1",
+          name: "write_file",
+          args: {
+            path: "/workspace/outputs/report.md",
+            content: "A".repeat(1500),
+          },
+        },
+      ],
+    });
+
+    // 1. AIMessage 尚未包含 finish_reason，视为模型正在流式生成参数
+    const streamingTurns = buildTranscript([partialAiMsg], [], true);
+    const streamingTool = streamingTurns[0]?.work[0]?.tools[0];
+    expect(streamingTool?.status).toBe("running");
+    expect(streamingTool?.streamingInput).toBe(true);
+    expect(streamingTool?.streamingChars).toBe(1500);
+
+    // 2. AIMessage 包含 finish_reason="tool_calls"，说明模型已结束输出，正在执行工具节点
+    const finishedAiMsg = new AIMessage({
+      id: "ai-streaming-write",
+      content: "正在撰写最终报告...",
+      tool_calls: [
+        {
+          id: "call-write-1",
+          name: "write_file",
+          args: {
+            path: "/workspace/outputs/report.md",
+            content: "A".repeat(23140),
+          },
+        },
+      ],
+      response_metadata: { finish_reason: "tool_calls" },
+    });
+    const executingTurns = buildTranscript([finishedAiMsg], [], true);
+    const executingTool = executingTurns[0]?.work[0]?.tools[0];
+    expect(executingTool?.status).toBe("running");
+    expect(executingTool?.streamingInput).toBeUndefined();
+    expect(executingTool?.streamingChars).toBeUndefined();
+  });
 });
+

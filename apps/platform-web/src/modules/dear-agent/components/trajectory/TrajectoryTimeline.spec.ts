@@ -1,6 +1,6 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
-import TrajectoryTimeline from "./TrajectoryTimeline.vue";
+import TrajectoryTimeline from "@/modules/chat/components/trajectory/TrajectoryTimeline.vue";
 import type { TrajectoryRecord } from "../../trajectory/types";
 
 describe("TrajectoryTimeline component", () => {

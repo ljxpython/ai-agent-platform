@@ -1,7 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import type { BaseMessage } from "@langchain/core/messages";
-import TrajectoryView from "./TrajectoryView.vue";
+import TrajectoryView from "@/modules/chat/components/trajectory/TrajectoryView.vue";
 
 describe("TrajectoryView component", () => {
   it("正常渲染空消息下的轨迹视图", () => {

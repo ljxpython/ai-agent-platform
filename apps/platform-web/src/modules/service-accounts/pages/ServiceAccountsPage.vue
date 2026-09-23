@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import BaseButton from '@/components/base/BaseButton.vue'
-import BaseDialog from '@/components/base/BaseDialog.vue'
-import BaseDrawer from '@/components/base/BaseDrawer.vue'
+import ServiceAccountFormDialogs from '../components/ServiceAccountFormDialogs.vue'
+import ServiceAccountDetailDrawer from '../components/ServiceAccountDetailDrawer.vue'
 import ConfirmDialog from '@/components/base/ConfirmDialog.vue'
 import BaseIcon from '@/components/base/BaseIcon.vue'
 import BaseInput from '@/components/base/BaseInput.vue'
@@ -61,7 +61,6 @@ const error = ref('')
 const notice = ref('')
 const query = ref('')
 const statusFilter = ref('all')
-const tokenSearch = ref('')
 const accounts = ref<ManagementServiceAccount[]>([])
 const summary = ref<{
   total_accounts: number
@@ -203,22 +202,6 @@ const paginatedAccounts = computed(() => {
   return filteredAccounts.value.slice(pagination.offset.value, pagination.offset.value + pagination.pageSize.value)
 })
 
-const filteredSelectedTokens = computed<ManagementServiceAccountToken[]>(() => {
-  const account = selectedAccount.value
-  if (!account) {
-    return []
-  }
-
-  const keyword = tokenSearch.value.trim().toLowerCase()
-  if (!keyword) {
-    return account.tokens
-  }
-
-  return account.tokens.filter((token) =>
-    [token.name, token.token_prefix, token.status].join(' ').toLowerCase().includes(keyword)
-  )
-})
-
 watch(
   () => filteredAccounts.value.length,
   (total) => {
@@ -309,7 +292,6 @@ async function loadProjectGrants(accountId: string) {
 
 function openAccountDetail(account: ManagementServiceAccount) {
   selectedAccount.value = account
-  tokenSearch.value = ''
   projectGrantForm.value = { project_id: '', role: 'project_executor' }
   projectGrants.value = []
   projectGrantError.value = ''
@@ -925,311 +907,38 @@ onMounted(() => {
       />
     </div>
 
-    <BaseDialog
-      :show="createDialogOpen"
-      title="新建 Service Account"
-      width="normal"
-      @close="createDialogOpen = false"
-    >
-      <div class="space-y-4">
-        <label class="block space-y-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-dark-100">名称</span>
-          <BaseInput
-            v-model="createForm.name"
-            placeholder="例如 metrics-reader"
-          />
-        </label>
-        <label class="block space-y-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-dark-100">描述</span>
-          <BaseInput
-            v-model="createForm.description"
-            placeholder="说明这个账号给谁用、干什么"
-          />
-        </label>
-        <label class="block space-y-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-dark-100">默认角色</span>
-          <BaseSelect
-            :model-value="createForm.platform_roles[0] || 'platform_viewer'"
-            :options="roleOptions"
-            @update:model-value="(value) => (createForm.platform_roles = [value])"
-          />
-        </label>
-      </div>
+    <ServiceAccountFormDialogs
+      :create-dialog-open="createDialogOpen"
+      :create-form="createForm"
+      :edit-dialog-open="editDialogOpen"
+      :edit-form="editForm"
+      :token-dialog-open="tokenDialogOpen"
+      :token-form="tokenForm"
+      :token-secret="tokenSecret"
+      :selected-account="selectedAccount"
+      :role-options="roleOptions"
+      :submitting="submitting"
+      :saving-account="savingAccount"
+      :can-manage-service-accounts="canManageServiceAccounts"
+      :can-manage-selected-account="canManageAccount(selectedAccount)"
+      @close-create="createDialogOpen = false"
+      @submit-create="submitCreateForm"
+      @close-edit="editDialogOpen = false"
+      @submit-edit="submitEditForm"
+      @close-token="tokenDialogOpen = false"
+      @submit-token="submitTokenForm"
+      @copy-token="copyTokenSecret"
+    />
 
-      <template #footer>
-        <div class="flex gap-3">
-          <BaseButton
-            variant="secondary"
-            @click="createDialogOpen = false"
-          >
-            取消
-          </BaseButton>
-          <BaseButton
-            :disabled="submitting || !createForm.name.trim() || !canManageServiceAccounts"
-            @click="submitCreateForm"
-          >
-            {{ submitting ? '创建中...' : '确认创建' }}
-          </BaseButton>
-        </div>
-      </template>
-    </BaseDialog>
-
-    <BaseDialog
-      :show="editDialogOpen"
-      title="编辑 Service Account"
-      width="normal"
-      @close="editDialogOpen = false"
-    >
-      <div class="space-y-4">
-        <div
-          v-if="selectedAccount"
-          class="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:bg-dark-800/80 dark:text-dark-200"
-        >
-          当前账号：{{ selectedAccount.name }}
-        </div>
-        <label class="block space-y-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-dark-100">描述</span>
-          <BaseInput
-            v-model="editForm.description"
-            placeholder="描述账号用途、归属与责任人"
-          />
-        </label>
-        <label class="block space-y-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-dark-100">平台角色</span>
-          <BaseSelect
-            :model-value="editForm.platform_roles[0] || 'platform_viewer'"
-            :options="roleOptions"
-            @update:model-value="(value) => (editForm.platform_roles = [value])"
-          />
-        </label>
-      </div>
-
-      <template #footer>
-        <div class="flex gap-3">
-          <BaseButton
-            variant="secondary"
-            @click="editDialogOpen = false"
-          >
-            取消
-          </BaseButton>
-          <BaseButton
-            :disabled="savingAccount || !canManageAccount(selectedAccount)"
-            @click="submitEditForm"
-          >
-            {{ savingAccount ? '保存中...' : '确认保存' }}
-          </BaseButton>
-        </div>
-      </template>
-    </BaseDialog>
-
-    <BaseDialog
-      :show="tokenDialogOpen"
-      title="创建 Token"
-      width="normal"
-      @close="tokenDialogOpen = false"
-    >
-      <div class="space-y-4">
-        <div
-          v-if="selectedAccount"
-          class="rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-600 dark:bg-dark-800/80 dark:text-dark-200"
-        >
-          当前账号：{{ selectedAccount.name }}
-        </div>
-        <label class="block space-y-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-dark-100">Token 名称</span>
-          <BaseInput
-            v-model="tokenForm.name"
-            placeholder="例如 default"
-          />
-        </label>
-        <label class="block space-y-2">
-          <span class="text-sm font-medium text-gray-700 dark:text-dark-100">过期天数</span>
-          <BaseInput
-            v-model="tokenForm.expires_in_days"
-            type="number"
-            placeholder="90"
-          />
-        </label>
-
-        <div
-          v-if="tokenSecret"
-          class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 dark:border-emerald-900/40 dark:bg-emerald-950/20"
-        >
-          <div class="text-sm font-semibold text-emerald-700 dark:text-emerald-200">
-            明文 Token 只展示这一次
-          </div>
-          <div class="mt-2 break-all text-sm text-emerald-700 dark:text-emerald-200">
-            {{ tokenSecret }}
-          </div>
-          <div class="mt-3">
-            <BaseButton
-              variant="secondary"
-              @click="copyTokenSecret"
-            >
-              复制 Token
-            </BaseButton>
-          </div>
-        </div>
-      </div>
-
-      <template #footer>
-        <div class="flex gap-3">
-          <BaseButton
-            variant="secondary"
-            @click="tokenDialogOpen = false"
-          >
-            关闭
-          </BaseButton>
-          <BaseButton
-            :disabled="submitting || !tokenForm.name.trim() || !canManageAccount(selectedAccount)"
-            @click="submitTokenForm"
-          >
-            {{ submitting ? '创建中...' : '确认创建' }}
-          </BaseButton>
-        </div>
-      </template>
-    </BaseDialog>
-
-    <BaseDrawer
+    <ServiceAccountDetailDrawer
       :show="detailDrawerOpen"
-      title="Service Account 详情"
-      width="wide"
+      :account="selectedAccount"
+      :can-manage="canManageAccount(selectedAccount)"
       @close="detailDrawerOpen = false"
-    >
-      <div
-        v-if="selectedAccount"
-        class="space-y-5"
-      >
-        <div class="pw-card p-5">
-          <div class="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <div class="flex flex-wrap items-center gap-2">
-                <div class="text-base font-semibold text-gray-900 dark:text-white">
-                  {{ selectedAccount.name }}
-                </div>
-                <span
-                  class="rounded-full px-2.5 py-1 text-xs font-semibold"
-                  :class="selectedAccount.status === 'active'
-                    ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200'
-                    : 'bg-gray-100 text-gray-600 dark:bg-dark-800 dark:text-dark-200'"
-                >
-                  {{ selectedAccount.status }}
-                </span>
-              </div>
-              <div class="mt-3 text-sm text-gray-500 dark:text-dark-300">
-                {{ selectedAccount.description || '暂无描述' }}
-              </div>
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <BaseButton
-                variant="secondary"
-                :disabled="!canManageAccount(selectedAccount)"
-                @click="openEditDialog(selectedAccount)"
-              >
-                编辑
-              </BaseButton>
-              <BaseButton
-                variant="secondary"
-                :disabled="!canManageAccount(selectedAccount)"
-                @click="openTokenDialog(selectedAccount)"
-              >
-                发 Token
-              </BaseButton>
-            </div>
-          </div>
-          <div class="mt-4 grid gap-2 text-sm text-gray-600 dark:text-dark-200">
-            <div>ID: {{ selectedAccount.id }}</div>
-            <div>Created by: {{ selectedAccount.created_by || '--' }}</div>
-            <div>Updated by: {{ selectedAccount.updated_by || '--' }}</div>
-            <div>Created at: {{ formatDateTime(selectedAccount.created_at) }}</div>
-            <div>Updated at: {{ formatDateTime(selectedAccount.updated_at) }}</div>
-            <div>Last used at: {{ formatDateTime(selectedAccount.last_used_at) }}</div>
-          </div>
-        </div>
-
-        <div>
-          <div class="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-            Roles
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <span
-              v-for="role in selectedAccount.platform_roles"
-              :key="role"
-              class="rounded-full bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-700 dark:bg-primary-950/30 dark:text-primary-200"
-            >
-              {{ formatPlatformRoleLabel(role) }}
-            </span>
-          </div>
-        </div>
-
-        <div class="space-y-3">
-          <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div class="text-xs font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
-                Tokens
-              </div>
-              <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                {{ filteredSelectedTokens.length }} / {{ selectedAccount.tokens.length }} 可见
-              </div>
-            </div>
-            <div class="w-full sm:w-[260px]">
-              <BaseInput
-                v-model="tokenSearch"
-                placeholder="搜索 token 名称或前缀"
-              />
-            </div>
-          </div>
-
-          <EmptyState
-            v-if="!selectedAccount.tokens.length"
-            title="该账号暂无 token"
-            description="还没有签发任何 token。"
-            icon="lock"
-            :action-label="canManageAccount(selectedAccount) ? '发 Token' : ''"
-            @action="openTokenDialog(selectedAccount)"
-          />
-
-          <EmptyState
-            v-else-if="!filteredSelectedTokens.length"
-            title="没有匹配的 token"
-            description="换个名称或前缀关键字再试。"
-            icon="search"
-          />
-
-          <template v-else>
-            <article
-              v-for="token in filteredSelectedTokens"
-              :key="token.id"
-              class="pw-card-subtle px-4 py-4"
-            >
-              <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0 flex-1">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-white">
-                    {{ token.name }}
-                  </div>
-                  <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                    {{ token.token_prefix }} · {{ token.status }}
-                  </div>
-                  <div class="mt-3 grid gap-1 text-xs text-gray-500 dark:text-dark-300">
-                    <span>created {{ formatDateTime(token.created_at) }}</span>
-                    <span>expires {{ formatDateTime(token.expires_at) }}</span>
-                    <span>last used {{ formatDateTime(token.last_used_at) }}</span>
-                    <span>revoked {{ formatDateTime(token.revoked_at) }}</span>
-                  </div>
-                </div>
-                <BaseButton
-                  variant="secondary"
-                  :disabled="token.status !== 'active' || !canManageAccount(selectedAccount)"
-                  @click="requestRevokeToken(selectedAccount, token)"
-                >
-                  撤销
-                </BaseButton>
-              </div>
-            </article>
-          </template>
-        </div>
-      </div>
-    </BaseDrawer>
+      @edit="openEditDialog"
+      @create-token="openTokenDialog"
+      @revoke-token="requestRevokeToken"
+    />
 
     <ConfirmDialog
       :show="revokeConfirmOpen"

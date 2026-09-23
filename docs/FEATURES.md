@@ -44,6 +44,7 @@
 | 排队补充消息体验深度美化与超时终态自愈 | 已完成：优雅气泡卡片、正文预览、呼吸感状态、未消费一键作为新消息发送/恢复草稿；终态自动断开僵尸流彻底解决假死 | [变更记录](../apps/platform-web/docs/changes/20260922-queued-messages-ux-and-run-timeout-self-healing.md) |
 | 敏感工具审批中断状态优化与回合处理指示条精准化 | 已完成：工具触发中断时保持执行/等待审批态，杜绝误报“已中止”；助手回答完毕流结束时瞬时隐藏“处理当前回合”指示条，杜绝延迟逗留 | [变更记录](../apps/platform-web/docs/changes/20260923-tool-interrupt-status-and-live-step-refinement.md) |
 | 消息出队与即时提交会话执行态感知优化 | 已完成：综合 isSessionRunning 状态机覆盖出队、提交与乐观消息，0ms 呈现“组织答复”与进度指示条，出队动效与禁用保护 | [变更记录](../apps/platform-web/docs/changes/20260923-queued-message-draining-execution-state.md) |
+| 工具卡片区分「正在生成参数」与「执行中」状态及实时字数反馈 | 已完成：基于末尾 AIMessage finish_reason 精准区分 LLM 流式构造长参数与工具真实执行阶段，实时展示 `正在生成参数 · 已生成 X.Xk 字符` 及 `write_file` 流式正文预览 | [变更记录](../apps/platform-web/docs/changes/20260923-tool-streaming-input-vs-execution-state.md) |
 
 
 

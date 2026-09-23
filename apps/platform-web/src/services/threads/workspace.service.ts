@@ -1,4 +1,8 @@
 import { platformHttpClient } from '@/services/http/client';
+import {
+  unwrapPlatformHttpError,
+  type PlatformUnwrappedHttpError,
+} from '@/utils/http-error';
 import type {
   ArtifactRef,
   PreviewKind,
@@ -16,53 +20,10 @@ export interface WorkspacePreviewResult {
   downloadOnly?: boolean;
 }
 
-export interface WorkspaceServiceError extends Error {
-  code?: string;
-  requestId?: string;
-  status?: number;
-}
+export type WorkspaceServiceError = PlatformUnwrappedHttpError;
 
 export async function unwrapWorkspaceError(err: unknown): Promise<WorkspaceServiceError> {
-  if (err && typeof err === 'object') {
-    const maybeAxios = err as {
-      response?: {
-        data?: unknown;
-        status?: number;
-      };
-      message?: string;
-    };
-    const response = maybeAxios.response;
-    if (response) {
-      const status = response.status;
-      if (response.data instanceof Blob) {
-        try {
-          const text = await response.data.text();
-          const json = JSON.parse(text);
-          if (json && typeof json === 'object') {
-            const errObj = (json as Record<string, unknown>).error as Record<string, unknown> | undefined;
-            const message = (errObj?.message as string) || (json as Record<string, unknown>).message || maybeAxios.message || '请求失败';
-            const customErr = new Error(String(message)) as WorkspaceServiceError;
-            customErr.code = (errObj?.code as string) || undefined;
-            customErr.requestId = ((json as Record<string, unknown>).request_id as string) || undefined;
-            customErr.status = status;
-            return customErr;
-          }
-        } catch {
-          // 非 JSON blob，降级回退
-        }
-      } else if (response.data && typeof response.data === 'object') {
-        const json = response.data as Record<string, unknown>;
-        const errObj = json.error as Record<string, unknown> | undefined;
-        const message = (errObj?.message as string) || (json.message as string) || maybeAxios.message || '请求失败';
-        const customErr = new Error(String(message)) as WorkspaceServiceError;
-        customErr.code = (errObj?.code as string) || undefined;
-        customErr.requestId = (json.request_id as string) || undefined;
-        customErr.status = status;
-        return customErr;
-      }
-    }
-  }
-  return (err instanceof Error ? err : new Error(String(err))) as WorkspaceServiceError;
+  return unwrapPlatformHttpError(err, '请求失败');
 }
 
 export async function getWorkspaceCapabilities(

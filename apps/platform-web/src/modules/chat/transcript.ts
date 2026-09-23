@@ -50,11 +50,14 @@ export type ContentItem = {
 export type ToolItem = {
   key: string;
   id: string;
+  callId?: string;
   name: string;
   input: unknown;
   output: unknown;
   artifact?: unknown;
   status: "running" | "finished" | "error" | "incomplete";
+  streamingInput?: boolean;
+  streamingChars?: number;
   error?: string;
 };
 export type MessageItem = {
@@ -419,39 +422,77 @@ export function buildTranscript(
     return err.includes("Interrupt(") || err.includes("GraphInterrupt");
   }
 
-  function tool(id: string, name: string, input: unknown): ToolItem {
+  function measureInputChars(inputVal: unknown): number {
+    if (typeof inputVal === "string") return inputVal.length;
+    if (inputVal && typeof inputVal === "object") {
+      const obj = inputVal as Record<string, unknown>;
+      if (typeof obj.content === "string") return obj.content.length;
+      if (typeof obj.new_string === "string") return obj.new_string.length;
+      try {
+        return JSON.stringify(inputVal).length;
+      } catch {
+        return 0;
+      }
+    }
+    return 0;
+  }
+
+  function tool(
+    id: string,
+    name: string,
+    input: unknown,
+    isStreamingMessage = false,
+  ): ToolItem {
     shown.add(id);
     const call = callMap.get(id);
     const result = results.get(id);
     const resolvedName = call?.name ?? name;
     const isClarification = resolvedName === "request_information";
+
+    const resultObj = asObject(result);
+    const hasResult = Boolean(result);
+    const resultIsError = hasResult && resultObj.status === "error";
     const isInterrupt = isInterruptError(call?.error);
     let rawError = call?.error;
     if (isInterrupt) {
       rawError = undefined;
     }
 
-    let status =
-      call?.status ??
-      (result
-        ? asObject(result).status === "error"
-          ? "error"
-          : "finished"
-        : "running");
-    if (isClarification || isInterrupt) {
+    let status: "running" | "finished" | "error" | "incomplete";
+    if (hasResult) {
+      status = resultIsError ? "error" : "finished";
+    } else if (rawError) {
+      status = "error";
+    } else if (call?.status && call.status !== "error") {
+      status = call.status;
+    } else if (isClarification || isInterrupt) {
       status = "running";
+    } else {
+      status = call?.status ?? "running";
     }
 
     const isPending = isClarification || isInterrupt;
+    const finalStatus =
+      status === "running" && !running && !isPending ? "incomplete" : status;
+    const resolvedInput = call?.input ?? input;
+    const streamingInput =
+      isStreamingMessage && finalStatus === "running" && !hasResult && !isPending;
 
     return {
       key: `${prefix}:tool:${id}`,
       id,
+      callId: id,
       name: resolvedName,
-      input: call?.input ?? input,
+      input: resolvedInput,
       output: call?.output ?? result?.content,
-      artifact: asObject(result).artifact,
-      status: status === "running" && !running && !isPending ? "incomplete" : status,
+      artifact: resultObj.artifact,
+      status: finalStatus,
+      ...(streamingInput
+        ? {
+            streamingInput: true,
+            streamingChars: measureInputChars(resolvedInput),
+          }
+        : {}),
       error: rawError,
     };
   }
@@ -490,14 +531,32 @@ export function buildTranscript(
       blocks: parsedBlocks,
       tools: [],
     };
-    const requested = asObject(message).tool_calls;
+    const msgObj = asObject(message);
+    const respMeta = asObject(msgObj.response_metadata);
+    const hasFinishMarker = Boolean(
+      respMeta.finish_reason ||
+      respMeta.stop_reason ||
+      msgObj.usage_metadata,
+    );
+    const hasToolCallChunks =
+      (Array.isArray(msgObj.tool_call_chunks) && msgObj.tool_call_chunks.length > 0) ||
+      (Array.isArray(msgObj.contentBlocks) &&
+        msgObj.contentBlocks.some((b) => asObject(b).type === "tool_call_chunk"));
+    const isStreamingMessage =
+      running &&
+      index === messages.length - 1 &&
+      !hasFinishMarker &&
+      (hasToolCallChunks || Object.keys(respMeta).length === 0);
+    const requested = msgObj.tool_calls;
     if (Array.isArray(requested))
       for (const [callIndex, raw] of requested.entries()) {
         const call = asObject(raw);
         const id =
           typeof call.id === "string" ? call.id : `${key}:call-${callIndex}`;
         if (!shown.has(id))
-          item.tools.push(tool(id, String(call.name ?? "未知工具"), call.args));
+          item.tools.push(
+            tool(id, String(call.name ?? "未知工具"), call.args, isStreamingMessage),
+          );
       }
     if (message.type === "tool") {
       const id = asObject(message).tool_call_id;

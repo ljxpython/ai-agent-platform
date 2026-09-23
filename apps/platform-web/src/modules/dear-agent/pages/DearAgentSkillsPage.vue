@@ -17,13 +17,11 @@ import {
   type DearSkillsCapabilities,
   type DearSkillsLimits,
 } from "@/services/dear-agent/skills.service";
-import { renderMarkdown } from "@/utils/markdown";
-import { copyText } from "@/utils/clipboard";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
-import BaseDialog from "@/components/base/BaseDialog.vue";
-import BaseDrawer from "@/components/base/BaseDrawer.vue";
 import ConfirmDialog from "@/components/base/ConfirmDialog.vue";
+import SkillDetailDrawer from "../components/SkillDetailDrawer.vue";
+import SkillUploadModals from "../components/SkillUploadModals.vue";
 
 const { activeProject, activeProjectId } = useWorkspaceProjectContext();
 const { can } = useAuthorization();
@@ -185,7 +183,6 @@ async function handleToggleSkill(skill: CustomSkillItem, nextEnabled: boolean) {
 async function openDetailDrawer(skill: SkillItem) {
   if (!activeProjectId.value) return;
   isDrawerOpen.value = true;
-  isSidebarCollapsed.value = false;
   drawerLoading.value = true;
   drawerSkill.value = null;
   selectedPath.value = "";
@@ -255,93 +252,6 @@ async function loadFileContent(path: string, retryOnConflict = true) {
     contentError.value = err.response?.data?.message || err.message || "读取文件内容失败";
   } finally {
     contentLoading.value = false;
-  }
-}
-
-// 判断当前文件是否为 Markdown
-function isMarkdown(path: string): boolean {
-  return path.toLowerCase().endsWith(".md");
-}
-
-// 格式化文件大小
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  return `${(bytes / 1024).toFixed(1)} KiB`;
-}
-
-// 当前选中的文件清单元数据
-const selectedFileItem = computed(() => {
-  return drawerSkill.value?.manifest?.find((m) => m.path === selectedPath.value);
-});
-
-// 抽屉侧边栏宽度与折叠状态
-const isSidebarCollapsed = ref(false);
-const sidebarWidth = ref(240);
-const isResizing = ref(false);
-
-function toggleSidebar() {
-  isSidebarCollapsed.value = !isSidebarCollapsed.value;
-}
-
-function startResize(event: MouseEvent) {
-  event.preventDefault();
-  isResizing.value = true;
-  const startX = event.clientX;
-  const startWidth = sidebarWidth.value;
-
-  const onMouseMove = (e: MouseEvent) => {
-    const deltaX = e.clientX - startX;
-    const nextWidth = Math.min(420, Math.max(160, startWidth + deltaX));
-    sidebarWidth.value = nextWidth;
-  };
-
-  const onMouseUp = () => {
-    isResizing.value = false;
-    window.removeEventListener("mousemove", onMouseMove);
-    window.removeEventListener("mouseup", onMouseUp);
-    document.body.style.removeProperty("cursor");
-    document.body.style.removeProperty("user-select");
-  };
-
-  document.body.style.cursor = "col-resize";
-  document.body.style.userSelect = "none";
-  window.addEventListener("mousemove", onMouseMove);
-  window.addEventListener("mouseup", onMouseUp);
-}
-
-onScopeDispose(() => {
-  document.body.style.removeProperty("cursor");
-  document.body.style.removeProperty("user-select");
-});
-
-// 复制文件正文
-async function copyFileContent() {
-  if (!selectedContent.value) return;
-  const ok = await copyText(selectedContent.value);
-  if (ok) {
-    copySuccess.value = true;
-    setTimeout(() => {
-      copySuccess.value = false;
-    }, 2500);
-  }
-}
-
-// Markdown 内部代码块一键复制事件代理
-async function handleMarkdownCopyClick(event: MouseEvent) {
-  const target = event.target as HTMLElement | null;
-  const copyButton = target?.closest("[data-copy-code]") as HTMLButtonElement | null;
-  if (!copyButton) return;
-
-  const codeElement = copyButton.closest(".pw-markdown-code")?.querySelector("code");
-  const code = codeElement?.textContent || "";
-  if (!code) return;
-
-  const success = await copyText(code);
-  if (success) {
-    copyButton.textContent = "已复制";
-    window.setTimeout(() => {
-      copyButton.textContent = "复制";
-    }, 1600);
   }
 }
 
@@ -991,310 +901,39 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 详情抽屉 (BaseDrawer) -->
-    <BaseDrawer
+    <!-- 详情抽屉 -->
+    <SkillDetailDrawer
       :show="isDrawerOpen"
-      :title="drawerSkill?.name || '技能详情与文件预览'"
-      width="2xl"
-      flush
+      :loading="drawerLoading"
+      :skill="drawerSkill"
+      :selected-path="selectedPath"
+      :selected-content="selectedContent"
+      :content-loading="contentLoading"
+      :content-error="contentError"
       @close="isDrawerOpen = false"
-    >
-      <div v-if="drawerLoading" class="flex h-full items-center justify-center p-12 text-xs text-zinc-500">
-        正在载入技能文件清单...
-      </div>
+      @select-file="loadFileContent"
+    />
 
-      <div v-else-if="drawerSkill" class="flex flex-col h-full overflow-hidden">
-        <!-- 抽屉头部 Hero Banner -->
-        <div class="shrink-0 border-b border-zinc-200 bg-zinc-50/80 px-5 py-3 dark:border-zinc-800 dark:bg-zinc-900/60">
-          <div class="flex items-center justify-between gap-4">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="text-xs text-zinc-400 font-mono shrink-0">slug:</span>
-              <span class="rounded bg-zinc-200/60 px-1.5 py-0.5 font-mono text-xs font-semibold text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200 truncate">
-                {{ drawerSkill.slug }}
-              </span>
-            </div>
-            <span
-              :class="[
-                'shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-wide',
-                drawerSkill.source === 'public'
-                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300'
-                  : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'
-              ]"
-            >
-              {{ drawerSkill.source === 'public' ? '平台公共技能' : '用户自定义' }}
-            </span>
-          </div>
-          <p v-if="drawerSkill.description" class="mt-1 text-xs text-zinc-600 dark:text-zinc-400 leading-relaxed line-clamp-2">
-            {{ drawerSkill.description }}
-          </p>
-        </div>
-
-        <!-- 左右分栏主体容器 -->
-        <div class="flex flex-1 min-h-0 overflow-hidden relative">
-          <!-- 左侧文件导航树 (支持伸缩与一键折叠) -->
-          <div
-            v-show="!isSidebarCollapsed"
-            :style="{ width: sidebarWidth + 'px' }"
-            class="flex flex-col shrink-0 border-r border-zinc-200 bg-zinc-50/30 dark:border-zinc-800 dark:bg-zinc-900/20 overflow-hidden select-none"
-          >
-            <!-- 树标题与一键收起按钮 -->
-            <div class="flex items-center justify-between border-b border-zinc-200/60 px-3.5 py-2.5 dark:border-zinc-800/60 shrink-0">
-              <div class="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-                文件清单 ({{ drawerSkill.manifest?.length || 0 }})
-              </div>
-              <button
-                type="button"
-                @click="toggleSidebar"
-                class="rounded p-1 text-zinc-400 hover:bg-zinc-200/60 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition"
-                title="收起文件清单"
-              >
-                <BaseIcon name="collapse" size="xs" class="shrink-0" />
-              </button>
-            </div>
-
-            <!-- 文件列表 -->
-            <div class="flex-1 overflow-y-auto p-2 space-y-0.5">
-              <button
-                v-for="file in drawerSkill.manifest || []"
-                :key="file.path"
-                type="button"
-                @click="loadFileContent(file.path)"
-                :class="[
-                  'group flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-left text-xs transition-colors',
-                  selectedPath === file.path
-                    ? 'bg-primary-50 font-medium text-primary-700 dark:bg-primary-950/50 dark:text-primary-300'
-                    : 'text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800/60'
-                ]"
-              >
-                <div class="flex items-center gap-2 min-w-0 pr-1">
-                  <BaseIcon
-                    :name="file.readable ? 'file' : 'shield'"
-                    size="xs"
-                    :class="[
-                      'shrink-0',
-                      file.readable ? 'text-zinc-400 group-hover:text-zinc-600' : 'text-amber-500'
-                    ]"
-                  />
-                  <span class="truncate text-xs" :title="file.path">{{ file.path }}</span>
-                </div>
-                <span class="font-mono text-[10px] text-zinc-400 shrink-0 ml-1">
-                  {{ formatFileSize(file.size) }}
-                </span>
-              </button>
-            </div>
-          </div>
-
-          <!-- 拖拽分割条 (Splitter Handle) -->
-          <div
-            v-show="!isSidebarCollapsed"
-            @mousedown="startResize"
-            class="group relative w-1 cursor-col-resize select-none bg-zinc-200/70 hover:bg-primary-500/80 active:bg-primary-600 dark:bg-zinc-800 transition-colors shrink-0 z-10"
-            title="拖动调整文件清单宽度"
-          >
-            <!-- 扩大鼠标捕获响应区 -->
-            <div class="absolute inset-y-0 -left-1 -right-1 z-10" />
-          </div>
-
-          <!-- 右侧正文预览区 -->
-          <div class="flex-1 flex flex-col min-w-0 overflow-hidden bg-white dark:bg-zinc-900">
-            <!-- 正文顶部工具栏 (Header) -->
-            <div class="flex items-center justify-between border-b border-zinc-200 px-4 py-2 text-xs dark:border-zinc-800 shrink-0 bg-white dark:bg-zinc-900">
-              <div class="flex items-center gap-2 min-w-0 mr-3">
-                <!-- 当侧边栏收起时显示的展开按钮 -->
-                <button
-                  v-if="isSidebarCollapsed"
-                  type="button"
-                  @click="toggleSidebar"
-                  class="rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 transition shrink-0"
-                  title="展开文件清单"
-                >
-                  <BaseIcon name="expand" size="xs" class="shrink-0" />
-                </button>
-
-                <BaseIcon name="file" size="xs" class="text-zinc-400 shrink-0" />
-                <span class="font-mono font-medium text-zinc-700 dark:text-zinc-200 truncate" :title="selectedPath">
-                  {{ selectedPath || '未选择文件' }}
-                </span>
-                <span v-if="selectedFileItem" class="font-mono text-[10px] text-zinc-400 shrink-0">
-                  ({{ formatFileSize(selectedFileItem.size) }})
-                </span>
-              </div>
-
-              <!-- 复制按钮 (禁止折行，紧凑型) -->
-              <BaseButton
-                v-if="selectedContent"
-                variant="secondary"
-                size="xs"
-                @click="copyFileContent"
-                class="shrink-0 whitespace-nowrap px-2.5 py-1 text-xs"
-              >
-                <template #icon>
-                  <BaseIcon :name="copySuccess ? 'check' : 'copy'" size="xs" class="shrink-0 mr-1" />
-                </template>
-                <span class="whitespace-nowrap">{{ copySuccess ? '已复制' : '复制内容' }}</span>
-              </BaseButton>
-            </div>
-
-            <!-- 正文滚动容器 -->
-            <div class="flex-1 min-h-0 overflow-y-auto px-6 py-5">
-              <div v-if="contentLoading" class="py-12 text-center text-xs text-zinc-500">
-                正在载入文件正文...
-              </div>
-
-              <!-- 不可读或加载异常提示 -->
-              <div
-                v-else-if="contentError"
-                class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-300"
-              >
-                <div class="flex items-center gap-2 font-medium">
-                  <BaseIcon name="alert" size="xs" class="shrink-0" />
-                  <span>无法预览此文件</span>
-                </div>
-                <p class="mt-1 text-[11px] leading-relaxed">
-                  {{ contentError }}
-                </p>
-              </div>
-
-              <!-- Markdown 渲染 (支持 .pw-markdown 样式体系与代码复制委托) -->
-              <div
-                v-else-if="isMarkdown(selectedPath) && selectedContent"
-                class="pw-markdown prose prose-sm max-w-none text-zinc-800 dark:prose-invert dark:text-zinc-200"
-                @click="handleMarkdownCopyClick"
-                v-html="renderMarkdown(selectedContent)"
-              />
-
-              <!-- 代码/普通文本渲染 -->
-              <div
-                v-else-if="selectedContent"
-                class="pw-markdown-code not-prose my-0 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-950"
-              >
-                <div class="pw-markdown-code-header flex items-center justify-between border-b border-zinc-800/80 px-4 py-2 text-[11px] font-mono text-zinc-400">
-                  <span>{{ selectedPath.split('.').pop() || 'text' }}</span>
-                  <button
-                    type="button"
-                    class="pw-markdown-copy rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[11px] text-zinc-300 hover:bg-white/10 hover:text-white transition"
-                    @click="copyFileContent"
-                  >
-                    {{ copySuccess ? '已复制' : '复制' }}
-                  </button>
-                </div>
-                <pre class="m-0 overflow-x-auto p-4 font-mono text-xs leading-relaxed text-zinc-200"><code>{{ selectedContent }}</code></pre>
-              </div>
-
-              <div v-else class="py-12 text-center text-xs text-zinc-400">
-                请从左侧选择要查看的文件
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </BaseDrawer>
-
-    <!-- 导入新技能弹窗 -->
-    <BaseDialog
-      :show="isUploadModalOpen"
-      title="导入自定义技能 (ZIP)"
-      width="normal"
-      @close="isUploadModalOpen = false"
-    >
-      <div class="space-y-3">
-        <div class="rounded-xl bg-zinc-50 p-3 text-xs text-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-400 space-y-1">
-          <div class="font-medium text-zinc-900 dark:text-zinc-200">技能包规范：</div>
-          <div>• 根目录必须包含 <code>SKILL.md</code> 并附带合法 YAML frontmatter (name & description)</div>
-          <div>• 仅支持 <code>.zip</code> 格式，大小 ≤ 1 MiB，展开文件数 ≤ 100</div>
-          <div>• 上传成功后将默认启用，并在下一次新任务执行中生效</div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300">选择 .zip 文件</label>
-          <input
-            type="file"
-            accept=".zip"
-            @change="handleFileChange"
-            class="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-          />
-        </div>
-
-        <div v-if="fileError" class="text-xs text-rose-600 dark:text-rose-400">
-          {{ fileError }}
-        </div>
-
-        <!-- 同名冲突直接转更新提示 -->
-        <div
-          v-if="conflictSlug"
-          class="flex items-center justify-between rounded-lg bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-        >
-          <span>同名技能已存在，是否直接覆盖更新？</span>
-          <BaseButton variant="secondary" size="xs" @click="handleSwitchToUpdate">
-            转为覆盖更新
-          </BaseButton>
-        </div>
-      </div>
-
-      <template #footer>
-        <div class="flex items-center justify-end gap-2">
-          <BaseButton variant="secondary" size="sm" @click="isUploadModalOpen = false">
-            取消
-          </BaseButton>
-          <BaseButton
-            variant="primary"
-            size="sm"
-            :disabled="!selectedFile"
-            :loading="isUploading"
-            @click="handleUpload"
-          >
-            确认导入
-          </BaseButton>
-        </div>
-      </template>
-    </BaseDialog>
-
-    <!-- 显式覆盖更新弹窗 -->
-    <BaseDialog
-      :show="isUpdateModalOpen"
-      :title="`更新技能包: ${updateTargetSkill?.name || updateTargetSkill?.slug}`"
-      width="normal"
-      @close="isUpdateModalOpen = false"
-    >
-      <div class="space-y-3">
-        <div class="rounded-xl bg-zinc-50 p-3 text-xs text-zinc-600 dark:bg-zinc-800/50 dark:text-zinc-400 space-y-1">
-          <div class="font-medium text-zinc-900 dark:text-zinc-200">覆盖更新说明：</div>
-          <div>• 包内 <code>SKILL.md</code> 中的 name 必须与当前技能 slug (<code>{{ updateTargetSkill?.slug }}</code>) 完全一致</div>
-          <div>• 覆盖后保留原技能的启用/停用状态；新内容将在下一次新任务中生效</div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300">选择新 .zip 文件</label>
-          <input
-            type="file"
-            accept=".zip"
-            @change="handleUpdateFileChange"
-            class="mt-1.5 w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-          />
-        </div>
-
-        <div v-if="updateFileError" class="text-xs text-rose-600 dark:text-rose-400">
-          {{ updateFileError }}
-        </div>
-      </div>
-
-      <template #footer>
-        <div class="flex items-center justify-end gap-2">
-          <BaseButton variant="secondary" size="sm" @click="isUpdateModalOpen = false">
-            取消
-          </BaseButton>
-          <BaseButton
-            variant="primary"
-            size="sm"
-            :disabled="!updateSelectedFile"
-            :loading="isUpdating"
-            @click="handleUpdateSkill"
-          >
-            确认更新
-          </BaseButton>
-        </div>
-      </template>
-    </BaseDialog>
+    <!-- 导入与覆盖更新弹窗 -->
+    <SkillUploadModals
+      :is-upload-modal-open="isUploadModalOpen"
+      :selected-file="selectedFile"
+      :file-error="fileError"
+      :conflict-slug="conflictSlug"
+      :is-uploading="isUploading"
+      :is-update-modal-open="isUpdateModalOpen"
+      :update-target-skill="updateTargetSkill"
+      :update-selected-file="updateSelectedFile"
+      :update-file-error="updateFileError"
+      :is-updating="isUpdating"
+      @close-upload="isUploadModalOpen = false"
+      @file-change="handleFileChange"
+      @switch-to-update="handleSwitchToUpdate"
+      @upload="handleUpload"
+      @close-update="isUpdateModalOpen = false"
+      @update-file-change="handleUpdateFileChange"
+      @update-skill="handleUpdateSkill"
+    />
 
     <!-- 删除危险操作确认弹窗 -->
     <ConfirmDialog

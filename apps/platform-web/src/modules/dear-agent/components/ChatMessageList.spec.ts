@@ -1,7 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import { expect, it } from "vitest";
-import ChatMessageList from "./ChatMessageList.vue";
+import ChatMessageList from "@/modules/chat/components/ChatMessageList.vue";
 
 it("renders branch button and emits fork with messageId and optional checkpointId", async () => {
   const wrapper = mount(ChatMessageList, {

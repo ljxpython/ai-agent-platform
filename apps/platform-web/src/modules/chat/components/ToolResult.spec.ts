@@ -220,4 +220,50 @@ describe("ToolResult.vue", () => {
     expect(renderedImages.length).toBe(1);
     expect(renderedImages[0].attributes("data-path")).toBe(imagePath);
   });
+
+  it("renders '正在生成参数 · 已生成 1.5k 字符' during streamingInput and switches to '执行中' when executing", async () => {
+    const streamingTool: ToolItem = {
+      key: "write-tool-1",
+      id: "call-write-1",
+      name: "write_file",
+      input: {
+        path: "/workspace/outputs/report.md",
+        content: "# 综合报告\n" + "内容段落".repeat(380),
+      },
+      status: "running",
+      streamingInput: true,
+      streamingChars: 1526,
+    };
+
+    const wrapper = mount(ToolResult, {
+      props: { tool: streamingTool },
+      global: {
+        stubs: {
+          SubagentCard: true,
+          BaseIcon: true,
+          MessageContent: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("write_file");
+    expect(wrapper.text()).toContain("report.md");
+    expect(wrapper.text()).toContain("正在生成参数 · 已生成 1.5k 字符");
+
+    // 展开后应显示正在流式生成写入内容预览
+    await wrapper.find("button").trigger("click");
+    expect(wrapper.text()).toContain("正在流式生成写入内容");
+
+    // 切换为工具执行阶段（streamingInput: false）
+    await wrapper.setProps({
+      tool: {
+        ...streamingTool,
+        streamingInput: false,
+        streamingChars: undefined,
+      },
+    });
+    expect(wrapper.text()).toContain("执行中");
+    expect(wrapper.text()).not.toContain("正在生成参数");
+  });
 });
+

@@ -22,7 +22,7 @@ import BaseIcon from "@/components/base/BaseIcon.vue";
 import EmptyState from "@/components/platform/EmptyState.vue";
 import WorkspaceProjectSwitcher from "@/components/platform/WorkspaceProjectSwitcher.vue";
 import UserMenu from "@/components/layout/UserMenu.vue";
-import DearAgentSession from "../components/DearAgentSession.vue";
+import DearAgentSession from "@/modules/chat/components/ChatSession.vue";
 import DearAgentThreadSidebar from "../components/DearAgentThreadSidebar.vue";
 import { buildChatThreadListView, type ChatThreadStatusFilter } from "../thread-list-view-model";
 import { formatThreadTime } from "@/utils/threads";

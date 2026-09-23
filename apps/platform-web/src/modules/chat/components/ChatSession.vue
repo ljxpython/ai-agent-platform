@@ -63,6 +63,7 @@ const props = defineProps<{
   targetName?: string;
   projectName?: string;
   threadTitle?: string;
+  enableExecutionMode?: boolean;
 }>();
 const emit = defineEmits<{
   thread: [id: string];
@@ -143,6 +144,7 @@ const streamError = computed(() => {
 const canSubmit = computed(
   () =>
     canSend.value &&
+    !hasPendingInterrupts.value &&
     !modelsLoading.value && !!models.value.length &&
     !attachmentsLoading.value &&
     (!!props.draft.trim() || !!attachments.value.length),
@@ -152,20 +154,48 @@ const modelsLoading = ref(true);
 const defaultModelName = ref("");
 const optionsOpen = ref(false);
 const optionsError = ref("");
+type ExecutionMode = "flash" | "standard" | "pro" | "ultra";
+const showExecutionMode = computed(
+  () =>
+    props.enableExecutionMode ??
+    ["dear_agent", "dearflow_agent"].includes(props.graphId),
+);
 const initialContext = { ...context.value };
-const draftRunOptions = reactive({ modelId: "", temperature: "", maxTokens: "", recursionLimit: "1000" });
+const draftRunOptions = reactive<{
+  modelId: string;
+  temperature: string;
+  maxTokens: string;
+  recursionLimit: string;
+  executionMode: ExecutionMode;
+}>({
+  modelId: "",
+  temperature: "",
+  maxTokens: "",
+  recursionLimit: "1000",
+  executionMode: (context.value.execution_mode as ExecutionMode) ?? "standard",
+});
+const currentExecutionMode = computed<ExecutionMode>(
+  () => (context.value.execution_mode as ExecutionMode) ?? "standard",
+);
+const isModeLocked = computed(
+  () => busy.value || hasPendingInterrupts.value || checking.value,
+);
 function resetOptions(value: AgentContext) {
   Object.assign(draftRunOptions, {
     modelId: value.model_id ?? "",
     temperature: value.temperature?.toString() ?? "",
     maxTokens: value.max_tokens?.toString() ?? "",
     recursionLimit: recursionLimit.value.toString(),
+    executionMode: (value.execution_mode as ExecutionMode) ?? "standard",
   });
   optionsError.value = "";
 }
 function openOptions() { resetOptions(context.value); optionsOpen.value = true; }
 function applyOptions() {
   try {
+    const nextMode = isModeLocked.value
+      ? ((context.value.execution_mode as ExecutionMode) ?? "standard")
+      : (draftRunOptions.executionMode || "standard");
     if (draftRunOptions.recursionLimit.trim()) {
       const limitNum = Number(draftRunOptions.recursionLimit);
       if (!Number.isInteger(limitNum) || limitNum < 1 || limitNum > 1000) {
@@ -174,9 +204,13 @@ function applyOptions() {
       }
       recursionLimit.value = limitNum;
     }
-    const updated = parseAgentContext({ ...context.value, model_id: draftRunOptions.modelId || undefined,
+    const updated = parseAgentContext({
+      ...context.value,
+      model_id: draftRunOptions.modelId || undefined,
       temperature: draftRunOptions.temperature.trim() ? Number(draftRunOptions.temperature) : undefined,
-      max_tokens: draftRunOptions.maxTokens.trim() ? Number(draftRunOptions.maxTokens) : undefined });
+      max_tokens: draftRunOptions.maxTokens.trim() ? Number(draftRunOptions.maxTokens) : undefined,
+      ...(showExecutionMode.value ? { execution_mode: nextMode } : {}),
+    });
     context.value = updated;
     optionsOpen.value = false;
   } catch (cause) { optionsError.value = cause instanceof Error ? cause.message : "运行参数无效"; }
@@ -1297,6 +1331,40 @@ defineExpose({
             </button>
           </div>
           <button
+            v-if="showExecutionMode"
+            type="button"
+            class="inline-flex h-7 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 text-xs font-medium transition-all shadow-2xs"
+            :class="[
+              currentExecutionMode === 'ultra'
+                ? 'border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-800/80 dark:bg-purple-950/40 dark:text-purple-300'
+                : currentExecutionMode === 'pro'
+                  ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800/80 dark:bg-blue-950/40 dark:text-blue-300'
+                  : currentExecutionMode === 'flash'
+                    ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-300'
+                    : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200'
+            ]"
+            title="点击切换执行模式与参数"
+            @click="openOptions"
+          >
+            <span
+              class="inline-block h-1.5 w-1.5 rounded-full"
+              :class="[
+                currentExecutionMode === 'ultra' ? 'bg-purple-500' :
+                currentExecutionMode === 'pro' ? 'bg-blue-500' :
+                currentExecutionMode === 'flash' ? 'bg-amber-500' : 'bg-emerald-500'
+              ]"
+            />
+            <span class="font-semibold uppercase tracking-wider text-[10px]">
+              {{ currentExecutionMode }}
+            </span>
+            <span
+              v-if="currentExecutionMode === 'pro' || currentExecutionMode === 'ultra'"
+              class="text-[10px] opacity-75 font-mono"
+            >
+              100步
+            </span>
+          </button>
+          <button
             type="button"
             class="relative inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
             :class="showWorkspace ? 'border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400' : ''"
@@ -1489,6 +1557,7 @@ defineExpose({
             <div
               v-if="clarifications.length"
               class="space-y-3"
+              data-testid="clarification-container"
             >
               <ClarificationCard
                 v-for="clarification in clarifications"
@@ -1660,8 +1729,11 @@ defineExpose({
       :show="optionsOpen"
       :draft-run-options="draftRunOptions"
       :runtime-models="models"
+      :show-execution-mode="showExecutionMode"
+      :mode-disabled="isModeLocked"
       :error="optionsError"
       @close="optionsOpen = false"
+      @update:execution-mode="draftRunOptions.executionMode = $event"
       @update:model-id="draftRunOptions.modelId = $event"
       @update:temperature="draftRunOptions.temperature = $event"
       @update:max-tokens="draftRunOptions.maxTokens = $event"

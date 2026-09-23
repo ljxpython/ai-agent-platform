@@ -33,28 +33,8 @@ import {
   type MessageReceipt,
 } from "@/services/threads/messages.service";
 import { createRunActions } from "../run-actions";
-import {
-  buildReviewResponses,
-  parseReviews,
-  type ReviewDraft,
-} from "../approvals";
-import {
-  buildClarificationResponse,
-  filterActiveClarifications,
-  parseClarifications,
-} from "../human-input";
-import {
-  calculateFileSha256 as calculateImageSha256,
-  uploadThreadImage,
-} from "@/services/threads/images.service";
-import {
-  calculateFileSha256,
-  uploadThreadFile,
-} from "@/services/threads/files.service";
-import {
-  createRuntimeFileTextBlock,
-  createRuntimeImageTextBlock,
-} from "@/utils/chat-content";
+import { createSessionAttachmentUploader } from "./useSessionAttachmentUpload";
+import { useSessionInterrupts } from "./useSessionInterrupts";
 
 const active = (run: Run | null) =>
   run != null && ["pending", "running"].includes(run.status);
@@ -208,49 +188,32 @@ export function useChatSession(options: {
       }
     },
   });
-  const resolvedClarificationIds = ref<Set<string>>(new Set());
-  const isInterruptAllowed = computed(() => {
-    if (threadId.value && (!hydrated.value || !verified.value)) return false;
-    if (run.value != null && run.value.status !== "interrupted") return false;
-    return true;
-  });
-  watch(
-    () => stream.interrupts.value?.length ?? 0,
-    (len, prevLen) => {
-      if (len > 0 && len !== prevLen && run.value?.status !== "interrupted" && !checking.value && threadId.value) {
-        void verify(false);
-      }
-    },
-  );
-  const rawInterrupts = computed(() => stream.interrupts.value);
-  const reviews = computed(() => {
-    if (!isInterruptAllowed.value) return [];
-    return parseReviews(rawInterrupts.value);
-  });
-  const rawClarifications = computed(() =>
-    parseClarifications(rawInterrupts.value),
-  );
-  const clarifications = computed(() => {
-    if (!isInterruptAllowed.value) return [];
-    const rawMessages =
-      Array.isArray((stream.values?.value as { messages?: unknown })?.messages)
-        ? ((stream.values?.value as { messages?: unknown }).messages as readonly unknown[])
-        : (stream.messages?.value ?? []);
-    if (threadId.value && (!hydrated.value || (checking.value && !run.value)) && rawMessages.length === 0) {
-      return [];
-    }
-    return filterActiveClarifications(
-      rawClarifications.value,
-      rawMessages,
-      resolvedClarificationIds.value,
-    );
-  });
-  const hasPendingInterrupts = computed(
-    () => reviews.value.length > 0 || clarifications.value.length > 0,
-  );
   const pendingAction = computed(() =>
     ["submitting", "unknown"].includes(actions.current.value?.status ?? ""),
   );
+  const {
+    reviews,
+    clarifications,
+    hasPendingInterrupts,
+    approve,
+    answerClarification,
+    resumeClarification,
+  } = useSessionInterrupts({
+    threadId,
+    hydrated,
+    verified,
+    checking,
+    error,
+    run,
+    canApprove,
+    pendingAction,
+    isDisposed: () => disposed,
+    stream,
+    service,
+    actions,
+    verify: (force?: boolean) => verify(force),
+    fail: (cause: unknown) => fail(cause),
+  });
   const busy = computed(() => {
     if (
       run.value &&
@@ -548,76 +511,9 @@ export function useChatSession(options: {
       receiptTimer = setTimeout(() => void refreshReceipts(false), 3000);
   }
 
-  function hasAttachmentsToUpload(rawContent: unknown): boolean {
-    if (!Array.isArray(rawContent)) return false;
-    return rawContent.some(
-      (item) =>
-        item &&
-        typeof item === "object" &&
-        ["image", "file"].includes((item as Record<string, unknown>).type as string) &&
-        (item as Record<string, unknown>).file instanceof Blob,
-    );
-  }
-
-  async function uploadAttachmentsAsync(
-    targetThreadId: string,
-    rawContent: unknown[],
-  ): Promise<unknown> {
-    const prepared = await Promise.all(
-      rawContent.map(async (item) => {
-        if (!item || typeof item !== "object") return item;
-        const block = item as Record<string, unknown>;
-        if (block.type === "image" && block.file instanceof Blob) {
-          const file = block.file;
-          const metadata = (block.metadata || {}) as Record<string, unknown>;
-          const filename =
-            typeof metadata.name === "string"
-              ? metadata.name
-              : typeof metadata.filename === "string"
-                ? metadata.filename
-                : "image.png";
-          const sha256 = await calculateImageSha256(file);
-          const ref = await uploadThreadImage(
-            options.projectId,
-            targetThreadId,
-            sha256,
-            file,
-          );
-          return createRuntimeImageTextBlock(filename, ref);
-        }
-        if (block.type === "file" && block.file instanceof Blob) {
-          const file = block.file as File;
-          const metadata = (block.metadata || {}) as Record<string, unknown>;
-          const filename =
-            typeof metadata.name === "string"
-              ? metadata.name
-              : typeof metadata.filename === "string"
-                ? metadata.filename
-                : file.name || "document";
-          const sha256 = await calculateFileSha256(file);
-          const ref = await uploadThreadFile(
-            options.projectId,
-            targetThreadId,
-            sha256,
-            file,
-          );
-          return createRuntimeFileTextBlock(filename, ref);
-        }
-        return item;
-      }),
-    );
-    return prepared;
-  }
-
-  function prepareMessageAttachments(
-    targetThreadId: string,
-    rawContent: unknown,
-  ): unknown | Promise<unknown> {
-    if (!hasAttachmentsToUpload(rawContent)) {
-      return rawContent;
-    }
-    return uploadAttachmentsAsync(targetThreadId, rawContent as unknown[]);
-  }
+  const prepareMessageAttachments = createSessionAttachmentUploader(
+    options.projectId,
+  );
 
   async function queueMessage(
     content?: unknown,
@@ -931,83 +827,6 @@ export function useChatSession(options: {
     }
   }
 
-  async function approve(drafts: Record<string, ReviewDraft[]>) {
-    if (
-      !canApprove.value ||
-      checking.value ||
-      pendingAction.value ||
-      !threadId.value
-    )
-      return;
-    const before = reviews.value;
-    checking.value = true;
-    error.value = "";
-    try {
-      const state = await service.state(threadId.value);
-      if (disposed || !canApprove.value) return;
-      const current = parseReviews(state.interrupts ?? []);
-      if (
-        current.length !== before.length ||
-        before.some(
-          (review) =>
-            !current.some(
-              (item) =>
-                item.id === review.id &&
-                item.fingerprint === review.fingerprint,
-            ),
-        )
-      ) {
-        throw new Error("审批请求已变化，请恢复连接后重新确认");
-      }
-      const responses = buildReviewResponses(current, drafts);
-      actions.begin(threadId.value, "resume", responses);
-      await stream.respondAll(responses);
-      await verify(true);
-    } catch (cause) {
-      actions.rejectUnsent();
-      fail(cause);
-    } finally {
-      if (!disposed) checking.value = false;
-    }
-  }
-
-  async function answerClarification(
-    interruptId: string,
-    values: Record<string, unknown>,
-  ) {
-    if (
-      !canApprove.value ||
-      checking.value ||
-      pendingAction.value ||
-      !threadId.value
-    )
-      return;
-    const targetClarification = clarifications.value.find(
-      (c) => c.id === interruptId,
-    );
-    if (!targetClarification) return;
-    resolvedClarificationIds.value.add(interruptId);
-    checking.value = true;
-    error.value = "";
-    try {
-      const response = buildClarificationResponse(
-        targetClarification.id,
-        values,
-        targetClarification.request.schema_version,
-        targetClarification.raw,
-      );
-      actions.begin(threadId.value, "resume", response);
-      await stream.respondAll(response);
-      await verify(true);
-    } catch (cause) {
-      resolvedClarificationIds.value.delete(interruptId);
-      actions.rejectUnsent();
-      fail(cause);
-    } finally {
-      if (!disposed) checking.value = false;
-    }
-  }
-
   async function stop() {
     if (
       !canEdit.value ||
@@ -1196,6 +1015,7 @@ export function useChatSession(options: {
     send,
     approve,
     answerClarification,
+    resumeClarification,
     stop,
     retry,
     fork,

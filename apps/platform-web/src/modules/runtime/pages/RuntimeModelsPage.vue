@@ -2,7 +2,7 @@
 import { computed, onScopeDispose, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import BaseButton from "@/components/base/BaseButton.vue";
-import BaseDialog from "@/components/base/BaseDialog.vue";
+import RuntimeDeleteDialogs from "../components/RuntimeDeleteDialogs.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import PageHeader from "@/components/layout/PageHeader.vue";
 import PaginationBar from "@/components/platform/PaginationBar.vue";
@@ -978,108 +978,14 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
       @close="detailModel = null"
       @edit="edit($event)"
     />
-    <BaseDialog
-      :show="deleteDialogState.open"
-      title="删除模型"
-      width="narrow"
-      @close="deleteDialogState.open = false"
-    >
-      <div class="space-y-3 text-sm text-gray-600 dark:text-dark-300">
-        <p>
-          确定要删除模型
-          <strong class="font-mono text-gray-900 dark:text-white">
-            {{ deleteDialogState.model?.display_name || deleteDialogState.model?.model }}
-          </strong>
-          吗？
-        </p>
-        <p class="text-xs text-rose-600 dark:text-rose-400">
-          ⚠️ 此操作将永久移除该模型配置。若有正在使用该模型的任务或 Agent，可能会导致调用失败。
-        </p>
-      </div>
-      <template #footer>
-        <div class="flex justify-end gap-3">
-          <BaseButton
-            variant="secondary"
-            :disabled="deleteDialogState.busy"
-            @click="deleteDialogState.open = false"
-          >
-            取消
-          </BaseButton>
-          <BaseButton
-            variant="danger"
-            :disabled="deleteDialogState.busy"
-            @click="handleDeleteModel"
-          >
-            {{ deleteDialogState.busy ? "正在删除…" : "确认删除" }}
-          </BaseButton>
-        </div>
-      </template>
-    </BaseDialog>
-    <BaseDialog
-      :show="deleteStationDialogState.open"
-      :title="`删除提供商「${deleteStationDialogState.station?.name || ''}」`"
-      width="normal"
-      @close="closeDeleteStationDialog"
-    >
-      <div class="space-y-3 text-sm text-gray-600 dark:text-dark-300">
-        <p>
-          确定要删除提供商
-          <strong class="font-semibold text-gray-900 dark:text-white">
-            {{ deleteStationDialogState.station?.name }}
-          </strong>
-          <span class="font-mono text-xs text-gray-500">
-            ({{ deleteStationDialogState.station?.provider }})
-          </span>
-          及其包含的全部
-          <strong class="text-rose-600 dark:text-rose-400">
-            {{ deleteStationDialogState.station?.models.length || 0 }} 个模型配置
-          </strong>
-          吗？
-        </p>
-        <div
-          v-if="deleteStationDialogState.station?.models.length"
-          class="max-h-36 overflow-y-auto rounded-lg border border-gray-100 bg-gray-50 p-2 text-xs font-mono dark:border-dark-800 dark:bg-dark-900"
-        >
-          <div
-            v-for="m in deleteStationDialogState.station.models"
-            :key="m.id"
-            class="flex items-center justify-between py-1 border-b border-gray-100 last:border-0 dark:border-dark-800"
-          >
-            <span class="truncate text-gray-800 dark:text-dark-200">
-              {{ m.display_name || m.model }}
-            </span>
-            <span class="text-gray-400 dark:text-dark-500 text-[11px] ml-2 shrink-0">
-              {{ m.model }}
-            </span>
-          </div>
-        </div>
-        <p class="text-xs text-rose-600 dark:text-rose-400">
-          ⚠️ 此操作将永久移除该提供商下的所有模型接入及凭据。若有智能体正绑定这些模型，可能会导致调用失败。
-        </p>
-      </div>
-      <template #footer>
-        <div class="flex justify-end gap-3">
-          <BaseButton
-            variant="secondary"
-            :disabled="deleteStationDialogState.busy"
-            @click="deleteStationDialogState.open = false"
-          >
-            取消
-          </BaseButton>
-          <BaseButton
-            variant="danger"
-            :disabled="deleteStationDialogState.busy"
-            @click="handleDeleteStation"
-          >
-            {{
-              deleteStationDialogState.busy
-                ? "正在删除…"
-                : `确认删除 (${deleteStationDialogState.station?.models.length || 0} 个模型)`
-            }}
-          </BaseButton>
-        </div>
-      </template>
-    </BaseDialog>
+    <RuntimeDeleteDialogs
+      :delete-dialog-state="deleteDialogState"
+      :delete-station-dialog-state="deleteStationDialogState"
+      @close-delete-model="deleteDialogState.open = false"
+      @confirm-delete-model="handleDeleteModel"
+      @close-delete-station="closeDeleteStationDialog"
+      @confirm-delete-station="handleDeleteStation"
+    />
     <ToolRestrictionsPanel
       :show="toolRestrictionsOpen"
       :project-id="activeProjectId"

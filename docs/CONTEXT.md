@@ -5,10 +5,11 @@
 
 ## 最后更新
 
-2026-09-23 | platform-web 修复切回会话界面时历史需求澄清卡片闪现及消息队列 409 抢跑排空无回复缺陷，单元测试与类型检查全绿
+2026-09-23 | platform-web 全面完成前端代码冗余清理与结构化重构（4 个子专题全部 `done`：双生会话模块合并、useChatSession 拆解、三大超长控制面页面拆分、HTTP 错误解包收敛），净减 11,760 行重复代码；`pnpm build`（vue-tsc + vite build）与 Vitest 88 套单测（355 用例）100% 通过，本地运行恢复正常
 
 ## 活跃项目
 
+- [前端代码冗余清理与结构化重构](projects/20260923-platform-web-codebase-refactor/README.md)：✅ 已完成（子专题 01~04 全部 `done`，净减 11,760 行代码，`pnpm build` 与 88 套单测全绿）
 - [跨服务规范治理](projects/20260922-cross-service-governance/README.md)：🔴 规划中（待人工评审）
 - [全平台权限治理](projects/20260920-platform-access-governance/README.md)：技术实现与自动化 Final done，用户人工验收中；完整手工用例、证据模板和清理清单见 08。仅项目内个人记忆入口治理；共享/跨项目记忆、自定义角色等 deferred。未提交或生产部署。
 
@@ -16,9 +17,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-09-22 | 按用户批准恢复本机/示例 audience 配置，API/Worker 重启及真实审批通过；业务代码未改 |
+| runtime-service | 2026-09-23 | 将 `dearflow_agent` 的 `ModelCallTimeoutMiddleware` 单步推理超时从 `120s` 提升至 `240s`，并将 `scripts/local-stack.sh` 中 `runtime-worker` 的 `--n-jobs-per-worker` 从 `1` 提升至 `4`，消除多会话并发阻塞与长文流式截断 |
 | platform-api | 2026-09-22 | BYOK 双层模型架构 Phase 2 落地；0004 迁移、双层模型 RBAC、私有模型自主 CRUD/注销与网关代理安全打通，测试全绿 |
-| platform-web | 2026-09-23 | 修复 acknowledge 旧 runId 覆盖、切回界面历史澄清卡片闪现、后台活跃 run 轮询与前端队列 409 抢跑排空重复气泡问题；测试与 vue-tsc 0 报错 |
+| platform-web | 2026-09-23 | 完成全仓结构化重构（净减 11,760 行重复代码）；优化工具卡片状态机区分 LLM「正在生成参数 · 已生成 X.Xk 字符」与「执行中」阶段并支持 `write_file` 流式预览 |
 | interaction-data-service | — | — |
 | AI Harness（AGENTS.md + Skills） | 2026-09-21 | 今日完成全面优化，详见 docs/changes/20260921-harness-optimization.md |
 

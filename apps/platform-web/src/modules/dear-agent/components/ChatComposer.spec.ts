@@ -5,7 +5,7 @@ vi.mock("vue-i18n", () => ({
   useI18n: () => ({ t: (k: string) => k }),
 }));
 
-import ChatComposer from "./ChatComposer.vue";
+import ChatComposer from "@/modules/chat/components/ChatComposer.vue";
 
 type ComposerProps = InstanceType<typeof ChatComposer>["$props"];
 
