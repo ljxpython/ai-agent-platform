@@ -80,7 +80,12 @@ import { useChatSession } from "../composables/useChatSession";
 import { useChatAttachments } from "../composables/useChatAttachments";
 import { useTranscriptMessages } from "../composables/useTranscriptMessages";
 import { asObject, buildTranscript, contentItems, readable, type ToolItem } from "../transcript";
-import { isChatViewportNearBottom } from "../scroll-state";
+import {
+  computeDynamicBottomSpacerHeight,
+  computeStreamingFollowScrollTop,
+  computeTurnAnchorScrollTop,
+  isChatViewportNearContentBottom,
+} from "../scroll-state";
 import ChatComposer from "./ChatComposer.vue";
 import ChatMessageList from "./ChatMessageList.vue";
 import ApprovalPanel from "./ApprovalPanel.vue";
@@ -144,7 +149,13 @@ const session = useChatSession({
   onRefresh: () => emit("refresh"),
   onReconnect: () => emit("reconnect"),
   onAccepted: () => {
-    optimisticUserMessage.value = null;
+    if (
+      optimisticUserMessage.value &&
+      (hasOptimisticEchoed(messages.value, optimisticUserMessage.value) ||
+        hasOptimisticEchoed(latestHistoryMessages.value, optimisticUserMessage.value))
+    ) {
+      optimisticUserMessage.value = null;
+    }
     if (props.draft === submittedDraft) emit("update:draft", "");
     attachments.value = attachments.value.filter(
       (item) => !submittedAttachments.has(item),
@@ -278,38 +289,56 @@ const latestHistoryMessages = computed<BaseMessage[]>(() => {
 });
 const snapshotMessages = shallowRef<BaseMessage[] | null>(null);
 const optimisticUserMessage = shallowRef<BaseMessage | null>(null);
+const hasConversationStarted = ref(Boolean(props.threadId));
+
 function hasOptimisticEchoed(list: readonly BaseMessage[], optimistic: BaseMessage | null): boolean {
   if (!optimistic) return false;
   if (optimistic.id && list.some((m) => m.id === optimistic.id)) return true;
-  const lastMsg = list[list.length - 1];
-  return Boolean(
-    lastMsg &&
-      lastMsg.type === "human" &&
-      typeof lastMsg.content === "string" &&
-      typeof optimistic.content === "string" &&
-      lastMsg.content.trim() === optimistic.content.trim(),
+  const optText = typeof optimistic.content === "string" ? optimistic.content.trim() : "";
+  if (!optText) return false;
+  return list.some(
+    (m) =>
+      m.type === "human" &&
+      typeof m.content === "string" &&
+      m.content.trim() === optText,
   );
 }
 
 const displayedMessages = computed(() => {
   let base = snapshotMessages.value ?? messages.value;
-  if (
-    !snapshotMessages.value &&
-    !stream.isLoading.value &&
-    latestHistoryMessages.value.length > base.length
-  ) {
-    base = latestHistoryMessages.value;
+  if (!snapshotMessages.value && latestHistoryMessages.value.length > 0) {
+    if (base.length === 0) {
+      base = latestHistoryMessages.value;
+    } else if (latestHistoryMessages.value.length > base.length) {
+      const baseIds = new Set(base.map((m) => m.id).filter(Boolean));
+      const missingPrefix = latestHistoryMessages.value.filter(
+        (m) => m.id && !baseIds.has(m.id),
+      );
+      if (missingPrefix.length > 0) {
+        base = [...missingPrefix, ...base];
+      }
+    }
   }
   if (!optimisticUserMessage.value) return base;
   if (hasOptimisticEchoed(base, optimisticUserMessage.value)) return base;
   return [...base, optimisticUserMessage.value];
 });
-watch([messages, busy], ([currentMessages, isBusy]) => {
-  if (!optimisticUserMessage.value) return;
-  if (hasOptimisticEchoed(currentMessages, optimisticUserMessage.value) || (!isBusy && !action.value)) {
-    optimisticUserMessage.value = null;
-  }
-});
+
+watch(
+  [messages, latestHistoryMessages],
+  ([currentMessages, historyMsgs]) => {
+    if (currentMessages.length > 0 || historyMsgs.length > 0) {
+      hasConversationStarted.value = true;
+    }
+    if (!optimisticUserMessage.value) return;
+    if (
+      hasOptimisticEchoed(currentMessages, optimisticUserMessage.value) ||
+      hasOptimisticEchoed(historyMsgs, optimisticUserMessage.value)
+    ) {
+      optimisticUserMessage.value = null;
+    }
+  },
+);
 const branchPath = ref("");
 const branchContext = computed(() => getChatBranchContext(branchPath.value, history.value));
 const messageMetadata = computed(() => buildChatMessageMetadata(displayedMessages.value as unknown as Message[], history.value, branchContext.value));
@@ -487,7 +516,6 @@ watch(
 
 async function sendQueuedContent(content: unknown) {
   if (!content) return false;
-  follow();
   const messageId = crypto.randomUUID();
   const optimistic = coerceMessageLikeToMessage({
     id: messageId,
@@ -495,7 +523,7 @@ async function sendQueuedContent(content: unknown) {
     content: content as any,
   });
   optimisticUserMessage.value = optimistic;
-  void nextTick(() => requestSmoothScrollToBottom());
+  void anchorLatestUserTurn(true);
   try {
     const ok = await session.send(content, recursionLimit.value, { fromQueue: true, messageId });
     if (!ok) {
@@ -602,8 +630,6 @@ async function send(queued = false) {
     ? [{ type: "text", text: props.draft }, ...attachments.value]
     : props.draft;
 
-  follow();
-
   if (selectedCheckpoint.value) {
     const targetCheckpoint = selectedCheckpoint.value.checkpoint;
     const messageId = crypto.randomUUID();
@@ -615,7 +641,7 @@ async function send(queued = false) {
     emit("update:draft", "");
     attachments.value = [];
     selectSnapshot("");
-    void nextTick(() => requestSmoothScrollToBottom());
+    void anchorLatestUserTurn(true);
     try {
       const ok = await session.fork(
         targetCheckpoint,
@@ -642,7 +668,7 @@ async function send(queued = false) {
     });
     emit("update:draft", "");
     attachments.value = [];
-    void nextTick(() => requestSmoothScrollToBottom());
+    void anchorLatestUserTurn(true);
     try {
       const ok = await session.send(content, recursionLimit.value, { messageId });
       if (!ok) {
@@ -709,7 +735,7 @@ async function resendQueuedMessage(content: unknown, messageId?: string) {
     type: "human",
     content: content as any,
   });
-  void nextTick(() => requestSmoothScrollToBottom());
+  void anchorLatestUserTurn(true);
   try {
     const ok = await session.send(content, recursionLimit.value, { messageId: nextMessageId });
     if (!ok && session.error.value) {
@@ -721,54 +747,241 @@ async function resendQueuedMessage(content: unknown, messageId?: string) {
 }
 
 const viewport = ref<HTMLElement | null>(null);
+const contentEndSentinel = ref<HTMLElement | null>(null);
+const bottomSpacerHeightPx = ref(0);
+const userScrolledUp = ref(false);
 const following = ref(true);
 const unreadMessageCount = ref(0);
 const bufferedStreamActivity = ref(false);
 const lastEventAt = ref("");
+let scrollRafId: number | null = null;
+let programmaticScrollUntil = 0;
+let lastKnownScrollTop = 0;
+
+function isHumanLikeMessage(m: unknown): boolean {
+  if (!m || typeof m !== "object") return false;
+  const raw = m as { type?: string; role?: string };
+  return raw.type === "human" || raw.role === "user" || raw.role === "human";
+}
+
+const turnCount = computed(() =>
+  displayedMessages.value.filter(isHumanLikeMessage).length,
+);
+
 const liveFollowView = computed(() => buildChatLiveFollowView({
   autoFollowEnabled: following.value && !drawerOpen.value && !optionsOpen.value && !inspector.value,
   isRunning: busy.value, unreadMessageCount: unreadMessageCount.value, bufferedStreamActivity: bufferedStreamActivity.value,
 }));
-let scrollRafId: number | null = null;
-function requestSmoothScrollToBottom() {
-  if (!following.value || drawerOpen.value || optionsOpen.value || inspector.value || snapshotMessages.value) return;
+
+function getOffsetTopWithinViewport(el: HTMLElement, vp: HTMLElement): number {
+  const elRect = el.getBoundingClientRect();
+  const vpRect = vp.getBoundingClientRect();
+  if (vpRect.height > 0 || elRect.height > 0) {
+    return Math.round(elRect.top - vpRect.top + vp.scrollTop);
+  }
+  return el.offsetTop;
+}
+
+function syncBottomSpacerHeight(): {
+  lastUserOffsetTop: number;
+  contentBottomOffsetTop: number;
+} {
+  const vp = viewport.value;
+  if (!vp || turnCount.value <= 0) {
+    bottomSpacerHeightPx.value = 0;
+    return { lastUserOffsetTop: 0, contentBottomOffsetTop: 0 };
+  }
+  const lastUserEl = vp.querySelector<HTMLElement>(
+    'article[data-is-last-user="true"], article[data-author="user"]:last-of-type',
+  );
+  const sentinelEl = contentEndSentinel.value;
+  const lastUserOffsetTop = lastUserEl
+    ? getOffsetTopWithinViewport(lastUserEl, vp)
+    : 0;
+  const contentBottomOffsetTop = sentinelEl
+    ? getOffsetTopWithinViewport(sentinelEl, vp)
+    : Math.max(0, vp.scrollHeight - bottomSpacerHeightPx.value);
+  const latestTurnHeightPx = Math.max(
+    0,
+    contentBottomOffsetTop - lastUserOffsetTop,
+  );
+  bottomSpacerHeightPx.value = computeDynamicBottomSpacerHeight({
+    turnCount: turnCount.value,
+    viewportClientHeight: vp.clientHeight,
+    latestTurnHeightPx,
+  });
+  return { lastUserOffsetTop, contentBottomOffsetTop };
+}
+
+let lastAnchoredTurnCount = 0;
+
+async function anchorLatestUserTurn(smooth = true) {
+  hasConversationStarted.value = true;
+  if (drawerOpen.value || optionsOpen.value || inspector.value || snapshotMessages.value) return;
+  userScrolledUp.value = false;
+  following.value = true;
+  unreadMessageCount.value = 0;
+  bufferedStreamActivity.value = false;
+  const currentTurns = turnCount.value;
+  lastAnchoredTurnCount = currentTurns;
+  // 同步预置底部留白垫片高度，与 optimisticUserMessage 在同一个 Vue DOM patch 帧内生效，杜绝分帧跳动
+  const vpPre = viewport.value;
+  if (vpPre && currentTurns > 1) {
+    bottomSpacerHeightPx.value = computeDynamicBottomSpacerHeight({
+      turnCount: currentTurns,
+      viewportClientHeight: vpPre.clientHeight,
+      latestTurnHeightPx: 88,
+    });
+  }
+  await nextTick();
+  const vp = viewport.value;
+  if (!vp) return;
+  const { lastUserOffsetTop } = syncBottomSpacerHeight();
+  const targetTop = computeTurnAnchorScrollTop({
+    turnCount: turnCount.value,
+    userElementOffsetTop: lastUserOffsetTop,
+    viewportClientHeight: vp.clientHeight,
+  });
+  programmaticScrollUntil = Date.now() + 500;
+  lastKnownScrollTop = targetTop;
+  if (typeof vp.scrollTo === "function" && smooth) {
+    vp.scrollTo({ top: targetTop, behavior: "smooth" });
+  } else {
+    vp.scrollTop = targetTop;
+  }
+}
+
+function requestSmartStreamingFollow() {
+  if (!following.value || userScrolledUp.value || drawerOpen.value || optionsOpen.value || inspector.value || snapshotMessages.value) return;
   if (scrollRafId !== null) return;
   scrollRafId = requestAnimationFrame(() => {
     scrollRafId = null;
-    if (viewport.value) {
-      viewport.value.scrollTop = viewport.value.scrollHeight;
+    const vp = viewport.value;
+    if (!vp) return;
+    const { contentBottomOffsetTop } = syncBottomSpacerHeight();
+    const nextScrollTop = computeStreamingFollowScrollTop({
+      currentScrollTop: vp.scrollTop,
+      viewportClientHeight: vp.clientHeight,
+      contentBottomOffsetTop,
+    });
+    if (nextScrollTop !== null && nextScrollTop !== vp.scrollTop) {
+      programmaticScrollUntil = Date.now() + 180;
+      lastKnownScrollTop = nextScrollTop;
+      vp.scrollTop = nextScrollTop;
     }
   });
 }
+
 watch(
   displayedMessages,
   async (next, previous) => {
     lastEventAt.value = new Date().toISOString();
-    if (!following.value) {
-      unreadMessageCount.value += Math.max(0, next.length - previous.length);
-      bufferedStreamActivity.value = true;
+    if (next.length > 0) {
+      hasConversationStarted.value = true;
     }
-    if (following.value && !drawerOpen.value && !optionsOpen.value && !inspector.value && !snapshotMessages.value) {
+    const prevHumanCount = (previous ?? []).filter(isHumanLikeMessage).length;
+    const nextHumanCount = next.filter(isHumanLikeMessage).length;
+    const hasNewUserTurn =
+      nextHumanCount > prevHumanCount &&
+      nextHumanCount !== lastAnchoredTurnCount;
+
+    if (!following.value && !hasNewUserTurn) {
+      unreadMessageCount.value += Math.max(0, next.length - (previous?.length ?? 0));
+      bufferedStreamActivity.value = true;
       await nextTick();
-      requestSmoothScrollToBottom();
+      syncBottomSpacerHeight();
+      return;
+    }
+
+    if (drawerOpen.value || optionsOpen.value || inspector.value || snapshotMessages.value) {
+      return;
+    }
+
+    if (hasNewUserTurn) {
+      // Initial hydration of multi-turn history jumps immediately; interactive new user turns glide smoothly
+      const isInitialHydration = (previous?.length ?? 0) === 0 && next.length > 1;
+      await anchorLatestUserTurn(!isInitialHydration);
+    } else if (following.value) {
+      await nextTick();
+      requestSmartStreamingFollow();
     }
   },
   { flush: "post", deep: true },
 );
-function follow() {
+
+async function follow() {
+  userScrolledUp.value = false;
   following.value = true;
   unreadMessageCount.value = 0;
   bufferedStreamActivity.value = false;
-  requestSmoothScrollToBottom();
+  await nextTick();
+  const vp = viewport.value;
+  if (!vp) return;
+  const { lastUserOffsetTop, contentBottomOffsetTop } = syncBottomSpacerHeight();
+  await nextTick();
+  const anchorTop = computeTurnAnchorScrollTop({
+    turnCount: turnCount.value,
+    userElementOffsetTop: lastUserOffsetTop,
+    viewportClientHeight: vp.clientHeight,
+  });
+  const streamFollowTop = computeStreamingFollowScrollTop({
+    currentScrollTop: anchorTop,
+    viewportClientHeight: vp.clientHeight,
+    contentBottomOffsetTop,
+  });
+  const targetTop = streamFollowTop ?? anchorTop;
+  programmaticScrollUntil = Date.now() + 500;
+  lastKnownScrollTop = targetTop;
+  if (typeof vp.scrollTo === "function") {
+    vp.scrollTo({ top: targetTop, behavior: "smooth" });
+  } else {
+    vp.scrollTop = targetTop;
+  }
+}
+
+function handleViewportWheel(event: WheelEvent) {
+  if (event.deltaY < -2) {
+    userScrolledUp.value = true;
+    following.value = false;
+  }
 }
 
 function handleViewportScroll() {
-  if (!viewport.value) return;
-  const nearBottom = isChatViewportNearBottom(viewport.value);
-  following.value = nearBottom;
-  if (nearBottom) {
+  const vp = viewport.value;
+  if (!vp) return;
+  const currentTop = vp.scrollTop;
+  const isProgrammatic = Date.now() < programmaticScrollUntil;
+
+  if (!isProgrammatic && currentTop < lastKnownScrollTop - 4) {
+    userScrolledUp.value = true;
+    following.value = false;
+  }
+  lastKnownScrollTop = currentTop;
+
+  const sentinelEl = contentEndSentinel.value;
+  const contentBottomOffsetTop = sentinelEl
+    ? getOffsetTopWithinViewport(sentinelEl, vp)
+    : undefined;
+  const nearBottom = isChatViewportNearContentBottom(
+    vp,
+    contentBottomOffsetTop,
+  );
+  if (nearBottom && !userScrolledUp.value) {
+    following.value = true;
     unreadMessageCount.value = 0;
     bufferedStreamActivity.value = false;
+  } else if (
+    nearBottom &&
+    userScrolledUp.value &&
+    !isProgrammatic &&
+    currentTop >= Math.max(0, (contentBottomOffsetTop ?? vp.scrollHeight) - vp.clientHeight - 40)
+  ) {
+    userScrolledUp.value = false;
+    following.value = true;
+    unreadMessageCount.value = 0;
+    bufferedStreamActivity.value = false;
+  } else if (!nearBottom && !isProgrammatic) {
+    following.value = false;
   }
 }
 
@@ -1532,6 +1745,7 @@ defineExpose({
           ref="viewport"
           class="pw-chat-stream overscroll-contain"
           @scroll="handleViewportScroll"
+          @wheel.passive="handleViewportWheel"
         >
           <div class="pw-chat-stream-content space-y-6">
             <ChatAgentStatusBar
@@ -1549,8 +1763,8 @@ defineExpose({
               @open-tasks="drawerTab = 'tasks'; drawerOpen = true;"
             />
             <div
-              v-if="!messages.length && !checking"
-              class="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center py-12 px-4 text-center"
+              v-if="!props.threadId && !session.threadId.value && !hasConversationStarted && !displayedMessages.length && !checking && !isSessionRunning"
+              class="mx-auto my-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center py-12 px-4 text-center"
             >
               <span class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-500 text-white shadow-md mb-4">
                 <BaseIcon
@@ -1663,13 +1877,32 @@ defineExpose({
               @resend-as-new="resendQueuedMessage"
               @refresh="session.refreshReceipts()"
             />
+            <div
+              ref="contentEndSentinel"
+              data-testid="chat-content-end"
+              class="h-px w-full shrink-0 pointer-events-none"
+              aria-hidden="true"
+            />
+            <div
+              v-if="turnCount > 1"
+              data-testid="chat-turn-spacer"
+              class="w-full shrink-0 pointer-events-none"
+              :style="{
+                height: `${bottomSpacerHeightPx}px`,
+                minHeight: bottomSpacerHeightPx ? undefined : '56vh',
+              }"
+              aria-hidden="true"
+            />
           </div>
         </div>
         <div
-          v-if="liveFollowView.noticeVisible && !drawerOpen && !optionsOpen"
+          v-if="(liveFollowView.noticeVisible || (!following && displayedMessages.length > 0)) && !drawerOpen && !optionsOpen"
           class="pointer-events-none absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 justify-center"
         >
-          <div class="pointer-events-auto flex items-center gap-2.5 rounded-full border border-primary-200/90 bg-white/95 px-4 py-1.5 shadow-lg backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/95">
+          <div
+            v-if="liveFollowView.noticeVisible"
+            class="pointer-events-auto flex items-center gap-2.5 rounded-full border border-primary-200/90 bg-white/95 px-4 py-1.5 shadow-lg backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/95"
+          >
             <span class="flex items-center gap-1.5 text-xs font-medium text-primary-950 dark:text-primary-100">
               <BaseIcon
                 :name="liveFollowView.icon"
@@ -1704,6 +1937,19 @@ defineExpose({
               </button>
             </div>
           </div>
+          <button
+            v-else
+            type="button"
+            data-testid="scroll-to-latest"
+            class="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-gray-200/90 bg-white/95 px-3.5 py-1.5 text-xs font-medium text-gray-700 shadow-md backdrop-blur-sm transition-all hover:border-primary-300 hover:bg-white hover:text-primary-600 dark:border-dark-700 dark:bg-dark-900/95 dark:text-dark-200 dark:hover:border-primary-500/70 dark:hover:text-primary-400"
+            @click="follow"
+          >
+            <BaseIcon
+              name="chevron-down"
+              class="h-3.5 w-3.5"
+            />
+            <span>回到最新</span>
+          </button>
         </div>
       </div>
       <WorkspacePanel
@@ -1715,13 +1961,6 @@ defineExpose({
         @add-to-chat="handleAddToChat"
       />
     </div>
-    <button
-      v-if="!following && !liveFollowView.noticeVisible"
-      class="pw-table-tool-button mx-auto my-1"
-      @click="follow"
-    >
-      回到最新
-    </button>
     <ChatComposer
       ref="composerRef"
       :model-value="draft"
@@ -1739,6 +1978,7 @@ defineExpose({
       "
       :send-button-label="selectedCheckpoint ? '分叉执行' : '发送'"
       :placeholder="selectedCheckpoint ? '当前处于快照分叉模式，输入新指令即可从此快照分叉执行...' : undefined"
+      :footer-text="(displayedMessages.length || messages.length) && activeView === 'chat' ? chatMetrics.formattedLine : ''"
       compact
       :focus-mode="focusMode"
       :models="models"
@@ -1762,27 +2002,6 @@ defineExpose({
       @composer-paste="handlePaste"
       @remove-attachment="removeAttachment"
     />
-    <div
-      v-if="messages.length && activeView === 'chat' && chatMetrics.formattedLine"
-      class="mt-0.5 pb-1.5 text-center font-mono text-[11px] text-gray-400 select-none dark:text-dark-500 truncate px-4"
-    >
-      <span>{{ chatMetrics.formattedLine }}</span>
-    </div>
-    <button
-      v-if="
-        session.supportsQueue &&
-          busy &&
-          canWrite &&
-          !reviews.length &&
-          props.draft.trim()
-      "
-      type="button"
-      class="mx-4 mb-3 rounded-lg border px-3 py-2 text-xs"
-      :disabled="cancelling || !!session.pendingMessage.value"
-      @click="send(true)"
-    >
-      排队发送当前草稿
-    </button>
     <ChatRunOptionsDialog
       :show="optionsOpen"
       :draft-run-options="draftRunOptions"

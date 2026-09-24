@@ -28,6 +28,7 @@ const props = defineProps<{
   defaultModelId?: string;
   defaultModelName?: string;
   placeholder?: string;
+  footerText?: string;
   projectId?: string;
   accessPolicy?: AccessPolicy;
   accessPolicyUpdating?: boolean;
@@ -218,17 +219,17 @@ defineExpose({
 
 <template>
   <div
-    class="pw-chat-composer-wrap transition-all duration-200"
+    class="pw-chat-composer-wrap shrink-0"
     :class="
       isFocusMode
         ? 'px-3 pb-2 pt-1 md:px-4'
         : props.compact
-          ? 'px-3 pb-2 pt-1 md:px-4'
+          ? 'px-3 pb-1.5 pt-1 md:px-4'
           : ''
     "
   >
     <div
-      class="pw-chat-composer transition-all duration-200 focus-within:border-primary-500/80 focus-within:ring-2 focus-within:ring-primary-500/15 focus-within:shadow-md"
+      class="pw-chat-composer transition-[border-color,box-shadow] duration-150 focus-within:border-primary-500/80 focus-within:ring-2 focus-within:ring-primary-500/15 focus-within:shadow-md"
       :class="isFocusMode ? 'max-w-[780px]' : ''"
     >
       <div
@@ -248,7 +249,7 @@ defineExpose({
         ref="textareaRef"
         v-model="composerModel"
         :rows="1"
-        class="pw-input resize-none border-0 bg-transparent px-0 py-0 shadow-none focus:ring-0"
+        class="pw-input !transition-none resize-none border-0 bg-transparent px-0 py-0 shadow-none focus:ring-0"
         :class="[
           isDenseMode
             ? 'min-h-[28px] max-h-[112px] overflow-y-auto text-sm leading-6'
@@ -261,13 +262,13 @@ defineExpose({
         @paste="handleComposerPaste"
       />
 
-      <div class="mt-2 space-y-1.5 transition-all duration-200">
+      <div class="mt-2">
         <div
-          class="flex flex-wrap items-center justify-between gap-2 transition-all duration-200 sm:flex-nowrap"
+          class="flex h-8 items-center justify-between gap-2 sm:flex-nowrap"
           :class="isFocusMode || props.compact ? '' : 'sm:gap-3'"
         >
           <div
-            class="flex min-w-0 basis-full items-center gap-2 overflow-x-auto pb-1 sm:basis-auto"
+            class="flex h-8 min-w-0 items-center gap-2 overflow-x-auto no-scrollbar"
             :class="isFocusMode || props.compact ? 'gap-2' : 'gap-2.5'"
           >
             <ThreadAccessPolicySelect
@@ -304,7 +305,7 @@ defineExpose({
           </div>
 
           <div
-            class="ml-auto flex shrink-0 items-center gap-2"
+            class="ml-auto flex h-8 shrink-0 items-center gap-2"
             :class="isFocusMode || props.compact ? 'gap-2' : 'gap-2.5'"
           >
             <ChatModelSelector
@@ -398,14 +399,16 @@ defineExpose({
             </template>
           </div>
         </div>
-
-        <p
-          v-if="!isFocusMode && helperText"
-          class="px-0.5 text-[11px] leading-5 text-gray-400 dark:text-dark-400"
-        >
-          {{ helperText }}
-        </p>
       </div>
+    </div>
+
+    <div
+      v-if="!isFocusMode"
+      class="mx-auto mt-1 flex h-4 w-full max-w-4xl lg:max-w-5xl items-center justify-center px-2 text-center font-mono text-[11px] leading-4 text-gray-400 select-none dark:text-dark-400"
+    >
+      <span class="truncate">
+        {{ helperText || footerText || "" }}
+      </span>
     </div>
   </div>
 </template>

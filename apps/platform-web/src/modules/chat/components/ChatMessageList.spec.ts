@@ -94,3 +94,104 @@ it("keeps a stable agent bubble DOM node and loading placeholder across empty me
   }
 });
 
+it("marks the latest user turn with data-is-last-user and computes GPT-style turn anchoring & streaming follow", async () => {
+  const {
+    computeTurnAnchorScrollTop,
+    computeDynamicBottomSpacerHeight,
+    computeStreamingFollowScrollTop,
+    isChatViewportNearContentBottom,
+  } = await import("../scroll-state");
+
+  // 1. First turn: question moves to the top (scrollTop = 0), no bottom spacer needed
+  expect(
+    computeTurnAnchorScrollTop({
+      turnCount: 1,
+      userElementOffsetTop: 120,
+      viewportClientHeight: 800,
+    }),
+  ).toBe(0);
+  expect(
+    computeDynamicBottomSpacerHeight({
+      turnCount: 1,
+      viewportClientHeight: 800,
+      latestTurnHeightPx: 100,
+    }),
+  ).toBe(0);
+
+  // 2. Subsequent turns (turnCount > 1): question stays at upper-middle (32% from top = 256px)
+  const anchorTop = computeTurnAnchorScrollTop({
+    turnCount: 2,
+    userElementOffsetTop: 1000,
+    viewportClientHeight: 800,
+  });
+  expect(anchorTop).toBe(1000 - Math.round(800 * 0.32)); // 744
+
+  // Dynamic spacer pads the remaining 68% viewport height (544px) minus current turn height
+  const spacerAtStart = computeDynamicBottomSpacerHeight({
+    turnCount: 2,
+    viewportClientHeight: 800,
+    latestTurnHeightPx: 100,
+  });
+  expect(spacerAtStart).toBe(Math.round(800 * 0.68) - 100); // 444
+
+  // As AI streams and turn height grows by 200px, spacer shrinks by 200px so scrollHeight stays constant
+  const spacerAfterStream = computeDynamicBottomSpacerHeight({
+    turnCount: 2,
+    viewportClientHeight: 800,
+    latestTurnHeightPx: 300,
+  });
+  expect(spacerAfterStream).toBe(spacerAtStart - 200);
+
+  // 3. While streaming output is still inside the lower viewport (1000 + 300 = 1300 <= 744 + 800 - 36), scrollTop stays null (no upward jump)
+  expect(
+    computeStreamingFollowScrollTop({
+      currentScrollTop: anchorTop,
+      viewportClientHeight: 800,
+      contentBottomOffsetTop: 1300,
+    }),
+  ).toBeNull();
+
+  // Once streaming output exceeds the visible bottom limit (1600 > 744 + 800 - 36 = 1508), scrollTop advances smoothly
+  expect(
+    computeStreamingFollowScrollTop({
+      currentScrollTop: anchorTop,
+      viewportClientHeight: 800,
+      contentBottomOffsetTop: 1600,
+    }),
+  ).toBe(1600 - 800 + 36);
+
+  // Near-bottom check accounts for contentBottomOffsetTop even when dynamic spacer increases scrollHeight
+  expect(
+    isChatViewportNearContentBottom(
+      { scrollTop: anchorTop, clientHeight: 800, scrollHeight: 1850 },
+      1300,
+    ),
+  ).toBe(true);
+
+  // 4. DOM attributes on ChatMessageList for multi-turn conversation
+  const wrapper = mount(ChatMessageList, {
+    props: {
+      messages: [
+        new HumanMessage({ id: "u-1", content: "第一个问题" }),
+        new AIMessage({ id: "a-1", content: "第一个回答" }),
+        new HumanMessage({ id: "u-2", content: "第二个问题" }),
+        new AIMessage({ id: "a-2", content: "第二个回答" }),
+      ],
+      calls: [],
+      isRunning: true,
+    },
+    global: { stubs: { MessageContent: true, ToolResult: true } },
+  });
+  try {
+    const userArticles = wrapper.findAll("article[data-author='user']");
+    expect(userArticles).toHaveLength(2);
+    expect(userArticles[0]!.attributes("data-turn-index")).toBe("0");
+    expect(userArticles[0]!.attributes("data-is-last-user")).toBeUndefined();
+    expect(userArticles[1]!.attributes("data-turn-index")).toBe("1");
+    expect(userArticles[1]!.attributes("data-is-last-user")).toBe("true");
+  } finally {
+    wrapper.unmount();
+  }
+});
+
+

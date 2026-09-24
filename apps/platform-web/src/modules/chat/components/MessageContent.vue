@@ -37,8 +37,8 @@ function toggleReasoning(key: string) {
 <template>
   <div class="min-w-0 space-y-3 break-words">
     <template
-      v-for="block in blocks"
-      :key="block.key"
+      v-for="(block, blockIdx) in blocks"
+      :key="`${block.kind}-${blockIdx}`"
     >
       <div
         v-if="block.kind === 'loading'"

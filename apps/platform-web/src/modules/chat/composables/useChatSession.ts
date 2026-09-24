@@ -736,6 +736,7 @@ export function useChatSession(options: {
     if (!canSend.value) return false;
     error.value = "";
     checking.value = true;
+    streamInFlight.value = true;
     try {
       if (
         !Number.isInteger(recursionLimit) ||
@@ -780,7 +781,7 @@ export function useChatSession(options: {
         }
       }
       if (disposed || !canComment.value) return false;
-      if (threadId.value && (busy.value || active(run.value) || actions.current.value?.status === "submitting")) {
+      if (threadId.value && (stream.isLoading.value || active(run.value) || actions.current.value?.status === "submitting")) {
         if (sendOptions?.fromQueue || supportsQueue) {
           return false;
         }

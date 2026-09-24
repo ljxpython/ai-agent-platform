@@ -5,7 +5,7 @@
 
 ## 最后更新
 
-2026-09-23 | 修复 OpenAI 兼容模型流式阶段 `content_blocks` 被 `openai` translator 屏蔽导致思考内容等对话结束才弹出的问题；修复对话栏模型选择器双层同名模型去重与 `defaultModelId` 精准匹配
+2026-09-24 | 优化前端对话界面为仿 GPT 回合锚定与流式防抖滚动设计：首次提问即时收起欢迎卡片并置顶流式输出；后续提问精准停留在视口偏中间位置（32%视口高度）配合动态留白垫片向下流式输出；统一底部悬浮“回到最新”胶囊并支持丝滑上下滑动
 
 ## 活跃项目
 
@@ -20,7 +20,7 @@
 |---|---|---|
 | runtime-service | 2026-09-23 | `ChatOpenAIWithReasoning` 现设置 `model_provider="openai_compatible"`，确保流式 `AIMessageChunk.content_blocks` 实时输出 `{"type": "reasoning", ...}` 供 LangGraph v2 `messages` 频道推送；`RuntimeConfigMiddleware` 强制执行 `tool_calls` 连续性与截断自愈 |
 | platform-api | 2026-09-22 | BYOK 双层模型架构 Phase 2 落地；0004 迁移、双层模型 RBAC、私有模型自主 CRUD/注销与网关代理安全打通，测试全绿 |
-| platform-web | 2026-09-23 | `MessageContent.vue` 修复 `<details>` 原生 `@toggle` 干扰流式自动展开问题；`ChatModelSelector.vue` 支持同渠道同名模型自动去重（优先保留项目私有/选中项）、展示 `项目私有`/`平台` 徽标并按 `defaultModelId` 精准匹配默认标签 |
+| platform-web | 2026-09-24 | `ChatSession.vue` / `ChatMessageList.vue` / `scroll-state.ts` 实现仿 GPT 聊天界面回合锚定（首轮置顶、后续提问锚定视口 32% 偏中间位置 + 动态底部留白垫片）与无抖动流式跟随；修复欢迎卡片与乐观消息不同步问题 |
 | interaction-data-service | — | — |
 | AI Harness（AGENTS.md + Skills） | 2026-09-21 | 今日完成全面优化，详见 docs/changes/20260921-harness-optimization.md |
 

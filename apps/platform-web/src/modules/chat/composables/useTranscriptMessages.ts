@@ -109,6 +109,11 @@ export function useTranscriptMessages(stream: AnyStream, namespace: readonly str
       }
     }
 
+    const lastCurrentHuman = [...current].reverse().find(m => getMsgType(m) === "human");
+    const hasSnapshotCaughtUp =
+      snapshot.length > 0 &&
+      (!lastCurrentHuman?.id || owned.has(lastCurrentHuman.id));
+
     return current.filter(message => {
       // 1. A child result explicitly promoted to parent values is an owned parent reply.
       if (message.id && owned.has(message.id)) return true;
@@ -118,9 +123,9 @@ export function useTranscriptMessages(stream: AnyStream, namespace: readonly str
 
       const source = message.id ? sources.get(message.id) : undefined;
 
-      // Once a run finishes and authoritative values snapshot is present, any same-scope
-      // message missing from snapshot is an uncommitted/aborted draft and must be dropped.
-      if (!stream.isLoading.value && snapshot.length > 0 && isSameNamespace(source)) return false;
+      // Once a run finishes and authoritative values snapshot is present (and has caught up to the latest human turn),
+      // any same-scope message missing from snapshot is an uncommitted/aborted draft and must be dropped.
+      if (!stream.isLoading.value && hasSnapshotCaughtUp && isSameNamespace(source)) return false;
 
       // 2. Subagent messages (originating from child namespaces in stream.subagents, or child tools:/task: namespaces)
       // MUST NEVER leak into the parent transcript view, whether tool call, tool result, or text.

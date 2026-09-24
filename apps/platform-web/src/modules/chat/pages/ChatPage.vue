@@ -343,7 +343,12 @@ watch(
     const threadId = textParam(thread);
     const forceThreadRefresh = accessRevision.value !== lastAccessRevision;
     lastAccessRevision = accessRevision.value;
-    if (threadId && threadId === ownThread && target.value) {
+    if (
+      threadId &&
+      (threadId === ownThread || threadId === mountedThread.value) &&
+      target.value &&
+      !forceThreadRefresh
+    ) {
       ownThread = undefined;
       selectedThread.value = threadId;
       mountedThread.value = threadId;

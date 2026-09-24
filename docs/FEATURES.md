@@ -46,6 +46,7 @@
 | 敏感工具审批中断状态优化与回合处理指示条精准化 | 已完成：工具触发中断时保持执行/等待审批态，杜绝误报“已中止”；助手回答完毕流结束时瞬时隐藏“处理当前回合”指示条，杜绝延迟逗留 | [变更记录](../apps/platform-web/docs/changes/20260923-tool-interrupt-status-and-live-step-refinement.md) |
 | 消息出队与即时提交会话执行态感知优化 | 已完成：综合 isSessionRunning 状态机覆盖出队、提交与乐观消息，0ms 呈现“组织答复”与进度指示条，出队动效与禁用保护 | [变更记录](../apps/platform-web/docs/changes/20260923-queued-message-draining-execution-state.md) |
 | 工具卡片区分「正在生成参数」与「执行中」状态及实时字数反馈 | 已完成：基于末尾 AIMessage finish_reason 精准区分 LLM 流式构造长参数与工具真实执行阶段，实时展示 `正在生成参数 · 已生成 X.Xk 字符` 及 `write_file` 流式正文预览 | [变更记录](../apps/platform-web/docs/changes/20260923-tool-streaming-input-vs-execution-state.md) |
+| 仿 GPT 聊天界面回合锚定与流式防抖滚动体验 | 已完成：首次提问即时收起欢迎区并置顶展开流式输出；后续提问锚定在视口偏中间位置（32%高度）配合动态收缩底部留白垫片实现零抖动流式生长；支持自由上下滑动与统一底部悬浮回到最新胶囊 | [变更记录](../apps/platform-web/docs/changes/20260924-gpt-style-turn-anchoring-and-scroll-ux.md) |
 
 
 
