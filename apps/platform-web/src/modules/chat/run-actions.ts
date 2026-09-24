@@ -23,7 +23,9 @@ export function platformCommand(body: string, threadId?: string): string {
   const command = record(JSON.parse(body));
   if (!Number.isInteger(command.id)) throw new Error("运行命令 ID 必须为整数");
   if (command.method === "run.start") {
-    const params = record(command.params);
+    const { multitaskStrategy: _multitaskStrategy, ...params } = record(
+      command.params,
+    );
     const config = params.config == null ? {} : record(params.config);
     const configurable =
       config.configurable == null ? {} : record(config.configurable);
@@ -35,6 +37,12 @@ export function platformCommand(body: string, threadId?: string): string {
       return JSON.stringify({
         ...command,
         params: { ...params, config: { ...config, configurable: options } },
+      });
+    }
+    if ("multitaskStrategy" in record(command.params)) {
+      return JSON.stringify({
+        ...command,
+        params,
       });
     }
     return body;

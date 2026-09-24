@@ -76,7 +76,21 @@ const isImmersive = computed(() => route.name === 'workspace-chat' || Boolean(ro
           class="flex min-h-0 w-full flex-1 flex-col"
           :class="isImmersive ? 'overflow-hidden' : 'overflow-y-auto'"
         >
-          <router-view v-if="routeAccessAllowed" :key="authStore.sessionEpoch" />
+          <router-view
+            v-if="routeAccessAllowed"
+            v-slot="{ Component }"
+          >
+            <keep-alive :include="['ChatPage', 'DearAgentPage']">
+              <component
+                :is="Component"
+                :key="
+                  route.name === 'workspace-chat' || route.name === 'workspace-dear-agent'
+                    ? `${String(route.name)}:${authStore.sessionEpoch}:${String(route.params.projectId ?? '')}`
+                    : `${String(route.name ?? route.path)}:${authStore.sessionEpoch}:${route.fullPath}`
+                "
+              />
+            </keep-alive>
+          </router-view>
           <section v-else class="p-6 space-y-4">
             <StateBanner title="当前页面权限已失效" description="请切换到有权限的项目，或联系项目管理员申请访问。正在进行的任务不会因页面关闭而自动停止。" variant="warning" />
             <RouterLink class="pw-btn pw-btn-secondary" to="/workspace/overview">返回总览 / 切换项目</RouterLink>

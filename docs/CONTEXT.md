@@ -5,10 +5,13 @@
 
 ## 最后更新
 
-2026-09-24 | 优化前端对话界面为仿 GPT 回合锚定与流式防抖滚动设计：首次提问即时收起欢迎卡片并置顶流式输出；后续提问精准停留在视口偏中间位置（32%视口高度）配合动态留白垫片向下流式输出；统一底部悬浮“回到最新”胶囊并支持丝滑上下滑动
+2026-09-24 | Dear Agent记忆后端/Runtime部分实施：无线程管理、受信共享检查及隔离PG真实HTTP链路已通过；多来源提取、真实模型与前端联验待完成。前端会话SWR缓存与流式保活已完成。
 
 ## 活跃项目
 
+- [Dear Agent记忆闭环](projects/20260920-dear-agent-memory/README.md)：partial；无线程后端管理链路、当前权限与共享ACL回调、180秒有界提取和召回故障降级已有代码；真实HTTP/隔离PG测试通过。多队列来源、真实模型质量、浏览器联验与联调交接待完成；前端由用户同事开发。
+
+- [前端对话会话 SWR 缓存与流式长效保活治理](projects/20260924-chat-session-cache-and-stream-resumption/README.md)：✅ done；工作区 `<KeepAlive>` 保活 `ChatPage` / `DearAgentPage`，`useChatSessionStore` 实现跨会话与跨路由 0ms SWR 消息水合，根除 `loadHistory` 竞态清空与切页断流问题
 - [模型思考内容输出排查](projects/20260923-model-reasoning-output/README.md)：done；`ChatOpenAIWithReasoning` 显式标记 `model_provider="openai_compatible"` 使流式 `AIMessageChunk.content_blocks` 实时产出 `reasoning` 块，配合 `MessageContent.vue` 流式默认展开修复，流式实时展示与完成态均通过。
 - [前端代码冗余清理与结构化重构](projects/20260923-platform-web-codebase-refactor/README.md)：✅ 已完成（子专题 01~04 全部 `done`，净减 11,760 行代码，`pnpm build` 与 88 套单测全绿）
 - [跨服务规范治理](projects/20260922-cross-service-governance/README.md)：🔴 规划中（待人工评审）
@@ -18,9 +21,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-09-23 | `ChatOpenAIWithReasoning` 现设置 `model_provider="openai_compatible"`，确保流式 `AIMessageChunk.content_blocks` 实时输出 `{"type": "reasoning", ...}` 供 LangGraph v2 `messages` 频道推送；`RuntimeConfigMiddleware` 强制执行 `tool_calls` 连续性与截断自愈 |
-| platform-api | 2026-09-22 | BYOK 双层模型架构 Phase 2 落地；0004 迁移、双层模型 RBAC、私有模型自主 CRUD/注销与网关代理安全打通，测试全绿 |
-| platform-web | 2026-09-24 | `ChatSession.vue` / `ChatMessageList.vue` / `scroll-state.ts` 实现仿 GPT 聊天界面回合锚定（首轮置顶、后续提问锚定视口 32% 偏中间位置 + 动态底部留白垫片）与无抖动流式跟随；修复欢迎卡片与乐观消息不同步问题 |
+| runtime-service | 2026-09-24 | Dear个人记忆无线程内部接口、共享ACL复核和有界提取/召回已部分实施；真实HTTP/隔离PG通过，模型质量及多队列来源待验证；既有 reasoning 与 tool_calls 连续性治理保留 |
+| platform-api | 2026-09-24 | Dear个人记忆无线程管理API、本人权限、委托与共享ACL回调已部分实施；真实HTTP/隔离PG通过，联调环境未部署；BYOK双层模型仍按原有能力运行 |
+| platform-web | 2026-09-24 | 完成仿 GPT 回合锚定/定高防抖以及会话 SWR 缓存与路由 KeepAlive 保活（`useChatSessionStore` + `WorkspaceLayout` KeepAlive + 非破坏性 `loadHistory`），切页/切会话 0ms 秒开且后台不断流 |
 | interaction-data-service | — | — |
 | AI Harness（AGENTS.md + Skills） | 2026-09-21 | 今日完成全面优化，详见 docs/changes/20260921-harness-optimization.md |
 

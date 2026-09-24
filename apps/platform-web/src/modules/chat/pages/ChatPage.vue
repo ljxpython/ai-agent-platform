@@ -27,6 +27,9 @@ import ChatThreadSidebar from "../components/ChatThreadSidebar.vue";
 import ChatAgentSelector from "../components/ChatAgentSelector.vue";
 import { buildChatThreadListView, type ChatThreadStatusFilter } from "../thread-list-view-model";
 import { formatThreadTime } from "@/utils/threads";
+import { useChatSessionStore } from "../stores/useChatSessionStore";
+
+defineOptions({ name: "ChatPage" });
 
 const sessionRef = ref<InstanceType<typeof ChatSession> | null>(null);
 const accessControlRef = ref<InstanceType<typeof ThreadAccessControl> | null>(null);
@@ -34,6 +37,7 @@ const accessControlRef = ref<InstanceType<typeof ThreadAccessControl> | null>(nu
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
+const chatSessionStore = useChatSessionStore();
 const { activeProjectId, activeProject } = useWorkspaceProjectContext();
 const { can } = useAuthorization();
 const canWrite = computed(() =>
@@ -340,9 +344,13 @@ watch(
     accessRevision,
   ],
   async ([projectId, _session, agent, graph, thread]) => {
+    if (route.name && route.name !== "workspace-chat") return;
     const threadId = textParam(thread);
     const forceThreadRefresh = accessRevision.value !== lastAccessRevision;
     lastAccessRevision = accessRevision.value;
+    if (projectId) {
+      chatSessionStore.setLastActiveThread(projectId, "workspace-chat", threadId);
+    }
     if (
       threadId &&
       (threadId === ownThread || threadId === mountedThread.value) &&
@@ -366,7 +374,8 @@ watch(
     }
     const cachedThread =
       threadId && !forceThreadRefresh
-        ? threads.value.find((t) => t.thread_id === threadId)
+        ? (threads.value.find((t) => t.thread_id === threadId) ??
+          chatSessionStore.getSession(projectId, threadId)?.thread)
         : undefined;
     const hasSyncThread =
       !threadId || Boolean(cachedThread && textParam(cachedThread.metadata?.graph_id));
@@ -380,6 +389,9 @@ watch(
       if (threadId) {
         if (!storedThread || !textParam(storedThread.metadata?.graph_id)) {
           storedThread = await service.value.get(threadId);
+        }
+        if (storedThread) {
+          chatSessionStore.setSessionThread(projectId, threadId, storedThread);
         }
         const metadata = storedThread.metadata ?? {};
         const storedGraph = textParam(metadata.graph_id);
@@ -465,6 +477,7 @@ watch(
 
 function choose(value: string) {
   if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;
+  chatSessionStore.setLastActiveThread(activeProjectId.value, "workspace-chat", null);
   if (!value) {
     void router.push({ path: chatPath.value });
   } else {
@@ -473,10 +486,12 @@ function choose(value: string) {
 }
 function openThread(id: string) {
   if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;
+  chatSessionStore.setLastActiveThread(activeProjectId.value, "workspace-chat", id);
   void router.push(`${chatPath.value}/${encodeURIComponent(id)}`);
 }
 function newThread() {
   if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;
+  chatSessionStore.setLastActiveThread(activeProjectId.value, "workspace-chat", null);
   if (target.value) choose(selectedTarget.value);
   if (!selectedThread.value) {
     resetDraft();
@@ -490,6 +505,7 @@ function created(id: string) {
   storeDraft(draft.value);
   ownThread = id;
   selectedThread.value = id;
+  chatSessionStore.setLastActiveThread(activeProjectId.value, "workspace-chat", id);
   void router.replace({
     path: `${chatPath.value}/${encodeURIComponent(id)}`,
     query: route.query,

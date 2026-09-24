@@ -36,6 +36,7 @@ import {
 import { createRunActions } from "../run-actions";
 import { createSessionAttachmentUploader } from "./useSessionAttachmentUpload";
 import { useSessionInterrupts } from "./useSessionInterrupts";
+import { useChatSessionStore } from "../stores/useChatSessionStore";
 
 const active = (run: Run | null) =>
   run != null && ["pending", "running"].includes(run.status);
@@ -66,6 +67,7 @@ export function useChatSession(options: {
   onReconnect: () => void;
   onAccepted?: () => void;
 }) {
+  const chatSessionStore = useChatSessionStore();
   const actions = createRunActions(
     options.projectId,
     createLanggraphAuthorizedFetch(),
@@ -78,6 +80,9 @@ export function useChatSession(options: {
 
   function applyAccessThread(thread: ChatThread | undefined) {
     accessThread.value = thread;
+    if (thread && threadId.value) {
+      chatSessionStore.setSessionThread(options.projectId, threadId.value, thread);
+    }
     if (thread?.metadata && typeof thread.metadata === "object") {
       const policy = (thread.metadata as Record<string, unknown>).access_policy;
       if (policy === "workspace_write" || policy === "full_access") {
@@ -90,17 +95,23 @@ export function useChatSession(options: {
     }
   }
 
-  const initialSeeded = unref(options.initialThread);
+  const cachedEntry = threadId.value
+    ? chatSessionStore.getSession(options.projectId, threadId.value)
+    : undefined;
+  const initialSeeded = unref(options.initialThread) ?? cachedEntry?.thread;
   if (hasResolvedAccess(initialSeeded, threadId.value)) {
     applyAccessThread(initialSeeded);
   }
-  const accessLoading = ref(Boolean(threadId.value && !accessThread.value));
-  const canRead = computed(() => !threadId.value || hasThreadAction(accessThread.value, "read"));
+  const hasCachedContent = Boolean(
+    cachedEntry && (cachedEntry.messages.length > 0 || cachedEntry.history.length > 0),
+  );
+  const accessLoading = ref(Boolean(threadId.value && !accessThread.value && !hasCachedContent));
+  const canRead = computed(() => !threadId.value || hasThreadAction(accessThread.value, "read") || hasCachedContent);
   let accessRefreshing = false;
   let accessEpoch = 0;
   const run = shallowRef<Run | null>(null);
-  const checking = ref(true);
-  const verified = ref(false);
+  const checking = ref(!hasCachedContent);
+  const verified = ref(hasCachedContent);
   const cancelling = ref(false);
   const error = ref("");
   let disposed = false;
@@ -260,11 +271,20 @@ export function useChatSession(options: {
         run.value &&
         run.value.run_id !== actions.current.value.runId,
     );
+    const isSameConfirmedTerminalRun = Boolean(
+      run.value &&
+        !active(run.value) &&
+        (!stream.isLoading.value ||
+          (actions.current.value?.runId &&
+            run.value.run_id === actions.current.value.runId) ||
+          ["timeout", "error", "cancelled", "canceled"].includes(
+            String(run.value.status),
+          )),
+    );
     if (
       !streamInFlight.value &&
-      run.value &&
+      isSameConfirmedTerminalRun &&
       !isStaleRun &&
-      !active(run.value) &&
       !hasPendingInterrupts.value &&
       actions.current.value?.status !== "submitting"
     ) {
@@ -283,6 +303,8 @@ export function useChatSession(options: {
     return (
       raw.includes("409 Conflict") ||
       raw.includes("pending or running run") ||
+      raw.includes("multitaskStrategy is 'reject'") ||
+      raw.includes("already in flight") ||
       raw.includes("Upstream stream ended before terminal chunk") ||
       raw.includes("AbortError") ||
       raw.includes("BodyStreamBuffer")
@@ -393,8 +415,16 @@ export function useChatSession(options: {
       verified.value = true;
       return true;
     }
-    verified.value = false;
-    checking.value = true;
+    const isSilentRevalidate =
+      !waitForTerminal &&
+      (verified.value ||
+        Boolean(
+          chatSessionStore.getSession(options.projectId, threadId.value)?.messages.length,
+        ));
+    if (!isSilentRevalidate) {
+      verified.value = false;
+      checking.value = true;
+    }
     activeVerifyTerminal = waitForTerminal;
     const id = threadId.value;
     let deadline = Date.now() + 30000;
@@ -458,7 +488,14 @@ export function useChatSession(options: {
             void refreshAccessPolicy();
           }
           if (active(run.value) && !stream.isLoading.value) {
-            scheduleBackgroundRunPoll(id);
+            const rejoinFn = (stream as unknown as { joinStream?: (runId: string) => Promise<unknown> }).joinStream;
+            if (typeof rejoinFn === "function" && run.value?.run_id) {
+              void rejoinFn.call(stream, run.value.run_id).catch(() => {
+                scheduleBackgroundRunPoll(id);
+              });
+            } else {
+              scheduleBackgroundRunPoll(id);
+            }
           }
           return true;
         }
@@ -839,7 +876,11 @@ export function useChatSession(options: {
         } catch (cause) {
           streamInFlight.value = false;
           const raw = cause instanceof Error ? cause.message : String(cause);
-          const is409 = raw.includes("409 Conflict") || raw.includes("pending or running run");
+          const is409 =
+            raw.includes("409 Conflict") ||
+            raw.includes("pending or running run") ||
+            raw.includes("multitaskStrategy is 'reject'") ||
+            raw.includes("already in flight");
           if (is409 && attempts < maxAttempts) {
             actions.rejectUnsent();
             removeUncommittedMessage();
@@ -1059,7 +1100,9 @@ export function useChatSession(options: {
     window.removeEventListener("thread-access-updated", accessChanged);
     clearTimeout(timer);
     releaseWait?.();
-    void stream.disconnect();
+    if (!active(run.value) && !streamInFlight.value && !stream.isLoading.value) {
+      void stream.disconnect();
+    }
     actions.dispose();
   });
   return {

@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthorization } from '@/composables/useAuthorization'
+import { useChatSessionStore } from '@/modules/chat/stores/useChatSessionStore'
 
 type SidebarItem = {
   to: string
@@ -17,25 +18,34 @@ type SidebarGroup = {
 }
 
 export function useNavigation() {
-const router = useRouter()
-const authorization = useAuthorization()
-const groups = computed(() => {
-  const projectId = authorization.currentProjectId.value
-  const result = new Map<string, SidebarGroup>()
-  for (const item of router.getRoutes()) {
-    const nav = item.meta.navigation
-    if (!nav || item.path.includes(':projectId') && !projectId) continue
-    const permissions = item.meta.requiredPermissions ?? []
-    const allowed = item.meta.permissionMode === 'any'
-      ? permissions.some(permission => authorization.can(permission, projectId))
-      : permissions.every(permission => authorization.can(permission, projectId))
-    if (!allowed) continue
-    const group = result.get(nav.group) ?? { id: nav.group, label: nav.group, items: [] }
-    group.items.push({ to: item.path.replace(':projectId', encodeURIComponent(projectId)).replace('/:threadId?', ''), label: nav.label, icon: nav.icon, exact: item.name === 'workspace-projects' })
-    result.set(nav.group, group)
-  }
-  return ['工作区', 'Dear Agent', '项目管理', '平台管理'].flatMap(key => result.has(key) ? [result.get(key)!] : [])
-})
+  const router = useRouter()
+  const authorization = useAuthorization()
+  const chatSessionStore = useChatSessionStore()
+  const groups = computed(() => {
+    const projectId = authorization.currentProjectId.value
+    const result = new Map<string, SidebarGroup>()
+    for (const item of router.getRoutes()) {
+      const nav = item.meta.navigation
+      if (!nav || item.path.includes(':projectId') && !projectId) continue
+      const permissions = item.meta.requiredPermissions ?? []
+      const allowed = item.meta.permissionMode === 'any'
+        ? permissions.some(permission => authorization.can(permission, projectId))
+        : permissions.every(permission => authorization.can(permission, projectId))
+      if (!allowed) continue
+      const group = result.get(nav.group) ?? { id: nav.group, label: nav.group, items: [] }
+      const baseTo = item.path.replace(':projectId', encodeURIComponent(projectId)).replace('/:threadId?', '')
+      const rememberedThreadId =
+        item.name === 'workspace-chat' || item.name === 'workspace-dear-agent'
+          ? chatSessionStore.getLastActiveThread(projectId, item.name)
+          : undefined
+      const resolvedTo = rememberedThreadId
+        ? `${baseTo}/${encodeURIComponent(rememberedThreadId)}`
+        : baseTo
+      group.items.push({ to: resolvedTo, label: nav.label, icon: nav.icon, exact: item.name === 'workspace-projects' })
+      result.set(nav.group, group)
+    }
+    return ['工作区', 'Dear Agent', '项目管理', '平台管理'].flatMap(key => result.has(key) ? [result.get(key)!] : [])
+  })
 
-return groups
+  return groups
 }

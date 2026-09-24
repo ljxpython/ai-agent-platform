@@ -86,6 +86,7 @@ import {
   computeTurnAnchorScrollTop,
   isChatViewportNearContentBottom,
 } from "../scroll-state";
+import { useChatSessionStore } from "../stores/useChatSessionStore";
 import ChatComposer from "./ChatComposer.vue";
 import ChatMessageList from "./ChatMessageList.vue";
 import ApprovalPanel from "./ApprovalPanel.vue";
@@ -272,8 +273,14 @@ function applyOptions() {
 const drawerOpen = ref(false);
 const drawerTab = ref<"overview" | "tasks" | "files" | "history">("overview");
 function openDrawer() { drawerOpen.value = true; drawerTab.value = "overview"; void loadHistory(true); }
+const chatSessionStore = useChatSessionStore();
+const initialCachedSession = chatSessionStore.getSession(
+  props.projectId,
+  session.threadId.value || props.threadId,
+);
 const historyLoading = ref(false);
-const history = shallowRef<ChatCheckpoint[]>([]);
+const history = shallowRef<ChatCheckpoint[]>(initialCachedSession?.history ?? []);
+const cachedDisplayMessages = shallowRef<BaseMessage[]>(initialCachedSession?.messages ?? []);
 const hasMoreHistory = ref(true);
 const selectedCheckpoint = shallowRef<ChatCheckpoint | null>(null);
 const latestHistoryMessages = computed<BaseMessage[]>(() => {
@@ -289,7 +296,9 @@ const latestHistoryMessages = computed<BaseMessage[]>(() => {
 });
 const snapshotMessages = shallowRef<BaseMessage[] | null>(null);
 const optimisticUserMessage = shallowRef<BaseMessage | null>(null);
-const hasConversationStarted = ref(Boolean(props.threadId));
+const hasConversationStarted = ref(
+  Boolean(props.threadId || initialCachedSession?.messages.length || initialCachedSession?.history.length),
+);
 
 function hasOptimisticEchoed(list: readonly BaseMessage[], optimistic: BaseMessage | null): boolean {
   if (!optimistic) return false;
@@ -306,12 +315,16 @@ function hasOptimisticEchoed(list: readonly BaseMessage[], optimistic: BaseMessa
 
 const displayedMessages = computed(() => {
   let base = snapshotMessages.value ?? messages.value;
-  if (!snapshotMessages.value && latestHistoryMessages.value.length > 0) {
+  const fallbackMessages =
+    latestHistoryMessages.value.length >= cachedDisplayMessages.value.length
+      ? latestHistoryMessages.value
+      : cachedDisplayMessages.value;
+  if (!snapshotMessages.value && fallbackMessages.length > 0) {
     if (base.length === 0) {
-      base = latestHistoryMessages.value;
-    } else if (latestHistoryMessages.value.length > base.length) {
+      base = fallbackMessages;
+    } else if (fallbackMessages.length > base.length) {
       const baseIds = new Set(base.map((m) => m.id).filter(Boolean));
-      const missingPrefix = latestHistoryMessages.value.filter(
+      const missingPrefix = fallbackMessages.filter(
         (m) => m.id && !baseIds.has(m.id),
       );
       if (missingPrefix.length > 0) {
@@ -330,6 +343,15 @@ watch(
     if (currentMessages.length > 0 || historyMsgs.length > 0) {
       hasConversationStarted.value = true;
     }
+    const activeThreadId = session.threadId.value || props.threadId;
+    if (activeThreadId && !snapshotMessages.value) {
+      const latestCommitted =
+        currentMessages.length >= historyMsgs.length ? currentMessages : historyMsgs;
+      if (latestCommitted.length > 0) {
+        cachedDisplayMessages.value = [...latestCommitted];
+        chatSessionStore.setSessionMessages(props.projectId, activeThreadId, [...latestCommitted]);
+      }
+    }
     if (!optimisticUserMessage.value) return;
     if (
       hasOptimisticEchoed(currentMessages, optimisticUserMessage.value) ||
@@ -338,6 +360,7 @@ watch(
       optimisticUserMessage.value = null;
     }
   },
+  { immediate: true },
 );
 const branchPath = ref("");
 const branchContext = computed(() => getChatBranchContext(branchPath.value, history.value));
@@ -459,8 +482,12 @@ const isDrainingQueue = ref(false);
 
 const isSessionRunning = computed(() => {
   if (snapshotMessages.value) return false;
+  const runStatus = session.run.value?.status;
   return (
     busy.value ||
+    Boolean(stream.isLoading?.value) ||
+    runStatus === "running" ||
+    runStatus === "pending" ||
     isDrainingQueue.value ||
     checking.value ||
     actions.current.value?.status === "submitting" ||
@@ -541,6 +568,7 @@ async function drainNextQueuedItem() {
   if (isDrainingQueue.value) return;
   if (
     busy.value ||
+    Boolean(stream.isLoading?.value) ||
     !canSend.value ||
     cancelling.value ||
     hasPendingInterrupts.value ||
@@ -569,11 +597,18 @@ async function drainNextQueuedItem() {
 }
 
 watch(
-  [busy, canSend, hasPendingInterrupts, () => promptQueue.queue.value.length],
-  async ([isBusy, isCanSend, hasInterrupt, queueLen]) => {
-    if (!isBusy && isCanSend && !hasInterrupt && queueLen > 0 && !cancelling.value) {
+  [busy, () => Boolean(stream.isLoading?.value), canSend, hasPendingInterrupts, () => promptQueue.queue.value.length],
+  async ([isBusy, isStreamLoading, isCanSend, hasInterrupt, queueLen]) => {
+    if (!isBusy && !isStreamLoading && isCanSend && !hasInterrupt && queueLen > 0 && !cancelling.value) {
       await new Promise((r) => setTimeout(r, 350));
-      if (!busy.value && canSend.value && !hasPendingInterrupts.value && promptQueue.queue.value.length > 0 && !cancelling.value) {
+      if (
+        !busy.value &&
+        !stream.isLoading?.value &&
+        canSend.value &&
+        !hasPendingInterrupts.value &&
+        promptQueue.queue.value.length > 0 &&
+        !cancelling.value
+      ) {
         await drainNextQueuedItem();
       }
     }
@@ -1099,18 +1134,32 @@ async function submitEditedBranch() {
   cancelEdit();
   await session.fork(checkpoint, draftText, recursionLimit.value);
 }
+let lastLoadedHistoryThreadId = session.threadId.value || props.threadId || "";
 async function loadHistory(reset = false, limit = 20) {
-  if (!session.threadId.value || historyLoading.value) return;
+  const currentThread = session.threadId.value;
+  if (!currentThread || historyLoading.value) return;
   historyLoading.value = true;
   localError.value = "";
   try {
     const rows = await session.service.history(
-      session.threadId.value,
+      currentThread,
       reset ? undefined : history.value[history.value.length - 1]?.checkpoint,
       limit
     );
-    if (disposed) return;
-    history.value = reset ? rows : [...history.value, ...rows];
+    if (disposed || session.threadId.value !== currentThread) return;
+    if (reset) {
+      if (rows.length > 0 || history.value.length === 0 || lastLoadedHistoryThreadId !== currentThread) {
+        history.value = rows;
+        lastLoadedHistoryThreadId = currentThread;
+      }
+    } else {
+      const seenIds = new Set(history.value.map((r) => r.checkpoint.checkpoint_id));
+      const appended = rows.filter((r) => !seenIds.has(r.checkpoint.checkpoint_id));
+      history.value = [...history.value, ...appended];
+    }
+    if (history.value.length > 0) {
+      chatSessionStore.setSessionHistory(props.projectId, currentThread, history.value);
+    }
     hasMoreHistory.value = rows.length === limit;
   } catch (cause) {
     if (!disposed)
@@ -1358,9 +1407,24 @@ async function edit(messageId: string, text: string) {
     if (!disposed) editLoading.value = false;
   }
 }
-watch([session.threadId, busy, checking], ([id, running, verifying]) => {
-  if (id && !running && !verifying) void loadHistory(true);
-}, { immediate: true });
+watch(
+  [session.threadId, busy, checking],
+  ([id, running, verifying], prev) => {
+    const prevId = prev?.[0];
+    const prevRunning = prev?.[1];
+    if (id && id !== prevId) {
+      const cached = chatSessionStore.getSession(props.projectId, id);
+      history.value = cached?.history ?? [];
+      cachedDisplayMessages.value = cached?.messages ?? [];
+      void loadHistory(true);
+      return;
+    }
+    if (id && !running && !verifying && (prevRunning || history.value.length === 0)) {
+      void loadHistory(true);
+    }
+  },
+  { immediate: true },
+);
 function visibilityChanged() {
   if (!document.hidden && !busy.value && action.value?.status !== "unknown")
     void session.verify();

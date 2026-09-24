@@ -47,6 +47,7 @@
 | 消息出队与即时提交会话执行态感知优化 | 已完成：综合 isSessionRunning 状态机覆盖出队、提交与乐观消息，0ms 呈现“组织答复”与进度指示条，出队动效与禁用保护 | [变更记录](../apps/platform-web/docs/changes/20260923-queued-message-draining-execution-state.md) |
 | 工具卡片区分「正在生成参数」与「执行中」状态及实时字数反馈 | 已完成：基于末尾 AIMessage finish_reason 精准区分 LLM 流式构造长参数与工具真实执行阶段，实时展示 `正在生成参数 · 已生成 X.Xk 字符` 及 `write_file` 流式正文预览 | [变更记录](../apps/platform-web/docs/changes/20260923-tool-streaming-input-vs-execution-state.md) |
 | 仿 GPT 聊天界面回合锚定与流式防抖滚动体验 | 已完成：首次提问即时收起欢迎区并置顶展开流式输出；后续提问锚定在视口偏中间位置（32%高度）配合动态收缩底部留白垫片实现零抖动流式生长；支持自由上下滑动与统一底部悬浮回到最新胶囊 | [变更记录](../apps/platform-web/docs/changes/20260924-gpt-style-turn-anchoring-and-scroll-ux.md) |
+| 前端对话会话 SWR 缓存与流式长效保活治理 | 已完成：路由级 `<KeepAlive>` 保活与侧栏导航活跃会话记忆、Pinia SWR 会话缓存（`useChatSessionStore` 0ms 水合）、消除 `loadHistory(true)` 二次清空竞争、流式生命周期解耦与 `joinStream` 断流无缝续传 | [项目文档](projects/20260924-chat-session-cache-and-stream-resumption/README.md) |
 
 
 
@@ -104,4 +105,4 @@
 - Agent resync / Operations：后端全链路已退役，20 表及字段收缩和真实 Runtime 验收通过；当前状态见 [11](projects/20260910-platform-api-refactor/implementation/11-backend-closeout.md)。
 
 | Dear Agent P6 记忆与技能治理 | 记忆与外部任务原有验收保留；技能已由当前记录和执行快照替代旧版本治理，见Skills改进项目；前端待接入 | [P6执行包](projects/20260913-dearflow-agent/phases/P6-记忆与技能治理.md) |
-| Dear Agent 个人记忆管理与跨会话闭环 | 已有页面 CRUD、PG 存储、候选与注入；分层实施/接口/测试规划待评审，后端与Runtime负责实现，前端仅交接给同事；首轮旧前端15测试通过，新链路未实施 | [记忆专项与前端交接](projects/20260920-dear-agent-memory/README.md) |
+| Dear Agent 个人记忆管理与跨会话闭环 | partial：无线程后端管理API、当前本人权限、受信共享检查、180秒提取与召回降级已有代码并通过真实HTTP/隔离PG；多队列来源、真实模型和前端联验未完成。前端由同事开发 | [记忆专项与前端交接](projects/20260920-dear-agent-memory/README.md) |
