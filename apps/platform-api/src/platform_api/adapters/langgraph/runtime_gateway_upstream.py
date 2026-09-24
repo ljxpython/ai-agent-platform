@@ -109,6 +109,19 @@ class LangGraphRuntimeGatewayUpstream:
     async def dear_skills(self, method: str, suffix: str = "", *, payload=None, params=None):
         return await self._http.request_json(method, "/internal/dear/skills" + suffix, payload=payload, params=params)
 
+    async def dear_memory(self, *, payload: dict | None = None) -> dict:
+        try:
+            return await self._http.require_json("GET" if payload is None else "POST",
+                                                 "/internal/dear/memory", payload=payload)
+        except PlatformApiError as exc:
+            allowed = {"memory_revision_conflict", "memory_not_found", "memory_expired",
+                       "memory_duplicate_fact", "memory_capacity_exceeded", "memory_maintenance_required",
+                       "memory_storage_unavailable", "dear_governance_disabled", "dear_memory_scope_denied",
+                       "runtime.tool.not_allowed", "langgraph_upstream_unavailable", "langgraph_upstream_timeout"}
+            code = "validation_failed" if exc.status_code == 422 else exc.code if exc.code in allowed else "memory_upstream_error"
+            raise PlatformApiError(code=code, status_code=exc.status_code,
+                                   message="Memory request failed") from exc
+
     async def dear_governance(self, thread_id: str, resource: str, *, payload: dict | None = None, query: str = "") -> dict:
         from urllib.parse import quote
         return await self._http.require_json(

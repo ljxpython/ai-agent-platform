@@ -11,7 +11,7 @@ from anyio import CancelScope
 from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse, Response
 from starlette.types import Send
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictBool, ValidationError, model_validator
 
 from platform_api.adapters.langgraph import (
     LangGraphRuntimeGatewayUpstream,
@@ -21,6 +21,7 @@ from platform_api.core.errors import (
     BadRequestError,
     ForbiddenError,
     NotAuthenticatedError,
+    PlatformApiError,
     ServiceUnavailableError,
 )
 from platform_api.core.security import (
@@ -707,6 +708,130 @@ async def detail_dear_skill(request: Request, source: Literal["public", "custom"
 @router.get("/dear/skills/{source}/{slug}/content")
 async def content_dear_skill(request: Request, source: Literal["public", "custom"], slug: str, path: str = Query(min_length=1, max_length=1024), revision: str = Query(min_length=1, max_length=64), actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
     return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="GET", suffix=f"/{source}/" + quote(slug, safe="") + "/content", params={"path": path, "revision": revision})
+
+
+class MemoryFactBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    text: str = Field(min_length=1, max_length=1000)
+    category: Literal["preference", "fact"] = "preference"
+    expires_at: AwareDatetime | None = None
+
+
+class MemoryCommandBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    action: Literal["save", "delete", "clear", "accept", "reject", "settings", "restore"]
+    expected_revision: int = Field(ge=0, strict=True)
+    fact_id: str | None = Field(default=None, max_length=64)
+    replace_fact_id: str | None = Field(default=None, max_length=64)
+    fact: MemoryFactBody | None = None
+    automatic_candidates: StrictBool | None = None
+    facts: list[MemoryFactBody] = Field(default_factory=list, max_length=100)
+
+    @model_validator(mode="after")
+    def valid_action_fields(self):
+        provided = self.model_fields_set - {"action", "expected_revision"}
+        allowed = {"save": {"fact", "fact_id"}, "delete": {"fact_id"},
+                   "accept": {"fact_id", "replace_fact_id"}, "reject": {"fact_id"},
+                   "settings": {"automatic_candidates"}, "restore": {"facts"}, "clear": set()}[self.action]
+        required = {"save": {"fact"}, "delete": {"fact_id"}, "accept": {"fact_id"},
+                    "reject": {"fact_id"}, "settings": {"automatic_candidates"},
+                    "restore": {"facts"}, "clear": set()}[self.action]
+        if provided - allowed or required - provided or any(getattr(self, key) is None for key in required):
+            raise ValueError("invalid_memory_command_fields")
+        if self.action == "restore" and not self.facts:
+            raise ValueError("memory_restore_empty")
+        return self
+
+
+class MemoryFactView(MemoryFactBody):
+    id: str
+    origin: Literal["user", "confirmed", "inferred"]
+    revision: int
+    created_at: str
+    updated_at: str
+    source_kind: Literal["management", "user_message", "tool", "legacy"]
+    source_thread_id: str | None
+    source_message_id: str | None
+    source_call_id: str | None
+    quote: str | None
+
+
+class MemoryDocumentView(BaseModel):
+    schema_version: int
+    revision: int
+    epoch: int
+    automatic_candidates: bool
+    facts: list[MemoryFactView]
+    candidates: list[MemoryFactView]
+
+
+class MemoryExtractionView(BaseModel):
+    status: Literal["never", "running", "succeeded", "no_candidates", "failed", "skipped", "interrupted"]
+    updated_at: str | None
+    source_thread_id: str | None
+    candidate_count: int
+    error_code: str | None
+    pause_reason: str | None
+
+
+class MemoryMutationView(BaseModel):
+    action: str
+    changed: bool
+    added: int
+    updated: int
+    removed: int
+    skipped: int
+
+
+class MemoryView(BaseModel):
+    status: Literal["ready", "disabled"]
+    scope: dict[str, str]
+    capabilities: dict[str, bool]
+    limits: dict[str, int]
+    document: MemoryDocumentView | None
+    counts: dict[str, int] | None
+    extraction: MemoryExtractionView | None
+    mutation: MemoryMutationView | None
+
+
+@router.get("/dear/memory", response_model=MemoryView)
+async def read_dear_memory(request: Request, actor: ActorContext = Depends(get_actor_context),
+                           service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    return await service.dear_memory(actor=actor, project_id=_require_project_id(request))
+
+
+@router.post("/dear/memory", response_model=MemoryView, openapi_extra={"requestBody": {"required": True,
+    "content": {"application/json": {"schema": MemoryCommandBody.model_json_schema()}}}})
+async def write_dear_memory(request: Request, actor: ActorContext = Depends(get_actor_context),
+                            service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+    chunks = []
+    size = 0
+    async for chunk in request.stream():
+        size += len(chunk)
+        if size > 1500000:
+            raise PlatformApiError(code="memory_payload_too_large", status_code=413, message="Memory payload too large")
+        chunks.append(chunk)
+    body = b"".join(chunks)
+    try:
+        payload = json.loads(body)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise BadRequestError(code="invalid_memory_command", message="Invalid memory JSON") from exc
+    try:
+        command = MemoryCommandBody.model_validate(payload)
+    except ValidationError as exc:
+        details = [{"loc": list(error["loc"]), "type": error["type"], "message": "Invalid value"}
+                   for error in exc.errors(include_input=False)[:20]]
+        raise PlatformApiError(code="validation_failed", status_code=422,
+                               message="Validation failed", details=details) from exc
+    action = payload.get("action") if isinstance(payload, dict) else None
+    if isinstance(action, str) and action in {"save", "delete", "clear", "accept", "reject", "settings", "restore"}:
+        request.state.audit_metadata = {"memory_action": action}
+    try:
+        return await service.dear_memory(actor=actor, project_id=_require_project_id(request), payload=command.model_dump(mode="json", exclude_unset=True))
+    except PlatformApiError as exc:
+        if exc.status_code == 422:
+            raise PlatformApiError(code="validation_failed", status_code=422, message="Validation failed") from exc
+        raise
 
 
 @router.get("/threads/{thread_id}/dear/{resource}")

@@ -72,6 +72,7 @@ class ModelConnectionLifecycleTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(redact_runtime_private_fields({"values": {
             "runtime_message_claim": {"token": "secret"},
+            "dear_memory_source": {"text": "private memory text"},
             "messages": [{"content": "hello", "authorization_ref": "secret"}],
         }}), {"values": {"messages": [{"content": "hello"}]}})
 
@@ -248,4 +249,3 @@ class ModelConnectionLifecycleTest(unittest.IsolatedAsyncioTestCase):
             ),
         )
         self.assertEqual(created.protocol, "anthropic")
-

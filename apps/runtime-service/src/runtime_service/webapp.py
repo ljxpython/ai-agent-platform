@@ -22,6 +22,7 @@ from runtime_service.http.workspace import router as workspace_router
 from runtime_service.http.terminal import router as terminal_router
 from runtime_service.http.dear_governance import router as dear_governance_router
 from runtime_service.http.dear_skills import router as dear_skills_router
+from runtime_service.http.dear_memory import router as dear_memory_router
 from runtime_service.http.title_summary import router as title_summary_router
 from runtime_service.messaging import MessageInbox
 from runtime_service.messaging.reconcile import reconcile_run
@@ -48,6 +49,7 @@ app.include_router(workspace_router)
 app.include_router(terminal_router)
 app.include_router(dear_governance_router)
 app.include_router(dear_skills_router)
+app.include_router(dear_memory_router)
 app.include_router(title_summary_router)
 
 

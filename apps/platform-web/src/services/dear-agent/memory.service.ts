@@ -1,57 +1,132 @@
 import { platformHttpClient } from "@/services/http/client";
 
-export interface FactItem {
+export type FactCategory = "preference" | "fact";
+export type FactOrigin = "user" | "confirmed" | "inferred";
+export type FactSourceKind = "management" | "user_message" | "tool" | "legacy";
+
+export interface FactInput {
+  text: string;
+  category?: FactCategory;
+  expires_at?: string | null;
+}
+
+export interface MemoryFact {
   id: string;
   text: string;
-  category: "preference" | "fact";
-  origin: "user" | "confirmed" | "inferred";
-  source_thread_id?: string;
-  source_message_id?: string;
+  category: FactCategory;
+  expires_at: string | null;
+  origin: FactOrigin;
   revision: number;
   created_at: string;
   updated_at: string;
-  expires_at?: string | null;
+  source_kind: FactSourceKind;
+  source_thread_id: string | null;
+  source_message_id: string | null;
+  source_call_id: string | null;
+  quote: string | null;
 }
+
+/** @deprecated 兼容旧别名，等同于 MemoryFact */
+export type FactItem = MemoryFact;
 
 export interface MemoryDocument {
   schema_version: number;
   revision: number;
   epoch: number;
   automatic_candidates: boolean;
-  facts: FactItem[];
-  candidates: FactItem[];
+  facts: MemoryFact[];
+  candidates: MemoryFact[];
 }
 
-export interface FactInput {
-  text: string;
-  category?: "preference" | "fact";
-  expires_at?: string | null;
+export type ExtractionStatusKind =
+  | "never"
+  | "running"
+  | "succeeded"
+  | "no_candidates"
+  | "failed"
+  | "skipped"
+  | "interrupted";
+
+export type ExtractionPauseReason =
+  | "source_limit"
+  | "tombstone_limit"
+  | "candidate_limit";
+
+export interface ExtractionStatus {
+  status: ExtractionStatusKind;
+  updated_at: string | null;
+  source_thread_id: string | null;
+  candidate_count: number;
+  error_code: string | null;
+  pause_reason: ExtractionPauseReason | string | null;
+}
+
+export interface MemoryMutation {
+  action: string;
+  changed: boolean;
+  added: number;
+  updated: number;
+  removed: number;
+  skipped: number;
+}
+
+export interface MemoryScope {
+  kind: "project_user" | string;
+  project_id: string;
+  user_id: string;
+}
+
+export interface MemoryCapabilities {
+  memory_enabled: boolean;
+  can_read: boolean;
+  can_write: boolean;
+}
+
+export interface MemoryLimits {
+  fact_text_chars: number;
+  facts: number;
+  candidates: number;
+  restore_items: number;
+  request_bytes: number;
+}
+
+export interface MemoryCounts {
+  facts: number;
+  candidates: number;
+}
+
+export interface MemoryView {
+  status: "ready" | "disabled";
+  scope: MemoryScope;
+  capabilities: MemoryCapabilities;
+  limits: MemoryLimits;
+  document: MemoryDocument | null;
+  counts: MemoryCounts | null;
+  extraction: ExtractionStatus | null;
+  mutation: MemoryMutation | null;
 }
 
 export interface MemoryCommandPayload {
   action: "save" | "delete" | "clear" | "accept" | "reject" | "settings" | "restore";
   expected_revision: number;
   fact_id?: string;
+  replace_fact_id?: string;
   fact?: FactInput;
   automatic_candidates?: boolean;
   facts?: FactInput[];
 }
 
 /**
- * 读取当前 Dear 会话关联的长期记忆与候选
+ * 读取当前登录用户在指定项目下的无线程长期记忆视图 (MemoryView)
  */
 export async function readMemory(
   projectId: string,
-  threadId: string,
-  query = "",
   signal?: AbortSignal,
-): Promise<MemoryDocument> {
-  const params = query.trim() ? { query: query.trim() } : undefined;
-  const { data } = await platformHttpClient.get<MemoryDocument>(
-    `/api/langgraph/threads/${encodeURIComponent(threadId)}/dear/memory`,
+): Promise<MemoryView> {
+  const { data } = await platformHttpClient.get<MemoryView>(
+    "/api/langgraph/dear/memory",
     {
       headers: { "x-project-id": projectId },
-      params,
       signal,
     },
   );
@@ -59,15 +134,14 @@ export async function readMemory(
 }
 
 /**
- * 提交记忆变更指令（带 CAS expected_revision 防并发冲突）
+ * 提交无线程长期记忆变更命令（带 CAS expected_revision 防并发冲突）
  */
 export async function changeMemory(
   projectId: string,
-  threadId: string,
   payload: MemoryCommandPayload,
-): Promise<MemoryDocument> {
-  const { data } = await platformHttpClient.post<MemoryDocument>(
-    `/api/langgraph/threads/${encodeURIComponent(threadId)}/dear/memory`,
+): Promise<MemoryView> {
+  const { data } = await platformHttpClient.post<MemoryView>(
+    "/api/langgraph/dear/memory",
     payload,
     {
       headers: { "x-project-id": projectId },
@@ -81,17 +155,19 @@ export async function changeMemory(
  */
 export async function saveMemoryFact(
   projectId: string,
-  threadId: string,
   expectedRevision: number,
   fact: FactInput,
   factId?: string,
-): Promise<MemoryDocument> {
-  return changeMemory(projectId, threadId, {
+): Promise<MemoryView> {
+  const payload: MemoryCommandPayload = {
     action: "save",
     expected_revision: expectedRevision,
     fact,
-    fact_id: factId,
-  });
+  };
+  if (factId) {
+    payload.fact_id = factId;
+  }
+  return changeMemory(projectId, payload);
 }
 
 /**
@@ -99,11 +175,10 @@ export async function saveMemoryFact(
  */
 export async function deleteMemoryFact(
   projectId: string,
-  threadId: string,
   expectedRevision: number,
   factId: string,
-): Promise<MemoryDocument> {
-  return changeMemory(projectId, threadId, {
+): Promise<MemoryView> {
+  return changeMemory(projectId, {
     action: "delete",
     expected_revision: expectedRevision,
     fact_id: factId,
@@ -111,33 +186,36 @@ export async function deleteMemoryFact(
 }
 
 /**
- * 清空当前用户在当前项目下的记忆事实
+ * 清空当前用户在当前项目下的全部记忆事实与候选并关闭自动候选
  */
 export async function clearMemory(
   projectId: string,
-  threadId: string,
   expectedRevision: number,
-): Promise<MemoryDocument> {
-  return changeMemory(projectId, threadId, {
+): Promise<MemoryView> {
+  return changeMemory(projectId, {
     action: "clear",
     expected_revision: expectedRevision,
   });
 }
 
 /**
- * 确认采纳推断候选为正式事实
+ * 确认采纳推断候选为正式事实（可选传入 replaceFactId 原子替换已有事实）
  */
 export async function acceptMemoryCandidate(
   projectId: string,
-  threadId: string,
   expectedRevision: number,
   factId: string,
-): Promise<MemoryDocument> {
-  return changeMemory(projectId, threadId, {
+  replaceFactId?: string,
+): Promise<MemoryView> {
+  const payload: MemoryCommandPayload = {
     action: "accept",
     expected_revision: expectedRevision,
     fact_id: factId,
-  });
+  };
+  if (replaceFactId) {
+    payload.replace_fact_id = replaceFactId;
+  }
+  return changeMemory(projectId, payload);
 }
 
 /**
@@ -145,11 +223,10 @@ export async function acceptMemoryCandidate(
  */
 export async function rejectMemoryCandidate(
   projectId: string,
-  threadId: string,
   expectedRevision: number,
   factId: string,
-): Promise<MemoryDocument> {
-  return changeMemory(projectId, threadId, {
+): Promise<MemoryView> {
+  return changeMemory(projectId, {
     action: "reject",
     expected_revision: expectedRevision,
     fact_id: factId,
@@ -161,11 +238,10 @@ export async function rejectMemoryCandidate(
  */
 export async function updateMemorySettings(
   projectId: string,
-  threadId: string,
   expectedRevision: number,
   automaticCandidates: boolean,
-): Promise<MemoryDocument> {
-  return changeMemory(projectId, threadId, {
+): Promise<MemoryView> {
+  return changeMemory(projectId, {
     action: "settings",
     expected_revision: expectedRevision,
     automatic_candidates: automaticCandidates,
@@ -173,15 +249,14 @@ export async function updateMemorySettings(
 }
 
 /**
- * 追加恢复记忆事实列表（最多 100 条）
+ * 追加恢复记忆事实列表（单次 1..100 条）
  */
 export async function restoreMemoryFacts(
   projectId: string,
-  threadId: string,
   expectedRevision: number,
   facts: FactInput[],
-): Promise<MemoryDocument> {
-  return changeMemory(projectId, threadId, {
+): Promise<MemoryView> {
+  return changeMemory(projectId, {
     action: "restore",
     expected_revision: expectedRevision,
     facts,

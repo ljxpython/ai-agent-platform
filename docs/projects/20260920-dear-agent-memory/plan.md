@@ -7,5 +7,6 @@
 3. [Platform 实施及唯一公开契约](03-platform-api-contract.md)
 4. [前端同事交接](04-frontend-handoff.md)
 5. [分层验证与交付](05-verification-and-delivery.md)
+6. [操作与使用指南](06-user-and-dev-guide.md)
 
 当前仍是规划，不能将推荐接口视为已上线。

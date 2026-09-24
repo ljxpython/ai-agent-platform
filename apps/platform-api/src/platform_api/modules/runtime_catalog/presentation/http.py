@@ -4,13 +4,15 @@ import hashlib
 import hmac
 import time
 
+from platform_api.modules.runtime_gateway.application import thread_access
+
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import sessionmaker
 
 from platform_api.adapters.langgraph import build_forward_headers
 from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext
-from platform_api.core.errors import BadRequestError
+from platform_api.core.errors import BadRequestError, ForbiddenError
 from platform_api.entrypoints.http.dependencies import get_actor_context
 from platform_api.modules.runtime_catalog.application import RuntimeCatalogService
 from platform_api.modules.runtime_catalog.bootstrap import build_runtime_catalog_service
@@ -98,6 +100,24 @@ def get_internal_runtime_model_config(
     return service.resolve_model_connection(
         reference=reference, project_id=project_id, trusted_runtime=trusted_runtime)
 
+
+
+@router.get("/internal/memory-authorization")
+def authorize_runtime_memory(request: Request, project_id: str, thread_id: str, user_id: str) -> dict:
+    stamp = request.headers.get("x-runtime-memory-timestamp", "")
+    signature = request.headers.get("x-runtime-memory-signature", "")
+    secret = request.app.state.settings.runtime_delegation_secret
+    try:
+        timely = abs(time.time() - int(stamp)) <= 30
+    except ValueError:
+        timely = False
+    message = f"{stamp}\n{project_id}\n{thread_id}\n{user_id}"
+    expected = hmac.new(secret.encode(), message.encode(), hashlib.sha256).hexdigest()
+    if not secret or not timely or not hmac.compare_digest(signature, expected):
+        raise ForbiddenError(code="runtime_memory_signature_invalid", message="Invalid Runtime signature")
+    factory = request.app.state.db_session_factory
+    access = thread_access.get(factory, thread_id)
+    return {"allowed": thread_access.personal_memory_allowed(access, project_id=project_id, user_id=user_id)}
 
 
 @router.get("/internal/message-authorization")

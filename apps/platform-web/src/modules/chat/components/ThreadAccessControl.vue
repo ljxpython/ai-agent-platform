@@ -248,7 +248,7 @@ defineExpose({
             />
             <div class="leading-relaxed">
               <span class="font-semibold">会话安全隔离说明：</span>
-              默认仅本人可见。共享仅授予会话浏览或发言权，<strong>绝不会</strong>授予本地终端操作、全权执行或高危动作审批权限。
+              默认仅本人可见。共享仅授予会话浏览或发言权，<strong>绝不会</strong>授予本地终端操作、全权执行或高危动作审批权限。共享会话将自动停用个人记忆；但<strong>分享包含历史回答，回答中已经出现的个人信息也会被分享</strong>，不会自动移除历史个人信息。
             </div>
           </div>
 

@@ -30,6 +30,27 @@ async def _stream_events(*events):
 
 
 class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
+    async def test_dear_memory_upstream_error_does_not_echo_fact_text(self):
+        marker = "SENSITIVE_MEMORY_BODY"
+        adapter = LangGraphRuntimeGatewayUpstream(base_url="http://runtime", timeout_seconds=10)
+        for status, code in ((503, "memory_storage_unavailable"),
+                             (504, "langgraph_upstream_timeout")):
+            adapter._http = SimpleNamespace(require_json=AsyncMock(side_effect=PlatformApiError(
+                code=code, status_code=status, message=marker,
+                extra={"upstream_detail": marker})))
+            with self.assertRaises(PlatformApiError) as caught:
+                await adapter.dear_memory()
+            self.assertEqual(caught.exception.code, code)
+            self.assertNotIn(marker, str(caught.exception.to_payload(request_id="request-1")))
+            self.assertEqual(caught.exception.to_payload(request_id="request-1")["request_id"], "request-1")
+
+    async def test_dear_memory_uses_threadless_private_route(self):
+        adapter = LangGraphRuntimeGatewayUpstream(base_url="http://runtime", timeout_seconds=10)
+        adapter._http = SimpleNamespace(require_json=AsyncMock(return_value={"status": "ready"}))
+        await adapter.dear_memory(payload={"action": "clear", "expected_revision": 1})
+        adapter._http.require_json.assert_awaited_once_with(
+            "POST", "/internal/dear/memory", payload={"action": "clear", "expected_revision": 1})
+
     async def test_dear_governance_is_runtime_private_route(self):
         adapter = LangGraphRuntimeGatewayUpstream(base_url="http://runtime", timeout_seconds=10)
         adapter._http = SimpleNamespace(require_json=AsyncMock(return_value={"revision": 1}))

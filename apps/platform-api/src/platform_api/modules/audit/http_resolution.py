@@ -351,6 +351,9 @@ def _resolve_action(
             )
 
     if len(segments) >= 2 and segments[:2] == ["api", "langgraph"]:
+        if segments[2:] == ["dear", "memory"] and method in {"GET", "POST"}:
+            action = "read" if method == "GET" else clean_str((request.metadata or {}).get("memory_action")) or "changed"
+            return f"runtime.dear.memory.{action}", "personal_memory", None
         if segments[2:4] == ["dear", "skills"]:
             action = {"GET": "read", "POST": "created", "PUT": "updated", "PATCH": "enabled.changed", "DELETE": "deleted"}.get(method)
             if action:
@@ -625,7 +628,7 @@ def _resolve_metadata(
             {
                 str(key): value
                 for key, value in request.metadata.items()
-                if key in {"reason", "graph_id", "subject_type", "subject_id", "tool_name"} and isinstance(value, (str, int, float, bool))
+                if key in {"reason", "graph_id", "subject_type", "subject_id", "tool_name", "memory_action"} and isinstance(value, (str, int, float, bool))
             }
         )
     return {key: value for key, value in metadata.items() if value is not None}

@@ -95,6 +95,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                 for method in route.methods
             },
             {(method, path) for method, path, _ in CASES} | {
+                ("GET", "/dear/memory"), ("POST", "/dear/memory"),
                 ("GET", "/dear/skills"), ("POST", "/dear/skills/custom"),
                 ("PUT", "/dear/skills/custom/{slug}"), ("PATCH", "/dear/skills/custom/{slug}"),
                 ("DELETE", "/dear/skills/custom/{slug}"), ("GET", "/dear/skills/{source}/{slug}"),

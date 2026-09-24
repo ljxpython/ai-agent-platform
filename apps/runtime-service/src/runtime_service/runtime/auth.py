@@ -109,6 +109,8 @@ def _parse_scope(raw: object) -> RuntimeScope:
         "terminal-write",
         "dear-skills-read",
         "dear-skills-write",
+        "dear-memory-read",
+        "dear-memory-write",
         "dear-governance-read",
         "dear-governance-write",
     }:

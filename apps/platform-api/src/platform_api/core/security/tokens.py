@@ -176,6 +176,8 @@ def create_runtime_delegation_token(
         "terminal-write",
         "dear-skills-read",
         "dear-skills-write",
+        "dear-memory-read",
+        "dear-memory-write",
         "dear-governance-read",
         "dear-governance-write",
     }:

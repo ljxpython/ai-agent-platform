@@ -17,6 +17,7 @@ class BinaryPayload:
 
 
 class RuntimeGatewayUpstreamProtocol(Protocol):
+    async def dear_memory(self, *, payload: dict | None = None) -> dict: ...
     async def dear_skills(self, method: str, suffix: str = "", *, payload=None, params=None): ...
 
     async def dear_governance(

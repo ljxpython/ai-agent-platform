@@ -1,5 +1,7 @@
 # 01 源码对照、目录地图与分层边界
 
+本篇保留 2026-09-20 调研时的源码快照和“拟新增”地图；2026-09-24 已实施状态以 [tasks.md](tasks.md)、[实现记录](implementation/02-source-and-model.md)和[验证记录](verification.md)为准。
+
 ## 1. 调研范围与证据口径
 
 - 当前仓库：`ai-agent-platform`，以本轮工作区文件为准，已有其他任务的未提交改动未清理。

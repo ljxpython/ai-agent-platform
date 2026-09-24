@@ -2,7 +2,7 @@
 
 ## 目标与责任
 
-**负责人：后端/Runtime 开发者（本任务后续实施范围）。状态：规划中，以下新增函数、字段和规则均尚未实现。**
+**负责人：后端/Runtime 开发者。状态：部分实施；准确进度以 [tasks.md](tasks.md) 为准。** 本文保留目标方案，标为“拟增”的段落是原实施定位，不代表当前仍缺代码。
 
 保留 Runtime 对记忆的唯一所有权，修复现有行为，再提供供 Platform 调用的无线程管理接口。前端只能通过 Platform 访问，不持有 Runtime 委托密钥。
 
@@ -19,7 +19,7 @@ src/runtime_service/
 ├── runtime/auth.py                   # 已有；修改 _parse_scope 的 operation 白名单
 ├── http/
 │   ├── dear_governance.py             # 已有；旧线程入口及 call，被 dear_skills 引用
-│   ├── dear_memory.py                 # 拟新增；新无线程 GET/POST 和 MemoryView 响应适配
+│   ├── dear_memory.py                 # 已新增；无线程 GET/POST 和 MemoryView 响应适配
 │   └── dear_skills.py                 # 已有；只作为无线程授权范式参考
 ├── services/dearflow_agent/
 │   ├── memory.py                     # 已有；命令、事实、唯一存储，主要业务改这里
@@ -35,9 +35,9 @@ src/runtime_service/
     └── migrations/versions/0001_application.py  # 已发布基线，不编辑
 tests/
 ├── services/dearflow_agent/test_p6_governance.py  # 已有 PG/CAS 基线，扩展
-├── services/dearflow_agent/test_memory_context.py     # 拟新增纯选择/转义测试
-├── services/dearflow_agent/test_memory_extraction.py  # 拟新增来源/生命周期测试
-├── http/test_dear_memory.py           # 拟新增新 HTTP 作用域/契约测试
+├── services/dearflow_agent/test_memory_contract.py    # 已新增；输入、召回与 HTTP 契约
+├── services/dearflow_agent/test_memory_access.py      # 已新增；共享 ACL 回调
+├── services/dearflow_agent/test_p6_governance.py      # 已扩展；隔离 PG、CAS、提取状态
 └── runtime/test_auth.py               # 已有；新增 operation 正反例
 ```
 
@@ -115,12 +115,12 @@ change(scope, command, source):
 - 用户可见有效 facts ≤100、candidates ≤100；到期隐藏与写入容量计算必须一致。写事务清理过期实体，不因读请求自动增加 revision。
 - sources ≤2000、deleted_digests ≤1000 是内部安全限额，不是人工 CRUD 的总开关。达到限额暂停自动提取并给出 maintenance 状态，不能从列表头直接丢幂等信息。
 - 无剩余墓碑位置但用户要求删除/替换：先提升 epoch、关闭自动候选并标维护原因，再允许人工修改；不能将“无法记墓碑”变成禁止用户删除自己的数据。settings 开启时若维护原因未解除，返回 `memory_maintenance_required`。
-- 恢复提取的首期维护路径明确为“导出有效事实→确认 clear→restore→显式重新开启”；这是用户主动维护流程，不后台自动清空，旧候选不保留。
+- 待收口的维护提案：“导出有效事实→确认 clear→restore→显式重新开启”会丢失旧候选、来源去重与删除指纹，不属于无损维护，2026-09-24 用户确认未批准该维护流程。实施该部分前须冻结重置语义并验证旧源不重放；此前仅承诺满额暂停自动提取、人工管理仍可用，不承诺一键恢复。
 - 到期候选不能采纳。一个与过期记录同文本的新明确输入是否可记住，按当前有效集合去重；历史用户主动拒绝/删除的指纹仍优先抑制自动候选。
 
 ## 4. 内部 HTTP 与工具怎么接
 
-拟新增 `http/dear_memory.py`：`authorize_memory()`、`read_memory()`、`change_memory()`。使用 FastAPI、Pydantic、既有 authenticate/call 模式，不创建独立服务进程。
+已新增 `http/dear_memory.py`：`authorize()`、`read_memory()`、`change_memory()`。使用 FastAPI、Pydantic、既有 authenticate/call 模式，不创建独立服务进程。
 
 ```text
 GET /internal/dear/memory
@@ -147,6 +147,10 @@ POST /internal/dear/memory
 
 `HumanMessage` 类型本身不足以证明实际作者；公开输入规范化与队列授权链必须共同成立。
 
+**2026-09-24 已确认的共享会话限制：** 共享会话不自动注入个人记忆、不暴露或执行记忆工具（包括查询与管理）、不自动提取候选。不能仅隐藏工具名称，执行入口也必须拒绝；不能只关提取而继续注入。无线程管理接口仍允许用户管理本人记忆。Thread owner、执行用户、队列发送者不能互相替代；分享或takeover不授予读取原owner记忆的权限。
+
+实现前需明确 Platform 的权威 Thread ACL 如何通过受信上下文传递给 Runtime；不能信任客户端提交的 shared/private 标记，也不能因未知状态而默认允许记忆。运行中分享、撤销分享及resume时的重新判定是待完成的工程设计和验证项。私有会话后续被分享会暴露其历史回答，不承诺清除回答中已生成的个人信息。
+
 - 普通 run：源 ID 来自已接受输入中的用户消息；拒绝客户端伪造 memory 私有 state、隐藏系统标记或来源 user_id。
 - 消息队列：`MessageQueueMiddleware.abefore_model` 验证授权后，目前输出 HumanMessage 只带 id/content。若允许其他参与者向线程追加，不能把该参与者的“我喜欢…”写到 run owner 的个人记忆。**必须核对受信 sender_id；没有可靠作者证明则跳过自动候选。** 必要时在 private state 中携带 ID→sender 映射，不能把公共 additional_kwargs 当可信凭据。
 - 字符串或标准 text block 提取文本；图片、附件 URI、工具结果跳过。不要把任意 dict 的 text 字段都当用户正文。
@@ -171,15 +175,17 @@ POST /internal/dear/memory
 
 先检查开关、maintenance、epoch、已处理 source key，再调用当前平台解析出的 model 的结构化输出。候选含 text/category/quote/source_message_id 及 scope/durability/authority。由服务把 source_message_id 绑定到本轮合格源，不接受模型自造原文或 owner。
 
-整个 run 最多 5 条候选；模型最多两次尝试、共用一个 30 秒 deadline，第二次只在剩余预算内针对可重试传输错误，解析/标签拒绝不无脑重试。模型调用不占 PG 事务。取消向上抛出，不能被 `except Exception` 变成成功。
+整个 run 最多 5 条候选；模型最多两次尝试、共用一个 180 秒 deadline，第二次只在剩余预算内针对可重试传输错误，解析/标签拒绝不无脑重试。预算覆盖等待和重试间隔，不是每次180秒；首次耗尽预算时不再发起第二次。模型调用不占 PG 事务。取消向上抛出，不能被 `except Exception` 变成成功。用户接受该处理延迟run最终完成状态；180秒不包含主对话模型执行时间，也不等于整个run或HTTP请求的总超时。
 
 原始当前实现的 read/extracted 在 try 之外，需要把**可选提取链**的存储与模型错误都转换为安全状态；显式 CRUD 错误仍必须向调用者报告。若 PG 不可写，失败状态也可能持久化不了，只能记不含正文的 trace；UI GET 应显示存储错误，不能承诺所有失败一定有状态记录。
 
 propose 提交时重读 epoch/开关/指纹；候选 ID 由服务生成。旧任务被取消/清空后不可更新新的 extraction 状态。观测状态按 epoch+run_id+source 标识比较再更新，防止旧失败覆盖新成功。跨 worker 可能重复调用模型，但唯一源提交和 scope 锁必须保证不重复生效；本期不宣称模型调用 exactly-once。
 
-`running` 状态要有 expires_at；deadline 过去但进程已死时 GET 投影为 interrupted，不能永远显示推断中。不启动后台轮询修复 worker，后续新 run 可按已批准规则重新处理未成功源；没有新 run 就不承诺自动补偿。
+`running` 状态要有 expires_at；deadline 过去但进程已死时 GET 投影为 interrupted，不能永远显示推断中。其有效期应与180秒模型预算及有界存储收尾一致，具体收尾上限在实现时冻结。不启动后台轮询修复worker；失败后显示failed/interrupted，不承诺跨run自动补偿，新run不自动重放旧失败源。用户再次明确表达产生的新消息可作为新源；同一run恢复执行也不得重置次数和预算。
 
 ## 6. 召回、预算与注入怎么写
+
+自动召回遇到存储故障时，本次模型调用不注入个人记忆，记录不含正文的降级原因，普通对话继续。前置的可选记忆读取同样隔离存储异常，不能在进入模型前打断普通对话。显式 `search_memory/manage_memory` 与管理HTTP请求仍返回明确错误，不能将异常转换为空列表或成功。只处理存储故障，不吞掉取消或授权拒绝；共享会话应先被记忆策略门拦截。
 
 拟修改签名：`MemoryStorage.context(scope, query="")`，返回内部选中 facts 与观测元数据，再由 middleware 序列化注入。现有 search_memory(query) 的所有词子串查询可继续用于显式查找，不必强制与上下文排序同一种语义。
 
@@ -199,15 +205,15 @@ propose 提交时重读 epoch/开关/指纹；候选 ID 由服务生成。旧任
 
 | 任务 | 开发内容 | 测试入口/验收 |
 |---|---|---|
-| [ ] R01 | 旧 document 默认值、公开投影、内部状态 | 旧数据 fixture 读不丢字段；公开输出无 sources/墓碑 |
-| [ ] R02 | command 严格字段、事务 snapshot、CAS/去重/替换 | test_p6_governance：双连接同 revision 仅一个写入、非法批次全回滚 |
-| [ ] R03 | 到期、配额、维护/清空 | 容量边界不锁死人工删除；clear 单调 epoch；旧源晚到拒绝 |
-| [ ] R04 | 新路由、operation 白名单、旧路由适配 | test_dear_memory/test_auth：真假委托、不同 operation、开关、DB 异常 |
-| [ ] R05 | 用户来源捕获、队列作者、摘要协作 | test_memory_extraction：不同 sender 不污染 owner、摘要后仍有源快照 |
-| [ ] R06 | 提取门、deadline、失败、usage 状态 | 可控模型两次内结束、取消传播、旧结果不覆盖新状态 |
-| [ ] R07 | query 排序、预算、转义 | test_memory_context：相关旧事实、中文词、长项跳过、闭合标签 |
-| [ ] R08 | 工具/权限一致与真实新线程模型验证 | 独立 memory E2E：工具拒绝不写入，新会话使用已确认事实 |
+| [x] R01 | 旧 document 默认值、公开投影、内部状态 | 旧数据 fixture 读不丢字段；公开输出无 sources/墓碑 |
+| [x] R02 | command 严格字段、事务 snapshot、CAS/去重/替换 | test_p6_governance：双连接同 revision 仅一个写入、非法批次全回滚 |
+| [x] R03 | 到期、配额、维护/清空 | 容量边界不锁死人工删除；clear 单调 epoch；旧源晚到拒绝 |
+| [x] R04 | 新路由、operation 白名单、旧路由适配 | test_memory_contract/test_auth：委托、operation、开关、真实 HTTP/PG |
+| [x] R05 | 用户来源捕获、队列作者、摘要协作 | test_context/test_memory_contract/test_p6_governance：真实 sender、交付状态、同 run 多源与摘要后快照 |
+| [x] R06 | 提取门、deadline、失败、usage 状态 | 可控模型两次内结束、取消传播、并发 run 状态归属、独立真实模型提取 |
+| [x] R07 | query 排序、预算、转义 | 固定 10 正/10 负召回样本、预算/转义、真实模型合成事实问答 |
+| [~] R08 | 工具/权限一致与真实新线程模型验证 | 独立 memory E2E：工具拒绝不写入，新会话使用已确认事实 |
 
 ## 验证记录与状态
 
-本轮仅核查源码与官方文档，未新增上述业务实现和测试文件。实施执行命令、隔离 PG 规则、真实模型输入和交付证据见 [05](05-verification-and-delivery.md)。R01—R08 全部待开始；不得标 Runtime 已开发完成。
+2026-09-24 已实施无线程接口、命令与事务、受信共享检查、多条本人队列来源、有界提取和词法召回；相关代码与测试见 [阶段一](implementation/01-backend-memory.md)和[阶段二](implementation/02-source-and-model.md)。R08 的平台完整 run/SSE 分享竞态仍未验证。进度只看 [tasks.md](tasks.md)；执行结果记入 [verification.md](verification.md) 的 Phase 区，Final 尚未执行。

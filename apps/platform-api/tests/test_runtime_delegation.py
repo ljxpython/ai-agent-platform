@@ -18,6 +18,7 @@ from platform_api.core.context.models import (
 from platform_api.core.runtime_contract import (
     normalize_protocol_v2_command,
     normalize_protocol_v2_event_request,
+    normalize_runtime_payload,
 )
 from platform_api.core.security import create_runtime_delegation_token, empty_runtime_context_hash
 from platform_api.modules.runtime_gateway.presentation.http import get_runtime_gateway_service
@@ -240,6 +241,14 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
 
 
 class ProtocolV2RuntimeNormalizationTest(unittest.TestCase):
+    def test_client_cannot_supply_private_memory_source(self):
+        for key in ("dear_memory_source", "runtime_message_claim", "dear_skill_snapshot"):
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                normalize_runtime_payload(payload={"input": {key: {"text": "forged"}}}, project_id="project")
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                normalize_protocol_v2_command(payload={"id": 1, "method": "run.start",
+                    "params": {"assistant_id": "dearflow_agent", "input": {key: {"text": "forged"}}}})
+
     def test_rejects_client_tool_authorization_in_all_control_locations(self):
         for field in ("tools", "enable_tools", "tool_overrides", "tool_policy_version"):
             for location in ("context", "metadata", "config", "configurable", "platform_runtime", "config_metadata"):

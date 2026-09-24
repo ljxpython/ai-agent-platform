@@ -32,6 +32,12 @@ def private_owner(actor: ActorContext, metadata: dict) -> bool:
     return metadata.get("access_version") == 1 and metadata.get("visibility") == "private" and is_owner(actor, metadata)
 
 
+def personal_memory_allowed(metadata: dict, *, project_id: str, user_id: str) -> bool:
+    return (metadata.get("access_version") == 1 and metadata.get("project_id") == project_id
+            and metadata.get("owner_user_id") == user_id and metadata.get("visibility") == "private"
+            and not metadata.get("shared_actions") and not metadata.get("project_actions"))
+
+
 def initial_metadata(actor: ActorContext, metadata: dict) -> dict:
     result = {key: value for key, value in metadata.items() if key not in ACL_KEYS and key not in {"sandbox_id", "workspace_id"}}
     personal = actor.principal_type == "user" and bool(actor.user_id)

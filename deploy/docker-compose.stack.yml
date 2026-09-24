@@ -67,6 +67,7 @@ services:
       PLATFORM_RUNTIME_MANAGEMENT_API_KEY: "${PLATFORM_RUNTIME_MANAGEMENT_API_KEY:-}"
       PLATFORM_RUNTIME_MODEL_CONFIG_URL: "http://platform-api:2142/api/runtime/internal/model-config"
       PLATFORM_RUNTIME_MESSAGE_AUTH_URL: "http://platform-api:2142/api/runtime/internal/message-authorization"
+      PLATFORM_RUNTIME_MEMORY_AUTH_URL: "http://platform-api:2142/api/runtime/internal/memory-authorization"
       RUNTIME_SELF_URL: "http://127.0.0.1:8000"
       SYSTEM_PROMPT: "${SYSTEM_PROMPT:-}"
       MULTIMODAL_PARSER_MODEL_ID: "${MULTIMODAL_PARSER_MODEL_ID:-gpt_5.4-ccr}"

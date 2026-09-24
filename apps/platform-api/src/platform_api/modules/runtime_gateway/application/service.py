@@ -36,6 +36,7 @@ from platform_api.core.runtime_contract import (
     normalize_protocol_v2_command,
     normalize_protocol_v2_event_request,
     normalize_runtime_payload,
+    reject_private_runtime_state,
     strip_keys,
     validate_runtime_option_values,
 )
@@ -402,8 +403,10 @@ def _interrupt_ids(state: Any) -> set[str]:
 def _normalize_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
     def check(value):
         if isinstance(value, dict):
-            if "dear_skill_snapshot" in value:
-                raise BadRequestError(code="runtime_private_state", message="Skill execution state is server-owned")
+            try:
+                reject_private_runtime_state(value)
+            except ValueError as exc:
+                raise BadRequestError(code="runtime_private_state", message="Runtime execution state is server-owned") from exc
             for item in value.values():
                 check(item)
         elif isinstance(value, list):
@@ -1150,11 +1153,36 @@ class RuntimeGatewayService:
             result["capabilities"]["can_write"] = can_write and result["capabilities"]["custom_management_enabled"]
         return result
 
+    async def dear_memory(self, *, actor: ActorContext, project_id: str,
+                          payload: dict | None = None) -> dict:
+        if actor.principal_type != "user" or not actor.user_id:
+            raise ForbiddenError(code="memory_user_required", message="Personal memory requires a user account")
+        write = payload is not None
+        await run_in_threadpool(self._prepare_project_scope, actor=actor, project_id=project_id, write=write)
+        await run_in_threadpool(self._assert_runtime_target_allowed, project_id=project_id,
+                                assistant_id="dearflow_agent")
+        if not self._delegation_headers_factory:
+            raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
+        upstream = self._upstream.with_forwarded_headers(await run_in_threadpool(
+            self._delegation_headers_factory, project_id=project_id, agent_key="dearflow_agent",
+            thread_id=None, context_hash=empty_runtime_context_hash(),
+            operation="dear-memory-write" if write else "dear-memory-read"))
+        result = await upstream.dear_memory(payload=payload)
+        if not write and result.get("status") == "ready":
+            try:
+                self._authorize(actor=actor, project_id=project_id, write=True)
+            except ForbiddenError:
+                result["capabilities"]["can_write"] = False
+        return result
+
     async def dear_governance(self, *, actor: ActorContext, project_id: str, thread_id: str,
                               resource: str, payload: dict | None = None, query: str = "") -> dict:
         if resource != "memory":
             raise BadRequestError(code="invalid_dear_resource", message="Unknown Dear resource")
         thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=payload is not None)
+        if not thread_access.personal_memory_allowed(_thread_metadata(thread),
+                project_id=project_id, user_id=actor.user_id or ""):
+            raise ForbiddenError(code="memory_thread_shared", message="Personal memory is unavailable in shared Threads")
         agent_key = clean_str(ensure_dict(thread.get("metadata")).get("graph_id"))
         if agent_key != "dearflow_agent":
             raise BadRequestError(code="dear_agent_required", message="Dear Agent thread required")
@@ -1896,6 +1924,10 @@ class RuntimeGatewayService:
             thread_id=thread_id,
             write=True,
         )
+        try:
+            reject_private_runtime_state(ensure_dict(payload).get("values"))
+        except ValueError as exc:
+            raise BadRequestError(code="invalid_runtime_payload", message=str(exc)) from exc
         return await self._upstream.update_thread_state(
             thread_id, _normalize_payload(payload)
         )

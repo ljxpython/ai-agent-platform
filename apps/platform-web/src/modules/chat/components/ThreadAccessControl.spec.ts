@@ -23,9 +23,11 @@ beforeEach(() => {
 })
 afterEach(() => wrapper.unmount())
 
-it('allows revoking a departed member without allowing a new grant', async () => {
+it('allows revoking a departed member without allowing a new grant and shows personal memory privacy disclosure', async () => {
   await wrapper.findAll('button')[0]!.trigger('click')
   await flushPromises()
+  expect(wrapper.text()).toContain('共享会话将自动停用个人记忆')
+  expect(wrapper.text()).toContain('分享包含历史回答，回答中已经出现的个人信息也会被分享')
   expect(wrapper.text()).toContain('已离开项目')
   await wrapper.get('select').setValue('departed')
   expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()

@@ -43,4 +43,7 @@ async def read_memory(thread_id: str, query: str = Query(default="", max_length=
 @router.post("/memory")
 async def change_memory(thread_id: str, command: MemoryCommand, authorization: str | None = Header(default=None)):
     scope = await authorize(thread_id, authorization, write=True)
-    return await call(MemoryStorage().change, scope, command, thread_id=thread_id, source_id="explicit-management")
+    document = await call(MemoryStorage().change, scope, command, thread_id=thread_id, source_id="explicit-management")
+    document.pop("mutation", None)
+    document.pop("extraction", None)
+    return document

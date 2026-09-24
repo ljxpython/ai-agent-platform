@@ -11,6 +11,41 @@ from support import BindableFakeMessagesChatModel
 from runtime_service.services.dearflow_agent.workspace.backend import build_backend
 
 
+def test_memory_source_snapshot_survives_official_summarization(monkeypatch):
+    from runtime_service.services.dearflow_agent.middleware import memory as module
+
+    class Store:
+        def read(self, scope):
+            return {"epoch": 0, "automatic_candidates": False}
+
+        def context(self, scope, query=""):
+            return ""
+
+    monkeypatch.setattr(module, "MemoryStorage", Store)
+    monkeypatch.setattr(module, "memory_scope", lambda runtime: ("t", "p", "u"))
+    monkeypatch.setattr(module, "memory_allowed", lambda runtime: asyncio.sleep(0, result=True))
+
+    async def run():
+        saver = InMemorySaver()
+        backend = build_backend(None)
+        summary_model = BindableFakeMessagesChatModel(responses=[AIMessage(content="Previous conversation summary")])
+        model = BindableFakeMessagesChatModel(responses=[AIMessage(content="done")])
+        graph = create_deep_agent(model=model, backend=backend, middleware=[
+            SummarizationMiddleware(model=summary_model, backend=backend,
+                                    trigger=("messages", 4), keep=("messages", 2)),
+            module.MemoryContextMiddleware(model),
+        ], checkpointer=saver)
+        config = {"configurable": {"thread_id": "memory-summary"}}
+        await graph.ainvoke({"messages": [HumanMessage(content="old one", id="old-1"),
+            AIMessage(content="answer one"), HumanMessage(content="old two", id="old-2"),
+            AIMessage(content="answer two"), HumanMessage(content="我偏好简洁中文", id="current")]}, config)
+        checkpoint = await saver.aget_tuple(config)
+        assert checkpoint.checkpoint["channel_values"]["dear_memory_source"]["id"] == "current"
+        assert checkpoint.checkpoint["channel_values"]["dear_memory_source"]["text"] == "我偏好简洁中文"
+
+    asyncio.run(run())
+
+
 def test_official_summary_keeps_queue_receipts_and_archives_history():
     async def run():
         backend = build_backend(None)

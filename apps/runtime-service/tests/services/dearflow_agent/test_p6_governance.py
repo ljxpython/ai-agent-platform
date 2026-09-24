@@ -6,6 +6,7 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from threading import Event
 from uuid import uuid4
 
 import httpx
@@ -14,7 +15,9 @@ import pytest
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
 from runtime_service.services.dearflow_agent.governance_storage import connect
-from runtime_service.services.dearflow_agent.memory import MemoryCommand, MemoryStorage
+from runtime_service.services.dearflow_agent.memory import MemoryCommand, MemoryStorage, fresh_document
+from runtime_service.messaging import MessageInbox
+from runtime_service.http.dear_memory import envelope
 from runtime_service.services.dearflow_agent.skill_governance import (
     SkillStorage,
     inspect_package,
@@ -94,6 +97,234 @@ def test_memory_expiry_restore_capacity_and_context_budget(dsn):
     with pytest.raises(DocumentError, match="invalid_memory_fact"):
         change(store, "save", doc["revision"], fact={"text": "expired", "expires_at": datetime.now(UTC) - timedelta(seconds=1)})
     assert store.read(SCOPE)["revision"] == doc["revision"]
+
+
+def test_legacy_document_projects_safely_and_remains_writable(dsn, monkeypatch):
+    monkeypatch.setenv("RUNTIME_DEAR_GOVERNANCE_ENABLED", "1")
+    store = MemoryStorage(dsn)
+    old = fresh_document()
+    old["facts"] = [{"id": "old", "text": "偏好中文", "category": "preference",
+        "expires_at": None, "origin": "user", "revision": 1,
+        "created_at": "2025-01-01T00:00:00+00:00", "updated_at": "2025-01-01T00:00:00+00:00",
+        "source_thread_id": "legacy-thread", "source_message_id": "explicit-management"}]
+    with connect(dsn) as db:
+        store._write(db, SCOPE, old)
+    document, extraction = store.view(SCOPE)
+    public = envelope(SCOPE, document, extraction)
+    assert public["document"]["facts"][0]["source_kind"] == "management"
+    assert public["document"]["facts"][0]["source_message_id"] is None
+    assert public["extraction"]["status"] == "never"
+    assert "sources" not in public["document"]
+    saved = change(store, "save", 0, fact={"text": "偏好简洁"})
+    assert saved["revision"] == 1
+    assert {fact["text"] for fact in store.read(SCOPE)["facts"]} == {"偏好中文", "偏好简洁"}
+
+
+def test_expired_fact_does_not_occupy_capacity(dsn):
+    store = MemoryStorage(dsn)
+    doc = fresh_document()
+    doc["facts"] = [{"id": str(i), "text": f"事实 {i}", "category": "fact",
+        "expires_at": (datetime.now(UTC) - timedelta(days=1)).isoformat() if i == 0 else None,
+        "origin": "user", "revision": 1, "created_at": datetime.now(UTC).isoformat(),
+        "updated_at": datetime.now(UTC).isoformat()} for i in range(100)]
+    with connect(dsn) as db:
+        store._write(db, SCOPE, doc)
+    result = change(store, "save", 0, fact={"text": "replacement"})
+    assert len(result["facts"]) == 100
+    assert all(fact["id"] != "0" for fact in result["facts"])
+
+
+def test_metadata_limits_pause_extraction_but_allow_manual_management(dsn):
+    store = MemoryStorage(dsn)
+    doc = fresh_document()
+    doc["automatic_candidates"] = True
+    doc["sources"] = [f"source-{i}" for i in range(2000)]
+    with connect(dsn) as db:
+        store._write(db, SCOPE, doc)
+    deadline = (datetime.now(UTC) + timedelta(seconds=180)).isoformat()
+    assert store.begin_extraction(SCOPE, epoch=0, thread_id="thread", message_id="new",
+        run_id="run", deadline_at=deadline) is None
+    assert store.view(SCOPE)[1]["pause_reason"] == "source_limit"
+    saved = change(store, "save", 0, fact={"text": "manual fact"})
+    deleted = change(store, "delete", saved["revision"], fact_id=saved["facts"][0]["id"])
+    assert deleted["facts"] == []
+    with pytest.raises(DocumentError, match="memory_maintenance_required"):
+        change(store, "settings", deleted["revision"], automatic_candidates=True)
+    cleared = change(store, "clear", deleted["revision"])
+    assert cleared["epoch"] > deleted["epoch"] and not cleared["automatic_candidates"]
+
+
+def test_candidate_and_tombstone_limits_keep_manual_delete_available(dsn):
+    store = MemoryStorage(dsn)
+    doc = fresh_document()
+    doc["automatic_candidates"] = True
+    doc["candidates"] = [{"id": str(i), "text": f"candidate {i}", "expires_at": None}
+                         for i in range(100)]
+    with connect(dsn) as db:
+        store._write(db, SCOPE, doc)
+    deadline = (datetime.now(UTC) + timedelta(seconds=180)).isoformat()
+    assert store.begin_extraction(SCOPE, epoch=0, thread_id="thread", message_id="new",
+        run_id="run", deadline_at=deadline) is None
+    assert store.view(SCOPE)[1]["pause_reason"] == "candidate_limit"
+    rejected = change(store, "reject", 0, fact_id="0")
+    assert len(rejected["candidates"]) == 99
+    assert store.view(SCOPE)[1]["pause_reason"] is None
+    enabled = change(store, "settings", rejected["revision"], automatic_candidates=True)
+    saved = change(store, "save", enabled["revision"], fact={"text": "manual fact"})
+    with connect(dsn) as db:
+        current = store._load(db, SCOPE)
+        current["deleted_digests"] = [f"digest-{i}" for i in range(1000)]
+        store._write(db, SCOPE, current)
+    deleted = change(store, "delete", saved["revision"], fact_id=saved["facts"][0]["id"])
+    assert deleted["facts"] == []
+    assert store.view(SCOPE)[1]["pause_reason"] == "tombstone_limit"
+    assert not deleted["automatic_candidates"]
+
+
+def test_memory_extraction_claim_rejects_other_run_and_preserves_revision(dsn):
+    store = MemoryStorage(dsn)
+    doc = change(store, "settings", 0, automatic_candidates=True)
+    deadline = (datetime.now(UTC) + timedelta(seconds=180)).isoformat()
+    assert store.begin_extraction(SCOPE, epoch=doc["epoch"], thread_id="thread",
+        message_id="message", run_id="run-a", deadline_at=deadline) == deadline
+    assert store.begin_extraction(SCOPE, epoch=doc["epoch"], thread_id="thread",
+        message_id="message", run_id="run-b", deadline_at=deadline) is None
+    assert store.reserve_extraction_attempt(SCOPE, epoch=doc["epoch"], thread_id="thread",
+        message_id="message", run_id="run-a")
+    assert store.reserve_extraction_attempt(SCOPE, epoch=doc["epoch"], thread_id="thread",
+        message_id="message", run_id="run-a")
+    assert not MemoryStorage(dsn).reserve_extraction_attempt(SCOPE, epoch=doc["epoch"], thread_id="thread",
+        message_id="message", run_id="run-a")
+    assert not store.finish_extraction(SCOPE, epoch=doc["epoch"], thread_id="thread",
+        message_id="message", run_id="run-b", status="failed")
+    outcome = store.propose(SCOPE, epoch=doc["epoch"], thread_id="thread", message_id="message",
+        source_text="偏好中文", candidates=[], run_id="run-a")
+    assert outcome["status"] == "proposed" and outcome["added"] == 0
+    assert store.propose(SCOPE, epoch=doc["epoch"], thread_id="thread", message_id="message",
+        source_text="偏好中文", candidates=[], run_id="run-a")["status"] == "duplicate"
+    assert store.finish_extraction(SCOPE, epoch=doc["epoch"], thread_id="thread",
+        message_id="message", run_id="run-a", status="no_candidates")
+    snapshot, extraction = store.view(SCOPE)
+    assert snapshot["revision"] == doc["revision"]
+    assert extraction["status"] == "no_candidates"
+    assert store.begin_extraction(SCOPE, epoch=doc["epoch"], thread_id="thread",
+        message_id="message", run_id="run-b", deadline_at=deadline) is None
+
+
+def test_memory_restore_skips_duplicates_and_accept_replaces_atomically(dsn):
+    store = MemoryStorage(dsn)
+    saved = change(store, "save", 0, fact={"text": "old"})
+    restored = change(store, "restore", saved["revision"], facts=[{"text": "old"}, {"text": "new"}, {"text": "new"}])
+    assert restored["mutation"] == {"action": "restore", "changed": True, "added": 1,
+        "updated": 0, "removed": 0, "skipped": 2}
+    assert len(restored["facts"]) == 2
+    enabled = change(store, "settings", restored["revision"], automatic_candidates=True)
+    store.propose(SCOPE, epoch=enabled["epoch"], thread_id="thread", message_id="candidate",
+        source_text="喜欢简洁", candidates=[{"text": "简洁回答", "quote": "简洁"}])
+    current = store.read(SCOPE)
+    replaced = change(store, "accept", current["revision"], fact_id=current["candidates"][0]["id"],
+                      replace_fact_id=saved["facts"][0]["id"])
+    assert {fact["text"] for fact in replaced["facts"]} == {"new", "简洁回答"}
+    assert replaced["mutation"]["updated"] == 1
+
+
+def test_memory_noop_and_replacement_duplicate_keep_revision(dsn):
+    store = MemoryStorage(dsn)
+    saved = change(store, "save", 0, fact={"text": "existing"})
+    unchanged = change(store, "save", saved["revision"], fact_id=saved["facts"][0]["id"],
+                       fact={"text": "existing"})
+    assert not unchanged["mutation"]["changed"]
+    assert unchanged["revision"] == saved["revision"]
+    enabled = change(store, "settings", unchanged["revision"], automatic_candidates=True)
+    repeated = change(store, "settings", enabled["revision"], automatic_candidates=True)
+    assert not repeated["mutation"]["changed"]
+    assert repeated["revision"] == enabled["revision"]
+    store.propose(SCOPE, epoch=repeated["epoch"], thread_id="thread", message_id="source",
+                  source_text="candidate", candidates=[{"text": "candidate", "quote": "candidate"}])
+    candidate_id = store.read(SCOPE)["candidates"][0]["id"]
+    second = change(store, "save", store.read(SCOPE)["revision"], fact={"text": "candidate"})
+    with pytest.raises(DocumentError, match="memory_duplicate_fact"):
+        change(store, "accept", second["revision"], fact_id=candidate_id,
+               replace_fact_id=saved["facts"][0]["id"])
+    assert store.read(SCOPE)["revision"] == second["revision"]
+
+
+def test_queue_memory_sources_require_owner_run_and_delivery(dsn):
+    inbox = MessageInbox(dsn)
+    thread, run, other_run = str(uuid4()), str(uuid4()), str(uuid4())
+    ids = []
+    for sender, target, content in (("user", run, "我喜欢中文"),
+                                    ("other", run, "我喜欢英文"),
+                                    ("user", other_run, "我喜欢法文")):
+        message_id = str(uuid4())
+        inbox.enqueue(thread_id=thread, target_run_id=target, sender_id=sender,
+            client_message_id=message_id, idempotency_key=message_id, content=content)
+        ids.append(message_id)
+    assert inbox.memory_sources(thread_id=thread, target_run_id=run,
+        sender_id="user", message_ids=ids) == []
+    inbox.claim(thread_id=thread, target_run_id=run, owner="worker")
+    assert inbox.memory_sources(thread_id=thread, target_run_id=run,
+        sender_id="user", message_ids=ids) == [{"id": ids[0], "content": "我喜欢中文"}]
+
+
+def test_batch_sources_validate_quote_and_survive_concurrent_runs(dsn):
+    store = MemoryStorage(dsn)
+    enabled = change(store, "settings", 0, automatic_candidates=True)
+    deadline = (datetime.now(UTC) + timedelta(seconds=180)).isoformat()
+    first = store.begin_extraction(SCOPE, epoch=enabled["epoch"], thread_id="thread",
+        message_id="run:a", run_id="a", deadline_at=deadline, source_ids=["a1", "a2"])
+    second = store.begin_extraction(SCOPE, epoch=enabled["epoch"], thread_id="thread",
+        message_id="run:b", run_id="b", deadline_at=deadline, source_ids=["b1", "b2"])
+    assert first["source_ids"] == ["a1", "a2"]
+    assert second["source_ids"] == ["b1", "b2"]
+    assert store.reserve_extraction_attempt(SCOPE, epoch=enabled["epoch"],
+        thread_id="thread", message_id="run:a", run_id="a")
+    assert store.reserve_extraction_attempt(SCOPE, epoch=enabled["epoch"],
+        thread_id="thread", message_id="run:b", run_id="b")
+    candidates = [
+        {"text": "偏好中文", "quote": "喜欢中文", "source_message_id": "a1",
+         "scope": "personal", "durability": "stable", "authority": "personal_fact"},
+        {"text": "偏好简洁", "quote": "喜欢简洁", "source_message_id": "a2",
+         "scope": "personal", "durability": "stable", "authority": "personal_fact"},
+        {"text": "越界", "quote": "喜欢中文", "source_message_id": "b1",
+         "scope": "personal", "durability": "stable", "authority": "personal_fact"},
+    ]
+    outcome = store.propose(SCOPE, epoch=enabled["epoch"], thread_id="thread",
+        message_id="run:a", run_id="a", source_text="", candidates=candidates,
+        source_messages={"a1": "我喜欢中文", "a2": "我喜欢简洁"})
+    assert outcome["added"] == 2
+    assert store.finish_extraction(SCOPE, epoch=enabled["epoch"], thread_id="thread",
+        message_id="run:a", run_id="a", status="succeeded", count=2)
+    assert store.view(SCOPE)[1]["status"] == "running"
+    assert store.finish_extraction(SCOPE, epoch=enabled["epoch"], thread_id="thread",
+        message_id="run:b", run_id="b", status="no_candidates")
+    assert store.view(SCOPE)[1]["status"] == "no_candidates"
+    assert {item["source_message_id"] for item in store.read(SCOPE)["candidates"]} == {"a1", "a2"}
+    assert store.begin_extraction(SCOPE, epoch=enabled["epoch"], thread_id="thread",
+        message_id="run:c", run_id="c", deadline_at=deadline, source_ids=["a1", "a2"]) is None
+
+
+def test_memory_cancel_during_candidate_write_rolls_back(dsn, monkeypatch):
+    store = MemoryStorage(dsn)
+    enabled = change(store, "settings", 0, automatic_candidates=True)
+    deadline = (datetime.now(UTC) + timedelta(seconds=180)).isoformat()
+    store.begin_extraction(SCOPE, epoch=enabled["epoch"], thread_id="thread",
+        message_id="human", run_id="run", deadline_at=deadline)
+    cancelled = Event()
+    original_write = store._write
+
+    def cancel_before_commit(db, scope, doc):
+        original_write(db, scope, doc)
+        cancelled.set()
+
+    monkeypatch.setattr(store, "_write", cancel_before_commit)
+    with pytest.raises(DocumentError, match="memory_extraction_cancelled"):
+        store.propose(SCOPE, epoch=enabled["epoch"], thread_id="thread", message_id="human",
+            source_text="喜欢中文", candidates=[{"text": "偏好中文", "quote": "中文",
+                "scope": "personal", "durability": "stable", "authority": "personal_fact"}],
+            run_id="run", cancel_event=cancelled)
+    assert store.read(SCOPE)["revision"] == enabled["revision"]
+    assert not store.read(SCOPE)["candidates"]
 
 
 def package(text="Reply with HELLO", slug="test-skill", extra=None):
@@ -206,11 +437,12 @@ def test_extraction_source_idempotency_and_clear(dsn, monkeypatch):
     from langchain_core.messages import AIMessage, HumanMessage
     from runtime_service.services.dearflow_agent.middleware import memory as module
     monkeypatch.setattr(module, "memory_scope", lambda runtime: SCOPE)
+    monkeypatch.setattr(module, "memory_allowed", lambda runtime: asyncio.sleep(0, result=True))
     change(MemoryStorage(dsn), "settings", 0, automatic_candidates=True)
     model = SimpleNamespace(with_structured_output=lambda *a, **kw: structured)
-    structured = SimpleNamespace(ainvoke=AsyncMock(return_value={"parsed": module.Candidates(candidates=[module.Candidate(text="偏好中文", quote="中文")]), "raw": AIMessage(content="", usage_metadata={"input_tokens": 3, "output_tokens": 2, "total_tokens": 5})}))
+    structured = SimpleNamespace(ainvoke=AsyncMock(return_value={"parsed": module.Candidates(candidates=[module.Candidate(text="偏好中文", quote="中文", scope="personal", durability="stable", authority="personal_fact")]), "raw": AIMessage(content="", usage_metadata={"input_tokens": 3, "output_tokens": 2, "total_tokens": 5})}))
     middleware = module.MemoryContextMiddleware(model)
-    runtime = SimpleNamespace(execution_info=SimpleNamespace(thread_id="thread"))
+    runtime = SimpleNamespace(execution_info=SimpleNamespace(thread_id="thread", run_id="run"))
     async def run():
         state = {"messages": [HumanMessage(content="我喜欢中文", id="human") ]}
         state.update(await middleware.abefore_agent(state, runtime))

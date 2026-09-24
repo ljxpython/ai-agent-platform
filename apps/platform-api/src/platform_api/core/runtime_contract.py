@@ -58,6 +58,12 @@ PROTOCOL_V2_EVENT_CHANNELS = {
 
 PROTOCOL_V2_RUN_DURABILITY = {"sync", "async", "exit"}
 PROTOCOL_V2_RUN_DISCONNECT = {"cancel", "continue"}
+PRIVATE_RUNTIME_STATE_KEYS = {"runtime_message_claim", "dear_memory_source", "dear_skill_snapshot"}
+
+
+def reject_private_runtime_state(value: Any) -> None:
+    if isinstance(value, dict) and (set(value) & PRIVATE_RUNTIME_STATE_KEYS):
+        raise ValueError("Runtime private state cannot be supplied by a client")
 
 
 def _validate_runtime_option_values(options: dict[str, Any]) -> None:
@@ -203,6 +209,7 @@ def normalize_runtime_payload(
     project_id: str,
 ) -> dict[str, Any]:
     next_payload = strip_keys(normalize_runtime_object(payload), PROJECT_SCOPE_ALIAS_KEYS)
+    reject_private_runtime_state(next_payload.get("input"))
     next_config, next_context, next_metadata = normalize_runtime_contract(
         config=normalize_runtime_object(next_payload.get("config")),
         context=normalize_runtime_object(next_payload.get("context")),
@@ -251,6 +258,7 @@ def normalize_protocol_v2_command(
         return normalized
 
     run_params = normalized["params"]
+    reject_private_runtime_state(run_params.get("input"))
     unknown_run_fields = sorted(
         set(run_params)
         - {

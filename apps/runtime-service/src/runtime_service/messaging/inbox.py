@@ -147,6 +147,22 @@ class MessageInbox:
                 for row in sorted(rows, key=lambda row: row[2])
             ]
 
+    def memory_sources(self, *, thread_id: str, target_run_id: str,
+                       sender_id: str, message_ids: list[str], limit: int = 20) -> list[dict[str, Any]]:
+        """Read delivered messages by their durable sender, never by message shape."""
+        if not message_ids:
+            return []
+        ids = [uuid.UUID(value) for value in message_ids[:100]]
+        with connect(self.dsn, row_factory=tuple_row) as connection:
+            rows = connection.execute(
+                """SELECT message_id, payload FROM runtime_message_inbox
+                WHERE thread_id=%s AND target_run_id=%s AND sender_id=%s
+                AND status IN ('claimed','consumed') AND message_id = ANY(%s::uuid[])
+                ORDER BY sequence LIMIT %s""",
+                (thread_id, target_run_id, sender_id, ids, limit),
+            ).fetchall()
+        return [{"id": str(message_id), "content": payload} for message_id, payload in rows]
+
     def ack(self, *, token: str, message_ids: list[str], checkpoint_id: str) -> int:
         if not message_ids:
             return 0

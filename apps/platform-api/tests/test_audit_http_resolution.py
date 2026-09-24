@@ -7,6 +7,17 @@ from platform_api.modules.audit.schemas import AuditPlane, AuditResult
 
 
 class AuditHttpResolutionTest(unittest.TestCase):
+    def test_personal_memory_audit_uses_action_without_body(self):
+        resolved = resolve_http_audit(request=AuditHttpRequest(
+            method="POST", path="/api/langgraph/dear/memory", query_params={}, query_string=None,
+            state_project_id="project", client_ip=None, user_agent=None, response_content_length=None,
+            metadata={"memory_action": "save", "text": "private body"}),
+            response_payload={"document": {"facts": [{"text": "private body"}]}, "mutation": {"added": 1}},
+            actor_user_id="owner", status_code=200, result=AuditResult.SUCCESS)
+        self.assertEqual(resolved.action, "runtime.dear.memory.save")
+        self.assertEqual(resolved.target_type, "personal_memory")
+        self.assertNotIn("private body", str(resolved.metadata))
+
     def test_tool_restriction_records_target_and_safe_rule_metadata(self):
         metadata = {"graph_id": "reference_agent", "subject_type": "user", "subject_id": "u", "tool_name": "read_reference", "reason": "test", "token": "secret"}
         for method, suffix, action in (("POST", "", "created"), ("DELETE", "/restriction", "deleted")):

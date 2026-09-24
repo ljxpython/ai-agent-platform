@@ -66,6 +66,7 @@ from runtime_service.services.dearflow_agent.middleware.delegation import Delega
 from runtime_service.services.dearflow_agent.tools.memory import build_memory_tools
 from runtime_service.services.dearflow_agent.tools.skills import build_skill_tools
 from runtime_service.services.dearflow_agent.middleware.memory import MemoryContextMiddleware
+from runtime_service.services.dearflow_agent.memory_access import memory_allowed
 from runtime_service.services.dearflow_agent.middleware.skills import ExecutionSkillsMiddleware
 from runtime_service.services.dearflow_agent.tools.deployment import build_deployment_tool
 
@@ -123,6 +124,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     mcp_tools = []
     reasoning = {"reasoning": "probe_only"}
     governance = os.environ.get("RUNTIME_DEAR_GOVERNANCE_ENABLED") == "1"
+    memory_enabled = governance and executing and await memory_allowed(user, configurable.get("thread_id"))
     if executing:
         thread_id = configurable.get("thread_id")
         if not isinstance(thread_id, str) or not thread_id:
@@ -169,6 +171,8 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     available = set(defaults.optional_tool_names)
     if not governance:
         available.difference_update((*MEMORY_READ_TOOLS, *MEMORY_WRITE_TOOLS, *SKILL_READ_TOOLS, *SKILL_WRITE_TOOLS))
+    if not memory_enabled:
+        available.difference_update((*MEMORY_READ_TOOLS, *MEMORY_WRITE_TOOLS))
     if os.environ.get("RUNTIME_DEAR_PREVIEW_DEPLOY_ENABLED") != "1":
         available.discard("deploy_preview")
     if not mode.planning:
@@ -232,7 +236,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         model=model,
         system_prompt=SYSTEM_PROMPT + "\n<current_date>" + datetime.now(timezone.utc).date().isoformat() + " UTC</current_date>",
         tools=[request_information, artifact_tool, *research_tools, github_tool, arxiv_tool, fetch_web_guidelines, *chart_tools, *media_tools, *mcp_tools,
-               *build_memory_tools(), *build_skill_tools(workspace, model), build_deployment_tool(workspace)],
+               *(build_memory_tools() if memory_enabled else []), *build_skill_tools(workspace, model), build_deployment_tool(workspace)],
         backend=backend,
         skills=None,
         permissions=PERMISSIONS,
@@ -261,7 +265,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             MessageQueueMiddleware(),
             ClarificationBatchGuard(),
             document_middleware,
-            *([MemoryContextMiddleware(model)] if governance else []),
+            *([MemoryContextMiddleware(model)] if memory_enabled else []),
 
         ],
         context_schema=RuntimeContext,

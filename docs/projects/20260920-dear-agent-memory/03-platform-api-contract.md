@@ -2,9 +2,9 @@
 
 ## 目标、版本与责任
 
-**负责人：后端开发者。状态：规划草案 v0.2，未上线。** 本文是推荐公开 HTTP 契约的唯一事实源；04 只解释前端如何使用，不另定字段。实施评审后冻结，交接时用真实响应替换示例并记录版本。
+**负责人：后端开发者。状态：本地部分实施，未部署到联调环境。** 本文是公开 HTTP 契约的事实源；04 只解释前端如何使用，不另定字段。真实 OpenAPI 由当前代码生成，示例仍需和联调部署版本核对。
 
-当前已经能调用的是线程版 `/api/langgraph/threads/{thread_id}/dear/memory`。本文无线程接口、新 envelope、计数和提取状态都属于拟开发，不能通知前端“现在已可用”。
+当前本地代码同时保留线程版 `/api/langgraph/threads/{thread_id}/dear/memory`，并已实现无线程 `/api/langgraph/dear/memory`、新 envelope、计数和提取状态。本地真实 HTTP/隔离 PG 已通过；联调环境尚未部署，不能宣称环境已可用。
 
 ## 1. 目录与逐层调用
 
@@ -28,7 +28,8 @@ src/platform_api/
 │   └── schemas.py              # 已有公共错误 schema，不改全站形状
 └── modules/audit/http_resolution.py  # 新路径/动作归类
 tests/
-├── test_runtime_gateway_memory.py      # 拟新增；本专题主要 Platform 测试
+├── test_runtime_gateway_memory.py      # 已新增；真实 HTTP/隔离 PG 测试
+├── test_runtime_gateway_memory_contract.py # 已新增；共享 ACL 契约
 ├── test_runtime_gateway_skills.py      # 已有；复用其 HTTP/PG 测试范式
 ├── test_runtime_gateway_sdk_adapters.py # 已有；新 adapter 请求断言
 └── test_runtime_gateway_http_matrix.py # 已有；补路由覆盖矩阵
@@ -43,7 +44,7 @@ sequenceDiagram
   participant P as Runtime PG
   F->>H: POST /api/langgraph/dear/memory + project header
   H->>S: actor, project_id, validated command
-  S->>S: project.runtime.write + 项目存在 + Dear 许可
+  S->>S: project.runtime.execute + 项目存在 + Dear 许可
   S->>R: 签名 dear-memory-write / thread=null
   R->>R: principal/scope 校验、开关与业务参数校验
   R->>P: scope 锁 + revision 比较 + 原子变更
@@ -61,6 +62,7 @@ sequenceDiagram
 
 1. `write = payload is not None`，不是依据是否含 fact_id；settings/clear 也是写。
 2. `_prepare_project_scope(actor, project_id, write)` 同时检查权限与项目存在；同步 DB/policy 操作用已有 run_in_threadpool。
+   2026-09-24 用户确认沿用当前权限系统：GET 对应 `project.runtime.read`，写对应 `project.runtime.execute`；不要改回项目策略写权限，不新增记忆管理角色。scope中的user来自认证主体，不能由请求指定；管理员也只能管理本人记忆。
 3. `_assert_runtime_target_allowed(project_id, assistant_id="dearflow_agent")`，保持 agent catalog/项目许可门禁。
 4. 委托工厂不可用时明确 503，不使用 API key 假扮用户。
 5. 从已有 `get_runtime_gateway_service()` 的 `delegation_headers_factory` 签发新操作 token，thread_id=None；身份完全来自 ActorContext/PlatformRequestContext。
@@ -87,7 +89,7 @@ body 大小上限 1,500,000 UTF-8 bytes，避免只在 json.loads 后才有无�
 
 审计允许：request_id、actor/project、action、fact_id、expected_revision、结果 revision、added/skipped 计数。禁止：text、quote、导入数组、搜索词、委托 token、原始模型提示。审计与业务事务独立，写审计失败不得伪造记忆回滚；日志按现有失败机制暴露。
 
-## 3. 请求总览（拟开发）
+## 3. 请求总览（本地已实现，待部署）
 
 | HTTP | URL | 请求 | 响应 |
 |---|---|---|---|
@@ -133,7 +135,7 @@ type ExtractionStatus = {
   source_thread_id: string | null;
   candidate_count: number;
   error_code: string | null;
-  pause_reason: "source_limit" | "tombstone_limit" | null;
+  pause_reason: "source_limit" | "tombstone_limit" | "candidate_limit" | null;
 };
 type MemoryView = {
   status: "ready" | "disabled";
@@ -147,7 +149,7 @@ type MemoryView = {
 };
 ```
 
-这是文档类型，尚未生成前端代码。后端建议定义 Pydantic response_model，使 OpenAPI 与字段 nullability 可检查。`status=ready` 时 document/counts/extraction 非 null；disabled 时三者 null，memory_enabled/can_read/can_write 均 false；已通过项目权限的人仍可读到不可用状态。权限不足直接 403，不返回他人 scope 摘要。
+这是文档类型，尚未生成前端代码。后端已定义 Pydantic response_model，OpenAPI 可检查字段 nullability。`status=ready` 时 document/counts/extraction 非 null；disabled 时三者 null，memory_enabled/can_read/can_write 均 false；已通过项目权限的人仍可读到不可用状态。权限不足直接 403，不返回他人 scope 摘要。
 
 ### 4.1 ready GET 示例
 
@@ -283,8 +285,8 @@ request_id 可能缺省；error.extra 可能出现安全上游元数据，前端
 | 409/memory_duplicate_fact | 拟增 | save 同文本冲突，引导编辑已有条目；restore 则跳过计数 |
 | 409/memory_maintenance_required | 拟增 | 提取元数据耗尽，允许人工管理，说明维护流程 |
 | 422/validation_failed | 新路由统一 | details.loc/message/type；定位字段，不泄露整个事实输入 |
-| 400/invalid_memory_fact | 旧入口兼容 | 旧实现空白/过期业务校验；新入口统一 422，旧客户端过渡仍可遇到 |
-| 400/dear_payload_too_large | 复用语义 | body 超上限；网关更早拦截为 413 时按体积错误兜底 |
+| 400/invalid_memory_fact | 新旧入口均可能返回 | 空白/过期业务校验；字段格式错误为 422 |
+| 413/memory_payload_too_large | 新路由已实现 | body 超过 1.5 MB，不发送至 Runtime |
 | 503/memory_storage_unavailable | 拟增 | PG 不可用，不返回空数据；写入结果需重新核对 |
 | 502/langgraph_upstream_unavailable、504/langgraph_upstream_timeout | 复用 | Runtime 不可达/超时，保留草稿并允许读取重试 |
 
@@ -296,14 +298,14 @@ request_id 可能缺省；error.extra 可能出现安全上游元数据，前端
 
 ## 9. 任务、验证与交付条件
 
-- [ ] B01：冻结 MemoryView/MemoryCommand Pydantic schema 与 OpenAPI 示例；响应 ready/disabled 的不变量测试。
-- [ ] B02：新路由/service/port/adapter、双端 operation 白名单；匿名/外人/只读/目标禁用测试。
-- [ ] B03：标准错误包、422 脱敏、request_id、503 映射；真实 middleware exception handler 测试，不能只 mock service 返回。
-- [ ] B04：新审计 path/action 和正文脱敏；确认 audit 模块真正处理了 memory 路由。
-- [ ] B05：与 Runtime 的真实 HTTP+独立 PG schema 验证、重启和 CAS；参考 SkillsGatewayTest 的测试子进程，不向业务数据库写测试数据。
-- [ ] B06：给前端输出交接清单：已部署版本、公开 OpenAPI、成功/失败真实包、read-only/disabled fixture、测试项目及权限、可用模型、旧接口支持状态；交接状态写入 04。
+- [x] B01：MemoryView/MemoryCommand Pydantic schema、OpenAPI 与 ready/disabled 投影测试已通过。
+- [x] B02：新路由/service/port/adapter、双端 operation 白名单；匿名/外人/只读/目标禁用测试。
+- [x] B03：真实 HTTP 的 409/422/413、request_id 与敏感正文脱敏；adapter 的 503/504 映射测试已通过。
+- [x] B04：新审计 path/action 和正文脱敏；确认 audit 模块真正处理了 memory 路由。
+- [x] B05：与 Runtime 的真实 HTTP+独立 PG schema 验证、重启和 CAS；参考 SkillsGatewayTest 的测试子进程，不向业务数据库写测试数据。
+- [~] B06：给前端输出交接清单：已部署版本、公开 OpenAPI、成功/失败真实包、read-only/disabled fixture、测试项目及权限、可用模型、旧接口支持状态；交接状态写入 04。
 
-本轮未实现 B01—B06；示例均为拟定契约。Backend ready 需要 05 的后端门禁通过，不要求我们替前端同事写页面，但也不能因此把整体用户闭环标 done。
+本地 B01—B05 已有代码和对应自动验证；B06 仍缺联调环境、接收人和浏览器证据。准确进度见 [tasks.md](tasks.md)，实测结果见 [verification.md](verification.md)。Backend ready 的完整 run/SSE 门禁仍未满足，前端工作由接手同事负责。
 
 ## 10. 交接时可执行的最小人工联调
 

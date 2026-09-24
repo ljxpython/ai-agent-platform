@@ -4,7 +4,16 @@
 
 测试证明四件不同的事：存储正确、HTTP/身份正确、模型行为正确、页面操作正确。**我们负责前三项和前端交接材料；前端组件与浏览器用例由接手同事开发执行。** 联合验收需要双方证据，不能用“前端不在本次范围”把整体产品直接标 done。
 
-本轮只有文档变更。以下新文件/用例均为规划；首轮实际执行的旧前端 15 条通过记录保留在 [verification.md](verification.md)，本轮没有重跑它们。
+本轮已实施后端/Runtime 与测试；以下门禁既保留原计划，也在 [verification.md](verification.md) 区分已执行与未执行。旧前端 15 条 mock 通过是首轮历史记录，本轮未重跑，也不能替代新页面验收。
+
+### 2026-09-24 确认规则对应的必测项（状态见验证记录）
+
+- 当前权限：真实executor可管理本人记忆；只读成员写入403；管理员不得指定他人user；共享/接管不授权原owner记忆。
+- 共享会话：自动注入0、记忆工具不可调用、提取模型调用0；覆盖直接伪造工具请求、客户端伪造private标记、resume与运行中分享的最终冻结策略。无线程本人管理仍可用。
+- 私有会话后续分享：前端同事验证分享确认包含历史回答提示，历史回答可能含个人信息；不以“历史回答未被自动清洗”判定失败。
+- 当前run重试：两次共用180秒，首次耗尽预算不得发起第二次；resume不重置预算；失败后新run不自动重放旧源。使用可控时钟和模型，不让单测实际等待180秒。
+- 存储降级：自动召回及前置可选读取故障时普通回答继续、无记忆注入、有脱敏降级记录；显式查询/管理返回错误，不能返回假空库。取消和授权拒绝不作为存储降级吞掉。
+- 长等待：检查run生命周期、代理/SSE超时、SDK模型重试与deadline的关系，避免180秒预算被旧30秒超时截断或被底层重试放大；记录末token至terminal时间。管理GET/POST不应改成长模型超时。
 
 ## 1. 四道交付门禁
 
@@ -22,14 +31,12 @@
 | 层 | 文件 | 复用/新增 | 不要误用 |
 |---|---|---|---|
 | Runtime 存储 | `apps/runtime-service/tests/services/dearflow_agent/test_p6_governance.py` | 扩展 dsn fixture、change 辅助函数、CAS 测试 | 不运行与记忆无关的部署/技能批次 |
-| Runtime 提取 | `apps/runtime-service/tests/services/dearflow_agent/test_memory_extraction.py` | 拟新增；AsyncMock 可控模型，合成 Human/AI/Tool 消息 | mock 通过不是实际模型质量通过 |
-| Runtime 召回 | `apps/runtime-service/tests/services/dearflow_agent/test_memory_context.py` | 拟新增；纯选取/转义/预算 fixtures | 不为每个 helper 都单独建文件 |
-| Runtime HTTP | `apps/runtime-service/tests/http/test_dear_memory.py` | 拟新增；httpx.ASGITransport + 真实授权签名 | 必须测试 capability disabled 时无 PG 查询 |
+| Runtime 提取/召回/HTTP | `apps/runtime-service/tests/services/dearflow_agent/test_memory_contract.py` | 已新增；可控模型、20例召回、公开投影与路由 | mock 通过不是实际模型质量通过 |
 | Runtime 认证 | `apps/runtime-service/tests/runtime/test_auth.py` | 扩展 operation 正反例 | 不放松现有签名/expiry 验证 |
-| Platform | `apps/platform-api/tests/test_runtime_gateway_memory.py` | 拟新增；参考 SkillsGatewayTest/WorkspaceGatewayTest | 授权测试不能把 `_authorize` mock 成永远成功 |
+| Platform | `apps/platform-api/tests/test_runtime_gateway_memory.py` | 已新增；参考 SkillsGatewayTest/WorkspaceGatewayTest 的真实 HTTP/隔离 PG | 回环存储用例局部 mock 项目授权，拒绝用例另测真实授权；不能把单一用例冒充全权限覆盖 |
 | Platform adapter | `apps/platform-api/tests/test_runtime_gateway_sdk_adapters.py` | 扩展新 URL/method/header | 仅 mock adapter 不能证明标准错误响应 |
 | Platform 路由 | `apps/platform-api/tests/test_runtime_gateway_http_matrix.py` | 扩展新 GET/POST | 不删除旧入口用例直到前端迁移完成 |
-| 独立模型链路 | `apps/runtime-service/tests/e2e/test_dear_memory_real.py` | 拟新增 pytest e2e；只测 memory 与新线程 | 不执行 platform_batch 全部技能来验证一个记忆功能 |
+| 独立模型链路 | `apps/runtime-service/tests/e2e/test_dear_memory_real.py` | 已新增并执行；MAOMAO 模型＋隔离 PG 验证提取、采纳、事实问答 | 直接调用中间件，不代表完整 Platform run/SSE |
 | 前端 | 04 第 9 节列出的 spec/e2e 文件 | 前端同事实现 | 我们不代写页面或组件测试 |
 
 测试方法复用 deer-flow `backend/tests/test_memory_scope_gate.py` 的逐候选拒绝和原子替换、`test_memory_prompt_injection.py` 的预算/转义、`test_memory_router.py` 的错误和异步 IO 边界、`test_memory_queue_user_isolation.py` 的作用域负例。借鉴输入和断言意图，不搬它的存储 fixtures。
@@ -97,7 +104,7 @@ U1 在 P1 的 fact A：“我的测试标记是青松七号，偏好简洁中文
 
 ## 6. 不等前端的后端端到端验证
 
-拟新增 `test_dear_memory_real.py` 通过公开 Platform API 创建线程/运行及管理记忆。用专用测试账号、真实 Worker 和模型连接，不伪造 Runtime principal。
+现有 `test_dear_memory_real.py` 已验证独立模型＋中间件＋隔离 PG；尚需另补公开 Platform API 创建线程/运行的完整用例。该用例必须使用专用测试账号、真实 Worker 和模型连接，不伪造 Runtime principal。
 
 步骤脚本应实现以下过程并输出脱敏报告：
 
@@ -111,7 +118,7 @@ U1 在 P1 的 fact A：“我的测试标记是青松七号，偏好简洁中文
 
 approval 的工具链单独用例：明确保存请求→观察manage_memory审批→先拒绝再批准新的操作→核对DB/页面API。不能让脚本自动批准无关部署、网络外发工具。
 
-没有可用模型或凭据时记录 blocked/未执行，不用 mock 结果代替。使用既有测试凭据供应机制；拟新增门控变量 `DEAR_MEMORY_E2E=1` 仅是新测试的执行开关，实施时在测试说明中登记，当前并不存在可运行入口。
+没有可用模型或凭据时记录 blocked/未执行，不用 mock 结果代替。独立模型用例已用 `DEAR_MEMORY_REAL_MODEL=1` 运行；完整平台 run 用例尚不存在，不借此开关冒充完整 E2E。
 
 ## 7. 前端与联合验收（由接手同事执行）
 
@@ -134,20 +141,20 @@ F01—F07 的组件矩阵见 04。真实浏览器至少覆盖：
 Runtime工作目录 `apps/runtime-service/`：
 
 ```bash
-uv run --no-sync python -m pytest "tests/services/dearflow_agent/test_p6_governance.py" -k "memory or extraction or internal_http_scope" -q
-uv run --no-sync python -m pytest "tests/services/dearflow_agent/test_memory_context.py" "tests/services/dearflow_agent/test_memory_extraction.py" "tests/http/test_dear_memory.py" "tests/runtime/test_auth.py" -q
+uv run --no-sync python -m pytest "tests/services/dearflow_agent/test_p6_governance.py" "tests/services/dearflow_agent/test_memory_contract.py" "tests/services/dearflow_agent/test_memory_access.py" "tests/services/dearflow_agent/test_context.py" -q
+uv run --no-sync python -m pytest "tests/runtime/test_auth.py" "tests/runtime/test_platform_auth.py" "tests/integration/test_agent_server_auth.py" -q
 ```
 
 Platform工作目录 `apps/platform-api/`：
 
 ```bash
-uv run --no-sync python -m pytest "tests/test_runtime_gateway_memory.py" "tests/test_runtime_gateway_sdk_adapters.py" "tests/test_runtime_gateway_http_matrix.py" -q
+PYTHONPATH=tests uv run --no-sync python -m unittest -q test_runtime_gateway_memory test_runtime_gateway_memory_contract test_runtime_gateway_http_matrix test_runtime_gateway_sdk_adapters test_audit_http_resolution test_runtime_delegation
 ```
 
-真实模型栈按仓库 contract 用 `bash "scripts/local-stack.sh" start` 启动，再在 Runtime 目录执行新 e2e 测试；本轮不启动。启用测试门控与凭据后：
+独立模型用例不要求启动完整栈；本轮从 Runtime `.env` 加载 MAOMAO 模型资源，在隔离 PG schema 内运行。完整平台 run/SSE 仍需联调栈。启用测试门控与凭据后：
 
 ```bash
-uv run --no-sync python -m pytest "tests/e2e/test_dear_memory_real.py" -m e2e -q
+DEAR_MEMORY_REAL_MODEL=1 uv run --no-sync python -m pytest "tests/e2e/test_dear_memory_real.py" -q
 ```
 
 `RUNTIME_MESSAGE_TEST_DSN` 必须显式指向专用测试PG；现有 dsn fixture 会CREATE/DROP隔离schema。未配置的skip不算通过。新E2E要用单独测试身份，清理时只清理其合成记忆，不操作真实用户数据。
@@ -159,7 +166,7 @@ uv run --no-sync python -m pytest "tests/e2e/test_dear_memory_real.py" -m e2e -q
 | 召回 | 10条中英正例＋10条越权/过期/不相关负例，固定gold fact IDs | 正例recall@10≥90%；越权/候选/过期注入0 |
 | 提取 | 20条稳定偏好/事实/临时任务/批准/密钥样例 | accepted候选100%有真实源quote；永不自动生效；漏提取单独计数 |
 | API | 100facts/100candidates，10个scope并发，记录机器/PG版本 | p95<500ms（不含模型）；先记录基线后解释差异 |
-| 提取延迟 | 可控慢模型记录两次尝试和末token→terminal | 共享模型deadline≤30s；关闭提取时LLM调用0 |
+| 提取延迟 | 可控慢模型记录两次尝试和末token→terminal | 两次共用模型deadline≤180s；关闭提取或共享会话时提取LLM调用0；DB收尾另计且有界 |
 | DB等待 | 同scope锁竞争和连接失败 | 建议connect≤3s、statement≤2s、lock≤1s；实际选值在部署说明冻结 |
 | 隐私 | 检索测试日志/错误/审计/trace metadata | 不含合成密钥标记或完整事实正文；受控模型trace按既有权限策略 |
 
@@ -183,7 +190,7 @@ Python lint/type命令以各服务现有工具配置为准，当前 pyproject �
 
 每次记录最少包含：日期、负责人、工作区版本、命令、前置/数据scope、退出码、passed/failed/skipped、关键request/run ID、产物路径、限制。不要只写“全部通过”。实现留痕用 implement-feature，完成时用 verify-change，维度分别写Runtime/API/前端。
 
-当前：源码核查与官方文档查询完成；本轮只执行文档结构/链接/示例检查，不执行新业务测试。业务、Runtime、前端和真实E2E均未开始；旧前端15条通过是历史基线，不代表G1—G4。
+当前：Runtime 定向与隔离 PG、Platform 真实 HTTP/鉴权、独立 MAOMAO 模型测试已执行，精确结果见 [verification.md](verification.md)。G1/G2 的完整平台 run/SSE、性能/部署回退，以及 G3 联调环境和 G4 页面验收仍未完成；旧前端15条通过是历史基线，不代表新页面验收。
 
 ### 2026-09-20 分层文档复核结果
 
