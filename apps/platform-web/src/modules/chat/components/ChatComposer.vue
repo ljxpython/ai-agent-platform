@@ -229,6 +229,13 @@ defineExpose({
     "
   >
     <div
+      v-if="$slots['top-tray']"
+      class="mx-auto w-full max-w-4xl px-3 lg:max-w-5xl"
+      :class="isFocusMode ? '!max-w-[780px]' : ''"
+    >
+      <slot name="top-tray" />
+    </div>
+    <div
       class="pw-chat-composer transition-[border-color,box-shadow] duration-150 focus-within:border-primary-500/80 focus-within:ring-2 focus-within:ring-primary-500/15 focus-within:shadow-md"
       :class="isFocusMode ? 'max-w-[780px]' : ''"
     >

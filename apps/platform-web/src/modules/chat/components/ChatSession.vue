@@ -1900,10 +1900,6 @@ defineExpose({
               @cancel="session.stop"
               @resume="approvalElement?.scrollIntoView({ block: 'center', behavior: 'smooth' })"
             />
-            <ChatStickyTaskPill
-              :plan-view="planView"
-              @open-tasks="drawerTab = 'tasks'; drawerOpen = true;"
-            />
             <div
               v-if="!props.threadId && !session.threadId.value && !hasConversationStarted && !displayedMessages.length && !checking && !isSessionRunning"
               class="mx-auto my-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center py-12 px-4 text-center"
@@ -2143,7 +2139,15 @@ defineExpose({
       @file-input-change="handleInputChange"
       @composer-paste="handlePaste"
       @remove-attachment="removeAttachment"
-    />
+    >
+      <template #top-tray>
+        <ChatStickyTaskPill
+          v-if="activeView === 'chat'"
+          :plan-view="planView"
+          @open-tasks="drawerTab = 'tasks'; drawerOpen = true;"
+        />
+      </template>
+    </ChatComposer>
     <ChatRunOptionsDialog
       :show="optionsOpen"
       :draft-run-options="draftRunOptions"

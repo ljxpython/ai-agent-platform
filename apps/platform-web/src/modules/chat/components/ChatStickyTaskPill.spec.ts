@@ -2,7 +2,7 @@ import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import ChatStickyTaskPill from "./ChatStickyTaskPill.vue";
 
-describe("ChatStickyTaskPill.vue", () => {
+describe("ChatStickyTaskPill.vue (Composer Top Tray)", () => {
   it("does not render when totalTasks is 0", () => {
     const wrapper = mount(ChatStickyTaskPill, {
       props: {
@@ -18,10 +18,10 @@ describe("ChatStickyTaskPill.vue", () => {
       },
     });
 
-    expect(wrapper.find(".sticky").exists()).toBe(false);
+    expect(wrapper.find("[data-testid='composer-task-tray']").exists()).toBe(false);
   });
 
-  it("renders sticky progress bar and emits openTasks", async () => {
+  it("renders progress ring in tray bar, expands upward to show task list, and emits openTasks", async () => {
     const wrapper = mount(ChatStickyTaskPill, {
       props: {
         planView: {
@@ -40,60 +40,51 @@ describe("ChatStickyTaskPill.vue", () => {
       },
     });
 
-    expect(wrapper.find(".sticky").exists()).toBe(true);
-    expect(wrapper.text()).toContain("任务进度");
-    expect(wrapper.text()).toContain("进行中: 修复代码");
+    expect(wrapper.find("[data-testid='composer-task-tray']").exists()).toBe(true);
+    expect(wrapper.find("[data-testid='task-progress-ring']").exists()).toBe(true);
+    expect(wrapper.text()).toContain("正在执行：修复代码");
     expect(wrapper.text()).toContain("1/3");
 
-    // 点击查看待办看板
-    const openBtn = wrapper.find("button");
-    expect(openBtn.exists()).toBe(true);
-    expect(wrapper.text()).toContain("查看待办看板 →");
+    // 默认不展开详情列表
+    expect(wrapper.find("[data-testid='task-tray-list']").exists()).toBe(false);
 
-    await wrapper.find("button:not([title])").trigger("click");
-    expect(wrapper.emitted("openTasks")).toBeTruthy();
-
-    // 点击微型折叠按钮展开详情
-    const toggleBtn = wrapper.find("button[title='展开微型列表']");
-    expect(toggleBtn.exists()).toBe(true);
-    await toggleBtn.trigger("click");
-
+    // 点击底部托盘控制条向上展开待办清单
+    await wrapper.find("[data-testid='toggle-task-tray']").trigger("click");
+    expect(wrapper.find("[data-testid='task-tray-list']").exists()).toBe(true);
     expect(wrapper.text()).toContain("分析缺陷");
     expect(wrapper.text()).toContain("修复代码");
     expect(wrapper.text()).toContain("跑测试");
+
+    // 在展开面板右上角点击“待办看板”触发 openTasks
+    const openDrawerBtn = wrapper.find("[data-testid='open-task-drawer-btn']");
+    expect(openDrawerBtn.exists()).toBe(true);
+    await openDrawerBtn.trigger("click");
+    expect(wrapper.emitted("openTasks")).toBeTruthy();
   });
 
-  it("can be dismissed to avoid covering chat and restored via mini chip", async () => {
+  it("renders low-noise completed state without full-width green bar when all tasks are completed", () => {
     const wrapper = mount(ChatStickyTaskPill, {
       props: {
         planView: {
-          planTodos: [{ id: "1", content: "任务A", status: "completed" }],
+          planTodos: [
+            { id: "1", content: "任务A", status: "completed" },
+            { id: "2", content: "任务B", status: "completed" },
+          ],
           ephemeralTodos: [],
           activeTask: null,
-          totalTasks: 1,
-          completedTasks: 1,
+          totalTasks: 2,
+          completedTasks: 2,
           allTasksCompleted: true,
           hasFrozenPlan: false,
         },
       },
     });
 
-    expect(wrapper.text()).toContain("所有待办任务已顺利完成");
-
-    // 点击收起按钮
-    const dismissBtn = wrapper.find("[data-testid='dismiss-task-pill']");
-    expect(dismissBtn.exists()).toBe(true);
-    await dismissBtn.trigger("click");
-
-    // 主胶囊已收起，显示微型恢复胶囊
-    expect(wrapper.text()).not.toContain("所有待办任务已顺利完成");
-    const restoreBtn = wrapper.find("[data-testid='restore-task-pill']");
-    expect(restoreBtn.exists()).toBe(true);
-    expect(restoreBtn.text()).toContain("任务 1/1");
-
-    // 点击恢复
-    await restoreBtn.trigger("click");
-    expect(wrapper.text()).toContain("所有待办任务已顺利完成");
+    expect(wrapper.find("[data-testid='task-completed-icon']").exists()).toBe(true);
+    expect(wrapper.find("[data-testid='task-progress-ring']").exists()).toBe(false);
+    expect(wrapper.text()).toContain("已完成全部 2 项待办任务");
+    expect(wrapper.text()).toContain("2/2");
   });
 });
+
 

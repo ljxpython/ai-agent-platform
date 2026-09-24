@@ -24,7 +24,7 @@
 | Platform Web 架构与 Agent Chat 重构 | 01—07 非后置范围已完成；旧展示组件已取回，专项验收边界见 09；双浏览器入队/完整文件与 Skills API/PTY 后置 | [项目概览](projects/20260910-platform-web-refactor/README.md) |
 | 运行中补充消息（多端入口、Runtime 队列与 Middleware） | 已实现：根模型注入、持久回执/恢复、权限复核与 Web 重试；前端待执行消息队列与输入框排队模式严密分流，切回页面防澄清闪现与防 409 抢跑排空已落地，横幅状态文案准确对齐，网络取消/移动回归通过，双浏览器后置，GraphHarbor post27 发布包复验通过 | [队列与消费设计](projects/20260910-platform-web-refactor/07-message-queue-and-middleware.md) · [前端排队守卫修复](../apps/platform-web/docs/changes/20260923-fix-prompt-queue-routing-and-banner-state.md) · [切回防闪现与防排空修复](../apps/platform-web/docs/changes/20260923-fix-queue-drain-and-clarification-flash-on-switch.md) |
 | Chat 流式输出标准化与 open-swe 架构对齐 | 已完成：流式管道、打字机光标、平滑滚底、Open SWE 子智能体卡片特化与微型居中未读胶囊已全量交付通过 | [流式标准化](projects/20260912-chat-streaming-standardization/README.md) |
-| 任务进度条收起与时间旅行动作标题精准化 | 已完成：任务胶囊可随时 ✕ 收起且折叠为右上角微型恢复徽标彻底消除正文遮挡，时间旅行历史基于当前 Step 动作精准呈现标题 | [任务胶囊与时间旅行优化](../apps/platform-web/docs/changes/20260912-task-pill-dismiss-and-history-preview.md) |
+| 聊天任务进度底部悬浮托盘（Composer Top Tray）与时间旅行动作标题精准化 | 已完成：任务进度下沉至底部输入框顶沿阶梯托盘（SVG 环形进度圈 + 完成态降噪 + 向上展开清单），彻底根治正文/深色代码块滚动穿模遮挡；时间旅行历史基于当前 Step 动作精准呈现标题 | [任务进度底部托盘重构](../apps/platform-web/docs/changes/20260924-composer-task-tray-redesign.md) · [时间旅行优化](../apps/platform-web/docs/changes/20260912-task-pill-dismiss-and-history-preview.md) |
 | 历史关键节点过滤、多步长翻页与消息编辑分叉 | 已完成：白名单精准识别业务里程碑并剔除无新动作系统流转帧；支持 +20/+50/+100 快速翻页；编辑消息即时响应与本地内存回溯杜绝卡死 | [关键节点与编辑分叉修复](../apps/platform-web/docs/changes/20260912-history-milestone-filter-and-edit-branch-fix.md) |
 | 时间旅行抽屉角色筛选与历史发问分叉 | 已完成：抽屉按用户/Agent/工具多维筛选与统计，可与关键节点组合，秒级定位发问检查点并分叉重新执行 | [时间旅行角色筛选](../apps/platform-web/docs/changes/20260913-history-checkpoint-role-filter.md) |
 | 前端对话页面美化与交互体验重构 | 已完成：Hover 浮动工具栏、复制反馈、高质感 Agent 胶囊选择器、Agent Hero 欢迎看板与快捷 Prompt、代码 Diff/终端卡片及输入框光晕微交互已全量交付通过 | [对话页面美化](projects/20260913-chat-ui-aesthetic-optimization/README.md) |
@@ -105,4 +105,4 @@
 - Agent resync / Operations：后端全链路已退役，20 表及字段收缩和真实 Runtime 验收通过；当前状态见 [11](projects/20260910-platform-api-refactor/implementation/11-backend-closeout.md)。
 
 | Dear Agent P6 记忆与技能治理 | 记忆与外部任务原有验收保留；技能已由当前记录和执行快照替代旧版本治理，见Skills改进项目；前端待接入 | [P6执行包](projects/20260913-dearflow-agent/phases/P6-记忆与技能治理.md) |
-| Dear Agent 个人记忆管理与跨会话闭环 | partial：无线程后端管理API、当前本人权限、受信共享检查、180秒提取与召回降级已有代码并通过真实HTTP/隔离PG；多队列来源、真实模型和前端联验未完成。前端由同事开发 | [记忆专项与前端交接](projects/20260920-dear-agent-memory/README.md) |
+| Dear Agent 个人记忆管理与跨会话闭环 | partial：无线程管理、本人队列多源、受信共享检查、180秒提取与召回降级已通过真实HTTP/隔离PG及独立MAOMAO模型测试；完整平台run/SSE、部署和前端联验未完成。前端由同事开发 | [记忆专项与前端交接](projects/20260920-dear-agent-memory/README.md) |
