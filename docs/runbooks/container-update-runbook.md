@@ -23,20 +23,18 @@ docker compose -f apps/runtime-service/deploy/docker-compose.runtime-service.yml
 docker compose -f apps/runtime-service/deploy/docker-compose.runtime-service.yml --env-file apps/runtime-service/deploy/.env.runtime-service up -d
 ```
 
-如果你修改了 `TEST_CASE_V2_*` 或 `INTERACTION_DATA_SERVICE_*` 这类 runtime 私有 env，也按这条重建 / 重启 `runtime-service`。
+如果你修改了 Runtime 私有 env，也按这条重建 / 重启 `runtime-service`。
 
-整仓 `platform-api` / worker 共镜像：
+整仓 `platform-api`：
 
 ```bash
 docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack build platform-api
-docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack up -d --force-recreate platform-api platform-api-worker
+docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack up -d --force-recreate platform-api
 ```
 
 说明：
 
-- `platform-api-worker` 会执行 `runtime.*.refresh`、`knowledge.documents.*`、`testcase.*.export`、`assistant.resync`
-- 这些异步 operation 依赖的 upstream env 必须和 `platform-api` 主容器保持一致
-- 如果你改了 `PLATFORM_API_LANGGRAPH_*`、`PLATFORM_API_INTERACTION_DATA_SERVICE_*`、`PLATFORM_API_KNOWLEDGE_*`，要同时重建 / 重启 worker
+- `PLATFORM_API_LANGGRAPH_*` 等上游配置变化后需重建 / 重启 `platform-api`
 
 ### 2.2 仅 env / 配置变更
 
@@ -55,7 +53,7 @@ docker compose -f deploy/docker-compose.stack.nginx.yml --env-file deploy/.env.s
 标准动作：
 
 1. 先处理数据库更新 / 初始化脚本
-2. 必要时清卷重建
+2. 必要时核对现有卷并执行受控迁移
 3. 再重启受影响服务
 4. 再做 health / smoke 验证
 
@@ -80,7 +78,6 @@ curl http://127.0.0.1:8123/internal/capabilities/tools
 
 ```bash
 docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack config
-curl http://127.0.0.1:8081/_service/health
 curl http://127.0.0.1:2142/_system/probes/ready
 curl http://127.0.0.1:8123/info
 curl -I http://localhost:3000

@@ -6,7 +6,6 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Vue-3%20Workspace-42B883" alt="Vue 3 Workspace" />
-  <img src="https://img.shields.io/badge/Testcase-Agent%20Live-2563EB" alt="Testcase Agent Live" />
   <img src="https://img.shields.io/badge/Skills-Private%20Skill%20Stack-0F766E" alt="Skills" />
   <img src="https://img.shields.io/badge/MCP-Knowledge%20Ready-7C3AED" alt="MCP Knowledge Ready" />
   <img src="https://img.shields.io/badge/Harness-AI%20Continuous%20Coding-F59E0B" alt="Harness" />
@@ -17,24 +16,10 @@
 
 <p align="center"><a href="#system-overview">System Overview</a> · <a href="#frontend-entry">Frontend Entry</a> · <a href="#quick-start">Quick Start</a> · <a href="docs/quickstart/deployment-guide.md">Deployment Guide</a> · <a href="https://github.com/ljxpython/ai-agent-platform/releases/tag/v0.3.1">Latest Release</a> · <a href="docs/CHANGELOG.md">Changelog</a> · <a href="#acknowledgements">Acknowledgements</a> · <a href="#ai-deploy">AI Deployment</a></p>
 
-## Testcase Agent Demo
-
-<p align="center">
-  <a href="https://youtu.be/SVplU-uIci0">
-    <img src="docs/assets/testcase-agent-demo-preview.jpg" alt="Testcase Agent Demo" width="100%" />
-  </a>
-</p>
-
-<p align="center">
-  <strong><a href="https://youtu.be/SVplU-uIci0">▶ Watch the current platform Testcase Agent demo</a></strong>
-</p>
-
-<p align="center"><sub>The GitHub README uses an image preview here. Click it to open the YouTube demo.</sub></p>
-
 An enterprise AI agent platform architecture built on `LangGraph / LangChain`, intended as a reusable foundation for further development.  
 It separates the **platform governance layer** from the **Agent Runtime execution layer**, so the repo can support platform-side authentication, project management, audit, and catalog management, while also supporting runtime graph orchestration, model assembly, Tools / MCP / Skills integration, and rapid agent debugging.
 
-The repository provides a native development stack with four processes and an optional result-domain service. It is suitable for:
+The repository provides a native development stack with four processes. It is suitable for:
 
 - Teams that want to build on mainstream agent infrastructure instead of inventing a closed framework
 - Projects that need both platform capabilities and agent execution capabilities
@@ -61,7 +46,7 @@ This repository is not only a codebase. It already acts as an engineering harnes
 
 That harness is made of several parts working together:
 
-- `Boundaries`: platform governance, runtime execution, debug frontend, and result-domain service are separated instead of mixed together
+- `Boundaries`: platform governance, runtime execution, and the frontend entry are separated instead of mixed together
 - `Contracts`: local deployment contract, env conventions, startup order, API naming, and demo account rules are fixed
 - `Patterns`: `runtime-service`, `platform-web`, control-plane standards, and reusable examples already provide working implementation patterns
 - `Delivery loop`: helper scripts, health checks, smoke tests, acceptance docs, changelog, and release runbooks form a repeatable delivery path
@@ -104,9 +89,8 @@ That article is more frontend-oriented and is useful for quickly understanding t
 
 ## System Overview
 
-The repository includes the following applications; the result-domain service is started separately when needed:
+The repository includes the following applications:
 
-- `apps/interaction-data-service`: result-domain data service for workflow result persistence and querying
 - `apps/platform-api`: official platform backend / control-plane API
 - `apps/platform-web`: official platform frontend / admin workspace entry
 - `apps/runtime-service`: LangGraph execution layer / Agent Runtime
@@ -114,7 +98,6 @@ The repository includes the following applications; the result-domain service is
 ### Main Paths
 
 - Platform path: `platform-web -> platform-api -> runtime-service`
-- Result-domain path: `runtime-service -> interaction-data-service`
 
 ### What The Frontend Entries Are For
 
@@ -122,7 +105,7 @@ The repository includes the following applications; the result-domain service is
 
 ## Architecture Diagram
 
-![System Architecture Diagram](docs/assets/system-architecture.en.svg)
+`platform-web -> platform-api -> runtime-service`. Platform API and Runtime use separate PostgreSQL databases; Runtime also uses Redis.
 
 <a id="quick-start"></a>
 
@@ -150,7 +133,7 @@ bash scripts/local-stack.sh status   # Check service status
 bash scripts/local-stack.sh stop     # Stop services
 ```
 
-This script starts GraphHarbor API, GraphHarbor Worker, Platform API, and Platform Web directly. The result-domain service is optional and started separately.
+This script starts GraphHarbor API, GraphHarbor Worker, Platform API, and Platform Web directly.
 Database migrations use the `migrate` subcommand. Logs and PID files are stored in the system temp directory.
 It does not install PostgreSQL/Redis or frontend dependencies. It may reclaim stale development processes owned by this repository.
 Runtime uses `apps/runtime-service/.env`, Platform API uses `apps/platform-api/.env`.
@@ -173,7 +156,6 @@ Then open:
 
 ### Default Local Ports
 
-- `interaction-data-service`: `8081`
 - `runtime-service`: `8123`
 - `platform-api`: `2142`
 - `platform-web`: `3000`
@@ -190,15 +172,13 @@ curl -fsS "http://127.0.0.1:2142/_system/health"
 ```
 
 Inspect the response body, then verify login, project creation, model configuration and a real Run.
-Port 8081 is only checked when the optional result-domain service is started.
-Architecture diagrams illustrate service boundaries; the deployment contract defines actual startup members.
+The deployment contract defines actual startup members.
 
 ## Repo Structure
 
 ```text
 AITestLab/
 ├── apps/
-│   ├── interaction-data-service/
 │   ├── platform-api/
 │   ├── platform-web/
 │   ├── runtime-service/
@@ -310,10 +290,8 @@ This repo has already completed:
 - `apps/platform-web` is the official platform frontend host
 - `apps/platform-api` is the official platform control plane
 - `runtime-service` can start
-- `interaction-data-service` can start
 - `platform-api` can start
 - `platform-api -> runtime-service` integration has passed
-- `interaction-data-service` can be started independently; the default local stack does not manage it
 - `platform-web` is the official platform frontend host
 - The development workflow is collapsed into `AGENTS.md`: change levels (single-project/chain/governed) are judged automatically by the AI, which calls `plan-project`/`implement-feature`/`verify-change` Skills as needed
 - The current release is [`v0.3.1`](https://github.com/ljxpython/ai-agent-platform/releases/tag/v0.3.1)

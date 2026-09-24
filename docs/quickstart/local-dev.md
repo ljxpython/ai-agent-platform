@@ -3,7 +3,7 @@
 2026-09-20 核对。新机安装、账号、配置和远程访问见[非 Docker 部署手册](deployment-guide.md)。
 
 默认：platform-web:3000 → platform-api:2142 → runtime-api:8123 → runtime-worker。
-PostgreSQL、Redis 必需；结果域 8081 按需单独启动，LightRAG 不在当前默认范围。
+PostgreSQL、Redis 必需；LightRAG 不在当前默认范围。
 没有 Platform Worker，不沿用 SQLite 或 langgraph dev 的旧启动说明。
 
 ## 首次配置完成后

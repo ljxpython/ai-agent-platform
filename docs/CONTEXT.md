@@ -5,9 +5,11 @@
 
 ## 最后更新
 
-2026-09-24 | Dear Agent记忆闭环前端（`F01—F07`）已完成实施与门禁验证：无线程 `/api/langgraph/dear/memory` 接入、`MemoryView` 四态、静默轮询、候选原文溯源与 `replace_fact_id` 替换、双模导入预览与导出、`ThreadAccessControl.vue` 分享隐私提示及 `useDearGovernanceContext.ts` 孤儿清理全部落地，16 条单测、typecheck 与 eslint 全绿。
+2026-09-24 | interaction-data-service 退役在本机范围完成：服务目录、部署配置/文档、本机 Docker 独占资源已清理，备份恢复、浏览器聊天与成果生成/预览/下载通过；未来 Docker 部署由用户管理。Dear Agent 记忆闭环前端 `F01—F07` 已完成实施与门禁验证，联调环境完整平台 run/SSE 与浏览器 E2E 仍待验收。
 
 ## 活跃项目
+
+- [interaction-data-service 退役](projects/20260924-interaction-data-service-retirement/README.md)：done（本机范围）；仓库/本机独占资源清理、备份恢复、浏览器聊天与成果交付通过。
 
 - [Dear Agent记忆闭环](projects/20260920-dear-agent-memory/README.md)：partial（后端 + Runtime + 前端 `F01—F07` 代码与单测全部完成；仅剩联调环境完整平台 run/SSE 与浏览器 E2E 验收）。
 
@@ -24,7 +26,6 @@
 | runtime-service | 2026-09-24 | Dear个人记忆无线程内部接口、共享ACL复核、本人队列多源及有界提取/召回已实施；隔离PG及独立MAOMAO模型通过，完整平台run/SSE未验证；既有 reasoning 与 tool_calls 连续性治理保留 |
 | platform-api | 2026-09-24 | Dear个人记忆无线程管理API、本人权限、委托与共享ACL回调已实施；真实HTTP/隔离PG与50条网关/授权回归通过，联调环境未部署；BYOK双层模型仍按原有能力运行 |
 | platform-web | 2026-09-24 | 完成 Dear Agent 无线程个人记忆治理重构（`DearAgentMemoryPage.vue` + `memory.service.ts` + `ThreadAccessControl.vue` 分享隐私提示 + 移除孤儿 `useDearGovernanceContext.ts`），16 条单测/typecheck/eslint 全绿；同时保留会话 SWR 缓存与路由 KeepAlive 保活 |
-| interaction-data-service | — | — |
 | AI Harness（AGENTS.md + Skills） | 2026-09-21 | 今日完成全面优化，详见 docs/changes/20260921-harness-optimization.md |
 
 ## 近期关键决策

@@ -419,12 +419,6 @@ apps/runtime-service/test2.log
 apps/runtime-service/graph_src_v2/.env
 apps/runtime-service/graph_src_v2/conf/settings.local.yaml
 
-apps/interaction-data-service/.env
-apps/interaction-data-service/.venv/
-apps/interaction-data-service/.pytest_cache/
-apps/interaction-data-service/__pycache__/
-apps/interaction-data-service/storage/
-
 apps/runtime-web/.env
 apps/runtime-web/.env.local
 apps/runtime-web/node_modules/

@@ -15,7 +15,7 @@
 3. 整仓 nginx stack
 
 如果你只是想验证 `runtime-service` 本身，选第 1 种。
-如果你想验证平台前端、平台后端和结果域链路，选第 2 或第 3 种。
+如果你想验证平台前端、平台后端和 Runtime 链路，选第 2 或第 3 种。
 
 推荐顺序：
 
@@ -53,11 +53,6 @@ cp apps/runtime-service/deploy/.env.runtime-service.example apps/runtime-service
 - `LANGSMITH_ENDPOINT`
 - `LANGGRAPH_CLOUD_LICENSE_KEY` 留空
 
-如果要启用 runtime 私有 knowledge MCP：
-
-- `TEST_CASE_V2_KNOWLEDGE_MCP_ENABLED=true`
-- 宿主机直跑 LightRAG 时：`TEST_CASE_V2_KNOWLEDGE_MCP_URL=http://host.docker.internal:8621/sse`
-
 ### 3.2 启动
 
 ```bash
@@ -93,11 +88,6 @@ cp deploy/.env.stack.example deploy/.env.stack
 - `LANGSMITH_ENDPOINT=https://api.smith.langchain.com`
 - `LANGGRAPH_CLOUD_LICENSE_KEY` 留空
 
-如果要启用可选知识依赖：
-
-- `PLATFORM_API_KNOWLEDGE_UPSTREAM_URL`
-- `TEST_CASE_V2_KNOWLEDGE_MCP_URL=http://host.docker.internal:8621/sse`
-
 ### 4.2 启动
 
 ```bash
@@ -108,7 +98,6 @@ docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack u
 
 ```bash
 docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack ps
-curl http://127.0.0.1:8081/_service/health
 curl http://127.0.0.1:2142/_system/probes/ready
 curl http://127.0.0.1:8123/info
 curl -I http://localhost:3000
@@ -229,7 +218,6 @@ docker compose -f apps/runtime-service/deploy/docker-compose.runtime-service.yml
 docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack logs -f
 docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack logs -f runtime-service
 docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack logs -f platform-api
-docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack logs -f interaction-data-service
 docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack logs -f platform-web
 ```
 

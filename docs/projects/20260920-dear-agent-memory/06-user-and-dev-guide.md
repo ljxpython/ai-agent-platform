@@ -9,7 +9,7 @@
 ## 一、 前端功能概述与操作使用指南
 
 ### 1.1 功能入口与多项目隔离
-- **入口路径**：登录系统后，进入左侧工作区（Workspace）选择具体项目，点击 Dear Agent 导航项中的 **“长期记忆”**（页面路由：`workspace-dear-agent-memory`，组件文件：[`DearAgentMemoryPage.vue`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/dear-agent/pages/DearAgentMemoryPage.vue)）。
+- **入口路径**：登录系统后，进入左侧工作区（Workspace）选择具体项目，点击 Dear Agent 导航项中的 **“长期记忆”**（页面路由：`workspace-dear-agent-memory`，组件文件：[`DearAgentMemoryPage.vue`](../../../apps/platform-web/src/modules/dear-agent/pages/DearAgentMemoryPage.vue)）。
 - **项目作用域隔离**：记忆严格以 `(tenant_id, project_id, user_id)` 三元组进行隔离。切换顶部项目时，页面内置 `scopeGeneration` 令牌机制，自动终止未完成请求并丢弃反序响应，杜绝多项目切换产生的数据串扰。
 
 ---
@@ -66,7 +66,7 @@
   - 当用户提交与后台变更发生版本冲突时，弹窗绝不强退、输入内容绝不丢失，前端持久提示黄色冲突横幅，自动同步最新 revision 供用户复核后重试。
 
 #### 6. 共享会话隐私安全提示（Privacy Shield）
-- 在聊天页面的权限设置（[`ThreadAccessControl.vue`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/chat/components/ThreadAccessControl.vue)）中，当用户准备把会话设为“共享（`mode === 'share'`）”时，界面会自动浮现专属隐私告示：
+- 在聊天页面的权限设置（[`ThreadAccessControl.vue`](../../../apps/platform-web/src/modules/chat/components/ThreadAccessControl.vue)）中，当用户准备把会话设为“共享（`mode === 'share'`）”时，界面会自动浮现专属隐私告示：
   - 明确告知**“共享会话将自动停用个人记忆沉淀”**；
   - 提醒用户**“历史回答中若包含个人信息，共享后也将对协作者可见”**。
 

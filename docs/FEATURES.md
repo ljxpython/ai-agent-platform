@@ -83,16 +83,11 @@
 | Runtime Service 开发文档体系（资料导航、开发范式、介入与验证） | 已完成：正式指南位于 `docs/standards/`，以 Showcase Demo 和 tests 为可执行范式 | `apps/runtime-service/docs/standards/README.md` |
 | showcase_demo — 教学智能体（工具调用/HITL/子智能体/Todo/Sandbox/Skills） | 部分完成：Docker 正式执行与 LocalShellBackend 本地开发模式均支持；前端后置 | `docs/projects/20260908-showcase-demo/`、`docs/projects/20260917-showcase-local-sandbox/` |
 
-## interaction-data-service
-
-| 功能 | 状态 | 关联文档 |
-|---|---|---|
-| 结果域落库与查询 | 已完成 | `apps/interaction-data-service/docs/service-design.md` |
-
 ## 仓库级 / 工具链
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 旧 Testcase 结果服务退役 | 已完成（本机范围）：仓库与本机 Docker 独占资源已清理，备份恢复、浏览器聊天及成果生成/预览/下载通过 | [退役记录](projects/20260924-interaction-data-service-retirement/README.md) |
 | 非 Docker 新机开发环境交接 | 文档已收口：通用模板与私有账号映射分开，建库/SCRAM/反向验收连续步骤，补齐运维回执；目标机实际部署待执行 | [部署手册](quickstart/deployment-guide.md) · [运维交接](quickstart/operator-handoff.md) · [收口记录](changes/20260921-native-deployment-operator-handoff.md) |
 | 本地 PostgreSQL 密码认证 | 本地已完成：SCRAM、18 项认证检查、9 项兼容检查、重连和回退通过；云端交接更新因 SSH 超时待补 | [认证记录](projects/20260920-local-postgres-password/README.md) |
 | 本地项目清理 | 已支持：按 UUID 保留项目；显式历史清理先备份，支持失效令牌、会话/审计及指定测试库；测试退出回收项目 | [运维规范](guides/database-operations.md#本地项目清理) |

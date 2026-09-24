@@ -119,10 +119,9 @@
 正式生产链路保持：
 
 ```text
-platform-web / agent-web
+platform-web
   -> platform-api
        -> runtime-service / LangGraph Agent Server
-            -> interaction-data-service 或其他受控下游
 ```
 
 ### 3.1 `platform-api`

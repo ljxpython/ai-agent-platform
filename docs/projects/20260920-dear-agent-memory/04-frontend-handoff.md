@@ -69,7 +69,7 @@ e2e/dear-agent-memory.spec.ts                           # 浏览器 E2E 验收�
 
 ## 3. 前端可以借鉴 deer-flow 哪段
 
-参考根 `/Users/lijiaxin/PyCharmMiscProject/research/deer-flow/`。
+以下参考路径以本地 deer-flow 仓库根目录为起点。
 
 | 参考代码 | 学习点 | 本页面如何使用 |
 |---|---|---|
@@ -238,4 +238,3 @@ pnpm --dir "apps/platform-web" exec eslint "src/modules/dear-agent/pages/DearAge
 ## 11. 历史排查归档说明（无需记忆页处理）
 
 早期聊天页曾出现的 `Unsupported run.start fields: multitaskStrategy`（400 错误）已由 `src/modules/chat/run-actions.ts:platformCommand` 在转发 `run.start` 前剥离解决，不属于个人记忆模块范围，前端实施 `DearAgentMemoryPage` 时无需处理。
-

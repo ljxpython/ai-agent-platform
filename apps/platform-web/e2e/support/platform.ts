@@ -42,13 +42,6 @@ export async function createPlatformFixture(graphId = 'workflow_demo') {
     const graph = graphs.graphs.find((item) => item.graph_id === graphId)
     if (!graph) throw new Error(`Deploy graph ${graphId} before running chain tests; available: ${graphs.graphs.map((item) => item.graph_id).join(', ')}`)
     await request(`/api/projects/${projectId}/runtime-policies/graphs/${graph.id}`, 'PUT', { is_enabled: true })
-    await request('/api/runtime/tools/refresh', 'POST')
-    const tools = await request<{ tools: Array<{ id: string; tool_key: string }> }>('/api/runtime/tools')
-    for (const tool of tools.tools) {
-      if (graphId === 'showcase_demo' || tool.tool_key === 'read_reference') {
-        await request(`/api/projects/${projectId}/runtime-policies/tools/${tool.id}`, 'PUT', { is_enabled: true })
-      }
-    }
     const models = await request<{ models: Array<{ id: string; enabled: boolean; credential_configured: boolean }> }>('/api/runtime/platform-models')
     let model = models.models.find((item) => item.enabled && item.credential_configured)
     if (!model && process.env.Q5_QUEUE_FIXTURE === '1') {

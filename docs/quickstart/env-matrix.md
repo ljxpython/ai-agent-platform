@@ -10,7 +10,6 @@
 | apps/runtime-service/.env | 脚本、GraphHarbor API/Worker | 被 bash source，必须正确引用特殊字符 |
 | apps/platform-api/.env | Settings、database.py | dotenv 读取，进程环境优先，不直接 source |
 | apps/platform-web/.env.local | Vite | 仅公开参数；脚本覆盖 API、代理、端口 |
-| apps/interaction-data-service/.env | 可选结果域 | 默认不启动 |
 | 根目录 .env | 私有保留文件 | 非统一启动配置，不整体注入 |
 
 旧 Runtime 嵌套目录和 conf/settings*.yaml 已退出默认链路，模型来源是平台模型目录。
@@ -87,10 +86,3 @@ VITE_LANGGRAPH_DEBUG_URL=
 ```
 
 VITE_* 会进入浏览器，不放密钥。SSH 只转发前端即可。
-
-## 可选结果域
-
-SERVICE_NAME=interaction-data-service，当前本地 INTERACTION_DB_ENABLED=false、
-INTERACTION_DB_AUTO_CREATE=false、DATABASE_URL 为空。
-启用时使用独立库 interaction_data_service 和同名角色，按结果域自己的规范建表；
-控制面 Alembic 不管理这些表。

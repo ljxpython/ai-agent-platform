@@ -62,7 +62,7 @@ Refs:
 
 优先使用以下 scope（按改动归属选择一个主 scope）：
 
-- 应用/服务：`platform-web` `platform-api` `runtime-service` `interaction-data-service`
+- 应用/服务：`platform-web` `platform-api` `runtime-service`
 - UI 领域：`ui` `thread` `tool-calls` `markdown` `tasks` `history`
 - 文档：`docs`
 - 其他：`deps` `infra`

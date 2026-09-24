@@ -32,12 +32,7 @@
 http://host.docker.internal:<port>
 ```
 
-当前已验证通过的例子：
-
-- RAG HTTP：
-  - `http://host.docker.internal:9621`
-- MCP SSE：
-  - `http://host.docker.internal:8621/sse`
+例如宿主机服务监听 `9621` 时，容器内地址为 `http://host.docker.internal:9621`。
 
 ### 2.2 服务跑在同一个 Docker 网络
 
@@ -50,65 +45,18 @@ http://<service-name>:<port>
 例如：
 
 - `http://platform-api:2142`
-- `http://interaction-data-service:8081`
 
 ### 2.3 服务跑在外网或其他可直连机器
 
 直接填写真实 URL：
 
 ```text
-https://rag.example.com
-https://mcp.example.com/sse
+https://service.example.com
 ```
 
 如果是公司内网可直连地址，也按同样方式处理。
 
-## 3. 这套仓库里对应填哪里
-
-### 3.1 平台侧 RAG HTTP
-
-填到：
-
-- `deploy/.env.stack`
-
-字段：
-
-```env
-PLATFORM_API_KNOWLEDGE_UPSTREAM_URL=...
-PLATFORM_API_KNOWLEDGE_UPSTREAM_API_KEY=
-```
-
-### 3.2 runtime 私有 knowledge MCP
-
-填到：
-
-- `deploy/.env.stack`
-- 或单应用验证时的 `apps/runtime-service/deploy/.env.runtime-service`
-
-字段：
-
-```env
-TEST_CASE_V2_KNOWLEDGE_MCP_ENABLED=true
-TEST_CASE_V2_KNOWLEDGE_MCP_URL=...
-TEST_CASE_V2_KNOWLEDGE_TIMEOUT_SECONDS=30
-TEST_CASE_V2_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS=300
-```
-
-## 4. 已验证结论
-
-当前这套仓库里已经验证过：
-
-- `http://host.docker.internal:9621`
-  - 可被 `platform-api` 容器访问
-- `http://host.docker.internal:8621/sse`
-  - 可被 `runtime-service` 容器访问
-
-也已经验证过下面两种写法**不可用**：
-
-- `http://127.0.0.1:9621`
-- `http://0.0.0.0:8621`
-
-## 5. 最短建议
+## 3. 最短建议
 
 如果你不想思考太多：
 

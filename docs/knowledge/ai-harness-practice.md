@@ -7,23 +7,22 @@
 
 ## 一、项目背景
 
-**ai-agent-platform** 是一个 AI 智能体运行平台，包含四个核心服务：
+**ai-agent-platform** 是一个 AI 智能体运行平台，包含三个核心服务：
 
 ```
 platform-web          # 平台前端、管理页面
 platform-api          # 鉴权、项目治理、审计、catalog
 runtime-service       # graph 注册、工具装配、智能体执行
-interaction-data-service  # 结果落库与查询
 ```
 
 主链路：
 ```
-platform-web → platform-api → runtime-service → interaction-data-service
+platform-web → platform-api → runtime-service
 ```
 
 这个项目有几个特点，让 Harness 设计变得尤为重要：
 
-- **多服务并行开发**：四个服务之间有接口契约依赖，跨服务改动非常频繁
+- **多服务并行开发**：三个服务之间有接口契约依赖，跨服务改动非常频繁
 - **AI 深度参与**：开发过程中 AI 参与代码编写、文档维护、方案设计
 - **改动影响范围难判断**：一个看起来很小的改动，有时会牵连多个服务的契约
 

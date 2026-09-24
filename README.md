@@ -6,7 +6,6 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Vue-3%20Workspace-42B883" alt="Vue 3 Workspace" />
-  <img src="https://img.shields.io/badge/Testcase-Agent%20Live-2563EB" alt="Testcase Agent Live" />
   <img src="https://img.shields.io/badge/Skills-Private%20Skill%20Stack-0F766E" alt="Skills" />
   <img src="https://img.shields.io/badge/MCP-Knowledge%20Ready-7C3AED" alt="MCP Knowledge Ready" />
   <img src="https://img.shields.io/badge/Harness-AI%20Continuous%20Coding-F59E0B" alt="Harness" />
@@ -17,24 +16,10 @@
 
 <p align="center"><a href="#system-overview">系统总览</a> · <a href="#frontend-entry">前端入口</a> · <a href="#quick-start">快速开始</a> · <a href="docs/quickstart/deployment-guide.md">部署文档</a> · <a href="https://github.com/ljxpython/ai-agent-platform/releases/tag/v0.3.1">最新 Release</a> · <a href="docs/CHANGELOG.md">更新日志</a> · <a href="#acknowledgements">致谢参考</a> · <a href="#ai-deploy">AI代理部署</a></p>
 
-## Testcase Agent 展示视频
-
-<p align="center">
-  <a href="https://youtu.be/SVplU-uIci0">
-    <img src="docs/assets/testcase-agent-demo-preview.jpg" alt="Testcase Agent 展示视频" width="100%" />
-  </a>
-</p>
-
-<p align="center">
-  <strong><a href="https://youtu.be/SVplU-uIci0">▶ 观看当前平台 Testcase Agent 演示视频</a></strong>
-</p>
-
-<p align="center"><sub>GitHub README 中采用预览图展示，点击后跳转到 YouTube 播放。</sub></p>
-
 基于 `LangGraph / LangChain` 的企业级 AI 平台架构，可在此基础上进行二次开发。  
 它把**平台治理层**和**Agent Runtime 执行层**拆开，既支持平台侧的认证、项目管理、审计、catalog 管理，也支持 Agent 侧的图编排、模型装配、Tools / MCP / Skills 接入与快速调试，适合作为企业内部 AI 平台和智能体应用的基础骨架。
 
-当前仓库提供原生进程开发链路，结果域按需独立启用，适合：
+当前仓库提供原生进程开发链路，适合：
 
 - 想基于主流 Agent 技术栈做二次开发的团队
 - 想同时建设平台能力和 Agent 执行能力的项目
@@ -120,7 +105,7 @@
 
 这里说的 Harness，不是单个工具，而是一整套受控的工程外壳：
 
-- `边界`：平台治理、运行时执行、调试前端、结果域服务已经拆层，AI 不需要在一个大泥球里瞎改
+- `边界`：平台治理、运行时执行和前端入口已经拆层，AI 不需要在一个大泥球里瞎改
 - `契约`：本地部署 contract、环境变量矩阵、接口命名、默认启动顺序和账号口径都已固定
 - `范式`：`runtime-service`、`platform-web`、控制面页面标准与现成样例页面已经沉淀出可复用范式
 - `闭环`：根级脚本、健康检查、烟测清单、验收文档、CHANGELOG 和 release runbook 已形成可执行交付链路
@@ -157,9 +142,8 @@
 
 ## 系统总览
 
-仓库包含以下应用；默认脚本启动 Runtime API、Runtime Worker、Platform API 和 Platform Web，结果域按需单独启动：
+仓库包含以下应用；默认脚本启动 Runtime API、Runtime Worker、Platform API 和 Platform Web：
 
-- `apps/interaction-data-service`：结果域数据服务 / 工作流结果落库与查询
 - `apps/platform-api`：正式平台后端 / 控制面 API
 - `apps/platform-web`：正式平台前端宿主 / 管理台入口
 - `apps/runtime-service`：LangGraph 执行层 / Agent Runtime
@@ -167,7 +151,6 @@
 ### 主要链路
 
 - 平台链路：`platform-web -> platform-api -> runtime-service`
-- 结果链路：`runtime-service -> interaction-data-service`
 
 ### 前端入口
 
@@ -175,7 +158,7 @@
 
 ## 架构图
 
-![系统架构图](docs/assets/system-architecture.zh.svg)
+`platform-web → platform-api → runtime-service`。Platform API 与 Runtime 使用独立 PostgreSQL 数据库；Runtime 同时依赖 Redis。
 
 <a id="quick-start"></a>
 
@@ -189,7 +172,7 @@
 本地 PostgreSQL 的[认证与回退验证](docs/projects/20260920-local-postgres-password/README.md)已完成；服务器由运维按[交接与回执](docs/quickstart/operator-handoff.md)部署并独立验收。
 
 默认启动顺序：Runtime API、Runtime Worker、Platform API、Platform Web。
-PostgreSQL 和 Redis 必需且预先运行；没有 Platform Worker，结果域不由默认脚本管理。
+PostgreSQL 和 Redis 必需且预先运行；没有 Platform Worker。
 
 完成首次配置后，在仓库根目录执行：
 
@@ -252,7 +235,6 @@ VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web" dev
 
 ### 默认本地端口
 
-- `interaction-data-service`（可选）：`8081`
 - `runtime-service`：`8123`
 - `platform-api`：`2142`
 - `platform-web`：`3000`
@@ -269,15 +251,13 @@ curl -fsS "http://127.0.0.1:2142/_system/health"
 ```
 
 检查返回内容，并在登录后创建项目、配置模型、完成一次真实 Run。
-结果域仅在单独启动后检查 8081；默认启动成功不代表结果域落库已验收。
-旧架构图用于服务边界参考，实际启动成员以部署契约和脚本为准。
+实际启动成员以部署契约和脚本为准。
 
 ## 仓库结构
 
 ```text
 AITestLab/
 ├── apps/
-│   ├── interaction-data-service/
 │   ├── platform-api/
 │   ├── platform-web/
 │   ├── runtime-service/
@@ -391,10 +371,8 @@ bash "scripts/local-stack.sh" start
 - 正式默认本地演示链路已收口到 `apps/*`
 - `apps/platform-web` 是当前正式平台前端宿主
 - `runtime-service` 可启动
-- `interaction-data-service` 可启动
 - `platform-api` 可启动
 - `platform-api -> runtime-service` 联调已通过
-- `interaction-data-service` 可按需独立启动，默认本地栈不管理该进程
 - `platform-web` 是当前正式平台前端入口
 - 开发流程已收口到 `AGENTS.md`：改动分级（单项目/链路/治理）由 AI 自动判断并按需自动调用 `plan-project`/`implement-feature`/`verify-change` Skills
 - 当前正式版本为 [`v0.3.1`](https://github.com/ljxpython/ai-agent-platform/releases/tag/v0.3.1)

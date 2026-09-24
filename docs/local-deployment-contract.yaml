@@ -25,7 +25,7 @@ profiles:
     services: [runtime-service, platform-api, platform-web]
     processes: [runtime-api, runtime-worker, platform-api, platform-web]
     startup_order: [runtime-api, runtime-worker, platform-api, platform-web]
-    optional_services: [interaction-data-service]
+    optional_services: []
     chains:
       - platform-web -> platform-api -> runtime-api -> runtime-worker
     excluded:
@@ -115,15 +115,6 @@ services:
       VITE_DEV_PROXY_TARGET: http://127.0.0.1:2142
       VITE_DEV_PORT: "3000"
     remote_access: SSH local forwarding 13000 -> server 127.0.0.1:3000
-  interaction-data-service:
-    repo_path: apps/interaction-data-service
-    port: 8081
-    in_default_local: false
-    config_files: [apps/interaction-data-service/.env]
-    database_enabled_by_default: false
-    health_checks: ["http://127.0.0.1:8081/_service/health"]
-    note: Optional independent startup; health does not prove result persistence.
-
 preflight:
   - Inventory existing infrastructure and installation sources; do not install conflicting instances.
   - Verify approved destination before uploading private configuration.
@@ -141,7 +132,7 @@ acceptance:
   - Bootstrap login and new project creation work.
   - Configure model connection and project/Agent model selection in the platform.
   - A real new chat streams and completes; refresh shows only newly created history.
-  - Report optional services and real-model checks not performed.
+  - Report real-model checks not performed.
 
 handoff:
   operator_guide: docs/quickstart/operator-handoff.md

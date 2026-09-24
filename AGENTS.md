@@ -106,7 +106,7 @@ plan-project → 方案评审（人工） → 批准 → 实施 → 全面验证
 
 ## 服务边界
 
-当前仓库包含 4 个核心服务：
+当前仓库包含 3 个核心服务：
 
 ### platform-web
 **职责：** 正式平台前端、管理页面、平台聊天入口
@@ -130,17 +130,10 @@ plan-project → 方案评审（人工） → 批准 → 实施 → 全面验证
 - `apps/runtime-service/docs/standards/*.md`
 - `apps/runtime-service/tests/*.py`（可执行契约）
 
-### interaction-data-service
-**职责：** 结果域落库与查询
-
-**标准文档：**
-- `apps/interaction-data-service/docs/test-case-service-api-design.md`
-- `apps/interaction-data-service/docs/standards/result-domain-boundary-standard.md`
-
 ## 主要链路
 
 ```
-platform-web → platform-api → runtime-service → interaction-data-service
+platform-web → platform-api → runtime-service
 ```
 
 ## 开发流程

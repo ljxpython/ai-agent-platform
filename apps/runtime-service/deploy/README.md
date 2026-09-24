@@ -67,19 +67,7 @@ R6 Compose 负责 API、独立 Worker、PostgreSQL 和 Redis 的隔离启动；R
 等同于 Platform 外部 delegation JWT 配置。R6 Durable Core 已通过真实 Agent Server Durable
 验证；生产发布、回滚和外部依赖仍需单独通过对应 hard gate，不能把本文件当作无条件生产发布声明。
 
-### 3.3 runtime 远端持久化
-
-如果你希望 `test_case_service` / `test_case_service_v2` 把正式结果持久化到远端 `interaction-data-service`，还需要：
-
-- `INTERACTION_DATA_SERVICE_URL`
-- `INTERACTION_DATA_SERVICE_TOKEN`
-- `INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS`
-
-如果这组值未配置，`persist_test_case_results` 会返回：
-
-- `status=skipped_remote_not_configured`
-
-### 3.4 运行时 config 文件
+### 3.3 运行时 config 文件
 
 默认容器化 config 源：
 
@@ -87,7 +75,7 @@ R6 Compose 负责 API、独立 Worker、PostgreSQL 和 Redis 的隔离启动；R
 
 GraphHarbor 直接读取该文件中的 `auth`、`http.app` 和 `graphs` 配置。
 
-### 3.5 配置检查
+### 3.4 配置检查
 
 在 `apps/runtime-service` 目录执行：
 

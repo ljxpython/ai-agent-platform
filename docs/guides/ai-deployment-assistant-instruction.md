@@ -10,7 +10,7 @@
 - 本地或远程开发机，原生 PostgreSQL + Redis，GraphHarbor API/Worker + 平台 API/前端。
 - app-local .env；不 source 根目录 .env 或 Platform .env。
 - 模型目录由平台管理，不使用旧 Runtime settings.local.yaml；缺模型可以先验进程，不能宣称真实聊天通过。
-- 无 Platform Worker，结果域按需独立启动，LightRAG 不属于当前仓库默认部署。
+- 无 Platform Worker，LightRAG 不属于当前仓库默认部署。
 - 只复制配置不等于迁移项目、用户、模型连接；空库须初始化管理员并重新配置。
 
 ## 执行顺序

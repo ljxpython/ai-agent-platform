@@ -11,7 +11,7 @@
 复制 .env 不会复制数据库里的用户和模型目录。
 
 默认只有四个进程：Runtime API、Runtime Worker、Platform API、Platform Web。
-没有 Platform Worker；结果域是独立可选服务，LightRAG 不在当前仓库可部署范围。
+没有 Platform Worker；LightRAG 不在当前仓库可部署范围。
 
 | 组件 | 地址 / 推荐 |
 |---|---|
@@ -21,7 +21,6 @@
 | Runtime Worker | 无监听端口，与 API 共用配置、PG、Redis、工作区 |
 | Platform API | 127.0.0.1:2142 |
 | Platform Web | 127.0.0.1:3000，Vite 同源代理 |
-| 可选结果域 | 127.0.0.1:8081，默认不启动、不落库 |
 
 完成标准：依赖检查、迁移、四进程健康、管理员登录，再创建项目、配置模型并完成一次真实聊天。
 健康检查不等于模型链路验收。接手部署者先读[运维交接与回执](operator-handoff.md)。
@@ -129,7 +128,6 @@ GraphHarbor 从 Runtime 锁文件安装，不依赖相邻源码仓库、私有 w
 | Platform API | platform_api | platform_api | Platform 私有 .env |
 | Redis | 7 | 按已有 ACL | 当前服务器认证配置 |
 | 平台登录 | 平台数据库里的用户 | admin | Platform bootstrap 配置 |
-| 可选结果域 | interaction_data_service | interaction_data_service | 启用时单独设置 |
 
 如果交接指定了其他名字，后续 SQL、HBA、连接串统一替换，不能只改其中一处。
 个人交接中的库名、角色名属于该环境的映射，不是所有人的必填值。
@@ -148,7 +146,6 @@ SSH 用户、PG 管理员、PG 业务角色和平台管理员是四种身份；�
 | apps/runtime-service/.env | PG、Redis、委托、工作区、工具和观测配置 |
 | apps/platform-api/.env | 平台 PG、JWT、管理员、模型加密主密钥 |
 | apps/platform-web/.env.local | 前端公开参数，不放密钥 |
-| apps/interaction-data-service/.env | 可选结果域，当前本地禁用落库 |
 | 根目录 .env | 私有备份，非统一配置入口，不整体 source 或注入应用 |
 
 没有私有配置时从示例创建缺失文件，已有文件不要覆盖：
@@ -248,7 +245,7 @@ FROM pg_hba_file_rules ORDER BY line_number;
 | 其他项目也使用当前实例 | 只约束本次业务角色，不整体替换全部 HBA 规则 |
 
 已有角色不得自动降权或重置密码。先用其已确认的密码；确需修正权限或密码时按影响范围处理。
-本手册不使用 DROP、清空表或恢复旧 dump。可选结果域库暂不需要创建。
+本手册不使用 DROP、清空表或恢复旧 dump。
 
 ### 6.2 新建两个业务角色与空库
 
@@ -267,7 +264,6 @@ CREATE DATABASE platform_api OWNER platform_api;
 
 有交接私有密码就保持一致，不重复生成。独立新环境自行生成密码，再写入对应 app-local .env；
 URL 中的特殊字符要进行 URI 编码，不把编码后的密码作为数据库原始密码设置。
-仅配置两个库时无需运行会额外创建结果域库的全栈初始化脚本。
 已有自动化需求可复用[数据库规范](../guides/database-operations.md)中的建库脚本，不与本节重复执行。
 
 ### 6.3 设置真正校验密码的 HBA 规则
@@ -442,16 +438,3 @@ Runtime 配置变化后同时重启 API 和 Worker。
 | 任务排队 | Worker 存活、同 PG/Redis/配置，查看 Worker 日志 |
 | 隧道失败 | SSH 用户/端口、监听地址、本机 13000 占用 |
 | 构建或进程被杀 | 系统 OOM 日志；降低并行或扩容 |
-
-## 10. 可选结果域
-
-默认脚本不管理该进程。确需结果域时，单独准备 app-local .env，在独立终端执行：
-
-```bash
-cd "apps/interaction-data-service"
-uv sync --frozen
-uv run --frozen uvicorn main:app --host 127.0.0.1 --port 8081 --reload
-```
-
-默认 INTERACTION_DB_ENABLED=false 仅用于服务存活，不是落库部署。
-真实持久化须按该服务规范配置数据库、建表和业务接入，控制面 Alembic 不接管结果域表。

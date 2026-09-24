@@ -61,33 +61,28 @@
 
 - `runtime-service`
 - `platform-api`
-- `interaction-data-service`
 - `platform-web`
 - `redis`
 - `postgres`
 
 当前约束：
 
-- `runtime-service`、`platform-api`、`interaction-data-service` 共用一个 Postgres 实例
+- `runtime-service`、`platform-api` 共用一个 Postgres 实例
 - 默认数据库名：
   - `runtime_service`
   - `platform_api`
-  - `interaction_data_service`
 - `platform-api` 使用 `redis_list`
-- `interaction-data-service` 启用 DB
 - 共享 Postgres 默认只在容器网络内可达，不默认绑定宿主机 `5432`
 
 当前已补齐：
 
 - `deploy/docker-compose.stack.yml`
 - `deploy/postgres/init/01-init-shared-databases.sh`
-- `apps/interaction-data-service/Dockerfile`
 - `apps/platform-web/Dockerfile`
 - 各 app `.dockerignore`
 
 当前已验证：
 
-- `interaction-data-service` healthy
 - `platform-api` ready
 - `platform-web` 可访问
 - `runtime-service` `/info`、models、tools 可访问
@@ -135,40 +130,7 @@ nginx 前端约束：
 
 ## 2. 外部依赖
 
-### 2.1 LightRAG / RAG
-
-LightRAG 可以作为外部兼容依赖接入。
-当前默认的 Compose 栈**不会**自动启动它，因此基础容器栈仍保持四服务默认成员不变。
-
-支持两条可选地址：
-
-- 平台侧 RAG HTTP URL
-  - 归 `platform-api`
-- runtime 私有 knowledge MCP SSE URL
-  - 归 `runtime-service`
-
-它们都是可选输入：
-
-- 未提供时，不阻塞基础容器栈启动
-- 但会影响 knowledge 相关能力是否可用
-
-当前验证结果：
-
-- host-run LightRAG MCP SSE 默认口径：`http://127.0.0.1:8621/sse`
-  - 这是宿主机直接运行 LightRAG 时的默认本地地址
-- `TEST_CASE_V2_KNOWLEDGE_MCP_URL=http://host.docker.internal:8621/sse`
-  - 这是容器内 `runtime-service` 访问宿主机上 LightRAG 时的推荐地址
-  - 已被 runtime 配置正确读取
-  - 已验证容器内可达，返回 `text/event-stream`
-- `PLATFORM_API_KNOWLEDGE_UPSTREAM_URL=http://host.docker.internal:9621`
-  - 如启用平台侧 LightRAG HTTP 链路，这是容器访问宿主机 LightRAG HTTP 的已验证地址
-
-如需在容器内启用这两条链路，建议改成：
-
-- 宿主机服务：
-  - `http://host.docker.internal:<port>`
-- 同一容器网络内服务：
-  - `http://<service-name>:<port>`
+当前 Compose 栈不部署 LightRAG，主服务也没有对应的部署配置入口。
 
 ## 3. 配置归属
 
@@ -192,19 +154,6 @@ LightRAG 可以作为外部兼容依赖接入。
 - 当前容器化基线默认值：`gpt_5.4-ccr`
 - 作用范围：所有未显式覆盖 `parser_model_id` 的 `MultimodalMiddleware`
 
-runtime 私有 knowledge MCP env：
-
-- `TEST_CASE_V2_KNOWLEDGE_MCP_ENABLED`
-- `TEST_CASE_V2_KNOWLEDGE_MCP_URL`
-- `TEST_CASE_V2_KNOWLEDGE_TIMEOUT_SECONDS`
-- `TEST_CASE_V2_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS`
-
-runtime 持久化到 `interaction-data-service` 的 env：
-
-- `INTERACTION_DATA_SERVICE_URL`
-- `INTERACTION_DATA_SERVICE_TOKEN`
-- `INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS`
-
 runtime 认证 env：
 
 - `PLATFORM_RUNTIME_DELEGATION_SECRET`：校验 platform-api 签发的短期运行 JWT
@@ -220,12 +169,6 @@ runtime 认证 env：
 - `apps/platform-api/.env`
 - `deploy/.env.stack.example`
 
-平台侧 RAG HTTP 配置归 `platform-api`：
-
-- `PLATFORM_API_KNOWLEDGE_UPSTREAM_URL`
-- `PLATFORM_API_KNOWLEDGE_UPSTREAM_API_KEY`
-- `PLATFORM_API_KNOWLEDGE_UPSTREAM_TIMEOUT_SECONDS`
-
 runtime 上游认证配置：
 
 - `PLATFORM_API_RUNTIME_DELEGATION_SECRET` 必须与 runtime-service 的 delegation secret 相同
@@ -235,20 +178,8 @@ runtime 上游认证配置：
 注意：
 
 
-### 3.3 `interaction-data-service`
-
-配置归属：
-
-- `apps/interaction-data-service/.env`
-- `deploy/.env.stack.example`
-
-容器化 stack 默认：
-
-- `INTERACTION_DB_ENABLED=true`
-
 ## 4. 更新与重建
 
 更新流程统一收敛到：
 
 - [`docs/runbooks/container-update-runbook.md`](../docs/runbooks/container-update-runbook.md)
-

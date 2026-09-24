@@ -35,9 +35,8 @@
 
 ## 3. 服务职责边界（默认约定）
 
-- `interaction-data-service`：承接落库与 CRUD/查询接口（按 domain 命名空间组织）。
-- `runtime-service`：执行智能体/工作流；需要持久化时调用对应 domain 的 `/api/<domain>/...`。
-- `platform-api`：对外统一鉴权/项目隔离；需要时转发/聚合 `interaction-data-service`。
+- `runtime-service`：执行智能体/工作流，维护执行期数据和工作区成果。
+- `platform-api`：对外统一鉴权/项目隔离，通过网关访问 Runtime。
 - `platform-web`：当前正式平台前端宿主，按 domain 做页面入口与管理能力。
 
-本地部署补充说明：默认本地部署成员以 `docs/local-deployment-contract.yaml` 为准；当前默认进程为 Runtime API/Worker、Platform API 和 Platform Web；`interaction-data-service` 按需独立启动。
+本地部署成员以 `docs/local-deployment-contract.yaml` 为准；当前进程为 Runtime API/Worker、Platform API 和 Platform Web。

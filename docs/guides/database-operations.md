@@ -1,6 +1,6 @@
 # 数据库部署、迁移与本地开发规范
 
-文档类型：当前生效的运维规范。适用于控制面 PostgreSQL；Runtime 与结果域沿用各自迁移工具，不能让控制面 Alembic 接管其表。实施证据和剩余验收项见[迁移专项](../projects/20260920-platform-api-postgresql-migration/README.md)。
+文档类型：当前生效的运维规范。适用于控制面 PostgreSQL；Runtime 使用自己的迁移工具，不能让控制面 Alembic 接管其表。实施证据和剩余验收项见[迁移专项](../projects/20260920-platform-api-postgresql-migration/README.md)。
 
 首次非 Docker 新机部署从[完整手册](../quickstart/deployment-guide.md)开始；本页重点是数据库职责和运维。
 
@@ -10,7 +10,6 @@
 |---|---|---|
 | platform-api | `platform_api` / `platform_api` | SQLAlchemy 模型 + Alembic；关闭自动建表 |
 | runtime-service | 通用模板 `runtime_service` / `runtime_service`；个人交接可另指定独立库/角色 | GraphHarbor / Runtime 自己的迁移 |
-| interaction-data-service | `interaction_data_service` / 同名角色 | 由结果域维护；不能套用控制面基线 |
 
 可以共享 PG 实例，必须分库和使用独立非超级用户角色。控制面角色不授予其他库业务表访问权限。开发、测试、生产也必须隔离；测试不能指向业务库。库名以各环境配置为准，脚本不凭库名前缀推断“可以删除”。
 
@@ -22,7 +21,7 @@
 
 | 入口（相对仓库根目录） | 做什么 | 不做什么 |
 |---|---|---|
-| `deploy/postgres/init/01-init-shared-databases.sh` | 创建缺失的角色及三个独立数据库；`--platform-only` 仅建控制面库 | 不升级表、不迁数据、不重置已有角色密码或已有库 owner |
+| `deploy/postgres/init/01-init-shared-databases.sh` | 创建缺失的 Runtime 和 Platform API 数据库及角色；`--platform-only` 仅建控制面库 | 不升级表、不迁数据、不重置已有角色密码或已有库 owner |
 | `apps/platform-api/scripts/database.py preflight` | 校验有效 PG 配置、实际连接、已知 revision；允许新空库/待升级版本 | 不写库 |
 | `apps/platform-api/scripts/database.py upgrade` | preflight 后执行 Alembic 到 head，再核验版本 | 不创建 database、不自动导入旧数据、不 stamp 未登记的库 |
 | `apps/platform-api/scripts/database.py check` | 要求实际目标已在 Alembic head | 不迁移 |
@@ -39,7 +38,7 @@
    docker compose --env-file "deploy/.env.stack" -f "deploy/docker-compose.stack.yml" up -d postgres redis
    ```
 
-3. **只有空 PG 数据目录首次初始化时**，官方 PG 镜像会自动执行挂载的 `01-init-shared-databases.sh`，创建三个库与角色。PG healthy 不代表控制面表已经存在。
+3. **只有空 PG 数据目录首次初始化时**，官方 PG 镜像会自动执行挂载的 `01-init-shared-databases.sh`，创建两个库与角色。PG healthy 不代表控制面表已经存在。
 4. 构建/启动平台服务时，Compose 命令先执行 `python scripts/database.py upgrade`，成功才启动 uvicorn；`PLATFORM_API_PLATFORM_DB_AUTO_CREATE=false`。升级错误会阻止 API 启动。新库部署与旧库迁移使用不同流程，旧库必须先走第 3 节。
    Runtime 容器同样先运行 `graphharbor migrate upgrade`、`python -m runtime_service.messaging` 再启动服务，连接变量为 `DATABASE_URI`；健康探针访问 `/ok`。模型密文的 `PLATFORM_API_MODEL_CONFIG_MASTER_KEY` 必须跨重启/恢复保持一致。
 5. 用容器内 `python scripts/database.py check` 核验 head；再验证登录、项目、Agent、运行和审计。检查 ready JSON 中 `status=ready` 且 `database_ready=true`，HTTP 200 不是唯一依据。

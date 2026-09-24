@@ -25,9 +25,6 @@ services:
       PLATFORM_API_POSTGRES_DB: "${PLATFORM_API_POSTGRES_DB:-platform_api}"
       PLATFORM_API_POSTGRES_USER: "${PLATFORM_API_POSTGRES_USER:-platform_api}"
       PLATFORM_API_POSTGRES_PASSWORD: "${PLATFORM_API_POSTGRES_PASSWORD:-platform_api}"
-      INTERACTION_DATA_SERVICE_POSTGRES_DB: "${INTERACTION_DATA_SERVICE_POSTGRES_DB:-interaction_data_service}"
-      INTERACTION_DATA_SERVICE_POSTGRES_USER: "${INTERACTION_DATA_SERVICE_POSTGRES_USER:-interaction_data_service}"
-      INTERACTION_DATA_SERVICE_POSTGRES_PASSWORD: "${INTERACTION_DATA_SERVICE_POSTGRES_PASSWORD:-interaction_data_service}"
     command:
       - postgres
       - -c
@@ -72,55 +69,17 @@ services:
       ENABLE_TOOLS: "${ENABLE_TOOLS:-}"
       TOOLS: "${TOOLS:-}"
       MIDDLEWARES: "${MIDDLEWARES:-}"
-      TEST_CASE_V2_KNOWLEDGE_MCP_ENABLED: "${TEST_CASE_V2_KNOWLEDGE_MCP_ENABLED:-}"
-      TEST_CASE_V2_KNOWLEDGE_MCP_URL: "${TEST_CASE_V2_KNOWLEDGE_MCP_URL:-}"
-      TEST_CASE_V2_KNOWLEDGE_TIMEOUT_SECONDS: "${TEST_CASE_V2_KNOWLEDGE_TIMEOUT_SECONDS:-}"
-      TEST_CASE_V2_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS: "${TEST_CASE_V2_KNOWLEDGE_SSE_READ_TIMEOUT_SECONDS:-}"
       LANGSMITH_API_KEY: "${LANGSMITH_API_KEY:-}"
       LANGSMITH_ENDPOINT: "${LANGSMITH_ENDPOINT:-https://api.smith.langchain.com}"
       LANGGRAPH_CLOUD_LICENSE_KEY: "${LANGGRAPH_CLOUD_LICENSE_KEY:-}"
       SUPABASE_URL: "${SUPABASE_URL:-}"
       SUPABASE_SERVICE_KEY: "${SUPABASE_SERVICE_KEY:-}"
       SUPABASE_TIMEOUT_SECONDS: "${SUPABASE_TIMEOUT_SECONDS:-}"
-      INTERACTION_DATA_SERVICE_URL: "http://interaction-data-service:8081"
-      INTERACTION_DATA_SERVICE_TOKEN: "${INTERACTION_DATA_SERVICE_TOKEN:-}"
-      INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS: "${INTERACTION_DATA_SERVICE_TIMEOUT_SECONDS:-10}"
       REDIS_URI: "redis://${SHARED_REDIS_HOST:-redis}:${SHARED_REDIS_PORT:-6379}/${RUNTIME_REDIS_DB:-0}"
       DATABASE_URI: "postgres://${RUNTIME_POSTGRES_USER:-runtime_service}:${RUNTIME_POSTGRES_PASSWORD:-runtime_service}@${SHARED_POSTGRES_HOST:-postgres}:5432/${RUNTIME_POSTGRES_DB:-runtime_service}?sslmode=disable"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ok', timeout=5).read()"]
       interval: 60s
-      start_period: 10s
-
-  interaction-data-service:
-    image: "${INTERACTION_DATA_SERVICE_IMAGE:-aitestlab-interaction-data-service:local}"
-    restart: unless-stopped
-    build:
-      context: ../apps/interaction-data-service
-      dockerfile: Dockerfile
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      API_DOCS_ENABLED: "${API_DOCS_ENABLED:-true}"
-      SERVICE_CORS_ALLOW_ORIGINS: "${SERVICE_CORS_ALLOW_ORIGINS:-*}"
-      SERVICE_NAME: "${SERVICE_NAME:-interaction-data-service}"
-      SERVICE_VERSION: "${SERVICE_VERSION:-0.1.0}"
-      INTERACTION_DB_ENABLED: "${INTERACTION_DB_ENABLED:-true}"
-      INTERACTION_DB_AUTO_CREATE: "${INTERACTION_DB_AUTO_CREATE:-true}"
-      DOCUMENT_ASSET_ROOT: "${DOCUMENT_ASSET_ROOT:-./storage}"
-      DATABASE_URL: "postgresql+psycopg://${INTERACTION_DATA_SERVICE_POSTGRES_USER:-interaction_data_service}:${INTERACTION_DATA_SERVICE_POSTGRES_PASSWORD:-interaction_data_service}@${SHARED_POSTGRES_HOST:-postgres}:5432/${INTERACTION_DATA_SERVICE_POSTGRES_DB:-interaction_data_service}"
-    volumes:
-      - interaction-data-storage:/app/storage
-    healthcheck:
-      test:
-        - "CMD"
-        - "python"
-        - "-c"
-        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8081/_service/health', timeout=5).read()"
-      interval: 30s
-      timeout: 5s
-      retries: 5
       start_period: 10s
 
   platform-api:
@@ -196,6 +155,4 @@ volumes:
   stack-redis-data:
     driver: local
   stack-postgres-data:
-    driver: local
-  interaction-data-storage:
     driver: local

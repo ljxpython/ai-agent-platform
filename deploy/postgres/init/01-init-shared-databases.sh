@@ -29,6 +29,3 @@ if [ "${1:-}" != "--platform-only" ]; then
   create_user_and_db "${RUNTIME_POSTGRES_DB:-runtime_service}" "${RUNTIME_POSTGRES_USER:-runtime_service}" "${RUNTIME_POSTGRES_PASSWORD:-runtime_service}"
 fi
 create_user_and_db "${PLATFORM_API_POSTGRES_DB:-platform_api}" "${PLATFORM_API_POSTGRES_USER:-platform_api}" "${PLATFORM_API_POSTGRES_PASSWORD:-platform_api}"
-if [ "${1:-}" != "--platform-only" ]; then
-  create_user_and_db "${INTERACTION_DATA_SERVICE_POSTGRES_DB:-interaction_data_service}" "${INTERACTION_DATA_SERVICE_POSTGRES_USER:-interaction_data_service}" "${INTERACTION_DATA_SERVICE_POSTGRES_PASSWORD:-interaction_data_service}"
-fi
