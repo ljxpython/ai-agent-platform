@@ -101,6 +101,8 @@ export function createRunActions(
   let disposed = false;
   const controller = new AbortController();
 
+  const completedRunIds = new Set<string>();
+
   function begin(threadId: string, kind: RunAction["kind"], input: unknown) {
     if (disposed) throw new Error("会话已关闭");
     if (
@@ -108,6 +110,9 @@ export function createRunActions(
       ["submitting", "unknown"].includes(current.value.status)
     ) {
       throw new Error("请先核实上一动作的结果");
+    }
+    if (current.value?.runId) {
+      completedRunIds.add(current.value.runId);
     }
     current.value = Object.freeze({
       key: `run:${crypto.randomUUID()}`,
@@ -172,6 +177,117 @@ export function createRunActions(
     }
   }
 
+  function filterStaleRunSseResponse(response: Response): Response {
+    if (!response.body || typeof ReadableStream === "undefined") {
+      return response;
+    }
+    const contentType = response.headers.get("content-type") ?? "";
+    if (!contentType.includes("text/event-stream")) {
+      return response;
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    const encoder = new TextEncoder();
+    let buffer = "";
+
+    const shouldForwardFrame = (rawFrame: string): boolean => {
+      const lines = rawFrame.split(/\r?\n/);
+      const dataLines = lines
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trimStart());
+      if (dataLines.length === 0) return true;
+      try {
+        const payload = JSON.parse(dataLines.join("\n")) as {
+          method?: string;
+          params?: {
+            run_id?: string;
+            namespace?: unknown[];
+            data?: { event?: string; status?: string };
+          };
+        };
+        const eventRunId =
+          typeof payload?.params?.run_id === "string"
+            ? payload.params.run_id.trim()
+            : "";
+        if (!eventRunId) return true;
+        if (completedRunIds.has(eventRunId)) {
+          return false;
+        }
+        const activeRunId = current.value?.runId;
+        if (activeRunId && eventRunId !== activeRunId) {
+          return false;
+        }
+        if (
+          payload.method === "lifecycle" &&
+          (!Array.isArray(payload.params?.namespace) ||
+            payload.params.namespace.length === 0)
+        ) {
+          const ev =
+            payload.params?.data?.event ?? payload.params?.data?.status ?? "";
+          if (
+            [
+              "completed",
+              "failed",
+              "interrupted",
+              "success",
+              "error",
+              "cancelled",
+              "canceled",
+            ].includes(ev)
+          ) {
+            completedRunIds.add(eventRunId);
+          }
+        }
+        return true;
+      } catch {
+        return true;
+      }
+    };
+
+    const filteredBody = new ReadableStream<Uint8Array>({
+      async pull( streamController ) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            if (buffer.trim().length > 0 && shouldForwardFrame(buffer)) {
+              streamController.enqueue(encoder.encode(buffer));
+            }
+            buffer = "";
+            streamController.close();
+            return;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          let emittedChunk = "";
+          let boundaryMatch: RegExpExecArray | null;
+          const boundaryRegex = /\r?\n\r?\n/;
+          while ((boundaryMatch = boundaryRegex.exec(buffer)) !== null) {
+            const frameEnd = boundaryMatch.index;
+            const sepEnd = frameEnd + boundaryMatch[0].length;
+            const frame = buffer.slice(0, frameEnd);
+            const sep = buffer.slice(frameEnd, sepEnd);
+            buffer = buffer.slice(sepEnd);
+            if (shouldForwardFrame(frame)) {
+              emittedChunk += frame + sep;
+            }
+          }
+          if (emittedChunk.length > 0) {
+            streamController.enqueue(encoder.encode(emittedChunk));
+            return;
+          }
+        }
+      },
+      async cancel(reason) {
+        await reader.cancel(reason);
+      },
+    });
+
+    return new Response(filteredBody, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: response.headers,
+    });
+  }
+
   const fetch: typeof globalThis.fetch = async (input, init) => {
     if (disposed) throw new Error("会话已关闭");
     const url = input instanceof Request ? input.url : input.toString();
@@ -208,13 +324,17 @@ export function createRunActions(
     new Headers(init?.headers).forEach((value, key) => headers.set(key, value));
     headers.set("x-project-id", projectId);
     const signal = init?.signal ?? (input instanceof Request ? input.signal : null);
-    return authorizedFetch(input, {
+    const response = await authorizedFetch(input, {
       ...init,
       headers,
       signal: signal
         ? AbortSignal.any([controller.signal, signal])
         : controller.signal,
     });
+    if (method === "POST" && /\/threads\/[^/]+\/stream\/events\/?$/.test(path)) {
+      return filterStaleRunSseResponse(response);
+    }
+    return response;
   };
 
   function acknowledge(key?: string, runId?: string) {

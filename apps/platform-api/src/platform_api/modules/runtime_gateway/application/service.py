@@ -306,6 +306,8 @@ def _promote_protocol_run_start(params: dict[str, Any]) -> dict[str, Any]:
         cns = configurable["checkpoint_ns"]
         if isinstance(cns, str):
             promoted["checkpoint_ns"] = cns
+    promoted.setdefault("stream_mode", list(_DEFAULT_STREAM_MODES))
+    promoted.setdefault("stream_resumable", True)
     promoted["context"] = context
     if next_config:
         promoted["config"] = next_config
@@ -1417,6 +1419,8 @@ class RuntimeGatewayService:
             return record, await self._upstream.get_thread_run(thread_id, record.run_id)
 
         payload = dict(upstream_payload)
+        payload.setdefault("stream_mode", list(_DEFAULT_STREAM_MODES))
+        payload.setdefault("stream_resumable", True)
         payload["multitask_strategy"] = str(upstream_payload.get("multitask_strategy") or "reject")
         payload["context"] = dict(record.context_snapshot)
         payload["config"] = dict(record.config_snapshot)

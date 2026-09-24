@@ -283,13 +283,33 @@ const history = shallowRef<ChatCheckpoint[]>(initialCachedSession?.history ?? []
 const cachedDisplayMessages = shallowRef<BaseMessage[]>(initialCachedSession?.messages ?? []);
 const hasMoreHistory = ref(true);
 const selectedCheckpoint = shallowRef<ChatCheckpoint | null>(null);
+const coercedMessageCache = new Map<string, { sig: string; msg: BaseMessage }>();
 const latestHistoryMessages = computed<BaseMessage[]>(() => {
   const headRaw = history.value[0]?.values?.messages;
   if (!Array.isArray(headRaw) || headRaw.length === 0) return [];
   try {
-    return headRaw.map((m) =>
-      coerceMessageLikeToMessage(m as Parameters<typeof coerceMessageLikeToMessage>[0]),
-    );
+    return headRaw.map((m) => {
+      const rawObj = m && typeof m === "object" ? (m as Record<string, unknown>) : null;
+      const rawId = typeof rawObj?.id === "string" ? rawObj.id : "";
+      const rawContent = typeof rawObj?.content === "string"
+        ? rawObj.content
+        : JSON.stringify(rawObj?.content ?? "");
+      const rawToolsLen = Array.isArray(rawObj?.tool_calls) ? rawObj.tool_calls.length : 0;
+      const sig = `${rawId}:${rawContent.length}:${rawToolsLen}`;
+      if (rawId) {
+        const cached = coercedMessageCache.get(rawId);
+        if (cached && cached.sig === sig) {
+          return cached.msg;
+        }
+      }
+      const coerced = coerceMessageLikeToMessage(
+        m as Parameters<typeof coerceMessageLikeToMessage>[0],
+      );
+      if (rawId) {
+        coercedMessageCache.set(rawId, { sig, msg: coerced });
+      }
+      return coerced;
+    });
   } catch {
     return [];
   }
@@ -322,13 +342,60 @@ const displayedMessages = computed(() => {
   if (!snapshotMessages.value && fallbackMessages.length > 0) {
     if (base.length === 0) {
       base = fallbackMessages;
-    } else if (fallbackMessages.length > base.length) {
+    } else {
+      const committedById = new Map<string, BaseMessage>();
+      for (const fm of fallbackMessages) {
+        if (fm.id) committedById.set(fm.id, fm);
+      }
+      // 防止 SSE seq=0 历史重放将已落盘完成的检查点消息降级为空串或半截内容（避免页面消息从头重新流式刷一遍）
+      let stabilized = false;
+      const nextBase = base.map((m) => {
+        if (!m.id) return m;
+        const committed = committedById.get(m.id);
+        if (!committed) return m;
+        const streamText = typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? "");
+        const committedText = typeof committed.content === "string" ? committed.content : JSON.stringify(committed.content ?? "");
+        if (streamText.length < committedText.length) {
+          stabilized = true;
+          return committed;
+        }
+        return m;
+      });
+      if (stabilized) {
+        base = nextBase;
+      }
+
       const baseIds = new Set(base.map((m) => m.id).filter(Boolean));
-      const missingPrefix = fallbackMessages.filter(
-        (m) => m.id && !baseIds.has(m.id),
+      const firstOverlapIdx = fallbackMessages.findIndex(
+        (m) => Boolean(m.id && baseIds.has(m.id)),
       );
-      if (missingPrefix.length > 0) {
-        base = [...missingPrefix, ...base];
+      if (firstOverlapIdx === -1) {
+        const missingPrefix = fallbackMessages.filter(
+          (m) => Boolean(m.id && !baseIds.has(m.id)),
+        );
+        if (missingPrefix.length > 0) {
+          base = [...missingPrefix, ...base];
+        }
+      } else {
+        const missingPrefix = fallbackMessages
+          .slice(0, firstOverlapIdx)
+          .filter((m) => Boolean(m.id && !baseIds.has(m.id)));
+        let lastOverlapIdx = firstOverlapIdx;
+        for (let i = fallbackMessages.length - 1; i > firstOverlapIdx; i--) {
+          const id = fallbackMessages[i]?.id;
+          if (id && baseIds.has(id)) {
+            lastOverlapIdx = i;
+            break;
+          }
+        }
+        const missingSuffix = !isSessionRunning.value
+          ? fallbackMessages
+              .slice(lastOverlapIdx + 1)
+              .filter((m) => Boolean(m.id && !baseIds.has(m.id)))
+          : [];
+        if (missingPrefix.length > 0 || missingSuffix.length > 0) {
+          base = [...missingPrefix, ...base, ...missingSuffix];
+        }
       }
     }
   }
@@ -1148,7 +1215,12 @@ async function loadHistory(reset = false, limit = 20) {
     );
     if (disposed || session.threadId.value !== currentThread) return;
     if (reset) {
-      if (rows.length > 0 || history.value.length === 0 || lastLoadedHistoryThreadId !== currentThread) {
+      const isSameHeadCheckpoint =
+        lastLoadedHistoryThreadId === currentThread &&
+        history.value.length > 0 &&
+        history.value.length === rows.length &&
+        history.value[0]?.checkpoint?.checkpoint_id === rows[0]?.checkpoint?.checkpoint_id;
+      if (!isSameHeadCheckpoint && (rows.length > 0 || history.value.length === 0 || lastLoadedHistoryThreadId !== currentThread)) {
         history.value = rows;
         lastLoadedHistoryThreadId = currentThread;
       }
@@ -1426,8 +1498,14 @@ watch(
   { immediate: true },
 );
 function visibilityChanged() {
-  if (!document.hidden && !busy.value && action.value?.status !== "unknown")
+  if (
+    !document.hidden &&
+    !busy.value &&
+    action.value?.status !== "unknown" &&
+    (!session.verified.value || ["pending", "running"].includes(session.run.value?.status ?? ""))
+  ) {
     void session.verify();
+  }
 }
 document.addEventListener("visibilitychange", visibilityChanged);
 onScopeDispose(() => {

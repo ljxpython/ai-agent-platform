@@ -87,3 +87,40 @@ it("keeps the same key and exact wire request after a lost ACK, isolates new act
   actions.dispose();
   await expect(actions.retry()).rejects.toThrow();
 });
+
+it("filters replayed SSE frames belonging to previously completed runs while keeping active run frames", async () => {
+  const sseBody = [
+    `id: 0\nevent: stream\ndata: ${JSON.stringify({ type: "event", method: "lifecycle", params: { event: "completed", run_id: "run-1", data: { status: "completed" } } })}\n\n`,
+    `id: 1\nevent: stream\ndata: ${JSON.stringify({ type: "event", method: "messages", params: { event: "message-chunk", run_id: "run-2", data: { id: "ai-2", delta: { content: "你好" } } } })}\n\n`,
+  ].join("");
+  const wire = vi.fn<typeof fetch>().mockImplementation(async (input) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (url.endsWith("/commands")) {
+      return new Response(
+        JSON.stringify({ type: "success", result: { run_id: "run-2" } }),
+      );
+    }
+    return new Response(sseBody, {
+      headers: { "Content-Type": "text/event-stream" },
+    });
+  });
+  const actions = createRunActions("project-A", wire);
+  actions.begin("thread-A", "send", { text: "first" });
+  actions.acknowledge(undefined, "run-1");
+  actions.begin("thread-A", "send", { text: "second" });
+  await actions.fetch("https://platform/api/langgraph/threads/thread-A/commands", {
+    method: "POST",
+    body: JSON.stringify({ id: 2, method: "run.start", params: { input: { text: "second" } } }),
+  });
+  expect(actions.current.value?.runId).toBe("run-2");
+
+  const streamRes = await actions.fetch(
+    "https://platform/api/langgraph/threads/thread-A/stream/events",
+    { method: "POST" },
+  );
+  const text = await streamRes.text();
+  expect(text).not.toContain('"run_id":"run-1"');
+  expect(text).toContain('"run_id":"run-2"');
+  expect(text).toContain("message-chunk");
+});
+

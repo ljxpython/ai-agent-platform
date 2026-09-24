@@ -48,10 +48,13 @@ export const useWorkspaceStore = defineStore('workspace', {
     },
     async setProjectId(projectId: string) {
       const id = projectId.trim()
+      const isProjectChanged = id !== this.currentProjectId
       const epoch = ++this.accessEpoch
       this.currentProjectId = id
-      this.currentProjectAccess = null
-      this.accessLoading = Boolean(id)
+      if (isProjectChanged || !id) {
+        this.currentProjectAccess = null
+      }
+      this.accessLoading = Boolean(id && !this.currentProjectAccess)
       this.error = ''
       writeProjectPreference(PROJECT_STORAGE_KEY, id)
       try {

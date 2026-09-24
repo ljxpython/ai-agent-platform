@@ -858,3 +858,92 @@ it("keeps busy true throughout subsequent send() stream even when previous run i
   }
 });
 
+it("rotates shared SSE event stream via getThread().subscribe() on every consecutive acknowledged run and keeps verify silent", async () => {
+  const isLoading = ref(false);
+  const current = ref<{ key: string; kind: string; status: string; runId?: string } | null>(null);
+  const unsubscribe = vi.fn().mockResolvedValue(undefined);
+  const subscribe = vi.fn().mockResolvedValue({ unsubscribe });
+
+  mocks.getThread.mockResolvedValue({
+    thread_id: "t-consecutive",
+    metadata: { allowed_actions: ["read", "comment", "edit"] },
+  });
+  mocks.runs.mockResolvedValue([{ run_id: "run-1", status: "success" }]);
+  mocks.run.mockImplementation(async (_tid: string, rid: string) => ({
+    run_id: rid,
+    status: "success",
+  }));
+
+  let runCounter = 1;
+  mocks.stream.mockReturnValue({
+    isLoading,
+    error: ref(null),
+    interrupts: ref([]),
+    messages: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    getThread: () => ({ subscribe }),
+    submit: vi.fn(async () => {
+      runCounter += 1;
+      isLoading.value = true;
+      current.value = {
+        key: `act-${runCounter}`,
+        kind: "send",
+        status: "acknowledged",
+        runId: `run-${runCounter}`,
+      };
+      await Promise.resolve();
+      isLoading.value = false;
+    }),
+    disconnect: vi.fn(),
+  });
+
+  mocks.actions.mockReturnValue({
+    current,
+    begin: vi.fn((_tid: string, kind: string) => {
+      const action = { key: `act-${runCounter + 1}`, kind, status: "submitting" };
+      current.value = action;
+      return action;
+    }),
+    rejectUnsent: vi.fn(),
+    acknowledge: vi.fn(),
+    dispose: vi.fn(),
+  });
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "dearflow_agent",
+      threadId: "t-consecutive",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    expect(session.verified.value).toBe(true);
+    expect(session.checking.value).toBe(false);
+
+    // Send consecutive Turn 2 and Turn 3
+    await session.send("第二轮连续消息");
+    await flushPromises();
+    await session.send("第三轮连续消息");
+    await flushPromises();
+
+    // Every acknowledged run command must trigger getThread().subscribe() to reopen/rotate POST /threads/{id}/stream/events
+    expect(subscribe).toHaveBeenCalledTimes(2);
+    expect(unsubscribe).toHaveBeenCalledTimes(2);
+    expect(session.verified.value).toBe(true);
+    expect(session.checking.value).toBe(false);
+  } finally {
+    scope.stop();
+    mocks.runs.mockReset();
+    mocks.run.mockReset();
+  }
+});
+
+

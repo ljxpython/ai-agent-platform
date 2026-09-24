@@ -373,6 +373,7 @@ export function useChatSession(options: {
   }
   let activeVerifyPromise: Promise<boolean> | undefined;
   let activeVerifyTerminal = false;
+  let activeVerifyRunId: string | undefined;
   let backgroundRunTimer: ReturnType<typeof setTimeout> | undefined;
 
   function scheduleBackgroundRunPoll(targetThreadId: string) {
@@ -402,7 +403,14 @@ export function useChatSession(options: {
 
   async function verify(waitForTerminal = false): Promise<boolean> {
     if (disposed) return false;
-    if (activeVerifyPromise && (!waitForTerminal || activeVerifyTerminal)) {
+    const targetRunId =
+      actions.current.value?.runId ??
+      (active(run.value) ? run.value?.run_id : undefined);
+    if (
+      activeVerifyPromise &&
+      (!waitForTerminal || activeVerifyTerminal) &&
+      activeVerifyRunId === targetRunId
+    ) {
       return activeVerifyPromise;
     }
     const epoch = ++checkEpoch;
@@ -416,16 +424,16 @@ export function useChatSession(options: {
       return true;
     }
     const isSilentRevalidate =
-      !waitForTerminal &&
-      (verified.value ||
-        Boolean(
-          chatSessionStore.getSession(options.projectId, threadId.value)?.messages.length,
-        ));
+      verified.value ||
+      Boolean(
+        chatSessionStore.getSession(options.projectId, threadId.value)?.messages.length,
+      );
     if (!isSilentRevalidate) {
       verified.value = false;
       checking.value = true;
     }
     activeVerifyTerminal = waitForTerminal;
+    activeVerifyRunId = targetRunId;
     const id = threadId.value;
     let deadline = Date.now() + 30000;
     const p = (async () => {
@@ -504,9 +512,12 @@ export function useChatSession(options: {
         if (epoch === checkEpoch) fail(cause);
         return false;
       } finally {
-        if (!disposed && epoch === checkEpoch) checking.value = false;
-        activeVerifyPromise = undefined;
-        activeVerifyTerminal = false;
+        if (!disposed && epoch === checkEpoch) {
+          checking.value = false;
+          activeVerifyPromise = undefined;
+          activeVerifyTerminal = false;
+          activeVerifyRunId = undefined;
+        }
       }
     })();
     activeVerifyPromise = p;
@@ -772,7 +783,7 @@ export function useChatSession(options: {
   ): Promise<boolean> {
     if (!canSend.value) return false;
     error.value = "";
-    checking.value = true;
+    if (!verified.value) checking.value = true;
     streamInFlight.value = true;
     try {
       if (
@@ -999,7 +1010,7 @@ export function useChatSession(options: {
     if (!canSend.value || !threadId.value || !checkpoint?.checkpoint_id) return false;
     const checkpointId = checkpoint.checkpoint_id;
     error.value = "";
-    checking.value = true;
+    if (!verified.value) checking.value = true;
     try {
       if (
         !Number.isInteger(recursionLimit) ||
@@ -1061,12 +1072,48 @@ export function useChatSession(options: {
     }
   }
 
+  function ensureLiveEventStream() {
+    if (disposed) return;
+    const activeThread = (
+      stream as unknown as {
+        getThread?: () => {
+          subscribe?: (params: {
+            channels: string[];
+            namespaces?: string[][];
+            depth?: number;
+          }) => Promise<{ unsubscribe?: () => Promise<void> }>;
+        };
+      }
+    ).getThread?.();
+    if (activeThread && typeof activeThread.subscribe === "function") {
+      void activeThread
+        .subscribe({
+          channels: ["lifecycle", "input"],
+          namespaces: [[]],
+          depth: 1,
+        })
+        .then((sub) => sub?.unsubscribe?.())
+        .catch(() => {
+          // Ignore if thread closed or disposed during stream rotation
+        });
+    }
+  }
+
   watch(actions.current, (action, previous) => {
     if (disposed) return;
     if (
       action?.status === "acknowledged" &&
       (previous?.key !== action.key || previous.status !== "acknowledged")
     ) {
+      if (action.runId && (!run.value || run.value.run_id !== action.runId)) {
+        run.value = {
+          ...(run.value ?? {}),
+          run_id: action.runId,
+          thread_id: action.threadId,
+          status: "running",
+        } as Run;
+      }
+      ensureLiveEventStream();
       if (action.kind === "send" || action.kind === "fork") options.onAccepted?.();
       options.onRefresh();
     }
