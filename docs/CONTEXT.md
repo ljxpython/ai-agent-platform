@@ -5,7 +5,7 @@
 
 ## 最后更新
 
-2026-09-24 | interaction-data-service 退役在本机范围完成：服务目录、部署配置/文档、本机 Docker 独占资源已清理，备份恢复、浏览器聊天与成果生成/预览/下载通过；未来 Docker 部署由用户管理。Dear Agent 记忆闭环前端 `F01—F07` 已完成实施与门禁验证，联调环境完整平台 run/SSE 与浏览器 E2E 仍待验收。
+2026-09-25 | 根级 pre-commit 代码质量门禁已启用：通用检查、Python Ruff、platform-web ESLint/Prettier；CI 仅检查变更文件，Python 历史存量格式基线（731 条诊断、297 个文件）另立专项。interaction-data-service 退役在本机范围完成：服务目录、部署配置/文档、本机 Docker 独占资源已清理，备份恢复、浏览器聊天与成果生成/预览/下载通过；未来 Docker 部署由用户管理。Dear Agent 记忆闭环前端 `F01—F07` 已完成实施与门禁验证，联调环境完整平台 run/SSE 与浏览器 E2E 仍待验收。
 
 ## 活跃项目
 
@@ -18,6 +18,8 @@
 - [前端代码冗余清理与结构化重构](projects/20260923-platform-web-codebase-refactor/README.md)：✅ 已完成（子专题 01~04 全部 `done`，净减 11,760 行代码，`pnpm build` 与 88 套单测全绿）
 - [跨服务规范治理](projects/20260922-cross-service-governance/README.md)：🔴 规划中（待人工评审）
 - [全平台权限治理](projects/20260920-platform-access-governance/README.md)：技术实现与自动化 Final done，用户人工验收中；完整手工用例、证据模板和清理清单见 08。仅项目内个人记忆入口治理；共享/跨项目记忆、自定义角色等 deferred。未提交或生产部署。
+- [代码规范自动化](projects/20260925-code-quality-automation/README.md)：partial；根级 pre-commit 与变更文件 CI 门禁已落地，历史 Python 格式基线待单独清理。
+- [Python 格式基线清理](projects/20260925-python-format-baseline-cleanup/README.md)：规划中；约 731 条 Ruff 诊断、297 个文件格式差异待后续分批治理，本次不实施。
 
 ## 各服务当前状态
 

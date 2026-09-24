@@ -1,3 +1,30 @@
-# Temporarily disabled during repository restructuring.
-# Re-enable after the apps/* layout and shared tooling strategy are finalized.
-repos: []
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.13.2
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^apps/(platform-api|runtime-service)/.*\.py$
+      - id: ruff-format
+        files: ^apps/(platform-api|runtime-service)/.*\.py$
+
+  - repo: local
+    hooks:
+      - id: platform-web-eslint
+        name: platform-web eslint
+        entry: bash -c 'cd apps/platform-web && pnpm exec eslint --fix "${@/#apps\/platform-web\//}"' --
+        language: system
+        files: ^apps/platform-web/.*\.(ts|tsx|vue|js|mjs|cjs)$
+      - id: platform-web-prettier
+        name: platform-web prettier
+        entry: bash -c 'cd apps/platform-web && pnpm exec prettier --write "${@/#apps\/platform-web\//}"' --
+        language: system
+        files: ^apps/platform-web/.*\.(ts|tsx|vue|js|mjs|cjs|json|css|html|md|yaml|yml)$

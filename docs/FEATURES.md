@@ -87,6 +87,8 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 代码规范自动化门禁 | 部分完成：pre-commit 与 CI 变更文件检查已接入；Python 历史格式基线待单独清理 | [项目记录](projects/20260925-code-quality-automation/README.md) |
+| Python 格式基线清理 | 规划中：约 731 条 Ruff 诊断、297 个文件格式差异待分批清理，本次不实施 | [项目规划](projects/20260925-python-format-baseline-cleanup/README.md) |
 | 旧 Testcase 结果服务退役 | 已完成（本机范围）：仓库与本机 Docker 独占资源已清理，备份恢复、浏览器聊天及成果生成/预览/下载通过 | [退役记录](projects/20260924-interaction-data-service-retirement/README.md) |
 | 非 Docker 新机开发环境交接 | 文档已收口：通用模板与私有账号映射分开，建库/SCRAM/反向验收连续步骤，补齐运维回执；目标机实际部署待执行 | [部署手册](quickstart/deployment-guide.md) · [运维交接](quickstart/operator-handoff.md) · [收口记录](changes/20260921-native-deployment-operator-handoff.md) |
 | 本地 PostgreSQL 密码认证 | 本地已完成：SCRAM、18 项认证检查、9 项兼容检查、重连和回退通过；云端交接更新因 SSH 超时待补 | [认证记录](projects/20260920-local-postgres-password/README.md) |
