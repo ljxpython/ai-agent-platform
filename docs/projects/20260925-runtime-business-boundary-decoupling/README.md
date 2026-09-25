@@ -64,6 +64,6 @@ Thread 委托复核补充：管理员无 takeover 删除为 403；限时 takeove
 
 2026-09-26 官方对照续验：GraphHarbor 主方案的同一 identity-only Auth fixture 在官方 `langgraph-api==0.13.0` 与 post33 上通过 12 类 Thread/Run/HITL/SSE 子集对照；完整 OpenAPI 比较仍有 203 处差异（路径/操作 140、组件 schema 63）。该结果不证明平台 ACL 跨身份 Final 或通用 API 全兼容，详见主方案 04。
 
-2026-09-26 创建故障注入：平台网关对 Runtime 已创建而 ready 确认失败、上游 5xx 且探测再次失败的请求返回可对账 UUID；ACL 预留已消失时不报告 ready。五个 ACL/gateway/委托/SDK 测试模块 71 tests、3 skipped，Ruff/format 钩子通过。明确 4xx 后平台数据库清理失败仍可能留下 pending ACL，Runtime 不存在时须人工核对清理；该异常不记为自动补偿完成。相关实现仅在 platform-api，GraphHarbor 不承担业务 ACL。
+2026-09-26 创建故障注入：平台网关对 Runtime 已创建而 ready 确认失败、上游 5xx 且探测或探测委托签发再次失败的请求返回可对账 UUID；ACL 预留已消失时不报告 ready。五个 ACL/gateway/委托/SDK 测试模块 72 tests、3 skipped，Ruff/format 钩子通过。明确 4xx 后平台数据库清理失败仍可能留下 pending ACL，Runtime 不存在时须人工核对清理；该异常不记为自动补偿完成。相关实现仅在 platform-api，GraphHarbor 不承担业务 ACL。
 
 同日 Web `session.service.spec.ts` 验证 503 与 504 均能保留 pending UUID 并在后续创建前对账，7 passed；pre-commit 的 Ruff/format/eslint/prettier 全部通过。正式本机栈登录后在临时项目创建、读取、删除 Thread 均为 200，临时项目删除 200。此烟测仅覆盖单用户正向路径。

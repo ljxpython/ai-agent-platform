@@ -2010,21 +2010,23 @@ class RuntimeGatewayService:
                 and self._delegation_headers_factory
                 and hasattr(self._upstream, "with_forwarded_headers")
             ):
-                reconcile = self._upstream.with_forwarded_headers(
-                    await run_in_threadpool(
-                        self._delegation_headers_factory,
-                        project_id=project_id,
-                        agent_key=clean_str(next_payload.get("graph_id")) or "",
-                        thread_id=next_payload["thread_id"],
-                        context_hash=empty_runtime_context_hash(),
-                        operation="thread-reconcile",
-                    )
-                )
                 try:
+                    reconcile = self._upstream.with_forwarded_headers(
+                        await run_in_threadpool(
+                            self._delegation_headers_factory,
+                            project_id=project_id,
+                            agent_key=clean_str(next_payload.get("graph_id")) or "",
+                            thread_id=next_payload["thread_id"],
+                            context_hash=empty_runtime_context_hash(),
+                            operation="thread-reconcile",
+                        )
+                    )
                     thread = await reconcile.get_thread(next_payload["thread_id"])
                 except UpstreamServiceError as probe_error:
                     if probe_error.status_code != 404:
                         raise exc
+                except Exception:
+                    raise exc from None
                 else:
                     if thread.get("thread_id") == next_payload["thread_id"]:
                         self._assert_thread_project_scope(

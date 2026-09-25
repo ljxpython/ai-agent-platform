@@ -845,6 +845,40 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
                 "pending",
             )
 
+    async def test_unknown_create_result_keeps_identity_when_reconcile_signing_fails(
+        self,
+    ):
+        from platform_api.core.errors import UpstreamServiceError
+
+        original = UpstreamServiceError(
+            upstream="langgraph", status_code=504, code="timeout", message="Timed out"
+        )
+        self.upstream.create_thread.side_effect = original
+        self.upstream.with_forwarded_headers = Mock(return_value=self.upstream)
+
+        def sign(**kwargs):
+            if kwargs["operation"] == "thread-reconcile":
+                raise RuntimeError("signing unavailable")
+            return {"authorization": "Bearer scoped"}
+
+        self.service._delegation_headers_factory = sign
+        with self.assertRaises(UpstreamServiceError) as raised:
+            await self.service.create_thread(
+                actor=self.owner, project_id=self.project, payload={}
+            )
+        thread_id = self.upstream.create_thread.call_args.args[0]["thread_id"]
+        self.assertIs(raised.exception, original)
+        self.assertEqual(raised.exception.extra["thread_id"], thread_id)
+        self.assertEqual(
+            raised.exception.extra["reconcile_path"],
+            f"/api/langgraph/threads/{thread_id}/reconcile",
+        )
+        with session_scope(self.factory) as session:
+            self.assertEqual(
+                session.get(ThreadAccessRecord, thread_id).provisioning_status,
+                "pending",
+            )
+
     async def test_manager_approval_does_not_grant_private_read_or_leak_run_input(self):
         self.upstream.create_thread_run = AsyncMock(
             return_value={"run_id": "source-run"}
