@@ -2012,14 +2012,7 @@ class RuntimeGatewayService:
                 try:
                     thread = await reconcile.get_thread(next_payload["thread_id"])
                 except UpstreamServiceError as probe_error:
-                    if probe_error.status_code == 404:
-                        await run_in_threadpool(
-                            thread_access.remove_pending,
-                            self._require_session_factory(),
-                            project_id=project_id,
-                            thread_id=next_payload["thread_id"],
-                        )
-                    else:
+                    if probe_error.status_code != 404:
                         raise exc
                 else:
                     if thread.get("thread_id") == next_payload["thread_id"]:
@@ -2047,6 +2040,62 @@ class RuntimeGatewayService:
             next_payload["thread_id"],
         )
         return self._thread_with_access(actor, project_id, thread, access)
+
+    async def reconcile_pending_thread(
+        self, *, actor: ActorContext, project_id: str, thread_id: str
+    ) -> dict[str, Any]:
+        await run_in_threadpool(
+            self._prepare_project_scope, actor=actor, project_id=project_id, write=False
+        )
+        if not actor.user_id or not await run_in_threadpool(
+            thread_access.pending_owner,
+            self._require_session_factory(),
+            thread_id=thread_id,
+            project_id=project_id,
+            user_id=actor.user_id,
+        ):
+            raise ForbiddenError(
+                code="thread_action_denied", message="Thread is unavailable"
+            )
+        if not self._delegation_headers_factory:
+            raise ServiceUnavailableError(
+                code="runtime_delegation_not_configured",
+                message="Runtime delegation is not configured",
+            )
+        upstream = self._upstream.with_forwarded_headers(
+            await run_in_threadpool(
+                self._delegation_headers_factory,
+                project_id=project_id,
+                agent_key="",
+                thread_id=thread_id,
+                context_hash=empty_runtime_context_hash(),
+                operation="thread-reconcile",
+            )
+        )
+        try:
+            thread = await upstream.get_thread(thread_id)
+        except UpstreamServiceError as exc:
+            if exc.status_code == 404:
+                return {"thread_id": thread_id, "status": "pending"}
+            raise
+        if thread.get("thread_id") != thread_id:
+            raise PlatformApiError(
+                code="invalid_reconciled_thread_id",
+                status_code=502,
+                message="Runtime returned a different Thread identity",
+            )
+        self._assert_thread_project_scope(project_id=project_id, thread=thread)
+        await run_in_threadpool(
+            thread_access.mark_provisioned, self._require_session_factory(), thread_id
+        )
+        access = await run_in_threadpool(
+            thread_access.get, self._require_session_factory(), thread_id
+        )
+        return {
+            "thread_id": thread_id,
+            "status": "ready",
+            "thread": self._thread_with_access(actor, project_id, thread, access),
+        }
 
     async def _visible_threads(
         self, *, actor: ActorContext, project_id: str, payload: dict

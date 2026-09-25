@@ -191,9 +191,9 @@ def test_thread_auth_rechecks_signed_platform_acl(
         resource="threads",
         action="read",
     )
-    asyncio.run(
+    assert asyncio.run(
         platform.deny_image_scope_on_server_resources(ctx, {"thread_id": "thread-1"})
-    )
+    ) == {"project_id": "project-a"}
 
     kwargs = post.await_args.kwargs
     assert kwargs["json"] == {
@@ -244,9 +244,14 @@ def test_thread_create_accepts_graphharbor_uuid_target(
         resource="threads",
         action="create",
     )
-    asyncio.run(
-        platform.deny_image_scope_on_server_resources(ctx, {"thread_id": thread_id})
-    )
+    value = {
+        "thread_id": thread_id,
+        "metadata": {"project_id": "forged", "title": "safe"},
+    }
+    assert asyncio.run(platform.deny_image_scope_on_server_resources(ctx, value)) == {
+        "project_id": "project-a"
+    }
+    assert value["metadata"] == {"project_id": "project-a", "title": "safe"}
 
 
 def test_thread_reconcile_only_reads_its_bound_pending_thread(

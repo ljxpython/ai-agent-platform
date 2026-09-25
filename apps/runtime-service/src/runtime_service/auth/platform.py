@@ -97,7 +97,7 @@ async def authenticate(authorization: str | None = None) -> Auth.types.MinimalUs
 @auth.on
 async def deny_image_scope_on_server_resources(
     ctx: Auth.types.AuthContext, value: dict
-) -> None:
+) -> dict[str, str] | None:
     """Enforce delegation scope and recheck platform ACL for thread resources."""
     scope = _user_value(ctx.user, "runtime_scope")
     if not isinstance(scope, dict) or scope.get("operation") not in {
@@ -284,6 +284,11 @@ async def deny_image_scope_on_server_resources(
         raise Auth.exceptions.HTTPException(
             status_code=403, detail="Thread access denied"
         )
+    if action in {"create", "update"} and isinstance(value.get("metadata"), dict):
+        value["metadata"]["project_id"] = project_id
+    elif action == "create":
+        value["metadata"] = {"project_id": project_id}
+    return {"project_id": project_id}
 
 
 __all__ = ["auth", "authenticate", "deny_image_scope_on_server_resources"]

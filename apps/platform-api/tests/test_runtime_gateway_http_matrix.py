@@ -38,6 +38,7 @@ CASES = [
     ("POST", "/threads/search", "search_threads"),
     ("POST", "/threads/count", "count_threads"),
     ("GET", "/threads/{thread_id}", "get_thread"),
+    ("POST", "/threads/{thread_id}/reconcile", "reconcile_pending_thread"),
     ("DELETE", "/threads/{thread_id}", "delete_thread"),
     ("PATCH", "/threads/{thread_id}", "update_thread"),
     ("POST", "/threads/{thread_id}/title/summarize", "summarize_thread_title"),
@@ -74,7 +75,12 @@ CASES = [
 
 def terminal_payload(path):
     if path.endswith("/terminals"):
-        return {"request_id": "00000000-0000-4000-8000-000000000001", "acknowledge_execution": True, "rows": 24, "cols": 80}
+        return {
+            "request_id": "00000000-0000-4000-8000-000000000001",
+            "acknowledge_execution": True,
+            "rows": 24,
+            "cols": 80,
+        }
     if path.endswith("/input"):
         return {"data_base64": "eA==", "sequence": 0}
     return {"rows": 24, "cols": 80}
@@ -83,7 +89,12 @@ def terminal_payload(path):
 def governance_payload(name):
     if name == "share_thread":
         return {"actions": ["read"]}
-    return {"category": "user_support", "reason": "Explicit user requested support", "reference": "CASE-1", "duration_minutes": 15}
+    return {
+        "category": "user_support",
+        "reason": "Explicit user requested support",
+        "reference": "CASE-1",
+        "duration_minutes": 15,
+    }
 
 
 class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
@@ -94,11 +105,16 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                 for route in router.routes
                 for method in route.methods
             },
-            {(method, path) for method, path, _ in CASES} | {
-                ("GET", "/dear/memory"), ("POST", "/dear/memory"),
-                ("GET", "/dear/skills"), ("POST", "/dear/skills/custom"),
-                ("PUT", "/dear/skills/custom/{slug}"), ("PATCH", "/dear/skills/custom/{slug}"),
-                ("DELETE", "/dear/skills/custom/{slug}"), ("GET", "/dear/skills/{source}/{slug}"),
+            {(method, path) for method, path, _ in CASES}
+            | {
+                ("GET", "/dear/memory"),
+                ("POST", "/dear/memory"),
+                ("GET", "/dear/skills"),
+                ("POST", "/dear/skills/custom"),
+                ("PUT", "/dear/skills/custom/{slug}"),
+                ("PATCH", "/dear/skills/custom/{slug}"),
+                ("DELETE", "/dear/skills/custom/{slug}"),
+                ("GET", "/dear/skills/{source}/{slug}"),
                 ("GET", "/dear/skills/{source}/{slug}/content"),
             },
         )
@@ -142,7 +158,13 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                                 body=image_bytes(),
                                 content_type="image/png",
                             )
-                        elif name == "read_thread_file" or path.endswith(("/workspace/content", "/workspace/preview", "/workspace/zip")):
+                        elif name == "read_thread_file" or path.endswith(
+                            (
+                                "/workspace/content",
+                                "/workspace/preview",
+                                "/workspace/zip",
+                            )
+                        ):
                             ret_val = BinaryPayload(
                                 body=file_bytes(),
                                 content_type="application/pdf",
@@ -169,20 +191,26 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             )
                             headers["content-length"] = "10"
                         post_payload = (
-                            governance_payload(name) if name in {"share_thread", "takeover_thread"} else
-                            terminal_payload(path) if name == "thread_terminal" else
-                            {"checkpoint_id": "checkpoint-1"}
-                            if name == "fork_thread" else
-                            {"access_policy": "workspace_write"}
-                            if name == "update_thread_access_policy" else
-                            {"title": "new-title"}
-                            if name == "update_thread" else
-                            {"content": "hello"}
+                            governance_payload(name)
+                            if name in {"share_thread", "takeover_thread"}
+                            else terminal_payload(path)
+                            if name == "thread_terminal"
+                            else {"checkpoint_id": "checkpoint-1"}
+                            if name == "fork_thread"
+                            else {"access_policy": "workspace_write"}
+                            if name == "update_thread_access_policy"
+                            else {"title": "new-title"}
+                            if name == "update_thread"
+                            else {"content": "hello"}
                             if path.endswith("/messages")
                             else {"probe": "body"}
                         )
                         url_path = "/api/langgraph" + path.format(
-                            thread_id="thread-1", run_id="run-1", sha256="a" * 64, resource="memory", terminal_id="terminal-1"
+                            thread_id="thread-1",
+                            run_id="run-1",
+                            sha256="a" * 64,
+                            resource="memory",
+                            terminal_id="terminal-1",
                         )
                         req_params = (
                             {"path": "/workspace/uploads/test.png"}
@@ -195,8 +223,12 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             method,
                             url_path,
                             params=req_params,
-                            json=post_payload if method in {"POST", "PATCH"} or name == "share_thread" else None,
-                            content=b"0123456789" if method == "PUT" and name != "share_thread" else None,
+                            json=post_payload
+                            if method in {"POST", "PATCH"} or name == "share_thread"
+                            else None,
+                            content=b"0123456789"
+                            if method == "PUT" and name != "share_thread"
+                            else None,
                             headers=headers,
                         )
                         expected = {
@@ -218,13 +250,22 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         self.assertEqual(kwargs["project_id"], "project-1")
                         for key in ("thread_id", "run_id", "sha256"):
                             if "{" + key + "}" in path:
-                                expected_val = "a" * 64 if key == "sha256" else key.replace("_id", "-1")
+                                expected_val = (
+                                    "a" * 64
+                                    if key == "sha256"
+                                    else key.replace("_id", "-1")
+                                )
                                 self.assertEqual(kwargs[key], expected_val)
                         if method == "POST":
                             if name == "fork_thread":
-                                self.assertEqual(kwargs["checkpoint_id"], "checkpoint-1")
+                                self.assertEqual(
+                                    kwargs["checkpoint_id"], "checkpoint-1"
+                                )
                                 self.assertIsNone(kwargs["title"])
-                            elif name != "takeover_thread":
+                            elif name not in {
+                                "takeover_thread",
+                                "reconcile_pending_thread",
+                            }:
                                 self.assertEqual(kwargs["payload"], post_payload)
                         if name in {
                             "create_thread_run",
@@ -259,7 +300,11 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                 for method, path, name in CASES:
                     with self.subTest(route=path, principal=principal.user_id):
                         url_path = "/api/langgraph" + path.format(
-                            thread_id="thread-1", run_id="run-1", sha256="a" * 64, resource="memory", terminal_id="terminal-1"
+                            thread_id="thread-1",
+                            run_id="run-1",
+                            sha256="a" * 64,
+                            resource="memory",
+                            terminal_id="terminal-1",
                         )
                         req_params = (
                             {"path": "/workspace/uploads/test.png"}
@@ -282,14 +327,23 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                             url_path,
                             params=req_params,
                             json=(
-                                governance_payload(name) if name in {"share_thread", "takeover_thread"} else
-                                terminal_payload(path) if name == "thread_terminal"
-                                else {"checkpoint_id": "checkpoint-1"} if name == "fork_thread"
-                                else {"access_policy": "review"} if name == "update_thread_access_policy"
-                                else {"title": "new-title"} if name == "update_thread"
+                                governance_payload(name)
+                                if name in {"share_thread", "takeover_thread"}
+                                else terminal_payload(path)
+                                if name == "thread_terminal"
+                                else {"checkpoint_id": "checkpoint-1"}
+                                if name == "fork_thread"
+                                else {"access_policy": "review"}
+                                if name == "update_thread_access_policy"
+                                else {"title": "new-title"}
+                                if name == "update_thread"
                                 else {}
-                            ) if method in {"POST", "PATCH"} or name == "share_thread" else None,
-                            content=b"0123456789" if method == "PUT" and name != "share_thread" else None,
+                            )
+                            if method in {"POST", "PATCH"} or name == "share_thread"
+                            else None,
+                            content=b"0123456789"
+                            if method == "PUT" and name != "share_thread"
+                            else None,
                             headers=headers,
                         )
                         self.assertEqual(response.status_code, expected, response.text)
@@ -298,17 +352,35 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
 
             # A caller authorized for project-1 still cannot touch another project's thread.
             service._prepare_project_scope = Mock()
-            upstream.get_thread = AsyncMock(
-                return_value={"metadata": {"project_id": "other-project"}}
+            service._delegation_headers_factory = Mock(
+                return_value={"authorization": "Bearer scoped"}
             )
-            actor = ActorContext(user_id="member", project_roles={"project-1": ("project_admin",)})
-            service._session_factory = thread_acl_factory(self, actor=actor, project_id="project-1")
+            upstream.get_thread = AsyncMock(
+                return_value={
+                    "thread_id": "thread-1",
+                    "metadata": {"project_id": "other-project"},
+                }
+            )
+            upstream.with_forwarded_headers = Mock(return_value=upstream)
+            actor = ActorContext(
+                user_id="member", project_roles={"project-1": ("project_admin",)}
+            )
+            service._session_factory = thread_acl_factory(
+                self, actor=actor, project_id="project-1"
+            )
             for method, path, name in CASES:
-                if "{thread_id}" not in path or name in {"takeover_thread", "end_thread_takeover"}:
+                if "{thread_id}" not in path or name in {
+                    "takeover_thread",
+                    "end_thread_takeover",
+                }:
                     continue
                 with self.subTest(cross_project=path, method=method):
                     url_path = "/api/langgraph" + path.format(
-                        thread_id="thread-1", run_id="run-1", sha256="a" * 64, resource="memory", terminal_id="terminal-1"
+                        thread_id="thread-1",
+                        run_id="run-1",
+                        sha256="a" * 64,
+                        resource="memory",
+                        terminal_id="terminal-1",
                     )
                     req_params = (
                         {"path": "/workspace/uploads/test.png"}
@@ -331,14 +403,23 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         url_path,
                         params=req_params,
                         json=(
-                            governance_payload(name) if name == "share_thread" else
-                            terminal_payload(path) if name == "thread_terminal"
-                            else {"checkpoint_id": "checkpoint-1"} if name == "fork_thread"
-                            else {"access_policy": "review"} if name == "update_thread_access_policy"
-                            else {"title": "new-title"} if name == "update_thread"
+                            governance_payload(name)
+                            if name == "share_thread"
+                            else terminal_payload(path)
+                            if name == "thread_terminal"
+                            else {"checkpoint_id": "checkpoint-1"}
+                            if name == "fork_thread"
+                            else {"access_policy": "review"}
+                            if name == "update_thread_access_policy"
+                            else {"title": "new-title"}
+                            if name == "update_thread"
                             else {}
-                        ) if method in {"POST", "PATCH"} or name == "share_thread" else None,
-                        content=b"0123456789" if method == "PUT" and name != "share_thread" else None,
+                        )
+                        if method in {"POST", "PATCH"} or name == "share_thread"
+                        else None,
+                        content=b"0123456789"
+                        if method == "PUT" and name != "share_thread"
+                        else None,
                         headers=headers,
                     )
                     self.assertEqual(response.status_code, 403, response.text)
@@ -346,7 +427,10 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                         response.json()["error"]["code"], "thread_project_denied"
                     )
             self.assertTrue(
-                all(call[0] == "get_thread" for call in upstream.mock_calls)
+                all(
+                    call[0] in {"get_thread", "with_forwarded_headers"}
+                    for call in upstream.mock_calls
+                )
             )
 
             service = SimpleNamespace()

@@ -428,6 +428,22 @@ async def get_thread(
     )
 
 
+@router.post("/threads/{thread_id}/reconcile")
+async def reconcile_pending_thread(
+    request: Request,
+    thread_id: str,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    return _redact_runtime_private_fields(
+        await service.reconcile_pending_thread(
+            actor=actor,
+            project_id=_require_project_id(request),
+            thread_id=thread_id,
+        )
+    )
+
+
 @router.delete("/threads/{thread_id}")
 async def delete_thread(
     request: Request,

@@ -420,7 +420,7 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
                 "pending",
             )
 
-    async def test_unknown_create_result_removes_only_after_reconcile_404(self):
+    async def test_unknown_create_result_keeps_reservation_after_reconcile_404(self):
         from platform_api.core.errors import UpstreamServiceError
 
         self.upstream.create_thread.side_effect = UpstreamServiceError(
@@ -438,13 +438,54 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
                 actor=self.owner, project_id=self.project, payload={}
             )
         thread_id = self.upstream.create_thread.call_args.args[0]["thread_id"]
-        self.assertEqual(acl.get(self.factory, thread_id), {})
+        self.assertEqual(
+            acl.get(self.factory, thread_id)["owner_user_id"], self.owner.user_id
+        )
+        with session_scope(self.factory) as session:
+            self.assertEqual(
+                session.get(ThreadAccessRecord, thread_id).provisioning_status,
+                "pending",
+            )
 
-    async def test_reconcile_404_does_not_remove_acl_after_provisioning_race(self):
+    async def test_pending_owner_can_reconcile_after_late_create(self):
+        thread_id = str(uuid4())
+        acl.register(
+            self.factory,
+            thread_id=thread_id,
+            project_id=self.project,
+            actor=self.owner,
+        )
+        self.upstream.get_thread.return_value = {
+            "thread_id": thread_id,
+            "metadata": {"project_id": self.project},
+        }
+        self.upstream.with_forwarded_headers = Mock(return_value=self.upstream)
+        self.service._delegation_headers_factory = Mock(
+            return_value={"authorization": "Bearer scoped"}
+        )
+        result = await self.service.reconcile_pending_thread(
+            actor=self.owner, project_id=self.project, thread_id=thread_id
+        )
+        self.assertEqual(result["status"], "ready")
+        self.assertEqual(result["thread"]["thread_id"], thread_id)
+        self.assertEqual(
+            self.service._delegation_headers_factory.call_args.kwargs["operation"],
+            "thread-reconcile",
+        )
+        with session_scope(self.factory) as session:
+            self.assertEqual(
+                session.get(ThreadAccessRecord, thread_id).provisioning_status, "ready"
+            )
+
+    async def test_pending_reconcile_404_stays_pending_and_peer_is_denied(self):
         from platform_api.core.errors import UpstreamServiceError
 
-        self.upstream.create_thread.side_effect = UpstreamServiceError(
-            upstream="langgraph", status_code=504, code="timeout", message="Timed out"
+        thread_id = str(uuid4())
+        acl.register(
+            self.factory,
+            thread_id=thread_id,
+            project_id=self.project,
+            actor=self.owner,
         )
         self.upstream.get_thread.side_effect = UpstreamServiceError(
             upstream="langgraph", status_code=404, code="not_found", message="Not found"
@@ -453,19 +494,45 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
         self.service._delegation_headers_factory = Mock(
             return_value={"authorization": "Bearer scoped"}
         )
-        original_remove_pending = acl.remove_pending
-
-        def mark_ready_then_remove(factory, *, project_id, thread_id):
-            acl.mark_provisioned(factory, thread_id)
-            return original_remove_pending(
-                factory, project_id=project_id, thread_id=thread_id
+        with self.assertRaises(ForbiddenError):
+            await self.service.reconcile_pending_thread(
+                actor=self.peer, project_id=self.project, thread_id=thread_id
+            )
+        result = await self.service.reconcile_pending_thread(
+            actor=self.owner, project_id=self.project, thread_id=thread_id
+        )
+        self.assertEqual(result, {"thread_id": thread_id, "status": "pending"})
+        with session_scope(self.factory) as session:
+            self.assertEqual(
+                session.get(ThreadAccessRecord, thread_id).provisioning_status,
+                "pending",
             )
 
-        with patch.object(acl, "remove_pending", side_effect=mark_ready_then_remove):
-            with self.assertRaises(UpstreamServiceError):
-                await self.service.create_thread(
-                    actor=self.owner, project_id=self.project, payload={}
-                )
+    async def test_reconcile_404_does_not_remove_acl_after_provisioning_race(self):
+        from platform_api.core.errors import UpstreamServiceError
+
+        self.upstream.create_thread.side_effect = UpstreamServiceError(
+            upstream="langgraph", status_code=504, code="timeout", message="Timed out"
+        )
+
+        async def late_404(thread_id):
+            acl.mark_provisioned(self.factory, thread_id)
+            raise UpstreamServiceError(
+                upstream="langgraph",
+                status_code=404,
+                code="not_found",
+                message="Not found",
+            )
+
+        self.upstream.get_thread.side_effect = late_404
+        self.upstream.with_forwarded_headers = Mock(return_value=self.upstream)
+        self.service._delegation_headers_factory = Mock(
+            return_value={"authorization": "Bearer scoped"}
+        )
+        with self.assertRaises(UpstreamServiceError):
+            await self.service.create_thread(
+                actor=self.owner, project_id=self.project, payload={}
+            )
         thread_id = self.upstream.create_thread.call_args.args[0]["thread_id"]
         self.assertEqual(
             acl.get(self.factory, thread_id)["owner_user_id"], self.owner.user_id
