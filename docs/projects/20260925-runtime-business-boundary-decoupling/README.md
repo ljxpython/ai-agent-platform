@@ -4,7 +4,7 @@
 
 - **启动日期：** 2026-09-25。
 - **级别：** 治理改动，跨 platform-api、runtime-service 和 GraphHarbor；含授权与历史数据迁移。
-- **状态：** `partial`。已实施平台 ACL 回查、thread 创建预留/受限 reconcile、可信 project metadata、模型与 tracing 关联；定向 Runtime Service、Platform API 与 workspace 测试通过。完整 Agent Server 入口矩阵、历史 SQL scope 移除、候选包联合验收及生产切换仍未完成。
+- **状态：** `partial`。已实施平台 ACL 回查、thread 创建预留/受限 reconcile、可信 project metadata、模型与 tracing 关联；GraphHarbor 候选代码已移除旧 SQL scope。完整 Agent Server 授权矩阵、迁移/回退演练、候选包联合验收及生产切换仍未完成。
 - **主方案：** [GraphHarbor 项目概览](../../../../graphharbor/docs/projects/20260925-runtime-business-boundary-decoupling/README.md)。此跨仓库相对链接要求两仓同级检出；仓库不在同一工作区时，请在 graphharbor 仓库打开相同项目路径。
 - **单一事实源：** 任务、验证和评审记录集中在 GraphHarbor 主方案；本入口不复制任务状态。
 
@@ -19,7 +19,7 @@
 
 ## 已确认的边界
 
-2026-09-25 用户明确：彻底解耦，不保留旧业务兼容。主方案已改为候选版本联合验收后维护窗口一次切换；取消双读/双写及旧 API/worker 混跑。官方 LangGraph 契约仍需遵循。历史数据默认保留并离线迁移，不把此决定解释为清库授权。平台逐模块适配清单、鉴权层次和 ACL 定义已补入主方案 README。
+2026-09-25 用户明确：彻底解耦，不保留旧业务兼容；候选版本联合验收后维护窗口一次切换，允许直接删除历史 GraphHarbor 运行数据，不做旧业务字段回填。该决定不授权清理未知或生产数据库；平台逐模块适配清单、鉴权层次和 ACL 定义见主方案 README。
 
 1. tenant/project、角色、模型/工具策略、ACL 和 workspace 仍是平台业务能力。GraphHarbor 只执行应用提供的标准 Auth 与通用运行协议。
 2. ACL 仍以平台数据库为权威，保留共享、审批与限时 takeover；不采用 owner-only 替代，不复制一套 ACL 数据库。

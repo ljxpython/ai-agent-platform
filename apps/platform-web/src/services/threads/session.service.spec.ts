@@ -1,114 +1,192 @@
-import { expect, it, vi } from 'vitest'
-import { createSessionService } from './session.service'
+import { expect, it, vi } from "vitest";
+import { createSessionService } from "./session.service";
 
-it('uses SDK graphId and the public checkpoint wire contract', async () => {
-  const requests: Array<{ url: string; body?: Record<string, unknown>; headers: Headers }> = []
+it("uses SDK graphId and the public checkpoint wire contract", async () => {
+  const requests: Array<{
+    url: string;
+    body?: Record<string, unknown>;
+    headers: Headers;
+  }> = [];
   const transport = vi.fn<typeof fetch>(async (input, init) => {
-    requests.push({ url: String(input), body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined, headers: new Headers(init?.headers) })
-    return new Response(JSON.stringify({ thread_id: 'thread' }), { headers: { 'content-type': 'application/json' } })
-  })
-  const service = createSessionService(transport, 'project')
-  await service.create('workflow_demo', 'agent', '标题')
-  await service.state('thread', { checkpoint_id: 'check', checkpoint_ns: '' })
-  await service.history('thread', { checkpoint_id: 'check', checkpoint_ns: '' })
-  await service.fork('thread', 'check', '分支标题')
-  await service.resume('thread', { approval: { decisions: [{ type: 'approve' }] } })
-  expect(requests[0]?.body?.metadata).toEqual({ graph_id: 'workflow_demo', agent_id: 'agent', title: '标题' })
-  expect(requests[1]?.url).toMatch(/\/threads\/thread\/state\?checkpoint_id=check$/)
-  expect(requests[2]?.body?.before).toEqual({ checkpoint_id: 'check', checkpoint_ns: '' })
-  expect(requests[3]?.url).toMatch(/\/threads\/thread\/fork$/)
-  expect(requests[3]?.body).toEqual({ checkpoint_id: 'check', title: '分支标题' })
-  expect(requests[4]?.url).toMatch(/\/threads\/thread\/runs$/)
-  expect(requests[4]?.body).toEqual({ command: { resume: { approval: { decisions: [{ type: 'approve' }] } } } })
-  expect(requests.every(request => request.headers.get('x-project-id') === 'project')).toBe(true)
-})
+    requests.push({
+      url: String(input),
+      body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+      headers: new Headers(init?.headers),
+    });
+    return new Response(JSON.stringify({ thread_id: "thread" }), {
+      headers: { "content-type": "application/json" },
+    });
+  });
+  const service = createSessionService(transport, "project");
+  await service.create("workflow_demo", "agent", "标题");
+  await service.state("thread", { checkpoint_id: "check", checkpoint_ns: "" });
+  await service.history("thread", {
+    checkpoint_id: "check",
+    checkpoint_ns: "",
+  });
+  await service.fork("thread", "check", "分支标题");
+  await service.resume("thread", {
+    approval: { decisions: [{ type: "approve" }] },
+  });
+  expect(requests[0]?.body?.metadata).toEqual({
+    graph_id: "workflow_demo",
+    agent_id: "agent",
+    title: "标题",
+  });
+  expect(requests[1]?.url).toMatch(
+    /\/threads\/thread\/state\?checkpoint_id=check$/,
+  );
+  expect(requests[2]?.body?.before).toEqual({
+    checkpoint_id: "check",
+    checkpoint_ns: "",
+  });
+  expect(requests[3]?.url).toMatch(/\/threads\/thread\/fork$/);
+  expect(requests[3]?.body).toEqual({
+    checkpoint_id: "check",
+    title: "分支标题",
+  });
+  expect(requests[4]?.url).toMatch(/\/threads\/thread\/runs$/);
+  expect(requests[4]?.body).toEqual({
+    command: { resume: { approval: { decisions: [{ type: "approve" }] } } },
+  });
+  expect(
+    requests.every(
+      (request) => request.headers.get("x-project-id") === "project",
+    ),
+  ).toBe(true);
+});
 
-it('reconciles a pending thread before retrying creation', async () => {
-  const threadId = '11111111-1111-4111-8111-111111111111'
-  let createCalls = 0
-  let reconcileCalls = 0
+it("reconciles a pending thread before retrying creation", async () => {
+  const threadId = "11111111-1111-4111-8111-111111111111";
+  let createCalls = 0;
+  let reconcileCalls = 0;
   const transport = vi.fn<typeof fetch>(async (input) => {
-    if (String(input).endsWith('/reconcile')) {
-      reconcileCalls += 1
-      return new Response(JSON.stringify(reconcileCalls === 1
-        ? { thread_id: threadId, status: 'pending' }
-        : { thread_id: threadId, status: 'ready', thread: { thread_id: threadId } }), { headers: { 'content-type': 'application/json' } })
+    if (String(input).endsWith("/reconcile")) {
+      reconcileCalls += 1;
+      return new Response(
+        JSON.stringify(
+          reconcileCalls === 1
+            ? { thread_id: threadId, status: "pending" }
+            : {
+                thread_id: threadId,
+                status: "ready",
+                thread: { thread_id: threadId },
+              },
+        ),
+        { headers: { "content-type": "application/json" } },
+      );
     }
-    createCalls += 1
-    return new Response(JSON.stringify({ error: { extra: { thread_id: threadId } } }), { status: 504, headers: { 'content-type': 'application/json' } })
-  })
-  const service = createSessionService(transport, 'project')
-  await expect(service.create('workflow_demo', 'agent', '标题')).rejects.toThrow(threadId)
-  await expect(service.create('workflow_demo', 'agent', '标题')).rejects.toThrow('请稍后重试')
-  await expect(service.create('workflow_demo', 'agent', '标题')).resolves.toMatchObject({ thread_id: threadId })
-  expect(createCalls).toBe(1)
-  expect(reconcileCalls).toBe(2)
-})
+    createCalls += 1;
+    return new Response(
+      JSON.stringify({ error: { extra: { thread_id: threadId } } }),
+      { status: 504, headers: { "content-type": "application/json" } },
+    );
+  });
+  const service = createSessionService(transport, "project", "user");
+  await expect(
+    service.create("workflow_demo", "agent", "标题"),
+  ).rejects.toThrow(threadId);
+  const rebuiltService = createSessionService(transport, "project", "user");
+  await expect(
+    rebuiltService.create("workflow_demo", "agent", "标题"),
+  ).rejects.toThrow("请稍后重试");
+  await expect(
+    rebuiltService.create("workflow_demo", "agent", "标题"),
+  ).resolves.toMatchObject({ thread_id: threadId });
+  expect(createCalls).toBe(1);
+  expect(reconcileCalls).toBe(2);
+  expect(sessionStorage.getItem("pw:thread:create:user:project")).toBeNull();
+});
 
-it('passes metadata and pagination options to search and count', async () => {
-  const requests: Array<{ url: string; body?: Record<string, unknown> }> = []
+it("passes metadata and pagination options to search and count", async () => {
+  const requests: Array<{ url: string; body?: Record<string, unknown> }> = [];
   const transport = vi.fn<typeof fetch>(async (input, init) => {
-    requests.push({ url: String(input), body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined })
-    return new Response(JSON.stringify([{ thread_id: 't-1' }]), { headers: { 'content-type': 'application/json' } })
-  })
-  const service = createSessionService(transport, 'project')
-  await service.list({ offset: 20, metadata: { agent_id: 'agent-1' } })
-  await service.count({ metadata: { agent_id: 'agent-1' } })
+    requests.push({
+      url: String(input),
+      body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+    });
+    return new Response(JSON.stringify([{ thread_id: "t-1" }]), {
+      headers: { "content-type": "application/json" },
+    });
+  });
+  const service = createSessionService(transport, "project");
+  await service.list({ offset: 20, metadata: { agent_id: "agent-1" } });
+  await service.count({ metadata: { agent_id: "agent-1" } });
 
-  expect(requests[0]?.url).toMatch(/\/threads\/search$/)
-  expect(requests[0]?.body?.offset).toBe(20)
-  expect(requests[0]?.body?.metadata).toEqual({ agent_id: 'agent-1' })
+  expect(requests[0]?.url).toMatch(/\/threads\/search$/);
+  expect(requests[0]?.body?.offset).toBe(20);
+  expect(requests[0]?.body?.metadata).toEqual({ agent_id: "agent-1" });
 
-  expect(requests[1]?.url).toMatch(/\/threads\/count$/)
-  expect(requests[1]?.body?.metadata).toEqual({ agent_id: 'agent-1' })
-})
+  expect(requests[1]?.url).toMatch(/\/threads\/count$/);
+  expect(requests[1]?.body?.metadata).toEqual({ agent_id: "agent-1" });
+});
 
-it('unwraps object response into integer count', async () => {
+it("unwraps object response into integer count", async () => {
   const transport = vi.fn<typeof fetch>(async () => {
-    return new Response(JSON.stringify({ count: 42 }), { headers: { 'content-type': 'application/json' } })
-  })
-  const service = createSessionService(transport, 'project')
-  const count = await service.count({ metadata: { agent_id: 'agent-1' } })
-  expect(count).toBe(42)
-})
+    return new Response(JSON.stringify({ count: 42 }), {
+      headers: { "content-type": "application/json" },
+    });
+  });
+  const service = createSessionService(transport, "project");
+  const count = await service.count({ metadata: { agent_id: "agent-1" } });
+  expect(count).toBe(42);
+});
 
-it('updates thread metadata with PATCH request', async () => {
-  const requests: Array<{ url: string; method?: string; body?: Record<string, unknown> }> = []
+it("updates thread metadata with PATCH request", async () => {
+  const requests: Array<{
+    url: string;
+    method?: string;
+    body?: Record<string, unknown>;
+  }> = [];
   const transport = vi.fn<typeof fetch>(async (input, init) => {
     requests.push({
       url: String(input),
       method: init?.method,
-      body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
-    })
-    return new Response(JSON.stringify({ thread_id: 'thread-1', metadata: { title: '新标题' } }), {
-      headers: { 'content-type': 'application/json' }
-    })
-  })
-  const service = createSessionService(transport, 'project')
-  await service.update('thread-1', { title: '新标题', preview: '消息摘要' })
+      body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+    });
+    return new Response(
+      JSON.stringify({ thread_id: "thread-1", metadata: { title: "新标题" } }),
+      {
+        headers: { "content-type": "application/json" },
+      },
+    );
+  });
+  const service = createSessionService(transport, "project");
+  await service.update("thread-1", { title: "新标题", preview: "消息摘要" });
 
-  expect(requests[0]?.url).toMatch(/\/threads\/thread-1$/)
-  expect(requests[0]?.method).toBe('PATCH')
-  expect(requests[0]?.body).toEqual({ title: '新标题', preview: '消息摘要' })
-})
+  expect(requests[0]?.url).toMatch(/\/threads\/thread-1$/);
+  expect(requests[0]?.method).toBe("PATCH");
+  expect(requests[0]?.body).toEqual({ title: "新标题", preview: "消息摘要" });
+});
 
-it('summarizes thread title with POST request', async () => {
-  const requests: Array<{ url: string; method?: string; body?: Record<string, unknown> }> = []
+it("summarizes thread title with POST request", async () => {
+  const requests: Array<{
+    url: string;
+    method?: string;
+    body?: Record<string, unknown>;
+  }> = [];
   const transport = vi.fn<typeof fetch>(async (input, init) => {
     requests.push({
       url: String(input),
       method: init?.method,
-      body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
-    })
-    return new Response(JSON.stringify({ thread_id: 'thread-1', title: '智能标题' }), {
-      headers: { 'content-type': 'application/json' }
-    })
-  })
-  const service = createSessionService(transport, 'project')
-  const res = await service.summarizeTitle('thread-1', [{ role: 'user', content: '测试消息' }])
+      body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+    });
+    return new Response(
+      JSON.stringify({ thread_id: "thread-1", title: "智能标题" }),
+      {
+        headers: { "content-type": "application/json" },
+      },
+    );
+  });
+  const service = createSessionService(transport, "project");
+  const res = await service.summarizeTitle("thread-1", [
+    { role: "user", content: "测试消息" },
+  ]);
 
-  expect(requests[0]?.url).toMatch(/\/threads\/thread-1\/title\/summarize$/)
-  expect(requests[0]?.method).toBe('POST')
-  expect(requests[0]?.body).toEqual({ messages: [{ role: 'user', content: '测试消息' }] })
-  expect(res.title).toBe('智能标题')
-})
+  expect(requests[0]?.url).toMatch(/\/threads\/thread-1\/title\/summarize$/);
+  expect(requests[0]?.method).toBe("POST");
+  expect(requests[0]?.body).toEqual({
+    messages: [{ role: "user", content: "测试消息" }],
+  });
+  expect(res.title).toBe("智能标题");
+});

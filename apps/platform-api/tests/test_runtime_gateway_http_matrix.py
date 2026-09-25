@@ -8,7 +8,11 @@ import httpx
 from fastapi import FastAPI
 from tests.thread_acl_fixture import thread_acl_factory
 
-from platform_api.core.errors import ForbiddenError, register_exception_handlers
+from platform_api.core.errors import (
+    ForbiddenError,
+    UpstreamServiceError,
+    register_exception_handlers,
+)
 from platform_api.core.context.models import ActorContext
 from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
 from platform_api.modules.runtime_gateway.application.service import (
@@ -98,6 +102,46 @@ def governance_payload(name):
 
 
 class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
+    async def test_create_timeout_returns_reconciliation_identity(self):
+        app = FastAPI()
+        app.include_router(router)
+        register_exception_handlers(app)
+        thread_id = "11111111-1111-4111-8111-111111111111"
+        error = UpstreamServiceError(
+            "Runtime timed out", upstream="runtime", status_code=504
+        )
+        error.extra.update(
+            {
+                "thread_id": thread_id,
+                "reconcile_path": f"/api/langgraph/threads/{thread_id}/reconcile",
+            }
+        )
+        service = SimpleNamespace(create_thread=AsyncMock(side_effect=error))
+        app.dependency_overrides[get_actor_context] = lambda: SimpleNamespace(
+            user_id="user-1"
+        )
+        app.dependency_overrides[get_runtime_gateway_service] = lambda: service
+
+        @app.middleware("http")
+        async def scope(request, call_next):
+            request.state.platform_context = SimpleNamespace(
+                project=SimpleNamespace(project_id="project-1")
+            )
+            return await call_next(request)
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            response = await client.post(
+                "/api/langgraph/threads", headers={"x-project-id": "project-1"}, json={}
+            )
+        self.assertEqual(response.status_code, 504)
+        self.assertEqual(response.json()["error"]["extra"]["thread_id"], thread_id)
+        self.assertEqual(
+            response.json()["error"]["extra"]["reconcile_path"],
+            f"/api/langgraph/threads/{thread_id}/reconcile",
+        )
+
     async def test_public_route_inventory_and_boundaries(self):
         self.assertEqual(
             {

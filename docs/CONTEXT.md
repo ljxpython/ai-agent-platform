@@ -9,7 +9,7 @@
 
 ## 活跃项目
 
-- [Runtime 与 GraphHarbor 业务边界解耦](projects/20260925-runtime-business-boundary-decoupling/README.md)：规划中，待人工评审；跨仓库授权、模型/trace、workspace 与历史隔离迁移方案已形成，本轮未实施服务或数据库变更。
+- [Runtime 与 GraphHarbor 业务边界解耦](projects/20260925-runtime-business-boundary-decoupling/README.md)：实施中，部分完成；平台 ACL 回查、Thread 创建对账和 Web 重试已落地，GraphHarbor 候选代码移除固定 SQL scope。完整授权矩阵、数据迁移/回退及候选包联合验收未完成。
 
 - [interaction-data-service 退役](projects/20260924-interaction-data-service-retirement/README.md)：done（本机范围）；仓库/本机独占资源清理、备份恢复、浏览器聊天与成果交付通过。
 

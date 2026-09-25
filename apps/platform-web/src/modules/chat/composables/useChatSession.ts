@@ -10,9 +10,7 @@ import {
 import { isAxiosError } from "axios";
 import { useStream } from "@langchain/vue";
 import type { Checkpoint, Run } from "@langchain/langgraph-sdk";
-import {
-  createLanggraphAuthorizedFetch,
-} from "@/services/langgraph/client";
+import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
 import {
   createSessionService,
   hasThreadAction,
@@ -24,10 +22,7 @@ import {
 import { updateThreadAccessPolicy } from "@/services/threads/access-policy.service";
 import type { AgentContext } from "@/services/agents/types";
 import { parseAgentContext } from "@/services/agents/context";
-import {
-  deriveMessagePreview,
-  deriveThreadTitle,
-} from "@/utils/thread-title";
+import { deriveMessagePreview, deriveThreadTitle } from "@/utils/thread-title";
 import {
   enqueueThreadMessage,
   listThreadMessages,
@@ -47,9 +42,9 @@ function hasResolvedAccess(
 ): thread is ChatThread {
   return Boolean(
     expectedThreadId &&
-      thread &&
-      thread.thread_id === expectedThreadId &&
-      Array.isArray(thread.metadata?.allowed_actions),
+    thread &&
+    thread.thread_id === expectedThreadId &&
+    Array.isArray(thread.metadata?.allowed_actions),
   );
 }
 
@@ -72,7 +67,11 @@ export function useChatSession(options: {
     options.projectId,
     createLanggraphAuthorizedFetch(),
   );
-  const service = createSessionService(actions.fetch);
+  const service = createSessionService(
+    actions.fetch,
+    options.projectId,
+    options.userId,
+  );
   const threadId = ref(options.threadId ?? null);
   const accessPolicy = ref<AccessPolicy>("review");
   const accessPolicyUpdating = ref(false);
@@ -81,7 +80,11 @@ export function useChatSession(options: {
   function applyAccessThread(thread: ChatThread | undefined) {
     accessThread.value = thread;
     if (thread && threadId.value) {
-      chatSessionStore.setSessionThread(options.projectId, threadId.value, thread);
+      chatSessionStore.setSessionThread(
+        options.projectId,
+        threadId.value,
+        thread,
+      );
     }
     if (thread?.metadata && typeof thread.metadata === "object") {
       const policy = (thread.metadata as Record<string, unknown>).access_policy;
@@ -103,10 +106,18 @@ export function useChatSession(options: {
     applyAccessThread(initialSeeded);
   }
   const hasCachedContent = Boolean(
-    cachedEntry && (cachedEntry.messages.length > 0 || cachedEntry.history.length > 0),
+    cachedEntry &&
+    (cachedEntry.messages.length > 0 || cachedEntry.history.length > 0),
   );
-  const accessLoading = ref(Boolean(threadId.value && !accessThread.value && !hasCachedContent));
-  const canRead = computed(() => !threadId.value || hasThreadAction(accessThread.value, "read") || hasCachedContent);
+  const accessLoading = ref(
+    Boolean(threadId.value && !accessThread.value && !hasCachedContent),
+  );
+  const canRead = computed(
+    () =>
+      !threadId.value ||
+      hasThreadAction(accessThread.value, "read") ||
+      hasCachedContent,
+  );
   let accessRefreshing = false;
   let accessEpoch = 0;
   const run = shallowRef<Run | null>(null);
@@ -119,14 +130,21 @@ export function useChatSession(options: {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let releaseWait: (() => void) | undefined;
 
-  const canAct = (action: ThreadAction) => threadId.value
-    ? hasThreadAction(accessThread.value, action)
-    : options.canWrite.value;
-  const canComment = computed(() => options.canWrite.value && canAct("comment"));
+  const canAct = (action: ThreadAction) =>
+    threadId.value
+      ? hasThreadAction(accessThread.value, action)
+      : options.canWrite.value;
+  const canComment = computed(
+    () => options.canWrite.value && canAct("comment"),
+  );
   const canApprove = computed(() => canAct("approve"));
   const canEdit = computed(() => options.canWrite.value && canAct("edit"));
-  const canSetPolicy = computed(() => options.canWrite.value && canAct("share"));
-  const canFullAccess = computed(() => options.canWrite.value && canAct("full_access"));
+  const canSetPolicy = computed(
+    () => options.canWrite.value && canAct("share"),
+  );
+  const canFullAccess = computed(
+    () => options.canWrite.value && canAct("full_access"),
+  );
 
   async function refreshAccessPolicy() {
     if (!threadId.value || disposed || accessRefreshing) return;
@@ -136,10 +154,19 @@ export function useChatSession(options: {
     if (!accessThread.value) accessLoading.value = true;
     try {
       const thread = await service.get(requestedThread);
-      if (disposed || threadId.value !== requestedThread || accessEpoch !== requestedEpoch) return;
+      if (
+        disposed ||
+        threadId.value !== requestedThread ||
+        accessEpoch !== requestedEpoch
+      )
+        return;
       if (!disposed) applyAccessThread(thread);
     } catch {
-      if (!disposed && threadId.value === requestedThread && accessEpoch === requestedEpoch) {
+      if (
+        !disposed &&
+        threadId.value === requestedThread &&
+        accessEpoch === requestedEpoch
+      ) {
         accessThread.value = undefined;
         accessPolicy.value = "review";
         verified.value = false;
@@ -152,14 +179,22 @@ export function useChatSession(options: {
       }
     } finally {
       accessRefreshing = false;
-      if (!disposed && requestedEpoch === accessEpoch) accessLoading.value = false;
-      if (!disposed && (accessEpoch !== requestedEpoch || threadId.value !== requestedThread)) void refreshAccessPolicy();
+      if (!disposed && requestedEpoch === accessEpoch)
+        accessLoading.value = false;
+      if (
+        !disposed &&
+        (accessEpoch !== requestedEpoch || threadId.value !== requestedThread)
+      )
+        void refreshAccessPolicy();
     }
   }
 
   async function setAccessPolicy(policy: AccessPolicy) {
     if (policy === accessPolicy.value) return true;
-    if (!canSetPolicy.value || (policy === "full_access" && !canFullAccess.value)) {
+    if (
+      !canSetPolicy.value ||
+      (policy === "full_access" && !canFullAccess.value)
+    ) {
       fail(new Error("没有此会话的策略管理权限；全权模式仅限私人会话所有者"));
       return false;
     }
@@ -268,18 +303,18 @@ export function useChatSession(options: {
   const busy = computed(() => {
     const isStaleRun = Boolean(
       actions.current.value?.runId &&
-        run.value &&
-        run.value.run_id !== actions.current.value.runId,
+      run.value &&
+      run.value.run_id !== actions.current.value.runId,
     );
     const isSameConfirmedTerminalRun = Boolean(
       run.value &&
-        !active(run.value) &&
-        (!stream.isLoading.value ||
-          (actions.current.value?.runId &&
-            run.value.run_id === actions.current.value.runId) ||
-          ["timeout", "error", "cancelled", "canceled"].includes(
-            String(run.value.status),
-          )),
+      !active(run.value) &&
+      (!stream.isLoading.value ||
+        (actions.current.value?.runId &&
+          run.value.run_id === actions.current.value.runId) ||
+        ["timeout", "error", "cancelled", "canceled"].includes(
+          String(run.value.status),
+        )),
     );
     if (
       !streamInFlight.value &&
@@ -378,9 +413,15 @@ export function useChatSession(options: {
 
   function scheduleBackgroundRunPoll(targetThreadId: string) {
     clearTimeout(backgroundRunTimer);
-    if (disposed || threadId.value !== targetThreadId || !active(run.value)) return;
+    if (disposed || threadId.value !== targetThreadId || !active(run.value))
+      return;
     backgroundRunTimer = setTimeout(async () => {
-      if (disposed || threadId.value !== targetThreadId || stream.isLoading.value) return;
+      if (
+        disposed ||
+        threadId.value !== targetThreadId ||
+        stream.isLoading.value
+      )
+        return;
       try {
         const list = await service.runs(targetThreadId);
         if (disposed || threadId.value !== targetThreadId) return;
@@ -394,7 +435,11 @@ export function useChatSession(options: {
           await refreshAccessPolicy();
         }
       } catch {
-        if (!disposed && threadId.value === targetThreadId && active(run.value)) {
+        if (
+          !disposed &&
+          threadId.value === targetThreadId &&
+          active(run.value)
+        ) {
           scheduleBackgroundRunPoll(targetThreadId);
         }
       }
@@ -426,7 +471,8 @@ export function useChatSession(options: {
     const isSilentRevalidate =
       verified.value ||
       Boolean(
-        chatSessionStore.getSession(options.projectId, threadId.value)?.messages.length,
+        chatSessionStore.getSession(options.projectId, threadId.value)?.messages
+          .length,
       );
     if (!isSilentRevalidate) {
       verified.value = false;
@@ -441,7 +487,9 @@ export function useChatSession(options: {
         let attempt = 0;
         do {
           const actionRunId = actions.current.value?.runId;
-          const activeKnownId = active(run.value) ? run.value?.run_id : undefined;
+          const activeKnownId = active(run.value)
+            ? run.value?.run_id
+            : undefined;
           const knownId = waitForTerminal
             ? (actionRunId ?? activeKnownId)
             : undefined;
@@ -496,7 +544,11 @@ export function useChatSession(options: {
             void refreshAccessPolicy();
           }
           if (active(run.value) && !stream.isLoading.value) {
-            const rejoinFn = (stream as unknown as { joinStream?: (runId: string) => Promise<unknown> }).joinStream;
+            const rejoinFn = (
+              stream as unknown as {
+                joinStream?: (runId: string) => Promise<unknown>;
+              }
+            ).joinStream;
             if (typeof rejoinFn === "function" && run.value?.run_id) {
               void rejoinFn.call(stream, run.value.run_id).catch(() => {
                 scheduleBackgroundRunPoll(id);
@@ -595,7 +647,8 @@ export function useChatSession(options: {
         threadId.value,
         controller.signal,
       );
-      if (disposed || controller !== receiptController || !canRead.value) return;
+      if (disposed || controller !== receiptController || !canRead.value)
+        return;
       receipts.value = rows;
       receiptError.value = "";
       const pending = pendingMessage.value;
@@ -635,15 +688,22 @@ export function useChatSession(options: {
     const allowFallbackSend = queueOptions?.allowFallbackSend ?? true;
 
     // 1. 严格检查活跃 run：只有明确处于 active 态的 run 才能作为追加目标
-    let targetRunId = (run.value && active(run.value))
-      ? run.value.run_id
-      : (actions.current.value?.status === "submitting" ? actions.current.value.runId : undefined);
+    let targetRunId =
+      run.value && active(run.value)
+        ? run.value.run_id
+        : actions.current.value?.status === "submitting"
+          ? actions.current.value.runId
+          : undefined;
 
     // 2. 如果本地缓存未命中，始终向服务端查询最新的 running/pending 运行回合（即使本地 busy 因旧 verify 被误置为 false）
     if (!targetRunId) {
       try {
-        const list = await service.client.runs.list(threadId.value, { limit: 5 });
-        const runningItem = list?.find((r) => r.status === "running" || r.status === "pending");
+        const list = await service.client.runs.list(threadId.value, {
+          limit: 5,
+        });
+        const runningItem = list?.find(
+          (r) => r.status === "running" || r.status === "pending",
+        );
         if (runningItem) {
           targetRunId = runningItem.run_id;
           run.value = runningItem;
@@ -662,7 +722,9 @@ export function useChatSession(options: {
         await verify(true);
         return false;
       }
-      console.info("[session] 没有活跃中的运行回合，将排队消息自愈回退为直接发送");
+      console.info(
+        "[session] 没有活跃中的运行回合，将排队消息自愈回退为直接发送",
+      );
       return await send(content);
     }
 
@@ -721,8 +783,7 @@ export function useChatSession(options: {
       // 4. 关键自愈机制（对齐 open-swe）：
       // 若后端返回 409（run_changed 或 thread 不在 running 态），说明上一回合在发送间隙恰好完结！
       const is409RunEnded =
-        isAxiosError(cause) &&
-        cause.response?.status === 409;
+        isAxiosError(cause) && cause.response?.status === 409;
 
       if (is409RunEnded) {
         pendingMessage.value = null;
@@ -731,7 +792,9 @@ export function useChatSession(options: {
         if (!allowFallbackSend) {
           return false;
         }
-        console.warn("[session] 目标回合已结束(409)，排队消息无感自愈转为新回合发送");
+        console.warn(
+          "[session] 目标回合已结束(409)，排队消息无感自愈转为新回合发送",
+        );
         const fallbackContent = pending.payload.content ?? content;
         return await send(fallbackContent);
       }
@@ -829,22 +892,36 @@ export function useChatSession(options: {
         }
       }
       if (disposed || !canComment.value) return false;
-      if (threadId.value && (stream.isLoading.value || active(run.value) || actions.current.value?.status === "submitting")) {
+      if (
+        threadId.value &&
+        (stream.isLoading.value ||
+          active(run.value) ||
+          actions.current.value?.status === "submitting")
+      ) {
         if (sendOptions?.fromQueue || supportsQueue) {
           return false;
         }
         throw new Error("当前回合正在执行中，请等待完成或停止后再发送");
       }
-      const messageContent = await prepareMessageAttachments(threadId.value, content);
+      const messageContent = await prepareMessageAttachments(
+        threadId.value,
+        content,
+      );
       if (disposed || !canComment.value) return false;
       const inputMessageId = sendOptions?.messageId || crypto.randomUUID();
       const input = {
-        messages: [{ id: inputMessageId, type: "human", content: messageContent }],
+        messages: [
+          { id: inputMessageId, type: "human", content: messageContent },
+        ],
       };
       const removeUncommittedMessage = () => {
-        const streamMessages = (stream as unknown as { messages?: { value?: Array<{ id?: string }> } }).messages;
+        const streamMessages = (
+          stream as unknown as { messages?: { value?: Array<{ id?: string }> } }
+        ).messages;
         if (streamMessages && Array.isArray(streamMessages.value)) {
-          streamMessages.value = streamMessages.value.filter((m) => m?.id !== inputMessageId);
+          streamMessages.value = streamMessages.value.filter(
+            (m) => m?.id !== inputMessageId,
+          );
         }
       };
       const isFromQueue = Boolean(sendOptions?.fromQueue);
@@ -895,7 +972,9 @@ export function useChatSession(options: {
           if (is409 && attempts < maxAttempts) {
             actions.rejectUnsent();
             removeUncommittedMessage();
-            console.warn(`[session] 遇到服务端短暂运行冲突 (409)，正在进行第 ${attempts} 次退避重试...`);
+            console.warn(
+              `[session] 遇到服务端短暂运行冲突 (409)，正在进行第 ${attempts} 次退避重试...`,
+            );
             error.value = "";
             try {
               (stream.error as unknown as { value: unknown }).value = null;
@@ -934,7 +1013,10 @@ export function useChatSession(options: {
               await verify(true);
             }
             if (actions.current.value?.key) {
-              actions.acknowledge(actions.current.value.key, actions.current.value?.runId ?? run.value?.run_id);
+              actions.acknowledge(
+                actions.current.value.key,
+                actions.current.value?.runId ?? run.value?.run_id,
+              );
             }
             return true;
           }
@@ -990,7 +1072,12 @@ export function useChatSession(options: {
   }
 
   async function retry() {
-    if (actions.current.value?.kind === "resume" ? !canApprove.value : !canComment.value) return;
+    if (
+      actions.current.value?.kind === "resume"
+        ? !canApprove.value
+        : !canComment.value
+    )
+      return;
     try {
       const response = await actions.retry();
       if (!response.ok || actions.current.value?.status !== "acknowledged")
@@ -1007,7 +1094,8 @@ export function useChatSession(options: {
     recursionLimit = 1000,
     forkOptions?: { messageId?: string },
   ) {
-    if (!canSend.value || !threadId.value || !checkpoint?.checkpoint_id) return false;
+    if (!canSend.value || !threadId.value || !checkpoint?.checkpoint_id)
+      return false;
     const checkpointId = checkpoint.checkpoint_id;
     error.value = "";
     if (!verified.value) checking.value = true;
@@ -1031,7 +1119,13 @@ export function useChatSession(options: {
 
       const input = hasContent
         ? {
-            messages: [{ id: forkOptions?.messageId || crypto.randomUUID(), type: "human", content: messageContent }],
+            messages: [
+              {
+                id: forkOptions?.messageId || crypto.randomUUID(),
+                type: "human",
+                content: messageContent,
+              },
+            ],
           }
         : null;
 
@@ -1114,7 +1208,8 @@ export function useChatSession(options: {
         } as Run;
       }
       ensureLiveEventStream();
-      if (action.kind === "send" || action.kind === "fork") options.onAccepted?.();
+      if (action.kind === "send" || action.kind === "fork")
+        options.onAccepted?.();
       options.onRefresh();
     }
   });
@@ -1147,13 +1242,22 @@ export function useChatSession(options: {
     window.removeEventListener("thread-access-updated", accessChanged);
     clearTimeout(timer);
     releaseWait?.();
-    if (!active(run.value) && !streamInFlight.value && !stream.isLoading.value) {
+    if (
+      !active(run.value) &&
+      !streamInFlight.value &&
+      !stream.isLoading.value
+    ) {
       void stream.disconnect();
     }
     actions.dispose();
   });
   return {
-    canRead, canComment, canApprove, canEdit, canSetPolicy, canFullAccess,
+    canRead,
+    canComment,
+    canApprove,
+    canEdit,
+    canSetPolicy,
+    canFullAccess,
     accessLoading,
     supportsQueue,
     receipts,
