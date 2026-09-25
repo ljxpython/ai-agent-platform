@@ -23,6 +23,28 @@ it('uses SDK graphId and the public checkpoint wire contract', async () => {
   expect(requests.every(request => request.headers.get('x-project-id') === 'project')).toBe(true)
 })
 
+it('reconciles a pending thread before retrying creation', async () => {
+  const threadId = '11111111-1111-4111-8111-111111111111'
+  let createCalls = 0
+  let reconcileCalls = 0
+  const transport = vi.fn<typeof fetch>(async (input) => {
+    if (String(input).endsWith('/reconcile')) {
+      reconcileCalls += 1
+      return new Response(JSON.stringify(reconcileCalls === 1
+        ? { thread_id: threadId, status: 'pending' }
+        : { thread_id: threadId, status: 'ready', thread: { thread_id: threadId } }), { headers: { 'content-type': 'application/json' } })
+    }
+    createCalls += 1
+    return new Response(JSON.stringify({ error: { extra: { thread_id: threadId } } }), { status: 504, headers: { 'content-type': 'application/json' } })
+  })
+  const service = createSessionService(transport, 'project')
+  await expect(service.create('workflow_demo', 'agent', '标题')).rejects.toThrow(threadId)
+  await expect(service.create('workflow_demo', 'agent', '标题')).rejects.toThrow('请稍后重试')
+  await expect(service.create('workflow_demo', 'agent', '标题')).resolves.toMatchObject({ thread_id: threadId })
+  expect(createCalls).toBe(1)
+  expect(reconcileCalls).toBe(2)
+})
+
 it('passes metadata and pagination options to search and count', async () => {
   const requests: Array<{ url: string; body?: Record<string, unknown> }> = []
   const transport = vi.fn<typeof fetch>(async (input, init) => {
@@ -90,4 +112,3 @@ it('summarizes thread title with POST request', async () => {
   expect(requests[0]?.body).toEqual({ messages: [{ role: 'user', content: '测试消息' }] })
   expect(res.title).toBe('智能标题')
 })
-

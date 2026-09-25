@@ -433,11 +433,19 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
         self.service._delegation_headers_factory = Mock(
             return_value={"authorization": "Bearer scoped"}
         )
-        with self.assertRaises(UpstreamServiceError):
+        with self.assertRaises(UpstreamServiceError) as caught:
             await self.service.create_thread(
                 actor=self.owner, project_id=self.project, payload={}
             )
         thread_id = self.upstream.create_thread.call_args.args[0]["thread_id"]
+        self.assertEqual(
+            caught.exception.extra,
+            {
+                "upstream": "langgraph",
+                "thread_id": thread_id,
+                "reconcile_path": f"/api/langgraph/threads/{thread_id}/reconcile",
+            },
+        )
         self.assertEqual(
             acl.get(self.factory, thread_id)["owner_user_id"], self.owner.user_id
         )

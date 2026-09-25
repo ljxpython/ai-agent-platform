@@ -2012,7 +2012,17 @@ class RuntimeGatewayService:
                 try:
                     thread = await reconcile.get_thread(next_payload["thread_id"])
                 except UpstreamServiceError as probe_error:
-                    if probe_error.status_code != 404:
+                    if probe_error.status_code == 404:
+                        exc.extra.update(
+                            {
+                                "thread_id": next_payload["thread_id"],
+                                "reconcile_path": (
+                                    f"/api/langgraph/threads/"
+                                    f"{next_payload['thread_id']}/reconcile"
+                                ),
+                            }
+                        )
+                    else:
                         raise exc
                 else:
                     if thread.get("thread_id") == next_payload["thread_id"]:

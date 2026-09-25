@@ -14,6 +14,7 @@ export function hasThreadAction(thread: Pick<ChatThread, 'metadata'> | undefined
 
 export function createSessionService(fetch: typeof globalThis.fetch, projectId?: string) {
   const client = new Client<ChatState>({ apiUrl: getLanggraphApiUrl(), callerOptions: { fetch, maxRetries: 0 }, defaultHeaders: projectId ? { 'x-project-id': projectId } : undefined })
+  let pendingThreadId: string | null = null
   async function read<T>(path: string, init?: RequestInit): Promise<T> {
     const headers = new Headers(init?.headers)
     if (projectId) headers.set('x-project-id', projectId)
@@ -33,17 +34,44 @@ export function createSessionService(fetch: typeof globalThis.fetch, projectId?:
   }
   return {
     client,
-    create: (graphId: string, agentId: string | undefined, title: string, accessPolicy?: AccessPolicy, preview?: string) =>
-      client.threads.create({
-        graphId,
-        metadata: {
-          graph_id: graphId,
-          agent_id: agentId,
-          title,
-          ...(preview ? { preview } : {}),
-          ...(accessPolicy ? { access_policy: accessPolicy } : {}),
-        },
-      }),
+    create: async (graphId: string, agentId: string | undefined, title: string, accessPolicy?: AccessPolicy, preview?: string) => {
+      if (pendingThreadId) {
+        const result = await read<{ status: string; thread?: ChatThread }>(`/threads/${encodeURIComponent(pendingThreadId)}/reconcile`, { method: 'POST' })
+        if (result.status === 'ready' && result.thread) {
+          pendingThreadId = null
+          return result.thread
+        }
+        throw new Error(`会话创建结果待确认（${pendingThreadId}），请稍后重试`)
+      }
+      try {
+        return await client.threads.create({
+          graphId,
+          metadata: {
+            graph_id: graphId,
+            agent_id: agentId,
+            title,
+            ...(preview ? { preview } : {}),
+            ...(accessPolicy ? { access_policy: accessPolicy } : {}),
+          },
+        })
+      } catch (error) {
+        const raw = (error as { text?: unknown })?.text
+        if (typeof raw === 'string') {
+          try {
+            const body = JSON.parse(raw) as { error?: { extra?: { thread_id?: unknown } } }
+            const id = body.error?.extra?.thread_id
+            if (typeof id === 'string' && /^[0-9a-f-]{36}$/i.test(id)) {
+              pendingThreadId = id
+              throw new Error(`会话创建结果待确认（${id}），请稍后重试`)
+            }
+          } catch (parseError) {
+            if (parseError instanceof SyntaxError) throw error
+            throw parseError
+          }
+        }
+        throw error
+      }
+    },
     get: (threadId: string) => client.threads.get(threadId),
     // The gateway exposes checkpoint_id on GET state, not the SDK's extra checkpoint route.
     state: (threadId: string, checkpoint?: Checkpoint) => read<ThreadState<ChatState> & { interrupts?: Interrupt[] }>(`/threads/${encodeURIComponent(threadId)}/state${checkpoint?.checkpoint_id ? `?checkpoint_id=${encodeURIComponent(checkpoint.checkpoint_id)}` : ''}`),
