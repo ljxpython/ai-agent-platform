@@ -5,11 +5,11 @@
 
 ## 最后更新
 
-2026-09-25 | 根级 pre-commit 代码质量门禁已启用：通用检查、Python Ruff、platform-web ESLint/Prettier；CI 仅检查变更文件，Python 历史存量格式基线（731 条诊断、297 个文件）另立专项。interaction-data-service 退役在本机范围完成，Dear Agent 记忆闭环前端 `F01—F07` 已完成实施。GraphHarbor 边界解耦的本机两库已备份、清理旧运行数据并迁移；Runtime 事件保留候选已在独立双库与端口接入平台 API，Thread 创建/读取和 Graph 搜索通过，Web/业务 Run 尚缺。恢复入口与未完成项见边界解耦项目 README。
+2026-09-25 | GraphHarbor 双包 post33 已发布，runtime-service 的依赖与锁文件已更新，普通 `uv sync --frozen` 安装及导入检查通过。业务边界与事件保留专项仍为 partial，平台完整业务 Run/SSE/HITL、文件正向链路及恢复验收仍缺；进度见边界解耦项目 README。
 
 ## 活跃项目
 
-- [Runtime 与 GraphHarbor 业务边界解耦](projects/20260925-runtime-business-boundary-decoupling/README.md)：`partial`，2026-09-25 暂缓后续实施，先处理 GraphHarbor 流事件保留治理。本机两库已清理旧运行数据并分别升级至 `008_remove_business_scope` / `20260925_0005`；备份全量恢复、正式依赖锁定、业务 run/SSE、文件正向链路和官方全入口差分仍未完成。恢复顺序见项目 README。
+- [Runtime 与 GraphHarbor 业务边界解耦](projects/20260925-runtime-business-boundary-decoupling/README.md)：`partial`，本机两库已清理旧运行数据并迁移；正式依赖 post33 已锁定。备份全量恢复、业务 run/SSE/HITL、文件正向链路和官方全入口差分仍未完成。
 
 - [interaction-data-service 退役](projects/20260924-interaction-data-service-retirement/README.md)：done（本机范围）；仓库/本机独占资源清理、备份恢复、浏览器聊天与成果交付通过。
 
@@ -27,7 +27,7 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-09-25 | Dear个人记忆能力保留；事件保留候选双 wheel 的独立平台 Thread/Graph 搜索链路通过，完整平台 run/SSE 未验证 |
+| runtime-service | 2026-09-25 | Dear个人记忆能力保留；已锁定 PyPI GraphHarbor post33 并完成 frozen 安装，完整平台 run/SSE 未验证 |
 | platform-api | 2026-09-25 | Dear个人记忆能力保留；Thread ACL 内部回查含服务账号 token/grant 复核、预留/对账和共享撤权已通过 SQLite、临时 HTTP 与治理浏览器联调；BYOK 双层模型仍按原有能力运行 |
 | platform-web | 2026-09-24 | 完成 Dear Agent 无线程个人记忆治理重构（`DearAgentMemoryPage.vue` + `memory.service.ts` + `ThreadAccessControl.vue` 分享隐私提示 + 移除孤儿 `useDearGovernanceContext.ts`），16 条单测/typecheck/eslint 全绿；同时保留会话 SWR 缓存与路由 KeepAlive 保活 |
 | AI Harness（AGENTS.md + Skills） | 2026-09-21 | 今日完成全面优化，详见 docs/changes/20260921-harness-optimization.md |
