@@ -7,7 +7,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 from fastapi import FastAPI
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from platform_api.bootstrap.lifespan import lifespan
 from platform_api.config import Settings
@@ -16,7 +16,35 @@ from platform_api.modules.identity.models import UserRecord
 
 
 class ResourceLifecycleTest(unittest.IsolatedAsyncioTestCase):
-    async def test_startup_failure_disposes_engine_and_clears_request_resources(self) -> None:
+    async def test_outdated_thread_access_schema_fails_before_serving(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            database_url = f"sqlite:///{Path(directory) / 'platform.db'}"
+            engine = build_engine(database_url)
+            try:
+                create_core_tables(engine)
+                with engine.begin() as connection:
+                    connection.execute(
+                        text(
+                            "ALTER TABLE thread_access DROP COLUMN provisioning_status"
+                        )
+                    )
+            finally:
+                engine.dispose()
+            app = FastAPI()
+            app.state.settings = Settings(
+                _env_file=None,
+                platform_db_enabled=True,
+                database_url=database_url,
+                platform_db_auto_create=False,
+                bootstrap_admin_enabled=False,
+            )
+            with self.assertRaisesRegex(RuntimeError, "20260925_0005"):
+                async with lifespan(app):
+                    self.fail("outdated schema must prevent startup")
+
+    async def test_startup_failure_disposes_engine_and_clears_request_resources(
+        self,
+    ) -> None:
         app = FastAPI()
         app.state.settings = Settings(
             _env_file=None,
@@ -29,7 +57,10 @@ class ResourceLifecycleTest(unittest.IsolatedAsyncioTestCase):
         with (
             patch("platform_api.bootstrap.lifespan.build_engine", return_value=engine),
             patch("platform_api.bootstrap.lifespan.build_session_factory"),
-            patch("platform_api.bootstrap.lifespan.create_core_tables", side_effect=RuntimeError("init failed")),
+            patch(
+                "platform_api.bootstrap.lifespan.create_core_tables",
+                side_effect=RuntimeError("init failed"),
+            ),
             self.assertRaisesRegex(RuntimeError, "init failed"),
         ):
             async with lifespan(app):
@@ -38,7 +69,9 @@ class ResourceLifecycleTest(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(app.state.db_engine)
         self.assertIsNone(app.state.db_session_factory)
 
-    async def test_database_initialization_runs_off_loop_and_bootstrap_survives_restart(self) -> None:
+    async def test_database_initialization_runs_off_loop_and_bootstrap_survives_restart(
+        self,
+    ) -> None:
         with tempfile.TemporaryDirectory() as directory:
             database_url = f"sqlite:///{Path(directory) / 'platform.db'}"
             app = FastAPI()
@@ -58,7 +91,10 @@ class ResourceLifecycleTest(unittest.IsolatedAsyncioTestCase):
                 initialization_threads.append(threading.get_ident())
                 create_core_tables(engine)
 
-            with patch("platform_api.bootstrap.lifespan.create_core_tables", side_effect=initialize):
+            with patch(
+                "platform_api.bootstrap.lifespan.create_core_tables",
+                side_effect=initialize,
+            ):
                 for _ in range(2):
                     async with lifespan(app):
                         self.assertIsNotNone(app.state.db_session_factory)
@@ -75,7 +111,6 @@ class ResourceLifecycleTest(unittest.IsolatedAsyncioTestCase):
                     self.assertNotEqual(users[0].password_hash, "test-password-only")
             finally:
                 engine.dispose()
-
 
 
 if __name__ == "__main__":

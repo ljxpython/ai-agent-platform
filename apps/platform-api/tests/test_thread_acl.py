@@ -5,14 +5,17 @@ import os
 import time
 import unittest
 import json
+import hashlib
+import hmac
 import statistics
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 from urllib.parse import urlparse
 
 from sqlalchemy import create_engine, select, text
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import (
@@ -156,6 +159,191 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
                 actor=self.peer, project_id=self.project, thread_id="private"
             )
         self.upstream.get_thread.assert_not_awaited()
+
+    async def test_internal_authorization_uses_current_acl_after_revocation(self):
+        from fastapi import FastAPI
+        from starlette.requests import Request
+
+        from platform_api.modules.runtime_catalog.presentation.http import (
+            authorize_runtime_threads,
+        )
+
+        secret = "runtime-delegation-secret-at-least-32-bytes"
+        app = FastAPI()
+        app.state.settings = SimpleNamespace(runtime_delegation_secret=secret)
+        app.state.db_session_factory = self.factory
+
+        def allowed(action: str) -> list[str]:
+            payload = {
+                "action": action,
+                "project_id": self.project,
+                "user_id": self.peer.user_id,
+                "thread_ids": ["private"],
+            }
+            stamp = str(int(time.time()))
+            canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+            signature = hmac.new(
+                secret.encode(),
+                f"{stamp}\nthread-authorization\n{canonical}".encode(),
+                hashlib.sha256,
+            ).hexdigest()
+            request = Request(
+                {
+                    "type": "http",
+                    "method": "POST",
+                    "app": app,
+                    "headers": [
+                        (b"x-runtime-acl-timestamp", stamp.encode()),
+                        (b"x-runtime-acl-signature", signature.encode()),
+                    ],
+                }
+            )
+            return authorize_runtime_threads(request, payload)["allowed_thread_ids"]
+
+        self.assertEqual(allowed("read"), [])
+        await self.service.share_thread(
+            actor=self.owner,
+            project_id=self.project,
+            thread_id="private",
+            user_id=self.peer.user_id,
+            actions=["read", "comment"],
+        )
+        self.assertEqual(allowed("read"), ["private"])
+        self.assertEqual(allowed("comment"), ["private"])
+        self.assertEqual(allowed("approve"), [])
+        await self.service.share_thread(
+            actor=self.owner,
+            project_id=self.project,
+            thread_id="private",
+            user_id=self.peer.user_id,
+            actions=[],
+        )
+        self.assertEqual(allowed("read"), [])
+
+    async def test_internal_authorization_rechecks_service_account_token_and_grant(
+        self,
+    ):
+        from fastapi import FastAPI
+        from starlette.requests import Request
+
+        from platform_api.modules.runtime_catalog.presentation.http import (
+            authorize_runtime_threads,
+        )
+        from platform_api.modules.service_accounts.repository import (
+            SqlAlchemyServiceAccountsRepository,
+        )
+
+        secret = "runtime-delegation-secret-at-least-32-bytes"
+        with session_scope(self.factory) as session:
+            repository = SqlAlchemyServiceAccountsRepository(session)
+            account = repository.create_service_account(
+                name="acl-service",
+                description=None,
+                platform_roles=(),
+                created_by=None,
+            )
+            token = repository.create_token(
+                service_account_id=account.id,
+                name="acl-token",
+                token_prefix="test",
+                token_secret_hash="unused",
+                expires_at=None,
+                created_by=None,
+            )
+
+        payload = {
+            "action": "read",
+            "project_id": self.project,
+            "user_id": f"service-account:{account.id}",
+            "credential_id": str(token.id),
+            "thread_ids": ["private"],
+        }
+        app = FastAPI()
+        app.state.settings = SimpleNamespace(runtime_delegation_secret=secret)
+        app.state.db_session_factory = self.factory
+
+        def allowed() -> list[str]:
+            stamp = str(int(time.time()))
+            canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+            signature = hmac.new(
+                secret.encode(),
+                f"{stamp}\nthread-authorization\n{canonical}".encode(),
+                hashlib.sha256,
+            ).hexdigest()
+            request = Request(
+                {
+                    "type": "http",
+                    "method": "POST",
+                    "app": app,
+                    "headers": [
+                        (b"x-runtime-acl-timestamp", stamp.encode()),
+                        (b"x-runtime-acl-signature", signature.encode()),
+                    ],
+                }
+            )
+            return authorize_runtime_threads(request, payload)["allowed_thread_ids"]
+
+        self.assertEqual(allowed(), [])
+        with session_scope(self.factory) as session:
+            repository = SqlAlchemyServiceAccountsRepository(session)
+            repository.upsert_project_grant(
+                service_account_id=account.id,
+                project_id=UUID(self.project),
+                role=ProjectRole.EXECUTOR,
+                actor_id=None,
+            )
+        self.assertEqual(allowed(), [])
+        acl.share(
+            self.factory,
+            actor=self.owner,
+            project_id=self.project,
+            thread_id="private",
+            user_id=None,
+            actions=["read", "comment"],
+        )
+        self.assertEqual(allowed(), ["private"])
+        with session_scope(self.factory) as session:
+            other = SqlAlchemyServiceAccountsRepository(session).create_service_account(
+                name="other-acl-service",
+                description=None,
+                platform_roles=(),
+                created_by=None,
+            )
+        payload["user_id"] = f"service-account:{other.id}"
+        self.assertEqual(allowed(), [])
+        payload["user_id"] = f"service-account:{account.id}"
+        with session_scope(self.factory) as session:
+            repository = SqlAlchemyServiceAccountsRepository(session)
+            repository.delete_project_grant(
+                service_account_id=account.id,
+                project_id=UUID(self.project),
+            )
+        self.assertEqual(allowed(), [])
+        with session_scope(self.factory) as session:
+            repository = SqlAlchemyServiceAccountsRepository(session)
+            repository.upsert_project_grant(
+                service_account_id=account.id,
+                project_id=UUID(self.project),
+                role=ProjectRole.EXECUTOR,
+                actor_id=None,
+            )
+        self.assertEqual(allowed(), ["private"])
+        from platform_api.modules.service_accounts.models import (
+            ServiceAccountTokenRecord,
+        )
+
+        with session_scope(self.factory) as session:
+            session.get(ServiceAccountTokenRecord, token.id).expires_at = datetime.now(
+                timezone.utc
+            ) - timedelta(seconds=1)
+        self.assertEqual(allowed(), [])
+        with session_scope(self.factory) as session:
+            session.get(ServiceAccountTokenRecord, token.id).expires_at = None
+        self.assertEqual(allowed(), ["private"])
+        with session_scope(self.factory) as session:
+            repository = SqlAlchemyServiceAccountsRepository(session)
+            repository.revoke_token(service_account_id=account.id, token_id=token.id)
+        self.assertEqual(allowed(), [])
 
     async def test_takeover_is_read_only_expiring_and_audited(self):
         await self.service.takeover_thread(

@@ -14,7 +14,10 @@ from platform_api.adapters.langgraph.threads_sdk_adapter import (
     LangGraphThreadsSdkAdapter,
 )
 from platform_api.core.errors import PlatformApiError
-from platform_api.modules.runtime_gateway.presentation.http import router, _normalize_ack
+from platform_api.modules.runtime_gateway.presentation.http import (
+    router,
+    _normalize_ack,
+)
 
 
 async def _collect_chunks(stream):
@@ -32,43 +35,84 @@ async def _stream_events(*events):
 class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
     async def test_dear_memory_upstream_error_does_not_echo_fact_text(self):
         marker = "SENSITIVE_MEMORY_BODY"
-        adapter = LangGraphRuntimeGatewayUpstream(base_url="http://runtime", timeout_seconds=10)
-        for status, code in ((503, "memory_storage_unavailable"),
-                             (504, "langgraph_upstream_timeout")):
-            adapter._http = SimpleNamespace(require_json=AsyncMock(side_effect=PlatformApiError(
-                code=code, status_code=status, message=marker,
-                extra={"upstream_detail": marker})))
+        adapter = LangGraphRuntimeGatewayUpstream(
+            base_url="http://runtime", timeout_seconds=10
+        )
+        for status, code in (
+            (503, "memory_storage_unavailable"),
+            (504, "langgraph_upstream_timeout"),
+        ):
+            adapter._http = SimpleNamespace(
+                require_json=AsyncMock(
+                    side_effect=PlatformApiError(
+                        code=code,
+                        status_code=status,
+                        message=marker,
+                        extra={"upstream_detail": marker},
+                    )
+                )
+            )
             with self.assertRaises(PlatformApiError) as caught:
                 await adapter.dear_memory()
             self.assertEqual(caught.exception.code, code)
-            self.assertNotIn(marker, str(caught.exception.to_payload(request_id="request-1")))
-            self.assertEqual(caught.exception.to_payload(request_id="request-1")["request_id"], "request-1")
+            self.assertNotIn(
+                marker, str(caught.exception.to_payload(request_id="request-1"))
+            )
+            self.assertEqual(
+                caught.exception.to_payload(request_id="request-1")["request_id"],
+                "request-1",
+            )
 
     async def test_dear_memory_uses_threadless_private_route(self):
-        adapter = LangGraphRuntimeGatewayUpstream(base_url="http://runtime", timeout_seconds=10)
-        adapter._http = SimpleNamespace(require_json=AsyncMock(return_value={"status": "ready"}))
+        adapter = LangGraphRuntimeGatewayUpstream(
+            base_url="http://runtime", timeout_seconds=10
+        )
+        adapter._http = SimpleNamespace(
+            require_json=AsyncMock(return_value={"status": "ready"})
+        )
         await adapter.dear_memory(payload={"action": "clear", "expected_revision": 1})
         adapter._http.require_json.assert_awaited_once_with(
-            "POST", "/internal/dear/memory", payload={"action": "clear", "expected_revision": 1})
+            "POST",
+            "/internal/dear/memory",
+            payload={"action": "clear", "expected_revision": 1},
+        )
 
     async def test_dear_governance_is_runtime_private_route(self):
-        adapter = LangGraphRuntimeGatewayUpstream(base_url="http://runtime", timeout_seconds=10)
-        adapter._http = SimpleNamespace(require_json=AsyncMock(return_value={"revision": 1}))
-        await adapter.dear_governance("thread-1", "memory", payload={"action": "clear", "expected_revision": 1})
+        adapter = LangGraphRuntimeGatewayUpstream(
+            base_url="http://runtime", timeout_seconds=10
+        )
+        adapter._http = SimpleNamespace(
+            require_json=AsyncMock(return_value={"revision": 1})
+        )
+        await adapter.dear_governance(
+            "thread-1", "memory", payload={"action": "clear", "expected_revision": 1}
+        )
         adapter._http.require_json.assert_awaited_once_with(
-            "POST", "/internal/threads/thread-1/dear/memory",
-            payload={"action": "clear", "expected_revision": 1}, params=None)
+            "POST",
+            "/internal/threads/thread-1/dear/memory",
+            payload={"action": "clear", "expected_revision": 1},
+            params=None,
+        )
 
     async def test_explicit_v3_create_preserves_idempotency_and_payload(self):
         adapter = LangGraphRunsSdkAdapter(base_url="http://runtime")
-        adapter._http = SimpleNamespace(request_json=AsyncMock(return_value={"run_id": "run-1"}))
-        result = await adapter.create("thread-1", {
-            "assistant_id": "agent-1", "version": "v3", "input": {"x": 1},
-            "idempotency_key": "request-1", "untrusted_extra": "ignored",
-        })
+        adapter._http = SimpleNamespace(
+            request_json=AsyncMock(return_value={"run_id": "run-1"})
+        )
+        result = await adapter.create(
+            "thread-1",
+            {
+                "assistant_id": "agent-1",
+                "version": "v3",
+                "input": {"x": 1},
+                "idempotency_key": "request-1",
+                "untrusted_extra": "ignored",
+            },
+        )
         self.assertEqual(result, {"run_id": "run-1"})
         adapter._http.request_json.assert_awaited_once_with(
-            "POST", "/threads/thread-1/runs",
+            "POST",
+            "/threads/thread-1/runs",
             payload={"assistant_id": "agent-1", "input": {"x": 1}, "version": "v3"},
             forwarded_headers={"Idempotency-Key": "request-1"},
         )
@@ -104,8 +148,8 @@ class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
             return_value=fake_client,
         ):
             adapter = LangGraphRunsSdkAdapter(base_url="http://example.com")
-            stream = await adapter.stream("thread-1",
-                {"assistant_id": "assistant-1", "version": "v2"}
+            stream = await adapter.stream(
+                "thread-1", {"assistant_id": "assistant-1", "version": "v2"}
             )
             chunks = await _collect_chunks(stream)
 
@@ -124,16 +168,26 @@ class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
         adapter = LangGraphRunsSdkAdapter(base_url="http://runtime")
         stream = _stream_events(b"event: values\ndata: {}\n\n")
         adapter._http = SimpleNamespace(stream=AsyncMock(return_value=stream))
-        actual = await adapter.join_stream("thread-1", "run-1", {
-            "stream_mode": "values", "last_event_id": "event-2",
-        })
-        self.assertEqual(await _collect_chunks(actual), [b"event: values\ndata: {}\n\n"])
+        actual = await adapter.join_stream(
+            "thread-1",
+            "run-1",
+            {
+                "stream_mode": "values",
+                "last_event_id": "event-2",
+            },
+        )
+        self.assertEqual(
+            await _collect_chunks(actual), [b"event: values\ndata: {}\n\n"]
+        )
         adapter._http.stream.assert_awaited_once_with(
-            "GET", "/threads/thread-1/runs/run-1/stream",
+            "GET",
+            "/threads/thread-1/runs/run-1/stream",
             params={"stream_mode": "values", "cancel_on_disconnect": "false"},
             forwarded_headers={"Last-Event-ID": "event-2"},
         )
-        adapter._http.stream.side_effect = PlatformApiError(code="denied", message="denied", status_code=403)
+        adapter._http.stream.side_effect = PlatformApiError(
+            code="denied", message="denied", status_code=403
+        )
         with self.assertRaises(PlatformApiError):
             await adapter.join_stream("thread-1", "run-1")
 
@@ -152,8 +206,6 @@ class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
                 )
 
         fake_client.runs.join_stream.assert_not_called()
-
-
 
     async def test_protocol_v2_upstream_uses_exact_standard_paths(self) -> None:
         upstream = LangGraphRuntimeGatewayUpstream(
@@ -216,6 +268,37 @@ class RuntimeGatewayRouterSmokeTest(unittest.TestCase):
 
 
 class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
+    async def test_protocol_stream_preserves_expired_cursor_response(self) -> None:
+        upstream = LangGraphRuntimeGatewayUpstream(
+            base_url="http://runtime", timeout_seconds=1
+        )
+        request = httpx.Request("POST", "http://runtime/threads/thread-1/stream/events")
+        response = httpx.Response(
+            410,
+            json={
+                "code": "cursor_expired",
+                "detail": "cursor_expired",
+                "recovery": "thread_snapshot",
+            },
+            request=request,
+        )
+        with patch(
+            "platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient"
+        ) as factory:
+            client = factory.return_value
+            client.build_request.return_value = request
+            client.send = AsyncMock(return_value=response)
+            client.aclose = AsyncMock()
+            with self.assertRaises(PlatformApiError) as caught:
+                await upstream.stream_thread_events(
+                    "thread-1", {"channels": ["lifecycle"], "since": 1}
+                )
+        self.assertEqual(caught.exception.status_code, 410)
+        self.assertEqual(caught.exception.code, "cursor_expired")
+        self.assertEqual(
+            caught.exception.extra["upstream_detail"]["recovery"], "thread_snapshot"
+        )
+
     async def test_file_stream_limits_and_cleanup(self):
         original = httpx.AsyncClient
         runtime = LangGraphRuntimeClient(base_url="http://runtime", timeout_seconds=1)
@@ -236,7 +319,14 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
             async def aclose(self):
                 self.closed = True
 
-        for mode in ("success", "bad_mime", "bad_length", "overflow", "disconnect", "cancel"):
+        for mode in (
+            "success",
+            "bad_mime",
+            "bad_length",
+            "overflow",
+            "disconnect",
+            "cancel",
+        ):
             with self.subTest(mode=mode):
                 stream = Stream(mode)
                 headers = {"content-type": "text/plain"}
@@ -244,24 +334,42 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
                     headers["content-type"] = "application/x-unsupported"
                 if mode == "bad_length":
                     headers["content-length"] = str(20 * 1024 * 1024 + 1)
-                transport = httpx.MockTransport(lambda request: httpx.Response(200, headers=headers, stream=stream))
+                transport = httpx.MockTransport(
+                    lambda request: httpx.Response(200, headers=headers, stream=stream)
+                )
                 client = original(transport=transport)
-                with patch("platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient", return_value=client):
+                with patch(
+                    "platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient",
+                    return_value=client,
+                ):
                     try:
                         if mode in {"bad_mime", "bad_length"}:
                             with self.assertRaises(PlatformApiError) as error:
-                                await runtime.read_file("/internal/threads/t/workspace/content")
+                                await runtime.read_file(
+                                    "/internal/threads/t/workspace/content"
+                                )
                             self.assertEqual(error.exception.status_code, 502)
                         else:
-                            payload = await runtime.read_file("/internal/threads/t/workspace/content")
+                            payload = await runtime.read_file(
+                                "/internal/threads/t/workspace/content"
+                            )
                             if mode == "cancel":
                                 self.assertEqual(await anext(payload.body), b"start")
                                 await payload.body.aclose()
                             elif mode in {"overflow", "disconnect"}:
-                                with self.assertRaises(PlatformApiError if mode == "overflow" else httpx.ReadError):
-                                    _ = b"".join([chunk async for chunk in payload.body])
+                                with self.assertRaises(
+                                    PlatformApiError
+                                    if mode == "overflow"
+                                    else httpx.ReadError
+                                ):
+                                    _ = b"".join(
+                                        [chunk async for chunk in payload.body]
+                                    )
                             else:
-                                self.assertEqual(b"".join([chunk async for chunk in payload.body]), b"start")
+                                self.assertEqual(
+                                    b"".join([chunk async for chunk in payload.body]),
+                                    b"start",
+                                )
                         self.assertTrue(stream.closed)
                         self.assertTrue(client.is_closed)
                     finally:
@@ -270,42 +378,91 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
     async def test_file_adapter_accepts_all_delivered_formats(self):
         original = httpx.AsyncClient
         runtime = LangGraphRuntimeClient(base_url="http://runtime", timeout_seconds=1)
-        for mime in ("text/x-bibtex", "application/zip", "application/vnd.ms-excel",
-                     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                     "text/html", "text/css", "text/javascript", "application/yaml", "text/yaml", "application/toml",
-                     "application/xml", "application/sql", "image/svg+xml", "image/png", "image/jpeg", "image/webp",
-                     "text/x-python", "text/x-shellscript", "text/typescript", "text/x-java-source", "text/x-c",
-                     "text/x-c++src", "text/x-rust", "text/jsx", "text/tsx", "application/octet-stream"):
-            transport = httpx.MockTransport(lambda request: httpx.Response(
-                200, content=b"fixture", headers={"content-type": mime}, request=request))
-            with patch("platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient",
-                       side_effect=lambda **kwargs: original(transport=transport, **kwargs)) as factory:
+        for mime in (
+            "text/x-bibtex",
+            "application/zip",
+            "application/vnd.ms-excel",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "text/html",
+            "text/css",
+            "text/javascript",
+            "application/yaml",
+            "text/yaml",
+            "application/toml",
+            "application/xml",
+            "application/sql",
+            "image/svg+xml",
+            "image/png",
+            "image/jpeg",
+            "image/webp",
+            "text/x-python",
+            "text/x-shellscript",
+            "text/typescript",
+            "text/x-java-source",
+            "text/x-c",
+            "text/x-c++src",
+            "text/x-rust",
+            "text/jsx",
+            "text/tsx",
+            "application/octet-stream",
+        ):
+            transport = httpx.MockTransport(
+                lambda request: httpx.Response(
+                    200,
+                    content=b"fixture",
+                    headers={"content-type": mime},
+                    request=request,
+                )
+            )
+            with patch(
+                "platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient",
+                side_effect=lambda **kwargs: original(transport=transport, **kwargs),
+            ) as factory:
                 payload = await runtime.read_file("/internal/threads/t/files/content")
                 self.assertEqual(payload.content_type, mime)
-                self.assertEqual(b"".join([chunk async for chunk in payload.body]), b"fixture")
+                self.assertEqual(
+                    b"".join([chunk async for chunk in payload.body]), b"fixture"
+                )
                 self.assertIs(factory.call_args.kwargs["trust_env"], False)
 
     async def test_protocol_stream_rejects_before_returning_iterator(self):
         client = LangGraphRuntimeClient(base_url="http://runtime", timeout_seconds=1)
-        response = httpx.Response(403, json={"detail": "denied"},
-                                  request=httpx.Request("POST", "http://runtime/events"))
-        fake = SimpleNamespace(build_request=Mock(return_value=response.request),
-                               send=AsyncMock(return_value=response), aclose=AsyncMock())
-        with patch("platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient", return_value=fake) as factory:
+        response = httpx.Response(
+            403,
+            json={"detail": "denied"},
+            request=httpx.Request("POST", "http://runtime/events"),
+        )
+        fake = SimpleNamespace(
+            build_request=Mock(return_value=response.request),
+            send=AsyncMock(return_value=response),
+            aclose=AsyncMock(),
+        )
+        with patch(
+            "platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient",
+            return_value=fake,
+        ) as factory:
             with self.assertRaises(PlatformApiError) as error:
                 await client.stream("POST", "/events", payload={})
         self.assertEqual(error.exception.status_code, 403)
         self.assertIs(factory.call_args.kwargs["trust_env"], False)
         fake.aclose.assert_awaited_once()
 
-
     async def test_stream_connect_timeout_is_504_before_returning_iterator(self):
         from platform_api.core.errors import UpstreamServiceError
+
         client = LangGraphRuntimeClient(base_url="http://runtime", timeout_seconds=1)
-        fake = SimpleNamespace(build_request=Mock(return_value=httpx.Request("GET", "http://runtime/events")),
-                               send=AsyncMock(side_effect=httpx.ConnectTimeout("timeout")), aclose=AsyncMock())
-        with patch("platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient", return_value=fake) as factory:
+        fake = SimpleNamespace(
+            build_request=Mock(
+                return_value=httpx.Request("GET", "http://runtime/events")
+            ),
+            send=AsyncMock(side_effect=httpx.ConnectTimeout("timeout")),
+            aclose=AsyncMock(),
+        )
+        with patch(
+            "platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient",
+            return_value=fake,
+        ) as factory:
             with self.assertRaises(UpstreamServiceError) as error:
                 await client.stream("GET", "/events")
         self.assertEqual(error.exception.status_code, 504)
@@ -313,26 +470,56 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
         fake.aclose.assert_awaited_once()
 
     async def test_cancel_ack_filters_internal_run_config(self):
-        self.assertEqual(_normalize_ack({"run_id": "r", "kwargs": {"config": {
-            "configurable": {"runtime_model_ref": "secret", "_runtime_auth": "secret"}}}}),
-            {"run_id": "r", "kwargs": {"config": {"configurable": {}}}})
+        self.assertEqual(
+            _normalize_ack(
+                {
+                    "run_id": "r",
+                    "kwargs": {
+                        "config": {
+                            "configurable": {
+                                "runtime_model_ref": "secret",
+                                "_runtime_auth": "secret",
+                            }
+                        }
+                    },
+                }
+            ),
+            {"run_id": "r", "kwargs": {"config": {"configurable": {}}}},
+        )
 
     async def test_upstream_error_removes_nested_internal_fields(self) -> None:
         client = LangGraphRuntimeClient(base_url="http://runtime", timeout_seconds=1)
         response = httpx.Response(
             400,
-            json={"detail": {"message": "invalid input", "items": [
-                {"runtime_model_ref": "secret", "_runtime_auth": "secret",
-                 "text": "ordinary runtime_model_ref text"}]}},
+            json={
+                "detail": {
+                    "message": "invalid input",
+                    "items": [
+                        {
+                            "runtime_model_ref": "secret",
+                            "_runtime_auth": "secret",
+                            "text": "ordinary runtime_model_ref text",
+                        }
+                    ],
+                }
+            },
             request=httpx.Request("POST", "http://runtime/runs"),
         )
         with self.assertRaises(PlatformApiError) as error:
             await client._raise_for_status(response)
-        self.assertEqual(error.exception.extra["upstream_detail"], {
-            "detail": {"message": "invalid input", "items": [
-                {"text": "ordinary runtime_model_ref text"}]}})
+        self.assertEqual(
+            error.exception.extra["upstream_detail"],
+            {
+                "detail": {
+                    "message": "invalid input",
+                    "items": [{"text": "ordinary runtime_model_ref text"}],
+                }
+            },
+        )
 
-    async def test_runtime_client_raises_platform_api_error_for_upstream_status(self) -> None:
+    async def test_runtime_client_raises_platform_api_error_for_upstream_status(
+        self,
+    ) -> None:
         client = LangGraphRuntimeClient(
             base_url="http://example.com",
             timeout_seconds=1.0,

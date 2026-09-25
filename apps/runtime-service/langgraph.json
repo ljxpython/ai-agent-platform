@@ -5,7 +5,8 @@
     "."
   ],
   "http": {
-    "app": "./src/runtime_service/webapp.py:app"
+    "app": "./src/runtime_service/webapp.py:app",
+    "disable_mcp": true
   },
   "graphs": {
     "reference_agent": {

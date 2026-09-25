@@ -6,7 +6,10 @@ import json
 import time
 
 from platform_api.modules.runtime_gateway.application import thread_access
-from platform_api.modules.identity.actors import load_user_actor
+from platform_api.modules.identity.actors import (
+    load_service_account_actor,
+    load_user_actor,
+)
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import sessionmaker
@@ -155,6 +158,7 @@ def authorize_runtime_threads(request: Request, payload: dict) -> dict:
     action = payload.get("action")
     project_id = payload.get("project_id")
     user_id = payload.get("user_id")
+    credential_id = payload.get("credential_id")
     targets = payload.get("thread_ids")
     if (
         action
@@ -174,6 +178,7 @@ def authorize_runtime_threads(request: Request, payload: dict) -> dict:
         or not project_id
         or not isinstance(user_id, str)
         or not user_id
+        or (credential_id is not None and not isinstance(credential_id, str))
         or not isinstance(targets, list)
         or not 0 < len(targets) <= 100
         or any(not isinstance(item, str) or not item for item in targets)
@@ -192,11 +197,23 @@ def authorize_runtime_threads(request: Request, payload: dict) -> dict:
             code="runtime_acl_signature_invalid", message="Invalid Runtime signature"
         )
     factory = request.app.state.db_session_factory
-    actor = load_user_actor(
-        session_factory=request.app.state.db_session_factory,
-        user_id=user_id,
-        project_id=project_id,
-    )
+    if user_id.startswith("service-account:"):
+        actor = load_service_account_actor(
+            session_factory=factory,
+            subject=user_id,
+            credential_id=credential_id,
+            project_id=project_id,
+        )
+    else:
+        actor = (
+            load_user_actor(
+                session_factory=factory,
+                user_id=user_id,
+                project_id=project_id,
+            )
+            if credential_id is None
+            else None
+        )
     if actor is None:
         return {"allowed_thread_ids": []}
     allowed = []

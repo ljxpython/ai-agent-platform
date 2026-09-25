@@ -219,6 +219,13 @@ def get_runtime_gateway_service(
             code="project_role_missing",
             message="Project role missing",
         )
+    delegation_role = (
+        "platform_super_admin"
+        if actor.has_platform_role("platform_super_admin")
+        else "platform_operator"
+        if actor.has_platform_role("platform_operator")
+        else project_roles[0]
+    )
     try:
         policy = RuntimePolicyOverlayService(
             session_factory=session_factory,
@@ -226,9 +233,12 @@ def get_runtime_gateway_service(
         ).build_delegation_policy(project_id=project_id)
         delegation = create_runtime_delegation_token(
             subject=subject,
+            credential_id=actor.credential_id
+            if actor.principal_type == "service_account"
+            else None,
             tenant_id=context.tenant.tenant_id or "__default",
             project_id=project_id,
-            role=project_roles[0] if project_roles else "platform_super_admin",
+            role=delegation_role,
             permissions=[],
             policy_version=str(policy["version"]),
             allowed_model_ids=policy["allowed_model_ids"],
@@ -277,9 +287,12 @@ def get_runtime_gateway_service(
         )
         scoped = create_runtime_delegation_token(
             subject=subject,
+            credential_id=actor.credential_id
+            if actor.principal_type == "service_account"
+            else None,
             tenant_id=context.tenant.tenant_id or "__default",
             project_id=project_id,
-            role=project_roles[0] if project_roles else "platform_super_admin",
+            role=delegation_role,
             permissions=[],
             policy_version=str(policy["version"]),
             allowed_model_ids=policy["allowed_model_ids"],

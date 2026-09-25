@@ -10,7 +10,9 @@ from unittest.mock import patch
 from fastapi import FastAPI
 from starlette.requests import Request
 
-from platform_api.modules.runtime_catalog.presentation.http import authorize_runtime_threads
+from platform_api.modules.runtime_catalog.presentation.http import (
+    authorize_runtime_threads,
+)
 
 
 SECRET = "runtime-delegation-secret-at-least-32-bytes"
@@ -22,35 +24,110 @@ def _request(payload: dict, *, signature: str | None = None) -> Request:
     app.state.db_session_factory = object()
     stamp = str(int(time.time()))
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    signature = signature or hmac.new(
-        SECRET.encode(), f"{stamp}\nthread-authorization\n{canonical}".encode(), hashlib.sha256
-    ).hexdigest()
-    return Request({
-        "type": "http", "method": "POST", "path": "/api/runtime/internal/thread-authorization",
-        "headers": [(b"x-runtime-acl-timestamp", stamp.encode()),
-                    (b"x-runtime-acl-signature", signature.encode())], "app": app,
-    })
+    signature = (
+        signature
+        or hmac.new(
+            SECRET.encode(),
+            f"{stamp}\nthread-authorization\n{canonical}".encode(),
+            hashlib.sha256,
+        ).hexdigest()
+    )
+    return Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/runtime/internal/thread-authorization",
+            "headers": [
+                (b"x-runtime-acl-timestamp", stamp.encode()),
+                (b"x-runtime-acl-signature", signature.encode()),
+            ],
+            "app": app,
+        }
+    )
 
 
 def test_batch_endpoint_rebuilds_actor_and_checks_platform_acl() -> None:
-    payload = {"action": "read", "project_id": "p1", "user_id": "u1", "thread_ids": ["t1", "t2"]}
+    payload = {
+        "action": "read",
+        "project_id": "p1",
+        "user_id": "u1",
+        "thread_ids": ["t1", "t2"],
+    }
     actor = object()
     request = _request(payload)
-    with patch("platform_api.modules.runtime_catalog.presentation.http.load_user_actor", return_value=actor) as load_actor, \
-         patch("platform_api.modules.runtime_catalog.presentation.http.thread_access.get", return_value={"project_id": "p1"}) as get_access, \
-         patch("platform_api.modules.runtime_catalog.presentation.http.thread_access.allowed", side_effect=[True, False]) as allowed:
+    with (
+        patch(
+            "platform_api.modules.runtime_catalog.presentation.http.load_user_actor",
+            return_value=actor,
+        ) as load_actor,
+        patch(
+            "platform_api.modules.runtime_catalog.presentation.http.thread_access.get",
+            return_value={"project_id": "p1"},
+        ) as get_access,
+        patch(
+            "platform_api.modules.runtime_catalog.presentation.http.thread_access.allowed",
+            side_effect=[True, False],
+        ) as allowed,
+    ):
         result = authorize_runtime_threads(request, payload)
 
     assert result == {"allowed_thread_ids": ["t1"]}
     load_actor.assert_called_once_with(
-        session_factory=request.app.state.db_session_factory, user_id="u1", project_id="p1"
+        session_factory=request.app.state.db_session_factory,
+        user_id="u1",
+        project_id="p1",
     )
     assert get_access.call_count == 2
     assert [call.args[3] for call in allowed.call_args_list] == ["read", "read"]
 
 
+def test_batch_endpoint_rechecks_service_credential() -> None:
+    payload = {
+        "action": "read",
+        "project_id": "p1",
+        "user_id": "service-account:account-1",
+        "credential_id": "credential-1",
+        "thread_ids": ["t1"],
+    }
+    actor = SimpleNamespace(principal_type="service_account")
+    request = _request(payload)
+    with (
+        patch(
+            "platform_api.modules.runtime_catalog.presentation.http.load_service_account_actor",
+            return_value=actor,
+        ) as load_actor,
+        patch(
+            "platform_api.modules.runtime_catalog.presentation.http.thread_access.get",
+            return_value={"project_id": "p1"},
+        ),
+        patch(
+            "platform_api.modules.runtime_catalog.presentation.http.thread_access.allowed",
+            return_value=True,
+        ),
+    ):
+        assert authorize_runtime_threads(request, payload) == {
+            "allowed_thread_ids": ["t1"]
+        }
+    load_actor.assert_called_once_with(
+        session_factory=request.app.state.db_session_factory,
+        subject="service-account:account-1",
+        credential_id="credential-1",
+        project_id="p1",
+    )
+    with patch(
+        "platform_api.modules.runtime_catalog.presentation.http.load_service_account_actor",
+        return_value=None,
+    ):
+        assert authorize_runtime_threads(request, payload) == {"allowed_thread_ids": []}
+
+
 def test_batch_endpoint_rejects_invalid_signature_and_unbounded_targets() -> None:
-    payload = {"action": "read", "project_id": "p1", "user_id": "u1", "thread_ids": ["t1"]}
+    payload = {
+        "action": "read",
+        "project_id": "p1",
+        "user_id": "u1",
+        "thread_ids": ["t1"],
+    }
     bad = _request(payload, signature="invalid")
     try:
         authorize_runtime_threads(bad, payload)
@@ -77,10 +154,23 @@ def test_batch_endpoint_rejects_invalid_signature_and_unbounded_targets() -> Non
 
 
 def test_create_authorization_requires_pending_owner() -> None:
-    payload = {"action": "create", "project_id": "p1", "user_id": "u1", "thread_ids": ["pending", "ready"]}
+    payload = {
+        "action": "create",
+        "project_id": "p1",
+        "user_id": "u1",
+        "thread_ids": ["pending", "ready"],
+    }
     actor = SimpleNamespace(principal_type="user")
-    with patch("platform_api.modules.runtime_catalog.presentation.http.load_user_actor", return_value=actor), \
-         patch("platform_api.modules.runtime_catalog.presentation.http.thread_access.pending_owner", side_effect=[True, False]) as pending_owner:
+    with (
+        patch(
+            "platform_api.modules.runtime_catalog.presentation.http.load_user_actor",
+            return_value=actor,
+        ),
+        patch(
+            "platform_api.modules.runtime_catalog.presentation.http.thread_access.pending_owner",
+            side_effect=[True, False],
+        ) as pending_owner,
+    ):
         result = authorize_runtime_threads(_request(payload), payload)
     assert result == {"allowed_thread_ids": ["pending"]}
     assert pending_owner.call_count == 2

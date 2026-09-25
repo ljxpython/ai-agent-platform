@@ -6,6 +6,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
+from uuid import UUID
 
 import jwt
 
@@ -47,6 +48,7 @@ _ALLOWED_CLAIMS = frozenset(
         "context_hash",
         "request_id",
         "platform_trace_id",
+        "credential_id",
     }
 )
 
@@ -73,6 +75,7 @@ class VerifiedDelegation:
     context_hash: str
     request_id: str | None = None
     platform_trace_id: str | None = None
+    credential_id: str | None = None
 
 
 def _invalid(
@@ -190,6 +193,16 @@ def verify_delegation_claims(
         raise _invalid(field="delegation_version")
     if claims.get("type") != "runtime_delegation":
         raise _invalid(field="type")
+    credential_id = claims.get("credential_id")
+    if credential_id is not None:
+        if not isinstance(credential_id, str) or not claims["sub"].startswith(
+            "service-account:"
+        ):
+            raise _invalid(field="credential_id")
+        try:
+            UUID(credential_id)
+        except ValueError as exc:
+            raise _invalid(field="credential_id") from exc
 
     try:
         principal = parse_runtime_principal(
@@ -256,6 +269,7 @@ def verify_delegation_claims(
         context_claim,
         _optional_correlation(claims, "request_id"),
         _optional_correlation(claims, "platform_trace_id"),
+        credential_id,
     )
 
 
@@ -316,6 +330,7 @@ def verified_delegation_from_user(user: object) -> VerifiedDelegation:
         raise _invalid("runtime.auth.invalid_claim", "context_hash")
     request_id = _user_value(user, "request_id")
     platform_trace_id = _user_value(user, "platform_trace_id")
+    credential_id = _user_value(user, "runtime_credential_id")
     for name, value in (
         ("request_id", request_id),
         ("platform_trace_id", platform_trace_id),
@@ -331,6 +346,7 @@ def verified_delegation_from_user(user: object) -> VerifiedDelegation:
         context_claim,
         request_id.strip() if isinstance(request_id, str) else None,
         platform_trace_id.strip() if isinstance(platform_trace_id, str) else None,
+        credential_id if isinstance(credential_id, str) else None,
     )
 
 

@@ -79,6 +79,7 @@ PY
   printf '[config] Runtime backend: %s (changes require Runtime API/Worker restart)\n' "$RUNTIME_BACKEND"
   RUNTIME_PORT="${RUNTIME_PORT:-${RUNTIME_SERVICE_PORT:-8123}}"
   GRAPH_CONFIG="${RUNTIME_GRAPH_CONFIG_PATH:-$RUNTIME_DIR/langgraph.json}"
+  export PLATFORM_THREAD_AUTHORIZATION_URL="${PLATFORM_THREAD_AUTHORIZATION_URL:-http://127.0.0.1:$PLATFORM_API_PORT/api/runtime/internal/thread-authorization}"
   export RUNTIME_PORT PLATFORM_API_PORT PLATFORM_WEB_PORT
 }
 

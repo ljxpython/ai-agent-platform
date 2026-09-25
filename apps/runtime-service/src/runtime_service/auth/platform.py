@@ -91,6 +91,7 @@ async def authenticate(authorization: str | None = None) -> Auth.types.MinimalUs
         "runtime_context_hash": verified.context_hash,
         "request_id": verified.request_id,
         "platform_trace_id": verified.platform_trace_id,
+        "runtime_credential_id": verified.credential_id,
     }
 
 
@@ -151,6 +152,13 @@ async def deny_image_scope_on_server_resources(
             status_code=403, detail="Thread creation requires a scoped delegation"
         )
     elif resource == "assistants":
+        if (
+            action == "search"
+            and scope["operation"] == "read"
+            and _user_value(ctx.user, "role")
+            in {"platform_operator", "platform_super_admin"}
+        ):
+            return
         assistant_id = str(scope.get("assistant_id") or "")
         allowed_ids = (
             {assistant_id, str(uuid5(NAMESPACE_URL, assistant_id))}
@@ -256,6 +264,9 @@ async def deny_image_scope_on_server_resources(
         "user_id": identity,
         "thread_ids": targets,
     }
+    credential_id = _user_value(ctx.user, "runtime_credential_id")
+    if credential_id is not None:
+        payload["credential_id"] = credential_id
     stamp = str(int(time.time()))
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     signature = hmac.new(

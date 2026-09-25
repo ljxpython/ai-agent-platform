@@ -1,8 +1,15 @@
+from datetime import datetime, timezone
+from uuid import UUID
+
 from sqlalchemy.orm import Session, sessionmaker
 
 from platform_api.core.context.models import ActorContext
 from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
 from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
+from platform_api.modules.service_accounts.models import ServiceAccountTokenRecord
+from platform_api.modules.service_accounts.repository import (
+    SqlAlchemyServiceAccountsRepository,
+)
 
 
 def load_user_actor(
@@ -47,3 +54,56 @@ def load_user_actor(
         )
     finally:
         session.close()
+
+
+def load_service_account_actor(
+    *,
+    session_factory: sessionmaker[Session] | None,
+    subject: str,
+    credential_id: str | None,
+    project_id: str,
+) -> ActorContext | None:
+    if (
+        session_factory is None
+        or not subject.startswith("service-account:")
+        or not credential_id
+    ):
+        return None
+    try:
+        account_id = UUID(subject.removeprefix("service-account:"))
+        token_id = UUID(credential_id)
+        project_uuid = UUID(project_id)
+    except ValueError:
+        return None
+    with session_factory() as session:
+        repository = SqlAlchemyServiceAccountsRepository(session)
+        account = repository.get_service_account_by_id(account_id)
+        token = session.get(ServiceAccountTokenRecord, token_id)
+        if (
+            account is None
+            or account.status != "active"
+            or token is None
+            or token.service_account_id != account_id
+            or token.status != "active"
+            or (
+                token.expires_at is not None
+                and token.expires_at.replace(
+                    tzinfo=token.expires_at.tzinfo or timezone.utc
+                )
+                <= datetime.now(timezone.utc)
+            )
+        ):
+            return None
+        if token.revoked_at is not None:
+            return None
+        role = repository.get_project_grant_role(
+            credential_id=credential_id,
+            project_id=project_uuid,
+        )
+        return ActorContext(
+            subject=subject,
+            principal_type="service_account",
+            credential_id=credential_id,
+            platform_roles=account.platform_roles,
+            project_roles={project_id: (role.value,)} if role else {},
+        )

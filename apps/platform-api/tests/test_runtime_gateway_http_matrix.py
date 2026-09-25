@@ -2,18 +2,19 @@
 
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 from fastapi import FastAPI
 from tests.thread_acl_fixture import thread_acl_factory
 
+from platform_api.config import Settings
+from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import (
     ForbiddenError,
     UpstreamServiceError,
     register_exception_handlers,
 )
-from platform_api.core.context.models import ActorContext
 from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
@@ -102,6 +103,55 @@ def governance_payload(name):
 
 
 class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
+    def test_platform_role_is_preserved_in_runtime_delegation(self):
+        request = SimpleNamespace(
+            app=SimpleNamespace(
+                state=SimpleNamespace(settings=Settings(), db_session_factory=None)
+            ),
+            state=SimpleNamespace(
+                platform_context=SimpleNamespace(
+                    project=SimpleNamespace(project_id="project-1"),
+                    tenant=SimpleNamespace(tenant_id="tenant-1"),
+                ),
+            ),
+            path_params={},
+        )
+        cases = (
+            (("platform_super_admin",), "platform_super_admin"),
+            (("platform_operator",), "platform_operator"),
+            ((), "project_admin"),
+        )
+        for platform_roles, expected_role in cases:
+            with self.subTest(platform_roles=platform_roles):
+                actor = ActorContext(
+                    user_id="user-1",
+                    platform_roles=platform_roles,
+                    project_roles={"project-1": ("project_admin",)},
+                )
+                with (
+                    patch(
+                        "platform_api.modules.runtime_gateway.presentation.http.RuntimePolicyOverlayService"
+                    ) as policy_factory,
+                    patch(
+                        "platform_api.modules.runtime_gateway.presentation.http.create_runtime_delegation_token",
+                        return_value="token",
+                    ) as sign,
+                ):
+                    policy_factory.return_value.build_delegation_policy.return_value = {
+                        "version": "policy-1",
+                        "allowed_model_ids": [],
+                    }
+                    service = get_runtime_gateway_service(request, actor)
+                    self.assertEqual(sign.call_args.kwargs["role"], expected_role)
+                    service._delegation_headers_factory(
+                        project_id="project-1",
+                        agent_key="",
+                        thread_id=None,
+                        context_hash="context-hash",
+                        operation="read",
+                    )
+                    self.assertEqual(sign.call_args.kwargs["role"], expected_role)
+
     async def test_create_timeout_returns_reconciliation_identity(self):
         app = FastAPI()
         app.include_router(router)

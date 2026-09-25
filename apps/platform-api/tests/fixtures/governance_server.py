@@ -1,4 +1,5 @@
 """Opt-in local browser fixture: isolated Platform DB, existing local Runtime."""
+
 import json
 import os
 import tempfile
@@ -12,13 +13,14 @@ from sqlalchemy import select
 
 from platform_api.bootstrap.lifespan import lifespan
 from platform_api.core.db import session_scope
-from platform_api.core.security import hash_password, create_runtime_delegation_token, empty_runtime_context_hash
+from platform_api.core.security import hash_password
 from platform_api.main import create_app
 from platform_api.modules.iam.domain import ProjectRole
 from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
 from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
-from platform_api.modules.runtime_gateway.infra.sqlalchemy.models import ThreadAccessRecord
-from platform_api.adapters.langgraph.runtime_gateway_upstream import LangGraphRuntimeGatewayUpstream
+from platform_api.modules.runtime_gateway.infra.sqlalchemy.models import (
+    ThreadAccessRecord,
+)
 
 PASSWORD = "Governance-test-only-2026!"
 
@@ -29,7 +31,11 @@ def serve():
     with tempfile.TemporaryDirectory(prefix="platform-governance-e2e-") as directory:
         app = create_app()
         settings = app.state.settings
-        assert urlparse(settings.langgraph_upstream_url).hostname in {"localhost", "127.0.0.1", "::1"}
+        assert urlparse(settings.langgraph_upstream_url).hostname in {
+            "localhost",
+            "127.0.0.1",
+            "::1",
+        }
         settings.database_url = f"sqlite:///{Path(directory) / 'platform.db'}"
         settings.platform_db_enabled = True
         settings.platform_db_auto_create = True
@@ -47,46 +53,54 @@ def serve():
                 with session_scope(factory) as session:
                     projects = SqlAlchemyProjectsRepository(session)
                     tenant = projects.get_or_create_default_tenant()
-                    project = projects.create_project(tenant_id=tenant.id, name="Governance E2E", description="Temporary browser fixture")
+                    project = projects.create_project(
+                        tenant_id=tenant.id,
+                        name="Governance E2E",
+                        description="Temporary browser fixture",
+                    )
                     project_id = str(project.id)
                     users = SqlAlchemyIdentityRepository(session)
                     identities = {}
                     for name, platform_roles, role in (
-                        ("owner", (), ProjectRole.EXECUTOR), ("peer", (), ProjectRole.EXECUTOR),
-                        ("manager", (), ProjectRole.ADMIN), ("superadmin", ("platform_super_admin",), None),
-                        ("operator", ("platform_operator",), None), ("viewer", ("platform_viewer",), None),
+                        ("owner", (), ProjectRole.EXECUTOR),
+                        ("peer", (), ProjectRole.EXECUTOR),
+                        ("manager", (), ProjectRole.ADMIN),
+                        ("superadmin", ("platform_super_admin",), None),
+                        ("operator", ("platform_operator",), None),
+                        ("viewer", ("platform_viewer",), None),
                         ("provisioner", ("platform_super_admin",), ProjectRole.ADMIN),
                     ):
-                        user = users.create_user(username=f"governance-{name}", password_hash=hash_password(PASSWORD),
-                            external_subject=f"governance-{name}", email=None, platform_roles=platform_roles,
-                            is_super_admin=name == "superadmin")
+                        user = users.create_user(
+                            username=f"governance-{name}",
+                            password_hash=hash_password(PASSWORD),
+                            external_subject=f"governance-{name}",
+                            email=None,
+                            platform_roles=platform_roles,
+                            is_super_admin=name == "superadmin",
+                        )
                         identities[name] = str(user.id)
                         if role:
-                            projects.upsert_project_member(project_id=project.id, user_id=user.id, role=role)
-                Path("/tmp/platform-governance-e2e.json").write_text(json.dumps({"project_id": project_id, "users": identities}))
+                            projects.upsert_project_member(
+                                project_id=project.id, user_id=user.id, role=role
+                            )
+                Path("/tmp/platform-governance-e2e.json").write_text(
+                    json.dumps({"project_id": project_id, "users": identities})
+                )
                 try:
                     yield
                 finally:
                     with session_scope(factory) as session:
-                        ids = list(session.scalars(select(ThreadAccessRecord.thread_id).where(ThreadAccessRecord.project_id == project_id)))
+                        ids = list(
+                            session.scalars(
+                                select(ThreadAccessRecord.thread_id).where(
+                                    ThreadAccessRecord.project_id == project_id
+                                )
+                            )
+                        )
                     if ids:
-                        token = create_runtime_delegation_token(subject="governance-fixture-cleanup", tenant_id="__default",
-                            project_id=project_id, role="project_admin", permissions=[], policy_version="test",
-                            allowed_model_ids=["platform:no-enabled-model"], tool_overrides={}, tool_policy_version="unscoped-read-v2",
-                            scope={"tenant_id": "__default", "project_id": project_id, "operation": "read"},
-                            context_hash=empty_runtime_context_hash(), settings=settings)
-                        upstream = LangGraphRuntimeGatewayUpstream(base_url=settings.langgraph_upstream_url,
-                            timeout_seconds=10, forwarded_headers={"authorization": f"Bearer {token}"})
-                        failures = []
-                        for thread_id in ids:
-                            try:
-                                row = await upstream.get_thread(thread_id)
-                                assert row["metadata"]["project_id"] == project_id
-                                await upstream.delete_thread(thread_id)
-                            except Exception as exc:
-                                failures.append(RuntimeError(f"Fixture cleanup failed: project={project_id}, thread={thread_id}: {exc}"))
-                        if failures:
-                            raise ExceptionGroup("Fixture Thread cleanup failed", failures)
+                        raise RuntimeError(
+                            f"Fixture left {len(ids)} Thread ACL records; delete Threads through the gateway before shutdown"
+                        )
 
         app.router.lifespan_context = fixture_lifespan
         uvicorn.run(app, host="127.0.0.1", port=12142, log_level="warning")

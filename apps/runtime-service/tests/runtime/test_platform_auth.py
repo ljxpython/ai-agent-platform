@@ -69,6 +69,33 @@ def test_platform_auth_returns_runtime_facts_without_token(
     assert "Bearer" not in str(user)
 
 
+def test_platform_auth_preserves_signed_service_credential(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from uuid import uuid4
+
+    monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_SECRET", SECRET)
+    monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_ISSUER", "runtime-test")
+    monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_AUDIENCE", "runtime-service")
+    account_id, credential_id = uuid4(), uuid4()
+    claims = jwt.decode(
+        _token(),
+        SECRET,
+        algorithms=["HS256"],
+        audience="runtime-service",
+        issuer="runtime-test",
+    )
+    claims["sub"] = f"service-account:{account_id}"
+    claims["credential_id"] = str(credential_id)
+    user = asyncio.run(
+        authenticate(
+            authorization=f"Bearer {jwt.encode(claims, SECRET, algorithm='HS256')}"
+        )
+    )
+    assert user["identity"] == f"service-account:{account_id}"
+    assert user["runtime_credential_id"] == str(credential_id)
+
+
 def test_platform_auth_rejects_missing_or_invalid_authorization(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -205,6 +232,47 @@ def test_thread_auth_rechecks_signed_platform_acl(
     assert kwargs["headers"]["x-runtime-acl-signature"]
 
 
+def test_thread_auth_signs_service_credential_in_acl_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+    from runtime_service.auth import platform
+
+    monkeypatch.setenv("PLATFORM_THREAD_AUTHORIZATION_URL", "http://platform.test/acl")
+    monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_SECRET", SECRET)
+    response = SimpleNamespace(
+        raise_for_status=lambda: None,
+        json=lambda: {"allowed_thread_ids": ["thread-1"]},
+    )
+    post = AsyncMock(return_value=response)
+
+    class Client:
+        def __init__(self, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return SimpleNamespace(post=post)
+
+        async def __aexit__(self, *args):
+            return None
+
+    monkeypatch.setattr(platform.httpx, "AsyncClient", Client)
+    user = {
+        "identity": "service-account:account-1",
+        "project_id": "project-a",
+        "runtime_scope": {"operation": "read"},
+        "runtime_credential_id": "credential-1",
+    }
+    asyncio.run(
+        platform.deny_image_scope_on_server_resources(
+            SimpleNamespace(user=user, resource="threads", action="read"),
+            {"thread_id": "thread-1"},
+        )
+    )
+    assert post.await_args.kwargs["json"]["credential_id"] == "credential-1"
+
+
 def test_thread_create_accepts_graphharbor_uuid_target(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -334,6 +402,31 @@ def test_only_the_delegated_assistant_is_readable() -> None:
             deny_image_scope_on_server_resources(ctx, {"assistant_id": "assistant-b"})
         )
     assert error.value.status_code == 403
+
+
+def test_catalog_search_requires_platform_role_and_read_delegation() -> None:
+    from types import SimpleNamespace
+    from runtime_service.auth.platform import deny_image_scope_on_server_resources
+
+    def context(role: str, operation: str):
+        return SimpleNamespace(
+            user={"role": role, "runtime_scope": {"operation": operation}},
+            resource="assistants",
+            action="search",
+        )
+
+    asyncio.run(
+        deny_image_scope_on_server_resources(context("platform_operator", "read"), {})
+    )
+    for role, operation in (
+        ("project_executor", "read"),
+        ("platform_operator", "run-create"),
+    ):
+        with pytest.raises(Auth.exceptions.HTTPException) as error:
+            asyncio.run(
+                deny_image_scope_on_server_resources(context(role, operation), {})
+            )
+        assert error.value.status_code == 403
 
 
 @pytest.mark.parametrize("resource", ["crons", "store", "runs"])

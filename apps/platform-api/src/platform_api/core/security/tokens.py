@@ -141,6 +141,7 @@ def create_runtime_delegation_token(
     context_hash: str | None = None,
     request_id: str | None = None,
     platform_trace_id: str | None = None,
+    credential_id: str | None = None,
 ) -> str:
     secret = settings.runtime_delegation_secret
     if len(secret.encode("utf-8")) < 32:
@@ -274,6 +275,16 @@ def create_runtime_delegation_token(
             if not isinstance(value, str) or not value.strip() or len(value) > 256:
                 raise ValueError(f"runtime delegation {name} is invalid")
             payload[name] = value.strip()
+    if credential_id is not None:
+        if not subject.startswith("service-account:"):
+            raise ValueError(
+                "runtime delegation credential_id requires a service account"
+            )
+        try:
+            uuid.UUID(credential_id)
+        except (TypeError, ValueError) as exc:
+            raise ValueError("runtime delegation credential_id is invalid") from exc
+        payload["credential_id"] = credential_id
     return jwt.encode(
         payload,
         secret,
