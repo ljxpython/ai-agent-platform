@@ -171,11 +171,14 @@ def register(factory, *, thread_id: str, project_id: str, actor: ActorContext) -
         return record_metadata(row)
 
 
-def mark_provisioned(factory, thread_id: str) -> None:
+def mark_provisioned(factory, thread_id: str) -> bool:
     with session_scope(factory) as session:
         row = session.get(ThreadAccessRecord, thread_id, with_for_update=True)
-        if row is not None and row.provisioning_status == "pending":
+        if row is None:
+            return False
+        if row.provisioning_status == "pending":
             row.provisioning_status = "ready"
+        return True
 
 
 def pending_owner(factory, *, thread_id: str, project_id: str, user_id: str) -> bool:

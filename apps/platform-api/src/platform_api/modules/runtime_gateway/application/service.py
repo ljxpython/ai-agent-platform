@@ -1990,14 +1990,25 @@ class RuntimeGatewayService:
             thread = await upstream.create_thread(next_payload)
         except UpstreamServiceError as exc:
             if exc.status_code < 500:
-                await run_in_threadpool(
-                    thread_access.remove_pending,
-                    self._require_session_factory(),
-                    project_id=project_id,
-                    thread_id=next_payload["thread_id"],
+                try:
+                    await run_in_threadpool(
+                        thread_access.remove_pending,
+                        self._require_session_factory(),
+                        project_id=project_id,
+                        thread_id=next_payload["thread_id"],
+                    )
+                except Exception as cleanup_error:
+                    raise self._thread_reconcile_error(
+                        next_payload["thread_id"]
+                    ) from cleanup_error
+            else:
+                exc.extra.update(
+                    self._thread_reconcile_error(next_payload["thread_id"]).extra
                 )
-            elif self._delegation_headers_factory and hasattr(
-                self._upstream, "with_forwarded_headers"
+            if (
+                exc.status_code >= 500
+                and self._delegation_headers_factory
+                and hasattr(self._upstream, "with_forwarded_headers")
             ):
                 reconcile = self._upstream.with_forwarded_headers(
                     await run_in_threadpool(
@@ -2012,28 +2023,14 @@ class RuntimeGatewayService:
                 try:
                     thread = await reconcile.get_thread(next_payload["thread_id"])
                 except UpstreamServiceError as probe_error:
-                    if probe_error.status_code == 404:
-                        exc.extra.update(
-                            {
-                                "thread_id": next_payload["thread_id"],
-                                "reconcile_path": (
-                                    f"/api/langgraph/threads/"
-                                    f"{next_payload['thread_id']}/reconcile"
-                                ),
-                            }
-                        )
-                    else:
+                    if probe_error.status_code != 404:
                         raise exc
                 else:
                     if thread.get("thread_id") == next_payload["thread_id"]:
                         self._assert_thread_project_scope(
                             project_id=project_id, thread=thread
                         )
-                        await run_in_threadpool(
-                            thread_access.mark_provisioned,
-                            self._require_session_factory(),
-                            next_payload["thread_id"],
-                        )
+                        await self._mark_thread_provisioned(next_payload["thread_id"])
                         return self._thread_with_access(
                             actor, project_id, thread, access
                         )
@@ -2044,12 +2041,32 @@ class RuntimeGatewayService:
                 status_code=502,
                 message="Runtime did not preserve the requested Thread identity",
             )
-        await run_in_threadpool(
-            thread_access.mark_provisioned,
-            self._require_session_factory(),
-            next_payload["thread_id"],
-        )
+        await self._mark_thread_provisioned(next_payload["thread_id"])
         return self._thread_with_access(actor, project_id, thread, access)
+
+    @staticmethod
+    def _thread_reconcile_error(thread_id: str) -> PlatformApiError:
+        return PlatformApiError(
+            code="thread_provisioning_unconfirmed",
+            status_code=503,
+            message="Thread provisioning is unconfirmed; reconcile before retrying",
+            extra={
+                "thread_id": thread_id,
+                "reconcile_path": f"/api/langgraph/threads/{thread_id}/reconcile",
+            },
+        )
+
+    async def _mark_thread_provisioned(self, thread_id: str) -> None:
+        try:
+            confirmed = await run_in_threadpool(
+                thread_access.mark_provisioned,
+                self._require_session_factory(),
+                thread_id,
+            )
+        except Exception as error:
+            raise self._thread_reconcile_error(thread_id) from error
+        if not confirmed:
+            raise self._thread_reconcile_error(thread_id)
 
     async def reconcile_pending_thread(
         self, *, actor: ActorContext, project_id: str, thread_id: str
@@ -2095,9 +2112,7 @@ class RuntimeGatewayService:
                 message="Runtime returned a different Thread identity",
             )
         self._assert_thread_project_scope(project_id=project_id, thread=thread)
-        await run_in_threadpool(
-            thread_access.mark_provisioned, self._require_session_factory(), thread_id
-        )
+        await self._mark_thread_provisioned(thread_id)
         access = await run_in_threadpool(
             thread_access.get, self._require_session_factory(), thread_id
         )

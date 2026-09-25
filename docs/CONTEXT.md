@@ -5,11 +5,11 @@
 
 ## 最后更新
 
-2026-09-25 | GraphHarbor 双包 post33 已发布，runtime-service 的依赖与锁文件已更新，普通 `uv sync --frozen` 安装及导入检查通过。业务边界与事件保留专项仍为 partial，平台完整业务 Run/SSE/HITL、文件正向链路及恢复验收仍缺；进度见边界解耦项目 README。
+2026-09-26 | GraphHarbor 双包 post33 已发布且 runtime-service 锁定；本机两库归档已完整恢复到隔离库，单项目业务 Run/SSE/HITL 与文件正向链路已有阶段证据。业务边界与事件保留专项仍为 partial：官方完整 OpenAPI 比较发现 203 处差异，跨项目故障、容量及最终回退验收未完成；进度见边界解耦项目 README。
 
 ## 活跃项目
 
-- [Runtime 与 GraphHarbor 业务边界解耦](projects/20260925-runtime-business-boundary-decoupling/README.md)：`partial`，本机两库已清理旧运行数据并迁移；正式依赖 post33 已锁定。备份全量恢复、业务 run/SSE/HITL、文件正向链路和官方全入口差分仍未完成。
+- [Runtime 与 GraphHarbor 业务边界解耦](projects/20260925-runtime-business-boundary-decoupling/README.md)：`partial`，本机两库已清理旧运行数据并迁移，归档隔离恢复通过，正式依赖 post33 已锁定。单项目 run/SSE/HITL 与文件正向链路已有证据；官方全入口差分、跨项目故障和回退门禁仍缺。
 
 - [interaction-data-service 退役](projects/20260924-interaction-data-service-retirement/README.md)：done（本机范围）；仓库/本机独占资源清理、备份恢复、浏览器聊天与成果交付通过。
 
@@ -27,7 +27,7 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-09-25 | Dear个人记忆能力保留；已锁定 PyPI GraphHarbor post33 并完成 frozen 安装，完整平台 run/SSE 未验证 |
+| runtime-service | 2026-09-26 | Dear个人记忆能力保留；已锁定 PyPI GraphHarbor post33 并完成 frozen 安装，单项目真实模型 run/SSE/HITL 已验证，跨身份和故障矩阵未完成 |
 | platform-api | 2026-09-25 | Dear个人记忆能力保留；Thread ACL 内部回查含服务账号 token/grant 复核、预留/对账和共享撤权已通过 SQLite、临时 HTTP 与治理浏览器联调；BYOK 双层模型仍按原有能力运行 |
 | platform-web | 2026-09-24 | 完成 Dear Agent 无线程个人记忆治理重构（`DearAgentMemoryPage.vue` + `memory.service.ts` + `ThreadAccessControl.vue` 分享隐私提示 + 移除孤儿 `useDearGovernanceContext.ts`），16 条单测/typecheck/eslint 全绿；同时保留会话 SWR 缓存与路由 KeepAlive 保活 |
 | AI Harness（AGENTS.md + Skills） | 2026-09-21 | 今日完成全面优化，详见 docs/changes/20260921-harness-optimization.md |

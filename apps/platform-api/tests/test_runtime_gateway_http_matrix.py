@@ -152,21 +152,12 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                     )
                     self.assertEqual(sign.call_args.kwargs["role"], expected_role)
 
-    async def test_create_timeout_returns_reconciliation_identity(self):
+    async def test_create_unconfirmed_returns_reconciliation_identity(self):
         app = FastAPI()
         app.include_router(router)
         register_exception_handlers(app)
         thread_id = "11111111-1111-4111-8111-111111111111"
-        error = UpstreamServiceError(
-            "Runtime timed out", upstream="runtime", status_code=504
-        )
-        error.extra.update(
-            {
-                "thread_id": thread_id,
-                "reconcile_path": f"/api/langgraph/threads/{thread_id}/reconcile",
-            }
-        )
-        service = SimpleNamespace(create_thread=AsyncMock(side_effect=error))
+        service = SimpleNamespace(create_thread=AsyncMock())
         app.dependency_overrides[get_actor_context] = lambda: SimpleNamespace(
             user_id="user-1"
         )
@@ -179,18 +170,33 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
             )
             return await call_next(request)
 
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="http://test"
-        ) as client:
-            response = await client.post(
-                "/api/langgraph/threads", headers={"x-project-id": "project-1"}, json={}
+        for status in (503, 504):
+            error = UpstreamServiceError(
+                "Thread provisioning is unconfirmed",
+                upstream="runtime",
+                status_code=status,
             )
-        self.assertEqual(response.status_code, 504)
-        self.assertEqual(response.json()["error"]["extra"]["thread_id"], thread_id)
-        self.assertEqual(
-            response.json()["error"]["extra"]["reconcile_path"],
-            f"/api/langgraph/threads/{thread_id}/reconcile",
-        )
+            error.extra.update(
+                {
+                    "thread_id": thread_id,
+                    "reconcile_path": f"/api/langgraph/threads/{thread_id}/reconcile",
+                }
+            )
+            service.create_thread.side_effect = error
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                response = await client.post(
+                    "/api/langgraph/threads",
+                    headers={"x-project-id": "project-1"},
+                    json={},
+                )
+            self.assertEqual(response.status_code, status)
+            self.assertEqual(response.json()["error"]["extra"]["thread_id"], thread_id)
+            self.assertEqual(
+                response.json()["error"]["extra"]["reconcile_path"],
+                f"/api/langgraph/threads/{thread_id}/reconcile",
+            )
 
     async def test_public_route_inventory_and_boundaries(self):
         self.assertEqual(

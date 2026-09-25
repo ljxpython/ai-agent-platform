@@ -4,8 +4,8 @@
 
 - **启动日期：** 2026-09-25。
 - **级别：** 治理改动，跨 platform-api、runtime-service 和 GraphHarbor；含授权与历史数据迁移。
-- **状态：** `partial`。平台 ACL 回查、thread 创建预留/受限 reconcile、可信 project metadata、模型与 tracing 关联已实施；GraphHarbor 候选代码已移除旧 SQL scope。本机两库已备份、清理旧运行历史并迁移，新候选包 local stack 健康；完整备份恢复、官方全入口授权差分、业务 run/SSE 和浏览器文件正向链路仍未完成。
-- **当前安排：** 2026-09-25 暂停本专项后续实施，先处理 GraphHarbor 的[Runtime 流事件保留治理](../../../../graphharbor/docs/projects/20260925-runtime-event-retention/README.md)；恢复顺序以主方案“暂停点与恢复入口”为准。
+- **状态：** `partial`。平台 ACL 回查、thread 创建预留/受限 reconcile、可信 project metadata、模型与 tracing 关联已实施；GraphHarbor 已移除旧 SQL scope，公开 post33 已锁定。本机两库归档隔离恢复、单项目业务 run/SSE/HITL 和浏览器文件正向链路已有阶段证据；官方全入口、跨身份故障与回退 Final 仍未完成。
+- **当前安排：** 与 GraphHarbor 的[Runtime 流事件保留治理](../../../../graphharbor/docs/projects/20260925-runtime-event-retention/README.md)联合验收；真实缺口以主方案“暂停点与恢复入口”及各专题 Final 为准。
 - **主方案：** [GraphHarbor 项目概览](../../../../graphharbor/docs/projects/20260925-runtime-business-boundary-decoupling/README.md)。此跨仓库相对链接要求两仓同级检出；仓库不在同一工作区时，请在 graphharbor 仓库打开相同项目路径。
 - **单一事实源：** 任务、验证和评审记录集中在 GraphHarbor 主方案；本入口不复制任务状态。
 
@@ -61,3 +61,9 @@ Thread 委托复核补充：管理员无 takeover 删除为 403；限时 takeove
 隔离治理矩阵在临时切换 Runtime 回查地址到 12142 后 10 项均通过（29.4 秒），随后已恢复主平台 2142。fixture 关闭时报告遗留 6 条临时 ACL，属于测试清理失败，未写入正式 platform_api；下次需用网关逐条删除或在 fixture teardown 增加失败清单核对，不能把“10 passed”扩大成无残留通过。
 
 2026-09-26 续验：使用完整回查地址 `http://127.0.0.1:12142/api/runtime/internal/thread-authorization` 重跑治理浏览器矩阵，10 passed，fixture `thread_access` 残留为 0；正式 Runtime 地址已恢复为 2142。Runtime workspace/zip/HTTP/browser/terminal/resource-binding 定向回归 54 passed，PG17 restart/HITL/workspace 1 passed，skill snapshot restart 4 passed。skill restart 测试改用本地后端已有 `RUNTIME_SKILLS_ROOT`、`RUNTIME_WORKSPACE_ROOT`，消除 Docker 路径假设；GraphHarbor 边界未改变。完整跨项目故障注入和 Final 门禁仍未完成。
+
+2026-09-26 官方对照续验：GraphHarbor 主方案的同一 identity-only Auth fixture 在官方 `langgraph-api==0.13.0` 与 post33 上通过 12 类 Thread/Run/HITL/SSE 子集对照；完整 OpenAPI 比较仍有 203 处差异（路径/操作 140、组件 schema 63）。该结果不证明平台 ACL 跨身份 Final 或通用 API 全兼容，详见主方案 04。
+
+2026-09-26 创建故障注入：平台网关对 Runtime 已创建而 ready 确认失败、上游 5xx 且探测再次失败的请求返回可对账 UUID；ACL 预留已消失时不报告 ready。五个 ACL/gateway/委托/SDK 测试模块 71 tests、3 skipped，Ruff/format 钩子通过。明确 4xx 后平台数据库清理失败仍可能留下 pending ACL，Runtime 不存在时须人工核对清理；该异常不记为自动补偿完成。相关实现仅在 platform-api，GraphHarbor 不承担业务 ACL。
+
+同日 Web `session.service.spec.ts` 验证 503 与 504 均能保留 pending UUID 并在后续创建前对账，7 passed；pre-commit 的 Ruff/format/eslint/prettier 全部通过。正式本机栈登录后在临时项目创建、读取、删除 Thread 均为 200，临时项目删除 200。此烟测仅覆盖单用户正向路径。

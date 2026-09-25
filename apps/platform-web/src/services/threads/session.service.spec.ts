@@ -56,47 +56,50 @@ it("uses SDK graphId and the public checkpoint wire contract", async () => {
   ).toBe(true);
 });
 
-it("reconciles a pending thread before retrying creation", async () => {
-  const threadId = "11111111-1111-4111-8111-111111111111";
-  let createCalls = 0;
-  let reconcileCalls = 0;
-  const transport = vi.fn<typeof fetch>(async (input) => {
-    if (String(input).endsWith("/reconcile")) {
-      reconcileCalls += 1;
+it.each([503, 504])(
+  "reconciles a pending thread after HTTP %i",
+  async (status) => {
+    const threadId = "11111111-1111-4111-8111-111111111111";
+    let createCalls = 0;
+    let reconcileCalls = 0;
+    const transport = vi.fn<typeof fetch>(async (input) => {
+      if (String(input).endsWith("/reconcile")) {
+        reconcileCalls += 1;
+        return new Response(
+          JSON.stringify(
+            reconcileCalls === 1
+              ? { thread_id: threadId, status: "pending" }
+              : {
+                  thread_id: threadId,
+                  status: "ready",
+                  thread: { thread_id: threadId },
+                },
+          ),
+          { headers: { "content-type": "application/json" } },
+        );
+      }
+      createCalls += 1;
       return new Response(
-        JSON.stringify(
-          reconcileCalls === 1
-            ? { thread_id: threadId, status: "pending" }
-            : {
-                thread_id: threadId,
-                status: "ready",
-                thread: { thread_id: threadId },
-              },
-        ),
-        { headers: { "content-type": "application/json" } },
+        JSON.stringify({ error: { extra: { thread_id: threadId } } }),
+        { status, headers: { "content-type": "application/json" } },
       );
-    }
-    createCalls += 1;
-    return new Response(
-      JSON.stringify({ error: { extra: { thread_id: threadId } } }),
-      { status: 504, headers: { "content-type": "application/json" } },
-    );
-  });
-  const service = createSessionService(transport, "project", "user");
-  await expect(
-    service.create("workflow_demo", "agent", "标题"),
-  ).rejects.toThrow(threadId);
-  const rebuiltService = createSessionService(transport, "project", "user");
-  await expect(
-    rebuiltService.create("workflow_demo", "agent", "标题"),
-  ).rejects.toThrow("请稍后重试");
-  await expect(
-    rebuiltService.create("workflow_demo", "agent", "标题"),
-  ).resolves.toMatchObject({ thread_id: threadId });
-  expect(createCalls).toBe(1);
-  expect(reconcileCalls).toBe(2);
-  expect(sessionStorage.getItem("pw:thread:create:user:project")).toBeNull();
-});
+    });
+    const service = createSessionService(transport, "project", "user");
+    await expect(
+      service.create("workflow_demo", "agent", "标题"),
+    ).rejects.toThrow(threadId);
+    const rebuiltService = createSessionService(transport, "project", "user");
+    await expect(
+      rebuiltService.create("workflow_demo", "agent", "标题"),
+    ).rejects.toThrow("请稍后重试");
+    await expect(
+      rebuiltService.create("workflow_demo", "agent", "标题"),
+    ).resolves.toMatchObject({ thread_id: threadId });
+    expect(createCalls).toBe(1);
+    expect(reconcileCalls).toBe(2);
+    expect(sessionStorage.getItem("pw:thread:create:user:project")).toBeNull();
+  },
+);
 
 it("passes metadata and pagination options to search and count", async () => {
   const requests: Array<{ url: string; body?: Record<string, unknown> }> = [];

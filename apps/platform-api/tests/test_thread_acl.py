@@ -531,6 +531,76 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(acl.get(self.factory, created_id), {})
         self.upstream.delete_thread.assert_not_awaited()
 
+    async def test_created_thread_can_reconcile_after_ready_update_fails(self):
+        from platform_api.core.errors import PlatformApiError
+
+        with patch.object(
+            acl, "mark_provisioned", side_effect=RuntimeError("db failed")
+        ):
+            with self.assertRaises(PlatformApiError) as caught:
+                await self.service.create_thread(
+                    actor=self.owner, project_id=self.project, payload={}
+                )
+        thread_id = self.upstream.create_thread.call_args.args[0]["thread_id"]
+        self.assertEqual(caught.exception.status_code, 503)
+        self.assertEqual(caught.exception.extra["thread_id"], thread_id)
+        self.assertEqual(
+            caught.exception.extra["reconcile_path"],
+            f"/api/langgraph/threads/{thread_id}/reconcile",
+        )
+        with session_scope(self.factory) as session:
+            self.assertEqual(
+                session.get(ThreadAccessRecord, thread_id).provisioning_status,
+                "pending",
+            )
+        self.upstream.get_thread.side_effect = lambda requested_id: {
+            "thread_id": requested_id,
+            "metadata": {"project_id": self.project},
+        }
+        self.upstream.with_forwarded_headers = Mock(return_value=self.upstream)
+        self.service._delegation_headers_factory = Mock(return_value={})
+        result = await self.service.reconcile_pending_thread(
+            actor=self.owner, project_id=self.project, thread_id=thread_id
+        )
+        self.assertEqual(result["status"], "ready")
+        self.upstream.delete_thread.assert_not_awaited()
+
+    async def test_created_thread_is_not_reported_ready_without_acl(self):
+        from platform_api.core.errors import PlatformApiError
+
+        with patch.object(acl, "mark_provisioned", return_value=False):
+            with self.assertRaises(PlatformApiError) as caught:
+                await self.service.create_thread(
+                    actor=self.owner, project_id=self.project, payload={}
+                )
+        self.assertEqual(caught.exception.status_code, 503)
+        self.assertEqual(
+            caught.exception.extra["thread_id"],
+            self.upstream.create_thread.call_args.args[0]["thread_id"],
+        )
+        self.upstream.delete_thread.assert_not_awaited()
+
+    async def test_cleanup_failure_returns_reconcile_identity(self):
+        from platform_api.core.errors import PlatformApiError, UpstreamServiceError
+
+        self.upstream.create_thread.side_effect = UpstreamServiceError(
+            upstream="langgraph", status_code=403, code="denied", message="Denied"
+        )
+        with patch.object(acl, "remove_pending", side_effect=RuntimeError("db failed")):
+            with self.assertRaises(PlatformApiError) as caught:
+                await self.service.create_thread(
+                    actor=self.owner, project_id=self.project, payload={}
+                )
+        thread_id = self.upstream.create_thread.call_args.args[0]["thread_id"]
+        self.assertEqual(caught.exception.status_code, 503)
+        self.assertEqual(caught.exception.extra["thread_id"], thread_id)
+        with session_scope(self.factory) as session:
+            self.assertEqual(
+                session.get(ThreadAccessRecord, thread_id).provisioning_status,
+                "pending",
+            )
+        self.upstream.delete_thread.assert_not_awaited()
+
     async def test_unknown_create_result_keeps_reservation(self):
         from platform_api.core.errors import UpstreamServiceError
 
@@ -761,6 +831,11 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
             )
         thread_id = self.upstream.create_thread.call_args.args[0]["thread_id"]
         self.assertIs(raised.exception, original)
+        self.assertEqual(raised.exception.extra["thread_id"], thread_id)
+        self.assertEqual(
+            raised.exception.extra["reconcile_path"],
+            f"/api/langgraph/threads/{thread_id}/reconcile",
+        )
         self.assertEqual(
             acl.get(self.factory, thread_id)["owner_user_id"], self.owner.user_id
         )
