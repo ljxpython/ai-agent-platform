@@ -59,3 +59,5 @@ Thread 委托复核补充：管理员无 takeover 删除为 403；限时 takeove
 两份切换前归档已用本机 PG17 的 `pg_restore --exit-on-error` 完整恢复到独立库，Runtime 旧 revision 006 与 57 Threads/324 Runs/434,742 Events、平台旧 revision `20260922_0004` 与 57 Thread ACL/401 run requests 均核对一致。隔离浏览器治理矩阵第一次重跑为 5 passed、5 failed；失败创建 Thread 403 是 Runtime ACL 回查仍指向主平台 2142，而测试 fixture 是 12142。将回查目标临时切到 fixture 重跑后须恢复主平台地址；本次失败不计通过。
 
 隔离治理矩阵在临时切换 Runtime 回查地址到 12142 后 10 项均通过（29.4 秒），随后已恢复主平台 2142。fixture 关闭时报告遗留 6 条临时 ACL，属于测试清理失败，未写入正式 platform_api；下次需用网关逐条删除或在 fixture teardown 增加失败清单核对，不能把“10 passed”扩大成无残留通过。
+
+2026-09-26 续验：使用完整回查地址 `http://127.0.0.1:12142/api/runtime/internal/thread-authorization` 重跑治理浏览器矩阵，10 passed，fixture `thread_access` 残留为 0；正式 Runtime 地址已恢复为 2142。Runtime workspace/zip/HTTP/browser/terminal/resource-binding 定向回归 54 passed，PG17 restart/HITL/workspace 1 passed，skill snapshot restart 4 passed。skill restart 测试改用本地后端已有 `RUNTIME_SKILLS_ROOT`、`RUNTIME_WORKSPACE_ROOT`，消除 Docker 路径假设；GraphHarbor 边界未改变。完整跨项目故障注入和 Final 门禁仍未完成。

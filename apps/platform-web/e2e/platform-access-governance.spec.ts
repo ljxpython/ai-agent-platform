@@ -699,19 +699,23 @@ test("project editor can create private threads but cannot edit project security
       )
     ).status(),
   ).toBe(403);
-  const thread = await request.post(`${apiUrl}/api/langgraph/threads`, {
-    headers,
-    data: {},
-  });
-  expect(thread.ok()).toBeTruthy();
-  expect(
-    (
-      await request.delete(
-        `${apiUrl}/api/langgraph/threads/${(await thread.json()).thread_id}`,
+  let threadId: string | undefined;
+  try {
+    const thread = await request.post(`${apiUrl}/api/langgraph/threads`, {
+      headers,
+      data: {},
+    });
+    expect(thread.ok()).toBeTruthy();
+    threadId = (await thread.json()).thread_id as string;
+  } finally {
+    if (threadId) {
+      const deleted = await request.delete(
+        `${apiUrl}/api/langgraph/threads/${threadId}`,
         { headers },
-      )
-    ).ok(),
-  ).toBeTruthy();
+      );
+      expect(deleted.ok()).toBeTruthy();
+    }
+  }
 });
 
 test("removing membership rejects new requests and clears both active browser tabs on focus", async ({
