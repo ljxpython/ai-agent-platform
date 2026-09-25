@@ -57,7 +57,9 @@ from platform_api.modules.runtime_gateway.application.ports import (
     BinaryPayload,
     RuntimeGatewayUpstreamProtocol,
 )
-from platform_api.modules.runtime_gateway.application.clarification import validate_clarification_resumes
+from platform_api.modules.runtime_gateway.application.clarification import (
+    validate_clarification_resumes,
+)
 from platform_api.modules.runtime_gateway.application import thread_access
 from platform_api.modules.runtime_gateway.infra.sqlalchemy.repository import (
     RunRequestsRepository,
@@ -406,12 +408,16 @@ def _normalize_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
             try:
                 reject_private_runtime_state(value)
             except ValueError as exc:
-                raise BadRequestError(code="runtime_private_state", message="Runtime execution state is server-owned") from exc
+                raise BadRequestError(
+                    code="runtime_private_state",
+                    message="Runtime execution state is server-owned",
+                ) from exc
             for item in value.values():
                 check(item)
         elif isinstance(value, list):
             for item in value:
                 check(item)
+
     check(payload)
     return ensure_dict(payload)
 
@@ -512,6 +518,20 @@ class RuntimeGatewayService:
         self._runtime_model_config_secret = runtime_model_config_secret
         self._runtime_model_config_ttl_seconds = runtime_model_config_ttl_seconds
 
+    async def _thread_upstream(self, *, project_id: str, thread: dict, operation: str):
+        if not self._delegation_headers_factory:
+            return self._upstream
+        return self._upstream.with_forwarded_headers(
+            await run_in_threadpool(
+                self._delegation_headers_factory,
+                project_id=project_id,
+                agent_key=_thread_graph_id(thread) or "",
+                thread_id=thread["thread_id"],
+                context_hash=empty_runtime_context_hash(),
+                operation=operation,
+            )
+        )
+
     def _require_session_factory(self) -> sessionmaker[Session]:
         if self._session_factory is None:
             raise ServiceUnavailableError(
@@ -584,7 +604,9 @@ class RuntimeGatewayService:
         try:
             return normalize_runtime_payload(payload=payload, project_id=project_id)
         except ValueError as exc:
-            raise BadRequestError(code="invalid_runtime_payload", message=str(exc)) from exc
+            raise BadRequestError(
+                code="invalid_runtime_payload", message=str(exc)
+            ) from exc
 
     def _inject_project_default_model(
         self,
@@ -625,11 +647,16 @@ class RuntimeGatewayService:
                             if key in agent.context
                         }
 
-        requested_model = clean_str(context.get("model_id") or runtime_options.get("model_id"))
+        requested_model = clean_str(
+            context.get("model_id") or runtime_options.get("model_id")
+        )
         if default_model_id is None and not requested_model:
             default_model_id = self._project_default_model_id(project_id=project_id)
 
-        combined_requested = {**context, **{k: v for k, v in runtime_options.items() if v is not None}}
+        combined_requested = {
+            **context,
+            **{k: v for k, v in runtime_options.items() if v is not None},
+        }
         merged = _merge_runtime_context(
             project_default_model=default_model_id,
             agent_defaults=profile_defaults,
@@ -646,7 +673,10 @@ class RuntimeGatewayService:
             next_configurable = dict(configurable)
             next_runtime_options = dict(runtime_options)
             next_runtime_options["model_id"] = merged["model_id"]
-            if merged.get("execution_mode") and "execution_mode" not in next_runtime_options:
+            if (
+                merged.get("execution_mode")
+                and "execution_mode" not in next_runtime_options
+            ):
                 next_runtime_options["execution_mode"] = merged["execution_mode"]
             next_configurable["platform_runtime"] = next_runtime_options
             next_config["configurable"] = next_configurable
@@ -655,9 +685,16 @@ class RuntimeGatewayService:
         return next_payload
 
     @staticmethod
-    def _inject_thread_access_policy(*, thread: dict[str, Any], payload: dict[str, Any], actor: ActorContext | None = None) -> dict[str, Any]:
+    def _inject_thread_access_policy(
+        *,
+        thread: dict[str, Any],
+        payload: dict[str, Any],
+        actor: ActorContext | None = None,
+    ) -> dict[str, Any]:
         policy = _thread_access_policy(thread)
-        if actor is not None and not thread_access.private_owner(actor, _thread_metadata(thread)):
+        if actor is not None and not thread_access.private_owner(
+            actor, _thread_metadata(thread)
+        ):
             policy = "review"
         next_payload = dict(payload)
         context = dict(ensure_dict(next_payload.get("context")))
@@ -765,7 +802,10 @@ class RuntimeGatewayService:
                     code="runtime_model_denied",
                     message="Requested runtime model is not enabled",
                 )
-            if getattr(item, "scope_type", "platform") == "project" and str(getattr(item, "project_id", None)) != project_id:
+            if (
+                getattr(item, "scope_type", "platform") == "project"
+                and str(getattr(item, "project_id", None)) != project_id
+            ):
                 raise ForbiddenError(
                     code="runtime_model_denied",
                     message="Requested project runtime model belongs to another project",
@@ -820,80 +860,187 @@ class RuntimeGatewayService:
         action: str | None = None,
     ) -> dict[str, Any]:
         action = action or ("edit" if write else "read")
-        if thread_access.is_manager(actor, project_id) and not actor.project_role_set(project_id) and action in {"read", "approve", "delete"}:
+        if (
+            thread_access.is_manager(actor, project_id)
+            and not actor.project_role_set(project_id)
+            and action in {"read", "approve", "delete"}
+        ):
+
             def validate_project():
                 with session_scope(self._require_session_factory()) as session:
                     self._require_project_exists(session=session, project_id=project_id)
+
             await run_in_threadpool(validate_project)
         else:
             await run_in_threadpool(
-                self._prepare_project_scope, actor=actor, project_id=project_id,
+                self._prepare_project_scope,
+                actor=actor,
+                project_id=project_id,
                 write=write and action not in {"delete", "approve", "share"},
             )
-        access = await run_in_threadpool(thread_access.get, self._require_session_factory(), thread_id)
-        if not access and action == "delete" and thread_access.is_manager(actor, project_id):
+        access = await run_in_threadpool(
+            thread_access.get, self._require_session_factory(), thread_id
+        )
+        if (
+            not access
+            and action == "delete"
+            and thread_access.is_manager(actor, project_id)
+        ):
             access = {"project_id": project_id}
         thread_access.require_action(actor, project_id, access, action)
-        if action == "read" and not thread_access.is_owner(actor, access) and thread_access.is_manager(actor, project_id) and (access.get("visibility") == "private" or not actor.project_role_set(project_id)):
-            await run_in_threadpool(thread_access.audit_takeover_access, self._require_session_factory(),
-                                   actor=actor, project_id=project_id, thread_id=thread_id)
+        if (
+            action == "read"
+            and not thread_access.is_owner(actor, access)
+            and thread_access.is_manager(actor, project_id)
+            and (
+                access.get("visibility") == "private"
+                or not actor.project_role_set(project_id)
+            )
+        ):
+            await run_in_threadpool(
+                thread_access.audit_takeover_access,
+                self._require_session_factory(),
+                actor=actor,
+                project_id=project_id,
+                thread_id=thread_id,
+            )
         thread = await self._upstream.get_thread(thread_id)
         self._assert_thread_project_scope(project_id=project_id, thread=thread)
         return self._thread_with_access(actor, project_id, thread, access)
 
     @staticmethod
-    def _thread_with_access(actor: ActorContext, project_id: str, thread: dict, access: dict) -> dict:
-        metadata = {key: value for key, value in _thread_metadata(thread).items() if key not in thread_access.ACL_KEYS}
+    def _thread_with_access(
+        actor: ActorContext, project_id: str, thread: dict, access: dict
+    ) -> dict:
+        metadata = {
+            key: value
+            for key, value in _thread_metadata(thread).items()
+            if key not in thread_access.ACL_KEYS
+        }
         metadata.update(access)
-        metadata["allowed_actions"] = [action for action in (*sorted(thread_access.SHARE_ACTIONS), "approve", "terminal", "full_access")
-                                       if thread_access.allowed(actor, project_id, access, action)]
+        metadata["allowed_actions"] = [
+            action
+            for action in (
+                *sorted(thread_access.SHARE_ACTIONS),
+                "approve",
+                "terminal",
+                "full_access",
+            )
+            if thread_access.allowed(actor, project_id, access, action)
+        ]
         metadata.pop("takeovers", None)
         if "share" not in metadata["allowed_actions"]:
             metadata.pop("shared_actions", None)
         return {**thread, "metadata": metadata}
 
-    async def enqueue_thread_message(self, *, actor: ActorContext, project_id: str,
-                                     thread_id: str, payload: dict[str, Any],
-                                     idempotency_key: str | None) -> Any:
+    async def enqueue_thread_message(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        payload: dict[str, Any],
+        idempotency_key: str | None,
+    ) -> Any:
         if not idempotency_key or len(idempotency_key) > 128:
-            raise BadRequestError(code="idempotency_key_required", message="Idempotency-Key header is required")
-        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=True, action="comment")
-        metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+            raise BadRequestError(
+                code="idempotency_key_required",
+                message="Idempotency-Key header is required",
+            )
+        thread = await self._load_thread(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            write=True,
+            action="comment",
+        )
+        metadata = (
+            thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        )
         agent_key = clean_str(metadata.get("graph_id"))
         if not agent_key:
-            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+            raise BadRequestError(
+                code="graph_id_required", message="Thread graph is missing"
+            )
         if agent_key not in {"reference_agent", "showcase_demo", "dearflow_agent"}:
-            raise ConflictError(code="queue_not_supported", message="Graph does not support queued messages")
+            raise ConflictError(
+                code="queue_not_supported",
+                message="Graph does not support queued messages",
+            )
         target_run_id = clean_str(payload.get("target_run_id"))
         if not target_run_id:
-            raise BadRequestError(code="target_run_required", message="Target Run is required")
+            raise BadRequestError(
+                code="target_run_required", message="Target Run is required"
+            )
         await self._upstream.get_thread_run(thread_id, target_run_id)
         upstream = self._upstream
         if self._delegation_headers_factory:
-            upstream = upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,
-                project_id=project_id, agent_key=agent_key, thread_id=thread_id,
-                context_hash=empty_runtime_context_hash(), operation="message-enqueue"))
+            upstream = upstream.with_forwarded_headers(
+                await run_in_threadpool(
+                    self._delegation_headers_factory,
+                    project_id=project_id,
+                    agent_key=agent_key,
+                    thread_id=thread_id,
+                    context_hash=empty_runtime_context_hash(),
+                    operation="message-enqueue",
+                )
+            )
         import jwt
         import time
-        if not self._runtime_model_config_secret:
-            raise ServiceUnavailableError(code="message_auth_unavailable", message="Message authorization is not configured")
-        reference = jwt.encode({
-            "aud": "runtime-message", "exp": int(time.time()) + 86400,
-            "project_id": project_id, "thread_id": thread_id, "run_id": target_run_id,
-            "agent_key": agent_key, "actor": {"user_id": actor.user_id,
-                "principal_type": actor.principal_type, "credential_id": actor.credential_id},
-        }, self._runtime_model_config_secret, algorithm="HS256")
-        return await upstream.enqueue_thread_message(thread_id, {
-            **payload, "idempotency_key": idempotency_key, "authorization_ref": reference,
-        })
 
-    async def list_thread_messages(self, *, actor: ActorContext, project_id: str, thread_id: str) -> Any:
-        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=False)
-        metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        if not self._runtime_model_config_secret:
+            raise ServiceUnavailableError(
+                code="message_auth_unavailable",
+                message="Message authorization is not configured",
+            )
+        reference = jwt.encode(
+            {
+                "aud": "runtime-message",
+                "exp": int(time.time()) + 86400,
+                "project_id": project_id,
+                "thread_id": thread_id,
+                "run_id": target_run_id,
+                "agent_key": agent_key,
+                "actor": {
+                    "user_id": actor.user_id,
+                    "principal_type": actor.principal_type,
+                    "credential_id": actor.credential_id,
+                },
+            },
+            self._runtime_model_config_secret,
+            algorithm="HS256",
+        )
+        return await upstream.enqueue_thread_message(
+            thread_id,
+            {
+                **payload,
+                "idempotency_key": idempotency_key,
+                "authorization_ref": reference,
+            },
+        )
+
+    async def list_thread_messages(
+        self, *, actor: ActorContext, project_id: str, thread_id: str
+    ) -> Any:
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=False
+        )
+        metadata = (
+            thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        )
         agent_key = clean_str(metadata.get("graph_id"))
         upstream = self._upstream
         if self._delegation_headers_factory:
-            upstream = upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,project_id=project_id, agent_key=agent_key, thread_id=thread_id, context_hash=empty_runtime_context_hash(), operation="message-read"))
+            upstream = upstream.with_forwarded_headers(
+                await run_in_threadpool(
+                    self._delegation_headers_factory,
+                    project_id=project_id,
+                    agent_key=agent_key,
+                    thread_id=thread_id,
+                    context_hash=empty_runtime_context_hash(),
+                    operation="message-read",
+                )
+            )
         return await upstream.list_thread_messages(thread_id)
 
     async def upload_thread_image(
@@ -909,7 +1056,9 @@ class RuntimeGatewayService:
     ) -> dict[str, Any]:
         sha256 = clean_str(sha256).lower()
         if len(sha256) != 64 or any(c not in "0123456789abcdef" for c in sha256):
-            raise BadRequestError(code="image_hash_invalid", message="Invalid image sha256")
+            raise BadRequestError(
+                code="image_hash_invalid", message="Invalid image sha256"
+            )
 
         media_type = content_type.split(";")[0].strip().lower()
         if media_type not in {"image/png", "image/jpeg", "image/webp"}:
@@ -920,7 +1069,10 @@ class RuntimeGatewayService:
             )
 
         if content_length <= 0:
-            raise BadRequestError(code="image_length_required", message="Content-Length must be a positive integer")
+            raise BadRequestError(
+                code="image_length_required",
+                message="Content-Length must be a positive integer",
+            )
         if content_length > 5 * 1024 * 1024:
             raise PlatformApiError(
                 code="image_too_large",
@@ -928,16 +1080,23 @@ class RuntimeGatewayService:
                 message="Image upload exceeds 5 MiB limit",
             )
 
-        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=True)
-        metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=True
+        )
+        metadata = (
+            thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        )
         agent_key = clean_str(metadata.get("graph_id"))
         if not agent_key:
-            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+            raise BadRequestError(
+                code="graph_id_required", message="Thread graph is missing"
+            )
 
         upstream = self._upstream
         if self._delegation_headers_factory:
             upstream = upstream.with_forwarded_headers(
-                await run_in_threadpool(self._delegation_headers_factory,
+                await run_in_threadpool(
+                    self._delegation_headers_factory,
                     project_id=project_id,
                     agent_key=agent_key,
                     thread_id=thread_id,
@@ -956,7 +1115,9 @@ class RuntimeGatewayService:
         )
 
         version = ref.get("version") if isinstance(ref, dict) else None
-        mime_type = (ref.get("mime_type") or ref.get("mime")) if isinstance(ref, dict) else None
+        mime_type = (
+            (ref.get("mime_type") or ref.get("mime")) if isinstance(ref, dict) else None
+        )
         path = ref.get("path") if isinstance(ref, dict) else None
         ref_sha256 = ref.get("sha256") if isinstance(ref, dict) else None
         size_bytes = ref.get("size_bytes") if isinstance(ref, dict) else None
@@ -994,7 +1155,9 @@ class RuntimeGatewayService:
     ) -> BinaryPayload:
         path = clean_str(path)
         if not path or ".." in path or "\\" in path:
-            raise BadRequestError(code="image_path_invalid", message="Invalid image path")
+            raise BadRequestError(
+                code="image_path_invalid", message="Invalid image path"
+            )
 
         allowed_prefixes = (
             "/workspace/uploads/",
@@ -1003,18 +1166,28 @@ class RuntimeGatewayService:
             "/workspace/outputs/",
         )
         if not any(path.startswith(prefix) for prefix in allowed_prefixes):
-            raise BadRequestError(code="image_path_invalid", message="Path must be in allowed workspace image directories")
+            raise BadRequestError(
+                code="image_path_invalid",
+                message="Path must be in allowed workspace image directories",
+            )
 
-        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=False)
-        metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=False
+        )
+        metadata = (
+            thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        )
         agent_key = clean_str(metadata.get("graph_id"))
         if not agent_key:
-            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+            raise BadRequestError(
+                code="graph_id_required", message="Thread graph is missing"
+            )
 
         upstream = self._upstream
         if self._delegation_headers_factory:
             upstream = upstream.with_forwarded_headers(
-                await run_in_threadpool(self._delegation_headers_factory,
+                await run_in_threadpool(
+                    self._delegation_headers_factory,
                     project_id=project_id,
                     agent_key=agent_key,
                     thread_id=thread_id,
@@ -1043,14 +1216,18 @@ class RuntimeGatewayService:
     ) -> dict[str, Any]:
         sha256 = clean_str(sha256).lower()
         if len(sha256) != 64 or any(c not in "0123456789abcdef" for c in sha256):
-            raise BadRequestError(code="invalid_file_ref", message="Invalid file sha256")
+            raise BadRequestError(
+                code="invalid_file_ref", message="Invalid file sha256"
+            )
 
         media_type = content_type.split(";")[0].strip().lower()
         allowed_mimes = {
             "application/zip",
             "application/vnd.ms-excel",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "text/html", "text/css", "text/javascript",
+            "text/html",
+            "text/css",
+            "text/javascript",
             "application/pdf",
             "text/plain",
             "text/markdown",
@@ -1065,7 +1242,10 @@ class RuntimeGatewayService:
             )
 
         if content_length <= 0:
-            raise BadRequestError(code="file_length_required", message="Content-Length must be a positive integer")
+            raise BadRequestError(
+                code="file_length_required",
+                message="Content-Length must be a positive integer",
+            )
         if content_length > 20 * 1024 * 1024:
             raise PlatformApiError(
                 code="file_too_large",
@@ -1073,16 +1253,23 @@ class RuntimeGatewayService:
                 message="File upload exceeds 20 MiB limit",
             )
 
-        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=True)
-        metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=True
+        )
+        metadata = (
+            thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        )
         agent_key = clean_str(metadata.get("graph_id"))
         if not agent_key:
-            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+            raise BadRequestError(
+                code="graph_id_required", message="Thread graph is missing"
+            )
 
         upstream = self._upstream
         if self._delegation_headers_factory:
             upstream = upstream.with_forwarded_headers(
-                await run_in_threadpool(self._delegation_headers_factory,
+                await run_in_threadpool(
+                    self._delegation_headers_factory,
                     project_id=project_id,
                     agent_key=agent_key,
                     thread_id=thread_id,
@@ -1102,7 +1289,9 @@ class RuntimeGatewayService:
         )
 
         version = ref.get("version") if isinstance(ref, dict) else None
-        mime_type = (ref.get("mime_type") or ref.get("mime")) if isinstance(ref, dict) else None
+        mime_type = (
+            (ref.get("mime_type") or ref.get("mime")) if isinstance(ref, dict) else None
+        )
         path = ref.get("path") if isinstance(ref, dict) else None
         ref_sha256 = ref.get("sha256") if isinstance(ref, dict) else None
         size_bytes = ref.get("size_bytes") if isinstance(ref, dict) else None
@@ -1132,41 +1321,86 @@ class RuntimeGatewayService:
             "sha256": ref_sha256,
         }
 
-    async def dear_skills(self, *, actor: ActorContext, project_id: str, method: str,
-                          suffix: str = "", payload: dict | None = None, params: dict | None = None):
+    async def dear_skills(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        method: str,
+        suffix: str = "",
+        payload: dict | None = None,
+        params: dict | None = None,
+    ):
         write = method != "GET"
-        await run_in_threadpool(self._prepare_project_scope, actor=actor, project_id=project_id, write=write)
-        await run_in_threadpool(self._assert_runtime_target_allowed, project_id=project_id, assistant_id="dearflow_agent")
+        await run_in_threadpool(
+            self._prepare_project_scope, actor=actor, project_id=project_id, write=write
+        )
+        await run_in_threadpool(
+            self._assert_runtime_target_allowed,
+            project_id=project_id,
+            assistant_id="dearflow_agent",
+        )
         if not self._delegation_headers_factory:
-            raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
-        upstream = self._upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,
-            project_id=project_id, agent_key="dearflow_agent", thread_id=None,
-            context_hash=empty_runtime_context_hash(),
-            operation="dear-skills-write" if write else "dear-skills-read"))
-        result = await upstream.dear_skills(method, suffix, payload=payload, params=params)
+            raise ServiceUnavailableError(
+                code="runtime_delegation_not_configured",
+                message="Runtime delegation required",
+            )
+        upstream = self._upstream.with_forwarded_headers(
+            await run_in_threadpool(
+                self._delegation_headers_factory,
+                project_id=project_id,
+                agent_key="dearflow_agent",
+                thread_id=None,
+                context_hash=empty_runtime_context_hash(),
+                operation="dear-skills-write" if write else "dear-skills-read",
+            )
+        )
+        result = await upstream.dear_skills(
+            method, suffix, payload=payload, params=params
+        )
         if method == "GET" and not suffix:
             can_write = True
             try:
                 self._authorize(actor=actor, project_id=project_id, write=True)
             except ForbiddenError:
                 can_write = False
-            result["capabilities"]["can_write"] = can_write and result["capabilities"]["custom_management_enabled"]
+            result["capabilities"]["can_write"] = (
+                can_write and result["capabilities"]["custom_management_enabled"]
+            )
         return result
 
-    async def dear_memory(self, *, actor: ActorContext, project_id: str,
-                          payload: dict | None = None) -> dict:
+    async def dear_memory(
+        self, *, actor: ActorContext, project_id: str, payload: dict | None = None
+    ) -> dict:
         if actor.principal_type != "user" or not actor.user_id:
-            raise ForbiddenError(code="memory_user_required", message="Personal memory requires a user account")
+            raise ForbiddenError(
+                code="memory_user_required",
+                message="Personal memory requires a user account",
+            )
         write = payload is not None
-        await run_in_threadpool(self._prepare_project_scope, actor=actor, project_id=project_id, write=write)
-        await run_in_threadpool(self._assert_runtime_target_allowed, project_id=project_id,
-                                assistant_id="dearflow_agent")
+        await run_in_threadpool(
+            self._prepare_project_scope, actor=actor, project_id=project_id, write=write
+        )
+        await run_in_threadpool(
+            self._assert_runtime_target_allowed,
+            project_id=project_id,
+            assistant_id="dearflow_agent",
+        )
         if not self._delegation_headers_factory:
-            raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
-        upstream = self._upstream.with_forwarded_headers(await run_in_threadpool(
-            self._delegation_headers_factory, project_id=project_id, agent_key="dearflow_agent",
-            thread_id=None, context_hash=empty_runtime_context_hash(),
-            operation="dear-memory-write" if write else "dear-memory-read"))
+            raise ServiceUnavailableError(
+                code="runtime_delegation_not_configured",
+                message="Runtime delegation required",
+            )
+        upstream = self._upstream.with_forwarded_headers(
+            await run_in_threadpool(
+                self._delegation_headers_factory,
+                project_id=project_id,
+                agent_key="dearflow_agent",
+                thread_id=None,
+                context_hash=empty_runtime_context_hash(),
+                operation="dear-memory-write" if write else "dear-memory-read",
+            )
+        )
         result = await upstream.dear_memory(payload=payload)
         if not write and result.get("status") == "ready":
             try:
@@ -1175,88 +1409,220 @@ class RuntimeGatewayService:
                 result["capabilities"]["can_write"] = False
         return result
 
-    async def dear_governance(self, *, actor: ActorContext, project_id: str, thread_id: str,
-                              resource: str, payload: dict | None = None, query: str = "") -> dict:
+    async def dear_governance(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        resource: str,
+        payload: dict | None = None,
+        query: str = "",
+    ) -> dict:
         if resource != "memory":
-            raise BadRequestError(code="invalid_dear_resource", message="Unknown Dear resource")
-        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=payload is not None)
-        if not thread_access.personal_memory_allowed(_thread_metadata(thread),
-                project_id=project_id, user_id=actor.user_id or ""):
-            raise ForbiddenError(code="memory_thread_shared", message="Personal memory is unavailable in shared Threads")
+            raise BadRequestError(
+                code="invalid_dear_resource", message="Unknown Dear resource"
+            )
+        thread = await self._load_thread(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            write=payload is not None,
+        )
+        if not thread_access.personal_memory_allowed(
+            _thread_metadata(thread), project_id=project_id, user_id=actor.user_id or ""
+        ):
+            raise ForbiddenError(
+                code="memory_thread_shared",
+                message="Personal memory is unavailable in shared Threads",
+            )
         agent_key = clean_str(ensure_dict(thread.get("metadata")).get("graph_id"))
         if agent_key != "dearflow_agent":
-            raise BadRequestError(code="dear_agent_required", message="Dear Agent thread required")
-        await run_in_threadpool(self._assert_runtime_target_allowed, project_id=project_id,
-                                assistant_id=agent_key, thread=thread)
+            raise BadRequestError(
+                code="dear_agent_required", message="Dear Agent thread required"
+            )
+        await run_in_threadpool(
+            self._assert_runtime_target_allowed,
+            project_id=project_id,
+            assistant_id=agent_key,
+            thread=thread,
+        )
         if not self._delegation_headers_factory:
-            raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
-        upstream = self._upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,
-            project_id=project_id, agent_key=agent_key, thread_id=thread_id,
-            context_hash=empty_runtime_context_hash(),
-            operation="dear-governance-write" if payload is not None else "dear-governance-read"))
-        return await upstream.dear_governance(thread_id, resource, payload=payload, query=query)
+            raise ServiceUnavailableError(
+                code="runtime_delegation_not_configured",
+                message="Runtime delegation required",
+            )
+        upstream = self._upstream.with_forwarded_headers(
+            await run_in_threadpool(
+                self._delegation_headers_factory,
+                project_id=project_id,
+                agent_key=agent_key,
+                thread_id=thread_id,
+                context_hash=empty_runtime_context_hash(),
+                operation="dear-governance-write"
+                if payload is not None
+                else "dear-governance-read",
+            )
+        )
+        return await upstream.dear_governance(
+            thread_id, resource, payload=payload, query=query
+        )
 
     async def get_thread_capabilities(
-        self, *, actor: ActorContext, project_id: str, thread_id: str,
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
     ) -> dict[str, Any]:
         thread = await self._load_thread(
             actor=actor, project_id=project_id, thread_id=thread_id, write=False
         )
         agent_key = clean_str(ensure_dict(thread.get("metadata")).get("graph_id"))
         if not agent_key:
-            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+            raise BadRequestError(
+                code="graph_id_required", message="Thread graph is missing"
+            )
         await run_in_threadpool(
-            self._assert_runtime_target_allowed, project_id=project_id,
-            assistant_id=agent_key, thread=thread,
+            self._assert_runtime_target_allowed,
+            project_id=project_id,
+            assistant_id=agent_key,
+            thread=thread,
         )
         upstream = self._upstream
         if self._delegation_headers_factory:
-            upstream = upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,
-                project_id=project_id, agent_key=agent_key, thread_id=thread_id,
-                context_hash=empty_runtime_context_hash(), operation="read",
-            ))
+            upstream = upstream.with_forwarded_headers(
+                await run_in_threadpool(
+                    self._delegation_headers_factory,
+                    project_id=project_id,
+                    agent_key=agent_key,
+                    thread_id=thread_id,
+                    context_hash=empty_runtime_context_hash(),
+                    operation="read",
+                )
+            )
         capabilities = await upstream.get_graph_capabilities(agent_key)
-        return {**capabilities, "terminal": bool(capabilities.get("terminal")) and
-                thread_access.allowed(actor, project_id, _thread_metadata(thread), "terminal")}
+        return {
+            **capabilities,
+            "terminal": bool(capabilities.get("terminal"))
+            and thread_access.allowed(
+                actor, project_id, _thread_metadata(thread), "terminal"
+            ),
+        }
 
-    async def thread_terminal(self, *, actor: ActorContext, project_id: str, thread_id: str,
-                              action: str, terminal_id: str | None = None, payload: dict | None = None,
-                              offset: int = 0) -> dict:
+    async def thread_terminal(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        action: str,
+        terminal_id: str | None = None,
+        payload: dict | None = None,
+        offset: int = 0,
+    ) -> dict:
         if action not in {"create", "list", "output", "input", "resize", "close"}:
-            raise BadRequestError(code="invalid_terminal_action", message="Unknown terminal action")
-        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=True)
-        thread_access.require_action(actor, project_id, _thread_metadata(thread), "terminal")
+            raise BadRequestError(
+                code="invalid_terminal_action", message="Unknown terminal action"
+            )
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=True
+        )
+        thread_access.require_action(
+            actor, project_id, _thread_metadata(thread), "terminal"
+        )
         agent_key = clean_str(ensure_dict(thread.get("metadata")).get("graph_id"))
-        await run_in_threadpool(self._assert_runtime_target_allowed, project_id=project_id,
-                                assistant_id=agent_key, thread=thread)
+        await run_in_threadpool(
+            self._assert_runtime_target_allowed,
+            project_id=project_id,
+            assistant_id=agent_key,
+            thread=thread,
+        )
         if not self._delegation_headers_factory:
-            raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
-        upstream = self._upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,
-            project_id=project_id, agent_key=agent_key, thread_id=thread_id,
-            context_hash=empty_runtime_context_hash(),
-            operation="terminal-read" if action in {"list", "output"} else "terminal-write"))
-        return await upstream.terminal_request(thread_id, action, terminal_id=terminal_id, payload=payload, offset=offset)
+            raise ServiceUnavailableError(
+                code="runtime_delegation_not_configured",
+                message="Runtime delegation required",
+            )
+        upstream = self._upstream.with_forwarded_headers(
+            await run_in_threadpool(
+                self._delegation_headers_factory,
+                project_id=project_id,
+                agent_key=agent_key,
+                thread_id=thread_id,
+                context_hash=empty_runtime_context_hash(),
+                operation="terminal-read"
+                if action in {"list", "output"}
+                else "terminal-write",
+            )
+        )
+        return await upstream.terminal_request(
+            thread_id, action, terminal_id=terminal_id, payload=payload, offset=offset
+        )
 
-    async def thread_workspace(self, *, actor: ActorContext, project_id: str, thread_id: str,
-                               resource: str, path: str = "/workspace", cursor: str | None = None,
-                               limit: int = 100) -> Any:
-        if resource not in {"workspace/tree", "workspace/content", "workspace/preview", "artifacts", "workspace/zip"}:
-            raise BadRequestError(code="invalid_workspace_resource", message="Unknown workspace resource")
+    async def thread_workspace(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        resource: str,
+        path: str = "/workspace",
+        cursor: str | None = None,
+        limit: int = 100,
+    ) -> Any:
+        if resource not in {
+            "workspace/tree",
+            "workspace/content",
+            "workspace/preview",
+            "artifacts",
+            "workspace/zip",
+        }:
+            raise BadRequestError(
+                code="invalid_workspace_resource", message="Unknown workspace resource"
+            )
         if resource != "workspace/zip":
-            if (len(path) > 4096 or "\\" in path or any(ord(c) < 32 or ord(c) == 127 for c in path)
-                or path != "/workspace" and (not path.startswith("/workspace/") or any(p in {"", ".", ".."} for p in path[11:].split("/")))):
-                raise BadRequestError(code="invalid_workspace_path", message="Invalid workspace path")
-        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=False)
+            if (
+                len(path) > 4096
+                or "\\" in path
+                or any(ord(c) < 32 or ord(c) == 127 for c in path)
+                or path != "/workspace"
+                and (
+                    not path.startswith("/workspace/")
+                    or any(p in {"", ".", ".."} for p in path[11:].split("/"))
+                )
+            ):
+                raise BadRequestError(
+                    code="invalid_workspace_path", message="Invalid workspace path"
+                )
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=False
+        )
         agent_key = clean_str(ensure_dict(thread.get("metadata")).get("graph_id"))
         if not agent_key:
-            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
-        await run_in_threadpool(self._assert_runtime_target_allowed, project_id=project_id,
-                                assistant_id=agent_key, thread=thread)
+            raise BadRequestError(
+                code="graph_id_required", message="Thread graph is missing"
+            )
+        await run_in_threadpool(
+            self._assert_runtime_target_allowed,
+            project_id=project_id,
+            assistant_id=agent_key,
+            thread=thread,
+        )
         if not self._delegation_headers_factory:
-            raise ServiceUnavailableError(code="runtime_delegation_not_configured", message="Runtime delegation required")
-        upstream = self._upstream.with_forwarded_headers(await run_in_threadpool(self._delegation_headers_factory,
-            project_id=project_id, agent_key=agent_key, thread_id=thread_id,
-            context_hash=empty_runtime_context_hash(), operation="workspace-file-read"))
+            raise ServiceUnavailableError(
+                code="runtime_delegation_not_configured",
+                message="Runtime delegation required",
+            )
+        upstream = self._upstream.with_forwarded_headers(
+            await run_in_threadpool(
+                self._delegation_headers_factory,
+                project_id=project_id,
+                agent_key=agent_key,
+                thread_id=thread_id,
+                context_hash=empty_runtime_context_hash(),
+                operation="workspace-file-read",
+            )
+        )
         if resource in {"workspace/content", "workspace/preview"}:
             return await upstream.workspace_file(thread_id, resource, path)
         if resource == "workspace/zip":
@@ -1281,18 +1647,28 @@ class RuntimeGatewayService:
             raise BadRequestError(code="invalid_file_ref", message="Invalid file path")
 
         if not path.startswith(("/workspace/uploads/", "/workspace/outputs/")):
-            raise BadRequestError(code="invalid_file_ref", message="Path must be in uploads or published outputs")
+            raise BadRequestError(
+                code="invalid_file_ref",
+                message="Path must be in uploads or published outputs",
+            )
 
-        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=False)
-        metadata = thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=False
+        )
+        metadata = (
+            thread.get("metadata") if isinstance(thread.get("metadata"), dict) else {}
+        )
         agent_key = clean_str(metadata.get("graph_id"))
         if not agent_key:
-            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+            raise BadRequestError(
+                code="graph_id_required", message="Thread graph is missing"
+            )
 
         upstream = self._upstream
         if self._delegation_headers_factory:
             upstream = upstream.with_forwarded_headers(
-                await run_in_threadpool(self._delegation_headers_factory,
+                await run_in_threadpool(
+                    self._delegation_headers_factory,
                     project_id=project_id,
                     agent_key=agent_key,
                     thread_id=thread_id,
@@ -1376,12 +1752,33 @@ class RuntimeGatewayService:
         interrupt_id: str | None = None,
     ) -> tuple[StoredRunRequest, Any]:
         """Persist submission identity; Agent Server owns execution and concurrency."""
-        thread_action = "approve" if interrupt_id or parent_run_id or "resume" in ensure_dict(upstream_payload.get("command")) else "comment"
-        await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=True, action=thread_action)
+        thread_action = (
+            "approve"
+            if interrupt_id
+            or parent_run_id
+            or "resume" in ensure_dict(upstream_payload.get("command"))
+            else "comment"
+        )
+        await self._load_thread(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            write=True,
+            action=thread_action,
+        )
         _normalize_payload(upstream_payload)
-        if "version" in upstream_payload and upstream_payload["version"] not in ("v2", "v3"):
-            raise BadRequestError(code="invalid_stream_version", message="version must be v2 or v3")
-        if upstream_payload.get("assistant_id") in {"reference_agent", "showcase_demo", "dearflow_agent"}:
+        if "version" in upstream_payload and upstream_payload["version"] not in (
+            "v2",
+            "v3",
+        ):
+            raise BadRequestError(
+                code="invalid_stream_version", message="version must be v2 or v3"
+            )
+        if upstream_payload.get("assistant_id") in {
+            "reference_agent",
+            "showcase_demo",
+            "dearflow_agent",
+        }:
             upstream_payload = {**upstream_payload, "durability": "sync"}
         key = _normalize_idempotency_key(idempotency_key)
         actor_id = (
@@ -1449,7 +1846,9 @@ class RuntimeGatewayService:
         payload = dict(upstream_payload)
         payload.setdefault("stream_mode", list(_DEFAULT_STREAM_MODES))
         payload.setdefault("stream_resumable", True)
-        payload["multitask_strategy"] = str(upstream_payload.get("multitask_strategy") or "reject")
+        payload["multitask_strategy"] = str(
+            upstream_payload.get("multitask_strategy") or "reject"
+        )
         payload["context"] = dict(record.context_snapshot)
         payload["config"] = dict(record.config_snapshot)
         config_configurable = ensure_dict(payload["config"].get("configurable"))
@@ -1477,7 +1876,8 @@ class RuntimeGatewayService:
             upstream, "with_forwarded_headers"
         ):
             upstream = upstream.with_forwarded_headers(
-                await run_in_threadpool(self._delegation_headers_factory,
+                await run_in_threadpool(
+                    self._delegation_headers_factory,
                     project_id=project_id,
                     agent_key=agent_key,
                     thread_id=thread_id,
@@ -1552,13 +1952,19 @@ class RuntimeGatewayService:
         next_payload = self._inject_project_metadata(
             project_id=project_id, payload=payload
         )
-        metadata = thread_access.initial_metadata(actor, dict(ensure_dict(next_payload.get("metadata"))))
+        metadata = thread_access.initial_metadata(
+            actor, dict(ensure_dict(next_payload.get("metadata")))
+        )
         policy = metadata.get(_ACCESS_POLICY_KEY)
         if policy == "full_access":
             thread_access.require_action(actor, project_id, metadata, "full_access")
         if policy in _ACCESS_POLICIES:
             metadata[_ACCESS_POLICY_KEY] = policy
-        next_payload["metadata"] = {key: value for key, value in metadata.items() if key not in thread_access.ACL_KEYS}
+        next_payload["metadata"] = {
+            key: value
+            for key, value in metadata.items()
+            if key not in thread_access.ACL_KEYS
+        }
         next_payload["thread_id"] = str(uuid4())
         next_payload["if_exists"] = "raise"
         next_payload = _promote_thread_graph_id(next_payload)
@@ -1574,49 +1980,145 @@ class RuntimeGatewayService:
             )
             upstream = upstream.with_forwarded_headers(headers)
         access = await run_in_threadpool(
-            thread_access.register, self._require_session_factory(),
-            thread_id=next_payload["thread_id"], project_id=project_id, actor=actor,
+            thread_access.register,
+            self._require_session_factory(),
+            thread_id=next_payload["thread_id"],
+            project_id=project_id,
+            actor=actor,
         )
         try:
             thread = await upstream.create_thread(next_payload)
         except UpstreamServiceError as exc:
             if exc.status_code < 500:
                 await run_in_threadpool(
-                    thread_access.remove, self._require_session_factory(),
-                    actor=actor, project_id=project_id, thread_id=next_payload["thread_id"],
+                    thread_access.remove_pending,
+                    self._require_session_factory(),
+                    project_id=project_id,
+                    thread_id=next_payload["thread_id"],
                 )
+            elif self._delegation_headers_factory and hasattr(
+                self._upstream, "with_forwarded_headers"
+            ):
+                reconcile = self._upstream.with_forwarded_headers(
+                    await run_in_threadpool(
+                        self._delegation_headers_factory,
+                        project_id=project_id,
+                        agent_key=clean_str(next_payload.get("graph_id")) or "",
+                        thread_id=next_payload["thread_id"],
+                        context_hash=empty_runtime_context_hash(),
+                        operation="thread-reconcile",
+                    )
+                )
+                try:
+                    thread = await reconcile.get_thread(next_payload["thread_id"])
+                except UpstreamServiceError as probe_error:
+                    if probe_error.status_code == 404:
+                        await run_in_threadpool(
+                            thread_access.remove_pending,
+                            self._require_session_factory(),
+                            project_id=project_id,
+                            thread_id=next_payload["thread_id"],
+                        )
+                    else:
+                        raise exc
+                else:
+                    if thread.get("thread_id") == next_payload["thread_id"]:
+                        self._assert_thread_project_scope(
+                            project_id=project_id, thread=thread
+                        )
+                        await run_in_threadpool(
+                            thread_access.mark_provisioned,
+                            self._require_session_factory(),
+                            next_payload["thread_id"],
+                        )
+                        return self._thread_with_access(
+                            actor, project_id, thread, access
+                        )
             raise
         if thread.get("thread_id") != next_payload["thread_id"]:
-            raise PlatformApiError(code="invalid_created_thread_id", status_code=502, message="Runtime did not preserve the requested Thread identity")
-        await run_in_threadpool(thread_access.mark_provisioned, self._require_session_factory(), next_payload["thread_id"])
+            raise PlatformApiError(
+                code="invalid_created_thread_id",
+                status_code=502,
+                message="Runtime did not preserve the requested Thread identity",
+            )
+        await run_in_threadpool(
+            thread_access.mark_provisioned,
+            self._require_session_factory(),
+            next_payload["thread_id"],
+        )
         return self._thread_with_access(actor, project_id, thread, access)
 
-    async def _visible_threads(self, *, actor: ActorContext, project_id: str, payload: dict) -> list[dict]:
-        records = await run_in_threadpool(thread_access.visible_records, self._require_session_factory(), actor=actor, project_id=project_id)
+    async def _visible_threads(
+        self, *, actor: ActorContext, project_id: str, payload: dict
+    ) -> list[dict]:
+        records = await run_in_threadpool(
+            thread_access.visible_records,
+            self._require_session_factory(),
+            actor=actor,
+            project_id=project_id,
+        )
         requested_ids = payload.get("ids")
-        ids = [thread_id for thread_id in records if requested_ids is None or thread_id in requested_ids]
-        metadata = {key: value for key, value in ensure_dict(payload.get("metadata")).items() if key not in thread_access.ACL_KEYS}
+        ids = [
+            thread_id
+            for thread_id in records
+            if requested_ids is None or thread_id in requested_ids
+        ]
+        metadata = {
+            key: value
+            for key, value in ensure_dict(payload.get("metadata")).items()
+            if key not in thread_access.ACL_KEYS
+        }
         metadata["project_id"] = project_id
-        query = {key: value for key, value in payload.items() if key not in {"limit", "offset", "select", "extract", "ids", "metadata"}}
+        query = {
+            key: value
+            for key, value in payload.items()
+            if key not in {"limit", "offset", "select", "extract", "ids", "metadata"}
+        }
         rows: list[dict] = []
         # ponytail: materialize authorized IDs for exact filtered counts; add a local searchable history index if project history becomes large.
         for start in range(0, len(ids), 100):
-            batch_ids = ids[start:start + 100]
+            batch_ids = ids[start : start + 100]
             for thread_id in batch_ids:
                 access = records[thread_id]
-                if thread_access.is_manager(actor, project_id) and not thread_access.is_owner(actor, access) and access.get("visibility") == "private":
-                    await run_in_threadpool(thread_access.audit_takeover_access, self._require_session_factory(),
-                                           actor=actor, project_id=project_id, thread_id=thread_id)
-            batch = await self._upstream.search_threads({**query, "metadata": metadata, "ids": batch_ids, "limit": 100, "offset": 0})
+                if (
+                    thread_access.is_manager(actor, project_id)
+                    and not thread_access.is_owner(actor, access)
+                    and access.get("visibility") == "private"
+                ):
+                    await run_in_threadpool(
+                        thread_access.audit_takeover_access,
+                        self._require_session_factory(),
+                        actor=actor,
+                        project_id=project_id,
+                        thread_id=thread_id,
+                    )
+            batch = await self._upstream.search_threads(
+                {
+                    **query,
+                    "metadata": metadata,
+                    "ids": batch_ids,
+                    "limit": 100,
+                    "offset": 0,
+                }
+            )
             if not isinstance(batch, list):
-                raise PlatformApiError(code="invalid_thread_search", status_code=502, message="Invalid Thread search response")
+                raise PlatformApiError(
+                    code="invalid_thread_search",
+                    status_code=502,
+                    message="Invalid Thread search response",
+                )
             for row in batch:
                 thread_id = row.get("thread_id")
                 if thread_id not in batch_ids:
-                    raise ForbiddenError(code="thread_search_scope_denied", message="Runtime returned an unexpected Thread")
+                    raise ForbiddenError(
+                        code="thread_search_scope_denied",
+                        message="Runtime returned an unexpected Thread",
+                    )
                 self._assert_thread_project_scope(project_id=project_id, thread=row)
                 row.pop("values", None)
-                rows.append(self._thread_with_access(actor, project_id, row, records[thread_id]))
+                rows.append(
+                    self._thread_with_access(actor, project_id, row, records[thread_id])
+                )
         return rows
 
     async def search_threads(
@@ -1633,17 +2135,48 @@ class RuntimeGatewayService:
             project_id=project_id, payload=payload
         )
         limit, offset = next_payload.get("limit", 20), next_payload.get("offset", 0)
-        sort_by, order = next_payload.get("sort_by", "updated_at"), next_payload.get("sort_order", "desc")
-        if type(limit) is not int or not 1 <= limit <= 100 or type(offset) is not int or not 0 <= offset <= 10_000:
-            raise BadRequestError(code="invalid_thread_page", message="Thread limit must be 1–100 and offset 0–10000")
-        if sort_by not in {"created_at", "updated_at", "thread_id"} or order not in {"asc", "desc"}:
-            raise BadRequestError(code="invalid_thread_sort", message="Unsupported Thread sort")
+        sort_by, order = (
+            next_payload.get("sort_by", "updated_at"),
+            next_payload.get("sort_order", "desc"),
+        )
+        if (
+            type(limit) is not int
+            or not 1 <= limit <= 100
+            or type(offset) is not int
+            or not 0 <= offset <= 10_000
+        ):
+            raise BadRequestError(
+                code="invalid_thread_page",
+                message="Thread limit must be 1–100 and offset 0–10000",
+            )
+        if sort_by not in {"created_at", "updated_at", "thread_id"} or order not in {
+            "asc",
+            "desc",
+        }:
+            raise BadRequestError(
+                code="invalid_thread_sort", message="Unsupported Thread sort"
+            )
         selected = next_payload.pop("select", None)
         next_payload.pop("extract", None)
-        rows = await self._visible_threads(actor=actor, project_id=project_id, payload=next_payload)
-        rows.sort(key=lambda row: (str(row.get(sort_by) or ""), str(row.get("thread_id") or "")), reverse=order == "desc")
-        page = rows[offset:offset + limit]
-        return [{key: value for key, value in row.items() if key in selected} for row in page] if isinstance(selected, list) and selected else page
+        rows = await self._visible_threads(
+            actor=actor, project_id=project_id, payload=next_payload
+        )
+        rows.sort(
+            key=lambda row: (
+                str(row.get(sort_by) or ""),
+                str(row.get("thread_id") or ""),
+            ),
+            reverse=order == "desc",
+        )
+        page = rows[offset : offset + limit]
+        return (
+            [
+                {key: value for key, value in row.items() if key in selected}
+                for row in page
+            ]
+            if isinstance(selected, list) and selected
+            else page
+        )
 
     async def count_threads(
         self,
@@ -1658,7 +2191,9 @@ class RuntimeGatewayService:
         next_payload = self._inject_project_metadata(
             project_id=project_id, payload=payload
         )
-        rows = await self._visible_threads(actor=actor, project_id=project_id, payload=next_payload)
+        rows = await self._visible_threads(
+            actor=actor, project_id=project_id, payload=next_payload
+        )
         return {"count": len(rows)}
 
     async def get_thread(
@@ -1682,16 +2217,24 @@ class RuntimeGatewayService:
         project_id: str,
         thread_id: str,
     ) -> Any:
-        await self._load_thread(
+        thread = await self._load_thread(
             actor=actor,
             project_id=project_id,
             thread_id=thread_id,
             write=True,
             action="delete",
         )
-        result = await self._upstream.delete_thread(thread_id)
-        await run_in_threadpool(thread_access.remove, self._require_session_factory(),
-                               actor=actor, project_id=project_id, thread_id=thread_id)
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="thread-delete"
+        )
+        result = await upstream.delete_thread(thread_id)
+        await run_in_threadpool(
+            thread_access.remove,
+            self._require_session_factory(),
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+        )
         return result
 
     async def fork_thread(
@@ -1714,7 +2257,9 @@ class RuntimeGatewayService:
         )
         graph_id = _thread_graph_id(source)
         if not graph_id:
-            raise BadRequestError(code="graph_id_required", message="Thread graph is missing")
+            raise BadRequestError(
+                code="graph_id_required", message="Thread graph is missing"
+            )
         state = await self._upstream.get_thread_state(
             thread_id, {"checkpoint_id": checkpoint_id}
         )
@@ -1739,7 +2284,8 @@ class RuntimeGatewayService:
         if not thread_access.is_owner(actor, source_metadata):
             metadata[_ACCESS_POLICY_KEY] = "review"
         target = await self.create_thread(
-            actor=actor, project_id=project_id,
+            actor=actor,
+            project_id=project_id,
             payload={"metadata": metadata, "graph_id": graph_id},
         )
         target_id = clean_str(ensure_dict(target).get("thread_id"))
@@ -1749,13 +2295,24 @@ class RuntimeGatewayService:
                 status_code=502,
                 message="Runtime returned no fork thread ID",
             )
+        target_upstream = await self._thread_upstream(
+            project_id=project_id, thread=target, operation="thread-edit"
+        )
         try:
-            await self._upstream.update_thread_state(target_id, {"values": values})
+            await target_upstream.update_thread_state(target_id, {"values": values})
         except Exception:
             try:
-                await self._upstream.delete_thread(target_id)
-                await run_in_threadpool(thread_access.remove, self._require_session_factory(),
-                                       actor=actor, project_id=project_id, thread_id=target_id)
+                delete_upstream = await self._thread_upstream(
+                    project_id=project_id, thread=target, operation="thread-delete"
+                )
+                await delete_upstream.delete_thread(target_id)
+                await run_in_threadpool(
+                    thread_access.remove,
+                    self._require_session_factory(),
+                    actor=actor,
+                    project_id=project_id,
+                    thread_id=target_id,
+                )
             except Exception:
                 pass
             raise
@@ -1763,7 +2320,8 @@ class RuntimeGatewayService:
         if self._delegation_headers_factory:
             try:
                 fork_upstream = self._upstream.with_forwarded_headers(
-                    await run_in_threadpool(self._delegation_headers_factory,
+                    await run_in_threadpool(
+                        self._delegation_headers_factory,
                         project_id=project_id,
                         agent_key=graph_id,
                         thread_id=target_id,
@@ -1784,43 +2342,108 @@ class RuntimeGatewayService:
         self, *, actor: ActorContext, project_id: str, thread_id: str, policy: str
     ) -> dict[str, str]:
         if not isinstance(policy, str) or policy not in _ACCESS_POLICIES:
-            raise BadRequestError(code="invalid_access_policy", message="access_policy must be review, workspace_write or full_access")
-        thread = await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=True)
+            raise BadRequestError(
+                code="invalid_access_policy",
+                message="access_policy must be review, workspace_write or full_access",
+            )
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=True
+        )
         metadata = _thread_metadata(thread)
-        thread_access.require_action(actor, project_id, metadata, "full_access" if policy == "full_access" else "share")
-        await self._upstream.update_thread(thread_id, {"metadata": {_ACCESS_POLICY_KEY: policy}})
+        thread_access.require_action(
+            actor,
+            project_id,
+            metadata,
+            "full_access" if policy == "full_access" else "share",
+        )
+        await self._upstream.update_thread(
+            thread_id, {"metadata": {_ACCESS_POLICY_KEY: policy}}
+        )
         return {"thread_id": thread_id, _ACCESS_POLICY_KEY: policy}
 
-    async def share_thread(self, *, actor: ActorContext, project_id: str, thread_id: str,
-                           user_id: str | None, actions: list[str]) -> dict:
-        await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id,
-                                write=False, action="share")
-        access = await run_in_threadpool(thread_access.share, self._require_session_factory(),
-                                        actor=actor, project_id=project_id, thread_id=thread_id,
-                                        user_id=user_id, actions=actions)
-        return {"thread_id": thread_id, "visibility": access["visibility"],
-                "shared_actions": access["shared_actions"], "project_actions": access["project_actions"]}
+    async def share_thread(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        user_id: str | None,
+        actions: list[str],
+    ) -> dict:
+        await self._load_thread(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            write=False,
+            action="share",
+        )
+        access = await run_in_threadpool(
+            thread_access.share,
+            self._require_session_factory(),
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            user_id=user_id,
+            actions=actions,
+        )
+        return {
+            "thread_id": thread_id,
+            "visibility": access["visibility"],
+            "shared_actions": access["shared_actions"],
+            "project_actions": access["project_actions"],
+        }
 
-    async def takeover_thread(self, *, actor: ActorContext, project_id: str, thread_id: str,
-                              category: str, reason: str, reference: str, duration_minutes: int) -> dict:
+    async def takeover_thread(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        category: str,
+        reason: str,
+        reference: str,
+        duration_minutes: int,
+    ) -> dict:
         if not thread_access.is_manager(actor, project_id):
             self._authorize(actor=actor, project_id=project_id, write=False)
-            raise ForbiddenError(code="thread_takeover_denied", message="Administrator permission required")
+            raise ForbiddenError(
+                code="thread_takeover_denied",
+                message="Administrator permission required",
+            )
+
         # Validate the object without reading its private contents before granting access.
         def grant():
             with session_scope(self._require_session_factory()) as session:
                 self._require_project_exists(session=session, project_id=project_id)
-            return thread_access.takeover(self._require_session_factory(), actor=actor,
-                project_id=project_id, thread_id=thread_id, category=category, reason=reason,
-                reference=reference, duration_minutes=duration_minutes)
+            return thread_access.takeover(
+                self._require_session_factory(),
+                actor=actor,
+                project_id=project_id,
+                thread_id=thread_id,
+                category=category,
+                reason=reason,
+                reference=reference,
+                duration_minutes=duration_minutes,
+            )
+
         return await run_in_threadpool(grant)
 
-    async def end_thread_takeover(self, *, actor: ActorContext, project_id: str, thread_id: str) -> dict:
+    async def end_thread_takeover(
+        self, *, actor: ActorContext, project_id: str, thread_id: str
+    ) -> dict:
         if not thread_access.is_manager(actor, project_id):
             self._authorize(actor=actor, project_id=project_id, write=False)
-            raise ForbiddenError(code="thread_takeover_denied", message="Administrator permission required")
-        return await run_in_threadpool(thread_access.end_takeover, self._require_session_factory(),
-                                       actor=actor, project_id=project_id, thread_id=thread_id)
+            raise ForbiddenError(
+                code="thread_takeover_denied",
+                message="Administrator permission required",
+            )
+        return await run_in_threadpool(
+            thread_access.end_takeover,
+            self._require_session_factory(),
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+        )
 
     async def update_thread(
         self,
@@ -1848,7 +2471,10 @@ class RuntimeGatewayService:
             raise BadRequestError(
                 code="invalid_metadata", message="No supported metadata fields provided"
             )
-        await self._upstream.update_thread(thread_id, {"metadata": updated_fields})
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="thread-edit"
+        )
+        await upstream.update_thread(thread_id, {"metadata": updated_fields})
         return {"thread_id": thread_id, "metadata": metadata}
 
     async def summarize_thread_title(
@@ -1863,12 +2489,16 @@ class RuntimeGatewayService:
             actor=actor, project_id=project_id, thread_id=thread_id, write=True
         )
         upstream_payload = dict(payload or {})
-        if not upstream_payload.get("messages") and hasattr(self._upstream, "get_thread_state"):
+        if not upstream_payload.get("messages") and hasattr(
+            self._upstream, "get_thread_state"
+        ):
             try:
                 state = await self._upstream.get_thread_state(thread_id)
                 if isinstance(state, dict):
                     values = state.get("values")
-                    if isinstance(values, dict) and isinstance(values.get("messages"), list):
+                    if isinstance(values, dict) and isinstance(
+                        values.get("messages"), list
+                    ):
                         extracted_msgs = []
                         for m in values["messages"]:
                             if isinstance(m, dict):
@@ -1878,32 +2508,59 @@ class RuntimeGatewayService:
                                     text_parts = [
                                         b.get("text", "")
                                         for b in content
-                                        if isinstance(b, dict) and b.get("type") == "text"
+                                        if isinstance(b, dict)
+                                        and b.get("type") == "text"
                                     ]
                                     content = " ".join(text_parts)
                                 if content and str(content).strip():
-                                    extracted_msgs.append({"role": str(role), "content": str(content).strip()})
+                                    extracted_msgs.append(
+                                        {
+                                            "role": str(role),
+                                            "content": str(content).strip(),
+                                        }
+                                    )
                             elif hasattr(m, "content"):
                                 role = getattr(m, "type", "user")
                                 content = getattr(m, "content", "")
                                 if content and str(content).strip():
-                                    extracted_msgs.append({"role": str(role), "content": str(content).strip()})
+                                    extracted_msgs.append(
+                                        {
+                                            "role": str(role),
+                                            "content": str(content).strip(),
+                                        }
+                                    )
                         if extracted_msgs:
                             upstream_payload["messages"] = extracted_msgs
             except Exception as exc:
                 logger.warning(
-                    "summarize_thread_title: failed to extract messages from thread state: %s", exc
+                    "summarize_thread_title: failed to extract messages from thread state: %s",
+                    exc,
                 )
 
         summary_result = await self._upstream.summarize_thread_title(
             thread_id, upstream_payload
         )
-        generated_title = summary_result.get("title") if isinstance(summary_result, dict) else None
-        if generated_title and isinstance(generated_title, str) and generated_title.strip():
+        generated_title = (
+            summary_result.get("title") if isinstance(summary_result, dict) else None
+        )
+        if (
+            generated_title
+            and isinstance(generated_title, str)
+            and generated_title.strip()
+        ):
             metadata = _thread_metadata(thread)
             metadata["title"] = generated_title.strip()
-            await self._upstream.update_thread(thread_id, {"metadata": {"title": generated_title.strip()}})
-            return {"thread_id": thread_id, "title": generated_title.strip(), "metadata": metadata}
+            upstream = await self._thread_upstream(
+                project_id=project_id, thread=thread, operation="thread-edit"
+            )
+            await upstream.update_thread(
+                thread_id, {"metadata": {"title": generated_title.strip()}}
+            )
+            return {
+                "thread_id": thread_id,
+                "title": generated_title.strip(),
+                "metadata": metadata,
+            }
         return {"thread_id": thread_id, "title": "新对话"}
 
     async def get_thread_state(
@@ -1933,7 +2590,7 @@ class RuntimeGatewayService:
         thread_id: str,
         payload: dict[str, Any] | None,
     ) -> Any:
-        await self._load_thread(
+        thread = await self._load_thread(
             actor=actor,
             project_id=project_id,
             thread_id=thread_id,
@@ -1942,8 +2599,13 @@ class RuntimeGatewayService:
         try:
             reject_private_runtime_state(ensure_dict(payload).get("values"))
         except ValueError as exc:
-            raise BadRequestError(code="invalid_runtime_payload", message=str(exc)) from exc
-        return await self._upstream.update_thread_state(
+            raise BadRequestError(
+                code="invalid_runtime_payload", message=str(exc)
+            ) from exc
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="thread-edit"
+        )
+        return await upstream.update_thread_state(
             thread_id, _normalize_payload(payload)
         )
 
@@ -2032,7 +2694,9 @@ class RuntimeGatewayService:
             project_id=project_id,
             payload=next_payload,
         )
-        next_payload = self._inject_thread_access_policy(thread=thread, payload=next_payload, actor=actor)
+        next_payload = self._inject_thread_access_policy(
+            thread=thread, payload=next_payload, actor=actor
+        )
         assistant_id = clean_str(next_payload.get("assistant_id"))
         await run_in_threadpool(
             self._assert_runtime_target_allowed,
@@ -2064,7 +2728,9 @@ class RuntimeGatewayService:
         payload: dict[str, Any] | None,
         idempotency_key: str | None = None,
     ) -> Any:
-        await self._load_thread(actor=actor, project_id=project_id, thread_id=thread_id, write=False)
+        await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=False
+        )
         next_payload = _normalize_payload(payload)
         result = await self.create_thread_run(
             actor=actor,
@@ -2118,7 +2784,9 @@ class RuntimeGatewayService:
                 project_id=project_id,
                 payload=raw_params,
             )
-            raw_params = self._inject_thread_access_policy(thread=thread, payload=raw_params, actor=actor)
+            raw_params = self._inject_thread_access_policy(
+                thread=thread, payload=raw_params, actor=actor
+            )
         raw_payload["params"] = raw_params
         default_model_id = clean_str(
             ensure_dict(raw_params.get("context")).get("model_id")
@@ -2175,7 +2843,9 @@ class RuntimeGatewayService:
             if resumes is None:
                 if isinstance(params.get("responses"), list):
                     resumes = {
-                        clean_str(item.get("interrupt_id") or item.get("id")): item.get("response")
+                        clean_str(item.get("interrupt_id") or item.get("id")): item.get(
+                            "response"
+                        )
                         for item in params["responses"]
                         if isinstance(item, dict)
                         and clean_str(item.get("interrupt_id") or item.get("id"))
@@ -2183,7 +2853,9 @@ class RuntimeGatewayService:
                     }
                 else:
                     interrupt_id = clean_str(params.get("interrupt_id"))
-                    resumes = {interrupt_id: params.get("response")} if interrupt_id else {}
+                    resumes = (
+                        {interrupt_id: params.get("response")} if interrupt_id else {}
+                    )
             if (
                 not isinstance(resumes, dict)
                 or not resumes
@@ -2266,7 +2938,9 @@ class RuntimeGatewayService:
             resume_payload = {
                 "assistant_id": parent.agent_key,
                 "command": {"resume": resumes},
-                "version": ensure_dict(ensure_dict(parent_run).get("kwargs")).get("version", "v2"),
+                "version": ensure_dict(ensure_dict(parent_run).get("kwargs")).get(
+                    "version", "v2"
+                ),
                 "context": dict(parent.context_snapshot),
                 "config": dict(parent.config_snapshot),
                 "multitask_strategy": "reject",
@@ -2363,14 +3037,17 @@ class RuntimeGatewayService:
         thread_id: str,
         run_id: str,
     ) -> Any:
-        await self._load_thread(
+        thread = await self._load_thread(
             actor=actor,
             project_id=project_id,
             thread_id=thread_id,
             write=True,
             action="delete",
         )
-        return await self._upstream.delete_thread_run(thread_id, run_id)
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="run-delete"
+        )
+        return await upstream.delete_thread_run(thread_id, run_id)
 
     async def join_thread_run(
         self,
@@ -2425,13 +3102,16 @@ class RuntimeGatewayService:
         run_id: str,
         payload: dict[str, Any] | None,
     ) -> Any:
-        await self._load_thread(
+        thread = await self._load_thread(
             actor=actor,
             project_id=project_id,
             thread_id=thread_id,
             write=True,
         )
-        result = await self._upstream.cancel_thread_run(
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="run-cancel"
+        )
+        result = await upstream.cancel_thread_run(
             thread_id,
             run_id,
             _normalize_payload(payload),

@@ -50,7 +50,9 @@ _ALLOWED_CLAIMS = frozenset(
     }
 )
 
-_SCOPE_FIELDS = frozenset({"tenant_id", "project_id", "assistant_id", "thread_id", "operation"})
+_SCOPE_FIELDS = frozenset(
+    {"tenant_id", "project_id", "assistant_id", "thread_id", "operation"}
+)
 _HASH_PATTERN = re.compile(r"^sha256:[0-9a-f]{64}$")
 
 
@@ -73,7 +75,9 @@ class VerifiedDelegation:
     platform_trace_id: str | None = None
 
 
-def _invalid(code: str = "runtime.auth.invalid_claim", field: str | None = None) -> RuntimeAuthError:
+def _invalid(
+    code: str = "runtime.auth.invalid_claim", field: str | None = None
+) -> RuntimeAuthError:
     return RuntimeAuthError(code, field)
 
 
@@ -87,17 +91,30 @@ def _optional_correlation(claims: Mapping[str, Any], name: str) -> str | None:
 
 
 def _parse_scope(raw: object) -> RuntimeScope:
-    if not isinstance(raw, Mapping) or set(raw) - _SCOPE_FIELDS or "tenant_id" not in raw or "project_id" not in raw:
+    if (
+        not isinstance(raw, Mapping)
+        or set(raw) - _SCOPE_FIELDS
+        or "tenant_id" not in raw
+        or "project_id" not in raw
+    ):
         raise _invalid("runtime.auth.invalid_principal", "scope")
     values: dict[str, str | None] = {}
     for field in _SCOPE_FIELDS:
         value = raw.get(field)
-        if value is not None and (not isinstance(value, str) or not value or value != value.strip()):
+        if value is not None and (
+            not isinstance(value, str) or not value or value != value.strip()
+        ):
             raise _invalid("runtime.auth.invalid_principal", field)
         values[field] = value
     if values["operation"] not in {
         "read",
+        "thread-create",
+        "thread-reconcile",
         "run-create",
+        "thread-edit",
+        "thread-delete",
+        "run-cancel",
+        "run-delete",
         "message-enqueue",
         "message-read",
         "image-upload",
@@ -136,11 +153,18 @@ def verify_delegation_claims(
 ) -> VerifiedDelegation:
     """Verify a Delegation JWT and return immutable auth facts."""
 
-    if not isinstance(token, str) or not token.strip() or not isinstance(secret, str) or not secret:
+    if (
+        not isinstance(token, str)
+        or not token.strip()
+        or not isinstance(secret, str)
+        or not secret
+    ):
         raise _invalid("runtime.auth.invalid_token")
     if not isinstance(issuer, str) or not issuer.strip():
         raise _invalid("runtime.auth.invalid_token", "issuer")
-    if not algorithms or any(not isinstance(item, str) or not item for item in algorithms):
+    if not algorithms or any(
+        not isinstance(item, str) or not item for item in algorithms
+    ):
         raise _invalid("runtime.auth.invalid_token", "algorithms")
 
     options = {"require": list(_REQUIRED_CLAIMS), "verify_aud": audience is not None}
@@ -159,7 +183,10 @@ def verify_delegation_claims(
     unknown = set(claims) - _ALLOWED_CLAIMS
     if unknown:
         raise _invalid(field=min(unknown))
-    if type(claims.get("delegation_version")) is not int or claims["delegation_version"] != 2:
+    if (
+        type(claims.get("delegation_version")) is not int
+        or claims["delegation_version"] != 2
+    ):
         raise _invalid(field="delegation_version")
     if claims.get("type") != "runtime_delegation":
         raise _invalid(field="type")
@@ -190,9 +217,22 @@ def verify_delegation_claims(
     if claims.get("policy_project_id", principal.project_id) != principal.project_id:
         raise _invalid("runtime.auth.invalid_principal", "project_id")
     scope = _parse_scope(claims["scope"])
-    if scope.tenant_id != principal.tenant_id or scope.project_id != principal.project_id:
+    if (
+        scope.tenant_id != principal.tenant_id
+        or scope.project_id != principal.project_id
+    ):
         raise _invalid("runtime.auth.invalid_principal", "scope")
-    if scope.operation != "read" and not scope.assistant_id:
+    if (
+        scope.operation
+        not in {
+            "read",
+            "thread-create",
+            "thread-reconcile",
+            "thread-edit",
+            "thread-delete",
+        }
+        and not scope.assistant_id
+    ):
         raise _invalid(field="scope")
     context_claim = claims["context_hash"]
     if not isinstance(context_claim, str) or not _HASH_PATTERN.fullmatch(context_claim):
@@ -267,13 +307,19 @@ def verified_delegation_from_user(user: object) -> VerifiedDelegation:
     except RuntimeResolutionError as exc:
         raise _invalid("runtime.auth.invalid_claim", exc.field) from exc
     scope = _parse_scope(raw_scope)
-    if scope.tenant_id != principal.tenant_id or scope.project_id != principal.project_id:
+    if (
+        scope.tenant_id != principal.tenant_id
+        or scope.project_id != principal.project_id
+    ):
         raise _invalid("runtime.auth.invalid_principal", "scope")
     if not isinstance(context_claim, str) or not _HASH_PATTERN.fullmatch(context_claim):
         raise _invalid("runtime.auth.invalid_claim", "context_hash")
     request_id = _user_value(user, "request_id")
     platform_trace_id = _user_value(user, "platform_trace_id")
-    for name, value in (("request_id", request_id), ("platform_trace_id", platform_trace_id)):
+    for name, value in (
+        ("request_id", request_id),
+        ("platform_trace_id", platform_trace_id),
+    ):
         if value is not None and (
             not isinstance(value, str) or not value.strip() or len(value) > 256
         ):

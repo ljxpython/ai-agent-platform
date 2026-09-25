@@ -20,7 +20,9 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _encode(payload: dict[str, Any], *, secret: str, kid: str, settings: Settings) -> str:
+def _encode(
+    payload: dict[str, Any], *, secret: str, kid: str, settings: Settings
+) -> str:
     return jwt.encode(
         payload,
         secret,
@@ -146,7 +148,11 @@ def create_runtime_delegation_token(
     if not isinstance(policy_version, str) or not policy_version.strip():
         raise ValueError("runtime delegation policy_version must not be empty")
     model_ids = _runtime_names(allowed_model_ids, "allowed_model_ids")
-    if not isinstance(tool_overrides, dict) or len(tool_overrides) > 128 or any(v is not False for v in tool_overrides.values()):
+    if (
+        not isinstance(tool_overrides, dict)
+        or len(tool_overrides) > 128
+        or any(v is not False for v in tool_overrides.values())
+    ):
         raise ValueError("tool_overrides must contain only false values")
     _runtime_names(list(tool_overrides), "tool_overrides")
     if len(json.dumps(tool_overrides, separators=(",", ":")).encode()) > 4096:
@@ -156,8 +162,14 @@ def create_runtime_delegation_token(
     if not isinstance(scope, Mapping):
         raise ValueError("runtime delegation scope must be an object")
     scope_keys = {"tenant_id", "project_id", "assistant_id", "thread_id", "operation"}
-    if set(scope) - scope_keys or not scope.get("tenant_id") or not scope.get("project_id"):
-        raise ValueError("runtime delegation scope must contain tenant_id and project_id")
+    if (
+        set(scope) - scope_keys
+        or not scope.get("tenant_id")
+        or not scope.get("project_id")
+    ):
+        raise ValueError(
+            "runtime delegation scope must contain tenant_id and project_id"
+        )
     normalized_scope = {
         key: value.strip() if isinstance(value, str) else value
         for key, value in scope.items()
@@ -167,7 +179,12 @@ def create_runtime_delegation_token(
     if operation not in {
         "read",
         "thread-create",
+        "thread-reconcile",
         "run-create",
+        "thread-edit",
+        "thread-delete",
+        "run-cancel",
+        "run-delete",
         "message-enqueue",
         "message-read",
         "image-upload",
@@ -185,7 +202,13 @@ def create_runtime_delegation_token(
         "dear-governance-write",
     }:
         raise ValueError("runtime delegation scope operation is unsupported")
-    if operation not in {"read", "thread-create"} and not normalized_scope.get("assistant_id"):
+    if operation not in {
+        "read",
+        "thread-create",
+        "thread-reconcile",
+        "thread-edit",
+        "thread-delete",
+    } and not normalized_scope.get("assistant_id"):
         raise ValueError("runtime delegation execution requires assistant_id")
     if (
         normalized_scope.get("tenant_id") != tenant_id
@@ -238,10 +261,15 @@ def create_runtime_delegation_token(
         "iat": int(now.timestamp()),
         "nbf": int(now.timestamp()),
         "exp": int(
-            (now + timedelta(seconds=settings.runtime_delegation_ttl_seconds)).timestamp()
+            (
+                now + timedelta(seconds=settings.runtime_delegation_ttl_seconds)
+            ).timestamp()
         ),
     }
-    for name, value in (("request_id", request_id), ("platform_trace_id", platform_trace_id)):
+    for name, value in (
+        ("request_id", request_id),
+        ("platform_trace_id", platform_trace_id),
+    ):
         if value is not None:
             if not isinstance(value, str) or not value.strip() or len(value) > 256:
                 raise ValueError(f"runtime delegation {name} is invalid")
@@ -259,9 +287,16 @@ def _runtime_names(values: Sequence[str], field: str) -> list[str]:
         raise ValueError(f"runtime delegation {field} must be an array")
     normalized = []
     for value in values:
-        if not isinstance(value, str) or not value.strip() or value != value.strip() or len(value) > 128:
+        if (
+            not isinstance(value, str)
+            or not value.strip()
+            or value != value.strip()
+            or len(value) > 128
+        ):
             raise ValueError(f"runtime delegation {field} contains an invalid name")
-        if not value.isascii() or any(char.isspace() or not char.isprintable() for char in value):
+        if not value.isascii() or any(
+            char.isspace() or not char.isprintable() for char in value
+        ):
             raise ValueError(f"runtime delegation {field} contains an invalid name")
         normalized.append(value)
     if len(normalized) != len(set(normalized)):
@@ -277,7 +312,9 @@ def empty_runtime_context_hash() -> str:
         "max_tokens": None,
         "top_p": None,
     }
-    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    encoded = json.dumps(
+        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    )
     return "sha256:" + hashlib.sha256(encoded.encode("utf-8")).hexdigest()
 
 

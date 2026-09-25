@@ -94,18 +94,28 @@ def get_internal_runtime_model_config(
             timely = abs(time.time() - int(timestamp)) <= 60
         except ValueError:
             timely = False
-        expected = hmac.new(secret.encode(), f"{timestamp}\n{project_id}\n{reference}".encode(), hashlib.sha256).hexdigest()
+        expected = hmac.new(
+            secret.encode(),
+            f"{timestamp}\n{project_id}\n{reference}".encode(),
+            hashlib.sha256,
+        ).hexdigest()
         if not secret or not timely or not hmac.compare_digest(signature, expected):
             from platform_api.core.errors import ForbiddenError
-            raise ForbiddenError(code="runtime_model_signature_invalid", message="Invalid Runtime signature")
+
+            raise ForbiddenError(
+                code="runtime_model_signature_invalid",
+                message="Invalid Runtime signature",
+            )
         trusted_runtime = True
     return service.resolve_model_connection(
-        reference=reference, project_id=project_id, trusted_runtime=trusted_runtime)
-
+        reference=reference, project_id=project_id, trusted_runtime=trusted_runtime
+    )
 
 
 @router.get("/internal/memory-authorization")
-def authorize_runtime_memory(request: Request, project_id: str, thread_id: str, user_id: str) -> dict:
+def authorize_runtime_memory(
+    request: Request, project_id: str, thread_id: str, user_id: str
+) -> dict:
     stamp = request.headers.get("x-runtime-memory-timestamp", "")
     signature = request.headers.get("x-runtime-memory-signature", "")
     secret = request.app.state.settings.runtime_delegation_secret
@@ -116,10 +126,16 @@ def authorize_runtime_memory(request: Request, project_id: str, thread_id: str, 
     message = f"{stamp}\n{project_id}\n{thread_id}\n{user_id}"
     expected = hmac.new(secret.encode(), message.encode(), hashlib.sha256).hexdigest()
     if not secret or not timely or not hmac.compare_digest(signature, expected):
-        raise ForbiddenError(code="runtime_memory_signature_invalid", message="Invalid Runtime signature")
+        raise ForbiddenError(
+            code="runtime_memory_signature_invalid", message="Invalid Runtime signature"
+        )
     factory = request.app.state.db_session_factory
     access = thread_access.get(factory, thread_id)
-    return {"allowed": thread_access.personal_memory_allowed(access, project_id=project_id, user_id=user_id)}
+    return {
+        "allowed": thread_access.personal_memory_allowed(
+            access, project_id=project_id, user_id=user_id
+        )
+    }
 
 
 @router.post("/internal/thread-authorization")
@@ -133,25 +149,48 @@ def authorize_runtime_threads(request: Request, payload: dict) -> dict:
     except (TypeError, ValueError):
         timely = False
     if not isinstance(payload, dict):
-        raise ForbiddenError(code="runtime_acl_invalid_request", message="Invalid ACL request")
+        raise ForbiddenError(
+            code="runtime_acl_invalid_request", message="Invalid ACL request"
+        )
     action = payload.get("action")
     project_id = payload.get("project_id")
     user_id = payload.get("user_id")
     targets = payload.get("thread_ids")
     if (
-        action not in {"create", "read", "comment", "edit", "share", "delete", "approve", "terminal", "full_access"}
-        or not isinstance(project_id, str) or not project_id
-        or not isinstance(user_id, str) or not user_id
-        or not isinstance(targets, list) or not 0 < len(targets) <= 100
+        action
+        not in {
+            "create",
+            "reconcile",
+            "read",
+            "comment",
+            "edit",
+            "share",
+            "delete",
+            "approve",
+            "terminal",
+            "full_access",
+        }
+        or not isinstance(project_id, str)
+        or not project_id
+        or not isinstance(user_id, str)
+        or not user_id
+        or not isinstance(targets, list)
+        or not 0 < len(targets) <= 100
         or any(not isinstance(item, str) or not item for item in targets)
     ):
-        raise ForbiddenError(code="runtime_acl_invalid_request", message="Invalid ACL request")
+        raise ForbiddenError(
+            code="runtime_acl_invalid_request", message="Invalid ACL request"
+        )
     canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     expected = hmac.new(
-        secret.encode(), f"{stamp}\nthread-authorization\n{canonical}".encode(), hashlib.sha256
+        secret.encode(),
+        f"{stamp}\nthread-authorization\n{canonical}".encode(),
+        hashlib.sha256,
     ).hexdigest()
     if not secret or not timely or not hmac.compare_digest(signature, expected):
-        raise ForbiddenError(code="runtime_acl_signature_invalid", message="Invalid Runtime signature")
+        raise ForbiddenError(
+            code="runtime_acl_signature_invalid", message="Invalid Runtime signature"
+        )
     factory = request.app.state.db_session_factory
     actor = load_user_actor(
         session_factory=request.app.state.db_session_factory,
@@ -162,21 +201,34 @@ def authorize_runtime_threads(request: Request, payload: dict) -> dict:
         return {"allowed_thread_ids": []}
     allowed = []
     for thread_id in targets:
-        if action == "create":
-            permitted = thread_access.pending_owner(factory, thread_id=thread_id,
-                project_id=project_id, user_id=user_id) and actor.principal_type == "user"
+        if action in {"create", "reconcile"}:
+            permitted = (
+                thread_access.pending_owner(
+                    factory, thread_id=thread_id, project_id=project_id, user_id=user_id
+                )
+                and actor.principal_type == "user"
+            )
         else:
-            permitted = thread_access.allowed(actor, project_id, thread_access.get(factory, thread_id), action)
+            permitted = thread_access.allowed(
+                actor, project_id, thread_access.get(factory, thread_id), action
+            )
         if permitted:
             allowed.append(thread_id)
     return {"allowed_thread_ids": allowed}
 
 
 @router.get("/internal/message-authorization")
-def authorize_runtime_message(request: Request, thread_id: str, run_id: str,
-                              service: RuntimeCatalogService = Depends(get_runtime_catalog_service)) -> dict:
-    return service.authorize_message(request.headers.get("x-runtime-message-ref", ""),
-                                     thread_id=thread_id, run_id=run_id)
+def authorize_runtime_message(
+    request: Request,
+    thread_id: str,
+    run_id: str,
+    service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
+) -> dict:
+    return service.authorize_message(
+        request.headers.get("x-runtime-message-ref", ""),
+        thread_id=thread_id,
+        run_id=run_id,
+    )
 
 
 @router.get("/models", response_model=RuntimeModelCatalogList)
@@ -195,8 +247,6 @@ def list_platform_models(
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
 ) -> RuntimeModelCatalogList:
     return service.list_models(actor=actor, project_id="", platform=True)
-
-
 
 
 @router.post("/models", response_model=RuntimeModelCatalogItem, status_code=201)

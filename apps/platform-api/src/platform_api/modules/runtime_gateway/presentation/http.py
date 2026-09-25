@@ -11,7 +11,15 @@ from anyio import CancelScope
 from fastapi import APIRouter, Body, Depends, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse, Response
 from starlette.types import Send
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, StrictBool, ValidationError, model_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    ValidationError,
+    model_validator,
+)
 
 from platform_api.adapters.langgraph import (
     LangGraphRuntimeGatewayUpstream,
@@ -60,7 +68,9 @@ class ThreadForkBody(BaseModel):
 class ThreadShareBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
     user_id: UUID | None = None
-    actions: list[Literal["read", "comment", "edit", "share", "delete"]] = Field(max_length=5)
+    actions: list[Literal["read", "comment", "edit", "share", "delete"]] = Field(
+        max_length=5
+    )
 
 
 class ThreadTakeoverBody(BaseModel):
@@ -69,6 +79,7 @@ class ThreadTakeoverBody(BaseModel):
     reason: str = Field(min_length=10, max_length=1000)
     reference: str = Field(min_length=3, max_length=200)
     duration_minutes: int = Field(default=15, ge=1, le=60, strict=True)
+
 
 _SENSITIVE_EVENT_KEYS = {
     "access_token",
@@ -199,7 +210,8 @@ def get_runtime_gateway_service(
         raise NotAuthenticatedError()
     project_roles = actor.project_role_set(project_id)
     object_governance = (
-        actor.principal_type == "user" and actor.has_platform_role("platform_super_admin")
+        actor.principal_type == "user"
+        and actor.has_platform_role("platform_super_admin")
         and "thread_id" in request.path_params
     )
     if not project_roles and not object_governance:
@@ -251,10 +263,17 @@ def get_runtime_gateway_service(
         operation: str = "run-create",
     ) -> dict[str, str]:
         restrictions = (
-            RuntimePolicyOverlayService(session_factory=session_factory, runtime_base_url=settings.langgraph_upstream_url).resolve_tool_overrides(
-                project_id=project_id, user_id=actor.user_id, graph_id=agent_key)
-            if agent_key and operation != "thread-create" else
-            {"tool_overrides": {}, "tool_policy_version": "unscoped-thread-create"}
+            RuntimePolicyOverlayService(
+                session_factory=session_factory,
+                runtime_base_url=settings.langgraph_upstream_url,
+            ).resolve_tool_overrides(
+                project_id=project_id, user_id=actor.user_id, graph_id=agent_key
+            )
+            if agent_key and operation not in {"thread-create", "thread-reconcile"}
+            else {
+                "tool_overrides": {},
+                "tool_policy_version": "unscoped-thread-operation",
+            }
         )
         scoped = create_runtime_delegation_token(
             subject=subject,
@@ -427,32 +446,53 @@ async def delete_thread(
 
 @router.put("/threads/{thread_id}/shares")
 async def share_thread(
-    request: Request, thread_id: str, payload: ThreadShareBody,
+    request: Request,
+    thread_id: str,
+    payload: ThreadShareBody,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
-    return _redact_runtime_private_fields(await service.share_thread(actor=actor, project_id=_require_project_id(request),
-        thread_id=thread_id, user_id=str(payload.user_id) if payload.user_id else None, actions=payload.actions))
+    return _redact_runtime_private_fields(
+        await service.share_thread(
+            actor=actor,
+            project_id=_require_project_id(request),
+            thread_id=thread_id,
+            user_id=str(payload.user_id) if payload.user_id else None,
+            actions=payload.actions,
+        )
+    )
 
 
 @router.post("/threads/{thread_id}/takeover")
 async def takeover_thread(
-    request: Request, thread_id: str, payload: ThreadTakeoverBody,
+    request: Request,
+    thread_id: str,
+    payload: ThreadTakeoverBody,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
-    return _redact_runtime_private_fields(await service.takeover_thread(actor=actor, project_id=_require_project_id(request),
-        thread_id=thread_id, **payload.model_dump()))
+    return _redact_runtime_private_fields(
+        await service.takeover_thread(
+            actor=actor,
+            project_id=_require_project_id(request),
+            thread_id=thread_id,
+            **payload.model_dump(),
+        )
+    )
 
 
 @router.delete("/threads/{thread_id}/takeover")
 async def end_thread_takeover(
-    request: Request, thread_id: str,
+    request: Request,
+    thread_id: str,
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
-    return _redact_runtime_private_fields(await service.end_thread_takeover(
-        actor=actor, project_id=_require_project_id(request), thread_id=thread_id))
+    return _redact_runtime_private_fields(
+        await service.end_thread_takeover(
+            actor=actor, project_id=_require_project_id(request), thread_id=thread_id
+        )
+    )
 
 
 @router.post("/threads/{thread_id}/fork")
@@ -482,8 +522,15 @@ async def update_thread_access_policy(
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
-    if not isinstance(payload, dict) or set(payload) != {"access_policy"} or not isinstance(payload["access_policy"], str):
-        raise BadRequestError(code="invalid_access_policy", message="access_policy must be review, workspace_write or full_access")
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != {"access_policy"}
+        or not isinstance(payload["access_policy"], str)
+    ):
+        raise BadRequestError(
+            code="invalid_access_policy",
+            message="access_policy must be review, workspace_write or full_access",
+        )
     request.state.audit_metadata = {"access_policy": payload["access_policy"]}
     return _redact_runtime_private_fields(
         await service.update_thread_access_policy(
@@ -504,7 +551,9 @@ async def update_thread(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     if not isinstance(payload, dict):
-        raise BadRequestError(code="invalid_payload", message="payload must be a JSON object")
+        raise BadRequestError(
+            code="invalid_payload", message="payload must be a JSON object"
+        )
     metadata_updates: dict[str, Any] = {}
     if "metadata" in payload and isinstance(payload["metadata"], dict):
         metadata_updates.update(payload["metadata"])
@@ -512,7 +561,9 @@ async def update_thread(
         if key in payload:
             metadata_updates[key] = payload[key]
     if not metadata_updates:
-        raise BadRequestError(code="invalid_payload", message="No valid fields to update")
+        raise BadRequestError(
+            code="invalid_payload", message="No valid fields to update"
+        )
     request.state.audit_metadata = {"updated_fields": list(metadata_updates.keys())}
     return _redact_runtime_private_fields(
         await service.update_thread(
@@ -554,18 +605,32 @@ async def enqueue_thread_message(
     project_id = _require_project_id(request)
     allowed = {"client_message_id", "target_run_id", "content"}
     if set(payload) - allowed:
-        raise BadRequestError(code="invalid_message_payload", message="Only message fields are accepted")
-    return _redact_runtime_private_fields(await service.enqueue_thread_message(
-        actor=actor, project_id=project_id, thread_id=thread_id, payload=payload,
-        idempotency_key=request.headers.get("Idempotency-Key")))
+        raise BadRequestError(
+            code="invalid_message_payload", message="Only message fields are accepted"
+        )
+    return _redact_runtime_private_fields(
+        await service.enqueue_thread_message(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            payload=payload,
+            idempotency_key=request.headers.get("Idempotency-Key"),
+        )
+    )
 
 
 @router.get("/threads/{thread_id}/messages")
-async def list_thread_messages(request: Request, thread_id: str,
+async def list_thread_messages(
+    request: Request,
+    thread_id: str,
     actor: ActorContext = Depends(get_actor_context),
-    service: RuntimeGatewayService = Depends(get_runtime_gateway_service)) -> Any:
-    return _redact_runtime_private_fields(await service.list_thread_messages(
-        actor=actor, project_id=_require_project_id(request), thread_id=thread_id))
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    return _redact_runtime_private_fields(
+        await service.list_thread_messages(
+            actor=actor, project_id=_require_project_id(request), thread_id=thread_id
+        )
+    )
 
 
 @router.put("/threads/{thread_id}/images/uploads/{sha256}")
@@ -580,7 +645,9 @@ async def upload_thread_image(
     content_type = request.headers.get("content-type", "")
     content_length_str = request.headers.get("content-length")
     try:
-        content_length = int(content_length_str) if content_length_str is not None else 0
+        content_length = (
+            int(content_length_str) if content_length_str is not None else 0
+        )
     except ValueError:
         content_length = 0
 
@@ -639,7 +706,9 @@ async def upload_thread_file(
     content_type = request.headers.get("content-type", "")
     content_length_str = request.headers.get("content-length")
     try:
-        content_length = int(content_length_str) if content_length_str is not None else 0
+        content_length = (
+            int(content_length_str) if content_length_str is not None else 0
+        )
     except ValueError:
         content_length = 0
 
@@ -664,7 +733,9 @@ async def get_thread_capabilities(
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
     result = await service.get_thread_capabilities(
-        actor=actor, project_id=_require_project_id(request), thread_id=thread_id,
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=thread_id,
     )
     return _redact_runtime_private_fields(result)
 
@@ -685,39 +756,117 @@ class SkillToggleBody(BaseModel):
 
 
 @router.get("/dear/skills")
-async def list_dear_skills(request: Request, actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="GET")
+async def list_dear_skills(
+    request: Request,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await service.dear_skills(
+        actor=actor, project_id=_require_project_id(request), method="GET"
+    )
 
 
 @router.post("/dear/skills/custom", status_code=201)
-async def create_dear_skill(request: Request, payload: SkillUploadBody, actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="POST", suffix="/custom", payload=payload.model_dump())
+async def create_dear_skill(
+    request: Request,
+    payload: SkillUploadBody,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await service.dear_skills(
+        actor=actor,
+        project_id=_require_project_id(request),
+        method="POST",
+        suffix="/custom",
+        payload=payload.model_dump(),
+    )
 
 
 @router.put("/dear/skills/custom/{slug}")
-async def update_dear_skill(request: Request, slug: str, payload: SkillUpdateBody, actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="PUT", suffix="/custom/" + quote(slug, safe=""), payload=payload.model_dump())
+async def update_dear_skill(
+    request: Request,
+    slug: str,
+    payload: SkillUpdateBody,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await service.dear_skills(
+        actor=actor,
+        project_id=_require_project_id(request),
+        method="PUT",
+        suffix="/custom/" + quote(slug, safe=""),
+        payload=payload.model_dump(),
+    )
 
 
 @router.patch("/dear/skills/custom/{slug}")
-async def toggle_dear_skill(request: Request, slug: str, payload: SkillToggleBody, actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="PATCH", suffix="/custom/" + quote(slug, safe=""), payload=payload.model_dump())
+async def toggle_dear_skill(
+    request: Request,
+    slug: str,
+    payload: SkillToggleBody,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await service.dear_skills(
+        actor=actor,
+        project_id=_require_project_id(request),
+        method="PATCH",
+        suffix="/custom/" + quote(slug, safe=""),
+        payload=payload.model_dump(),
+    )
 
 
 @router.delete("/dear/skills/custom/{slug}", status_code=204)
-async def delete_dear_skill(request: Request, slug: str, expected_revision: str = Query(min_length=1, max_length=64), actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="DELETE", suffix="/custom/" + quote(slug, safe=""), params={"expected_revision": expected_revision})
+async def delete_dear_skill(
+    request: Request,
+    slug: str,
+    expected_revision: str = Query(min_length=1, max_length=64),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    await service.dear_skills(
+        actor=actor,
+        project_id=_require_project_id(request),
+        method="DELETE",
+        suffix="/custom/" + quote(slug, safe=""),
+        params={"expected_revision": expected_revision},
+    )
     return Response(status_code=204)
 
 
 @router.get("/dear/skills/{source}/{slug}")
-async def detail_dear_skill(request: Request, source: Literal["public", "custom"], slug: str, actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="GET", suffix=f"/{source}/" + quote(slug, safe=""))
+async def detail_dear_skill(
+    request: Request,
+    source: Literal["public", "custom"],
+    slug: str,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await service.dear_skills(
+        actor=actor,
+        project_id=_require_project_id(request),
+        method="GET",
+        suffix=f"/{source}/" + quote(slug, safe=""),
+    )
 
 
 @router.get("/dear/skills/{source}/{slug}/content")
-async def content_dear_skill(request: Request, source: Literal["public", "custom"], slug: str, path: str = Query(min_length=1, max_length=1024), revision: str = Query(min_length=1, max_length=64), actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await service.dear_skills(actor=actor, project_id=_require_project_id(request), method="GET", suffix=f"/{source}/" + quote(slug, safe="") + "/content", params={"path": path, "revision": revision})
+async def content_dear_skill(
+    request: Request,
+    source: Literal["public", "custom"],
+    slug: str,
+    path: str = Query(min_length=1, max_length=1024),
+    revision: str = Query(min_length=1, max_length=64),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await service.dear_skills(
+        actor=actor,
+        project_id=_require_project_id(request),
+        method="GET",
+        suffix=f"/{source}/" + quote(slug, safe="") + "/content",
+        params={"path": path, "revision": revision},
+    )
 
 
 class MemoryFactBody(BaseModel):
@@ -729,7 +878,9 @@ class MemoryFactBody(BaseModel):
 
 class MemoryCommandBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    action: Literal["save", "delete", "clear", "accept", "reject", "settings", "restore"]
+    action: Literal[
+        "save", "delete", "clear", "accept", "reject", "settings", "restore"
+    ]
     expected_revision: int = Field(ge=0, strict=True)
     fact_id: str | None = Field(default=None, max_length=64)
     replace_fact_id: str | None = Field(default=None, max_length=64)
@@ -740,13 +891,29 @@ class MemoryCommandBody(BaseModel):
     @model_validator(mode="after")
     def valid_action_fields(self):
         provided = self.model_fields_set - {"action", "expected_revision"}
-        allowed = {"save": {"fact", "fact_id"}, "delete": {"fact_id"},
-                   "accept": {"fact_id", "replace_fact_id"}, "reject": {"fact_id"},
-                   "settings": {"automatic_candidates"}, "restore": {"facts"}, "clear": set()}[self.action]
-        required = {"save": {"fact"}, "delete": {"fact_id"}, "accept": {"fact_id"},
-                    "reject": {"fact_id"}, "settings": {"automatic_candidates"},
-                    "restore": {"facts"}, "clear": set()}[self.action]
-        if provided - allowed or required - provided or any(getattr(self, key) is None for key in required):
+        allowed = {
+            "save": {"fact", "fact_id"},
+            "delete": {"fact_id"},
+            "accept": {"fact_id", "replace_fact_id"},
+            "reject": {"fact_id"},
+            "settings": {"automatic_candidates"},
+            "restore": {"facts"},
+            "clear": set(),
+        }[self.action]
+        required = {
+            "save": {"fact"},
+            "delete": {"fact_id"},
+            "accept": {"fact_id"},
+            "reject": {"fact_id"},
+            "settings": {"automatic_candidates"},
+            "restore": {"facts"},
+            "clear": set(),
+        }[self.action]
+        if (
+            provided - allowed
+            or required - provided
+            or any(getattr(self, key) is None for key in required)
+        ):
             raise ValueError("invalid_memory_command_fields")
         if self.action == "restore" and not self.facts:
             raise ValueError("memory_restore_empty")
@@ -776,7 +943,15 @@ class MemoryDocumentView(BaseModel):
 
 
 class MemoryExtractionView(BaseModel):
-    status: Literal["never", "running", "succeeded", "no_candidates", "failed", "skipped", "interrupted"]
+    status: Literal[
+        "never",
+        "running",
+        "succeeded",
+        "no_candidates",
+        "failed",
+        "skipped",
+        "interrupted",
+    ]
     updated_at: str | None
     source_thread_id: str | None
     candidate_count: int
@@ -805,62 +980,132 @@ class MemoryView(BaseModel):
 
 
 @router.get("/dear/memory", response_model=MemoryView)
-async def read_dear_memory(request: Request, actor: ActorContext = Depends(get_actor_context),
-                           service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await service.dear_memory(actor=actor, project_id=_require_project_id(request))
+async def read_dear_memory(
+    request: Request,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await service.dear_memory(
+        actor=actor, project_id=_require_project_id(request)
+    )
 
 
-@router.post("/dear/memory", response_model=MemoryView, openapi_extra={"requestBody": {"required": True,
-    "content": {"application/json": {"schema": MemoryCommandBody.model_json_schema()}}}})
-async def write_dear_memory(request: Request, actor: ActorContext = Depends(get_actor_context),
-                            service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+@router.post(
+    "/dear/memory",
+    response_model=MemoryView,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {"schema": MemoryCommandBody.model_json_schema()}
+            },
+        }
+    },
+)
+async def write_dear_memory(
+    request: Request,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
     chunks = []
     size = 0
     async for chunk in request.stream():
         size += len(chunk)
         if size > 1500000:
-            raise PlatformApiError(code="memory_payload_too_large", status_code=413, message="Memory payload too large")
+            raise PlatformApiError(
+                code="memory_payload_too_large",
+                status_code=413,
+                message="Memory payload too large",
+            )
         chunks.append(chunk)
     body = b"".join(chunks)
     try:
         payload = json.loads(body)
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise BadRequestError(code="invalid_memory_command", message="Invalid memory JSON") from exc
+        raise BadRequestError(
+            code="invalid_memory_command", message="Invalid memory JSON"
+        ) from exc
     try:
         command = MemoryCommandBody.model_validate(payload)
     except ValidationError as exc:
-        details = [{"loc": list(error["loc"]), "type": error["type"], "message": "Invalid value"}
-                   for error in exc.errors(include_input=False)[:20]]
-        raise PlatformApiError(code="validation_failed", status_code=422,
-                               message="Validation failed", details=details) from exc
+        details = [
+            {
+                "loc": list(error["loc"]),
+                "type": error["type"],
+                "message": "Invalid value",
+            }
+            for error in exc.errors(include_input=False)[:20]
+        ]
+        raise PlatformApiError(
+            code="validation_failed",
+            status_code=422,
+            message="Validation failed",
+            details=details,
+        ) from exc
     action = payload.get("action") if isinstance(payload, dict) else None
-    if isinstance(action, str) and action in {"save", "delete", "clear", "accept", "reject", "settings", "restore"}:
+    if isinstance(action, str) and action in {
+        "save",
+        "delete",
+        "clear",
+        "accept",
+        "reject",
+        "settings",
+        "restore",
+    }:
         request.state.audit_metadata = {"memory_action": action}
     try:
-        return await service.dear_memory(actor=actor, project_id=_require_project_id(request), payload=command.model_dump(mode="json", exclude_unset=True))
+        return await service.dear_memory(
+            actor=actor,
+            project_id=_require_project_id(request),
+            payload=command.model_dump(mode="json", exclude_unset=True),
+        )
     except PlatformApiError as exc:
         if exc.status_code == 422:
-            raise PlatformApiError(code="validation_failed", status_code=422, message="Validation failed") from exc
+            raise PlatformApiError(
+                code="validation_failed", status_code=422, message="Validation failed"
+            ) from exc
         raise
 
 
 @router.get("/threads/{thread_id}/dear/{resource}")
-async def read_dear_governance(request: Request, thread_id: str, resource: str, query: str = Query(default="", max_length=500),
-                               actor: ActorContext = Depends(get_actor_context),
-                               service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    result = await service.dear_governance(actor=actor, project_id=_require_project_id(request),
-                                          thread_id=thread_id, resource=resource, query=query)
+async def read_dear_governance(
+    request: Request,
+    thread_id: str,
+    resource: str,
+    query: str = Query(default="", max_length=500),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    result = await service.dear_governance(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=thread_id,
+        resource=resource,
+        query=query,
+    )
     return _redact_runtime_private_fields(result)
 
 
 @router.post("/threads/{thread_id}/dear/{resource}")
-async def write_dear_governance(request: Request, thread_id: str, resource: str, payload: dict = Body(...),
-                                actor: ActorContext = Depends(get_actor_context),
-                                service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+async def write_dear_governance(
+    request: Request,
+    thread_id: str,
+    resource: str,
+    payload: dict = Body(...),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
     if len(json.dumps(payload).encode()) > 1500000:
-        raise BadRequestError(code="dear_payload_too_large", message="Dear payload too large")
-    result = await service.dear_governance(actor=actor, project_id=_require_project_id(request),
-                                          thread_id=thread_id, resource=resource, payload=payload)
+        raise BadRequestError(
+            code="dear_payload_too_large", message="Dear payload too large"
+        )
+    result = await service.dear_governance(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=thread_id,
+        resource=resource,
+        payload=payload,
+    )
     return _redact_runtime_private_fields(result)
 
 
@@ -890,7 +1135,16 @@ async def read_thread_file(
     headers["x-content-type-options"] = "nosniff"
     headers["content-security-policy"] = "sandbox; default-src 'none'"
     media_type = payload.content_type
-    if media_type in ("text/html", "text/css", "text/javascript", "text/plain", "text/markdown", "text/x-bibtex", "text/csv", "application/json"):
+    if media_type in (
+        "text/html",
+        "text/css",
+        "text/javascript",
+        "text/plain",
+        "text/markdown",
+        "text/x-bibtex",
+        "text/csv",
+        "application/json",
+    ):
         media_type = f"{media_type}; charset=utf-8"
 
     return RuntimeStreamingResponse(
@@ -920,88 +1174,234 @@ class TerminalResizeBody(BaseModel):
     cols: int = Field(ge=2, le=400)
 
 
-async def _terminal_response(request, thread_id, actor, service, action, *, terminal_id=None, payload=None, offset=0):
-    result = await service.thread_terminal(actor=actor, project_id=_require_project_id(request), thread_id=thread_id,
-                                           action=action, terminal_id=terminal_id, payload=payload, offset=offset)
-    return JSONResponse(_redact_runtime_private_fields(result), headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff"})
+async def _terminal_response(
+    request,
+    thread_id,
+    actor,
+    service,
+    action,
+    *,
+    terminal_id=None,
+    payload=None,
+    offset=0,
+):
+    result = await service.thread_terminal(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=thread_id,
+        action=action,
+        terminal_id=terminal_id,
+        payload=payload,
+        offset=offset,
+    )
+    return JSONResponse(
+        _redact_runtime_private_fields(result),
+        headers={
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
+    )
 
 
 @router.post("/threads/{thread_id}/terminals")
-async def create_terminal(request: Request, thread_id: str, payload: TerminalCreateBody,
-                          actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await _terminal_response(request, thread_id, actor, service, "create", payload=payload.model_dump(mode="json"))
+async def create_terminal(
+    request: Request,
+    thread_id: str,
+    payload: TerminalCreateBody,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await _terminal_response(
+        request,
+        thread_id,
+        actor,
+        service,
+        "create",
+        payload=payload.model_dump(mode="json"),
+    )
 
 
 @router.get("/threads/{thread_id}/terminals")
-async def list_terminals(request: Request, thread_id: str, actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
+async def list_terminals(
+    request: Request,
+    thread_id: str,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
     return await _terminal_response(request, thread_id, actor, service, "list")
 
 
 @router.get("/threads/{thread_id}/terminals/{terminal_id}/output")
-async def terminal_output(request: Request, thread_id: str, terminal_id: str, offset: int = Query(default=0, ge=0),
-                          actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await _terminal_response(request, thread_id, actor, service, "output", terminal_id=terminal_id, offset=offset)
+async def terminal_output(
+    request: Request,
+    thread_id: str,
+    terminal_id: str,
+    offset: int = Query(default=0, ge=0),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await _terminal_response(
+        request,
+        thread_id,
+        actor,
+        service,
+        "output",
+        terminal_id=terminal_id,
+        offset=offset,
+    )
 
 
 @router.post("/threads/{thread_id}/terminals/{terminal_id}/input")
-async def terminal_input(request: Request, thread_id: str, terminal_id: str, payload: TerminalInputBody,
-                         actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await _terminal_response(request, thread_id, actor, service, "input", terminal_id=terminal_id, payload=payload.model_dump())
+async def terminal_input(
+    request: Request,
+    thread_id: str,
+    terminal_id: str,
+    payload: TerminalInputBody,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await _terminal_response(
+        request,
+        thread_id,
+        actor,
+        service,
+        "input",
+        terminal_id=terminal_id,
+        payload=payload.model_dump(),
+    )
 
 
 @router.post("/threads/{thread_id}/terminals/{terminal_id}/resize")
-async def terminal_resize(request: Request, thread_id: str, terminal_id: str, payload: TerminalResizeBody,
-                          actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await _terminal_response(request, thread_id, actor, service, "resize", terminal_id=terminal_id, payload=payload.model_dump())
+async def terminal_resize(
+    request: Request,
+    thread_id: str,
+    terminal_id: str,
+    payload: TerminalResizeBody,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await _terminal_response(
+        request,
+        thread_id,
+        actor,
+        service,
+        "resize",
+        terminal_id=terminal_id,
+        payload=payload.model_dump(),
+    )
 
 
 @router.delete("/threads/{thread_id}/terminals/{terminal_id}")
-async def close_terminal(request: Request, thread_id: str, terminal_id: str,
-                         actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await _terminal_response(request, thread_id, actor, service, "close", terminal_id=terminal_id)
+async def close_terminal(
+    request: Request,
+    thread_id: str,
+    terminal_id: str,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await _terminal_response(
+        request, thread_id, actor, service, "close", terminal_id=terminal_id
+    )
 
 
 @router.get("/threads/{thread_id}/workspace/tree")
-async def workspace_tree(request: Request, thread_id: str, path: str = Query(default="/workspace", max_length=4096),
-                         cursor: str | None = Query(default=None, max_length=8192), limit: int = Query(default=100, ge=1, le=200),
-                         actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    result = await service.thread_workspace(actor=actor, project_id=_require_project_id(request), thread_id=thread_id,
-                                          resource="workspace/tree", path=path, cursor=cursor, limit=limit)
-    return JSONResponse(_redact_runtime_private_fields(result), headers={"Cache-Control": "private, no-store"})
+async def workspace_tree(
+    request: Request,
+    thread_id: str,
+    path: str = Query(default="/workspace", max_length=4096),
+    cursor: str | None = Query(default=None, max_length=8192),
+    limit: int = Query(default=100, ge=1, le=200),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    result = await service.thread_workspace(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=thread_id,
+        resource="workspace/tree",
+        path=path,
+        cursor=cursor,
+        limit=limit,
+    )
+    return JSONResponse(
+        _redact_runtime_private_fields(result),
+        headers={"Cache-Control": "private, no-store"},
+    )
 
 
 @router.get("/threads/{thread_id}/artifacts")
-async def thread_artifacts(request: Request, thread_id: str, cursor: str | None = Query(default=None, max_length=8192),
-                           limit: int = Query(default=100, ge=1, le=200), actor: ActorContext = Depends(get_actor_context),
-                           service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    result = await service.thread_workspace(actor=actor, project_id=_require_project_id(request), thread_id=thread_id,
-                                          resource="artifacts", cursor=cursor, limit=limit)
-    return JSONResponse(_redact_runtime_private_fields(result), headers={"Cache-Control": "private, no-store"})
+async def thread_artifacts(
+    request: Request,
+    thread_id: str,
+    cursor: str | None = Query(default=None, max_length=8192),
+    limit: int = Query(default=100, ge=1, le=200),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    result = await service.thread_workspace(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=thread_id,
+        resource="artifacts",
+        cursor=cursor,
+        limit=limit,
+    )
+    return JSONResponse(
+        _redact_runtime_private_fields(result),
+        headers={"Cache-Control": "private, no-store"},
+    )
 
 
 async def _workspace_response(request, thread_id, path, actor, service, *, preview):
-    payload = await service.thread_workspace(actor=actor, project_id=_require_project_id(request), thread_id=thread_id,
-                                             resource="workspace/preview" if preview else "workspace/content", path=path)
-    headers = {"cache-control": "private, no-store", "x-content-type-options": "nosniff",
-               "referrer-policy": "no-referrer", "content-security-policy": "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'",
-               "content-disposition": "inline" if preview else "attachment; filename*=UTF-8''" + quote(path.rsplit("/", 1)[-1], safe="")}
+    payload = await service.thread_workspace(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=thread_id,
+        resource="workspace/preview" if preview else "workspace/content",
+        path=path,
+    )
+    headers = {
+        "cache-control": "private, no-store",
+        "x-content-type-options": "nosniff",
+        "referrer-policy": "no-referrer",
+        "content-security-policy": "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'none'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'",
+        "content-disposition": "inline"
+        if preview
+        else "attachment; filename*=UTF-8''" + quote(path.rsplit("/", 1)[-1], safe=""),
+    }
     if payload.content_length is not None:
         headers["content-length"] = str(payload.content_length)
     if payload.etag:
         headers["etag"] = payload.etag
-    return RuntimeStreamingResponse(payload.body, media_type=payload.content_type, headers=headers)
+    return RuntimeStreamingResponse(
+        payload.body, media_type=payload.content_type, headers=headers
+    )
 
 
 @router.get("/threads/{thread_id}/workspace/content")
-async def workspace_content(request: Request, thread_id: str, path: str = Query(..., max_length=4096),
-                            actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await _workspace_response(request, thread_id, path, actor, service, preview=False)
+async def workspace_content(
+    request: Request,
+    thread_id: str,
+    path: str = Query(..., max_length=4096),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await _workspace_response(
+        request, thread_id, path, actor, service, preview=False
+    )
 
 
 @router.get("/threads/{thread_id}/workspace/preview")
-async def workspace_preview(request: Request, thread_id: str, path: str = Query(..., max_length=4096),
-                            actor: ActorContext = Depends(get_actor_context), service: RuntimeGatewayService = Depends(get_runtime_gateway_service)):
-    return await _workspace_response(request, thread_id, path, actor, service, preview=True)
+async def workspace_preview(
+    request: Request,
+    thread_id: str,
+    path: str = Query(..., max_length=4096),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    return await _workspace_response(
+        request, thread_id, path, actor, service, preview=True
+    )
 
 
 @router.get("/threads/{thread_id}/workspace/zip")
@@ -1020,13 +1420,16 @@ async def workspace_zip(
     headers = {
         "cache-control": "private, no-store",
         "x-content-type-options": "nosniff",
-        "content-disposition": payload.content_disposition or f"attachment; filename*=UTF-8''workspace-{quote(thread_id[:8], safe='')}.zip",
+        "content-disposition": payload.content_disposition
+        or f"attachment; filename*=UTF-8''workspace-{quote(thread_id[:8], safe='')}.zip",
     }
     if payload.content_length is not None:
         headers["content-length"] = str(payload.content_length)
     if payload.etag:
         headers["etag"] = payload.etag
-    return RuntimeStreamingResponse(payload.body, media_type=payload.content_type, headers=headers)
+    return RuntimeStreamingResponse(
+        payload.body, media_type=payload.content_type, headers=headers
+    )
 
 
 @router.get("/threads/{thread_id}/state")
