@@ -64,14 +64,14 @@ def test_binding_merges_config_and_trusted_metadata(monkeypatch: pytest.MonkeyPa
             "configurable": {"thread_id": "thread-1"},
         },
         graph_id="demo",
-        trusted_metadata={"user_id": "trusted", "tenant_id": "tenant-1"},
+        trusted_metadata={"user_id": "trusted", "tenant_id": "tenant-1", "request_id": "trusted-request"},
     )
     assert bound is graph
     assert graph.bound is not None
     assert graph.bound["callbacks"][:2] == ["caller", callback]  # type: ignore[index]
     assert type(graph.bound["callbacks"][2]).__name__ == "_RuntimeDiagnosticsCallback"  # type: ignore[index]
     assert graph.bound["metadata"] == {
-        "request_id": "req",
+        "request_id": "trusted-request",
         "user_id": "trusted",
         "thread_id": "thread-1",
         "graph_id": "demo",
@@ -94,6 +94,9 @@ def test_untrusted_identity_is_not_added_to_trace(monkeypatch: pytest.MonkeyPatc
                 "user_id": "attacker",
                 "tenant_id": "attacker-tenant",
                 "project_id": "attacker-project",
+                "model_id": "attacker-model",
+                "request_id": "attacker-request",
+                "platform_trace_id": "attacker-trace",
             }
         },
         graph_id="demo",
@@ -103,6 +106,9 @@ def test_untrusted_identity_is_not_added_to_trace(monkeypatch: pytest.MonkeyPatc
     assert "user_id" not in metadata
     assert "tenant_id" not in metadata
     assert "project_id" not in metadata
+    assert "model_id" not in metadata
+    assert "request_id" not in metadata
+    assert "platform_trace_id" not in metadata
     assert "langfuse_user_id" not in metadata
 
 

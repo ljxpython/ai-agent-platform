@@ -69,6 +69,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Runtime 与 GraphHarbor 业务边界解耦 | 规划中：授权/身份、模型与业务 trace、workspace、历史数据切换待人工评审；未改变现有服务能力 | [跨仓库协作入口](projects/20260925-runtime-business-boundary-decoupling/README.md) |
 | 智能体 execute 与交互终端统一后端 | 已实现：`RUNTIME_BACKEND=local` 供受信任本地开发使用，Showcase、Dear Agent 与终端不依赖 Docker；独立 Runtime 默认 Docker，保留执行审批 | [项目记录](projects/20260923-dear-agent-local-execute/README.md) |
 | Runtime 工具治理收敛与平台禁用例外 | 后端/Runtime 开发及本轮验证完成；前端由用户接入，联合发布待执行：Runtime 执行、平台管理禁用例外、Catalog 仅展示，旧功能不兼容 | [专项方案](projects/20260920-runtime-optional-tool-resolution/README.md) |
 | Showcase / DearFlow 沙箱文件树与产物预览下载 | 第一阶段后端已完成：文件树、普通文件/产物预览下载、格式扩展与审批；兼容 `/workspace/outputs/` 下 SHA256 命名与普通可读文件名成果识别及动态哈希计算；两服务 HTTP、重启读取与双浏览器静态 HTML 隔离通过 | [实现版接入契约](projects/20260917-showcase-artifact-workspace/05-frontend-handoff.md) · [可读文件名兼容](../apps/runtime-service/docs/changes/20260923-artifact-readable-filenames-support.md) |

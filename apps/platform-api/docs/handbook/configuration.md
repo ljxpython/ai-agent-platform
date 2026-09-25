@@ -43,6 +43,8 @@
 
 Runtime另需 `PLATFORM_RUNTIME_MODEL_CONFIG_URL` 指向本平台 `/api/runtime/internal/model-config`。双方委托secret/issuer/audience必须一致；业务JWT由Platform/Runtime处理，不给GraphHarbor核心增加业务handler。
 
+Runtime 的线程对象授权回查还需配置 `PLATFORM_THREAD_AUTHORIZATION_URL`，指向本平台 `/api/runtime/internal/thread-authorization`；该端点只接受双方共享委托密钥签名的短时批量请求。
+
 在 `apps/platform-api` 生成本机master key：
 
 ```bash

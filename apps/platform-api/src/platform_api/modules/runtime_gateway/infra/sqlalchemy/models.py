@@ -20,6 +20,8 @@ class ThreadAccessRecord(Base):
     shared_actions: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     project_actions: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     takeovers: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    provisioning_status: Mapped[str] = mapped_column(String(16), nullable=False, default="ready")
+    reserved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class RunRequestRecord(Base):

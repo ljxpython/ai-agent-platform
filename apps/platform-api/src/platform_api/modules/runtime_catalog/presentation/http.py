@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import time
 
 from platform_api.modules.runtime_gateway.application import thread_access
+from platform_api.modules.identity.actors import load_user_actor
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import sessionmaker
@@ -118,6 +120,56 @@ def authorize_runtime_memory(request: Request, project_id: str, thread_id: str, 
     factory = request.app.state.db_session_factory
     access = thread_access.get(factory, thread_id)
     return {"allowed": thread_access.personal_memory_allowed(access, project_id=project_id, user_id=user_id)}
+
+
+@router.post("/internal/thread-authorization")
+def authorize_runtime_threads(request: Request, payload: dict) -> dict:
+    """Batch ACL lookup for Runtime; the platform database remains authoritative."""
+    stamp = request.headers.get("x-runtime-acl-timestamp", "")
+    signature = request.headers.get("x-runtime-acl-signature", "")
+    secret = request.app.state.settings.runtime_delegation_secret
+    try:
+        timely = abs(time.time() - int(stamp)) <= 30
+    except (TypeError, ValueError):
+        timely = False
+    if not isinstance(payload, dict):
+        raise ForbiddenError(code="runtime_acl_invalid_request", message="Invalid ACL request")
+    action = payload.get("action")
+    project_id = payload.get("project_id")
+    user_id = payload.get("user_id")
+    targets = payload.get("thread_ids")
+    if (
+        action not in {"create", "read", "comment", "edit", "share", "delete", "approve", "terminal", "full_access"}
+        or not isinstance(project_id, str) or not project_id
+        or not isinstance(user_id, str) or not user_id
+        or not isinstance(targets, list) or not 0 < len(targets) <= 100
+        or any(not isinstance(item, str) or not item for item in targets)
+    ):
+        raise ForbiddenError(code="runtime_acl_invalid_request", message="Invalid ACL request")
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    expected = hmac.new(
+        secret.encode(), f"{stamp}\nthread-authorization\n{canonical}".encode(), hashlib.sha256
+    ).hexdigest()
+    if not secret or not timely or not hmac.compare_digest(signature, expected):
+        raise ForbiddenError(code="runtime_acl_signature_invalid", message="Invalid Runtime signature")
+    factory = request.app.state.db_session_factory
+    actor = load_user_actor(
+        session_factory=request.app.state.db_session_factory,
+        user_id=user_id,
+        project_id=project_id,
+    )
+    if actor is None:
+        return {"allowed_thread_ids": []}
+    allowed = []
+    for thread_id in targets:
+        if action == "create":
+            permitted = thread_access.pending_owner(factory, thread_id=thread_id,
+                project_id=project_id, user_id=user_id) and actor.principal_type == "user"
+        else:
+            permitted = thread_access.allowed(actor, project_id, thread_access.get(factory, thread_id), action)
+        if permitted:
+            allowed.append(thread_id)
+    return {"allowed_thread_ids": allowed}
 
 
 @router.get("/internal/message-authorization")

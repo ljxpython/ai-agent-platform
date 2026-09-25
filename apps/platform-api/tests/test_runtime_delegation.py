@@ -39,6 +39,44 @@ class MessagePayloadBoundaryTest(unittest.IsolatedAsyncioTestCase):
 
 
 class RuntimeDelegationTokenTest(unittest.TestCase):
+    def test_thread_create_scope_can_omit_assistant(self) -> None:
+        settings = Settings(runtime_delegation_secret="runtime-delegation-secret-at-least-32-bytes")
+        token = create_runtime_delegation_token(
+            subject="user-1", tenant_id="tenant-1", project_id="project-1",
+            role="project_editor", permissions=[], policy_version="policy-1",
+            allowed_model_ids=[], tool_overrides={}, tool_policy_version="unscoped-thread-create",
+            scope={"tenant_id": "tenant-1", "project_id": "project-1", "thread_id": "thread-1", "operation": "thread-create"},
+            settings=settings,
+        )
+        claims = jwt.decode(token, settings.runtime_delegation_secret, algorithms=["HS256"],
+                            issuer=settings.runtime_delegation_issuer, audience=settings.runtime_delegation_audience)
+        self.assertNotIn("assistant_id", claims["scope"])
+
+    def test_correlation_claims_are_bounded_and_optional(self) -> None:
+        settings = Settings(runtime_delegation_secret="runtime-delegation-secret-at-least-32-bytes")
+        kwargs = dict(
+            subject="user-1", tenant_id="tenant-1", project_id="project-1",
+            role="project_editor", permissions=[], policy_version="policy-1",
+            allowed_model_ids=[], tool_overrides={}, tool_policy_version="tools-1",
+            scope={"tenant_id": "tenant-1", "project_id": "project-1", "operation": "read"},
+            settings=settings,
+        )
+
+        def claims(**correlation):
+            return jwt.decode(
+                create_runtime_delegation_token(**kwargs, **correlation),
+                settings.runtime_delegation_secret, algorithms=["HS256"],
+                issuer=settings.runtime_delegation_issuer, audience=settings.runtime_delegation_audience,
+            )
+
+        for name in ("request_id", "platform_trace_id"):
+            self.assertNotIn(name, claims())
+            self.assertEqual(claims(**{name: " trusted-id "})[name], "trusted-id")
+            self.assertEqual(claims(**{name: "x" * 256})[name], "x" * 256)
+            for value in ("", " ", "x" * 257, 1, [], {}):
+                with self.subTest(name=name, value=value), self.assertRaisesRegex(ValueError, name):
+                    claims(**{name: value})
+
     def test_signs_runtime_service_claim_contract(self) -> None:
         settings = Settings(
             runtime_delegation_secret="runtime-delegation-secret-at-least-32-bytes",
@@ -238,6 +276,8 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
             claims["permissions"],
             [],
         )
+        self.assertEqual(claims["request_id"], "request-1")
+        self.assertNotIn("platform_trace_id", claims)
 
 
 class ProtocolV2RuntimeNormalizationTest(unittest.TestCase):

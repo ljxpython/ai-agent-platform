@@ -9,8 +9,6 @@ from collections.abc import AsyncIterator, Callable, Mapping
 from typing import Any
 from uuid import UUID, uuid4
 
-logger = logging.getLogger(__name__)
-
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.concurrency import run_in_threadpool
@@ -68,6 +66,8 @@ from platform_api.modules.runtime_gateway.infra.sqlalchemy.repository import (
 from platform_api.modules.runtime_policies.infra import (
     SqlAlchemyRuntimePolicyRepository,
 )
+
+logger = logging.getLogger(__name__)
 
 _THREAD_PROJECT_ID_KEYS = PROJECT_SCOPE_ALIAS_KEYS
 _THREAD_GRAPH_ID_KEYS = ("graph_id", "graphId")
@@ -1562,18 +1562,33 @@ class RuntimeGatewayService:
         next_payload["thread_id"] = str(uuid4())
         next_payload["if_exists"] = "raise"
         next_payload = _promote_thread_graph_id(next_payload)
-        thread = await self._upstream.create_thread(next_payload)
+        upstream = self._upstream
+        if self._delegation_headers_factory:
+            headers = await run_in_threadpool(
+                self._delegation_headers_factory,
+                project_id=project_id,
+                agent_key=clean_str(next_payload.get("graph_id")) or "",
+                thread_id=next_payload["thread_id"],
+                context_hash=empty_runtime_context_hash(),
+                operation="thread-create",
+            )
+            upstream = upstream.with_forwarded_headers(headers)
+        access = await run_in_threadpool(
+            thread_access.register, self._require_session_factory(),
+            thread_id=next_payload["thread_id"], project_id=project_id, actor=actor,
+        )
+        try:
+            thread = await upstream.create_thread(next_payload)
+        except UpstreamServiceError as exc:
+            if exc.status_code < 500:
+                await run_in_threadpool(
+                    thread_access.remove, self._require_session_factory(),
+                    actor=actor, project_id=project_id, thread_id=next_payload["thread_id"],
+                )
+            raise
         if thread.get("thread_id") != next_payload["thread_id"]:
             raise PlatformApiError(code="invalid_created_thread_id", status_code=502, message="Runtime did not preserve the requested Thread identity")
-        try:
-            access = await run_in_threadpool(thread_access.register, self._require_session_factory(),
-                                            thread_id=thread["thread_id"], project_id=project_id, actor=actor)
-        except Exception:
-            try:
-                await self._upstream.delete_thread(thread["thread_id"])
-            except Exception:
-                logger.exception("Failed to remove unregistered Thread %s", thread["thread_id"])
-            raise
+        await run_in_threadpool(thread_access.mark_provisioned, self._require_session_factory(), next_payload["thread_id"])
         return self._thread_with_access(actor, project_id, thread, access)
 
     async def _visible_threads(self, *, actor: ActorContext, project_id: str, payload: dict) -> list[dict]:

@@ -190,6 +190,10 @@ def get_runtime_gateway_service(
     session_factory = getattr(request.app.state, "db_session_factory", None)
     project_id = _require_project_id(request)
     context = request.state.platform_context
+    correlation = {
+        "request_id": getattr(request.state, "request_id", None),
+        "platform_trace_id": getattr(request.state, "platform_trace_id", None),
+    }
     subject = actor.user_id or actor.subject
     if not subject:
         raise NotAuthenticatedError()
@@ -225,6 +229,7 @@ def get_runtime_gateway_service(
             },
             context_hash=empty_runtime_context_hash(),
             settings=settings,
+            **correlation,
         )
     except ValueError as exc:
         raise ServiceUnavailableError(
@@ -245,8 +250,12 @@ def get_runtime_gateway_service(
         context_hash: str,
         operation: str = "run-create",
     ) -> dict[str, str]:
-        restrictions = RuntimePolicyOverlayService(session_factory=session_factory, runtime_base_url=settings.langgraph_upstream_url).resolve_tool_overrides(
-            project_id=project_id, user_id=actor.user_id, graph_id=agent_key)
+        restrictions = (
+            RuntimePolicyOverlayService(session_factory=session_factory, runtime_base_url=settings.langgraph_upstream_url).resolve_tool_overrides(
+                project_id=project_id, user_id=actor.user_id, graph_id=agent_key)
+            if agent_key and operation != "thread-create" else
+            {"tool_overrides": {}, "tool_policy_version": "unscoped-thread-create"}
+        )
         scoped = create_runtime_delegation_token(
             subject=subject,
             tenant_id=context.tenant.tenant_id or "__default",
@@ -259,12 +268,13 @@ def get_runtime_gateway_service(
             scope={
                 "tenant_id": context.tenant.tenant_id or "__default",
                 "project_id": project_id,
-                "assistant_id": agent_key,
+                "assistant_id": agent_key or None,
                 "thread_id": thread_id,
                 "operation": operation,
             },
             context_hash=context_hash,
             settings=settings,
+            **correlation,
         )
         return {"authorization": f"Bearer {scoped}"}
 

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import time
+from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import or_, select
@@ -91,12 +92,26 @@ def record_metadata(row: ThreadAccessRecord) -> dict:
 def register(factory, *, thread_id: str, project_id: str, actor: ActorContext) -> dict:
     metadata = initial_metadata(actor, {"project_id": project_id})
     with session_scope(factory) as session:
-        row = ThreadAccessRecord(thread_id=thread_id, **{key: metadata[key] for key in (
+        row = ThreadAccessRecord(thread_id=thread_id, provisioning_status="pending", reserved_at=datetime.now(UTC), **{key: metadata[key] for key in (
             "project_id", "owner_user_id", "visibility", "shared_actions", "project_actions", "takeovers",
         )})
         session.add(row)
         session.flush()
         return record_metadata(row)
+
+
+def mark_provisioned(factory, thread_id: str) -> None:
+    with session_scope(factory) as session:
+        row = session.get(ThreadAccessRecord, thread_id, with_for_update=True)
+        if row is not None and row.provisioning_status == "pending":
+            row.provisioning_status = "ready"
+
+
+def pending_owner(factory, *, thread_id: str, project_id: str, user_id: str) -> bool:
+    with session_scope(factory) as session:
+        row = session.get(ThreadAccessRecord, thread_id)
+        return bool(row is not None and row.provisioning_status == "pending"
+                    and row.project_id == project_id and row.owner_user_id == user_id)
 
 
 def get(factory, thread_id: str) -> dict:

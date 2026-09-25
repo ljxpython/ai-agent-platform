@@ -137,6 +137,8 @@ def create_runtime_delegation_token(
     scope: Mapping[str, str | None],
     settings: Settings,
     context_hash: str | None = None,
+    request_id: str | None = None,
+    platform_trace_id: str | None = None,
 ) -> str:
     secret = settings.runtime_delegation_secret
     if len(secret.encode("utf-8")) < 32:
@@ -164,6 +166,7 @@ def create_runtime_delegation_token(
     operation = normalized_scope.get("operation")
     if operation not in {
         "read",
+        "thread-create",
         "run-create",
         "message-enqueue",
         "message-read",
@@ -182,7 +185,7 @@ def create_runtime_delegation_token(
         "dear-governance-write",
     }:
         raise ValueError("runtime delegation scope operation is unsupported")
-    if operation != "read" and not normalized_scope.get("assistant_id"):
+    if operation not in {"read", "thread-create"} and not normalized_scope.get("assistant_id"):
         raise ValueError("runtime delegation execution requires assistant_id")
     if (
         normalized_scope.get("tenant_id") != tenant_id
@@ -238,6 +241,11 @@ def create_runtime_delegation_token(
             (now + timedelta(seconds=settings.runtime_delegation_ttl_seconds)).timestamp()
         ),
     }
+    for name, value in (("request_id", request_id), ("platform_trace_id", platform_trace_id)):
+        if value is not None:
+            if not isinstance(value, str) or not value.strip() or len(value) > 256:
+                raise ValueError(f"runtime delegation {name} is invalid")
+            payload[name] = value.strip()
     return jwt.encode(
         payload,
         secret,

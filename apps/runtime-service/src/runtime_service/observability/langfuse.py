@@ -27,8 +27,6 @@ logger = logging.getLogger(__name__)
 _REQUIRED_SETTINGS = ("LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_BASE_URL")
 _CALLER_METADATA = frozenset(
     {
-        "request_id",
-        "platform_trace_id",
         "run_id",
         "thread_id",
         "assistant_id",

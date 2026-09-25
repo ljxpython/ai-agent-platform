@@ -101,6 +101,8 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
                 "visibility": "project", "sandbox_id": "another-sandbox", "access_policy": "full_access"},
         })
         self.assertNotEqual(result["thread_id"], "private")
+        with session_scope(self.factory) as session:
+            self.assertEqual(session.get(ThreadAccessRecord, result["thread_id"]).provisioning_status, "ready")
         self.assertEqual(result["metadata"]["owner_user_id"], self.owner.user_id)
         sent = self.upstream.create_thread.call_args.args[0]
         self.assertFalse(set(sent["metadata"]) & acl.ACL_KEYS)
@@ -144,14 +146,38 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
         acl.end_takeover(self.factory, actor=self.admin, project_id=self.project, thread_id="private")
         self.assertTrue(acl.allowed(self.superadmin, self.project, acl.get(self.factory, "private"), "read"))
 
-    async def test_registration_failure_removes_only_new_upstream_thread(self):
+    async def test_registration_failure_never_creates_upstream_thread(self):
         with patch.object(acl, "register", side_effect=RuntimeError("database unavailable")):
             with self.assertRaisesRegex(RuntimeError, "database unavailable"):
                 await self.service.create_thread(actor=self.owner, project_id=self.project, payload={})
+        self.upstream.create_thread.assert_not_awaited()
+        self.upstream.delete_thread.assert_not_awaited()
+
+    async def test_explicit_create_rejection_removes_reservation(self):
+        from platform_api.core.errors import UpstreamServiceError
+
+        self.upstream.create_thread.side_effect = UpstreamServiceError(
+            upstream="langgraph", status_code=403, code="denied", message="Denied"
+        )
+        with self.assertRaises(UpstreamServiceError):
+            await self.service.create_thread(actor=self.owner, project_id=self.project, payload={})
         created_id = self.upstream.create_thread.call_args.args[0]["thread_id"]
-        self.assertNotEqual(created_id, "private")
-        self.upstream.delete_thread.assert_awaited_once_with(created_id)
         self.assertEqual(acl.get(self.factory, created_id), {})
+        self.upstream.delete_thread.assert_not_awaited()
+
+    async def test_unknown_create_result_keeps_reservation(self):
+        from platform_api.core.errors import UpstreamServiceError
+
+        self.upstream.create_thread.side_effect = UpstreamServiceError(
+            upstream="langgraph", status_code=504, code="timeout", message="Timed out"
+        )
+        with self.assertRaises(UpstreamServiceError):
+            await self.service.create_thread(actor=self.owner, project_id=self.project, payload={})
+        created_id = self.upstream.create_thread.call_args.args[0]["thread_id"]
+        self.assertEqual(acl.get(self.factory, created_id)["owner_user_id"], self.owner.user_id)
+        with session_scope(self.factory) as session:
+            self.assertEqual(session.get(ThreadAccessRecord, created_id).provisioning_status, "pending")
+        self.upstream.delete_thread.assert_not_awaited()
 
     async def test_manager_approval_does_not_grant_private_read_or_leak_run_input(self):
         self.upstream.create_thread_run = AsyncMock(return_value={"run_id": "source-run"})

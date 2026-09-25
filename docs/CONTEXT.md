@@ -9,6 +9,8 @@
 
 ## 活跃项目
 
+- [Runtime 与 GraphHarbor 业务边界解耦](projects/20260925-runtime-business-boundary-decoupling/README.md)：规划中，待人工评审；跨仓库授权、模型/trace、workspace 与历史隔离迁移方案已形成，本轮未实施服务或数据库变更。
+
 - [interaction-data-service 退役](projects/20260924-interaction-data-service-retirement/README.md)：done（本机范围）；仓库/本机独占资源清理、备份恢复、浏览器聊天与成果交付通过。
 
 - [Dear Agent记忆闭环](projects/20260920-dear-agent-memory/README.md)：partial（后端 + Runtime + 前端 `F01—F07` 代码与单测全部完成；仅剩联调环境完整平台 run/SSE 与浏览器 E2E 验收）。
