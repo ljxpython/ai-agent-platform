@@ -47,7 +47,7 @@
 | 消息出队与即时提交会话执行态感知优化 | 已完成：综合 isSessionRunning 状态机覆盖出队、提交与乐观消息，0ms 呈现“组织答复”与进度指示条，出队动效与禁用保护 | [变更记录](../apps/platform-web/docs/changes/20260923-queued-message-draining-execution-state.md) |
 | 工具卡片区分「正在生成参数」与「执行中」状态及实时字数反馈 | 已完成：基于末尾 AIMessage finish_reason 精准区分 LLM 流式构造长参数与工具真实执行阶段，实时展示 `正在生成参数 · 已生成 X.Xk 字符` 及 `write_file` 流式正文预览 | [变更记录](../apps/platform-web/docs/changes/20260923-tool-streaming-input-vs-execution-state.md) |
 | 仿 GPT 聊天界面回合锚定与流式防抖滚动体验 | 已完成：首次提问即时收起欢迎区并置顶展开流式输出；后续提问锚定在视口偏中间位置（32%高度）配合动态收缩底部留白垫片实现零抖动流式生长；支持自由上下滑动与统一底部悬浮回到最新胶囊 | [变更记录](../apps/platform-web/docs/changes/20260924-gpt-style-turn-anchoring-and-scroll-ux.md) |
-| 前端对话会话 SWR 缓存与流式长效保活治理 | 已完成：路由级 `<KeepAlive>` 保活与侧栏导航活跃会话记忆、Pinia SWR 会话缓存（`useChatSessionStore` 0ms 水合）、消除 `loadHistory(true)` 二次清空竞争、流式生命周期解耦与 `joinStream` 断流无缝续传 | [项目文档](projects/20260924-chat-session-cache-and-stream-resumption/README.md) |
+| 前端对话会话 SWR 缓存与流式长效保活治理 | 部分完成（按当前能力校正）：已有页面KeepAlive、侧栏活跃会话记忆及SWR缓存；当前Vue SDK无joinStream，跨Thread实例保活/恢复缺口进入SSE专项，未实施 | [原项目记录](projects/20260924-chat-session-cache-and-stream-resumption/README.md) · [现状校正与后续方案](projects/20260926-sse-event-contract/plan.md) |
 
 
 
@@ -88,6 +88,12 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 跨服务规范治理专项群 | 规划中：错误响应/SSE/追踪方案就绪、实现未开始；JWT执行包已细化、实现未开始；AI路由按仓库级文档小改动处理 | [总入口](projects/20260922-cross-service-governance/README.md) |
+| 平台错误响应统一 | 待实施：方案已确认，公开字段/错误码/任务/验证已细化；仅改API/Web，Runtime/GraphHarbor完全不改 | [错误响应专项](projects/20260926-error-response-contract/README.md) |
+| SSE事件契约治理 | 规划中（方案就绪、实现未开始）：用户已同意进入下一专项；线程级持续保活、恢复/410及安全帧纳入；保持原有渲染与交互，不默认折叠 | [SSE专项](projects/20260926-sse-event-contract/README.md) |
+| 跨服务追踪传播治理 | 规划中（方案就绪、实现未开始）：平台内部编号、两处委托关联、现有提交/审计及SSE日志执行契约已落盘；Runtime/GraphHarbor不改，真实链路未验证 | [追踪专项](projects/20260926-trace-context-propagation/README.md) |
+| Delegation JWT契约治理 | 规划中（执行方案已细化、实现未开始）：v2字段/23项operation/身份/生命周期矩阵及J1—J6任务就绪；平台最小修正与真实双端测试，Runtime/GraphHarbor不改 | [JWT专项](projects/20260926-delegation-jwt-contract/README.md) |
+| AI服务规范路由 | 不再独立立项：后续按仓库级文档小改动补按需阅读规则；本轮未修改AGENTS | [AI路由专项](projects/20260926-ai-service-routing/README.md) |
 | 代码规范自动化门禁 | 部分完成：pre-commit 与 CI 变更文件检查已接入；Python 历史格式基线待单独清理 | [项目记录](projects/20260925-code-quality-automation/README.md) |
 | Python 格式基线清理 | 规划中：约 731 条 Ruff 诊断、297 个文件格式差异待分批清理，本次不实施 | [项目规划](projects/20260925-python-format-baseline-cleanup/README.md) |
 | 旧 Testcase 结果服务退役 | 已完成（本机范围）：仓库与本机 Docker 独占资源已清理，备份恢复、浏览器聊天及成果生成/预览/下载通过 | [退役记录](projects/20260924-interaction-data-service-retirement/README.md) |

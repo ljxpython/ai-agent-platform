@@ -4,10 +4,12 @@
 
 - **启动日期：** 2026-09-25。
 - **级别：** 治理改动，跨 platform-api、runtime-service 和 GraphHarbor；含授权与历史数据迁移。
-- **状态：** `partial`。平台 ACL 回查、thread 创建预留/受限 reconcile、可信 project metadata、模型与 tracing 关联已实施；GraphHarbor 已移除旧 SQL scope，公开 post33 已锁定。本机两库归档隔离恢复、单项目业务 run/SSE/HITL 和浏览器文件正向链路已有阶段证据；官方全入口、跨身份故障与回退 Final 仍未完成。
+- **状态：** `done`（业务边界解耦范围）。平台 ACL 回查、Thread 创建预留/受限 reconcile、可信执行身份、模型与 tracing 关联、workspace 与 GraphHarbor post33 接入已完成；GraphHarbor 只保留通用 Agent Server 能力。官方 OpenAPI 全量 schema 差异继续由独立契约专项处理。
 - **当前安排：** 与 GraphHarbor 的[Runtime 流事件保留治理](../../../../graphharbor/docs/projects/20260925-runtime-event-retention/README.md)联合验收；真实缺口以主方案“暂停点与恢复入口”及各专题 Final 为准。
 - **主方案：** [GraphHarbor 项目概览](../../../../graphharbor/docs/projects/20260925-runtime-business-boundary-decoupling/README.md)。此跨仓库相对链接要求两仓同级检出；仓库不在同一工作区时，请在 graphharbor 仓库打开相同项目路径。
 - **单一事实源：** 任务、验证和评审记录集中在 GraphHarbor 主方案；本入口不复制任务状态。
+
+2026-09-26 收口：主方案已将本专项业务边界范围标记为 `done`。本文件和各专题中的早期 `partial` 仅保留历史阶段证据；官方 OpenAPI 203 项差异属于独立 Agent Server 契约专项，不代表业务字段、ACL、workspace 或执行身份重新进入 GraphHarbor。
 
 ## 阅读顺序和平台责任
 

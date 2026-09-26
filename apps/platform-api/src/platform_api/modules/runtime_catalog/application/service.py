@@ -135,11 +135,18 @@ class RuntimeCatalogService:
     def _require_refresh_access(self, *, actor: ActorContext, project_id: str) -> None:
         self._policy_engine.require(
             actor=actor,
-            authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_CATALOG_REFRESH),
+            authorization=AuthorizationRequest(
+                permission=PermissionCode.PLATFORM_CATALOG_REFRESH
+            ),
         )
 
     def _runtime_headers(
-        self, *, actor: ActorContext, project_id: str, catalog_refresh: bool = False
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        catalog_refresh: bool = False,
+        assistant_id: str | None = None,
     ) -> dict[str, str]:
         subject = actor.user_id or actor.subject
         if not subject:
@@ -147,7 +154,11 @@ class RuntimeCatalogService:
         project_roles = actor.project_role_set(project_id)
         if catalog_refresh:
             self._require_refresh_access(actor=actor, project_id=project_id)
-            role = "platform_super_admin" if actor.has_platform_role("platform_super_admin") else "platform_operator"
+            role = (
+                "platform_super_admin"
+                if actor.has_platform_role("platform_super_admin")
+                else "platform_operator"
+            )
         elif not project_roles:
             raise ForbiddenError(
                 code="project_role_missing",
@@ -170,7 +181,12 @@ class RuntimeCatalogService:
                 allowed_model_ids=policy["allowed_model_ids"],
                 tool_overrides={},
                 tool_policy_version="unscoped-read-v2",
-                scope={"tenant_id": self._tenant_id, "project_id": project_id, "operation": "read"},
+                scope={
+                    "tenant_id": self._tenant_id,
+                    "project_id": project_id,
+                    "operation": "read",
+                    **({"assistant_id": assistant_id} if assistant_id else {}),
+                },
                 context_hash=empty_runtime_context_hash(),
                 settings=self._settings,
             )
@@ -283,7 +299,9 @@ class RuntimeCatalogService:
 
             action = values.get("thread_action", "comment")
             if action not in {"comment", "approve"}:
-                raise ForbiddenError(code="thread_action_denied", message="Invalid execution action")
+                raise ForbiddenError(
+                    code="thread_action_denied", message="Invalid execution action"
+                )
             access = thread_access.get(factory, values.get("thread_id") or "")
             thread_access.require_action(actor, project_id, access, action)
             if action != "approve":
@@ -332,16 +350,35 @@ class RuntimeCatalogService:
 
     def authorize_message(self, reference: str, *, thread_id: str, run_id: str) -> dict:
         import jwt
-        secret = self._settings.runtime_model_config_secret or self._settings.runtime_delegation_secret
+
+        secret = (
+            self._settings.runtime_model_config_secret
+            or self._settings.runtime_delegation_secret
+        )
         if not secret:
-            raise ForbiddenError(code="message_authorization_unavailable", message="Message authorization is not configured")
+            raise ForbiddenError(
+                code="message_authorization_unavailable",
+                message="Message authorization is not configured",
+            )
         try:
-            values = jwt.decode(reference, secret, algorithms=["HS256"], audience="runtime-message",
-                                options={"require": ["exp", "project_id", "thread_id", "run_id", "actor"]})
+            values = jwt.decode(
+                reference,
+                secret,
+                algorithms=["HS256"],
+                audience="runtime-message",
+                options={
+                    "require": ["exp", "project_id", "thread_id", "run_id", "actor"]
+                },
+            )
         except jwt.InvalidTokenError as exc:
-            raise ForbiddenError(code="message_authorization_invalid", message="Invalid message authorization") from exc
+            raise ForbiddenError(
+                code="message_authorization_invalid",
+                message="Invalid message authorization",
+            ) from exc
         if values["thread_id"] != thread_id or values["run_id"] != run_id:
-            raise ForbiddenError(code="message_scope_denied", message="Message scope mismatch")
+            raise ForbiddenError(
+                code="message_scope_denied", message="Message scope mismatch"
+            )
         self._authorize_model_reference(values, values["project_id"])
         return {"allowed": True, "project_id": values["project_id"]}
 
@@ -513,11 +550,15 @@ class RuntimeCatalogService:
                 project_id=effective_project_id,
                 permission=PermissionCode.PROJECT_RUNTIME_WRITE,
             )
-            target_project_uuid = parse_uuid(effective_project_id, code="invalid_project_id")
+            target_project_uuid = parse_uuid(
+                effective_project_id, code="invalid_project_id"
+            )
         else:
             self._policy_engine.require(
                 actor=actor,
-                authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_MODEL_WRITE),
+                authorization=AuthorizationRequest(
+                    permission=PermissionCode.PLATFORM_MODEL_WRITE
+                ),
             )
 
         values = self._validated_model_values(payload, partial=False)
@@ -585,7 +626,9 @@ class RuntimeCatalogService:
             else:
                 self._policy_engine.require(
                     actor=actor,
-                    authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_MODEL_WRITE),
+                    authorization=AuthorizationRequest(
+                        permission=PermissionCode.PLATFORM_MODEL_WRITE
+                    ),
                 )
 
             values = self._validated_model_values(payload, partial=True)
@@ -664,7 +707,9 @@ class RuntimeCatalogService:
             else:
                 self._policy_engine.require(
                     actor=actor,
-                    authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_MODEL_WRITE),
+                    authorization=AuthorizationRequest(
+                        permission=PermissionCode.PLATFORM_MODEL_WRITE
+                    ),
                 )
 
             repository.delete_configured_model(model_uuid)
@@ -699,7 +744,11 @@ class RuntimeCatalogService:
     @staticmethod
     def _normalize_tool_items(payload: Any) -> list[dict[str, Any]]:
         def invalid():
-            return ServiceUnavailableError(code="runtime_tool_catalog_invalid", message="Invalid Runtime tool declarations")
+            return ServiceUnavailableError(
+                code="runtime_tool_catalog_invalid",
+                message="Invalid Runtime tool declarations",
+            )
+
         if not isinstance(payload, dict) or not isinstance(payload.get("tools"), list):
             raise invalid()
         seen = set()
@@ -708,21 +757,41 @@ class RuntimeCatalogService:
                 raise invalid()
             for key in ("tool_key", "name"):
                 value = item.get(key)
-                if not isinstance(value, str) or not value or len(value) > 128 or value != value.strip():
+                if (
+                    not isinstance(value, str)
+                    or not value
+                    or len(value) > 128
+                    or value != value.strip()
+                ):
                     raise invalid()
             graphs = item.get("graph_ids")
-            if (item["tool_key"] != item["name"] or item["tool_key"] in seen or
-                    not isinstance(graphs, list) or not graphs or
-                    any(not isinstance(g, str) or not g or len(g) > 128 for g in graphs)):
+            if (
+                item["tool_key"] != item["name"]
+                or item["tool_key"] in seen
+                or not isinstance(graphs, list)
+                or not graphs
+                or any(not isinstance(g, str) or not g or len(g) > 128 for g in graphs)
+            ):
                 raise invalid()
             seen.add(item["tool_key"])
         return payload["tools"]
 
-    async def read_tool_declarations(self, *, actor: ActorContext, project_id: str) -> list[dict]:
-        await run_in_threadpool(self._prepare_project_scope, actor=actor, project_id=project_id,
-                                permission=PermissionCode.PROJECT_RUNTIME_READ)
-        payload = await self._upstream.require_json("GET", "/internal/capabilities/tools",
-            forwarded_headers=await run_in_threadpool(self._runtime_headers, actor=actor, project_id=project_id))
+    async def read_tool_declarations(
+        self, *, actor: ActorContext, project_id: str
+    ) -> list[dict]:
+        await run_in_threadpool(
+            self._prepare_project_scope,
+            actor=actor,
+            project_id=project_id,
+            permission=PermissionCode.PROJECT_RUNTIME_READ,
+        )
+        payload = await self._upstream.require_json(
+            "GET",
+            "/internal/capabilities/tools",
+            forwarded_headers=await run_in_threadpool(
+                self._runtime_headers, actor=actor, project_id=project_id
+            ),
+        )
         return self._normalize_tool_items(payload)
 
     @staticmethod
@@ -752,7 +821,9 @@ class RuntimeCatalogService:
         if platform:
             self._policy_engine.require(
                 actor=actor,
-                authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_MODEL_READ),
+                authorization=AuthorizationRequest(
+                    permission=PermissionCode.PLATFORM_MODEL_READ
+                ),
             )
             scope_filter = "platform"
         else:
@@ -831,7 +902,10 @@ class RuntimeCatalogService:
             "GET",
             "/internal/capabilities/tools",
             forwarded_headers=await run_in_threadpool(
-                self._runtime_headers, actor=actor, project_id=project_id, catalog_refresh=True
+                self._runtime_headers,
+                actor=actor,
+                project_id=project_id,
+                catalog_refresh=True,
             ),
         )
         items = self._normalize_tool_items(payload)
@@ -879,7 +953,10 @@ class RuntimeCatalogService:
             "GET",
             f"/assistants/{quote(graph_id, safe='')}/schemas",
             forwarded_headers=await run_in_threadpool(
-                self._runtime_headers, actor=actor, project_id=project_id
+                self._runtime_headers,
+                actor=actor,
+                project_id=project_id,
+                assistant_id=graph_id,
             ),
         )
 
@@ -922,7 +999,10 @@ class RuntimeCatalogService:
 
         rows = await self._upstream.list_deployed_graphs(
             forwarded_headers=await run_in_threadpool(
-                self._runtime_headers, actor=actor, project_id=project_id, catalog_refresh=True
+                self._runtime_headers,
+                actor=actor,
+                project_id=project_id,
+                catalog_refresh=True,
             ),
         )
         items = [{**row, "display_name": row["graph_id"]} for row in rows]

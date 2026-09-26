@@ -12,7 +12,12 @@ from platform_api.adapters.langgraph.runtime_client import LangGraphRuntimeClien
 from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import build_engine, create_core_tables
-from platform_api.core.errors import BadRequestError, NotAuthenticatedError, ServiceUnavailableError, PlatformApiError
+from platform_api.core.errors import (
+    BadRequestError,
+    NotAuthenticatedError,
+    ServiceUnavailableError,
+    PlatformApiError,
+)
 from platform_api.modules.runtime_catalog.infra.sqlalchemy.repository import (
     SqlAlchemyRuntimeCatalogRepository,
 )
@@ -57,10 +62,13 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
             policy_factory.return_value.build_delegation_policy.return_value = {
                 "version": "policy-1",
                 "allowed_model_ids": ["model-1"],
-                "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+                "tool_overrides": {},
+                "tool_policy_version": "test-tools-v2",
                 "runtime_permissions": [],
             }
-            headers = service._runtime_headers(actor=self.actor, project_id=self.project_id)
+            headers = service._runtime_headers(
+                actor=self.actor, project_id=self.project_id
+            )
 
         token = headers["authorization"].removeprefix("Bearer ")
         claims = jwt.decode(
@@ -72,7 +80,37 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(claims["sub"], "user-1")
         self.assertEqual(claims["project_id"], self.project_id)
-        self.assertEqual(claims["scope"], {"tenant_id": "tenant-1", "project_id": self.project_id, "operation": "read"})
+        self.assertEqual(
+            claims["scope"],
+            {
+                "tenant_id": "tenant-1",
+                "project_id": self.project_id,
+                "operation": "read",
+            },
+        )
+
+    def test_schema_read_delegation_is_bound_to_assistant(self) -> None:
+        service = self._service()
+        with patch(
+            "platform_api.modules.runtime_catalog.application.service.RuntimePolicyOverlayService"
+        ) as policy_factory:
+            policy_factory.return_value.build_delegation_policy.return_value = {
+                "version": "policy-1",
+                "allowed_model_ids": [],
+            }
+            headers = service._runtime_headers(
+                actor=self.actor,
+                project_id=self.project_id,
+                assistant_id="reference_agent",
+            )
+        claims = jwt.decode(
+            headers["authorization"].removeprefix("Bearer "),
+            self.settings.runtime_delegation_secret,
+            algorithms=["HS256"],
+            audience=self.settings.runtime_delegation_audience,
+            issuer=self.settings.runtime_delegation_issuer,
+        )
+        self.assertEqual(claims["scope"]["assistant_id"], "reference_agent")
 
     def test_runtime_headers_include_permissions_for_allowed_runtime_tool(self) -> None:
         service = self._service()
@@ -82,10 +120,13 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
             policy_factory.return_value.build_delegation_policy.return_value = {
                 "version": "policy-1",
                 "allowed_model_ids": ["model-1"],
-                "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+                "tool_overrides": {},
+                "tool_policy_version": "test-tools-v2",
                 "runtime_permissions": ["runtime.tool.read"],
             }
-            headers = service._runtime_headers(actor=self.actor, project_id=self.project_id)
+            headers = service._runtime_headers(
+                actor=self.actor, project_id=self.project_id
+            )
 
         token = headers["authorization"].removeprefix("Bearer ")
         claims = jwt.decode(
@@ -102,23 +143,39 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
 
     def test_runtime_headers_reject_missing_subject(self) -> None:
         with self.assertRaises(NotAuthenticatedError):
-            self._service()._runtime_headers(actor=ActorContext(), project_id=self.project_id)
+            self._service()._runtime_headers(
+                actor=ActorContext(), project_id=self.project_id
+            )
 
-    async def test_schema_read_checks_project_before_forwarding_delegation(self) -> None:
-        upstream = SimpleNamespace(require_json=AsyncMock(return_value={"graph_id": "remote"}))
+    async def test_schema_read_checks_project_before_forwarding_delegation(
+        self,
+    ) -> None:
+        upstream = SimpleNamespace(
+            require_json=AsyncMock(return_value={"graph_id": "remote"})
+        )
         service = self._service(upstream=upstream)
         service._prepare_project_scope = Mock()
-        service._runtime_headers = Mock(return_value={"authorization": "Bearer delegation"})
-        await service.get_graph_schema(actor=self.actor, project_id=self.project_id, graph_id="remote")
+        service._runtime_headers = Mock(
+            return_value={"authorization": "Bearer delegation"}
+        )
+        await service.get_graph_schema(
+            actor=self.actor, project_id=self.project_id, graph_id="remote"
+        )
         service._prepare_project_scope.assert_called_once()
+        service._runtime_headers.assert_called_once_with(
+            actor=self.actor, project_id=self.project_id, assistant_id="remote"
+        )
         upstream.require_json.assert_awaited_once_with(
-            "GET", "/assistants/remote/schemas",
+            "GET",
+            "/assistants/remote/schemas",
             forwarded_headers={"authorization": "Bearer delegation"},
         )
         upstream.require_json.reset_mock()
         service._prepare_project_scope.side_effect = NotAuthenticatedError()
         with self.assertRaises(NotAuthenticatedError):
-            await service.get_graph_schema(actor=self.actor, project_id=self.project_id, graph_id="remote")
+            await service.get_graph_schema(
+                actor=self.actor, project_id=self.project_id, graph_id="remote"
+            )
         upstream.require_json.assert_not_awaited()
 
     async def test_refresh_passes_delegation_to_upstream(self) -> None:
@@ -126,7 +183,9 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
         service = self._service(upstream=upstream)
         service._prepare_project_scope = Mock()  # type: ignore[method-assign]
         service._require_refresh_access = Mock()  # type: ignore[method-assign]
-        service._runtime_headers = Mock(return_value={"authorization": "Bearer delegation"})  # type: ignore[method-assign]
+        service._runtime_headers = Mock(
+            return_value={"authorization": "Bearer delegation"}
+        )  # type: ignore[method-assign]
 
         with self.assertRaises(ServiceUnavailableError):
             await service.refresh_tools(actor=self.actor, project_id=self.project_id)
@@ -139,37 +198,89 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_tool_refresh_rejects_bad_snapshot_and_accepts_empty(self):
         from tempfile import TemporaryDirectory
+
         with TemporaryDirectory() as directory:
             engine = build_engine(f"sqlite:///{directory}/catalog.db")
             self.addCleanup(engine.dispose)
             create_core_tables(engine)
-            upstream = SimpleNamespace(require_json=AsyncMock(return_value={"tools": [{"tool_key": "read_reference", "name": "read_reference", "graph_ids": ["reference_agent"]}]}))
-            service = RuntimeCatalogService(session_factory=sessionmaker(engine), upstream=upstream, runtime_base_url="http://runtime", settings=self.settings)
+            upstream = SimpleNamespace(
+                require_json=AsyncMock(
+                    return_value={
+                        "tools": [
+                            {
+                                "tool_key": "read_reference",
+                                "name": "read_reference",
+                                "graph_ids": ["reference_agent"],
+                            }
+                        ]
+                    }
+                )
+            )
+            service = RuntimeCatalogService(
+                session_factory=sessionmaker(engine),
+                upstream=upstream,
+                runtime_base_url="http://runtime",
+                settings=self.settings,
+            )
             service._prepare_project_scope = Mock()
             service._require_refresh_access = Mock()
             service._runtime_headers = Mock(return_value={})
             await service.refresh_tools(actor=self.actor, project_id=self.project_id)
-            for payload in ({}, {"tools": [None]}, {"tools": [{"name": "bad"}]}, {"tools": [{"tool_key": "x", "name": "y", "graph_ids": ["reference_agent"]}]}):
+            for payload in (
+                {},
+                {"tools": [None]},
+                {"tools": [{"name": "bad"}]},
+                {
+                    "tools": [
+                        {"tool_key": "x", "name": "y", "graph_ids": ["reference_agent"]}
+                    ]
+                },
+            ):
                 upstream.require_json.return_value = payload
                 with self.assertRaises(ServiceUnavailableError):
-                    await service.refresh_tools(actor=self.actor, project_id=self.project_id)
-                self.assertEqual(service.list_tools(actor=self.actor, project_id=self.project_id).tools[0].sync_status, "ready")
+                    await service.refresh_tools(
+                        actor=self.actor, project_id=self.project_id
+                    )
+                self.assertEqual(
+                    service.list_tools(actor=self.actor, project_id=self.project_id)
+                    .tools[0]
+                    .sync_status,
+                    "ready",
+                )
             upstream.require_json.return_value = {"tools": []}
             await service.refresh_tools(actor=self.actor, project_id=self.project_id)
-            self.assertTrue(all(item.sync_status == "deleted" for item in service.list_tools(actor=self.actor, project_id=self.project_id).tools))
+            self.assertTrue(
+                all(
+                    item.sync_status == "deleted"
+                    for item in service.list_tools(
+                        actor=self.actor, project_id=self.project_id
+                    ).tools
+                )
+            )
 
     def test_model_credential_round_trip_is_not_returned(self) -> None:
         secret = "provider-secret"
-        ciphertext = encrypt_api_key(secret, master_key=self.settings.model_config_master_key)
+        ciphertext = encrypt_api_key(
+            secret, master_key=self.settings.model_config_master_key
+        )
         self.assertNotEqual(ciphertext, secret)
-        self.assertEqual(decrypt_api_key(ciphertext, master_key=self.settings.model_config_master_key), secret)
+        self.assertEqual(
+            decrypt_api_key(
+                ciphertext, master_key=self.settings.model_config_master_key
+            ),
+            secret,
+        )
 
     def test_model_credential_decryption_fails_closed(self) -> None:
         with self.assertRaises(ModelCredentialError):
-            decrypt_api_key("not-a-fernet-token", master_key=self.settings.model_config_master_key)
+            decrypt_api_key(
+                "not-a-fernet-token", master_key=self.settings.model_config_master_key
+            )
         with self.assertRaises(ModelCredentialError):
             decrypt_api_key(
-                encrypt_api_key("provider-secret", master_key=self.settings.model_config_master_key),
+                encrypt_api_key(
+                    "provider-secret", master_key=self.settings.model_config_master_key
+                ),
                 master_key=Fernet.generate_key().decode(),
             )
 
@@ -272,7 +383,9 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
         engine = build_engine(f"sqlite:///{directory.name}/catalog.db")
         create_core_tables(engine)
         session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-        upstream = LangGraphRuntimeClient(base_url="http://runtime.test", timeout_seconds=1)
+        upstream = LangGraphRuntimeClient(
+            base_url="http://runtime.test", timeout_seconds=1
+        )
         upstream.request_json = AsyncMock(return_value=[{"graph_id": "remote_agent"}])
         service = RuntimeCatalogService(
             session_factory=session_factory,
@@ -283,28 +396,43 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
         )
         service._prepare_project_scope = Mock()  # type: ignore[method-assign]
         service._require_refresh_access = Mock()  # type: ignore[method-assign]
-        service._runtime_headers = Mock(return_value={"authorization": "Bearer delegation"})  # type: ignore[method-assign]
+        service._runtime_headers = Mock(
+            return_value={"authorization": "Bearer delegation"}
+        )  # type: ignore[method-assign]
 
         try:
             catalog = service.list_graphs(actor=self.actor, project_id=self.project_id)
             self.assertEqual(catalog.count, 0)
             upstream.request_json.assert_not_awaited()
-            result = await service.refresh_graphs(actor=self.actor, project_id=self.project_id)
+            result = await service.refresh_graphs(
+                actor=self.actor, project_id=self.project_id
+            )
             self.assertTrue(result.ok)
             catalog = service.list_graphs(actor=self.actor, project_id=self.project_id)
             graph_keys = {g.graph_id for g in catalog.graphs}
             self.assertEqual(graph_keys, {"remote_agent"})
             upstream.request_json.assert_awaited_once_with(
-                "POST", "/assistants/search",
-                payload={"metadata": {"created_by": "system"}, "limit": 1000, "offset": 0},
-                forwarded_headers={"authorization": "Bearer delegation"}
+                "POST",
+                "/assistants/search",
+                payload={
+                    "metadata": {"created_by": "system"},
+                    "limit": 1000,
+                    "offset": 0,
+                },
+                forwarded_headers={"authorization": "Bearer delegation"},
             )
             for invalid in ({}, None, [{}]):
                 upstream.request_json.return_value = invalid
                 with self.assertRaises(PlatformApiError):
-                    await service.refresh_graphs(actor=self.actor, project_id=self.project_id)
-                unchanged = service.list_graphs(actor=self.actor, project_id=self.project_id)
-                self.assertEqual({g.graph_id for g in unchanged.graphs}, {"remote_agent"})
+                    await service.refresh_graphs(
+                        actor=self.actor, project_id=self.project_id
+                    )
+                unchanged = service.list_graphs(
+                    actor=self.actor, project_id=self.project_id
+                )
+                self.assertEqual(
+                    {g.graph_id for g in unchanged.graphs}, {"remote_agent"}
+                )
             upstream.request_json.return_value = []
             await service.refresh_graphs(actor=self.actor, project_id=self.project_id)
             empty = service.list_graphs(actor=self.actor, project_id=self.project_id)
@@ -318,7 +446,10 @@ class LangGraphRuntimeClientHeadersTest(unittest.TestCase):
         client = LangGraphRuntimeClient(
             base_url="http://runtime.test",
             timeout_seconds=1.0,
-            forwarded_headers={"authorization": "Bearer browser-token", "x-request-id": "request-1"},
+            forwarded_headers={
+                "authorization": "Bearer browser-token",
+                "x-request-id": "request-1",
+            },
         )
 
         headers = client._headers(

@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import atexit
 import json
 import argparse
 import subprocess
@@ -121,6 +122,14 @@ def run_id(response: dict[str, Any]) -> str:
     if not isinstance(value, str) or not value:
         raise RuntimeError("run response did not include a run_id")
     return value
+
+
+def cleanup_project(token: str, project_id: str) -> None:
+    status, _ = request_json(
+        f"/api/projects/{project_id}", token=token, method="DELETE"
+    )
+    if status != 200:
+        print(f"temporary project cleanup failed: HTTP {status}", file=sys.stderr)
 
 
 def restart_recovery_check(token: str, project_id: str, marker: str) -> dict[str, Any]:
@@ -261,6 +270,7 @@ def main() -> int:
     project_id = project.get("id")
     if status != 200 or not isinstance(project_id, str):
         raise RuntimeError("isolated project creation failed")
+    atexit.register(cleanup_project, token, project_id)
     refresh_status, _ = request_json(
         "/api/runtime/graphs/refresh",
         token=token,
@@ -269,6 +279,35 @@ def main() -> int:
     )
     if refresh_status != 200:
         raise RuntimeError(f"runtime graph catalog refresh failed: HTTP {refresh_status}")
+    model_status, model_list = request_json(
+        "/api/runtime/models", token=token, project_id=project_id
+    )
+    models = model_list.get("models") if isinstance(model_list.get("models"), list) else []
+    selected_model = next(
+        (
+            model for model in models
+            if isinstance(model, dict)
+            and model.get("model") == "deepseek-v4.1-flash"
+            and model.get("enabled") is True
+        ),
+        None,
+    )
+    if model_status != 200 or selected_model is None:
+        raise RuntimeError("deepseek-v4.1-flash is unavailable in the project")
+    agent_status, agent_result = request_json(
+        f"/api/projects/{project_id}/agents",
+        token=token,
+        payload={
+            "graph_id": "reference_agent",
+            "name": f"{marker}-agent",
+            "context": {"model_id": selected_model["id"]},
+        },
+    )
+    if agent_status != 200:
+        raise RuntimeError(
+            f"project Agent registration failed: HTTP {agent_status} "
+            f"({agent_result.get('code', 'unknown')})"
+        )
     thread_id = create_thread(token, project_id, marker)
 
     search_status, search_payload = request_json(
@@ -335,13 +374,16 @@ def main() -> int:
             "durability": "sync",
             "stream_resumable": True,
             "multitask_strategy": "reject",
-            "context": {"temperature": 0.2, "tools": []},
+            "context": {"temperature": 0.2},
             "stream_mode": ["values", "updates"],
             "after_seconds": 2,
         },
     )
     if status not in {200, 201}:
-        raise RuntimeError("standard Runs create failed")
+        raise RuntimeError(
+            f"standard Runs create failed: HTTP {status} "
+            f"({standard.get('code', 'unknown')}: {standard.get('message', '')})"
+        )
     standard_run_id = run_id(standard)
     standard_stream = stream_shape(
         f"/api/langgraph/threads/{standard_thread_id}/runs/{standard_run_id}/stream?stream_mode=values",
@@ -408,6 +450,7 @@ def main() -> int:
     second_project_id = second_project.get("id")
     if second_project_status != 200 or not isinstance(second_project_id, str):
         raise RuntimeError("second project creation failed")
+    atexit.register(cleanup_project, token, second_project_id)
     cross_project_status, _ = request_json(
         f"/api/langgraph/threads/{thread_id}",
         token=token,
@@ -443,39 +486,6 @@ def main() -> int:
             token=token,
             project_id=project_id,
             payload={"wait": True},
-        )
-
-    model_status, model_list = request_json("/api/runtime/models", token=token, project_id=project_id)
-    models = model_list.get("models") if isinstance(model_list.get("models"), list) else []
-    configured_model_id = models[0].get("id") if models and isinstance(models[0], dict) else None
-    disable_update_status = None
-    disabled_run_status = None
-    restored_status = None
-    if isinstance(configured_model_id, str):
-        disabled_thread_id = create_thread(token, project_id, f"{marker}-disabled")
-        disable_update_status, _ = request_json(
-            f"/api/runtime/models/{configured_model_id}",
-            token=token,
-            project_id=project_id,
-            payload={"enabled": False},
-            method="PATCH",
-        )
-        disabled_run_status, _ = request_json(
-            f"/api/langgraph/threads/{disabled_thread_id}/runs",
-            token=token,
-            project_id=project_id,
-            payload={
-                "assistant_id": "reference_agent",
-                "input": {"messages": [{"role": "user", "content": PROMPT}]},
-                "context": {"model_id": models[0].get("model_id")},
-            },
-        )
-        restored_status, _ = request_json(
-            f"/api/runtime/models/{configured_model_id}",
-            token=token,
-            project_id=project_id,
-            payload={"enabled": True},
-            method="PATCH",
         )
 
     reconnect_thread_id = create_thread(token, project_id, f"{marker}-reconnect")
@@ -517,6 +527,24 @@ def main() -> int:
         if args.restart_check
         else None
     )
+    if (
+        (search_status, count_status, thread_get_status) != (200, 200, 200)
+        or (command_status, protocol_snapshot_status) != (200, 200)
+        or not protocol_events["has_cursor"]
+        or (standard_stream["http_status"], standard_snapshot_status) != (200, 200)
+        or (cancel_status, final_status) != (200, 200)
+        or duplicate_status != 409
+        or cross_project_status != 403
+        or (
+            restart_recovery is not None
+            and (
+                restart_recovery.get("run_terminal_status") != "success"
+                or restart_recovery["event_stream"]["replay_cursor_advances"]
+                is not True
+            )
+        )
+    ):
+        raise RuntimeError("L2 runtime contract check failed")
 
     print(
         json.dumps(
@@ -570,9 +598,6 @@ def main() -> int:
                     "idempotency_conflict_http": duplicate_status,
                     "cross_project_get_http": cross_project_status,
                     "active_run_conflict_http": conflict_status,
-                    "model_disable_http": disable_update_status if model_status == 200 else None,
-                    "disabled_model_run_http": disabled_run_status if model_status == 200 else None,
-                    "model_restore_http": restored_status if model_status == 200 else None,
                     "sse_disconnect_stream": reconnect_stream,
                     "sse_disconnect_run_status_http": reconnect_snapshot_status,
                     "sse_disconnect_run_status": reconnect_snapshot.get("status"),

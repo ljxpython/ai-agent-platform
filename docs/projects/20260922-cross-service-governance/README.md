@@ -1,57 +1,71 @@
-# 跨服务规范治理（Cross-Service Governance）
+# 跨服务规范治理总入口
 
 ## 项目概述
-- **时间：** 2026-09-22 至 待定
-- **目标：** 建立四个服务之间的统一契约规范，解决 AI Harness 缺乏服务路由、错误格式不统一、链路追踪断链、关键内部接口无文档等问题
+
+- **启动日期：** 2026-09-22
+- **本轮修订：** 2026-09-26
+- **目标：** 对齐三个现役服务及 AI Harness 的契约，将四项业务契约独立实施和验收，AI规范路由按仓库级文档小改动处理。
 - **负责人：** @lijiaxin
-- **模板类型：** 多专题模板
-- **状态：** 🔴 规划中（治理改动，待人工评审批准后方可实施）
+- **组织方式：** 总入口 + 四个独立专项；AI规范路由旧目录仅保留历史引用。
+- **状态：** 规划中。错误响应、SSE方案已就绪；追踪已按批准契约落盘，方案就绪、实现未开始；JWT执行包已细化，实现未开始；AI路由不再独立立项。本轮不实施业务代码，Runtime/GraphHarbor完全不改。
+- **本轮范围：** 完成追踪与JWT执行文档和文档检查，收口AI路由立项边界；不修改业务代码，不运行迁移、不部署、不提交或操作分支。
 
-## ⚠️ 评审要求
+## 阅读顺序与进度
 
-本项目为治理改动，涉及跨服务架构规范制定。**以下决策点需要在评审时确认：**
+本页是原治理项目的唯一纲领。新专项的 plan.md 是对应方案事实源，tasks.md 是任务进度事实源；本页仅同步摘要。
 
-1. **错误 Envelope 格式（02）**：是否接受以 platform-api 现有格式为基础，统一 runtime-service 和 IDS 的错误结构
-2. **链路追踪方案（03）**：是否采用 W3C traceparent 作为主追踪头，x-request-id 作为日志关联别名
-3. **实施顺序**：是否按 01 → 04 → 02 → 03 → 05 的优先级顺序推进
-
-## 阅读顺序
-
-1. [AI 服务路由机制](01-ai-routing-mechanism.md)：在 AGENTS.md 中建立服务规范索引，让 AI 改哪个服务就读哪份规范（**风险最低，可最先实施**）
-2. [错误响应 Envelope 标准](02-error-envelope-standard.md)：统一四个服务的错误响应格式，以 platform-api 现有格式为基准
-3. [跨服务链路追踪规范](03-trace-propagation.md)：设计 W3C traceparent 传播链，打通 Langfuse 与平台 trace_id 关联
-4. [Delegation JWT Schema 文档化](04-delegation-jwt-schema.md)：将已有的 JWT 实现整理为正式的接口契约文档（**纯文档，无代码变更**）
-5. [SSE 事件格式契约](05-sse-event-contract.md)：定义 runtime → platform-api → platform-web 的流式事件格式（**纯文档**）
-
-## 改动范围
-
-- **影响服务：** 全部四个服务 + AI Harness（AGENTS.md）
-- **改动级别：** 治理改动
-- **子专题独立性：** 每个子专题可独立实施和验收，无强依赖顺序
-
-| 子专题 | 类型 | 风险 | 需要代码变更 |
+| 原编号 | 独立专项 | 当前阶段 | 交付边界 |
 |---|---|---|---|
-| 01 AI 路由机制 | Harness 改动 | 低 | 否（仅 AGENTS.md）|
-| 02 错误 Envelope | 架构规范 + 代码 | 中 | 是（runtime-service / IDS）|
-| 03 链路追踪 | 架构设计 | 中 | 是（platform-api 生成 + 各服务透传）|
-| 04 JWT Schema | 纯文档 | 无 | 否 |
-| 05 SSE 契约 | 纯文档 | 无 | 否 |
+| 01 | [AI 服务规范路由](../20260926-ai-service-routing/README.md) | 不再独立立项，旧目录仅保留引用 | 后续按仓库级文档小改动处理；本轮未修改AGENTS规则 |
+| 02 | [错误响应统一](../20260926-error-response-contract/README.md) | 方案已确认、执行细则已细化，待实施 | 平台错误出口、上游转换、前端消费与组合验证 |
+| 03 | [跨服务链路追踪](../20260926-trace-context-propagation/README.md) | 方案就绪、实现未开始 | 平台内部编号、请求/提交/Run/既有观测闭环；不做完整W3C/OTel改造 |
+| 04 | [Delegation JWT 契约](../20260926-delegation-jwt-contract/README.md) | 执行方案已细化，实现未开始 | 现有v2签发/校验矩阵与一致性测试，优先修平台侧；Runtime/GraphHarbor不改 |
+| 05 | [SSE 事件契约](../20260926-sse-event-contract/README.md) | 方案就绪、实现未开始；用户已同意进入下一专项 | 线程级持续保活；保持现有渲染和交互，不默认折叠；Runtime/GraphHarbor不改 |
 
-## 关键决策
+02/05/03执行包已就绪，04已补齐字段/23项operation/身份矩阵、J1—J6及C/R验收；实现均未开始。01不再独立立项，也不阻塞业务专项。后续明确编码指令后按对应执行包实施。
+JWT 与追踪涉及共同字段，SSE 与错误响应涉及握手/流内失败边界，需要交叉复核；四项不是完全没有依赖。
 
-1. 错误 Envelope 以 platform-api 现有 `ErrorResponse` 模型为标准，`extra` 字段归入 `error` 内，`request_id` 移入 `meta` 对象
-2. 链路追踪采用 W3C traceparent，platform-api 为入口生成方，所有下游服务透传
-3. AI 路由机制通过 AGENTS.md 显式服务索引实现，Skill 路径懒加载
-4. 跨服务规范优先于服务内部规范（当两者冲突时）
+## 2026-09-26 现状校正
 
-## 背景
+1. **现役链路只有三个服务：** platform-web → platform-api → runtime-service。interaction-data-service 已退役，取消原 2.4、3.4 及其他 IDS 实施任务，不能算作已实现。
+2. **错误处理已有基础：** Platform API 已有 ErrorResponse / core.errors，上游公共转换函数和前端公共解析均已存在。专项应补缺口，不能按旧方案重建全部错误类。
+3. **请求关联已经存在：** API 的 core/context/runtime.py 生成或接收 x-request-id/x-trace-id；委托与 Runtime 观测已有 request_id/platform_trace_id。当前是否完成端到端关联仍须验证，“完全无关联”的旧判断不成立。
+4. **JWT 文档已过时：** 当前签发端含 23 个 operation，并增加 request_id/platform_trace_id/credential_id；assistant_id 必填例外也已增加。旧 15 项枚举不再作为实施依据。
+5. **SSE 不是尚无实现：** 网关已有脱敏、生命周期转换；前端已有 SDK adapter 与 patch、会话保活。需要以现有代码及 GraphHarbor 边界专项为基础核对协议。
+6. **AI 服务索引部分已存在：** AGENTS.md 已列出三个服务与规范。任务改为补齐读取触发、入口与冲突处理，不重复建表。
+7. **原预设不是当前生效决策：** request_id 移到 meta、request_id 截取 trace 后 16 位、改写全部 Runtime HTTPException、JWT 所有结构变化必须同时部署，均取消其“默认执行”地位。
 
-经过对四个服务文档的全面读取，识别出以下系统性问题：
+本轮核对的是工作区代码及当前项目记录；已有未提交改动未由本轮修改。代码后续变化时，各专项实施前必须复核基线，不能复制本页数字作为永久契约。
 
-| 问题 | 具体现象 |
-|---|---|
-| AI 无服务感知 | AGENTS.md 无服务路由规则，AI 改 runtime 时不知道读 LangGraph 规范 |
-| 错误格式三套 | platform-api 用 `{error:{}}`, runtime 用 `{detail:{}}`, IDS 用 `{detail:"string"}` |
-| 链路追踪断链 | x-request-id 提到但无格式/传播规范，Langfuse trace 与平台 trace 无关联 |
-| JWT Schema 无文档 | Delegation JWT 有完整实现但无独立契约文档，只散落在代码和 changes 里 |
-| SSE 格式无约定 | runtime 产出、platform-api 脱敏、前端消费三段无对齐文档 |
+## 与现有项目的关系
+
+- [IDS 退役](../20260924-interaction-data-service-retirement/README.md)：作为已退役边界，不重复治理。
+- [Runtime / GraphHarbor 边界解耦](../20260925-runtime-business-boundary-decoupling/README.md)：依赖 post33、Thread ACL、pending 对账、业务 trace、事件保留等当前实现；该项目仍为 partial，不能替它宣布 Final 通过。
+- [会话缓存与流式保活](../20260924-chat-session-cache-and-stream-resumption/README.md)：SSE 专项复用现状和已有验收范围。
+- [个人记忆闭环](../20260920-dear-agent-memory/README.md)：JWT operation 与无会话权限边界的输入资料。
+
+## 统一的“可开工”门槛
+
+四个专项都要逐项满足以下条件，不能只创建目录就标记为已对齐：
+
+- [ ] 范围、非目标、责任服务和跨专项边界明确。
+- [ ] 现状有代码路径/函数或真实协议样例支撑。
+- [ ] 字段、错误码、状态、权限、敏感信息、兼容策略逐项冻结。
+- [ ] 每项任务写明改动内容、代码位置、预期行为、最小验证。
+- [ ] Phase 与 Final 分开；测试输入、预期输出、执行方式和环境要求明确。
+- [ ] 发布顺序、回退方式、外部消费者及在途运行影响明确。
+- [ ] plan.md 中未决项清零；人工评审人、日期、批准范围记入专项 README。
+
+错误响应、SSE、追踪已有执行方案与任务/验收要求；实现验证尚未开始。SSE用户已同意进入下一专项，追踪范围及契约已批准；JWT已批准整理现有v2、双端一致性测试及优先修平台侧，并确认到期不自动取消已接受Run、不增加SSE持续重鉴权、新请求按当前权限重新签发；真实行为验证仍未执行。以上清单是总门槛，具体批准记录与任务状态以各专项为准；本会话继续规划，不开始代码。
+
+## 文档迁移规则
+
+原 01—05 文件保留为失效提示和跳转，防止旧链接失效；旧方案正文不再作为第二份可执行方案。
+独立专项是唯一维护位置，不重复维护原任务表。不创建尚未冻结的 docs/standards 契约冒充现行规范。
+
+## 本轮文档验证（2026-09-26）
+
+- `python3 scripts/check_docs.py`：通过。
+- 前序26份Markdown检查记录保留；本次复核追踪四文件、任务状态及本轮修改的相对链接/围栏。FEATURES存在一条既有无关链接缺陷，详见[追踪文档验证](../20260926-trace-context-propagation/verification.md)，不宣称其整页链接全通过。
+- `git diff --check`：通过。
+- 业务代码未修改；未执行应用单元、集成或E2E测试。上述检查不能作为任一专项的功能验收。
