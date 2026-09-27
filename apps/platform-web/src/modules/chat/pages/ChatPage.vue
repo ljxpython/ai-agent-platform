@@ -90,10 +90,40 @@ function threadCan(id: string, action: ThreadAction) {
     action,
   );
 }
+const CHAT_HISTORY_COLLAPSED_STORAGE_KEY = "pw:chat:history-sidebar-collapsed";
+
+function resolveHistorySidebarCollapsed(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    const cached = window.localStorage.getItem(
+      CHAT_HISTORY_COLLAPSED_STORAGE_KEY,
+    );
+    if (cached !== null) {
+      return cached === "true";
+    }
+  } catch {
+    // Ignore storage access errors in private mode
+  }
+  return window.innerWidth < 1024;
+}
+
 const threadQuery = ref("");
-const sidebarCollapsed = ref(
-  typeof window !== "undefined" ? window.innerWidth < 1024 : false,
-);
+const sidebarCollapsed = ref(resolveHistorySidebarCollapsed());
+
+watch(sidebarCollapsed, (next) => {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      CHAT_HISTORY_COLLAPSED_STORAGE_KEY,
+      String(next),
+    );
+  } catch {
+    // Ignore storage write errors in private mode
+  }
+});
+
 const focusMode = ref(false);
 const threadStatus = ref<ChatThreadStatusFilter>("all");
 const statusFilters = [
@@ -103,11 +133,25 @@ const statusFilters = [
   { value: "idle", label: "空闲" },
   { value: "error", label: "异常" },
 ] as const;
-function exitFocus(event: KeyboardEvent) {
+function handleGlobalKeydown(event: KeyboardEvent) {
   if (event.key === "Escape") focusMode.value = false;
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "b") {
+    const target = event.target as HTMLElement | null;
+    const isEditing =
+      target &&
+      (target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable);
+    if (!isEditing) {
+      event.preventDefault();
+      sidebarCollapsed.value = !sidebarCollapsed.value;
+    }
+  }
 }
-document.addEventListener("keydown", exitFocus);
-onScopeDispose(() => document.removeEventListener("keydown", exitFocus));
+document.addEventListener("keydown", handleGlobalKeydown);
+onScopeDispose(() =>
+  document.removeEventListener("keydown", handleGlobalKeydown),
+);
 const threadListView = computed(() =>
   buildChatThreadListView({
     items: threads.value.map((thread) => ({
