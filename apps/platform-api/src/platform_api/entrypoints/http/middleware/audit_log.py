@@ -197,11 +197,9 @@ def register_audit_log_middleware(app: FastAPI) -> None:
                     yield chunk
             except asyncio.CancelledError:
                 result = AuditResult.CANCELLED
-                status_code = 499
                 raise
             except Exception:
                 result = AuditResult.FAILED
-                status_code = 500
                 raise
             finally:
                 if chunks:

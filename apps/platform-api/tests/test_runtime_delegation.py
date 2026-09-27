@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import unittest
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -8,6 +9,7 @@ import jwt
 from fastapi import FastAPI, Request
 
 from platform_api.config import Settings
+from platform_api.core.errors import ServiceUnavailableError
 from platform_api.core.context.models import (
     ActorContext,
     PlatformRequestContext,
@@ -65,6 +67,336 @@ class MessagePayloadBoundaryTest(unittest.IsolatedAsyncioTestCase):
 
 
 class RuntimeDelegationTokenTest(unittest.TestCase):
+    def test_gateway_signing_failures_are_safe_before_upstream(self) -> None:
+        project_id = "project-1"
+        app = FastAPI()
+        app.state.settings = Settings(
+            runtime_delegation_secret="runtime-delegation-secret-at-least-32-bytes"
+        )
+        request = Request(
+            {
+                "type": "http",
+                "method": "GET",
+                "path": "/api/langgraph/info",
+                "headers": [],
+                "app": app,
+            }
+        )
+        request.state.platform_context = PlatformRequestContext(
+            request=RequestContext(
+                request_id="request-1",
+                trace_id="request-1",
+                method="GET",
+                path=request.url.path,
+                started_at=0.0,
+            ),
+            tenant=TenantContext(tenant_id="tenant-1"),
+            project=ProjectContext(project_id=project_id),
+            actor=ActorContext(),
+        )
+        actor = ActorContext(
+            user_id="user-1", project_roles={project_id: ("project_editor",)}
+        )
+        with (
+            patch(
+                "platform_api.modules.runtime_gateway.presentation.http.RuntimePolicyOverlayService"
+            ) as policy,
+            patch(
+                "platform_api.modules.runtime_gateway.presentation.http.LangGraphRuntimeGatewayUpstream"
+            ) as upstream,
+            patch(
+                "platform_api.modules.runtime_gateway.presentation.http.create_runtime_delegation_token"
+            ) as sign,
+        ):
+            policy.return_value.build_delegation_policy.return_value = {
+                "version": "policy-1",
+                "allowed_model_ids": ["model-1"],
+            }
+            sign.side_effect = ValueError("secret-bearing internal failure")
+            with self.assertRaises(ServiceUnavailableError) as initial:
+                get_runtime_gateway_service(request, actor)
+            self.assertEqual(
+                initial.exception.code, "runtime_delegation_not_configured"
+            )
+            self.assertNotIn("secret-bearing", initial.exception.message)
+            upstream.assert_not_called()
+
+            sign.side_effect = [
+                "signed-initial",
+                ValueError("secret-bearing internal failure"),
+            ]
+            service = get_runtime_gateway_service(request, actor)
+            with self.assertRaises(ServiceUnavailableError) as scoped:
+                service._delegation_headers_factory(
+                    project_id=project_id,
+                    agent_key="",
+                    thread_id="thread-1",
+                    context_hash="sha256:" + "0" * 64,
+                    operation="thread-create",
+                )
+            self.assertEqual(scoped.exception.code, "runtime_delegation_not_configured")
+            self.assertNotIn("secret-bearing", scoped.exception.message)
+            self.assertEqual(upstream.return_value.mock_calls, [])
+
+    def test_gateway_uses_current_request_for_each_delegation(self) -> None:
+        project_id = "project-1"
+        app = FastAPI()
+        app.state.settings = Settings(
+            runtime_delegation_secret="runtime-delegation-secret-at-least-32-bytes"
+        )
+        actor = ActorContext(
+            user_id="user-1", project_roles={project_id: ("project_editor",)}
+        )
+        claims = []
+        with (
+            patch(
+                "platform_api.modules.runtime_gateway.presentation.http.RuntimePolicyOverlayService"
+            ) as policy,
+            patch(
+                "platform_api.modules.runtime_gateway.presentation.http.LangGraphRuntimeGatewayUpstream"
+            ) as upstream,
+        ):
+            policy.return_value.build_delegation_policy.return_value = {
+                "version": "policy-1",
+                "allowed_model_ids": ["model-1"],
+            }
+            policy.return_value.resolve_tool_overrides.return_value = {
+                "tool_overrides": {},
+                "tool_policy_version": "tools-1",
+            }
+            for request_id in ("request-1", "request-2"):
+                request = Request(
+                    {
+                        "type": "http",
+                        "method": "GET",
+                        "path": "/api/langgraph/info",
+                        "headers": [],
+                        "app": app,
+                    }
+                )
+                request.state.platform_context = PlatformRequestContext(
+                    request=RequestContext(
+                        request_id=request_id,
+                        trace_id=request_id,
+                        method="GET",
+                        path=request.url.path,
+                        started_at=0.0,
+                    ),
+                    tenant=TenantContext(tenant_id="tenant-1"),
+                    project=ProjectContext(project_id=project_id),
+                    actor=ActorContext(),
+                )
+                service = get_runtime_gateway_service(request, actor)
+                initial = upstream.call_args.kwargs["forwarded_headers"][
+                    "authorization"
+                ]
+                scoped = service._delegation_headers_factory(
+                    project_id=project_id,
+                    agent_key="agent-1",
+                    thread_id="thread-1",
+                    context_hash="sha256:" + "0" * 64,
+                )["authorization"]
+                message_headers = service._delegation_headers_factory(
+                    project_id=project_id,
+                    agent_key="agent-1",
+                    thread_id="thread-1",
+                    context_hash=empty_runtime_context_hash(),
+                    operation="message-enqueue",
+                )
+                self.assertEqual(
+                    message_headers["x-runtime-run-read-authorization"], initial
+                )
+                self.assertNotEqual(message_headers["authorization"], initial)
+                self.assertEqual(
+                    service._delegation_headers_factory(
+                        project_id=project_id,
+                        agent_key="agent-1",
+                        thread_id="thread-1",
+                        context_hash=empty_runtime_context_hash(),
+                        operation="message-read",
+                    )["x-runtime-run-read-authorization"],
+                    initial,
+                )
+                self.assertNotIn(
+                    "x-runtime-run-read-authorization",
+                    service._delegation_headers_factory(
+                        project_id=project_id,
+                        agent_key="agent-1",
+                        thread_id="thread-1",
+                        context_hash=empty_runtime_context_hash(),
+                        operation="run-create",
+                    ),
+                )
+                for authorization in (initial, scoped):
+                    claims.append(
+                        jwt.decode(
+                            authorization.removeprefix("Bearer "),
+                            app.state.settings.runtime_delegation_secret,
+                            algorithms=["HS256"],
+                            issuer=app.state.settings.runtime_delegation_issuer,
+                            audience=app.state.settings.runtime_delegation_audience,
+                        )
+                    )
+        self.assertEqual(
+            [item["request_id"] for item in claims],
+            ["request-1", "request-1", "request-2", "request-2"],
+        )
+        self.assertEqual(
+            [item["platform_trace_id"] for item in claims],
+            ["request-1", "request-1", "request-2", "request-2"],
+        )
+        self.assertEqual(len({item["jti"] for item in claims}), 4)
+
+    def test_claim_boundaries_and_normalization(self) -> None:
+        settings = Settings(
+            runtime_delegation_secret="runtime-delegation-secret-at-least-32-bytes"
+        )
+        valid = dict(
+            subject="user-1",
+            tenant_id="tenant-1",
+            project_id="project-1",
+            role="project_editor",
+            permissions=[],
+            policy_version="policy-1",
+            allowed_model_ids=["model-1"],
+            tool_overrides={},
+            tool_policy_version="tools-1",
+            scope={
+                "tenant_id": "tenant-1",
+                "project_id": "project-1",
+                "operation": "read",
+            },
+            settings=settings,
+        )
+        invalid = []
+        for field in ("subject", "tenant_id", "project_id", "role"):
+            for value in (None, 1, "", " ", "bad name", "é", "x" * 129):
+                invalid.append({field: value})
+        invalid += [
+            {"permissions": [None]},
+            {"permissions": ["bad name"]},
+            {"allowed_model_ids": ["model-1", "model-1"]},
+            {"allowed_model_ids": ["bad model"]},
+            {"policy_version": " "},
+            {"policy_version": "x" * 100_001},
+            {"tool_policy_version": " "},
+            {"tool_policy_version": "x" * 100_001},
+            {"tool_overrides": {"tool": True}},
+            {"tool_overrides": {"tool": 0}},
+            {"tool_overrides": {"tool": None}},
+            {"tool_overrides": {f"t{i}": False for i in range(129)}},
+            {"scope": "read"},
+            {"scope": {**valid["scope"], "unknown": "x"}},
+            {"scope": {**valid["scope"], "thread_id": 1}},
+            {"scope": {**valid["scope"], "thread_id": "  "}},
+            {"scope": {**valid["scope"], "project_id": "other"}},
+            {
+                "scope": {
+                    **valid["scope"],
+                    "assistant_id": None,
+                    "operation": "run-create",
+                }
+            },
+        ]
+        for override in invalid:
+            with (
+                self.subTest(override=str(override)[:80]),
+                self.assertRaises(ValueError),
+            ):
+                create_runtime_delegation_token(**(valid | override))
+
+        def budget(size: int) -> dict[str, bool]:
+            names = {f"k{i:02d}" + "x" * 51: False for i in range(65)}
+            delta = size - len(json.dumps(names, separators=(",", ":")).encode())
+            last = next(reversed(names))
+            names[last + "x" * delta] = names.pop(last)
+            self.assertEqual(
+                len(json.dumps(names, separators=(",", ":")).encode()), size
+            )
+            return names
+
+        invalid.append({"tool_overrides": budget(4097)})
+        with self.assertRaises(ValueError):
+            create_runtime_delegation_token(**(valid | invalid[-1]))
+        token = create_runtime_delegation_token(
+            **(
+                valid
+                | {
+                    "subject": "x" * 128,
+                    "permissions": [" b ", "a", "", "a"],
+                    "policy_version": " x ",
+                    "tool_policy_version": "x" * 100_000,
+                    "tool_overrides": budget(4096),
+                }
+            )
+        )
+        claims = jwt.decode(
+            token,
+            settings.runtime_delegation_secret,
+            algorithms=["HS256"],
+            issuer=settings.runtime_delegation_issuer,
+            audience=settings.runtime_delegation_audience,
+        )
+        self.assertEqual(claims["permissions"], ["a", "b"])
+        self.assertEqual(claims["policy_version"], "x")
+        self.assertEqual(claims["sub"], "x" * 128)
+        self.assertEqual(
+            len(json.dumps(claims["tool_overrides"], separators=(",", ":")).encode()),
+            4096,
+        )
+
+    def test_invalid_delegation_inputs_fail_before_signing(self) -> None:
+        settings = Settings(
+            runtime_delegation_secret="runtime-delegation-secret-at-least-32-bytes"
+        )
+        valid = dict(
+            subject="user-1",
+            tenant_id="tenant-1",
+            project_id="project-1",
+            role="project_editor",
+            permissions=["project.runtime.read"],
+            policy_version="policy-1",
+            allowed_model_ids=["model-1"],
+            tool_overrides={},
+            tool_policy_version="tools-1",
+            scope={
+                "tenant_id": "tenant-1",
+                "project_id": "project-1",
+                "operation": "read",
+            },
+            settings=settings,
+        )
+        invalid = (
+            {"subject": 1},
+            {"role": "bad role"},
+            {"permissions": "read"},
+            {"permissions": [1]},
+            {"permissions": ["bad permission"]},
+            {"policy_version": "x" * 100_001},
+            {"allowed_model_ids": []},
+            {"tool_policy_version": "   "},
+            {
+                "scope": {
+                    "tenant_id": "tenant-1",
+                    "project_id": "project-1",
+                    "operation": "read",
+                    "thread_id": "  ",
+                }
+            },
+            {
+                "scope": {
+                    "tenant_id": "tenant-1",
+                    "project_id": "project-1",
+                    "operation": "read",
+                    "thread_id": 1,
+                }
+            },
+            {"subject": "service-account:account-1"},
+        )
+        for override in invalid:
+            with self.subTest(override=override), self.assertRaises(ValueError):
+                create_runtime_delegation_token(**(valid | override))
+
     def test_service_account_credential_is_bound_to_its_subject(self) -> None:
         from uuid import uuid4
 
@@ -78,7 +410,7 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
             role="project_executor",
             permissions=[],
             policy_version="policy-1",
-            allowed_model_ids=[],
+            allowed_model_ids=["model-1"],
             tool_overrides={},
             tool_policy_version="test-tools-v2",
             scope={
@@ -117,7 +449,7 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
             role="project_editor",
             permissions=[],
             policy_version="policy-1",
-            allowed_model_ids=[],
+            allowed_model_ids=["model-1"],
             tool_overrides={},
             tool_policy_version="unscoped-thread-create",
             scope={
@@ -148,7 +480,7 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
             role="project_editor",
             permissions=[],
             policy_version="policy-1",
-            allowed_model_ids=[],
+            allowed_model_ids=["model-1"],
             tool_overrides={},
             tool_policy_version="tools-1",
             scope={
@@ -298,7 +630,7 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
                 role="project_editor",
                 permissions=["project.runtime.read"],
                 policy_version="policy-1",
-                allowed_model_ids=[],
+                allowed_model_ids=["model-1"],
                 tool_overrides={},
                 tool_policy_version="test-tools-v2",
                 scope={
@@ -324,7 +656,7 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
                 role="project_editor",
                 permissions=["project.runtime.read"],
                 policy_version="policy-1",
-                allowed_model_ids=[],
+                allowed_model_ids=["model-1"],
                 tool_overrides={},
                 tool_policy_version="test-tools-v2",
                 scope={
@@ -413,7 +745,7 @@ class RuntimeDelegationTokenTest(unittest.TestCase):
             [],
         )
         self.assertEqual(claims["request_id"], "request-1")
-        self.assertNotIn("platform_trace_id", claims)
+        self.assertEqual(claims["platform_trace_id"], "request-1")
 
 
 class ProtocolV2RuntimeNormalizationTest(unittest.TestCase):

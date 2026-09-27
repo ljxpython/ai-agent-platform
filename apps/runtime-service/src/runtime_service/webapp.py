@@ -38,6 +38,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         yield
     finally:
         from runtime_service.workspace.terminal import terminals
+
         await asyncio.to_thread(terminals.shutdown)
         close_langfuse(timeout_seconds=5.0)
 
@@ -54,7 +55,9 @@ app.include_router(title_summary_router)
 
 
 @app.exception_handler(auth_exceptions.HTTPException)
-async def auth_exception_handler(request: Request, exc: auth_exceptions.HTTPException) -> JSONResponse:
+async def auth_exception_handler(
+    request: Request, exc: auth_exceptions.HTTPException
+) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 
@@ -117,11 +120,31 @@ class EnqueueMessage(BaseModel):
         return content
 
 
+async def _verified_run_read_authorization(
+    facts: dict, authorization: str | None, thread_id: str
+) -> str:
+    if authorization is None:
+        raise HTTPException(401, "Unauthorized")
+    read_facts = await authenticate(authorization)
+    read_scope = read_facts.get("runtime_scope", {})
+    if (
+        read_scope.get("operation") != "read"
+        or read_scope.get("thread_id") not in {None, thread_id}
+        or any(
+            read_facts.get(key) != facts.get(key)
+            for key in ("identity", "tenant_id", "project_id", "runtime_credential_id")
+        )
+    ):
+        raise HTTPException(403, "run read delegation mismatch")
+    return authorization
+
+
 @app.post("/internal/threads/{thread_id}/messages", status_code=202)
 async def enqueue_message(
     thread_id: str,
     payload: EnqueueMessage,
     authorization: str | None = Header(default=None),
+    x_runtime_run_read_authorization: str | None = Header(default=None),
 ) -> dict:
     facts = await authenticate(authorization)
     scope = facts.get("runtime_scope", {})
@@ -129,9 +152,13 @@ async def enqueue_message(
         scope.get("operation") != "message-enqueue"
         or scope.get("thread_id") != thread_id
         or scope.get("project_id") is None
-        or scope.get("assistant_id") not in {"reference_agent", "showcase_demo", "dearflow_agent"}
+        or scope.get("assistant_id")
+        not in {"reference_agent", "showcase_demo", "dearflow_agent"}
     ):
         raise HTTPException(403, "thread scope denied")
+    run_read_authorization = await _verified_run_read_authorization(
+        facts, x_runtime_run_read_authorization, thread_id
+    )
     dsn = os.getenv("DATABASE_URI")
     if not dsn:
         raise HTTPException(503, "message inbox unavailable")
@@ -146,7 +173,7 @@ async def enqueue_message(
             raise HTTPException(409, "queue_disabled")
     async with httpx.AsyncClient(
         base_url=os.getenv("RUNTIME_SELF_URL", "http://127.0.0.1:8123"),
-        headers={"authorization": authorization},
+        headers={"authorization": run_read_authorization},
         timeout=10,
         trust_env=False,
     ) as client:
@@ -186,7 +213,9 @@ async def enqueue_message(
 
 @app.get("/internal/threads/{thread_id}/messages")
 async def list_messages(
-    thread_id: str, authorization: str | None = Header(default=None)
+    thread_id: str,
+    authorization: str | None = Header(default=None),
+    x_runtime_run_read_authorization: str | None = Header(default=None),
 ) -> dict:
     facts = await authenticate(authorization)
     scope = facts.get("runtime_scope", {})
@@ -195,6 +224,9 @@ async def list_messages(
         or scope.get("thread_id") != thread_id
     ):
         raise HTTPException(403, "thread scope denied")
+    run_read_authorization = await _verified_run_read_authorization(
+        facts, x_runtime_run_read_authorization, thread_id
+    )
     dsn = os.getenv("DATABASE_URI")
     if not dsn:
         raise HTTPException(503, "message inbox unavailable")
@@ -206,7 +238,7 @@ async def list_messages(
     )
     async with httpx.AsyncClient(
         base_url=os.getenv("RUNTIME_SELF_URL", "http://127.0.0.1:8123"),
-        headers={"authorization": authorization},
+        headers={"authorization": run_read_authorization},
         timeout=10,
         trust_env=False,
     ) as client:
@@ -237,6 +269,7 @@ async def tool_catalog(authorization: str | None = Header(default=None)) -> dict
     """Display declarations only; catalog freshness never grants tools."""
     await authenticate(authorization)
     from runtime_service.runtime.capabilities import tool_catalog as catalog
+
     return catalog()
 
 
@@ -244,8 +277,11 @@ __all__ = ["app", "lifespan"]
 
 
 @app.get("/internal/capabilities/graphs/{graph_id}")
-async def graph_capability(graph_id: str, authorization: str | None = Header(default=None)) -> dict:
+async def graph_capability(
+    graph_id: str, authorization: str | None = Header(default=None)
+) -> dict:
     from runtime_service.runtime.capabilities import graph_capabilities
+
     facts = await authenticate(authorization)
     if facts.get("runtime_scope", {}).get("assistant_id") != graph_id:
         raise HTTPException(403, "graph scope denied")

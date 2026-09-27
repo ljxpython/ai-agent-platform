@@ -583,24 +583,41 @@ def test_receipt_http_reconciles_before_terminal_close(inbox, monkeypatch):
             "assistant_id": "reference_agent",
         }
 
-        async def authenticate(_):
-            return {"identity": "u", "runtime_scope": scope}
+        async def authenticate(authorization):
+            return {
+                "identity": "u",
+                "tenant_id": "tenant-1",
+                "project_id": "p",
+                "runtime_credential_id": None,
+                "runtime_scope": (
+                    {"operation": "read", "thread_id": thread}
+                    if authorization == "Bearer read"
+                    else scope
+                ),
+            }
 
         monkeypatch.setattr(webapp, "authenticate", authenticate)
         monkeypatch.setenv("DATABASE_URI", inbox.dsn)
         monkeypatch.setenv("RUNTIME_SELF_URL", "http://engine")
         status = {"value": "running"}
         original = httpx.AsyncClient
-        transport = httpx.MockTransport(
-            lambda r: httpx.Response(200, json={"status": status["value"]})
-        )
+        native_authorizations = []
+
+        def native_get(request):
+            native_authorizations.append(request.headers["authorization"])
+            return httpx.Response(200, json={"status": status["value"]})
+
+        transport = httpx.MockTransport(native_get)
         async with AsyncPostgresSaver.from_conn_string(inbox.dsn) as saver:
             await saver.setup()
             monkeypatch.setattr(cp, "get_checkpointer", lambda: saver)
             async with original(
                 transport=httpx.ASGITransport(app=webapp.app),
                 base_url="http://runtime",
-                headers={"authorization": "Bearer test"},
+                headers={
+                    "authorization": "Bearer test",
+                    "x-runtime-run-read-authorization": "Bearer read",
+                },
             ) as client:
                 monkeypatch.setattr(
                     httpx,
@@ -608,6 +625,28 @@ def test_receipt_http_reconciles_before_terminal_close(inbox, monkeypatch):
                     lambda **kwargs: original(transport=transport, **kwargs),
                 )
                 path = f"/internal/threads/{thread}/messages"
+                rejected_payload = {
+                    "target_run_id": run,
+                    "client_message_id": str(uuid4()),
+                    "idempotency_key": str(uuid4()),
+                    "content": "hello",
+                    "authorization_ref": "signed-reference",
+                }
+                rejected = await client.post(
+                    path,
+                    json=rejected_payload,
+                    headers={"x-runtime-run-read-authorization": "Bearer wrong"},
+                )
+                assert rejected.status_code == 403
+                assert "Bearer wrong" not in rejected.text
+                assert (
+                    await client.get(
+                        path,
+                        headers={"x-runtime-run-read-authorization": "Bearer wrong"},
+                    )
+                ).status_code == 403
+                assert not native_authorizations
+                assert inbox.list(thread_id=thread, sender_id="u") == []
                 for message in messages:
                     response = await client.post(
                         path,
@@ -620,6 +659,7 @@ def test_receipt_http_reconciles_before_terminal_close(inbox, monkeypatch):
                         },
                     )
                     assert response.status_code == 202, response.text
+                assert native_authorizations == ["Bearer read"] * len(messages)
                 monkeypatch.setenv("RUNTIME_MESSAGE_QUEUE_ENABLED", "false")
                 payload = {
                     "target_run_id": run,

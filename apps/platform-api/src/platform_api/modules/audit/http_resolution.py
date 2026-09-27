@@ -333,8 +333,16 @@ def _resolve_action(
             return "runtime.policy.model.listed", "runtime_policy_model", project_id
         if segments[4] == "tool-restrictions" and method in {"GET", "POST", "DELETE"}:
             action = {"GET": "listed", "POST": "created", "DELETE": "deleted"}[method]
-            target = clean_str(segments[5]) if len(segments) == 6 else (project_id if method == "GET" else None)
-            return f"runtime.tool_restriction.{action}", "runtime_tool_restriction", target
+            target = (
+                clean_str(segments[5])
+                if len(segments) == 6
+                else (project_id if method == "GET" else None)
+            )
+            return (
+                f"runtime.tool_restriction.{action}",
+                "runtime_tool_restriction",
+                target,
+            )
         if len(segments) == 5 and segments[4] == "graphs" and method == "GET":
             return "runtime.policy.graph.listed", "runtime_policy_graph", project_id
         if len(segments) == 6 and segments[4] == "models" and method == "PUT":
@@ -352,21 +360,58 @@ def _resolve_action(
 
     if len(segments) >= 2 and segments[:2] == ["api", "langgraph"]:
         if segments[2:] == ["dear", "memory"] and method in {"GET", "POST"}:
-            action = "read" if method == "GET" else clean_str((request.metadata or {}).get("memory_action")) or "changed"
+            action = (
+                "read"
+                if method == "GET"
+                else clean_str((request.metadata or {}).get("memory_action"))
+                or "changed"
+            )
             return f"runtime.dear.memory.{action}", "personal_memory", None
         if segments[2:4] == ["dear", "skills"]:
-            action = {"GET": "read", "POST": "created", "PUT": "updated", "PATCH": "enabled.changed", "DELETE": "deleted"}.get(method)
+            action = {
+                "GET": "read",
+                "POST": "created",
+                "PUT": "updated",
+                "PATCH": "enabled.changed",
+                "DELETE": "deleted",
+            }.get(method)
             if action:
-                return f"runtime.dear.skills.{action}", "skill", clean_str(segments[5]) if len(segments) > 5 else None
-        if len(segments) >= 5 and segments[2] == "threads" and segments[4] == "terminals":
-            action = {(5, "POST"): "created", (5, "GET"): "listed", (6, "DELETE"): "closed"}.get((len(segments), method))
+                return (
+                    f"runtime.dear.skills.{action}",
+                    "skill",
+                    clean_str(segments[5]) if len(segments) > 5 else None,
+                )
+        if (
+            len(segments) >= 5
+            and segments[2] == "threads"
+            and segments[4] == "terminals"
+        ):
+            action = {
+                (5, "POST"): "created",
+                (5, "GET"): "listed",
+                (6, "DELETE"): "closed",
+            }.get((len(segments), method))
             if len(segments) == 7:
-                action = {("output", "GET"): "output.read", ("input", "POST"): "input.sent", ("resize", "POST"): "resized"}.get((segments[6], method))
+                action = {
+                    ("output", "GET"): "output.read",
+                    ("input", "POST"): "input.sent",
+                    ("resize", "POST"): "resized",
+                }.get((segments[6], method))
             if action:
                 return f"runtime.terminal.{action}", "thread", clean_str(segments[3])
-        if len(segments) == 6 and segments[2] == "threads" and segments[4] == "dear" and segments[5] in {"memory", "skills"} and method in {"GET", "POST"}:
+        if (
+            len(segments) == 6
+            and segments[2] == "threads"
+            and segments[4] == "dear"
+            and segments[5] in {"memory", "skills"}
+            and method in {"GET", "POST"}
+        ):
             action = "read" if method == "GET" else "changed"
-            return f"runtime.dear.{segments[5]}.{action}", "thread", clean_str(segments[3])
+            return (
+                f"runtime.dear.{segments[5]}.{action}",
+                "thread",
+                clean_str(segments[3]),
+            )
         if segments[2:] == ["info"] and method == "GET":
             return "runtime.info.read", "runtime", "info"
         if segments[2:] == ["graphs", "search"] and method == "POST":
@@ -628,7 +673,29 @@ def _resolve_metadata(
             {
                 str(key): value
                 for key, value in request.metadata.items()
-                if key in {"reason", "graph_id", "subject_type", "subject_id", "tool_name", "memory_action"} and isinstance(value, (str, int, float, bool))
+                if key
+                in {
+                    "reason",
+                    "graph_id",
+                    "subject_type",
+                    "subject_id",
+                    "tool_name",
+                    "memory_action",
+                    "platform_trace_id",
+                    "submission_id",
+                    "thread_id",
+                    "run_id",
+                    "parent_run_id",
+                    "target_run_id",
+                    "interrupt_key",
+                    "operation",
+                    "outcome",
+                    "stream_kind",
+                    "close_reason",
+                    "reused_submission",
+                    "correlation_version",
+                }
+                and isinstance(value, (str, int, float, bool))
             }
         )
     return {key: value for key, value in metadata.items() if value is not None}

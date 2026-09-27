@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   updateAccessPolicy: vi.fn(),
   getThread: vi.fn(),
   createThread: vi.fn(),
+  state: vi.fn(),
+  history: vi.fn(),
 }));
 vi.mock("@langchain/vue", () => ({ useStream: mocks.stream }));
 vi.mock("@/services/threads/messages.service", () => ({
@@ -22,7 +24,9 @@ vi.mock("@/services/threads/access-policy.service", () => ({
   updateThreadAccessPolicy: mocks.updateAccessPolicy,
 }));
 vi.mock("@/services/threads/session.service", async (importOriginal) => ({
-  ...await importOriginal<typeof import("@/services/threads/session.service")>(),
+  ...(await importOriginal<
+    typeof import("@/services/threads/session.service")
+  >()),
   createSessionService: () => ({
     client: {},
     runs: mocks.runs.getMockImplementation()
@@ -32,10 +36,37 @@ vi.mock("@/services/threads/session.service", async (importOriginal) => ({
     cancel: mocks.cancel,
     get: mocks.getThread.getMockImplementation()
       ? mocks.getThread
-      : async () => ({ thread_id: "t", metadata: { access_policy: "review", allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] } }),
+      : async () => ({
+          thread_id: "t",
+          metadata: {
+            access_policy: "review",
+            allowed_actions: [
+              "read",
+              "comment",
+              "edit",
+              "approve",
+              "share",
+              "full_access",
+            ],
+          },
+        }),
     create: mocks.createThread.getMockImplementation()
       ? mocks.createThread
-      : async () => ({ thread_id: "new-thread", metadata: { allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] } }),
+      : async () => ({
+          thread_id: "new-thread",
+          metadata: {
+            allowed_actions: [
+              "read",
+              "comment",
+              "edit",
+              "approve",
+              "share",
+              "full_access",
+            ],
+          },
+        }),
+    state: mocks.state,
+    history: mocks.history,
   }),
 }));
 vi.mock("@/services/langgraph/client", () => ({
@@ -43,66 +74,300 @@ vi.mock("@/services/langgraph/client", () => ({
   getLanggraphApiUrl: () => "",
 }));
 vi.mock("../run-actions", () => ({
-  createRunActions: () => mocks.actions() ?? ({ current: ref(null), begin: vi.fn(() => ({ key: "k" })), acknowledge: vi.fn(), rejectUnsent: vi.fn(), dispose: vi.fn() }),
+  createRunActions: () =>
+    mocks.actions() ?? {
+      current: ref(null),
+      begin: vi.fn(() => ({ key: "k" })),
+      acknowledge: vi.fn(),
+      rejectUnsent: vi.fn(),
+      dispose: vi.fn(),
+    },
 }));
 import { useChatSession } from "./useChatSession";
 import { useDearAgentSession } from "../../dear-agent/composables/useDearAgentSession";
 vi.mock("../../dear-agent/run-actions", () => ({
-  createRunActions: () => ({ current: ref(null), begin: vi.fn(() => ({ key: "k" })), acknowledge: vi.fn(), rejectUnsent: vi.fn(), dispose: vi.fn() }),
+  createRunActions: () => ({
+    current: ref(null),
+    begin: vi.fn(() => ({ key: "k" })),
+    acknowledge: vi.fn(),
+    rejectUnsent: vi.fn(),
+    dispose: vi.fn(),
+  }),
 }));
-it.each([useChatSession, useDearAgentSession])("revokes visible Thread content and disconnects on the 60-second ACL refresh (%#)", async (useSession) => {
-  vi.useFakeTimers();
-  const disconnect = vi.fn();
-  mocks.stream.mockReturnValue({ isLoading: ref(false), error: ref(null), interrupts: ref([]),
-    hydrationPromise: ref(Promise.resolve()), disconnect });
+it.each([useChatSession, useDearAgentSession])(
+  "revokes visible Thread content and disconnects on the 60-second ACL refresh (%#)",
+  async (useSession) => {
+    vi.useFakeTimers();
+    const disconnect = vi.fn();
+    mocks.stream.mockReturnValue({
+      isLoading: ref(false),
+      error: ref(null),
+      interrupts: ref([]),
+      hydrationPromise: ref(Promise.resolve()),
+      disconnect,
+    });
+    mocks.runs.mockResolvedValue([]);
+    mocks.list.mockResolvedValue([]);
+    mocks.getThread.mockResolvedValue({
+      thread_id: "t",
+      metadata: { allowed_actions: ["read", "comment"] },
+    });
+    const scope = effectScope();
+    const session = scope.run(() =>
+      useSession({
+        projectId: "p",
+        graphId: "reference_agent",
+        threadId: "t",
+        context: ref({}),
+        canWrite: ref(true),
+        onThread: vi.fn(),
+        onRefresh: vi.fn(),
+        onReconnect: vi.fn(),
+      }),
+    )!;
+    try {
+      await flushPromises();
+      expect(session.canRead.value).toBe(true);
+      mocks.getThread.mockRejectedValue(
+        Object.assign(new Error("Forbidden"), { status: 403 }),
+      );
+      await vi.advanceTimersByTimeAsync(60_000);
+      await flushPromises();
+      expect(session.canRead.value).toBe(false);
+      expect(session.canComment.value).toBe(false);
+      expect(disconnect).toHaveBeenCalled();
+    } finally {
+      scope.stop();
+      mocks.getThread.mockReset();
+      mocks.runs.mockReset();
+      vi.useRealTimers();
+    }
+  },
+);
+afterEach(() => {
+  vi.restoreAllMocks();
+  mocks.actions.mockReset();
+  mocks.updateAccessPolicy.mockReset();
+  sessionStorage.clear();
+});
+it("recovers one expired cursor when suspension synchronously reports the same 410", async () => {
+  const expired = Object.assign(new Error("expired"), { status: 410 });
+  let listener:
+    | ((state: {
+        state: string;
+        streams: { state: string; error?: Error }[];
+      }) => void)
+    | undefined;
+  const streamThread = {
+    onConnectionChange: vi.fn((callback: typeof listener) => {
+      listener = callback;
+      callback?.({ state: "connected", streams: [{ state: "connected" }] });
+      return vi.fn();
+    }),
+    suspendEvents: vi.fn(() =>
+      listener?.({
+        state: "paused",
+        streams: [{ state: "paused", error: expired }],
+      }),
+    ),
+    reconnectEvents: vi.fn(async () => {}),
+    getConnectionState: vi.fn(() => ({
+      state: "paused",
+      streams: [{ state: "paused", error: expired }],
+    })),
+  };
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+    getThread: () => streamThread,
+  });
+  mocks.getThread.mockResolvedValue({
+    thread_id: "t",
+    metadata: { allowed_actions: ["read", "comment"] },
+  });
+  mocks.state.mockResolvedValue({ values: { messages: [] } });
+  mocks.history.mockResolvedValue([]);
   mocks.runs.mockResolvedValue([]);
-  mocks.list.mockResolvedValue([]);
-  mocks.getThread.mockResolvedValue({ thread_id: "t", metadata: { allowed_actions: ["read", "comment"] } });
   const scope = effectScope();
-  const session = scope.run(() => useSession({ projectId: "p", graphId: "reference_agent", threadId: "t",
-    context: ref({}), canWrite: ref(true), onThread: vi.fn(), onRefresh: vi.fn(), onReconnect: vi.fn() }))!;
   try {
+    scope.run(() =>
+      useChatSession({
+        projectId: "p",
+        graphId: "reference_agent",
+        threadId: "t",
+        context: ref({}),
+        canWrite: ref(true),
+        onThread: vi.fn(),
+        onRefresh: vi.fn(),
+        onReconnect: vi.fn(),
+      }),
+    );
     await flushPromises();
-    expect(session.canRead.value).toBe(true);
-    mocks.getThread.mockRejectedValue(new Error("Forbidden"));
-    await vi.advanceTimersByTimeAsync(60_000);
+    listener?.({
+      state: "paused",
+      streams: [{ state: "paused", error: expired }],
+    });
     await flushPromises();
-    expect(session.canRead.value).toBe(false);
-    expect(session.canComment.value).toBe(false);
-    expect(disconnect).toHaveBeenCalled();
+    expect(streamThread.suspendEvents).toHaveBeenCalledTimes(1);
+    expect(mocks.state).toHaveBeenCalledTimes(1);
+    expect(streamThread.reconnectEvents).toHaveBeenCalledTimes(1);
+  } finally {
+    scope.stop();
+    mocks.getThread.mockReset();
+    mocks.state.mockReset();
+    mocks.history.mockReset();
+    mocks.runs.mockReset();
+  }
+});
+it("discards a stale 410 snapshot and resumes the paused stream after a new Run appears", async () => {
+  const expired = Object.assign(new Error("expired"), { status: 410 });
+  let listener:
+    | ((state: {
+        state: string;
+        streams: { state: string; error?: Error }[];
+      }) => void)
+    | undefined;
+  const streamThread = {
+    onConnectionChange: vi.fn((callback: typeof listener) => {
+      listener = callback;
+      callback?.({ state: "connected", streams: [{ state: "connected" }] });
+      return vi.fn();
+    }),
+    suspendEvents: vi.fn(),
+    reconnectEvents: vi.fn(async () => {}),
+    getConnectionState: vi.fn(() => ({
+      state: "paused",
+      streams: [{ state: "paused", error: expired }],
+    })),
+  };
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+    getThread: () => streamThread,
+  });
+  mocks.getThread.mockResolvedValue({
+    thread_id: "t",
+    metadata: { allowed_actions: ["read", "comment", "approve"] },
+  });
+  mocks.runs.mockResolvedValue([{ run_id: "run-2", status: "running" }]);
+  mocks.history.mockResolvedValue([]);
+  let resolveState!: (state: {
+    values: { messages: { id: string }[] };
+  }) => void;
+  mocks.state.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        resolveState = resolve;
+      }),
+  );
+  const scope = effectScope();
+  try {
+    const session = scope.run(() =>
+      useChatSession({
+        projectId: "p",
+        graphId: "reference_agent",
+        threadId: "t",
+        context: ref({}),
+        canWrite: ref(true),
+        onThread: vi.fn(),
+        onRefresh: vi.fn(),
+        onReconnect: vi.fn(),
+      }),
+    )!;
+    await flushPromises();
+    session.run.value = {
+      run_id: "run-1",
+      status: "running",
+    } as typeof session.run.value;
+    listener?.({
+      state: "paused",
+      streams: [{ state: "paused", error: expired }],
+    });
+    await flushPromises();
+    expect(session.canApprove.value).toBe(false);
+    expect(session.canSend.value).toBe(false);
+    expect(await session.queueMessage("must stay local")).toBe(false);
+    await vi.waitFor(() => expect(mocks.state).toHaveBeenCalledTimes(1));
+    session.run.value = {
+      run_id: "run-2",
+      status: "running",
+    } as typeof session.run.value;
+    resolveState({ values: { messages: [{ id: "old-snapshot" }] } });
+    await vi.waitFor(() =>
+      expect(streamThread.reconnectEvents).toHaveBeenCalledTimes(1),
+    );
+    expect(session.recoverySnapshot.value).toBeNull();
+    expect(mocks.runs).toHaveBeenCalled();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
   } finally {
     scope.stop();
     mocks.getThread.mockReset();
     mocks.runs.mockReset();
-    vi.useRealTimers();
+    mocks.state.mockReset();
+    mocks.history.mockReset();
   }
 });
-afterEach(() => { vi.restoreAllMocks(); mocks.actions.mockReset(); mocks.updateAccessPolicy.mockReset(); sessionStorage.clear(); });
-it.each([useChatSession, useDearAgentSession])("ignores an ACL response issued before a sharing change (%#)", async useSession => {
-  mocks.stream.mockReturnValue({ isLoading: ref(false), error: ref(null), interrupts: ref([]),
-    hydrationPromise: ref(Promise.resolve()), disconnect: vi.fn() });
-  mocks.runs.mockResolvedValue([]);
-  mocks.list.mockResolvedValue([]);
-  const allowed = { thread_id: "t", metadata: { allowed_actions: ["read", "comment"] } };
-  mocks.getThread.mockResolvedValue(allowed);
-  const scope = effectScope();
-  const session = scope.run(() => useSession({ projectId: "p", graphId: "reference_agent", threadId: "t",
-    context: ref({}), canWrite: ref(true), onThread: vi.fn(), onRefresh: vi.fn(), onReconnect: vi.fn() }))!;
-  try {
-    await flushPromises();
-    let resolveOld!: (value: typeof allowed) => void;
-    mocks.getThread.mockImplementationOnce(() => new Promise(resolve => { resolveOld = resolve; }));
-    const oldRequest = session.refreshAccessPolicy();
-    window.dispatchEvent(new Event('thread-access-updated'));
-    expect(session.canRead.value).toBe(false);
-    mocks.getThread.mockRejectedValue(new Error('Forbidden'));
-    resolveOld(allowed);
-    await oldRequest;
-    await flushPromises();
-    expect(session.canRead.value).toBe(false);
-    expect(session.canComment.value).toBe(false);
-  } finally { scope.stop(); mocks.getThread.mockReset(); mocks.runs.mockReset(); }
-});
+it.each([useChatSession, useDearAgentSession])(
+  "ignores an ACL response issued before a sharing change (%#)",
+  async (useSession) => {
+    mocks.stream.mockReturnValue({
+      isLoading: ref(false),
+      error: ref(null),
+      interrupts: ref([]),
+      hydrationPromise: ref(Promise.resolve()),
+      disconnect: vi.fn(),
+    });
+    mocks.runs.mockResolvedValue([]);
+    mocks.list.mockResolvedValue([]);
+    const allowed = {
+      thread_id: "t",
+      metadata: { allowed_actions: ["read", "comment"] },
+    };
+    mocks.getThread.mockResolvedValue(allowed);
+    const scope = effectScope();
+    const session = scope.run(() =>
+      useSession({
+        projectId: "p",
+        graphId: "reference_agent",
+        threadId: "t",
+        context: ref({}),
+        canWrite: ref(true),
+        onThread: vi.fn(),
+        onRefresh: vi.fn(),
+        onReconnect: vi.fn(),
+      }),
+    )!;
+    try {
+      await flushPromises();
+      let resolveOld!: (value: typeof allowed) => void;
+      mocks.getThread.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveOld = resolve;
+          }),
+      );
+      const oldRequest = session.refreshAccessPolicy();
+      window.dispatchEvent(new Event("thread-access-updated"));
+      expect(session.canRead.value).toBe(false);
+      mocks.getThread.mockRejectedValue(new Error("Forbidden"));
+      resolveOld(allowed);
+      await oldRequest;
+      await flushPromises();
+      expect(session.canRead.value).toBe(false);
+      expect(session.canComment.value).toBe(false);
+    } finally {
+      scope.stop();
+      mocks.getThread.mockReset();
+      mocks.runs.mockReset();
+    }
+  },
+);
 it("unknown queue retry freezes original payload and key and clears draft only on ACK", async () => {
   mocks.stream.mockReturnValue({
     isLoading: ref(true),
@@ -151,36 +416,150 @@ it("unknown queue retry freezes original payload and key and clears draft only o
 });
 
 it("late parent completion checks the new Run and cannot reopen sending", async () => {
-  mocks.stream.mockReturnValue({ isLoading: ref(false), error: ref(null), interrupts: ref([]), hydrationPromise: ref(Promise.resolve()), disconnect: vi.fn() });
-  const current = ref<{ key: string; kind: string; runId: string; status: string } | null>(null);
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+  });
+  const current = ref<{
+    key: string;
+    kind: string;
+    runId: string;
+    status: string;
+  } | null>(null);
   mocks.actions.mockReturnValue({ current, dispose: vi.fn() });
   mocks.run.mockResolvedValue({ run_id: "new-run", status: "running" });
   const scope = effectScope();
-  const session = scope.run(() => useChatSession({ projectId: "p", graphId: "workflow_demo", threadId: "t", context: ref({}), canWrite: ref(true), onThread: vi.fn(), onRefresh: vi.fn(), onReconnect: vi.fn() }))!;
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "p",
+      graphId: "workflow_demo",
+      threadId: "t",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
   try {
     await flushPromises();
-    current.value = { key: "new-action", kind: "send", runId: "new-run", status: "acknowledged" };
+    current.value = {
+      key: "new-action",
+      kind: "send",
+      runId: "new-run",
+      status: "acknowledged",
+    };
     mocks.stream.mock.lastCall![0].onCompleted();
     await flushPromises();
     expect(mocks.run).toHaveBeenCalledWith("t", "new-run");
     expect(session.run.value?.run_id).toBe("new-run");
     expect(session.busy.value).toBe(true);
     expect(session.canSend.value).toBe(false);
-  } finally { scope.stop(); }
+  } finally {
+    scope.stop();
+  }
+});
+
+it("keeps the stream after cancel ACK until the server confirms a terminal Run", async () => {
+  const disconnect = vi.fn();
+  mocks.stream.mockReturnValue({
+    isLoading: ref(true),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect,
+  });
+  mocks.runs.mockResolvedValue([{ run_id: "run-1", status: "running" }]);
+  mocks.cancel.mockResolvedValue(undefined);
+  let finish!: (value: { run_id: string; status: string }) => void;
+  mocks.run
+    .mockResolvedValueOnce({ run_id: "run-1", status: "running" })
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+  const scope = effectScope();
+  try {
+    const session = scope.run(() =>
+      useChatSession({
+        projectId: "p",
+        graphId: "workflow_demo",
+        threadId: "t",
+        initialThread: ref({
+          thread_id: "t",
+          metadata: { allowed_actions: ["read", "comment", "edit", "approve"] },
+        } as never),
+        context: ref({}),
+        canWrite: ref(true),
+        onThread: vi.fn(),
+        onRefresh: vi.fn(),
+        onReconnect: vi.fn(),
+      }),
+    )!;
+    await flushPromises();
+    const stopping = session.stop();
+    await vi.waitFor(() => expect(mocks.run).toHaveBeenCalledTimes(2));
+    expect(mocks.cancel).toHaveBeenCalledTimes(1);
+    expect(session.run.value?.status).toBe("running");
+    expect(disconnect).not.toHaveBeenCalled();
+    finish({ run_id: "run-1", status: "cancelled" });
+    await stopping;
+    expect(session.run.value?.status).toBe("cancelled");
+    expect(disconnect).not.toHaveBeenCalled();
+  } finally {
+    scope.stop();
+    mocks.runs.mockReset();
+    mocks.run.mockReset();
+    mocks.cancel.mockReset();
+  }
 });
 
 it("receipt before POST ACK confirms once, and disposed sessions ignore late receipts", async () => {
-  mocks.stream.mockReturnValue({ isLoading: ref(true), error: ref(null), interrupts: ref([]), hydrationPromise: ref(Promise.resolve()), disconnect: vi.fn() });
+  mocks.stream.mockReturnValue({
+    isLoading: ref(true),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+  });
   mocks.list.mockResolvedValue([]);
   let ack!: (value: unknown) => void;
-  mocks.enqueue.mockImplementationOnce(() => new Promise(resolve => { ack = resolve; }));
+  mocks.enqueue.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        ack = resolve;
+      }),
+  );
   const accepted = vi.fn();
   const scope = effectScope();
-  const session = scope.run(() => useChatSession({ projectId: "p", graphId: "reference_agent", threadId: "t", context: ref({}), canWrite: ref(true), onThread: vi.fn(), onRefresh: vi.fn(), onReconnect: vi.fn(), onAccepted: accepted }))!;
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "p",
+      graphId: "reference_agent",
+      threadId: "t",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+      onAccepted: accepted,
+    }),
+  )!;
   await flushPromises();
   const request = session.queueMessage("ordered by ID");
   const id = session.pendingMessage.value!.payload.client_message_id;
-  const consumed = { message_id: id, target_run_id: "run", thread_id: "t", sequence: 1, status: "consumed" };
+  const consumed = {
+    message_id: id,
+    target_run_id: "run",
+    thread_id: "t",
+    sequence: 1,
+    status: "consumed",
+  };
   mocks.list.mockResolvedValueOnce([consumed]);
   await session.refreshReceipts();
   expect(accepted).toHaveBeenCalledTimes(1);
@@ -189,7 +568,12 @@ it("receipt before POST ACK confirms once, and disposed sessions ignore late rec
   expect(accepted).toHaveBeenCalledTimes(1);
   expect(session.receipts.value[0]?.status).toBe("consumed");
   let late!: (value: unknown) => void;
-  mocks.list.mockImplementationOnce(() => new Promise(resolve => { late = resolve; }));
+  mocks.list.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        late = resolve;
+      }),
+  );
   const refresh = session.refreshReceipts();
   scope.stop();
   late([]);
@@ -206,7 +590,12 @@ it("coalesces concurrent verify calls on completion so canSend resets to true", 
     hydrationPromise: ref(Promise.resolve()),
     disconnect: vi.fn(),
   });
-  const current = ref<{ key: string; kind: string; runId: string; status: string } | null>(null);
+  const current = ref<{
+    key: string;
+    kind: string;
+    runId: string;
+    status: string;
+  } | null>(null);
   mocks.actions.mockReturnValue({ current, dispose: vi.fn() });
   mocks.run.mockResolvedValue({ run_id: "run-1", status: "success" });
 
@@ -229,7 +618,12 @@ it("coalesces concurrent verify calls on completion so canSend resets to true", 
     expect(session.canSend.value).toBe(true);
 
     // 模拟并发调用：stream 的 onCompleted 与本地 verify(true) 同时触发
-    current.value = { key: "send-1", kind: "send", runId: "run-1", status: "acknowledged" };
+    current.value = {
+      key: "send-1",
+      kind: "send",
+      runId: "run-1",
+      status: "acknowledged",
+    };
     const p1 = mocks.stream.mock.lastCall![0].onCompleted();
     const p2 = session.verify(true);
 
@@ -253,7 +647,12 @@ it("does NOT throw unconfirmed error while stream is loading even if document is
     hydrationPromise: ref(Promise.resolve()),
     disconnect: vi.fn(),
   });
-  const current = ref<{ key: string; kind: string; runId: string; status: string } | null>({
+  const current = ref<{
+    key: string;
+    kind: string;
+    runId: string;
+    status: string;
+  } | null>({
     key: "action-1",
     kind: "send",
     runId: "run-active",
@@ -263,7 +662,10 @@ it("does NOT throw unconfirmed error while stream is loading even if document is
   mocks.run.mockResolvedValue({ run_id: "run-active", status: "running" });
 
   const originalHidden = Object.getOwnPropertyDescriptor(document, "hidden");
-  Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
+  Object.defineProperty(document, "hidden", {
+    configurable: true,
+    get: () => true,
+  });
 
   const scope = effectScope();
   const session = scope.run(() =>
@@ -290,7 +692,10 @@ it("does NOT throw unconfirmed error while stream is loading even if document is
     expect(session.busy.value).toBe(true);
 
     // 随后后端 run 完成且流式结束
-    mocks.run.mockResolvedValueOnce({ run_id: "run-active", status: "success" });
+    mocks.run.mockResolvedValueOnce({
+      run_id: "run-active",
+      status: "success",
+    });
     isLoading.value = false;
     await session.verify(true);
     await flushPromises();
@@ -320,7 +725,19 @@ it("supports draft state policy staging and sends PATCH before starting run on n
     thread_id: "created-thread-1",
     access_policy: "workspace_write",
   });
-  mocks.createThread.mockResolvedValue({ thread_id: "created-thread-1", metadata: { allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] } });
+  mocks.createThread.mockResolvedValue({
+    thread_id: "created-thread-1",
+    metadata: {
+      allowed_actions: [
+        "read",
+        "comment",
+        "edit",
+        "approve",
+        "share",
+        "full_access",
+      ],
+    },
+  });
 
   const scope = effectScope();
   const session = scope.run(() =>
@@ -374,7 +791,17 @@ it("updates access policy for existing thread via API and handles failure gracef
   mocks.runs.mockResolvedValue([]);
   mocks.getThread.mockResolvedValue({
     thread_id: "thread-existing",
-    metadata: { access_policy: "review", allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] },
+    metadata: {
+      access_policy: "review",
+      allowed_actions: [
+        "read",
+        "comment",
+        "edit",
+        "approve",
+        "share",
+        "full_access",
+      ],
+    },
   });
   mocks.updateAccessPolicy.mockResolvedValue({
     thread_id: "thread-existing",
@@ -431,10 +858,32 @@ it("supports draft state full_access staging and keeps full_access after refresh
     submit: submitFn,
   });
   mocks.runs.mockResolvedValue([]);
-  mocks.createThread.mockResolvedValue({ thread_id: "created-thread-full", metadata: { allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] } });
+  mocks.createThread.mockResolvedValue({
+    thread_id: "created-thread-full",
+    metadata: {
+      allowed_actions: [
+        "read",
+        "comment",
+        "edit",
+        "approve",
+        "share",
+        "full_access",
+      ],
+    },
+  });
   mocks.getThread.mockResolvedValue({
     thread_id: "created-thread-full",
-    metadata: { access_policy: "full_access", allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] },
+    metadata: {
+      access_policy: "full_access",
+      allowed_actions: [
+        "read",
+        "comment",
+        "edit",
+        "approve",
+        "share",
+        "full_access",
+      ],
+    },
   });
   mocks.updateAccessPolicy.mockResolvedValue({
     thread_id: "created-thread-full",
@@ -485,151 +934,183 @@ it("supports draft state full_access staging and keeps full_access after refresh
   }
 });
 
-it.each([useChatSession, useDearAgentSession])("self-heals and fallbacks to direct send when queueMessage encounters 409 run_changed (%#)", async (useSession) => {
-  const submitFn = vi.fn().mockResolvedValue({});
-  mocks.stream.mockReturnValue({
-    isLoading: ref(false),
-    error: ref(null),
-    interrupts: ref([]),
-    hydrationPromise: ref(Promise.resolve()),
-    disconnect: vi.fn(),
-    submit: submitFn,
-  });
-  mocks.runs.mockResolvedValue([{ run_id: "run-ended-1", status: "success" }]);
-  mocks.list.mockResolvedValue([]);
-  mocks.getThread.mockResolvedValue({
-    thread_id: "t-heal",
-    metadata: { allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] },
-  });
+it.each([useChatSession, useDearAgentSession])(
+  "self-heals and fallbacks to direct send when queueMessage encounters 409 run_changed (%#)",
+  async (useSession) => {
+    const submitFn = vi.fn().mockResolvedValue({});
+    mocks.stream.mockReturnValue({
+      isLoading: ref(false),
+      error: ref(null),
+      interrupts: ref([]),
+      hydrationPromise: ref(Promise.resolve()),
+      disconnect: vi.fn(),
+      submit: submitFn,
+    });
+    mocks.runs.mockResolvedValue([
+      { run_id: "run-ended-1", status: "success" },
+    ]);
+    mocks.list.mockResolvedValue([]);
+    mocks.getThread.mockResolvedValue({
+      thread_id: "t-heal",
+      metadata: {
+        allowed_actions: [
+          "read",
+          "comment",
+          "edit",
+          "approve",
+          "share",
+          "full_access",
+        ],
+      },
+    });
 
-  const scope = effectScope();
-  const session = scope.run(() =>
-    useSession({
-      projectId: "proj-heal",
-      graphId: "reference_agent",
-      threadId: "t-heal",
-      context: ref({}),
-      canWrite: ref(true),
-      onThread: vi.fn(),
-      onRefresh: vi.fn(),
-      onReconnect: vi.fn(),
-    }),
-  )!;
-
-  try {
-    await flushPromises();
-
-    // 1. 无 active run 时调用 queueMessage，直接自愈回退到 direct send，不抛错
-    await session.queueMessage("hello when idle");
-    expect(submitFn).toHaveBeenCalledTimes(1);
-    expect(session.error.value).toBe("");
-
-    // 2. 模拟运行中有 active run，但向后端排队时后端判定 run 已结束返回 409 run_changed
-    mocks.enqueue.mockRejectedValueOnce(
-      Object.assign(new Error("Request failed with status code 409"), {
-        isAxiosError: true,
-        response: { status: 409, data: { detail: "run_changed" } },
+    const scope = effectScope();
+    const session = scope.run(() =>
+      useSession({
+        projectId: "proj-heal",
+        graphId: "reference_agent",
+        threadId: "t-heal",
+        context: ref({}),
+        canWrite: ref(true),
+        onThread: vi.fn(),
+        onRefresh: vi.fn(),
+        onReconnect: vi.fn(),
       }),
-    );
+    )!;
 
-    await session.queueMessage("second message after run ended");
-    // 验证无感自愈转为发起新回合 send()，因此 submit 被再次调用
-    expect(submitFn).toHaveBeenCalledTimes(2);
-    // 验证绝不将 409 冒泡为顶部大红框报错
-    expect(session.error.value).toBe("");
-  } finally {
-    scope.stop();
-    mocks.enqueue.mockReset();
-    mocks.runs.mockReset();
-  }
-});
+    try {
+      await flushPromises();
+
+      // 1. 无 active run 时调用 queueMessage，直接自愈回退到 direct send，不抛错
+      await session.queueMessage("hello when idle");
+      expect(submitFn).toHaveBeenCalledTimes(1);
+      expect(session.error.value).toBe("");
+
+      // 2. 模拟运行中有 active run，但向后端排队时后端判定 run 已结束返回 409 run_changed
+      mocks.enqueue.mockRejectedValueOnce(
+        Object.assign(new Error("Request failed with status code 409"), {
+          isAxiosError: true,
+          response: { status: 409, data: { detail: "run_changed" } },
+        }),
+      );
+
+      await session.queueMessage("second message after run ended");
+      // 验证无感自愈转为发起新回合 send()，因此 submit 被再次调用
+      expect(submitFn).toHaveBeenCalledTimes(2);
+      // 验证绝不将 409 冒泡为顶部大红框报错
+      expect(session.error.value).toBe("");
+    } finally {
+      scope.stop();
+      mocks.enqueue.mockReset();
+      mocks.runs.mockReset();
+    }
+  },
+);
 
 it.each([useChatSession, useDearAgentSession])(
   "suppresses historical clarification flash during hydration/completed run and keeps queued item when send fromQueue hits 409 (%#)",
   async (useSession) => {
     let resolveHydration!: () => void;
-  const hydrationDeferred = new Promise<void>((resolve) => {
-    resolveHydration = resolve;
-  });
+    const hydrationDeferred = new Promise<void>((resolve) => {
+      resolveHydration = resolve;
+    });
 
-  const submitFn = vi.fn(async () => {
-    throw new Error("409 Conflict: Cannot start a new run while thread has a pending or running run.");
-  });
+    const submitFn = vi.fn(async () => {
+      throw new Error(
+        "409 Conflict: Cannot start a new run while thread has a pending or running run.",
+      );
+    });
 
-  mocks.stream.mockReturnValue({
-    values: ref({ messages: [] }),
-    messages: ref([]),
-    isLoading: ref(false),
-    error: ref(null),
-    interrupts: ref([
-      {
-        id: "hist-clarification-1",
-        value: {
-          action_requests: [
-            {
-              name: "ask_user_question",
-              args: {
-                schema_version: 1,
-                title: "历史需求澄清",
-                questions: [{ id: "q1", label: "选择方向", type: "text" }],
+    mocks.stream.mockReturnValue({
+      values: ref({ messages: [] }),
+      messages: ref([]),
+      isLoading: ref(false),
+      error: ref(null),
+      interrupts: ref([
+        {
+          id: "hist-clarification-1",
+          value: {
+            action_requests: [
+              {
+                name: "ask_user_question",
+                args: {
+                  schema_version: 1,
+                  title: "历史需求澄清",
+                  questions: [{ id: "q1", label: "选择方向", type: "text" }],
+                },
               },
-            },
-          ],
+            ],
+          },
         },
+      ]),
+      hydrationPromise: ref(hydrationDeferred),
+      disconnect: vi.fn(),
+      submit: submitFn,
+    });
+
+    // 初始 hydrate 完成时后端返回最新已完结 run（success）
+    mocks.runs.mockResolvedValue([
+      { run_id: "run-completed-old", status: "success" },
+    ]);
+    mocks.list.mockResolvedValue([]);
+    mocks.getThread.mockResolvedValue({
+      thread_id: "t-switch-back",
+      metadata: {
+        allowed_actions: [
+          "read",
+          "comment",
+          "edit",
+          "approve",
+          "share",
+          "full_access",
+        ],
       },
-    ]),
-    hydrationPromise: ref(hydrationDeferred),
-    disconnect: vi.fn(),
-    submit: submitFn,
-  });
+    });
 
-  // 初始 hydrate 完成时后端返回最新已完结 run（success）
-  mocks.runs.mockResolvedValue([{ run_id: "run-completed-old", status: "success" }]);
-  mocks.list.mockResolvedValue([]);
-  mocks.getThread.mockResolvedValue({
-    thread_id: "t-switch-back",
-    metadata: { allowed_actions: ["read", "comment", "edit", "approve", "share", "full_access"] },
-  });
+    const scope = effectScope();
+    const session = scope.run(() =>
+      useSession({
+        projectId: "proj-switch",
+        graphId: "reference_agent",
+        threadId: "t-switch-back",
+        context: ref({}),
+        canWrite: ref(true),
+        onThread: vi.fn(),
+        onRefresh: vi.fn(),
+        onReconnect: vi.fn(),
+      }),
+    )!;
 
-  const scope = effectScope();
-  const session = scope.run(() =>
-    useSession({
-      projectId: "proj-switch",
-      graphId: "reference_agent",
-      threadId: "t-switch-back",
-      context: ref({}),
-      canWrite: ref(true),
-      onThread: vi.fn(),
-      onRefresh: vi.fn(),
-      onReconnect: vi.fn(),
-    }),
-  )!;
+    try {
+      // 1. Hydration 尚未完成、messages 为空时，历史中断绝不可闪现为澄清卡片
+      expect(session.clarifications.value).toHaveLength(0);
 
-  try {
-    // 1. Hydration 尚未完成、messages 为空时，历史中断绝不可闪现为澄清卡片
-    expect(session.clarifications.value).toHaveLength(0);
+      resolveHydration();
+      await flushPromises();
 
-    resolveHydration();
-    await flushPromises();
+      // 2. Hydration 完成后，当前最新 run 为 success 终态（非 interrupted），历史中断同样绝不可闪现
+      expect(session.clarifications.value).toHaveLength(0);
 
-    // 2. Hydration 完成后，当前最新 run 为 success 终态（非 interrupted），历史中断同样绝不可闪现
-    expect(session.clarifications.value).toHaveLength(0);
+      // 3. 模拟后台其实有一个新启动的 active run 正在执行，前端队列尝试弹出第一条消息发送（fromQueue: true）遇到 409
+      mocks.runs.mockResolvedValue([
+        { run_id: "run-active-bg", status: "running" },
+      ]);
+      const ok = await session.send("queued message 1", 1000, {
+        fromQueue: true,
+      });
 
-    // 3. 模拟后台其实有一个新启动的 active run 正在执行，前端队列尝试弹出第一条消息发送（fromQueue: true）遇到 409
-    mocks.runs.mockResolvedValue([{ run_id: "run-active-bg", status: "running" }]);
-    const ok = await session.send("queued message 1", 1000, { fromQueue: true });
-
-    // 必须返回 false 以便前端队列将消息放回队首等待，且只尝试 1 次不产生递归重复气泡
-    expect(ok).toBe(false);
-    expect(submitFn).toHaveBeenCalledTimes(1);
-    expect(session.error.value).toBe("");
-    // 并且 verify(true) 已将后台 running 状态同步回前端，busy 恢复为 true 阻止后续队列继续抢跑
-    expect(session.busy.value).toBe(true);
-  } finally {
-    scope.stop();
-    mocks.runs.mockReset();
-  }
-});
+      // 必须返回 false 以便前端队列将消息放回队首等待，且只尝试 1 次不产生递归重复气泡
+      expect(ok).toBe(false);
+      expect(submitFn).toHaveBeenCalledTimes(1);
+      expect(session.error.value).toBe("");
+      // 并且 verify(true) 已将后台 running 状态同步回前端，busy 恢复为 true 阻止后续队列继续抢跑
+      expect(session.busy.value).toBe(true);
+    } finally {
+      scope.stop();
+      mocks.runs.mockReset();
+    }
+  },
+);
 
 it("seeds accessThread from initialThread with zero accessLoading and stops in-place without calling onReconnect", async () => {
   const disconnect = vi.fn();
@@ -643,7 +1124,10 @@ it("seeds accessThread from initialThread with zero accessLoading and stops in-p
     disconnect,
   });
   mocks.runs.mockResolvedValue([{ run_id: "run-active-1", status: "running" }]);
-  mocks.run.mockResolvedValue({ run_id: "run-active-1", status: "interrupted" });
+  mocks.run.mockResolvedValue({
+    run_id: "run-active-1",
+    status: "interrupted",
+  });
   mocks.cancel.mockResolvedValue(undefined);
   mocks.list.mockResolvedValue([]);
   mocks.getThread.mockClear();
@@ -689,7 +1173,7 @@ it("seeds accessThread from initialThread with zero accessLoading and stops in-p
     // 2. 点击停止时，原地取消 run 并断开流，绝不触发 onReconnect 重建组件或开启 accessLoading
     await session.stop();
     expect(mocks.cancel).toHaveBeenCalledWith("t-seeded", "run-active-1");
-    expect(disconnect).toHaveBeenCalled();
+    expect(disconnect).not.toHaveBeenCalled();
     expect(onReconnect).not.toHaveBeenCalled();
     expect(session.accessLoading.value).toBe(false);
   } finally {
@@ -702,13 +1186,23 @@ it("seeds accessThread from initialThread with zero accessLoading and stops in-p
 
 it("removes uncommitted HumanMessage from stream.messages on 409 and extends verify deadline while backend run is active", async () => {
   vi.useFakeTimers();
-  const streamMessages = ref<Array<{ id?: string; type?: string; content?: unknown }>>([]);
-  const submitFn = vi.fn().mockImplementation(async (input: { messages: Array<{ id?: string; type?: string; content?: unknown }> }) => {
-    streamMessages.value = [...streamMessages.value, ...input.messages];
-    throw new Error("409 Conflict: pending or running run");
-  });
+  const streamMessages = ref<
+    Array<{ id?: string; type?: string; content?: unknown }>
+  >([]);
+  const submitFn = vi
+    .fn()
+    .mockImplementation(
+      async (input: {
+        messages: Array<{ id?: string; type?: string; content?: unknown }>;
+      }) => {
+        streamMessages.value = [...streamMessages.value, ...input.messages];
+        throw new Error("409 Conflict: pending or running run");
+      },
+    );
 
-  mocks.runs.mockResolvedValue([{ run_id: "run-active-44s", status: "running" }]);
+  mocks.runs.mockResolvedValue([
+    { run_id: "run-active-44s", status: "running" },
+  ]);
   mocks.run.mockResolvedValue({ run_id: "run-active-44s", status: "running" });
   mocks.stream.mockReturnValue({
     messages: streamMessages,
@@ -719,7 +1213,12 @@ it("removes uncommitted HumanMessage from stream.messages on 409 and extends ver
     submit: submitFn,
     disconnect: vi.fn(),
   });
-  const current = ref<{ key: string; kind: string; runId?: string; status: string } | null>(null);
+  const current = ref<{
+    key: string;
+    kind: string;
+    runId?: string;
+    status: string;
+  } | null>(null);
   mocks.actions.mockReturnValue({
     current,
     begin: vi.fn((_tid: string, kind: string) => {
@@ -750,7 +1249,9 @@ it("removes uncommitted HumanMessage from stream.messages on 409 and extends ver
 
   try {
     await flushPromises();
-    const sendPromise = session.send("你再换另一个人物给我讲一下", 1000, { fromQueue: true });
+    const sendPromise = session.send("你再换另一个人物给我讲一下", 1000, {
+      fromQueue: true,
+    });
     await flushPromises();
     const ok = await sendPromise;
 
@@ -766,7 +1267,10 @@ it("removes uncommitted HumanMessage from stream.messages on 409 and extends ver
     }
     expect(session.error.value).toBe("");
 
-    mocks.run.mockResolvedValueOnce({ run_id: "run-active-44s", status: "success" });
+    mocks.run.mockResolvedValueOnce({
+      run_id: "run-active-44s",
+      status: "success",
+    });
     await vi.advanceTimersByTimeAsync(4000);
     await flushPromises();
     expect(session.verified.value).toBe(true);
@@ -782,11 +1286,21 @@ it("removes uncommitted HumanMessage from stream.messages on 409 and extends ver
 it("keeps busy true throughout subsequent send() stream even when previous run in run.value was terminal", async () => {
   const isLoading = ref(false);
   let resolveStream!: () => void;
-  const current = ref<{ key: string; kind: string; runId?: string; status: string } | null>(null);
+  const current = ref<{
+    key: string;
+    kind: string;
+    runId?: string;
+    status: string;
+  } | null>(null);
   const submitFn = vi.fn().mockImplementation(() => {
     isLoading.value = true;
     // Simulate POST /commands returning 200 OK immediately with the new runId
-    current.value = { key: "act-2", kind: "send", runId: "run-turn-2", status: "acknowledged" };
+    current.value = {
+      key: "act-2",
+      kind: "send",
+      runId: "run-turn-2",
+      status: "acknowledged",
+    };
     return new Promise<void>((resolve) => {
       resolveStream = () => {
         isLoading.value = false;
@@ -860,7 +1374,12 @@ it("keeps busy true throughout subsequent send() stream even when previous run i
 
 it("rotates shared SSE event stream via getThread().subscribe() on every consecutive acknowledged run and keeps verify silent", async () => {
   const isLoading = ref(false);
-  const current = ref<{ key: string; kind: string; status: string; runId?: string } | null>(null);
+  const current = ref<{
+    key: string;
+    kind: string;
+    status: string;
+    runId?: string;
+  } | null>(null);
   const unsubscribe = vi.fn().mockResolvedValue(undefined);
   const subscribe = vi.fn().mockResolvedValue({ unsubscribe });
 
@@ -900,7 +1419,11 @@ it("rotates shared SSE event stream via getThread().subscribe() on every consecu
   mocks.actions.mockReturnValue({
     current,
     begin: vi.fn((_tid: string, kind: string) => {
-      const action = { key: `act-${runCounter + 1}`, kind, status: "submitting" };
+      const action = {
+        key: `act-${runCounter + 1}`,
+        kind,
+        status: "submitting",
+      };
       current.value = action;
       return action;
     }),
@@ -935,8 +1458,8 @@ it("rotates shared SSE event stream via getThread().subscribe() on every consecu
     await flushPromises();
 
     // Every acknowledged run command must trigger getThread().subscribe() to reopen/rotate POST /threads/{id}/stream/events
-    expect(subscribe).toHaveBeenCalledTimes(2);
-    expect(unsubscribe).toHaveBeenCalledTimes(2);
+    expect(subscribe).not.toHaveBeenCalled();
+    expect(unsubscribe).not.toHaveBeenCalled();
     expect(session.verified.value).toBe(true);
     expect(session.checking.value).toBe(false);
   } finally {
@@ -945,5 +1468,3 @@ it("rotates shared SSE event stream via getThread().subscribe() on every consecu
     mocks.run.mockReset();
   }
 });
-
-

@@ -13,7 +13,7 @@ it("aborts session streams on disposal and preserves SDK cancellation", async ()
   expect(signals[0].aborted).toBe(true);
   expect(signals[1].aborted).toBe(false);
   actions.dispose();
-  expect(signals.every(signal => signal.aborted)).toBe(true);
+  expect(signals.every((signal) => signal.aborted)).toBe(true);
 });
 
 it("maps SDK multi-interrupt responses by ID and refuses configuration overrides", () => {
@@ -88,13 +88,19 @@ it("keeps the same key and exact wire request after a lost ACK, isolates new act
   await expect(actions.retry()).rejects.toThrow();
 });
 
-it("filters replayed SSE frames belonging to previously completed runs while keeping active run frames", async () => {
+it("keeps final values after lifecycle completion and frames from other runs", async () => {
   const sseBody = [
     `id: 0\nevent: stream\ndata: ${JSON.stringify({ type: "event", method: "lifecycle", params: { event: "completed", run_id: "run-1", data: { status: "completed" } } })}\n\n`,
+    `id: 1\nevent: stream\ndata: ${JSON.stringify({ type: "event", method: "values", params: { run_id: "run-1", data: { messages: [{ id: "final-1" }] } } })}\n\n`,
     `id: 1\nevent: stream\ndata: ${JSON.stringify({ type: "event", method: "messages", params: { event: "message-chunk", run_id: "run-2", data: { id: "ai-2", delta: { content: "你好" } } } })}\n\n`,
   ].join("");
   const wire = vi.fn<typeof fetch>().mockImplementation(async (input) => {
-    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    const url =
+      typeof input === "string"
+        ? input
+        : input instanceof URL
+          ? input.href
+          : input.url;
     if (url.endsWith("/commands")) {
       return new Response(
         JSON.stringify({ type: "success", result: { run_id: "run-2" } }),
@@ -108,10 +114,17 @@ it("filters replayed SSE frames belonging to previously completed runs while kee
   actions.begin("thread-A", "send", { text: "first" });
   actions.acknowledge(undefined, "run-1");
   actions.begin("thread-A", "send", { text: "second" });
-  await actions.fetch("https://platform/api/langgraph/threads/thread-A/commands", {
-    method: "POST",
-    body: JSON.stringify({ id: 2, method: "run.start", params: { input: { text: "second" } } }),
-  });
+  await actions.fetch(
+    "https://platform/api/langgraph/threads/thread-A/commands",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        id: 2,
+        method: "run.start",
+        params: { input: { text: "second" } },
+      }),
+    },
+  );
   expect(actions.current.value?.runId).toBe("run-2");
 
   const streamRes = await actions.fetch(
@@ -119,8 +132,8 @@ it("filters replayed SSE frames belonging to previously completed runs while kee
     { method: "POST" },
   );
   const text = await streamRes.text();
-  expect(text).not.toContain('"run_id":"run-1"');
+  expect(text).toContain('"run_id":"run-1"');
+  expect(text).toContain('"final-1"');
   expect(text).toContain('"run_id":"run-2"');
   expect(text).toContain("message-chunk");
 });
-

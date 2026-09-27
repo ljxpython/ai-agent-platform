@@ -152,6 +152,7 @@ def test_platform_auth_requires_audience_configuration(
         "dear-memory-read",
         "dear-memory-write",
         "message-enqueue",
+        "message-read",
         "terminal-write",
         "unknown",
     ],

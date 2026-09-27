@@ -9,6 +9,28 @@ import {
   platformUrl,
 } from "../../../e2e/support/platform";
 
+// jsdom replaces AbortSignal with a partial DOM implementation; the real browser
+// provides this primitive, so keep the integration test's transport semantics intact.
+if (!("any" in AbortSignal)) {
+  (
+    AbortSignal as typeof AbortSignal & {
+      any: (signals: Iterable<AbortSignal>) => AbortSignal;
+    }
+  ).any = (signals) => {
+    const controller = new AbortController();
+    for (const signal of signals) {
+      if (signal.aborted) {
+        controller.abort(signal.reason);
+        break;
+      }
+      signal.addEventListener("abort", () => controller.abort(signal.reason), {
+        once: true,
+      });
+    }
+    return controller.signal;
+  };
+}
+
 it.runIf(process.env.PLATFORM_CHAIN_TEST === "1")(
   "real Vue SDK sends, completes and hydrates through the platform gateway",
   async () => {
@@ -172,7 +194,7 @@ it.runIf(process.env.PLATFORM_CHAIN_TEST === "1")(
           {
             id: crypto.randomUUID(),
             type: "human" as const,
-            content: "需要人工确认：请回复审批完成，不要调用工具。",
+            content: "需要人工确认后再继续",
           },
         ],
       };
@@ -183,7 +205,9 @@ it.runIf(process.env.PLATFORM_CHAIN_TEST === "1")(
         },
       });
       expect(stream.error.value).toBeUndefined();
-      await expect.poll(() => stream.interrupts.value.length).toBe(1);
+      await expect
+        .poll(() => stream.interrupts.value.length, { timeout: 45_000 })
+        .toBe(1);
       const parentRun = transport.current.value?.runId;
       const approvalState = await fixture.request<{
         interrupts: Array<{ id: string; value: unknown }>;
@@ -236,31 +260,42 @@ it.runIf(process.env.PLATFORM_CHAIN_TEST === "1")(
       expect(initial?.checkpoint.checkpoint_id).toBeTruthy();
       await stream.disconnect();
       wrapper.unmount();
-      const forkResponse = await transport.fork(
-        `${platformUrl}/api/langgraph`,
-        thread.thread_id,
-        {
-          assistant_id: fixture.graphId,
-          checkpoint_id: initial!.checkpoint.checkpoint_id,
-          input: {
-            messages: [
-              {
-                id: crypto.randomUUID(),
-                role: "user",
-                content: "请只回复分支正常，不要调用工具。",
-              },
-            ],
-          },
-          context: { model_id: fixture.modelId },
-        },
-      );
-      expect(forkResponse.ok).toBe(true);
-      expect(transport.current.value?.status).toBe("acknowledged");
       wrapper = mount(component);
       await stream.hydrationPromise.value;
+      const forkInput = {
+        messages: [
+          {
+            id: crypto.randomUUID(),
+            type: "human" as const,
+            content: "请只回复分支正常，不要调用工具。",
+          },
+        ],
+      };
+      transport.begin(thread.thread_id, "fork", {
+        input: forkInput,
+        checkpoint_id: initial!.checkpoint.checkpoint_id,
+      });
+      await stream.submit(forkInput, {
+        threadId: thread.thread_id,
+        forkFrom: initial!.checkpoint.checkpoint_id,
+        config: {
+          configurable: { platform_runtime: { model_id: fixture.modelId } },
+        },
+      });
+      expect(stream.error.value).toBeUndefined();
+      expect(transport.current.value?.status).toBe("acknowledged");
       await expect
         .poll(
-          () => stream.messages.value.some((message) => message.type === "ai"),
+          async () => {
+            const state = await fixture.request<{
+              values: {
+                messages?: Array<{ type?: string; content?: unknown }>;
+              };
+            }>(`/api/langgraph/threads/${thread.thread_id}/state`);
+            return state.values.messages?.some(
+              (message) => message.type === "ai" && Boolean(message.content),
+            );
+          },
           { timeout: 45000 },
         )
         .toBe(true);

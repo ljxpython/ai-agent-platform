@@ -1,142 +1,227 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock('@/services/http/client', () => ({
-  platformApiBaseUrl: 'https://platform.example.com',
-  refreshAccessToken: async () => '',
-  resolveAuthorizedAccessToken: async () => ''
-}))
+vi.mock("@/services/http/client", () => ({
+  platformApiBaseUrl: "https://platform.example.com",
+  refreshAccessToken: async () => "",
+  resolveAuthorizedAccessToken: async () => "",
+}));
 
-import { createLanggraphAuthorizedFetch, getLanggraphApiUrl } from './client'
-import { clearTokenSet } from '@/services/auth/token'
+import {
+  createLanggraphAuthorizedFetch,
+  createLanggraphClient,
+  getLanggraphApiUrl,
+} from "./client";
+import { clearTokenSet } from "@/services/auth/token";
 
-describe('createLanggraphAuthorizedFetch', () => {
-  it('rejects late SDK responses after logout and does not reuse the old client', async () => {
-    let complete!: (response: Response) => void
-    const fetchImpl = vi.fn<typeof fetch>().mockImplementationOnce(() => new Promise(resolve => { complete = resolve }))
-    const client = createLanggraphAuthorizedFetch({ fetchImpl, getAccessToken: () => 'old' })
-    const request = client('https://example.com/threads')
-    const result = expect(request).rejects.toThrow('登录会话已变更')
-    await vi.waitFor(() => expect(complete).toBeTypeOf('function'))
-    clearTokenSet()
-    complete(new Response('{}'))
-    await result
-    await expect(client('https://example.com/threads')).rejects.toThrow('登录会话已变更')
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
-  })
+describe("createLanggraphAuthorizedFetch", () => {
+  it("rejects late SDK responses after logout and does not reuse the old client", async () => {
+    let complete!: (response: Response) => void;
+    const fetchImpl = vi.fn<typeof fetch>().mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    const client = createLanggraphAuthorizedFetch({
+      fetchImpl,
+      getAccessToken: () => "old",
+    });
+    const request = client("https://example.com/threads");
+    const result = expect(request).rejects.toThrow("登录会话已变更");
+    await vi.waitFor(() => expect(complete).toBeTypeOf("function"));
+    clearTokenSet();
+    complete(new Response("{}"));
+    await result;
+    await expect(client("https://example.com/threads")).rejects.toThrow(
+      "登录会话已变更",
+    );
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
   beforeEach(() => {
-    vi.clearAllMocks()
-  })
+    vi.clearAllMocks();
+  });
 
-  it('builds an absolute /api/langgraph base url from platformApiBaseUrl', () => {
-    expect(getLanggraphApiUrl()).toBe('https://platform.example.com/api/langgraph')
-  })
+  it("builds an absolute /api/langgraph base url from platformApiBaseUrl", () => {
+    expect(getLanggraphApiUrl()).toBe(
+      "https://platform.example.com/api/langgraph",
+    );
+  });
 
-  it('uses the latest access token on the first request', async () => {
-    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(new Response(null, { status: 200 }))
-    const authFetch = createLanggraphAuthorizedFetch({
-      fetchImpl,
-      getAccessToken: () => 'latest-token',
-      refreshAccessToken: async () => ''
-    })
-
-    await authFetch('http://example.com/runs', { method: 'POST' })
-
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
-    expect(new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get('Authorization')).toBe(
-      'Bearer latest-token'
-    )
-  })
-
-  it('refreshes once and retries when the first response is 401', async () => {
+  it("uses the latest access token on the first request", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
-      .mockResolvedValueOnce(new Response(null, { status: 200 }))
-    const refreshToken = vi.fn(async () => 'refreshed-token')
-
+      .mockResolvedValue(new Response(null, { status: 200 }));
     const authFetch = createLanggraphAuthorizedFetch({
       fetchImpl,
-      getAccessToken: () => 'expired-token',
-      refreshAccessToken: refreshToken
-    })
+      getAccessToken: () => "latest-token",
+      refreshAccessToken: async () => "",
+    });
 
-    const response = await authFetch('http://example.com/runs', { method: 'POST' })
+    await authFetch("http://example.com/runs", { method: "POST" });
 
-    expect(response.status).toBe(200)
-    expect(refreshToken).toHaveBeenCalledTimes(1)
-    expect(fetchImpl).toHaveBeenCalledTimes(2)
-    expect(new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get('Authorization')).toBe(
-      'Bearer expired-token'
-    )
-    expect(new Headers(fetchImpl.mock.calls[1]?.[1]?.headers).get('Authorization')).toBe(
-      'Bearer refreshed-token'
-    )
-  })
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(
+      new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get("Authorization"),
+    ).toBe("Bearer latest-token");
+  });
 
-  it('adds one idempotency key to a thread command and reuses it after authentication refresh', async () => {
+  it("refreshes once and retries when the first response is 401", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
-      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+      .mockResolvedValueOnce(new Response("expired", { status: 401 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+    const refreshToken = vi.fn(async () => "refreshed-token");
+
     const authFetch = createLanggraphAuthorizedFetch({
       fetchImpl,
-      getAccessToken: () => 'expired-token',
-      refreshAccessToken: async () => 'refreshed-token'
-    })
+      getAccessToken: () => "expired-token",
+      refreshAccessToken: refreshToken,
+    });
 
-    await authFetch('http://example.com/api/langgraph/threads/thread-1/commands', {
-      method: 'POST',
-      body: JSON.stringify({ method: 'run.start' })
-    })
+    const response = await authFetch("http://example.com/runs", {
+      method: "POST",
+    });
 
-    const firstKey = new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get('Idempotency-Key')
-    const retryKey = new Headers(fetchImpl.mock.calls[1]?.[1]?.headers).get('Idempotency-Key')
-    expect(firstKey).toMatch(/^run:/)
-    expect(retryKey).toBe(firstKey)
-  })
+    expect(response.status).toBe(200);
+    expect(refreshToken).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(
+      new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get("Authorization"),
+    ).toBe("Bearer expired-token");
+    expect(
+      new Headers(fetchImpl.mock.calls[1]?.[1]?.headers).get("Authorization"),
+    ).toBe("Bearer refreshed-token");
+  });
 
-  it('returns the original 401 response when refresh fails', async () => {
+  it("adds one idempotency key to a thread command and reuses it after authentication refresh", async () => {
     const fetchImpl = vi
       .fn<typeof fetch>()
-      .mockResolvedValueOnce(new Response('expired', { status: 401 }))
+      .mockResolvedValueOnce(new Response("expired", { status: 401 }))
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
     const authFetch = createLanggraphAuthorizedFetch({
       fetchImpl,
-      getAccessToken: () => 'expired-token',
-      refreshAccessToken: async () => ''
-    })
+      getAccessToken: () => "expired-token",
+      refreshAccessToken: async () => "refreshed-token",
+    });
 
-    const response = await authFetch('http://example.com/runs', { method: 'POST' })
+    await authFetch(
+      "http://example.com/api/langgraph/threads/thread-1/commands",
+      {
+        method: "POST",
+        body: JSON.stringify({ method: "run.start" }),
+      },
+    );
 
-    expect(response.status).toBe(401)
-    expect(fetchImpl).toHaveBeenCalledTimes(1)
-  })
+    const firstKey = new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get(
+      "Idempotency-Key",
+    );
+    const retryKey = new Headers(fetchImpl.mock.calls[1]?.[1]?.headers).get(
+      "Idempotency-Key",
+    );
+    expect(firstKey).toMatch(/^run:/);
+    expect(retryKey).toBe(firstKey);
+  });
 
-  it('flattens the platform error envelope for the protocol SDK', async () => {
+  it("returns the original 401 response when refresh fails", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValueOnce(new Response("expired", { status: 401 }));
+    const authFetch = createLanggraphAuthorizedFetch({
+      fetchImpl,
+      getAccessToken: () => "expired-token",
+      refreshAccessToken: async () => "",
+    });
+
+    const response = await authFetch("http://example.com/runs", {
+      method: "POST",
+    });
+
+    expect(response.status).toBe(401);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves the platform error envelope for the protocol SDK", async () => {
     const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
       new Response(
         JSON.stringify({
           error: {
-            code: 'thread_active_run_conflict',
-            message: 'The thread already has an active Durable Run'
-          }
+            code: "thread_active_run_conflict",
+            message: "The thread already has an active Durable Run",
+          },
         }),
-        { status: 409, statusText: 'Conflict' }
-      )
-    )
+        { status: 409, statusText: "Conflict" },
+      ),
+    );
     const authFetch = createLanggraphAuthorizedFetch({
       fetchImpl,
-      getAccessToken: () => 'token',
-      refreshAccessToken: async () => ''
-    })
+      getAccessToken: () => "token",
+      refreshAccessToken: async () => "",
+    });
 
-    const response = await authFetch('http://example.com/api/langgraph/threads/thread-1/runs', {
-      method: 'POST'
-    })
+    const response = await authFetch(
+      "http://example.com/api/langgraph/threads/thread-1/runs",
+      {
+        method: "POST",
+      },
+    );
 
     expect(await response.json()).toMatchObject({
-      code: 'thread_active_run_conflict',
-      message: 'The thread already has an active Durable Run',
-      error: 'The thread already has an active Durable Run'
-    })
-  })
-})
+      code: "thread_active_run_conflict",
+      message: "The thread already has an active Durable Run",
+      error: {
+        code: "thread_active_run_conflict",
+        message: "The thread already has an active Durable Run",
+      },
+    });
+  });
+
+  it("does not retry a failed SDK write", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: {
+            code: "langgraph_upstream_request_failed",
+            message: "Runtime request failed",
+          },
+        }),
+        { status: 502, headers: { "content-type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchImpl);
+    try {
+      await expect(
+        createLanggraphClient("project").threads.create({}),
+      ).rejects.toThrow();
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("exposes safe SSE handshake fields without returning upstream text", async () => {
+    const fetchImpl = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          error: { code: "cursor_expired", message: "safe" },
+          request_id: "req-1",
+        }),
+        { status: 410, headers: { "retry-after": "3" } },
+      ),
+    );
+    const authFetch = createLanggraphAuthorizedFetch({
+      fetchImpl,
+      getAccessToken: () => "token",
+    });
+    await expect(
+      authFetch("https://example.com/api/langgraph/threads/t/stream/events", {
+        method: "POST",
+      }),
+    ).rejects.toMatchObject({
+      status: 410,
+      code: "cursor_expired",
+      request_id: "req-1",
+      retryAfter: "3",
+    });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+});

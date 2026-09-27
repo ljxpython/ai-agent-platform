@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { platformHttpClientMock } = vi.hoisted(() => ({
   platformHttpClientMock: {
@@ -8,7 +8,7 @@ const { platformHttpClientMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@/services/http/client', () => ({
+vi.mock("@/services/http/client", () => ({
   platformHttpClient: platformHttpClientMock,
 }));
 
@@ -19,9 +19,9 @@ import {
   getWorkspaceContentBlob,
   getWorkspacePreview,
   getWorkspaceTree,
-} from './workspace.service';
+} from "./workspace.service";
 
-describe('workspace.service', () => {
+describe("workspace.service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     if (!Blob.prototype.text) {
@@ -36,32 +36,36 @@ describe('workspace.service', () => {
     }
   });
 
-  it('fetches capabilities correctly', async () => {
+  it("fetches capabilities correctly", async () => {
     platformHttpClientMock.get.mockResolvedValueOnce({
-      data: { workspace: true, terminal: true, artifacts: ['application/json'] },
+      data: {
+        workspace: true,
+        terminal: true,
+        artifacts: ["application/json"],
+      },
     });
 
-    const caps = await getWorkspaceCapabilities('proj-1', 'thread-1');
+    const caps = await getWorkspaceCapabilities("proj-1", "thread-1");
     expect(caps.workspace).toBe(true);
     expect(caps.terminal).toBe(true);
     expect(platformHttpClientMock.get).toHaveBeenCalledWith(
-      '/api/langgraph/threads/thread-1/capabilities',
+      "/api/langgraph/threads/thread-1/capabilities",
       expect.objectContaining({
-        headers: { 'x-project-id': 'proj-1' },
+        headers: { "x-project-id": "proj-1" },
       }),
     );
   });
 
-  it('fetches workspace tree with path and limit', async () => {
+  it("fetches workspace tree with path and limit", async () => {
     platformHttpClientMock.get.mockResolvedValueOnce({
       data: {
         items: [
           {
-            path: '/workspace/work',
-            name: 'work',
-            type: 'directory',
+            path: "/workspace/work",
+            name: "work",
+            type: "directory",
             size_bytes: null,
-            mtime: '2026-09-17T08:00:00Z',
+            mtime: "2026-09-17T08:00:00Z",
             mime_type: null,
             preview_kind: null,
             is_artifact: false,
@@ -71,127 +75,138 @@ describe('workspace.service', () => {
       },
     });
 
-    const tree = await getWorkspaceTree('proj-1', 'thread-1', {
-      path: '/workspace',
+    const tree = await getWorkspaceTree("proj-1", "thread-1", {
+      path: "/workspace",
       limit: 100,
     });
     expect(tree.items).toHaveLength(1);
-    expect(tree.items[0].name).toBe('work');
+    expect(tree.items[0].name).toBe("work");
     expect(platformHttpClientMock.get).toHaveBeenCalledWith(
-      '/api/langgraph/threads/thread-1/workspace/tree',
+      "/api/langgraph/threads/thread-1/workspace/tree",
       expect.objectContaining({
-        params: { path: '/workspace', limit: 100 },
-        headers: { 'x-project-id': 'proj-1' },
+        params: { path: "/workspace", limit: 100 },
+        headers: { "x-project-id": "proj-1" },
       }),
     );
   });
 
-  it('fetches artifacts page', async () => {
+  it("fetches artifacts page", async () => {
     platformHttpClientMock.get.mockResolvedValueOnce({
       data: {
         items: [
           {
             version: 1,
-            artifact_id: 'art-1',
-            path: '/workspace/outputs/chart.html',
-            file_name: 'chart.html',
-            mime_type: 'text/html',
+            artifact_id: "art-1",
+            path: "/workspace/outputs/chart.html",
+            file_name: "chart.html",
+            mime_type: "text/html",
             size_bytes: 1234,
-            sha256: 'abc...',
-            kind: 'chart',
-            preview_kind: 'html-sandbox',
+            sha256: "abc...",
+            kind: "chart",
+            preview_kind: "html-sandbox",
           },
         ],
         next_cursor: null,
       },
     });
 
-    const arts = await getArtifacts('proj-1', 'thread-1');
+    const arts = await getArtifacts("proj-1", "thread-1");
     expect(arts.items).toHaveLength(1);
-    expect(arts.items[0].kind).toBe('chart');
+    expect(arts.items[0].kind).toBe("chart");
   });
 
-  it('handles workspace preview text response', async () => {
+  it("handles workspace preview text response", async () => {
     const textBlob = new Blob(
       [
         JSON.stringify({
-          path: '/workspace/work/test.py',
-          file_name: 'test.py',
-          mime_type: 'text/x-python',
+          path: "/workspace/work/test.py",
+          file_name: "test.py",
+          mime_type: "text/x-python",
           size_bytes: 20,
-          sha256: 'sha256...',
-          preview_kind: 'text',
+          sha256: "sha256...",
+          preview_kind: "text",
           text: 'print("hello")',
           truncated: false,
         }),
       ],
-      { type: 'application/json' },
+      { type: "application/json" },
     );
 
     platformHttpClientMock.get.mockResolvedValueOnce({
       data: textBlob,
-      headers: { 'content-type': 'application/json' },
+      headers: { "content-type": "application/json" },
     });
 
-    const result = await getWorkspacePreview('proj-1', 'thread-1', '/workspace/work/test.py');
-    expect(result.kind).toBe('text');
+    const result = await getWorkspacePreview(
+      "proj-1",
+      "thread-1",
+      "/workspace/work/test.py",
+    );
+    expect(result.kind).toBe("text");
     expect(result.textPreview?.text).toBe('print("hello")');
   });
 
-  it('handles workspace content blob and filename extraction', async () => {
-    const contentBlob = new Blob(['sample content'], { type: 'text/plain' });
+  it("handles workspace content blob and filename extraction", async () => {
+    const contentBlob = new Blob(["sample content"], { type: "text/plain" });
 
     platformHttpClientMock.get.mockResolvedValueOnce({
       data: contentBlob,
       headers: {
-        'content-type': 'text/plain',
-        'content-disposition': 'attachment; filename="test.txt"',
+        "content-type": "text/plain",
+        "content-disposition": 'attachment; filename="test.txt"',
       },
     });
 
-    const result = await getWorkspaceContentBlob('proj-1', 'thread-1', '/workspace/test.txt');
-    expect(result.fileName).toBe('test.txt');
+    const result = await getWorkspaceContentBlob(
+      "proj-1",
+      "thread-1",
+      "/workspace/test.txt",
+    );
+    expect(result.fileName).toBe("test.txt");
     expect(result.blob).toBe(contentBlob);
   });
 
-  it('downloads workspace zip and triggers download', async () => {
-    const zipBlob = new Blob(['mock-zip-bytes'], { type: 'application/zip' });
+  it("downloads workspace zip and triggers download", async () => {
+    const zipBlob = new Blob(["mock-zip-bytes"], { type: "application/zip" });
     platformHttpClientMock.get.mockResolvedValueOnce({
       data: zipBlob,
       headers: {
-        'content-type': 'application/zip',
-        'content-disposition': "attachment; filename*=UTF-8''workspace-thread-1.zip",
+        "content-type": "application/zip",
+        "content-disposition":
+          "attachment; filename*=UTF-8''workspace-thread-1.zip",
       },
     });
 
-    const createObjectURLMock = vi.fn().mockReturnValue('blob:http://localhost/mock-uuid');
+    const createObjectURLMock = vi
+      .fn()
+      .mockReturnValue("blob:http://localhost/mock-uuid");
     const revokeObjectURLMock = vi.fn();
     window.URL.createObjectURL = createObjectURLMock;
     window.URL.revokeObjectURL = revokeObjectURLMock;
 
-    await downloadWorkspaceZip('proj-1', 'thread-1');
+    await downloadWorkspaceZip("proj-1", "thread-1");
     expect(platformHttpClientMock.get).toHaveBeenCalledWith(
-      '/api/langgraph/threads/thread-1/workspace/zip',
+      "/api/langgraph/threads/thread-1/workspace/zip",
       expect.objectContaining({
-        headers: { 'x-project-id': 'proj-1' },
-        responseType: 'blob',
+        headers: { "x-project-id": "proj-1" },
+        responseType: "blob",
       }),
     );
     expect(createObjectURLMock).toHaveBeenCalledWith(zipBlob);
   });
 
-  it('unwraps error from Blob response when HTTP request fails', async () => {
+  it("unwraps error from Blob response when HTTP request fails", async () => {
     const errorPayload = JSON.stringify({
-      request_id: 'req-400-abc',
+      request_id: "req-400-abc",
       error: {
-        code: 'project_id_required',
-        message: 'x-project-id header is required',
+        code: "project_id_required",
+        message: "x-project-id header is required",
       },
     });
-    const errorBlob = new Blob([errorPayload], { type: 'application/json' });
+    const errorBlob = new Blob([errorPayload], { type: "application/json" });
     const axiosError = {
       isAxiosError: true,
-      message: 'Request failed with status code 400',
+      message: "Request failed with status code 400",
       response: {
         status: 400,
         data: errorBlob,
@@ -200,13 +215,12 @@ describe('workspace.service', () => {
     platformHttpClientMock.get.mockRejectedValueOnce(axiosError);
 
     await expect(
-      getWorkspacePreview('proj-1', 'thread-1', '/workspace/outputs/bad.md'),
+      getWorkspacePreview("proj-1", "thread-1", "/workspace/outputs/bad.md"),
     ).rejects.toMatchObject({
-      message: 'x-project-id header is required',
-      code: 'project_id_required',
-      requestId: 'req-400-abc',
+      message: "x-project-id header is required（请求编号：req-400-abc）",
+      code: "project_id_required",
+      requestId: "req-400-abc",
       status: 400,
     });
   });
 });
-

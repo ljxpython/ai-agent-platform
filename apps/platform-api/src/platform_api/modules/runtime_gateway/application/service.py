@@ -509,6 +509,7 @@ class RuntimeGatewayService:
         delegation_headers_factory: Callable[..., Mapping[str, str]] | None = None,
         runtime_model_config_secret: str | None = None,
         runtime_model_config_ttl_seconds: int = 60,
+        on_correlation: Callable[[str, Mapping[str, Any]], None] | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._upstream = upstream
@@ -517,6 +518,14 @@ class RuntimeGatewayService:
         self._delegation_headers_factory = delegation_headers_factory
         self._runtime_model_config_secret = runtime_model_config_secret
         self._runtime_model_config_ttl_seconds = runtime_model_config_ttl_seconds
+        self._on_correlation = on_correlation
+
+    def _emit_correlation(self, event: str, **fields: Any) -> None:
+        if self._on_correlation is not None:
+            try:
+                self._on_correlation(event, fields)
+            except Exception:
+                logger.exception("runtime correlation observer failed")
 
     async def _thread_upstream(self, *, project_id: str, thread: dict, operation: str):
         if not self._delegation_headers_factory:
@@ -1238,7 +1247,7 @@ class RuntimeGatewayService:
             raise PlatformApiError(
                 code="unsupported_file_type",
                 status_code=415,
-                message=f"Unsupported document type: {content_type}",
+                message="Unsupported document type",
             )
 
         if content_length <= 0:
@@ -1815,7 +1824,7 @@ class RuntimeGatewayService:
                             code="idempotency_key_conflict",
                             message="Key already used for a different request",
                         )
-                    return existing
+                    return existing, True
                 return repo.create(
                     project_id=project_id,
                     thread_id=thread_id,
@@ -1829,18 +1838,33 @@ class RuntimeGatewayService:
                     parent_run_id=parent_run_id,
                     interrupt_id=interrupt_id,
                     submission_status="submitted",
-                )
+                ), False
 
         try:
-            record = await run_in_threadpool(reserve)
+            record, reused = await run_in_threadpool(reserve)
         except IntegrityError:
-            record = await run_in_threadpool(reserve)
+            record, reused = await run_in_threadpool(reserve)
+        relation = {
+            "submission_id": record.id,
+            "thread_id": thread_id,
+            "parent_run_id": record.parent_run_id,
+            "interrupt_key": record.interrupt_id,
+            "reused_submission": reused,
+            "operation": "approve" if thread_action == "approve" else "run-create",
+        }
+        self._emit_correlation("runtime.submission.attempt", **relation)
         await run_in_threadpool(
             self._validate_run_options,
             project_id=project_id,
             payload={"context": record.context_snapshot},
         )
         if record.run_id:
+            self._emit_correlation(
+                "runtime.submission.result",
+                **relation,
+                run_id=record.run_id,
+                outcome="deduplicated",
+            )
             return record, await self._upstream.get_thread_run(thread_id, record.run_id)
 
         payload = dict(upstream_payload)
@@ -1899,13 +1923,30 @@ class RuntimeGatewayService:
                     upstream="langgraph",
                 )
         except PlatformApiError as exc:
-            await run_in_threadpool(
-                mark, "rejected" if 400 <= exc.status_code < 500 else "unknown"
+            source_status = (
+                exc.upstream_status_code
+                if isinstance(exc, UpstreamServiceError)
+                and exc.upstream_status_code is not None
+                else exc.status_code
             )
+            outcome = "rejected" if 400 <= source_status < 500 else "unknown"
+            self._emit_correlation(
+                "runtime.submission.result", **relation, outcome=outcome
+            )
+            await run_in_threadpool(mark, outcome)
             raise
         except Exception:
+            self._emit_correlation(
+                "runtime.submission.result", **relation, outcome="unknown"
+            )
             await run_in_threadpool(mark, "unknown")
             raise
+        self._emit_correlation(
+            "runtime.submission.result",
+            **relation,
+            run_id=run_id,
+            outcome="accepted",
+        )
         await run_in_threadpool(mark, "accepted", run_id)
         return record, result
 
@@ -1989,7 +2030,13 @@ class RuntimeGatewayService:
         try:
             thread = await upstream.create_thread(next_payload)
         except UpstreamServiceError as exc:
-            if exc.status_code < 500:
+            source_status = (
+                exc.upstream_status_code
+                if exc.upstream_status_code is not None
+                else exc.status_code
+            )
+            definite_rejection = 400 <= source_status < 500
+            if definite_rejection:
                 try:
                     await run_in_threadpool(
                         thread_access.remove_pending,
@@ -2006,7 +2053,7 @@ class RuntimeGatewayService:
                     self._thread_reconcile_error(next_payload["thread_id"]).extra
                 )
             if (
-                exc.status_code >= 500
+                not definite_rejection
                 and self._delegation_headers_factory
                 and hasattr(self._upstream, "with_forwarded_headers")
             ):
@@ -2023,7 +2070,11 @@ class RuntimeGatewayService:
                     )
                     thread = await reconcile.get_thread(next_payload["thread_id"])
                 except UpstreamServiceError as probe_error:
-                    if probe_error.status_code != 404:
+                    if (
+                        probe_error.upstream_status_code
+                        if probe_error.upstream_status_code is not None
+                        else probe_error.status_code
+                    ) != 404:
                         raise exc
                 except Exception:
                     raise exc from None
@@ -2104,7 +2155,11 @@ class RuntimeGatewayService:
         try:
             thread = await upstream.get_thread(thread_id)
         except UpstreamServiceError as exc:
-            if exc.status_code == 404:
+            if (
+                exc.upstream_status_code
+                if exc.upstream_status_code is not None
+                else exc.status_code
+            ) == 404:
                 return {"thread_id": thread_id, "status": "pending"}
             raise
         if thread.get("thread_id") != thread_id:
@@ -3187,9 +3242,31 @@ class RuntimeGatewayService:
         upstream = await self._thread_upstream(
             project_id=project_id, thread=thread, operation="run-cancel"
         )
-        result = await upstream.cancel_thread_run(
-            thread_id,
-            run_id,
-            _normalize_payload(payload),
+        try:
+            result = await upstream.cancel_thread_run(
+                thread_id,
+                run_id,
+                _normalize_payload(payload),
+            )
+        except Exception as exc:
+            outcome = (
+                "rejected"
+                if isinstance(exc, PlatformApiError) and 400 <= exc.status_code < 500
+                else "unknown"
+            )
+            self._emit_correlation(
+                "runtime.cancel.result",
+                thread_id=thread_id,
+                target_run_id=run_id,
+                operation="run-cancel",
+                outcome=outcome,
+            )
+            raise
+        self._emit_correlation(
+            "runtime.cancel.result",
+            thread_id=thread_id,
+            target_run_id=run_id,
+            operation="run-cancel",
+            outcome="accepted",
         )
         return result

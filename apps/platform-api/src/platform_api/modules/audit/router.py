@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from datetime import datetime
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
+from pydantic import ValidationError as PydanticValidationError
 from sqlalchemy.orm import sessionmaker
 
 from platform_api.core.context.models import ActorContext
+from platform_api.core.errors import ValidationError
 from platform_api.entrypoints.http.dependencies import get_actor_context
 from platform_api.modules.audit.contracts import AuditEventPage, ListAuditEventsQuery
 from platform_api.modules.audit.service import AuditService
@@ -34,14 +37,17 @@ def list_audit_events(
     status_code: int | None = Query(default=None, ge=100, le=599),
     created_from: datetime | None = Query(default=None),
     created_to: datetime | None = Query(default=None),
+    request_id: str | None = Query(default=None),
+    submission_id: UUID | None = Query(default=None),
+    thread_id: str | None = Query(default=None),
+    run_id: str | None = Query(default=None),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
     actor: ActorContext = Depends(get_actor_context),
     service: AuditService = Depends(get_audit_service),
 ) -> AuditEventPage:
-    return service.list_events(
-        actor=actor,
-        query=ListAuditEventsQuery(
+    try:
+        query = ListAuditEventsQuery(
             project_id=project_id,
             plane=plane,
             action=action,
@@ -53,7 +59,13 @@ def list_audit_events(
             status_code=status_code,
             created_from=created_from,
             created_to=created_to,
+            request_id=request_id,
+            submission_id=submission_id,
+            thread_id=thread_id,
+            run_id=run_id,
             limit=limit,
             offset=offset,
-        ),
-    )
+        )
+    except PydanticValidationError as exc:
+        raise ValidationError() from exc
+    return service.list_events(actor=actor, query=query)

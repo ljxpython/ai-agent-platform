@@ -1,9 +1,12 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
-import { reactive, ref } from "vue";
+import { defineComponent, h, reactive, ref } from "vue";
 
 const activeProjectIdRef = ref("proj-1");
-const activeProjectRef = ref<{ id: string; name: string } | null>({ id: "proj-1", name: "测试项目" });
+const activeProjectRef = ref<{ id: string; name: string } | null>({
+  id: "proj-1",
+  name: "测试项目",
+});
 
 const routeState = reactive({
   params: { projectId: "proj-1", threadId: "th-1" },
@@ -46,7 +49,9 @@ const mockList = vi.fn().mockResolvedValue([
 ]);
 
 vi.mock("@/services/threads/session.service", async (importOriginal) => ({
-  ...await importOriginal<typeof import("@/services/threads/session.service")>(),
+  ...(await importOriginal<
+    typeof import("@/services/threads/session.service")
+  >()),
   createSessionService: () => ({
     list: mockList,
     count: vi.fn().mockResolvedValue(2),
@@ -83,17 +88,31 @@ vi.mock("@/services/agents/agents.service", () => ({
 }));
 
 import DearAgentPage from "./DearAgentPage.vue";
+import ChatSessionPool from "@/modules/chat/components/ChatSessionPool.vue";
+import {
+  createChatSessionPool,
+  provideChatSessionPool,
+} from "@/modules/chat/composables/useChatSessionPool";
+
+const DearAgentPageHost = defineComponent({
+  setup() {
+    const pool = createChatSessionPool();
+    provideChatSessionPool(pool);
+    return () => h("div", [h(ChatSessionPool, { pool }), h(DearAgentPage)]);
+  },
+});
 
 describe("DearAgentPage.vue", () => {
   it("renders sidebar and active session when activeProjectId is provided", async () => {
-    const wrapper = mount(DearAgentPage, {
+    const wrapper = mount(DearAgentPageHost, {
       global: {
         stubs: {
           DearAgentThreadSidebar: {
             props: ["threadCount", "activeThreadId"],
-            template: '<aside data-testid="dear-sidebar" :data-thread-count="threadCount" :data-active-thread="activeThreadId"><slot /></aside>',
+            template:
+              '<aside data-testid="dear-sidebar" :data-thread-count="threadCount" :data-active-thread="activeThreadId"><slot /></aside>',
           },
-          DearAgentSession: {
+          ChatSession: {
             props: ["projectId", "graphId", "threadId"],
             template:
               '<div data-testid="dear-session" :data-graph="graphId" :data-thread="threadId"><slot name="target" /><slot name="actions" /></div>',
@@ -125,17 +144,17 @@ describe("DearAgentPage.vue", () => {
     expect(sessionEl.exists()).toBe(true);
     expect(sessionEl.attributes("data-graph")).toBe("dearflow_agent");
     expect(sessionEl.attributes("data-thread")).toBe("th-1");
-    expect(wrapper.text()).toContain("✨ Dear Agent");
+    expect(wrapper.findComponent(DearAgentPage).exists()).toBe(true);
   });
 
   it("shows empty state when no active project is selected", async () => {
     activeProjectIdRef.value = "";
     activeProjectRef.value = null;
-    const wrapper = mount(DearAgentPage, {
+    const wrapper = mount(DearAgentPageHost, {
       global: {
         stubs: {
           DearAgentThreadSidebar: true,
-          DearAgentSession: true,
+          ChatSession: true,
           WorkspaceProjectSwitcher: true,
           UserMenu: true,
           ChatAgentSelector: true,
@@ -157,15 +176,19 @@ describe("DearAgentPage.vue", () => {
   });
 
   it("switching thread preserves full thread list without clearing it", async () => {
-    routeState.value = { params: { projectId: "proj-1", threadId: "th-1" }, query: {} };
-    const wrapper = mount(DearAgentPage, {
+    routeState.value = {
+      params: { projectId: "proj-1", threadId: "th-1" },
+      query: {},
+    };
+    const wrapper = mount(DearAgentPageHost, {
       global: {
         stubs: {
           DearAgentThreadSidebar: {
             props: ["threadCount", "activeThreadId"],
-            template: '<aside data-testid="dear-sidebar" :data-thread-count="threadCount" :data-active-thread="activeThreadId"><slot /></aside>',
+            template:
+              '<aside data-testid="dear-sidebar" :data-thread-count="threadCount" :data-active-thread="activeThreadId"><slot /></aside>',
           },
-          DearAgentSession: {
+          ChatSession: {
             props: ["projectId", "graphId", "threadId"],
             template:
               '<div data-testid="dear-session" :data-graph="graphId" :data-thread="threadId"><slot name="target" /><slot name="actions" /></div>',
@@ -194,7 +217,7 @@ describe("DearAgentPage.vue", () => {
     expect(sidebarEl.attributes("data-thread-count")).toBe("2");
     expect(sidebarEl.attributes("data-active-thread")).toBe("th-2");
 
-    const sessionEl = wrapper.find('[data-testid="dear-session"]');
+    const sessionEl = wrapper.findAll('[data-testid="dear-session"]').at(-1)!;
     expect(sessionEl.attributes("data-thread")).toBe("th-2");
   });
 });

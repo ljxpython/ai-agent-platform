@@ -146,9 +146,15 @@ def create_runtime_delegation_token(
     secret = settings.runtime_delegation_secret
     if len(secret.encode("utf-8")) < 32:
         raise ValueError("runtime delegation secret must be at least 32 bytes")
-    if not isinstance(policy_version, str) or not policy_version.strip():
+    if (
+        not isinstance(policy_version, str)
+        or not policy_version.strip()
+        or len(policy_version.strip()) > 100_000
+    ):
         raise ValueError("runtime delegation policy_version must not be empty")
     model_ids = _runtime_names(allowed_model_ids, "allowed_model_ids")
+    if not model_ids:
+        raise ValueError("runtime delegation allowed_model_ids must not be empty")
     if (
         not isinstance(tool_overrides, dict)
         or len(tool_overrides) > 128
@@ -158,7 +164,11 @@ def create_runtime_delegation_token(
     _runtime_names(list(tool_overrides), "tool_overrides")
     if len(json.dumps(tool_overrides, separators=(",", ":")).encode()) > 4096:
         raise ValueError("tool_overrides exceeds token budget")
-    if not isinstance(tool_policy_version, str) or not tool_policy_version:
+    if (
+        not isinstance(tool_policy_version, str)
+        or not tool_policy_version.strip()
+        or len(tool_policy_version) > 100_000
+    ):
         raise ValueError("tool_policy_version is required")
     if not isinstance(scope, Mapping):
         raise ValueError("runtime delegation scope must be an object")
@@ -171,11 +181,13 @@ def create_runtime_delegation_token(
         raise ValueError(
             "runtime delegation scope must contain tenant_id and project_id"
         )
-    normalized_scope = {
-        key: value.strip() if isinstance(value, str) else value
-        for key, value in scope.items()
-        if value is not None
-    }
+    normalized_scope = {}
+    for key, value in scope.items():
+        if value is None:
+            continue
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"runtime delegation scope {key} is invalid")
+        normalized_scope[key] = value.strip()
     operation = normalized_scope.get("operation")
     if operation not in {
         "read",
@@ -235,11 +247,27 @@ def create_runtime_delegation_token(
         "issuer": settings.runtime_delegation_issuer,
         "audience": settings.runtime_delegation_audience,
     }
-    missing = [name for name, value in required_values.items() if not value.strip()]
+    missing = [
+        name
+        for name, value in required_values.items()
+        if not isinstance(value, str) or not value.strip()
+    ]
     if missing:
         raise ValueError(
             "runtime delegation fields must not be empty: " + ", ".join(missing)
         )
+    for name in (subject, tenant_id, project_id, role):
+        _runtime_names([name], "principal")
+    if not isinstance(permissions, (list, tuple)) or any(
+        not isinstance(item, str) for item in permissions
+    ):
+        raise ValueError("runtime delegation permissions must be an array of strings")
+    normalized_permissions = sorted(
+        {item.strip() for item in permissions if item.strip()}
+    )
+    _runtime_names(normalized_permissions, "permissions")
+    if subject.startswith("service-account:") and credential_id is None:
+        raise ValueError("runtime delegation service account requires credential_id")
 
     now = _now()
     payload: dict[str, Any] = {
@@ -247,7 +275,7 @@ def create_runtime_delegation_token(
         "tenant_id": tenant_id,
         "project_id": project_id,
         "role": role,
-        "permissions": sorted({item.strip() for item in permissions if item.strip()}),
+        "permissions": normalized_permissions,
         "policy_version": policy_version.strip(),
         "allowed_model_ids": model_ids,
         "delegation_version": 2,
@@ -281,6 +309,8 @@ def create_runtime_delegation_token(
                 "runtime delegation credential_id requires a service account"
             )
         try:
+            if not isinstance(credential_id, str):
+                raise ValueError("invalid credential_id type")
             uuid.UUID(credential_id)
         except (TypeError, ValueError) as exc:
             raise ValueError("runtime delegation credential_id is invalid") from exc

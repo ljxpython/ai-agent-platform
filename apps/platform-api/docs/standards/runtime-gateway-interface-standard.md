@@ -35,6 +35,8 @@
 
 请求携带平台认证与 `x-project-id`。Thread归属必须匹配项目；启动/恢复重新检查当前Agent、Graph、模型、工具与成员授权。委托scope.operation区分read和run-create。
 
+委托使用短时v2/HS256 JWT；Gateway与Catalog各自按当前请求签发，service account必须携带当前`credential_id`，用户不得携带。非法签发输入统一走安全`503 runtime_delegation_not_configured`，上游401对外映射`502 runtime_delegation_rejected`，不表示平台用户登录失效。已接受Run不因委托到期自动取消；SSE不持续重鉴权，重连/审批/取消新请求重新核对当前权限。23项operation与当前组合的验证范围见[Delegation JWT专项](../../../../docs/projects/20260926-delegation-jwt-contract/README.md)。消息入口额外转发同一请求已有的`read`委托供Runtime内部原生Run回查；Runtime核对身份、租户、项目、凭据和Thread绑定后才使用该委托，消息operation自身仍不得访问原生资源。该修复的现役真实链路尚未验证，见[消息回查专项](../../../../docs/projects/20260927-message-run-read-delegation/README.md)。
+
 产品Agent执行键为graph_id，标准SDK字段仍为assistant_id；平台不创建/同步上游Assistant。Graph/Tool刷新是有限超时HTTP，普通目录只读快照；schema从远端读取，不扫描宿主源码。
 
 model_id使用平台模型记录UUID，不是provider:model或模型名称。默认值按项目→Agent→本次显式参数覆盖，仍受策略约束。Agent公开context为model_id、temperature、max_tokens、top_p；不能从客户端注入身份或内部模型引用。
@@ -56,6 +58,8 @@ run_requests只保存请求摘要、授权/config快照和Run关联，不存消�
 从当前state读取真实interrupt ID与动作，decisions必须与动作对应，不能硬编码全批准。恢复不允许覆盖input/config/context；多个interrupt使用ID映射。Protocol `/commands` 的input.respond共用授权与恢复路径，id为整数，不是HTTP幂等键。恢复产生新Run ID，父Run关联保留；重复/过期/异项目审批拒绝。
 
 ## SSE、错误与取消
+
+平台公开HTTP错误结构、上游状态转换和pending恢复字段见[错误出口标准](../../../../docs/standards/error-envelope.md)；流内事件仍按SSE专项处理。
 
 授权和上游状态校验在发送200前完成。JSON/SSE移除内部runtime_model_ref；SSE敏感键脱敏。网络chunk不等于完整事件，客户端使用SDK或正确SSE解析器。
 

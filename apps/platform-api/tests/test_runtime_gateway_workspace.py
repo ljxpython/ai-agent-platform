@@ -42,7 +42,9 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
         self.app = FastAPI()
         self.app.include_router(router)
         register_exception_handlers(self.app)
-        self.actor = ActorContext(user_id="user-a", project_roles={"project-a": ("project_admin",)})
+        self.actor = ActorContext(
+            user_id="user-a", project_roles={"project-a": ("project_admin",)}
+        )
         self.upstream = Mock()
         self.upstream.get_thread = AsyncMock(
             return_value={
@@ -52,6 +54,7 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
         self.upstream.workspace_json = AsyncMock(
             return_value={"items": [], "next_cursor": None}
         )
+
         async def fake_zip_stream():
             yield b"PK\x03\x04mock-zip"
 
@@ -64,7 +67,9 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
         )
         self.upstream.with_forwarded_headers = Mock(return_value=self.upstream)
         self.service = RuntimeGatewayService(
-            session_factory=thread_acl_factory(self, actor=self.actor, project_id="project-a"),
+            session_factory=thread_acl_factory(
+                self, actor=self.actor, project_id="project-a"
+            ),
             upstream=self.upstream,
             delegation_headers_factory=self.delegation,
         )
@@ -85,7 +90,8 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
     def delegation(self, *, project_id, agent_key, thread_id, context_hash, operation):
         now = int(time.time())
         claims = {
-            "type": "runtime_delegation", "delegation_version": 2,
+            "type": "runtime_delegation",
+            "delegation_version": 2,
             "sub": "user-a",
             "tenant_id": "tenant-a",
             "project_id": project_id,
@@ -93,7 +99,8 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
             "permissions": ["runtime.tool.read", "runtime.tool.execute"],
             "policy_version": "test-1",
             "allowed_model_ids": ["deepseek:deepseek-chat"],
-            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+            "tool_overrides": {},
+            "tool_policy_version": "test-tools-v2",
             "iat": now,
             "exp": now + 60,
             "iss": "runtime-test",
@@ -145,7 +152,9 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.json()["error"]["code"], "runtime_target_denied")
 
     async def test_artifact_request_boundaries_and_pagination(self):
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=self.app), base_url="http://test"
+        ) as client:
             prefix = "/api/langgraph/threads/thread-1"
             response = await client.get(prefix + "/artifacts")
             self.assertEqual(response.status_code, 400)
@@ -159,14 +168,26 @@ class WorkspaceGatewayTest(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 422)
             self.upstream.workspace_json.assert_not_awaited()
             self.upstream.workspace_json.return_value = {
-                "items": [{"path": "/workspace/outputs/test.md", "_runtime_private": "hidden"}],
+                "items": [
+                    {"path": "/workspace/outputs/test.md", "_runtime_private": "hidden"}
+                ],
                 "next_cursor": "opaque",
             }
-            response = await client.get(prefix + "/artifacts", params={"limit": 17, "cursor": "opaque"})
+            response = await client.get(
+                prefix + "/artifacts", params={"limit": 17, "cursor": "opaque"}
+            )
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.json(), {"items": [{"path": "/workspace/outputs/test.md"}], "next_cursor": "opaque"})
+            self.assertEqual(
+                response.json(),
+                {
+                    "items": [{"path": "/workspace/outputs/test.md"}],
+                    "next_cursor": "opaque",
+                },
+            )
             self.assertEqual(response.headers["cache-control"], "private, no-store")
-            self.upstream.workspace_json.assert_awaited_once_with("thread-1", "artifacts", {"limit": 17, "cursor": "opaque"})
+            self.upstream.workspace_json.assert_awaited_once_with(
+                "thread-1", "artifacts", {"limit": 17, "cursor": "opaque"}
+            )
 
     async def test_real_two_service_http(self):
         await self._check_two_service_http("showcase_demo", terminal=True)
@@ -264,7 +285,9 @@ uvicorn.run('runtime_service.webapp:app', fd=int(sys.argv[1]), log_level='error'
                         await asyncio.sleep(0.1)
                     else:
                         log.seek(0)
-                        self.fail("Local HTTP services did not start\n" + log.read().decode())
+                        self.fail(
+                            "Local HTTP services did not start\n" + log.read().decode()
+                        )
 
                 try:
                     await wait_ready()
@@ -314,33 +337,66 @@ uvicorn.run('runtime_service.webapp:app', fd=int(sys.argv[1]), log_level='error'
                             params={"path": "/workspace/work/missing.txt"},
                         )
                         self.assertEqual(result.status_code, 404, result.text)
-                        self.assertEqual(result.json()["error"]["message"], "workspace_file_unavailable")
-                        self.assertEqual(result.json()["error"]["code"], "workspace_file_unavailable")
+                        self.assertEqual(
+                            result.json()["error"]["message"],
+                            "Workspace file unavailable",
+                        )
+                        self.assertEqual(
+                            result.json()["error"]["code"], "workspace_file_unavailable"
+                        )
                         if terminal:
-                            body = {"request_id": "00000000-0000-4000-8000-000000000001", "acknowledge_execution": True}
-                            created = await client.post(prefix + "/terminals", json=body)
+                            body = {
+                                "request_id": "00000000-0000-4000-8000-000000000001",
+                                "acknowledge_execution": True,
+                            }
+                            created = await client.post(
+                                prefix + "/terminals", json=body
+                            )
                             self.assertEqual(created.status_code, 200, created.text)
                             terminal_id = created.json()["terminal_id"]
                             terminal_url = prefix + "/terminals/" + terminal_id
-                            repeated = await client.post(prefix + "/terminals", json=body)
-                            self.assertEqual(repeated.json()["terminal_id"], terminal_id)
-                            entered = await client.post(terminal_url + "/input", json={"sequence": 0,
-                                "data_base64": base64.b64encode(b"printf 'terminal-http-ok\\n'\n").decode()})
+                            repeated = await client.post(
+                                prefix + "/terminals", json=body
+                            )
+                            self.assertEqual(
+                                repeated.json()["terminal_id"], terminal_id
+                            )
+                            entered = await client.post(
+                                terminal_url + "/input",
+                                json={
+                                    "sequence": 0,
+                                    "data_base64": base64.b64encode(
+                                        b"printf 'terminal-http-ok\\n'\n"
+                                    ).decode(),
+                                },
+                            )
                             self.assertEqual(entered.status_code, 200, entered.text)
                             output = b""
                             offset = 0
                             for _ in range(100):
-                                response = await client.get(terminal_url + "/output", params={"offset": offset})
-                                self.assertEqual(response.status_code, 200, response.text)
-                                output += base64.b64decode(response.json()["data_base64"])
+                                response = await client.get(
+                                    terminal_url + "/output", params={"offset": offset}
+                                )
+                                self.assertEqual(
+                                    response.status_code, 200, response.text
+                                )
+                                output += base64.b64decode(
+                                    response.json()["data_base64"]
+                                )
                                 offset = response.json()["next_offset"]
                                 if b"\r\nterminal-http-ok\r\n" in output:
                                     break
                                 await asyncio.sleep(0.05)
                             self.assertIn(b"\r\nterminal-http-ok\r\n", output)
-                            replay = await client.get(terminal_url + "/output", params={"offset": 0})
-                            self.assertIn(output, base64.b64decode(replay.json()["data_base64"]))
-                            resized = await client.post(terminal_url + "/resize", json={"rows": 40, "cols": 120})
+                            replay = await client.get(
+                                terminal_url + "/output", params={"offset": 0}
+                            )
+                            self.assertIn(
+                                output, base64.b64decode(replay.json()["data_base64"])
+                            )
+                            resized = await client.post(
+                                terminal_url + "/resize", json={"rows": 40, "cols": 120}
+                            )
                             self.assertEqual(resized.json()["rows"], 40)
                             closed = await client.delete(terminal_url)
                             self.assertEqual(closed.json()["status"], "exited")
@@ -376,9 +432,16 @@ uvicorn.run('runtime_service.webapp:app', fd=int(sys.argv[1]), log_level='error'
                         )
                         zip_resp = await client.get(prefix + "/workspace/zip")
                         self.assertEqual(zip_resp.status_code, 200, zip_resp.text)
-                        self.assertEqual(zip_resp.headers["content-type"], "application/zip")
-                        self.assertIn("attachment; filename*=", zip_resp.headers.get("content-disposition", ""))
-                        import io, zipfile
+                        self.assertEqual(
+                            zip_resp.headers["content-type"], "application/zip"
+                        )
+                        self.assertIn(
+                            "attachment; filename*=",
+                            zip_resp.headers.get("content-disposition", ""),
+                        )
+                        import io
+                        import zipfile
+
                         with zipfile.ZipFile(io.BytesIO(zip_resp.content)) as archive:
                             names = archive.namelist()
                             self.assertIn("work/payment.yaml", names)

@@ -6,8 +6,6 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 from fastapi import FastAPI
-from tests.thread_acl_fixture import thread_acl_factory
-
 from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import (
@@ -24,6 +22,7 @@ from platform_api.modules.runtime_gateway.presentation.http import (
     get_runtime_gateway_service,
     router,
 )
+from tests.thread_acl_fixture import thread_acl_factory
 
 # Explicit inventory: a newly exposed route must receive a matrix case.
 CASES = [
@@ -112,6 +111,7 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                 platform_context=SimpleNamespace(
                     project=SimpleNamespace(project_id="project-1"),
                     tenant=SimpleNamespace(tenant_id="tenant-1"),
+                    request=SimpleNamespace(request_id="request-1", trace_id="trace-1"),
                 ),
             ),
             path_params={},
@@ -229,12 +229,16 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
         @app.middleware("http")
         async def scope(request, call_next):
             request.state.platform_context = SimpleNamespace(
-                project=SimpleNamespace(project_id=request.headers.get("x-project-id"))
+                project=SimpleNamespace(project_id=request.headers.get("x-project-id")),
+                request=SimpleNamespace(request_id="request-1", trace_id="trace-1"),
             )
             return await call_next(request)
 
         async def events():
             yield b'data: {"visible":"yes","runtime_model_ref":"opaque"}\n\n'
+
+        async def protocol_events():
+            yield b'data: {"type":"event","seq":1,"event_id":"fixture-1","method":"values","params":{"thread_id":"thread-1","run_id":"run-1","namespace":[],"data":{"visible":"yes","runtime_model_ref":"opaque"}}}\n\n'
 
         async def image_bytes():
             yield b"yes-image-bytes"
@@ -270,7 +274,11 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                                 content_type="application/pdf",
                             )
                         elif streaming:
-                            ret_val = events()
+                            ret_val = (
+                                protocol_events()
+                                if name == "stream_thread_events"
+                                else events()
+                            )
                         else:
                             ret_val = {
                                 "visible": "yes",

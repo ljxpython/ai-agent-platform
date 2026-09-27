@@ -44,7 +44,9 @@ class AuditService:
         session_factory = self._require_session_factory()
         platform_access = self._policy_engine.evaluate(
             actor=actor,
-            authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_AUDIT_READ),
+            authorization=AuthorizationRequest(
+                permission=PermissionCode.PLATFORM_AUDIT_READ
+            ),
         ).allowed
         if query.project_id and not platform_access:
             self._policy_engine.require(
@@ -76,17 +78,56 @@ class AuditService:
                 status_code=query.status_code,
                 created_from=query.created_from,
                 created_to=query.created_to,
+                request_id=query.request_id,
+                submission_id=str(query.submission_id) if query.submission_id else None,
+                thread_id=query.thread_id,
+                run_id=query.run_id,
                 limit=query.limit,
                 offset=query.offset,
             )
             return AuditEventPage(
-                items=[AuditEvent(**{
-                    **asdict(item),
-                    "metadata": {key: value for key, value in item.metadata.items()
-                                 if key in {"route_kind", "client_ip", "user_agent", "target_type", "target_id",
-                                            "result", "response_size", "is_error", "reason", "graph_id",
-                                            "subject_type", "subject_id", "tool_name"}
-                                 and isinstance(value, (str, int, float, bool))},
-                }) for item in items],
+                items=[
+                    AuditEvent(
+                        **{
+                            **asdict(item),
+                            "metadata": {
+                                key: value
+                                for key, value in item.metadata.items()
+                                if key
+                                in {
+                                    "route_kind",
+                                    "client_ip",
+                                    "user_agent",
+                                    "target_type",
+                                    "target_id",
+                                    "result",
+                                    "response_size",
+                                    "is_error",
+                                    "reason",
+                                    "graph_id",
+                                    "subject_type",
+                                    "subject_id",
+                                    "tool_name",
+                                    "memory_action",
+                                    "platform_trace_id",
+                                    "submission_id",
+                                    "thread_id",
+                                    "run_id",
+                                    "parent_run_id",
+                                    "target_run_id",
+                                    "interrupt_key",
+                                    "operation",
+                                    "outcome",
+                                    "stream_kind",
+                                    "close_reason",
+                                    "reused_submission",
+                                    "correlation_version",
+                                }
+                                and isinstance(value, (str, int, float, bool))
+                            },
+                        }
+                    )
+                    for item in items
+                ],
                 total=total,
             )

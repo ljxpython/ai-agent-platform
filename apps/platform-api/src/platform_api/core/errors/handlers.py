@@ -8,7 +8,11 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from platform_api.core.errors.base import PlatformApiError
-from platform_api.core.errors.payload import build_error_payload, build_error_response
+from platform_api.core.errors.payload import (
+    build_error_response,
+    safe_error_headers,
+    safe_validation_details,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -18,16 +22,7 @@ def _request_id(request: Request) -> str | None:
 
 
 def _validation_details(exc: RequestValidationError) -> list[dict[str, object]]:
-    details: list[dict[str, object]] = []
-    for item in exc.errors():
-        details.append(
-            {
-                "loc": list(item.get("loc", ())),
-                "message": item.get("msg", "Invalid request"),
-                "type": item.get("type", "validation_error"),
-            }
-        )
-    return details
+    return safe_validation_details(exc.errors())
 
 
 def _http_exception_code(status_code: int) -> str:
@@ -63,9 +58,18 @@ def register_exception_handlers(app: FastAPI) -> None:
         request: Request,
         exc: PlatformApiError,
     ) -> JSONResponse:
-        return JSONResponse(
+        return build_error_response(
             status_code=exc.status_code,
-            content=exc.to_payload(request_id=_request_id(request)),
+            code=exc.code,
+            message=exc.message,
+            request_id=_request_id(request),
+            details=exc.details,
+            extra=exc.extra,
+            headers=safe_error_headers(
+                exc.status_code,
+                getattr(exc, "headers", None),
+                platform=not hasattr(exc, "upstream_status_code"),
+            ),
         )
 
     @app.exception_handler(RequestValidationError)
@@ -91,22 +95,28 @@ def register_exception_handlers(app: FastAPI) -> None:
             code=_http_exception_code(exc.status_code),
             message=_http_exception_message(exc),
             request_id=_request_id(request),
+            headers=exc.headers,
         )
 
     @app.exception_handler(Exception)
     async def handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
-        logger.exception(
-            "unhandled_exception request_id=%s method=%s path=%s",
-            _request_id(request),
-            request.method,
-            request.url.path,
-            exc_info=exc,
-        )
-        return JSONResponse(
-            status_code=500,
-            content=build_error_payload(
-                code="internal_server_error",
-                message="Internal server error",
-                request_id=_request_id(request),
-            ),
-        )
+        return unexpected_error_response(request, exc)
+
+
+def unexpected_error_response(request: Request, exc: Exception) -> JSONResponse:
+    location = exc.__traceback__
+    while location and location.tb_next:
+        location = location.tb_next
+    logger.error(
+        "unhandled_exception request_id=%s type=%s location=%s:%s",
+        _request_id(request),
+        type(exc).__name__,
+        location.tb_frame.f_code.co_filename if location else "unknown",
+        location.tb_lineno if location else 0,
+    )
+    return build_error_response(
+        status_code=500,
+        code="internal_server_error",
+        message="Internal server error",
+        request_id=_request_id(request),
+    )

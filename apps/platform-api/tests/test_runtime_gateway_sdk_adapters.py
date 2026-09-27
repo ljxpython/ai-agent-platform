@@ -508,14 +508,10 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(PlatformApiError) as error:
             await client._raise_for_status(response)
         self.assertEqual(
-            error.exception.extra["upstream_detail"],
-            {
-                "detail": {
-                    "message": "invalid input",
-                    "items": [{"text": "ordinary runtime_model_ref text"}],
-                }
-            },
+            error.exception.extra,
+            {"upstream": "langgraph", "upstream_status_code": 400},
         )
+        self.assertNotIn("secret", str(error.exception.to_payload(request_id=None)))
 
     async def test_runtime_client_raises_platform_api_error_for_upstream_status(
         self,
@@ -535,9 +531,9 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(ctx.exception.code, "langgraph_upstream_request_failed")
         self.assertEqual(ctx.exception.status_code, 404)
-        self.assertEqual(ctx.exception.message, "thread missing")
+        self.assertEqual(ctx.exception.message, "Runtime request failed")
         self.assertEqual(ctx.exception.extra["upstream_status_code"], 404)
-        self.assertEqual(ctx.exception.extra["upstream_path"], "/threads/thread-1")
+        self.assertNotIn("upstream_path", ctx.exception.extra)
 
 
 if __name__ == "__main__":

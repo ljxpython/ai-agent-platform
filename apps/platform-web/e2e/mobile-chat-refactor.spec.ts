@@ -39,10 +39,20 @@ test("mobile Chat keeps composer reachable and hides desktop-only rail", async (
         () => document.documentElement.scrollWidth <= window.innerWidth,
       ),
     ).toBe(true);
-    await expect(page.getByRole("heading", { name: "开始新的对话" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: fixture.agent.name }),
+    ).toBeVisible();
     for (const dark of [false, true]) {
-      await page.evaluate(value => document.documentElement.classList.toggle("dark", value), dark);
-      await page.screenshot({ path: test.info().outputPath(`chat-mobile-${dark ? "dark" : "light"}.png`), animations: "disabled" });
+      await page.evaluate(
+        (value) => document.documentElement.classList.toggle("dark", value),
+        dark,
+      );
+      await page.screenshot({
+        path: test
+          .info()
+          .outputPath(`chat-mobile-${dark ? "dark" : "light"}.png`),
+        animations: "disabled",
+      });
     }
   } finally {
     await page.close();

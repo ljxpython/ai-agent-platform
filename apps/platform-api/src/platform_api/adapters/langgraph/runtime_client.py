@@ -64,6 +64,7 @@ class LangGraphRuntimeClient:
             detail=detail,
             fallback_code="langgraph_upstream_request_failed",
             upstream_path=response.request.url.path,
+            headers=response.headers,
         )
 
     async def request_json(
@@ -75,13 +76,11 @@ class LangGraphRuntimeClient:
         params: Mapping[str, Any] | None = None,
         forwarded_headers: Mapping[str, str] | None = None,
     ) -> Any:
-        json_payload = (
-            dict(payload)
-            if isinstance(payload, Mapping)
-            else payload
-        )
+        json_payload = dict(payload) if isinstance(payload, Mapping) else payload
         try:
-            async with httpx.AsyncClient(trust_env=False, timeout=self._timeout_seconds) as client:
+            async with httpx.AsyncClient(
+                trust_env=False, timeout=self._timeout_seconds
+            ) as client:
                 response = await client.request(
                     method=method,
                     url=self._url(path),
@@ -118,27 +117,40 @@ class LangGraphRuntimeClient:
             return {"raw": response.text}
 
     async def list_deployed_graphs(
-        self, *, forwarded_headers: Mapping[str, str] | None = None,
+        self,
+        *,
+        forwarded_headers: Mapping[str, str] | None = None,
     ) -> list[dict[str, str]]:
         graphs: dict[str, dict[str, str]] = {}
         offset = 0
         while True:
             rows = await self.request_json(
-                "POST", "/assistants/search",
-                payload={"metadata": {"created_by": "system"}, "limit": 1000, "offset": offset},
+                "POST",
+                "/assistants/search",
+                payload={
+                    "metadata": {"created_by": "system"},
+                    "limit": 1000,
+                    "offset": offset,
+                },
                 forwarded_headers=forwarded_headers,
             )
             if not isinstance(rows, list) or any(
-                not isinstance(row, dict) or not isinstance(row.get("graph_id"), str)
-                or not row["graph_id"].strip() for row in rows
+                not isinstance(row, dict)
+                or not isinstance(row.get("graph_id"), str)
+                or not row["graph_id"].strip()
+                for row in rows
             ):
                 raise PlatformApiError(
-                    code="runtime_graph_catalog_invalid", status_code=502,
+                    code="runtime_graph_catalog_invalid",
+                    status_code=502,
                     message="Runtime returned an invalid Assistant search response",
                 )
             for row in rows:
                 key = row["graph_id"]
-                graphs[key] = {"graph_id": key, "description": row.get("description") or ""}
+                graphs[key] = {
+                    "graph_id": key,
+                    "description": row.get("description") or "",
+                }
             if len(rows) < 1000:
                 return list(graphs.values())
             offset += len(rows)
@@ -152,13 +164,19 @@ class LangGraphRuntimeClient:
         params: Mapping[str, Any] | None = None,
         forwarded_headers: Mapping[str, str] | None = None,
     ) -> AsyncIterator[bytes]:
-        client = httpx.AsyncClient(trust_env=False, timeout=httpx.Timeout(None, connect=self._timeout_seconds))
+        client = httpx.AsyncClient(
+            trust_env=False, timeout=httpx.Timeout(None, connect=self._timeout_seconds)
+        )
         response = None
         try:
             request = client.build_request(
-                method, self._url(path), json=dict(payload) if isinstance(payload, Mapping) else payload,
+                method,
+                self._url(path),
+                json=dict(payload) if isinstance(payload, Mapping) else payload,
                 params=dict(params) if params is not None else None,
-                headers=self._headers(accept="text/event-stream", forwarded_headers=forwarded_headers),
+                headers=self._headers(
+                    accept="text/event-stream", forwarded_headers=forwarded_headers
+                ),
             )
             response = await client.send(request, stream=True)
             if response.status_code >= 400:
@@ -170,7 +188,9 @@ class LangGraphRuntimeClient:
                     await response.aclose()
                 await client.aclose()
             if isinstance(exc, httpx.HTTPError):
-                raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_stream_failed")
+                raise_runtime_upstream_error(
+                    exc, fallback_detail="langgraph_run_stream_failed"
+                )
             raise
 
         async def iterator() -> AsyncIterator[bytes]:
@@ -182,6 +202,7 @@ class LangGraphRuntimeClient:
                 with CancelScope(shield=True):
                     await response.aclose()
                     await client.aclose()
+
         return iterator()
 
     async def require_json(
@@ -225,7 +246,9 @@ class LangGraphRuntimeClient:
         headers["content-length"] = str(content_length)
 
         try:
-            async with httpx.AsyncClient(trust_env=False, timeout=self._timeout_seconds) as client:
+            async with httpx.AsyncClient(
+                trust_env=False, timeout=self._timeout_seconds
+            ) as client:
                 response = await client.request(
                     method="PUT",
                     url=self._url(path),
@@ -265,7 +288,9 @@ class LangGraphRuntimeClient:
         params: Mapping[str, Any] | None = None,
         forwarded_headers: Mapping[str, str] | None = None,
     ) -> BinaryPayload:
-        client = httpx.AsyncClient(trust_env=False, timeout=httpx.Timeout(None, connect=self._timeout_seconds))
+        client = httpx.AsyncClient(
+            trust_env=False, timeout=httpx.Timeout(None, connect=self._timeout_seconds)
+        )
         response = None
         try:
             request = client.build_request(
@@ -286,7 +311,9 @@ class LangGraphRuntimeClient:
             if isinstance(exc, (PlatformApiError, UpstreamServiceError)):
                 raise
             if isinstance(exc, httpx.HTTPError):
-                raise_runtime_upstream_error(exc, fallback_detail="langgraph_image_read_failed")
+                raise_runtime_upstream_error(
+                    exc, fallback_detail="langgraph_image_read_failed"
+                )
             raise
 
         content_type = response.headers.get("content-type", "")
@@ -298,11 +325,15 @@ class LangGraphRuntimeClient:
             raise PlatformApiError(
                 code="runtime_invalid_image_response",
                 status_code=502,
-                message=f"Unsupported image content type: {content_type}",
+                message="Unsupported image content type",
             )
 
         content_length_str = response.headers.get("content-length")
-        content_length = int(content_length_str) if content_length_str and content_length_str.isdigit() else None
+        content_length = (
+            int(content_length_str)
+            if content_length_str and content_length_str.isdigit()
+            else None
+        )
         if content_length is not None and content_length > 20 * 1024 * 1024:
             with CancelScope(shield=True):
                 await response.aclose()
@@ -361,7 +392,9 @@ class LangGraphRuntimeClient:
         headers["content-length"] = str(content_length)
 
         try:
-            async with httpx.AsyncClient(trust_env=False, timeout=self._timeout_seconds) as client:
+            async with httpx.AsyncClient(
+                trust_env=False, timeout=self._timeout_seconds
+            ) as client:
                 response = await client.request(
                     method="PUT",
                     url=self._url(path),
@@ -402,7 +435,9 @@ class LangGraphRuntimeClient:
         params: Mapping[str, Any] | None = None,
         forwarded_headers: Mapping[str, str] | None = None,
     ) -> BinaryPayload:
-        client = httpx.AsyncClient(trust_env=False, timeout=httpx.Timeout(None, connect=self._timeout_seconds))
+        client = httpx.AsyncClient(
+            trust_env=False, timeout=httpx.Timeout(None, connect=self._timeout_seconds)
+        )
         response = None
         try:
             request = client.build_request(
@@ -423,16 +458,33 @@ class LangGraphRuntimeClient:
             if isinstance(exc, (PlatformApiError, UpstreamServiceError)):
                 raise
             if isinstance(exc, httpx.HTTPError):
-                raise_runtime_upstream_error(exc, fallback_detail="langgraph_file_read_failed")
+                raise_runtime_upstream_error(
+                    exc, fallback_detail="langgraph_file_read_failed"
+                )
             raise
 
         content_type = response.headers.get("content-type", "")
         media_type = content_type.split(";")[0].strip().lower()
         allowed_mimes = {
-            "application/octet-stream", "application/yaml", "text/yaml", "application/toml",
-            "application/xml", "application/sql", "image/svg+xml", "image/png", "image/jpeg", "image/webp",
-            "text/x-python", "text/x-shellscript", "text/typescript", "text/x-java-source",
-            "text/x-c", "text/x-c++src", "text/x-rust", "text/jsx", "text/tsx",
+            "application/octet-stream",
+            "application/yaml",
+            "text/yaml",
+            "application/toml",
+            "application/xml",
+            "application/sql",
+            "image/svg+xml",
+            "image/png",
+            "image/jpeg",
+            "image/webp",
+            "text/x-python",
+            "text/x-shellscript",
+            "text/typescript",
+            "text/x-java-source",
+            "text/x-c",
+            "text/x-c++src",
+            "text/x-rust",
+            "text/jsx",
+            "text/tsx",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "application/pdf",
             "text/plain",
@@ -458,7 +510,11 @@ class LangGraphRuntimeClient:
             )
 
         content_length_str = response.headers.get("content-length")
-        content_length = int(content_length_str) if content_length_str and content_length_str.isdigit() else None
+        content_length = (
+            int(content_length_str)
+            if content_length_str and content_length_str.isdigit()
+            else None
+        )
         if content_length is not None and content_length > 20 * 1024 * 1024:
             with CancelScope(shield=True):
                 await response.aclose()

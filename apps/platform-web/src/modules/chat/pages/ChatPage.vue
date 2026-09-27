@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import { computed, onScopeDispose, ref, shallowRef, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onActivated,
+  onDeactivated,
+  onScopeDispose,
+  ref,
+  shallowRef,
+  watch,
+} from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useWorkspaceProjectContext } from "@/composables/useWorkspaceProjectContext";
 import { useAuthorization } from "@/composables/useAuthorization";
 import { useAuthStore } from "@/stores/auth";
 import { getAgent, listAgents } from "@/services/agents/agents.service";
 import type { Agent, AgentContext } from "@/services/agents/types";
-import type { ChatAttachmentBlock } from "@/utils/chat-content";
 import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
 import {
   createSessionService,
@@ -22,17 +30,34 @@ import BaseIcon from "@/components/base/BaseIcon.vue";
 import EmptyState from "@/components/platform/EmptyState.vue";
 import WorkspaceProjectSwitcher from "@/components/platform/WorkspaceProjectSwitcher.vue";
 import UserMenu from "@/components/layout/UserMenu.vue";
-import ChatSession from "../components/ChatSession.vue";
+import ChatSessionOutlet from "../components/ChatSessionOutlet.vue";
 import ChatThreadSidebar from "../components/ChatThreadSidebar.vue";
 import ChatAgentSelector from "../components/ChatAgentSelector.vue";
-import { buildChatThreadListView, type ChatThreadStatusFilter } from "../thread-list-view-model";
+import {
+  buildChatThreadListView,
+  type ChatThreadStatusFilter,
+} from "../thread-list-view-model";
 import { formatThreadTime } from "@/utils/threads";
 import { useChatSessionStore } from "../stores/useChatSessionStore";
+import {
+  useChatSessionPool,
+  type PoolEntry,
+} from "../composables/useChatSessionPool";
 
 defineOptions({ name: "ChatPage" });
 
-const sessionRef = ref<InstanceType<typeof ChatSession> | null>(null);
-const accessControlRef = ref<InstanceType<typeof ThreadAccessControl> | null>(null);
+const sessionRef = computed(
+  () => selectedEntry.value?.sessionRef.value ?? null,
+);
+const pool = useChatSessionPool();
+const outletRef = ref<InstanceType<typeof ChatSessionOutlet> | null>(null);
+const sessionOutlet = computed(() => outletRef.value?.element ?? null);
+const selectedEntry = shallowRef<PoolEntry>();
+let detachView: (() => void) | undefined;
+let pageActive = true;
+const accessControlRef = ref<InstanceType<typeof ThreadAccessControl> | null>(
+  null,
+);
 
 const route = useRoute();
 const router = useRouter();
@@ -43,7 +68,11 @@ const { can } = useAuthorization();
 const canWrite = computed(() =>
   can("project.runtime.execute", activeProjectId.value),
 );
-const canTakeover = computed(() => can("project.runtime.write", activeProjectId.value) || can("platform.super_admin.manage"));
+const canTakeover = computed(
+  () =>
+    can("project.runtime.write", activeProjectId.value) ||
+    can("platform.super_admin.manage"),
+);
 const accessRevision = ref(0);
 type ChatTarget = {
   graphId: string;
@@ -56,71 +85,101 @@ const target = shallowRef<ChatTarget | null>(null);
 const agents = ref<Agent[]>([]);
 const threads = ref<ChatThread[]>([]);
 function threadCan(id: string, action: ThreadAction) {
-  return hasThreadAction(threads.value.find(thread => thread.thread_id === id), action);
+  return hasThreadAction(
+    threads.value.find((thread) => thread.thread_id === id),
+    action,
+  );
 }
 const threadQuery = ref("");
-const sidebarCollapsed = ref(typeof window !== "undefined" ? window.innerWidth < 1024 : false);
+const sidebarCollapsed = ref(
+  typeof window !== "undefined" ? window.innerWidth < 1024 : false,
+);
 const focusMode = ref(false);
 const threadStatus = ref<ChatThreadStatusFilter>("all");
-const statusFilters = [{ value: "all", label: "全部" }, { value: "interrupted", label: "待处理" }, { value: "busy", label: "运行中" }, { value: "idle", label: "空闲" }, { value: "error", label: "异常" }] as const;
-function exitFocus(event: KeyboardEvent) { if (event.key === "Escape") focusMode.value = false; }
+const statusFilters = [
+  { value: "all", label: "全部" },
+  { value: "interrupted", label: "待处理" },
+  { value: "busy", label: "运行中" },
+  { value: "idle", label: "空闲" },
+  { value: "error", label: "异常" },
+] as const;
+function exitFocus(event: KeyboardEvent) {
+  if (event.key === "Escape") focusMode.value = false;
+}
 document.addEventListener("keydown", exitFocus);
 onScopeDispose(() => document.removeEventListener("keydown", exitFocus));
-const threadListView = computed(() => buildChatThreadListView({
-  items: threads.value.map(thread => ({ id: thread.thread_id, title: String(thread.metadata?.title || "未命名对话"), preview: String(thread.metadata?.preview || ""), updatedAt: thread.updated_at, time: formatThreadTime(thread.updated_at), status: thread.status })),
-  query: threadQuery.value, statusFilter: threadStatus.value,
-}));
+const threadListView = computed(() =>
+  buildChatThreadListView({
+    items: threads.value.map((thread) => ({
+      id: thread.thread_id,
+      title: String(thread.metadata?.title || "未命名对话"),
+      preview: String(thread.metadata?.preview || ""),
+      updatedAt: thread.updated_at,
+      time: formatThreadTime(thread.updated_at),
+      status: thread.status,
+    })),
+    query: threadQuery.value,
+    statusFilter: threadStatus.value,
+  }),
+);
 const loading = ref(false);
 const listLoading = ref(false);
 const error = ref("");
 const listError = ref("");
-const draft = ref("");
-let draftStorageKey = "";
+const draft = computed({
+  get: () => selectedEntry.value?.draft.value ?? "",
+  set: (value: string) => {
+    if (selectedEntry.value) selectedEntry.value.draft.value = value;
+  },
+});
 function storeDraft(value: string) {
-  if (!draftStorageKey) return;
+  const key = selectedEntry.value?.draftKey;
+  if (!key) return;
   try {
-    if (value) sessionStorage.setItem(draftStorageKey, value);
-    else sessionStorage.removeItem(draftStorageKey);
-  } catch { /* A blocked browser storage must not prevent typing. */ }
+    if (value) sessionStorage.setItem(key, value);
+    else sessionStorage.removeItem(key);
+  } catch {
+    /* A blocked browser storage must not prevent typing. */
+  }
 }
 watch(draft, storeDraft, { flush: "sync" });
-function restoreDraft(projectId: string, agentId: string, threadId?: string) {
-  draftStorageKey = ["pw:chat:draft", auth.user?.id, projectId, agentId, threadId || "new"].join(":");
-  try { draft.value = sessionStorage.getItem(draftStorageKey) || ""; }
-  catch { draft.value = ""; }
-}
-const draftAttachments = ref<ChatAttachmentBlock[]>([]);
-const runContext = ref<AgentContext>({});
-const recursionLimit = ref(1000);
-function resetDraft() {
-  draftStorageKey = "";
-  draft.value = "";
-  draftAttachments.value = [];
-  runContext.value = { ...target.value?.context };
-  recursionLimit.value = 1000;
-}
 const selectedThread = ref<string>();
 const deleting = ref(false);
 const deleteOpen = ref(false);
 const deleteId = ref<string>();
-function requestDelete(id: string) { deleteId.value = id; deleteOpen.value = true; }
+function requestDelete(id: string) {
+  deleteId.value = id;
+  deleteOpen.value = true;
+}
 async function deleteThread() {
-  if (!deleteId.value || !threadCan(deleteId.value, "delete") || deleting.value) return;
+  if (!deleteId.value || !threadCan(deleteId.value, "delete") || deleting.value)
+    return;
   const id = deleteId.value;
   const requestEpoch = epoch;
   deleting.value = true;
   try {
     await service.value.remove(id);
     if (requestEpoch !== epoch) return;
+    for (const entry of pool.entries.values())
+      if (entry.threadId.value === id) pool.remove(entry);
+    chatSessionStore.removeSession(activeProjectId.value, id);
     deleteOpen.value = false;
-    if (selectedThread.value === id) await router.replace({ path: chatPath.value, query: { agentId: selectedTarget.value } });
+    if (selectedThread.value === id)
+      await router.replace({
+        path: chatPath.value,
+        query: { agentId: selectedTarget.value },
+      });
     await loadThreads();
   } catch (cause) {
-    if (requestEpoch === epoch) listError.value = cause instanceof Error ? cause.message : "删除对话失败";
-  } finally { deleting.value = false; }
+    if (requestEpoch === epoch)
+      listError.value = cause instanceof Error ? cause.message : "删除对话失败";
+  } finally {
+    deleting.value = false;
+  }
 }
 async function handleRenameThread(threadId: string, newTitle: string) {
-  if (!canWrite.value || !threadCan(threadId, "edit") || !newTitle.trim()) return;
+  if (!canWrite.value || !threadCan(threadId, "edit") || !newTitle.trim())
+    return;
   try {
     await service.value.update(threadId, { title: newTitle.trim() });
     const match = threads.value.find((t) => t.thread_id === threadId);
@@ -133,7 +192,12 @@ async function handleRenameThread(threadId: string, newTitle: string) {
 }
 const summarizingThreadId = ref<string | null>(null);
 async function handleAiSummarizeTitle(threadId: string) {
-  if (!canWrite.value || !threadCan(threadId, "edit") || summarizingThreadId.value) return;
+  if (
+    !canWrite.value ||
+    !threadCan(threadId, "edit") ||
+    summarizingThreadId.value
+  )
+    return;
   summarizingThreadId.value = threadId;
   try {
     const res = await service.value.summarizeTitle(threadId);
@@ -145,13 +209,14 @@ async function handleAiSummarizeTitle(threadId: string) {
       }
     }
   } catch (cause) {
-    listError.value = cause instanceof Error ? cause.message : "智能提炼标题失败";
+    listError.value =
+      cause instanceof Error ? cause.message : "智能提炼标题失败";
   } finally {
     summarizingThreadId.value = null;
   }
 }
 const mountedThread = ref<string>();
-const mountVersion = ref(0);
+const draftId = ref(crypto.randomUUID());
 const offset = ref(0);
 const hasMore = ref(false);
 let epoch = 0;
@@ -168,8 +233,65 @@ const chatPath = computed(
   () => `/workspace/projects/${encodeURIComponent(activeProjectId.value)}/chat`,
 );
 const activeThreadTitle = computed(() => {
-  const current = threads.value.find((t) => t.thread_id === mountedThread.value);
-  return typeof current?.metadata?.title === "string" ? current.metadata.title : "";
+  const current = threads.value.find(
+    (t) => t.thread_id === mountedThread.value,
+  );
+  return typeof current?.metadata?.title === "string"
+    ? current.metadata.title
+    : "";
+});
+const projectName = computed(() => activeProject.value?.name ?? "");
+let attachEpoch = 0;
+function attachCurrentView() {
+  const entry = selectedEntry.value;
+  const outlet = sessionOutlet.value;
+  if (
+    !pageActive ||
+    loading.value ||
+    !entry ||
+    !outlet ||
+    route.name !== "workspace-chat" ||
+    detachView
+  )
+    return;
+  detachView = pool.attachView(entry, {
+    outlet,
+    slots: outletRef.value!.slots,
+    focusMode,
+    canWrite,
+    projectName,
+    threadTitle: activeThreadTitle,
+    onThread: created,
+    onFork: handleForkThread,
+    onRefresh: () => {
+      void loadThreads();
+    },
+    onRevoked: () => {
+      selectedEntry.value = undefined;
+      error.value = "当前会话访问权限已失效";
+    },
+  });
+}
+watch(
+  [selectedEntry, sessionOutlet, loading],
+  async () => {
+    const request = ++attachEpoch;
+    detachView?.();
+    detachView = undefined;
+    await nextTick();
+    if (request === attachEpoch) attachCurrentView();
+  },
+  { flush: "post", immediate: true },
+);
+onActivated(() => {
+  pageActive = true;
+  void nextTick(attachCurrentView);
+});
+onDeactivated(() => {
+  pageActive = false;
+  attachEpoch++;
+  detachView?.();
+  detachView = undefined;
 });
 const textParam = (value: unknown) =>
   typeof value === "string" ? value : undefined;
@@ -184,7 +306,9 @@ const currentSelectedAgent = computed(() => {
     graphId: target.value?.graphId || match?.graph_id,
   };
 });
-const currentSelectedAgentKey = computed(() => currentSelectedAgent.value?.agentId || "");
+const currentSelectedAgentKey = computed(
+  () => currentSelectedAgent.value?.agentId || "",
+);
 
 function isThreadBelongToAgent(
   thread: ChatThread,
@@ -192,9 +316,13 @@ function isThreadBelongToAgent(
 ): boolean {
   if (!selected) return true;
   const threadAgentId =
-    typeof thread.metadata?.agent_id === "string" ? thread.metadata.agent_id : undefined;
+    typeof thread.metadata?.agent_id === "string"
+      ? thread.metadata.agent_id
+      : undefined;
   const threadGraphId =
-    typeof thread.metadata?.graph_id === "string" ? thread.metadata.graph_id : undefined;
+    typeof thread.metadata?.graph_id === "string"
+      ? thread.metadata.graph_id
+      : undefined;
 
   if (threadAgentId) {
     return threadAgentId === selected.agentId;
@@ -231,11 +359,15 @@ async function loadThreads(reset = true) {
     const [rows, countRes] = await Promise.all([
       service.value.list({ offset: nextOffset, metadata }),
       reset && typeof service.value.count === "function"
-        ? service.value.count(metadata ? { metadata } : undefined).catch(() => undefined)
+        ? service.value
+            .count(metadata ? { metadata } : undefined)
+            .catch(() => undefined)
         : Promise.resolve(undefined),
     ]);
     if (requestEpoch !== listEpoch) return;
-    threads.value = rows.filter((thread) => isThreadBelongToAgent(thread, selected));
+    threads.value = rows.filter((thread) =>
+      isThreadBelongToAgent(thread, selected),
+    );
     offset.value = nextOffset;
     hasMore.value = rows.length === pageSize;
     if (typeof countRes === "number") {
@@ -267,7 +399,9 @@ async function handlePageChange(targetPage: number) {
   try {
     const rows = await service.value.list({ offset: nextOffset, metadata });
     if (requestEpoch !== listEpoch) return;
-    threads.value = rows.filter((thread) => isThreadBelongToAgent(thread, selected));
+    threads.value = rows.filter((thread) =>
+      isThreadBelongToAgent(thread, selected),
+    );
     offset.value = nextOffset;
     hasMore.value = rows.length === pageSize;
   } catch (cause) {
@@ -290,9 +424,10 @@ watch(
     threads.value = [];
     activeThreadObj.value = undefined;
     threadQuery.value = "";
-    resetDraft();
+    selectedEntry.value = undefined;
     ++listEpoch;
     if (!projectId) {
+      selectedEntry.value = undefined;
       agentsLoadPromise = null;
       return;
     }
@@ -305,7 +440,9 @@ watch(
         ? listAgents(projectId, { limit: 200 })
         : Promise.resolve({ items: [] as Agent[] })
     ).then((res) => {
-      const activeItems = res.items.filter((agent) => agent.status === "active");
+      const activeItems = res.items.filter(
+        (agent) => agent.status === "active",
+      );
       if (!cancelled) {
         agents.value = activeItems;
       }
@@ -349,11 +486,17 @@ watch(
     const forceThreadRefresh = accessRevision.value !== lastAccessRevision;
     lastAccessRevision = accessRevision.value;
     if (projectId) {
-      chatSessionStore.setLastActiveThread(projectId, "workspace-chat", threadId);
+      chatSessionStore.setLastActiveThread(
+        projectId,
+        "workspace-chat",
+        threadId,
+      );
     }
     if (
       threadId &&
       (threadId === ownThread || threadId === mountedThread.value) &&
+      selectedEntry.value?.scope ===
+        `${auth.user?.id ?? ""}:${auth.sessionEpoch}:${projectId}` &&
       target.value &&
       !forceThreadRefresh
     ) {
@@ -378,7 +521,8 @@ watch(
           chatSessionStore.getSession(projectId, threadId)?.thread)
         : undefined;
     const hasSyncThread =
-      !threadId || Boolean(cachedThread && textParam(cachedThread.metadata?.graph_id));
+      !threadId ||
+      Boolean(cachedThread && textParam(cachedThread.metadata?.graph_id));
     if (!hasSyncThread || !target.value) {
       loading.value = !hasSyncThread;
     }
@@ -413,7 +557,9 @@ watch(
             : [];
       // Graph links resolve the same project Agent; there is no second execution mode.
       if (!agentId && graphId) {
-        const matchedInMemory = activeAgents.find((a) => a.graph_id === graphId);
+        const matchedInMemory = activeAgents.find(
+          (a) => a.graph_id === graphId,
+        );
         if (matchedInMemory) {
           agentId = matchedInMemory.id;
         } else {
@@ -441,9 +587,13 @@ watch(
             throw new Error("该 Agent 已停用");
           if (graphId && item.graph_id !== graphId)
             throw new Error("Agent 与对话的执行目标不一致");
-          const available = await listAgents(projectId, { graphId: item.graph_id, limit: 1 });
-          const authorized = available.items.some(a => a.id === item.id);
-          if (!authorized && !threadId) throw new Error("执行目标不可用或未授权");
+          const available = await listAgents(projectId, {
+            graphId: item.graph_id,
+            limit: 1,
+          });
+          const authorized = available.items.some((a) => a.id === item.id);
+          if (!authorized && !threadId)
+            throw new Error("执行目标不可用或未授权");
           resolved = {
             graphId: item.graph_id,
             agentId: item.id,
@@ -456,14 +606,23 @@ watch(
       if (requestEpoch === epoch) {
         activeThreadObj.value = storedThread;
         mountedThread.value = threadId;
-        ++mountVersion.value;
         target.value = resolved;
-        resetDraft();
-        runContext.value = { ...resolved?.context };
-        if (resolved?.agentId) restoreDraft(projectId, resolved.agentId, threadId);
+        selectedEntry.value = resolved
+          ? pool.acquire(
+              `${auth.user?.id ?? ""}:${auth.sessionEpoch}:${projectId}`,
+              projectId,
+              "chat",
+              resolved,
+              threadId,
+              draftId.value,
+            )
+          : undefined;
+        if (selectedEntry.value && storedThread)
+          selectedEntry.value.initialThread.value = storedThread;
       }
     } catch (cause) {
       if (requestEpoch === epoch) {
+        selectedEntry.value = undefined;
         target.value = null;
         activeThreadObj.value = undefined;
         error.value = cause instanceof Error ? cause.message : "对话读取失败";
@@ -476,8 +635,13 @@ watch(
 );
 
 function choose(value: string) {
-  if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;
-  chatSessionStore.setLastActiveThread(activeProjectId.value, "workspace-chat", null);
+  if (typeof window !== "undefined" && window.innerWidth < 1024)
+    sidebarCollapsed.value = true;
+  chatSessionStore.setLastActiveThread(
+    activeProjectId.value,
+    "workspace-chat",
+    null,
+  );
   if (!value) {
     void router.push({ path: chatPath.value });
   } else {
@@ -485,43 +649,68 @@ function choose(value: string) {
   }
 }
 function openThread(id: string) {
-  if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;
-  chatSessionStore.setLastActiveThread(activeProjectId.value, "workspace-chat", id);
+  if (typeof window !== "undefined" && window.innerWidth < 1024)
+    sidebarCollapsed.value = true;
+  chatSessionStore.setLastActiveThread(
+    activeProjectId.value,
+    "workspace-chat",
+    id,
+  );
   void router.push(`${chatPath.value}/${encodeURIComponent(id)}`);
 }
 function newThread() {
-  if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;
-  chatSessionStore.setLastActiveThread(activeProjectId.value, "workspace-chat", null);
+  if (typeof window !== "undefined" && window.innerWidth < 1024)
+    sidebarCollapsed.value = true;
+  chatSessionStore.setLastActiveThread(
+    activeProjectId.value,
+    "workspace-chat",
+    null,
+  );
   if (target.value) choose(selectedTarget.value);
   if (!selectedThread.value) {
-    resetDraft();
-    if (target.value?.agentId) restoreDraft(activeProjectId.value, target.value.agentId);
-    ++mountVersion.value;
+    draftId.value = crypto.randomUUID();
+    if (target.value)
+      selectedEntry.value = pool.acquire(
+        `${auth.user?.id ?? ""}:${auth.sessionEpoch}:${activeProjectId.value}`,
+        activeProjectId.value,
+        "chat",
+        target.value,
+        undefined,
+        draftId.value,
+      );
   }
 }
 function created(id: string) {
   storeDraft("");
-  draftStorageKey = ["pw:chat:draft", auth.user?.id, activeProjectId.value, target.value?.agentId, id].join(":");
+  if (selectedEntry.value)
+    selectedEntry.value.draftKey = [
+      "pw:chat:draft",
+      auth.user?.id,
+      activeProjectId.value,
+      target.value?.agentId,
+      id,
+    ].join(":");
   storeDraft(draft.value);
   ownThread = id;
   selectedThread.value = id;
-  chatSessionStore.setLastActiveThread(activeProjectId.value, "workspace-chat", id);
+  chatSessionStore.setLastActiveThread(
+    activeProjectId.value,
+    "workspace-chat",
+    id,
+  );
   void router.replace({
     path: `${chatPath.value}/${encodeURIComponent(id)}`,
     query: route.query,
   });
 }
 function handleForkThread(id: string) {
-  if (typeof window !== "undefined" && window.innerWidth < 1024) sidebarCollapsed.value = true;
+  if (typeof window !== "undefined" && window.innerWidth < 1024)
+    sidebarCollapsed.value = true;
   selectedThread.value = id;
   void router.push({
     path: `${chatPath.value}/${encodeURIComponent(id)}`,
     query: route.query,
   });
-}
-function reconnect() {
-  mountedThread.value = selectedThread.value;
-  ++mountVersion.value;
 }
 function handleKeydown(e: KeyboardEvent) {
   if (e.key === "Escape" && focusMode.value) {
@@ -532,6 +721,8 @@ if (typeof window !== "undefined") {
   window.addEventListener("keydown", handleKeydown);
 }
 onScopeDispose(() => {
+  attachEpoch++;
+  detachView?.();
   if (typeof window !== "undefined") {
     window.removeEventListener("keydown", handleKeydown);
   }
@@ -543,7 +734,11 @@ onScopeDispose(() => {
 <template>
   <section
     class="pw-chat-page-shell"
-    :class="focusMode ? 'fixed inset-0 z-[85] m-0 !h-[100dvh] overflow-hidden bg-gray-50 dark:bg-dark-950 p-0' : ''"
+    :class="
+      focusMode
+        ? 'fixed inset-0 z-[85] m-0 !h-[100dvh] overflow-hidden bg-gray-50 dark:bg-dark-950 p-0'
+        : ''
+    "
   >
     <EmptyState
       v-if="!activeProject"
@@ -566,8 +761,12 @@ onScopeDispose(() => {
           size="xs"
           class="text-gray-500 group-hover:text-primary-600 dark:text-dark-400 dark:group-hover:text-primary-400 transition-colors"
         />
-        <span class="text-[11px] hidden sm:group-hover:inline font-medium">还原</span>
-        <kbd class="hidden sm:group-hover:inline-flex items-center rounded border border-gray-200 bg-gray-50 px-1 py-0.5 font-mono text-[9px] text-gray-400 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-500">
+        <span class="text-[11px] hidden sm:group-hover:inline font-medium"
+          >还原</span
+        >
+        <kbd
+          class="hidden sm:group-hover:inline-flex items-center rounded border border-gray-200 bg-gray-50 px-1 py-0.5 font-mono text-[9px] text-gray-400 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-500"
+        >
           ESC
         </kbd>
       </button>
@@ -630,30 +829,7 @@ onScopeDispose(() => {
           title="无法打开对话"
           :description="error"
         />
-        <ChatSession
-          v-else-if="target"
-          ref="sessionRef"
-          :key="`${activeProjectId}:${auth.sessionEpoch}:${mountVersion}`"
-          v-model:context="runContext"
-          v-model:attachments="draftAttachments"
-          v-model:recursion-limit="recursionLimit"
-          :focus-mode="focusMode"
-          :project-id="activeProjectId"
-          :project-name="activeProject.name"
-          :target-name="target.name"
-          :graph-id="target.graphId"
-          :agent-id="target.agentId"
-          :thread-id="mountedThread"
-          :initial-thread="activeThreadObj"
-          :thread-title="activeThreadTitle"
-          :can-write="canWrite && !target.disabled"
-          :draft="draft"
-          @update:draft="draft = $event"
-          @thread="created"
-          @fork-thread="handleForkThread"
-          @refresh="loadThreads()"
-          @reconnect="reconnect"
-        >
+        <ChatSessionOutlet v-else-if="target" ref="outletRef">
           <template #target>
             <button
               v-if="!focusMode"
@@ -666,11 +842,10 @@ onScopeDispose(() => {
               :title="sidebarCollapsed ? '展开历史会话' : '收起历史会话'"
               @click="sidebarCollapsed = !sidebarCollapsed"
             >
-              <BaseIcon
-                name="columns"
-                size="xs"
-              />
-              <span class="hidden sm:inline">{{ sidebarCollapsed ? '历史' : '收起' }}</span>
+              <BaseIcon name="columns" size="xs" />
+              <span class="hidden sm:inline">{{
+                sidebarCollapsed ? "历史" : "收起"
+              }}</span>
             </button>
             <ChatAgentSelector
               :agents="agents"
@@ -686,52 +861,62 @@ onScopeDispose(() => {
                 title="新建会话"
                 @click="newThread"
               >
-                <BaseIcon
-                  name="chat"
-                  size="xs"
-                />
+                <BaseIcon name="chat" size="xs" />
                 <span class="whitespace-nowrap">新对话</span>
               </button>
               <ThreadAccessControl
-                v-if="selectedThread && (threadCan(selectedThread, 'share') || canTakeover)"
+                v-if="
+                  selectedThread &&
+                  (threadCan(selectedThread, 'share') || canTakeover)
+                "
                 ref="accessControlRef"
                 :project-id="activeProjectId"
                 :thread-id="selectedThread"
                 :can-share="threadCan(selectedThread, 'share')"
                 :can-takeover="canTakeover"
                 :show-takeover-button="false"
-                @updated="accessRevision++; loadThreads()"
+                @updated="
+                  accessRevision++;
+                  loadThreads();
+                "
               />
               <ThreadActionsMenu
                 :focus-mode="focusMode"
                 :can-takeover="canTakeover"
-                :can-delete="Boolean(selectedThread && threadCan(selectedThread, 'delete'))"
+                :can-delete="
+                  Boolean(selectedThread && threadCan(selectedThread, 'delete'))
+                "
                 @toggle-focus="focusMode = !focusMode"
                 @open-drawer="sessionRef?.openDrawer()"
                 @open-options="sessionRef?.openOptions()"
                 @open-takeover="accessControlRef?.openTakeover()"
                 @delete-thread="selectedThread && requestDelete(selectedThread)"
               />
-              <div class="h-4 w-px bg-gray-200 dark:bg-dark-700 mx-1 hidden sm:block shrink-0" />
+              <div
+                class="h-4 w-px bg-gray-200 dark:bg-dark-700 mx-1 hidden sm:block shrink-0"
+              />
               <div class="hidden sm:flex items-center gap-1.5 shrink-0">
                 <WorkspaceProjectSwitcher compact />
                 <UserMenu compact />
               </div>
             </div>
           </template>
-        </ChatSession>
+        </ChatSessionOutlet>
         <div
           v-else
           class="flex min-w-0 flex-1 flex-col items-center justify-center p-6 text-center"
         >
-          <div class="mx-auto w-full max-w-md rounded-2xl border border-gray-200/80 bg-white/95 p-8 shadow-sm dark:border-dark-800 dark:bg-dark-900/90">
-            <span class="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-500 text-white shadow-md">
-              <BaseIcon
-                name="assistant"
-                size="md"
-              />
+          <div
+            class="mx-auto w-full max-w-md rounded-2xl border border-gray-200/80 bg-white/95 p-8 shadow-sm dark:border-dark-800 dark:bg-dark-900/90"
+          >
+            <span
+              class="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-500 text-white shadow-md"
+            >
+              <BaseIcon name="assistant" size="md" />
             </span>
-            <h2 class="mt-4 text-base font-semibold text-gray-900 dark:text-white">
+            <h2
+              class="mt-4 text-base font-semibold text-gray-900 dark:text-white"
+            >
               请选择一个对话智能体
             </h2>
             <p class="mt-2 text-xs text-gray-500 dark:text-dark-400">
@@ -748,17 +933,10 @@ onScopeDispose(() => {
         </div>
       </div>
     </template>
-    <BaseDialog
-      :show="deleteOpen"
-      title="删除对话"
-      @close="deleteOpen = false"
-    >
+    <BaseDialog :show="deleteOpen" title="删除对话" @close="deleteOpen = false">
       <p>删除后无法恢复此对话及运行历史。确认删除？</p>
       <template #footer>
-        <BaseButton
-          :loading="deleting"
-          @click="deleteThread"
-        >
+        <BaseButton :loading="deleting" @click="deleteThread">
           确认删除
         </BaseButton>
       </template>

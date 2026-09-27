@@ -63,14 +63,20 @@ def get_runtime_catalog_service(request: Request) -> RuntimeCatalogService:
         session_factory = None
     platform_context = getattr(request.state, "platform_context", None)
     tenant = getattr(platform_context, "tenant", None)
+    request_context = getattr(platform_context, "request", None)
+    request_id = getattr(request_context, "request_id", None)
+    trace_id = getattr(request_context, "trace_id", None)
     return build_runtime_catalog_service(
         settings=settings,
         session_factory=session_factory,
         forwarded_headers=build_forward_headers(
             request.headers,
-            request_id=getattr(request.state, "request_id", None),
+            request_id=request_id,
         ),
         tenant_id=getattr(tenant, "tenant_id", None) or "__default",
+        request_correlation={"request_id": request_id, "platform_trace_id": trace_id}
+        if request_id and trace_id
+        else None,
     )
 
 

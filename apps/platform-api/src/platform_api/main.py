@@ -37,6 +37,7 @@ def create_app() -> FastAPI:
         allow_credentials=False,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["x-request-id", "x-trace-id"],
     )
     register_exception_handlers(app)
     app.include_router(api_router)

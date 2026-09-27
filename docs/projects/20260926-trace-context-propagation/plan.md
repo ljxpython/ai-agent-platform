@@ -77,7 +77,7 @@ get_runtime_gateway_service 从 context.request 捕获 request_id、trace_id，�
 
 ### Catalog
 
-presentation → bootstrap → RuntimeCatalogService 增加可选 request_correlation，仅包含 request_id/platform_trace_id；_runtime_headers 签发时填入。非 HTTP 调用可不传，不生成虚假请求编号。工厂原参数保持兼容。
+presentation → bootstrap → RuntimeCatalogService 增加可选 request_correlation，仅包含 request_id/platform_trace_id；_runtime_headers 签发时填入。非 HTTP 调用可不传，不生成虚假请求编号；现有非HTTP调用仍可用。
 
 build_forward_headers 不得从浏览器头回退取关联编号：显式 request_id 有值则设置 x-request-id，没有则省略；其余既有允许的非关联头行为不变。不得顺便转发 W3C 头。
 
@@ -142,26 +142,26 @@ correlation_version 固定整数 1，reused_submission 为布尔值；其余为�
 
 | 参数 | 校验及匹配 |
 |---|---|
-| request_id | 1—64 字符、无控制字符，精确匹配已有列，兼容历史非 32 位编号 |
+| request_id | 平台新生成的32位小写十六进制；精确匹配已有列，不要求查询旧编号格式 |
 | submission_id | UUID，规范化为现有 run_requests.id 字符串，精确匹配 metadata |
 | thread_id | 1—128 字符、无控制字符，精确匹配 metadata |
 | run_id | 1—128 字符、无控制字符，匹配 metadata 的 run_id/target_run_id/parent_run_id 任一 |
 
 - 不同参数 AND；run_id 内部三个字段 OR，并整体括号化后与授权 project_id 等过滤 AND；列表和 total 使用同一过滤集。
 - submission/thread/run 任一存在时，created_from/created_to 必填，起点不晚于终点，窗口不超过 7 天；边界均含。恰好 7 天允许，超过拒绝。request_id 单独查不强制窗口。
-- 沿现有时间字段；比较前统一时区，历史无时区输入按既有 UTC 存储约定解释，避免 naive/aware 混比。控制字符按 Unicode Cc 拒绝，不对 ID 静默截断。
+- 沿现有时间字段；比较前统一时区，避免 naive/aware 混比。控制字符按 Unicode Cc 拒绝，不对 ID 静默截断。
 - router 将字段传给 ListAuditEventsQuery，在请求边界校验；模型跨字段校验失败必须转换为公开 422 验证响应，不能让路由内构造模型的 ValueError 漏成 500。
 - 保留现有平台审计权限及带 project_id 的项目审计授权；只有编号、没有权限不得查询。不能把关联过滤当作授权条件。
 - 通过 SQLAlchemy JSON 标量比较实现，验证 SQLite 与 PostgreSQL 实际执行；不使用数据库专属 JSON 文本拼接或任意路径查询。
-- 历史缺字段视为不匹配相关 metadata 条件，不报错；request_id 仍可查。不迁移、不回填旧数据，不新增表或索引。
+- 不迁移、不回填旧数据，不新增表或索引；不设置旧审计记录格式的兼容验收。
 - 无模糊扫描、任意 JSON 查询或凭编号越权。无索引性能不达标则另行评审，不能擅自执行 DDL。
 
-## 9. 实施顺序、集成与兼容回退
+## 9. 实施顺序与新服务组合
 
 顺序：T1 → T2/T3 → T4 → T5/T6 → T7 → T8，详见 tasks.md。错误响应专项公共安全 500 和错误编号契约是 T1 集成前置；SSE 结束原因回调是 T6 协作接口。同文件按最新工作树整合，不覆盖对方实现或用户改动。
 
-后续仅发布包含变更的 API 产物，Runtime/Web 无本专项版本升级要求。实施前按当前锁定 Runtime 契约验证两个现有可选 claim；API 新旧实例混合期间旧实例可能沿旧编号行为，不能宣称全量内部编号保证。历史审计读取兼容；新增查询参数不保证在回退后的旧 API 上仍可用，调用者应恢复旧查询方式。
+只验收新API与当前锁定Runtime；Web按关联的错误响应/SSE新版本集成。实施前验证Runtime接受两个现有可选claim；不测试API新旧实例混用或旧审计查询格式。
 
-回退只恢复前一 API 产物；新增 metadata 对旧读取白名单无害，无表、索引、迁移或数据库回滚。不取消、重发或重签已有 Run；观测 metadata 保持当时事实。回退后不再承诺新关联字段齐全，真实在途 Run/SSE 必须按 verification.md 验证。
+无表、索引、迁移或数据库回滚；新组合中已接受Run和SSE的既有状态语义不变，不因追踪记录取消、重发或重签。旧API产物切回不属于本专项验收。
 
 本轮只落文档、不执行部署或回退。任务完成与验收状态分开，缺环境按未验证记录。

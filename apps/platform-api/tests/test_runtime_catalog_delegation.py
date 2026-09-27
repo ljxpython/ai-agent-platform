@@ -88,6 +88,48 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
                 "operation": "read",
             },
         )
+        self.assertNotIn("request_id", claims)
+        self.assertNotIn("platform_trace_id", claims)
+
+    def test_runtime_headers_bind_http_correlation_and_service_credential(self) -> None:
+        from uuid import uuid4
+
+        credential_id = str(uuid4())
+        actor = ActorContext(
+            subject=f"service-account:{uuid4()}",
+            principal_type="service_account",
+            credential_id=credential_id,
+            project_roles={self.project_id: ("project_editor",)},
+        )
+        service = RuntimeCatalogService(
+            session_factory=None,
+            upstream=SimpleNamespace(),
+            runtime_base_url="http://runtime.test",
+            settings=self.settings,
+            tenant_id="tenant-1",
+            request_correlation={
+                "request_id": "request-1",
+                "platform_trace_id": "request-1",
+            },
+        )
+        with patch(
+            "platform_api.modules.runtime_catalog.application.service.RuntimePolicyOverlayService"
+        ) as policy_factory:
+            policy_factory.return_value.build_delegation_policy.return_value = {
+                "version": "policy-1",
+                "allowed_model_ids": ["model-1"],
+            }
+            headers = service._runtime_headers(actor=actor, project_id=self.project_id)
+        claims = jwt.decode(
+            headers["authorization"].removeprefix("Bearer "),
+            self.settings.runtime_delegation_secret,
+            algorithms=["HS256"],
+            audience=self.settings.runtime_delegation_audience,
+            issuer=self.settings.runtime_delegation_issuer,
+        )
+        self.assertEqual(claims["credential_id"], credential_id)
+        self.assertEqual(claims["request_id"], "request-1")
+        self.assertEqual(claims["platform_trace_id"], "request-1")
 
     def test_schema_read_delegation_is_bound_to_assistant(self) -> None:
         service = self._service()
@@ -96,7 +138,7 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
         ) as policy_factory:
             policy_factory.return_value.build_delegation_policy.return_value = {
                 "version": "policy-1",
-                "allowed_model_ids": [],
+                "allowed_model_ids": ["model-1"],
             }
             headers = service._runtime_headers(
                 actor=self.actor,
@@ -146,6 +188,31 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
             self._service()._runtime_headers(
                 actor=ActorContext(), project_id=self.project_id
             )
+
+    async def test_catalog_signing_failure_is_safe_before_upstream(self) -> None:
+        upstream = SimpleNamespace(require_json=AsyncMock())
+        service = self._service(upstream=upstream)
+        service._prepare_project_scope = Mock()
+        with (
+            patch(
+                "platform_api.modules.runtime_catalog.application.service.RuntimePolicyOverlayService"
+            ) as policy,
+            patch(
+                "platform_api.modules.runtime_catalog.application.service.create_runtime_delegation_token",
+                side_effect=ValueError("secret-bearing internal failure"),
+            ),
+        ):
+            policy.return_value.build_delegation_policy.return_value = {
+                "version": "policy-1",
+                "allowed_model_ids": ["model-1"],
+            }
+            with self.assertRaises(ServiceUnavailableError) as failure:
+                await service.get_graph_schema(
+                    actor=self.actor, project_id=self.project_id, graph_id="agent-1"
+                )
+        self.assertEqual(failure.exception.code, "runtime_delegation_not_configured")
+        self.assertNotIn("secret-bearing", failure.exception.message)
+        upstream.require_json.assert_not_awaited()
 
     async def test_schema_read_checks_project_before_forwarding_delegation(
         self,

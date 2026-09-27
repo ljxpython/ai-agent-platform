@@ -47,7 +47,10 @@ import {
   toRef,
   watch,
 } from "vue";
-import { coerceMessageLikeToMessage, type BaseMessage } from "@langchain/core/messages";
+import {
+  coerceMessageLikeToMessage,
+  type BaseMessage,
+} from "@langchain/core/messages";
 import { parseAgentContext } from "@/services/agents/context";
 import ChatRunOptionsDialog from "./ChatRunOptionsDialog.vue";
 import ChatContextDrawer from "./ChatContextDrawer.vue";
@@ -79,7 +82,13 @@ import type { RuntimeModelItem } from "@/types/management";
 import { useChatSession } from "../composables/useChatSession";
 import { useChatAttachments } from "../composables/useChatAttachments";
 import { useTranscriptMessages } from "../composables/useTranscriptMessages";
-import { asObject, buildTranscript, contentItems, readable, type ToolItem } from "../transcript";
+import {
+  asObject,
+  buildTranscript,
+  contentItems,
+  readable,
+  type ToolItem,
+} from "../transcript";
 import {
   computeDynamicBottomSpacerHeight,
   computeStreamingFollowScrollTop,
@@ -111,6 +120,8 @@ const props = defineProps<{
   projectName?: string;
   threadTitle?: string;
   enableExecutionMode?: boolean;
+  visible?: boolean;
+  onAccessRevoked?: () => void;
 }>();
 const emit = defineEmits<{
   thread: [id: string];
@@ -126,6 +137,7 @@ const recursionLimit = defineModel<number>("recursionLimit", {
 const draftAttachments = defineModel<ChatAttachmentBlock[]>("attachments", {
   required: true,
 });
+const authStore = useAuthStore();
 const {
   attachments,
   loading: attachmentsLoading,
@@ -139,7 +151,7 @@ let submittedDraft: string | undefined;
 let submittedAttachments = new Set<unknown>();
 const session = useChatSession({
   projectId: props.projectId,
-  userId: useAuthStore().user?.id,
+  userId: authStore.user?.id,
   graphId: props.graphId,
   agentId: props.agentId,
   threadId: props.threadId,
@@ -149,11 +161,15 @@ const session = useChatSession({
   onThread: (id) => emit("thread", id),
   onRefresh: () => emit("refresh"),
   onReconnect: () => emit("reconnect"),
+  onAccessRevoked: () => props.onAccessRevoked?.(),
   onAccepted: () => {
     if (
       optimisticUserMessage.value &&
       (hasOptimisticEchoed(messages.value, optimisticUserMessage.value) ||
-        hasOptimisticEchoed(latestHistoryMessages.value, optimisticUserMessage.value))
+        hasOptimisticEchoed(
+          latestHistoryMessages.value,
+          optimisticUserMessage.value,
+        ))
     ) {
       optimisticUserMessage.value = null;
     }
@@ -179,6 +195,13 @@ const {
   actions,
 } = session;
 const action = actions.current;
+const connectionMessage = computed(() =>
+  session.connectionState.value === "reconnecting"
+    ? "连接恢复中"
+    : session.connectionState.value === "paused"
+      ? "连接已断开，请重试"
+      : "",
+);
 const messages = useTranscriptMessages(stream);
 const calls = stream.toolCalls;
 const approvalElement = ref<HTMLElement | null>(null);
@@ -199,7 +222,8 @@ const canSubmit = computed(
   () =>
     canSend.value &&
     !hasPendingInterrupts.value &&
-    !modelsLoading.value && !!models.value.length &&
+    !modelsLoading.value &&
+    !!models.value.length &&
     !attachmentsLoading.value &&
     (!!props.draft.trim() || !!attachments.value.length),
 );
@@ -245,12 +269,15 @@ function resetOptions(value: AgentContext) {
   });
   optionsError.value = "";
 }
-function openOptions() { resetOptions(context.value); optionsOpen.value = true; }
+function openOptions() {
+  resetOptions(context.value);
+  optionsOpen.value = true;
+}
 function applyOptions() {
   try {
     const nextMode = isModeLocked.value
       ? ((context.value.execution_mode as ExecutionMode) ?? "standard")
-      : (draftRunOptions.executionMode || "standard");
+      : draftRunOptions.executionMode || "standard";
     if (draftRunOptions.recursionLimit.trim()) {
       const limitNum = Number(draftRunOptions.recursionLimit);
       if (!Number.isInteger(limitNum) || limitNum < 1 || limitNum > 1000) {
@@ -262,39 +289,61 @@ function applyOptions() {
     const updated = parseAgentContext({
       ...context.value,
       model_id: draftRunOptions.modelId || undefined,
-      temperature: draftRunOptions.temperature.trim() ? Number(draftRunOptions.temperature) : undefined,
-      max_tokens: draftRunOptions.maxTokens.trim() ? Number(draftRunOptions.maxTokens) : undefined,
+      temperature: draftRunOptions.temperature.trim()
+        ? Number(draftRunOptions.temperature)
+        : undefined,
+      max_tokens: draftRunOptions.maxTokens.trim()
+        ? Number(draftRunOptions.maxTokens)
+        : undefined,
       ...(showExecutionMode.value ? { execution_mode: nextMode } : {}),
     });
     context.value = updated;
     optionsOpen.value = false;
-  } catch (cause) { optionsError.value = cause instanceof Error ? cause.message : "运行参数无效"; }
+  } catch (cause) {
+    optionsError.value =
+      cause instanceof Error ? cause.message : "运行参数无效";
+  }
 }
 const drawerOpen = ref(false);
 const drawerTab = ref<"overview" | "tasks" | "files" | "history">("overview");
-function openDrawer() { drawerOpen.value = true; drawerTab.value = "overview"; void loadHistory(true); }
+function openDrawer() {
+  drawerOpen.value = true;
+  drawerTab.value = "overview";
+  void loadHistory(true);
+}
 const chatSessionStore = useChatSessionStore();
 const initialCachedSession = chatSessionStore.getSession(
   props.projectId,
   session.threadId.value || props.threadId,
 );
 const historyLoading = ref(false);
-const history = shallowRef<ChatCheckpoint[]>(initialCachedSession?.history ?? []);
-const cachedDisplayMessages = shallowRef<BaseMessage[]>(initialCachedSession?.messages ?? []);
+const history = shallowRef<ChatCheckpoint[]>(
+  initialCachedSession?.history ?? [],
+);
+const cachedDisplayMessages = shallowRef<BaseMessage[]>(
+  initialCachedSession?.messages ?? [],
+);
 const hasMoreHistory = ref(true);
 const selectedCheckpoint = shallowRef<ChatCheckpoint | null>(null);
-const coercedMessageCache = new Map<string, { sig: string; msg: BaseMessage }>();
+const coercedMessageCache = new Map<
+  string,
+  { sig: string; msg: BaseMessage }
+>();
 const latestHistoryMessages = computed<BaseMessage[]>(() => {
   const headRaw = history.value[0]?.values?.messages;
   if (!Array.isArray(headRaw) || headRaw.length === 0) return [];
   try {
     return headRaw.map((m) => {
-      const rawObj = m && typeof m === "object" ? (m as Record<string, unknown>) : null;
+      const rawObj =
+        m && typeof m === "object" ? (m as Record<string, unknown>) : null;
       const rawId = typeof rawObj?.id === "string" ? rawObj.id : "";
-      const rawContent = typeof rawObj?.content === "string"
-        ? rawObj.content
-        : JSON.stringify(rawObj?.content ?? "");
-      const rawToolsLen = Array.isArray(rawObj?.tool_calls) ? rawObj.tool_calls.length : 0;
+      const rawContent =
+        typeof rawObj?.content === "string"
+          ? rawObj.content
+          : JSON.stringify(rawObj?.content ?? "");
+      const rawToolsLen = Array.isArray(rawObj?.tool_calls)
+        ? rawObj.tool_calls.length
+        : 0;
       const sig = `${rawId}:${rawContent.length}:${rawToolsLen}`;
       if (rawId) {
         const cached = coercedMessageCache.get(rawId);
@@ -317,13 +366,21 @@ const latestHistoryMessages = computed<BaseMessage[]>(() => {
 const snapshotMessages = shallowRef<BaseMessage[] | null>(null);
 const optimisticUserMessage = shallowRef<BaseMessage | null>(null);
 const hasConversationStarted = ref(
-  Boolean(props.threadId || initialCachedSession?.messages.length || initialCachedSession?.history.length),
+  Boolean(
+    props.threadId ||
+    initialCachedSession?.messages.length ||
+    initialCachedSession?.history.length,
+  ),
 );
 
-function hasOptimisticEchoed(list: readonly BaseMessage[], optimistic: BaseMessage | null): boolean {
+function hasOptimisticEchoed(
+  list: readonly BaseMessage[],
+  optimistic: BaseMessage | null,
+): boolean {
   if (!optimistic) return false;
   if (optimistic.id && list.some((m) => m.id === optimistic.id)) return true;
-  const optText = typeof optimistic.content === "string" ? optimistic.content.trim() : "";
+  const optText =
+    typeof optimistic.content === "string" ? optimistic.content.trim() : "";
   if (!optText) return false;
   return list.some(
     (m) =>
@@ -335,6 +392,16 @@ function hasOptimisticEchoed(list: readonly BaseMessage[], optimistic: BaseMessa
 
 const displayedMessages = computed(() => {
   let base = snapshotMessages.value ?? messages.value;
+  const recovered = session.recoverySnapshot.value?.messages as
+    | BaseMessage[]
+    | undefined;
+  if (!snapshotMessages.value && recovered?.length) {
+    const recoveredIds = new Set(recovered.map((message) => message.id));
+    base = [
+      ...recovered,
+      ...base.filter((message) => !recoveredIds.has(message.id)),
+    ];
+  }
   const fallbackMessages =
     latestHistoryMessages.value.length >= cachedDisplayMessages.value.length
       ? latestHistoryMessages.value
@@ -353,8 +420,14 @@ const displayedMessages = computed(() => {
         if (!m.id) return m;
         const committed = committedById.get(m.id);
         if (!committed) return m;
-        const streamText = typeof m.content === "string" ? m.content : JSON.stringify(m.content ?? "");
-        const committedText = typeof committed.content === "string" ? committed.content : JSON.stringify(committed.content ?? "");
+        const streamText =
+          typeof m.content === "string"
+            ? m.content
+            : JSON.stringify(m.content ?? "");
+        const committedText =
+          typeof committed.content === "string"
+            ? committed.content
+            : JSON.stringify(committed.content ?? "");
         if (streamText.length < committedText.length) {
           stabilized = true;
           return committed;
@@ -366,12 +439,12 @@ const displayedMessages = computed(() => {
       }
 
       const baseIds = new Set(base.map((m) => m.id).filter(Boolean));
-      const firstOverlapIdx = fallbackMessages.findIndex(
-        (m) => Boolean(m.id && baseIds.has(m.id)),
+      const firstOverlapIdx = fallbackMessages.findIndex((m) =>
+        Boolean(m.id && baseIds.has(m.id)),
       );
       if (firstOverlapIdx === -1) {
-        const missingPrefix = fallbackMessages.filter(
-          (m) => Boolean(m.id && !baseIds.has(m.id)),
+        const missingPrefix = fallbackMessages.filter((m) =>
+          Boolean(m.id && !baseIds.has(m.id)),
         );
         if (missingPrefix.length > 0) {
           base = [...missingPrefix, ...base];
@@ -413,10 +486,14 @@ watch(
     const activeThreadId = session.threadId.value || props.threadId;
     if (activeThreadId && !snapshotMessages.value) {
       const latestCommitted =
-        currentMessages.length >= historyMsgs.length ? currentMessages : historyMsgs;
+        currentMessages.length >= historyMsgs.length
+          ? currentMessages
+          : historyMsgs;
       if (latestCommitted.length > 0) {
         cachedDisplayMessages.value = [...latestCommitted];
-        chatSessionStore.setSessionMessages(props.projectId, activeThreadId, [...latestCommitted]);
+        chatSessionStore.setSessionMessages(props.projectId, activeThreadId, [
+          ...latestCommitted,
+        ]);
       }
     }
     if (!optimisticUserMessage.value) return;
@@ -430,8 +507,16 @@ watch(
   { immediate: true },
 );
 const branchPath = ref("");
-const branchContext = computed(() => getChatBranchContext(branchPath.value, history.value));
-const messageMetadata = computed(() => buildChatMessageMetadata(displayedMessages.value as unknown as Message[], history.value, branchContext.value));
+const branchContext = computed(() =>
+  getChatBranchContext(branchPath.value, history.value),
+);
+const messageMetadata = computed(() =>
+  buildChatMessageMetadata(
+    displayedMessages.value as unknown as Message[],
+    history.value,
+    branchContext.value,
+  ),
+);
 function selectMessageBranch(path: string) {
   const head = getChatBranchContext(path, history.value).threadHead;
   if (head?.checkpoint.checkpoint_id) {
@@ -440,26 +525,72 @@ function selectMessageBranch(path: string) {
   }
 }
 function selectSnapshot(id: string) {
-  if (!id) { branchPath.value = ""; selectedCheckpoint.value = null; snapshotMessages.value = null; return; }
-  const row = history.value.find(item => item.checkpoint.checkpoint_id === id);
+  if (!id) {
+    branchPath.value = "";
+    selectedCheckpoint.value = null;
+    snapshotMessages.value = null;
+    return;
+  }
+  const row = history.value.find(
+    (item) => item.checkpoint.checkpoint_id === id,
+  );
   if (!row) return;
   try {
-    const converted = (row.values.messages ?? []).map(message => coerceMessageLikeToMessage(message as Parameters<typeof coerceMessageLikeToMessage>[0]));
+    const converted = (row.values.messages ?? []).map((message) =>
+      coerceMessageLikeToMessage(
+        message as Parameters<typeof coerceMessageLikeToMessage>[0],
+      ),
+    );
     selectedCheckpoint.value = row;
     snapshotMessages.value = converted;
-  } catch { localError.value = "该快照消息无法解析，请选择其他快照"; }
+  } catch {
+    localError.value = "该快照消息无法解析，请选择其他快照";
+  }
 }
-const drawerHistory = computed(() => history.value.map(row => ({ ...row, metadata: { ...row.metadata, created_at: row.created_at } })));
-const drawerFiles = computed(() => files.value.map(([path, value]) => {
-  const content = typeof value.content === "string" ? value.content : readable(value.content);
-  return { path, content, lineCount: content.split("\n").length, completeness: value.completeness };
-}));
+const drawerHistory = computed(() =>
+  history.value.map((row) => ({
+    ...row,
+    metadata: { ...row.metadata, created_at: row.created_at },
+  })),
+);
+const drawerFiles = computed(() =>
+  files.value.map(([path, value]) => {
+    const content =
+      typeof value.content === "string"
+        ? value.content
+        : readable(value.content);
+    return {
+      path,
+      content,
+      lineCount: content.split("\n").length,
+      completeness: value.completeness,
+    };
+  }),
+);
 const planView = computed(() => {
-  const planTodos = todos.value.map((todo, index) => ({ id: String(todo.id ?? index), content: String(todo.content), status: todo.status as "pending" | "in_progress" | "completed" }));
-  const completedTasks = planTodos.filter(todo => todo.status === "completed").length;
-  return { planTodos, ephemeralTodos: [], activeTask: planTodos.find(todo => todo.status === "in_progress") ?? null, totalTasks: planTodos.length, completedTasks, allTasksCompleted: !!planTodos.length && completedTasks === planTodos.length, hasFrozenPlan: false };
+  const planTodos = todos.value.map((todo, index) => ({
+    id: String(todo.id ?? index),
+    content: String(todo.content),
+    status: todo.status as "pending" | "in_progress" | "completed",
+  }));
+  const completedTasks = planTodos.filter(
+    (todo) => todo.status === "completed",
+  ).length;
+  return {
+    planTodos,
+    ephemeralTodos: [],
+    activeTask: planTodos.find((todo) => todo.status === "in_progress") ?? null,
+    totalTasks: planTodos.length,
+    completedTasks,
+    allTasksCompleted:
+      !!planTodos.length && completedTasks === planTodos.length,
+    hasFrozenPlan: false,
+  };
 });
-const hasArtifacts = computed(() => Array.isArray(stream.values.value.ui) && stream.values.value.ui.length > 0);
+const hasArtifacts = computed(
+  () =>
+    Array.isArray(stream.values.value.ui) && stream.values.value.ui.length > 0,
+);
 const showWorkspace = ref(false);
 const workspacePanelRef = ref<InstanceType<typeof WorkspacePanel> | null>(null);
 
@@ -476,16 +607,25 @@ watch(busy, (isBusy, wasBusy) => {
 });
 
 function handleAddToChat(text: string) {
-  emit('update:draft', props.draft ? `${props.draft}\n\n${text}` : text);
+  emit("update:draft", props.draft ? `${props.draft}\n\n${text}` : text);
 }
 const localError = ref("");
 let disposed = false;
 void loadProjectModelBundle(props.projectId)
   .then(([value, policies]) => {
     if (disposed) return;
-    models.value = value.models.filter((model) => model.enabled && policies.items.find(item => item.catalog_id === model.id)?.policy.is_enabled !== false);
-    const projectDefault = policies.items.find(item => item.policy.is_default_for_project);
-    const defaultModel = models.value.find(model => model.id === projectDefault?.catalog_id) ?? models.value[0];
+    models.value = value.models.filter(
+      (model) =>
+        model.enabled &&
+        policies.items.find((item) => item.catalog_id === model.id)?.policy
+          .is_enabled !== false,
+    );
+    const projectDefault = policies.items.find(
+      (item) => item.policy.is_default_for_project,
+    );
+    const defaultModel =
+      models.value.find((model) => model.id === projectDefault?.catalog_id) ??
+      models.value[0];
     defaultModelId.value = defaultModel?.id ?? "";
     defaultModelName.value = defaultModel?.display_name ?? "";
     if (!context.value.model_id && defaultModel) {
@@ -494,12 +634,16 @@ void loadProjectModelBundle(props.projectId)
   })
   .catch(() => {
     if (!disposed) localError.value = "模型列表读取失败，可恢复连接后重试";
-  }).finally(() => { if (!disposed) modelsLoading.value = false; });
+  })
+  .finally(() => {
+    if (!disposed) modelsLoading.value = false;
+  });
 
 const composerRef = ref<{ focus: () => void } | null>(null);
 function focusComposer() {
+  if (props.visible === false) return;
   void nextTick(() => {
-    composerRef.value?.focus();
+    if (props.visible !== false) composerRef.value?.focus();
   });
 }
 
@@ -514,18 +658,36 @@ async function copyThreadId() {
     threadCopyTimeout = setTimeout(() => {
       copiedThread.value = false;
     }, 2000);
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 }
 
 const quickPrompts = [
-  { icon: 'sparkle', title: '分析当前项目', desc: '全面梳理代码库结构与模块依赖关系' },
-  { icon: 'assistant', title: '设计功能方案', desc: '根据业务需求给出优雅的架构与接口设计' },
-  { icon: 'shield', title: '审查代码规范', desc: '排查潜在异常、安全漏洞与代码坏味道' },
-  { icon: 'activity', title: '调试系统问题', desc: '定位错误调用栈并提供直接可用的修复补丁' },
+  {
+    icon: "sparkle",
+    title: "分析当前项目",
+    desc: "全面梳理代码库结构与模块依赖关系",
+  },
+  {
+    icon: "assistant",
+    title: "设计功能方案",
+    desc: "根据业务需求给出优雅的架构与接口设计",
+  },
+  {
+    icon: "shield",
+    title: "审查代码规范",
+    desc: "排查潜在异常、安全漏洞与代码坏味道",
+  },
+  {
+    icon: "activity",
+    title: "调试系统问题",
+    desc: "定位错误调用栈并提供直接可用的修复补丁",
+  },
 ];
 
 function applyQuickPrompt(title: string, desc: string) {
-  emit('update:draft', `${title}：${desc}`);
+  emit("update:draft", `${title}：${desc}`);
   focusComposer();
 }
 
@@ -541,7 +703,9 @@ function handleSnapshotFork() {
 }
 
 const promptQueueKey = computed(() =>
-  session.threadId.value ? `prompt_queue:${props.projectId}:${session.threadId.value}` : ""
+  session.threadId.value && authStore.user?.id
+    ? `prompt_queue:${authStore.user.id}:${props.projectId}:${session.threadId.value}`
+    : "",
 );
 const promptQueue = usePromptQueue(promptQueueKey);
 
@@ -567,7 +731,9 @@ function extractMessageText(raw: unknown): string {
   if (Array.isArray(raw)) {
     return raw
       .map((item) =>
-        item && typeof item === "object" && typeof (item as { text?: unknown }).text === "string"
+        item &&
+        typeof item === "object" &&
+        typeof (item as { text?: unknown }).text === "string"
           ? (item as { text: string }).text
           : "",
       )
@@ -579,17 +745,30 @@ function extractMessageText(raw: unknown): string {
 }
 
 watch(
-  [() => displayedMessages.value, () => promptQueue.queue.value.length, () => session.stream.values?.value],
+  [
+    () => displayedMessages.value,
+    () => promptQueue.queue.value.length,
+    () => session.stream.values?.value,
+  ],
   ([msgs]) => {
     if (promptQueue.queue.value.length === 0 || isDrainingQueue.value) return;
-    const rawValuesMessages = (session.stream.values?.value as { messages?: Array<{ id?: string }> } | undefined)?.messages;
-    const committedIds = Array.isArray(rawValuesMessages) && rawValuesMessages.length > 0
-      ? new Set(rawValuesMessages.map((m) => m?.id).filter(Boolean))
-      : null;
+    const rawValuesMessages = (
+      session.stream.values?.value as
+        | { messages?: Array<{ id?: string }> }
+        | undefined
+    )?.messages;
+    const committedIds =
+      Array.isArray(rawValuesMessages) && rawValuesMessages.length > 0
+        ? new Set(rawValuesMessages.map((m) => m?.id).filter(Boolean))
+        : null;
     const persistedHumanTexts = new Set(
       msgs
         .filter((m) => {
-          if (m.type !== "human" || String(m.id ?? "").startsWith("optimistic-")) return false;
+          if (
+            m.type !== "human" ||
+            String(m.id ?? "").startsWith("optimistic-")
+          )
+            return false;
           if (committedIds) return Boolean(m.id && committedIds.has(m.id));
           return !busy.value && !checking.value;
         })
@@ -619,7 +798,10 @@ async function sendQueuedContent(content: unknown) {
   optimisticUserMessage.value = optimistic;
   void anchorLatestUserTurn(true);
   try {
-    const ok = await session.send(content, recursionLimit.value, { fromQueue: true, messageId });
+    const ok = await session.send(content, recursionLimit.value, {
+      fromQueue: true,
+      messageId,
+    });
     if (!ok) {
       optimisticUserMessage.value = null;
       return false;
@@ -632,7 +814,7 @@ async function sendQueuedContent(content: unknown) {
 }
 
 async function drainNextQueuedItem() {
-  if (isDrainingQueue.value) return;
+  if (isDrainingQueue.value || props.visible === false) return;
   if (
     busy.value ||
     Boolean(stream.isLoading?.value) ||
@@ -664,11 +846,28 @@ async function drainNextQueuedItem() {
 }
 
 watch(
-  [busy, () => Boolean(stream.isLoading?.value), canSend, hasPendingInterrupts, () => promptQueue.queue.value.length],
+  [
+    busy,
+    () => Boolean(stream.isLoading?.value),
+    canSend,
+    hasPendingInterrupts,
+    () => promptQueue.queue.value.length,
+    () => props.visible,
+  ],
   async ([isBusy, isStreamLoading, isCanSend, hasInterrupt, queueLen]) => {
-    if (!isBusy && !isStreamLoading && isCanSend && !hasInterrupt && queueLen > 0 && !cancelling.value) {
+    const stillVisible = () => props.visible !== false;
+    if (
+      stillVisible() &&
+      !isBusy &&
+      !isStreamLoading &&
+      isCanSend &&
+      !hasInterrupt &&
+      queueLen > 0 &&
+      !cancelling.value
+    ) {
       await new Promise((r) => setTimeout(r, 350));
       if (
+        stillVisible() &&
         !busy.value &&
         !stream.isLoading?.value &&
         canSend.value &&
@@ -694,7 +893,12 @@ async function send(queued = false) {
     Boolean(optimisticUserMessage.value);
   const shouldQueue = queued || isAgentActive;
   if (shouldQueue) {
-    if (!props.canWrite || cancelling.value || reviews.value.length || (!props.draft.trim() && !attachments.value.length)) {
+    if (
+      !props.canWrite ||
+      cancelling.value ||
+      reviews.value.length ||
+      (!props.draft.trim() && !attachments.value.length)
+    ) {
       return;
     }
     const content = attachments.value.length
@@ -707,7 +911,10 @@ async function send(queued = false) {
     return;
   }
   if (!canSubmit.value) {
-    if (props.canWrite && (props.draft.trim().length > 0 || attachments.value.length > 0)) {
+    if (
+      props.canWrite &&
+      (props.draft.trim().length > 0 || attachments.value.length > 0)
+    ) {
       const content = attachments.value.length
         ? [{ type: "text", text: props.draft }, ...attachments.value]
         : props.draft;
@@ -720,8 +927,11 @@ async function send(queued = false) {
   }
   if (!context.value.model_id && models.value.length) {
     const fallbackModel =
-      models.value.find((m) => (defaultModelId.value ? m.id === defaultModelId.value : m.display_name === defaultModelName.value)) ??
-      models.value[0];
+      models.value.find((m) =>
+        defaultModelId.value
+          ? m.id === defaultModelId.value
+          : m.display_name === defaultModelName.value,
+      ) ?? models.value[0];
     if (fallbackModel) {
       context.value = { ...context.value, model_id: fallbackModel.id };
     }
@@ -757,7 +967,9 @@ async function send(queued = false) {
     } catch {
       optimisticUserMessage.value = null;
       if (submittedDraft !== undefined) emit("update:draft", submittedDraft);
-      attachments.value = Array.from(submittedAttachments) as ChatAttachmentBlock[];
+      attachments.value = Array.from(
+        submittedAttachments,
+      ) as ChatAttachmentBlock[];
       submittedDraft = undefined;
       submittedAttachments = new Set();
     }
@@ -772,7 +984,9 @@ async function send(queued = false) {
     attachments.value = [];
     void anchorLatestUserTurn(true);
     try {
-      const ok = await session.send(content, recursionLimit.value, { messageId });
+      const ok = await session.send(content, recursionLimit.value, {
+        messageId,
+      });
       if (!ok) {
         if (disposed) {
           return;
@@ -788,7 +1002,9 @@ async function send(queued = false) {
     } catch {
       optimisticUserMessage.value = null;
       if (submittedDraft !== undefined) emit("update:draft", submittedDraft);
-      attachments.value = Array.from(submittedAttachments) as ChatAttachmentBlock[];
+      attachments.value = Array.from(
+        submittedAttachments,
+      ) as ChatAttachmentBlock[];
       submittedDraft = undefined;
       submittedAttachments = new Set();
     }
@@ -811,7 +1027,13 @@ function restoreQueuedDraft(content?: unknown, messageId?: string) {
   }
   const restoringPending = content === undefined;
   content ??= session.pendingMessage.value?.payload.content;
-  const append = (text: string) => emit("update:draft", props.draft === text ? text : [props.draft, text].filter(Boolean).join("\n"));
+  const append = (text: string) =>
+    emit(
+      "update:draft",
+      props.draft === text
+        ? text
+        : [props.draft, text].filter(Boolean).join("\n"),
+    );
   if (typeof content === "string") append(content);
   else if (Array.isArray(content)) {
     append(
@@ -820,7 +1042,10 @@ function restoreQueuedDraft(content?: unknown, messageId?: string) {
         .map((item) => item.text)
         .join("\n"),
     );
-    attachments.value = [...attachments.value, ...content.filter(isChatAttachmentBlock)];
+    attachments.value = [
+      ...attachments.value,
+      ...content.filter(isChatAttachmentBlock),
+    ];
   }
   if (restoringPending) session.pendingMessage.value = null;
 }
@@ -839,7 +1064,9 @@ async function resendQueuedMessage(content: unknown, messageId?: string) {
   });
   void anchorLatestUserTurn(true);
   try {
-    const ok = await session.send(content, recursionLimit.value, { messageId: nextMessageId });
+    const ok = await session.send(content, recursionLimit.value, {
+      messageId: nextMessageId,
+    });
     if (!ok && session.error.value) {
       throw new Error(session.error.value);
     }
@@ -859,6 +1086,7 @@ const lastEventAt = ref("");
 let scrollRafId: number | null = null;
 let programmaticScrollUntil = 0;
 let lastKnownScrollTop = 0;
+let parkedScrollTop = 0;
 
 function isHumanLikeMessage(m: unknown): boolean {
   if (!m || typeof m !== "object") return false;
@@ -866,14 +1094,22 @@ function isHumanLikeMessage(m: unknown): boolean {
   return raw.type === "human" || raw.role === "user" || raw.role === "human";
 }
 
-const turnCount = computed(() =>
-  displayedMessages.value.filter(isHumanLikeMessage).length,
+const turnCount = computed(
+  () => displayedMessages.value.filter(isHumanLikeMessage).length,
 );
 
-const liveFollowView = computed(() => buildChatLiveFollowView({
-  autoFollowEnabled: following.value && !drawerOpen.value && !optionsOpen.value && !inspector.value,
-  isRunning: busy.value, unreadMessageCount: unreadMessageCount.value, bufferedStreamActivity: bufferedStreamActivity.value,
-}));
+const liveFollowView = computed(() =>
+  buildChatLiveFollowView({
+    autoFollowEnabled:
+      following.value &&
+      !drawerOpen.value &&
+      !optionsOpen.value &&
+      !inspector.value,
+    isRunning: busy.value,
+    unreadMessageCount: unreadMessageCount.value,
+    bufferedStreamActivity: bufferedStreamActivity.value,
+  }),
+);
 
 function getOffsetTopWithinViewport(el: HTMLElement, vp: HTMLElement): number {
   const elRect = el.getBoundingClientRect();
@@ -889,6 +1125,8 @@ function syncBottomSpacerHeight(): {
   contentBottomOffsetTop: number;
 } {
   const vp = viewport.value;
+  if (props.visible === false)
+    return { lastUserOffsetTop: 0, contentBottomOffsetTop: 0 };
   if (!vp || turnCount.value <= 0) {
     bottomSpacerHeightPx.value = 0;
     return { lastUserOffsetTop: 0, contentBottomOffsetTop: 0 };
@@ -918,8 +1156,15 @@ function syncBottomSpacerHeight(): {
 let lastAnchoredTurnCount = 0;
 
 async function anchorLatestUserTurn(smooth = true) {
+  if (props.visible === false) return;
   hasConversationStarted.value = true;
-  if (drawerOpen.value || optionsOpen.value || inspector.value || snapshotMessages.value) return;
+  if (
+    drawerOpen.value ||
+    optionsOpen.value ||
+    inspector.value ||
+    snapshotMessages.value
+  )
+    return;
   userScrolledUp.value = false;
   following.value = true;
   unreadMessageCount.value = 0;
@@ -954,12 +1199,21 @@ async function anchorLatestUserTurn(smooth = true) {
 }
 
 function requestSmartStreamingFollow() {
-  if (!following.value || userScrolledUp.value || drawerOpen.value || optionsOpen.value || inspector.value || snapshotMessages.value) return;
+  if (
+    props.visible === false ||
+    !following.value ||
+    userScrolledUp.value ||
+    drawerOpen.value ||
+    optionsOpen.value ||
+    inspector.value ||
+    snapshotMessages.value
+  )
+    return;
   if (scrollRafId !== null) return;
   scrollRafId = requestAnimationFrame(() => {
     scrollRafId = null;
     const vp = viewport.value;
-    if (!vp) return;
+    if (!vp || props.visible === false) return;
     const { contentBottomOffsetTop } = syncBottomSpacerHeight();
     const nextScrollTop = computeStreamingFollowScrollTop({
       currentScrollTop: vp.scrollTop,
@@ -975,12 +1229,32 @@ function requestSmartStreamingFollow() {
 }
 
 watch(
+  () => props.visible,
+  async (visible) => {
+    if (visible === false) {
+      parkedScrollTop = viewport.value?.scrollTop ?? lastKnownScrollTop;
+      if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
+      scrollRafId = null;
+      return;
+    }
+    await nextTick();
+    syncBottomSpacerHeight();
+    if (viewport.value) {
+      viewport.value.scrollTop = parkedScrollTop;
+      lastKnownScrollTop = parkedScrollTop;
+    }
+    requestSmartStreamingFollow();
+  },
+);
+
+watch(
   displayedMessages,
   async (next, previous) => {
     lastEventAt.value = new Date().toISOString();
     if (next.length > 0) {
       hasConversationStarted.value = true;
     }
+    if (props.visible === false) return;
     const prevHumanCount = (previous ?? []).filter(isHumanLikeMessage).length;
     const nextHumanCount = next.filter(isHumanLikeMessage).length;
     const hasNewUserTurn =
@@ -988,20 +1262,29 @@ watch(
       nextHumanCount !== lastAnchoredTurnCount;
 
     if (!following.value && !hasNewUserTurn) {
-      unreadMessageCount.value += Math.max(0, next.length - (previous?.length ?? 0));
+      unreadMessageCount.value += Math.max(
+        0,
+        next.length - (previous?.length ?? 0),
+      );
       bufferedStreamActivity.value = true;
       await nextTick();
       syncBottomSpacerHeight();
       return;
     }
 
-    if (drawerOpen.value || optionsOpen.value || inspector.value || snapshotMessages.value) {
+    if (
+      drawerOpen.value ||
+      optionsOpen.value ||
+      inspector.value ||
+      snapshotMessages.value
+    ) {
       return;
     }
 
     if (hasNewUserTurn) {
       // Initial hydration of multi-turn history jumps immediately; interactive new user turns glide smoothly
-      const isInitialHydration = (previous?.length ?? 0) === 0 && next.length > 1;
+      const isInitialHydration =
+        (previous?.length ?? 0) === 0 && next.length > 1;
       await anchorLatestUserTurn(!isInitialHydration);
     } else if (following.value) {
       await nextTick();
@@ -1019,7 +1302,8 @@ async function follow() {
   await nextTick();
   const vp = viewport.value;
   if (!vp) return;
-  const { lastUserOffsetTop, contentBottomOffsetTop } = syncBottomSpacerHeight();
+  const { lastUserOffsetTop, contentBottomOffsetTop } =
+    syncBottomSpacerHeight();
   await nextTick();
   const anchorTop = computeTurnAnchorScrollTop({
     turnCount: turnCount.value,
@@ -1049,6 +1333,7 @@ function handleViewportWheel(event: WheelEvent) {
 }
 
 function handleViewportScroll() {
+  if (props.visible === false) return;
   const vp = viewport.value;
   if (!vp) return;
   const currentTop = vp.scrollTop;
@@ -1076,7 +1361,11 @@ function handleViewportScroll() {
     nearBottom &&
     userScrolledUp.value &&
     !isProgrammatic &&
-    currentTop >= Math.max(0, (contentBottomOffsetTop ?? vp.scrollHeight) - vp.clientHeight - 40)
+    currentTop >=
+      Math.max(
+        0,
+        (contentBottomOffsetTop ?? vp.scrollHeight) - vp.clientHeight - 40,
+      )
   ) {
     userScrolledUp.value = false;
     following.value = true;
@@ -1101,21 +1390,44 @@ const todos = computed(() =>
     : [],
 );
 const files = computed(() => {
-  const visible = new Map(Object.entries(asObject(stream.values.value.files)).map(([path, value]) => [path, {
-    content: asObject(value).content ?? value,
-    source: "公开状态",
-    completeness: asObject(value).complete === true ? "完整内容" : "可见片段，完整性未声明",
-  }]));
+  const visible = new Map(
+    Object.entries(asObject(stream.values.value.files)).map(([path, value]) => [
+      path,
+      {
+        content: asObject(value).content ?? value,
+        source: "公开状态",
+        completeness:
+          asObject(value).complete === true
+            ? "完整内容"
+            : "可见片段，完整性未声明",
+      },
+    ]),
+  );
   const statePaths = new Set(visible.keys());
   // Hydrated SDK calls may be empty; the same transcript projection joins
   // persisted AI tool_calls with ToolMessages after a refresh.
-  const tools = buildTranscript(messages.value, calls.value, busy.value)
-    .flatMap(turn => [...turn.work, ...turn.answer].flatMap(item => item.tools));
+  const tools = buildTranscript(
+    messages.value,
+    calls.value,
+    busy.value,
+  ).flatMap((turn) =>
+    [...turn.work, ...turn.answer].flatMap((item) => item.tools),
+  );
   for (const tool of tools) {
     const input = asObject(tool.input);
     const path = input.file_path ?? input.path;
-    if (tool.name === "read_file" && tool.status === "finished" && typeof path === "string" && tool.output !== undefined && !statePaths.has(path))
-      visible.set(path, { content: tool.output, source: `工具调用 ${tool.id}`, completeness: "读取结果，可能包含截断" });
+    if (
+      tool.name === "read_file" &&
+      tool.status === "finished" &&
+      typeof path === "string" &&
+      tool.output !== undefined &&
+      !statePaths.has(path)
+    )
+      visible.set(path, {
+        content: tool.output,
+        source: `工具调用 ${tool.id}`,
+        completeness: "读取结果，可能包含截断",
+      });
   }
   return [...visible.entries()];
 });
@@ -1132,7 +1444,12 @@ function inspect(tool: ToolItem) {
   }
   const path = asObject(tool.input).file_path ?? asObject(tool.input).path;
   inspector.value = {
-    title: tool.name === "read_file" && typeof path === "string" && path.startsWith("/skills/") ? "已读取技能" : tool.name,
+    title:
+      tool.name === "read_file" &&
+      typeof path === "string" &&
+      path.startsWith("/skills/")
+        ? "已读取技能"
+        : tool.name,
     source: `工具调用 ${tool.id} · ${tool.status}${typeof path === "string" ? ` · ${path} · 可见片段` : ""}`,
     value: tool.artifact ?? tool.output,
   };
@@ -1145,7 +1462,10 @@ function cancelEdit() {
   editLoading.value = false;
 }
 
-function findParentCheckpointForMessage(messageId: string, messageText: string): Checkpoint | null {
+function findParentCheckpointForMessage(
+  messageId: string,
+  messageText: string,
+): Checkpoint | null {
   // 1. 优先查预计算的 messageMetadata
   const meta = messageMetadata.value[messageId];
   if (meta?.parentCheckpoint?.checkpoint_id) {
@@ -1169,7 +1489,7 @@ function findParentCheckpointForMessage(messageId: string, messageText: string):
 
   const states = [...history.value].reverse();
   const firstSeenIndex = states.findIndex((state) =>
-    (state.values.messages ?? []).some(matchMsg)
+    (state.values.messages ?? []).some(matchMsg),
   );
 
   if (firstSeenIndex > 0) {
@@ -1190,7 +1510,10 @@ async function submitEditedBranch() {
   if (!editDraft.value.trim()) return;
   let checkpoint = editCheckpoint.value;
   if (!checkpoint && editingMessageId.value) {
-    checkpoint = findParentCheckpointForMessage(editingMessageId.value, editDraft.value);
+    checkpoint = findParentCheckpointForMessage(
+      editingMessageId.value,
+      editDraft.value,
+    );
     if (checkpoint) editCheckpoint.value = checkpoint;
   }
   if (!checkpoint) {
@@ -1211,7 +1534,7 @@ async function loadHistory(reset = false, limit = 20) {
     const rows = await session.service.history(
       currentThread,
       reset ? undefined : history.value[history.value.length - 1]?.checkpoint,
-      limit
+      limit,
     );
     if (disposed || session.threadId.value !== currentThread) return;
     if (reset) {
@@ -1219,18 +1542,32 @@ async function loadHistory(reset = false, limit = 20) {
         lastLoadedHistoryThreadId === currentThread &&
         history.value.length > 0 &&
         history.value.length === rows.length &&
-        history.value[0]?.checkpoint?.checkpoint_id === rows[0]?.checkpoint?.checkpoint_id;
-      if (!isSameHeadCheckpoint && (rows.length > 0 || history.value.length === 0 || lastLoadedHistoryThreadId !== currentThread)) {
+        history.value[0]?.checkpoint?.checkpoint_id ===
+          rows[0]?.checkpoint?.checkpoint_id;
+      if (
+        !isSameHeadCheckpoint &&
+        (rows.length > 0 ||
+          history.value.length === 0 ||
+          lastLoadedHistoryThreadId !== currentThread)
+      ) {
         history.value = rows;
         lastLoadedHistoryThreadId = currentThread;
       }
     } else {
-      const seenIds = new Set(history.value.map((r) => r.checkpoint.checkpoint_id));
-      const appended = rows.filter((r) => !seenIds.has(r.checkpoint.checkpoint_id));
+      const seenIds = new Set(
+        history.value.map((r) => r.checkpoint.checkpoint_id),
+      );
+      const appended = rows.filter(
+        (r) => !seenIds.has(r.checkpoint.checkpoint_id),
+      );
       history.value = [...history.value, ...appended];
     }
     if (history.value.length > 0) {
-      chatSessionStore.setSessionHistory(props.projectId, currentThread, history.value);
+      chatSessionStore.setSessionHistory(
+        props.projectId,
+        currentThread,
+        history.value,
+      );
     }
     hasMoreHistory.value = rows.length === limit;
   } catch (cause) {
@@ -1248,7 +1585,9 @@ async function retryMessage(id: string) {
   await edit(id, "");
   if (!disposed && editCheckpoint.value) {
     const ok = await session.fork(editCheckpoint.value);
-    if (ok) { cancelEdit(); }
+    if (ok) {
+      cancelEdit();
+    }
   }
 }
 
@@ -1259,7 +1598,7 @@ function findForkCheckpointForMessage(messageId: string): string | undefined {
   }
   const allMsgs = displayedMessages.value;
   const targetIndex = allMsgs.findIndex(
-    (m) => m.id === messageId || (m as any).key === messageId
+    (m) => m.id === messageId || (m as any).key === messageId,
   );
   const subsequentIds = new Set<string>();
   if (targetIndex >= 0) {
@@ -1296,9 +1635,16 @@ function findForkCheckpointForMessage(messageId: string): string | undefined {
   // 只要目标消息后无后续用户消息（属于当前落定最新轮次），直接返回该唯一 checkpoint
   const subsequentMsgs = targetIndex >= 0 ? allMsgs.slice(targetIndex + 1) : [];
   const hasSubsequentHuman = subsequentMsgs.some(
-    (m) => m.type === "human" || (m as any).role === "user" || (m as any).role === "human"
+    (m) =>
+      m.type === "human" ||
+      (m as any).role === "user" ||
+      (m as any).role === "human",
   );
-  if (!hasSubsequentHuman && history.value.length === 1 && history.value[0]?.checkpoint?.checkpoint_id) {
+  if (
+    !hasSubsequentHuman &&
+    history.value.length === 1 &&
+    history.value[0]?.checkpoint?.checkpoint_id
+  ) {
     return history.value[0].checkpoint.checkpoint_id;
   }
 
@@ -1328,18 +1674,18 @@ async function forkToNewThread(messageId: string, checkpointId?: string) {
           const rows = await session.service.history(
             currentThreadId,
             oldestCheckpoint,
-            50
+            50,
           );
           if (disposed || !rows || rows.length === 0) break;
           const existingIds = new Set(
             history.value
               .map((s) => s.checkpoint?.checkpoint_id)
-              .filter(Boolean)
+              .filter(Boolean),
           );
           const newRows = rows.filter(
             (r) =>
               r.checkpoint?.checkpoint_id &&
-              !existingIds.has(r.checkpoint.checkpoint_id)
+              !existingIds.has(r.checkpoint.checkpoint_id),
           );
           if (newRows.length === 0) break;
           history.value = [...history.value, ...newRows];
@@ -1354,16 +1700,21 @@ async function forkToNewThread(messageId: string, checkpointId?: string) {
     if (!resolvedCheckpointId) {
       const allMsgs = displayedMessages.value;
       const targetIndex = allMsgs.findIndex(
-        (m) => m.id === messageId || (m as any).key === messageId
+        (m) => m.id === messageId || (m as any).key === messageId,
       );
-      const subsequentMsgs = targetIndex >= 0 ? allMsgs.slice(targetIndex + 1) : [];
+      const subsequentMsgs =
+        targetIndex >= 0 ? allMsgs.slice(targetIndex + 1) : [];
       const hasSubsequentHuman = subsequentMsgs.some(
-        (m) => m.type === "human" || (m as any).role === "user" || (m as any).role === "human"
+        (m) =>
+          m.type === "human" ||
+          (m as any).role === "user" ||
+          (m as any).role === "human",
       );
       const isLatestTurn = targetIndex === -1 || !hasSubsequentHuman;
       if (isLatestTurn) {
         // 1. 优先采用本地历史的首个快照
-        resolvedCheckpointId = history.value[0]?.checkpoint?.checkpoint_id || undefined;
+        resolvedCheckpointId =
+          history.value[0]?.checkpoint?.checkpoint_id || undefined;
         // 2. 本地无历史时，向服务端查询当前 thread 的最新状态
         if (!resolvedCheckpointId) {
           try {
@@ -1380,23 +1731,30 @@ async function forkToNewThread(messageId: string, checkpointId?: string) {
     }
 
     // 终极保障：在单快照新分支中，若仍未命中但本地已有快照，直接采用该基线快照
-    if (!resolvedCheckpointId && history.value.length === 1 && history.value[0]?.checkpoint?.checkpoint_id) {
-      resolvedCheckpointId = history.value[0].checkpoint.checkpoint_id || undefined;
+    if (
+      !resolvedCheckpointId &&
+      history.value.length === 1 &&
+      history.value[0]?.checkpoint?.checkpoint_id
+    ) {
+      resolvedCheckpointId =
+        history.value[0].checkpoint.checkpoint_id || undefined;
     }
 
     if (!resolvedCheckpointId) {
-      throw new Error("未找到该轮次有效的历史快照，无法创建分支（请刷新后重试）");
+      throw new Error(
+        "未找到该轮次有效的历史快照，无法创建分支（请刷新后重试）",
+      );
     }
 
     const sessionService = createSessionService(
       createLanggraphAuthorizedFetch(),
-      props.projectId
+      props.projectId,
     );
     const newTitle = increasedForkTitle(props.threadTitle);
     const target = await sessionService.fork(
       currentThreadId,
       resolvedCheckpointId,
-      newTitle
+      newTitle,
     );
     if (!target?.thread_id) {
       throw new Error("未能获取新分支会话 ID");
@@ -1430,7 +1788,11 @@ async function edit(messageId: string, text: string) {
   // 2. 本地历史若未命中，仅拉取单次更早历史补充后重试
   editLoading.value = true;
   try {
-    const rows = await session.service.history(session.threadId.value, undefined, 100);
+    const rows = await session.service.history(
+      session.threadId.value,
+      undefined,
+      100,
+    );
     if (disposed) return;
     if (rows && rows.length > 0) {
       history.value = rows;
@@ -1491,7 +1853,12 @@ watch(
       void loadHistory(true);
       return;
     }
-    if (id && !running && !verifying && (prevRunning || history.value.length === 0)) {
+    if (
+      id &&
+      !running &&
+      !verifying &&
+      (prevRunning || history.value.length === 0)
+    ) {
       void loadHistory(true);
     }
   },
@@ -1502,7 +1869,8 @@ function visibilityChanged() {
     !document.hidden &&
     !busy.value &&
     action.value?.status !== "unknown" &&
-    (!session.verified.value || ["pending", "running"].includes(session.run.value?.status ?? ""))
+    (!session.verified.value ||
+      ["pending", "running"].includes(session.run.value?.status ?? ""))
   ) {
     void session.verify();
   }
@@ -1554,19 +1922,29 @@ const chatMetrics = computed(() => {
     const raw = m as unknown as Record<string, unknown>;
     const usage =
       (raw.usage_metadata as Record<string, number> | undefined) ||
-      ((raw.response_metadata as Record<string, unknown> | undefined)?.token_usage as Record<string, number> | undefined);
+      ((raw.response_metadata as Record<string, unknown> | undefined)
+        ?.token_usage as Record<string, number> | undefined);
     if (usage) {
       if (typeof usage.input_tokens === "number") inTok += usage.input_tokens;
-      if (typeof usage.output_tokens === "number") outTok += usage.output_tokens;
-      if (typeof usage.cache_read_input_tokens === "number") cacheReadTok += usage.cache_read_input_tokens;
-      if (typeof usage.cache_creation_input_tokens === "number") cacheWriteTok += usage.cache_creation_input_tokens;
+      if (typeof usage.output_tokens === "number")
+        outTok += usage.output_tokens;
+      if (typeof usage.cache_read_input_tokens === "number")
+        cacheReadTok += usage.cache_read_input_tokens;
+      if (typeof usage.cache_creation_input_tokens === "number")
+        cacheWriteTok += usage.cache_creation_input_tokens;
     }
-    const additional = raw.additional_kwargs as Record<string, unknown> | undefined;
-    const dur = typeof additional?.durationMs === "number" ? additional.durationMs : undefined;
+    const additional = raw.additional_kwargs as
+      | Record<string, unknown>
+      | undefined;
+    const dur =
+      typeof additional?.durationMs === "number"
+        ? additional.durationMs
+        : undefined;
     if (dur && dur > 0) {
       totalLlmMs += dur;
     }
-    const ttft = typeof additional?.ttftMs === "number" ? additional.ttftMs : undefined;
+    const ttft =
+      typeof additional?.ttftMs === "number" ? additional.ttftMs : undefined;
     if (ttft && ttft > 0) {
       totalTtftMs += ttft;
       ttftCount++;
@@ -1576,7 +1954,10 @@ const chatMetrics = computed(() => {
   // 历史/缺少原生遥测时：智能安全推导
   if (totalAiChars > 0) {
     if (inTok === 0 && outTok === 0) {
-      inTok = Math.max(160, Math.round(totalHumanChars * 0.6 + 680 * Math.max(turns, 1)));
+      inTok = Math.max(
+        160,
+        Math.round(totalHumanChars * 0.6 + 680 * Math.max(turns, 1)),
+      );
       outTok = Math.max(25, Math.round(totalAiChars * 0.72));
     }
     if (totalLlmMs === 0) {
@@ -1596,8 +1977,13 @@ const chatMetrics = computed(() => {
     }
     if (ttftCount > 0 && outTok > 0) {
       const avgTtft = totalTtftMs / ttftCount;
-      const speed = totalLlmMs > 0 ? Math.max(1, Math.round(outTok / (totalLlmMs / 1000))) : 40;
-      groups.push(`首 token 平均 ${formatDurationSec(avgTtft)} · ${speed} tok/s`);
+      const speed =
+        totalLlmMs > 0
+          ? Math.max(1, Math.round(outTok / (totalLlmMs / 1000)))
+          : 40;
+      groups.push(
+        `首 token 平均 ${formatDurationSec(avgTtft)} · ${speed} tok/s`,
+      );
     } else {
       groups.push("LLM 8.4s");
     }
@@ -1612,7 +1998,9 @@ const chatMetrics = computed(() => {
   }
 
   if (inTok > 0 || outTok > 0) {
-    groups.push(`输入 ${formatTokensCompact(inTok || billedInput || 46800)} tok · 输出 ${formatTokensCompact(outTok || 197)} tok`);
+    groups.push(
+      `输入 ${formatTokensCompact(inTok || billedInput || 46800)} tok · 输出 ${formatTokensCompact(outTok || 197)} tok`,
+    );
   }
 
   return {
@@ -1625,6 +2013,7 @@ const chatMetrics = computed(() => {
 defineExpose({
   openDrawer,
   openOptions,
+  reconnectStream: session.reconnectStream,
 });
 </script>
 
@@ -1634,12 +2023,18 @@ defineExpose({
     role="status"
     class="flex flex-1 h-full min-h-[calc(100vh-160px)] w-full flex-col items-center justify-center p-8 text-sm text-gray-500 space-y-3 dark:text-dark-400"
   >
-    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
+    <div
+      class="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400"
+    >
       <BaseIcon name="refresh" size="sm" class="animate-spin" />
     </div>
     <div class="text-center space-y-1">
-      <p class="font-medium text-gray-800 text-sm dark:text-gray-200">正在核验会话访问权限...</p>
-      <p class="text-xs text-gray-400 dark:text-dark-400">正在同步会话策略与目标配置</p>
+      <p class="font-medium text-gray-800 text-sm dark:text-gray-200">
+        正在核验会话访问权限...
+      </p>
+      <p class="text-xs text-gray-400 dark:text-dark-400">
+        正在同步会话策略与目标配置
+      </p>
     </div>
   </div>
   <div
@@ -1647,12 +2042,18 @@ defineExpose({
     role="status"
     class="flex flex-1 h-full min-h-[calc(100vh-160px)] w-full flex-col items-center justify-center p-8 text-sm text-gray-500 space-y-3 dark:text-dark-400"
   >
-    <div class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+    <div
+      class="flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
+    >
       <BaseIcon name="alert" size="sm" />
     </div>
     <div class="text-center space-y-1">
-      <p class="font-medium text-gray-800 text-sm dark:text-gray-200">无法读取此会话</p>
-      <p class="text-xs text-gray-500 max-w-sm dark:text-dark-400">权限可能已撤销或会话已被移除。请切换其他会话，或联系所有者重新授权。</p>
+      <p class="font-medium text-gray-800 text-sm dark:text-gray-200">
+        无法读取此会话
+      </p>
+      <p class="text-xs text-gray-500 max-w-sm dark:text-dark-400">
+        权限可能已撤销或会话已被移除。请切换其他会话，或联系所有者重新授权。
+      </p>
     </div>
     <BaseButton
       variant="secondary"
@@ -1662,15 +2063,11 @@ defineExpose({
       重新检查
     </BaseButton>
   </div>
-  <div
-    v-else
-    class="pw-chat-workspace min-w-0"
-  >
-    <header
-      v-if="!focusMode"
-      class="pw-chat-workspace-header"
-    >
-      <div class="flex min-h-8 items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+  <div v-else class="pw-chat-workspace min-w-0">
+    <header v-if="!focusMode" class="pw-chat-workspace-header">
+      <div
+        class="flex min-h-8 items-center justify-between gap-2 overflow-x-auto no-scrollbar"
+      >
         <div class="flex min-w-0 shrink items-center gap-1.5 sm:gap-2">
           <slot name="target" />
           <button
@@ -1681,7 +2078,9 @@ defineExpose({
             @click="copyThreadId"
           >
             <span class="font-mono text-gray-400 dark:text-dark-400">#</span>
-            <span class="font-mono font-medium">{{ session.threadId.value.slice(0, 8) }}</span>
+            <span class="font-mono font-medium">{{
+              session.threadId.value.slice(0, 8)
+            }}</span>
             <BaseIcon
               :name="copiedThread ? 'check' : 'copy'"
               size="xs"
@@ -1713,7 +2112,9 @@ defineExpose({
           </span>
         </div>
         <div class="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <div class="flex shrink-0 items-center gap-2 sm:gap-3 text-xs font-medium">
+          <div
+            class="flex shrink-0 items-center gap-2 sm:gap-3 text-xs font-medium"
+          >
             <button
               type="button"
               class="relative shrink-0 pb-1 whitespace-nowrap transition-colors"
@@ -1752,7 +2153,7 @@ defineExpose({
                   ? 'border-blue-300 bg-blue-50 text-blue-700 dark:border-blue-800/80 dark:bg-blue-950/40 dark:text-blue-300'
                   : currentExecutionMode === 'flash'
                     ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800/80 dark:bg-amber-950/40 dark:text-amber-300'
-                    : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200'
+                    : 'border-gray-200 bg-gray-50 text-gray-700 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200',
             ]"
             title="点击切换执行模式与参数"
             @click="openOptions"
@@ -1760,16 +2161,23 @@ defineExpose({
             <span
               class="inline-block h-1.5 w-1.5 rounded-full"
               :class="[
-                currentExecutionMode === 'ultra' ? 'bg-purple-500' :
-                currentExecutionMode === 'pro' ? 'bg-blue-500' :
-                currentExecutionMode === 'flash' ? 'bg-amber-500' : 'bg-emerald-500'
+                currentExecutionMode === 'ultra'
+                  ? 'bg-purple-500'
+                  : currentExecutionMode === 'pro'
+                    ? 'bg-blue-500'
+                    : currentExecutionMode === 'flash'
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500',
               ]"
             />
             <span class="font-semibold uppercase tracking-wider text-[10px]">
               {{ currentExecutionMode }}
             </span>
             <span
-              v-if="currentExecutionMode === 'pro' || currentExecutionMode === 'ultra'"
+              v-if="
+                currentExecutionMode === 'pro' ||
+                currentExecutionMode === 'ultra'
+              "
               class="text-[10px] opacity-75 font-mono"
             >
               100步
@@ -1778,31 +2186,32 @@ defineExpose({
           <button
             type="button"
             class="relative inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
-            :class="showWorkspace ? 'border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400' : ''"
+            :class="
+              showWorkspace
+                ? 'border-primary-500 bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400'
+                : ''
+            "
             title="沙箱工作区与产物面板"
             @click="showWorkspace = !showWorkspace"
           >
-            <BaseIcon
-              name="folder"
-              size="xs"
-            />
+            <BaseIcon name="folder" size="xs" />
             <span class="hidden sm:inline">工作区</span>
           </button>
           <slot name="actions" />
         </div>
       </div>
     </header>
-    <span
-      role="status"
-      aria-live="polite"
-      class="sr-only"
-    >{{ status }}<span v-if="!canWrite"> · 只读</span></span>
+    <span role="status" aria-live="polite" class="sr-only"
+      >{{ status }}<span v-if="!canWrite"> · 只读</span></span
+    >
     <div
       v-if="snapshotMessages"
       class="pw-panel-info mx-5 mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between text-sm"
     >
       <div class="flex items-center gap-2">
-        <span class="inline-flex h-2 w-2 rounded-full bg-sky-500 animate-pulse" />
+        <span
+          class="inline-flex h-2 w-2 rounded-full bg-sky-500 animate-pulse"
+        />
         <span class="font-medium text-gray-900 dark:text-white">
           正在查看历史快照（只读预览模式）
         </span>
@@ -1814,18 +2223,10 @@ defineExpose({
         </span>
       </div>
       <div class="flex items-center gap-2">
-        <BaseButton
-          size="sm"
-          :disabled="!canSend"
-          @click="handleSnapshotFork"
-        >
+        <BaseButton size="sm" :disabled="!canSend" @click="handleSnapshotFork">
           从此快照重新执行
         </BaseButton>
-        <BaseButton
-          variant="secondary"
-          size="sm"
-          @click="selectSnapshot('')"
-        >
+        <BaseButton variant="secondary" size="sm" @click="selectSnapshot('')">
           返回最新对话
         </BaseButton>
       </div>
@@ -1844,12 +2245,12 @@ defineExpose({
       </RouterLink>
     </div>
     <div
-      v-if="error || streamError || localError"
+      v-if="error || streamError || localError || connectionMessage"
       role="alert"
       class="flex flex-wrap items-center gap-2 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/20"
     >
       <span class="min-w-0 flex-1 break-words">{{
-        error || streamError || localError
+        error || streamError || localError || connectionMessage
       }}</span>
       <button
         v-if="action?.status !== 'unknown' && action?.status !== 'submitting'"
@@ -1864,18 +2265,14 @@ defineExpose({
       class="bg-amber-50 px-4 py-3 text-sm text-amber-900"
     >
       提交结果尚未确认，草稿已保留。
-      <button
-        class="underline"
-        :disabled="!canWrite"
-        @click="session.retry()"
-      >
+      <button class="underline" :disabled="!canWrite" @click="session.retry()">
         核实原请求
       </button>
     </div>
-    <div
-      class="relative z-10 flex min-h-0 flex-1 overflow-hidden"
-    >
-      <div class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <div class="relative z-10 flex min-h-0 flex-1 overflow-hidden">
+      <div
+        class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      >
         <TrajectoryView
           v-if="activeView === 'trajectory'"
           :messages="displayedMessages"
@@ -1898,26 +2295,44 @@ defineExpose({
               :error="error || streamError"
               :disabled="!canWrite || cancelling"
               @cancel="session.stop"
-              @resume="approvalElement?.scrollIntoView({ block: 'center', behavior: 'smooth' })"
+              @resume="
+                approvalElement?.scrollIntoView({
+                  block: 'center',
+                  behavior: 'smooth',
+                })
+              "
             />
             <div
-              v-if="!props.threadId && !session.threadId.value && !hasConversationStarted && !displayedMessages.length && !checking && !isSessionRunning"
+              v-if="
+                !props.threadId &&
+                !session.threadId.value &&
+                !hasConversationStarted &&
+                !displayedMessages.length &&
+                !checking &&
+                !isSessionRunning
+              "
               class="mx-auto my-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center py-12 px-4 text-center"
             >
-              <span class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-500 text-white shadow-md mb-4">
-                <BaseIcon
-                  name="sparkle"
-                  size="lg"
-                />
+              <span
+                class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-500 text-white shadow-md mb-4"
+              >
+                <BaseIcon name="sparkle" size="lg" />
               </span>
-              <h2 class="text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                {{ targetName ? `${targetName}` : '开始新的会话' }}
+              <h2
+                class="text-xl font-bold text-gray-900 dark:text-white tracking-tight"
+              >
+                {{ targetName ? `${targetName}` : "开始新的会话" }}
               </h2>
-              <p class="mt-2 max-w-md text-xs leading-5 text-gray-500 dark:text-dark-400">
-                输入任务目标或点击下方常用场景卡片，Agent 将在这里展示执行细节与产物。
+              <p
+                class="mt-2 max-w-md text-xs leading-5 text-gray-500 dark:text-dark-400"
+              >
+                输入任务目标或点击下方常用场景卡片，Agent
+                将在这里展示执行细节与产物。
               </p>
 
-              <div class="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2 text-left">
+              <div
+                class="mt-8 grid w-full grid-cols-1 gap-3 sm:grid-cols-2 text-left"
+              >
                 <button
                   v-for="(item, idx) in quickPrompts"
                   :key="idx"
@@ -1925,16 +2340,19 @@ defineExpose({
                   class="group flex flex-col justify-between rounded-xl border border-gray-200/80 bg-white/85 p-3.5 shadow-2xs hover:border-primary-400 hover:bg-white hover:shadow-xs dark:border-dark-800 dark:bg-dark-900/80 dark:hover:border-primary-500/80 dark:hover:bg-dark-800 transition-all text-xs"
                   @click="applyQuickPrompt(item.title, item.desc)"
                 >
-                  <div class="flex items-center gap-2 mb-1 font-semibold text-gray-800 dark:text-gray-100 group-hover:text-primary-600 dark:group-hover:text-primary-400">
-                    <span class="flex h-5 w-5 items-center justify-center rounded-md bg-gray-100 text-gray-600 dark:bg-dark-800 dark:text-dark-300 group-hover:bg-primary-50 group-hover:text-primary-600 dark:group-hover:bg-primary-950/60 dark:group-hover:text-primary-400 transition-colors">
-                      <BaseIcon
-                        :name="item.icon as any"
-                        size="xs"
-                      />
+                  <div
+                    class="flex items-center gap-2 mb-1 font-semibold text-gray-800 dark:text-gray-100 group-hover:text-primary-600 dark:group-hover:text-primary-400"
+                  >
+                    <span
+                      class="flex h-5 w-5 items-center justify-center rounded-md bg-gray-100 text-gray-600 dark:bg-dark-800 dark:text-dark-300 group-hover:bg-primary-50 group-hover:text-primary-600 dark:group-hover:bg-primary-950/60 dark:group-hover:text-primary-400 transition-colors"
+                    >
+                      <BaseIcon :name="item.icon as any" size="xs" />
                     </span>
                     <span>{{ item.title }}</span>
                   </div>
-                  <p class="text-[11px] text-gray-400 dark:text-dark-400 leading-normal">
+                  <p
+                    class="text-[11px] text-gray-400 dark:text-dark-400 leading-normal"
+                  >
                     {{ item.desc }}
                   </p>
                 </button>
@@ -1947,7 +2365,10 @@ defineExpose({
               :messages="displayedMessages"
               :calls="snapshotMessages ? [] : calls"
               :is-running="isSessionRunning && !hasPendingInterrupts"
-              :is-interrupted="hasPendingInterrupts || session.run.value?.status === 'interrupted'"
+              :is-interrupted="
+                hasPendingInterrupts ||
+                session.run.value?.status === 'interrupted'
+              "
               :can-edit="canSend && !snapshotMessages"
               :metadata="messageMetadata"
               :target-name="targetName"
@@ -1974,26 +2395,26 @@ defineExpose({
                 :clarification="clarification"
                 :submitting="
                   !session.canApprove.value ||
-                    checking ||
-                    cancelling ||
-                    action?.status === 'unknown' ||
-                    action?.status === 'submitting'
+                  checking ||
+                  cancelling ||
+                  action?.status === 'unknown' ||
+                  action?.status === 'submitting'
                 "
-                @submit="(values) => session.answerClarification(clarification.id, values)"
+                @submit="
+                  (values) =>
+                    session.answerClarification(clarification.id, values)
+                "
               />
             </div>
-            <div
-              v-if="reviews.length"
-              ref="approvalElement"
-            >
+            <div v-if="reviews.length" ref="approvalElement">
               <ApprovalPanel
                 :reviews="reviews"
                 :disabled="
                   !session.canApprove.value ||
-                    checking ||
-                    cancelling ||
-                    action?.status === 'unknown' ||
-                    action?.status === 'submitting'
+                  checking ||
+                  cancelling ||
+                  action?.status === 'unknown' ||
+                  action?.status === 'submitting'
                 "
                 @submit="session.approve"
               />
@@ -2034,21 +2455,30 @@ defineExpose({
           </div>
         </div>
         <div
-          v-if="(liveFollowView.noticeVisible || (!following && displayedMessages.length > 0)) && !drawerOpen && !optionsOpen"
+          v-if="
+            (liveFollowView.noticeVisible ||
+              (!following && displayedMessages.length > 0)) &&
+            !drawerOpen &&
+            !optionsOpen
+          "
           class="pointer-events-none absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 justify-center"
         >
           <div
             v-if="liveFollowView.noticeVisible"
             class="pointer-events-auto flex items-center gap-2.5 rounded-full border border-primary-200/90 bg-white/95 px-4 py-1.5 shadow-lg backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/95"
           >
-            <span class="flex items-center gap-1.5 text-xs font-medium text-primary-950 dark:text-primary-100">
+            <span
+              class="flex items-center gap-1.5 text-xs font-medium text-primary-950 dark:text-primary-100"
+            >
               <BaseIcon
                 :name="liveFollowView.icon"
                 class="h-3.5 w-3.5 text-primary-600 dark:text-primary-400"
               />
               {{ liveFollowView.title }}
             </span>
-            <div class="flex items-center gap-1.5 border-l border-gray-200 pl-2 dark:border-dark-700">
+            <div
+              class="flex items-center gap-1.5 border-l border-gray-200 pl-2 dark:border-dark-700"
+            >
               <button
                 v-if="liveFollowView.showStopAction"
                 type="button"
@@ -2056,21 +2486,15 @@ defineExpose({
                 :disabled="cancelling"
                 @click="session.stop"
               >
-                <BaseIcon
-                  name="x"
-                  class="h-3 w-3"
-                />
-                {{ cancelling ? '停止中...' : '停止' }}
+                <BaseIcon name="x" class="h-3 w-3" />
+                {{ cancelling ? "停止中..." : "停止" }}
               </button>
               <button
                 type="button"
                 class="inline-flex items-center gap-1 rounded-full bg-primary-600 px-2.5 py-0.5 text-xs font-medium text-white shadow-sm hover:bg-primary-700 dark:bg-primary-500 dark:hover:bg-primary-600"
                 @click="follow"
               >
-                <BaseIcon
-                  name="chevron-down"
-                  class="h-3 w-3"
-                />
+                <BaseIcon name="chevron-down" class="h-3 w-3" />
                 回到最新
               </button>
             </div>
@@ -2082,10 +2506,7 @@ defineExpose({
             class="pointer-events-auto inline-flex items-center gap-1.5 rounded-full border border-gray-200/90 bg-white/95 px-3.5 py-1.5 text-xs font-medium text-gray-700 shadow-md backdrop-blur-sm transition-all hover:border-primary-300 hover:bg-white hover:text-primary-600 dark:border-dark-700 dark:bg-dark-900/95 dark:text-dark-200 dark:hover:border-primary-500/70 dark:hover:text-primary-400"
             @click="follow"
           >
-            <BaseIcon
-              name="chevron-down"
-              class="h-3.5 w-3.5"
-            />
+            <BaseIcon name="chevron-down" class="h-3.5 w-3.5" />
             <span>回到最新</span>
           </button>
         </div>
@@ -2110,13 +2531,21 @@ defineExpose({
       :can-queue="canWrite && !selectedCheckpoint"
       :cancelling="
         cancelling ||
-          !canWrite ||
-          action?.status === 'submitting' ||
-          action?.status === 'unknown'
+        !canWrite ||
+        action?.status === 'submitting' ||
+        action?.status === 'unknown'
       "
       :send-button-label="selectedCheckpoint ? '分叉执行' : '发送'"
-      :placeholder="selectedCheckpoint ? '当前处于快照分叉模式，输入新指令即可从此快照分叉执行...' : undefined"
-      :footer-text="(displayedMessages.length || messages.length) && activeView === 'chat' ? chatMetrics.formattedLine : ''"
+      :placeholder="
+        selectedCheckpoint
+          ? '当前处于快照分叉模式，输入新指令即可从此快照分叉执行...'
+          : undefined
+      "
+      :footer-text="
+        (displayedMessages.length || messages.length) && activeView === 'chat'
+          ? chatMetrics.formattedLine
+          : ''
+      "
       compact
       :focus-mode="focusMode"
       :models="models"
@@ -2144,12 +2573,15 @@ defineExpose({
         <ChatStickyTaskPill
           v-if="activeView === 'chat'"
           :plan-view="planView"
-          @open-tasks="drawerTab = 'tasks'; drawerOpen = true;"
+          @open-tasks="
+            drawerTab = 'tasks';
+            drawerOpen = true;
+          "
         />
       </template>
     </ChatComposer>
     <ChatRunOptionsDialog
-      :show="optionsOpen"
+      :show="props.visible !== false && optionsOpen"
       :draft-run-options="draftRunOptions"
       :runtime-models="models"
       :show-execution-mode="showExecutionMode"
@@ -2165,7 +2597,7 @@ defineExpose({
       @apply="applyOptions"
     />
     <ChatContextDrawer
-      :show="drawerOpen"
+      :show="props.visible !== false && drawerOpen"
       :initial-tab="drawerTab"
       :show-history="true"
       :show-artifacts="hasArtifacts"
@@ -2194,7 +2626,7 @@ defineExpose({
       @fork="handleSnapshotFork"
     />
     <BaseDialog
-      :show="!!inspector"
+      :show="props.visible !== false && !!inspector"
       :title="inspector?.title ?? '详情'"
       width="wide"
       @close="inspector = null"

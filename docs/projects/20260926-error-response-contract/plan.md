@@ -1,6 +1,6 @@
 # 错误响应统一 - 实施方案
 
-> 版本：2026-09-26执行细则。用户已同意方案；本轮仅完成文档。本专项只改platform-api/platform-web，Runtime/GraphHarbor完全不变。
+> 版本：2026-09-26执行细则。用户已同意方案；平台实现已部分落地，Final状态见README/tasks/verification。本专项只改platform-api/platform-web，Runtime/GraphHarbor完全不变。
 
 ## 1. 范围与责任
 
@@ -151,15 +151,14 @@ SDK Protocol流握手路径会抛普通Error并丢结构字段；本期保证安
 - threads/workspace.service.ts沿用unwrap；useArtifacts的workspace_directory_changed只重读首页一次，不能变成写重试。
 - skills页面与terminal消费者保留现有码；详见清单，不顺带重构页面。
 
-## 7. 发布与兼容
+## 7. 新版本交付
 
 实施顺序：前端无损解析及禁止隐式重试 → API转换/对账/headers → 组合和HTTP验收。
 不升级SDK、Runtime或GraphHarbor，不改数据库。本期交付代码和隔离验证；生产部署排期/外部客户迁移不在本专项授权内，不阻塞开发。
 
-验证组合固定为：实现前API+新Web；新API+新Web。旧Web+新API必须作为风险检查，旧Web已有字段丢失问题，不允许该组合成为正式上线顺序。
-若旧缓存Web仍在使用，API切换前要求刷新/重载新版Web；静态资产版本和已打开会话按现有发布机制处理，不建新的热更新服务。
+验证组合固定为新API+新Web+当前Runtime；不测试旧Web、新Web与旧API的交叉组合。发布时让客户端加载新Web产物，按新服务组合验收，不建立旧版本兼容策略或热更新服务。
 实现者在verification记录实施前后git revision、脏工作区diff标识、SDK锁定版本、测试环境URL；这是证据填值而非新增设计决策。
-回退API到实施前版本时保留新Web无损解析，重测pending/401/409/Blob；该回退会恢复旧安全输出缺口，只能隔离测试或维护止流环境演练，不能默认为生产恢复服务方案。安全问题上线后优先前滚。
+保留新组合的pending/401/409/Blob与安全输出验证。旧API产物切回及对应组合测试不属于本专项验收；安全问题按新版本修复。
 不运行git commit/push，不修改Runtime配置来适配测试；需要Runtime服务端修复时记录为本专项外依赖。
 
 ## 8. 已确认决策

@@ -1,8 +1,30 @@
 diff --git a/dist/client/stream/index.cjs b/dist/client/stream/index.cjs
-index 358b698df9aca6d1a9b4da639348b779d52f088e..e67fe43ca207129aec3f6d565bfe668243b76a2c 100644
+index 358b698df9aca6d1a9b4da639348b779d52f088e..6b3b0c0b5265f797216c773870e540ec32e5547a 100644
 --- a/dist/client/stream/index.cjs
 +++ b/dist/client/stream/index.cjs
-@@ -1426,6 +1426,7 @@ var ThreadStream = class {
+@@ -1046,6 +1046,21 @@ var ThreadStream = class {
+ 			listener(event);
+ 		} catch {}
+ 	}
++	getConnectionState() {
++		return this.#transportAdapter.getConnectionState?.() ?? { state: "unsupported", streams: [] };
++	}
++	onConnectionChange(listener) {
++		if (!this.#transportAdapter.onConnectionChange) throw new Error("Connection state is unavailable for this transport.");
++		return this.#transportAdapter.onConnectionChange(listener);
++	}
++	suspendEvents() {
++		if (!this.#transportAdapter.suspendEvents) throw new Error("SSE suspension is unavailable for this transport.");
++		this.#transportAdapter.suspendEvents();
++	}
++	reconnectEvents() {
++		if (!this.#transportAdapter.reconnectEvents) return Promise.reject(new Error("SSE reconnection is unavailable for this transport."));
++		return this.#transportAdapter.reconnectEvents();
++	}
+ 	async close() {
+ 		if (this.#closed) return;
+ 		this.#closed = true;
+@@ -1426,6 +1441,7 @@ var ThreadStream = class {
  			if (this.#closed) return;
  			for (const [id, subscription] of this.#subscriptions) {
  				if (id === this.#lifecycleSubId) continue;
@@ -10,11 +32,48 @@ index 358b698df9aca6d1a9b4da639348b779d52f088e..e67fe43ca207129aec3f6d565bfe6682
  				if (terminalSeq != null && subscription.registeredAfterSeq != null && subscription.registeredAfterSeq >= terminalSeq) continue;
  				subscription.pause();
  			}
+diff --git a/dist/client/stream/index.d.ts b/dist/client/stream/index.d.ts
+index cf41117ab31e00b8c70d272ed2e4b1ac476ca125..d004ccb44606c532db0ceb5616b21a212a00651f 100644
+--- a/dist/client/stream/index.d.ts
++++ b/dist/client/stream/index.d.ts
+@@ -71,6 +71,10 @@ declare class SubscriptionHandle<TEvent extends Event = Event, TYield = TEvent>
+  */
+ declare class ThreadStream<TExtensions extends Record<string, unknown> = Record<string, unknown>> {
+   #private;
++  getConnectionState(): { state: string; streams: Array<{ state: string; error?: Error }> };
++  onConnectionChange(listener: (state: { state: string; streams: Array<{ state: string; error?: Error }> }) => void): () => void;
++  suspendEvents(): void;
++  reconnectEvents(): Promise<void>;
+   readonly threadId: string;
+   readonly ordering: SessionOrderingState;
+   readonly run: ThreadModules["run"];
 diff --git a/dist/client/stream/index.js b/dist/client/stream/index.js
-index 7c92040702fcf8ae2c980b02f006688c641745b7..8c42f08f87903f0a38d46c0d17bf3987a3f5c3cb 100644
+index 7c92040702fcf8ae2c980b02f006688c641745b7..522ff4a15df14be4a2d7d1ecdd1657656108d5ec 100644
 --- a/dist/client/stream/index.js
 +++ b/dist/client/stream/index.js
-@@ -1426,6 +1426,7 @@ var ThreadStream = class {
+@@ -1046,6 +1046,21 @@ var ThreadStream = class {
+ 			listener(event);
+ 		} catch {}
+ 	}
++	getConnectionState() {
++		return this.#transportAdapter.getConnectionState?.() ?? { state: "unsupported", streams: [] };
++	}
++	onConnectionChange(listener) {
++		if (!this.#transportAdapter.onConnectionChange) throw new Error("Connection state is unavailable for this transport.");
++		return this.#transportAdapter.onConnectionChange(listener);
++	}
++	suspendEvents() {
++		if (!this.#transportAdapter.suspendEvents) throw new Error("SSE suspension is unavailable for this transport.");
++		this.#transportAdapter.suspendEvents();
++	}
++	reconnectEvents() {
++		if (!this.#transportAdapter.reconnectEvents) return Promise.reject(new Error("SSE reconnection is unavailable for this transport."));
++		return this.#transportAdapter.reconnectEvents();
++	}
+ 	async close() {
+ 		if (this.#closed) return;
+ 		this.#closed = true;
+@@ -1426,6 +1441,7 @@ var ThreadStream = class {
  			if (this.#closed) return;
  			for (const [id, subscription] of this.#subscriptions) {
  				if (id === this.#lifecycleSubId) continue;
@@ -22,6 +81,531 @@ index 7c92040702fcf8ae2c980b02f006688c641745b7..8c42f08f87903f0a38d46c0d17bf3987
  				if (terminalSeq != null && subscription.registeredAfterSeq != null && subscription.registeredAfterSeq >= terminalSeq) continue;
  				subscription.pause();
  			}
+diff --git a/dist/client/stream/transport/http.cjs b/dist/client/stream/transport/http.cjs
+index 8389e2f5014734e35fd61b67f5f972219231a831..7da0cdb8c8ef96081cd2f41cb2060b4c158d3dfe 100644
+--- a/dist/client/stream/transport/http.cjs
++++ b/dist/client/stream/transport/http.cjs
+@@ -28,6 +28,8 @@ var ProtocolSseTransportAdapter = class {
+ 	paths;
+ 	sessionAbortController = new AbortController();
+ 	eventStreams = /* @__PURE__ */ new Set();
++	connectionListeners = /* @__PURE__ */ new Set();
++	reconnectPromise;
+ 	closed = false;
+ 	constructor(options) {
+ 		this.fetchImpl = options.fetch ?? fetch;
+@@ -37,7 +39,7 @@ var ProtocolSseTransportAdapter = class {
+ 		this.fetchFactory = options.fetchFactory;
+ 		this.asyncCaller = options.asyncCaller;
+ 		this.maxReconnectAttempts = options.maxReconnectAttempts ?? 5;
+-		this.idleReconnect = options.idleReconnect ?? "auto";
++		this.idleReconnect = options.idleReconnect ?? 45e3;
+ 		this.onReconnect = options.onReconnect;
+ 		this.reconnectDelayMs = options.reconnectDelayMs ?? require_reconnect.reconnectDelayMs;
+ 		this.threadId = options.threadId ?? "";
+@@ -93,6 +95,51 @@ var ProtocolSseTransportAdapter = class {
+ 	* per-command and per-subscription.
+ 	*/
+ 	async open() {}
++	getConnectionState() {
++		const streams = [...this.eventStreams].map((handle) => ({ state: handle.state, error: handle.error }));
++		return {
++			state: this.closed ? "closed" : streams.some((item) => item.state === "paused") ? "paused" : streams.some((item) => item.state === "reconnecting") ? "reconnecting" : streams.length && streams.every((item) => item.state === "connected") ? "connected" : "connecting",
++			streams
++		};
++	}
++	onConnectionChange(listener) {
++		this.connectionListeners.add(listener);
++		listener(this.getConnectionState());
++		return () => this.connectionListeners.delete(listener);
++	}
++	notifyConnectionChange() {
++		for (const listener of this.connectionListeners) listener(this.getConnectionState());
++	}
++	suspendEvents() {
++		for (const handle of this.eventStreams) {
++			handle.generation++;
++			handle.state = "paused";
++			handle.controller?.abort();
++		}
++		this.notifyConnectionChange();
++	}
++	reconnectEvents() {
++		if (this.closed) return Promise.reject(new Error("Protocol transport is closed."));
++		if (this.reconnectPromise) return this.reconnectPromise;
++		const paused = [...this.eventStreams].filter((handle) => handle.state === "paused");
++		this.reconnectPromise = Promise.all(paused.map((handle) => new Promise((resolve, reject) => {
++			let started = false;
++			const unsubscribe = this.onConnectionChange(() => {
++				if (handle.state === "connected") {
++					unsubscribe();
++					resolve();
++				} else if (started && (handle.state === "paused" || handle.state === "closed")) {
++					unsubscribe();
++					reject(handle.error ?? new Error("Event stream closed."));
++				}
++			});
++			started = true;
++			void handle.start(true).catch(() => {});
++		}))).then(() => void 0).finally(() => {
++			this.reconnectPromise = void 0;
++		});
++		return this.reconnectPromise;
++	}
+ 	async send(command) {
+ 		const response = await this.request(this.commandsUrl, {
+ 			method: "POST",
+@@ -125,8 +172,6 @@ var ProtocolSseTransportAdapter = class {
+ 	}
+ 	openEventStream(params) {
+ 		if (this.closed) throw new Error("Protocol transport is closed.");
+-		const ac = new AbortController();
+-		this.eventStreams.add(ac);
+ 		const streamQueue = new require_queue.AsyncQueue();
+ 		const streamUrl = this.streamUrl;
+ 		let resolveReady;
+@@ -137,9 +182,33 @@ var ProtocolSseTransportAdapter = class {
+ 		});
+ 		const initialSince = typeof params.since === "number" ? params.since : void 0;
+ 		let readySettled = false;
+-		const startStream = async () => {
++		const handle = { state: "connecting", error: void 0, controller: void 0, start: void 0, close: void 0, generation: 0 };
++		const setState = (state, error) => {
++			handle.state = state;
++			handle.error = error;
++			this.notifyConnectionChange();
++		};
++		const cleanup = () => {
++			if (!this.eventStreams.delete(handle)) return;
++			handle.generation++;
++			handle.controller?.abort();
++			setState("closed");
++			if (!readySettled) {
++				readySettled = true;
++				rejectReady(new Error("Protocol event stream closed."));
++			}
++			streamQueue.close();
++		};
++		const startStream = async (manual = false) => {
++			const generation = ++handle.generation;
+ 			let attempt = 0;
+-			while (!ac.signal.aborted && !this.closed) try {
++			let lastError;
++			let connectedAt = 0;
++			if (manual) setState("reconnecting");
++			while (generation === handle.generation && this.eventStreams.has(handle) && !this.closed && handle.state !== "paused") {
++			try {
++				const ac = new AbortController();
++				handle.controller = ac;
+ 				const response = await this.request(streamUrl, {
+ 					method: "POST",
+ 					headers: {
+@@ -150,16 +219,23 @@ var ProtocolSseTransportAdapter = class {
+ 						channels: params.channels,
+ 						...params.namespaces ? { namespaces: params.namespaces } : {},
+ 						...params.depth != null ? { depth: params.depth } : {},
+-						...!readySettled && initialSince != null ? { since: initialSince } : {}
++						...attempt === 0 && !manual && !readySettled && initialSince != null ? { since: initialSince } : {}
+ 					}),
+ 					signal: ac.signal
+ 				}, { stream: true });
++				if (generation !== handle.generation) return;
+ 				const contentType = response.headers.get("content-type")?.split(";")[0];
+-				if (contentType && !contentType.includes("text/event-stream")) throw new Error(`Expected response header Content-Type to contain 'text/event-stream', got '${contentType}'`);
++				if (contentType && !contentType.includes("text/event-stream")) {
++					const error = new Error("Invalid event stream content type.");
++					error.code = "invalid_content_type";
++					throw error;
++				}
+ 				if (!readySettled) {
+ 					readySettled = true;
+ 					resolveReady();
+ 				}
++				setState("connected");
++				connectedAt = Date.now();
+ 				const readable = response.body ?? new ReadableStream({ start(controller) {
+ 					controller.close();
+ 				} });
+@@ -168,44 +244,52 @@ var ProtocolSseTransportAdapter = class {
+ 				const stream = (enableIdle ? lines.pipeThrough(require_stream.idleReconnectStream({ mode: this.idleReconnect })) : lines).pipeThrough(require_sse.SSEDecoder());
+ 				const iterable = require_stream.IterableReadableStream.fromReadableStream(stream);
+ 				for await (const event of iterable) {
+-					if (ac.signal.aborted || this.closed) break;
++					if (ac.signal.aborted || this.closed || handle.state === "paused") break;
+ 					if (require_utils.isRecord(event.data)) streamQueue.push(event.data);
+ 				}
+-				streamQueue.close();
+-				return;
++				if (generation !== handle.generation || this.closed || !this.eventStreams.has(handle) || handle.state === "paused") return;
++				if (Date.now() - connectedAt >= 3e4) attempt = 0;
++				connectedAt = 0;
++				lastError = new Error("Event stream ended before the connection closed.");
+ 			} catch (error) {
+-				if (ac.signal.aborted || this.closed) {
+-					if (!readySettled) rejectReady(error);
+-					streamQueue.close();
+-					return;
+-				}
+-				if (this.maxReconnectAttempts <= 0) {
+-					if (!readySettled) rejectReady(error);
+-					streamQueue.close(require_utils.toError(error));
+-					return;
+-				}
+-				attempt += 1;
+-				if (attempt > this.maxReconnectAttempts) {
+-					if (!readySettled) rejectReady(error);
+-					streamQueue.close(require_utils.toError(error));
+-					return;
+-				}
+-				this.onReconnect?.({
+-					attempt,
+-					cause: error
+-				});
+-				const delay = this.reconnectDelayMs(attempt);
+-				if (delay > 0) await new Promise((resolve) => {
+-					setTimeout(resolve, delay);
+-				});
++				if (generation !== handle.generation || this.closed || !this.eventStreams.has(handle) || handle.state === "paused") return;
++				if (connectedAt && Date.now() - connectedAt >= 3e4) attempt = 0;
++				connectedAt = 0;
++				lastError = require_utils.toError(error);
++			}
++			if (lastError?.code === "invalid_content_type" || lastError?.status === 410 || lastError?.status >= 400 && ![408, 429, 500, 502, 503, 504].includes(lastError.status)) {
++				setState("paused", lastError);
++				if (manual) throw lastError;
++				return;
++			}
++			attempt += 1;
++			if (attempt > this.maxReconnectAttempts) {
++				setState("paused", lastError);
++				if (manual) throw lastError;
++				return;
++			}
++			setState("reconnecting", lastError);
++			this.onReconnect?.({
++				attempt,
++				cause: lastError
++			});
++			const retryAfter = lastError?.status === 429 ? lastError.retryAfter : null;
++			const retrySeconds = retryAfter && (/^\d+$/.test(retryAfter) ? Number(retryAfter) : (Date.parse(retryAfter) - Date.now()) / 1e3);
++			const delay = Number.isFinite(retrySeconds) && retrySeconds > 0 ? Math.min(6e4, Math.max(1e3, retrySeconds * 1e3)) : Math.min(15e3, 1e3 * 2 ** (attempt - 1)) * (0.8 + Math.random() * 0.4);
++			await new Promise((resolve) => {
++				const timer = setTimeout(resolve, delay);
++				handle.controller.signal.addEventListener("abort", () => {
++					clearTimeout(timer);
++					resolve();
++				}, { once: true });
++			});
+ 			}
+ 		};
+-		startStream();
+-		const cleanup = () => {
+-			this.eventStreams.delete(ac);
+-			ac.abort();
+-			streamQueue.close();
+-		};
++		handle.start = startStream;
++		handle.close = cleanup;
++		this.eventStreams.add(handle);
++		this.notifyConnectionChange();
++		void startStream();
+ 		return {
+ 			events: { [Symbol.asyncIterator]: () => ({
+ 				next: async () => await streamQueue.shift(),
+@@ -225,8 +309,8 @@ var ProtocolSseTransportAdapter = class {
+ 		if (this.closed) return;
+ 		this.closed = true;
+ 		this.sessionAbortController.abort();
+-		for (const ac of this.eventStreams) ac.abort();
+-		this.eventStreams.clear();
++		for (const handle of [...this.eventStreams]) handle.close();
++		this.notifyConnectionChange();
+ 		this.queue.close();
+ 	}
+ 	async request(path, init, options) {
+@@ -240,6 +324,12 @@ var ProtocolSseTransportAdapter = class {
+ 		const execute = async () => {
+ 			const response = await (await this.resolveFetch())(url.toString(), requestInit);
+ 			if (!response.ok) {
++				if (options?.stream) {
++					const error = new Error(`Event stream request failed: ${response.status}`);
++					error.status = response.status;
++					error.retryAfter = response.headers.get("retry-after");
++					throw error;
++				}
+ 				if (useAsyncCaller) throw response;
+ 				let detail = "";
+ 				try {
+diff --git a/dist/client/stream/transport/http.d.ts b/dist/client/stream/transport/http.d.ts
+index c4a32ef9643c08addf03673389212f795ea1c3b3..2a747d12948be5e1e1ceb161436c2df779cc6381 100644
+--- a/dist/client/stream/transport/http.d.ts
++++ b/dist/client/stream/transport/http.d.ts
+@@ -12,6 +12,10 @@ import { Command, CommandResponse, ErrorResponse, Message, SubscribeParams } fro
+  * `POST /threads/:thread_id/stream/events`.
+  */
+ declare class ProtocolSseTransportAdapter implements TransportAdapter {
++  getConnectionState(): { state: string; streams: Array<{ state: string; error?: Error }> };
++  onConnectionChange(listener: (state: { state: string; streams: Array<{ state: string; error?: Error }> }) => void): () => void;
++  suspendEvents(): void;
++  reconnectEvents(): Promise<void>;
+   threadId: string;
+   readonly apiUrl: string;
+   private readonly queue;
+diff --git a/dist/client/stream/transport/http.js b/dist/client/stream/transport/http.js
+index 0302382dbd74c5857d3b1197bcec84ab85b6e7b1..40f7cf5e1a77c68ef75e9c11dff1a72f8bab6b9c 100644
+--- a/dist/client/stream/transport/http.js
++++ b/dist/client/stream/transport/http.js
+@@ -28,6 +28,8 @@ var ProtocolSseTransportAdapter = class {
+ 	paths;
+ 	sessionAbortController = new AbortController();
+ 	eventStreams = /* @__PURE__ */ new Set();
++	connectionListeners = /* @__PURE__ */ new Set();
++	reconnectPromise;
+ 	closed = false;
+ 	constructor(options) {
+ 		this.fetchImpl = options.fetch ?? fetch;
+@@ -37,7 +39,7 @@ var ProtocolSseTransportAdapter = class {
+ 		this.fetchFactory = options.fetchFactory;
+ 		this.asyncCaller = options.asyncCaller;
+ 		this.maxReconnectAttempts = options.maxReconnectAttempts ?? 5;
+-		this.idleReconnect = options.idleReconnect ?? "auto";
++		this.idleReconnect = options.idleReconnect ?? 45e3;
+ 		this.onReconnect = options.onReconnect;
+ 		this.reconnectDelayMs = options.reconnectDelayMs ?? reconnectDelayMs;
+ 		this.threadId = options.threadId ?? "";
+@@ -93,6 +95,51 @@ var ProtocolSseTransportAdapter = class {
+ 	* per-command and per-subscription.
+ 	*/
+ 	async open() {}
++	getConnectionState() {
++		const streams = [...this.eventStreams].map((handle) => ({ state: handle.state, error: handle.error }));
++		return {
++			state: this.closed ? "closed" : streams.some((item) => item.state === "paused") ? "paused" : streams.some((item) => item.state === "reconnecting") ? "reconnecting" : streams.length && streams.every((item) => item.state === "connected") ? "connected" : "connecting",
++			streams
++		};
++	}
++	onConnectionChange(listener) {
++		this.connectionListeners.add(listener);
++		listener(this.getConnectionState());
++		return () => this.connectionListeners.delete(listener);
++	}
++	notifyConnectionChange() {
++		for (const listener of this.connectionListeners) listener(this.getConnectionState());
++	}
++	suspendEvents() {
++		for (const handle of this.eventStreams) {
++			handle.generation++;
++			handle.state = "paused";
++			handle.controller?.abort();
++		}
++		this.notifyConnectionChange();
++	}
++	reconnectEvents() {
++		if (this.closed) return Promise.reject(new Error("Protocol transport is closed."));
++		if (this.reconnectPromise) return this.reconnectPromise;
++		const paused = [...this.eventStreams].filter((handle) => handle.state === "paused");
++		this.reconnectPromise = Promise.all(paused.map((handle) => new Promise((resolve, reject) => {
++			let started = false;
++			const unsubscribe = this.onConnectionChange(() => {
++				if (handle.state === "connected") {
++					unsubscribe();
++					resolve();
++				} else if (started && (handle.state === "paused" || handle.state === "closed")) {
++					unsubscribe();
++					reject(handle.error ?? new Error("Event stream closed."));
++				}
++			});
++			started = true;
++			void handle.start(true).catch(() => {});
++		}))).then(() => void 0).finally(() => {
++			this.reconnectPromise = void 0;
++		});
++		return this.reconnectPromise;
++	}
+ 	async send(command) {
+ 		const response = await this.request(this.commandsUrl, {
+ 			method: "POST",
+@@ -125,8 +172,6 @@ var ProtocolSseTransportAdapter = class {
+ 	}
+ 	openEventStream(params) {
+ 		if (this.closed) throw new Error("Protocol transport is closed.");
+-		const ac = new AbortController();
+-		this.eventStreams.add(ac);
+ 		const streamQueue = new AsyncQueue();
+ 		const streamUrl = this.streamUrl;
+ 		let resolveReady;
+@@ -137,9 +182,33 @@ var ProtocolSseTransportAdapter = class {
+ 		});
+ 		const initialSince = typeof params.since === "number" ? params.since : void 0;
+ 		let readySettled = false;
+-		const startStream = async () => {
++		const handle = { state: "connecting", error: void 0, controller: void 0, start: void 0, close: void 0, generation: 0 };
++		const setState = (state, error) => {
++			handle.state = state;
++			handle.error = error;
++			this.notifyConnectionChange();
++		};
++		const cleanup = () => {
++			if (!this.eventStreams.delete(handle)) return;
++			handle.generation++;
++			handle.controller?.abort();
++			setState("closed");
++			if (!readySettled) {
++				readySettled = true;
++				rejectReady(new Error("Protocol event stream closed."));
++			}
++			streamQueue.close();
++		};
++		const startStream = async (manual = false) => {
++			const generation = ++handle.generation;
+ 			let attempt = 0;
+-			while (!ac.signal.aborted && !this.closed) try {
++			let lastError;
++			let connectedAt = 0;
++			if (manual) setState("reconnecting");
++			while (generation === handle.generation && this.eventStreams.has(handle) && !this.closed && handle.state !== "paused") {
++			try {
++				const ac = new AbortController();
++				handle.controller = ac;
+ 				const response = await this.request(streamUrl, {
+ 					method: "POST",
+ 					headers: {
+@@ -150,16 +219,23 @@ var ProtocolSseTransportAdapter = class {
+ 						channels: params.channels,
+ 						...params.namespaces ? { namespaces: params.namespaces } : {},
+ 						...params.depth != null ? { depth: params.depth } : {},
+-						...!readySettled && initialSince != null ? { since: initialSince } : {}
++						...attempt === 0 && !manual && !readySettled && initialSince != null ? { since: initialSince } : {}
+ 					}),
+ 					signal: ac.signal
+ 				}, { stream: true });
++				if (generation !== handle.generation) return;
+ 				const contentType = response.headers.get("content-type")?.split(";")[0];
+-				if (contentType && !contentType.includes("text/event-stream")) throw new Error(`Expected response header Content-Type to contain 'text/event-stream', got '${contentType}'`);
++				if (contentType && !contentType.includes("text/event-stream")) {
++					const error = new Error("Invalid event stream content type.");
++					error.code = "invalid_content_type";
++					throw error;
++				}
+ 				if (!readySettled) {
+ 					readySettled = true;
+ 					resolveReady();
+ 				}
++				setState("connected");
++				connectedAt = Date.now();
+ 				const readable = response.body ?? new ReadableStream({ start(controller) {
+ 					controller.close();
+ 				} });
+@@ -168,44 +244,52 @@ var ProtocolSseTransportAdapter = class {
+ 				const stream = (enableIdle ? lines.pipeThrough(idleReconnectStream({ mode: this.idleReconnect })) : lines).pipeThrough(SSEDecoder());
+ 				const iterable = IterableReadableStream.fromReadableStream(stream);
+ 				for await (const event of iterable) {
+-					if (ac.signal.aborted || this.closed) break;
++					if (ac.signal.aborted || this.closed || handle.state === "paused") break;
+ 					if (isRecord(event.data)) streamQueue.push(event.data);
+ 				}
+-				streamQueue.close();
+-				return;
++				if (generation !== handle.generation || this.closed || !this.eventStreams.has(handle) || handle.state === "paused") return;
++				if (Date.now() - connectedAt >= 3e4) attempt = 0;
++				connectedAt = 0;
++				lastError = new Error("Event stream ended before the connection closed.");
+ 			} catch (error) {
+-				if (ac.signal.aborted || this.closed) {
+-					if (!readySettled) rejectReady(error);
+-					streamQueue.close();
+-					return;
+-				}
+-				if (this.maxReconnectAttempts <= 0) {
+-					if (!readySettled) rejectReady(error);
+-					streamQueue.close(toError(error));
+-					return;
+-				}
+-				attempt += 1;
+-				if (attempt > this.maxReconnectAttempts) {
+-					if (!readySettled) rejectReady(error);
+-					streamQueue.close(toError(error));
+-					return;
+-				}
+-				this.onReconnect?.({
+-					attempt,
+-					cause: error
+-				});
+-				const delay = this.reconnectDelayMs(attempt);
+-				if (delay > 0) await new Promise((resolve) => {
+-					setTimeout(resolve, delay);
+-				});
++				if (generation !== handle.generation || this.closed || !this.eventStreams.has(handle) || handle.state === "paused") return;
++				if (connectedAt && Date.now() - connectedAt >= 3e4) attempt = 0;
++				connectedAt = 0;
++				lastError = toError(error);
++			}
++			if (lastError?.code === "invalid_content_type" || lastError?.status === 410 || lastError?.status >= 400 && ![408, 429, 500, 502, 503, 504].includes(lastError.status)) {
++				setState("paused", lastError);
++				if (manual) throw lastError;
++				return;
++			}
++			attempt += 1;
++			if (attempt > this.maxReconnectAttempts) {
++				setState("paused", lastError);
++				if (manual) throw lastError;
++				return;
++			}
++			setState("reconnecting", lastError);
++			this.onReconnect?.({
++				attempt,
++				cause: lastError
++			});
++			const retryAfter = lastError?.status === 429 ? lastError.retryAfter : null;
++			const retrySeconds = retryAfter && (/^\d+$/.test(retryAfter) ? Number(retryAfter) : (Date.parse(retryAfter) - Date.now()) / 1e3);
++			const delay = Number.isFinite(retrySeconds) && retrySeconds > 0 ? Math.min(6e4, Math.max(1e3, retrySeconds * 1e3)) : Math.min(15e3, 1e3 * 2 ** (attempt - 1)) * (0.8 + Math.random() * 0.4);
++			await new Promise((resolve) => {
++				const timer = setTimeout(resolve, delay);
++				handle.controller.signal.addEventListener("abort", () => {
++					clearTimeout(timer);
++					resolve();
++				}, { once: true });
++			});
+ 			}
+ 		};
+-		startStream();
+-		const cleanup = () => {
+-			this.eventStreams.delete(ac);
+-			ac.abort();
+-			streamQueue.close();
+-		};
++		handle.start = startStream;
++		handle.close = cleanup;
++		this.eventStreams.add(handle);
++		this.notifyConnectionChange();
++		void startStream();
+ 		return {
+ 			events: { [Symbol.asyncIterator]: () => ({
+ 				next: async () => await streamQueue.shift(),
+@@ -225,8 +309,8 @@ var ProtocolSseTransportAdapter = class {
+ 		if (this.closed) return;
+ 		this.closed = true;
+ 		this.sessionAbortController.abort();
+-		for (const ac of this.eventStreams) ac.abort();
+-		this.eventStreams.clear();
++		for (const handle of [...this.eventStreams]) handle.close();
++		this.notifyConnectionChange();
+ 		this.queue.close();
+ 	}
+ 	async request(path, init, options) {
+@@ -240,6 +324,12 @@ var ProtocolSseTransportAdapter = class {
+ 		const execute = async () => {
+ 			const response = await (await this.resolveFetch())(url.toString(), requestInit);
+ 			if (!response.ok) {
++				if (options?.stream) {
++					const error = new Error(`Event stream request failed: ${response.status}`);
++					error.status = response.status;
++					error.retryAfter = response.headers.get("retry-after");
++					throw error;
++				}
+ 				if (useAsyncCaller) throw response;
+ 				let detail = "";
+ 				try {
 diff --git a/dist/stream/projections/messages.cjs b/dist/stream/projections/messages.cjs
 index cd275c856ca207692b12f3c8cf3416286eaca73d..dc8e1c01cb2d199049b5048e370b0eaf5beedd7d 100644
 --- a/dist/stream/projections/messages.cjs
@@ -49,7 +633,7 @@ index 0245f0c968ec06c3e9940fd8c4546f04c4220cc7..0966e65e9ea2b4a7e86988d6077a7bfa
  						else if (event.method === "values") applyValuesEvent(event);
  					}
 diff --git a/dist/stream/projections/runtime.cjs b/dist/stream/projections/runtime.cjs
-index a3f61562b08ada2e22cbee84bb65d40569002780..5eb2a7ecee5dbd96c9390d43a39fd0119c60c02c 100644
+index a3f61562b08ada2e22cbee84bb65d40569002780..839d569b449904918f32f583969bb061b66c1473 100644
 --- a/dist/stream/projections/runtime.cjs
 +++ b/dist/stream/projections/runtime.cjs
 @@ -2,7 +2,7 @@
@@ -72,7 +656,7 @@ index a3f61562b08ada2e22cbee84bb65d40569002780..5eb2a7ecee5dbd96c9390d43a39fd011
  				await subscription.unsubscribe();
  				return;
 diff --git a/dist/stream/projections/runtime.js b/dist/stream/projections/runtime.js
-index e9731b389d5ae4cca2265ce090f4d112fde41b39..c9a53be00043b90c2cd6b369a186227e10fb3b51 100644
+index e9731b389d5ae4cca2265ce090f4d112fde41b39..6559da36516ce189cca08bd38dcc532e1c3c4b64 100644
 --- a/dist/stream/projections/runtime.js
 +++ b/dist/stream/projections/runtime.js
 @@ -2,7 +2,7 @@

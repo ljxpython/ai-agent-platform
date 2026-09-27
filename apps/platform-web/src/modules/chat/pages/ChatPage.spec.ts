@@ -1,6 +1,6 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
-import { reactive, ref } from "vue";
+import { defineComponent, h, reactive, ref } from "vue";
 
 const activeProjectIdRef = ref("proj-1");
 const activeProjectRef = ref<{ id: string; name: string } | null>({
@@ -38,7 +38,10 @@ const mockThreads = [
     thread_id: "th-1",
     updated_at: "2026-09-14T08:00:00Z",
     status: "idle",
-    metadata: { title: "给我画一个支付累积查询技术架构图", graph_id: "dearflow_agent" },
+    metadata: {
+      title: "给我画一个支付累积查询技术架构图",
+      graph_id: "dearflow_agent",
+    },
   },
   {
     thread_id: "th-2",
@@ -54,29 +57,39 @@ const mockThreads = [
   },
 ];
 
-const mockList = vi.fn().mockImplementation((options?: { metadata?: Record<string, unknown> }) => {
-  const meta = options?.metadata;
-  if (!meta) return Promise.resolve(mockThreads);
-  if (meta.graph_id === "showcase_demo") return Promise.resolve([]);
-  if (meta.graph_id === "dearflow_agent") return Promise.resolve(mockThreads);
-  return Promise.resolve(mockThreads);
-});
+const mockList = vi
+  .fn()
+  .mockImplementation((options?: { metadata?: Record<string, unknown> }) => {
+    const meta = options?.metadata;
+    if (!meta) return Promise.resolve(mockThreads);
+    if (meta.graph_id === "showcase_demo") return Promise.resolve([]);
+    if (meta.graph_id === "dearflow_agent") return Promise.resolve(mockThreads);
+    return Promise.resolve(mockThreads);
+  });
 
 vi.mock("@/services/threads/session.service", async (importOriginal) => ({
-  ...await importOriginal<typeof import("@/services/threads/session.service")>(),
+  ...(await importOriginal<
+    typeof import("@/services/threads/session.service")
+  >()),
   createSessionService: () => ({
     list: mockList,
-    count: vi.fn().mockImplementation((options?: { metadata?: Record<string, unknown> }) => {
-      const meta = options?.metadata;
-      if (!meta) return Promise.resolve(3);
-      if (meta.graph_id === "showcase_demo") return Promise.resolve(0);
-      if (meta.graph_id === "dearflow_agent") return Promise.resolve(3);
-      return Promise.resolve(3);
-    }),
+    count: vi
+      .fn()
+      .mockImplementation(
+        (options?: { metadata?: Record<string, unknown> }) => {
+          const meta = options?.metadata;
+          if (!meta) return Promise.resolve(3);
+          if (meta.graph_id === "showcase_demo") return Promise.resolve(0);
+          if (meta.graph_id === "dearflow_agent") return Promise.resolve(3);
+          return Promise.resolve(3);
+        },
+      ),
     remove: vi.fn().mockResolvedValue({}),
     get: vi.fn().mockImplementation((id: string) => {
       const match = mockThreads.find((t) => t.thread_id === id);
-      return Promise.resolve(match || { thread_id: id, metadata: { graph_id: "dearflow_agent" } });
+      return Promise.resolve(
+        match || { thread_id: id, metadata: { graph_id: "dearflow_agent" } },
+      );
     }),
   }),
 }));
@@ -123,13 +136,26 @@ vi.mock("@/services/agents/agents.service", () => ({
 }));
 
 import ChatPage from "./ChatPage.vue";
+import ChatSessionPool from "../components/ChatSessionPool.vue";
+import {
+  createChatSessionPool,
+  provideChatSessionPool,
+} from "../composables/useChatSessionPool";
+
+const ChatPageHost = defineComponent({
+  setup() {
+    const pool = createChatSessionPool();
+    provideChatSessionPool(pool);
+    return () => h("div", [h(ChatSessionPool, { pool }), h(ChatPage)]);
+  },
+});
 
 describe("ChatPage.vue", () => {
   it("aligns thread list with selected agent and shows full list when empty", async () => {
     routeState.params = { projectId: "proj-1", threadId: "" };
     routeState.query = {};
 
-    const wrapper = mount(ChatPage, {
+    const wrapper = mount(ChatPageHost, {
       global: {
         stubs: {
           ChatThreadSidebar: {
@@ -170,7 +196,9 @@ describe("ChatPage.vue", () => {
     await flushPromises();
 
     expect(sidebarEl.attributes("data-thread-count")).toBe("0");
-    const showcaseSession = wrapper.find('[data-testid="chat-session"]');
+    const showcaseSession = wrapper
+      .findAll('[data-testid="chat-session"]')
+      .at(-1)!;
     expect(showcaseSession.exists()).toBe(true);
     expect(showcaseSession.attributes("data-agent")).toBe("agent-showcase");
     expect(showcaseSession.attributes("data-graph")).toBe("showcase_demo");
@@ -180,7 +208,9 @@ describe("ChatPage.vue", () => {
     await flushPromises();
 
     expect(sidebarEl.attributes("data-thread-count")).toBe("3");
-    const dearflowSession = wrapper.find('[data-testid="chat-session"]');
+    const dearflowSession = wrapper
+      .findAll('[data-testid="chat-session"]')
+      .at(-1)!;
     expect(dearflowSession.exists()).toBe(true);
     expect(dearflowSession.attributes("data-agent")).toBe("agent-dearflow");
     expect(dearflowSession.attributes("data-graph")).toBe("dearflow_agent");
@@ -197,7 +227,7 @@ describe("ChatPage.vue", () => {
     routeState.params = { projectId: "proj-1", threadId: "th-3" };
     routeState.query = {};
 
-    const wrapper = mount(ChatPage, {
+    const wrapper = mount(ChatPageHost, {
       global: {
         stubs: {
           ChatThreadSidebar: {

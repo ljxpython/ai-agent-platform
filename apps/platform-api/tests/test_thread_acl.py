@@ -519,14 +519,21 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_explicit_create_rejection_removes_reservation(self):
         from platform_api.core.errors import UpstreamServiceError
-
-        self.upstream.create_thread.side_effect = UpstreamServiceError(
-            upstream="langgraph", status_code=403, code="denied", message="Denied"
+        from platform_api.adapters.langgraph.sdk_client import (
+            create_runtime_upstream_error,
         )
-        with self.assertRaises(UpstreamServiceError):
+
+        self.upstream.create_thread.side_effect = create_runtime_upstream_error(
+            status_code=401,
+            detail={"detail": "private"},
+            fallback_code="thread_create_failed",
+        )
+        with self.assertRaises(UpstreamServiceError) as caught:
             await self.service.create_thread(
                 actor=self.owner, project_id=self.project, payload={}
             )
+        self.assertEqual(caught.exception.status_code, 502)
+        self.assertEqual(caught.exception.upstream_status_code, 401)
         created_id = self.upstream.create_thread.call_args.args[0]["thread_id"]
         self.assertEqual(acl.get(self.factory, created_id), {})
         self.upstream.delete_thread.assert_not_awaited()

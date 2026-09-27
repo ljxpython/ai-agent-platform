@@ -1,16 +1,18 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
-from collections.abc import AsyncIterator
+import asyncio
+from collections.abc import AsyncIterator, Callable
+from time import perf_counter
 from typing import Any, Literal
-from uuid import UUID
 from urllib.parse import quote
+from uuid import UUID
 
 from anyio import CancelScope
 from fastapi import APIRouter, Body, Depends, Query, Request
-from fastapi.responses import JSONResponse, StreamingResponse, Response
-from starlette.types import Send
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import (
     AwareDatetime,
     BaseModel,
@@ -20,6 +22,7 @@ from pydantic import (
     ValidationError,
     model_validator,
 )
+from starlette.types import Receive, Send
 
 from platform_api.adapters.langgraph import (
     LangGraphRuntimeGatewayUpstream,
@@ -32,6 +35,8 @@ from platform_api.core.errors import (
     PlatformApiError,
     ServiceUnavailableError,
 )
+from platform_api.core.errors.payload import safe_validation_details
+from platform_api.core.observability import log_event
 from platform_api.core.security import (
     create_runtime_delegation_token,
     empty_runtime_context_hash,
@@ -47,16 +52,63 @@ from platform_api.modules.runtime_policies.application import (
 )
 
 router = APIRouter(prefix="/api/langgraph", tags=["runtime-gateway"])
+logger = logging.getLogger(__name__)
+event_logger = logging.getLogger("uvicorn.error")
 
 
 class RuntimeStreamingResponse(StreamingResponse):
+    def __init__(
+        self,
+        *args: Any,
+        on_open: Callable[[], None] | None = None,
+        on_close: Callable[[str, int], None] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(*args, **kwargs)
+        self._on_open = on_open
+        self._on_close = on_close
+        self._client_disconnected = False
+
+    async def listen_for_disconnect(self, receive: Receive) -> None:
+        await super().listen_for_disconnect(receive)
+        self._client_disconnected = True
+
     async def stream_response(self, send: Send) -> None:
+        opened_at: float | None = None
+        close_reason = "unknown"
+
+        async def tracked_send(message: Any) -> None:
+            nonlocal opened_at
+            await send(message)
+            if message["type"] == "http.response.start":
+                opened_at = perf_counter()
+                if self._on_open:
+                    self._on_open()
+
         try:
-            await super().stream_response(send)
+            await super().stream_response(tracked_send)
+            close_reason = "closed"
+        except OSError:
+            close_reason = "client_disconnect"
+            raise
+        except asyncio.CancelledError:
+            close_reason = (
+                "client_disconnect" if self._client_disconnected else "unknown"
+            )
+            raise
+        except Exception:
+            close_reason = "upstream_error"
+            raise
         finally:
             # Close suspended generators before GC can finalize nested streams concurrently.
-            with CancelScope(shield=True):
-                await self.body_iterator.aclose()
+            try:
+                with CancelScope(shield=True):
+                    await self.body_iterator.aclose()
+            finally:
+                if opened_at is not None and self._on_close:
+                    self._on_close(
+                        close_reason, max(0, int((perf_counter() - opened_at) * 1000))
+                    )
 
 
 class ThreadForkBody(BaseModel):
@@ -91,7 +143,14 @@ _SENSITIVE_EVENT_KEYS = {
     "refresh_token",
     "secret",
     "token",
+    "x_runtime_run_read_authorization",
 }
+_MAX_SSE_FRAME_BYTES = 8 * 1024 * 1024
+_SSE_BOUNDARY = re.compile(rb"\r?\n\r?\n")
+
+
+class InvalidSseFrame(ValueError):
+    pass
 
 
 def _normalize_ack(value: Any) -> Any:
@@ -115,22 +174,34 @@ def _redact_event_value(value: Any) -> Any:
     }
 
 
-def _redact_sse_frame(frame: bytes) -> bytes:
+def _redact_sse_frame(frame: bytes, *, protocol: bool = True) -> bytes:
     frame, _ = _normalize_protocol_lifecycle_frame(frame)
     try:
         lines = frame.decode("utf-8").splitlines()
-    except UnicodeDecodeError:
-        return frame
+    except UnicodeDecodeError as exc:
+        raise InvalidSseFrame("invalid_utf8") from exc
+    if lines and all(not line or line.startswith(":") for line in lines):
+        return b": heartbeat"
     data_positions = [
         index for index, line in enumerate(lines) if line.startswith("data:")
     ]
     if not data_positions:
-        return frame
+        return "\n".join(line for line in lines if not line.startswith(":")).encode()
     data = "\n".join(lines[index][5:].lstrip() for index in data_positions)
     try:
         payload = json.loads(data)
-    except ValueError:
-        return frame
+    except ValueError as exc:
+        raise InvalidSseFrame("invalid_json") from exc
+    if protocol and (
+        not isinstance(payload, dict)
+        or not isinstance(payload.get("method"), str)
+        or not isinstance(payload.get("params"), dict)
+        or not isinstance(payload["params"].get("namespace", []), list)
+        or any(
+            not isinstance(item, str) for item in payload["params"].get("namespace", [])
+        )
+    ):
+        raise InvalidSseFrame("invalid_protocol")
     encoded = json.dumps(
         _redact_event_value(payload), ensure_ascii=False, separators=(",", ":")
     )
@@ -138,6 +209,7 @@ def _redact_sse_frame(frame: bytes) -> bytes:
     redacted_lines = [
         f"data: {encoded}" if index == first_data_position else line
         for index, line in enumerate(lines)
+        if not line.startswith(":")
         if index not in data_positions[1:]
     ]
     return "\n".join(redacted_lines).encode("utf-8")
@@ -145,20 +217,99 @@ def _redact_sse_frame(frame: bytes) -> bytes:
 
 async def _redact_protocol_event_stream(
     stream: AsyncIterator[bytes],
+    *,
+    protocol: bool = True,
+    on_close: Callable[[str], None] | None = None,
 ) -> AsyncIterator[bytes]:
-    buffer = b""
+    buffer = bytearray()
     try:
         async for chunk in stream:
-            buffer += chunk
-            while boundary := re.search(rb"\r?\n\r?\n", buffer):
-                frame = buffer[: boundary.start()].replace(b"\r\n", b"\n")
-                buffer = buffer[boundary.end() :]
-                yield _redact_sse_frame(frame) + b"\n\n"
+            offset = 0
+            while offset < len(chunk):
+                size = min(len(chunk) - offset, _MAX_SSE_FRAME_BYTES + 4 - len(buffer))
+                if size <= 0:
+                    raise InvalidSseFrame("frame_too_large")
+                search_from = max(0, len(buffer) - 3)
+                buffer.extend(chunk[offset : offset + size])
+                offset += size
+                while boundary := _SSE_BOUNDARY.search(buffer, search_from):
+                    if boundary.start() > _MAX_SSE_FRAME_BYTES:
+                        raise InvalidSseFrame("frame_too_large")
+                    frame = bytes(buffer[: boundary.start()]).replace(b"\r\n", b"\n")
+                    del buffer[: boundary.end()]
+                    search_from = 0
+                    yield _redact_sse_frame(frame, protocol=protocol) + b"\n\n"
+                if len(buffer) > _MAX_SSE_FRAME_BYTES + 3:
+                    raise InvalidSseFrame("frame_too_large")
         if buffer:
-            yield _redact_sse_frame(buffer.replace(b"\r\n", b"\n"))
+            raise InvalidSseFrame("truncated_frame")
+        if on_close:
+            on_close("eof")
+    except InvalidSseFrame as exc:
+        logger.warning("runtime SSE stream closed: %s", exc)
+        if on_close:
+            on_close("frame_rejected")
+    except Exception:
+        if on_close:
+            on_close("upstream_error")
+        raise
     finally:
         if hasattr(stream, "aclose"):
             await stream.aclose()
+
+
+def _runtime_sse_response(
+    request: Request,
+    stream: AsyncIterator[bytes],
+    *,
+    thread_id: str,
+    stream_kind: str,
+    protocol: bool,
+    run_id: str | None = None,
+) -> RuntimeStreamingResponse:
+    context = request.state.platform_context
+    metadata = getattr(request.state, "audit_metadata", None)
+    if run_id is None and isinstance(metadata, dict):
+        candidate = metadata.get("run_id")
+        run_id = candidate if isinstance(candidate, str) else None
+    fields = {
+        "request_id": context.request.request_id,
+        "platform_trace_id": context.request.trace_id,
+        "project_id": context.project.project_id,
+        "thread_id": thread_id,
+        "stream_kind": stream_kind,
+        **({"run_id": run_id} if run_id else {}),
+    }
+    frame_reason: str | None = None
+
+    def emit(event: str, **extra: Any) -> None:
+        try:
+            log_event(event_logger, event, **fields, **extra)
+        except Exception:
+            logger.exception("runtime stream correlation log failed")
+
+    def note_frame_close(reason: str) -> None:
+        nonlocal frame_reason
+        frame_reason = reason
+
+    request.state.audit_metadata = {
+        **(metadata if isinstance(metadata, dict) else {}),
+        "stream_kind": stream_kind,
+        "thread_id": thread_id,
+        **({"run_id": run_id} if run_id else {}),
+    }
+    return RuntimeStreamingResponse(
+        _redact_protocol_event_stream(
+            stream, protocol=protocol, on_close=note_frame_close
+        ),
+        media_type="text/event-stream",
+        on_open=lambda: emit("runtime.stream.opened"),
+        on_close=lambda fallback, duration: emit(
+            "runtime.stream.closed",
+            close_reason=frame_reason or fallback,
+            duration_ms=duration,
+        ),
+    )
 
 
 def _require_project_id(request: Request) -> str:
@@ -202,8 +353,8 @@ def get_runtime_gateway_service(
     project_id = _require_project_id(request)
     context = request.state.platform_context
     correlation = {
-        "request_id": getattr(request.state, "request_id", None),
-        "platform_trace_id": getattr(request.state, "platform_trace_id", None),
+        "request_id": context.request.request_id,
+        "platform_trace_id": context.request.trace_id,
     }
     subject = actor.user_id or actor.subject
     if not subject:
@@ -260,9 +411,7 @@ def get_runtime_gateway_service(
         ) from exc
 
     forwarded_headers = {"authorization": f"Bearer {delegation}"}
-    request_id = getattr(request.state, "request_id", None)
-    if request_id:
-        forwarded_headers["x-request-id"] = request_id
+    forwarded_headers["x-request-id"] = context.request.request_id
 
     def delegation_headers_factory(
         *,
@@ -285,30 +434,39 @@ def get_runtime_gateway_service(
                 "tool_policy_version": "unscoped-thread-operation",
             }
         )
-        scoped = create_runtime_delegation_token(
-            subject=subject,
-            credential_id=actor.credential_id
-            if actor.principal_type == "service_account"
-            else None,
-            tenant_id=context.tenant.tenant_id or "__default",
-            project_id=project_id,
-            role=delegation_role,
-            permissions=[],
-            policy_version=str(policy["version"]),
-            allowed_model_ids=policy["allowed_model_ids"],
-            **restrictions,
-            scope={
-                "tenant_id": context.tenant.tenant_id or "__default",
-                "project_id": project_id,
-                "assistant_id": agent_key or None,
-                "thread_id": thread_id,
-                "operation": operation,
-            },
-            context_hash=context_hash,
-            settings=settings,
-            **correlation,
-        )
-        return {"authorization": f"Bearer {scoped}"}
+        try:
+            scoped = create_runtime_delegation_token(
+                subject=subject,
+                credential_id=actor.credential_id
+                if actor.principal_type == "service_account"
+                else None,
+                tenant_id=context.tenant.tenant_id or "__default",
+                project_id=project_id,
+                role=delegation_role,
+                permissions=[],
+                policy_version=str(policy["version"]),
+                allowed_model_ids=policy["allowed_model_ids"],
+                **restrictions,
+                scope={
+                    "tenant_id": context.tenant.tenant_id or "__default",
+                    "project_id": project_id,
+                    "assistant_id": agent_key or None,
+                    "thread_id": thread_id,
+                    "operation": operation,
+                },
+                context_hash=context_hash,
+                settings=settings,
+                **correlation,
+            )
+        except ValueError as exc:
+            raise ServiceUnavailableError(
+                code="runtime_delegation_not_configured",
+                message="Runtime delegation is not configured",
+            ) from exc
+        headers = {"authorization": f"Bearer {scoped}"}
+        if operation in {"message-enqueue", "message-read"}:
+            headers["x-runtime-run-read-authorization"] = f"Bearer {delegation}"
+        return headers
 
     upstream = LangGraphRuntimeGatewayUpstream(
         base_url=settings.langgraph_upstream_url,
@@ -316,11 +474,34 @@ def get_runtime_gateway_service(
         timeout_seconds=settings.langgraph_upstream_timeout_seconds,
         forwarded_headers=forwarded_headers,
     )
+
+    def on_correlation(event: str, fields: dict[str, Any]) -> None:
+        safe_fields = {key: value for key, value in fields.items() if value is not None}
+        safe_fields.update(
+            request_id=context.request.request_id,
+            platform_trace_id=context.request.trace_id,
+            project_id=project_id,
+            correlation_version=1,
+        )
+        try:
+            metadata = getattr(request.state, "audit_metadata", None)
+            request.state.audit_metadata = {
+                **(metadata if isinstance(metadata, dict) else {}),
+                **safe_fields,
+            }
+        except Exception:
+            logger.exception("runtime audit correlation merge failed")
+        try:
+            log_event(event_logger, event, **safe_fields)
+        except Exception:
+            logger.exception("runtime correlation log failed")
+
     return RuntimeGatewayService(
         session_factory=session_factory,
         upstream=upstream,
         runtime_base_url=settings.langgraph_upstream_url,
         delegation_headers_factory=delegation_headers_factory,
+        on_correlation=on_correlation,
         runtime_model_config_secret=(
             settings.runtime_model_config_secret or settings.runtime_delegation_secret
         ),
@@ -1057,14 +1238,7 @@ async def write_dear_memory(
     try:
         command = MemoryCommandBody.model_validate(payload)
     except ValidationError as exc:
-        details = [
-            {
-                "loc": list(error["loc"]),
-                "type": error["type"],
-                "message": "Invalid value",
-            }
-            for error in exc.errors(include_input=False)[:20]
-        ]
+        details = safe_validation_details(exc.errors(include_input=False))
         raise PlatformApiError(
             code="validation_failed",
             status_code=422,
@@ -1091,7 +1265,10 @@ async def write_dear_memory(
     except PlatformApiError as exc:
         if exc.status_code == 422:
             raise PlatformApiError(
-                code="validation_failed", status_code=422, message="Validation failed"
+                code="validation_failed",
+                status_code=422,
+                message="Validation failed",
+                details=exc.details,
             ) from exc
         raise
 
@@ -1560,8 +1737,8 @@ async def stream_thread_run(
         payload=payload,
         idempotency_key=request.headers.get("Idempotency-Key"),
     )
-    return RuntimeStreamingResponse(
-        _redact_protocol_event_stream(stream), media_type="text/event-stream"
+    return _runtime_sse_response(
+        request, stream, thread_id=thread_id, stream_kind="run", protocol=False
     )
 
 
@@ -1600,8 +1777,8 @@ async def stream_thread_events(
         thread_id=thread_id,
         payload=payload,
     )
-    return RuntimeStreamingResponse(
-        _redact_protocol_event_stream(stream), media_type="text/event-stream"
+    return _runtime_sse_response(
+        request, stream, thread_id=thread_id, stream_kind="thread", protocol=True
     )
 
 
@@ -1700,8 +1877,13 @@ async def join_thread_run_stream(
         run_id=run_id,
         params=params,
     )
-    return RuntimeStreamingResponse(
-        _redact_protocol_event_stream(stream), media_type="text/event-stream"
+    return _runtime_sse_response(
+        request,
+        stream,
+        thread_id=thread_id,
+        run_id=run_id,
+        stream_kind="run",
+        protocol=False,
     )
 
 

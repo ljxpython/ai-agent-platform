@@ -34,7 +34,9 @@ class PlatformApiError(Exception):
 
 
 class BadRequestError(PlatformApiError):
-    def __init__(self, message: str = "Bad request", *, code: str = "bad_request") -> None:
+    def __init__(
+        self, message: str = "Bad request", *, code: str = "bad_request"
+    ) -> None:
         super().__init__(code=code, status_code=400, message=message)
 
 
@@ -63,17 +65,23 @@ class NotAuthenticatedError(PlatformApiError):
 
 
 class ForbiddenError(PlatformApiError):
-    def __init__(self, message: str = "Permission denied", *, code: str = "forbidden") -> None:
+    def __init__(
+        self, message: str = "Permission denied", *, code: str = "forbidden"
+    ) -> None:
         super().__init__(code=code, status_code=403, message=message)
 
 
 class NotFoundError(PlatformApiError):
-    def __init__(self, message: str = "Resource not found", *, code: str = "not_found") -> None:
+    def __init__(
+        self, message: str = "Resource not found", *, code: str = "not_found"
+    ) -> None:
         super().__init__(code=code, status_code=404, message=message)
 
 
 class ConflictError(PlatformApiError):
-    def __init__(self, message: str = "Resource conflict", *, code: str = "conflict") -> None:
+    def __init__(
+        self, message: str = "Resource conflict", *, code: str = "conflict"
+    ) -> None:
         super().__init__(code=code, status_code=409, message=message)
 
 
@@ -95,10 +103,25 @@ class UpstreamServiceError(PlatformApiError):
         upstream: str,
         status_code: int = 502,
         code: str = "upstream_service_error",
+        upstream_status_code: int | None = None,
+        details: Sequence[Mapping[str, Any]] | None = None,
+        extra: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> None:
+        self.upstream_status_code = upstream_status_code
+        self.headers = dict(headers or {})
         super().__init__(
             code=code,
             status_code=status_code,
             message=message,
-            extra={"upstream": upstream},
+            details=details,
+            extra={
+                "upstream": upstream,
+                **(
+                    {"upstream_status_code": upstream_status_code}
+                    if upstream_status_code is not None
+                    else {}
+                ),
+                **dict(extra or {}),
+            },
         )

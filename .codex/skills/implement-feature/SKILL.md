@@ -64,6 +64,7 @@ description: AI 在项目文档（docs/projects/{YYYYMMDD}-{项目名}/）已存
    - 前三项必须勾选，不得跳过
    - CONTEXT.md 更新：Task 涉及服务能力/状态变化时必须更新；纯内部重构/bugfix 可标注"跳过"
    - `tasks.md` 是进度的唯一来源，任何人看进度看这里
+   - Task Completion Card 只记录单个任务的进度；更新后继续处理范围内的后续任务，不以此结束本次工作
 
 
 

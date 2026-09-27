@@ -67,10 +67,25 @@ class LangGraphRuntimeGatewayUpstream:
     async def get_info(self) -> dict[str, Any]:
         return await self._http.require_json("GET", "/info")
 
-    async def terminal_request(self, thread_id: str, action: str, *, terminal_id: str | None = None,
-                               payload: dict | None = None, offset: int = 0) -> dict:
+    async def terminal_request(
+        self,
+        thread_id: str,
+        action: str,
+        *,
+        terminal_id: str | None = None,
+        payload: dict | None = None,
+        offset: int = 0,
+    ) -> dict:
         from urllib.parse import quote
-        methods = {"create": "POST", "list": "GET", "output": "GET", "input": "POST", "resize": "POST", "close": "DELETE"}
+
+        methods = {
+            "create": "POST",
+            "list": "GET",
+            "output": "GET",
+            "input": "POST",
+            "resize": "POST",
+            "close": "DELETE",
+        }
         if action not in methods:
             raise ValueError("invalid_terminal_action")
         path = f"/internal/threads/{quote(thread_id, safe='')}/terminals"
@@ -78,60 +93,128 @@ class LangGraphRuntimeGatewayUpstream:
             path += "/" + quote(terminal_id or "", safe="")
             if action != "close":
                 path += "/" + action
-        return await self._http.require_json(methods[action], path, payload=payload,
-                                            params={"offset": offset} if action == "output" else None)
+        return await self._http.require_json(
+            methods[action],
+            path,
+            payload=payload,
+            params={"offset": offset} if action == "output" else None,
+        )
 
-    async def workspace_json(self, thread_id: str, resource: str, params: dict[str, Any]) -> dict[str, Any]:
+    async def workspace_json(
+        self, thread_id: str, resource: str, params: dict[str, Any]
+    ) -> dict[str, Any]:
         from urllib.parse import quote
+
         if resource not in {"workspace/tree", "artifacts"}:
             raise ValueError("invalid_workspace_resource")
-        return await self._http.require_json("GET", f"/internal/threads/{quote(thread_id, safe='')}/{resource}", params=params)
+        return await self._http.require_json(
+            "GET",
+            f"/internal/threads/{quote(thread_id, safe='')}/{resource}",
+            params=params,
+        )
 
-    async def workspace_file(self, thread_id: str, resource: str, path: str) -> BinaryPayload:
+    async def workspace_file(
+        self, thread_id: str, resource: str, path: str
+    ) -> BinaryPayload:
         from urllib.parse import quote
+
         if resource not in {"workspace/content", "workspace/preview"}:
             raise ValueError("invalid_workspace_resource")
-        return await self._http.read_file(f"/internal/threads/{quote(thread_id, safe='')}/{resource}", params={"path": path})
+        return await self._http.read_file(
+            f"/internal/threads/{quote(thread_id, safe='')}/{resource}",
+            params={"path": path},
+        )
 
     async def workspace_zip(self, thread_id: str) -> BinaryPayload:
         from urllib.parse import quote
-        return await self._http.read_file(f"/internal/threads/{quote(thread_id, safe='')}/workspace/zip")
 
+        return await self._http.read_file(
+            f"/internal/threads/{quote(thread_id, safe='')}/workspace/zip"
+        )
 
-    async def fork_thread_workspace(self, target_thread_id: str, source_thread_id: str) -> dict[str, Any]:
+    async def fork_thread_workspace(
+        self, target_thread_id: str, source_thread_id: str
+    ) -> dict[str, Any]:
         from urllib.parse import quote
+
         return await self._http.require_json(
             "POST",
             f"/internal/threads/{quote(target_thread_id, safe='')}/workspace/fork",
             payload={"source_thread_id": source_thread_id},
         )
 
-    async def dear_skills(self, method: str, suffix: str = "", *, payload=None, params=None):
-        return await self._http.request_json(method, "/internal/dear/skills" + suffix, payload=payload, params=params)
+    async def dear_skills(
+        self, method: str, suffix: str = "", *, payload=None, params=None
+    ):
+        return await self._http.request_json(
+            method, "/internal/dear/skills" + suffix, payload=payload, params=params
+        )
 
     async def dear_memory(self, *, payload: dict | None = None) -> dict:
         try:
-            return await self._http.require_json("GET" if payload is None else "POST",
-                                                 "/internal/dear/memory", payload=payload)
+            return await self._http.require_json(
+                "GET" if payload is None else "POST",
+                "/internal/dear/memory",
+                payload=payload,
+            )
         except PlatformApiError as exc:
-            allowed = {"memory_revision_conflict", "memory_not_found", "memory_expired",
-                       "memory_duplicate_fact", "memory_capacity_exceeded", "memory_maintenance_required",
-                       "memory_storage_unavailable", "dear_governance_disabled", "dear_memory_scope_denied",
-                       "runtime.tool.not_allowed", "langgraph_upstream_unavailable", "langgraph_upstream_timeout"}
-            code = "validation_failed" if exc.status_code == 422 else exc.code if exc.code in allowed else "memory_upstream_error"
-            raise PlatformApiError(code=code, status_code=exc.status_code,
-                                   message="Memory request failed") from exc
+            allowed = {
+                "memory_revision_conflict",
+                "memory_not_found",
+                "memory_expired",
+                "memory_duplicate_fact",
+                "memory_capacity_exceeded",
+                "memory_maintenance_required",
+                "memory_storage_unavailable",
+                "dear_governance_disabled",
+                "dear_memory_scope_denied",
+                "runtime.tool.not_allowed",
+                "runtime_delegation_rejected",
+                "langgraph_upstream_request_failed",
+                "langgraph_upstream_unavailable",
+                "langgraph_upstream_timeout",
+            }
+            code = (
+                "validation_failed"
+                if exc.status_code == 422
+                else exc.code
+                if exc.code in allowed
+                else "memory_upstream_error"
+            )
+            raise PlatformApiError(
+                code=code,
+                status_code=exc.status_code,
+                message="Memory request failed",
+                details=exc.details,
+                extra={
+                    key: exc.extra[key]
+                    for key in ("upstream", "upstream_status_code")
+                    if key in exc.extra
+                },
+            ) from exc
 
-    async def dear_governance(self, thread_id: str, resource: str, *, payload: dict | None = None, query: str = "") -> dict:
+    async def dear_governance(
+        self,
+        thread_id: str,
+        resource: str,
+        *,
+        payload: dict | None = None,
+        query: str = "",
+    ) -> dict:
         from urllib.parse import quote
+
         return await self._http.require_json(
             "GET" if payload is None else "POST",
             f"/internal/threads/{quote(thread_id, safe='')}/dear/{resource}",
-            payload=payload, params={"query": query} if resource == "memory" and payload is None else None,
+            payload=payload,
+            params={"query": query}
+            if resource == "memory" and payload is None
+            else None,
         )
 
     async def get_graph_capabilities(self, graph_id: str) -> dict[str, Any]:
         from urllib.parse import quote
+
         return await self._http.require_json(
             "GET", f"/internal/capabilities/graphs/{quote(graph_id, safe='')}"
         )
@@ -151,15 +234,18 @@ class LangGraphRuntimeGatewayUpstream:
     async def count_threads(self, payload: dict[str, Any] | None = None) -> Any:
         return await self._threads.count(payload)
 
-    async def enqueue_thread_message(self, thread_id: str, payload: dict[str, Any]) -> Any:
+    async def enqueue_thread_message(
+        self, thread_id: str, payload: dict[str, Any]
+    ) -> Any:
         """Forward a running-thread message through the scoped Runtime delegation."""
         return await self._http.require_json(
             "POST", f"/internal/threads/{thread_id}/messages", payload=payload
         )
 
     async def list_thread_messages(self, thread_id: str) -> Any:
-        return await self._http.require_json("GET", f"/internal/threads/{thread_id}/messages")
-
+        return await self._http.require_json(
+            "GET", f"/internal/threads/{thread_id}/messages"
+        )
 
     async def get_thread(self, thread_id: str) -> dict[str, Any]:
         value = await self._threads.get(thread_id)
@@ -171,7 +257,6 @@ class LangGraphRuntimeGatewayUpstream:
             message="LangGraph upstream returned an invalid thread payload",
         )
 
-
     async def delete_thread(self, thread_id: str) -> Any:
         return await self._threads.delete(thread_id)
 
@@ -182,9 +267,10 @@ class LangGraphRuntimeGatewayUpstream:
         self, thread_id: str, payload: dict[str, Any] | None = None
     ) -> dict[str, Any]:
         return await self._http.require_json(
-            "POST", f"/internal/threads/{thread_id}/title/summarize", payload=payload or {}
+            "POST",
+            f"/internal/threads/{thread_id}/title/summarize",
+            payload=payload or {},
         )
-
 
     async def get_thread_state(
         self,
@@ -206,16 +292,6 @@ class LangGraphRuntimeGatewayUpstream:
         payload: dict[str, Any] | None = None,
     ) -> Any:
         return await self._threads.get_history(thread_id, payload)
-
-
-
-
-
-
-
-
-
-
 
     async def create_thread_run(
         self,
@@ -253,7 +329,6 @@ class LangGraphRuntimeGatewayUpstream:
             payload=payload,
         )
 
-
     async def get_thread_run(self, thread_id: str, run_id: str) -> Any:
         return await self._runs.get(thread_id, run_id)
 
@@ -277,7 +352,6 @@ class LangGraphRuntimeGatewayUpstream:
         params: dict[str, Any] | None = None,
     ) -> AsyncIterator[bytes]:
         return await self._runs.join_stream(thread_id, run_id, params)
-
 
     async def cancel_thread_run(
         self,

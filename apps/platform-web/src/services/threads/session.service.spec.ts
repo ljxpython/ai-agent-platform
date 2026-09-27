@@ -1,5 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { createSessionService } from "./session.service";
+import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
 
 it("uses SDK graphId and the public checkpoint wire contract", async () => {
   const requests: Array<{
@@ -100,6 +101,44 @@ it.each([503, 504])(
     expect(sessionStorage.getItem("pw:thread:create:user:project")).toBeNull();
   },
 );
+
+it("keeps pending identity through authorized fetch and the actual SDK", async () => {
+  const threadId = "11111111-1111-4111-8111-111111111111";
+  let creates = 0;
+  const fetchImpl = vi.fn<typeof fetch>(async (input) => {
+    if (String(input).endsWith("/reconcile")) {
+      return new Response(
+        JSON.stringify({ status: "ready", thread: { thread_id: threadId } }),
+        { headers: { "content-type": "application/json" } },
+      );
+    }
+    creates += 1;
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "thread_provisioning_unconfirmed",
+          message: "Reconcile first",
+          extra: { thread_id: threadId },
+        },
+        request_id: "req-1",
+      }),
+      { status: 503, headers: { "content-type": "application/json" } },
+    );
+  });
+  const authorizedFetch = createLanggraphAuthorizedFetch({
+    fetchImpl,
+    getAccessToken: () => "token",
+  });
+  const service = createSessionService(authorizedFetch, "project", "owner");
+  await expect(
+    service.create("workflow_demo", "agent", "标题"),
+  ).rejects.toThrow(threadId);
+  await expect(
+    service.create("workflow_demo", "agent", "标题"),
+  ).resolves.toMatchObject({ thread_id: threadId });
+  expect(creates).toBe(1);
+  expect(fetchImpl).toHaveBeenCalledTimes(2);
+});
 
 it("passes metadata and pagination options to search and count", async () => {
   const requests: Array<{ url: string; body?: Record<string, unknown> }> = [];

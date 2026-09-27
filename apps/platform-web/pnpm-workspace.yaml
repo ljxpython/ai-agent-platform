@@ -1,0 +1,5 @@
+packages:
+  - .
+
+patchedDependencies:
+  "@langchain/langgraph-sdk@1.10.2": patches/@langchain__langgraph-sdk@1.10.2.patch

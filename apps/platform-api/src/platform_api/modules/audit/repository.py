@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, or_, select
 from sqlalchemy.orm import Session
 
 from platform_api.modules.audit.records import AuditWriteCommand, StoredAuditEvent
@@ -73,10 +73,31 @@ class SqlAlchemyAuditRepository:
         created_to: datetime | None,
         limit: int,
         offset: int,
+        request_id: str | None = None,
+        submission_id: str | None = None,
+        thread_id: str | None = None,
+        run_id: str | None = None,
     ) -> tuple[list[StoredAuditEvent], int]:
         base_stmt = select(AuditLogRecord)
         if project_id:
             base_stmt = base_stmt.where(AuditLogRecord.project_id == project_id)
+        if request_id:
+            base_stmt = base_stmt.where(AuditLogRecord.request_id == request_id)
+        metadata = AuditLogRecord.metadata_json
+        if submission_id:
+            base_stmt = base_stmt.where(
+                metadata["submission_id"].as_string() == submission_id
+            )
+        if thread_id:
+            base_stmt = base_stmt.where(metadata["thread_id"].as_string() == thread_id)
+        if run_id:
+            base_stmt = base_stmt.where(
+                or_(
+                    metadata["run_id"].as_string() == run_id,
+                    metadata["target_run_id"].as_string() == run_id,
+                    metadata["parent_run_id"].as_string() == run_id,
+                )
+            )
         if plane:
             base_stmt = base_stmt.where(AuditLogRecord.plane == plane)
         if action:

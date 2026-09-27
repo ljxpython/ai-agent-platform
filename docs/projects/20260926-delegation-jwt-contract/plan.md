@@ -1,6 +1,6 @@
 # Delegation JWT v2 - 执行方案
 
-> 本期方向、简化生命周期已批准；本文将现有契约和平台侧修正具体化。实现未开始。本方案不升级鉴权架构。
+> 本期方向、简化生命周期已批准；平台修正和契约矩阵已有阶段证据，进度以 tasks.md、验证以 verification.md 为准。本方案不升级鉴权架构。
 
 ## 1. 范围和实现选择
 
@@ -8,7 +8,7 @@
 
 沿现有create_runtime_delegation_token签发v2；Gateway和Catalog分别调用它，不合并两个业务工厂。双端测试放API测试目录，以独立子进程调用Runtime现有校验器，避免混装依赖。
 
-本期不新增claim/operation、轮换、算法升级、v3、后台刷新或SSE持续重鉴权。追踪专项负责request_id/platform_trace_id来源与传播，本专项验证现有claim兼容性，不重复开发编号机制。
+本期不新增claim/operation、轮换、算法升级、v3、后台刷新或SSE持续重鉴权。追踪专项负责request_id/platform_trace_id来源与传播，本专项验证新API签发值被当前锁定Runtime接受，不重复开发编号机制。
 
 ## 2. 源码入口与当前差异
 
@@ -122,19 +122,19 @@ webapp.py的消息入口在部分路径会将message-read/enqueue委托用于内
 4. 过期JWT用于新的Runtime请求按现有401拒绝。不自动降级匿名，不因401自动重放提交、审批、取消等用户动作。
 5. 工厂可在同一HTTP请求内使用当前快照，不缓存到后续请求；本期不加请求内自动续签。慢请求跨TTL导致后续上游调用拒绝时沿现有安全错误返回，不能用放宽过期验证修复。
 
-## 7. 安全失败、兼容和回退
+## 7. 安全失败与版本边界
 
 - 平台纯签发器非法输入统一ValueError。HTTP签发边界捕获该类失败，复用现有503 runtime_delegation_not_configured安全响应；scoped闭包也要覆盖，禁止返回异常原文、claim、secret或token。不吞其他业务授权异常/取消。
 - Runtime签名/过期/issuer/audience/claim失败为401，资源operation/scope拒绝为403，Thread ACL回查不可用为503，均不放行。平台公开映射沿错误响应专项：Runtime401为502 runtime_delegation_rejected，不让前端误退出用户登录；已登记403保留安全码，未登记为forbidden；503按既有公共转换。
-- v2不变：新平台只发当前Runtime已允许字段；本期不新增字段、不把未知字段当兼容扩展。未来claim/operation/语义或算法改变单独评审，不预建v3。
-- 新平台+当前锁定Runtime作为必测组合；旧平台+当前Runtime作回退基线。其他旧Runtime未测不能宣布兼容。新增追踪两claim的目标Runtime必须实测已接受。
-- 后续发布/回退仅API产物；无DDL、历史回填、依赖升级或Runtime重启要求。回退可能重新暴露旧签发缺陷，但不撤销/重发/重签已接受Run；按既有新请求路径验证。
+- v2不变：新平台只发当前Runtime已允许字段；本期不新增字段。未来claim/operation/语义或算法改变单独评审，不预建v3。
+- 只验收新API+当前锁定Runtime；不验证旧API、旧Runtime或新旧服务混用。新增追踪两claim须实测被当前Runtime接受；这是当前组合的安全契约，不是旧版兼容测试。
+- 无DDL、历史回填、依赖升级或Runtime重启要求。不设置旧API产物切回门禁；已接受Run不得因本专项取消、重发或重签。
 - 若双端差异必须修改Runtime才能解决，保留拒绝行为并明确阻塞，不在本专项突破边界。权限规则变化也不作为“修一致性”夹带实施。
 
 ## 8. 固定修改清单与集成顺序
 
-J1先建立真实双端测试基线 → J2签发输入收口 → J3 Catalog凭据/签发错误出口 → J4动作/身份矩阵 → J5真实生命周期与回退验证 → J6交接。
+J1先建立真实双端测试基线 → J2签发输入收口 → J3 Catalog凭据/签发错误出口 → J4动作/身份矩阵 → J5真实生命周期验证 → J6交接。
 
-J2只改tokens.py，不改policy构造器/正常模型算法；J3只改Catalog _runtime_headers凭据传递与Gateway scoped签发ValueError安全出口。J4以测试为主，既有业务权限与动作逻辑保持；发现不兼容依第7节处理。追踪修改同一工厂时按最新工作树整合，禁止覆盖Catalog用户已有改动。
+J2只改tokens.py，不改policy构造器/正常模型算法；J3只改Catalog _runtime_headers凭据传递与Gateway scoped签发ValueError安全出口。J4以测试为主，既有业务权限与动作逻辑保持；发现当前组合契约冲突依第7节处理。追踪修改同一工厂时按最新工作树整合，禁止覆盖Catalog用户已有改动。
 
 本期无需先实施AI服务规范路由，也无需通读所有项目。最低依赖只涉及错误响应委托失败映射、追踪两claim契约、SSE重连边界；具体测试见verification.md。

@@ -22,7 +22,7 @@
 | 控制面核心页面（overview/projects/users/agents/me/security/audit） | 已迁移：Agent/模型新契约、统一权限导航、列表四态；全路由浏览器验收见项目记录 | [现状与目标架构](projects/20260910-platform-web-refactor/02-architecture-and-ui.md) |
 | 旧 Chat 视觉与统一 Agent 入口 | 部分完成：Agent 归一已交付；旧工作台组件已直接取回；37 项定向测试及三尺寸回归通过；摘要数据与部分专项验收仍待补齐 | [09 还原功能核对](projects/20260910-platform-web-refactor/09-chat-workbench-restoration-audit.md) |
 | Platform Web 架构与 Agent Chat 重构 | 01—07 非后置范围已完成；旧展示组件已取回，专项验收边界见 09；双浏览器入队/完整文件与 Skills API/PTY 后置 | [项目概览](projects/20260910-platform-web-refactor/README.md) |
-| 运行中补充消息（多端入口、Runtime 队列与 Middleware） | 已实现：根模型注入、持久回执/恢复、权限复核与 Web 重试；前端待执行消息队列与输入框排队模式严密分流，切回页面防澄清闪现与防 409 抢跑排空已落地，横幅状态文案准确对齐，网络取消/移动回归通过，双浏览器后置，GraphHarbor post27 发布包复验通过 | [队列与消费设计](projects/20260910-platform-web-refactor/07-message-queue-and-middleware.md) · [前端排队守卫修复](../apps/platform-web/docs/changes/20260923-fix-prompt-queue-routing-and-banner-state.md) · [切回防闪现与防排空修复](../apps/platform-web/docs/changes/20260923-fix-queue-drain-and-clarification-flash-on-switch.md) |
+| 运行中补充消息（多端入口、Runtime 队列与 Middleware） | 已实现：根模型注入、持久回执/恢复、权限复核与 Web 重试；消息内部原生Run回查委托源码修复及本机PostgreSQL测试通过，现役跨服务链路未验证；前端排队守卫和横幅状态修复已落地，双浏览器后置 | [队列与消费设计](projects/20260910-platform-web-refactor/07-message-queue-and-middleware.md) · [内部Run回查修复](projects/20260927-message-run-read-delegation/README.md) |
 | Chat 流式输出标准化与 open-swe 架构对齐 | 已完成：流式管道、打字机光标、平滑滚底、Open SWE 子智能体卡片特化与微型居中未读胶囊已全量交付通过 | [流式标准化](projects/20260912-chat-streaming-standardization/README.md) |
 | 聊天任务进度底部悬浮托盘（Composer Top Tray）与时间旅行动作标题精准化 | 已完成：任务进度下沉至底部输入框顶沿阶梯托盘（SVG 环形进度圈 + 完成态降噪 + 向上展开清单），彻底根治正文/深色代码块滚动穿模遮挡；时间旅行历史基于当前 Step 动作精准呈现标题 | [任务进度底部托盘重构](../apps/platform-web/docs/changes/20260924-composer-task-tray-redesign.md) · [时间旅行优化](../apps/platform-web/docs/changes/20260912-task-pill-dismiss-and-history-preview.md) |
 | 历史关键节点过滤、多步长翻页与消息编辑分叉 | 已完成：白名单精准识别业务里程碑并剔除无新动作系统流转帧；支持 +20/+50/+100 快速翻页；编辑消息即时响应与本地内存回溯杜绝卡死 | [关键节点与编辑分叉修复](../apps/platform-web/docs/changes/20260912-history-milestone-filter-and-edit-branch-fix.md) |
@@ -47,7 +47,7 @@
 | 消息出队与即时提交会话执行态感知优化 | 已完成：综合 isSessionRunning 状态机覆盖出队、提交与乐观消息，0ms 呈现“组织答复”与进度指示条，出队动效与禁用保护 | [变更记录](../apps/platform-web/docs/changes/20260923-queued-message-draining-execution-state.md) |
 | 工具卡片区分「正在生成参数」与「执行中」状态及实时字数反馈 | 已完成：基于末尾 AIMessage finish_reason 精准区分 LLM 流式构造长参数与工具真实执行阶段，实时展示 `正在生成参数 · 已生成 X.Xk 字符` 及 `write_file` 流式正文预览 | [变更记录](../apps/platform-web/docs/changes/20260923-tool-streaming-input-vs-execution-state.md) |
 | 仿 GPT 聊天界面回合锚定与流式防抖滚动体验 | 已完成：首次提问即时收起欢迎区并置顶展开流式输出；后续提问锚定在视口偏中间位置（32%高度）配合动态收缩底部留白垫片实现零抖动流式生长；支持自由上下滑动与统一底部悬浮回到最新胶囊 | [变更记录](../apps/platform-web/docs/changes/20260924-gpt-style-turn-anchoring-and-scroll-ux.md) |
-| 前端对话会话 SWR 缓存与流式长效保活治理 | 部分完成（按当前能力校正）：已有页面KeepAlive、侧栏活跃会话记忆及SWR缓存；当前Vue SDK无joinStream，跨Thread实例保活/恢复缺口进入SSE专项，未实施 | [原项目记录](projects/20260924-chat-session-cache-and-stream-resumption/README.md) · [现状校正与后续方案](projects/20260926-sse-event-contract/plan.md) |
+| 前端对话会话 SWR 缓存与流式长效保活治理 | 部分完成：已有页面KeepAlive、SWR缓存；跨Thread实例保活、SDK恢复、真实普通链路及1/4条短容量已验；8条容量受HTTP/1.1浏览器origin连接槽限制，Final blocked | [原项目记录](projects/20260924-chat-session-cache-and-stream-resumption/README.md) · [SSE专项](projects/20260926-sse-event-contract/README.md) |
 
 
 
@@ -88,11 +88,11 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| 跨服务规范治理专项群 | 规划中：错误响应/SSE/追踪方案就绪、实现未开始；JWT执行包已细化、实现未开始；AI路由按仓库级文档小改动处理 | [总入口](projects/20260922-cross-service-governance/README.md) |
-| 平台错误响应统一 | 待实施：方案已确认，公开字段/错误码/任务/验证已细化；仅改API/Web，Runtime/GraphHarbor完全不改 | [错误响应专项](projects/20260926-error-response-contract/README.md) |
-| SSE事件契约治理 | 规划中（方案就绪、实现未开始）：用户已同意进入下一专项；线程级持续保活、恢复/410及安全帧纳入；保持原有渲染与交互，不默认折叠 | [SSE专项](projects/20260926-sse-event-contract/README.md) |
-| 跨服务追踪传播治理 | 规划中（方案就绪、实现未开始）：平台内部编号、两处委托关联、现有提交/审计及SSE日志执行契约已落盘；Runtime/GraphHarbor不改，真实链路未验证 | [追踪专项](projects/20260926-trace-context-propagation/README.md) |
-| Delegation JWT契约治理 | 规划中（执行方案已细化、实现未开始）：v2字段/23项operation/身份/生命周期矩阵及J1—J6任务就绪；平台最小修正与真实双端测试，Runtime/GraphHarbor不改 | [JWT专项](projects/20260926-delegation-jwt-contract/README.md) |
+| 跨服务规范治理专项群 | 四专项仅验收新Web+新API+当前锁定Runtime/GraphHarbor，不设置旧版兼容或混用测试；错误响应平台实现部分完成，真实单链路已验但Final未过；SSE/追踪/JWT按各专项状态推进；AI路由按仓库级文档小改动处理 | [总入口](projects/20260922-cross-service-governance/README.md) |
+| 平台错误响应统一 | 已完成：API公共安全出口、精确上游映射、Web无损解析、Thread对账、真实提交→Run→审计→Langfuse、memory409、SSE编号、peer ACL、workspace正向文件及现役浏览器403均已验；`reference_agent` 的 `runtime.tool.not_allowed` 属既有工具授权基线差异 | [错误响应专项](projects/20260926-error-response-contract/README.md) · [当前标准](standards/error-envelope.md) |
+| SSE事件契约治理 | 部分完成：S1—S10已完成，API分帧/安全关闭、Web SDK恢复、410单飞、Workspace线程池、真实普通SDK链路、1/4条短容量及390px视觉检查通过；8条容量受HTTP/1.1浏览器origin连接槽限制，h2/h3和30分钟Final blocked | [SSE专项](projects/20260926-sse-event-contract/README.md) |
+| 跨服务追踪传播治理 | 部分实施：API内部编号、委托关联、提交回调、审计查询和SSE同编号日志有阶段证据；单条真实Run到Langfuse已验，PG及完整worker/关闭矩阵未验 | [追踪专项](projects/20260926-trace-context-propagation/README.md) |
+| Delegation JWT契约治理 | 部分完成：J1—J6平台任务、v2双端23项矩阵、签发安全失败及R01—R04真实生命周期有证据；消息内部Run回查由后续专项修复源码，本机测试通过，现役链路未验证；GraphHarbor不改 | [JWT专项](projects/20260926-delegation-jwt-contract/README.md) · [回查修复](projects/20260927-message-run-read-delegation/README.md) |
 | AI服务规范路由 | 不再独立立项：后续按仓库级文档小改动补按需阅读规则；本轮未修改AGENTS | [AI路由专项](projects/20260926-ai-service-routing/README.md) |
 | 代码规范自动化门禁 | 部分完成：pre-commit 与 CI 变更文件检查已接入；Python 历史格式基线待单独清理 | [项目记录](projects/20260925-code-quality-automation/README.md) |
 | Python 格式基线清理 | 规划中：约 731 条 Ruff 诊断、297 个文件格式差异待分批清理，本次不实施 | [项目规划](projects/20260925-python-format-baseline-cleanup/README.md) |
@@ -101,7 +101,7 @@
 | 本地 PostgreSQL 密码认证 | 本地已完成：SCRAM、18 项认证检查、9 项兼容检查、重连和回退通过；云端交接更新因 SSH 超时待补 | [认证记录](projects/20260920-local-postgres-password/README.md) |
 | 本地项目清理 | 已支持：按 UUID 保留项目；显式历史清理先备份，支持失效令牌、会话/审计及指定测试库；测试退出回收项目 | [运维规范](guides/database-operations.md#本地项目清理) |
 | 本地栈进程启停 | 已优化：进程/端口归属隔离；Runtime 单服务重启在停进程前预检，恢复 audience 配置后真实审批通过 | [重启预检修复](changes/20260922-local-stack-runtime-preflight.md) · `docs/changes/20260913-local-stack-real-process-management.md` |
-| 改动分级 + Skills 自动触发（plan-project/implement-feature/verify-change） | 已完成 | `AGENTS.md` |
+| 改动分级 + Skills 自动触发（plan-project/implement-feature/verify-change） | 已完成；整单任务持续推进至 done 或需用户行动的 blocked，阶段进度写入任务文档且不作为最终交付 | [Harness 完成与汇报规则](changes/20260926-harness-completion-reporting.md) |
 | 文档一致性检查（`scripts/check_docs.py`） | 已完成 | `scripts/check_docs.py` |
 
 - Platform API：Agent/Profile ORM 已合并，空库静态基线已通过 SQLite/PostgreSQL 往返验证；完整控制面重构仍为 partial，见 [实现记录](projects/20260910-platform-api-refactor/implementation/08-agent-single-table.md)。

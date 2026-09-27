@@ -3,6 +3,7 @@ from __future__ import annotations
 from starlette.concurrency import run_in_threadpool
 
 import ipaddress
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote, urlparse
@@ -84,6 +85,7 @@ class RuntimeCatalogService:
         runtime_base_url: str,
         settings: Settings,
         tenant_id: str = "__default",
+        request_correlation: Mapping[str, str] | None = None,
         policy_engine: IamPolicyEngine | None = None,
     ) -> None:
         self._session_factory = session_factory
@@ -91,6 +93,7 @@ class RuntimeCatalogService:
         self._runtime_id = _runtime_id(runtime_base_url)
         self._settings = settings
         self._tenant_id = tenant_id or "__default"
+        self._request_correlation = dict(request_correlation or {})
         self._policy_engine = policy_engine or IamPolicyEngine()
 
     def _require_session_factory(self) -> sessionmaker[Session]:
@@ -173,6 +176,9 @@ class RuntimeCatalogService:
             ).build_delegation_policy(project_id=project_id)
             delegation = create_runtime_delegation_token(
                 subject=subject,
+                credential_id=actor.credential_id
+                if actor.principal_type == "service_account"
+                else None,
                 tenant_id=self._tenant_id,
                 project_id=project_id,
                 role=role,
@@ -189,6 +195,7 @@ class RuntimeCatalogService:
                 },
                 context_hash=empty_runtime_context_hash(),
                 settings=self._settings,
+                **self._request_correlation,
             )
         except ValueError as exc:
             raise ServiceUnavailableError(

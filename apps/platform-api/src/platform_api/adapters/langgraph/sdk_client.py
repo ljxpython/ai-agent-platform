@@ -7,8 +7,68 @@ import httpx
 import langgraph_sdk
 
 from platform_api.core.errors import PlatformApiError, UpstreamServiceError
+from platform_api.core.errors.payload import safe_error_headers, safe_validation_details
 
 FORWARDED_HEADER_KEYS = ("x-request-id",)
+
+# Public Runtime codes are exact matches; unknown upstream text never becomes a client message.
+_PUBLIC_CODES = {
+    400: (
+        "artifact_source_denied invalid_artifact_ref invalid_file_ref invalid_memory_fact "
+        "invalid_skill_frontmatter invalid_skill_metadata invalid_skill_package invalid_skill_path "
+        "invalid_source_thread_id invalid_workspace_cursor invalid_workspace_limit "
+        "invalid_workspace_path memory_fact_required memory_query_too_long "
+        "memory_setting_required reserved_public_skill_name skill_frontmatter_required skill_name_mismatch "
+        "skill_package_capacity skill_security_blocked terminal_input_invalid "
+        "unsafe_skill_package image_digest_mismatch image_path_invalid"
+    ),
+    403: (
+        "dear_governance_scope_denied dear_memory_scope_denied dear_skills_scope_denied "
+        "file_scope_denied file_target_denied terminal_scope_denied runtime.tool.not_allowed "
+        "image_scope_denied runtime_target_denied thread_project_denied"
+    ),
+    404: (
+        "artifact_not_found artifact_source_unavailable file_not_found memory_not_found "
+        "skill_not_found terminal_not_found workspace_directory_unavailable "
+        "workspace_file_unavailable workspace_not_found image_not_found"
+    ),
+    409: (
+        "artifact_hash_mismatch dear_governance_disabled dear_skills_disabled "
+        "file_content_conflict file_hash_mismatch file_workspace_unavailable "
+        "memory_capacity_exceeded memory_duplicate_fact memory_expired "
+        "memory_extraction_cancelled memory_maintenance_required memory_revision_conflict "
+        "skill_capacity skill_name_conflict skill_revision_conflict "
+        "terminal_backend_invalid terminal_disabled terminal_exited terminal_input_conflict "
+        "terminal_input_sequence terminal_instance_changed terminal_offset_ahead "
+        "terminal_workspace_unavailable workspace_capability_unavailable "
+        "workspace_directory_changed thread_active_run_conflict run_start_in_progress "
+        "idempotency_key_conflict image_content_conflict image_capability_unavailable"
+    ),
+    410: "cursor_expired",
+    413: (
+        "file_too_large html_preview_too_large presentation_size_or_type skill_package_size "
+        "terminal_input_too_large workspace_directory_too_large image_too_large payload_too_large"
+    ),
+    415: (
+        "artifact_image_type_mismatch empty_file invalid_artifact_image invalid_pdf_magic "
+        "invalid_xls_magic unsupported_artifact_type unsupported_file_type workspace_not_file "
+        "workspace_preview_unsupported image_type_unsupported"
+    ),
+    422: "damaged_pdf encrypted_pdf invalid_document invalid_presentation",
+    429: "terminal_input_busy terminal_session_limit queue_full",
+    503: "memory_storage_unavailable",
+}
+_PUBLIC_CODES[400] += " file_hash_mismatch"
+_PUBLIC_CODES[409] += " message_scope_required idempotency_conflict message_id_conflict"
+_PUBLIC_CODES = {status: set(codes.split()) for status, codes in _PUBLIC_CODES.items()}
+_PUBLIC_MESSAGES = {
+    "workspace_directory_changed": "Directory changed",
+    "cursor_expired": "Event cursor expired",
+    "thread_active_run_conflict": "Thread already has an active run",
+    "run_start_in_progress": "Run start is in progress",
+    "idempotency_key_conflict": "Idempotency key conflict",
+    "runtime.tool.not_allowed": "Tool access denied",
+}
 
 
 def build_forward_headers(
@@ -16,14 +76,7 @@ def build_forward_headers(
     *,
     request_id: str | None = None,
 ) -> dict[str, str]:
-    forwarded = {
-        key: value
-        for key in FORWARDED_HEADER_KEYS
-        if (value := headers.get(key))
-    }
-    if "x-request-id" not in forwarded and request_id:
-        forwarded["x-request-id"] = request_id
-    return forwarded
+    return {"x-request-id": request_id} if request_id else {}
 
 
 def get_langgraph_client(
@@ -46,26 +99,21 @@ def redact_runtime_private_fields(value: Any) -> Any:
         return {
             key: redact_runtime_private_fields(item)
             for key, item in value.items()
-            if not (str(key).startswith("_runtime_") or key in {"runtime_model_ref", "runtime_message_claim", "authorization_ref", "dear_skill_snapshot", "dear_memory_source"})
+            if not (
+                str(key).startswith("_runtime_")
+                or key
+                in {
+                    "runtime_model_ref",
+                    "runtime_message_claim",
+                    "authorization_ref",
+                    "dear_skill_snapshot",
+                    "dear_memory_source",
+                }
+            )
         }
     if isinstance(value, list):
         return [redact_runtime_private_fields(item) for item in value]
     return value
-
-
-def _runtime_upstream_message(detail: Any, *, fallback_code: str) -> str:
-    if isinstance(detail, str) and detail.strip():
-        return detail.strip()
-    if isinstance(detail, Mapping):
-        message = detail.get("message") or detail.get("detail")
-        if isinstance(message, str) and message.strip():
-            return message.strip()
-        inner = detail.get("detail")
-        if isinstance(inner, Mapping):
-            message = inner.get("message")
-            if isinstance(message, str) and message.strip():
-                return message.strip()
-    return fallback_code.replace("_", " ")
 
 
 def create_runtime_upstream_error(
@@ -74,30 +122,98 @@ def create_runtime_upstream_error(
     detail: Any,
     fallback_code: str,
     upstream_path: str | None = None,
-) -> PlatformApiError:
-    detail = redact_runtime_private_fields(detail)
-    extra: dict[str, Any] = {
-        "upstream": "langgraph",
-        "upstream_status_code": status_code,
-    }
-    if upstream_path:
-        extra["upstream_path"] = upstream_path
-    if detail not in (None, ""):
-        extra["upstream_detail"] = detail
-
-    code = fallback_code
+    headers: Mapping[str, str] | None = None,
+) -> UpstreamServiceError:
+    selected: Mapping[str, Any] | None = None
     if isinstance(detail, Mapping):
-        inner_detail = detail.get("detail")
-        if isinstance(inner_detail, Mapping) and isinstance(inner_detail.get("code"), str):
-            code = inner_detail["code"]
-        elif isinstance(detail.get("code"), str):
-            code = detail["code"]
-
-    return PlatformApiError(
+        for candidate in (detail.get("error"), detail.get("detail"), detail):
+            if not isinstance(candidate, Mapping):
+                continue
+            candidate_code = candidate.get("code")
+            candidate_message = candidate.get("message")
+            known_code = isinstance(
+                candidate_code, str
+            ) and candidate_code in _PUBLIC_CODES.get(status_code, set())
+            has_message = isinstance(candidate_message, str) and bool(
+                candidate_message.strip()
+            )
+            if known_code or has_message:
+                selected = candidate
+                break
+    raw_code = (
+        selected.get("code")
+        if selected is not None
+        else detail
+        if isinstance(detail, str)
+        else None
+    )
+    registered = isinstance(raw_code, str) and raw_code in _PUBLIC_CODES.get(
+        status_code, set()
+    )
+    if status_code == 401:
+        public_status, code, message = (
+            502,
+            "runtime_delegation_rejected",
+            "Runtime authentication failed",
+        )
+    elif status_code >= 500:
+        public_status = 502
+        code = (
+            "memory_storage_unavailable"
+            if registered and raw_code == "memory_storage_unavailable"
+            else "langgraph_upstream_request_failed"
+        )
+        message = (
+            "Memory storage unavailable"
+            if code == "memory_storage_unavailable"
+            else "Runtime request failed"
+        )
+    elif registered:
+        public_status, code = status_code, raw_code
+        message = _PUBLIC_MESSAGES.get(code, code.replace("_", " ").capitalize())
+    else:
+        public_status = status_code
+        code, message = {
+            403: ("forbidden", "Permission denied"),
+            422: ("validation_failed", "Validation failed"),
+            429: ("langgraph_upstream_rate_limited", "Runtime request rate limited"),
+        }.get(status_code, (fallback_code, "Runtime request failed"))
+    extra: dict[str, Any] = {}
+    if code == "cursor_expired" and isinstance(detail, Mapping):
+        candidates = (selected.get("extra") if selected else None, selected, detail)
+        recovery = None
+        for candidate in candidates:
+            if isinstance(candidate, Mapping):
+                nested = candidate.get("upstream_detail")
+                value = (
+                    nested.get("recovery")
+                    if isinstance(nested, Mapping)
+                    else candidate.get("recovery")
+                )
+                if value == "thread_snapshot":
+                    recovery = value
+                    break
+        if recovery:
+            extra["upstream_detail"] = {"recovery": recovery}
+    raw_details = (
+        detail
+        if isinstance(detail, list)
+        else (detail.get("detail") if isinstance(detail, Mapping) else None)
+    )
+    details = (
+        safe_validation_details(raw_details)
+        if status_code == 422 and isinstance(raw_details, list)
+        else []
+    )
+    return UpstreamServiceError(
+        upstream="langgraph",
+        upstream_status_code=status_code,
         code=code,
-        status_code=status_code,
-        message=_runtime_upstream_message(detail, fallback_code=fallback_code),
+        status_code=public_status,
+        message=message,
+        details=details,
         extra=extra,
+        headers=safe_error_headers(public_status, headers, platform=False),
     )
 
 
@@ -118,25 +234,13 @@ def raise_runtime_upstream_error(exc: Exception, *, fallback_detail: str) -> Non
     if isinstance(status_code, int):
         try:
             detail: Any = response.json()
-        except Exception:
+        except (ValueError, TypeError):
             detail = getattr(response, "text", None) or fallback_detail
-        request = getattr(response, "request", None)
-        url = getattr(request, "url", None)
-        upstream_path = getattr(url, "path", None)
         raise create_runtime_upstream_error(
             status_code=status_code,
             detail=detail,
             fallback_code=fallback_detail,
-            upstream_path=upstream_path,
-        ) from exc
-
-    message = str(exc).strip()
-    if message.startswith("ValueError:"):
-        detail = message.split(":", 1)[1].strip() or fallback_detail
-        raise create_runtime_upstream_error(
-            status_code=400,
-            detail=detail,
-            fallback_code=fallback_detail,
+            headers=getattr(response, "headers", None),
         ) from exc
 
     if isinstance(exc, httpx.HTTPError):

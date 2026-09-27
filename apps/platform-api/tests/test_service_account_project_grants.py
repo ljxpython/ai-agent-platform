@@ -9,15 +9,68 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
+from platform_api.core.db import (
+    build_engine,
+    build_session_factory,
+    create_core_tables,
+    session_scope,
+)
 from platform_api.core.security import create_access_token, hash_password
 from platform_api.main import create_app
 from platform_api.modules.audit.models import AuditLogRecord
 from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
+from platform_api.modules.identity.actors import load_service_account_actor
 from platform_api.modules.service_accounts.models import ServiceAccountTokenRecord
 
 
 class ServiceAccountProjectGrantsTest(unittest.TestCase):
+    def test_thread_actor_rejects_credential_from_another_account(self) -> None:
+        project = self.client.post(
+            "/api/projects",
+            headers=self._admin_headers(),
+            json={"name": "Credential Binding"},
+        ).json()
+        accounts = []
+        for name in ("owner", "other"):
+            account = self.client.post(
+                "/api/service-accounts",
+                headers=self._admin_headers(),
+                json={
+                    "name": f"credential-{name}",
+                    "platform_roles": ["platform_viewer"],
+                },
+            ).json()
+            credential = self.client.post(
+                f"/api/service-accounts/{account['id']}/tokens",
+                headers=self._admin_headers(),
+                json={"name": "test"},
+            ).json()["token"]["id"]
+            self.client.put(
+                f"/api/service-accounts/{account['id']}/project-grants/{project['id']}",
+                headers=self._admin_headers(),
+                json={"role": "project_executor"},
+            )
+            accounts.append((account["id"], credential))
+
+        account_id, credential_id = accounts[0]
+        subject = f"service-account:{account_id}"
+        self.assertIsNotNone(
+            load_service_account_actor(
+                session_factory=self._session_factory,
+                subject=subject,
+                credential_id=credential_id,
+                project_id=project["id"],
+            )
+        )
+        self.assertIsNone(
+            load_service_account_actor(
+                session_factory=self._session_factory,
+                subject=subject,
+                credential_id=accounts[1][1],
+                project_id=project["id"],
+            )
+        )
+
     def setUp(self) -> None:
         self._tmpdir = tempfile.TemporaryDirectory()
         database_path = Path(self._tmpdir.name) / "service-account-project-grants.db"
@@ -94,10 +147,14 @@ class ServiceAccountProjectGrantsTest(unittest.TestCase):
         ).json()["plain_text_token"]
 
         api_headers = {"x-platform-api-key": token, "x-project-id": project["id"]}
-        before = self.client.get(f"/api/projects/{project['id']}/access", headers=api_headers)
+        before = self.client.get(
+            f"/api/projects/{project['id']}/access", headers=api_headers
+        )
         self.assertEqual(before.status_code, 200, before.text)
         self.assertEqual(before.json()["roles"], [])
-        self.assertEqual(before.headers["x-user-subject"], f"service-account:{account['id']}")
+        self.assertEqual(
+            before.headers["x-user-subject"], f"service-account:{account['id']}"
+        )
 
         grant = self.client.put(
             f"/api/service-accounts/{account['id']}/project-grants/{project['id']}",
@@ -105,7 +162,9 @@ class ServiceAccountProjectGrantsTest(unittest.TestCase):
             json={"role": "project_executor"},
         )
         self.assertEqual(grant.status_code, 200, grant.text)
-        after = self.client.get(f"/api/projects/{project['id']}/access", headers=api_headers)
+        after = self.client.get(
+            f"/api/projects/{project['id']}/access", headers=api_headers
+        )
         self.assertEqual(after.json()["roles"], ["project_executor"])
 
         removed = self.client.delete(
@@ -113,7 +172,9 @@ class ServiceAccountProjectGrantsTest(unittest.TestCase):
             headers=self._admin_headers(),
         )
         self.assertEqual(removed.status_code, 204, removed.text)
-        revoked = self.client.get(f"/api/projects/{project['id']}/access", headers=api_headers)
+        revoked = self.client.get(
+            f"/api/projects/{project['id']}/access", headers=api_headers
+        )
         self.assertEqual(revoked.json()["roles"], [])
 
     def test_grant_management_requires_super_admin_and_is_project_scoped(self) -> None:
@@ -195,7 +256,9 @@ class ServiceAccountProjectGrantsTest(unittest.TestCase):
         )
         api_headers = {"x-platform-api-key": token, "x-project-id": project["id"]}
         self.assertEqual(
-            self.client.get(f"/api/projects/{project['id']}/access", headers=api_headers).json()["roles"],
+            self.client.get(
+                f"/api/projects/{project['id']}/access", headers=api_headers
+            ).json()["roles"],
             ["project_executor"],
         )
 
@@ -219,7 +282,9 @@ class ServiceAccountProjectGrantsTest(unittest.TestCase):
             f"/api/service-accounts/{account['id']}/tokens/{token_id}",
             headers=self._admin_headers(),
         )
-        revoked = self.client.get(f"/api/projects/{project['id']}/access", headers=api_headers)
+        revoked = self.client.get(
+            f"/api/projects/{project['id']}/access", headers=api_headers
+        )
         self.assertEqual(revoked.status_code, 401, revoked.text)
 
         replacement = self.client.post(
@@ -249,7 +314,9 @@ class ServiceAccountProjectGrantsTest(unittest.TestCase):
             json={"name": "expired"},
         ).json()
         with session_scope(self._session_factory) as session:
-            record = session.get(ServiceAccountTokenRecord, UUID(expiring_payload["token"]["id"]))
+            record = session.get(
+                ServiceAccountTokenRecord, UUID(expiring_payload["token"]["id"])
+            )
             assert record is not None
             record.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
         expired = self.client.get(

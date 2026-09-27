@@ -30,13 +30,11 @@ def _clean(value: str | None) -> str | None:
 
 
 def _request_id(request: Request) -> str:
-    incoming = _clean(request.headers.get("x-request-id"))
-    return incoming or uuid.uuid4().hex
+    return uuid.uuid4().hex
 
 
 def _trace_id(request: Request, request_id: str) -> str:
-    incoming = _clean(request.headers.get("x-trace-id"))
-    return incoming or request_id
+    return request_id
 
 
 def _route_project_id(path: str) -> str | None:
@@ -52,7 +50,9 @@ def build_request_context(request: Request) -> PlatformRequestContext:
     started_at = time.perf_counter()
     header_project_id = _clean(request.headers.get("x-project-id"))
     query_project_id = _clean(request.query_params.get("project_id"))
-    project_id = _route_project_id(request.url.path) or header_project_id or query_project_id
+    project_id = (
+        _route_project_id(request.url.path) or header_project_id or query_project_id
+    )
     return PlatformRequestContext(
         request=RequestContext(
             request_id=request_id,

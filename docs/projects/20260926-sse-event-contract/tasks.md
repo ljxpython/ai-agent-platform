@@ -1,6 +1,6 @@
 # SSE 专项 — 可执行任务清单
 
-> 2026-09-26。方案事实源为[plan.md](plan.md)，测试输入/命令见[verification.md](verification.md)。下述新文件、接口和测试均是待实施交付物，不表示当前仓库已经存在。业务代码尚未开始。
+> 2026-09-26。方案事实源为[plan.md](plan.md)，测试输入/命令见[verification.md](verification.md)。本轮已获 API/Web 开发与测试授权；状态以下方逐项记录为准。
 
 ## Phase 0：交接与评审
 
@@ -16,7 +16,7 @@
 - **代码位置：** 本专项README.md评审记录。
 - **预期结果：** 对新细则的评审可追溯；不把AI补文档当作自行批准治理改动。
 - **验证项：** 明确API/Web范围、当前标签页/项目边界、无活跃线程驱逐、410降级及SDK窄补丁；批准前只允许文档/只读核对。
-- **状态：** [x] 2026-09-26 本次交接确认用户已同意进入下一专项；方案就绪，仍无本轮业务编码授权。
+- **状态：** [x] 2026-09-26 用户明确授权按执行包开发和测试，限定 API/Web，排除迁移、部署和 Git 操作。
 
 ## Phase 1：测试基线与网关（P0.2后）
 
@@ -25,21 +25,21 @@
 - **代码位置：** 新增apps/platform-web/src/modules/chat/sdk-stream-recovery.test.ts、e2e/sse-event-contract.spec.ts；扩展src/modules/chat/run-actions.test.ts；基线证据记本专项implementation/01-baseline.md。
 - **预期结果：** 明确本期缺口与已有行为，UI目标为当前平台；保存instanceId、run.start/input.respond/cancel计数及流连接记录。
 - **验证项：** V01—V06基线、V10/V11失败复现；测试失败原因必须为目标缺口，不因坏夹具伪造红灯。
-- **状态：** [ ] 待实施。
+- **状态：** [x] `done`：真实安装 SDK、Run 过滤回归、受控浏览器用例及本地真实 SDK 链路已通过；按用户本轮要求不执行旧版本兼容矩阵。实施前视觉基线不可追补，当前 390px/桌面行为截图作为实施后证据保留。
 
 ### S2 网关帧限额与安全关闭
 - **改动内容：** 增量分帧，8MiB字节上限；UTF8/JSON/外层失败安全结束；心跳注释固定化；protocol/run分别验证payload；保留上游握手和finally清理。
 - **代码位置：** apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py::_redact_sse_frame、_redact_protocol_event_stream及三处调用；tests/test_runtime_gateway_event_redaction.py；tests/test_runtime_upstream_errors.py。
 - **预期结果：** 合法业务流保真，坏帧无原文输出；无需改Runtime、HTTP读超时或DB。
 - **验证项：** V14—V18；改掉旧test_preserves_fragmented_and_non_json_sse_frames中“任意非JSON透传”的断言，保留合法分片断言；所有异常分支aclose恰一次。
-- **状态：** [ ] 待实施。
+- **状态：** [x] `done`：8 MiB 分帧、安全关闭、双入口校验及关闭原因回调已实现；API 定向测试 11 passed、110 subtests passed。
 
 ### S3 HTTP错误边界衔接
 - **改动内容：** 复用错误专项safe parser，stream握手抛保留status/code/request_id的安全Error；现有401刷新一次；不引入另一套Envelope或重复命令重试。
 - **代码位置：** apps/platform-web/src/services/langgraph/client.ts::createLanggraphAuthorizedFetch及client.spec.ts；必要时在run-actions.ts的stream请求分支调用同一parser；不对正常Response重复读body。
 - **预期结果：** SDK能识别403/410/429/5xx；UI不出现原始上游堆栈/正文。
 - **验证项：** V12、V13；一次401→刷新→成功、二次401退出、403零自动重试、410保留机器码。
-- **状态：** [ ] 依赖错误响应专项相应公共边界交付。
+- **状态：** [x] `done`：复用错误专项 parser，握手安全字段与刷新/失败路径定向测试已通过；真实三服务仍列 Final 未验证。
 
 ## Phase 2：协议恢复与执行事实（S1/S3后）
 
@@ -48,21 +48,21 @@
 - **代码位置：** apps/platform-web/patches/@langchain__langgraph-sdk@1.10.2.patch，对应包dist/client/stream/transport/http.js/.cjs/.d.ts、dist/client/stream/index.js/.cjs/.d.ts及必要导出类型；pnpm patch更新产生的package.json/pnpm-lock.yaml；新增sdk-stream-recovery.test.ts。
 - **预期结果：** 不重建useStream/registry，不重复run命令；首次握手失败也可手动恢复；SDK安装可复现。
 - **验证项：** V09—V13、V19；直接导入安装SDK测试ESM，增加CJS导入冒烟；5次重试/30秒健康重置/全Abort清理；ready挂起时close不死锁；共享扩容回放和同名子任务测试不回归。
-- **状态：** [ ] 待实施；只提交patch源及锁信息，禁止以手改node_modules作为交付。
+- **状态：** [x] `done`：ESM/CJS/类型与锁定补丁、frozen install 已验证；11 个真实安装 SDK 用例覆盖重试上限、健康重置、45 秒空闲、手动恢复、双流选择、ready 关闭、共享扩容回放、跨 namespace 同 event_id 和过滤并集旋转失败后的恢复；受控浏览器 EOF 重连无命令重放。真实 Runtime Final 另列 S11。
 
 ### S5 去除整流Run过滤与取消误判
 - **改动内容：** 删除filterStaleRunSseResponse及仅为它存在的completedRunIds/帧解析分支；保留RunAction key/body/id幂等逻辑。终态/cancel不立即disconnect，旧Run只限制状态回调，不过滤数据。
 - **代码位置：** apps/platform-web/src/modules/chat/run-actions.ts::createRunActions；run-actions.test.ts；composables/useChatSession.ts::verify、stop、onCompleted。
 - **预期结果：** lifecycle先到时最终values/checkpoints仍可应用；r1终态不影响r2；其他入口启动Run仍被发现。
 - **验证项：** V10、V11；r1终态→r1最终values、r2开始→r1迟到终态、取消ACK→running→真实终态三组；每组命令计数精确。
-- **状态：** [ ] 待实施。
+- **状态：** [x] `done`：整流 Run 过滤已删除；尾帧、跨 Run 迟到完成、取消 ACK 后仍 running、晚订阅历史回放、跨 namespace 同 event_id 及页面重复事件回归通过。真实 Runtime 错序仍列 S11 Final 未验证。
 
 ### S6 会话恢复与410
 - **改动内容：** 删除不存在的joinStream分支，新增reconnectStream和每Thread单飞recoverExpiredStream；连接状态订阅清理；复用verify/state/history，新增recoverySnapshot绑定，隔离generation/run_id；动作retry与连接retry分流。
 - **代码位置：** apps/platform-web/src/modules/chat/composables/useChatSession.ts::verify、retry、ensureLiveEventStream、refreshAccessPolicy及新增恢复函数；components/ChatSession.vue的现有error/status及displayedMessages数据绑定；useChatSession.spec.ts。
 - **预期结果：** 普通恢复不重放动作，410显示授权快照/缺失提示，不声称原子无损；主视图/历史选择/草稿不重置。
 - **验证项：** V09、V12、V13、V19；410并发只查一次、状态读取期间新Run使旧快照作废、审批ID变化不自动提交；同一条目的两个流状态正确汇总。
-- **状态：** [ ] 待实施。
+- **状态：** [x] `done`：410 单飞、授权快照及手动恢复已接线；修复水合后首次 ThreadStream 连接监听漏绑。受控 SDK 与真实 ChatPage 410 回归、新 Run 期间快照作废、双流选择恢复及审批 ID 变化拒绝提交测试通过。真实 Runtime Final 另列 S11。
 
 ## Phase 3：完整会话持续保活（S4—S6后）
 
@@ -71,21 +71,21 @@
 - **代码位置：** 新增apps/platform-web/src/modules/chat/components/ChatSessionPool.vue、composables/useChatSessionPool.ts及同名.spec.ts；layouts/WorkspaceLayout.vue与WorkspaceLayout.spec.ts。
 - **预期结果：** 页面只绑定view，Thread实例与动作持续受管；同Thread跨聊天/Dear入口至多一个实例；草稿确认Thread不remount。
 - **验证项：** V07、V08、V20；身份索引碰撞检查、旧generation丢弃、pending ready销毁、Teleport目标卸载后无残留/报错。
-- **状态：** [ ] 待实施。
+- **状态：** [x] `done`：Workspace 稳定宿主、池索引及 Teleport 已实现，后台 ACK 回视图路由同步测试通过；真实 ChatPage+ChatSession+SDK A→B→A 后 A 后台继续消费且不新增订阅/命令，跨入口同 Thread 的实例索引在池单测验证。真实 Runtime 容量归 S11。
 
 ### S8 页面与组件必要接线
 - **改动内容：** ChatPage/DearAgentPage去掉mountVersion会话重建，loading/error只影响视图；原resetDraft/restoreDraft改为条目初始化，created/fork/refresh事件按条目处理；传visible，暂停后台DOM副作用和未发送队列drain。
 - **代码位置：** apps/platform-web/src/modules/chat/pages/ChatPage.vue及.spec.ts；modules/dear-agent/pages/DearAgentPage.vue及.spec.ts；modules/dear-agent/components/DearAgentSession.vue；modules/chat/components/ChatSession.vue。
 - **预期结果：** A后台完成不改B路由/输入/附件；打开抽屉/参数作用于当前线程；隐藏弹层不盖B；原展示与操作一致。
 - **验证项：** V01—V08、V20；延时350ms途中切页不新发消息；已提交收据继续更新；新建Thread ACK期间切B不清B草稿；回A滚动/折叠保留。
-- **状态：** [ ] 待实施。
+- **状态：** [x] `done`：两页面和组件已接池；受控 ChatPage 验证后台保活、排队命令、350ms 窗口、草稿/附件/滚动隔离及工具卡结果；390px 真实浏览器检查发现并修复会话头部重叠，截图与横向溢出断言通过。实施前视觉基线不可追补，按用户要求不做兼容矩阵。
 
 ### S9 权限与作用域清理
 - **改动内容：** 明确denied状态优先于hasCachedContent；403/404清条目及其缓存/草稿，网络故障不冒充撤权；换项目/账号/登出/离开工作区统一清作用域；删除Thread成功通知池。
 - **代码位置：** apps/platform-web/src/modules/chat/composables/useChatSession.ts::refreshAccessPolicy、canRead；useChatSessionPool.ts；stores/useChatSessionStore.ts::removeSession/clearAll；WorkspaceLayout.vue；两页面deleteThread。
 - **预期结果：** 旧页面KeepAlive/迟到请求不能恢复越权数据；释放不取消Run；不同身份不共享SDK。
 - **验证项：** V08、V12、V20；撤权后再次导航无缓存闪现；network/5xx保留已授权快照但新操作重新校验；所有controller/timer/listener清零。
-- **状态：** [ ] 待实施。
+- **状态：** [x] `done`：403/404 清池和缓存、作用域清理已接线；排队草稿本地键纳入用户 ID，避免共享 Thread 跨账号读取。受控浏览器撤权后内容/连接清零、UI 登出后 A/B 连接归零且无 cancel；WorkspaceLayout 项目参数变化调用清池的单测通过。真实跨身份 Runtime Final 另列 S11。
 
 ## Phase 4：综合验证与交接
 
@@ -94,20 +94,20 @@
 - **代码位置：** 新增apps/platform-api/tests/fixtures/sse_contract_server.py；扩展apps/platform-web/e2e/sse-event-contract.spec.ts。优先复用错误专项fixture装配，SSE场景仍独立计数与端口。
 - **预期结果：** 可重复验证Web→API→受控上游，真实三服务另验，不拿夹具当Runtime验证。
 - **验证项：** verification第3节命令和fixture契约；所有V编号有断言/截图/请求计数或日志证据。
-- **状态：** [ ] 待实施。
+- **状态：** [x] `done`：隔离临时 SQLite、真实 API/auth/router、受控 gateway、分片/EOF/坏帧/410/撤权及 Run 状态控制已交付；夹具 reset 释放旧 SSE 队列。受控浏览器全文件 15 passed，覆盖后台排队命令、350ms 隐藏窗口、同名工具失败/成功、附件/滚动回切、不同 namespace 同 event_id 的错序传输、根命名空间重复事件、握手 403/404/429/502、取消 ACK 及撤权。V01—V21 的真实 Runtime 边界由 S11 单独记录。
 
-### S11 Final验收、回退与现状文档
-- **改动内容：** 执行全量Web/API相关测试及真实链路、容量/权限/回退；更新现役规范、CONTEXT/FEATURES/父项目；按implement-feature记实现、verify-change记Final四态。
+### S11 Final验收与现状文档
+- **改动内容：** 执行全量Web/API相关测试及新服务组合真实链路、容量/权限；更新现役规范、CONTEXT/FEATURES/父项目；按implement-feature记实现、verify-change记Final四态。
 - **代码位置：** 本专项implementation/、verification.md；apps/platform-web/docs/frontend-development-playbook.md；apps/platform-api/docs下受影响现役规范；docs/CONTEXT.md、docs/FEATURES.md、父项目README.md。
 - **预期结果：** 没有未解释UI改动；无新跨Runtime契约；测试证据明确通过/失败/未测，未通过门禁不宣布完成。
-- **验证项：** verification第4—6节；真实链路故障/取消/HITL、8活跃+30访问30分钟、隔离回退及三段脱敏样例。
-- **状态：** [ ] 待实施；本轮不执行发布、删除测试数据或git提交。
+- **验证项：** verification第4—6节；真实链路故障/取消/HITL、8活跃+30访问30分钟及三段脱敏样例。
+- **状态：** [ ] `blocked`：真实 SDK 链路 1 passed；1/4 条真实 Runtime-backed SSE 分别完成 30 次访问，390px 真实浏览器截图/无溢出通过；Web 全量 Vitest 397 passed、1 skipped，受控浏览器 15 passed，production build、typecheck、文档检查通过。根因已确认是本地 HTTP/1.1 浏览器 origin 约 6 条长连接槽：8 条时后续 SSE 无法握手，6 条时 `/state` 请求饥饿；Runtime worker 扩容不改变该限制。30 分钟/h2/h3/完整容量 Final 需 HTTP/2 或 HTTP/3 入口，当前未验证。未执行迁移、部署、Git 提交或分支操作。
 
 ## 进度
 
 - [x] 独立专项及父项目关联。
 - [x] 用户确认线程保活及展示保护。
 - [x] 实施方案、函数任务、输入/断言/命令、回退文档细化。
-- [ ] 新增技术细则人工评审。
-- [ ] S1—S10实施与Phase验收。
-- [ ] S11 Final验收。
+- [x] 用户授权执行包开发和测试，批准边界见 README。
+- [x] S1—S10实施与Phase验收（S1—S10 done；旧版本兼容矩阵按用户要求不执行）。
+- [ ] S11 Final验收（blocked：8 条真实 Runtime 并发握手、HTTP/1.1 入口及 30 分钟/h2/h3 门禁未满足）。

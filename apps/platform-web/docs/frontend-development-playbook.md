@@ -75,6 +75,8 @@ service/state/permission/audit 规则仍由 `control-plane-page-standard.md` 管
 
 页面完成必须同时满足响应式布局、错误态、空态、加载态和基本可访问性。
 
+HTTP错误统一经 `src/utils/http-error.ts` 解析；SDK嵌套 `error` 对象和 `extra` 不得覆盖。只有合法请求ID追加到可见文案，Thread创建结果未知时先按平台UUID对账。完整边界见[错误出口标准](../../../docs/standards/error-envelope.md)。
+
 ## 6. Chat 实现边界
 
 `ChatPage` 负责 URL/目标/列表；`ChatSession` 与 `useChatSession` 绑定固定身份/项目/Thread，官方 SDK 持有实时投影；`run-actions` 只持有动作幂等快照。`Transcript` 保留消息顺序和稳定 ID，`SubtaskDetail` 展开时订阅 scoped 数据，详情只用一个 Inspector。

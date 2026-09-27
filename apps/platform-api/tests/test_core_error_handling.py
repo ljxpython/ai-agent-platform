@@ -72,6 +72,55 @@ class CoreErrorHandlingTest(unittest.TestCase):
         self.assertEqual(payload["error"]["code"], "route_not_found")
         self.assertEqual(payload["error"]["message"], "Route not found")
 
+    def test_validation_details_exclude_input_and_private_message(self) -> None:
+        from platform_api.core.errors.payload import safe_validation_details
+
+        details = safe_validation_details(
+            [
+                {
+                    "loc": ["body", "secret", True, "x" * 129],
+                    "type": "missing",
+                    "msg": "token=secret",
+                    "input": "secret",
+                    "ctx": {"key": "secret"},
+                }
+            ]
+            * 20
+            + ["malformed"]
+        )
+        self.assertEqual(len(details), 20)
+        self.assertEqual(
+            details[0],
+            {"loc": ["body", "secret"], "type": "missing", "message": "Field required"},
+        )
+        self.assertNotIn("token=secret", str(details))
+        self.assertEqual(safe_validation_details(["malformed"]), [])
+
+    def test_platform_error_has_matching_request_header(self) -> None:
+        response = self.client.get("/platform-error")
+        self.assertEqual(
+            response.headers["x-request-id"], response.json()["request_id"]
+        )
+
+    def test_error_header_allowlist(self) -> None:
+        from platform_api.core.errors.payload import safe_error_headers
+
+        headers = {
+            "Retry-After": "15",
+            "Set-Cookie": "secret=1",
+            "Authorization": "Bearer secret",
+            "Allow": "GET, POST, bad value",
+        }
+        self.assertEqual(
+            safe_error_headers(429, headers, platform=False), {"Retry-After": "15"}
+        )
+        self.assertEqual(
+            safe_error_headers(405, headers, platform=False), {"Allow": "GET, POST"}
+        )
+        self.assertEqual(
+            safe_error_headers(503, {"Retry-After": "1\r\nsecret"}, platform=False), {}
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,6 +7,10 @@ import {
   type ThreadState,
 } from "@langchain/langgraph-sdk";
 import { getLanggraphApiUrl } from "@/services/langgraph/client";
+import {
+  extractPlatformHttpError,
+  formatPlatformHttpErrorMessage,
+} from "@/utils/http-error";
 
 export type AccessPolicy = "review" | "workspace_write" | "full_access";
 export type ChatState = Record<string, unknown> & { messages: unknown[] };
@@ -68,21 +72,26 @@ export function createSessionService(
       headers,
     });
     if (!response.ok) {
-      let detail = "";
+      let body: unknown;
       try {
-        const body = (await response.clone().json()) as {
-          message?: string;
-          detail?: string;
-        };
-        detail = body?.message || body?.detail || "";
+        body = await response.json();
       } catch {
-        // ignore json parse error
+        body = undefined;
       }
-      throw new Error(
-        detail
-          ? `${detail}（${response.status}）`
-          : `读取会话失败（${response.status}）`,
-      );
+      const original = { response: { status: response.status, data: body } };
+      const fields = extractPlatformHttpError(original, "读取会话失败");
+      const error = new Error(
+        formatPlatformHttpErrorMessage(original, "读取会话失败"),
+      ) as Error & typeof fields;
+      Object.assign(error, {
+        status: fields.status,
+        code: fields.code,
+        requestId: fields.requestId,
+        details: fields.details,
+        extra: fields.extra,
+        cancelled: fields.cancelled,
+      });
+      throw error;
     }
     return response.json() as Promise<T>;
   }
@@ -119,21 +128,27 @@ export function createSessionService(
           },
         });
       } catch (error) {
-        const raw = (error as { text?: unknown })?.text;
-        if (typeof raw === "string") {
-          try {
-            const body = JSON.parse(raw) as {
-              error?: { extra?: { thread_id?: unknown } };
-            };
-            const id = body.error?.extra?.thread_id;
-            if (typeof id === "string" && /^[0-9a-f-]{36}$/i.test(id)) {
-              setPendingThreadId(id);
-              throw new Error(`会话创建结果待确认（${id}），请稍后重试`);
-            }
-          } catch (parseError) {
-            if (parseError instanceof SyntaxError) throw error;
-            throw parseError;
-          }
+        const fields = extractPlatformHttpError(error);
+        const id = fields.extra?.thread_id;
+        if (
+          typeof id === "string" &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            id,
+          )
+        ) {
+          setPendingThreadId(id);
+          const pendingError = new Error(
+            `会话创建结果待确认（${id}），请稍后重试`,
+          ) as Error & typeof fields;
+          Object.assign(pendingError, {
+            status: fields.status,
+            code: fields.code,
+            requestId: fields.requestId,
+            details: fields.details,
+            extra: fields.extra,
+            cancelled: fields.cancelled,
+          });
+          throw pendingError;
         }
         throw error;
       }
