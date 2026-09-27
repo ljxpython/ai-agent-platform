@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import ChatTodoStatusBadge, {
+  type TodoBadgeStatus,
+} from "./ChatTodoStatusBadge.vue";
 
-type ChatPlanTodo = { id: string; content: string; status: "pending" | "in_progress" | "completed" };
+type ChatPlanTodo = { id: string; content: string; status: TodoBadgeStatus };
 type ChatPlanView = {
   planTodos: ChatPlanTodo[];
   ephemeralTodos: ChatPlanTodo[];
@@ -24,7 +27,9 @@ const expanded = ref(false);
 
 const percent = computed(() => {
   if (!props.planView.totalTasks) return 0;
-  return Math.round((props.planView.completedTasks / props.planView.totalTasks) * 100);
+  return Math.round(
+    (props.planView.completedTasks / props.planView.totalTasks) * 100,
+  );
 });
 
 const ringCircumference = 2 * Math.PI * 6;
@@ -56,7 +61,9 @@ const statusSummary = computed(() => {
       data-testid="task-tray-list"
       class="border-b border-gray-200/75 bg-white/90 px-3.5 py-2.5 dark:border-dark-700/75 dark:bg-dark-900/90"
     >
-      <div class="mb-2 flex items-center justify-between text-[11px] text-gray-500 dark:text-dark-300">
+      <div
+        class="mb-2 flex items-center justify-between text-[11px] text-gray-500 dark:text-dark-300"
+      >
         <span class="font-semibold text-gray-700 dark:text-gray-200">
           任务执行清单 ({{ planView.completedTasks }}/{{ planView.totalTasks }})
         </span>
@@ -76,50 +83,23 @@ const statusSummary = computed(() => {
           v-for="(item, idx) in planView.planTodos"
           :key="item.id ?? idx"
           class="flex items-start gap-2 rounded-lg px-1.5 py-1 text-xs transition-colors"
-          :class="item.status === 'in_progress' ? 'bg-blue-50/60 dark:bg-blue-950/25' : ''"
+          :class="
+            item.status === 'in_progress'
+              ? 'bg-blue-50/60 dark:bg-blue-950/25'
+              : ''
+          "
         >
-          <!-- 单项任务状态图标 -->
-          <span class="mt-0.5 flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-            <svg
-              v-if="item.status === 'completed'"
-              class="h-3.5 w-3.5 text-emerald-500"
-              viewBox="0 0 16 16"
-              fill="none"
-            >
-              <circle
-                cx="8"
-                cy="8"
-                r="7"
-                class="fill-emerald-500/15 stroke-emerald-500"
-                stroke-width="1.5"
-              />
-              <path
-                d="M5 8.2L7.1 10.3L11.2 6"
-                stroke="currentColor"
-                stroke-width="1.6"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-              />
-            </svg>
-            <span
-              v-else-if="item.status === 'in_progress'"
-              class="relative flex h-2.5 w-2.5"
-            >
-              <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-400 opacity-75" />
-              <span class="relative inline-flex h-2.5 w-2.5 rounded-full bg-blue-500" />
-            </span>
-            <span
-              v-else
-              class="h-2.5 w-2.5 rounded-full border border-gray-300 dark:border-dark-500"
-            />
-          </span>
+          <!-- 单项任务状态微徽章 -->
+          <ChatTodoStatusBadge :status="item.status" size="sm" class="mt-0.5" />
 
           <span
             class="flex-1 truncate leading-relaxed"
             :class="{
-              'font-medium text-gray-900 dark:text-white': item.status === 'in_progress',
-              'text-gray-400 line-through dark:text-gray-500': item.status === 'completed',
-              'text-gray-600 dark:text-gray-300': item.status === 'pending'
+              'font-medium text-gray-900 dark:text-white':
+                item.status === 'in_progress',
+              'text-gray-400 line-through dark:text-gray-500':
+                item.status === 'completed',
+              'text-gray-600 dark:text-gray-300': item.status === 'pending',
             }"
           >
             {{ item.content }}
@@ -128,12 +108,20 @@ const statusSummary = computed(() => {
           <span
             class="shrink-0 rounded px-1.5 py-0.5 text-[10px]"
             :class="{
-              'bg-blue-100/80 text-blue-700 font-medium dark:bg-blue-950/60 dark:text-blue-300': item.status === 'in_progress',
-              'text-emerald-600/80 dark:text-emerald-400/80': item.status === 'completed',
-              'text-gray-400 dark:text-dark-400': item.status === 'pending'
+              'bg-blue-100/80 text-blue-700 font-medium dark:bg-blue-950/60 dark:text-blue-300':
+                item.status === 'in_progress',
+              'text-emerald-600/80 dark:text-emerald-400/80':
+                item.status === 'completed',
+              'text-gray-400 dark:text-dark-400': item.status === 'pending',
             }"
           >
-            {{ item.status === 'in_progress' ? '进行中' : item.status === 'completed' ? '已完成' : '待处理' }}
+            {{
+              item.status === "in_progress"
+                ? "进行中"
+                : item.status === "completed"
+                  ? "已完成"
+                  : "待处理"
+            }}
           </span>
         </div>
       </div>

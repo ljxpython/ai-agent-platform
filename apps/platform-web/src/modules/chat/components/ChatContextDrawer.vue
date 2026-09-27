@@ -1,284 +1,304 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import BaseButton from '@/components/base/BaseButton.vue'
-import BaseDrawer from '@/components/base/BaseDrawer.vue'
-import { useUiStore } from '@/stores/ui'
-import { downloadBlob } from '@/utils/browser-download'
-import { copyText } from '@/utils/clipboard'
-import { toPrettyJson } from '@/utils/threads'
-import { buildChatHistoryView } from '../history-view-model'
-type ChatInspectorFile = { path: string; content: string; lineCount: number; completeness: string }
-type ChatPlanTodo = { id: string; content: string; status: 'pending' | 'in_progress' | 'completed' }
-type ChatPlanView = { planTodos: ChatPlanTodo[]; ephemeralTodos: ChatPlanTodo[]; activeTask: ChatPlanTodo | null; totalTasks: number; completedTasks: number; allTasksCompleted: boolean; hasFrozenPlan: boolean }
-import type { ThreadHistoryEntry } from '@/types/management'
+import { computed, ref, watch } from "vue";
+import BaseButton from "@/components/base/BaseButton.vue";
+import BaseDrawer from "@/components/base/BaseDrawer.vue";
+import { useUiStore } from "@/stores/ui";
+import { downloadBlob } from "@/utils/browser-download";
+import { copyText } from "@/utils/clipboard";
+import { toPrettyJson } from "@/utils/threads";
+import { buildChatHistoryView } from "../history-view-model";
+import ChatTodoStatusBadge, {
+  type TodoBadgeStatus,
+} from "./ChatTodoStatusBadge.vue";
+type ChatInspectorFile = {
+  path: string;
+  content: string;
+  lineCount: number;
+  completeness: string;
+};
+type ChatPlanTodo = { id: string; content: string; status: TodoBadgeStatus };
+type ChatPlanView = {
+  planTodos: ChatPlanTodo[];
+  ephemeralTodos: ChatPlanTodo[];
+  activeTask: ChatPlanTodo | null;
+  totalTasks: number;
+  completedTasks: number;
+  allTasksCompleted: boolean;
+  hasFrozenPlan: boolean;
+};
+import type { ThreadHistoryEntry } from "@/types/management";
 
-type InspectorTabKey = 'overview' | 'tasks' | 'files' | 'history'
-type TodoStatus = ChatPlanTodo['status']
+type InspectorTabKey = "overview" | "tasks" | "files" | "history";
 
 const props = defineProps<{
-  show: boolean
-  initialTab: InspectorTabKey
-  showHistory: boolean
-  showArtifacts: boolean
-  allowResetTarget: boolean
-  targetText: string
-  projectName: string
-  activeThreadId: string
-  lastRunId: string
-  selectedBranch: string
-  latestMessagePreview: string
-  historyItems: ThreadHistoryEntry[]
-  isViewingBranch: boolean
-  planView: ChatPlanView
-  files: ChatInspectorFile[]
-  values?: Record<string, unknown> | null
-  isRunning: boolean
-  hasInterrupt: boolean
-  sourceNote: string
-  contextNotice?: string
-  onUpdateState?: (values: Record<string, unknown>) => Promise<boolean>
-  historyLoading?: boolean
-  hasMoreHistory?: boolean
-  canExecute?: boolean
-  run?: unknown
-}>()
+  show: boolean;
+  initialTab: InspectorTabKey;
+  showHistory: boolean;
+  showArtifacts: boolean;
+  allowResetTarget: boolean;
+  targetText: string;
+  projectName: string;
+  activeThreadId: string;
+  lastRunId: string;
+  selectedBranch: string;
+  latestMessagePreview: string;
+  historyItems: ThreadHistoryEntry[];
+  isViewingBranch: boolean;
+  planView: ChatPlanView;
+  files: ChatInspectorFile[];
+  values?: Record<string, unknown> | null;
+  isRunning: boolean;
+  hasInterrupt: boolean;
+  sourceNote: string;
+  contextNotice?: string;
+  onUpdateState?: (values: Record<string, unknown>) => Promise<boolean>;
+  historyLoading?: boolean;
+  hasMoreHistory?: boolean;
+  canExecute?: boolean;
+  run?: unknown;
+}>();
 
 const emit = defineEmits<{
-  close: []
-  'select-branch': [branchId: string]
-  'reset-target': []
-  'load-history': [limit?: number]
-  'fork': []
-}>()
+  close: [];
+  "select-branch": [branchId: string];
+  "reset-target": [];
+  "load-history": [limit?: number];
+  fork: [];
+}>();
 
-const uiStore = useUiStore()
-const activeTab = ref<InspectorTabKey>('overview')
-const selectedFilePath = ref('')
-const isEditing = ref(false)
-const editValue = ref('')
-const isSaving = ref(false)
+const uiStore = useUiStore();
+const activeTab = ref<InspectorTabKey>("overview");
+const selectedFilePath = ref("");
+const isEditing = ref(false);
+const editValue = ref("");
+const isSaving = ref(false);
 
 const availableTabs = computed(() => {
   const tabs: Array<{
-    key: InspectorTabKey
-    label: string
-    count?: number
-    tone?: 'info' | 'warning' | 'success'
+    key: InspectorTabKey;
+    label: string;
+    count?: number;
+    tone?: "info" | "warning" | "success";
   }> = [
-    { key: 'overview', label: '概览' },
+    { key: "overview", label: "概览" },
     {
-      key: 'tasks',
-      label: 'ToDo',
+      key: "tasks",
+      label: "ToDo",
       count: props.planView.totalTasks + props.planView.ephemeralTodos.length,
-      tone: props.planView.activeTask ? 'info' : props.planView.allTasksCompleted ? 'success' : undefined
+      tone: props.planView.activeTask
+        ? "info"
+        : props.planView.allTasksCompleted
+          ? "success"
+          : undefined,
     },
-    { key: 'files', label: 'Files', count: props.files.length }
-  ]
+    { key: "files", label: "Files", count: props.files.length },
+  ];
 
   if (props.showHistory) {
     tabs.push({
-      key: 'history',
-      label: '历史',
+      key: "history",
+      label: "历史",
       count: props.historyItems.length,
-      tone: props.isViewingBranch ? 'warning' : undefined
-    })
+      tone: props.isViewingBranch ? "warning" : undefined,
+    });
   }
 
-  return tabs
-})
+  return tabs;
+});
 
 const selectedFile = computed(
-  () => props.files.find((item) => item.path === selectedFilePath.value) || null
-)
+  () =>
+    props.files.find((item) => item.path === selectedFilePath.value) || null,
+);
 const hasTasks = computed(
-  () => props.planView.totalTasks > 0 || props.planView.ephemeralTodos.length > 0
-)
-const editDisabled = computed(() => props.isRunning || props.hasInterrupt || isSaving.value)
-const currentTaskLabel = computed(() => props.planView.activeTask?.content || '暂无')
+  () =>
+    props.planView.totalTasks > 0 || props.planView.ephemeralTodos.length > 0,
+);
+const editDisabled = computed(
+  () => props.isRunning || props.hasInterrupt || isSaving.value,
+);
+const currentTaskLabel = computed(
+  () => props.planView.activeTask?.content || "暂无",
+);
 const historyView = computed(() =>
   buildChatHistoryView({
     items: props.historyItems,
     selectedBranch: props.selectedBranch,
-    isViewingBranch: props.isViewingBranch
-  })
-)
+    isViewingBranch: props.isViewingBranch,
+  }),
+);
 
-const showOnlyMilestones = ref(true)
-const historyRoleFilter = ref<'all' | 'user' | 'agent' | 'tool'>('all')
+const showOnlyMilestones = ref(true);
+const historyRoleFilter = ref<"all" | "user" | "agent" | "tool">("all");
 
 const displayedHistoryItems = computed(() => {
-  let list = historyView.value.items
+  let list = historyView.value.items;
   if (showOnlyMilestones.value) {
-    const milestones = list.filter((item) => item.isKeyMilestone)
-    list = milestones.length > 0 ? milestones : list
+    const milestones = list.filter((item) => item.isKeyMilestone);
+    list = milestones.length > 0 ? milestones : list;
   }
-  if (historyRoleFilter.value !== 'all') {
-    list = list.filter((item) => item.role === historyRoleFilter.value)
+  if (historyRoleFilter.value !== "all") {
+    list = list.filter((item) => item.role === historyRoleFilter.value);
   }
-  return list
-})
+  return list;
+});
 
 watch(
   () => [props.initialTab, props.showHistory, props.show] as const,
   ([nextTab, showHistory, isOpen]) => {
     if (!isOpen) {
-      return
+      return;
     }
 
-    if (nextTab === 'history' && !showHistory) {
-      activeTab.value = 'overview'
-      return
+    if (nextTab === "history" && !showHistory) {
+      activeTab.value = "overview";
+      return;
     }
 
-    activeTab.value = nextTab
+    activeTab.value = nextTab;
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 watch(
   () => props.files,
   (nextFiles) => {
     if (nextFiles.length === 0) {
-      selectedFilePath.value = ''
-      isEditing.value = false
-      editValue.value = ''
-      return
+      selectedFilePath.value = "";
+      isEditing.value = false;
+      editValue.value = "";
+      return;
     }
 
-    if (!selectedFilePath.value || !nextFiles.some((item) => item.path === selectedFilePath.value)) {
-      selectedFilePath.value = nextFiles[0].path
-      isEditing.value = false
-      editValue.value = nextFiles[0].content
+    if (
+      !selectedFilePath.value ||
+      !nextFiles.some((item) => item.path === selectedFilePath.value)
+    ) {
+      selectedFilePath.value = nextFiles[0].path;
+      isEditing.value = false;
+      editValue.value = nextFiles[0].content;
     }
   },
-  { immediate: true, deep: true }
-)
+  { immediate: true, deep: true },
+);
 
 watch(selectedFile, (file) => {
   if (!isEditing.value) {
-    editValue.value = file?.content || ''
+    editValue.value = file?.content || "";
   }
-})
+});
 
 function groupTodoList(todos: ChatPlanTodo[]) {
   return {
-    in_progress: todos.filter((item) => item.status === 'in_progress'),
-    pending: todos.filter((item) => item.status === 'pending'),
-    completed: todos.filter((item) => item.status === 'completed')
-  }
-}
-
-function statusDotClass(status: TodoStatus) {
-  if (status === 'completed') {
-    return 'border-emerald-200 bg-emerald-500'
-  }
-  if (status === 'in_progress') {
-    return 'border-sky-200 bg-sky-500'
-  }
-  return 'border-gray-200 bg-white'
+    in_progress: todos.filter((item) => item.status === "in_progress"),
+    pending: todos.filter((item) => item.status === "pending"),
+    completed: todos.filter((item) => item.status === "completed"),
+  };
 }
 
 async function handleCopyFile() {
   if (!selectedFile.value) {
-    return
+    return;
   }
 
-  const copied = await copyText(selectedFile.value.content)
+  const copied = await copyText(selectedFile.value.content);
   uiStore.pushToast({
-    type: copied ? 'success' : 'error',
-    title: copied ? '已复制文件内容' : '复制失败',
-    message: copied ? selectedFile.value.path : '浏览器拒绝了复制动作'
-  })
+    type: copied ? "success" : "error",
+    title: copied ? "已复制文件内容" : "复制失败",
+    message: copied ? selectedFile.value.path : "浏览器拒绝了复制动作",
+  });
 }
 
 function handleDownloadFile() {
   if (!selectedFile.value) {
-    return
+    return;
   }
 
   downloadBlob(
-    new Blob([selectedFile.value.content], { type: 'text/plain;charset=utf-8' }),
-    selectedFile.value.path
-  )
+    new Blob([selectedFile.value.content], {
+      type: "text/plain;charset=utf-8",
+    }),
+    selectedFile.value.path,
+  );
   uiStore.pushToast({
-    type: 'success',
-    title: '已下载文件',
-    message: selectedFile.value.path
-  })
+    type: "success",
+    title: "已下载文件",
+    message: selectedFile.value.path,
+  });
 }
 
 function handleStartEdit() {
   if (!selectedFile.value) {
-    return
+    return;
   }
 
   if (editDisabled.value) {
     uiStore.pushToast({
-      type: 'warning',
-      title: '当前不可编辑',
-      message: '运行中或等待中断决策时，文件内容不能直接改。'
-    })
-    return
+      type: "warning",
+      title: "当前不可编辑",
+      message: "运行中或等待中断决策时，文件内容不能直接改。",
+    });
+    return;
   }
 
-  isEditing.value = true
-  editValue.value = selectedFile.value.content
+  isEditing.value = true;
+  editValue.value = selectedFile.value.content;
 }
 
 function handleCancelEdit() {
-  isEditing.value = false
-  editValue.value = selectedFile.value?.content || ''
+  isEditing.value = false;
+  editValue.value = selectedFile.value?.content || "";
 }
 
 async function handleSaveEdit() {
   if (!selectedFile.value || !props.onUpdateState) {
-    return
+    return;
   }
 
-  const rawFiles = props.values?.files
-  if (!rawFiles || typeof rawFiles !== 'object' || Array.isArray(rawFiles)) {
+  const rawFiles = props.values?.files;
+  if (!rawFiles || typeof rawFiles !== "object" || Array.isArray(rawFiles)) {
     uiStore.pushToast({
-      type: 'error',
-      title: '保存失败',
-      message: '当前线程里没有可编辑的文件状态。'
-    })
-    return
+      type: "error",
+      title: "保存失败",
+      message: "当前线程里没有可编辑的文件状态。",
+    });
+    return;
   }
 
-  const nextFiles = { ...(rawFiles as Record<string, unknown>) }
-  const currentRaw = nextFiles[selectedFile.value.path]
-  if (typeof currentRaw === 'string' || currentRaw == null) {
-    nextFiles[selectedFile.value.path] = editValue.value
-  } else if (typeof currentRaw === 'object' && !Array.isArray(currentRaw)) {
-    const currentRecord = currentRaw as Record<string, unknown>
+  const nextFiles = { ...(rawFiles as Record<string, unknown>) };
+  const currentRaw = nextFiles[selectedFile.value.path];
+  if (typeof currentRaw === "string" || currentRaw == null) {
+    nextFiles[selectedFile.value.path] = editValue.value;
+  } else if (typeof currentRaw === "object" && !Array.isArray(currentRaw)) {
+    const currentRecord = currentRaw as Record<string, unknown>;
     nextFiles[selectedFile.value.path] =
-      'content' in currentRecord
+      "content" in currentRecord
         ? {
             ...currentRecord,
-            content: editValue.value
+            content: editValue.value,
           }
-        : editValue.value
+        : editValue.value;
   } else {
-    nextFiles[selectedFile.value.path] = editValue.value
+    nextFiles[selectedFile.value.path] = editValue.value;
   }
 
-  isSaving.value = true
+  isSaving.value = true;
   try {
-    await props.onUpdateState({ files: nextFiles })
-    isEditing.value = false
+    await props.onUpdateState({ files: nextFiles });
+    isEditing.value = false;
     uiStore.pushToast({
-      type: 'success',
-      title: '文件已保存',
-      message: selectedFile.value.path
-    })
+      type: "success",
+      title: "文件已保存",
+      message: selectedFile.value.path,
+    });
   } catch (error) {
     uiStore.pushToast({
-      type: 'error',
-      title: '保存失败',
-      message: error instanceof Error ? error.message : '线程状态更新失败'
-    })
+      type: "error",
+      title: "保存失败",
+      message: error instanceof Error ? error.message : "线程状态更新失败",
+    });
   } finally {
-    isSaving.value = false
+    isSaving.value = false;
   }
 }
 </script>
@@ -299,11 +319,7 @@ async function handleSaveEdit() {
           :key="tab.key"
           type="button"
           class="pw-chip-toggle"
-          :class="
-            activeTab === tab.key
-              ? 'pw-chip-toggle-active'
-              : ''
-          "
+          :class="activeTab === tab.key ? 'pw-chip-toggle-active' : ''"
           :aria-label="tab.label"
           @click="activeTab = tab.key"
         >
@@ -333,33 +349,32 @@ async function handleSaveEdit() {
         </button>
       </div>
 
-      <div
-        v-if="activeTab === 'overview'"
-        class="space-y-5"
-      >
+      <div v-if="activeTab === 'overview'" class="space-y-5">
         <div class="grid gap-4 md:grid-cols-3">
           <div class="pw-panel-muted">
-            <div class="text-xs text-gray-400 dark:text-dark-400">
-              当前任务
-            </div>
-            <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+            <div class="text-xs text-gray-400 dark:text-dark-400">当前任务</div>
+            <div
+              class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
+            >
               {{ currentTaskLabel }}
             </div>
           </div>
           <div class="pw-panel-muted">
-            <div class="text-xs text-gray-400 dark:text-dark-400">
-              文件状态
-            </div>
-            <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+            <div class="text-xs text-gray-400 dark:text-dark-400">文件状态</div>
+            <div
+              class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
+            >
               {{ props.files.length }} 个文件
             </div>
           </div>
           <div class="pw-panel-muted">
-            <div class="text-xs text-gray-400 dark:text-dark-400">
-              历史快照
-            </div>
-            <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-              {{ props.showHistory ? `${props.historyItems.length} 条` : '未启用' }}
+            <div class="text-xs text-gray-400 dark:text-dark-400">历史快照</div>
+            <div
+              class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
+            >
+              {{
+                props.showHistory ? `${props.historyItems.length} 条` : "未启用"
+              }}
             </div>
           </div>
         </div>
@@ -372,63 +387,86 @@ async function handleSaveEdit() {
             <div class="font-semibold text-gray-900 dark:text-white">
               当前正在查看历史分支
             </div>
-            <div class="mt-1 break-all text-xs leading-6 text-gray-500 dark:text-dark-300">
+            <div
+              class="mt-1 break-all text-xs leading-6 text-gray-500 dark:text-dark-300"
+            >
               {{ props.selectedBranch }}
             </div>
           </div>
-          <BaseButton
-            variant="ghost"
-            @click="emit('select-branch', '')"
-          >
+          <BaseButton variant="ghost" @click="emit('select-branch', '')">
             返回最新
           </BaseButton>
         </div>
 
         <div class="pw-panel">
-          <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
+          <div
+            class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400"
+          >
             当前上下文
           </div>
-          <div class="mt-3 space-y-3 text-sm leading-7 text-gray-600 dark:text-dark-300">
+          <div
+            class="mt-3 space-y-3 text-sm leading-7 text-gray-600 dark:text-dark-300"
+          >
             <div class="flex items-start justify-between gap-3">
               <span>Target</span>
-              <span class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white">{{ props.targetText }}</span>
+              <span
+                class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white"
+                >{{ props.targetText }}</span
+              >
             </div>
             <div class="flex items-start justify-between gap-3">
               <span>项目</span>
-              <span class="max-w-[320px] text-right font-semibold text-gray-900 dark:text-white">{{ props.projectName || '--' }}</span>
+              <span
+                class="max-w-[320px] text-right font-semibold text-gray-900 dark:text-white"
+                >{{ props.projectName || "--" }}</span
+              >
             </div>
             <div class="flex items-start justify-between gap-3">
               <span>Thread</span>
-              <span class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white">{{ props.activeThreadId || '--' }}</span>
+              <span
+                class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white"
+                >{{ props.activeThreadId || "--" }}</span
+              >
             </div>
             <div class="flex items-start justify-between gap-3">
               <span>Run</span>
-              <span class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white">{{ props.lastRunId || '--' }}</span>
+              <span
+                class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white"
+                >{{ props.lastRunId || "--" }}</span
+              >
             </div>
             <div class="flex items-start justify-between gap-3">
               <span>Branch</span>
-              <span class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white">
-                {{ props.selectedBranch || 'latest' }}
+              <span
+                class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white"
+              >
+                {{ props.selectedBranch || "latest" }}
               </span>
             </div>
             <div class="flex items-start justify-between gap-3">
               <span>最近消息</span>
-              <span class="max-w-[320px] text-right text-gray-500 dark:text-dark-300">{{ props.latestMessagePreview || '暂无' }}</span>
+              <span
+                class="max-w-[320px] text-right text-gray-500 dark:text-dark-300"
+                >{{ props.latestMessagePreview || "暂无" }}</span
+              >
             </div>
           </div>
         </div>
 
         <details class="pw-panel">
-          <summary class="cursor-pointer text-sm font-medium">
-            运行详情
-          </summary>
-          <pre class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">{{ toPrettyJson(run) }}</pre>
+          <summary class="cursor-pointer text-sm font-medium">运行详情</summary>
+          <pre
+            class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs"
+            >{{ toPrettyJson(run) }}</pre
+          >
         </details>
         <div
           v-if="props.sourceNote"
           class="pw-panel-info text-sm leading-7 text-sky-800 dark:text-sky-100"
         >
-          <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-500 dark:text-sky-300">
+          <div
+            class="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-500 dark:text-sky-300"
+          >
             目标来源
           </div>
           <div class="mt-2 whitespace-pre-wrap break-words">
@@ -440,7 +478,9 @@ async function handleSaveEdit() {
           v-if="props.contextNotice"
           class="pw-panel-success text-sm leading-7 text-emerald-800 dark:text-emerald-100"
         >
-          <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300">
+          <div
+            class="text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-600 dark:text-emerald-300"
+          >
             上下文说明
           </div>
           <div class="mt-2 whitespace-pre-wrap break-words">
@@ -456,67 +496,64 @@ async function handleSaveEdit() {
             Artifact 侧栏
           </div>
           <p class="mt-2">
-            当前 thread 如果存在 `values.ui` 条目，会在主画布右侧直接展开 artifact 侧栏。这里仅保留说明，不再重复渲染内容。
+            当前 thread 如果存在 `values.ui` 条目，会在主画布右侧直接展开
+            artifact 侧栏。这里仅保留说明，不再重复渲染内容。
           </p>
         </div>
 
-        <div
-          v-if="props.allowResetTarget"
-          class="pw-panel-muted"
-        >
+        <div v-if="props.allowResetTarget" class="pw-panel-muted">
           <div class="text-sm font-semibold text-gray-900 dark:text-white">
             默认聊天目标
           </div>
           <p class="mt-2 text-sm leading-7 text-gray-500 dark:text-dark-300">
-            这个动作只会清掉当前项目保存的默认聊天入口，不会删除任何 thread、消息或后端运行数据。
+            这个动作只会清掉当前项目保存的默认聊天入口，不会删除任何
+            thread、消息或后端运行数据。
           </p>
           <div class="mt-4 flex justify-end">
-            <BaseButton
-              variant="ghost"
-              @click="emit('reset-target')"
-            >
+            <BaseButton variant="ghost" @click="emit('reset-target')">
               清空默认目标
             </BaseButton>
           </div>
         </div>
       </div>
 
-      <div
-        v-else-if="activeTab === 'tasks'"
-        class="space-y-4"
-      >
+      <div v-else-if="activeTab === 'tasks'" class="space-y-4">
         <div
           v-if="props.planView.hasFrozenPlan"
           class="pw-panel-info text-sm leading-7 text-sky-800 dark:text-sky-100"
         >
-          主计划固定展示第一次 `write_todos` 生成的任务列表；后续实时 todos 只更新主计划状态，新出现的任务会单列到临时执行项。
+          主计划固定展示第一次 `write_todos` 生成的任务列表；后续实时 todos
+          只更新主计划状态，新出现的任务会单列到临时执行项。
         </div>
 
-        <div
-          v-if="hasTasks"
-          class="grid gap-4 md:grid-cols-3"
-        >
+        <div v-if="hasTasks" class="grid gap-4 md:grid-cols-3">
           <div class="pw-panel-muted">
-            <div class="text-xs text-gray-400 dark:text-dark-400">
-              当前任务
-            </div>
-            <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-              {{ props.planView.activeTask?.content || '暂无' }}
+            <div class="text-xs text-gray-400 dark:text-dark-400">当前任务</div>
+            <div
+              class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
+            >
+              {{ props.planView.activeTask?.content || "暂无" }}
             </div>
           </div>
           <div class="pw-panel-muted">
             <div class="text-xs text-gray-400 dark:text-dark-400">
               主计划进度
             </div>
-            <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-              {{ props.planView.completedTasks }}/{{ props.planView.totalTasks }}
+            <div
+              class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
+            >
+              {{ props.planView.completedTasks }}/{{
+                props.planView.totalTasks
+              }}
             </div>
           </div>
           <div class="pw-panel-muted">
             <div class="text-xs text-gray-400 dark:text-dark-400">
               临时执行项
             </div>
-            <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+            <div
+              class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
+            >
               {{ props.planView.ephemeralTodos.length }}
             </div>
           </div>
@@ -536,34 +573,56 @@ async function handleSaveEdit() {
           class="space-y-3"
         >
           <template
-            v-if="groupTodoList(props.planView.planTodos)[statusKey as keyof ReturnType<typeof groupTodoList>].length > 0"
+            v-if="
+              groupTodoList(props.planView.planTodos)[
+                statusKey as keyof ReturnType<typeof groupTodoList>
+              ].length > 0
+            "
           >
-            <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
+            <div
+              class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400"
+            >
               {{
-                statusKey === 'in_progress'
-                  ? 'In Progress'
-                  : statusKey === 'pending'
-                    ? 'Pending'
-                    : 'Completed'
+                statusKey === "in_progress"
+                  ? "In Progress"
+                  : statusKey === "pending"
+                    ? "Pending"
+                    : "Completed"
               }}
             </div>
 
             <div class="space-y-2">
               <div
-                v-for="todo in groupTodoList(props.planView.planTodos)[statusKey as keyof ReturnType<typeof groupTodoList>]"
+                v-for="todo in groupTodoList(props.planView.planTodos)[
+                  statusKey as keyof ReturnType<typeof groupTodoList>
+                ]"
                 :key="todo.id"
-                class="pw-panel px-4 py-3"
+                class="pw-panel px-4 py-3 transition-colors"
+                :class="
+                  todo.status === 'in_progress'
+                    ? 'border-blue-200/80 bg-blue-50/20 dark:border-blue-900/40 dark:bg-blue-950/15'
+                    : ''
+                "
               >
                 <div class="flex items-start gap-3">
-                  <span
-                    class="mt-1 inline-flex h-2.5 w-2.5 rounded-full border"
-                    :class="statusDotClass(todo.status)"
-                  />
-                  <div class="min-w-0">
-                    <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                  <ChatTodoStatusBadge :status="todo.status" class="mt-0.5" />
+                  <div class="min-w-0 flex-1">
+                    <div
+                      class="text-sm font-medium leading-relaxed"
+                      :class="{
+                        'font-semibold text-gray-900 dark:text-white':
+                          todo.status === 'in_progress',
+                        'text-gray-800 dark:text-dark-100':
+                          todo.status === 'completed',
+                        'text-gray-600 dark:text-dark-300':
+                          todo.status === 'pending',
+                      }"
+                    >
                       {{ todo.content }}
                     </div>
-                    <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
+                    <div
+                      class="mt-0.5 text-xs text-gray-400 dark:text-dark-400 font-mono"
+                    >
                       {{ todo.id }}
                     </div>
                   </div>
@@ -573,11 +632,10 @@ async function handleSaveEdit() {
           </template>
         </div>
 
-        <div
-          v-if="props.planView.ephemeralTodos.length > 0"
-          class="space-y-3"
-        >
-          <div class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400">
+        <div v-if="props.planView.ephemeralTodos.length > 0" class="space-y-3">
+          <div
+            class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400"
+          >
             临时执行项
           </div>
           <div class="space-y-2">
@@ -587,15 +645,16 @@ async function handleSaveEdit() {
               class="pw-panel-warning px-4 py-3"
             >
               <div class="flex items-start gap-3">
-                <span
-                  class="mt-1 inline-flex h-2.5 w-2.5 rounded-full border"
-                  :class="statusDotClass(todo.status)"
-                />
-                <div class="min-w-0">
-                  <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                <ChatTodoStatusBadge :status="todo.status" class="mt-0.5" />
+                <div class="min-w-0 flex-1">
+                  <div
+                    class="text-sm font-medium text-gray-900 dark:text-white leading-relaxed"
+                  >
                     {{ todo.content }}
                   </div>
-                  <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
+                  <div
+                    class="mt-0.5 text-xs text-gray-400 dark:text-dark-400 font-mono"
+                  >
                     {{ todo.id }}
                   </div>
                 </div>
@@ -605,10 +664,7 @@ async function handleSaveEdit() {
         </div>
       </div>
 
-      <div
-        v-else-if="activeTab === 'files'"
-        class="space-y-4"
-      >
+      <div v-else-if="activeTab === 'files'" class="space-y-4">
         <div
           v-if="props.files.length === 0"
           class="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-sm leading-7 text-gray-500 dark:border-dark-700 dark:text-dark-300"
@@ -616,10 +672,7 @@ async function handleSaveEdit() {
           当前线程还没有文件状态。
         </div>
 
-        <div
-          v-else
-          class="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]"
-        >
+        <div v-else class="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
           <div class="space-y-2">
             <button
               v-for="file in props.files"
@@ -636,37 +689,29 @@ async function handleSaveEdit() {
               <div class="truncate text-sm font-semibold">
                 {{ file.path }}
               </div>
-              <div class="mt-1 text-xs opacity-70">
-                {{ file.lineCount }} 行
-              </div>
+              <div class="mt-1 text-xs opacity-70">{{ file.lineCount }} 行</div>
             </button>
           </div>
 
-          <div
-            v-if="selectedFile"
-            class="space-y-3"
-          >
+          <div v-if="selectedFile" class="space-y-3">
             <div class="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div class="text-sm font-semibold text-gray-900 dark:text-white">
+                <div
+                  class="text-sm font-semibold text-gray-900 dark:text-white"
+                >
                   {{ selectedFile.path }}
                 </div>
                 <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
-                  {{ selectedFile.lineCount }} 行 · {{ selectedFile.completeness }}
+                  {{ selectedFile.lineCount }} 行 ·
+                  {{ selectedFile.completeness }}
                 </div>
               </div>
 
               <div class="flex flex-wrap gap-2">
-                <BaseButton
-                  variant="ghost"
-                  @click="handleCopyFile"
-                >
+                <BaseButton variant="ghost" @click="handleCopyFile">
                   复制
                 </BaseButton>
-                <BaseButton
-                  variant="ghost"
-                  @click="handleDownloadFile"
-                >
+                <BaseButton variant="ghost" @click="handleDownloadFile">
                   下载
                 </BaseButton>
                 <BaseButton
@@ -688,33 +733,22 @@ async function handleSaveEdit() {
             <pre
               v-else
               class="pw-panel min-h-[420px] overflow-auto whitespace-pre-wrap break-words px-4 py-4 text-xs leading-6 text-gray-700 dark:text-dark-100"
-            >{{ selectedFile.content }}</pre>
-
-            <div
-              v-if="isEditing"
-              class="flex flex-wrap justify-end gap-3"
+              >{{ selectedFile.content }}</pre
             >
-              <BaseButton
-                variant="ghost"
-                @click="handleCancelEdit"
-              >
+
+            <div v-if="isEditing" class="flex flex-wrap justify-end gap-3">
+              <BaseButton variant="ghost" @click="handleCancelEdit">
                 取消
               </BaseButton>
-              <BaseButton
-                :disabled="editDisabled"
-                @click="handleSaveEdit"
-              >
-                {{ isSaving ? '保存中...' : '保存' }}
+              <BaseButton :disabled="editDisabled" @click="handleSaveEdit">
+                {{ isSaving ? "保存中..." : "保存" }}
               </BaseButton>
             </div>
           </div>
         </div>
       </div>
 
-      <div
-        v-else-if="activeTab === 'history'"
-        class="space-y-3"
-      >
+      <div v-else-if="activeTab === 'history'" class="space-y-3">
         <div
           v-if="!props.showHistory"
           class="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-sm leading-7 text-gray-500 dark:border-dark-700 dark:text-dark-300"
@@ -728,15 +762,17 @@ async function handleSaveEdit() {
               <div class="text-xs text-gray-400 dark:text-dark-400">
                 Checkpoints
               </div>
-              <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+              <div
+                class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
+              >
                 {{ historyView.totalEntries }}
               </div>
             </div>
             <div class="pw-panel-muted">
-              <div class="text-xs text-gray-400 dark:text-dark-400">
-                分叉组
-              </div>
-              <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
+              <div class="text-xs text-gray-400 dark:text-dark-400">分叉组</div>
+              <div
+                class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
+              >
                 {{ historyView.branchGroupCount }}
               </div>
             </div>
@@ -744,8 +780,10 @@ async function handleSaveEdit() {
               <div class="text-xs text-gray-400 dark:text-dark-400">
                 当前快照
               </div>
-              <div class="mt-2 break-all text-sm font-semibold text-gray-900 dark:text-white">
-                {{ historyView.activeCheckpointId || 'latest' }}
+              <div
+                class="mt-2 break-all text-sm font-semibold text-gray-900 dark:text-white"
+              >
+                {{ historyView.activeCheckpointId || "latest" }}
               </div>
             </div>
           </div>
@@ -755,13 +793,19 @@ async function handleSaveEdit() {
           >
             <div class="min-w-0">
               <div class="font-semibold text-gray-900 dark:text-white">
-                {{ props.isViewingBranch ? '当前正在查看历史快照' : '当前正在查看最新线程头' }}
+                {{
+                  props.isViewingBranch
+                    ? "当前正在查看历史快照"
+                    : "当前正在查看最新线程头"
+                }}
               </div>
-              <div class="mt-1 break-all text-xs leading-6 text-gray-500 dark:text-dark-300">
+              <div
+                class="mt-1 break-all text-xs leading-6 text-gray-500 dark:text-dark-300"
+              >
                 {{
                   props.isViewingBranch
                     ? props.selectedBranch
-                    : historyView.activeCheckpointId || 'latest'
+                    : historyView.activeCheckpointId || "latest"
                 }}
               </div>
             </div>
@@ -769,22 +813,13 @@ async function handleSaveEdit() {
               v-if="props.isViewingBranch"
               class="flex flex-wrap items-center gap-2 shrink-0"
             >
-              <BaseButton
-                :disabled="!canExecute"
-                @click="emit('fork')"
-              >
+              <BaseButton :disabled="!canExecute" @click="emit('fork')">
                 从此快照重新执行
               </BaseButton>
-              <BaseButton
-                variant="secondary"
-                @click="emit('close')"
-              >
+              <BaseButton variant="secondary" @click="emit('close')">
                 关闭抽屉查看
               </BaseButton>
-              <BaseButton
-                variant="ghost"
-                @click="emit('select-branch', '')"
-              >
+              <BaseButton variant="ghost" @click="emit('select-branch', '')">
                 返回最新
               </BaseButton>
             </div>
@@ -792,7 +827,9 @@ async function handleSaveEdit() {
 
           <div class="space-y-2 pt-1">
             <div class="flex flex-wrap items-center justify-between gap-3">
-              <div class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs dark:border-dark-700 dark:bg-dark-800">
+              <div
+                class="inline-flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs dark:border-dark-700 dark:bg-dark-800"
+              >
                 <button
                   type="button"
                   class="rounded-md px-2.5 py-1 font-medium transition-all"
@@ -819,12 +856,18 @@ async function handleSaveEdit() {
                 </button>
               </div>
               <span class="text-xs text-gray-400 dark:text-dark-400">
-                {{ showOnlyMilestones ? '已过滤纯内部系统检查点' : '展示全部原始中间步骤' }}
+                {{
+                  showOnlyMilestones
+                    ? "已过滤纯内部系统检查点"
+                    : "展示全部原始中间步骤"
+                }}
               </span>
             </div>
 
             <div class="flex flex-wrap items-center gap-1.5 pt-1">
-              <span class="text-xs text-gray-400 dark:text-dark-400 mr-1">角色筛选:</span>
+              <span class="text-xs text-gray-400 dark:text-dark-400 mr-1"
+                >角色筛选:</span
+              >
               <button
                 type="button"
                 class="rounded-md px-2 py-0.5 text-xs transition-colors"
@@ -848,7 +891,10 @@ async function handleSaveEdit() {
                 @click="historyRoleFilter = 'user'"
               >
                 <span>👤 用户提问</span>
-                <span class="rounded-full bg-gray-200/80 px-1 text-[10px] dark:bg-dark-700">{{ historyView.userCount }}</span>
+                <span
+                  class="rounded-full bg-gray-200/80 px-1 text-[10px] dark:bg-dark-700"
+                  >{{ historyView.userCount }}</span
+                >
               </button>
               <button
                 type="button"
@@ -861,7 +907,10 @@ async function handleSaveEdit() {
                 @click="historyRoleFilter = 'agent'"
               >
                 <span>🤖 Agent 回复</span>
-                <span class="rounded-full bg-gray-200/80 px-1 text-[10px] dark:bg-dark-700">{{ historyView.agentCount }}</span>
+                <span
+                  class="rounded-full bg-gray-200/80 px-1 text-[10px] dark:bg-dark-700"
+                  >{{ historyView.agentCount }}</span
+                >
               </button>
               <button
                 type="button"
@@ -874,7 +923,10 @@ async function handleSaveEdit() {
                 @click="historyRoleFilter = 'tool'"
               >
                 <span>🛠️ 工具调用</span>
-                <span class="rounded-full bg-gray-200/80 px-1 text-[10px] dark:bg-dark-700">{{ historyView.toolCount }}</span>
+                <span
+                  class="rounded-full bg-gray-200/80 px-1 text-[10px] dark:bg-dark-700"
+                  >{{ historyView.toolCount }}</span
+                >
               </button>
             </div>
           </div>
@@ -883,19 +935,22 @@ async function handleSaveEdit() {
             v-if="displayedHistoryItems.length === 0"
             class="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-sm leading-7 text-gray-500 dark:border-dark-700 dark:text-dark-300"
           >
-            {{ historyRoleFilter !== 'all' ? '未找到符合当前筛选条件的检查点，请切换其他角色或点击「全部」。' : '当前 thread 还没有 checkpoint 历史，或者还没开始对话。' }}
+            {{
+              historyRoleFilter !== "all"
+                ? "未找到符合当前筛选条件的检查点，请切换其他角色或点击「全部」。"
+                : "当前 thread 还没有 checkpoint 历史，或者还没开始对话。"
+            }}
           </div>
 
-          <div
-            v-else
-            class="space-y-4"
-          >
+          <div v-else class="space-y-4">
             <div
               v-for="item in displayedHistoryItems"
               :key="item.id"
               class="relative pl-6"
             >
-              <span class="absolute left-0 top-7 h-full w-px bg-gray-200 dark:bg-dark-700" />
+              <span
+                class="absolute left-0 top-7 h-full w-px bg-gray-200 dark:bg-dark-700"
+              />
               <span
                 class="absolute left-[-4px] top-6 inline-flex h-3 w-3 rounded-full border-2 border-white dark:border-dark-950"
                 :class="
@@ -911,16 +966,24 @@ async function handleSaveEdit() {
 
               <details class="pw-panel p-4">
                 <summary class="cursor-pointer list-none">
-                  <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div
+                    class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                  >
                     <div class="min-w-0">
-                      <div class="truncate text-sm font-semibold text-gray-900 dark:text-white">
+                      <div
+                        class="truncate text-sm font-semibold text-gray-900 dark:text-white"
+                      >
                         {{ item.preview }}
                       </div>
-                      <div class="mt-1 truncate text-xs text-gray-400 dark:text-dark-400">
+                      <div
+                        class="mt-1 truncate text-xs text-gray-400 dark:text-dark-400"
+                      >
                         {{ item.id }}
                       </div>
                     </div>
-                    <div class="shrink-0 text-xs text-gray-400 dark:text-dark-400">
+                    <div
+                      class="shrink-0 text-xs text-gray-400 dark:text-dark-400"
+                    >
                       {{ item.time }}
                     </div>
                   </div>
@@ -971,7 +1034,7 @@ async function handleSaveEdit() {
                       后续分支 {{ item.childCount }}
                     </span>
                     <span class="pw-pill-soft pw-pill-soft-neutral">
-                      {{ item.step || '--' }}
+                      {{ item.step || "--" }}
                     </span>
                     <span
                       v-if="item.source"
@@ -997,8 +1060,12 @@ async function handleSaveEdit() {
                   </div>
                 </summary>
 
-                <div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div class="text-xs leading-6 text-gray-500 dark:text-dark-300">
+                <div
+                  class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div
+                    class="text-xs leading-6 text-gray-500 dark:text-dark-300"
+                  >
                     <span v-if="item.parentId">
                       parent: {{ item.parentId }}
                     </span>
@@ -1027,12 +1094,15 @@ async function handleSaveEdit() {
                       :disabled="item.isCurrent"
                       @click="emit('select-branch', item.id)"
                     >
-                      {{ item.selectLabel || '查看此快照' }}
+                      {{ item.selectLabel || "查看此快照" }}
                     </BaseButton>
                   </div>
                 </div>
 
-                <pre class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-gray-950 px-3 py-3 text-xs leading-6 text-gray-100 dark:bg-black/50">{{ toPrettyJson(item.rawEntry) }}</pre>
+                <pre
+                  class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-gray-950 px-3 py-3 text-xs leading-6 text-gray-100 dark:bg-black/50"
+                  >{{ toPrettyJson(item.rawEntry) }}</pre
+                >
               </details>
             </div>
           </div>
@@ -1048,7 +1118,7 @@ async function handleSaveEdit() {
             variant="secondary"
             @click="emit('load-history', 20)"
           >
-            {{ historyLoading ? '加载中...' : '加载更多 (+20)' }}
+            {{ historyLoading ? "加载中..." : "加载更多 (+20)" }}
           </BaseButton>
           <BaseButton
             :disabled="historyLoading"
@@ -1065,10 +1135,7 @@ async function handleSaveEdit() {
             +100 条 (快速翻页)
           </BaseButton>
         </template>
-        <span
-          v-else
-          class="text-xs text-gray-400 dark:text-dark-400"
-        >
+        <span v-else class="text-xs text-gray-400 dark:text-dark-400">
           已加载全部历史记录 (共 {{ historyView.totalEntries }} 条)
         </span>
         <BaseButton
