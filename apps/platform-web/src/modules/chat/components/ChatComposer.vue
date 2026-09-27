@@ -239,7 +239,7 @@ defineExpose({
       <slot name="top-tray" />
     </div>
     <div
-      class="pw-chat-composer transition-[border-color,box-shadow] duration-150 focus-within:border-primary-500/80 focus-within:ring-2 focus-within:ring-primary-500/15 focus-within:shadow-md"
+      class="pw-chat-composer transition-[border-color,box-shadow] duration-150 focus-within:border-gray-300 focus-within:shadow-md dark:focus-within:border-dark-600"
       :class="isFocusMode ? 'max-w-[780px]' : ''"
     >
       <div v-if="attachments.length > 0" class="mb-4 flex flex-wrap gap-3">
