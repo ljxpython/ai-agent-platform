@@ -1,4 +1,11 @@
-import { computed, ref, watch, type ComputedRef, type Ref, type ShallowRef } from "vue";
+import {
+  computed,
+  ref,
+  watch,
+  type ComputedRef,
+  type Ref,
+  type ShallowRef,
+} from "vue";
 import type { Run } from "@langchain/langgraph-sdk";
 import {
   buildReviewResponses,
@@ -26,7 +33,8 @@ export function useSessionInterrupts(deps: {
   streamInFlight?: Ref<boolean>;
   stream: {
     interrupts: Ref<
-      readonly { id?: string; value?: unknown; ns?: readonly string[] }[] | undefined
+      | readonly { id?: string; value?: unknown; ns?: readonly string[] }[]
+      | undefined
     >;
     values?: Ref<unknown>;
     messages?: Ref<readonly unknown[] | undefined>;
@@ -38,6 +46,15 @@ export function useSessionInterrupts(deps: {
   fail: (cause: unknown) => void;
 }) {
   const resolvedClarificationIds = ref<Set<string>>(new Set());
+  const resolvedReviewIds = ref<Set<string>>(new Set());
+
+  watch(
+    () => deps.threadId.value,
+    () => {
+      resolvedClarificationIds.value.clear();
+      resolvedReviewIds.value.clear();
+    },
+  );
 
   const isInterruptAllowed = computed(() => {
     if (deps.threadId.value && (!deps.hydrated.value || !deps.verified.value)) {
@@ -48,6 +65,24 @@ export function useSessionInterrupts(deps: {
     }
     return true;
   });
+
+  async function syncAuthoritativeReviews() {
+    if (!deps.threadId.value || deps.isDisposed()) return;
+    try {
+      const state = await deps.service.state(deps.threadId.value);
+      if (deps.isDisposed()) return;
+      const current = parseReviews(state.interrupts ?? []);
+      const activeIds = new Set(current.map((item) => item.id));
+      const all = parseReviews(rawInterrupts.value);
+      for (const r of all) {
+        if (!activeIds.has(r.id)) {
+          resolvedReviewIds.value.add(r.id);
+        }
+      }
+    } catch {
+      // Best-effort authoritative sync, ignore fetch errors
+    }
+  }
 
   watch(
     () => deps.stream.interrupts.value?.length ?? 0,
@@ -61,13 +96,18 @@ export function useSessionInterrupts(deps: {
       ) {
         void deps.verify(false);
       }
+      if (len > 0 && deps.threadId.value) {
+        void syncAuthoritativeReviews();
+      }
     },
   );
 
   const rawInterrupts = computed(() => deps.stream.interrupts.value ?? []);
   const reviews = computed(() => {
     if (!isInterruptAllowed.value) return [];
-    return parseReviews(rawInterrupts.value);
+    return parseReviews(rawInterrupts.value).filter(
+      (review) => !resolvedReviewIds.value.has(review.id),
+    );
   });
   const rawClarifications = computed(() =>
     parseClarifications(rawInterrupts.value),
@@ -113,6 +153,14 @@ export function useSessionInterrupts(deps: {
       const state = await deps.service.state(deps.threadId.value);
       if (deps.isDisposed() || !deps.canApprove.value) return;
       const current = parseReviews(state.interrupts ?? []);
+      const activeIds = new Set(current.map((item) => item.id));
+
+      for (const r of before) {
+        if (!activeIds.has(r.id)) {
+          resolvedReviewIds.value.add(r.id);
+        }
+      }
+
       if (
         current.length !== before.length ||
         before.some(
@@ -131,6 +179,9 @@ export function useSessionInterrupts(deps: {
       if (deps.streamInFlight) deps.streamInFlight.value = true;
       deps.run.value = null;
       await deps.stream.respondAll(responses);
+      for (const r of current) {
+        resolvedReviewIds.value.add(r.id);
+      }
       await deps.verify(true);
     } catch (cause) {
       deps.actions.rejectUnsent();
@@ -183,11 +234,13 @@ export function useSessionInterrupts(deps: {
 
   return {
     resolvedClarificationIds,
+    resolvedReviewIds,
     reviews,
     clarifications,
     hasPendingInterrupts,
     approve,
     answerClarification,
     resumeClarification: answerClarification,
+    syncAuthoritativeReviews,
   };
 }

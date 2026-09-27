@@ -24,6 +24,7 @@
 - `docs/CONTEXT.md` 是项目状态快照，记录各服务当前状态、活跃项目、近期关键决策
 - 改动完成后，AI 自动更新 CONTEXT.md 的"最后更新"和受影响的服务状态行
 - CONTEXT.md 只保留"当前有效"的信息，不堆历史；过期信息删掉，历史在 `docs/projects/` 和 `docs/changes/` 里
+- **改动涉及具体服务时**，在同步 CONTEXT.md 后额外读取该服务规范入口（见「服务边界 → 服务规范读取规则」）
 
 ## 经验库读取规则
 
@@ -130,13 +131,44 @@ plan-project → 方案评审（人工） → 批准 → 实施 → 全面验证
 - `apps/runtime-service/docs/standards/*.md`
 - `apps/runtime-service/tests/*.py`（可执行契约）
 
+### 服务规范读取规则
+
+改动涉及某个服务时，**在读 CONTEXT.md 之后、开始写代码之前**，读取该服务 `docs/` 下的入口导航文件（通常是 `README.md` 或首页 playbook），再按当前任务判断是否需要深读具体条目。不需要全量读完所有 handbook 文件。
+
+| 服务 | 规范入口 |
+|---|---|
+| platform-web | `apps/platform-web/docs/frontend-development-playbook.md` |
+| platform-api | `apps/platform-api/docs/README.md` 或 `handbook/` 首页 |
+| runtime-service | `apps/runtime-service/docs/standards/README.md` |
+
+跨服务改动（链路/治理级别），额外读取 `docs/standards/README.md`（跨服务规范健康表）。
+
 ## 主要链路
 
 ```
 platform-web → platform-api → runtime-service
 ```
 
-## 开发流程
+## 跨服务规范
+
+跨服务契约（错误格式、链路追踪、JWT Schema、SSE 事件等）的当前生效版本存放在 `docs/standards/`。
+
+**读取时机：** 跨服务改动（链路/治理级别）时，先读 `docs/standards/README.md` 确认各规范置信度，再按任务读具体标准文件。
+
+**置信度规则（每份标准文件头部含 `last_verified` 字段）：**
+- 🟢 `< 60 天`（high）→ 可直接参考
+- 🟡 `60–180 天`（medium）→ 参考，但代码可能已超前，需核对
+- 🔴 `> 180 天`（low）→ 视为过期，以代码为准，不作约束
+
+**代码与文档冲突处理：**
+- 代码 = 当前运行的事实源；`docs/standards/` = 已批准的设计意图
+- 发现冲突时：以代码为当前行为基准，明确标记差异，由人工判断是修代码还是更新文档
+- 安全 / 权限 / 契约类冲突：AI 不自行裁决，必须标记并停止，等待人工确认
+- `confidence: low` 的文档直接视为过期，不用来约束当前实现
+
+**改动触发文档审查：** 改动涉及已有标准文档所描述的接口或行为时，检查对应 `docs/standards/` 文件是否需要同步更新；如需更新，作为本次改动的一部分完成。
+
+
 
 以下流程都是 AI 自行判断级别后自动执行的，用户不需要手动触发每一步；用户只需要提出需求，AI 在过程中该记录、该验证的地方自己调用对应 Skill。
 
@@ -145,6 +177,12 @@ platform-web → platform-api → runtime-service
 当用户要求完成指定范围内的全部需求时，先确认需求清单和验收条件，并在对应的任务文档中持续更新进度。完成单个 Task 或阶段后继续推进；`partial` 是过程状态，不能作为停止工作并提交最终答复的理由。
 
 结束本次工作前，逐项检查任务文档中的未完成项：能在当前授权、代码和环境内继续实现或验证的，必须继续推进，不能因阶段测试通过、文档已更新、测试进程已停止或项目标记为 `partial` 就收工。缺少真实环境时，先完成不依赖它的任务；只有剩余工作确实需要用户提供条件或作决定，且已说明所缺条件、尝试过的替代办法及具体请求，才按 `blocked` 结束并汇报。治理改动要求的人工评审也按此处理。全部范围达到 `done` 才能作完成汇报；执行期间可以简短同步状态，但不得把阶段进度当成最终交付。
+
+**项目收尾反思（链路/治理改动完成时）：** 最终汇报前，主动做两件事：
+
+1. **经验提案**：回顾本次项目是否遇到了值得沉淀的教训（意外阻塞、改动范围判断失误、踩坑等）。若有，主动提议加入 `docs/lessons/`，说明建议内容和对应服务/场景，等待用户确认后再写入——不强制，但 AI 要有这个动作，不能让教训随会话消失。
+
+2. **标准文件毕业**：若本项目对应 `docs/standards/` 中的某个草案文件，且项目状态已达到 `done`，将该文件的 `status` 从 `draft` 改为 `active`，刷新 `last_verified` 字段，并更新 `docs/standards/README.md` 的状态行。`partial` 或 `blocked` 状态不触发此操作。
 
 ### 场景0：纯讨论/探索性规划
 
@@ -246,6 +284,13 @@ git commit -m "fix: 修复 xxx 问题"
 docs/
 ├── README.md                   # 文档导航
 ├── FEATURES.md                 # 功能现状总览（全仓库，按服务分组）
+├── CONTEXT.md                  # AI 会话状态快照
+├── standards/                  # 跨服务生效规范（带置信度元数据）
+│   ├── README.md               # 规范健康表（各规范状态 + 置信度一览）
+│   ├── error-envelope.md       # 错误响应 Envelope 标准
+│   ├── trace-propagation.md    # 链路追踪传播规范
+│   ├── delegation-jwt.md       # Delegation JWT Schema（draft）
+│   └── sse-event.md            # SSE 事件格式契约（draft）
 ├── changes/                    # 仓库级/工具链级单项目改动记录
 │   └── {YYYYMMDD}-{slug}.md
 ├── quickstart/                 # 快速开始（新人必读）

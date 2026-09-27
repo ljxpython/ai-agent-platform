@@ -341,3 +341,48 @@ class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, b": heartbeat\n\n")
         self.assertEqual(closes, [True])
         self.assertEqual(reasons, ["frame_rejected"])
+
+    async def test_injects_heartbeat_when_upstream_is_idle(self):
+        async def slow_upstream():
+            yield b'data: {"seq":1,"method":"values","params":{"namespace":[],"data":{"step":"start"}}}\n\n'
+            await asyncio.sleep(0.12)
+            yield b'data: {"seq":2,"method":"values","params":{"namespace":[],"data":{"step":"end"}}}\n\n'
+
+        parts = []
+        async for part in _redact_protocol_event_stream(
+            slow_upstream(),
+            heartbeat_seconds=0.04,
+        ):
+            parts.append(part)
+
+        heartbeats = [p for p in parts if p == b": heartbeat\n\n"]
+        self.assertGreaterEqual(len(heartbeats), 2)
+        self.assertIn(
+            b'data: {"seq":1,"method":"values","params":{"namespace":[],"data":{"step":"start"}}}\n\n',
+            parts,
+        )
+        self.assertIn(
+            b'data: {"seq":2,"method":"values","params":{"namespace":[],"data":{"step":"end"}}}\n\n',
+            parts,
+        )
+
+    async def test_heartbeat_can_be_disabled(self):
+        async def slow_upstream():
+            yield b'data: {"seq":1,"method":"values","params":{"namespace":[],"data":{"step":"start"}}}\n\n'
+            await asyncio.sleep(0.06)
+            yield b'data: {"seq":2,"method":"values","params":{"namespace":[],"data":{"step":"end"}}}\n\n'
+
+        parts = []
+        async for part in _redact_protocol_event_stream(
+            slow_upstream(),
+            heartbeat_seconds=0.0,
+        ):
+            parts.append(part)
+
+        self.assertEqual(
+            parts,
+            [
+                b'data: {"seq":1,"method":"values","params":{"namespace":[],"data":{"step":"start"}}}\n\n',
+                b'data: {"seq":2,"method":"values","params":{"namespace":[],"data":{"step":"end"}}}\n\n',
+            ],
+        )

@@ -101,7 +101,32 @@ Antigravity 的 Harness 载体：
 
 优化方法：结构化分节，每节独立回答一个问题，用列表和表格替代段落。规则越结构化，AI 遵从率越高。
 
----
+### 迭代新增：服务感知路由
+
+随着三个服务的开发范式差异越来越明显（Vue/TypeScript 的前端、Python FastAPI 的后端、LangGraph 的 Agent 服务），我们在 AGENTS.md 里加入了"服务规范读取规则"。
+
+**核心思路：** AGENTS.md 只做路由，不做大全。
+
+```markdown
+### 服务规范读取规则
+
+改动涉及某个服务时，在读 CONTEXT.md 之后、开始写代码之前，
+读取该服务的规范入口文档，按任务判断是否需要深读具体条目。
+
+| 服务 | 规范入口 |
+|---|---|
+| platform-web | docs/frontend-development-playbook.md |
+| platform-api | docs/handbook/ 首页 |
+| runtime-service | docs/standards/README.md |
+
+跨服务改动时，额外读取 docs/standards/README.md（跨服务规范健康表）。
+```
+
+配套加入了一条新的约束层规则：代码与文档冲突时，以代码为当前行为基准，AI 标记差异由人工裁决，安全/契约类冲突必须停下来等待人工确认。
+
+**效果：** AI 不再用 Python 思维改前端代码、不再忽略 runtime-service 的 LangGraph 约束。改哪个服务就读哪份手册，上下文精准。
+
+
 
 ## 四、流程层：三个 Skill 的设计
 
@@ -258,7 +283,46 @@ docs/projects/{date}-{}/   # 情节记忆：项目历史和决策背景
 
 **之后：** AI 读 `CONTEXT.md`，30 秒同步完毕，直接进入正题。
 
+### 迭代新增：跨服务契约记忆（docs/standards/）
+
+随着跨服务规范治理专项的推进，记忆层增加了一个新文件夹：
+
+```
+docs/standards/
+├── README.md              # 规范健康表：各规范状态 + 置信度一览
+├── error-envelope.md      # 错误响应 Envelope（active）
+├── trace-propagation.md   # 链路追踪传播规范（active）
+├── delegation-jwt.md      # Delegation JWT Schema（draft）
+└── sse-event.md           # SSE 事件格式契约（draft）
+```
+
+每份标准文件带置信度元数据：
+
+```markdown
 ---
+status: active
+last_verified: 2026-09-27
+confidence: high
+source_project: docs/projects/20260926-error-response-contract/
+---
+```
+
+`docs/standards/README.md` 是健康表入口：
+
+```markdown
+| 规范 | 状态 | last_verified | 置信度 |
+|---|---|---|---|
+| 错误 Envelope | active | 2026-09-27 | 🟢 high |
+| 链路追踪 | active | 2026-09-27 | 🟢 high |
+| JWT Schema | draft | 2026-09-27 | 🟡 medium |
+| SSE 格式 | draft | 2026-09-27 | 🟡 medium |
+```
+
+**使用规则（写进 AGENTS.md）：** 跨服务改动时，先读健康表确认置信度，再读具体标准文件。`confidence: low` 的文档视为过期，不作约束，以代码为准。
+
+**标准文件的毕业路径：** 草案（draft）→ 活跃（active）。触发条件是对应专项状态达到 done，由 AI 在项目收尾时自动更新，不需要人手动维护。
+
+
 
 ## 七、可观测层：让合规性看得见
 
@@ -382,7 +446,22 @@ AI 犯错 → 你纠正 → 蒸馏成 ≤4 行
 | 同样的错反复犯 | 三层经验库 + 蒸馏沉淀流程 |
 | 全量回归效率差 | Phase 验证 + Final 验证两阶段 |
 
----
+**第四轮：多服务规范治理 + Harness 自我进化**
+
+三轮之后，Harness 基础框架成熟，但暴露了新问题：三个服务各自演进，跨服务契约缺乏统一文档；AI 在修改不同服务时有时忽略该服务的开发范式；经验沉淀仍然依赖人工主动触发。
+
+| 痛点 | 解法 |
+|---|---|
+| AI 忽略服务开发范式 | AGENTS.md 加服务感知路由，改哪个服务读哪份入口文档 |
+| 跨服务契约无统一存放 | 建立 `docs/standards/`，带置信度元数据 |
+| 文档陈旧无感知机制 | confidence 三档（high/medium/low）+ 改动触发审查 |
+| 经验沉淀依赖人工 | 约束层加"项目收尾反思"规则，AI 主动提议 lessons |
+| 标准文件状态不自动更新 | 专项 done 时 AI 自动将 draft → active |
+| FEATURES.md 经常被跳过 | 完成卡合规 checklist 加必填项 |
+
+这一轮的关键洞察：**Harness 的自我进化要有边界**。AI 可以自动更新工作记忆层（CONTEXT.md、标准文件、经验库），但不能自主修改约束层（AGENTS.md 和 Skills）——约束层的修改需要人工审批，这个边界是故意设计的。
+
+
 
 ## 十、当前局限性（诚实说）
 
@@ -408,15 +487,21 @@ AI 需要主动判断"现在该读这个 Skill 了"——如果判断错了，Sk
 
 ```
 项目根目录/
-├── AGENTS.md                          # 约束层：项目规则入口
+├── AGENTS.md                          # 约束层：项目规则入口 + 服务路由表
 ├── .agents/
 │   └── skills/
 │       ├── plan-project/SKILL.md      # 流程层：规划 SOP
-│       ├── implement-feature/SKILL.md # 流程层：实现 SOP
-│       └── verify-change/SKILL.md     # 流程层：验证 SOP
+│       ├── implement-feature/SKILL.md # 流程层：实现 SOP（含完成卡模板）
+│       └── verify-change/SKILL.md     # 流程层：验证 SOP（两阶段 + 四态判定）
 └── docs/
-    ├── CONTEXT.md                     # 记忆层：AI 会话快照
+    ├── CONTEXT.md                     # 记忆层：AI 会话快照（每次新会话必读）
     ├── FEATURES.md                    # 记忆层：功能现状总览
+    ├── standards/                     # 记忆层：跨服务契约（带置信度元数据）
+    │   ├── README.md                  # 规范健康表（置信度一览）
+    │   ├── error-envelope.md          # 错误响应标准（active）
+    │   ├── trace-propagation.md       # 链路追踪规范（active）
+    │   ├── delegation-jwt.md          # JWT Schema（draft）
+    │   └── sse-event.md               # SSE 格式契约（draft）
     ├── lessons/
     │   ├── index.md                   # 反馈层：经验索引
     │   └── ai-workflow.md             # 反馈层：AI 工作流经验

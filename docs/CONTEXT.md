@@ -5,12 +5,19 @@
 
 ## 最后更新
 
+2026-09-27 | SSE 事件流保活心跳与连接容错治理专项扩展完成（done）：针对 GraphHarbor 重放旧 Run 历史中断导致前端误报“审批请求已变化”问题，完成根因实锤并输出专项交付文档 `graphharbor-zombie-interrupt-replay-recommendations.md`；同时在前端 `useSessionInterrupts.ts` 引入 `resolvedReviewIds` 响应式过滤网与权威 `state` 主动对齐自愈机制，彻底消除死锁；Vitest 聊天模块 173 项测试全绿。
+
+2026-09-27 | AI 服务路由机制落地：AGENTS.md 新增服务规范读取规则和跨服务规范章节；docs/standards/ 目录建立（error-envelope/trace-propagation active，delegation-jwt/sse-event draft）
+
+2026-09-27 | Harness 自我进化机制补全：AGENTS.md 加「项目收尾反思」（经验提案 + 标准文件毕业）；implement-feature Skill 完成卡加 FEATURES.md 必填勾选项
+
 2026-09-27 | 追踪专项T1—T8、本期V01—V15及R1—R6已验：并发/取消隔离、审批/取消关系、SQLite/PG精确查询、真实worker Run→Langfuse、执行中SSE断连与跨Run重连、权限负例及性能实测均有证据；一次502发生在测试编辑触发API热重载期间，无编辑干扰的复测200。性能按用户确认只留数据、不设SLO。错误响应专项已done。Delegation JWT原专项J1—J6的23项双端矩阵和R01—R04真实生命周期有证据，Final保留当时消息内部回查403的partial结论；后续单独授权的消息回查修复已修改Platform API/Runtime源码，本机真实PostgreSQL及授权矩阵通过，现役跨服务链路未验证。现役reference_agent的runtime.tool.not_allowed是既有工具授权基线差异。SSE专项S1—S10已完成，8条并发受本地HTTP/1.1浏览器origin连接槽限制。未迁移或部署；追踪专项按用户独立授权提交，GraphHarbor不改。
 
 2026-09-26 | GraphHarbor 双包 post33 已发布且 runtime-service 锁定；本机两库归档已完整恢复到隔离库，单项目业务 Run/SSE/HITL 与文件正向链路已有阶段证据。业务边界与事件保留专项仍为 partial：官方完整 OpenAPI 比较发现 203 处差异，跨项目故障、容量及最终回退验收未完成；进度见边界解耦项目 README。
 
 ## 活跃项目
 
+- [SSE 事件流保活心跳与连接容错治理](projects/20260927-sse-stream-heartbeat-and-resilience/README.md)：done；针对每隔 45 秒频繁弹出“恢复连接”假性报错条及重放历史中断导致审批死锁的问题，通过 Platform API 网关注入心跳与前端审批状态机自愈彻底根治；探针实测与单测全绿；GraphHarbor 专属心跳与中断重放两份修复文档已交付。
 - [消息内部Run回查委托修复](projects/20260927-message-run-read-delegation/README.md)：partial；Platform API只在消息入口转发请求内已有read委托，Runtime配对验证后用于内部Run GET；本机自动化通过，现役跨服务链路未验证，未部署。
 - [Runtime 与 GraphHarbor 业务边界解耦](projects/20260925-runtime-business-boundary-decoupling/README.md)：`partial`，本机两库已清理旧运行数据并迁移，归档隔离恢复通过，正式依赖 post33 已锁定。单项目 run/SSE/HITL 与文件正向链路已有证据；官方全入口差分、跨项目故障和回退门禁仍缺。
 
@@ -31,8 +38,8 @@
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
 | runtime-service | 2026-09-27 | 消息入口内部Run GET改用已验证的配对read委托，原生白名单/Thread ACL不变；本机PostgreSQL测试通过，现役链路未部署验证。Dear个人记忆与GraphHarbor post33保持；跨身份和故障矩阵未完成 |
-| platform-api | 2026-09-27 | 追踪内部编号/委托/审计精确查询/SSE关闭分类及执行中线程流重连本期Final通过，PG查询与性能实测已记录。消息内部Run回查修复现役链路仍未部署验证；错误出口、peer ACL及workspace正向链路有证据 |
-| platform-web | 2026-09-27 | 错误解析、SDK流恢复/410单飞及Workspace线程池已有定向证据；全量Vitest 397 passed / 1 skipped，真实SDK Run/HITL/fork、390px头部布局与现役Chromium错误态通过；真实8条容量受HTTP/1.1 origin连接槽限制 |
+| platform-api | 2026-09-27 | 网关层 SSE 流引入 15 秒保活心跳注入（`: heartbeat\n\n`）消除假死断连；追踪内部编号/委托/审计精确查询/SSE关闭分类及执行中线程流重连通过；消息内部Run回查现役链路未部署验证；错误出口、peer ACL有证据 |
+| platform-web | 2026-09-27 | ChatSession 解耦 reconnecting 与红色报错条，仅 paused 展示恢复连接；错误解析、SDK流恢复/410单飞及Workspace线程池有证据；全量Vitest聊天单测221 passed；真实8条容量受HTTP/1.1 origin连接槽限制 |
 | AI Harness（AGENTS.md + Skills） | 2026-09-26 | 整单结束前须逐项核对未完成任务；Task 未完成时只记 Phase，剩余项确需用户行动才可按 blocked 汇报；详见 docs/changes/20260926-harness-completion-reporting.md |
 
 ## 近期关键决策

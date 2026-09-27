@@ -2487,7 +2487,10 @@ class RuntimeGatewayService:
             metadata,
             "full_access" if policy == "full_access" else "share",
         )
-        await self._upstream.update_thread(
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="thread-edit"
+        )
+        await upstream.update_thread(
             thread_id, {"metadata": {_ACCESS_POLICY_KEY: policy}}
         )
         return {"thread_id": thread_id, _ACCESS_POLICY_KEY: policy}

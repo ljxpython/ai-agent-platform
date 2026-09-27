@@ -82,7 +82,10 @@ const composerMaxHeight = computed(() => {
 });
 
 const isQueueMode = computed(() => {
-  return (props.isRunning || Boolean(props.hasQueuedItems)) && Boolean(props.canQueue);
+  return (
+    (props.isRunning || Boolean(props.hasQueuedItems)) &&
+    Boolean(props.canQueue)
+  );
 });
 
 const helperText = computed(() =>
@@ -239,10 +242,7 @@ defineExpose({
       class="pw-chat-composer transition-[border-color,box-shadow] duration-150 focus-within:border-primary-500/80 focus-within:ring-2 focus-within:ring-primary-500/15 focus-within:shadow-md"
       :class="isFocusMode ? 'max-w-[780px]' : ''"
     >
-      <div
-        v-if="attachments.length > 0"
-        class="mb-4 flex flex-wrap gap-3"
-      >
+      <div v-if="attachments.length > 0" class="mb-4 flex flex-wrap gap-3">
         <ChatAttachmentPreview
           v-for="(attachment, index) in attachments"
           :key="`composer-attachment-${index}`"
@@ -256,14 +256,16 @@ defineExpose({
         ref="textareaRef"
         v-model="composerModel"
         :rows="1"
-        class="pw-input !transition-none resize-none border-0 bg-transparent px-0 py-0 shadow-none focus:ring-0"
+        class="pw-input !transition-none resize-none border-0 bg-transparent shadow-none focus:ring-0"
         :class="[
           isDenseMode
-            ? 'min-h-[28px] max-h-[112px] overflow-y-auto text-sm leading-6'
-            : 'min-h-[32px] max-h-[120px] overflow-y-auto text-sm leading-6',
-          isFocusMode ? 'text-sm leading-6' : '',
+            ? 'min-h-[28px] max-h-[112px] overflow-y-auto px-1 py-1 text-sm leading-5'
+            : 'min-h-[32px] max-h-[120px] overflow-y-auto px-1 py-1.5 text-sm leading-5',
+          isFocusMode ? 'text-sm leading-5' : '',
         ]"
-        :placeholder="props.placeholder || '输入消息，Enter 发送，Shift + Enter 换行。'"
+        :placeholder="
+          props.placeholder || '输入消息，Enter 发送，Shift + Enter 换行。'
+        "
         aria-label="消息草稿"
         @keydown="handleKeydown"
         @paste="handleComposerPaste"
@@ -281,7 +283,12 @@ defineExpose({
             <ThreadAccessPolicySelect
               v-if="projectId"
               :model-value="accessPolicy || 'review'"
-              :disabled="isRunning || hasBlockingInterrupt || canSetPolicy === false || canWrite === false"
+              :disabled="
+                isRunning ||
+                hasBlockingInterrupt ||
+                canSetPolicy === false ||
+                canWrite === false
+              "
               :loading="accessPolicyUpdating"
               :can-write="canWrite !== false"
               :can-full-access="canFullAccess"
@@ -295,10 +302,7 @@ defineExpose({
               aria-label="上传附件（图片/文档）"
               @click="openFilePicker"
             >
-              <BaseIcon
-                name="paperclip"
-                size="xs"
-              />
+              <BaseIcon name="paperclip" size="xs" />
               <span class="hidden sm:inline">附件</span>
             </button>
             <input
@@ -308,7 +312,7 @@ defineExpose({
               multiple
               :accept="CHAT_ATTACHMENT_ACCEPT"
               @change="emit('file-input-change', $event)"
-            >
+            />
           </div>
 
           <div
@@ -327,8 +331,13 @@ defineExpose({
             />
             <!-- 排队模式且有输入：支持一键补充要求排队，并保留停止按钮（若处于运行中） -->
             <template v-if="isQueueMode && composerModel.trim().length > 0">
-              <span class="hidden md:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-dark-400 font-mono select-none">
-                <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] dark:border-dark-700 dark:bg-dark-800">↵</kbd>
+              <span
+                class="hidden md:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-dark-400 font-mono select-none"
+              >
+                <kbd
+                  class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] dark:border-dark-700 dark:bg-dark-800"
+                  >↵</kbd
+                >
                 <span>排队</span>
               </span>
               <button
@@ -338,10 +347,7 @@ defineExpose({
                 title="排队加入执行队列"
                 @click="emit('queue')"
               >
-                <BaseIcon
-                  name="sparkle"
-                  size="xs"
-                />
+                <BaseIcon name="sparkle" size="xs" />
                 <span>补充要求</span>
               </button>
               <button
@@ -352,10 +358,7 @@ defineExpose({
                 :title="cancelling ? '停止中...' : '停止生成'"
                 @click="emit('cancel')"
               >
-                <BaseIcon
-                  name="x"
-                  size="xs"
-                />
+                <BaseIcon name="x" size="xs" />
                 <span class="sr-only">停止生成</span>
               </button>
             </template>
@@ -369,18 +372,22 @@ defineExpose({
                 :title="cancelling ? '停止中...' : '停止生成'"
                 @click="emit('cancel')"
               >
-                <BaseIcon
-                  name="x"
-                  size="xs"
-                />
-                <span class="sr-only">{{ cancelling ? '停止中...' : '停止生成' }}</span>
+                <BaseIcon name="x" size="xs" />
+                <span class="sr-only">{{
+                  cancelling ? "停止中..." : "停止生成"
+                }}</span>
               </button>
             </template>
 
             <!-- 常规非运行状态：发送按钮 -->
             <template v-else>
-              <span class="hidden md:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-dark-400 font-mono select-none">
-                <kbd class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] dark:border-dark-700 dark:bg-dark-800">↵</kbd>
+              <span
+                class="hidden md:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-dark-400 font-mono select-none"
+              >
+                <kbd
+                  class="rounded border border-gray-200 bg-gray-50 px-1 py-0.5 text-[10px] dark:border-dark-700 dark:bg-dark-800"
+                  >↵</kbd
+                >
                 <span>发送</span>
               </span>
               <button

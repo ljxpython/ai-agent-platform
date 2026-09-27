@@ -215,15 +215,46 @@ def _redact_sse_frame(frame: bytes, *, protocol: bool = True) -> bytes:
     return "\n".join(redacted_lines).encode("utf-8")
 
 
+_DEFAULT_SSE_HEARTBEAT_SECONDS = 15.0
+
+
 async def _redact_protocol_event_stream(
     stream: AsyncIterator[bytes],
     *,
     protocol: bool = True,
     on_close: Callable[[str], None] | None = None,
+    heartbeat_seconds: float = _DEFAULT_SSE_HEARTBEAT_SECONDS,
 ) -> AsyncIterator[bytes]:
     buffer = bytearray()
+    queue: asyncio.Queue[bytes | None | Exception] = asyncio.Queue(maxsize=16)
+
+    async def _read_upstream() -> None:
+        try:
+            async for chunk in stream:
+                await queue.put(chunk)
+            await queue.put(None)
+        except Exception as exc:
+            await queue.put(exc)
+
+    reader_task = asyncio.create_task(_read_upstream())
     try:
-        async for chunk in stream:
+        while True:
+            try:
+                item = (
+                    await asyncio.wait_for(queue.get(), timeout=heartbeat_seconds)
+                    if heartbeat_seconds > 0
+                    else await queue.get()
+                )
+            except TimeoutError:
+                yield b": heartbeat\n\n"
+                continue
+
+            if item is None:
+                break
+            if isinstance(item, Exception):
+                raise item
+
+            chunk = item
             offset = 0
             while offset < len(chunk):
                 size = min(len(chunk) - offset, _MAX_SSE_FRAME_BYTES + 4 - len(buffer))
@@ -254,6 +285,12 @@ async def _redact_protocol_event_stream(
             on_close("upstream_error")
         raise
     finally:
+        reader_task.cancel()
+        with CancelScope(shield=True):
+            try:
+                await reader_task
+            except (asyncio.CancelledError, Exception):
+                pass
         if hasattr(stream, "aclose"):
             await stream.aclose()
 

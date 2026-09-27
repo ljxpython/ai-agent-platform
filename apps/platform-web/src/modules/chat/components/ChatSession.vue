@@ -196,11 +196,7 @@ const {
 } = session;
 const action = actions.current;
 const connectionMessage = computed(() =>
-  session.connectionState.value === "reconnecting"
-    ? "连接恢复中"
-    : session.connectionState.value === "paused"
-      ? "连接已断开，请重试"
-      : "",
+  session.connectionState.value === "paused" ? "连接已断开，请重试" : "",
 );
 const messages = useTranscriptMessages(stream);
 const calls = stream.toolCalls;
