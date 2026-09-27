@@ -120,6 +120,11 @@ const editDisabled = computed(
 const currentTaskLabel = computed(
   () => props.planView.activeTask?.content || "暂无",
 );
+const isLatestMessageExpanded = ref(false);
+const hasLongLatestMessage = computed(() => {
+  const msg = props.latestMessagePreview || "";
+  return msg.length > 70 || msg.includes("\n");
+});
 const historyView = computed(() =>
   buildChatHistoryView({
     items: props.historyItems,
@@ -188,12 +193,95 @@ watch(selectedFile, (file) => {
   }
 });
 
+const planProgressPercent = computed(() => {
+  if (props.planView.totalTasks <= 0) {
+    return 0;
+  }
+  return Math.min(
+    100,
+    Math.round(
+      (props.planView.completedTasks / props.planView.totalTasks) * 100,
+    ),
+  );
+});
+
+const todoGroupMeta: Record<
+  string,
+  { label: string; dotClass: string; badgeClass: string }
+> = {
+  in_progress: {
+    label: "进行中",
+    dotClass: "bg-sky-500",
+    badgeClass: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300",
+  },
+  pending: {
+    label: "待执行",
+    dotClass: "bg-amber-400",
+    badgeClass:
+      "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300",
+  },
+  completed: {
+    label: "已完成",
+    dotClass: "bg-emerald-500",
+    badgeClass:
+      "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300",
+  },
+  other: {
+    label: "其他状态",
+    dotClass: "bg-rose-500",
+    badgeClass:
+      "bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300",
+  },
+};
+
+function formatTodoStep(id: string): string {
+  if (!id) {
+    return "#--";
+  }
+  if (/^\d+$/.test(id)) {
+    const num = parseInt(id, 10) + 1;
+    return `#${num < 10 ? "0" + num : num}`;
+  }
+  return `#${id}`;
+}
+
 function groupTodoList(todos: ChatPlanTodo[]) {
   return {
     in_progress: todos.filter((item) => item.status === "in_progress"),
     pending: todos.filter((item) => item.status === "pending"),
     completed: todos.filter((item) => item.status === "completed"),
+    other: todos.filter(
+      (item) =>
+        item.status !== "in_progress" &&
+        item.status !== "pending" &&
+        item.status !== "completed",
+    ),
   };
+}
+
+const todoGroups = computed(() => {
+  const grouped = groupTodoList(props.planView.planTodos);
+  const keys = ["in_progress", "pending", "completed", "other"] as const;
+  return keys
+    .map((key) => ({
+      key,
+      meta: todoGroupMeta[key],
+      items: grouped[key] || [],
+    }))
+    .filter((group) => group.items.length > 0);
+});
+
+async function handleCopyText(text: string, title = "已复制内容") {
+  if (!text) {
+    return;
+  }
+
+  const copied = await copyText(text);
+  uiStore.pushToast({
+    type: copied ? "success" : "error",
+    title: copied ? title : "复制失败",
+    message: text,
+  });
 }
 
 async function handleCopyFile() {
@@ -313,37 +401,43 @@ async function handleSaveEdit() {
     @close="emit('close')"
   >
     <div class="space-y-5">
-      <div class="flex flex-wrap gap-2">
+      <div
+        class="inline-flex max-w-full flex-wrap items-center gap-1 rounded-2xl border border-gray-200/70 bg-gray-100/80 p-1 dark:border-dark-700/60 dark:bg-dark-900/80"
+      >
         <button
           v-for="tab in availableTabs"
           :key="tab.key"
           type="button"
-          class="pw-chip-toggle"
-          :class="activeTab === tab.key ? 'pw-chip-toggle-active' : ''"
+          class="relative flex items-center justify-center gap-2 rounded-xl px-3.5 py-1.5 text-xs transition-all duration-150"
+          :class="
+            activeTab === tab.key
+              ? 'bg-white font-semibold text-gray-900 shadow-xs dark:bg-dark-800 dark:text-white'
+              : 'font-medium text-gray-500 hover:text-gray-900 dark:text-dark-300 dark:hover:text-white'
+          "
           :aria-label="tab.label"
           @click="activeTab = tab.key"
         >
           <span>{{ tab.label }}</span>
           <span
             v-if="typeof tab.count === 'number'"
-            class="pw-pill-count"
+            class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold leading-none transition-colors"
             :class="
               activeTab === tab.key
-                ? 'bg-white text-primary-700 dark:bg-dark-800 dark:text-primary-100'
-                : ''
+                ? 'bg-primary-50 text-primary-700 dark:bg-primary-950/60 dark:text-primary-300'
+                : 'bg-gray-200/70 text-gray-600 dark:bg-dark-700 dark:text-dark-300'
             "
           >
             {{ tab.count }}
           </span>
           <span
             v-else-if="tab.tone"
-            class="inline-flex h-2.5 w-2.5 rounded-full"
+            class="inline-flex h-2 w-2 rounded-full"
             :class="
               tab.tone === 'warning'
-                ? 'bg-amber-500'
+                ? 'bg-amber-500 ring-2 ring-amber-400/20'
                 : tab.tone === 'success'
-                  ? 'bg-emerald-500'
-                  : 'bg-sky-500'
+                  ? 'bg-emerald-500 ring-2 ring-emerald-400/20'
+                  : 'bg-sky-500 ring-2 ring-sky-400/20'
             "
           />
         </button>
@@ -351,29 +445,72 @@ async function handleSaveEdit() {
 
       <div v-if="activeTab === 'overview'" class="space-y-5">
         <div class="grid gap-4 md:grid-cols-3">
-          <div class="pw-panel-muted">
-            <div class="text-xs text-gray-400 dark:text-dark-400">当前任务</div>
-            <div
-              class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
-            >
-              {{ currentTaskLabel }}
+          <div class="pw-panel-muted flex flex-col justify-between">
+            <div>
+              <div
+                class="flex items-center justify-between text-xs text-gray-400 dark:text-dark-400"
+              >
+                <span>当前任务</span>
+                <span class="text-xs">🎯</span>
+              </div>
+              <div
+                class="mt-2 text-sm font-semibold text-gray-900 line-clamp-2 dark:text-white"
+                :title="currentTaskLabel"
+              >
+                {{ currentTaskLabel }}
+              </div>
+            </div>
+            <div class="mt-2 text-[11px] text-gray-400 dark:text-dark-400">
+              当前线程正在执行的目标
             </div>
           </div>
-          <div class="pw-panel-muted">
-            <div class="text-xs text-gray-400 dark:text-dark-400">文件状态</div>
-            <div
-              class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
-            >
-              {{ props.files.length }} 个文件
+
+          <div class="pw-panel-muted flex flex-col justify-between">
+            <div>
+              <div
+                class="flex items-center justify-between text-xs text-gray-400 dark:text-dark-400"
+              >
+                <span>文件状态</span>
+                <span class="text-xs">📁</span>
+              </div>
+              <div
+                class="mt-2 text-base font-semibold text-gray-900 dark:text-white"
+              >
+                {{ props.files.length }}
+                <span
+                  class="text-xs font-normal text-gray-400 dark:text-dark-400"
+                  >个关联文件</span
+                >
+              </div>
+            </div>
+            <div class="mt-2 text-[11px] text-gray-400 dark:text-dark-400">
+              可在 Files 标签中实时预览或编辑
             </div>
           </div>
-          <div class="pw-panel-muted">
-            <div class="text-xs text-gray-400 dark:text-dark-400">历史快照</div>
-            <div
-              class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
-            >
+
+          <div class="pw-panel-muted flex flex-col justify-between">
+            <div>
+              <div
+                class="flex items-center justify-between text-xs text-gray-400 dark:text-dark-400"
+              >
+                <span>历史快照</span>
+                <span class="text-xs">⏱️</span>
+              </div>
+              <div
+                class="mt-2 text-base font-semibold text-gray-900 dark:text-white"
+              >
+                {{
+                  props.showHistory
+                    ? `${props.historyItems.length} 条`
+                    : "未启用"
+                }}
+              </div>
+            </div>
+            <div class="mt-2 text-[11px] text-gray-400 dark:text-dark-400">
               {{
-                props.showHistory ? `${props.historyItems.length} 条` : "未启用"
+                props.showHistory
+                  ? "支持时光机分支回溯执行"
+                  : "当前环境未开启历史功能"
               }}
             </div>
           </div>
@@ -399,66 +536,196 @@ async function handleSaveEdit() {
         </div>
 
         <div class="pw-panel">
-          <div
-            class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400"
-          >
-            当前上下文
+          <div class="flex items-center justify-between">
+            <div
+              class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400"
+            >
+              当前执行上下文
+            </div>
+            <span
+              class="rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-medium text-primary-700 dark:bg-primary-950/60 dark:text-primary-300"
+            >
+              Runtime
+            </span>
           </div>
-          <div
-            class="mt-3 space-y-3 text-sm leading-7 text-gray-600 dark:text-dark-300"
-          >
-            <div class="flex items-start justify-between gap-3">
-              <span>Target</span>
-              <span
-                class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white"
-                >{{ props.targetText }}</span
+
+          <div class="mt-3 grid gap-2.5 sm:grid-cols-6">
+            <div
+              class="rounded-xl border border-gray-100 bg-gray-50/70 p-2.5 sm:col-span-2 dark:border-dark-700/60 dark:bg-dark-800/40"
+            >
+              <div
+                class="text-[11px] font-medium text-gray-400 dark:text-dark-400"
               >
-            </div>
-            <div class="flex items-start justify-between gap-3">
-              <span>项目</span>
-              <span
-                class="max-w-[320px] text-right font-semibold text-gray-900 dark:text-white"
-                >{{ props.projectName || "--" }}</span
+                Target 目标
+              </div>
+              <div
+                class="mt-1 break-all text-xs font-semibold text-gray-900 dark:text-white"
               >
+                {{ props.targetText }}
+              </div>
             </div>
-            <div class="flex items-start justify-between gap-3">
-              <span>Thread</span>
-              <span
-                class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white"
-                >{{ props.activeThreadId || "--" }}</span
+
+            <div
+              class="rounded-xl border border-gray-100 bg-gray-50/70 p-2.5 sm:col-span-2 dark:border-dark-700/60 dark:bg-dark-800/40"
+            >
+              <div
+                class="text-[11px] font-medium text-gray-400 dark:text-dark-400"
               >
-            </div>
-            <div class="flex items-start justify-between gap-3">
-              <span>Run</span>
-              <span
-                class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white"
-                >{{ props.lastRunId || "--" }}</span
+                所属项目
+              </div>
+              <div
+                class="mt-1 truncate text-xs font-semibold text-gray-900 dark:text-white"
               >
+                {{ props.projectName || "--" }}
+              </div>
             </div>
-            <div class="flex items-start justify-between gap-3">
-              <span>Branch</span>
-              <span
-                class="max-w-[320px] break-all text-right font-semibold text-gray-900 dark:text-white"
+
+            <div
+              class="rounded-xl border border-gray-100 bg-gray-50/70 p-2.5 sm:col-span-2 dark:border-dark-700/60 dark:bg-dark-800/40"
+            >
+              <div
+                class="text-[11px] font-medium text-gray-400 dark:text-dark-400"
+              >
+                Branch 分支
+              </div>
+              <div
+                class="mt-1 break-all font-mono text-xs font-semibold text-gray-900 dark:text-white"
               >
                 {{ props.selectedBranch || "latest" }}
-              </span>
+              </div>
             </div>
-            <div class="flex items-start justify-between gap-3">
-              <span>最近消息</span>
-              <span
-                class="max-w-[320px] text-right text-gray-500 dark:text-dark-300"
-                >{{ props.latestMessagePreview || "暂无" }}</span
+
+            <div
+              class="rounded-xl border border-gray-100 bg-gray-50/70 p-2.5 sm:col-span-3 dark:border-dark-700/60 dark:bg-dark-800/40"
+            >
+              <div
+                class="flex items-center justify-between text-[11px] font-medium text-gray-400 dark:text-dark-400"
               >
+                <span>Thread ID</span>
+                <button
+                  v-if="props.activeThreadId"
+                  type="button"
+                  class="cursor-pointer text-[10px] text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                  @click="handleCopyText(props.activeThreadId, 'Thread ID')"
+                >
+                  复制
+                </button>
+              </div>
+              <div
+                class="mt-1 break-all font-mono text-xs font-semibold text-gray-900 dark:text-white"
+              >
+                {{ props.activeThreadId || "--" }}
+              </div>
+            </div>
+
+            <div
+              class="rounded-xl border border-gray-100 bg-gray-50/70 p-2.5 sm:col-span-3 dark:border-dark-700/60 dark:bg-dark-800/40"
+            >
+              <div
+                class="flex items-center justify-between text-[11px] font-medium text-gray-400 dark:text-dark-400"
+              >
+                <span>Run ID</span>
+                <button
+                  v-if="props.lastRunId"
+                  type="button"
+                  class="cursor-pointer text-[10px] text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                  @click="handleCopyText(props.lastRunId, 'Run ID')"
+                >
+                  复制
+                </button>
+              </div>
+              <div
+                class="mt-1 break-all font-mono text-xs font-semibold text-gray-900 dark:text-white"
+              >
+                {{ props.lastRunId || "--" }}
+              </div>
+            </div>
+
+            <div
+              class="rounded-xl border border-gray-100 bg-gray-50/70 p-3 sm:col-span-6 dark:border-dark-700/60 dark:bg-dark-800/40"
+            >
+              <div
+                class="flex items-center justify-between text-[11px] font-medium text-gray-400 dark:text-dark-400"
+              >
+                <div class="flex items-center gap-1.5">
+                  <span class="text-xs">💬</span>
+                  <span class="font-semibold text-gray-700 dark:text-dark-200"
+                    >最近消息</span
+                  >
+                </div>
+                <div class="flex items-center gap-2">
+                  <button
+                    v-if="hasLongLatestMessage"
+                    type="button"
+                    class="cursor-pointer text-[10px] font-medium text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                    @click="isLatestMessageExpanded = !isLatestMessageExpanded"
+                  >
+                    {{ isLatestMessageExpanded ? "收起" : "展开全文" }}
+                  </button>
+                  <button
+                    v-if="props.latestMessagePreview"
+                    type="button"
+                    class="cursor-pointer text-[10px] text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                    @click="
+                      handleCopyText(props.latestMessagePreview, '最近消息')
+                    "
+                  >
+                    复制
+                  </button>
+                </div>
+              </div>
+              <div
+                class="mt-2 text-xs leading-relaxed text-gray-700 dark:text-dark-200 transition-all"
+                :class="
+                  isLatestMessageExpanded
+                    ? 'max-h-72 overflow-y-auto whitespace-pre-wrap break-words pr-1 text-[12px]'
+                    : 'line-clamp-2 break-words'
+                "
+              >
+                {{ props.latestMessagePreview || "暂无" }}
+              </div>
             </div>
           </div>
         </div>
 
-        <details class="pw-panel">
-          <summary class="cursor-pointer text-sm font-medium">运行详情</summary>
-          <pre
-            class="mt-3 max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs"
-            >{{ toPrettyJson(run) }}</pre
+        <details class="pw-panel group">
+          <summary
+            class="flex cursor-pointer list-none items-center justify-between text-xs font-medium text-gray-700 dark:text-dark-200"
           >
+            <div class="flex items-center gap-2">
+              <span class="inline-flex h-2 w-2 rounded-full bg-sky-500" />
+              <span class="font-semibold">运行状态数据 (Run Payload)</span>
+            </div>
+            <span
+              class="text-[10px] text-gray-400 transition-transform group-open:rotate-180"
+              >▼</span
+            >
+          </summary>
+          <div
+            class="mt-3 overflow-hidden rounded-xl border border-gray-800 bg-gray-950 dark:bg-black/70"
+          >
+            <div
+              class="flex items-center justify-between border-b border-gray-800 bg-gray-900/90 px-3 py-1.5 text-[10px] text-gray-400"
+            >
+              <div class="flex items-center gap-1.5">
+                <span class="h-2 w-2 rounded-full bg-red-500/80" />
+                <span class="h-2 w-2 rounded-full bg-amber-500/80" />
+                <span class="h-2 w-2 rounded-full bg-emerald-500/80" />
+                <span class="ml-1 font-mono">run.json</span>
+              </div>
+              <button
+                type="button"
+                class="cursor-pointer font-medium text-gray-300 transition-colors hover:text-white"
+                @click="handleCopyText(toPrettyJson(run), '运行数据')"
+              >
+                复制 JSON
+              </button>
+            </div>
+            <pre
+              class="max-h-80 overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-5 text-gray-200"
+              >{{ toPrettyJson(run) }}</pre
+            >
+          </div>
         </details>
         <div
           v-if="props.sourceNote"
@@ -527,135 +794,247 @@ async function handleSaveEdit() {
         </div>
 
         <div v-if="hasTasks" class="grid gap-4 md:grid-cols-3">
-          <div class="pw-panel-muted">
-            <div class="text-xs text-gray-400 dark:text-dark-400">当前任务</div>
-            <div
-              class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
-            >
-              {{ props.planView.activeTask?.content || "暂无" }}
+          <div class="pw-panel-muted flex flex-col justify-between">
+            <div>
+              <div
+                class="flex items-center justify-between text-xs text-gray-400 dark:text-dark-400"
+              >
+                <span>当前任务</span>
+                <span
+                  v-if="props.planView.activeTask"
+                  class="inline-flex items-center gap-1 rounded-full bg-sky-50 px-1.5 py-0.5 text-[10px] font-medium text-sky-600 dark:bg-sky-950/50 dark:text-sky-300"
+                >
+                  <span
+                    class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-sky-500"
+                  />
+                  执行中
+                </span>
+              </div>
+              <div
+                class="mt-2 text-sm font-semibold text-gray-900 line-clamp-2 dark:text-white"
+                :title="props.planView.activeTask?.content || '暂无'"
+              >
+                {{ props.planView.activeTask?.content || "暂无进行中的任务" }}
+              </div>
             </div>
-          </div>
-          <div class="pw-panel-muted">
-            <div class="text-xs text-gray-400 dark:text-dark-400">
-              主计划进度
-            </div>
             <div
-              class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
+              class="mt-2 text-[11px] font-mono text-gray-400 dark:text-dark-400"
             >
-              {{ props.planView.completedTasks }}/{{
-                props.planView.totalTasks
+              {{
+                props.planView.activeTask
+                  ? formatTodoStep(props.planView.activeTask.id)
+                  : "--"
               }}
             </div>
           </div>
-          <div class="pw-panel-muted">
-            <div class="text-xs text-gray-400 dark:text-dark-400">
-              临时执行项
+
+          <div
+            class="pw-panel-muted flex flex-col justify-between transition-colors"
+            :class="
+              props.planView.allTasksCompleted && props.planView.totalTasks > 0
+                ? 'border-emerald-200/80 bg-emerald-50/20 dark:border-emerald-900/40 dark:bg-emerald-950/15'
+                : ''
+            "
+          >
+            <div>
+              <div
+                class="flex items-center justify-between text-xs text-gray-400 dark:text-dark-400"
+              >
+                <span>主计划进度</span>
+                <span
+                  v-if="
+                    props.planView.allTasksCompleted &&
+                    props.planView.totalTasks > 0
+                  "
+                  class="rounded-full bg-emerald-100/80 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                >
+                  已全部达成 ✨
+                </span>
+                <span
+                  v-else
+                  class="text-[11px] font-semibold text-gray-700 dark:text-dark-200"
+                >
+                  {{ planProgressPercent }}%
+                </span>
+              </div>
+              <div
+                class="mt-2 text-base font-semibold text-gray-900 dark:text-white"
+              >
+                {{ props.planView.completedTasks }}
+                <span
+                  class="text-xs font-normal text-gray-400 dark:text-dark-400"
+                >
+                  / {{ props.planView.totalTasks }} 项
+                </span>
+              </div>
             </div>
             <div
-              class="mt-2 text-sm font-semibold text-gray-900 dark:text-white"
+              class="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-gray-200/70 dark:bg-dark-700"
             >
-              {{ props.planView.ephemeralTodos.length }}
+              <div
+                class="h-full rounded-full transition-all duration-500 ease-out"
+                :class="
+                  props.planView.allTasksCompleted &&
+                  props.planView.totalTasks > 0
+                    ? 'bg-emerald-500'
+                    : 'bg-primary-600 dark:bg-primary-500'
+                "
+                :style="{ width: `${planProgressPercent}%` }"
+              />
+            </div>
+          </div>
+
+          <div class="pw-panel-muted flex flex-col justify-between">
+            <div>
+              <div
+                class="flex items-center justify-between text-xs text-gray-400 dark:text-dark-400"
+              >
+                <span>临时执行项</span>
+                <span
+                  v-if="props.planView.ephemeralTodos.length > 0"
+                  class="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:bg-amber-950/50 dark:text-amber-300"
+                >
+                  ⚡ 动态补充
+                </span>
+              </div>
+              <div
+                class="mt-2 text-base font-semibold text-gray-900 dark:text-white"
+              >
+                {{ props.planView.ephemeralTodos.length }}
+                <span
+                  class="text-xs font-normal text-gray-400 dark:text-dark-400"
+                  >项</span
+                >
+              </div>
+            </div>
+            <div class="mt-2 text-[11px] text-gray-400 dark:text-dark-400">
+              {{
+                props.planView.ephemeralTodos.length > 0
+                  ? "随运行动态扩充的任务"
+                  : "当前无动态追加项"
+              }}
             </div>
           </div>
         </div>
 
         <div
           v-if="!hasTasks"
-          class="rounded-2xl border border-dashed border-gray-200 px-4 py-6 text-sm leading-7 text-gray-500 dark:border-dark-700 dark:text-dark-300"
+          class="rounded-2xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm leading-7 text-gray-400 dark:border-dark-700 dark:text-dark-400"
         >
-          当前还没有任务项。
+          当前还没有生成任务项
         </div>
 
         <div
-          v-for="statusKey in ['in_progress', 'pending', 'completed']"
+          v-for="group in todoGroups"
           v-else
-          :key="statusKey"
-          class="space-y-3"
+          :key="group.key"
+          class="space-y-2.5"
         >
-          <template
-            v-if="
-              groupTodoList(props.planView.planTodos)[
-                statusKey as keyof ReturnType<typeof groupTodoList>
-              ].length > 0
-            "
-          >
+          <div class="flex items-center justify-between pt-1">
             <div
-              class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400"
+              class="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-dark-400"
             >
-              {{
-                statusKey === "in_progress"
-                  ? "In Progress"
-                  : statusKey === "pending"
-                    ? "Pending"
-                    : "Completed"
-              }}
+              <span
+                class="inline-block h-2 w-2 rounded-full"
+                :class="group.meta.dotClass"
+              />
+              <span class="font-semibold text-gray-800 dark:text-dark-100">
+                {{ group.meta.label }}
+              </span>
             </div>
-
-            <div class="space-y-2">
-              <div
-                v-for="todo in groupTodoList(props.planView.planTodos)[
-                  statusKey as keyof ReturnType<typeof groupTodoList>
-                ]"
-                :key="todo.id"
-                class="pw-panel px-4 py-3 transition-colors"
-                :class="
-                  todo.status === 'in_progress'
-                    ? 'border-blue-200/80 bg-blue-50/20 dark:border-blue-900/40 dark:bg-blue-950/15'
-                    : ''
-                "
-              >
-                <div class="flex items-start gap-3">
-                  <ChatTodoStatusBadge :status="todo.status" class="mt-0.5" />
-                  <div class="min-w-0 flex-1">
-                    <div
-                      class="text-sm font-medium leading-relaxed"
-                      :class="{
-                        'font-semibold text-gray-900 dark:text-white':
-                          todo.status === 'in_progress',
-                        'text-gray-800 dark:text-dark-100':
-                          todo.status === 'completed',
-                        'text-gray-600 dark:text-dark-300':
-                          todo.status === 'pending',
-                      }"
-                    >
-                      {{ todo.content }}
-                    </div>
-                    <div
-                      class="mt-0.5 text-xs text-gray-400 dark:text-dark-400 font-mono"
-                    >
-                      {{ todo.id }}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
-        </div>
-
-        <div v-if="props.planView.ephemeralTodos.length > 0" class="space-y-3">
-          <div
-            class="text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-400 dark:text-dark-400"
-          >
-            临时执行项
+            <span
+              class="rounded-full px-2 py-0.5 text-[10px] font-semibold"
+              :class="group.meta.badgeClass"
+            >
+              {{ group.items.length }}
+            </span>
           </div>
+
           <div class="space-y-2">
             <div
-              v-for="todo in props.planView.ephemeralTodos"
+              v-for="todo in group.items"
               :key="todo.id"
-              class="pw-panel-warning px-4 py-3"
+              class="pw-panel px-4 py-3 transition-all"
+              :class="
+                todo.status === 'in_progress'
+                  ? 'border-l-4 border-l-primary-500 border-primary-200/80 bg-primary-50/15 shadow-xs dark:border-primary-900/50 dark:border-l-primary-500 dark:bg-primary-950/10'
+                  : ''
+              "
             >
               <div class="flex items-start gap-3">
                 <ChatTodoStatusBadge :status="todo.status" class="mt-0.5" />
                 <div class="min-w-0 flex-1">
                   <div
-                    class="text-sm font-medium text-gray-900 dark:text-white leading-relaxed"
+                    class="text-sm leading-relaxed"
+                    :class="{
+                      'font-semibold text-gray-900 dark:text-white':
+                        todo.status === 'in_progress',
+                      'text-gray-400 line-through dark:text-dark-400':
+                        todo.status === 'completed',
+                      'text-gray-700 dark:text-dark-200':
+                        todo.status !== 'in_progress' &&
+                        todo.status !== 'completed',
+                    }"
                   >
                     {{ todo.content }}
                   </div>
+                  <div class="mt-1 flex items-center gap-1.5">
+                    <span
+                      class="inline-flex items-center rounded border border-gray-200/60 bg-gray-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-gray-500 dark:border-dark-700/60 dark:bg-dark-800 dark:text-dark-400"
+                    >
+                      {{ formatTodoStep(todo.id) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div
+          v-if="props.planView.ephemeralTodos.length > 0"
+          class="space-y-2.5 pt-1"
+        >
+          <div
+            class="flex items-center justify-between text-xs font-medium text-gray-500 dark:text-dark-400"
+          >
+            <div class="flex items-center gap-1.5">
+              <span class="inline-block h-2 w-2 rounded-full bg-amber-500" />
+              <span class="font-semibold text-gray-800 dark:text-dark-100"
+                >临时补充任务</span
+              >
+            </div>
+            <span
+              class="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+            >
+              {{ props.planView.ephemeralTodos.length }}
+            </span>
+          </div>
+          <div class="space-y-2">
+            <div
+              v-for="todo in props.planView.ephemeralTodos"
+              :key="todo.id"
+              class="pw-panel border-amber-200/60 bg-amber-50/15 px-4 py-3 transition-colors dark:border-amber-900/30 dark:bg-amber-950/10"
+            >
+              <div class="flex items-start gap-3">
+                <ChatTodoStatusBadge :status="todo.status" class="mt-0.5" />
+                <div class="min-w-0 flex-1">
                   <div
-                    class="mt-0.5 text-xs text-gray-400 dark:text-dark-400 font-mono"
+                    class="text-sm font-medium leading-relaxed text-gray-900 dark:text-white"
                   >
-                    {{ todo.id }}
+                    {{ todo.content }}
+                  </div>
+                  <div class="mt-1 flex items-center gap-2">
+                    <span
+                      class="inline-flex items-center rounded border border-gray-200/60 bg-gray-100 px-1.5 py-0.5 text-[10px] font-mono font-medium text-gray-500 dark:border-dark-700/60 dark:bg-dark-800 dark:text-dark-400"
+                    >
+                      {{ formatTodoStep(todo.id) }}
+                    </span>
+                    <span
+                      class="inline-flex items-center gap-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
+                    >
+                      ⚡ 动态补充
+                    </span>
                   </div>
                 </div>
               </div>
@@ -673,49 +1052,81 @@ async function handleSaveEdit() {
         </div>
 
         <div v-else class="grid gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-          <div class="space-y-2">
+          <div class="space-y-1.5">
             <button
               v-for="file in props.files"
               :key="file.path"
               type="button"
-              class="block w-full rounded-2xl border px-3 py-3 text-left transition"
+              class="block w-full rounded-xl border p-2.5 text-left transition-all"
               :class="
                 selectedFilePath === file.path
-                  ? 'border-primary-200 bg-primary-50 text-primary-700 dark:border-primary-900/40 dark:bg-primary-950/20 dark:text-primary-100'
-                  : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-200 dark:hover:bg-dark-800 dark:hover:text-white'
+                  ? 'border-primary-200 bg-primary-50/70 text-primary-700 shadow-xs dark:border-primary-900/40 dark:bg-primary-950/30 dark:text-primary-200'
+                  : 'border-gray-200/70 bg-white text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-200 dark:hover:bg-dark-800 dark:hover:text-white'
               "
               @click="selectedFilePath = file.path"
             >
-              <div class="truncate text-sm font-semibold">
-                {{ file.path }}
+              <div class="flex items-center gap-2">
+                <span class="text-xs">📄</span>
+                <div
+                  class="min-w-0 flex-1 truncate font-mono text-xs font-semibold"
+                >
+                  {{ file.path }}
+                </div>
               </div>
-              <div class="mt-1 text-xs opacity-70">{{ file.lineCount }} 行</div>
+              <div
+                class="mt-1 flex items-center justify-between text-[11px] opacity-70"
+              >
+                <span>{{ file.lineCount }} 行</span>
+                <span
+                  v-if="file.completeness"
+                  class="rounded bg-gray-200/60 px-1 py-0.2 font-mono text-[10px] dark:bg-dark-700"
+                >
+                  {{ file.completeness }}
+                </span>
+              </div>
             </button>
           </div>
 
-          <div v-if="selectedFile" class="space-y-3">
-            <div class="flex flex-wrap items-center justify-between gap-3">
-              <div>
+          <div
+            v-if="selectedFile"
+            class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-xs dark:border-dark-700/80 dark:bg-dark-900"
+          >
+            <div
+              class="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200/80 bg-gray-50/90 px-4 py-2.5 dark:border-dark-700/80 dark:bg-dark-800/80"
+            >
+              <div class="flex items-center gap-3">
+                <div class="flex items-center gap-1.5">
+                  <span class="h-2.5 w-2.5 rounded-full bg-red-400/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-amber-400/80" />
+                  <span class="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+                </div>
                 <div
-                  class="text-sm font-semibold text-gray-900 dark:text-white"
+                  class="font-mono text-xs font-semibold text-gray-900 dark:text-white"
                 >
                   {{ selectedFile.path }}
                 </div>
-                <div class="mt-1 text-xs text-gray-500 dark:text-dark-300">
+                <span
+                  class="rounded-full bg-gray-200/70 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:bg-dark-700 dark:text-dark-300"
+                >
                   {{ selectedFile.lineCount }} 行 ·
                   {{ selectedFile.completeness }}
-                </div>
+                </span>
               </div>
 
-              <div class="flex flex-wrap gap-2">
-                <BaseButton variant="ghost" @click="handleCopyFile">
+              <div class="flex flex-wrap items-center gap-1.5">
+                <BaseButton size="sm" variant="ghost" @click="handleCopyFile">
                   复制
                 </BaseButton>
-                <BaseButton variant="ghost" @click="handleDownloadFile">
+                <BaseButton
+                  size="sm"
+                  variant="ghost"
+                  @click="handleDownloadFile"
+                >
                   下载
                 </BaseButton>
                 <BaseButton
                   v-if="!isEditing && onUpdateState"
+                  size="sm"
                   variant="ghost"
                   @click="handleStartEdit"
                 >
@@ -724,23 +1135,32 @@ async function handleSaveEdit() {
               </div>
             </div>
 
-            <textarea
-              v-if="isEditing"
-              v-model="editValue"
-              rows="18"
-              class="pw-input min-h-[420px] resize-y font-mono text-xs leading-6"
-            />
-            <pre
-              v-else
-              class="pw-panel min-h-[420px] overflow-auto whitespace-pre-wrap break-words px-4 py-4 text-xs leading-6 text-gray-700 dark:text-dark-100"
-              >{{ selectedFile.content }}</pre
-            >
+            <div class="p-0">
+              <textarea
+                v-if="isEditing"
+                v-model="editValue"
+                rows="18"
+                class="pw-input min-h-[420px] w-full resize-y rounded-none border-none font-mono text-xs leading-6 focus:ring-0"
+              />
+              <pre
+                v-else
+                class="min-h-[420px] max-h-[600px] overflow-auto whitespace-pre-wrap break-words bg-gray-950 p-4 font-mono text-xs leading-6 text-gray-100 dark:bg-black/80"
+                >{{ selectedFile.content }}</pre
+              >
+            </div>
 
-            <div v-if="isEditing" class="flex flex-wrap justify-end gap-3">
-              <BaseButton variant="ghost" @click="handleCancelEdit">
+            <div
+              v-if="isEditing"
+              class="flex flex-wrap justify-end gap-3 border-t border-gray-200/80 bg-gray-50/50 p-3 dark:border-dark-700/80 dark:bg-dark-800/40"
+            >
+              <BaseButton size="sm" variant="ghost" @click="handleCancelEdit">
                 取消
               </BaseButton>
-              <BaseButton :disabled="editDisabled" @click="handleSaveEdit">
+              <BaseButton
+                size="sm"
+                :disabled="editDisabled"
+                @click="handleSaveEdit"
+              >
                 {{ isSaving ? "保存中..." : "保存" }}
               </BaseButton>
             </div>
@@ -946,39 +1366,52 @@ async function handleSaveEdit() {
             <div
               v-for="item in displayedHistoryItems"
               :key="item.id"
-              class="relative pl-6"
+              class="relative pl-8"
             >
               <span
-                class="absolute left-0 top-7 h-full w-px bg-gray-200 dark:bg-dark-700"
+                class="absolute left-3 top-7 h-full w-px bg-gray-200/80 dark:bg-dark-700"
               />
               <span
-                class="absolute left-[-4px] top-6 inline-flex h-3 w-3 rounded-full border-2 border-white dark:border-dark-950"
+                class="absolute left-0.5 top-4 inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-200/80 bg-white text-[10px] shadow-2xs dark:border-dark-700 dark:bg-dark-900"
                 :class="
                   item.isCurrent
-                    ? 'bg-primary-500'
-                    : item.isInSelectedPath
-                      ? 'bg-sky-500'
-                      : item.childCount
-                        ? 'bg-amber-500'
-                        : 'bg-gray-300 dark:bg-dark-500'
+                    ? 'border-primary-300 ring-2 ring-primary-500/30 dark:border-primary-700'
+                    : ''
                 "
-              />
+              >
+                {{
+                  item.role === "user"
+                    ? "👤"
+                    : item.role === "agent"
+                      ? "🤖"
+                      : item.role === "tool"
+                        ? "🛠️"
+                        : "⏱️"
+                }}
+              </span>
 
               <details class="pw-panel p-4">
                 <summary class="cursor-pointer list-none">
                   <div
                     class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
                   >
-                    <div class="min-w-0">
+                    <div class="min-w-0 flex-1">
                       <div
                         class="truncate text-sm font-semibold text-gray-900 dark:text-white"
                       >
                         {{ item.preview }}
                       </div>
                       <div
-                        class="mt-1 truncate text-xs text-gray-400 dark:text-dark-400"
+                        class="mt-1 flex items-center gap-2 font-mono text-xs text-gray-400 dark:text-dark-400"
                       >
-                        {{ item.id }}
+                        <span class="truncate">{{ item.id }}</span>
+                        <button
+                          type="button"
+                          class="cursor-pointer text-[10px] text-primary-600 transition-colors hover:text-primary-700 dark:text-primary-400"
+                          @click.stop="handleCopyText(item.id, 'Checkpoint ID')"
+                        >
+                          复制
+                        </button>
                       </div>
                     </div>
                     <div
@@ -1099,10 +1532,36 @@ async function handleSaveEdit() {
                   </div>
                 </div>
 
-                <pre
-                  class="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words rounded-2xl bg-gray-950 px-3 py-3 text-xs leading-6 text-gray-100 dark:bg-black/50"
-                  >{{ toPrettyJson(item.rawEntry) }}</pre
+                <div
+                  class="mt-3 overflow-hidden rounded-xl border border-gray-800 bg-gray-950 dark:bg-black/70"
                 >
+                  <div
+                    class="flex items-center justify-between border-b border-gray-800 bg-gray-900/90 px-3 py-1.5 text-[10px] text-gray-400"
+                  >
+                    <div class="flex items-center gap-1.5 font-mono">
+                      <span class="h-2 w-2 rounded-full bg-red-500/80" />
+                      <span class="h-2 w-2 rounded-full bg-amber-500/80" />
+                      <span class="h-2 w-2 rounded-full bg-emerald-500/80" />
+                      <span class="ml-1">checkpoint.json</span>
+                    </div>
+                    <button
+                      type="button"
+                      class="cursor-pointer font-medium text-gray-300 transition-colors hover:text-white"
+                      @click="
+                        handleCopyText(
+                          toPrettyJson(item.rawEntry),
+                          '检查点数据',
+                        )
+                      "
+                    >
+                      复制 JSON
+                    </button>
+                  </div>
+                  <pre
+                    class="max-h-64 overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] leading-5 text-gray-200"
+                    >{{ toPrettyJson(item.rawEntry) }}</pre
+                  >
+                </div>
               </details>
             </div>
           </div>
