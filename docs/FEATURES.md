@@ -88,10 +88,10 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| 跨服务规范治理专项群 | 四专项仅验收新Web+新API+当前锁定Runtime/GraphHarbor，不设置旧版兼容或混用测试；错误响应平台实现部分完成，真实单链路已验但Final未过；SSE/追踪/JWT按各专项状态推进；AI路由按仓库级文档小改动处理 | [总入口](projects/20260922-cross-service-governance/README.md) |
+| 跨服务规范治理专项群 | 四专项仅验收新Web+新API+当前锁定Runtime/GraphHarbor，不设置旧版兼容或混用测试；错误响应与追踪本期Final已完成，SSE/JWT按各专项状态推进；AI路由按仓库级文档小改动处理 | [总入口](projects/20260922-cross-service-governance/README.md) |
 | 平台错误响应统一 | 已完成：API公共安全出口、精确上游映射、Web无损解析、Thread对账、真实提交→Run→审计→Langfuse、memory409、SSE编号、peer ACL、workspace正向文件及现役浏览器403均已验；`reference_agent` 的 `runtime.tool.not_allowed` 属既有工具授权基线差异 | [错误响应专项](projects/20260926-error-response-contract/README.md) · [当前标准](standards/error-envelope.md) |
 | SSE事件契约治理 | 部分完成：S1—S10已完成，API分帧/安全关闭、Web SDK恢复、410单飞、Workspace线程池、真实普通SDK链路、1/4条短容量及390px视觉检查通过；8条容量受HTTP/1.1浏览器origin连接槽限制，h2/h3和30分钟Final blocked | [SSE专项](projects/20260926-sse-event-contract/README.md) |
-| 跨服务追踪传播治理 | 部分实施：API内部编号、委托关联、提交回调、审计查询和SSE同编号日志有阶段证据；单条真实Run到Langfuse已验，PG及完整worker/关闭矩阵未验 | [追踪专项](projects/20260926-trace-context-propagation/README.md) |
+| 跨服务追踪传播治理 | 已完成本期验收：T1—T8、V01—V15、R1—R6，API编号/委托/审计精确查询/SSE关闭及真实Run→Langfuse反查均有证据；PG/SQLite性能留实测数据，不设SLO | [追踪专项](projects/20260926-trace-context-propagation/README.md) |
 | Delegation JWT契约治理 | 部分完成：J1—J6平台任务、v2双端23项矩阵、签发安全失败及R01—R04真实生命周期有证据；消息内部Run回查由后续专项修复源码，本机测试通过，现役链路未验证；GraphHarbor不改 | [JWT专项](projects/20260926-delegation-jwt-contract/README.md) · [回查修复](projects/20260927-message-run-read-delegation/README.md) |
 | AI服务规范路由 | 不再独立立项：后续按仓库级文档小改动补按需阅读规则；本轮未修改AGENTS | [AI路由专项](projects/20260926-ai-service-routing/README.md) |
 | 代码规范自动化门禁 | 部分完成：pre-commit 与 CI 变更文件检查已接入；Python 历史格式基线待单独清理 | [项目记录](projects/20260925-code-quality-automation/README.md) |

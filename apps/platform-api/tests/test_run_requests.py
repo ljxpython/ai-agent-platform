@@ -356,6 +356,10 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_resume_maps_interrupt_and_preserves_both_run_ids(self):
+        events = []
+        self.service._on_correlation = lambda event, fields: events.append(
+            (event, fields)
+        )
         await self.start()
         self.upstream.create_thread_run.return_value = {"run_id": "run-2"}
         self.upstream.get_thread_run.return_value = {
@@ -389,6 +393,21 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         rows = self.records()
         self.assertEqual({r.run_id for r in rows}, {"run-1", "run-2"})
         self.assertEqual(next(r for r in rows if r.interrupt_id).parent_run_id, "run-1")
+        resumed = [
+            fields for event, fields in events if event == "runtime.submission.result"
+        ][-1]
+        self.assertEqual(
+            {
+                key: resumed[key]
+                for key in ("run_id", "parent_run_id", "interrupt_key", "outcome")
+            },
+            {
+                "run_id": "run-2",
+                "parent_run_id": "run-1",
+                "interrupt_key": "interrupt-1",
+                "outcome": "accepted",
+            },
+        )
         self.upstream.get_thread_state.return_value = {"tasks": []}
         self.upstream.get_thread_run.return_value = {"run_id": "run-2"}
         await resume(response)
@@ -644,6 +663,35 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         self.upstream.create_thread_run.return_value = {"run_id": "run-2"}
         await self.start(key="after-cancel")
         self.assertEqual({r.run_id for r in self.records()}, {"run-1", "run-2"})
+
+    async def test_cancel_correlation_distinguishes_ack_rejection_and_unknown(self):
+        events = []
+        self.service._on_correlation = lambda event, fields: events.append(
+            (event, fields)
+        )
+        await self.start()
+        args = dict(
+            actor=self.actor,
+            project_id="project-1",
+            thread_id="thread-1",
+            run_id="run-1",
+            payload=None,
+        )
+        await self.service.cancel_thread_run(**args)
+        self.upstream.cancel_thread_run.side_effect = ForbiddenError()
+        with self.assertRaises(ForbiddenError):
+            await self.service.cancel_thread_run(**args)
+        self.upstream.cancel_thread_run.side_effect = TimeoutError()
+        with self.assertRaises(TimeoutError):
+            await self.service.cancel_thread_run(**args)
+        outcomes = [
+            fields for event, fields in events if event == "runtime.cancel.result"
+        ]
+        self.assertEqual(
+            [item["outcome"] for item in outcomes], ["accepted", "rejected", "unknown"]
+        )
+        self.assertEqual({item["target_run_id"] for item in outcomes}, {"run-1"})
+        self.assertTrue(all("run_id" not in item for item in outcomes))
 
     async def test_resume_uses_checkpoint_origin_not_latest_cancelled_request(self):
         await self.start()

@@ -6,7 +6,7 @@
 - **负责人：** @lijiaxin
 - **模板类型：** 标准模板
 - **改动级别：** 治理改动（可观测性、请求上下文与信任边界）
-- **状态：** 部分实施；API 编号、委托、提交、审计与 SSE 日志已有阶段证据，单条真实提交→Run→Langfuse 已验证；完整矩阵、PG 和性能未完成。
+- **状态：** 已完成（本期新 API/当前 Runtime 组合）；T1—T8、V01—V15、R1—R6 已验，PG/SQLite 性能留实测数据。未部署生产。
 - **目标：** 请求 → 提交 → Run → 既有观测的正反向关联闭环。
 - **父项目：** [跨服务规范治理](../20260922-cross-service-governance/README.md)。
 
@@ -20,9 +20,9 @@
 
 2026-09-26：用户已批准本期关联闭环方向及本页链接的执行契约：平台生成内部编号，复用现有日志、审计表、run_requests 和下游观测；Runtime/GraphHarbor 完全不变；完整 W3C/OTel 跨服务 span 改造后置。本次交接明确要求将最新聊天执行稿写入仓库。
 
-2026-09-26 用户已下达编码指令；API 基础阶段实现见 [记录](implementation/01-api-correlation-foundation.md)。方案批准和定向测试不等于功能上线。
+2026-09-26 用户已下达编码指令；API 基础阶段见[记录](implementation/01-api-correlation-foundation.md)。2026-09-27 完整矩阵与真实链路见[实施补验](implementation/02-final-correlation-matrix.md)及 [Final](verification.md)。
 
-- platform-api：后续修改请求编号、关联传播、提交日志、现有审计查询和 SSE 日志。
+- platform-api：已完成请求编号、关联传播、提交日志、现有审计查询和 SSE 生命周期日志。
 - platform-web：本专项只验证现有错误编号消费和响应头访问，不改页面、展示、交互。
 - Runtime/GraphHarbor：代码、配置、依赖、数据库、观测组件均不修改。
 - 不新增追踪库、Collector、观测平台、前端追踪页、后台补偿或审计重试队列。
@@ -33,6 +33,6 @@
 
 关联闭环以已有观测启用且成功导出为条件；不承诺进程崩溃、观测关闭或导出失败时记录完整。源码静态核查不能代替真实 worker 与观测导出验证。
 
-仅验收新API与当前Runtime组合；不设置旧版本兼容或旧产物回退测试。不取消、重发或重签已创建的Run。本轮不执行迁移、部署、Git提交或分支操作，保留工作区既有改动。
+仅验收新API与当前Runtime组合；不设置旧版本兼容或旧产物回退测试。不取消、重发或重签已创建的Run。未执行迁移或部署；本专项按用户后续独立授权提交到现有分支。
 
-当前：SSE 同编号 opened/closed 与单条真实 Langfuse 导出已有 Phase 证据；SSE 关闭分类全矩阵、PostgreSQL、真实 worker 身份及性能 Final 未完成。Phase 与 Final 证据见 verification.md。
+本期 Final 已验收；执行中 Run 的线程流断开重连、Run 正常成功均有现役证据。一次 502 发生在 WatchFiles 因测试文件编辑触发 API 热重载时，不计入业务失败样本。性能仅留实测数据，未设 SLO。证据见 [verification.md](verification.md)。

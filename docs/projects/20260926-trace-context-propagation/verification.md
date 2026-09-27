@@ -2,7 +2,7 @@
 
 ## 当前状态
 
-方案已细化，API基础部分实施并通过部分定向自动化；PostgreSQL、SSE生命周期、真实链路及性能验证未执行。仅验收新服务组合，Phase通过不等于Final验收。
+T1—T8 已实施。本期按已批准的新 API/当前 Runtime 组合验收；Phase 与 Final 分开记录。用户确认性能只记录实测数据，不设置临时 SLO。
 
 ## 自动化验收矩阵
 
@@ -30,7 +30,7 @@
 - apps/platform-api/tests/test_runtime_correlation.py（V04—V09、V13—V15）
 - apps/platform-api/tests/test_audit_correlation.py（V10—V12、V15）
 
-上述三个是计划路径，当前尚未创建。
+`test_request_correlation.py`、`test_audit_correlation.py` 已创建；其他场景沿既有测试文件扩展，未创建重复测试框架。
 
 ## Phase 自动化执行入口
 
@@ -76,11 +76,30 @@ GET /api/audit?project_id=<authorized-project>&run_id=<actual-run>&created_from=
 
 ## 性能门禁
 
-- 在现成隔离 SQLite/PG 数据中覆盖代表性 7 天窗口和跨项目数据量；记录数据规模、原查询/新增查询的计划及延迟分布。按测试环境已批准查询 SLO 判定；无既有 SLO 时只报告数据、标记性能验收未验证，不临时编造阈值。
+- 在隔离 SQLite/PG 数据中覆盖代表性 7 天窗口和跨项目数据量，记录数据规模、查询计划及延迟分布。2026-09-27 用户确认本期仅留实测数据、不做 SLO 达标判定。
 - 关联查询无索引若不达标，另行评审索引方案，本专项不执行 DDL。不得以去掉授权/时间过滤换取性能。
 - 新API与当前Runtime组合验证已接受Run仍可执行、后续现有操作正常且没有额外重发/重签；Runtime/GraphHarbor不变，无数据库变更。不测试旧API产物或历史审计格式。
 
 ## Phase 验证记录
+
+### 2026-09-27 T1—T8 阶段补验
+
+| Task | 执行与结果 | 限制 |
+|---|---|---|
+| T1 | `test_request_correlation.py` 2项通过；12条并发请求及后请求均有独立内部编号；取消传播后 ContextVar 无残留。安全 500/CORS 由现有错误契约与全量测试覆盖 | 代理提前拒绝不在应用编号范围 |
+| T2 | `test_runtime_delegation.py`、`test_runtime_delegation_contract.py` 与完整 API 回归通过；当前请求的初始/scoped claim 和转发头同号 | 不改变 JWT operation/TTL |
+| T3 | `test_runtime_catalog_delegation.py` 与 SDK 调用方回归通过；非 HTTP 路径不生成虚假编号 | Runtime/GraphHarbor 不改 |
+| T4 | `test_run_requests.py` 27项通过；重试同 submission、mark 失败后同幂等键、审批 parent/interrupt、取消 ACK/拒绝/unknown及观察失败均有断言。现役旧隔离 Run 的审批/取消可按 run_id 精确反查 | ACK 不等于取消终态 |
+| T5 | `RUN_LOCAL_TRACE_POSTGRES=1` 执行 `test_audit_correlation.py` 6项通过；SQLite/PG 用同一过滤断言，PG 事务回滚；白名单、控制字符/窗口/UUID 422及项目审计权限通过。`test_audit_stream_status.py` 2项通过：已发200保持200、审计写入失败不改变响应 | 不新增索引/迁移 |
+| T6 | `test_runtime_gateway_event_redaction.py` 12项通过；握手 start 失败无 opened、坏帧优先、EOF/空流、主动关闭、异常、确认断连、未知取消及单次 closed；日志观察失败不改变流内容。现役执行中 Run 的线程流断开重连200且不固定 Run | 一次502发生在测试编辑触发的 API 热重载期间，不计业务样本 |
+| T7 | `PLATFORM_ERROR_CONTRACT_REAL=1` 真实测试2项通过；R1—R4、R6同一隔离项目实测；R5通过现役旧隔离审批/取消记录的授权 API 反查。PG 17.11/SQLite 3.50.4 的性能数据见下 | 当前 Runtime 终态清除 `lease_owner`，worker 身份须结合进程和 heartbeat 复核 |
+| T8 | 实施记录、任务与总览状态已同步；文档检查和最终工作树核对见 Final | 不执行 Git 提交或部署 |
+
+**真实性能样本：** PG 既有 `audit_logs` 112135 行，request_id 30次中位 0.577 ms / p95 1.105 ms，计划使用 `ix_audit_logs_request_id`；项目+7天+run 三字段 OR 查询中位 1.276 ms / p95 1.834 ms，使用 `ix_audit_logs_project_id` 后 JSON 过滤。SQLite 内存 10000 行、20项目、run 值1000种，同类查询30次中位 2.442 ms / p95 7.911 ms，计划使用项目索引并为排序建临时 B-tree。无批准 SLO，不宣称达标；测试数据未写入业务库，PG 过滤测试事务已回滚。
+
+**真实链路定位：** 2026-09-27 平台两次请求 `0b9c86fa5de14900a68e577d9f62eb27`、`6d392f8c39964201a710de02cc225ecc` 映射 submission `8c52c864-0860-43fc-bdcd-0cbad4950895`、Run `c786612f-f9b0-4810-863b-6251992bd823`；PG 审计按编号及 submission+窗口均返回对应尝试。Runtime 持久 Run 状态 `success`、有 heartbeat；验证时本地唯一 worker launcher PID 38768、子 Python PID 38784 存活；Langfuse trace `77cf961ec70884670c0c38e9c2712422` 的可信 metadata 匹配 Run 和提交请求。无编辑干扰的 R6 复测中，第二个 Run `45aeec01-77cc-46d6-87a1-e24325c97738` 在断流重连后成功；线程流请求号 `2b2fb0bf212c41b5aaa0cb22d2836a25`、`b5e3877dc74a45df835210ba75692e19` 各有一条 opened/closed，原因 `client_disconnect` 且无固定 Run ID。项目 executor 用相同 request_id 查审计返回403。真实测试创建的隔离 Thread/项目已由测试清理。
+
+**R5 现役旧隔离样本：** 已有授权测试项目 `5a5b7239-43e3-40e6-bba3-e64d96057607` 的真实取消 Run `6d106bc9-97e0-41df-afb8-8169142a90bb`，`GET /api/audit?run_id=...` 返回创建与取消两行，取消行含 `target_run_id`、`operation=run-cancel`、`outcome=accepted`；审批恢复 Run `0561a389-515f-4385-a7c8-70d617ca8cbe` 返回 `parent_run_id=ce7adb5c-8264-4a9c-a252-15c84ba76664`、真实 `interrupt_key`、`operation=approve`。本轮仅只读反查，没有撤权或修改旧样本。
 
 ### 2026-09-27 SSE 编号回调交叉验证
 
@@ -109,4 +128,29 @@ GET /api/audit?project_id=<authorized-project>&run_id=<actual-run>&created_from=
 
 ## Final 验收记录
 
-未开始。API基础部分实施；V01—V15尚未完整覆盖，R1—R6及性能均未验证。不得将Phase定向测试标为done、已交付或已上线。
+### 2026-09-27 Final
+
+**完成度：`done`（本期已批准的新 API/当前 Runtime 组合）。** T1—T8 均为 `[x]`，README、plan、tasks、verification、CONTEXT 和 FEATURES 的本期状态一致。无生产部署或 Git 提交由本次验收执行。
+
+| 验收项 | 最终证据 |
+|---|---|
+| V01—V03 | 12条并发、恶意外部编号、取消传播及后请求 ContextVar 隔离；安全 500/CORS 及 HTTP/SSE 同编号由现有错误响应契约和真实测试覆盖 |
+| V04—V05 | Gateway 初始/scoped、Catalog 独立签发及转发调用方由既有委托/双端契约和 API 全量测试覆盖；非 HTTP 调用无虚假编号 |
+| V06—V09 | 幂等重试、unknown、mark 失败、单/多 interrupt 审批关系、取消三种结果由 `test_run_requests.py` 及真实审计反查覆盖；没有新增 Run 或将 ACK 当终态 |
+| V10—V12 | 写/读双白名单、SQLite/PG 实际 JSON 查询、项目过滤与 total、权限403、请求422、七天边界和 Unicode Cc 拒绝通过 |
+| V13—V15 | SSE start 失败、EOF/空流、坏帧、上游异常、确认断连、未知取消及单次 closed 通过；真实两次线程流关闭为 client_disconnect；已发200审计状态及观察回调失败回归通过 |
+
+| 真实场景 | 最终证据 |
+|---|---|
+| R1 | 两个不同 request_id 对应同一 submission/Run；同一幂等键无额外 Run；审计按两个编号和 submission+时间窗均能查回 |
+| R2 | Runtime 持久 Run `c786612f-f9b0-4810-863b-6251992bd823` 为 success、含 heartbeat；本机唯一 worker launcher PID 38768/子进程38784在测试时存活，实际执行与本机 worker 组合核对 |
+| R3 | Langfuse 导出 trace `77cf961ec70884670c0c38e9c2712422`，可信 metadata 的 Run 与 request_id 匹配，非时间近似推断 |
+| R4 | `GET /api/audit` 带 `submission_id`、`created_from/to` 返回两次已记录尝试；unknown 可保留，不保证崩溃场景完整 |
+| R5 | 现役旧隔离审批/取消真实记录通过授权 API 用 `run_id` 反查；恢复关系含 parent/interrupt，取消含 target/outcome；新隔离项目 executor 同编号查询403 |
+| R6 | 两次线程流断连重连各有新编号与 opened/closed，均 `client_disconnect`，日志不固定 Run；第二个 Run 执行中立即重连200，断流后该 Run 成功且无隐式取消 |
+
+**自动化与质量：** 最后一次完整 API `pytest -q tests` 为 307 passed、16 skipped、613 subtests passed，退出码0；其后只新增两个测试，已分别在 SSE 定向12项与审计状态定向2项中通过，本机 PG 定向6项、并发/取消2项也通过。Runtime 两个鉴权文件47项通过；Web 相关 Vitest 11项通过。新增测试完整 Ruff 与格式检查通过；相关 Python 文件 `E4,E7,E9,F`、`python3 scripts/check_docs.py`、本专项范围 `git diff --check` 均退出码0。全量测试的16个 skip按既有条件保留，不计为通过；测试密钥长度警告和 WebSocket 弃用警告不属于本专项失败。
+
+**性能：** PG 17.11 既有112135行，request_id 中位/p95 为0.577/1.105 ms，项目+7天+run关联为1.276/1.834 ms；SQLite 3.50.4 隔离内存10000行为2.442/7.911 ms。均为30次本机样本，查询计划见 Phase。用户已确认本期只记录数据，没有已批准SLO，故不做“达标”判断；不据此引入索引或执行DDL。
+
+**边界和问题：** 一次执行中订阅的502与 WatchFiles 因测试文件编辑触发的平台 API 热重载同窗；停止编辑后相同场景重跑200、Run 成功，该502不计业务缺陷。终态会清除 Runtime `lease_owner`，R2 的 worker 身份靠本机单 worker 进程、Run heartbeat/终态及导出共同核对，没有永久 worker ID 行。观测关闭、进程崩溃、生产容量和旧版本混用不在已批准本期闭环保证内。Runtime/GraphHarbor 源码、配置、依赖和数据库结构未因追踪修改；没有迁移、生产部署或本次验收发起的 Git 提交。

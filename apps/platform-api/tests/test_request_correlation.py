@@ -6,7 +6,6 @@ import unittest
 
 import httpx
 from fastapi import FastAPI, Request
-
 from platform_api.core.context import get_current_request_context
 from platform_api.entrypoints.http.middleware.request_context import (
     register_request_context_middleware,
@@ -14,6 +13,30 @@ from platform_api.entrypoints.http.middleware.request_context import (
 
 
 class RequestCorrelationTest(unittest.IsolatedAsyncioTestCase):
+    async def test_cancelled_request_releases_its_context(self):
+        app = FastAPI()
+        register_request_context_middleware(app)
+        entered = asyncio.Event()
+
+        @app.get("/wait")
+        async def wait():
+            entered.set()
+            await asyncio.Event().wait()
+
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(
+            transport=transport, base_url="http://test"
+        ) as client:
+            task = asyncio.create_task(client.get("/wait"))
+            await asyncio.wait_for(entered.wait(), 2)
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+            healthy = await client.get("/missing")
+        self.assertRegex(healthy.headers["x-request-id"], r"^[0-9a-f]{32}$")
+        with self.assertRaisesRegex(RuntimeError, "request_context_not_bound"):
+            get_current_request_context()
+
     async def test_concurrent_requests_do_not_inherit_external_or_sibling_ids(self):
         app = FastAPI()
         register_request_context_middleware(app)

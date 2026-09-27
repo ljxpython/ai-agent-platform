@@ -7,7 +7,7 @@
 - **目标：** 对齐三个现役服务及 AI Harness 的契约，将四项业务契约独立实施和验收，AI规范路由按仓库级文档小改动处理。
 - **负责人：** @lijiaxin
 - **组织方式：** 总入口 + 四个独立专项；AI规范路由旧目录仅保留历史引用。
-- **状态：** 部分完成。错误响应已完成Final；追踪T1—T6有阶段实现和单条真实提交→Run→Langfuse证据，完整矩阵、PG与性能未完成；JWT J1—J6及真实生命周期已验，后续消息回查修复代码与本机测试完成、部署后真实链路未验证；SSE S1—S10完成，S11容量Final受HTTP/1.1入口限制而blocked。
+- **状态：** 部分完成。错误响应与追踪专项已完成本期Final；JWT J1—J6及真实生命周期已验，后续消息回查修复代码与本机测试完成、部署后真实链路未验证；SSE S1—S10完成，S11容量Final受HTTP/1.1入口限制而blocked。
 - **当前范围：** 四项原专项保持各自已批准边界；消息内部Run回查按2026-09-27单独授权修改Platform API与Runtime消息入口，GraphHarbor、原生白名单与Thread ACL不变。未执行迁移或部署；用户已授权将当前代码与文档提交并推送到现有分支，提交结果以Git记录为准。
 
 ## 阅读顺序与进度
@@ -18,16 +18,16 @@
 |---|---|---|---|
 | 01 | [AI 服务规范路由](../20260926-ai-service-routing/README.md) | 不再独立立项，旧目录仅保留引用 | 后续按仓库级文档小改动处理；本轮未修改AGENTS规则 |
 | 02 | [错误响应统一](../20260926-error-response-contract/README.md) | `done`：真实提交→Run→审计→Langfuse、memory409、SSE编号、peer ACL、workspace正向文件与现役浏览器错误态均通过 | 平台错误出口、上游转换、前端消费与新服务组合验证 |
-| 03 | [跨服务链路追踪](../20260926-trace-context-propagation/README.md) | `partial`：T1—T6部分实现，SSE同编号日志及单条提交→Run→Langfuse通过；各任务完整矩阵未验，T7/T8未完成，Final未开始 | 平台内部编号、请求/提交/Run/既有观测闭环；不做完整W3C/OTel改造 |
+| 03 | [跨服务链路追踪](../20260926-trace-context-propagation/README.md) | `done`：T1—T8、V01—V15、R1—R6、SQLite/PG 查询与性能实测均有证据；运行中线程流断开重连通过 | 平台内部编号、请求/提交/Run/既有观测闭环；不做完整W3C/OTel改造 |
 | 04 | [Delegation JWT 契约](../20260926-delegation-jwt-contract/README.md) | `partial`：J1—J6及R01—R04真实生命周期已验；消息403的后续修复源码和本机测试通过，部署后真实链路未验证 | 原专项保持v2与平台边界；[后续消息回查专项](../20260927-message-run-read-delegation/README.md)单独授权Runtime消息入口改动，不扩大权限 |
 | 05 | [SSE 事件契约](../20260926-sse-event-contract/README.md) | `partial`：S1—S10完成，真实普通SDK链路、1/4条短容量及390px前端检查通过；8条容量受HTTP/1.1浏览器origin连接槽限制，30分钟/h2/h3 Final blocked | 线程级持续保活；保持现有渲染和交互，不默认折叠；Runtime/GraphHarbor不改 |
 
-02已完成；04与05主体开发完成但仍缺真实验收，03剩余验证工作最多。04已执行字段/23项operation/身份矩阵和R01—R04真实链路，真实工具Run执行68.499秒跨TTL通过；原Final保留当时消息403事实，后续修复不追溯改写旧证据。01不阻塞业务专项。
+02、03已完成本期验收；04与05主体开发完成但仍缺各自剩余真实验收。04已执行字段/23项operation/身份矩阵和R01—R04真实链路，真实工具Run执行68.499秒跨TTL通过；原Final保留当时消息403事实，后续修复不追溯改写旧证据。01不阻塞业务专项。
 JWT 与追踪涉及共同字段，SSE 与错误响应涉及握手/流内失败边界，需要交叉复核；四项不是完全没有依赖。
 
 ## 当前剩余验收（2026-09-27）
 
-- **追踪：** 并发/取消上下文隔离、scoped委托与调用方完整矩阵、审批/取消关联、审计PostgreSQL查询及权限HTTP、SSE关闭分类/线程跨Run、worker身份和R1—R6完整链路、查询性能；T7/T8与Final未完成。
+- **追踪：** 本期无未完成任务；运行中订阅、断开重连及 Run 成功已补验。性能按用户确认只记录数据、不做SLO判定。详见[Final](../20260926-trace-context-propagation/verification.md)。
 - **JWT后续消息回查：** 部署新API与新Runtime后，验证真实运行中Run的消息入队、待处理列表及Thread ACL撤权拒绝。当前真实PostgreSQL队列和配对JWT测试通过，受控原生GET不能替代该链路。
 - **SSE：** 需HTTP/2或HTTP/3浏览器入口验证8条并发、30分钟容量、堆增长、退出资源归零及三段脱敏样例；其余真实边界见专项V01—V21覆盖表。当前HTTP/1.1约6条长连接槽会阻塞后续握手和state请求，worker扩容不解决。
 - **错误响应：** 本期无未完成项。各专项部署与生产发布另行安排，不把提交快照视为Final验收或上线。

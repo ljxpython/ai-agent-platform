@@ -22,6 +22,73 @@ async def _chunks(*values: bytes) -> AsyncIterator[bytes]:
 
 
 class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
+    async def test_plain_stream_close_and_failed_observer_do_not_change_body(self):
+        reasons = []
+        sent = []
+        response = RuntimeStreamingResponse(
+            _chunks(b"data: 1\n\n"), on_close=lambda reason, _: reasons.append(reason)
+        )
+
+        async def send(message):
+            sent.append(message)
+
+        await response.stream_response(send)
+        self.assertEqual(reasons, ["closed"])
+        self.assertTrue(any(item.get("body") == b"data: 1\n\n" for item in sent))
+
+        request = Request(
+            {"type": "http", "method": "POST", "path": "/stream", "headers": []}
+        )
+        request.state.platform_context = SimpleNamespace(
+            request=SimpleNamespace(request_id="request-1", trace_id="request-1"),
+            project=SimpleNamespace(project_id="project-1"),
+        )
+        response = _runtime_sse_response(
+            request,
+            _chunks(b"data: 1\n\n"),
+            thread_id="thread-1",
+            stream_kind="run",
+            protocol=False,
+        )
+        sent.clear()
+        with patch(
+            "platform_api.modules.runtime_gateway.presentation.http.log_event",
+            side_effect=RuntimeError("observer unavailable"),
+        ):
+            await response.stream_response(send)
+        self.assertTrue(any(item.get("body") == b"data: 1\n\n" for item in sent))
+
+    async def test_eof_and_empty_stream_keep_one_log_pair(self):
+        for values, expected in (((), "eof"), ((b"data: 1\n\n",), "eof")):
+            request = Request(
+                {"type": "http", "method": "POST", "path": "/stream", "headers": []}
+            )
+            request.state.platform_context = SimpleNamespace(
+                request=SimpleNamespace(request_id="request-1", trace_id="request-1"),
+                project=SimpleNamespace(project_id="project-1"),
+            )
+            events = []
+            response = _runtime_sse_response(
+                request,
+                _chunks(*values),
+                thread_id="thread-1",
+                stream_kind="thread",
+                protocol=False,
+            )
+            with patch(
+                "platform_api.modules.runtime_gateway.presentation.http.log_event",
+                side_effect=lambda _logger, event, **fields: events.append(
+                    (event, fields)
+                ),
+            ):
+                await response.stream_response(lambda _message: asyncio.sleep(0))
+            self.assertEqual(
+                [name for name, _ in events],
+                ["runtime.stream.opened", "runtime.stream.closed"],
+            )
+            self.assertEqual(events[-1][1]["close_reason"], expected)
+            self.assertNotIn("run_id", events[-1][1])
+
     async def test_disconnect_and_unknown_cancel_have_distinct_close_reasons(self):
         async def pending():
             yield b": heartbeat\n\n"

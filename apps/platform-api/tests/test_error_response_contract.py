@@ -2,6 +2,7 @@ import hashlib
 import os
 import time
 import unittest
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 from uuid import uuid4
@@ -344,6 +345,28 @@ class ErrorResponseContractTest(unittest.TestCase):
                 self.assertEqual({item["run_id"] for item in metadata}, {run_id})
                 self.assertEqual(len({item["submission_id"] for item in metadata}), 1)
                 self.assertEqual({item["thread_id"] for item in metadata}, {thread_id})
+                peer_audit = client.get(
+                    "/api/audit",
+                    headers=peer_headers,
+                    params={"project_id": project_id, "request_id": request_ids[0]},
+                )
+                self.assertEqual(peer_audit.status_code, 403)
+                window = {
+                    "project_id": project_id,
+                    "submission_id": metadata[0]["submission_id"],
+                    "created_from": (
+                        datetime.now(UTC) - timedelta(hours=1)
+                    ).isoformat(),
+                    "created_to": (
+                        datetime.now(UTC) + timedelta(minutes=1)
+                    ).isoformat(),
+                }
+                attempts = client.get("/api/audit", headers=auth, params=window)
+                self.assertEqual(attempts.status_code, 200, attempts.text)
+                self.assertEqual(
+                    {item["request_id"] for item in attempts.json()["items"]},
+                    set(request_ids),
+                )
 
                 log_path = (
                     Path(os.environ.get("TMPDIR", "/tmp"))
@@ -385,6 +408,56 @@ class ErrorResponseContractTest(unittest.TestCase):
                     any('"event": "runtime.stream.closed"' in line for line in events)
                 )
 
+                thread_stream_ids = []
+                for index in range(2):
+                    with client.stream(
+                        "POST",
+                        f"/api/langgraph/threads/{thread_id}/stream/events",
+                        headers=headers,
+                        json={"channels": ["lifecycle"]},
+                    ) as thread_stream:
+                        self.assertEqual(thread_stream.status_code, 200)
+                        thread_stream_ids.append(thread_stream.headers["x-request-id"])
+                        next(thread_stream.iter_lines())
+                    if index == 0:
+                        another = client.post(
+                            f"/api/langgraph/threads/{thread_id}/runs",
+                            headers={**headers, "Idempotency-Key": key + "-next"},
+                            json=payload,
+                        )
+                        self.assertEqual(another.status_code, 200, another.text)
+                        self.assertNotEqual(another.json()["run_id"], run_id)
+                self.assertNotEqual(*thread_stream_ids)
+                for _ in range(30):
+                    continued = client.get(
+                        f"/api/langgraph/threads/{thread_id}/runs/{another.json()['run_id']}",
+                        headers=headers,
+                    )
+                    self.assertEqual(continued.status_code, 200)
+                    if continued.json()["status"] in {"success", "error", "cancelled"}:
+                        break
+                    time.sleep(2)
+                self.assertEqual(continued.json()["status"], "success")
+                for _ in range(10):
+                    stream_log = log_path.read_text()[log_offset:]
+                    closed = [
+                        line
+                        for line in stream_log.splitlines()
+                        if '"event": "runtime.stream.closed"' in line
+                        and any(
+                            f'"request_id": "{item}"' in line
+                            for item in thread_stream_ids
+                        )
+                    ]
+                    if len(closed) == 2:
+                        break
+                    time.sleep(1)
+                self.assertEqual(len(closed), 2)
+                self.assertTrue(
+                    all('"stream_kind": "thread"' in line for line in closed)
+                )
+                self.assertTrue(all('"run_id"' not in line for line in closed))
+
                 with httpx.Client(
                     base_url=runtime["LANGFUSE_BASE_URL"],
                     auth=(
@@ -418,6 +491,8 @@ class ErrorResponseContractTest(unittest.TestCase):
                         "stream_request_id": stream_request_id,
                         "memory_status": memory_status,
                         "submission_id": metadata[0]["submission_id"],
+                        "thread_stream_request_ids": thread_stream_ids,
+                        "continued_run_id": another.json()["run_id"],
                         "langfuse_trace_ids": [item["id"] for item in matched],
                     }
                 )
