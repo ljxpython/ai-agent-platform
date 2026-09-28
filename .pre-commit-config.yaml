@@ -18,13 +18,14 @@ repos:
 
   - repo: local
     hooks:
-      - id: platform-web-eslint
-        name: platform-web eslint
-        entry: bash -c 'cd apps/platform-web && pnpm exec eslint --fix "${@/#apps\/platform-web\//}"' --
-        language: system
-        files: ^apps/platform-web/.*\.(ts|tsx|vue|js|mjs|cjs)$
       - id: platform-web-prettier
         name: platform-web prettier
-        entry: bash -c 'cd apps/platform-web && pnpm exec prettier --write "${@/#apps\/platform-web\//}"' --
+        entry: bash -c 'cd apps/platform-web && pnpm exec prettier --write --ignore-unknown "${@/#apps\/platform-web\//}"' --
         language: system
         files: ^apps/platform-web/.*\.(ts|tsx|vue|js|mjs|cjs|json|css|html|md|yaml|yml)$
+        exclude: ^apps/platform-web/pnpm-lock\.yaml$
+      - id: platform-web-eslint
+        name: platform-web eslint
+        entry: bash -c 'cd apps/platform-web && pnpm exec eslint --fix --cache "${@/#apps\/platform-web\//}"' --
+        language: system
+        files: ^apps/platform-web/.*\.(ts|tsx|vue|js|mjs|cjs)$

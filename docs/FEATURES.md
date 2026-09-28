@@ -95,6 +95,7 @@
 | Delegation JWT契约治理 | 部分完成：J1—J6平台任务、v2双端23项矩阵、签发安全失败及R01—R04真实生命周期有证据；消息内部Run回查由后续专项修复源码，本机测试通过，现役链路未验证；GraphHarbor不改 | [JWT专项](projects/20260926-delegation-jwt-contract/README.md) · [回查修复](projects/20260927-message-run-read-delegation/README.md) |
 | AI服务规范路由 | 不再独立立项：后续按仓库级文档小改动补按需阅读规则；本轮未修改AGENTS | [AI路由专项](projects/20260926-ai-service-routing/README.md) |
 | 代码规范自动化门禁 | 部分完成：pre-commit 与 CI 变更文件检查已接入；Python 历史格式基线待单独清理 | [项目记录](projects/20260925-code-quality-automation/README.md) |
+| 前端代码格式化与 Git Hook 工具链治理 | 已完成：引入 eslint-config-prettier 解耦 ESLint 质量检查与 Prettier 视觉排版，优化 pre-commit 执行链并提供 VSCode 保存即格式化配置 | [变更记录](changes/20260928-code-formatting-toolchain-optimization.md) |
 | Python 格式基线清理 | 规划中：约 731 条 Ruff 诊断、297 个文件格式差异待分批清理，本次不实施 | [项目规划](projects/20260925-python-format-baseline-cleanup/README.md) |
 | 旧 Testcase 结果服务退役 | 已完成（本机范围）：仓库与本机 Docker 独占资源已清理，备份恢复、浏览器聊天及成果生成/预览/下载通过 | [退役记录](projects/20260924-interaction-data-service-retirement/README.md) |
 | 非 Docker 新机开发环境交接 | 文档已收口：通用模板与私有账号映射分开，建库/SCRAM/反向验收连续步骤，补齐运维回执；目标机实际部署待执行 | [部署手册](quickstart/deployment-guide.md) · [运维交接](quickstart/operator-handoff.md) · [收口记录](changes/20260921-native-deployment-operator-handoff.md) |

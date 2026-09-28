@@ -9,3 +9,4 @@ coverage
 .login-response.json
 playwright-report/
 test-results/
+.eslintcache

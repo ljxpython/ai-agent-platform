@@ -50,6 +50,7 @@
     "@vue/test-utils": "^2.4.6",
     "autoprefixer": "^10.4.20",
     "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vue": "^9.32.0",
     "globals": "^17.0.0",
     "jsdom": "^25.0.1",
