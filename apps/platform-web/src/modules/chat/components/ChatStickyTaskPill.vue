@@ -47,95 +47,136 @@ const statusSummary = computed(() => {
   }
   return "待办任务计划已就绪";
 });
+
+function formatStep(idx: number): string {
+  const num = idx + 1;
+  return `#${num < 10 ? "0" + num : num}`;
+}
 </script>
 
 <template>
   <div
     v-if="planView.totalTasks > 0"
     data-testid="composer-task-tray"
-    class="relative z-10 -mb-px overflow-hidden rounded-t-2xl border border-b-0 border-gray-200/85 bg-gray-50/95 shadow-[0_-2px_10px_rgba(0,0,0,0.02)] backdrop-blur-md transition-all dark:border-dark-700/80 dark:bg-dark-800/90"
+    class="relative z-10 -mb-px overflow-hidden rounded-t-2xl border border-b-0 transition-all duration-200 backdrop-blur-md"
+    :class="
+      planView.allTasksCompleted
+        ? 'border-emerald-200/80 bg-gradient-to-b from-emerald-50/30 to-white/95 shadow-[0_-2px_12px_rgba(16,185,129,0.04)] dark:border-emerald-900/40 dark:from-emerald-950/20 dark:to-dark-900/95'
+        : 'border-gray-200/85 bg-white/95 shadow-[0_-2px_12px_rgba(0,0,0,0.03)] dark:border-dark-700/80 dark:bg-dark-900/95'
+    "
   >
     <!-- 向上展开的待办清单详情面板 -->
     <div
       v-if="expanded"
       data-testid="task-tray-list"
-      class="border-b border-gray-200/75 bg-white/90 px-3.5 py-2.5 dark:border-dark-700/75 dark:bg-dark-900/90"
+      class="border-b border-gray-100/90 bg-white/70 px-4 py-3 dark:border-dark-700/70 dark:bg-dark-900/70"
     >
-      <div
-        class="mb-2 flex items-center justify-between text-[11px] text-gray-500 dark:text-dark-300"
-      >
-        <span class="font-semibold text-gray-700 dark:text-gray-200">
-          任务执行清单 ({{ planView.completedTasks }}/{{ planView.totalTasks }})
-        </span>
+      <!-- 清单头部：标题、进度与跳转待办看板 -->
+      <div class="mb-2.5 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-semibold text-gray-800 dark:text-dark-100">
+            任务执行清单
+          </span>
+          <span
+            class="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold"
+            :class="
+              planView.allTasksCompleted
+                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300'
+                : 'bg-primary-50 text-primary-700 dark:bg-primary-950/50 dark:text-primary-300'
+            "
+          >
+            {{ planView.completedTasks }}/{{ planView.totalTasks }}
+          </span>
+        </div>
+
         <button
           type="button"
           data-testid="open-task-drawer-btn"
-          class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-medium text-primary-600 transition-colors hover:bg-primary-50 hover:text-primary-700 dark:text-primary-400 dark:hover:bg-primary-950/40"
+          class="inline-flex cursor-pointer items-center gap-1 rounded-lg px-2 py-0.5 text-xs font-medium text-primary-600 transition-colors hover:bg-primary-50 hover:text-primary-700 dark:text-primary-400 dark:hover:bg-primary-950/40"
           @click.stop="emit('openTasks')"
         >
           <span>待办看板</span>
-          <span aria-hidden="true">↗</span>
+          <span class="text-[10px]" aria-hidden="true">↗</span>
         </button>
       </div>
 
-      <div class="max-h-48 space-y-1.5 overflow-y-auto pr-1">
+      <!-- 任务项滚动列表 -->
+      <div class="max-h-52 space-y-1.5 overflow-y-auto pr-1">
         <div
           v-for="(item, idx) in planView.planTodos"
           :key="item.id ?? idx"
-          class="flex items-start gap-2 rounded-lg px-1.5 py-1 text-xs transition-colors"
+          class="group flex items-center gap-2.5 rounded-xl border border-transparent px-2.5 py-1.5 text-xs transition-all"
           :class="
             item.status === 'in_progress'
-              ? 'bg-blue-50/60 dark:bg-blue-950/25'
-              : ''
+              ? 'border-primary-200/80 bg-primary-50/40 text-gray-900 shadow-2xs dark:border-primary-900/50 dark:bg-primary-950/25 dark:text-white'
+              : item.status === 'completed'
+                ? 'bg-gray-50/50 hover:bg-gray-50 dark:bg-dark-800/30 dark:hover:bg-dark-800/50'
+                : 'hover:bg-gray-50/70 dark:hover:bg-dark-800/40'
           "
         >
-          <!-- 单项任务状态微徽章 -->
-          <ChatTodoStatusBadge :status="item.status" size="sm" class="mt-0.5" />
-
+          <!-- 步骤编号微标 -->
           <span
-            class="flex-1 truncate leading-relaxed"
+            class="inline-flex shrink-0 items-center justify-center font-mono text-[10px] font-semibold text-gray-400 dark:text-dark-400"
+          >
+            {{ formatStep(idx) }}
+          </span>
+
+          <!-- 单项任务状态矢量微徽章 -->
+          <ChatTodoStatusBadge
+            :status="item.status"
+            size="sm"
+            class="shrink-0"
+          />
+
+          <!-- 任务内容文本（彻底去除粗暴的删除线，使用清晰优雅的灰阶层级） -->
+          <span
+            class="min-w-0 flex-1 truncate text-xs leading-relaxed"
             :class="{
-              'font-medium text-gray-900 dark:text-white':
+              'font-semibold text-gray-900 dark:text-white':
                 item.status === 'in_progress',
-              'text-gray-400 line-through dark:text-gray-500':
-                item.status === 'completed',
-              'text-gray-600 dark:text-gray-300': item.status === 'pending',
+              'text-gray-500 dark:text-dark-400': item.status === 'completed',
+              'text-gray-700 dark:text-dark-200': item.status === 'pending',
             }"
+            :title="item.content"
           >
             {{ item.content }}
           </span>
 
+          <!-- 状态轻量微标 -->
           <span
-            class="shrink-0 rounded px-1.5 py-0.5 text-[10px]"
-            :class="{
-              'bg-blue-100/80 text-blue-700 font-medium dark:bg-blue-950/60 dark:text-blue-300':
-                item.status === 'in_progress',
-              'text-emerald-600/80 dark:text-emerald-400/80':
-                item.status === 'completed',
-              'text-gray-400 dark:text-dark-400': item.status === 'pending',
-            }"
+            v-if="item.status === 'in_progress'"
+            class="inline-flex shrink-0 items-center gap-1 rounded-full bg-primary-100/80 px-2 py-0.5 text-[10px] font-medium text-primary-700 dark:bg-primary-950/70 dark:text-primary-300"
           >
-            {{
-              item.status === "in_progress"
-                ? "进行中"
-                : item.status === "completed"
-                  ? "已完成"
-                  : "待处理"
-            }}
+            <span
+              class="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-primary-500"
+            />
+            执行中
+          </span>
+          <span
+            v-else-if="item.status === 'completed'"
+            class="shrink-0 text-[10px] font-medium text-emerald-600/80 dark:text-emerald-400/80"
+          >
+            已完成
+          </span>
+          <span
+            v-else
+            class="shrink-0 text-[10px] font-medium text-gray-400 dark:text-dark-400"
+          >
+            待处理
           </span>
         </div>
       </div>
     </div>
 
-    <!-- 底部托盘常驻控制条（整条可点击展开/收起） -->
+    <!-- 底部托盘常驻控制条（整条可点击平滑展开/收起） -->
     <button
       type="button"
       data-testid="toggle-task-tray"
-      class="flex w-full items-center justify-between gap-3 px-3.5 py-1.5 text-left text-xs transition-colors hover:bg-gray-100/80 dark:hover:bg-dark-800"
+      class="flex w-full cursor-pointer items-center justify-between gap-3 px-4 py-2 text-left text-xs transition-colors hover:bg-gray-50/80 dark:hover:bg-dark-800/60"
       :title="expanded ? '收起任务清单' : '展开任务清单'"
       @click="expanded = !expanded"
     >
-      <div class="flex min-w-0 flex-1 items-center gap-2">
+      <div class="flex min-w-0 flex-1 items-center gap-2.5">
         <!-- 完成态：翠绿小圆勾图标；执行态：SVG 环形进度圈 -->
         <svg
           v-if="planView.allTasksCompleted"
@@ -186,11 +227,11 @@ const statusSummary = computed(() => {
         </svg>
 
         <span
-          class="truncate"
+          class="truncate text-xs"
           :class="
             planView.allTasksCompleted
-              ? 'text-gray-500 dark:text-dark-300'
-              : 'font-medium text-gray-700 dark:text-gray-200'
+              ? 'font-medium text-emerald-700 dark:text-emerald-300'
+              : 'font-medium text-gray-800 dark:text-gray-100'
           "
         >
           {{ statusSummary }}
@@ -199,21 +240,29 @@ const statusSummary = computed(() => {
 
       <div class="flex shrink-0 items-center gap-2">
         <span
-          class="rounded-md px-1.5 py-0.5 font-mono text-[11px] font-medium"
+          class="rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold leading-none"
           :class="
             planView.allTasksCompleted
-              ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
-              : 'bg-gray-200/75 text-gray-700 dark:bg-dark-700 dark:text-dark-200'
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+              : 'bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-dark-200'
           "
         >
           {{ planView.completedTasks }}/{{ planView.totalTasks }}
         </span>
-        <span
-          aria-hidden="true"
-          class="text-[11px] text-gray-400 transition-transform duration-200 dark:text-dark-400"
+
+        <!-- 顺滑旋转的 SVG 矢量 Chevron 箭头（彻底抛弃字符 ▾/▴） -->
+        <svg
+          class="h-3.5 w-3.5 text-gray-400 transition-transform duration-200 dark:text-dark-400"
+          :class="{ 'rotate-180': expanded }"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
         >
-          {{ expanded ? "▾" : "▴" }}
-        </span>
+          <path d="M4 10l4-4 4 4" />
+        </svg>
       </div>
     </button>
   </div>
