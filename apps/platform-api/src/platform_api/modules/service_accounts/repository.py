@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from platform_api.modules.service_accounts.records import (
-    StoredServiceAccount,
-    StoredServiceAccountToken,
-    StoredServiceAccountProjectGrant,
-)
 from platform_api.modules.iam.domain import ProjectRole
 from platform_api.modules.service_accounts.models import (
-    ServiceAccountRecord,
     ServiceAccountProjectGrantRecord,
+    ServiceAccountRecord,
     ServiceAccountTokenRecord,
+)
+from platform_api.modules.service_accounts.records import (
+    StoredServiceAccount,
+    StoredServiceAccountProjectGrant,
+    StoredServiceAccountToken,
 )
 
 
@@ -200,7 +200,7 @@ class SqlAlchemyServiceAccountsRepository:
     def get_active_token_by_prefix(
         self, *, token_prefix: str
     ) -> StoredServiceAccountToken | None:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         stmt = (
             select(ServiceAccountTokenRecord)
             .where(
@@ -231,7 +231,7 @@ class SqlAlchemyServiceAccountsRepository:
         if record is None or record.service_account_id != service_account_id:
             return None
         record.status = "revoked"
-        record.revoked_at = datetime.now(timezone.utc)
+        record.revoked_at = datetime.now(UTC)
         self.session.flush()
         self.session.refresh(record)
         return _to_token(record)

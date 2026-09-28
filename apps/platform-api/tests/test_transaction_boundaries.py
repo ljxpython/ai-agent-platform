@@ -4,11 +4,11 @@ import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from uuid import uuid4
 from unittest.mock import patch
+from uuid import uuid4
 
-from anyio import CancelScope
 import httpx
+from anyio import CancelScope
 from fastapi import FastAPI
 from sqlalchemy import event, text
 from sqlalchemy.orm import Session, sessionmaker
@@ -18,8 +18,10 @@ from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import build_engine, create_core_tables, session_scope
 from platform_api.entrypoints.http.dependencies import get_actor_context
-from platform_api.entrypoints.http.middleware.audit_log import register_audit_log_middleware
-from platform_api.modules.projects.router import router, get_projects_service
+from platform_api.entrypoints.http.middleware.audit_log import (
+    register_audit_log_middleware,
+)
+from platform_api.modules.projects.router import get_projects_service, router
 from platform_api.modules.projects.service import ProjectsService
 from platform_api.modules.runtime_catalog.application.service import (
     RuntimeCatalogService,
@@ -135,7 +137,15 @@ class TransactionBoundariesTest(unittest.IsolatedAsyncioTestCase):
         app.state.db_session_factory = sessionmaker()
         register_audit_log_middleware(app)
         dispatch = app.user_middleware[0].kwargs["dispatch"]
-        request = Request({"type": "http", "method": "POST", "path": "/api/projects", "headers": [], "app": app})
+        request = Request(
+            {
+                "type": "http",
+                "method": "POST",
+                "path": "/api/projects",
+                "headers": [],
+                "app": app,
+            }
+        )
         writes = []
 
         def write(**kwargs):
@@ -145,7 +155,10 @@ class TransactionBoundariesTest(unittest.IsolatedAsyncioTestCase):
         async def cancelled(request):
             raise asyncio.CancelledError()
 
-        with patch("platform_api.entrypoints.http.middleware.audit_log._write_audit_event", side_effect=write):
+        with patch(
+            "platform_api.entrypoints.http.middleware.audit_log._write_audit_event",
+            side_effect=write,
+        ):
             with CancelScope() as scope:
                 scope.cancel()
                 with self.assertRaises(asyncio.CancelledError):

@@ -7,8 +7,6 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field
 
 from platform_api.core.schemas import OffsetPage
-
-
 from platform_api.modules.runtime_policies.domain import (
     RuntimeGraphPolicyItem,
     RuntimeGraphPolicyValue,

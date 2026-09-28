@@ -8,22 +8,22 @@ from unittest.mock import AsyncMock, Mock
 import httpx
 import jwt
 from fastapi import FastAPI
-from tests.thread_acl_fixture import thread_acl_factory
 
 from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import (
-    BadRequestError,
-    ForbiddenError,
     PlatformApiError,
     register_exception_handlers,
 )
 from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
-from platform_api.modules.runtime_gateway.application.service import RuntimeGatewayService
+from platform_api.modules.runtime_gateway.application.service import (
+    RuntimeGatewayService,
+)
 from platform_api.modules.runtime_gateway.presentation.http import (
     get_actor_context,
     get_runtime_gateway_service,
     router,
 )
+from tests.thread_acl_fixture import thread_acl_factory
 
 
 class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
@@ -32,14 +32,20 @@ class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
         self.app.include_router(router)
         register_exception_handlers(self.app)
 
-        self.actor = ActorContext(user_id="user-1", project_roles={"proj-1": ("project_executor",)})
+        self.actor = ActorContext(
+            user_id="user-1", project_roles={"proj-1": ("project_executor",)}
+        )
         self.upstream = Mock()
         self.upstream.with_forwarded_headers = Mock(return_value=self.upstream)
-        self.session_factory = thread_acl_factory(self, actor=self.actor, project_id="proj-1")
+        self.session_factory = thread_acl_factory(
+            self, actor=self.actor, project_id="proj-1"
+        )
 
         self.delegation_calls = []
 
-        def delegation_factory(*, project_id, agent_key, thread_id, context_hash, operation):
+        def delegation_factory(
+            *, project_id, agent_key, thread_id, context_hash, operation
+        ):
             token = jwt.encode(
                 {
                     "sub": "user-1",
@@ -70,7 +76,9 @@ class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
         self.service._prepare_project_scope = Mock()
 
         self.app.dependency_overrides[get_actor_context] = lambda: self.actor
-        self.app.dependency_overrides[get_runtime_gateway_service] = lambda: self.service
+        self.app.dependency_overrides[get_runtime_gateway_service] = lambda: (
+            self.service
+        )
 
         @self.app.middleware("http")
         async def scope(request, call_next):
@@ -84,7 +92,9 @@ class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
         sha = hashlib.sha256(data).hexdigest()
 
         self.upstream.get_thread = AsyncMock(
-            return_value={"metadata": {"project_id": "proj-1", "graph_id": "showcase_demo"}}
+            return_value={
+                "metadata": {"project_id": "proj-1", "graph_id": "showcase_demo"}
+            }
         )
         self.upstream.upload_thread_image = AsyncMock(
             return_value={
@@ -176,7 +186,12 @@ class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
 
             # 5. Thread from other project
             self.upstream.get_thread = AsyncMock(
-                return_value={"metadata": {"project_id": "other-proj", "graph_id": "showcase_demo"}}
+                return_value={
+                    "metadata": {
+                        "project_id": "other-proj",
+                        "graph_id": "showcase_demo",
+                    }
+                }
             )
             resp = await client.put(
                 f"/api/langgraph/threads/thread-1/images/uploads/{sha}",
@@ -192,7 +207,9 @@ class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_read_image_success(self):
         self.upstream.get_thread = AsyncMock(
-            return_value={"metadata": {"project_id": "proj-1", "graph_id": "showcase_demo"}}
+            return_value={
+                "metadata": {"project_id": "proj-1", "graph_id": "showcase_demo"}
+            }
         )
 
         async def fake_body():
@@ -255,7 +272,12 @@ class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
 
             # 3. Thread belongs to other project
             self.upstream.get_thread = AsyncMock(
-                return_value={"metadata": {"project_id": "other-proj", "graph_id": "showcase_demo"}}
+                return_value={
+                    "metadata": {
+                        "project_id": "other-proj",
+                        "graph_id": "showcase_demo",
+                    }
+                }
             )
             resp = await client.get(
                 "/api/langgraph/threads/thread-1/images/content",
@@ -267,7 +289,9 @@ class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_upstream_error_propagation(self):
         self.upstream.get_thread = AsyncMock(
-            return_value={"metadata": {"project_id": "proj-1", "graph_id": "showcase_demo"}}
+            return_value={
+                "metadata": {"project_id": "proj-1", "graph_id": "showcase_demo"}
+            }
         )
 
         # 1. Upstream 404 image_not_found
@@ -309,7 +333,9 @@ class RuntimeGatewayImagesTest(unittest.IsolatedAsyncioTestCase):
                 },
             )
             self.assertEqual(resp.status_code, 502)
-            self.assertEqual(resp.json()["error"]["code"], "runtime_invalid_image_response")
+            self.assertEqual(
+                resp.json()["error"]["code"], "runtime_invalid_image_response"
+            )
 
 
 if __name__ == "__main__":

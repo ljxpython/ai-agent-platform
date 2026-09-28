@@ -107,18 +107,24 @@ def _runtime_model(config: RunnableConfig, *, local: bool) -> BaseChatModel | No
     if not local:
         raise RuntimeAuthError("runtime.auth.test_adapter_forbidden")
     if not isinstance(candidate, BaseChatModel):
-        raise RuntimeResolutionError("runtime.model.invalid_test_adapter", "_runtime_test_model")
+        raise RuntimeResolutionError(
+            "runtime.model.invalid_test_adapter", "_runtime_test_model"
+        )
     return candidate
 
 
-def _runtime_checkpointer(config: RunnableConfig, *, local: bool) -> BaseCheckpointSaver | None:
+def _runtime_checkpointer(
+    config: RunnableConfig, *, local: bool
+) -> BaseCheckpointSaver | None:
     candidate = _configurable(config).get("_runtime_test_checkpointer")
     if candidate is None:
         return None
     if not local:
         raise RuntimeAuthError("runtime.auth.test_adapter_forbidden")
     if not isinstance(candidate, BaseCheckpointSaver):
-        raise RuntimeResolutionError("runtime.checkpointer.invalid", "_runtime_test_checkpointer")
+        raise RuntimeResolutionError(
+            "runtime.checkpointer.invalid", "_runtime_test_checkpointer"
+        )
     return candidate
 
 

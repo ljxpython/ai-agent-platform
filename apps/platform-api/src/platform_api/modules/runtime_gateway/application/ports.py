@@ -15,13 +15,19 @@ class BinaryPayload:
     content_disposition: str | None = None
 
 
-
 class RuntimeGatewayUpstreamProtocol(Protocol):
     async def dear_memory(self, *, payload: dict | None = None) -> dict: ...
-    async def dear_skills(self, method: str, suffix: str = "", *, payload=None, params=None): ...
+    async def dear_skills(
+        self, method: str, suffix: str = "", *, payload=None, params=None
+    ): ...
 
     async def dear_governance(
-        self, thread_id: str, resource: str, *, payload: dict | None = None, query: str = "",
+        self,
+        thread_id: str,
+        resource: str,
+        *,
+        payload: dict | None = None,
+        query: str = "",
     ) -> dict: ...
 
     async def get_info(self) -> dict[str, Any]: ...
@@ -36,9 +42,7 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
 
     async def count_threads(self, payload: dict[str, Any] | None = None) -> Any: ...
 
-
     async def get_thread(self, thread_id: str) -> dict[str, Any]: ...
-
 
     async def delete_thread(self, thread_id: str) -> Any: ...
 
@@ -49,7 +53,6 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
         thread_id: str,
         payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]: ...
-
 
     async def get_thread_state(
         self,
@@ -68,16 +71,6 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
         thread_id: str,
         payload: dict[str, Any] | None = None,
     ) -> Any: ...
-
-
-
-
-
-
-
-
-
-
 
     async def create_thread_run(
         self,
@@ -103,7 +96,6 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
         payload: dict[str, Any],
     ) -> AsyncIterator[bytes]: ...
 
-
     async def get_graph_capabilities(self, graph_id: str) -> dict[str, Any]: ...
 
     async def get_thread_run(self, thread_id: str, run_id: str) -> Any: ...
@@ -124,7 +116,6 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
         run_id: str,
         params: dict[str, Any] | None = None,
     ) -> AsyncIterator[bytes]: ...
-
 
     async def cancel_thread_run(
         self,
@@ -164,11 +155,24 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
         path: str,
     ) -> BinaryPayload: ...
 
-    async def workspace_json(self, thread_id: str, resource: str, params: dict[str, Any]) -> dict[str, Any]: ...
+    async def workspace_json(
+        self, thread_id: str, resource: str, params: dict[str, Any]
+    ) -> dict[str, Any]: ...
 
-    async def workspace_file(self, thread_id: str, resource: str, path: str) -> BinaryPayload: ...
+    async def workspace_file(
+        self, thread_id: str, resource: str, path: str
+    ) -> BinaryPayload: ...
     async def workspace_zip(self, thread_id: str) -> BinaryPayload: ...
-    async def fork_thread_workspace(self, target_thread_id: str, source_thread_id: str) -> dict[str, Any]: ...
+    async def fork_thread_workspace(
+        self, target_thread_id: str, source_thread_id: str
+    ) -> dict[str, Any]: ...
 
-    async def terminal_request(self, thread_id: str, action: str, *, terminal_id: str | None = None,
-                               payload: dict | None = None, offset: int = 0) -> dict: ...
+    async def terminal_request(
+        self,
+        thread_id: str,
+        action: str,
+        *,
+        terminal_id: str | None = None,
+        payload: dict | None = None,
+        offset: int = 0,
+    ) -> dict: ...

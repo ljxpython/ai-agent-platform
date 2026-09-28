@@ -250,8 +250,7 @@ skills/<skill>/SKILL.md
 平台对外只有一个组合根协议：
 
 ```python
-async def get_agent(config: RunnableConfig) -> Pregel:
-    ...
+async def get_agent(config: RunnableConfig) -> Pregel: ...
 ```
 
 `get_agent` 统一的是部署入口，不统一 `create_agent`、`create_deep_agent` 和 `StateGraph`
@@ -343,8 +342,7 @@ LangGraph Agent Server 会把 `get_agent` 作为 graph factory 调用，并且�
 每个 `agent.py` 只导出一个正式入口：
 
 ```python
-async def get_agent(config: RunnableConfig) -> Pregel:
-    ...
+async def get_agent(config: RunnableConfig) -> Pregel: ...
 ```
 
 对应的 `src/runtime_service/graphs/<graph_id>.py` 只重导出该符号，例如：

@@ -4,28 +4,30 @@ import asyncio
 from types import SimpleNamespace
 
 import pytest
-from langchain_core.language_models.fake_chat_models import FakeListChatModel
-from langchain_core.messages import HumanMessage
-from langgraph.runtime import Runtime
-
-from runtime_service.middlewares import ModelCallTimeoutMiddleware, RuntimeConfigMiddleware
-from runtime_service.runtime import (
-    AgentDefaults,
-    RuntimeContext,
-    RuntimePolicy,
-    RuntimePrincipal,
-    RuntimeResolutionError,
-    RuntimeAuthError,
-    runtime_context_hash,
-)
 from langchain.agents.middleware import (
     ModelRequest,
     ToolCallRequest,
     ToolErrorMiddleware,
     ToolRetryMiddleware,
 )
-from langchain_core.messages import ToolMessage
 from langchain.tools import tool
+from langchain_core.language_models.fake_chat_models import FakeListChatModel
+from langchain_core.messages import HumanMessage, ToolMessage
+from langgraph.runtime import Runtime
+
+from runtime_service.middlewares import (
+    ModelCallTimeoutMiddleware,
+    RuntimeConfigMiddleware,
+)
+from runtime_service.runtime import (
+    AgentDefaults,
+    RuntimeAuthError,
+    RuntimeContext,
+    RuntimePolicy,
+    RuntimePrincipal,
+    RuntimeResolutionError,
+    runtime_context_hash,
+)
 
 
 @tool
@@ -64,7 +66,11 @@ def _middleware(*, builder=None) -> RuntimeConfigMiddleware:
 
 def test_runtime_middleware_resolves_context_and_rebuilds_override_model() -> None:
     captured: list[object] = []
-    middleware = _middleware(builder=lambda config: captured.append(config) or FakeListChatModel(responses=["ok"]))
+    middleware = _middleware(
+        builder=lambda config: (
+            captured.append(config) or FakeListChatModel(responses=["ok"])
+        )
+    )
     request = ModelRequest(
         model=FakeListChatModel(responses=["base"]),
         messages=[HumanMessage(content="hello")],
@@ -87,7 +93,12 @@ def test_runtime_middleware_resolves_context_and_rebuilds_override_model() -> No
 def test_runtime_middleware_rejects_unknown_tool_before_handler() -> None:
     middleware = _middleware()
     request = ToolCallRequest(
-        tool_call={"name": "write_tool", "args": {}, "id": "call-1", "type": "tool_call"},
+        tool_call={
+            "name": "write_tool",
+            "args": {},
+            "id": "call-1",
+            "type": "tool_call",
+        },
         tool=None,
         state={},
         runtime=Runtime(context=RuntimeContext()),
@@ -124,7 +135,9 @@ def test_runtime_middleware_filters_unknown_tools_before_model_visibility() -> N
     assert [item.name for item in called[0].tools] == ["read_tool"]
 
 
-def _server_runtime(*, context_hash: str | None = None, operation: str | None = "run-create") -> Runtime:
+def _server_runtime(
+    *, context_hash: str | None = None, operation: str | None = "run-create"
+) -> Runtime:
     user = {
         "runtime_principal": {
             "user_id": "server-user",
@@ -136,7 +149,8 @@ def _server_runtime(*, context_hash: str | None = None, operation: str | None = 
         "runtime_policy": {
             "version": "server-policy",
             "allowed_model_ids": ["test:model"],
-            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+            "tool_overrides": {},
+            "tool_policy_version": "test-tools-v2",
         },
         "runtime_scope": {
             "tenant_id": "server-tenant",
@@ -155,8 +169,12 @@ def _server_runtime(*, context_hash: str | None = None, operation: str | None = 
 def test_runtime_middleware_uses_verified_server_user_facts() -> None:
     middleware = RuntimeConfigMiddleware(
         principal=RuntimePrincipal("constructor-user", "t", "p", "developer", ()),
-        policy=RuntimePolicy("constructor-policy", ("test:model",), (), "test-tools-v2"),
-        defaults=AgentDefaults("test:model", "prompt", "v1", optional_tool_names=("read_tool",)),
+        policy=RuntimePolicy(
+            "constructor-policy", ("test:model",), (), "test-tools-v2"
+        ),
+        defaults=AgentDefaults(
+            "test:model", "prompt", "v1", optional_tool_names=("read_tool",)
+        ),
         base_model=FakeListChatModel(responses=["ok"]),
         local_fallback=False,
     )
@@ -195,7 +213,9 @@ def test_runtime_middleware_rejects_context_hash_mismatch() -> None:
 def test_runtime_middleware_rejects_read_delegation_before_handler() -> None:
     middleware = RuntimeConfigMiddleware(
         principal=RuntimePrincipal("constructor-user", "t", "p", "developer", ()),
-        policy=RuntimePolicy("constructor-policy", ("test:model",), (), "test-tools-v2"),
+        policy=RuntimePolicy(
+            "constructor-policy", ("test:model",), (), "test-tools-v2"
+        ),
         defaults=AgentDefaults("test:model", "prompt", "v1"),
         base_model=FakeListChatModel(responses=["ok"]),
         local_fallback=False,
@@ -241,7 +261,9 @@ def test_model_call_timeout_does_not_swallow_cancellation() -> None:
         asyncio.run(middleware.awrap_model_call(object(), handler))
 
 
-def test_model_call_timeout_reads_env_and_defaults_to_600(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_model_call_timeout_reads_env_and_defaults_to_600(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("AGENT_MODEL_CALL_TIMEOUT_SECONDS", raising=False)
     assert ModelCallTimeoutMiddleware().timeout_seconds == 600.0
 
@@ -249,16 +271,22 @@ def test_model_call_timeout_reads_env_and_defaults_to_600(monkeypatch: pytest.Mo
     assert ModelCallTimeoutMiddleware().timeout_seconds == 900.0
 
 
-
 def test_official_tool_error_only_handles_explicit_exception() -> None:
     request = ToolCallRequest(
-        tool_call={"name": "read_tool", "args": {}, "id": "call-1", "type": "tool_call"},
+        tool_call={
+            "name": "read_tool",
+            "args": {},
+            "id": "call-1",
+            "type": "tool_call",
+        },
         tool=None,
         state={},
         runtime=Runtime(context=RuntimeContext()),
     )
     middleware = ToolErrorMiddleware(
-        on_error=lambda exc, _request: "recoverable" if isinstance(exc, ValueError) else None
+        on_error=lambda exc, _request: (
+            "recoverable" if isinstance(exc, ValueError) else None
+        )
     )
 
     async def handled(_request):
@@ -277,7 +305,12 @@ def test_official_tool_error_only_handles_explicit_exception() -> None:
 
 def test_official_tool_retry_is_limited_to_named_tool_and_attempts() -> None:
     request = ToolCallRequest(
-        tool_call={"name": "read_tool", "args": {}, "id": "call-1", "type": "tool_call"},
+        tool_call={
+            "name": "read_tool",
+            "args": {},
+            "id": "call-1",
+            "type": "tool_call",
+        },
         tool=None,
         state={},
         runtime=Runtime(context=RuntimeContext()),
@@ -307,7 +340,9 @@ def test_official_tool_retry_is_limited_to_named_tool_and_attempts() -> None:
 def test_scope_accepts_server_resolved_graph_alias_but_rejects_other_graph():
     runtime = _server_runtime()
     runtime.server_info.graph_id = "graph-a"
-    facts = SimpleNamespace(scope=SimpleNamespace(assistant_id="graph-a", thread_id="thread-a"))
+    facts = SimpleNamespace(
+        scope=SimpleNamespace(assistant_id="graph-a", thread_id="thread-a")
+    )
     RuntimeConfigMiddleware._check_scope(runtime, facts)
     facts.scope.assistant_id = "graph-b"
     with pytest.raises(RuntimeAuthError):
@@ -322,8 +357,18 @@ def test_runtime_middleware_repairs_interrupted_and_non_contiguous_tool_calls() 
     ai_msg = AIMessage(
         content="",
         tool_calls=[
-            {"name": "read_tool", "args": {"topic": "a"}, "id": "call-1", "type": "tool_call"},
-            {"name": "read_tool", "args": {"topic": "b"}, "id": "call-2", "type": "tool_call"},
+            {
+                "name": "read_tool",
+                "args": {"topic": "a"},
+                "id": "call-1",
+                "type": "tool_call",
+            },
+            {
+                "name": "read_tool",
+                "args": {"topic": "b"},
+                "id": "call-2",
+                "type": "tool_call",
+            },
         ],
     )
     # Simulate a stopped/interrupted parallel tool execution where call-2 was patched or missing
@@ -336,7 +381,9 @@ def test_runtime_middleware_repairs_interrupted_and_non_contiguous_tool_calls() 
     ]
 
     state_patch = asyncio.run(
-        middleware.abefore_model({"messages": broken_messages}, Runtime(context=RuntimeContext()))
+        middleware.abefore_model(
+            {"messages": broken_messages}, Runtime(context=RuntimeContext())
+        )
     )
     assert state_patch is not None
     repaired_state_msgs = state_patch["messages"][1:]
@@ -377,30 +424,57 @@ def test_runtime_middleware_repairs_interrupted_and_non_contiguous_tool_calls() 
     openai_dicts = [_convert_message_to_dict(m) for m in sent_messages]
     assert openai_dicts[1]["role"] == "assistant"
     assert [tc["id"] for tc in openai_dicts[1]["tool_calls"]] == ["call-1", "call-2"]
-    assert openai_dicts[2]["role"] == "tool" and openai_dicts[2]["tool_call_id"] == "call-1"
-    assert openai_dicts[3]["role"] == "tool" and openai_dicts[3]["tool_call_id"] == "call-2"
+    assert (
+        openai_dicts[2]["role"] == "tool"
+        and openai_dicts[2]["tool_call_id"] == "call-1"
+    )
+    assert (
+        openai_dicts[3]["role"] == "tool"
+        and openai_dicts[3]["tool_call_id"] == "call-2"
+    )
     assert openai_dicts[4]["role"] == "user"
 
 
-def test_sanitize_tool_call_messages_strips_idless_truncated_tool_calls_and_orphan_tools() -> None:
+def test_sanitize_tool_call_messages_strips_idless_truncated_tool_calls_and_orphan_tools() -> (
+    None
+):
     from langchain_core.messages import AIMessage
     from langchain_openai.chat_models.base import _convert_message_to_dict
+
     from runtime_service.middlewares import sanitize_tool_call_messages
 
     truncated_ai = AIMessage(
         content="",
         invalid_tool_calls=[
-            {"name": "read_tool", "args": '{"topic": "unclosed', "id": None, "error": "truncated", "type": "invalid_tool_call"}
+            {
+                "name": "read_tool",
+                "args": '{"topic": "unclosed',
+                "id": None,
+                "error": "truncated",
+                "type": "invalid_tool_call",
+            }
         ],
-        additional_kwargs={"tool_calls": [{"id": None, "type": "function", "function": {"name": "read_tool", "arguments": ""}}]},
+        additional_kwargs={
+            "tool_calls": [
+                {
+                    "id": None,
+                    "type": "function",
+                    "function": {"name": "read_tool", "arguments": ""},
+                }
+            ]
+        },
     )
-    orphan_tool = ToolMessage(content="stale", name="read_tool", tool_call_id="orphan-id")
-    sanitized, changed = sanitize_tool_call_messages([
-        orphan_tool,
-        HumanMessage(content="hello"),
-        truncated_ai,
-        HumanMessage(content="retry"),
-    ])
+    orphan_tool = ToolMessage(
+        content="stale", name="read_tool", tool_call_id="orphan-id"
+    )
+    sanitized, changed = sanitize_tool_call_messages(
+        [
+            orphan_tool,
+            HumanMessage(content="hello"),
+            truncated_ai,
+            HumanMessage(content="retry"),
+        ]
+    )
     assert changed is True
     assert len(sanitized) == 3
     openai_dicts = [_convert_message_to_dict(m) for m in sanitized]

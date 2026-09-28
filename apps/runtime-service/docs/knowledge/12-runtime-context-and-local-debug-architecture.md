@@ -207,9 +207,7 @@ def resolve_runtime_config(
     agent_policy: AgentCapabilityPolicy,
 ) -> ResolvedRuntimeConfig:
     # 1. 身份只来自 Auth；缺字段直接失败。
-    principal = RuntimePrincipal.from_server_user(
-        runtime.server_info.user
-    )
+    principal = RuntimePrincipal.from_server_user(runtime.server_info.user)
 
     # 2. context 是候选配置，未知字段和非法值直接失败。
     context = RuntimeContext.strict_validate(runtime.context)
@@ -218,20 +216,14 @@ def resolve_runtime_config(
     #    这里显式补 Service 默认值，不读取 configurable.platform_runtime。
     model_id = context.model_id or defaults.model_id
     temperature = (
-        context.temperature
-        if context.temperature is not None
-        else defaults.temperature
+        context.temperature if context.temperature is not None else defaults.temperature
     )
     max_tokens = (
-        context.max_tokens
-        if context.max_tokens is not None
-        else defaults.max_tokens
+        context.max_tokens if context.max_tokens is not None else defaults.max_tokens
     )
     top_p = context.top_p if context.top_p is not None else defaults.top_p
     requested_optional_tools = (
-        context.tools
-        if context.tools is not None
-        else defaults.optional_tool_names
+        context.tools if context.tools is not None else defaults.optional_tool_names
     )
 
     # 4. 模型必须同时满足项目策略、身份权限和 Agent 能力声明。
@@ -288,8 +280,7 @@ async def bind_runtime_resources(
         top_p=resolved.top_p,
     )
     optional_tools = [
-        optional_tool_catalog[name]
-        for name in resolved.optional_tool_names
+        optional_tool_catalog[name] for name in resolved.optional_tool_names
     ]
     return BoundRequest(
         model=model,
@@ -306,8 +297,7 @@ metadata；后者含进程内对象，只活在执行阶段。
 统一部署入口仍按 11 号文档执行：
 
 ```python
-async def get_agent(config: RunnableConfig) -> Pregel:
-    ...
+async def get_agent(config: RunnableConfig) -> Pregel: ...
 ```
 
 静态 Agent：

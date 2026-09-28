@@ -4,6 +4,7 @@ from pathlib import Path
 from uuid import UUID
 
 from cryptography.fernet import Fernet
+
 from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import build_engine, build_session_factory, create_core_tables
@@ -11,8 +12,13 @@ from platform_api.core.errors import ConflictError
 from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
 from platform_api.modules.projects.models import ProjectMemberRecord
 from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
-from platform_api.modules.runtime_catalog.application.service import RuntimeCatalogService
-from platform_api.modules.runtime_catalog.domain.models import RuntimeModelCreate, RuntimeModelUpdate
+from platform_api.modules.runtime_catalog.application.service import (
+    RuntimeCatalogService,
+)
+from platform_api.modules.runtime_catalog.domain.models import (
+    RuntimeModelCreate,
+    RuntimeModelUpdate,
+)
 from platform_api.modules.runtime_policies.infra.sqlalchemy.repository import (
     SqlAlchemyRuntimePolicyRepository,
 )
@@ -22,7 +28,7 @@ class ModelCatalogAndPolicyUniquenessTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
-        self.engine = build_engine(f"sqlite:///{Path(self.temp.name) / "test.db"}")
+        self.engine = build_engine(f"sqlite:///{Path(self.temp.name) / 'test.db'}")
         self.addCleanup(self.engine.dispose)
         self.factory = build_session_factory(self.engine)
         create_core_tables(self.engine)
@@ -36,13 +42,17 @@ class ModelCatalogAndPolicyUniquenessTest(unittest.TestCase):
             self.project = projects.create_project(
                 tenant_id=tenant.id, name="Test Project", description=""
             ).id
-            self.user = SqlAlchemyIdentityRepository(session).create_user(
-                username="admin_user",
-                external_subject="admin",
-                password_hash="unused",
-                email=None,
-                is_super_admin=True,
-            ).id
+            self.user = (
+                SqlAlchemyIdentityRepository(session)
+                .create_user(
+                    username="admin_user",
+                    external_subject="admin",
+                    password_hash="unused",
+                    email=None,
+                    is_super_admin=True,
+                )
+                .id
+            )
             session.add(
                 ProjectMemberRecord(
                     project_id=self.project, user_id=self.user, role="admin"
@@ -168,7 +178,9 @@ class ModelCatalogAndPolicyUniquenessTest(unittest.TestCase):
         with self.factory.begin() as session:
             repo = SqlAlchemyRuntimePolicyRepository(session)
             policies = repo.list_model_policies(project_id=self.project)
-            policy_map = {p.model_catalog_id: p.is_default_for_project for p in policies}
+            policy_map = {
+                p.model_catalog_id: p.is_default_for_project for p in policies
+            }
             self.assertFalse(policy_map[m1_id])
             self.assertTrue(policy_map[m2_id])
             default_count = sum(1 for p in policies if p.is_default_for_project)
@@ -177,6 +189,7 @@ class ModelCatalogAndPolicyUniquenessTest(unittest.TestCase):
                 repo.get_default_model_id(project_id=self.project),
                 str(m2_id),
             )
+
 
 if __name__ == "__main__":
     unittest.main()

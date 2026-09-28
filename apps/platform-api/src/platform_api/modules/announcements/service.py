@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -20,15 +20,15 @@ from platform_api.modules.announcements.contracts import (
     UpdateAnnouncementCommand,
 )
 from platform_api.modules.announcements.records import StoredAnnouncement
+from platform_api.modules.announcements.repository import (
+    SqlAlchemyAnnouncementsRepository,
+)
 from platform_api.modules.announcements.schemas import (
     AnnouncementItem,
     AnnouncementPage,
     AnnouncementScopeType,
     AnnouncementStatus,
     AnnouncementTone,
-)
-from platform_api.modules.announcements.repository import (
-    SqlAlchemyAnnouncementsRepository,
 )
 from platform_api.modules.iam.application import (
     AuthorizationRequest,
@@ -42,7 +42,7 @@ from platform_api.modules.service_accounts.repository import (
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class AnnouncementsService:
@@ -181,12 +181,21 @@ class AnnouncementsService:
     ) -> AnnouncementPage:
         session_factory = self._require_session_factory()
         scope_project_uuid = self._resolve_scope_project_id(query.project_id)
-        scope_type = AnnouncementScopeType.PROJECT if query.project_id else AnnouncementScopeType.GLOBAL
+        scope_type = (
+            AnnouncementScopeType.PROJECT
+            if query.project_id
+            else AnnouncementScopeType.GLOBAL
+        )
         if query.scope_type is not None and query.scope_type != scope_type:
-            raise BadRequestError(code="announcement_scope_mismatch", message="Choose a project for project announcements, or clear it for global announcements")
+            raise BadRequestError(
+                code="announcement_scope_mismatch",
+                message="Choose a project for project announcements, or clear it for global announcements",
+            )
         with session_scope(session_factory) as session:
             self._require_manage_access(
-                actor=self._actor_with_project_role(session=session, actor=actor, project_id=query.project_id),
+                actor=self._actor_with_project_role(
+                    session=session, actor=actor, project_id=query.project_id
+                ),
                 scope_type=scope_type,
                 scope_project_id=query.project_id,
             )

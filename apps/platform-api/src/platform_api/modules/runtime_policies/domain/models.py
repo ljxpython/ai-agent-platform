@@ -44,4 +44,3 @@ class RuntimeModelPolicyItem(BaseModel):
     model_id: str
     display_name: str
     policy: RuntimeModelPolicyValue
-

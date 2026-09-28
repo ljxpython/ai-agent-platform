@@ -14,8 +14,9 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import ToolException, tool
 from langgraph.types import Command
 from PIL import Image
-from runtime_service.tools import chart
-from runtime_service.tools import images
+
+from runtime_service.tools import chart, images
+
 from .test_agent import build as graph_builder
 from .test_agent import call, config
 
@@ -160,13 +161,19 @@ def test_image_content_policy_violation_message(monkeypatch, tmp_path):
 
         async def generate(self, **kwargs):
             exc = Exception("Error code: 400 - content_policy_violation")
-            exc.body = {"code": "content_policy_violation", "message": "Policy violation"}
+            exc.body = {
+                "code": "content_policy_violation",
+                "message": "Policy violation",
+            }
             exc.status_code = 400
             raise exc
 
         async def edit(self, **kwargs):
             exc = Exception("Error code: 400 - content_policy_violation")
-            exc.body = {"code": "content_policy_violation", "message": "Policy violation"}
+            exc.body = {
+                "code": "content_policy_violation",
+                "message": "Policy violation",
+            }
             exc.status_code = 400
             raise exc
 
@@ -184,7 +191,9 @@ def test_image_content_policy_violation_message(monkeypatch, tmp_path):
         res_gen = await generate_tool.ainvoke({"prompt": "test sensitive"})
         assert "content_policy_violation" in str(res_gen)
 
-        res_edit = await edit_tool.ainvoke({"image_path": path, "prompt": "test sensitive"})
+        res_edit = await edit_tool.ainvoke(
+            {"image_path": path, "prompt": "test sensitive"}
+        )
         assert "content_policy_violation" in str(res_edit)
 
     asyncio.run(run())
@@ -196,6 +205,7 @@ def test_live_main_model_delegates_chart(monkeypatch, tmp_path):
         pytest.skip("Set RUNTIME_CHART_LIVE_TEST=1 for real model routing and MCP")
     from dotenv import dotenv_values
     from langgraph.checkpoint.memory import InMemorySaver
+
     from runtime_service.services.demo.showcase_demo import agent
     from runtime_service.services.demo.showcase_demo.backend import (
         DockerWorkspaceBackend,
@@ -368,7 +378,15 @@ def test_chart_interceptor_downloads_into_workspace(monkeypatch, tmp_path):
             ]
         )
 
-    result = asyncio.run(intercepted[0](SimpleNamespace(name="generate_bar_chart", args={"data": [{"category": "A", "value": 12}]}), handler))
+    result = asyncio.run(
+        intercepted[0](
+            SimpleNamespace(
+                name="generate_bar_chart",
+                args={"data": [{"category": "A", "value": 12}]},
+            ),
+            handler,
+        )
+    )
     assert result.content[0].text.startswith("/workspace/charts/")
     assert len(list((tmp_path / "charts").glob("*.png"))) == 1
 
@@ -582,7 +600,9 @@ def test_normalize_chart_args_flow_diagram():
     data = normalized["data"]
     # 验证重复边已合并
     assert len(data["edges"]) == 2
-    edge_ab = next(e for e in data["edges"] if e["source"] == "A" and e["target"] == "B")
+    edge_ab = next(
+        e for e in data["edges"] if e["source"] == "A" and e["target"] == "B"
+    )
     assert edge_ab["name"] == "step1 / step2"
     # 验证自动推导补齐了 nodes
     node_names = {n["name"] for n in data["nodes"]}
@@ -669,7 +689,13 @@ def test_chart_validation_error_returns_friendly_message(monkeypatch, tmp_path):
     # 传入无效类型的参数（非法的 width）
     result = asyncio.run(
         intercepted[0](
-            SimpleNamespace(name="generate_bar_chart", args={"data": [{"category": "A", "value": 1}], "width": "invalid_number"}),
+            SimpleNamespace(
+                name="generate_bar_chart",
+                args={
+                    "data": [{"category": "A", "value": 1}],
+                    "width": "invalid_number",
+                },
+            ),
             handler,
         )
     )
@@ -690,13 +716,24 @@ def test_chart_mcp_error_returns_friendly_message(monkeypatch, tmp_path):
     chart.build_chart_tools(images.ImageWorkspace(tmp_path))
 
     async def handler(request):
-        raise McpError(ErrorData(code=-32603, message="Failed to generate chart: Something went wrong in AntV\nError: internal stack"))
+        raise McpError(
+            ErrorData(
+                code=-32603,
+                message="Failed to generate chart: Something went wrong in AntV\nError: internal stack",
+            )
+        )
 
     result = asyncio.run(
         intercepted[0](
-            SimpleNamespace(name="generate_bar_chart", args={"data": [{"category": "A", "value": 1}]}),
+            SimpleNamespace(
+                name="generate_bar_chart",
+                args={"data": [{"category": "A", "value": 1}]},
+            ),
             handler,
         )
     )
     assert result.isError
-    assert "Chart generation failed: Failed to generate chart: Something went wrong in AntV" in result.content[0].text
+    assert (
+        "Chart generation failed: Failed to generate chart: Something went wrong in AntV"
+        in result.content[0].text
+    )

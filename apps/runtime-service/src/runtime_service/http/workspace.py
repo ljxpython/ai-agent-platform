@@ -4,6 +4,7 @@ import asyncio
 from urllib.parse import quote
 
 from fastapi import APIRouter, Header, HTTPException, Query, Response
+from pydantic import BaseModel, Field
 
 from runtime_service.http.documents import _auth
 from runtime_service.workspace.artifact_refs import ArtifactWorkspace
@@ -136,9 +137,6 @@ async def preview(
     )
 
 
-from pydantic import BaseModel, Field
-
-
 class ForkWorkspacePayload(BaseModel):
     source_thread_id: str = Field(..., min_length=1, max_length=256)
 
@@ -150,13 +148,20 @@ async def fork_workspace(
     authorization: str | None = Header(default=None),
 ) -> dict:
     import shutil
-    from runtime_service.workspace.scoped import resolve_thread_workspace
+
     from runtime_service.http.documents import _auth_scope
+    from runtime_service.workspace.scoped import resolve_thread_workspace
 
     target_root, scope = await _auth_scope(thread_id, authorization, "workspace-fork")
     source_thread_id = payload.source_thread_id.strip()
     if not source_thread_id:
-        raise HTTPException(400, {"code": "invalid_source_thread_id", "message": "source_thread_id is required"})
+        raise HTTPException(
+            400,
+            {
+                "code": "invalid_source_thread_id",
+                "message": "source_thread_id is required",
+            },
+        )
 
     if source_thread_id == thread_id:
         return {
@@ -168,7 +173,10 @@ async def fork_workspace(
 
     try:
         source_root = resolve_thread_workspace(
-            scope["tenant_id"], scope["project_id"], source_thread_id, scope["assistant_id"]
+            scope["tenant_id"],
+            scope["project_id"],
+            source_thread_id,
+            scope["assistant_id"],
         )
     except ValueError as exc:
         raise HTTPException(409, {"code": "workspace_capability_unavailable"}) from exc
@@ -193,4 +201,3 @@ async def fork_workspace(
         "target_thread_id": thread_id,
         "files_copied": copied,
     }
-

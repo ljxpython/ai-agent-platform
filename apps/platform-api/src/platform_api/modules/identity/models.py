@@ -87,7 +87,7 @@ class UserRecord(Base):
         onupdate=func.now(),
     )
 
-    refresh_tokens: Mapped[list["RefreshTokenRecord"]] = relationship(
+    refresh_tokens: Mapped[list[RefreshTokenRecord]] = relationship(
         back_populates="user",
         cascade="all,delete",
     )

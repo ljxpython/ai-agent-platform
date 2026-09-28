@@ -8,22 +8,21 @@ from unittest.mock import AsyncMock, Mock
 import httpx
 import jwt
 from fastapi import FastAPI
-from tests.thread_acl_fixture import thread_acl_factory
 
 from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import (
-    BadRequestError,
-    ForbiddenError,
-    PlatformApiError,
     register_exception_handlers,
 )
 from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
-from platform_api.modules.runtime_gateway.application.service import RuntimeGatewayService
+from platform_api.modules.runtime_gateway.application.service import (
+    RuntimeGatewayService,
+)
 from platform_api.modules.runtime_gateway.presentation.http import (
     get_actor_context,
     get_runtime_gateway_service,
     router,
 )
+from tests.thread_acl_fixture import thread_acl_factory
 
 
 class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
@@ -32,14 +31,20 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
         self.app.include_router(router)
         register_exception_handlers(self.app)
 
-        self.actor = ActorContext(user_id="user-1", project_roles={"proj-1": ("project_executor",)})
+        self.actor = ActorContext(
+            user_id="user-1", project_roles={"proj-1": ("project_executor",)}
+        )
         self.upstream = Mock()
         self.upstream.with_forwarded_headers = Mock(return_value=self.upstream)
-        self.session_factory = thread_acl_factory(self, actor=self.actor, project_id="proj-1")
+        self.session_factory = thread_acl_factory(
+            self, actor=self.actor, project_id="proj-1"
+        )
 
         self.delegation_calls = []
 
-        def delegation_factory(*, project_id, agent_key, thread_id, context_hash, operation):
+        def delegation_factory(
+            *, project_id, agent_key, thread_id, context_hash, operation
+        ):
             token = jwt.encode(
                 {
                     "sub": "user-1",
@@ -70,7 +75,9 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
         self.service._prepare_project_scope = Mock()
 
         self.app.dependency_overrides[get_actor_context] = lambda: self.actor
-        self.app.dependency_overrides[get_runtime_gateway_service] = lambda: self.service
+        self.app.dependency_overrides[get_runtime_gateway_service] = lambda: (
+            self.service
+        )
 
         @self.app.middleware("http")
         async def scope(request, call_next):
@@ -84,7 +91,9 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
         sha = hashlib.sha256(data).hexdigest()
 
         self.upstream.get_thread = AsyncMock(
-            return_value={"metadata": {"project_id": "proj-1", "graph_id": "showcase_demo"}}
+            return_value={
+                "metadata": {"project_id": "proj-1", "graph_id": "showcase_demo"}
+            }
         )
         self.upstream.upload_thread_file = AsyncMock(
             return_value={
@@ -179,7 +188,12 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
 
             # 5. 跨项目线程访问
             self.upstream.get_thread = AsyncMock(
-                return_value={"metadata": {"project_id": "other-proj", "graph_id": "showcase_demo"}}
+                return_value={
+                    "metadata": {
+                        "project_id": "other-proj",
+                        "graph_id": "showcase_demo",
+                    }
+                }
             )
             resp = await client.put(
                 f"/api/langgraph/threads/thread-1/files/uploads/{sha}",
@@ -196,40 +210,98 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
     async def test_zip_upload_and_bibtex_download(self):
         data = b"test zip transport; runtime validates archive"
         sha = hashlib.sha256(data).hexdigest()
-        self.upstream.get_thread = AsyncMock(return_value={"metadata": {"project_id": "proj-1", "graph_id": "dearflow_agent"}})
-        self.upstream.upload_thread_file = AsyncMock(return_value={"version": 1, "path": f"/workspace/uploads/{sha}.zip",
-            "sha256": sha, "file_name": "source.zip", "mime_type": "application/zip", "size_bytes": len(data)})
+        self.upstream.get_thread = AsyncMock(
+            return_value={
+                "metadata": {"project_id": "proj-1", "graph_id": "dearflow_agent"}
+            }
+        )
+        self.upstream.upload_thread_file = AsyncMock(
+            return_value={
+                "version": 1,
+                "path": f"/workspace/uploads/{sha}.zip",
+                "sha256": sha,
+                "file_name": "source.zip",
+                "mime_type": "application/zip",
+                "size_bytes": len(data),
+            }
+        )
+
         async def body():
             yield b"@misc{paper,title={Test}}"
-        self.upstream.read_thread_file = AsyncMock(return_value=BinaryPayload(body=body(), content_type="text/x-bibtex", content_length=24))
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
-            uploaded = await client.put(f"/api/langgraph/threads/thread-1/files/uploads/{sha}", content=data,
-                                        headers={"x-project-id": "proj-1", "content-type": "application/zip"})
+
+        self.upstream.read_thread_file = AsyncMock(
+            return_value=BinaryPayload(
+                body=body(), content_type="text/x-bibtex", content_length=24
+            )
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=self.app), base_url="http://test"
+        ) as client:
+            uploaded = await client.put(
+                f"/api/langgraph/threads/thread-1/files/uploads/{sha}",
+                content=data,
+                headers={"x-project-id": "proj-1", "content-type": "application/zip"},
+            )
             self.assertEqual(uploaded.status_code, 200)
-            response = await client.get("/api/langgraph/threads/thread-1/files/content", params={"path": f"/workspace/outputs/{sha}.bib"}, headers={"x-project-id": "proj-1"})
+            response = await client.get(
+                "/api/langgraph/threads/thread-1/files/content",
+                params={"path": f"/workspace/outputs/{sha}.bib"},
+                headers={"x-project-id": "proj-1"},
+            )
             self.assertEqual(response.status_code, 200)
-            self.assertTrue(response.headers["content-type"].startswith("text/x-bibtex"))
+            self.assertTrue(
+                response.headers["content-type"].startswith("text/x-bibtex")
+            )
 
     async def test_excel_and_web_file_contract(self):
-        self.upstream.get_thread = AsyncMock(return_value={"metadata": {"project_id": "proj-1", "graph_id": "dearflow_agent"}})
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=self.app), base_url="http://test") as client:
-            for ext, mime in (("xls", "application/vnd.ms-excel"),
-                              ("xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
-                              ("html", "text/html"), ("css", "text/css"), ("js", "text/javascript")):
+        self.upstream.get_thread = AsyncMock(
+            return_value={
+                "metadata": {"project_id": "proj-1", "graph_id": "dearflow_agent"}
+            }
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=self.app), base_url="http://test"
+        ) as client:
+            for ext, mime in (
+                ("xls", "application/vnd.ms-excel"),
+                (
+                    "xlsx",
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ),
+                ("html", "text/html"),
+                ("css", "text/css"),
+                ("js", "text/javascript"),
+            ):
                 data = b"gateway fixture; runtime validates bytes"
                 sha = hashlib.sha256(data).hexdigest()
-                self.upstream.upload_thread_file = AsyncMock(return_value={
-                    "version": 1, "path": f"/workspace/uploads/{sha}.{ext}", "sha256": sha,
-                    "file_name": f"source.{ext}", "mime_type": mime, "size_bytes": len(data),
-                })
-                uploaded = await client.put(f"/api/langgraph/threads/thread-1/files/uploads/{sha}", content=data,
-                    headers={"x-project-id": "proj-1", "content-type": mime})
+                self.upstream.upload_thread_file = AsyncMock(
+                    return_value={
+                        "version": 1,
+                        "path": f"/workspace/uploads/{sha}.{ext}",
+                        "sha256": sha,
+                        "file_name": f"source.{ext}",
+                        "mime_type": mime,
+                        "size_bytes": len(data),
+                    }
+                )
+                uploaded = await client.put(
+                    f"/api/langgraph/threads/thread-1/files/uploads/{sha}",
+                    content=data,
+                    headers={"x-project-id": "proj-1", "content-type": mime},
+                )
                 self.assertEqual(uploaded.status_code, 200, uploaded.text)
+
             async def body():
                 yield b"<script>parent.document.cookie</script>"
-            self.upstream.read_thread_file = AsyncMock(return_value=BinaryPayload(body=body(), content_type="text/html"))
-            response = await client.get("/api/langgraph/threads/thread-1/files/content",
-                params={"path": f"/workspace/outputs/{sha}.html"}, headers={"x-project-id": "proj-1"})
+
+            self.upstream.read_thread_file = AsyncMock(
+                return_value=BinaryPayload(body=body(), content_type="text/html")
+            )
+            response = await client.get(
+                "/api/langgraph/threads/thread-1/files/content",
+                params={"path": f"/workspace/outputs/{sha}.html"},
+                headers={"x-project-id": "proj-1"},
+            )
             self.assertEqual(response.status_code, 200)
             self.assertTrue(response.headers["content-type"].startswith("text/html"))
             self.assertIn("attachment", response.headers["content-disposition"])
@@ -238,7 +310,9 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_read_file_success(self):
         self.upstream.get_thread = AsyncMock(
-            return_value={"metadata": {"project_id": "proj-1", "graph_id": "showcase_demo"}}
+            return_value={
+                "metadata": {"project_id": "proj-1", "graph_id": "showcase_demo"}
+            }
         )
 
         async def fake_body():

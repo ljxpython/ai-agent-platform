@@ -8,8 +8,8 @@ from platform_api.core.context.models import ActorContext
 from platform_api.core.db import session_scope
 from platform_api.core.errors import ServiceUnavailableError
 from platform_api.modules.audit.contracts import AuditEventPage, ListAuditEventsQuery
-from platform_api.modules.audit.schemas import AuditEvent
 from platform_api.modules.audit.repository import SqlAlchemyAuditRepository
+from platform_api.modules.audit.schemas import AuditEvent
 from platform_api.modules.iam.application import (
     AuthorizationRequest,
     IamPolicyEngine,

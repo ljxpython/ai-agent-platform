@@ -147,20 +147,34 @@ class ImageWorkspace:
 
     def put_upload(self, data: bytes, sha256: str) -> ImageRef:
         if not isinstance(sha256, str) or not re.match(r"^[0-9a-f]{64}$", sha256):
-            raise ImageWorkspaceError("image_digest_mismatch", "Invalid sha256 hex digest", status_code=400)
+            raise ImageWorkspaceError(
+                "image_digest_mismatch", "Invalid sha256 hex digest", status_code=400
+            )
         if len(data) > UPLOAD_MAX_BYTES:
-            raise ImageWorkspaceError("image_too_large", f"Upload exceeds {UPLOAD_MAX_BYTES} bytes limit", status_code=413)
+            raise ImageWorkspaceError(
+                "image_too_large",
+                f"Upload exceeds {UPLOAD_MAX_BYTES} bytes limit",
+                status_code=413,
+            )
         if not data:
-            raise ImageWorkspaceError("image_type_unsupported", "Empty upload payload", status_code=415)
+            raise ImageWorkspaceError(
+                "image_type_unsupported", "Empty upload payload", status_code=415
+            )
 
         actual_hash = hashlib.sha256(data).hexdigest()
         if actual_hash != sha256.lower():
-            raise ImageWorkspaceError("image_digest_mismatch", "Payload digest does not match URL sha256", status_code=400)
+            raise ImageWorkspaceError(
+                "image_digest_mismatch",
+                "Payload digest does not match URL sha256",
+                status_code=400,
+            )
 
         try:
             ext, mime = image_type(data)
         except ToolException as exc:
-            raise ImageWorkspaceError("image_type_unsupported", str(exc), status_code=415) from exc
+            raise ImageWorkspaceError(
+                "image_type_unsupported", str(exc), status_code=415
+            ) from exc
 
         name = f"{sha256}.{ext}"
         directory = self._directory(("uploads",), create=True)
@@ -180,12 +194,21 @@ class ImageWorkspace:
                             sha256=sha256,
                         )
                     else:
-                        raise ImageWorkspaceError("image_content_conflict", "Existing file corrupted or conflict", status_code=409)
+                        raise ImageWorkspaceError(
+                            "image_content_conflict",
+                            "Existing file corrupted or conflict",
+                            status_code=409,
+                        )
             except FileNotFoundError:
                 pass
 
             # 2. 写入临时文件
-            tmp_fd = os.open(tmp_name, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600, dir_fd=directory)
+            tmp_fd = os.open(
+                tmp_name,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+                dir_fd=directory,
+            )
             with os.fdopen(tmp_fd, "wb") as tmp_file:
                 tmp_file.write(data)
                 tmp_file.flush()
@@ -201,7 +224,11 @@ class ImageWorkspace:
                 sha256=sha256,
             )
         except OSError as exc:
-            raise ImageWorkspaceError("image_workspace_unavailable", f"I/O error during upload: {exc}", status_code=500) from exc
+            raise ImageWorkspaceError(
+                "image_workspace_unavailable",
+                f"I/O error during upload: {exc}",
+                status_code=500,
+            ) from exc
         finally:
             try:
                 os.unlink(tmp_name, dir_fd=directory)
@@ -213,40 +240,68 @@ class ImageWorkspace:
         try:
             folder, filename = validate_image_path(path)
         except ImageRefValidationError as exc:
-            raise ImageWorkspaceError("image_path_invalid", str(exc), status_code=400) from exc
+            raise ImageWorkspaceError(
+                "image_path_invalid", str(exc), status_code=400
+            ) from exc
 
         try:
             directory = self._directory((folder,))
-        except ToolException:
-            raise ImageWorkspaceError("image_not_found", "Image file not found", status_code=404)
+        except ToolException as exc:
+            raise ImageWorkspaceError(
+                "image_not_found", "Image file not found", status_code=404
+            ) from exc
         try:
             try:
                 fd = os.open(filename, os.O_RDONLY | os.O_NOFOLLOW, dir_fd=directory)
-            except FileNotFoundError:
-                raise ImageWorkspaceError("image_not_found", "Image file not found", status_code=404)
+            except FileNotFoundError as exc:
+                raise ImageWorkspaceError(
+                    "image_not_found", "Image file not found", status_code=404
+                ) from exc
             except OSError as exc:
-                raise ImageWorkspaceError("image_workspace_unavailable", "Cannot open image file", status_code=500) from exc
+                raise ImageWorkspaceError(
+                    "image_workspace_unavailable",
+                    "Cannot open image file",
+                    status_code=500,
+                ) from exc
 
             with os.fdopen(fd, "rb") as f:
                 st = os.fstat(f.fileno())
                 if not stat.S_ISREG(st.st_mode):
-                    raise ImageWorkspaceError("image_path_invalid", "Target is not a regular file", status_code=400)
+                    raise ImageWorkspaceError(
+                        "image_path_invalid",
+                        "Target is not a regular file",
+                        status_code=400,
+                    )
                 if st.st_size > ASSET_MAX_BYTES:
-                    raise ImageWorkspaceError("image_too_large", f"Image size exceeds {ASSET_MAX_BYTES} bytes", status_code=413)
+                    raise ImageWorkspaceError(
+                        "image_too_large",
+                        f"Image size exceeds {ASSET_MAX_BYTES} bytes",
+                        status_code=413,
+                    )
                 data = f.read(ASSET_MAX_BYTES + 1)
                 if len(data) > ASSET_MAX_BYTES:
-                    raise ImageWorkspaceError("image_too_large", f"Image size exceeds {ASSET_MAX_BYTES} bytes", status_code=413)
+                    raise ImageWorkspaceError(
+                        "image_too_large",
+                        f"Image size exceeds {ASSET_MAX_BYTES} bytes",
+                        status_code=413,
+                    )
 
             try:
                 ext, mime = image_type(data)
             except ToolException as exc:
-                raise ImageWorkspaceError("image_type_unsupported", str(exc), status_code=415) from exc
+                raise ImageWorkspaceError(
+                    "image_type_unsupported", str(exc), status_code=415
+                ) from exc
 
             actual_sha = hashlib.sha256(data).hexdigest()
             if folder in {"uploads", "outputs"}:
                 stem = filename.rsplit(".", 1)[0]
                 if stem != actual_sha:
-                    raise ImageWorkspaceError("image_content_conflict", f"File content does not match {folder} digest", status_code=409)
+                    raise ImageWorkspaceError(
+                        "image_content_conflict",
+                        f"File content does not match {folder} digest",
+                        status_code=409,
+                    )
 
             ref = ImageRef(
                 version=1,
@@ -314,8 +369,7 @@ def build_image_tools(workspace: ImageWorkspace):
             data = base64.b64decode(item.b64_json, validate=True)
         elif getattr(item, "url", None):
             hosts = {
-                host.strip()
-                for host in setting("RUNTIME_IMAGE_ASSET_HOSTS").split(",")
+                host.strip() for host in setting("RUNTIME_IMAGE_ASSET_HOSTS").split(",")
             }
             data = await download_image(item.url, allowed_hosts=hosts)
         else:
@@ -333,7 +387,10 @@ def build_image_tools(workspace: ImageWorkspace):
         if isinstance(body, dict):
             code = body.get("code")
             message = body.get("message")
-        if code == "content_policy_violation" or "content_policy_violation" in error_msg:
+        if (
+            code == "content_policy_violation"
+            or "content_policy_violation" in error_msg
+        ):
             hint = f": {message}" if message else ""
             return ToolException(
                 f"{operation} failed: triggered content safety policy (content_policy_violation){hint}. "
@@ -376,17 +433,25 @@ def build_image_tools(workspace: ImageWorkspace):
         if not prompt.strip() or len(prompt) > 8000:
             raise ToolException("Prompt must contain 1 to 8000 characters.")
         if len(reference_images or []) > 3:
-            raise ToolException("At most three additional reference images are supported.")
+            raise ToolException(
+                "At most three additional reference images are supported."
+            )
         try:
             data = await asyncio.to_thread(workspace.read, image_path)
             _, mime = image_type(data)
-            ext = "png" if mime == "image/png" else ("jpg" if mime == "image/jpeg" else "webp")
+            ext = (
+                "png"
+                if mime == "image/png"
+                else ("jpg" if mime == "image/jpeg" else "webp")
+            )
             file_tuple = (f"image.{ext}", data, mime)
             files = [file_tuple]
             for index, path in enumerate(reference_images or []):
                 reference = await asyncio.to_thread(workspace.read, path)
                 extension, content_type = image_type(reference)
-                files.append((f"reference-{index}.{extension}", reference, content_type))
+                files.append(
+                    (f"reference-{index}.{extension}", reference, content_type)
+                )
             async with AsyncOpenAI(
                 api_key=setting("IMAGE_25_KEY"),
                 base_url=setting("IMAGE_25_URL"),

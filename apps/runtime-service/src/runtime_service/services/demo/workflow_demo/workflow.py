@@ -88,18 +88,20 @@ def confirm(state: WorkflowState) -> dict[str, object]:
         normalized_decision = decision
     elif isinstance(decision, Mapping):
         decisions = decision.get("decisions")
-        first_decision = decisions[0] if isinstance(decisions, list) and decisions else None
+        first_decision = (
+            decisions[0] if isinstance(decisions, list) and decisions else None
+        )
         normalized_decision = (
-            first_decision.get("type")
-            if isinstance(first_decision, Mapping)
-            else ""
+            first_decision.get("type") if isinstance(first_decision, Mapping) else ""
         )
     else:
         normalized_decision = ""
 
     if normalized_decision not in {"approve", "reject"}:
         return {"resume_error": "workflow.invalid_resume"}
-    model_ref = decision.get("_runtime_model_ref") if isinstance(decision, Mapping) else None
+    model_ref = (
+        decision.get("_runtime_model_ref") if isinstance(decision, Mapping) else None
+    )
     result: dict[str, object] = {
         "confirmation": normalized_decision,
         "resume_error": None,
@@ -109,7 +111,9 @@ def confirm(state: WorkflowState) -> dict[str, object]:
     return result
 
 
-def select_route(state: WorkflowState) -> dict[str, Literal["approve", "reject", "respond"]]:
+def select_route(
+    state: WorkflowState,
+) -> dict[str, Literal["approve", "reject", "respond"]]:
     return {"route": state.get("confirmation") or state.get("route", "respond")}
 
 
@@ -159,7 +163,7 @@ def build_graph(
         response = _message_text(response_message).strip()
         result_messages = result.get("messages", [])
         new_messages = (
-            result_messages[len(messages):]
+            result_messages[len(messages) :]
             if len(result_messages) > len(messages)
             else [response_message]
         )
@@ -173,8 +177,12 @@ def build_graph(
 
     graph = StateGraph(WorkflowState, context_schema=RuntimeContext)
     for name, node in (
-        ("prepare", prepare), ("confirm", confirm), ("route", select_route),
-        ("approve", approve), ("reject", reject), ("respond", respond),
+        ("prepare", prepare),
+        ("confirm", confirm),
+        ("route", select_route),
+        ("approve", approve),
+        ("reject", reject),
+        ("respond", respond),
     ):
         graph.add_node(name, unavailable_node if probe_only else node)
     graph.add_edge(START, "prepare")

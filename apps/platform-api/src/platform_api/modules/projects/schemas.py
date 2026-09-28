@@ -6,7 +6,6 @@ from enum import StrEnum
 from pydantic import BaseModel, ConfigDict
 
 from platform_api.core.schemas import OffsetPage
-
 from platform_api.modules.iam.domain import ProjectRole
 
 

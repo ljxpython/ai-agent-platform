@@ -15,21 +15,21 @@ from platform_api.core.db import build_engine, create_core_tables
 from platform_api.core.errors import (
     BadRequestError,
     NotAuthenticatedError,
-    ServiceUnavailableError,
     PlatformApiError,
-)
-from platform_api.modules.runtime_catalog.infra.sqlalchemy.repository import (
-    SqlAlchemyRuntimeCatalogRepository,
-)
-from platform_api.modules.runtime_catalog.application.service import (
-    RuntimeCatalogService,
+    ServiceUnavailableError,
 )
 from platform_api.modules.runtime_catalog.application.credentials import (
     ModelCredentialError,
     decrypt_api_key,
     encrypt_api_key,
 )
+from platform_api.modules.runtime_catalog.application.service import (
+    RuntimeCatalogService,
+)
 from platform_api.modules.runtime_catalog.domain import RuntimeModelCreate
+from platform_api.modules.runtime_catalog.infra.sqlalchemy.repository import (
+    SqlAlchemyRuntimeCatalogRepository,
+)
 
 
 class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):

@@ -1,8 +1,8 @@
 import tempfile
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
-from pathlib import Path
 from uuid import UUID, uuid4
 
 from sqlalchemy import inspect
@@ -51,7 +51,9 @@ class AgentSingleTableTest(unittest.IsolatedAsyncioTestCase):
             )
             service = AssistantsService(
                 session_factory=factory,
-                schema_provider=SimpleNamespace(build_schema=AsyncMock(return_value={})),
+                schema_provider=SimpleNamespace(
+                    build_schema=AsyncMock(return_value={})
+                ),
             )
             created = await service.create_assistant(
                 actor=actor,

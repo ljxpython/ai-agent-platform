@@ -123,7 +123,7 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
     mcp = api = worker = replacement = None
     base_url = f"http://127.0.0.1:{args.port}"
     headers = {
-        "Authorization": f"Bearer {_local_token(secret=secret, tenant_id="r6-mcp-tenant", project_id="r6-mcp-project", permissions=["runtime.tool.read"], allowed_tool_names=["mcp_read"])}"
+        "Authorization": f"Bearer {_local_token(secret=secret, tenant_id='r6-mcp-tenant', project_id='r6-mcp-project', permissions=['runtime.tool.read'], allowed_tool_names=['mcp_read'])}"
     }
     try:
         mcp = await _start([sys.executable, str(MCP_SERVER)], env)
@@ -146,7 +146,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
         async with httpx.AsyncClient(
             base_url=base_url, headers=headers, timeout=10, trust_env=False
         ) as client:
-            await _wait_for(client, "/ready", lambda value: value.get("ready") is True, 60)
+            await _wait_for(
+                client, "/ready", lambda value: value.get("ready") is True, 60
+            )
             assistant_response = await client.post(
                 "/assistants", json={"graph_id": "mcp_probe", "name": "r6-mcp-probe"}
             )
@@ -159,7 +161,8 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             thread_response.raise_for_status()
 
             worker = await _start(
-                command + ["worker", "--config", str(args.config), "--n-jobs-per-worker", "1"],
+                command
+                + ["worker", "--config", str(args.config), "--n-jobs-per-worker", "1"],
                 env,
             )
             first_id, first = await _run_case(
@@ -169,20 +172,31 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 raise AssertionError(f"initial MCP call failed: {first}")
             state = await client.get(f"/threads/{thread_id}/state")
             state.raise_for_status()
-            if (state.json().get("values") or {}).get("observed") != "initial: mcp-provider-ok":
-                raise AssertionError(f"MCP tool result was not persisted: {state.json()}")
+            if (state.json().get("values") or {}).get(
+                "observed"
+            ) != "initial: mcp-provider-ok":
+                raise AssertionError(
+                    f"MCP tool result was not persisted: {state.json()}"
+                )
 
             await _stop(worker, signal.SIGTERM)
             worker = None
             replacement = await _start(
-                command + ["worker", "--config", str(args.config), "--n-jobs-per-worker", "1"],
+                command
+                + ["worker", "--config", str(args.config), "--n-jobs-per-worker", "1"],
                 env,
             )
             replacement_id, replacement_run = await _run_case(
-                client, thread_id, assistant_id, "after-worker-replacement", args.timeout
+                client,
+                thread_id,
+                assistant_id,
+                "after-worker-replacement",
+                args.timeout,
             )
             if replacement_run.get("status") != "success":
-                raise AssertionError(f"MCP Worker replacement failed: {replacement_run}")
+                raise AssertionError(
+                    f"MCP Worker replacement failed: {replacement_run}"
+                )
 
             await _stop(mcp, signal.SIGTERM)
             mcp = await _start([sys.executable, str(MCP_SERVER)], env)
@@ -196,13 +210,17 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
                 )
 
             missing_thread = str(uuid.uuid4())
-            missing_response = await client.post("/threads", json={"thread_id": missing_thread})
+            missing_response = await client.post(
+                "/threads", json={"thread_id": missing_thread}
+            )
             missing_response.raise_for_status()
             missing_id, missing_run = await _run_case(
                 client, missing_thread, assistant_id, "missing-binding", args.timeout
             )
             if missing_run.get("status") != "error":
-                raise AssertionError(f"Missing MCP binding did not fail closed: {missing_run}")
+                raise AssertionError(
+                    f"Missing MCP binding did not fail closed: {missing_run}"
+                )
 
             unavailable_thread = str(uuid.uuid4())
             unavailable_response = await client.post(
@@ -211,7 +229,11 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             )
             unavailable_response.raise_for_status()
             unavailable_id, unavailable_run = await _run_case(
-                client, unavailable_thread, assistant_id, "unavailable-provider", args.timeout
+                client,
+                unavailable_thread,
+                assistant_id,
+                "unavailable-provider",
+                args.timeout,
             )
             if unavailable_run.get("status") != "error":
                 raise AssertionError(
@@ -229,7 +251,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             }.items()
         }
         if any(item["terminal_event_total"] != 1 for item in evidence.values()):
-            raise AssertionError(f"MCP acceptance emitted duplicate terminal events: {evidence}")
+            raise AssertionError(
+                f"MCP acceptance emitted duplicate terminal events: {evidence}"
+            )
         for name in ("missing_binding", "unavailable_provider"):
             if evidence[name]["terminal_error"] != "runtime.mcp.recovery_failed":
                 raise AssertionError(
@@ -265,7 +289,9 @@ def main() -> int:
     try:
         result = asyncio.run(_run(args))
     except Exception as exc:  # noqa: BLE001 - CLI returns structured acceptance evidence.
-        print(json.dumps({"status": "failed", "failure": f"{type(exc).__name__}: {exc}"}))
+        print(
+            json.dumps({"status": "failed", "failure": f"{type(exc).__name__}: {exc}"})
+        )
         return 1
     print(json.dumps(result, ensure_ascii=False))
     return 0

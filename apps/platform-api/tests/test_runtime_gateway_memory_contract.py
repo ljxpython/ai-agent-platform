@@ -1,25 +1,25 @@
 """Memory management and shared Thread authorization contracts."""
 
-import unittest
-from unittest.mock import AsyncMock
 import hashlib
 import hmac
 import time
+import unittest
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
-from platform_api.modules.runtime_gateway.application.thread_access import (
-    personal_memory_allowed,
-)
+from fastapi import FastAPI
+
+from platform_api.core.context.models import ActorContext
+from platform_api.core.errors import BadRequestError, ForbiddenError
 from platform_api.modules.runtime_catalog.presentation.http import (
     authorize_runtime_memory,
 )
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
 )
-from platform_api.core.errors import BadRequestError
-from platform_api.core.context.models import ActorContext
-from fastapi import FastAPI
+from platform_api.modules.runtime_gateway.application.thread_access import (
+    personal_memory_allowed,
+)
 from platform_api.modules.runtime_gateway.presentation.http import (
     router as gateway_router,
 )
@@ -62,7 +62,7 @@ class MemoryAuthorizationTest(unittest.TestCase):
                 )
             ),
         )
-        with self.assertRaises(Exception):
+        with self.assertRaises(ForbiddenError):
             authorize_runtime_memory(
                 request, project_id="p", thread_id="t", user_id="u"
             )

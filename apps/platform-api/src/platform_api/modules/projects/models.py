@@ -26,7 +26,7 @@ class TenantRecord(Base):
         server_default=func.now(),
     )
 
-    projects: Mapped[list["ProjectRecord"]] = relationship(
+    projects: Mapped[list[ProjectRecord]] = relationship(
         back_populates="tenant",
         cascade="all,delete",
     )
@@ -66,7 +66,7 @@ class ProjectRecord(Base):
     )
 
     tenant: Mapped[TenantRecord] = relationship(back_populates="projects")
-    members: Mapped[list["ProjectMemberRecord"]] = relationship(
+    members: Mapped[list[ProjectMemberRecord]] = relationship(
         back_populates="project",
         cascade="all,delete",
     )

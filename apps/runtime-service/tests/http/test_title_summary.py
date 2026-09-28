@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, patch
+
 import pytest
 from starlette.testclient import TestClient
-from unittest.mock import AsyncMock, patch
 
 from runtime_service.webapp import app
 

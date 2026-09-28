@@ -15,7 +15,7 @@ class ProjectRole(StrEnum):
     EXECUTOR = "project_executor"
 
     @classmethod
-    def from_db(cls, value: str) -> "ProjectRole":
+    def from_db(cls, value: str) -> ProjectRole:
         mapping = {
             "admin": cls.ADMIN,
             "editor": cls.EDITOR,

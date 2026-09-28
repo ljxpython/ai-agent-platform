@@ -1,4 +1,5 @@
 """Service binding for a persistent, isolated thread workspace."""
+
 from __future__ import annotations
 
 import asyncio
@@ -40,7 +41,9 @@ PACKAGE = "runtime_service.services.dearflow_agent"
 
 def skills_hash(root=None) -> str:
     """Fingerprint packaged skill resources, including provenance and licenses."""
-    root = Path(root) if root is not None else Path(str(files(PACKAGE).joinpath("skills")))
+    root = (
+        Path(root) if root is not None else Path(str(files(PACKAGE).joinpath("skills")))
+    )
     digest = hashlib.sha256()
     for path in sorted(root.rglob("*")):
         if path.is_symlink():
@@ -82,7 +85,13 @@ class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
             return WriteResult(error="workspace_write_denied")
         return super().write(file_path, content)
 
-    def edit(self, file_path: str, old_string: str, new_string: str, replace_all: bool = False) -> EditResult:
+    def edit(
+        self,
+        file_path: str,
+        old_string: str,
+        new_string: str,
+        replace_all: bool = False,
+    ) -> EditResult:
         if not self._can_write(file_path):
             return EditResult(error="workspace_write_denied")
         return super().edit(file_path, old_string, new_string, replace_all)
@@ -90,28 +99,48 @@ class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
     def execute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
         return asyncio.run(self.aexecute(command, timeout=timeout))
 
-    async def aexecute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
+    async def aexecute(
+        self, command: str, *, timeout: int | None = None
+    ) -> ExecuteResponse:
         if runtime_backend() == "local":
-            if not isinstance(command, str) or not command.strip() or len(command) > 32768:
-                raise ValueError("command must be non-empty and at most 32768 characters")
-            if timeout is not None and (type(timeout) is not int or not 1 <= timeout <= 60):
+            if (
+                not isinstance(command, str)
+                or not command.strip()
+                or len(command) > 32768
+            ):
+                raise ValueError(
+                    "command must be non-empty and at most 32768 characters"
+                )
+            if timeout is not None and (
+                type(timeout) is not int or not 1 <= timeout <= 60
+            ):
                 raise ValueError("timeout must be between 1 and 60 seconds")
             shell = LocalShellBackend(
-                root_dir=self.root / "work", virtual_mode=True, inherit_env=False,
+                root_dir=self.root / "work",
+                virtual_mode=True,
+                inherit_env=False,
                 env={
-                    "PATH": os.pathsep.join((str(Path(sys.executable).parent), os.defpath)),
+                    "PATH": os.pathsep.join(
+                        (str(Path(sys.executable).parent), os.defpath)
+                    ),
                     "HOME": str(self.root / "work"),
                     "GIT_CONFIG_GLOBAL": "/dev/null",
                     "RUNTIME_WORKSPACE_ROOT": str(self.root),
                     "RUNTIME_SKILLS_ROOT": str(self.skills_root),
                 },
-                timeout=30, max_output_bytes=MAX_OUTPUT,
+                timeout=30,
+                max_output_bytes=MAX_OUTPUT,
             )
             return await asyncio.to_thread(shell.execute, command, timeout=timeout)
         try:
             return await execute_in_workspace(
-                self.root, command, timeout=timeout, protected=True,
-                image=os.getenv("RUNTIME_WORKSPACE_IMAGE", "runtime-agent-workspace:p5"),
+                self.root,
+                command,
+                timeout=timeout,
+                protected=True,
+                image=os.getenv(
+                    "RUNTIME_WORKSPACE_IMAGE", "runtime-agent-workspace:p5"
+                ),
                 skills=self.skills_root,
             )
         except TimeoutError:
@@ -126,10 +155,14 @@ def prepare_custom_skills(workspace, documents):
         if path.is_symlink():
             raise RuntimeAuthError("runtime.skill.snapshot_mismatch")
         if path.is_file() and "__pycache__" not in path.parts and path.suffix != ".pyc":
-            expected[path.relative_to(public_root).as_posix()] = hashlib.sha256(path.read_bytes()).digest()
+            expected[path.relative_to(public_root).as_posix()] = hashlib.sha256(
+                path.read_bytes()
+            ).digest()
     for document in documents:
         for name, content in document["files"].items():
-            expected[f"custom/{document['slug']}/{name}"] = hashlib.sha256(content.encode()).digest()
+            expected[f"custom/{document['slug']}/{name}"] = hashlib.sha256(
+                content.encode()
+            ).digest()
     digest = hashlib.sha256()
     for name, hashed in sorted(expected.items()):
         digest.update(name.encode() + b"\0")
@@ -139,7 +172,9 @@ def prepare_custom_skills(workspace, documents):
     if root.is_symlink():
         raise RuntimeAuthError("runtime.skill.snapshot_mismatch")
     if not root.exists():
-        with tempfile.TemporaryDirectory(prefix=".skills-", dir=workspace.root.parent) as staging:
+        with tempfile.TemporaryDirectory(
+            prefix=".skills-", dir=workspace.root.parent
+        ) as staging:
             staged = Path(staging) / "snapshot"
             shutil.copytree(Path(str(files(PACKAGE).joinpath("skills"))), staged)
             for document in documents:
@@ -169,14 +204,24 @@ class ReadOnlySkillsBackend(FilesystemBackend):
         return EditResult(error="skill_resource_read_only")
 
     def upload_files(self, files):
-        return [FileUploadResponse(path=path, error="permission_denied") for path, _ in files]
+        return [
+            FileUploadResponse(path=path, error="permission_denied")
+            for path, _ in files
+        ]
 
 
 def build_backend(workspace):
     return CompositeBackend(
         default=workspace if workspace is not None else StateBackend(),
         routes={
-            "/skills/": ReadOnlySkillsBackend(root_dir=str(workspace.skills_root if workspace else files(PACKAGE).joinpath("skills")), virtual_mode=True),
+            "/skills/": ReadOnlySkillsBackend(
+                root_dir=str(
+                    workspace.skills_root
+                    if workspace
+                    else files(PACKAGE).joinpath("skills")
+                ),
+                virtual_mode=True,
+            ),
             "/conversation_history/": StateBackend(),
             "/large_tool_results/": StateBackend(),
         },
@@ -191,7 +236,14 @@ class WorkspaceMiddleware(AgentMiddleware):
         if self.workspace is None:
             raise RuntimeAuthError("runtime.graph.probe_only")
         facts = verified_delegation_from_user(runtime.server_info.user)
-        scope = (facts.principal.tenant_id, facts.principal.project_id, runtime.execution_info.thread_id)
-        if scope != self.workspace.scope or facts.scope.assistant_id != "dearflow_agent":
+        scope = (
+            facts.principal.tenant_id,
+            facts.principal.project_id,
+            runtime.execution_info.thread_id,
+        )
+        if (
+            scope != self.workspace.scope
+            or facts.scope.assistant_id != "dearflow_agent"
+        ):
             raise RuntimeAuthError("runtime.workspace.scope_mismatch")
         await asyncio.to_thread(self.workspace.prepare)

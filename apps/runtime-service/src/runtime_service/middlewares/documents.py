@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 from langchain.agents.middleware import AgentMiddleware
 from langchain_core.messages import SystemMessage
@@ -16,7 +17,9 @@ class DocumentToolsMiddleware(AgentMiddleware):
         self.workspace = workspace
         self.tools = build_document_tools(workspace)
 
-    async def awrap_model_call(self, request: Any, handler: Callable[[Any], Awaitable[Any]]) -> Any:
+    async def awrap_model_call(
+        self, request: Any, handler: Callable[[Any], Awaitable[Any]]
+    ) -> Any:
         if self.workspace is None:
             return await handler(request)
         uploads = self.workspace / "uploads"
@@ -24,13 +27,21 @@ class DocumentToolsMiddleware(AgentMiddleware):
         if uploads.is_dir():
             for path in sorted(uploads.iterdir()):
                 if path.is_file() and not path.is_symlink():
-                    files.append(f"- /workspace/uploads/{path.name} ({path.stat().st_size} bytes)")
+                    files.append(
+                        f"- /workspace/uploads/{path.name} ({path.stat().st_size} bytes)"
+                    )
         if not files:
             return await handler(request)
-        context = SystemMessage(content="当前线程可用文档：\n" + "\n".join(files) + "\n需要内容时调用 parse_document。")
+        context = SystemMessage(
+            content="当前线程可用文档：\n"
+            + "\n".join(files)
+            + "\n需要内容时调用 parse_document。"
+        )
         current = getattr(request, "system_message", None)
         if current is not None and hasattr(current, "content_blocks"):
-            content = list(current.content_blocks) + [{"type": "text", "text": str(context.content)}]
+            content = list(current.content_blocks) + [
+                {"type": "text", "text": str(context.content)}
+            ]
             clean = request.override(system_message=SystemMessage(content=content))
         else:
             clean = request

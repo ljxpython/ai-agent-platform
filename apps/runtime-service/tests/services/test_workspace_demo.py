@@ -26,9 +26,14 @@ def _config(
                 "runtime_policy": {
                     "version": "workspace-test-v1",
                     "allowed_model_ids": ["runtime:workspace-demo"],
-                    "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+                    "tool_overrides": {},
+                    "tool_policy_version": "test-tools-v2",
                 },
-                "runtime_scope": {"operation": "read", "tenant_id": tenant_id, "project_id": project_id},
+                "runtime_scope": {
+                    "operation": "read",
+                    "tenant_id": tenant_id,
+                    "project_id": project_id,
+                },
                 "runtime_context_hash": runtime_context_hash(None),
             },
         },

@@ -1,10 +1,9 @@
 """Composition root for the model-backed workflow agent."""
 
 from __future__ import annotations
-from runtime_service.runtime.capabilities import REFERENCE_TOOLS
 
-from collections.abc import Mapping
 import os
+from collections.abc import Mapping
 
 import httpx
 from langchain.agents import create_agent
@@ -30,6 +29,7 @@ from runtime_service.runtime import (
     verified_delegation_from_user,
 )
 from runtime_service.runtime.auth import VerifiedDelegation
+from runtime_service.runtime.capabilities import REFERENCE_TOOLS
 from runtime_service.runtime.errors import RuntimeAuthError, RuntimeResolutionError
 from runtime_service.services.demo.workflow_demo.workflow import build_graph
 
@@ -39,6 +39,7 @@ def read_reference(topic: str) -> str:
     """Return a short reference note for a named topic."""
 
     return f"reference note: {topic.strip()}"
+
 
 _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
@@ -98,7 +99,9 @@ def _runtime_model(config: RunnableConfig, *, local: bool) -> BaseChatModel | No
     if not local:
         raise RuntimeAuthError("runtime.auth.test_adapter_forbidden")
     if not isinstance(candidate, BaseChatModel):
-        raise RuntimeResolutionError("runtime.model.invalid_test_adapter", "_runtime_model")
+        raise RuntimeResolutionError(
+            "runtime.model.invalid_test_adapter", "_runtime_model"
+        )
     return candidate
 
 
@@ -126,11 +129,15 @@ async def _catalog_connection(
             response.raise_for_status()
             payload = response.json()
     except (httpx.HTTPError, ValueError) as exc:
-        raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id") from exc
+        raise RuntimeResolutionError(
+            "runtime.model.initialization_failed", "model_id"
+        ) from exc
     required = ("provider", "base_url", "protocol", "model", "api_key")
     if not isinstance(payload, dict) or payload.get("model_id") != model_id:
         raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
-    if any(not isinstance(payload.get(key), str) or not payload[key] for key in required):
+    if any(
+        not isinstance(payload.get(key), str) or not payload[key] for key in required
+    ):
         raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
     return {key: payload[key] for key in required} | {"model_id": model_id}
 
@@ -139,9 +146,16 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     """Build the real model-backed workflow Agent with optional HITL routing."""
 
     configurable = _configurable(config)
-    if configurable and set(configurable) <= {"graph_id", "thread_id", "checkpoint_id", "checkpoint_ns"}:
+    if configurable and set(configurable) <= {
+        "graph_id",
+        "thread_id",
+        "checkpoint_id",
+        "checkpoint_ns",
+    }:
+
         async def unavailable_model(_state):
             raise RuntimeAuthError("runtime.graph.probe_only")
+
         return build_graph(unavailable_model, probe_only=True)
 
     facts, local = _facts(config)
@@ -156,12 +170,17 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         defaults=_DEFAULTS,
     )
     injected = _runtime_model(config, local=local)
+
     async def model_agent_for(state: Mapping[str, object]) -> object:
-        connection = None if injected is not None else await _catalog_connection(
-            config,
-            model_id=resolved.model_id,
-            project_id=facts.principal.project_id,
-            reference=state.get("_runtime_model_ref"),
+        connection = (
+            None
+            if injected is not None
+            else await _catalog_connection(
+                config,
+                model_id=resolved.model_id,
+                project_id=facts.principal.project_id,
+                reference=state.get("_runtime_model_ref"),
+            )
         )
         model = injected or build_model(resolved, connection=connection)
         return create_agent(
@@ -175,6 +194,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             context_schema=RuntimeContext,
             name="workflow_demo_model",
         )
+
     bound_config = dict(config)
     bound_configurable = dict(bound_config.get("configurable") or {})
     bound_configurable.pop("_runtime_model", None)

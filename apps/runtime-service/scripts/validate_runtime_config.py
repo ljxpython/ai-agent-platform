@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 
 from dotenv import dotenv_values
 
-
 BASE_REQUIRED = (
     "GRAPHHARBOR_RUNTIME_CONTEXT_SECRET",
     "PLATFORM_RUNTIME_DELEGATION_ISSUER",
@@ -68,7 +67,10 @@ def validate(path: Path) -> list[str]:
         if value and urlparse(value).scheme not in {"http", "https"}:
             errors.append(f"{key} must use http or https")
 
-    for key in ("PLATFORM_RUNTIME_DELEGATION_SECRET", "GRAPHHARBOR_RUNTIME_CONTEXT_SECRET"):
+    for key in (
+        "PLATFORM_RUNTIME_DELEGATION_SECRET",
+        "GRAPHHARBOR_RUNTIME_CONTEXT_SECRET",
+    ):
         if _present(settings, key) and len(settings[key].strip()) < 32:
             errors.append(f"{key} must be at least 32 characters")
 

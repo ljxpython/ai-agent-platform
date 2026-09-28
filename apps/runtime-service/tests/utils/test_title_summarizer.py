@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.language_models import FakeListChatModel
 
 from runtime_service.utils.title_summarizer import (
-    clean_generated_title,
     _fallback_extract_title,
-    summarize_thread_title,
     build_title_summarizer_agent,
+    clean_generated_title,
+    summarize_thread_title,
 )
 
 
@@ -20,7 +19,7 @@ def test_clean_generated_title_standard():
 
 def test_clean_generated_title_with_quotes_and_brackets():
     assert clean_generated_title("《购物车设计》") == "购物车设计"
-    assert clean_generated_title("\"秒杀微服务\"") == "秒杀微服务"
+    assert clean_generated_title('"秒杀微服务"') == "秒杀微服务"
     assert clean_generated_title("【系统设计方案】") == "系统设计方案"
     assert clean_generated_title("“数据同步”") == "数据同步"
 

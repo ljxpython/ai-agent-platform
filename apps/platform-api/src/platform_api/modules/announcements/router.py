@@ -12,13 +12,13 @@ from platform_api.modules.announcements.contracts import (
     ListAnnouncementsQuery,
     UpdateAnnouncementCommand,
 )
-from platform_api.modules.announcements.service import AnnouncementsService
 from platform_api.modules.announcements.schemas import (
     AnnouncementItem,
     AnnouncementPage,
     AnnouncementScopeType,
     AnnouncementStatus,
 )
+from platform_api.modules.announcements.service import AnnouncementsService
 
 router = APIRouter(prefix="/api/announcements", tags=["announcements"])
 

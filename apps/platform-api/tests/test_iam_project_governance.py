@@ -8,7 +8,12 @@ from uuid import UUID
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
+from platform_api.core.db import (
+    build_engine,
+    build_session_factory,
+    create_core_tables,
+    session_scope,
+)
 from platform_api.core.security import create_access_token, hash_password
 from platform_api.main import create_app
 from platform_api.modules.audit.models import AuditLogRecord
@@ -54,8 +59,12 @@ class IamProjectGovernanceTest(unittest.TestCase):
             )
             return str(user.id)
 
-    def _headers(self, user_id: str, username: str, project_id: str | None = None) -> dict[str, str]:
-        token = create_access_token(user_id=user_id, username=username, settings=self.app.state.settings)
+    def _headers(
+        self, user_id: str, username: str, project_id: str | None = None
+    ) -> dict[str, str]:
+        token = create_access_token(
+            user_id=user_id, username=username, settings=self.app.state.settings
+        )
         headers = {"Authorization": f"Bearer {token}"}
         if project_id:
             headers["x-project-id"] = project_id
@@ -84,12 +93,16 @@ class IamProjectGovernanceTest(unittest.TestCase):
 
         mismatch = self.client.get(
             f"/api/projects/{project_id}/access",
-            headers=self._headers(self.admin_id, "admin", "00000000-0000-0000-0000-000000000000"),
+            headers=self._headers(
+                self.admin_id, "admin", "00000000-0000-0000-0000-000000000000"
+            ),
         )
         self.assertEqual(mismatch.status_code, 400, mismatch.text)
         self.assertEqual(mismatch.json()["error"]["code"], "project_scope_mismatch")
 
-    def test_project_member_candidates_do_not_require_global_user_directory(self) -> None:
+    def test_project_member_candidates_do_not_require_global_user_directory(
+        self,
+    ) -> None:
         created = self.client.post(
             "/api/projects",
             headers=self._headers(self.admin_id, "admin"),
@@ -103,8 +116,9 @@ class IamProjectGovernanceTest(unittest.TestCase):
         self.assertEqual(candidates.status_code, 200, candidates.text)
         self.assertEqual(candidates.json()["items"][0]["username"], "viewer")
 
-
-    def test_super_admin_needs_explicit_takeover_and_last_admin_is_protected(self) -> None:
+    def test_super_admin_needs_explicit_takeover_and_last_admin_is_protected(
+        self,
+    ) -> None:
         owner_id = self._create_user("owner", ())
         with session_scope(self._session_factory) as session:
             repository = SqlAlchemyIdentityRepository(session)
@@ -139,7 +153,10 @@ class IamProjectGovernanceTest(unittest.TestCase):
 
         takeover = self.client.post(
             f"/api/projects/{project_id}/takeover",
-            headers={**self._headers(self.admin_id, "admin"), "x-tenant-id": "forged-tenant"},
+            headers={
+                **self._headers(self.admin_id, "admin"),
+                "x-tenant-id": "forged-tenant",
+            },
             json={"reason": "owner unavailable"},
         )
         self.assertEqual(takeover.status_code, 200, takeover.text)
@@ -158,7 +175,9 @@ class IamProjectGovernanceTest(unittest.TestCase):
             self.assertNotEqual(event.tenant_id, "forged-tenant")
             self.assertEqual(event.project_id, project_id)
             self.assertEqual(event.metadata_json.get("reason"), "owner unavailable")
-            self.assertEqual(set(event.metadata_json) & {"password", "token", "authorization"}, set())
+            self.assertEqual(
+                set(event.metadata_json) & {"password", "token", "authorization"}, set()
+            )
 
         recovery = self.client.post(
             f"/api/projects/{project_id}/admin-recovery",
@@ -190,7 +209,9 @@ class IamProjectGovernanceTest(unittest.TestCase):
             headers=self._headers(self.admin_id, "admin", project_id),
         )
         self.assertEqual(remove_last.status_code, 409, remove_last.text)
-        self.assertEqual(remove_last.json()["error"]["code"], "cannot_remove_last_admin")
+        self.assertEqual(
+            remove_last.json()["error"]["code"], "cannot_remove_last_admin"
+        )
 
     def test_archived_project_loses_content_access_and_can_be_restored(self) -> None:
         created = self.client.post(

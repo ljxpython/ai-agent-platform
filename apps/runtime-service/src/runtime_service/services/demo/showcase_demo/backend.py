@@ -66,12 +66,17 @@ class DockerWorkspaceBackend(_ThreadWorkspaceBackend, SandboxBackendProtocol):
     def execute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
         return asyncio.run(self.aexecute(command, timeout=timeout))
 
-    async def aexecute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
+    async def aexecute(
+        self, command: str, *, timeout: int | None = None
+    ) -> ExecuteResponse:
         from runtime_service.workspace.execution import execute_in_workspace
+
         try:
             return await execute_in_workspace(
-                self.cwd / "workspace", command,
-                image=os.getenv("RUNTIME_SHOWCASE_IMAGE", "python:3.13-slim"), timeout=timeout,
+                self.cwd / "workspace",
+                command,
+                image=os.getenv("RUNTIME_SHOWCASE_IMAGE", "python:3.13-slim"),
+                timeout=timeout,
             )
         except TimeoutError:
             return ExecuteResponse(output="Execution timed out.", exit_code=124)
@@ -88,8 +93,12 @@ class LocalWorkspaceBackend(_ThreadWorkspaceBackend, SandboxBackendProtocol):
             "GIT_CONFIG_GLOBAL": str(self.cwd / ".gitconfig-sandbox"),
         }
         self._local = LocalShellBackend(
-            root_dir=self.cwd / "workspace", virtual_mode=True,
-            inherit_env=False, env=env, timeout=30, max_output_bytes=_LOCAL_MAX_OUTPUT,
+            root_dir=self.cwd / "workspace",
+            virtual_mode=True,
+            inherit_env=False,
+            env=env,
+            timeout=30,
+            max_output_bytes=_LOCAL_MAX_OUTPUT,
         )
 
     def execute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
@@ -99,16 +108,20 @@ class LocalWorkspaceBackend(_ThreadWorkspaceBackend, SandboxBackendProtocol):
             raise ValueError("timeout must be between 1 and 60 seconds")
         return self._local.execute(command, timeout=timeout)
 
-    async def aexecute(self, command: str, *, timeout: int | None = None) -> ExecuteResponse:
+    async def aexecute(
+        self, command: str, *, timeout: int | None = None
+    ) -> ExecuteResponse:
         return await asyncio.to_thread(self.execute, command, timeout=timeout)
 
 
 def create_workspace(tenant_id: str, project_id: str, thread_id: str):
     try:
         kind = runtime_backend()
-    except ValueError:
-        raise RuntimeAuthError("runtime.workspace.invalid_backend")
-    backend_class = {"local": LocalWorkspaceBackend, "docker": DockerWorkspaceBackend}[kind]
+    except ValueError as exc:
+        raise RuntimeAuthError("runtime.workspace.invalid_backend") from exc
+    backend_class = {"local": LocalWorkspaceBackend, "docker": DockerWorkspaceBackend}[
+        kind
+    ]
     return backend_class(tenant_id, project_id, thread_id)
 
 

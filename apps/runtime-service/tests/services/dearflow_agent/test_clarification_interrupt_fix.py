@@ -1,11 +1,10 @@
-import pytest
 from uuid import uuid4
-from langgraph.errors import GraphBubbleUp, GraphInterrupt
+
+from langgraph.errors import GraphBubbleUp
 from langgraph.pregel._tools import StreamToolCallHandler
+
 from runtime_service.services.dearflow_agent.schemas import (
     ClarificationRequest,
-    ClarificationField,
-    Option,
 )
 
 
@@ -22,7 +21,12 @@ def test_clarification_schema_allows_extra_fields():
                 "required": True,
                 "description": "辅助说明字段",
                 "options": [
-                    {"value": "md", "label": "Markdown文档", "type": "select", "extra_meta": 123},
+                    {
+                        "value": "md",
+                        "label": "Markdown文档",
+                        "type": "select",
+                        "extra_meta": 123,
+                    },
                     {"value": "doc", "label": "Word文档", "type": "select"},
                 ],
             }
@@ -90,4 +94,3 @@ def test_clarification_schema_tolerates_missing_value_or_string_options():
     assert opts[1].value == "微信支付" and opts[1].label == "微信支付"
     assert opts[2].value == "银联/银行卡" and opts[2].label == "银联/银行卡"
     assert opts[3].value == "Apple Pay" and opts[3].label == "Apple Pay"
-

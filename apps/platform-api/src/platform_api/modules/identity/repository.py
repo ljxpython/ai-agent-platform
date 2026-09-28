@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
-from platform_api.modules.identity.records import StoredRefreshToken, StoredUser
 from platform_api.modules.identity.models import (
     RefreshTokenRecord,
     UserRecord,
     has_super_admin_platform_role,
     normalize_user_platform_roles,
 )
+from platform_api.modules.identity.records import StoredRefreshToken, StoredUser
 
 
 def _to_user(record: UserRecord) -> StoredUser:
@@ -125,7 +125,7 @@ class SqlAlchemyIdentityRepository:
     def consume_refresh_token(
         self, token_id: str
     ) -> tuple[StoredRefreshToken | None, str | None]:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = self.session.execute(
             update(RefreshTokenRecord)
             .where(
@@ -154,11 +154,11 @@ class SqlAlchemyIdentityRepository:
         if record is None:
             return
         if record.revoked_at is None:
-            record.revoked_at = datetime.now(timezone.utc)
+            record.revoked_at = datetime.now(UTC)
             self.session.flush()
 
     def revoke_refresh_token_family(self, family_id: str) -> int:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         result = self.session.execute(
             update(RefreshTokenRecord)
             .where(
@@ -174,7 +174,7 @@ class SqlAlchemyIdentityRepository:
             RefreshTokenRecord.user_id == user_id,
             RefreshTokenRecord.revoked_at.is_(None),
         )
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         changed = 0
         for record in self.session.scalars(stmt).all():
             record.revoked_at = now

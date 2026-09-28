@@ -43,7 +43,11 @@ class RuntimeCatalogModelRecord(Base):
     )
     project_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True),
-        ForeignKey("projects.id", ondelete="CASCADE", name="fk_runtime_catalog_models_project_id"),
+        ForeignKey(
+            "projects.id",
+            ondelete="CASCADE",
+            name="fk_runtime_catalog_models_project_id",
+        ),
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(
@@ -80,9 +84,15 @@ class RuntimeCatalogToolRecord(Base):
     source: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     raw_payload_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    sync_status: Mapped[str] = mapped_column(String(32), nullable=False, default="ready")
-    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sync_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="ready"
+    )
+    last_seen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -116,11 +126,19 @@ class RuntimeCatalogGraphRecord(Base):
     graph_key: Mapped[str] = mapped_column(String(255), nullable=False)
     display_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    source_type: Mapped[str] = mapped_column(String(64), nullable=False, default="assistant_search")
+    source_type: Mapped[str] = mapped_column(
+        String(64), nullable=False, default="assistant_search"
+    )
     raw_payload_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    sync_status: Mapped[str] = mapped_column(String(32), nullable=False, default="ready")
-    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    sync_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, default="ready"
+    )
+    last_seen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    last_synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     is_deleted: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

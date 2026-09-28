@@ -16,11 +16,11 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.constants import TAG_HIDDEN, TAG_NOSTREAM
 from pydantic import BaseModel, Field
 
-from runtime_service.services.dearflow_agent.memory import FactInput, MemoryStorage
 from runtime_service.messaging import MessageInbox
+from runtime_service.runtime import RuntimeAuthError
+from runtime_service.services.dearflow_agent.memory import FactInput, MemoryStorage
 from runtime_service.services.dearflow_agent.memory_access import memory_allowed
 from runtime_service.services.dearflow_agent.tools.memory import memory_scope
-from runtime_service.runtime import RuntimeAuthError
 
 logger = logging.getLogger(__name__)
 

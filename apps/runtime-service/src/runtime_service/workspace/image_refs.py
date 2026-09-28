@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 import re
-from typing import Any, Mapping, Sequence, TypedDict
-from langchain_core.messages import BaseMessage, HumanMessage
-
+from collections.abc import Mapping
+from typing import Any, TypedDict
 
 ALLOWED_IMAGE_MIMES = {"image/png", "image/jpeg", "image/webp"}
 UPLOAD_MAX_BYTES = 5 * 1024 * 1024
@@ -45,10 +44,17 @@ def validate_image_path(path: str) -> tuple[str, str]:
         raise ImageRefValidationError("path must be a string")
     if not path.startswith("/workspace/"):
         raise ImageRefValidationError("path must start with /workspace/")
-    if "\\" in path or "\x00" in path or "/./" in path or "/../" in path or path.endswith("/.") or path.endswith("/.."):
+    if (
+        "\\" in path
+        or "\x00" in path
+        or "/./" in path
+        or "/../" in path
+        or path.endswith("/.")
+        or path.endswith("/..")
+    ):
         raise ImageRefValidationError("path contains invalid path characters")
 
-    rel = path[len("/workspace/"):]
+    rel = path[len("/workspace/") :]
     parts = rel.split("/")
     if len(parts) != 2:
         raise ImageRefValidationError("path must be a direct child of allowed folders")
@@ -97,7 +103,11 @@ def validate_image_ref(
         raise ImageRefValidationError(f"unsupported mime_type: {mime_type}")
 
     size_bytes = ref.get("size_bytes")
-    if not isinstance(size_bytes, int) or isinstance(size_bytes, bool) or size_bytes <= 0:
+    if (
+        not isinstance(size_bytes, int)
+        or isinstance(size_bytes, bool)
+        or size_bytes <= 0
+    ):
         raise ImageRefValidationError("size_bytes must be a positive integer")
     if size_bytes > max_bytes:
         raise ImageRefValidationError(f"size_bytes exceeds limit {max_bytes}")
@@ -109,7 +119,9 @@ def validate_image_ref(
     if folder in {"uploads", "outputs"}:
         name_stem, _ = filename.rsplit(".", 1)
         if name_stem != sha256:
-            raise ImageRefValidationError(f"{folder} filename does not match sha256 claim")
+            raise ImageRefValidationError(
+                f"{folder} filename does not match sha256 claim"
+            )
 
     return ImageRef(
         version=1,
@@ -145,7 +157,9 @@ def build_image_reference_block(
     clean_name = name.strip() if name and isinstance(name, str) else None
     if clean_name:
         # Sanitize control characters
-        clean_name = "".join(ch for ch in clean_name if ch >= " " and ch != "\x7f")[:120]
+        clean_name = "".join(ch for ch in clean_name if ch >= " " and ch != "\x7f")[
+            :120
+        ]
     display_name = clean_name or validated["path"].rsplit("/", 1)[-1]
 
     text = f"[图片附件] {display_name}\n{validated['path']}"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from platform_api.adapters.langgraph.runtime_client import LangGraphRuntimeClient
 
@@ -27,7 +28,8 @@ class LangGraphGraphsSdkAdapter:
         offset = self._as_non_negative_int(normalized_payload.get("offset"), default=0)
         query = self._as_string(normalized_payload.get("query")).strip().lower()
         sort_order = (
-            self._as_string(normalized_payload.get("sort_order")).strip().lower() or "asc"
+            self._as_string(normalized_payload.get("sort_order")).strip().lower()
+            or "asc"
         )
         if sort_order not in {"asc", "desc"}:
             sort_order = "asc"

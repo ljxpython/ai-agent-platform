@@ -10,6 +10,7 @@ from uuid import uuid4
 import httpx
 from dotenv import dotenv_values
 from fastapi.testclient import TestClient
+
 from platform_api.adapters.langgraph.sdk_client import create_runtime_upstream_error
 from platform_api.config import Settings
 from platform_api.main import create_app

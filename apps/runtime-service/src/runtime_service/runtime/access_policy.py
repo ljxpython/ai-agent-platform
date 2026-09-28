@@ -21,4 +21,8 @@ def interrupts_for_access_policy(
         return {}
     if effective == REVIEW:
         return dict(approvals)
-    return {name: value for name, value in approvals.items() if name not in WORKSPACE_WRITE_TOOLS}
+    return {
+        name: value
+        for name, value in approvals.items()
+        if name not in WORKSPACE_WRITE_TOOLS
+    }

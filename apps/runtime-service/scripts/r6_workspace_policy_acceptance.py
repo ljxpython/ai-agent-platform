@@ -74,7 +74,9 @@ def _run(root: Path) -> dict[str, object]:
         and fresh.is_dir()
         else "failed",
         "quota_results": sorted(results),
-        "cleanup_candidates": [item.relative_to(root).as_posix() for item in candidates],
+        "cleanup_candidates": [
+            item.relative_to(root).as_posix() for item in candidates
+        ],
         "removed": removed,
         "active_preserved": active.is_dir(),
         "fresh_preserved": fresh.is_dir(),

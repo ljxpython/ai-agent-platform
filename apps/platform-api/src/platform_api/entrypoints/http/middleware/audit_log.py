@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-from anyio import CancelScope
-
-from starlette.concurrency import run_in_threadpool
-
 import asyncio
 import json
 import logging
@@ -11,8 +7,10 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any
 
+from anyio import CancelScope
 from fastapi import FastAPI, Request, Response
 from sqlalchemy.orm import Session, sessionmaker
+from starlette.concurrency import run_in_threadpool
 
 from platform_api.core.context.models import ActorContext, PlatformRequestContext
 from platform_api.core.normalization import clean_str

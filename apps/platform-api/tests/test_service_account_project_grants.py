@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID
 
@@ -18,8 +18,8 @@ from platform_api.core.db import (
 from platform_api.core.security import create_access_token, hash_password
 from platform_api.main import create_app
 from platform_api.modules.audit.models import AuditLogRecord
-from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
 from platform_api.modules.identity.actors import load_service_account_actor
+from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
 from platform_api.modules.service_accounts.models import ServiceAccountTokenRecord
 
 
@@ -318,7 +318,7 @@ class ServiceAccountProjectGrantsTest(unittest.TestCase):
                 ServiceAccountTokenRecord, UUID(expiring_payload["token"]["id"])
             )
             assert record is not None
-            record.expires_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+            record.expires_at = datetime.now(UTC) - timedelta(seconds=1)
         expired = self.client.get(
             f"/api/projects/{project['id']}/access",
             headers={

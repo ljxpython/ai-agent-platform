@@ -6,6 +6,7 @@ import time
 from uuid import uuid4
 
 import pytest
+
 from runtime_service.workspace.documents import DocumentError
 from runtime_service.workspace.terminal import TerminalManager
 

@@ -9,6 +9,7 @@ from secrets import token_urlsafe
 from uuid import uuid4
 
 import uvicorn
+
 from platform_api.adapters.langgraph.sdk_client import create_runtime_upstream_error
 from platform_api.bootstrap.lifespan import lifespan
 from platform_api.core.db import session_scope

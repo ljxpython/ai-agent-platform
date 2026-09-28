@@ -1,12 +1,12 @@
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
-from platform_api.core.context.models import ActorContext
-from tests.thread_acl_fixture import thread_acl_factory
 
+from platform_api.core.context.models import ActorContext
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
 )
+from tests.thread_acl_fixture import thread_acl_factory
 
 
 class ThreadForkTest(unittest.IsolatedAsyncioTestCase):

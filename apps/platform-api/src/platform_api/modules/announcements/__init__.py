@@ -4,7 +4,6 @@ from platform_api.modules.announcements.contracts import (
     ListAnnouncementsQuery,
     UpdateAnnouncementCommand,
 )
-from platform_api.modules.announcements.service import AnnouncementsService
 from platform_api.modules.announcements.schemas import (
     AnnouncementItem,
     AnnouncementPage,
@@ -12,6 +11,7 @@ from platform_api.modules.announcements.schemas import (
     AnnouncementStatus,
     AnnouncementTone,
 )
+from platform_api.modules.announcements.service import AnnouncementsService
 
 __all__ = [
     "AnnouncementFeedQuery",

@@ -158,9 +158,16 @@ def _redact(value: Any, *, key: str | None = None) -> Any:
     if key is not None and key.lower() in _SENSITIVE_KEYS:
         return "[REDACTED]"
     if isinstance(value, str):
-        return value[:_MAX_VALUE_LENGTH] if len(value) <= _MAX_VALUE_LENGTH else "[REDACTED]"
+        return (
+            value[:_MAX_VALUE_LENGTH]
+            if len(value) <= _MAX_VALUE_LENGTH
+            else "[REDACTED]"
+        )
     if isinstance(value, Mapping):
-        return {str(item_key): _redact(item, key=str(item_key)) for item_key, item in value.items()}
+        return {
+            str(item_key): _redact(item, key=str(item_key))
+            for item_key, item in value.items()
+        }
     if isinstance(value, list):
         return [_redact(item) for item in value[:32]]
     if isinstance(value, tuple):
@@ -185,8 +192,7 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
     def __init__(self, graph_id: str, metadata: Mapping[str, Any]) -> None:
         self._graph_id = graph_id
         self._metadata = {
-            key: metadata.get(key)
-            for key in ("run_id", "thread_id", "request_id")
+            key: metadata.get(key) for key in ("run_id", "thread_id", "request_id")
         }
         self._starts: dict[Any, float] = {}
 
@@ -231,7 +237,9 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
             )
             self._finish(run_id, status)
 
-    def on_tool_error(self, error: BaseException, *, run_id: Any, **kwargs: Any) -> None:
+    def on_tool_error(
+        self, error: BaseException, *, run_id: Any, **kwargs: Any
+    ) -> None:
         _metrics["tool_error"] += 1
         logger.warning(
             "runtime_tool_error",
@@ -246,13 +254,21 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
     def on_llm_end(self, response: Any, *, run_id: Any, **_: Any) -> None:
         usage = getattr(response, "llm_output", None) or {}
         token_usage = usage.get("token_usage", {}) if isinstance(usage, Mapping) else {}
-        total = token_usage.get("total_tokens") if isinstance(token_usage, Mapping) else None
+        total = (
+            token_usage.get("total_tokens")
+            if isinstance(token_usage, Mapping)
+            else None
+        )
         if isinstance(total, int) and total >= 0:
             _metrics["token_total"] += total
 
     def _finish(self, run_id: Any, status: str) -> None:
         started = self._starts.pop(run_id, None)
-        duration_ms = round((time.monotonic() - started) * 1000, 2) if started is not None else None
+        duration_ms = (
+            round((time.monotonic() - started) * 1000, 2)
+            if started is not None
+            else None
+        )
         _metrics[f"run_{status}"] += 1
         logger.info(
             "runtime_run_completed",
@@ -334,7 +350,9 @@ def _trusted_metadata(metadata: Mapping[str, Any] | None) -> dict[str, Any]:
     }
 
 
-def _merge_config(config: RunnableConfig, callback: Any, graph_id: str) -> RunnableConfig:
+def _merge_config(
+    config: RunnableConfig, callback: Any, graph_id: str
+) -> RunnableConfig:
     bound = dict(config)
     metadata = _approved_metadata(config, graph_id)
     tags = [
@@ -372,7 +390,9 @@ def with_langfuse_tracing(
         if trusted_metadata:
             bound_metadata.update(_trusted_metadata(trusted_metadata))
         if otel_provider is not None:
-            callbacks.append(OTelDiagnosticsCallback(otel_provider, graph_id, bound_metadata))
+            callbacks.append(
+                OTelDiagnosticsCallback(otel_provider, graph_id, bound_metadata)
+            )
         callbacks.append(_RuntimeDiagnosticsCallback(graph_id, bound_metadata))
         bound["callbacks"] = callbacks
         bound_metadata["langfuse_trace_name"] = graph_id
@@ -389,7 +409,9 @@ def with_langfuse_tracing(
     except Exception:
         _metrics["callback_error"] += 1
         _metrics["export_error"] += 1
-        logger.exception("runtime_langfuse_callback_error", extra={"graph_id": graph_id})
+        logger.exception(
+            "runtime_langfuse_callback_error", extra={"graph_id": graph_id}
+        )
         return graph
 
 

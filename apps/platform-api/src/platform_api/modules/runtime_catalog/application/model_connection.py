@@ -17,7 +17,9 @@ class ModelReferenceError(ValueError):
 
 
 def _encode(value: dict[str, Any]) -> str:
-    raw = json.dumps(value, ensure_ascii=True, separators=(",", ":"), sort_keys=True).encode()
+    raw = json.dumps(
+        value, ensure_ascii=True, separators=(",", ":"), sort_keys=True
+    ).encode()
     return base64.urlsafe_b64encode(raw).decode().rstrip("=")
 
 
@@ -26,7 +28,13 @@ def _decode(value: str) -> dict[str, Any]:
         padded = value + "=" * (-len(value) % 4)
         decoded = base64.urlsafe_b64decode(padded.encode())
         payload = json.loads(decoded)
-    except (ValueError, TypeError, UnicodeDecodeError, json.JSONDecodeError, binascii.Error) as exc:
+    except (
+        ValueError,
+        TypeError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        binascii.Error,
+    ) as exc:
         raise ModelReferenceError("invalid model reference") from exc
     if not isinstance(payload, dict):
         raise ModelReferenceError("invalid model reference")
@@ -66,19 +74,29 @@ def create_model_reference(
     return f"v1.{payload}.{_signature(payload, secret)}"
 
 
-def parse_model_reference(reference: str, *, secret: str, allow_expired: bool = False) -> dict[str, Any]:
+def parse_model_reference(
+    reference: str, *, secret: str, allow_expired: bool = False
+) -> dict[str, Any]:
     if not isinstance(reference, str):
         raise ModelReferenceError("invalid model reference")
     try:
         version, payload, signature = reference.split(".", 2)
     except ValueError as exc:
         raise ModelReferenceError("invalid model reference") from exc
-    if version != "v1" or not hmac.compare_digest(signature, _signature(payload, secret)):
+    if version != "v1" or not hmac.compare_digest(
+        signature, _signature(payload, secret)
+    ):
         raise ModelReferenceError("invalid model reference")
     values = _decode(payload)
-    if values.get("v") != 1 or not isinstance(values.get("project_id"), str) or not isinstance(values.get("model_id"), str):
+    if (
+        values.get("v") != 1
+        or not isinstance(values.get("project_id"), str)
+        or not isinstance(values.get("model_id"), str)
+    ):
         raise ModelReferenceError("invalid model reference")
-    if not isinstance(values.get("exp"), int) or (not allow_expired and values["exp"] < int(time.time())):
+    if not isinstance(values.get("exp"), int) or (
+        not allow_expired and values["exp"] < int(time.time())
+    ):
         raise ModelReferenceError("expired model reference")
     if not isinstance(values.get("nonce"), str) or not values["nonce"]:
         raise ModelReferenceError("invalid model reference")

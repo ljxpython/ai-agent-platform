@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -87,10 +87,8 @@ def load_service_account_actor(
             or token.status != "active"
             or (
                 token.expires_at is not None
-                and token.expires_at.replace(
-                    tzinfo=token.expires_at.tzinfo or timezone.utc
-                )
-                <= datetime.now(timezone.utc)
+                and token.expires_at.replace(tzinfo=token.expires_at.tzinfo or UTC)
+                <= datetime.now(UTC)
             )
         ):
             return None

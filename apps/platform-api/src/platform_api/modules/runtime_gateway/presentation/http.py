@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
-import asyncio
 from collections.abc import AsyncIterator, Callable
 from time import perf_counter
 from typing import Any, Literal

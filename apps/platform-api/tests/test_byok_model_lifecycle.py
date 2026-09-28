@@ -3,6 +3,7 @@ import unittest
 from pathlib import Path
 
 from cryptography.fernet import Fernet
+
 from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import build_engine, build_session_factory, create_core_tables
@@ -85,6 +86,7 @@ class ByokModelLifecycleTest(unittest.IsolatedAsyncioTestCase):
                 )
             )
             from platform_api.modules.agents.infra.sqlalchemy.models import AgentRecord
+
             session.add(
                 AgentRecord(
                     project_id=self.project_1,
@@ -332,6 +334,7 @@ class ByokModelLifecycleTest(unittest.IsolatedAsyncioTestCase):
 
         import httpx
         from fastapi import FastAPI
+
         from platform_api.core.errors import register_exception_handlers
         from platform_api.modules.runtime_catalog.presentation.http import (
             get_actor_context,
@@ -340,6 +343,7 @@ class ByokModelLifecycleTest(unittest.IsolatedAsyncioTestCase):
         )
 
         app = FastAPI()
+
         @app.middleware("http")
         async def populate_context(request, call_next):
             request.state.platform_context = SimpleNamespace(
@@ -369,7 +373,9 @@ class ByokModelLifecycleTest(unittest.IsolatedAsyncioTestCase):
 
         # 2. Project 1 Admin interacts via HTTP
         app.dependency_overrides[get_actor_context] = lambda: self.actor_admin_1
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
             # Create BYOK model in Project 1
             res = await client.post(
                 "/api/runtime/models",
@@ -396,12 +402,16 @@ class ByokModelLifecycleTest(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(res_list.status_code, 200)
             models = res_list.json()["models"]
-            global_model = next((m for m in models if m["scope_type"] == "platform"), None)
+            global_model = next(
+                (m for m in models if m["scope_type"] == "platform"), None
+            )
             byok_model = next((m for m in models if m["id"] == p1_created["id"]), None)
             self.assertIsNotNone(global_model)
             self.assertEqual(global_model["base_url"], "")  # masked
             self.assertIsNotNone(byok_model)
-            self.assertEqual(byok_model["base_url"], "https://api.deepseek.com/v1")  # not masked for project members
+            self.assertEqual(
+                byok_model["base_url"], "https://api.deepseek.com/v1"
+            )  # not masked for project members
 
             # Update BYOK model
             res_update = await client.patch(
@@ -434,4 +444,3 @@ class ByokModelLifecycleTest(unittest.IsolatedAsyncioTestCase):
                 headers={"x-project-id": str(self.project_1)},
             )
             self.assertEqual(res_delete.status_code, 204)
-

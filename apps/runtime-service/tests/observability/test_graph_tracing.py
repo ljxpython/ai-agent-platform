@@ -116,7 +116,10 @@ def test_deep_agent_propagates_callbacks_into_subagent(monkeypatch) -> None:
     graph = asyncio.run(
         deep_agent.get_agent(
             {
-                "metadata": {"run_id": "run-subagent-1", "thread_id": "thread-subagent-1"},
+                "metadata": {
+                    "run_id": "run-subagent-1",
+                    "thread_id": "thread-subagent-1",
+                },
                 "configurable": {
                     "_runtime_test_model": model,
                     "_runtime_test_local_auth": True,
@@ -153,7 +156,9 @@ def test_exporter_callback_failure_does_not_change_agent_result(monkeypatch) -> 
         reference_agent.get_agent(
             {
                 "configurable": {
-                    "_runtime_model": BindableFakeMessagesChatModel(responses=[AIMessage(content="done")]),
+                    "_runtime_model": BindableFakeMessagesChatModel(
+                        responses=[AIMessage(content="done")]
+                    ),
                 }
             }
         )
@@ -223,7 +228,13 @@ def test_exporter_failure_preserves_workflow_interrupt(monkeypatch) -> None:
 
     monkeypatch.setattr(langfuse, "_new_callback", _failing_exporter)
     graph = asyncio.run(
-        get_agent({"configurable": {"_runtime_model": BindableFakeChatModel(responses=["ok"])}})
+        get_agent(
+            {
+                "configurable": {
+                    "_runtime_model": BindableFakeChatModel(responses=["ok"])
+                }
+            }
+        )
     )
     paused = graph.invoke(
         {"message": "hello", "requires_confirmation": True},
@@ -259,7 +270,9 @@ def test_exporter_failure_preserves_tool_error_semantics(monkeypatch) -> None:
     assert result["messages"][-1].content == "done"
 
 
-def test_concurrent_real_graphs_keep_principal_and_run_metadata_isolated(monkeypatch) -> None:
+def test_concurrent_real_graphs_keep_principal_and_run_metadata_isolated(
+    monkeypatch,
+) -> None:
     captures: list[_CaptureCallback] = []
 
     def new_callback() -> _CaptureCallback:
@@ -291,9 +304,11 @@ def test_concurrent_real_graphs_keep_principal_and_run_metadata_isolated(monkeyp
                     "runtime_policy": {
                         "version": f"policy-{index}",
                         "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-                        "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+                        "tool_overrides": {},
+                        "tool_policy_version": "test-tools-v2",
                     },
-                    "runtime_scope": {"operation": "read",
+                    "runtime_scope": {
+                        "operation": "read",
                         "tenant_id": f"tenant-{index}",
                         "project_id": f"project-{index}",
                     },

@@ -16,9 +16,6 @@ from uuid import UUID
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from database import check_database, configured_engine, migration_config
-from platform_api.config import load_settings
-from platform_api.core.db.base import Base
-from platform_api.core.db.init_db import import_core_models
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -30,6 +27,10 @@ from sqlalchemy import (
     select,
     text,
 )
+
+from platform_api.config import load_settings
+from platform_api.core.db.base import Base
+from platform_api.core.db.init_db import import_core_models
 
 
 def snapshot(source: Path, backup: Path) -> None:

@@ -1,4 +1,5 @@
 """Runtime service monkey patches for upstream LangGraph quirks."""
+
 from __future__ import annotations
 
 import logging
@@ -25,7 +26,9 @@ def _patch_stream_tool_call_handler() -> None:
 
         orig_error = StreamToolCallHandler._error
 
-        def _patched_error(self: StreamToolCallHandler, error: BaseException, *, run_id: UUID) -> None:
+        def _patched_error(
+            self: StreamToolCallHandler, error: BaseException, *, run_id: UUID
+        ) -> None:
             # GraphBubbleUp (including GraphInterrupt) is a control-flow interrupt signal,
             # not a failure of the tool execution. Do not emit a "tool-error" event to clients.
             if isinstance(error, GraphBubbleUp):

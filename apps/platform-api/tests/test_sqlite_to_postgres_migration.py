@@ -34,6 +34,7 @@ from database import (
     migration_config,
 )
 from migrate_sqlite_to_postgres import copy_data, digest, snapshot
+
 from platform_api.config import Settings
 from platform_api.core.db.base import Base
 from platform_api.core.db.init_db import import_core_models

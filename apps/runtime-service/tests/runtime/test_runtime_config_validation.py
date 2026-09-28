@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-
 SCRIPT = Path(__file__).parents[2] / "scripts" / "validate_runtime_config.py"
 SPEC = importlib.util.spec_from_file_location("validate_runtime_config", SCRIPT)
 assert SPEC and SPEC.loader
@@ -32,7 +31,9 @@ def _base(**overrides: str) -> dict[str, str]:
 
 def _write(tmp_path: Path, values: dict[str, str]) -> Path:
     path = tmp_path / "runtime.env"
-    path.write_text("\n".join(f"{key}={value}" for key, value in values.items()), encoding="utf-8")
+    path.write_text(
+        "\n".join(f"{key}={value}" for key, value in values.items()), encoding="utf-8"
+    )
     return path
 
 
@@ -40,6 +41,8 @@ def test_runtime_config_accepts_empty_model_catalog(tmp_path: Path) -> None:
     assert module.validate(_write(tmp_path, _base())) == []
 
 
-def test_runtime_config_ignores_retired_profile_and_e2e_variables(tmp_path: Path) -> None:
+def test_runtime_config_ignores_retired_profile_and_e2e_variables(
+    tmp_path: Path,
+) -> None:
     values = _base(RUNTIME_MODEL_PROFILE="legacy", RUNTIME_E2E="invalid")
     assert module.validate(_write(tmp_path, values)) == []

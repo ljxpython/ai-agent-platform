@@ -10,8 +10,7 @@ model。测试可以通过 `configurable._runtime_model` 显式注入 `FakeListC
 正式入口是：
 
 ```python
-async def get_agent(config: RunnableConfig) -> Pregel:
-    ...
+async def get_agent(config: RunnableConfig) -> Pregel: ...
 ```
 
 Graph 注册由根目录的 `langgraph.json` 和 `langgraph.demo.json` 负责。
@@ -23,7 +22,9 @@ from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from runtime_service.runtime import RuntimeContext
 from runtime_service.services.reference_agent.agent import get_agent
 
-graph = await get_agent({"configurable": {"_runtime_model": FakeListChatModel(responses=["ok"])}})
+graph = await get_agent(
+    {"configurable": {"_runtime_model": FakeListChatModel(responses=["ok"])}}
+)
 result = await graph.ainvoke(
     {"messages": [{"role": "user", "content": "hello"}]},
     context=RuntimeContext(),

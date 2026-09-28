@@ -6,11 +6,16 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from platform_api.main import create_app
-from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
+from platform_api.core.db import (
+    build_engine,
+    build_session_factory,
+    create_core_tables,
+    session_scope,
+)
 from platform_api.core.security import create_access_token, hash_password
-from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
+from platform_api.main import create_app
 from platform_api.modules.iam.domain import ProjectRole
+from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
 from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
 
 
@@ -87,7 +92,9 @@ class IdentityProfileRolesTest(unittest.TestCase):
         self.assertEqual(payload["platform_roles"], [])
         self.assertNotIn("project_roles", payload)
 
-    def test_login_response_omits_project_roles_and_access_is_project_scoped(self) -> None:
+    def test_login_response_omits_project_roles_and_access_is_project_scoped(
+        self,
+    ) -> None:
         response = self.client.post(
             "/api/identity/session",
             json={

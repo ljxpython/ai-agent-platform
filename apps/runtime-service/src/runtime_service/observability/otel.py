@@ -75,7 +75,9 @@ class _RecordingExporter(SpanExporter):
 
 
 def initialize_otel(
-    *, env: Mapping[str, str] | None = None, on_error: Callable[[BaseException], None] | None = None
+    *,
+    env: Mapping[str, str] | None = None,
+    on_error: Callable[[BaseException], None] | None = None,
 ) -> TracerProvider | None:
     """Create one process-scoped OTLP provider when an endpoint is configured."""
 
@@ -95,7 +97,9 @@ def initialize_otel(
             exporter = OTLPSpanExporter(
                 endpoint=endpoint,
                 headers=None,
-                timeout=float(_positive_int(settings, "OTEL_EXPORTER_OTLP_TIMEOUT", 10)),
+                timeout=float(
+                    _positive_int(settings, "OTEL_EXPORTER_OTLP_TIMEOUT", 10)
+                ),
             )
             processor = BatchSpanProcessor(
                 _RecordingExporter(exporter),
@@ -154,7 +158,9 @@ def close_otel(*, timeout_seconds: float = 5.0) -> bool:
 class OTelDiagnosticsCallback(BaseCallbackHandler):
     """Record only the root graph span and bounded Runtime identifiers."""
 
-    def __init__(self, provider: TracerProvider, graph_id: str, metadata: Mapping[str, Any]) -> None:
+    def __init__(
+        self, provider: TracerProvider, graph_id: str, metadata: Mapping[str, Any]
+    ) -> None:
         self._tracer = provider.get_tracer("runtime-service")
         self._graph_id = graph_id
         self._metadata = {

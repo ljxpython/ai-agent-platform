@@ -20,14 +20,26 @@ def test_artifact_tool_returns_recoverable_error_then_publishes(tmp_path):
     tool = build_artifact_tool(tmp_path)
 
     async def run():
-        rejected = await tool.ainvoke({"type": "tool_call", "id": "bad", "name": tool.name,
-                                      "args": {"file_path": "/workspace/uploads/image.png"}})
+        rejected = await tool.ainvoke(
+            {
+                "type": "tool_call",
+                "id": "bad",
+                "name": tool.name,
+                "args": {"file_path": "/workspace/uploads/image.png"},
+            }
+        )
         assert rejected.status == "error"
         assert rejected.content == "artifact_source_denied"
         (tmp_path / "work").mkdir()
         (tmp_path / "work/report.md").write_text("Image reference report")
-        published = await tool.ainvoke({"type": "tool_call", "id": "good", "name": tool.name,
-                                       "args": {"file_path": "/workspace/work/report.md"}})
+        published = await tool.ainvoke(
+            {
+                "type": "tool_call",
+                "id": "good",
+                "name": tool.name,
+                "args": {"file_path": "/workspace/work/report.md"},
+            }
+        )
         assert published.status == "success"
         assert json.loads(published.content)["mime_type"] == "text/markdown"
 
@@ -41,16 +53,38 @@ def test_artifact_tool_returns_recoverable_error_then_publishes(tmp_path):
             ("ts", "text/typescript"),
         ):
             path = tmp_path / "work" / f"payment_openapi.{extension}"
-            path.write_text("openapi: 3.1.0\n" if extension in {"yaml", "yml"} else "<root/>\n" if extension == "xml" else "select 1;\n" if extension == "sql" else "value = 1\n")
-            published = await tool.ainvoke({"type": "tool_call", "id": extension, "name": tool.name,
-                                          "args": {"file_path": f"/workspace/work/payment_openapi.{extension}"}})
+            path.write_text(
+                "openapi: 3.1.0\n"
+                if extension in {"yaml", "yml"}
+                else "<root/>\n"
+                if extension == "xml"
+                else "select 1;\n"
+                if extension == "sql"
+                else "value = 1\n"
+            )
+            published = await tool.ainvoke(
+                {
+                    "type": "tool_call",
+                    "id": extension,
+                    "name": tool.name,
+                    "args": {
+                        "file_path": f"/workspace/work/payment_openapi.{extension}"
+                    },
+                }
+            )
             assert published.status == "success", published.content
             assert json.loads(published.content)["mime_type"] == expected_mime
 
         image = tmp_path / "work" / "architecture.png"
         Image.new("RGB", (2, 2), "blue").save(image)
-        published = await tool.ainvoke({"type": "tool_call", "id": "png", "name": tool.name,
-                                      "args": {"file_path": "/workspace/work/architecture.png"}})
+        published = await tool.ainvoke(
+            {
+                "type": "tool_call",
+                "id": "png",
+                "name": tool.name,
+                "args": {"file_path": "/workspace/work/architecture.png"},
+            }
+        )
         assert published.status == "success"
         assert json.loads(published.content)["mime_type"] == "image/png"
 
@@ -67,14 +101,24 @@ def test_signed_upload_artifact_download_and_scope_isolation(monkeypatch, tmp_pa
     async def run():
         raw = b"input text"
         digest = hashlib.sha256(raw).hexdigest()
-        token = _make_token(assistant_id="dearflow_agent", operation="workspace-file-upload")
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        token = _make_token(
+            assistant_id="dearflow_agent", operation="workspace-file-upload"
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
             response = await client.put(
-                f"/internal/threads/thread-1/files/uploads/{digest}", content=raw,
-                headers={"Authorization": f"Bearer {token}", "Content-Type": "text/plain"},
+                f"/internal/threads/thread-1/files/uploads/{digest}",
+                content=raw,
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "text/plain",
+                },
             )
             assert response.status_code == 200, response.text
-            root = resolve_thread_workspace("tenant-a", "project-a", "thread-1", "dearflow_agent")
+            root = resolve_thread_workspace(
+                "tenant-a", "project-a", "thread-1", "dearflow_agent"
+            )
             (root / "work").mkdir()
             (root / "work/result.txt").write_bytes(raw.upper())
             ref = ArtifactWorkspace(root).publish("/workspace/work/result.txt")
@@ -83,16 +127,27 @@ def test_signed_upload_artifact_download_and_scope_isolation(monkeypatch, tmp_pa
                 ("showcase_demo", "tenant-a", 404),
                 ("dearflow_agent", "tenant-b", 404),
             ]:
-                token = _make_token(assistant_id=graph, tenant_id=tenant, operation="workspace-file-read")
-                response = await client.get("/internal/threads/thread-1/files/content",
-                    params={"path": ref["path"]}, headers={"Authorization": f"Bearer {token}"})
+                token = _make_token(
+                    assistant_id=graph,
+                    tenant_id=tenant,
+                    operation="workspace-file-read",
+                )
+                response = await client.get(
+                    "/internal/threads/thread-1/files/content",
+                    params={"path": ref["path"]},
+                    headers={"Authorization": f"Bearer {token}"},
+                )
                 assert response.status_code == expected, response.text
                 if expected == 200:
                     assert response.content == raw.upper()
                     assert hashlib.sha256(response.content).hexdigest() == ref["sha256"]
-            response = await client.get("/internal/threads/other/files/content",
-                params={"path": ref["path"]}, headers={"Authorization": f"Bearer {token}"})
+            response = await client.get(
+                "/internal/threads/other/files/content",
+                params={"path": ref["path"]},
+                headers={"Authorization": f"Bearer {token}"},
+            )
             assert response.status_code == 403
+
     asyncio.run(run())
 
 
@@ -100,6 +155,7 @@ def test_artifact_symlink_and_corruption_rejected(tmp_path):
     from langchain_core.tools import ToolException
 
     from runtime_service.workspace.documents import DocumentError
+
     (tmp_path / "work").mkdir()
     (tmp_path / "work/secret.txt").symlink_to("/etc/passwd")
     store = ArtifactWorkspace(tmp_path)

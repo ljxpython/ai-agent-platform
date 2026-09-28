@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from dataclasses import FrozenInstanceError, replace
-import json
 import builtins
+import json
+from dataclasses import FrozenInstanceError, replace
 from math import inf, nan
 
 import pytest
@@ -14,8 +14,8 @@ from runtime_service.runtime import (
     RuntimePrincipal,
     RuntimeResolutionError,
     parse_runtime_context,
-    resolved_runtime_config_from_snapshot,
     resolve_runtime_config,
+    resolved_runtime_config_from_snapshot,
     runtime_config_snapshot,
     runtime_context_hash,
 )
@@ -24,11 +24,14 @@ from runtime_service.runtime.runtime_config import parse_context
 
 def _inputs() -> tuple[RuntimePrincipal, RuntimePolicy, AgentDefaults]:
     return (
-        RuntimePrincipal("user-a", "tenant-a", "project-a", "developer", ("search", "read_project")),
+        RuntimePrincipal(
+            "user-a", "tenant-a", "project-a", "developer", ("search", "read_project")
+        ),
         RuntimePolicy(
             "policy-1",
             ("deepseek:deepseek-chat",),
-            (), "test-tools-v2",
+            (),
+            "test-tools-v2",
         ),
         AgentDefaults(
             model_id="deepseek:deepseek-chat",
@@ -145,7 +148,9 @@ def test_resolver_rejects_model_and_tool_policy_violations() -> None:
         ("max_tokens", 0),
     ],
 )
-def test_context_parser_rejects_invalid_generation_values(field: str, value: object) -> None:
+def test_context_parser_rejects_invalid_generation_values(
+    field: str, value: object
+) -> None:
     with pytest.raises(RuntimeResolutionError):
         parse_runtime_context({field: value})
 
@@ -153,14 +158,32 @@ def test_context_parser_rejects_invalid_generation_values(field: str, value: obj
 def test_resolver_applies_denials_and_keeps_required_strict() -> None:
     principal, policy, defaults = _inputs()
     denied = replace(policy, denied_tool_names=("search",))
-    resolved = resolve_runtime_config(principal=principal, context=RuntimeContext(), policy=denied, defaults=defaults)
+    resolved = resolve_runtime_config(
+        principal=principal, context=RuntimeContext(), policy=denied, defaults=defaults
+    )
     assert resolved.optional_tool_names == ("read_project",)
-    with pytest.raises(RuntimeResolutionError, match="runtime.required_tool.not_allowed"):
-        resolve_runtime_config(principal=principal, context=RuntimeContext(), policy=denied,
-            defaults=replace(defaults, required_tool_names=("search",), optional_tool_names=("read_project",)))
-    with pytest.raises(RuntimeResolutionError, match="runtime.tool.restriction_unknown"):
-        resolve_runtime_config(principal=principal, context=RuntimeContext(),
-            policy=replace(policy, denied_tool_names=("typo",)), defaults=defaults)
+    with pytest.raises(
+        RuntimeResolutionError, match="runtime.required_tool.not_allowed"
+    ):
+        resolve_runtime_config(
+            principal=principal,
+            context=RuntimeContext(),
+            policy=denied,
+            defaults=replace(
+                defaults,
+                required_tool_names=("search",),
+                optional_tool_names=("read_project",),
+            ),
+        )
+    with pytest.raises(
+        RuntimeResolutionError, match="runtime.tool.restriction_unknown"
+    ):
+        resolve_runtime_config(
+            principal=principal,
+            context=RuntimeContext(),
+            policy=replace(policy, denied_tool_names=("typo",)),
+            defaults=defaults,
+        )
 
 
 def test_runtime_context_hash_and_snapshot_are_safe_and_stable() -> None:
@@ -197,7 +220,9 @@ def test_runtime_context_hash_changes_with_semantics() -> None:
     )
 
 
-def test_resolver_does_not_mutate_inputs_or_perform_io(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolver_does_not_mutate_inputs_or_perform_io(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     principal, policy, defaults = _inputs()
     context = {"temperature": 0}
     original_context = json.loads(json.dumps(context))

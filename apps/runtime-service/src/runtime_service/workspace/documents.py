@@ -11,7 +11,11 @@ from langchain_core.tools import ToolException
 
 from runtime_service.tools.images import ImageWorkspace
 from runtime_service.workspace.file_refs import (
-    MAX_FILE_BYTES, MIME_EXT, FileRef, validate_file_path, validate_file_ref,
+    MAX_FILE_BYTES,
+    MIME_EXT,
+    FileRef,
+    validate_file_path,
+    validate_file_ref,
 )
 
 
@@ -52,6 +56,7 @@ def validate_document(data: bytes, mime: str) -> None:
         return
     if mime == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
         from runtime_service.workspace.archives import read_zip
+
         try:
             names = {name for name, _ in read_zip(data)}
             if not {"[Content_Types].xml", "xl/workbook.xml"} <= names:
@@ -63,6 +68,7 @@ def validate_document(data: bytes, mime: str) -> None:
         return
     if mime == "application/zip":
         from runtime_service.workspace.archives import read_zip
+
         try:
             read_zip(data)
         except ValueError as exc:
@@ -100,18 +106,34 @@ class DocumentWorkspace:
         if hashlib.sha256(data).hexdigest() != digest:
             raise DocumentError("file_hash_mismatch", 409)
         mime = next(mime for mime, extension in MIME_EXT.items() if extension == ext)
-        return data, FileRef(version=1, path=path, file_name=path.rsplit("/", 1)[-1],
-                            mime_type=mime, size_bytes=len(data), sha256=digest)
+        return data, FileRef(
+            version=1,
+            path=path,
+            file_name=path.rsplit("/", 1)[-1],
+            mime_type=mime,
+            size_bytes=len(data),
+            sha256=digest,
+        )
 
-    def put(self, data: bytes, digest: str, mime: str, name: str | None = None) -> FileRef:
+    def put(
+        self, data: bytes, digest: str, mime: str, name: str | None = None
+    ) -> FileRef:
         ext = MIME_EXT.get(mime)
         if ext is None:
             raise DocumentError("unsupported_file_type", 415)
         validate_document(data, mime)
         filename = f"{digest}.{ext}"
         try:
-            ref = validate_file_ref(dict(version=1, path=f"/workspace/uploads/{filename}",
-                file_name=name or filename, mime_type=mime, size_bytes=len(data), sha256=digest))
+            ref = validate_file_ref(
+                dict(
+                    version=1,
+                    path=f"/workspace/uploads/{filename}",
+                    file_name=name or filename,
+                    mime_type=mime,
+                    size_bytes=len(data),
+                    sha256=digest,
+                )
+            )
         except ValueError:
             raise DocumentError("invalid_file_ref") from None
         if hashlib.sha256(data).hexdigest() != digest:
@@ -122,19 +144,28 @@ class DocumentWorkspace:
             raise DocumentError("file_workspace_unavailable", 409) from None
         temporary = f".document-{uuid4().hex}"
         try:
-            fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-                         0o600, dir_fd=directory)
+            fd = os.open(
+                temporary,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+                dir_fd=directory,
+            )
             with os.fdopen(fd, "wb") as target:
                 target.write(data)
                 target.flush()
                 os.fsync(target.fileno())
             try:
-                os.link(temporary, filename, src_dir_fd=directory, dst_dir_fd=directory,
-                        follow_symlinks=False)
-            except FileExistsError:
+                os.link(
+                    temporary,
+                    filename,
+                    src_dir_fd=directory,
+                    dst_dir_fd=directory,
+                    follow_symlinks=False,
+                )
+            except FileExistsError as exc:
                 existing, _ = self.read(ref["path"])
                 if existing != data:
-                    raise DocumentError("file_content_conflict", 409)
+                    raise DocumentError("file_content_conflict", 409) from exc
         except OSError:
             raise DocumentError("file_workspace_unavailable", 409) from None
         finally:

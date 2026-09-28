@@ -23,6 +23,8 @@ def build_session_factory(engine: Engine) -> sessionmaker[Session]:
     )
 
 
-def session_scope(session_factory: sessionmaker[Session]) -> AbstractContextManager[Session]:
+def session_scope(
+    session_factory: sessionmaker[Session],
+) -> AbstractContextManager[Session]:
     """Create, commit or roll back, and close one session in its calling thread."""
     return session_factory.begin()

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from starlette.concurrency import run_in_threadpool
-
 from typing import Any
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
+from starlette.concurrency import run_in_threadpool
 
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import session_scope

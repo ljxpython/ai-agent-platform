@@ -32,7 +32,9 @@ def _local_token(
         "tenant_id": tenant,
         "project_id": project,
         "role": "developer",
-        "permissions": permissions if permissions is not None else ["runtime.tool.read"],
+        "permissions": permissions
+        if permissions is not None
+        else ["runtime.tool.read"],
         "policy_version": "r6-smoke-v1",
         "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
         "allowed_tool_names": (
@@ -92,14 +94,18 @@ async def main() -> int:
         run = await client.runs.get(thread_id, run_id)
         state = await client.threads.get_state(thread_id)
         status = run.get("status") if isinstance(run, dict) else run.status
-        checkpoint = state.get("checkpoint") if isinstance(state, dict) else state.checkpoint
+        checkpoint = (
+            state.get("checkpoint") if isinstance(state, dict) else state.checkpoint
+        )
         checkpoint_id = (
             checkpoint.get("checkpoint_id") or checkpoint.get("id")
             if isinstance(checkpoint, dict)
             else checkpoint
         )
         if not checkpoint_id:
-            raise RuntimeError("Agent Server state did not return a persisted checkpoint")
+            raise RuntimeError(
+                "Agent Server state did not return a persisted checkpoint"
+            )
         print(
             {
                 "thread_id": thread_id,

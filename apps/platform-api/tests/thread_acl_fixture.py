@@ -1,4 +1,5 @@
 """Real isolated ACL persistence for gateway transport contract tests."""
+
 import tempfile
 from pathlib import Path
 

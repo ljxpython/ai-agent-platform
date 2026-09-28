@@ -11,7 +11,9 @@ from langchain.agents.middleware import AgentMiddleware, ModelRequest
 DEFAULT_MODEL_CALL_TIMEOUT_SECONDS = 600.0
 
 
-def resolve_model_call_timeout_seconds(default: float = DEFAULT_MODEL_CALL_TIMEOUT_SECONDS) -> float:
+def resolve_model_call_timeout_seconds(
+    default: float = DEFAULT_MODEL_CALL_TIMEOUT_SECONDS,
+) -> float:
     raw = os.getenv("AGENT_MODEL_CALL_TIMEOUT_SECONDS", "").strip()
     if raw:
         try:
@@ -28,7 +30,11 @@ class ModelCallTimeoutMiddleware(AgentMiddleware):
 
     def __init__(self, timeout_seconds: float | None = None) -> None:
         super().__init__()
-        resolved = resolve_model_call_timeout_seconds() if timeout_seconds is None else timeout_seconds
+        resolved = (
+            resolve_model_call_timeout_seconds()
+            if timeout_seconds is None
+            else timeout_seconds
+        )
         if isinstance(resolved, bool) or not math.isfinite(resolved) or resolved <= 0:
             raise ValueError("timeout_seconds must be a finite positive number")
         self.timeout_seconds = float(resolved)

@@ -1,7 +1,6 @@
 """The only composition root: official Deep Agents plus Runtime policy and tracing."""
 
 from __future__ import annotations
-from runtime_service.runtime.capabilities import SHOWCASE_TOOLS
 
 from collections.abc import Mapping, Sequence
 
@@ -37,6 +36,7 @@ from runtime_service.runtime import (
     runtime_context_hash,
     verified_delegation_from_user,
 )
+from runtime_service.runtime.capabilities import SHOWCASE_TOOLS
 from runtime_service.services.demo.showcase_demo.backend import (
     WorkspaceMiddleware,
     build_backend,
@@ -106,13 +106,17 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             project_id=facts.principal.project_id,
         )
         model = build_model(resolved, connection=connection)
-        workspace = create_workspace(facts.principal.tenant_id, facts.principal.project_id, thread_id)
+        workspace = create_workspace(
+            facts.principal.tenant_id, facts.principal.project_id, thread_id
+        )
     else:
         # Schema-only client: no request is sent, and WorkspaceMiddleware rejects invocation.
         model = ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
 
     backend = build_backend(workspace)
-    image_workspace = ImageWorkspace(None if workspace is None else workspace.cwd / "workspace")
+    image_workspace = ImageWorkspace(
+        None if workspace is None else workspace.cwd / "workspace"
+    )
     image_middleware = ImageToolsMiddleware(image_workspace)
     document_middleware = DocumentToolsMiddleware(
         None if workspace is None else workspace.cwd / "workspace"
@@ -132,6 +136,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
 
     def _env_int(name: str, default: int) -> int:
         import os
+
         raw = os.getenv(name, "").strip()
         return int(raw) if raw.isdigit() and int(raw) > 0 else default
 
@@ -166,10 +171,18 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         permissions=PERMISSIONS,
         interrupt_on=interrupts_for_access_policy(
             context.access_policy if executing else None,
-            {**APPROVALS, "present_artifacts": {"allowed_decisions": ["approve", "edit", "reject"]}},
+            {
+                **APPROVALS,
+                "present_artifacts": {
+                    "allowed_decisions": ["approve", "edit", "reject"]
+                },
+            },
         ),
         subagents=build_subagents(
-            model, backend, middleware, chart_tools,
+            model,
+            backend,
+            middleware,
+            chart_tools,
             context.access_policy if executing else None,
         ),
         middleware=[
@@ -179,7 +192,9 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 _permissions=PERMISSIONS,
                 max_execute_timeout=60,
             ),
-            *middleware((*_DEFAULTS.optional_tool_names, *image_names, *document_names)),
+            *middleware(
+                (*_DEFAULTS.optional_tool_names, *image_names, *document_names)
+            ),
             image_middleware,
             document_middleware,
             TodoListMiddleware(),
@@ -196,7 +211,9 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     bound["configurable"] = {
         key: value for key, value in configurable.items() if key in _EXECUTION_KEYS
     }
-    bound["recursion_limit"] = min(max(int(config.get("recursion_limit", 1000)), 1), 1000)
+    bound["recursion_limit"] = min(
+        max(int(config.get("recursion_limit", 1000)), 1), 1000
+    )
     agent = agent.with_config(bound)
     if not executing:
         return agent

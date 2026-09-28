@@ -1,7 +1,8 @@
 import asyncio
+import time
+
 import httpx
 import jwt
-import time
 
 from runtime_service.runtime.resolver import runtime_context_hash
 from runtime_service.webapp import app
@@ -14,7 +15,8 @@ def _source_workspace_token(thread_id: str) -> str:
     now = int(time.time())
     return jwt.encode(
         {
-            "type": "runtime_delegation", "delegation_version": 2,
+            "type": "runtime_delegation",
+            "delegation_version": 2,
             "sub": "user-a",
             "tenant_id": "tenant-a",
             "project_id": "project-a",
@@ -22,7 +24,8 @@ def _source_workspace_token(thread_id: str) -> str:
             "permissions": ["runtime.tool.read"],
             "policy_version": "policy-1",
             "allowed_model_ids": ["deepseek:deepseek-chat"],
-            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+            "tool_overrides": {},
+            "tool_policy_version": "test-tools-v2",
             "iat": now,
             "exp": now + 60,
             "iss": "runtime-test",
@@ -77,7 +80,8 @@ def _fork_workspace_token(thread_id: str) -> str:
     now = int(time.time())
     return jwt.encode(
         {
-            "type": "runtime_delegation", "delegation_version": 2,
+            "type": "runtime_delegation",
+            "delegation_version": 2,
             "sub": "user-a",
             "tenant_id": "tenant-a",
             "project_id": "project-a",
@@ -85,7 +89,8 @@ def _fork_workspace_token(thread_id: str) -> str:
             "permissions": ["runtime.tool.read"],
             "policy_version": "policy-1",
             "allowed_model_ids": ["deepseek:deepseek-chat"],
-            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+            "tool_overrides": {},
+            "tool_policy_version": "test-tools-v2",
             "iat": now,
             "exp": now + 60,
             "iss": "runtime-test",
@@ -113,8 +118,12 @@ def test_fork_workspace_copies_files_and_remains_isolated(monkeypatch, tmp_path)
     source_thread_id = "source-thread-123"
     target_thread_id = "target-thread-456"
 
-    source_root = resolve_thread_workspace("tenant-a", "project-a", source_thread_id, "showcase_demo")
-    target_root = resolve_thread_workspace("tenant-a", "project-a", target_thread_id, "showcase_demo")
+    source_root = resolve_thread_workspace(
+        "tenant-a", "project-a", source_thread_id, "showcase_demo"
+    )
+    target_root = resolve_thread_workspace(
+        "tenant-a", "project-a", target_thread_id, "showcase_demo"
+    )
 
     source_root.mkdir(parents=True, exist_ok=True)
     (source_root / "hello.txt").write_text("Hello from source!", encoding="utf-8")
@@ -141,17 +150,22 @@ def test_fork_workspace_copies_files_and_remains_isolated(monkeypatch, tmp_path)
 
     # 验证复制成功
     assert (target_root / "hello.txt").exists()
-    assert (target_root / "hello.txt").read_text(encoding="utf-8") == "Hello from source!"
+    assert (target_root / "hello.txt").read_text(
+        encoding="utf-8"
+    ) == "Hello from source!"
     assert (target_root / "docs" / "design.md").exists()
-    assert (target_root / "docs" / "design.md").read_text(encoding="utf-8") == "# Design doc"
+    assert (target_root / "docs" / "design.md").read_text(
+        encoding="utf-8"
+    ) == "# Design doc"
 
     # 验证独立物理隔离：修改 target 不影响 source
     (target_root / "hello.txt").write_text("Mutated in target!", encoding="utf-8")
-    assert (source_root / "hello.txt").read_text(encoding="utf-8") == "Hello from source!"
+    assert (source_root / "hello.txt").read_text(
+        encoding="utf-8"
+    ) == "Hello from source!"
 
     (target_root / "target_only.txt").write_text("target only", encoding="utf-8")
     assert not (source_root / "target_only.txt").exists()
 
     (source_root / "source_only.txt").write_text("source only", encoding="utf-8")
     assert not (target_root / "source_only.txt").exists()
-

@@ -23,7 +23,10 @@ async def _authorize_image_request(
     if scope.get("operation") != expected_operation:
         raise HTTPException(
             status_code=403,
-            detail={"code": "image_scope_denied", "message": "Scope operation mismatch"},
+            detail={
+                "code": "image_scope_denied",
+                "message": "Scope operation mismatch",
+            },
         )
     if scope.get("thread_id") != thread_id:
         raise HTTPException(
@@ -38,13 +41,18 @@ async def _authorize_image_request(
                 "message": "Graph does not support image workspace",
             },
         )
-    require_tool_access(facts, "write_file" if expected_operation == "image-upload" else "read_file")
+    require_tool_access(
+        facts, "write_file" if expected_operation == "image-upload" else "read_file"
+    )
     tenant_id = scope.get("tenant_id")
     project_id = scope.get("project_id")
     if not tenant_id or not project_id:
         raise HTTPException(
             status_code=403,
-            detail={"code": "thread_project_denied", "message": "Tenant and project required"},
+            detail={
+                "code": "thread_project_denied",
+                "message": "Tenant and project required",
+            },
         )
     return tenant_id, project_id, scope["assistant_id"]
 
@@ -67,12 +75,17 @@ async def upload_thread_image(
         if total_bytes > UPLOAD_MAX_BYTES:
             raise HTTPException(
                 status_code=413,
-                detail={"code": "image_too_large", "message": f"Upload exceeds {UPLOAD_MAX_BYTES} bytes limit"},
+                detail={
+                    "code": "image_too_large",
+                    "message": f"Upload exceeds {UPLOAD_MAX_BYTES} bytes limit",
+                },
             )
         chunks.append(chunk)
 
     data = b"".join(chunks)
-    workspace_root = resolve_thread_workspace(tenant_id, project_id, thread_id, graph_id)
+    workspace_root = resolve_thread_workspace(
+        tenant_id, project_id, thread_id, graph_id
+    )
     ws = ImageWorkspace(workspace_root)
 
     try:
@@ -95,7 +108,9 @@ async def read_thread_image(
         thread_id, authorization, "image-read"
     )
 
-    workspace_root = resolve_thread_workspace(tenant_id, project_id, thread_id, graph_id)
+    workspace_root = resolve_thread_workspace(
+        tenant_id, project_id, thread_id, graph_id
+    )
     ws = ImageWorkspace(workspace_root)
 
     try:

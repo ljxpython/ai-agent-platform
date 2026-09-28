@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from sqlalchemy.orm import Session, sessionmaker
 
 from platform_api.config import Settings

@@ -7,12 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from platform_api.bootstrap.lifespan import lifespan
 from platform_api.config import load_settings
 from platform_api.core.errors import register_exception_handlers
-from platform_api.entrypoints.http.router import api_router
 from platform_api.entrypoints.http.middleware import (
     register_audit_log_middleware,
     register_auth_context_middleware,
     register_request_context_middleware,
 )
+from platform_api.entrypoints.http.router import api_router
 
 
 def create_app() -> FastAPI:

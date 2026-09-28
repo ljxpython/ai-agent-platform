@@ -34,7 +34,8 @@ def _reasoning_text(message: Mapping[str, object]) -> str:
     details = message.get("reasoning_details")
     if isinstance(details, list):
         return "".join(
-            item["text"] for item in details
+            item["text"]
+            for item in details
             if isinstance(item, dict) and isinstance(item.get("text"), str)
         )
     return ""
@@ -48,7 +49,9 @@ class ChatOpenAIWithReasoning(ChatOpenAI):
     ) -> ChatResult:
         result = super()._create_chat_result(response, generation_info)
         data = response if isinstance(response, dict) else response.model_dump()
-        for choice, generation in zip(data.get("choices", []), result.generations):
+        for choice, generation in zip(
+            data.get("choices", []), result.generations, strict=False
+        ):
             generation.message.response_metadata = {
                 **generation.message.response_metadata,
                 "model_provider": "openai_compatible",
@@ -61,8 +64,14 @@ class ChatOpenAIWithReasoning(ChatOpenAI):
     def _convert_chunk_to_generation_chunk(
         self, chunk: dict, default_chunk_class: type, base_generation_info: dict | None
     ) -> ChatGenerationChunk | None:
-        result = super()._convert_chunk_to_generation_chunk(chunk, default_chunk_class, base_generation_info)
-        if result and isinstance(result.message, AIMessageChunk) and chunk.get("choices"):
+        result = super()._convert_chunk_to_generation_chunk(
+            chunk, default_chunk_class, base_generation_info
+        )
+        if (
+            result
+            and isinstance(result.message, AIMessageChunk)
+            and chunk.get("choices")
+        ):
             result.message.response_metadata = {
                 **result.message.response_metadata,
                 "model_provider": "openai_compatible",
@@ -132,7 +141,11 @@ def build_model(
                 stream_usage=True,
                 **kwargs,
             )
-        if provider in ("openai", "gpt-proxy") or protocol in ("openai", "openai-compatible", "openai_compatible"):
+        if provider in ("openai", "gpt-proxy") or protocol in (
+            "openai",
+            "openai-compatible",
+            "openai_compatible",
+        ):
             return ChatOpenAIWithReasoning(
                 model=model_name,
                 api_key=conn_api_key or settings.get("GPT_PROXY_API_KEY") or "EMPTY",
@@ -142,15 +155,27 @@ def build_model(
             )
         if (
             protocol in ("anthropic", "anthropic-messages")
-            or (connection is not None and provider in ("anthropic", "claude", "anthropic-proxy"))
+            or (
+                connection is not None
+                and provider in ("anthropic", "claude", "anthropic-proxy")
+            )
             or provider == "anthropic-proxy"
         ):
             if ChatAnthropic is None:
-                raise RuntimeResolutionError("runtime.model.initialization_failed", "langchain-anthropic not installed")
+                raise RuntimeResolutionError(
+                    "runtime.model.initialization_failed",
+                    "langchain-anthropic not installed",
+                )
             return ChatAnthropic(
                 model=model_name,
-                api_key=conn_api_key or settings.get("ANTHROPIC_PROXY_API_KEY") or settings.get("ANTHROPIC_API_KEY") or "EMPTY",
-                base_url=conn_base_url or settings.get("ANTHROPIC_PROXY_URL") or settings.get("ANTHROPIC_API_URL") or "https://api.anthropic.com",
+                api_key=conn_api_key
+                or settings.get("ANTHROPIC_PROXY_API_KEY")
+                or settings.get("ANTHROPIC_API_KEY")
+                or "EMPTY",
+                base_url=conn_base_url
+                or settings.get("ANTHROPIC_PROXY_URL")
+                or settings.get("ANTHROPIC_API_URL")
+                or "https://api.anthropic.com",
                 stream_usage=True,
                 **kwargs,
             )
@@ -166,7 +191,9 @@ def build_model(
     except RuntimeResolutionError:
         raise
     except Exception as exc:
-        raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id") from exc
+        raise RuntimeResolutionError(
+            "runtime.model.initialization_failed", "model_id"
+        ) from exc
 
 
 async def fetch_model_connection(
@@ -179,7 +206,12 @@ async def fetch_model_connection(
     if reference is None:
         return None
     endpoint = os.getenv("PLATFORM_RUNTIME_MODEL_CONFIG_URL", "").strip()
-    if not isinstance(reference, str) or not reference or not endpoint or not project_id:
+    if (
+        not isinstance(reference, str)
+        or not reference
+        or not endpoint
+        or not project_id
+    ):
         raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
     headers = {"x-runtime-model-ref": reference, "x-project-id": project_id}
     secret = os.getenv("PLATFORM_RUNTIME_DELEGATION_SECRET", "")
@@ -187,7 +219,9 @@ async def fetch_model_connection(
         timestamp = str(int(time.time()))
         headers["x-runtime-model-time"] = timestamp
         headers["x-runtime-model-signature"] = hmac.new(
-            secret.encode(), f"{timestamp}\n{project_id}\n{reference}".encode(), hashlib.sha256
+            secret.encode(),
+            f"{timestamp}\n{project_id}\n{reference}".encode(),
+            hashlib.sha256,
         ).hexdigest()
     try:
         async with httpx.AsyncClient(timeout=10) as client:
@@ -198,12 +232,17 @@ async def fetch_model_connection(
             response.raise_for_status()
             payload = response.json()
     except (httpx.HTTPError, ValueError) as exc:
-        raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id") from exc
+        raise RuntimeResolutionError(
+            "runtime.model.initialization_failed", "model_id"
+        ) from exc
     required = ("provider", "base_url", "protocol", "model", "api_key")
     if (
         not isinstance(payload, dict)
         or payload.get("model_id") != model_id
-        or any(not isinstance(payload.get(key), str) or not payload[key] for key in required)
+        or any(
+            not isinstance(payload.get(key), str) or not payload[key]
+            for key in required
+        )
     ):
         raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
     return {key: payload[key] for key in required} | {"model_id": model_id}

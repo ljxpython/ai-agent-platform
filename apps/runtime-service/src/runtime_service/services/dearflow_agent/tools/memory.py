@@ -1,4 +1,5 @@
 """Explicit memory actions use the same scoped storage as the management API."""
+
 import asyncio
 
 from langchain.tools import ToolRuntime
@@ -14,7 +15,11 @@ def memory_scope(runtime):
     facts = verified_delegation_from_user(runtime.server_info.user)
     if facts.scope.assistant_id != "dearflow_agent" or not runtime.execution_info:
         raise DocumentError("memory_scope_denied", 403)
-    return (facts.principal.tenant_id, facts.principal.project_id, facts.principal.user_id)
+    return (
+        facts.principal.tenant_id,
+        facts.principal.project_id,
+        facts.principal.user_id,
+    )
 
 
 def build_memory_tools():
@@ -23,15 +28,22 @@ def build_memory_tools():
         """Read this user's current-project facts, candidates and current revision. Never grants permissions."""
         if not await memory_allowed(runtime):
             raise DocumentError("memory_thread_shared", 403)
-        return await asyncio.to_thread(MemoryStorage().read, memory_scope(runtime), query)
+        return await asyncio.to_thread(
+            MemoryStorage().read, memory_scope(runtime), query
+        )
 
     @tool
     async def manage_memory(command: MemoryCommand, runtime: ToolRuntime) -> dict:
         """After approval save/edit/delete/clear/restore facts or accept/reject a candidate. Use search_memory's revision; preferences do not change permissions."""
         if not await memory_allowed(runtime):
             raise DocumentError("memory_thread_shared", 403)
-        return await asyncio.to_thread(MemoryStorage().change, memory_scope(runtime), command,
-                                       thread_id=str(runtime.execution_info.thread_id), source_id=runtime.tool_call_id)
+        return await asyncio.to_thread(
+            MemoryStorage().change,
+            memory_scope(runtime),
+            command,
+            thread_id=str(runtime.execution_info.thread_id),
+            source_id=runtime.tool_call_id,
+        )
 
     for item in (search_memory, manage_memory):
         item.handle_tool_error = True

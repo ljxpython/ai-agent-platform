@@ -5,13 +5,18 @@ import json
 from decimal import Decimal
 from uuid import UUID
 
-from sqlalchemy import select, or_
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import session_scope
-from platform_api.core.errors import NotFoundError, ServiceUnavailableError, BadRequestError, ConflictError
+from platform_api.core.errors import (
+    BadRequestError,
+    ConflictError,
+    NotFoundError,
+    ServiceUnavailableError,
+)
 from platform_api.core.identifiers import parse_uuid
 from platform_api.modules.iam.application import (
     AuthorizationRequest,
@@ -23,8 +28,11 @@ from platform_api.modules.runtime_catalog.infra import (
     SqlAlchemyRuntimeCatalogRepository,
 )
 from platform_api.modules.runtime_policies.application.contracts import (
+    CreateToolRestriction,
     RuntimeGraphPolicyList,
     RuntimeModelPolicyList,
+    ToolRestrictionItem,
+    ToolRestrictionList,
     UpsertRuntimeGraphPolicyCommand,
     UpsertRuntimeModelPolicyCommand,
 )
@@ -37,9 +45,9 @@ from platform_api.modules.runtime_policies.domain import (
 from platform_api.modules.runtime_policies.infra import (
     SqlAlchemyRuntimePolicyRepository,
 )
-
-from platform_api.modules.runtime_policies.infra.sqlalchemy.models import RuntimeToolRestrictionRecord
-from platform_api.modules.runtime_policies.application.contracts import CreateToolRestriction, ToolRestrictionItem, ToolRestrictionList
+from platform_api.modules.runtime_policies.infra.sqlalchemy.models import (
+    RuntimeToolRestrictionRecord,
+)
 
 _NO_ENABLED_MODEL_SENTINEL = "platform:no-enabled-model"
 
@@ -107,68 +115,128 @@ class RuntimePolicyOverlayService:
             "allowed_model_ids": allowed_model_ids,
         }
 
-    def resolve_tool_overrides(self, *, project_id: str, user_id: str | None, graph_id: str) -> dict:
+    def resolve_tool_overrides(
+        self, *, project_id: str, user_id: str | None, graph_id: str
+    ) -> dict:
         project = parse_uuid(project_id, code="invalid_project_id")
-        user = parse_uuid(user_id, code="invalid_user_id") if user_id is not None else None
+        user = (
+            parse_uuid(user_id, code="invalid_user_id") if user_id is not None else None
+        )
         with self._require_session_factory()() as session:
             self._ensure_project_exists(session, project)
-            names = session.scalars(select(RuntimeToolRestrictionRecord.tool_name).where(
-                RuntimeToolRestrictionRecord.project_id == project,
-                RuntimeToolRestrictionRecord.graph_id == graph_id,
-                or_(
-                    (RuntimeToolRestrictionRecord.subject_type == "project") & (RuntimeToolRestrictionRecord.subject_id == project),
-                    (RuntimeToolRestrictionRecord.subject_type == "user") & (RuntimeToolRestrictionRecord.subject_id == user),
-                ),
-            )).all()
+            names = session.scalars(
+                select(RuntimeToolRestrictionRecord.tool_name).where(
+                    RuntimeToolRestrictionRecord.project_id == project,
+                    RuntimeToolRestrictionRecord.graph_id == graph_id,
+                    or_(
+                        (RuntimeToolRestrictionRecord.subject_type == "project")
+                        & (RuntimeToolRestrictionRecord.subject_id == project),
+                        (RuntimeToolRestrictionRecord.subject_type == "user")
+                        & (RuntimeToolRestrictionRecord.subject_id == user),
+                    ),
+                )
+            ).all()
         overrides = dict.fromkeys(sorted(set(names)), False)
-        payload = json.dumps([project_id, user_id, graph_id, overrides], separators=(",", ":"))
-        if len(overrides) > 128 or len(json.dumps(overrides, separators=(",", ":")).encode()) > 4096:
-            raise ServiceUnavailableError(code="tool_policy_too_large", message="Tool restrictions exceed delegation budget")
-        return {"tool_overrides": overrides,
-                "tool_policy_version": "sha256:" + hashlib.sha256(payload.encode()).hexdigest()}
+        payload = json.dumps(
+            [project_id, user_id, graph_id, overrides], separators=(",", ":")
+        )
+        if (
+            len(overrides) > 128
+            or len(json.dumps(overrides, separators=(",", ":")).encode()) > 4096
+        ):
+            raise ServiceUnavailableError(
+                code="tool_policy_too_large",
+                message="Tool restrictions exceed delegation budget",
+            )
+        return {
+            "tool_overrides": overrides,
+            "tool_policy_version": "sha256:"
+            + hashlib.sha256(payload.encode()).hexdigest(),
+        }
 
-    def list_tool_restrictions(self, *, actor: ActorContext, project_id: str) -> ToolRestrictionList:
-        project = self._require_project_access(actor=actor, project_id=project_id, write=True)
+    def list_tool_restrictions(
+        self, *, actor: ActorContext, project_id: str
+    ) -> ToolRestrictionList:
+        project = self._require_project_access(
+            actor=actor, project_id=project_id, write=True
+        )
         with self._require_session_factory()() as session:
             self._ensure_project_exists(session, project)
-            rows = session.scalars(select(RuntimeToolRestrictionRecord).where(
-                RuntimeToolRestrictionRecord.project_id == project
-            ).order_by(RuntimeToolRestrictionRecord.created_at, RuntimeToolRestrictionRecord.id)).all()
-            return ToolRestrictionList(items=[ToolRestrictionItem.model_validate(row) for row in rows], total=len(rows))
+            rows = session.scalars(
+                select(RuntimeToolRestrictionRecord)
+                .where(RuntimeToolRestrictionRecord.project_id == project)
+                .order_by(
+                    RuntimeToolRestrictionRecord.created_at,
+                    RuntimeToolRestrictionRecord.id,
+                )
+            ).all()
+            return ToolRestrictionList(
+                items=[ToolRestrictionItem.model_validate(row) for row in rows],
+                total=len(rows),
+            )
 
-    def validate_restriction_subject(self, *, actor: ActorContext, project_id: str, command: CreateToolRestriction) -> None:
-        project = self._require_project_access(actor=actor, project_id=project_id, write=True)
+    def validate_restriction_subject(
+        self, *, actor: ActorContext, project_id: str, command: CreateToolRestriction
+    ) -> None:
+        project = self._require_project_access(
+            actor=actor, project_id=project_id, write=True
+        )
         with self._require_session_factory()() as session:
             self._ensure_project_exists(session, project)
             repository = SqlAlchemyProjectsRepository(session)
             if command.subject_type == "project":
                 valid = command.subject_id == project
             else:
-                valid = repository.user_exists(user_id=command.subject_id) and repository.get_project_member_role(
-                    project_id=project, user_id=command.subject_id) is not None
+                valid = (
+                    repository.user_exists(user_id=command.subject_id)
+                    and repository.get_project_member_role(
+                        project_id=project, user_id=command.subject_id
+                    )
+                    is not None
+                )
             if not valid:
-                raise BadRequestError(code="invalid_restriction_subject", message="Restriction subject must belong to the project")
+                raise BadRequestError(
+                    code="invalid_restriction_subject",
+                    message="Restriction subject must belong to the project",
+                )
 
-    def create_tool_restriction(self, *, actor: ActorContext, project_id: str,
-                                command: CreateToolRestriction) -> ToolRestrictionItem:
-        self.validate_restriction_subject(actor=actor, project_id=project_id, command=command)
+    def create_tool_restriction(
+        self, *, actor: ActorContext, project_id: str, command: CreateToolRestriction
+    ) -> ToolRestrictionItem:
+        self.validate_restriction_subject(
+            actor=actor, project_id=project_id, command=command
+        )
         try:
             with session_scope(self._require_session_factory()) as session:
-                row = RuntimeToolRestrictionRecord(project_id=parse_uuid(project_id, code="invalid_project_id"),
-                    **command.model_dump(), created_by=actor.user_id or actor.subject)
+                row = RuntimeToolRestrictionRecord(
+                    project_id=parse_uuid(project_id, code="invalid_project_id"),
+                    **command.model_dump(),
+                    created_by=actor.user_id or actor.subject,
+                )
                 session.add(row)
                 session.flush()
                 return ToolRestrictionItem.model_validate(row)
         except IntegrityError as exc:
-            raise ConflictError(code="tool_restriction_exists", message="Restriction already exists") from exc
+            raise ConflictError(
+                code="tool_restriction_exists", message="Restriction already exists"
+            ) from exc
 
-    def delete_tool_restriction(self, *, actor: ActorContext, project_id: str, restriction_id: str) -> ToolRestrictionItem:
-        project = self._require_project_access(actor=actor, project_id=project_id, write=True)
+    def delete_tool_restriction(
+        self, *, actor: ActorContext, project_id: str, restriction_id: str
+    ) -> ToolRestrictionItem:
+        project = self._require_project_access(
+            actor=actor, project_id=project_id, write=True
+        )
         with session_scope(self._require_session_factory()) as session:
             self._ensure_project_exists(session, project)
-            row = session.get(RuntimeToolRestrictionRecord, parse_uuid(restriction_id, code="invalid_restriction_id"))
+            row = session.get(
+                RuntimeToolRestrictionRecord,
+                parse_uuid(restriction_id, code="invalid_restriction_id"),
+            )
             if row is None or row.project_id != project:
-                raise NotFoundError(code="tool_restriction_not_found", message="Restriction not found")
+                raise NotFoundError(
+                    code="tool_restriction_not_found", message="Restriction not found"
+                )
             deleted = ToolRestrictionItem.model_validate(row)
             session.delete(row)
             return deleted
@@ -281,7 +349,6 @@ class RuntimePolicyOverlayService:
                 note=row.note,
                 updated_at=row.updated_at,
             )
-
 
     def list_model_policies(
         self,

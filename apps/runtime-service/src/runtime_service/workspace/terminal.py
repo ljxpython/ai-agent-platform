@@ -57,8 +57,8 @@ class TerminalSession:
         self.root = resolve_thread_workspace(tenant, project, thread, graph)
         try:
             self.backend = runtime_backend()
-        except ValueError:
-            raise DocumentError("terminal_backend_invalid", 409)
+        except ValueError as exc:
+            raise DocumentError("terminal_backend_invalid", 409) from exc
         io = ImageWorkspace(self.root)
         try:
             os.close(

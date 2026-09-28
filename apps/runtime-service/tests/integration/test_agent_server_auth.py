@@ -5,12 +5,12 @@ import os
 import time
 import uuid
 
+import httpx
 import jwt
 import pytest
 from langgraph_sdk import get_client
 
 from runtime_service.runtime.resolver import runtime_context_hash
-
 
 pytestmark = pytest.mark.integration
 
@@ -29,7 +29,8 @@ def _token(context: object | None = None) -> str:
     now = int(time.time())
     return jwt.encode(
         {
-            "type": "runtime_delegation", "delegation_version": 2,
+            "type": "runtime_delegation",
+            "delegation_version": 2,
             "sub": "integration-user",
             "tenant_id": "integration-tenant",
             "project_id": "integration-project",
@@ -37,12 +38,15 @@ def _token(context: object | None = None) -> str:
             "permissions": ["runtime.tool.read"],
             "policy_version": "integration-policy-v1",
             "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+            "tool_overrides": {},
+            "tool_policy_version": "test-tools-v2",
             "iat": now,
             "exp": now + 60,
             "iss": ISSUER,
             "aud": AUDIENCE,
-            "scope": {"operation": "run-create", "assistant_id": "reference_agent",
+            "scope": {
+                "operation": "run-create",
+                "assistant_id": "reference_agent",
                 "tenant_id": "integration-tenant",
                 "project_id": "integration-project",
             },
@@ -70,14 +74,14 @@ def test_graphharbor_auth_rejects_anonymous_and_accepts_delegation(
 async def _test_auth(base_url: str) -> None:
     anonymous = get_client(url=base_url)
     try:
-        with pytest.raises(Exception):
+        with pytest.raises(httpx.HTTPError):
             await anonymous.threads.search()
     finally:
         await anonymous.aclose()
 
     invalid = get_client(url=base_url, headers={"Authorization": "Bearer invalid"})
     try:
-        with pytest.raises(Exception):
+        with pytest.raises(httpx.HTTPError):
             await invalid.threads.search()
     finally:
         await invalid.aclose()
@@ -87,7 +91,9 @@ async def _test_auth(base_url: str) -> None:
         headers={"Authorization": f"Bearer {_token()}"},
     )
     try:
-        thread = await client.threads.create(thread_id=str(uuid.uuid4()), if_exists="raise")
+        thread = await client.threads.create(
+            thread_id=str(uuid.uuid4()), if_exists="raise"
+        )
         assert thread
     finally:
         await client.aclose()
@@ -115,22 +121,26 @@ def test_graphharbor_context_hash_mismatch_records_terminal_run(
 
 async def _test_invalid_delegation_no_side_effect(base_url: str) -> None:
     thread_id = str(uuid.uuid4())
-    scope_claims = jwt.decode(_token(), SECRET, algorithms=["HS256"], options={"verify_signature": False})
+    scope_claims = jwt.decode(
+        _token(), SECRET, algorithms=["HS256"], options={"verify_signature": False}
+    )
     scope_claims["scope"] = {
         "tenant_id": "wrong-tenant",
         "project_id": "integration-project",
     }
     invalid_token = jwt.encode(scope_claims, SECRET, algorithm="HS256")
-    client = get_client(url=base_url, headers={"Authorization": f"Bearer {invalid_token}"})
+    client = get_client(
+        url=base_url, headers={"Authorization": f"Bearer {invalid_token}"}
+    )
     try:
-        with pytest.raises(Exception):
+        with pytest.raises(httpx.HTTPError):
             await client.threads.create(thread_id=thread_id, if_exists="raise")
     finally:
         await client.aclose()
 
     valid = get_client(url=base_url, headers={"Authorization": f"Bearer {_token()}"})
     try:
-        with pytest.raises(Exception):
+        with pytest.raises(httpx.HTTPError):
             await valid.threads.get(thread_id)
     finally:
         await valid.aclose()
@@ -157,7 +167,9 @@ async def _test_context_hash_mismatch(base_url: str) -> None:
         assert run_id
         await client.runs.join(thread_id, run_id)
         observed = await client.runs.get(thread_id, run_id)
-        status = observed.get("status") if isinstance(observed, dict) else observed.status
+        status = (
+            observed.get("status") if isinstance(observed, dict) else observed.status
+        )
         assert status in {"error", "failed"}
     finally:
         await client.aclose()
@@ -183,7 +195,9 @@ async def _test_unknown_context(base_url: str) -> None:
         run_id = run.get("run_id") if isinstance(run, dict) else run.run_id
         await client.runs.join(thread_id, run_id)
         observed = await client.runs.get(thread_id, run_id)
-        status = observed.get("status") if isinstance(observed, dict) else observed.status
+        status = (
+            observed.get("status") if isinstance(observed, dict) else observed.status
+        )
         assert status in {"error", "failed"}
     finally:
         await client.aclose()
@@ -208,7 +222,9 @@ async def _run_real_model(base_url: str) -> None:
         async for part in client.runs.stream(
             thread_id,
             "reference_agent",
-            input={"messages": [{"role": "user", "content": "Reply with exactly: e2e-ok"}]},
+            input={
+                "messages": [{"role": "user", "content": "Reply with exactly: e2e-ok"}]
+            },
             context=context,
             stream_mode=["values", "updates"],
             on_disconnect="cancel",

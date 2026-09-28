@@ -15,13 +15,21 @@ class ThreadAccessRecord(Base):
     __tablename__ = "thread_access"
     thread_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     project_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
-    owner_user_id: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
-    visibility: Mapped[str] = mapped_column(String(16), nullable=False, default="private")
+    owner_user_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, index=True
+    )
+    visibility: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="private"
+    )
     shared_actions: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     project_actions: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     takeovers: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
-    provisioning_status: Mapped[str] = mapped_column(String(16), nullable=False, default="ready")
-    reserved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    provisioning_status: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="ready"
+    )
+    reserved_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class RunRequestRecord(Base):
@@ -53,8 +61,13 @@ class RunRequestRecord(Base):
         String(32), nullable=False, default="submitted"
     )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now()
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(UTC), server_default=func.now(), onupdate=func.now()
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        server_default=func.now(),
+        onupdate=func.now(),
     )

@@ -1,21 +1,21 @@
 """Platform DB ACL and gateway checks; no Runtime ACL implementation is involved."""
 
-import tempfile
-import os
-import time
-import unittest
-import json
 import hashlib
 import hmac
+import json
+import os
 import statistics
-from datetime import datetime, timedelta, timezone
+import tempfile
+import time
+import unittest
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 from urllib.parse import urlparse
+from uuid import UUID, uuid4
 
 from sqlalchemy import create_engine, select, text
-from uuid import UUID, uuid4
 
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import (
@@ -334,7 +334,7 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
 
         with session_scope(self.factory) as session:
             session.get(ServiceAccountTokenRecord, token.id).expires_at = datetime.now(
-                timezone.utc
+                UTC
             ) - timedelta(seconds=1)
         self.assertEqual(allowed(), [])
         with session_scope(self.factory) as session:
@@ -518,10 +518,10 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
         self.upstream.delete_thread.assert_not_awaited()
 
     async def test_explicit_create_rejection_removes_reservation(self):
-        from platform_api.core.errors import UpstreamServiceError
         from platform_api.adapters.langgraph.sdk_client import (
             create_runtime_upstream_error,
         )
+        from platform_api.core.errors import UpstreamServiceError
 
         self.upstream.create_thread.side_effect = create_runtime_upstream_error(
             status_code=401,
@@ -941,6 +941,7 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_operator_catalog_refresh_does_not_grant_project_execution(self):
         import jwt
+
         from platform_api.config import Settings
         from platform_api.modules.runtime_catalog.application.service import (
             RuntimeCatalogService,
@@ -1044,8 +1045,9 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
         "explicit local PostgreSQL contract gate",
     )
     async def test_postgres_visible_candidates_keep_shares_and_takeover_expiry(self):
-        from platform_api.config import Settings
         from sqlalchemy.engine import make_url
+
+        from platform_api.config import Settings
 
         url = make_url(Settings().database_url)
         self.assertIn(url.host, {"localhost", "127.0.0.1", "::1"})

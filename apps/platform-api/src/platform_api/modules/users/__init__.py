@@ -3,13 +3,13 @@ from platform_api.modules.users.contracts import (
     ListUsersQuery,
     UpdateUserCommand,
 )
-from platform_api.modules.users.service import UsersService
 from platform_api.modules.users.schemas import (
     UserItem,
     UserPage,
     UserProjectItem,
     UserProjectPage,
 )
+from platform_api.modules.users.service import UsersService
 
 __all__ = [
     "CreateUserCommand",

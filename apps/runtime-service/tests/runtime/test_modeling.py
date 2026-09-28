@@ -26,7 +26,12 @@ def test_openai_compatible_preserves_reasoning(field: str, value: object) -> Non
     model = modeling.ChatOpenAIWithReasoning(model="test", api_key="test")
     response = {
         "model": "test",
-        "choices": [{"message": {"role": "assistant", "content": "OK", field: value}, "finish_reason": "stop"}],
+        "choices": [
+            {
+                "message": {"role": "assistant", "content": "OK", field: value},
+                "finish_reason": "stop",
+            }
+        ],
     }
     expected = value[0]["text"] if isinstance(value, list) else value
     message = model._create_chat_result(response).generations[0].message
@@ -34,7 +39,9 @@ def test_openai_compatible_preserves_reasoning(field: str, value: object) -> Non
     assert message.additional_kwargs["reasoning_content"] == expected
 
     chunk = model._convert_chunk_to_generation_chunk(
-        {"choices": [{"delta": {"role": "assistant", field: value}}]}, AIMessageChunk, None
+        {"choices": [{"delta": {"role": "assistant", field: value}}]},
+        AIMessageChunk,
+        None,
     )
     assert chunk is not None
     assert chunk.message.additional_kwargs["reasoning_content"] == expected
@@ -65,7 +72,10 @@ def test_build_deepseek_uses_proxy_settings(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(modeling, "ChatDeepSeek", fake_constructor)
     model = modeling.build_model(
         _resolved("deepseek:deepseek-chat"),
-        env={"DEEPSEEK_PROXY_API_KEY": "key", "DEEPSEEK_PROXY_URL": "https://deepseek.test/v1"},
+        env={
+            "DEEPSEEK_PROXY_API_KEY": "key",
+            "DEEPSEEK_PROXY_URL": "https://deepseek.test/v1",
+        },
     )
 
     assert model is not None
@@ -75,7 +85,9 @@ def test_build_deepseek_uses_proxy_settings(monkeypatch: pytest.MonkeyPatch) -> 
     assert calls["temperature"] == 0.0
 
 
-def test_build_deepseek_without_prefix_uses_proxy_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_deepseek_without_prefix_uses_proxy_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     calls: dict[str, object] = {}
 
     def fake_constructor(**kwargs: object) -> object:
@@ -85,7 +97,10 @@ def test_build_deepseek_without_prefix_uses_proxy_settings(monkeypatch: pytest.M
     monkeypatch.setattr(modeling, "ChatDeepSeek", fake_constructor)
     model = modeling.build_model(
         _resolved("DeepSeek-V4-Flash"),
-        env={"DEEPSEEK_PROXY_API_KEY": "key", "DEEPSEEK_PROXY_URL": "https://deepseek.test/v1"},
+        env={
+            "DEEPSEEK_PROXY_API_KEY": "key",
+            "DEEPSEEK_PROXY_URL": "https://deepseek.test/v1",
+        },
     )
 
     assert model is not None
@@ -142,7 +157,9 @@ def test_build_model_rejects_missing_provider_settings() -> None:
     assert error.value.code == "runtime.model.initialization_failed"
 
 
-def test_build_model_uses_standard_initializer_for_other_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_model_uses_standard_initializer_for_other_provider(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     calls: dict[str, object] = {}
 
     def fake_initializer(model: str, **kwargs: object) -> object:
@@ -152,7 +169,10 @@ def test_build_model_uses_standard_initializer_for_other_provider(monkeypatch: p
 
     monkeypatch.setattr(modeling, "init_chat_model", fake_initializer)
     modeling.build_model(_resolved("anthropic:claude-sonnet"), env={})
-    assert calls == {"model": "anthropic:claude-sonnet", "kwargs": {"temperature": 0.0, "max_tokens": 100}}
+    assert calls == {
+        "model": "anthropic:claude-sonnet",
+        "kwargs": {"temperature": 0.0, "max_tokens": 100},
+    }
 
 
 def test_build_model_does_not_accept_raw_context() -> None:
@@ -161,7 +181,9 @@ def test_build_model_does_not_accept_raw_context() -> None:
     assert error.value.code == "runtime.model.invalid_config"
 
 
-def test_build_model_supports_proxy_providers_and_protocols(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_build_model_supports_proxy_providers_and_protocols(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     deepseek_calls: dict[str, object] = {}
     openai_calls: dict[str, object] = {}
 
@@ -249,7 +271,9 @@ def test_build_model_supports_proxy_providers_and_protocols(monkeypatch: pytest.
     assert anthropic_calls["base_url"] == "https://api.anthropic.com/v1"
 
 
-def test_chat_openai_with_reasoning_exposes_streaming_reasoning_content_blocks() -> None:
+def test_chat_openai_with_reasoning_exposes_streaming_reasoning_content_blocks() -> (
+    None
+):
     from langchain_core.messages import AIMessageChunk
 
     model = modeling.ChatOpenAIWithReasoning(

@@ -50,6 +50,7 @@ def build_title_summarizer_agent(model: BaseChatModel | None = None) -> Any:
     if model is None:
         try:
             from dotenv import load_dotenv
+
             load_dotenv()
             # 同时也尝试加载上层或本包目录下的 .env
             env_path = os.path.join(os.path.dirname(__file__), "..", "..", "..", ".env")
@@ -101,7 +102,13 @@ def _format_messages_for_agent(
                 role = getattr(msg, "type", "系统")
         elif isinstance(msg, dict):
             raw_role = str(msg.get("role", "user")).lower()
-            role = "用户" if raw_role in ("user", "human") else "助手" if raw_role in ("assistant", "ai") else "系统"
+            role = (
+                "用户"
+                if raw_role in ("user", "human")
+                else "助手"
+                if raw_role in ("assistant", "ai")
+                else "系统"
+            )
             content = str(msg.get("content", "")).strip()
 
         if content:
@@ -163,7 +170,9 @@ async def summarize_thread_title(
         if msg_list:
             last_msg = msg_list[-1]
             raw_title = getattr(last_msg, "content", "")
-            if (not raw_title or not str(raw_title).strip()) and hasattr(last_msg, "additional_kwargs"):
+            if (not raw_title or not str(raw_title).strip()) and hasattr(
+                last_msg, "additional_kwargs"
+            ):
                 raw_title = last_msg.additional_kwargs.get("reasoning_content", "")
             cleaned = clean_generated_title(str(raw_title))
             if cleaned and cleaned != "新对话":

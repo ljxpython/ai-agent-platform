@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import unittest
 import json
+import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -9,7 +9,6 @@ import jwt
 from fastapi import FastAPI, Request
 
 from platform_api.config import Settings
-from platform_api.core.errors import ServiceUnavailableError
 from platform_api.core.context.models import (
     ActorContext,
     PlatformRequestContext,
@@ -17,6 +16,7 @@ from platform_api.core.context.models import (
     RequestContext,
     TenantContext,
 )
+from platform_api.core.errors import ServiceUnavailableError
 from platform_api.core.runtime_contract import (
     normalize_protocol_v2_command,
     normalize_protocol_v2_event_request,
@@ -36,6 +36,7 @@ class MessagePayloadBoundaryTest(unittest.IsolatedAsyncioTestCase):
         self,
     ):
         from unittest.mock import AsyncMock
+
         from platform_api.core.errors import BadRequestError
         from platform_api.modules.runtime_gateway.presentation.http import (
             enqueue_thread_message,

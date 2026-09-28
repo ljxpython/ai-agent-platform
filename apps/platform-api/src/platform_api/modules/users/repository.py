@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import desc, func, select
@@ -164,7 +164,7 @@ class SqlAlchemyUsersRepository:
             RefreshTokenRecord.user_id == user_id,
             RefreshTokenRecord.revoked_at.is_(None),
         )
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         changed = 0
         for record in self.session.scalars(stmt).all():
             record.revoked_at = now

@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 from fastapi import FastAPI
+
 from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import (
@@ -49,6 +50,7 @@ CASES = [
     ("POST", "/threads/{thread_id}/fork", "fork_thread"),
     ("PATCH", "/threads/{thread_id}/access-policy", "update_thread_access_policy"),
     ("GET", "/threads/{thread_id}/state", "get_thread_state"),
+    ("POST", "/threads/{thread_id}/state/checkpoint", "get_thread_state"),
     ("POST", "/threads/{thread_id}/state", "update_thread_state"),
     ("POST", "/threads/{thread_id}/history", "get_thread_history"),
     ("POST", "/threads/{thread_id}/runs", "create_thread_run"),
@@ -370,6 +372,8 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                                     kwargs["checkpoint_id"], "checkpoint-1"
                                 )
                                 self.assertIsNone(kwargs["title"])
+                            elif name == "get_thread_state":
+                                self.assertEqual(kwargs["params"], post_payload)
                             elif name not in {
                                 "takeover_thread",
                                 "reconcile_pending_thread",

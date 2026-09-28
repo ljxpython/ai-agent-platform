@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 from collections.abc import Mapping
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from enum import Enum
 from typing import Any
 from uuid import UUID
@@ -63,7 +63,7 @@ def log_event(
     **fields: Any,
 ) -> None:
     payload: dict[str, Any] = {
-        "ts": datetime.now(timezone.utc).isoformat(),
+        "ts": datetime.now(UTC).isoformat(),
         "level": logging.getLevelName(level).lower(),
         "logger": logger.name,
         "event": event,

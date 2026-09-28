@@ -9,10 +9,10 @@ from langchain_core.language_models.fake_chat_models import (
     FakeMessagesListChatModel,
 )
 from langchain_core.messages import AIMessage
-
-from runtime_service.services.reference_agent import agent
-from runtime_service.runtime.resolver import runtime_context_hash
 from support import BindableFakeChatModel
+
+from runtime_service.runtime.resolver import runtime_context_hash
+from runtime_service.services.reference_agent import agent
 
 
 def _auth_user() -> dict[str, object]:
@@ -27,9 +27,14 @@ def _auth_user() -> dict[str, object]:
         "runtime_policy": {
             "version": "reference-agent-local-v1",
             "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+            "tool_overrides": {},
+            "tool_policy_version": "test-tools-v2",
         },
-        "runtime_scope": {"operation": "read", "tenant_id": "local-tenant", "project_id": "reference-project"},
+        "runtime_scope": {
+            "operation": "read",
+            "tenant_id": "local-tenant",
+            "project_id": "reference-project",
+        },
         "runtime_context_hash": runtime_context_hash(None),
     }
 
@@ -71,9 +76,13 @@ def test_reference_agent_declares_reliability_middleware_in_order(monkeypatch) -
     ]
 
 
-def test_reference_agent_explicitly_composes_model_reliability_adapters(monkeypatch) -> None:
+def test_reference_agent_explicitly_composes_model_reliability_adapters(
+    monkeypatch,
+) -> None:
     captured: dict[str, object] = {}
-    monkeypatch.setattr(agent, "build_model", lambda _config: FakeListChatModel(responses=["ok"]))
+    monkeypatch.setattr(
+        agent, "build_model", lambda _config: FakeListChatModel(responses=["ok"])
+    )
 
     def capture_create_agent(**kwargs):
         captured.update(kwargs)
@@ -85,7 +94,9 @@ def test_reference_agent_explicitly_composes_model_reliability_adapters(monkeypa
             {
                 "configurable": {
                     "_runtime_model": BindableFakeChatModel(responses=["ok"]),
-                    "_runtime_fallback_model": BindableFakeChatModel(responses=["fallback"]),
+                    "_runtime_fallback_model": BindableFakeChatModel(
+                        responses=["fallback"]
+                    ),
                     "_runtime_model_retry": True,
                 }
             }
@@ -127,7 +138,12 @@ def _tool_call_response(name: str = "read_reference") -> AIMessage:
     return AIMessage(
         content="",
         tool_calls=[
-            {"name": name, "args": {"topic": "runtime"}, "id": "call-1", "type": "tool_call"}
+            {
+                "name": name,
+                "args": {"topic": "runtime"},
+                "id": "call-1",
+                "type": "tool_call",
+            }
         ],
     )
 
@@ -159,13 +175,17 @@ def test_reference_agent_graph_retries_idempotent_tool(monkeypatch) -> None:
         )
     )
 
-    result = asyncio.run(graph.ainvoke({"messages": [{"role": "user", "content": "read runtime"}]}))
+    result = asyncio.run(
+        graph.ainvoke({"messages": [{"role": "user", "content": "read runtime"}]})
+    )
 
     assert calls == 2
     assert result["messages"][-1].content == "done"
 
 
-def test_reference_agent_graph_surfaces_recoverable_tool_error_to_model(monkeypatch) -> None:
+def test_reference_agent_graph_surfaces_recoverable_tool_error_to_model(
+    monkeypatch,
+) -> None:
     from langchain.tools import tool
 
     @tool("read_reference")
@@ -179,14 +199,19 @@ def test_reference_agent_graph_surfaces_recoverable_tool_error_to_model(monkeypa
             {
                 "configurable": {
                     "_runtime_model": _BindableMessagesListChatModel(
-                        responses=[_tool_call_response(), AIMessage(content="recovered")]
+                        responses=[
+                            _tool_call_response(),
+                            AIMessage(content="recovered"),
+                        ]
                     )
                 }
             }
         )
     )
 
-    result = asyncio.run(graph.ainvoke({"messages": [{"role": "user", "content": "read runtime"}]}))
+    result = asyncio.run(
+        graph.ainvoke({"messages": [{"role": "user", "content": "read runtime"}]})
+    )
 
     tool_message = result["messages"][-2]
     assert tool_message.status == "error"
@@ -195,7 +220,9 @@ def test_reference_agent_graph_surfaces_recoverable_tool_error_to_model(monkeypa
     assert result["messages"][-1].content == "recovered"
 
 
-def test_reference_agent_graph_surfaces_tool_error_after_retry_budget(monkeypatch) -> None:
+def test_reference_agent_graph_surfaces_tool_error_after_retry_budget(
+    monkeypatch,
+) -> None:
     calls = 0
     from langchain.tools import tool
 
@@ -212,14 +239,19 @@ def test_reference_agent_graph_surfaces_tool_error_after_retry_budget(monkeypatc
             {
                 "configurable": {
                     "_runtime_model": _BindableMessagesListChatModel(
-                        responses=[_tool_call_response(), AIMessage(content="recovered")]
+                        responses=[
+                            _tool_call_response(),
+                            AIMessage(content="recovered"),
+                        ]
                     )
                 }
             }
         )
     )
 
-    result = asyncio.run(graph.ainvoke({"messages": [{"role": "user", "content": "read runtime"}]}))
+    result = asyncio.run(
+        graph.ainvoke({"messages": [{"role": "user", "content": "read runtime"}]})
+    )
 
     tool_message = result["messages"][-2]
     assert calls == 2
@@ -250,7 +282,9 @@ def test_reference_agent_graph_does_not_swallow_unknown_tool_error(monkeypatch) 
     )
 
     try:
-        asyncio.run(graph.ainvoke({"messages": [{"role": "user", "content": "read runtime"}]}))
+        asyncio.run(
+            graph.ainvoke({"messages": [{"role": "user", "content": "read runtime"}]})
+        )
     except RuntimeError as error:
         assert str(error) == "program defect"
     else:
@@ -270,7 +304,9 @@ def test_reference_agent_graph_uses_explicit_model_fallback() -> None:
         )
     )
 
-    result = asyncio.run(graph.ainvoke({"messages": [{"role": "user", "content": "hello"}]}))
+    result = asyncio.run(
+        graph.ainvoke({"messages": [{"role": "user", "content": "hello"}]})
+    )
 
     assert result["messages"][-1].content == "fallback result"
 
@@ -281,14 +317,18 @@ def test_reference_agent_graph_retries_model_when_explicitly_enabled() -> None:
         agent.get_agent(
             {
                 "configurable": {
-                    "_runtime_model": _RetryOnceModel(responses=[AIMessage(content="retry result")]),
+                    "_runtime_model": _RetryOnceModel(
+                        responses=[AIMessage(content="retry result")]
+                    ),
                     "_runtime_model_retry": True,
                 }
             }
         )
     )
 
-    result = asyncio.run(graph.ainvoke({"messages": [{"role": "user", "content": "hello"}]}))
+    result = asyncio.run(
+        graph.ainvoke({"messages": [{"role": "user", "content": "hello"}]})
+    )
 
     assert _RetryOnceModel.attempts == 2
     assert result["messages"][-1].content == "retry result"

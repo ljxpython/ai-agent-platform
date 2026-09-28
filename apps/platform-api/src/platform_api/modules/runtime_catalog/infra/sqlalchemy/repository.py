@@ -40,7 +40,7 @@ def _to_runtime_tool(record: RuntimeCatalogToolRecord) -> StoredRuntimeTool:
         tool_key=record.tool_key,
         name=record.name,
         source=record.source,
-        graph_ids=tuple(record.raw_payload_json.get('graph_ids', [])),
+        graph_ids=tuple(record.raw_payload_json.get("graph_ids", [])),
         description=record.description,
         sync_status=record.sync_status,
         last_seen_at=record.last_seen_at,
@@ -106,7 +106,9 @@ class SqlAlchemyRuntimeCatalogRepository:
         self.session.flush()
         return _to_runtime_model(record)
 
-    def update_configured_model(self, model_id, *, values: dict[str, Any]) -> StoredRuntimeModel | None:
+    def update_configured_model(
+        self, model_id, *, values: dict[str, Any]
+    ) -> StoredRuntimeModel | None:
         record = self.session.get(RuntimeCatalogModelRecord, model_id)
         if record is None:
             return None
@@ -181,7 +183,6 @@ class SqlAlchemyRuntimeCatalogRepository:
         )
         return [_to_runtime_graph(item) for item in self.session.scalars(stmt).all()]
 
-
     def upsert_tool_items(
         self,
         *,
@@ -246,7 +247,9 @@ class SqlAlchemyRuntimeCatalogRepository:
                 )
                 self.session.add(record)
 
-            record.display_name = str(item.get("display_name") or graph_key) or graph_key
+            record.display_name = (
+                str(item.get("display_name") or graph_key) or graph_key
+            )
             record.description = str(item.get("description") or "") or None
             record.source_type = source_type
             record.raw_payload_json = dict(item)
@@ -257,7 +260,6 @@ class SqlAlchemyRuntimeCatalogRepository:
 
         self.session.flush()
 
-
     def mark_missing_tools_deleted(
         self,
         *,
@@ -265,7 +267,9 @@ class SqlAlchemyRuntimeCatalogRepository:
         active_keys: set[str],
         synced_at: datetime,
     ) -> None:
-        stmt = select(RuntimeCatalogToolRecord).where(RuntimeCatalogToolRecord.runtime_id == runtime_id)
+        stmt = select(RuntimeCatalogToolRecord).where(
+            RuntimeCatalogToolRecord.runtime_id == runtime_id
+        )
         for record in self.session.scalars(stmt).all():
             if record.tool_key not in active_keys:
                 record.is_deleted = True
@@ -279,7 +283,9 @@ class SqlAlchemyRuntimeCatalogRepository:
         active_keys: set[str],
         synced_at: datetime,
     ) -> None:
-        stmt = select(RuntimeCatalogGraphRecord).where(RuntimeCatalogGraphRecord.runtime_id == runtime_id)
+        stmt = select(RuntimeCatalogGraphRecord).where(
+            RuntimeCatalogGraphRecord.runtime_id == runtime_id
+        )
         for record in self.session.scalars(stmt).all():
             if record.graph_key not in active_keys:
                 record.is_deleted = True

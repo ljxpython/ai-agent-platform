@@ -1,9 +1,10 @@
 """Apply signed restrictions to direct HTTP operations as well as Agent calls."""
+
 from fastapi import HTTPException
 
 from runtime_service.runtime.capabilities import graph_tools
-from runtime_service.runtime.resolver import parse_runtime_policy
 from runtime_service.runtime.errors import RuntimeResolutionError
+from runtime_service.runtime.resolver import parse_runtime_policy
 
 
 def require_tool_access(facts: dict, *names: str) -> None:

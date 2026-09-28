@@ -8,12 +8,13 @@ from unittest.mock import patch
 
 import anyio
 import anyio.lowlevel
+from starlette.requests import Request
+
 from platform_api.modules.runtime_gateway.presentation.http import (
     RuntimeStreamingResponse,
     _redact_protocol_event_stream,
     _runtime_sse_response,
 )
-from starlette.requests import Request
 
 
 async def _chunks(*values: bytes) -> AsyncIterator[bytes]:
@@ -77,8 +78,8 @@ class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
             )
             with patch(
                 "platform_api.modules.runtime_gateway.presentation.http.log_event",
-                side_effect=lambda _logger, event, **fields: events.append(
-                    (event, fields)
+                side_effect=lambda _logger, event, _events=events, **fields: (
+                    _events.append((event, fields))
                 ),
             ):
                 await response.stream_response(lambda _message: asyncio.sleep(0))
@@ -97,13 +98,14 @@ class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
         for disconnected, expected in ((True, "client_disconnect"), (False, "unknown")):
             reasons = []
             response = RuntimeStreamingResponse(
-                pending(), on_close=lambda reason, _: reasons.append(reason)
+                pending(),
+                on_close=lambda reason, _, _reasons=reasons: _reasons.append(reason),
             )
 
-            async def send(message):
+            async def send(message, _disconnected=disconnected, _response=response):
                 if message["type"] == "http.response.body":
-                    if disconnected:
-                        response._client_disconnected = True
+                    if _disconnected:
+                        _response._client_disconnected = True
                     raise asyncio.CancelledError()
 
             with self.assertRaises(asyncio.CancelledError):
@@ -121,11 +123,12 @@ class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
         ):
             reasons = []
             response = RuntimeStreamingResponse(
-                broken(), on_close=lambda reason, _: reasons.append(reason)
+                broken(),
+                on_close=lambda reason, _, _reasons=reasons: _reasons.append(reason),
             )
 
-            async def send(message):
-                if send_error and message["type"] == "http.response.body":
+            async def send(message, _send_error=send_error):
+                if _send_error and message["type"] == "http.response.body":
                     raise BrokenPipeError()
 
             with self.assertRaises((RuntimeError, BrokenPipeError)):

@@ -192,13 +192,11 @@ async def _run(args: argparse.Namespace, workspace_root: Path) -> dict[str, Any]
                 120,
                 process=api,
             )
-            state_after_api_restart = await client.get(
-                f"/threads/{first_thread}/state"
-            )
+            state_after_api_restart = await client.get(f"/threads/{first_thread}/state")
             state_after_api_restart.raise_for_status()
             observed_after_api_restart = (
-                (state_after_api_restart.json().get("values") or {}).get("observed")
-            )
+                state_after_api_restart.json().get("values") or {}
+            ).get("observed")
             if observed_after_api_restart != "workspace-ok":
                 raise AssertionError(
                     "API restart did not preserve the Thread Workspace state"

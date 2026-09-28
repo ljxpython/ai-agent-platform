@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from platform_api.core.normalization import ensure_dict
 
@@ -58,7 +59,11 @@ PROTOCOL_V2_EVENT_CHANNELS = {
 
 PROTOCOL_V2_RUN_DURABILITY = {"sync", "async", "exit"}
 PROTOCOL_V2_RUN_DISCONNECT = {"cancel", "continue"}
-PRIVATE_RUNTIME_STATE_KEYS = {"runtime_message_claim", "dear_memory_source", "dear_skill_snapshot"}
+PRIVATE_RUNTIME_STATE_KEYS = {
+    "runtime_message_claim",
+    "dear_memory_source",
+    "dear_skill_snapshot",
+}
 
 
 def reject_private_runtime_state(value: Any) -> None:
@@ -68,10 +73,16 @@ def reject_private_runtime_state(value: Any) -> None:
 
 def _validate_runtime_option_values(options: dict[str, Any]) -> None:
     mode = options.get("execution_mode")
-    if mode is not None and (not isinstance(mode, str) or mode not in {"flash", "standard", "pro", "ultra"}):
+    if mode is not None and (
+        not isinstance(mode, str) or mode not in {"flash", "standard", "pro", "ultra"}
+    ):
         raise ValueError("execution_mode must be flash, standard, pro or ultra")
     policy = options.get("access_policy")
-    if policy is not None and policy not in {"review", "workspace_write", "full_access"}:
+    if policy is not None and policy not in {
+        "review",
+        "workspace_write",
+        "full_access",
+    }:
         raise ValueError("access_policy must be review, workspace_write or full_access")
     string_keys = ("model_id", "system_prompt", "multimodal_parser_model_id")
     for key in string_keys:
@@ -99,6 +110,7 @@ def _validate_runtime_option_values(options: dict[str, Any]) -> None:
         or max_tokens <= 0
     ):
         raise ValueError("platform_runtime.max_tokens must be a positive integer")
+
 
 RUNTIME_CONTEXT_PROPERTY_TYPES: dict[str, str] = {
     "user_id": "string",
@@ -162,7 +174,12 @@ def normalize_runtime_contract(
     project_id: str,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     for value in (config, context, metadata, ensure_dict(config.get("configurable"))):
-        if set(value) & {"tools", "enable_tools", "tool_overrides", "tool_policy_version"}:
+        if set(value) & {
+            "tools",
+            "enable_tools",
+            "tool_overrides",
+            "tool_policy_version",
+        }:
             raise ValueError("Client tool configuration is not supported")
     next_context = strip_keys(context, TRUSTED_RUNTIME_CONTEXT_KEYS)
 
@@ -208,7 +225,9 @@ def normalize_runtime_payload(
     payload: dict[str, Any] | None,
     project_id: str,
 ) -> dict[str, Any]:
-    next_payload = strip_keys(normalize_runtime_object(payload), PROJECT_SCOPE_ALIAS_KEYS)
+    next_payload = strip_keys(
+        normalize_runtime_object(payload), PROJECT_SCOPE_ALIAS_KEYS
+    )
     reject_private_runtime_state(next_payload.get("input"))
     next_config, next_context, next_metadata = normalize_runtime_contract(
         config=normalize_runtime_object(next_payload.get("config")),
@@ -303,9 +322,7 @@ def normalize_protocol_v2_command(
 
     config = ensure_dict(run_params.get("config"))
     context = ensure_dict(run_params.get("context"))
-    unknown_context_keys = sorted(
-        set(context) - set(RUNTIME_OPTION_KEYS)
-    )
+    unknown_context_keys = sorted(set(context) - set(RUNTIME_OPTION_KEYS))
     if unknown_context_keys:
         raise ValueError(
             "Unsupported run.start context fields: " + ", ".join(unknown_context_keys)
@@ -324,7 +341,11 @@ def normalize_protocol_v2_command(
         ("config.configurable.platform_runtime", runtime_options),
     )
     for location, value in forbidden_locations:
-        forbidden = sorted(set(value).intersection((*TRUSTED_RUNTIME_CONTEXT_KEYS, "tools", "enable_tools")))
+        forbidden = sorted(
+            set(value).intersection(
+                (*TRUSTED_RUNTIME_CONTEXT_KEYS, "tools", "enable_tools")
+            )
+        )
         if forbidden:
             raise ValueError(
                 f"{location} must not contain trusted identity fields: "
@@ -377,7 +398,8 @@ def normalize_protocol_v2_event_request(payload: dict[str, Any]) -> dict[str, An
     unsupported_channels = sorted(
         channel
         for channel in channels
-        if channel not in PROTOCOL_V2_EVENT_CHANNELS and not channel.startswith("custom:")
+        if channel not in PROTOCOL_V2_EVENT_CHANNELS
+        and not channel.startswith("custom:")
     )
     if unsupported_channels:
         raise ValueError(
@@ -393,7 +415,9 @@ def normalize_protocol_v2_event_request(payload: dict[str, Any]) -> dict[str, An
             for namespace in namespaces
         )
     ):
-        raise ValueError("Protocol v2 event namespaces must be an array of string arrays")
+        raise ValueError(
+            "Protocol v2 event namespaces must be an array of string arrays"
+        )
 
     for key in ("depth", "since"):
         value = payload.get(key)
@@ -405,17 +429,16 @@ def normalize_protocol_v2_event_request(payload: dict[str, Any]) -> dict[str, An
 
 
 def build_execution_config_schema_properties() -> dict[str, dict[str, Any]]:
-    return {
-        key: dict(value)
-        for key, value in EXECUTION_CONFIG_PROPERTIES.items()
-    }
+    return {key: dict(value) for key, value in EXECUTION_CONFIG_PROPERTIES.items()}
 
 
 def build_runtime_context_schema_properties(
     *,
     keys: Iterable[str] | None = None,
 ) -> dict[str, dict[str, Any]]:
-    selected_keys = tuple(keys) if keys is not None else tuple(RUNTIME_CONTEXT_PROPERTY_TYPES)
+    selected_keys = (
+        tuple(keys) if keys is not None else tuple(RUNTIME_CONTEXT_PROPERTY_TYPES)
+    )
     return {
         key: {
             "type": RUNTIME_CONTEXT_PROPERTY_TYPES[key],

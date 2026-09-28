@@ -30,9 +30,11 @@ with session_scope(session_factory) as session:
 ```python
 from starlette.concurrency import run_in_threadpool
 
+
 def read_config():
     with session_scope(session_factory) as session:
         return load_config(session)  # 返回已物化结果，不返回 Session 或懒加载 ORM 对象
+
 
 config = await run_in_threadpool(read_config)
 result = await upstream.request(config)

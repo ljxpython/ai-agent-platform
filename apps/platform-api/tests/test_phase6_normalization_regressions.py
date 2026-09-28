@@ -3,11 +3,13 @@ from __future__ import annotations
 import importlib
 import unittest
 from types import SimpleNamespace
-from unittest.mock import Mock, AsyncMock
-from platform_api.core.context.models import ActorContext
-from tests.thread_acl_fixture import thread_acl_factory
+from unittest.mock import AsyncMock, Mock
 
-from platform_api.modules.runtime_gateway.application.service import RuntimeGatewayService
+from platform_api.core.context.models import ActorContext
+from platform_api.modules.runtime_gateway.application.service import (
+    RuntimeGatewayService,
+)
+from tests.thread_acl_fixture import thread_acl_factory
 
 
 class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase):
@@ -16,17 +18,32 @@ class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase
         repository_module = importlib.import_module(
             "platform_api.modules.projects.repository"
         )
-        service_module = importlib.import_module("platform_api.modules.runtime_gateway.application.service")
+        service_module = importlib.import_module(
+            "platform_api.modules.runtime_gateway.application.service"
+        )
 
         self.assertIsNotNone(models_module)
         self.assertTrue(hasattr(repository_module, "SqlAlchemyProjectsRepository"))
         self.assertTrue(hasattr(service_module, "RuntimeGatewayService"))
 
-    async def test_create_thread_promotes_graph_id_from_legacy_graph_metadata(self) -> None:
-        actor = ActorContext(user_id="owner", project_roles={"project-1": ("project_executor",)})
-        upstream = SimpleNamespace(create_thread=AsyncMock(side_effect=lambda payload: {"thread_id": payload["thread_id"], "metadata": payload["metadata"]}))
+    async def test_create_thread_promotes_graph_id_from_legacy_graph_metadata(
+        self,
+    ) -> None:
+        actor = ActorContext(
+            user_id="owner", project_roles={"project-1": ("project_executor",)}
+        )
+        upstream = SimpleNamespace(
+            create_thread=AsyncMock(
+                side_effect=lambda payload: {
+                    "thread_id": payload["thread_id"],
+                    "metadata": payload["metadata"],
+                }
+            )
+        )
         service = RuntimeGatewayService(
-            session_factory=thread_acl_factory(self, actor=actor, project_id="project-1"),
+            session_factory=thread_acl_factory(
+                self, actor=actor, project_id="project-1"
+            ),
             upstream=upstream,
         )
         service._prepare_project_scope = Mock()  # type: ignore[method-assign]
@@ -55,9 +72,6 @@ class RuntimeGatewayNormalizationRegressionTest(unittest.IsolatedAsyncioTestCase
                 "if_exists": "raise",
             }
         )
-
-
-
 
 
 if __name__ == "__main__":

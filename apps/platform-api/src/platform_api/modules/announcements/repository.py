@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 
-from platform_api.modules.announcements.records import (
-    StoredAnnouncement,
-    StoredAnnouncementFeedItem,
-)
 from platform_api.modules.announcements.models import (
     AnnouncementReadRecord,
     AnnouncementRecord,
+)
+from platform_api.modules.announcements.records import (
+    StoredAnnouncement,
+    StoredAnnouncementFeedItem,
 )
 
 
@@ -215,7 +215,7 @@ class SqlAlchemyAnnouncementsRepository:
             AnnouncementReadRecord.user_id == user_id,
         )
         record = self.session.scalar(stmt)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         if record is None:
             record = AnnouncementReadRecord(
                 announcement_id=announcement_id,

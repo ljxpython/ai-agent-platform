@@ -23,7 +23,9 @@ class _Graph:
         return self
 
 
-def test_disabled_returns_original_graph_without_sdk(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_disabled_returns_original_graph_without_sdk(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     graph = _Graph()
     monkeypatch.delenv("LANGFUSE_ENABLED", raising=False)
     assert langfuse.with_langfuse_tracing(graph, {}, graph_id="demo") is graph  # type: ignore[arg-type]
@@ -51,7 +53,9 @@ def test_initialize_reuses_process_client(monkeypatch: pytest.MonkeyPatch) -> No
     assert langfuse.initialize_langfuse(env=env) is client
 
 
-def test_binding_merges_config_and_trusted_metadata(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_binding_merges_config_and_trusted_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     graph = _Graph()
     callback = object()
     monkeypatch.setattr(langfuse, "_new_callback", lambda: callback)
@@ -64,7 +68,11 @@ def test_binding_merges_config_and_trusted_metadata(monkeypatch: pytest.MonkeyPa
             "configurable": {"thread_id": "thread-1"},
         },
         graph_id="demo",
-        trusted_metadata={"user_id": "trusted", "tenant_id": "tenant-1", "request_id": "trusted-request"},
+        trusted_metadata={
+            "user_id": "trusted",
+            "tenant_id": "tenant-1",
+            "request_id": "trusted-request",
+        },
     )
     assert bound is graph
     assert graph.bound is not None
@@ -84,7 +92,9 @@ def test_binding_merges_config_and_trusted_metadata(monkeypatch: pytest.MonkeyPa
     assert graph.bound["tags"] == ["environment", "runtime-service", "demo"]
 
 
-def test_untrusted_identity_is_not_added_to_trace(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_untrusted_identity_is_not_added_to_trace(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     graph = _Graph()
     monkeypatch.setattr(langfuse, "_new_callback", lambda: object())
     langfuse.with_langfuse_tracing(
@@ -114,16 +124,26 @@ def test_untrusted_identity_is_not_added_to_trace(monkeypatch: pytest.MonkeyPatc
 
 def test_dear_assembly_metadata_requires_trusted_boundary(monkeypatch):
     monkeypatch.setattr(langfuse, "_new_callback", lambda: object())
-    fields = {"policy_hash": "policy", "skills_hash": "skills", "execution_mode": "ultra",
-              "effective_reasoning": {"reasoning": "model_default"}}
+    fields = {
+        "policy_hash": "policy",
+        "skills_hash": "skills",
+        "execution_mode": "ultra",
+        "effective_reasoning": {"reasoning": "model_default"},
+    }
     graph = _Graph()
-    langfuse.with_langfuse_tracing(graph, {"metadata": fields}, graph_id="dearflow_agent")
+    langfuse.with_langfuse_tracing(
+        graph, {"metadata": fields}, graph_id="dearflow_agent"
+    )
     assert not set(fields) & graph.bound["metadata"].keys()
-    langfuse.with_langfuse_tracing(graph, {}, graph_id="dearflow_agent", trusted_metadata=fields)
+    langfuse.with_langfuse_tracing(
+        graph, {}, graph_id="dearflow_agent", trusted_metadata=fields
+    )
     assert all(graph.bound["metadata"][key] == value for key, value in fields.items())
 
 
-def test_diagnostics_include_runtime_identifiers(caplog: pytest.LogCaptureFixture) -> None:
+def test_diagnostics_include_runtime_identifiers(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     callback = langfuse._RuntimeDiagnosticsCallback(
         "demo",
         {"run_id": "run-1", "thread_id": "thread-1", "request_id": "request-1"},
@@ -131,7 +151,9 @@ def test_diagnostics_include_runtime_identifiers(caplog: pytest.LogCaptureFixtur
     with caplog.at_level("INFO"):
         callback.on_chain_start({}, {}, run_id="callback-run")
         callback.on_chain_end({}, run_id="callback-run")
-    record = next(item for item in caplog.records if item.message == "runtime_run_completed")
+    record = next(
+        item for item in caplog.records if item.message == "runtime_run_completed"
+    )
     assert record.run_id == "run-1"
     assert record.thread_id == "thread-1"
     assert record.request_id == "request-1"
@@ -155,24 +177,35 @@ def test_diagnostics_classify_terminal_failures(
     assert any(record.status == status for record in caplog.records)
 
 
-def test_diagnostics_count_tool_error_and_tokens(caplog: pytest.LogCaptureFixture) -> None:
+def test_diagnostics_count_tool_error_and_tokens(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     callback = langfuse._RuntimeDiagnosticsCallback(
         "demo", {"run_id": "run-1", "thread_id": "thread-1"}
     )
     before = langfuse.get_observability_metrics()
     with caplog.at_level("WARNING"):
-        callback.on_tool_error(ValueError("bad input"), run_id="tool-run", name="read_reference")
-    callback.on_llm_end(type("Response", (), {"llm_output": {"token_usage": {"total_tokens": 3}}})(), run_id="llm-run")
+        callback.on_tool_error(
+            ValueError("bad input"), run_id="tool-run", name="read_reference"
+        )
+    callback.on_llm_end(
+        type("Response", (), {"llm_output": {"token_usage": {"total_tokens": 3}}})(),
+        run_id="llm-run",
+    )
     after = langfuse.get_observability_metrics()
     assert after["tool_error"] == before.get("tool_error", 0) + 1
     assert after["token_total"] == before.get("token_total", 0) + 3
-    record = next(item for item in caplog.records if item.message == "runtime_tool_error")
+    record = next(
+        item for item in caplog.records if item.message == "runtime_tool_error"
+    )
     assert record.error_category == "ValueError"
     assert record.tool_name == "read_reference"
 
 
 def test_sensitive_values_are_redacted_and_long_content_is_dropped() -> None:
-    assert langfuse._redact({"Authorization": "Bearer secret", "nested": {"password": "x"}}) == {
+    assert langfuse._redact(
+        {"Authorization": "Bearer secret", "nested": {"password": "x"}}
+    ) == {
         "Authorization": "[REDACTED]",
         "nested": {"password": "[REDACTED]"},
     }
@@ -210,7 +243,9 @@ def test_export_failure_matrix_records_stable_drop_metric(
         langfuse._record_export_error(error)
     assert langfuse.get_observability_metrics()["event_dropped"] == before + 1
     record = next(
-        item for item in caplog.records if item.message == "runtime_langfuse_event_dropped"
+        item
+        for item in caplog.records
+        if item.message == "runtime_langfuse_event_dropped"
     )
     assert record.error_category == category
 
@@ -258,7 +293,9 @@ def test_sdk_queue_saturation_drops_without_blocking_run(
                 tracer.start_span(f"queued-{index}").end()
             elapsed = time.monotonic() - started
         assert elapsed < 0.2
-        assert any("Queue full, dropping Span" in record.message for record in caplog.records)
+        assert any(
+            "Queue full, dropping Span" in record.message for record in caplog.records
+        )
     finally:
         exporter.release.set()
         processor.shutdown()
@@ -352,7 +389,9 @@ def test_otlp_http_503_is_recorded_without_raising(
         server.server_close()
 
 
-def test_concurrent_runs_keep_metadata_isolated(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_concurrent_runs_keep_metadata_isolated(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(langfuse, "_new_callback", lambda: object())
     results: list[dict[str, object]] = []
 
@@ -366,7 +405,9 @@ def test_concurrent_runs_keep_metadata_isolated(monkeypatch: pytest.MonkeyPatch)
         assert graph.bound is not None
         results.append(graph.bound["metadata"])  # type: ignore[arg-type]
 
-    threads = [threading.Thread(target=bind, args=(f"thread-{index}",)) for index in range(2)]
+    threads = [
+        threading.Thread(target=bind, args=(f"thread-{index}",)) for index in range(2)
+    ]
     for thread in threads:
         thread.start()
     for thread in threads:
@@ -412,12 +453,18 @@ def test_close_flush_error_is_fail_soft(monkeypatch: pytest.MonkeyPatch) -> None
     assert after["event_dropped"] == before.get("event_dropped", 0) + 1
 
 
-def test_app_lifespan_owns_initialize_and_close(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_app_lifespan_owns_initialize_and_close(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from runtime_service import webapp
 
     calls: list[str] = []
     monkeypatch.setattr(webapp, "initialize_langfuse", lambda: calls.append("start"))
-    monkeypatch.setattr(webapp, "close_langfuse", lambda *, timeout_seconds: calls.append(f"close:{timeout_seconds}"))
+    monkeypatch.setattr(
+        webapp,
+        "close_langfuse",
+        lambda *, timeout_seconds: calls.append(f"close:{timeout_seconds}"),
+    )
 
     async def run() -> None:
         async with webapp.lifespan(webapp.app):

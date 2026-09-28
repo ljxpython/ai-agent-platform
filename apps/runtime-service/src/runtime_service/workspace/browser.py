@@ -6,7 +6,6 @@ import codecs
 import hashlib
 import json
 import os
-import re
 import stat
 from datetime import UTC, datetime
 from pathlib import Path
@@ -223,7 +222,9 @@ class WorkspaceBrowser:
         with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as zf:
             for parent, dirs, files in os.walk(self.root, followlinks=False):
                 # 过滤常见无关隐藏目录
-                dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
+                dirs[:] = [
+                    d for d in dirs if not d.startswith(".") and d != "__pycache__"
+                ]
                 for f in sorted(files):
                     if f.startswith(".") or f == ".DS_Store":
                         continue

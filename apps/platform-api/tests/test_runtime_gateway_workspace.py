@@ -18,13 +18,13 @@ import httpx
 import jwt
 import uvicorn
 from fastapi import FastAPI
-from tests.thread_acl_fixture import thread_acl_factory
+
 from platform_api.adapters.langgraph.runtime_gateway_upstream import (
     LangGraphRuntimeGatewayUpstream,
 )
-from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
 from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import register_exception_handlers
+from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
 )
@@ -33,6 +33,7 @@ from platform_api.modules.runtime_gateway.presentation.http import (
     get_runtime_gateway_service,
     router,
 )
+from tests.thread_acl_fixture import thread_acl_factory
 
 SECRET = "workspace-test-secret-with-at-least-32-bytes"
 

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from starlette.concurrency import run_in_threadpool
-
 import ipaddress
 from collections.abc import Mapping
 from datetime import UTC, datetime
@@ -10,6 +8,7 @@ from urllib.parse import quote, urlparse
 from uuid import UUID
 
 from sqlalchemy.orm import Session, sessionmaker
+from starlette.concurrency import run_in_threadpool
 
 from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext

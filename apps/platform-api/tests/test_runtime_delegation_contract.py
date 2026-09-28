@@ -395,7 +395,7 @@ class RuntimeDelegationContractTest(unittest.TestCase):
         )
         results = self._verify(cases)
         for (operation, (_, _, _, expected_action)), result in zip(
-            native.items(), results
+            native.items(), results, strict=False
         ):
             with self.subTest(operation=operation):
                 self.assertEqual(result["acl_action"], expected_action)

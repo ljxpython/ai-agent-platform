@@ -1,8 +1,9 @@
 """Real process restart against an explicitly provided disposable PostgreSQL DB."""
+
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
 from uuid import uuid4
 
 import pytest
@@ -11,7 +12,9 @@ import pytest
 def test_process_restart_preserves_pending_approval_and_workspace(tmp_path):
     dsn = os.environ.get("DEAR_TEST_DATABASE_URI")
     if not dsn:
-        pytest.skip("DEAR_TEST_DATABASE_URI must point at a disposable PostgreSQL database")
+        pytest.skip(
+            "DEAR_TEST_DATABASE_URI must point at a disposable PostgreSQL database"
+        )
     script = """
 import asyncio, os
 import faulthandler
@@ -51,14 +54,26 @@ asyncio.run(run())
 faulthandler.cancel_dump_traceback_later()
 """
     env = {
-        **os.environ, "RUNTIME_WORKSPACE_ROOT": str(tmp_path),
+        **os.environ,
+        "RUNTIME_WORKSPACE_ROOT": str(tmp_path),
         "DEAR_TEST_THREAD": str(uuid4()),
-        "PYTHONPATH": os.pathsep.join([str(Path("src").resolve()), str(Path("tests").resolve()), str(Path(__file__).parent.resolve())]),
+        "PYTHONPATH": os.pathsep.join(
+            [
+                str(Path("src").resolve()),
+                str(Path("tests").resolve()),
+                str(Path(__file__).parent.resolve()),
+            ]
+        ),
     }
     for stage in ("pause", "resume"):
         try:
-            result = subprocess.run([sys.executable, "-c", script], env={**env, "DEAR_TEST_STAGE": stage},
-                                    capture_output=True, text=True, timeout=240)
+            result = subprocess.run(
+                [sys.executable, "-c", script],
+                env={**env, "DEAR_TEST_STAGE": stage},
+                capture_output=True,
+                text=True,
+                timeout=240,
+            )
         except subprocess.TimeoutExpired as exc:
             pytest.fail(str(exc.stderr)[-6000:])
         assert result.returncode == 0, result.stderr

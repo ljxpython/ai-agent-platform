@@ -103,14 +103,12 @@ class LangGraphRunsSdkAdapter:
         "action",
     )
 
-
     _LIST_FIELDS = (
         "limit",
         "offset",
         "status",
         "select",
     )
-
 
     _JOIN_STREAM_FIELDS = (
         "cancel_on_disconnect",
@@ -127,7 +125,9 @@ class LangGraphRunsSdkAdapter:
         forwarded_headers: Mapping[str, str] | None = None,
     ) -> None:
         self._http = LangGraphRuntimeClient(
-            base_url=base_url, api_key=api_key, timeout_seconds=timeout_seconds or 30,
+            base_url=base_url,
+            api_key=api_key,
+            timeout_seconds=timeout_seconds or 30,
             forwarded_headers=forwarded_headers,
         )
         self._client = get_langgraph_client(
@@ -150,26 +150,39 @@ class LangGraphRunsSdkAdapter:
                 # accepts it and uses the saved value when replaying the Run.
                 headers = create_payload.pop("headers", None)
                 return await self._http.request_json(
-                    "POST", f"/threads/{thread_id}/runs",
-                    payload={"assistant_id": assistant_id, **create_payload, "version": payload["version"]},
+                    "POST",
+                    f"/threads/{thread_id}/runs",
+                    payload={
+                        "assistant_id": assistant_id,
+                        **create_payload,
+                        "version": payload["version"],
+                    },
                     forwarded_headers=headers,
                 )
-            return await self._client.runs.create(thread_id, assistant_id, **create_payload)
+            return await self._client.runs.create(
+                thread_id, assistant_id, **create_payload
+            )
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_run_request_failed"
+            )
 
-
-    async def stream(self, thread_id: str, payload: dict[str, Any]) -> AsyncIterator[bytes]:
+    async def stream(
+        self, thread_id: str, payload: dict[str, Any]
+    ) -> AsyncIterator[bytes]:
         assistant_id = payload["assistant_id"]
         stream_payload = {
             key: payload[key] for key in self._STREAM_FIELDS if key in payload
         }
         try:
-            event_iter = self._client.runs.stream(thread_id, assistant_id, **stream_payload)
+            event_iter = self._client.runs.stream(
+                thread_id, assistant_id, **stream_payload
+            )
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_stream_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_run_stream_failed"
+            )
         return _sse_stream(event_iter)
-
 
     async def wait(self, thread_id: str, payload: dict[str, Any]) -> Any:
         assistant_id = payload["assistant_id"]
@@ -179,14 +192,17 @@ class LangGraphRunsSdkAdapter:
         try:
             return await self._client.runs.wait(thread_id, assistant_id, **wait_payload)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
-
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_run_request_failed"
+            )
 
     async def get(self, thread_id: str, run_id: str) -> Any:
         try:
             return await self._client.runs.get(thread_id, run_id)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_run_request_failed"
+            )
 
     async def cancel(
         self,
@@ -202,8 +218,9 @@ class LangGraphRunsSdkAdapter:
         try:
             return await self._client.runs.cancel(thread_id, run_id, **cancel_payload)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
-
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_run_request_failed"
+            )
 
     async def list(self, thread_id: str, payload: dict[str, Any] | None = None) -> Any:
         list_payload = {
@@ -214,19 +231,25 @@ class LangGraphRunsSdkAdapter:
         try:
             return await self._client.runs.list(thread_id, **list_payload)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_run_request_failed"
+            )
 
     async def delete(self, thread_id: str, run_id: str) -> Any:
         try:
             return await self._client.runs.delete(thread_id, run_id)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_run_request_failed"
+            )
 
     async def join(self, thread_id: str, run_id: str) -> Any:
         try:
             return await self._client.runs.join(thread_id, run_id)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_run_request_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_run_request_failed"
+            )
 
     async def join_stream(
         self,
@@ -244,7 +267,10 @@ class LangGraphRunsSdkAdapter:
         join_stream_payload["cancel_on_disconnect"] = "false"
         last_event_id = join_stream_payload.pop("last_event_id", None)
         return await self._http.stream(
-            "GET", f"/threads/{thread_id}/runs/{run_id}/stream",
+            "GET",
+            f"/threads/{thread_id}/runs/{run_id}/stream",
             params=join_stream_payload,
-            forwarded_headers={"Last-Event-ID": str(last_event_id)} if last_event_id is not None else None,
+            forwarded_headers={"Last-Event-ID": str(last_event_id)}
+            if last_event_id is not None
+            else None,
         )

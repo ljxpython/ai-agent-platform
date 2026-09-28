@@ -1,7 +1,12 @@
 """Dynamic clarification; no side effects before interrupt."""
+
 from langchain_core.tools import tool
 from langgraph.types import interrupt
-from runtime_service.services.dearflow_agent.schemas import ClarificationRequest, validate_answer
+
+from runtime_service.services.dearflow_agent.schemas import (
+    ClarificationRequest,
+    validate_answer,
+)
 
 
 @tool

@@ -64,7 +64,9 @@ async def mcp_probe(state: MCPProbeState, config: RunnableConfig) -> MCPProbeSta
             config=config,
             principal=facts.principal,
         )
-        tool = next((candidate for candidate in tools if candidate.name == "mcp_read"), None)
+        tool = next(
+            (candidate for candidate in tools if candidate.name == "mcp_read"), None
+        )
         if tool is None:
             raise RuntimeResolutionError("runtime.mcp.recovery_failed")
         result = await tool.ainvoke({"topic": state.get("topic", "GraphHarbor")})

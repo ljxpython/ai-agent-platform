@@ -6,9 +6,10 @@ from alembic import command
 from alembic.autogenerate import compare_metadata
 from alembic.config import Config
 from alembic.migration import MigrationContext
+from sqlalchemy import create_engine, inspect
+
 from platform_api.core.db.base import Base
 from platform_api.core.db.init_db import import_core_models
-from sqlalchemy import create_engine, inspect
 
 
 class PlatformBaselineTest(unittest.TestCase):
@@ -37,13 +38,29 @@ class PlatformBaselineTest(unittest.TestCase):
                     column["name"] for column in inspect(engine).get_columns("agents")
                 }
                 self.assertTrue(
-                    {"status", "context", "created_by", "updated_by"}
-                    <= columns
+                    {"status", "context", "created_by", "updated_by"} <= columns
                 )
-                self.assertFalse({"config", "metadata_json", "runtime_base_url"} & columns)
-                model_columns = {c["name"] for c in inspect(engine).get_columns("runtime_catalog_models")}
-                self.assertFalse({"runtime_id", "model_key", "sync_status", "is_default_runtime", "raw_payload_json"} & model_columns)
-                self.assertIn("config_snapshot", {c["name"] for c in inspect(engine).get_columns("run_requests")})
+                self.assertFalse(
+                    {"config", "metadata_json", "runtime_base_url"} & columns
+                )
+                model_columns = {
+                    c["name"]
+                    for c in inspect(engine).get_columns("runtime_catalog_models")
+                }
+                self.assertFalse(
+                    {
+                        "runtime_id",
+                        "model_key",
+                        "sync_status",
+                        "is_default_runtime",
+                        "raw_payload_json",
+                    }
+                    & model_columns
+                )
+                self.assertIn(
+                    "config_snapshot",
+                    {c["name"] for c in inspect(engine).get_columns("run_requests")},
+                )
                 self.assertIn("runtime_tool_restrictions", tables)
                 self.assertNotIn("project_tool_policies", tables)
                 with self.assertRaisesRegex(RuntimeError, "not recoverable"):

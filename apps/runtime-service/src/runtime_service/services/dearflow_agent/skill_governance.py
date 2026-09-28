@@ -1,15 +1,16 @@
 """One current private skill per owner; atomic writes with opaque CAS revisions."""
+
 from __future__ import annotations
 
 import hashlib
 import io
 import json
-from datetime import datetime, timezone
-from uuid import uuid4
 import re
 import stat
 import zipfile
+from datetime import UTC, datetime
 from pathlib import PurePosixPath
+from uuid import uuid4
 
 import yaml
 from psycopg.types.json import Jsonb
@@ -38,12 +39,30 @@ def inspect_package(raw: bytes) -> dict:
                 filename = entry.filename[:-1] if entry.is_dir() else entry.filename
                 path = PurePosixPath(filename)
                 total += entry.file_size
-                if (path.is_absolute() or ".." in path.parts or "\\" in entry.filename
-                        or not filename or str(path) != filename or filename in seen
-                        or stat.S_ISLNK(entry.external_attr >> 16) or entry.flag_bits & 1
-                        or any(p.startswith(".") for p in path.parts)
-                        or not entry.is_dir() and path.suffix not in {".md", ".txt", ".json", ".py", ".html", ".css", ".js", ".yaml", ".yml"}
-                        ):
+                if (
+                    path.is_absolute()
+                    or ".." in path.parts
+                    or "\\" in entry.filename
+                    or not filename
+                    or str(path) != filename
+                    or filename in seen
+                    or stat.S_ISLNK(entry.external_attr >> 16)
+                    or entry.flag_bits & 1
+                    or any(p.startswith(".") for p in path.parts)
+                    or not entry.is_dir()
+                    and path.suffix
+                    not in {
+                        ".md",
+                        ".txt",
+                        ".json",
+                        ".py",
+                        ".html",
+                        ".css",
+                        ".js",
+                        ".yaml",
+                        ".yml",
+                    }
+                ):
                     raise DocumentError("unsafe_skill_package")
                 seen.add(filename)
                 if entry.is_dir():
@@ -63,16 +82,37 @@ def inspect_package(raw: bytes) -> dict:
         meta = yaml.safe_load(parts[1])
     except yaml.YAMLError as exc:
         raise DocumentError("invalid_skill_frontmatter") from exc
-    if (not isinstance(meta, dict) or not isinstance(meta.get("name"), str)
-            or not SLUG.fullmatch(meta["name"]) or len(meta["name"]) > 64
-            or not isinstance(meta.get("description"), str) or not 1 <= len(meta["description"]) <= 1000):
+    if (
+        not isinstance(meta, dict)
+        or not isinstance(meta.get("name"), str)
+        or not SLUG.fullmatch(meta["name"])
+        or len(meta["name"]) > 64
+        or not isinstance(meta.get("description"), str)
+        or not 1 <= len(meta["description"]) <= 1000
+    ):
         raise DocumentError("invalid_skill_metadata")
-    digest = hashlib.sha256(json.dumps(entries, sort_keys=True, ensure_ascii=False).encode()).hexdigest()
+    digest = hashlib.sha256(
+        json.dumps(entries, sort_keys=True, ensure_ascii=False).encode()
+    ).hexdigest()
     text = "\n".join(entries.values())
-    warnings = [pattern for pattern in (r"(?i)ignore.{0,30}(previous|system)", r"(?i)(api[_-]?key|password)\s*[:=]\s*['\"]?\S{10,}",
-                                        r"(?i)npx\s+skills\s+add", r"(?i)curl.+\|\s*(bash|sh)") if re.search(pattern, text)]
-    return {"slug": meta["name"], "name": meta["name"], "description": meta["description"],
-            "digest": digest, "files": entries, "warnings": warnings}
+    warnings = [
+        pattern
+        for pattern in (
+            r"(?i)ignore.{0,30}(previous|system)",
+            r"(?i)(api[_-]?key|password)\s*[:=]\s*['\"]?\S{10,}",
+            r"(?i)npx\s+skills\s+add",
+            r"(?i)curl.+\|\s*(bash|sh)",
+        )
+        if re.search(pattern, text)
+    ]
+    return {
+        "slug": meta["name"],
+        "name": meta["name"],
+        "description": meta["description"],
+        "digest": digest,
+        "files": entries,
+        "warnings": warnings,
+    }
 
 
 class SkillStorage:
@@ -80,19 +120,27 @@ class SkillStorage:
         self.dsn = dsn
 
     def _get(self, db, scope, slug):
-        row = db.execute("SELECT document FROM dear_skills WHERE tenant_id=%s AND project_id=%s AND user_id=%s AND slug=%s", (*scope, slug)).fetchone()
+        row = db.execute(
+            "SELECT document FROM dear_skills WHERE tenant_id=%s AND project_id=%s AND user_id=%s AND slug=%s",
+            (*scope, slug),
+        ).fetchone()
         if row is None:
             raise DocumentError("skill_not_found", 404)
         return row["document"]
 
     @staticmethod
     def summary(doc):
-        return {**{k: v for k, v in doc.items() if k != "files"},
-                "manifest": [{"path": k, "size": len(v.encode()), "readable": True} for k, v in sorted(doc["files"].items())]}
+        return {
+            **{k: v for k, v in doc.items() if k != "files"},
+            "manifest": [
+                {"path": k, "size": len(v.encode()), "readable": True}
+                for k, v in sorted(doc["files"].items())
+            ],
+        }
 
     @staticmethod
     def _revision(doc):
-        doc.update(revision=str(uuid4()), updated_at=datetime.now(timezone.utc).isoformat())
+        doc.update(revision=str(uuid4()), updated_at=datetime.now(UTC).isoformat())
 
     @staticmethod
     def _check(doc, revision):
@@ -101,7 +149,10 @@ class SkillStorage:
 
     def _save(self, db, scope, doc):
         self._revision(doc)
-        db.execute("UPDATE dear_skills SET document=%s WHERE tenant_id=%s AND project_id=%s AND user_id=%s AND slug=%s", (Jsonb(doc), *scope, doc["slug"]))
+        db.execute(
+            "UPDATE dear_skills SET document=%s WHERE tenant_id=%s AND project_id=%s AND user_id=%s AND slug=%s",
+            (Jsonb(doc), *scope, doc["slug"]),
+        )
 
     def create(self, scope, raw: bytes, *, source: str):
         doc = self._inspect(raw, source)
@@ -109,19 +160,28 @@ class SkillStorage:
         self._revision(doc)
         with connect(self.dsn) as db:
             lock_scope(db, scope, "skills")
-            rows = db.execute("SELECT slug FROM dear_skills WHERE tenant_id=%s AND project_id=%s AND user_id=%s", scope).fetchall()
+            rows = db.execute(
+                "SELECT slug FROM dear_skills WHERE tenant_id=%s AND project_id=%s AND user_id=%s",
+                scope,
+            ).fetchall()
             if any(r["slug"] == doc["slug"] for r in rows):
                 raise DocumentError("skill_name_conflict", 409)
             if len(rows) >= 50:
                 raise DocumentError("skill_capacity", 409)
-            db.execute("INSERT INTO dear_skills VALUES (%s,%s,%s,%s,%s)", (*scope, doc["slug"], Jsonb(doc)))
+            db.execute(
+                "INSERT INTO dear_skills VALUES (%s,%s,%s,%s,%s)",
+                (*scope, doc["slug"], Jsonb(doc)),
+            )
         return self.summary(doc)
 
     @staticmethod
     def _inspect(raw, origin):
         doc = inspect_package(raw)
         from runtime_service.services.dearflow_agent.skill_catalog import public_catalog
-        if any(doc["slug"] in {item["slug"], item["name"]} for item in public_catalog()):
+
+        if any(
+            doc["slug"] in {item["slug"], item["name"]} for item in public_catalog()
+        ):
             raise DocumentError("reserved_public_skill_name")
         if doc["warnings"]:
             raise DocumentError("skill_security_blocked")
@@ -134,7 +194,13 @@ class SkillStorage:
     def documents(self, scope, *, enabled_only=False):
         with connect(self.dsn) as db:
             lock_scope(db, scope, "skills")
-            docs = [r["document"] for r in db.execute("SELECT document FROM dear_skills WHERE tenant_id=%s AND project_id=%s AND user_id=%s ORDER BY slug", scope).fetchall()]
+            docs = [
+                r["document"]
+                for r in db.execute(
+                    "SELECT document FROM dear_skills WHERE tenant_id=%s AND project_id=%s AND user_id=%s ORDER BY slug",
+                    scope,
+                ).fetchall()
+            ]
         return [d for d in docs if d["enabled"] or not enabled_only]
 
     def get(self, scope, slug):
@@ -142,7 +208,9 @@ class SkillStorage:
             lock_scope(db, scope, "skills")
             return self._get(db, scope, slug)
 
-    def update(self, scope, slug, raw, *, expected_revision, source="explicit-management"):
+    def update(
+        self, scope, slug, raw, *, expected_revision, source="explicit-management"
+    ):
         doc = self._inspect(raw, source)
         if doc["slug"] != slug:
             raise DocumentError("skill_name_mismatch")
@@ -167,4 +235,7 @@ class SkillStorage:
         with connect(self.dsn) as db:
             lock_scope(db, scope, "skills")
             self._check(self._get(db, scope, slug), expected_revision)
-            db.execute("DELETE FROM dear_skills WHERE tenant_id=%s AND project_id=%s AND user_id=%s AND slug=%s", (*scope, slug))
+            db.execute(
+                "DELETE FROM dear_skills WHERE tenant_id=%s AND project_id=%s AND user_id=%s AND slug=%s",
+                (*scope, slug),
+            )

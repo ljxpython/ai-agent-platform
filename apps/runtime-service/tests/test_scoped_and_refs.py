@@ -1,14 +1,15 @@
 from pathlib import Path
+
 import pytest
 
-from runtime_service.workspace.scoped import hashed_thread_root, thread_scope_hash
 from runtime_service.workspace.image_refs import (
-    validate_image_ref,
-    validate_image_path,
-    parse_image_reference_block,
-    build_image_reference_block,
     ImageRefValidationError,
+    build_image_reference_block,
+    parse_image_reference_block,
+    validate_image_path,
+    validate_image_ref,
 )
+from runtime_service.workspace.scoped import hashed_thread_root, thread_scope_hash
 
 
 def test_scoped_hash_derivation():
@@ -25,17 +26,29 @@ def test_scoped_hash_derivation():
 
 
 def test_validate_image_path():
-    folder, filename = validate_image_path("/workspace/uploads/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png")
+    folder, filename = validate_image_path(
+        "/workspace/uploads/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png"
+    )
     assert folder == "uploads"
-    assert filename == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png"
+    assert (
+        filename
+        == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png"
+    )
 
-    folder, filename = validate_image_path("/workspace/generated/0123456789abcdef0123456789abcdef.webp")
+    folder, filename = validate_image_path(
+        "/workspace/generated/0123456789abcdef0123456789abcdef.webp"
+    )
     assert folder == "generated"
     assert filename == "0123456789abcdef0123456789abcdef.webp"
 
-    folder, filename = validate_image_path("/workspace/outputs/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png")
+    folder, filename = validate_image_path(
+        "/workspace/outputs/0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png"
+    )
     assert folder == "outputs"
-    assert filename == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png"
+    assert (
+        filename
+        == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef.png"
+    )
 
     # Invalid paths
     with pytest.raises(ImageRefValidationError):

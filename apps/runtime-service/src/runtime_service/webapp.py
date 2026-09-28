@@ -12,23 +12,23 @@ from uuid import UUID
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, Field, field_validator
 from langgraph_sdk.auth import exceptions as auth_exceptions
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from runtime_service.auth.platform import authenticate
-from runtime_service.http.images import router as images_router
-from runtime_service.http.documents import router as documents_router
-from runtime_service.http.workspace import router as workspace_router
-from runtime_service.http.terminal import router as terminal_router
 from runtime_service.http.dear_governance import router as dear_governance_router
-from runtime_service.http.dear_skills import router as dear_skills_router
 from runtime_service.http.dear_memory import router as dear_memory_router
+from runtime_service.http.dear_skills import router as dear_skills_router
+from runtime_service.http.documents import router as documents_router
+from runtime_service.http.images import router as images_router
+from runtime_service.http.terminal import router as terminal_router
 from runtime_service.http.title_summary import router as title_summary_router
+from runtime_service.http.workspace import router as workspace_router
 from runtime_service.messaging import MessageInbox
 from runtime_service.messaging.reconcile import reconcile_run
 from runtime_service.observability import close_langfuse, initialize_langfuse
-from runtime_service.workspace.image_refs import validate_image_ref
 from runtime_service.workspace.file_refs import validate_file_ref
+from runtime_service.workspace.image_refs import validate_image_ref
 
 
 @asynccontextmanager

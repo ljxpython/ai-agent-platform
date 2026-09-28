@@ -39,7 +39,9 @@ async def _start(command: list[str], env: dict[str, str]) -> asyncio.subprocess.
     )
 
 
-async def _stop(process: asyncio.subprocess.Process | None, sig: signal.Signals) -> None:
+async def _stop(
+    process: asyncio.subprocess.Process | None, sig: signal.Signals
+) -> None:
     if process is None or process.returncode is not None:
         return
     try:
@@ -210,7 +212,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             await _wait_for(
                 client,
                 f"/threads/{thread['thread_id']}/state",
-                lambda value: (value.get("values") or {}).get("marker") == "checkpointed",
+                lambda value: (
+                    (value.get("values") or {}).get("marker") == "checkpointed"
+                ),
                 30,
             )
 
@@ -224,7 +228,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             final = await _wait_for(
                 client,
                 f"/threads/{thread['thread_id']}/runs/{run_id}",
-                lambda value: value.get("status") in {"success", "error", "interrupted"},
+                lambda value: (
+                    value.get("status") in {"success", "error", "interrupted"}
+                ),
                 args.timeout,
             )
             state_response = await client.get(f"/threads/{thread['thread_id']}/state")
@@ -239,9 +245,13 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             "completed": True,
         }
         if final["status"] != "success" or database["status"] != "success":
-            raise AssertionError(f"replacement Worker ended Run incorrectly: {final}, {database}")
+            raise AssertionError(
+                f"replacement Worker ended Run incorrectly: {final}, {database}"
+            )
         if state != expected_state:
-            raise AssertionError(f"Run did not resume from the persisted checkpoint: {state!r}")
+            raise AssertionError(
+                f"Run did not resume from the persisted checkpoint: {state!r}"
+            )
         if database["terminal_event_total"] != 1:
             raise AssertionError(f"expected exactly one terminal event: {database}")
         if args.worker_signal == "SIGTERM" and database["shutdown_requeue_total"] < 1:
@@ -269,14 +279,18 @@ def main() -> int:
     parser.add_argument("--lease-seconds", type=int, default=5)
     parser.add_argument("--run-delay", type=float, default=30)
     parser.add_argument("--timeout", type=float, default=120)
-    parser.add_argument("--worker-signal", choices=("SIGTERM", "SIGKILL"), required=True)
+    parser.add_argument(
+        "--worker-signal", choices=("SIGTERM", "SIGKILL"), required=True
+    )
     args = parser.parse_args()
     if not args.database_uri or not args.redis_uri:
         parser.error("DATABASE_URI and REDIS_URI are required")
     try:
         result = asyncio.run(_run(args))
     except Exception as exc:  # noqa: BLE001 - CLI returns structured failure evidence.
-        print(json.dumps({"status": "failed", "failure": f"{type(exc).__name__}: {exc}"}))
+        print(
+            json.dumps({"status": "failed", "failure": f"{type(exc).__name__}: {exc}"})
+        )
         return 1
     print(json.dumps(result, ensure_ascii=False))
     return 0

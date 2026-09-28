@@ -51,7 +51,9 @@ def main() -> int:
             if line.strip()
         )
     if not args.workspace_root.is_absolute() or args.max_age_seconds <= 0:
-        parser.error("an absolute --workspace-root and positive --max-age-seconds are required")
+        parser.error(
+            "an absolute --workspace-root and positive --max-age-seconds are required"
+        )
 
     if args.apply:
         removed = cleanup_expired_workspace_threads(
@@ -71,7 +73,9 @@ def main() -> int:
             json.dumps(
                 {
                     "mode": "dry-run",
-                    "candidates": [item.relative_to(base).as_posix() for item in candidates],
+                    "candidates": [
+                        item.relative_to(base).as_posix() for item in candidates
+                    ],
                 },
                 ensure_ascii=False,
             )

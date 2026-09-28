@@ -159,6 +159,7 @@ def test_platform_auth_requires_audience_configuration(
 )
 def test_skill_tokens_cannot_use_server_resources(operation):
     from types import SimpleNamespace
+
     from runtime_service.auth.platform import deny_image_scope_on_server_resources
 
     with pytest.raises(Auth.exceptions.HTTPException) as error:
@@ -172,6 +173,7 @@ def test_skill_tokens_cannot_use_server_resources(operation):
 
 def test_custom_scope_is_rejected_for_attribute_user():
     from types import SimpleNamespace
+
     from runtime_service.auth.platform import deny_image_scope_on_server_resources
 
     user = SimpleNamespace(runtime_scope={"operation": "workspace-file-read"})
@@ -187,6 +189,7 @@ def test_thread_auth_rechecks_signed_platform_acl(
 ) -> None:
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
+
     from runtime_service.auth import platform
 
     monkeypatch.setenv(
@@ -238,6 +241,7 @@ def test_thread_auth_signs_service_credential_in_acl_request(
 ) -> None:
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
+
     from runtime_service.auth import platform
 
     monkeypatch.setenv("PLATFORM_THREAD_AUTHORIZATION_URL", "http://platform.test/acl")
@@ -278,8 +282,9 @@ def test_thread_create_accepts_graphharbor_uuid_target(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from types import SimpleNamespace
-    from uuid import uuid4
     from unittest.mock import AsyncMock
+    from uuid import uuid4
+
     from runtime_service.auth import platform
 
     thread_id = uuid4()
@@ -328,6 +333,7 @@ def test_thread_reconcile_only_reads_its_bound_pending_thread(
 ) -> None:
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
+
     from runtime_service.auth import platform
 
     monkeypatch.setenv("PLATFORM_THREAD_AUTHORIZATION_URL", "http://platform.test/acl")
@@ -383,6 +389,7 @@ def test_thread_reconcile_only_reads_its_bound_pending_thread(
 def test_only_the_delegated_assistant_is_readable() -> None:
     from types import SimpleNamespace
     from uuid import NAMESPACE_URL, uuid5
+
     from runtime_service.auth.platform import deny_image_scope_on_server_resources
 
     ctx = SimpleNamespace(
@@ -407,6 +414,7 @@ def test_only_the_delegated_assistant_is_readable() -> None:
 
 def test_catalog_search_requires_platform_role_and_read_delegation() -> None:
     from types import SimpleNamespace
+
     from runtime_service.auth.platform import deny_image_scope_on_server_resources
 
     def context(role: str, operation: str):
@@ -433,6 +441,7 @@ def test_catalog_search_requires_platform_role_and_read_delegation() -> None:
 @pytest.mark.parametrize("resource", ["crons", "store", "runs"])
 def test_unsupported_server_resources_are_denied(resource: str) -> None:
     from types import SimpleNamespace
+
     from runtime_service.auth.platform import deny_image_scope_on_server_resources
 
     ctx = SimpleNamespace(
@@ -446,6 +455,7 @@ def test_unsupported_server_resources_are_denied(resource: str) -> None:
 @pytest.mark.parametrize("action", ["create_run", "update", "delete", "approve"])
 def test_read_delegation_cannot_mutate_threads(action: str) -> None:
     from types import SimpleNamespace
+
     from runtime_service.auth.platform import deny_image_scope_on_server_resources
 
     ctx = SimpleNamespace(
@@ -473,6 +483,7 @@ def test_scoped_write_delegations_allow_only_their_bound_action(
 ):
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
+
     from runtime_service.auth import platform
 
     monkeypatch.setenv("PLATFORM_THREAD_AUTHORIZATION_URL", "http://platform.test/acl")
@@ -531,6 +542,7 @@ def test_thread_auth_fails_closed_for_unbounded_or_denied_targets(
 ) -> None:
     from types import SimpleNamespace
     from unittest.mock import AsyncMock
+
     from runtime_service.auth import platform
 
     monkeypatch.setenv("PLATFORM_THREAD_AUTHORIZATION_URL", "http://platform.test/acl")

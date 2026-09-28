@@ -2,31 +2,69 @@ from __future__ import annotations
 
 import unittest
 
-from platform_api.modules.audit.http_resolution import AuditHttpRequest, resolve_http_audit
+from platform_api.modules.audit.http_resolution import (
+    AuditHttpRequest,
+    resolve_http_audit,
+)
 from platform_api.modules.audit.schemas import AuditPlane, AuditResult
 
 
 class AuditHttpResolutionTest(unittest.TestCase):
     def test_personal_memory_audit_uses_action_without_body(self):
-        resolved = resolve_http_audit(request=AuditHttpRequest(
-            method="POST", path="/api/langgraph/dear/memory", query_params={}, query_string=None,
-            state_project_id="project", client_ip=None, user_agent=None, response_content_length=None,
-            metadata={"memory_action": "save", "text": "private body"}),
-            response_payload={"document": {"facts": [{"text": "private body"}]}, "mutation": {"added": 1}},
-            actor_user_id="owner", status_code=200, result=AuditResult.SUCCESS)
+        resolved = resolve_http_audit(
+            request=AuditHttpRequest(
+                method="POST",
+                path="/api/langgraph/dear/memory",
+                query_params={},
+                query_string=None,
+                state_project_id="project",
+                client_ip=None,
+                user_agent=None,
+                response_content_length=None,
+                metadata={"memory_action": "save", "text": "private body"},
+            ),
+            response_payload={
+                "document": {"facts": [{"text": "private body"}]},
+                "mutation": {"added": 1},
+            },
+            actor_user_id="owner",
+            status_code=200,
+            result=AuditResult.SUCCESS,
+        )
         self.assertEqual(resolved.action, "runtime.dear.memory.save")
         self.assertEqual(resolved.target_type, "personal_memory")
         self.assertNotIn("private body", str(resolved.metadata))
 
     def test_tool_restriction_records_target_and_safe_rule_metadata(self):
-        metadata = {"graph_id": "reference_agent", "subject_type": "user", "subject_id": "u", "tool_name": "read_reference", "reason": "test", "token": "secret"}
-        for method, suffix, action in (("POST", "", "created"), ("DELETE", "/restriction", "deleted")):
+        metadata = {
+            "graph_id": "reference_agent",
+            "subject_type": "user",
+            "subject_id": "u",
+            "tool_name": "read_reference",
+            "reason": "test",
+            "token": "secret",
+        }
+        for method, suffix, action in (
+            ("POST", "", "created"),
+            ("DELETE", "/restriction", "deleted"),
+        ):
             resolved = resolve_http_audit(
-                request=AuditHttpRequest(method=method, path="/api/projects/p/runtime-policies/tool-restrictions" + suffix,
-                    query_params={}, query_string=None, state_project_id="p", client_ip=None, user_agent=None,
-                    response_content_length=None, metadata=metadata),
-                response_payload={"id": "restriction"}, actor_user_id="admin", status_code=201,
-                result=AuditResult.SUCCESS)
+                request=AuditHttpRequest(
+                    method=method,
+                    path="/api/projects/p/runtime-policies/tool-restrictions" + suffix,
+                    query_params={},
+                    query_string=None,
+                    state_project_id="p",
+                    client_ip=None,
+                    user_agent=None,
+                    response_content_length=None,
+                    metadata=metadata,
+                ),
+                response_payload={"id": "restriction"},
+                actor_user_id="admin",
+                status_code=201,
+                result=AuditResult.SUCCESS,
+            )
             self.assertEqual(resolved.action, "runtime.tool_restriction." + action)
             self.assertEqual(resolved.target_id, "restriction")
             self.assertEqual(resolved.metadata["tool_name"], "read_reference")
@@ -35,7 +73,8 @@ class AuditHttpResolutionTest(unittest.TestCase):
 
     def test_terminal_operations_have_audit_actions_without_output(self):
         for method, suffix, action in (
-            ("POST", "", "created"), ("GET", "", "listed"),
+            ("POST", "", "created"),
+            ("GET", "", "listed"),
             ("GET", "/session/output", "output.read"),
             ("POST", "/session/input", "input.sent"),
             ("POST", "/session/resize", "resized"),
@@ -43,12 +82,20 @@ class AuditHttpResolutionTest(unittest.TestCase):
         ):
             with self.subTest(action=action):
                 resolved = resolve_http_audit(
-                    request=AuditHttpRequest(method=method,
+                    request=AuditHttpRequest(
+                        method=method,
                         path="/api/langgraph/threads/thread-1/terminals" + suffix,
-                        query_params={}, query_string=None, state_project_id="p",
-                        client_ip=None, user_agent=None, response_content_length=None),
+                        query_params={},
+                        query_string=None,
+                        state_project_id="p",
+                        client_ip=None,
+                        user_agent=None,
+                        response_content_length=None,
+                    ),
                     response_payload={"data_base64": "private-output"},
-                    actor_user_id="u", status_code=200, result=AuditResult.SUCCESS,
+                    actor_user_id="u",
+                    status_code=200,
+                    result=AuditResult.SUCCESS,
                 )
                 self.assertEqual(resolved.action, "runtime.terminal." + action)
                 self.assertEqual(resolved.target_id, "thread-1")
@@ -61,10 +108,20 @@ class AuditHttpResolutionTest(unittest.TestCase):
             ("/api/unknown/" + "x" * 200, None),
         ):
             resolved = resolve_http_audit(
-                request=AuditHttpRequest(method="POST", path=path, query_params={},
-                    query_string=None, state_project_id="p", client_ip=None,
-                    user_agent=None, response_content_length=None),
-                response_payload=None, actor_user_id="u", status_code=200, result=AuditResult.SUCCESS,
+                request=AuditHttpRequest(
+                    method="POST",
+                    path=path,
+                    query_params={},
+                    query_string=None,
+                    state_project_id="p",
+                    client_ip=None,
+                    user_agent=None,
+                    response_content_length=None,
+                ),
+                response_payload=None,
+                actor_user_id="u",
+                status_code=200,
+                result=AuditResult.SUCCESS,
             )
             self.assertEqual(resolved.target_id, expected)
             if expected:
@@ -95,7 +152,9 @@ class AuditHttpResolutionTest(unittest.TestCase):
         self.assertEqual(resolved.project_id, "project-1")
         self.assertEqual(resolved.metadata["route_kind"], "control_plane")
 
-    def test_runtime_thread_create_resolution_uses_response_payload_target(self) -> None:
+    def test_runtime_thread_create_resolution_uses_response_payload_target(
+        self,
+    ) -> None:
         resolved = resolve_http_audit(
             request=AuditHttpRequest(
                 method="POST",
@@ -157,7 +216,9 @@ class AuditHttpResolutionTest(unittest.TestCase):
         self.assertEqual(command.target_id, "thread-9")
         self.assertEqual(events.project_id, "project-2")
 
-    def test_project_lifecycle_and_service_account_grant_use_semantic_actions(self) -> None:
+    def test_project_lifecycle_and_service_account_grant_use_semantic_actions(
+        self,
+    ) -> None:
         archive = resolve_http_audit(
             request=AuditHttpRequest(
                 method="POST",

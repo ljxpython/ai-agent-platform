@@ -1,7 +1,6 @@
 """Composition root for the Runtime-aware reference agent."""
 
 from __future__ import annotations
-from runtime_service.runtime.capabilities import REFERENCE_TOOLS
 
 from collections.abc import Mapping
 
@@ -39,6 +38,7 @@ from runtime_service.runtime import (
     verified_delegation_from_user,
 )
 from runtime_service.runtime.auth import VerifiedDelegation
+from runtime_service.runtime.capabilities import REFERENCE_TOOLS
 from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.runtime.modeling import fetch_model_connection
 from runtime_service.services.reference_agent.prompts import SYSTEM_PROMPT
@@ -92,7 +92,9 @@ def _runtime_fallback_model(config: RunnableConfig) -> BaseChatModel | None:
     return candidate if isinstance(candidate, BaseChatModel) else None
 
 
-def _build_runtime_model(config: object, connection: Mapping[str, str] | None) -> BaseChatModel:
+def _build_runtime_model(
+    config: object, connection: Mapping[str, str] | None
+) -> BaseChatModel:
     if connection is None:
         return build_model(config)  # type: ignore[arg-type]
     return build_model(config, connection=connection)  # type: ignore[arg-type]
@@ -140,7 +142,10 @@ async def get_agent(config: RunnableConfig) -> Pregel:
 
     configurable = config.get("configurable") or {}
     probe_only = bool(configurable) and set(configurable) <= {
-        "graph_id", "thread_id", "checkpoint_id", "checkpoint_ns",
+        "graph_id",
+        "thread_id",
+        "checkpoint_id",
+        "checkpoint_ns",
     }
     runtime_model = _runtime_model(config)
     local_test_auth = (
@@ -154,7 +159,9 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     if facts:
         raw_context = config.get("context")
         context = parse_runtime_context(raw_context)
-        if raw_context is not None and facts.context_hash != runtime_context_hash(context):
+        if raw_context is not None and facts.context_hash != runtime_context_hash(
+            context
+        ):
             raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
         resolved = resolve_runtime_config(
             principal=principal,
@@ -162,14 +169,23 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             policy=policy,
             defaults=_DEFAULTS,
         )
-        connection = None if runtime_model is not None else await _runtime_model_connection(
-            config, model_id=resolved.model_id, project_id=principal.project_id,
+        connection = (
+            None
+            if runtime_model is not None
+            else await _runtime_model_connection(
+                config,
+                model_id=resolved.model_id,
+                project_id=principal.project_id,
+            )
         )
     model = (
         ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
-        if probe_only else runtime_model or _build_runtime_model(resolved, connection)
+        if probe_only
+        else runtime_model or _build_runtime_model(resolved, connection)
     )
-    fallback_model = _runtime_fallback_model(config) if runtime_model is not None else None
+    fallback_model = (
+        _runtime_fallback_model(config) if runtime_model is not None else None
+    )
     model_retry_enabled = (
         runtime_model is not None
         and isinstance(configurable, Mapping)
@@ -185,7 +201,11 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         return None
 
     def model_builder(next_config):
-        next_connection = connection if resolved and next_config.model_id == resolved.model_id else None
+        next_connection = (
+            connection
+            if resolved and next_config.model_id == resolved.model_id
+            else None
+        )
         return _build_runtime_model(next_config, next_connection)
 
     middleware = [

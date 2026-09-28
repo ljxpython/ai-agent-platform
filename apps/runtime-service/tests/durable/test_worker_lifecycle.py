@@ -21,7 +21,9 @@ def _thread_id() -> str:
 def _compose_file() -> str:
     value = os.getenv("RUNTIME_DURABLE_COMPOSE_FILE")
     if not value:
-        pytest.skip("RUNTIME_DURABLE_COMPOSE_FILE is required for worker lifecycle tests")
+        pytest.skip(
+            "RUNTIME_DURABLE_COMPOSE_FILE is required for worker lifecycle tests"
+        )
     return value
 
 
@@ -38,11 +40,15 @@ def test_worker_restart_recovers_scheduled_run(
     durable_url: str, durable_lifecycle_assistant_id: str
 ) -> None:
     asyncio.run(
-        _test_worker_restart(durable_url, durable_lifecycle_assistant_id, _compose_file())
+        _test_worker_restart(
+            durable_url, durable_lifecycle_assistant_id, _compose_file()
+        )
     )
 
 
-async def _test_worker_restart(base_url: str, assistant_id: str, compose_file: str) -> None:
+async def _test_worker_restart(
+    base_url: str, assistant_id: str, compose_file: str
+) -> None:
     client = get_authenticated_client(base_url, assistant_id=assistant_id)
     thread_id = _thread_id()
     try:
@@ -64,16 +70,22 @@ async def _test_worker_restart(base_url: str, assistant_id: str, compose_file: s
             except httpx.HTTPError:
                 await asyncio.sleep(1)
                 continue
-            status = current.get("status") if isinstance(current, dict) else current.status
+            status = (
+                current.get("status") if isinstance(current, dict) else current.status
+            )
             if status in {"success", "error", "failed", "cancelled", "canceled"}:
                 assert status in {"success", "error", "failed"}
                 state = await client.threads.get_state(thread_id)
-                values = state.get("values") if isinstance(state, dict) else state.values
+                values = (
+                    state.get("values") if isinstance(state, dict) else state.values
+                )
                 assert values["marker"] == "checkpointed"
                 assert values["completed"] is True
                 return
             await asyncio.sleep(1)
-        raise AssertionError("scheduled Run did not reach a terminal state after worker restart")
+        raise AssertionError(
+            "scheduled Run did not reach a terminal state after worker restart"
+        )
     finally:
         await client.aclose()
 
@@ -109,10 +121,14 @@ async def _test_sigterm(base_url: str, assistant_id: str, compose_file: str) -> 
             except httpx.HTTPError:
                 await asyncio.sleep(1)
                 continue
-            status = current.get("status") if isinstance(current, dict) else current.status
+            status = (
+                current.get("status") if isinstance(current, dict) else current.status
+            )
             if status in {"success", "error", "failed", "cancelled", "canceled"}:
                 state = await client.threads.get_state(thread_id)
-                values = state.get("values") if isinstance(state, dict) else state.values
+                values = (
+                    state.get("values") if isinstance(state, dict) else state.values
+                )
                 assert values["marker"] == "checkpointed"
                 assert values["completed"] is True
                 return

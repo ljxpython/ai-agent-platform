@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -31,17 +31,17 @@ from platform_api.modules.identity.contracts import (
     UpdateCurrentUserProfileCommand,
 )
 from platform_api.modules.identity.records import StoredUser
+from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
 from platform_api.modules.identity.schemas import (
     AuthenticatedSession,
     SessionTokens,
     UserProfile,
     UserStatus,
 )
-from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _parse_user_id(raw_user_id: str | None) -> UUID:
@@ -75,7 +75,11 @@ class IdentityService:
         return SqlAlchemyIdentityRepository(session)
 
     def _user_profile(self, user: StoredUser) -> UserProfile:
-        from platform_api.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode
+        from platform_api.modules.iam.application import (
+            AuthorizationRequest,
+            IamPolicyEngine,
+            PermissionCode,
+        )
 
         status = (
             UserStatus.ACTIVE
@@ -91,8 +95,10 @@ class IdentityService:
             status=status,
             platform_roles=user.platform_roles,
             permissions=tuple(
-                permission.value for permission in PermissionCode
-                if status == UserStatus.ACTIVE and permission.value.startswith("platform.")
+                permission.value
+                for permission in PermissionCode
+                if status == UserStatus.ACTIVE
+                and permission.value.startswith("platform.")
                 and policy_engine.evaluate(
                     actor=actor,
                     authorization=AuthorizationRequest(permission=permission),
@@ -139,7 +145,7 @@ class IdentityService:
             now = _now()
             locked_until = user.locked_until if user is not None else None
             if locked_until is not None and locked_until.tzinfo is None:
-                locked_until = locked_until.replace(tzinfo=timezone.utc)
+                locked_until = locked_until.replace(tzinfo=UTC)
             password_valid = bool(
                 user is not None
                 and user.status == UserStatus.ACTIVE.value

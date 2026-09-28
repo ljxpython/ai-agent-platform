@@ -13,14 +13,14 @@ from platform_api.modules.service_accounts.contracts import (
     UpdateServiceAccountCommand,
     UpsertServiceAccountProjectGrantCommand,
 )
-from platform_api.modules.service_accounts.service import ServiceAccountsService
 from platform_api.modules.service_accounts.schemas import (
     CreatedServiceAccountToken,
     ServiceAccountItem,
     ServiceAccountPage,
-    ServiceAccountTokenItem,
     ServiceAccountProjectGrantItem,
+    ServiceAccountTokenItem,
 )
+from platform_api.modules.service_accounts.service import ServiceAccountsService
 
 router = APIRouter(prefix="/api/service-accounts", tags=["service-accounts"])
 

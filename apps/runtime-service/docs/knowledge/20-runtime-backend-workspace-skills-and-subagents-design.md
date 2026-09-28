@@ -328,7 +328,7 @@ services/<service_name>/skills/
 `skills` 参数指向包含多个 Skill 子目录的容器路径，而不是某一个 `SKILL.md`：
 
 ```python
-skills=["/skills/"]
+skills = ["/skills/"]
 ```
 
 Skill frontmatter 的名称和描述在启动时用于发现，完整内容仅在相关任务中按需加载。Skills 是

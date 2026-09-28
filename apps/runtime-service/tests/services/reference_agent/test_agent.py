@@ -4,6 +4,8 @@ import asyncio
 from unittest.mock import AsyncMock
 
 import pytest
+from support import BindableFakeChatModel
+
 from runtime_service.runtime import (
     RuntimeAuthError,
     RuntimeContext,
@@ -12,24 +14,30 @@ from runtime_service.runtime import (
 from runtime_service.runtime.resolver import runtime_context_hash
 from runtime_service.services.reference_agent import agent
 from runtime_service.services.reference_agent.tools import read_reference
-from support import BindableFakeChatModel
 
 
 def test_model_connection_uses_current_gateway_reference(monkeypatch):
     connection = {"model_id": "model-uuid", "model": "actual-model"}
     fetch = AsyncMock(return_value=connection)
     monkeypatch.setattr(agent, "fetch_model_connection", fetch)
-    result = asyncio.run(agent._runtime_model_connection(
-        {"configurable": {"runtime_model_ref": "opaque-reference"}},
-        model_id="model-uuid", project_id="project-uuid",
-    ))
+    result = asyncio.run(
+        agent._runtime_model_connection(
+            {"configurable": {"runtime_model_ref": "opaque-reference"}},
+            model_id="model-uuid",
+            project_id="project-uuid",
+        )
+    )
     assert result == connection
     fetch.assert_awaited_once_with(
-        "opaque-reference", model_id="model-uuid", project_id="project-uuid",
+        "opaque-reference",
+        model_id="model-uuid",
+        project_id="project-uuid",
     )
 
 
-def _config(model: BindableFakeChatModel, context: object | None = None) -> dict[str, object]:
+def _config(
+    model: BindableFakeChatModel, context: object | None = None
+) -> dict[str, object]:
     return {
         "configurable": {
             "_runtime_model": model,
@@ -50,9 +58,14 @@ def _auth_user(context: object | None = None) -> dict[str, object]:
         "runtime_policy": {
             "version": "reference-agent-local-v1",
             "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+            "tool_overrides": {},
+            "tool_policy_version": "test-tools-v2",
         },
-        "runtime_scope": {"operation": "read", "tenant_id": "local-tenant", "project_id": "reference-project"},
+        "runtime_scope": {
+            "operation": "read",
+            "tenant_id": "local-tenant",
+            "project_id": "reference-project",
+        },
         "runtime_context_hash": runtime_context_hash(context),
     }
 
@@ -87,9 +100,14 @@ def test_authenticated_identity_and_policy_are_used_per_run() -> None:
                     "runtime_policy": {
                         "version": "policy-b",
                         "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-                        "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+                        "tool_overrides": {},
+                        "tool_policy_version": "test-tools-v2",
                     },
-                    "runtime_scope": {"operation": "read", "tenant_id": "tenant-b", "project_id": "project-b"},
+                    "runtime_scope": {
+                        "operation": "read",
+                        "tenant_id": "tenant-b",
+                        "project_id": "project-b",
+                    },
                     "runtime_context_hash": runtime_context_hash(None),
                 },
             }
@@ -106,15 +124,15 @@ def test_authenticated_identity_and_policy_must_be_complete() -> None:
         agent._runtime_identity_and_policy(
             {
                 "configurable": {
-                "langgraph_auth_user": {
-                    "runtime_principal": {
-                        "user_id": "user-b",
-                        "tenant_id": "tenant-b",
-                        "project_id": "project-b",
-                        "role": "operator",
-                        "permissions": [],
-                    },
-                }
+                    "langgraph_auth_user": {
+                        "runtime_principal": {
+                            "user_id": "user-b",
+                            "tenant_id": "tenant-b",
+                            "project_id": "project-b",
+                            "role": "operator",
+                            "permissions": [],
+                        },
+                    }
                 }
             }
         )
@@ -137,7 +155,9 @@ def test_context_override_is_resolved_before_model_creation(
                 "configurable": {
                     "langgraph_auth_user": {
                         **_auth_user(),
-                        "runtime_context_hash": runtime_context_hash({"temperature": 0}),
+                        "runtime_context_hash": runtime_context_hash(
+                            {"temperature": 0}
+                        ),
                     },
                     "_runtime_test_local_auth": True,
                 },
@@ -170,8 +190,14 @@ def test_reference_agent_topology_is_stable_across_runtime_bindings() -> None:
     assert {(edge.source, edge.target) for edge in first_graph.edges} == {
         (edge.source, edge.target) for edge in second_graph.edges
     }
-    assert first.input_schema.model_json_schema() == second.input_schema.model_json_schema()
-    assert first.output_schema.model_json_schema() == second.output_schema.model_json_schema()
+    assert (
+        first.input_schema.model_json_schema()
+        == second.input_schema.model_json_schema()
+    )
+    assert (
+        first.output_schema.model_json_schema()
+        == second.output_schema.model_json_schema()
+    )
 
 
 def test_context_policy_violation_fails_before_fake_model_use() -> None:
@@ -197,7 +223,9 @@ def test_default_path_does_not_fallback_to_fake_model(
 
     monkeypatch.setattr(agent, "build_model", missing_provider)
     with pytest.raises(RuntimeResolutionError) as error:
-        asyncio.run(agent.get_agent({"configurable": {"langgraph_auth_user": _auth_user()}}))
+        asyncio.run(
+            agent.get_agent({"configurable": {"langgraph_auth_user": _auth_user()}})
+        )
 
     assert error.value.code == "runtime.model.initialization_failed"
 

@@ -1,13 +1,14 @@
 import io
 import time
 import zipfile
-import jwt
+
 import httpx
+import jwt
 import pytest
 
 from runtime_service.runtime.resolver import runtime_context_hash
-from runtime_service.workspace.browser import WorkspaceBrowser
 from runtime_service.webapp import app
+from runtime_service.workspace.browser import WorkspaceBrowser
 
 SECRET = "r1-test-secret-with-at-least-32-bytes"
 
@@ -16,7 +17,8 @@ def _read_token(thread_id: str) -> str:
     now = int(time.time())
     return jwt.encode(
         {
-            "type": "runtime_delegation", "delegation_version": 2,
+            "type": "runtime_delegation",
+            "delegation_version": 2,
             "sub": "user-a",
             "tenant_id": "tenant-a",
             "project_id": "project-a",
@@ -24,7 +26,8 @@ def _read_token(thread_id: str) -> str:
             "permissions": ["runtime.tool.read"],
             "policy_version": "policy-1",
             "allowed_model_ids": ["deepseek:deepseek-chat"],
-            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+            "tool_overrides": {},
+            "tool_policy_version": "test-tools-v2",
             "iat": now,
             "exp": now + 60,
             "iss": "runtime-test",
@@ -86,6 +89,7 @@ async def test_workspace_zip_endpoint(monkeypatch, tmp_path):
     thread_id = "test-thread-zip"
     # 创建对应工作区物理目录
     from runtime_service.workspace.scoped import resolve_thread_workspace
+
     root = resolve_thread_workspace("tenant-a", "project-a", thread_id, "showcase_demo")
     root.mkdir(parents=True, exist_ok=True)
     (root / "doc.txt").write_text("archive test", encoding="utf-8")
@@ -99,7 +103,10 @@ async def test_workspace_zip_endpoint(monkeypatch, tmp_path):
         )
         assert resp.status_code == 200
         assert resp.headers["content-type"] == "application/zip"
-        assert "attachment; filename*=UTF-8''workspace-" in resp.headers["content-disposition"]
+        assert (
+            "attachment; filename*=UTF-8''workspace-"
+            in resp.headers["content-disposition"]
+        )
 
         with zipfile.ZipFile(io.BytesIO(resp.content)) as zf:
             assert "doc.txt" in zf.namelist()

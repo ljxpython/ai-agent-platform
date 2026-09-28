@@ -35,7 +35,9 @@ class WorkspaceState(TypedDict, total=False):
 def _configurable(config: RunnableConfig) -> Mapping[str, object]:
     value = config.get("configurable") or {}
     if not isinstance(value, Mapping):
-        raise RuntimeResolutionError("runtime.workspace.recovery_failed", "configurable")
+        raise RuntimeResolutionError(
+            "runtime.workspace.recovery_failed", "configurable"
+        )
     return value
 
 
@@ -92,9 +94,13 @@ async def workspace_io(state: WorkspaceState, config: RunnableConfig) -> Workspa
             resolve_workspace_path(workspace.root, path)
             result = await workspace.backend.aread(path)
         else:
-            raise RuntimeResolutionError("runtime.workspace.recovery_failed", "operation")
+            raise RuntimeResolutionError(
+                "runtime.workspace.recovery_failed", "operation"
+            )
     except (TypeError, ValueError) as exc:
-        raise RuntimeResolutionError("runtime.workspace.recovery_failed", "path") from exc
+        raise RuntimeResolutionError(
+            "runtime.workspace.recovery_failed", "path"
+        ) from exc
     if operation == "write":
         if result.error:
             raise RuntimeResolutionError("runtime.workspace.recovery_failed")

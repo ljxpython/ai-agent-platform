@@ -21,8 +21,7 @@ R0 当前提供两个参考入口：
 `langgraph.demo.json` 额外注册能力 Demo。每个 Service 的正式入口都是：
 
 ```python
-async def get_agent(config: RunnableConfig) -> Pregel:
-    ...
+async def get_agent(config: RunnableConfig) -> Pregel: ...
 ```
 
 ## 安装和配置

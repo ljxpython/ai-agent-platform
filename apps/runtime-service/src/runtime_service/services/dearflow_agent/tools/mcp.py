@@ -1,9 +1,11 @@
 """Optional MCP tools from a server-owned, scoped resource binding."""
+
 import json
 import os
 
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from runtime_service.runtime import resolve_resource_binding, RuntimeResolutionError
+
+from runtime_service.runtime import RuntimeResolutionError, resolve_resource_binding
 
 
 async def load_mcp_tools(config, principal, requested, reserved):
@@ -21,7 +23,10 @@ async def load_mcp_tools(config, principal, requested, reserved):
         connection = dict(connections[binding.resource_id])
         allowed = connection.pop("allowed_tools", [])
         names.intersection_update(allowed)
-        if binding.provider != "mcp_http" or connection.get("transport") != "streamable_http":
+        if (
+            binding.provider != "mcp_http"
+            or connection.get("transport") != "streamable_http"
+        ):
             raise ValueError()
     except (KeyError, TypeError, ValueError) as exc:
         raise RuntimeResolutionError("runtime.mcp.recovery_failed") from exc
@@ -36,6 +41,10 @@ async def load_mcp_tools(config, principal, requested, reserved):
     if names - set(actual):
         raise RuntimeResolutionError("runtime.mcp.required_unavailable")
     # P2 only accepts explicitly read-only bound tools. Mutations need their own HITL policy.
-    if any((tool.metadata or {}).get("readOnlyHint") is not True for tool in tools if tool.name in names):
+    if any(
+        (tool.metadata or {}).get("readOnlyHint") is not True
+        for tool in tools
+        if tool.name in names
+    ):
         raise RuntimeResolutionError("runtime.mcp.read_only_required")
     return [tool for tool in tools if tool.name in names]

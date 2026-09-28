@@ -1,5 +1,9 @@
-from platform_api.entrypoints.http.middleware.audit_log import register_audit_log_middleware
-from platform_api.entrypoints.http.middleware.auth_context import register_auth_context_middleware
+from platform_api.entrypoints.http.middleware.audit_log import (
+    register_audit_log_middleware,
+)
+from platform_api.entrypoints.http.middleware.auth_context import (
+    register_auth_context_middleware,
+)
 from platform_api.entrypoints.http.middleware.request_context import (
     register_request_context_middleware,
 )

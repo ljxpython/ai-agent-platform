@@ -15,12 +15,12 @@ from platform_api.modules.identity.contracts import (
     RefreshSessionCommand,
     UpdateCurrentUserProfileCommand,
 )
-from platform_api.modules.identity.service import IdentityService
 from platform_api.modules.identity.schemas import (
     AuthenticatedSession,
     SessionTokens,
     UserProfile,
 )
+from platform_api.modules.identity.service import IdentityService
 
 router = APIRouter(prefix="/api/identity", tags=["identity"])
 

@@ -6,6 +6,7 @@ import zipfile
 
 import pytest
 from PIL import Image
+
 from runtime_service.workspace.artifact_refs import ARTIFACT_MIMES, ArtifactWorkspace
 from runtime_service.workspace.browser import PREVIEW_BYTES, WorkspaceBrowser
 from runtime_service.workspace.documents import DocumentError, DocumentWorkspace
@@ -215,7 +216,9 @@ def test_published_versions_and_tampering(tmp_path):
     source.write_bytes(b"# report\n")
     store = ArtifactWorkspace(tmp_path)
     assert store.list_artifacts()["items"] == []
-    ref = build_artifact_tool(tmp_path).invoke({"file_path": "/workspace/work/report.md"})
+    ref = build_artifact_tool(tmp_path).invoke(
+        {"file_path": "/workspace/work/report.md"}
+    )
     source.write_bytes(b"# changed\n")
     newer = store.publish("/workspace/work/report.md")
     assert newer["path"] != ref["path"]
@@ -229,7 +232,10 @@ def test_published_versions_and_tampering(tmp_path):
     (tmp_path / ref["path"].removeprefix("/workspace/")).write_bytes(b"tampered")
     with pytest.raises(DocumentError) as error:
         store.read(ref["path"])
-    assert (error.value.code, error.value.status_code) == ("artifact_hash_mismatch", 409)
+    assert (error.value.code, error.value.status_code) == (
+        "artifact_hash_mismatch",
+        409,
+    )
 
 
 def test_artifact_pagination_and_failed_publication(tmp_path):
@@ -285,4 +291,3 @@ def test_readable_filename_artifacts_in_outputs(tmp_path):
     preview_bytes, mime = browser.preview(item["path"])
     assert mime == "application/json"
     assert json.loads(preview_bytes)["text"] == "# Architecture Design\n"
-

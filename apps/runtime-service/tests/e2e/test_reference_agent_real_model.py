@@ -11,7 +11,6 @@ from runtime_service.runtime import RuntimeContext
 from runtime_service.runtime.resolver import runtime_context_hash
 from runtime_service.services.reference_agent.agent import get_agent
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 pytestmark = pytest.mark.e2e
 
@@ -28,9 +27,11 @@ def _auth_user() -> dict[str, object]:
         "runtime_policy": {
             "version": "e2e-policy-v1",
             "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+            "tool_overrides": {},
+            "tool_policy_version": "test-tools-v2",
         },
-        "runtime_scope": {"operation": "read",
+        "runtime_scope": {
+            "operation": "read",
             "tenant_id": "e2e-tenant",
             "project_id": "e2e-project",
         },

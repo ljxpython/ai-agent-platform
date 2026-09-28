@@ -11,8 +11,8 @@ from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import ValidationError
 from platform_api.entrypoints.http.dependencies import get_actor_context
 from platform_api.modules.audit.contracts import AuditEventPage, ListAuditEventsQuery
-from platform_api.modules.audit.service import AuditService
 from platform_api.modules.audit.schemas import AuditPlane, AuditResult
+from platform_api.modules.audit.service import AuditService
 
 router = APIRouter(prefix="/api/audit", tags=["audit"])
 

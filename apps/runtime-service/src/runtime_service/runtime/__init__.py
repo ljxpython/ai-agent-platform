@@ -1,5 +1,13 @@
 """Public Runtime contracts and pure resolution entrypoints."""
 
+from runtime_service.runtime.access_policy import interrupts_for_access_policy
+from runtime_service.runtime.auth import (
+    RuntimeScope,
+    VerifiedDelegation,
+    verified_delegation_from_user,
+    verify_delegation_claims,
+    verify_delegation_token,
+)
 from runtime_service.runtime.contracts import (
     AgentDefaults,
     ResolvedRuntimeConfig,
@@ -13,29 +21,21 @@ from runtime_service.runtime.errors import (
     RuntimeResolutionError,
 )
 from runtime_service.runtime.modeling import build_model, fetch_model_connection
-from runtime_service.runtime.auth import (
-    RuntimeScope,
-    VerifiedDelegation,
-    verified_delegation_from_user,
-    verify_delegation_claims,
-    verify_delegation_token,
-)
 from runtime_service.runtime.resolver import (
     parse_runtime_context,
     parse_runtime_policy,
     parse_runtime_principal,
+    reject_untrusted_configurable,
     resolve_runtime_config,
     resolved_runtime_config_from_snapshot,
     runtime_config_snapshot,
     runtime_context_hash,
-    reject_untrusted_configurable,
 )
 from runtime_service.runtime.resource_bindings import (
     RuntimeResourceBinding,
     resolve_resource_binding,
     thread_resource_metadata,
 )
-from runtime_service.runtime.access_policy import interrupts_for_access_policy
 
 __all__ = [
     "AgentDefaults",

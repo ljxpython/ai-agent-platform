@@ -110,7 +110,10 @@ async def _worker_readiness_probe(client: Any, args: argparse.Namespace) -> None
 
 async def _run(args: argparse.Namespace) -> dict[str, Any]:
     parsed = urlparse(args.url)
-    if parsed.hostname in {None, "127.0.0.1", "localhost", "::1"} and not args.allow_loopback:
+    if (
+        parsed.hostname in {None, "127.0.0.1", "localhost", "::1"}
+        and not args.allow_loopback
+    ):
         raise ValueError(
             "--url must be reachable outside the caller loopback namespace (or pass --allow-loopback)"
         )
@@ -181,7 +184,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
             )
         return {
             "status": "passed",
-            "network_namespace": "local-loopback" if args.allow_loopback else "external",
+            "network_namespace": "local-loopback"
+            if args.allow_loopback
+            else "external",
             "api_readiness": "passed",
             "worker_readiness": "passed",
             "initial_cursor": initial_ids[-1],

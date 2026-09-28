@@ -128,7 +128,9 @@ async def _run(args: argparse.Namespace) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--url", default=os.getenv("RUNTIME_DURABLE_URL", "http://127.0.0.1:18123"))
+    parser.add_argument(
+        "--url", default=os.getenv("RUNTIME_DURABLE_URL", "http://127.0.0.1:18123")
+    )
     parser.add_argument(
         "--assistant-id",
         default=os.getenv("RUNTIME_DURABLE_DISCONNECT_ASSISTANT_ID", "disconnect_demo"),
@@ -140,7 +142,9 @@ def main() -> int:
     try:
         print(json.dumps(asyncio.run(_run(args)), ensure_ascii=False))
     except Exception as exc:  # noqa: BLE001 - baseline must emit structured failure.
-        print(json.dumps({"status": "failed", "failure": f"{type(exc).__name__}: {exc}"}))
+        print(
+            json.dumps({"status": "failed", "failure": f"{type(exc).__name__}: {exc}"})
+        )
         return 1
     return 0
 

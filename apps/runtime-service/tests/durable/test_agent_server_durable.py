@@ -5,10 +5,10 @@ import contextlib
 import os
 import uuid
 
+import httpx
 import pytest
 
 from .local_auth import get_authenticated_client
-
 
 pytestmark = [pytest.mark.integration, pytest.mark.durable]
 
@@ -73,7 +73,9 @@ async def _test_durability_mode(
         run_id = next(part.data["run_id"] for part in parts if part.event == "metadata")
         assert _status(await durable_client.runs.get(thread_id, run_id)) == "success"
         state = await durable_client.threads.get_state(thread_id)
-        checkpoint = state.get("checkpoint") if isinstance(state, dict) else state.checkpoint
+        checkpoint = (
+            state.get("checkpoint") if isinstance(state, dict) else state.checkpoint
+        )
         assert checkpoint
     finally:
         await durable_client.aclose()
@@ -92,12 +94,23 @@ async def _test_sync_run(base_url: str, assistant_id: str) -> None:
             input={"messages": [{"role": "user", "content": "second run"}]},
         )
         assert first and second
-        first_run_id = next(part.data["run_id"] for part in first if part.event == "metadata")
-        second_run_id = next(part.data["run_id"] for part in second if part.event == "metadata")
-        assert _status(await durable_client.runs.get(thread_id, first_run_id)) == "success"
-        assert _status(await durable_client.runs.get(thread_id, second_run_id)) == "success"
+        first_run_id = next(
+            part.data["run_id"] for part in first if part.event == "metadata"
+        )
+        second_run_id = next(
+            part.data["run_id"] for part in second if part.event == "metadata"
+        )
+        assert (
+            _status(await durable_client.runs.get(thread_id, first_run_id)) == "success"
+        )
+        assert (
+            _status(await durable_client.runs.get(thread_id, second_run_id))
+            == "success"
+        )
         state = await durable_client.threads.get_state(thread_id)
-        checkpoint = state.get("checkpoint") if isinstance(state, dict) else state.checkpoint
+        checkpoint = (
+            state.get("checkpoint") if isinstance(state, dict) else state.checkpoint
+        )
         assert checkpoint
     finally:
         await durable_client.aclose()
@@ -107,6 +120,7 @@ def test_interrupt_before_and_resume_keep_thread_scope(
     durable_url: str, durable_assistant_id: str
 ) -> None:
     asyncio.run(_test_interrupt_before_and_resume(durable_url, durable_assistant_id))
+
 
 async def _test_interrupt_before_and_resume(base_url: str, assistant_id: str) -> None:
     durable_client = get_authenticated_client(base_url, assistant_id=assistant_id)
@@ -170,14 +184,18 @@ async def _test_two_sequential_workflow_interrupts(
         )
         assert any("workflow.invalid_resume" in str(part.data) for part in second)
         state = await durable_client.threads.get_state(thread_id)
-        state_values = state.get("values", {}) if isinstance(state, dict) else state.values
+        state_values = (
+            state.get("values", {}) if isinstance(state, dict) else state.values
+        )
         state_interrupts = (
             state.get("interrupts", []) if isinstance(state, dict) else state.interrupts
         )
         assert state_values["prepared_count"] == 1
         assert state_interrupts
         interrupt = state_interrupts[0]
-        interrupt_id = interrupt.get("id") if isinstance(interrupt, dict) else interrupt.id
+        interrupt_id = (
+            interrupt.get("id") if isinstance(interrupt, dict) else interrupt.id
+        )
 
         completed = await _stream_run(
             durable_client,
@@ -186,7 +204,10 @@ async def _test_two_sequential_workflow_interrupts(
             input=None,
             command={"resume": {interrupt_id: "approve"}},
         )
-        assert any("workflow approved: durable workflow" in str(part.data) for part in completed)
+        assert any(
+            "workflow approved: durable workflow" in str(part.data)
+            for part in completed
+        )
         final_state = await durable_client.threads.get_state(thread_id)
         final_values = (
             final_state.get("values", {})
@@ -203,6 +224,7 @@ def test_resumable_stream_replays_without_duplicate_event_ids(
     durable_url: str, durable_assistant_id: str
 ) -> None:
     asyncio.run(_test_resumable_stream(durable_url, durable_assistant_id))
+
 
 async def _test_resumable_stream(base_url: str, assistant_id: str) -> None:
     durable_client = get_authenticated_client(base_url, assistant_id=assistant_id)
@@ -262,7 +284,9 @@ async def _test_sse_disconnect(base_url: str, assistant_id: str) -> None:
         run = await durable_client.runs.create(
             thread_id,
             assistant_id,
-            input={"messages": [{"role": "user", "content": "reply with disconnect-ok"}]},
+            input={
+                "messages": [{"role": "user", "content": "reply with disconnect-ok"}]
+            },
             stream_mode=["values", "updates"],
             stream_resumable=True,
             durability="sync",
@@ -283,6 +307,7 @@ async def _test_sse_disconnect(base_url: str, assistant_id: str) -> None:
 
 def test_cancel_is_idempotent(durable_url: str, durable_assistant_id: str) -> None:
     asyncio.run(_test_cancel(durable_url, durable_assistant_id))
+
 
 async def _test_cancel(base_url: str, assistant_id: str) -> None:
     durable_client = get_authenticated_client(base_url, assistant_id=assistant_id)
@@ -307,15 +332,18 @@ async def _test_cancel(base_url: str, assistant_id: str) -> None:
         await durable_client.aclose()
 
 
-def test_invalid_checkpoint_is_rejected(durable_url: str, durable_assistant_id: str) -> None:
+def test_invalid_checkpoint_is_rejected(
+    durable_url: str, durable_assistant_id: str
+) -> None:
     asyncio.run(_test_invalid_checkpoint(durable_url, durable_assistant_id))
+
 
 async def _test_invalid_checkpoint(base_url: str, assistant_id: str) -> None:
     durable_client = get_authenticated_client(base_url, assistant_id=assistant_id)
     thread_id = _thread_id()
     try:
         await durable_client.threads.create(thread_id=thread_id, if_exists="raise")
-        with pytest.raises(Exception):
+        with pytest.raises(httpx.HTTPError):
             await durable_client.runs.wait(
                 thread_id,
                 assistant_id,
@@ -335,10 +363,12 @@ def test_unrecoverable_input_is_reported_as_run_failure(
 
 async def _test_failure(base_url: str, assistant_id: str) -> None:
     durable_client = get_authenticated_client(
-        base_url, assistant_id=assistant_id,
+        base_url,
+        assistant_id=assistant_id,
         permissions=["runtime.tool.write"],
         allowed_model_ids=["runtime:failure-demo"],
-        tool_overrides={}, tool_policy_version="test-tools-v2",
+        tool_overrides={},
+        tool_policy_version="test-tools-v2",
     )
     thread_id = _thread_id()
     try:
@@ -375,10 +405,12 @@ def test_run_timeout_is_reported_once(
 
 async def _test_timeout(base_url: str, assistant_id: str) -> None:
     durable_client = get_authenticated_client(
-        base_url, assistant_id=assistant_id,
+        base_url,
+        assistant_id=assistant_id,
         permissions=["runtime.tool.write"],
         allowed_model_ids=["runtime:timeout-demo"],
-        tool_overrides={}, tool_policy_version="test-tools-v2",
+        tool_overrides={},
+        tool_policy_version="test-tools-v2",
     )
     thread_id = _thread_id()
     try:

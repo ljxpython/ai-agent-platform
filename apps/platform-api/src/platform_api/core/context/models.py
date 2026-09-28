@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Mapping
 
 
 def _normalize_roles(values: list[str] | tuple[str, ...]) -> tuple[str, ...]:
@@ -45,7 +45,9 @@ class ActorContext:
     project_roles: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "platform_roles", _normalize_roles(list(self.platform_roles)))
+        object.__setattr__(
+            self, "platform_roles", _normalize_roles(list(self.platform_roles))
+        )
         object.__setattr__(
             self,
             "project_roles",

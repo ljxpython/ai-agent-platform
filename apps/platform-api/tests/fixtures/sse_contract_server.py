@@ -12,16 +12,17 @@ from uuid import uuid4
 
 import uvicorn
 from fastapi import Body
+
 from platform_api.adapters.langgraph.sdk_client import create_runtime_upstream_error
 from platform_api.bootstrap.lifespan import lifespan
 from platform_api.core.db import session_scope
 from platform_api.core.security import hash_password
 from platform_api.main import create_app
-from platform_api.modules.iam.domain import ProjectRole
-from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
 from platform_api.modules.agents.infra.sqlalchemy.repository import (
     SqlAlchemyAssistantsRepository,
 )
+from platform_api.modules.iam.domain import ProjectRole
+from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
 from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
 from platform_api.modules.runtime_catalog.infra.sqlalchemy.models import (
     RuntimeCatalogGraphRecord,

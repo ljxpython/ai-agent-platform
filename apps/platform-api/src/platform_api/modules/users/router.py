@@ -9,11 +9,11 @@ from platform_api.modules.identity.schemas import UserStatus
 from platform_api.modules.users.contracts import (
     CreateUserCommand,
     ListUsersQuery,
+    ResetUserPasswordCommand,
     UpdateUserCommand,
 )
-from platform_api.modules.users.service import UsersService
-from platform_api.modules.users.contracts import ResetUserPasswordCommand
 from platform_api.modules.users.schemas import UserItem, UserPage, UserProjectPage
+from platform_api.modules.users.service import UsersService
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 

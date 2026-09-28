@@ -15,7 +15,9 @@ from runtime_service.services.demo.workspace_demo.policy import (
 )
 
 
-def test_workspace_policy_rejects_oversized_files_and_file_quota(tmp_path: Path) -> None:
+def test_workspace_policy_rejects_oversized_files_and_file_quota(
+    tmp_path: Path,
+) -> None:
     root = tmp_path / "tenant" / "project" / "thread"
     root.mkdir(parents=True)
     with pytest.raises(ValueError, match="file exceeds"):
@@ -98,9 +100,7 @@ def test_workspace_write_lock_makes_quota_check_atomic(tmp_path: Path) -> None:
     def write(path: str) -> str:
         try:
             with workspace_write_lock(root):
-                target = validate_workspace_write(
-                    root, path, "1234", limits=limits
-                )
+                target = validate_workspace_write(root, path, "1234", limits=limits)
                 target.write_text("1234", encoding="utf-8")
             return "written"
         except ValueError:

@@ -12,7 +12,6 @@ from dotenv import dotenv_values
 from runtime_service.observability import langfuse
 from runtime_service.services.demo.workflow_demo.agent import get_agent
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 pytestmark = pytest.mark.e2e
 
@@ -49,10 +48,10 @@ def test_real_langfuse_workflow_trace_smoke(monkeypatch: pytest.MonkeyPatch) -> 
                         "request_id": request_id,
                         "thread_id": thread_id,
                     },
-                "configurable": {
-                    "thread_id": thread_id,
-                    "_runtime_test_local_auth": True,
-                },
+                    "configurable": {
+                        "thread_id": thread_id,
+                        "_runtime_test_local_auth": True,
+                    },
                 }
             )
         )
@@ -72,9 +71,7 @@ def test_real_langfuse_workflow_trace_smoke(monkeypatch: pytest.MonkeyPatch) -> 
         for _ in range(6):
             traces = [
                 trace
-                for trace in client.api.trace.list(
-                    session_id=thread_id, limit=20
-                ).data
+                for trace in client.api.trace.list(session_id=thread_id, limit=20).data
                 if trace.name == "workflow_demo"
             ]
             if traces:
@@ -87,9 +84,7 @@ def test_real_langfuse_workflow_trace_smoke(monkeypatch: pytest.MonkeyPatch) -> 
         assert trace.metadata["request_id"] == request_id
         assert trace.metadata["thread_id"] == thread_id
         assert trace.metadata["graph_id"] == "workflow_demo"
-        observations = client.api.observations.get_many(
-            trace_id=trace.id, limit=100
-        )
+        observations = client.api.observations.get_many(trace_id=trace.id, limit=100)
         assert observations.data
     finally:
         langfuse.close_langfuse(timeout_seconds=10.0)

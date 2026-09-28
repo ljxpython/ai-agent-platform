@@ -24,8 +24,7 @@ Aegra 曾作为官方 `langgraph-api` Durable Server 的候选进行调研，但
 - 一参数 factory 会收到每次 Run 的配置，因此兼容我们的：
 
   ```python
-  async def get_agent(config: RunnableConfig) -> Pregel:
-      ...
+  async def get_agent(config: RunnableConfig) -> Pregel: ...
   ```
 
 - 通过 OpenTelemetry 可把 Trace 发送到 Langfuse、Phoenix 或通用 OTLP 后端，不强制绑定 LangSmith。

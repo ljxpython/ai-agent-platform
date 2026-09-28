@@ -9,8 +9,8 @@ from fastapi.responses import StreamingResponse
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from platform_api.core.context import build_request_context
 from platform_api.adapters.langgraph import build_forward_headers
+from platform_api.core.context import build_request_context
 from platform_api.core.db import session_scope
 from platform_api.core.security import hash_password
 from platform_api.entrypoints.http.middleware.audit_log import _should_capture_response

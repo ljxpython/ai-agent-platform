@@ -1,7 +1,7 @@
 import os
 from unittest.mock import patch
 
-from runtime_service.services.dearflow_agent.modes import MODES, resolve_mode
+from runtime_service.services.dearflow_agent.modes import MODES
 
 
 def test_modes_default_values_elevated():

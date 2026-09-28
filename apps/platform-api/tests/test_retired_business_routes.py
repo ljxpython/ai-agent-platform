@@ -16,7 +16,9 @@ class RetiredBusinessRoutesTest(unittest.TestCase):
         paths = app.openapi()["paths"]
         self.assertTrue(paths)
         self.assertNotIn("/api/runtime/models/refresh", paths)
-        self.assertFalse(any("knowledge" in path or "testcase" in path for path in paths))
+        self.assertFalse(
+            any("knowledge" in path or "testcase" in path for path in paths)
+        )
         self.assertFalse(any(path.endswith("/resync") for path in paths))
         with TestClient(app) as client:
             for path in (

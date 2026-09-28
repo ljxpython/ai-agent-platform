@@ -80,7 +80,7 @@ class Settings(BaseSettings):
         return ("*",)
 
     @model_validator(mode="after")
-    def validate_security_guards(self) -> "Settings":
+    def validate_security_guards(self) -> Settings:
         normalized_env = self.app_env.lower()
         if normalized_env not in {"local", "dev", "staging", "prod", "production"}:
             raise ValueError("app_env must be one of local/dev/staging/prod/production")
@@ -91,12 +91,15 @@ class Settings(BaseSettings):
                 "PLATFORM_API_DATABASE_URL is required when platform_db_enabled=true"
             )
         if self.oidc_enabled and (not self.oidc_issuer_url or not self.oidc_client_id):
-            raise ValueError("oidc_issuer_url and oidc_client_id are required when oidc_enabled=true")
+            raise ValueError(
+                "oidc_issuer_url and oidc_client_id are required when oidc_enabled=true"
+            )
         if self.jwt_algorithm not in {"HS256", "HS384", "HS512"}:
             raise ValueError("jwt_algorithm must be one of HS256/HS384/HS512")
-        if self.runtime_delegation_secret and len(
-            self.runtime_delegation_secret.encode("utf-8")
-        ) < 32:
+        if (
+            self.runtime_delegation_secret
+            and len(self.runtime_delegation_secret.encode("utf-8")) < 32
+        ):
             raise ValueError("runtime_delegation_secret must be at least 32 bytes")
         if is_production:
             if self.api_docs_enabled:
@@ -108,7 +111,9 @@ class Settings(BaseSettings):
             if self.jwt_refresh_secret == "change-me-refresh-secret-at-least-32-bytes":
                 raise ValueError("JWT refresh secret must be overridden in production")
             if not self.runtime_delegation_secret:
-                raise ValueError("Runtime delegation secret must be configured in production")
+                raise ValueError(
+                    "Runtime delegation secret must be configured in production"
+                )
         return self
 
 

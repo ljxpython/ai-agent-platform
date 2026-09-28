@@ -8,8 +8,7 @@
 入口是：
 
 ```python
-async def get_agent(config: RunnableConfig) -> Pregel:
-    ...
+async def get_agent(config: RunnableConfig) -> Pregel: ...
 ```
 
 输入支持旧的 `message` 字段以及标准 Chat 的 `messages` 字段，另有 `route` 和

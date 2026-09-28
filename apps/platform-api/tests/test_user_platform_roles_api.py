@@ -6,7 +6,12 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
+from platform_api.core.db import (
+    build_engine,
+    build_session_factory,
+    create_core_tables,
+    session_scope,
+)
 from platform_api.core.security import create_access_token, hash_password
 from platform_api.main import create_app
 from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
@@ -111,7 +116,9 @@ class UserPlatformRolesApiTest(unittest.TestCase):
             headers=self._auth_headers(operator_token),
         )
         self.assertEqual(profile_response.status_code, 200, profile_response.text)
-        self.assertEqual(profile_response.json()["platform_roles"], ["platform_operator"])
+        self.assertEqual(
+            profile_response.json()["platform_roles"], ["platform_operator"]
+        )
 
         update_response = self.client.patch(
             f"/api/users/{user_id}",
@@ -125,7 +132,9 @@ class UserPlatformRolesApiTest(unittest.TestCase):
         self.assertEqual(updated_payload["platform_roles"], ["platform_viewer"])
         self.assertFalse(updated_payload["is_super_admin"])
 
-    def test_last_super_admin_remains_protected_after_platform_role_migration(self) -> None:
+    def test_last_super_admin_remains_protected_after_platform_role_migration(
+        self,
+    ) -> None:
         response = self.client.patch(
             f"/api/users/{self.admin_user_id}",
             headers=self._auth_headers(),

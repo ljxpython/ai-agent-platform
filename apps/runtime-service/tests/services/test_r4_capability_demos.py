@@ -40,14 +40,18 @@ def _tool_names(graph: Pregel) -> set[str]:
     return set(graph.nodes["tools"].bound._tools_by_name)
 
 
-@pytest.mark.parametrize("entrypoint", [get_deep_agent, get_backend_agent, get_mcp_agent])
+@pytest.mark.parametrize(
+    "entrypoint", [get_deep_agent, get_backend_agent, get_mcp_agent]
+)
 def test_r4_graphs_return_pregel_without_external_services(entrypoint) -> None:
     graph = asyncio.run(entrypoint(_config()))
     assert isinstance(graph, Pregel)
 
 
 def test_demo_config_registers_all_r4_capability_graphs() -> None:
-    config = json.loads((PROJECT_ROOT / "langgraph.demo.json").read_text(encoding="utf-8"))
+    config = json.loads(
+        (PROJECT_ROOT / "langgraph.demo.json").read_text(encoding="utf-8")
+    )
     graphs = config["graphs"]
 
     assert set(graphs) == {
@@ -67,7 +71,9 @@ def test_deep_agent_declares_state_backend_and_bundled_skill() -> None:
     assert "SkillsMiddleware.before_agent" in graph.get_graph().nodes
 
 
-def test_deep_agent_subagent_is_explicitly_restricted(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_deep_agent_subagent_is_explicitly_restricted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     captured: dict[str, object] = {}
 
     def capture(**kwargs: object) -> object:
@@ -108,7 +114,9 @@ def test_mcp_loader_has_explicit_required_and_optional_failure_semantics(
         raise OSError("MCP down")
 
     monkeypatch.setattr(mcp_loader.MultiServerMCPClient, "get_tools", unavailable)
-    with pytest.raises(RuntimeResolutionError, match="runtime.mcp.required_unavailable"):
+    with pytest.raises(
+        RuntimeResolutionError, match="runtime.mcp.required_unavailable"
+    ):
         asyncio.run(load_mcp_tools(required=True))
     assert asyncio.run(load_mcp_tools(required=False)) == []
 
@@ -121,13 +129,20 @@ def test_mcp_tool_is_registered_in_real_agent_graph() -> None:
 def test_mcp_graph_executes_service_loaded_tool() -> None:
     model = BindableFakeMessagesChatModel(
         responses=[
-            AIMessage(content="", tool_calls=[{"name": "mcp_read", "args": {"topic": "runtime"}, "id": "mcp-call"}]),
+            AIMessage(
+                content="",
+                tool_calls=[
+                    {"name": "mcp_read", "args": {"topic": "runtime"}, "id": "mcp-call"}
+                ],
+            ),
             AIMessage(content="done"),
         ]
     )
     config = _config(model)
     result = asyncio.run(_invoke(get_mcp_agent, config, "read MCP"))
-    tool_messages = [message for message in result["messages"] if isinstance(message, ToolMessage)]
+    tool_messages = [
+        message for message in result["messages"] if isinstance(message, ToolMessage)
+    ]
     assert any("mcp note: runtime" in str(message.content) for message in tool_messages)
 
 
@@ -154,15 +169,25 @@ def test_backend_demo_does_not_fallback_after_initialization_failure(
         asyncio.run(backend_server.get_agent(_config()))
 
 
-@pytest.mark.parametrize("entrypoint", [get_deep_agent, get_backend_agent, get_mcp_agent])
-def test_r4_production_entrypoints_fail_closed_without_verified_principal(entrypoint) -> None:
+@pytest.mark.parametrize(
+    "entrypoint", [get_deep_agent, get_backend_agent, get_mcp_agent]
+)
+def test_r4_production_entrypoints_fail_closed_without_verified_principal(
+    entrypoint,
+) -> None:
     with pytest.raises(RuntimeAuthError, match="runtime.auth.missing_principal"):
         asyncio.run(entrypoint({}))
 
 
-@pytest.mark.parametrize("entrypoint", [get_deep_agent, get_backend_agent, get_mcp_agent])
-@pytest.mark.parametrize("field", ["backend", "mcp_url", "skill_path", "subagents", "tool_impl", "token"])
-def test_r4_entrypoints_reject_client_resource_and_credential_injection(entrypoint, field: str) -> None:
+@pytest.mark.parametrize(
+    "entrypoint", [get_deep_agent, get_backend_agent, get_mcp_agent]
+)
+@pytest.mark.parametrize(
+    "field", ["backend", "mcp_url", "skill_path", "subagents", "tool_impl", "token"]
+)
+def test_r4_entrypoints_reject_client_resource_and_credential_injection(
+    entrypoint, field: str
+) -> None:
     with pytest.raises(RuntimeResolutionError, match="runtime.configurable.forbidden"):
         asyncio.run(
             entrypoint(
@@ -198,11 +223,18 @@ def test_backend_demo_exposes_workspace_tools_without_execute_or_task() -> None:
     assert "task" not in _tool_names(graph)
 
 
-@pytest.mark.parametrize("entrypoint", [get_deep_agent, get_backend_agent, get_mcp_agent])
+@pytest.mark.parametrize(
+    "entrypoint", [get_deep_agent, get_backend_agent, get_mcp_agent]
+)
 @pytest.mark.parametrize("tool_name", ["execute"])
 def test_r4_rejects_forged_unregistered_tool_calls(entrypoint, tool_name: str) -> None:
     model = BindableFakeMessagesChatModel(
-        responses=[AIMessage(content="", tool_calls=[{"name": tool_name, "args": {}, "id": "forged-call"}])]
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[{"name": tool_name, "args": {}, "id": "forged-call"}],
+            )
+        ]
     )
     config = _config(model)
     graph = asyncio.run(entrypoint(config))
@@ -212,7 +244,12 @@ def test_r4_rejects_forged_unregistered_tool_calls(entrypoint, tool_name: str) -
 
 def test_backend_demo_rejects_forged_task_tool_call() -> None:
     model = BindableFakeMessagesChatModel(
-        responses=[AIMessage(content="", tool_calls=[{"name": "task", "args": {}, "id": "forged-task"}])]
+        responses=[
+            AIMessage(
+                content="",
+                tool_calls=[{"name": "task", "args": {}, "id": "forged-task"}],
+            )
+        ]
     )
     config = _config(model)
     graph = asyncio.run(get_backend_agent(config))
@@ -243,13 +280,18 @@ def test_backend_demo_rejects_invalid_test_checkpointer() -> None:
 def _tool_model(name: str, args: dict[str, object]) -> BindableFakeMessagesChatModel:
     return BindableFakeMessagesChatModel(
         responses=[
-            AIMessage(content="", tool_calls=[{"name": name, "args": args, "id": f"{name}-call"}]),
+            AIMessage(
+                content="",
+                tool_calls=[{"name": name, "args": args, "id": f"{name}-call"}],
+            ),
             AIMessage(content="done"),
         ]
     )
 
 
-def _backend_config(model: object, checkpointer: InMemorySaver, thread_id: str) -> dict[str, object]:
+def _backend_config(
+    model: object, checkpointer: InMemorySaver, thread_id: str
+) -> dict[str, object]:
     config = _config(model)
     config["configurable"] = {
         **config["configurable"],
@@ -259,35 +301,56 @@ def _backend_config(model: object, checkpointer: InMemorySaver, thread_id: str) 
     return config
 
 
-async def _invoke(entrypoint, config: dict[str, object], text: str) -> dict[str, object]:
+async def _invoke(
+    entrypoint, config: dict[str, object], text: str
+) -> dict[str, object]:
     graph = await entrypoint(config)
     return await graph.ainvoke({"messages": [("human", text)]}, config)
 
 
 def test_backend_workspace_survives_graph_rebuild_for_same_thread() -> None:
     checkpointer = InMemorySaver()
-    write_config = _backend_config(_tool_model("write_file", {"file_path": "/notes.txt", "content": "thread-a"}), checkpointer, "thread-a")
+    write_config = _backend_config(
+        _tool_model("write_file", {"file_path": "/notes.txt", "content": "thread-a"}),
+        checkpointer,
+        "thread-a",
+    )
     asyncio.run(_invoke(get_backend_agent, write_config, "write"))
 
-    read_config = _backend_config(_tool_model("read_file", {"file_path": "/notes.txt"}), checkpointer, "thread-a")
+    read_config = _backend_config(
+        _tool_model("read_file", {"file_path": "/notes.txt"}), checkpointer, "thread-a"
+    )
     result = asyncio.run(_invoke(get_backend_agent, read_config, "read"))
-    tool_messages = [message for message in result["messages"] if isinstance(message, ToolMessage)]
+    tool_messages = [
+        message for message in result["messages"] if isinstance(message, ToolMessage)
+    ]
     assert any("thread-a" in str(message.content) for message in tool_messages)
 
 
 def test_backend_workspace_isolated_between_threads() -> None:
     checkpointer = InMemorySaver()
-    write_config = _backend_config(_tool_model("write_file", {"file_path": "/notes.txt", "content": "thread-a"}), checkpointer, "thread-a")
+    write_config = _backend_config(
+        _tool_model("write_file", {"file_path": "/notes.txt", "content": "thread-a"}),
+        checkpointer,
+        "thread-a",
+    )
     asyncio.run(_invoke(get_backend_agent, write_config, "write"))
 
-    read_config = _backend_config(_tool_model("read_file", {"file_path": "/notes.txt"}), checkpointer, "thread-b")
+    read_config = _backend_config(
+        _tool_model("read_file", {"file_path": "/notes.txt"}), checkpointer, "thread-b"
+    )
     result = asyncio.run(_invoke(get_backend_agent, read_config, "read"))
-    tool_messages = [message for message in result["messages"] if isinstance(message, ToolMessage)]
+    tool_messages = [
+        message for message in result["messages"] if isinstance(message, ToolMessage)
+    ]
     assert any("not found" in str(message.content).lower() for message in tool_messages)
 
 
 def test_deep_agent_rejects_skill_write_before_backend_execution() -> None:
-    model = _tool_model("write_file", {"file_path": "/skills/runtime-notes/SKILL.md", "content": "tamper"})
+    model = _tool_model(
+        "write_file",
+        {"file_path": "/skills/runtime-notes/SKILL.md", "content": "tamper"},
+    )
     config = _config(model)
     config["configurable"] = {
         **config["configurable"],
@@ -319,8 +382,14 @@ def test_deep_agent_performs_explicit_subagent_delegation() -> None:
         ]
     )
     result = asyncio.run(_invoke(get_deep_agent, _config(model), "delegate"))
-    tool_messages = [message for message in result["messages"] if isinstance(message, ToolMessage)]
-    assert any(message.tool_call_id == "task-call" and "subagent-summary" in str(message.content) for message in tool_messages)
+    tool_messages = [
+        message for message in result["messages"] if isinstance(message, ToolMessage)
+    ]
+    assert any(
+        message.tool_call_id == "task-call"
+        and "subagent-summary" in str(message.content)
+        for message in tool_messages
+    )
     assert _tool_names(asyncio.run(get_deep_agent(_config(model)))) == {
         "ls",
         "read_file",

@@ -274,12 +274,12 @@ class LangGraphRuntimeClient:
 
         try:
             return response.json()
-        except ValueError:
+        except ValueError as exc:
             raise PlatformApiError(
                 code="langgraph_upstream_invalid_response",
                 status_code=502,
                 message="LangGraph upstream returned an invalid JSON response",
-            )
+            ) from exc
 
     async def read_image(
         self,
@@ -421,12 +421,12 @@ class LangGraphRuntimeClient:
 
         try:
             return response.json()
-        except ValueError:
+        except ValueError as exc:
             raise PlatformApiError(
                 code="langgraph_upstream_invalid_response",
                 status_code=502,
                 message="LangGraph upstream returned an invalid JSON response",
-            )
+            ) from exc
 
     async def read_file(
         self,

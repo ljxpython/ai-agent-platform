@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 from sqlalchemy import desc, func, select
@@ -8,16 +8,16 @@ from sqlalchemy.orm import Session
 
 from platform_api.modules.iam.domain import ProjectRole
 from platform_api.modules.identity.models import UserRecord
-from platform_api.modules.projects.records import (
-    StoredProject,
-    StoredProjectMemberView,
-    StoredProjectMemberCandidate,
-    StoredTenant,
-)
 from platform_api.modules.projects.models import (
     ProjectMemberRecord,
     ProjectRecord,
     TenantRecord,
+)
+from platform_api.modules.projects.records import (
+    StoredProject,
+    StoredProjectMemberCandidate,
+    StoredProjectMemberView,
+    StoredTenant,
 )
 
 
@@ -158,7 +158,7 @@ class SqlAlchemyProjectsRepository:
         record.status = "deleting"
         self.session.flush()
         record.status = "deleted"
-        record.deleted_at = datetime.now(timezone.utc)
+        record.deleted_at = datetime.now(UTC)
         self.session.flush()
 
     def list_project_members(

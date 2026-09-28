@@ -33,9 +33,7 @@ def register_r6_assistants() -> None:
             await client.aclose()
 
         existing = {
-            item.get("graph_id")
-            for item in assistants
-            if isinstance(item, dict)
+            item.get("graph_id") for item in assistants if isinstance(item, dict)
         }
         required = {
             "reference_agent",

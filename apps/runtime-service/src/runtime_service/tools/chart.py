@@ -49,7 +49,11 @@ def normalize_chart_args(tool_name: str, raw_args: dict | None) -> dict:
                 key = (source, target)
                 name = str(edge.get("name") or "").strip()
                 if key not in merged_edges:
-                    merged_edges[key] = {"source": source, "target": target, "name": name}
+                    merged_edges[key] = {
+                        "source": source,
+                        "target": target,
+                        "name": name,
+                    }
                 else:
                     existing_name = merged_edges[key].get("name", "")
                     if name:
@@ -140,7 +144,9 @@ def build_chart_tools(workspace: ImageWorkspace, *, include_spreadsheet=False):
                         data = await download_image(
                             block.text.strip(), allowed_hosts={"mdn.alipayobjects.com"}
                         )
-                        ref = await asyncio.to_thread(workspace.save_asset, data, "charts")
+                        ref = await asyncio.to_thread(
+                            workspace.save_asset, data, "charts"
+                        )
                         content.append(TextContent(type="text", text=ref["path"]))
                         refs.append(ref)
                     else:
@@ -154,7 +160,9 @@ def build_chart_tools(workspace: ImageWorkspace, *, include_spreadsheet=False):
                     raise ValueError("chart_image_missing")
                 return result.model_copy(update=update_dict)
         except ValidationError as err:
-            logger.warning("Chart argument validation failed for %s: %s", request.name, err)
+            logger.warning(
+                "Chart argument validation failed for %s: %s", request.name, err
+            )
             path_str = ".".join(str(p) for p in err.path)
             detail = f"field '{path_str}': {err.message}" if path_str else err.message
             return CallToolResult(
@@ -168,7 +176,9 @@ def build_chart_tools(workspace: ImageWorkspace, *, include_spreadsheet=False):
             )
         except McpError as err:
             logger.warning("Chart MCP execution error for %s: %s", request.name, err)
-            err_message = getattr(getattr(err, "error", None), "message", None) or str(err)
+            err_message = getattr(getattr(err, "error", None), "message", None) or str(
+                err
+            )
             clean_message = err_message.split("\n")[0].strip()
             return CallToolResult(
                 isError=True,
@@ -186,7 +196,9 @@ def build_chart_tools(workspace: ImageWorkspace, *, include_spreadsheet=False):
             elif msg == "chart_data_limit":
                 tip = "Chart data payload exceeds the 128KB limit."
             elif msg == "chart_image_missing":
-                logger.warning("Chart generated successfully but no image URL was returned.")
+                logger.warning(
+                    "Chart generated successfully but no image URL was returned."
+                )
                 tip = "Chart MCP failed or its image could not be saved. Retry later."
             else:
                 tip = f"Invalid chart parameters: {msg}"

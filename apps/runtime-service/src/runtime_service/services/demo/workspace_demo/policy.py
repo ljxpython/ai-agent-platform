@@ -87,7 +87,10 @@ def validate_workspace_write(
     if not target.exists() and _file_count(workspace_root) >= limits.max_files:
         raise ValueError("workspace file count exceeds configured limit")
     existing_bytes = target.stat().st_size if target.is_file() else 0
-    if _total_file_bytes(workspace_root) - existing_bytes + content_bytes > limits.max_total_bytes:
+    if (
+        _total_file_bytes(workspace_root) - existing_bytes + content_bytes
+        > limits.max_total_bytes
+    ):
         raise ValueError("workspace total size exceeds configured limit")
     return target
 
@@ -113,7 +116,9 @@ def workspace_write_lock(workspace_root: Path) -> Iterator[None]:
 def _file_count(root: Path) -> int:
     # ponytail: bounded provider-backed workspaces can use an O(n) scan; replace
     # with provider quota accounting when the workspace owner exposes it.
-    return sum(1 for item in root.rglob("*") if item.is_file() and not item.is_symlink())
+    return sum(
+        1 for item in root.rglob("*") if item.is_file() and not item.is_symlink()
+    )
 
 
 def _total_file_bytes(root: Path) -> int:
@@ -136,7 +141,9 @@ def expired_workspace_threads(
     if not base_dir.is_absolute() or max_age_seconds <= 0:
         raise ValueError("workspace cleanup requires an absolute root and positive TTL")
     base = base_dir.resolve()
-    active = {str(item).strip("/") for item in active_workspace_ids if str(item).strip("/")}
+    active = {
+        str(item).strip("/") for item in active_workspace_ids if str(item).strip("/")
+    }
     timestamp = time.time() if now is None else now
     expired: list[Path] = []
     for tenant in _directories(base):
@@ -170,7 +177,9 @@ def cleanup_expired_workspace_threads(
         max_age_seconds=max_age_seconds,
         now=now,
     )
-    active = {str(item).strip("/") for item in active_workspace_ids if str(item).strip("/")}
+    active = {
+        str(item).strip("/") for item in active_workspace_ids if str(item).strip("/")
+    }
     timestamp = time.time() if now is None else now
     removed: list[str] = []
     for thread in expired:
@@ -190,7 +199,9 @@ def cleanup_expired_workspace_threads(
 
 def _directories(root: Path) -> list[Path]:
     try:
-        return [item for item in root.iterdir() if item.is_dir() and not item.is_symlink()]
+        return [
+            item for item in root.iterdir() if item.is_dir() and not item.is_symlink()
+        ]
     except OSError:
         return []
 

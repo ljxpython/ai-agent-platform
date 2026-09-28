@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-
 from sqlalchemy.orm import Session, sessionmaker
 
 from platform_api.core.context.models import ActorContext
@@ -27,17 +26,17 @@ from platform_api.modules.projects.contracts import (
     UpsertProjectMemberCommand,
 )
 from platform_api.modules.projects.records import StoredProject, StoredProjectMemberView
+from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
 from platform_api.modules.projects.schemas import (
-    ProjectMemberPage,
+    ProjectAccess,
     ProjectMemberCandidate,
     ProjectMemberCandidatePage,
+    ProjectMemberPage,
     ProjectMemberView,
     ProjectPage,
     ProjectStatus,
     ProjectSummary,
-    ProjectAccess,
 )
-from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
 
 
 class ProjectsService:

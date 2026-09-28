@@ -4,7 +4,12 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from platform_api.core.context.models import ActorContext
-from platform_api.core.errors import BadRequestError, ForbiddenError, NotAuthenticatedError, PlatformApiError
+from platform_api.core.errors import (
+    BadRequestError,
+    ForbiddenError,
+    NotAuthenticatedError,
+    PlatformApiError,
+)
 from platform_api.modules.iam.domain.roles import PlatformRole, ProjectRole
 
 
@@ -76,7 +81,9 @@ PLATFORM_PERMISSION_MAP: dict[PermissionCode, frozenset[PlatformRole]] = {
     PermissionCode.PLATFORM_USER_STATUS_WRITE: frozenset(
         {PlatformRole.SUPER_ADMIN, PlatformRole.OPERATOR}
     ),
-    PermissionCode.PLATFORM_USER_CREDENTIAL_RESET: frozenset({PlatformRole.SUPER_ADMIN}),
+    PermissionCode.PLATFORM_USER_CREDENTIAL_RESET: frozenset(
+        {PlatformRole.SUPER_ADMIN}
+    ),
     PermissionCode.PLATFORM_USER_ROLE_WRITE: frozenset({PlatformRole.SUPER_ADMIN}),
     PermissionCode.PLATFORM_PROJECT_READ: frozenset(
         {PlatformRole.SUPER_ADMIN, PlatformRole.OPERATOR, PlatformRole.VIEWER}
@@ -105,7 +112,9 @@ PLATFORM_PERMISSION_MAP: dict[PermissionCode, frozenset[PlatformRole]] = {
     PermissionCode.PLATFORM_SERVICE_ACCOUNT_WRITE: frozenset(
         {PlatformRole.SUPER_ADMIN, PlatformRole.OPERATOR}
     ),
-    PermissionCode.PLATFORM_SERVICE_ACCOUNT_GRANT_WRITE: frozenset({PlatformRole.SUPER_ADMIN}),
+    PermissionCode.PLATFORM_SERVICE_ACCOUNT_GRANT_WRITE: frozenset(
+        {PlatformRole.SUPER_ADMIN}
+    ),
     PermissionCode.PLATFORM_SUPER_ADMIN_MANAGE: frozenset({PlatformRole.SUPER_ADMIN}),
 }
 
@@ -113,9 +122,7 @@ PROJECT_PERMISSION_MAP: dict[PermissionCode, frozenset[ProjectRole]] = {
     PermissionCode.PROJECT_MEMBER_READ: frozenset(
         {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
     ),
-    PermissionCode.PROJECT_MEMBER_WRITE: frozenset(
-        {ProjectRole.ADMIN}
-    ),
+    PermissionCode.PROJECT_MEMBER_WRITE: frozenset({ProjectRole.ADMIN}),
     PermissionCode.PROJECT_AUDIT_READ: frozenset(
         {ProjectRole.ADMIN, ProjectRole.EDITOR}
     ),
@@ -134,9 +141,7 @@ PROJECT_PERMISSION_MAP: dict[PermissionCode, frozenset[ProjectRole]] = {
     PermissionCode.PROJECT_RUNTIME_READ: frozenset(
         {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
     ),
-    PermissionCode.PROJECT_RUNTIME_WRITE: frozenset(
-        {ProjectRole.ADMIN}
-    ),
+    PermissionCode.PROJECT_RUNTIME_WRITE: frozenset({ProjectRole.ADMIN}),
     PermissionCode.PROJECT_RUNTIME_EXECUTE: frozenset(
         {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
     ),
@@ -168,24 +173,44 @@ class IamPolicyEngine:
         permission = authorization.permission
         if permission in PROJECT_PERMISSION_MAP:
             if not authorization.project_id:
-                return PolicyDecision(allowed=False, reason=PolicyReason.PROJECT_SCOPE_REQUIRED)
+                return PolicyDecision(
+                    allowed=False, reason=PolicyReason.PROJECT_SCOPE_REQUIRED
+                )
             actor_roles = actor.project_role_set(authorization.project_id)
             required_roles = PROJECT_PERMISSION_MAP[permission]
-            matched = {ProjectRole(role) for role in actor_roles if role in required_roles}
+            matched = {
+                ProjectRole(role) for role in actor_roles if role in required_roles
+            }
             if matched:
-                return PolicyDecision(allowed=True, reason=PolicyReason.PROJECT_ROLE_ALLOWED)
-            return PolicyDecision(allowed=False, reason=PolicyReason.MISSING_PROJECT_ROLE)
+                return PolicyDecision(
+                    allowed=True, reason=PolicyReason.PROJECT_ROLE_ALLOWED
+                )
+            return PolicyDecision(
+                allowed=False, reason=PolicyReason.MISSING_PROJECT_ROLE
+            )
 
         if permission in PLATFORM_PERMISSION_MAP:
             if actor.has_platform_role(PlatformRole.SUPER_ADMIN.value):
-                return PolicyDecision(allowed=True, reason=PolicyReason.PLATFORM_SUPER_ADMIN)
+                return PolicyDecision(
+                    allowed=True, reason=PolicyReason.PLATFORM_SUPER_ADMIN
+                )
             required_roles = PLATFORM_PERMISSION_MAP[permission]
-            matched = {PlatformRole(role) for role in actor.platform_roles if role in required_roles}
+            matched = {
+                PlatformRole(role)
+                for role in actor.platform_roles
+                if role in required_roles
+            }
             if matched:
-                return PolicyDecision(allowed=True, reason=PolicyReason.PLATFORM_ROLE_ALLOWED)
-            return PolicyDecision(allowed=False, reason=PolicyReason.MISSING_PLATFORM_ROLE)
+                return PolicyDecision(
+                    allowed=True, reason=PolicyReason.PLATFORM_ROLE_ALLOWED
+                )
+            return PolicyDecision(
+                allowed=False, reason=PolicyReason.MISSING_PLATFORM_ROLE
+            )
 
-        return PolicyDecision(allowed=False, reason=PolicyReason.PERMISSION_NOT_REGISTERED)
+        return PolicyDecision(
+            allowed=False, reason=PolicyReason.PERMISSION_NOT_REGISTERED
+        )
 
     def require(
         self,

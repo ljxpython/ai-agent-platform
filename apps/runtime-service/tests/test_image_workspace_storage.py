@@ -1,8 +1,9 @@
 import hashlib
 import io
 from pathlib import Path
-from PIL import Image
+
 import pytest
+from PIL import Image
 
 from runtime_service.tools.images import ImageWorkspace, ImageWorkspaceError
 
@@ -44,7 +45,6 @@ def test_put_upload_and_read_asset(tmp_path: Path):
 def test_put_upload_rejections(tmp_path: Path):
     ws = ImageWorkspace(root=tmp_path)
     png_bytes = make_test_png()
-    actual_sha = hashlib.sha256(png_bytes).hexdigest()
 
     # Mismatched sha
     with pytest.raises(ImageWorkspaceError) as exc:

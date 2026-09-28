@@ -9,12 +9,12 @@ from langchain.agents.middleware import AgentMiddleware
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 
+from runtime_service.runtime import interrupts_for_access_policy
 from runtime_service.services.demo.showcase_demo.prompts import (
     CHART_PROMPT,
     IMPLEMENTOR_PROMPT,
     RESEARCH_PROMPT,
 )
-from runtime_service.runtime import interrupts_for_access_policy
 
 READ_TOOLS = ("ls", "read_file", "glob", "grep")
 WORK_TOOLS = (*READ_TOOLS, "write_file", "edit_file", "execute")
@@ -71,18 +71,23 @@ def build_subagents(
         },
     ]
     if chart_tools:
-        agents.append({
-            "name": "chart-agent",
-            "description": "根据委派的数据，用 AntV MCP 生成图表并返回 /workspace/charts/ 图片路径。",
-            "system_prompt": CHART_PROMPT,
-            "model": model,
-            "tools": list(chart_tools),
-            "permissions": PERMISSIONS,
-            "interrupt_on": {},
-            "middleware": [
-                FilesystemMiddleware(backend=backend, tools=list(READ_TOOLS),
-                                     _permissions=PERMISSIONS),
-                *middleware((*READ_TOOLS, *(tool.name for tool in chart_tools))),
-            ],
-        })
+        agents.append(
+            {
+                "name": "chart-agent",
+                "description": "根据委派的数据，用 AntV MCP 生成图表并返回 /workspace/charts/ 图片路径。",
+                "system_prompt": CHART_PROMPT,
+                "model": model,
+                "tools": list(chart_tools),
+                "permissions": PERMISSIONS,
+                "interrupt_on": {},
+                "middleware": [
+                    FilesystemMiddleware(
+                        backend=backend,
+                        tools=list(READ_TOOLS),
+                        _permissions=PERMISSIONS,
+                    ),
+                    *middleware((*READ_TOOLS, *(tool.name for tool in chart_tools))),
+                ],
+            }
+        )
     return agents

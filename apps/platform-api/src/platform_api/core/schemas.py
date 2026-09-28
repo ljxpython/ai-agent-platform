@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
-from typing import Generic, TypeVar
+from typing import Any, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -14,7 +13,7 @@ class AckResponse(BaseModel):
     ok: bool = True
 
 
-class OffsetPage(BaseModel, Generic[T]):
+class OffsetPage[T](BaseModel):
     model_config = ConfigDict(frozen=True)
 
     items: list[T] = Field(default_factory=list)

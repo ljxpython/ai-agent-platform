@@ -3,7 +3,9 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from platform_api.core.errors import BadRequestError
-from platform_api.modules.runtime_gateway.application.service import RuntimeGatewayService
+from platform_api.modules.runtime_gateway.application.service import (
+    RuntimeGatewayService,
+)
 
 
 class ThreadMetadataUpdateTest(unittest.IsolatedAsyncioTestCase):
@@ -11,7 +13,13 @@ class ThreadMetadataUpdateTest(unittest.IsolatedAsyncioTestCase):
         upstream = SimpleNamespace(update_thread=AsyncMock())
         service = RuntimeGatewayService(session_factory=None, upstream=upstream)
         service._load_thread = AsyncMock(
-            return_value={"metadata": {"project_id": "proj-1", "graph_id": "reference_agent", "title": "旧标题"}}
+            return_value={
+                "metadata": {
+                    "project_id": "proj-1",
+                    "graph_id": "reference_agent",
+                    "title": "旧标题",
+                }
+            }
         )
         result = await service.update_thread(
             actor=SimpleNamespace(),
@@ -106,16 +114,20 @@ class ThreadMetadataUpdateTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["title"], "新对话")
         upstream.update_thread.assert_not_called()
 
-    async def test_summarize_thread_title_auto_extracts_messages_from_thread_state(self) -> None:
+    async def test_summarize_thread_title_auto_extracts_messages_from_thread_state(
+        self,
+    ) -> None:
         upstream = SimpleNamespace(
-            get_thread_state=AsyncMock(return_value={
-                "values": {
-                    "messages": [
-                        {"type": "human", "content": "你来给我画一只鹈鹕"},
-                        {"type": "ai", "content": "好的，我来帮你画"},
-                    ]
+            get_thread_state=AsyncMock(
+                return_value={
+                    "values": {
+                        "messages": [
+                            {"type": "human", "content": "你来给我画一只鹈鹕"},
+                            {"type": "ai", "content": "好的，我来帮你画"},
+                        ]
+                    }
                 }
-            }),
+            ),
             summarize_thread_title=AsyncMock(return_value={"title": "画鹈鹕"}),
             update_thread=AsyncMock(),
         )
@@ -138,7 +150,7 @@ class ThreadMetadataUpdateTest(unittest.IsolatedAsyncioTestCase):
                     {"role": "human", "content": "你来给我画一只鹈鹕"},
                     {"role": "ai", "content": "好的，我来帮你画"},
                 ]
-            }
+            },
         )
         upstream.update_thread.assert_awaited_once_with(
             "th-1", {"metadata": {"title": "画鹈鹕"}}

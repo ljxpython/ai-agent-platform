@@ -32,7 +32,7 @@ class ListAuditEventsQuery(BaseModel):
     offset: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
-    def validate_correlation(self) -> "ListAuditEventsQuery":
+    def validate_correlation(self) -> ListAuditEventsQuery:
         for value, limit in (
             (self.request_id, 64),
             (self.thread_id, 128),

@@ -1,4 +1,5 @@
 """Fixed-source web review rules with verifiable version evidence."""
+
 import hashlib
 from datetime import UTC, datetime
 
@@ -17,11 +18,20 @@ async def fetch_web_guidelines() -> dict:
         text = data.decode("utf-8")
     except UnicodeError as exc:
         raise ToolException("invalid_guidelines_encoding") from exc
-    if len(text) > 100000 or "# " not in text or "text/html" in headers.get("content-type", ""):
+    if (
+        len(text) > 100000
+        or "# " not in text
+        or "text/html" in headers.get("content-type", "")
+    ):
         raise ToolException("invalid_guidelines_response")
-    return {"source_url": GUIDELINES_URL, "sha256": hashlib.sha256(data).hexdigest(),
-            "fetched_at": datetime.now(UTC).isoformat(), "etag": headers.get("etag"),
-            "content": text, "review_scope": "static_only"}
+    return {
+        "source_url": GUIDELINES_URL,
+        "sha256": hashlib.sha256(data).hexdigest(),
+        "fetched_at": datetime.now(UTC).isoformat(),
+        "etag": headers.get("etag"),
+        "content": text,
+        "review_scope": "static_only",
+    }
 
 
 fetch_web_guidelines.handle_tool_error = True

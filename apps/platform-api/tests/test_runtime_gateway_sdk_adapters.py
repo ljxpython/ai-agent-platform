@@ -5,6 +5,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
+
 from platform_api.adapters.langgraph.runs_sdk_adapter import LangGraphRunsSdkAdapter
 from platform_api.adapters.langgraph.runtime_client import LangGraphRuntimeClient
 from platform_api.adapters.langgraph.runtime_gateway_upstream import (
@@ -15,8 +16,8 @@ from platform_api.adapters.langgraph.threads_sdk_adapter import (
 )
 from platform_api.core.errors import PlatformApiError
 from platform_api.modules.runtime_gateway.presentation.http import (
-    router,
     _normalize_ack,
+    router,
 )
 
 
@@ -335,7 +336,9 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
                 if mode == "bad_length":
                     headers["content-length"] = str(20 * 1024 * 1024 + 1)
                 transport = httpx.MockTransport(
-                    lambda request: httpx.Response(200, headers=headers, stream=stream)
+                    lambda request, _headers=headers, _stream=stream: httpx.Response(
+                        200, headers=_headers, stream=_stream
+                    )
                 )
                 client = original(transport=transport)
                 with patch(
@@ -408,16 +411,18 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
             "application/octet-stream",
         ):
             transport = httpx.MockTransport(
-                lambda request: httpx.Response(
+                lambda request, _mime=mime: httpx.Response(
                     200,
                     content=b"fixture",
-                    headers={"content-type": mime},
+                    headers={"content-type": _mime},
                     request=request,
                 )
             )
             with patch(
                 "platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient",
-                side_effect=lambda **kwargs: original(transport=transport, **kwargs),
+                side_effect=lambda _transport=transport, **kwargs: original(
+                    transport=_transport, **kwargs
+                ),
             ) as factory:
                 payload = await runtime.read_file("/internal/threads/t/files/content")
                 self.assertEqual(payload.content_type, mime)

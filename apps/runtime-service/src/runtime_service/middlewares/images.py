@@ -43,19 +43,23 @@ class ImageToolsMiddleware(HumanInTheLoopMiddleware):
                                 raw_data = base64.b64decode(block["data"])
                                 sha = hashlib.sha256(raw_data).hexdigest()
                                 ref = self.workspace.put_upload(raw_data, sha)
-                                new_blocks.append({
-                                    "type": "text",
-                                    "text": f"[图片附件] {ref['path']}",
-                                })
+                                new_blocks.append(
+                                    {
+                                        "type": "text",
+                                        "text": f"[图片附件] {ref['path']}",
+                                    }
+                                )
                                 continue
                             except Exception:
                                 pass
                         # 剥离 extras 仅留 text 给模型
                         if block.get("type") == "text":
-                            new_blocks.append({
-                                "type": "text",
-                                "text": str(block.get("text", "")),
-                            })
+                            new_blocks.append(
+                                {
+                                    "type": "text",
+                                    "text": str(block.get("text", "")),
+                                }
+                            )
                             continue
                     new_blocks.append(block)
                 clean_messages.append(msg.model_copy(update={"content": new_blocks}))

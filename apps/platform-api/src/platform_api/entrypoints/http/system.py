@@ -12,8 +12,8 @@ from platform_api.entrypoints.http.dependencies import (
     get_actor_context,
     get_request_context,
 )
-from platform_api.modules.platform_config.service import PlatformConfigService
 from platform_api.modules.platform_config.contracts import UpdateFeatureFlagsCommand
+from platform_api.modules.platform_config.service import PlatformConfigService
 
 router = APIRouter(prefix="/_system", tags=["system"])
 

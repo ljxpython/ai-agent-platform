@@ -7,10 +7,11 @@ import httpx
 import jwt
 import pytest
 from langgraph_sdk import Auth
+from test_image_http import SECRET, _make_token
+
 from runtime_service.auth.platform import deny_image_scope_on_server_resources
 from runtime_service.webapp import app
 from runtime_service.workspace.terminal import terminals
-from test_image_http import SECRET, _make_token
 
 
 def token(operation="terminal-write", **changes):
@@ -20,7 +21,11 @@ def token(operation="terminal-write", **changes):
         algorithms=["HS256"],
         options={"verify_aud": False},
     )
-    claims.update(permissions=["runtime.tool.execute"], tool_overrides={}, tool_policy_version="test-tools-v2")
+    claims.update(
+        permissions=["runtime.tool.execute"],
+        tool_overrides={},
+        tool_policy_version="test-tools-v2",
+    )
     claims.update(changes)
     return "Bearer " + jwt.encode(claims, SECRET, algorithm="HS256")
 
@@ -45,7 +50,10 @@ def test_signed_terminal_routes(monkeypatch, tmp_path):
             assert (
                 await client.post(prefix, json=body, headers=read)
             ).status_code == 403
-            for changes in ({"tool_overrides": {"execute": False}}, {"tool_overrides": {"unknown": False}}):
+            for changes in (
+                {"tool_overrides": {"execute": False}},
+                {"tool_overrides": {"unknown": False}},
+            ):
                 assert (
                     await client.post(
                         prefix, json=body, headers={"authorization": token(**changes)}
@@ -102,8 +110,14 @@ def test_signed_terminal_routes(monkeypatch, tmp_path):
                 )
             ).status_code == 403
             assert (await client.get(url + "/output", headers=read)).status_code == 200
-            revoked = {"authorization": token("terminal-write", tool_overrides={"execute": False})}
-            assert (await client.post(url + "/input", json=payload, headers=revoked)).status_code == 403
+            revoked = {
+                "authorization": token(
+                    "terminal-write", tool_overrides={"execute": False}
+                )
+            }
+            assert (
+                await client.post(url + "/input", json=payload, headers=revoked)
+            ).status_code == 403
             assert (await client.delete(url, headers=revoked)).json()[
                 "status"
             ] == "exited"

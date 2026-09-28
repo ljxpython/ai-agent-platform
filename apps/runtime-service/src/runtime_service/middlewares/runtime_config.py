@@ -29,7 +29,9 @@ from runtime_service.runtime.errors import RuntimeAuthError, RuntimeResolutionEr
 ModelBuilder = Callable[[ResolvedRuntimeConfig], BaseChatModel]
 
 
-def _tool_name(tool: BaseTool | Callable[..., object] | dict[str, object]) -> str | None:
+def _tool_name(
+    tool: BaseTool | Callable[..., object] | dict[str, object],
+) -> str | None:
     if isinstance(tool, dict):
         value = tool.get("name")
     else:
@@ -57,9 +59,8 @@ def _normalize_ai_message_tool_calls(
     for tc in getattr(msg, "tool_calls", None) or ():
         tc_id = tc.get("id") if isinstance(tc, Mapping) else getattr(tc, "id", None)
         tc_name = (
-            (tc.get("name") if isinstance(tc, Mapping) else getattr(tc, "name", None))
-            or "unknown"
-        )
+            tc.get("name") if isinstance(tc, Mapping) else getattr(tc, "name", None)
+        ) or "unknown"
         if isinstance(tc_id, str) and tc_id.strip():
             valid_tool_calls.append(tc)
             if tc_id not in seen_ids:
@@ -71,9 +72,8 @@ def _normalize_ai_message_tool_calls(
     for tc in getattr(msg, "invalid_tool_calls", None) or ():
         tc_id = tc.get("id") if isinstance(tc, Mapping) else getattr(tc, "id", None)
         tc_name = (
-            (tc.get("name") if isinstance(tc, Mapping) else getattr(tc, "name", None))
-            or "unknown"
-        )
+            tc.get("name") if isinstance(tc, Mapping) else getattr(tc, "name", None)
+        ) or "unknown"
         if isinstance(tc_id, str) and tc_id.strip():
             valid_invalid_calls.append(tc)
             if tc_id not in seen_ids:
@@ -103,8 +103,10 @@ def _normalize_ai_message_tool_calls(
             additional.pop("tool_calls", None)
             additional.pop("function_call", None)
             mutated = True
-    elif not valid_tool_calls and not valid_invalid_calls and (
-        "tool_calls" in additional or "function_call" in additional
+    elif (
+        not valid_tool_calls
+        and not valid_invalid_calls
+        and ("tool_calls" in additional or "function_call" in additional)
     ):
         additional.pop("tool_calls", None)
         additional.pop("function_call", None)
@@ -177,7 +179,7 @@ def sanitize_tool_call_messages(
             sanitized.append(msg)
 
     changed = len(sanitized) != len(messages) or any(
-        a is not b for a, b in zip(sanitized, messages)
+        a is not b for a, b in zip(sanitized, messages, strict=False)
     )
     return sanitized, changed
 
@@ -206,6 +208,7 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         self._local_fallback = local_fallback
         self._tool_names = None if tool_names is None else frozenset(tool_names)
         self._probe_only = probe_only
+
     @staticmethod
     def _user(runtime: object) -> object | None:
         server_info = getattr(runtime, "server_info", None)
@@ -229,14 +232,17 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         server_info = getattr(runtime, "server_info", None)
         execution_info = getattr(runtime, "execution_info", None)
         if facts.scope.assistant_id is not None and (
-            server_info is None or facts.scope.assistant_id not in {
+            server_info is None
+            or facts.scope.assistant_id
+            not in {
                 getattr(server_info, "assistant_id", None),
                 getattr(server_info, "graph_id", None),
             }
         ):
             raise RuntimeAuthError("runtime.auth.invalid_principal", "assistant_id")
         if facts.scope.thread_id is not None and (
-            execution_info is None or facts.scope.thread_id != getattr(execution_info, "thread_id", None)
+            execution_info is None
+            or facts.scope.thread_id != getattr(execution_info, "thread_id", None)
         ):
             raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
 
@@ -251,7 +257,9 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
                 raise RuntimeAuthError("runtime.auth.missing_principal")
         else:
             if facts.context_hash != runtime_context_hash(context):
-                raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
+                raise RuntimeAuthError(
+                    "runtime.auth.context_hash_mismatch", "context_hash"
+                )
             self._check_scope(runtime, facts)
             if facts.scope.operation != "run-create":
                 raise RuntimeAuthError("runtime.auth.invalid_principal", "operation")
@@ -280,14 +288,18 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         self._resolve(runtime)
         return self._sanitize_state_messages(state)
 
-    async def abefore_agent(self, state: object, runtime: object) -> dict[str, Any] | None:
+    async def abefore_agent(
+        self, state: object, runtime: object
+    ) -> dict[str, Any] | None:
         self._resolve(runtime)
         return self._sanitize_state_messages(state)
 
     def before_model(self, state: object, runtime: object) -> dict[str, Any] | None:
         return self._sanitize_state_messages(state)
 
-    async def abefore_model(self, state: object, runtime: object) -> dict[str, Any] | None:
+    async def abefore_model(
+        self, state: object, runtime: object
+    ) -> dict[str, Any] | None:
         return self._sanitize_state_messages(state)
 
     def _allowed_tools(self, resolved: ResolvedRuntimeConfig) -> set[str]:
@@ -328,7 +340,9 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
             for tool_call in getattr(message, "tool_calls", []):
                 name = tool_call.get("name")
                 if not isinstance(name, str) or name not in allowed:
-                    raise RuntimeResolutionError("runtime.tool.not_allowed", "tool_name")
+                    raise RuntimeResolutionError(
+                        "runtime.tool.not_allowed", "tool_name"
+                    )
         return response
 
     async def awrap_tool_call(self, request: ToolCallRequest, handler):

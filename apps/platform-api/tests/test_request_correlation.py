@@ -6,6 +6,7 @@ import unittest
 
 import httpx
 from fastapi import FastAPI, Request
+
 from platform_api.core.context import get_current_request_context
 from platform_api.entrypoints.http.middleware.request_context import (
     register_request_context_middleware,

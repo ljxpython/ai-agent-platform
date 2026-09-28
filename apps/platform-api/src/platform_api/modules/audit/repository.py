@@ -5,9 +5,9 @@ from datetime import datetime
 from sqlalchemy import desc, func, or_, select
 from sqlalchemy.orm import Session
 
+from platform_api.modules.audit.models import AuditLogRecord
 from platform_api.modules.audit.records import AuditWriteCommand, StoredAuditEvent
 from platform_api.modules.audit.schemas import AuditPlane, AuditResult
-from platform_api.modules.audit.models import AuditLogRecord
 
 
 def _to_event(record: AuditLogRecord) -> StoredAuditEvent:

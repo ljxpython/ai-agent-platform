@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from contextlib import nullcontext
-
 import unittest
+from contextlib import nullcontext
 from types import SimpleNamespace
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from platform_api.core.errors import BadRequestError, ForbiddenError
 from platform_api.modules.runtime_gateway.application.service import (
@@ -17,10 +16,14 @@ from platform_api.modules.runtime_gateway.application.service import (
 
 class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
     def test_standard_run_rejects_tool_fields_with_client_error(self):
-        service = RuntimeGatewayService(session_factory=None, upstream=SimpleNamespace())
+        service = RuntimeGatewayService(
+            session_factory=None, upstream=SimpleNamespace()
+        )
         for field in ("tools", "enable_tools", "tool_overrides", "tool_policy_version"):
             with self.subTest(field=field), self.assertRaises(BadRequestError):
-                service._inject_project_scope(project_id="p", payload={"context": {field: {}}})
+                service._inject_project_scope(
+                    project_id="p", payload={"context": {field: {}}}
+                )
 
     def test_protocol_lifecycle_is_normalized_for_frontend_sdk(self) -> None:
         frame, terminal = _normalize_protocol_lifecycle_frame(
@@ -75,7 +78,9 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
             },
         )
 
-    def test_runtime_context_precedence_is_explicit_then_agent_then_project(self) -> None:
+    def test_runtime_context_precedence_is_explicit_then_agent_then_project(
+        self,
+    ) -> None:
         self.assertEqual(
             _merge_runtime_context(
                 project_default_model="project:model",
@@ -94,9 +99,13 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_thread_graph_target_does_not_allow_a_different_target(self) -> None:
-        service = RuntimeGatewayService(session_factory=None, upstream=SimpleNamespace())
+        service = RuntimeGatewayService(
+            session_factory=None, upstream=SimpleNamespace()
+        )
         service._assistant_belongs_project = Mock(return_value=False)  # type: ignore[method-assign]
-        thread = {"metadata": {"project_id": "project-1", "graph_id": "test_case_agent"}}
+        thread = {
+            "metadata": {"project_id": "project-1", "graph_id": "test_case_agent"}
+        }
 
         with self.assertRaises(ForbiddenError):
             service._assert_runtime_target_allowed(
@@ -113,8 +122,12 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(denied.exception.code, "runtime_target_denied")
 
-    async def test_agent_profile_defaults_are_filtered_before_runtime_context(self) -> None:
-        service = RuntimeGatewayService(session_factory=object(), upstream=SimpleNamespace())
+    async def test_agent_profile_defaults_are_filtered_before_runtime_context(
+        self,
+    ) -> None:
+        service = RuntimeGatewayService(
+            session_factory=object(), upstream=SimpleNamespace()
+        )
         service._project_default_model_id = Mock(return_value="project:model")  # type: ignore[method-assign]
         agent = SimpleNamespace(
             context={
@@ -126,8 +139,13 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
             }
         )
         with (
-            patch("platform_api.modules.runtime_gateway.application.service.session_scope", return_value=nullcontext(object())),
-            patch("platform_api.modules.runtime_gateway.application.service.SqlAlchemyAssistantsRepository") as repository,
+            patch(
+                "platform_api.modules.runtime_gateway.application.service.session_scope",
+                return_value=nullcontext(object()),
+            ),
+            patch(
+                "platform_api.modules.runtime_gateway.application.service.SqlAlchemyAssistantsRepository"
+            ) as repository,
         ):
             repository.return_value.get_by_project_and_graph_id.return_value = agent
             result = service._inject_project_default_model(
@@ -199,13 +217,15 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
             },
         )
 
-
-
-    async def test_v2_event_subscription_preserves_upstream_before_http_filter(self) -> None:
+    async def test_v2_event_subscription_preserves_upstream_before_http_filter(
+        self,
+    ) -> None:
         async def stream():
             yield b'data: {"method":"lifecycle","params":{"namespace":[],"data":{"event":"success","status":"success"},"run_id":"run-1"}}\n\n'
 
-        upstream = SimpleNamespace(stream_thread_events=AsyncMock(return_value=stream()))
+        upstream = SimpleNamespace(
+            stream_thread_events=AsyncMock(return_value=stream())
+        )
         service = RuntimeGatewayService(session_factory=None, upstream=upstream)
         service._load_thread = AsyncMock(return_value={"metadata": {}})  # type: ignore[method-assign]
         payload = {"channels": ["messages", "values"], "since": 12}
@@ -231,7 +251,9 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
         )
         upstream.stream_thread_events.assert_awaited_once_with("thread-1", payload)
 
-    async def test_v2_event_subscription_rejects_unknown_channels_before_upstream(self) -> None:
+    async def test_v2_event_subscription_rejects_unknown_channels_before_upstream(
+        self,
+    ) -> None:
         upstream = SimpleNamespace(stream_thread_events=AsyncMock())
         service = RuntimeGatewayService(session_factory=None, upstream=upstream)
         service._load_thread = AsyncMock(return_value={"metadata": {}})  # type: ignore[method-assign]
@@ -248,7 +270,9 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
         upstream.stream_thread_events.assert_not_awaited()
 
     async def test_join_stream_disconnect_never_cancels_run(self) -> None:
-        upstream = SimpleNamespace(join_thread_run_stream=AsyncMock(return_value=object()))
+        upstream = SimpleNamespace(
+            join_thread_run_stream=AsyncMock(return_value=object())
+        )
         service = RuntimeGatewayService(session_factory=None, upstream=upstream)
         service._load_thread = AsyncMock(return_value={"metadata": {}})  # type: ignore[method-assign]
 
@@ -265,7 +289,9 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
             {"stream_mode": "values", "cancel_on_disconnect": False},
         )
 
-    async def test_join_stream_rejects_disconnect_cancellation_before_upstream(self) -> None:
+    async def test_join_stream_rejects_disconnect_cancellation_before_upstream(
+        self,
+    ) -> None:
         upstream = SimpleNamespace(join_thread_run_stream=AsyncMock())
         service = RuntimeGatewayService(session_factory=None, upstream=upstream)
         service._load_thread = AsyncMock(return_value={"metadata": {}})  # type: ignore[method-assign]
@@ -299,17 +325,28 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ctx.exception.code, "invalid_protocol_command")
         upstream.send_thread_command.assert_not_awaited()
 
-
-    async def test_run_launch_attaches_opaque_model_reference_from_platform_runtime_context(self) -> None:
-        service = RuntimeGatewayService(session_factory=object(), upstream=SimpleNamespace())
+    async def test_run_launch_attaches_opaque_model_reference_from_platform_runtime_context(
+        self,
+    ) -> None:
+        service = RuntimeGatewayService(
+            session_factory=object(), upstream=SimpleNamespace()
+        )
         service._runtime_model_config_secret = "test-secret"  # type: ignore[attr-defined]
         service._runtime_model_config_ttl_seconds = 60  # type: ignore[attr-defined]
         service._runtime_id = "runtime-1"  # type: ignore[attr-defined]
         item = SimpleNamespace(enabled=True)
         with (
-            patch("platform_api.modules.runtime_gateway.application.service.session_scope", return_value=nullcontext(object())),
-            patch("platform_api.modules.runtime_gateway.application.service.SqlAlchemyRuntimeCatalogRepository") as repository,
-            patch("platform_api.modules.runtime_gateway.application.service.create_model_reference", return_value="v1.opaque.sig"),
+            patch(
+                "platform_api.modules.runtime_gateway.application.service.session_scope",
+                return_value=nullcontext(object()),
+            ),
+            patch(
+                "platform_api.modules.runtime_gateway.application.service.SqlAlchemyRuntimeCatalogRepository"
+            ) as repository,
+            patch(
+                "platform_api.modules.runtime_gateway.application.service.create_model_reference",
+                return_value="v1.opaque.sig",
+            ),
         ):
             repository.return_value.get_model_by_id.return_value = item
             result = service._attach_runtime_model_reference(
@@ -317,7 +354,9 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
                 payload={
                     "config": {
                         "configurable": {
-                            "platform_runtime": {"model_id": "11111111-1111-1111-1111-111111111111"},
+                            "platform_runtime": {
+                                "model_id": "11111111-1111-1111-1111-111111111111"
+                            },
                         },
                     },
                 },
@@ -327,17 +366,26 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(configurable["runtime_model_ref"], "v1.opaque.sig")
         self.assertNotIn("api_key", str(result))
 
-
-
     async def test_thread_state_redacts_runtime_private_fields(self) -> None:
         upstream = SimpleNamespace(
-            get_thread_state=AsyncMock(return_value={"values": {"_runtime_model_ref": "opaque", "runtime_model_ref": "opaque", "message": "hello"}})
+            get_thread_state=AsyncMock(
+                return_value={
+                    "values": {
+                        "_runtime_model_ref": "opaque",
+                        "runtime_model_ref": "opaque",
+                        "message": "hello",
+                    }
+                }
+            )
         )
         service = RuntimeGatewayService(session_factory=None, upstream=upstream)
         service._load_thread = AsyncMock(return_value={"metadata": {}})  # type: ignore[method-assign]
 
         result = await service.get_thread_state(
-            actor=SimpleNamespace(), project_id="project-1", thread_id="thread-1", params=None
+            actor=SimpleNamespace(),
+            project_id="project-1",
+            thread_id="thread-1",
+            params=None,
         )
 
         self.assertEqual(result, {"values": {"message": "hello"}})
@@ -351,9 +399,15 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(merged["model_id"], "11111111-1111-1111-1111-111111111111")
         self.assertEqual(merged["temperature"], 0.5)
 
-    def test_inject_project_default_model_populates_both_context_and_configurable(self) -> None:
-        service = RuntimeGatewayService(session_factory=None, upstream=SimpleNamespace())
-        service._project_default_model_id = Mock(return_value="22222222-2222-2222-2222-222222222222")  # type: ignore[method-assign]
+    def test_inject_project_default_model_populates_both_context_and_configurable(
+        self,
+    ) -> None:
+        service = RuntimeGatewayService(
+            session_factory=None, upstream=SimpleNamespace()
+        )
+        service._project_default_model_id = Mock(
+            return_value="22222222-2222-2222-2222-222222222222"
+        )  # type: ignore[method-assign]
 
         payload = {
             "assistant_id": "generic_chat",
@@ -364,9 +418,13 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
             },
             "context": {},
         }
-        injected = service._inject_project_default_model(project_id="test-proj", payload=payload)
+        injected = service._inject_project_default_model(
+            project_id="test-proj", payload=payload
+        )
 
-        self.assertEqual(injected["context"]["model_id"], "22222222-2222-2222-2222-222222222222")
+        self.assertEqual(
+            injected["context"]["model_id"], "22222222-2222-2222-2222-222222222222"
+        )
         self.assertEqual(
             injected["config"]["configurable"]["platform_runtime"]["model_id"],
             "22222222-2222-2222-2222-222222222222",

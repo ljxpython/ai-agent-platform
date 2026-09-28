@@ -3,4 +3,3 @@ from platform_api.modules.runtime_policies.infra.sqlalchemy.repository import (
 )
 
 __all__ = ["SqlAlchemyRuntimePolicyRepository"]
-

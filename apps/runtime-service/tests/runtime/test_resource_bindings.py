@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from runtime_service.runtime import RuntimePrincipal, RuntimeResolutionError, resolve_resource_binding
+from runtime_service.runtime import (
+    RuntimePrincipal,
+    RuntimeResolutionError,
+    resolve_resource_binding,
+)
 
 
 def _principal() -> RuntimePrincipal:
@@ -61,11 +65,25 @@ def test_resource_binding_reads_server_owned_thread_metadata() -> None:
     ],
 )
 def test_resource_binding_fails_closed(metadata: object) -> None:
-    with pytest.raises(RuntimeResolutionError, match="runtime.workspace.recovery_failed"):
-        resolve_resource_binding(_config({"__graphharbor_thread_metadata": metadata}), _principal(), "workspace")
+    with pytest.raises(
+        RuntimeResolutionError, match="runtime.workspace.recovery_failed"
+    ):
+        resolve_resource_binding(
+            _config({"__graphharbor_thread_metadata": metadata}),
+            _principal(),
+            "workspace",
+        )
 
 
 def test_resource_binding_does_not_trust_run_metadata() -> None:
-    config = _config({"__graphharbor_thread_metadata": {"runtime_resource_bindings": {"schema": "bad"}}})
-    with pytest.raises(RuntimeResolutionError, match="runtime.workspace.recovery_failed"):
+    config = _config(
+        {
+            "__graphharbor_thread_metadata": {
+                "runtime_resource_bindings": {"schema": "bad"}
+            }
+        }
+    )
+    with pytest.raises(
+        RuntimeResolutionError, match="runtime.workspace.recovery_failed"
+    ):
         resolve_resource_binding(config, _principal(), "workspace")

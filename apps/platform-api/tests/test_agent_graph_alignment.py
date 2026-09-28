@@ -5,6 +5,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from uuid import UUID, uuid4
 
+from sqlalchemy import select
+
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import (
     build_engine,
@@ -26,7 +28,6 @@ from platform_api.modules.runtime_catalog.infra.sqlalchemy.models import (
 from platform_api.modules.runtime_policies.infra.sqlalchemy.models import (
     ProjectGraphPolicyRecord,
 )
-from sqlalchemy import select
 
 
 class GraphAlignmentTest(unittest.TestCase):
@@ -70,7 +71,9 @@ class GraphAlignmentTest(unittest.TestCase):
             with ThreadPoolExecutor(max_workers=4) as workers:
                 initial = list(workers.map(lambda _: read(), range(4)))
             first = initial[0]
-            self.assertEqual({page.items[0].id for page in initial}, {first.items[0].id})
+            self.assertEqual(
+                {page.items[0].id for page in initial}, {first.items[0].id}
+            )
             self.assertEqual(first.total, 1)
             item = first.items[0]
             self.assertEqual(item.graph_id, "demo")

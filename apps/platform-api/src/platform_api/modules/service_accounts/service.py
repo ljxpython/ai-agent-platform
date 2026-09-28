@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 from sqlalchemy.orm import Session, sessionmaker
@@ -30,15 +30,15 @@ from platform_api.modules.service_accounts.contracts import (
     UpdateServiceAccountCommand,
     UpsertServiceAccountProjectGrantCommand,
 )
+from platform_api.modules.service_accounts.repository import (
+    SqlAlchemyServiceAccountsRepository,
+)
 from platform_api.modules.service_accounts.schemas import (
     CreatedServiceAccountToken,
     ServiceAccountItem,
     ServiceAccountPage,
-    ServiceAccountTokenItem,
     ServiceAccountProjectGrantItem,
-)
-from platform_api.modules.service_accounts.repository import (
-    SqlAlchemyServiceAccountsRepository,
+    ServiceAccountTokenItem,
 )
 
 
@@ -103,7 +103,9 @@ class ServiceAccountsService:
             actor=actor, permission=PermissionCode.PLATFORM_SUPER_ADMIN_MANAGE
         )
 
-    def _require_protected_account_access(self, *, actor: ActorContext, account) -> None:
+    def _require_protected_account_access(
+        self, *, actor: ActorContext, account
+    ) -> None:
         if PlatformRole.SUPER_ADMIN.value in account.platform_roles:
             self._require_super_admin_role_permission(actor=actor)
 
@@ -271,7 +273,7 @@ class ServiceAccountsService:
         expires_in_days = command.expires_in_days or self._default_token_ttl_days
         plain_text_token = f"pkv2_{secrets.token_urlsafe(24)}"
         token_prefix = plain_text_token[:20]
-        expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
+        expires_at = datetime.now(UTC) + timedelta(days=expires_in_days)
 
         with session_scope(session_factory) as session:
             repository = SqlAlchemyServiceAccountsRepository(session)
@@ -432,7 +434,7 @@ class ServiceAccountsService:
             repository.touch_token_usage(
                 token_id=token.id,
                 service_account_id=account.id,
-                used_at=datetime.now(timezone.utc),
+                used_at=datetime.now(UTC),
             )
             project_roles: dict[str, tuple[str, ...]] = {}
             if project_id:

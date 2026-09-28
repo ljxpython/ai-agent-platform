@@ -25,13 +25,13 @@ from platform_api.modules.users.contracts import (
     ResetUserPasswordCommand,
     UpdateUserCommand,
 )
+from platform_api.modules.users.repository import SqlAlchemyUsersRepository
 from platform_api.modules.users.schemas import (
     UserItem,
     UserPage,
     UserProjectItem,
     UserProjectPage,
 )
-from platform_api.modules.users.repository import SqlAlchemyUsersRepository
 
 
 def _normalize_platform_roles(

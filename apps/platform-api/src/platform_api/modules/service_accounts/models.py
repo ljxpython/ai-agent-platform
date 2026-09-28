@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, JSON, String, UniqueConstraint, Uuid, func
+from sqlalchemy import JSON, DateTime, ForeignKey, String, UniqueConstraint, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from platform_api.core.db.base import Base
@@ -40,11 +40,11 @@ class ServiceAccountRecord(Base):
         onupdate=func.now(),
     )
 
-    tokens: Mapped[list["ServiceAccountTokenRecord"]] = relationship(
+    tokens: Mapped[list[ServiceAccountTokenRecord]] = relationship(
         back_populates="service_account",
         cascade="all,delete",
     )
-    project_grants: Mapped[list["ServiceAccountProjectGrantRecord"]] = relationship(
+    project_grants: Mapped[list[ServiceAccountProjectGrantRecord]] = relationship(
         back_populates="service_account",
         cascade="all,delete",
     )

@@ -1,13 +1,15 @@
 """Real checkpoints, process restart and read-only skill snapshots."""
 
 import os
-from pathlib import Path
 import subprocess
 import sys
+from pathlib import Path
+
 import pytest
 
-from .test_p6_governance import package
 from runtime_service.services.dearflow_agent.skill_governance import SkillStorage
+
+from .test_p6_governance import package
 
 pytest_plugins = ("tests.services.dearflow_agent.test_p6_governance",)
 
@@ -100,12 +102,13 @@ asyncio.run(run())
 
 def test_child_file_tools_share_resumed_snapshot(dsn, tmp_path, monkeypatch):
     import asyncio
+
     from deepagents import create_deep_agent
     from langchain_core.messages import AIMessage, ToolMessage
     from langgraph.checkpoint.memory import InMemorySaver
     from langgraph.types import Command
     from support import BindableFakeMessagesChatModel
-    from .test_agent import config, call
+
     from runtime_service.services.dearflow_agent.middleware.skills import (
         ExecutionSkillsMiddleware,
     )
@@ -113,6 +116,8 @@ def test_child_file_tools_share_resumed_snapshot(dsn, tmp_path, monkeypatch):
         DearWorkspaceBackend,
         build_backend,
     )
+
+    from .test_agent import call, config
 
     monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path))
     scope = ("tenant", "project", "dear-test")

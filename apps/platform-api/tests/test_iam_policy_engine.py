@@ -3,8 +3,18 @@ from __future__ import annotations
 import unittest
 
 from platform_api.core.context.models import ActorContext
-from platform_api.core.errors import BadRequestError, ForbiddenError, NotAuthenticatedError, PlatformApiError
-from platform_api.modules.iam.application import AuthorizationRequest, IamPolicyEngine, PermissionCode, PolicyReason
+from platform_api.core.errors import (
+    BadRequestError,
+    ForbiddenError,
+    NotAuthenticatedError,
+    PlatformApiError,
+)
+from platform_api.modules.iam.application import (
+    AuthorizationRequest,
+    IamPolicyEngine,
+    PermissionCode,
+    PolicyReason,
+)
 
 
 class IamPolicyEngineTest(unittest.TestCase):
@@ -14,7 +24,9 @@ class IamPolicyEngineTest(unittest.TestCase):
     def test_evaluate_returns_explicit_reason_for_unauthenticated_actor(self) -> None:
         decision = self.engine.evaluate(
             actor=ActorContext(),
-            authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_USER_READ),
+            authorization=AuthorizationRequest(
+                permission=PermissionCode.PLATFORM_USER_READ
+            ),
         )
 
         self.assertFalse(decision.allowed)
@@ -29,7 +41,9 @@ class IamPolicyEngineTest(unittest.TestCase):
         with self.assertRaises(BadRequestError) as ctx:
             self.engine.require(
                 actor=actor,
-                authorization=AuthorizationRequest(permission=PermissionCode.PROJECT_MEMBER_READ),
+                authorization=AuthorizationRequest(
+                    permission=PermissionCode.PROJECT_MEMBER_READ
+                ),
             )
 
         self.assertEqual(ctx.exception.code, "project_scope_required")
@@ -43,7 +57,9 @@ class IamPolicyEngineTest(unittest.TestCase):
         with self.assertRaises(ForbiddenError) as ctx:
             self.engine.require(
                 actor=actor,
-                authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_USER_READ),
+                authorization=AuthorizationRequest(
+                    permission=PermissionCode.PLATFORM_USER_READ
+                ),
             )
 
         self.assertEqual(ctx.exception.code, "platform_role_missing")
@@ -85,23 +101,31 @@ class IamPolicyEngineTest(unittest.TestCase):
 
     def test_fixed_platform_and_project_role_matrix(self) -> None:
         viewer = ActorContext(user_id="viewer", platform_roles=("platform_viewer",))
-        operator = ActorContext(user_id="operator", platform_roles=("platform_operator",))
+        operator = ActorContext(
+            user_id="operator", platform_roles=("platform_operator",)
+        )
         self.assertTrue(
             self.engine.evaluate(
                 actor=viewer,
-                authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_PROJECT_READ),
+                authorization=AuthorizationRequest(
+                    permission=PermissionCode.PLATFORM_PROJECT_READ
+                ),
             ).allowed
         )
         self.assertFalse(
             self.engine.evaluate(
                 actor=viewer,
-                authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_USER_CREATE),
+                authorization=AuthorizationRequest(
+                    permission=PermissionCode.PLATFORM_USER_CREATE
+                ),
             ).allowed
         )
         self.assertTrue(
             self.engine.evaluate(
                 actor=operator,
-                authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_USER_CREATE),
+                authorization=AuthorizationRequest(
+                    permission=PermissionCode.PLATFORM_USER_CREATE
+                ),
             ).allowed
         )
         self.assertFalse(
@@ -149,7 +173,9 @@ class IamPolicyEngineTest(unittest.TestCase):
         with self.assertRaises(NotAuthenticatedError):
             self.engine.require(
                 actor=ActorContext(),
-                authorization=AuthorizationRequest(permission=PermissionCode.PLATFORM_AUDIT_READ),
+                authorization=AuthorizationRequest(
+                    permission=PermissionCode.PLATFORM_AUDIT_READ
+                ),
             )
 
     def test_execution_and_governance_are_separate(self) -> None:
@@ -162,19 +188,43 @@ class IamPolicyEngineTest(unittest.TestCase):
                 (PermissionCode.PLATFORM_CATALOG_REFRESH, False),
             ):
                 with self.subTest(role=role, permission=permission):
-                    self.assertEqual(self.engine.evaluate(actor=actor, authorization=AuthorizationRequest(
-                        permission=permission, project_id="p",
-                    )).allowed, allowed)
-            self.assertFalse(self.engine.evaluate(actor=actor, authorization=AuthorizationRequest(
-                permission=PermissionCode.PROJECT_RUNTIME_EXECUTE, project_id="other",
-            )).allowed)
+                    self.assertEqual(
+                        self.engine.evaluate(
+                            actor=actor,
+                            authorization=AuthorizationRequest(
+                                permission=permission,
+                                project_id="p",
+                            ),
+                        ).allowed,
+                        allowed,
+                    )
+            self.assertFalse(
+                self.engine.evaluate(
+                    actor=actor,
+                    authorization=AuthorizationRequest(
+                        permission=PermissionCode.PROJECT_RUNTIME_EXECUTE,
+                        project_id="other",
+                    ),
+                ).allowed
+            )
         operator = ActorContext(user_id="op", platform_roles=("platform_operator",))
-        self.assertTrue(self.engine.evaluate(actor=operator, authorization=AuthorizationRequest(
-            permission=PermissionCode.PLATFORM_MODEL_WRITE,
-        )).allowed)
-        self.assertFalse(self.engine.evaluate(actor=operator, authorization=AuthorizationRequest(
-            permission=PermissionCode.PROJECT_RUNTIME_EXECUTE, project_id="p",
-        )).allowed)
+        self.assertTrue(
+            self.engine.evaluate(
+                actor=operator,
+                authorization=AuthorizationRequest(
+                    permission=PermissionCode.PLATFORM_MODEL_WRITE,
+                ),
+            ).allowed
+        )
+        self.assertFalse(
+            self.engine.evaluate(
+                actor=operator,
+                authorization=AuthorizationRequest(
+                    permission=PermissionCode.PROJECT_RUNTIME_EXECUTE,
+                    project_id="p",
+                ),
+            ).allowed
+        )
 
     def test_require_raises_for_unregistered_permission(self) -> None:
         actor = ActorContext(

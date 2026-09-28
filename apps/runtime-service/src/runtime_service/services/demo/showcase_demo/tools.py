@@ -55,7 +55,16 @@ class _HTMLToMarkdownParser(HTMLParser):
             return
 
         if tag_lower in (
-            "h1", "h2", "h3", "h4", "h5", "h6", "p", "div", "section", "article"
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+            "p",
+            "div",
+            "section",
+            "article",
         ):
             self._pieces.append("\n\n")
         elif tag_lower == "pre":
@@ -151,4 +160,3 @@ async def fetch_documentation(url: str) -> str:
 fetch_documentation.handle_tool_error = True
 
 __all__ = ["fetch_documentation", "html_to_markdown"]
-

@@ -3,12 +3,15 @@ import shutil
 import subprocess
 
 import pytest
+
 from runtime_service.services.dearflow_agent.workspace.backend import (
     DearWorkspaceBackend,
 )
 
 
-def test_local_execute_uses_thread_workspace_without_service_secrets(monkeypatch, tmp_path):
+def test_local_execute_uses_thread_workspace_without_service_secrets(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("RUNTIME_BACKEND", "local")
     monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path))
     monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_SECRET", "must-not-enter-shell")
@@ -16,11 +19,13 @@ def test_local_execute_uses_thread_workspace_without_service_secrets(monkeypatch
     backend.prepare()
     backend.write("/workspace/work/input.txt", "hello")
 
-    result = asyncio.run(backend.aexecute(
-        'cat "$RUNTIME_WORKSPACE_ROOT/work/input.txt" > output.txt; '
-        'test -z "$PLATFORM_RUNTIME_DELEGATION_SECRET"; '
-        'test -f "$RUNTIME_SKILLS_ROOT/runtime-smoke/SKILL.md"'
-    ))
+    result = asyncio.run(
+        backend.aexecute(
+            'cat "$RUNTIME_WORKSPACE_ROOT/work/input.txt" > output.txt; '
+            'test -z "$PLATFORM_RUNTIME_DELEGATION_SECRET"; '
+            'test -f "$RUNTIME_SKILLS_ROOT/runtime-smoke/SKILL.md"'
+        )
+    )
     assert result.exit_code == 0, result.output
     assert backend.read("/workspace/work/output.txt").file_data["content"] == "hello"
     assert asyncio.run(backend.aexecute("exit 7")).exit_code == 7
@@ -45,7 +50,7 @@ def test_local_skill_scripts_use_thread_root(monkeypatch, tmp_path):
         )
         assert analysis.exit_code == 0, analysis.output
         image = await backend.aexecute(
-            "python -c 'from PIL import Image; Image.new(\"RGB\", (10, 10)).save(\"slide.png\")'"
+            'python -c \'from PIL import Image; Image.new("RGB", (10, 10)).save("slide.png")\''
         )
         assert image.exit_code == 0, image.output
         slides = await backend.aexecute(
@@ -62,16 +67,25 @@ def test_local_skill_scripts_use_thread_root(monkeypatch, tmp_path):
 
 @pytest.mark.integration
 def test_container_mounts_timeout_and_output_limit(monkeypatch, tmp_path):
-    if not shutil.which("docker") or subprocess.run(
-        ["docker", "info"], capture_output=True, timeout=15, check=False
-    ).returncode:
+    if (
+        not shutil.which("docker")
+        or subprocess.run(
+            ["docker", "info"], capture_output=True, timeout=15, check=False
+        ).returncode
+    ):
         pytest.skip("Docker daemon is unavailable")
     monkeypatch.setenv("RUNTIME_BACKEND", "docker")
     monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path))
     backend = DearWorkspaceBackend("tenant", "project", "thread")
     backend.prepare()
+
     async def run():
-        for path in ("/workspace/uploads/bad.txt", "/workspace/outputs/bad.txt", "/skills/bad.txt", "/etc/bad.txt"):
+        for path in (
+            "/workspace/uploads/bad.txt",
+            "/workspace/outputs/bad.txt",
+            "/skills/bad.txt",
+            "/etc/bad.txt",
+        ):
             result = await backend.aexecute(f"echo bad > {path}")
             assert result.exit_code != 0
         result = await backend.aexecute("sleep 5", timeout=1)
@@ -80,7 +94,9 @@ def test_container_mounts_timeout_and_output_limit(monkeypatch, tmp_path):
         assert len(result.output.encode()) <= 128 * 1024
         assert result.truncated
         # A process cannot keep running after cancellation.
-        task = asyncio.create_task(backend.aexecute("sleep 3; echo leaked > cancelled.txt"))
+        task = asyncio.create_task(
+            backend.aexecute("sleep 3; echo leaked > cancelled.txt")
+        )
         await asyncio.sleep(0.5)
         task.cancel()
         try:
@@ -89,4 +105,5 @@ def test_container_mounts_timeout_and_output_limit(monkeypatch, tmp_path):
             pass
         await asyncio.sleep(3)
         assert not (backend.root / "work/cancelled.txt").exists()
+
     asyncio.run(run())

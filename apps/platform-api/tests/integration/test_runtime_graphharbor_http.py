@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 import unittest
+from dataclasses import dataclass
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -32,10 +32,14 @@ def _load_config() -> IntegrationConfig:
 
     missing = [name for name in _REQUIRED_ENV if not os.getenv(name, "").strip()]
     if missing:
-        raise unittest.SkipTest("missing integration environment: " + ", ".join(missing))
+        raise unittest.SkipTest(
+            "missing integration environment: " + ", ".join(missing)
+        )
 
     base_url = os.environ["PLATFORM_API_BASE_URL"].strip().rstrip("/")
-    expected_upstream_url = os.environ["PLATFORM_API_EXPECTED_UPSTREAM_URL"].strip().rstrip("/")
+    expected_upstream_url = (
+        os.environ["PLATFORM_API_EXPECTED_UPSTREAM_URL"].strip().rstrip("/")
+    )
     if not expected_upstream_url.startswith(("http://", "https://")):
         raise ValueError(
             "PLATFORM_API_EXPECTED_UPSTREAM_URL must be an absolute HTTP URL"
@@ -67,7 +71,9 @@ class RuntimeGraphHarborHttpIntegrationTest(unittest.TestCase):
     def test_missing_gate_is_explicit_skip(self) -> None:
         previous = os.environ.pop("PLATFORM_RUNTIME_INTEGRATION", None)
         try:
-            with self.assertRaisesRegex(unittest.SkipTest, "PLATFORM_RUNTIME_INTEGRATION"):
+            with self.assertRaisesRegex(
+                unittest.SkipTest, "PLATFORM_RUNTIME_INTEGRATION"
+            ):
                 _load_config()
         finally:
             if previous is not None:
@@ -95,7 +101,9 @@ class RuntimeGraphHarborHttpIntegrationTest(unittest.TestCase):
 
         self.assertIn(response.status_code, {401, 403}, response.text)
 
-    def test_platform_gateway_reaches_graphharbor_for_info_graphs_and_thread(self) -> None:
+    def test_platform_gateway_reaches_graphharbor_for_info_graphs_and_thread(
+        self,
+    ) -> None:
         config = _load_config()
         headers = _headers(config)
         thread_marker = f"platform-graphharbor-{uuid4().hex}"
@@ -142,4 +150,6 @@ class RuntimeGraphHarborHttpIntegrationTest(unittest.TestCase):
 
     def test_integration_config_records_expected_upstream(self) -> None:
         config = _load_config()
-        self.assertTrue(config.expected_upstream_url.startswith(("http://", "https://")))
+        self.assertTrue(
+            config.expected_upstream_url.startswith(("http://", "https://"))
+        )

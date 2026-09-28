@@ -35,7 +35,9 @@ def get_showcase_workspace_root(
     return thread_root / "workspace"
 
 
-def resolve_thread_workspace(tenant_id: str, project_id: str, thread_id: str, graph_id: str) -> Path:
+def resolve_thread_workspace(
+    tenant_id: str, project_id: str, thread_id: str, graph_id: str
+) -> Path:
     """Resolve only a server-verified graph binding; never accept a client path."""
     from runtime_service.runtime.capabilities import graph_capabilities
 

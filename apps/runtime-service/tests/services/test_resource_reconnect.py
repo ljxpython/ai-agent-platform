@@ -4,6 +4,7 @@ import asyncio
 import json
 
 import pytest
+
 from runtime_service.runtime import RuntimePrincipal, RuntimeResolutionError
 from runtime_service.runtime.resolver import runtime_context_hash
 from runtime_service.services.demo.backend_demo import agent as backend_agent
@@ -35,9 +36,14 @@ def _config(
                 "runtime_policy": {
                     "version": "resource-test-v1",
                     "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-                    "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+                    "tool_overrides": {},
+                    "tool_policy_version": "test-tools-v2",
                 },
-                "runtime_scope": {"operation": "read", "tenant_id": "tenant", "project_id": "project"},
+                "runtime_scope": {
+                    "operation": "read",
+                    "tenant_id": "tenant",
+                    "project_id": "project",
+                },
                 "runtime_context_hash": runtime_context_hash(None),
             },
         },

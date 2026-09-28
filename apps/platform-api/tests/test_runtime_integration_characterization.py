@@ -4,8 +4,9 @@ import json
 import unittest
 from pathlib import Path
 
-
-FIXTURE = Path(__file__).parent / "fixtures" / "runtime_integration_characterization.json"
+FIXTURE = (
+    Path(__file__).parent / "fixtures" / "runtime_integration_characterization.json"
+)
 
 
 class RuntimeIntegrationCharacterizationTest(unittest.TestCase):
@@ -13,15 +14,24 @@ class RuntimeIntegrationCharacterizationTest(unittest.TestCase):
         payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
         serialized = json.dumps(payload, ensure_ascii=True).lower()
 
-        self.assertEqual(payload["schema"], "platform-runtime-integration/characterization-v1")
+        self.assertEqual(
+            payload["schema"], "platform-runtime-integration/characterization-v1"
+        )
         self.assertNotIn("api_key", serialized)
         self.assertNotIn("token", serialized)
-        self.assertIn("/api/langgraph/threads/{thread_id}/commands", payload["gateway_allowlist"])
-        self.assertIn("/api/langgraph/threads/{thread_id}/stream/events", payload["gateway_allowlist"])
+        self.assertIn(
+            "/api/langgraph/threads/{thread_id}/commands", payload["gateway_allowlist"]
+        )
+        self.assertIn(
+            "/api/langgraph/threads/{thread_id}/stream/events",
+            payload["gateway_allowlist"],
+        )
         self.assertEqual(payload["historical_thread"]["compatibility"], "read-only")
 
     def test_run_fixture_requires_stable_idempotency_boundary(self) -> None:
-        run_start = json.loads(FIXTURE.read_text(encoding="utf-8"))["formal_chat"]["run_start"]
+        run_start = json.loads(FIXTURE.read_text(encoding="utf-8"))["formal_chat"][
+            "run_start"
+        ]
         self.assertEqual(run_start["method"], "POST")
         self.assertIn("Idempotency-Key", run_start["required_headers"])
         self.assertNotIn("tools", run_start["body"]["params"])

@@ -7,11 +7,9 @@ import asyncio
 import json
 import os
 import signal
-import sys
 from pathlib import Path
 
 import httpx
-
 from r6_worker_fault_injection import (
     DEFAULT_CONFIG,
     _graphharbor_command,
@@ -49,8 +47,16 @@ async def _run(args: argparse.Namespace) -> dict[str, object]:
     first = second = None
     try:
         first = await _start(command + serve, env)
-        async with httpx.AsyncClient(base_url=base_url, timeout=5, trust_env=False) as client:
-            await _wait_for(client, "/ready", lambda value: value.get("ready") is True, args.timeout, first)
+        async with httpx.AsyncClient(
+            base_url=base_url, timeout=5, trust_env=False
+        ) as client:
+            await _wait_for(
+                client,
+                "/ready",
+                lambda value: value.get("ready") is True,
+                args.timeout,
+                first,
+            )
             await _stop(first, signal.SIGTERM)
             if first.returncode is None:
                 raise AssertionError("first API process did not exit after SIGTERM")
@@ -86,7 +92,9 @@ def main() -> int:
     try:
         result = asyncio.run(_run(args))
     except Exception as exc:  # noqa: BLE001 - emit structured probe failure.
-        print(json.dumps({"status": "failed", "failure": f"{type(exc).__name__}: {exc}"}))
+        print(
+            json.dumps({"status": "failed", "failure": f"{type(exc).__name__}: {exc}"})
+        )
         return 1
     print(json.dumps(result))
     return 0

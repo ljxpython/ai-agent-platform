@@ -10,8 +10,18 @@ from uuid import UUID
 import jwt
 from fastapi.testclient import TestClient
 
-from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
-from platform_api.core.security import InvalidTokenError, create_access_token, decode_access_token, hash_password
+from platform_api.core.db import (
+    build_engine,
+    build_session_factory,
+    create_core_tables,
+    session_scope,
+)
+from platform_api.core.security import (
+    InvalidTokenError,
+    create_access_token,
+    decode_access_token,
+    hash_password,
+)
 from platform_api.main import create_app
 from platform_api.modules.identity.models import UserRecord
 from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
@@ -61,7 +71,9 @@ class IdentitySecurityTest(unittest.TestCase):
 
     def test_jwt_rejects_wrong_audience_and_unknown_kid(self) -> None:
         settings = self.app.state.settings
-        valid = create_access_token(user_id="user-id", username="user", settings=settings)
+        valid = create_access_token(
+            user_id="user-id", username="user", settings=settings
+        )
         payload = jwt.decode(valid, options={"verify_signature": False})
         wrong_audience = jwt.encode(
             {**payload, "aud": "other-service"},
@@ -170,7 +182,9 @@ class IdentitySecurityTest(unittest.TestCase):
         )
         self.assertEqual(replacement.status_code, 401, replacement.text)
 
-    def test_refresh_token_conditional_update_has_single_concurrent_winner(self) -> None:
+    def test_refresh_token_conditional_update_has_single_concurrent_winner(
+        self,
+    ) -> None:
         self._create_user(username="concurrent-refresh-user")
         login = self.client.post(
             "/api/identity/session",
@@ -184,7 +198,9 @@ class IdentitySecurityTest(unittest.TestCase):
             session = self._session_factory()
             try:
                 barrier.wait()
-                _, state = SqlAlchemyIdentityRepository(session).consume_refresh_token(token_id)
+                _, state = SqlAlchemyIdentityRepository(session).consume_refresh_token(
+                    token_id
+                )
                 session.commit()
                 return state
             finally:

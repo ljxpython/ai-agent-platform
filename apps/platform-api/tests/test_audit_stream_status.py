@@ -54,7 +54,7 @@ class AuditStreamStatusTest(unittest.TestCase):
             "platform_api.entrypoints.http.middleware.audit_log._write_audit_event",
             side_effect=lambda **kwargs: captured.append(kwargs),
         ):
-            with self.assertRaises(Exception):
+            with self.assertRaises(RuntimeError):
                 TestClient(app).get("/stream")
         self.assertEqual(len(captured), 1)
         self.assertEqual(captured[0]["status_code"], 200)

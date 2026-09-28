@@ -1,7 +1,11 @@
 """arXiv research; pure parsers copied from DeerFlow (MIT), network bounded locally."""
+
 from typing import Any
 
-NS_MAP = {"atom": "http://www.w3.org/2005/Atom", "arxiv": "http://arxiv.org/schemas/atom"}
+NS_MAP = {
+    "atom": "http://www.w3.org/2005/Atom",
+    "arxiv": "http://arxiv.org/schemas/atom",
+}
 
 
 def _build_search_query(
@@ -66,10 +70,17 @@ def _parse_entry(entry: Any) -> dict:
     raw_id = _text("atom:id")
     arxiv_id = _normalise_arxiv_id(raw_id)
 
-    authors = [(a.findtext("atom:name", default="", namespaces=NS_MAP) or "").strip() for a in entry.findall("atom:author", NS_MAP)]
+    authors = [
+        (a.findtext("atom:name", default="", namespaces=NS_MAP) or "").strip()
+        for a in entry.findall("atom:author", NS_MAP)
+    ]
     authors = [a for a in authors if a]
 
-    categories = [c.get("term", "") for c in entry.findall("atom:category", NS_MAP) if c.get("term")]
+    categories = [
+        c.get("term", "")
+        for c in entry.findall("atom:category", NS_MAP)
+        if c.get("term")
+    ]
 
     pdf_url = ""
     abs_url = raw_id  # default
@@ -103,4 +114,3 @@ def _parse_entry(entry: Any) -> dict:
         "pdf_url": pdf_url,
         "abs_url": abs_url,
     }
-

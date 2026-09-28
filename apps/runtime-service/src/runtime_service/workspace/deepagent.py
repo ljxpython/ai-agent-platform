@@ -64,7 +64,9 @@ def resolve_workspace_virtual_path(workspace_root: Path, path_text: str) -> Path
         raise ValueError(f"workspace path must start with '/': {path_text!r}")
     parts = PurePosixPath(path).parts
     if ".." in parts or "~" in parts or "\\" in path:
-        raise ValueError(f"workspace path contains a forbidden component: {path_text!r}")
+        raise ValueError(
+            f"workspace path contains a forbidden component: {path_text!r}"
+        )
     resolved = (root / path.lstrip("/")).resolve()
     if not resolved.is_relative_to(root):
         raise ValueError(f"path escapes workspace root: {resolved}")

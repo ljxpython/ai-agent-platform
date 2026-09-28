@@ -32,11 +32,15 @@ def _config(thread_id: str) -> dict[str, object]:
     ("route", "expected"),
     [("approve", "model response"), ("reject", "model response")],
 )
-def test_workflow_demo_routes_to_one_conditional_branch(route: str, expected: str) -> None:
-    result = asyncio.run(_graph().ainvoke(
-        {"message": "hello", "route": route},
-        _config(f"workflow-branch-{route}"),
-    ))
+def test_workflow_demo_routes_to_one_conditional_branch(
+    route: str, expected: str
+) -> None:
+    result = asyncio.run(
+        _graph().ainvoke(
+            {"message": "hello", "route": route},
+            _config(f"workflow-branch-{route}"),
+        )
+    )
 
     assert result["response"] == expected
 
@@ -94,14 +98,16 @@ def test_workflow_demo_interrupt_resume_does_not_repeat_completed_step() -> None
     graph = _graph()
     config = {"configurable": {"thread_id": "workflow-resume-test"}}
 
-    paused = asyncio.run(graph.ainvoke(
-        {
-            "message": "hello",
-            "route": "reject",
-            "requires_confirmation": True,
-        },
-        config,
-    ))
+    paused = asyncio.run(
+        graph.ainvoke(
+            {
+                "message": "hello",
+                "route": "reject",
+                "requires_confirmation": True,
+            },
+            config,
+        )
+    )
 
     assert paused["__interrupt__"][0].value["kind"] == "workflow_confirmation"
     assert paused["__interrupt__"][0].value["action_requests"][0]["name"] == (
@@ -110,7 +116,9 @@ def test_workflow_demo_interrupt_resume_does_not_repeat_completed_step() -> None
     assert paused["prepared_count"] == 1
 
     interrupt_id = paused["__interrupt__"][0].id
-    completed = asyncio.run(graph.ainvoke(Command(resume={interrupt_id: "approve"}), config))
+    completed = asyncio.run(
+        graph.ainvoke(Command(resume={interrupt_id: "approve"}), config)
+    )
 
     assert completed["response"] == "model response"
     assert completed["prepared_count"] == 1
@@ -122,18 +130,26 @@ def test_workflow_demo_accepts_web_hitl_decision_envelope(decision: str) -> None
     graph = _graph()
     config = _config(f"workflow-web-resume-{decision}")
 
-    paused = asyncio.run(graph.ainvoke(
-        {"message": "需要人工确认后再继续", "requires_confirmation": True},
-        config,
-    ))
+    paused = asyncio.run(
+        graph.ainvoke(
+            {"message": "需要人工确认后再继续", "requires_confirmation": True},
+            config,
+        )
+    )
     interrupt_id = paused["__interrupt__"][0].id
-    completed = asyncio.run(graph.ainvoke(
-        Command(resume={interrupt_id: {
-            "decisions": [{"type": decision}],
-            "_runtime_model_ref": "opaque-reference",
-        }}),
-        config,
-    ))
+    completed = asyncio.run(
+        graph.ainvoke(
+            Command(
+                resume={
+                    interrupt_id: {
+                        "decisions": [{"type": decision}],
+                        "_runtime_model_ref": "opaque-reference",
+                    }
+                }
+            ),
+            config,
+        )
+    )
 
     assert completed["confirmation"] == decision
     assert completed["response"] == "model response"
@@ -144,10 +160,12 @@ def test_workflow_demo_chat_phrase_enters_hitl() -> None:
     graph = _graph()
     config = {"configurable": {"thread_id": "browser-hitl"}}
 
-    paused = asyncio.run(graph.ainvoke(
-        {"messages": [{"role": "user", "content": "需要人工确认后再继续"}]},
-        config,
-    ))
+    paused = asyncio.run(
+        graph.ainvoke(
+            {"messages": [{"role": "user", "content": "需要人工确认后再继续"}]},
+            config,
+        )
+    )
 
     assert paused["__interrupt__"][0].value["kind"] == "workflow_confirmation"
 
@@ -155,14 +173,20 @@ def test_workflow_demo_chat_phrase_enters_hitl() -> None:
 def test_workflow_demo_rejects_invalid_resume_without_completing_run() -> None:
     graph = _graph()
     config = {"configurable": {"thread_id": "workflow-invalid-resume-test"}}
-    asyncio.run(graph.ainvoke(
-        {"message": "hello", "requires_confirmation": True},
-        config,
-    ))
+    asyncio.run(
+        graph.ainvoke(
+            {"message": "hello", "requires_confirmation": True},
+            config,
+        )
+    )
 
-    invalid = asyncio.run(graph.ainvoke(Command(resume={"missing-interrupt-id": "approve"}), config))
+    invalid = asyncio.run(
+        graph.ainvoke(Command(resume={"missing-interrupt-id": "approve"}), config)
+    )
     assert invalid["__interrupt__"][0].value["error"] == "workflow.invalid_resume"
 
     interrupt_id = invalid["__interrupt__"][0].id
-    completed = asyncio.run(graph.ainvoke(Command(resume={interrupt_id: "reject"}), config))
+    completed = asyncio.run(
+        graph.ainvoke(Command(resume={interrupt_id: "reject"}), config)
+    )
     assert completed["response"] == "model response"

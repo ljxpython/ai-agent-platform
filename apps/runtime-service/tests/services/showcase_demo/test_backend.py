@@ -58,7 +58,9 @@ def test_workspace_rejects_symlink_root(monkeypatch, tmp_path):
         DockerWorkspaceBackend("tenant", "project", "thread")
 
 
-def test_local_backend_executes_in_thread_workspace_without_secret_env(monkeypatch, tmp_path):
+def test_local_backend_executes_in_thread_workspace_without_secret_env(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path))
     monkeypatch.setenv("OPENAI_API_KEY", "must-not-enter-shell")
     monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_SECRET", "must-not-enter-shell")
@@ -69,20 +71,34 @@ def test_local_backend_executes_in_thread_workspace_without_secret_env(monkeypat
 
     assert result.exit_code == 0, result.output
     assert "27.00" in result.output
-    assert (workspace.cwd / "workspace/result.txt").read_text().strip() == "Total sales: 27.00"
-    assert workspace.execute("test -z \"$OPENAI_API_KEY\"").exit_code == 0
-    assert workspace.execute('test -z "$PLATFORM_RUNTIME_DELEGATION_SECRET"').exit_code == 0
+    assert (
+        workspace.cwd / "workspace/result.txt"
+    ).read_text().strip() == "Total sales: 27.00"
+    assert workspace.execute('test -z "$OPENAI_API_KEY"').exit_code == 0
+    assert (
+        workspace.execute('test -z "$PLATFORM_RUNTIME_DELEGATION_SECRET"').exit_code
+        == 0
+    )
     assert workspace.execute("exit 7").exit_code == 7
     assert asyncio.run(workspace.aexecute("python report.py")).exit_code == 0
-    assert workspace.execute("python -c 'import time; time.sleep(2)'", timeout=1).exit_code == 124
+    assert (
+        workspace.execute("python -c 'import time; time.sleep(2)'", timeout=1).exit_code
+        == 124
+    )
     for timeout in (0, 61, True):
         with pytest.raises(ValueError):
             workspace.execute("true", timeout=timeout)
     assert build_backend(workspace).read("/workspace/result.txt").error is None
 
 
-@pytest.mark.parametrize("kind,expected", [(None, DockerWorkspaceBackend),
-    ("docker", DockerWorkspaceBackend), ("local", LocalWorkspaceBackend)])
+@pytest.mark.parametrize(
+    "kind,expected",
+    [
+        (None, DockerWorkspaceBackend),
+        ("docker", DockerWorkspaceBackend),
+        ("local", LocalWorkspaceBackend),
+    ],
+)
 def test_backend_selection(monkeypatch, tmp_path, kind, expected):
     monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path))
     monkeypatch.delenv("RUNTIME_BACKEND", raising=False)

@@ -1,4 +1,5 @@
 """Thin internal routes; scoped business rules remain in Dear Agent."""
+
 import asyncio
 import os
 
@@ -9,7 +10,9 @@ from runtime_service.runtime.tool_access import require_tool_access
 from runtime_service.services.dearflow_agent.memory import MemoryCommand, MemoryStorage
 from runtime_service.workspace.documents import DocumentError
 
-router = APIRouter(prefix="/internal/threads/{thread_id}/dear", tags=["dear-governance"])
+router = APIRouter(
+    prefix="/internal/threads/{thread_id}/dear", tags=["dear-governance"]
+)
 
 
 async def authorize(thread_id, authorization, *, write):
@@ -18,10 +21,15 @@ async def authorize(thread_id, authorization, *, write):
     facts = await authenticate(authorization)
     scope = facts.get("runtime_scope", {})
     principal = facts.get("runtime_principal", {})
-    if (scope.get("operation") != ("dear-governance-write" if write else "dear-governance-read")
-            or scope.get("thread_id") != thread_id or scope.get("assistant_id") != "dearflow_agent"
-            or not all(principal.get(k) for k in ("tenant_id", "project_id", "user_id"))
-            or scope.get("tenant_id") != principal["tenant_id"] or scope.get("project_id") != principal["project_id"]):
+    if (
+        scope.get("operation")
+        != ("dear-governance-write" if write else "dear-governance-read")
+        or scope.get("thread_id") != thread_id
+        or scope.get("assistant_id") != "dearflow_agent"
+        or not all(principal.get(k) for k in ("tenant_id", "project_id", "user_id"))
+        or scope.get("tenant_id") != principal["tenant_id"]
+        or scope.get("project_id") != principal["project_id"]
+    ):
         raise HTTPException(403, {"code": "dear_governance_scope_denied"})
     require_tool_access(facts, "manage_memory" if write else "search_memory")
     return tuple(principal[k] for k in ("tenant_id", "project_id", "user_id"))
@@ -35,15 +43,29 @@ async def call(function, *args, **kwargs):
 
 
 @router.get("/memory")
-async def read_memory(thread_id: str, query: str = Query(default="", max_length=500), authorization: str | None = Header(default=None)):
+async def read_memory(
+    thread_id: str,
+    query: str = Query(default="", max_length=500),
+    authorization: str | None = Header(default=None),
+):
     scope = await authorize(thread_id, authorization, write=False)
     return await call(MemoryStorage().read, scope, query)
 
 
 @router.post("/memory")
-async def change_memory(thread_id: str, command: MemoryCommand, authorization: str | None = Header(default=None)):
+async def change_memory(
+    thread_id: str,
+    command: MemoryCommand,
+    authorization: str | None = Header(default=None),
+):
     scope = await authorize(thread_id, authorization, write=True)
-    document = await call(MemoryStorage().change, scope, command, thread_id=thread_id, source_id="explicit-management")
+    document = await call(
+        MemoryStorage().change,
+        scope,
+        command,
+        thread_id=thread_id,
+        source_id="explicit-management",
+    )
     document.pop("mutation", None)
     document.pop("extraction", None)
     return document

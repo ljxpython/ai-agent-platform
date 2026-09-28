@@ -38,14 +38,18 @@ class MetricsRegistry:
             if failed:
                 self._requests_failed += 1
             self._request_duration_total_ms += duration_ms
-            self._request_duration_max_ms = max(self._request_duration_max_ms, duration_ms)
+            self._request_duration_max_ms = max(
+                self._request_duration_max_ms, duration_ms
+            )
             self._status_buckets[status_family] += 1
             self._method_buckets[method.upper()] += 1
 
             path_metrics = self._path_buckets[path]
             path_metrics["count"] += 1
             path_metrics["duration_total_ms"] += duration_ms
-            path_metrics["duration_max_ms"] = max(path_metrics["duration_max_ms"], duration_ms)
+            path_metrics["duration_max_ms"] = max(
+                path_metrics["duration_max_ms"], duration_ms
+            )
             if failed:
                 path_metrics["failed"] += 1
 
@@ -53,7 +57,9 @@ class MetricsRegistry:
         with self._lock:
             total = self._requests_total
             failed = self._requests_failed
-            avg_duration_ms = round(self._request_duration_total_ms / total, 2) if total else 0.0
+            avg_duration_ms = (
+                round(self._request_duration_total_ms / total, 2) if total else 0.0
+            )
             failure_rate = round(failed / total, 4) if total else 0.0
 
             top_paths = sorted(
@@ -62,9 +68,7 @@ class MetricsRegistry:
                         "path": path,
                         "count": int(metrics["count"]),
                         "failed": int(metrics["failed"]),
-                        "failure_rate": round(
-                            metrics["failed"] / metrics["count"], 4
-                        )
+                        "failure_rate": round(metrics["failed"] / metrics["count"], 4)
                         if metrics["count"]
                         else 0.0,
                         "avg_duration_ms": round(

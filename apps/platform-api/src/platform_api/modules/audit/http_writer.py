@@ -10,8 +10,8 @@ from platform_api.modules.audit.http_resolution import (
     resolve_http_audit,
 )
 from platform_api.modules.audit.records import AuditWriteCommand
-from platform_api.modules.audit.schemas import AuditResult
 from platform_api.modules.audit.repository import SqlAlchemyAuditRepository
+from platform_api.modules.audit.schemas import AuditResult
 
 
 @dataclass(frozen=True, slots=True)

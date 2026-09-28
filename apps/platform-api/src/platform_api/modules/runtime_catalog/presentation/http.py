@@ -5,12 +5,6 @@ import hmac
 import json
 import time
 
-from platform_api.modules.runtime_gateway.application import thread_access
-from platform_api.modules.identity.actors import (
-    load_service_account_actor,
-    load_user_actor,
-)
-
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import sessionmaker
 
@@ -19,6 +13,10 @@ from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import BadRequestError, ForbiddenError
 from platform_api.entrypoints.http.dependencies import get_actor_context
+from platform_api.modules.identity.actors import (
+    load_service_account_actor,
+    load_user_actor,
+)
 from platform_api.modules.runtime_catalog.application import RuntimeCatalogService
 from platform_api.modules.runtime_catalog.bootstrap import build_runtime_catalog_service
 from platform_api.modules.runtime_catalog.domain import (
@@ -30,6 +28,7 @@ from platform_api.modules.runtime_catalog.domain import (
     RuntimeModelUpdate,
     RuntimeToolCatalogList,
 )
+from platform_api.modules.runtime_gateway.application import thread_access
 
 router = APIRouter(prefix="/api/runtime", tags=["runtime-catalog"])
 

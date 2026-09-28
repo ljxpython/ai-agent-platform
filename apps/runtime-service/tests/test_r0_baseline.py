@@ -56,8 +56,16 @@ def test_production_config_registers_model_backed_agents() -> None:
     config = _load_config("langgraph.json")
     graphs = config["graphs"]
 
-    assert list(graphs) == ["reference_agent", "workflow_demo"]
-    assert all(item["path"].startswith("./src/runtime_service/graphs/") for item in graphs.values())
+    assert list(graphs) == [
+        "reference_agent",
+        "workflow_demo",
+        "showcase_demo",
+        "dearflow_agent",
+    ]
+    assert all(
+        item["path"].startswith("./src/runtime_service/graphs/")
+        for item in graphs.values()
+    )
     assert all(item["description"] for item in graphs.values())
 
 
@@ -94,7 +102,12 @@ def test_docker_uses_graphharbor_production_config() -> None:
 
     assert 'ENTRYPOINT ["graphharbor"]' in dockerfile
     assert '"--config", "${RUNTIME_GRAPH_CONFIG:-/app/langgraph.json}"' in compose
-    assert list(config["graphs"]) == ["reference_agent", "workflow_demo"]
+    assert list(config["graphs"]) == [
+        "reference_agent",
+        "workflow_demo",
+        "showcase_demo",
+        "dearflow_agent",
+    ]
 
 
 def test_docker_does_not_embed_stale_langgraph_api_registries() -> None:
@@ -122,7 +135,10 @@ def test_host_infra_compose_uses_external_postgres_and_redis() -> None:
 
     assert set(services) == {"migrate", "runtime-service", "worker"}
     assert not set(services) & {"postgres", "redis"}
-    assert not any("depends_on" in service for service in services.values())
+    assert not any(
+        set(service.get("depends_on", {})) & {"postgres", "redis"}
+        for service in services.values()
+    )
 
     expected_database = "${DATABASE_URI:?DATABASE_URI is required}"
     expected_redis = "${REDIS_URI:?REDIS_URI is required}"
@@ -241,7 +257,13 @@ def test_reference_agent_uses_deterministic_fake_model() -> None:
 def test_workflow_demo_calls_the_model_for_default_route() -> None:
     graph = asyncio.run(
         get_workflow_agent(
-            {"configurable": {"_runtime_model": BindableFakeChatModel(responses=["model response"])}}
+            {
+                "configurable": {
+                    "_runtime_model": BindableFakeChatModel(
+                        responses=["model response"]
+                    )
+                }
+            }
         )
     )
     result = asyncio.run(

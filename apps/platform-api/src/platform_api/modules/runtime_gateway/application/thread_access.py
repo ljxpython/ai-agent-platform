@@ -7,16 +7,16 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from sqlalchemy import or_, select
+
+from platform_api.core.context.models import ActorContext
 from platform_api.core.db import session_scope
+from platform_api.core.errors import BadRequestError, ForbiddenError
 from platform_api.core.identifiers import parse_uuid
+from platform_api.modules.audit.models import AuditLogRecord
+from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
 from platform_api.modules.runtime_gateway.infra.sqlalchemy.models import (
     ThreadAccessRecord,
 )
-from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
-from platform_api.modules.audit.models import AuditLogRecord
-
-from platform_api.core.context.models import ActorContext
-from platform_api.core.errors import BadRequestError, ForbiddenError
 
 ACL_KEYS = frozenset(
     {

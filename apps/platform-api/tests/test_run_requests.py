@@ -5,7 +5,9 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock, AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
+
+from sqlalchemy import select
 
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import build_engine, build_session_factory, create_core_tables
@@ -13,8 +15,8 @@ from platform_api.core.errors import (
     BadRequestError,
     ConflictError,
     ForbiddenError,
-    UpstreamServiceError,
     PlatformApiError,
+    UpstreamServiceError,
 )
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
@@ -25,7 +27,6 @@ from platform_api.modules.runtime_gateway.infra.sqlalchemy.models import (
 from platform_api.modules.runtime_gateway.infra.sqlalchemy.repository import (
     RunRequestsRepository,
 )
-from sqlalchemy import select
 
 
 class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
@@ -517,9 +518,9 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_delegation_is_bound_to_frozen_context_and_upstream_key(self):
         captured = []
-        self.service._delegation_headers_factory = lambda **values: captured.append(
-            values
-        ) or {"authorization": "scoped"}
+        self.service._delegation_headers_factory = lambda **values: (
+            captured.append(values) or {"authorization": "scoped"}
+        )
         self.upstream.with_forwarded_headers = lambda headers: self.upstream
         await self.start()
         self.assertEqual(captured[0]["context_hash"], self.records()[0].context_hash)

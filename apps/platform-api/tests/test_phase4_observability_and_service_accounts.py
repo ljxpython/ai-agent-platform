@@ -6,9 +6,14 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from platform_api.main import create_app
-from platform_api.core.db import build_engine, build_session_factory, create_core_tables, session_scope
+from platform_api.core.db import (
+    build_engine,
+    build_session_factory,
+    create_core_tables,
+    session_scope,
+)
 from platform_api.core.security import create_access_token, hash_password
+from platform_api.main import create_app
 from platform_api.modules.identity.repository import SqlAlchemyIdentityRepository
 
 
@@ -80,7 +85,9 @@ class Phase4ObservabilityAndServiceAccountsTest(unittest.TestCase):
             "Content-Type": "application/json",
         }
 
-    def test_service_account_api_key_can_read_metrics_but_cannot_write_platform_config(self) -> None:
+    def test_service_account_api_key_can_read_metrics_but_cannot_write_platform_config(
+        self,
+    ) -> None:
         create_response = self.client.post(
             "/api/service-accounts",
             headers=self._auth_headers(),
@@ -124,8 +131,9 @@ class Phase4ObservabilityAndServiceAccountsTest(unittest.TestCase):
         )
         self.assertEqual(forbidden_response.status_code, 403, forbidden_response.text)
 
-
-    def test_operator_cannot_manage_super_admin_service_account_credentials(self) -> None:
+    def test_operator_cannot_manage_super_admin_service_account_credentials(
+        self,
+    ) -> None:
         _, operator_token = self._create_operator_user()
         operator_headers = {
             "Authorization": f"Bearer {operator_token}",
@@ -149,7 +157,9 @@ class Phase4ObservabilityAndServiceAccountsTest(unittest.TestCase):
                 "platform_roles": ["platform_super_admin"],
             },
         )
-        self.assertEqual(admin_create_response.status_code, 200, admin_create_response.text)
+        self.assertEqual(
+            admin_create_response.status_code, 200, admin_create_response.text
+        )
         account_id = admin_create_response.json()["id"]
 
         admin_token_response = self.client.post(
@@ -157,7 +167,9 @@ class Phase4ObservabilityAndServiceAccountsTest(unittest.TestCase):
             headers=self._auth_headers(),
             json={"name": "protected-token"},
         )
-        self.assertEqual(admin_token_response.status_code, 200, admin_token_response.text)
+        self.assertEqual(
+            admin_token_response.status_code, 200, admin_token_response.text
+        )
         token_id = admin_token_response.json()["token"]["id"]
 
         token_response = self.client.post(
@@ -187,36 +199,60 @@ class Phase4ObservabilityAndServiceAccountsTest(unittest.TestCase):
         )
         self.assertEqual(revoke_response.status_code, 403, revoke_response.text)
 
-    def test_platform_audit_filters_projects_without_exposing_private_metadata(self) -> None:
+    def test_platform_audit_filters_projects_without_exposing_private_metadata(
+        self,
+    ) -> None:
         from uuid import uuid4
+
         from platform_api.modules.audit.models import AuditLogRecord
 
         project_id = str(uuid4())
         with session_scope(self._session_factory) as session:
-            session.add(AuditLogRecord(
-                request_id="audit-privacy-test", plane="runtime_gateway", action="thread.read",
-                project_id=project_id, result="success", method="GET", path="/api/langgraph/threads/thread",
-                status_code=200, duration_ms=1,
-                metadata_json={"query": "memory=private", "body": "private text", "api_key": "secret",
-                               "reason": "support", "graph_id": "demo"},
-            ))
+            session.add(
+                AuditLogRecord(
+                    request_id="audit-privacy-test",
+                    plane="runtime_gateway",
+                    action="thread.read",
+                    project_id=project_id,
+                    result="success",
+                    method="GET",
+                    path="/api/langgraph/threads/thread",
+                    status_code=200,
+                    duration_ms=1,
+                    metadata_json={
+                        "query": "memory=private",
+                        "body": "private text",
+                        "api_key": "secret",
+                        "reason": "support",
+                        "graph_id": "demo",
+                    },
+                )
+            )
         _, token = self._create_operator_user()
-        response = self.client.get("/api/audit", params={"project_id": project_id},
-                                   headers={"Authorization": f"Bearer {token}"})
+        response = self.client.get(
+            "/api/audit",
+            params={"project_id": project_id},
+            headers={"Authorization": f"Bearer {token}"},
+        )
         self.assertEqual(response.status_code, 200, response.text)
-        item = next(item for item in response.json()["items"] if item["request_id"] == "audit-privacy-test")
+        item = next(
+            item
+            for item in response.json()["items"]
+            if item["request_id"] == "audit-privacy-test"
+        )
         self.assertEqual(item["metadata"], {"reason": "support", "graph_id": "demo"})
 
     def test_identity_profile_exposes_authoritative_platform_permissions(self) -> None:
         _, token = self._create_operator_user()
-        response = self.client.get("/api/identity/me", headers={"Authorization": f"Bearer {token}"})
+        response = self.client.get(
+            "/api/identity/me", headers={"Authorization": f"Bearer {token}"}
+        )
         self.assertEqual(response.status_code, 200, response.text)
         permissions = response.json()["permissions"]
         self.assertIn("platform.model.write", permissions)
         self.assertIn("platform.user.create", permissions)
         self.assertNotIn("platform.user.role.write", permissions)
         self.assertTrue(all(value.startswith("platform.") for value in permissions))
-
 
     @staticmethod
     def _run_async(coro):

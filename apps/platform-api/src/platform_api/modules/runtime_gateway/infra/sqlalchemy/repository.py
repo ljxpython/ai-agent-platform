@@ -55,11 +55,13 @@ class RunRequestsRepository:
 
     def for_run(self, *, project_id: str, thread_id: str, run_id: str):
         row = self.session.scalar(
-            select(RunRequestRecord).where(
+            select(RunRequestRecord)
+            .where(
                 RunRequestRecord.project_id == project_id,
                 RunRequestRecord.thread_id == thread_id,
                 RunRequestRecord.run_id == run_id,
-            ).limit(1)
+            )
+            .limit(1)
         )
         return _stored(row) if row else None
 

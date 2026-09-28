@@ -9,11 +9,11 @@ import httpx
 import psycopg
 import pytest
 from fastapi import FastAPI
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
 from pydantic import ValidationError
 
-from runtime_service.http.dear_memory import envelope
 from runtime_service.http import dear_memory as memory_http
+from runtime_service.http.dear_memory import envelope
 from runtime_service.services.dearflow_agent.memory import (
     MemoryCommand,
     MemoryStorage,

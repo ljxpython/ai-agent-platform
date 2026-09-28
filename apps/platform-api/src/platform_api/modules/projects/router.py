@@ -14,15 +14,15 @@ from platform_api.modules.projects.contracts import (
     RestoreProjectAdminCommand,
     UpsertProjectMemberCommand,
 )
-from platform_api.modules.projects.service import ProjectsService
 from platform_api.modules.projects.schemas import (
     ProjectAccess,
-    ProjectMemberPage,
     ProjectMemberCandidatePage,
+    ProjectMemberPage,
     ProjectMemberView,
     ProjectPage,
     ProjectSummary,
 )
+from platform_api.modules.projects.service import ProjectsService
 
 router = APIRouter(prefix="/api/projects", tags=["projects"])
 

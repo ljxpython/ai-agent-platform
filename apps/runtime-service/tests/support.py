@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from langchain_core.language_models.fake_chat_models import FakeListChatModel, FakeMessagesListChatModel
-from langchain_core.messages import BaseMessage
+from langchain_core.language_models.fake_chat_models import (
+    FakeListChatModel,
+    FakeMessagesListChatModel,
+)
 from langchain_core.runnables import Runnable
 from langchain_core.tools import BaseTool
 

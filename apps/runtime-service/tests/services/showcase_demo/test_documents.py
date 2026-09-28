@@ -1,8 +1,7 @@
-from pathlib import Path
 import hashlib
+from pathlib import Path
 
 import fitz
-import pytest
 
 from runtime_service.tools.documents import build_document_tools
 

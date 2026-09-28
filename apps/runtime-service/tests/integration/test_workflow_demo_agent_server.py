@@ -11,7 +11,6 @@ from langgraph_sdk import get_client
 
 from runtime_service.runtime.resolver import runtime_context_hash
 
-
 pytestmark = pytest.mark.integration
 
 SECRET = os.getenv(
@@ -29,7 +28,8 @@ def _token() -> str:
     now = int(time.time())
     return jwt.encode(
         {
-            "type": "runtime_delegation", "delegation_version": 2,
+            "type": "runtime_delegation",
+            "delegation_version": 2,
             "sub": "workflow-integration-user",
             "tenant_id": "workflow-integration-tenant",
             "project_id": "workflow-integration-project",
@@ -37,12 +37,15 @@ def _token() -> str:
             "permissions": [],
             "policy_version": "workflow-integration-policy-v1",
             "allowed_model_ids": ["deepseek:DeepSeek-V4-Flash"],
-            "tool_overrides": {}, "tool_policy_version": "test-tools-v2",
+            "tool_overrides": {},
+            "tool_policy_version": "test-tools-v2",
             "iat": now,
             "exp": now + 60,
             "iss": ISSUER,
             "aud": AUDIENCE,
-            "scope": {"operation": "run-create", "assistant_id": "workflow_demo",
+            "scope": {
+                "operation": "run-create",
+                "assistant_id": "workflow_demo",
                 "tenant_id": "workflow-integration-tenant",
                 "project_id": "workflow-integration-project",
             },

@@ -1,6 +1,8 @@
 """Reject mixed clarification batches before any tool can execute."""
+
 from langchain.agents.middleware import AgentMiddleware
 from langchain_core.messages import AIMessage
+
 from runtime_service.services.dearflow_agent.schemas import ClarificationRequest
 
 

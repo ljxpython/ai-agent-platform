@@ -1,4 +1,5 @@
 """Usage: python -m runtime_service.db upgrade."""
+
 import argparse
 
 from runtime_service.db import upgrade

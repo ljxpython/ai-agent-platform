@@ -170,4 +170,3 @@ def test_documentation_fetch_converts_html_response_to_markdown(monkeypatch):
     assert "<html>" not in result
     assert "# CSV Module" in result
     assert "Reading tabular data." in result
-

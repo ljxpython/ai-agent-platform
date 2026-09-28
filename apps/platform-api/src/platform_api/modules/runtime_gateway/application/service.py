@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from platform_api.core.security import empty_runtime_context_hash
-
 import hashlib
 import json
 import logging
@@ -38,6 +36,7 @@ from platform_api.core.runtime_contract import (
     strip_keys,
     validate_runtime_option_values,
 )
+from platform_api.core.security import empty_runtime_context_hash
 from platform_api.modules.agents.infra.sqlalchemy.repository import (
     SqlAlchemyAssistantsRepository,
 )
@@ -53,14 +52,14 @@ from platform_api.modules.runtime_catalog.application.model_connection import (
 from platform_api.modules.runtime_catalog.infra.sqlalchemy.repository import (
     SqlAlchemyRuntimeCatalogRepository,
 )
+from platform_api.modules.runtime_gateway.application import thread_access
+from platform_api.modules.runtime_gateway.application.clarification import (
+    validate_clarification_resumes,
+)
 from platform_api.modules.runtime_gateway.application.ports import (
     BinaryPayload,
     RuntimeGatewayUpstreamProtocol,
 )
-from platform_api.modules.runtime_gateway.application.clarification import (
-    validate_clarification_resumes,
-)
-from platform_api.modules.runtime_gateway.application import thread_access
 from platform_api.modules.runtime_gateway.infra.sqlalchemy.repository import (
     RunRequestsRepository,
     StoredRunRequest,
@@ -994,8 +993,9 @@ class RuntimeGatewayService:
                     operation="message-enqueue",
                 )
             )
-        import jwt
         import time
+
+        import jwt
 
         if not self._runtime_model_config_secret:
             raise ServiceUnavailableError(
@@ -2075,7 +2075,7 @@ class RuntimeGatewayService:
                         if probe_error.upstream_status_code is not None
                         else probe_error.status_code
                     ) != 404:
-                        raise exc
+                        raise exc from probe_error
                 except Exception:
                     raise exc from None
                 else:

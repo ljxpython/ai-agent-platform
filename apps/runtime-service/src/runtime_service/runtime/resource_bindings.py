@@ -53,10 +53,15 @@ def resolve_resource_binding(
     if not isinstance(raw, Mapping) or set(raw) != _REQUIRED_FIELDS:
         raise _failed(kind)
     values = {field: raw.get(field) for field in _REQUIRED_FIELDS}
-    if any(not isinstance(value, str) or not value or value != value.strip() for value in values.values()):
+    if any(
+        not isinstance(value, str) or not value or value != value.strip()
+        for value in values.values()
+    ):
         raise _failed(kind)
     configurable = config.get("configurable")
-    thread_id = configurable.get("thread_id") if isinstance(configurable, Mapping) else None
+    thread_id = (
+        configurable.get("thread_id") if isinstance(configurable, Mapping) else None
+    )
     if (
         values["tenant_id"] != principal.tenant_id
         or values["project_id"] != principal.project_id
@@ -76,7 +81,10 @@ def thread_resource_metadata(
 ) -> dict[str, object]:
     """Build the JSON-safe metadata written when a Thread owns a resource."""
 
-    if not all(isinstance(value, str) and value.strip() for value in (kind, provider, resource_id, thread_id)):
+    if not all(
+        isinstance(value, str) and value.strip()
+        for value in (kind, provider, resource_id, thread_id)
+    ):
         raise ValueError("resource binding values must be non-empty strings")
     return {
         "runtime_resource_bindings": {
@@ -92,4 +100,8 @@ def thread_resource_metadata(
     }
 
 
-__all__ = ["RuntimeResourceBinding", "resolve_resource_binding", "thread_resource_metadata"]
+__all__ = [
+    "RuntimeResourceBinding",
+    "resolve_resource_binding",
+    "thread_resource_metadata",
+]

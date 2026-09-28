@@ -8,6 +8,7 @@ import psycopg
 import pytest
 from psycopg import sql
 from psycopg.conninfo import make_conninfo
+
 from runtime_service.messaging import MessageInbox
 
 DSN = os.getenv(
@@ -209,6 +210,7 @@ def test_committed_history_reconciliation_and_run_isolation(inbox):
 
     from langgraph.checkpoint.base import empty_checkpoint
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
     from runtime_service.messaging.reconcile import reconcile_run
 
     async def check():
@@ -303,9 +305,10 @@ def test_running_tool_then_root_model_receives_queue(inbox, monkeypatch, authori
     from langchain_core.messages import AIMessage, HumanMessage
     from langchain_core.tools import tool
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+    from support import BindableFakeMessagesChatModel
+
     from runtime_service.messaging.reconcile import reconcile_run
     from runtime_service.middlewares.message_queue import MessageQueueMiddleware
-    from support import BindableFakeMessagesChatModel
 
     async def check():
         thread, run, message = str(uuid4()), str(uuid4()), str(uuid4())
@@ -571,6 +574,7 @@ def test_receipt_http_reconciles_before_terminal_close(inbox, monkeypatch):
     import langgraph_runtime_pg.checkpoint as cp
     from langgraph.checkpoint.base import empty_checkpoint
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
     from runtime_service import webapp
 
     async def check():
@@ -718,6 +722,7 @@ def test_receipt_http_reconciles_before_terminal_close(inbox, monkeypatch):
 )
 def test_message_intake_rejects_untrusted_content(content):
     from pydantic import ValidationError
+
     from runtime_service.webapp import EnqueueMessage
 
     with pytest.raises(ValidationError):
@@ -845,9 +850,10 @@ def test_two_child_agents_do_not_claim_root_inbox(inbox, monkeypatch):
     from langchain_core.messages import AIMessage, HumanMessage
     from langchain_core.tools import tool
     from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+    from support import BindableFakeMessagesChatModel
+
     from runtime_service.messaging.reconcile import reconcile_run
     from runtime_service.middlewares.message_queue import MessageQueueMiddleware
-    from support import BindableFakeMessagesChatModel
 
     async def check():
         thread, run, message = str(uuid4()), str(uuid4()), str(uuid4())

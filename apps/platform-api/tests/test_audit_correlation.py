@@ -9,6 +9,10 @@ from uuid import uuid4
 from dotenv import dotenv_values
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
+from sqlalchemy import create_engine, inspect
+from sqlalchemy.orm import Session, sessionmaker
+
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db.base import Base
 from platform_api.core.errors import ForbiddenError, register_exception_handlers
@@ -23,9 +27,6 @@ from platform_api.modules.audit.repository import SqlAlchemyAuditRepository
 from platform_api.modules.audit.router import get_audit_service, router
 from platform_api.modules.audit.schemas import AuditResult
 from platform_api.modules.audit.service import AuditService
-from pydantic import ValidationError
-from sqlalchemy import create_engine, inspect
-from sqlalchemy.orm import Session, sessionmaker
 
 
 class AuditCorrelationTest(unittest.TestCase):

@@ -12,6 +12,7 @@ from pathlib import Path
 import httpx
 from dotenv import dotenv_values
 from r6_worker_fault_injection import _stop, _wait_for
+
 from runtime_service.messaging import MessageInbox
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -165,9 +166,22 @@ async def main():
             "platform",
         )
         await start(
-            ["pnpm", "exec", "vite", *(["preview"] if os.getenv("Q5_PREVIEW_WEB") == "1" else []),
-             *(["--outDir", os.environ["Q5_WEB_OUTDIR"]] if os.getenv("Q5_WEB_OUTDIR") else []),
-             "--host", "127.0.0.1", "--port", "3002", "--strictPort"],
+            [
+                "pnpm",
+                "exec",
+                "vite",
+                *(["preview"] if os.getenv("Q5_PREVIEW_WEB") == "1" else []),
+                *(
+                    ["--outDir", os.environ["Q5_WEB_OUTDIR"]]
+                    if os.getenv("Q5_WEB_OUTDIR")
+                    else []
+                ),
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "3002",
+                "--strictPort",
+            ],
             web,
             {**os.environ, "VITE_DEV_PROXY_TARGET": "http://127.0.0.1:2143"},
             "web",

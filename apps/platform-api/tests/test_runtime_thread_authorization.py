@@ -14,7 +14,6 @@ from platform_api.modules.runtime_catalog.presentation.http import (
     authorize_runtime_threads,
 )
 
-
 SECRET = "runtime-delegation-secret-at-least-32-bytes"
 
 
