@@ -64,3 +64,38 @@ markers = [
     "integration: requires a running Agent Server",
     "durable: requires PostgreSQL/Redis and Agent Server",
 ]
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+extend-exclude = [
+    "tests/acceptance_app",
+    "**/skills/**",
+    ".venv",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "B",
+    "UP",
+]
+ignore = [
+    "E501",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["runtime_service"]
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Body",
+    "fastapi.Header",
+    "fastapi.Path",
+    "fastapi.Security",
+]

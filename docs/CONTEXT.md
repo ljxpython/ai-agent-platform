@@ -5,6 +5,8 @@
 
 ## 最后更新
 
+2026-09-28 | Python 工具链服务级自治治理与基线收敛（Phase 1 完成）：确立拒绝根目录一刀切、坚持服务级自治架构原则。在 `apps/platform-api` 与 `apps/runtime-service` 各自的 `pyproject.toml` 中配置专属 `[tool.ruff]` 与目录豁免；通过 `extend-immutable-calls` 彻底消灭 282 处 FastAPI `B008` 假阳性报错，全仓诊断从 777+ 骤降至 315 条真实基线（其中 279 条支持自动修复，真实语法缺陷极低）；两服务单测全通，本地 `pre-commit` 门禁秒级通过。
+
 2026-09-28 | 子智能体工具调用历史持久化与回放能力专项完成（done）：GraphHarbor 核心团队响应 RFC 并发布 `0.13.0.post37`，支持定向 `checkpoint_ns` 路由。平台完成 `runtime-service` 依赖锁步、`platform-api` 网关层放通 `checkpoint_ns` 与对齐 LangGraph 官方 SDK 的 `POST /state/checkpoint` 端点；服务栈完整平滑重启就绪；真实历史 Thread `fba64a6c-...` 端到端回归实测 100% 成功拉取到子智能体的 16 条完整消息、10 次内部工具调用（ls/read_file/grep/glob）及 10 步历史快照，彻底根治工具轨迹丢失问题。
 
 2026-09-27 | SSE 事件流保活心跳与连接容错治理专项扩展完成（done）：针对 GraphHarbor 重放旧 Run 历史中断导致前端误报“审批请求已变化”问题，完成根因实锤并输出专项交付文档 `graphharbor-zombie-interrupt-replay-recommendations.md`；同时在前端 `useSessionInterrupts.ts` 引入 `resolvedReviewIds` 响应式过滤网与权威 `state` 主动对齐自愈机制，彻底消除死锁；Vitest 聊天模块 173 项测试全绿。
@@ -34,14 +36,14 @@
 - [跨服务规范治理](projects/20260922-cross-service-governance/README.md)：错误响应与追踪本期done；追踪T1—T8、真实链路、PG查询及性能实测见专项Final。JWT J1—J6与R01—R04已验，后续消息回查源码修复与本机测试通过、部署后真实链路未验证；SSE S1—S10完成，S11容量Final受HTTP/1.1连接槽限制而blocked。原专项边界保留，后续消息专项单独授权Runtime入口修改；GraphHarbor不改。
 - [全平台权限治理](projects/20260920-platform-access-governance/README.md)：技术实现与自动化 Final done，用户人工验收中；完整手工用例、证据模板和清理清单见 08。仅项目内个人记忆入口治理；共享/跨项目记忆、自定义角色等 deferred。未提交或生产部署。
 - [代码规范自动化](projects/20260925-code-quality-automation/README.md)：partial；根级 pre-commit 与变更文件 CI 门禁已落地，历史 Python 格式基线待单独清理。
-- [Python 格式基线清理](projects/20260925-python-format-baseline-cleanup/README.md)：规划中；约 731 条 Ruff 诊断、297 个文件格式差异待后续分批治理，本次不实施。
+- [Python 格式基线清理](projects/20260925-python-format-baseline-cleanup/README.md)：进行中（Phase 1 完成）；两服务落地专属 Ruff 规范与 FastAPI B008 豁免，真实诊断大幅收敛至 315 条，Phase 2~4 存量治理待后续分批实施。
 
 ## 各服务当前状态
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-09-27 | 消息入口内部Run GET改用已验证的配对read委托，原生白名单/Thread ACL不变；本机PostgreSQL测试通过，现役链路未部署验证。Dear个人记忆与GraphHarbor post33保持；跨身份和故障矩阵未完成 |
-| platform-api | 2026-09-27 | 网关层 SSE 流引入 15 秒保活心跳注入（`: heartbeat\n\n`）消除假死断连；追踪内部编号/委托/审计精确查询/SSE关闭分类及执行中线程流重连通过；消息内部Run回查现役链路未部署验证；错误出口、peer ACL有证据 |
+| runtime-service | 2026-09-28 | 已落地专属 `[tool.ruff]` 与 skills/acceptance 目录豁免；GraphHarbor post37 升级并支持 checkpoint_ns；消息入口内部Run GET改用已验证的配对read委托；单测全通 |
+| platform-api | 2026-09-28 | 已落地专属 `[tool.ruff]` 与 FastAPI DI 豁免，消除 282 处 B008 假阳性；网关层放通 checkpoint_ns 与 /state/checkpoint；网关层 SSE 流保活心跳注入保持；单测全通 |
 | platform-web | 2026-09-27 | ChatSession 解耦 reconnecting 与红色报错条，仅 paused 展示恢复连接；错误解析、SDK流恢复/410单飞及Workspace线程池有证据；全量Vitest聊天单测221 passed；真实8条容量受HTTP/1.1 origin连接槽限制 |
 | AI Harness（AGENTS.md + Skills） | 2026-09-26 | 整单结束前须逐项核对未完成任务；Task 未完成时只记 Phase，剩余项确需用户行动才可按 blocked 汇报；详见 docs/changes/20260926-harness-completion-reporting.md |
 
