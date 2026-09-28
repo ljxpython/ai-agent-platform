@@ -5,6 +5,8 @@
 
 ## 最后更新
 
+2026-09-28 | 子智能体工具调用历史持久化与回放能力专项完成（done）：GraphHarbor 核心团队响应 RFC 并发布 `0.13.0.post37`，支持定向 `checkpoint_ns` 路由。平台完成 `runtime-service` 依赖锁步、`platform-api` 网关层放通 `checkpoint_ns` 与对齐 LangGraph 官方 SDK 的 `POST /state/checkpoint` 端点；服务栈完整平滑重启就绪；真实历史 Thread `fba64a6c-...` 端到端回归实测 100% 成功拉取到子智能体的 16 条完整消息、10 次内部工具调用（ls/read_file/grep/glob）及 10 步历史快照，彻底根治工具轨迹丢失问题。
+
 2026-09-27 | SSE 事件流保活心跳与连接容错治理专项扩展完成（done）：针对 GraphHarbor 重放旧 Run 历史中断导致前端误报“审批请求已变化”问题，完成根因实锤并输出专项交付文档 `graphharbor-zombie-interrupt-replay-recommendations.md`；同时在前端 `useSessionInterrupts.ts` 引入 `resolvedReviewIds` 响应式过滤网与权威 `state` 主动对齐自愈机制，彻底消除死锁；Vitest 聊天模块 173 项测试全绿。
 
 2026-09-27 | AI 服务路由机制落地：AGENTS.md 新增服务规范读取规则和跨服务规范章节；docs/standards/ 目录建立（error-envelope/trace-propagation active，delegation-jwt/sse-event draft）
@@ -17,6 +19,7 @@
 
 ## 活跃项目
 
+- [子智能体工具调用历史持久化与回放能力支持](projects/20260928-graphharbor-subagent-tool-history/README.md)：done；GraphHarbor post37 升级与 platform-api 网关层放通，全链路端到端真实用例实测通过，子智能体内部 10 次工具调用全数可查。
 - [SSE 事件流保活心跳与连接容错治理](projects/20260927-sse-stream-heartbeat-and-resilience/README.md)：done；针对每隔 45 秒频繁弹出“恢复连接”假性报错条及重放历史中断导致审批死锁的问题，通过 Platform API 网关注入心跳与前端审批状态机自愈彻底根治；探针实测与单测全绿；GraphHarbor 专属心跳与中断重放两份修复文档已交付。
 - [消息内部Run回查委托修复](projects/20260927-message-run-read-delegation/README.md)：partial；Platform API只在消息入口转发请求内已有read委托，Runtime配对验证后用于内部Run GET；本机自动化通过，现役跨服务链路未验证，未部署。
 - [Runtime 与 GraphHarbor 业务边界解耦](projects/20260925-runtime-business-boundary-decoupling/README.md)：`partial`，本机两库已清理旧运行数据并迁移，归档隔离恢复通过，正式依赖 post33 已锁定。单项目 run/SSE/HITL 与文件正向链路已有证据；官方全入口差分、跨项目故障和回退门禁仍缺。

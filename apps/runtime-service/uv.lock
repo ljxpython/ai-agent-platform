@@ -623,7 +623,7 @@ wheels = [
 
 [[package]]
 name = "graphharbor"
-version = "0.13.0.post36"
+version = "0.13.0.post37"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -634,14 +634,14 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "uvicorn", extra = ["standard"] },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/07/51/a85389ec26cd8610c8a3aca78d6c496bfa7e62707c58a282bb9684a092a9/graphharbor-0.13.0.post36.tar.gz", hash = "sha256:fa4a398f1e53000f8c78aa911dc1570aabad2421c8d9ca3f0d54ed81fe6c7d90", size = 51268, upload-time = "2026-09-27T11:06:35.175Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9c/43/dfb8d06554b93479976d745491f92d5fa722e84c3aedab401d8ecafb349b/graphharbor-0.13.0.post37.tar.gz", hash = "sha256:4e9093d88db623746ce2d783fb20c1b1882ca09e9bcb1144d5cb999d7445d410", size = 53134, upload-time = "2026-09-28T01:12:33.317Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fa/f3/aa5b1437640d65a62823abd981ab05b6bb099ee9ca8e201c7600a8c06f12/graphharbor-0.13.0.post36-py3-none-any.whl", hash = "sha256:fe02dc82450e3d989873968939f8f7a541a87be666b744bbcef45f6ba4281d43", size = 41630, upload-time = "2026-09-27T11:06:34.035Z" },
+    { url = "https://files.pythonhosted.org/packages/89/41/224b07f1e7fa7ffb109d677928730a126cd58f81389eec55a73b650f371d/graphharbor-0.13.0.post37-py3-none-any.whl", hash = "sha256:ee2358863e396b4d2957430a886461426aad3d07be0d2fd882fd9302e9515b4c", size = 41938, upload-time = "2026-09-28T01:12:32.144Z" },
 ]
 
 [[package]]
 name = "graphharbor-runtime"
-version = "0.13.0.post36"
+version = "0.13.0.post37"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "alembic" },
@@ -658,9 +658,9 @@ dependencies = [
     { name = "starlette" },
     { name = "structlog" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a4/a2/628e8bc72fc533bfc6711829e51b16437a6964500354453fab9aa85fb9a7/graphharbor_runtime-0.13.0.post36.tar.gz", hash = "sha256:f9157a7d1e4c212649f709e0b9a8492ee6d349713f68807963bd2dc4f7bb79db", size = 141818, upload-time = "2026-09-27T11:06:31.907Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/34/30/6f45880902419b69b727c51d03cc829f3da4c1758d3ebd492d4c56ba196d/graphharbor_runtime-0.13.0.post37.tar.gz", hash = "sha256:5ada3cc7448d8289ec919fa653c27fb19faa0e681020966da27d33123ec2bb22", size = 141818, upload-time = "2026-09-28T01:12:27.446Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/2c/0bf077133de7f22a68d3b26c6e8646b8aaa7fd48e79e33fe8b41ccd8d094/graphharbor_runtime-0.13.0.post36-py3-none-any.whl", hash = "sha256:41f0d25a77137e22e721aeb8ea6cc6cd4d9f75e81dc61658fe3ff7d33f963823", size = 107980, upload-time = "2026-09-27T11:06:30.301Z" },
+    { url = "https://files.pythonhosted.org/packages/3f/52/b9df8112bc5f6e2383dcddf35885550b54671a99646a8d2afedf531c59ae/graphharbor_runtime-0.13.0.post37-py3-none-any.whl", hash = "sha256:ba6c5aae3f8cb017fd377a8b7f4f0616fbe972185596c490382a8025cb5164f4", size = 107978, upload-time = "2026-09-28T01:12:25.978Z" },
 ]
 
 [[package]]
@@ -1205,7 +1205,7 @@ requires-dist = [
     { name = "defusedxml", specifier = "==0.7.1" },
     { name = "duckdb", specifier = "==1.4.4" },
     { name = "fastapi", specifier = ">=0.133.1" },
-    { name = "graphharbor", specifier = "==0.13.0.post36" },
+    { name = "graphharbor", specifier = "==0.13.0.post37" },
     { name = "jsonschema", specifier = ">=4.0" },
     { name = "langchain", extras = ["openai"], specifier = ">=1.2.10" },
     { name = "langchain-anthropic", specifier = ">=1.0.0" },

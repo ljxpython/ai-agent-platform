@@ -1681,6 +1681,7 @@ async def get_thread_state(
     thread_id: str,
     subgraphs: bool | None = Query(default=None),
     checkpoint_id: str | None = Query(default=None),
+    checkpoint_ns: str | None = Query(default=None),
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
@@ -1689,6 +1690,8 @@ async def get_thread_state(
         params["subgraphs"] = subgraphs
     if checkpoint_id is not None:
         params["checkpoint_id"] = checkpoint_id
+    if checkpoint_ns is not None:
+        params["checkpoint_ns"] = checkpoint_ns
     project_id = _require_project_id(request)
     return _redact_runtime_private_fields(
         await service.get_thread_state(
@@ -1696,6 +1699,25 @@ async def get_thread_state(
             project_id=project_id,
             thread_id=thread_id,
             params=params,
+        )
+    )
+
+
+@router.post("/threads/{thread_id}/state/checkpoint")
+async def get_thread_state_at_checkpoint_post(
+    request: Request,
+    thread_id: str,
+    payload: dict[str, Any] = Body(default_factory=dict),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    project_id = _require_project_id(request)
+    return _redact_runtime_private_fields(
+        await service.get_thread_state(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            params=payload,
         )
     )
 

@@ -35,6 +35,8 @@ class LangGraphThreadsSdkAdapter:
     _STATE_FIELDS = (
         "subgraphs",
         "checkpoint_id",
+        "checkpoint",
+        "checkpoint_ns",
     )
 
     _HISTORY_FIELDS = (
@@ -42,6 +44,7 @@ class LangGraphThreadsSdkAdapter:
         "before",
         "metadata",
         "checkpoint",
+        "checkpoint_ns",
     )
 
     _COUNT_FIELDS = (
@@ -86,7 +89,9 @@ class LangGraphThreadsSdkAdapter:
         try:
             return await self._client.threads.get(thread_id)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_get_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_thread_get_failed"
+            )
 
     async def create(self, payload: dict[str, Any] | None = None) -> Any:
         create_payload = {
@@ -97,7 +102,9 @@ class LangGraphThreadsSdkAdapter:
         try:
             return await self._client.threads.create(**create_payload)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_create_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_thread_create_failed"
+            )
 
     async def search(self, payload: dict[str, Any] | None = None) -> Any:
         search_payload = {
@@ -108,7 +115,9 @@ class LangGraphThreadsSdkAdapter:
         try:
             return await self._client.threads.search(**search_payload)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_search_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_thread_search_failed"
+            )
 
     async def count(self, payload: dict[str, Any] | None = None) -> dict[str, int]:
         count_payload = {
@@ -119,24 +128,29 @@ class LangGraphThreadsSdkAdapter:
         try:
             count = await self._client.threads.count(**count_payload)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_count_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_thread_count_failed"
+            )
         return {"count": int(count)}
-
-
 
     async def delete(self, thread_id: str) -> Any:
         try:
             return await self._client.threads.delete(thread_id)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_delete_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_thread_delete_failed"
+            )
 
     async def update(self, thread_id: str, payload: dict[str, Any]) -> Any:
-        update_payload = {key: payload[key] for key in self._UPDATE_FIELDS if key in payload}
+        update_payload = {
+            key: payload[key] for key in self._UPDATE_FIELDS if key in payload
+        }
         try:
             return await self._client.threads.update(thread_id, **update_payload)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_update_failed")
-
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_thread_update_failed"
+            )
 
     async def get_state(
         self,
@@ -144,6 +158,8 @@ class LangGraphThreadsSdkAdapter:
         payload: dict[str, Any] | None = None,
         *,
         checkpoint_id: str | None = None,
+        checkpoint_ns: str | None = None,
+        checkpoint: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> Any:
         state_payload = {
@@ -153,13 +169,36 @@ class LangGraphThreadsSdkAdapter:
         }
         if checkpoint_id:
             state_payload["checkpoint_id"] = str(checkpoint_id).strip()
+        if checkpoint_ns:
+            state_payload["checkpoint_ns"] = str(checkpoint_ns).strip()
+        if checkpoint:
+            state_payload["checkpoint"] = checkpoint
         for key in self._STATE_FIELDS:
             if key in kwargs and kwargs[key] is not None:
                 state_payload[key] = kwargs[key]
+
+        subgraphs = bool(state_payload.get("subgraphs", False))
+        cp = state_payload.get("checkpoint")
+        ns = state_payload.get("checkpoint_ns")
+        cp_id = state_payload.get("checkpoint_id")
+
+        if cp is None and ns:
+            cp = {"checkpoint_ns": ns}
+            if cp_id:
+                cp["checkpoint_id"] = cp_id
+
+        client_kwargs: dict[str, Any] = {"subgraphs": subgraphs}
+        if cp is not None:
+            client_kwargs["checkpoint"] = cp
+        elif cp_id:
+            client_kwargs["checkpoint_id"] = cp_id
+
         try:
-            return await self._client.threads.get_state(thread_id, **state_payload)
+            return await self._client.threads.get_state(thread_id, **client_kwargs)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_state_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_thread_state_failed"
+            )
 
     async def update_state(
         self,
@@ -172,7 +211,9 @@ class LangGraphThreadsSdkAdapter:
             if payload is not None and key in payload
         }
         try:
-            return await self._client.threads.update_state(thread_id, **update_state_payload)
+            return await self._client.threads.update_state(
+                thread_id, **update_state_payload
+            )
         except Exception as exc:
             raise_runtime_upstream_error(
                 exc,
@@ -189,7 +230,15 @@ class LangGraphThreadsSdkAdapter:
             for key in self._HISTORY_FIELDS
             if payload is not None and key in payload
         }
+        if "checkpoint_ns" in history_payload and "checkpoint" not in history_payload:
+            history_payload["checkpoint"] = {
+                "checkpoint_ns": history_payload.pop("checkpoint_ns")
+            }
+        else:
+            history_payload.pop("checkpoint_ns", None)
         try:
             return await self._client.threads.get_history(thread_id, **history_payload)
         except Exception as exc:
-            raise_runtime_upstream_error(exc, fallback_detail="langgraph_thread_history_failed")
+            raise_runtime_upstream_error(
+                exc, fallback_detail="langgraph_thread_history_failed"
+            )

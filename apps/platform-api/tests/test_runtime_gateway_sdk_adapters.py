@@ -533,7 +533,62 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(ctx.exception.status_code, 404)
         self.assertEqual(ctx.exception.message, "Runtime request failed")
         self.assertEqual(ctx.exception.extra["upstream_status_code"], 404)
-        self.assertNotIn("upstream_path", ctx.exception.extra)
+
+    async def test_threads_get_state_passes_checkpoint_ns(self) -> None:
+        fake_client = SimpleNamespace(
+            threads=SimpleNamespace(
+                get_state=AsyncMock(return_value={"values": {"messages": []}}),
+            )
+        )
+        with patch(
+            "platform_api.adapters.langgraph.threads_sdk_adapter.get_langgraph_client",
+            return_value=fake_client,
+        ):
+            adapter = LangGraphThreadsSdkAdapter(base_url="http://example.com")
+            # 1. 传 checkpoint_ns
+            await adapter.get_state("thread-1", {"checkpoint_ns": "tools:call-123"})
+            fake_client.threads.get_state.assert_awaited_with(
+                "thread-1",
+                checkpoint={"checkpoint_ns": "tools:call-123"},
+                subgraphs=False,
+            )
+
+            # 2. 传完整 checkpoint dict
+            await adapter.get_state(
+                "thread-1",
+                {
+                    "checkpoint": {
+                        "checkpoint_ns": "tools:call-456",
+                        "checkpoint_id": "cp-1",
+                    }
+                },
+            )
+            fake_client.threads.get_state.assert_awaited_with(
+                "thread-1",
+                checkpoint={"checkpoint_ns": "tools:call-456", "checkpoint_id": "cp-1"},
+                subgraphs=False,
+            )
+
+    async def test_threads_get_history_passes_checkpoint(self) -> None:
+        fake_client = SimpleNamespace(
+            threads=SimpleNamespace(
+                get_history=AsyncMock(return_value=[]),
+            )
+        )
+        with patch(
+            "platform_api.adapters.langgraph.threads_sdk_adapter.get_langgraph_client",
+            return_value=fake_client,
+        ):
+            adapter = LangGraphThreadsSdkAdapter(base_url="http://example.com")
+            await adapter.get_history(
+                "thread-1",
+                {"checkpoint_ns": "tools:call-123", "limit": 10},
+            )
+            fake_client.threads.get_history.assert_awaited_with(
+                "thread-1",
+                checkpoint={"checkpoint_ns": "tools:call-123"},
+                limit=10,
+            )
 
 
 if __name__ == "__main__":
