@@ -59,12 +59,14 @@ description: AI 在项目文档（docs/projects/{YYYYMMDD}-{项目名}/）已存
      - [x] tasks.md 状态已更新
      - [ ] CONTEXT.md 已更新（此 Task 未涉及服务状态变化，跳过）
      - [ ] docs/FEATURES.md 已更新（新增/改变了功能能力时必须；纯修复/重构/文档标注「跳过」）
+     - [ ] docs/CHANGELOG.md 已更新（feat/fix/perf 类改动在 [Unreleased] 对应分组加一行；refactor/docs/chore 标注「跳过」）
    ```
 
    **合规检查说明：**
    - 前三项必须勾选，不得跳过
    - CONTEXT.md 更新：Task 涉及服务能力/状态变化时必须更新；纯内部重构/bugfix 可标注"跳过"
    - FEATURES.md 更新：Task 新增或改变了"这个服务有哪些功能"这个答案时必须更新；纯修复、重构、加日志可标注"跳过"
+   - CHANGELOG.md 更新：改动属于 `feat`/`fix`/`perf` 类型时，在 `[Unreleased]` 对应分组加一行；写用户能感知的变化，不写实现细节；`refactor`/`docs`/`chore`/`test` 标注「跳过」
    - `tasks.md` 是进度的唯一来源，任何人看进度看这里
    - Task Completion Card 只记录单个任务的进度；更新后继续处理范围内的后续任务，不以此结束本次工作
 

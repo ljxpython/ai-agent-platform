@@ -5,6 +5,10 @@
 
 ## 最后更新
 
+2026-09-29 | docs/ 目录结构整理：quickstart/ 并入 guides/；decisions/ ADR 迁入各自 projects/ 子目录；新建 architecture/ 教学文档目录；新建 docs/README.md 导航入口
+
+2026-09-28 | DearFlow迁移重新盘点与规划完成：沿用20260913专项，新增11能力矩阵（38类Agent能力/23个Skills）、12补齐任务与评审、13验证基线；资源迁入19/23，4项仍延期未迁。纠正原总纲“整体完成”表述，明确Skills单份当前内容、共享Chat和后续记忆/post37历史修复的覆盖关系。本轮核心抽测28 passed/1 skipped；未改业务代码，整体partial，新增治理实施范围待人审。
+
 2026-09-28 | Python 格式基线清理与 CI 全量门禁专项圆满完成（done）：彻底消除 `platform-api`（163 条）与 `runtime-service`（152 条）全量存量 Lint 诊断（0 errors）；全仓 574 个 Python 文件全部完成 Ruff 格式化；安全治理 B023 闭包循环变量绑定、B904 异常链显式保留、B017 确切异常断言与 re-export 符号保护机制；两服务核心单测（325 + 534 项）全绿通过；`.github/workflows/ci.yml` 成功升级全量 Ruff check 与 format check 门禁。
 
 2026-09-28 | 子智能体工具调用历史持久化与回放能力专项完成（done）：GraphHarbor 核心团队响应 RFC 并发布 `0.13.0.post37`，支持定向 `checkpoint_ns` 路由。平台完成 `runtime-service` 依赖锁步、`platform-api` 网关层放通 `checkpoint_ns` 与对齐 LangGraph 官方 SDK 的 `POST /state/checkpoint` 端点；服务栈完整平滑重启就绪；真实历史 Thread `fba64a6c-...` 端到端回归实测 100% 成功拉取到子智能体的 16 条完整消息、10 次内部工具调用（ls/read_file/grep/glob）及 10 步历史快照，彻底根治工具轨迹丢失问题。
@@ -20,6 +24,8 @@
 2026-09-26 | GraphHarbor 双包 post33 已发布且 runtime-service 锁定；本机两库归档已完整恢复到隔离库，单项目业务 Run/SSE/HITL 与文件正向链路已有阶段证据。业务边界与事件保留专项仍为 partial：官方完整 OpenAPI 比较发现 203 处差异，跨项目故障、容量及最终回退验收未完成；进度见边界解耦项目 README。
 
 ## 活跃项目
+
+- [DearFlow Agent迁移重审与补齐](projects/20260913-dearflow-agent/README.md)：整体partial；本轮分析规划已交付，接续以12的T01—T10为入口。14效果审计已用7个离线故障场景复现响应终止、空回答、错误完成、循环、预算和Todo缺口；优先T03/T07关键可靠性及真实页面验收，音视频/新版扩展单独评审；不恢复已被后续专项取代的旧设计。
 
 - [子智能体工具调用历史持久化与回放能力支持](projects/20260928-graphharbor-subagent-tool-history/README.md)：done；GraphHarbor post37 升级与 platform-api 网关层放通，全链路端到端真实用例实测通过，子智能体内部 10 次工具调用全数可查。
 - [SSE 事件流保活心跳与连接容错治理](projects/20260927-sse-stream-heartbeat-and-resilience/README.md)：done；针对每隔 45 秒频繁弹出“恢复连接”假性报错条及重放历史中断导致审批死锁的问题，通过 Platform API 网关注入心跳与前端审批状态机自愈彻底根治；探针实测与单测全绿；GraphHarbor 专属心跳与中断重放两份修复文档已交付。

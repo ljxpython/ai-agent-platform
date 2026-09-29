@@ -3,15 +3,15 @@ kind: local-deployment-contract
 name: ai-agent-platform
 source_of_truth: true
 scope: non-docker-development
-reviewed_on: "2026-09-21"
+reviewed_on: "2026-09-29"
 
 document_precedence:
   canonical:
     - docs/local-deployment-contract.yaml
-    - docs/quickstart/deployment-guide.md
+    - docs/guides/deployment-guide.md
   supporting:
-    - docs/quickstart/local-dev.md
-    - docs/quickstart/env-matrix.md
+    - docs/guides/local-dev.md
+    - docs/guides/env-matrix.md
     - docs/guides/database-operations.md
   rule: Documents must agree with scripts/local-stack.sh and app config; report drift instead of executing obsolete commands.
 
@@ -135,7 +135,7 @@ acceptance:
   - Report real-model checks not performed.
 
 handoff:
-  operator_guide: docs/quickstart/operator-handoff.md
+  operator_guide: docs/guides/operator-handoff.md
   environment_overrides: Read the private handoff README for actual accounts, paths and code revision.
   data_policy: fresh databases; no old users, projects, chats, checkpoints, Redis or workspace data
   config_policy: privately copy app env; root env preserved separately, never used as shared runtime config

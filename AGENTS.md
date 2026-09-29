@@ -276,34 +276,42 @@ git commit -m "fix: 修复 xxx 问题"
 |---|---|
 | 单服务内改动（需要留痕的） | `apps/{app}/docs/changes/{YYYYMMDD}-{slug}.md` |
 | 跨服务链路/治理改动 | `docs/projects/{YYYYMMDD}-{project-name}/` |
+| 项目内架构决策记录（ADR） | `docs/projects/{YYYYMMDD}-{project-name}/` 内，和项目文档放一起 |
 | 不属于任何 app 的仓库级/工具链改动（脚本、CI、根级配置、`AGENTS.md` 本身） | `docs/changes/{YYYYMMDD}-{slug}.md` |
 
 `docs/FEATURES.md` 是全仓库"功能现状总览"，按服务/模块分组，一个功能一行（功能、状态、关联文档链接）。上面任何一个桶落一笔新记录时，同步更新这里对应的一行；不需要每次改动都重写整份文档。
 
+`docs/CHANGELOG.md` 是用户可见的版本变更历史，`[Unreleased]` 分组是当前版本的写作 inbox。**改动类型为 `feat`（新能力）/ `fix`（修复）/ `perf`（性能/体验）时，在 `[Unreleased]` 对应分组加一行用户可感知的描述，不写实现细节。** 发版时由发布者将 `[Unreleased]` 提升为正式版本号。`refactor` / `docs` / `chore` / `test` 等类型默认不进入 CHANGELOG。
+
 ```
 docs/
-├── README.md                   # 文档导航
+├── README.md                   # 文档导航（人类 + AI 分路）
 ├── FEATURES.md                 # 功能现状总览（全仓库，按服务分组）
 ├── CONTEXT.md                  # AI 会话状态快照
+├── CHANGELOG.md                # 版本变更历史
 ├── standards/                  # 跨服务生效规范（带置信度元数据）
 │   ├── README.md               # 规范健康表（各规范状态 + 置信度一览）
 │   ├── error-envelope.md       # 错误响应 Envelope 标准
 │   ├── trace-propagation.md    # 链路追踪传播规范
 │   ├── delegation-jwt.md       # Delegation JWT Schema（draft）
 │   └── sse-event.md            # SSE 事件格式契约（draft）
+├── architecture/               # 系统教学文档（架构、技术栈、服务详解）
+│   └── README.md
+├── guides/                     # 开发者手册（开发规范 + 环境搭建 + 部署）
+│   ├── README.md
+│   └── {操作文档}.md
+├── runbooks/                   # 运维操作手册
+├── releases/                   # 版本发布记录
+├── knowledge/                  # 技术洞察文章
 ├── changes/                    # 仓库级/工具链级单项目改动记录
 │   └── {YYYYMMDD}-{slug}.md
-├── quickstart/                 # 快速开始（新人必读）
-│   ├── architecture.md
-│   ├── local-dev.md
-│   └── deployment.md
-├── guides/                     # 开发指南
-│   ├── development-workflow.md
-│   ├── coding-standards.md
-│   └── configuration.md
 ├── projects/                   # 项目文档（链路/治理改动），两档模板，见下
 │   └── {YYYYMMDD}-{project-name}/
-├── decisions/                  # 仓库级/跨服务技术决策（ADR）
+├── lessons/                    # AI 经验库
+│   ├── index.md                # 快速索引
+│   └── {service-name}.md       # 服务级经验文件
+├── assets/                     # 静态资源
+├── diagrams/                   # 架构图
 └── archive/                    # 归档文档
 ```
 
