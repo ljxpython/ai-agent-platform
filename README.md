@@ -273,7 +273,7 @@ ai-agent-platform/
 
 ## 当前状态与工程基线
 
-- **当前正式版本**：`v0.4.0`（迭代记录见 [CHANGELOG.md](docs/CHANGELOG.md)）
+- **当前正式版本**：`v0.5.0`（迭代记录见 [CHANGELOG.md](docs/CHANGELOG.md)）
 - **代码质量与门禁**：
   - Python 全仓 570+ 源码文件实现 Ruff 100% 格式化与诊断清零（0 errors）
   - 前端 Vitest 单元测试覆盖核心会话状态机，打包构建无告警

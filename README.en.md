@@ -133,6 +133,14 @@ bash "scripts/local-stack.sh" stop
 
 ---
 
+## Current Status & Engineering Baseline
+
+- **Current Official Release**: `v0.5.0` (See [CHANGELOG.md](docs/CHANGELOG.md))
+- **Quality & CI Gates**:
+  - Python: 570+ files formatted with Ruff and zero diagnostic errors (0 errors)
+  - Frontend: Full Vitest test suites passing for chat session state machines
+  - Backend: End-to-end executable contracts verified
+
 <a id="acknowledgements"></a>
 
 ## Acknowledgements & Technical Core
