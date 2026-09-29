@@ -8,7 +8,7 @@
 
 如果把智能体比作一个通识大学生，工具是他的纸和笔，而技能就是他在特定领域接受的专业岗位培训课件。
 
-`DearFlow Agent` 打造了一套企业级的**双轨制技能治理与动态热加载体系（Skills Runtime & Governance）**（代码坐标：[skill_governance.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_governance.py) 与 [skill_catalog.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_catalog.py)）：
+`DearFlow Agent` 打造了一套企业级的**双轨制技能治理与动态热加载体系（Skills Runtime & Governance）**（代码坐标：[skill_governance.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_governance.py) 与 [skill_catalog.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_catalog.py)）：
 1. **双轨制技能目录（Dual Skill Catalog）**：
    - **公共内置技能（Public Skills）**：随平台代码库打包出厂，内置 20+ 类各垂直领域的权威技能。
    - **租户私有技能（Custom Skills）**：支持企业或用户以标准 ZIP 格式自主开发并动态上传挂载，实现领域知识零代码发版热更新。
@@ -21,8 +21,8 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [01-architecture-and-modes.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/01-architecture-and-modes.md)：明确 `ExecutionSkillsMiddleware` 挂载在中间件流水线顶部，负责将可用技能的元数据注册给大模型。
-- 依赖 [04-workspace-sandbox.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/04-workspace-sandbox.md)：理解沙箱通过 `FilesystemPermission` 严厉阻断 Agent 擅自篡改系统技能目录的防御逻辑。
+- 依赖 [01-architecture-and-modes.md](01-architecture-and-modes.md)：明确 `ExecutionSkillsMiddleware` 挂载在中间件流水线顶部，负责将可用技能的元数据注册给大模型。
+- 依赖 [04-workspace-sandbox.md](04-workspace-sandbox.md)：理解沙箱通过 `FilesystemPermission` 严厉阻断 Agent 擅自篡改系统技能目录的防御逻辑。
 
 ### 2. 本章核心流转
 - **技能包校验与解析**：用户通过 `upload_skill` 提交 ZIP 包，系统解压核验是否包含规范的 `SKILL.md`（带 YAML Frontmatter）。
@@ -31,7 +31,7 @@
 - **技能感知与动态激活**：大模型根据 `list_skills` 结果识别场景，动态调用指定技能的 SOP 与执行脚本。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [06-high-fidelity-implementation.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/06-high-fidelity-implementation.md) 提供技能系统在最终状态机中完整初始化的实现细节。
+- 为 [06-high-fidelity-implementation.md](06-high-fidelity-implementation.md) 提供技能系统在最终状态机中完整初始化的实现细节。
 
 ---
 
@@ -49,7 +49,7 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 内置 20+ 类公共专业技能
-- [services/dearflow_agent/skills/](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/skills/)：
+- [services/dearflow_agent/skills/](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/skills)：
   - `academic-paper-review`：学术论文同行评审 SOP
   - `deep-research`：全网多源交叉核验深度检索技能
   - `frontend-design`：专业前端 UI/UX 与响应式组件设计
@@ -59,16 +59,16 @@
   - `skill-creator` 与 `skill-reviewer`：自主创建新技能与技能合规审查元技能
 
 ### 2. 技能仓储治理与版本控制
-- [services/dearflow_agent/skill_governance.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_governance.py)：
+- [services/dearflow_agent/skill_governance.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_governance.py)：
   - `SkillStorage`：私有自定义技能包存储器，实现 `create`, `update`, `set_enabled`, `delete` 与乐观锁版本比较。
   - `MAX_PACKAGE`：技能包体积硬约束常量。
-- [services/dearflow_agent/skill_catalog.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_catalog.py)：
+- [services/dearflow_agent/skill_catalog.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_catalog.py)：
   - `public_catalog()`：读取出厂内置技能并解析 `SKILL.md` 的 YAML Frontmatter。
 
 ### 3. 工具暴露与快照指纹
-- [services/dearflow_agent/tools/skills.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/skills.py)：
+- [services/dearflow_agent/tools/skills.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/skills.py)：
   - `build_skill_tools()`：构建面向大模型的技能管理工具集（`list_skills`, `upload_skill`, `update_skill` 等）。
-- [services/dearflow_agent/workspace/backend.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/workspace/backend.py)：
+- [services/dearflow_agent/workspace/backend.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/workspace/backend.py)：
   - `skills_hash()`：计算并绑定当前会话的快照哈希。
 
 ---

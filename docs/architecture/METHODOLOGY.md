@@ -285,7 +285,7 @@ sequenceDiagram
 
 1. **生活大白话类比**：[用日常生活常见事物打比方，通俗易懂]。
 2. **解决的生产痛点**：[如果不这么设计，代码会变成什么大泥球，出什么故障]。
-3. **本项目怎么落地**：在本项目对应 `[路径]`，完整推演与 20 行极简对比详见 [docs/architecture/concepts/01-xxx.md](file:///.../docs/architecture/concepts/01-xxx.md)。
+3. **本项目怎么落地**：在本项目对应 `[路径]`，完整推演与 20 行极简对比详见 [concepts/01-mvc-ddd-hexagonal.md](concepts/01-mvc-ddd-hexagonal.md)。
 </details>
 ```
 

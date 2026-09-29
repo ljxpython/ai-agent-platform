@@ -2,7 +2,7 @@
 
 ## 模块定位与核心价值
 
-`DearFlow Agent`（代码入口：[agent.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)）是整个平台中技术浓度最高的智能体核心组装根（Composition Root）。
+`DearFlow Agent`（代码入口：[agent.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)）是整个平台中技术浓度最高的智能体核心组装根（Composition Root）。
 
 在传统的智能体设计中，开发者往往写死一个 Prompt 和一组固定的 Tools。这种“一刀切”的设计在面对复杂多变的企业级需求时漏洞百出：
 - 用户问一个简单定义，系统却大张旗鼓地派生子智能体和生成 Todo 列表，导致响应极其迟钝且浪费昂贵的 Token 费用；
@@ -18,8 +18,8 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [05-runtime-service/02-langgraph-execution.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/02-langgraph-execution.md)：理解 LangGraph Pregel 图执行循环、Checkpointer 增量持久化以及 `checkpoint_ns` 多命名空间机制。
-- 依赖 [04-platform-api/02-runtime-gateway.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/02-runtime-gateway.md)：明确客户端请求中的 `execution_mode` 是如何在网关层完成校验并收敛至 `platform_runtime` 配置中的。
+- 依赖 [05-runtime-service/02-langgraph-execution.md](../../05-runtime-service/02-langgraph-execution.md)：理解 LangGraph Pregel 图执行循环、Checkpointer 增量持久化以及 `checkpoint_ns` 多命名空间机制。
+- 依赖 [04-platform-api/02-runtime-gateway.md](../../04-platform-api/02-runtime-gateway.md)：明确客户端请求中的 `execution_mode` 是如何在网关层完成校验并收敛至 `platform_runtime` 配置中的。
 
 ### 2. 本章核心流转
 - **模式解析与算力配置**：`resolve_mode()` 读取入参，确定 `planning`、`delegation` 与 `reasoning` 的启用状态。
@@ -27,8 +27,8 @@
 - **中间件按需装配**：依据模式布尔值，按需挂载 `TodoListMiddleware` 与 `researcher` 子智能体，完成整个 Pregel 状态图编译。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [02-memory-engine.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/02-memory-engine.md) 提供 `MemoryContextMiddleware` 在中间件流水线中的准确定位。
-- 为 [03-tools-ecosystem.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/03-tools-ecosystem.md) 提供所有 38 类工具挂载至底座图的统一执行环境。
+- 为 [02-memory-engine.md](02-memory-engine.md) 提供 `MemoryContextMiddleware` 在中间件流水线中的准确定位。
+- 为 [03-tools-ecosystem.md](03-tools-ecosystem.md) 提供所有 38 类工具挂载至底座图的统一执行环境。
 
 ---
 
@@ -46,13 +46,13 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 模式解析与算力预算
-- [services/dearflow_agent/modes.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/modes.py)：
+- [services/dearflow_agent/modes.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/modes.py)：
   - `AgentMode` 数据模型：包含 `planning: bool`, `delegation: bool`, `reasoning: str`。
   - `resolve_mode()`：将字符串模式（`flash`, `standard`, `pro`, `ultra`）解析为结构化模式对象。
   - `apply_reasoning()`：向模型注入思考链参数。
 
 ### 2. 组装根与中间件流水线
-- [services/dearflow_agent/agent.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)：
+- [services/dearflow_agent/agent.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)：
   - 核心编排函数：装配全部工具、子智能体与 10+ 核心中间件。
   - 中间件清单：
     1. `ExecutionSkillsMiddleware`（技能动态注入）
@@ -67,7 +67,7 @@
     10. `ModelCallTimeoutMiddleware`（模型调用超时防护）
 
 ### 3. 系统提示词动态渲染
-- [services/dearflow_agent/prompts.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py)：
+- [services/dearflow_agent/prompts.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/prompts.py)：
   - `SYSTEM_PROMPT`：定义 Agent 的基础行为准则、格式输出规范与安全红线。
 
 ---

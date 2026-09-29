@@ -19,11 +19,11 @@
 
 ### 1. 认知输入（前置模块输入）
 - 串联本专题所有前置章节：
-  - [01-architecture-and-modes.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/01-architecture-and-modes.md)：执行模式与中间件管道。
-  - [02-memory-engine.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/02-memory-engine.md)：记忆引擎与前置 Working Memory 注入。
-  - [03-tools-ecosystem.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/03-tools-ecosystem.md)：工具生态与大结果分流。
-  - [04-workspace-sandbox.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/04-workspace-sandbox.md)：虚拟沙箱与反自我篡改权限。
-  - [05-skills-runtime.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/05-skills-runtime.md)：技能版本快照不可变性。
+  - [01-architecture-and-modes.md](01-architecture-and-modes.md)：执行模式与中间件管道。
+  - [02-memory-engine.md](02-memory-engine.md)：记忆引擎与前置 Working Memory 注入。
+  - [03-tools-ecosystem.md](03-tools-ecosystem.md)：工具生态与大结果分流。
+  - [04-workspace-sandbox.md](04-workspace-sandbox.md)：虚拟沙箱与反自我篡改权限。
+  - [05-skills-runtime.md](05-skills-runtime.md)：技能版本快照不可变性。
 
 ### 2. 本章核心流转
 - 阅读并对照下文完整的单文件级伪代码实现。

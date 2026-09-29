@@ -15,8 +15,8 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [01-architecture.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/01-architecture.md)：中间件阶段已提取出 `ActorContext`，其中包含用户的平台角色（`platform_roles`）以及按项目映射的项目角色（`project_roles`）。
-- 依赖 [02-runtime-gateway.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/02-runtime-gateway.md)：网关在接收到任何执行指令前，必须由 IAM 判定其是否具有 `PROJECT_RUNTIME_EXECUTE` 或 `PROJECT_RUNTIME_READ` 权限。
+- 依赖 [01-architecture.md](01-architecture.md)：中间件阶段已提取出 `ActorContext`，其中包含用户的平台角色（`platform_roles`）以及按项目映射的项目角色（`project_roles`）。
+- 依赖 [02-runtime-gateway.md](02-runtime-gateway.md)：网关在接收到任何执行指令前，必须由 IAM 判定其是否具有 `PROJECT_RUNTIME_EXECUTE` 或 `PROJECT_RUNTIME_READ` 权限。
 
 ### 2. 本章核心流转
 - **双层权限裁决**：`IamPolicyEngine` 依据 `AuthorizationRequest` 中的权限码（平台级 vs 项目级）进行分层裁决，强制要求项目级操作显式绑定 `project_id`。
@@ -25,7 +25,7 @@
 - **凭据加密保全**：使用 Fernet 对称主密钥对 API Key 进行密文存储与受控解密。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [04-catalog-management.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/04-catalog-management.md) 提供模型凭证的密文加解密与状态隐藏机制。
+- 为 [04-catalog-management.md](04-catalog-management.md) 提供模型凭证的密文加解密与状态隐藏机制。
 - 为向下游签发的 Delegation Token 提供精准的模型白名单与工具禁用清单。
 
 ---
@@ -45,28 +45,28 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. IAM 与策略引擎
-- [modules/iam/application/policies.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/iam/application/policies.py)：
+- [modules/iam/application/policies.py](../../../apps/platform-api/src/platform_api/modules/iam/application/policies.py)：
   - `PermissionCode`：声明 32 个细粒度权限码（如 `PLATFORM_USER_READ`, `PROJECT_RUNTIME_EXECUTE` 等）。
   - `PLATFORM_PERMISSION_MAP` 与 `PROJECT_PERMISSION_MAP`：权限到角色的静态映射规则。
   - `IamPolicyEngine`：执行 `evaluate()` 与 `require()`，提供清晰的判决原因（`PolicyReason`）。
-- [modules/iam/domain/roles.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/iam/domain/roles.py)：
+- [modules/iam/domain/roles.py](../../../apps/platform-api/src/platform_api/modules/iam/domain/roles.py)：
   - `PlatformRole`：`super_admin`, `operator`, `viewer`。
   - `ProjectRole`：`admin`, `editor`, `executor`。
 
 ### 2. 项目与多租户隔离
-- [modules/projects/router.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/projects/router.py)：项目工作空间管理端点。
-- [modules/projects/service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/projects/service.py)：项目成员管理、项目归属校验与配额管理。
+- [modules/projects/router.py](../../../apps/platform-api/src/platform_api/modules/projects/router.py)：项目工作空间管理端点。
+- [modules/projects/service.py](../../../apps/platform-api/src/platform_api/modules/projects/service.py)：项目成员管理、项目归属校验与配额管理。
 
 ### 3. 运行时策略与 BYOK 治理
-- [modules/runtime_policies/application/service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_policies/application/service.py)：
+- [modules/runtime_policies/application/service.py](../../../apps/platform-api/src/platform_api/modules/runtime_policies/application/service.py)：
   - `build_delegation_policy()`：提取项目启用的可用模型清单，计算版本哈希。
   - `resolve_tool_overrides()`：计算当前执行的工具禁用覆盖字典。
-- [modules/runtime_catalog/application/credentials.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_catalog/application/credentials.py)：
+- [modules/runtime_catalog/application/credentials.py](../../../apps/platform-api/src/platform_api/modules/runtime_catalog/application/credentials.py)：
   - `encrypt_api_key()` 与 `decrypt_api_key()`：基于 Fernet 的模型密钥对称加解密。
 
 ### 4. 审计体系
-- [modules/audit/http_writer.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/audit/http_writer.py)：结构化审计日志落盘。
-- [entrypoints/http/middleware/audit_log.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/entrypoints/http/middleware/audit_log.py)：HTTP 请求审计拦截器。
+- [modules/audit/http_writer.py](../../../apps/platform-api/src/platform_api/modules/audit/http_writer.py)：结构化审计日志落盘。
+- [entrypoints/http/middleware/audit_log.py](../../../apps/platform-api/src/platform_api/entrypoints/http/middleware/audit_log.py)：HTTP 请求审计拦截器。
 
 ---
 

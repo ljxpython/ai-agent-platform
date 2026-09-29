@@ -4,7 +4,7 @@
 
 如果说大语言模型是智能体的“大脑”，那么**工具生态（Tools Ecosystem）**就是智能体的“五官与双手”。在面向软件研发、学术研究与商业分析的严谨生产场景中，工具的质量、数量与边界安全性直接决定了系统的成败。
 
-`DearFlow Agent` 拥有平台中最庞大、最完善的工具矩阵（代码坐标：[apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/) 与 [capabilities.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/capabilities.py)）。其核心设计解决了大模型调用外部世界的四大顽疾：
+`DearFlow Agent` 拥有平台中最庞大、最完善的工具矩阵（代码坐标：[apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools) 与 [capabilities.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/capabilities.py)）。其核心设计解决了大模型调用外部世界的四大顽疾：
 1. **能力全景结构化分类（38 类原子能力）**：覆盖通用网络检索、学术 ArXiv 论文抓取、GitHub 工程联动、云端 Vercel 部署、多模态媒体图文处理、ECharts/Chart.js 动态图表引擎与动态 Artifacts 渲染。
 2. **大结果体积分流截断（Large Output Guard）**：当网络抓取或命令执行吐出数十万字时，工具框架自动将原始报文落盘并仅向模型上下文回传引用路径与精简摘要，**彻底根绝由于单个 ToolCall 撑爆 Context Window 导致的死机崩溃**。
 3. **参数强类型校验与 Schema 约束**：例如在图表工具中引入高达 83KB 的静态 JSON Schema 校验包（`chart-schemas.json`），在入参阶段就将不合规的畸形前端配置当场纠偏。
@@ -15,8 +15,8 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [01-architecture-and-modes.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/01-architecture-and-modes.md)：明确在 `create_deep_agent` 装配时，工具矩阵是如何按照执行模式与权限清单分流注入状态机的。
-- 依赖 [05-runtime-service/03-hitl-and-interrupts.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/03-hitl-and-interrupts.md)：掌握涉及外部变更的工具（如 `deployment_execute`）是如何被 `interrupts_for_access_policy` 强行拦截并挂起等待审批的。
+- 依赖 [01-architecture-and-modes.md](01-architecture-and-modes.md)：明确在 `create_deep_agent` 装配时，工具矩阵是如何按照执行模式与权限清单分流注入状态机的。
+- 依赖 [05-runtime-service/03-hitl-and-interrupts.md](../../05-runtime-service/03-hitl-and-interrupts.md)：掌握涉及外部变更的工具（如 `deployment_execute`）是如何被 `interrupts_for_access_policy` 强行拦截并挂起等待审批的。
 
 ### 2. 本章核心流转
 - **模型意图决策**：LLM 输出包含具体参数的 `ToolCall`。
@@ -25,7 +25,7 @@
 - **反馈闭环包装**：将安全干净的输出组装为 `ToolMessage` 回传给 Pregel 引擎进入下一步思考循环。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [04-workspace-sandbox.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/04-workspace-sandbox.md) 提供所有文件与代码执行类工具在底层沙箱内部的真实映射支撑。
+- 为 [04-workspace-sandbox.md](04-workspace-sandbox.md) 提供所有文件与代码执行类工具在底层沙箱内部的真实映射支撑。
 
 ---
 
@@ -43,25 +43,25 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 能力全景总表与分类
-- [services/dearflow_agent/capabilities.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/capabilities.py)：
+- [services/dearflow_agent/capabilities.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/capabilities.py)：
   - `WORK_TOOLS`：工作空间基础工具（`read_file`, `write_file`, `edit_file`, `execute` 等）。
   - `DEAR_TOOLS`：核心专业能力（`search_web`, `fetch_page`, `arxiv_search`, `github`, `deployment` 等）。
   - `CHART_NAMES`：支持的图表渲染类型集合。
 
 ### 2. 专业工具实现族
 - 深度网络检索：
-  - [tools/search.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/search.py)：`search_web`（支持 Google/Bing 聚合）与 `fetch_page`（安全网页提取）。
+  - [tools/search.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/search.py)：`search_web`（支持 Google/Bing 聚合）与 `fetch_page`（安全网页提取）。
 - 学术论文挖掘：
-  - [tools/arxiv.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/arxiv.py) 与 [tools/arxiv_search.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/arxiv_search.py)：基于官方 API 检索 ArXiv 预印本并按章节解析 PDF 内容。
+  - [tools/arxiv.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/arxiv.py) 与 [tools/arxiv_search.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/arxiv_search.py)：基于官方 API 检索 ArXiv 预印本并按章节解析 PDF 内容。
 - 研发工程协同：
-  - [tools/github.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/github.py)：读取仓库代码树、检索 Issue、查看 Commit Diff。
-  - [tools/deployment.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/deployment.py)：自动化打包产物并生成可认领（Claimable）的 Vercel 静态预览地址。
+  - [tools/github.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/github.py)：读取仓库代码树、检索 Issue、查看 Commit Diff。
+  - [tools/deployment.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/deployment.py)：自动化打包产物并生成可认领（Claimable）的 Vercel 静态预览地址。
 - 多模态与专业图表：
-  - [tools/media.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/media.py)：支持提取图片 OCR、音频转录与多模态文件输入。
-  - [tools/chart.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/chart.py)：结合 `chart-schemas.json` 强校验前端图表选项。
+  - [tools/media.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/media.py)：支持提取图片 OCR、音频转录与多模态文件输入。
+  - [tools/chart.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/skills/chart-visualization)：结合 `chart-schemas.json` 强校验前端图表选项。
 - 交互澄清与产物封装：
-  - [tools/human_input.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/human_input.py)：`request_information` 中断提问工具。
-  - [tools/artifacts.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/tools/artifacts.py)：创建或更新平台前端右侧抽屉渲染的交互式产物。
+  - [tools/human_input.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/human_input.py)：`request_information` 中断提问工具。
+  - [tools/artifacts.py](../../../../apps/runtime-service/src/runtime_service/tools/artifacts.py)：创建或更新平台前端右侧抽屉渲染的交互式产物。
 
 ---
 

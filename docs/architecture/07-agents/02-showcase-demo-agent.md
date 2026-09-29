@@ -2,7 +2,7 @@
 
 ## 模块定位与核心价值
 
-如果说 `DearFlow Agent` 是一艘功能完备、重达十万吨的核动力航空母舰，那么 `Showcase Agent`（代码坐标：[apps/runtime-service/src/runtime_service/services/demo/showcase_demo/](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/demo/showcase_demo/)）就是一艘**去除了全部非核心装甲、专为教学研读与二次开发参考打造的工业级标准护卫舰**。
+如果说 `DearFlow Agent` 是一艘功能完备、重达十万吨的核动力航空母舰，那么 `Showcase Agent`（代码坐标：[apps/runtime-service/src/runtime_service/services/demo/showcase_demo/](../../../apps/runtime-service/src/runtime_service/services/demo/showcase_demo)）就是一艘**去除了全部非核心装甲、专为教学研读与二次开发参考打造的工业级标准护卫舰**。
 
 很多技术团队在尝试将 LangChain、LangGraph 与 Deep Agents 引入自研平台时，往往面临“官方 Demo 太简陋无法用于生产，而真实业务项目又太臃肿无从下手”的困境。
 
@@ -17,8 +17,8 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [07-agents/01-dearflow-agent/01-architecture-and-modes.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/01-architecture-and-modes.md)：理解企业级 Agent 的完整中间件栈是如何与 LangGraph 运行时集成的。
-- 依赖 [05-runtime-service/03-hitl-and-interrupts.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/03-hitl-and-interrupts.md)：掌握在执行修改与运行代码前，`interrupt_on` 是如何暂停状态机的。
+- 依赖 [07-agents/01-dearflow-agent/01-architecture-and-modes.md](01-dearflow-agent/01-architecture-and-modes.md)：理解企业级 Agent 的完整中间件栈是如何与 LangGraph 运行时集成的。
+- 依赖 [05-runtime-service/03-hitl-and-interrupts.md](../05-runtime-service/03-hitl-and-interrupts.md)：掌握在执行修改与运行代码前，`interrupt_on` 是如何暂停状态机的。
 
 ### 2. 本章核心流转
 - **平台凭据核验**：`verified_delegation_from_user` 校验 Delegation JWT 与 `context_hash` 是否一致，阻断测试后门。
@@ -45,27 +45,27 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 组合根与平台接入
-- [services/demo/showcase_demo/agent.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/demo/showcase_demo/agent.py)：
+- [services/demo/showcase_demo/agent.py](../../../apps/runtime-service/src/runtime_service/services/demo/showcase_demo/agent.py)：
   - `get_agent()`：唯一的异步图构造工厂，负责提取并校验 `langgraph_auth_user`，解析 `RuntimeContext` 与哈希比对。
   - `_DEFAULTS`：默认绑定 `deepseek:DeepSeek-V4-Flash` 模型与版本声明。
-- [services/demo/showcase_demo/prompts.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/demo/showcase_demo/prompts.py)：
+- [services/demo/showcase_demo/prompts.py](../../../apps/runtime-service/src/runtime_service/services/demo/showcase_demo/prompts.py)：
   - 纯函数式系统提示词，严禁在提示词文件中读取环境变量或发起网络 I/O。
 
 ### 2. 子智能体与角色划分
-- [services/demo/showcase_demo/subagents.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/demo/showcase_demo/subagents.py)：
+- [services/demo/showcase_demo/subagents.py](../../../apps/runtime-service/src/runtime_service/services/demo/showcase_demo/subagents.py)：
   - `research` 角色：仅具备 `ls`, `read_file`, `glob`, `grep`，剥夺一切写权限与命令执行权限。
   - `general-purpose` 角色：明确配置的实现助手，拥有读写和执行工具，但禁止再次委派。
   - `chart-agent` 角色：专用于调用 AntV MCP 生成可视化图表。
 
 ### 3. 沙箱执行适配器
-- [services/demo/showcase_demo/backend.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/demo/showcase_demo/backend.py)：
+- [services/demo/showcase_demo/backend.py](../../../apps/runtime-service/src/runtime_service/services/demo/showcase_demo/backend.py)：
   - `create_workspace()`：初始化线程数据目录，复制初始销售报表工程。
   - `build_backend()`：根据环境变量 `RUNTIME_BACKEND` 动态切换 Docker 容器沙箱与 LocalShell 本地沙箱。
 
 ### 4. 工具与 MCP 接入
-- [services/demo/showcase_demo/tools.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/demo/showcase_demo/tools.py)：
+- [services/demo/showcase_demo/tools.py](../../../apps/runtime-service/src/runtime_service/services/demo/showcase_demo/tools.py)：
   - `fetch_documentation`：受限的官方文档拉取工具（白名单限定仅允许抓取特定官方文档域名）。
-- [services/demo/showcase_demo/chart.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/demo/showcase_demo/chart.py)：
+- [services/demo/showcase_demo/chart.py](../../../apps/runtime-service/src/runtime_service/services/demo/showcase_demo/chart.py)：
   - 适配 `@antv/mcp-server-chart@0.9.10` 标准 MCP Server，将生成的图表安全落盘到 `/workspace/charts/`。
 
 ---

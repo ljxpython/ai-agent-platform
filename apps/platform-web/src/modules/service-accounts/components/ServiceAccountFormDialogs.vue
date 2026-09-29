@@ -33,6 +33,7 @@ const emit = defineEmits<{
 </script>
 
 <template>
+  <!-- eslint-disable vue/no-mutating-props -->
   <BaseDialog
     :show="createDialogOpen"
     title="新建 Service Account"
@@ -41,21 +42,27 @@ const emit = defineEmits<{
   >
     <div class="space-y-4">
       <label class="block space-y-2">
-        <span class="text-sm font-medium text-gray-700 dark:text-dark-100">名称</span>
+        <span class="text-sm font-medium text-gray-700 dark:text-dark-100"
+          >名称</span
+        >
         <BaseInput
           v-model="createForm.name"
           placeholder="例如 metrics-reader"
         />
       </label>
       <label class="block space-y-2">
-        <span class="text-sm font-medium text-gray-700 dark:text-dark-100">描述</span>
+        <span class="text-sm font-medium text-gray-700 dark:text-dark-100"
+          >描述</span
+        >
         <BaseInput
           v-model="createForm.description"
           placeholder="说明这个账号给谁用、干什么"
         />
       </label>
       <label class="block space-y-2">
-        <span class="text-sm font-medium text-gray-700 dark:text-dark-100">默认角色</span>
+        <span class="text-sm font-medium text-gray-700 dark:text-dark-100"
+          >默认角色</span
+        >
         <BaseSelect
           :model-value="createForm.platform_roles[0] || 'platform_viewer'"
           :options="roleOptions"
@@ -66,17 +73,16 @@ const emit = defineEmits<{
 
     <template #footer>
       <div class="flex gap-3">
-        <BaseButton
-          variant="secondary"
-          @click="emit('close-create')"
-        >
+        <BaseButton variant="secondary" @click="emit('close-create')">
           取消
         </BaseButton>
         <BaseButton
-          :disabled="submitting || !createForm.name.trim() || !canManageServiceAccounts"
+          :disabled="
+            submitting || !createForm.name.trim() || !canManageServiceAccounts
+          "
           @click="emit('submit-create')"
         >
-          {{ submitting ? '创建中...' : '确认创建' }}
+          {{ submitting ? "创建中..." : "确认创建" }}
         </BaseButton>
       </div>
     </template>
@@ -96,14 +102,18 @@ const emit = defineEmits<{
         当前账号：{{ selectedAccount.name }}
       </div>
       <label class="block space-y-2">
-        <span class="text-sm font-medium text-gray-700 dark:text-dark-100">描述</span>
+        <span class="text-sm font-medium text-gray-700 dark:text-dark-100"
+          >描述</span
+        >
         <BaseInput
           v-model="editForm.description"
           placeholder="描述账号用途、归属与责任人"
         />
       </label>
       <label class="block space-y-2">
-        <span class="text-sm font-medium text-gray-700 dark:text-dark-100">平台角色</span>
+        <span class="text-sm font-medium text-gray-700 dark:text-dark-100"
+          >平台角色</span
+        >
         <BaseSelect
           :model-value="editForm.platform_roles[0] || 'platform_viewer'"
           :options="roleOptions"
@@ -114,17 +124,14 @@ const emit = defineEmits<{
 
     <template #footer>
       <div class="flex gap-3">
-        <BaseButton
-          variant="secondary"
-          @click="emit('close-edit')"
-        >
+        <BaseButton variant="secondary" @click="emit('close-edit')">
           取消
         </BaseButton>
         <BaseButton
           :disabled="savingAccount || !canManageSelectedAccount"
           @click="emit('submit-edit')"
         >
-          {{ savingAccount ? '保存中...' : '确认保存' }}
+          {{ savingAccount ? "保存中..." : "确认保存" }}
         </BaseButton>
       </div>
     </template>
@@ -144,14 +151,15 @@ const emit = defineEmits<{
         当前账号：{{ selectedAccount.name }}
       </div>
       <label class="block space-y-2">
-        <span class="text-sm font-medium text-gray-700 dark:text-dark-100">Token 名称</span>
-        <BaseInput
-          v-model="tokenForm.name"
-          placeholder="例如 default"
-        />
+        <span class="text-sm font-medium text-gray-700 dark:text-dark-100"
+          >Token 名称</span
+        >
+        <BaseInput v-model="tokenForm.name" placeholder="例如 default" />
       </label>
       <label class="block space-y-2">
-        <span class="text-sm font-medium text-gray-700 dark:text-dark-100">过期天数</span>
+        <span class="text-sm font-medium text-gray-700 dark:text-dark-100"
+          >过期天数</span
+        >
         <BaseInput
           v-model="tokenForm.expires_in_days"
           type="number"
@@ -163,17 +171,18 @@ const emit = defineEmits<{
         v-if="tokenSecret"
         class="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 dark:border-emerald-900/40 dark:bg-emerald-950/20"
       >
-        <div class="text-sm font-semibold text-emerald-700 dark:text-emerald-200">
+        <div
+          class="text-sm font-semibold text-emerald-700 dark:text-emerald-200"
+        >
           明文 Token 只展示这一次
         </div>
-        <div class="mt-2 break-all text-sm text-emerald-700 dark:text-emerald-200">
+        <div
+          class="mt-2 break-all text-sm text-emerald-700 dark:text-emerald-200"
+        >
           {{ tokenSecret }}
         </div>
         <div class="mt-3">
-          <BaseButton
-            variant="secondary"
-            @click="emit('copy-token')"
-          >
+          <BaseButton variant="secondary" @click="emit('copy-token')">
             复制 Token
           </BaseButton>
         </div>
@@ -182,17 +191,16 @@ const emit = defineEmits<{
 
     <template #footer>
       <div class="flex gap-3">
-        <BaseButton
-          variant="secondary"
-          @click="emit('close-token')"
-        >
+        <BaseButton variant="secondary" @click="emit('close-token')">
           关闭
         </BaseButton>
         <BaseButton
-          :disabled="submitting || !tokenForm.name.trim() || !canManageSelectedAccount"
+          :disabled="
+            submitting || !tokenForm.name.trim() || !canManageSelectedAccount
+          "
           @click="emit('submit-token')"
         >
-          {{ submitting ? '创建中...' : '确认创建' }}
+          {{ submitting ? "创建中..." : "确认创建" }}
         </BaseButton>
       </div>
     </template>

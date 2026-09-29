@@ -15,9 +15,9 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [01-architecture.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/01-architecture.md)：已完成用户身份鉴权与 `ActorContext` / `ProjectContext` 的构建。
-- 依赖 [02-cross-cutting/03-sse-streaming-pipeline.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/03-sse-streaming-pipeline.md)：掌握 Protocol v2 SSE 事件通道规范（`messages`, `updates`, `values`, `checkpoints`, `lifecycle`）。
-- 依赖 [03-platform-web/02-chat-session-engine.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/03-platform-web/02-chat-session-engine.md)：前端会话池发起 `run.start` 与 `input.respond` 的状态机流转。
+- 依赖 [01-architecture.md](01-architecture.md)：已完成用户身份鉴权与 `ActorContext` / `ProjectContext` 的构建。
+- 依赖 [02-cross-cutting/03-sse-streaming-pipeline.md](../02-cross-cutting/03-sse-streaming-pipeline.md)：掌握 Protocol v2 SSE 事件通道规范（`messages`, `updates`, `values`, `checkpoints`, `lifecycle`）。
+- 依赖 [03-platform-web/02-chat-session-engine.md](../03-platform-web/02-chat-session-engine.md)：前端会话池发起 `run.start` 与 `input.respond` 的状态机流转。
 
 ### 2. 本章核心流转
 - **协议清洗与反注入**：调用 `normalize_protocol_v2_command`，强校验 JSON 载荷，剔除客户端伪造的 `tools` 或私有状态。
@@ -26,7 +26,7 @@
 - **流式透传与脱敏**：建立与下游的 SSE 长连接，实时过滤私有数据字段，流式回传客户端。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [03-iam-and-governance.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/03-iam-and-governance.md) 的 BYOK 模型配置覆盖与工具禁用策略提供落地执行通道。
+- 为 [03-iam-and-governance.md](03-iam-and-governance.md) 的 BYOK 模型配置覆盖与工具禁用策略提供落地执行通道。
 - 为底层 `runtime-service` 屏蔽非法的恶意输入，保障图执行器的状态机确定性。
 
 ---
@@ -46,18 +46,18 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 网关控制层与路由
-- [modules/runtime_gateway/presentation/http.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py)：声明网关暴露给前端的全部 HTTP/SSE 路由（涵盖 `/threads`, `/runs`, `/commands`, `/stream/events`, `/terminals`, `/workspace` 等 50+ 个端点）。
-- [modules/runtime_gateway/application/service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py)：`RuntimeGatewayService` 聚合服务类，处理所有运行时协议交互、状态授权检查与 Delegation 置换。
+- [modules/runtime_gateway/presentation/http.py](../../../apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py)：声明网关暴露给前端的全部 HTTP/SSE 路由（涵盖 `/threads`, `/runs`, `/commands`, `/stream/events`, `/terminals`, `/workspace` 等 50+ 个端点）。
+- [modules/runtime_gateway/application/service.py](../../../apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py)：`RuntimeGatewayService` 聚合服务类，处理所有运行时协议交互、状态授权检查与 Delegation 置换。
 
 ### 2. 协议归一化与边界契约
-- [core/runtime_contract.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/core/runtime_contract.py)：
+- [core/runtime_contract.py](../../../apps/platform-api/src/platform_api/core/runtime_contract.py)：
   - `reject_private_runtime_state()`：拦截 `runtime_message_claim`、`dear_memory_source` 等私有键。
   - `normalize_protocol_v2_command()`：Protocol v2 指令校验、运行时参数归一化。
   - `normalize_runtime_contract()`：剥离 `tools`、`enable_tools` 等前端非法注入的工具配置。
 
 ### 3. 上游适配器与下沉传输
-- [adapters/langgraph/runtime_gateway_upstream.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/adapters/langgraph/runtime_gateway_upstream.py)：`LangGraphRuntimeGatewayUpstream`，实现与下游 HTTP/SSE 通信，管理连接池，并提供不可变派生方法 `with_forwarded_headers()`。
-- [adapters/langgraph/sdk_client.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/adapters/langgraph/sdk_client.py)：`redact_runtime_private_fields()`，用于清洗图状态与流式消息中的运行时私有数据。
+- [adapters/langgraph/runtime_gateway_upstream.py](../../../apps/platform-api/src/platform_api/adapters/langgraph/runtime_gateway_upstream.py)：`LangGraphRuntimeGatewayUpstream`，实现与下游 HTTP/SSE 通信，管理连接池，并提供不可变派生方法 `with_forwarded_headers()`。
+- [adapters/langgraph/sdk_client.py](../../../apps/platform-api/src/platform_api/adapters/langgraph/sdk_client.py)：`redact_runtime_private_fields()`，用于清洗图状态与流式消息中的运行时私有数据。
 
 ---
 

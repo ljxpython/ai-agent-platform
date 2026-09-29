@@ -13,10 +13,10 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [02-cross-cutting/03-sse-streaming-pipeline.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/03-sse-streaming-pipeline.md)：掌握 Protocol v2 SSE 传输规范、15 秒心跳保活与游标（Cursor）自愈机制。
-- 依赖 [03-platform-web/02-chat-session-engine.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/03-platform-web/02-chat-session-engine.md)：掌握前端会话池 `ChatSessionPool` 的 Teleport 驻留与状态机驱动机制。
-- 依赖 [04-platform-api/02-runtime-gateway.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/02-runtime-gateway.md)：掌握 API 网关如何清洗 `run.start` 指令并动态铸造 Delegation JWT。
-- 依赖 [05-runtime-service/02-langgraph-execution.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/02-langgraph-execution.md)：掌握底层 LangGraph 引擎节点执行与 Checkpoint 状态保存。
+- 依赖 [02-cross-cutting/03-sse-streaming-pipeline.md](../02-cross-cutting/03-sse-streaming-pipeline.md)：掌握 Protocol v2 SSE 传输规范、15 秒心跳保活与游标（Cursor）自愈机制。
+- 依赖 [03-platform-web/02-chat-session-engine.md](../03-platform-web/02-chat-session-engine.md)：掌握前端会话池 `ChatSessionPool` 的 Teleport 驻留与状态机驱动机制。
+- 依赖 [04-platform-api/02-runtime-gateway.md](../04-platform-api/02-runtime-gateway.md)：掌握 API 网关如何清洗 `run.start` 指令并动态铸造 Delegation JWT。
+- 依赖 [05-runtime-service/02-langgraph-execution.md](../05-runtime-service/02-langgraph-execution.md)：掌握底层 LangGraph 引擎节点执行与 Checkpoint 状态保存。
 
 ### 2. 本章核心流转
 - **前端发起意图**：构建具备幂等约束的 `submission_id`，将用户文本包装为 Protocol v2 的 `run.start` 指令下发。
@@ -25,7 +25,7 @@
 - **反向脱敏与零拷贝泵送**：网关实时解包 SSE 帧，清洗掉内部私有状态，客户端接收帧并在 Vue 响应式数据流中平滑打字机渲染。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [02-hitl-approval-flow.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/06-scenarios/02-hitl-approval-flow.md) 提供对话流程在遇到敏感动作时如何优雅切入中断挂起状态的基石。
+- 为 [02-hitl-approval-flow.md](02-hitl-approval-flow.md) 提供对话流程在遇到敏感动作时如何优雅切入中断挂起状态的基石。
 
 ---
 
@@ -43,16 +43,16 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 前端交互与驱动
-- [apps/platform-web/src/modules/chat/composables/useChatSession.ts](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/chat/composables/useChatSession.ts)：会话核心逻辑，管理 `run.start` 发起、SSE 帧消费与游标自愈。
-- [apps/platform-web/src/modules/chat/components/MessageContent.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/chat/components/MessageContent.vue)：富文本渲染引擎，处理思维链折叠、截断保护与 XSS 过滤。
+- [apps/platform-web/src/modules/chat/composables/useChatSession.ts](../../../apps/platform-web/src/modules/chat/composables/useChatSession.ts)：会话核心逻辑，管理 `run.start` 发起、SSE 帧消费与游标自愈。
+- [apps/platform-web/src/modules/chat/components/MessageContent.vue](../../../apps/platform-web/src/modules/chat/components/MessageContent.vue)：富文本渲染引擎，处理思维链折叠、截断保护与 XSS 过滤。
 
 ### 2. 控制面网关代理
-- [apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py)：`/threads/{thread_id}/commands` 与 `/threads/{thread_id}/runs/{run_id}/stream` 端点。
-- [apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py)：`send_thread_command()`、`launch_runtime_run()` 与 Delegation JWT 动态签发。
+- [apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py](../../../apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py)：`/threads/{thread_id}/commands` 与 `/threads/{thread_id}/runs/{run_id}/stream` 端点。
+- [apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py](../../../apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py)：`send_thread_command()`、`launch_runtime_run()` 与 Delegation JWT 动态签发。
 
 ### 3. 底座运行时引擎
-- [apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)：Pregel 状态图入口，挂载中间件栈与 LLM 连接池。
-- [apps/runtime-service/src/runtime_service/runtime/resolver.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/runtime/resolver.py)：解密与装配大模型连接凭据。
+- [apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)：Pregel 状态图入口，挂载中间件栈与 LLM 连接池。
+- [apps/runtime-service/src/runtime_service/runtime/resolver.py](../../../apps/runtime-service/src/runtime_service/runtime/resolver.py)：解密与装配大模型连接凭据。
 
 ---
 

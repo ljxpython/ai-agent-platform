@@ -153,7 +153,7 @@ flowchart TD
     C["concepts/ (概念透析库: DDD/六边形等)"] -.->|"随时按需查阅"| API
 ```
 
-- **新同学第一步**：先看 [01-overview/01-system-topology.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/01-overview/01-system-topology.md) 在内嵌大图中看懂系统全景。
-- **遇到不熟的架构黑话**：如 MVC vs DDD、六边形架构等，先看正文的 `<details>` 30秒折叠拐杖，或者直接阅读 [concepts/01-mvc-ddd-hexagonal.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/concepts/01-mvc-ddd-hexagonal.md)。
-- **联调与接口二开**：必读 [02-cross-cutting/02-delegation-auth.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/02-delegation-auth.md) 与 [02-cross-cutting/03-sse-streaming-pipeline.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/03-sse-streaming-pipeline.md)。
+- **新同学第一步**：先看 [01-overview/01-system-topology.md](01-overview/01-system-topology.md) 在内嵌大图中看懂系统全景。
+- **遇到不熟的架构黑话**：如 MVC vs DDD、六边形架构等，先看正文的 `<details>` 30秒折叠拐杖，或者直接阅读 [concepts/01-mvc-ddd-hexagonal.md](concepts/01-mvc-ddd-hexagonal.md)。
+- **联调与接口二开**：必读 [02-cross-cutting/02-delegation-auth.md](02-cross-cutting/02-delegation-auth.md) 与 [02-cross-cutting/03-sse-streaming-pipeline.md](02-cross-cutting/03-sse-streaming-pipeline.md)。
 - **开发新智能体 / 接入新工具**：必读 `05-runtime-service/` 与 `07-agents/01-dearflow-agent.md`。

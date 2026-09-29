@@ -15,8 +15,8 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [05-runtime-service/02-langgraph-execution.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/02-langgraph-execution.md)：深入理解 `checkpoint_ns` 多命名空间隔离机制与 `MessageQueueMiddleware` 的根图判定规则。
-- 依赖 [03-platform-web/03-component-design.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/03-platform-web/03-component-design.md)：掌握前端如何针对多层级推理块、子任务执行过程进行自折叠与抽屉展示。
+- 依赖 [05-runtime-service/02-langgraph-execution.md](../05-runtime-service/02-langgraph-execution.md)：深入理解 `checkpoint_ns` 多命名空间隔离机制与 `MessageQueueMiddleware` 的根图判定规则。
+- 依赖 [03-platform-web/03-component-design.md](../03-platform-web/03-component-design.md)：掌握前端如何针对多层级推理块、子任务执行过程进行自折叠与抽屉展示。
 
 ### 2. 本章核心流转
 - **主智能体决策派发**：主模型调用 `task` 工具，声明子任务目标、限定角色与专属提示词。
@@ -26,7 +26,7 @@
 - **前端分级回放渲染**：前端识别命名空间标记，将子任务的思考与工具调用收敛至子组件折叠卡片中。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [07-agents/01-dearflow-agent.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent.md) 的核心能力解剖提供子智能体派发与上下文防污染的场景闭环。
+- 为 [07-agents/01-dearflow-agent.md](../07-agents/01-dearflow-agent/README.md) 的核心能力解剖提供子智能体派发与上下文防污染的场景闭环。
 
 ---
 
@@ -44,18 +44,18 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 子智能体定义与派发入口
-- [services/dearflow_agent/subagents/researcher.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/subagents/researcher.py)：
+- [services/dearflow_agent/subagents/researcher.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/subagents/researcher.py)：
   - `researcher()`：定义只读研究员角色（限定工具仅为 `read_file`, `search_web`, `fetch_page`）。
-- [services/dearflow_agent/agent.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)：
+- [services/dearflow_agent/agent.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)：
   - `ToolCallLimitMiddleware`：限制 `task` 工具的单次 Run 上限为 10 次。
   - `DelegationConcurrencyMiddleware`：控制委托并发度。
 
 ### 2. 多命名空间隔离与消息屏蔽
-- [middlewares/message_queue.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/message_queue.py)：
+- [middlewares/message_queue.py](../../../apps/runtime-service/src/runtime_service/middlewares/message_queue.py)：
   - 判定 `if info and "|" in info.checkpoint_ns: return None`，实现子图对根队列的屏蔽。
 
 ### 3. 前端层级渲染
-- [apps/platform-web/src/modules/chat/components/MessageContent.vue](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/chat/components/MessageContent.vue)：
+- [apps/platform-web/src/modules/chat/components/MessageContent.vue](../../../apps/platform-web/src/modules/chat/components/MessageContent.vue)：
   - 识别子智能体执行事件，渲染独立的嵌套卡片与折叠面板。
 
 ---

@@ -16,8 +16,8 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [04-platform-api/02-runtime-gateway.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/02-runtime-gateway.md)：掌握 `platform-api` 网关如何通过 `with_forwarded_headers` 注入 Delegation JWT，并将请求分发至 `runtime-service` 的 `/threads/...` 端点。
-- 依赖 [02-cross-cutting/05-data-isolation.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/05-data-isolation.md)：明确运行时数据库（Runtime DB）的物理边界，其拥有独立的 `runtime_message_inbox` 与 `checkpoints` 表空间。
+- 依赖 [04-platform-api/02-runtime-gateway.md](../04-platform-api/02-runtime-gateway.md)：掌握 `platform-api` 网关如何通过 `with_forwarded_headers` 注入 Delegation JWT，并将请求分发至 `runtime-service` 的 `/threads/...` 端点。
+- 依赖 [02-cross-cutting/05-data-isolation.md](../02-cross-cutting/05-data-isolation.md)：明确运行时数据库（Runtime DB）的物理边界，其拥有独立的 `runtime_message_inbox` 与 `checkpoints` 表空间。
 
 ### 2. 本章核心流转
 - **请求验证与鉴权置换**：API Server 拦截 HTTP 请求，调用 `runtime_service.auth.platform.authenticate` 校验 Delegation Token，并通过 `_verified_run_read_authorization` 确保跨操作的作用域一致。
@@ -25,8 +25,8 @@
 - **运行时环境清理**：在应用 Lifespan 退出时，安全排空伪终端（PTY）进程，优雅刷盘 Langfuse 观测追踪。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [02-langgraph-execution.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/02-langgraph-execution.md) 提供底座图执行时由 `MessageQueueMiddleware` 消费的持久化数据源。
-- 为 [03-hitl-and-interrupts.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/03-hitl-and-interrupts.md) 提供断点恢复与多模态数据输入的基础设施。
+- 为 [02-langgraph-execution.md](02-langgraph-execution.md) 提供底座图执行时由 `MessageQueueMiddleware` 消费的持久化数据源。
+- 为 [03-hitl-and-interrupts.md](03-hitl-and-interrupts.md) 提供断点恢复与多模态数据输入的基础设施。
 
 ---
 
@@ -44,23 +44,23 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. API 宿主与生命周期
-- [src/runtime_service/webapp.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/webapp.py)：
+- [src/runtime_service/webapp.py](../../../apps/runtime-service/src/runtime_service/webapp.py)：
   - `lifespan()`：负责 Langfuse 追踪初始化、停机优雅关闭与 PTY 终端资源排空。
   - `enqueue_message()`：`/internal/threads/{thread_id}/messages` 端点，负责运行中消息入队。
   - `list_messages()`：查看会话待对账与已投递的消息清单。
 
 ### 2. 持久化消息收件箱（Message Inbox）
-- [src/runtime_service/messaging/inbox.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/messaging/inbox.py)：
+- [src/runtime_service/messaging/inbox.py](../../../apps/runtime-service/src/runtime_service/messaging/inbox.py)：
   - `MessageInbox` 核心类：包含 `enqueue()`, `claim()`, `reconcile_checkpoint()`, `reject()`。
   - 咨询锁控制：`SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))`。
-- [src/runtime_service/messaging/reconcile.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/messaging/reconcile.py)：
+- [src/runtime_service/messaging/reconcile.py](../../../apps/runtime-service/src/runtime_service/messaging/reconcile.py)：
   - `reconcile_run()`：依据持久化落盘的 Checkpoint 历史，对齐消息消费收据。
-- [src/runtime_service/messaging/__main__.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/messaging/__main__.py)：
+- [src/runtime_service/messaging/__main__.py](../../../apps/runtime-service/src/runtime_service/messaging/__main__.py)：
   - 运维命令行工具，支持队列迁移、指标查看（`--stats`）与孤儿线程消息修剪（`--prune-deleted`）。
 
 ### 3. 可观测性与伪终端治理
-- [src/runtime_service/observability/__init__.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/__init__.py)：`initialize_langfuse()`, `close_langfuse()`。
-- [src/runtime_service/workspace/terminal.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/workspace/terminal.py)：PTY 终端会话管理器，维护交互式命令进程树。
+- [src/runtime_service/observability/__init__.py](../../../apps/runtime-service/src/runtime_service/observability/__init__.py)：`initialize_langfuse()`, `close_langfuse()`。
+- [src/runtime_service/workspace/terminal.py](../../../apps/runtime-service/src/runtime_service/workspace/terminal.py)：PTY 终端会话管理器，维护交互式命令进程树。
 
 ---
 

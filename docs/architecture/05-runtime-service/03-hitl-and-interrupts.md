@@ -15,8 +15,8 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [03-platform-web/02-chat-session-engine.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/03-platform-web/02-chat-session-engine.md)：前端 `useSessionInterrupts.ts` 监听 `interrupt` 事件并维护 `resolvedReviewIds` 去重过滤。
-- 依赖 [04-platform-api/02-runtime-gateway.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/02-runtime-gateway.md)：API 网关对 `input.respond` 指令进行参数净化，强行拦截任何试图在恢复时篡改 Prompt 或模型的行为。
+- 依赖 [03-platform-web/02-chat-session-engine.md](../03-platform-web/02-chat-session-engine.md)：前端 `useSessionInterrupts.ts` 监听 `interrupt` 事件并维护 `resolvedReviewIds` 去重过滤。
+- 依赖 [04-platform-api/02-runtime-gateway.md](../04-platform-api/02-runtime-gateway.md)：API 网关对 `input.respond` 指令进行参数净化，强行拦截任何试图在恢复时篡改 Prompt 或模型的行为。
 
 ### 2. 本章核心流转
 - **敏感动作拦截检测**：工具执行前调用 `interrupts_for_access_policy`，比对当前会话策略与待执行工具。
@@ -25,8 +25,8 @@
 - **精准解冻恢复**：底座接收 `resume: {interrupt_id: response}`，唤醒原挂起节点继续往下走图计算。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [04-tools-and-skills.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/04-tools-and-skills.md) 中涉及写入私有技能包或外部 MCP 变更的高危工具提供审批屏障。
-- 为 [06-scenarios/02-hitl-approval-flow.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/06-scenarios/02-hitl-approval-flow.md) 提供底座执行引擎层面的理论与时序支撑。
+- 为 [04-tools-and-skills.md](04-tools-and-skills.md) 中涉及写入私有技能包或外部 MCP 变更的高危工具提供审批屏障。
+- 为 [06-scenarios/02-hitl-approval-flow.md](../06-scenarios/02-hitl-approval-flow.md) 提供底座执行引擎层面的理论与时序支撑。
 
 ---
 
@@ -44,16 +44,16 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 访问策略与工具鉴权
-- [runtime/access_policy.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/runtime/access_policy.py)：
+- [runtime/access_policy.py](../../../apps/runtime-service/src/runtime_service/runtime/access_policy.py)：
   - `interrupts_for_access_policy()`：依据当前生效的 `access_policy`（`review`, `workspace_write`, `full_access`）裁剪工具审批列表。
   - `WORKSPACE_WRITE_TOOLS`：声明免审批工作空间工具集合（`write_file`, `edit_file`, `execute`）。
-- [runtime/tool_access.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/runtime/tool_access.py)：
+- [runtime/tool_access.py](../../../apps/runtime-service/src/runtime_service/runtime/tool_access.py)：
   - `require_tool_access()`：校验当前请求是否违反了签名中的工具黑名单（`tool_overrides`）。
 
 ### 2. 人类介入工具与防护守卫
-- [services/dearflow_agent/tools/human_input.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/human_input.py)：
+- [services/dearflow_agent/tools/human_input.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/human_input.py)：
   - `request_information`：触发主动澄清中断的专用工具实现。
-- [services/dearflow_agent/middleware/clarification.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/clarification.py)：
+- [services/dearflow_agent/middleware/clarification.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/clarification.py)：
   - `ClarificationBatchGuard`：防止并发多次抛出澄清提问的守护中间件。
 
 ---

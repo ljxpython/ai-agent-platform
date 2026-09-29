@@ -2,7 +2,7 @@
 
 ## 智能体定位与核心价值
 
-`DearFlow Agent`（代码坐标：[apps/runtime-service/src/runtime_service/services/dearflow_agent/](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/)）是 `ai-agent-platform` 的核心旗舰智能体。
+`DearFlow Agent`（代码坐标：[apps/runtime-service/src/runtime_service/services/dearflow_agent/](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent)）是 `ai-agent-platform` 的核心旗舰智能体。
 
 不同于演示性质的简单玩具 Agent，`DearFlow Agent` 承担了平台中最复杂的企业级通用任务：
 - **深度研究与综合分析**：自主搜集论文、技术文档、企业内部知识库，多轮交叉核验。
@@ -33,12 +33,12 @@ flowchart TD
 
 | 章节与链接 | 核心内容与技术考量 | 对应核心源码坐标 |
 |---|---|---|
-| [01-architecture-and-modes.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/01-architecture-and-modes.md) | **总控编排与四档执行模式**<br>• `create_deep_agent` 核心图拓扑组装<br>• 10+ 深度中间件流水线调用链<br>• `modes.py` 四档算力调配（Flash/Standard/Pro/Ultra）与特性组合（Reasoning/Planning/Delegation） | `agent.py`<br>`modes.py`<br>`prompts.py` |
-| [02-memory-engine.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/02-memory-engine.md) | **三层记忆闭环系统**<br>• Profile 画像事实记忆、Session 短期记忆与 Working 动态检索<br>• `MemoryContextMiddleware` 智能语义注入<br>• 多租户隐私边界与授权审查 | `memory.py`<br>`middleware/memory.py`<br>`memory_access.py` |
-| [03-tools-ecosystem.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/03-tools-ecosystem.md) | **38类工具装配矩阵**<br>• 深度检索（Web/ArXiv）、工程联动（GitHub/Vercel）、图表与多模态渲染<br>• 工具参数动态校验与大体积结果自动落盘引流<br>• 人工介入澄清工具（`request_information`） | `tools/search.py`<br>`tools/chart.py`<br>`tools/media.py`<br>`tools/human_input.py` |
-| [04-workspace-sandbox.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/04-workspace-sandbox.md) | **工作空间沙箱与资产管线**<br>• `DearWorkspaceBackend` 虚拟工作空间映射与防逃逸校验<br>• PTY 伪终端交互式执行与硬超时防护<br>• `PERMISSIONS` 反自我篡改只读黑名单 | `workspace/backend.py`<br>`workspace/terminal.py`<br>`workspace/artifact_refs.py` |
-| [05-skills-runtime.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/05-skills-runtime.md) | **技能治理与动态热加载**<br>• 20+ 内置专业技能解析与分发<br>• ZIP 自定义技能包生命周期治理与 `expected_revision` 乐观锁<br>• `skills_hash` 快照不可变性保证运行稳定性 | `skill_governance.py`<br>`skill_catalog.py`<br>`tools/skills.py` |
-| [06-high-fidelity-implementation.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/06-high-fidelity-implementation.md) | **端到端高保真实现伪代码**<br>• 剥离第三方库冗余包装的单文件级完整装配还原<br>• 状态机从初始化、中间件拦截、工具执行到落盘全景闭环 | 全模块代码凝练还原 |
+| [01-architecture-and-modes.md](01-architecture-and-modes.md) | **总控编排与四档执行模式**<br>• `create_deep_agent` 核心图拓扑组装<br>• 10+ 深度中间件流水线调用链<br>• `modes.py` 四档算力调配（Flash/Standard/Pro/Ultra）与特性组合（Reasoning/Planning/Delegation） | `agent.py`<br>`modes.py`<br>`prompts.py` |
+| [02-memory-engine.md](02-memory-engine.md) | **三层记忆闭环系统**<br>• Profile 画像事实记忆、Session 短期记忆与 Working 动态检索<br>• `MemoryContextMiddleware` 智能语义注入<br>• 多租户隐私边界与授权审查 | `memory.py`<br>`middleware/memory.py`<br>`memory_access.py` |
+| [03-tools-ecosystem.md](03-tools-ecosystem.md) | **38类工具装配矩阵**<br>• 深度检索（Web/ArXiv）、工程联动（GitHub/Vercel）、图表与多模态渲染<br>• 工具参数动态校验与大体积结果自动落盘引流<br>• 人工介入澄清工具（`request_information`） | `tools/search.py`<br>`tools/chart.py`<br>`tools/media.py`<br>`tools/human_input.py` |
+| [04-workspace-sandbox.md](04-workspace-sandbox.md) | **工作空间沙箱与资产管线**<br>• `DearWorkspaceBackend` 虚拟工作空间映射与防逃逸校验<br>• PTY 伪终端交互式执行与硬超时防护<br>• `PERMISSIONS` 反自我篡改只读黑名单 | `workspace/backend.py`<br>`workspace/terminal.py`<br>`workspace/artifact_refs.py` |
+| [05-skills-runtime.md](05-skills-runtime.md) | **技能治理与动态热加载**<br>• 20+ 内置专业技能解析与分发<br>• ZIP 自定义技能包生命周期治理与 `expected_revision` 乐观锁<br>• `skills_hash` 快照不可变性保证运行稳定性 | `skill_governance.py`<br>`skill_catalog.py`<br>`tools/skills.py` |
+| [06-high-fidelity-implementation.md](06-high-fidelity-implementation.md) | **端到端高保真实现伪代码**<br>• 剥离第三方库冗余包装的单文件级完整装配还原<br>• 状态机从初始化、中间件拦截、工具执行到落盘全景闭环 | 全模块代码凝练还原 |
 
 ---
 

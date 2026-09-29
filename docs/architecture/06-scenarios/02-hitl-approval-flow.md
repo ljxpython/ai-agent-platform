@@ -16,9 +16,9 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [03-platform-web/02-chat-session-engine.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/03-platform-web/02-chat-session-engine.md)：掌握前端 `useSessionInterrupts.ts` 的 `resolvedReviewIds` 去重机制。
-- 依赖 [04-platform-api/02-runtime-gateway.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/02-runtime-gateway.md)：掌握网关对 `input.respond` 指令的合法性过滤与 `resume_configuration_override` 拦截。
-- 依赖 [05-runtime-service/03-hitl-and-interrupts.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/03-hitl-and-interrupts.md)：掌握底座运行时三档访问策略（`review`, `workspace_write`, `full_access`）与 `interrupt()` 状态机。
+- 依赖 [03-platform-web/02-chat-session-engine.md](../03-platform-web/02-chat-session-engine.md)：掌握前端 `useSessionInterrupts.ts` 的 `resolvedReviewIds` 去重机制。
+- 依赖 [04-platform-api/02-runtime-gateway.md](../04-platform-api/02-runtime-gateway.md)：掌握网关对 `input.respond` 指令的合法性过滤与 `resume_configuration_override` 拦截。
+- 依赖 [05-runtime-service/03-hitl-and-interrupts.md](../05-runtime-service/03-hitl-and-interrupts.md)：掌握底座运行时三档访问策略（`review`, `workspace_write`, `full_access`）与 `interrupt()` 状态机。
 
 ### 2. 本章核心流转
 - **敏感策略拦截**：模型决定调用具有写权限的工具，底座判定命中当前访问策略规则，抛出 `interrupt()`。
@@ -27,7 +27,7 @@
 - **防篡改参数组装与解冻执行**：通过 `input.respond` 携带 `interrupt_id` 回传，网关完成防篡改校验，底座精准唤醒原挂起节点继续执行。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [03-subagent-dispatch.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/06-scenarios/03-subagent-dispatch.md) 中子智能体执行敏感任务时如何向主流程回传审批事件提供场景支撑。
+- 为 [03-subagent-dispatch.md](03-subagent-dispatch.md) 中子智能体执行敏感任务时如何向主流程回传审批事件提供场景支撑。
 
 ---
 
@@ -45,19 +45,19 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 前端审批渲染与去重拦截
-- [apps/platform-web/src/modules/chat/composables/useSessionInterrupts.ts](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/chat/composables/useSessionInterrupts.ts)：
+- [apps/platform-web/src/modules/chat/composables/useSessionInterrupts.ts](../../../apps/platform-web/src/modules/chat/composables/useSessionInterrupts.ts)：
   - `activeReview`：当前处于等待决策状态的激活审批项。
   - `resolvedReviewIds`：已处理审批 ID 集合，用于快照回放去重。
   - `submitReview()`：构建并向网关发送 `input.respond` 指令。
 
 ### 2. 控制面反向代理与防篡改
-- [apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py)：
+- [apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py](../../../apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py)：
   - `send_thread_command()`：在 `method == "input.respond"` 时执行字段白名单过滤，阻断 `resume_configuration_override`。
 
 ### 3. 底座运行时挂起与状态机解冻
-- [apps/runtime-service/src/runtime_service/runtime/access_policy.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/runtime/access_policy.py)：
+- [apps/runtime-service/src/runtime_service/runtime/access_policy.py](../../../apps/runtime-service/src/runtime_service/runtime/access_policy.py)：
   - `interrupts_for_access_policy()`：依据会话策略匹配判定是否触发审批。
-- [apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/deployment.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/deployment.py)：
+- [apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/deployment.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/deployment.py)：
   - 典型高危部署工具，配置强审批拦截。
 
 ---

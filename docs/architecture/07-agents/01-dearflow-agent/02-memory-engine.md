@@ -4,7 +4,7 @@
 
 大模型在处理单轮交互时展现出的高智商，往往会被其与生俱来的“遗忘症”所抵消。在传统的无状态调用中，每次对话一旦开启新会话，模型就会将用户之前的偏好、技术栈约定、架构规范抛诸脑后；而如果在每次提示词中无脑塞入海量历史记录，又会瞬间撑爆上下文窗口（Context Window），引入高昂的 Token 费用并引发注意力涣散。
 
-`DearFlow Agent` 拥有平台中最精密的企业级记忆引擎（代码坐标：[memory.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/memory.py) 与 [middleware/memory.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/memory.py)）：
+`DearFlow Agent` 拥有平台中最精密的企业级记忆引擎（代码坐标：[memory.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/memory.py) 与 [middleware/memory.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/memory.py)）：
 1. **三层立体记忆模型**：
    - **Profile Memory（用户画像长期记忆）**：持久化沉淀用户的编程语言偏好、架构习惯、个人身份等跨会话事实。
    - **Session / Episodic Memory（会话情景记忆）**：在单个会话或项目维度内沉淀关键决策结论与里程碑。
@@ -17,8 +17,8 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [01-architecture-and-modes.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/01-architecture-and-modes.md)：明确 `MemoryContextMiddleware` 挂载在中间件流水线的关键位置，在 `abefore_model` 阶段执行动态前置注入。
-- 依赖 [02-cross-cutting/05-data-isolation.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/05-data-isolation.md)：理解存储架构中运行时私有表与平台业务表的物理隔离界限。
+- 依赖 [01-architecture-and-modes.md](01-architecture-and-modes.md)：明确 `MemoryContextMiddleware` 挂载在中间件流水线的关键位置，在 `abefore_model` 阶段执行动态前置注入。
+- 依赖 [02-cross-cutting/05-data-isolation.md](../../02-cross-cutting/05-data-isolation.md)：理解存储架构中运行时私有表与平台业务表的物理隔离界限。
 
 ### 2. 本章核心流转
 - **事实沉淀与向量化**：模型识别到用户核心偏好，调用记忆工具生成语义嵌入（Embedding）并持久化。
@@ -27,7 +27,7 @@
 - **模型反思与反馈**：模型基于注入的个性化背景进行推理，输出高度贴合用户习惯的代码或方案。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [03-tools-ecosystem.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/03-tools-ecosystem.md) 提供记忆读写工具集（`build_memory_tools`）的具体实现。
+- 为 [03-tools-ecosystem.md](03-tools-ecosystem.md) 提供记忆读写工具集（`build_memory_tools`）的具体实现。
 
 ---
 
@@ -45,18 +45,18 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 记忆存储与核心领域服务
-- [services/dearflow_agent/memory.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/memory.py)：
+- [services/dearflow_agent/memory.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/memory.py)：
   - `MemoryStorage`：管理记忆实体落盘、SQLite/PostgreSQL 向量存储与增删改查。
   - `extract_profile_facts()`：基于小模型提取对话中的用户事实。
-- [services/dearflow_agent/memory_access.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/memory_access.py)：
+- [services/dearflow_agent/memory_access.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/memory_access.py)：
   - `memory_allowed()`：校验当前请求的主体是否具备读写目标记忆作用域的权限。
 
 ### 2. 动态拦截与工作记忆注入中间件
-- [services/dearflow_agent/middleware/memory.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/memory.py)：
+- [services/dearflow_agent/middleware/memory.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/middleware/memory.py)：
   - `MemoryContextMiddleware`：实现 `abefore_model` 钩子，前置抓取上下文并发起语义检索，将结果动态写入 `state["dear_memory_source"]`。
 
 ### 3. 工具暴露与人工操作
-- [services/dearflow_agent/tools/memory.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/memory.py)：
+- [services/dearflow_agent/tools/memory.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/memory.py)：
   - `build_memory_tools()`：构建向模型暴露的原子工具（`remember`, `recall`, `forget`）。
 
 ---

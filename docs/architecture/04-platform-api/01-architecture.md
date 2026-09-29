@@ -25,9 +25,9 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [01-overview/01-system-topology.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/01-overview/01-system-topology.md)：掌握 `platform-api` 处于平台核心控制面的中枢位置。
-- 依赖 [02-cross-cutting/02-delegation-auth.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/02-delegation-auth.md)：理解用户凭证（User Bearer JWT / API Key）与平台代理凭证（Delegation JWT）的双层令牌置换模型。
-- 依赖 [03-platform-web/01-architecture.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/03-platform-web/01-architecture.md)：明确前端发起的所有 HTTP/SSE 请求均必须携带 `x-project-id` 及标准认证头。
+- 依赖 [01-overview/01-system-topology.md](../01-overview/01-system-topology.md)：掌握 `platform-api` 处于平台核心控制面的中枢位置。
+- 依赖 [02-cross-cutting/02-delegation-auth.md](../02-cross-cutting/02-delegation-auth.md)：理解用户凭证（User Bearer JWT / API Key）与平台代理凭证（Delegation JWT）的双层令牌置换模型。
+- 依赖 [03-platform-web/01-architecture.md](../03-platform-web/01-architecture.md)：明确前端发起的所有 HTTP/SSE 请求均必须携带 `x-project-id` 及标准认证头。
 
 ### 2. 本章核心流转
 - **请求摄入与生命周期管控**：由 ASGI/FastAPI 启动并交由中间件洋葱圈过滤，完成追踪注入、认证解析与项目作用域校验。
@@ -35,9 +35,9 @@
 - **领域路由分发**：根据业务类型分流至各领域 Module，Module 内部遵循事务隔离。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [02-runtime-gateway.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/02-runtime-gateway.md) 提供统一认证后具有可信 Actor 的请求执行环境。
-- 为 [03-iam-and-governance.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/03-iam-and-governance.md) 提供多租户隔离与角色权限判定的基石。
-- 为 [04-catalog-management.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/04-catalog-management.md) 提供持久化数据库事务与加密工具支撑。
+- 为 [02-runtime-gateway.md](02-runtime-gateway.md) 提供统一认证后具有可信 Actor 的请求执行环境。
+- 为 [03-iam-and-governance.md](03-iam-and-governance.md) 提供多租户隔离与角色权限判定的基石。
+- 为 [04-catalog-management.md](04-catalog-management.md) 提供持久化数据库事务与加密工具支撑。
 
 ---
 
@@ -56,25 +56,25 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 入口与引导编排
-- [main.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/main.py)：FastAPI 应用工厂 `create_app()`，配置加载、中间件挂载、异常处理器注册与全局路由聚合。
-- [bootstrap/lifespan.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/bootstrap/lifespan.py)：生命周期管理，负责 SQLAlchemy Engine 与 `sessionmaker` 初始化、数据库 Schema 严格校验、超级管理员兜底初始化、应用停机资源释放。
-- [entrypoints/http/router.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/entrypoints/http/router.py)：聚合 11 个核心模块的 API 路由。
+- [main.py](../../../apps/platform-api/src/platform_api/main.py)：FastAPI 应用工厂 `create_app()`，配置加载、中间件挂载、异常处理器注册与全局路由聚合。
+- [bootstrap/lifespan.py](../../../apps/platform-api/src/platform_api/bootstrap/lifespan.py)：生命周期管理，负责 SQLAlchemy Engine 与 `sessionmaker` 初始化、数据库 Schema 严格校验、超级管理员兜底初始化、应用停机资源释放。
+- [entrypoints/http/router.py](../../../apps/platform-api/src/platform_api/entrypoints/http/router.py)：聚合 11 个核心模块的 API 路由。
 
 ### 2. 中间件洋葱链
-- [entrypoints/http/middleware/auth_context.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/entrypoints/http/middleware/auth_context.py)：身份认证中间件，提取 Bearer Token 或 API Key，校验路由与 Header 的项目作用域，装配 `ActorContext`。
-- [entrypoints/http/middleware/request_context.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/entrypoints/http/middleware/request_context.py)：请求链路追踪中间件，生成/传递 `x-request-id`、`x-trace-id`，记录耗时指标并清理 `ContextVar`。
-- [entrypoints/http/middleware/audit_log.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/entrypoints/http/middleware/audit_log.py)：HTTP 请求审计日志中间件，捕获变更类操作并落盘审计记录。
+- [entrypoints/http/middleware/auth_context.py](../../../apps/platform-api/src/platform_api/entrypoints/http/middleware/auth_context.py)：身份认证中间件，提取 Bearer Token 或 API Key，校验路由与 Header 的项目作用域，装配 `ActorContext`。
+- [entrypoints/http/middleware/request_context.py](../../../apps/platform-api/src/platform_api/entrypoints/http/middleware/request_context.py)：请求链路追踪中间件，生成/传递 `x-request-id`、`x-trace-id`，记录耗时指标并清理 `ContextVar`。
+- [entrypoints/http/middleware/audit_log.py](../../../apps/platform-api/src/platform_api/entrypoints/http/middleware/audit_log.py)：HTTP 请求审计日志中间件，捕获变更类操作并落盘审计记录。
 
 ### 3. 核心领域模块划分
-- [modules/runtime_gateway/](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/)：运行时反向代理、协议归一化与流式脱敏（后文详述）。
-- [modules/iam/](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/iam/)：RBAC 策略引擎 `IamPolicyEngine`，平台级角色与项目级角色权限校验。
-- [modules/projects/](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/projects/)：工作空间项目生命周期、成员归属与隔离隔离模型。
-- [modules/runtime_policies/](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_policies/)：项目级模型启用策略、工具禁用覆盖层与 Delegation 策略生成。
-- [modules/runtime_catalog/](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_catalog/)：模型、图、工具与技能的统一目录管理，Fernet 密文加解密。
+- [modules/runtime_gateway/](../../../apps/platform-api/src/platform_api/modules/runtime_gateway)：运行时反向代理、协议归一化与流式脱敏（后文详述）。
+- [modules/iam/](../../../apps/platform-api/src/platform_api/modules/iam)：RBAC 策略引擎 `IamPolicyEngine`，平台级角色与项目级角色权限校验。
+- [modules/projects/](../../../apps/platform-api/src/platform_api/modules/projects)：工作空间项目生命周期、成员归属与隔离隔离模型。
+- [modules/runtime_policies/](../../../apps/platform-api/src/platform_api/modules/runtime_policies)：项目级模型启用策略、工具禁用覆盖层与 Delegation 策略生成。
+- [modules/runtime_catalog/](../../../apps/platform-api/src/platform_api/modules/runtime_catalog)：模型、图、工具与技能的统一目录管理，Fernet 密文加解密。
 
 ### 4. 基础设施与数据层
-- [core/db/session.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/core/db/session.py)：数据库连接池构建、`session_scope` 上下文事务控制。
-- [core/context/models.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/core/context/models.py)：不可变请求上下文模型（`PlatformRequestContext`, `ActorContext`, `ProjectContext` 等）。
+- [core/db/session.py](../../../apps/platform-api/src/platform_api/core/db/session.py)：数据库连接池构建、`session_scope` 上下文事务控制。
+- [core/context/models.py](../../../apps/platform-api/src/platform_api/core/context/models.py)：不可变请求上下文模型（`PlatformRequestContext`, `ActorContext`, `ProjectContext` 等）。
 
 ---
 

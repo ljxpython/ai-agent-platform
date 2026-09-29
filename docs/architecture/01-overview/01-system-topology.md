@@ -12,7 +12,7 @@
 
 <iframe src="./system-topology-interactive.html" width="100%" height="680px" frameborder="0" style="border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 24px;"></iframe>
 
-> 无法加载 iframe 时，也可直接使用浏览器打开查看：[system-topology-interactive.html](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/01-overview/system-topology-interactive.html)
+> 无法加载 iframe 时，也可直接使用浏览器打开查看：[system-topology-interactive.html](system-topology-interactive.html)
 
 ---
 

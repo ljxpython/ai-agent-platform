@@ -15,8 +15,8 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [04-platform-api/04-catalog-management.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/04-catalog-management.md)：理解平台侧资产目录如何通过 Refresh 工作流同步图与工具元数据。
-- 依赖 [03-hitl-and-interrupts.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/03-hitl-and-interrupts.md)：掌握任何对技能包产生写操作（`upload_skill`, `update_skill` 等）的工具调用，均受访问策略与 HITL 审批的拦截约束。
+- 依赖 [04-platform-api/04-catalog-management.md](../04-platform-api/04-catalog-management.md)：理解平台侧资产目录如何通过 Refresh 工作流同步图与工具元数据。
+- 依赖 [03-hitl-and-interrupts.md](03-hitl-and-interrupts.md)：掌握任何对技能包产生写操作（`upload_skill`, `update_skill` 等）的工具调用，均受访问策略与 HITL 审批的拦截约束。
 
 ### 2. 本章核心流转
 - **MCP 动态绑定解析**：解析 Thread 元数据中的 `runtime_resource_bindings`，从服务端加载安全连接配置并初始化客户端。
@@ -24,7 +24,7 @@
 - **沙箱权限拦截**：在工具实际执行前，`FilesystemPermission` 阻断一切向系统保护路径发起的越权写操作。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [07-agents/01-dearflow-agent.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent.md) 提供 38 类核心工具与 20+ 专业技能的运行底层支撑。
+- 为 [07-agents/01-dearflow-agent.md](../07-agents/01-dearflow-agent/README.md) 提供 38 类核心工具与 20+ 专业技能的运行底层支撑。
 
 ---
 
@@ -42,22 +42,22 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. MCP 协议集成与客户端适配
-- [services/dearflow_agent/tools/mcp.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/mcp.py)：
+- [services/dearflow_agent/tools/mcp.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/mcp.py)：
   - `load_mcp_tools()`：加载并适配当前会话绑定的 MCP 工具，执行 `readOnlyHint` 安全断言与名称冲突校验。
   - `MultiServerMCPClient`：LangChain MCP 协议客户端包装器。
 
 ### 2. Skills 技能系统与生命周期治理
-- [services/dearflow_agent/tools/skills.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/skills.py)：
+- [services/dearflow_agent/tools/skills.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/tools/skills.py)：
   - `build_skill_tools()`：构建技能生命周期工具集（`list_skills`, `upload_skill`, `update_skill`, `set_skill_enabled`, `delete_skill`）。
-- [services/dearflow_agent/skill_governance.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_governance.py)：
+- [services/dearflow_agent/skill_governance.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_governance.py)：
   - `SkillStorage`：技能包存储引擎，处理 ZIP 解析、修订版本（`expected_revision`）控制与哈希计算。
-- [services/dearflow_agent/skill_catalog.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_catalog.py)：
+- [services/dearflow_agent/skill_catalog.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_catalog.py)：
   - `public_catalog()`：读取随代码分发的内置公共技能目录。
 
 ### 3. 沙箱权限与工作区后端
-- [services/dearflow_agent/agent.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)：
+- [services/dearflow_agent/agent.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)：
   - `PERMISSIONS`：声明 `FilesystemPermission` 规则，禁止对 `/skills/**` 写入。
-- [services/dearflow_agent/workspace/backend.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/workspace/backend.py)：
+- [services/dearflow_agent/workspace/backend.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/workspace/backend.py)：
   - `DearWorkspaceBackend` 与 `skills_hash()`：固化当前技能树的状态快照指纹。
 
 ---

@@ -15,9 +15,9 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [01-architecture.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/01-architecture.md)：使用 `session_scope()` 实现资产元数据的读写事务管理。
-- 依赖 [02-runtime-gateway.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/02-runtime-gateway.md)：网关在启动 Run 前，需通过 Catalog 校验客户端传入的 `assistant_id` 与目标底层 Graph 是否合法。
-- 依赖 [03-iam-and-governance.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/03-iam-and-governance.md)：利用 Fernet 工具包进行凭据加解密，并结合策略引擎对资产进行项目级过滤。
+- 依赖 [01-architecture.md](01-architecture.md)：使用 `session_scope()` 实现资产元数据的读写事务管理。
+- 依赖 [02-runtime-gateway.md](02-runtime-gateway.md)：网关在启动 Run 前，需通过 Catalog 校验客户端传入的 `assistant_id` 与目标底层 Graph 是否合法。
+- 依赖 [03-iam-and-governance.md](03-iam-and-governance.md)：利用 Fernet 工具包进行凭据加解密，并结合策略引擎对资产进行项目级过滤。
 
 ### 2. 本章核心流转
 - **能力拉取与注册**：调用适配器从 `runtime-service` 查询 `/info` 与内部 capabilities 端点，同步图和工具元数据至 `runtime_tool_catalog` 与 `runtime_graph_catalog` 表。
@@ -43,22 +43,22 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 资产领域模型与契约
-- [modules/runtime_catalog/domain/models.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_catalog/domain/models.py)：
+- [modules/runtime_catalog/domain/models.py](../../../apps/platform-api/src/platform_api/modules/runtime_catalog/domain/models.py)：
   - `RuntimeModelCatalogItem`：模型目录查询实体（隐藏 Key，仅暴露 `credential_configured`）。
   - `RuntimeModelCreate` / `RuntimeModelUpdate`：模型创建与变更请求实体。
   - `RuntimeToolCatalogItem` 与 `RuntimeGraphCatalogItem`：工具与图元数据实体。
-- [modules/runtime_catalog/application/credentials.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_catalog/application/credentials.py)：
+- [modules/runtime_catalog/application/credentials.py](../../../apps/platform-api/src/platform_api/modules/runtime_catalog/application/credentials.py)：
   - `encrypt_api_key()` 与 `decrypt_api_key()`：使用 `model_config_master_key` 的 Fernet 对称加密。
 
 ### 2. 目录应用服务与仓储
-- [modules/runtime_catalog/application/service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_catalog/application/service.py)：
+- [modules/runtime_catalog/application/service.py](../../../apps/platform-api/src/platform_api/modules/runtime_catalog/application/service.py)：
   - `RuntimeCatalogService`：处理模型增删改查、能力同步刷新、内部解密凭据签发。
-- [modules/runtime_catalog/infra/sqlalchemy/repository.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_catalog/infra/sqlalchemy/repository.py)：
+- [modules/runtime_catalog/infra/sqlalchemy/repository.py](../../../apps/platform-api/src/platform_api/modules/runtime_catalog/infra/sqlalchemy/repository.py)：
   - `SqlAlchemyRuntimeCatalogRepository`：资产元数据持久化读写仓储。
 
 ### 3. 智能体与助手模块
-- [modules/agents/presentation/](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/agents/presentation/)：智能体助手 CRUD 路由。
-- [modules/agents/application/service.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src/platform_api/modules/agents/application/service.py)：助手业务逻辑、Graph 关联校验与发布控制。
+- [modules/agents/presentation/](../../../apps/platform-api/src/platform_api/modules/agents/presentation)：智能体助手 CRUD 路由。
+- [modules/agents/application/service.py](../../../apps/platform-api/src/platform_api/modules/agents/application/service.py)：助手业务逻辑、Graph 关联校验与发布控制。
 
 ---
 

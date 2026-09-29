@@ -6,7 +6,7 @@
 
 如果一个 Agent 可以随意执行 `cd / && rm -rf *`，或者通过写入 `../../etc/shadow` 窃取系统密文，那么这个平台在任何严肃企业里都是绝对禁止部署的危险品。
 
-`DearFlow Agent` 构建了一套严密的**虚拟工作空间沙箱与安全资产管线（Workspace Sandbox & Asset Pipeline）**（代码坐标：[workspace/backend.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/workspace/backend.py) 与 [workspace/terminal.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/workspace/terminal.py)）：
+`DearFlow Agent` 构建了一套严密的**虚拟工作空间沙箱与安全资产管线（Workspace Sandbox & Asset Pipeline）**（代码坐标：[workspace/backend.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/workspace/backend.py) 与 [workspace/terminal.py](../../../../apps/runtime-service/src/runtime_service/workspace/terminal.py)）：
 1. **虚拟根目录与防路径逃逸（Path Traversal Guard）**：通过 `DearWorkspaceBackend` 将 Agent 的一切文件系统感知强行锚定在专属的工作区物理目录内，彻底截断任何试图通过 `..`、软链接（Symlink）向宿主机系统目录逃逸的攻击。
 2. **带硬超时的 PTY 交互式伪终端**：终端执行基于 Linux PTY 伪终端通道，对所有 Bash 执行强加 60 秒硬超时熔断，防止后台死锁挂起或恶意死循环耗尽 CPU。
 3. **反自我篡改安全红线（Anti-Self-Tampering）**：基于 `FilesystemPermission`，在文件系统底层设立不可逾越的只读黑名单，**彻底封死智能体试图篡改自身技能代码（`/skills/**`）或覆写历史事实（`/conversation_history/**`）的通道**。
@@ -17,8 +17,8 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [01-architecture-and-modes.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/01-architecture-and-modes.md)：明确 `FilesystemMiddleware` 是挂载在 Agent 核心中间件链上的第一道物理防御。
-- 依赖 [03-tools-ecosystem.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/03-tools-ecosystem.md)：理解所有基础文件工具（`read_file`, `write_file`, `edit_file`, `execute`）底层均依赖工作区后端进行路径转义。
+- 依赖 [01-architecture-and-modes.md](01-architecture-and-modes.md)：明确 `FilesystemMiddleware` 是挂载在 Agent 核心中间件链上的第一道物理防御。
+- 依赖 [03-tools-ecosystem.md](03-tools-ecosystem.md)：理解所有基础文件工具（`read_file`, `write_file`, `edit_file`, `execute`）底层均依赖工作区后端进行路径转义。
 
 ### 2. 本章核心流转
 - **虚拟路径安全转义**：工具层传入相对路径（如 `src/main.py`），沙箱执行规范化解析并验证物理边界。
@@ -27,7 +27,7 @@
 - **前端资产映射**：检测文件是否落入输出目录，自动向前端触发 Artifacts 面板更新。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [05-skills-runtime.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/07-agents/01-dearflow-agent/05-skills-runtime.md) 提供技能包解压落盘与受控执行的底层宿主环境。
+- 为 [05-skills-runtime.md](05-skills-runtime.md) 提供技能包解压落盘与受控执行的底层宿主环境。
 
 ---
 
@@ -45,21 +45,21 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 虚拟工作空间与防逃逸核心
-- [services/dearflow_agent/workspace/backend.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/workspace/backend.py)：
+- [services/dearflow_agent/workspace/backend.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/workspace/backend.py)：
   - `DearWorkspaceBackend`：实现抽象文件系统接口（`read`, `write`, `edit`, `glob`），执行严格的路径物理边界合规性核验。
   - `skills_hash()`：基于当前工作区技能代码计算不可变指纹。
-- [services/dearflow_agent/agent.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)：
+- [services/dearflow_agent/agent.py](../../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)：
   - `PERMISSIONS`：声明对系统目录的写入阻断规则。
 
 ### 2. 伪终端与交互式命令执行
-- [workspace/terminal.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/workspace/terminal.py)：
+- [workspace/terminal.py](../../../../apps/runtime-service/src/runtime_service/workspace/terminal.py)：
   - `TerminalSession`：基于 `pty.openpty()` 的伪终端会话封装。
   - `TerminalManager`（`terminals` 单例）：管理跨会话的终端进程树、输出缓冲池与停机清理（`shutdown`）。
 
 ### 3. 产物与文档抽象
-- [workspace/artifact_refs.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/workspace/artifact_refs.py)：
+- [workspace/artifact_refs.py](../../../../apps/runtime-service/src/runtime_service/workspace/artifact_refs.py)：
   - `ArtifactWorkspace`：识别与封装对外交付的产物实体。
-- [workspace/documents.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/workspace/documents.py)：
+- [workspace/documents.py](../../../../apps/runtime-service/src/runtime_service/workspace/documents.py)：
   - `DocumentWorkspace`：支持读取 PDF、DOCX、TXT 等文档内容的提取管道。
 
 ---

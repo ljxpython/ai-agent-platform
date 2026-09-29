@@ -15,8 +15,8 @@
 ## 零、知识前置与上下文串联（Knowledge Bridges）
 
 ### 1. 认知输入（前置模块输入）
-- 依赖 [01-architecture.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/01-architecture.md)：掌握 `MessageInbox` 是如何通过咨询锁保证消息在数据库中排队存储的。
-- 依赖 [04-platform-api/02-runtime-gateway.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/04-platform-api/02-runtime-gateway.md)：明确网关下发的 `run.start` 指令包含了 `checkpoint_id` 与经过严格清洗的 `platform_runtime` 配置。
+- 依赖 [01-architecture.md](01-architecture.md)：掌握 `MessageInbox` 是如何通过咨询锁保证消息在数据库中排队存储的。
+- 依赖 [04-platform-api/02-runtime-gateway.md](../04-platform-api/02-runtime-gateway.md)：明确网关下发的 `run.start` 指令包含了 `checkpoint_id` 与经过严格清洗的 `platform_runtime` 配置。
 
 ### 2. 本章核心流转
 - **图初始化与中间件管道装配**：`create_deep_agent` 装配包括 `MessageQueueMiddleware`、`FilesystemMiddleware` 等在内的中间件拦截链。
@@ -25,8 +25,8 @@
 - **增量检查点提交与收据冲销**：Pregel 循环完成一次 Super-step，将包含 `runtime_message_claim` 的 Checkpoint 写入数据库，后台由 `reconcile_run` 闭环确认收据。
 
 ### 3. 认知输出（支撑后续模块）
-- 为 [03-hitl-and-interrupts.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/03-hitl-and-interrupts.md) 提供带有完整调用栈上下文的中断挂起与恢复点。
-- 为 [04-tools-and-skills.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/05-runtime-service/04-tools-and-skills.md) 提供确定性运行的环境配置与工具调用上下文。
+- 为 [03-hitl-and-interrupts.md](03-hitl-and-interrupts.md) 提供带有完整调用栈上下文的中断挂起与恢复点。
+- 为 [04-tools-and-skills.md](04-tools-and-skills.md) 提供确定性运行的环境配置与工具调用上下文。
 
 ---
 
@@ -44,16 +44,16 @@
 ## 二、源码精准坐标映射（Code Pointer Map）
 
 ### 1. 核心图组装与中间件拦截
-- [services/dearflow_agent/agent.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)：
+- [services/dearflow_agent/agent.py](../../../apps/runtime-service/src/runtime_service/services/dearflow_agent/agent.py)：
   - `create_deep_agent()`：装配 Deep Agents 核心图，挂载 10+ 个核心中间件。
   - `PERMISSIONS`：声明文件系统沙箱的访问黑名单规则。
-- [middlewares/message_queue.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/message_queue.py)：
+- [middlewares/message_queue.py](../../../apps/runtime-service/src/runtime_service/middlewares/message_queue.py)：
   - `MessageQueueMiddleware`：负责识别 `checkpoint_ns`、认领队列消息、请求平台鉴权并注入 `runtime_message_claim`。
 
 ### 2. 检查点持久化与对账
-- [messaging/reconcile.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/messaging/reconcile.py)：
+- [messaging/reconcile.py](../../../apps/runtime-service/src/runtime_service/messaging/reconcile.py)：
   - `reconcile_run()`：扫描已提交的 `loop` 来源 Checkpoint，根据快照内的 `runtime_message_claim` 批量更新收件箱状态为 `delivered`。
-- [runtime/resolver.py](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/runtime/resolver.py)：
+- [runtime/resolver.py](../../../apps/runtime-service/src/runtime_service/runtime/resolver.py)：
   - `reject_untrusted_configurable()`：强力拦截传入图配置中的非法注入字段（`_FORBIDDEN_CONFIGURABLE_FIELDS`）。
 
 ---
