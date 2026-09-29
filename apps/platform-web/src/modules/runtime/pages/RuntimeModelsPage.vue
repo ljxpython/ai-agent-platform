@@ -47,13 +47,21 @@ const auth = useAuthStore();
 const { can } = useAuthorization();
 const route = useRoute();
 const platformMode = computed(() => route.name === "workspace-platform-models");
-const canManagePlatform = computed(() => platformMode.value && can("platform.model.write"));
-const canManagePrivate = computed(() => !platformMode.value && can("project.runtime.write"));
+const canManagePlatform = computed(
+  () => platformMode.value && can("platform.model.write"),
+);
+const canManagePrivate = computed(
+  () => !platformMode.value && can("project.runtime.write"),
+);
 const canManage = computed(() =>
   platformMode.value ? canManagePlatform.value : canManagePrivate.value,
 );
-const canManagePolicy = computed(() => !platformMode.value && can("project.runtime.write"));
-const canRefresh = computed(() => !platformMode.value && can("platform.catalog.refresh"));
+const canManagePolicy = computed(
+  () => !platformMode.value && can("project.runtime.write"),
+);
+const canRefresh = computed(
+  () => !platformMode.value && can("platform.catalog.refresh"),
+);
 const items = ref<RuntimeModelItem[]>([]);
 const policies = ref<Record<string, RuntimeModelPolicyValue>>({});
 const tools = ref<RuntimeToolItem[]>([]);
@@ -329,7 +337,9 @@ async function handleDeleteStation() {
     } else {
       const firstErr = failed[0] as PromiseRejectedResult;
       throw new Error(
-        firstErr.reason instanceof Error ? firstErr.reason.message : "删除提供商失败",
+        firstErr.reason instanceof Error
+          ? firstErr.reason.message
+          : "删除提供商失败",
       );
     }
     deleteStationDialogState.value.open = false;
@@ -391,10 +401,14 @@ async function save(payload: ModelEditorSubmitPayload) {
         result.status === "rejected" ? [payload.models[index].id] : [],
       );
       if (failed.length === results.length) {
-        const firstErr = results.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+        const firstErr = results.find((r) => r.status === "rejected") as
+          | PromiseRejectedResult
+          | undefined;
         const errDetail =
           (firstErr?.reason as any)?.response?.data?.detail ||
-          (firstErr?.reason instanceof Error ? firstErr.reason.message : "模型创建失败，请检查配置后重试");
+          (firstErr?.reason instanceof Error
+            ? firstErr.reason.message
+            : "模型创建失败，请检查配置后重试");
         throw new Error(errDetail);
       }
       notice.value = failed.length
@@ -417,7 +431,12 @@ async function save(payload: ModelEditorSubmitPayload) {
 }
 
 async function mutate(action: (project: string) => Promise<unknown>) {
-  if ((!canManage.value && !canManagePolicy.value) || saving.value || loading.value) return;
+  if (
+    (!canManage.value && !canManagePolicy.value) ||
+    saving.value ||
+    loading.value
+  )
+    return;
   const requestEpoch = epoch;
   saving.value = true;
   error.value = "";
@@ -608,10 +627,7 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
           :disabled="saving"
           @click="openAddStandard()"
         >
-          <BaseIcon
-            name="plus"
-            size="xs"
-          />
+          <BaseIcon name="plus" size="xs" />
           <span>新增平台模型</span>
         </BaseButton>
         <BaseButton
@@ -620,10 +636,7 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
           :disabled="saving"
           @click="openAddStandard()"
         >
-          <BaseIcon
-            name="plus"
-            size="xs"
-          />
+          <BaseIcon name="plus" size="xs" />
           <span>添加私有模型 (BYOK)</span>
         </BaseButton>
       </template>
@@ -659,7 +672,11 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
         <span
           v-if="filteredModels.length"
           class="ml-1.5 rounded-full px-1.5 py-0.5 text-xs font-mono"
-          :class="tab === 'models' ? 'bg-primary-700/80 text-white dark:bg-primary-300 dark:text-gray-900' : 'bg-gray-200 text-gray-700 dark:bg-dark-700 dark:text-gray-300'"
+          :class="
+            tab === 'models'
+              ? 'bg-primary-700/80 text-white dark:bg-primary-300 dark:text-gray-900'
+              : 'bg-gray-200 text-gray-700 dark:bg-dark-700 dark:text-gray-300'
+          "
         >
           {{ filteredModels.length }}
         </span>
@@ -673,28 +690,28 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
         <span
           v-if="filteredTools.length"
           class="ml-1.5 rounded-full px-1.5 py-0.5 text-xs font-mono"
-          :class="tab === 'tools' ? 'bg-primary-700/80 text-white dark:bg-primary-300 dark:text-gray-900' : 'bg-gray-200 text-gray-700 dark:bg-dark-700 dark:text-gray-300'"
+          :class="
+            tab === 'tools'
+              ? 'bg-primary-700/80 text-white dark:bg-primary-300 dark:text-gray-900'
+              : 'bg-gray-200 text-gray-700 dark:bg-dark-700 dark:text-gray-300'
+          "
         >
           {{ filteredTools.length }}
         </span>
       </BaseButton>
       <SearchInput
         v-model="query"
-        :placeholder="tab === 'models' ? '搜索名称、提供商或端点' : '搜索工具名称或 tool_key'"
+        :placeholder="
+          tab === 'models'
+            ? '搜索名称、提供商或端点'
+            : '搜索工具名称或 tool_key'
+        "
         class="ml-auto max-w-sm"
       />
     </div>
-    <p
-      v-if="loading"
-      role="status"
-    >
-      正在读取目录与项目授权…
-    </p>
+    <p v-if="loading" role="status">正在读取目录与项目授权…</p>
     <template v-else-if="!error || items.length || tools.length">
-      <p
-        v-if="!total"
-        class="py-12 text-center text-gray-500"
-      >
+      <p v-if="!total" class="py-12 text-center text-gray-500">
         没有符合条件的记录
       </p>
       <template v-else-if="tab === 'models'">
@@ -718,10 +735,7 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
         </template>
 
         <!-- 项目模型管理模式：清晰分为 私有 BYOK 和 平台公共 两大板块 -->
-        <div
-          v-else
-          class="space-y-8"
-        >
+        <div v-else class="space-y-8">
           <!-- 板块 1: 项目私有模型 (BYOK) -->
           <section class="space-y-4">
             <div
@@ -729,7 +743,9 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
             >
               <div>
                 <div class="flex items-center gap-2">
-                  <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+                  <h2
+                    class="text-base font-semibold text-gray-900 dark:text-white"
+                  >
                     项目私有模型 (BYOK)
                   </h2>
                   <span
@@ -739,16 +755,14 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
                   </span>
                 </div>
                 <p class="mt-0.5 text-xs text-gray-500 dark:text-dark-400">
-                  本项目自备的模型接入与 API Key，仅当前项目成员可见与调用。由项目自主维护凭据与额度。
+                  本项目自备的模型接入与 API
+                  Key，仅当前项目成员可见与调用。由项目自主维护凭据与额度。
                 </p>
               </div>
             </div>
 
             <!-- 私有模型卡片列表 -->
-            <div
-              v-if="privateStations.length > 0"
-              class="space-y-4"
-            >
+            <div v-if="privateStations.length > 0" class="space-y-4">
               <ProviderStationCard
                 v-for="station in privateStations"
                 :key="station.id"
@@ -762,37 +776,6 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
                 @add-model="edit(null, $event)"
                 @delete-station="confirmDeleteStation"
               />
-
-              <!-- 私有模型列表下方的并排新增按钮 -->
-              <div
-                v-if="canManagePrivate && !editorOpen"
-                class="grid grid-cols-1 gap-3 pt-2 sm:grid-cols-2"
-              >
-                <button
-                  type="button"
-                  class="flex h-11 items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white/50 text-xs font-medium text-gray-700 transition hover:border-purple-400 hover:bg-purple-50/40 hover:text-purple-700 dark:border-dark-700 dark:bg-dark-900/30 dark:text-dark-200 dark:hover:border-purple-500 dark:hover:bg-purple-950/20 dark:hover:text-purple-300"
-                  :disabled="saving"
-                  @click="openAddStandard()"
-                >
-                  <BaseIcon
-                    name="plus"
-                    size="xs"
-                  />
-                  <span>添加提供方</span>
-                </button>
-                <button
-                  type="button"
-                  class="flex h-11 items-center justify-center gap-2 rounded-xl border border-dashed border-gray-300 bg-white/50 text-xs font-medium text-gray-700 transition hover:border-purple-400 hover:bg-purple-50/40 hover:text-purple-700 dark:border-dark-700 dark:bg-dark-900/30 dark:text-dark-200 dark:hover:border-purple-500 dark:hover:bg-purple-950/20 dark:hover:text-purple-300"
-                  :disabled="saving"
-                  @click="openAddCustom()"
-                >
-                  <BaseIcon
-                    name="plus"
-                    size="xs"
-                  />
-                  <span>添加自定义提供方</span>
-                </button>
-              </div>
             </div>
 
             <!-- 无私有模型时的引导卡片 -->
@@ -803,16 +786,19 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
               <div
                 class="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300"
               >
-                <BaseIcon
-                  name="sparkle"
-                  size="md"
-                />
+                <BaseIcon name="sparkle" size="md" />
               </div>
-              <h3 class="mt-2.5 text-sm font-semibold text-gray-900 dark:text-white">
+              <h3
+                class="mt-2.5 text-sm font-semibold text-gray-900 dark:text-white"
+              >
                 尚未接入项目私有模型
               </h3>
-              <p class="mx-auto mt-1 max-w-md text-xs text-gray-500 dark:text-dark-400">
-                如果团队有自备的 API Key（如 DeepSeek、OpenAI、Claude 或本地局域网 Ollama/vLLM），可直接添加为私有模型，由项目独立调用与承担费用。
+              <p
+                class="mx-auto mt-1 max-w-md text-xs text-gray-500 dark:text-dark-400"
+              >
+                如果团队有自备的 API Key（如 DeepSeek、OpenAI、Claude
+                或本地局域网
+                Ollama/vLLM），可直接添加为私有模型，由项目独立调用与承担费用。
               </p>
               <div
                 v-if="canManagePrivate && !editorOpen"
@@ -824,10 +810,7 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
                   :disabled="saving"
                   @click="openAddStandard()"
                 >
-                  <BaseIcon
-                    name="plus"
-                    size="xs"
-                  />
+                  <BaseIcon name="plus" size="xs" />
                   <span>添加提供方</span>
                 </button>
                 <button
@@ -836,10 +819,7 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
                   :disabled="saving"
                   @click="openAddCustom()"
                 >
-                  <BaseIcon
-                    name="plus"
-                    size="xs"
-                  />
+                  <BaseIcon name="plus" size="xs" />
                   <span>添加自定义提供方</span>
                 </button>
               </div>
@@ -853,7 +833,9 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
             >
               <div>
                 <div class="flex items-center gap-2">
-                  <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+                  <h2
+                    class="text-base font-semibold text-gray-900 dark:text-white"
+                  >
                     平台公共模型
                   </h2>
                   <span
@@ -869,10 +851,7 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
             </div>
 
             <!-- 平台模型卡片列表 -->
-            <div
-              v-if="platformStations.length > 0"
-              class="space-y-4"
-            >
+            <div v-if="platformStations.length > 0" class="space-y-4">
               <ProviderStationCard
                 v-for="station in platformStations"
                 :key="station.id"
@@ -895,10 +874,7 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
         </div>
       </template>
       <!-- 工具卡片列表（只读目录） -->
-      <div
-        v-else
-        class="grid gap-3 md:grid-cols-2 xl:grid-cols-3"
-      >
+      <div v-else class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <article
           v-for="tool in visibleTools"
           :key="tool.id || tool.tool_key"
@@ -910,7 +886,9 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
               <h3 class="truncate font-semibold text-gray-900 dark:text-white">
                 {{ tool.name || tool.tool_key }}
               </h3>
-              <span class="mt-1 inline-block rounded-md bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-500 dark:bg-dark-800 dark:text-dark-300">
+              <span
+                class="mt-1 inline-block rounded-md bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-500 dark:bg-dark-800 dark:text-dark-300"
+              >
                 {{ tool.tool_key }}
               </span>
             </div>
@@ -932,7 +910,9 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
             v-if="tool.graph_ids && tool.graph_ids.length"
             class="mt-2.5 flex flex-wrap items-center gap-1.5"
           >
-            <span class="text-[11px] text-gray-400 dark:text-dark-500">归属:</span>
+            <span class="text-[11px] text-gray-400 dark:text-dark-500"
+              >归属:</span
+            >
             <span
               v-for="gid in tool.graph_ids"
               :key="gid"
@@ -948,12 +928,11 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
           </p>
 
           <!-- 底部：source + 同步时间 -->
-          <div class="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs text-gray-400 dark:border-dark-800 dark:text-dark-400">
+          <div
+            class="mt-4 flex items-center justify-between border-t border-gray-100 pt-3 text-xs text-gray-400 dark:border-dark-800 dark:text-dark-400"
+          >
             <span>来源: {{ tool.source || "—" }}</span>
-            <span
-              v-if="tool.last_seen_at"
-              class="text-[11px]"
-            >
+            <span v-if="tool.last_seen_at" class="text-[11px]">
               同步于 {{ new Date(tool.last_seen_at).toLocaleDateString() }}
             </span>
           </div>
@@ -973,7 +952,12 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
     <RuntimeModelDetailDialog
       :show="!!detailModel"
       :model="detailModel"
-      :can-manage="(platformMode && canManagePlatform) || (!platformMode && detailModel?.scope_type === 'project' && canManagePrivate)"
+      :can-manage="
+        (platformMode && canManagePlatform) ||
+        (!platformMode &&
+          detailModel?.scope_type === 'project' &&
+          canManagePrivate)
+      "
       :is-project-default="!!detailModel && defaultIds.includes(detailModel.id)"
       @close="detailModel = null"
       @edit="edit($event)"
