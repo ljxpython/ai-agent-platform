@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "AI Agent Platform System Topology",
+    "output": "system-topology-interactive.html",
+    "quality_profile": "showcase",
+    "locale": "zh-CN",
+    "views": [
+      {
+        "id": "full-stack",
+        "label": "端到端全链路",
+        "focus": ["browser", "web", "api", "rt_api", "rt_worker", "llm"],
+        "note": "从前端用户提问到底层大模型流式推理的完整主路径。"
+      },
+      {
+        "id": "control-plane",
+        "label": "控制面治理与隔离",
+        "focus": ["web", "api", "db_platform"],
+        "note": "平台用户登录、权限验证与数据隔离边界。"
+      },
+      {
+        "id": "execution-plane",
+        "label": "执行引擎与观测",
+        "focus": ["rt_api", "redis", "rt_worker", "db_runtime", "langfuse", "llm"],
+        "note": "LangGraph 图执行、状态快照与全链路追踪。"
+      }
+    ]
+  },
+  "components": [
+    { "id": "browser", "type": "external", "label": "用户浏览器", "sublabel": "Browser Client", "pos": [40, 280], "size": [130, 60] },
+    { "id": "web", "type": "frontend", "label": "Platform Web", "sublabel": "Vue 3 :5173", "pos": [230, 280], "size": [140, 60], "tag": "Chat & Admin" },
+    { "id": "api", "type": "backend", "label": "Platform API", "sublabel": "FastAPI :8000", "pos": [450, 280], "size": [140, 60], "tag": "Control Plane" },
+    { "id": "db_platform", "type": "database", "label": "平台业务库", "sublabel": "PostgreSQL :5432", "pos": [450, 120], "size": [140, 60], "tag": "Auth & Models" },
+    { "id": "rt_api", "type": "backend", "label": "Runtime API", "sublabel": "FastAPI :8001", "pos": [680, 280], "size": [140, 60], "tag": "Delegation Auth" },
+    { "id": "redis", "type": "database", "label": "Redis", "sublabel": "Queue & Lock :6379", "pos": [680, 120], "size": [140, 60], "tag": "Task Dispatch" },
+    { "id": "rt_worker", "type": "backend", "label": "Runtime Worker", "sublabel": "LangGraph 1.2", "pos": [910, 280], "size": [140, 60], "tag": "GraphHarbor" },
+    { "id": "db_runtime", "type": "database", "label": "运行时状态库", "sublabel": "PostgreSQL :5432", "pos": [910, 120], "size": [140, 60], "tag": "Checkpoints" },
+    { "id": "langfuse", "type": "external", "label": "Langfuse", "sublabel": "Observability", "pos": [680, 440], "size": [140, 60], "tag": "Trace 树" },
+    { "id": "llm", "type": "cloud", "label": "大模型供应商", "sublabel": "OpenAI / Claude", "pos": [910, 440], "size": [140, 60], "tag": "Inference" }
+  ],
+  "boundaries": [
+    { "kind": "security-group", "label": "Client Layer (前端层)", "wraps": ["browser", "web"] },
+    { "kind": "security-group", "label": "Control Plane (控制面)", "wraps": ["api", "db_platform"] },
+    { "kind": "security-group", "label": "Execution Plane (运行面)", "wraps": ["rt_api", "rt_worker", "db_runtime", "redis"] }
+  ],
+  "connections": [
+    { "id": "browser-to-web", "from": "browser", "to": "web", "label": "HTTP :5173", "variant": "emphasis" },
+    { "id": "web-to-api", "from": "web", "to": "api", "label": "User JWT / SSE", "variant": "emphasis" },
+    { "id": "api-to-db", "from": "api", "to": "db_platform", "label": "SQL", "fromSide": "top", "toSide": "bottom" },
+    { "id": "api-to-rt", "from": "api", "to": "rt_api", "label": "Delegation JWT", "variant": "security" },
+    { "id": "rt-to-redis", "from": "rt_api", "to": "redis", "label": "入队", "fromSide": "top", "toSide": "bottom" },
+    { "id": "redis-to-worker", "from": "redis", "to": "rt_worker", "label": "抢占消费", "fromSide": "right", "toSide": "top" },
+    { "id": "worker-to-db", "from": "rt_worker", "to": "db_runtime", "label": "Checkpoints", "fromSide": "top", "toSide": "bottom", "labelDy": -36 },
+    { "id": "worker-to-llm", "from": "rt_worker", "to": "llm", "label": "流式推理", "fromSide": "bottom", "toSide": "top", "labelDy": 30 },
+    { "id": "rt-to-langfuse", "from": "rt_api", "to": "langfuse", "label": "Trace 上报", "fromSide": "bottom", "toSide": "top", "labelDy": 30 }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "前端宿主 (Web)",
+      "items": [
+        "Vue 3 + Vite 单页管理台与流式对话工作台",
+        "ChatSessionPool 多会话持久池，切 Tab 不断流",
+        "自动处理 HTTP 410 游标过期自愈"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "控制面网关 (API)",
+      "items": [
+        "FastAPI 处理 RBAC 权限与 BYOK 私有模型秘钥",
+        "生成 60 秒临时 Delegation JWT，隔离底层凭据",
+        "流式反向代理，执行 8MiB 截断与保活心跳注入"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "执行引擎 (Runtime)",
+      "items": [
+        "LangGraph StateGraph 状态机编排与循环图执行",
+        "GraphHarbor post37 支持子图命名空间 checkpoint_ns",
+        "独立 PostgreSQL 状态库与 Redis 队列无干扰运行"
+      ]
+    }
+  ]
+}
