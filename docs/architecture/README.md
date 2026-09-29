@@ -111,6 +111,9 @@ docs/architecture/
     │   ├── 05-skills-runtime.md             # 07-01-05 技能治理与动态热加载 (20+内置技能/ZIP乐观锁/快照隔离)
     │   └── 06-high-fidelity-implementation.md # 07-01-06 端到端高保真实现伪代码 (单文件级全景装配闭环)
     └── 02-showcase-demo-agent.md            # 07-02 演示智能体：Showcase Agent 最小骨架
+│
+└── concepts/                                # 【概念透析库：扫清架构理解的门槛障碍】
+    └── 01-mvc-ddd-hexagonal.md              # 01 从 MVC 到 DDD 与六边形架构深度透析
 ```
 
 ---
@@ -124,6 +127,7 @@ docs/architecture/
 | **Phase 2** | **三大核心子服务深度剖析** | `03-platform-web/`（3篇完成 ✅ Done）<br>`04-platform-api/`（4篇完成 ✅ Done）<br>`05-runtime-service/`（4篇完成 ✅ Done） | ✅ Done |
 | **Phase 3** | **端到端业务场景时序** | `06-scenarios/`（3篇完成 ✅ Done） | ✅ Done |
 | **Phase 4** | **具体 Agent 深度剖析与伪代码** | `07-agents/01-dearflow-agent/`（专题 7 篇 ✅ Done）<br>`07-agents/02-showcase-demo-agent.md`（完成 ✅ Done） | ✅ Done |
+| **Concepts**| **核心门槛概念透析专篇库** | `concepts/01-mvc-ddd-hexagonal.md` | ✅ Done |
 
 ---
 
@@ -145,8 +149,11 @@ flowchart TD
     RT --> SC
 
     SC --> AG["07-agents (具体智能体深度精通)"]
+
+    C["concepts/ (概念透析库: DDD/六边形等)"] -.->|"随时按需查阅"| API
 ```
 
 - **新同学第一步**：先看 [01-overview/01-system-topology.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/01-overview/01-system-topology.md) 在内嵌大图中看懂系统全景。
+- **遇到不熟的架构黑话**：如 MVC vs DDD、六边形架构等，先看正文的 `<details>` 30秒折叠拐杖，或者直接阅读 [concepts/01-mvc-ddd-hexagonal.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/concepts/01-mvc-ddd-hexagonal.md)。
 - **联调与接口二开**：必读 [02-cross-cutting/02-delegation-auth.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/02-delegation-auth.md) 与 [02-cross-cutting/03-sse-streaming-pipeline.md](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/docs/architecture/02-cross-cutting/03-sse-streaming-pipeline.md)。
 - **开发新智能体 / 接入新工具**：必读 `05-runtime-service/` 与 `07-agents/01-dearflow-agent.md`。

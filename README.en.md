@@ -1,355 +1,159 @@
 <h1 align="center">Enterprise AI Agent Platform</h1>
 
-<p align="center"><strong>An AI agent platform foundation for enterprise delivery and secondary development</strong></p>
+<p align="center"><strong>An Enterprise-Grade AI Agent Platform Foundation for Secondary Development · Built on the LangGraph Ecosystem</strong></p>
 
 <p align="center">English | <a href="README.md">中文</a></p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Vue-3%20Workspace-42B883" alt="Vue 3 Workspace" />
-  <img src="https://img.shields.io/badge/Skills-Private%20Skill%20Stack-0F766E" alt="Skills" />
-  <img src="https://img.shields.io/badge/MCP-Knowledge%20Ready-7C3AED" alt="MCP Knowledge Ready" />
-  <img src="https://img.shields.io/badge/Harness-AI%20Continuous%20Coding-F59E0B" alt="Harness" />
   <img src="https://img.shields.io/badge/LangGraph-Runtime%20Core-111827" alt="LangGraph Runtime Core" />
+  <img src="https://img.shields.io/badge/GraphHarbor-State%20Persistence-F59E0B" alt="GraphHarbor" />
+  <img src="https://img.shields.io/badge/FastAPI-Platform%20API-009688" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Vue-3%20Console-42B883" alt="Vue 3 Console" />
+  <img src="https://img.shields.io/badge/MCP-Tool%20Extension-7C3AED" alt="MCP Tool Extension" />
+  <img src="https://img.shields.io/badge/Skills-Agent%20Skills-0F766E" alt="Skills" />
+  <img src="https://img.shields.io/badge/Memory-Memory%20Loop-2563EB" alt="Memory" />
+  <img src="https://img.shields.io/badge/HITL-Human--in--the--Loop-DC2626" alt="HITL" />
   <a href="https://github.com/ljxpython/ai-agent-platform/releases/latest"><img src="https://img.shields.io/github/v/release/ljxpython/ai-agent-platform" alt="Latest Release" /></a>
-  <img src="https://img.shields.io/badge/README-EN%2FZH-F59E0B" alt="README EN/ZH" />
 </p>
 
-<p align="center"><a href="#system-overview">System Overview</a> · <a href="#frontend-entry">Frontend Entry</a> · <a href="#quick-start">Quick Start</a> · <a href="docs/quickstart/deployment-guide.md">Deployment Guide</a> · <a href="https://github.com/ljxpython/ai-agent-platform/releases/tag/v0.3.1">Latest Release</a> · <a href="docs/CHANGELOG.md">Changelog</a> · <a href="#acknowledgements">Acknowledgements</a> · <a href="#ai-deploy">AI Deployment</a></p>
+<p align="center">
+  <a href="#system-overview">System Overview</a> ·
+  <a href="#architecture-diagrams">Architecture Diagrams</a> ·
+  <a href="#agent-ecosystem">Built-in Agents</a> ·
+  <a href="#secondary-development">Secondary Development</a> ·
+  <a href="#quick-start">Quick Start</a> ·
+  <a href="docs/guides/deployment-guide.md">Deployment Guide</a> ·
+  <a href="docs/CHANGELOG.md">Changelog</a> ·
+  <a href="#acknowledgements">Acknowledgements</a>
+</p>
 
-An enterprise AI agent platform architecture built on `LangGraph / LangChain`, intended as a reusable foundation for further development.  
-It separates the **platform governance layer** from the **Agent Runtime execution layer**, so the repo can support platform-side authentication, project management, audit, and catalog management, while also supporting runtime graph orchestration, model assembly, Tools / MCP / Skills integration, and rapid agent debugging.
+---
 
-The repository provides a native development stack with four processes. It is suitable for:
+## What Problem Does This Project Solve?
 
-- Teams that want to build on mainstream agent infrastructure instead of inventing a closed framework
-- Projects that need both platform capabilities and agent execution capabilities
-- Developers who want to validate LangGraph Runtime behavior and frontend interaction quickly
-- Teams that want to bring AI-assisted collaboration into the real engineering workflow
+Many agent projects stop at the "toy demo" stage: platform governance, runtime execution, persistent storage, and frontend interactions are tightly coupled into a single monolith. When moving to production, teams immediately face authorization gaps, state loss, model lock-in, and fragile extensions.
 
-> If you want to understand the development workflow and change-level standards, start with [AGENTS.md](AGENTS.md). Most supporting docs in this repo are currently Chinese-first.
+This project delivers an **enterprise-ready engineering foundation built for secondary development**:
 
-<a id="frontend-entry"></a>
-
-## Current Frontend Entry
-
-`apps/platform-web` is the official platform frontend host and the default place for current platform frontend development.
-
-Use the frontend entries in this repo like this:
-
-- `apps/platform-web`: official platform workspace frontend
-
-If you just want the current official local demo path, start the root scripts and open `apps/platform-web`.
-
-## AI Continuous-Coding Harness
-
-This repository is not only a codebase. It already acts as an engineering harness for continuous AI-assisted development.
-
-That harness is made of several parts working together:
-
-- `Boundaries`: platform governance, runtime execution, and the frontend entry are separated instead of mixed together
-- `Contracts`: local deployment contract, env conventions, startup order, API naming, and demo account rules are fixed
-- `Patterns`: `runtime-service`, `platform-web`, control-plane standards, and reusable examples already provide working implementation patterns
-- `Delivery loop`: helper scripts, health checks, smoke tests, acceptance docs, changelog, and release runbooks form a repeatable delivery path
-
-In short, the repo is meant to let AI agents keep building inside a controlled engineering environment, not just generate random code in a vacuum.
-
-The current entry docs for that harness are:
-
-1. `AGENTS.md`
-2. `docs/README.md`
-
-Change level (single-project / chain / governed) is judged automatically by the AI on every request — no manual command needed. See `AGENTS.md` for the rubric.
-
-The router does not override root rules, leaf standards, human approval, or verification
-gates. Use `$plan-project`, `$implement-feature`, and `$verify-change` to plan chain/governed change projects,
-record implementation details, and run verification.
-
-## What Problem This Project Solves
-
-Many agent projects can run a demo, but once they enter a real engineering context, things become messy fast: platform governance, runtime execution, debug entrypoints, and environment configuration all get coupled together.
-
-This repo has a clear goal:
-
-- Build an enterprise AI platform architecture on top of the mainstream `LangGraph / LangChain` ecosystem
-- Decouple the platform layer from the runtime layer so ownership, evolution, and delivery stay manageable
-- Provide a reusable runtime execution skeleton instead of a one-off demo
-- Leave room for later business customization and testing-related scenarios
-
-## Frontend Showcase
-
-If you want to see what the current platform frontend already looks like and how the frontend workspace is organized, start with this write-up:
-
-- [Platform frontend showcase and introduction](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/20260325_platform_frontend_intro.md)
-
-That article is more frontend-oriented and is useful for quickly understanding the current platform workspace structure and UI direction.
-
-![Platform Frontend Showcase](docs/assets/image-20260325161139758.png)
+- **Decoupled Platform Governance & Agent Runtime**: The platform layer manages authentication, multi-tenant/project isolation, audit trails, and model catalog routing; the runtime layer focuses purely on graph orchestration, tool execution, and state persistence.
+- **Mainstream Open-Source Ecosystem**: Built natively on `LangGraph / LangChain`, deeply incorporating design principles from `open-swe`, `deepagents`, and `deer-flow`.
+- **Standardized Secondary Development Scaffold**: Explicit extension points (custom Agent graphs, custom Tools, MCP services, Skills) allow teams to clone this repo as a production scaffold and assemble custom business agents in minutes.
 
 <a id="system-overview"></a>
 
 ## System Overview
 
-The repository includes the following applications:
+| Service | Directory | Responsibilities | Core Stack |
+|---|---|---|---|
+| **Platform API** | `apps/platform-api` | **Control Plane**: Auth, project isolation, audit logs, model catalog, managed contract gateway | FastAPI + SQLAlchemy + PostgreSQL |
+| **Platform Web** | `apps/platform-web` | **Console UI**: Workspace layout, agent chat stream, access controls, multi-turn rendering | Vue 3 + Vite + Tailwind CSS + Pinia |
+| **Runtime Service** | `apps/runtime-service` | **Agent Runtime**: LangGraph graph registry, tool & MCP binding, session dispatch, SSE streaming | Python 3.11+ + LangGraph + GraphHarbor + Redis |
 
-- `apps/platform-api`: official platform backend / control-plane API
-- `apps/platform-web`: official platform frontend / admin workspace entry
-- `apps/runtime-service`: LangGraph execution layer / Agent Runtime
+<a id="architecture-diagrams"></a>
 
-### Main Paths
+## Architecture & Flow Diagrams
 
-- Platform path: `platform-web -> platform-api -> runtime-service`
+### 1. System Architecture Overview
 
-### What The Frontend Entries Are For
+> 🔗 **Interactive View:** [👉 Open Fullscreen Architecture Diagram (HTML)](docs/diagrams/arch-system-overview.html)
 
-- `platform-web`: official platform product workspace and the default frontend host
+![System Architecture Overview](docs/assets/arch-system-overview.png)
 
-## Architecture Diagram
+---
 
-`platform-web -> platform-api -> runtime-service`. Platform API and Runtime use separate PostgreSQL databases; Runtime also uses Redis.
+### 2. Agent Execution Sequence
+
+> 🔗 **Interactive View:** [👉 Open Fullscreen Sequence Diagram (HTML)](docs/diagrams/seq-agent-run.html)
+
+![Agent Execution Sequence Diagram](docs/assets/seq-agent-run.png)
+
+---
+
+### 3. Secondary Development Extension Points
+
+> 🔗 **Interactive View:** [👉 Open Fullscreen Extension Points Diagram (HTML)](docs/diagrams/arch-extension-points.html)
+
+![Secondary Development Extension Points](docs/assets/arch-extension-points.png)
+
+---
+
+<a id="agent-ecosystem"></a>
+
+## Built-in Agent Ecosystem
+
+### 1. Educational Starter: `showcase_demo`
+- **Location**: `apps/runtime-service/src/runtime_service/services/demo/showcase_demo/`
+- **Capabilities**: Tool calling, HITL approval interrupts, subagents, sandbox workspace, and dynamic MCP.
+
+### 2. Production-Grade Reference: `DeerFlow Agent`
+- **Design Inspiration**: Incorporates paradigms from `bytedance/deer-flow`, `langchain-ai/deepagents`, and `langchain-ai/open-swe`.
+- **Enterprise Features**:
+  - 🧠 **Dynamic Multi-Mode Flow**: Research, Coding, Planning, and Subagent delegation.
+  - 💾 **Memory Engine**: Short-term session state plus cross-session long-term memory pipeline.
+  - 🛡️ **Secure Sandbox Workspace**: Dual local/Docker sandbox, live file tree, code preview, and .zip artifact download.
+  - 💻 **Interactive PTY Terminal**: Real xterm terminal sessions, command auditing, and permission guards.
+  - 🧰 **Production Skill Matrix**: Comprehensive tool suite for code analysis, search, and operations.
+
+---
+
+<a id="secondary-development"></a>
+
+## Secondary Development Guide
+
+| Extension Need | Target Path | Description |
+|---|---|---|
+| **Add Custom Agent Graph** | `apps/runtime-service/src/runtime_service/graphs/` | Define `StateGraph` nodes and edges using LangGraph |
+| **Add Custom Tools** | `apps/runtime-service/src/runtime_service/tools/` | Write pure Python functions with `@tool` |
+| **Connect MCP Servers** | Runtime Configuration | Standard MCP client support to mount external FastMCP or official tools |
+| **Extend Control Plane APIs** | `apps/platform-api/src/platform_api/` | Follow `apps/platform-api/docs/handbook/` |
+| **Extend Console UI** | `apps/platform-web/src/modules/` | Follow `control-plane-page-standard.md` |
+
+---
 
 <a id="quick-start"></a>
 
 ## Quick Start
 
-### Default Startup Order
-
-1. Runtime API
-2. Runtime Worker
-3. Platform API
-4. Platform Web
-
-### Root Scripts
-
-### Local Stack Startup (Recommended)
-
-For first-time setup, follow the [native Linux development guide](docs/quickstart/deployment-guide.md).
-PostgreSQL and Redis are required. After installing dependencies and configuring app-local env files:
-
 ```bash
+# 1. Activate runtime virtual environment
 source "apps/runtime-service/.venv/bin/activate"
-bash scripts/local-stack.sh doctor   # Validate environment and dependencies
-bash scripts/local-stack.sh start    # Start full stack
-bash scripts/local-stack.sh status   # Check service status
-bash scripts/local-stack.sh stop     # Stop services
+
+# 2. Run system doctor
+bash "scripts/local-stack.sh" doctor
+
+# 3. Start full stack
+bash "scripts/local-stack.sh" start
+
+# 4. Status check
+bash "scripts/local-stack.sh" status
+
+# 5. Stop
+bash "scripts/local-stack.sh" stop
 ```
 
-This script starts GraphHarbor API, GraphHarbor Worker, Platform API, and Platform Web directly.
-Database migrations use the `migrate` subcommand. Logs and PID files are stored in the system temp directory.
-It does not install PostgreSQL/Redis or frontend dependencies. It may reclaim stale development processes owned by this repository.
-Runtime uses `apps/runtime-service/.env`, Platform API uses `apps/platform-api/.env`.
-On first use, create local `.env` files from the corresponding `.env.example` templates, filling in real model
-credentials and local PostgreSQL credentials. Don't overwrite existing `.env` files or commit real values.
-
-### If You Want To Start `platform-web` Separately
-
-The root scripts already start `apps/platform-web`.
-
-If you want to run it alone during frontend work:
-
-```bash
-VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web" dev
-```
-
-Then open:
-
-- `platform-web`: `http://127.0.0.1:3002`
-
-### Default Local Ports
-
-- `runtime-service`: `8123`
-- `platform-api`: `2142`
-- `platform-web`: `3000`
-
-### URLs After Startup
-
-- `platform-web`: `http://127.0.0.1:3000`
-
-### Minimum Health Checks
-
-```bash
-curl -fsS "http://127.0.0.1:8123/ready"
-curl -fsS "http://127.0.0.1:2142/_system/health"
-```
-
-Inspect the response body, then verify login, project creation, model configuration and a real Run.
-The deployment contract defines actual startup members.
-
-## Repo Structure
-
-```text
-AITestLab/
-├── apps/
-│   ├── platform-api/
-│   ├── platform-web/
-│   ├── runtime-service/
-│   └── ...
-├── .codex/skills/
-├── docs/
-├── scripts/
-└── archive/
-```
-
-- `apps/`: business apps, including the default local startup set and other maintained application directories
-- `.codex/skills/`: portable project-level Codex Skills
-- `docs/`: deployment, development, constraints, and background docs
-- `scripts/`: unified start, stop, and health-check scripts
-- `archive/`: historical archive notes
-
-<a id="docs-by-goal"></a>
-
-## Read Docs By Goal
-
-![Documentation Navigation Diagram](docs/assets/readme-doc-navigation.en.svg)
-
-### I Want To Bring Up The Environment First
-
-Start with:
-
-- `docs/local-deployment-contract.yaml`
-- `docs/quickstart/local-dev.md`
-- `docs/quickstart/env-matrix.md`
-
-### I Want Full Deployment Details
-
-Then read:
-
-- `docs/quickstart/deployment-guide.md`
-
-### I Want To Continue Development Or Customize The Project
-
-Focus on:
-
-- `AGENTS.md`
-- `docs/guides/development-guidelines.md`
-- `docs/project-story.md`
-
-### I Want To Do An Official Release
-
-Start with:
-
-- `docs/releases/release-policy.md`
-- `docs/releases/v0.3.1-agent-workspace-demo-draft.md`
-- `docs/releases/v0.3.1-release-runbook.md`
-- `docs/releases/` for the complete release history
-
-<a id="ai-deploy"></a>
-
-### I Want An AI Agent To Help Me Deploy
-
-Entry document:
-
-- `docs/guides/ai-deployment-assistant-instruction.md`
-
-If you only want to trigger the standard local deployment flow, this sentence is enough:
-
-```text
-Read `docs/guides/ai-deployment-assistant-instruction.md` and help me deploy the environment.
-```
-
-Model connections are configured through the platform model catalog after login, with private provider credentials.
-Legacy Runtime settings.local.yaml is no longer used. Copying env files does not copy users, projects, chats or model connections.
-See the [deployment guide](docs/quickstart/deployment-guide.md) for fresh databases, accounts, SSH access and acceptance checks.
-
-## Practical References
-
-If you want a set of notes closer to real development work, see:
-
-- [ai-learning-portfolio repository](https://github.com/ljxpython/ai-learning-portfolio)
-- [my_work_record index](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/README.md)
-
-These notes do not duplicate the source code. They focus on the practical path: how things were done, how they were verified, and how they were reviewed afterward. They are useful as a reference for both **agent capability development** and **platform capability development** in this repo.
-
-A useful way to think about them:
-
-- The root `README` of this repo is more of a project map, system layering guide, and document index
-- The `ai-learning-portfolio` notes are more about real implementation flow, validation steps, and retrospective thinking
-
-If you want the mainline reading path, start with:
-
-- [Deployment and validation baseline](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/20260323_deployment_environment.md)
-- [A simple Text-to-SQL capability case](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/20260312_texttosql_rd.md)
-- [A complex multi-agent business case](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/20260314_requirement_agent_rd.md)
-
-You can read those three notes like this:
-
-- `20260323_deployment_environment.md`: how to prepare the local environment, start services, and verify that paths are connected
-- `20260312_texttosql_rd.md`: how a relatively simple Text-to-SQL capability is designed and implemented around a concrete scenario
-- `20260314_requirement_agent_rd.md`: how a more complex multi-agent business scenario moves from requirement understanding and role split to actual delivery
-
-If this is your first time looking at the repo, the recommended reading order is:
-
-1. Read this `README`, `docs/local-deployment-contract.yaml`, and `docs/quickstart/local-dev.md`
-2. Then check the local practice index in `ai-learning-portfolio`
-3. If you want a simpler starting point, begin with Text-to-SQL. If you want a more complex collaboration case, start with the multi-agent requirement case
-
-## Current Status
-
-This repo has already completed:
-
-- The default local startup set is collapsed onto `apps/*`
-- `apps/platform-web` is the official platform frontend host
-- `apps/platform-api` is the official platform control plane
-- `runtime-service` can start
-- `platform-api` can start
-- `platform-api -> runtime-service` integration has passed
-- `platform-web` is the official platform frontend host
-- The development workflow is collapsed into `AGENTS.md`: change levels (single-project/chain/governed) are judged automatically by the AI, which calls `plan-project`/`implement-feature`/`verify-change` Skills as needed
-- The current release is [`v0.3.1`](https://github.com/ljxpython/ai-agent-platform/releases/tag/v0.3.1)
-
-Current conventions that are still kept:
-
-- Each app maintains its own environment and dependencies
-- There is no unified root `.env`
-- Python and Node dependencies are not unified at the repo root for now
-
-## Project Direction
-
-The long-term direction of this repo is to evolve into a reusable, extensible, secondary-development-friendly AI agent platform foundation.  
-Near-term capability growth is biased toward test-engineering-related scenarios such as:
-
-- AI-assisted review
-- AI-driven UI automation
-- Automated script generation and testing assistance
-- AI performance testing
-- Text-to-SQL
-
-For fuller project background, evolution history, and design tradeoffs, see:
-
-- `docs/project-story.md`
-
-## Support And Contact
-
-If this repo helps you, a star is welcome.  
-If you want to discuss testing platforms, AI-assisted development, or LangGraph / MCP practice, feel free to reach out.
-
-Personal WeChat:
-
-<img src="docs/assets/image-20250531212549739.png" alt="Personal WeChat QR" width="300"/>
-
-## Historical Code
-
-The old `AITestLab` code is no longer kept on the current working branch.
-
-If you need the historical code, see:
-
-- [AITestLab-archive](https://github.com/ljxpython/AITestLab-archive)
+---
 
 <a id="acknowledgements"></a>
 
-## Acknowledgements
+## Acknowledgements & Technical Core
 
-This project has benefited from several strong open-source projects and ecosystems, especially:
+### Core Inspirations & Architectural Pillars
+- [open-swe](https://github.com/langchain-ai/open-swe): Core inspiration for sandbox workspaces, PTY terminal sessions, and production developer agent UX.
+- [deepagents](https://github.com/langchain-ai/deepagents): Key reference for complex task decomposition, subagent orchestration, and execution trace persistence.
+- [deer-flow](https://github.com/bytedance/deer-flow): Fundamental architecture reference for end-to-end streaming agent execution, memory loop governance, and engineering delivery.
 
-- [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api/tree/main): strong inspiration for frontend layout rhythm, dashboard organization, and workspace interaction patterns
-- [FastAPI](https://fastapi.tiangolo.com/): key foundation for the platform backend and service interfaces
-- [LangGraph](https://docs.langchain.com/langgraph): key foundation for agent runtime orchestration and stateful execution flows
-- [FastMCP](https://gofastmcp.com/): important reference ecosystem for MCP-based tooling and service integration
-- [HKUDS/LightRAG](https://github.com/HKUDS/LightRAG): important reference for project-scoped knowledge retrieval and the optional in-repo LightRAG MCP integration path
+### Ecosystem Foundation & References
+- [LangGraph / LangChain](https://docs.langchain.com/langgraph)
+- [FastAPI](https://fastapi.tiangolo.com/)
+- [FastMCP](https://gofastmcp.com/)
+- [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api/tree/main)
+- [HKUDS/LightRAG](https://github.com/HKUDS/LightRAG)
 
-These references are not copied blindly. They are absorbed, reorganized, and adapted around the goals and engineering boundaries of this repository.
+---
 
-## Open Source Usage Notice
+## License & Attribution
 
-This project is maintained as public source code. Learning from it, referencing it, and building on top of it are all welcome.
-
-If you use this project in public repositories, technical articles, demos, training materials, or redistributed derivatives, please clearly credit the original repository and author.
+```text
+Based on Enterprise AI Agent Platform:
+https://github.com/ljxpython/ai-agent-platform
+```

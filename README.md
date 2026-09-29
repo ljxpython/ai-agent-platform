@@ -1,445 +1,321 @@
 <h1 align="center">企业级 AI Agent 平台</h1>
 
-<p align="center"><strong>面向二次开发与企业落地的 AI Agent 平台底座</strong></p>
+<p align="center"><strong>面向二次开发与企业落地的 AI Agent 平台底座 · 基于 LangGraph 生态体系</strong></p>
 
 <p align="center"><a href="README.en.md">English</a> | 中文</p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Vue-3%20Workspace-42B883" alt="Vue 3 Workspace" />
-  <img src="https://img.shields.io/badge/Skills-Private%20Skill%20Stack-0F766E" alt="Skills" />
-  <img src="https://img.shields.io/badge/MCP-Knowledge%20Ready-7C3AED" alt="MCP Knowledge Ready" />
-  <img src="https://img.shields.io/badge/Harness-AI%20Continuous%20Coding-F59E0B" alt="Harness" />
   <img src="https://img.shields.io/badge/LangGraph-Runtime%20Core-111827" alt="LangGraph Runtime Core" />
+  <img src="https://img.shields.io/badge/GraphHarbor-状态持久化-F59E0B" alt="GraphHarbor" />
+  <img src="https://img.shields.io/badge/FastAPI-Platform%20API-009688" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Vue-3%20管理控制台-42B883" alt="Vue 3" />
+  <img src="https://img.shields.io/badge/MCP-工具扩展-7C3AED" alt="MCP" />
+  <img src="https://img.shields.io/badge/Skills-智能体技能矩阵-0F766E" alt="Skills" />
+  <img src="https://img.shields.io/badge/Memory-长期记忆闭环-2563EB" alt="Memory" />
+  <img src="https://img.shields.io/badge/HITL-人机协同审批-DC2626" alt="HITL" />
   <a href="https://github.com/ljxpython/ai-agent-platform/releases/latest"><img src="https://img.shields.io/github/v/release/ljxpython/ai-agent-platform" alt="Latest Release" /></a>
-  <img src="https://img.shields.io/badge/README-EN%2FZH-F59E0B" alt="README EN/ZH" />
 </p>
 
-<p align="center"><a href="#system-overview">系统总览</a> · <a href="#frontend-entry">前端入口</a> · <a href="#quick-start">快速开始</a> · <a href="docs/quickstart/deployment-guide.md">部署文档</a> · <a href="https://github.com/ljxpython/ai-agent-platform/releases/tag/v0.3.1">最新 Release</a> · <a href="docs/CHANGELOG.md">更新日志</a> · <a href="#acknowledgements">致谢参考</a> · <a href="#ai-deploy">AI代理部署</a></p>
+<p align="center">
+  <a href="#system-overview">系统总览</a> ·
+  <a href="#architecture-diagrams">架构与链路图解</a> ·
+  <a href="#agent-ecosystem">内置智能体生态</a> ·
+  <a href="#secondary-development">二次开发指南</a> ·
+  <a href="#frontend-showcase">前端体验与工作台</a> ·
+  <a href="#quick-start">快速开始</a> ·
+  <a href="docs/guides/deployment-guide.md">部署手册</a> ·
+  <a href="docs/CHANGELOG.md">更新日志</a> ·
+  <a href="#acknowledgements">致谢与技术核心</a>
+</p>
 
-基于 `LangGraph / LangChain` 的企业级 AI 平台架构，可在此基础上进行二次开发。
-它把**平台治理层**和**Agent Runtime 执行层**拆开，既支持平台侧的认证、项目管理、审计、catalog 管理，也支持 Agent 侧的图编排、模型装配、Tools / MCP / Skills 接入与快速调试，适合作为企业内部 AI 平台和智能体应用的基础骨架。
+---
 
-当前仓库提供原生进程开发链路，适合：
+## 项目定位：解决什么问题？
 
-- 想基于主流 Agent 技术栈做二次开发的团队
-- 想同时建设平台能力和 Agent 执行能力的项目
-- 想快速验证 LangGraph Runtime、Agent 行为和前端交互的开发者
-- 希望把 AI 协同开发真正纳入工程流程的团队
+很多团队做 Agent 容易停留在 Demo 阶段：平台治理、运行时执行、状态存储和前端交互全揉成一个“大泥球”，一到生产落地就面临权限缺失、状态丢失、模型切换困难、二开举步维艰的问题。
 
-> 想先理解开发流程和任务分级，可看 [AGENTS.md](AGENTS.md)。
+本项目为解决这一痛点而生，提供一个**可直接用于二次开发、快速搭建企业私有 AI Agent 平台**的工程底座：
 
-当前建议优先把下面几份文档当成正式事实源：
-
-- `docs/local-deployment-contract.yaml`
-- `AGENTS.md`
-- `docs/quickstart/local-dev.md`
-- `docs/quickstart/env-matrix.md`
-- `deploy/README.md`
-- `docs/runbooks/container-update-runbook.md`
-
-如果你要从零开始使用 Docker / Docker Compose 部署当前项目，优先看：
-
-- `deploy/README.md`
-- `docs/quickstart/zero-to-one-container-deploy.md`
-- `docs/runbooks/container-update-runbook.md`
-
-## AI 执行入口
-
-如果你希望后续的人类开发者或 AI 代理都按同一套开发规范进入任务，建议先按下面顺序阅读：
-
-1. [AGENTS.md](AGENTS.md) —— 开发流程、改动分级标准（单项目/链路/治理改动）
-2. [Docs 总入口](docs/README.md)
-
-当前规划：[Dear Agent 总纲与能力迁移](docs/projects/20260913-dearflow-agent/README.md)（第二版：独立前端、前后端基础框架与逐章实施接续；治理方案待评审，尚未实施）。
-
-成果专项：[Dear Agent 成果页分层规划](docs/projects/20260920-dear-agent-artifacts-alignment/README.md)（本方负责后端/Runtime，前端由其他同事实现；[接口与测试交接](docs/projects/20260920-dear-agent-artifacts-alignment/04-frontend-handoff.md)已完成，后端/Runtime 验证完成；前端页面及联合浏览器验收暂未实施）。
-
-新增专项：[Runtime 工具治理收敛](docs/projects/20260920-runtime-optional-tool-resolution/README.md)（方案已批准，待实施；Runtime 执行、平台管理禁用例外、Catalog 仅展示；旧功能直接退役，不维护或迁移旧项目）。
-
-记忆专项：[Dear Agent 记忆闭环补齐](docs/projects/20260920-dear-agent-memory/README.md)（已细化源码参考、目录、Runtime/Platform实施、接口与测试；前端仅交接给其他同事；规划待评审，尚未实施）。
-
-一句话理解：
-
-- `AGENTS.md`：开发规范入口，定义分级标准和验证要求
-- [数据库部署与迁移规范](docs/guides/database-operations.md)：新服务器建库、未来迁移与本地 PG 开发
-- `docs/projects/`：链路/治理改动的项目文档（方案、任务、验证记录）
-- 各 app/service 自己的 `docs/`：服务内部标准
-
-改动分级由 AI 自动判断（不需要手动调用命令），依据见 `AGENTS.md`。
-
-规划链路/治理改动项目、记录实现细节、执行验证分别使用 `$plan-project`、`$implement-feature`、`$verify-change`。
-
-<a id="frontend-entry"></a>
-
-## 当前前端与推荐入口
-
-`apps/platform-web` 是当前正式平台前端宿主，也是仓库默认联调和后续平台前端开发的统一入口。
-
-前端架构与 Agent Chat 重构原方案已获用户批准，保留 Vue/官方 SDK、允许 SDK 升级并沿用现有视觉，尚未实施；多端消息队列与 Runtime Middleware 按用户要求最后完成，不阻塞前端主体验收，见 [重构方案与验收计划](docs/projects/20260910-platform-web-refactor/README.md)。
-
-当前正式平台入口已经覆盖首批核心页面：
-
-- `overview`
-- `projects`
-- `users`
-- `assistants`
-- `me`
-- `security`
-- `audit`
-
-当前正式前端相关事实源：
-
-- `apps/platform-web/src/router/routes.ts`
-- `apps/platform-web/docs/control-plane-page-standard.md`
-- `apps/platform-api/docs/README.md`
-- `apps/platform-api/docs/handbook/project-handbook.md`
-- [Platform API开发规范](apps/platform-api/docs/handbook/development-playbook.md)
-
-补充说明：上面列出的页面是当前正式前端范围中的核心入口，以 `apps/platform-web/src/router/routes.ts` 为代码事实源。
-
-如果你是第一次跑这个仓库，建议直接按根目录脚本启动并打开 `apps/platform-web`。
-
-## AI 持续编程 Harness
-
-这个仓库不只是“放了一堆代码”，而是已经形成了一套可以指导 AI 代理持续开发、持续联调、持续验收的工程 Harness。
-
-这里说的 Harness，不是单个工具，而是一整套受控的工程外壳：
-
-- `边界`：平台治理、运行时执行和前端入口已经拆层，AI 不需要在一个大泥球里瞎改
-- `契约`：本地部署 contract、环境变量矩阵、接口命名、默认启动顺序和账号口径都已固定
-- `范式`：`runtime-service`、`platform-web`、控制面页面标准与现成样例页面已经沉淀出可复用范式
-- `闭环`：根级脚本、健康检查、烟测清单、验收文档、CHANGELOG 和 release runbook 已形成可执行交付链路
-
-平台控制面后端这部分，当前专用的落地蓝图与正式标准已经统一写入：
-
-- `apps/platform-api/docs/README.md`
-- `apps/platform-api/docs/handbook/project-handbook.md`
-
-一句话说，这个仓库已经不是“让 AI 随便写代码”，而是“让 AI 在明确边界、稳定契约和现成范式中持续完成开发”。
-
-## 这个项目解决什么问题
-
-很多 Agent 项目能跑 demo，但一到真实工程场景就容易混乱：平台治理、运行时执行、调试入口、环境配置全耦在一起，后面越改越难受。
-
-这个仓库的目标很明确：
-
-- 用 `LangGraph / LangChain` 主流生态构建企业级 AI 平台架构，不重新发明一套封闭框架
-- 把平台层和运行时层解耦，便于分工、演进和交付
-- 提供可复用的 Runtime 执行骨架，而不是一次性 demo
-- 给后续业务二开和测试场景接入预留空间
-
-## 前端效果展示
-
-如果你想先看当前平台前端已经做到了什么程度、页面大致长什么样，以及前端这部分是怎么组织和展示的，可以直接看这篇记录：
-
-- [平台前端效果展示与介绍](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/20260325_platform_frontend_intro.md)
-
-这篇内容更偏平台前端视角，适合快速了解当前 `Agent Platform Console` 的页面效果、工作区结构和一些实际展示结果。
-
-![平台前端效果展示](docs/assets/image-20260325161139758.png)
+- **解耦平台治理与 Agent 执行**：平台层专职负责认证鉴权、多租户/项目隔离、审计回溯、模型 Catalog 治理；Agent 运行时专职负责图编排、工具装配与状态机运转。两层通过受管契约通信，互不污染。
+- **拥抱主流开源生态，不造封闭轮子**：全面基于 `LangGraph / LangChain` 系列生态设计，深度吸收 `open-swe`、`deepagents` 与 `deer-flow` 的工程思想，原生支持复杂图编排、状态持久化、多轮工具调用循环与人机协同（HITL）审批中断。
+- **标准化二次开发骨架**：预留清晰的扩展点（自定义 Agent 图、自定义 Tools、标准 MCP 服务、Skills 技能），其他企业可以直接拉取作为模板，快速装配自有业务 Agent。
 
 <a id="system-overview"></a>
 
 ## 系统总览
 
-仓库包含以下应用；默认脚本启动 Runtime API、Runtime Worker、Platform API 和 Platform Web：
+整个系统由三大服务分层构建，各司其职：
 
-- `apps/platform-api`：正式平台后端 / 控制面 API
-- `apps/platform-web`：正式平台前端宿主 / 管理台入口
-- `apps/runtime-service`：LangGraph 执行层 / Agent Runtime
+| 服务 | 目录 | 职责定位 | 核心技术栈 |
+|---|---|---|---|
+| **Platform API** | `apps/platform-api` | **控制面核心**：认证鉴权、项目治理、审计日志、模型 Catalog 目录、受管契约网关转发 | FastAPI + SQLAlchemy + PostgreSQL |
+| **Platform Web** | `apps/platform-web` | **管理控制台前端**：工作台布局、Agent 交互对话流、权限管理、多端流式渲染 | Vue 3 + Vite + Tailwind CSS + Pinia |
+| **Runtime Service** | `apps/runtime-service` | **Agent 执行引擎**：LangGraph 图注册、工具与 MCP 装配、会话调度、SSE 事件流保活推送 | Python 3.11+ + LangGraph + GraphHarbor + Redis |
 
-### 主要链路
+<a id="architecture-diagrams"></a>
 
-- 平台链路：`platform-web -> platform-api -> runtime-service`
+## 架构与链路图解
 
-### 前端入口
+### 1. 系统架构全景图
 
-- `platform-web`：当前正式平台工作台入口，承接 `Agent Platform Console`、Agent 页面和平台治理相关前端能力
+> 🔗 **交互式网页体验：** [👉 打开全屏交互式架构图 (HTML)](docs/diagrams/arch-system-overview.html)（支持节点聚焦缩放、深浅主题切换与全要素搜索）
 
-## 架构图
+![系统架构全景图](docs/assets/arch-system-overview.png)
 
-`platform-web → platform-api → runtime-service`。Platform API 与 Runtime 使用独立 PostgreSQL 数据库；Runtime 同时依赖 Redis。
+- **平台治理层（左）**：集中处理所有的用户身份、安全隔离与审计流向，Runtime 内部无须耦合任何用户鉴权逻辑。
+- **Agent 执行层（中）**：Runtime API 与 Runtime Worker 分离，状态由 GraphHarbor 统一落库，保障长时间运行与故障断点恢复。
+- **二开扩展点（右）**：工具函数、标准 MCP 服务与外部 LLM 全部通过标准化协议接入，扩展时对核心代码零侵入。
+
+---
+
+### 2. Agent 执行请求链路时序
+
+> 🔗 **交互式网页体验：** [👉 打开全屏交互式时序图 (HTML)](docs/diagrams/seq-agent-run.html)（支持三阶段分段探索与完整链路追踪）
+
+![Agent 执行请求链路时序图](docs/assets/seq-agent-run.png)
+
+- **阶段一（鉴权与契约组装）**：Platform API 拦截用户请求，从数据库读取当前项目启用的模型参数、可用工具白名单和系统 Prompt，组装成受保护的“受管契约”下发给 Runtime。
+- **阶段二（图编排与工具循环）**：Runtime Worker 接管任务，驱动 LangGraph 状态机向 LLM 发起推理；当模型决定调用工具或 MCP 时，进入工具执行/人机审批流，完成后携带结果继续推理。
+- **阶段三（SSE 流式保活透传）**：执行状态以 Server-Sent Events（SSE）形式实时推送，网关层自动注入保活心跳，前端支持流式打字渲染与断流自愈。
+
+---
+
+### 3. 二次开发扩展点全景
+
+> 🔗 **交互式网页体验：** [👉 打开全屏交互式扩展点图 (HTML)](docs/diagrams/arch-extension-points.html)（清晰划定二开边界）
+
+![二次开发扩展点全景图](docs/assets/arch-extension-points.png)
+
+- **二开业务定制区（右侧）**：业务开发者主要编写自定义 Agent 图、业务 Tools 和挂载 MCP 插件。
+- **核心基础设施骨架（左下）**：认证、网关、状态持久化、SSE 传输通道等基础设施开箱即用，一般无需做侵入性修改。
+
+---
+
+<a id="agent-ecosystem"></a>
+
+## 内置智能体生态：从教学到生产落地
+
+仓库内置了两套具有不同使命的智能体示例，兼顾了快速上手学习与极端复杂场景落地：
+
+### 1. 教学入门智能体：`showcase_demo`
+- **定位**：初学者了解平台机制的最小样板间。
+- **源码位置**：`apps/runtime-service/src/runtime_service/services/demo/showcase_demo/`
+- **覆盖能力**：
+  - ✅ **基础与高级工具调用 (Tool Calling)**
+  - ✅ **人机协同审批中断 (HITL - Human-in-the-Loop)**
+  - ✅ **子智能体协作与调用轨迹基础回放**
+  - ✅ **沙箱安全工作区 (Workspace) + 产物实时预览**
+  - ✅ **MCP 工具集成与动态装配**
+
+### 2. 生产级标杆智能体：`DeerFlow Agent`
+- **定位**：真正面向生产级任务工程的复杂智能体实现，验证平台对极端复杂场景的承载力。
+- **设计思想**：深度吸收 `bytedance/deer-flow`、`langchain-ai/deepagents` 与 `langchain-ai/open-swe` 的工程设计范式。
+- **生产级核心特质**：
+  - 🧠 **全流程多模式切换**：支持探索研究（Research）、工程代码编写（Coding）、长效规划（Planning）与任务分发子智能体多模式动态调度。
+  - 💾 **记忆闭环引擎 (Memory Pipeline)**：具备会话短期上下文管理与跨会话个人/项目长期记忆提取、存储、检索与注入机制。
+  - 🛡️ **安全沙箱隔离工作区**：提供本地/容器化双模式执行沙箱，原生支持文件树浏览、代码高亮预览与成果归档下载（.zip）。
+  - 💻 **交互式终端 (PTY)**：提供基于 xterm 的真实终端会话，支持命令审计、防越权拦截、终端划词一键入 Chat 与多终端保活。
+  - 🧰 **深度工具与企业级 Skills 矩阵**：内置文件操作、语法树检索、代码分析等成套 Production Skills。
+
+> 💡 **企业二开建议：** 企业客户可以直接复用 `DeerFlow Agent` 的工程实现作为高阶智能体模板，也可将其拆解为底层组件，按需装配到企业原有的垂直业务场景中。
+
+---
+
+<a id="secondary-development"></a>
+
+## 二次开发指南：如何接入你的业务？
+
+### 扩展点代码速查
+
+| 扩展需求 | 目标代码路径 | 开发说明 |
+|---|---|---|
+| **新增自定义 Agent 图** | `apps/runtime-service/src/runtime_service/graphs/` | 基于 LangGraph 编写 `StateGraph`，定义节点与边，并在统一入口注册 |
+| **新增自定义工具 (Tools)** | `apps/runtime-service/src/runtime_service/tools/` | 使用 `@tool` 装饰器编写纯 Python 函数，平台自动提取 JSON Schema 供模型调用 |
+| **接入第三方 MCP 服务** | `apps/runtime-service` 配置文件 | 标准 MCP 客户端开箱即用，通过配置快速挂载外部 FastMCP / 官方 MCP 工具服务 |
+| **扩展控制面 API** | `apps/platform-api/src/platform_api/` | 遵循 `apps/platform-api/docs/handbook/` 规范新增 REST 端点与数据模型 |
+| **管理台页面二次开发** | `apps/platform-web/src/modules/` | 遵循 `control-plane-page-standard.md` 页面标准，快速扩建控制台视图 |
+
+---
+
+<a id="frontend-showcase"></a>
+
+## 前端体验与工作台
+
+当前平台控制台已完成多次大版本重构，消灭了早期简陋的 Demo 样貌，全面演进为现代化工业级控制台：
+
+![平台前端效果展示](docs/assets/image-20260325161139758.png)
+
+### 核心工作台体验矩阵
+
+平台当前已沉淀出 4 大核心视觉与交互空间：
+
+1. **通透无界智能体对话流**：
+   - 支持模型思考过程（Think 块）流式实时折叠与展开
+   - 仿 GPT-style 视口平滑锚定与防抖动流式生长
+   - 敏感操作工具审批（HITL）交互卡片与状态机自愈
+   - 时间旅行（Time Travel）历史节点快速筛选与分叉执行
+2. **沉浸式沙箱 Workspace**：
+   - 弹性拖拽双栏布局与全屏最大化
+   - 实时懒加载文件树、Markdown / HTML 渲染预览
+   - 多终端（PTY）交互式命令行、划词入会话与成果一键打包（Zip）
+3. **DeepSeek 级轨迹 DevTools 视图**：
+   - 对话模式与排障轨迹视图秒级切换
+   - 三层横向甘特时间线（Input / Model / Tools）、Turn 树状执行链与性能指标看板
+4. **企业级控制面管理空间**：
+   - 模型统一目录（支持多 Provider、端点防重、BYOK 私有密钥隔离）
+   - 项目、用户多角色 RBAC 隔离与安全审计流向
+
+> 💡 *关于界面体验补充：我们正在准备一套完整的 30 秒快速漫游短视频与高帧率 GIF 动图，欢迎保持关注！*
+
+---
 
 <a id="quick-start"></a>
 
 ## 快速开始
 
-### 非 Docker 本地 / 服务器开发（推荐）
+### 运行环境准备
 
-首次部署直接按[非 Docker 部署手册](docs/quickstart/deployment-guide.md)操作：
-原生依赖安装 → 账号和空库 → app-local 配置 → 迁移 → 启动 → SSH 访问 → 登录和模型验收。
-通用账号与 app-local 示例对齐，个人交接另附实际账号映射；密码和模型 Key 只保存在私有配置。
-本地 PostgreSQL 的[认证与回退验证](docs/projects/20260920-local-postgres-password/README.md)已完成；服务器由运维按[交接与回执](docs/quickstart/operator-handoff.md)部署并独立验收。
+- **Python**：3.11+（各服务独立依赖隔离）
+- **Node.js**：18+ / pnpm 9+
+- **PostgreSQL**：建议 14+（平台与 Runtime 使用独立数据库隔离）
+- **Redis**：支持会话队列与临时缓存
 
-默认启动顺序：Runtime API、Runtime Worker、Platform API、Platform Web。
-PostgreSQL 和 Redis 必需且预先运行；没有 Platform Worker。
-
-完成首次配置后，在仓库根目录执行：
+### 1. 本地原生多进程启动（开发推荐）
 
 ```bash
+# 1. 激活 runtime 虚拟环境（确保依赖已安装）
 source "apps/runtime-service/.venv/bin/activate"
+
+# 2. 运行健康自检，检查数据库、Redis 连接与配置文件
 bash "scripts/local-stack.sh" doctor
+
+# 3. 自动执行数据库迁移并拉起全栈进程 (Runtime API、Worker、Platform API、Platform Web)
 bash "scripts/local-stack.sh" start
+
+# 4. 查看当前栈运行状态与端口占用
 bash "scripts/local-stack.sh" status
+
+# 5. 停止本地全栈服务
 bash "scripts/local-stack.sh" stop
 ```
 
-脚本使用各应用自己的配置，先执行平台、GraphHarbor 和 Runtime 应用表迁移，再启动进程。
-直接启动 `platform-api` 前也必须先运行 `bash "scripts/local-stack.sh" migrate`；缺少平台 Alembic `20260925_0005` 的 Thread ACL 列时，API 会拒绝启动。
-旧 GraphHarbor 库若仍有 Thread/Run/Assistant/Cron，`008_remove_business_scope` 会拒绝迁移；按[边界切换方案](../graphharbor/docs/projects/20260925-runtime-business-boundary-decoupling/04-data-migration-and-cutover.md)备份并清理指定历史数据后再启动，不能对现有库直接反复执行 `start`。
-它不是基础设施安装器，也不安装前端依赖；doctor 可能回收属于本仓库的旧占用进程。
-不复制跨系统的 .venv/node_modules，不将根目录 .env 作为统一运行配置。
-新空库需初始化管理员、创建项目，并在平台模型目录配置连接；旧聊天等数据不随配置复制。
+首次运行的配置初始化、数据库建表及密码配置，请查阅 [非容器化本地部署手册](docs/guides/deployment-guide.md)。
 
-### Docker / Docker Compose
+---
 
-如果你希望直接用容器方式启动，当前有 3 种常见用法：
-
-1. 只启动 `runtime-service`
+### 2. Docker / Docker Compose 启动
 
 ```bash
-docker compose -f apps/runtime-service/deploy/docker-compose.runtime-service.yml --env-file apps/runtime-service/deploy/.env.runtime-service up -d
-```
+# 选项 A：仅启动 runtime-service 执行层
+docker compose -f apps/runtime-service/deploy/docker-compose.runtime-service.yml \
+  --env-file apps/runtime-service/deploy/.env.runtime-service up -d
 
-2. 启动整仓 stack（无 Nginx，前后端分端口）
-
-```bash
+# 选项 B：启动全栈 stack（前后端独立暴露端口）
 docker compose -f deploy/docker-compose.stack.yml --env-file deploy/.env.stack up -d
-```
 
-3. 启动整仓 stack（带 Nginx，单入口）
-
-```bash
+# 选项 C：启动全栈 stack（带 Nginx 反向代理，单端口统一入口）
 docker compose -f deploy/docker-compose.stack.nginx.yml --env-file deploy/.env.stack up -d
 ```
 
-建议阅读顺序：
+完整容器指南见 [deploy/README.md](deploy/README.md) 与 [容器化零到一运行指南](docs/guides/zero-to-one-container-deploy.md)。
 
-- `deploy/README.md`
-- `docs/quickstart/zero-to-one-container-deploy.md`
-- `docs/runbooks/container-update-runbook.md`
+---
 
-### 如果你想单独启动 `platform-web`
+### 3. 默认访问入口与健康检查
 
-根目录默认脚本已经会启动 `apps/platform-web`。
+| 模块 | 默认本地地址 | 最小健康检查指令 |
+|---|---|---|
+| **Platform Web** | `http://127.0.0.1:3000` | 浏览器直接访问前端管理界面 |
+| **Platform API** | `http://127.0.0.1:2142` | `curl -fsS "http://127.0.0.1:2142/_system/health"` |
+| **Runtime Service** | `http://127.0.0.1:8123` | `curl -fsS "http://127.0.0.1:8123/ready"` |
 
-如果你要单独调试平台前端，也可以这样启动：
+---
 
-```bash
-VITE_DEV_PORT=3002 pnpm --dir "apps/platform-web" dev
-```
-
-然后打开：
-
-- `platform-web`：`http://127.0.0.1:3002`
-
-这样不会和默认的 `platform-web:3000` 端口冲突。
-
-### 默认本地端口
-
-- `runtime-service`：`8123`
-- `platform-api`：`2142`
-- `platform-web`：`3000`
-
-### 成功启动后访问地址
-
-- `platform-web`：`http://127.0.0.1:3000`
-
-### 最小健康检查
-
-```bash
-curl -fsS "http://127.0.0.1:8123/ready"
-curl -fsS "http://127.0.0.1:2142/_system/health"
-```
-
-检查返回内容，并在登录后创建项目、配置模型、完成一次真实 Run。
-实际启动成员以部署契约和脚本为准。
-
-## 仓库结构
+## 仓库结构速览
 
 ```text
-AITestLab/
+ai-agent-platform/
 ├── apps/
-│   ├── platform-api/
-│   ├── platform-web/
-│   ├── runtime-service/
-│   └── ...
-├── .codex/skills/
-├── docs/
-├── scripts/
-└── deploy/
+│   ├── platform-api/       # 平台控制面后端 (FastAPI, 权限/项目/审计/Catalog)
+│   ├── platform-web/       # 平台控制面前端 (Vue 3, 统一管理台与聊天流)
+│   └── runtime-service/    # LangGraph 执行运行时 (图编排/工具装配/状态机)
+├── deploy/                 # Docker Compose 生产与开发镜像编排
+├── docs/                   # 架构设计、场景指南与跨服务标准体系
+│   ├── architecture/       # 系统架构沉淀与概念透析专篇
+│   ├── diagrams/           # 交互式架构与时序图表 (Archify HTML)
+│   ├── guides/             # 开发者指南、部署手册与数据库运维规范
+│   └── standards/          # 跨服务通信、错误信封与追踪标准
+├── scripts/                # 本地栈启停管理与一致性检查脚本
+└── AGENTS.md               # 团队工程规范与 AI 协同开发指南
 ```
 
-- `apps/`：业务应用目录，包含当前默认联调服务与其他按需维护的应用目录
-- `.codex/skills/`：可跨设备复用的项目级 Codex Skills
-- `docs/`：部署、开发、约束和背景文档
-- `scripts/`：统一启动、停止、健康检查脚本
-- `archive/`：历史归档说明
-
-<a id="docs-by-goal"></a>
+---
 
 ## 按目标阅读文档
 
-![文档导航图](docs/assets/readme-doc-navigation.zh.svg)
+- 🚀 **我想把环境跑起来：**
+  - [本地开发快速上手](docs/guides/local-dev.md)
+  - [本地/服务器部署手册](docs/guides/deployment-guide.md)
+  - [环境变量矩阵总览](docs/guides/env-matrix.md)
+- 📐 **我想深入理解架构：**
+  - [系统架构文档总索引](docs/architecture/README.md)
+  - [跨服务通信与契约规范](docs/standards/README.md)
+- 🛠️ **我想进行代码二开：**
+  - [AI 与开发者协作规范 (AGENTS.md)](AGENTS.md)
+  - [Platform API 开发手册](apps/platform-api/docs/handbook/development-playbook.md)
+  - [Platform Web 开发手册](apps/platform-web/docs/frontend-development-playbook.md)
+  - [Runtime Service 标准体系](apps/runtime-service/docs/standards/README.md)
+- 🐳 **我想做生产容器化发布：**
+  - [容器化部署配置指南](deploy/README.md)
+  - [容器升级与日常运维 Runbook](docs/runbooks/container-update-runbook.md)
 
-### 我想先把环境跑起来
+---
 
-推荐使用统一启动入口 `local-stack.sh`：
-```bash
-bash "scripts/local-stack.sh" start
-```
-详细说明见：
-- `docs/local-deployment-contract.yaml`
-- `docs/quickstart/local-dev.md`
-- `docs/quickstart/env-matrix.md`
+## 当前状态与工程基线
 
-### 我想了解完整部署细节
+- **当前正式版本**：`v0.4.0`（迭代记录见 [CHANGELOG.md](docs/CHANGELOG.md)）
+- **代码质量与门禁**：
+  - Python 全仓 570+ 源码文件实现 Ruff 100% 格式化与诊断清零（0 errors）
+  - 前端 Vitest 单元测试覆盖核心会话状态机，打包构建无告警
+  - 后端核心单测全绿，保持端到端可执行契约验证
 
-再看：
-
-- `docs/quickstart/deployment-guide.md`
-
-### 我想继续开发或二开
-
-重点看：
-
-- `AGENTS.md`
-- `docs/guides/development-guidelines.md`
-- `docs/project-story.md`
-
-### 我想做正式发版
-
-先看：
-
-- `docs/releases/release-policy.md`
-- `docs/releases/v0.3.1-agent-workspace-demo-draft.md`
-- `docs/releases/v0.3.1-release-runbook.md`
-- `docs/releases/`：完整历史发布记录
-
-<a id="ai-deploy"></a>
-
-### 我想让 AI 代理帮我部署
-
-入口文档：
-
-- `docs/guides/ai-deployment-assistant-instruction.md`
-
-如果你只是想触发标准本地部署，这句话就够了：
-
-```text
-阅读 `docs/guides/ai-deployment-assistant-instruction.md` 帮我部署环境。
-```
-
-模型连接通过平台模型目录管理；在私有交接中提供 provider、base URL、模型名和 Key，
-登录后配置连接与项目/Agent 模型选择。当前不再向旧 Runtime settings.local.yaml 写模型。
-配置文件本身不能迁移数据库中的项目、用户和模型目录。实际命令与验收见[部署手册](docs/quickstart/deployment-guide.md)。
-
-## 实操参考
-
-如果你希望参考一套更贴近真实开发过程的本地实操记录，详细见：
-
-- [ai-learning-portfolio 仓库](https://github.com/ljxpython/ai-learning-portfolio)
-- [my_work_record 索引](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/README.md)
-
-这组记录不是重复贴源码，而是专门补“具体怎么做、怎么验证、怎么复盘”的落地路径，可作为本仓库进行**智能体功能开发**和**平台相关能力开发**的参考。
-
-建议这样理解这组内容：
-
-- 根仓库 `README` 更偏项目地图、系统分层和文档导航
-- `ai-learning-portfolio` 里的本地实操记录更偏真实开发过程、验证路径和复盘方法
-
-如果你想按主线看，建议优先关注这些内容：
-
-- [部署与验证基线](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/20260323_deployment_environment.md)
-- [Text-to-SQL 简单能力开发案例](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/20260312_texttosql_rd.md)
-- [多智能体复杂业务开发案例](https://github.com/ljxpython/ai-learning-portfolio/blob/main/my_work_record/20260314_requirement_agent_rd.md)
-
-你可以这样理解这 3 篇记录的作用：
-
-- `20260323_deployment_environment.md`：看本地环境怎么准备、怎么启动、怎么验证链路是否打通
-- `20260312_texttosql_rd.md`：看一个相对简单的 Text-to-SQL 能力案例是怎么围绕具体场景做设计与实现的
-- `20260314_requirement_agent_rd.md`：看多智能体复杂业务场景从需求理解、角色拆分到研发落地是怎么推进的
-
-如果你是第一次接触这个仓库，比较推荐的阅读顺序是：
-
-1. 先看当前仓库的 `README`、`docs/local-deployment-contract.yaml` 和 `docs/quickstart/local-dev.md`
-2. 再看 `ai-learning-portfolio` 中的本地实操记录索引
-3. 如果想先从简单案例入手，就看 Text-to-SQL；如果想看复杂业务协作场景，就看多智能体需求研发案例
-
-## 当前状态
-
-当前仓库已经完成：
-
-- 正式默认本地演示链路已收口到 `apps/*`
-- `apps/platform-web` 是当前正式平台前端宿主
-- `runtime-service` 可启动
-- `platform-api` 可启动
-- `platform-api -> runtime-service` 联调已通过
-- `platform-web` 是当前正式平台前端入口
-- 开发流程已收口到 `AGENTS.md`：改动分级（单项目/链路/治理）由 AI 自动判断并按需自动调用 `plan-project`/`implement-feature`/`verify-change` Skills
-- 当前正式版本为 [`v0.3.1`](https://github.com/ljxpython/ai-agent-platform/releases/tag/v0.3.1)
-
-当前仍保持的约定：
-
-- 每个应用独立维护自己的环境与依赖
-- 根目录不统一维护 `.env`
-- 根目录暂不统一 Python / Node 依赖
-
-## 项目方向
-
-这个仓库的长期方向，是把它打磨成一套可复用、可扩展、可继续二开的 AI Agent 平台基础框架。
-当前会优先吸收测试工程相关场景能力，例如：
-
-- AI 智能评审
-- AI 驱动的 UI 自动化
-- 自动化脚本生成与测试辅助
-- AI 性能测试
-- Text-to-SQL
-
-更完整的项目背景、演进过程和设计取舍，见：
-
-- `docs/project-story.md`
+---
 
 ## 支持与交流
 
-如果这个项目对你有帮助，欢迎 star。
-如果你希望交流测试平台、AI 协同开发、LangGraph / MCP 相关实践，也欢迎联系。
+如果你在企业内部落地 Agent 平台、使用 LangGraph 进行二次开发或使用 MCP 扩展能力时遇到问题，欢迎交流探讨：
 
 个人微信号：
 
-<img src="docs/assets/image-20250531212549739.png" alt="个人微信号" width="300"/>
+<img src="docs/assets/image-20250531212549739.png" alt="个人微信号" width="280"/>
 
-## 历史代码
-
-旧版 `AITestLab` 代码已不再保留在当前工作分支。
-
-如需回看旧版代码，请访问：
-
-- [AITestLab-archive](https://github.com/ljxpython/AITestLab-archive)
+---
 
 <a id="acknowledgements"></a>
 
-## 致谢与参考
+## 致谢与技术核心
 
-本项目在持续演进过程中，参考并受益于一些优秀的开源项目与技术生态，尤其包括：
+本项目在持续演进过程中，深度受益于以下开源项目与核心工程思想：
 
-- [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api/tree/main)：在前端视觉组织、后台工作台布局、列表页与系统区交互节奏上给了当前平台工作台设计不少启发
-- [FastAPI](https://fastapi.tiangolo.com/)：平台后端与服务接口层的重要基础
-- [LangGraph](https://docs.langchain.com/langgraph)：Agent Runtime、状态编排与执行流建模的重要基础
-- [FastMCP](https://gofastmcp.com/)：MCP 工具接入与服务化能力的重要参考生态
-- [HKUDS/LightRAG](https://github.com/HKUDS/LightRAG)：项目级知识检索与可选仓库内 LightRAG MCP 接入方案的重要参考
+### 核心灵感与架构支柱（Technical Core）
+- [open-swe](https://github.com/langchain-ai/open-swe)：提供了现代化沙箱工作区（Artifacts Workspace）、多终端 PTY 会话流及工业级工程交互模型的核心灵感。
+- [deepagents](https://github.com/langchain-ai/deepagents)：提供了复杂长程任务分解、子智能体协同编排及调用历史轨迹持久化的关键设计参考。
+- [deer-flow](https://github.com/bytedance/deer-flow)：提供了生产级端到端智能体流式执行、记忆闭环治理与全链路工程落地的核心思想。
 
-这里的“参考”不是简单照搬源码，而是基于这些开源项目和技术生态，结合当前仓库的业务目标、工程边界和平台化需求，做了再组织、再封装和再落地。
+### 生态基石与重要参考
+- [LangGraph / LangChain](https://docs.langchain.com/langgraph)：提供了卓越的状态图编排核心与智能体运行时抽象。
+- [FastAPI](https://fastapi.tiangolo.com/)：高并发控制面与异步网关接口的可靠基石。
+- [FastMCP](https://gofastmcp.com/)：模型上下文协议（MCP）工程化落地的重要参考。
+- [Wei-Shaw/sub2api](https://github.com/Wei-Shaw/sub2api/tree/main)：提供了极具质感的前端后台工作台排布与交互美学启发。
+- [HKUDS/LightRAG](https://github.com/HKUDS/LightRAG)：知识检索与图结构 RAG 探索的重要参考。
 
-## 开源与引用说明
+---
 
-本项目以公开源码方式持续维护，欢迎学习、参考和基于当前仓库继续二次开发。
+## 开源协议与引用规范
 
-如果你在公开项目、技术文章、演示材料、培训内容或二次发布中使用了本项目的代码、设计、文档或衍生实现，请明确注明来源仓库与作者信息。
-
-建议至少保留类似说明：
+本项目以开源方式持续演进，欢迎学习、参考与基于本项目搭建商业化产品。若你在公开技术分享、衍生开源项目或商业发行版中使用了本项目的代码或架构设计，请注明原项目出处：
 
 ```text
-This project is based on or references AITestLab:
-https://github.com/ljxpython/AITestLab
+Based on Enterprise AI Agent Platform:
+https://github.com/ljxpython/ai-agent-platform
 ```

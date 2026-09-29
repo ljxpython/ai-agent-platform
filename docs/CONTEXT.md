@@ -5,6 +5,10 @@
 
 ## 最后更新
 
+2026-09-29 | 平台重大里程碑发布：正式定级发布 `v0.5.0`。确立“面向二次开发与企业落地的 AI Agent 平台底座”核心定位；消灭早期测试流水账与死链，重构中英文主页并发布 3 套 Archify 2K 架构/时序/扩展点全景可视化系统；实装以 `open-swe`、`deepagents` 与 `deer-flow` 为支柱的生产级智能体 `DeerFlow Agent`，支持多模式工作流、长期记忆闭环、沙箱 Workspace 与 PTY 终端；致谢置顶技术核心并发布正式 Release Notes 与 Runbook。
+
+2026-09-29 | architecture/ 方法论升级：新增第七章双层渐进式概念透析规范（30秒原地折叠拐杖 + 概念专篇库）；新建 concepts/ 目录并交付首篇《01-从 MVC 到 DDD 与六边形架构深度透析》；完成 04-platform-api 架构文档原地折叠拐杖挂载
+
 2026-09-29 | docs/ 目录结构整理：quickstart/ 并入 guides/；decisions/ ADR 迁入各自 projects/ 子目录；新建 architecture/ 教学文档目录；新建 docs/README.md 导航入口
 
 2026-09-28 | DearFlow迁移重新盘点与规划完成：沿用20260913专项，新增11能力矩阵（38类Agent能力/23个Skills）、12补齐任务与评审、13验证基线；资源迁入19/23，4项仍延期未迁。纠正原总纲“整体完成”表述，明确Skills单份当前内容、共享Chat和后续记忆/post37历史修复的覆盖关系。本轮核心抽测28 passed/1 skipped；未改业务代码，整体partial，新增治理实施范围待人审。
