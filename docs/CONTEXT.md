@@ -5,6 +5,28 @@
 
 ## 最后更新
 
+2026-09-30 | DearFlow Agent 真实案例端到端全链路实录交付：在 `docs/architecture/07-agents/01-dearflow-agent/` 交付重磅实录《07-真实案例端到端全链路生命周期实录：从用户一句话到沙箱结果落盘》，以真实生产复合场景（GitHub分析+Python沙箱绘图+不可变制品发布+长期记忆注入）为抓手，深度解密 Platform-Web 乐观更新与 SSE 泵、Platform-API 双层 RBAC 与 60s Delegation JWT 签发、Runtime 控制面与 MessageInbox 咨询锁入库、Worker 调度与 10+ 中间件洋葱圈拦截、Docker 断网沙箱与原子硬链接发布，以及在 PostgreSQL、Redis 和物理磁盘上的状态演进细节与 6 重安全栅栏。
+
+2026-09-30 | runtime-service 可观测性与追踪管线专篇交付：完成概念专篇《12-运行时可观测性架构、Langfuse 与 OTel 追踪管线深度剖析》，逐一拆解 `apps/runtime-service/src/runtime_service/observability/` 架构与源码，深度剖析 `_FailSoftCallback` 软着陆动态代理吞噬 APM 异常防止业务中断、零信任元数据消杀与敏感密钥粉碎、本地常驻 `_RuntimeDiagnosticsCallback` 离线 0.05 秒自测断言，以及 5 秒守护线程优雅排空防死锁机制；在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
+
+2026-09-30 | runtime-service 猴子补丁与人机中断专篇交付：完成概念专篇《11-LangGraph 官方源码级猴子补丁与人机中断避坑深度剖析》，调用官方 MCP 查证 upstream 最新 main 分支源码，深度解密 `patches.py` 方法级替换（Method Swizzling）消灭 `StreamToolCallHandler` 把人机审批当中断的流式假报警、防御 `ToolNode` 异步冒泡吞没缺陷，阐述类方法零侵入自执行与幂等守卫；并在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
+
+2026-09-30 | runtime-service Web控制面与消息对账专篇交付：完成概念专篇《10-运行时 Web 控制面、消息收件箱与对账引擎深度剖析》，逐一拆解 `apps/runtime-service/src/runtime_service/webapp.py` 核心职责，深度剖析 `lifespan` 强杀清理 Docker 伪终端僵尸容器、8 大业务子路由汇聚大厅、`MessageInbox` 咨询锁原子入库与 `reconcile_run` 终态自愈对账机制；在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
+
+2026-09-30 | runtime-service 工具/技能/沙箱架构边界澄清：在 `04-tools-and-skills.md` 中重磅补充第一节《核心架构澄清：我们常说的“薄封装”到底封装了什么？Tools / MCP / Skills / 沙箱来自哪里？》，全面破除“LangGraph包办沙箱与技能”的误解，确立“LangGraph专职状态图调度 + LangChain BaseTool协议归一 + MCP安全网关转译 + DeepAgents技能治理 + 平台自研Docker断网沙箱”四分天下架构全景。
+
+2026-09-30 | runtime-service 工作区沙箱与资产管线专篇交付：完成概念专篇《09-工作区沙箱、PTY终端与资产管线深度透析》，逐一拆解 `apps/runtime-service/src/runtime_service/workspace/` 全部 15 个文件职责，深度透析 `scoped.py` 单向哈希物理路径隔离、`execution.py` 断网无特权 Docker 极苛沙箱、`terminal.py` 环形缓冲交互 PTY、`archives.py` 内存流式防解压炸弹与 Zip Slip、`html_preview.py` 严格白名单与超强 CSP 消杀防 Stored XSS，以及 `artifact_refs.py` 基于 `dir_fd` 与 `os.link` 原子硬链接发布不可变交付物；在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
+
+2026-09-30 | runtime-service 数据库双轨制专篇交付：完成概念专篇《08-Runtime 数据库双轨制架构与应用表全景透析》，揭秘为什么 `db/` 几乎无代码，深度剖析引擎链（LangGraph 官方表托管 checkpoints）与应用链（`0001_application.py` 四大约束表 inbox/memory/skills/tasks）分工、无 ORM 原生 SQL 设计哲学与控制面 vs 执行面数据边界划分；并在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
+
+2026-09-30 | runtime-service 核心内核模块剖析专篇交付：完成概念专篇《07-Runtime 核心内核模块源码全景剖析与职责透析》，逐一拆解 `apps/runtime-service/src/runtime_service/runtime/` 全部 11 个文件职责，包含真实业务攻防推演、DearFlowAgent 组合根源码调用映射、0.05秒脱机极速自测范式与本地脱机 vs 生产运行态持久化落盘（runtime_message_inbox + checkpoints）分水岭剖析；在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
+
+2026-09-30 | runtime-service 架构深潜与请求验签消杀专篇交付：完成概念专篇《06-请求验签与配置净化全链路深度透析》，深度解密海关边检大厅模型、`auth/platform.py` Delegation JWT 60s 验签与 `@auth.on` 防跨线程越权守卫、`runtime/` 18 类高危配置熔断消杀、工具黑名单物理求差与模型凭据用完即焚拉取；并在 `01-architecture.md` 与全局概念总字典中完成挂载。
+
+2026-09-30 | runtime-service 架构深潜与 MessageInbox 专篇交付：完成概念专篇《05-MessageInbox 数据库咨询锁与消息对账全链路深度透析》，剖析传菜窗木板模型、为什么 PostgreSQL 咨询锁（pg_advisory_xact_lock）完爆行锁、租约超时自愈、全链路 4 大阶段调用时序与 Checkpoint 确定性对账闭环；完成 `01-architecture.md` 原生表格重构（彻底解决 Typora 下 HTML details 折叠失效与标签裸露 Bug），并在 README.md 概念总字典完成全量注册。
+
+2026-09-30 | RuntimeAgentHarness 专项立项规划完成：针对 Runtime 执行层 Agent 组合根样板代码超标（150+行安全胶水代码）、安全验签重复建设与测试体验痛点，完成标准项目文档规划（README/plan/tasks/verification），提出 AgentBuildContext 与 @runtime_agent 框架解耦模式。
+
 2026-09-29 | 平台重大里程碑发布：正式定级发布 `v0.5.0`。确立“面向二次开发与企业落地的 AI Agent 平台底座”核心定位；消灭早期测试流水账与死链，重构中英文主页并发布 3 套 Archify 2K 架构/时序/扩展点全景可视化系统；实装以 `open-swe`、`deepagents` 与 `deer-flow` 为支柱的生产级智能体 `DeerFlow Agent`，支持多模式工作流、长期记忆闭环、沙箱 Workspace 与 PTY 终端；致谢置顶技术核心并发布正式 Release Notes 与 Runbook。
 
 2026-09-29 | architecture/ 方法论升级：新增第七章双层渐进式概念透析规范（30秒原地折叠拐杖 + 概念专篇库）；新建 concepts/ 目录并交付首篇《01-从 MVC 到 DDD 与六边形架构深度透析》；完成 04-platform-api 架构文档原地折叠拐杖挂载
@@ -29,6 +51,8 @@
 
 ## 活跃项目
 
+- [Runtime 数据库仓储模式重构与 Schema 契约治理](projects/20260930-runtime-database-repository-refactor/README.md)：规划中；针对“幽灵数据层”（无实体定义）与原生 SQL 散落各个业务目录（inbox/memory/skills/tasks）问题，规划 schema.py 契约层与 repositories/ 轻量仓储层，收敛原生 SQL，实现业务与持久化解耦，待方案评审。
+- [Runtime Agent 组合根脚手架重构与 DX 体验治理](projects/20260930-runtime-agent-harness-refactor/README.md)：规划中；针对组合根样板代码超标（150+行安全胶水代码）与测试构造心智摩擦，完成方案设计与任务拆分，待方案评审。
 - [DearFlow Agent迁移重审与补齐](projects/20260913-dearflow-agent/README.md)：整体partial；本轮分析规划已交付，接续以12的T01—T10为入口。14效果审计已用7个离线故障场景复现响应终止、空回答、错误完成、循环、预算和Todo缺口；优先T03/T07关键可靠性及真实页面验收，音视频/新版扩展单独评审；不恢复已被后续专项取代的旧设计。
 
 - [子智能体工具调用历史持久化与回放能力支持](projects/20260928-graphharbor-subagent-tool-history/README.md)：done；GraphHarbor post37 升级与 platform-api 网关层放通，全链路端到端真实用例实测通过，子智能体内部 10 次工具调用全数可查。
@@ -52,7 +76,7 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-09-28 | 存量 Python 诊断全部清零且 100% 格式化；GraphHarbor post37 升级并支持 checkpoint_ns；消息入口内部Run GET改用已验证的配对read委托；单测全通 |
+| runtime-service | 2026-09-30 | 交付概念专篇 06~12（可观测性/补丁消音器/Web控制面/工作区沙箱/双轨DB/内核消杀）；存量 Python 诊断清零且 100% 格式化；GraphHarbor post37 升级并支持 checkpoint_ns；单测全通 |
 | platform-api | 2026-09-28 | 存量 Python 诊断全部清零且 100% 格式化；网关层放通 checkpoint_ns 与 /state/checkpoint；网关层 SSE 流保活心跳注入保持；单测全通 |
 | platform-web | 2026-09-27 | ChatSession 解耦 reconnecting 与红色报错条，仅 paused 展示恢复连接；错误解析、SDK流恢复/410单飞及Workspace线程池有证据；全量Vitest聊天单测221 passed；真实8条容量受HTTP/1.1 origin连接槽限制 |
 | AI Harness（AGENTS.md + Skills） | 2026-09-26 | 整单结束前须逐项核对未完成任务；Task 未完成时只记 Phase，剩余项确需用户行动才可按 blocked 汇报；详见 docs/changes/20260926-harness-completion-reporting.md |

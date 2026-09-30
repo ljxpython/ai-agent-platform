@@ -28,6 +28,14 @@
 - 为 [04-catalog-management.md](04-catalog-management.md) 提供模型凭证的密文加解密与状态隐藏机制。
 - 为向下游签发的 Delegation Token 提供精准的模型白名单与工具禁用清单。
 
+<details>
+<summary>💡 老王说人话：到底什么是 IAM？双层 RBAC 是怎么玩的？（30秒速懂）</summary>
+
+1. **生活大白话类比**：就像高档小区门禁保安（AAA体系）：先验工牌（AuthN 认证），再查业主权限套餐（AuthZ 鉴权），最后监控拍照记账（Audit 审计）；平台超管就像总行长，没有万能钥匙，想查分行私密保险箱必须走显式接管并亮红灯审计。
+2. **解决的生产痛点**：如果不搞双层 RBAC，全系统就一个 `is_admin`，财务管理员能直接登录清空算法代码库；前端传一个 `thread_id` 就能水平越权偷看全公司商业机密。
+3. **本项目怎么落地**：在本项目对应 `modules/iam/application/policies.py` 的 `IamPolicyEngine` 与 `PlatformRole`/`ProjectRole`，完整推演与 20 行极简对比详见 [concepts/05-iam-and-rbac-architecture.md](concepts/05-iam-and-rbac-architecture.md)。
+</details>
+
 ---
 
 ## 一、对立视角：简易原型 vs 生产架构（Naive vs Production）
@@ -87,6 +95,14 @@ PROJECT_PERMISSION_MAP: dict[PermissionCode, frozenset[ProjectRole]] = {
     PermissionCode.PROJECT_RUNTIME_WRITE: frozenset({ProjectRole.ADMIN}),
 }
 ```
+
+<details>
+<summary>💡 老王说人话：32 项权限码和双层 RBAC 到底怎么判定？超管怎么接管项目？（30秒速懂）</summary>
+
+1. **生活大白话类比**：银行总行长（平台超管）管大楼，分行私人保险柜（项目）只有支行长（Admin）和持有特定钥匙的员工（Editor/Executor）能进；总行长不能偷看，紧急排障必须走显式接管（Takeover）并在监控室留下大红印章。
+2. **解决的生产痛点**：如果业务代码到处硬编码 `if role == "admin"`，新增一个角色就要重构 200 个接口；通过人 -> 角色 -> 权限码三层解耦与原生 frozenset 查表，判定耗时仅 0.01ms，新增角色零代码改动！
+3. **本项目怎么落地**：在本项目对应 `modules/iam/application/policies.py` 的 `IamPolicyEngine`，32项原子权限码字典、猎鹰智航车企实战故事线与 5 阶段时序推演详见 [concepts/06-dual-layer-rbac-deep-dive.md](concepts/06-dual-layer-rbac-deep-dive.md)。
+</details>
 
 ### 2. 工具限制持久化模型（SQLAlchemy）
 限制表采用“只减不增”的否定式设计。表中存在记录即代表该主体（项目或个人）在该图执行时**禁用**该工具：

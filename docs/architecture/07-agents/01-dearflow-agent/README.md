@@ -29,6 +29,8 @@ flowchart TD
     C3 --> C6
     C4 --> C6
     C5 --> C6
+
+    C6 --> C7["07-real-world-lifecycle-case-study.md<br/>(真实案例端到端全链路实录)"]
 ```
 
 | 章节与链接 | 核心内容与技术考量 | 对应核心源码坐标 |
@@ -39,6 +41,7 @@ flowchart TD
 | [04-workspace-sandbox.md](04-workspace-sandbox.md) | **工作空间沙箱与资产管线**<br>• `DearWorkspaceBackend` 虚拟工作空间映射与防逃逸校验<br>• PTY 伪终端交互式执行与硬超时防护<br>• `PERMISSIONS` 反自我篡改只读黑名单 | `workspace/backend.py`<br>`workspace/terminal.py`<br>`workspace/artifact_refs.py` |
 | [05-skills-runtime.md](05-skills-runtime.md) | **技能治理与动态热加载**<br>• 20+ 内置专业技能解析与分发<br>• ZIP 自定义技能包生命周期治理与 `expected_revision` 乐观锁<br>• `skills_hash` 快照不可变性保证运行稳定性 | `skill_governance.py`<br>`skill_catalog.py`<br>`tools/skills.py` |
 | [06-high-fidelity-implementation.md](06-high-fidelity-implementation.md) | **端到端高保真实现伪代码**<br>• 剥离第三方库冗余包装的单文件级完整装配还原<br>• 状态机从初始化、中间件拦截、工具执行到落盘全景闭环 | 全模块代码凝练还原 |
+| [07-real-world-lifecycle-case-study.md](07-real-world-lifecycle-case-study.md) | **真实案例端到端全链路实录**<br>• 用户输入→网关RBAC→Delegation 60s→Runtime API Server→Worker调度→沙箱执行→制品发布→SSE推送回显<br>• 涵盖 6 大角色泳道图、数据库/Redis/磁盘物理状态变迁与 6 大安全栅栏 | 全微服务链路贯通实战 |
 
 ---
 

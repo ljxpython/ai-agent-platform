@@ -25,6 +25,14 @@
 - **委托令牌动态签发**：基于目标 Thread 与 Agent 信息，动态生成 Delegation JWT 注入请求头。
 - **流式透传与脱敏**：建立与下游的 SSE 长连接，实时过滤私有数据字段，流式回传客户端。
 
+<details>
+<summary>💡 老王说人话：网关请求进入前的“洋葱圈中间件”是个啥？（30秒速懂）</summary>
+
+1. **生活大白话类比**：就像进入无尘车间穿脱防护服，进门时一层层穿上（CORS检查 → 审计拍照 → 挂Trace工牌计时 → 刷指纹验Token），出门时原路一层层脱下（算总耗时打指标 → 写回响应头 → 彻底销毁工牌防泄漏）。
+2. **解决的生产痛点**：如果不搞洋葱模型，每个网关接口都得自己写计时、鉴权和异常捕获，一旦某个接口漏清理协程变量（ContextVar），高并发下就会发生致命的跨租户身份串号大事故。
+3. **本项目怎么落地**：在控制面入口由 `main.py` 逆序装配 4 层中间件洋葱皮，详细图解与 20 行极简解析传送门：[02-深入理解中间件洋葱圈模型](concepts/02-onion-middleware-model.md)。
+</details>
+
 ### 3. 认知输出（支撑后续模块）
 - 为 [03-iam-and-governance.md](03-iam-and-governance.md) 的 BYOK 模型配置覆盖与工具禁用策略提供落地执行通道。
 - 为底层 `runtime-service` 屏蔽非法的恶意输入，保障图执行器的状态机确定性。
@@ -124,8 +132,15 @@ x-runtime-delegation-token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
     }
   },
   "stream_mode": ["values", "updates", "messages", "checkpoints"]
-}
 ```
+
+<details>
+<summary>💡 老王说人话：前端透传的内容，到底哪些是业务层、哪些是底层真正需要的？权限到底归谁管？（30秒速懂）</summary>
+
+1. **生活大白话类比**：就像市民（前端）去法院（控制面）打官司，法官（PDP）翻卷宗定权限并开具盖章的判决书（Delegation JWT）；而监狱狱警（PEP 执行面）只认判决书不认人，严格把违禁工具搜身没收后推进牢房执行。
+2. **解决的生产痛点**：如果让执行层直连业务库查权限，或者允许前端在请求里传 `tools`，任何恶意用户按一下 F12 就能在服务器上提权反弹 Shell，导致灾难性的 RCE 和数据泄露。
+3. **本项目怎么落地**：在网关层通过 `normalize_protocol_v2_command` 彻底粉碎非法工具入参，并依靠防漂移四重锁（60s短TTL、context_hash指纹、只减不增、23项operation）保证跨层一致，全量报文字段对比与端到端源码映射详见 [concepts/04-control-vs-execution-plane-permissions.md](concepts/04-control-vs-execution-plane-permissions.md)。
+</details>
 
 ---
 
@@ -272,9 +287,111 @@ async def send_thread_command(self, *, actor: ActorContext, project_id: str, thr
 
 ## 六、假想断电与极限场景推演（Thought Experiments）
 
-### 场景一：恶意用户试图通过入参注入未授权的 Bash 工具
-- **推演过程**：攻击者拥有低权限账号，在向网关发送 `run.start` 时，在 `config.configurable.tools` 中手动写入 `["bash_execute", "file_delete"]`，试图绕过平台的工具策略限制。
-- **系统表现**：`normalize_protocol_v2_command` 会遍历 `config.configurable`，并在发现包含 `tools` 字段时，立即抛出 `ValueError("config.configurable must not contain trusted identity or tool fields: tools")`，直接转换成 `400 Bad Request`，恶意参数在网关最前线被当场粉碎。
+### 场景一：恶意用户试图通过入参注入未授权的 Bash 工具（深度攻防剖析）
+
+#### 1. 核心困惑认知对齐：正常用户“工具传参”到底发生在哪里？
+在理解攻击之前，必须先理清正常用户工具使用的三个完全解耦的阶段——**正常用户压根不需要、也绝不允许在请求报文中直接定义工具列表**：
+1. **工具清单谁决定？（服务端编排与预置）**：
+   - 智能体（如平台旗舰 `dearflow_agent`）拥有的工具集（文件操作、检索、沙箱执行等 38 类工具），是在服务端代码与资产目录（Catalog）中静态或动态编排好的。
+   - 正常用户发起的 `run.start` 请求体中，**仅包含自然语言 Prompt 与受控运行参数**（如 `model_id`, `temperature`, `execution_mode`），压根没有 `tools` 数组字段。
+2. **工具调用的入参谁生成？（大模型自发推理产出）**：
+   - 用户输入 Prompt（如“帮我统计 sales.csv 的前10行”）进入 `runtime-service` 后，系统将工具的 Schema 随上下文传给 LLM。
+   - LLM 推理后自主生成 Tool Call 报文（如 `{"name": "bash_execute", "args": {"command": "head -n 10 sales.csv"}}`），由后端的 ToolNode 在隔离沙箱中执行。**工具参数是 LLM 生成的，不是客户端在 HTTP 请求里硬塞的。**
+3. **人类唯一介入工具参数的阶段：断点审批（HITL）**：
+   - 当高危工具触发中断（Interrupt）挂起等待人类批准时，前端弹窗交互后调用 `input.respond`，此时仅传递 `interrupt_id` 与审批决定（`approve`/`reject`），严禁携带任何工具配置。
+
+#### 2. 恶意用户干了啥？（攻击者抓包注入与提权企图）
+在大量低质量的 Agent 玩具原型中，后端往往盲目透传客户端入参给 LangGraph（Naive Proxy），甚至允许客户端通过 `config.configurable.tools` 动态挂载工具。
+如果一个低权限租户已被管理员在控制面安全策略中禁用了 `bash_execute`（终端命令行工具），攻击者试图抓包并在 `run.start` 中恶意构造如下 Payload：
+```json
+{
+  "id": 666,
+  "method": "run.start",
+  "params": {
+    "assistant_id": "dearflow_agent",
+    "input": {"messages": [{"role": "user", "content": "提权执行敏感操作"}]},
+    "config": {
+      "configurable": {
+        // 恶意注入 1：直接强塞未授权的高危命令行工具
+        "tools": ["bash_execute", "filesystem_destroy"],
+        "enable_tools": ["bash_execute"],
+
+        // 恶意注入 2：伪造受信任的平台身份试图水平越权
+        "user_id": "admin_super_user",
+        "role": "platform_admin",
+
+        // 恶意注入 3：妄图覆盖平台禁用策略，强行把封禁项置为 true（开启）
+        "tool_overrides": {
+          "bash_execute": true
+        }
+      }
+    }
+  }
+}
+```
+**攻击企图**：绕过平台黑名单策略，强制激活 Bash 工具，配合 Prompt Injection 在宿主沙箱或容器中执行任意 Shell 脚本，窃取企业凭证或实施逃逸。
+
+#### 3. 平台的“三道纵深防御防线”（源码级闭环）
+
+```mermaid
+flowchart TD
+    Client["攻击者恶意请求\n(携带 tools / tool_overrides:true)"]
+
+    subgraph Gateway["第一道防线：网关层入口协议白名单清洗 (platform-api)"]
+        Contract["core/runtime_contract.py\nnormalize_protocol_v2_command()"]
+        Check1{"检查 config / metadata 是否含\ntools / enable_tools / 信任身份"}
+    end
+
+    subgraph Minting["第二道防线：权威数据库计算 + 60s短时 Delegation JWT 签名"]
+        PolicyDB[(Platform DB\nRuntimeToolRestrictionRecord)]
+        TokenMint["core/security/tokens.py\nmint_runtime_delegation_token()"]
+        Check2{"tool_overrides 强校验:\n必须全部为 False！"}
+    end
+
+    subgraph Runtime["第三道防线：运行时引擎零信任解析 (runtime-service)"]
+        Resolver["runtime/resolver.py\nresolve_runtime_config()"]
+        ToolMount["剔除 denied_tool_names\n拒绝未知工具限制"]
+    end
+
+    Client --> Contract
+    Contract --> Check1
+    Check1 --"命中非法字段"--> Error400["💥 当场 400 Bad Request 抛出\n粉碎注入参数！"]
+    Check1 --"清洗通过 (白名单参数)"--> PolicyDB
+    PolicyDB --> TokenMint
+    TokenMint --> Check2
+    Check2 --"存在任何 True 覆盖"--> FatalToken["💥 拒绝签发 Token 报错"]
+    Check2 --"安全小票 (TTL 60s)"--> Resolver
+    Resolver --> ToolMount
+    ToolMount --> Execute["安全的图执行状态机"]
+```
+
+- **第一道防线：网关层入口协议归一化与白名单粉碎**
+  - **源码坐标**：[core/runtime_contract.py](../../../apps/platform-api/src/platform_api/core/runtime_contract.py)（`normalize_protocol_v2_command`、`normalize_runtime_contract`）
+  - **防御动作**：网关深入遍历客户端请求中的 `metadata`、`config`、`configurable`，执行 `forbidden = set(value).intersection((*TRUSTED_RUNTIME_CONTEXT_KEYS, "tools", "enable_tools"))`。一旦检测到客户端私自传递 `tools` 或平台受信任上下文，直接抛出 `ValueError` 并转化为 **`400 Bad Request`**，恶意参数在入口处被当场击毙。
+- **第二道防线：控制面根据权威数据库动态计算 + 60s 短时 Delegation JWT（切斯特顿栅栏）**
+  - **源码坐标**：
+    - [modules/runtime_policies/application/service.py](../../../apps/platform-api/src/platform_api/modules/runtime_policies/application/service.py)（`resolve_tool_overrides`）
+    - [core/security/tokens.py](../../../apps/platform-api/src/platform_api/core/security/tokens.py)（`mint_runtime_delegation_token`）
+  - **防御动作**：合法的工具策略完全由平台从权威数据库 `RuntimeToolRestrictionRecord` 中按项目与用户读取，生成 `overrides = {"bash_execute": False}`。
+  - **只减不增原则**：`tokens.py` 内部硬编码强断言 `any(v is not False for v in tool_overrides.values()) -> raise ValueError("tool_overrides must contain only false values")`。系统在数据结构上彻底封死提权可能——`tool_overrides` 只准作为黑名单显式声明 `False`（禁用），绝无声明 `True`（放通）的语法空间！随后以 60 秒超短 TTL 签署成不可篡改的 Delegation JWT。
+
+  <details>
+  <summary>💡 老王说人话：什么是“切斯特顿栅栏”？为什么 tool_overrides 只能是 False？（30秒速懂）</summary>
+
+  1. **生活大白话类比**：野外路中央横着一道木头栅栏，自作聪明的新手嫌挡路想顺手拆掉；长者拦住他：你搞清楚它当初在防什么（比如防狂暴野牛群或掩盖流沙）之前，一根木头都别想动！
+  2. **解决的生产痛点**：新手重构看到 `tool_overrides` 明明是字典却只准填 `False`，自以为很懂地改成“支持填 `True` 动态开启工具以提高灵活性”，结果直接送给黑客一个未授权注入 Bash 提权 RCE 的灾难性大漏洞。
+  3. **本项目怎么落地**：在本项目对应 `core/security/tokens.py` 的 `mint_runtime_delegation_token` 强断言与 `runtime_policies`，深度推演、20行极简代码对比与平台4大经典栅栏清单详见 [concepts/03-chestertons-fence-in-software-defense.md](concepts/03-chestertons-fence-in-software-defense.md)。
+  </details>
+- **第三道防线：运行时引擎零信任解析与物理装配剔除**
+  - **源码坐标**：[runtime/resolver.py](../../../apps/runtime-service/src/runtime_service/runtime/resolver.py)（`parse_tool_overrides`、`resolve_runtime_config`）
+  - **防御动作**：下游 `runtime-service` 根本不信任任何 HTTP Body 里的权限声明，只校验 Delegation JWT 签名。从 JWT 中解出 `denied = set(policy.denied_tool_names)` 后，装配候选工具时强行过滤：
+    ```python
+    optional = tuple(
+        name for name in defaults.optional_tool_names
+        if name not in denied and name in available
+    )
+    ```
+    被策略封禁的 `bash_execute` 在工具装配阶段被彻底剥离。大模型收到的 Prompt 上下文中完全没有该工具的 Schema，任凭攻击者如何诱导，智能体在物理层面根本不具备调用 Bash 的能力。
 
 ### 场景二：长耗时推理期间客户端主动断开 SSE 连接
 - **推演过程**：智能体正在执行长达 2 分钟的代码生成任务，用户浏览器因关闭标签页或网络故障中断连接。

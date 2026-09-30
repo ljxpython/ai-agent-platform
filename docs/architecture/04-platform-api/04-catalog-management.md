@@ -24,6 +24,14 @@
 - **模型凭据入库**：管理接口接收新建模型请求，使用主密钥加密明文 API Key 后落盘，抹除内存中的敏感字符串。
 - **受控按需解密**：下游 `runtime-service` 真正发起推理前，携带合法 Delegation Token 调用内部端点 `/api/runtime/internal/model-config`，目录服务动态解密并返回连接元数据。
 
+<details>
+<summary>💡 老王说人话：为什么跨服务不直接传 API Key，非要用“临时引用暗号”换凭据？（30秒速懂）</summary>
+
+1. **生活大白话类比**：就像去洗浴中心，你绝不会把 10 万块现金塞在浴袍口袋里到处晃悠；前台给你一张盖了防伪章（HMAC 签名）、限时 60 秒（超短 TTL）、带包厢号（项目隔离）的临时纸条，技师拿纸条换一次性精油，用完立刻洗手，绝不把钥匙交给技师。
+2. **解决的生产痛点**：如果微服务间裸传明文 Key，下游日志打一下、抓包瞅一眼公司就破产了；如果只裸传 `model_id`，黑客只要改包就能跨租户偷用竞争对手高配模型（IDOR 越权）。
+3. **本项目怎么落地**：在本项目对应 `modules/runtime_catalog/application/model_connection.py` 的 `create_model_reference` 与 `service.py` 的 `resolve_model_connection`，完整推演、20 行极简对立代码与四重门禁详见 [07-大模型凭据零信任治理与不透明临时引用票据](concepts/07-opaque-token-and-credential-governance.md)。
+</details>
+
 ### 3. 认知输出（支撑后续模块）
 - 为底层 `runtime-service`（后续专题）提供模型连接池配置、动态 Prompt 注入与图拓扑参数的校验依据。
 
@@ -245,6 +253,18 @@ async def refresh_catalog(self, *, actor: ActorContext) -> RuntimeCatalogRefresh
 ### 场景三：攻击者伪造请求试图读取内部模型配置端点
 - **推演过程**：攻击者利用已泄露的普通用户账号，直接向平台内部端点 `/api/runtime/internal/model-config?model_id=xxx` 发起 GET 请求，试图窃取明文 API Key。
 - **系统表现**：该端点挂载了内部认证守卫（Internal Delegation Guard），强制要求请求头包含由平台专门签发给 `runtime-service` 的专用 Delegation JWT。普通用户或 Bearer Token 无法通过签名校验，直接被拦截并返回 `401 Unauthorized`，杜绝凭证窃取风险。
+
+### 场景四：算法或测试团队需要在脱离控制面（Platform-API）的情况下独立自测 Runtime 执行核
+- **推演过程**：算法同学在本地调整 Agent 图节点逻辑或 Prompt，此时不想启动臃肿的 `platform-api`，更不想每次调试都向真实商业大模型扣费。
+- **系统表现**：通过三层解耦测试体系，单元测试可直接通过 `configurable._runtime_model` 依赖注入确定性的 `BindableFakeChatModel`，零鉴权、零网络、零费用毫秒级跑通图状态转移；集成测试则通过本地对称密钥自签发 Delegation Token，完全脱离上层控制面。
+
+<details>
+<summary>💡 老王说人话：底层 Runtime 测自己的逻辑，难道非得把上层全家桶全开起来？（30秒速懂）</summary>
+
+1. **生活大白话类比**：就像汽车厂测试发动机，工程师在测试台架上接个外接电机（Mock 模型），不烧一滴油就能测气缸；而安检门只认戳记，车间拿工模印章自己盖戳（本地自签 Token）就能通关，绝不需要交警大队（Platform-API）到场办公。
+2. **解决的生产痛点**：如果不做测试解耦，执行层就会沦为“分布式单体”，改一行 Prompt 得起 5 个容器、配 3 张表，断网就无法开发，单测跑一次刷爆上千刀大模型账单。
+3. **本项目怎么落地**：在本项目对应 `runtime-service/services/.../agent.py` 的 `_runtime_model` 注入机制与 `tests/support.py`，完整的三层解耦架构详见 [01-执行层微服务自治与无依赖测试架构](../../05-runtime-service/concepts/01-runtime-autonomy-and-decoupled-testing.md)。
+</details>
 
 ---
 

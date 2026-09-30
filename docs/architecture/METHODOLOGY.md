@@ -136,7 +136,10 @@ docs/architecture/
 │   ├── 01-architecture.md                   # 04-01 后端分层架构与领域划分
 │   ├── 02-runtime-gateway.md                # 04-02 网关反向代理与协议转换细节
 │   ├── 03-iam-and-governance.md             # 04-03 IAM 权限、租户隔离与 BYOK 模型治理
-│   └── 04-catalog-management.md             # 04-04 智能体资产目录生命周期管理
+│   ├── 04-catalog-management.md             # 04-04 智能体资产目录生命周期管理
+│   └── concepts/                            # 领域概念透析：控制面进阶知识专篇库 (就近自治)
+│       ├── 01-mvc-ddd-hexagonal.md          # 01 从 MVC 到 DDD 与六边形架构透析
+│       └── 02-onion-middleware-model.md     # 02 深入理解中间件洋葱圈模型 (穿透/短路/防泄漏)
 │
 ├── 05-runtime-service/                      # 第五层：Agent 运行时执行引擎
 │   ├── 01-architecture.md                   # 05-01 运行时 API 与 Worker 双进程架构
@@ -149,12 +152,9 @@ docs/architecture/
 │   ├── 02-hitl-approval-flow.md             # 06-02 工具调用触发审批与恢复全链路
 │   └── 03-subagent-dispatch.md              # 06-03 主智能体派发子智能体与历史回放
 │
-├── 07-agents/                               # 第七层：具体智能体深度剖析与伪代码
-│   ├── 01-dearflow-agent.md                 # 07-01 核心智能体：DearFlow Agent 深度解剖
-│   └── 02-showcase-demo-agent.md            # 07-02 演示智能体：Showcase Agent 最小骨架
-│
-└── concepts/                                # 概念透析：核心门槛知识专篇库
-    └── 01-mvc-ddd-hexagonal.md              # 01 从 MVC 到 DDD 与六边形架构透析
+└── 07-agents/                               # 第七层：具体智能体深度剖析与伪代码
+    ├── 01-dearflow-agent.md                 # 07-01 核心智能体：DearFlow Agent 深度解剖
+    └── 02-showcase-demo-agent.md            # 07-02 演示智能体：Showcase Agent 最小骨架
 ```
 
 ---
@@ -276,7 +276,7 @@ sequenceDiagram
 折叠块展开后的内容严禁长篇大论，严格限制为**三句话**：
 1. **生活大白话类比**：用买菜、开餐馆、修水管等日常场景说明它的本质，严禁使用其他术语套娃。
 2. **解决的核心痛点**：说清楚不搞这个设计，代码在生产环境会烂成什么德行。
-3. **本项目落地映射与传送门**：说明它在当前仓库对应哪几个核心目录或类，并附上直达第二层概念专篇的链接。
+3. **本项目落地映射与传送门**：说明它在当前仓库对应哪几个核心目录或类，并附上就近概念专篇的相对链接。
 
 #### 第一层金牌模板：
 ```html
@@ -285,15 +285,21 @@ sequenceDiagram
 
 1. **生活大白话类比**：[用日常生活常见事物打比方，通俗易懂]。
 2. **解决的生产痛点**：[如果不这么设计，代码会变成什么大泥球，出什么故障]。
-3. **本项目怎么落地**：在本项目对应 `[路径]`，完整推演与 20 行极简对比详见 [concepts/01-mvc-ddd-hexagonal.md](concepts/01-mvc-ddd-hexagonal.md)。
+3. **本项目怎么落地**：在本项目对应 `[路径]`，完整推演与 20 行极简对比详见 [04-platform-api/concepts/01-mvc-ddd-hexagonal.md](04-platform-api/concepts/01-mvc-ddd-hexagonal.md)。
 </details>
 ```
 
 ---
 
-### 3. 第二层：专属概念透析库（Dedicated Concept Deep-Dive）
+### 3. 第二层：专属概念透析库（就近自治与全局字典索引）
 
-所有被原地拐杖引用的重型概念，统一收录在 `docs/architecture/concepts/` 目录下，按数字编号独立立项：`01-{slug}.md`。
+为了避免根目录概念文件夹沦为无序膨胀的“杂物间”，所有被原地拐杖引用的重型概念，**严格遵循“子系统就近自治原则”收录在对应模块目录下的 `concepts/` 专属子文件夹中**：
+- 控制面概念：`docs/architecture/04-platform-api/concepts/{编号}-{slug}.md`
+- 运行时概念：`docs/architecture/05-runtime-service/concepts/{编号}-{slug}.md`
+- 跨服务协议概念：`docs/architecture/02-cross-cutting/concepts/{编号}-{slug}.md`
+- 旗舰 Agent 专有概念：`docs/architecture/07-agents/01-dearflow-agent/concepts/{编号}-{slug}.md`
+
+同时，全局总导航 `docs/architecture/README.md` 统一维护全平台概念总字典索引，确保既能就近快速研读，又能全局一览无余。
 
 #### 概念透析专篇必须遵循的四步金牌结构：
 
