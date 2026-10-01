@@ -1,92 +1,61 @@
-# Runtime 数据库仓储模式重构与 Schema 契约治理专项 - 整体方案
+# Runtime 数据库访问边界收敛与类型补全 - 方案
 
-## 背景
+## 现状与收益
 
-当前 `runtime-service` 采用双轨制存储（引擎链由 LangGraph 官方托管，应用链由自建表托管）。然而在应用链的代码组织上，存在明显的架构反模式：
-1. **“幽灵数据层”**：`apps/runtime-service/src/runtime_service/db/` 根目录下无任何数据结构定义文件，仅有空壳 `__init__.py` 与 `migrations/` 目录。开发者必须去翻 `0001_application.py` 的原始 SQL 字符串才能获知有哪些表和字段，迁移脚本反客为主变成了静态契约事实源。
-2. **“原生 SQL 到处裸奔”**：应用链管理的 4 张表（`runtime_message_inbox`、`dear_memory`、`dear_skills`、`dear_external_tasks`），其读写 SQL 散落在 `messaging/inbox.py`、`services/dearflow_agent/memory.py`、`services/dearflow_agent/skill_governance.py` 和 `services/dearflow_agent/external_task_storage.py` 各自业务文件中，难以统一事务、连接治理与防腐审计。
+`apps/runtime-service/src/runtime_service/db/__init__.py` 已提供 `connect()`、`normalize_dsn()` 和 `upgrade()`；当前连接由 psycopg 直接创建，并没有连接池或独立的公共 transaction 函数。Alembic 迁移入口已使用 SQLAlchemy，本方案不改变该用途。
 
-## 目标
+`MessageInbox`、`MemoryStorage`、`SkillStorage`、`ExternalTaskStorage` 已承担存储职责。问题集中在 Memory/Skills 将业务规则与 SQL 放在同一个文件，而非完全缺少数据访问层。抽取少量 SQL 可以让业务规则更容易阅读和单独验证，但不会自动提高性能或加强安全性；若只增加无意义转发，则不值得继续扩展。
 
-1. 在 `apps/runtime-service/src/runtime_service/db/` 下建立纯类型契约层 `schema.py`，使用不可变 `dataclass` 或 `TypedDict` 清晰定义 4 张表的结构，作为系统静态契约的唯一事实源。
-2. 建立轻量仓储层 `apps/runtime-service/src/runtime_service/db/repositories/`，收敛上述 4 张表的所有原生 SQL 与咨询锁操作。
-3. 重构现有业务模块，将散落在外的硬编码 SQL 替换为仓储接口调用，实现业务逻辑与持久化解耦。
-4. 保持微秒级高性能与原生 `psycopg` 架构，坚决不引入庞大低效的重型 ORM。
+数据库实际结构以已应用迁移后的数据库为准，迁移脚本描述版本演进和建库约束。Python 类型只描述代码使用的数据，不替代数据库的主键、唯一约束、默认值和字段类型。
 
-## 方案设计
+## 代码落点
 
-### 整体架构
+以下均位于 `apps/runtime-service/src/runtime_service/`：
 
-```text
-apps/runtime-service/src/runtime_service/db/
-├── __init__.py               # 连接池与事务基础设施 (connect, transaction, normalize_dsn)
-├── __main__.py              # CLI 升级入口 (python -m runtime_service.db)
-│
-├── schema.py                # 【第一层：强类型契约事实源】
-│                            # 声明 InboxRecord, MemoryDocument, SkillDocument, ExternalTaskRecord
-│
-├── repositories/            # 【第二层：轻量仓储层 (收敛原生 SQL)】
-│   ├── base.py              # 仓储基类与事务上下文绑定
-│   ├── inbox_repo.py        # 负责 runtime_message_inbox 的入队、抢占与冲销
-│   ├── memory_repo.py       # 负责 dear_memory 的租户隔离读写
-│   ├── skills_repo.py       # 负责 dear_skills 的热加载与乐观锁保存
-│   └── tasks_repo.py        # 负责 dear_external_tasks 的租约与状态流转
-│
-└── migrations/              # 【第三层：纯版本演进历史】
-    ├── env.py
-    └── versions/
-        └── 0001_application.py
-```
+| 文件 | 计划改动与职责 |
+|---|---|
+| `db/schema.py`（新增） | 定义 Memory/Skills 实际共用的 scope 类型及必要查询结果 TypedDict；每个类型必须有消费者 |
+| `db/repositories/__init__.py`（新增） | 最小包入口，不构建注册器或统一导出框架 |
+| `db/repositories/memory.py`（新增） | `load_document(db, scope)`、`save_document(db, scope, document)`：查询与 upsert |
+| `db/repositories/skills.py`（新增） | 查询单份文档、列出 slug/文档、插入、更新、删除；仅封装现有 SQL |
+| `services/dearflow_agent/memory.py` | `_load()`、`_write()` 调用 SQL 函数；保留默认文档、revision、epoch、候选记忆、墓碑和提取状态规则 |
+| `services/dearflow_agent/skill_governance.py` | SQL 调用替换；保留包检查、容量、名称、安全检查、revision 校验和摘要生成 |
+| `services/dearflow_agent/governance_storage.py` | 复用现有 `lock_scope()` 和 scope 校验，不改锁键编码 |
+| `db/__init__.py`、`db/migrations/` | 复用连接与迁移基础设施 |
+| `messaging/inbox.py`、`services/dearflow_agent/external_task_storage.py` | 本期不拆分、不新增对应 Repository |
 
-### 关键改动点
+## 类型边界
 
-#### 1. 建立强类型契约层 `schema.py`
-- **文件：** `apps/runtime-service/src/runtime_service/db/schema.py`
-- **改动：** 定义 `InboxMessageRecord`、`DearMemoryRecord`、`DearSkillRecord`、`DearExternalTaskRecord` 等强类型只读数据类。
-- **理由：** 确立数据库事实源，让代码可读、IDE 智能补全，杜绝手写拼写错误。
+先补实际使用的稳定类型，保留字典式返回和现有数据处理方式。不要为四张表复制完整 dataclass，也不为本期未改动的 Inbox/Tasks 新建未使用类型。
 
-#### 2. 实现轻量仓储模块 `db/repositories/`
-- **文件：**
-  - `db/repositories/inbox_repo.py`
-  - `db/repositories/memory_repo.py`
-  - `db/repositories/skills_repo.py`
-  - `db/repositories/tasks_repo.py`
-- **改动：** 将各自的原生 SQL 移植并封装为清晰的函数/方法接口（如 `enqueue_message()`, `claim_messages()`, `get_memory()`, `save_memory()` 等）。
-- **理由：** 关注点分离，集中管理 SQL 语句与参数化绑定，消除注入风险，便于统一单测与 Mock。
+Memory/Skills 的 JSON 文档包含可选字段和历史兼容路径；本期不全量强类型化文档内容，不增加严格反序列化校验。TypedDict 只提供静态提示，不执行运行时校验；frozen dataclass 也不能冻结其内部字典，因此不以“不可变记录”作为本期目标。
 
-#### 3. 平替业务模块中的原生 SQL 散落代码
-- **文件：**
-  - `messaging/inbox.py`
-  - `services/dearflow_agent/memory.py`
-  - `services/dearflow_agent/skill_governance.py`
-  - `services/dearflow_agent/external_task_storage.py`
-- **改动：** 业务层初始化对应 Repository 实例，调用其纯方法完成交互。
-- **理由：** 业务代码专注 Agent 编排，不再污染任何数据表 DDL 与查询字符串。
+类型应对齐实际查询结果：PostgreSQL UUID/timestamptz 与业务层字符串并不等价，不能直接复制面向 HTTP 的字段类型。SQL 模块不反向导入业务模块。
 
-### 技术选型
-- **选型 1：继续使用 `psycopg` (v3) + 原生 SQL**：绝不使用 SQLAlchemy ORM，保障毫秒级推理吞吐与极低内存开销。
-- **选型 2：不可变数据结构 (`dataclass(frozen=True)`)**：仓储层查询结果返回只读不可变记录，防止业务层就地篡改。
+## 事务与业务边界
 
-## 链路影响
+调用关系：现有 HTTP/工具/中间件 → MemoryStorage 或 SkillStorage → SQL 函数 → 同一 psycopg 连接。
 
-### 受影响的调用链路
-```text
-HTTP Request / Agent Step
-    ──► 业务模块 (inbox.py / memory.py)
-    ──► db.repositories (收敛的仓储方法)
-    ──► db.connect() (psycopg 原生连接)
-    ──► PostgreSQL
-```
+- 外层存储方法继续使用 `with connect(self.dsn) as db` 控制事务。
+- SQL 函数显式接收该连接，不自行 connect、commit、rollback 或关闭连接。
+- 咨询锁的获取位置、锁键、持有时间保持原有语义。特别是 Memory `_load()` 当前包含加锁，不能拆成一个独立提交的读取操作。
+- 读取、revision 检查、业务修改、写入必须位于同一事务。Skills 当前依赖咨询锁保护读改写，并非 SQL 自带 revision 条件更新。
+- Memory 的 `_save()` 保留容量检查和 revision 递增；`_write()` 仍允许更新提取元数据而不递增用户 revision。
+- SQL 层读取不存在记录时返回 None；默认文档或 `DocumentError` 由现有业务层处理。
+- 参数绑定、tenant/project/user 过滤、排序和返回值保持一致。Skills 写入只更新指定 slug。
+- Memory 写入后的取消异常必须继续触发整个事务回滚。
 
-### 契约变更
-- **对外 HTTP / Agent 契约：** 完全零变更（向下兼容）。
-- **内部 Python 契约：** 数据库访问统一通过 `runtime_service.db.repositories` 模块导出。
+## 不纳入本期
 
-## 风险和依赖
-- **风险 1：SQL 移植过程中参数绑定疏漏** → **应对：** 为每个 Repository 编写 100% 覆盖的单元测试与集成测试，验证参数化绑定的严格正确性。
-- **风险 2：并发事务与咨询锁释放失效** → **应对：** 仓储层继承原有的事务上下文管理器，确保连接与锁原子归还连接池。
+不建立 BaseRepository、通用 CRUD、Unit of Work 或仓储工厂；不增加 ORM、连接池、异步数据库访问、索引或迁移；不搬迁 Inbox/Tasks；不调整锁粒度、租约、fencing、安全检查或错误契约。
 
-## 实施计划
-1. **Phase 1: 基础设施与契约定义**：创建 `db/schema.py` 与各 Repository 骨架及单测。
-2. **Phase 2: 渐进式业务平替**：按 `inbox` -> `memory` -> `skills` -> `tasks` 顺序逐个替换现有硬编码 SQL。
-3. **Phase 3: 架构验收与全量回归**：执行原有全部 534 项单测并验证脱机运行兼容性。
+不承诺“微秒级吞吐”“1ms 以内”或“零性能衰退”。当前收益是可读性与职责边界；SQL 数量和连接次数应保持一致，性能优化须由后续测量驱动。
+
+## 实施顺序与复评
+
+1. 用户重新评估并确认实施范围。
+2. 记录当前测试基线，补实际使用的类型；不创建闲置骨架。
+3. 先抽 Memory SQL 并跑相关测试，再抽 Skills SQL 并跑相关测试。
+4. 执行 Runtime 回归与质量检查，记录实际通过、失败和跳过项。
+
+若抽取导致更多层间转换、无法保留事务语义，或发现必须调整数据库/安全行为，先明确差异并重新评估，不把这些变化夹带进内部重构。只有出现具体复用需求或可维护性问题，才另行评估 Inbox/Tasks 的拆分。

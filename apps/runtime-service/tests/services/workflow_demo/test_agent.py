@@ -1,13 +1,18 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import hmac
 
+import httpx
 import pytest
 from langgraph.pregel import Pregel
 from langgraph.types import Command
 from support import BindableFakeChatModel
 
 from runtime_service.graphs.workflow_demo import get_agent
+from runtime_service.runtime.errors import RuntimeResolutionError
+from runtime_service.services.demo.workflow_demo import agent
 
 
 def _graph(*responses: str) -> Pregel:
@@ -26,6 +31,106 @@ def _graph(*responses: str) -> Pregel:
 
 def _config(thread_id: str) -> dict[str, object]:
     return {"configurable": {"thread_id": thread_id}}
+
+
+@pytest.mark.parametrize("resume_reference", [None, "renewed-reference"])
+def test_model_connection_is_signed_and_fetched_only_when_responding(
+    monkeypatch, resume_reference
+):
+    monkeypatch.setenv(
+        "PLATFORM_RUNTIME_MODEL_CONFIG_URL", "https://platform.invalid/model"
+    )
+    monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_SECRET", "test-secret")
+    requests = []
+    connection = {
+        "model_id": agent._DEFAULTS.model_id,
+        "provider": "deepseek",
+        "base_url": "https://model.invalid",
+        "protocol": "deepseek",
+        "model": "test-model",
+        "api_key": "test-key",
+    }
+
+    def respond(request):
+        requests.append(request)
+        reference = resume_reference or "original-reference"
+        assert request.headers["x-runtime-model-ref"] == reference
+        assert request.headers["x-project-id"] == "workflow-project"
+        timestamp = request.headers["x-runtime-model-time"]
+        expected = hmac.new(
+            b"test-secret",
+            f"{timestamp}\nworkflow-project\n{reference}".encode(),
+            hashlib.sha256,
+        ).hexdigest()
+        assert request.headers["x-runtime-model-signature"] == expected
+        return httpx.Response(200, json=connection)
+
+    client_type = httpx.AsyncClient
+    monkeypatch.setattr(
+        httpx,
+        "AsyncClient",
+        lambda **kwargs: client_type(transport=httpx.MockTransport(respond), **kwargs),
+    )
+
+    def build_model(resolved, *, connection):
+        assert connection["api_key"] == "test-key"
+        return BindableFakeChatModel(responses=["model response"])
+
+    monkeypatch.setattr(agent, "build_model", build_model)
+
+    async def run():
+        graph = await get_agent(
+            {
+                "configurable": {
+                    "_runtime_test_local_auth": True,
+                    "runtime_model_ref": "original-reference",
+                }
+            }
+        )
+        assert not requests
+        config = _config("workflow-catalog-resume")
+        paused = await graph.ainvoke(
+            {"message": "hello", "requires_confirmation": True}, config
+        )
+        assert paused["__interrupt__"]
+        assert not requests
+        decision = {"decisions": [{"type": "approve"}]}
+        if resume_reference:
+            decision["_runtime_model_ref"] = resume_reference
+        completed = await graph.ainvoke(Command(resume=decision), config)
+        assert completed["response"] == "model response"
+        assert len(requests) == 1
+
+    asyncio.run(run())
+
+
+def test_model_reference_without_endpoint_does_not_fall_back(monkeypatch):
+    monkeypatch.delenv("PLATFORM_RUNTIME_MODEL_CONFIG_URL", raising=False)
+
+    def forbidden(*args, **kwargs):
+        pytest.fail(
+            "invalid model reference must not fall back to environment credentials"
+        )
+
+    monkeypatch.setattr(agent, "build_model", forbidden)
+
+    async def run():
+        graph = await get_agent(
+            {
+                "configurable": {
+                    "_runtime_test_local_auth": True,
+                    "runtime_model_ref": "original-reference",
+                }
+            }
+        )
+        with pytest.raises(
+            RuntimeResolutionError, match="runtime.model.initialization_failed"
+        ):
+            await graph.ainvoke(
+                {"message": "hello"}, _config("workflow-missing-endpoint")
+            )
+
+    asyncio.run(run())
 
 
 @pytest.mark.parametrize(

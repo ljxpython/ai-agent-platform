@@ -13,8 +13,16 @@ from pathlib import PurePosixPath
 from uuid import uuid4
 
 import yaml
-from psycopg.types.json import Jsonb
 
+from runtime_service.db.repositories.skills import (
+    delete_document,
+    get_document,
+    insert_document,
+    list_documents,
+    list_slugs,
+    update_document,
+)
+from runtime_service.db.schema import Scope
 from runtime_service.services.dearflow_agent.governance_storage import (
     connect,
     lock_scope,
@@ -119,14 +127,11 @@ class SkillStorage:
     def __init__(self, dsn: str | None = None):
         self.dsn = dsn
 
-    def _get(self, db, scope, slug):
-        row = db.execute(
-            "SELECT document FROM dear_skills WHERE tenant_id=%s AND project_id=%s AND user_id=%s AND slug=%s",
-            (*scope, slug),
-        ).fetchone()
-        if row is None:
+    def _get(self, db, scope: Scope, slug: str):
+        document = get_document(db, scope, slug)
+        if document is None:
             raise DocumentError("skill_not_found", 404)
-        return row["document"]
+        return document
 
     @staticmethod
     def summary(doc):
@@ -149,10 +154,7 @@ class SkillStorage:
 
     def _save(self, db, scope, doc):
         self._revision(doc)
-        db.execute(
-            "UPDATE dear_skills SET document=%s WHERE tenant_id=%s AND project_id=%s AND user_id=%s AND slug=%s",
-            (Jsonb(doc), *scope, doc["slug"]),
-        )
+        update_document(db, scope, doc)
 
     def create(self, scope, raw: bytes, *, source: str):
         doc = self._inspect(raw, source)
@@ -160,18 +162,12 @@ class SkillStorage:
         self._revision(doc)
         with connect(self.dsn) as db:
             lock_scope(db, scope, "skills")
-            rows = db.execute(
-                "SELECT slug FROM dear_skills WHERE tenant_id=%s AND project_id=%s AND user_id=%s",
-                scope,
-            ).fetchall()
-            if any(r["slug"] == doc["slug"] for r in rows):
+            slugs = list_slugs(db, scope)
+            if doc["slug"] in slugs:
                 raise DocumentError("skill_name_conflict", 409)
-            if len(rows) >= 50:
+            if len(slugs) >= 50:
                 raise DocumentError("skill_capacity", 409)
-            db.execute(
-                "INSERT INTO dear_skills VALUES (%s,%s,%s,%s,%s)",
-                (*scope, doc["slug"], Jsonb(doc)),
-            )
+            insert_document(db, scope, doc)
         return self.summary(doc)
 
     @staticmethod
@@ -194,13 +190,7 @@ class SkillStorage:
     def documents(self, scope, *, enabled_only=False):
         with connect(self.dsn) as db:
             lock_scope(db, scope, "skills")
-            docs = [
-                r["document"]
-                for r in db.execute(
-                    "SELECT document FROM dear_skills WHERE tenant_id=%s AND project_id=%s AND user_id=%s ORDER BY slug",
-                    scope,
-                ).fetchall()
-            ]
+            docs = list_documents(db, scope)
         return [d for d in docs if d["enabled"] or not enabled_only]
 
     def get(self, scope, slug):
@@ -235,7 +225,4 @@ class SkillStorage:
         with connect(self.dsn) as db:
             lock_scope(db, scope, "skills")
             self._check(self._get(db, scope, slug), expected_revision)
-            db.execute(
-                "DELETE FROM dear_skills WHERE tenant_id=%s AND project_id=%s AND user_id=%s AND slug=%s",
-                (*scope, slug),
-            )
+            delete_document(db, scope, slug)

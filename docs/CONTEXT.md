@@ -5,6 +5,10 @@
 
 ## 最后更新
 
+2026-10-01 | Runtime 数据库精简重构完成：新增 Scope 类型和 Memory/Skills SQL helper，保留原事务及锁边界；43 项 PostgreSQL 定向测试通过，全量 564 passed / 61 skipped / 2 failed。Docker 不可用与终端文件未生成两项失败在原 Memory/Skills 源码对照下复现，见专项验证记录。
+
+2026-09-30 | Workflow Demo 模型连接修复：复用公共 fetch_model_connection，补齐模型配置请求签名与异常配置拒绝行为，保留响应节点延迟获取和审批恢复引用优先级。用户确认保留 Agent 显式装配模型、工具和中间件，本轮不实施 RuntimeAgentHarness 架构重构。
+
 2026-09-30 | DearFlow Agent 真实案例端到端全链路实录交付：在 `docs/architecture/07-agents/01-dearflow-agent/` 交付重磅实录《07-真实案例端到端全链路生命周期实录：从用户一句话到沙箱结果落盘》，以真实生产复合场景（GitHub分析+Python沙箱绘图+不可变制品发布+长期记忆注入）为抓手，深度解密 Platform-Web 乐观更新与 SSE 泵、Platform-API 双层 RBAC 与 60s Delegation JWT 签发、Runtime 控制面与 MessageInbox 咨询锁入库、Worker 调度与 10+ 中间件洋葱圈拦截、Docker 断网沙箱与原子硬链接发布，以及在 PostgreSQL、Redis 和物理磁盘上的状态演进细节与 6 重安全栅栏。
 
 2026-09-30 | runtime-service 可观测性与追踪管线专篇交付：完成概念专篇《12-运行时可观测性架构、Langfuse 与 OTel 追踪管线深度剖析》，逐一拆解 `apps/runtime-service/src/runtime_service/observability/` 架构与源码，深度剖析 `_FailSoftCallback` 软着陆动态代理吞噬 APM 异常防止业务中断、零信任元数据消杀与敏感密钥粉碎、本地常驻 `_RuntimeDiagnosticsCallback` 离线 0.05 秒自测断言，以及 5 秒守护线程优雅排空防死锁机制；在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
@@ -51,7 +55,7 @@
 
 ## 活跃项目
 
-- [Runtime 数据库仓储模式重构与 Schema 契约治理](projects/20260930-runtime-database-repository-refactor/README.md)：规划中；针对“幽灵数据层”（无实体定义）与原生 SQL 散落各个业务目录（inbox/memory/skills/tasks）问题，规划 schema.py 契约层与 repositories/ 轻量仓储层，收敛原生 SQL，实现业务与持久化解耦，待方案评审。
+- [Runtime 数据库访问边界收敛与类型补全](projects/20260930-runtime-database-repository-refactor/README.md)：本期 done；Scope 与 Memory/Skills SQL 抽取完成，43 项定向通过；全仓两项范围外失败已对照复现，详见 verification.md。
 - [Runtime Agent 组合根脚手架重构与 DX 体验治理](projects/20260930-runtime-agent-harness-refactor/README.md)：规划中；针对组合根样板代码超标（150+行安全胶水代码）与测试构造心智摩擦，完成方案设计与任务拆分，待方案评审。
 - [DearFlow Agent迁移重审与补齐](projects/20260913-dearflow-agent/README.md)：整体partial；本轮分析规划已交付，接续以12的T01—T10为入口。14效果审计已用7个离线故障场景复现响应终止、空回答、错误完成、循环、预算和Todo缺口；优先T03/T07关键可靠性及真实页面验收，音视频/新版扩展单独评审；不恢复已被后续专项取代的旧设计。
 
@@ -76,7 +80,7 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-09-30 | 交付概念专篇 06~12（可观测性/补丁消音器/Web控制面/工作区沙箱/双轨DB/内核消杀）；存量 Python 诊断清零且 100% 格式化；GraphHarbor post37 升级并支持 checkpoint_ns；单测全通 |
+| runtime-service | 2026-10-01 | Workflow Demo 复用公共模型连接获取，保留延迟初始化与恢复引用；Agent 继续显式装配。交付概念专篇 06~12；GraphHarbor post37 支持 checkpoint_ns；数据库精简重构完成，43 项定向通过；全仓范围外失败见专项验证 |
 | platform-api | 2026-09-28 | 存量 Python 诊断全部清零且 100% 格式化；网关层放通 checkpoint_ns 与 /state/checkpoint；网关层 SSE 流保活心跳注入保持；单测全通 |
 | platform-web | 2026-09-27 | ChatSession 解耦 reconnecting 与红色报错条，仅 paused 展示恢复连接；错误解析、SDK流恢复/410单飞及Workspace线程池有证据；全量Vitest聊天单测221 passed；真实8条容量受HTTP/1.1 origin连接槽限制 |
 | AI Harness（AGENTS.md + Skills） | 2026-09-26 | 整单结束前须逐项核对未完成任务；Task 未完成时只记 Phase，剩余项确需用户行动才可按 blocked 汇报；详见 docs/changes/20260926-harness-completion-reporting.md |

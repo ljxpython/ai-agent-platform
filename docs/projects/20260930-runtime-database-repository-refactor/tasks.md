@@ -1,69 +1,44 @@
-# Runtime 数据库仓储模式重构与 Schema 契约治理专项 - 任务拆分
+# Runtime 数据库访问边界收敛与类型补全 - 任务
 
-## Phase 1: 契约层与轻量仓储基建 (Infrastructure & Contracts)
+## 当前进度
 
-### Task 1.1: 建立强类型契约层 `db/schema.py`
-- **改动内容：** 使用不可变数据类定义 `InboxMessageRecord`、`DearMemoryRecord`、`DearSkillRecord`、`DearExternalTaskRecord`。
-- **代码位置：** `apps/runtime-service/src/runtime_service/db/schema.py`
-- **预期结果：** 具备明确的字段类型、默认值、不可变性 (`frozen=True, slots=True`)。
-- **验证项：** 契约单元测试，验证类型映射与不可变性。
-- **预计：** 0.5天
-- **状态：** `[ ]` 待开始
+- [x] 依据源码修订精简方案及验证计划。
+- [x] 用户确认精简方案，2026-10-01 开始实施。
 
-### Task 1.2: 建立轻量仓储基础架构与 `InboxRepository`
-- **改动内容：** 实现 `db/repositories/inbox_repo.py`，封装 `runtime_message_inbox` 的 `enqueue`, `claim`, `reconcile`, `reclaim` 原生 SQL。
-- **代码位置：** `apps/runtime-service/src/runtime_service/db/repositories/inbox_repo.py`
-- **预期结果：** 提供标准仓储方法，原生 SQL 参数化防注入，支持事务透传。
-- **验证项：** 编写 `tests/db/test_inbox_repo.py`。
-- **预计：** 0.5天
-- **状态：** `[ ]` 待开始
+## T1：必要类型
 
-### Task 1.3: 实现 `MemoryRepository`、`SkillsRepository` 与 `TasksRepository`
-- **改动内容：**
-  - `db/repositories/memory_repo.py`：负责 `dear_memory` 的租户级文档读写。
-  - `db/repositories/skills_repo.py`：负责 `dear_skills` 的查询与更新。
-  - `db/repositories/tasks_repo.py`：负责 `dear_external_tasks` 的状态流转与租约。
-- **代码位置：** `apps/runtime-service/src/runtime_service/db/repositories/`
-- **预期结果：** 全部完成原生 SQL 收敛。
-- **验证项：** 对应单测 `tests/db/test_application_repos.py`。
-- **预计：** 1天
-- **状态：** `[ ]` 待开始
+- **改动内容：** 新增实际使用的 `Scope` 类型别名；数据库连接使用 psycopg `Connection` 类型，不复制四表实体。
+- **代码位置：** `apps/runtime-service/src/runtime_service/db/schema.py`；`apps/runtime-service/src/runtime_service/db/repositories/`。
+- **预期结果：** 类型提示不改变运行时行为。
+- **验证项：** `uvx ruff check src tests` 与 `uvx ruff format --check src tests` 通过；仓库未配置独立类型检查器。Python 编译检查通过。
+- **状态：** [x] 已完成 2026-10-01。
+- **合规检查：** [x] 实现完成；[x] 验证已执行；[x] 进度已更新；CONTEXT/FEATURES 在 T4 统一同步；CHANGELOG 跳过（refactor）。
 
----
+## T2：抽取 Memory SQL
 
-## Phase 2: 业务层渐进式平替 (Incremental Migration)
+- **改动内容：** 将查询和 upsert 提取为接收外层连接的函数；默认文档、revision、epoch、咨询锁和取消回滚保留在存储类。
+- **代码位置：** `apps/runtime-service/src/runtime_service/db/repositories/memory.py`；`apps/runtime-service/src/runtime_service/services/dearflow_agent/memory.py`。
+- **预期结果：** 现有 API、SQL 参数、事务语义兼容。
+- **验证项：** Memory 契约、治理与 Skills 重启定向联合测试 43 passed（显式配置 PostgreSQL DSN，无跳过）。
+- **状态：** [x] 已完成 2026-10-01，见 [实施记录](implementation/01-memory-skills-sql.md)。
+- **合规检查：** [x] 实现完成；[x] 验证已执行；[x] 进度已更新；CONTEXT/FEATURES 在 T4 统一同步；CHANGELOG 跳过（refactor）。
 
-### Task 2.1: 平替 `messaging/inbox.py`
-- **改动内容：** 将 `inbox.py` 中的原生 SQL 替换为调用 `InboxRepository`。
-- **代码位置：** `apps/runtime-service/src/runtime_service/messaging/inbox.py`
-- **预期结果：** 既有 `MessageInbox` 行为 100% 兼容，咨询锁与租约状态机正常工作。
-- **验证项：** `pytest apps/runtime-service/tests/test_inbox.py` 全绿。
-- **预计：** 0.5天
-- **状态：** `[ ]` 待开始
+## T3：抽取 Skills SQL
 
-### Task 2.2: 平替 `dearflow_agent` 相关存储文件
-- **改动内容：**
-  - `services/dearflow_agent/memory.py` -> 改用 `MemoryRepository`；
-  - `services/dearflow_agent/skill_governance.py` -> 改用 `SkillsRepository`；
-  - `services/dearflow_agent/external_task_storage.py` -> 改用 `TasksRepository`。
-- **代码位置：** `apps/runtime-service/src/runtime_service/services/dearflow_agent/`
-- **预期结果：** 消除 3 个业务文件中的全部裸 SQL 字符串。
-- **验证项：** `pytest apps/runtime-service/tests/services/dearflow_agent/` 全部通过。
-- **预计：** 0.5天
-- **状态：** `[ ]` 待开始
+- **改动内容：** 提取单文档读取、文档/slug 列表、插入、更新和删除；业务规则留在 SkillStorage。
+- **代码位置：** `apps/runtime-service/src/runtime_service/db/repositories/skills.py`；`apps/runtime-service/src/runtime_service/services/dearflow_agent/skill_governance.py`。
+- **预期结果：** 保留包安全检查、容量限制、scope 隔离、同事务 revision 检查及执行快照恢复。
+- **验证项：** 同 T2 的 43 项定向测试，包含真实 PostgreSQL 并发与独立进程重启。
+- **状态：** [x] 已完成 2026-10-01，见 [实施记录](implementation/01-memory-skills-sql.md)。
+- **合规检查：** [x] 实现完成；[x] 验证已执行；[x] 进度已更新；CONTEXT/FEATURES 在 T4 统一同步；CHANGELOG 跳过（refactor）。
 
----
+## T4：回归与交付
 
-## Phase 3: 全面验证与架构归档 (Verification & Governance)
+- **改动内容：** 执行 Runtime 全量回归、质量检查并同步最终状态。
+- **代码位置：** `apps/runtime-service/tests/`；本项目文档；`docs/CONTEXT.md`、`docs/FEATURES.md`。
+- **预期结果：** 必验 PostgreSQL 场景通过，全量回归结果如实记录；无迁移、Inbox/Tasks 或外部契约变更。
+- **验证项：** Runtime 全量 564 passed / 61 skipped / 2 failed；两项失败使用改动前 Memory/Skills 代码复现，详见 verification.md；全量 Ruff check/format check 通过。
+- **状态：** [x] 已完成 2026-10-01（本期验收；不代表全仓测试全绿）。
+- **合规检查：** [x] 实现完成；[x] 验证已执行；[x] 进度已更新；[x] CONTEXT/FEATURES 已同步；CHANGELOG 跳过（refactor）。
 
-### Task 3.1: Final 全量回归与脱机自测验证
-- **改动内容：** 运行 `runtime-service` 全量 534 项单测与脱机运行用例，确保零性能衰退、零功能倒退。
-- **验证项：** 单元测试通过率 100%，无 ORM 性能开销，Ruff 0 诊断。
-- **状态：** `[ ]` 待开始
-
----
-
-## 进度追踪
-- [ ] Phase 1 基础建设完成
-- [ ] Phase 2 业务平替完成
-- [ ] Phase 3 全量验证通过
+本次未取得代码修改前的测试基线；以下结论仅来自修改后的实际执行，不宣称前后性能对比。最终结果见 verification.md。

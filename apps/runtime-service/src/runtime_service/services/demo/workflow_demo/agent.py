@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import os
 from collections.abc import Mapping
 
-import httpx
 from langchain.agents import create_agent
 from langchain.agents.middleware import ModelCallLimitMiddleware
 from langchain.tools import tool
@@ -22,6 +20,7 @@ from runtime_service.runtime import (
     RuntimePrincipal,
     RuntimeScope,
     build_model,
+    fetch_model_connection,
     parse_runtime_context,
     reject_untrusted_configurable,
     resolve_runtime_config,
@@ -105,43 +104,6 @@ def _runtime_model(config: RunnableConfig, *, local: bool) -> BaseChatModel | No
     return candidate
 
 
-async def _catalog_connection(
-    config: RunnableConfig,
-    *,
-    model_id: str,
-    project_id: str,
-    reference: object | None = None,
-) -> dict[str, str] | None:
-    configurable = _configurable(config)
-    reference = reference or configurable.get("runtime_model_ref")
-    endpoint = os.getenv("PLATFORM_RUNTIME_MODEL_CONFIG_URL", "").strip()
-    if not reference or not endpoint or not project_id:
-        return None
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            response = await client.get(
-                endpoint,
-                headers={
-                    "x-runtime-model-ref": str(reference),
-                    "x-project-id": project_id,
-                },
-            )
-            response.raise_for_status()
-            payload = response.json()
-    except (httpx.HTTPError, ValueError) as exc:
-        raise RuntimeResolutionError(
-            "runtime.model.initialization_failed", "model_id"
-        ) from exc
-    required = ("provider", "base_url", "protocol", "model", "api_key")
-    if not isinstance(payload, dict) or payload.get("model_id") != model_id:
-        raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
-    if any(
-        not isinstance(payload.get(key), str) or not payload[key] for key in required
-    ):
-        raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
-    return {key: payload[key] for key in required} | {"model_id": model_id}
-
-
 async def get_agent(config: RunnableConfig) -> Pregel:
     """Build the real model-backed workflow Agent with optional HITL routing."""
 
@@ -175,11 +137,11 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         connection = (
             None
             if injected is not None
-            else await _catalog_connection(
-                config,
+            else await fetch_model_connection(
+                state.get("_runtime_model_ref")
+                or configurable.get("runtime_model_ref"),
                 model_id=resolved.model_id,
                 project_id=facts.principal.project_id,
-                reference=state.get("_runtime_model_ref"),
             )
         )
         model = injected or build_model(resolved, connection=connection)

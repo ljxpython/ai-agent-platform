@@ -69,6 +69,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 数据库访问边界收敛与类型补全 | 已完成：Scope 与 Memory/Skills SQL 抽取；43 项定向通过，全仓两项范围外失败见验证记录 | [精简方案](projects/20260930-runtime-database-repository-refactor/README.md) |
 | Runtime 与 GraphHarbor 业务边界解耦 | 部分完成：授权/身份、模型与业务 trace、workspace 及旧 SQL scope 的候选实现已验证；真实 HTTP Thread ACL 与治理浏览器 10 项通过，完整业务链路、文件正向操作与维护切换待验 | [跨仓库协作入口](projects/20260925-runtime-business-boundary-decoupling/README.md) |
 | 智能体 execute 与交互终端统一后端 | 已实现：`RUNTIME_BACKEND=local` 供受信任本地开发使用，Showcase、Dear Agent 与终端不依赖 Docker；独立 Runtime 默认 Docker，保留执行审批 | [项目记录](projects/20260923-dear-agent-local-execute/README.md) |
 | Runtime 工具治理收敛与平台禁用例外 | 后端/Runtime 开发及本轮验证完成；前端由用户接入，联合发布待执行：Runtime 执行、平台管理禁用例外、Catalog 仅展示，旧功能不兼容 | [专项方案](projects/20260920-runtime-optional-tool-resolution/README.md) |

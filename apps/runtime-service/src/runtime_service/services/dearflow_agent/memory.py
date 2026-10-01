@@ -10,7 +10,6 @@ from threading import Event
 from typing import Literal
 from uuid import uuid4
 
-from psycopg.types.json import Jsonb
 from pydantic import (
     AwareDatetime,
     BaseModel,
@@ -20,6 +19,8 @@ from pydantic import (
     model_validator,
 )
 
+from runtime_service.db.repositories.memory import load_document, save_document
+from runtime_service.db.schema import Scope
 from runtime_service.services.dearflow_agent.governance_storage import (
     connect,
     lock_scope,
@@ -142,13 +143,10 @@ class MemoryStorage:
     def __init__(self, dsn: str | None = None):
         self.dsn = dsn
 
-    def _load(self, db, scope):
+    def _load(self, db, scope: Scope):
         lock_scope(db, scope, "memory")
-        row = db.execute(
-            "SELECT document FROM dear_memory WHERE tenant_id=%s AND project_id=%s AND user_id=%s",
-            scope,
-        ).fetchone()
-        return row["document"] if row else fresh_document()
+        document = load_document(db, scope)
+        return document if document is not None else fresh_document()
 
     def _save(self, db, scope, doc):
         if len(doc["facts"]) > 100 or len(doc["candidates"]) > 100:
@@ -157,11 +155,7 @@ class MemoryStorage:
         self._write(db, scope, doc)
 
     def _write(self, db, scope, doc):
-        db.execute(
-            """INSERT INTO dear_memory VALUES (%s,%s,%s,%s)
-            ON CONFLICT (tenant_id,project_id,user_id) DO UPDATE SET document=EXCLUDED.document""",
-            (*scope, Jsonb(doc)),
-        )
+        save_document(db, scope, doc)
 
     def read(self, scope, query: str = "", *, include_candidates=True):
         if len(query) > 500:
