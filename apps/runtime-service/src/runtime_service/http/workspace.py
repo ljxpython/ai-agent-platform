@@ -132,7 +132,7 @@ async def preview(
             "X-Content-Type-Options": "nosniff",
             "Content-Disposition": "inline",
             "Referrer-Policy": "no-referrer",
-            "Content-Security-Policy": "sandbox; " + HTML_CSP,
+            "Content-Security-Policy": "sandbox allow-scripts; " + HTML_CSP,
         },
     )
 

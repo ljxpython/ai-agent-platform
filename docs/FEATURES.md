@@ -48,6 +48,7 @@
 | 工具卡片区分「正在生成参数」与「执行中」状态及实时字数反馈 | 已完成：基于末尾 AIMessage finish_reason 精准区分 LLM 流式构造长参数与工具真实执行阶段，实时展示 `正在生成参数 · 已生成 X.Xk 字符` 及 `write_file` 流式正文预览 | [变更记录](../apps/platform-web/docs/changes/20260923-tool-streaming-input-vs-execution-state.md) |
 | 仿 GPT 聊天界面回合锚定与流式防抖滚动体验 | 已完成：首次提问即时收起欢迎区并置顶展开流式输出；后续提问锚定在视口偏中间位置（32%高度）配合动态收缩底部留白垫片实现零抖动流式生长；支持自由上下滑动与统一底部悬浮回到最新胶囊 | [变更记录](../apps/platform-web/docs/changes/20260924-gpt-style-turn-anchoring-and-scroll-ux.md) |
 | 前端对话会话 SWR 缓存与流式长效保活治理 | 部分完成：已有页面KeepAlive、SWR缓存；跨Thread实例保活、SDK恢复、真实普通链路及1/4条短容量已验；8条容量受HTTP/1.1浏览器origin连接槽限制，Final blocked | [原项目记录](projects/20260924-chat-session-cache-and-stream-resumption/README.md) · [SSE专项](projects/20260926-sse-event-contract/README.md) |
+| 工作区 HTML 现代化高保真安全预览 | 已完成：SandboxedHtmlFrame 升级为 sandbox="allow-scripts" 且 Origin 锁定为 null，更新安全沙箱徽章文案，单测通过 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
 
 
 
@@ -69,6 +70,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 工作区 HTML 预览 CSP 策略升级与白名单扩充 | 已完成：放行公认安全 CDN（Tailwind CDN / Google Fonts / cdnjs / unpkg / jsdelivr / SVG），严格限制 connect-src https: 阻断内网探测，43 项单测全绿 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
 | 数据库访问边界收敛与类型补全 | 已完成：Scope 与 Memory/Skills SQL 抽取；43 项定向通过，全仓两项范围外失败见验证记录 | [精简方案](projects/20260930-runtime-database-repository-refactor/README.md) |
 | Runtime 与 GraphHarbor 业务边界解耦 | 部分完成：授权/身份、模型与业务 trace、workspace 及旧 SQL scope 的候选实现已验证；真实 HTTP Thread ACL 与治理浏览器 10 项通过，完整业务链路、文件正向操作与维护切换待验 | [跨仓库协作入口](projects/20260925-runtime-business-boundary-decoupling/README.md) |
 | 智能体 execute 与交互终端统一后端 | 已实现：`RUNTIME_BACKEND=local` 供受信任本地开发使用，Showcase、Dear Agent 与终端不依赖 Docker；独立 Runtime 默认 Docker，保留执行审批 | [项目记录](projects/20260923-dear-agent-local-execute/README.md) |

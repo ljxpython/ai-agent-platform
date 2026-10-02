@@ -137,13 +137,24 @@ def test_generated_images_and_type_mismatch(tmp_path, extension, format):
 def test_html_has_no_active_navigation_or_script():
     html = safe_html(
         '<meta http-equiv="refresh" content="0;url=https://evil.test">'
-        '<base href="https://evil.test"><script>fetch("https://evil.test")</script>'
-        '<a href="https://evil.test"><b onclick="alert(1)">hello</b></a>'
-        '<iframe src="https://evil.test"></iframe><img src="https://evil.test/a">'
+        '<base href="https://evil.test">'
+        '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC">'
+        '<link rel="stylesheet" href="javascript:alert(1)">'
+        '<script src="https://cdn.tailwindcss.com"></script>'
+        '<script src="javascript:alert(2)"></script>'
+        "<script>tailwind.config = { theme: {} };</script>"
+        '<a href="javascript:alert(3)"><b onclick="alert(4)">hello</b></a>'
+        '<iframe src="https://evil.test"></iframe>'
         '<div style="color:red">diagram</div>'
     )
-    assert "https://evil.test" not in html
-    assert "onclick" not in html and "<script" not in html and "<iframe" not in html
+    assert "onclick" not in html
+    assert "<iframe" not in html
+    assert "<base" not in html
+    assert "javascript:" not in html
+    assert "refresh" not in html
+    assert "https://fonts.googleapis.com/css2" in html
+    assert "https://cdn.tailwindcss.com" in html
+    assert "tailwind.config" in html
     assert "Content-Security-Policy" in html and "diagram" in html
 
 

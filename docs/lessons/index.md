@@ -5,7 +5,7 @@
 | 文件 | 覆盖范围 | 条数 |
 |---|---|---|
 | [ai-workflow.md](ai-workflow.md) | AI 工作流、Harness、Skill 设计、文档规范 | 4 |
-| [runtime-service.md](runtime-service.md) | runtime-service 服务内部、模块导入、工具治理 | 1 |
+| [runtime-service.md](runtime-service.md) | runtime-service 服务内部、模块导入、工具治理 | 2 |
 
 ## 新增经验的流程
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import BaseIcon from '@/components/base/BaseIcon.vue';
+import { ref } from "vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
 
 const props = defineProps<{
   html: string;
@@ -27,16 +27,17 @@ function toggleFullScreen() {
     <div
       class="flex h-10 shrink-0 items-center justify-between border-b border-gray-200 bg-gray-50/80 px-3 dark:border-dark-800 dark:bg-dark-950/60"
     >
-      <div class="flex items-center gap-2 text-xs text-gray-500 dark:text-dark-300">
-        <BaseIcon
-          name="shield"
-          class="h-3.5 w-3.5 text-primary-500"
-        />
+      <div
+        class="flex items-center gap-2 text-xs text-gray-500 dark:text-dark-300"
+      >
+        <BaseIcon name="shield" class="h-3.5 w-3.5 text-primary-500" />
         <span class="font-medium text-gray-700 dark:text-dark-100">
-          {{ title || 'HTML 安全沙箱预览' }}
+          {{ title || "HTML 安全沙箱预览" }}
         </span>
-        <span class="rounded bg-gray-200/60 px-1.5 py-0.5 text-[10px] text-gray-500 dark:bg-dark-800 dark:text-dark-400">
-          禁用脚本与外链
+        <span
+          class="rounded bg-gray-200/60 px-1.5 py-0.5 text-[10px] text-gray-500 dark:bg-dark-800 dark:text-dark-400"
+        >
+          独立脚本沙箱 (零同源凭据)
         </span>
       </div>
 
@@ -59,7 +60,7 @@ function toggleFullScreen() {
     <div class="relative min-h-0 flex-1 bg-white">
       <iframe
         :srcdoc="props.html"
-        sandbox=""
+        sandbox="allow-scripts"
         referrerpolicy="no-referrer"
         class="h-full w-full border-0 bg-white"
         :title="title || 'Sandboxed Preview'"

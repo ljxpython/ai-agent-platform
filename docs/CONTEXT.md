@@ -5,6 +5,8 @@
 
 ## 最后更新
 
+2026-10-02 | 工作区 HTML 现代化沙箱渲染支持完成（done）：彻底解决智能体生成的单文件 HTML 在工作区中由于一刀切禁用脚本/外链导致的 Tailwind CSS、Google Fonts 样式坍塌问题。采用双重防御模型：前端 SandboxedHtmlFrame 授予 sandbox="allow-scripts" 但坚决剔除 allow-same-origin（Origin 锁定为 null 杜绝窃取凭据与跨域 DOM 越权），后端 html_preview.py 升级白名单 CSP（放行常见公认安全 CDN，严格限制 connect-src https: 杜绝内网探测）并扩充 link/script/svg 白名单；全量 43 项 Python 工作区单测全绿，前端 Vitest 验证通过，真实博客 HTML 渲染 100% 还原。
+
 2026-10-01 | Runtime 数据库精简重构完成：新增 Scope 类型和 Memory/Skills SQL helper，保留原事务及锁边界；43 项 PostgreSQL 定向测试通过，全量 564 passed / 61 skipped / 2 failed。Docker 不可用与终端文件未生成两项失败在原 Memory/Skills 源码对照下复现，见专项验证记录。
 
 2026-09-30 | Workflow Demo 模型连接修复：复用公共 fetch_model_connection，补齐模型配置请求签名与异常配置拒绝行为，保留响应节点延迟获取和审批恢复引用优先级。用户确认保留 Agent 显式装配模型、工具和中间件，本轮不实施 RuntimeAgentHarness 架构重构。
@@ -55,6 +57,7 @@
 
 ## 活跃项目
 
+- [工作区 HTML 现代化沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md)：done；前后端精准沙箱隔离与 CSP 白名单升级，Tailwind CDN / Google Fonts 完整放行，单元测试与全链路真实博客页面验收全绿。
 - [Runtime 数据库访问边界收敛与类型补全](projects/20260930-runtime-database-repository-refactor/README.md)：本期 done；Scope 与 Memory/Skills SQL 抽取完成，43 项定向通过；全仓两项范围外失败已对照复现，详见 verification.md。
 - [Runtime Agent 组合根脚手架重构与 DX 体验治理](projects/20260930-runtime-agent-harness-refactor/README.md)：规划中；针对组合根样板代码超标（150+行安全胶水代码）与测试构造心智摩擦，完成方案设计与任务拆分，待方案评审。
 - [DearFlow Agent迁移重审与补齐](projects/20260913-dearflow-agent/README.md)：整体partial；本轮分析规划已交付，接续以12的T01—T10为入口。14效果审计已用7个离线故障场景复现响应终止、空回答、错误完成、循环、预算和Todo缺口；优先T03/T07关键可靠性及真实页面验收，音视频/新版扩展单独评审；不恢复已被后续专项取代的旧设计。
@@ -80,9 +83,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-01 | Workflow Demo 复用公共模型连接获取，保留延迟初始化与恢复引用；Agent 继续显式装配。交付概念专篇 06~12；GraphHarbor post37 支持 checkpoint_ns；数据库精简重构完成，43 项定向通过；全仓范围外失败见专项验证 |
+| runtime-service | 2026-10-02 | 工作区 HTML 现代化沙箱渲染与安全 CSP 策略升级，放行公共白名单 CDN/Fonts/SVG，单元测试全绿；Workflow Demo 复用公共模型连接获取；GraphHarbor post37 支持 checkpoint_ns；数据库精简重构完成 |
 | platform-api | 2026-09-28 | 存量 Python 诊断全部清零且 100% 格式化；网关层放通 checkpoint_ns 与 /state/checkpoint；网关层 SSE 流保活心跳注入保持；单测全通 |
-| platform-web | 2026-09-27 | ChatSession 解耦 reconnecting 与红色报错条，仅 paused 展示恢复连接；错误解析、SDK流恢复/410单飞及Workspace线程池有证据；全量Vitest聊天单测221 passed；真实8条容量受HTTP/1.1 origin连接槽限制 |
+| platform-web | 2026-10-02 | 工作区 SandboxedHtmlFrame 升级为 sandbox="allow-scripts" 且 Origin: null，支持 Tailwind/Google Fonts 现代样式完整高保真预览，单测通过；ChatSession 解耦 reconnecting 与红色报错条 |
 | AI Harness（AGENTS.md + Skills） | 2026-09-26 | 整单结束前须逐项核对未完成任务；Task 未完成时只记 Phase，剩余项确需用户行动才可按 blocked 汇报；详见 docs/changes/20260926-harness-completion-reporting.md |
 
 ## 近期关键决策

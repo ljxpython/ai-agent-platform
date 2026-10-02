@@ -51,7 +51,9 @@ def test_signed_workspace_http(monkeypatch, tmp_path, graph):
                 params={"path": "/workspace/work/view.html"},
                 headers=headers,
             )
-            assert preview.status_code == 200 and "<script" not in preview.text
+            assert (
+                preview.status_code == 200 and "Content-Security-Policy" in preview.text
+            )
             assert "sandbox" in preview.headers["content-security-policy"]
             for token, url, status in [
                 (_make_token(operation="read"), prefix + "/workspace/tree", 403),
@@ -134,8 +136,11 @@ def test_dear_artifact_types_errors_and_scope(monkeypatch, tmp_path):
                     )
                     assert preview.headers["content-type"] == "image/png"
                 elif name.endswith(".html"):
-                    assert preview.status_code == 200 and "<script" not in preview.text
-                    assert "Content-Security-Policy" in preview.text
+                    assert (
+                        preview.status_code == 200
+                        and "Content-Security-Policy" in preview.text
+                    )
+                    assert "sandbox" in preview.headers["content-security-policy"]
                 else:
                     assert preview.json()["text"] == sources[name].decode()
                     assert preview.json()["truncated"] is False
