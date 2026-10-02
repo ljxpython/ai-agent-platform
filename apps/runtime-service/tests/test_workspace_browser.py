@@ -144,6 +144,8 @@ def test_html_has_no_active_navigation_or_script():
         '<script src="javascript:alert(2)"></script>'
         "<script>tailwind.config = { theme: {} };</script>"
         '<a href="javascript:alert(3)"><b onclick="alert(4)">hello</b></a>'
+        '<a class="skip" href="#main">跳到正文</a>'
+        '<a href="https://example.com" target="_blank" rel="noopener">链接</a>'
         '<iframe src="https://evil.test"></iframe>'
         '<div style="color:red">diagram</div>'
     )
@@ -155,6 +157,10 @@ def test_html_has_no_active_navigation_or_script():
     assert "https://fonts.googleapis.com/css2" in html
     assert "https://cdn.tailwindcss.com" in html
     assert "tailwind.config" in html
+    assert '<a class="skip" href="#main">跳到正文</a>' in html
+    assert (
+        '<a href="https://example.com" target="_blank" rel="noopener">链接</a>' in html
+    )
     assert "Content-Security-Policy" in html and "diagram" in html
 
 
