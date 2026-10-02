@@ -247,7 +247,13 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     if not mode.delegation:
         available.discard("task")
     if not os.environ.get("TAVILY_API_KEY"):
-        available.difference_update({"search_web", "fetch_page"})
+        available.discard("search_web")
+    if not (
+        os.environ.get("TAVILY_API_KEY")
+        or os.environ.get("JINA_API_KEY")
+        or os.environ.get("JINA_KEY")
+    ):
+        available.discard("fetch_page")
 
     if executing:
         available.difference_update(configured_mcp_names())

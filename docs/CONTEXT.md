@@ -5,6 +5,8 @@
 
 ## 最后更新
 
+2026-10-02 | DearFlow Agent 接入 Jina Reader 网页深度提取与双通道容灾完成（done）：落地 deer-flow 架构哲学，形成“Tavily 语义搜索（search_web）+ Jina Reader 高质量 Markdown 正文阅读（fetch_page）”黄金组合。实现 jina_extract 并改造 fetch_page 支持 Jina 优先、异常/超时平滑降级 Tavily Extract，严守 public_url SSRF 防护与 _evidence SHA256 原子硬链接落盘；agent.py 解耦工具过滤判定；15 项 research 单测全绿，真实网络端到端提取实测通过。
+
 2026-10-02 | 工作区 HTML 现代化沙箱渲染支持完成（done）：彻底解决智能体生成的单文件 HTML 在工作区中由于一刀切禁用脚本/外链导致的 Tailwind CSS、Google Fonts 样式坍塌问题。采用双重防御模型：前端 SandboxedHtmlFrame 授予 sandbox="allow-scripts" 但坚决剔除 allow-same-origin（Origin 锁定为 null 杜绝窃取凭据与跨域 DOM 越权），后端 html_preview.py 升级白名单 CSP（放行常见公认安全 CDN，严格限制 connect-src https: 杜绝内网探测）并扩充 link/script/svg 白名单；全量 43 项 Python 工作区单测全绿，前端 Vitest 验证通过，真实博客 HTML 渲染 100% 还原。
 
 2026-10-01 | Runtime 数据库精简重构完成：新增 Scope 类型和 Memory/Skills SQL helper，保留原事务及锁边界；43 项 PostgreSQL 定向测试通过，全量 564 passed / 61 skipped / 2 failed。Docker 不可用与终端文件未生成两项失败在原 Memory/Skills 源码对照下复现，见专项验证记录。
@@ -57,6 +59,7 @@
 
 ## 活跃项目
 
+- [DearFlow Agent 接入 Jina Reader 网页深度提取](projects/20261002-dearflow-jina-reader-integration/README.md)：done；Jina Reader API（r.jina.ai）高质量 Markdown 深度提取与双通道平滑容灾降级已实装，单测与真实网络提取验证全绿。
 - [工作区 HTML 现代化沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md)：done；前后端精准沙箱隔离与 CSP 白名单升级，Tailwind CDN / Google Fonts 完整放行，单元测试与全链路真实博客页面验收全绿。
 - [Runtime 数据库访问边界收敛与类型补全](projects/20260930-runtime-database-repository-refactor/README.md)：本期 done；Scope 与 Memory/Skills SQL 抽取完成，43 项定向通过；全仓两项范围外失败已对照复现，详见 verification.md。
 - [Runtime Agent 组合根脚手架重构与 DX 体验治理](projects/20260930-runtime-agent-harness-refactor/README.md)：规划中；针对组合根样板代码超标（150+行安全胶水代码）与测试构造心智摩擦，完成方案设计与任务拆分，待方案评审。

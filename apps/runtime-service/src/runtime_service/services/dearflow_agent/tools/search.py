@@ -86,6 +86,62 @@ async def tavily(operation: str, payload: dict) -> dict:
         raise ToolException("research_provider_failed") from exc
 
 
+async def jina_extract(url: str) -> dict:
+    key = (os.environ.get("JINA_API_KEY") or os.environ.get("JINA_KEY") or "").strip()
+    headers = {
+        "X-Return-Format": "markdown",
+        "X-Timeout": "20",
+        "X-No-Cache": "false",
+        "Accept": "application/json",
+    }
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+    try:
+        async with (
+            asyncio.timeout(25),
+            httpx.AsyncClient(
+                timeout=20, follow_redirects=True, trust_env=True
+            ) as client,
+        ):
+            async with client.stream(
+                "GET",
+                "https://r.jina.ai/" + url,
+                headers=headers,
+            ) as response:
+                response.raise_for_status()
+                data = bytearray()
+                async for chunk in response.aiter_bytes():
+                    data.extend(chunk)
+                    if len(data) > 1024 * 1024:
+                        raise ToolException("research_response_too_large")
+
+        try:
+            parsed = json.loads(data)
+            if (
+                isinstance(parsed, dict)
+                and "data" in parsed
+                and isinstance(parsed["data"], dict)
+            ):
+                inner = parsed["data"]
+                content = inner.get("content") or ""
+                return {
+                    "url": inner.get("url") or url,
+                    "title": inner.get("title") or "",
+                    "content": content,
+                }
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            pass
+
+        text = data.decode("utf-8", errors="replace")
+        return {
+            "url": url,
+            "title": "",
+            "content": text,
+        }
+    except (httpx.HTTPError, ValueError, TimeoutError) as exc:
+        raise ToolException("jina_provider_failed") from exc
+
+
 def _evidence(workspace, runtime: ToolRuntime, records: list[dict]):
     if workspace is None:
         raise ToolException("research_probe_only")
@@ -193,26 +249,65 @@ def build_research_tools(workspace):
 
     @tool(response_format="content_and_artifact")
     async def fetch_page(url: str, runtime: ToolRuntime):
-        """Read public page text through Tavily extract, not a local browser or crawler."""
+        """Read public page text through Jina Reader or Tavily extract, not a local browser or crawler."""
         await public_url(url)
-        result = await tavily(
-            "extract", {"urls": [url], "extract_depth": "basic", "format": "text"}
-        )
         records = []
-        for item in result.get("results", [])[:1]:
-            final_url = await public_url(item["url"])
-            content = item.get("raw_content")
-            if not isinstance(content, str) or not content.strip():
-                raise ToolException("research_empty_page")
-            records.append(
-                {
-                    "source_url": final_url,
-                    "requested_url": url,
-                    "title": item.get("title") or "",
-                    "kind": "page_text",
-                    "content": content,
-                }
-            )
+        jina_key = (
+            os.environ.get("JINA_API_KEY") or os.environ.get("JINA_KEY") or ""
+        ).strip()
+        if jina_key:
+            try:
+                jina_res = await jina_extract(url)
+                content = jina_res.get("content")
+                if isinstance(content, str) and content.strip():
+                    final_url = await public_url(jina_res.get("url") or url)
+                    records.append(
+                        {
+                            "source_url": final_url,
+                            "requested_url": url,
+                            "title": jina_res.get("title") or "",
+                            "kind": "page_text",
+                            "content": content,
+                        }
+                    )
+            except ToolException as exc:
+                if exc.args and exc.args[0] == "research_response_too_large":
+                    raise
+            except Exception:
+                pass
+
+        if not records:
+            if os.environ.get("TAVILY_API_KEY"):
+                try:
+                    result = await tavily(
+                        "extract",
+                        {"urls": [url], "extract_depth": "basic", "format": "text"},
+                    )
+                    for item in result.get("results", [])[:1]:
+                        final_url = await public_url(item["url"])
+                        content = item.get("raw_content")
+                        if not isinstance(content, str) or not content.strip():
+                            raise ToolException("research_empty_page")
+                        records.append(
+                            {
+                                "source_url": final_url,
+                                "requested_url": url,
+                                "title": item.get("title") or "",
+                                "kind": "page_text",
+                                "content": content,
+                            }
+                        )
+                except ToolException as exc:
+                    if exc.args and exc.args[0] in (
+                        "research_response_too_large",
+                        "research_empty_page",
+                    ):
+                        raise
+            elif not jina_key:
+                raise ToolException(
+                    "research_unavailable: No research provider configured"
+                )
+
         if not records:
             raise ToolException("research_extract_failed")
         return _evidence(workspace, runtime, records)
