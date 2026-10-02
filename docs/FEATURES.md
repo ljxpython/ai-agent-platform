@@ -49,6 +49,7 @@
 | 仿 GPT 聊天界面回合锚定与流式防抖滚动体验 | 已完成：首次提问即时收起欢迎区并置顶展开流式输出；后续提问锚定在视口偏中间位置（32%高度）配合动态收缩底部留白垫片实现零抖动流式生长；支持自由上下滑动与统一底部悬浮回到最新胶囊 | [变更记录](../apps/platform-web/docs/changes/20260924-gpt-style-turn-anchoring-and-scroll-ux.md) |
 | 前端对话会话 SWR 缓存与流式长效保活治理 | 部分完成：已有页面KeepAlive、SWR缓存；跨Thread实例保活、SDK恢复、真实普通链路及1/4条短容量已验；8条容量受HTTP/1.1浏览器origin连接槽限制，Final blocked | [原项目记录](projects/20260924-chat-session-cache-and-stream-resumption/README.md) · [SSE专项](projects/20260926-sse-event-contract/README.md) |
 | 工作区 HTML 现代化高保真安全预览 | 已完成：SandboxedHtmlFrame 升级为 sandbox="allow-scripts" 且 Origin 锁定为 null，更新安全沙箱徽章文案，单测通过 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
+| 对话输入灵感胶囊栏与微物理撒花小惊喜（ConfettiButton & ComposerSuggestions） | 已完成：实装基于 canvas-confetti 的五彩粒子喷射按钮与动态灵感胶囊栏，支持快捷填入小惊喜、写作、调研、分析等指令模板，与 ChatComposer 双向联动；单测与打包全通过 | [小惊喜迁移专项](projects/20261002-dearflow-surprise-me-feature/README.md) |
 
 
 
@@ -72,6 +73,7 @@
 |---|---|---|
 | 工作区 HTML 预览 CSP 策略升级与白名单扩充 | 已完成：放行公认安全 CDN（Tailwind CDN / Google Fonts / cdnjs / unpkg / jsdelivr / SVG），严格限制 connect-src https: 阻断内网探测，43 项单测全绿 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
 | DearFlow Agent 接入 Jina Reader 网页深度提取与双通道容灾 | 已完成：Jina Reader API（r.jina.ai）高质量 Markdown 提取上线，首选 Jina、超时/异常自动平滑降级 Tavily Extract，严守 public_url 防御与 SHA256 证据落盘 | [Jina Reader 集成](projects/20261002-dearflow-jina-reader-integration/README.md) |
+| DearFlow Agent 单文件交互式创意编程与惊喜作品规范 | 已完成：确立纯原生零外部依赖、Web Audio 音效合成、Canvas/SVG 交互的单文件 HTML 规范，通过 present_artifacts 发布并在 SandboxedHtmlFrame 免刷新实时试玩 | [小惊喜迁移专项](projects/20261002-dearflow-surprise-me-feature/README.md) |
 | 数据库访问边界收敛与类型补全 | 已完成：Scope 与 Memory/Skills SQL 抽取；43 项定向通过，全仓两项范围外失败见验证记录 | [精简方案](projects/20260930-runtime-database-repository-refactor/README.md) |
 | Runtime 与 GraphHarbor 业务边界解耦 | 部分完成：授权/身份、模型与业务 trace、workspace 及旧 SQL scope 的候选实现已验证；真实 HTTP Thread ACL 与治理浏览器 10 项通过，完整业务链路、文件正向操作与维护切换待验 | [跨仓库协作入口](projects/20260925-runtime-business-boundary-decoupling/README.md) |
 | 智能体 execute 与交互终端统一后端 | 已实现：`RUNTIME_BACKEND=local` 供受信任本地开发使用，Showcase、Dear Agent 与终端不依赖 Docker；独立 Runtime 默认 Docker，保留执行审批 | [项目记录](projects/20260923-dear-agent-local-execute/README.md) |

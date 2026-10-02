@@ -5,6 +5,8 @@
 
 ## 最后更新
 
+2026-10-02 | DearFlow Agent 灵感建议与“小惊喜”创意工坊完成（done）：全面落地原版 deer-flow 创意互动体验。前端实装微物理动效 ConfettiButton 与可扩展灵感胶囊栏 ComposerSuggestions（含“🎉 小惊喜”、“📝 深度写作”、“🔬 敏捷调研”、“📊 数据洞察”、“💻 交互单页”），并无缝集成 ChatComposer 双向草稿同步；后端在 DearFlow Agent 提示词中确立单文件零依赖纯原生创意编程规范（Web Audio 合成音效 + Canvas/SVG 微动画），与 SandboxedHtmlFrame 形成高保真免刷新试玩闭环；全量前端 Vitest（19 套/67 项）通过，pnpm build 打包通过，后端 Agent 单测（33 项）全绿。
+
 2026-10-02 | DearFlow Agent 接入 Jina Reader 网页深度提取与双通道容灾完成（done）：落地 deer-flow 架构哲学，形成“Tavily 语义搜索（search_web）+ Jina Reader 高质量 Markdown 正文阅读（fetch_page）”黄金组合。实现 jina_extract 并改造 fetch_page 支持 Jina 优先、异常/超时平滑降级 Tavily Extract，严守 public_url SSRF 防护与 _evidence SHA256 原子硬链接落盘；agent.py 解耦工具过滤判定；15 项 research 单测全绿，真实网络端到端提取实测通过。
 
 2026-10-02 | 工作区 HTML 现代化沙箱渲染支持完成（done）：彻底解决智能体生成的单文件 HTML 在工作区中由于一刀切禁用脚本/外链导致的 Tailwind CSS、Google Fonts 样式坍塌问题。采用双重防御模型：前端 SandboxedHtmlFrame 授予 sandbox="allow-scripts" 但坚决剔除 allow-same-origin（Origin 锁定为 null 杜绝窃取凭据与跨域 DOM 越权），后端 html_preview.py 升级白名单 CSP（放行常见公认安全 CDN，严格限制 connect-src https: 杜绝内网探测）并扩充 link/script/svg 白名单；全量 43 项 Python 工作区单测全绿，前端 Vitest 验证通过，真实博客 HTML 渲染 100% 还原。
@@ -59,6 +61,7 @@
 
 ## 活跃项目
 
+- [DearFlow Agent 灵感建议与“小惊喜”创意工坊](projects/20261002-dearflow-surprise-me-feature/README.md)：done；前端 Confetti 动效按钮与灵感胶囊栏实装，后端创意交互网页生成规范与工作区沙箱高保真免刷新预览闭环，单测及生产打包全绿。
 - [DearFlow Agent 接入 Jina Reader 网页深度提取](projects/20261002-dearflow-jina-reader-integration/README.md)：done；Jina Reader API（r.jina.ai）高质量 Markdown 深度提取与双通道平滑容灾降级已实装，单测与真实网络提取验证全绿。
 - [工作区 HTML 现代化沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md)：done；前后端精准沙箱隔离与 CSP 白名单升级，Tailwind CDN / Google Fonts 完整放行，单元测试与全链路真实博客页面验收全绿。
 - [Runtime 数据库访问边界收敛与类型补全](projects/20260930-runtime-database-repository-refactor/README.md)：本期 done；Scope 与 Memory/Skills SQL 抽取完成，43 项定向通过；全仓两项范围外失败已对照复现，详见 verification.md。
@@ -86,9 +89,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-02 | 工作区 HTML 现代化沙箱渲染与安全 CSP 策略升级，放行公共白名单 CDN/Fonts/SVG，单元测试全绿；Workflow Demo 复用公共模型连接获取；GraphHarbor post37 支持 checkpoint_ns；数据库精简重构完成 |
+| runtime-service | 2026-10-02 | DearFlow Agent 确立单文件零依赖创意交互作品规范（原生 Web Audio + Canvas/SVG）；Jina Reader 高质量提取与容灾降级已就绪；工作区 HTML 现代化沙箱渲染与安全 CSP 白名单升级；单测全绿 |
 | platform-api | 2026-09-28 | 存量 Python 诊断全部清零且 100% 格式化；网关层放通 checkpoint_ns 与 /state/checkpoint；网关层 SSE 流保活心跳注入保持；单测全通 |
-| platform-web | 2026-10-02 | 工作区 SandboxedHtmlFrame 升级为 sandbox="allow-scripts" 且 Origin: null，支持 Tailwind/Google Fonts 现代样式完整高保真预览，单测通过；ChatSession 解耦 reconnecting 与红色报错条 |
+| platform-web | 2026-10-02 | ChatComposer 接入 ComposerSuggestions 灵感胶囊栏与 ConfettiButton 微物理撒花动效；SandboxedHtmlFrame 高保真免刷新预览；单测与生产构建打包全绿 |
 | AI Harness（AGENTS.md + Skills） | 2026-09-26 | 整单结束前须逐项核对未完成任务；Task 未完成时只记 Phase，剩余项确需用户行动才可按 blocked 汇报；详见 docs/changes/20260926-harness-completion-reporting.md |
 
 ## 近期关键决策

@@ -8,34 +8,41 @@ import {
 import ChatAttachmentPreview from "./ChatAttachmentPreview.vue";
 import ChatModelSelector from "./ChatModelSelector.vue";
 import ThreadAccessPolicySelect from "./ThreadAccessPolicySelect.vue";
+import ComposerSuggestions from "./ComposerSuggestions.vue";
 import type { RuntimeModelItem } from "@/types/management";
 import type { AccessPolicy } from "@/services/threads/session.service";
 
-const props = defineProps<{
-  modelValue: string;
-  attachments: ChatAttachmentBlock[];
-  isRunning: boolean;
-  hasBlockingInterrupt: boolean;
-  canSendFreshMessage: boolean;
-  cancelling: boolean;
-  sendButtonLabel: string;
-  canQueue?: boolean;
-  hasQueuedItems?: boolean;
-  compact?: boolean;
-  focusMode?: boolean;
-  models?: RuntimeModelItem[];
-  selectedModelId?: string;
-  defaultModelId?: string;
-  defaultModelName?: string;
-  placeholder?: string;
-  footerText?: string;
-  projectId?: string;
-  accessPolicy?: AccessPolicy;
-  accessPolicyUpdating?: boolean;
-  canWrite?: boolean;
-  canSetPolicy?: boolean;
-  canFullAccess?: boolean;
-}>();
+const props = withDefaults(
+  defineProps<{
+    modelValue: string;
+    attachments: ChatAttachmentBlock[];
+    isRunning: boolean;
+    hasBlockingInterrupt: boolean;
+    canSendFreshMessage: boolean;
+    cancelling: boolean;
+    sendButtonLabel: string;
+    canQueue?: boolean;
+    hasQueuedItems?: boolean;
+    compact?: boolean;
+    focusMode?: boolean;
+    models?: RuntimeModelItem[];
+    selectedModelId?: string;
+    defaultModelId?: string;
+    defaultModelName?: string;
+    placeholder?: string;
+    footerText?: string;
+    projectId?: string;
+    accessPolicy?: AccessPolicy;
+    accessPolicyUpdating?: boolean;
+    canWrite?: boolean;
+    canSetPolicy?: boolean;
+    canFullAccess?: boolean;
+    showSuggestions?: boolean;
+  }>(),
+  {
+    showSuggestions: true,
+  },
+);
 
 const emit = defineEmits<{
   "update:modelValue": [value: string];
@@ -48,6 +55,7 @@ const emit = defineEmits<{
   "update:selectedModelId": [value: string];
   "update:accessPolicy": [value: AccessPolicy];
   "change:accessPolicy": [value: AccessPolicy];
+  "select-suggestion": [prompt: string];
 }>();
 
 const fileInputRef = ref<HTMLInputElement | null>(null);
@@ -211,6 +219,23 @@ function handleKeydown(event: KeyboardEvent) {
   }
 }
 
+const shouldShowSuggestions = computed(
+  () =>
+    (props.showSuggestions ?? true) &&
+    !props.isRunning &&
+    !props.hasBlockingInterrupt &&
+    !composerModel.value.trim(),
+);
+
+function handleSelectSuggestion(prompt: string) {
+  composerModel.value = prompt;
+  nextTick(async () => {
+    textareaRef.value?.focus();
+    await syncTextareaHeight();
+  });
+  emit("select-suggestion", prompt);
+}
+
 onMounted(async () => {
   await syncTextareaHeight();
 });
@@ -238,6 +263,20 @@ defineExpose({
     >
       <slot name="top-tray" />
     </div>
+
+    <!-- 灵感建议胶囊栏（支持小惊喜撒花与一键填入） -->
+    <div
+      v-if="shouldShowSuggestions"
+      class="mx-auto mb-1.5 w-full max-w-4xl px-3 lg:max-w-5xl"
+      :class="isFocusMode ? '!max-w-[780px]' : ''"
+      data-testid="composer-suggestions-container"
+    >
+      <ComposerSuggestions
+        :disabled="isRunning"
+        @select="handleSelectSuggestion"
+      />
+    </div>
+
     <div
       class="pw-chat-composer transition-[border-color,box-shadow] duration-150 focus-within:border-gray-300 focus-within:shadow-md dark:focus-within:border-dark-600"
       :class="isFocusMode ? 'max-w-[780px]' : ''"

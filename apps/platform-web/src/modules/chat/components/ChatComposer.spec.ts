@@ -82,7 +82,9 @@ describe("ChatComposer", () => {
     const sendBtn = wrapper.findAll("button").at(-1);
     expect(sendBtn?.attributes("disabled")).toBeUndefined();
 
-    await wrapper.find("textarea").trigger("keydown", { key: "Enter", shiftKey: false });
+    await wrapper
+      .find("textarea")
+      .trigger("keydown", { key: "Enter", shiftKey: false });
     expect(wrapper.emitted("send")).toHaveLength(1);
   });
 
@@ -94,7 +96,9 @@ describe("ChatComposer", () => {
       isRunning: true,
     });
 
-    await wrapper.find("textarea").trigger("keydown", { key: "Enter", shiftKey: false });
+    await wrapper
+      .find("textarea")
+      .trigger("keydown", { key: "Enter", shiftKey: false });
     expect(wrapper.emitted("queue")).toHaveLength(1);
   });
 
@@ -109,8 +113,38 @@ describe("ChatComposer", () => {
 
     expect(wrapper.text()).toContain("补充要求");
     expect(wrapper.text()).toContain("排队");
-    await wrapper.find("textarea").trigger("keydown", { key: "Enter", shiftKey: false });
+    await wrapper
+      .find("textarea")
+      .trigger("keydown", { key: "Enter", shiftKey: false });
     expect(wrapper.emitted("queue")).toHaveLength(1);
     expect(wrapper.emitted("send")).toBeUndefined();
+  });
+
+  it("renders composer suggestions when draft is empty and not running", async () => {
+    const wrapper = mountComposer({
+      modelValue: "",
+      isRunning: false,
+    });
+
+    const suggestions = wrapper.find(
+      '[data-testid="composer-suggestions-container"]',
+    );
+    expect(suggestions.exists()).toBe(true);
+    expect(suggestions.text()).toContain("小惊喜");
+  });
+
+  it("hides composer suggestions when draft is non-empty or agent is running", async () => {
+    const wrapper = mountComposer({
+      modelValue: "已输入内容",
+      isRunning: false,
+    });
+    expect(
+      wrapper.find('[data-testid="composer-suggestions-container"]').exists(),
+    ).toBe(false);
+
+    await wrapper.setProps({ modelValue: "", isRunning: true });
+    expect(
+      wrapper.find('[data-testid="composer-suggestions-container"]').exists(),
+    ).toBe(false);
   });
 });
