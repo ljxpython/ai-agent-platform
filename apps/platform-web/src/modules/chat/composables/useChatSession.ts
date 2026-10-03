@@ -366,10 +366,7 @@ export function useChatSession(options: {
             await thread.reconnectEvents();
           return;
         }
-        const [snapshot, history] = await Promise.all([
-          service.state(id),
-          service.history(id),
-        ]);
+        const snapshot = await service.state(id);
         if (disposed || threadId.value !== id) return;
         if (epoch !== checkEpoch || currentRunId !== run.value?.run_id) {
           await verify(false);
@@ -379,7 +376,24 @@ export function useChatSession(options: {
         }
         applyAccessThread(access);
         recoverySnapshot.value = snapshot.values;
-        chatSessionStore.setSessionHistory(options.projectId, id, history);
+        // 历史快照后台非阻塞异步预热，不阻塞断流恢复主流程，网络或超时异常静默软降级
+        void service
+          .history(id)
+          .then((history) => {
+            if (!disposed && threadId.value === id && history) {
+              chatSessionStore.setSessionHistory(
+                options.projectId,
+                id,
+                history,
+              );
+            }
+          })
+          .catch((historyErr) => {
+            console.warn(
+              `[recoverExpiredStream] Non-blocking history preheat failed for thread ${id}:`,
+              historyErr,
+            );
+          });
         error.value = "历史流已过期，已刷新当前状态；部分过程无法恢复";
         await thread.reconnectEvents();
       })

@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[3]
 HISTORY = (
     "runtime_events",
     "run_leases",
+    "run_checkpoint_baselines",
     "retry_counters",
     "runtime_message_inbox",
     "dear_external_tasks",
@@ -32,6 +33,7 @@ HISTORY = (
     "runs",
     "threads",
 )
+
 TOKEN_FILTER = "expires_at <= CURRENT_TIMESTAMP OR revoked_at IS NOT NULL"
 
 
@@ -52,9 +54,16 @@ def validate_test_name(name, protected):
         )
 
 
-def history_counts(connection, *, runtime):
+def history_counts(connection, *, runtime: bool, cancel_unfinished_runs: bool = False):
     if runtime:
-        if connection.execute(
+        if cancel_unfinished_runs:
+            connection.execute(
+                text(
+                    "UPDATE runs SET status = 'cancelled' WHERE status NOT IN "
+                    "('success', 'error', 'failed', 'timeout', 'cancelled', 'canceled', 'interrupted')"
+                )
+            )
+        elif connection.execute(
             text(
                 "SELECT count(*) FROM runs WHERE status NOT IN "
                 "('success', 'error', 'failed', 'timeout', 'cancelled', 'canceled', 'interrupted')"
@@ -71,6 +80,7 @@ def history_counts(connection, *, runtime):
             )
         ).scalar_one():
             raise ValueError("Pending external tasks exist.")
+
         return {
             name: connection.execute(
                 text(f'SELECT count(*) FROM "{name}"')
@@ -90,12 +100,14 @@ def history_counts(connection, *, runtime):
     }
 
 
-def clean(connection, *, runtime):
+def clean(connection, *, runtime: bool, cancel_unfinished_runs: bool = False):
     names = HISTORY if runtime else ("refresh_tokens", "run_requests", "audit_logs")
     tables = ", ".join(f'"{name}"' for name in names)
     connection.execute(text("SET LOCAL lock_timeout = '5s'"))
     connection.execute(text(f"LOCK TABLE {tables} IN ACCESS EXCLUSIVE MODE"))
-    before = history_counts(connection, runtime=runtime)
+    before = history_counts(
+        connection, runtime=runtime, cancel_unfinished_runs=cancel_unfinished_runs
+    )
     if runtime:
         connection.execute(text(f"TRUNCATE TABLE {tables} RESTRICT"))
     else:
@@ -131,6 +143,20 @@ def backup_database(url, directory, pg_bin):
     )
 
 
+def get_default_pg_bin() -> Path:
+    if "PG_BIN" in os.environ:
+        return Path(os.environ["PG_BIN"])
+    for candidate in (
+        Path("/usr/local/opt/postgresql@17/bin"),
+        Path("/opt/homebrew/opt/postgresql@17/bin"),
+        Path("/usr/local/opt/postgresql@16/bin"),
+        Path("/opt/homebrew/opt/postgresql@16/bin"),
+    ):
+        if (candidate / "pg_dump").is_file():
+            return candidate
+    return Path(shutil.which("pg_dump") or "pg_dump").parent
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -143,7 +169,13 @@ def main():
         action="store_true",
         help="All conversations, including interrupted runs and checkpoints",
     )
+    parser.add_argument(
+        "--cancel-unfinished-runs",
+        action="store_true",
+        help="Cancel orphaned or unfinished runs before cleanup",
+    )
     parser.add_argument("--drop-test-database", action="append", default=[])
+
     parser.add_argument("--confirm-database", action="append", default=[])
     parser.add_argument("--writers-stopped", action="store_true")
     mode = parser.add_mutually_exclusive_group()
@@ -152,12 +184,9 @@ def main():
     parser.add_argument(
         "--pg-bin",
         type=Path,
-        default=Path(
-            os.environ.get(
-                "PG_BIN", str(Path(shutil.which("pg_dump") or "pg_dump").parent)
-            )
-        ),
+        default=get_default_pg_bin(),
     )
+
     args = parser.parse_args()
     engines = []
     try:
@@ -244,7 +273,11 @@ def main():
                     )
                 report[url.database] = {
                     "action": kind,
-                    "counts": history_counts(connection, runtime=kind == "runtime")
+                    "counts": history_counts(
+                        connection,
+                        runtime=kind == "runtime",
+                        cancel_unfinished_runs=args.cancel_unfinished_runs,
+                    )
                     if kind != "drop"
                     else {},
                 }
@@ -268,15 +301,31 @@ def main():
                     connection.execute(text(f"DROP DATABASE {name}"))  # No FORCE.
             else:
                 with engine.begin() as connection:
-                    clean(connection, runtime=kind == "runtime")
+                    clean(
+                        connection,
+                        runtime=kind == "runtime",
+                        cancel_unfinished_runs=args.cancel_unfinished_runs,
+                    )
+
             report[url.database]["completed"] = True
             (directory / "manifest.json").write_text(json.dumps(report, indent=2))
         print(
             json.dumps({"backup": str(directory.relative_to(ROOT)), "results": report})
         )
     except Exception as exc:  # noqa: BLE001 - redact driver and subprocess secrets at CLI boundary.
-        message = str(exc) if type(exc) is ValueError else type(exc).__name__
+        if isinstance(exc, subprocess.CalledProcessError):
+            err = (
+                exc.stderr.decode("utf-8", errors="replace").strip()
+                if exc.stderr
+                else str(exc)
+            )
+            message = f"Command failed ({exc.cmd[0]}): {err}"
+        elif isinstance(exc, ValueError):
+            message = str(exc)
+        else:
+            message = type(exc).__name__
         raise SystemExit(f"History cleanup failed: {message}") from None
+
     finally:
         for engine in engines:
             engine.dispose()

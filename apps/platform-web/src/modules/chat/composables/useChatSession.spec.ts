@@ -222,6 +222,95 @@ it("recovers one expired cursor when suspension synchronously reports the same 4
     mocks.runs.mockReset();
   }
 });
+it("recovers stream smoothly without failure even if history fetch fails or times out with 504", async () => {
+  const expired = Object.assign(new Error("expired"), { status: 410 });
+  const timeout504 = Object.assign(new Error("LangGraph upstream timed out"), {
+    status: 504,
+  });
+  let listener:
+    | ((state: {
+        state: string;
+        streams: { state: string; error?: Error }[];
+      }) => void)
+    | undefined;
+  const streamThread = {
+    onConnectionChange: vi.fn((callback: typeof listener) => {
+      listener = callback;
+      callback?.({ state: "connected", streams: [{ state: "connected" }] });
+      return vi.fn();
+    }),
+    suspendEvents: vi.fn(() =>
+      listener?.({
+        state: "paused",
+        streams: [{ state: "paused", error: expired }],
+      }),
+    ),
+    reconnectEvents: vi.fn(async () => {}),
+    getConnectionState: vi.fn(() => ({
+      state: "paused",
+      streams: [{ state: "paused", error: expired }],
+    })),
+  };
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+    getThread: () => streamThread,
+  });
+  mocks.getThread.mockResolvedValue({
+    thread_id: "t",
+    metadata: { allowed_actions: ["read", "comment"] },
+  });
+  mocks.state.mockResolvedValue({
+    values: { messages: [{ role: "assistant", content: "hello" }] },
+  });
+  // 模拟 history 接口发生 504 严重超时！
+  mocks.history.mockRejectedValue(timeout504);
+  mocks.runs.mockResolvedValue([]);
+  const scope = effectScope();
+  try {
+    let session!: ReturnType<typeof useChatSession>;
+    scope.run(() => {
+      session = useChatSession({
+        projectId: "p",
+        graphId: "reference_agent",
+        threadId: "t",
+        context: ref({}),
+        canWrite: ref(true),
+        onThread: vi.fn(),
+        onRefresh: vi.fn(),
+        onReconnect: vi.fn(),
+      });
+    });
+    await flushPromises();
+    // 触发 410 流过期
+    listener?.({
+      state: "paused",
+      streams: [{ state: "paused", error: expired }],
+    });
+    await flushPromises();
+    // 验证核心自愈链路全部通畅，没有被 history 504 中断
+    expect(streamThread.suspendEvents).toHaveBeenCalledTimes(1);
+    expect(mocks.state).toHaveBeenCalledTimes(1);
+    expect(streamThread.reconnectEvents).toHaveBeenCalledTimes(1);
+    // 验证状态机平稳自愈，快照成功恢复，绝不进入 failed 态
+    expect(session.status.value).not.toBe("failed");
+    expect(session.recoverySnapshot.value).toEqual({
+      messages: [{ role: "assistant", content: "hello" }],
+    });
+    expect(session.error.value).toBe(
+      "历史流已过期，已刷新当前状态；部分过程无法恢复",
+    );
+  } finally {
+    scope.stop();
+    mocks.getThread.mockReset();
+    mocks.state.mockReset();
+    mocks.history.mockReset();
+    mocks.runs.mockReset();
+  }
+});
 it("discards a stale 410 snapshot and resumes the paused stream after a new Run appears", async () => {
   const expired = Object.assign(new Error("expired"), { status: 410 });
   let listener:

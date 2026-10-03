@@ -1525,7 +1525,6 @@ async function loadHistory(reset = false, limit = 20) {
   const currentThread = session.threadId.value;
   if (!currentThread || historyLoading.value) return;
   historyLoading.value = true;
-  localError.value = "";
   try {
     const rows = await session.service.history(
       currentThread,
@@ -1567,9 +1566,12 @@ async function loadHistory(reset = false, limit = 20) {
     }
     hasMoreHistory.value = rows.length === limit;
   } catch (cause) {
-    if (!disposed)
-      localError.value =
-        cause instanceof Error ? cause.message : "历史加载失败";
+    if (!disposed) {
+      console.warn(
+        `[loadHistory] Failed to load history snapshot for ${currentThread}:`,
+        cause,
+      );
+    }
   } finally {
     if (!disposed) historyLoading.value = false;
   }
@@ -1846,7 +1848,9 @@ watch(
       const cached = chatSessionStore.getSession(props.projectId, id);
       history.value = cached?.history ?? [];
       cachedDisplayMessages.value = cached?.messages ?? [];
-      void loadHistory(true);
+      if (drawerOpen.value) {
+        void loadHistory(true);
+      }
       return;
     }
     if (
@@ -1855,7 +1859,9 @@ watch(
       !verifying &&
       (prevRunning || history.value.length === 0)
     ) {
-      void loadHistory(true);
+      if (drawerOpen.value) {
+        void loadHistory(true);
+      }
     }
   },
   { immediate: true },

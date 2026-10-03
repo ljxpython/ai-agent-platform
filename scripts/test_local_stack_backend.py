@@ -65,6 +65,11 @@ start
                 self.assertEqual(path.read_bytes(), b"must remain unchanged")
             self.assertNotIn("DROP DATABASE", local_script.read_text())
             self.assertNotIn("CASCADE", local_script.read_text())
+            help_result = subprocess.run(["bash", str(local_script), "--help"], capture_output=True, text=True, timeout=10, check=False)
+            self.assertEqual(help_result.returncode, 0)
+            self.assertIn("--clean-test-env", help_result.stdout)
+            self.assertIn("--keep-project-name", help_result.stdout)
+
 
     def test_terminal_switch(self):
         script = Path(__file__).with_name("local-stack.sh").resolve()

@@ -737,3 +737,90 @@ def test_chart_mcp_error_returns_friendly_message(monkeypatch, tmp_path):
         "Chart generation failed: Failed to generate chart: Something went wrong in AntV"
         in result.content[0].text
     )
+
+
+def test_resolve_vision_config_precedence(monkeypatch):
+    # 清理所有相关变量
+    for key in (
+        "VISION_MODEL",
+        "VISION_API_KEY",
+        "VISION_API_BASE",
+        "VISION_BASE_URL",
+        "DEEPSEEK_API_KEY",
+        "DEEPSEEK_PROXY_API_KEY",
+        "DEEPSEEK_URL",
+        "DEEPSEEK_PROXY_URL",
+        "DEEPSEEK_VISION_MODEL",
+        "DOUBAO_MODEL",
+        "DOUBAO_API_KEY",
+        "DOUBAO_API_BASE",
+        "DOUBAO_MAX_TOKENS",
+        "VISION_MAX_TOKENS",
+    ):
+        monkeypatch.delenv(key, raising=False)
+
+    # 1. 缺失配置抛出异常
+    with pytest.raises(ToolException, match="Runtime vision configuration is missing"):
+        images.resolve_vision_config()
+
+    # 2. 只有 DOUBAO 时回退使用 DOUBAO
+    monkeypatch.setenv("DOUBAO_MODEL", "doubao-vision")
+    monkeypatch.setenv("DOUBAO_API_KEY", "doubao-key")
+    monkeypatch.setenv("DOUBAO_API_BASE", "https://doubao.test/v3")
+    assert images.resolve_vision_config() == (
+        "doubao-vision",
+        "doubao-key",
+        "https://doubao.test/v3",
+        2048,
+    )
+
+    # 3. 注入 DEEPSEEK_API_KEY 时优先选用 DeepSeek
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "ds-key")
+    monkeypatch.setenv("DEEPSEEK_URL", "https://api.deepseek.com")
+    assert images.resolve_vision_config() == (
+        "deepseek-flash",
+        "ds-key",
+        "https://api.deepseek.com",
+        2048,
+    )
+
+    # 4. 显式通用 VISION_* 具有最高优先级
+    monkeypatch.setenv("VISION_MODEL", "custom-vision")
+    monkeypatch.setenv("VISION_API_KEY", "vision-key")
+    monkeypatch.setenv("VISION_API_BASE", "https://custom.vision/v1")
+    monkeypatch.setenv("VISION_MAX_TOKENS", "4000")
+    assert images.resolve_vision_config() == (
+        "custom-vision",
+        "vision-key",
+        "https://custom.vision/v1",
+        4000,
+    )
+
+
+def test_analyze_image_preserves_error_details(monkeypatch, tmp_path):
+    workspace = images.ImageWorkspace(tmp_path)
+    tools = images.build_image_tools(workspace)
+    analyze_tool = next(t for t in tools if t.name == "analyze_image")
+    path = workspace.save(png(), "generated")
+
+    class FailingVision:
+        def __init__(self, **kwargs):
+            pass
+
+        async def ainvoke(self, messages, **kwargs):
+            exc = Exception("ClosedEndpoint")
+            exc.body = {
+                "error": {
+                    "code": "InvalidEndpoint.ClosedEndpoint",
+                    "message": "Endpoint is closed",
+                }
+            }
+            raise exc
+
+    monkeypatch.setattr(images, "ChatOpenAI", FailingVision)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+
+    res = asyncio.run(analyze_tool.ainvoke({"image_path": path, "question": "test"}))
+    assert "InvalidEndpoint.ClosedEndpoint" in str(res) or "Endpoint is closed" in str(
+        res
+    )

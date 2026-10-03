@@ -5,6 +5,12 @@
 
 ## 最后更新
 
+2026-10-03 | Runtime 视觉识图全面支持 DeepSeek 官方多模态与盲吞异常消灭完成（done）：彻底解决 `analyze_image` 强绑定火山豆包及盲吞异常抛出无用废话问题。实现 `resolve_vision_config` 多级配置解析（通用 `VISION_*` > DeepSeek 官方配置 `DEEPSEEK_*` > 兼容回退 `DOUBAO_*`）；默认采用 `deepseek-flash` 官方多模态识图；彻底透出底层真实 `error.code` 与 `message`；单测全绿（22 passed）并通过真实页面截图端到端识图实测验收。
+
+2026-10-02 | 长会话断流恢复解耦与历史快照按需懒加载治理完成（done）：彻底根治 100+ 步长会话下 Checkpoint 历史快照（3.4MB+）导致的断流重连 504 假死超时。解耦 useChatSession.ts 中 recoverExpiredStream 对巨型 service.history 的强制阻塞等待，仅拉取轻量级 service.state 实现 0.05 秒瞬时极速自愈，并转为非阻塞异步预热与静默软降级；加固 ChatSession.vue 移除 loadHistory 错误对全局红色横幅的污染，并增加抽屉展开懒加载守卫；新增 504 容错单测（24 passed），全量 19 套聊天组件单测（67 passed）与 pnpm build 打包全绿。
+
+2026-10-02 | DearFlow Agent 创意模式防死循环与无头测试防卷护栏完成（done）：彻底解决“小惊喜”与创意单页场景下 Agent 自建无头测试（osascript/JXA mock DOM/Audio）与递归调用 fetch_web_guidelines 导致的 50 步 ModelCallLimitExceeded 假死熔断问题。明确 fetch_web_guidelines 仅限显式静态审计任务，在 prompts.py 中确立单文件编写完成即刻 present_artifacts 交付原则，严禁在无真实浏览器环境中编写复杂 mock 自测脚本；定向 Agent 单测（24 passed）与 Ruff 格式全绿。
+
 2026-10-02 | DearFlow Agent 灵感建议与“小惊喜”创意工坊完成（done）：全面落地原版 deer-flow 创意互动体验。前端实装微物理动效 ConfettiButton 与可扩展灵感胶囊栏 ComposerSuggestions（含“🎉 小惊喜”、“📝 深度写作”、“🔬 敏捷调研”、“📊 数据洞察”、“💻 交互单页”），并无缝集成 ChatComposer 双向草稿同步；后端在 DearFlow Agent 提示词中确立单文件零依赖纯原生创意编程规范（Web Audio 合成音效 + Canvas/SVG 微动画），与 SandboxedHtmlFrame 形成高保真免刷新试玩闭环；全量前端 Vitest（19 套/67 项）通过，pnpm build 打包通过，后端 Agent 单测（33 项）全绿。
 
 2026-10-02 | DearFlow Agent 接入 Jina Reader 网页深度提取与双通道容灾完成（done）：落地 deer-flow 架构哲学，形成“Tavily 语义搜索（search_web）+ Jina Reader 高质量 Markdown 正文阅读（fetch_page）”黄金组合。实现 jina_extract 并改造 fetch_page 支持 Jina 优先、异常/超时平滑降级 Tavily Extract，严守 public_url SSRF 防护与 _evidence SHA256 原子硬链接落盘；agent.py 解耦工具过滤判定；15 项 research 单测全绿，真实网络端到端提取实测通过。
@@ -61,6 +67,7 @@
 
 ## 活跃项目
 
+- [长会话断流恢复解耦与历史快照按需懒加载治理](projects/20261002-chat-history-lazy-loading-and-timeout-resilience/README.md)：done；解耦断流恢复对 3.4MB 巨型 history 的阻塞依赖，仅拉取 state 毫秒级极速自愈并后台静默预热；加固 ChatSession 抽屉懒加载与错误隔离，单测与生产构建全绿。
 - [DearFlow Agent 灵感建议与“小惊喜”创意工坊](projects/20261002-dearflow-surprise-me-feature/README.md)：done；前端 Confetti 动效按钮与灵感胶囊栏实装，后端创意交互网页生成规范与工作区沙箱高保真免刷新预览闭环，单测及生产打包全绿。
 - [DearFlow Agent 接入 Jina Reader 网页深度提取](projects/20261002-dearflow-jina-reader-integration/README.md)：done；Jina Reader API（r.jina.ai）高质量 Markdown 深度提取与双通道平滑容灾降级已实装，单测与真实网络提取验证全绿。
 - [工作区 HTML 现代化沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md)：done；前后端精准沙箱隔离与 CSP 白名单升级，Tailwind CDN / Google Fonts 完整放行，单元测试与全链路真实博客页面验收全绿。
@@ -89,9 +96,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-02 | DearFlow Agent 确立单文件零依赖创意交互作品规范（原生 Web Audio + Canvas/SVG）；Jina Reader 高质量提取与容灾降级已就绪；工作区 HTML 现代化沙箱渲染与安全 CSP 白名单升级；单测全绿 |
+| runtime-service | 2026-10-03 | 图像识别分析工具（analyze_image）支持 DeepSeek 官方多模态识图（deepseek-flash）与通用 VISION_*，消灭盲吞异常并保留错误详情；单测全通 |
 | platform-api | 2026-09-28 | 存量 Python 诊断全部清零且 100% 格式化；网关层放通 checkpoint_ns 与 /state/checkpoint；网关层 SSE 流保活心跳注入保持；单测全通 |
-| platform-web | 2026-10-02 | ChatComposer 接入 ComposerSuggestions 灵感胶囊栏与 ConfettiButton 微物理撒花动效；SandboxedHtmlFrame 高保真免刷新预览；单测与生产构建打包全绿 |
+| platform-web | 2026-10-02 | 解耦断流恢复对 3.4MB 巨型 history 的阻塞依赖，毫秒级极速自愈并后台静默预热；加固 ChatSession 抽屉懒加载与错误隔离；ChatComposer 接入灵感胶囊栏与撒花微动效；SandboxedHtmlFrame 免刷新预览；单测全通与打包通过 |
 | AI Harness（AGENTS.md + Skills） | 2026-09-26 | 整单结束前须逐项核对未完成任务；Task 未完成时只记 Phase，剩余项确需用户行动才可按 blocked 汇报；详见 docs/changes/20260926-harness-completion-reporting.md |
 
 ## 近期关键决策

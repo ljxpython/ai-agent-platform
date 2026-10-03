@@ -356,6 +356,73 @@ def setting(name: str) -> str:
     return value
 
 
+def resolve_vision_config() -> tuple[str, str, str, int]:
+    """Resolve vision provider settings: supports VISION_*, DEEPSEEK_*, and legacy DOUBAO_*."""
+    # 1. Generic VISION_* configs have highest precedence
+    model = os.environ.get("VISION_MODEL", "").strip()
+    api_key = os.environ.get("VISION_API_KEY", "").strip()
+    base_url = (
+        os.environ.get("VISION_API_BASE", "").strip()
+        or os.environ.get("VISION_BASE_URL", "").strip()
+    )
+
+    # 2. DeepSeek official / proxy configs (defaults to deepseek-flash with multimodal capability)
+    if not (model and api_key and base_url):
+        ds_key = (
+            os.environ.get("DEEPSEEK_API_KEY", "").strip()
+            or os.environ.get("DEEPSEEK_PROXY_API_KEY", "").strip()
+        )
+        if ds_key:
+            model = (
+                model
+                or os.environ.get("DEEPSEEK_VISION_MODEL", "").strip()
+                or "deepseek-flash"
+            )
+            api_key = api_key or ds_key
+            base_url = (
+                base_url
+                or os.environ.get("DEEPSEEK_URL", "").strip()
+                or os.environ.get("DEEPSEEK_PROXY_URL", "").strip()
+                or "https://api.deepseek.com"
+            )
+
+    # 3. Fallback to legacy DOUBAO_* configs
+    if not (model and api_key and base_url):
+        model = model or os.environ.get("DOUBAO_MODEL", "").strip()
+        api_key = api_key or os.environ.get("DOUBAO_API_KEY", "").strip()
+        base_url = base_url or os.environ.get("DOUBAO_API_BASE", "").strip()
+
+    max_tokens_raw = (
+        os.environ.get("VISION_MAX_TOKENS", "").strip()
+        or os.environ.get("DOUBAO_MAX_TOKENS", "").strip()
+        or "2048"
+    )
+    try:
+        max_tokens = min(int(max_tokens_raw), 4096)
+    except ValueError:
+        max_tokens = 2048
+
+    if not model or not api_key or not base_url:
+        missing = []
+        if not model:
+            missing.append(
+                "model (VISION_MODEL / DEEPSEEK_VISION_MODEL / DOUBAO_MODEL)"
+            )
+        if not api_key:
+            missing.append(
+                "api_key (VISION_API_KEY / DEEPSEEK_API_KEY / DOUBAO_API_KEY)"
+            )
+        if not base_url:
+            missing.append(
+                "base_url (VISION_API_BASE / DEEPSEEK_URL / DOUBAO_API_BASE)"
+            )
+        raise ToolException(
+            f"Runtime vision configuration is missing: {', '.join(missing)}."
+        )
+
+    return model, api_key, base_url, max_tokens
+
+
 def build_image_tools(workspace: ImageWorkspace):
     async def _extract_and_save_image(
         result: Any, operation: str
@@ -479,13 +546,12 @@ def build_image_tools(workspace: ImageWorkspace):
         try:
             data = await asyncio.to_thread(workspace.read, image_path)
             _, mime = image_type(data)
+            model_name, api_key, base_url, max_tokens = resolve_vision_config()
             model = ChatOpenAI(
-                model=setting("DOUBAO_MODEL"),
-                api_key=SecretStr(setting("DOUBAO_API_KEY")),
-                base_url=setting("DOUBAO_API_BASE"),
-                max_completion_tokens=min(
-                    int(os.getenv("DOUBAO_MAX_TOKENS", "2048")), 4096
-                ),
+                model=model_name,
+                api_key=SecretStr(api_key),
+                base_url=base_url,
+                max_completion_tokens=max_tokens,
                 timeout=60,
                 max_retries=0,
             )
@@ -506,12 +572,29 @@ def build_image_tools(workspace: ImageWorkspace):
                 ],
                 config={"callbacks": []},
             )
-            return result.text
+            text_content = result.text or (
+                result.content if isinstance(result.content, str) else ""
+            )
+            if not text_content and isinstance(result.content, list):
+                for block in result.content:
+                    if isinstance(block, dict) and block.get("type") == "text":
+                        text_content += block.get("text", "")
+            return text_content or "No textual description returned by vision model."
         except ToolException:
             raise
-        except Exception:  # noqa: BLE001 - do not return provider payloads to the agent
+        except Exception as exc:
+            hint = ""
+            body = getattr(exc, "body", None)
+            if isinstance(body, dict):
+                error_obj = body.get("error")
+                if isinstance(error_obj, dict):
+                    hint = f": {error_obj.get('message') or error_obj.get('code')}"
+                elif "message" in body:
+                    hint = f": {body['message']}"
+            if not hint and str(exc):
+                hint = f": {exc}"
             raise ToolException(
-                "Image analysis failed; check the Runtime vision configuration."
+                f"Image analysis failed ({type(exc).__name__}){hint}."
             ) from None
 
     for image_tool in (generate_image, edit_image, analyze_image):

@@ -75,22 +75,58 @@ def clean_ledgers(connection, *, execute: bool):
     return counts
 
 
-def clean_projects(connection, keep_project: str, *, execute: bool):
+def clean_projects(
+    connection,
+    keep_project: str | None = None,
+    keep_project_name: str | None = None,
+    *,
+    execute: bool,
+):
     """Match project soft-delete semantics; retain history and global catalogs."""
-    keep_id = str(UUID(keep_project))
+    if keep_project_name:
+        matches = (
+            connection.execute(
+                text(
+                    "SELECT id, name FROM projects "
+                    "WHERE lower(name) = lower(:name) AND status = 'active'"
+                ),
+                {"name": keep_project_name.strip()},
+            )
+            .mappings()
+            .all()
+        )
+        if not matches:
+            raise ValueError(
+                f"No active project found with name '{keep_project_name}'."
+            )
+        if len(matches) > 1:
+            raise ValueError(
+                f"Multiple active projects found with name '{keep_project_name}'; specify UUID instead."
+            )
+        keep = matches[0]
+        keep_id = str(keep["id"])
+    elif keep_project:
+        keep_id = str(UUID(keep_project))
+        keep = (
+            connection.execute(
+                text(
+                    "SELECT id, name FROM projects WHERE id = :id AND status = 'active'"
+                ),
+                {"id": keep_id},
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if keep is None:
+            raise ValueError("The retained project must exist and be active.")
+    else:
+        raise ValueError(
+            "Specify either --keep-project UUID or --keep-project-name NAME."
+        )
+
     if execute:
         connection.execute(text("SET LOCAL lock_timeout = '5s'"))
         connection.execute(text("LOCK TABLE projects IN SHARE ROW EXCLUSIVE MODE"))
-    keep = (
-        connection.execute(
-            text("SELECT id, name FROM projects WHERE id = :id AND status = 'active'"),
-            {"id": keep_id},
-        )
-        .mappings()
-        .one_or_none()
-    )
-    if keep is None:
-        raise ValueError("The retained project must exist and be active.")
     targets = (
         connection.execute(
             text(
@@ -131,6 +167,9 @@ def main() -> None:
     parser.add_argument(
         "--keep-project", help="Exact UUID of the active project to retain."
     )
+    parser.add_argument(
+        "--keep-project-name", help="Name of the single active project to retain."
+    )
     args = parser.parse_args()
     engine = None
     try:
@@ -160,17 +199,23 @@ def main() -> None:
                 )
             with engine.begin() as connection:
                 if args.action == "clean-projects":
-                    if not args.keep_project:
-                        raise ValueError("Specify --keep-project UUID.")
+                    if not (args.keep_project or args.keep_project_name):
+                        raise ValueError(
+                            "Specify --keep-project UUID or --keep-project-name NAME."
+                        )
                     print(
                         json.dumps(
                             clean_projects(
-                                connection, args.keep_project, execute=args.execute
+                                connection,
+                                keep_project=args.keep_project,
+                                keep_project_name=args.keep_project_name,
+                                execute=args.execute,
                             ),
                             default=str,
                         )
                     )
                     return
+
                 print(
                     json.dumps(
                         {

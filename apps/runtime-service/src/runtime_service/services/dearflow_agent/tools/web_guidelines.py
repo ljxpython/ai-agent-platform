@@ -12,7 +12,7 @@ GUIDELINES_URL = "https://raw.githubusercontent.com/vercel-labs/web-interface-gu
 
 @tool
 async def fetch_web_guidelines() -> dict:
-    """Fetch public web guidelines; return exact source, SHA256 and time, never infer freshness on failure."""
+    """Fetch public web review rules for explicit static audit tasks only; never call during normal page creation or creative tasks. Return exact source, SHA256 and time."""
     data, headers = await get_public(GUIDELINES_URL)
     try:
         text = data.decode("utf-8")
