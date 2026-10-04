@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
@@ -184,6 +185,98 @@ def sanitize_tool_call_messages(
     return sanitized, changed
 
 
+def repair_model_tool_calls(message: AIMessage) -> AIMessage:
+    """Repair fragmented tool calls and strip malformed empty tool call blocks from model response."""
+    tool_calls = list(getattr(message, "tool_calls", None) or [])
+    invalid_tool_calls = list(getattr(message, "invalid_tool_calls", None) or [])
+
+    cleaned_tool_calls: list[dict[str, Any]] = []
+    mutated = False
+
+    for tc in tool_calls:
+        tc = dict(tc) if not isinstance(tc, dict) else dict(tc)
+        name = tc.get("name")
+        args = tc.get("args")
+
+        if not isinstance(name, str) or not name.strip():
+            mutated = True
+            if args and cleaned_tool_calls:
+                parsed_args = None
+                if isinstance(args, dict):
+                    parsed_args = args
+                elif isinstance(args, str) and args.strip().startswith("{"):
+                    try:
+                        parsed_args = json.loads(args)
+                    except Exception:
+                        pass
+                if parsed_args and isinstance(parsed_args, dict):
+                    prev_tc = cleaned_tool_calls[-1]
+                    prev_args = prev_tc.get("args")
+                    if (
+                        not prev_args
+                        or not isinstance(prev_args, dict)
+                        or len(prev_args) == 0
+                    ):
+                        prev_tc["args"] = parsed_args
+            continue
+
+        cleaned_tool_calls.append(tc)
+
+    cleaned_invalid: list[dict[str, Any]] = []
+    for itc in invalid_tool_calls:
+        itc = dict(itc) if not isinstance(itc, dict) else dict(itc)
+        name = itc.get("name")
+        args = itc.get("args")
+        if not isinstance(name, str) or not name.strip():
+            mutated = True
+            if args and cleaned_tool_calls:
+                parsed_args = None
+                if isinstance(args, dict):
+                    parsed_args = args
+                elif isinstance(args, str) and args.strip().startswith("{"):
+                    try:
+                        parsed_args = json.loads(args)
+                    except Exception:
+                        pass
+                if parsed_args and isinstance(parsed_args, dict):
+                    prev_tc = cleaned_tool_calls[-1]
+                    prev_args = prev_tc.get("args")
+                    if (
+                        not prev_args
+                        or not isinstance(prev_args, dict)
+                        or len(prev_args) == 0
+                    ):
+                        prev_tc["args"] = parsed_args
+            continue
+        cleaned_invalid.append(itc)
+
+    if not mutated:
+        return message
+
+    updates: dict[str, Any] = {
+        "tool_calls": cleaned_tool_calls,
+        "invalid_tool_calls": cleaned_invalid,
+    }
+
+    raw_content = getattr(message, "content", None)
+    if isinstance(raw_content, list):
+        filtered_content = [
+            item
+            for item in raw_content
+            if not (
+                isinstance(item, dict)
+                and item.get("type")
+                in ("tool_call", "invalid_tool_call", "tool_call_chunk")
+                and not (
+                    isinstance(item.get("name"), str) and item.get("name", "").strip()
+                )
+            )
+        ]
+        updates["content"] = filtered_content
+
+    return message.model_copy(update=updates)
+
+
 class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
     """Re-resolve immutable Runtime values before model and tool execution."""
 
@@ -336,12 +429,17 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         messages = getattr(response, "result", None)
         if messages is None:
             messages = [response]
-        for message in messages:
+        for i, message in enumerate(messages):
+            if isinstance(message, AIMessage):
+                message = repair_model_tool_calls(message)
+                if hasattr(response, "result") and isinstance(response.result, list):
+                    response.result[i] = message
             for tool_call in getattr(message, "tool_calls", []):
                 name = tool_call.get("name")
                 if not isinstance(name, str) or name not in allowed:
                     raise RuntimeResolutionError(
-                        "runtime.tool.not_allowed", "tool_name"
+                        "runtime.tool.not_allowed",
+                        name if isinstance(name, str) and name else "tool_name",
                     )
         return response
 
@@ -350,8 +448,15 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         name = request.tool_call.get("name")
         allowed = self._allowed_tools(resolved)
         if not isinstance(name, str) or name not in allowed:
-            raise RuntimeResolutionError("runtime.tool.not_allowed", "tool_name")
+            raise RuntimeResolutionError(
+                "runtime.tool.not_allowed",
+                name if isinstance(name, str) and name else "tool_name",
+            )
         return await handler(request)
 
 
-__all__ = ["RuntimeConfigMiddleware", "sanitize_tool_call_messages"]
+__all__ = [
+    "RuntimeConfigMiddleware",
+    "repair_model_tool_calls",
+    "sanitize_tool_call_messages",
+]

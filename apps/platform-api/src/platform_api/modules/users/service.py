@@ -11,7 +11,7 @@ from platform_api.core.errors import (
     NotFoundError,
     ServiceUnavailableError,
 )
-from platform_api.core.identifiers import parse_uuid
+from platform_api.core.identifiers import parse_actor_user_id, parse_uuid
 from platform_api.core.security import hash_password
 from platform_api.modules.iam.application import (
     AuthorizationRequest,
@@ -354,3 +354,61 @@ class UsersService:
             if updated is None:
                 raise NotFoundError(message="User not found", code="user_not_found")
             return self._user_item(updated)
+
+    def delete_user(
+        self,
+        *,
+        actor: ActorContext,
+        user_id: str,
+    ) -> None:
+        session_factory = self._require_session_factory()
+        self._require_permission(
+            actor=actor, permission=PermissionCode.PLATFORM_USER_STATUS_WRITE
+        )
+        user_uuid = parse_uuid(user_id, code="invalid_user_id")
+        with session_scope(session_factory) as session:
+            repository = SqlAlchemyUsersRepository(session)
+            current = repository.get_user_by_id(user_uuid)
+            if current is None or current.status == "deleted":
+                raise NotFoundError(message="User not found", code="user_not_found")
+
+            if current.is_super_admin:
+                self._require_super_admin_role_permission(actor=actor)
+
+            try:
+                actor_user_id = parse_actor_user_id(actor)
+            except Exception:
+                actor_user_id = None
+
+            if actor_user_id == user_uuid:
+                raise ConflictError(
+                    code="cannot_delete_self",
+                    message="Cannot delete current user",
+                )
+
+            if current.is_super_admin and repository.count_active_super_admins() <= 1:
+                raise ConflictError(
+                    code="last_super_admin_protected",
+                    message="Cannot delete the last active super admin",
+                )
+
+            user_projects = repository.list_user_projects(user_id=user_uuid)
+            sole_admin_projects: list[str] = []
+            for membership in user_projects:
+                if membership.role == "admin":
+                    admin_count = repository.count_project_admins(
+                        project_id=membership.project_id
+                    )
+                    if admin_count <= 1:
+                        sole_admin_projects.append(membership.project_name)
+
+            if sole_admin_projects:
+                proj_names = ", ".join(sole_admin_projects)
+                raise ConflictError(
+                    code="user_is_sole_project_admin",
+                    message=f"Cannot delete user who is the sole admin of project(s): {proj_names}. Transfer project admin role or delete the project(s) first.",
+                )
+
+            repository.remove_user_from_all_projects(user_id=user_uuid)
+            repository.revoke_all_refresh_tokens_for_user(user_uuid)
+            repository.soft_delete_user(user_uuid)

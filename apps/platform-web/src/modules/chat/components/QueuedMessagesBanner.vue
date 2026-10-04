@@ -97,11 +97,18 @@ const hasWarning = computed(() => {
     props.receipts.some((r) => ["rejected", "not_consumed"].includes(r.status))
   );
 });
+const shouldShowBanner = computed(() => {
+  return (
+    isPromptQueueActive.value ||
+    props.receipts.length > 0 ||
+    Boolean(props.pendingMessage)
+  );
+});
 </script>
 
 <template>
   <section
-    v-if="(queueItems && queueItems.length > 0) || receipts.length || pendingMessage || receiptError"
+    v-if="shouldShowBanner"
     aria-label="消息队列"
     class="mx-auto w-full max-w-3xl rounded-2xl border p-3.5 sm:p-4 text-xs shadow-xs transition-all duration-200"
     :class="[
@@ -109,27 +116,41 @@ const hasWarning = computed(() => {
         ? 'border-blue-500/30 bg-blue-500/[0.04] dark:bg-blue-950/20'
         : hasWarning
           ? 'border-amber-500/30 bg-amber-500/[0.04] dark:bg-amber-950/20'
-          : 'border-blue-500/25 bg-blue-500/[0.03] dark:bg-blue-950/15'
+          : 'border-blue-500/25 bg-blue-500/[0.03] dark:bg-blue-950/15',
     ]"
   >
     <!-- Header -->
-    <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-border/50">
+    <div
+      class="flex items-center justify-between gap-3 pb-2.5 border-b border-border/50"
+    >
       <div class="flex items-center gap-2 min-w-0">
         <!-- Status indicator dot with pulse -->
-        <span class="relative flex h-2 w-2 shrink-0 items-center justify-center">
+        <span
+          class="relative flex h-2 w-2 shrink-0 items-center justify-center"
+        >
           <span
             v-if="!hasWarning || isPromptQueueActive"
             class="absolute inline-flex h-full w-full animate-ping rounded-full bg-blue-500 opacity-75"
           />
           <span
             class="relative inline-flex h-2 w-2 rounded-full"
-            :class="isPromptQueueActive ? 'bg-blue-500' : hasWarning ? 'bg-amber-500' : 'bg-blue-500'"
+            :class="
+              isPromptQueueActive
+                ? 'bg-blue-500'
+                : hasWarning
+                  ? 'bg-amber-500'
+                  : 'bg-blue-500'
+            "
           />
         </span>
 
         <div class="flex items-center gap-2 min-w-0">
-          <span class="font-medium text-foreground tracking-tight text-xs flex items-center gap-1.5">
-            <span>{{ isPromptQueueActive ? "待执行消息队列" : "排队补充消息" }}</span>
+          <span
+            class="font-medium text-foreground tracking-tight text-xs flex items-center gap-1.5"
+          >
+            <span>{{
+              isPromptQueueActive ? "待执行消息队列" : "排队补充消息"
+            }}</span>
             <span
               class="rounded-full px-1.5 py-0.5 text-[10px] font-semibold"
               :class="
@@ -144,7 +165,9 @@ const hasWarning = computed(() => {
             </span>
           </span>
 
-          <span class="text-[11px] text-muted-foreground truncate hidden sm:inline">
+          <span
+            class="text-[11px] text-muted-foreground truncate hidden sm:inline"
+          >
             {{
               isPromptQueueActive
                 ? "当前轮次执行完成后，将按顺序自动发出并执行"
@@ -191,10 +214,7 @@ const hasWarning = computed(() => {
     </div>
 
     <!-- Prompt Queue Items (First-class citizen) -->
-    <div
-      v-if="isPromptQueueActive"
-      class="mt-3 space-y-2.5"
-    >
+    <div v-if="isPromptQueueActive" class="mt-3 space-y-2.5">
       <div
         v-for="(item, index) in queueItems"
         :key="item.id"
@@ -278,7 +298,9 @@ const hasWarning = computed(() => {
         >
           <div
             :class="{
-              'line-clamp-3': !expandedMap[item.id] && extractContentText(item.content).length > 160
+              'line-clamp-3':
+                !expandedMap[item.id] &&
+                extractContentText(item.content).length > 160,
             }"
           >
             {{ extractContentText(item.content) }}
@@ -306,9 +328,12 @@ const hasWarning = computed(() => {
           <span
             class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
             :class="{
-              'bg-blue-500/10 text-blue-600 dark:text-blue-400': pendingMessage.status === 'sending',
-              'bg-destructive/10 text-destructive': pendingMessage.status === 'rejected',
-              'bg-amber-500/10 text-amber-600 dark:text-amber-400': pendingMessage.status === 'unknown',
+              'bg-blue-500/10 text-blue-600 dark:text-blue-400':
+                pendingMessage.status === 'sending',
+              'bg-destructive/10 text-destructive':
+                pendingMessage.status === 'rejected',
+              'bg-amber-500/10 text-amber-600 dark:text-amber-400':
+                pendingMessage.status === 'unknown',
             }"
           >
             {{
@@ -371,15 +396,22 @@ const hasWarning = computed(() => {
       >
         <div class="flex items-center justify-between gap-2 flex-wrap">
           <div class="flex items-center gap-2 min-w-0">
-            <span class="font-mono text-muted-foreground text-[11px]">#{{ receipt.sequence }}</span>
+            <span class="font-mono text-muted-foreground text-[11px]"
+              >#{{ receipt.sequence }}</span
+            >
             <span
               class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium"
               :class="{
-                'bg-blue-500/10 text-blue-600 dark:text-blue-400': receipt.status === 'queued',
-                'bg-purple-500/10 text-purple-600 dark:text-purple-400': receipt.status === 'claimed',
-                'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400': receipt.status === 'consumed',
-                'bg-amber-500/15 text-amber-700 dark:text-amber-300': receipt.status === 'not_consumed',
-                'bg-destructive/10 text-destructive': receipt.status === 'rejected',
+                'bg-blue-500/10 text-blue-600 dark:text-blue-400':
+                  receipt.status === 'queued',
+                'bg-purple-500/10 text-purple-600 dark:text-purple-400':
+                  receipt.status === 'claimed',
+                'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400':
+                  receipt.status === 'consumed',
+                'bg-amber-500/15 text-amber-700 dark:text-amber-300':
+                  receipt.status === 'not_consumed',
+                'bg-destructive/10 text-destructive':
+                  receipt.status === 'rejected',
               }"
             >
               {{
@@ -402,7 +434,10 @@ const hasWarning = computed(() => {
 
           <!-- Actions for receipt -->
           <div
-            v-if="['rejected', 'not_consumed'].includes(receipt.status) && receipt.content != null"
+            v-if="
+              ['rejected', 'not_consumed'].includes(receipt.status) &&
+              receipt.content != null
+            "
             class="flex items-center gap-2 shrink-0 ml-auto"
           >
             <!-- 恢复到输入框 -->
@@ -436,7 +471,9 @@ const hasWarning = computed(() => {
         >
           <div
             :class="{
-              'line-clamp-3': !expandedMap[receipt.message_id] && extractContentText(receipt.content).length > 160
+              'line-clamp-3':
+                !expandedMap[receipt.message_id] &&
+                extractContentText(receipt.content).length > 160,
             }"
           >
             {{ extractContentText(receipt.content) }}

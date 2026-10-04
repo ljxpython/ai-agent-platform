@@ -6,7 +6,11 @@ import type { ChatMessageMetadata } from "../branching";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import MessageContent from "./MessageContent.vue";
 import ToolResult from "./ToolResult.vue";
-import { buildTranscript, type MessageItem, type ToolItem } from "../transcript";
+import {
+  buildTranscript,
+  type MessageItem,
+  type ToolItem,
+} from "../transcript";
 const props = defineProps<{
   messages: readonly BaseMessage[];
   calls: readonly AssembledToolCall[];
@@ -23,10 +27,14 @@ const props = defineProps<{
   forkingCheckpointId?: string;
 }>();
 const emit = defineEmits<{
-  inspect: [tool: ToolItem]; edit: [id: string, text: string]; retry: [id: string];
+  inspect: [tool: ToolItem];
+  edit: [id: string, text: string];
+  retry: [id: string];
   fork: [messageId: string, checkpointId?: string];
   "select-branch": [branch: string];
-  "update:editingMessageValue": [value: string]; "cancel-edit": []; "submit-edit": [];
+  "update:editingMessageValue": [value: string];
+  "cancel-edit": [];
+  "submit-edit": [];
 }>();
 const text = (items: MessageItem[]) =>
   items
@@ -74,7 +82,8 @@ const visibleDisplayMessages = computed(() => {
               b.kind === "image" ||
               b.kind === "file" ||
               b.kind === "unknown" ||
-              ((b.kind === "reasoning" || b.kind === "text") && b.text.trim().length > 0),
+              ((b.kind === "reasoning" || b.kind === "text") &&
+                b.text.trim().length > 0),
           ),
       ) ||
       turn.answer.some((item) =>
@@ -84,7 +93,8 @@ const visibleDisplayMessages = computed(() => {
             b.kind === "image" ||
             b.kind === "file" ||
             b.kind === "unknown" ||
-            ((b.kind === "reasoning" || b.kind === "text") && b.text.trim().length > 0),
+            ((b.kind === "reasoning" || b.kind === "text") &&
+              b.text.trim().length > 0),
         ),
       );
     const showPendingPlaceholder =
@@ -125,23 +135,42 @@ const visibleDisplayMessages = computed(() => {
 });
 
 const shouldShowLiveStep = computed(() => {
-  if (!props.isRunning) return false;
+  if (!props.isRunning || Boolean(props.isInterrupted)) return false;
   const turns = visibleDisplayMessages.value;
   if (!turns.length) return true;
   const lastEntry = turns[turns.length - 1];
 
   if (lastEntry?.author === "user") return true;
 
-  const hasRunningTools = lastEntry?.work?.some((w) =>
-    w.tools?.some((t) => t.status === "running")
+  // 澄清/等待人工输入工具（如 request_information）处于挂起等待态，不能作为普通后台运行中工具展示 Live Step
+  const clarificationToolNames = new Set([
+    "request_information",
+    "ask_user_question",
+    "ask_question",
+    "clarify",
+  ]);
+  const hasRunningActiveTools = lastEntry?.work?.some((w) =>
+    w.tools?.some(
+      (t) =>
+        t.status === "running" &&
+        !clarificationToolNames.has(t.name) &&
+        !t.streamingInput,
+    ),
   );
-  if (hasRunningTools) return true;
+  if (hasRunningActiveTools) return true;
+
+  // 如果包含澄清工具，说明正在等待人工补充信息，不展示“Agent 正在处理当前回合”
+  const hasPendingClarificationTools = lastEntry?.work?.some((w) =>
+    w.tools?.some((t) => clarificationToolNames.has(t.name)),
+  );
+  if (hasPendingClarificationTools) return false;
 
   const hasVisibleBlocks = lastEntry?.content?.some((item) =>
     item.blocks?.some(
       (b) =>
         b.kind === "loading" ||
-        ((b.kind === "reasoning" || b.kind === "text") && b.text.trim().length > 0),
+        ((b.kind === "reasoning" || b.kind === "text") &&
+          b.text.trim().length > 0),
     ),
   );
   if (hasVisibleBlocks) return false;
@@ -150,30 +179,44 @@ const shouldShowLiveStep = computed(() => {
     item.blocks?.some(
       (b) =>
         b.kind === "loading" ||
-        ((b.kind === "reasoning" || b.kind === "text") && b.text.trim().length > 0),
+        ((b.kind === "reasoning" || b.kind === "text") &&
+          b.text.trim().length > 0),
     ),
   );
-  if (hasVisibleWorkReasoningOrText && !lastEntry?.work?.some((w) => (w.tools?.length ?? 0) > 0)) {
+  if (hasVisibleWorkReasoningOrText) {
     return false;
   }
 
   return true;
 });
 
-function getMessageMeta(id: string) { return props.metadata?.[id]; }
-function getMessageBranchIndex(id: string) {
-  const meta = getMessageMeta(id); return meta?.branchOptions?.indexOf(meta.branch || "") ?? -1;
+function getMessageMeta(id: string) {
+  return props.metadata?.[id];
 }
-function hasBranchSwitcher(id: string) { return (getMessageMeta(id)?.branchOptions?.length ?? 0) > 1; }
+function getMessageBranchIndex(id: string) {
+  const meta = getMessageMeta(id);
+  return meta?.branchOptions?.indexOf(meta.branch || "") ?? -1;
+}
+function hasBranchSwitcher(id: string) {
+  return (getMessageMeta(id)?.branchOptions?.length ?? 0) > 1;
+}
 function selectBranch(id: string, offset: number) {
-  const path = getMessageMeta(id)?.branchOptions?.[getMessageBranchIndex(id) + offset];
+  const path =
+    getMessageMeta(id)?.branchOptions?.[getMessageBranchIndex(id) + offset];
   if (path) emit("select-branch", path);
 }
-function getForkCheckpointId(entry: (typeof visibleDisplayMessages.value)[number]): string | undefined {
+function getForkCheckpointId(
+  entry: (typeof visibleDisplayMessages.value)[number],
+): string | undefined {
   if (entry.author !== "agent" || !entry.messageId) return undefined;
   return getMessageMeta(entry.messageId)?.checkpointId;
 }
-function handleEditingInput(event: Event) { emit("update:editingMessageValue", (event.target as HTMLTextAreaElement).value); }
+function handleEditingInput(event: Event) {
+  emit(
+    "update:editingMessageValue",
+    (event.target as HTMLTextAreaElement).value,
+  );
+}
 const copyError = ref("");
 const copiedId = ref("");
 const workOpenState = ref<Record<string, boolean>>({});
@@ -202,10 +245,7 @@ async function copy(value: string, id?: string) {
 </script>
 
 <template>
-  <div
-    class="space-y-7"
-    data-testid="transcript"
-  >
+  <div class="space-y-7" data-testid="transcript">
     <template
       v-for="displayEntry in visibleDisplayMessages"
       :key="displayEntry.renderKey"
@@ -221,25 +261,31 @@ async function copy(value: string, id?: string) {
           v-if="displayEntry.author === 'agent'"
           class="pw-chat-turn-heading mb-1.5 flex items-center gap-2"
         >
-          <span class="inline-flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs">
-            <BaseIcon
-              name="sparkle"
-              size="xs"
-            />
+          <span
+            class="inline-flex h-5 w-5 items-center justify-center rounded-md bg-gradient-to-tr from-blue-600 to-indigo-600 text-white shadow-xs"
+          >
+            <BaseIcon name="sparkle" size="xs" />
           </span>
-          <span class="text-xs font-semibold text-gray-800 dark:text-gray-200">{{ targetName || 'Agent' }}</span>
+          <span
+            class="text-xs font-semibold text-gray-800 dark:text-gray-200"
+            >{{ targetName || "Agent" }}</span
+          >
         </div>
 
         <div
           :class="[
             displayEntry.author === 'user'
               ? 'w-auto max-w-[85%] sm:max-w-[75%] self-end rounded-2xl rounded-tr-xs bg-blue-50/85 text-gray-900 border border-blue-100/90 px-4 py-2.5 shadow-2xs dark:bg-blue-950/40 dark:border-blue-900/50 dark:text-gray-100'
-              : 'w-full self-start border-0 bg-transparent p-0 shadow-none'
+              : 'w-full self-start border-0 bg-transparent p-0 shadow-none',
           ]"
         >
           <!-- Editing -->
           <textarea
-            v-if="editingMessageId === displayEntry.id || (displayEntry.messageId && editingMessageId === displayEntry.messageId)"
+            v-if="
+              editingMessageId === displayEntry.id ||
+              (displayEntry.messageId &&
+                editingMessageId === displayEntry.messageId)
+            "
             :value="editingMessageValue"
             rows="5"
             class="pw-input resize-y border-0 bg-transparent px-0 py-0 text-sm leading-7 shadow-none focus:ring-0"
@@ -258,12 +304,16 @@ async function copy(value: string, id?: string) {
                   @click.prevent="toggleWork(displayEntry.renderKey)"
                 >
                   <span class="flex items-center gap-2">
-                    <span class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400 text-[10px] font-bold">
+                    <span
+                      class="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary-100 text-primary-600 dark:bg-primary-950 dark:text-primary-400 text-[10px] font-bold"
+                    >
                       {{ displayEntry.work.length }}
                     </span>
                     <span>执行步骤与工具调用</span>
                   </span>
-                  <span class="text-[11px] text-gray-400 dark:text-dark-500">点击展开/收起</span>
+                  <span class="text-[11px] text-gray-400 dark:text-dark-500"
+                    >点击展开/收起</span
+                  >
                 </summary>
                 <div
                   v-for="(item, workIdx) in displayEntry.work"
@@ -315,13 +365,24 @@ async function copy(value: string, id?: string) {
         <div
           class="flex max-w-[780px] flex-wrap items-center gap-1.5 pt-1 text-xs transition-all duration-200"
           :class="[
-            displayEntry.author === 'user' ? 'w-auto justify-end self-end' : 'w-full justify-start self-start',
-            editingMessageId === displayEntry.id || (displayEntry.messageId && editingMessageId === displayEntry.messageId) || copiedId === displayEntry.id
+            displayEntry.author === 'user'
+              ? 'w-auto justify-end self-end'
+              : 'w-full justify-start self-start',
+            editingMessageId === displayEntry.id ||
+            (displayEntry.messageId &&
+              editingMessageId === displayEntry.messageId) ||
+            copiedId === displayEntry.id
               ? 'opacity-100'
-              : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+              : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100',
           ]"
         >
-          <template v-if="editingMessageId === displayEntry.id || (displayEntry.messageId && editingMessageId === displayEntry.messageId)">
+          <template
+            v-if="
+              editingMessageId === displayEntry.id ||
+              (displayEntry.messageId &&
+                editingMessageId === displayEntry.messageId)
+            "
+          >
             <button
               type="button"
               class="inline-flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-3 py-1 text-xs text-gray-600 transition hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-300"
@@ -342,7 +403,11 @@ async function copy(value: string, id?: string) {
             <button
               type="button"
               class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-700 hover:bg-gray-100/80 dark:text-dark-400 dark:hover:text-gray-200 dark:hover:bg-dark-800/80 transition-colors"
-              :class="copiedId === displayEntry.id ? '!text-emerald-600 dark:!text-emerald-400' : ''"
+              :class="
+                copiedId === displayEntry.id
+                  ? '!text-emerald-600 dark:!text-emerald-400'
+                  : ''
+              "
               :title="copiedId === displayEntry.id ? '已复制' : '复制'"
               @click="copy(displayEntry.text, displayEntry.id)"
             >
@@ -350,19 +415,22 @@ async function copy(value: string, id?: string) {
                 :name="copiedId === displayEntry.id ? 'check' : 'copy'"
                 size="xs"
               />
-              <span class="text-[11px]">{{ copiedId === displayEntry.id ? '已复制' : '复制' }}</span>
+              <span class="text-[11px]">{{
+                copiedId === displayEntry.id ? "已复制" : "复制"
+              }}</span>
             </button>
             <button
-              v-if="displayEntry.author === 'user' && canEdit && displayEntry.messageId"
+              v-if="
+                displayEntry.author === 'user' &&
+                canEdit &&
+                displayEntry.messageId
+              "
               type="button"
               class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-700 hover:bg-gray-100/80 dark:text-dark-400 dark:hover:text-gray-200 dark:hover:bg-dark-800/80 transition-colors"
               title="编辑"
               @click="emit('edit', displayEntry.messageId, displayEntry.text)"
             >
-              <BaseIcon
-                name="pencil"
-                size="xs"
-              />
+              <BaseIcon name="pencil" size="xs" />
               <span class="text-[11px]">编辑</span>
             </button>
             <button
@@ -372,25 +440,42 @@ async function copy(value: string, id?: string) {
               title="重试"
               @click="emit('retry', displayEntry.messageId)"
             >
-              <BaseIcon
-                name="refresh"
-                size="xs"
-              />
+              <BaseIcon name="refresh" size="xs" />
               <span class="text-[11px]">重试</span>
             </button>
             <button
               v-if="displayEntry.author === 'agent' && displayEntry.messageId"
               type="button"
               class="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-gray-400 hover:text-gray-700 hover:bg-gray-100/80 disabled:cursor-not-allowed disabled:opacity-40 dark:text-dark-400 dark:hover:text-gray-200 dark:hover:bg-dark-800/80 transition-colors"
-              :disabled="isRunning || displayEntry.isStreaming || Boolean(forkingCheckpointId)"
+              :disabled="
+                isRunning ||
+                displayEntry.isStreaming ||
+                Boolean(forkingCheckpointId)
+              "
               aria-label="在新对话中分支"
-              :title="isRunning || displayEntry.isStreaming ? '仅可从已完成轮次分支' : '在新对话中分支'"
-              @click="emit('fork', displayEntry.messageId!, getForkCheckpointId(displayEntry))"
+              :title="
+                isRunning || displayEntry.isStreaming
+                  ? '仅可从已完成轮次分支'
+                  : '在新对话中分支'
+              "
+              @click="
+                emit(
+                  'fork',
+                  displayEntry.messageId!,
+                  getForkCheckpointId(displayEntry),
+                )
+              "
             >
               <BaseIcon
                 name="branch"
                 size="xs"
-                :class="forkingCheckpointId && (forkingCheckpointId === getForkCheckpointId(displayEntry) || forkingCheckpointId === displayEntry.messageId) ? 'animate-spin' : ''"
+                :class="
+                  forkingCheckpointId &&
+                  (forkingCheckpointId === getForkCheckpointId(displayEntry) ||
+                    forkingCheckpointId === displayEntry.messageId)
+                    ? 'animate-spin'
+                    : ''
+                "
               />
               <span class="text-[11px]">分支</span>
             </button>
@@ -401,31 +486,39 @@ async function copy(value: string, id?: string) {
               <button
                 type="button"
                 class="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30 dark:hover:bg-dark-700 dark:hover:text-dark-200"
-                :disabled="getMessageBranchIndex(displayEntry.messageId || '') <= 0 || isRunning"
+                :disabled="
+                  getMessageBranchIndex(displayEntry.messageId || '') <= 0 ||
+                  isRunning
+                "
                 aria-label="上一个分支"
                 title="上一个分支"
                 @click="selectBranch(displayEntry.messageId || '', -1)"
               >
-                <BaseIcon
-                  name="chevron-left"
-                  size="xs"
-                />
+                <BaseIcon name="chevron-left" size="xs" />
               </button>
-              <span class="min-w-[48px] text-center font-mono text-[11px] font-medium text-gray-500 dark:text-dark-300">
-                {{ getMessageBranchIndex(displayEntry.messageId || '') + 1 }} / {{ getMessageMeta(displayEntry.messageId || '')?.branchOptions?.length }}
+              <span
+                class="min-w-[48px] text-center font-mono text-[11px] font-medium text-gray-500 dark:text-dark-300"
+              >
+                {{ getMessageBranchIndex(displayEntry.messageId || "") + 1 }} /
+                {{
+                  getMessageMeta(displayEntry.messageId || "")?.branchOptions
+                    ?.length
+                }}
               </span>
               <button
                 type="button"
                 class="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30 dark:hover:bg-dark-700 dark:hover:text-dark-200"
-                :disabled="getMessageBranchIndex(displayEntry.messageId || '') >= ((getMessageMeta(displayEntry.messageId || '')?.branchOptions?.length ?? 1) - 1) || isRunning"
+                :disabled="
+                  getMessageBranchIndex(displayEntry.messageId || '') >=
+                    (getMessageMeta(displayEntry.messageId || '')?.branchOptions
+                      ?.length ?? 1) -
+                      1 || isRunning
+                "
                 aria-label="下一个分支"
                 title="下一个分支"
                 @click="selectBranch(displayEntry.messageId || '', 1)"
               >
-                <BaseIcon
-                  name="chevron-right"
-                  size="xs"
-                />
+                <BaseIcon name="chevron-right" size="xs" />
               </button>
             </div>
           </template>
@@ -433,17 +526,10 @@ async function copy(value: string, id?: string) {
       </article>
     </template>
 
-    <p
-      v-if="copyError"
-      role="alert"
-      class="text-xs text-red-600"
-    >
+    <p v-if="copyError" role="alert" class="text-xs text-red-600">
       {{ copyError }}
     </p>
-    <div
-      v-if="shouldShowLiveStep"
-      class="pw-chat-live-step"
-    >
+    <div v-if="shouldShowLiveStep" class="pw-chat-live-step">
       <span class="pw-chat-live-dot animate-pulse" />
       <span>Agent 正在处理当前回合</span>
     </div>

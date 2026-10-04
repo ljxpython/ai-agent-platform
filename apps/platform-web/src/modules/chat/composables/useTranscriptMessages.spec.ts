@@ -3,68 +3,153 @@ import { AIMessage, HumanMessage } from "@langchain/core/messages";
 import type { AnyStream } from "@langchain/vue";
 import { expect, it, vi } from "vitest";
 
-type Event = { method: string; params: { namespace: string[]; data: Record<string, unknown> } };
+type Event = {
+  method: string;
+  params: { namespace: string[]; data: Record<string, unknown> };
+};
 const hooks = vi.hoisted(() => ({ onEvent: (_event: Event) => {} }));
 vi.mock("@langchain/vue", () => ({
   useMessages: (stream: { messages: unknown }) => stream.messages,
-  useChannelEffect: (_stream: unknown, _channels: unknown, options: { onEvent: typeof hooks.onEvent }) => { hooks.onEvent = options.onEvent; },
+  useChannelEffect: (
+    _stream: unknown,
+    _channels: unknown,
+    options: { onEvent: typeof hooks.onEvent },
+  ) => {
+    hooks.onEvent = options.onEvent;
+  },
 }));
 import { useTranscriptMessages } from "./useTranscriptMessages";
 
 it("shows child results explicitly promoted to root values, without leaking other child messages", () => {
   const human = new HumanMessage({ id: "u", content: "question" });
   const stream = {
-    messages: shallowRef([human, new AIMessage({ id: "reply", content: "fin" }), new AIMessage({ id: "private", content: "PRIVATE" })]),
-    values: shallowRef({ messages: [human] }), isLoading: shallowRef(false),
-    subgraphs: shallowRef(new Map([["child", { namespace: ["respond:child"] }]])), subagents: shallowRef(new Map()),
+    messages: shallowRef([
+      human,
+      new AIMessage({ id: "reply", content: "fin" }),
+      new AIMessage({ id: "private", content: "PRIVATE" }),
+    ]),
+    values: shallowRef({ messages: [human] }),
+    isLoading: shallowRef(false),
+    subgraphs: shallowRef(
+      new Map([["child", { namespace: ["respond:child"] }]]),
+    ),
+    subagents: shallowRef(new Map()),
   };
   const scope = effectScope();
   try {
-    const messages = scope.run(() => useTranscriptMessages(stream as unknown as AnyStream))!;
-    for (const id of ["reply", "private"]) hooks.onEvent({ method: "messages", params: { namespace: ["respond:child"], data: { event: "message-start", id } } });
-    hooks.onEvent({ method: "values", params: { namespace: [], data: { messages: [human] } } });
-    expect(messages.value.map(message => message.id)).toEqual(["u"]);
-    stream.values.value = { messages: [human, new AIMessage({ id: "reply", content: "final answer" })] };
-    expect(messages.value.map(message => message.id)).toEqual(["u"]);
-    hooks.onEvent({ method: "values", params: { namespace: [], data: { messages: [human, { type: "ai", id: "reply", content: "final answer" }] } } });
-    expect(messages.value.map(message => message.content)).toEqual(["question", "final answer"]);
-  } finally { scope.stop(); }
+    const messages = scope.run(() =>
+      useTranscriptMessages(stream as unknown as AnyStream),
+    )!;
+    for (const id of ["reply", "private"])
+      hooks.onEvent({
+        method: "messages",
+        params: {
+          namespace: ["respond:child"],
+          data: { event: "message-start", id },
+        },
+      });
+    hooks.onEvent({
+      method: "values",
+      params: { namespace: [], data: { messages: [human] } },
+    });
+    expect(messages.value.map((message) => message.id)).toEqual(["u"]);
+    stream.values.value = {
+      messages: [
+        human,
+        new AIMessage({ id: "reply", content: "final answer" }),
+      ],
+    };
+    expect(messages.value.map((message) => message.id)).toEqual(["u"]);
+    hooks.onEvent({
+      method: "values",
+      params: {
+        namespace: [],
+        data: {
+          messages: [
+            human,
+            { type: "ai", id: "reply", content: "final answer" },
+          ],
+        },
+      },
+    });
+    expect(messages.value.map((message) => message.content)).toEqual([
+      "question",
+      "final answer",
+    ]);
+  } finally {
+    scope.stop();
+  }
 });
 
 it("uses exact-scope final values when late replay leaves a partial message", () => {
   const stream = {
     messages: shallowRef([new AIMessage({ id: "left", content: "LEFT" })]),
-    values: shallowRef({ messages: [] }), isLoading: shallowRef(false),
-    subgraphs: shallowRef(new Map()), subagents: shallowRef(new Map()),
+    values: shallowRef({ messages: [] }),
+    isLoading: shallowRef(false),
+    subgraphs: shallowRef(new Map()),
+    subagents: shallowRef(new Map()),
   };
   const scope = effectScope();
   try {
-    const messages = scope.run(() => useTranscriptMessages(stream as unknown as AnyStream, ["left:1"]))!;
-    hooks.onEvent({ method: "values", params: { namespace: ["left:1"], data: { messages: [{ type: "ai", id: "left", content: "LEFT_PRIVATE complete" }] } } });
-    hooks.onEvent({ method: "values", params: { namespace: ["left:1", "nested:2"], data: { messages: [{ type: "ai", id: "child", content: "CHILD_PRIVATE" }] } } });
-    expect(messages.value.map(message => message.content)).toEqual(["LEFT_PRIVATE complete"]);
-  } finally { scope.stop(); }
+    const messages = scope.run(() =>
+      useTranscriptMessages(stream as unknown as AnyStream, ["left:1"]),
+    )!;
+    hooks.onEvent({
+      method: "values",
+      params: {
+        namespace: ["left:1"],
+        data: {
+          messages: [
+            { type: "ai", id: "left", content: "LEFT_PRIVATE complete" },
+          ],
+        },
+      },
+    });
+    hooks.onEvent({
+      method: "values",
+      params: {
+        namespace: ["left:1", "nested:2"],
+        data: {
+          messages: [{ type: "ai", id: "child", content: "CHILD_PRIVATE" }],
+        },
+      },
+    });
+    expect(messages.value.map((message) => message.content)).toEqual([
+      "LEFT_PRIVATE complete",
+    ]);
+  } finally {
+    scope.stop();
+  }
 });
 
 it("preserves tool calls and tool messages from execution subgraphs", () => {
   const toolCallMsg = new AIMessage({
     id: "tool-call-1",
     content: "",
-    tool_calls: [{ name: "read_reference", args: { topic: "test" }, id: "call-1" }],
+    tool_calls: [
+      { name: "read_reference", args: { topic: "test" }, id: "call-1" },
+    ],
   });
   const stream = {
     messages: shallowRef([toolCallMsg]),
     values: shallowRef({ messages: [] }),
     isLoading: shallowRef(true),
-    subgraphs: shallowRef(new Map([["child", { namespace: ["respond:child"] }]])),
+    subgraphs: shallowRef(
+      new Map([["child", { namespace: ["respond:child"] }]]),
+    ),
     subagents: shallowRef(new Map()),
   };
   const scope = effectScope();
   try {
-    const messages = scope.run(() => useTranscriptMessages(stream as unknown as AnyStream))!;
+    const messages = scope.run(() =>
+      useTranscriptMessages(stream as unknown as AnyStream),
+    )!;
     hooks.onEvent({
       method: "messages",
-      params: { namespace: ["respond:child"], data: { event: "message-start", id: "tool-call-1" } },
+      params: {
+        namespace: ["respond:child"],
+        data: { event: "message-start", id: "tool-call-1" },
+      },
     });
     expect(messages.value.map((m) => m.id)).toEqual(["tool-call-1"]);
   } finally {
@@ -73,15 +158,23 @@ it("preserves tool calls and tool messages from execution subgraphs", () => {
 });
 
 it("filters out subagent delegated task description HumanMessage from root transcript", () => {
-  const userMsg = new HumanMessage({ id: "user-root", content: "请委派 research 分析" });
+  const userMsg = new HumanMessage({
+    id: "user-root",
+    content: "请委派 research 分析",
+  });
   const taskCallMsg = new AIMessage({
     id: "ai-task-call",
     content: "",
-    tool_calls: [{
-      name: "task",
-      args: { subagent_type: "research", description: "只读分析 /workspace/report.py" },
-      id: "call-task-1",
-    }],
+    tool_calls: [
+      {
+        name: "task",
+        args: {
+          subagent_type: "research",
+          description: "只读分析 /workspace/report.py",
+        },
+        id: "call-task-1",
+      },
+    ],
   });
   const subagentHumanMsg = new HumanMessage({
     id: "subagent-input-human",
@@ -94,28 +187,46 @@ it("filters out subagent delegated task description HumanMessage from root trans
     values: shallowRef({ messages: [userMsg, taskCallMsg, finalAiMsg] }),
     isLoading: shallowRef(false),
     subgraphs: shallowRef(new Map()),
-    subagents: shallowRef(new Map([
-      ["call-task-1", {
-        id: "call-task-1",
-        name: "research",
-        namespace: ["tools:subagent-1"],
-        taskInput: "只读分析 /workspace/report.py",
-      }],
-    ])),
+    subagents: shallowRef(
+      new Map([
+        [
+          "call-task-1",
+          {
+            id: "call-task-1",
+            name: "research",
+            namespace: ["tools:subagent-1"],
+            taskInput: "只读分析 /workspace/report.py",
+          },
+        ],
+      ]),
+    ),
   };
 
   const scope = effectScope();
   try {
-    const rootMessages = scope.run(() => useTranscriptMessages(stream as unknown as AnyStream))!;
+    const rootMessages = scope.run(() =>
+      useTranscriptMessages(stream as unknown as AnyStream),
+    )!;
     // Even BEFORE subagent values event arrives (source is undefined), taskInput matches and blocks leakage
-    expect(rootMessages.value.map(m => m.id)).toEqual(["user-root", "ai-task-call", "ai-final"]);
+    expect(rootMessages.value.map((m) => m.id)).toEqual([
+      "user-root",
+      "ai-task-call",
+      "ai-final",
+    ]);
 
     // And after subagent values event arrives (source becomes child namespace), it remains filtered
     hooks.onEvent({
       method: "values",
-      params: { namespace: ["tools:subagent-1"], data: { messages: [subagentHumanMsg] } },
+      params: {
+        namespace: ["tools:subagent-1"],
+        data: { messages: [subagentHumanMsg] },
+      },
     });
-    expect(rootMessages.value.map(m => m.id)).toEqual(["user-root", "ai-task-call", "ai-final"]);
+    expect(rootMessages.value.map((m) => m.id)).toEqual([
+      "user-root",
+      "ai-task-call",
+      "ai-final",
+    ]);
   } finally {
     scope.stop();
   }
@@ -125,7 +236,9 @@ it("filters out subagent internal tool calls and tool messages from root transcr
   const rootAiTaskMsg = new AIMessage({
     id: "root-task-call",
     content: "正在委派 research 进行分析",
-    tool_calls: [{ name: "task", args: { subagent_type: "research" }, id: "task-call-1" }],
+    tool_calls: [
+      { name: "task", args: { subagent_type: "research" }, id: "task-call-1" },
+    ],
   });
   const subagentToolCallMsg = new AIMessage({
     id: "subagent-ls-call",
@@ -144,47 +257,85 @@ it("filters out subagent internal tool calls and tool messages from root transcr
   });
 
   const stream = {
-    messages: shallowRef([rootAiTaskMsg, subagentToolCallMsg, subagentToolMsg, rootAiReplyMsg]),
+    messages: shallowRef([
+      rootAiTaskMsg,
+      subagentToolCallMsg,
+      subagentToolMsg,
+      rootAiReplyMsg,
+    ]),
     values: shallowRef({ messages: [rootAiTaskMsg, rootAiReplyMsg] }),
     isLoading: shallowRef(false),
     subgraphs: shallowRef(new Map()),
-    subagents: shallowRef(new Map([
-      ["task-call-1", {
-        id: "task-call-1",
-        name: "research",
-        namespace: ["tools:subagent-1"],
-      }],
-    ])),
+    subagents: shallowRef(
+      new Map([
+        [
+          "task-call-1",
+          {
+            id: "task-call-1",
+            name: "research",
+            namespace: ["tools:subagent-1"],
+          },
+        ],
+      ]),
+    ),
   };
 
   const scope = effectScope();
   try {
-    const rootMessages = scope.run(() => useTranscriptMessages(stream as unknown as AnyStream))!;
+    const rootMessages = scope.run(() =>
+      useTranscriptMessages(stream as unknown as AnyStream),
+    )!;
     // Dispatch event indicating subagent tool calls are from ["tools:subagent-1"]
     hooks.onEvent({
       method: "messages",
-      params: { namespace: ["tools:subagent-1"], data: { id: "subagent-ls-call" } },
+      params: {
+        namespace: ["tools:subagent-1"],
+        data: { id: "subagent-ls-call" },
+      },
     });
     hooks.onEvent({
       method: "messages",
-      params: { namespace: ["tools:subagent-1"], data: { id: "subagent-ls-result" } },
+      params: {
+        namespace: ["tools:subagent-1"],
+        data: { id: "subagent-ls-result" },
+      },
     });
 
     // Root transcript should only contain root-task-call and root-final-reply, NOT subagent-ls-call or subagent-ls-result!
-    expect(rootMessages.value.map(m => m.id)).toEqual(["root-task-call", "root-final-reply"]);
+    expect(rootMessages.value.map((m) => m.id)).toEqual([
+      "root-task-call",
+      "root-final-reply",
+    ]);
   } finally {
     scope.stop();
   }
 });
 
 it("drops uncommitted timed-out retry AI messages both during streaming and after completion", () => {
-  const userMsg = new HumanMessage({ id: "user-1", content: "你喜欢哪一段剧情呢？" });
-  const abortedAttempt1 = new AIMessage({ id: "lc_run--retry-1", content: "司法岛篇（半截超时废稿1）" });
-  const abortedAttempt2 = new AIMessage({ id: "lc_run--retry-2", content: "司法岛篇（半截超时废稿2）" });
-  const finalAttempt3 = new AIMessage({ id: "lc_run--retry-3", content: "司法岛篇（完整回答）" });
+  const userMsg = new HumanMessage({
+    id: "user-1",
+    content: "你喜欢哪一段剧情呢？",
+  });
+  const abortedAttempt1 = new AIMessage({
+    id: "lc_run--retry-1",
+    content: "司法岛篇（半截超时废稿1）",
+  });
+  const abortedAttempt2 = new AIMessage({
+    id: "lc_run--retry-2",
+    content: "司法岛篇（半截超时废稿2）",
+  });
+  const finalAttempt3 = new AIMessage({
+    id: "lc_run--retry-3",
+    content: "司法岛篇（完整回答）",
+  });
 
   const stream = {
-    messages: shallowRef([userMsg, abortedAttempt1, abortedAttempt2, finalAttempt3]),
+    messages: shallowRef([
+      userMsg,
+      abortedAttempt1,
+      abortedAttempt2,
+      finalAttempt3,
+    ]),
     values: shallowRef({ messages: [userMsg] }),
     isLoading: shallowRef(true),
     subgraphs: shallowRef(new Map()),
@@ -193,8 +344,14 @@ it("drops uncommitted timed-out retry AI messages both during streaming and afte
 
   const scope = effectScope();
   try {
-    const rootMessages = scope.run(() => useTranscriptMessages(stream as unknown as AnyStream))!;
-    for (const id of ["lc_run--retry-1", "lc_run--retry-2", "lc_run--retry-3"]) {
+    const rootMessages = scope.run(() =>
+      useTranscriptMessages(stream as unknown as AnyStream),
+    )!;
+    for (const id of [
+      "lc_run--retry-1",
+      "lc_run--retry-2",
+      "lc_run--retry-3",
+    ]) {
       hooks.onEvent({
         method: "messages",
         params: { namespace: [], data: { event: "message-start", id } },
@@ -202,7 +359,10 @@ it("drops uncommitted timed-out retry AI messages both during streaming and afte
     }
 
     // While still loading, retry-1 and retry-2 are immediately superseded by retry-3
-    expect(rootMessages.value.map(m => m.id)).toEqual(["user-1", "lc_run--retry-3"]);
+    expect(rootMessages.value.map((m) => m.id)).toEqual([
+      "user-1",
+      "lc_run--retry-3",
+    ]);
 
     // Once the run finishes and values snapshot only contains committed messages
     stream.values.value = { messages: [userMsg, finalAttempt3] };
@@ -211,7 +371,10 @@ it("drops uncommitted timed-out retry AI messages both during streaming and afte
       params: { namespace: [], data: { messages: [userMsg, finalAttempt3] } },
     });
     stream.isLoading.value = false;
-    expect(rootMessages.value.map(m => m.id)).toEqual(["user-1", "lc_run--retry-3"]);
+    expect(rootMessages.value.map((m) => m.id)).toEqual([
+      "user-1",
+      "lc_run--retry-3",
+    ]);
   } finally {
     scope.stop();
   }
@@ -219,8 +382,14 @@ it("drops uncommitted timed-out retry AI messages both during streaming and afte
 
 it("streams follow-up root AI reasoning and text in real time even when thread has prior subagents", () => {
   const turn1User = new HumanMessage({ id: "u-1", content: "我想学习一下 Go" });
-  const turn1Reply = new AIMessage({ id: "ai-1", content: "Go 学习路线已完成" });
-  const turn2User = new HumanMessage({ id: "u-2", content: "哎，你喜欢什么游戏啊？" });
+  const turn1Reply = new AIMessage({
+    id: "ai-1",
+    content: "Go 学习路线已完成",
+  });
+  const turn2User = new HumanMessage({
+    id: "u-2",
+    content: "哎，你喜欢什么游戏啊？",
+  });
   const turn2StreamingAi = new AIMessage({
     id: "ai-2-streaming",
     content: [
@@ -234,26 +403,36 @@ it("streams follow-up root AI reasoning and text in real time even when thread h
     values: shallowRef({ messages: [turn1User, turn1Reply, turn2User] }),
     isLoading: shallowRef(true),
     subgraphs: shallowRef(new Map()),
-    subagents: shallowRef(new Map([
-      ["call-sub-1", {
-        id: "call-sub-1",
-        name: "general-purpose",
-        namespace: ["tools:3583a98c-c8e5-c578-6aae-982cf23554dd"],
-      }],
-    ])),
+    subagents: shallowRef(
+      new Map([
+        [
+          "call-sub-1",
+          {
+            id: "call-sub-1",
+            name: "general-purpose",
+            namespace: ["tools:3583a98c-c8e5-c578-6aae-982cf23554dd"],
+          },
+        ],
+      ]),
+    ),
   };
 
   const scope = effectScope();
   try {
-    const rootMessages = scope.run(() => useTranscriptMessages(stream as unknown as AnyStream))!;
+    const rootMessages = scope.run(() =>
+      useTranscriptMessages(stream as unknown as AnyStream),
+    )!;
     // Root SSE message-start sets source to [] (empty namespace array)
     hooks.onEvent({
       method: "messages",
-      params: { namespace: [], data: { event: "message-start", id: "ai-2-streaming" } },
+      params: {
+        namespace: [],
+        data: { event: "message-start", id: "ai-2-streaming" },
+      },
     });
 
     // Must stream live BEFORE the final values event arrives!
-    expect(rootMessages.value.map(m => m.id)).toEqual([
+    expect(rootMessages.value.map((m) => m.id)).toEqual([
       "u-1",
       "ai-1",
       "u-2",
@@ -264,4 +443,67 @@ it("streams follow-up root AI reasoning and text in real time even when thread h
   }
 });
 
+it("accumulates and projects reasoning-delta in real time during live stream", () => {
+  const userMsg = new HumanMessage({ id: "user-q", content: "请分析" });
+  const stream = {
+    messages: shallowRef([userMsg]),
+    values: shallowRef({ messages: [userMsg] }),
+    isLoading: shallowRef(true),
+    subgraphs: shallowRef(new Map()),
+    subagents: shallowRef(new Map()),
+  };
 
+  const scope = effectScope();
+  try {
+    const rootMessages = scope.run(() =>
+      useTranscriptMessages(stream as unknown as AnyStream),
+    )!;
+
+    // 1. message-start
+    hooks.onEvent({
+      method: "messages",
+      params: {
+        namespace: [],
+        data: { event: "message-start", id: "ai-live-1" },
+      },
+    });
+
+    // 2. reasoning-delta chunks arriving
+    hooks.onEvent({
+      method: "messages",
+      params: {
+        namespace: [],
+        data: {
+          event: "content-block-delta",
+          delta: { type: "reasoning-delta", reasoning: "思考步骤一..." },
+        },
+      },
+    });
+
+    expect(rootMessages.value).toHaveLength(2);
+    const streamingMsg1 = rootMessages.value[1] as any;
+    expect(streamingMsg1.id).toBe("ai-live-1");
+    expect(streamingMsg1.additional_kwargs?.reasoning_content).toBe(
+      "思考步骤一...",
+    );
+
+    // 3. More reasoning-delta
+    hooks.onEvent({
+      method: "messages",
+      params: {
+        namespace: [],
+        data: {
+          event: "content-block-delta",
+          delta: { type: "reasoning-delta", reasoning: " 思考步骤二。" },
+        },
+      },
+    });
+
+    const streamingMsg2 = rootMessages.value[1] as any;
+    expect(streamingMsg2.additional_kwargs?.reasoning_content).toBe(
+      "思考步骤一... 思考步骤二。",
+    );
+  } finally {
+    scope.stop();
+  }
+});

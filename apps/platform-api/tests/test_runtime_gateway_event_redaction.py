@@ -389,3 +389,13 @@ class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
                 b'data: {"seq":2,"method":"values","params":{"namespace":[],"data":{"step":"end"}}}\n\n',
             ],
         )
+
+    async def test_sse_frame_with_unicode_line_separators_is_not_split(self):
+        # \u2028 (LINE SEPARATOR) and \u2029 (PARAGRAPH SEPARATOR) must not break SSE frames
+        frame = b'data: {"seq":1,"method":"values","params":{"namespace":[],"data":{"content":"hello\\u2028world\\u2029test"}}}\n\n'
+        parts = []
+        async for part in _redact_protocol_event_stream(_chunks(frame)):
+            parts.append(part)
+
+        self.assertEqual(len(parts), 1)
+        self.assertIn("hello\u2028world\u2029test".encode(), parts[0])

@@ -8,6 +8,7 @@ from pydantic import BaseModel, ConfigDict
 class UserStatus(StrEnum):
     ACTIVE = "active"
     DISABLED = "disabled"
+    DELETED = "deleted"
 
 
 class UserProfile(BaseModel):

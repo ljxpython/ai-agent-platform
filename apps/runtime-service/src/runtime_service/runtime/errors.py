@@ -7,7 +7,8 @@ class RuntimeErrorBase(ValueError):
     def __init__(self, code: str, field: str | None = None) -> None:
         self.code = code
         self.field = field
-        super().__init__(code)
+        message = f"{code}: {field}" if field else code
+        super().__init__(message)
 
 
 class RuntimeResolutionError(RuntimeErrorBase):

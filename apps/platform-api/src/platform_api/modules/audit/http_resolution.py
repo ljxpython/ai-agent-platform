@@ -127,6 +127,8 @@ def _resolve_action(
             return "user.item.read", "user", clean_str(segments[2])
         if len(segments) == 3 and method == "PATCH":
             return "user.item.updated", "user", clean_str(segments[2])
+        if len(segments) == 3 and method == "DELETE":
+            return "user.item.deleted", "user", clean_str(segments[2])
         if (
             len(segments) == 5
             and segments[3:] == ["credentials", "reset"]

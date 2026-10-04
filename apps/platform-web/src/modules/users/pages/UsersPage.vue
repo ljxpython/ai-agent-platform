@@ -1,233 +1,265 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import BaseButton from '@/components/base/BaseButton.vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import { useAuthorization } from '@/composables/useAuthorization'
-import BaseSelect from '@/components/base/BaseSelect.vue'
-import PageHeader from '@/components/layout/PageHeader.vue'
-import TablePageLayout from '@/components/layout/TablePageLayout.vue'
-import { usePagination } from '@/composables/usePagination'
-import ActionMenu from '@/components/platform/ActionMenu.vue'
-import BulkActionsBar from '@/components/platform/BulkActionsBar.vue'
-import DataTable from '@/components/platform/DataTable.vue'
-import FilterToolbar from '@/components/platform/FilterToolbar.vue'
-import MetricCard from '@/components/platform/MetricCard.vue'
-import PaginationBar from '@/components/platform/PaginationBar.vue'
-import SearchInput from '@/components/platform/SearchInput.vue'
-import StateBanner from '@/components/platform/StateBanner.vue'
-import StatusPill from '@/components/platform/StatusPill.vue'
-import type { ActionMenuItem, BulkActionItem, DataTableColumn } from '@/components/platform/data-table'
-import { describePlatformRole, primaryPlatformRole } from '@/services/auth/permissions'
-import { listUsersPage } from '@/services/users/users.service'
-import { useUiStore } from '@/stores/ui'
-import type { ManagementUser } from '@/types/management'
-import { downloadBlob } from '@/utils/browser-download'
-import { copyText } from '@/utils/clipboard'
-import { formatDateTime, shortId } from '@/utils/format'
+import { computed, onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
+import BaseButton from "@/components/base/BaseButton.vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import ConfirmDialog from "@/components/base/ConfirmDialog.vue";
+import { useAuthorization } from "@/composables/useAuthorization";
+import BaseSelect from "@/components/base/BaseSelect.vue";
+import PageHeader from "@/components/layout/PageHeader.vue";
+import TablePageLayout from "@/components/layout/TablePageLayout.vue";
+import { usePagination } from "@/composables/usePagination";
+import ActionMenu from "@/components/platform/ActionMenu.vue";
+import BulkActionsBar from "@/components/platform/BulkActionsBar.vue";
+import DataTable from "@/components/platform/DataTable.vue";
+import FilterToolbar from "@/components/platform/FilterToolbar.vue";
+import MetricCard from "@/components/platform/MetricCard.vue";
+import PaginationBar from "@/components/platform/PaginationBar.vue";
+import SearchInput from "@/components/platform/SearchInput.vue";
+import StateBanner from "@/components/platform/StateBanner.vue";
+import StatusPill from "@/components/platform/StatusPill.vue";
+import type {
+  ActionMenuItem,
+  BulkActionItem,
+  DataTableColumn,
+} from "@/components/platform/data-table";
+import {
+  describePlatformRole,
+  primaryPlatformRole,
+} from "@/services/auth/permissions";
+import { deleteUser, listUsersPage } from "@/services/users/users.service";
+import { useAuthStore } from "@/stores/auth";
+import { useUiStore } from "@/stores/ui";
+import type { ManagementUser } from "@/types/management";
+import { downloadBlob } from "@/utils/browser-download";
+import { copyText } from "@/utils/clipboard";
+import { formatDateTime, shortId } from "@/utils/format";
 
-const router = useRouter()
-const uiStore = useUiStore()
-const authorization = useAuthorization()
+const router = useRouter();
+const uiStore = useUiStore();
+const authorization = useAuthorization();
+const authStore = useAuthStore();
 
-const queryInput = ref('')
-const statusInput = ref('')
-const query = ref('')
-const status = ref('')
-const loading = ref(false)
-const error = ref('')
-const items = ref<ManagementUser[]>([])
-const selectedUserIds = ref<string[]>([])
-const userRows = computed(() => items.value as unknown as Record<string, unknown>[])
+const pendingDeleteUser = ref<ManagementUser | null>(null);
+const deleting = ref(false);
+const canManageUsers = computed(() =>
+  authorization.can("platform.user.status.write"),
+);
+
+const queryInput = ref("");
+const statusInput = ref("");
+const query = ref("");
+const status = ref("");
+const loading = ref(false);
+const error = ref("");
+const items = ref<ManagementUser[]>([]);
+const selectedUserIds = ref<string[]>([]);
+const userRows = computed(
+  () => items.value as unknown as Record<string, unknown>[],
+);
 const pagination = usePagination({
   initialPageSize: 20,
-  storageKey: 'pw:users:page-size'
-})
+  storageKey: "pw:users:page-size",
+});
 const columns = computed<DataTableColumn[]>(() => [
   {
-    key: 'username',
-    label: '账号',
+    key: "username",
+    label: "账号",
     sortable: true,
     alwaysVisible: true,
-    sortValue: (row) => row.username
+    sortValue: (row) => row.username,
   },
   {
-    key: 'email',
-    label: '邮箱',
+    key: "email",
+    label: "邮箱",
     sortable: true,
     defaultHidden: false,
-    sortValue: (row) => row.email || ''
+    sortValue: (row) => row.email || "",
   },
   {
-    key: 'role',
-    label: '角色',
+    key: "role",
+    label: "角色",
     sortable: true,
     sortValue: (row) => {
-      const user = row as ManagementUser
-      const role = primaryPlatformRole(user)
-      if (role === 'platform_super_admin') {
-        return 3
+      const user = row as ManagementUser;
+      const role = primaryPlatformRole(user);
+      if (role === "platform_super_admin") {
+        return 3;
       }
-      if (role === 'platform_operator') {
-        return 2
+      if (role === "platform_operator") {
+        return 2;
       }
-      if (role === 'platform_viewer') {
-        return 1
+      if (role === "platform_viewer") {
+        return 1;
       }
-      return 0
-    }
+      return 0;
+    },
   },
   {
-    key: 'status',
-    label: '状态',
+    key: "status",
+    label: "状态",
     sortable: true,
-    sortValue: (row) => row.status
+    sortValue: (row) => row.status,
   },
   {
-    key: 'created_at',
-    label: '创建时间',
-    sortable: true,
-    defaultHidden: true,
-    sortValue: (row) => row.created_at || ''
-  },
-  {
-    key: 'id',
-    label: 'ID',
+    key: "created_at",
+    label: "创建时间",
     sortable: true,
     defaultHidden: true,
-    sortValue: (row) => row.id
-  }
-])
+    sortValue: (row) => row.created_at || "",
+  },
+  {
+    key: "id",
+    label: "ID",
+    sortable: true,
+    defaultHidden: true,
+    sortValue: (row) => row.id,
+  },
+]);
 
 function userFromRow(row: Record<string, unknown>) {
-  return row as ManagementUser
+  return row as ManagementUser;
 }
 
 const adminCount = computed(
-  () => items.value.filter((item) => primaryPlatformRole(item) === 'platform_super_admin').length
-)
-const activeCount = computed(() => items.value.filter((item) => item.status === 'active').length)
-const selectedUsers = computed(() => items.value.filter((item) => selectedUserIds.value.includes(item.id)))
+  () =>
+    items.value.filter(
+      (item) => primaryPlatformRole(item) === "platform_super_admin",
+    ).length,
+);
+const activeCount = computed(
+  () => items.value.filter((item) => item.status === "active").length,
+);
+const selectedUsers = computed(() =>
+  items.value.filter((item) => selectedUserIds.value.includes(item.id)),
+);
 const stats = computed(() => [
   {
-    label: '当前结果',
+    label: "当前结果",
     value: items.value.length,
-    hint: '展示最新查询返回的用户',
-    icon: 'users',
-    tone: 'primary'
+    hint: "展示最新查询返回的用户",
+    icon: "users",
+    tone: "primary",
   },
   {
-    label: '管理员',
+    label: "管理员",
     value: adminCount.value,
-    hint: '当前结果集中拥有超级管理员权限的用户',
-    icon: 'shield',
-    tone: 'success'
+    hint: "当前结果集中拥有超级管理员权限的用户",
+    icon: "shield",
+    tone: "success",
   },
   {
-    label: '活跃成员',
+    label: "活跃成员",
     value: activeCount.value,
-    hint: '当前结果集中状态为 active 的用户',
-    icon: 'activity',
-    tone: 'warning'
-  }
-])
+    hint: "当前结果集中状态为 active 的用户",
+    icon: "activity",
+    tone: "warning",
+  },
+]);
 
 const bulkActionSummary = computed(() => {
-  const names = selectedUsers.value.slice(0, 3).map((item) => item.username)
+  const names = selectedUsers.value.slice(0, 3).map((item) => item.username);
   if (!names.length) {
-    return ''
+    return "";
   }
 
   const suffix =
     selectedUsers.value.length > names.length
       ? ` 等 ${selectedUsers.value.length} 个账号`
-      : ` 共 ${selectedUsers.value.length} 个账号`
+      : ` 共 ${selectedUsers.value.length} 个账号`;
 
-  return `${names.join('、')}${suffix}`
-})
+  return `${names.join("、")}${suffix}`;
+});
 
 async function loadUsers() {
-  loading.value = true
-  error.value = ''
+  loading.value = true;
+  error.value = "";
 
   try {
     const payload = await listUsersPage({
       limit: pagination.pageSize.value,
       offset: pagination.offset.value,
       query: query.value,
-      status: status.value
-    })
+      status: status.value,
+    });
 
-    items.value = payload.items
-    pagination.setTotal(payload.total)
+    items.value = payload.items;
+    pagination.setTotal(payload.total);
   } catch (loadError) {
-    items.value = []
-    pagination.setTotal(0)
-    error.value = loadError instanceof Error ? loadError.message : '用户列表加载失败'
+    items.value = [];
+    pagination.setTotal(0);
+    error.value =
+      loadError instanceof Error ? loadError.message : "用户列表加载失败";
   } finally {
-    loading.value = false
+    loading.value = false;
   }
 }
 
 function applyFilters() {
-  query.value = queryInput.value.trim()
-  status.value = statusInput.value
+  query.value = queryInput.value.trim();
+  status.value = statusInput.value;
   if (pagination.page.value === 1) {
-    void loadUsers()
-    return
+    void loadUsers();
+    return;
   }
 
-  pagination.resetPage()
+  pagination.resetPage();
 }
 
 function resetFilters() {
-  queryInput.value = ''
-  statusInput.value = ''
-  query.value = ''
-  status.value = ''
+  queryInput.value = "";
+  statusInput.value = "";
+  query.value = "";
+  status.value = "";
   if (pagination.page.value === 1) {
-    void loadUsers()
-    return
+    void loadUsers();
+    return;
   }
 
-  pagination.resetPage()
+  pagination.resetPage();
 }
 
 async function handleCopyValue(label: string, value: string) {
-  const copied = await copyText(value)
+  const copied = await copyText(value);
   uiStore.pushToast({
-    type: copied ? 'success' : 'warning',
-    title: copied ? `已复制${label}` : '复制失败',
-    message: copied ? value : '当前环境不支持自动复制，请手动复制。'
-  })
+    type: copied ? "success" : "warning",
+    title: copied ? `已复制${label}` : "复制失败",
+    message: copied ? value : "当前环境不支持自动复制，请手动复制。",
+  });
 }
 
 function clearUserSelection() {
-  selectedUserIds.value = []
+  selectedUserIds.value = [];
 }
 
 function updateSelectedUserIds(keys: Array<string | number>) {
-  selectedUserIds.value = keys.map(String)
+  selectedUserIds.value = keys.map(String);
 }
 
 async function handleCopySelectedUserIds() {
-  const content = selectedUsers.value.map((item) => item.id).join('\n')
-  const copied = await copyText(content)
+  const content = selectedUsers.value.map((item) => item.id).join("\n");
+  const copied = await copyText(content);
   uiStore.pushToast({
-    type: copied ? 'success' : 'warning',
-    title: copied ? '已复制所选用户 ID' : '复制失败',
-    message: copied ? `${selectedUsers.value.length} 个用户 ID 已写入剪贴板。` : '当前环境不支持自动复制，请手动复制。'
-  })
+    type: copied ? "success" : "warning",
+    title: copied ? "已复制所选用户 ID" : "复制失败",
+    message: copied
+      ? `${selectedUsers.value.length} 个用户 ID 已写入剪贴板。`
+      : "当前环境不支持自动复制，请手动复制。",
+  });
 }
 
 async function handleCopySelectedEmails() {
-  const emails = selectedUsers.value.map((item) => item.email?.trim() || '').filter(Boolean)
-  const copied = await copyText(emails.join('\n'))
+  const emails = selectedUsers.value
+    .map((item) => item.email?.trim() || "")
+    .filter(Boolean);
+  const copied = await copyText(emails.join("\n"));
   uiStore.pushToast({
-    type: copied ? 'success' : 'warning',
-    title: copied ? '已复制所选邮箱' : '复制失败',
-    message: copied ? `${emails.length} 个邮箱已写入剪贴板。` : '当前环境不支持自动复制，请手动复制。'
-  })
+    type: copied ? "success" : "warning",
+    title: copied ? "已复制所选邮箱" : "复制失败",
+    message: copied
+      ? `${emails.length} 个邮箱已写入剪贴板。`
+      : "当前环境不支持自动复制，请手动复制。",
+  });
 }
 
 function handleExportUserSummary() {
@@ -235,89 +267,132 @@ function handleExportUserSummary() {
     [
       item.id,
       item.username,
-      item.email || '',
+      item.email || "",
       describePlatformRole(item),
       item.status,
-      item.created_at || ''
-    ].join('\t')
-  )
-  const content = ['id\tusername\temail\trole\tstatus\tcreated_at', ...rows].join('\n')
+      item.created_at || "",
+    ].join("\t"),
+  );
+  const content = [
+    "id\tusername\temail\trole\tstatus\tcreated_at",
+    ...rows,
+  ].join("\n");
   downloadBlob(
-    new Blob([content], { type: 'text/tab-separated-values;charset=utf-8' }),
-    `users-summary-${new Date().toISOString().slice(0, 10)}.tsv`
-  )
+    new Blob([content], { type: "text/tab-separated-values;charset=utf-8" }),
+    `users-summary-${new Date().toISOString().slice(0, 10)}.tsv`,
+  );
   uiStore.pushToast({
-    type: 'success',
-    title: '用户摘要已导出',
-    message: `已导出 ${selectedUsers.value.length} 个用户的摘要文件。`
-  })
+    type: "success",
+    title: "用户摘要已导出",
+    message: `已导出 ${selectedUsers.value.length} 个用户的摘要文件。`,
+  });
 }
 
 function userActions(user: ManagementUser): ActionMenuItem[] {
+  const isSelf = user.id === authStore.user?.id;
   return [
     {
-      key: 'copy-id',
-      label: '复制用户 ID',
-      icon: 'copy',
-      onSelect: () => handleCopyValue('用户 ID', user.id)
+      key: "copy-id",
+      label: "复制用户 ID",
+      icon: "copy",
+      onSelect: () => handleCopyValue("用户 ID", user.id),
     },
     {
-      key: 'copy-email',
-      label: user.email ? '复制邮箱' : '邮箱未填写',
-      icon: 'copy',
+      key: "copy-email",
+      label: user.email ? "复制邮箱" : "邮箱未填写",
+      icon: "copy",
       disabled: !user.email,
-      onSelect: () => handleCopyValue('邮箱', user.email || '')
+      onSelect: () => handleCopyValue("邮箱", user.email || ""),
     },
     {
-      key: 'detail',
-      label: '用户详情',
-      icon: 'eye',
-      onSelect: () => void router.push(`/workspace/users/${user.id}`)
-    }
-  ]
+      key: "detail",
+      label: "用户详情",
+      icon: "eye",
+      onSelect: () => void router.push(`/workspace/users/${user.id}`),
+    },
+    {
+      key: "delete",
+      label: isSelf ? "不能删除当前登录账号" : "删除用户",
+      icon: "trash",
+      danger: true,
+      disabled: isSelf || !canManageUsers.value || user.status === "deleted",
+      onSelect: () => {
+        pendingDeleteUser.value = user;
+      },
+    },
+  ];
+}
+
+async function confirmDeleteUser() {
+  if (!pendingDeleteUser.value) {
+    return;
+  }
+  const target = pendingDeleteUser.value;
+  deleting.value = true;
+  try {
+    await deleteUser(target.id);
+    uiStore.pushToast({
+      type: "success",
+      title: "用户已删除",
+      message: `已软删除用户 ${target.username}`,
+    });
+    pendingDeleteUser.value = null;
+    await loadUsers();
+  } catch (deleteError) {
+    uiStore.pushToast({
+      type: "error",
+      title: "删除用户失败",
+      message: deleteError instanceof Error ? deleteError.message : "删除失败",
+    });
+  } finally {
+    deleting.value = false;
+  }
 }
 
 const selectedEmailsCount = computed(
-  () => selectedUsers.value.filter((item) => Boolean(item.email?.trim())).length
-)
+  () =>
+    selectedUsers.value.filter((item) => Boolean(item.email?.trim())).length,
+);
 
 const bulkActions = computed<BulkActionItem[]>(() => [
   {
-    key: 'copy-ids',
-    label: '复制用户 ID',
-    icon: 'copy',
-    variant: 'secondary',
-    onSelect: handleCopySelectedUserIds
+    key: "copy-ids",
+    label: "复制用户 ID",
+    icon: "copy",
+    variant: "secondary",
+    onSelect: handleCopySelectedUserIds,
   },
   {
-    key: 'copy-emails',
-    label: '复制邮箱',
-    icon: 'copy',
-    variant: 'secondary',
+    key: "copy-emails",
+    label: "复制邮箱",
+    icon: "copy",
+    variant: "secondary",
     disabled: selectedEmailsCount.value === 0,
-    onSelect: handleCopySelectedEmails
+    onSelect: handleCopySelectedEmails,
   },
   {
-    key: 'export',
-    label: '导出摘要',
-    icon: 'download',
-    variant: 'primary',
-    onSelect: handleExportUserSummary
-  }
-])
+    key: "export",
+    label: "导出摘要",
+    icon: "download",
+    variant: "primary",
+    onSelect: handleExportUserSummary,
+  },
+]);
 
 watch(items, (nextItems) => {
-  const validIds = new Set(nextItems.map((item) => item.id))
-  selectedUserIds.value = selectedUserIds.value.filter((id) => validIds.has(id))
-})
+  const validIds = new Set(nextItems.map((item) => item.id));
+  selectedUserIds.value = selectedUserIds.value.filter((id) =>
+    validIds.has(id),
+  );
+});
 
 watch([() => pagination.page.value, () => pagination.pageSize.value], () => {
-  void loadUsers()
-})
+  void loadUsers();
+});
 
 onMounted(() => {
-  void loadUsers()
-})
+  void loadUsers();
+});
 </script>
 
 <template>
@@ -332,20 +407,15 @@ onMounted(() => {
           :disabled="!authorization.can('platform.user.create')"
           @click="void router.push('/workspace/users/new')"
         >
-          <BaseIcon
-            name="users"
-            size="sm"
-          />
-          {{ authorization.can('platform.user.create') ? '新建用户' : '当前账号只读' }}
+          <BaseIcon name="users" size="sm" />
+          {{
+            authorization.can("platform.user.create")
+              ? "新建用户"
+              : "当前账号只读"
+          }}
         </BaseButton>
-        <BaseButton
-          variant="secondary"
-          @click="loadUsers"
-        >
-          <BaseIcon
-            name="refresh"
-            size="sm"
-          />
+        <BaseButton variant="secondary" @click="loadUsers">
+          <BaseIcon name="refresh" size="sm" />
           刷新
         </BaseButton>
       </template>
@@ -374,30 +444,17 @@ onMounted(() => {
       <template #filters>
         <FilterToolbar>
           <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
-            <SearchInput
-              v-model="queryInput"
-              placeholder="按用户名搜索"
-            />
+            <SearchInput v-model="queryInput" placeholder="按用户名搜索" />
             <BaseSelect v-model="statusInput">
-              <option value="">
-                全部状态
-              </option>
-              <option value="active">
-                active
-              </option>
-              <option value="disabled">
-                disabled
-              </option>
+              <option value="">全部状态</option>
+              <option value="active">active (正常)</option>
+              <option value="disabled">disabled (已禁用)</option>
+              <option value="deleted">deleted (已删除)</option>
             </BaseSelect>
-            <BaseButton
-              variant="secondary"
-              @click="resetFilters"
-            >
+            <BaseButton variant="secondary" @click="resetFilters">
               重置
             </BaseButton>
-            <BaseButton @click="applyFilters">
-              应用筛选
-            </BaseButton>
+            <BaseButton @click="applyFilters"> 应用筛选 </BaseButton>
           </div>
         </FilterToolbar>
       </template>
@@ -429,11 +486,10 @@ onMounted(() => {
         >
           <template #cell-username="{ row }">
             <div class="flex items-center gap-3">
-              <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-50 text-primary-600 shadow-soft dark:bg-primary-950/30 dark:text-primary-300">
-                <BaseIcon
-                  name="user"
-                  size="sm"
-                />
+              <div
+                class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-50 text-primary-600 shadow-soft dark:bg-primary-950/30 dark:text-primary-300"
+              >
+                <BaseIcon name="user" size="sm" />
               </div>
               <div class="font-semibold text-gray-900 dark:text-white">
                 {{ userFromRow(row).username }}
@@ -443,18 +499,32 @@ onMounted(() => {
 
           <template #cell-email="{ row }">
             <span class="text-gray-500 dark:text-dark-300">
-              {{ userFromRow(row).email || '未填写' }}
+              {{ userFromRow(row).email || "未填写" }}
             </span>
           </template>
 
           <template #cell-role="{ row }">
-            <StatusPill :tone="primaryPlatformRole(userFromRow(row)) === 'platform_super_admin' ? 'warning' : 'neutral'">
+            <StatusPill
+              :tone="
+                primaryPlatformRole(userFromRow(row)) === 'platform_super_admin'
+                  ? 'warning'
+                  : 'neutral'
+              "
+            >
               {{ describePlatformRole(userFromRow(row)) }}
             </StatusPill>
           </template>
 
           <template #cell-status="{ row }">
-            <StatusPill :tone="userFromRow(row).status === 'active' ? 'success' : 'warning'">
+            <StatusPill
+              :tone="
+                userFromRow(row).status === 'active'
+                  ? 'success'
+                  : userFromRow(row).status === 'deleted'
+                    ? 'danger'
+                    : 'warning'
+              "
+            >
               {{ userFromRow(row).status }}
             </StatusPill>
           </template>
@@ -477,10 +547,7 @@ onMounted(() => {
         </DataTable>
       </template>
 
-      <template
-        v-if="pagination.total.value > 0"
-        #footer
-      >
+      <template v-if="pagination.total.value > 0" #footer>
         <PaginationBar
           :total="pagination.total.value"
           :page="pagination.page.value"
@@ -491,5 +558,19 @@ onMounted(() => {
         />
       </template>
     </TablePageLayout>
+
+    <ConfirmDialog
+      :show="pendingDeleteUser !== null"
+      title="删除用户"
+      :message="
+        pendingDeleteUser
+          ? `确认软删除用户 ${pendingDeleteUser.username} 吗？删除后将释放该用户名，吊销其全部登录凭证并移出所有项目。`
+          : ''
+      "
+      confirm-text="确认删除"
+      danger
+      @cancel="pendingDeleteUser = null"
+      @confirm="confirmDeleteUser"
+    />
   </section>
 </template>

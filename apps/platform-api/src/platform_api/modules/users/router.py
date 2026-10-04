@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import sessionmaker
 
 from platform_api.core.context.models import ActorContext
+from platform_api.core.schemas import AckResponse
 from platform_api.entrypoints.http.dependencies import get_actor_context
 from platform_api.modules.identity.schemas import UserStatus
 from platform_api.modules.users.contracts import (
@@ -113,3 +114,13 @@ def reset_user_password(
     service: UsersService = Depends(get_users_service),
 ) -> UserItem:
     return service.reset_password(actor=actor, user_id=user_id, command=payload)
+
+
+@router.delete("/{user_id}", response_model=AckResponse)
+def delete_user(
+    user_id: str,
+    actor: ActorContext = Depends(get_actor_context),
+    service: UsersService = Depends(get_users_service),
+) -> AckResponse:
+    service.delete_user(actor=actor, user_id=user_id)
+    return AckResponse()

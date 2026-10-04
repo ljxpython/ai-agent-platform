@@ -7,26 +7,45 @@ it("binds the original message toolbar to current message IDs and copies only th
   const writeText = vi.fn().mockResolvedValue(undefined);
   vi.stubGlobal("navigator", { clipboard: { writeText } });
   const wrapper = mount(ChatMessageList, {
-    props: { messages: [new HumanMessage({ id: "user-1", content: "问题" }), new AIMessage({ id: "answer-1", content: "回答" })], calls: [], isRunning: false, canEdit: true },
+    props: {
+      messages: [
+        new HumanMessage({ id: "user-1", content: "问题" }),
+        new AIMessage({ id: "answer-1", content: "回答" }),
+      ],
+      calls: [],
+      isRunning: false,
+      canEdit: true,
+    },
     global: { stubs: { MessageContent: true, ToolResult: true } },
   });
   try {
-    const button = (label: string) => wrapper.findAll("button").find(item => item.text() === label)!;
+    const button = (label: string) =>
+      wrapper.findAll("button").find((item) => item.text() === label)!;
     await button("编辑").trigger("click");
     expect(wrapper.emitted("edit")).toEqual([["user-1", "问题"]]);
     await button("重试").trigger("click");
     expect(wrapper.emitted("retry")).toEqual([["answer-1"]]);
-    await wrapper.findAll("button").filter(item => item.text() === "复制")[1]!.trigger("click");
+    await wrapper
+      .findAll("button")
+      .filter((item) => item.text() === "复制")[1]!
+      .trigger("click");
     expect(writeText).toHaveBeenCalledWith("回答");
-    await wrapper.setProps({ editingMessageId: "user-1", editingMessageValue: "修改后" });
+    await wrapper.setProps({
+      editingMessageId: "user-1",
+      editingMessageValue: "修改后",
+    });
     expect(wrapper.get("textarea").element.value).toBe("修改后");
     await wrapper.get("textarea").setValue("再次修改");
-    expect(wrapper.emitted("update:editingMessageValue")).toEqual([["再次修改"]]);
+    expect(wrapper.emitted("update:editingMessageValue")).toEqual([
+      ["再次修改"],
+    ]);
     await button("提交重发").trigger("click");
     expect(wrapper.emitted("submit-edit")).toHaveLength(1);
 
     // Fork button tests: visible for completed agent messages
-    const forkBtn = wrapper.findAll("button").find(item => item.text() === "分支")!;
+    const forkBtn = wrapper
+      .findAll("button")
+      .find((item) => item.text() === "分支")!;
     expect(forkBtn.exists()).toBe(true);
     expect(forkBtn.attributes("title")).toBe("在新对话中分支");
     await forkBtn.trigger("click");
@@ -34,7 +53,9 @@ it("binds the original message toolbar to current message IDs and copies only th
 
     // Emits checkpointId when available in metadata
     await wrapper.setProps({
-      metadata: { "answer-1": { messageId: "answer-1", checkpointId: "cp-123" } }
+      metadata: {
+        "answer-1": { messageId: "answer-1", checkpointId: "cp-123" },
+      },
     });
     await forkBtn.trigger("click");
     expect(wrapper.emitted("fork")?.[1]).toEqual(["answer-1", "cp-123"]);
@@ -43,11 +64,17 @@ it("binds the original message toolbar to current message IDs and copies only th
     await wrapper.setProps({ isRunning: true });
     expect(forkBtn.attributes("disabled")).toBeDefined();
     expect(forkBtn.attributes("title")).toBe("仅可从已完成轮次分支");
-  } finally { wrapper.unmount(); vi.unstubAllGlobals(); }
+  } finally {
+    wrapper.unmount();
+    vi.unstubAllGlobals();
+  }
 });
 
 it("keeps a stable agent bubble DOM node and loading placeholder across empty message-start until first token arrives", async () => {
-  const userMsg = new HumanMessage({ id: "user-stable-1", content: "测试平滑输出" });
+  const userMsg = new HumanMessage({
+    id: "user-stable-1",
+    content: "测试平滑输出",
+  });
   const wrapper = mount(ChatMessageList, {
     props: {
       messages: [userMsg],
@@ -85,10 +112,52 @@ it("keeps a stable agent bubble DOM node and loading placeholder across empty me
         }),
       ],
     });
-    const articlesDuringReasoning = wrapper.findAll("article[data-author='agent']");
+    const articlesDuringReasoning = wrapper.findAll(
+      "article[data-author='agent']",
+    );
     expect(articlesDuringReasoning[0]!.element).toBe(initialElement);
     expect(wrapper.text()).toContain("正在思考...");
     expect(wrapper.text()).toContain("正在分析问题...");
+  } finally {
+    wrapper.unmount();
+  }
+});
+
+it("hides 'Agent 正在处理当前回合' when session is interrupted or awaiting request_information clarification", async () => {
+  const userMsg = new HumanMessage({ id: "user-2", content: "请写博客" });
+  const aiMsg = new AIMessage({
+    id: "ai-2",
+    content: "先确认几个点",
+    tool_calls: [
+      {
+        id: "call_req_1",
+        name: "request_information",
+        args: { question: "确认方向" },
+      },
+    ],
+  });
+
+  const wrapper = mount(ChatMessageList, {
+    props: {
+      messages: [userMsg, aiMsg],
+      calls: [],
+      isRunning: true,
+      isInterrupted: false,
+    },
+    global: {
+      stubs: {
+        BaseIcon: true,
+      },
+    },
+  });
+
+  try {
+    // 包含 request_information 工具，即使 isRunning 为 true，也不能显示“Agent 正在处理当前回合”
+    expect(wrapper.text()).not.toContain("Agent 正在处理当前回合");
+
+    // 当设置 isInterrupted 为 true 时，绝对隐藏“Agent 正在处理当前回合”
+    await wrapper.setProps({ isInterrupted: true });
+    expect(wrapper.text()).not.toContain("Agent 正在处理当前回合");
   } finally {
     wrapper.unmount();
   }
@@ -193,5 +262,3 @@ it("marks the latest user turn with data-is-last-user and computes GPT-style tur
     wrapper.unmount();
   }
 });
-
-

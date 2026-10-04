@@ -1,127 +1,144 @@
-import { defineStore } from 'pinia'
-import { getProjectAccess, listProjects } from '@/services/projects/projects.service'
-import type { ManagementProject, ProjectAccess } from '@/types/management'
+import { defineStore } from "pinia";
+import {
+  getProjectAccess,
+  listProjects,
+} from "@/services/projects/projects.service";
+import type { ManagementProject, ProjectAccess } from "@/types/management";
 
-const PROJECT_STORAGE_KEY = 'pw:workspace:project-id'
+const PROJECT_STORAGE_KEY = "pw:workspace:project-id";
 
 function readProjectPreference(storageKey: string) {
-  if (typeof window === 'undefined') {
-    return ''
+  if (typeof window === "undefined") {
+    return "";
   }
 
-  return window.localStorage.getItem(storageKey)?.trim() || ''
+  return window.localStorage.getItem(storageKey)?.trim() || "";
 }
 
 function writeProjectPreference(storageKey: string, projectId: string) {
-  if (typeof window === 'undefined') {
-    return
+  if (typeof window === "undefined") {
+    return;
   }
 
   if (projectId) {
-    window.localStorage.setItem(storageKey, projectId)
-    return
+    window.localStorage.setItem(storageKey, projectId);
+    return;
   }
 
-  window.localStorage.removeItem(storageKey)
+  window.localStorage.removeItem(storageKey);
 }
 
-export const useWorkspaceStore = defineStore('workspace', {
+export const useWorkspaceStore = defineStore("workspace", {
   state: () => ({
-    currentProjectId: '',
+    currentProjectId: "",
     projects: [] as ManagementProject[],
     currentProjectAccess: null as ProjectAccess | null,
     loading: false,
     accessLoading: false,
     contextLoaded: false,
-    error: '',
+    error: "",
     accessEpoch: 0,
-    contextEpoch: 0
+    contextEpoch: 0,
   }),
   getters: {
     currentProject(state) {
-      return state.projects.find((project) => project.id === state.currentProjectId) ?? null
-    }
+      return (
+        state.projects.find(
+          (project) => project.id === state.currentProjectId,
+        ) ?? null
+      );
+    },
   },
   actions: {
     hydrateProjectPreference() {
-      this.currentProjectId = readProjectPreference(PROJECT_STORAGE_KEY)
+      this.currentProjectId = readProjectPreference(PROJECT_STORAGE_KEY);
     },
     async setProjectId(projectId: string) {
-      const id = projectId.trim()
-      const isProjectChanged = id !== this.currentProjectId
-      const epoch = ++this.accessEpoch
-      this.currentProjectId = id
+      const id = projectId.trim();
+      const isProjectChanged = id !== this.currentProjectId;
+      const epoch = ++this.accessEpoch;
+      this.currentProjectId = id;
       if (isProjectChanged || !id) {
-        this.currentProjectAccess = null
+        this.currentProjectAccess = null;
       }
-      this.accessLoading = Boolean(id && !this.currentProjectAccess)
-      this.error = ''
-      writeProjectPreference(PROJECT_STORAGE_KEY, id)
+      this.accessLoading = Boolean(id && !this.currentProjectAccess);
+      this.error = "";
+      writeProjectPreference(PROJECT_STORAGE_KEY, id);
       try {
-        const access = id ? await getProjectAccess(id) : null
-        if (epoch === this.accessEpoch) this.currentProjectAccess = access
+        const access = id ? await getProjectAccess(id) : null;
+        if (epoch === this.accessEpoch) this.currentProjectAccess = access;
       } catch (error) {
-        if (epoch === this.accessEpoch) this.error = '项目权限加载失败，请重试'
-        throw error
+        if (epoch === this.accessEpoch) this.error = "项目权限加载失败，请重试";
+        throw error;
       } finally {
-        if (epoch === this.accessEpoch) this.accessLoading = false
+        if (epoch === this.accessEpoch) this.accessLoading = false;
       }
     },
     async refreshCurrentProjectAccess() {
-      const projectId = this.currentProjectId
+      const projectId = this.currentProjectId;
       if (!projectId) {
-        this.currentProjectAccess = null
-        return
+        this.currentProjectAccess = null;
+        return;
       }
-      const epoch = ++this.accessEpoch
+      const epoch = ++this.accessEpoch;
       try {
-        const access = await getProjectAccess(projectId)
+        const access = await getProjectAccess(projectId);
         if (epoch === this.accessEpoch && projectId === this.currentProjectId) {
-          this.currentProjectAccess = access
+          this.currentProjectAccess = access;
         }
-      } catch (error) {
+      } catch (error: any) {
         if (epoch === this.accessEpoch && projectId === this.currentProjectId) {
-          this.currentProjectAccess = null
-          this.error = '项目权限刷新失败，请重试'
+          const status = error?.response?.status ?? error?.status;
+          const message = String(error?.message || "").toLowerCase();
+          const isExplicitForbidden =
+            status === 403 ||
+            message.includes("forbidden") ||
+            message.includes("permission_denied") ||
+            message.includes("access_denied");
+
+          if (isExplicitForbidden) {
+            this.currentProjectAccess = null;
+          }
+          this.error = "项目权限刷新失败，请重试";
         }
-        throw error
+        throw error;
       }
     },
     async hydrateContext() {
-      const epoch = ++this.contextEpoch
-      this.loading = true
-      this.error = ''
+      const epoch = ++this.contextEpoch;
+      this.loading = true;
+      this.error = "";
 
       try {
-        this.hydrateProjectPreference()
-        const rows = await listProjects()
-        if (epoch !== this.contextEpoch) return
-        this.projects = rows
+        this.hydrateProjectPreference();
+        const rows = await listProjects();
+        if (epoch !== this.contextEpoch) return;
+        this.projects = rows;
 
         const nextProjectId =
           rows.find((project) => project.id === this.currentProjectId)?.id ||
           rows[0]?.id ||
-          ''
+          "";
 
-        await this.setProjectId(nextProjectId)
+        await this.setProjectId(nextProjectId);
       } catch {
-        if (epoch !== this.contextEpoch) return
-        this.projects = []
-        await this.setProjectId('')
-        this.error = '项目列表或权限加载失败，请重试'
+        if (epoch !== this.contextEpoch) return;
+        this.projects = [];
+        await this.setProjectId("");
+        this.error = "项目列表或权限加载失败，请重试";
       } finally {
         if (epoch === this.contextEpoch) {
-          this.loading = false
-          this.contextLoaded = true
+          this.loading = false;
+          this.contextLoaded = true;
         }
       }
     },
     reset() {
-      this.contextEpoch += 1
-      this.projects = []
-      void this.setProjectId('')
-      this.loading = false
-      this.contextLoaded = false
-    }
-  }
-})
+      this.contextEpoch += 1;
+      this.projects = [];
+      void this.setProjectId("");
+      this.loading = false;
+      this.contextLoaded = false;
+    },
+  },
+});

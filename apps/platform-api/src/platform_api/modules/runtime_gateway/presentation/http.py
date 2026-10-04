@@ -147,6 +147,7 @@ _SENSITIVE_EVENT_KEYS = {
 }
 _MAX_SSE_FRAME_BYTES = 8 * 1024 * 1024
 _SSE_BOUNDARY = re.compile(rb"\r?\n\r?\n")
+_SSE_LINE_BREAK = re.compile(r"\r\n|\r|\n")
 
 
 class InvalidSseFrame(ValueError):
@@ -177,9 +178,11 @@ def _redact_event_value(value: Any) -> Any:
 def _redact_sse_frame(frame: bytes, *, protocol: bool = True) -> bytes:
     frame, _ = _normalize_protocol_lifecycle_frame(frame)
     try:
-        lines = frame.decode("utf-8").splitlines()
+        decoded = frame.decode("utf-8")
     except UnicodeDecodeError as exc:
         raise InvalidSseFrame("invalid_utf8") from exc
+    cleaned = decoded.rstrip("\r\n")
+    lines = _SSE_LINE_BREAK.split(cleaned) if cleaned else []
     if lines and all(not line or line.startswith(":") for line in lines):
         return b": heartbeat"
     data_positions = [

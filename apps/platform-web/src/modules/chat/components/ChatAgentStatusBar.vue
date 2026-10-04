@@ -1,34 +1,49 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import { formatThreadTime } from '@/utils/threads'
+import { computed } from "vue";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import { formatThreadTime } from "@/utils/threads";
 
 const props = defineProps<{
-  isRunning: boolean
-  isInterrupted: boolean
-  error?: string
-  lastEventAt?: string
-  disabled?: boolean
-}>()
+  isRunning: boolean;
+  isInterrupted: boolean;
+  error?: string;
+  lastEventAt?: string;
+  disabled?: boolean;
+}>();
 
 const emit = defineEmits<{
-  'resume': []
-  'cancel': []
-}>()
+  resume: [];
+  cancel: [];
+}>();
+
+function formatError(raw: string): string {
+  if (raw.includes("runtime.tool.not_allowed")) {
+    const match = raw.match(
+      /runtime\.tool\.not_allowed(?::\s*([a-zA-Z0-9_.-]+))?/,
+    );
+    const toolName = match?.[1]?.trim();
+    return toolName
+      ? `工具「${toolName}」已被项目策略禁用，无法执行`
+      : "工具调用受限，已被项目策略禁用";
+  }
+  return raw;
+}
 
 const statusText = computed(() => {
-  if (props.isRunning) return 'Agent 正在执行...'
-  if (props.isInterrupted) return '等待人工确认'
-  if (props.error) return `执行出错: ${props.error}`
-  return props.lastEventAt ? `最后活跃于 ${formatThreadTime(props.lastEventAt)}` : '就绪'
-})
+  if (props.isRunning) return "Agent 正在执行...";
+  if (props.isInterrupted) return "等待人工确认";
+  if (props.error) return `执行出错: ${formatError(props.error)}`;
+  return props.lastEventAt
+    ? `最后活跃于 ${formatThreadTime(props.lastEventAt)}`
+    : "就绪";
+});
 
 const statusIcon = computed(() => {
-  if (props.isRunning) return 'refresh'
-  if (props.isInterrupted) return 'alert'
-  if (props.error) return 'x'
-  return 'check'
-})
+  if (props.isRunning) return "refresh";
+  if (props.isInterrupted) return "alert";
+  if (props.error) return "x";
+  return "check";
+});
 </script>
 
 <template>
@@ -38,7 +53,7 @@ const statusIcon = computed(() => {
     :class="{
       'bg-blue-50 border-blue-200': isRunning,
       'bg-amber-50 border-amber-200': isInterrupted,
-      'bg-red-50 border-red-200': error
+      'bg-red-50 border-red-200': error,
     }"
   >
     <div class="flex items-center gap-3 w-full sm:w-auto overflow-hidden">
@@ -47,7 +62,7 @@ const statusIcon = computed(() => {
         :class="{
           'animate-spin text-blue-500': isRunning,
           'text-amber-500': isInterrupted,
-          'text-red-500': error
+          'text-red-500': error,
         }"
       />
       <span
@@ -55,10 +70,11 @@ const statusIcon = computed(() => {
         :class="{
           'text-blue-800': isRunning,
           'text-amber-800': isInterrupted,
-          'text-red-800': error
+          'text-red-800': error,
         }"
         :title="statusText"
-      >{{ statusText }}</span>
+        >{{ statusText }}</span
+      >
     </div>
 
     <div

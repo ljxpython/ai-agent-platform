@@ -12,13 +12,14 @@ from langchain.agents.middleware import (
 )
 from langchain.tools import tool
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
-from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.runtime import Runtime
 
 from runtime_service.middlewares import (
     ModelCallTimeoutMiddleware,
     RuntimeConfigMiddleware,
 )
+from runtime_service.middlewares.runtime_config import repair_model_tool_calls
 from runtime_service.runtime import (
     AgentDefaults,
     RuntimeAuthError,
@@ -480,3 +481,64 @@ def test_sanitize_tool_call_messages_strips_idless_truncated_tool_calls_and_orph
     openai_dicts = [_convert_message_to_dict(m) for m in sanitized]
     assert "tool_calls" not in openai_dicts[1]
     assert [d["role"] for d in openai_dicts] == ["user", "assistant", "user"]
+
+
+def test_repair_model_tool_calls_stitches_arguments_and_strips_empty_blocks() -> None:
+    msg = AIMessage(
+        content="Writing blog",
+        tool_calls=[
+            {"id": "call_123", "args": {}, "name": "write_file", "type": "tool_call"},
+            {
+                "id": "",
+                "args": {
+                    "file_path": "/workspace/work/blog.md",
+                    "content": "text",
+                },
+                "name": "",
+                "type": "tool_call",
+            },
+        ],
+        invalid_tool_calls=[
+            {
+                "id": None,
+                "args": "",
+                "name": None,
+                "error": None,
+                "type": "invalid_tool_call",
+            }
+        ],
+    )
+    repaired = repair_model_tool_calls(msg)
+    assert len(repaired.tool_calls) == 1
+    assert repaired.tool_calls[0]["name"] == "write_file"
+    assert repaired.tool_calls[0]["args"] == {
+        "file_path": "/workspace/work/blog.md",
+        "content": "text",
+    }
+    assert len(repaired.invalid_tool_calls) == 0
+
+
+def test_runtime_middleware_repairs_fragmented_tool_calls() -> None:
+    middleware = _middleware()
+    request = ModelRequest(
+        model=FakeListChatModel(responses=["ok"]),
+        messages=[HumanMessage(content="write")],
+        tools=[read_tool],
+        runtime=Runtime(context=RuntimeContext()),
+    )
+    fragmented_ai = AIMessage(
+        content="Done",
+        tool_calls=[
+            {"id": "call_abc", "args": {}, "name": "read_tool", "type": "tool_call"},
+            {"id": "", "args": {"topic": "ai"}, "name": "", "type": "tool_call"},
+        ],
+    )
+
+    async def handler(value: ModelRequest):
+        return SimpleNamespace(result=[fragmented_ai])
+
+    response = asyncio.run(middleware.awrap_model_call(request, handler))
+    res_msg = response.result[0]
+    assert len(res_msg.tool_calls) == 1
+    assert res_msg.tool_calls[0]["name"] == "read_tool"
+    assert res_msg.tool_calls[0]["args"] == {"topic": "ai"}

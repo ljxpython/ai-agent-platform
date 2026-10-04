@@ -26,11 +26,13 @@ import {
 import {
   listRuntimeModelPolicies,
   updateRuntimeModelPolicy,
+  listToolRestrictions,
 } from "@/services/runtime-policies/runtime-policies.service";
 import type {
   RuntimeModelItem,
   RuntimeModelPolicyValue,
   RuntimeToolItem,
+  ToolRestrictionItem,
 } from "@/types/management";
 import RuntimeModelEditor, {
   type ModelEditorMode,
@@ -65,6 +67,7 @@ const canRefresh = computed(
 const items = ref<RuntimeModelItem[]>([]);
 const policies = ref<Record<string, RuntimeModelPolicyValue>>({});
 const tools = ref<RuntimeToolItem[]>([]);
+const toolRestrictions = ref<ToolRestrictionItem[]>([]);
 const toolRestrictionsOpen = ref(false);
 const tab = ref<"models" | "tools">("models");
 const query = ref("");
@@ -182,6 +185,7 @@ async function load() {
   items.value = [];
   policies.value = {};
   tools.value = [];
+  toolRestrictions.value = [];
   try {
     if (platformMode.value) {
       const models = await listPlatformModels();
@@ -189,17 +193,24 @@ async function load() {
       return;
     }
     if (!project) throw new Error("请先选择项目");
-    const [models, modelPolicies, toolData] = await Promise.all([
-      listRuntimeModels(project),
-      listRuntimeModelPolicies(project),
-      listRuntimeTools(project),
-    ]);
+    const [models, modelPolicies, toolData, restrictionData] =
+      await Promise.all([
+        listRuntimeModels(project),
+        listRuntimeModelPolicies(project),
+        listRuntimeTools(project),
+        listToolRestrictions(project).catch(() => ({
+          project_id: project,
+          items: [],
+          total: 0,
+        })),
+      ]);
     if (requestEpoch !== epoch) return;
     items.value = models.models;
     policies.value = Object.fromEntries(
       modelPolicies.items.map((item) => [item.catalog_id, item.policy]),
     );
     tools.value = toolData.tools;
+    toolRestrictions.value = restrictionData.items || [];
   } catch (cause) {
     if (requestEpoch === epoch)
       error.value = cause instanceof Error ? cause.message : "目录读取失败";
@@ -215,6 +226,7 @@ watch(
     targetStation.value = null;
     detailModel.value = null;
     toolRestrictionsOpen.value = false;
+    toolRestrictions.value = [];
     tab.value = "models";
     saving.value = false;
     notice.value = "";
@@ -620,7 +632,13 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
           :disabled="saving || loading"
           @click="toolRestrictionsOpen = true"
         >
-          管理禁用规则
+          <span>管理禁用规则</span>
+          <span
+            v-if="toolRestrictions.length"
+            class="ml-1.5 rounded-full bg-white/20 px-1.5 py-0.5 text-xs font-mono font-medium"
+          >
+            {{ toolRestrictions.length }}
+          </span>
         </BaseButton>
         <BaseButton
           v-if="platformMode && canManagePlatform && tab === 'models'"
@@ -975,7 +993,10 @@ function modelActions(model: RuntimeModelItem): ActionMenuItem[] {
       :project-id="activeProjectId"
       :tools="tools"
       :can-manage="canManagePolicy"
-      @close="toolRestrictionsOpen = false"
+      @close="
+        toolRestrictionsOpen = false;
+        void load();
+      "
     />
   </section>
 </template>

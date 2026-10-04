@@ -5,6 +5,12 @@
 
 ## 最后更新
 
+2026-10-04 | Chat 会话状态机加固与思维链流式体验优化完成（done）：彻底解决 Thread `ce88ceb8-8907-4c4b-af94-3d489df7167f` 中暴露的四大交互顽疾。1) 权限刷新防误踢：`workspace.ts` 请求失败时区分错误，仅在明确 403 时清空权限，瞬态网络或 401 刷新期间保留现有缓存；2) 排队 Banner 显隐收敛：`QueuedMessagesBanner.vue` 增加 `totalCount > 0` 守卫，空队列不再误弹黄色告警；3) Live Step 状态指示解耦：`ChatMessageList.vue` 增加 `isInterrupted` 守卫并剔除 `request_information` 等交互类工具，避免澄清时挂着“正在处理”矛盾提示；4) 思维链首轮流式动态投影：`useTranscriptMessages.ts` 实时捕获 `reasoning-delta` 并注入活跃 AIMessage，解决 DeepSeek 长思考阶段卡顿假死与突兀弹出；前端定向单测（22 项全绿）、`pnpm typecheck` 与生产打包验证全绿。
+
+2026-10-03 | 模型输出畸形 Tool Call 自动缝合与孤儿空块剔除兼容完成（done）：彻底解决第三方中转代理在流式输出长参数工具调用时切片异常裂变，导致 `ClarificationBatchGuard` 报 `clarification_requires_single_valid_tool_call` 与 `RuntimeConfigMiddleware` 报 `runtime.tool.not_allowed` 的阻断死锁。实装 `repair_model_tool_calls`：对无名/空名畸形孤儿块自动将参数精准缝合给前驱缺参工具调用，并从 `tool_calls` / `invalid_tool_calls` 及 `content` 中彻底剔除空块；定向单测（16 项）及 DearFlow 澄清合约单测全绿。
+
+2026-10-03 | 平台用户软删除与生命周期治理完成（done）：彻底解决平台用户无法删除的问题。扩展 `UserStatus.DELETED = "deleted"` 并建立三重硬核安全防护栅栏（自杀拦截、最后活跃超管保护、唯一项目管理员防孤儿项目拦截）；软删除后自动原子重命名加 tag 释放原始 `username` / `external_subject`，撤销该用户所在的所有项目成员身份，并吊销全部有效 Refresh Token；后端暴露 `DELETE /api/users/{user_id}` 接口且审计挂载 `user.item.deleted`；前端 `UsersPage.vue` 与 `UserDetailPage.vue` 实装删除动作、自杀置灰保护与二次确认弹窗；定向单测（4 项 Python + 7 项 Vitest）与生产打包全绿。
+
 2026-10-03 | Runtime 视觉识图全面支持 DeepSeek 官方多模态与盲吞异常消灭完成（done）：彻底解决 `analyze_image` 强绑定火山豆包及盲吞异常抛出无用废话问题。实现 `resolve_vision_config` 多级配置解析（通用 `VISION_*` > DeepSeek 官方配置 `DEEPSEEK_*` > 兼容回退 `DOUBAO_*`）；默认采用 `deepseek-flash` 官方多模态识图；彻底透出底层真实 `error.code` 与 `message`；单测全绿（22 passed）并通过真实页面截图端到端识图实测验收。
 
 2026-10-02 | 长会话断流恢复解耦与历史快照按需懒加载治理完成（done）：彻底根治 100+ 步长会话下 Checkpoint 历史快照（3.4MB+）导致的断流重连 504 假死超时。解耦 useChatSession.ts 中 recoverExpiredStream 对巨型 service.history 的强制阻塞等待，仅拉取轻量级 service.state 实现 0.05 秒瞬时极速自愈，并转为非阻塞异步预热与静默软降级；加固 ChatSession.vue 移除 loadHistory 错误对全局红色横幅的污染，并增加抽屉展开懒加载守卫；新增 504 容错单测（24 passed），全量 19 套聊天组件单测（67 passed）与 pnpm build 打包全绿。
@@ -67,6 +73,8 @@
 
 ## 活跃项目
 
+- [Chat 会话状态机加固与流式体验优化](projects/20261004-chat-session-state-and-stream-hardening/README.md)：done；彻底解决切屏失焦权限刷新误踢、空队列误弹排队 0 黄条、中断等待澄清时底部悬挂正在处理矛盾提示、以及 DeepSeek 思维链首轮流式卡顿假死四大顽疾；前端 22 项单测全绿、静态类型检查与生产打包全绿。
+- [平台用户软删除与生命周期治理](projects/20261003-platform-user-soft-delete/README.md)：done；平台用户软删除闭环，扩展 UserStatus.DELETED，三大安全护栏（防自杀、最后活跃超管、唯一项目管理员防孤儿项目），重命名释放用户名/subject，吊销 token，退出关联项目；前后端单测与生产构建全绿。
 - [长会话断流恢复解耦与历史快照按需懒加载治理](projects/20261002-chat-history-lazy-loading-and-timeout-resilience/README.md)：done；解耦断流恢复对 3.4MB 巨型 history 的阻塞依赖，仅拉取 state 毫秒级极速自愈并后台静默预热；加固 ChatSession 抽屉懒加载与错误隔离，单测与生产构建全绿。
 - [DearFlow Agent 灵感建议与“小惊喜”创意工坊](projects/20261002-dearflow-surprise-me-feature/README.md)：done；前端 Confetti 动效按钮与灵感胶囊栏实装，后端创意交互网页生成规范与工作区沙箱高保真免刷新预览闭环，单测及生产打包全绿。
 - [DearFlow Agent 接入 Jina Reader 网页深度提取](projects/20261002-dearflow-jina-reader-integration/README.md)：done；Jina Reader API（r.jina.ai）高质量 Markdown 深度提取与双通道平滑容灾降级已实装，单测与真实网络提取验证全绿。
@@ -96,9 +104,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-03 | 图像识别分析工具（analyze_image）支持 DeepSeek 官方多模态识图（deepseek-flash）与通用 VISION_*，消灭盲吞异常并保留错误详情；单测全通 |
-| platform-api | 2026-09-28 | 存量 Python 诊断全部清零且 100% 格式化；网关层放通 checkpoint_ns 与 /state/checkpoint；网关层 SSE 流保活心跳注入保持；单测全通 |
-| platform-web | 2026-10-02 | 解耦断流恢复对 3.4MB 巨型 history 的阻塞依赖，毫秒级极速自愈并后台静默预热；加固 ChatSession 抽屉懒加载与错误隔离；ChatComposer 接入灵感胶囊栏与撒花微动效；SandboxedHtmlFrame 免刷新预览；单测全通与打包通过 |
+| runtime-service | 2026-10-03 | 实装 repair_model_tool_calls 自动缝合分裂 Tool Call 参数并剔除畸形孤儿空块，彻底消灭二道贩子 API 导致的 not_allowed / single_valid_tool_call 阻断；图像分析工具支持 deepseek-flash；单测全通 |
+| platform-api | 2026-10-03 | 平台用户软删除 DELETE /api/users/{user_id} 实装，内置三重安全栅栏（防自杀、最后超管、唯一项目管理员防孤儿项目），重命名释放原始用户名并吊销凭据；单测全通 |
+| platform-web | 2026-10-04 | 会话状态机加固（权限防误踢、排队Banner收敛、澄清与处理中互斥）与思维链流式渐进感知优化完成；单测 22 项全绿、typecheck 与打包全绿 |
 | AI Harness（AGENTS.md + Skills） | 2026-09-26 | 整单结束前须逐项核对未完成任务；Task 未完成时只记 Phase，剩余项确需用户行动才可按 blocked 汇报；详见 docs/changes/20260926-harness-completion-reporting.md |
 
 ## 近期关键决策

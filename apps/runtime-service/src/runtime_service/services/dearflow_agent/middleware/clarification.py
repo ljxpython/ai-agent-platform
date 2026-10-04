@@ -3,6 +3,7 @@
 from langchain.agents.middleware import AgentMiddleware
 from langchain_core.messages import AIMessage
 
+from runtime_service.middlewares.runtime_config import repair_model_tool_calls
 from runtime_service.services.dearflow_agent.schemas import ClarificationRequest
 
 
@@ -20,12 +21,18 @@ class ClarificationBatchGuard(AgentMiddleware):
 
     def wrap_model_call(self, request, handler):
         response = handler(request)
-        for message in response.result:
+        for i, message in enumerate(response.result):
+            if isinstance(message, AIMessage):
+                message = repair_model_tool_calls(message)
+                response.result[i] = message
             self._validate(message)
         return response
 
     async def awrap_model_call(self, request, handler):
         response = await handler(request)
-        for message in response.result:
+        for i, message in enumerate(response.result):
+            if isinstance(message, AIMessage):
+                message = repair_model_tool_calls(message)
+                response.result[i] = message
             self._validate(message)
         return response

@@ -59,6 +59,8 @@ class SqlAlchemyUsersRepository:
             )
         if status:
             base_stmt = base_stmt.where(UserRecord.status == status)
+        else:
+            base_stmt = base_stmt.where(UserRecord.status != "deleted")
         if exclude_user_ids:
             base_stmt = base_stmt.where(UserRecord.id.not_in(exclude_user_ids))
 
@@ -183,3 +185,39 @@ class SqlAlchemyUsersRepository:
                 is_super_admin=record.is_super_admin,
             )
         )
+
+    def soft_delete_user(
+        self,
+        user_id: UUID,
+    ) -> StoredPlatformUser | None:
+        record = self.session.get(UserRecord, user_id)
+        if record is None:
+            return None
+        tag = record.id.hex[:8]
+        record.status = "deleted"
+        record.username = f"{record.username}#deleted#{tag}"
+        record.external_subject = f"{record.external_subject}#deleted#{tag}"
+        record.updated_at = datetime.now(UTC)
+        self.session.flush()
+        return _to_user(record)
+
+    def count_project_admins(self, *, project_id: UUID) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(ProjectMemberRecord)
+            .where(
+                ProjectMemberRecord.project_id == project_id,
+                ProjectMemberRecord.role == "admin",
+            )
+        )
+        return int(self.session.scalar(stmt) or 0)
+
+    def remove_user_from_all_projects(self, *, user_id: UUID) -> int:
+        stmt = select(ProjectMemberRecord).where(ProjectMemberRecord.user_id == user_id)
+        records = list(self.session.scalars(stmt).all())
+        count = len(records)
+        for record in records:
+            self.session.delete(record)
+        if count:
+            self.session.flush()
+        return count

@@ -51,14 +51,13 @@
 | 工作区 HTML 现代化高保真安全预览 | 已完成：SandboxedHtmlFrame 升级为 sandbox="allow-scripts" 且 Origin 锁定为 null，更新安全沙箱徽章文案，单测通过 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
 | 对话输入灵感胶囊栏与微物理撒花小惊喜（ConfettiButton & ComposerSuggestions） | 已完成：实装基于 canvas-confetti 的五彩粒子喷射按钮与动态灵感胶囊栏，支持快捷填入小惊喜、写作、调研、分析等指令模板，与 ChatComposer 双向联动；单测与打包全通过 | [小惊喜迁移专项](projects/20261002-dearflow-surprise-me-feature/README.md) |
 | 长会话断流恢复解耦与历史快照按需懒加载治理 | 已完成：剥离 recoverExpiredStream 对 3.4MB 巨型 history 的阻塞强依赖，改为 state 毫秒级极速自愈 + history 后台静默预热软降级；加固 ChatSession 抽屉懒加载守卫并隔离全局横幅报错；单测全通与打包通过 | [历史懒加载治理专项](projects/20261002-chat-history-lazy-loading-and-timeout-resilience/README.md) |
-
-
-
+| 平台用户管理软删除操作与自杀保护交互 | 已完成：操作菜单与详情页实装软删除操作、二次确认弹窗、防自杀禁用与状态筛选；单测及生产构建全绿 | [软删除治理](projects/20261003-platform-user-soft-delete/README.md) |
 
 ## platform-api
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 平台用户软删除与生命周期治理 | 已完成：实现 DELETE /api/users/{user_id}，内置防自杀、最后超管保护、唯一项目管理员防孤儿项目三重护栏，释放原始用户名与凭据吊销 | [软删除治理](projects/20261003-platform-user-soft-delete/README.md) |
 | 鉴权、项目治理、审计、catalog | 已完成 | `apps/platform-api/docs/handbook/project-handbook.md` |
 | 控制面 SQLite → PostgreSQL 迁移 | 已完成：本地 PG 真实切换，20 表一致；浏览器、容器重启、性能复测及双库恢复读回通过 | [迁移专项](projects/20260920-platform-api-postgresql-migration/README.md) · [运维规范](guides/database-operations.md) |
 | 重构后文档体系重建 | done：10篇活文档、28文件归档与引用修复，配置/契约核对及33项相关测试通过 | [文档工程](projects/20260910-platform-api-docs-rebuild/README.md) |

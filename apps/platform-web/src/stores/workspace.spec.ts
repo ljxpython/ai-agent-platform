@@ -1,53 +1,96 @@
-import { beforeEach, expect, it, vi } from 'vitest'
-import { createPinia, setActivePinia } from 'pinia'
-import type { ProjectAccess } from '@/types/management'
+import { beforeEach, expect, it, vi } from "vitest";
+import { createPinia, setActivePinia } from "pinia";
+import type { ProjectAccess } from "@/types/management";
 
-const api = vi.hoisted(() => ({ getProjectAccess: vi.fn(), listProjects: vi.fn() }))
-vi.mock('@/services/projects/projects.service', () => api)
-import { useWorkspaceStore } from './workspace'
+const api = vi.hoisted(() => ({
+  getProjectAccess: vi.fn(),
+  listProjects: vi.fn(),
+}));
+vi.mock("@/services/projects/projects.service", () => api);
+import { useWorkspaceStore } from "./workspace";
 
-beforeEach(() => { setActivePinia(createPinia()); vi.clearAllMocks() })
+beforeEach(() => {
+  setActivePinia(createPinia());
+  vi.clearAllMocks();
+});
 
-it('clears old permissions immediately and ignores delayed project responses', async () => {
-  let resolveA!: (value: ProjectAccess) => void
-  api.getProjectAccess.mockImplementation((id: string) => id === 'A'
-    ? new Promise<ProjectAccess>((resolve) => { resolveA = resolve })
-    : Promise.resolve({ project_id: 'B', permissions: [], roles: [] }))
-  const store = useWorkspaceStore()
-  const pending = store.setProjectId('A')
-  await store.setProjectId('B')
-  resolveA({ project_id: 'A', permissions: ['project.runtime.write'], roles: ['project_admin'] })
-  await pending
-  expect(store.currentProjectAccess?.project_id).toBe('B')
-  expect(store.currentProjectAccess?.permissions).toEqual([])
-})
+it("clears old permissions immediately and ignores delayed project responses", async () => {
+  let resolveA!: (value: ProjectAccess) => void;
+  api.getProjectAccess.mockImplementation((id: string) =>
+    id === "A"
+      ? new Promise<ProjectAccess>((resolve) => {
+          resolveA = resolve;
+        })
+      : Promise.resolve({ project_id: "B", permissions: [], roles: [] }),
+  );
+  const store = useWorkspaceStore();
+  const pending = store.setProjectId("A");
+  await store.setProjectId("B");
+  resolveA({
+    project_id: "A",
+    permissions: ["project.runtime.write"],
+    roles: ["project_admin"],
+  });
+  await pending;
+  expect(store.currentProjectAccess?.project_id).toBe("B");
+  expect(store.currentProjectAccess?.permissions).toEqual([]);
+});
 
-it('logout invalidates in-flight hydration', async () => {
-  let resolve!: (rows: []) => void
-  api.listProjects.mockReturnValue(new Promise<[]>((done) => { resolve = done }))
-  const store = useWorkspaceStore()
-  const pending = store.hydrateContext()
-  store.reset()
-  resolve([])
-  await pending
-  expect(store.contextLoaded).toBe(false)
-  expect(store.currentProjectAccess).toBeNull()
-  expect(store.currentProjectId).toBe('')
-})
+it("logout invalidates in-flight hydration", async () => {
+  let resolve!: (rows: []) => void;
+  api.listProjects.mockReturnValue(
+    new Promise<[]>((done) => {
+      resolve = done;
+    }),
+  );
+  const store = useWorkspaceStore();
+  const pending = store.hydrateContext();
+  store.reset();
+  resolve([]);
+  await pending;
+  expect(store.contextLoaded).toBe(false);
+  expect(store.currentProjectAccess).toBeNull();
+  expect(store.currentProjectId).toBe("");
+});
 
-it('clears revoked permissions when the periodic access refresh is rejected', async () => {
+it("clears revoked permissions when the periodic access refresh is rejected", async () => {
   api.getProjectAccess
     .mockResolvedValueOnce({
-      project_id: 'A',
-      permissions: ['project.runtime.write'],
-      roles: ['project_executor']
+      project_id: "A",
+      permissions: ["project.runtime.write"],
+      roles: ["project_executor"],
     })
-    .mockRejectedValueOnce(new Error('forbidden'))
-  const store = useWorkspaceStore()
-  await store.setProjectId('A')
+    .mockRejectedValueOnce(new Error("forbidden"));
+  const store = useWorkspaceStore();
+  await store.setProjectId("A");
 
-  await expect(store.refreshCurrentProjectAccess()).rejects.toThrow('forbidden')
+  await expect(store.refreshCurrentProjectAccess()).rejects.toThrow(
+    "forbidden",
+  );
 
-  expect(store.currentProjectAccess).toBeNull()
-  expect(store.error).toBe('项目权限刷新失败，请重试')
-})
+  expect(store.currentProjectAccess).toBeNull();
+  expect(store.error).toBe("项目权限刷新失败，请重试");
+});
+
+it("retains current permissions on transient network error during refresh", async () => {
+  api.getProjectAccess
+    .mockResolvedValueOnce({
+      project_id: "A",
+      permissions: ["project.runtime.write"],
+      roles: ["project_executor"],
+    })
+    .mockRejectedValueOnce(new Error("Network Error"));
+  const store = useWorkspaceStore();
+  await store.setProjectId("A");
+
+  await expect(store.refreshCurrentProjectAccess()).rejects.toThrow(
+    "Network Error",
+  );
+
+  expect(store.currentProjectAccess).toEqual({
+    project_id: "A",
+    permissions: ["project.runtime.write"],
+    roles: ["project_executor"],
+  });
+  expect(store.error).toBe("项目权限刷新失败，请重试");
+});

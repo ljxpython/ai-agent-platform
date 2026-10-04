@@ -60,13 +60,17 @@ describe("QueuedMessagesBanner.vue", () => {
     expect(wrapper.text()).toContain("继续");
 
     // Click resend button
-    const resendBtn = wrapper.findAll("button").find((b) => b.text().includes("作为新消息发送"));
+    const resendBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("作为新消息发送"));
     expect(resendBtn).toBeDefined();
     await resendBtn?.trigger("click");
     expect(wrapper.emitted("resendAsNew")?.[0]).toEqual(["继续", "m-2"]);
 
     // Click restore button
-    const restoreBtn = wrapper.findAll("button").find((b) => b.text().includes("恢复到输入框"));
+    const restoreBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("恢复到输入框"));
     expect(restoreBtn).toBeDefined();
     await restoreBtn?.trigger("click");
     expect(wrapper.emitted("restoreDraft")?.[0]).toEqual(["继续", "m-2"]);
@@ -75,7 +79,16 @@ describe("QueuedMessagesBanner.vue", () => {
   it("handles refresh button click", async () => {
     const wrapper = mount(QueuedMessagesBanner, {
       props: {
-        receipts: [],
+        receipts: [
+          {
+            message_id: "m-1",
+            thread_id: "t-1",
+            target_run_id: "r-1",
+            sequence: 1,
+            status: "not_consumed",
+            content: "补充要求",
+          },
+        ],
         receiptError: "网络连接超时",
         canWrite: true,
         canSend: false,
@@ -88,9 +101,25 @@ describe("QueuedMessagesBanner.vue", () => {
     });
 
     expect(wrapper.text()).toContain("网络连接超时");
-    const refreshBtn = wrapper.findAll("button").find((b) => b.text().includes("刷新"));
+    const refreshBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("刷新"));
     await refreshBtn?.trigger("click");
     expect(wrapper.emitted("refresh")).toBeDefined();
+  });
+
+  it("does not render when totalCount is 0 even if receiptError is present", () => {
+    const wrapper = mount(QueuedMessagesBanner, {
+      props: {
+        receipts: [],
+        queueItems: [],
+        pendingMessage: null,
+        receiptError: "网络连接超时",
+        canWrite: true,
+        canSend: false,
+      },
+    });
+    expect(wrapper.find("section").exists()).toBe(false);
   });
 
   it("renders queueItems with order indicators and handles moveUp, moveDown, restoreDraft, and removeItem", async () => {
@@ -123,31 +152,44 @@ describe("QueuedMessagesBanner.vue", () => {
     expect(wrapper.text()).toContain("第二条排队指令");
 
     // Click Move Down on first item (index 0)
-    const downBtns = wrapper.findAll("button").filter((b) => b.text().includes("下移"));
+    const downBtns = wrapper
+      .findAll("button")
+      .filter((b) => b.text().includes("下移"));
     expect(downBtns.length).toBe(2); // Item 0 and Item 1 have down buttons
     await downBtns[0].trigger("click");
     expect(wrapper.emitted("moveDown")?.[0]).toEqual([0]);
 
     // Click Move Up on second item (index 1)
-    const upBtns = wrapper.findAll("button").filter((b) => b.text().includes("上移"));
+    const upBtns = wrapper
+      .findAll("button")
+      .filter((b) => b.text().includes("上移"));
     expect(upBtns.length).toBe(2); // Item 1 and Item 2 have up buttons
     await upBtns[0].trigger("click");
     expect(wrapper.emitted("moveUp")?.[0]).toEqual([1]);
 
     // Click Restore Draft on first item
-    const restoreBtns = wrapper.findAll("button").filter((b) => b.text().includes("恢复草稿"));
+    const restoreBtns = wrapper
+      .findAll("button")
+      .filter((b) => b.text().includes("恢复草稿"));
     expect(restoreBtns.length).toBe(3);
     await restoreBtns[0].trigger("click");
-    expect(wrapper.emitted("restoreDraft")?.[0]).toEqual(["第一条待执行指令", "q-1"]);
+    expect(wrapper.emitted("restoreDraft")?.[0]).toEqual([
+      "第一条待执行指令",
+      "q-1",
+    ]);
 
     // Click Delete on first item
-    const deleteBtns = wrapper.findAll("button").filter((b) => b.text().includes("删除"));
+    const deleteBtns = wrapper
+      .findAll("button")
+      .filter((b) => b.text().includes("删除"));
     expect(deleteBtns.length).toBe(3);
     await deleteBtns[0].trigger("click");
     expect(wrapper.emitted("removeItem")?.[0]).toEqual(["q-1"]);
 
     // Click Clear Queue
-    const clearBtn = wrapper.findAll("button").find((b) => b.text().includes("清空队列"));
+    const clearBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("清空队列"));
     expect(clearBtn).toBeDefined();
     await clearBtn?.trigger("click");
     expect(wrapper.emitted("clearQueue")).toBeDefined();
@@ -178,4 +220,3 @@ describe("QueuedMessagesBanner.vue", () => {
     expect(wrapper.text()).toContain("· 顺延等待处理");
   });
 });
-
