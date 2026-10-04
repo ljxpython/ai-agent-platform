@@ -170,7 +170,7 @@ platform-web → platform-api → runtime-service
 
 
 
-以下流程都是 AI 自行判断级别后自动执行的，用户不需要手动触发每一步；用户只需要提出需求，AI 在过程中该记录、该验证的地方自己调用对应 Skill。
+以下流程都是 AI 自行判断级别后自动执行的，用户不需要手动触发每一步；用户只需要提出需求，AI 在过程中该记录、该验证的地方自己调用对应 Skill。**各 Skill 的详细流程步骤、模板、踩坑记录见对应 SKILL.md，不在此重复。**
 
 ### 任务完成与汇报
 
@@ -190,64 +190,22 @@ platform-web → platform-api → runtime-service
 
 **讨论有结论时主动落笔：** 当讨论达成明确结论或关键决策时，AI 主动提议将结论记录到 plan.md（如项目文档已存在）或以 `docs/decisions/` 内的 ADR 形式落笔。用户确认则记，不确认则跳过——不强制，但 AI 要有这个动作，不能让结论随上下文消失。
 
-只有当讨论收敛到"确定要做"，才转入下面的分级流程；此时才可能触发 `plan-project`。
+只有当讨论收敛到"确定要做"，才转入分级流程；此时才可能触发 `plan-project`。
 
 ### 场景1：单项目改动
 
-```bash
-# 1. 直接实现
-# 编辑代码...
-
-# 2. 单元测试
-pytest apps/xxx/tests/
-
-# 3.（仅当改动新增/改变了一个功能时）留痕
-#   apps/{app}/docs/changes/{YYYYMMDD}-{slug}.md，同步更新 docs/FEATURES.md 对应行
-
-# 4. 提交
-git commit -m "fix: 修复 xxx 问题"
-```
-
-不触发任何 Skill；是否需要 `changes/` 记录看改动是否改变了"这个服务有哪些功能"这个答案（纯 bug fix/重构不需要）。
+直接实现 → 单元测试 → （功能变化时留痕到 `apps/{app}/docs/changes/`）→ Commit。
+不触发任何 Skill。
 
 ### 场景2：链路改动
 
-```text
-1. AI 判断为链路改动，自动调用 plan-project
-   在 docs/projects/{YYYYMMDD}-{项目名}/ 下创建 README.md / plan.md / tasks.md / verification.md
-
-2. AI 实现功能
-   调用 implement-feature，记录改动到 implementation/
-
-3. AI 验证
-   调用 verify-change，执行测试并记录到 verification.md（含四态判定）
-
-4. 提交
-   git commit -m "refactor(runtime): 重构数据建模
-
-   详见 docs/projects/20260908-runtime-modeling-refactor/"
-```
+调用 `plan-project` → 实现（调用 `implement-feature`）→ 验证（调用 `verify-change`）→ Commit。
+详细流程和文档模板见 `.agents/skills/plan-project/SKILL.md`。
 
 ### 场景3：治理改动
 
-```text
-1. AI 判断为治理改动，自动调用 plan-project 生成完整项目文档
-
-2. 方案评审（这一步必须由人完成，AI 不能自己批准自己的方案）
-   团队评审 plan.md，批准后在 README.md 记录评审结果
-
-3. 分阶段实施
-   Phase 1... Phase 2...（AI 按 implement-feature 记录每阶段）
-
-4. 全面验证
-   调用 verify-change，执行所有级别的测试
-
-5. 生产部署（如适用）
-   按部署流程执行
-
-6. 归档
-# 项目完成后精简文档，保留关键决策
-```
+调用 `plan-project` → **人工评审批准**（必须）→ 分阶段实施（`implement-feature`）→ 全面验证（`verify-change`）→ 生产部署（如适用）。
+详细流程和模板见 `.agents/skills/plan-project/SKILL.md`。
 
 ## archive/ 的定义
 
@@ -331,25 +289,6 @@ docs/
 - `archive/` —— 被取代、不再指导实现的旧文档
 
 单项目改动不需要把"需求"和"变更记录"拆成两份文件——一份 `changes/{日期}-{slug}.md` 开头写背景/需求，后面写改了什么即可。
-
-## 验证标准
-
-### 单项目改动
-- ✅ 单元测试通过
-- ✅ 代码质量检查通过（lint、类型检查）
-
-### 链路改动
-- ✅ 单元测试通过
-- ✅ 集成测试通过
-- ✅ 端到端测试通过（至少一条完整链路）
-
-### 治理改动
-- ✅ 单元测试通过
-- ✅ 集成测试通过
-- ✅ 端到端测试通过（所有关键链路）
-- ✅ 性能测试通过（如适用）
-- ✅ 安全测试通过（如适用）
-- ✅ 回滚方案验证（如适用）
 
 ## LangChain 生态系统文档
 

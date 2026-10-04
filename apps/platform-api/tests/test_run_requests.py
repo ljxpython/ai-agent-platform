@@ -71,7 +71,7 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(stream, "stream")
             submitted = self.upstream.create_thread_run.call_args.args[1]
-            self.assertEqual(submitted.get("version", "v2"), version or "v2")
+            self.assertEqual(submitted["version"], version or "v3")
             self.assertNotIn("version", submitted["context"])
             self.assertEqual(
                 self.upstream.join_thread_run_stream.call_args.args[:2],
@@ -474,6 +474,27 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         sent = self.upstream.create_thread_run.call_args.args[1]
         self.assertEqual(sent["version"], "v3")
         self.upstream.get_thread_run.assert_awaited_with("thread-1", "run-1")
+
+    async def test_resume_without_saved_version_defaults_to_v3(self):
+        await self.start()
+        self.upstream.get_thread_run.return_value = {
+            "run_id": "run-1",
+            "status": "interrupted",
+            "kwargs": {},
+        }
+        self.upstream.create_thread_run.return_value = {"run_id": "run-2"}
+        await self.service.send_thread_command(
+            actor=self.actor,
+            project_id="project-1",
+            thread_id="thread-1",
+            payload={
+                "id": 3,
+                "method": "input.respond",
+                "params": {"resume": {"interrupt-1": True}},
+            },
+        )
+        sent = self.upstream.create_thread_run.call_args.args[1]
+        self.assertEqual(sent["version"], "v3")
 
     async def test_model_revocation_rechecks_saved_context(self):
         self.service._project_default_model_id.return_value = "model-old"

@@ -507,3 +507,118 @@ it("accumulates and projects reasoning-delta in real time during live stream", (
     scope.stop();
   }
 });
+
+it("debounces redundant values frames during live stream and protects live reasoning until final hydration", () => {
+  const userMsg = new HumanMessage({ id: "user-1", content: "请分析" });
+  const stream = {
+    messages: shallowRef([userMsg]),
+    values: shallowRef({ messages: [userMsg] }),
+    isLoading: shallowRef(true),
+    subgraphs: shallowRef(new Map()),
+    subagents: shallowRef(new Map()),
+  };
+
+  const scope = effectScope();
+  try {
+    const rootMessages = scope.run(() =>
+      useTranscriptMessages(stream as unknown as AnyStream),
+    )!;
+
+    // Initial values event sets the snapshot
+    hooks.onEvent({
+      method: "values",
+      params: {
+        namespace: [],
+        data: { messages: [userMsg] },
+      },
+    });
+
+    // Start streaming an AI message with reasoning
+    hooks.onEvent({
+      method: "messages",
+      params: {
+        namespace: [],
+        data: { event: "message-start", id: "ai-1" },
+      },
+    });
+    hooks.onEvent({
+      method: "messages",
+      params: {
+        namespace: [],
+        data: {
+          event: "content-block-delta",
+          delta: { type: "reasoning-delta", reasoning: "深度推演中..." },
+        },
+      },
+    });
+
+    // Verify reasoning is alive
+    expect(rootMessages.value).toHaveLength(2);
+    expect(
+      (rootMessages.value[1] as any).additional_kwargs?.reasoning_content,
+    ).toBe("深度推演中...");
+
+    // Redundant values frame with the exact same messages arrives while streaming (v3 high-frequency step event)
+    hooks.onEvent({
+      method: "values",
+      params: {
+        namespace: [],
+        data: { messages: [userMsg] },
+      },
+    });
+
+    // Live reasoning should NOT be wiped out by the redundant intermediate values frame
+    expect(rootMessages.value).toHaveLength(2);
+    expect(
+      (rootMessages.value[1] as any).additional_kwargs?.reasoning_content,
+    ).toBe("深度推演中...");
+
+    // Now stream completes (isLoading = false) and final values with completed AI message arrives
+    stream.isLoading.value = false;
+    const finalAiMsg = new AIMessage({
+      id: "ai-1",
+      content: "推演完成",
+      additional_kwargs: { reasoning_content: "深度推演中..." },
+    });
+
+    hooks.onEvent({
+      method: "values",
+      params: {
+        namespace: [],
+        data: { messages: [userMsg, finalAiMsg] },
+      },
+    });
+
+    expect(rootMessages.value).toHaveLength(2);
+    expect(rootMessages.value[1].content).toBe("推演完成");
+    expect(
+      (rootMessages.value[1] as any).additional_kwargs?.reasoning_content,
+    ).toBe("深度推演中...");
+  } finally {
+    scope.stop();
+  }
+});
+
+it("preserves chronological order of snapshot history when stream messages only contains late streaming chunk", () => {
+  const userMsg = new HumanMessage({
+    id: "user-1",
+    content: "请帮我设计一个五子棋网页小游戏",
+  });
+  const aiMsg = new AIMessage({ id: "ai-1", content: "好，我来为你设计" });
+  const stream = {
+    messages: shallowRef([aiMsg]),
+    values: shallowRef({ messages: [userMsg, aiMsg] }),
+    isLoading: shallowRef(true),
+    subgraphs: shallowRef(new Map()),
+    subagents: shallowRef(new Map()),
+  };
+  const scope = effectScope();
+  try {
+    const rootMessages = scope.run(() =>
+      useTranscriptMessages(stream as unknown as AnyStream),
+    )!;
+    expect(rootMessages.value.map((m) => m.id)).toEqual(["user-1", "ai-1"]);
+  } finally {
+    scope.stop();
+  }
+});

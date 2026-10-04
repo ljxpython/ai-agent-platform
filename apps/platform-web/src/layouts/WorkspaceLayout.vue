@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 import { storeToRefs } from "pinia";
 import AppSidebar from "@/components/layout/AppSidebar.vue";
@@ -34,37 +34,82 @@ watch(
   },
 );
 const { can } = useAuthorization();
+
+watch(
+  () => route.params.projectId,
+  (projectId) => {
+    if (
+      typeof workspaceStore.setProjectId === "function" &&
+      typeof projectId === "string" &&
+      projectId &&
+      projectId !== workspaceStore.currentProjectId
+    ) {
+      void workspaceStore.setProjectId(projectId);
+    }
+  },
+  { immediate: true },
+);
+
+let accessRefreshTimer: number | undefined;
+const refreshingAccess = ref(false);
+
 const routeAccessAllowed = computed(() => {
   const permissions = route.meta.requiredPermissions ?? [];
+  if (permissions.length === 0) return true;
+  if (!authStore.isAuthenticated) return false;
+
   const projectId =
     typeof route.params.projectId === "string"
       ? route.params.projectId
       : undefined;
+
+  // Stale-While-Revalidate 原则：当处于加载/刷新中，若本地已有该项目的访问权限，坚决保持现有权限，绝不误杀视图
+  if (
+    projectId &&
+    (workspaceStore.accessLoading || refreshingAccess.value) &&
+    workspaceStore.currentProjectAccess?.project_id === projectId
+  ) {
+    return true;
+  }
+
   const allowed = (permission: (typeof permissions)[number]) =>
     can(permission, projectId);
-  return route.meta.permissionMode === "any"
-    ? permissions.some(allowed)
-    : permissions.every(allowed);
+  const result =
+    route.meta.permissionMode === "any"
+      ? permissions.some(allowed)
+      : permissions.every(allowed);
+
+  // 避免后台短暂抖动误判：如果当前项目已有授权记录且并未收到明确 403 移除通知，继续允许访问
+  if (
+    !result &&
+    projectId &&
+    workspaceStore.currentProjectAccess?.project_id === projectId
+  ) {
+    if (workspaceStore.currentProjectAccess.roles.length > 0) {
+      return true;
+    }
+  }
+
+  return result;
 });
+
 watch(routeAccessAllowed, (allowed) => {
   if (!allowed) {
     chatSessionPool.clearScope();
     chatSessionStore.clearAll();
   }
 });
-let accessRefreshTimer: number | undefined;
-let refreshingAccess = false;
 
 async function refreshAccess() {
-  if (document.visibilityState !== "visible" || refreshingAccess) return;
-  refreshingAccess = true;
+  if (document.visibilityState !== "visible" || refreshingAccess.value) return;
+  refreshingAccess.value = true;
   try {
     await Promise.allSettled([
       authStore.fetchCurrentUser(),
       workspaceStore.refreshCurrentProjectAccess(),
     ]);
   } finally {
-    refreshingAccess = false;
+    refreshingAccess.value = false;
   }
 }
 

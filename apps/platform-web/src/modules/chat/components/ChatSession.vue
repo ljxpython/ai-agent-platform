@@ -158,6 +158,7 @@ const session = useChatSession({
   initialThread: toRef(props, "initialThread"),
   context,
   canWrite: toRef(props, "canWrite"),
+  visible: toRef(props, "visible"),
   onThread: (id) => emit("thread", id),
   onRefresh: () => emit("refresh"),
   onReconnect: () => emit("reconnect"),
@@ -193,6 +194,7 @@ const {
   canSend,
   status,
   actions,
+  resumeInterruptedRun,
 } = session;
 const action = actions.current;
 const connectionMessage = computed(() =>
@@ -201,6 +203,31 @@ const connectionMessage = computed(() =>
 const messages = useTranscriptMessages(stream);
 const calls = stream.toolCalls;
 const approvalElement = ref<HTMLElement | null>(null);
+
+const isSessionInterrupted = computed(() => {
+  return (
+    hasPendingInterrupts.value ||
+    reviews.value.length > 0 ||
+    session.run.value?.status === "interrupted"
+  );
+});
+
+const handleStop = () => {
+  if (props.visible === false || !props.canWrite) return;
+  void session.stop();
+};
+
+const handleResume = async () => {
+  if (hasPendingInterrupts.value || reviews.value.length > 0) {
+    approvalElement.value?.scrollIntoView({
+      block: "center",
+      behavior: "smooth",
+    });
+    return;
+  }
+  if (!props.canWrite || cancelling.value) return;
+  await resumeInterruptedRun();
+};
 const streamError = computed(() => {
   if (!stream.error.value) return "";
   const raw =
@@ -369,20 +396,46 @@ const hasConversationStarted = ref(
   ),
 );
 
+function extractMessageText(raw: unknown): string {
+  if (typeof raw === "string") return raw.trim();
+  if (Array.isArray(raw)) {
+    return raw
+      .map((item) => {
+        if (!item || typeof item !== "object") return "";
+        if (typeof (item as { text?: unknown }).text === "string") {
+          return (item as { text: string }).text;
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+  }
+  return "";
+}
+
+function isHumanMessage(m: BaseMessage | null | undefined): boolean {
+  if (!m) return false;
+  const raw = m as unknown as Record<string, unknown>;
+  const type =
+    m.type ||
+    (typeof (raw._getType as (() => string) | undefined) === "function"
+      ? (raw._getType as () => string)()
+      : "");
+  if (type === "human" || type === "user") return true;
+  return raw.role === "human" || raw.role === "user";
+}
+
 function hasOptimisticEchoed(
   list: readonly BaseMessage[],
   optimistic: BaseMessage | null,
 ): boolean {
   if (!optimistic) return false;
   if (optimistic.id && list.some((m) => m.id === optimistic.id)) return true;
-  const optText =
-    typeof optimistic.content === "string" ? optimistic.content.trim() : "";
+  const optText = extractMessageText(optimistic.content);
   if (!optText) return false;
   return list.some(
-    (m) =>
-      m.type === "human" &&
-      typeof m.content === "string" &&
-      m.content.trim() === optText,
+    (m) => isHumanMessage(m) && extractMessageText(m.content) === optText,
   );
 }
 
@@ -457,19 +510,63 @@ const displayedMessages = computed(() => {
             break;
           }
         }
-        const missingSuffix = !isSessionRunning.value
-          ? fallbackMessages
-              .slice(lastOverlapIdx + 1)
-              .filter((m) => Boolean(m.id && !baseIds.has(m.id)))
-          : [];
+        const lastBaseMsg = base[base.length - 1];
+        const lastBaseIsAi =
+          lastBaseMsg &&
+          (lastBaseMsg.type === "ai" ||
+            (
+              lastBaseMsg as unknown as { _getType?: () => string }
+            )._getType?.() === "ai");
+        const lastBaseEmpty =
+          lastBaseIsAi && !extractMessageText(lastBaseMsg.content);
+        const missingSuffix =
+          !isSessionRunning.value || lastBaseEmpty
+            ? fallbackMessages
+                .slice(lastOverlapIdx + 1)
+                .filter((m) => Boolean(m.id && !baseIds.has(m.id)))
+            : [];
         if (missingPrefix.length > 0 || missingSuffix.length > 0) {
-          base = [...missingPrefix, ...base, ...missingSuffix];
+          if (lastBaseEmpty && missingSuffix.length > 0) {
+            base = [...missingPrefix, ...base.slice(0, -1), ...missingSuffix];
+          } else {
+            base = [...missingPrefix, ...base, ...missingSuffix];
+          }
         }
       }
     }
   }
   if (!optimisticUserMessage.value) return base;
-  if (hasOptimisticEchoed(base, optimisticUserMessage.value)) return base;
+  if (hasOptimisticEchoed(base, optimisticUserMessage.value)) {
+    if (optimisticUserMessage.value) {
+      queueMicrotask(() => {
+        optimisticUserMessage.value = null;
+      });
+    }
+    return base;
+  }
+
+  // 严防用户问题倒挂：当处于正在运行阶段且 base 中有由当前问题激发的响应消息时，
+  // 乐观用户消息必须定位在当前运行轮次的起始位置（即所有当前连续的非 Human 响应之前），绝不可追加在 AI/Tool 屁股后面！
+  if (isSessionRunning.value && base.length > 0) {
+    if (!isHumanMessage(base[0])) {
+      return [optimisticUserMessage.value, ...base];
+    }
+    let turnStartIdx = base.length;
+    while (turnStartIdx > 0) {
+      const prevMsg = base[turnStartIdx - 1];
+      if (isHumanMessage(prevMsg)) {
+        break;
+      }
+      turnStartIdx--;
+    }
+    if (turnStartIdx < base.length) {
+      return [
+        ...base.slice(0, turnStartIdx),
+        optimisticUserMessage.value,
+        ...base.slice(turnStartIdx),
+      ];
+    }
+  }
   return [...base, optimisticUserMessage.value];
 });
 
@@ -722,24 +819,6 @@ const isSessionRunning = computed(() => {
   );
 });
 
-function extractMessageText(raw: unknown): string {
-  if (typeof raw === "string") return raw.trim();
-  if (Array.isArray(raw)) {
-    return raw
-      .map((item) =>
-        item &&
-        typeof item === "object" &&
-        typeof (item as { text?: unknown }).text === "string"
-          ? (item as { text: string }).text
-          : "",
-      )
-      .filter(Boolean)
-      .join("\n")
-      .trim();
-  }
-  return "";
-}
-
 watch(
   [
     () => displayedMessages.value,
@@ -810,7 +889,7 @@ async function sendQueuedContent(content: unknown) {
 }
 
 async function drainNextQueuedItem() {
-  if (isDrainingQueue.value || props.visible === false) return;
+  if (isDrainingQueue.value) return;
   if (
     busy.value ||
     Boolean(stream.isLoading?.value) ||
@@ -848,12 +927,9 @@ watch(
     canSend,
     hasPendingInterrupts,
     () => promptQueue.queue.value.length,
-    () => props.visible,
   ],
   async ([isBusy, isStreamLoading, isCanSend, hasInterrupt, queueLen]) => {
-    const stillVisible = () => props.visible !== false;
     if (
-      stillVisible() &&
       !isBusy &&
       !isStreamLoading &&
       isCanSend &&
@@ -863,7 +939,6 @@ watch(
     ) {
       await new Promise((r) => setTimeout(r, 350));
       if (
-        stillVisible() &&
         !busy.value &&
         !stream.isLoading?.value &&
         canSend.value &&
@@ -1240,6 +1315,43 @@ watch(
       lastKnownScrollTop = parkedScrollTop;
     }
     requestSmartStreamingFollow();
+    emit("refresh");
+    if (
+      optimisticUserMessage.value &&
+      (hasOptimisticEchoed(messages.value, optimisticUserMessage.value) ||
+        hasOptimisticEchoed(
+          latestHistoryMessages.value,
+          optimisticUserMessage.value,
+        ) ||
+        hasOptimisticEchoed(
+          cachedDisplayMessages.value,
+          optimisticUserMessage.value,
+        ))
+    ) {
+      optimisticUserMessage.value = null;
+    }
+    if (session.threadId.value) {
+      void session.verify().then(async () => {
+        if (
+          session.run.value?.status === "running" ||
+          session.connectionState.value === "paused"
+        ) {
+          session.reconnectStream();
+        } else {
+          // 当前 Run 已经结束：主动拉取最新轻量历史，水合断流导致的空白或半截消息
+          await loadHistory(true, 10);
+          // 若存在因假死而滞留在本地待执行队列里的消息，自动触发顺延补发
+          if (
+            promptQueue.queue.value.length > 0 &&
+            !busy.value &&
+            canSend.value &&
+            !cancelling.value
+          ) {
+            await drainNextQueuedItem();
+          }
+        }
+      });
+    }
   },
 );
 
@@ -1859,9 +1971,7 @@ watch(
       !verifying &&
       (prevRunning || history.value.length === 0)
     ) {
-      if (drawerOpen.value) {
-        void loadHistory(true);
-      }
+      void loadHistory(true, drawerOpen.value ? 20 : 5);
     }
   },
   { immediate: true },
@@ -2292,22 +2402,16 @@ defineExpose({
             <ChatAgentStatusBar
               class="sticky top-0 z-10 mb-4"
               :is-running="isSessionRunning"
-              :is-interrupted="!!reviews.length"
+              :is-interrupted="isSessionInterrupted"
+              :has-structured-interrupt="hasPendingInterrupts"
               :last-event-at="lastEventAt"
               :error="error || streamError"
               :disabled="!canWrite || cancelling"
-              @cancel="session.stop"
-              @resume="
-                approvalElement?.scrollIntoView({
-                  block: 'center',
-                  behavior: 'smooth',
-                })
-              "
+              @cancel="handleStop"
+              @resume="handleResume"
             />
             <div
               v-if="
-                !props.threadId &&
-                !session.threadId.value &&
                 !hasConversationStarted &&
                 !displayedMessages.length &&
                 !checking &&
@@ -2486,7 +2590,7 @@ defineExpose({
                 type="button"
                 class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
                 :disabled="cancelling"
-                @click="session.stop"
+                @click="handleStop"
               >
                 <BaseIcon name="x" class="h-3 w-3" />
                 {{ cancelling ? "停止中..." : "停止" }}
@@ -2566,7 +2670,7 @@ defineExpose({
       @update:model-value="emit('update:draft', $event)"
       @send="send()"
       @queue="send(true)"
-      @cancel="session.stop"
+      @cancel="handleStop"
       @file-input-change="handleInputChange"
       @composer-paste="handlePaste"
       @remove-attachment="removeAttachment"

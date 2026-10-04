@@ -666,10 +666,15 @@ watch(
       }
     } catch (cause) {
       if (requestEpoch === epoch) {
-        selectedEntry.value = undefined;
-        target.value = null;
-        activeThreadObj.value = undefined;
-        error.value = cause instanceof Error ? cause.message : "对话读取失败";
+        if (selectedEntry.value && mountedThread.value === threadId) {
+          listError.value =
+            cause instanceof Error ? cause.message : "对话更新失败，请重试";
+        } else {
+          selectedEntry.value = undefined;
+          target.value = null;
+          activeThreadObj.value = undefined;
+          error.value = cause instanceof Error ? cause.message : "对话读取失败";
+        }
       }
     } finally {
       if (requestEpoch === epoch) loading.value = false;

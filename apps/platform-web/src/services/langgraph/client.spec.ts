@@ -224,4 +224,28 @@ describe("createLanggraphAuthorizedFetch", () => {
     });
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
+
+  it("hydrates initial token before sending when initial token is empty and stored session exists", async () => {
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockResolvedValue(new Response(null, { status: 200 }));
+    const refreshToken = vi.fn(async () => "hydrated-token");
+
+    const authFetch = createLanggraphAuthorizedFetch({
+      fetchImpl,
+      getAccessToken: () => "",
+      hasStoredSession: () => true,
+      refreshAccessToken: refreshToken,
+    });
+
+    await authFetch("https://example.com/api/langgraph/threads/t", {
+      method: "GET",
+    });
+
+    expect(refreshToken).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(
+      new Headers(fetchImpl.mock.calls[0]?.[1]?.headers).get("Authorization"),
+    ).toBe("Bearer hydrated-token");
+  });
 });

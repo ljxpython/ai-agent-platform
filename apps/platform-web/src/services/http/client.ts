@@ -1,104 +1,113 @@
-import axios from 'axios'
-import type { AxiosError, InternalAxiosRequestConfig } from 'axios'
-import { env } from '@/config/env'
+import axios from "axios";
+import type { AxiosError, InternalAxiosRequestConfig } from "axios";
+import { env } from "@/config/env";
 import {
   getAccessToken,
   getRefreshToken,
   getSessionGeneration,
   isAccessTokenExpiringSoon,
-  setTokenSet
-} from '@/services/auth/token'
-import { handleSessionExpired, hasStoredSession } from '@/services/auth/session-expiry'
-import type { AuthTokenSet } from '@/types/management'
+  setTokenSet,
+} from "@/services/auth/token";
+import {
+  handleSessionExpired,
+  hasStoredSession,
+} from "@/services/auth/session-expiry";
+import type { AuthTokenSet } from "@/types/management";
 
 type RetriableRequest = InternalAxiosRequestConfig & {
-  _retry?: boolean
-  _sessionGeneration?: number
-}
+  _retry?: boolean;
+  _sessionGeneration?: number;
+};
 
-let refreshPromise: Promise<string> | null = null
-let refreshGeneration = -1
+let refreshPromise: Promise<string> | null = null;
+let refreshGeneration = -1;
 
-export const platformApiBaseUrl = env.platformApiUrl
-export const authRefreshPath = '/api/identity/session/refresh'
+export const platformApiBaseUrl = env.platformApiUrl;
+export const authRefreshPath = "/api/identity/session/refresh";
 
 function mapRefreshPayload(payload: {
-  access_token?: string
-  refresh_token?: string
-  token_type?: string
+  access_token?: string;
+  refresh_token?: string;
+  token_type?: string;
 }): AuthTokenSet {
   return {
-    accessToken: payload.access_token || '',
-    refreshToken: payload.refresh_token || '',
-    tokenType: payload.token_type || 'bearer'
-  }
+    accessToken: payload.access_token || "",
+    refreshToken: payload.refresh_token || "",
+    tokenType: payload.token_type || "bearer",
+  };
 }
 
 export async function refreshAccessToken(): Promise<string> {
-  const refreshToken = getRefreshToken()
-  const generation = getSessionGeneration()
-  const hadSession = hasStoredSession()
+  const refreshToken = getRefreshToken();
+  const generation = getSessionGeneration();
+  const hadSession = hasStoredSession();
 
   if (!refreshToken) {
     if (hadSession) {
-      handleSessionExpired()
+      handleSessionExpired();
     }
-    return ''
+    return "";
   }
 
   if (refreshPromise && refreshGeneration === generation) {
-    return refreshPromise
+    return refreshPromise;
   }
 
-  refreshGeneration = generation
+  refreshGeneration = generation;
   const pending = (async () => {
     try {
       const response = await axios.post<{
-        access_token: string
-        refresh_token: string
-        token_type?: string
+        access_token: string;
+        refresh_token: string;
+        token_type?: string;
       }>(
         `${platformApiBaseUrl}${authRefreshPath}`,
         { refresh_token: refreshToken },
         {
           timeout: env.requestTimeoutMs,
           headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      )
+            "Content-Type": "application/json",
+          },
+        },
+      );
 
-      const tokenSet = mapRefreshPayload(response.data)
-      if (getRefreshToken() !== refreshToken) return ''
-      setTokenSet(tokenSet)
-      return tokenSet.accessToken
-    } catch {
-      if (hadSession && getRefreshToken() === refreshToken) {
-        handleSessionExpired()
+      const tokenSet = mapRefreshPayload(response.data);
+      if (generation !== getSessionGeneration()) return "";
+      if (getRefreshToken() !== refreshToken) return getAccessToken();
+      setTokenSet(tokenSet);
+      return tokenSet.accessToken;
+    } catch (cause) {
+      const isAuthRejected =
+        axios.isAxiosError(cause) &&
+        (cause.response?.status === 401 || cause.response?.status === 400);
+      if (hadSession && isAuthRejected && getRefreshToken() === refreshToken) {
+        handleSessionExpired();
       }
-      return ''
+      return "";
     } finally {
-      if (refreshGeneration === generation) refreshPromise = null
+      if (refreshGeneration === generation) refreshPromise = null;
     }
-  })()
-  refreshPromise = pending
-  return pending
+  })();
+  refreshPromise = pending;
+  return pending;
 }
 
-export async function resolveAuthorizedAccessToken(skewSeconds = 30): Promise<string> {
-  const generation = getSessionGeneration()
-  const currentToken = getAccessToken()
+export async function resolveAuthorizedAccessToken(
+  skewSeconds = 30,
+): Promise<string> {
+  const generation = getSessionGeneration();
+  const currentToken = getAccessToken();
   if (currentToken && !isAccessTokenExpiringSoon(currentToken, skewSeconds)) {
-    return currentToken
+    return currentToken;
   }
 
   if (!getRefreshToken()) {
-    return currentToken
+    return currentToken;
   }
 
-  const refreshedToken = (await refreshAccessToken()).trim()
-  if (generation !== getSessionGeneration()) throw new Error('登录会话已变更')
-  return refreshedToken || currentToken
+  const refreshedToken = (await refreshAccessToken()).trim();
+  if (generation !== getSessionGeneration()) throw new Error("登录会话已变更");
+  return refreshedToken || currentToken;
 }
 
 function createPlatformHttpClient() {
@@ -106,57 +115,70 @@ function createPlatformHttpClient() {
     baseURL: platformApiBaseUrl,
     timeout: env.requestTimeoutMs,
     headers: {
-      'Content-Type': 'application/json'
-    }
-  })
+      "Content-Type": "application/json",
+    },
+  });
 
   client.interceptors.request.use(async (config) => {
-    const request = config as RetriableRequest
-    request._sessionGeneration ??= getSessionGeneration()
-    if (request._sessionGeneration !== getSessionGeneration()) throw new Error('登录会话已变更')
-    const token = await resolveAuthorizedAccessToken()
+    const request = config as RetriableRequest;
+    request._sessionGeneration ??= getSessionGeneration();
+    if (request._sessionGeneration !== getSessionGeneration())
+      throw new Error("登录会话已变更");
+    const token = await resolveAuthorizedAccessToken();
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
+      config.headers.Authorization = `Bearer ${token}`;
     }
-    return config
-  })
+    return config;
+  });
 
   client.interceptors.response.use(
     (response) => {
-      if ((response.config as RetriableRequest)._sessionGeneration !== getSessionGeneration()) {
-        return Promise.reject(new Error('登录会话已变更'))
+      if (
+        (response.config as RetriableRequest)._sessionGeneration !==
+        getSessionGeneration()
+      ) {
+        return Promise.reject(new Error("登录会话已变更"));
       }
-      return response
+      return response;
     },
     async (error: AxiosError) => {
-      const originalRequest = error.config as RetriableRequest | undefined
-      if (originalRequest?._sessionGeneration !== getSessionGeneration()) return Promise.reject(error)
+      const originalRequest = error.config as RetriableRequest | undefined;
+      if (originalRequest?._sessionGeneration !== getSessionGeneration())
+        return Promise.reject(error);
 
-      if (error.response?.status === 403 && typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('platform-access-denied'))
+      if (error.response?.status === 403 && typeof window !== "undefined") {
+        window.dispatchEvent(new Event("platform-access-denied"));
       }
 
-      if (error.response?.status === 401 && originalRequest?._retry && hasStoredSession()) {
-        handleSessionExpired()
+      if (
+        error.response?.status === 401 &&
+        originalRequest?._retry &&
+        hasStoredSession()
+      ) {
+        handleSessionExpired();
       }
 
-      if (!originalRequest || error.response?.status !== 401 || originalRequest._retry) {
-        return Promise.reject(error)
+      if (
+        !originalRequest ||
+        error.response?.status !== 401 ||
+        originalRequest._retry
+      ) {
+        return Promise.reject(error);
       }
 
-      originalRequest._retry = true
-      const nextToken = await refreshAccessToken()
+      originalRequest._retry = true;
+      const nextToken = await refreshAccessToken();
       if (!nextToken) {
-        return Promise.reject(error)
+        return Promise.reject(error);
       }
 
-      originalRequest.headers = originalRequest.headers || {}
-      originalRequest.headers.Authorization = `Bearer ${nextToken}`
-      return client(originalRequest)
-    }
-  )
+      originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers.Authorization = `Bearer ${nextToken}`;
+      return client(originalRequest);
+    },
+  );
 
-  return client
+  return client;
 }
 
-export const platformHttpClient = createPlatformHttpClient()
+export const platformHttpClient = createPlatformHttpClient();

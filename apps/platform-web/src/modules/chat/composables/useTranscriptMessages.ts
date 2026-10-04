@@ -42,9 +42,29 @@ export function useTranscriptMessages(
           )
         ) {
           if (Array.isArray(value?.messages)) {
-            scopedSnapshot.value = coerce(value.messages);
-            liveReasonings.clear();
-            activeMessageId = undefined;
+            const nextRaw = value.messages as Array<{
+              id?: string;
+              tool_calls?: unknown[];
+            }>;
+            const prev = scopedSnapshot.value;
+            // 防洪机制：在流式生成中，如果消息总数未变、首尾 ID 相同且末尾 tool_calls 数量一致，跳过高频全量深拷贝
+            const isUnchangedDuringStream =
+              stream.isLoading.value &&
+              prev.length === nextRaw.length &&
+              prev.length > 0 &&
+              prev[0]?.id === nextRaw[0]?.id &&
+              prev[prev.length - 1]?.id === nextRaw[nextRaw.length - 1]?.id &&
+              (prev[prev.length - 1] as unknown as { tool_calls?: unknown[] })
+                ?.tool_calls?.length ===
+                nextRaw[nextRaw.length - 1]?.tool_calls?.length;
+
+            if (!isUnchangedDuringStream) {
+              scopedSnapshot.value = coerce(value.messages);
+              if (!stream.isLoading.value) {
+                liveReasonings.clear();
+                activeMessageId = undefined;
+              }
+            }
           }
         }
         return;
@@ -152,9 +172,29 @@ export function useTranscriptMessages(
         }
       }
     }
-    const seen = new Set(current.map((message) => message.id));
-    for (const message of snapshot)
-      if (message.id && !seen.has(message.id)) current.push(message);
+    let merged: BaseMessage[];
+    if (snapshot.length === 0) {
+      merged = [...current];
+    } else {
+      const currentById = new Map<string, BaseMessage>();
+      for (const msg of current) {
+        if (msg.id) currentById.set(msg.id, msg);
+      }
+      // 1. 严格以 snapshot 权威检查点时间线为基底（保留从首个用户提问开始的正序），并融入 current 中的实时增强（如 live reasoning）
+      merged = snapshot.map(
+        (msg) => (msg.id && currentById.get(msg.id)) || msg,
+      );
+      // 2. 将 current 中尚未落盘到 snapshot 的最新增量消息（如正在流式的最后一个 AI 块）追加在末尾
+      const snapshotIds = new Set(
+        snapshot.map((msg) => msg.id).filter(Boolean),
+      );
+      for (const msg of current) {
+        if (!msg.id || !snapshotIds.has(msg.id)) {
+          merged.push(msg);
+        }
+      }
+    }
+
     const subagents = [...stream.subagents.value.values()].map(
       (agent) => agent.namespace,
     );
@@ -177,7 +217,7 @@ export function useTranscriptMessages(
         subagentTaskInputs.add(agent.taskInput.trim());
       }
     }
-    for (const msg of current) {
+    for (const msg of merged) {
       const raw = msg as unknown as Record<string, unknown>;
       if (Array.isArray(raw.tool_calls)) {
         for (const tc of raw.tool_calls as Array<{
@@ -220,7 +260,7 @@ export function useTranscriptMessages(
     // attempt timed out or failed and was superseded by the retry.
     const supersededRetryIds = new Set<string>();
     let pendingToollessAiId: string | undefined;
-    for (const msg of current) {
+    for (const msg of merged) {
       const type = getMsgType(msg);
       const source = msg.id ? sources.get(msg.id) : undefined;
       if (!isSameNamespace(source)) continue;
@@ -235,14 +275,14 @@ export function useTranscriptMessages(
       }
     }
 
-    const lastCurrentHuman = [...current]
+    const lastCurrentHuman = [...merged]
       .reverse()
       .find((m) => getMsgType(m) === "human");
     const hasSnapshotCaughtUp =
       snapshot.length > 0 &&
       (!lastCurrentHuman?.id || owned.has(lastCurrentHuman.id));
 
-    return current.filter((message) => {
+    return merged.filter((message) => {
       // 1. A child result explicitly promoted to parent values is an owned parent reply.
       if (message.id && owned.has(message.id)) return true;
 

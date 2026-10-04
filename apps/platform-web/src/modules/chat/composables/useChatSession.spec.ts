@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   run: vi.fn(),
   runs: vi.fn(),
   cancel: vi.fn(),
+  resume: vi.fn(),
   actions: vi.fn(),
   updateAccessPolicy: vi.fn(),
   getThread: vi.fn(),
@@ -34,6 +35,7 @@ vi.mock("@/services/threads/session.service", async (importOriginal) => ({
       : async () => [{ run_id: "run", status: "running" }],
     run: mocks.run,
     cancel: mocks.cancel,
+    resume: mocks.resume,
     get: mocks.getThread.getMockImplementation()
       ? mocks.getThread
       : async () => ({
@@ -1555,5 +1557,133 @@ it("rotates shared SSE event stream via getThread().subscribe() on every consecu
     scope.stop();
     mocks.runs.mockReset();
     mocks.run.mockReset();
+  }
+});
+
+it("prevents stop() from canceling background run when session visible is false", async () => {
+  mocks.cancel.mockReset();
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+  });
+  mocks.runs.mockResolvedValueOnce([{ run_id: "run-bg", status: "running" }]);
+
+  const visible = ref(false);
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "dearflow_agent",
+      threadId: "t-bg-test",
+      context: ref({}),
+      canWrite: ref(true),
+      visible,
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    await session.stop();
+    await flushPromises();
+
+    // Because visible was false, stop() was guarded and cancel was not invoked
+    expect(mocks.cancel).not.toHaveBeenCalled();
+
+    // Now make it visible, stop() should proceed to invoke cancel
+    visible.value = true;
+    await session.stop();
+    await flushPromises();
+    expect(mocks.cancel).toHaveBeenCalled();
+  } finally {
+    scope.stop();
+    mocks.cancel.mockReset();
+    mocks.runs.mockReset();
+  }
+});
+
+it("resumeInterruptedRun invokes service.resume with empty dict to unblock interrupted run", async () => {
+  mocks.resume.mockReset();
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+  });
+  mocks.resume.mockResolvedValue({
+    thread_id: "t",
+    run_id: "run-resumed",
+  });
+  mocks.runs.mockResolvedValue([{ run_id: "run-int", status: "interrupted" }]);
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "dearflow_agent",
+      threadId: "t",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    await session.resumeInterruptedRun();
+    await flushPromises();
+
+    expect(mocks.resume).toHaveBeenCalledWith("t", {});
+  } finally {
+    scope.stop();
+    mocks.resume.mockReset();
+    mocks.runs.mockReset();
+  }
+});
+
+it("auto-heals and resets stream.isLoading when backend run is confirmed terminal", async () => {
+  const streamLoading = ref(true);
+  mocks.stream.mockReturnValue({
+    isLoading: streamLoading,
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+  });
+  mocks.runs.mockResolvedValue([{ run_id: "run-done", status: "success" }]);
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "dearflow_agent",
+      threadId: "t-finished",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    expect(streamLoading.value).toBe(true);
+    await session.verify();
+    await flushPromises();
+
+    expect(streamLoading.value).toBe(false);
+    expect(session.busy.value).toBe(false);
+    expect(session.canSend.value).toBe(true);
+  } finally {
+    scope.stop();
+    mocks.runs.mockReset();
   }
 });

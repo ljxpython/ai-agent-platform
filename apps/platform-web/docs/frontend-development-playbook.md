@@ -82,3 +82,31 @@ HTTP错误统一经 `src/utils/http-error.ts` 解析；SDK嵌套 `error` 对象�
 `ChatPage` 负责 URL/目标/列表；`ChatSession` 与 `useChatSession` 绑定固定身份/项目/Thread，官方 SDK 持有实时投影；`run-actions` 只持有动作幂等快照。`Transcript` 保留消息顺序和稳定 ID，`SubtaskDetail` 展开时订阅 scoped 数据，详情只用一个 Inspector。
 
 普通消息、审批 resume、运行中消息入队是三个动作。审批禁止覆盖运行配置；入队 ACK 不等于消费，unknown 必须复用原 ID/key/body。历史 checkpoint 只在用户打开时读取，不覆盖实时消息。
+
+## 7. 新增代码粒度规范
+
+> **适用范围：仅约束新增代码。存量代码不在此规范的覆盖范围内，不得借此规范触发对旧代码的"顺手重构"。**
+
+### SFC（单文件组件）
+
+| 部分                  | 新增目标 | 超出信号                               |
+| --------------------- | -------- | -------------------------------------- |
+| `<script setup>`      | ≤ 150 行 | 超出时抽 Composable                    |
+| `<template>` 嵌套层数 | ≤ 5 层   | 超出时提取子组件                       |
+| Props 数量            | ≤ 6 个   | 超出时用 object prop 或 provide/inject |
+
+### Composable（`use*.ts`）
+
+- 一个 Composable 只管一个关注点（状态、数据请求、事件处理三类不混用）
+- 新增 Composable 内单个函数目标 ≤ 60 行
+- 暴露的返回值保持最小：只导出调用方真正用到的 ref / 函数，不把内部状态全量暴露
+
+### 函数原子化
+
+- 一个函数只做一件事：要么计算/转换数据，要么触发副作用，不混用
+- 新增函数参数目标 ≤ 4 个；超过时用 options object 包裹
+- 嵌套层数目标 ≤ 3 层；优先用 early return 扁平化
+
+### 信号而非硬阻
+
+上述数字是设计目标，不是 CI 门禁。若某组件确需更多行（如复杂表单编排、富文本渲染），在文件顶部注释说明原因。

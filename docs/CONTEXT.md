@@ -1,78 +1,24 @@
 # 项目当前状态 - AI 上下文
 
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
-> **维护规则：** 只保留"当前有效"信息，过期内容直接删除；历史在 `docs/projects/` 和 `docs/changes/` 里。
+> **维护规则（渐进式快照）：**
+> - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
+> - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
+> - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-## 最后更新
+## 最近改动
 
-2026-10-04 | Chat 会话状态机加固与思维链流式体验优化完成（done）：彻底解决 Thread `ce88ceb8-8907-4c4b-af94-3d489df7167f` 中暴露的四大交互顽疾。1) 权限刷新防误踢：`workspace.ts` 请求失败时区分错误，仅在明确 403 时清空权限，瞬态网络或 401 刷新期间保留现有缓存；2) 排队 Banner 显隐收敛：`QueuedMessagesBanner.vue` 增加 `totalCount > 0` 守卫，空队列不再误弹黄色告警；3) Live Step 状态指示解耦：`ChatMessageList.vue` 增加 `isInterrupted` 守卫并剔除 `request_information` 等交互类工具，避免澄清时挂着“正在处理”矛盾提示；4) 思维链首轮流式动态投影：`useTranscriptMessages.ts` 实时捕获 `reasoning-delta` 并注入活跃 AIMessage，解决 DeepSeek 长思考阶段卡顿假死与突兀弹出；前端定向单测（22 项全绿）、`pnpm typecheck` 与生产打包验证全绿。
+2026-10-04 | **多会话后台无感自动排队消费与权限失效误杀彻底根治**：彻底消除切到其他会话后消息队列被 `props.visible === false` 人为截断冻结的严重体验缺陷，实现后台无头自主消费与顺延发送；彻底根除标签页失焦切屏唤醒时因权限刷新非响应式与抖动误判导致的“当前页面权限已失效”全屏拦截与会话池自毁误杀，实装 Google 工业级 Stale-While-Revalidate 乐观权限护栏；全仓 423 项单测全绿、vue-tsc 0 errors、生产打包全绿。
 
-2026-10-03 | 模型输出畸形 Tool Call 自动缝合与孤儿空块剔除兼容完成（done）：彻底解决第三方中转代理在流式输出长参数工具调用时切片异常裂变，导致 `ClarificationBatchGuard` 报 `clarification_requires_single_valid_tool_call` 与 `RuntimeConfigMiddleware` 报 `runtime.tool.not_allowed` 的阻断死锁。实装 `repair_model_tool_calls`：对无名/空名畸形孤儿块自动将参数精准缝合给前驱缺参工具调用，并从 `tool_calls` / `invalid_tool_calls` 及 `content` 中彻底剔除空块；定向单测（16 项）及 DearFlow 澄清合约单测全绿。
+## 本月归并
 
-2026-10-03 | 平台用户软删除与生命周期治理完成（done）：彻底解决平台用户无法删除的问题。扩展 `UserStatus.DELETED = "deleted"` 并建立三重硬核安全防护栅栏（自杀拦截、最后活跃超管保护、唯一项目管理员防孤儿项目拦截）；软删除后自动原子重命名加 tag 释放原始 `username` / `external_subject`，撤销该用户所在的所有项目成员身份，并吊销全部有效 Refresh Token；后端暴露 `DELETE /api/users/{user_id}` 接口且审计挂载 `user.item.deleted`；前端 `UsersPage.vue` 与 `UserDetailPage.vue` 实装删除动作、自杀置灰保护与二次确认弹窗；定向单测（4 项 Python + 7 项 Vitest）与生产打包全绿。
+2026-10（截至 10-04）| 切回历史时序正序合并、多会话切回假死死锁/空白水合/报错隔离、LangGraph v3 默认消费与 DeltaChannel 离线/PG 评估、模型畸形 ToolCall 自动缝合与孤儿块剔除、平台用户软删除三重安全栅栏、DeepSeek 官方多模态视觉识图、长会话断流解耦与历史懒加载、DearFlow 防死循环护栏、小惊喜创意工坊与 Jina Reader 接入、HTML 沙箱现代化渲染、Runtime DB 精简重构。
 
-2026-10-03 | Runtime 视觉识图全面支持 DeepSeek 官方多模态与盲吞异常消灭完成（done）：彻底解决 `analyze_image` 强绑定火山豆包及盲吞异常抛出无用废话问题。实现 `resolve_vision_config` 多级配置解析（通用 `VISION_*` > DeepSeek 官方配置 `DEEPSEEK_*` > 兼容回退 `DOUBAO_*`）；默认采用 `deepseek-flash` 官方多模态识图；彻底透出底层真实 `error.code` 与 `message`；单测全绿（22 passed）并通过真实页面截图端到端识图实测验收。
-
-2026-10-02 | 长会话断流恢复解耦与历史快照按需懒加载治理完成（done）：彻底根治 100+ 步长会话下 Checkpoint 历史快照（3.4MB+）导致的断流重连 504 假死超时。解耦 useChatSession.ts 中 recoverExpiredStream 对巨型 service.history 的强制阻塞等待，仅拉取轻量级 service.state 实现 0.05 秒瞬时极速自愈，并转为非阻塞异步预热与静默软降级；加固 ChatSession.vue 移除 loadHistory 错误对全局红色横幅的污染，并增加抽屉展开懒加载守卫；新增 504 容错单测（24 passed），全量 19 套聊天组件单测（67 passed）与 pnpm build 打包全绿。
-
-2026-10-02 | DearFlow Agent 创意模式防死循环与无头测试防卷护栏完成（done）：彻底解决“小惊喜”与创意单页场景下 Agent 自建无头测试（osascript/JXA mock DOM/Audio）与递归调用 fetch_web_guidelines 导致的 50 步 ModelCallLimitExceeded 假死熔断问题。明确 fetch_web_guidelines 仅限显式静态审计任务，在 prompts.py 中确立单文件编写完成即刻 present_artifacts 交付原则，严禁在无真实浏览器环境中编写复杂 mock 自测脚本；定向 Agent 单测（24 passed）与 Ruff 格式全绿。
-
-2026-10-02 | DearFlow Agent 灵感建议与“小惊喜”创意工坊完成（done）：全面落地原版 deer-flow 创意互动体验。前端实装微物理动效 ConfettiButton 与可扩展灵感胶囊栏 ComposerSuggestions（含“🎉 小惊喜”、“📝 深度写作”、“🔬 敏捷调研”、“📊 数据洞察”、“💻 交互单页”），并无缝集成 ChatComposer 双向草稿同步；后端在 DearFlow Agent 提示词中确立单文件零依赖纯原生创意编程规范（Web Audio 合成音效 + Canvas/SVG 微动画），与 SandboxedHtmlFrame 形成高保真免刷新试玩闭环；全量前端 Vitest（19 套/67 项）通过，pnpm build 打包通过，后端 Agent 单测（33 项）全绿。
-
-2026-10-02 | DearFlow Agent 接入 Jina Reader 网页深度提取与双通道容灾完成（done）：落地 deer-flow 架构哲学，形成“Tavily 语义搜索（search_web）+ Jina Reader 高质量 Markdown 正文阅读（fetch_page）”黄金组合。实现 jina_extract 并改造 fetch_page 支持 Jina 优先、异常/超时平滑降级 Tavily Extract，严守 public_url SSRF 防护与 _evidence SHA256 原子硬链接落盘；agent.py 解耦工具过滤判定；15 项 research 单测全绿，真实网络端到端提取实测通过。
-
-2026-10-02 | 工作区 HTML 现代化沙箱渲染支持完成（done）：彻底解决智能体生成的单文件 HTML 在工作区中由于一刀切禁用脚本/外链导致的 Tailwind CSS、Google Fonts 样式坍塌问题。采用双重防御模型：前端 SandboxedHtmlFrame 授予 sandbox="allow-scripts" 但坚决剔除 allow-same-origin（Origin 锁定为 null 杜绝窃取凭据与跨域 DOM 越权），后端 html_preview.py 升级白名单 CSP（放行常见公认安全 CDN，严格限制 connect-src https: 杜绝内网探测）并扩充 link/script/svg 白名单；全量 43 项 Python 工作区单测全绿，前端 Vitest 验证通过，真实博客 HTML 渲染 100% 还原。
-
-2026-10-01 | Runtime 数据库精简重构完成：新增 Scope 类型和 Memory/Skills SQL helper，保留原事务及锁边界；43 项 PostgreSQL 定向测试通过，全量 564 passed / 61 skipped / 2 failed。Docker 不可用与终端文件未生成两项失败在原 Memory/Skills 源码对照下复现，见专项验证记录。
-
-2026-09-30 | Workflow Demo 模型连接修复：复用公共 fetch_model_connection，补齐模型配置请求签名与异常配置拒绝行为，保留响应节点延迟获取和审批恢复引用优先级。用户确认保留 Agent 显式装配模型、工具和中间件，本轮不实施 RuntimeAgentHarness 架构重构。
-
-2026-09-30 | DearFlow Agent 真实案例端到端全链路实录交付：在 `docs/architecture/07-agents/01-dearflow-agent/` 交付重磅实录《07-真实案例端到端全链路生命周期实录：从用户一句话到沙箱结果落盘》，以真实生产复合场景（GitHub分析+Python沙箱绘图+不可变制品发布+长期记忆注入）为抓手，深度解密 Platform-Web 乐观更新与 SSE 泵、Platform-API 双层 RBAC 与 60s Delegation JWT 签发、Runtime 控制面与 MessageInbox 咨询锁入库、Worker 调度与 10+ 中间件洋葱圈拦截、Docker 断网沙箱与原子硬链接发布，以及在 PostgreSQL、Redis 和物理磁盘上的状态演进细节与 6 重安全栅栏。
-
-2026-09-30 | runtime-service 可观测性与追踪管线专篇交付：完成概念专篇《12-运行时可观测性架构、Langfuse 与 OTel 追踪管线深度剖析》，逐一拆解 `apps/runtime-service/src/runtime_service/observability/` 架构与源码，深度剖析 `_FailSoftCallback` 软着陆动态代理吞噬 APM 异常防止业务中断、零信任元数据消杀与敏感密钥粉碎、本地常驻 `_RuntimeDiagnosticsCallback` 离线 0.05 秒自测断言，以及 5 秒守护线程优雅排空防死锁机制；在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
-
-2026-09-30 | runtime-service 猴子补丁与人机中断专篇交付：完成概念专篇《11-LangGraph 官方源码级猴子补丁与人机中断避坑深度剖析》，调用官方 MCP 查证 upstream 最新 main 分支源码，深度解密 `patches.py` 方法级替换（Method Swizzling）消灭 `StreamToolCallHandler` 把人机审批当中断的流式假报警、防御 `ToolNode` 异步冒泡吞没缺陷，阐述类方法零侵入自执行与幂等守卫；并在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
-
-2026-09-30 | runtime-service Web控制面与消息对账专篇交付：完成概念专篇《10-运行时 Web 控制面、消息收件箱与对账引擎深度剖析》，逐一拆解 `apps/runtime-service/src/runtime_service/webapp.py` 核心职责，深度剖析 `lifespan` 强杀清理 Docker 伪终端僵尸容器、8 大业务子路由汇聚大厅、`MessageInbox` 咨询锁原子入库与 `reconcile_run` 终态自愈对账机制；在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
-
-2026-09-30 | runtime-service 工具/技能/沙箱架构边界澄清：在 `04-tools-and-skills.md` 中重磅补充第一节《核心架构澄清：我们常说的“薄封装”到底封装了什么？Tools / MCP / Skills / 沙箱来自哪里？》，全面破除“LangGraph包办沙箱与技能”的误解，确立“LangGraph专职状态图调度 + LangChain BaseTool协议归一 + MCP安全网关转译 + DeepAgents技能治理 + 平台自研Docker断网沙箱”四分天下架构全景。
-
-2026-09-30 | runtime-service 工作区沙箱与资产管线专篇交付：完成概念专篇《09-工作区沙箱、PTY终端与资产管线深度透析》，逐一拆解 `apps/runtime-service/src/runtime_service/workspace/` 全部 15 个文件职责，深度透析 `scoped.py` 单向哈希物理路径隔离、`execution.py` 断网无特权 Docker 极苛沙箱、`terminal.py` 环形缓冲交互 PTY、`archives.py` 内存流式防解压炸弹与 Zip Slip、`html_preview.py` 严格白名单与超强 CSP 消杀防 Stored XSS，以及 `artifact_refs.py` 基于 `dir_fd` 与 `os.link` 原子硬链接发布不可变交付物；在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
-
-2026-09-30 | runtime-service 数据库双轨制专篇交付：完成概念专篇《08-Runtime 数据库双轨制架构与应用表全景透析》，揭秘为什么 `db/` 几乎无代码，深度剖析引擎链（LangGraph 官方表托管 checkpoints）与应用链（`0001_application.py` 四大约束表 inbox/memory/skills/tasks）分工、无 ORM 原生 SQL 设计哲学与控制面 vs 执行面数据边界划分；并在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
-
-2026-09-30 | runtime-service 核心内核模块剖析专篇交付：完成概念专篇《07-Runtime 核心内核模块源码全景剖析与职责透析》，逐一拆解 `apps/runtime-service/src/runtime_service/runtime/` 全部 11 个文件职责，包含真实业务攻防推演、DearFlowAgent 组合根源码调用映射、0.05秒脱机极速自测范式与本地脱机 vs 生产运行态持久化落盘（runtime_message_inbox + checkpoints）分水岭剖析；在 `01-architecture.md` 与全局概念总字典中完成全量挂载。
-
-2026-09-30 | runtime-service 架构深潜与请求验签消杀专篇交付：完成概念专篇《06-请求验签与配置净化全链路深度透析》，深度解密海关边检大厅模型、`auth/platform.py` Delegation JWT 60s 验签与 `@auth.on` 防跨线程越权守卫、`runtime/` 18 类高危配置熔断消杀、工具黑名单物理求差与模型凭据用完即焚拉取；并在 `01-architecture.md` 与全局概念总字典中完成挂载。
-
-2026-09-30 | runtime-service 架构深潜与 MessageInbox 专篇交付：完成概念专篇《05-MessageInbox 数据库咨询锁与消息对账全链路深度透析》，剖析传菜窗木板模型、为什么 PostgreSQL 咨询锁（pg_advisory_xact_lock）完爆行锁、租约超时自愈、全链路 4 大阶段调用时序与 Checkpoint 确定性对账闭环；完成 `01-architecture.md` 原生表格重构（彻底解决 Typora 下 HTML details 折叠失效与标签裸露 Bug），并在 README.md 概念总字典完成全量注册。
-
-2026-09-30 | RuntimeAgentHarness 专项立项规划完成：针对 Runtime 执行层 Agent 组合根样板代码超标（150+行安全胶水代码）、安全验签重复建设与测试体验痛点，完成标准项目文档规划（README/plan/tasks/verification），提出 AgentBuildContext 与 @runtime_agent 框架解耦模式。
-
-2026-09-29 | 平台重大里程碑发布：正式定级发布 `v0.5.0`。确立“面向二次开发与企业落地的 AI Agent 平台底座”核心定位；消灭早期测试流水账与死链，重构中英文主页并发布 3 套 Archify 2K 架构/时序/扩展点全景可视化系统；实装以 `open-swe`、`deepagents` 与 `deer-flow` 为支柱的生产级智能体 `DeerFlow Agent`，支持多模式工作流、长期记忆闭环、沙箱 Workspace 与 PTY 终端；致谢置顶技术核心并发布正式 Release Notes 与 Runbook。
-
-2026-09-29 | architecture/ 方法论升级：新增第七章双层渐进式概念透析规范（30秒原地折叠拐杖 + 概念专篇库）；新建 concepts/ 目录并交付首篇《01-从 MVC 到 DDD 与六边形架构深度透析》；完成 04-platform-api 架构文档原地折叠拐杖挂载
-
-2026-09-29 | docs/ 目录结构整理：quickstart/ 并入 guides/；decisions/ ADR 迁入各自 projects/ 子目录；新建 architecture/ 教学文档目录；新建 docs/README.md 导航入口
-
-2026-09-28 | DearFlow迁移重新盘点与规划完成：沿用20260913专项，新增11能力矩阵（38类Agent能力/23个Skills）、12补齐任务与评审、13验证基线；资源迁入19/23，4项仍延期未迁。纠正原总纲“整体完成”表述，明确Skills单份当前内容、共享Chat和后续记忆/post37历史修复的覆盖关系。本轮核心抽测28 passed/1 skipped；未改业务代码，整体partial，新增治理实施范围待人审。
-
-2026-09-28 | Python 格式基线清理与 CI 全量门禁专项圆满完成（done）：彻底消除 `platform-api`（163 条）与 `runtime-service`（152 条）全量存量 Lint 诊断（0 errors）；全仓 574 个 Python 文件全部完成 Ruff 格式化；安全治理 B023 闭包循环变量绑定、B904 异常链显式保留、B017 确切异常断言与 re-export 符号保护机制；两服务核心单测（325 + 534 项）全绿通过；`.github/workflows/ci.yml` 成功升级全量 Ruff check 与 format check 门禁。
-
-2026-09-28 | 子智能体工具调用历史持久化与回放能力专项完成（done）：GraphHarbor 核心团队响应 RFC 并发布 `0.13.0.post37`，支持定向 `checkpoint_ns` 路由。平台完成 `runtime-service` 依赖锁步、`platform-api` 网关层放通 `checkpoint_ns` 与对齐 LangGraph 官方 SDK 的 `POST /state/checkpoint` 端点；服务栈完整平滑重启就绪；真实历史 Thread `fba64a6c-...` 端到端回归实测 100% 成功拉取到子智能体的 16 条完整消息、10 次内部工具调用（ls/read_file/grep/glob）及 10 步历史快照，彻底根治工具轨迹丢失问题。
-
-2026-09-27 | SSE 事件流保活心跳与连接容错治理专项扩展完成（done）：针对 GraphHarbor 重放旧 Run 历史中断导致前端误报“审批请求已变化”问题，完成根因实锤并输出专项交付文档 `graphharbor-zombie-interrupt-replay-recommendations.md`；同时在前端 `useSessionInterrupts.ts` 引入 `resolvedReviewIds` 响应式过滤网与权威 `state` 主动对齐自愈机制，彻底消除死锁；Vitest 聊天模块 173 项测试全绿。
-
-2026-09-27 | AI 服务路由机制落地：AGENTS.md 新增服务规范读取规则和跨服务规范章节；docs/standards/ 目录建立（error-envelope/trace-propagation active，delegation-jwt/sse-event draft）
-
-2026-09-27 | Harness 自我进化机制补全：AGENTS.md 加「项目收尾反思」（经验提案 + 标准文件毕业）；implement-feature Skill 完成卡加 FEATURES.md 必填勾选项
-
-2026-09-27 | 追踪专项T1—T8、本期V01—V15及R1—R6已验：并发/取消隔离、审批/取消关系、SQLite/PG精确查询、真实worker Run→Langfuse、执行中SSE断连与跨Run重连、权限负例及性能实测均有证据；一次502发生在测试编辑触发API热重载期间，无编辑干扰的复测200。性能按用户确认只留数据、不设SLO。错误响应专项已done。Delegation JWT原专项J1—J6的23项双端矩阵和R01—R04真实生命周期有证据，Final保留当时消息内部回查403的partial结论；后续单独授权的消息回查修复已修改Platform API/Runtime源码，本机真实PostgreSQL及授权矩阵通过，现役跨服务链路未验证。现役reference_agent的runtime.tool.not_allowed是既有工具授权基线差异。SSE专项S1—S10已完成，8条并发受本地HTTP/1.1浏览器origin连接槽限制。未迁移或部署；追踪专项按用户独立授权提交，GraphHarbor不改。
-
-2026-09-26 | GraphHarbor 双包 post33 已发布且 runtime-service 锁定；本机两库归档已完整恢复到隔离库，单项目业务 Run/SSE/HITL 与文件正向链路已有阶段证据。业务边界与事件保留专项仍为 partial：官方完整 OpenAPI 比较发现 203 处差异，跨项目故障、容量及最终回退验收未完成；进度见边界解耦项目 README。
+2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
 
+- [LangGraph v3 默认消费与 DeltaChannel 评估](projects/20261004-langgraph-v3-delta-evaluation/README.md)：partial；后端默认 v3、前端交接、离线 Spike 和本地 PostgreSQL 体积测量已完成，回滚门禁和前端浏览器验收待执行；节点 timeout/error_handler/RunControl 暂不实施。
 - [Chat 会话状态机加固与流式体验优化](projects/20261004-chat-session-state-and-stream-hardening/README.md)：done；彻底解决切屏失焦权限刷新误踢、空队列误弹排队 0 黄条、中断等待澄清时底部悬挂正在处理矛盾提示、以及 DeepSeek 思维链首轮流式卡顿假死四大顽疾；前端 22 项单测全绿、静态类型检查与生产打包全绿。
 - [平台用户软删除与生命周期治理](projects/20261003-platform-user-soft-delete/README.md)：done；平台用户软删除闭环，扩展 UserStatus.DELETED，三大安全护栏（防自杀、最后活跃超管、唯一项目管理员防孤儿项目），重命名释放用户名/subject，吊销 token，退出关联项目；前后端单测与生产构建全绿。
 - [长会话断流恢复解耦与历史快照按需懒加载治理](projects/20261002-chat-history-lazy-loading-and-timeout-resilience/README.md)：done；解耦断流恢复对 3.4MB 巨型 history 的阻塞依赖，仅拉取 state 毫秒级极速自愈并后台静默预热；加固 ChatSession 抽屉懒加载与错误隔离，单测与生产构建全绿。
@@ -104,10 +50,10 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-03 | 实装 repair_model_tool_calls 自动缝合分裂 Tool Call 参数并剔除畸形孤儿空块，彻底消灭二道贩子 API 导致的 not_allowed / single_valid_tool_call 阻断；图像分析工具支持 deepseek-flash；单测全通 |
+| runtime-service | 2026-10-04 | 升级锁定 GraphHarbor 0.13.0.post38，DeltaChannel 崩溃恢复与快照 dump 回退门禁测试通过（生产保持完整快照 Defer Delta）；定向测试全通 |
 | platform-api | 2026-10-03 | 平台用户软删除 DELETE /api/users/{user_id} 实装，内置三重安全栅栏（防自杀、最后超管、唯一项目管理员防孤儿项目），重命名释放原始用户名并吊销凭据；单测全通 |
-| platform-web | 2026-10-04 | 会话状态机加固（权限防误踢、排队Banner收敛、澄清与处理中互斥）与思维链流式渐进感知优化完成；单测 22 项全绿、typecheck 与打包全绿 |
-| AI Harness（AGENTS.md + Skills） | 2026-09-26 | 整单结束前须逐项核对未完成任务；Task 未完成时只记 Phase，剩余项确需用户行动才可按 blocked 汇报；详见 docs/changes/20260926-harness-completion-reporting.md |
+| platform-web | 2026-10-04 | 后台多会话无感自动排队消费实装、SWR 乐观权限护栏根除切屏误判；全仓 423 项前端单测全绿、vue-tsc 0 errors、生产打包全绿 |
+| AI Harness（AGENTS.md + Skills） | 2026-10-04 | AGENTS.md 与 Skill 重复内容已去除（场景步骤 + 验证标准章节移入 Skill），CONTEXT.md 改为渐进式快照结构；整单结束前须逐项核对未完成任务，Task 未完成时只记 Phase |
 
 ## 近期关键决策
 

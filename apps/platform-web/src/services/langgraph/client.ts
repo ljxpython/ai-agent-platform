@@ -203,8 +203,15 @@ export function createLanggraphAuthorizedFetch(
     );
     new Headers(init?.headers).forEach((value, key) => headers.set(key, value));
     const requestInit = withCommandIdempotencyKey(input, { ...init, headers });
-    const initialToken =
+    let initialToken =
       (await resolveAuthorizedAccessToken()).trim() || readAccessToken().trim();
+    if (!initialToken && readStoredSession()) {
+      initialToken = (await renewAccessToken()).trim();
+      if (!initialToken) {
+        expireSession();
+        throw new Error("登录会话已过期，请重新登录");
+      }
+    }
     if (generation !== getSessionGeneration())
       throw new Error("登录会话已变更");
     const initialResponse = await fetchImpl(

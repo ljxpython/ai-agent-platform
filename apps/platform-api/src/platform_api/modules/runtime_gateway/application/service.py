@@ -79,8 +79,8 @@ _SDK_LIFECYCLE_EVENTS = {
     "success": "completed",
     "error": "failed",
 }
-# Default stream modes for LangGraph Protocol v2 SSE events
-# Required for frontend to receive streaming messages, tools, and lifecycle events
+# Default stream modes for LangGraph Run SSE events.
+# The frontend consumes the v3 projections by default; explicit v2 remains valid.
 _DEFAULT_STREAM_MODES: tuple[str, ...] = (
     "values",
     "updates",
@@ -309,6 +309,7 @@ def _promote_protocol_run_start(params: dict[str, Any]) -> dict[str, Any]:
         if isinstance(cns, str):
             promoted["checkpoint_ns"] = cns
     promoted.setdefault("stream_mode", list(_DEFAULT_STREAM_MODES))
+    promoted.setdefault("version", "v3")
     promoted.setdefault("stream_resumable", True)
     promoted["context"] = context
     if next_config:
@@ -1869,6 +1870,7 @@ class RuntimeGatewayService:
 
         payload = dict(upstream_payload)
         payload.setdefault("stream_mode", list(_DEFAULT_STREAM_MODES))
+        payload.setdefault("version", "v3")
         payload.setdefault("stream_resumable", True)
         payload["multitask_strategy"] = str(
             upstream_payload.get("multitask_strategy") or "reject"
@@ -2838,8 +2840,9 @@ class RuntimeGatewayService:
             assistant_id=assistant_id or "",
             thread=thread,
         )
-        # Set default stream_mode for Protocol v2 SSE events if not specified
+        # New Run requests default to v3; explicit v2 remains compatible.
         next_payload.setdefault("stream_mode", list(_DEFAULT_STREAM_MODES))
+        next_payload.setdefault("version", "v3")
         next_payload.setdefault("stream_resumable", True)
         next_payload.setdefault("multitask_strategy", "interrupt")
         command = {"method": "run.start", "params": next_payload}
@@ -3073,7 +3076,7 @@ class RuntimeGatewayService:
                 "assistant_id": parent.agent_key,
                 "command": {"resume": resumes},
                 "version": ensure_dict(ensure_dict(parent_run).get("kwargs")).get(
-                    "version", "v2"
+                    "version", "v3"
                 ),
                 "context": dict(parent.context_snapshot),
                 "config": dict(parent.config_snapshot),

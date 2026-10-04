@@ -92,7 +92,10 @@ const totalCount = computed(() => {
 
 const hasWarning = computed(() => {
   return (
-    Boolean(props.receiptError) ||
+    (Boolean(props.receiptError) &&
+      (!isPromptQueueActive.value ||
+        Boolean(props.pendingMessage) ||
+        props.receipts.length > 0)) ||
     props.pendingMessage?.status === "rejected" ||
     props.receipts.some((r) => ["rejected", "not_consumed"].includes(r.status))
   );
@@ -205,7 +208,10 @@ const shouldShowBanner = computed(() => {
 
     <!-- Error Alert -->
     <div
-      v-if="receiptError"
+      v-if="
+        receiptError &&
+        (!isPromptQueueActive || pendingMessage || receipts.length > 0)
+      "
       role="alert"
       class="mt-3 flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/20 px-3 py-2 text-xs text-destructive font-medium"
     >

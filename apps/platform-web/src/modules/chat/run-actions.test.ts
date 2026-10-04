@@ -137,3 +137,50 @@ it("keeps final values after lifecycle completion and frames from other runs", a
   expect(text).toContain('"run_id":"run-2"');
   expect(text).toContain("message-chunk");
 });
+
+it("validates and allows explicit version v2 and v3 in platformCommand, rejects invalid versions", () => {
+  const v2Command = {
+    id: 10,
+    method: "run.start",
+    params: { input: "hello", version: "v2" },
+  };
+  const v3Command = {
+    id: 11,
+    method: "run.start",
+    params: { input: "hello", version: "v3" },
+  };
+  const invalidCommand = {
+    id: 12,
+    method: "run.start",
+    params: { input: "hello", version: "v1" },
+  };
+
+  const parsedV2 = JSON.parse(platformCommand(JSON.stringify(v2Command)));
+  expect(parsedV2.params.version).toBe("v2");
+
+  const parsedV3 = JSON.parse(platformCommand(JSON.stringify(v3Command)));
+  expect(parsedV3.params.version).toBe("v3");
+
+  expect(() => platformCommand(JSON.stringify(invalidCommand))).toThrow(
+    "不支持的运行版本",
+  );
+});
+
+it("allows direct resume dictionary payload without interrupt_id in platformCommand", () => {
+  const resumeCommand = {
+    id: 13,
+    method: "input.respond",
+    params: { resume: {} },
+  };
+  const parsed = JSON.parse(platformCommand(JSON.stringify(resumeCommand)));
+  expect(parsed.params).toEqual({ resume: {} });
+
+  const invalidForbidden = {
+    id: 14,
+    method: "input.respond",
+    params: { resume: {}, illegal: "override" },
+  };
+  expect(() => platformCommand(JSON.stringify(invalidForbidden))).toThrow(
+    "审批请求不能覆盖运行参数",
+  );
+});

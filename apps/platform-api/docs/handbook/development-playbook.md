@@ -68,3 +68,27 @@ SDK、HTTP、SSE 细节在 adapters；业务 JWT 和模型授权仍属于 Platfo
 同步CRUD参考[公告service](../../src/platform_api/modules/announcements/service.py)与[router](../../src/platform_api/modules/announcements/router.py)；异步远端刷新参考[catalog service](../../src/platform_api/modules/runtime_catalog/application/service.py)。示例中的load_config只是说明事务边界，不是应复制的新抽象。
 
 新增功能提交前说明接口/权限/审计/持久化变化，执行相关测试并同步活文档；跨服务影响在工程目录记录真实证据与前端交接。无需另建模块交付或发布模板。包应可冷启动导入、正常收集测试；不把HTTPException作为业务语言，使用core.errors统一错误。
+
+## 新增代码粒度规范
+
+> **适用范围：仅约束新增代码。存量代码不在此规范的覆盖范围内，不得借此规范触发对旧代码的"顺手重构"。**
+
+### 层级职责与行数目标
+
+| 层级 | 职责边界 | 新增函数行数目标 |
+|---|---|---|
+| **Router 函数** | 只做参数解析 + 权限检查 + 调 Service，不写业务逻辑 | ≤ 20 行 |
+| **Service 函数** | 业务规则、事务编排，不直接写 SQL | ≤ 60 行 |
+| **Repository 函数** | 数据库读写，不写业务判断 | ≤ 40 行 |
+
+违反职责边界比超出行数更严重——行数是信号，层级错位是结构问题。
+
+### 函数原子化
+
+- 一个函数只做一件事：要么协调（调其他函数），要么执行（真实业务动作），不混用
+- 新增函数参数目标 ≤ 4 个；超过时用 `dataclass` / Pydantic model 包裹
+- 嵌套层数目标 ≤ 3 层；优先用 early return / Guard Clause 扁平化
+
+### 信号而非硬阻
+
+上述数字是设计目标，不是 CI 门禁。若某函数确需更多行（如复杂校验矩阵、穷举分支），在函数上方注释说明原因。

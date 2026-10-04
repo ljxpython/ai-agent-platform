@@ -6,6 +6,7 @@ import { formatThreadTime } from "@/utils/threads";
 const props = defineProps<{
   isRunning: boolean;
   isInterrupted: boolean;
+  hasStructuredInterrupt?: boolean;
   error?: string;
   lastEventAt?: string;
   disabled?: boolean;
@@ -31,7 +32,11 @@ function formatError(raw: string): string {
 
 const statusText = computed(() => {
   if (props.isRunning) return "Agent 正在执行...";
-  if (props.isInterrupted) return "等待人工确认";
+  if (props.isInterrupted) {
+    return props.hasStructuredInterrupt !== false
+      ? "等待人工确认"
+      : "执行已暂停/中断";
+  }
   if (props.error) return `执行出错: ${formatError(props.error)}`;
   return props.lastEventAt
     ? `最后活跃于 ${formatThreadTime(props.lastEventAt)}`
@@ -93,7 +98,7 @@ const statusIcon = computed(() => {
         class="px-3 py-1.5 text-xs font-medium text-white bg-amber-600 rounded hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors"
         @click="emit('resume')"
       >
-        查看审批
+        {{ hasStructuredInterrupt !== false ? "查看审批" : "继续生成" }}
       </button>
     </div>
   </div>

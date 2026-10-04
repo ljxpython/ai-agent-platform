@@ -26,6 +26,13 @@ export function platformCommand(body: string, threadId?: string): string {
     const { multitaskStrategy: _multitaskStrategy, ...params } = record(
       command.params,
     );
+    if (
+      "version" in params &&
+      params.version !== "v2" &&
+      params.version !== "v3"
+    ) {
+      throw new Error("不支持的运行版本");
+    }
     const config = params.config == null ? {} : record(params.config);
     const configurable =
       config.configurable == null ? {} : record(config.configurable);
@@ -49,6 +56,23 @@ export function platformCommand(body: string, threadId?: string): string {
   }
   if (command.method !== "input.respond") throw new Error("不支持的运行命令");
   const params = record(command.params);
+  if (
+    "resume" in params &&
+    typeof params.resume === "object" &&
+    params.resume !== null
+  ) {
+    const forbidden = Object.keys(params).filter(
+      (key) => !["resume", "assistant_id"].includes(key),
+    );
+    if (forbidden.length) throw new Error("审批请求不能覆盖运行参数");
+    return JSON.stringify({
+      ...command,
+      params: {
+        resume: params.resume,
+        ...(params.assistant_id ? { assistant_id: params.assistant_id } : {}),
+      },
+    });
+  }
   const forbidden = Object.keys(params).filter(
     (key) =>
       ![

@@ -81,6 +81,7 @@ export const useWorkspaceStore = defineStore("workspace", {
         return;
       }
       const epoch = ++this.accessEpoch;
+      this.accessLoading = true;
       try {
         const access = await getProjectAccess(projectId);
         if (epoch === this.accessEpoch && projectId === this.currentProjectId) {
@@ -102,6 +103,10 @@ export const useWorkspaceStore = defineStore("workspace", {
           this.error = "项目权限刷新失败，请重试";
         }
         throw error;
+      } finally {
+        if (epoch === this.accessEpoch) {
+          this.accessLoading = false;
+        }
       }
     },
     async hydrateContext() {

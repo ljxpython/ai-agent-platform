@@ -57,6 +57,7 @@ export function useChatSession(options: {
   initialThread?: ChatThread | Ref<ChatThread | undefined>;
   context: Ref<AgentContext>;
   canWrite: Ref<boolean>;
+  visible?: Ref<boolean | undefined>;
   onThread: (id: string) => void;
   onRefresh: () => void;
   onReconnect: () => void;
@@ -414,16 +415,18 @@ export function useChatSession(options: {
   async function reconnectStream() {
     bindConnectionState();
     const thread = stream.getThread?.();
-    if (!thread || thread.getConnectionState().state !== "paused") return;
+    if (!thread) return;
+    const connState = thread.getConnectionState();
     if (
-      thread
-        .getConnectionState()
-        .streams.some(
-          (item) => (item.error as Error & { status?: number })?.status === 410,
-        )
+      connState.streams.some(
+        (item) => (item.error as Error & { status?: number })?.status === 410,
+      )
     ) {
       await recoverExpiredStream();
-    } else {
+    } else if (
+      connState.state === "paused" ||
+      connState.streams.some((item) => item.state === "paused")
+    ) {
       await thread.reconnectEvents();
     }
   }
@@ -685,6 +688,16 @@ export function useChatSession(options: {
         if (!disposed && epoch === checkEpoch) {
           verified.value = true;
           error.value = "";
+          // 自愈状态机：若当前 run 已经处于非 active 终态，强制收敛流式与动作状态
+          if (!active(run.value)) {
+            if (stream.isLoading.value) {
+              (stream.isLoading as unknown as { value: boolean }).value = false;
+            }
+            streamInFlight.value = false;
+            if (actions.current.value?.status === "submitting") {
+              actions.acknowledge();
+            }
+          }
           if (waitForTerminal) {
             options.onRefresh();
           }
@@ -798,9 +811,18 @@ export function useChatSession(options: {
         pendingMessage.value = null;
         options.onAccepted?.();
       }
-    } catch {
-      if (!disposed && !controller.signal.aborted)
-        receiptError.value = "投递状态读取失败，请刷新";
+    } catch (cause) {
+      const isCanceled =
+        controller.signal.aborted ||
+        (isAxiosError(cause) && cause.code === "ERR_CANCELED") ||
+        (cause as { name?: string })?.name === "CanceledError" ||
+        (cause as { name?: string })?.name === "AbortError";
+      if (!disposed && !isCanceled) {
+        // 仅在存在待投递的 pendingMessage 或已有未清空 receipts 时才显示投递状态警告，避免后台静默轮询失败干扰空队列界面
+        if (pendingMessage.value || receipts.value.length > 0) {
+          receiptError.value = "投递状态读取失败，请刷新";
+        }
+      }
     }
     if (!disposed && !document.hidden && Date.now() < receiptDeadline)
       receiptTimer = setTimeout(() => void refreshReceipts(false), 3000);
@@ -1178,7 +1200,8 @@ export function useChatSession(options: {
       !canEdit.value ||
       cancelling.value ||
       pendingAction.value ||
-      !threadId.value
+      !threadId.value ||
+      options.visible?.value === false
     )
       return;
     cancelling.value = true;
@@ -1205,6 +1228,32 @@ export function useChatSession(options: {
       fail(cause);
     } finally {
       if (!disposed) cancelling.value = false;
+    }
+  }
+
+  async function resumeInterruptedRun() {
+    if (
+      !canEdit.value ||
+      !threadId.value ||
+      checking.value ||
+      cancelling.value ||
+      pendingAction.value ||
+      options.visible?.value === false
+    )
+      return;
+    const currentRun = run.value;
+    if (!currentRun || currentRun.status !== "interrupted") return;
+    checking.value = true;
+    error.value = "";
+    try {
+      await service.resume(threadId.value, {});
+      await verify(false);
+      void reconnectStream();
+      options.onRefresh();
+    } catch (cause) {
+      fail(cause);
+    } finally {
+      if (!disposed) checking.value = false;
     }
   }
 
@@ -1417,6 +1466,7 @@ export function useChatSession(options: {
     answerClarification,
     resumeClarification,
     stop,
+    resumeInterruptedRun,
     retry,
     fork,
     verify,
