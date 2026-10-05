@@ -87,6 +87,72 @@ vi.mock("../run-actions", () => ({
 }));
 import { useChatSession } from "./useChatSession";
 import { useDearAgentSession } from "../../dear-agent/composables/useDearAgentSession";
+
+it("parks background SSE, confirms terminal state and permits the next queued turn", async () => {
+  vi.useFakeTimers();
+  const visible = ref(true);
+  const loading = ref(true);
+  let state = "connected";
+  const thread = {
+    onConnectionChange: vi.fn(),
+    suspendEvents: vi.fn(() => {
+      state = "paused";
+    }),
+    getConnectionState: () => ({ state, streams: [] }),
+    reconnectEvents: vi.fn(async () => {
+      state = "connected";
+    }),
+  };
+  const disconnect = vi.fn(async () => {
+    loading.value = false;
+  });
+  mocks.stream.mockReturnValue({
+    isLoading: loading,
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    getThread: () => thread,
+    disconnect,
+  });
+  mocks.runs.mockResolvedValue([{ run_id: "run", status: "running" }]);
+  mocks.list.mockResolvedValue([]);
+  mocks.state.mockResolvedValue({
+    values: { messages: [{ type: "ai", content: "finished" }] },
+  });
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "p",
+      graphId: "showcase_demo",
+      threadId: "t",
+      visible,
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+  try {
+    await flushPromises();
+    visible.value = false;
+    await flushPromises();
+    expect(thread.suspendEvents).toHaveBeenCalled();
+    mocks.runs.mockResolvedValue([{ run_id: "run", status: "success" }]);
+    await vi.advanceTimersByTimeAsync(1600);
+    await flushPromises();
+    expect(disconnect).toHaveBeenCalled();
+    expect(session.recoverySnapshot.value?.messages).toHaveLength(1);
+    expect(session.canSend.value).toBe(true);
+    visible.value = true;
+    await flushPromises();
+    expect(thread.reconnectEvents).toHaveBeenCalled();
+  } finally {
+    scope.stop();
+    mocks.runs.mockReset();
+    vi.useRealTimers();
+  }
+});
 vi.mock("../../dear-agent/run-actions", () => ({
   createRunActions: () => ({
     current: ref(null),

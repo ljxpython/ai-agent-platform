@@ -1,9 +1,17 @@
 import { defineStore } from "pinia";
+import { extractPlatformHttpError } from "@/utils/http-error";
+import { getSessionGeneration } from "@/services/auth/token";
 import {
   getProjectAccess,
   listProjects,
 } from "@/services/projects/projects.service";
 import type { ManagementProject, ProjectAccess } from "@/types/management";
+
+const accessRequests = new WeakMap<
+  object,
+  { epoch: number; promise: Promise<void> }
+>();
+const contextRequests = new WeakMap<object, Promise<void>>();
 
 const PROJECT_STORAGE_KEY = "pw:workspace:project-id";
 
@@ -35,6 +43,8 @@ export const useWorkspaceStore = defineStore("workspace", {
     currentProjectAccess: null as ProjectAccess | null,
     loading: false,
     accessLoading: false,
+    accessStatus: "unknown" as "unknown" | "ready" | "denied" | "unavailable",
+    accessCheckedAt: 0,
     contextLoaded: false,
     error: "",
     accessEpoch: 0,
@@ -55,91 +65,113 @@ export const useWorkspaceStore = defineStore("workspace", {
     },
     async setProjectId(projectId: string) {
       const id = projectId.trim();
-      const isProjectChanged = id !== this.currentProjectId;
-      const epoch = ++this.accessEpoch;
-      this.currentProjectId = id;
-      if (isProjectChanged || !id) {
+      if (id !== this.currentProjectId || !id) {
+        this.accessEpoch += 1;
         this.currentProjectAccess = null;
+        this.accessStatus = "unknown";
+        this.accessCheckedAt = 0;
       }
-      this.accessLoading = Boolean(id && !this.currentProjectAccess);
-      this.error = "";
+      this.currentProjectId = id;
       writeProjectPreference(PROJECT_STORAGE_KEY, id);
-      try {
-        const access = id ? await getProjectAccess(id) : null;
-        if (epoch === this.accessEpoch) this.currentProjectAccess = access;
-      } catch (error) {
-        if (epoch === this.accessEpoch) this.error = "项目权限加载失败，请重试";
-        throw error;
-      } finally {
-        if (epoch === this.accessEpoch) this.accessLoading = false;
-      }
+      await this.refreshCurrentProjectAccess(true);
     },
-    async refreshCurrentProjectAccess() {
+    async refreshCurrentProjectAccess(force = true): Promise<void> {
       const projectId = this.currentProjectId;
       if (!projectId) {
         this.currentProjectAccess = null;
+        this.accessLoading = false;
         return;
       }
-      const epoch = ++this.accessEpoch;
+      const active = accessRequests.get(this);
+      if (active?.epoch === this.accessEpoch) return active.promise;
+      // 合并切屏、聚焦和拒绝事件的短时间突发；显式重试不受冷却限制。
+      if (
+        !force &&
+        this.accessCheckedAt &&
+        Date.now() - this.accessCheckedAt < 10_000
+      )
+        return;
+      const epoch = this.accessEpoch;
+      const generation = getSessionGeneration();
+      const isCurrent = () =>
+        epoch === this.accessEpoch &&
+        projectId === this.currentProjectId &&
+        generation === getSessionGeneration();
       this.accessLoading = true;
-      try {
-        const access = await getProjectAccess(projectId);
-        if (epoch === this.accessEpoch && projectId === this.currentProjectId) {
+      const pending = (async () => {
+        try {
+          const access = await getProjectAccess(projectId);
+          if (!isCurrent()) return;
           this.currentProjectAccess = access;
-        }
-      } catch (error: any) {
-        if (epoch === this.accessEpoch && projectId === this.currentProjectId) {
-          const status = error?.response?.status ?? error?.status;
-          const message = String(error?.message || "").toLowerCase();
-          const isExplicitForbidden =
-            status === 403 ||
-            message.includes("forbidden") ||
-            message.includes("permission_denied") ||
-            message.includes("access_denied");
-
-          if (isExplicitForbidden) {
-            this.currentProjectAccess = null;
+          this.accessStatus = access.permissions.length ? "ready" : "denied";
+          this.error = "";
+        } catch (cause) {
+          if (isCurrent()) {
+            const { status, code } = extractPlatformHttpError(cause);
+            if (
+              status === 403 ||
+              (status === 404 && code === "project_not_found")
+            ) {
+              this.currentProjectAccess = null;
+              this.accessStatus = "denied";
+              this.error = "当前账号无法访问此项目";
+            } else {
+              this.accessStatus = "unavailable";
+              this.error = "暂时无法确认项目权限，请检查连接后重试";
+            }
           }
-          this.error = "项目权限刷新失败，请重试";
+          throw cause;
+        } finally {
+          if (isCurrent()) {
+            this.accessLoading = false;
+            this.accessCheckedAt = Date.now();
+          }
         }
-        throw error;
+      })();
+      accessRequests.set(this, { epoch, promise: pending });
+      try {
+        await pending;
       } finally {
-        if (epoch === this.accessEpoch) {
-          this.accessLoading = false;
-        }
+        if (accessRequests.get(this)?.promise === pending)
+          accessRequests.delete(this);
       }
     },
-    async hydrateContext() {
+    async hydrateContext(): Promise<void> {
+      const active = contextRequests.get(this);
+      if (active) return active;
       const epoch = ++this.contextEpoch;
+      const generation = getSessionGeneration();
+      const isCurrent = () =>
+        epoch === this.contextEpoch && generation === getSessionGeneration();
       this.loading = true;
       this.error = "";
-
-      try {
-        this.hydrateProjectPreference();
-        const rows = await listProjects();
-        if (epoch !== this.contextEpoch) return;
-        this.projects = rows;
-
-        const nextProjectId =
-          rows.find((project) => project.id === this.currentProjectId)?.id ||
-          rows[0]?.id ||
-          "";
-
-        await this.setProjectId(nextProjectId);
-      } catch {
-        if (epoch !== this.contextEpoch) return;
-        this.projects = [];
-        await this.setProjectId("");
-        this.error = "项目列表或权限加载失败，请重试";
-      } finally {
-        if (epoch === this.contextEpoch) {
-          this.loading = false;
-          this.contextLoaded = true;
+      const pending = (async () => {
+        try {
+          if (!this.currentProjectId) this.hydrateProjectPreference();
+          const rows = await listProjects();
+          if (!isCurrent()) return;
+          this.projects = rows;
+          // 当前路由/用户选择优先。列表更新不能悄悄切换工作区。
+          const nextProjectId = this.currentProjectId || rows[0]?.id || "";
+          await this.setProjectId(nextProjectId);
+          if (isCurrent()) this.contextLoaded = true;
+        } catch {
+          if (isCurrent()) this.error ||= "项目列表暂时无法加载，请重试";
+        } finally {
+          if (isCurrent()) this.loading = false;
         }
+      })();
+      contextRequests.set(this, pending);
+      try {
+        await pending;
+      } finally {
+        if (contextRequests.get(this) === pending) contextRequests.delete(this);
       }
     },
     reset() {
       this.contextEpoch += 1;
+      contextRequests.delete(this);
+      this.error = "";
       this.projects = [];
       void this.setProjectId("");
       this.loading = false;

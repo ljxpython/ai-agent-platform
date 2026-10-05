@@ -5,7 +5,156 @@ import {
   type BaseMessage,
 } from "@langchain/core/messages";
 
-/** SDK 1.10 root projection includes generic (non task/tools) subgraph text.
+const coerce = (value: unknown): BaseMessage[] =>
+  Array.isArray(value)
+    ? value.map((message) => coerceMessageLikeToMessage(message))
+    : [];
+
+export function getMsgType(msg: BaseMessage): string {
+  const raw = msg as unknown as { _getType?: () => string; role?: string };
+  return (
+    msg.type ||
+    (typeof raw._getType === "function" ? raw._getType() : "") ||
+    raw.role ||
+    ""
+  );
+}
+
+export function hasToolCalls(msg: BaseMessage): boolean {
+  const raw = msg as unknown as Record<string, unknown>;
+  return Array.isArray(raw.tool_calls) && raw.tool_calls.length > 0;
+}
+
+/**
+ * 1. 融入思维链（Live Reasoning Deltas）
+ */
+export function injectLiveReasonings(
+  messages: readonly BaseMessage[],
+  liveReasonings: Map<string, string>,
+  activeMessageId: string | undefined,
+  isLoading: boolean,
+  owned: Map<string, BaseMessage>,
+): BaseMessage[] {
+  const current = messages.map((message) => {
+    if (!isLoading && message.id && owned.has(message.id)) {
+      return owned.get(message.id)!;
+    }
+    if (isLoading && message.id) {
+      const liveReasoning =
+        liveReasonings.get(message.id) ?? liveReasonings.get("__live__");
+      if (liveReasoning) {
+        const raw = message as unknown as Record<string, unknown>;
+        const additionalKwargs =
+          (raw.additional_kwargs as Record<string, unknown> | undefined) ?? {};
+        if (
+          !additionalKwargs.reasoning_content &&
+          !additionalKwargs.reasoning
+        ) {
+          return coerceMessageLikeToMessage({
+            ...raw,
+            additional_kwargs: {
+              ...additionalKwargs,
+              reasoning_content: liveReasoning,
+            },
+          } as any);
+        }
+      }
+    }
+    return message;
+  });
+
+  if (isLoading && liveReasonings.size > 0) {
+    const activeReasoning =
+      (activeMessageId ? liveReasonings.get(activeMessageId) : undefined) ??
+      liveReasonings.get("__live__") ??
+      [...liveReasonings.values()][liveReasonings.size - 1];
+    if (activeReasoning) {
+      const lastMsg = current[current.length - 1];
+      const lastIsAi =
+        lastMsg &&
+        (lastMsg.type === "ai" ||
+          (lastMsg as unknown as { _getType?: () => string })._getType?.() ===
+            "ai");
+      if (!lastIsAi) {
+        current.push(
+          coerceMessageLikeToMessage({
+            id: activeMessageId || "streaming-ai-live",
+            type: "ai",
+            content: "",
+            additional_kwargs: {
+              reasoning_content: activeReasoning,
+            },
+          } as any),
+        );
+      }
+    }
+  }
+
+  return current;
+}
+
+/**
+ * 2. 权威快照与流式增量正序对齐
+ */
+export function reconcileSnapshotWithStream(
+  snapshot: readonly BaseMessage[],
+  current: readonly BaseMessage[],
+): BaseMessage[] {
+  if (snapshot.length === 0) {
+    return [...current];
+  }
+  const currentById = new Map<string, BaseMessage>();
+  for (const msg of current) {
+    if (msg.id) currentById.set(msg.id, msg);
+  }
+  // 严格以 snapshot 权威检查点时间线为基底（保留正序），并融入 current 中的实时增强
+  const merged = snapshot.map(
+    (msg) => (msg.id && currentById.get(msg.id)) || msg,
+  );
+  // 将 current 中尚未落盘到 snapshot 的最新增量消息追加在末尾
+  const snapshotIds = new Set(snapshot.map((msg) => msg.id).filter(Boolean));
+  for (const msg of current) {
+    if (!msg.id || !snapshotIds.has(msg.id)) {
+      merged.push(msg);
+    }
+  }
+  return merged;
+}
+
+/**
+ * 3. 提取子智能体委派任务输入（防止向父/根级泄露）
+ */
+export function extractSubagentTaskInputs(
+  merged: readonly BaseMessage[],
+  subagentsList: Iterable<{ taskInput?: string }>,
+): Set<string> {
+  const inputs = new Set<string>();
+  for (const agent of subagentsList) {
+    if (typeof agent.taskInput === "string" && agent.taskInput.trim()) {
+      inputs.add(agent.taskInput.trim());
+    }
+  }
+  for (const msg of merged) {
+    const raw = msg as unknown as Record<string, unknown>;
+    if (Array.isArray(raw.tool_calls)) {
+      for (const tc of raw.tool_calls as Array<{
+        name?: string;
+        args?: Record<string, unknown>;
+      }>) {
+        if (tc?.name === "task" && tc.args && typeof tc.args === "object") {
+          for (const key of ["description", "prompt", "task", "instructions"]) {
+            const val = tc.args[key];
+            if (typeof val === "string" && val.trim()) inputs.add(val.trim());
+          }
+        }
+      }
+    }
+  }
+  return inputs;
+}
+
+/**
+ * SDK 1.10 root projection includes generic (non task/tools) subgraph text.
  * Use exact-scope values to distinguish returned answers from private child text.
  */
 export function useTranscriptMessages(
@@ -17,10 +166,7 @@ export function useTranscriptMessages(
   const scopedSnapshot = shallowRef<readonly BaseMessage[]>([]);
   const liveReasonings = shallowReactive(new Map<string, string>());
   let activeMessageId: string | undefined;
-  const coerce = (value: unknown) =>
-    Array.isArray(value)
-      ? value.map((message) => coerceMessageLikeToMessage(message))
-      : [];
+
   useChannelEffect(stream, ["messages", "values"], {
     target: { namespace },
     replay: true,
@@ -100,9 +246,8 @@ export function useTranscriptMessages(
       }
     },
   });
+
   return computed(() => {
-    // stream.values includes the SDK's merged message projection; only an exact
-    // values event proves that the graph explicitly returned a child message.
     const rawValues =
       namespace.length === 0 &&
       Array.isArray((stream.values.value as { messages?: unknown })?.messages)
@@ -116,88 +261,24 @@ export function useTranscriptMessages(
         .filter((message) => message.id)
         .map((message) => [message.id!, message]),
     );
-    // Finished values are authoritative. Late replay chunks can leave the SDK's
-    // message projection shorter than the checkpoint, even after the Run ends.
-    const current = messages.value.map((message) => {
-      if (!stream.isLoading.value && message.id && owned.has(message.id)) {
-        return owned.get(message.id)!;
-      }
-      if (stream.isLoading.value && message.id) {
-        const liveReasoning =
-          liveReasonings.get(message.id) ?? liveReasonings.get("__live__");
-        if (liveReasoning) {
-          const raw = message as unknown as Record<string, unknown>;
-          const additionalKwargs =
-            (raw.additional_kwargs as Record<string, unknown> | undefined) ??
-            {};
-          if (
-            !additionalKwargs.reasoning_content &&
-            !additionalKwargs.reasoning
-          ) {
-            return coerceMessageLikeToMessage({
-              ...raw,
-              additional_kwargs: {
-                ...additionalKwargs,
-                reasoning_content: liveReasoning,
-              },
-            } as any);
-          }
-        }
-      }
-      return message;
-    });
-    if (stream.isLoading.value && liveReasonings.size > 0) {
-      const activeReasoning =
-        (activeMessageId ? liveReasonings.get(activeMessageId) : undefined) ??
-        liveReasonings.get("__live__") ??
-        [...liveReasonings.values()][liveReasonings.size - 1];
-      if (activeReasoning) {
-        const lastMsg = current[current.length - 1];
-        const lastIsAi =
-          lastMsg &&
-          (lastMsg.type === "ai" ||
-            (lastMsg as unknown as { _getType?: () => string })._getType?.() ===
-              "ai");
-        if (!lastIsAi) {
-          current.push(
-            coerceMessageLikeToMessage({
-              id: activeMessageId || "streaming-ai-live",
-              type: "ai",
-              content: "",
-              additional_kwargs: {
-                reasoning_content: activeReasoning,
-              },
-            } as any),
-          );
-        }
-      }
-    }
-    let merged: BaseMessage[];
-    if (snapshot.length === 0) {
-      merged = [...current];
-    } else {
-      const currentById = new Map<string, BaseMessage>();
-      for (const msg of current) {
-        if (msg.id) currentById.set(msg.id, msg);
-      }
-      // 1. 严格以 snapshot 权威检查点时间线为基底（保留从首个用户提问开始的正序），并融入 current 中的实时增强（如 live reasoning）
-      merged = snapshot.map(
-        (msg) => (msg.id && currentById.get(msg.id)) || msg,
-      );
-      // 2. 将 current 中尚未落盘到 snapshot 的最新增量消息（如正在流式的最后一个 AI 块）追加在末尾
-      const snapshotIds = new Set(
-        snapshot.map((msg) => msg.id).filter(Boolean),
-      );
-      for (const msg of current) {
-        if (!msg.id || !snapshotIds.has(msg.id)) {
-          merged.push(msg);
-        }
-      }
-    }
 
-    const subagents = [...stream.subagents.value.values()].map(
-      (agent) => agent.namespace,
+    // 1. 融入思维链实时增量
+    const current = injectLiveReasonings(
+      messages.value,
+      liveReasonings,
+      activeMessageId,
+      stream.isLoading.value,
+      owned,
     );
+
+    // 2. 权威快照正序合并
+    const merged = reconcileSnapshotWithStream(snapshot, current);
+
+    // 3. 提取子智能体防泄漏白名单
+    const subagentsList = [...stream.subagents.value.values()];
+    const subagents = subagentsList.map((agent) => agent.namespace);
+    const subagentTaskInputs = extractSubagentTaskInputs(merged, subagentsList);
+
     const children = [
       ...stream.subgraphs.value.values(),
       ...stream.subagents.value.values(),
@@ -209,55 +290,12 @@ export function useTranscriptMessages(
           namespace.every((part, index) => child[index] === part),
       );
 
-    // Subagent delegated task inputs (passed as HumanMessage into child graphs)
-    // should never leak into parent/root message streams.
-    const subagentTaskInputs = new Set<string>();
-    for (const agent of stream.subagents.value.values()) {
-      if (typeof agent.taskInput === "string" && agent.taskInput.trim()) {
-        subagentTaskInputs.add(agent.taskInput.trim());
-      }
-    }
-    for (const msg of merged) {
-      const raw = msg as unknown as Record<string, unknown>;
-      if (Array.isArray(raw.tool_calls)) {
-        for (const tc of raw.tool_calls as Array<{
-          name?: string;
-          args?: Record<string, unknown>;
-        }>) {
-          if (tc?.name === "task" && tc.args && typeof tc.args === "object") {
-            for (const key of [
-              "description",
-              "prompt",
-              "task",
-              "instructions",
-            ]) {
-              const val = tc.args[key];
-              if (typeof val === "string" && val.trim())
-                subagentTaskInputs.add(val.trim());
-            }
-          }
-        }
-      }
-    }
-
     const isSameNamespace = (source?: readonly string[]) =>
       !source ||
       (source.length === namespace.length &&
         source.every((part, index) => namespace[index] === part));
-    const getMsgType = (msg: BaseMessage) =>
-      msg.type ||
-      (typeof (msg as unknown as { _getType?: () => string })._getType ===
-      "function"
-        ? (msg as unknown as { _getType: () => string })._getType()
-        : "");
-    const hasToolCalls = (msg: BaseMessage) => {
-      const raw = msg as unknown as Record<string, unknown>;
-      return Array.isArray(raw.tool_calls) && raw.tool_calls.length > 0;
-    };
 
-    // Detect mid-stream model retries: if an uncommitted tool-less AI message in the current
-    // namespace is followed by another AI message before any human/tool message, the earlier
-    // attempt timed out or failed and was superseded by the retry.
+    // 4. 重试中间状态识别
     const supersededRetryIds = new Set<string>();
     let pendingToollessAiId: string | undefined;
     for (const msg of merged) {
@@ -282,28 +320,21 @@ export function useTranscriptMessages(
       snapshot.length > 0 &&
       (!lastCurrentHuman?.id || owned.has(lastCurrentHuman.id));
 
+    // 5. 过滤与管道最终输出
     return merged.filter((message) => {
-      // 1. A child result explicitly promoted to parent values is an owned parent reply.
       if (message.id && owned.has(message.id)) return true;
-
-      // Drop aborted/retried AI messages superseded by a subsequent retry attempt.
       if (message.id && supersededRetryIds.has(message.id)) return false;
 
       const source = message.id ? sources.get(message.id) : undefined;
 
-      // Once a run finishes and authoritative values snapshot is present (and has caught up to the latest human turn),
-      // any same-scope message missing from snapshot is an uncommitted/aborted draft and must be dropped.
       if (
         !stream.isLoading.value &&
         hasSnapshotCaughtUp &&
         isSameNamespace(source)
-      )
+      ) {
         return false;
+      }
 
-      // 2. Subagent messages (originating from child namespaces in stream.subagents, or child tools:/task: namespaces)
-      // MUST NEVER leak into the parent transcript view, whether tool call, tool result, or text.
-      // Note: root/same-namespace messages have source.length <= namespace.length (e.g. source = []),
-      // and [].every(...) is vacuously true in JS, so we MUST require source.length > namespace.length.
       const isFromSubagent =
         !!source &&
         source.length > namespace.length &&
@@ -320,7 +351,6 @@ export function useTranscriptMessages(
             ));
       if (isFromSubagent) return false;
 
-      // 3. Filter out subagent task input HumanMessages from parent/root view even before source resolution
       const isHuman = getMsgType(message) === "human";
       if (isHuman) {
         const text =
@@ -336,22 +366,22 @@ export function useTranscriptMessages(
                   .join("")
                   .trim()
               : "";
-        if (text && subagentTaskInputs.has(text) && namespace.length === 0)
+        if (text && subagentTaskInputs.has(text) && namespace.length === 0) {
           return false;
+        }
         if (
           source &&
           children.some((child) =>
             child.every((part, index) => source[index] === part),
           )
-        )
+        ) {
           return false;
+        }
       }
 
-      // 4. Execution subgraphs (non-subagent internal graph nodes) tool calls are preserved for root visibility
       if (hasToolCalls(message)) return true;
       if (message.type === "tool") return true;
 
-      // 5. Default: include if it has no descendant source and is not from a child scope
       return (
         !source ||
         !children.some((child) =>

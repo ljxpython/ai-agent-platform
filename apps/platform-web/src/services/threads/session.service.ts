@@ -95,6 +95,14 @@ export function createSessionService(
     }
     return response.json() as Promise<T>;
   }
+  function assertValidThreadId(threadId: string): string {
+    const trimmed = typeof threadId === "string" ? threadId.trim() : "";
+    if (!trimmed) {
+      throw new Error("Invalid threadId: threadId must be a non-empty string");
+    }
+    return trimmed;
+  }
+
   return {
     client,
     create: async (
@@ -153,18 +161,23 @@ export function createSessionService(
         throw error;
       }
     },
-    get: (threadId: string) => client.threads.get(threadId),
+    get: (threadId: string) =>
+      client.threads.get(assertValidThreadId(threadId)),
     // The gateway exposes checkpoint_id on GET state, not the SDK's extra checkpoint route.
-    state: (threadId: string, checkpoint?: Checkpoint) =>
-      read<ThreadState<ChatState> & { interrupts?: Interrupt[] }>(
-        `/threads/${encodeURIComponent(threadId)}/state${checkpoint?.checkpoint_id ? `?checkpoint_id=${encodeURIComponent(checkpoint.checkpoint_id)}` : ""}`,
-      ),
+    state: (threadId: string, checkpoint?: Checkpoint) => {
+      const validId = assertValidThreadId(threadId);
+      return read<ThreadState<ChatState> & { interrupts?: Interrupt[] }>(
+        `/threads/${encodeURIComponent(validId)}/state${checkpoint?.checkpoint_id ? `?checkpoint_id=${encodeURIComponent(checkpoint.checkpoint_id)}` : ""}`,
+      );
+    },
     // SDK 1.10 types before as Config; the public wire contract requires a Checkpoint.
-    history: (threadId: string, before?: Checkpoint, limit = 20) =>
-      read<ChatCheckpoint[]>(
-        `/threads/${encodeURIComponent(threadId)}/history`,
+    history: (threadId: string, before?: Checkpoint, limit = 20) => {
+      const validId = assertValidThreadId(threadId);
+      return read<ChatCheckpoint[]>(
+        `/threads/${encodeURIComponent(validId)}/history`,
         { method: "POST", body: JSON.stringify({ limit, before }) },
-      ),
+      );
+    },
     list: (
       options:
         | number
@@ -205,47 +218,62 @@ export function createSessionService(
       }
       return 0;
     },
-    remove: (threadId: string) => client.threads.delete(threadId),
-    resume: (threadId: string, resume: Record<string, unknown>) =>
-      read<{ thread_id: string; run_id: string }>(
-        `/threads/${encodeURIComponent(threadId)}/runs`,
+    remove: (threadId: string) =>
+      client.threads.delete(assertValidThreadId(threadId)),
+    resume: (threadId: string, resume: Record<string, unknown>) => {
+      const validId = assertValidThreadId(threadId);
+      return read<{ thread_id: string; run_id: string }>(
+        `/threads/${encodeURIComponent(validId)}/runs`,
         {
           method: "POST",
           body: JSON.stringify({ command: { resume } }),
         },
-      ),
+      );
+    },
     runs: (threadId: string): Promise<Run[]> =>
-      client.runs.list(threadId, { limit: 20 }),
-    run: (threadId: string, runId: string) => client.runs.get(threadId, runId),
+      client.runs.list(assertValidThreadId(threadId), { limit: 20 }),
+    run: (threadId: string, runId: string) =>
+      client.runs.get(assertValidThreadId(threadId), runId),
     cancel: (threadId: string, runId: string) =>
-      client.runs.cancel(threadId, runId, false, "interrupt"),
-    fork: (threadId: string, checkpointId: string, title?: string) =>
-      read<ChatThread>(`/threads/${encodeURIComponent(threadId)}/fork`, {
+      client.runs.cancel(
+        assertValidThreadId(threadId),
+        runId,
+        false,
+        "interrupt",
+      ),
+    fork: (threadId: string, checkpointId: string, title?: string) => {
+      const validId = assertValidThreadId(threadId);
+      return read<ChatThread>(`/threads/${encodeURIComponent(validId)}/fork`, {
         method: "POST",
         body: JSON.stringify({
           checkpoint_id: checkpointId,
           ...(title ? { title } : {}),
         }),
-      }),
+      });
+    },
     update: (
       threadId: string,
       metadata: { title?: string; preview?: string },
-    ) =>
-      read<ChatThread>(`/threads/${encodeURIComponent(threadId)}`, {
+    ) => {
+      const validId = assertValidThreadId(threadId);
+      return read<ChatThread>(`/threads/${encodeURIComponent(validId)}`, {
         method: "PATCH",
         body: JSON.stringify(metadata),
-      }),
+      });
+    },
     summarizeTitle: (
       threadId: string,
       messages?: Array<{ role: string; content: string }>,
-    ) =>
-      read<{
+    ) => {
+      const validId = assertValidThreadId(threadId);
+      return read<{
         thread_id: string;
         title: string;
         metadata?: Record<string, unknown>;
-      }>(`/threads/${encodeURIComponent(threadId)}/title/summarize`, {
+      }>(`/threads/${encodeURIComponent(validId)}/title/summarize`, {
         method: "POST",
         body: JSON.stringify(messages ? { messages } : {}),
-      }),
+      });
+    },
   };
 }

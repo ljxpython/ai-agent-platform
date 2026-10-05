@@ -286,6 +286,21 @@ const activeThreadTitle = computed(() => {
 });
 const projectName = computed(() => activeProject.value?.name ?? "");
 let attachEpoch = 0;
+
+function touchLocalThread(threadId: string, status?: ChatThread["status"]) {
+  if (!threadId) return;
+  const index = threads.value.findIndex((t) => t.thread_id === threadId);
+  if (index >= 0) {
+    const item = threads.value[index];
+    item.updated_at = new Date().toISOString();
+    if (status) item.status = status;
+    if (index > 0) {
+      threads.value.splice(index, 1);
+      threads.value.unshift(item);
+    }
+  }
+}
+
 function attachCurrentView() {
   const entry = selectedEntry.value;
   const outlet = sessionOutlet.value;
@@ -308,7 +323,11 @@ function attachCurrentView() {
     onThread: created,
     onFork: handleForkThread,
     onRefresh: () => {
-      void loadThreads();
+      // 智能体调用完成或状态改变，仅做本地轻量状态 Patch，绝不发起全量 loadThreads 网络请求！
+      const currentThreadId = mountedThread.value || entry.threadId.value;
+      if (currentThreadId) {
+        touchLocalThread(currentThreadId);
+      }
     },
     onRevoked: () => {
       selectedEntry.value = undefined;
@@ -338,17 +357,30 @@ onDeactivated(() => {
   detachView = undefined;
 });
 const textParam = (value: unknown) =>
-  typeof value === "string" ? value : undefined;
-const selectedTarget = computed(() => target.value?.agentId ?? "");
+  typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+const selectedTarget = computed(
+  () => textParam(route.query.agentId) || target.value?.agentId || "",
+);
 
-const currentSelectedAgent = computed(() => {
-  const agentId = target.value?.agentId || textParam(route.query.agentId);
+function resolveSelectedAgent(agentId?: string) {
   if (!agentId) return null;
   const match = agents.value.find((a) => a.id === agentId);
   return {
     agentId,
-    graphId: target.value?.graphId || match?.graph_id,
+    graphId:
+      match?.graph_id ||
+      (target.value?.agentId === agentId ? target.value?.graphId : undefined),
   };
+}
+
+const currentSelectedAgent = computed(() => {
+  const queryAgentId = textParam(route.query.agentId);
+  const threadId = textParam(route.params.threadId);
+  const agentId =
+    queryAgentId || (threadId ? target.value?.agentId : undefined);
+  return resolveSelectedAgent(agentId);
 });
 const currentSelectedAgentKey = computed(
   () => currentSelectedAgent.value?.agentId || "",
@@ -387,17 +419,23 @@ const totalPages = computed(() => {
   return Math.max(1, currentPage.value + (hasMore.value ? 1 : 0));
 });
 
-async function loadThreads(reset = true) {
+async function loadThreads(reset = true, overrideAgentId?: string) {
   if (!activeProjectId.value) return;
   const requestEpoch = ++listEpoch;
   const nextOffset = reset ? 0 : offset.value + pageSize;
   listLoading.value = true;
   listError.value = "";
-  const selected = currentSelectedAgent.value;
-  const metadata = selected?.graphId
-    ? { graph_id: selected.graphId }
-    : selected?.agentId
-      ? { agent_id: selected.agentId }
+  if (reset) {
+    threads.value = [];
+  }
+  const selected =
+    overrideAgentId !== undefined
+      ? resolveSelectedAgent(overrideAgentId)
+      : currentSelectedAgent.value;
+  const metadata = selected?.agentId
+    ? { agent_id: selected.agentId }
+    : selected?.graphId
+      ? { graph_id: selected.graphId }
       : undefined;
   try {
     const [rows, countRes] = await Promise.all([
@@ -435,10 +473,10 @@ async function handlePageChange(targetPage: number) {
   listLoading.value = true;
   listError.value = "";
   const selected = currentSelectedAgent.value;
-  const metadata = selected?.graphId
-    ? { graph_id: selected.graphId }
-    : selected?.agentId
-      ? { agent_id: selected.agentId }
+  const metadata = selected?.agentId
+    ? { agent_id: selected.agentId }
+    : selected?.graphId
+      ? { graph_id: selected.graphId }
       : undefined;
   try {
     const rows = await service.value.list({ offset: nextOffset, metadata });
@@ -684,13 +722,18 @@ watch(
 );
 
 function choose(value: string) {
-  if (typeof window !== "undefined" && window.innerWidth < 1024)
+  // 仅在窄屏手机端（< 768px）切换智能体时自动收起侧边栏；Pad（>= 768px）与桌面端保持当前侧边栏状态，方便用户即时查看左侧匹配的会话队列
+  if (typeof window !== "undefined" && window.innerWidth < 768)
     sidebarCollapsed.value = true;
   chatSessionStore.setLastActiveThread(
     activeProjectId.value,
     "workspace-chat",
     null,
   );
+  threads.value = [];
+  totalThreads.value = undefined;
+  listLoading.value = true;
+  void loadThreads(true, value);
   if (!value) {
     void router.push({ path: chatPath.value });
   } else {
@@ -698,14 +741,19 @@ function choose(value: string) {
   }
 }
 function openThread(id: string) {
+  if (selectedThread.value === id) return;
   if (typeof window !== "undefined" && window.innerWidth < 1024)
     sidebarCollapsed.value = true;
+  selectedThread.value = id;
   chatSessionStore.setLastActiveThread(
     activeProjectId.value,
     "workspace-chat",
     id,
   );
-  void router.push(`${chatPath.value}/${encodeURIComponent(id)}`);
+  void router.push({
+    path: `${chatPath.value}/${encodeURIComponent(id)}`,
+    query: route.query,
+  });
 }
 function newThread() {
   if (typeof window !== "undefined" && window.innerWidth < 1024)
@@ -715,18 +763,23 @@ function newThread() {
     "workspace-chat",
     null,
   );
-  if (target.value) choose(selectedTarget.value);
-  if (!selectedThread.value) {
-    draftId.value = crypto.randomUUID();
-    if (target.value)
-      selectedEntry.value = pool.acquire(
-        `${auth.user?.id ?? ""}:${auth.sessionEpoch}:${activeProjectId.value}`,
-        activeProjectId.value,
-        "chat",
-        target.value,
-        undefined,
-        draftId.value,
-      );
+  draftId.value = crypto.randomUUID();
+  selectedThread.value = undefined;
+  mountedThread.value = undefined;
+  activeThreadObj.value = undefined;
+  if (target.value) {
+    selectedEntry.value = pool.acquire(
+      `${auth.user?.id ?? ""}:${auth.sessionEpoch}:${activeProjectId.value}`,
+      activeProjectId.value,
+      "chat",
+      target.value,
+      undefined,
+      draftId.value,
+    );
+    choose(selectedTarget.value);
+  } else {
+    selectedEntry.value = undefined;
+    choose("");
   }
 }
 function created(id: string) {
@@ -747,6 +800,27 @@ function created(id: string) {
     "workspace-chat",
     id,
   );
+  if (!threads.value.some((t) => t.thread_id === id)) {
+    const now = new Date().toISOString();
+    const newThreadItem: ChatThread = {
+      thread_id: id,
+      created_at: now,
+      updated_at: now,
+      state_updated_at: now,
+      status: "idle",
+      values: { messages: [] },
+      interrupts: {},
+      metadata: {
+        title: "新对话",
+        agent_id: target.value?.agentId,
+        graph_id: target.value?.graphId,
+      },
+    };
+    threads.value = [newThreadItem, ...threads.value];
+    if (typeof totalThreads.value === "number") {
+      totalThreads.value += 1;
+    }
+  }
   void router.replace({
     path: `${chatPath.value}/${encodeURIComponent(id)}`,
     query: route.query,
@@ -778,6 +852,8 @@ onScopeDispose(() => {
   ++epoch;
   ++listEpoch;
 });
+
+defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
 </script>
 
 <template>

@@ -135,9 +135,26 @@ describe("router guards", () => {
     });
     expect(result).toEqual({
       name: "workspace-access-unavailable",
-      query: { returnTo: fullPath },
+      query: { returnTo: fullPath, reason: "unavailable" },
     });
     expect(mocks.workspaceStore.hydrateContext).not.toHaveBeenCalled();
+  });
+
+  it("keeps a stored session on a temporary profile failure and presents retry", async () => {
+    mocks.authStore.user = null;
+    const fullPath = "/workspace/projects/project-a/members";
+    expect(
+      await captureGuard()({
+        path: fullPath,
+        fullPath,
+        query: {},
+        params: {},
+        meta: {},
+      }),
+    ).toEqual({
+      name: "workspace-access-unavailable",
+      query: { returnTo: fullPath, reason: "unavailable" },
+    });
   });
 
   it("keeps an empty hydrated project context stable", async () => {

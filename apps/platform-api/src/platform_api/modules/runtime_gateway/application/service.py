@@ -2707,15 +2707,16 @@ class RuntimeGatewayService:
         thread_id: str,
         params: dict[str, Any] | None,
     ) -> Any:
-        await self._load_thread(
+        thread = await self._load_thread(
             actor=actor,
             project_id=project_id,
             thread_id=thread_id,
             write=False,
         )
-        state = await self._upstream.get_thread_state(
-            thread_id, _normalize_payload(params)
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="read"
         )
+        state = await upstream.get_thread_state(thread_id, _normalize_payload(params))
         return _redact_runtime_private_fields(state)
 
     async def update_thread_state(
@@ -2768,13 +2769,16 @@ class RuntimeGatewayService:
         thread_id: str,
         payload: dict[str, Any] | None,
     ) -> Any:
-        await self._load_thread(
+        thread = await self._load_thread(
             actor=actor,
             project_id=project_id,
             thread_id=thread_id,
             write=False,
         )
-        history = await self._upstream.get_thread_history(
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="read"
+        )
+        history = await upstream.get_thread_history(
             thread_id, _normalize_payload(payload)
         )
         return _redact_runtime_private_fields(history)

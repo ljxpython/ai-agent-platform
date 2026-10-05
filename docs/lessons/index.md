@@ -6,6 +6,7 @@
 |---|---|---|
 | [ai-workflow.md](ai-workflow.md) | AI 工作流、Harness、Skill 设计、文档规范 | 4 |
 | [runtime-service.md](runtime-service.md) | runtime-service 服务内部、模块导入、工具治理 | 2 |
+| [platform-web.md](platform-web.md) | 权限状态、刷新作用域与撤权回归 | 1 |
 
 ## 新增经验的流程
 

@@ -585,6 +585,42 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(response.status_code, 200, response.text)
                     self.assertEqual(callback.call_args.kwargs["params"], params)
 
+    async def test_reserved_thread_path_keywords_return_404(self) -> None:
+        app = FastAPI()
+        app.include_router(router)
+        register_exception_handlers(app)
+        service = SimpleNamespace(get_thread=AsyncMock())
+        app.dependency_overrides[get_actor_context] = lambda: SimpleNamespace(
+            user_id="user-1"
+        )
+        app.dependency_overrides[get_runtime_gateway_service] = lambda: service
+
+        @app.middleware("http")
+        async def scope(request, call_next):
+            request.state.platform_context = SimpleNamespace(
+                project=SimpleNamespace(project_id="project-1")
+            )
+            return await call_next(request)
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            for keyword in (
+                "state",
+                "history",
+                "runs",
+                "search",
+                "count",
+                "reconcile",
+                "copy",
+            ):
+                with self.subTest(keyword=keyword):
+                    response = await client.get(
+                        f"/api/langgraph/threads/{keyword}",
+                        headers={"x-project-id": "project-1"},
+                    )
+                    self.assertEqual(response.status_code, 404, response.text)
+
 
 if __name__ == "__main__":
     unittest.main()

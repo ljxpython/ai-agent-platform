@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import logging
 import os
 import time
 from uuid import NAMESPACE_URL, UUID, uuid5
@@ -12,9 +13,11 @@ from uuid import NAMESPACE_URL, UUID, uuid5
 import httpx
 from langgraph_sdk import Auth
 
+from runtime_service.auth.acl_client import post_acl
 from runtime_service.runtime.auth import _user_value, verify_delegation_claims
 from runtime_service.runtime.errors import RuntimeAuthError
 
+logger = logging.getLogger(__name__)
 auth = Auth()
 
 
@@ -273,24 +276,38 @@ async def deny_image_scope_on_server_resources(
         f"{stamp}\nthread-authorization\n{canonical}".encode(),
         hashlib.sha256,
     ).hexdigest()
+    started = time.monotonic()
     try:
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            response = await client.post(
-                endpoint,
-                json=payload,
-                headers={
-                    "x-runtime-acl-timestamp": stamp,
-                    "x-runtime-acl-signature": signature,
-                },
-            )
-            response.raise_for_status()
-            result = response.json()
+        response = await post_acl(
+            endpoint,
+            payload,
+            {
+                "x-runtime-acl-timestamp": stamp,
+                "x-runtime-acl-signature": signature,
+            },
+        )
+        response.raise_for_status()
+        result = response.json()
     except (httpx.HTTPError, ValueError) as exc:
+        logger.warning(
+            "Platform authorization unavailable project=%s action=%s targets=%s elapsed_ms=%.0f error=%s",
+            project_id,
+            acl_action,
+            len(targets),
+            (time.monotonic() - started) * 1000,
+            type(exc).__name__,
+        )
         raise Auth.exceptions.HTTPException(
             status_code=503, detail="Platform authorization unavailable"
         ) from exc
     allowed = result.get("allowed_thread_ids") if isinstance(result, dict) else None
-    if not isinstance(allowed, list) or set(allowed) != set(targets):
+    if not isinstance(allowed, list) or not all(
+        isinstance(item, str) for item in allowed
+    ):
+        raise Auth.exceptions.HTTPException(
+            status_code=503, detail="Platform authorization unavailable"
+        )
+    if set(allowed) != set(targets):
         raise Auth.exceptions.HTTPException(
             status_code=403, detail="Thread access denied"
         )

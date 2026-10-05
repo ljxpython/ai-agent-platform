@@ -11,7 +11,8 @@ vi.mock("./ChatSession.vue", async () => {
   return {
     default: defineComponent({
       name: "ChatSession",
-      emits: ["thread"],
+      props: { canWrite: Boolean },
+      emits: ["thread", "refresh"],
       setup(_, { slots, emit }) {
         onMounted(() => {
           counters.mounts++;
@@ -21,6 +22,10 @@ vi.mock("./ChatSession.vue", async () => {
             h("button", {
               "data-testid": "thread-ack",
               onClick: () => emit("thread", "new-thread"),
+            }),
+            h("button", {
+              "data-testid": "refresh-ack",
+              onClick: () => emit("refresh"),
             }),
             slots.target?.(),
           ]);
@@ -100,12 +105,85 @@ it("moves one mounted session between an outlet and the parked host", async () =
     onRevoked: () => {},
   });
   await nextTick();
+  expect(wrapper.findComponent({ name: "ChatSession" }).props("canWrite")).toBe(
+    true,
+  );
   expect(outlet.textContent).toContain("Original toolbar");
   expect(counters.mounts).toBe(1);
   detach();
   await nextTick();
   expect(outlet.textContent).toBe("");
+  expect(wrapper.findComponent({ name: "ChatSession" }).props("canWrite")).toBe(
+    true,
+  );
+  entry.canWrite.value = false;
+  await nextTick();
+  expect(wrapper.findComponent({ name: "ChatSession" }).props("canWrite")).toBe(
+    false,
+  );
   expect(counters.mounts).toBe(1);
+  wrapper.unmount();
+  outlet.remove();
+});
+
+it("defers refresh on inactive entry and does not call view onRefresh directly", async () => {
+  const pool = createChatSessionPool();
+  const wrapper = mount(ChatSessionPool, {
+    props: { pool },
+    attachTo: document.body,
+  });
+  const outlet = document.createElement("div");
+  document.body.append(outlet);
+  const entryA = pool.acquire(
+    "u:e:p",
+    "p",
+    "chat",
+    { graphId: "g", name: "AgentA", context: {} },
+    "thread-a",
+  );
+  const entryB = pool.acquire(
+    "u:e:p",
+    "p",
+    "chat",
+    { graphId: "g", name: "AgentB", context: {} },
+    "thread-b",
+  );
+  await nextTick();
+
+  const onRefresh = vi.fn();
+  pool.attachView(entryB, {
+    outlet,
+    slots: {} as Slots,
+    focusMode: ref(false),
+    canWrite: ref(true),
+    projectName: ref("Project"),
+    threadTitle: ref("Thread"),
+    onThread: () => {},
+    onFork: () => {},
+    onRefresh,
+    onRevoked: () => {},
+  });
+  await nextTick();
+
+  expect(entryA.visible.value).toBe(false);
+  expect(entryB.visible.value).toBe(true);
+
+  // 触发 entryA (非活动) 的 refresh 事件
+  const refreshBtns = document.querySelectorAll<HTMLButtonElement>(
+    '[data-testid="refresh-ack"]',
+  );
+  expect(refreshBtns.length).toBe(2);
+  // 第一个就是 entryA 的按钮
+  refreshBtns[0].click();
+  await nextTick();
+  expect(onRefresh).not.toHaveBeenCalled();
+  expect(entryA.needsRefresh).toBe(true);
+
+  // 触发 entryB (当前活动) 的 refresh 事件
+  refreshBtns[1].click();
+  await nextTick();
+  expect(onRefresh).toHaveBeenCalledTimes(1);
+
   wrapper.unmount();
   outlet.remove();
 });

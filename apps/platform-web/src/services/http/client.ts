@@ -1,6 +1,8 @@
 import axios from "axios";
 import type { AxiosError, InternalAxiosRequestConfig } from "axios";
 import { env } from "@/config/env";
+import { notifyAccessDenied } from "@/services/auth/access-events";
+import { extractPlatformHttpError } from "@/utils/http-error";
 import {
   getAccessToken,
   getRefreshToken,
@@ -83,6 +85,12 @@ export async function refreshAccessToken(): Promise<string> {
       if (hadSession && isAuthRejected && getRefreshToken() === refreshToken) {
         handleSessionExpired();
       }
+      if (!isAuthRejected && generation === getSessionGeneration()) {
+        throw Object.assign(new Error("登录服务暂时无法连接，请稍后重试"), {
+          status: 503,
+          code: "auth_refresh_unavailable",
+        });
+      }
       return "";
     } finally {
       if (refreshGeneration === generation) refreshPromise = null;
@@ -147,7 +155,12 @@ function createPlatformHttpClient() {
         return Promise.reject(error);
 
       if (error.response?.status === 403 && typeof window !== "undefined") {
-        window.dispatchEvent(new Event("platform-access-denied"));
+        notifyAccessDenied(
+          originalRequest?.url || "/",
+          originalRequest?.method || "GET",
+          originalRequest?.headers?.get("x-project-id") as string | undefined,
+          extractPlatformHttpError(error).code,
+        );
       }
 
       if (

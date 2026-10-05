@@ -7,7 +7,8 @@ import TopContextBar from "@/components/layout/TopContextBar.vue";
 import { useUiStore } from "@/stores/ui";
 import { useAuthStore } from "@/stores/auth";
 import { useWorkspaceStore } from "@/stores/workspace";
-import { useAuthorization } from "@/composables/useAuthorization";
+import { resolveRouteAccess } from "@/services/auth/route-access";
+import { accessDeniedDetail } from "@/services/auth/access-events";
 import StateBanner from "@/components/platform/StateBanner.vue";
 import ChatSessionPool from "@/modules/chat/components/ChatSessionPool.vue";
 import {
@@ -33,7 +34,6 @@ watch(
     }
   },
 );
-const { can } = useAuthorization();
 
 watch(
   () => route.params.projectId,
@@ -44,7 +44,9 @@ watch(
       projectId &&
       projectId !== workspaceStore.currentProjectId
     ) {
-      void workspaceStore.setProjectId(projectId);
+      void workspaceStore.setProjectId(projectId).catch(() => {
+        /* Store 提供可重试状态。 */
+      });
     }
   },
   { immediate: true },
@@ -53,63 +55,83 @@ watch(
 let accessRefreshTimer: number | undefined;
 const refreshingAccess = ref(false);
 
-const routeAccessAllowed = computed(() => {
-  const permissions = route.meta.requiredPermissions ?? [];
-  if (permissions.length === 0) return true;
-  if (!authStore.isAuthenticated) return false;
+const routeAccess = computed(() =>
+  resolveRouteAccess(route, authStore.user, workspaceStore),
+);
+const routeAccessAllowed = computed(() => routeAccess.value === "allowed");
+const accessTitle = computed(
+  () =>
+    ({
+      allowed: "",
+      loading: "正在确认访问权限",
+      unavailable: "暂时无法确认访问权限",
+      denied: "当前页面权限已失效",
+    })[routeAccess.value],
+);
 
-  const projectId =
-    typeof route.params.projectId === "string"
-      ? route.params.projectId
-      : undefined;
-
-  // Stale-While-Revalidate 原则：当处于加载/刷新中，若本地已有该项目的访问权限，坚决保持现有权限，绝不误杀视图
-  if (
-    projectId &&
-    (workspaceStore.accessLoading || refreshingAccess.value) &&
-    workspaceStore.currentProjectAccess?.project_id === projectId
-  ) {
-    return true;
-  }
-
-  const allowed = (permission: (typeof permissions)[number]) =>
-    can(permission, projectId);
-  const result =
-    route.meta.permissionMode === "any"
-      ? permissions.some(allowed)
-      : permissions.every(allowed);
-
-  // 避免后台短暂抖动误判：如果当前项目已有授权记录且并未收到明确 403 移除通知，继续允许访问
-  if (
-    !result &&
-    projectId &&
-    workspaceStore.currentProjectAccess?.project_id === projectId
-  ) {
-    if (workspaceStore.currentProjectAccess.roles.length > 0) {
-      return true;
+watch(
+  () => workspaceStore.accessStatus,
+  (status) => {
+    if (status === "denied") {
+      chatSessionPool.clearScope();
+      chatSessionStore.clearAll();
     }
-  }
-
-  return result;
-});
+  },
+);
 
 watch(routeAccessAllowed, (allowed) => {
-  if (!allowed) {
+  if (!allowed && !authStore.isAuthenticated) {
     chatSessionPool.clearScope();
     chatSessionStore.clearAll();
   }
 });
 
-async function refreshAccess() {
+let lastRefresh = 0;
+let pendingRefresh: ReturnType<typeof setTimeout> | undefined;
+async function refreshAccess(force = false) {
   if (document.visibilityState !== "visible" || refreshingAccess.value) return;
+  if (!force && lastRefresh && Date.now() - lastRefresh < 10_000) {
+    pendingRefresh ??= setTimeout(
+      () => {
+        pendingRefresh = undefined;
+        void refreshAccess();
+      },
+      10_000 - (Date.now() - lastRefresh),
+    );
+    return;
+  }
+  clearTimeout(pendingRefresh);
+  pendingRefresh = undefined;
+  lastRefresh = Date.now();
   refreshingAccess.value = true;
   try {
     await Promise.allSettled([
       authStore.fetchCurrentUser(),
       workspaceStore.refreshCurrentProjectAccess(),
     ]);
+  } catch {
+    // 静默吸收后台刷新错误，绝不中断前台交互
   } finally {
     refreshingAccess.value = false;
+  }
+}
+
+function handleVisibilityChange() {
+  void refreshAccess();
+}
+
+function handleFocus() {
+  void refreshAccess();
+}
+
+function handleAccessDenied(event: Event) {
+  const detail = accessDeniedDetail(event);
+  if (
+    detail?.scope === "platform" ||
+    (detail?.scope === "project" &&
+      detail.projectId === workspaceStore.currentProjectId)
+  ) {
+    void refreshAccess(true);
   }
 }
 
@@ -117,17 +139,18 @@ onMounted(() => {
   accessRefreshTimer = window.setInterval(() => {
     void refreshAccess();
   }, 60_000);
-  document.addEventListener("visibilitychange", refreshAccess);
-  window.addEventListener("focus", refreshAccess);
-  window.addEventListener("platform-access-denied", refreshAccess);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("focus", handleFocus);
+  window.addEventListener("platform-access-denied", handleAccessDenied);
 });
 onUnmounted(() => {
   chatSessionPool.clearScope();
   chatSessionStore.clearAll();
   window.clearInterval(accessRefreshTimer);
-  document.removeEventListener("visibilitychange", refreshAccess);
-  window.removeEventListener("focus", refreshAccess);
-  window.removeEventListener("platform-access-denied", refreshAccess);
+  clearTimeout(pendingRefresh);
+  document.removeEventListener("visibilitychange", handleVisibilityChange);
+  window.removeEventListener("focus", handleFocus);
+  window.removeEventListener("platform-access-denied", handleAccessDenied);
 });
 const { sidebarCollapsed } = storeToRefs(uiStore);
 
@@ -158,6 +181,24 @@ const isImmersive = computed(
           class="flex min-h-0 w-full flex-1 flex-col"
           :class="isImmersive ? 'overflow-hidden' : 'overflow-y-auto'"
         >
+          <div
+            v-if="
+              routeAccessAllowed &&
+              workspaceStore.currentProjectAccess &&
+              workspaceStore.accessStatus === 'unavailable'
+            "
+            role="status"
+            class="flex shrink-0 items-center justify-between gap-3 px-4 py-2 text-sm text-amber-800 dark:text-amber-200"
+          >
+            <span>权限同步暂时不可用，已保留当前页面。</span>
+            <button
+              class="pw-btn pw-btn-secondary"
+              :disabled="refreshingAccess"
+              @click="refreshAccess(true)"
+            >
+              重试
+            </button>
+          </div>
           <router-view v-if="routeAccessAllowed" v-slot="{ Component }">
             <keep-alive :include="['ChatPage', 'DearAgentPage']">
               <component
@@ -173,10 +214,22 @@ const isImmersive = computed(
           </router-view>
           <section v-else class="p-6 space-y-4">
             <StateBanner
-              title="当前页面权限已失效"
-              description="请切换到有权限的项目，或联系项目管理员申请访问。正在进行的任务不会因页面关闭而自动停止。"
+              :title="accessTitle"
+              :description="
+                routeAccess === 'denied'
+                  ? '请切换到有权限的项目，或联系项目管理员申请访问。正在进行的任务不会因页面关闭而自动停止。'
+                  : '连接暂时不可用，请稍后重试。正在进行的任务不会因此自动停止。'
+              "
               variant="warning"
             />
+            <button
+              v-if="routeAccess !== 'denied'"
+              class="pw-btn pw-btn-secondary"
+              :disabled="refreshingAccess || workspaceStore.accessLoading"
+              @click="refreshAccess(true)"
+            >
+              重新连接
+            </button>
             <RouterLink
               class="pw-btn pw-btn-secondary"
               to="/workspace/overview"

@@ -8,16 +8,11 @@ import {
   type Ref,
 } from "vue";
 import { isAxiosError } from "axios";
-import { useStream } from "@langchain/vue";
 import type { Checkpoint, Run } from "@langchain/langgraph-sdk";
 import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
 import {
   createSessionService,
-  hasThreadAction,
   type ChatThread,
-  type ThreadAction,
-  type AccessPolicy,
-  type ChatState,
 } from "@/services/threads/session.service";
 import { updateThreadAccessPolicy } from "@/services/threads/access-policy.service";
 import type { AgentContext } from "@/services/agents/types";
@@ -32,6 +27,7 @@ import { createRunActions } from "../run-actions";
 import { createSessionAttachmentUploader } from "./useSessionAttachmentUpload";
 import { useSessionInterrupts } from "./useSessionInterrupts";
 import { useChatSessionStore } from "../stores/useChatSessionStore";
+import { useSessionConnection } from "./useSessionConnection";
 
 const active = (run: Run | null) =>
   run != null && ["pending", "running"].includes(run.status);
@@ -74,58 +70,17 @@ export function useChatSession(options: {
     options.projectId,
     options.userId,
   );
-  const threadId = ref(options.threadId ?? null);
-  const accessPolicy = ref<AccessPolicy>("review");
-  const accessPolicyUpdating = ref(false);
-  const accessThread = shallowRef<ChatThread>();
-
-  function applyAccessThread(thread: ChatThread | undefined) {
-    accessThread.value = thread;
-    if (thread && threadId.value) {
-      chatSessionStore.setSessionThread(
-        options.projectId,
-        threadId.value,
-        thread,
-      );
-    }
-    if (thread?.metadata && typeof thread.metadata === "object") {
-      const policy = (thread.metadata as Record<string, unknown>).access_policy;
-      if (policy === "workspace_write" || policy === "full_access") {
-        accessPolicy.value = policy;
-      } else {
-        accessPolicy.value = "review";
-      }
-    } else {
-      accessPolicy.value = "review";
-    }
-  }
-
+  const normalizeThreadId = (id: unknown): string | null =>
+    typeof id === "string" && id.trim().length > 0 ? id.trim() : null;
+  const threadId = ref<string | null>(normalizeThreadId(options.threadId));
+  const run = shallowRef<Run | null>(null);
   const cachedEntry = threadId.value
     ? chatSessionStore.getSession(options.projectId, threadId.value)
     : undefined;
-  const initialSeeded = unref(options.initialThread) ?? cachedEntry?.thread;
-  if (hasResolvedAccess(initialSeeded, threadId.value)) {
-    applyAccessThread(initialSeeded);
-  }
   const hasCachedContent = Boolean(
     cachedEntry &&
     (cachedEntry.messages.length > 0 || cachedEntry.history.length > 0),
   );
-  const accessLoading = ref(
-    Boolean(threadId.value && !accessThread.value && !hasCachedContent),
-  );
-  const canRead = computed(
-    () =>
-      !accessDenied.value &&
-      (!threadId.value ||
-        hasThreadAction(accessThread.value, "read") ||
-        hasCachedContent),
-  );
-  const accessDenied = ref(false);
-  const accessUncertain = ref(false);
-  let accessRefreshing = false;
-  let accessEpoch = 0;
-  const run = shallowRef<Run | null>(null);
   const checking = ref(!hasCachedContent);
   const verified = ref(hasCachedContent);
   const cancelling = ref(false);
@@ -134,130 +89,71 @@ export function useChatSession(options: {
   let checkEpoch = 0;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let releaseWait: (() => void) | undefined;
-
-  const canAct = (action: ThreadAction) =>
-    accessDenied.value || accessUncertain.value
-      ? false
-      : threadId.value
-        ? hasThreadAction(accessThread.value, action)
-        : options.canWrite.value;
-  const canComment = computed(
-    () => options.canWrite.value && canAct("comment"),
-  );
-  const canApprove = computed(
-    () => canAct("approve") && connectionState.value !== "paused",
-  );
-  const canEdit = computed(() => options.canWrite.value && canAct("edit"));
-  const canSetPolicy = computed(
-    () => options.canWrite.value && canAct("share"),
-  );
-  const canFullAccess = computed(
-    () => options.canWrite.value && canAct("full_access"),
-  );
-
-  async function refreshAccessPolicy() {
-    if (!threadId.value || disposed || accessRefreshing) return;
-    const requestedThread = threadId.value;
-    const requestedEpoch = accessEpoch;
-    accessRefreshing = true;
-    if (!accessThread.value) accessLoading.value = true;
-    try {
-      const thread = await service.get(requestedThread);
-      if (
-        disposed ||
-        threadId.value !== requestedThread ||
-        accessEpoch !== requestedEpoch
-      )
-        return;
-      if (!disposed) applyAccessThread(thread);
-      if (!hasThreadAction(thread, "read")) {
-        accessDenied.value = true;
-        chatSessionStore.removeSession(options.projectId, requestedThread);
-        void stream.disconnect();
-        options.onAccessRevoked?.();
-      } else {
-        accessDenied.value = false;
-        accessUncertain.value = false;
-      }
-    } catch (cause) {
-      if (
-        !disposed &&
-        threadId.value === requestedThread &&
-        accessEpoch === requestedEpoch
-      ) {
-        const status = (cause as { status?: number })?.status;
-        if (status === 403 || status === 404) {
-          accessDenied.value = true;
-          accessThread.value = undefined;
-          accessPolicy.value = "review";
-          verified.value = false;
-          receipts.value = [];
-          pendingMessage.value = null;
-          chatSessionStore.removeSession(options.projectId, requestedThread);
-          clearTimeout(receiptTimer);
-          receiptController?.abort();
-          receiptController = undefined;
-          void stream.disconnect();
-          options.onAccessRevoked?.();
-        } else {
-          accessUncertain.value = true;
-          error.value = "连接暂时不可用，请重试";
-        }
-      }
-    } finally {
-      accessRefreshing = false;
-      if (!disposed && requestedEpoch === accessEpoch)
-        accessLoading.value = false;
-      if (
-        !disposed &&
-        (accessEpoch !== requestedEpoch || threadId.value !== requestedThread)
-      )
-        void refreshAccessPolicy();
-    }
-  }
-
-  async function setAccessPolicy(policy: AccessPolicy) {
-    if (policy === accessPolicy.value) return true;
-    if (
-      !canSetPolicy.value ||
-      (policy === "full_access" && !canFullAccess.value)
-    ) {
-      fail(new Error("没有此会话的策略管理权限；全权模式仅限私人会话所有者"));
-      return false;
-    }
-    if (busy.value || reviews.value.length || checking.value) {
-      fail(new Error("会话执行或待审批中，无法切换访问策略"));
-      return false;
-    }
-
-    if (!threadId.value) {
-      accessPolicy.value = policy;
-      return true;
-    }
-
-    accessPolicyUpdating.value = true;
-    try {
-      await updateThreadAccessPolicy(options.projectId, threadId.value, policy);
-      if (!disposed) {
-        accessPolicy.value = policy;
-      }
-      return true;
-    } catch (cause) {
-      if (!disposed) {
-        fail(cause);
-      }
-      return false;
-    } finally {
-      if (!disposed) {
-        accessPolicyUpdating.value = false;
-      }
-    }
-  }
-
   const hydrated = ref(!threadId.value);
+  const streamInFlight = ref(false);
+
+  const connection = useSessionConnection({
+    projectId: options.projectId,
+    userId: options.userId,
+    graphId: options.graphId,
+    threadId,
+    canWrite: options.canWrite,
+    visible: options.visible,
+    service,
+    actions,
+    initialThread: options.initialThread,
+    run,
+    busy: computed(
+      () =>
+        stream.isLoading.value ||
+        streamInFlight.value ||
+        active(run.value) ||
+        actions.current.value?.status === "submitting",
+    ),
+    checking,
+    hasPendingReviews: computed(() => reviews.value.length > 0),
+    hydrated,
+    error,
+    getCheckEpoch: () => checkEpoch,
+    onVerify: (silent) => verify(silent),
+    onFail: (cause) => fail(cause),
+    onAccessRevoked: options.onAccessRevoked,
+    onClearReceipts: () => {
+      receipts.value = [];
+      pendingMessage.value = null;
+      clearTimeout(receiptTimer);
+      receiptController?.abort();
+      receiptController = undefined;
+    },
+  });
+
+  const {
+    stream,
+    connectionState,
+    eventsParked,
+    parkEvents,
+    recoverySnapshot,
+    accessPolicy,
+    accessPolicyUpdating,
+    accessThread,
+    accessLoading,
+    canRead,
+    canComment,
+    canApprove,
+    canEdit,
+    canSetPolicy,
+    canFullAccess,
+    applyAccessThread,
+    refreshAccessPolicy,
+    setAccessPolicy,
+    reconnectStream,
+    bindConnectionState,
+  } = connection;
+
   watch(
     () => options.threadId,
-    (next) => {
+    (rawNext) => {
+      const next = normalizeThreadId(rawNext);
       if (next && next !== threadId.value) {
         threadId.value = next;
         hydrated.value = false;
@@ -287,156 +183,9 @@ export function useChatSession(options: {
     },
     { immediate: true },
   );
-  const stream = useStream<ChatState>({
-    assistantId: options.graphId,
-    threadId: computed(() => threadId.value),
-    client: service.client,
-    fetch: actions.fetch,
-    optimistic: false,
-    onCompleted: () => {
-      if (!disposed) {
-        void verify(true);
-      }
-    },
-  });
-  const connectionState = ref("connecting");
-  const recoverySnapshot = shallowRef<ChatState | null>(null);
-  let connectionUnsubscribe: (() => void) | undefined;
-  let subscribedThread: ReturnType<typeof stream.getThread>;
-  let recoveryPromise: Promise<void> | undefined;
-
-  function bindConnectionState() {
-    const thread = stream.getThread?.();
-    if (!thread || thread === subscribedThread) return;
-    if (typeof thread.onConnectionChange !== "function") return;
-    connectionUnsubscribe?.();
-    subscribedThread = thread;
-    connectionUnsubscribe = thread.onConnectionChange((state) => {
-      if (disposed) return;
-      connectionState.value = state.state;
-      if (
-        state.streams.some((item) =>
-          [403, 404].includes(
-            (item.error as Error & { status?: number })?.status ?? 0,
-          ),
-        )
-      ) {
-        accessDenied.value = true;
-        if (threadId.value)
-          chatSessionStore.removeSession(options.projectId, threadId.value);
-        void stream.disconnect();
-        options.onAccessRevoked?.();
-        return;
-      }
-      if (
-        state.streams.some(
-          (item) =>
-            (item.error as Error & { status?: number; code?: string })
-              ?.status === 410 ||
-            (item.error as Error & { code?: string })?.code ===
-              "cursor_expired",
-        )
-      ) {
-        void recoverExpiredStream();
-      }
-    });
-  }
-
-  async function recoverExpiredStream() {
-    if (recoveryPromise) return recoveryPromise;
-    const thread = stream.getThread?.();
-    const id = threadId.value;
-    if (!thread || !id || disposed) return;
-    const epoch = checkEpoch;
-    const currentRunId = run.value?.run_id;
-    recoveryPromise = Promise.resolve()
-      .then(async () => {
-        thread.suspendEvents();
-        const access = await service.get(id);
-        if (disposed || threadId.value !== id) return;
-        if (!hasThreadAction(access, "read")) {
-          accessDenied.value = true;
-          chatSessionStore.removeSession(options.projectId, id);
-          void stream.disconnect();
-          options.onAccessRevoked?.();
-          return;
-        }
-        if (epoch !== checkEpoch) {
-          await verify(false);
-          if (!disposed && threadId.value === id && canRead.value)
-            await thread.reconnectEvents();
-          return;
-        }
-        const snapshot = await service.state(id);
-        if (disposed || threadId.value !== id) return;
-        if (epoch !== checkEpoch || currentRunId !== run.value?.run_id) {
-          await verify(false);
-          if (!disposed && threadId.value === id && canRead.value)
-            await thread.reconnectEvents();
-          return;
-        }
-        applyAccessThread(access);
-        recoverySnapshot.value = snapshot.values;
-        // 历史快照后台非阻塞异步预热，不阻塞断流恢复主流程，网络或超时异常静默软降级
-        void service
-          .history(id)
-          .then((history) => {
-            if (!disposed && threadId.value === id && history) {
-              chatSessionStore.setSessionHistory(
-                options.projectId,
-                id,
-                history,
-              );
-            }
-          })
-          .catch((historyErr) => {
-            console.warn(
-              `[recoverExpiredStream] Non-blocking history preheat failed for thread ${id}:`,
-              historyErr,
-            );
-          });
-        error.value = "历史流已过期，已刷新当前状态；部分过程无法恢复";
-        await thread.reconnectEvents();
-      })
-      .catch((cause) => {
-        if (
-          !disposed &&
-          [403, 404].includes((cause as { status?: number })?.status ?? 0)
-        ) {
-          void refreshAccessPolicy();
-        } else if (!disposed) fail(cause);
-      })
-      .finally(() => {
-        recoveryPromise = undefined;
-      });
-    return recoveryPromise;
-  }
-
-  async function reconnectStream() {
-    bindConnectionState();
-    const thread = stream.getThread?.();
-    if (!thread) return;
-    const connState = thread.getConnectionState();
-    if (
-      connState.streams.some(
-        (item) => (item.error as Error & { status?: number })?.status === 410,
-      )
-    ) {
-      await recoverExpiredStream();
-    } else if (
-      connState.state === "paused" ||
-      connState.streams.some((item) => item.state === "paused")
-    ) {
-      await thread.reconnectEvents();
-    }
-  }
-  watch([threadId, stream.isLoading, hydrated], bindConnectionState, {
-    immediate: true,
-  });
   const pendingAction = computed(() =>
     ["submitting", "unknown"].includes(actions.current.value?.status ?? ""),
   );
-  const streamInFlight = ref(false);
   const {
     reviews,
     clarifications,
@@ -533,7 +282,7 @@ export function useChatSession(options: {
       hydrated.value &&
       verified.value &&
       !hasFatalStreamError.value &&
-      connectionState.value !== "paused" &&
+      (eventsParked.value || connectionState.value !== "paused") &&
       !checking.value &&
       !cancelling.value &&
       !pendingAction.value &&
@@ -581,18 +330,27 @@ export function useChatSession(options: {
       if (
         disposed ||
         threadId.value !== targetThreadId ||
-        stream.isLoading.value
+        (stream.isLoading.value && !eventsParked.value)
       )
         return;
       try {
         const list = await service.runs(targetThreadId);
         if (disposed || threadId.value !== targetThreadId) return;
         const nextLatest = list.find((r) => active(r)) ?? list[0] ?? null;
-        run.value = nextLatest;
         if (active(nextLatest)) {
+          run.value = nextLatest;
           options.onRefresh();
           scheduleBackgroundRunPoll(targetThreadId);
         } else {
+          if (eventsParked.value) {
+            const snapshot = await service.state(targetThreadId);
+            if (disposed || threadId.value !== targetThreadId) return;
+            recoverySnapshot.value = snapshot.values;
+            run.value = nextLatest;
+            await stream.disconnect();
+            streamInFlight.value = false;
+          }
+          run.value = nextLatest;
           options.onRefresh();
           await refreshAccessPolicy();
         }
@@ -706,7 +464,10 @@ export function useChatSession(options: {
           } else if (waitForTerminal) {
             void refreshAccessPolicy();
           }
-          if (active(run.value) && !stream.isLoading.value) {
+          if (
+            active(run.value) &&
+            (!stream.isLoading.value || eventsParked.value)
+          ) {
             scheduleBackgroundRunPoll(id);
           }
           return true;
@@ -986,19 +747,6 @@ export function useChatSession(options: {
     }
   }
   document.addEventListener("visibilitychange", receiptVisibility);
-  const refreshVisibleAccess = () => {
-    if (!document.hidden) void refreshAccessPolicy();
-  };
-  const accessChanged = () => {
-    ++accessEpoch;
-    accessThread.value = undefined;
-    refreshVisibleAccess();
-  };
-  const accessTimer = setInterval(refreshVisibleAccess, 60_000);
-  document.addEventListener("visibilitychange", refreshVisibleAccess);
-  window.addEventListener("focus", refreshVisibleAccess);
-  window.addEventListener("platform-access-denied", refreshVisibleAccess);
-  window.addEventListener("thread-access-updated", accessChanged);
   watch(run, () => void refreshReceipts());
 
   async function send(
@@ -1363,8 +1111,30 @@ export function useChatSession(options: {
   function ensureLiveEventStream() {
     if (disposed) return;
     bindConnectionState();
+    if (options.visible?.value === false) {
+      parkEvents();
+      if (threadId.value) scheduleBackgroundRunPoll(threadId.value);
+      return;
+    }
     if (connectionState.value === "paused") void reconnectStream();
   }
+
+  watch(
+    [() => options.visible?.value, () => stream.isLoading.value, hydrated],
+    ([visible, loading, ready]) => {
+      if (!ready || disposed) return;
+      if (visible === false) {
+        parkEvents();
+        if (threadId.value) {
+          if (active(run.value)) scheduleBackgroundRunPoll(threadId.value);
+          else if (loading) void verify(false);
+        }
+      } else if (eventsParked.value) {
+        void reconnectStream().catch(fail);
+      }
+    },
+    { flush: "post" },
+  );
 
   watch(actions.current, (action, previous) => {
     if (disposed) return;
@@ -1403,17 +1173,11 @@ export function useChatSession(options: {
     });
   onScopeDispose(() => {
     disposed = true;
-    connectionUnsubscribe?.();
     ++checkEpoch;
     clearTimeout(receiptTimer);
     clearTimeout(backgroundRunTimer);
     receiptController?.abort();
     document.removeEventListener("visibilitychange", receiptVisibility);
-    clearInterval(accessTimer);
-    document.removeEventListener("visibilitychange", refreshVisibleAccess);
-    window.removeEventListener("focus", refreshVisibleAccess);
-    window.removeEventListener("platform-access-denied", refreshVisibleAccess);
-    window.removeEventListener("thread-access-updated", accessChanged);
     clearTimeout(timer);
     releaseWait?.();
     if (

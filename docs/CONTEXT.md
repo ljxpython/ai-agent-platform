@@ -8,16 +8,25 @@
 
 ## 最近改动
 
-2026-10-04 | **多会话后台无感自动排队消费与权限失效误杀彻底根治**：彻底消除切到其他会话后消息队列被 `props.visible === false` 人为截断冻结的严重体验缺陷，实现后台无头自主消费与顺延发送；彻底根除标签页失焦切屏唤醒时因权限刷新非响应式与抖动误判导致的“当前页面权限已失效”全屏拦截与会话池自毁误杀，实装 Google 工业级 Stale-While-Revalidate 乐观权限护栏；全仓 423 项单测全绿、vue-tsc 0 errors、生产打包全绿。
+2026-10-05 | **多会话流连接与运行缓存治理**：done；GraphHarbor post39 双包正式发布并完成 PyPI 独立安装，本地 Runtime API/Worker 升级重启；Redis 清理确认终态与用户授权的 618 个未知遗留流后约 586 MiB。三会话连续切换、后台队列、六个 Run success 与消息去重浏览器验收通过；权限故障/真实撤权 4 项通过。见 [专项](projects/20261005-chat-stream-resource-governance/README.md)。
+
+### 同日权限专项
+
+2026-10-05 | **平台权限状态与刷新治理**：本地 done。项目权限区分临时不可确认与真实拒绝；列表/后台刷新失败保留有效快照，路由与页面统一具体权限判断；作用域 403、刷新合并、认证服务 503 保留会话；Runtime ACL 共享连接池兼容文件路径加载，默认超时 10 秒。前端 473 passed/1 skipped、Runtime 114 项及最终定向 41 项、API 13 项/299 子测试、4 项故障注入及 4 项真实安全浏览器通过。未部署远端平台；Runtime 更改已随本次本地升级重启生效。见 [专项](projects/20261005-platform-access-refresh-governance/README.md)。
 
 ## 本月归并
 
-2026-10（截至 10-04）| 切回历史时序正序合并、多会话切回假死死锁/空白水合/报错隔离、LangGraph v3 默认消费与 DeltaChannel 离线/PG 评估、模型畸形 ToolCall 自动缝合与孤儿块剔除、平台用户软删除三重安全栅栏、DeepSeek 官方多模态视觉识图、长会话断流解耦与历史懒加载、DearFlow 防死循环护栏、小惊喜创意工坊与 Jina Reader 接入、HTML 沙箱现代化渲染、Runtime DB 精简重构。
+2026-10（截至 10-05）| Chat state/history 委托补齐与错误恢复；Chat 后台会话 DOM 虚拟化隔离与流式切换卡死根治、智能体切换隔离与列表远程拉取解耦治理、Chat 顶栏选择 Agent 历史列表联动过滤失效与 Pad 侧栏体验治理、对话前端视口平滑锚定与流式跟随根治、Clean Architecture 五层解耦重构、多会话后台无感自动排队消费与权限失效误杀彻底根治、切回历史时序正序合并、多会话切回假死死锁/空白水合/报错隔离、LangGraph v3 默认消费与 DeltaChannel 离线/PG 评估、模型畸形 ToolCall 自动缝合与孤儿块剔除、平台用户软删除三重安全栅栏、DeepSeek 官方多模态视觉识图、长会话断流解耦与历史懒加载、DearFlow 防死循环护栏、小惊喜创意工坊与 Jina Reader 接入、HTML 沙箱现代化渲染、Runtime DB 精简重构。
 
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
 
+- [多会话流连接与运行缓存治理](projects/20261005-chat-stream-resource-governance/README.md)：done；多会话与真实撤权浏览器、最终构建验证通过；GraphHarbor post39 双包已发布，本地 Runtime 已升级重启；Redis 从峰值 18.01 GiB 降至约 0.57 GiB。
+
+- [平台权限状态与刷新治理](projects/20261005-platform-access-refresh-governance/README.md)：本地 done；临时故障保留页面/登录，真实撤权仍生效；单测、故障注入与真实安全链路通过。未生产部署。
+
+- [Chat 前端对话架构治理与 Clean Architecture 重构](projects/20261004-chat-frontend-clean-architecture-refactor/README.md)：done；对标谷歌范式完成 5 层解耦。剥离模型参数、视口跟随、分支动作与传输自愈；ChatSession 降至 1959 行，useChatSession 压降至 1198 行，消息流水线纯函数化；前端 429 项单测、vue-tsc 0 错误、生产构建全绿。
 - [LangGraph v3 默认消费与 DeltaChannel 评估](projects/20261004-langgraph-v3-delta-evaluation/README.md)：partial；后端默认 v3、前端交接、离线 Spike 和本地 PostgreSQL 体积测量已完成，回滚门禁和前端浏览器验收待执行；节点 timeout/error_handler/RunControl 暂不实施。
 - [Chat 会话状态机加固与流式体验优化](projects/20261004-chat-session-state-and-stream-hardening/README.md)：done；彻底解决切屏失焦权限刷新误踢、空队列误弹排队 0 黄条、中断等待澄清时底部悬挂正在处理矛盾提示、以及 DeepSeek 思维链首轮流式卡顿假死四大顽疾；前端 22 项单测全绿、静态类型检查与生产打包全绿。
 - [平台用户软删除与生命周期治理](projects/20261003-platform-user-soft-delete/README.md)：done；平台用户软删除闭环，扩展 UserStatus.DELETED，三大安全护栏（防自杀、最后活跃超管、唯一项目管理员防孤儿项目），重命名释放用户名/subject，吊销 token，退出关联项目；前后端单测与生产构建全绿。
@@ -50,9 +59,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-04 | 升级锁定 GraphHarbor 0.13.0.post38，DeltaChannel 崩溃恢复与快照 dump 回退门禁测试通过（生产保持完整快照 Defer Delta）；定向测试全通 |
+| runtime-service | 2026-10-05 | ACL 共享连接池与 10 秒超时已验证，已随本地 Runtime 重启生效。 升级锁定 GraphHarbor 0.13.0.post39（已发布），流缓存 TTL/终态回收与分页回放已生效，DeltaChannel 崩溃恢复与快照 dump 回退门禁测试通过（生产保持完整快照 Defer Delta）；定向测试全通 |
 | platform-api | 2026-10-03 | 平台用户软删除 DELETE /api/users/{user_id} 实装，内置三重安全栅栏（防自杀、最后超管、唯一项目管理员防孤儿项目），重命名释放原始用户名并吊销凭据；单测全通 |
-| platform-web | 2026-10-04 | 后台多会话无感自动排队消费实装、SWR 乐观权限护栏根除切屏误判；全仓 423 项前端单测全绿、vue-tsc 0 errors、生产打包全绿 |
+| platform-web | 2026-10-05 | 后台会话暂停 SSE 且队列持续消费，三会话连续切换和权限 4 条浏览器验证通过。权限快照状态、作用域拒绝、续期容错与刷新合并通过单测/浏览器验证。 智能体切换与后台审批轮询穿透隔离完成；智能体历史列表联动与 Pad 侧栏体验治理完成；视口防倒滚与 60fps 流式跟随实装；全仓 46 个测试套件全绿、vue-tsc 0 errors、生产打包通过 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-04 | AGENTS.md 与 Skill 重复内容已去除（场景步骤 + 验证标准章节移入 Skill），CONTEXT.md 改为渐进式快照结构；整单结束前须逐项核对未完成任务，Task 未完成时只记 Phase |
 
 ## 近期关键决策

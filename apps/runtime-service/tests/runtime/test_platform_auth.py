@@ -204,7 +204,7 @@ def test_thread_auth_rechecks_signed_platform_acl(
 
     class Client:
         def __init__(self, **kwargs):
-            assert kwargs == {"timeout": 3.0}
+            assert kwargs == {"timeout": 10.0, "trust_env": False}
 
         async def __aenter__(self):
             return SimpleNamespace(post=post)
@@ -580,3 +580,99 @@ def test_thread_auth_fails_closed_for_unbounded_or_denied_targets(
             platform.deny_image_scope_on_server_resources(ctx, {"ids": ["thread-1"]})
         )
     assert denied.value.status_code == 403
+
+
+def test_acl_connection_pool_reused_and_closed(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from runtime_service.auth import acl_client as platform
+
+    post = AsyncMock(return_value="response")
+    closed = []
+    constructed = []
+
+    class Client:
+        def __init__(self, **kwargs):
+            constructed.append(kwargs)
+
+        async def __aenter__(self):
+            return SimpleNamespace(post=post)
+
+        async def __aexit__(self, *args):
+            closed.append(True)
+
+    monkeypatch.setenv("PLATFORM_ACL_TIMEOUT_SECONDS", "7.5")
+    monkeypatch.setattr(platform.httpx, "AsyncClient", Client)
+
+    async def check():
+        async with platform.acl_client_lifespan():
+            await platform.post_acl(
+                "http://platform.test/acl", {"thread_ids": ["a"]}, {}
+            )
+            await platform.post_acl(
+                "http://platform.test/acl", {"thread_ids": ["b"]}, {}
+            )
+        assert platform._acl_client is None
+
+    asyncio.run(check())
+    assert constructed == [{"timeout": 7.5, "trust_env": False}]
+    assert post.await_count == 2
+    assert closed == [True]
+
+
+@pytest.mark.parametrize(
+    "result,expected",
+    [
+        (None, 503),
+        ({}, 503),
+        ({"allowed_thread_ids": [{}]}, 503),
+        ({"allowed_thread_ids": []}, 403),
+    ],
+)
+def test_acl_unavailable_is_not_a_permission_denial(monkeypatch, result, expected):
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    import httpx
+
+    from runtime_service.auth import platform
+
+    monkeypatch.setenv("PLATFORM_THREAD_AUTHORIZATION_URL", "http://platform.test/acl")
+    monkeypatch.setenv("PLATFORM_RUNTIME_DELEGATION_SECRET", SECRET)
+    post = AsyncMock()
+    if result is None:
+        post.side_effect = httpx.ReadTimeout("temporary")
+    else:
+        post.return_value = SimpleNamespace(
+            raise_for_status=lambda: None, json=lambda: result
+        )
+    monkeypatch.setattr(platform, "post_acl", post)
+    ctx = SimpleNamespace(
+        user={
+            "identity": "u",
+            "project_id": "p",
+            "runtime_scope": {"operation": "read"},
+        },
+        resource="threads",
+        action="read",
+    )
+    with pytest.raises(Auth.exceptions.HTTPException) as error:
+        asyncio.run(
+            platform.deny_image_scope_on_server_resources(ctx, {"thread_id": "t"})
+        )
+    assert error.value.status_code == expected
+
+
+def test_path_loaded_auth_uses_the_same_acl_transport():
+    import importlib.util
+    from pathlib import Path
+
+    from runtime_service.auth import acl_client, platform
+
+    spec = importlib.util.spec_from_file_location(
+        "auth_pool_probe", Path(platform.__file__)
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert module.post_acl is acl_client.post_acl

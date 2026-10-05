@@ -15,6 +15,7 @@ from fastapi.responses import JSONResponse
 from langgraph_sdk.auth import exceptions as auth_exceptions
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from runtime_service.auth.acl_client import acl_client_lifespan
 from runtime_service.auth.platform import authenticate
 from runtime_service.http.dear_governance import router as dear_governance_router
 from runtime_service.http.dear_memory import router as dear_memory_router
@@ -35,7 +36,8 @@ from runtime_service.workspace.image_refs import validate_image_ref
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     initialize_langfuse()
     try:
-        yield
+        async with acl_client_lifespan():
+            yield
     finally:
         from runtime_service.workspace.terminal import terminals
 

@@ -13,9 +13,12 @@ const routeState = reactive({
   query: {} as Record<string, string>,
 });
 
+const mockPush = vi.fn();
+const mockReplace = vi.fn();
+
 vi.mock("vue-router", () => ({
   useRoute: () => routeState,
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace }),
 }));
 
 vi.mock("@/composables/useWorkspaceProjectContext", () => ({
@@ -62,8 +65,13 @@ const mockList = vi
   .mockImplementation((options?: { metadata?: Record<string, unknown> }) => {
     const meta = options?.metadata;
     if (!meta) return Promise.resolve(mockThreads);
-    if (meta.graph_id === "showcase_demo") return Promise.resolve([]);
-    if (meta.graph_id === "dearflow_agent") return Promise.resolve(mockThreads);
+    if (meta.agent_id === "agent-showcase" || meta.graph_id === "showcase_demo")
+      return Promise.resolve([]);
+    if (
+      meta.agent_id === "agent-dearflow" ||
+      meta.graph_id === "dearflow_agent"
+    )
+      return Promise.resolve(mockThreads);
     return Promise.resolve(mockThreads);
   });
 
@@ -79,8 +87,16 @@ vi.mock("@/services/threads/session.service", async (importOriginal) => ({
         (options?: { metadata?: Record<string, unknown> }) => {
           const meta = options?.metadata;
           if (!meta) return Promise.resolve(3);
-          if (meta.graph_id === "showcase_demo") return Promise.resolve(0);
-          if (meta.graph_id === "dearflow_agent") return Promise.resolve(3);
+          if (
+            meta.agent_id === "agent-showcase" ||
+            meta.graph_id === "showcase_demo"
+          )
+            return Promise.resolve(0);
+          if (
+            meta.agent_id === "agent-dearflow" ||
+            meta.graph_id === "dearflow_agent"
+          )
+            return Promise.resolve(3);
           return Promise.resolve(3);
         },
       ),
@@ -142,11 +158,13 @@ import {
   provideChatSessionPool,
 } from "../composables/useChatSessionPool";
 
+let activePool = createChatSessionPool();
 const ChatPageHost = defineComponent({
   setup() {
-    const pool = createChatSessionPool();
-    provideChatSessionPool(pool);
-    return () => h("div", [h(ChatSessionPool, { pool }), h(ChatPage)]);
+    activePool = createChatSessionPool();
+    provideChatSessionPool(activePool);
+    return () =>
+      h("div", [h(ChatSessionPool, { pool: activePool }), h(ChatPage)]);
   },
 });
 
@@ -195,6 +213,9 @@ describe("ChatPage.vue", () => {
     routeState.query = { agentId: "agent-showcase" };
     await flushPromises();
 
+    expect(mockList).toHaveBeenLastCalledWith(
+      expect.objectContaining({ metadata: { agent_id: "agent-showcase" } }),
+    );
     expect(sidebarEl.attributes("data-thread-count")).toBe("0");
     const showcaseSession = wrapper
       .findAll('[data-testid="chat-session"]')
@@ -207,6 +228,9 @@ describe("ChatPage.vue", () => {
     routeState.query = { agentId: "agent-dearflow" };
     await flushPromises();
 
+    expect(mockList).toHaveBeenLastCalledWith(
+      expect.objectContaining({ metadata: { agent_id: "agent-dearflow" } }),
+    );
     expect(sidebarEl.attributes("data-thread-count")).toBe("3");
     const dearflowSession = wrapper
       .findAll('[data-testid="chat-session"]')
@@ -219,6 +243,9 @@ describe("ChatPage.vue", () => {
     routeState.query = {};
     await flushPromises();
 
+    expect(mockList).toHaveBeenLastCalledWith(
+      expect.objectContaining({ metadata: undefined }),
+    );
     expect(sidebarEl.attributes("data-thread-count")).toBe("3");
   });
 
@@ -261,5 +288,98 @@ describe("ChatPage.vue", () => {
     expect(sessionEl.exists()).toBe(true);
     expect(sessionEl.attributes("data-thread")).toBe("th-3");
     expect(sessionEl.attributes("data-graph")).toBe("dearflow_agent");
+  });
+
+  it("switches sidebar thread list immediately and cleanly when user chooses another agent from a thread", async () => {
+    // 模拟进入 agent-dearflow 的已有会话 th-1
+    routeState.params = { projectId: "proj-1", threadId: "th-1" };
+    routeState.query = {};
+
+    const wrapper = mount(ChatPageHost, {
+      global: {
+        stubs: {
+          ChatThreadSidebar: {
+            props: ["threadCount", "activeThreadId"],
+            template:
+              '<aside data-testid="chat-sidebar" :data-thread-count="threadCount" :data-active-thread="activeThreadId"><slot /></aside>',
+          },
+          ChatSession: {
+            props: ["projectId", "graphId", "agentId", "threadId"],
+            template:
+              '<div data-testid="chat-session" :data-agent="agentId" :data-graph="graphId" :data-thread="threadId"><slot name="target" /><slot name="actions" /></div>',
+          },
+          ChatAgentSelector: {
+            props: ["agents", "selectedAgentId"],
+            template:
+              '<div data-testid="agent-selector"><button data-testid="switch-to-showcase" @click="$emit(\'select\', \'agent-showcase\')">切换到 showcase</button></div>',
+          },
+          WorkspaceProjectSwitcher: true,
+          UserMenu: true,
+          BaseDialog: true,
+          BaseButton: true,
+          BaseIcon: true,
+          EmptyState: true,
+        },
+      },
+    });
+
+    await flushPromises();
+
+    const sidebarEl = wrapper.find('[data-testid="chat-sidebar"]');
+    expect(sidebarEl.attributes("data-thread-count")).toBe("3"); // th-1, th-2, th-3 属于 dearflow
+    expect(sidebarEl.attributes("data-active-thread")).toBe("th-1");
+
+    // 用户在顶部选择器点击切换到 agent-showcase
+    const chatPage = wrapper.findComponent(ChatPage);
+    expect(chatPage.exists()).toBe(true);
+    chatPage.vm.choose("agent-showcase");
+    await flushPromises();
+
+    // 路由变为 ?agentId=agent-showcase 且无 threadId
+    expect(mockPush).toHaveBeenCalledWith({
+      path: "/workspace/projects/proj-1/chat",
+      query: { agentId: "agent-showcase" },
+    });
+    // mockList 必须以 agent-showcase 为 metadata 过滤参数被调用
+    expect(mockList).toHaveBeenLastCalledWith(
+      expect.objectContaining({ metadata: { agent_id: "agent-showcase" } }),
+    );
+    // 侧边栏计数立即变为 0（或匹配 showcase 的会话数），不再残留 dearflow 的会话
+    expect(sidebarEl.attributes("data-thread-count")).toBe("0");
+  });
+
+  it("does not trigger remote loadThreads when session events or run updates fire onRefresh", async () => {
+    routeState.params = { projectId: "proj-1", threadId: "th-1" };
+    routeState.query = {};
+
+    mount(ChatPageHost, {
+      global: {
+        stubs: {
+          ChatThreadSidebar: true,
+          ChatSession: true,
+          ChatAgentSelector: true,
+          WorkspaceProjectSwitcher: true,
+          UserMenu: true,
+          BaseDialog: true,
+          BaseButton: true,
+          BaseIcon: true,
+          EmptyState: true,
+        },
+      },
+    });
+
+    await flushPromises();
+
+    // 记录初次加载后的 mockList 调用次数
+    const initialCalls = mockList.mock.calls.length;
+
+    // 触发当前活动会话 entry 的 onRefresh
+    for (const entry of activePool.entries.values()) {
+      entry.view.value?.onRefresh();
+    }
+    await flushPromises();
+
+    // 严格验证：远程 mockList 绝对没有被再次调用！
+    expect(mockList.mock.calls.length).toBe(initialCalls);
   });
 });

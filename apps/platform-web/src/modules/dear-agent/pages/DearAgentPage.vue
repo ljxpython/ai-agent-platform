@@ -293,7 +293,9 @@ onDeactivated(() => {
   detachView = undefined;
 });
 const textParam = (value: unknown) =>
-  typeof value === "string" ? value : undefined;
+  typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
 const selectedTarget = computed(() => target.value?.agentId ?? "");
 
 const totalThreads = ref<number | undefined>(undefined);
@@ -623,14 +625,19 @@ function choose(value: string) {
   void router.push({ path: chatPath.value, query: { agentId: value } });
 }
 function openThread(id: string) {
+  if (selectedThread.value === id) return;
   if (typeof window !== "undefined" && window.innerWidth < 1024)
     sidebarCollapsed.value = true;
+  selectedThread.value = id;
   chatSessionStore.setLastActiveThread(
     activeProjectId.value,
     "workspace-dear-agent",
     id,
   );
-  void router.push(`${chatPath.value}/${encodeURIComponent(id)}`);
+  void router.push({
+    path: `${chatPath.value}/${encodeURIComponent(id)}`,
+    query: route.query,
+  });
 }
 function newThread() {
   if (typeof window !== "undefined" && window.innerWidth < 1024)
@@ -640,18 +647,23 @@ function newThread() {
     "workspace-dear-agent",
     null,
   );
-  if (target.value) choose(selectedTarget.value);
-  if (!selectedThread.value) {
-    draftId.value = crypto.randomUUID();
-    if (target.value)
-      selectedEntry.value = pool.acquire(
-        `${auth.user?.id ?? ""}:${auth.sessionEpoch}:${activeProjectId.value}`,
-        activeProjectId.value,
-        "dear-agent",
-        target.value,
-        undefined,
-        draftId.value,
-      );
+  draftId.value = crypto.randomUUID();
+  selectedThread.value = undefined;
+  mountedThread.value = undefined;
+  activeThreadObj.value = undefined;
+  if (target.value) {
+    selectedEntry.value = pool.acquire(
+      `${auth.user?.id ?? ""}:${auth.sessionEpoch}:${activeProjectId.value}`,
+      activeProjectId.value,
+      "dear-agent",
+      target.value,
+      undefined,
+      draftId.value,
+    );
+    choose(selectedTarget.value);
+  } else {
+    selectedEntry.value = undefined;
+    choose("");
   }
 }
 function created(id: string) {

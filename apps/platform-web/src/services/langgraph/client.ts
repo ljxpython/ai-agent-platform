@@ -10,6 +10,7 @@ import {
   hasStoredSession,
 } from "@/services/auth/session-expiry";
 import { formatPlatformHttpErrorMessage } from "@/utils/http-error";
+import { notifyAccessDenied } from "@/services/auth/access-events";
 
 function getLanggraphApiUrl() {
   const normalizedBase = platformApiBaseUrl.replace(/\/+$/, "");
@@ -90,9 +91,6 @@ function withCommandIdempotencyKey(
 async function normalizeProtocolErrorResponse(
   response: Response,
 ): Promise<Response> {
-  if (response.status === 403 && typeof window !== "undefined") {
-    window.dispatchEvent(new Event("platform-access-denied"));
-  }
   if (response.ok) {
     return response;
   }
@@ -154,7 +152,7 @@ async function normalizeStreamHandshake(
   ) {
     return response;
   }
-  const normalized = await normalizeProtocolErrorResponse(response);
+  const normalized = response;
   let code: string | undefined;
   let requestId: string | undefined;
   try {
@@ -192,6 +190,31 @@ export function createLanggraphAuthorizedFetch(
   const readStoredSession = options.hasStoredSession ?? hasStoredSession;
   const expireSession = options.onSessionExpired ?? handleSessionExpired;
 
+  async function normalize(
+    input: RequestInfo | URL,
+    init: RequestInit | undefined,
+    response: Response,
+  ) {
+    if (response.status === 403 && typeof window !== "undefined") {
+      let code: string | undefined;
+      try {
+        code = (await response.clone().json()).error?.code;
+      } catch {
+        /* 非 JSON 拒绝仍按请求作用域处理。 */
+      }
+      notifyAccessDenied(
+        input instanceof Request ? input.url : input.toString(),
+        init?.method || (input instanceof Request ? input.method : "GET"),
+        new Headers(init?.headers).get("x-project-id"),
+        code,
+      );
+    }
+    return normalizeStreamHandshake(
+      input,
+      await normalizeProtocolErrorResponse(response),
+    );
+  }
+
   return async (
     input: RequestInfo | URL,
     init?: RequestInit,
@@ -208,8 +231,7 @@ export function createLanggraphAuthorizedFetch(
     if (!initialToken && readStoredSession()) {
       initialToken = (await renewAccessToken()).trim();
       if (!initialToken) {
-        expireSession();
-        throw new Error("登录会话已过期，请重新登录");
+        throw new Error("暂时无法恢复登录连接，请稍后重试");
       }
     }
     if (generation !== getSessionGeneration())
@@ -221,23 +243,14 @@ export function createLanggraphAuthorizedFetch(
     if (generation !== getSessionGeneration())
       throw new Error("登录会话已变更");
     if (initialResponse.status !== 401) {
-      return normalizeStreamHandshake(
-        input,
-        await normalizeProtocolErrorResponse(initialResponse),
-      );
+      return normalize(input, requestInit, initialResponse);
     }
 
     const nextAccessToken = (await renewAccessToken()).trim();
     if (generation !== getSessionGeneration())
       throw new Error("登录会话已变更");
     if (!nextAccessToken) {
-      if (readStoredSession()) {
-        expireSession();
-      }
-      return normalizeStreamHandshake(
-        input,
-        await normalizeProtocolErrorResponse(initialResponse),
-      );
+      return normalize(input, requestInit, initialResponse);
     }
 
     const retryResponse = await fetchImpl(
@@ -250,10 +263,7 @@ export function createLanggraphAuthorizedFetch(
       expireSession();
     }
 
-    return normalizeStreamHandshake(
-      input,
-      await normalizeProtocolErrorResponse(retryResponse),
-    );
+    return normalize(input, requestInit, retryResponse);
   };
 }
 

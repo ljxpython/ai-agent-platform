@@ -249,3 +249,64 @@ describe("createLanggraphAuthorizedFetch", () => {
     ).toBe("Bearer hydrated-token");
   });
 });
+
+it("does not expire a stored session when token refresh is temporarily unavailable", async () => {
+  const expired = vi.fn();
+  const authFetch = createLanggraphAuthorizedFetch({
+    fetchImpl: vi.fn().mockResolvedValue(new Response("", { status: 401 })),
+    getAccessToken: () => "expired",
+    refreshAccessToken: async () => "",
+    hasStoredSession: () => true,
+    onSessionExpired: expired,
+  });
+  expect(
+    (await authFetch("https://example.com/api/langgraph/threads/t")).status,
+  ).toBe(401);
+  expect(expired).not.toHaveBeenCalled();
+});
+
+it("emits one scoped rejection for an SSE handshake", async () => {
+  const rejected = vi.fn();
+  window.addEventListener("platform-access-denied", rejected);
+  try {
+    const authFetch = createLanggraphAuthorizedFetch({
+      fetchImpl: vi
+        .fn()
+        .mockResolvedValue(
+          new Response(
+            JSON.stringify({ error: { code: "thread_action_denied" } }),
+            { status: 403 },
+          ),
+        ),
+      getAccessToken: () => "token",
+    });
+    await expect(
+      authFetch("https://example.com/api/langgraph/threads/t/stream/events", {
+        headers: { "x-project-id": "p" },
+      }),
+    ).rejects.toMatchObject({ status: 403 });
+    expect(rejected).toHaveBeenCalledTimes(1);
+    expect(rejected.mock.calls[0][0].detail).toMatchObject({
+      scope: "thread",
+      projectId: "p",
+      threadId: "t",
+    });
+  } finally {
+    window.removeEventListener("platform-access-denied", rejected);
+  }
+});
+
+it("expires a session only after the refreshed credential is explicitly rejected", async () => {
+  const expired = vi.fn();
+  const authFetch = createLanggraphAuthorizedFetch({
+    fetchImpl: vi
+      .fn()
+      .mockImplementation(async () => new Response("", { status: 401 })),
+    getAccessToken: () => "old",
+    refreshAccessToken: async () => "renewed",
+    hasStoredSession: () => true,
+    onSessionExpired: expired,
+  });
+  await authFetch("https://example.com/api/langgraph/threads/t");
+  expect(expired).toHaveBeenCalledOnce();
+});

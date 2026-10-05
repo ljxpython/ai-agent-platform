@@ -8,6 +8,7 @@ import SurfaceCard from "@/components/base/SurfaceCard.vue";
 import PageHeader from "@/components/layout/PageHeader.vue";
 import StateBanner from "@/components/platform/StateBanner.vue";
 import { useAuthorization } from "@/composables/useAuthorization";
+import { accessDeniedDetail } from "@/services/auth/access-events";
 import { useWorkspaceStore } from "@/stores/workspace";
 import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
 import {
@@ -195,16 +196,25 @@ async function approve(drafts: Record<string, ReviewDraft[]>) {
 const refreshVisible = () => {
   if (!document.hidden) void refresh();
 };
+const refreshDenied = (event: Event) => {
+  const detail = accessDeniedDetail(event);
+  if (
+    detail?.scope === "thread" &&
+    detail.projectId === target.value?.projectId &&
+    detail.threadId === target.value?.threadId
+  )
+    refreshVisible();
+};
 const timer = setInterval(refreshVisible, 60_000);
 window.addEventListener("focus", refreshVisible);
-window.addEventListener("platform-access-denied", refreshVisible);
+window.addEventListener("platform-access-denied", refreshDenied);
 document.addEventListener("visibilitychange", refreshVisible);
 onScopeDispose(() => {
   disposed = true;
   ++epoch;
   clearInterval(timer);
   window.removeEventListener("focus", refreshVisible);
-  window.removeEventListener("platform-access-denied", refreshVisible);
+  window.removeEventListener("platform-access-denied", refreshDenied);
   document.removeEventListener("visibilitychange", refreshVisible);
 });
 </script>

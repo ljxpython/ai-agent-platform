@@ -28,4 +28,6 @@ uv run pytest tests/services/showcase_demo -m "not integration and not e2e"
 
 ## 故障定位顺序
 
+Thread ACL 回查使用 `PLATFORM_THREAD_AUTHORIZATION_URL`，超时由 `PLATFORM_ACL_TIMEOUT_SECONDS` 控制（默认 10 秒）。`auth/acl_client.py` 由应用 lifespan 创建/关闭连接池，供文件路径加载的鉴权模块共同使用；不缓存授权结果。回查超时/无效响应为 503，合法响应明确拒绝为 403。日志记录项目、动作、目标数量、耗时及异常类型，不记录签名或凭据。
+
 先看 Graph 注册和 import，再看 Context/身份校验，再看 Middleware 和工具授权，最后看模型、Docker、PostgreSQL/Redis 等外部依赖。每次失败记录复现命令、日志摘要和边界归属。

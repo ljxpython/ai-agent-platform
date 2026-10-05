@@ -46,6 +46,7 @@ export type PoolEntry = {
   view: Ref<PoolView | undefined>;
   sessionRef: Ref<InstanceType<typeof ChatSession> | null>;
   visible: Ref<boolean>;
+  canWrite: Ref<boolean>;
   needsRefresh: boolean;
   pendingThreadRoute?: string;
   generation: number;
@@ -73,12 +74,17 @@ export function createChatSessionPool() {
     const id = (threadId ? byThread : byDraft).get(indexKey);
     const existing = id ? entries.get(id) : undefined;
     if (existing) {
-      if (
-        existing.target.graphId !== target.graphId ||
-        existing.target.agentId !== target.agentId
-      )
-        throw new Error("Agent 与对话的执行目标不一致");
-      return existing;
+      if (!threadId && existing.threadId.value) {
+        // 请求的是新草稿（!threadId），但此 draft 已经升级绑定了真实会话，严禁作为草稿复用！
+        byDraft.delete(indexKey);
+      } else {
+        if (
+          existing.target.graphId !== target.graphId ||
+          existing.target.agentId !== target.agentId
+        )
+          throw new Error("Agent 与对话的执行目标不一致");
+        return existing;
+      }
     }
     const draftKey = [
       "pw:chat:draft",
@@ -108,6 +114,7 @@ export function createChatSessionPool() {
       view: shallowRef(),
       sessionRef: shallowRef(null),
       visible: ref(false),
+      canWrite: ref(false),
       needsRefresh: false,
       generation: 0,
       disposed: false,
@@ -126,14 +133,23 @@ export function createChatSessionPool() {
       throw new Error("会话已由另一实例持有，请重新核实运行状态");
     entry.threadId.value = threadId;
     byThread.set(key, entry.instanceId);
+    for (const [dKey, instId] of byDraft.entries()) {
+      if (instId === entry.instanceId) {
+        byDraft.delete(dKey);
+      }
+    }
   }
 
   function attachView(entry: PoolEntry, view: PoolView) {
     if (entry.disposed) throw new Error("会话已关闭");
     const previous = activeId ? entries.get(activeId) : undefined;
-    if (previous) previous.visible.value = false;
+    if (previous && previous !== entry) {
+      previous.visible.value = false;
+      previous.view.value = undefined;
+    }
     activeId = entry.instanceId;
     entry.view.value = view;
+    entry.canWrite = view.canWrite;
     entry.visible.value = true;
     entry.lastViewedAt = Date.now();
     if (entry.pendingThreadRoute) {

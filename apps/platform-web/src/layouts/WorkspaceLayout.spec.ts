@@ -38,6 +38,7 @@ import WorkspaceLayout from "./WorkspaceLayout.vue";
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.clearAllMocks();
 });
 
 it("clears the session pool when the project scope changes", async () => {
@@ -97,10 +98,10 @@ it("refreshes immersive pages every 60 seconds, on activation and rejection, and
   await flushPromises();
   window.dispatchEvent(new Event("focus"));
   await flushPromises();
-  expect(refreshProject).toHaveBeenCalledTimes(4);
+  expect(refreshProject).toHaveBeenCalledTimes(2);
   wrapper.unmount();
   await vi.advanceTimersByTimeAsync(60_000);
   window.dispatchEvent(new Event("platform-access-denied"));
   window.dispatchEvent(new Event("focus"));
-  expect(refreshProject).toHaveBeenCalledTimes(4);
+  expect(refreshProject).toHaveBeenCalledTimes(2);
 });

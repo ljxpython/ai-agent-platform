@@ -1,13 +1,10 @@
 import type { Router } from "vue-router";
-import {
-  hasPermission,
-  defaultWorkspacePath,
-  isProjectPermission,
-} from "@/services/auth/permissions";
+import { defaultWorkspacePath } from "@/services/auth/permissions";
 import { getAccessToken, hasStoredAuthSession } from "@/services/auth/token";
 import { useAuthStore } from "@/stores/auth";
 import { useUiStore } from "@/stores/ui";
 import { useWorkspaceStore } from "@/stores/workspace";
+import { resolveRouteAccess } from "@/services/auth/route-access";
 import type { PermissionCode } from "@/types/management";
 
 function resolveRoutePermissionProjectId(
@@ -25,38 +22,6 @@ function resolveRoutePermissionProjectId(
   return workspaceStore.currentProjectId;
 }
 
-function hasRoutePermission(
-  requiredPermissions: PermissionCode[],
-  mode: "all" | "any",
-  projectId: string,
-  allowWithoutProject: boolean,
-  authStore: ReturnType<typeof useAuthStore>,
-  workspaceStore: ReturnType<typeof useWorkspaceStore>,
-): boolean {
-  const evaluator = (permission: PermissionCode) => {
-    if (!isProjectPermission(permission)) {
-      return hasPermission(authStore.user, permission);
-    }
-
-    if (projectId) {
-      return (
-        workspaceStore.currentProjectAccess?.project_id === projectId &&
-        workspaceStore.currentProjectAccess.permissions.includes(permission)
-      );
-    }
-
-    return allowWithoutProject
-      ? Boolean(
-          workspaceStore.currentProjectAccess?.permissions.includes(permission),
-        )
-      : false;
-  };
-
-  return mode === "any"
-    ? requiredPermissions.some((permission) => evaluator(permission))
-    : requiredPermissions.every((permission) => evaluator(permission));
-}
-
 export function registerRouterGuards(router: Router) {
   router.beforeEach(async (to) => {
     const authStore = useAuthStore();
@@ -70,10 +35,21 @@ export function registerRouterGuards(router: Router) {
 
     const isAuthenticated = hasStoredAuthSession() && Boolean(authStore.user);
 
-    if (to.path.startsWith("/workspace") && !isAuthenticated) {
+    if (to.path.startsWith("/workspace") && !hasStoredAuthSession()) {
       return {
         path: "/auth/login",
         query: { redirect: to.fullPath },
+      };
+    }
+
+    if (
+      to.path.startsWith("/workspace") &&
+      !isAuthenticated &&
+      to.name !== "workspace-access-unavailable"
+    ) {
+      return {
+        name: "workspace-access-unavailable",
+        query: { returnTo: to.fullPath, reason: "unavailable" },
       };
     }
 
@@ -102,7 +78,6 @@ export function registerRouterGuards(router: Router) {
         : [];
 
       if (requiredPermissions.length > 0) {
-        const permissionMode = to.meta.permissionMode === "any" ? "any" : "all";
         const projectId = resolveRoutePermissionProjectId(
           to.params as Record<string, unknown>,
           workspaceStore,
@@ -118,28 +93,30 @@ export function registerRouterGuards(router: Router) {
           } catch {
             return {
               name: "workspace-access-unavailable",
-              query: { returnTo: to.fullPath },
+              query: {
+                returnTo: to.fullPath,
+                reason:
+                  workspaceStore.accessStatus === "denied"
+                    ? "denied"
+                    : "unavailable",
+              },
             };
           }
         }
-        const allowed = hasRoutePermission(
-          requiredPermissions,
-          permissionMode,
-          projectId,
-          Boolean(to.meta.allowWithoutProject),
-          authStore,
-          workspaceStore,
-        );
-
-        if (!allowed) {
-          uiStore.pushToast({
-            type: "warning",
-            title: "无访问权限",
-            message: "当前账号没有访问该页面所需的权限。",
-          });
+        const access = resolveRouteAccess(to, authStore.user, workspaceStore);
+        if (access !== "allowed") {
+          if (access === "denied")
+            uiStore.pushToast({
+              type: "warning",
+              title: "无访问权限",
+              message: "当前账号没有访问该页面所需的权限。",
+            });
           return {
             name: "workspace-access-unavailable",
-            query: { returnTo: to.fullPath },
+            query: {
+              returnTo: to.fullPath,
+              reason: access === "denied" ? "denied" : "unavailable",
+            },
           };
         }
       }

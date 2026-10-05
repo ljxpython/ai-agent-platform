@@ -1,5 +1,6 @@
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
+import { useWorkspaceStore } from "@/stores/workspace";
 import {
   login as loginRequest,
   logout as logoutRequest,
@@ -94,6 +95,7 @@ export const useAuthStore = defineStore("auth", () => {
 
   function clearSessionState() {
     sessionEpoch.value += 1;
+    useWorkspaceStore().reset();
     hydratePromise = null;
     clearAllTokenSets();
     try {

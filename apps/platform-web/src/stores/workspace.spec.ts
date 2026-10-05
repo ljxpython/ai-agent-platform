@@ -11,7 +11,8 @@ import { useWorkspaceStore } from "./workspace";
 
 beforeEach(() => {
   setActivePinia(createPinia());
-  vi.clearAllMocks();
+  vi.resetAllMocks();
+  localStorage.clear();
 });
 
 it("clears old permissions immediately and ignores delayed project responses", async () => {
@@ -60,7 +61,9 @@ it("clears revoked permissions when the periodic access refresh is rejected", as
       permissions: ["project.runtime.write"],
       roles: ["project_executor"],
     })
-    .mockRejectedValueOnce(new Error("forbidden"));
+    .mockRejectedValueOnce(
+      Object.assign(new Error("forbidden"), { status: 403 }),
+    );
   const store = useWorkspaceStore();
   await store.setProjectId("A");
 
@@ -69,7 +72,7 @@ it("clears revoked permissions when the periodic access refresh is rejected", as
   );
 
   expect(store.currentProjectAccess).toBeNull();
-  expect(store.error).toBe("项目权限刷新失败，请重试");
+  expect(store.error).toBe("当前账号无法访问此项目");
 });
 
 it("retains current permissions on transient network error during refresh", async () => {
@@ -92,5 +95,88 @@ it("retains current permissions on transient network error during refresh", asyn
     permissions: ["project.runtime.write"],
     roles: ["project_executor"],
   });
-  expect(store.error).toBe("项目权限刷新失败，请重试");
+  expect(store.accessStatus).toBe("unavailable");
+});
+
+it("coalesces project refresh and keeps permission-specific snapshots on network failure", async () => {
+  const store = useWorkspaceStore();
+  let complete!: (value: ProjectAccess) => void;
+  api.getProjectAccess.mockReturnValue(
+    new Promise<ProjectAccess>((resolve) => {
+      complete = resolve;
+    }),
+  );
+  const first = store.setProjectId("A");
+  const second = store.refreshCurrentProjectAccess();
+  expect(api.getProjectAccess).toHaveBeenCalledTimes(1);
+  complete({
+    project_id: "A",
+    roles: ["project_executor"],
+    permissions: ["project.runtime.read"],
+  });
+  await Promise.all([first, second]);
+  await store.refreshCurrentProjectAccess(false);
+  expect(api.getProjectAccess).toHaveBeenCalledTimes(1);
+});
+
+it("does not erase context on a failed list refresh and retries initial failure", async () => {
+  const store = useWorkspaceStore();
+  api.listProjects.mockRejectedValue(new Error("offline"));
+  await store.hydrateContext();
+  expect(store.contextLoaded).toBe(false);
+  api.listProjects.mockResolvedValue([{ id: "A" }]);
+  api.getProjectAccess.mockResolvedValue({
+    project_id: "A",
+    roles: [],
+    permissions: ["project.runtime.read"],
+  });
+  await store.hydrateContext();
+  const access = store.currentProjectAccess;
+  api.listProjects.mockRejectedValue(new Error("offline"));
+  await store.hydrateContext();
+  expect(store.currentProjectId).toBe("A");
+  expect(store.projects).toEqual([{ id: "A" }]);
+  expect(store.currentProjectAccess).toEqual(access);
+});
+
+it.each([
+  [{ status: 404, code: "route_not_found" }, "unavailable", true],
+  [
+    {
+      response: { status: 404, data: { error: { code: "project_not_found" } } },
+    },
+    "denied",
+    false,
+  ],
+])(
+  "distinguishes resource deletion from missing API routes",
+  async (error, status, retain) => {
+    const store = useWorkspaceStore();
+    api.getProjectAccess
+      .mockResolvedValueOnce({
+        project_id: "A",
+        roles: [],
+        permissions: ["project.runtime.read"],
+      })
+      .mockRejectedValueOnce(error);
+    await store.setProjectId("A");
+    await expect(store.refreshCurrentProjectAccess()).rejects.toBe(error);
+    expect(store.accessStatus).toBe(status);
+    expect(Boolean(store.currentProjectAccess)).toBe(retain);
+  },
+);
+
+it("accepts successful empty permissions as authoritative revocation", async () => {
+  const store = useWorkspaceStore();
+  api.getProjectAccess
+    .mockResolvedValueOnce({
+      project_id: "A",
+      roles: ["project_executor"],
+      permissions: ["project.runtime.read"],
+    })
+    .mockResolvedValueOnce({ project_id: "A", roles: [], permissions: [] });
+  await store.setProjectId("A");
+  await store.refreshCurrentProjectAccess();
+  expect(store.accessStatus).toBe("denied");
+  expect(store.currentProjectAccess?.permissions).toEqual([]);
 });

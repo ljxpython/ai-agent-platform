@@ -32,6 +32,7 @@ from platform_api.core.errors import (
     BadRequestError,
     ForbiddenError,
     NotAuthenticatedError,
+    NotFoundError,
     PlatformApiError,
     ServiceUnavailableError,
 )
@@ -645,6 +646,24 @@ async def count_threads(
     )
 
 
+RESERVED_THREAD_PATH_KEYWORDS = frozenset(
+    {
+        "state",
+        "history",
+        "runs",
+        "search",
+        "count",
+        "reconcile",
+        "copy",
+    }
+)
+
+
+def _validate_thread_id(thread_id: str) -> None:
+    if not thread_id or thread_id.strip().lower() in RESERVED_THREAD_PATH_KEYWORDS:
+        raise NotFoundError(message=f"Thread '{thread_id}' not found")
+
+
 @router.get("/threads/{thread_id}")
 async def get_thread(
     request: Request,
@@ -652,6 +671,7 @@ async def get_thread(
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
+    _validate_thread_id(thread_id)
     project_id = _require_project_id(request)
     return _redact_runtime_private_fields(
         await service.get_thread(
@@ -669,6 +689,7 @@ async def reconcile_pending_thread(
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
+    _validate_thread_id(thread_id)
     return _redact_runtime_private_fields(
         await service.reconcile_pending_thread(
             actor=actor,
@@ -685,6 +706,7 @@ async def delete_thread(
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
+    _validate_thread_id(thread_id)
     project_id = _require_project_id(request)
     result = await service.delete_thread(
         actor=actor,
@@ -800,6 +822,7 @@ async def update_thread(
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
+    _validate_thread_id(thread_id)
     if not isinstance(payload, dict):
         raise BadRequestError(
             code="invalid_payload", message="payload must be a JSON object"

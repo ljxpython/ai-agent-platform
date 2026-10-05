@@ -9,9 +9,12 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Chat 顶栏选择 Agent 历史会话队列联动过滤与 Pad 侧栏体验治理 | 已完成：修正 currentSelectedAgent 优先级倒挂、拔除 graph_id 过滤劫持恢复 agent_id 精准匹配、优化 Pad 侧边栏折叠交互，210项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-agent-history-filter-fix.md) |
+| Chat 对话体验优化（视口倒滚/流式跟随/消息秒蒸发）与切屏权限失效自爆根治 | 已完成：视口防倒滚精准锚定、rAF 60fps 原生流式跟随、切除 computed 副作用根治消息闪退、加固 SWR 权限驻留与具名事件解绑彻底根除切屏报错，212项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-viewport-smooth-follow-fix.md) |
 | 多会话切换切回假死死锁、空白消息水合缺失与投递报错隔离 | 已完成：切回终态收敛、落盘轻量水合、队列自动消费与报错展示隔离全链路闭环，422项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-session-switch-healing-and-receipt-isolation.md) |
 | 模型思考内容展示与 OpenAI 兼容字段保留 | 部分完成：Qwen/DeepSeek 真实模型、LangGraph 消息流和浏览器 Think 展示通过；正式平台模型目录聊天链路待验 | [排查与验证](projects/20260923-model-reasoning-output/README.md) |
 | 对话流式超时容错与 Transcript 解析优化 | 规划中：解决长推理超时截断与前端幽灵步骤假折叠问题 | [项目概览](projects/20260921-chat-stream-timeout-and-retry-optimization/README.md) |
+| 平台权限状态与刷新容错 | 本地 done：临时网络故障保留权限快照和登录；局部拒绝隔离；真实撤权、冷启动重试与 Runtime ACL 连接复用验证通过；未生产部署 | [专项与验证](projects/20261005-platform-access-refresh-governance/README.md) |
 | 全平台菜单、页面与角色权限治理 | 人工验收中：技术实现与自动化 Final done；固定角色、平台/对象授权、撤权、P1 隔离、治理边界及项目内个人记忆入口完成；共享/跨项目记忆等 deferred | [分章方案与进度](projects/20260920-platform-access-governance/README.md) · [人工验收用例](projects/20260920-platform-access-governance/08-manual-acceptance.md) |
 | Agent 回复新对话分支 | 进行中：Platform API 受控分叉和 Runtime 隔离验证实施中；前端已完成对接设计、待接入 | [项目规划](projects/20260917-agent-conversation-fork/README.md) |
 | Agent 会话访问策略（逐项审批 / 工作区免审批 / 全权负责） | 部分完成：前后端与 Runtime 均已实现三档策略（review/workspace_write/full_access）、输入框左右布局对齐与草稿态同步；待全栈启动后跑最终 E2E 验收 | [方案](projects/20260917-agent-session-access-policy/README.md) |
@@ -52,6 +55,7 @@
 | 工作区 HTML 现代化高保真安全预览 | 已完成：SandboxedHtmlFrame 升级为 sandbox="allow-scripts" 且 Origin 锁定为 null，更新安全沙箱徽章文案，单测通过 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
 | 对话输入灵感胶囊栏与微物理撒花小惊喜（ConfettiButton & ComposerSuggestions） | 已完成：实装基于 canvas-confetti 的五彩粒子喷射按钮与动态灵感胶囊栏，支持快捷填入小惊喜、写作、调研、分析等指令模板，与 ChatComposer 双向联动；单测与打包全通过 | [小惊喜迁移专项](projects/20261002-dearflow-surprise-me-feature/README.md) |
 | 长会话断流恢复解耦与历史快照按需懒加载治理 | 已完成：剥离 recoverExpiredStream 对 3.4MB 巨型 history 的阻塞强依赖，改为 state 毫秒级极速自愈 + history 后台静默预热软降级；加固 ChatSession 抽屉懒加载守卫并隔离全局横幅报错；单测全通与打包通过 | [历史懒加载治理专项](projects/20261002-chat-history-lazy-loading-and-timeout-resilience/README.md) |
+| Chat 前端对话 Clean Architecture 架构治理与中断/时序缺陷修复 | 已完成：对标谷歌开发范式，拆解上帝组件（ChatSession 净减 923 行），根治手动中断 400 报错与消息队列出队跳顶/并排时序倒挂；102 个测试套件、441 项单测全绿、vue-tsc 0 错误、生产打包通过 | [Chat 干净架构重构](projects/20261004-chat-frontend-clean-architecture-refactor/README.md) |
 | 平台用户管理软删除操作与自杀保护交互 | 已完成：操作菜单与详情页实装软删除操作、二次确认弹窗、防自杀禁用与状态筛选；单测及生产构建全绿 | [软删除治理](projects/20261003-platform-user-soft-delete/README.md) |
 
 ## platform-api
@@ -119,3 +123,5 @@
 
 | Dear Agent P6 记忆与技能治理 | 记忆与外部任务原有验收保留；技能已由当前记录和执行快照替代旧版本治理，见Skills改进项目；前端待接入 | [P6执行包](projects/20260913-dearflow-agent/phases/P6-记忆与技能治理.md) |
 | Dear Agent 个人记忆管理与跨会话闭环 | partial：无线程管理、本人队列多源、受信共享检查、180秒提取与召回降级已通过真实HTTP/隔离PG及独立MAOMAO模型测试；完整平台run/SSE、部署和前端联验未完成。前端由同事开发 | [记忆专项与前端交接](projects/20260920-dear-agent-memory/README.md) |
+
+| 多会话流连接与运行缓存治理 | post39 已发布并升级本地 Runtime；后台 SSE 暂停、队列继续执行，三会话切换与权限浏览器验收通过 | [专项](projects/20261005-chat-stream-resource-governance/README.md) |

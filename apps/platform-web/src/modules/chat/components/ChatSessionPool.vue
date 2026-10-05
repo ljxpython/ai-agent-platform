@@ -31,7 +31,7 @@ function renderEntry(entry: PoolEntry) {
         threadId: entry.threadId.value,
         initialThread: entry.initialThread.value,
         threadTitle: view?.threadTitle.value ?? "",
-        canWrite: Boolean(view?.canWrite.value && !entry.target.disabled),
+        canWrite: Boolean(entry.canWrite.value && !entry.target.disabled),
         focusMode: view?.focusMode.value ?? false,
         visible: entry.visible.value,
         onAccessRevoked: () => {
@@ -66,8 +66,11 @@ function renderEntry(entry: PoolEntry) {
         },
         onRefresh: () => {
           const current = entry.view.value;
-          if (current) current.onRefresh();
-          else entry.needsRefresh = true;
+          if (current && entry.visible.value) {
+            current.onRefresh();
+          } else {
+            entry.needsRefresh = true;
+          }
         },
         onReconnect: () => {
           void entry.sessionRef.value?.reconnectStream();

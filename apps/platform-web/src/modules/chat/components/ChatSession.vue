@@ -1,45 +1,6 @@
-<script lang="ts">
-import { listRuntimeModels } from "@/services/runtime/runtime.service";
-import { listRuntimeModelPolicies } from "@/services/runtime-policies/runtime-policies.service";
-
-const projectModelBundleCache = new Map<
-  string,
-  {
-    expiresAt: number;
-    promise: Promise<
-      [
-        Awaited<ReturnType<typeof listRuntimeModels>>,
-        Awaited<ReturnType<typeof listRuntimeModelPolicies>>,
-      ]
-    >;
-  }
->();
-
-function loadProjectModelBundle(projectId: string) {
-  const now = Date.now();
-  const cached = projectModelBundleCache.get(projectId);
-  if (cached && cached.expiresAt > now) {
-    return cached.promise;
-  }
-  const promise = Promise.all([
-    listRuntimeModels(projectId),
-    listRuntimeModelPolicies(projectId),
-  ]).catch((err) => {
-    projectModelBundleCache.delete(projectId);
-    throw err;
-  });
-  projectModelBundleCache.set(projectId, {
-    expiresAt: now + 60_000,
-    promise,
-  });
-  return promise;
-}
-</script>
-
 <script setup lang="ts">
 import {
   computed,
-  reactive,
   nextTick,
   onScopeDispose,
   ref,
@@ -51,17 +12,19 @@ import {
   coerceMessageLikeToMessage,
   type BaseMessage,
 } from "@langchain/core/messages";
-import { parseAgentContext } from "@/services/agents/context";
 import ChatRunOptionsDialog from "./ChatRunOptionsDialog.vue";
 import ChatContextDrawer from "./ChatContextDrawer.vue";
 import ChatStickyTaskPill from "./ChatStickyTaskPill.vue";
 import WorkspacePanel from "@/components/workspace/WorkspacePanel.vue";
 import ChatAgentStatusBar from "./ChatAgentStatusBar.vue";
+import {
+  resolveDisplayedMessages,
+  hasOptimisticEchoed,
+  extractMessageText,
+} from "../message-alignment";
 import { RouterLink } from "vue-router";
 import { buildChatMessageMetadata, getChatBranchContext } from "../branching";
-import { buildChatLiveFollowView } from "../live-follow-view-model";
 import type { Message } from "@langchain/langgraph-sdk";
-import type { Checkpoint } from "@langchain/langgraph-sdk";
 import { useAuthStore } from "@/stores/auth";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import BaseButton from "@/components/base/BaseButton.vue";
@@ -72,16 +35,13 @@ import {
   type ChatAttachmentBlock,
 } from "@/utils/chat-content";
 import {
-  createSessionService,
   type ChatCheckpoint,
   type ChatThread,
 } from "@/services/threads/session.service";
-import { createLanggraphAuthorizedFetch } from "@/services/langgraph/client";
-import { increasedForkTitle } from "@/utils/threads";
-import type { RuntimeModelItem } from "@/types/management";
 import { useChatSession } from "../composables/useChatSession";
 import { useChatAttachments } from "../composables/useChatAttachments";
 import { useTranscriptMessages } from "../composables/useTranscriptMessages";
+import { useChatRunConfig } from "../composables/useChatRunConfig";
 import {
   asObject,
   buildTranscript,
@@ -89,12 +49,8 @@ import {
   readable,
   type ToolItem,
 } from "../transcript";
-import {
-  computeDynamicBottomSpacerHeight,
-  computeStreamingFollowScrollTop,
-  computeTurnAnchorScrollTop,
-  isChatViewportNearContentBottom,
-} from "../scroll-state";
+import { useChatViewport } from "../composables/useChatViewport";
+import { useChatActions } from "../composables/useChatActions";
 import { useChatSessionStore } from "../stores/useChatSessionStore";
 import ChatComposer from "./ChatComposer.vue";
 import ChatMessageList from "./ChatMessageList.vue";
@@ -172,7 +128,7 @@ const session = useChatSession({
           optimisticUserMessage.value,
         ))
     ) {
-      optimisticUserMessage.value = null;
+      setOptimisticUserMessage(null);
     }
     if (props.draft === submittedDraft) emit("update:draft", "");
     attachments.value = attachments.value.filter(
@@ -194,7 +150,6 @@ const {
   canSend,
   status,
   actions,
-  resumeInterruptedRun,
 } = session;
 const action = actions.current;
 const connectionMessage = computed(() =>
@@ -205,11 +160,7 @@ const calls = stream.toolCalls;
 const approvalElement = ref<HTMLElement | null>(null);
 
 const isSessionInterrupted = computed(() => {
-  return (
-    hasPendingInterrupts.value ||
-    reviews.value.length > 0 ||
-    session.run.value?.status === "interrupted"
-  );
+  return hasPendingInterrupts.value || reviews.value.length > 0;
 });
 
 const handleStop = () => {
@@ -217,16 +168,13 @@ const handleStop = () => {
   void session.stop();
 };
 
-const handleResume = async () => {
+const handleResume = () => {
   if (hasPendingInterrupts.value || reviews.value.length > 0) {
     approvalElement.value?.scrollIntoView({
       block: "center",
       behavior: "smooth",
     });
-    return;
   }
-  if (!props.canWrite || cancelling.value) return;
-  await resumeInterruptedRun();
 };
 const streamError = computed(() => {
   if (!stream.error.value) return "";
@@ -239,6 +187,17 @@ const streamError = computed(() => {
   if (raw.includes("409 Conflict") || raw.includes("pending or running run")) {
     return "";
   }
+  if (
+    raw.includes("langgraph_upstream_request_failed") ||
+    raw.includes("Runtime request failed") ||
+    raw.includes("Platform authorization unavailable")
+  ) {
+    const reqMatch =
+      raw.match(/request_id["':\s]+([A-Za-z0-9._-]+)/i) ||
+      raw.match(/请求编号[:：\s]+([A-Za-z0-9._-]+)/);
+    const reqId = reqMatch ? `（请求编号: ${reqMatch[1]}）` : "";
+    return `执行服务响应异常，请点击右侧恢复连接重试${reqId}`;
+  }
   return raw;
 });
 const canSubmit = computed(
@@ -250,83 +209,35 @@ const canSubmit = computed(
     !attachmentsLoading.value &&
     (!!props.draft.trim() || !!attachments.value.length),
 );
-const models = ref<RuntimeModelItem[]>([]);
-const modelsLoading = ref(true);
-const defaultModelId = ref("");
-const defaultModelName = ref("");
-const optionsOpen = ref(false);
-const optionsError = ref("");
-type ExecutionMode = "flash" | "standard" | "pro" | "ultra";
-const showExecutionMode = computed(
-  () =>
-    props.enableExecutionMode ??
-    ["dear_agent", "dearflow_agent"].includes(props.graphId),
-);
-const initialContext = { ...context.value };
-const draftRunOptions = reactive<{
-  modelId: string;
-  temperature: string;
-  maxTokens: string;
-  recursionLimit: string;
-  executionMode: ExecutionMode;
-}>({
-  modelId: "",
-  temperature: "",
-  maxTokens: "",
-  recursionLimit: "1000",
-  executionMode: (context.value.execution_mode as ExecutionMode) ?? "standard",
-});
-const currentExecutionMode = computed<ExecutionMode>(
-  () => (context.value.execution_mode as ExecutionMode) ?? "standard",
-);
 const isModeLocked = computed(
   () => busy.value || hasPendingInterrupts.value || checking.value,
 );
-function resetOptions(value: AgentContext) {
-  Object.assign(draftRunOptions, {
-    modelId: value.model_id ?? "",
-    temperature: value.temperature?.toString() ?? "",
-    maxTokens: value.max_tokens?.toString() ?? "",
-    recursionLimit: recursionLimit.value.toString(),
-    executionMode: (value.execution_mode as ExecutionMode) ?? "standard",
-  });
-  optionsError.value = "";
-}
-function openOptions() {
-  resetOptions(context.value);
-  optionsOpen.value = true;
-}
-function applyOptions() {
-  try {
-    const nextMode = isModeLocked.value
-      ? ((context.value.execution_mode as ExecutionMode) ?? "standard")
-      : draftRunOptions.executionMode || "standard";
-    if (draftRunOptions.recursionLimit.trim()) {
-      const limitNum = Number(draftRunOptions.recursionLimit);
-      if (!Number.isInteger(limitNum) || limitNum < 1 || limitNum > 1000) {
-        optionsError.value = "最大步数必须是 1 到 1000 之间的整数";
-        return;
-      }
-      recursionLimit.value = limitNum;
-    }
-    const updated = parseAgentContext({
-      ...context.value,
-      model_id: draftRunOptions.modelId || undefined,
-      temperature: draftRunOptions.temperature.trim()
-        ? Number(draftRunOptions.temperature)
-        : undefined,
-      max_tokens: draftRunOptions.maxTokens.trim()
-        ? Number(draftRunOptions.maxTokens)
-        : undefined,
-      ...(showExecutionMode.value ? { execution_mode: nextMode } : {}),
-    });
-    context.value = updated;
-    optionsOpen.value = false;
-  } catch (cause) {
-    optionsError.value =
-      cause instanceof Error ? cause.message : "运行参数无效";
-  }
-}
+const localError = ref("");
+const {
+  models,
+  modelsLoading,
+  defaultModelId,
+  defaultModelName,
+  optionsOpen,
+  optionsError,
+  draftRunOptions,
+  currentExecutionMode,
+  showExecutionMode,
+  resetOptions,
+  openOptions,
+  applyOptions,
+  initialContext,
+} = useChatRunConfig({
+  projectId: props.projectId,
+  graphId: props.graphId,
+  context,
+  recursionLimit,
+  enableExecutionMode: props.enableExecutionMode,
+  isModeLocked,
+  onLocalError: (msg) => {
+    localError.value = msg;
+  },
+});
 const drawerOpen = ref(false);
 const drawerTab = ref<"overview" | "tasks" | "files" | "history">("overview");
 function openDrawer() {
@@ -339,55 +250,48 @@ const initialCachedSession = chatSessionStore.getSession(
   props.projectId,
   session.threadId.value || props.threadId,
 );
-const historyLoading = ref(false);
-const history = shallowRef<ChatCheckpoint[]>(
-  initialCachedSession?.history ?? [],
-);
 const cachedDisplayMessages = shallowRef<BaseMessage[]>(
   initialCachedSession?.messages ?? [],
 );
-const hasMoreHistory = ref(true);
 const selectedCheckpoint = shallowRef<ChatCheckpoint | null>(null);
-const coercedMessageCache = new Map<
-  string,
-  { sig: string; msg: BaseMessage }
->();
-const latestHistoryMessages = computed<BaseMessage[]>(() => {
-  const headRaw = history.value[0]?.values?.messages;
-  if (!Array.isArray(headRaw) || headRaw.length === 0) return [];
-  try {
-    return headRaw.map((m) => {
-      const rawObj =
-        m && typeof m === "object" ? (m as Record<string, unknown>) : null;
-      const rawId = typeof rawObj?.id === "string" ? rawObj.id : "";
-      const rawContent =
-        typeof rawObj?.content === "string"
-          ? rawObj.content
-          : JSON.stringify(rawObj?.content ?? "");
-      const rawToolsLen = Array.isArray(rawObj?.tool_calls)
-        ? rawObj.tool_calls.length
-        : 0;
-      const sig = `${rawId}:${rawContent.length}:${rawToolsLen}`;
-      if (rawId) {
-        const cached = coercedMessageCache.get(rawId);
-        if (cached && cached.sig === sig) {
-          return cached.msg;
-        }
-      }
-      const coerced = coerceMessageLikeToMessage(
-        m as Parameters<typeof coerceMessageLikeToMessage>[0],
-      );
-      if (rawId) {
-        coercedMessageCache.set(rawId, { sig, msg: coerced });
-      }
-      return coerced;
-    });
-  } catch {
-    return [];
-  }
+
+const {
+  history,
+  historyLoading,
+  hasMoreHistory,
+  latestHistoryMessages,
+  editDraft,
+  editingMessageId,
+  forkingCheckpointId,
+  cancelEdit,
+  loadHistory,
+  edit,
+  submitEditedBranch,
+  retryMessage,
+  forkToNewThread,
+} = useChatActions({
+  projectId: props.projectId,
+  threadTitle: props.threadTitle,
+  session,
+  displayedMessages: () => displayedMessages.value,
+  messageMetadata: () => messageMetadata.value,
+  recursionLimit,
+  onForkThread: (newId) => emit("fork-thread", newId),
+  onRefresh: () => emit("refresh"),
+  onLocalError: (msg) => {
+    localError.value = msg;
+  },
 });
 const snapshotMessages = shallowRef<BaseMessage[] | null>(null);
 const optimisticUserMessage = shallowRef<BaseMessage | null>(null);
+let optimisticBaseCount = 0;
+
+function setOptimisticUserMessage(msg: BaseMessage | null) {
+  optimisticUserMessage.value = msg;
+  optimisticBaseCount = msg
+    ? (snapshotMessages.value ?? messages.value).length
+    : 0;
+}
 const hasConversationStarted = ref(
   Boolean(
     props.threadId ||
@@ -396,178 +300,23 @@ const hasConversationStarted = ref(
   ),
 );
 
-function extractMessageText(raw: unknown): string {
-  if (typeof raw === "string") return raw.trim();
-  if (Array.isArray(raw)) {
-    return raw
-      .map((item) => {
-        if (!item || typeof item !== "object") return "";
-        if (typeof (item as { text?: unknown }).text === "string") {
-          return (item as { text: string }).text;
-        }
-        return "";
-      })
-      .filter(Boolean)
-      .join("\n")
-      .trim();
-  }
-  return "";
-}
-
-function isHumanMessage(m: BaseMessage | null | undefined): boolean {
-  if (!m) return false;
-  const raw = m as unknown as Record<string, unknown>;
-  const type =
-    m.type ||
-    (typeof (raw._getType as (() => string) | undefined) === "function"
-      ? (raw._getType as () => string)()
-      : "");
-  if (type === "human" || type === "user") return true;
-  return raw.role === "human" || raw.role === "user";
-}
-
-function hasOptimisticEchoed(
-  list: readonly BaseMessage[],
-  optimistic: BaseMessage | null,
-): boolean {
-  if (!optimistic) return false;
-  if (optimistic.id && list.some((m) => m.id === optimistic.id)) return true;
-  const optText = extractMessageText(optimistic.content);
-  if (!optText) return false;
-  return list.some(
-    (m) => isHumanMessage(m) && extractMessageText(m.content) === optText,
-  );
-}
-
 const displayedMessages = computed(() => {
-  let base = snapshotMessages.value ?? messages.value;
-  const recovered = session.recoverySnapshot.value?.messages as
-    | BaseMessage[]
-    | undefined;
-  if (!snapshotMessages.value && recovered?.length) {
-    const recoveredIds = new Set(recovered.map((message) => message.id));
-    base = [
-      ...recovered,
-      ...base.filter((message) => !recoveredIds.has(message.id)),
-    ];
-  }
   const fallbackMessages =
     latestHistoryMessages.value.length >= cachedDisplayMessages.value.length
       ? latestHistoryMessages.value
       : cachedDisplayMessages.value;
-  if (!snapshotMessages.value && fallbackMessages.length > 0) {
-    if (base.length === 0) {
-      base = fallbackMessages;
-    } else {
-      const committedById = new Map<string, BaseMessage>();
-      for (const fm of fallbackMessages) {
-        if (fm.id) committedById.set(fm.id, fm);
-      }
-      // 防止 SSE seq=0 历史重放将已落盘完成的检查点消息降级为空串或半截内容（避免页面消息从头重新流式刷一遍）
-      let stabilized = false;
-      const nextBase = base.map((m) => {
-        if (!m.id) return m;
-        const committed = committedById.get(m.id);
-        if (!committed) return m;
-        const streamText =
-          typeof m.content === "string"
-            ? m.content
-            : JSON.stringify(m.content ?? "");
-        const committedText =
-          typeof committed.content === "string"
-            ? committed.content
-            : JSON.stringify(committed.content ?? "");
-        if (streamText.length < committedText.length) {
-          stabilized = true;
-          return committed;
-        }
-        return m;
-      });
-      if (stabilized) {
-        base = nextBase;
-      }
 
-      const baseIds = new Set(base.map((m) => m.id).filter(Boolean));
-      const firstOverlapIdx = fallbackMessages.findIndex((m) =>
-        Boolean(m.id && baseIds.has(m.id)),
-      );
-      if (firstOverlapIdx === -1) {
-        const missingPrefix = fallbackMessages.filter((m) =>
-          Boolean(m.id && !baseIds.has(m.id)),
-        );
-        if (missingPrefix.length > 0) {
-          base = [...missingPrefix, ...base];
-        }
-      } else {
-        const missingPrefix = fallbackMessages
-          .slice(0, firstOverlapIdx)
-          .filter((m) => Boolean(m.id && !baseIds.has(m.id)));
-        let lastOverlapIdx = firstOverlapIdx;
-        for (let i = fallbackMessages.length - 1; i > firstOverlapIdx; i--) {
-          const id = fallbackMessages[i]?.id;
-          if (id && baseIds.has(id)) {
-            lastOverlapIdx = i;
-            break;
-          }
-        }
-        const lastBaseMsg = base[base.length - 1];
-        const lastBaseIsAi =
-          lastBaseMsg &&
-          (lastBaseMsg.type === "ai" ||
-            (
-              lastBaseMsg as unknown as { _getType?: () => string }
-            )._getType?.() === "ai");
-        const lastBaseEmpty =
-          lastBaseIsAi && !extractMessageText(lastBaseMsg.content);
-        const missingSuffix =
-          !isSessionRunning.value || lastBaseEmpty
-            ? fallbackMessages
-                .slice(lastOverlapIdx + 1)
-                .filter((m) => Boolean(m.id && !baseIds.has(m.id)))
-            : [];
-        if (missingPrefix.length > 0 || missingSuffix.length > 0) {
-          if (lastBaseEmpty && missingSuffix.length > 0) {
-            base = [...missingPrefix, ...base.slice(0, -1), ...missingSuffix];
-          } else {
-            base = [...missingPrefix, ...base, ...missingSuffix];
-          }
-        }
-      }
-    }
-  }
-  if (!optimisticUserMessage.value) return base;
-  if (hasOptimisticEchoed(base, optimisticUserMessage.value)) {
-    if (optimisticUserMessage.value) {
-      queueMicrotask(() => {
-        optimisticUserMessage.value = null;
-      });
-    }
-    return base;
-  }
-
-  // 严防用户问题倒挂：当处于正在运行阶段且 base 中有由当前问题激发的响应消息时，
-  // 乐观用户消息必须定位在当前运行轮次的起始位置（即所有当前连续的非 Human 响应之前），绝不可追加在 AI/Tool 屁股后面！
-  if (isSessionRunning.value && base.length > 0) {
-    if (!isHumanMessage(base[0])) {
-      return [optimisticUserMessage.value, ...base];
-    }
-    let turnStartIdx = base.length;
-    while (turnStartIdx > 0) {
-      const prevMsg = base[turnStartIdx - 1];
-      if (isHumanMessage(prevMsg)) {
-        break;
-      }
-      turnStartIdx--;
-    }
-    if (turnStartIdx < base.length) {
-      return [
-        ...base.slice(0, turnStartIdx),
-        optimisticUserMessage.value,
-        ...base.slice(turnStartIdx),
-      ];
-    }
-  }
-  return [...base, optimisticUserMessage.value];
+  return resolveDisplayedMessages({
+    baseMessages: messages.value,
+    snapshotMessages: snapshotMessages.value,
+    recoveredMessages: session.recoverySnapshot.value?.messages as
+      | BaseMessage[]
+      | undefined,
+    fallbackMessages,
+    optimisticUserMessage: optimisticUserMessage.value,
+    optimisticBaseCount,
+    isSessionRunning: isSessionRunning.value,
+  });
 });
 
 watch(
@@ -594,7 +343,7 @@ watch(
       hasOptimisticEchoed(currentMessages, optimisticUserMessage.value) ||
       hasOptimisticEchoed(historyMsgs, optimisticUserMessage.value)
     ) {
-      optimisticUserMessage.value = null;
+      setOptimisticUserMessage(null);
     }
   },
   { immediate: true },
@@ -702,35 +451,7 @@ watch(busy, (isBusy, wasBusy) => {
 function handleAddToChat(text: string) {
   emit("update:draft", props.draft ? `${props.draft}\n\n${text}` : text);
 }
-const localError = ref("");
 let disposed = false;
-void loadProjectModelBundle(props.projectId)
-  .then(([value, policies]) => {
-    if (disposed) return;
-    models.value = value.models.filter(
-      (model) =>
-        model.enabled &&
-        policies.items.find((item) => item.catalog_id === model.id)?.policy
-          .is_enabled !== false,
-    );
-    const projectDefault = policies.items.find(
-      (item) => item.policy.is_default_for_project,
-    );
-    const defaultModel =
-      models.value.find((model) => model.id === projectDefault?.catalog_id) ??
-      models.value[0];
-    defaultModelId.value = defaultModel?.id ?? "";
-    defaultModelName.value = defaultModel?.display_name ?? "";
-    if (!context.value.model_id && defaultModel) {
-      context.value = { ...context.value, model_id: defaultModel.id };
-    }
-  })
-  .catch(() => {
-    if (!disposed) localError.value = "模型列表读取失败，可恢复连接后重试";
-  })
-  .finally(() => {
-    if (!disposed) modelsLoading.value = false;
-  });
 
 const composerRef = ref<{ focus: () => void } | null>(null);
 function focusComposer() {
@@ -870,20 +591,19 @@ async function sendQueuedContent(content: unknown) {
     type: "human",
     content: content as any,
   });
-  optimisticUserMessage.value = optimistic;
-  void anchorLatestUserTurn(true);
+  setOptimisticUserMessage(optimistic);
   try {
     const ok = await session.send(content, recursionLimit.value, {
       fromQueue: true,
       messageId,
     });
     if (!ok) {
-      optimisticUserMessage.value = null;
+      setOptimisticUserMessage(null);
       return false;
     }
     return true;
   } catch {
-    optimisticUserMessage.value = null;
+    setOptimisticUserMessage(null);
     return false;
   }
 }
@@ -1016,15 +736,16 @@ async function send(queued = false) {
   if (selectedCheckpoint.value) {
     const targetCheckpoint = selectedCheckpoint.value.checkpoint;
     const messageId = crypto.randomUUID();
-    optimisticUserMessage.value = coerceMessageLikeToMessage({
-      id: messageId,
-      type: "human",
-      content,
-    });
+    setOptimisticUserMessage(
+      coerceMessageLikeToMessage({
+        id: messageId,
+        type: "human",
+        content,
+      }),
+    );
     emit("update:draft", "");
     attachments.value = [];
     selectSnapshot("");
-    void anchorLatestUserTurn(true);
     try {
       const ok = await session.fork(
         targetCheckpoint,
@@ -1036,7 +757,7 @@ async function send(queued = false) {
         throw new Error(session.error.value);
       }
     } catch {
-      optimisticUserMessage.value = null;
+      setOptimisticUserMessage(null);
       if (submittedDraft !== undefined) emit("update:draft", submittedDraft);
       attachments.value = Array.from(
         submittedAttachments,
@@ -1046,14 +767,15 @@ async function send(queued = false) {
     }
   } else {
     const messageId = crypto.randomUUID();
-    optimisticUserMessage.value = coerceMessageLikeToMessage({
-      id: messageId,
-      type: "human",
-      content,
-    });
+    setOptimisticUserMessage(
+      coerceMessageLikeToMessage({
+        id: messageId,
+        type: "human",
+        content,
+      }),
+    );
     emit("update:draft", "");
     attachments.value = [];
-    void anchorLatestUserTurn(true);
     try {
       const ok = await session.send(content, recursionLimit.value, {
         messageId,
@@ -1065,13 +787,13 @@ async function send(queued = false) {
         if (session.error.value) {
           throw new Error(session.error.value);
         }
-        optimisticUserMessage.value = null;
+        setOptimisticUserMessage(null);
         submittedDraft = undefined;
         submittedAttachments = new Set();
         promptQueue.enqueue(content);
       }
     } catch {
-      optimisticUserMessage.value = null;
+      setOptimisticUserMessage(null);
       if (submittedDraft !== undefined) emit("update:draft", submittedDraft);
       attachments.value = Array.from(
         submittedAttachments,
@@ -1128,12 +850,13 @@ async function resendQueuedMessage(content: unknown, messageId?: string) {
     session.pendingMessage.value = null;
   }
   const nextMessageId = crypto.randomUUID();
-  optimisticUserMessage.value = coerceMessageLikeToMessage({
-    id: nextMessageId,
-    type: "human",
-    content: content as any,
-  });
-  void anchorLatestUserTurn(true);
+  setOptimisticUserMessage(
+    coerceMessageLikeToMessage({
+      id: nextMessageId,
+      type: "human",
+      content: content as any,
+    }),
+  );
   try {
     const ok = await session.send(content, recursionLimit.value, {
       messageId: nextMessageId,
@@ -1142,179 +865,45 @@ async function resendQueuedMessage(content: unknown, messageId?: string) {
       throw new Error(session.error.value);
     }
   } catch {
-    optimisticUserMessage.value = null;
+    setOptimisticUserMessage(null);
   }
 }
 
 const viewport = ref<HTMLElement | null>(null);
 const contentEndSentinel = ref<HTMLElement | null>(null);
-const bottomSpacerHeightPx = ref(0);
-const userScrolledUp = ref(false);
-const following = ref(true);
-const unreadMessageCount = ref(0);
-const bufferedStreamActivity = ref(false);
-const lastEventAt = ref("");
-let scrollRafId: number | null = null;
-let programmaticScrollUntil = 0;
-let lastKnownScrollTop = 0;
-let parkedScrollTop = 0;
-
-function isHumanLikeMessage(m: unknown): boolean {
-  if (!m || typeof m !== "object") return false;
-  const raw = m as { type?: string; role?: string };
-  return raw.type === "human" || raw.role === "user" || raw.role === "human";
-}
-
-const turnCount = computed(
-  () => displayedMessages.value.filter(isHumanLikeMessage).length,
-);
-
-const liveFollowView = computed(() =>
-  buildChatLiveFollowView({
-    autoFollowEnabled:
-      following.value &&
-      !drawerOpen.value &&
-      !optionsOpen.value &&
-      !inspector.value,
-    isRunning: busy.value,
-    unreadMessageCount: unreadMessageCount.value,
-    bufferedStreamActivity: bufferedStreamActivity.value,
-  }),
-);
-
-function getOffsetTopWithinViewport(el: HTMLElement, vp: HTMLElement): number {
-  const elRect = el.getBoundingClientRect();
-  const vpRect = vp.getBoundingClientRect();
-  if (vpRect.height > 0 || elRect.height > 0) {
-    return Math.round(elRect.top - vpRect.top + vp.scrollTop);
-  }
-  return el.offsetTop;
-}
-
-function syncBottomSpacerHeight(): {
-  lastUserOffsetTop: number;
-  contentBottomOffsetTop: number;
-} {
-  const vp = viewport.value;
-  if (props.visible === false)
-    return { lastUserOffsetTop: 0, contentBottomOffsetTop: 0 };
-  if (!vp || turnCount.value <= 0) {
-    bottomSpacerHeightPx.value = 0;
-    return { lastUserOffsetTop: 0, contentBottomOffsetTop: 0 };
-  }
-  const lastUserEl = vp.querySelector<HTMLElement>(
-    'article[data-is-last-user="true"], article[data-author="user"]:last-of-type',
-  );
-  const sentinelEl = contentEndSentinel.value;
-  const lastUserOffsetTop = lastUserEl
-    ? getOffsetTopWithinViewport(lastUserEl, vp)
-    : 0;
-  const contentBottomOffsetTop = sentinelEl
-    ? getOffsetTopWithinViewport(sentinelEl, vp)
-    : Math.max(0, vp.scrollHeight - bottomSpacerHeightPx.value);
-  const latestTurnHeightPx = Math.max(
-    0,
-    contentBottomOffsetTop - lastUserOffsetTop,
-  );
-  bottomSpacerHeightPx.value = computeDynamicBottomSpacerHeight({
-    turnCount: turnCount.value,
-    viewportClientHeight: vp.clientHeight,
-    latestTurnHeightPx,
-  });
-  return { lastUserOffsetTop, contentBottomOffsetTop };
-}
-
-let lastAnchoredTurnCount = 0;
-
-async function anchorLatestUserTurn(smooth = true) {
-  if (props.visible === false) return;
-  hasConversationStarted.value = true;
-  if (
-    drawerOpen.value ||
-    optionsOpen.value ||
-    inspector.value ||
-    snapshotMessages.value
-  )
-    return;
-  userScrolledUp.value = false;
-  following.value = true;
-  unreadMessageCount.value = 0;
-  bufferedStreamActivity.value = false;
-  const currentTurns = turnCount.value;
-  lastAnchoredTurnCount = currentTurns;
-  // 同步预置底部留白垫片高度，与 optimisticUserMessage 在同一个 Vue DOM patch 帧内生效，杜绝分帧跳动
-  const vpPre = viewport.value;
-  if (vpPre && currentTurns > 1) {
-    bottomSpacerHeightPx.value = computeDynamicBottomSpacerHeight({
-      turnCount: currentTurns,
-      viewportClientHeight: vpPre.clientHeight,
-      latestTurnHeightPx: 88,
-    });
-  }
-  await nextTick();
-  const vp = viewport.value;
-  if (!vp) return;
-  const { lastUserOffsetTop } = syncBottomSpacerHeight();
-  const targetTop = computeTurnAnchorScrollTop({
-    turnCount: turnCount.value,
-    userElementOffsetTop: lastUserOffsetTop,
-    viewportClientHeight: vp.clientHeight,
-  });
-  programmaticScrollUntil = Date.now() + 500;
-  lastKnownScrollTop = targetTop;
-  if (typeof vp.scrollTo === "function" && smooth) {
-    vp.scrollTo({ top: targetTop, behavior: "smooth" });
-  } else {
-    vp.scrollTop = targetTop;
-  }
-}
-
-function requestSmartStreamingFollow() {
-  if (
-    props.visible === false ||
-    !following.value ||
-    userScrolledUp.value ||
-    drawerOpen.value ||
-    optionsOpen.value ||
-    inspector.value ||
-    snapshotMessages.value
-  )
-    return;
-  if (scrollRafId !== null) return;
-  scrollRafId = requestAnimationFrame(() => {
-    scrollRafId = null;
-    const vp = viewport.value;
-    if (!vp || props.visible === false) return;
-    const { contentBottomOffsetTop } = syncBottomSpacerHeight();
-    const nextScrollTop = computeStreamingFollowScrollTop({
-      currentScrollTop: vp.scrollTop,
-      viewportClientHeight: vp.clientHeight,
-      contentBottomOffsetTop,
-    });
-    if (nextScrollTop !== null && nextScrollTop !== vp.scrollTop) {
-      programmaticScrollUntil = Date.now() + 180;
-      lastKnownScrollTop = nextScrollTop;
-      vp.scrollTop = nextScrollTop;
-    }
-  });
-}
+const {
+  bottomSpacerHeightPx,
+  following,
+  liveFollowView,
+  turnCount,
+  lastEventAt,
+  follow,
+  handleViewportWheel,
+  handleViewportScroll,
+  handleVisibleChange,
+} = useChatViewport({
+  viewportRef: viewport,
+  contentEndSentinelRef: contentEndSentinel,
+  displayedMessages,
+  visible: toRef(props, "visible"),
+  isRunning: busy,
+  isOverlayOpen: computed(
+    () =>
+      drawerOpen.value ||
+      optionsOpen.value ||
+      Boolean(inspector.value) ||
+      Boolean(snapshotMessages.value),
+  ),
+  onConversationStarted: () => {
+    hasConversationStarted.value = true;
+  },
+});
 
 watch(
   () => props.visible,
   async (visible) => {
-    if (visible === false) {
-      parkedScrollTop = viewport.value?.scrollTop ?? lastKnownScrollTop;
-      if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
-      scrollRafId = null;
-      return;
-    }
-    await nextTick();
-    syncBottomSpacerHeight();
-    if (viewport.value) {
-      viewport.value.scrollTop = parkedScrollTop;
-      lastKnownScrollTop = parkedScrollTop;
-    }
-    requestSmartStreamingFollow();
+    handleVisibleChange(visible);
+    if (visible === false) return;
     emit("refresh");
     if (
       optimisticUserMessage.value &&
@@ -1328,7 +917,7 @@ watch(
           optimisticUserMessage.value,
         ))
     ) {
-      optimisticUserMessage.value = null;
+      setOptimisticUserMessage(null);
     }
     if (session.threadId.value) {
       void session.verify().then(async () => {
@@ -1354,135 +943,6 @@ watch(
     }
   },
 );
-
-watch(
-  displayedMessages,
-  async (next, previous) => {
-    lastEventAt.value = new Date().toISOString();
-    if (next.length > 0) {
-      hasConversationStarted.value = true;
-    }
-    if (props.visible === false) return;
-    const prevHumanCount = (previous ?? []).filter(isHumanLikeMessage).length;
-    const nextHumanCount = next.filter(isHumanLikeMessage).length;
-    const hasNewUserTurn =
-      nextHumanCount > prevHumanCount &&
-      nextHumanCount !== lastAnchoredTurnCount;
-
-    if (!following.value && !hasNewUserTurn) {
-      unreadMessageCount.value += Math.max(
-        0,
-        next.length - (previous?.length ?? 0),
-      );
-      bufferedStreamActivity.value = true;
-      await nextTick();
-      syncBottomSpacerHeight();
-      return;
-    }
-
-    if (
-      drawerOpen.value ||
-      optionsOpen.value ||
-      inspector.value ||
-      snapshotMessages.value
-    ) {
-      return;
-    }
-
-    if (hasNewUserTurn) {
-      // Initial hydration of multi-turn history jumps immediately; interactive new user turns glide smoothly
-      const isInitialHydration =
-        (previous?.length ?? 0) === 0 && next.length > 1;
-      await anchorLatestUserTurn(!isInitialHydration);
-    } else if (following.value) {
-      await nextTick();
-      requestSmartStreamingFollow();
-    }
-  },
-  { flush: "post", deep: true },
-);
-
-async function follow() {
-  userScrolledUp.value = false;
-  following.value = true;
-  unreadMessageCount.value = 0;
-  bufferedStreamActivity.value = false;
-  await nextTick();
-  const vp = viewport.value;
-  if (!vp) return;
-  const { lastUserOffsetTop, contentBottomOffsetTop } =
-    syncBottomSpacerHeight();
-  await nextTick();
-  const anchorTop = computeTurnAnchorScrollTop({
-    turnCount: turnCount.value,
-    userElementOffsetTop: lastUserOffsetTop,
-    viewportClientHeight: vp.clientHeight,
-  });
-  const streamFollowTop = computeStreamingFollowScrollTop({
-    currentScrollTop: anchorTop,
-    viewportClientHeight: vp.clientHeight,
-    contentBottomOffsetTop,
-  });
-  const targetTop = streamFollowTop ?? anchorTop;
-  programmaticScrollUntil = Date.now() + 500;
-  lastKnownScrollTop = targetTop;
-  if (typeof vp.scrollTo === "function") {
-    vp.scrollTo({ top: targetTop, behavior: "smooth" });
-  } else {
-    vp.scrollTop = targetTop;
-  }
-}
-
-function handleViewportWheel(event: WheelEvent) {
-  if (event.deltaY < -2) {
-    userScrolledUp.value = true;
-    following.value = false;
-  }
-}
-
-function handleViewportScroll() {
-  if (props.visible === false) return;
-  const vp = viewport.value;
-  if (!vp) return;
-  const currentTop = vp.scrollTop;
-  const isProgrammatic = Date.now() < programmaticScrollUntil;
-
-  if (!isProgrammatic && currentTop < lastKnownScrollTop - 4) {
-    userScrolledUp.value = true;
-    following.value = false;
-  }
-  lastKnownScrollTop = currentTop;
-
-  const sentinelEl = contentEndSentinel.value;
-  const contentBottomOffsetTop = sentinelEl
-    ? getOffsetTopWithinViewport(sentinelEl, vp)
-    : undefined;
-  const nearBottom = isChatViewportNearContentBottom(
-    vp,
-    contentBottomOffsetTop,
-  );
-  if (nearBottom && !userScrolledUp.value) {
-    following.value = true;
-    unreadMessageCount.value = 0;
-    bufferedStreamActivity.value = false;
-  } else if (
-    nearBottom &&
-    userScrolledUp.value &&
-    !isProgrammatic &&
-    currentTop >=
-      Math.max(
-        0,
-        (contentBottomOffsetTop ?? vp.scrollHeight) - vp.clientHeight - 40,
-      )
-  ) {
-    userScrolledUp.value = false;
-    following.value = true;
-    unreadMessageCount.value = 0;
-    bufferedStreamActivity.value = false;
-  } else if (!nearBottom && !isProgrammatic) {
-    following.value = false;
-  }
-}
 
 const todos = computed(() =>
   Array.isArray(stream.values.value.todos)
@@ -1563,394 +1023,6 @@ function inspect(tool: ToolItem) {
   };
 }
 
-function cancelEdit() {
-  editCheckpoint.value = null;
-  editingMessageId.value = "";
-  editDraft.value = "";
-  editLoading.value = false;
-}
-
-function findParentCheckpointForMessage(
-  messageId: string,
-  messageText: string,
-): Checkpoint | null {
-  // 1. 优先查预计算的 messageMetadata
-  const meta = messageMetadata.value[messageId];
-  if (meta?.parentCheckpoint?.checkpoint_id) {
-    return meta.parentCheckpoint;
-  }
-
-  // 2. 本地历史按时间正序回溯查找
-  const matchMsg = (msg: unknown) => {
-    const obj = asObject(msg);
-    if (obj.id && obj.id === messageId) return true;
-    if (obj.key && obj.key === messageId) return true;
-    const type = String(obj.type || obj.role || "").toLowerCase();
-    if ((type === "human" || type === "user") && messageText) {
-      const content = typeof obj.content === "string" ? obj.content : "";
-      if (content.trim() && content.trim() === messageText.trim()) {
-        return true;
-      }
-    }
-    return false;
-  };
-
-  const states = [...history.value].reverse();
-  const firstSeenIndex = states.findIndex((state) =>
-    (state.values.messages ?? []).some(matchMsg),
-  );
-
-  if (firstSeenIndex > 0) {
-    return states[firstSeenIndex - 1].checkpoint;
-  }
-
-  if (firstSeenIndex === 0) {
-    const firstState = states[0];
-    if (firstState.parent_checkpoint?.checkpoint_id) {
-      return firstState.parent_checkpoint;
-    }
-  }
-
-  return null;
-}
-
-async function submitEditedBranch() {
-  if (!editDraft.value.trim()) return;
-  let checkpoint = editCheckpoint.value;
-  if (!checkpoint && editingMessageId.value) {
-    checkpoint = findParentCheckpointForMessage(
-      editingMessageId.value,
-      editDraft.value,
-    );
-    if (checkpoint) editCheckpoint.value = checkpoint;
-  }
-  if (!checkpoint) {
-    localError.value = "未找到该消息之前可恢复的检查点，无法安全创建分支";
-    return;
-  }
-  const draftText = editDraft.value;
-  cancelEdit();
-  await session.fork(checkpoint, draftText, recursionLimit.value);
-}
-let lastLoadedHistoryThreadId = session.threadId.value || props.threadId || "";
-async function loadHistory(reset = false, limit = 20) {
-  const currentThread = session.threadId.value;
-  if (!currentThread || historyLoading.value) return;
-  historyLoading.value = true;
-  try {
-    const rows = await session.service.history(
-      currentThread,
-      reset ? undefined : history.value[history.value.length - 1]?.checkpoint,
-      limit,
-    );
-    if (disposed || session.threadId.value !== currentThread) return;
-    if (reset) {
-      const isSameHeadCheckpoint =
-        lastLoadedHistoryThreadId === currentThread &&
-        history.value.length > 0 &&
-        history.value.length === rows.length &&
-        history.value[0]?.checkpoint?.checkpoint_id ===
-          rows[0]?.checkpoint?.checkpoint_id;
-      if (
-        !isSameHeadCheckpoint &&
-        (rows.length > 0 ||
-          history.value.length === 0 ||
-          lastLoadedHistoryThreadId !== currentThread)
-      ) {
-        history.value = rows;
-        lastLoadedHistoryThreadId = currentThread;
-      }
-    } else {
-      const seenIds = new Set(
-        history.value.map((r) => r.checkpoint.checkpoint_id),
-      );
-      const appended = rows.filter(
-        (r) => !seenIds.has(r.checkpoint.checkpoint_id),
-      );
-      history.value = [...history.value, ...appended];
-    }
-    if (history.value.length > 0) {
-      chatSessionStore.setSessionHistory(
-        props.projectId,
-        currentThread,
-        history.value,
-      );
-    }
-    hasMoreHistory.value = rows.length === limit;
-  } catch (cause) {
-    if (!disposed) {
-      console.warn(
-        `[loadHistory] Failed to load history snapshot for ${currentThread}:`,
-        cause,
-      );
-    }
-  } finally {
-    if (!disposed) historyLoading.value = false;
-  }
-}
-
-const editDraft = ref("");
-const editingMessageId = ref("");
-async function retryMessage(id: string) {
-  await edit(id, "");
-  if (!disposed && editCheckpoint.value) {
-    const ok = await session.fork(editCheckpoint.value);
-    if (ok) {
-      cancelEdit();
-    }
-  }
-}
-
-function findForkCheckpointForMessage(messageId: string): string | undefined {
-  const meta = messageMetadata.value[messageId];
-  if (meta?.checkpointId) {
-    return meta.checkpointId;
-  }
-  const allMsgs = displayedMessages.value;
-  const targetIndex = allMsgs.findIndex(
-    (m) => m.id === messageId || (m as any).key === messageId,
-  );
-  const subsequentIds = new Set<string>();
-  if (targetIndex >= 0) {
-    for (let i = targetIndex + 1; i < allMsgs.length; i++) {
-      const id = allMsgs[i]?.id || (allMsgs[i] as any)?.key;
-      if (id) subsequentIds.add(id);
-    }
-  }
-
-  const matchMsg = (msg: unknown) => {
-    const obj = asObject(msg);
-    return obj.id === messageId || obj.key === messageId;
-  };
-
-  // 在倒序历史中查找：必须包含目标消息，且绝不包含目标消息之后的后续消息
-  const matched = history.value.find((state) => {
-    const msgs = (state.values.messages ?? []) as unknown[];
-    const hasTarget = msgs.some(matchMsg);
-    if (!hasTarget) return false;
-    if (subsequentIds.size === 0) return true;
-    const hasSubsequent = msgs.some((msg) => {
-      const obj = asObject(msg);
-      const id = (obj.id || obj.key) as string;
-      return Boolean(id && subsequentIds.has(id));
-    });
-    return !hasSubsequent;
-  });
-
-  if (matched?.checkpoint?.checkpoint_id) {
-    return matched.checkpoint.checkpoint_id;
-  }
-
-  // 新分支开局防护：新分支通过快照初始化时通常仅有 1 个 checkpoint
-  // 只要目标消息后无后续用户消息（属于当前落定最新轮次），直接返回该唯一 checkpoint
-  const subsequentMsgs = targetIndex >= 0 ? allMsgs.slice(targetIndex + 1) : [];
-  const hasSubsequentHuman = subsequentMsgs.some(
-    (m) =>
-      m.type === "human" ||
-      (m as any).role === "user" ||
-      (m as any).role === "human",
-  );
-  if (
-    !hasSubsequentHuman &&
-    history.value.length === 1 &&
-    history.value[0]?.checkpoint?.checkpoint_id
-  ) {
-    return history.value[0].checkpoint.checkpoint_id;
-  }
-
-  return undefined;
-}
-
-const forkingCheckpointId = ref<string>();
-async function forkToNewThread(messageId: string, checkpointId?: string) {
-  const currentThreadId = session.threadId.value || props.threadId;
-  if (!currentThreadId || !messageId || forkingCheckpointId.value) return;
-  if (busy.value && !snapshotMessages.value) return;
-
-  forkingCheckpointId.value = checkpointId || messageId;
-  localError.value = "";
-  try {
-    let resolvedCheckpointId: string | undefined =
-      checkpointId || findForkCheckpointForMessage(messageId);
-
-    // 如果未命中且历史尚未完全拉取，向前分页循环拉取更早历史进行定位
-    if (!resolvedCheckpointId) {
-      let pageCount = 0;
-      while (!resolvedCheckpointId && pageCount < 5) {
-        pageCount++;
-        const oldestCheckpoint =
-          history.value[history.value.length - 1]?.checkpoint;
-        try {
-          const rows = await session.service.history(
-            currentThreadId,
-            oldestCheckpoint,
-            50,
-          );
-          if (disposed || !rows || rows.length === 0) break;
-          const existingIds = new Set(
-            history.value
-              .map((s) => s.checkpoint?.checkpoint_id)
-              .filter(Boolean),
-          );
-          const newRows = rows.filter(
-            (r) =>
-              r.checkpoint?.checkpoint_id &&
-              !existingIds.has(r.checkpoint.checkpoint_id),
-          );
-          if (newRows.length === 0) break;
-          history.value = [...history.value, ...newRows];
-          resolvedCheckpointId = findForkCheckpointForMessage(messageId);
-        } catch {
-          break;
-        }
-      }
-    }
-
-    // 兜底保护：只要目标消息后面没有后续的用户提问（HumanMessage），它就是当前会话落定的最新轮次，安全采用当前状态快照
-    if (!resolvedCheckpointId) {
-      const allMsgs = displayedMessages.value;
-      const targetIndex = allMsgs.findIndex(
-        (m) => m.id === messageId || (m as any).key === messageId,
-      );
-      const subsequentMsgs =
-        targetIndex >= 0 ? allMsgs.slice(targetIndex + 1) : [];
-      const hasSubsequentHuman = subsequentMsgs.some(
-        (m) =>
-          m.type === "human" ||
-          (m as any).role === "user" ||
-          (m as any).role === "human",
-      );
-      const isLatestTurn = targetIndex === -1 || !hasSubsequentHuman;
-      if (isLatestTurn) {
-        // 1. 优先采用本地历史的首个快照
-        resolvedCheckpointId =
-          history.value[0]?.checkpoint?.checkpoint_id || undefined;
-        // 2. 本地无历史时，向服务端查询当前 thread 的最新状态
-        if (!resolvedCheckpointId) {
-          try {
-            const currentState = await session.service.state(currentThreadId);
-            resolvedCheckpointId =
-              currentState?.checkpoint?.checkpoint_id ||
-              (currentState as any)?.checkpoint_id ||
-              undefined;
-          } catch {
-            /* ignore state fetch error */
-          }
-        }
-      }
-    }
-
-    // 终极保障：在单快照新分支中，若仍未命中但本地已有快照，直接采用该基线快照
-    if (
-      !resolvedCheckpointId &&
-      history.value.length === 1 &&
-      history.value[0]?.checkpoint?.checkpoint_id
-    ) {
-      resolvedCheckpointId =
-        history.value[0].checkpoint.checkpoint_id || undefined;
-    }
-
-    if (!resolvedCheckpointId) {
-      throw new Error(
-        "未找到该轮次有效的历史快照，无法创建分支（请刷新后重试）",
-      );
-    }
-
-    const sessionService = createSessionService(
-      createLanggraphAuthorizedFetch(),
-      props.projectId,
-    );
-    const newTitle = increasedForkTitle(props.threadTitle);
-    const target = await sessionService.fork(
-      currentThreadId,
-      resolvedCheckpointId,
-      newTitle,
-    );
-    if (!target?.thread_id) {
-      throw new Error("未能获取新分支会话 ID");
-    }
-    emit("fork-thread", target.thread_id);
-    emit("refresh");
-  } catch (cause) {
-    localError.value = cause instanceof Error ? cause.message : "创建分支失败";
-  } finally {
-    forkingCheckpointId.value = undefined;
-  }
-}
-
-const editCheckpoint = shallowRef<Checkpoint | null>(null);
-const editLoading = ref(false);
-async function edit(messageId: string, text: string) {
-  if (!canSend.value || !session.threadId.value) return;
-  localError.value = "";
-  // 即时响应：先进入编辑模式展开输入框，给用户最流畅的交互体验
-  editingMessageId.value = messageId;
-  editDraft.value = text;
-  editCheckpoint.value = null;
-
-  // 1. 优先本地内存秒级回溯检查点
-  let targetCheckpoint = findParentCheckpointForMessage(messageId, text);
-  if (targetCheckpoint) {
-    editCheckpoint.value = targetCheckpoint;
-    return;
-  }
-
-  // 2. 本地历史若未命中，仅拉取单次更早历史补充后重试
-  editLoading.value = true;
-  try {
-    const rows = await session.service.history(
-      session.threadId.value,
-      undefined,
-      100,
-    );
-    if (disposed) return;
-    if (rows && rows.length > 0) {
-      history.value = rows;
-      targetCheckpoint = findParentCheckpointForMessage(messageId, text);
-      if (targetCheckpoint) {
-        editCheckpoint.value = targetCheckpoint;
-        return;
-      }
-    }
-
-    // 3. 兜底浅层回溯（最多 10 次，严禁死循环）
-    let current = await session.service.state(session.threadId.value);
-    const contains = (state: ChatCheckpoint) =>
-      (state.values.messages ?? []).some((m) => {
-        const obj = asObject(m);
-        return (
-          obj.id === messageId ||
-          obj.key === messageId ||
-          ((obj.type === "human" || obj.role === "user") &&
-            typeof obj.content === "string" &&
-            text &&
-            obj.content.trim() === text.trim())
-        );
-      });
-    for (let depth = 0; depth < 10 && !disposed; depth++) {
-      if (!contains(current) || !current.parent_checkpoint) break;
-      const parent = await session.service.state(
-        session.threadId.value,
-        current.parent_checkpoint,
-      );
-      if (!contains(parent)) {
-        editCheckpoint.value = parent.checkpoint;
-        return;
-      }
-      current = parent;
-    }
-
-    if (!disposed && !editCheckpoint.value) {
-      localError.value = "未找到该消息之前可恢复的检查点，无法安全创建分支";
-    }
-  } catch (cause) {
-    if (!disposed)
-      localError.value =
-        cause instanceof Error ? cause.message : "读取分支失败";
-  } finally {
-    if (!disposed) editLoading.value = false;
-  }
-}
 watch(
   [session.threadId, busy, checking],
   ([id, running, verifying], prev) => {
@@ -1990,7 +1062,6 @@ function visibilityChanged() {
 document.addEventListener("visibilitychange", visibilityChanged);
 onScopeDispose(() => {
   disposed = true;
-  if (scrollRafId !== null) cancelAnimationFrame(scrollRafId);
   document.removeEventListener("visibilitychange", visibilityChanged);
 });
 
@@ -2175,6 +1246,7 @@ defineExpose({
       重新检查
     </BaseButton>
   </div>
+  <div v-else-if="props.visible === false" class="hidden" aria-hidden="true" />
   <div v-else class="pw-chat-workspace min-w-0">
     <header v-if="!focusMode" class="pw-chat-workspace-header">
       <div
@@ -2403,7 +1475,6 @@ defineExpose({
               class="sticky top-0 z-10 mb-4"
               :is-running="isSessionRunning"
               :is-interrupted="isSessionInterrupted"
-              :has-structured-interrupt="hasPendingInterrupts"
               :last-event-at="lastEventAt"
               :error="error || streamError"
               :disabled="!canWrite || cancelling"
@@ -2549,12 +1620,11 @@ defineExpose({
               aria-hidden="true"
             />
             <div
-              v-if="turnCount > 1"
+              v-if="turnCount > 1 && bottomSpacerHeightPx > 0"
               data-testid="chat-turn-spacer"
-              class="w-full shrink-0 pointer-events-none"
+              class="w-full shrink-0 pointer-events-none transition-[height] duration-150"
               :style="{
                 height: `${bottomSpacerHeightPx}px`,
-                minHeight: bottomSpacerHeightPx ? undefined : '56vh',
               }"
               aria-hidden="true"
             />
@@ -2687,7 +1757,7 @@ defineExpose({
       </template>
     </ChatComposer>
     <ChatRunOptionsDialog
-      :show="props.visible !== false && optionsOpen"
+      :show="optionsOpen"
       :draft-run-options="draftRunOptions"
       :runtime-models="models"
       :show-execution-mode="showExecutionMode"
@@ -2703,7 +1773,7 @@ defineExpose({
       @apply="applyOptions"
     />
     <ChatContextDrawer
-      :show="props.visible !== false && drawerOpen"
+      :show="drawerOpen"
       :initial-tab="drawerTab"
       :show-history="true"
       :show-artifacts="hasArtifacts"
@@ -2732,7 +1802,7 @@ defineExpose({
       @fork="handleSnapshotFork"
     />
     <BaseDialog
-      :show="props.visible !== false && !!inspector"
+      :show="!!inspector"
       :title="inspector?.title ?? '详情'"
       width="wide"
       @close="inspector = null"

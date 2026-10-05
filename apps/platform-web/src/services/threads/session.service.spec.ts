@@ -232,3 +232,15 @@ it("summarizes thread title with POST request", async () => {
   });
   expect(res.title).toBe("智能标题");
 });
+
+it("rejects empty or whitespace-only threadId to prevent invalid path requests", () => {
+  const service = createSessionService(vi.fn(), "project");
+  for (const empty of ["", "   ", "\t\n"]) {
+    expect(() => service.state(empty)).toThrow("Invalid threadId");
+    expect(() => service.history(empty)).toThrow("Invalid threadId");
+    expect(() => service.resume(empty, {})).toThrow("Invalid threadId");
+    expect(() => service.fork(empty, "cp")).toThrow("Invalid threadId");
+    expect(() => service.update(empty, {})).toThrow("Invalid threadId");
+    expect(() => service.summarizeTitle(empty)).toThrow("Invalid threadId");
+  }
+});

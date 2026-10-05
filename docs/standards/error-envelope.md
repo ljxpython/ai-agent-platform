@@ -9,5 +9,6 @@
 - `request_id` 位于根级且等于 `x-request-id` 响应头。`error.extra` 仅在有安全字段时出现。
 - 平台本地业务码保持原名；上游机器码必须在[精确清单](../projects/20260926-error-response-contract/error-catalog.md)登记并匹配来源 HTTP 状态。未知正文不公开。
 - Runtime 来源401对外为502 `runtime_delegation_rejected`；403保持403；5xx通常转502；超时504；`memory_storage_unavailable`来源503对外502且保留该机器码。`extra.upstream_status_code` 记录真实来源状态。
+- 前端不得把网络失败、502/503/504 解释为权限撤销，也不得以此清除登录会话。403 只触发对应作用域的权威复核，项目 `/access` 空权限与 `project_not_found` 明确收回访问；路由不存在的 404 不作为撤权依据。
 - 上游 `thread_id/reconcile_path` 不透传；仅平台创建Thread结果未知时由平台生成并附加，客户端必须先调用 reconcile，不能直接重建。
 - 422详情最多20项，只有有界 `loc/type/message`；上游原文、任意extra、Cookie/Authorization等响应头均不公开。500固定 `internal_server_error` / `Internal server error`。

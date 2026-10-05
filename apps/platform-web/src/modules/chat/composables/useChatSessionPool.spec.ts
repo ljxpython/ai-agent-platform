@@ -66,10 +66,18 @@ it("delivers a background thread ACK only when its own view returns", () => {
     onRevoked: vi.fn(),
   };
   pool.attachView(b, view);
+  expect(b.visible.value).toBe(true);
+  expect(b.view.value).toBe(view);
+
   pool.bindThread(a, "thread-a");
   a.pendingThreadRoute = "thread-a";
   expect(onThread).not.toHaveBeenCalled();
+
   pool.attachView(a, view);
+  expect(b.visible.value).toBe(false);
+  expect(b.view.value).toBeUndefined();
+  expect(a.visible.value).toBe(true);
+  expect(a.view.value).toBe(view);
   expect(onThread).toHaveBeenCalledTimes(1);
   expect(onThread).toHaveBeenCalledWith("thread-a");
   expect(a.pendingThreadRoute).toBeUndefined();
@@ -100,4 +108,33 @@ it("keeps draft, attachments, and run options on their own Thread entry", () => 
   expect(b.recursionLimit.value).toBe(1000);
   pool.clearScope();
   expect(pool.entries.size).toBe(0);
+});
+
+it("cleans up draft mappings once bound to thread and rejects reusing bound entries as drafts", () => {
+  const pool = createChatSessionPool();
+  const draft = pool.acquire(
+    "u:e:p",
+    "p",
+    "chat",
+    target,
+    undefined,
+    "draft-1",
+  );
+  const initialInstanceId = draft.instanceId;
+
+  // 绑定真实 threadId
+  pool.bindThread(draft, "thread-1");
+  expect(draft.threadId.value).toBe("thread-1");
+
+  // 再次以相同的 draft-1 请求草稿，必须返回全新 entry，绝对不能返回已经绑定 thread-1 的旧 entry！
+  const freshDraft = pool.acquire(
+    "u:e:p",
+    "p",
+    "chat",
+    target,
+    undefined,
+    "draft-1",
+  );
+  expect(freshDraft.instanceId).not.toBe(initialInstanceId);
+  expect(freshDraft.threadId.value).toBeUndefined();
 });
