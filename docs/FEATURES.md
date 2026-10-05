@@ -9,7 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| 定时 Agent 任务页面 | deferred：同事开发，后端契约已交付，浏览器联合验收待执行 | [前端交接](projects/20261005-scheduled-agent-tasks/frontend-handoff.md) |
+| 定时 Agent 任务页面 | 已完成：实装现代化卡片网格列表、双栏创建/编辑抽屉、DeerFlow 预设体系、历史记录抽屉与权限守卫，481 套单测、类型检查与生产打包全绿 | [前端交接](projects/20261005-scheduled-agent-tasks/frontend-handoff.md) |
 | Chat 顶栏选择 Agent 历史会话队列联动过滤与 Pad 侧栏体验治理 | 已完成：修正 currentSelectedAgent 优先级倒挂、拔除 graph_id 过滤劫持恢复 agent_id 精准匹配、优化 Pad 侧边栏折叠交互，210项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-agent-history-filter-fix.md) |
 | Chat 对话体验优化（视口倒滚/流式跟随/消息秒蒸发）与切屏权限失效自爆根治 | 已完成：视口防倒滚精准锚定、rAF 60fps 原生流式跟随、切除 computed 副作用根治消息闪退、加固 SWR 权限驻留与具名事件解绑彻底根除切屏报错，212项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-viewport-smooth-follow-fix.md) |
 | 多会话切换切回假死死锁、空白消息水合缺失与投递报错隔离 | 已完成：切回终态收敛、落盘轻量水合、队列自动消费与报错展示隔离全链路闭环，422项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-session-switch-healing-and-receipt-isolation.md) |

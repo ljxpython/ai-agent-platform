@@ -5,13 +5,20 @@ const workspaceChildren: RouteRecordRaw[] = [
     path: "thread-governance",
     name: "workspace-thread-governance",
     component: () => import("@/modules/chat/pages/ThreadGovernancePage.vue"),
-    meta: { title: "会话治理", requiredPermissions: ["platform.super_admin.manage"] },
+    meta: {
+      title: "会话治理",
+      requiredPermissions: ["platform.super_admin.manage"],
+    },
   },
   {
     path: "projects/:projectId/thread-governance",
     name: "workspace-project-thread-governance",
     component: () => import("@/modules/chat/pages/ThreadGovernancePage.vue"),
-    meta: { title: "项目会话治理", requiredPermissions: ["project.runtime.write"], permissionProjectSource: "route" },
+    meta: {
+      title: "项目会话治理",
+      requiredPermissions: ["project.runtime.write"],
+      permissionProjectSource: "route",
+    },
   },
   {
     path: "models",
@@ -79,6 +86,17 @@ const workspaceChildren: RouteRecordRaw[] = [
     },
   },
   {
+    path: "projects/:projectId/scheduled-tasks",
+    name: "workspace-scheduled-tasks",
+    component: () =>
+      import("@/modules/scheduled-tasks/pages/ScheduledTasksPage.vue"),
+    meta: {
+      title: "定时任务",
+      requiredPermissions: ["project.runtime.read"],
+      permissionProjectSource: "route",
+    },
+  },
+  {
     path: "projects/:projectId/chat/:threadId?",
     name: "workspace-chat",
     component: () => import("@/modules/chat/pages/ChatPage.vue"),
@@ -103,7 +121,8 @@ const workspaceChildren: RouteRecordRaw[] = [
   {
     path: "projects/:projectId/dear-agent-skills",
     name: "workspace-dear-agent-skills",
-    component: () => import("@/modules/dear-agent/pages/DearAgentSkillsPage.vue"),
+    component: () =>
+      import("@/modules/dear-agent/pages/DearAgentSkillsPage.vue"),
     meta: {
       title: "Dear Agent Skills",
       requiredPermissions: ["project.runtime.read"],
@@ -113,7 +132,8 @@ const workspaceChildren: RouteRecordRaw[] = [
   {
     path: "projects/:projectId/dear-agent-artifacts",
     name: "workspace-dear-agent-artifacts",
-    component: () => import("@/modules/dear-agent/pages/DearAgentArtifactsPage.vue"),
+    component: () =>
+      import("@/modules/dear-agent/pages/DearAgentArtifactsPage.vue"),
     meta: {
       title: "Dear Agent 成果",
       requiredPermissions: ["project.runtime.read"],
@@ -123,7 +143,8 @@ const workspaceChildren: RouteRecordRaw[] = [
   {
     path: "projects/:projectId/dear-agent-memory",
     name: "workspace-dear-agent-memory",
-    component: () => import("@/modules/dear-agent/pages/DearAgentMemoryPage.vue"),
+    component: () =>
+      import("@/modules/dear-agent/pages/DearAgentMemoryPage.vue"),
     meta: {
       title: "Dear Agent 记忆",
       requiredPermissions: ["project.runtime.read"],
@@ -135,7 +156,6 @@ const workspaceChildren: RouteRecordRaw[] = [
     name: "workspace-access-unavailable",
     component: () => import("@/views/workspace/AccessUnavailableView.vue"),
     meta: { title: "无法访问" },
-
   },
   {
     path: "",
@@ -341,10 +361,27 @@ const navigation: Record<
     icon: "runtime",
   },
   "workspace-graphs": { group: "项目管理", label: "Graphs", icon: "graph" },
+  "workspace-scheduled-tasks": {
+    group: "项目管理",
+    label: "定时任务",
+    icon: "activity",
+  },
   "workspace-users": { group: "平台管理", label: "用户", icon: "users" },
-  "workspace-platform-models": { group: "平台管理", label: "模型连接", icon: "runtime" },
-  "workspace-thread-governance": { group: "平台管理", label: "会话治理", icon: "shield" },
-  "workspace-project-thread-governance": { group: "项目管理", label: "会话治理", icon: "shield" },
+  "workspace-platform-models": {
+    group: "平台管理",
+    label: "模型连接",
+    icon: "runtime",
+  },
+  "workspace-thread-governance": {
+    group: "平台管理",
+    label: "会话治理",
+    icon: "shield",
+  },
+  "workspace-project-thread-governance": {
+    group: "项目管理",
+    label: "会话治理",
+    icon: "shield",
+  },
   "workspace-control-plane": {
     group: "平台管理",
     label: "控制面",
