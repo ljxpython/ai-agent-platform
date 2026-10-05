@@ -1806,6 +1806,24 @@ async def create_thread_run(
     )
 
 
+@router.post("/threads/{thread_id}/runs/queue")
+async def manage_thread_run_queue(
+    request: Request,
+    thread_id: str,
+    payload: dict[str, Any] = Body(...),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    return _redact_runtime_private_fields(
+        await service.manage_thread_run_queue(
+            actor=actor,
+            project_id=_require_project_id(request),
+            thread_id=thread_id,
+            payload=payload,
+        )
+    )
+
+
 @router.post("/threads/{thread_id}/runs/stream")
 async def stream_thread_run(
     request: Request,

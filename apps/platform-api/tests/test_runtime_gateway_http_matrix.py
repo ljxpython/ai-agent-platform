@@ -54,6 +54,7 @@ CASES = [
     ("POST", "/threads/{thread_id}/state", "update_thread_state"),
     ("POST", "/threads/{thread_id}/history", "get_thread_history"),
     ("POST", "/threads/{thread_id}/runs", "create_thread_run"),
+    ("POST", "/threads/{thread_id}/runs/queue", "manage_thread_run_queue"),
     ("POST", "/threads/{thread_id}/runs/stream", "stream_thread_run"),
     ("POST", "/threads/{thread_id}/commands", "send_thread_command"),
     ("POST", "/threads/{thread_id}/stream/events", "stream_thread_events"),

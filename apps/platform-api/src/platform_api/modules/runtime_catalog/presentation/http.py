@@ -147,7 +147,11 @@ def authorize_runtime_memory(
 
 
 @router.post("/internal/thread-authorization")
-def authorize_runtime_threads(request: Request, payload: dict) -> dict:
+def authorize_runtime_threads(
+    request: Request,
+    payload: dict,
+    service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
+) -> dict:
     """Batch ACL lookup for Runtime; the platform database remains authoritative."""
     stamp = request.headers.get("x-runtime-acl-timestamp", "")
     signature = request.headers.get("x-runtime-acl-signature", "")
@@ -236,7 +240,55 @@ def authorize_runtime_threads(request: Request, payload: dict) -> dict:
             )
         if permitted:
             allowed.append(thread_id)
-    return {"allowed_thread_ids": allowed}
+    execution = payload.get("execution")
+    result = {"allowed_thread_ids": allowed}
+    if execution is not None:
+        if (
+            not isinstance(execution, dict)
+            or len(targets) != 1
+            or action not in {"comment", "approve"}
+        ):
+            raise ForbiddenError(
+                code="runtime_acl_invalid_request", message="Invalid execution check"
+            )
+        agent_key = execution.get("agent_key")
+        model_id = execution.get("model_id")
+        if (
+            not isinstance(agent_key, str)
+            or not agent_key
+            or (model_id is not None and not isinstance(model_id, str))
+        ):
+            raise ForbiddenError(
+                code="runtime_acl_invalid_request", message="Invalid execution target"
+            )
+        if allowed:
+            service._authorize_model_reference(
+                {
+                    "actor": {
+                        "principal_type": actor.principal_type,
+                        "user_id": actor.user_id,
+                        "credential_id": credential_id,
+                    },
+                    "agent_key": agent_key,
+                    "model_id": model_id,
+                    "thread_id": targets[0],
+                    "thread_action": action,
+                },
+                project_id,
+            )
+            from platform_api.modules.runtime_policies.application.service import (
+                RuntimePolicyOverlayService,
+            )
+
+            result.update(
+                RuntimePolicyOverlayService(
+                    session_factory=factory,
+                    runtime_base_url=request.app.state.settings.langgraph_upstream_url,
+                ).resolve_tool_overrides(
+                    project_id=project_id, user_id=actor.user_id, graph_id=agent_key
+                )
+            )
+    return result
 
 
 @router.get("/internal/message-authorization")

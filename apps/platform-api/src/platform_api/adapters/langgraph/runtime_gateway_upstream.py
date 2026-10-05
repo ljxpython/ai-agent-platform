@@ -339,6 +339,13 @@ class LangGraphRuntimeGatewayUpstream:
     ) -> Any:
         return await self._runs.list(thread_id, params)
 
+    async def manage_thread_run_queue(
+        self, thread_id: str, payload: dict[str, Any]
+    ) -> Any:
+        return await self._http.require_json(
+            "POST", f"/threads/{thread_id}/runs/queue", payload=payload
+        )
+
     async def delete_thread_run(self, thread_id: str, run_id: str) -> Any:
         return await self._runs.delete(thread_id, run_id)
 

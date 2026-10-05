@@ -1226,6 +1226,8 @@ export function useChatSession(options: {
     canSend,
     status,
     send,
+    prepareQueueContent: (content: unknown) =>
+      prepareMessageAttachments(threadId.value!, content),
     approve,
     answerClarification,
     resumeClarification,

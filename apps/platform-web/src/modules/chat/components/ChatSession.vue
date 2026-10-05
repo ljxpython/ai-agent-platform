@@ -20,7 +20,6 @@ import ChatAgentStatusBar from "./ChatAgentStatusBar.vue";
 import {
   resolveDisplayedMessages,
   hasOptimisticEchoed,
-  extractMessageText,
 } from "../message-alignment";
 import { RouterLink } from "vue-router";
 import { buildChatMessageMetadata, getChatBranchContext } from "../branching";
@@ -60,6 +59,7 @@ import MessageContent from "./MessageContent.vue";
 import TrajectoryView from "./trajectory/TrajectoryView.vue";
 import QueuedMessagesBanner from "./QueuedMessagesBanner.vue";
 import { usePromptQueue } from "../composables/usePromptQueue";
+import { useServerPromptQueue } from "../composables/useServerPromptQueue";
 
 const activeView = ref<"chat" | "trajectory">("chat");
 
@@ -516,13 +516,25 @@ function handleSnapshotFork() {
   }
 }
 
-const promptQueueKey = computed(() =>
+const legacyPromptQueueKey = computed(() =>
   session.threadId.value && authStore.user?.id
     ? `prompt_queue:${authStore.user.id}:${props.projectId}:${session.threadId.value}`
     : "",
 );
-const promptQueue = usePromptQueue(promptQueueKey);
-
+const legacyPromptQueue = usePromptQueue(legacyPromptQueueKey);
+const queueReceiptKey = computed(() =>
+  session.threadId.value && authStore.user?.id
+    ? `submitted_queue:${authStore.user.id}:${props.projectId}:${session.threadId.value}`
+    : "",
+);
+const promptQueue = useServerPromptQueue({
+  threadId: session.threadId,
+  service: session.service,
+  graphId: props.graphId,
+  context,
+  recursionLimit,
+  storageKey: queueReceiptKey,
+});
 const isDrainingQueue = ref(false);
 
 const isSessionRunning = computed(() => {
@@ -533,145 +545,34 @@ const isSessionRunning = computed(() => {
     Boolean(stream.isLoading?.value) ||
     runStatus === "running" ||
     runStatus === "pending" ||
-    isDrainingQueue.value ||
     checking.value ||
     actions.current.value?.status === "submitting" ||
     Boolean(optimisticUserMessage.value)
   );
 });
 
-watch(
-  [
-    () => displayedMessages.value,
-    () => promptQueue.queue.value.length,
-    () => session.stream.values?.value,
-  ],
-  ([msgs]) => {
-    if (promptQueue.queue.value.length === 0 || isDrainingQueue.value) return;
-    const rawValuesMessages = (
-      session.stream.values?.value as
-        | { messages?: Array<{ id?: string }> }
-        | undefined
-    )?.messages;
-    const committedIds =
-      Array.isArray(rawValuesMessages) && rawValuesMessages.length > 0
-        ? new Set(rawValuesMessages.map((m) => m?.id).filter(Boolean))
-        : null;
-    const persistedHumanTexts = new Set(
-      msgs
-        .filter((m) => {
-          if (
-            m.type !== "human" ||
-            String(m.id ?? "").startsWith("optimistic-")
-          )
-            return false;
-          if (committedIds) return Boolean(m.id && committedIds.has(m.id));
-          return !busy.value && !checking.value;
-        })
-        .slice(-6)
-        .map((m) => extractMessageText(m.content))
-        .filter(Boolean),
-    );
-    if (persistedHumanTexts.size === 0) return;
-    for (const item of [...promptQueue.queue.value]) {
-      const itemText = extractMessageText(item?.content);
-      if (item && itemText && persistedHumanTexts.has(itemText)) {
-        promptQueue.remove(item.id);
-      }
-    }
-  },
-  { immediate: true },
-);
-
-async function sendQueuedContent(content: unknown) {
-  if (!content) return false;
-  const messageId = crypto.randomUUID();
-  const optimistic = coerceMessageLikeToMessage({
-    id: messageId,
-    type: "human",
-    content: content as any,
-  });
-  setOptimisticUserMessage(optimistic);
+async function submitQueuedMessage(content: unknown) {
   try {
-    const ok = await session.send(content, recursionLimit.value, {
-      fromQueue: true,
-      messageId,
-    });
-    if (!ok) {
-      setOptimisticUserMessage(null);
-      return false;
+    if (!session.threadId.value) throw new Error("请先创建会话");
+    if (!context.value.model_id && models.value.length) {
+      const fallback =
+        models.value.find((model) => model.id === defaultModelId.value) ??
+        models.value[0];
+      context.value = { ...context.value, model_id: fallback.id };
     }
-    return true;
-  } catch {
-    setOptimisticUserMessage(null);
+    const prepared = await session.prepareQueueContent(content);
+    const accepted = await promptQueue.enqueue(prepared);
+    if (!accepted) {
+      localError.value = promptQueue.pending.value
+        ? "排队结果待确认，请先重试原消息"
+        : promptQueue.error.value || "排队请求被拒绝";
+    }
+    return accepted;
+  } catch (cause) {
+    localError.value = cause instanceof Error ? cause.message : String(cause);
     return false;
   }
 }
-
-async function drainNextQueuedItem() {
-  if (isDrainingQueue.value) return;
-  if (
-    busy.value ||
-    Boolean(stream.isLoading?.value) ||
-    !canSend.value ||
-    cancelling.value ||
-    hasPendingInterrupts.value ||
-    reviews.value.length > 0
-  ) {
-    return;
-  }
-  if (promptQueue.queue.value.length === 0) return;
-
-  isDrainingQueue.value = true;
-  let nextItem: ReturnType<typeof promptQueue.dequeue> | null = null;
-  try {
-    nextItem = promptQueue.dequeue();
-    if (!nextItem) return;
-    const ok = await sendQueuedContent(nextItem.content);
-    if (!ok && !disposed) {
-      promptQueue.queue.value = [nextItem, ...promptQueue.queue.value];
-    }
-  } catch {
-    if (nextItem && !disposed) {
-      promptQueue.queue.value = [nextItem, ...promptQueue.queue.value];
-    }
-  } finally {
-    isDrainingQueue.value = false;
-  }
-}
-
-watch(
-  [
-    busy,
-    () => Boolean(stream.isLoading?.value),
-    canSend,
-    hasPendingInterrupts,
-    () => promptQueue.queue.value.length,
-  ],
-  async ([isBusy, isStreamLoading, isCanSend, hasInterrupt, queueLen]) => {
-    if (
-      !isBusy &&
-      !isStreamLoading &&
-      isCanSend &&
-      !hasInterrupt &&
-      queueLen > 0 &&
-      !cancelling.value
-    ) {
-      await new Promise((r) => setTimeout(r, 350));
-      if (
-        !busy.value &&
-        !stream.isLoading?.value &&
-        canSend.value &&
-        !hasPendingInterrupts.value &&
-        promptQueue.queue.value.length > 0 &&
-        !cancelling.value
-      ) {
-        await drainNextQueuedItem();
-      }
-    }
-  },
-  { flush: "post" },
-);
 
 async function send(queued = false) {
   const isAgentActive =
@@ -680,6 +581,7 @@ async function send(queued = false) {
     (Boolean(session.threadId.value) && !session.verified.value) ||
     isSessionRunning.value ||
     promptQueue.queue.value.length > 0 ||
+    Boolean(promptQueue.pending.value) ||
     actions.current.value?.status === "submitting" ||
     Boolean(optimisticUserMessage.value);
   const shouldQueue = queued || isAgentActive;
@@ -695,25 +597,14 @@ async function send(queued = false) {
     const content = attachments.value.length
       ? [{ type: "text", text: props.draft }, ...attachments.value]
       : props.draft;
-    emit("update:draft", "");
-    attachments.value = [];
-    follow();
-    promptQueue.enqueue(content);
-    return;
-  }
-  if (!canSubmit.value) {
-    if (
-      props.canWrite &&
-      (props.draft.trim().length > 0 || attachments.value.length > 0)
-    ) {
-      const content = attachments.value.length
-        ? [{ type: "text", text: props.draft }, ...attachments.value]
-        : props.draft;
+    if (await submitQueuedMessage(content)) {
       emit("update:draft", "");
       attachments.value = [];
       follow();
-      promptQueue.enqueue(content);
     }
+    return;
+  }
+  if (!canSubmit.value) {
     return;
   }
   if (!context.value.model_id && models.value.length) {
@@ -788,9 +679,14 @@ async function send(queued = false) {
           throw new Error(session.error.value);
         }
         setOptimisticUserMessage(null);
+        if (!(await submitQueuedMessage(content))) {
+          emit("update:draft", submittedDraft || "");
+          attachments.value = Array.from(
+            submittedAttachments,
+          ) as ChatAttachmentBlock[];
+        }
         submittedDraft = undefined;
         submittedAttachments = new Set();
-        promptQueue.enqueue(content);
       }
     } catch {
       setOptimisticUserMessage(null);
@@ -813,10 +709,14 @@ const visibleReceipts = computed(() =>
   ),
 );
 
-function restoreQueuedDraft(content?: unknown, messageId?: string) {
+async function restoreQueuedDraft(content?: unknown, messageId?: string) {
   if (messageId) {
     dismissedReceiptIds.value.add(messageId);
-    promptQueue.remove(messageId);
+    if (promptQueue.queue.value.some((item) => item.id === messageId)) {
+      if (!(await promptQueue.remove(messageId))) return;
+    } else {
+      legacyPromptQueue.remove(messageId);
+    }
   }
   const restoringPending = content === undefined;
   content ??= session.pendingMessage.value?.payload.content;
@@ -929,15 +829,7 @@ watch(
         } else {
           // 当前 Run 已经结束：主动拉取最新轻量历史，水合断流导致的空白或半截消息
           await loadHistory(true, 10);
-          // 若存在因假死而滞留在本地待执行队列里的消息，自动触发顺延补发
-          if (
-            promptQueue.queue.value.length > 0 &&
-            !busy.value &&
-            canSend.value &&
-            !cancelling.value
-          ) {
-            await drainNextQueuedItem();
-          }
+          await promptQueue.refresh();
         }
       });
     }
@@ -1595,6 +1487,37 @@ defineExpose({
                 "
                 @submit="session.approve"
               />
+            </div>
+            <div
+              v-if="promptQueue.pending.value"
+              role="alert"
+              class="mx-auto w-full max-w-3xl rounded-xl border border-amber-500/40 p-3 text-xs"
+            >
+              排队提交结果待确认；请用原消息和原幂等键重试。
+              <button
+                type="button"
+                class="ml-2 underline"
+                @click="promptQueue.retry()"
+              >
+                核实并重试
+              </button>
+            </div>
+            <div
+              v-if="legacyPromptQueue.queue.value.length"
+              class="mx-auto w-full max-w-3xl rounded-xl border p-3 text-xs"
+            >
+              本机有
+              {{ legacyPromptQueue.queue.value.length }}
+              条旧版未提交草稿，不会自动执行。
+              <button
+                v-for="item in legacyPromptQueue.queue.value"
+                :key="item.id"
+                type="button"
+                class="ml-2 underline"
+                @click="restoreQueuedDraft(item.content, item.id)"
+              >
+                恢复草稿
+              </button>
             </div>
             <QueuedMessagesBanner
               :queue-items="promptQueue.queue.value"

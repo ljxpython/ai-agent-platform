@@ -3170,6 +3170,29 @@ class RuntimeGatewayService:
             thread_id, _normalize_payload(params)
         )
 
+    async def manage_thread_run_queue(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        payload: dict[str, Any],
+    ) -> Any:
+        thread = await self._load_thread(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            write=True,
+        )
+        upstream = await self._thread_upstream(
+            project_id=project_id,
+            thread=thread,
+            operation="thread-edit",
+        )
+        return await upstream.manage_thread_run_queue(
+            thread_id, _normalize_payload(payload)
+        )
+
     async def delete_thread_run(
         self,
         *,

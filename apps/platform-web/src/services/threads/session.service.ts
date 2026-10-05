@@ -16,6 +16,14 @@ export type AccessPolicy = "review" | "workspace_write" | "full_access";
 export type ChatState = Record<string, unknown> & { messages: unknown[] };
 export type ChatThread = Thread<ChatState>;
 export type ChatCheckpoint = ThreadState<ChatState>;
+export type QueuedRun = Run & {
+  queue_position?: number;
+  kwargs?: {
+    input?: { messages?: Array<{ id?: string; content?: unknown }> };
+    command?: unknown;
+  };
+  metadata?: Record<string, unknown>;
+};
 export type ThreadAction =
   | "read"
   | "comment"
@@ -232,6 +240,43 @@ export function createSessionService(
     },
     runs: (threadId: string): Promise<Run[]> =>
       client.runs.list(assertValidThreadId(threadId), { limit: 20 }),
+    queuedRuns: async (threadId: string): Promise<QueuedRun[]> => {
+      const id = encodeURIComponent(assertValidThreadId(threadId));
+      const result: QueuedRun[] = [];
+      for (let offset = 0; ; offset += 100) {
+        const page = await read<QueuedRun[]>(
+          `/threads/${id}/runs?status=pending&limit=100&offset=${offset}`,
+        );
+        result.push(...page);
+        if (page.length < 100) return result;
+      }
+    },
+    enqueueRun: (threadId: string, body: unknown, key: string) =>
+      read<QueuedRun>(
+        `/threads/${encodeURIComponent(assertValidThreadId(threadId))}/runs`,
+        {
+          method: "POST",
+          headers: { "Idempotency-Key": key },
+          body: JSON.stringify(body),
+        },
+      ),
+    manageQueue: (
+      threadId: string,
+      operation: "cancel" | "reorder",
+      expectedRunIds: string[],
+      runIds: string[],
+    ) =>
+      read<QueuedRun[]>(
+        `/threads/${encodeURIComponent(assertValidThreadId(threadId))}/runs/queue`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            operation,
+            expected_run_ids: expectedRunIds,
+            run_ids: runIds,
+          }),
+        },
+      ),
     run: (threadId: string, runId: string) =>
       client.runs.get(assertValidThreadId(threadId), runId),
     cancel: (threadId: string, runId: string) =>

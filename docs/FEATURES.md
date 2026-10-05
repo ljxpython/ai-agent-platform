@@ -125,3 +125,5 @@
 | Dear Agent 个人记忆管理与跨会话闭环 | partial：无线程管理、本人队列多源、受信共享检查、180秒提取与召回降级已通过真实HTTP/隔离PG及独立MAOMAO模型测试；完整平台run/SSE、部署和前端联验未完成。前端由同事开发 | [记忆专项与前端交接](projects/20260920-dear-agent-memory/README.md) |
 
 | 多会话流连接与运行缓存治理 | post39 已发布并升级本地 Runtime；后台 SSE 暂停、队列继续执行，三会话切换与权限浏览器验收通过 | [专项](projects/20261005-chat-stream-resource-governance/README.md) |
+
+| Chat 服务端持久消息队列 | 规划完成，治理方案待评审；当前仍由页面消费 localStorage 队列，不支持关闭浏览器后自动提交后续消息 | [专项](projects/20261005-durable-chat-prompt-queue/README.md) |
