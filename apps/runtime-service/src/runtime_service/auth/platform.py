@@ -105,6 +105,8 @@ async def deny_image_scope_on_server_resources(
     scope = _user_value(ctx.user, "runtime_scope")
     if not isinstance(scope, dict) or scope.get("operation") not in {
         "read",
+        "cron-read",
+        "cron-write",
         "run-create",
         "thread-create",
         "thread-reconcile",
@@ -119,6 +121,40 @@ async def deny_image_scope_on_server_resources(
         )
     resource = str(ctx.resource)
     action = str(ctx.action)
+    if resource == "crons":
+        operation = scope["operation"]
+        if operation == "run-create" and action in {"create", "update"}:
+            if str(value.get("assistant_id") or "") != str(
+                scope.get("assistant_id") or ""
+            ):
+                raise Auth.exceptions.HTTPException(
+                    status_code=403, detail="Cron assistant scope mismatch"
+                )
+            if (value.get("thread_id") or None) != (scope.get("thread_id") or None):
+                raise Auth.exceptions.HTTPException(
+                    status_code=403, detail="Cron thread scope mismatch"
+                )
+        elif operation not in {"cron-read", "cron-write"} or action not in (
+            {"read", "search"}
+            if operation == "cron-read"
+            else {"read", "update", "delete"}
+        ):
+            raise Auth.exceptions.HTTPException(
+                status_code=403, detail="Cron operation mismatch"
+            )
+        # Execution payload updates require a fresh run-create delegation.
+        if operation == "cron-write" and set(value) - {"cron_id", "enabled"}:
+            raise Auth.exceptions.HTTPException(
+                status_code=403, detail="Cron execution update requires run-create"
+            )
+        filters = {
+            "project_id": scope["project_id"],
+            "scheduled_owner": _user_value(ctx.user, "identity"),
+            "scheduled_tenant": scope["tenant_id"],
+        }
+        if action in {"create", "update"} and "metadata" in value:
+            value["metadata"] = {**value["metadata"], **filters}
+        return filters
     bound_thread = scope.get("thread_id")
     requested_thread = value.get("thread_id")
     if (

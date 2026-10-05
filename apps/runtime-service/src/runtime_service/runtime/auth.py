@@ -111,6 +111,8 @@ def _parse_scope(raw: object) -> RuntimeScope:
         values[field] = value
     if values["operation"] not in {
         "read",
+        "cron-read",
+        "cron-write",
         "thread-create",
         "thread-reconcile",
         "run-create",
@@ -239,6 +241,8 @@ def verify_delegation_claims(
         scope.operation
         not in {
             "read",
+            "cron-read",
+            "cron-write",
             "thread-create",
             "thread-reconcile",
             "thread-edit",

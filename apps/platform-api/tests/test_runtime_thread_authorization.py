@@ -159,7 +159,9 @@ def test_create_authorization_requires_pending_owner() -> None:
         "user_id": "u1",
         "thread_ids": ["pending", "ready"],
     }
-    actor = SimpleNamespace(principal_type="user")
+    actor = SimpleNamespace(
+        principal_type="user", user_id="u1", project_role_set=lambda _: ["editor"]
+    )
     with (
         patch(
             "platform_api.modules.runtime_catalog.presentation.http.load_user_actor",

@@ -191,6 +191,8 @@ def create_runtime_delegation_token(
     operation = normalized_scope.get("operation")
     if operation not in {
         "read",
+        "cron-read",
+        "cron-write",
         "thread-create",
         "thread-reconcile",
         "run-create",
@@ -217,6 +219,8 @@ def create_runtime_delegation_token(
         raise ValueError("runtime delegation scope operation is unsupported")
     if operation not in {
         "read",
+        "cron-read",
+        "cron-write",
         "thread-create",
         "thread-reconcile",
         "thread-edit",

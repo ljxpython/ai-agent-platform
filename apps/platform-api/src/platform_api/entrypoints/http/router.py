@@ -17,6 +17,7 @@ from platform_api.modules.runtime_gateway.presentation import (
 from platform_api.modules.runtime_policies.presentation import (
     router as runtime_policies_router,
 )
+from platform_api.modules.scheduled_tasks.router import router as scheduled_tasks_router
 from platform_api.modules.service_accounts.router import (
     router as service_accounts_router,
 )
@@ -34,3 +35,4 @@ api_router.include_router(audit_router)
 api_router.include_router(runtime_catalog_router)
 api_router.include_router(runtime_policies_router)
 api_router.include_router(runtime_gateway_router)
+api_router.include_router(scheduled_tasks_router)

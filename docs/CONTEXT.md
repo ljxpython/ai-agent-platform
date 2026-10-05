@@ -8,6 +8,10 @@
 
 ## 最近改动
 
+2026-10-05 | **定时 Agent 任务**：后端与隔离验收 done；10 条产品接口、once/manual/预览/历史分页、每 Run 一次聚合授权、拒绝与审批失败留痕完成。GraphHarbor 双包 post41 已发布并独立安装，平台依赖已锁定安装；前端由同事开发，未部署现役或远端平台。见 [专项](projects/20261005-scheduled-agent-tasks/README.md)。
+
+### 同日流资源专项
+
 2026-10-05 | **多会话流连接与运行缓存治理**：done；GraphHarbor post39 双包正式发布并完成 PyPI 独立安装，本地 Runtime API/Worker 升级重启；Redis 清理确认终态与用户授权的 618 个未知遗留流后约 586 MiB。三会话连续切换、后台队列、六个 Run success 与消息去重浏览器验收通过；权限故障/真实撤权 4 项通过。见 [专项](projects/20261005-chat-stream-resource-governance/README.md)。
 
 ### 同日权限专项
@@ -21,6 +25,8 @@
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
+
+- [定时 Agent 任务](projects/20261005-scheduled-agent-tasks/README.md)：后端 done；平台 CRUD/once/manual/预览/分页和执行前拒绝审计完成，发布包隔离链路 22 Run（8 success、14 预期 error）。GraphHarbor 双包 post41 已发布并锁定安装；前端由同事开发与浏览器验收 deferred，现役/远端平台未部署。
 
 - [Chat 持久消息队列](projects/20261005-durable-chat-prompt-queue/README.md)：进行中，用户已批准治理方案；已核对 localStorage 消费根因、审批/FIFO/取消缺口，开始实施。现有平台修复已推送 `b85e00f`。
 
@@ -61,9 +67,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-05 | ACL 共享连接池与 10 秒超时已验证，已随本地 Runtime 重启生效。 升级锁定 GraphHarbor 0.13.0.post39（已发布），流缓存 TTL/终态回收与分页回放已生效，DeltaChannel 崩溃恢复与快照 dump 回退门禁测试通过（生产保持完整快照 Defer Delta）；定向测试全通 |
-| platform-api | 2026-10-03 | 平台用户软删除 DELETE /api/users/{user_id} 实装，内置三重安全栅栏（防自杀、最后超管、唯一项目管理员防孤儿项目），重命名释放原始用户名并吊销凭据；单测全通 |
-| platform-web | 2026-10-05 | 后台会话暂停 SSE 且队列持续消费，三会话连续切换和权限 4 条浏览器验证通过。权限快照状态、作用域拒绝、续期容错与刷新合并通过单测/浏览器验证。 智能体切换与后台审批轮询穿透隔离完成；智能体历史列表联动与 Pad 侧栏体验治理完成；视口防倒滚与 60fps 流式跟随实装；全仓 46 个测试套件全绿、vue-tsc 0 errors、生产打包通过 |
+| runtime-service | 2026-10-05 | GraphHarbor post41 已发布并锁定安装；cron 委托、原生时间预览/历史分页、四个 factory 执行前聚合授权和审批失败已隔离验收。现役 Runtime 未重启升级；原有 ACL 共享连接池与流缓存治理维持已验状态。 |
+| platform-api | 2026-10-05 | 定时 Agent 任务 10 条 API、手动幂等与 HMAC 执行授权/拒绝审计完成，发布包隔离验收通过；未部署现役或远端平台。平台用户软删除 DELETE /api/users/{user_id} 实装，内置三重安全栅栏（防自杀、最后超管、唯一项目管理员防孤儿项目），重命名释放原始用户名并吊销凭据；单测全通 |
+| platform-web | 2026-10-05 | 灵感胶囊栏生命周期收起治理完成（空白新会话展示，使用/对话后彻底隐藏）；后台会话暂停 SSE 且队列持续消费，三会话连续切换和权限 4 条浏览器验证通过。权限快照状态、作用域拒绝、续期容错与刷新合并通过单测/浏览器验证。 智能体切换与后台审批轮询穿透隔离完成；智能体历史列表联动与 Pad 侧栏体验治理完成；视口防倒滚与 60fps 流式跟随实装；全仓 105 个测试套件全绿、vue-tsc 0 errors、生产打包通过 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-04 | AGENTS.md 与 Skill 重复内容已去除（场景步骤 + 验证标准章节移入 Skill），CONTEXT.md 改为渐进式快照结构；整单结束前须逐项核对未完成任务，Task 未完成时只记 Phase |
 
 ## 近期关键决策

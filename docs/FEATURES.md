@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 定时 Agent 任务页面 | deferred：同事开发，后端契约已交付，浏览器联合验收待执行 | [前端交接](projects/20261005-scheduled-agent-tasks/frontend-handoff.md) |
 | Chat 顶栏选择 Agent 历史会话队列联动过滤与 Pad 侧栏体验治理 | 已完成：修正 currentSelectedAgent 优先级倒挂、拔除 graph_id 过滤劫持恢复 agent_id 精准匹配、优化 Pad 侧边栏折叠交互，210项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-agent-history-filter-fix.md) |
 | Chat 对话体验优化（视口倒滚/流式跟随/消息秒蒸发）与切屏权限失效自爆根治 | 已完成：视口防倒滚精准锚定、rAF 60fps 原生流式跟随、切除 computed 副作用根治消息闪退、加固 SWR 权限驻留与具名事件解绑彻底根除切屏报错，212项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-viewport-smooth-follow-fix.md) |
 | 多会话切换切回假死死锁、空白消息水合缺失与投递报错隔离 | 已完成：切回终态收敛、落盘轻量水合、队列自动消费与报错展示隔离全链路闭环，422项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-session-switch-healing-and-receipt-isolation.md) |
@@ -54,6 +55,7 @@
 | 前端对话会话 SWR 缓存与流式长效保活治理 | 部分完成：已有页面KeepAlive、SWR缓存；跨Thread实例保活、SDK恢复、真实普通链路及1/4条短容量已验；8条容量受HTTP/1.1浏览器origin连接槽限制，Final blocked | [原项目记录](projects/20260924-chat-session-cache-and-stream-resumption/README.md) · [SSE专项](projects/20260926-sse-event-contract/README.md) |
 | 工作区 HTML 现代化高保真安全预览 | 已完成：SandboxedHtmlFrame 升级为 sandbox="allow-scripts" 且 Origin 锁定为 null，更新安全沙箱徽章文案，单测通过 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
 | 对话输入灵感胶囊栏与微物理撒花小惊喜（ConfettiButton & ComposerSuggestions） | 已完成：实装基于 canvas-confetti 的五彩粒子喷射按钮与动态灵感胶囊栏，支持快捷填入小惊喜、写作、调研、分析等指令模板，与 ChatComposer 双向联动；单测与打包全通过 | [小惊喜迁移专项](projects/20261002-dearflow-surprise-me-feature/README.md) |
+| Chat 灵感胶囊栏生命周期与单次会话收起优化 | 已完成：灵感建议胶囊栏仅在空白新会话首次输入前展示，一旦在当前会话点击使用或产生对话后彻底收起，新建空白会话重置展示；单测、类型检查与打包全通过 | [变更记录](../apps/platform-web/docs/changes/20261005-chat-composer-suggestions-lifecycle.md) |
 | 长会话断流恢复解耦与历史快照按需懒加载治理 | 已完成：剥离 recoverExpiredStream 对 3.4MB 巨型 history 的阻塞强依赖，改为 state 毫秒级极速自愈 + history 后台静默预热软降级；加固 ChatSession 抽屉懒加载守卫并隔离全局横幅报错；单测全通与打包通过 | [历史懒加载治理专项](projects/20261002-chat-history-lazy-loading-and-timeout-resilience/README.md) |
 | Chat 前端对话 Clean Architecture 架构治理与中断/时序缺陷修复 | 已完成：对标谷歌开发范式，拆解上帝组件（ChatSession 净减 923 行），根治手动中断 400 报错与消息队列出队跳顶/并排时序倒挂；102 个测试套件、441 项单测全绿、vue-tsc 0 错误、生产打包通过 | [Chat 干净架构重构](projects/20261004-chat-frontend-clean-architecture-refactor/README.md) |
 | 平台用户管理软删除操作与自杀保护交互 | 已完成：操作菜单与详情页实装软删除操作、二次确认弹窗、防自杀禁用与状态筛选；单测及生产构建全绿 | [软删除治理](projects/20261003-platform-user-soft-delete/README.md) |
@@ -62,6 +64,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 定时 Agent 任务 API | 后端 done：CRUD、预览、once、pause/resume/manual、私有历史分页与执行拒绝审计；发布包隔离链路通过，未部署现役平台 | [专项](projects/20261005-scheduled-agent-tasks/README.md) |
 | 平台用户软删除与生命周期治理 | 已完成：实现 DELETE /api/users/{user_id}，内置防自杀、最后超管保护、唯一项目管理员防孤儿项目三重护栏，释放原始用户名与凭据吊销 | [软删除治理](projects/20261003-platform-user-soft-delete/README.md) |
 | 鉴权、项目治理、审计、catalog | 已完成 | `apps/platform-api/docs/handbook/project-handbook.md` |
 | 控制面 SQLite → PostgreSQL 迁移 | 已完成：本地 PG 真实切换，20 表一致；浏览器、容器重启、性能复测及双库恢复读回通过 | [迁移专项](projects/20260920-platform-api-postgresql-migration/README.md) · [运维规范](guides/database-operations.md) |
@@ -76,6 +79,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 定时 Run 执行前聚合授权与无人值守策略 | 后端 done：身份/凭据/项目/Agent/模型/Thread 失效拒绝，审批转失败，原生预览与历史；GraphHarbor post41 已锁定安装，未重启现役栈 | [验证](projects/20261005-scheduled-agent-tasks/verification.md) |
 | 工作区 HTML 预览 CSP 策略升级与白名单扩充 | 已完成：放行公认安全 CDN（Tailwind CDN / Google Fonts / cdnjs / unpkg / jsdelivr / SVG），严格限制 connect-src https: 阻断内网探测，43 项单测全绿 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
 | DearFlow Agent 接入 Jina Reader 网页深度提取与双通道容灾 | 已完成：Jina Reader API（r.jina.ai）高质量 Markdown 提取上线，首选 Jina、超时/异常自动平滑降级 Tavily Extract，严守 public_url 防御与 SHA256 证据落盘 | [Jina Reader 集成](projects/20261002-dearflow-jina-reader-integration/README.md) |
 | DearFlow Agent 单文件交互式创意编程与惊喜作品规范 | 已完成：确立纯原生零外部依赖、Web Audio 音效合成、Canvas/SVG 交互的单文件 HTML 规范，通过 present_artifacts 发布并在 SandboxedHtmlFrame 免刷新实时试玩 | [小惊喜迁移专项](projects/20261002-dearflow-surprise-me-feature/README.md) |
@@ -104,7 +108,7 @@
 | 平台错误响应统一 | 已完成：API公共安全出口、精确上游映射、Web无损解析、Thread对账、真实提交→Run→审计→Langfuse、memory409、SSE编号、peer ACL、workspace正向文件及现役浏览器403均已验；`reference_agent` 的 `runtime.tool.not_allowed` 属既有工具授权基线差异 | [错误响应专项](projects/20260926-error-response-contract/README.md) · [当前标准](standards/error-envelope.md) |
 | SSE事件契约治理 | 部分完成：S1—S10已完成，API分帧/安全关闭、Web SDK恢复、410单飞、Workspace线程池、真实普通SDK链路、1/4条短容量及390px视觉检查通过；8条容量受HTTP/1.1浏览器origin连接槽限制，h2/h3和30分钟Final blocked | [SSE专项](projects/20260926-sse-event-contract/README.md) |
 | 跨服务追踪传播治理 | 已完成本期验收：T1—T8、V01—V15、R1—R6，API编号/委托/审计精确查询/SSE关闭及真实Run→Langfuse反查均有证据；PG/SQLite性能留实测数据，不设SLO | [追踪专项](projects/20260926-trace-context-propagation/README.md) |
-| Delegation JWT契约治理 | 部分完成：J1—J6平台任务、v2双端23项矩阵、签发安全失败及R01—R04真实生命周期有证据；消息内部Run回查由后续专项修复源码，本机测试通过，现役链路未验证；GraphHarbor不改 | [JWT专项](projects/20260926-delegation-jwt-contract/README.md) · [回查修复](projects/20260927-message-run-read-delegation/README.md) |
+| Delegation JWT契约治理 | 部分完成：J1—J6平台任务、v2双端25项矩阵（含cron-read/write）、签发安全失败及R01—R04真实生命周期有证据；消息内部Run回查由后续专项修复源码，本机测试通过，现役链路未验证；GraphHarbor不改 | [JWT专项](projects/20260926-delegation-jwt-contract/README.md) · [回查修复](projects/20260927-message-run-read-delegation/README.md) |
 | AI服务规范路由 | 不再独立立项：后续按仓库级文档小改动补按需阅读规则；本轮未修改AGENTS | [AI路由专项](projects/20260926-ai-service-routing/README.md) |
 | 代码规范自动化门禁 | 部分完成：pre-commit 与 CI 变更文件检查已接入；Python 历史格式基线待单独清理 | [项目记录](projects/20260925-code-quality-automation/README.md) |
 | 前端代码格式化与 Git Hook 工具链治理 | 已完成：引入 eslint-config-prettier 解耦 ESLint 质量检查与 Prettier 视觉排版，优化 pre-commit 执行链并提供 VSCode 保存即格式化配置 | [变更记录](changes/20260928-code-formatting-toolchain-optimization.md) |

@@ -1,6 +1,6 @@
 # Runtime网关标准
 
-公开前缀为 `/api/langgraph`，入口见[router](../../src/platform_api/modules/runtime_gateway/presentation/http.py)。Platform负责身份/项目授权、参数决议、幂等记录和受控转发；GraphHarbor持有执行事实，Runtime负责图、模型与工具。GraphHarbor不实现平台业务JWT。
+普通 Run 网关公开前缀为 `/api/langgraph`，入口见[router](../../src/platform_api/modules/runtime_gateway/presentation/http.py)。Platform负责身份/项目授权、参数决议、幂等记录和受控转发；GraphHarbor持有执行事实，Runtime负责图、模型与工具。GraphHarbor不实现平台业务JWT。
 
 ## 当前公开面
 
@@ -35,7 +35,7 @@
 
 请求携带平台认证与 `x-project-id`。Thread归属必须匹配项目；启动/恢复重新检查当前Agent、Graph、模型、工具与成员授权。委托scope.operation区分read和run-create。
 
-委托使用短时v2/HS256 JWT；Gateway与Catalog各自按当前请求签发，service account必须携带当前`credential_id`，用户不得携带。非法签发输入统一走安全`503 runtime_delegation_not_configured`，上游401对外映射`502 runtime_delegation_rejected`，不表示平台用户登录失效。已接受Run不因委托到期自动取消；SSE不持续重鉴权，重连/审批/取消新请求重新核对当前权限。23项operation与当前组合的验证范围见[Delegation JWT专项](../../../../docs/projects/20260926-delegation-jwt-contract/README.md)。消息入口额外转发同一请求已有的`read`委托供Runtime内部原生Run回查；Runtime核对身份、租户、项目、凭据和Thread绑定后才使用该委托，消息operation自身仍不得访问原生资源。该修复的现役真实链路尚未验证，见[消息回查专项](../../../../docs/projects/20260927-message-run-read-delegation/README.md)。
+委托使用短时v2/HS256 JWT；Gateway与Catalog各自按当前请求签发，service account必须携带当前`credential_id`，用户不得携带。非法签发输入统一走安全`503 runtime_delegation_not_configured`，上游401对外映射`502 runtime_delegation_rejected`，不表示平台用户登录失效。已接受Run不因委托到期自动取消；SSE不持续重鉴权，重连/审批/取消新请求重新核对当前权限。25项operation与当前组合的验证范围见[Delegation JWT专项](../../../../docs/projects/20260926-delegation-jwt-contract/README.md)。消息入口额外转发同一请求已有的`read`委托供Runtime内部原生Run回查；Runtime核对身份、租户、项目、凭据和Thread绑定后才使用该委托，消息operation自身仍不得访问原生资源。该修复的现役真实链路尚未验证，见[消息回查专项](../../../../docs/projects/20260927-message-run-read-delegation/README.md)。
 
 产品Agent执行键为graph_id，标准SDK字段仍为assistant_id；平台不创建/同步上游Assistant。Graph/Tool刷新是有限超时HTTP，普通目录只读快照；schema从远端读取，不扫描宿主源码。
 
@@ -91,3 +91,15 @@ Runtime保有记忆私有表和revision规则；GraphHarbor不实现此业务。
 ## 工具治理（2026-09-20）
 
 Runtime 代码声明工具上限；工具 Catalog 仅展示。Platform 从 runtime_tool_restrictions 求项目/用户拒绝并集，签发 delegation_version=2、false-only tool_overrides 和 tool_policy_version。每次具体操作重新求值，查询失败不签空规则。浏览器的 tools/enable_tools/授权字段拒绝；旧工具策略接口已退役。管理接口及前端接入见[交接文档](../../../../docs/projects/20260920-runtime-optional-tool-resolution/frontend-handoff.md)。
+
+## 定时任务产品接口（2026-10-05）
+
+独立前缀 /api/scheduled-tasks：GET/POST 列表与创建、POST /preview、GET/PATCH/DELETE /{task_id}、POST /{task_id}/pause、/resume、/trigger，以及 GET /{task_id}/runs，共 10 条。普通 /api/langgraph 的 20 条显式矩阵保持独立。字段与 HTTP 状态见 [前端交接](../../../../docs/projects/20261005-scheduled-agent-tasks/frontend-handoff.md)。
+
+请求需平台身份与 x-project-id；定义和历史按 tenant/project/owner 私有隔离。cron-read/write 不能代替执行 payload 的 run-create；手动触发必须 Idempotency-Key，复用 run_requests、Thread reservation 和正常受管 Run，不推进计划时间。
+
+GraphHarbor 为唯一定义/调度/Run 事实源。平台 metadata 保存产品定义，无 cron/occurrence 表或第二套 worker；Runtime 内部预览复用原生 parser，历史先 SQL 过滤后分页，审计补拒绝原因。
+
+Runtime 图构造前以 HMAC 调用 POST /api/runtime/internal/scheduled-authorization，每个 Run 一次聚合核验身份/凭据/项目/Agent/模型/Thread；拒绝留痕且保留定义，回查不可用拒绝。批准后刷新当前角色/模型引用/工具限制。运行中不周期重验；暂停/删除不取消已接受 Run；无人值守审批失败。平台 HMAC 与 GraphHarbor 通用生产签名的责任边界见 [方案](../../../../docs/projects/20261005-scheduled-agent-tasks/plan.md)。
+
+平台 Runtime 锁定并安装 GraphHarbor post41，隔离链路通过；未部署现役或远端平台。Delegation 标准整体仍为 draft，消息内部 Run 回查的现役验收另行完成。

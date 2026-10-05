@@ -207,6 +207,30 @@ def _resolve_action(
     if segments == ["api", "audit"] and method == "GET":
         return "audit.collection.listed", "audit_event", None
 
+    if segments[:2] == ["api", "scheduled-tasks"]:
+        target = clean_str(segments[2]) if len(segments) >= 3 else None
+        if target == "preview" and method == "POST":
+            return "scheduled_task.preview", "scheduled_task", None
+        if len(segments) == 2:
+            return (
+                "scheduled_task.created"
+                if method == "POST"
+                else "scheduled_task.listed",
+                "scheduled_task",
+                None,
+            )
+        action = {"GET": "read", "PATCH": "updated", "DELETE": "deleted"}.get(
+            method, "requested"
+        )
+        if len(segments) == 4:
+            action = {
+                "pause": "paused",
+                "resume": "resumed",
+                "trigger": "triggered",
+                "runs": "history.read",
+            }.get(segments[3], action)
+        return f"scheduled_task.{action}", "scheduled_task", target
+
     if segments == ["_system", "platform-config"] and method == "GET":
         return "system.config.read", "platform_config", "platform-config"
     if (

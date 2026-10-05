@@ -1760,6 +1760,7 @@ class RuntimeGatewayService:
         idempotency_key: str,
         parent_run_id: str | None = None,
         interrupt_id: str | None = None,
+        scheduled_config: dict[str, Any] | None = None,
     ) -> tuple[StoredRunRequest, Any]:
         """Persist submission identity; Agent Server owns execution and concurrency."""
         thread_action = (
@@ -1890,6 +1891,16 @@ class RuntimeGatewayService:
             thread_id=thread_id,
             thread_action=thread_action,
         )
+        if scheduled_config is not None:
+            payload["config"]["configurable"] = {
+                **payload["config"].get("configurable", {}),
+                **scheduled_config,
+            }
+            # Public normalization removes scope aliases; restore server-owned scope.
+            payload["metadata"] = {
+                **ensure_dict(payload.get("metadata")),
+                "project_id": project_id,
+            }
         # A stable key covers timeout, response loss and API death after server commit.
         payload["idempotency_key"] = (
             "platform:"
@@ -1988,6 +1999,7 @@ class RuntimeGatewayService:
         actor: ActorContext,
         project_id: str,
         payload: dict[str, Any] | None,
+        reserved_thread_id: str | None = None,
     ) -> Any:
         await run_in_threadpool(
             self._prepare_project_scope, actor=actor, project_id=project_id, write=True
@@ -2008,7 +2020,7 @@ class RuntimeGatewayService:
             for key, value in metadata.items()
             if key not in thread_access.ACL_KEYS
         }
-        next_payload["thread_id"] = str(uuid4())
+        next_payload["thread_id"] = reserved_thread_id or str(uuid4())
         next_payload["if_exists"] = "raise"
         next_payload = _promote_thread_graph_id(next_payload)
         upstream = self._upstream
@@ -2022,13 +2034,33 @@ class RuntimeGatewayService:
                 operation="thread-create",
             )
             upstream = upstream.with_forwarded_headers(headers)
-        access = await run_in_threadpool(
-            thread_access.register,
-            self._require_session_factory(),
-            thread_id=next_payload["thread_id"],
-            project_id=project_id,
-            actor=actor,
-        )
+        try:
+            access = await run_in_threadpool(
+                thread_access.register,
+                self._require_session_factory(),
+                thread_id=next_payload["thread_id"],
+                project_id=project_id,
+                actor=actor,
+            )
+        except IntegrityError:
+            if not reserved_thread_id:
+                raise
+            access = await run_in_threadpool(
+                thread_access.get, self._require_session_factory(), reserved_thread_id
+            )
+            thread_access.require_action(actor, project_id, access, "comment")
+            if not await run_in_threadpool(
+                thread_access.pending_actor,
+                self._require_session_factory(),
+                thread_id=reserved_thread_id,
+                project_id=project_id,
+                actor=actor,
+            ):
+                return await self.get_thread(
+                    actor=actor, project_id=project_id, thread_id=reserved_thread_id
+                )
+        if reserved_thread_id:
+            next_payload["if_exists"] = "do_nothing"
         try:
             thread = await upstream.create_thread(next_payload)
         except UpstreamServiceError as exc:
@@ -2038,6 +2070,17 @@ class RuntimeGatewayService:
                 else exc.status_code
             )
             definite_rejection = 400 <= source_status < 500
+            if reserved_thread_id and source_status in {403, 409}:
+                # Another authorized request may have finished this reservation.
+                try:
+                    thread = await self.get_thread(
+                        actor=actor, project_id=project_id, thread_id=reserved_thread_id
+                    )
+                except PlatformApiError:
+                    pass
+                else:
+                    await self._mark_thread_provisioned(reserved_thread_id)
+                    return thread
             if definite_rejection:
                 try:
                     await run_in_threadpool(
@@ -2129,12 +2172,12 @@ class RuntimeGatewayService:
         await run_in_threadpool(
             self._prepare_project_scope, actor=actor, project_id=project_id, write=False
         )
-        if not actor.user_id or not await run_in_threadpool(
-            thread_access.pending_owner,
+        if not await run_in_threadpool(
+            thread_access.pending_actor,
             self._require_session_factory(),
             thread_id=thread_id,
             project_id=project_id,
-            user_id=actor.user_id,
+            actor=actor,
         ):
             raise ForbiddenError(
                 code="thread_action_denied", message="Thread is unavailable"
@@ -2791,6 +2834,7 @@ class RuntimeGatewayService:
         thread_id: str,
         payload: dict[str, Any] | None,
         idempotency_key: str | None = None,
+        scheduled_config: dict[str, Any] | None = None,
     ) -> Any:
         raw = ensure_dict(payload)
         if "command" in raw:
@@ -2852,6 +2896,7 @@ class RuntimeGatewayService:
         command = {"method": "run.start", "params": next_payload}
         _, result = await self.launch_runtime_run(
             actor=actor,
+            scheduled_config=scheduled_config,
             project_id=project_id,
             thread_id=thread_id,
             command=command,

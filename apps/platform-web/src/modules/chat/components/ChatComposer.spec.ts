@@ -147,4 +147,15 @@ describe("ChatComposer", () => {
       wrapper.find('[data-testid="composer-suggestions-container"]').exists(),
     ).toBe(false);
   });
+
+  it("hides composer suggestions when showSuggestions is false even if draft is empty and not running", () => {
+    const wrapper = mountComposer({
+      modelValue: "",
+      isRunning: false,
+      showSuggestions: false,
+    });
+    expect(
+      wrapper.find('[data-testid="composer-suggestions-container"]').exists(),
+    ).toBe(false);
+  });
 });

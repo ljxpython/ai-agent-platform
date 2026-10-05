@@ -167,6 +167,15 @@ def register(factory, *, thread_id: str, project_id: str, actor: ActorContext) -
             },
         )
         session.add(row)
+        if actor.principal_type == "service_account":
+            _audit(
+                session,
+                actor=actor,
+                project_id=project_id,
+                thread_id=thread_id,
+                action="thread.reserved",
+                reason=actor.credential_id,
+            )
         session.flush()
         return record_metadata(row)
 
@@ -189,6 +198,40 @@ def pending_owner(factory, *, thread_id: str, project_id: str, user_id: str) -> 
             and row.provisioning_status == "pending"
             and row.project_id == project_id
             and row.owner_user_id == user_id
+        )
+
+
+def pending_actor(
+    factory, *, thread_id: str, project_id: str, actor: ActorContext
+) -> bool:
+    if not actor.project_role_set(project_id):
+        return False
+    if actor.principal_type == "user":
+        return pending_owner(
+            factory, thread_id=thread_id, project_id=project_id, user_id=actor.user_id
+        )
+    with session_scope(factory) as session:
+        row = session.get(ThreadAccessRecord, thread_id)
+        if (
+            row is None
+            or row.project_id != project_id
+            or row.provisioning_status != "pending"
+        ):
+            return False
+        return (
+            session.scalar(
+                select(AuditLogRecord.id)
+                .where(
+                    AuditLogRecord.action == "thread.reserved",
+                    AuditLogRecord.target_id == thread_id,
+                    AuditLogRecord.project_id == project_id,
+                    AuditLogRecord.actor_subject == actor.subject,
+                    AuditLogRecord.metadata_json["reason"].as_string()
+                    == actor.credential_id,
+                )
+                .limit(1)
+            )
+            is not None
         )
 
 

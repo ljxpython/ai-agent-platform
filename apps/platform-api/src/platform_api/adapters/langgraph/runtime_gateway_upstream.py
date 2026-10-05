@@ -67,6 +67,39 @@ class LangGraphRuntimeGatewayUpstream:
     async def get_info(self) -> dict[str, Any]:
         return await self._http.require_json("GET", "/info")
 
+    async def cron_request(
+        self,
+        method: str,
+        suffix: str = "",
+        *,
+        payload: dict | None = None,
+        thread_id: str | None = None,
+    ) -> Any:
+        from urllib.parse import quote
+
+        path = (
+            f"/threads/{quote(thread_id, safe='')}/runs/crons"
+            if thread_id
+            else "/runs/crons"
+        )
+        if suffix:
+            path += "/" + quote(suffix, safe="")
+        return await self._http.request_json(method, path, payload=payload)
+
+    async def cron_preview(self, payload: dict) -> dict:
+        return await self._http.require_json(
+            "POST", "/internal/crons/preview", payload=payload
+        )
+
+    async def cron_runs(self, task_id: str, *, limit: int, offset: int) -> dict:
+        from urllib.parse import quote
+
+        return await self._http.require_json(
+            "GET",
+            f"/internal/crons/{quote(task_id, safe='')}/runs",
+            params={"limit": limit, "offset": offset},
+        )
+
     async def terminal_request(
         self,
         thread_id: str,

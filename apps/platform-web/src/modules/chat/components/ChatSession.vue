@@ -505,6 +505,35 @@ function applyQuickPrompt(title: string, desc: string) {
   focusComposer();
 }
 
+const hasUsedSuggestion = ref(false);
+
+function handleSelectSuggestion(_prompt: string) {
+  hasUsedSuggestion.value = true;
+}
+
+const shouldShowComposerSuggestions = computed(() => {
+  if (hasUsedSuggestion.value) {
+    return false;
+  }
+  if (
+    hasConversationStarted.value ||
+    displayedMessages.value.length > 0 ||
+    messages.value.length > 0
+  ) {
+    return false;
+  }
+  return true;
+});
+
+watch(
+  () => props.threadId,
+  (newId) => {
+    if (!newId) {
+      hasUsedSuggestion.value = false;
+    }
+  },
+);
+
 function handleSnapshotFork() {
   if (!selectedCheckpoint.value || !canSend.value) return;
   if (props.draft.trim() || attachments.value.length) {
@@ -1657,6 +1686,7 @@ defineExpose({
       :can-write="canWrite"
       :can-set-policy="session.canSetPolicy.value"
       :can-full-access="session.canFullAccess.value"
+      :show-suggestions="shouldShowComposerSuggestions"
       @update:access-policy="session.setAccessPolicy"
       @change:access-policy="session.setAccessPolicy"
       @update:selected-model-id="context.model_id = $event || undefined"
@@ -1667,6 +1697,7 @@ defineExpose({
       @file-input-change="handleInputChange"
       @composer-paste="handlePaste"
       @remove-attachment="removeAttachment"
+      @select-suggestion="handleSelectSuggestion"
     >
       <template #top-tray>
         <ChatStickyTaskPill

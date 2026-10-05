@@ -33,6 +33,75 @@ from platform_api.modules.runtime_gateway.application import thread_access
 router = APIRouter(prefix="/api/runtime", tags=["runtime-catalog"])
 
 
+@router.post("/internal/scheduled-authorization")
+def authorize_scheduled_execution(request: Request, payload: dict) -> dict:
+    from uuid import UUID
+
+    from platform_api.modules.runtime_gateway.application.service import (
+        RuntimeGatewayService,
+    )
+    from platform_api.modules.scheduled_tasks.service import (
+        authorize_execution,
+        canonical,
+    )
+
+    settings = request.app.state.settings
+    stamp = request.headers.get("x-runtime-acl-timestamp", "")
+    signature = request.headers.get("x-runtime-acl-signature", "")
+    secret = settings.runtime_delegation_secret
+    try:
+        timely = abs(time.time() - int(stamp)) <= 30
+    except ValueError:
+        timely = False
+    expected = hmac.new(
+        secret.encode(),
+        f"{stamp}\nscheduled-authorization\n{canonical(payload)}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    if not secret or not timely or not hmac.compare_digest(signature, expected):
+        raise ForbiddenError(
+            code="runtime_acl_signature_invalid", message="Invalid Runtime signature"
+        )
+    try:
+        for key in ("project_id", "task_id", "run_id", "thread_id"):
+            UUID(payload[key])
+        for key in ("tenant_id", "owner_id", "agent_key"):
+            if not isinstance(payload[key], str) or not payload[key]:
+                raise ValueError(key)
+        if not isinstance(payload["context"], dict) or not isinstance(
+            payload["task"], dict
+        ):
+            raise ValueError("shape")
+        if payload.get("trigger", "scheduled") not in {"scheduled", "manual"}:
+            raise ValueError("trigger")
+        if payload.get("outcome") not in {None, "success", "error"}:
+            raise ValueError("outcome")
+        if (payload.get("outcome") == "error") != (
+            payload.get("error_code") is not None
+        ):
+            raise ValueError("outcome")
+        if payload["owner_id"].startswith("service-account:"):
+            UUID(payload["owner_id"].removeprefix("service-account:"))
+            UUID(payload["credential_id"])
+        else:
+            UUID(payload["owner_id"])
+            if payload.get("credential_id") is not None:
+                raise ValueError("credential_id")
+    except (ValueError, KeyError, TypeError) as exc:
+        raise BadRequestError(
+            code="runtime_acl_invalid_request",
+            message="Invalid scheduled execution request",
+        ) from exc
+    factory = request.app.state.db_session_factory
+    gateway = RuntimeGatewayService(
+        session_factory=factory,
+        upstream=None,
+        runtime_base_url=settings.langgraph_upstream_url,
+        runtime_model_config_secret=settings.runtime_model_config_secret or secret,
+    )
+    return authorize_execution(factory, gateway, payload, secret)
+
+
 def _require_project_id(request: Request) -> str:
     project_id = getattr(request.state.platform_context.project, "project_id", None)
     normalized = project_id.strip() if isinstance(project_id, str) else ""
@@ -228,11 +297,8 @@ def authorize_runtime_threads(
     allowed = []
     for thread_id in targets:
         if action in {"create", "reconcile"}:
-            permitted = (
-                thread_access.pending_owner(
-                    factory, thread_id=thread_id, project_id=project_id, user_id=user_id
-                )
-                and actor.principal_type == "user"
+            permitted = thread_access.pending_actor(
+                factory, thread_id=thread_id, project_id=project_id, actor=actor
             )
         else:
             permitted = thread_access.allowed(
