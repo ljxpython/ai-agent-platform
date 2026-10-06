@@ -6,6 +6,7 @@ import type { ChatMessageMetadata } from "../branching";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import MessageContent from "./MessageContent.vue";
 import ToolResult from "./ToolResult.vue";
+import FollowUpSuggestions from "./FollowUpSuggestions.vue";
 import {
   buildTranscript,
   type MessageItem,
@@ -25,6 +26,10 @@ const props = defineProps<{
   projectId?: string;
   threadId?: string;
   forkingCheckpointId?: string;
+  followUpSuggestions?: readonly string[];
+  followUpLoading?: boolean;
+  followUpDraft?: string;
+  followUpDisabled?: boolean;
 }>();
 const emit = defineEmits<{
   inspect: [tool: ToolItem];
@@ -35,6 +40,8 @@ const emit = defineEmits<{
   "update:editingMessageValue": [value: string];
   "cancel-edit": [];
   "submit-edit": [];
+  "select-follow-up": [prompt: string, mode: "direct" | "append" | "replace"];
+  "dismiss-follow-up": [];
 }>();
 const text = (items: MessageItem[]) =>
   items
@@ -523,6 +530,22 @@ async function copy(value: string, id?: string) {
             </div>
           </template>
         </div>
+
+        <FollowUpSuggestions
+          v-if="
+            displayEntry.author === 'agent' &&
+            displayEntry.turnIndex === displayEntry.totalTurns - 1 &&
+            !isRunning &&
+            !displayEntry.isStreaming &&
+            !forkingCheckpointId
+          "
+          :suggestions="followUpSuggestions || []"
+          :loading="followUpLoading"
+          :draft="followUpDraft"
+          :disabled="followUpDisabled"
+          @select="(prompt, mode) => emit('select-follow-up', prompt, mode)"
+          @dismiss="emit('dismiss-follow-up')"
+        />
       </article>
     </template>
 

@@ -134,6 +134,28 @@ class ThreadTakeoverBody(BaseModel):
     duration_minutes: int = Field(default=15, ge=1, le=60, strict=True)
 
 
+class SuggestionMessageBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4000)
+
+
+class SuggestionsRequestBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    messages: list[SuggestionMessageBody] = Field(min_length=1, max_length=6)
+    n: int = Field(default=3, ge=1, le=5, strict=True)
+    model_id: str | None = Field(default=None, min_length=1, max_length=256)
+
+
+class SuggestionsResponseBody(BaseModel):
+    suggestions: list[str]
+
+
+class SuggestionsConfigResponse(BaseModel):
+    enabled: bool
+    max_suggestions: int
+
+
 _SENSITIVE_EVENT_KEYS = {
     "access_token",
     "api_key",
@@ -380,6 +402,8 @@ def _delegation_operation(request: Request) -> str:
         return "workspace-file-read"
     if path.endswith("/messages"):
         return "message-enqueue" if request.method == "POST" else "message-read"
+    if path.endswith("/suggestions"):
+        return "suggestions-generate"
     if request.method == "POST" and (path.endswith("/commands") or "/runs" in path):
         return "run-create"
     return "read"
@@ -469,7 +493,9 @@ def get_runtime_gateway_service(
             ).resolve_tool_overrides(
                 project_id=project_id, user_id=actor.user_id, graph_id=agent_key
             )
-            if agent_key and operation not in {"thread-create", "thread-reconcile"}
+            if agent_key
+            and operation
+            not in {"thread-create", "thread-reconcile", "suggestions-generate"}
             else {
                 "tool_overrides": {},
                 "tool_policy_version": "unscoped-thread-operation",
@@ -546,6 +572,9 @@ def get_runtime_gateway_service(
         runtime_model_config_secret=(
             settings.runtime_model_config_secret or settings.runtime_delegation_secret
         ),
+        suggestions_enabled=settings.suggestions_enabled,
+        suggestions_max=settings.suggestions_max,
+        suggestions_timeout_seconds=settings.suggestions_timeout_seconds,
     )
 
 
@@ -559,6 +588,15 @@ async def get_runtime_info(
     return _redact_runtime_private_fields(
         await service.get_info(actor=actor, project_id=project_id)
     )
+
+
+@router.get("/suggestions/config", response_model=SuggestionsConfigResponse)
+async def get_suggestions_config(
+    request: Request,
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> SuggestionsConfigResponse:
+    _require_project_id(request)
+    return SuggestionsConfigResponse(**service.suggestions_config())
 
 
 @router.post("/graphs/search")
@@ -890,6 +928,33 @@ async def enqueue_thread_message(
             idempotency_key=request.headers.get("Idempotency-Key"),
         )
     )
+
+
+@router.post(
+    "/threads/{thread_id}/suggestions",
+    response_model=SuggestionsResponseBody,
+)
+async def generate_thread_suggestions(
+    request: Request,
+    thread_id: str,
+    payload: SuggestionsRequestBody,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> SuggestionsResponseBody:
+    project_id = _require_project_id(request)
+    request.state.audit_metadata = {
+        "action": "suggestions_generate",
+        "suggestion_count": payload.n,
+    }
+    result = await service.generate_thread_suggestions(
+        actor=actor,
+        project_id=project_id,
+        thread_id=thread_id,
+        messages=[item.model_dump() for item in payload.messages],
+        n=payload.n,
+        model_id=payload.model_id,
+    )
+    return SuggestionsResponseBody.model_validate(result)
 
 
 @router.get("/threads/{thread_id}/messages")

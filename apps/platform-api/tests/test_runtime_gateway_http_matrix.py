@@ -219,6 +219,8 @@ class GatewayHttpMatrixTest(unittest.IsolatedAsyncioTestCase):
                 ("DELETE", "/dear/skills/custom/{slug}"),
                 ("GET", "/dear/skills/{source}/{slug}"),
                 ("GET", "/dear/skills/{source}/{slug}/content"),
+                ("GET", "/suggestions/config"),
+                ("POST", "/threads/{thread_id}/suggestions"),
             },
         )
         app = FastAPI()

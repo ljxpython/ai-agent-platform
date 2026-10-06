@@ -1,15 +1,15 @@
 ---
 status: draft
-last_verified: 2026-10-05
+last_verified: 2026-10-06
 confidence: medium
 source_project: docs/projects/20260926-delegation-jwt-contract/verification.md
-note: claim 规则及 25 项 operation 已验，cron 隔离链路通过；消息内部 Run 回查仍待 message-run-read-delegation 部署后补验
+note: 当前 operation 枚举为 26 项（原有 25 项 + suggestions-generate）；新增 suggestions 隔离已完成本机定向验证，cron 隔离链路独立覆盖；消息内部 Run 回查仍待 message-run-read-delegation 部署后补验
 ---
 
 # Delegation JWT Schema（draft）
 
 > **适用服务：** platform-api（签发方）、runtime-service（校验方）
-> **验证证据：** API 299 passed；Runtime 只读鉴权 46 passed；真实 R01-R04 链路（含 68.499 秒跨 TTL Run）通过
+> **验证证据：** 历史 API 299 passed、Runtime 只读鉴权 46 passed；本次 suggestions 定向测试与改动文件 Ruff 通过。Contract 测试中的 `OPERATIONS` 覆盖 24 个通用/自定义 operation（含 `suggestions-generate`），`cron-read`/`cron-write` 由独立隔离测试覆盖。
 > **未完成：** 消息内部原生 Run 回查源码和本机测试已修复，现役链路尚未验证，见 message-run-read-delegation 专项。标准整体仍为 draft。
 
 ## JWT Header
@@ -52,7 +52,7 @@ note: claim 规则及 25 项 operation 已验，cron 隔离链路通过；消息
     "project_id": "<必须与顶层一致>",
     "assistant_id": "<string 或 null>",
     "thread_id": "<string 或 null>",
-    "operation": "<25 项枚举之一>"
+    "operation": "<26 项枚举之一>"
   },
 
   "context_hash": "sha256:<64位十六进制>",
@@ -76,7 +76,7 @@ note: claim 规则及 25 项 operation 已验，cron 隔离链路通过；消息
 | scope 额外键 | 只允许五个键，未知键拒绝 |
 | 未知顶层 claim | Runtime 严格拒绝 |
 
-## scope.operation 枚举（25 项）
+## scope.operation 枚举（26 项）
 
 ```
 read                    thread-create           thread-reconcile
@@ -87,13 +87,14 @@ workspace-file-upload   workspace-file-read     workspace-fork
 terminal-read           terminal-write          dear-skills-read
 dear-skills-write       dear-memory-read        dear-memory-write
 dear-governance-read    dear-governance-write   cron-read
-cron-write
+cron-write              suggestions-generate
 ```
 
 **原生资源白名单（仅 10 项可访问原生资源）：**
 `read` / `thread-create` / `thread-reconcile` / `thread-edit` / `thread-delete` / `run-create` / `run-cancel` / `run-delete` / `cron-read` / `cron-write`
 
-其余 15 项自定义 token，不能访问原生资源。
+其余 16 项自定义 token，不能访问原生资源。`suggestions-generate` 只能访问
+`/internal/threads/{thread_id}/suggestions`，不能访问原生 Thread、Run、workspace、工具或 MCP 资源。
 
 ## 生命周期规则
 

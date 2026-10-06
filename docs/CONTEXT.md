@@ -8,6 +8,8 @@
 
 ## 最近改动
 
+2026-10-06 | **Agent 回答后推荐问题**：全链路完成。Platform API 与 Runtime Service 完成 suggestions 配置/生成、Delegation 隔离与 one-shot 推理；Platform Web 实装带 x-project-id 与单例缓存 API、思维链与多模态清洗纯函数、生命周期状态机（KeepAlive 补偿、Stop 抑制、竞态防护）、FollowUpSuggestions 紧凑展示组件与草稿冲突确认弹窗；27 项单测、vue-tsc 0 错误、ESLint 0 错误与生产打包全绿。未部署现役或远端平台。见 [专项](projects/20261005-agent-followup-suggestions/README.md)。
+
 2026-10-05 | **定时 Agent 任务**：全链路完成。后端与隔离验收 done；前端定时任务模块实装，对标 playbook 与 control-plane 规范，吸纳 DeerFlow 纯函数 Cron 预设，支持 Card Grid 列表、双栏响应式 Inspector 抽屉、运行历史按需懒加载与权限守卫；481 项单测全绿、vue-tsc 0 错误、生产构建全绿。见 [专项](projects/20261005-scheduled-agent-tasks/README.md)。
 
 ### 同日流资源专项
@@ -25,6 +27,8 @@
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
+
+- [Agent 回答后推荐问题](projects/20261005-agent-followup-suggestions/README.md)：done（本地全链路代码与门禁已完成）；Platform API + Runtime Service + Platform Web 全栈闭环，单测、静态类型、Lint 与生产构建全绿；真实三服务 E2E 与远端人工标准评审待具备环境后执行。
 
 - [定时 Agent 任务](projects/20261005-scheduled-agent-tasks/README.md)：全链路 done；后端 CRUD/once/manual/预览/分页和执行前拒绝审计完成，发布包隔离链路通过；前端定时任务模块实装，对标 playbook 与 control-plane 规范，全仓 107 套件 481 单测、vue-tsc 与生产打包全绿。未部署现役或远端平台。
 
@@ -67,9 +71,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-05 | GraphHarbor post41 已发布并锁定安装；cron 委托、原生时间预览/历史分页、四个 factory 执行前聚合授权和审批失败已隔离验收。现役 Runtime 未重启升级；原有 ACL 共享连接池与流缓存治理维持已验状态。 |
-| platform-api | 2026-10-05 | 定时 Agent 任务 10 条 API、手动幂等与 HMAC 执行授权/拒绝审计完成，发布包隔离验收通过；未部署现役或远端平台。平台用户软删除 DELETE /api/users/{user_id} 实装，内置三重安全栅栏（防自杀、最后超管、唯一项目管理员防孤儿项目），重命名释放原始用户名并吊销凭据；单测全通 |
-| platform-web | 2026-10-05 | 定时 Agent 任务模块实装（Card Grid 列表、双栏响应式抽屉、Cron 预设联动、运行历史与权限门禁）；灵感胶囊栏生命周期收起治理完成。权限快照状态、作用域拒绝、续期容错与刷新合并通过。全仓 107 个测试套件（481 单测）全绿、vue-tsc 0 errors、生产打包通过。 |
+| runtime-service | 2026-10-06 | 新增 follow-up suggestions 独立 endpoint、JWT scope 隔离、无工具 one-shot 模型调用与输出清洗；suggestions 定向测试 10 passed，改动文件 Ruff 通过。真实模型与现役 Runtime 未联调。 |
+| platform-api | 2026-10-06 | 新增 suggestions 配置/Thread API、ACL/模型策略校验、`suggestions-generate` delegation 与 Runtime 降级；suggestions + delegation 定向测试 8 passed、48 个子测试，改动文件 Ruff 通过。未部署现役或远端平台。 |
+| platform-web | 2026-10-06 | Agent 回答后推荐问题全链路实装（带 x-project-id API、思维链清洗纯函数、生命周期状态机、FollowUpSuggestions 紧凑展示与草稿冲突确认弹窗）；定时 Agent 任务模块维持已验状态。全仓单测全绿、vue-tsc 0 errors、生产打包通过。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-04 | AGENTS.md 与 Skill 重复内容已去除（场景步骤 + 验证标准章节移入 Skill），CONTEXT.md 改为渐进式快照结构；整单结束前须逐项核对未完成任务，Task 未完成时只记 Phase |
 
 ## 近期关键决策

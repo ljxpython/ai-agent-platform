@@ -43,6 +43,7 @@ OPERATIONS = (
     "dear-memory-write",
     "dear-governance-read",
     "dear-governance-write",
+    "suggestions-generate",
 )
 
 
@@ -126,7 +127,7 @@ class RuntimeDelegationContractTest(unittest.TestCase):
         return json.loads(completed.stdout)
 
     def test_all_platform_operations_pass_current_runtime_verifier(self) -> None:
-        self.assertEqual(len(OPERATIONS), 23)
+        self.assertEqual(len(OPERATIONS), 24)
         tokens = [
             self._token(
                 operation=operation,
@@ -399,18 +400,32 @@ class RuntimeDelegationContractTest(unittest.TestCase):
             with self.subTest(operation=operation):
                 self.assertEqual(result["acl_action"], expected_action)
                 self.assertEqual(result["acl_calls"], 1)
+        custom_count = len(OPERATIONS) - len(native)
+        custom_start = len(native)
+        invalid_start = custom_start + custom_count
         self.assertTrue(
-            all(r == {"accepted": False, "status": 403} for r in results[8 : 8 + 15])
+            all(
+                r == {"accepted": False, "status": 403}
+                for r in results[custom_start:invalid_start]
+            )
         )
         self.assertTrue(
-            all(r == {"accepted": False, "status": 403} for r in results[23:27])
+            all(
+                r == {"accepted": False, "status": 403}
+                for r in results[invalid_start : invalid_start + 4]
+            )
         )
-        self.assertEqual(results[27], {"accepted": False, "status": 403})
-        self.assertEqual(results[28], {"accepted": False, "status": 503})
-        self.assertEqual(results[29]["acl_action"], "approve")
-        self.assertEqual(results[30]["credential_id"], str(credential_id))
+        self.assertEqual(results[invalid_start + 4], {"accepted": False, "status": 403})
+        self.assertEqual(results[invalid_start + 5], {"accepted": False, "status": 503})
+        self.assertEqual(results[invalid_start + 6]["acl_action"], "approve")
+        self.assertEqual(
+            results[invalid_start + 7]["credential_id"], str(credential_id)
+        )
         self.assertTrue(
-            all(r == {"accepted": False, "status": 403} for r in results[31:])
+            all(
+                r == {"accepted": False, "status": 403}
+                for r in results[invalid_start + 8 :]
+            )
         )
 
     def test_custom_endpoint_operation_boundaries(self) -> None:
@@ -429,7 +444,7 @@ class RuntimeDelegationContractTest(unittest.TestCase):
                 "run-delete",
             }
         ]
-        self.assertEqual(len(custom), 15)
+        self.assertEqual(len(custom), 16)
         cases = []
         for operation in custom:
             assistant = (

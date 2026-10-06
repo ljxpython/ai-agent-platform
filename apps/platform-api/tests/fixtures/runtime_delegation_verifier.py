@@ -97,6 +97,21 @@ async def _custom_endpoint(case: dict, token: str) -> dict:
             if exc.status_code == 503 and exc.detail == "message inbox unavailable":
                 return {"accepted": True, "boundary": "storage_unavailable"}
             raise
+    elif operation == "suggestions-generate":
+        from runtime_service.http.suggestions import (
+            SuggestionsRequest,
+            _authorize_scope,
+        )
+
+        user = await authenticate(authorization=authorization)
+        _authorize_scope(
+            thread_id,
+            SuggestionsRequest(
+                assistant_id="showcase_demo",
+                messages=[{"role": "user", "content": "continue"}],
+            ),
+            user,
+        )
     return {"accepted": True, "boundary": "authorized"}
 
 

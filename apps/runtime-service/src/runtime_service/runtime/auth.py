@@ -135,6 +135,7 @@ def _parse_scope(raw: object) -> RuntimeScope:
         "dear-memory-write",
         "dear-governance-read",
         "dear-governance-write",
+        "suggestions-generate",
     }:
         raise _invalid("runtime.auth.invalid_principal", "operation")
     return RuntimeScope(

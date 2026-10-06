@@ -60,6 +60,7 @@ import TrajectoryView from "./trajectory/TrajectoryView.vue";
 import QueuedMessagesBanner from "./QueuedMessagesBanner.vue";
 import { usePromptQueue } from "../composables/usePromptQueue";
 import { useServerPromptQueue } from "../composables/useServerPromptQueue";
+import { useFollowUpSuggestions } from "../composables/useFollowUpSuggestions";
 
 const activeView = ref<"chat" | "trajectory">("chat");
 
@@ -162,11 +163,6 @@ const approvalElement = ref<HTMLElement | null>(null);
 const isSessionInterrupted = computed(() => {
   return hasPendingInterrupts.value || reviews.value.length > 0;
 });
-
-const handleStop = () => {
-  if (props.visible === false || !props.canWrite) return;
-  void session.stop();
-};
 
 const handleResume = () => {
   if (hasPendingInterrupts.value || reviews.value.length > 0) {
@@ -300,6 +296,20 @@ const hasConversationStarted = ref(
   ),
 );
 
+const isSessionRunning = computed(() => {
+  if (snapshotMessages.value) return false;
+  const runStatus = session.run.value?.status;
+  return (
+    busy.value ||
+    Boolean(stream.isLoading?.value) ||
+    runStatus === "running" ||
+    runStatus === "pending" ||
+    checking.value ||
+    actions.current.value?.status === "submitting" ||
+    Boolean(optimisticUserMessage.value)
+  );
+});
+
 const displayedMessages = computed(() => {
   const fallbackMessages =
     latestHistoryMessages.value.length >= cachedDisplayMessages.value.length
@@ -318,6 +328,24 @@ const displayedMessages = computed(() => {
     isSessionRunning: isSessionRunning.value,
   });
 });
+
+const followUp = useFollowUpSuggestions({
+  projectId: () => props.projectId,
+  threadId: () => session.threadId.value || props.threadId,
+  agentId: () => props.agentId,
+  modelId: () => context.value.model_id,
+  messages: displayedMessages,
+  isRunning: () => isSessionRunning.value,
+  hasPendingInterrupts: () => hasPendingInterrupts.value,
+  visible: () => props.visible,
+  disabled: () => !props.canWrite,
+});
+
+const handleStop = () => {
+  if (props.visible === false || !props.canWrite) return;
+  followUp.markStoppedByUser();
+  void session.stop();
+};
 
 watch(
   [messages, latestHistoryMessages],
@@ -511,6 +539,23 @@ function handleSelectSuggestion(_prompt: string) {
   hasUsedSuggestion.value = true;
 }
 
+function handleSelectFollowUp(
+  prompt: string,
+  mode: "direct" | "append" | "replace" = "direct",
+) {
+  if (!canSend.value) return;
+
+  let finalText = prompt;
+  if (mode === "append" && props.draft.trim()) {
+    finalText = `${props.draft.trim()}\n\n${prompt}`;
+  }
+  emit("update:draft", finalText);
+  followUp.dismiss();
+  nextTick(() => {
+    void send();
+  });
+}
+
 const shouldShowComposerSuggestions = computed(() => {
   if (hasUsedSuggestion.value) {
     return false;
@@ -565,20 +610,6 @@ const promptQueue = useServerPromptQueue({
   storageKey: queueReceiptKey,
 });
 const isDrainingQueue = ref(false);
-
-const isSessionRunning = computed(() => {
-  if (snapshotMessages.value) return false;
-  const runStatus = session.run.value?.status;
-  return (
-    busy.value ||
-    Boolean(stream.isLoading?.value) ||
-    runStatus === "running" ||
-    runStatus === "pending" ||
-    checking.value ||
-    actions.current.value?.status === "submitting" ||
-    Boolean(optimisticUserMessage.value)
-  );
-});
 
 async function submitQueuedMessage(content: unknown) {
   try {
@@ -1473,6 +1504,12 @@ defineExpose({
               :editing-message-id="editingMessageId"
               :editing-message-value="editDraft"
               :forking-checkpoint-id="forkingCheckpointId"
+              :follow-up-suggestions="followUp.suggestions.value"
+              :follow-up-loading="followUp.loading.value"
+              :follow-up-draft="draft"
+              :follow-up-disabled="!canSend || !!snapshotMessages"
+              @select-follow-up="handleSelectFollowUp"
+              @dismiss-follow-up="followUp.dismiss"
               @select-branch="selectMessageBranch"
               @inspect="inspect"
               @edit="edit"

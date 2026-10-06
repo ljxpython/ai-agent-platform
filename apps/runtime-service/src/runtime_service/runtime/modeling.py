@@ -82,8 +82,10 @@ class ChatOpenAIWithReasoning(ChatOpenAI):
         return result
 
 
-def _generation_kwargs(config: ResolvedRuntimeConfig) -> dict[str, object]:
-    return {
+def _generation_kwargs(
+    config: ResolvedRuntimeConfig, *, max_retries: int | None = None
+) -> dict[str, object]:
+    kwargs = {
         key: value
         for key, value in {
             "temperature": config.temperature,
@@ -92,6 +94,9 @@ def _generation_kwargs(config: ResolvedRuntimeConfig) -> dict[str, object]:
         }.items()
         if value is not None
     }
+    if max_retries is not None:
+        kwargs["max_retries"] = max_retries
+    return kwargs
 
 
 def _required(settings: Mapping[str, str], name: str) -> str:
@@ -106,6 +111,7 @@ def build_model(
     *,
     env: Mapping[str, str] | None = None,
     connection: Mapping[str, str] | None = None,
+    max_retries: int | None = None,
 ) -> BaseChatModel:
     """Build a model from a resolved ID; never accepts raw request config."""
 
@@ -127,7 +133,7 @@ def build_model(
         model_name = connection.get("model", model_name)
         protocol = str(connection.get("protocol", "")).strip().lower()
 
-    kwargs = _generation_kwargs(config)
+    kwargs = _generation_kwargs(config, max_retries=max_retries)
 
     try:
         conn_api_key = connection.get("api_key") if connection is not None else None
@@ -231,6 +237,13 @@ async def fetch_model_connection(
             )
             response.raise_for_status()
             payload = response.json()
+    except httpx.HTTPStatusError as exc:
+        code = (
+            "runtime.model.reference_denied"
+            if exc.response.status_code in {401, 403}
+            else "runtime.model.initialization_failed"
+        )
+        raise RuntimeResolutionError(code, "model_id") from exc
     except (httpx.HTTPError, ValueError) as exc:
         raise RuntimeResolutionError(
             "runtime.model.initialization_failed", "model_id"

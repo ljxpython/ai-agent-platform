@@ -23,6 +23,7 @@ from runtime_service.http.dear_memory import router as dear_memory_router
 from runtime_service.http.dear_skills import router as dear_skills_router
 from runtime_service.http.documents import router as documents_router
 from runtime_service.http.images import router as images_router
+from runtime_service.http.suggestions import router as suggestions_router
 from runtime_service.http.terminal import router as terminal_router
 from runtime_service.http.title_summary import router as title_summary_router
 from runtime_service.http.workspace import router as workspace_router
@@ -56,6 +57,7 @@ app.include_router(dear_governance_router)
 app.include_router(dear_skills_router)
 app.include_router(dear_memory_router)
 app.include_router(title_summary_router)
+app.include_router(suggestions_router)
 
 
 @app.exception_handler(auth_exceptions.HTTPException)

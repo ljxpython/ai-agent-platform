@@ -87,6 +87,11 @@ _DEFAULT_STREAM_MODES: tuple[str, ...] = (
     "messages",
     "checkpoints",
 )
+_SUGGESTION_ROLES = frozenset(("user", "assistant"))
+_SUGGESTION_MAX_MESSAGES = 6
+_SUGGESTION_MAX_MESSAGE_CHARS = 4000
+_SUGGESTION_MAX_TOTAL_CHARS = 12000
+_SUGGESTION_MAX_CHARS = 120
 
 
 def _request_digest(command: dict[str, Any]) -> str:
@@ -509,6 +514,9 @@ class RuntimeGatewayService:
         delegation_headers_factory: Callable[..., Mapping[str, str]] | None = None,
         runtime_model_config_secret: str | None = None,
         runtime_model_config_ttl_seconds: int = 60,
+        suggestions_enabled: bool = True,
+        suggestions_max: int = 3,
+        suggestions_timeout_seconds: float = 8.0,
         on_correlation: Callable[[str, Mapping[str, Any]], None] | None = None,
     ) -> None:
         self._session_factory = session_factory
@@ -518,6 +526,11 @@ class RuntimeGatewayService:
         self._delegation_headers_factory = delegation_headers_factory
         self._runtime_model_config_secret = runtime_model_config_secret
         self._runtime_model_config_ttl_seconds = runtime_model_config_ttl_seconds
+        self._suggestions_enabled = suggestions_enabled
+        self._suggestions_max = max(1, min(suggestions_max, 5))
+        self._suggestions_timeout_seconds = max(
+            0.1, min(suggestions_timeout_seconds, 30.0)
+        )
         self._on_correlation = on_correlation
 
     def _emit_correlation(self, event: str, **fields: Any) -> None:
@@ -527,7 +540,14 @@ class RuntimeGatewayService:
             except Exception:
                 logger.exception("runtime correlation observer failed")
 
-    async def _thread_upstream(self, *, project_id: str, thread: dict, operation: str):
+    async def _thread_upstream(
+        self,
+        *,
+        project_id: str,
+        thread: dict,
+        operation: str,
+        context_hash: str | None = None,
+    ):
         if not self._delegation_headers_factory:
             return self._upstream
         return self._upstream.with_forwarded_headers(
@@ -536,7 +556,7 @@ class RuntimeGatewayService:
                 project_id=project_id,
                 agent_key=_thread_graph_id(thread) or "",
                 thread_id=thread["thread_id"],
-                context_hash=empty_runtime_context_hash(),
+                context_hash=context_hash or empty_runtime_context_hash(),
                 operation=operation,
             )
         )
@@ -1968,6 +1988,159 @@ class RuntimeGatewayService:
             self._prepare_project_scope, actor=actor, project_id=project_id, write=False
         )
         return await self._upstream.get_info()
+
+    def suggestions_config(self) -> dict[str, Any]:
+        return {
+            "enabled": self._suggestions_enabled,
+            "max_suggestions": self._suggestions_max,
+        }
+
+    async def generate_thread_suggestions(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        messages: list[dict[str, Any]],
+        n: int,
+        model_id: str | None = None,
+    ) -> dict[str, Any]:
+        if type(n) is not int or not 1 <= n <= self._suggestions_max:
+            raise BadRequestError(
+                code="invalid_suggestions_count",
+                message=f"n must be between 1 and {self._suggestions_max}",
+            )
+        if (
+            not isinstance(messages, list)
+            or not 1 <= len(messages) <= _SUGGESTION_MAX_MESSAGES
+        ):
+            raise BadRequestError(
+                code="invalid_suggestions_messages",
+                message="messages must contain 1 to 6 items",
+            )
+        normalized: list[dict[str, str]] = []
+        total_chars = 0
+        for item in messages:
+            if not isinstance(item, dict) or set(item) != {"role", "content"}:
+                raise BadRequestError(
+                    code="invalid_suggestions_message",
+                    message="Each suggestion message must contain role and content",
+                )
+            role = clean_str(item.get("role"))
+            content = item.get("content")
+            if role not in _SUGGESTION_ROLES or not isinstance(content, str):
+                raise BadRequestError(
+                    code="invalid_suggestions_message",
+                    message="Suggestion messages must use user or assistant roles",
+                )
+            content = content.strip()
+            if not content or len(content) > _SUGGESTION_MAX_MESSAGE_CHARS:
+                raise BadRequestError(
+                    code="invalid_suggestions_message",
+                    message="Suggestion message content must be 1 to 4000 characters",
+                )
+            total_chars += len(content)
+            normalized.append({"role": role, "content": content})
+        if total_chars > _SUGGESTION_MAX_TOTAL_CHARS:
+            raise BadRequestError(
+                code="suggestions_payload_too_large",
+                message="Suggestion messages exceed the total character limit",
+            )
+
+        thread = await self._load_thread(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            write=False,
+            action="read",
+        )
+        graph_id = _thread_graph_id(thread)
+        if not graph_id:
+            raise BadRequestError(
+                code="graph_id_required", message="Thread graph is missing"
+            )
+        await run_in_threadpool(
+            self._assert_runtime_target_allowed,
+            project_id=project_id,
+            assistant_id=graph_id,
+            thread=thread,
+        )
+        if not self._suggestions_enabled:
+            return {"suggestions": []}
+
+        payload: dict[str, Any] = {
+            "assistant_id": graph_id,
+            "messages": normalized,
+            "n": n,
+            "context": {"model_id": clean_str(model_id)} if clean_str(model_id) else {},
+            "config": {},
+            "timeout_seconds": self._suggestions_timeout_seconds,
+        }
+        payload = await run_in_threadpool(
+            self._inject_project_default_model,
+            project_id=project_id,
+            payload=payload,
+        )
+        await run_in_threadpool(
+            self._validate_run_options, project_id=project_id, payload=payload
+        )
+        context_hash, _ = _runtime_context_snapshot({"params": payload})
+        payload = await run_in_threadpool(
+            self._attach_runtime_model_reference,
+            project_id=project_id,
+            actor=actor,
+            thread_id=thread_id,
+            thread_action="comment",
+            payload=payload,
+        )
+        upstream = await self._thread_upstream(
+            project_id=project_id,
+            thread=thread,
+            operation="suggestions-generate",
+            context_hash=context_hash,
+        )
+        try:
+            result = await upstream.generate_suggestions(thread_id, payload)
+        except PlatformApiError as exc:
+            source_status = (
+                getattr(exc, "upstream_status_code", None) or exc.status_code
+            )
+            if source_status < 500:
+                raise
+            self._emit_correlation(
+                "runtime.suggestions.result",
+                thread_id=thread_id,
+                graph_id=graph_id,
+                outcome="degraded",
+                reason="upstream_failure",
+                suggestion_count=0,
+            )
+            return {"suggestions": []}
+        if not isinstance(result, dict) or not isinstance(
+            result.get("suggestions"), list
+        ):
+            suggestions: list[str] = []
+        else:
+            suggestions = []
+            seen: set[str] = set()
+            for item in result["suggestions"]:
+                if not isinstance(item, str):
+                    continue
+                item = " ".join(item.split())
+                if not item or len(item) > _SUGGESTION_MAX_CHARS or item in seen:
+                    continue
+                seen.add(item)
+                suggestions.append(item)
+                if len(suggestions) >= self._suggestions_max:
+                    break
+        self._emit_correlation(
+            "runtime.suggestions.result",
+            thread_id=thread_id,
+            graph_id=graph_id,
+            outcome="completed",
+            suggestion_count=len(suggestions),
+        )
+        return {"suggestions": suggestions[:n]}
 
     async def search_graphs(
         self,

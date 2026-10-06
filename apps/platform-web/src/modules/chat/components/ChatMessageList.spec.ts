@@ -262,3 +262,49 @@ it("marks the latest user turn with data-is-last-user and computes GPT-style tur
     wrapper.unmount();
   }
 });
+
+it("renders FollowUpSuggestions on the last completed agent message and emits events", async () => {
+  const wrapper = mount(ChatMessageList, {
+    props: {
+      messages: [
+        new HumanMessage({ id: "u-1", content: "问题 1" }),
+        new AIMessage({ id: "a-1", content: "回答 1" }),
+        new HumanMessage({ id: "u-2", content: "问题 2" }),
+        new AIMessage({ id: "a-2", content: "回答 2" }),
+      ],
+      calls: [],
+      isRunning: false,
+      followUpSuggestions: ["后续追问 A", "后续追问 B"],
+      followUpLoading: false,
+      followUpDraft: "",
+    },
+    global: {
+      stubs: {
+        MessageContent: true,
+        ToolResult: true,
+        FollowUpConfirmDialog: true,
+        BaseDialog: true,
+        BaseButton: true,
+        BaseIcon: true,
+      },
+    },
+  });
+
+  try {
+    const followup = wrapper.findComponent({ name: "FollowUpSuggestions" });
+    expect(followup.exists()).toBe(true);
+    expect(followup.props("suggestions")).toEqual(["后续追问 A", "后续追问 B"]);
+
+    // 触发 select
+    followup.vm.$emit("select", "后续追问 A", "direct");
+    expect(wrapper.emitted("select-follow-up")).toEqual([
+      ["后续追问 A", "direct"],
+    ]);
+
+    // 触发 dismiss
+    followup.vm.$emit("dismiss");
+    expect(wrapper.emitted("dismiss-follow-up")).toHaveLength(1);
+  } finally {
+    wrapper.unmount();
+  }
+});

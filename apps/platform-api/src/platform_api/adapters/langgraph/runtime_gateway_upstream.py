@@ -305,6 +305,17 @@ class LangGraphRuntimeGatewayUpstream:
             payload=payload or {},
         )
 
+    async def generate_suggestions(
+        self, thread_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
+        from urllib.parse import quote
+
+        return await self._http.require_json(
+            "POST",
+            f"/internal/threads/{quote(thread_id, safe='')}/suggestions",
+            payload=payload,
+        )
+
     async def get_thread_state(
         self,
         thread_id: str,

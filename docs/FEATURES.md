@@ -56,6 +56,7 @@
 | 工作区 HTML 现代化高保真安全预览 | 已完成：SandboxedHtmlFrame 升级为 sandbox="allow-scripts" 且 Origin 锁定为 null，更新安全沙箱徽章文案，单测通过 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
 | 对话输入灵感胶囊栏与微物理撒花小惊喜（ConfettiButton & ComposerSuggestions） | 已完成：实装基于 canvas-confetti 的五彩粒子喷射按钮与动态灵感胶囊栏，支持快捷填入小惊喜、写作、调研、分析等指令模板，与 ChatComposer 双向联动；单测与打包全通过 | [小惊喜迁移专项](projects/20261002-dearflow-surprise-me-feature/README.md) |
 | Chat 灵感胶囊栏生命周期与单次会话收起优化 | 已完成：灵感建议胶囊栏仅在空白新会话首次输入前展示，一旦在当前会话点击使用或产生对话后彻底收起，新建空白会话重置展示；单测、类型检查与打包全通过 | [变更记录](../apps/platform-web/docs/changes/20261005-chat-composer-suggestions-lifecycle.md) |
+| Agent 回答后推荐问题 | 已完成：全链路前后端闭环。前端实装带 x-project-id 与单例缓存 API、思维链与多模态清洗纯函数、生命周期状态机（KeepAlive 补偿、Stop 抑制、竞态防护）、FollowUpSuggestions 紧凑展示组件与草稿冲突确认弹窗，27 项单测、vue-tsc 与打包全绿 | [项目文档](projects/20261005-agent-followup-suggestions/README.md) · [前端交接](projects/20261005-agent-followup-suggestions/04-platform-web-handoff.md) |
 | 长会话断流恢复解耦与历史快照按需懒加载治理 | 已完成：剥离 recoverExpiredStream 对 3.4MB 巨型 history 的阻塞强依赖，改为 state 毫秒级极速自愈 + history 后台静默预热软降级；加固 ChatSession 抽屉懒加载守卫并隔离全局横幅报错；单测全通与打包通过 | [历史懒加载治理专项](projects/20261002-chat-history-lazy-loading-and-timeout-resilience/README.md) |
 | Chat 前端对话 Clean Architecture 架构治理与中断/时序缺陷修复 | 已完成：对标谷歌开发范式，拆解上帝组件（ChatSession 净减 923 行），根治手动中断 400 报错与消息队列出队跳顶/并排时序倒挂；102 个测试套件、441 项单测全绿、vue-tsc 0 错误、生产打包通过 | [Chat 干净架构重构](projects/20261004-chat-frontend-clean-architecture-refactor/README.md) |
 | 平台用户管理软删除操作与自杀保护交互 | 已完成：操作菜单与详情页实装软删除操作、二次确认弹窗、防自杀禁用与状态筛选；单测及生产构建全绿 | [软删除治理](projects/20261003-platform-user-soft-delete/README.md) |
@@ -71,6 +72,7 @@
 | 重构后文档体系重建 | done：10篇活文档、28文件归档与引用修复，配置/契约核对及33项相关测试通过 | [文档工程](projects/20260910-platform-api-docs-rebuild/README.md) |
 | 控制面边界与代码简化重构 | 本阶段后端 done：事务/目录、Docker Showcase、真实备份恢复、混合负载及 20 条公开接口矩阵已验收；前端、整套容器部署与完整 Server 等价性 deferred | `docs/projects/20260910-platform-api-refactor/` |
 | 运行时网关（受管模型/工具/prompt 契约下发） | 已完成 | `apps/platform-api/docs/standards/runtime-gateway-interface-standard.md` |
+| Agent 回答后推荐问题网关 | 部分完成：配置查询、Thread ACL/模型策略校验、`suggestions-generate` delegation、Runtime best-effort 降级已实现；前端接入与真实 E2E 待完成 | [项目文档](projects/20261005-agent-followup-suggestions/README.md) |
 | 中转站维度模型管理、对话高级模型选择器 | 已完成：支持端点防重与单项目默认模型互斥 | [模型防重与单默认策略](../apps/platform-api/docs/changes/20260915-model-uniqueness-and-single-default-policy.md) |
 | 运行时网关 Checkpoint 分叉白名单与恢复透传 | 已完成：支持 checkpoint_id/checkpoint_ns 校验与提级转发，拦截恶意字段 | [网关分支支持](../apps/platform-api/docs/changes/20260913-gateway-checkpoint-configurable-whitelist.md) |
 | 运行时网关执行配置 SDK thread_id 白名单支持 | 已完成：白名单支持 SDK 自动注入的 thread_id 校验与快照保留，彻底解决浏览器端 400 Unsupported execution config 报错 | [网关 thread_id 支持](../apps/platform-api/docs/changes/20260914-gateway-thread-id-configurable-whitelist.md) |
@@ -92,6 +94,7 @@
 | GraphHarbor官方v3对齐与平台迁移 | 后端完成：post30已发布／接入，生命周期／并行中断／恢复版本／步数限制修复，真实研究、文件、子任务、父取消及观测已验；前端交接完成，浏览器与默认切换后置，默认仍v2 | [完成项与代码证据](projects/20260915-graphharbor-v3-alignment/README.md) |
 | DearFlowAgent：Deep Agents 能力迁移与生产化 | partial：2026-09-28重审确认主Agent/四模式/研究/文件/审批/只读子Agent及19个上游Skill资源已有；4项未迁入；逐Skill页面、部分供应商和生产Final仍未闭环。当前Skills采用单份内容＋执行快照，Dear复用Chat，记忆接续独立专项；核心抽测28 passed/1 skipped；14效果审计另复现7个可靠性缺口，不能认定同名能力效果等价；新增治理实施范围待评审 | [能力与缺口](projects/20260913-dearflow-agent/11-20260928-capability-reassessment.md) · [效果与可靠性](projects/20260913-dearflow-agent/14-effect-parity-and-reliability.md) · [补齐任务](projects/20260913-dearflow-agent/12-completion-plan.md) · [验证基线](projects/20260913-dearflow-agent/13-verification-baseline.md) |
 | Graph 注册、模型参数解析、工具装配 | 已完成 | `apps/runtime-service/docs/standards/*.md` |
+| Agent 回答后推荐问题 one-shot capability | 部分完成：独立 suggestions endpoint、JWT scope 隔离、无工具模型调用、输出清洗和超时/provider 降级已完成；真实模型与三服务 E2E 待验证 | [项目文档](projects/20261005-agent-followup-suggestions/README.md) |
 | MCP 接入 | 已完成 | `apps/runtime-service/docs/knowledge/19-runtime-tool-capability-mcp-and-side-effect-design.md` |
 | 公共图片工具 Middleware、Showcase 图表 MCP 子智能体与平台图片链路 | 部分完成：G0 契约、Runtime 运输层、Platform API 网关与 Platform Web 前端交互及确定性自动化测试全部通过；待配置真实生产环境模型凭据进行线上 Smoke 联调 | [图片与图表能力方案](projects/20260913-showcase-image-chart-capabilities/README.md) |
 | Runtime Service 图片编辑（图生图 `edit_image`）与内容安全审核友好提示 | 已完成：支持基于已有图片执行图像编辑/风格转换，接入 HITL 人工审批，结构化捕获并友好提示 `content_policy_violation` | [图片编辑能力](../apps/runtime-service/docs/changes/20260913-image-editing-capability.md) |

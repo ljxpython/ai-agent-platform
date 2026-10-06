@@ -54,6 +54,12 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
         payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]: ...
 
+    async def generate_suggestions(
+        self,
+        thread_id: str,
+        payload: dict[str, Any],
+    ) -> dict[str, Any]: ...
+
     async def get_thread_state(
         self,
         thread_id: str,

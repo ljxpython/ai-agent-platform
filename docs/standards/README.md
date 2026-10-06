@@ -21,7 +21,7 @@
 
 ## 未完成项
 
-- **delegation-jwt（draft）**：25 项 operation 和 claim 规则已验，cron 实时授权隔离链路通过；消息内部原生 Run 回查源码已修复，现役链路尚未验证，待 [message-run-read-delegation](../projects/20260927-message-run-read-delegation/README.md) 专项部署后补验
+- **delegation-jwt（draft）**：26 项 operation 和 claim 规则已验，包含 `suggestions-generate` 的内部路由隔离；cron 实时授权隔离链路通过；消息内部原生 Run 回查源码已修复，现役链路尚未验证，待 [message-run-read-delegation](../projects/20260927-message-run-read-delegation/README.md) 专项部署后补验
 - **sse-event（draft）**：帧安全、SDK 重试、会话池、410 降级规则已验（S1–S10）；8 条并发容量（S11）因 HTTP/1.1 入口限制阻塞，待 HTTP/2 入口就绪后补验
 
 ## 更新规则

@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     runtime_delegation_ttl_seconds: int = Field(default=60, ge=10, le=300)
     model_config_master_key: str | None = None
     runtime_model_config_secret: str | None = None
+    suggestions_enabled: bool = True
+    suggestions_max: int = Field(default=3, ge=1, le=5)
+    suggestions_timeout_seconds: float = Field(default=8.0, gt=0, le=30)
 
     platform_db_enabled: bool = False
     platform_db_auto_create: bool = False
