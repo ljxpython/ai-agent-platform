@@ -1,4 +1,6 @@
 import asyncio
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
 from deepagents import create_deep_agent
@@ -9,6 +11,136 @@ from langgraph.checkpoint.memory import InMemorySaver
 from support import BindableFakeMessagesChatModel
 
 from runtime_service.services.dearflow_agent.workspace.backend import build_backend
+
+
+@pytest.mark.parametrize("graph_name", ["dearflow_agent", "showcase_demo"])
+def test_schema_only_graph_reads_offloading_terminal_state(monkeypatch, graph_name):
+    from importlib import import_module
+
+    from langgraph.channels.delta import DeltaChannel
+
+    from runtime_service.middlewares import ConversationOffloadingMiddleware
+
+    async def run():
+        monkeypatch.delenv("AGENT_CONTEXT_MANAGEMENT_ENABLED", raising=False)
+        module = import_module(
+            "runtime_service.services.dearflow_agent.agent"
+            if graph_name == "dearflow_agent"
+            else "runtime_service.services.demo.showcase_demo.agent"
+        )
+        saver = InMemorySaver()
+        cfg = {"configurable": {"thread_id": "state-probe"}}
+        status = {
+            "type": "conversation_offloading",
+            "status": "completed",
+            "trigger": "manual",
+            "operation_id": "operation",
+            "run_id": "run",
+            "history_saved": True,
+        }
+        writer = create_deep_agent(
+            model=BindableFakeMessagesChatModel(responses=[AIMessage(content="ok")]),
+            checkpointer=saver,
+            state_schema=ConversationOffloadingMiddleware.state_schema,
+        )
+        await writer.aupdate_state(
+            cfg,
+            {
+                "messages": [HumanMessage(content="old")],
+                "conversation_offloading": status,
+            },
+            as_node="model",
+        )
+        reader = await module.get_agent(cfg)
+        reader.checkpointer = saver
+        assert isinstance(reader.channels["messages"], DeltaChannel)
+        assert (await reader.aget_state(cfg)).values[
+            "conversation_offloading"
+        ] == status
+
+    asyncio.run(run())
+
+
+def test_dearflow_maintenance_composition_skips_business_setup(monkeypatch, tmp_path):
+    from runtime_service.middlewares import (
+        ConversationOffloadingMiddleware,
+        RuntimeConfigMiddleware,
+    )
+    from runtime_service.runtime import RuntimeContext, runtime_context_hash
+    from runtime_service.services.dearflow_agent import agent
+    from runtime_service.services.dearflow_agent.middleware.skills import (
+        ExecutionSkillsMiddleware,
+    )
+    from runtime_service.services.dearflow_agent.workspace.backend import (
+        DearWorkspaceBackend,
+        WorkspaceMiddleware,
+    )
+
+    from .test_agent import config
+
+    monkeypatch.setenv("AGENT_CONTEXT_MANAGEMENT_ENABLED", "1")
+    monkeypatch.setenv("RUNTIME_DEAR_GOVERNANCE_ENABLED", "1")
+    monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path))
+    model = BindableFakeMessagesChatModel(
+        responses=[AIMessage(content="summary")],
+        profile={"max_input_tokens": 30000, "max_output_tokens": 2048},
+    )
+    monkeypatch.setattr(agent, "build_model", lambda *args, **kwargs: model)
+    mcp = AsyncMock(side_effect=AssertionError("maintenance connected MCP"))
+    memory = AsyncMock(side_effect=AssertionError("maintenance read memory"))
+    monkeypatch.setattr(agent, "load_mcp_tools", mcp)
+    monkeypatch.setattr(agent, "memory_allowed", memory)
+    captured = []
+    original = agent.create_deep_agent
+
+    def capture(**kwargs):
+        captured.append(kwargs)
+        return original(**kwargs)
+
+    monkeypatch.setattr(agent, "create_deep_agent", capture)
+    cfg = config()
+    cfg["context"] = {"offload_conversation": True, "max_tokens": 2048}
+    user = cfg["configurable"]["langgraph_auth_user"]
+    user["runtime_context_hash"] = runtime_context_hash(cfg["context"])
+    graph = asyncio.run(agent.get_agent(cfg))
+    root = captured[0]
+    wrappers = [
+        mw
+        for mw in root["middleware"]
+        if isinstance(mw, ConversationOffloadingMiddleware)
+    ]
+    assert len(wrappers) == 1 and wrappers[0].manual
+    assert (
+        sum(
+            name == "SummarizationMiddleware.before_model"
+            for name in graph.get_graph().nodes
+        )
+        == 1
+    )
+    for child in root["subagents"]:
+        wrappers = [
+            mw
+            for mw in child["middleware"]
+            if isinstance(mw, ConversationOffloadingMiddleware)
+        ]
+        assert len(wrappers) == 1 and not wrappers[0].manual
+    runtime = SimpleNamespace(
+        context=RuntimeContext(offload_conversation=True, max_tokens=2048),
+        server_info=SimpleNamespace(
+            user=user, assistant_id="dearflow_agent", graph_id="dearflow_agent"
+        ),
+        execution_info=SimpleNamespace(
+            thread_id="dear-thread", run_id="maintain", task_id="maintain"
+        ),
+    )
+    for mw in root["middleware"]:
+        if isinstance(mw, (RuntimeConfigMiddleware, WorkspaceMiddleware)):
+            assert asyncio.run(mw.abefore_agent({}, runtime)) is None
+        elif isinstance(mw, ExecutionSkillsMiddleware):
+            assert asyncio.run(mw.abefore_agent({}, runtime, cfg)) is None
+    mcp.assert_not_awaited()
+    memory.assert_not_awaited()
+    assert not DearWorkspaceBackend("tenant", "project", "dear-thread").root.exists()
 
 
 def test_memory_source_snapshot_survives_official_summarization(monkeypatch):

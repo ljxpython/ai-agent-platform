@@ -88,7 +88,7 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(terminal)
 
-    def test_context_hash_matches_runtime_context_v4_canonicalization(self) -> None:
+    def test_context_hash_matches_runtime_context_v5_canonicalization(self) -> None:
         context_hash, snapshot = _runtime_context_snapshot(
             {
                 "params": {
@@ -111,7 +111,7 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             context_hash,
-            "sha256:6919616740ad060d6785d7e2604f2487f1d109fca3dd207dd1107cb8a4281dc2",
+            "sha256:c7eb4961f3e693c8f776ed2bceafc886b3cd562591fd4fc9a48b13eea4319d6b",
         )
         self.assertEqual(
             snapshot,
@@ -120,8 +120,46 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
                 "temperature": 0.0,
                 "top_p": 1.0,
                 "max_tokens": 128,
+                "offload_conversation": False,
             },
         )
+
+    def test_context_offload_false_is_default_and_true_is_distinct(self) -> None:
+        empty_hash, empty_snapshot = _runtime_context_snapshot({"params": {}})
+        false_hash, false_snapshot = _runtime_context_snapshot(
+            {"params": {"context": {"offload_conversation": False}}}
+        )
+        true_hash, true_snapshot = _runtime_context_snapshot(
+            {
+                "params": {
+                    "config": {
+                        "configurable": {
+                            "platform_runtime": {"offload_conversation": True}
+                        }
+                    }
+                }
+            }
+        )
+        self.assertEqual(empty_hash, false_hash)
+        self.assertEqual(empty_snapshot["offload_conversation"], False)
+        self.assertEqual(false_snapshot["offload_conversation"], False)
+        self.assertNotEqual(empty_hash, true_hash)
+        self.assertEqual(true_snapshot["offload_conversation"], True)
+
+    def test_context_offload_rejects_conflicting_or_bypassed_locations(self) -> None:
+        with self.assertRaises(BadRequestError):
+            _runtime_context_snapshot(
+                {
+                    "params": {
+                        "context": {"offload_conversation": True},
+                        "config": {
+                            "configurable": {
+                                "platform_runtime": {"offload_conversation": False}
+                            }
+                        },
+                    }
+                }
+            )
 
     def test_runtime_context_precedence_is_explicit_then_agent_then_project(
         self,

@@ -90,6 +90,7 @@ _DEFAULT_STREAM_MODES: tuple[str, ...] = (
     "updates",
     "messages",
     "checkpoints",
+    "custom",
 )
 _SUGGESTION_ROLES = frozenset(("user", "assistant"))
 _SUGGESTION_MAX_MESSAGES = 6
@@ -173,6 +174,29 @@ def _runtime_context_snapshot(command: dict[str, Any]) -> tuple[str, dict[str, A
     configurable = ensure_dict(config.get("configurable"))
     runtime_options = ensure_dict(configurable.get("platform_runtime"))
     context = ensure_dict(params.get("context"))
+    context_offload = context.get("offload_conversation")
+    runtime_offload = runtime_options.get("offload_conversation")
+    if "offload_conversation" in context and not isinstance(context_offload, bool):
+        raise BadRequestError(
+            code="invalid_runtime_options",
+            message="offload_conversation must be a boolean",
+        )
+    if "offload_conversation" in runtime_options and not isinstance(
+        runtime_offload, bool
+    ):
+        raise BadRequestError(
+            code="invalid_runtime_options",
+            message="offload_conversation must be a boolean",
+        )
+    if (
+        context_offload is not None
+        and runtime_offload is not None
+        and context_offload != runtime_offload
+    ):
+        raise BadRequestError(
+            code="runtime_context_conflict",
+            message="offload_conversation values conflict",
+        )
     # Protocol promotion applies platform_runtime over the submitted context.
     merged = {**context, **runtime_options}
     snapshot = {
@@ -190,13 +214,17 @@ def _runtime_context_snapshot(command: dict[str, Any]) -> tuple[str, dict[str, A
             and not isinstance(merged.get("top_p"), bool)
             else merged.get("top_p")
         ),
+        "execution_mode": merged.get("execution_mode"),
+        "access_policy": merged.get("access_policy"),
+        "offload_conversation": (
+            runtime_offload
+            if runtime_offload is not None
+            else context_offload
+            if context_offload is not None
+            else False
+        ),
     }
-    mode = merged.get("execution_mode")
-    if mode is not None:
-        snapshot["execution_mode"] = mode
-    if merged.get("access_policy") is not None:
-        snapshot["access_policy"] = merged["access_policy"]
-    schema = "runtime-context/v4"
+    schema = "runtime-context/v5"
     encoded = json.dumps(
         {"schema": schema, **snapshot},
         ensure_ascii=False,
@@ -412,22 +440,13 @@ def _interrupt_ids(state: Any) -> set[str]:
 
 
 def _normalize_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
-    def check(value):
-        if isinstance(value, dict):
-            try:
-                reject_private_runtime_state(value)
-            except ValueError as exc:
-                raise BadRequestError(
-                    code="runtime_private_state",
-                    message="Runtime execution state is server-owned",
-                ) from exc
-            for item in value.values():
-                check(item)
-        elif isinstance(value, list):
-            for item in value:
-                check(item)
-
-    check(payload)
+    try:
+        reject_private_runtime_state(payload)
+    except ValueError as exc:
+        raise BadRequestError(
+            code="runtime_private_state",
+            message="Runtime execution state is server-owned",
+        ) from exc
     return ensure_dict(payload)
 
 
@@ -648,6 +667,8 @@ class RuntimeGatewayService:
         payload: dict[str, Any],
         default_model_id: str | None = None,
     ) -> dict[str, Any]:
+        # Check the two submitted locations before defaults merge them.
+        _runtime_context_snapshot({"params": payload})
         context = ensure_dict(payload.get("context"))
         config = ensure_dict(payload.get("config"))
         configurable = ensure_dict(config.get("configurable"))
@@ -1006,6 +1027,22 @@ class RuntimeGatewayService:
                 code="target_run_required", message="Target Run is required"
             )
         await self._upstream.get_thread_run(thread_id, target_run_id)
+
+        def is_maintenance_run():
+            with self._require_session_factory()() as session:
+                request = RunRequestsRepository(session).for_run(
+                    project_id=project_id, thread_id=thread_id, run_id=target_run_id
+                )
+                return bool(
+                    request
+                    and request.context_snapshot.get("offload_conversation") is True
+                )
+
+        if await run_in_threadpool(is_maintenance_run):
+            raise ConflictError(
+                code="context_offload_pending_input",
+                message="Maintenance Runs cannot receive queued messages",
+            )
         upstream = self._upstream
         if self._delegation_headers_factory:
             upstream = upstream.with_forwarded_headers(
@@ -1542,7 +1579,109 @@ class RuntimeGatewayService:
             and thread_access.allowed(
                 actor, project_id, _thread_metadata(thread), "terminal"
             ),
+            "conversation_offloading": capabilities.get("conversation_offloading")
+            is True
+            and thread_access.allowed(
+                actor, project_id, _thread_metadata(thread), "comment"
+            ),
         }
+
+    async def _preflight_conversation_offload(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        payload: dict[str, Any],
+        scheduled_config: dict | None,
+        check_state: bool,
+    ) -> None:
+        if (
+            scheduled_config is not None
+            or payload.get("command")
+            or payload.get("input") not in (None, {})
+            or any(
+                key in payload
+                for key in (
+                    "checkpoint_id",
+                    "checkpoint_ns",
+                    "checkpoint",
+                    "attachments",
+                )
+            )
+            or set(ensure_dict(ensure_dict(payload.get("config")).get("configurable")))
+            & {"checkpoint_id", "checkpoint_ns", "checkpoint_map"}
+        ):
+            raise BadRequestError(
+                code="context_offload_input_invalid",
+                message="Maintenance requires empty input and the latest root checkpoint",
+            )
+        thread = await self._load_thread(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            write=True,
+            action="comment",
+        )
+        if _thread_graph_id(thread) != clean_str(payload.get("assistant_id")):
+            raise BadRequestError(
+                code="context_offload_not_supported",
+                message="Maintenance requires the Thread's current graph",
+            )
+        capabilities = await self.get_thread_capabilities(
+            actor=actor, project_id=project_id, thread_id=thread_id
+        )
+        if capabilities.get("conversation_offloading") is not True:
+            raise ConflictError(
+                code="context_offload_not_supported",
+                message="Conversation maintenance is unavailable",
+            )
+        if not check_state:
+            return
+        for status in ("pending", "running"):
+            runs = await self._upstream.list_thread_runs(
+                thread_id, {"limit": 1, "status": status}
+            )
+            rows = runs if isinstance(runs, list) else ensure_dict(runs).get("runs", [])
+            if rows:
+                raise ConflictError(
+                    code="thread_active_run_conflict",
+                    message="Thread already has an active run",
+                )
+        state = await self._upstream.get_thread_state(thread_id)
+        if _interrupt_ids(state) or ensure_dict(state).get("next"):
+            raise ConflictError(
+                code="context_offload_interrupt_pending",
+                message="Resolve pending input before maintenance",
+            )
+        if not ensure_dict(ensure_dict(state).get("values")).get("messages"):
+            raise ConflictError(
+                code="context_offload_empty_thread",
+                message="Thread has no conversation history",
+            )
+        upstream = self._upstream
+        if self._delegation_headers_factory:
+            upstream = upstream.with_forwarded_headers(
+                await run_in_threadpool(
+                    self._delegation_headers_factory,
+                    project_id=project_id,
+                    agent_key=clean_str(payload.get("assistant_id")),
+                    thread_id=thread_id,
+                    context_hash=empty_runtime_context_hash(),
+                    operation="message-read",
+                )
+            )
+        pending = await upstream.list_thread_messages(thread_id, pending_only=True)
+        if type(ensure_dict(pending).get("has_pending_input")) is not bool:
+            raise ServiceUnavailableError(
+                code="context_offload_pending_state_unavailable",
+                message="Pending message state is unavailable",
+            )
+        if pending["has_pending_input"]:
+            raise ConflictError(
+                code="context_offload_pending_input",
+                message="Thread has pending messages",
+            )
 
     async def thread_terminal(
         self,
@@ -1877,6 +2016,11 @@ class RuntimeGatewayService:
             "interrupt_key": record.interrupt_id,
             "reused_submission": reused,
             "operation": "approve" if thread_action == "approve" else "run-create",
+            **(
+                {"maintenance_type": "conversation_offloading"}
+                if record.context_snapshot.get("offload_conversation") is True
+                else {}
+            ),
         }
         self._emit_correlation("runtime.submission.attempt", **relation)
         await run_in_threadpool(
@@ -1893,14 +2037,38 @@ class RuntimeGatewayService:
             )
             return record, await self._upstream.get_thread_run(thread_id, record.run_id)
 
+        current_context_hash, current_snapshot = _runtime_context_snapshot(
+            {"params": {"context": record.context_snapshot}}
+        )
+        maintenance = current_snapshot.get("offload_conversation") is True
+        if maintenance:
+            await self._preflight_conversation_offload(
+                actor=actor,
+                project_id=project_id,
+                thread_id=thread_id,
+                payload=upstream_payload,
+                scheduled_config=scheduled_config,
+                check_state=not (
+                    reused and record.submission_status in {"validated", "unknown"}
+                ),
+            )
+
+            def mark_validated():
+                with factory.begin() as session:
+                    RunRequestsRepository(session).mark(record.id, "validated")
+
+            await run_in_threadpool(mark_validated)
+
         payload = dict(upstream_payload)
         payload.setdefault("stream_mode", list(_DEFAULT_STREAM_MODES))
         payload.setdefault("version", "v3")
         payload.setdefault("stream_resumable", True)
-        payload["multitask_strategy"] = str(
-            upstream_payload.get("multitask_strategy") or "reject"
+        payload["multitask_strategy"] = (
+            "reject"
+            if maintenance
+            else str(upstream_payload.get("multitask_strategy") or "reject")
         )
-        payload["context"] = dict(record.context_snapshot)
+        payload["context"] = current_snapshot
         payload["config"] = dict(record.config_snapshot)
         config_configurable = ensure_dict(payload["config"].get("configurable"))
         if "checkpoint_id" not in payload and "checkpoint_id" in config_configurable:
@@ -1942,7 +2110,7 @@ class RuntimeGatewayService:
                     project_id=project_id,
                     agent_key=agent_key,
                     thread_id=thread_id,
-                    context_hash=record.context_hash,
+                    context_hash=current_context_hash,
                 )
             )
 
@@ -3272,6 +3440,11 @@ class RuntimeGatewayService:
                 raise ConflictError(
                     code="run_request_missing",
                     message="Original authorized request is required",
+                )
+            if parent.context_snapshot.get("offload_conversation") is True:
+                raise BadRequestError(
+                    code="context_offload_input_invalid",
+                    message="Maintenance cannot be resumed through input.respond",
                 )
             source_run_id = previous.parent_run_id if previous else parent.run_id
             parent_run = await self._upstream.get_thread_run(thread_id, source_run_id)

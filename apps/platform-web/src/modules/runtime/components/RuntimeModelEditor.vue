@@ -22,7 +22,16 @@ export interface ModelEditorSubmitPayload {
   api_key: string;
   enabled: boolean;
   models: ModelRowDraft[];
+  context_window_tokens?: number | null;
 }
+
+const CONTEXT_WINDOW_PRESETS = [
+  { label: "32K", value: 32768 },
+  { label: "64K", value: 65536 },
+  { label: "128K", value: 131072 },
+  { label: "200K", value: 200000 },
+  { label: "1M", value: 1048576 },
+];
 
 const props = withDefaults(
   defineProps<{
@@ -171,7 +180,10 @@ const providerOptions = PROVIDER_PRESETS.map((p) => ({
 }));
 
 const PROTOCOL_OPTIONS = [
-  { value: "openai-compatible", label: "openai-compatible (主流兼容网关，如 vLLM / Ollama)" },
+  {
+    value: "openai-compatible",
+    label: "openai-compatible (主流兼容网关，如 vLLM / Ollama)",
+  },
   { value: "anthropic", label: "anthropic (Anthropic Claude 原生网关)" },
   { value: "deepseek", label: "deepseek (DeepSeek 原生网关)" },
   { value: "openai", label: "openai (OpenAI 原生网关)" },
@@ -212,6 +224,7 @@ const editDisplayName = ref("");
 const editBaseUrl = ref("");
 const editProtocol = ref("openai-compatible");
 const editProvider = ref("");
+const editContextWindowTokensInput = ref("");
 
 const isEditMode = computed(() => activeMode.value === "edit");
 
@@ -275,10 +288,15 @@ function initForm() {
     editProtocol.value = m.protocol;
     apiKey.value = "";
     enabled.value = m.enabled !== false;
+    editContextWindowTokensInput.value =
+      typeof m.context_window_tokens === "number" && m.context_window_tokens > 0
+        ? String(m.context_window_tokens)
+        : "";
   } else if (props.initialStation) {
     const s = props.initialStation;
     apiKey.value = "";
     enabled.value = true;
+    editContextWindowTokensInput.value = "";
 
     // 判断是标准厂商还是自定义提供方
     const matchedPreset = PROVIDER_PRESETS.find(
@@ -302,6 +320,7 @@ function initForm() {
     activeMode.value = props.initialMode || "standard";
     apiKey.value = "";
     enabled.value = true;
+    editContextWindowTokensInput.value = "";
 
     // 默认标准预设
     selectedPreset.value = "deepseek";
@@ -322,7 +341,11 @@ function initForm() {
 }
 
 watch(
-  [() => props.editingModel, () => props.initialStation, () => props.initialMode],
+  [
+    () => props.editingModel,
+    () => props.initialStation,
+    () => props.initialMode,
+  ],
   () => {
     initForm();
   },
@@ -358,6 +381,19 @@ function handleSubmit() {
       }
     }
 
+    let parsedContextWindowTokens: number | null | undefined = undefined;
+    const rawTokens = editContextWindowTokensInput.value.trim();
+    if (rawTokens) {
+      const parsed = Number(rawTokens);
+      if (!Number.isInteger(parsed) || parsed <= 0) {
+        formError.value = "上下文窗口容量必须为大于 0 的整数";
+        return;
+      }
+      parsedContextWindowTokens = parsed;
+    } else {
+      parsedContextWindowTokens = null;
+    }
+
     emit("submit", {
       isEdit: true,
       editingId: props.editingModel?.id,
@@ -368,6 +404,7 @@ function handleSubmit() {
       api_key: apiKey.value.trim(),
       enabled: enabled.value,
       models: [{ id: trimmedId, name: editDisplayName.value.trim() }],
+      context_window_tokens: parsedContextWindowTokens,
     });
     return;
   }
@@ -431,7 +468,8 @@ function handleSubmit() {
       return;
     }
     if (!ROUTE_ID_PATTERN.test(route)) {
-      formError.value = "Provider 标识必须以小写字母开头，仅支持小写字母、数字和中划线（如 my-vllm）";
+      formError.value =
+        "Provider 标识必须以小写字母开头，仅支持小写字母、数字和中划线（如 my-vllm）";
       return;
     }
     if (!trimmedBaseUrl) {
@@ -484,10 +522,7 @@ function handleSubmit() {
         <div
           class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400"
         >
-          <BaseIcon
-            name="sparkle"
-            size="sm"
-          />
+          <BaseIcon name="sparkle" size="sm" />
         </div>
         <div>
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">
@@ -555,10 +590,7 @@ function handleSubmit() {
           :disabled="busy"
           @click="emit('close')"
         >
-          <BaseIcon
-            name="x"
-            size="sm"
-          />
+          <BaseIcon name="x" size="sm" />
           取消
         </BaseButton>
       </div>
@@ -571,11 +603,7 @@ function handleSubmit() {
         v-if="formError"
         class="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300"
       >
-        <BaseIcon
-          name="alert"
-          size="sm"
-          class="shrink-0"
-        />
+        <BaseIcon name="alert" size="sm" class="shrink-0" />
         <span>{{ formError }}</span>
       </div>
 
@@ -608,10 +636,7 @@ function handleSubmit() {
                 class="flex items-center gap-1 text-[11px] font-normal text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200"
                 @click="showApiKey = !showApiKey"
               >
-                <BaseIcon
-                  :name="showApiKey ? 'eye-off' : 'eye'"
-                  size="xs"
-                />
+                <BaseIcon :name="showApiKey ? 'eye-off' : 'eye'" size="xs" />
                 {{ showApiKey ? "隐藏" : "显示" }}
               </button>
             </label>
@@ -623,17 +648,14 @@ function handleSubmit() {
                 :placeholder="activePlaceholderKey"
                 autocomplete="new-password"
                 :disabled="busy"
-              >
+              />
               <button
                 type="button"
                 class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-dark-200"
                 tabindex="-1"
                 @click="showApiKey = !showApiKey"
               >
-                <BaseIcon
-                  :name="showApiKey ? 'eye-off' : 'eye'"
-                  size="sm"
-                />
+                <BaseIcon :name="showApiKey ? 'eye-off' : 'eye'" size="sm" />
               </button>
             </div>
           </div>
@@ -645,7 +667,9 @@ function handleSubmit() {
         >
           <div class="mb-3 flex items-center justify-between">
             <div>
-              <h3 class="text-xs font-semibold text-gray-800 dark:text-dark-200">
+              <h3
+                class="text-xs font-semibold text-gray-800 dark:text-dark-200"
+              >
                 包含模型清单 (Model List)
               </h3>
               <p class="text-[11px] text-gray-500 dark:text-dark-400">
@@ -658,10 +682,7 @@ function handleSubmit() {
               :disabled="busy"
               @click="addStandardModelRow"
             >
-              <BaseIcon
-                name="plus"
-                size="xs"
-              />
+              <BaseIcon name="plus" size="xs" />
               <span>添加模型</span>
             </button>
           </div>
@@ -678,7 +699,7 @@ function handleSubmit() {
                   class="pw-input h-9 text-xs"
                   placeholder="Model ID，例如 deepseek-chat"
                   :disabled="busy"
-                >
+                />
               </div>
               <div class="flex-1">
                 <input
@@ -686,7 +707,7 @@ function handleSubmit() {
                   class="pw-input h-9 text-xs"
                   placeholder="Display Name，例如 DeepSeek V3"
                   :disabled="busy"
-                >
+                />
               </div>
               <button
                 type="button"
@@ -695,10 +716,7 @@ function handleSubmit() {
                 title="删除此模型"
                 @click="removeStandardModelRow(idx)"
               >
-                <BaseIcon
-                  name="trash"
-                  size="sm"
-                />
+                <BaseIcon name="trash" size="sm" />
               </button>
             </div>
           </div>
@@ -714,11 +732,7 @@ function handleSubmit() {
             @click="showAdvancedSettings = !showAdvancedSettings"
           >
             <div class="flex items-center gap-2">
-              <BaseIcon
-                name="settings-2"
-                size="sm"
-                class="text-gray-400"
-              />
+              <BaseIcon name="settings-2" size="sm" class="text-gray-400" />
               <span>高级设置 (自定义 API 端点与启用状态)</span>
             </div>
             <BaseIcon
@@ -745,7 +759,7 @@ function handleSubmit() {
                 placeholder="提供方默认，若内网反向代理可修改"
                 inputmode="url"
                 :disabled="busy"
-              >
+              />
               <p class="mt-1 text-[11px] text-gray-500 dark:text-dark-400">
                 已自动预设官方标准端点。如团队自建了反向代理网关，可展开修改。
               </p>
@@ -760,7 +774,7 @@ function handleSubmit() {
                   type="checkbox"
                   class="pw-table-checkbox rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                   :disabled="busy"
-                >
+                />
                 <span>配置完成后默认启用该模型</span>
               </label>
             </div>
@@ -782,10 +796,14 @@ function handleSubmit() {
               <input
                 v-model="customRoute"
                 class="pw-input text-xs"
-                :class="customRouteError ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500' : ''"
+                :class="
+                  customRouteError
+                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500'
+                    : ''
+                "
                 placeholder="例如 my-vllm, company-gateway, ollama-local"
                 :disabled="busy"
-              >
+              />
               <p
                 v-if="customRouteError"
                 class="mt-1 text-[11px] text-rose-600 dark:text-rose-400"
@@ -810,9 +828,11 @@ function handleSubmit() {
               <input
                 v-model="customDisplayName"
                 class="pw-input text-xs"
-                :placeholder="customRoute.trim() || '例如 公司自建 vLLM 集群 (选填)'"
+                :placeholder="
+                  customRoute.trim() || '例如 公司自建 vLLM 集群 (选填)'
+                "
                 :disabled="busy"
-              >
+              />
               <p class="mt-1 text-[11px] text-gray-500 dark:text-dark-400">
                 面向界面展示的友好别名，留空将默认使用 Provider 标识。
               </p>
@@ -833,7 +853,7 @@ function handleSubmit() {
                 placeholder="例如 http://192.168.1.100:8000/v1 或 https://gateway.company.com/v1"
                 inputmode="url"
                 :disabled="busy"
-              >
+              />
             </div>
 
             <!-- Protocol 协议 (必选) -->
@@ -862,10 +882,7 @@ function handleSubmit() {
                 class="flex items-center gap-1 text-[11px] font-normal text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200"
                 @click="showApiKey = !showApiKey"
               >
-                <BaseIcon
-                  :name="showApiKey ? 'eye-off' : 'eye'"
-                  size="xs"
-                />
+                <BaseIcon :name="showApiKey ? 'eye-off' : 'eye'" size="xs" />
                 {{ showApiKey ? "隐藏" : "显示" }}
               </button>
             </label>
@@ -877,17 +894,14 @@ function handleSubmit() {
                 :placeholder="activePlaceholderKey"
                 autocomplete="new-password"
                 :disabled="busy"
-              >
+              />
               <button
                 type="button"
                 class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-dark-200"
                 tabindex="-1"
                 @click="showApiKey = !showApiKey"
               >
-                <BaseIcon
-                  :name="showApiKey ? 'eye-off' : 'eye'"
-                  size="sm"
-                />
+                <BaseIcon :name="showApiKey ? 'eye-off' : 'eye'" size="sm" />
               </button>
             </div>
             <p class="mt-1 text-[11px] text-gray-500 dark:text-dark-400">
@@ -901,7 +915,9 @@ function handleSubmit() {
           >
             <div class="mb-3 flex items-center justify-between">
               <div>
-                <h3 class="text-xs font-semibold text-gray-800 dark:text-dark-200">
+                <h3
+                  class="text-xs font-semibold text-gray-800 dark:text-dark-200"
+                >
                   包含模型清单 (Model List) <span class="text-rose-500">*</span>
                 </h3>
                 <p class="text-[11px] text-gray-500 dark:text-dark-400">
@@ -914,10 +930,7 @@ function handleSubmit() {
                 :disabled="busy"
                 @click="addCustomModelRow"
               >
-                <BaseIcon
-                  name="plus"
-                  size="xs"
-                />
+                <BaseIcon name="plus" size="xs" />
                 <span>添加模型</span>
               </button>
             </div>
@@ -934,7 +947,7 @@ function handleSubmit() {
                     class="pw-input h-9 text-xs"
                     placeholder="Model ID (必填)，例如 qwen2.5-72b-instruct"
                     :disabled="busy"
-                  >
+                  />
                 </div>
                 <div class="flex-1">
                   <input
@@ -942,7 +955,7 @@ function handleSubmit() {
                     class="pw-input h-9 text-xs"
                     placeholder="Display Name (选填)，例如 通义千问 72B 深度推理"
                     :disabled="busy"
-                  >
+                  />
                 </div>
                 <button
                   type="button"
@@ -951,10 +964,7 @@ function handleSubmit() {
                   title="删除此模型"
                   @click="removeCustomModelRow(idx)"
                 >
-                  <BaseIcon
-                    name="trash"
-                    size="sm"
-                  />
+                  <BaseIcon name="trash" size="sm" />
                 </button>
               </div>
             </div>
@@ -969,7 +979,7 @@ function handleSubmit() {
                 type="checkbox"
                 class="pw-table-checkbox rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 :disabled="busy"
-              >
+              />
               <span>配置完成后默认启用该模型</span>
             </label>
           </div>
@@ -981,17 +991,21 @@ function handleSubmit() {
         <div class="space-y-4">
           <div class="grid gap-4 md:grid-cols-2">
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 所属 Provider
               </label>
               <input
                 :value="editProvider"
                 class="pw-input bg-gray-50 text-xs text-gray-500 dark:bg-dark-800 dark:text-dark-400"
                 disabled
-              >
+              />
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 Protocol 协议
               </label>
               <BaseSelect
@@ -1004,7 +1018,9 @@ function handleSubmit() {
 
           <div class="grid gap-4 md:grid-cols-2">
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 Model ID (必填)
               </label>
               <input
@@ -1012,10 +1028,12 @@ function handleSubmit() {
                 class="pw-input text-xs"
                 placeholder="例如 deepseek-chat, gpt-4o"
                 :disabled="busy"
-              >
+              />
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 Display Name (显示别名)
               </label>
               <input
@@ -1023,13 +1041,15 @@ function handleSubmit() {
                 class="pw-input text-xs"
                 placeholder="例如 DeepSeek V3"
                 :disabled="busy"
-              >
+              />
             </div>
           </div>
 
           <div class="grid gap-4 md:grid-cols-2">
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 Base URL (API 接入端点)
               </label>
               <input
@@ -1038,20 +1058,19 @@ function handleSubmit() {
                 placeholder="https://api.example.com/v1"
                 inputmode="url"
                 :disabled="busy"
-              >
+              />
             </div>
             <div>
-              <label class="mb-1.5 flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 <span>更新 API Key (留空表示不修改已有凭据)</span>
                 <button
                   type="button"
                   class="flex items-center gap-1 text-[11px] font-normal text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200"
                   @click="showApiKey = !showApiKey"
                 >
-                  <BaseIcon
-                    :name="showApiKey ? 'eye-off' : 'eye'"
-                    size="xs"
-                  />
+                  <BaseIcon :name="showApiKey ? 'eye-off' : 'eye'" size="xs" />
                   {{ showApiKey ? "隐藏" : "显示" }}
                 </button>
               </label>
@@ -1063,17 +1082,68 @@ function handleSubmit() {
                   placeholder="留空则保持现有凭据不变"
                   autocomplete="new-password"
                   :disabled="busy"
-                >
+                />
                 <button
                   type="button"
                   class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-dark-200"
                   tabindex="-1"
                   @click="showApiKey = !showApiKey"
                 >
-                  <BaseIcon
-                    :name="showApiKey ? 'eye-off' : 'eye'"
-                    size="sm"
-                  />
+                  <BaseIcon :name="showApiKey ? 'eye-off' : 'eye'" size="sm" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 上下文窗口容量 (Tokens) -->
+          <div
+            class="rounded-xl border border-gray-100 bg-gray-50/50 p-4 dark:border-dark-800 dark:bg-dark-950/30"
+          >
+            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <label
+                  class="block text-xs font-semibold text-gray-700 dark:text-dark-200"
+                >
+                  上下文窗口容量 (Context Window Tokens)
+                </label>
+                <p class="text-[11px] text-gray-500 dark:text-dark-400">
+                  端点支持的最大输入与输出 Token 总量。留空或清除表示未设置。
+                </p>
+              </div>
+              <button
+                v-if="editContextWindowTokensInput"
+                type="button"
+                class="text-[11px] text-gray-500 hover:text-rose-600 dark:text-dark-400 dark:hover:text-rose-400"
+                :disabled="busy"
+                @click="editContextWindowTokensInput = ''"
+              >
+                清除设置
+              </button>
+            </div>
+
+            <div class="space-y-2.5">
+              <input
+                v-model="editContextWindowTokensInput"
+                class="pw-input text-xs font-mono"
+                placeholder="例如 128000 (正整数)"
+                inputmode="numeric"
+                :disabled="busy"
+              />
+
+              <!-- 快捷预设药丸 -->
+              <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <span class="text-[11px] text-gray-400 dark:text-dark-500 mr-1"
+                  >常用预设:</span
+                >
+                <button
+                  v-for="preset in CONTEXT_WINDOW_PRESETS"
+                  :key="preset.value"
+                  type="button"
+                  class="rounded-md border border-gray-200 bg-white px-2 py-0.5 text-[11px] text-gray-600 transition hover:border-primary-500 hover:bg-primary-50 hover:text-primary-600 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-300 dark:hover:border-primary-500 dark:hover:bg-primary-950/40 dark:hover:text-primary-400"
+                  :disabled="busy"
+                  @click="editContextWindowTokensInput = String(preset.value)"
+                >
+                  {{ preset.label }} ({{ preset.value.toLocaleString() }})
                 </button>
               </div>
             </div>
@@ -1088,7 +1158,7 @@ function handleSubmit() {
                 type="checkbox"
                 class="pw-table-checkbox rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 :disabled="busy"
-              >
+              />
               <span>启用该模型</span>
             </label>
           </div>
@@ -1100,23 +1170,11 @@ function handleSubmit() {
     <div
       class="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50/50 px-6 py-3.5 dark:border-dark-800 dark:bg-dark-950/40"
     >
-      <BaseButton
-        variant="ghost"
-        :disabled="busy"
-        @click="emit('close')"
-      >
+      <BaseButton variant="ghost" :disabled="busy" @click="emit('close')">
         取消
       </BaseButton>
-      <BaseButton
-        :disabled="busy"
-        @click="handleSubmit"
-      >
-        <BaseIcon
-          v-if="busy"
-          name="refresh"
-          size="sm"
-          class="animate-spin"
-        />
+      <BaseButton :disabled="busy" @click="handleSubmit">
+        <BaseIcon v-if="busy" name="refresh" size="sm" class="animate-spin" />
         <span>{{
           busy
             ? "保存中..."

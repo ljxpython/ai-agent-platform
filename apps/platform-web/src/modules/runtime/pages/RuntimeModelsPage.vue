@@ -391,6 +391,9 @@ async function save(payload: ModelEditorSubmitPayload) {
         ...common,
         model: payload.models[0].id,
         display_name: payload.display_name,
+        ...(payload.context_window_tokens !== undefined
+          ? { context_window_tokens: payload.context_window_tokens }
+          : {}),
       });
       if (requestEpoch !== epoch) return;
       notice.value = "模型配置已保存";
@@ -403,6 +406,9 @@ async function save(payload: ModelEditorSubmitPayload) {
             ...common,
             model: model.id,
             display_name: model.name || model.id,
+            ...(payload.context_window_tokens !== undefined
+              ? { context_window_tokens: payload.context_window_tokens }
+              : {}),
             scope_type,
             project_id,
           }),

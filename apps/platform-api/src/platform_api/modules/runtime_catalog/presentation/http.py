@@ -152,7 +152,7 @@ def get_runtime_catalog_service(request: Request) -> RuntimeCatalogService:
 def get_internal_runtime_model_config(
     request: Request,
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
-) -> dict[str, str]:
+) -> dict[str, str | int | None]:
     """Serve a model connection only to Runtime using a short-lived opaque reference."""
     reference = request.headers.get("x-runtime-model-ref", "").strip()
     project_id = request.headers.get("x-project-id", "").strip()

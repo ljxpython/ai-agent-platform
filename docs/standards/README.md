@@ -26,6 +26,8 @@
 
 ## 更新规则
 
+2026-10-07 补充已批准的 Context v5、受控维护与整理 custom 契约，证据见 [上下文专项](../projects/20261006-agent-context-window-governance/verification.md)。此补充不代表上面原专项的剩余门禁通过。
+
 - 标准发生变化时，对应文件的 `last_verified` 和 `status` 必须同步更新
 - 专项从 partial/blocked → done 后，将对应文件 `status` 改为 `active`
 - 不在此目录下存放草案或未批准的设计意图

@@ -10,6 +10,7 @@
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
 | Agent 运行诊断面板（Run Diagnostics） | 已完成：实装独立解耦面板 RunDiagnostics、Zod 白名单契约、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与模式切换、ChatSession 历史 Run 自动拉取与无缝切换，全仓 115 套件 535 项单测全绿，浏览器联合验收通过 | [前端交接](projects/20261006-agent-observability-hardening/frontend-handoff.md) |
+| Agent 上下文整理反馈与手动动作 | 已完成：单模型容量编辑与查看（F01）、整理微胶囊与 4 秒淡出/输入打断机制（F02）、手动整理菜单与守卫隔离（F03）；63 项单测、vue-tsc 0 错误与生产打包全通过；用户在真实平台页面完成端到端人工实测联合验收，全链路闭环通过 | [项目概览](projects/20261006-agent-context-window-governance/README.md) · [前端交接](projects/20261006-agent-context-window-governance/frontend-handoff.md) |
 | 定时 Agent 任务页面 | 已完成：实装现代化卡片网格列表、双栏创建/编辑抽屉、DeerFlow 预设体系、历史记录抽屉与权限守卫，481 套单测、类型检查与生产打包全绿 | [前端交接](projects/20261005-scheduled-agent-tasks/frontend-handoff.md) |
 | 工具卡片错误结构化摘要提取与微胶囊 Tag 徽章展示 | 已完成：纯函数 parseToolErrorSummary 抽取，统一支持第一方 JSON、MCP 文本块数组与纯文本截断，微胶囊 Tag 徽章（recoveryHint）与展开态格式化排版实装，根治 tool.error 为空时不显红条 bug，31 项单测、类型检查与打包全绿 | [实现记录](projects/20261006-agent-tool-error-resilience/implementation/04-frontend-error-presentation.md) |
 | Chat 顶栏选择 Agent 历史会话队列联动过滤与 Pad 侧栏体验治理 | 已完成：修正 currentSelectedAgent 优先级倒挂、拔除 graph_id 过滤劫持恢复 agent_id 精准匹配、优化 Pad 侧边栏折叠交互，210项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-agent-history-filter-fix.md) |
@@ -67,6 +68,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 模型容量治理与上下文维护网关 | 后端已完成：容量 CRUD/受信连接、Context v5、手动维护全入口校验/幂等/ACL、公开脱敏与真实 HTTP/回滚验证通过；前端入口待交接，未部署 | [整体方案](projects/20261006-agent-context-window-governance/plan.md) |
 | 定时 Agent 任务 API | 后端 done：CRUD、预览、once、pause/resume/manual、私有历史分页与执行拒绝审计；发布包隔离链路通过，未部署现役平台 | [专项](projects/20261005-scheduled-agent-tasks/README.md) |
 | 平台用户软删除与生命周期治理 | 已完成：实现 DELETE /api/users/{user_id}，内置防自杀、最后超管保护、唯一项目管理员防孤儿项目三重护栏，释放原始用户名与凭据吊销 | [软删除治理](projects/20261003-platform-user-soft-delete/README.md) |
 | 鉴权、项目治理、审计、catalog | 已完成 | `apps/platform-api/docs/handbook/project-handbook.md` |
@@ -84,6 +86,7 @@
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
 | Agent 工具调用容错与生产接线 | 已完成：全链路闭环，Runtime/API 选择性错误分类、主子图接线、安全消息与流出口脱敏完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化代码排版实装，31 项单测全绿，三服务全栈浏览器联合验收 F01-F08 全部通过，未生产部署 | [方案与任务](projects/20261006-agent-tool-error-resilience/README.md) · [前端交接](projects/20261006-agent-tool-error-resilience/frontend-handoff.md) |
+| Agent 上下文窗口管理工程化 | 已完成：全链路交付闭环；模型容量配置与展示、预算 guard、隐藏摘要流、根/子图装配、维护副作用隔离、前端整理微胶囊及平滑淡出打断、受控手动整理；隔离真 PG、真实模型质量集及全栈单测/类型/构建全绿，用户人工实测验收通过 | [项目入口](projects/20261006-agent-context-window-governance/README.md) |
 | 定时 Run 执行前聚合授权与无人值守策略 | 后端 done：身份/凭据/项目/Agent/模型/Thread 失效拒绝，审批转失败，原生预览与历史；GraphHarbor post41 已锁定安装，未重启现役栈 | [验证](projects/20261005-scheduled-agent-tasks/verification.md) |
 | 工作区 HTML 预览 CSP 策略升级与白名单扩充 | 已完成：放行公认安全 CDN（Tailwind CDN / Google Fonts / cdnjs / unpkg / jsdelivr / SVG），严格限制 connect-src https: 阻断内网探测，43 项单测全绿 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
 | DearFlow Agent 接入 Jina Reader 网页深度提取与双通道容灾 | 已完成：Jina Reader API（r.jina.ai）高质量 Markdown 提取上线，首选 Jina、超时/异常自动平滑降级 Tavily Extract，严守 public_url 防御与 SHA256 证据落盘 | [Jina Reader 集成](projects/20261002-dearflow-jina-reader-integration/README.md) |

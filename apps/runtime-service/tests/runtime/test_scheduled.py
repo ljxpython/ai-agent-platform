@@ -4,7 +4,10 @@ from unittest.mock import AsyncMock
 import pytest
 
 from runtime_service.runtime.errors import RuntimeAuthError
-from runtime_service.runtime.resolver import runtime_context_hash
+from runtime_service.runtime.resolver import (
+    persisted_context_hash_v4,
+    runtime_context_hash,
+)
 from runtime_service.runtime.scheduled import (
     MARKER,
     _ScheduledGraph,
@@ -88,6 +91,42 @@ def test_guard_refreshes_current_policy_before_factory(monkeypatch):
     assert user["role"] == "project_executor"
     assert user["runtime_policy"]["version"] == "new"
     assert value["configurable"]["platform_model_ref"] == "fresh"
+
+
+def test_saved_v4_cron_upgrades_only_after_reauthorization(monkeypatch):
+    factory = AsyncMock(return_value=object())
+    callback = AsyncMock(
+        return_value={
+            "allowed": True,
+            "configurable": {},
+            "role": "project_editor",
+            "policy": {
+                "version": "new",
+                "allowed_model_ids": ["model"],
+                "tool_overrides": {},
+                "tool_policy_version": "new-tools",
+            },
+        }
+    )
+    monkeypatch.setattr("runtime_service.runtime.scheduled._callback", callback)
+    value = config()
+    assert (
+        persisted_context_hash_v4({})
+        == "sha256:b5dd29b8e42f212b19045c788fc24b9bb5d726d1c788a3ff399ba60a5ef8b616"
+    )
+    value["configurable"]["langgraph_auth_user"]["runtime_context_hash"] = (
+        persisted_context_hash_v4({})
+    )
+    asyncio.run(scheduled_execution(factory, agent_key="probe")(value))
+    assert value["configurable"]["langgraph_auth_user"][
+        "runtime_context_hash"
+    ] == runtime_context_hash({})
+    callback.assert_awaited_once()
+    factory.reset_mock()
+    value["context"]["offload_conversation"] = True
+    with pytest.raises(RuntimeAuthError, match="context_offload_forbidden"):
+        asyncio.run(scheduled_execution(factory, agent_key="probe")(value))
+    factory.assert_not_awaited()
 
 
 @pytest.mark.parametrize(

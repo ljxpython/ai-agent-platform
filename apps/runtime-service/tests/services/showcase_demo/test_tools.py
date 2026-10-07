@@ -86,6 +86,7 @@ def test_model_reference_is_validated_without_leaking_credentials(monkeypatch):
         "protocol": "openai",
         "model": "model-a",
         "api_key": "test-only-secret",
+        "context_window_tokens": 128000,
     }
 
     def handler(request):

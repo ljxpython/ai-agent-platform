@@ -8,6 +8,7 @@ import langgraph_sdk
 
 from platform_api.core.errors import PlatformApiError, UpstreamServiceError
 from platform_api.core.errors.payload import safe_error_headers, safe_validation_details
+from platform_api.core.runtime_contract import is_runtime_history_file_path
 
 FORWARDED_HEADER_KEYS = ("x-request-id",)
 
@@ -142,9 +143,46 @@ def redact_execution_fields(value: Any) -> Any:
     }
 
 
-def redact_runtime_private_fields(value: Any, *, _resource: bool = True) -> Any:
+def redact_runtime_private_fields(
+    value: Any, *, _resource: bool = True, _execution_errors: bool = True
+) -> Any:
     if isinstance(value, dict):
-        result = dict(value)
+        if value.get("type") == "conversation_offloading":
+            return _offloading_status(value)
+        if (
+            _execution_errors
+            and value.get("error") is not None
+            and (
+                value.get("event") in ("lifecycle", "failed")
+                or "thread_id" in value
+                and "status" in value
+                or {"id", "name", "result", "interrupts"}.issubset(value)
+            )
+        ):
+            error = value["error"]
+            safe_error: Any = "runtime.execution_failed"
+            if isinstance(error, dict):
+                safe_error = {"message": "runtime.execution_failed"}
+                category = error.get("type")
+                if (
+                    isinstance(category, str)
+                    and len(category) <= 128
+                    and category.isidentifier()
+                ):
+                    safe_error["type"] = category
+            value = {**value, "error": safe_error}
+
+        # CompositeBackend removes route prefixes from checkpoint file keys.
+        result = {
+            key: {
+                path: data
+                for path, data in item.items()
+                if not is_runtime_history_file_path(path)
+            }
+            if key == "files" and isinstance(item, dict)
+            else item
+            for key, item in value.items()
+        }
         if _resource and "thread_id" in result and "error" in result:
             result["error"] = project_execution_error(result["error"])
         if (
@@ -156,7 +194,9 @@ def redact_runtime_private_fields(value: Any, *, _resource: bool = True) -> Any:
                 redact_execution_fields(task) for task in result["tasks"]
             ]
         return {
-            key: redact_runtime_private_fields(
+            key: _offloading_status(item)
+            if key == "conversation_offloading" and type(item) is not bool
+            else redact_runtime_private_fields(
                 item,
                 _resource=_resource
                 and key
@@ -169,6 +209,8 @@ def redact_runtime_private_fields(value: Any, *, _resource: bool = True) -> Any:
                     "args",
                     "content",
                 },
+                _execution_errors=_execution_errors
+                and key not in {"content", "artifact", "metadata", "values", "result"},
             )
             for key, item in result.items()
             if not (
@@ -180,14 +222,54 @@ def redact_runtime_private_fields(value: Any, *, _resource: bool = True) -> Any:
                     "authorization_ref",
                     "dear_skill_snapshot",
                     "dear_memory_source",
+                    "_summarization_event",
+                    "_summarization_session_id",
                 }
             )
         }
     if isinstance(value, list):
         return [
-            redact_runtime_private_fields(item, _resource=_resource) for item in value
+            redact_runtime_private_fields(
+                item, _resource=_resource, _execution_errors=_execution_errors
+            )
+            for item in value
         ]
     return value
+
+
+def _offloading_status(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("type") != "conversation_offloading":
+        return {}
+    if value.get("status") not in (
+        "started",
+        "completed",
+        "skipped",
+        "failed",
+    ) or value.get("trigger") not in ("automatic", "manual"):
+        return {}
+    result = {
+        "type": "conversation_offloading",
+        "status": value["status"],
+        "trigger": value["trigger"],
+    }
+    for key in ("operation_id", "run_id"):
+        item = value.get(key)
+        if isinstance(item, str) and 0 < len(item) <= 128:
+            result[key] = item
+    if type(value.get("history_saved")) is bool:
+        result["history_saved"] = value["history_saved"]
+    if value.get("reason_code") in (
+        "nothing_to_offload",
+        "cancelled",
+        "summary_timeout",
+        "run_failed",
+        "history_save_failed",
+        "media_save_failed",
+        "input_budget_exceeded",
+        "summary_input_budget_exceeded",
+    ):
+        result["reason_code"] = value["reason_code"]
+    return result
 
 
 def create_runtime_upstream_error(

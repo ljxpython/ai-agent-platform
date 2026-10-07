@@ -35,6 +35,16 @@ function handleEdit() {
     emit("edit", props.model);
   }
 }
+
+function formatContextWindowLabel(tokens: number): string {
+  if (tokens >= 1_048_576) {
+    return `${(tokens / 1_048_576).toFixed(tokens % 1_048_576 === 0 ? 0 : 1)}M`;
+  }
+  if (tokens >= 1000) {
+    return `${Math.round(tokens / 1000)}k`;
+  }
+  return `${tokens}`;
+}
 </script>
 
 <template>
@@ -44,10 +54,7 @@ function handleEdit() {
     width="normal"
     @close="emit('close')"
   >
-    <div
-      v-if="model"
-      class="space-y-5"
-    >
+    <div v-if="model" class="space-y-5">
       <!-- 头部状态指示区 -->
       <div
         class="rounded-xl border border-gray-100 bg-gray-50/70 p-4 dark:border-dark-800 dark:bg-dark-950/40"
@@ -57,10 +64,7 @@ function handleEdit() {
             <div
               class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950/50 dark:text-primary-400"
             >
-              <BaseIcon
-                name="sparkle"
-                size="sm"
-              />
+              <BaseIcon name="sparkle" size="sm" />
             </div>
             <div>
               <h3 class="text-sm font-semibold text-gray-900 dark:text-white">
@@ -76,10 +80,7 @@ function handleEdit() {
               v-if="isProjectDefault"
               class="inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400"
             >
-              <BaseIcon
-                name="check"
-                size="xs"
-              />
+              <BaseIcon name="check" size="xs" />
               默认模型
             </span>
             <span
@@ -111,10 +112,7 @@ function handleEdit() {
               title="复制 Model ID"
               @click="handleCopy('Model ID', model.model)"
             >
-              <BaseIcon
-                name="copy"
-                size="xs"
-              />
+              <BaseIcon name="copy" size="xs" />
             </button>
           </div>
           <div
@@ -166,6 +164,40 @@ function handleEdit() {
         </div>
 
         <div
+          class="rounded-lg border border-gray-100 bg-white p-3 shadow-sm dark:border-dark-800 dark:bg-dark-900"
+        >
+          <div
+            class="flex items-center justify-between text-gray-500 dark:text-dark-400"
+          >
+            <span>上下文窗口 (Context Window)</span>
+            <button
+              v-if="model.context_window_tokens"
+              type="button"
+              class="text-gray-400 hover:text-gray-600 dark:hover:text-dark-200"
+              title="复制上下文窗口数值"
+              @click="
+                handleCopy('上下文窗口', String(model.context_window_tokens))
+              "
+            >
+              <BaseIcon name="copy" size="xs" />
+            </button>
+          </div>
+          <div class="mt-1 font-medium truncate">
+            <span
+              v-if="model.context_window_tokens"
+              class="font-mono text-gray-900 dark:text-white"
+            >
+              {{ model.context_window_tokens.toLocaleString() }} Tokens ({{
+                formatContextWindowLabel(model.context_window_tokens)
+              }})
+            </span>
+            <span v-else class="text-gray-400 dark:text-dark-500 font-normal">
+              未设置
+            </span>
+          </div>
+        </div>
+
+        <div
           class="sm:col-span-2 rounded-lg border border-gray-100 bg-white p-3 shadow-sm dark:border-dark-800 dark:bg-dark-900"
         >
           <div
@@ -179,10 +211,7 @@ function handleEdit() {
               title="复制 Base URL"
               @click="handleCopy('Base URL', model.base_url)"
             >
-              <BaseIcon
-                name="copy"
-                size="xs"
-              />
+              <BaseIcon name="copy" size="xs" />
             </button>
           </div>
           <div
@@ -195,9 +224,7 @@ function handleEdit() {
         <div
           class="rounded-lg border border-gray-100 bg-white p-3 shadow-sm dark:border-dark-800 dark:bg-dark-900"
         >
-          <div class="text-gray-500 dark:text-dark-400">
-            凭据状态
-          </div>
+          <div class="text-gray-500 dark:text-dark-400">凭据状态</div>
           <div class="mt-1 flex items-center gap-1.5 font-medium">
             <span
               class="h-2 w-2 rounded-full"
@@ -214,7 +241,9 @@ function handleEdit() {
             >
               {{
                 model.credential_configured
-                  ? (model.scope_type === "project" ? "私有凭据已配置" : "平台托管已配置")
+                  ? model.scope_type === "project"
+                    ? "私有凭据已配置"
+                    : "平台托管已配置"
                   : "未检测到凭据"
               }}
             </span>
@@ -224,9 +253,7 @@ function handleEdit() {
         <div
           class="rounded-lg border border-gray-100 bg-white p-3 shadow-sm dark:border-dark-800 dark:bg-dark-900"
         >
-          <div class="text-gray-500 dark:text-dark-400">
-            归属作用域
-          </div>
+          <div class="text-gray-500 dark:text-dark-400">归属作用域</div>
           <div class="mt-1 flex items-center gap-1.5 font-medium">
             <span
               v-if="model.scope_type === 'project'"
@@ -257,10 +284,7 @@ function handleEdit() {
               title="复制 记录 UUID"
               @click="handleCopy('记录 UUID', model.id)"
             >
-              <BaseIcon
-                name="copy"
-                size="xs"
-              />
+              <BaseIcon name="copy" size="xs" />
             </button>
           </div>
           <div
@@ -274,22 +298,11 @@ function handleEdit() {
 
     <template #footer>
       <div class="flex items-center justify-end gap-2.5">
-        <BaseButton
-          variant="secondary"
-          size="sm"
-          @click="emit('close')"
-        >
+        <BaseButton variant="secondary" size="sm" @click="emit('close')">
           关闭
         </BaseButton>
-        <BaseButton
-          v-if="canManage"
-          size="sm"
-          @click="handleEdit"
-        >
-          <BaseIcon
-            name="settings-2"
-            size="xs"
-          />
+        <BaseButton v-if="canManage" size="sm" @click="handleEdit">
+          <BaseIcon name="settings-2" size="xs" />
           编辑配置
         </BaseButton>
       </div>

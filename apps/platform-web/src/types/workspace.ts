@@ -1,15 +1,21 @@
-export type PreviewKind = 'text' | 'markdown' | 'image' | 'html-sandbox' | 'download';
+export type PreviewKind =
+  | "text"
+  | "markdown"
+  | "image"
+  | "html-sandbox"
+  | "download";
 
 export interface WorkspaceCapabilities {
   workspace: boolean;
   artifacts?: string[];
   terminal?: boolean;
+  conversation_offloading?: boolean;
 }
 
 export interface WorkspaceEntry {
   path: string;
   name: string;
-  type: 'file' | 'directory';
+  type: "file" | "directory";
   size_bytes: number | null;
   mtime: string;
   mime_type: string | null;
@@ -40,22 +46,22 @@ export interface TextPreview {
   mime_type: string;
   size_bytes: number;
   sha256: string;
-  preview_kind: 'text' | 'markdown';
+  preview_kind: "text" | "markdown";
   text: string;
   truncated: boolean;
 }
 
-export type TerminalBackend = 'local' | 'docker';
-export type TerminalIsolation = 'host-development' | 'docker';
-export type TerminalStatus = 'running' | 'exited';
+export type TerminalBackend = "local" | "docker";
+export type TerminalIsolation = "host-development" | "docker";
+export type TerminalStatus = "running" | "exited";
 export type TerminalExitReason =
   | null
-  | 'shell_exit'
-  | 'closed'
-  | 'idle_expired'
-  | 'lifetime_expired'
-  | 'runtime_shutdown'
-  | 'disabled';
+  | "shell_exit"
+  | "closed"
+  | "idle_expired"
+  | "lifetime_expired"
+  | "runtime_shutdown"
+  | "disabled";
 
 export interface TerminalSession {
   terminal_id: string;

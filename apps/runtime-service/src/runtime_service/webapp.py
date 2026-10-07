@@ -256,6 +256,7 @@ async def list_messages(
     thread_id: str,
     authorization: str | None = Header(default=None),
     x_runtime_run_read_authorization: str | None = Header(default=None),
+    pending_only: bool = False,
 ) -> dict:
     facts = await authenticate(authorization)
     scope = facts.get("runtime_scope", {})
@@ -264,6 +265,15 @@ async def list_messages(
         or scope.get("thread_id") != thread_id
     ):
         raise HTTPException(403, "thread scope denied")
+    if pending_only:
+        dsn = os.getenv("DATABASE_URI")
+        if not dsn:
+            raise HTTPException(503, "message inbox unavailable")
+        return {
+            "has_pending_input": await asyncio.to_thread(
+                MessageInbox(dsn).has_pending, thread_id=thread_id
+            )
+        }
     run_read_authorization = await _verified_run_read_authorization(
         facts, x_runtime_run_read_authorization, thread_id
     )

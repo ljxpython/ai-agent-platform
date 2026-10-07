@@ -82,3 +82,13 @@ note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容
 | 标准 Run SSE 流 | `last_event_id`（join 参数） |
 
 两者不混用；`last_event_id` 不能改成 `since`。
+
+## 上下文整理 custom（2026-10-06 用户批准）
+
+复用已有 custom 通道，不新增物理 SSE。标准 Run 默认 modes 包含 custom。v3 Protocol 帧为 `method=custom`，`params.namespace/params.timestamp/params.data` 和 `seq`；data 直接是业务 payload，没有 payload 子层。显式 v2 标准 Run stream 的 custom data 直接为业务 payload。
+
+`type=conversation_offloading`，允许 `status=started/completed/skipped/failed`、`trigger=manual/automatic`、不超过 128 字符的 operation_id/run_id、布尔 history_saved 和固定 reason_code。网关剔除额外字段、私有摘要/session 和 history 文件；客户端 input/state update 不能写这些字段。
+
+根 namespace 为 `[]`，子图非空；根 UI 只消费根进度，run_id/operation_id 防重放和迟到覆盖。completed 是步骤状态，不是 Run success；checkpoint 最近 completed/skipped 由公开 state 恢复，失败或取消按 Run 终态核实，不要求存在 failed checkpoint。
+
+浏览器沿已有 hydration、Run/state 对账、后台暂停和 410 路径恢复整理状态，不重新提交维护、不等待完整 history、不新增运行状态机。真实 v2/v3、子图和状态出口证据及前端剩余项见 [上下文专项](../projects/20261006-agent-context-window-governance/verification.md)。原 SSE 专项的容量门禁仍未完成，整体保留 draft。

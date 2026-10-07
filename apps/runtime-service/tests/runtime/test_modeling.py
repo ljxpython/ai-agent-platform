@@ -151,6 +151,67 @@ def test_build_model_uses_catalog_connection(monkeypatch: pytest.MonkeyPatch) ->
     assert calls["base_url"] == "https://catalog.test/v1"
 
 
+def test_catalog_capacity_overrides_only_current_model_profile() -> None:
+    connection = {
+        "provider": "openai",
+        "model": "gpt-4o",
+        "api_key": "test",
+        "base_url": "https://catalog.test/v1",
+        "context_window_tokens": 12000,
+    }
+    model = modeling.build_model(
+        _resolved("openai:gpt-4o"), env={}, connection=connection
+    )
+    assert model.profile["max_input_tokens"] == 12000
+    assert model.model_copy().profile["max_input_tokens"] == 12000
+    original = modeling.ChatOpenAIWithReasoning(model="gpt-4o", api_key="test")
+    assert original.profile["max_input_tokens"] == 128000
+    for capacity in (True, 0, -1, "12000"):
+        with pytest.raises(RuntimeResolutionError, match="context_window_tokens"):
+            modeling.build_model(
+                _resolved("openai:gpt-4o"),
+                env={},
+                connection={**connection, "context_window_tokens": capacity},
+            )
+
+
+def test_internal_connection_exchange_ignores_system_proxy(monkeypatch):
+    import asyncio
+
+    import httpx
+
+    original = httpx.AsyncClient
+    payload = {
+        "model_id": "model",
+        "provider": "deepseek",
+        "protocol": "deepseek",
+        "model": "chat",
+        "base_url": "https://model.test/v1",
+        "api_key": "test",
+        "context_window_tokens": 12000,
+    }
+
+    def client(**kwargs):
+        assert kwargs["trust_env"] is False
+        return original(
+            **kwargs,
+            transport=httpx.MockTransport(
+                lambda request: httpx.Response(200, json=payload)
+            ),
+        )
+
+    monkeypatch.setenv(
+        "PLATFORM_RUNTIME_MODEL_CONFIG_URL", "http://platform.test/model-config"
+    )
+    monkeypatch.setattr(modeling.httpx, "AsyncClient", client)
+    result = asyncio.run(
+        modeling.fetch_model_connection(
+            "opaque-reference", model_id="model", project_id="project"
+        )
+    )
+    assert result["context_window_tokens"] == 12000
+
+
 def test_build_model_rejects_missing_provider_settings() -> None:
     with pytest.raises(RuntimeResolutionError) as error:
         modeling.build_model(_resolved("deepseek:deepseek-chat"), env={})

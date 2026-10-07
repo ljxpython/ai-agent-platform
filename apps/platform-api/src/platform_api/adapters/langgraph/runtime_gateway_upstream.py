@@ -275,9 +275,13 @@ class LangGraphRuntimeGatewayUpstream:
             "POST", f"/internal/threads/{thread_id}/messages", payload=payload
         )
 
-    async def list_thread_messages(self, thread_id: str) -> Any:
+    async def list_thread_messages(
+        self, thread_id: str, *, pending_only: bool = False
+    ) -> Any:
         return await self._http.require_json(
-            "GET", f"/internal/threads/{thread_id}/messages"
+            "GET",
+            f"/internal/threads/{thread_id}/messages",
+            params={"pending_only": "true"} if pending_only else None,
         )
 
     async def get_thread(self, thread_id: str) -> dict[str, Any]:

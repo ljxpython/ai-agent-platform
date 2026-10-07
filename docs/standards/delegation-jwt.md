@@ -109,6 +109,14 @@ tenant/project/graph 与当前 Thread ACL、服务账号 credential。不能访�
 - 重连 / 审批 / 取消等新 HTTP 请求加载当前身份重新签发
 - 过期 JWT 用于新 Runtime 请求按现有 401 拒绝，不自动降级匿名，不自动重放用户动作
 
+## Runtime Context v5（2026-10-06 用户批准）
+
+API/Runtime 使用相同 `runtime-context/v5` hash，固定字段为 `model_id/temperature/max_tokens/top_p/execution_mode/access_policy/offload_conversation`；JSON 规范化后计算 sha256。`offload_conversation` 严格布尔，省略与 false 相同，true 仅表示当前维护 Run，不关闭自动摘要。
+
+维护使用已有 run-create 和当前 Thread comment 授权，不新增 operation；能力、空输入、最新根 checkpoint、活动 Run、待审批/澄清和持久待发状态须通过网关检查。禁止普通可编辑默认参数、cron、queued input 或 resume 开启维护。
+
+服务端已保存的 v4 审批/定时快照先按当前授权核验，再确定性归一并签发 v5；不接收客户端指定 hash/schema 旁路。双端同步升级，关闭整理 feature flag 不回退 Context hash。实现与隔离证据见 [上下文专项](../projects/20261006-agent-context-window-governance/verification.md)；本段不使 JWT 原专项整体毕业。
+
 ## 定时任务执行身份（2026-10-05 用户批准）
 
 - cron-read 仅用于原生 cron 读取/搜索/计数及 Runtime 内部预览/历史；cron-write 用于启停/删除等定义操作。创建或编辑执行 payload 仍需 run-create，绑定 Agent/Thread 与 context_hash。

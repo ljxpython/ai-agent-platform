@@ -72,6 +72,16 @@ Protocol lifecycle可能规范化为completed；Run JSON保留上游状态，不
 
 ## 变更验证
 
+### 上下文维护（2026-10-06 用户批准）
+
+模型目录 CRUD 增加 nullable 正整数 `context_window_tokens`，null 清除、省略更新保留；当前受信内部 model-config 携带容量，浏览器不能通过 Run 上传可信容量。
+
+DearFlow/Showcase 的当前 Thread capabilities 返回 `conversation_offloading`，结合 Runtime feature flag 和 comment ACL。现有 commands/runs/runs-stream 接收 `config.configurable.platform_runtime.offload_conversation=true`（标准 context 位置也接受，冲突拒绝），通过同一前置校验启动空输入维护 Run；禁止消息/附件/checkpoint override、活动 Run、未决 interrupt 和待发消息。pending 状态不可确认返回 503；最终并发由 GraphHarbor reject。
+
+复用 Idempotency-Key/run_requests/取消和审计，维护不 claim 队列、不执行普通模型/工具/MCP/子图/记忆后处理。Context 双端为 v5，省略/false 同 hash，存量 v4 服务端快照重新授权后升级；cron/resume/queue 禁止携带维护标志。
+
+公开 custom 与 Thread state 只保留有界整理状态；私有摘要、session 和归档 files 不公开，所有 input/state update 拒绝注入。普通成果文件保持原访问语义。真实契约和前端待办见 [交接](../../../../docs/projects/20261006-agent-context-window-governance/frontend-handoff.md)。功能开关默认关闭，未部署现役平台。
+
 新增路由更新显式清单，覆盖scope、授权拒绝、字段过滤与参数；业务语义由run_requests/SDK/事件测试以及[真实验收](../../../../docs/projects/20260910-platform-api-refactor/implementation/13-backend-acceptance-closeout.md)证明。router替身不能替代真实执行，前端适配见[交接](../../../../docs/projects/20260910-platform-api-refactor/05-frontend-handoff.md)。
 
 ## Run 诊断查询（2026-10-06 用户批准）

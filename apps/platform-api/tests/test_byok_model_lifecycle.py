@@ -174,6 +174,53 @@ class ByokModelLifecycleTest(unittest.IsolatedAsyncioTestCase):
         )
         self.assertNotIn(item.id, [m.id for m in listed_after.models])
 
+    def test_context_window_tokens_supports_strict_create_update_and_clear(self):
+        payload = RuntimeModelCreate(
+            provider="openai-compatible",
+            display_name="Capacity Model",
+            base_url="https://capacity.example/v1",
+            protocol="openai-compatible",
+            model="capacity-model",
+            api_key="capacity-key",
+            scope_type="project",
+            project_id=str(self.project_1),
+            context_window_tokens=128000,
+        )
+        item = self.service.create_model(
+            actor=self.actor_admin_1,
+            project_id=str(self.project_1),
+            payload=payload,
+        )
+        self.assertEqual(item.context_window_tokens, 128000)
+
+        unchanged = self.service.update_model(
+            actor=self.actor_admin_1,
+            project_id=str(self.project_1),
+            model_id=item.id,
+            payload=RuntimeModelUpdate(display_name="Capacity Model Updated"),
+        )
+        self.assertEqual(unchanged.context_window_tokens, 128000)
+
+        cleared = self.service.update_model(
+            actor=self.actor_admin_1,
+            project_id=str(self.project_1),
+            model_id=item.id,
+            payload=RuntimeModelUpdate(context_window_tokens=None),
+        )
+        self.assertIsNone(cleared.context_window_tokens)
+
+        for value in (True, 0, -1, "128000"):
+            with self.assertRaises(ValueError):
+                RuntimeModelCreate(
+                    provider="openai-compatible",
+                    display_name="Invalid Capacity",
+                    base_url="https://capacity.example/v1",
+                    protocol="openai-compatible",
+                    model=f"capacity-{value}",
+                    api_key="capacity-key",
+                    context_window_tokens=value,
+                )
+
     def test_executor_cannot_create_update_or_delete_byok_model(self):
         payload = RuntimeModelCreate(
             provider="openai-compatible",

@@ -49,6 +49,8 @@ class TaskCreate(Schedule):
             raise ValueError("thread_id is required only for reuse mode")
         if self.thread_id:
             self.thread_id = str(UUID(self.thread_id))
+        if "offload_conversation" in self.context:
+            raise ValueError("Scheduled tasks cannot request conversation offloading")
         return self
 
 
@@ -70,4 +72,6 @@ class TaskUpdate(BaseModel):
             getattr(self, key) is None for key in self.model_fields_set - {"end_time"}
         ):
             raise ValueError("Only end_time can be cleared")
+        if "offload_conversation" in (self.context or {}):
+            raise ValueError("Scheduled tasks cannot request conversation offloading")
         return self

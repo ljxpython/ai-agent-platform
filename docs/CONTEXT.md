@@ -1,7 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-07（Agent 工具调用容错全链路闭环，前端结构化摘要与微胶囊 Tag 徽章实装，全栈三服务浏览器联合验收通过，全专项 done）。
-
+> **最后更新：** 2026-10-07（Agent 上下文窗口管理工程化与工具调用容错/可观测性全链路完成交付，Platform API/Runtime/Platform Web 全栈用户人工实测验收通过，项目标记为 done；本地测试服务安全停止并释放端口）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -11,6 +10,8 @@
 **最后更新：** 2026-10-07
 
 ## 最近改动
+
+2026-10-07 | **Agent 上下文窗口管理工程化**：done。Platform API/Runtime/Platform Web 完成全栈交付。后端与 Runtime 交付可信容量、预算 guard、隐藏摘要流、Context v5、受控维护 Run、私有字段脱敏；前端交付模型容量配置与展示（F01）、整理状态微胶囊及 4 秒自动淡出/草稿输入打断机制（F02）、手动维护动作与菜单守卫（F03）。隔离 PG、真实模型 10 次质量集、HTTP v2/v3、Worker 重启/回滚，以及前端 63 项定向单测、vue-tsc 0 错误与生产打包均通过。用户已在真实控制台与聊天会话中完成端到端人工实测，全链路验收通过，交付闭环。见 [专项](projects/20261006-agent-context-window-governance/README.md)。
 
 2026-10-07 | **Agent 工具调用容错与生产接线全链路完成**：Runtime/Platform API 完成选择性错误分类、DearFlow/Showcase/Reference 主子图接线、MCP/workspace 边界、v3 tools 流安全出口和公开 fatal 脱敏；Platform Web 完成纯函数错误摘要提取、微胶囊 Tag 徽章与展开态格式化代码块排版；核心单测全绿（31 passed），静态类型与构建通过；三服务全栈浏览器联合验收 F01-F08 全部通过，全专项闭环 done。见 [专项](projects/20261006-agent-tool-error-resilience/README.md)。
 
@@ -30,11 +31,13 @@
 
 ## 本月归并
 
-2026-10（截至 10-06）| Agent 回答后推荐问题全链路完成（27 项定向、类型/lint/构建通过）；Chat state/history 委托补齐与错误恢复；Chat 后台会话 DOM 虚拟化隔离与流式切换卡死根治、智能体切换隔离与列表远程拉取解耦治理、Chat 顶栏选择 Agent 历史列表联动过滤失效与 Pad 侧栏体验治理、对话前端视口平滑锚定与流式跟随根治、Clean Architecture 五层解耦重构、多会话后台无感自动排队消费与权限失效误杀彻底根治、切回历史时序正序合并、多会话切回假死死锁/空白水合/报错隔离、LangGraph v3 默认消费与 DeltaChannel 离线/PG 评估、模型畸形 ToolCall 自动缝合与孤儿块剔除、平台用户软删除三重安全栅栏、DeepSeek 官方多模态视觉识图、长会话断流解耦与历史懒加载、DearFlow 防死循环护栏、小惊喜创意工坊与 Jina Reader 接入、HTML 沙箱现代化渲染、Runtime DB 精简重构。
+2026-10（截至 10-07）| Agent 上下文窗口管理工程化、工具调用容错与可观测性补齐全链路闭环（全栈 3 服务验收通过）；Agent 回答后推荐问题全链路完成；Chat state/history 委托补齐与错误恢复；Chat 后台会话 DOM 虚拟化隔离与流式切换卡死根治、智能体切换隔离与列表远程拉取解耦治理、Chat 顶栏选择 Agent 历史列表联动过滤失效与 Pad 侧栏体验治理、对话前端视口平滑锚定与流式跟随根治、Clean Architecture 五层解耦重构、多会话后台无感自动排队消费与权限失效误杀彻底根治、切回历史时序正序合并、多会话切回假死死锁/空白水合/报错隔离、LangGraph v3 默认消费与 DeltaChannel 离线/PG 评估、模型畸形 ToolCall 自动缝合与孤儿块剔除、平台用户软删除三重安全栅栏、DeepSeek 官方多模态视觉识图、长会话断流解耦与历史懒加载、DearFlow 防死循环护栏、小惊喜创意工坊与 Jina Reader 接入、HTML 沙箱现代化渲染、Runtime DB 精简重构。
 
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
+
+- [Agent 上下文窗口管理工程化](projects/20261006-agent-context-window-governance/README.md)：`done`；Platform API、Runtime Service 与 Platform Web 全栈交付闭环，模型容量配置/展示、整理状态微胶囊及平滑淡出、受控手动整理动作与全套单测/类型/构建门禁全绿，用户人工实测验收通过。
 
 - [Agent 工具调用容错与生产接线补齐](projects/20261006-agent-tool-error-resilience/README.md)：done；全链路闭环，Runtime/API 共享选择性分类、主子图接线、安全消息与执行中缺根保护完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化排版实装；核心单测全绿，浏览器联合验收 F01-F08 全部通过。未生产部署。
 
@@ -83,9 +86,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-07 | 工具容错与生产接线完成，安全/工作区/未知异常传播；新增有界模型错误诊断、本地常驻回调、四graph启动阶段计时与只读查询；Langfuse 429 安全降级；未部署现役。 |
-| platform-api | 2026-10-07 | 工具消息保真与公开 fatal 安全出口；新增 Run diagnostics GET、diagnostics-read 权限核验与错误槽位脱敏投影；分层回归通过；未部署现役。 |
-| platform-web | 2026-10-07 | 工具错误纯函数摘要与展开态代码排版实装；运行诊断独立解耦面板 RunDiagnostics、模式切换与多轮 Run 自动拉取实装；535 项单测、vue-tsc 与生产打包全绿。未部署现役。 |
+| runtime-service | 2026-10-07 | 工具容错与生产接线完成；新增有界模型错误诊断、启动阶段计时与只读查询；上下文窗口管理官方摘要薄扩展、预算 guard、隐藏流、根/子图装配和维护副作用隔离已完成，定向测试与真实模型/PG恢复全部通过；未部署现役。 |
+| platform-api | 2026-10-07 | 工具消息保真与公开 fatal 安全出口；新增 Run diagnostics GET 与脱敏投影；上下文容量 CRUD、受信连接、Context v5、维护网关和公开脱敏已完成，API 回归测试全绿；未部署现役。 |
+| platform-web | 2026-10-07 | 工具错误摘要微胶囊实装；运行诊断 RunDiagnostics 面板实装；模型容量配置/展示、整理状态微胶囊（含4秒淡出打断机制）及手动整理菜单守卫全链路交付；全仓单测、vue-tsc 与生产打包全绿；未部署现役。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-04 | AGENTS.md 与 Skill 重复内容已去除（场景步骤 + 验证标准章节移入 Skill），CONTEXT.md 改为渐进式快照结构；整单结束前须逐项核对未完成任务，Task 未完成时只记 Phase |
 
 ## 近期关键决策

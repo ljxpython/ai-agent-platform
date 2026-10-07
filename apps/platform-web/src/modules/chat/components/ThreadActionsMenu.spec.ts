@@ -1,9 +1,9 @@
-import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vitest'
-import ThreadActionsMenu from './ThreadActionsMenu.vue'
+import { flushPromises, mount } from "@vue/test-utils";
+import { describe, expect, it } from "vitest";
+import ThreadActionsMenu from "./ThreadActionsMenu.vue";
 
-describe('ThreadActionsMenu', () => {
-  it('renders trigger button with icon and toggles dropdown', async () => {
+describe("ThreadActionsMenu", () => {
+  it("renders trigger button with icon and toggles dropdown", async () => {
     const wrapper = mount(ThreadActionsMenu, {
       props: {
         focusMode: false,
@@ -13,61 +13,71 @@ describe('ThreadActionsMenu', () => {
       global: {
         stubs: {
           BaseIcon: {
-            props: ['name'],
-            template: '<span class="icon-stub" :data-name="name" />'
+            props: ["name"],
+            template: '<span class="icon-stub" :data-name="name" />',
           },
           Teleport: true,
-        }
-      }
-    })
+        },
+      },
+    });
 
-    const trigger = wrapper.find('button[aria-label="更多操作"]')
-    expect(trigger.exists()).toBe(true)
+    const trigger = wrapper.find('button[aria-label="更多操作"]');
+    expect(trigger.exists()).toBe(true);
 
     // 点击展开菜单
-    await trigger.trigger('click')
-    await flushPromises()
+    await trigger.trigger("click");
+    await flushPromises();
 
     // 检查是否有抽屉详情项
-    const drawerItem = wrapper.findAll('button').find(b => b.text().includes('会话详情与上下文'))
-    expect(drawerItem).toBeDefined()
-    await drawerItem?.trigger('click')
-    expect(wrapper.emitted('open-drawer')).toBeDefined()
+    const drawerItem = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("会话详情与上下文"));
+    expect(drawerItem).toBeDefined();
+    await drawerItem?.trigger("click");
+    expect(wrapper.emitted("open-drawer")).toBeDefined();
 
     // 重新打开并点击运行参数配置
-    await trigger.trigger('click')
-    await flushPromises()
-    const optionsItem = wrapper.findAll('button').find(b => b.text().includes('运行参数配置'))
-    expect(optionsItem).toBeDefined()
-    await optionsItem?.trigger('click')
-    expect(wrapper.emitted('open-options')).toBeDefined()
+    await trigger.trigger("click");
+    await flushPromises();
+    const optionsItem = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("运行参数配置"));
+    expect(optionsItem).toBeDefined();
+    await optionsItem?.trigger("click");
+    expect(wrapper.emitted("open-options")).toBeDefined();
 
     // 重新打开并点击专注模式
-    await trigger.trigger('click')
-    await flushPromises()
-    const focusItem = wrapper.findAll('button').find(b => b.text().includes('进入专注模式'))
-    expect(focusItem).toBeDefined()
-    await focusItem?.trigger('click')
-    expect(wrapper.emitted('toggle-focus')).toBeDefined()
+    await trigger.trigger("click");
+    await flushPromises();
+    const focusItem = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("进入专注模式"));
+    expect(focusItem).toBeDefined();
+    await focusItem?.trigger("click");
+    expect(wrapper.emitted("toggle-focus")).toBeDefined();
 
     // 重新打开并测试管理员临时接管
-    await trigger.trigger('click')
-    await flushPromises()
-    const takeoverItem = wrapper.findAll('button').find(b => b.text().includes('管理员临时接管'))
-    expect(takeoverItem).toBeDefined()
-    await takeoverItem?.trigger('click')
-    expect(wrapper.emitted('open-takeover')).toBeDefined()
+    await trigger.trigger("click");
+    await flushPromises();
+    const takeoverItem = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("管理员临时接管"));
+    expect(takeoverItem).toBeDefined();
+    await takeoverItem?.trigger("click");
+    expect(wrapper.emitted("open-takeover")).toBeDefined();
 
     // 重新打开并测试删除当前会话
-    await trigger.trigger('click')
-    await flushPromises()
-    const deleteItem = wrapper.findAll('button').find(b => b.text().includes('删除当前会话'))
-    expect(deleteItem).toBeDefined()
-    await deleteItem?.trigger('click')
-    expect(wrapper.emitted('delete-thread')).toBeDefined()
-  })
+    await trigger.trigger("click");
+    await flushPromises();
+    const deleteItem = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("删除当前会话"));
+    expect(deleteItem).toBeDefined();
+    await deleteItem?.trigger("click");
+    expect(wrapper.emitted("delete-thread")).toBeDefined();
+  });
 
-  it('hides takeover and delete actions when permissions are false', async () => {
+  it("hides takeover and delete actions when permissions are false", async () => {
     const wrapper = mount(ThreadActionsMenu, {
       props: {
         focusMode: true,
@@ -78,16 +88,75 @@ describe('ThreadActionsMenu', () => {
         stubs: {
           BaseIcon: true,
           Teleport: true,
-        }
-      }
-    })
+        },
+      },
+    });
 
-    const trigger = wrapper.find('button[aria-label="更多操作"]')
-    await trigger.trigger('click')
-    await flushPromises()
+    const trigger = wrapper.find('button[aria-label="更多操作"]');
+    await trigger.trigger("click");
+    await flushPromises();
 
-    expect(wrapper.text()).toContain('退出专注模式')
-    expect(wrapper.text()).not.toContain('管理员临时接管')
-    expect(wrapper.text()).not.toContain('删除当前会话')
-  })
-})
+    expect(wrapper.text()).toContain("退出专注模式");
+    expect(wrapper.text()).not.toContain("管理员临时接管");
+    expect(wrapper.text()).not.toContain("删除当前会话");
+  });
+
+  it("handles offload conversation action and honors disabled state with tooltip", async () => {
+    const wrapper = mount(ThreadActionsMenu, {
+      props: {
+        focusMode: false,
+        showOffload: true,
+        offloadDisabled: false,
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+          Teleport: true,
+        },
+      },
+    });
+
+    const trigger = wrapper.find('button[aria-label="更多操作"]');
+    await trigger.trigger("click");
+    await flushPromises();
+
+    const offloadBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("整理上下文"));
+    expect(offloadBtn).toBeDefined();
+    expect(offloadBtn?.attributes("disabled")).toBeUndefined();
+    await offloadBtn?.trigger("click");
+    expect(wrapper.emitted("offload-conversation")).toBeDefined();
+
+    // 重新挂载，测试 disabled 场景
+    const disabledWrapper = mount(ThreadActionsMenu, {
+      props: {
+        focusMode: false,
+        showOffload: true,
+        offloadDisabled: true,
+        offloadDisabledReason: "会话正在执行中",
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+          Teleport: true,
+        },
+      },
+    });
+
+    const disabledTrigger = disabledWrapper.find(
+      'button[aria-label="更多操作"]',
+    );
+    await disabledTrigger.trigger("click");
+    await flushPromises();
+
+    const disabledBtn = disabledWrapper
+      .findAll("button")
+      .find((b) => b.text().includes("整理上下文"));
+    expect(disabledBtn).toBeDefined();
+    expect(disabledBtn?.attributes("disabled")).toBeDefined();
+    expect(disabledBtn?.attributes("title")).toBe("会话正在执行中");
+    await disabledBtn?.trigger("click");
+    expect(disabledWrapper.emitted("offload-conversation")).toBeUndefined();
+  });
+});

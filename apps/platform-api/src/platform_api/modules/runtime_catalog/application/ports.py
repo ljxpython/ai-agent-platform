@@ -15,6 +15,7 @@ class StoredRuntimeModel:
     model_name: str
     api_key_ciphertext: str
     enabled: bool
+    context_window_tokens: int | None = None
     scope_type: str = "platform"
     project_id: UUID | None = None
 

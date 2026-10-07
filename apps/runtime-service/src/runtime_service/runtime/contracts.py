@@ -20,6 +20,7 @@ class RuntimeContext:
     top_p: float | None = None
     execution_mode: str | None = None
     access_policy: str | None = None
+    offload_conversation: bool = False
 
 
 @dataclass(frozen=True, slots=True)

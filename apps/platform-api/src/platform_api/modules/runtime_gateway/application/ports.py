@@ -16,6 +16,9 @@ class BinaryPayload:
 
 
 class RuntimeGatewayUpstreamProtocol(Protocol):
+    async def list_thread_messages(
+        self, thread_id: str, *, pending_only: bool = False
+    ) -> Any: ...
     async def dear_memory(self, *, payload: dict | None = None) -> dict: ...
     async def dear_skills(
         self, method: str, suffix: str = "", *, payload=None, params=None

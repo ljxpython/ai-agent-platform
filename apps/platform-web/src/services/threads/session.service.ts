@@ -11,9 +11,13 @@ import {
   extractPlatformHttpError,
   formatPlatformHttpErrorMessage,
 } from "@/utils/http-error";
+import type { ConversationOffloadPersistedState } from "@/modules/chat/offload-status";
 
 export type AccessPolicy = "review" | "workspace_write" | "full_access";
-export type ChatState = Record<string, unknown> & { messages: unknown[] };
+export type ChatState = Record<string, unknown> & {
+  messages: unknown[];
+  conversation_offloading?: ConversationOffloadPersistedState;
+};
 export type ChatThread = Thread<ChatState>;
 export type ChatCheckpoint = ThreadState<ChatState>;
 export type QueuedRun = Run & {

@@ -18,6 +18,7 @@ import { updateThreadAccessPolicy } from "@/services/threads/access-policy.servi
 import type { AgentContext } from "@/services/agents/types";
 import { parseAgentContext } from "@/services/agents/context";
 import { deriveMessagePreview, deriveThreadTitle } from "@/utils/thread-title";
+import { unwrapPlatformHttpError } from "@/utils/http-error";
 import {
   enqueueThreadMessage,
   listThreadMessages,
@@ -28,6 +29,12 @@ import { createSessionAttachmentUploader } from "./useSessionAttachmentUpload";
 import { useSessionInterrupts } from "./useSessionInterrupts";
 import { useChatSessionStore } from "../stores/useChatSessionStore";
 import { useSessionConnection } from "./useSessionConnection";
+import { useChannelEffect } from "@langchain/vue";
+import {
+  parseOffloadCustomEvent,
+  toOffloadDisplayState,
+  type OffloadDisplayState,
+} from "../offload-status";
 
 const active = (run: Run | null) =>
   run != null && ["pending", "running"].includes(run.status);
@@ -150,11 +157,60 @@ export function useChatSession(options: {
     bindConnectionState,
   } = connection;
 
+  const offloadState = ref<OffloadDisplayState | null>(null);
+  let offloadDismissTimer: ReturnType<typeof setTimeout> | undefined;
+
+  const isOffloading = computed(() => {
+    return (
+      offloadState.value?.status === "started" ||
+      actions.current.value?.kind === "offload"
+    );
+  });
+
+  function clearOffloadState() {
+    if (offloadDismissTimer) {
+      clearTimeout(offloadDismissTimer);
+      offloadDismissTimer = undefined;
+    }
+    offloadState.value = null;
+  }
+
+  function scheduleOffloadDismiss() {
+    if (offloadDismissTimer) clearTimeout(offloadDismissTimer);
+    offloadDismissTimer = setTimeout(() => {
+      offloadState.value = null;
+      offloadDismissTimer = undefined;
+    }, 4000);
+  }
+
+  useChannelEffect(stream, ["custom"], {
+    onEvent(event) {
+      const parsed = parseOffloadCustomEvent(event);
+      if (!parsed || disposed) return;
+      if (parsed.status === "started") {
+        if (offloadDismissTimer) clearTimeout(offloadDismissTimer);
+        offloadState.value = toOffloadDisplayState(parsed);
+      } else if (parsed.status === "completed" || parsed.status === "skipped") {
+        offloadState.value = toOffloadDisplayState(parsed);
+        scheduleOffloadDismiss();
+      } else if (parsed.status === "failed") {
+        if (offloadDismissTimer) clearTimeout(offloadDismissTimer);
+        offloadState.value = toOffloadDisplayState(parsed);
+      }
+    },
+    onError() {
+      if (!disposed && offloadState.value?.status === "started") {
+        clearOffloadState();
+      }
+    },
+  });
+
   watch(
     () => options.threadId,
     (rawNext) => {
       const next = normalizeThreadId(rawNext);
       if (next && next !== threadId.value) {
+        clearOffloadState();
         threadId.value = next;
         hydrated.value = false;
         const seeded = unref(options.initialThread);
@@ -754,6 +810,7 @@ export function useChatSession(options: {
     recursionLimit = 1000,
     sendOptions?: { fromQueue?: boolean; messageId?: string },
   ): Promise<boolean> {
+    clearOffloadState();
     if (!canSend.value) return false;
     error.value = "";
     if (!verified.value) checking.value = true;
@@ -1108,6 +1165,71 @@ export function useChatSession(options: {
     }
   }
 
+  async function offloadConversation(): Promise<boolean> {
+    if (
+      !threadId.value ||
+      busy.value ||
+      hasPendingInterrupts.value ||
+      !canEdit.value ||
+      disposed
+    ) {
+      return false;
+    }
+    clearOffloadState();
+    error.value = "";
+    if (!verified.value) checking.value = true;
+    streamInFlight.value = true;
+    try {
+      const context = parseAgentContext(options.context.value);
+      const action = actions.begin(threadId.value, "offload", {});
+      if (run.value && !active(run.value)) {
+        run.value = null;
+      }
+      const completion = stream.submit(null, {
+        threadId: threadId.value,
+        config: {
+          configurable: {
+            platform_runtime: {
+              ...(context || {}),
+              offload_conversation: true,
+            },
+          },
+        },
+      });
+      checking.value = false;
+      await completion;
+      if (disposed) return true;
+      if (stream.error.value) throw stream.error.value;
+      actions.acknowledge(action.key, actions.current.value?.runId);
+      await verify(true);
+      return true;
+    } catch (cause) {
+      actions.rejectUnsent();
+      const unwrapped = await unwrapPlatformHttpError(cause);
+      let errMsg = unwrapped.message;
+      if (unwrapped.code === "context_offload_not_supported") {
+        errMsg = "当前智能体不支持上下文手动整理";
+      } else if (unwrapped.code === "context_offload_empty_thread") {
+        errMsg = "当前会话尚无历史消息，无需整理";
+      } else if (unwrapped.code === "context_offload_input_invalid") {
+        errMsg = "整理请求参数非法，请重试";
+      } else if (unwrapped.code === "context_offload_pending_input") {
+        errMsg = "当前存在排队或待发送消息，请完成后再试";
+      } else if (unwrapped.code === "context_offload_interrupt_pending") {
+        errMsg = "当前会话存在等待审批的动作，请先处理";
+      } else if (unwrapped.code === "thread_active_run_conflict") {
+        errMsg = "当前会话正在执行中，请等待其结束";
+      } else if (unwrapped.code === "runtime.context.capacity_unknown") {
+        errMsg = "当前模型未配置上下文容量，请联系管理员配置";
+      }
+      fail(new Error(errMsg));
+      return false;
+    } finally {
+      streamInFlight.value = false;
+      if (!disposed) checking.value = false;
+    }
+  }
+
   function ensureLiveEventStream() {
     if (disposed) return;
     bindConnectionState();
@@ -1174,6 +1296,7 @@ export function useChatSession(options: {
   onScopeDispose(() => {
     disposed = true;
     ++checkEpoch;
+    clearOffloadState();
     clearTimeout(receiptTimer);
     clearTimeout(backgroundRunTimer);
     receiptController?.abort();
@@ -1236,5 +1359,9 @@ export function useChatSession(options: {
     retry,
     fork,
     verify,
+    offloadState,
+    clearOffloadState,
+    offloadConversation,
+    isOffloading,
   };
 }
