@@ -63,7 +63,9 @@ class TerminalSession:
         try:
             os.close(
                 io._directory(
-                    ("work",) if graph == "dearflow_agent" else (), create=True
+                    ("work",) if graph == "dearflow_agent" else (),
+                    create=True,
+                    create_root=True,
                 )
             )
         except (ToolException, OSError) as exc:

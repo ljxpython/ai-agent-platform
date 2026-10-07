@@ -94,10 +94,36 @@ def get_langgraph_client(
     )
 
 
-def redact_runtime_private_fields(value: Any) -> Any:
+def redact_runtime_private_fields(value: Any, *, _execution_errors: bool = True) -> Any:
     if isinstance(value, dict):
+        if (
+            _execution_errors
+            and value.get("error") is not None
+            and (
+                value.get("event") in ("lifecycle", "failed")
+                or "thread_id" in value
+                and "status" in value
+                or {"id", "name", "result", "interrupts"}.issubset(value)
+            )
+        ):
+            error = value["error"]
+            safe_error: Any = "runtime.execution_failed"
+            if isinstance(error, dict):
+                safe_error = {"message": "runtime.execution_failed"}
+                category = error.get("type")
+                if (
+                    isinstance(category, str)
+                    and len(category) <= 128
+                    and category.isidentifier()
+                ):
+                    safe_error["type"] = category
+            value = {**value, "error": safe_error}
         return {
-            key: redact_runtime_private_fields(item)
+            key: redact_runtime_private_fields(
+                item,
+                _execution_errors=_execution_errors
+                and key not in {"content", "artifact", "metadata", "values", "result"},
+            )
             for key, item in value.items()
             if not (
                 str(key).startswith("_runtime_")
@@ -112,7 +138,10 @@ def redact_runtime_private_fields(value: Any) -> Any:
             )
         }
     if isinstance(value, list):
-        return [redact_runtime_private_fields(item) for item in value]
+        return [
+            redact_runtime_private_fields(item, _execution_errors=_execution_errors)
+            for item in value
+        ]
     return value
 
 

@@ -2,17 +2,16 @@
 
 import asyncio
 import json
-import logging
 from importlib.resources import files
 
 from jsonschema import ValidationError, validate
+from langchain_core.tools import ToolException
 from langchain_mcp_adapters.tools import convert_mcp_tool_to_langchain_tool
 from mcp.shared.exceptions import McpError
 from mcp.types import CallToolResult, TextContent, Tool
 
+from runtime_service.tools.errors import is_transport_error, tool_error_content
 from runtime_service.tools.images import ImageWorkspace, download_image
-
-logger = logging.getLogger(__name__)
 
 CHART_PACKAGE = "@antv/mcp-server-chart@0.9.10"
 
@@ -114,10 +113,24 @@ def build_chart_tools(workspace: ImageWorkspace, *, include_spreadsheet=False):
     schemas = json.loads(files(__package__).joinpath("chart-schemas.json").read_text())
     by_name = {item["name"]: item["schema"] for item in schemas}
 
+    def failure(name, code):
+        return CallToolResult(
+            isError=True,
+            content=[
+                TextContent(
+                    type="text",
+                    text=tool_error_content(ToolException(code), name),
+                )
+            ],
+        )
+
     async def persist_image(request, handler):
         try:
             request.args = normalize_chart_args(request.name, request.args)
-            payload = json.dumps(request.args, allow_nan=False)
+            try:
+                payload = json.dumps(request.args, allow_nan=False)
+            except ValueError as exc:
+                raise ValueError("chart_invalid_input") from exc
             if len(payload.encode()) > 128 * 1024:
                 raise ValueError("chart_data_limit")
             validate(request.args, by_name[request.name])
@@ -125,9 +138,12 @@ def build_chart_tools(workspace: ImageWorkspace, *, include_spreadsheet=False):
                 if not 1 <= request.args.get(dimension, 600) <= 4096:
                     raise ValueError("chart_dimension_limit")
             async with asyncio.timeout(120):
-                result = await handler(request)
+                try:
+                    result = await handler(request)
+                except FileNotFoundError:
+                    return failure(request.name, "chart_provider_failed")
                 if result.isError:
-                    return result
+                    return failure(request.name, "chart_provider_failed")
                 content = []
                 refs = []
                 # Maps return imageUrl in structuredContent, ordinary charts use a text URL.
@@ -159,64 +175,28 @@ def build_chart_tools(workspace: ImageWorkspace, *, include_spreadsheet=False):
                 else:
                     raise ValueError("chart_image_missing")
                 return result.model_copy(update=update_dict)
-        except ValidationError as err:
-            logger.warning(
-                "Chart argument validation failed for %s: %s", request.name, err
-            )
-            path_str = ".".join(str(p) for p in err.path)
-            detail = f"field '{path_str}': {err.message}" if path_str else err.message
-            return CallToolResult(
-                isError=True,
-                content=[
-                    TextContent(
-                        type="text",
-                        text=f"Chart argument validation failed ({detail}). Please provide valid arguments matching the tool schema.",
-                    )
-                ],
-            )
-        except McpError as err:
-            logger.warning("Chart MCP execution error for %s: %s", request.name, err)
-            err_message = getattr(getattr(err, "error", None), "message", None) or str(
-                err
-            )
-            clean_message = err_message.split("\n")[0].strip()
-            return CallToolResult(
-                isError=True,
-                content=[
-                    TextContent(
-                        type="text",
-                        text=f"Chart generation failed: {clean_message}. Please adjust the chart data.",
-                    )
-                ],
-            )
+        except ValidationError:
+            return failure(request.name, "chart_invalid_input")
+        except McpError:
+            return failure(request.name, "chart_provider_failed")
         except ValueError as err:
-            msg = str(err)
-            if msg == "chart_dimension_limit":
-                tip = "Chart width and height must be between 1 and 4096."
-            elif msg == "chart_data_limit":
-                tip = "Chart data payload exceeds the 128KB limit."
-            elif msg == "chart_image_missing":
-                logger.warning(
-                    "Chart generated successfully but no image URL was returned."
-                )
-                tip = "Chart MCP failed or its image could not be saved. Retry later."
-            else:
-                tip = f"Invalid chart parameters: {msg}"
-            return CallToolResult(
-                isError=True,
-                content=[TextContent(type="text", text=tip)],
-            )
-        except Exception:  # noqa: BLE001 - MCP/transport errors must not expose host details
-            logger.exception("Chart MCP or image storage failed for %s", request.name)
-            return CallToolResult(
-                isError=True,
-                content=[
-                    TextContent(
-                        type="text",
-                        text="Chart MCP failed or its image could not be saved. Retry later.",
-                    )
-                ],
-            )
+            if (
+                type(err) is not ValueError
+                or len(err.args) != 1
+                or err.args[0]
+                not in {
+                    "chart_invalid_input",
+                    "chart_dimension_limit",
+                    "chart_data_limit",
+                    "chart_image_missing",
+                }
+            ):
+                raise
+            return failure(request.name, err.args[0])
+        except Exception as exc:
+            if not is_transport_error(exc):
+                raise
+            return failure(request.name, "chart_provider_failed")
 
     return [
         convert_mcp_tool_to_langchain_tool(

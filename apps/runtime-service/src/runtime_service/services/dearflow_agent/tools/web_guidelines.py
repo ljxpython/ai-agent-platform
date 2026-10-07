@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from langchain_core.tools import ToolException, tool
 
 from runtime_service.services.dearflow_agent.tools.research_http import get_public
+from runtime_service.tools.errors import tool_error_handler
 
 GUIDELINES_URL = "https://raw.githubusercontent.com/vercel-labs/web-interface-guidelines/main/command.md"
 
@@ -34,4 +35,4 @@ async def fetch_web_guidelines() -> dict:
     }
 
 
-fetch_web_guidelines.handle_tool_error = True
+fetch_web_guidelines.handle_tool_error = tool_error_handler(fetch_web_guidelines.name)

@@ -5,6 +5,7 @@ import {
   contentItems,
   extractChartWeakImageRefs,
   extractRuntimeImages,
+  parseToolErrorSummary,
   safeContentUrl,
 } from "./transcript";
 
@@ -80,7 +81,9 @@ describe("SDK transcript projection", () => {
       additional_kwargs: { reasoning_content: "逐步思考第一步" },
     });
     const [turn1] = buildTranscript([aiWithKwargs], [], false);
-    expect(turn1?.answer[0]?.blocks.map(b => ({ kind: b.kind, text: b.text }))).toEqual([
+    expect(
+      turn1?.answer[0]?.blocks.map((b) => ({ kind: b.kind, text: b.text })),
+    ).toEqual([
       { kind: "reasoning", text: "逐步思考第一步" },
       { kind: "text", text: "正式回答" },
     ]);
@@ -89,7 +92,9 @@ describe("SDK transcript projection", () => {
       content: "<think>正在推理复杂逻辑</think>这是正文内容",
     });
     const [turn2] = buildTranscript([aiWithTags], [], false);
-    expect(turn2?.answer[0]?.blocks.map(b => ({ kind: b.kind, text: b.text }))).toEqual([
+    expect(
+      turn2?.answer[0]?.blocks.map((b) => ({ kind: b.kind, text: b.text })),
+    ).toEqual([
       { kind: "reasoning", text: "正在推理复杂逻辑" },
       { kind: "text", text: "这是正文内容" },
     ]);
@@ -98,12 +103,20 @@ describe("SDK transcript projection", () => {
   it("renders alternate provider reasoning fields separately from the answer", () => {
     for (const additional_kwargs of [
       { reasoning: "DeepSeek thought" },
-      { reasoning_details: [{ type: "reasoning.text", text: "DeepSeek thought" }] },
+      {
+        reasoning_details: [
+          { type: "reasoning.text", text: "DeepSeek thought" },
+        ],
+      },
     ]) {
-      const [turn] = buildTranscript([
-        new AIMessage({ content: "OK", additional_kwargs }),
-      ], [], false);
-      expect(turn?.answer[0]?.blocks.map(({ kind, text }) => ({ kind, text }))).toEqual([
+      const [turn] = buildTranscript(
+        [new AIMessage({ content: "OK", additional_kwargs })],
+        [],
+        false,
+      );
+      expect(
+        turn?.answer[0]?.blocks.map(({ kind, text }) => ({ kind, text })),
+      ).toEqual([
         { kind: "reasoning", text: "DeepSeek thought" },
         { kind: "text", text: "OK" },
       ]);
@@ -113,23 +126,45 @@ describe("SDK transcript projection", () => {
   it("handles multi-turn conversations properly", () => {
     const messages = [
       new HumanMessage({ id: "h1", content: "你好" }),
-      new AIMessage({ id: "a1", content: [{ type: "reasoning", reasoning: "think 1" }, { type: "text", text: "你好！" }] }),
+      new AIMessage({
+        id: "a1",
+        content: [
+          { type: "reasoning", reasoning: "think 1" },
+          { type: "text", text: "你好！" },
+        ],
+      }),
       new HumanMessage({ id: "h2", content: "你叫什么名字呀？" }),
-      new AIMessage({ id: "a2", content: [{ type: "reasoning", reasoning: "think 2" }, { type: "text", text: "我叫 Demo" }] }),
+      new AIMessage({
+        id: "a2",
+        content: [
+          { type: "reasoning", reasoning: "think 2" },
+          { type: "text", text: "我叫 Demo" },
+        ],
+      }),
     ];
     const turns = buildTranscript(messages, [], false);
     expect(turns.length).toBe(2);
     expect(turns[0].user?.blocks[0]?.text).toBe("你好");
-    expect(turns[0].answer[0]?.blocks.some(b => b.text === "你好！")).toBe(true);
+    expect(turns[0].answer[0]?.blocks.some((b) => b.text === "你好！")).toBe(
+      true,
+    );
     expect(turns[1].user?.blocks[0]?.text).toBe("你叫什么名字呀？");
-    expect(turns[1].answer[0]?.blocks.some(b => b.text === "我叫 Demo")).toBe(true);
+    expect(turns[1].answer[0]?.blocks.some((b) => b.text === "我叫 Demo")).toBe(
+      true,
+    );
   });
 
   it("never displays subagent internal orphan tool calls at the root transcript level, but preserves them in scoped view", () => {
     const rootAiMsg = new AIMessage({
       id: "ai-delegate",
       content: "委派 research 分析",
-      tool_calls: [{ id: "task-call-1", name: "task", args: { subagent_type: "research" } }],
+      tool_calls: [
+        {
+          id: "task-call-1",
+          name: "task",
+          args: { subagent_type: "research" },
+        },
+      ],
     });
 
     const calls = [
@@ -159,13 +194,19 @@ describe("SDK transcript projection", () => {
 
     // 1. Root level transcript view (namespace: [])
     const rootTurns = buildTranscript([rootAiMsg], calls, false, []);
-    const rootToolNames = rootTurns.flatMap(t => t.work.flatMap(item => item.tools.map(tool => tool.name)));
+    const rootToolNames = rootTurns.flatMap((t) =>
+      t.work.flatMap((item) => item.tools.map((tool) => tool.name)),
+    );
     // Root level must ONLY contain the 'task' tool call, NEVER orphan sub-tools!
     expect(rootToolNames).toEqual(["task"]);
 
     // 2. Scoped level transcript view for subagent (namespace: ["tools:task-call-1"])
-    const scopedTurns = buildTranscript([], calls, false, ["tools:task-call-1"]);
-    const scopedToolNames = scopedTurns.flatMap(t => t.work.flatMap(item => item.tools.map(tool => tool.name)));
+    const scopedTurns = buildTranscript([], calls, false, [
+      "tools:task-call-1",
+    ]);
+    const scopedToolNames = scopedTurns.flatMap((t) =>
+      t.work.flatMap((item) => item.tools.map((tool) => tool.name)),
+    );
     // Scoped subagent view preserves the subagent's tool calls
     expect(scopedToolNames).toContain("read_file");
     expect(scopedToolNames).toContain("ls");
@@ -202,24 +243,33 @@ describe("SDK transcript projection", () => {
       path: "/workspace/generated/generated.png",
       mime_type: "image/png" as const,
       size_bytes: 1024,
-      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      sha256:
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     };
     // 1. Direct artifact
     expect(extractRuntimeImages(validRef)).toEqual([validRef]);
-    expect(extractRuntimeImages({ runtime_images: [validRef] })).toEqual([validRef]);
+    expect(extractRuntimeImages({ runtime_images: [validRef] })).toEqual([
+      validRef,
+    ]);
     expect(extractRuntimeImages(null)).toEqual([]);
 
     // 2. Weak refs from text (charts, generated, uploads)
-    const textChart = "图表保存在 /workspace/charts/0123456789abcdef0123456789abcdef.png，请查收。";
+    const textChart =
+      "图表保存在 /workspace/charts/0123456789abcdef0123456789abcdef.png，请查收。";
     const weakRefsChart = extractChartWeakImageRefs(textChart);
     expect(weakRefsChart).toHaveLength(1);
-    expect(weakRefsChart[0]?.path).toBe("/workspace/charts/0123456789abcdef0123456789abcdef.png");
+    expect(weakRefsChart[0]?.path).toBe(
+      "/workspace/charts/0123456789abcdef0123456789abcdef.png",
+    );
     expect(weakRefsChart[0]?.mime_type).toBe("image/png");
 
-    const textGenerated = "成品路径：/workspace/generated/a03f0e9d6cdf49c4b1189865fefde01b.png";
+    const textGenerated =
+      "成品路径：/workspace/generated/a03f0e9d6cdf49c4b1189865fefde01b.png";
     const weakRefsGen = extractChartWeakImageRefs(textGenerated);
     expect(weakRefsGen).toHaveLength(1);
-    expect(weakRefsGen[0]?.path).toBe("/workspace/generated/a03f0e9d6cdf49c4b1189865fefde01b.png");
+    expect(weakRefsGen[0]?.path).toBe(
+      "/workspace/generated/a03f0e9d6cdf49c4b1189865fefde01b.png",
+    );
     expect(weakRefsGen[0]?.mime_type).toBe("image/png");
 
     // 3. contentItems splits text inline: [text-before] → [image block] when text contains workspace image path
@@ -229,7 +279,9 @@ describe("SDK transcript projection", () => {
     expect(items[0]?.kind).toBe("text");
     expect(items[0]?.text).toBe("成品路径：");
     expect(items[1]?.kind).toBe("image");
-    expect(items[1]?.imageRef?.path).toBe("/workspace/generated/a03f0e9d6cdf49c4b1189865fefde01b.png");
+    expect(items[1]?.imageRef?.path).toBe(
+      "/workspace/generated/a03f0e9d6cdf49c4b1189865fefde01b.png",
+    );
   });
 
   it("renders images beneath inline code paths while keeping text intact, and protects code blocks and links", () => {
@@ -252,7 +304,9 @@ describe("SDK transcript projection", () => {
     expect(items).toHaveLength(3);
     // 第 1 块：包含反引号在内的前段文本，完整保留代码展示
     expect(items[0]?.kind).toBe("text");
-    expect(items[0]?.text).toContain("图片地址：`/workspace/outputs/a9d3bf46bcc2988ed652743d4223c6f3f161dffd75f4fcf6fe7cf12d5dedf64a.png`");
+    expect(items[0]?.text).toContain(
+      "图片地址：`/workspace/outputs/a9d3bf46bcc2988ed652743d4223c6f3f161dffd75f4fcf6fe7cf12d5dedf64a.png`",
+    );
     // 第 2 块：紧随其后放在该路径下方的图片卡片
     expect(items[1]?.kind).toBe("image");
     expect(items[1]?.imageRef?.path).toBe(
@@ -274,7 +328,8 @@ describe("SDK transcript projection", () => {
     expect(blockItems[0]?.kind).toBe("text");
 
     // 3. 普通 Markdown 链接不得作为内嵌图片提取或切碎
-    const linkText = "点击查看原图：[查看原图](/workspace/outputs/a9d3bf46bcc2988ed652743d4223c6f3f161dffd75f4fcf6fe7cf12d5dedf64a.png)。";
+    const linkText =
+      "点击查看原图：[查看原图](/workspace/outputs/a9d3bf46bcc2988ed652743d4223c6f3f161dffd75f4fcf6fe7cf12d5dedf64a.png)。";
     expect(extractChartWeakImageRefs(linkText)).toEqual([]);
     const linkItems = contentItems(linkText, "msg-link");
     expect(linkItems).toHaveLength(1);
@@ -282,13 +337,16 @@ describe("SDK transcript projection", () => {
     expect(linkItems[0]?.text).toBe(linkText);
 
     // 4. 显式 Markdown 图片语法 ![alt](path) 正常原地切块
-    const markdownImgText = "这是说明：![大嘴鸟](/workspace/generated/pelican.png) 请查收。";
+    const markdownImgText =
+      "这是说明：![大嘴鸟](/workspace/generated/pelican.png) 请查收。";
     const imgItems = contentItems(markdownImgText, "msg-md-img");
     expect(imgItems).toHaveLength(3);
     expect(imgItems[0]?.kind).toBe("text");
     expect(imgItems[0]?.text).toBe("这是说明：");
     expect(imgItems[1]?.kind).toBe("image");
-    expect(imgItems[1]?.imageRef?.path).toBe("/workspace/generated/pelican.png");
+    expect(imgItems[1]?.imageRef?.path).toBe(
+      "/workspace/generated/pelican.png",
+    );
     expect(imgItems[2]?.kind).toBe("text");
     expect(imgItems[2]?.text).toBe("请查收。");
   });
@@ -337,5 +395,128 @@ describe("SDK transcript projection", () => {
     expect(executingTool?.status).toBe("running");
     expect(executingTool?.streamingInput).toBeUndefined();
     expect(executingTool?.streamingChars).toBeUndefined();
+  });
+});
+
+describe("parseToolErrorSummary", () => {
+  it("parses structured first-party JSON error with recovery hints", () => {
+    const rawJson = JSON.stringify({
+      status: "error",
+      code: "tool.invalid_input",
+      error: "工具输入不符合要求，请修正参数后继续。",
+      error_type: "ToolException",
+      name: "search_web",
+      recovery: "correct_input",
+      outcome: "not_started",
+    });
+
+    const res = parseToolErrorSummary(rawJson);
+    expect(res.isStructured).toBe(true);
+    expect(res.summary).toBe("工具输入不符合要求，请修正参数后继续。");
+    expect(res.recoveryHint).toBe("可修正参数");
+    expect(res.rawJson).toBe(rawJson);
+  });
+
+  it("maps choose_alternative and do_not_repeat recovery hints accurately", () => {
+    const upstreamJson = JSON.stringify({
+      error: "远程服务暂不可用",
+      recovery: "choose_alternative",
+    });
+    expect(parseToolErrorSummary(upstreamJson)).toEqual({
+      isStructured: true,
+      summary: "远程服务暂不可用",
+      recoveryHint: "可选择其他方式",
+      rawJson: upstreamJson,
+    });
+
+    const unknownJson = JSON.stringify({
+      error: "操作结果未知，避免重复提交",
+      recovery: "do_not_repeat",
+    });
+    expect(parseToolErrorSummary(unknownJson)).toEqual({
+      isStructured: true,
+      summary: "操作结果未知，避免重复提交",
+      recoveryHint: "先核对结果",
+      rawJson: unknownJson,
+    });
+  });
+
+  it("extracts structured error from MCP content blocks array", () => {
+    const mcpBlocks = [
+      {
+        type: "text",
+        text: JSON.stringify({
+          status: "error",
+          code: "tool.invalid_input",
+          error: "图表参数缺失 x_axis 字段",
+          recovery: "correct_input",
+        }),
+      },
+    ];
+
+    const res = parseToolErrorSummary(mcpBlocks);
+    expect(res.isStructured).toBe(true);
+    expect(res.summary).toBe("图表参数缺失 x_axis 字段");
+    expect(res.recoveryHint).toBe("可修正参数");
+  });
+
+  it("parses short non-JSON plain text error as summary", () => {
+    const plainError = "Error: file not found (/workspace/data.csv)";
+    const res = parseToolErrorSummary(plainError);
+    expect(res.isStructured).toBe(false);
+    expect(res.summary).toBe(plainError);
+    expect(res.recoveryHint).toBeUndefined();
+    expect(res.rawJson).toBeUndefined();
+  });
+
+  it("truncates long plain text error to 100 characters with ellipsis", () => {
+    const longError = "RuntimeError: " + "A".repeat(120);
+    const res = parseToolErrorSummary(longError);
+    expect(res.isStructured).toBe(false);
+    expect(res.summary.length).toBe(101); // 100 chars + '…'
+    expect(res.summary.endsWith("…")).toBe(true);
+    expect(res.summary.startsWith("RuntimeError: AAAAAA")).toBe(true);
+  });
+
+  it("falls back to stream error when output is empty or null", () => {
+    expect(parseToolErrorSummary(null, "tool.execution_failed")).toEqual({
+      isStructured: false,
+      summary: "工具执行失败",
+      recoveryHint: undefined,
+      rawJson: undefined,
+    });
+
+    expect(
+      parseToolErrorSummary(undefined, "Docker daemon unavailable"),
+    ).toEqual({
+      isStructured: false,
+      summary: "Docker daemon unavailable",
+      recoveryHint: undefined,
+      rawJson: undefined,
+    });
+
+    // 超长 stream error 也截断
+    const longStreamErr = "StreamError: " + "X".repeat(110);
+    const res = parseToolErrorSummary("", longStreamErr);
+    expect(res.summary.endsWith("…")).toBe(true);
+    expect(res.summary.length).toBe(101);
+  });
+
+  it("handles broken JSON gracefully without crashing", () => {
+    const brokenJson = "{ status: error, unquoted: string";
+    const res = parseToolErrorSummary(brokenJson);
+    expect(res.isStructured).toBe(false);
+    expect(res.summary).toBe(brokenJson);
+  });
+
+  it("supports pre-parsed error object directly", () => {
+    const obj = {
+      error: "直接传入的对象错误",
+      recovery: "choose_alternative",
+    };
+    const res = parseToolErrorSummary(obj);
+    expect(res.isStructured).toBe(true);
+    expect(res.summary).toBe("直接传入的对象错误");
+    expect(res.recoveryHint).toBe("可选择其他方式");
   });
 });

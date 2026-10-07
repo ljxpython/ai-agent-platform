@@ -10,6 +10,7 @@
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
 | 定时 Agent 任务页面 | 已完成：实装现代化卡片网格列表、双栏创建/编辑抽屉、DeerFlow 预设体系、历史记录抽屉与权限守卫，481 套单测、类型检查与生产打包全绿 | [前端交接](projects/20261005-scheduled-agent-tasks/frontend-handoff.md) |
+| 工具卡片错误结构化摘要提取与微胶囊 Tag 徽章展示 | 已完成：纯函数 parseToolErrorSummary 抽取，统一支持第一方 JSON、MCP 文本块数组与纯文本截断，微胶囊 Tag 徽章（recoveryHint）与展开态格式化排版实装，根治 tool.error 为空时不显红条 bug，31 项单测、类型检查与打包全绿 | [实现记录](projects/20261006-agent-tool-error-resilience/implementation/04-frontend-error-presentation.md) |
 | Chat 顶栏选择 Agent 历史会话队列联动过滤与 Pad 侧栏体验治理 | 已完成：修正 currentSelectedAgent 优先级倒挂、拔除 graph_id 过滤劫持恢复 agent_id 精准匹配、优化 Pad 侧边栏折叠交互，210项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-agent-history-filter-fix.md) |
 | Chat 对话体验优化（视口倒滚/流式跟随/消息秒蒸发）与切屏权限失效自爆根治 | 已完成：视口防倒滚精准锚定、rAF 60fps 原生流式跟随、切除 computed 副作用根治消息闪退、加固 SWR 权限驻留与具名事件解绑彻底根除切屏报错，212项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-viewport-smooth-follow-fix.md) |
 | 多会话切换切回假死死锁、空白消息水合缺失与投递报错隔离 | 已完成：切回终态收敛、落盘轻量水合、队列自动消费与报错展示隔离全链路闭环，422项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-session-switch-healing-and-receipt-isolation.md) |
@@ -81,6 +82,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Agent 工具调用容错与生产接线 | 已完成：全链路闭环，Runtime/API 选择性错误分类、主子图接线、安全消息与流出口脱敏完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化代码排版实装，31 项单测全绿，三服务全栈浏览器联合验收 F01-F08 全部通过，未生产部署 | [方案与任务](projects/20261006-agent-tool-error-resilience/README.md) · [前端交接](projects/20261006-agent-tool-error-resilience/frontend-handoff.md) |
 | 定时 Run 执行前聚合授权与无人值守策略 | 后端 done：身份/凭据/项目/Agent/模型/Thread 失效拒绝，审批转失败，原生预览与历史；GraphHarbor post41 已锁定安装，未重启现役栈 | [验证](projects/20261005-scheduled-agent-tasks/verification.md) |
 | 工作区 HTML 预览 CSP 策略升级与白名单扩充 | 已完成：放行公认安全 CDN（Tailwind CDN / Google Fonts / cdnjs / unpkg / jsdelivr / SVG），严格限制 connect-src https: 阻断内网探测，43 项单测全绿 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
 | DearFlow Agent 接入 Jina Reader 网页深度提取与双通道容灾 | 已完成：Jina Reader API（r.jina.ai）高质量 Markdown 提取上线，首选 Jina、超时/异常自动平滑降级 Tavily Extract，严守 public_url 防御与 SHA256 证据落盘 | [Jina Reader 集成](projects/20261002-dearflow-jina-reader-integration/README.md) |
@@ -98,7 +100,7 @@
 | MCP 接入 | 已完成 | `apps/runtime-service/docs/knowledge/19-runtime-tool-capability-mcp-and-side-effect-design.md` |
 | 公共图片工具 Middleware、Showcase 图表 MCP 子智能体与平台图片链路 | 部分完成：G0 契约、Runtime 运输层、Platform API 网关与 Platform Web 前端交互及确定性自动化测试全部通过；待配置真实生产环境模型凭据进行线上 Smoke 联调 | [图片与图表能力方案](projects/20260913-showcase-image-chart-capabilities/README.md) |
 | Runtime Service 图片编辑（图生图 `edit_image`）与内容安全审核友好提示 | 已完成：支持基于已有图片执行图像编辑/风格转换，接入 HITL 人工审批，结构化捕获并友好提示 `content_policy_violation` | [图片编辑能力](../apps/runtime-service/docs/changes/20260913-image-editing-capability.md) |
-| 图像识别分析工具（`analyze_image`）支持 DeepSeek 官方识图与错误详情透出 | 已完成：支持 DeepSeek 官方多模态识图（`deepseek-flash`）与通用 `VISION_*` 配置，消灭盲吞异常，保留底层 `error.message` / `error.code`，真实端到端验收通过 | [变更记录](../apps/runtime-service/docs/changes/20261003-vision-deepseek-support.md) |
+| 图像识别分析工具（`analyze_image`）支持 DeepSeek 官方识图与安全错误摘要 | 已完成：支持 DeepSeek 官方多模态识图（`deepseek-flash`）与通用 `VISION_*` 配置；provider/HTTP 失败对外使用稳定安全摘要，底层敏感正文不进入公开工具消息 | [变更记录](../apps/runtime-service/docs/changes/20261003-vision-deepseek-support.md) · [容错专项](projects/20261006-agent-tool-error-resilience/README.md) |
 | Runtime 鉴权、middleware 层、reference agent | 已完成 | `apps/runtime-service/docs/knowledge/28-runtime-refactor-development-plan.md` |
 | Runtime Service 开发文档体系（资料导航、开发范式、介入与验证） | 已完成：正式指南位于 `docs/standards/`，以 Showcase Demo 和 tests 为可执行范式 | `apps/runtime-service/docs/standards/README.md` |
 | showcase_demo — 教学智能体（工具调用/HITL/子智能体/Todo/Sandbox/Skills） | 部分完成：Docker 正式执行与 LocalShellBackend 本地开发模式均支持；前端后置 | `docs/projects/20260908-showcase-demo/`、`docs/projects/20260917-showcase-local-sandbox/` |

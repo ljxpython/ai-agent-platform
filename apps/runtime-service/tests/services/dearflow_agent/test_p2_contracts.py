@@ -1,6 +1,7 @@
 """Shared boundary vectors run against both services, without production cross imports."""
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -88,8 +89,16 @@ for answer, valid in p["answers"]:
 print("Platform and Runtime boundary vectors agree")
 """
     result = subprocess.run(
-        [str(repo / "apps/platform-api/.venv/bin/python"), "-c", script],
+        [
+            os.getenv(
+                "PLATFORM_API_TEST_PYTHON",
+                str(repo / "apps/platform-api/.venv/bin/python"),
+            ),
+            "-c",
+            script,
+        ],
         cwd=repo / "apps/platform-api",
+        env={**os.environ, "PYTHONPATH": str(repo / "apps/platform-api/src")},
         text=True,
         capture_output=True,
         input=json.dumps(

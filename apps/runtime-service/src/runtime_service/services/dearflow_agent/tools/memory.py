@@ -8,6 +8,7 @@ from langchain_core.tools import tool
 from runtime_service.runtime import verified_delegation_from_user
 from runtime_service.services.dearflow_agent.memory import MemoryCommand, MemoryStorage
 from runtime_service.services.dearflow_agent.memory_access import memory_allowed
+from runtime_service.tools.errors import tool_error_handler
 from runtime_service.workspace.documents import DocumentError
 
 
@@ -46,5 +47,5 @@ def build_memory_tools():
         )
 
     for item in (search_memory, manage_memory):
-        item.handle_tool_error = True
+        item.handle_tool_error = tool_error_handler(item.name)
     return [search_memory, manage_memory]

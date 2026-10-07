@@ -82,13 +82,19 @@ function reasoningText(value: unknown): string {
   }
   const details = fields.reasoning_details;
   return Array.isArray(details)
-    ? details.map((item) => asObject(item).text).filter((text): text is string => typeof text === "string").join("").trim()
+    ? details
+        .map((item) => asObject(item).text)
+        .filter((text): text is string => typeof text === "string")
+        .join("")
+        .trim()
     : "";
 }
 
 export function extractReasoningFromMessage(message: BaseMessage): string {
   const raw = message as unknown as Record<string, unknown>;
-  return reasoningText(raw.additional_kwargs) || reasoningText(raw.response_metadata);
+  return (
+    reasoningText(raw.additional_kwargs) || reasoningText(raw.response_metadata)
+  );
 }
 
 export const WORKSPACE_IMAGE_PATH_REGEX =
@@ -98,7 +104,9 @@ export const WORKSPACE_IMAGE_PATH_REGEX =
  * 提取文本中的多行代码块区间（```...``` 或 ~~~...~~~）与普通非图片超链接 URL。
  * 处于多行代码块内部或普通链接 URL 的路径不应触发图片生成。
  */
-export function getFencedCodeAndLinkRanges(text: string): Array<[number, number]> {
+export function getFencedCodeAndLinkRanges(
+  text: string,
+): Array<[number, number]> {
   if (!text) return [];
   const ranges: Array<[number, number]> = [];
 
@@ -169,10 +177,7 @@ export function extractWorkspaceImageRefs(text: string): RuntimeImageRef[] {
 export const WORKSPACE_CHART_PATH_REGEX = WORKSPACE_IMAGE_PATH_REGEX;
 export const extractChartWeakImageRefs = extractWorkspaceImageRefs;
 
-export function contentItems(
-  content: unknown,
-  key: string,
-): ContentItem[] {
+export function contentItems(content: unknown, key: string): ContentItem[] {
   const values =
     typeof content === "string"
       ? [{ type: "text", text: content }]
@@ -190,7 +195,8 @@ export function contentItems(
       const itemKey = `${key}:${index}`;
       if (block.type === "text" || block.type === "text-plain") {
         if (block.extras && typeof block.extras === "object") {
-          const runtimeImage = (block.extras as Record<string, unknown>).runtime_image;
+          const runtimeImage = (block.extras as Record<string, unknown>)
+            .runtime_image;
           if (isValidImageRef(runtimeImage)) {
             items.push({
               key: itemKey,
@@ -200,7 +206,8 @@ export function contentItems(
             });
             return;
           }
-          const runtimeFile = (block.extras as Record<string, unknown>).runtime_file;
+          const runtimeFile = (block.extras as Record<string, unknown>)
+            .runtime_file;
           if (isValidFileRef(runtimeFile)) {
             items.push({
               key: itemKey,
@@ -212,12 +219,24 @@ export function contentItems(
           }
         }
         const text = String(block.text ?? "");
-        const thinkMatch = /<(?:think|thinking)>([\s\S]*?)(?:<\/(?:think|thinking)>|$)/i.exec(text);
+        const thinkMatch =
+          /<(?:think|thinking)>([\s\S]*?)(?:<\/(?:think|thinking)>|$)/i.exec(
+            text,
+          );
         if (thinkMatch) {
           const thinkContent = thinkMatch[1].trim();
-          const remainder = text.replace(/<(?:think|thinking)>[\s\S]*?(?:<\/(?:think|thinking)>|$)/i, "").trim();
+          const remainder = text
+            .replace(
+              /<(?:think|thinking)>[\s\S]*?(?:<\/(?:think|thinking)>|$)/i,
+              "",
+            )
+            .trim();
           if (thinkContent) {
-            items.push({ key: `${itemKey}:think`, kind: "reasoning", text: thinkContent });
+            items.push({
+              key: `${itemKey}:think`,
+              kind: "reasoning",
+              text: thinkContent,
+            });
           }
           if (remainder || !thinkContent) {
             items.push({ key: itemKey, kind: "text", text: remainder });
@@ -227,13 +246,27 @@ export function contentItems(
         items.push({ key: itemKey, kind: "text", text });
         return;
       }
-      if (["document", "markdown"].includes(String(block.type)) && typeof block.content === "string") {
+      if (
+        ["document", "markdown"].includes(String(block.type)) &&
+        typeof block.content === "string"
+      ) {
         items.push({ key: itemKey, kind: "text", text: block.content });
         return;
       }
       if (block.type === "code" && typeof block.code === "string") {
-        const fence = "`".repeat(Math.max(3, ...[...block.code.matchAll(/`+/g)].map(match => match[0].length + 1)));
-        items.push({ key: itemKey, kind: "text", text: `${fence}${String(block.language ?? "text").replace(/[^\w-]/g, "")}\n${block.code}\n${fence}` });
+        const fence = "`".repeat(
+          Math.max(
+            3,
+            ...[...block.code.matchAll(/`+/g)].map(
+              (match) => match[0].length + 1,
+            ),
+          ),
+        );
+        items.push({
+          key: itemKey,
+          kind: "text",
+          text: `${fence}${String(block.language ?? "text").replace(/[^\w-]/g, "")}\n${block.code}\n${fence}`,
+        });
         return;
       }
       if (block.type === "reasoning") {
@@ -275,7 +308,10 @@ export function contentItems(
     });
 
   function cleanLeadingOrphanLineBreak(text: string): string {
-    return text.replace(/^([\u4e00-\u9fa5\w])\r?\n(?!\r?\n)([\u4e00-\u9fa5\w])/g, "$1$2");
+    return text.replace(
+      /^([\u4e00-\u9fa5\w])\r?\n(?!\r?\n)([\u4e00-\u9fa5\w])/g,
+      "$1$2",
+    );
   }
 
   const consolidated: ContentItem[] = [];
@@ -331,14 +367,22 @@ export function contentItems(
         // 行内反引号包裹的路径：保留完整代码文本，并将图片卡片紧随其后放在该路径下方
         const before = text.slice(lastIndex, matchEnd).trimEnd();
         if (before) {
-          segments.push({ key: `${key}:seg:${imgIdx}:pre`, kind: "text", text: before });
+          segments.push({
+            key: `${key}:seg:${imgIdx}:pre`,
+            kind: "text",
+            text: before,
+          });
         }
         lastIndex = matchEnd;
       } else {
         // 显式 Markdown 图片或裸路径：将标记从文本中剥离，原位插入图片块
         const before = text.slice(lastIndex, matchStart).trimEnd();
         if (before) {
-          segments.push({ key: `${key}:seg:${imgIdx}:pre`, kind: "text", text: before });
+          segments.push({
+            key: `${key}:seg:${imgIdx}:pre`,
+            kind: "text",
+            text: before,
+          });
         }
         lastIndex = matchEnd;
       }
@@ -347,7 +391,11 @@ export function contentItems(
       if (!existingImagePaths.has(imagePath)) {
         existingImagePaths.add(imagePath);
         const lower = imagePath.toLowerCase();
-        const ext = lower.endsWith(".png") ? "png" : lower.endsWith(".webp") ? "webp" : "jpeg";
+        const ext = lower.endsWith(".png")
+          ? "png"
+          : lower.endsWith(".webp")
+            ? "webp"
+            : "jpeg";
         segments.push({
           key: `${key}:img:${imgIdx}`,
           kind: "image",
@@ -368,7 +416,11 @@ export function contentItems(
     // 图片后剩余的文本段
     const tail = text.slice(lastIndex).trimStart();
     if (tail) {
-      segments.push({ key: `${key}:seg:${imgIdx}:post`, kind: "text", text: tail });
+      segments.push({
+        key: `${key}:seg:${imgIdx}:post`,
+        kind: "text",
+        text: tail,
+      });
     }
 
     return segments.length > 0 ? segments : [item];
@@ -384,7 +436,11 @@ export function contentItems(
 
   for (const item of consolidated) {
     WORKSPACE_IMAGE_PATH_REGEX.lastIndex = 0;
-    if (item.kind === "text" && item.text && WORKSPACE_IMAGE_PATH_REGEX.test(item.text)) {
+    if (
+      item.kind === "text" &&
+      item.text &&
+      WORKSPACE_IMAGE_PATH_REGEX.test(item.text)
+    ) {
       result.push(...splitTextByImages(item, existingImagePaths));
     } else {
       result.push(item);
@@ -478,7 +534,10 @@ export function buildTranscript(
       status === "running" && !running && !isPending ? "incomplete" : status;
     const resolvedInput = call?.input ?? input;
     const streamingInput =
-      isStreamingMessage && finalStatus === "running" && !hasResult && !isPending;
+      isStreamingMessage &&
+      finalStatus === "running" &&
+      !hasResult &&
+      !isPending;
 
     return {
       key: `${prefix}:tool:${id}`,
@@ -536,14 +595,15 @@ export function buildTranscript(
     const msgObj = asObject(message);
     const respMeta = asObject(msgObj.response_metadata);
     const hasFinishMarker = Boolean(
-      respMeta.finish_reason ||
-      respMeta.stop_reason ||
-      msgObj.usage_metadata,
+      respMeta.finish_reason || respMeta.stop_reason || msgObj.usage_metadata,
     );
     const hasToolCallChunks =
-      (Array.isArray(msgObj.tool_call_chunks) && msgObj.tool_call_chunks.length > 0) ||
+      (Array.isArray(msgObj.tool_call_chunks) &&
+        msgObj.tool_call_chunks.length > 0) ||
       (Array.isArray(msgObj.contentBlocks) &&
-        msgObj.contentBlocks.some((b) => asObject(b).type === "tool_call_chunk"));
+        msgObj.contentBlocks.some(
+          (b) => asObject(b).type === "tool_call_chunk",
+        ));
     const isStreamingMessage =
       running &&
       index === messages.length - 1 &&
@@ -557,7 +617,12 @@ export function buildTranscript(
           typeof call.id === "string" ? call.id : `${key}:call-${callIndex}`;
         if (!shown.has(id))
           item.tools.push(
-            tool(id, String(call.name ?? "未知工具"), call.args, isStreamingMessage),
+            tool(
+              id,
+              String(call.name ?? "未知工具"),
+              call.args,
+              isStreamingMessage,
+            ),
           );
       }
     if (message.type === "tool") {
@@ -599,8 +664,9 @@ export function buildTranscript(
   return turns;
 }
 
-
-export function extractRuntimeImages(contentOrArtifact: unknown): RuntimeImageRef[] {
+export function extractRuntimeImages(
+  contentOrArtifact: unknown,
+): RuntimeImageRef[] {
   const refs: RuntimeImageRef[] = [];
   const seen = new Set<string>();
 
@@ -648,4 +714,136 @@ export function extractRuntimeImages(contentOrArtifact: unknown): RuntimeImageRe
 
   walk(contentOrArtifact);
   return refs;
+}
+
+export interface ToolErrorInfo {
+  summary: string;
+  recoveryHint?: string;
+  rawJson?: string;
+  isStructured: boolean;
+}
+
+const RECOVERY_HINT_MAP: Record<string, string> = {
+  correct_input: "可修正参数",
+  choose_alternative: "可选择其他方式",
+  do_not_repeat: "先核对结果",
+};
+
+const MAX_PLAIN_ERROR_SUMMARY_CHARS = 100;
+
+/**
+ * 纯函数：安全解析工具调用的错误摘要与恢复建议。
+ * 支持结构化 JSON、MCP 内容块数组、非 JSON 纯文本截断与通用 stream 兜底。
+ */
+export function parseToolErrorSummary(
+  output: unknown,
+  streamError?: string,
+): ToolErrorInfo {
+  let candidateText: string | null = null;
+  let parsedObj: Record<string, unknown> | null = null;
+
+  if (typeof output === "string") {
+    const trimmed = output.trim();
+    if (trimmed) candidateText = trimmed;
+  } else if (Array.isArray(output)) {
+    // 兼容 MCP content blocks: [{"type": "text", "text": "..."}]
+    for (const item of output) {
+      if (
+        item &&
+        typeof item === "object" &&
+        item.type === "text" &&
+        typeof item.text === "string" &&
+        item.text.trim()
+      ) {
+        candidateText = item.text.trim();
+        break;
+      }
+    }
+  } else if (output && typeof output === "object") {
+    parsedObj = output as Record<string, unknown>;
+  }
+
+  // 1. 若候选文本是 JSON 字符串，尝试反序列化
+  if (
+    candidateText &&
+    (candidateText.startsWith("{") || candidateText.startsWith("["))
+  ) {
+    try {
+      const parsed = JSON.parse(candidateText);
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        parsedObj = parsed as Record<string, unknown>;
+      }
+    } catch {
+      // 非合规 JSON，回退作为纯文本处理
+    }
+  }
+
+  // 2. 识别受支持的第一方结构化错误
+  if (
+    parsedObj &&
+    typeof parsedObj.error === "string" &&
+    parsedObj.error.trim()
+  ) {
+    const summary = parsedObj.error.trim();
+    const recoveryKey =
+      typeof parsedObj.recovery === "string" ? parsedObj.recovery : undefined;
+    const recoveryHint = recoveryKey
+      ? RECOVERY_HINT_MAP[recoveryKey]
+      : undefined;
+    const rawJson = candidateText || JSON.stringify(parsedObj);
+    return {
+      summary,
+      recoveryHint,
+      rawJson,
+      isStructured: true,
+    };
+  }
+
+  // 3. 处理非 JSON 纯文本错误（受控截断 100 字符）
+  if (candidateText) {
+    const isOverLimit = candidateText.length > MAX_PLAIN_ERROR_SUMMARY_CHARS;
+    const summary = isOverLimit
+      ? `${candidateText.slice(0, MAX_PLAIN_ERROR_SUMMARY_CHARS)}…`
+      : candidateText;
+    return {
+      summary,
+      recoveryHint: undefined,
+      rawJson: undefined,
+      isStructured: false,
+    };
+  }
+
+  // 4. 兜底回退：优先使用 streamError，否则返回默认文案
+  if (streamError && typeof streamError === "string" && streamError.trim()) {
+    const errText = streamError.trim();
+    if (
+      !errText.includes("Interrupt(") &&
+      !errText.includes("GraphInterrupt")
+    ) {
+      if (errText === "tool.execution_failed") {
+        return {
+          summary: "工具执行失败",
+          recoveryHint: undefined,
+          rawJson: undefined,
+          isStructured: false,
+        };
+      }
+      const isOverLimit = errText.length > MAX_PLAIN_ERROR_SUMMARY_CHARS;
+      return {
+        summary: isOverLimit
+          ? `${errText.slice(0, MAX_PLAIN_ERROR_SUMMARY_CHARS)}…`
+          : errText,
+        recoveryHint: undefined,
+        rawJson: undefined,
+        isStructured: false,
+      };
+    }
+  }
+
+  return {
+    summary: "工具执行失败",
+    recoveryHint: undefined,
+    rawJson: undefined,
+    isStructured: false,
+  };
 }

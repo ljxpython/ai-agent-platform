@@ -12,6 +12,7 @@ from PIL import Image
 
 from runtime_service.runtime.resolver import runtime_context_hash
 from runtime_service.webapp import app
+from runtime_service.workspace.scoped import resolve_thread_workspace
 
 SECRET = "r1-test-secret-with-at-least-32-bytes"
 
@@ -133,6 +134,38 @@ async def test_upload_and_read_image_flow(graph_id):
             },
         )
         assert isolated.status_code == 404
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("graph_id", ["showcase_demo", "dearflow_agent"])
+@pytest.mark.parametrize("unsafe_root", [False, True])
+async def test_uncreated_workspace_is_404_but_unsafe_root_is_fatal(
+    graph_id, unsafe_root, tmp_path
+):
+    root = resolve_thread_workspace("tenant-a", "project-a", "thread-1", graph_id)
+    outside = tmp_path / "outside"
+    if unsafe_root:
+        outside.mkdir()
+        root.parent.mkdir(parents=True)
+        root.symlink_to(outside, target_is_directory=True)
+    token = _make_token(operation="image-read", assistant_id=graph_id)
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        response = await client.get(
+            "/internal/threads/thread-1/images/content",
+            params={"path": "/workspace/uploads/" + "f" * 64 + ".png"},
+            headers={"Authorization": "Bearer " + token},
+        )
+    assert response.status_code == (500 if unsafe_root else 404)
+    assert response.json()["detail"]["code"] == (
+        "runtime.workspace.unavailable" if unsafe_root else "image_not_found"
+    )
+    assert str(tmp_path) not in response.text
+    if unsafe_root:
+        assert root.is_symlink() and list(outside.iterdir()) == []
+    else:
+        assert not root.exists()
 
 
 @pytest.mark.anyio

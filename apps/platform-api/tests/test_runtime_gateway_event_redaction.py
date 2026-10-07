@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import unittest
 from collections.abc import AsyncIterator
 from types import SimpleNamespace
@@ -23,6 +24,162 @@ async def _chunks(*values: bytes) -> AsyncIterator[bytes]:
 
 
 class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
+    async def test_native_task_error_is_safe_in_both_streams(self):
+        data = {
+            "id": "task-1",
+            "name": "tools",
+            "error": "TASK_EXCEPTION_CANARY",
+            "result": {},
+            "interrupts": [],
+        }
+        for protocol in (False, True):
+            payload = (
+                {
+                    "method": "tasks",
+                    "params": {"namespace": ["tools:child"], "data": data},
+                }
+                if protocol
+                else data
+            )
+            raw = ("event: tasks\ndata: " + json.dumps(payload) + "\n\n").encode()
+            result = b"".join(
+                [
+                    chunk
+                    async for chunk in _redact_protocol_event_stream(
+                        _chunks(raw), protocol=protocol
+                    )
+                ]
+            )
+            self.assertNotIn(b"TASK_EXCEPTION_CANARY", result)
+            self.assertIn(b"runtime.execution_failed", result)
+            self.assertIn(b'"id":"task-1"', result)
+
+    async def test_fatal_run_error_hides_original_exception_in_both_streams(self):
+        for protocol in (False, True):
+            with self.subTest(protocol=protocol):
+                detail = "EXCEPTION_CANARY Authorization=secret /private/host/provider"
+                data = {
+                    "event": "failed" if protocol else "lifecycle",
+                    "status": "error",
+                    "error": detail
+                    if protocol
+                    else {"type": "RuntimeError", "message": detail},
+                }
+                payload = (
+                    {
+                        "method": "lifecycle",
+                        "params": {"namespace": [], "run_id": "run-1", "data": data},
+                    }
+                    if protocol
+                    else data
+                )
+                raw = (
+                    "event: lifecycle\ndata: " + json.dumps(payload) + "\n\n"
+                ).encode()
+                result = b"".join(
+                    [
+                        chunk
+                        async for chunk in _redact_protocol_event_stream(
+                            _chunks(raw), protocol=protocol
+                        )
+                    ]
+                )
+                self.assertNotIn(b"EXCEPTION_CANARY", result)
+                self.assertIn(b"runtime.execution_failed", result)
+                self.assertIn(b'"status":"error"', result)
+
+    async def test_safe_tool_error_survives_standard_and_protocol_streams(self):
+        content = json.dumps(
+            {
+                "status": "error",
+                "code": "tool.invalid_input",
+                "error": "Safe input failure",
+                "error_type": "ToolException",
+                "name": "search_web",
+                "recovery": "correct_input",
+                "outcome": "not_started",
+            }
+        )
+        message = {
+            "type": "tool",
+            "name": "search_web",
+            "tool_call_id": "child-call",
+            "status": "error",
+            "content": content,
+            "artifact": {
+                "token": "ARTIFACT_SECRET_CANARY",
+                "sources": [{"path": "/workspace/sources/source.txt"}],
+            },
+        }
+        for protocol in (False, True):
+            with self.subTest(protocol=protocol):
+                data = {"tools": {"messages": [message]}}
+                payload = (
+                    {
+                        "seq": 3,
+                        "method": "updates",
+                        "params": {"namespace": ["tools:child"], "data": data},
+                    }
+                    if protocol
+                    else data
+                )
+                raw = (
+                    "event: updates|tools:child\ndata: " + json.dumps(payload) + "\n\n"
+                ).encode()
+                result = b"".join(
+                    [
+                        chunk
+                        async for chunk in _redact_protocol_event_stream(
+                            _chunks(raw[:13], raw[13:39], raw[39:]), protocol=protocol
+                        )
+                    ]
+                )
+                decoded = json.loads(result.decode().split("data: ", 1)[1].strip())
+                transported = decoded["params"]["data"] if protocol else decoded
+                actual = transported["tools"]["messages"][0]
+                self.assertEqual(
+                    {
+                        k: actual[k]
+                        for k in ("name", "tool_call_id", "status", "content")
+                    },
+                    {
+                        k: message[k]
+                        for k in ("name", "tool_call_id", "status", "content")
+                    },
+                )
+                self.assertEqual(actual["artifact"]["token"], "[REDACTED]")
+                self.assertNotIn(b"SECRET_CANARY", result)
+                if protocol:
+                    self.assertEqual(decoded["params"]["namespace"], ["tools:child"])
+
+    async def test_tool_error_event_is_distinct_from_run_failure(self):
+        for event in ("tool-error", "failed"):
+            with self.subTest(event=event):
+                data = {
+                    "event": event,
+                    "tool_call_id": "call",
+                    "message": "tool.execution_failed",
+                }
+                raw = (
+                    "data: "
+                    + json.dumps(
+                        {
+                            "seq": 1,
+                            "method": "tools" if event == "tool-error" else "lifecycle",
+                            "params": {"namespace": [], "data": data},
+                        }
+                    )
+                    + "\n\n"
+                ).encode()
+                result = b"".join(
+                    [
+                        chunk
+                        async for chunk in _redact_protocol_event_stream(_chunks(raw))
+                    ]
+                )
+                actual = json.loads(result.decode().split("data: ", 1)[1])
+                self.assertEqual(actual["params"]["data"], data)
+
     async def test_plain_stream_close_and_failed_observer_do_not_change_body(self):
         reasons = []
         sent = []
@@ -346,17 +503,22 @@ class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(reasons, ["frame_rejected"])
 
     async def test_injects_heartbeat_when_upstream_is_idle(self):
+        received_heartbeats = asyncio.Event()
+
         async def slow_upstream():
             yield b'data: {"seq":1,"method":"values","params":{"namespace":[],"data":{"step":"start"}}}\n\n'
-            await asyncio.sleep(0.12)
+            await received_heartbeats.wait()
             yield b'data: {"seq":2,"method":"values","params":{"namespace":[],"data":{"step":"end"}}}\n\n'
 
         parts = []
-        async for part in _redact_protocol_event_stream(
-            slow_upstream(),
-            heartbeat_seconds=0.04,
-        ):
-            parts.append(part)
+        async with asyncio.timeout(5):
+            async for part in _redact_protocol_event_stream(
+                slow_upstream(),
+                heartbeat_seconds=0.04,
+            ):
+                parts.append(part)
+                if parts.count(b": heartbeat\n\n") >= 2:
+                    received_heartbeats.set()
 
         heartbeats = [p for p in parts if p == b": heartbeat\n\n"]
         self.assertGreaterEqual(len(heartbeats), 2)

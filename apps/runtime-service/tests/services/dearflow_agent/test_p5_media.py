@@ -147,6 +147,7 @@ def test_image_tools_idempotency_multi_reference_cancel_and_invalid_result(
 
     monkeypatch.setattr(images, "AsyncOpenAI", Provider)
     workspace = ImageWorkspace(tmp_path / "workspace")
+    workspace.root.mkdir()
     tools = {t.name: t for t in media.build_media_tools(workspace)}
 
     async def run():

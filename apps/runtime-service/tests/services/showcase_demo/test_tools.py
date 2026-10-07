@@ -1,4 +1,5 @@
 import asyncio
+import json
 
 import httpx
 import pytest
@@ -30,7 +31,9 @@ def test_documentation_rejects_untrusted_urls_without_network(monkeypatch, url):
 
     monkeypatch.setattr(tools.httpx, "AsyncClient", forbidden)
     result = asyncio.run(fetch_documentation.ainvoke({"url": url}))
-    assert "Use an HTTPS URL" in result
+    error = json.loads(result)
+    assert error["code"] == "tool.invalid_input"
+    assert error["name"] == "fetch_documentation" and error["outcome"] == "not_started"
 
 
 @pytest.mark.parametrize("kind", ["text", "redirect", "binary", "large", "failure"])
@@ -61,12 +64,14 @@ def test_documentation_fetch_is_bounded_and_reports_failures(monkeypatch, kind):
     )
     expected = {
         "text": "reference",
-        "redirect": "Redirects are not followed",
-        "binary": "Only text",
         "large": "truncated at 128 KiB",
-        "failure": "request failed",
     }
-    assert expected[kind] in result
+    if kind in expected:
+        assert expected[kind] in result
+    else:
+        error = json.loads(result)
+        assert error["code"] == "tool.upstream_unavailable"
+        assert error["name"] == "fetch_documentation" and error["outcome"] == "failed"
     assert len(result) < tools._MAX_BYTES + 100
 
 

@@ -7,6 +7,8 @@ from urllib.parse import urlsplit
 import httpx
 from langchain_core.tools import ToolException, tool
 
+from runtime_service.tools.errors import tool_error_handler
+
 _ALLOWED_HOSTS = frozenset(
     {"docs.python.org", "docs.langchain.com", "reference.langchain.com"}
 )
@@ -157,6 +159,6 @@ async def fetch_documentation(url: str) -> str:
         ) from exc
 
 
-fetch_documentation.handle_tool_error = True
+fetch_documentation.handle_tool_error = tool_error_handler(fetch_documentation.name)
 
 __all__ = ["fetch_documentation", "html_to_markdown"]

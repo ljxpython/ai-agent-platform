@@ -29,7 +29,9 @@ def test_artifact_tool_returns_recoverable_error_then_publishes(tmp_path):
             }
         )
         assert rejected.status == "error"
-        assert rejected.content == "artifact_source_denied"
+        error = json.loads(rejected.content)
+        assert error["code"] == "tool.invalid_input"
+        assert error["name"] == tool.name and rejected.tool_call_id == "bad"
         (tmp_path / "work").mkdir()
         (tmp_path / "work/report.md").write_text("Image reference report")
         published = await tool.ainvoke(

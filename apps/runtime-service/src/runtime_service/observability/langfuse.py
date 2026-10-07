@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import json
 import logging
 import os
 import threading
@@ -13,7 +14,9 @@ from collections.abc import Mapping
 from typing import Any, cast
 
 from langchain_core.callbacks import BaseCallbackHandler
+from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
+from langgraph.errors import GraphBubbleUp
 from langgraph.pregel import Pregel
 
 from runtime_service.observability.otel import (
@@ -228,6 +231,9 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
         **_: Any,
     ) -> None:
         if parent_run_id is None:
+            if isinstance(error, GraphBubbleUp):
+                self._starts.pop(run_id, None)
+                return
             status = (
                 "cancelled"
                 if isinstance(error, CancelledError)
@@ -240,6 +246,8 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
     def on_tool_error(
         self, error: BaseException, *, run_id: Any, **kwargs: Any
     ) -> None:
+        if isinstance(error, (GraphBubbleUp, CancelledError)):
+            return
         _metrics["tool_error"] += 1
         logger.warning(
             "runtime_tool_error",
@@ -248,6 +256,38 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
                 **self._metadata,
                 "tool_name": str(kwargs.get("name", "unknown"))[:_MAX_VALUE_LENGTH],
                 "error_category": type(error).__name__,
+            },
+        )
+
+    def on_tool_end(self, output: Any, *, run_id: Any, **_: Any) -> None:
+        if not isinstance(output, ToolMessage) or output.status != "error":
+            return
+        code = "tool.result_failed"
+        if isinstance(output.content, str) and len(output.content.encode()) <= 2048:
+            try:
+                payload = json.loads(output.content)
+            except (ValueError, TypeError):
+                payload = None
+            if (
+                isinstance(payload, dict)
+                and isinstance(payload.get("code"), str)
+                and payload["code"]
+                in {
+                    "tool.invalid_input",
+                    "tool.upstream_unavailable",
+                    "tool.operation_failed",
+                    "tool.outcome_unknown",
+                }
+            ):
+                code = payload["code"]
+        _metrics["tool_result_error"] += 1
+        logger.warning(
+            "runtime_tool_result_error",
+            extra={
+                "graph_id": self._graph_id,
+                **self._metadata,
+                "tool_name": str(output.name or "unknown")[:_MAX_VALUE_LENGTH],
+                "error_code": code,
             },
         )
 

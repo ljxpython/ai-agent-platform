@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from contextlib import nullcontext
 from types import SimpleNamespace
@@ -15,6 +16,50 @@ from platform_api.modules.runtime_gateway.application.service import (
 
 
 class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
+    async def test_error_tool_message_is_preserved_in_state_and_history(self):
+        message = {
+            "type": "tool",
+            "name": "search_web",
+            "tool_call_id": "call",
+            "status": "error",
+            "content": json.dumps(
+                {
+                    "status": "error",
+                    "code": "tool.invalid_input",
+                    "error": "Safe input failure",
+                    "name": "search_web",
+                }
+            ),
+            "artifact": {"sources": []},
+        }
+        state = {
+            "values": {"messages": [message], "runtime_model_ref": "PRIVATE_CANARY"},
+            "checkpoint": {"checkpoint_ns": "tools:child", "checkpoint_id": "cp"},
+            "next": [],
+        }
+        upstream = SimpleNamespace(
+            get_thread_state=AsyncMock(return_value=state),
+            get_thread_history=AsyncMock(return_value=[state]),
+        )
+        service = RuntimeGatewayService(session_factory=None, upstream=upstream)
+        service._load_thread = AsyncMock(return_value={"metadata": {}})
+        actual_state = await service.get_thread_state(
+            actor=SimpleNamespace(),
+            project_id="project",
+            thread_id="thread",
+            params={"subgraphs": True},
+        )
+        actual_history = await service.get_thread_history(
+            actor=SimpleNamespace(),
+            project_id="project",
+            thread_id="thread",
+            payload={"checkpoint_ns": "tools:child"},
+        )
+        for actual in (actual_state, actual_history[0]):
+            self.assertEqual(actual["values"]["messages"], [message])
+            self.assertEqual(actual["checkpoint"], state["checkpoint"])
+            self.assertNotIn("PRIVATE_CANARY", str(actual))
+
     def test_standard_run_rejects_tool_fields_with_client_error(self):
         service = RuntimeGatewayService(
             session_factory=None, upstream=SimpleNamespace()

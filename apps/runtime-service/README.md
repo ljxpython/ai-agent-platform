@@ -141,6 +141,20 @@ Provider fallback/retry 和 Platform Gateway 仍按 28 号计划单独验收。
 每个 Service 的组合逻辑都直接写在自己的 `get_agent()` 中。没有公共 `build_agent`、Builder、
 Factory 或 Registry；只有在出现真实重复或复杂生命周期时，才允许 Service 私有下划线辅助函数。
 
+### 工具错误容错验证
+
+DearFlow、Showcase 和 Reference 在组合根显式接入官方 `ToolErrorMiddleware` 或现有重试边界。
+Runtime 只把已批准的输入、业务和明确上游失败转换为脱敏 `ToolMessage`；权限、工作区基础故障、取消、
+中断和未知程序异常继续传播。流式 `tool-error` 事件使用固定 `tool.execution_failed`，不携带原异常文本。
+定向验证入口：
+
+```bash
+uv run pytest tests/tools/test_tool_errors.py tests/services/dearflow_agent/test_tool_errors.py tests/test_patches.py -q
+```
+
+隔离跨服务验证（显式启用，使用临时 PostgreSQL/Redis）见
+`tests/services/dearflow_agent/test_tool_error_platform.py`，不连接现役本地栈。
+
 R4 已归档。R5 已完成 Runtime 本地生命周期、可信 metadata、Model/Tool/Subagent callback 和真实
 Langfuse smoke；目标镜像仅完成 custom app import，SDK queue drop 指标、生产容器 startup/SIGTERM/drain
 和跨服务传播仍未闭合。R6 Durable

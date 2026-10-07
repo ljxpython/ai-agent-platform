@@ -17,10 +17,12 @@ from uuid import uuid4
 import httpx
 from langchain_core.tools import ToolException, tool
 from langchain_openai import ChatOpenAI
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAIError
 from PIL import Image
 from pydantic import SecretStr
 
+from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.tools.errors import tool_error_handler
 from runtime_service.workspace.image_refs import (
     ASSET_MAX_BYTES,
     UPLOAD_MAX_BYTES,
@@ -67,15 +69,22 @@ class ImageWorkspace:
     def __init__(self, root: Path | None):
         self.root = root
 
-    def _directory(self, parts: tuple[str, ...], *, create: bool = False) -> int:
+    def _directory(
+        self,
+        parts: tuple[str, ...],
+        *,
+        create: bool = False,
+        create_root: bool = False,
+    ) -> int:
         if self.root is None:
             raise ToolException("Workspace is unavailable for schema-only graphs.")
+        root_parts = self.root.absolute().parts[1:]
         descriptor = os.open("/", os.O_RDONLY | os.O_DIRECTORY)
         try:
-            for part in (*self.root.absolute().parts[1:], *parts):
+            for _index, part in enumerate((*root_parts, *parts)):
                 if part in ("", ".", ".."):
                     raise ValueError("Invalid path")
-                if create:
+                if create and (create_root or _index >= len(root_parts)):
                     try:
                         os.mkdir(part, mode=0o700, dir_fd=descriptor)
                     except FileExistsError:
@@ -88,8 +97,14 @@ class ImageWorkspace:
                 os.close(descriptor)
                 descriptor = child
             return descriptor
-        except (OSError, ValueError):
+        except (OSError, ValueError) as exc:
             os.close(descriptor)
+            if (
+                _index < len(root_parts)
+                or isinstance(exc, OSError)
+                and exc.errno not in (2, 20, 40)
+            ):
+                raise RuntimeWorkspaceError("runtime.workspace.unavailable") from exc
             raise ToolException("Workspace path is unavailable or unsafe.") from None
 
     def read(self, path: str) -> bytes:
@@ -177,7 +192,7 @@ class ImageWorkspace:
             ) from exc
 
         name = f"{sha256}.{ext}"
-        directory = self._directory(("uploads",), create=True)
+        directory = self._directory(("uploads",), create=True, create_root=True)
         tmp_name = f".tmp_{uuid4().hex}"
         try:
             # 1. 检查目标文件是否已存在 (幂等检查)
@@ -428,11 +443,11 @@ def build_image_tools(workspace: ImageWorkspace):
         result: Any, operation: str
     ) -> tuple[str, dict[str, Any]]:
         if not getattr(result, "data", None):
-            raise ToolException("Provider returned no image.")
+            raise ToolException("image_submission_unknown")
         item = result.data[0]
         if getattr(item, "b64_json", None):
             if len(item.b64_json) > MAX_BYTES * 4 // 3 + 4:
-                raise ToolException("Generated image is too large.")
+                raise ToolException("image_submission_unknown")
             data = base64.b64decode(item.b64_json, validate=True)
         elif getattr(item, "url", None):
             hosts = {
@@ -440,35 +455,22 @@ def build_image_tools(workspace: ImageWorkspace):
             }
             data = await download_image(item.url, allowed_hosts=hosts)
         else:
-            raise ToolException("Provider returned no image.")
-        ref = await asyncio.to_thread(workspace.save_asset, data, "generated")
+            raise ToolException("image_submission_unknown")
+        try:
+            ref = await asyncio.to_thread(workspace.save_asset, data, "generated")
+        except ToolException as exc:
+            raise ToolException("image_submission_unknown") from exc
         return ref["path"], {"runtime_images": [ref]}
 
-    def _handle_image_provider_error(exc: Exception, operation: str) -> ToolException:
+    def _handle_image_provider_error(exc: Exception) -> ToolException:
         if isinstance(exc, ToolException):
             return exc
-        error_msg = str(exc)
+        if not isinstance(exc, OpenAIError):
+            raise exc
         body = getattr(exc, "body", None)
-        code = None
-        message = None
-        if isinstance(body, dict):
-            code = body.get("code")
-            message = body.get("message")
-        if (
-            code == "content_policy_violation"
-            or "content_policy_violation" in error_msg
-        ):
-            hint = f": {message}" if message else ""
-            return ToolException(
-                f"{operation} failed: triggered content safety policy (content_policy_violation){hint}. "
-                "Please modify the prompt to avoid sensitive, school uniform, violence, or restricted words and try again."
-            )
-        status_code = getattr(exc, "status_code", None)
-        error = ToolException(
-            f"{operation} failed ({type(exc).__name__}, status={status_code}); no successful artifact was returned."
-        )
-        error.code = f"image_provider_{type(exc).__name__}_{status_code}"
-        return error
+        if isinstance(body, dict) and body.get("code") == "content_policy_violation":
+            return ToolException("image_content_policy_violation")
+        return ToolException("image_submission_unknown")
 
     @tool(response_format="content_and_artifact")
     async def generate_image(prompt: str) -> tuple[str, dict[str, Any]]:
@@ -490,7 +492,7 @@ def build_image_tools(workspace: ImageWorkspace):
                 )
             return await _extract_and_save_image(result, "Image generation")
         except Exception as exc:
-            raise _handle_image_provider_error(exc, "Image generation") from None
+            raise _handle_image_provider_error(exc) from None
 
     @tool(response_format="content_and_artifact")
     async def edit_image(
@@ -534,7 +536,7 @@ def build_image_tools(workspace: ImageWorkspace):
                 )
             return await _extract_and_save_image(result, "Image editing")
         except Exception as exc:
-            raise _handle_image_provider_error(exc, "Image editing") from None
+            raise _handle_image_provider_error(exc) from None
 
     @tool
     async def analyze_image(
@@ -582,21 +584,9 @@ def build_image_tools(workspace: ImageWorkspace):
             return text_content or "No textual description returned by vision model."
         except ToolException:
             raise
-        except Exception as exc:
-            hint = ""
-            body = getattr(exc, "body", None)
-            if isinstance(body, dict):
-                error_obj = body.get("error")
-                if isinstance(error_obj, dict):
-                    hint = f": {error_obj.get('message') or error_obj.get('code')}"
-                elif "message" in body:
-                    hint = f": {body['message']}"
-            if not hint and str(exc):
-                hint = f": {exc}"
-            raise ToolException(
-                f"Image analysis failed ({type(exc).__name__}){hint}."
-            ) from None
+        except (OpenAIError, httpx.HTTPError) as exc:
+            raise ToolException("image_analysis_unavailable") from exc
 
     for image_tool in (generate_image, edit_image, analyze_image):
-        image_tool.handle_tool_error = True
+        image_tool.handle_tool_error = tool_error_handler(image_tool.name)
     return [generate_image, edit_image, analyze_image]

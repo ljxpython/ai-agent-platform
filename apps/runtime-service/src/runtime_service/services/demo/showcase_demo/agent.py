@@ -10,6 +10,7 @@ from langchain.agents.middleware import (
     ModelCallLimitMiddleware,
     TodoListMiddleware,
     ToolCallLimitMiddleware,
+    ToolErrorMiddleware,
 )
 from langchain_core.runnables import RunnableConfig
 from langchain_openai import ChatOpenAI
@@ -52,6 +53,7 @@ from runtime_service.services.demo.showcase_demo.subagents import (
 )
 from runtime_service.services.demo.showcase_demo.tools import fetch_documentation
 from runtime_service.tools.artifacts import build_artifact_tool
+from runtime_service.tools.errors import on_tool_error
 from runtime_service.tools.images import ImageWorkspace
 
 _DEFAULTS = AgentDefaults(
@@ -160,6 +162,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 exit_behavior="error",
             ),
             ModelCallTimeoutMiddleware(),
+            ToolErrorMiddleware(on_error=on_tool_error),
         ]
 
     agent = create_deep_agent(

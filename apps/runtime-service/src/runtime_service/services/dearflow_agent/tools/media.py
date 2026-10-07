@@ -12,6 +12,7 @@ from runtime_service.runtime import verified_delegation_from_user
 from runtime_service.services.dearflow_agent.external_task_storage import (
     ExternalTaskStorage,
 )
+from runtime_service.tools.errors import tool_error_content, tool_error_handler
 from runtime_service.tools.images import ImageWorkspace, build_image_tools
 
 
@@ -87,10 +88,21 @@ def build_media_tools(workspace: ImageWorkspace):
                             ),
                         )
                     )
-                    if isinstance(exc, asyncio.CancelledError):
+                    if tool_error_content(exc, operation) is None:
                         raise
             return receipt(await asyncio.to_thread(storage.get, scope, str(row["id"])))
         except ValueError as exc:
+            if (
+                type(exc) is not ValueError
+                or len(exc.args) != 1
+                or exc.args[0]
+                not in {
+                    "invalid_external_task",
+                    "external_task_idempotency_conflict",
+                    "external_task_capacity",
+                }
+            ):
+                raise
             raise ToolException(str(exc)) from exc
 
     @tool
@@ -164,9 +176,11 @@ def build_media_tools(workspace: ImageWorkspace):
         try:
             return receipt(await asyncio.to_thread(storage.get, scope, task_id))
         except ValueError as exc:
+            if type(exc) is not ValueError or exc.args != ("external_task_not_found",):
+                raise
             raise ToolException("Invalid or inaccessible media task.") from exc
 
     result = [generate_image, edit_image, get_media_task]
     for item in result:
-        item.handle_tool_error = True
+        item.handle_tool_error = tool_error_handler(item.name)
     return result
