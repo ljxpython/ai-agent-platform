@@ -58,6 +58,7 @@ from platform_api.modules.runtime_catalog.infra import (
 from platform_api.modules.runtime_policies.application import (
     RuntimePolicyOverlayService,
 )
+from platform_api.modules.runtime_policies.application.service import enabled_model_ids
 
 
 def _clean(value: Any) -> str | None:
@@ -342,14 +343,20 @@ class RuntimeCatalogService:
                 raise ForbiddenError(
                     code="runtime_target_denied", message="Graph permission revoked"
                 )
-            policies = SqlAlchemyRuntimePolicyRepository(session).list_model_policies(
-                project_id=project_uuid
-            )
-            if any(
-                str(policy.model_catalog_id) == values.get("model_id")
-                and not policy.is_enabled
-                for policy in policies
-            ):
+            if values.get("model_id") is not None:
+                primary = SqlAlchemyRuntimeCatalogRepository(session).get_model_by_id(
+                    parse_uuid(values["model_id"], code="invalid_model_id")
+                )
+                if primary is None or not primary.enabled:
+                    raise NotFoundError(
+                        code="runtime_model_not_found",
+                        message="Runtime model not found",
+                    )
+            candidates = {
+                values.get("model_id"),
+                values.get("model_resilience", {}).get("fallback_model_id"),
+            } - {None}
+            if not candidates <= enabled_model_ids(session, project_id=project_uuid):
                 raise ForbiddenError(
                     code="runtime_model_denied",
                     message="Project model permission revoked",
@@ -395,7 +402,7 @@ class RuntimeCatalogService:
         reference: str,
         project_id: str,
         trusted_runtime: bool = False,
-    ) -> dict[str, str | int | None]:
+    ) -> dict[str, Any]:
         """Resolve one short-lived internal reference without exposing it publicly."""
         secret = (
             self._settings.runtime_model_config_secret
@@ -420,49 +427,72 @@ class RuntimeCatalogService:
         session_factory = self._require_session_factory()
         with session_scope(session_factory) as session:
             repository = SqlAlchemyRuntimeCatalogRepository(session)
-            item = repository.get_model_by_id(
-                parse_uuid(values["model_id"], code="invalid_model_id")
+            primary = self._model_connection(repository, values["model_id"], project_id)
+            resilience = values.get("model_resilience")
+            if resilience is None:
+                return primary
+            backup_id = resilience["fallback_model_id"]
+            fallback = (
+                self._model_connection(repository, backup_id, project_id)
+                if backup_id and backup_id != values["model_id"]
+                else None
             )
-            if item is None or not item.enabled:
-                raise NotFoundError(
-                    code="runtime_model_not_found", message="Runtime model not found"
-                )
-            if item.scope_type == "project" and str(item.project_id) != project_id:
-                raise ForbiddenError(
-                    code="runtime_model_reference_denied",
-                    message="Model reference project mismatch",
-                )
-            try:
-                api_key = decrypt_api_key(
-                    item.api_key_ciphertext,
-                    master_key=self._settings.model_config_master_key,
-                )
-            except ModelCredentialError as exc:
-                raise ServiceUnavailableError(
-                    code="model_credential_unavailable",
-                    message="Model credential storage is not configured",
-                ) from exc
-            required = (
+            return {
+                **primary,
+                "resilience_version": 1,
+                "model_resilience": resilience,
+                "fallback_connection": fallback,
+            }
+
+    def _model_connection(
+        self,
+        repository: SqlAlchemyRuntimeCatalogRepository,
+        model_id: str,
+        project_id: str,
+    ) -> dict[str, Any]:
+        item = repository.get_model_by_id(parse_uuid(model_id, code="invalid_model_id"))
+        if item is None or not item.enabled:
+            raise NotFoundError(
+                code="runtime_model_not_found", message="Runtime model not found"
+            )
+        if item.scope_type == "project" and str(item.project_id) != project_id:
+            raise ForbiddenError(
+                code="runtime_model_reference_denied",
+                message="Model reference project mismatch",
+            )
+        try:
+            api_key = decrypt_api_key(
+                item.api_key_ciphertext,
+                master_key=self._settings.model_config_master_key,
+            )
+        except ModelCredentialError as exc:
+            raise ServiceUnavailableError(
+                code="model_credential_unavailable",
+                message="Model credential storage is not configured",
+            ) from exc
+        if any(
+            not value
+            for value in (
                 item.provider,
                 item.base_url,
                 item.protocol,
                 item.model_name,
                 api_key,
             )
-            if any(not value for value in required):
-                raise ServiceUnavailableError(
-                    code="runtime_model_connection_incomplete",
-                    message="Runtime model connection is incomplete",
-                )
-            return {
-                "model_id": str(item.id),
-                "provider": item.provider,
-                "base_url": item.base_url,
-                "protocol": item.protocol,
-                "model": item.model_name,
-                "api_key": api_key,
-                "context_window_tokens": item.context_window_tokens,
-            }
+        ):
+            raise ServiceUnavailableError(
+                code="runtime_model_connection_incomplete",
+                message="Runtime model connection is incomplete",
+            )
+        return {
+            "model_id": str(item.id),
+            "provider": item.provider,
+            "base_url": item.base_url,
+            "protocol": item.protocol,
+            "model": item.model_name,
+            "api_key": api_key,
+            "context_window_tokens": item.context_window_tokens,
+        }
 
     @staticmethod
     def _validated_model_values(

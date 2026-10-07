@@ -10,6 +10,8 @@ from runtime_service.runtime.auth import (
 )
 from runtime_service.runtime.contracts import (
     AgentDefaults,
+    ModelConnectionBundle,
+    ModelResiliencePolicy,
     ResolvedRuntimeConfig,
     RuntimeContext,
     RuntimePolicy,
@@ -20,7 +22,12 @@ from runtime_service.runtime.errors import (
     RuntimeErrorBase,
     RuntimeResolutionError,
 )
-from runtime_service.runtime.modeling import build_model, fetch_model_connection
+from runtime_service.runtime.modeling import (
+    build_fallback_model,
+    build_model,
+    fetch_model_bundle,
+    fetch_model_connection,
+)
 from runtime_service.runtime.resolver import (
     parse_runtime_context,
     parse_runtime_policy,
@@ -39,6 +46,8 @@ from runtime_service.runtime.resource_bindings import (
 
 __all__ = [
     "AgentDefaults",
+    "ModelConnectionBundle",
+    "ModelResiliencePolicy",
     "ResolvedRuntimeConfig",
     "RuntimeAuthError",
     "RuntimeContext",
@@ -50,6 +59,8 @@ __all__ = [
     "verified_delegation_from_user",
     "RuntimeResolutionError",
     "build_model",
+    "build_fallback_model",
+    "fetch_model_bundle",
     "fetch_model_connection",
     "verify_delegation_token",
     "verify_delegation_claims",

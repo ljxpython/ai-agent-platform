@@ -176,4 +176,65 @@ describe("useFollowUpSuggestions", () => {
     expect(hook.dismissed.value).toBe(true);
     expect(hook.suggestions.value).toEqual([]);
   });
+
+  it("当 hasError 为 true 时严格拦截推荐问题生成", async () => {
+    vi.mocked(api.loadSuggestionsConfig).mockResolvedValue({
+      enabled: true,
+      max_suggestions: 3,
+    });
+    vi.mocked(api.generateThreadSuggestions).mockResolvedValue(["建议 1"]);
+
+    const isRunning = ref(true);
+    const hasError = ref(true);
+    const messages = ref([
+      { id: "ai-1", type: "ai", content: "部分回答中断..." },
+    ]);
+
+    const hook = useFollowUpSuggestions({
+      projectId: "proj-1",
+      threadId: "thread-1",
+      messages,
+      isRunning,
+      hasError,
+    });
+
+    isRunning.value = false;
+    await nextTick();
+
+    expect(api.generateThreadSuggestions).not.toHaveBeenCalled();
+    expect(hook.suggestions.value).toEqual([]);
+  });
+
+  it("当 runStatus 非 success (如 error 或 interrupted) 时严格拦截推荐问题生成", async () => {
+    vi.mocked(api.loadSuggestionsConfig).mockResolvedValue({
+      enabled: true,
+      max_suggestions: 3,
+    });
+    vi.mocked(api.generateThreadSuggestions).mockResolvedValue(["建议 1"]);
+
+    const isRunning = ref(true);
+    const runStatus = ref("interrupted");
+    const messages = ref([{ id: "ai-1", type: "ai", content: "已被用户停止" }]);
+
+    const hook = useFollowUpSuggestions({
+      projectId: "proj-1",
+      threadId: "thread-1",
+      messages,
+      isRunning,
+      runStatus,
+    });
+
+    isRunning.value = false;
+    await nextTick();
+
+    expect(api.generateThreadSuggestions).not.toHaveBeenCalled();
+    expect(hook.suggestions.value).toEqual([]);
+
+    // 切换为 success 时正常触发
+    runStatus.value = "success";
+    await hook.trigger();
+    await vi.waitFor(() => {
+      expect(hook.suggestions.value).toEqual(["建议 1"]);
+    });
+  });
 });

@@ -21,6 +21,9 @@ const props = withDefaults(
     projectId?: string;
     threadId?: string;
     runId?: string | null;
+    runStatus?: string | null;
+    hasError?: boolean;
+    models?: Array<{ id: string; name?: string }>;
     runs?: Array<{ run_id: string; status: string; created_at?: string }>;
     runsLoading?: boolean;
     canRead?: boolean;
@@ -29,6 +32,9 @@ const props = withDefaults(
     projectId: undefined,
     threadId: undefined,
     runId: null,
+    runStatus: null,
+    hasError: false,
+    models: () => [],
     runs: () => [],
     runsLoading: false,
     canRead: true,
@@ -39,8 +45,25 @@ const emit = defineEmits<{
   "select-run": [runId: string];
 }>();
 
+const modelMap = computed(() => {
+  const map: Record<string, string> = {};
+  if (Array.isArray(props.models)) {
+    for (const m of props.models) {
+      if (m?.id) map[m.id] = m.name || m.id;
+    }
+  }
+  return map;
+});
+
 const records = computed(() =>
-  buildTrajectoryRecords(props.messages, props.calls, props.isRunning),
+  buildTrajectoryRecords(
+    props.messages,
+    props.calls,
+    props.isRunning,
+    props.runStatus,
+    props.hasError,
+    modelMap.value,
+  ),
 );
 
 const groups = computed(() => groupTrajectoryByTurn(records.value));

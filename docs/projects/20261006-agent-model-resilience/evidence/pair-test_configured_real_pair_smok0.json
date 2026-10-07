@@ -1,0 +1,14 @@
+{
+  "primary_protocol": "deepseek",
+  "backup_protocol": "openai-compatible",
+  "scenario": "text_context",
+  "provider_calls": [
+    "primary",
+    "backup"
+  ],
+  "provider_errors": [],
+  "attempts": 2,
+  "tool_calls": 0,
+  "status": "success",
+  "duration_seconds": 5.229
+}

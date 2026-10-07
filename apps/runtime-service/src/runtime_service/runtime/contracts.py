@@ -1,6 +1,11 @@
 """Immutable runtime values shared by agent services."""
 
-from dataclasses import dataclass
+import math
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from uuid import UUID
+
+from runtime_service.runtime.errors import RuntimeResolutionError
 
 
 @dataclass(frozen=True, slots=True)
@@ -21,6 +26,57 @@ class RuntimeContext:
     execution_mode: str | None = None
     access_policy: str | None = None
     offload_conversation: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class ModelResiliencePolicy:
+    enabled: bool = False
+    fallback_model_id: str | None = None
+    max_attempts: int = 3
+    attempt_timeout_seconds: float = 600.0
+    total_timeout_seconds: float = 900.0
+
+    def __post_init__(self) -> None:
+        valid = type(self.enabled) is bool and type(self.max_attempts) is int
+        valid = valid and 1 <= self.max_attempts <= 5
+        for value, maximum in (
+            (self.attempt_timeout_seconds, 900),
+            (self.total_timeout_seconds, 1200),
+        ):
+            valid = valid and type(value) in (int, float)
+            if type(value) in (int, float):
+                valid = valid and math.isfinite(value) and 1 <= value <= maximum
+        if not valid or self.total_timeout_seconds < self.attempt_timeout_seconds:
+            raise RuntimeResolutionError("runtime.model.invalid_resilience")
+        if self.fallback_model_id is not None:
+            try:
+                if not isinstance(self.fallback_model_id, str):
+                    raise ValueError
+                UUID(self.fallback_model_id)
+            except ValueError:
+                raise RuntimeResolutionError(
+                    "runtime.model.invalid_resilience"
+                ) from None
+
+    @classmethod
+    def from_payload(cls, payload: object) -> "ModelResiliencePolicy":
+        fields = {
+            "enabled",
+            "fallback_model_id",
+            "max_attempts",
+            "attempt_timeout_seconds",
+            "total_timeout_seconds",
+        }
+        if not isinstance(payload, Mapping) or set(payload) != fields:
+            raise RuntimeResolutionError("runtime.model.invalid_resilience")
+        return cls(**payload)
+
+
+@dataclass(frozen=True, slots=True)
+class ModelConnectionBundle:
+    primary: Mapping[str, str] | None = field(default=None, repr=False)
+    fallback: Mapping[str, str] | None = field(default=None, repr=False)
+    policy: ModelResiliencePolicy = field(default_factory=ModelResiliencePolicy)
 
 
 @dataclass(frozen=True, slots=True)

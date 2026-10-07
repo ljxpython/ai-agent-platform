@@ -11,6 +11,10 @@ import secrets
 import time
 from typing import Any
 
+from pydantic import ValidationError
+
+from platform_api.modules.agents.domain.models import ModelResilienceSettings
+
 
 class ModelReferenceError(ValueError):
     pass
@@ -57,20 +61,25 @@ def create_model_reference(
     agent_key: str | None = None,
     thread_id: str | None = None,
     thread_action: str = "comment",
+    model_resilience: ModelResilienceSettings | None = None,
 ) -> str:
-    payload = _encode(
-        {
-            "v": 1,
-            "actor": actor,
-            "agent_key": agent_key,
-            "thread_id": thread_id,
-            "thread_action": thread_action,
-            "project_id": project_id,
-            "model_id": model_id,
-            "exp": int(time.time()) + max(10, min(ttl_seconds, 300)),
-            "nonce": secrets.token_urlsafe(12),
-        }
-    )
+    values = {
+        "v": 1,
+        "actor": actor,
+        "agent_key": agent_key,
+        "thread_id": thread_id,
+        "thread_action": thread_action,
+        "project_id": project_id,
+        "model_id": model_id,
+        "exp": int(time.time()) + max(10, min(ttl_seconds, 300)),
+        "nonce": secrets.token_urlsafe(12),
+    }
+    if model_resilience is not None and model_resilience.enabled:
+        values.update(
+            resilience_version=1,
+            model_resilience=model_resilience.model_dump(mode="json"),
+        )
+    payload = _encode(values)
     return f"v1.{payload}.{_signature(payload, secret)}"
 
 
@@ -100,6 +109,19 @@ def parse_model_reference(
         raise ModelReferenceError("expired model reference")
     if not isinstance(values.get("nonce"), str) or not values["nonce"]:
         raise ModelReferenceError("invalid model reference")
+    if "resilience_version" in values or "model_resilience" in values:
+        try:
+            settings = ModelResilienceSettings.model_validate(
+                values.get("model_resilience")
+            )
+        except ValidationError:
+            raise ModelReferenceError("invalid resilience reference") from None
+        if (
+            type(values.get("resilience_version")) is not int
+            or values["resilience_version"] != 1
+            or not settings.enabled
+        ):
+            raise ModelReferenceError("invalid resilience reference")
     return values
 
 

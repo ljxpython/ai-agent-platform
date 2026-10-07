@@ -52,6 +52,22 @@ from platform_api.modules.runtime_policies.infra.sqlalchemy.models import (
 _NO_ENABLED_MODEL_SENTINEL = "platform:no-enabled-model"
 
 
+def enabled_model_ids(session: Session, *, project_id: UUID) -> set[str]:
+    policies = {
+        str(item.model_catalog_id): item.is_enabled
+        for item in SqlAlchemyRuntimePolicyRepository(session).list_model_policies(
+            project_id=project_id
+        )
+    }
+    return {
+        str(item.id)
+        for item in SqlAlchemyRuntimeCatalogRepository(session).list_models(
+            project_id=project_id
+        )
+        if item.enabled and policies.get(str(item.id), True)
+    }
+
+
 class RuntimePolicyOverlayService:
     def __init__(
         self,
@@ -76,23 +92,8 @@ class RuntimePolicyOverlayService:
         session_factory = self._require_session_factory()
         project_uuid = parse_uuid(project_id, code="invalid_project_id")
         with session_factory() as session:
-            catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
-            policy_repository = SqlAlchemyRuntimePolicyRepository(session)
-            models = catalog_repository.list_models()
-            model_policies = {
-                str(item.model_catalog_id): item
-                for item in policy_repository.list_model_policies(
-                    project_id=project_uuid
-                )
-            }
             allowed_model_ids = sorted(
-                str(item.id)
-                for item in models
-                if item.enabled
-                and (
-                    str(item.id) not in model_policies
-                    or model_policies[str(item.id)].is_enabled
-                )
+                enabled_model_ids(session, project_id=project_uuid)
             )
             # Keep the delegation structurally valid when every model is disabled;
             # the Gateway still rejects any run before contacting the upstream.
@@ -364,7 +365,7 @@ class RuntimePolicyOverlayService:
             self._ensure_project_exists(session, project_uuid)
             catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
             policy_repository = SqlAlchemyRuntimePolicyRepository(session)
-            catalog_rows = catalog_repository.list_models()
+            catalog_rows = catalog_repository.list_models(project_id=project_uuid)
             policy_rows = {
                 str(item.model_catalog_id): item
                 for item in policy_repository.list_model_policies(
@@ -416,7 +417,10 @@ class RuntimePolicyOverlayService:
         with session_scope(session_factory) as session:
             self._ensure_project_exists(session, project_uuid)
             catalog_repository = SqlAlchemyRuntimeCatalogRepository(session)
-            if catalog_repository.get_model_by_id(catalog_uuid) is None:
+            model = catalog_repository.get_model_by_id(catalog_uuid)
+            if model is None or (
+                model.scope_type == "project" and model.project_id != project_uuid
+            ):
                 raise NotFoundError(
                     message="Model catalog not found", code="model_catalog_not_found"
                 )

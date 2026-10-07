@@ -11,7 +11,11 @@ export type TrajectoryRecordKind =
   | "reasoning"
   | "subagent";
 
-export type TrajectoryRecordStatus = "running" | "completed" | "error";
+export type TrajectoryRecordStatus =
+  | "running"
+  | "completed"
+  | "error"
+  | "interrupted";
 
 export interface TrajectoryTokens {
   input?: number;

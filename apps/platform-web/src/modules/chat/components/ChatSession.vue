@@ -37,7 +37,10 @@ import {
   type ChatCheckpoint,
   type ChatThread,
 } from "@/services/threads/session.service";
-import { useChatSession } from "../composables/useChatSession";
+import {
+  useChatSession,
+  extractRuntimeModelErrorMessage,
+} from "../composables/useChatSession";
 import { useChatAttachments } from "../composables/useChatAttachments";
 import { useTranscriptMessages } from "../composables/useTranscriptMessages";
 import { useChatRunConfig } from "../composables/useChatRunConfig";
@@ -270,6 +273,8 @@ const handleResume = () => {
 };
 const streamError = computed(() => {
   if (!stream.error.value) return "";
+  const runtimeModelMsg = extractRuntimeModelErrorMessage(stream.error.value);
+  if (runtimeModelMsg) return runtimeModelMsg;
   const raw =
     stream.error.value instanceof Error
       ? stream.error.value.message === "[object Object]"
@@ -440,6 +445,14 @@ const followUp = useFollowUpSuggestions({
   hasPendingInterrupts: () => hasPendingInterrupts.value,
   visible: () => props.visible,
   disabled: () => !props.canWrite,
+  runStatus: () => session.run.value?.status,
+  hasError: () =>
+    Boolean(
+      error.value ||
+      streamError.value ||
+      localError.value ||
+      session.error.value,
+    ),
 });
 
 const handleStop = () => {
@@ -1523,6 +1536,33 @@ defineExpose({
         核实原请求
       </button>
     </div>
+    <div
+      v-if="session.unconfirmedStopRunId.value"
+      role="alert"
+      class="flex flex-wrap items-center justify-between gap-2 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-200"
+    >
+      <span
+        >停止尚未确认，Worker 可能正在慢清理。您可以核实状态或重试停止。</span
+      >
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          class="underline hover:text-amber-700"
+          :disabled="!canWrite || session.cancelling.value"
+          @click="session.verify(true)"
+        >
+          核实状态
+        </button>
+        <button
+          type="button"
+          class="underline hover:text-amber-700 font-medium"
+          :disabled="!canWrite || session.cancelling.value"
+          @click="session.stop()"
+        >
+          重试停止
+        </button>
+      </div>
+    </div>
     <div class="relative z-10 flex min-h-0 flex-1 overflow-hidden">
       <div
         class="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
@@ -1532,6 +1572,11 @@ defineExpose({
           :messages="displayedMessages"
           :calls="snapshotMessages ? [] : calls"
           :is-running="isSessionRunning"
+          :run-status="session.run.value?.status"
+          :has-error="
+            Boolean(error || streamError || localError || session.error.value)
+          "
+          :models="models"
           :project-id="projectId"
           :thread-id="session.threadId.value || ''"
           :run-id="selectedRunId || session.run.value?.run_id || null"
@@ -1626,6 +1671,7 @@ defineExpose({
               :can-edit="canSend && !snapshotMessages"
               :metadata="messageMetadata"
               :target-name="targetName"
+              :models="models"
               :editing-message-id="editingMessageId"
               :editing-message-value="editDraft"
               :forking-checkpoint-id="forkingCheckpointId"

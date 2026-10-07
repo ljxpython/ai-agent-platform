@@ -1,0 +1,226 @@
+[
+  {
+    "primary_protocol": "miaomiao-deepseek",
+    "backup_protocol": "official-deepseek",
+    "scenario": "image",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 0,
+    "status": "success",
+    "duration_seconds": 2.17
+  },
+  {
+    "primary_protocol": "miaomiao-deepseek",
+    "backup_protocol": "official-deepseek",
+    "scenario": "text_context",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 0,
+    "status": "success",
+    "duration_seconds": 1.85
+  },
+  {
+    "primary_protocol": "miaomiao-deepseek",
+    "backup_protocol": "official-deepseek",
+    "scenario": "tool_history",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 1,
+    "status": "success",
+    "duration_seconds": 1.642
+  },
+  {
+    "primary_protocol": "miaomiao-minimax",
+    "backup_protocol": "official-deepseek",
+    "scenario": "text_context",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 0,
+    "status": "success",
+    "duration_seconds": 7.58
+  },
+  {
+    "primary_protocol": "miaomiao-minimax",
+    "backup_protocol": "official-deepseek",
+    "scenario": "tool_history",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 1,
+    "status": "success",
+    "duration_seconds": 1.669
+  },
+  {
+    "primary_protocol": "miaomiao-qwen",
+    "backup_protocol": "official-deepseek",
+    "scenario": "image",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 0,
+    "status": "success",
+    "duration_seconds": 2.776
+  },
+  {
+    "primary_protocol": "miaomiao-qwen",
+    "backup_protocol": "official-deepseek",
+    "scenario": "text_context",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 0,
+    "status": "success",
+    "duration_seconds": 1.437
+  },
+  {
+    "primary_protocol": "miaomiao-qwen",
+    "backup_protocol": "official-deepseek",
+    "scenario": "tool_history",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 1,
+    "status": "success",
+    "duration_seconds": 1.333
+  },
+  {
+    "primary_protocol": "official-deepseek",
+    "backup_protocol": "miaomiao-deepseek",
+    "scenario": "image",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 0,
+    "status": "success",
+    "duration_seconds": 4.568
+  },
+  {
+    "primary_protocol": "official-deepseek",
+    "backup_protocol": "miaomiao-deepseek",
+    "scenario": "text_context",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 0,
+    "status": "success",
+    "duration_seconds": 10.008
+  },
+  {
+    "primary_protocol": "official-deepseek",
+    "backup_protocol": "miaomiao-deepseek",
+    "scenario": "tool_history",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 1,
+    "status": "success",
+    "duration_seconds": 13.314
+  },
+  {
+    "primary_protocol": "official-deepseek",
+    "backup_protocol": "miaomiao-minimax",
+    "scenario": "text_context",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 0,
+    "status": "success",
+    "duration_seconds": 7.342
+  },
+  {
+    "primary_protocol": "official-deepseek",
+    "backup_protocol": "miaomiao-minimax",
+    "scenario": "tool_history",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 1,
+    "status": "success",
+    "duration_seconds": 3.525
+  },
+  {
+    "primary_protocol": "official-deepseek",
+    "backup_protocol": "miaomiao-qwen",
+    "scenario": "image",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 0,
+    "status": "success",
+    "duration_seconds": 3.983
+  },
+  {
+    "primary_protocol": "official-deepseek",
+    "backup_protocol": "miaomiao-qwen",
+    "scenario": "text_context",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 0,
+    "status": "success",
+    "duration_seconds": 6.083
+  },
+  {
+    "primary_protocol": "official-deepseek",
+    "backup_protocol": "miaomiao-qwen",
+    "scenario": "tool_history",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "provider_errors": [],
+    "attempts": 2,
+    "tool_calls": 1,
+    "status": "success",
+    "duration_seconds": 6.729
+  }
+]

@@ -29,6 +29,8 @@ from runtime_service.middlewares import (
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
+    ModelResilienceMiddleware,
+    ModelResilienceSummarizationMiddleware,
     RuntimeConfigMiddleware,
     context_management_enabled,
 )
@@ -36,10 +38,12 @@ from runtime_service.observability import with_langfuse_tracing
 from runtime_service.observability.startup import StartupDiagnostics
 from runtime_service.runtime import (
     AgentDefaults,
+    ModelConnectionBundle,
     RuntimeAuthError,
     RuntimeContext,
+    build_fallback_model,
     build_model,
-    fetch_model_connection,
+    fetch_model_bundle,
     interrupts_for_access_policy,
     parse_runtime_context,
     reject_untrusted_configurable,
@@ -172,6 +176,9 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     workspace = None
     resolved = None
     connection = None
+    bundle = ModelConnectionBundle()
+    fallback_model = None
+    auxiliary_model = None
     mode = resolve_mode(None)
     defaults = replace(
         _DEFAULTS, optional_tool_names=(*DEAR_TOOLS, *configured_mcp_names())
@@ -221,14 +228,22 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                     config, facts.principal, requested_mcp, DEAR_TOOLS
                 )
         with startup.phase("factory.model_connection"):
-            connection = await fetch_model_connection(
+            bundle = await fetch_model_bundle(
                 configurable.get("runtime_model_ref"),
                 model_id=resolved.model_id,
                 project_id=facts.principal.project_id,
+                allowed_model_ids=facts.policy.allowed_model_ids,
             )
+            connection = bundle.primary
         with startup.phase("factory.model_build"):
-            model = build_model(resolved, connection=connection)
+            fallback_model = build_fallback_model(resolved, bundle)
+            model = build_model(
+                resolved,
+                connection=connection,
+                **({"max_retries": 0} if bundle.policy.enabled else {}),
+            )
             model, reasoning = apply_reasoning(model, mode)
+            auxiliary_model = build_model(resolved, connection=connection)
         with startup.phase("factory.workspace"):
             workspace = DearWorkspaceBackend(
                 facts.principal.tenant_id, facts.principal.project_id, thread_id
@@ -300,9 +315,14 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         return (
             model
             if next_config == resolved
-            else apply_reasoning(build_model(next_config, connection=connection), mode)[
-                0
-            ]
+            else apply_reasoning(
+                build_model(
+                    next_config,
+                    connection=connection,
+                    **({"max_retries": 0} if bundle.policy.enabled else {}),
+                ),
+                mode,
+            )[0]
         )
 
     def middleware(tool_names: Sequence[str], *, child=False, tail=()):
@@ -355,6 +375,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             else []
         )
         return [
+            *(
+                [ModelResilienceSummarizationMiddleware(auxiliary_model, backend)]
+                if bundle.policy.enabled
+                else []
+            ),
             RuntimeConfigMiddleware(
                 defaults=defaults,
                 base_model=model,
@@ -375,10 +400,24 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 exit_behavior="error",
             ),
             # Bound the whole reasoning response, not just the time to its first token.
+            *(
+                [
+                    ModelResilienceMiddleware(
+                        bundle.policy,
+                        fallback_model,
+                        primary_model_id=resolved.model_id,
+                        context_recovery=True,
+                    )
+                ]
+                if bundle.policy.enabled
+                else []
+            ),
             ModelErrorMiddleware(
                 startup.metadata, scope="subagent" if child else "primary"
             ),
-            ModelCallTimeoutMiddleware(),
+            ModelCallTimeoutMiddleware(
+                bundle.policy.attempt_timeout_seconds if bundle.policy.enabled else None
+            ),
             ToolErrorMiddleware(on_error=on_tool_error),
             *tail,
             *([ContextBudgetMiddleware(offloading[0])] if offloading else []),
@@ -453,7 +492,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                         MessageQueueMiddleware(),
                         ClarificationBatchGuard(),
                         document_middleware,
-                        *([MemoryContextMiddleware(model)] if memory_enabled else []),
+                        *(
+                            [MemoryContextMiddleware(auxiliary_model or model)]
+                            if memory_enabled
+                            else []
+                        ),
                     ],
                 ),
             ],

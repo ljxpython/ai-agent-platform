@@ -11,17 +11,23 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import RunnableConfig
 from langgraph.pregel import Pregel
 
-from runtime_service.middlewares import ModelCallTimeoutMiddleware, ModelErrorMiddleware
+from runtime_service.middlewares import (
+    ModelCallTimeoutMiddleware,
+    ModelErrorMiddleware,
+    ModelResilienceMiddleware,
+)
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.observability.startup import StartupDiagnostics
 from runtime_service.runtime import (
     AgentDefaults,
+    ModelConnectionBundle,
     RuntimeContext,
     RuntimePolicy,
     RuntimePrincipal,
     RuntimeScope,
+    build_fallback_model,
     build_model,
-    fetch_model_connection,
+    fetch_model_bundle,
     parse_runtime_context,
     reject_untrusted_configurable,
     resolve_runtime_config,
@@ -146,17 +152,23 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
 
     async def model_agent_for(state: Mapping[str, object]) -> object:
         with startup.phase("node.model_prepare"):
-            connection = (
-                None
+            bundle = (
+                ModelConnectionBundle()
                 if injected is not None
-                else await fetch_model_connection(
+                else await fetch_model_bundle(
                     state.get("_runtime_model_ref")
                     or configurable.get("runtime_model_ref"),
                     model_id=resolved.model_id,
                     project_id=facts.principal.project_id,
+                    allowed_model_ids=facts.policy.allowed_model_ids,
                 )
             )
-            model = injected or build_model(resolved, connection=connection)
+            model = injected or build_model(
+                resolved,
+                connection=bundle.primary,
+                **({"max_retries": 0} if bundle.policy.enabled else {}),
+            )
+            fallback_model = build_fallback_model(resolved, bundle)
         return create_agent(
             model=model,
             tools=[read_reference],
@@ -164,7 +176,22 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             middleware=[
                 ModelCallLimitMiddleware(run_limit=10, exit_behavior="end"),
                 ModelErrorMiddleware(startup.metadata),
-                ModelCallTimeoutMiddleware(),
+                *(
+                    [
+                        ModelResilienceMiddleware(
+                            bundle.policy,
+                            fallback_model,
+                            primary_model_id=resolved.model_id,
+                        )
+                    ]
+                    if bundle.policy.enabled
+                    else []
+                ),
+                ModelCallTimeoutMiddleware(
+                    bundle.policy.attempt_timeout_seconds
+                    if bundle.policy.enabled
+                    else None
+                ),
             ],
             context_schema=RuntimeContext,
             name="workflow_demo_model",

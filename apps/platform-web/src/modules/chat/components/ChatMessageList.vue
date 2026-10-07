@@ -30,6 +30,7 @@ const props = defineProps<{
   followUpLoading?: boolean;
   followUpDraft?: string;
   followUpDisabled?: boolean;
+  models?: Array<{ id: string; name?: string }>;
 }>();
 const emit = defineEmits<{
   inspect: [tool: ToolItem];
@@ -135,6 +136,8 @@ const visibleDisplayMessages = computed(() => {
         userId: user?.id,
         userText: user ? text([user]) : "",
         isStreaming: props.isRunning && isLastTurn,
+        resilienceSummary:
+          turn.answer[turn.answer.length - 1]?.resilienceSummary,
       });
     }
     return entries;
@@ -248,6 +251,12 @@ async function copy(value: string, id?: string) {
   } catch {
     copyError.value = "复制失败，请手动选择文本复制";
   }
+}
+
+function getFallbackModelName(modelId?: string): string {
+  if (!modelId) return "备用模型";
+  const found = props.models?.find((m) => m.id === modelId);
+  return found?.name || "备用模型";
 }
 </script>
 
@@ -364,6 +373,30 @@ async function copy(value: string, id?: string) {
                   :thread-id="threadId"
                   @inspect="emit('inspect', $event)"
                 />
+              </div>
+              <!-- 模型恢复微胶囊提示 -->
+              <div
+                v-if="
+                  displayEntry.author === 'agent' &&
+                  displayEntry.resilienceSummary?.fallbackUsed &&
+                  !displayEntry.isStreaming
+                "
+                class="mt-2 inline-flex items-center gap-1.5 rounded-md border border-amber-200/80 bg-amber-50/80 px-2 py-0.5 text-[11px] text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300"
+              >
+                <BaseIcon
+                  name="sparkle"
+                  size="xs"
+                  class="text-amber-600 dark:text-amber-400"
+                />
+                <span>
+                  已自动切换至备用模型:
+                  {{
+                    getFallbackModelName(
+                      displayEntry.resilienceSummary.effectiveModelId,
+                    )
+                  }}
+                  · 尝试 {{ displayEntry.resilienceSummary.attempts }} 次
+                </span>
               </div>
             </div>
           </template>

@@ -36,7 +36,11 @@
 
 ---
 
-## 1. 模型调用稳定性
+## 1. 模型调用稳定性 (开发中)
+
+```
+/Users/lijiaxin/.codex/worktrees/39b3/ai-agent-platform/docs/projects/20261006-agent-model-resilience/README.md
+```
 
 ### 优先级：🔴 高（生产级必须）
 
@@ -101,7 +105,7 @@ _RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504, 529})
 
 ---
 
-## 2. 工具调用容错
+## 2. 工具调用容错 (完成开发)
 
 ### 优先级：🔴 高
 
@@ -152,7 +156,7 @@ class ToolErrorMiddleware(OpenSWEMiddleware):
 
 ---
 
-## 3. 上下文窗口管理
+## 3. 上下文窗口管理 (开发中)
 
 ### 优先级：🔴 高（长任务必然撞到）
 
@@ -199,7 +203,7 @@ class ConversationOffloadingMiddleware(SummarizationMiddleware):
 
 ---
 
-## 4. 运行生命周期超时治理
+## 4. 运行生命周期超时治理 (开发中)
 
 ### 优先级：🟡 中（长任务场景需要）
 
@@ -245,7 +249,7 @@ class TimeoutWrapupMiddleware(OpenSWEMiddleware):
 
 ---
 
-## 5. 消息队列运行中注入
+## 5. 消息队列运行中注入  (暂不实现)
 
 ### 优先级：🟡 中（已有但功能差距较大）
 
@@ -294,7 +298,7 @@ injected = visible_dynamic_context_hashes(state)
 
 ---
 
-## 6. 运行完成通知与失败回调
+## 6. 运行完成通知与失败回调 (考虑中)
 
 ### 优先级：🔴 高（生产可靠性）
 
@@ -345,7 +349,7 @@ def verify_run_complete_token(token: str | None) -> bool:
 
 ---
 
-## 7. 可观测性与追踪
+## 7. 可观测性与追踪 (开发中)
 
 ### 优先级：🟡 中
 
@@ -418,7 +422,7 @@ class ModelErrorMiddleware(OpenSWEMiddleware):
 
 ---
 
-## 8. Sandbox 容错与电路熔断
+## 8. Sandbox 容错与电路熔断 ()
 
 ### 优先级：🟡 中（有 workspace 运行时才相关）
 
@@ -563,7 +567,7 @@ def _repair_messages(messages):
 
 ---
 
-## 11. 工具输入自动修正
+## 11. 工具输入自动修正 暂不修正
 
 ### 优先级：🟢 低
 
@@ -591,7 +595,7 @@ def _coerce_int(value: object) -> int | None:
 
 ---
 
-## 12. 工具动态加载
+## 12. 工具动态加载  (暂时不实现)
 
 ### 优先级：🟢 低（有集成扩展场景时才需要）
 
@@ -619,7 +623,7 @@ class DynamicIntegrationToolsMiddleware(OpenSWEMiddleware):
 
 ---
 
-## 13. 运行启动阶段追踪
+## 13. 运行启动阶段追踪 (暂时先不实现)
 
 ### 优先级：🟢 低（完整 tracing 需要时）
 
@@ -731,7 +735,7 @@ LangGraph 会把 `run_prepared_for` checkpoint，同一 invocation 的重试自�
 
 ---
 
-## 16. 工具安全守卫
+## 16. 工具安全守卫 (是个思路,暂不实现)
 
 ### 优先级：🟡 中（有生产安全需要时）
 
@@ -769,7 +773,7 @@ class WorkflowPushGuardMiddleware:
 
 ---
 
-## 17. 模型智能选路
+## 17. 模型智能选路 (是个思路,暂不实现)
 
 ### 优先级：🟢 低
 
@@ -1035,7 +1039,7 @@ _MAX_WAKEUPS_BETWEEN_USER_MESSAGES = 10  # 两次用户消息之间最多 10 次
 
 ---
 
-## 22. 结构化消息信封
+## 22. 结构化消息信封 (暂时不做)
 
 ### 优先级：🟢 低（有多 surface / 多 sender 场景时才需要）
 
@@ -1165,7 +1169,7 @@ MAX_LOG_BYTES = 1 * 1024 * 1024
 
 ---
 
-## 25. URL 安全与 SSRF 防护
+## 25. URL 安全与 SSRF 防护 (暂不实现)
 
 ### 优先级：🟡 中（当前已有基础版，可补强）
 

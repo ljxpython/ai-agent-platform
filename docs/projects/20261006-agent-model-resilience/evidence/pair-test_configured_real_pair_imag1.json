@@ -1,0 +1,23 @@
+{
+  "primary_protocol": "openai-compatible",
+  "backup_protocol": "deepseek",
+  "scenario": "image",
+  "provider_calls": [
+    "primary",
+    "backup"
+  ],
+  "provider_errors": [
+    {
+      "candidate": "backup",
+      "error_type": "BadRequestError",
+      "status_code": 400,
+      "error_fields": {
+        "type": "BadRequestError"
+      }
+    }
+  ],
+  "status": "error",
+  "error_type": "RuntimeResolutionError",
+  "error_code": "runtime.model.provider_rejected",
+  "duration_seconds": 0.145
+}

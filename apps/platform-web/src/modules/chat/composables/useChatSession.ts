@@ -39,6 +39,38 @@ import {
 const active = (run: Run | null) =>
   run != null && ["pending", "running"].includes(run.status);
 
+export const RUNTIME_MODEL_ERROR_MESSAGES: Record<string, string> = {
+  "runtime.model.retry_exhausted": "模型服务暂不可用，本次运行未完成。",
+  "runtime.model.retry_budget_exceeded": "模型调用等待超时，本次运行未完成。",
+  "runtime.model.stream_interrupted": "本次回答中断，已保留部分内容。",
+  "runtime.model.provider_rejected": "模型配置或额度不可用，请联系项目管理员。",
+  "runtime.model.fallback_incompatible": "备用模型不支持当前请求，请调整配置。",
+};
+
+export function extractRuntimeModelErrorMessage(cause: unknown): string | null {
+  if (!cause) return null;
+  if (typeof cause === "object" && cause !== null) {
+    const raw = cause as Record<string, unknown>;
+    const errorObj =
+      raw.error && typeof raw.error === "object"
+        ? (raw.error as Record<string, unknown>)
+        : raw;
+    const msg =
+      typeof errorObj.message === "string"
+        ? errorObj.message
+        : typeof raw.message === "string"
+          ? raw.message
+          : "";
+    if (msg && RUNTIME_MODEL_ERROR_MESSAGES[msg]) {
+      return RUNTIME_MODEL_ERROR_MESSAGES[msg];
+    }
+  }
+  if (typeof cause === "string" && RUNTIME_MODEL_ERROR_MESSAGES[cause]) {
+    return RUNTIME_MODEL_ERROR_MESSAGES[cause];
+  }
+  return null;
+}
+
 function hasResolvedAccess(
   thread: ChatThread | undefined,
   expectedThreadId: string | null,
@@ -91,6 +123,7 @@ export function useChatSession(options: {
   const checking = ref(!hasCachedContent);
   const verified = ref(hasCachedContent);
   const cancelling = ref(false);
+  const unconfirmedStopRunId = ref<string | null>(null);
   const error = ref("");
   let disposed = false;
   let checkEpoch = 0;
@@ -212,6 +245,7 @@ export function useChatSession(options: {
       if (next && next !== threadId.value) {
         clearOffloadState();
         threadId.value = next;
+        unconfirmedStopRunId.value = null;
         hydrated.value = false;
         const seeded = unref(options.initialThread);
         if (hasResolvedAccess(seeded, next)) {
@@ -349,28 +383,36 @@ export function useChatSession(options: {
   const status = computed(() =>
     cancelling.value
       ? "正在停止"
-      : reviews.value.length
-        ? "等待审批"
-        : clarifications.value.length
-          ? "等待补充信息"
-          : actions.current.value?.status === "unknown"
-            ? "提交结果待确认"
-            : checking.value
-              ? "正在核实会话"
-              : actions.current.value?.status === "submitting"
-                ? "正在发送"
-                : busy.value
-                  ? "正在执行"
-                  : error.value || stream.error.value
-                    ? "连接或执行异常"
-                    : run.value?.status === "timeout"
-                      ? "上一回合执行超时"
-                      : "可以发送",
+      : unconfirmedStopRunId.value
+        ? "停止尚未确认"
+        : reviews.value.length
+          ? "等待审批"
+          : clarifications.value.length
+            ? "等待补充信息"
+            : actions.current.value?.status === "unknown"
+              ? "提交结果待确认"
+              : checking.value
+                ? "正在核实会话"
+                : actions.current.value?.status === "submitting"
+                  ? "正在发送"
+                  : busy.value
+                    ? "正在执行"
+                    : error.value || stream.error.value
+                      ? "连接或执行异常"
+                      : run.value?.status === "timeout"
+                        ? "上一回合执行超时"
+                        : "可以发送",
   );
 
   function fail(cause: unknown) {
     if (!disposed) {
-      error.value = cause instanceof Error ? cause.message : "请求失败，请重试";
+      const runtimeMsg = extractRuntimeModelErrorMessage(cause);
+      if (runtimeMsg) {
+        error.value = runtimeMsg;
+      } else {
+        error.value =
+          cause instanceof Error ? cause.message : "请求失败，请重试";
+      }
     }
   }
   let activeVerifyPromise: Promise<boolean> | undefined;
@@ -813,6 +855,7 @@ export function useChatSession(options: {
     clearOffloadState();
     if (!canSend.value) return false;
     error.value = "";
+    unconfirmedStopRunId.value = null;
     if (!verified.value) checking.value = true;
     streamInFlight.value = true;
     try {
@@ -1015,19 +1058,34 @@ export function useChatSession(options: {
       // 优先复用已知 runId，跳过前置 verify 避免把终态覆写进 run.value。
       const knownRunId = actions.current.value?.runId ?? run.value?.run_id;
       if (knownRunId && stream.isLoading.value) {
-        await service.cancel(threadId.value, knownRunId);
+        try {
+          await service.cancel(threadId.value, knownRunId);
+          unconfirmedStopRunId.value = null;
+        } catch (cause) {
+          unconfirmedStopRunId.value = knownRunId;
+          throw cause;
+        }
         await verify(true);
         return;
       }
       if (!(await verify())) return;
       if (disposed || !canEdit.value) return;
-      const runId = run.value?.run_id;
-      // run 已终态说明 Agent 刚刚执行完，停止操作自然完成，静默刷新即可。
-      if (!runId || !active(run.value)) {
+      const targetRunId = run.value?.run_id ?? unconfirmedStopRunId.value;
+      const isRetryingUnconfirmed = Boolean(
+        targetRunId && targetRunId === unconfirmedStopRunId.value,
+      );
+      // run 已终态说明 Agent 刚刚执行完，若不是处于未确认停止的显式重试，停止操作自然完成，静默刷新即可。
+      if (!targetRunId || (!active(run.value) && !isRetryingUnconfirmed)) {
         await verify(true);
         return;
       }
-      await service.cancel(threadId.value, runId);
+      try {
+        await service.cancel(threadId.value, targetRunId);
+        unconfirmedStopRunId.value = null;
+      } catch (cause) {
+        unconfirmedStopRunId.value = targetRunId;
+        throw cause;
+      }
       await verify(true);
     } catch (cause) {
       fail(cause);
@@ -1344,6 +1402,7 @@ export function useChatSession(options: {
     checking,
     verified,
     cancelling,
+    unconfirmedStopRunId,
     error,
     busy,
     canSend,

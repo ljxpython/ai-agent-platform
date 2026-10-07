@@ -1,0 +1,155 @@
+[
+  {
+    "graph_id": "dearflow_agent",
+    "role": "general-purpose",
+    "phase": "provider",
+    "candidate_calls_before_cancel": [
+      2,
+      0
+    ],
+    "candidate_calls_after_confirmation": [
+      2,
+      0
+    ],
+    "wait_blocked_before_child_cleanup": true,
+    "child_cleanup_completed": true,
+    "terminal_execution_stopped": true,
+    "worker_lease_released": true
+  },
+  {
+    "graph_id": "dearflow_agent",
+    "role": "general-purpose",
+    "phase": "backoff",
+    "candidate_calls_before_cancel": [
+      2,
+      1
+    ],
+    "candidate_calls_after_confirmation": [
+      2,
+      1
+    ],
+    "wait_blocked_before_child_cleanup": true,
+    "child_cleanup_completed": true,
+    "terminal_execution_stopped": true,
+    "worker_lease_released": true
+  },
+  {
+    "graph_id": "dearflow_agent",
+    "role": "general-purpose",
+    "phase": "cooldown",
+    "candidate_calls_before_cancel": [
+      2,
+      1
+    ],
+    "candidate_calls_after_confirmation": [
+      2,
+      1
+    ],
+    "wait_blocked_before_child_cleanup": true,
+    "child_cleanup_completed": true,
+    "terminal_execution_stopped": true,
+    "worker_lease_released": true
+  },
+  {
+    "graph_id": "showcase_demo",
+    "role": "research",
+    "phase": "provider",
+    "candidate_calls_before_cancel": [
+      2,
+      0
+    ],
+    "candidate_calls_after_confirmation": [
+      2,
+      0
+    ],
+    "wait_blocked_before_child_cleanup": true,
+    "child_cleanup_completed": true,
+    "terminal_execution_stopped": true,
+    "worker_lease_released": true
+  },
+  {
+    "graph_id": "showcase_demo",
+    "role": "research",
+    "phase": "backoff",
+    "candidate_calls_before_cancel": [
+      2,
+      1
+    ],
+    "candidate_calls_after_confirmation": [
+      2,
+      1
+    ],
+    "wait_blocked_before_child_cleanup": true,
+    "child_cleanup_completed": true,
+    "terminal_execution_stopped": true,
+    "worker_lease_released": true
+  },
+  {
+    "graph_id": "showcase_demo",
+    "role": "research",
+    "phase": "cooldown",
+    "candidate_calls_before_cancel": [
+      2,
+      1
+    ],
+    "candidate_calls_after_confirmation": [
+      2,
+      1
+    ],
+    "wait_blocked_before_child_cleanup": true,
+    "child_cleanup_completed": true,
+    "terminal_execution_stopped": true,
+    "worker_lease_released": true
+  },
+  {
+    "graph_id": "showcase_demo",
+    "role": "general-purpose",
+    "phase": "provider",
+    "candidate_calls_before_cancel": [
+      2,
+      0
+    ],
+    "candidate_calls_after_confirmation": [
+      2,
+      0
+    ],
+    "wait_blocked_before_child_cleanup": true,
+    "child_cleanup_completed": true,
+    "terminal_execution_stopped": true,
+    "worker_lease_released": true
+  },
+  {
+    "graph_id": "showcase_demo",
+    "role": "general-purpose",
+    "phase": "backoff",
+    "candidate_calls_before_cancel": [
+      2,
+      1
+    ],
+    "candidate_calls_after_confirmation": [
+      2,
+      1
+    ],
+    "wait_blocked_before_child_cleanup": true,
+    "child_cleanup_completed": true,
+    "terminal_execution_stopped": true,
+    "worker_lease_released": true
+  },
+  {
+    "graph_id": "showcase_demo",
+    "role": "general-purpose",
+    "phase": "cooldown",
+    "candidate_calls_before_cancel": [
+      2,
+      1
+    ],
+    "candidate_calls_after_confirmation": [
+      2,
+      1
+    ],
+    "wait_blocked_before_child_cleanup": true,
+    "child_cleanup_completed": true,
+    "terminal_execution_stopped": true,
+    "worker_lease_released": true
+  }
+]

@@ -11,6 +11,7 @@ from platform_api.core.db import session_scope
 from platform_api.core.errors import (
     BadRequestError,
     ConflictError,
+    ForbiddenError,
     NotFoundError,
     ServiceUnavailableError,
 )
@@ -33,6 +34,12 @@ from platform_api.modules.agents.domain import (
     AssistantPage,
     AssistantStatus,
 )
+from platform_api.modules.agents.domain.models import (
+    MODEL_RESILIENCE_KEY,
+    RESILIENT_GRAPH_IDS,
+    ModelResilienceSettings,
+    model_resilience_from_context,
+)
 from platform_api.modules.agents.infra.sqlalchemy.repository import (
     SqlAlchemyAssistantsRepository,
 )
@@ -42,6 +49,7 @@ from platform_api.modules.iam.application import (
     PermissionCode,
 )
 from platform_api.modules.projects.repository import SqlAlchemyProjectsRepository
+from platform_api.modules.runtime_policies.application.service import enabled_model_ids
 
 
 def _normalize_object(value: dict[str, Any] | None) -> dict[str, Any]:
@@ -96,7 +104,12 @@ class AssistantsService:
             description=item.description,
             graph_id=item.graph_id,
             status=status,
-            context=dict(item.context),
+            context={
+                key: value
+                for key, value in item.context.items()
+                if key != MODEL_RESILIENCE_KEY
+            },
+            model_resilience=model_resilience_from_context(item.context),
             created_by=str(item.created_by) if item.created_by else None,
             updated_by=str(item.updated_by) if item.updated_by else None,
             created_at=item.created_at,
@@ -114,6 +127,44 @@ class AssistantsService:
         project = projects_repository.get_project_by_id(project_uuid)
         if project is None or project.status == "deleted":
             raise NotFoundError(message="Project not found", code="project_not_found")
+
+    @staticmethod
+    def _with_model_resilience(
+        *,
+        session: Session,
+        project_id: str,
+        graph_id: str,
+        context: dict[str, Any],
+        settings: ModelResilienceSettings | None,
+    ) -> dict[str, Any]:
+        result = {
+            key: value for key, value in context.items() if key != MODEL_RESILIENCE_KEY
+        }
+        if settings is None or not settings.enabled:
+            return result
+        if graph_id not in RESILIENT_GRAPH_IDS:
+            raise BadRequestError(
+                code="model_resilience_not_supported",
+                message="Graph does not support model resilience",
+            )
+        allowed = enabled_model_ids(
+            session, project_id=parse_uuid(project_id, code="invalid_project_id")
+        )
+        for model_id in (context.get("model_id"), settings.fallback_model_id):
+            if model_id is not None and model_id not in allowed:
+                raise ForbiddenError(
+                    code="runtime_model_denied",
+                    message="Model is not enabled for this project",
+                )
+        if settings.fallback_model_id and settings.fallback_model_id == context.get(
+            "model_id"
+        ):
+            raise BadRequestError(
+                code="model_resilience_duplicate_model",
+                message="Fallback must differ from the primary model",
+            )
+        result[MODEL_RESILIENCE_KEY] = settings.model_dump(mode="json")
+        return result
 
     def list_assistants(
         self,
@@ -177,12 +228,19 @@ class AssistantsService:
                 with session_scope(session_factory) as session:
                     self._require_project_exists(session=session, project_id=project_id)
                     repository = SqlAlchemyAssistantsRepository(session)
+                    stored_context = self._with_model_resilience(
+                        session=session,
+                        project_id=project_id,
+                        graph_id=command.graph_id.strip(),
+                        context=user_context,
+                        settings=command.model_resilience,
+                    )
                     item = repository.create_assistant(
                         project_id=parse_uuid(project_id, code="invalid_project_id"),
                         name=command.name.strip(),
                         description=command.description.strip(),
                         graph_id=command.graph_id.strip(),
-                        context=user_context,
+                        context=stored_context,
                         actor_user_id=actor_user_id,
                     )
                     return self._assistant_item(item)
@@ -210,11 +268,12 @@ class AssistantsService:
                     message="Assistant not found",
                     code="assistant_not_found",
                 )
+            project_id = str(item.project_id)
             self._policy_engine.require(
                 actor=actor,
                 authorization=AuthorizationRequest(
                     permission=PermissionCode.PROJECT_ASSISTANT_READ,
-                    project_id=str(item.project_id),
+                    project_id=project_id,
                 ),
             )
             return self._assistant_item(item)
@@ -264,8 +323,23 @@ class AssistantsService:
                 else current.status
             )
             next_context = _normalize_agent_context(
-                command.context if "context" in fields_set else current.context,
+                command.context
+                if "context" in fields_set
+                else {
+                    key: value
+                    for key, value in current.context.items()
+                    if key != MODEL_RESILIENCE_KEY
+                },
                 project_id,
+            )
+            next_context = self._with_model_resilience(
+                session=session,
+                project_id=project_id,
+                graph_id=next_graph_id,
+                context=next_context,
+                settings=command.model_resilience
+                if "model_resilience" in fields_set
+                else model_resilience_from_context(current.context),
             )
 
             repository.update_assistant_runtime_fields(
@@ -337,8 +411,26 @@ class AssistantsService:
                 message="project_id is required for assistant schema access",
             )
 
-        return await self._schema_provider.build_schema(
+        schema = await self._schema_provider.build_schema(
             normalized_graph_id,
             actor=actor,
             project_id=project_id,
         )
+        return {
+            **schema,
+            "sections": [
+                *schema.get("sections", []),
+                {
+                    "key": "model_resilience",
+                    "type": "object",
+                    "required": False,
+                    "supported": normalized_graph_id in RESILIENT_GRAPH_IDS,
+                    "default": ModelResilienceSettings.disabled().model_dump(
+                        mode="json"
+                    ),
+                    "properties": ModelResilienceSettings.model_json_schema()[
+                        "properties"
+                    ],
+                },
+            ],
+        }

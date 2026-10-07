@@ -24,6 +24,8 @@ from runtime_service.middlewares import (
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
+    ModelResilienceMiddleware,
+    ModelResilienceSummarizationMiddleware,
     RuntimeConfigMiddleware,
     context_management_enabled,
 )
@@ -32,10 +34,12 @@ from runtime_service.observability import with_langfuse_tracing
 from runtime_service.observability.startup import StartupDiagnostics
 from runtime_service.runtime import (
     AgentDefaults,
+    ModelConnectionBundle,
     RuntimeAuthError,
     RuntimeContext,
+    build_fallback_model,
     build_model,
-    fetch_model_connection,
+    fetch_model_bundle,
     interrupts_for_access_policy,
     parse_runtime_context,
     reject_untrusted_configurable,
@@ -122,20 +126,35 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             )
         startup.metadata["model_id"] = resolved.model_id
         with startup.phase("factory.model_connection"):
-            connection = await fetch_model_connection(
+            bundle = await fetch_model_bundle(
                 configurable.get("runtime_model_ref"),
                 model_id=resolved.model_id,
                 project_id=facts.principal.project_id,
+                allowed_model_ids=facts.policy.allowed_model_ids,
             )
+            connection = bundle.primary
         with startup.phase("factory.model_build"):
-            model = build_model(resolved, connection=connection)
+            model = build_model(
+                resolved,
+                connection=connection,
+                **({"max_retries": 0} if bundle.policy.enabled else {}),
+            )
+            fallback_model = build_fallback_model(resolved, bundle)
         with startup.phase("factory.workspace"):
             workspace = create_workspace(
                 facts.principal.tenant_id, facts.principal.project_id, thread_id
             )
     else:
         # Schema-only client: no request is sent, and WorkspaceMiddleware rejects invocation.
+        bundle = ModelConnectionBundle()
+        fallback_model = None
         model = ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
+
+    auxiliary_model = (
+        build_model(resolved, connection=connection)
+        if (resolved and bundle.policy.enabled)
+        else model
+    )
 
     backend = build_backend(workspace)
     image_workspace = ImageWorkspace(
@@ -155,7 +174,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         return (
             model
             if next_config == resolved
-            else build_model(next_config, connection=connection)
+            else build_model(
+                next_config,
+                connection=connection,
+                **({"max_retries": 0} if bundle.policy.enabled else {}),
+            )
         )
 
     def _env_int(name: str, default: int) -> int:
@@ -182,6 +205,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             else []
         )
         return [
+            *(
+                [ModelResilienceSummarizationMiddleware(auxiliary_model, backend)]
+                if bundle.policy.enabled
+                else []
+            ),
             RuntimeConfigMiddleware(
                 defaults=_DEFAULTS,
                 base_model=model,
@@ -201,10 +229,24 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 thread_limit=_env_int("AGENT_TOOL_CALL_LIMIT_PER_THREAD", 1000),
                 exit_behavior="error",
             ),
+            *(
+                [
+                    ModelResilienceMiddleware(
+                        bundle.policy,
+                        fallback_model,
+                        primary_model_id=resolved.model_id,
+                        context_recovery=True,
+                    )
+                ]
+                if bundle.policy.enabled
+                else []
+            ),
             ModelErrorMiddleware(
                 startup.metadata, scope="subagent" if child else "primary"
             ),
-            ModelCallTimeoutMiddleware(),
+            ModelCallTimeoutMiddleware(
+                bundle.policy.attempt_timeout_seconds if bundle.policy.enabled else None
+            ),
             ToolErrorMiddleware(on_error=on_tool_error),
             *tail,
             *([ContextBudgetMiddleware(offloading[0])] if offloading else []),

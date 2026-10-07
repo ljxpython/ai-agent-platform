@@ -1,6 +1,9 @@
 import type { BaseMessage } from "@langchain/core/messages";
 import type { AssembledToolCall } from "@langchain/vue";
-import { extractReasoningFromMessage } from "../transcript";
+import {
+  extractReasoningFromMessage,
+  extractModelResilienceSummary,
+} from "../transcript";
 import type {
   TrajectoryRecord,
   TrajectoryRecordStatus,
@@ -35,7 +38,9 @@ export function extractReasoning(message: BaseMessage): string {
   return extractReasoningFromMessage(message);
 }
 
-export function extractTokens(message: BaseMessage): TrajectoryTokens | undefined {
+export function extractTokens(
+  message: BaseMessage,
+): TrajectoryTokens | undefined {
   const raw = message as unknown as Record<string, unknown>;
   const usage =
     asObject(raw.usage_metadata) ||
@@ -75,8 +80,10 @@ export function extractDurationMs(message: BaseMessage): number | undefined {
   const meta = asObject(raw.response_metadata);
   const add = asObject(raw.additional_kwargs);
   if (typeof meta.duration_ms === "number") return meta.duration_ms;
-  if (typeof meta.duration === "number") return Math.round(meta.duration * 1000);
-  if (typeof meta.duration_seconds === "number") return Math.round(meta.duration_seconds * 1000);
+  if (typeof meta.duration === "number")
+    return Math.round(meta.duration * 1000);
+  if (typeof meta.duration_seconds === "number")
+    return Math.round(meta.duration_seconds * 1000);
   if (typeof add.duration_ms === "number") return add.duration_ms;
   if (typeof add.duration === "number") return Math.round(add.duration * 1000);
   return undefined;
@@ -95,11 +102,15 @@ export function deriveRecordTiming(
   contentLength: number,
   baseTime: number,
 ): DerivedTiming {
-  const raw = (message ? (message as unknown as Record<string, unknown>) : {}) as Record<string, unknown>;
+  const raw = (
+    message ? (message as unknown as Record<string, unknown>) : {}
+  ) as Record<string, unknown>;
   const meta = asObject(raw.response_metadata);
   const add = asObject(raw.additional_kwargs);
 
-  let durationMs: number | undefined = extractDurationMs(message as BaseMessage);
+  let durationMs: number | undefined = extractDurationMs(
+    message as BaseMessage,
+  );
   let ttftMs: number | undefined =
     typeof add.ttftMs === "number"
       ? add.ttftMs
@@ -136,10 +147,11 @@ export function deriveRecordTiming(
   }
 
   if (!startedAt) {
-    const rawEnd =
-      raw.timestamp ? new Date(raw.timestamp as string).getTime()
-      : raw.created_at ? new Date(raw.created_at as string).getTime()
-      : baseTime;
+    const rawEnd = raw.timestamp
+      ? new Date(raw.timestamp as string).getTime()
+      : raw.created_at
+        ? new Date(raw.created_at as string).getTime()
+        : baseTime;
     startedAt = rawEnd - durationMs;
   }
 
@@ -173,6 +185,9 @@ export function buildTrajectoryRecords(
   messages: readonly BaseMessage[],
   calls: readonly AssembledToolCall[] = [],
   isRunning = false,
+  runStatus?: string | null,
+  hasError = false,
+  modelMap?: Record<string, string>,
 ): TrajectoryRecord[] {
   const baseTime = Date.now();
   const records: TrajectoryRecord[] = [];
@@ -213,14 +228,18 @@ export function buildTrajectoryRecords(
         text.includes("available_skills");
       currentStep++;
       const kind = isContext ? "context" : "system";
-      const name = isContext ? "上下文提示 (Context)" : "系统提示 (System Prompt)";
+      const name = isContext
+        ? "上下文提示 (Context)"
+        : "系统提示 (System Prompt)";
       records.push({
         id: `turn-${currentTurn || 1}-step-${currentStep}-${kind}`,
         turnIndex: currentTurn || 1,
         stepIndex: currentStep,
         kind,
         name,
-        summary: truncate(text) || (isContext ? "Runtime Context" : "Initial System Prompt"),
+        summary:
+          truncate(text) ||
+          (isContext ? "Runtime Context" : "Initial System Prompt"),
         status: "completed",
         input: text,
         output: text,
@@ -261,22 +280,45 @@ export function buildTrajectoryRecords(
       let contentText = extractTextContent(msg);
 
       // 检查文本内的 <think> 标签
-      const thinkMatch = /<(?:think|thinking)>([\s\S]*?)(?:<\/(?:think|thinking)>|$)/i.exec(
-        contentText,
-      );
+      const thinkMatch =
+        /<(?:think|thinking)>([\s\S]*?)(?:<\/(?:think|thinking)>|$)/i.exec(
+          contentText,
+        );
       if (thinkMatch) {
         const extracted = thinkMatch[1].trim();
         if (extracted && !reasoningText) {
           reasoningText = extracted;
         }
         contentText = contentText
-          .replace(/<(?:think|thinking)>[\s\S]*?(?:<\/(?:think|thinking)>|$)/i, "")
+          .replace(
+            /<(?:think|thinking)>[\s\S]*?(?:<\/(?:think|thinking)>|$)/i,
+            "",
+          )
           .trim();
       }
 
       if (reasoningText) {
         currentStep++;
-        const timing = deriveRecordTiming(msg, "reasoning", reasoningText.length, baseTime);
+        const timing = deriveRecordTiming(
+          msg,
+          "reasoning",
+          reasoningText.length,
+          baseTime,
+        );
+        const isLastMsg = i === messages.length - 1 && !contentText;
+        let reasoningStatus: TrajectoryRecordStatus = "completed";
+        if (isLastMsg && isRunning) {
+          reasoningStatus = "running";
+        } else if (isLastMsg && (hasError || runStatus === "error")) {
+          reasoningStatus = "error";
+        } else if (
+          isLastMsg &&
+          (runStatus === "interrupted" ||
+            runStatus === "cancelled" ||
+            runStatus === "canceled")
+        ) {
+          reasoningStatus = "interrupted";
+        }
         records.push({
           id: `turn-${currentTurn}-step-${currentStep}-reasoning`,
           turnIndex: currentTurn,
@@ -284,7 +326,7 @@ export function buildTrajectoryRecords(
           kind: "reasoning",
           name: "深度思考",
           summary: truncate(reasoningText, 50),
-          status: "completed",
+          status: reasoningStatus,
           startedAt: timing.startedAt,
           durationMs: timing.durationMs,
           ttftMs: timing.ttftMs,
@@ -308,7 +350,9 @@ export function buildTrajectoryRecords(
           const assembled = assembledMap.get(callId);
           const toolResultMsg = toolResults.get(callId);
 
-          const toolName = String(callObj.name ?? assembled?.name ?? "未知工具");
+          const toolName = String(
+            callObj.name ?? assembled?.name ?? "未知工具",
+          );
           const inputArgs = callObj.args ?? assembled?.input;
           const outputContent = toolResultMsg
             ? toolResultMsg.content
@@ -319,9 +363,16 @@ export function buildTrajectoryRecords(
 
           if (toolResultMsg) {
             const resObj = asObject(toolResultMsg);
-            if (resObj.status === "error" || (typeof outputContent === "string" && outputContent.startsWith("Error:"))) {
+            if (
+              resObj.status === "error" ||
+              (typeof outputContent === "string" &&
+                outputContent.startsWith("Error:"))
+            ) {
               status = "error";
-              errorMsg = typeof outputContent === "string" ? outputContent : "工具调用失败";
+              errorMsg =
+                typeof outputContent === "string"
+                  ? outputContent
+                  : "工具调用失败";
             }
           } else if (assembled?.error) {
             status = "error";
@@ -359,19 +410,43 @@ export function buildTrajectoryRecords(
       if (contentText) {
         currentStep++;
         const isLast = i === messages.length - 1;
-        const status: TrajectoryRecordStatus = isRunning && isLast ? "running" : "completed";
-        const timing = deriveRecordTiming(msg, "assistant", contentText.length, baseTime);
+        let status: TrajectoryRecordStatus = "completed";
+        if (isRunning && isLast) {
+          status = "running";
+        } else if (isLast && (hasError || runStatus === "error")) {
+          status = "error";
+        } else if (
+          isLast &&
+          (runStatus === "interrupted" ||
+            runStatus === "cancelled" ||
+            runStatus === "canceled")
+        ) {
+          status = "interrupted";
+        }
+        const timing = deriveRecordTiming(
+          msg,
+          "assistant",
+          contentText.length,
+          baseTime,
+        );
         const tokens = extractTokens(msg) || {
           input: Math.max(120, Math.round(contentText.length * 0.45 + 520)),
           output: Math.max(15, Math.round(contentText.length * 0.72)),
         };
+        const resilience = extractModelResilienceSummary(msg);
+        let assistantSummary = truncate(contentText);
+        if (resilience?.fallbackUsed) {
+          const modelName =
+            (modelMap && modelMap[resilience.effectiveModelId]) || "备用模型";
+          assistantSummary = `${assistantSummary} · 已自动切换至${modelName} (尝试 ${resilience.attempts} 次)`;
+        }
         records.push({
           id: `turn-${currentTurn}-step-${currentStep}-assistant`,
           turnIndex: currentTurn,
           stepIndex: currentStep,
           kind: "assistant",
           name: "Agent 答复",
-          summary: truncate(contentText),
+          summary: assistantSummary,
           status,
           startedAt: timing.startedAt,
           durationMs: timing.durationMs,
@@ -395,14 +470,21 @@ export function buildTrajectoryRecords(
       const toolName = String(rawMsg.name ?? "tool_result");
       const content = msg.content;
       const isErr = rawMsg.status === "error";
-      const orphanTiming = deriveRecordTiming(msg, "tool", String(content || "").length, baseTime);
+      const orphanTiming = deriveRecordTiming(
+        msg,
+        "tool",
+        String(content || "").length,
+        baseTime,
+      );
       records.push({
         id: `turn-${currentTurn}-step-${currentStep}-tool-orphan-${callId || i}`,
         turnIndex: currentTurn,
         stepIndex: currentStep,
         kind: "tool",
         name: toolName,
-        summary: truncate(typeof content === "string" ? content : JSON.stringify(content)),
+        summary: truncate(
+          typeof content === "string" ? content : JSON.stringify(content),
+        ),
         status: isErr ? "error" : "completed",
         startedAt: orphanTiming.startedAt,
         durationMs: orphanTiming.durationMs,
@@ -424,7 +506,11 @@ export function buildTrajectoryRecords(
         kind: "tool",
         name: call.name || "正在调用的工具",
         summary: `${call.name || "tool"}(${compactArgs(call.input)})`,
-        status: call.error ? "error" : call.status === "finished" ? "completed" : "running",
+        status: call.error
+          ? "error"
+          : call.status === "finished"
+            ? "completed"
+            : "running",
         input: call.input,
         output: call.output,
         error: call.error,
@@ -436,7 +522,9 @@ export function buildTrajectoryRecords(
   return records;
 }
 
-export function groupTrajectoryByTurn(records: TrajectoryRecord[]): TrajectoryTurnGroup[] {
+export function groupTrajectoryByTurn(
+  records: TrajectoryRecord[],
+): TrajectoryTurnGroup[] {
   const groups: TrajectoryTurnGroup[] = [];
   const map = new Map<number, TrajectoryRecord[]>();
 

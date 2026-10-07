@@ -1,0 +1,21 @@
+{
+  "scenario": "cancel",
+  "run_id": "aeafc4f4-ed03-47e6-94bc-523aba1d9977",
+  "status": "interrupted",
+  "provider_calls": [
+    "primary",
+    "backup"
+  ],
+  "duration_seconds": 23.365,
+  "worker_lease_released": true,
+  "worker_heartbeat_setting": "default",
+  "provider_calls_at_ack": [
+    "primary"
+  ],
+  "ack_to_lease_release_seconds": 7.925,
+  "graphharbor_version": "0.13.0.post41",
+  "test_result": "failed: backup request occurred after cancel ACK",
+  "attempt_timeout_seconds": 5,
+  "total_timeout_seconds": 10,
+  "max_attempts": 3
+}

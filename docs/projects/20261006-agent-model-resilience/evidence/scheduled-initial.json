@@ -1,0 +1,16 @@
+[
+  {
+    "trigger": "manual",
+    "scenario": "fallback",
+    "status": "success",
+    "run_id": "a7cc0294-948b-43fc-a37f-588375a5dc42",
+    "error_code": null
+  },
+  {
+    "trigger": "manual",
+    "scenario": "exhausted",
+    "status": "error",
+    "run_id": "121c17f4-8c73-400e-951a-c2d60607968e",
+    "error_code": "scheduled_task_execution_failed"
+  }
+]

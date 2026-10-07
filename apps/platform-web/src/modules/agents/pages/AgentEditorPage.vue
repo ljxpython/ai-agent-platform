@@ -21,13 +21,20 @@ import {
   parseAgentContext,
   type ContextField,
 } from "@/services/agents/context";
-import type { Agent, AgentContext } from "@/services/agents/types";
+import type {
+  Agent,
+  AgentContext,
+  ModelResilienceSettings,
+} from "@/services/agents/types";
 import { listGraphsPage } from "@/services/graphs/graphs.service";
 import {
   listRuntimeModels,
   listRuntimeTools,
 } from "@/services/runtime/runtime.service";
-import { listToolRestrictions } from "@/services/runtime-policies/runtime-policies.service";
+import {
+  listRuntimeModelPolicies,
+  listToolRestrictions,
+} from "@/services/runtime-policies/runtime-policies.service";
 import type {
   ManagementGraph,
   RuntimeModelItem,
@@ -41,6 +48,14 @@ const EXECUTION_MODES = [
   { value: "pro", label: "Pro（深度推理）" },
   { value: "ultra", label: "Ultra（顶配全能）" },
 ] as const;
+
+const DEFAULT_RESILIENCE: ModelResilienceSettings = {
+  enabled: false,
+  fallback_model_id: null,
+  max_attempts: 3,
+  attempt_timeout_seconds: 600,
+  total_timeout_seconds: 900,
+};
 
 const route = useRoute();
 const router = useRouter();
@@ -63,6 +78,18 @@ const editable = computed(() =>
 );
 
 const original = shallowRef<Agent | null>(null);
+const originalResilience = shallowRef<ModelResilienceSettings | null>(null);
+const resilienceDraft = ref<ModelResilienceSettings>({ ...DEFAULT_RESILIENCE });
+const resilienceSection = ref<{
+  supported?: boolean;
+  default?: ModelResilienceSettings;
+  properties?: Record<string, unknown>;
+} | null>(null);
+
+const isResilienceSupported = computed(() =>
+  Boolean(resilienceSection.value?.supported),
+);
+
 const graphId = ref("");
 const name = ref("");
 const description = ref("");
@@ -79,6 +106,8 @@ const schemaLoading = ref(false);
 const schemaError = ref("");
 const error = ref("");
 const notice = ref("");
+const saveSuccess = ref(false);
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
 const copiedId = ref(false);
 let epoch = 0;
 let schemaEpoch = 0;
@@ -161,6 +190,38 @@ const modelOptions = computed(() => [
   })),
 ]);
 
+const fallbackModelOptions = computed(() => {
+  const primaryId = (context.value.model_id as string) || "";
+  const list = models.value
+    .filter((m) => m.id !== primaryId)
+    .map((m) => ({
+      value: m.id,
+      label: `${m.display_name} (${m.model || m.provider})`,
+    }));
+  return [{ value: "", label: "仅重试当前模型（无备用）" }, ...list];
+});
+
+watch(
+  () => context.value.model_id,
+  (newPrimary) => {
+    if (newPrimary && resilienceDraft.value.fallback_model_id === newPrimary) {
+      resilienceDraft.value.fallback_model_id = null;
+    }
+  },
+);
+
+watch(
+  () => resilienceDraft.value.attempt_timeout_seconds,
+  (newAttempt) => {
+    if (
+      typeof newAttempt === "number" &&
+      newAttempt > resilienceDraft.value.total_timeout_seconds
+    ) {
+      resilienceDraft.value.total_timeout_seconds = newAttempt;
+    }
+  },
+);
+
 const currentModelItem = computed(() =>
   models.value.find((m) => m.id === context.value.model_id),
 );
@@ -180,12 +241,22 @@ function fill(agent: Agent) {
   delete (cleanContext as any).tools;
   delete (cleanContext as any).enable_tools;
   context.value = cleanContext;
+  if (agent.model_resilience) {
+    originalResilience.value = { ...agent.model_resilience };
+    resilienceDraft.value = { ...agent.model_resilience };
+  } else {
+    originalResilience.value = null;
+    resilienceDraft.value = { ...DEFAULT_RESILIENCE };
+  }
 }
 
 async function load() {
   const requestEpoch = ++epoch;
   ++schemaEpoch;
   original.value = null;
+  originalResilience.value = null;
+  resilienceDraft.value = { ...DEFAULT_RESILIENCE };
+  resilienceSection.value = null;
   graphId.value = "";
   context.value = {};
   fields.value = [];
@@ -203,16 +274,33 @@ async function load() {
   const project = activeProjectId.value;
   try {
     if (!project) throw new Error("请先选择项目");
-    const [graphList, modelList, toolList, agent, restrictionsData] = await Promise.all([
+    const [
+      graphList,
+      modelList,
+      toolList,
+      agent,
+      restrictionsData,
+      modelPoliciesData,
+    ] = await Promise.all([
       listGraphsPage(project, { limit: 500 }),
       listRuntimeModels(project),
       listRuntimeTools(project),
       agentId.value ? getAgent(project, agentId.value) : Promise.resolve(null),
       listToolRestrictions(project).catch(() => ({ items: [] })),
+      listRuntimeModelPolicies(project).catch(() => ({ items: [] })),
     ]);
     if (requestEpoch !== epoch) return;
     graphs.value = graphList.items;
-    models.value = modelList.models.filter((model: RuntimeModelItem) => model.enabled);
+    const modelPolicyMap = new Map<string, boolean>();
+    for (const item of (modelPoliciesData as any)?.items || []) {
+      if (item?.catalog_id && typeof item?.policy?.is_enabled === "boolean") {
+        modelPolicyMap.set(item.catalog_id, item.policy.is_enabled);
+      }
+    }
+    models.value = modelList.models.filter(
+      (model: RuntimeModelItem) =>
+        model.enabled && modelPolicyMap.get(model.id) !== false,
+    );
     tools.value = toolList.tools;
     restrictions.value = restrictionsData.items || [];
     if (agent) fill(agent);
@@ -236,12 +324,23 @@ watch(
 watch([activeProjectId, graphId], async ([project, graph]) => {
   const requestEpoch = ++schemaEpoch;
   fields.value = [];
+  resilienceSection.value = null;
   schemaError.value = "";
   schemaLoading.value = !!graph;
   if (!project || !graph) return;
   try {
     const schema = await getAgentParameterSchema(project, graph);
-    if (requestEpoch === schemaEpoch) fields.value = contextFields(schema);
+    if (requestEpoch === schemaEpoch) {
+      fields.value = contextFields(schema);
+      const sections = Array.isArray((schema as any)?.sections)
+        ? (schema as any).sections
+        : [];
+      const resSec = sections.find((s: any) => s?.key === "model_resilience");
+      resilienceSection.value = resSec || null;
+      if (isNew.value && resSec?.default && !resilienceDraft.value.enabled) {
+        resilienceDraft.value = { ...DEFAULT_RESILIENCE, ...resSec.default };
+      }
+    }
   } catch (cause) {
     if (requestEpoch === schemaEpoch)
       schemaError.value =
@@ -268,6 +367,22 @@ async function save() {
   try {
     if (!name.value.trim() || !graphId.value)
       throw new Error("请填写名称并选择 Graph");
+
+    if (resilienceDraft.value.enabled) {
+      if (
+        Number(resilienceDraft.value.total_timeout_seconds) <
+        Number(resilienceDraft.value.attempt_timeout_seconds)
+      ) {
+        throw new Error("总等待时间不能小于单次等待时间");
+      }
+      if (
+        Number(resilienceDraft.value.max_attempts) < 1 ||
+        Number(resilienceDraft.value.max_attempts) > 5
+      ) {
+        throw new Error("最大尝试次数必须在 1 到 5 之间");
+      }
+    }
+
     const nextContext: AgentContext = parseAgentContext(
       {
         ...context.value,
@@ -282,6 +397,20 @@ async function save() {
         name: name.value.trim(),
         description: description.value,
         context: Object.keys(nextContext).length ? nextContext : undefined,
+        model_resilience: resilienceDraft.value.enabled
+          ? {
+              enabled: true,
+              fallback_model_id:
+                resilienceDraft.value.fallback_model_id || null,
+              max_attempts: Number(resilienceDraft.value.max_attempts),
+              attempt_timeout_seconds: Number(
+                resilienceDraft.value.attempt_timeout_seconds,
+              ),
+              total_timeout_seconds: Number(
+                resilienceDraft.value.total_timeout_seconds,
+              ),
+            }
+          : null,
       });
       if (requestEpoch === epoch) {
         void router.replace(`${basePath.value}/agents/${created.id}`);
@@ -297,17 +426,63 @@ async function save() {
       if (status.value !== agent.status) changes.status = status.value;
       if (JSON.stringify(nextContext) !== JSON.stringify(agent.context))
         changes.context = nextContext;
+
+      const isResilienceDirty = (() => {
+        if (!resilienceDraft.value.enabled) {
+          return Boolean(originalResilience.value?.enabled);
+        }
+        if (!originalResilience.value?.enabled) return true;
+        return (
+          resilienceDraft.value.fallback_model_id !==
+            originalResilience.value.fallback_model_id ||
+          Number(resilienceDraft.value.max_attempts) !==
+            Number(originalResilience.value.max_attempts) ||
+          Number(resilienceDraft.value.attempt_timeout_seconds) !==
+            Number(originalResilience.value.attempt_timeout_seconds) ||
+          Number(resilienceDraft.value.total_timeout_seconds) !==
+            Number(originalResilience.value.total_timeout_seconds)
+        );
+      })();
+
+      if (isResilienceDirty) {
+        changes.model_resilience = resilienceDraft.value.enabled
+          ? {
+              enabled: true,
+              fallback_model_id:
+                resilienceDraft.value.fallback_model_id || null,
+              max_attempts: Number(resilienceDraft.value.max_attempts),
+              attempt_timeout_seconds: Number(
+                resilienceDraft.value.attempt_timeout_seconds,
+              ),
+              total_timeout_seconds: Number(
+                resilienceDraft.value.total_timeout_seconds,
+              ),
+            }
+          : null;
+      }
+
       if (!Object.keys(changes).length) {
         notice.value = "没有需要保存的改动";
+        saveSuccess.value = true;
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          saveSuccess.value = false;
+        }, 3000);
         return;
       }
       const updated = await updateAgent(project, agent.id, changes);
       if (requestEpoch === epoch) {
         fill(updated);
         notice.value = "已保存修改";
+        saveSuccess.value = true;
+        if (saveTimer) clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          saveSuccess.value = false;
+        }, 3000);
       }
     }
   } catch (cause) {
+    saveSuccess.value = false;
     if (requestEpoch === epoch)
       error.value = cause instanceof Error ? cause.message : "保存失败";
   } finally {
@@ -349,8 +524,12 @@ onScopeDispose(() => {
   <section class="pw-page-shell">
     <PageHeader
       eyebrow="Agents"
-      :title="isNew ? '新建 Agent' : (original?.name || '智能体配置')"
-      :description="isNew ? '选择底层 Graph 与执行策略，配置专属运行参数并创建智能体。' : '查看并调整该智能体的模型路由、生成参数与工具访问控制。'"
+      :title="isNew ? '新建 Agent' : original?.name || '智能体配置'"
+      :description="
+        isNew
+          ? '选择底层 Graph 与执行策略，配置专属运行参数并创建智能体。'
+          : '查看并调整该智能体的模型路由、生成参数与工具访问控制。'
+      "
     >
       <template #actions>
         <BaseButton
@@ -370,11 +549,7 @@ onScopeDispose(() => {
             })
           "
         >
-          <BaseIcon
-            name="chat"
-            size="sm"
-            class="mr-1 text-primary-500"
-          />
+          <BaseIcon name="chat" size="sm" class="mr-1 text-primary-500" />
           打开聊天
         </BaseButton>
       </template>
@@ -407,26 +582,23 @@ onScopeDispose(() => {
       class="grid gap-6 xl:grid-cols-[minmax(0,1.28fr)_minmax(320px,0.72fr)]"
     >
       <!-- 左栏：主配置区 -->
-      <form
-        class="space-y-6"
-        @submit.prevent="save"
-      >
-        <fieldset
-          :disabled="!editable || saving"
-          class="space-y-6"
-        >
+      <form class="space-y-6" @submit.prevent="save">
+        <fieldset :disabled="!editable || saving" class="space-y-6">
           <!-- 卡片 1：基础信息 -->
           <SurfaceCard class="space-y-5">
-            <div class="flex items-center justify-between border-b border-gray-100 pb-3.5 dark:border-dark-800">
+            <div
+              class="flex items-center justify-between border-b border-gray-100 pb-3.5 dark:border-dark-800"
+            >
               <div class="flex items-center gap-2.5">
-                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-300">
-                  <BaseIcon
-                    name="assistant"
-                    size="sm"
-                  />
+                <div
+                  class="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-300"
+                >
+                  <BaseIcon name="assistant" size="sm" />
                 </div>
                 <div>
-                  <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+                  <h2
+                    class="text-sm font-semibold text-gray-900 dark:text-white"
+                  >
                     基础信息
                   </h2>
                   <p class="text-xs text-gray-500 dark:text-dark-300">
@@ -438,7 +610,7 @@ onScopeDispose(() => {
                 v-if="original"
                 :tone="status === 'active' ? 'success' : 'warning'"
               >
-                {{ status === 'active' ? '启用中' : '已停用' }}
+                {{ status === "active" ? "启用中" : "已停用" }}
               </StatusPill>
             </div>
 
@@ -453,7 +625,7 @@ onScopeDispose(() => {
                   maxlength="200"
                   class="pw-input"
                   placeholder="例如：技术文档编写助手"
-                >
+                />
               </div>
 
               <div>
@@ -465,15 +637,17 @@ onScopeDispose(() => {
                   :options="graphOptions"
                   :disabled="!!original"
                   placeholder="请选择绑定的 Graph"
-                  @update:model-value="val => { graphId = String(val) }"
+                  @update:model-value="
+                    (val) => {
+                      graphId = String(val);
+                    }
+                  "
                 />
               </div>
             </div>
 
             <div>
-              <label class="pw-input-label">
-                功能描述
-              </label>
+              <label class="pw-input-label"> 功能描述 </label>
               <textarea
                 v-model="description"
                 maxlength="2000"
@@ -486,16 +660,17 @@ onScopeDispose(() => {
               </div>
             </div>
 
-            <div
-              v-if="original"
-              class="pt-1"
-            >
+            <div v-if="original" class="pt-1">
               <label class="pw-input-label">运行状态</label>
               <div class="max-w-xs">
                 <BaseSelect
                   :model-value="status"
                   :options="statusOptions"
-                  @update:model-value="val => { status = (val as Agent['status']) || 'active' }"
+                  @update:model-value="
+                    (val) => {
+                      status = (val as Agent['status']) || 'active';
+                    }
+                  "
                 />
               </div>
             </div>
@@ -503,16 +678,19 @@ onScopeDispose(() => {
 
           <!-- 卡片 2：模型与运行参数 -->
           <SurfaceCard class="space-y-5">
-            <div class="flex items-center justify-between border-b border-gray-100 pb-3.5 dark:border-dark-800">
+            <div
+              class="flex items-center justify-between border-b border-gray-100 pb-3.5 dark:border-dark-800"
+            >
               <div class="flex items-center gap-2.5">
-                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300">
-                  <BaseIcon
-                    name="sparkle"
-                    size="sm"
-                  />
+                <div
+                  class="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600 dark:bg-sky-950/40 dark:text-sky-300"
+                >
+                  <BaseIcon name="sparkle" size="sm" />
                 </div>
                 <div>
-                  <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+                  <h2
+                    class="text-sm font-semibold text-gray-900 dark:text-white"
+                  >
                     模型与推理参数
                   </h2>
                   <p class="text-xs text-gray-500 dark:text-dark-300">
@@ -528,18 +706,11 @@ onScopeDispose(() => {
             >
               正在拉取该 Graph 的参数定义…
             </p>
-            <p
-              v-if="schemaError"
-              role="alert"
-              class="text-xs text-red-600"
-            >
+            <p v-if="schemaError" role="alert" class="text-xs text-red-600">
               {{ schemaError }}
             </p>
 
-            <div
-              v-if="!schemaLoading && !schemaError"
-              class="space-y-5"
-            >
+            <div v-if="!schemaLoading && !schemaError" class="space-y-5">
               <!-- 第一行：模型选择 与 执行模式 下拉 -->
               <div class="grid gap-4 md:grid-cols-2">
                 <div>
@@ -548,7 +719,11 @@ onScopeDispose(() => {
                     :model-value="(context.model_id as string) || ''"
                     :options="modelOptions"
                     placeholder="使用项目默认模型"
-                    @update:model-value="val => { context.model_id = val ? String(val) : undefined }"
+                    @update:model-value="
+                      (val) => {
+                        context.model_id = val ? String(val) : undefined;
+                      }
+                    "
                   />
                   <p class="mt-1.5 text-xs text-gray-400 dark:text-dark-400">
                     可覆盖项目的统一默认模型
@@ -556,12 +731,18 @@ onScopeDispose(() => {
                 </div>
 
                 <div>
-                  <label class="pw-input-label">执行模式 (Execution Mode)</label>
+                  <label class="pw-input-label"
+                    >执行模式 (Execution Mode)</label
+                  >
                   <BaseSelect
                     :model-value="(context.execution_mode as string) || ''"
                     :options="executionModeOptions"
                     placeholder="使用默认模式"
-                    @update:model-value="val => { context.execution_mode = val ? String(val) : undefined }"
+                    @update:model-value="
+                      (val) => {
+                        context.execution_mode = val ? String(val) : undefined;
+                      }
+                    "
                   />
                   <p class="mt-1.5 text-xs text-gray-400 dark:text-dark-400">
                     控制运行时推理深度与资源消耗策略
@@ -570,13 +751,22 @@ onScopeDispose(() => {
               </div>
 
               <!-- 参数调节滑块区 -->
-              <div class="grid gap-5 border-t border-gray-100 pt-4 dark:border-dark-800 md:grid-cols-2">
+              <div
+                class="grid gap-5 border-t border-gray-100 pt-4 dark:border-dark-800 md:grid-cols-2"
+              >
                 <!-- Temperature -->
-                <div class="space-y-2 rounded-xl bg-gray-50/70 p-3.5 dark:bg-dark-900/60">
+                <div
+                  class="space-y-2 rounded-xl bg-gray-50/70 p-3.5 dark:bg-dark-900/60"
+                >
                   <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">Temperature (采样温度)</span>
-                    <span class="rounded-md bg-white px-2 py-0.5 font-mono text-xs font-bold text-primary-600 shadow-sm dark:bg-dark-800 dark:text-primary-300">
-                      {{ context.temperature ?? '默认 (0.7)' }}
+                    <span
+                      class="text-xs font-semibold text-gray-700 dark:text-gray-300"
+                      >Temperature (采样温度)</span
+                    >
+                    <span
+                      class="rounded-md bg-white px-2 py-0.5 font-mono text-xs font-bold text-primary-600 shadow-sm dark:bg-dark-800 dark:text-primary-300"
+                    >
+                      {{ context.temperature ?? "默认 (0.7)" }}
                     </span>
                   </div>
                   <div class="flex items-center gap-3">
@@ -587,8 +777,12 @@ onScopeDispose(() => {
                       step="0.05"
                       :value="context.temperature ?? 0.7"
                       class="h-1.5 flex-1 cursor-pointer accent-primary-600"
-                      @input="context.temperature = Number(($event.target as HTMLInputElement).value)"
-                    >
+                      @input="
+                        context.temperature = Number(
+                          ($event.target as HTMLInputElement).value,
+                        )
+                      "
+                    />
                     <input
                       v-model.number="context.temperature"
                       type="number"
@@ -597,7 +791,7 @@ onScopeDispose(() => {
                       step="0.05"
                       class="pw-input h-8 w-20 text-center font-mono text-xs"
                       placeholder="默认"
-                    >
+                    />
                   </div>
                   <div class="flex justify-between text-[10px] text-gray-400">
                     <span>0.0 严谨</span>
@@ -607,11 +801,18 @@ onScopeDispose(() => {
                 </div>
 
                 <!-- Top P -->
-                <div class="space-y-2 rounded-xl bg-gray-50/70 p-3.5 dark:bg-dark-900/60">
+                <div
+                  class="space-y-2 rounded-xl bg-gray-50/70 p-3.5 dark:bg-dark-900/60"
+                >
                   <div class="flex items-center justify-between">
-                    <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">Top P (核采样率)</span>
-                    <span class="rounded-md bg-white px-2 py-0.5 font-mono text-xs font-bold text-sky-600 shadow-sm dark:bg-dark-800 dark:text-sky-300">
-                      {{ context.top_p ?? '默认 (1.0)' }}
+                    <span
+                      class="text-xs font-semibold text-gray-700 dark:text-gray-300"
+                      >Top P (核采样率)</span
+                    >
+                    <span
+                      class="rounded-md bg-white px-2 py-0.5 font-mono text-xs font-bold text-sky-600 shadow-sm dark:bg-dark-800 dark:text-sky-300"
+                    >
+                      {{ context.top_p ?? "默认 (1.0)" }}
                     </span>
                   </div>
                   <div class="flex items-center gap-3">
@@ -622,8 +823,12 @@ onScopeDispose(() => {
                       step="0.05"
                       :value="context.top_p ?? 1"
                       class="h-1.5 flex-1 cursor-pointer accent-sky-600"
-                      @input="context.top_p = Number(($event.target as HTMLInputElement).value)"
-                    >
+                      @input="
+                        context.top_p = Number(
+                          ($event.target as HTMLInputElement).value,
+                        )
+                      "
+                    />
                     <input
                       v-model.number="context.top_p"
                       type="number"
@@ -632,7 +837,7 @@ onScopeDispose(() => {
                       step="0.05"
                       class="pw-input h-8 w-20 text-center font-mono text-xs"
                       placeholder="默认"
-                    >
+                    />
                   </div>
                   <div class="flex justify-between text-[10px] text-gray-400">
                     <span>0.1 聚焦</span>
@@ -643,11 +848,18 @@ onScopeDispose(() => {
               </div>
 
               <!-- Max Tokens -->
-              <div class="rounded-xl border border-gray-100 p-4 dark:border-dark-800">
+              <div
+                class="rounded-xl border border-gray-100 p-4 dark:border-dark-800"
+              >
                 <div class="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <label class="text-xs font-semibold text-gray-700 dark:text-gray-300">Max Tokens (最大单次输出)</label>
-                    <p class="mt-0.5 text-xs text-gray-400">限制回复的最大 Token 长度，超出将被截断</p>
+                    <label
+                      class="text-xs font-semibold text-gray-700 dark:text-gray-300"
+                      >Max Tokens (最大单次输出)</label
+                    >
+                    <p class="mt-0.5 text-xs text-gray-400">
+                      限制回复的最大 Token 长度，超出将被截断
+                    </p>
                   </div>
                   <div class="flex items-center gap-1.5">
                     <button
@@ -655,7 +867,11 @@ onScopeDispose(() => {
                       :key="preset"
                       type="button"
                       class="rounded-lg border border-gray-200 px-2 py-1 text-[11px] font-medium text-gray-600 transition-colors hover:border-primary-500 hover:text-primary-600 dark:border-dark-700 dark:text-dark-200"
-                      :class="context.max_tokens === preset ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300' : ''"
+                      :class="
+                        context.max_tokens === preset
+                          ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-950/40 dark:text-primary-300'
+                          : ''
+                      "
                       @click="applyTokenPreset(preset)"
                     >
                       {{ preset >= 1024 ? `${preset / 1024}k` : preset }}
@@ -679,7 +895,148 @@ onScopeDispose(() => {
                     step="1"
                     class="pw-input font-mono text-xs"
                     placeholder="留空则遵循 Graph 内部默认值"
-                  >
+                  />
+                </div>
+              </div>
+
+              <!-- 模型恢复策略分组 -->
+              <div
+                class="rounded-xl border border-gray-150/70 p-4 dark:border-dark-800"
+              >
+                <div class="flex items-center justify-between pb-3">
+                  <div class="flex items-center gap-2">
+                    <BaseIcon
+                      name="shield"
+                      size="sm"
+                      class="text-emerald-500"
+                    />
+                    <div>
+                      <h3
+                        class="text-xs font-semibold text-gray-800 dark:text-gray-200"
+                      >
+                        模型恢复策略 (Model Resilience)
+                      </h3>
+                      <p class="text-[11px] text-gray-400">
+                        主模型遇临时不可用时自动在同一次运行内切换备用模型或重试
+                      </p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <span
+                      v-if="!isResilienceSupported"
+                      class="text-[11px] text-gray-400"
+                    >
+                      当前 Graph 未支持该能力
+                    </span>
+                    <label
+                      class="relative inline-flex cursor-pointer items-center"
+                    >
+                      <input
+                        type="checkbox"
+                        :checked="resilienceDraft.enabled"
+                        :disabled="!isResilienceSupported || !editable"
+                        class="peer sr-only"
+                        @change="
+                          resilienceDraft.enabled = (
+                            $event.target as HTMLInputElement
+                          ).checked
+                        "
+                      />
+                      <div
+                        class="peer h-5 w-9 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary-600 peer-checked:after:translate-x-full peer-disabled:cursor-not-allowed peer-disabled:opacity-50 dark:bg-dark-700"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <!-- 展开的策略配置表单项 -->
+                <div
+                  v-if="resilienceDraft.enabled"
+                  class="space-y-3.5 border-t border-gray-100 pt-3 dark:border-dark-800"
+                >
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label class="pw-input-label">备用模型</label>
+                      <BaseSelect
+                        :model-value="resilienceDraft.fallback_model_id || ''"
+                        :options="fallbackModelOptions"
+                        :disabled="!editable"
+                        placeholder="仅重试当前模型（无备用）"
+                        @update:model-value="
+                          (val) => {
+                            resilienceDraft.fallback_model_id = val
+                              ? String(val)
+                              : null;
+                          }
+                        "
+                      />
+                      <p class="mt-1 text-[11px] text-gray-400">
+                        主模型故障时切入；已自动排除当前主模型
+                      </p>
+                    </div>
+
+                    <div>
+                      <label class="pw-input-label"
+                        >最大尝试次数 (包含首次)</label
+                      >
+                      <input
+                        v-model.number="resilienceDraft.max_attempts"
+                        type="number"
+                        min="1"
+                        max="5"
+                        step="1"
+                        :disabled="!editable"
+                        class="pw-input font-mono text-xs"
+                      />
+                      <p
+                        v-if="
+                          resilienceDraft.max_attempts === 1 &&
+                          !resilienceDraft.fallback_model_id
+                        "
+                        class="mt-1 text-[11px] text-amber-500"
+                      >
+                        提示：当前配置仅尝试 1
+                        次且未配置备用模型，不会触发额外重试。
+                      </p>
+                      <p v-else class="mt-1 text-[11px] text-gray-400">
+                        有效范围 1～5 次
+                      </p>
+                    </div>
+                  </div>
+
+                  <div class="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label class="pw-input-label">单次等待上限 (秒)</label>
+                      <input
+                        v-model.number="resilienceDraft.attempt_timeout_seconds"
+                        type="number"
+                        min="1"
+                        max="900"
+                        step="1"
+                        :disabled="!editable"
+                        class="pw-input font-mono text-xs"
+                      />
+                      <p class="mt-1 text-[11px] text-gray-400">
+                        一次调用最多等待时长 (1～900 秒)
+                      </p>
+                    </div>
+
+                    <div>
+                      <label class="pw-input-label">总等待上限 (秒)</label>
+                      <input
+                        v-model.number="resilienceDraft.total_timeout_seconds"
+                        type="number"
+                        min="1"
+                        max="1200"
+                        step="1"
+                        :disabled="!editable"
+                        class="pw-input font-mono text-xs"
+                      />
+                      <p class="mt-1 text-[11px] text-gray-400">
+                        包含重试在内的总耗时预算 (&gt;= 单次，最大 1200 秒)
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -687,30 +1044,39 @@ onScopeDispose(() => {
 
           <!-- 卡片 3：工具调用范围 -->
           <SurfaceCard class="space-y-4">
-            <div class="flex items-center justify-between border-b border-gray-100 pb-3.5 dark:border-dark-800">
+            <div
+              class="flex items-center justify-between border-b border-gray-100 pb-3.5 dark:border-dark-800"
+            >
               <div class="flex items-center gap-2.5">
-                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
-                  <BaseIcon
-                    name="settings-2"
-                    size="sm"
-                  />
+                <div
+                  class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300"
+                >
+                  <BaseIcon name="settings-2" size="sm" />
                 </div>
                 <div>
-                  <h2 class="text-sm font-semibold text-gray-900 dark:text-white">
+                  <h2
+                    class="text-sm font-semibold text-gray-900 dark:text-white"
+                  >
                     已声明工具能力
                   </h2>
                   <p class="text-xs text-gray-500 dark:text-dark-300">
-                    该智能体归属 Graph 声明的工具列表（由运行时统一治理并受项目禁用规则管控）
+                    该智能体归属 Graph
+                    声明的工具列表（由运行时统一治理并受项目禁用规则管控）
                   </p>
                 </div>
               </div>
               <span class="text-xs text-gray-400">
                 共 {{ declaredToolsForGraph.length }} 项工具
                 <template v-if="declaredToolsForGraph.length">
-                  （<span class="text-emerald-600 dark:text-emerald-400">{{ toolsStats.available }} 可用</span>
+                  （<span class="text-emerald-600 dark:text-emerald-400"
+                    >{{ toolsStats.available }} 可用</span
+                  >
                   <template v-if="toolsStats.restricted > 0">
-                    · <span class="text-rose-600 dark:text-rose-400">{{ toolsStats.restricted }} 已禁用</span>
-                  </template>）
+                    ·
+                    <span class="text-rose-600 dark:text-rose-400"
+                      >{{ toolsStats.restricted }} 已禁用</span
+                    > </template
+                  >）
                 </template>
               </span>
             </div>
@@ -763,7 +1129,12 @@ onScopeDispose(() => {
                           v-if="getToolRestriction(tool.tool_key)"
                           class="rounded-full bg-rose-100 px-1.5 py-0.2 text-[10px] font-medium text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"
                         >
-                          {{ getToolRestriction(tool.tool_key)?.subject_type === 'project' ? '项目禁用' : '成员禁用' }}
+                          {{
+                            getToolRestriction(tool.tool_key)?.subject_type ===
+                            "project"
+                              ? "项目禁用"
+                              : "成员禁用"
+                          }}
                         </span>
                         <span
                           v-if="tool.source"
@@ -787,43 +1158,96 @@ onScopeDispose(() => {
                       v-if="getToolRestriction(tool.tool_key)"
                       class="mt-2 rounded-lg bg-rose-50/80 px-2 py-1 text-[11px] text-rose-700 dark:bg-rose-950/40 dark:text-rose-300"
                     >
-                      <span class="font-medium">原因：</span>{{ getToolRestriction(tool.tool_key)?.reason }}
+                      <span class="font-medium">原因：</span
+                      >{{ getToolRestriction(tool.tool_key)?.reason }}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <p
-                v-else
-                class="py-6 text-center text-xs text-gray-400"
-              >
-                {{ graphId ? '所选 Graph 当前未声明任何工具' : '请先选择 Graph 以查看声明工具' }}
+              <p v-else class="py-6 text-center text-xs text-gray-400">
+                {{
+                  graphId
+                    ? "所选 Graph 当前未声明任何工具"
+                    : "请先选择 Graph 以查看声明工具"
+                }}
               </p>
             </div>
           </SurfaceCard>
 
-          <!-- 底部操作按钮 -->
-          <div class="flex items-center justify-end gap-3 pt-2">
-            <BaseButton
-              variant="secondary"
-              type="button"
-              :disabled="saving"
-              @click="router.push(`${basePath}/agents`)"
-            >
-              取消
-            </BaseButton>
-            <BaseButton
-              type="submit"
-              :disabled="schemaLoading || !!schemaError || !graphId || saving"
-            >
-              <BaseIcon
-                v-if="!saving"
-                :name="isNew ? 'plus' : 'check'"
-                size="sm"
-                class="mr-1"
-              />
-              {{ saving ? "正在提交…" : (isNew ? "立即创建 Agent" : "保存所有配置") }}
-            </BaseButton>
+          <!-- 底部操作按钮栏 -->
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
+            <!-- 左侧：就地状态提示（保存成功提示/报错提示） -->
+            <div class="flex items-center gap-2 text-xs">
+              <transition
+                enter-active-class="transition duration-200 ease-out"
+                enter-from-class="opacity-0 translate-y-1"
+                enter-to-class="opacity-100 translate-y-0"
+                leave-active-class="transition duration-150 ease-in"
+                leave-from-class="opacity-100 translate-y-0"
+                leave-to-class="opacity-0 translate-y-1"
+              >
+                <div
+                  v-if="saveSuccess"
+                  class="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 font-medium text-emerald-700 shadow-sm dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300"
+                >
+                  <BaseIcon
+                    name="check"
+                    size="sm"
+                    class="text-emerald-600 dark:text-emerald-400"
+                  />
+                  <span>{{ notice || "已成功保存所有配置！" }}</span>
+                </div>
+                <div
+                  v-else-if="error"
+                  class="flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 font-medium text-red-700 shadow-sm dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-300"
+                >
+                  <BaseIcon
+                    name="x"
+                    size="sm"
+                    class="text-red-600 dark:text-red-400"
+                  />
+                  <span>{{ error }}</span>
+                </div>
+              </transition>
+            </div>
+
+            <!-- 右侧：按钮组 -->
+            <div class="flex items-center gap-3">
+              <BaseButton
+                variant="secondary"
+                type="button"
+                :disabled="saving"
+                @click="router.push(`${basePath}/agents`)"
+              >
+                取消
+              </BaseButton>
+              <BaseButton
+                type="submit"
+                :disabled="schemaLoading || !!schemaError || !graphId || saving"
+                :class="
+                  saveSuccess
+                    ? '!bg-emerald-600 hover:!bg-emerald-700 !text-white'
+                    : ''
+                "
+              >
+                <BaseIcon
+                  v-if="!saving"
+                  :name="saveSuccess ? 'check' : isNew ? 'plus' : 'check'"
+                  size="sm"
+                  class="mr-1"
+                />
+                {{
+                  saving
+                    ? "正在提交…"
+                    : saveSuccess
+                      ? "已保存修改"
+                      : isNew
+                        ? "立即创建 Agent"
+                        : "保存所有配置"
+                }}
+              </BaseButton>
+            </div>
           </div>
         </fieldset>
       </form>
@@ -832,58 +1256,98 @@ onScopeDispose(() => {
       <aside class="space-y-5">
         <!-- 实时卡片预览 -->
         <SurfaceCard class="space-y-4">
-          <div class="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-dark-800">
-            <span class="text-xs font-semibold uppercase tracking-wider text-gray-400">
+          <div
+            class="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-dark-800"
+          >
+            <span
+              class="text-xs font-semibold uppercase tracking-wider text-gray-400"
+            >
               配置看板 · 实时预览
             </span>
-            <span class="flex h-2 w-2 rounded-full bg-emerald-500 ring-4 ring-emerald-100 dark:ring-emerald-950/50" />
+            <span
+              class="flex h-2 w-2 rounded-full bg-emerald-500 ring-4 ring-emerald-100 dark:ring-emerald-950/50"
+            />
           </div>
 
           <!-- 模拟渲染的 Agent Profile -->
-          <div class="rounded-2xl border border-gray-100 bg-gradient-to-b from-gray-50/80 to-white p-4.5 dark:border-dark-800 dark:from-dark-900/60 dark:to-dark-950">
+          <div
+            class="rounded-2xl border border-gray-100 bg-gradient-to-b from-gray-50/80 to-white p-4.5 dark:border-dark-800 dark:from-dark-900/60 dark:to-dark-950"
+          >
             <div class="flex items-start gap-3.5">
-              <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 font-bold text-white shadow-md shadow-primary-500/20">
-                {{ (name.trim().charAt(0) || 'A').toUpperCase() }}
+              <div
+                class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary-500 to-primary-700 font-bold text-white shadow-md shadow-primary-500/20"
+              >
+                {{ (name.trim().charAt(0) || "A").toUpperCase() }}
               </div>
               <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
-                  <h3 class="truncate text-base font-bold text-gray-900 dark:text-white">
-                    {{ name.trim() || '未命名智能体' }}
+                  <h3
+                    class="truncate text-base font-bold text-gray-900 dark:text-white"
+                  >
+                    {{ name.trim() || "未命名智能体" }}
                   </h3>
-                  <StatusPill :tone="status === 'active' ? 'success' : 'warning'">
-                    {{ status === 'active' ? '启用' : '停用' }}
+                  <StatusPill
+                    :tone="status === 'active' ? 'success' : 'warning'"
+                  >
+                    {{ status === "active" ? "启用" : "停用" }}
                   </StatusPill>
                 </div>
-                <p class="mt-1 line-clamp-2 text-xs text-gray-500 dark:text-dark-300">
-                  {{ description.trim() || '尚未填写描述信息…' }}
+                <p
+                  class="mt-1 line-clamp-2 text-xs text-gray-500 dark:text-dark-300"
+                >
+                  {{ description.trim() || "尚未填写描述信息…" }}
                 </p>
               </div>
             </div>
 
             <!-- 参数指标速览 -->
-            <div class="mt-4 grid grid-cols-2 gap-2 border-t border-gray-150/60 pt-3 text-xs dark:border-dark-800">
+            <div
+              class="mt-4 grid grid-cols-2 gap-2 border-t border-gray-150/60 pt-3 text-xs dark:border-dark-800"
+            >
               <div class="rounded-lg bg-white p-2 dark:bg-dark-900">
                 <span class="text-[10px] text-gray-400">执行模型</span>
-                <p class="truncate font-semibold text-gray-800 dark:text-gray-200">
-                  {{ currentModelItem?.display_name || '项目默认模型' }}
+                <p
+                  class="truncate font-semibold text-gray-800 dark:text-gray-200"
+                >
+                  {{ currentModelItem?.display_name || "项目默认模型" }}
                 </p>
               </div>
               <div class="rounded-lg bg-white p-2 dark:bg-dark-900">
                 <span class="text-[10px] text-gray-400">推理模式</span>
-                <p class="font-semibold capitalize text-gray-800 dark:text-gray-200">
-                  {{ context.execution_mode || 'standard (默认)' }}
+                <p
+                  class="font-semibold capitalize text-gray-800 dark:text-gray-200"
+                >
+                  {{ context.execution_mode || "standard (默认)" }}
                 </p>
               </div>
               <div class="rounded-lg bg-white p-2 dark:bg-dark-900">
                 <span class="text-[10px] text-gray-400">Temperature</span>
-                <p class="font-mono font-semibold text-gray-800 dark:text-gray-200">
-                  {{ context.temperature ?? '0.7 (默认)' }}
+                <p
+                  class="font-mono font-semibold text-gray-800 dark:text-gray-200"
+                >
+                  {{ context.temperature ?? "0.7 (默认)" }}
                 </p>
               </div>
               <div class="rounded-lg bg-white p-2 dark:bg-dark-900">
                 <span class="text-[10px] text-gray-400">已声明工具</span>
                 <p class="font-semibold text-gray-800 dark:text-gray-200">
-                  {{ declaredToolsForGraph.length ? `${declaredToolsForGraph.length} 项` : '无' }}
+                  {{
+                    declaredToolsForGraph.length
+                      ? `${declaredToolsForGraph.length} 项`
+                      : "无"
+                  }}
+                </p>
+              </div>
+              <div class="rounded-lg bg-white p-2 dark:bg-dark-900 col-span-2">
+                <span class="text-[10px] text-gray-400">自动恢复策略</span>
+                <p
+                  class="truncate font-semibold text-gray-800 dark:text-gray-200"
+                >
+                  {{
+                    resilienceDraft.enabled
+                      ? `已启用 · 最多 ${resilienceDraft.max_attempts} 次 (总预算 ${resilienceDraft.total_timeout_seconds}s)`
+                      : "已关闭"
+                  }}
                 </p>
               </div>
             </div>
@@ -894,13 +1358,15 @@ onScopeDispose(() => {
             v-if="currentGraphItem"
             class="space-y-2 rounded-xl bg-gray-50/60 p-3 text-xs dark:bg-dark-900/40"
           >
-            <div class="flex items-center gap-1.5 font-medium text-gray-700 dark:text-dark-200">
-              <BaseIcon
-                name="graph"
-                size="sm"
-                class="text-primary-500"
-              />
-              <span>绑定拓扑：{{ currentGraphItem.display_name || currentGraphItem.graph_id }}</span>
+            <div
+              class="flex items-center gap-1.5 font-medium text-gray-700 dark:text-dark-200"
+            >
+              <BaseIcon name="graph" size="sm" class="text-primary-500" />
+              <span
+                >绑定拓扑：{{
+                  currentGraphItem.display_name || currentGraphItem.graph_id
+                }}</span
+              >
             </div>
             <p
               v-if="currentGraphItem.description"
@@ -917,24 +1383,25 @@ onScopeDispose(() => {
         </SurfaceCard>
 
         <!-- 编辑态下的系统元数据 -->
-        <SurfaceCard
-          v-if="original"
-          class="space-y-3.5"
-        >
-          <div class="flex items-center gap-2 text-xs font-semibold text-gray-900 dark:text-white">
-            <BaseIcon
-              name="info"
-              size="sm"
-              class="text-primary-500"
-            />
+        <SurfaceCard v-if="original" class="space-y-3.5">
+          <div
+            class="flex items-center gap-2 text-xs font-semibold text-gray-900 dark:text-white"
+          >
+            <BaseIcon name="info" size="sm" class="text-primary-500" />
             元数据与审计记录
           </div>
 
           <dl class="space-y-2.5 text-xs">
-            <div class="flex items-center justify-between gap-2 border-b border-gray-100 pb-2 dark:border-dark-800">
+            <div
+              class="flex items-center justify-between gap-2 border-b border-gray-100 pb-2 dark:border-dark-800"
+            >
               <dt class="text-gray-500 dark:text-dark-400">Agent ID</dt>
-              <dd class="flex items-center gap-1 font-mono text-gray-800 dark:text-dark-200">
-                <span class="max-w-[140px] truncate" :title="original.id">{{ original.id }}</span>
+              <dd
+                class="flex items-center gap-1 font-mono text-gray-800 dark:text-dark-200"
+              >
+                <span class="max-w-[140px] truncate" :title="original.id">{{
+                  original.id
+                }}</span>
                 <button
                   type="button"
                   class="text-gray-400 hover:text-primary-600"
@@ -950,19 +1417,29 @@ onScopeDispose(() => {
               </dd>
             </div>
 
-            <div class="flex items-center justify-between gap-2 border-b border-gray-100 pb-2 dark:border-dark-800">
+            <div
+              class="flex items-center justify-between gap-2 border-b border-gray-100 pb-2 dark:border-dark-800"
+            >
               <dt class="text-gray-500 dark:text-dark-400">创建人</dt>
-              <dd class="text-gray-800 dark:text-dark-200">{{ original.created_by || '系统默认' }}</dd>
+              <dd class="text-gray-800 dark:text-dark-200">
+                {{ original.created_by || "系统默认" }}
+              </dd>
             </div>
 
-            <div class="flex items-center justify-between gap-2 border-b border-gray-100 pb-2 dark:border-dark-800">
+            <div
+              class="flex items-center justify-between gap-2 border-b border-gray-100 pb-2 dark:border-dark-800"
+            >
               <dt class="text-gray-500 dark:text-dark-400">创建时间</dt>
-              <dd class="text-gray-800 dark:text-dark-200">{{ formatDate(original.created_at) }}</dd>
+              <dd class="text-gray-800 dark:text-dark-200">
+                {{ formatDate(original.created_at) }}
+              </dd>
             </div>
 
             <div class="flex items-center justify-between gap-2">
               <dt class="text-gray-500 dark:text-dark-400">最后更新</dt>
-              <dd class="text-gray-800 dark:text-dark-200">{{ formatDate(original.updated_at) }}</dd>
+              <dd class="text-gray-800 dark:text-dark-200">
+                {{ formatDate(original.updated_at) }}
+              </dd>
             </div>
           </dl>
         </SurfaceCard>

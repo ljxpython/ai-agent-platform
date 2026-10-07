@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-07（Agent 上下文窗口管理工程化与工具调用容错/可观测性全链路完成交付，Platform API/Runtime/Platform Web 全栈用户人工实测验收通过，项目标记为 done；本地测试服务安全停止并释放端口）。
+> **最后更新：** 2026-10-07（Agent 模型调用稳定性治理全链路闭环，Platform API/Runtime/Platform Web 全栈用户人工实测验收通过，项目标记为 done；本地服务安全停止并释放端口）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -10,6 +10,8 @@
 **最后更新：** 2026-10-07
 
 ## 最近改动
+
+2026-10-07 | **Agent 模型调用稳定性治理**：done。Platform API/Runtime Service/Platform Web 全栈交付闭环。修复 FastAPI 500 强类型校验拦截与前端表单 step/就地保存高亮反馈；故障注入死端口实测 ModelResilienceMiddleware 毫秒级降级至 DeepSeek 备用模型并流式完成全生命周期；用户在浏览器端完成全链路人工实测，验收通过。见 [专项](projects/20261006-agent-model-resilience/README.md)。
 
 2026-10-07 | **Agent 上下文窗口管理工程化**：done。Platform API/Runtime/Platform Web 完成全栈交付。后端与 Runtime 交付可信容量、预算 guard、隐藏摘要流、Context v5、受控维护 Run、私有字段脱敏；前端交付模型容量配置与展示（F01）、整理状态微胶囊及 4 秒自动淡出/草稿输入打断机制（F02）、手动维护动作与菜单守卫（F03）。隔离 PG、真实模型 10 次质量集、HTTP v2/v3、Worker 重启/回滚，以及前端 63 项定向单测、vue-tsc 0 错误与生产打包均通过。用户已在真实控制台与聊天会话中完成端到端人工实测，全链路验收通过，交付闭环。见 [专项](projects/20261006-agent-context-window-governance/README.md)。
 
@@ -36,6 +38,8 @@
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
+
+- [Agent 模型调用稳定性治理](projects/20261006-agent-model-resilience/README.md)：`done`；全链路闭环，Platform API、Runtime Service 与 Platform Web 全栈交付。后端模型恢复策略/受管备模型/分类重试/契约签名与网关快照、前端编辑页配置/真实失败态/推荐问题门禁/停止确认超时保护/备用模型微胶囊 Tag 全量实装；单测门禁全绿，故障注入主备降级实测通过，用户人工浏览器实测验收通过。
 
 - [Agent 上下文窗口管理工程化](projects/20261006-agent-context-window-governance/README.md)：`done`；Platform API、Runtime Service 与 Platform Web 全栈交付闭环，模型容量配置/展示、整理状态微胶囊及平滑淡出、受控手动整理动作与全套单测/类型/构建门禁全绿，用户人工实测验收通过。
 

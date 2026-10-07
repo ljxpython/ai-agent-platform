@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Any
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
@@ -22,17 +23,21 @@ from runtime_service.middlewares import (
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
+    ModelResilienceMiddleware,
     RuntimeConfigMiddleware,
 )
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.observability.startup import StartupDiagnostics
 from runtime_service.runtime import (
     AgentDefaults,
+    ModelConnectionBundle,
     RuntimeContext,
     RuntimePolicy,
     RuntimePrincipal,
     RuntimeScope,
+    build_fallback_model,
     build_model,
+    fetch_model_bundle,
     parse_runtime_context,
     reject_untrusted_configurable,
     resolve_runtime_config,
@@ -42,7 +47,6 @@ from runtime_service.runtime import (
 from runtime_service.runtime.auth import VerifiedDelegation
 from runtime_service.runtime.capabilities import REFERENCE_TOOLS
 from runtime_service.runtime.errors import RuntimeAuthError
-from runtime_service.runtime.modeling import fetch_model_connection
 from runtime_service.services.reference_agent.prompts import SYSTEM_PROMPT
 from runtime_service.services.reference_agent.tools import read_reference
 from runtime_service.tools.errors import on_tool_error
@@ -96,11 +100,17 @@ def _runtime_fallback_model(config: RunnableConfig) -> BaseChatModel | None:
 
 
 def _build_runtime_model(
-    config: object, connection: Mapping[str, object] | None
+    config: object,
+    connection: Mapping[str, str] | None,
+    *,
+    max_retries: int | None = None,
 ) -> BaseChatModel:
-    if connection is None:
-        return build_model(config)  # type: ignore[arg-type]
-    return build_model(config, connection=connection)  # type: ignore[arg-type]
+    kwargs: dict[str, Any] = {}
+    if connection is not None:
+        kwargs["connection"] = connection
+    if max_retries is not None:
+        kwargs["max_retries"] = max_retries
+    return build_model(config, **kwargs)  # type: ignore[arg-type]
 
 
 def _runtime_facts(config: RunnableConfig) -> VerifiedDelegation:
@@ -116,20 +126,22 @@ def _runtime_facts(config: RunnableConfig) -> VerifiedDelegation:
     raise RuntimeAuthError("runtime.auth.missing_principal")
 
 
-async def _runtime_model_connection(
+async def _runtime_model_bundle(
     config: RunnableConfig,
     *,
     model_id: str,
     project_id: str,
-) -> dict[str, str | int | None] | None:
+    allowed_model_ids: tuple[str, ...],
+) -> ModelConnectionBundle:
     """Fetch the selected model connection; only the opaque reference crosses GraphHarbor."""
     configurable = config.get("configurable") or {}
     if not isinstance(configurable, Mapping):
-        return None
-    return await fetch_model_connection(
+        return ModelConnectionBundle()
+    return await fetch_model_bundle(
         configurable.get("runtime_model_ref"),
         model_id=model_id,
         project_id=project_id,
+        allowed_model_ids=allowed_model_ids,
     )
 
 
@@ -162,7 +174,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     )
     facts = None if probe_only else _runtime_facts(config)
     principal, policy = (facts.principal, facts.policy) if facts else (None, None)
-    connection = None
+    bundle = ModelConnectionBundle()
     resolved = None
     if facts:
         startup.authorize(config, facts)
@@ -185,23 +197,31 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             )
         startup.metadata["model_id"] = resolved.model_id
         with startup.phase("factory.model_connection"):
-            connection = (
-                None
+            bundle = (
+                ModelConnectionBundle()
                 if runtime_model is not None
-                else await _runtime_model_connection(
+                else await _runtime_model_bundle(
                     config,
                     model_id=resolved.model_id,
                     project_id=principal.project_id,
+                    allowed_model_ids=policy.allowed_model_ids,
                 )
             )
     with startup.phase("factory.model_build"):
         model = (
             ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
             if probe_only
-            else runtime_model or _build_runtime_model(resolved, connection)
+            else runtime_model
+            or _build_runtime_model(
+                resolved,
+                bundle.primary,
+                max_retries=0 if bundle.policy.enabled else None,
+            )
         )
     fallback_model = (
-        _runtime_fallback_model(config) if runtime_model is not None else None
+        _runtime_fallback_model(config)
+        if runtime_model is not None
+        else build_fallback_model(resolved, bundle)
     )
     model_retry_enabled = (
         runtime_model is not None
@@ -211,11 +231,15 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
 
     def model_builder(next_config):
         next_connection = (
-            connection
+            bundle.primary
             if resolved and next_config.model_id == resolved.model_id
             else None
         )
-        return _build_runtime_model(next_config, next_connection)
+        return _build_runtime_model(
+            next_config,
+            next_connection,
+            max_retries=0 if bundle.policy.enabled else None,
+        )
 
     middleware = [
         RuntimeConfigMiddleware(
@@ -239,8 +263,19 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             jitter=False,
         ),
         *(
+            [
+                ModelResilienceMiddleware(
+                    bundle.policy,
+                    fallback_model,
+                    primary_model_id=resolved.model_id,
+                )
+            ]
+            if bundle.policy.enabled
+            else []
+        ),
+        *(
             [ModelFallbackMiddleware(fallback_model)]
-            if fallback_model is not None
+            if fallback_model is not None and runtime_model is not None
             else []
         ),
         *(
@@ -257,7 +292,9 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             else []
         ),
         ModelErrorMiddleware(startup.metadata),
-        ModelCallTimeoutMiddleware(),
+        ModelCallTimeoutMiddleware(
+            bundle.policy.attempt_timeout_seconds if bundle.policy.enabled else None
+        ),
         MessageQueueMiddleware(),
     ]
     with startup.phase("factory.agent_compile"):

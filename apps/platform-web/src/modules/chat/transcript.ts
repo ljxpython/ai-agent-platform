@@ -60,12 +60,47 @@ export type ToolItem = {
   streamingChars?: number;
   error?: string;
 };
+export interface ModelResilienceSummary {
+  version: 1;
+  requestedModelId: string;
+  effectiveModelId: string;
+  attempts: number;
+  fallbackUsed: boolean;
+}
+
+export function extractModelResilienceSummary(
+  message: unknown,
+): ModelResilienceSummary | undefined {
+  if (!message || typeof message !== "object") return undefined;
+  const raw = asObject(message);
+  const respMeta = asObject(raw.response_metadata);
+  const resilience = asObject(respMeta.platform_model_resilience);
+  if (
+    resilience.version === 1 &&
+    typeof resilience.requested_model_id === "string" &&
+    typeof resilience.effective_model_id === "string" &&
+    typeof resilience.attempts === "number" &&
+    typeof resilience.fallback_used === "boolean"
+  ) {
+    return {
+      version: 1,
+      requestedModelId: resilience.requested_model_id,
+      effectiveModelId: resilience.effective_model_id,
+      attempts: resilience.attempts,
+      fallbackUsed: resilience.fallback_used,
+    };
+  }
+  return undefined;
+}
+
 export type MessageItem = {
   key: string;
   id?: string;
   role: string;
   blocks: ContentItem[];
   tools: ToolItem[];
+  raw?: BaseMessage;
+  resilienceSummary?: ModelResilienceSummary;
 };
 export type Turn = {
   key: string;
@@ -591,6 +626,8 @@ export function buildTranscript(
       role: message.type,
       blocks: parsedBlocks,
       tools: [],
+      raw: message,
+      resilienceSummary: extractModelResilienceSummary(message),
     };
     const msgObj = asObject(message);
     const respMeta = asObject(msgObj.response_metadata);

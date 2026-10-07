@@ -283,13 +283,28 @@ export function createSessionService(
       ),
     run: (threadId: string, runId: string) =>
       client.runs.get(assertValidThreadId(threadId), runId),
-    cancel: (threadId: string, runId: string) =>
-      client.runs.cancel(
-        assertValidThreadId(threadId),
-        runId,
-        false,
-        "interrupt",
-      ),
+    cancel: async (threadId: string, runId: string) => {
+      const validId = assertValidThreadId(threadId);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          const timeoutError = new Error("停止执行等待超时，本次取消尚未确认");
+          Object.assign(timeoutError, {
+            status: 504,
+            code: "cancel_confirmation_timeout",
+          });
+          reject(timeoutError);
+        }, 4000);
+      });
+      try {
+        return await Promise.race([
+          client.runs.cancel(validId, runId, true, "interrupt"),
+          timeoutPromise,
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    },
     fork: (threadId: string, checkpointId: string, title?: string) => {
       const validId = assertValidThreadId(threadId);
       return read<ChatThread>(`/threads/${encodeURIComponent(validId)}/fork`, {

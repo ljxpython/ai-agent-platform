@@ -7,6 +7,7 @@ import hmac
 import os
 import time
 from collections.abc import Mapping
+from typing import Any
 
 import httpx
 import openai
@@ -22,8 +23,14 @@ try:
 except ImportError:  # pragma: no cover
     ChatAnthropic = None  # type: ignore[assignment, misc]
 
-from runtime_service.runtime.contracts import ResolvedRuntimeConfig
-from runtime_service.runtime.errors import RuntimeResolutionError
+from dataclasses import replace
+
+from runtime_service.runtime.contracts import (
+    ModelConnectionBundle,
+    ModelResiliencePolicy,
+    ResolvedRuntimeConfig,
+)
+from runtime_service.runtime.errors import RuntimeAuthError, RuntimeResolutionError
 
 
 def _reasoning_text(message: Mapping[str, object]) -> str:
@@ -232,15 +239,16 @@ def build_model(
         ) from exc
 
 
-async def fetch_model_connection(
+async def fetch_model_bundle(
     reference: object,
     *,
     model_id: str,
     project_id: str,
-) -> dict[str, str | int | None] | None:
+    allowed_model_ids: tuple[str, ...] | None = None,
+) -> ModelConnectionBundle:
     """Resolve a server-issued opaque reference without persisting credentials."""
     if reference is None:
-        return None
+        return ModelConnectionBundle()
     endpoint = os.getenv("PLATFORM_RUNTIME_MODEL_CONFIG_URL", "").strip()
     if (
         not isinstance(reference, str)
@@ -273,11 +281,38 @@ async def fetch_model_connection(
             if exc.response.status_code in {401, 403}
             else "runtime.model.initialization_failed"
         )
-        raise RuntimeResolutionError(code, "model_id") from exc
-    except (httpx.HTTPError, ValueError) as exc:
+        raise RuntimeResolutionError(code, "model_id") from None
+    except (httpx.HTTPError, ValueError):
         raise RuntimeResolutionError(
             "runtime.model.initialization_failed", "model_id"
-        ) from exc
+        ) from None
+    primary = _parse_connection(payload, model_id=model_id)
+    if "resilience_version" not in payload and "model_resilience" not in payload:
+        return ModelConnectionBundle(primary=primary)
+    if (
+        type(payload.get("resilience_version")) is not int
+        or payload["resilience_version"] != 1
+    ):
+        raise RuntimeResolutionError("runtime.model.invalid_resilience")
+    policy = ModelResiliencePolicy.from_payload(payload.get("model_resilience"))
+    if not policy.enabled:
+        raise RuntimeResolutionError("runtime.model.invalid_resilience")
+    fallback = None
+    if policy.fallback_model_id and policy.fallback_model_id != model_id:
+        if (
+            allowed_model_ids is not None
+            and policy.fallback_model_id not in allowed_model_ids
+        ):
+            raise RuntimeAuthError("runtime.model.not_allowed", "fallback_model_id")
+        fallback = _parse_connection(
+            payload.get("fallback_connection"), model_id=policy.fallback_model_id
+        )
+    elif payload.get("fallback_connection") is not None:
+        raise RuntimeResolutionError("runtime.model.invalid_resilience")
+    return ModelConnectionBundle(primary=primary, fallback=fallback, policy=policy)
+
+
+def _parse_connection(payload: object, *, model_id: str) -> Mapping[str, Any]:
     required = ("provider", "base_url", "protocol", "model", "api_key")
     if (
         not isinstance(payload, dict)
@@ -303,4 +338,30 @@ async def fetch_model_connection(
     }
 
 
-__all__ = ["build_model", "fetch_model_connection"]
+async def fetch_model_connection(
+    reference: object, *, model_id: str, project_id: str
+) -> dict[str, Any] | None:
+    bundle = await fetch_model_bundle(
+        reference, model_id=model_id, project_id=project_id
+    )
+    return dict(bundle.primary) if bundle.primary is not None else None
+
+
+def build_fallback_model(
+    config: ResolvedRuntimeConfig, bundle: ModelConnectionBundle
+) -> BaseChatModel | None:
+    if bundle.fallback is None:
+        return None
+    return build_model(
+        replace(config, model_id=bundle.policy.fallback_model_id),
+        connection=bundle.fallback,
+        max_retries=0,
+    )
+
+
+__all__ = [
+    "build_model",
+    "build_fallback_model",
+    "fetch_model_bundle",
+    "fetch_model_connection",
+]

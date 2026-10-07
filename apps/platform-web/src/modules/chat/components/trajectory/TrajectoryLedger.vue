@@ -56,11 +56,18 @@ const filteredGroups = computed(() => {
     .map((group) => {
       const records = group.records.filter((r) => {
         // Calls 折叠：隐藏 tool 和 subagent
-        if (props.allCallsCollapsed && (r.kind === "tool" || r.kind === "subagent")) {
+        if (
+          props.allCallsCollapsed &&
+          (r.kind === "tool" || r.kind === "subagent")
+        ) {
           return false;
         }
         // 类型筛选
-        if (props.filter === "tools" && r.kind !== "tool" && r.kind !== "subagent") {
+        if (
+          props.filter === "tools" &&
+          r.kind !== "tool" &&
+          r.kind !== "subagent"
+        ) {
           return false;
         }
         if (props.filter === "errors" && r.status !== "error") {
@@ -82,7 +89,9 @@ const filteredGroups = computed(() => {
         records,
       };
     })
-    .filter((group) => group.records.length > 0 || isTurnCollapsed(group.turnIndex));
+    .filter(
+      (group) => group.records.length > 0 || isTurnCollapsed(group.turnIndex),
+    );
 });
 
 function getBadgeStyle(kind: TrajectoryRecordKind) {
@@ -129,11 +138,14 @@ function getBadgeStyle(kind: TrajectoryRecordKind) {
         class="flex h-6 items-center justify-between border-b border-gray-100 bg-gray-50/70 px-2.5 font-mono text-[10px] text-gray-500 cursor-pointer select-none hover:bg-gray-100/80 dark:border-dark-800/80 dark:bg-dark-900/70 dark:text-dark-400 dark:hover:bg-dark-800"
         @click="toggleTurn(group.turnIndex)"
       >
-        <div class="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-dark-200">
+        <div
+          class="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-dark-200"
+        >
           <span
             class="inline-block transition-transform duration-150 text-[8px]"
             :class="{ '-rotate-90': isTurnCollapsed(group.turnIndex) }"
-          >▼</span>
+            >▼</span
+          >
           <span>Turn {{ group.turnIndex }}</span>
         </div>
         <div class="text-[9px] text-gray-400 dark:text-dark-500">
@@ -162,7 +174,9 @@ function getBadgeStyle(kind: TrajectoryRecordKind) {
           />
 
           <!-- 左侧纵向贯穿树状轨道 (Turn Rail) -->
-          <div class="relative flex h-full w-8 shrink-0 items-center justify-center">
+          <div
+            class="relative flex h-full w-8 shrink-0 items-center justify-center"
+          >
             <!-- 纵向贯穿灰线 (Turn Rail) -->
             <div
               class="absolute top-0 bottom-0 left-4 w-[1.5px] bg-gray-200/90 dark:bg-dark-700"
@@ -176,8 +190,10 @@ function getBadgeStyle(kind: TrajectoryRecordKind) {
             <div
               class="relative z-1 h-2 w-2 rounded-full border border-white bg-gray-300 dark:border-dark-900 dark:bg-dark-500 group-hover:bg-blue-500"
               :class="{
-                '!bg-blue-600 !border-blue-200 dark:!bg-blue-400': selectedRecordId === record.id,
+                '!bg-blue-600 !border-blue-200 dark:!bg-blue-400':
+                  selectedRecordId === record.id,
                 '!bg-red-500': record.status === 'error',
+                '!bg-amber-500': record.status === 'interrupted',
               }"
             />
           </div>
@@ -193,7 +209,9 @@ function getBadgeStyle(kind: TrajectoryRecordKind) {
           </div>
 
           <!-- 单行摘要内容 (Summary) -->
-          <div class="min-w-0 flex-1 px-2 font-mono text-[11px] text-gray-700 truncate dark:text-gray-200">
+          <div
+            class="min-w-0 flex-1 px-2 font-mono text-[11px] text-gray-700 truncate dark:text-gray-200"
+          >
             <span
               v-if="record.kind === 'tool'"
               class="font-semibold text-gray-900 dark:text-white mr-1"
@@ -206,12 +224,20 @@ function getBadgeStyle(kind: TrajectoryRecordKind) {
           </div>
 
           <!-- 右侧耗时与状态 -->
-          <div class="flex shrink-0 items-center gap-1.5 font-mono text-[10px] text-gray-400 dark:text-dark-400">
+          <div
+            class="flex shrink-0 items-center gap-1.5 font-mono text-[10px] text-gray-400 dark:text-dark-400"
+          >
             <span
               v-if="record.status === 'error'"
               class="rounded bg-red-100 px-1 py-0.2 text-[9px] font-bold text-red-600 dark:bg-red-950 dark:text-red-300"
             >
               ERR
+            </span>
+            <span
+              v-else-if="record.status === 'interrupted'"
+              class="rounded bg-amber-100 px-1 py-0.2 text-[9px] font-bold text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+            >
+              INT
             </span>
             <span
               v-else-if="record.durationMs"

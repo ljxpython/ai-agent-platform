@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import type { TrajectoryRecord, TrajectoryRecordKind } from "../../trajectory/types";
+import type {
+  TrajectoryRecord,
+  TrajectoryRecordKind,
+} from "../../trajectory/types";
 
 const props = withDefaults(
   defineProps<{
@@ -45,6 +48,9 @@ function getColorClass(record: TrajectoryRecord): string {
   if (record.status === "error") {
     return "bg-red-500 text-white";
   }
+  if (record.status === "interrupted") {
+    return "bg-amber-500 text-white";
+  }
   switch (record.kind) {
     case "system":
       return "bg-gray-400 dark:bg-gray-600";
@@ -79,14 +85,19 @@ function formatDuration(ms: number): string {
 }
 
 function formatRange(record: TrajectoryRecord): string {
-  const start = record.startedAt ? new Date(record.startedAt).getTime() : Date.now();
+  const start = record.startedAt
+    ? new Date(record.startedAt).getTime()
+    : Date.now();
   const dur = record.durationMs || 0;
   return `${formatTime(start)} → ${formatTime(start + dur)}`;
 }
 
 // 悬停 Tooltip 状态
 const hoveredSpan = ref<TimelineSpan | null>(null);
-const tooltipStyle = ref<{ left: string; top: string }>({ left: "0px", top: "0px" });
+const tooltipStyle = ref<{ left: string; top: string }>({
+  left: "0px",
+  top: "0px",
+});
 
 function handleSpanEnter(span: TimelineSpan, event: MouseEvent) {
   hoveredSpan.value = span;
@@ -133,7 +144,8 @@ const spans = computed<TimelineSpan[]>(() => {
     0,
   );
   return props.records.map((record) => {
-    const dur = record.durationMs && record.durationMs > 0 ? record.durationMs : 100;
+    const dur =
+      record.durationMs && record.durationMs > 0 ? record.durationMs : 100;
     const leftPercent = (cumulativeOffset / totalDuration) * 100;
     const widthPercent = Math.max((dur / totalDuration) * 100, 1.2);
     cumulativeOffset += dur;
@@ -154,7 +166,11 @@ function getSpanStyle(span: TimelineSpan) {
     top: span.lane === 0 ? "6px" : span.lane === 1 ? "20px" : "34px",
     height: "9px",
   };
-  if (span.record.kind === "assistant" && span.record.ttftMs && span.record.durationMs) {
+  if (
+    span.record.kind === "assistant" &&
+    span.record.ttftMs &&
+    span.record.durationMs
+  ) {
     const ttftPct = Math.min(
       Math.max(
         Math.round((span.record.ttftMs / span.record.durationMs) * 100),
@@ -175,7 +191,9 @@ function getSpanStyle(span: TimelineSpan) {
     data-testid="trajectory-timeline"
   >
     <!-- Left: Lane Labels -->
-    <div class="flex w-12 shrink-0 flex-col justify-between border-r border-gray-200/80 py-1.5 pr-1.5 text-right font-mono font-medium text-gray-400 dark:border-dark-800 dark:text-dark-500">
+    <div
+      class="flex w-12 shrink-0 flex-col justify-between border-r border-gray-200/80 py-1.5 pr-1.5 text-right font-mono font-medium text-gray-400 dark:border-dark-800 dark:text-dark-500"
+    >
       <span class="h-3.5 leading-3.5">Input</span>
       <span class="h-3.5 leading-3.5">Model</span>
       <span class="h-3.5 leading-3.5">Tools</span>
@@ -184,8 +202,12 @@ function getSpanStyle(span: TimelineSpan) {
     <!-- Right: Multi-lane Track -->
     <div class="relative flex-1 py-1.5 px-1 overflow-visible h-12">
       <!-- Background Guide Lines for Lanes -->
-      <div class="absolute inset-x-0 top-1.5 h-3.5 border-b border-dashed border-gray-200/50 pointer-events-none dark:border-dark-800/50" />
-      <div class="absolute inset-x-0 top-5 h-3.5 border-b border-dashed border-gray-200/50 pointer-events-none dark:border-dark-800/50" />
+      <div
+        class="absolute inset-x-0 top-1.5 h-3.5 border-b border-dashed border-gray-200/50 pointer-events-none dark:border-dark-800/50"
+      />
+      <div
+        class="absolute inset-x-0 top-5 h-3.5 border-b border-dashed border-gray-200/50 pointer-events-none dark:border-dark-800/50"
+      />
 
       <!-- Spans -->
       <div
@@ -197,7 +219,9 @@ function getSpanStyle(span: TimelineSpan) {
           selectedRecordId === span.record.id
             ? 'z-10 ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-dark-900 shadow-sm opacity-100'
             : 'opacity-85 hover:opacity-100 hover:ring-1 hover:ring-blue-400',
-          span.record.kind === 'assistant' ? 'border border-blue-400/80 dark:border-blue-400/60 shadow-2xs' : '',
+          span.record.kind === 'assistant'
+            ? 'border border-blue-400/80 dark:border-blue-400/60 shadow-2xs'
+            : '',
         ]"
         :style="getSpanStyle(span)"
         @mouseenter="handleSpanEnter(span, $event)"
@@ -219,8 +243,11 @@ function getSpanStyle(span: TimelineSpan) {
         </div>
         <div class="text-[10px] text-gray-300">
           Total {{ formatDuration(hoveredSpan.record.durationMs || 0) }}
-          <template v-if="hoveredSpan.record.ttftMs && hoveredSpan.record.decodingMs">
-            · TTFT {{ formatDuration(hoveredSpan.record.ttftMs) }} · Decoding {{ formatDuration(hoveredSpan.record.decodingMs) }}
+          <template
+            v-if="hoveredSpan.record.ttftMs && hoveredSpan.record.decodingMs"
+          >
+            · TTFT {{ formatDuration(hoveredSpan.record.ttftMs) }} · Decoding
+            {{ formatDuration(hoveredSpan.record.decodingMs) }}
           </template>
         </div>
       </div>

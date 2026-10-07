@@ -38,9 +38,15 @@ describe("trajectory-adapter", () => {
       },
     } as unknown as BaseMessage;
 
-    expect(extractReasoning(msg1)).toBe("首先需要检查项目规范，然后查看代码目录结构");
+    expect(extractReasoning(msg1)).toBe(
+      "首先需要检查项目规范，然后查看代码目录结构",
+    );
 
-    expect(extractReasoning({ additional_kwargs: { reasoning: "另一种格式" } } as BaseMessage)).toBe("另一种格式");
+    expect(
+      extractReasoning({
+        additional_kwargs: { reasoning: "另一种格式" },
+      } as BaseMessage),
+    ).toBe("另一种格式");
 
     const msg2 = {
       type: "ai",
@@ -188,5 +194,83 @@ describe("trajectory-adapter", () => {
     expect(groups[0].records).toHaveLength(2);
     expect(groups[1].turnIndex).toBe(2);
     expect(groups[1].records).toHaveLength(2);
+  });
+
+  it("当 Run 失败或 hasError 为 true 时末尾未完成步骤标记为 error", () => {
+    const messages = [
+      { type: "human", content: "请执行高风险操作" } as unknown as BaseMessage,
+      {
+        type: "ai",
+        content: "正在尝试生成...",
+        additional_kwargs: { reasoning_content: "正在思考安全边界" },
+      } as unknown as BaseMessage,
+    ];
+
+    const records = buildTrajectoryRecords(messages, [], false, "error", true);
+    expect(records).toHaveLength(3); // user, reasoning, assistant
+    expect(records[1].kind).toBe("reasoning");
+    expect(records[2].kind).toBe("assistant");
+    expect(records[2].status).toBe("error");
+  });
+
+  it("当 Run 被中断 (interrupted) 时末尾 assistant 步骤标记为 interrupted", () => {
+    const messages = [
+      { type: "human", content: "写一篇长篇报告" } as unknown as BaseMessage,
+      { type: "ai", content: "已生成前言部分..." } as unknown as BaseMessage,
+    ];
+
+    const records = buildTrajectoryRecords(
+      messages,
+      [],
+      false,
+      "interrupted",
+      false,
+    );
+    expect(records).toHaveLength(2);
+    expect(records[1].kind).toBe("assistant");
+    expect(records[1].status).toBe("interrupted");
+  });
+
+  it("正确解析 platform_model_resilience 元数据并在 fallback_used 时展示备用模型名称与兜底", () => {
+    const messages = [
+      { type: "human", content: "测试备用模型" } as unknown as BaseMessage,
+      {
+        type: "ai",
+        content: "使用备用模型成功输出",
+        response_metadata: {
+          platform_model_resilience: {
+            version: 1,
+            requested_model_id: "model-primary",
+            effective_model_id: "model-fallback-uuid",
+            attempts: 2,
+            fallback_used: true,
+          },
+        },
+      } as unknown as BaseMessage,
+    ];
+
+    // 匹配 catalog 映射
+    const recordsWithMap = buildTrajectoryRecords(
+      messages,
+      [],
+      false,
+      "success",
+      false,
+      { "model-fallback-uuid": "Claude 3.5 Sonnet" },
+    );
+    expect(recordsWithMap[1].summary).toContain("Claude 3.5 Sonnet");
+    expect(recordsWithMap[1].summary).toContain("尝试 2 次");
+
+    // 未知 catalog ID 降级兜底为“备用模型”，绝不裸露 UUID
+    const recordsWithoutMap = buildTrajectoryRecords(
+      messages,
+      [],
+      false,
+      "success",
+      false,
+      {},
+    );
+    expect(recordsWithoutMap[1].summary).toContain("备用模型");
+    expect(recordsWithoutMap[1].summary).not.toContain("model-fallback-uuid");
   });
 });

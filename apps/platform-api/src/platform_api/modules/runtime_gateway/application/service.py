@@ -38,6 +38,11 @@ from platform_api.core.runtime_contract import (
     validate_runtime_option_values,
 )
 from platform_api.core.security import empty_runtime_context_hash
+from platform_api.modules.agents.domain.models import (
+    MODEL_RESILIENCE_KEY,
+    ModelResilienceSettings,
+    model_resilience_from_context,
+)
 from platform_api.modules.agents.infra.sqlalchemy.repository import (
     SqlAlchemyAssistantsRepository,
 )
@@ -68,6 +73,7 @@ from platform_api.modules.runtime_gateway.infra.sqlalchemy.repository import (
     RunRequestsRepository,
     StoredRunRequest,
 )
+from platform_api.modules.runtime_policies.application.service import enabled_model_ids
 from platform_api.modules.runtime_policies.infra import (
     SqlAlchemyRuntimePolicyRepository,
 )
@@ -833,9 +839,22 @@ class RuntimeGatewayService:
         thread_id: str | None = None,
         thread_action: str = "comment",
         payload: dict[str, Any],
+        model_resilience: ModelResilienceSettings | None = None,
     ) -> dict[str, Any]:
         """Pass only a short-lived model capability through the generic Agent Server."""
+        if model_resilience is None:
+            with session_scope(self._require_session_factory()) as session:
+                model_resilience = self._model_resilience_snapshot(
+                    session,
+                    project_id=project_id,
+                    agent_key=clean_str(payload.get("assistant_id")) or "",
+                )
         if not self._runtime_model_config_secret:
+            if model_resilience is not None and model_resilience.enabled:
+                raise ServiceUnavailableError(
+                    code="model_resilience_unavailable",
+                    message="Model reference signing is not configured",
+                )
             return payload
         context = ensure_dict(payload.get("context"))
         config = ensure_dict(payload.get("config"))
@@ -843,11 +862,26 @@ class RuntimeGatewayService:
         runtime_options = ensure_dict(configurable.get("platform_runtime"))
         model_id = clean_str(context.get("model_id") or runtime_options.get("model_id"))
         if not model_id:
+            if model_resilience.enabled:
+                raise BadRequestError(
+                    code="model_resilience_primary_required",
+                    message="Model resilience requires a catalog primary model",
+                )
             return payload
         if "model_id" not in context:
             context = {**runtime_options, **context}
         session_factory = self._require_session_factory()
         with session_scope(session_factory) as session:
+            candidates = [model_id]
+            if model_resilience.enabled and model_resilience.fallback_model_id:
+                candidates.append(model_resilience.fallback_model_id)
+            if not set(candidates) <= enabled_model_ids(
+                session, project_id=parse_uuid(project_id, code="invalid_project_id")
+            ):
+                raise ForbiddenError(
+                    code="runtime_model_denied",
+                    message="Model is not enabled for this project",
+                )
             item = SqlAlchemyRuntimeCatalogRepository(session).get_model_by_id(
                 parse_uuid(model_id, code="invalid_model_id")
             )
@@ -879,6 +913,7 @@ class RuntimeGatewayService:
             agent_key=clean_str(payload.get("assistant_id")),
             thread_id=thread_id,
             thread_action=thread_action,
+            model_resilience=model_resilience,
         )
         config = ensure_dict(payload.get("config"))
         configurable = dict(ensure_dict(config.get("configurable")))
@@ -890,6 +925,20 @@ class RuntimeGatewayService:
         next_payload = dict(payload)
         next_payload["config"] = next_config
         return next_payload
+
+    @staticmethod
+    def _model_resilience_snapshot(
+        session: Session, *, project_id: str, agent_key: str
+    ) -> ModelResilienceSettings:
+        agent = SqlAlchemyAssistantsRepository(session).get_by_project_and_graph_id(
+            project_id=parse_uuid(project_id, code="invalid_project_id"),
+            graph_id=agent_key,
+        )
+        return (
+            model_resilience_from_context(agent.context)
+            if agent
+            else ModelResilienceSettings.disabled()
+        )
 
     def _assert_thread_project_scope(
         self,
@@ -1924,6 +1973,7 @@ class RuntimeGatewayService:
         parent_run_id: str | None = None,
         interrupt_id: str | None = None,
         scheduled_config: dict[str, Any] | None = None,
+        model_resilience_snapshot: ModelResilienceSettings | None = None,
     ) -> tuple[StoredRunRequest, Any]:
         """Persist submission identity; Agent Server owns execution and concurrency."""
         thread_action = (
@@ -1990,6 +2040,16 @@ class RuntimeGatewayService:
                             message="Key already used for a different request",
                         )
                     return existing, True
+                resilience = (
+                    model_resilience_snapshot
+                    or self._model_resilience_snapshot(
+                        session, project_id=project_id, agent_key=agent_key
+                    )
+                )
+                execution_config = _execution_config(upstream_payload)
+                execution_config[MODEL_RESILIENCE_KEY] = resilience.model_dump(
+                    mode="json"
+                )
                 return repo.create(
                     project_id=project_id,
                     thread_id=thread_id,
@@ -1999,7 +2059,7 @@ class RuntimeGatewayService:
                     request_digest=digest,
                     context_hash=context_hash,
                     context_snapshot=snapshot,
-                    config_snapshot=_execution_config(upstream_payload),
+                    config_snapshot=execution_config,
                     parent_run_id=parent_run_id,
                     interrupt_id=interrupt_id,
                     submission_status="submitted",
@@ -2028,6 +2088,18 @@ class RuntimeGatewayService:
             project_id=project_id,
             payload={"context": record.context_snapshot},
         )
+        snapshot_policy = ModelResilienceSettings.model_validate(
+            record.config_snapshot.get(
+                MODEL_RESILIENCE_KEY,
+                ModelResilienceSettings.disabled().model_dump(mode="json"),
+            )
+        )
+        if snapshot_policy.enabled and snapshot_policy.fallback_model_id:
+            await run_in_threadpool(
+                self._assert_runtime_options_allowed,
+                project_id=project_id,
+                options={"model_id": snapshot_policy.fallback_model_id},
+            )
         if record.run_id:
             self._emit_correlation(
                 "runtime.submission.result",
@@ -2070,6 +2142,7 @@ class RuntimeGatewayService:
         )
         payload["context"] = current_snapshot
         payload["config"] = dict(record.config_snapshot)
+        payload["config"].pop(MODEL_RESILIENCE_KEY, None)
         config_configurable = ensure_dict(payload["config"].get("configurable"))
         if "checkpoint_id" not in payload and "checkpoint_id" in config_configurable:
             payload["checkpoint_id"] = config_configurable["checkpoint_id"]
@@ -2082,6 +2155,7 @@ class RuntimeGatewayService:
             actor=actor,
             thread_id=thread_id,
             thread_action=thread_action,
+            model_resilience=snapshot_policy,
         )
         if scheduled_config is not None:
             payload["config"]["configurable"] = {
@@ -2263,6 +2337,7 @@ class RuntimeGatewayService:
             actor=actor,
             thread_id=thread_id,
             thread_action="comment",
+            model_resilience=ModelResilienceSettings.disabled(),
             payload=payload,
         )
         upstream = await self._thread_upstream(
@@ -3481,6 +3556,12 @@ class RuntimeGatewayService:
                 "config": dict(parent.config_snapshot),
                 "multitask_strategy": "reject",
             }
+            resume_policy = ModelResilienceSettings.model_validate(
+                resume_payload["config"].pop(
+                    MODEL_RESILIENCE_KEY,
+                    ModelResilienceSettings.disabled().model_dump(mode="json"),
+                )
+            )
             await run_in_threadpool(
                 self._validate_run_options,
                 project_id=project_id,
@@ -3495,6 +3576,7 @@ class RuntimeGatewayService:
                 idempotency_key=resume_key,
                 parent_run_id=previous.parent_run_id if previous else parent.run_id,
                 interrupt_id=interrupt_id,
+                model_resilience_snapshot=resume_policy,
             )
             return _protocol_command_response(
                 command,

@@ -1919,3 +1919,116 @@ it("subscribes to custom offload events and clears offloadState upon send() or t
     mocks.runs.mockReset();
   }
 });
+
+it("when cancel fails or times out, records unconfirmedStopRunId and allows retry even when run is no longer active", async () => {
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+  });
+  // 首次运行中
+  mocks.runs.mockResolvedValue([{ run_id: "run-stuck", status: "running" }]);
+  // 取消时抛出超时未确认异常
+  mocks.cancel.mockRejectedValueOnce(new Error("停止尚未确认，请核实或重试"));
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "dearflow_agent",
+      threadId: "t-cancel-test",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await session.verify();
+    await flushPromises();
+
+    expect(session.run.value?.run_id).toBe("run-stuck");
+
+    // 第一次点击停止，cancel 失败
+    await session.stop();
+    await flushPromises();
+
+    expect(mocks.cancel).toHaveBeenCalledTimes(1);
+    expect(mocks.cancel).toHaveBeenCalledWith("t-cancel-test", "run-stuck");
+    expect(session.unconfirmedStopRunId.value).toBe("run-stuck");
+    expect(session.status.value).toBe("停止尚未确认");
+
+    // 此时模拟后台同步，run 变成了 interrupted（导致 active(run) === false）
+    mocks.runs.mockResolvedValue([
+      { run_id: "run-stuck", status: "interrupted" },
+    ]);
+    await session.verify();
+    await flushPromises();
+
+    expect(session.run.value?.status).toBe("interrupted");
+    // 依然保留未确认标识
+    expect(session.unconfirmedStopRunId.value).toBe("run-stuck");
+
+    // 第二次点击停止（重试停止），此时由于解耦机制，即使 !active(run) 也能正常发起重试调用
+    mocks.cancel.mockResolvedValueOnce(undefined);
+    await session.stop();
+    await flushPromises();
+
+    expect(mocks.cancel).toHaveBeenCalledTimes(2);
+    expect(mocks.cancel).toHaveBeenLastCalledWith("t-cancel-test", "run-stuck");
+    // 确认成功后清除未确认标识
+    expect(session.unconfirmedStopRunId.value).toBeNull();
+  } finally {
+    scope.stop();
+    mocks.cancel.mockReset();
+    mocks.runs.mockReset();
+  }
+});
+
+it("maps runtime.model.retry_exhausted and whitelist error codes to safe user-friendly messages", async () => {
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    disconnect: vi.fn(),
+  });
+  mocks.runs.mockResolvedValue([{ run_id: "run-1", status: "running" }]);
+  // 模拟 cancel 遇到白名单错误
+  mocks.cancel.mockRejectedValueOnce({
+    type: "RuntimeResolutionError",
+    message: "runtime.model.retry_exhausted",
+  });
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "dearflow_agent",
+      threadId: "t-error-test",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await session.verify();
+    await flushPromises();
+
+    await session.stop();
+    await flushPromises();
+
+    expect(session.error.value).toBe("模型服务暂不可用，本次运行未完成。");
+  } finally {
+    scope.stop();
+    mocks.cancel.mockReset();
+    mocks.runs.mockReset();
+  }
+});

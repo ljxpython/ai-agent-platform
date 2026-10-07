@@ -1,0 +1,18 @@
+{
+  "disabled": {
+    "samples": 20,
+    "provider_calls": 20,
+    "p50_ms": 0.14135999663267285,
+    "p95_ms": 0.2121729776263237,
+    "python_peak_bytes": 15016,
+    "transport": "in-process handler; no network pool"
+  },
+  "enabled": {
+    "samples": 20,
+    "provider_calls": 20,
+    "p50_ms": 0.29950650059618056,
+    "p95_ms": 0.46465900959447026,
+    "python_peak_bytes": 33558,
+    "transport": "in-process handler; no network pool"
+  }
+}

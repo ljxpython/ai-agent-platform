@@ -1,0 +1,16 @@
+{
+  "scenario": "cancel",
+  "run_id": "12336373-9263-4ac7-b191-db52924f6022",
+  "status": "interrupted",
+  "provider_calls": [
+    "primary"
+  ],
+  "duration_seconds": 14.743,
+  "worker_lease_released": true,
+  "worker_heartbeat_setting": "1",
+  "provider_calls_at_ack": [
+    "primary"
+  ],
+  "ack_to_lease_release_seconds": 0.705,
+  "test_result": "passed: no provider request after cancel ACK"
+}

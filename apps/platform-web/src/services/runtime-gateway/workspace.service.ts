@@ -468,7 +468,22 @@ export async function cancelRuntimeRun(
   runId: string,
 ): Promise<void> {
   const client = createLanggraphClient(projectId);
-  await client.runs.cancel(threadId, runId, false, "interrupt");
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      const err = new Error("停止执行等待超时，本次取消尚未确认");
+      Object.assign(err, { status: 504, code: "cancel_confirmation_timeout" });
+      reject(err);
+    }, 4000);
+  });
+  try {
+    await Promise.race([
+      client.runs.cancel(threadId, runId, true, "interrupt"),
+      timeoutPromise,
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 export async function getRuntimeRunStatus(

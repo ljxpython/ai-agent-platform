@@ -18,6 +18,8 @@ export interface UseFollowUpSuggestionsOptions {
   hasPendingInterrupts?: MaybeRefOrGetter<boolean>;
   visible?: MaybeRefOrGetter<boolean>;
   disabled?: MaybeRefOrGetter<boolean>;
+  runStatus?: MaybeRefOrGetter<string | undefined>;
+  hasError?: MaybeRefOrGetter<boolean>;
 }
 
 function quickHash(str: string): string {
@@ -49,6 +51,8 @@ export function useFollowUpSuggestions(options: UseFollowUpSuggestionsOptions) {
   );
   const isVisibleVal = computed(() => toValue(options.visible) !== false);
   const isDisabledVal = computed(() => Boolean(toValue(options.disabled)));
+  const runStatusVal = computed(() => toValue(options.runStatus));
+  const hasErrorVal = computed(() => Boolean(toValue(options.hasError)));
 
   function clear(): void {
     if (activeController) {
@@ -75,7 +79,9 @@ export function useFollowUpSuggestions(options: UseFollowUpSuggestionsOptions) {
       isRunningVal.value ||
       hasInterruptsVal.value ||
       !currentThreadId.value ||
-      !currentProjectId.value
+      !currentProjectId.value ||
+      hasErrorVal.value ||
+      (runStatusVal.value !== undefined && runStatusVal.value !== "success")
     ) {
       return;
     }

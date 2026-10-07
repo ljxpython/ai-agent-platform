@@ -1,0 +1,22 @@
+{
+  "primary_protocol": "deepseek",
+  "backup_protocol": "openai-compatible",
+  "scenario": "tool_history",
+  "provider_calls": [
+    "primary",
+    "backup",
+    "primary"
+  ],
+  "provider_errors": [
+    {
+      "candidate": "backup",
+      "error_type": "APIConnectionError",
+      "status_code": null,
+      "error_fields": {}
+    }
+  ],
+  "status": "error",
+  "error_type": "RuntimeResolutionError",
+  "error_code": "runtime.model.retry_exhausted",
+  "duration_seconds": 1.009
+}

@@ -1,0 +1,12 @@
+{
+  "retained_run_id": "48970fcc-a1bd-4f4c-a47d-4f2db3b7f560",
+  "status_after_restart": "success",
+  "new_run_status": "success",
+  "new_run_summary": {
+    "version": 1,
+    "requested_model_id": "7c6de2c0-001c-4ba3-b3d6-4f8d72c5b5d5",
+    "effective_model_id": "7c6de2c0-001c-4ba3-b3d6-4f8d72c5b5d5",
+    "attempts": 1,
+    "fallback_used": false
+  }
+}

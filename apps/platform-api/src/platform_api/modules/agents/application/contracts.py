@@ -5,6 +5,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from platform_api.modules.agents.domain import AssistantStatus
+from platform_api.modules.agents.domain.models import ModelResilienceSettings
 
 
 class ListAssistantsQuery(BaseModel):
@@ -23,6 +24,7 @@ class CreateAssistantCommand(BaseModel):
     name: str = Field(min_length=1, max_length=128)
     description: str = ""
     context: dict[str, Any] | None = None
+    model_resilience: ModelResilienceSettings | None = None
 
 
 class UpdateAssistantCommand(BaseModel):
@@ -32,3 +34,4 @@ class UpdateAssistantCommand(BaseModel):
     description: str | None = None
     status: AssistantStatus | None = None
     context: dict[str, Any] | None = None
+    model_resilience: ModelResilienceSettings | None = None

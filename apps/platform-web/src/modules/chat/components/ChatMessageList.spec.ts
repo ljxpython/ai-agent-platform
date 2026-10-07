@@ -308,3 +308,44 @@ it("renders FollowUpSuggestions on the last completed agent message and emits ev
     wrapper.unmount();
   }
 });
+
+it("renders model resilience fallback tag when fallback_used is true and resolves model name safely", async () => {
+  const wrapper = mount(ChatMessageList, {
+    props: {
+      messages: [
+        new HumanMessage({ id: "user-1", content: "提问" }),
+        new AIMessage({
+          id: "answer-1",
+          content: "备用模型回答内容",
+          response_metadata: {
+            platform_model_resilience: {
+              version: 1,
+              requested_model_id: "primary-uuid",
+              effective_model_id: "fallback-uuid",
+              attempts: 2,
+              fallback_used: true,
+            },
+          },
+        }),
+      ],
+      calls: [],
+      isRunning: false,
+      models: [{ id: "fallback-uuid", name: "DeepSeek V3" }],
+    },
+    global: {
+      stubs: {
+        MessageContent: true,
+        ToolResult: true,
+        BaseIcon: true,
+      },
+    },
+  });
+
+  try {
+    expect(wrapper.text()).toContain(
+      "已自动切换至备用模型: DeepSeek V3 · 尝试 2 次",
+    );
+  } finally {
+    wrapper.unmount();
+  }
+});
