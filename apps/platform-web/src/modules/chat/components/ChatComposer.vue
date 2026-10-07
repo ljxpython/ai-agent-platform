@@ -11,6 +11,7 @@ import ThreadAccessPolicySelect from "./ThreadAccessPolicySelect.vue";
 import ComposerSuggestions from "./ComposerSuggestions.vue";
 import type { RuntimeModelItem } from "@/types/management";
 import type { AccessPolicy } from "@/services/threads/session.service";
+import type { SessionTurnState } from "../composables/useChatSession";
 
 const props = withDefaults(
   defineProps<{
@@ -38,9 +39,11 @@ const props = withDefaults(
     canSetPolicy?: boolean;
     canFullAccess?: boolean;
     showSuggestions?: boolean;
+    turnState?: SessionTurnState;
   }>(),
   {
     showSuggestions: true,
+    turnState: "idle",
   },
 );
 
@@ -180,8 +183,16 @@ watch(
   },
 );
 
+const isStopBlocked = computed(() => {
+  return (
+    props.cancelling ||
+    props.turnState === "stopping" ||
+    props.turnState === "stop_unconfirmed"
+  );
+});
+
 const canSubmitFreshOrQueue = computed(() => {
-  if (props.cancelling || props.hasBlockingInterrupt) {
+  if (isStopBlocked.value || props.hasBlockingInterrupt) {
     return false;
   }
   const hasContent =
@@ -201,7 +212,7 @@ function handleKeydown(event: KeyboardEvent) {
       return;
     }
     event.preventDefault();
-    if (props.hasBlockingInterrupt || props.cancelling) {
+    if (props.hasBlockingInterrupt || isStopBlocked.value) {
       return;
     }
     const hasContent =
@@ -224,6 +235,7 @@ const shouldShowSuggestions = computed(
     (props.showSuggestions ?? true) &&
     !props.isRunning &&
     !props.hasBlockingInterrupt &&
+    !isStopBlocked.value &&
     !composerModel.value.trim(),
 );
 
@@ -325,6 +337,7 @@ defineExpose({
               :disabled="
                 isRunning ||
                 hasBlockingInterrupt ||
+                isStopBlocked ||
                 canSetPolicy === false ||
                 canWrite === false
               "
@@ -337,7 +350,7 @@ defineExpose({
             <button
               type="button"
               class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white transition-colors"
-              :disabled="isRunning || hasBlockingInterrupt"
+              :disabled="isRunning || hasBlockingInterrupt || isStopBlocked"
               aria-label="上传附件（图片/文档）"
               @click="openFilePicker"
             >
@@ -365,7 +378,7 @@ defineExpose({
               :selected-model-id="selectedModelId"
               :default-model-id="defaultModelId"
               :default-model-name="defaultModelName"
-              :disabled="isRunning || hasBlockingInterrupt"
+              :disabled="isRunning || hasBlockingInterrupt || isStopBlocked"
               @update:selected-model-id="emit('update:selectedModelId', $event)"
             />
             <!-- 排队模式且有输入：支持一键补充要求排队，并保留停止按钮（若处于运行中） -->
@@ -382,7 +395,7 @@ defineExpose({
               <button
                 type="button"
                 class="flex h-8 items-center gap-1.5 rounded-full bg-blue-600 px-3 text-xs font-medium text-white shadow-xs transition-all hover:bg-blue-700 active:scale-95 disabled:opacity-50"
-                :disabled="cancelling"
+                :disabled="isStopBlocked"
                 title="排队加入执行队列"
                 @click="emit('queue')"
               >
@@ -393,8 +406,8 @@ defineExpose({
                 v-if="isRunning"
                 type="button"
                 class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500 text-white shadow-xs transition-all duration-150 hover:bg-red-600 active:scale-90 disabled:opacity-35"
-                :disabled="cancelling"
-                :title="cancelling ? '停止中...' : '停止生成'"
+                :disabled="isStopBlocked"
+                :title="isStopBlocked ? '停止中...' : '停止生成'"
                 @click="emit('cancel')"
               >
                 <BaseIcon name="x" size="xs" />
@@ -407,13 +420,13 @@ defineExpose({
               <button
                 type="button"
                 class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500 text-white shadow-xs transition-all duration-150 hover:bg-red-600 active:scale-90 disabled:opacity-35"
-                :disabled="cancelling"
-                :title="cancelling ? '停止中...' : '停止生成'"
+                :disabled="isStopBlocked"
+                :title="isStopBlocked ? '停止中...' : '停止生成'"
                 @click="emit('cancel')"
               >
                 <BaseIcon name="x" size="xs" />
                 <span class="sr-only">{{
-                  cancelling ? "停止中..." : "停止生成"
+                  isStopBlocked ? "停止中..." : "停止生成"
                 }}</span>
               </button>
             </template>

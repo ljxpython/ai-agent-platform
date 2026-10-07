@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import os
 import shutil
+import signal
 import sys
 import tempfile
 from importlib.resources import files
@@ -14,7 +16,6 @@ from pathlib import Path
 from deepagents.backends import (
     CompositeBackend,
     FilesystemBackend,
-    LocalShellBackend,
     StateBackend,
 )
 from deepagents.backends.protocol import (
@@ -115,10 +116,13 @@ class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
                 type(timeout) is not int or not 1 <= timeout <= 60
             ):
                 raise ValueError("timeout must be between 1 and 60 seconds")
-            shell = LocalShellBackend(
-                root_dir=self.root / "work",
-                virtual_mode=True,
-                inherit_env=False,
+            process = await asyncio.create_subprocess_shell(
+                command,
+                cwd=self.root / "work",
+                stdin=asyncio.subprocess.DEVNULL,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.STDOUT,
+                start_new_session=True,
                 env={
                     "PATH": os.pathsep.join(
                         (str(Path(sys.executable).parent), os.defpath)
@@ -128,10 +132,35 @@ class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
                     "RUNTIME_WORKSPACE_ROOT": str(self.root),
                     "RUNTIME_SKILLS_ROOT": str(self.skills_root),
                 },
-                timeout=30,
-                max_output_bytes=MAX_OUTPUT,
             )
-            return await asyncio.to_thread(shell.execute, command, timeout=timeout)
+            output = bytearray()
+            total = 0
+
+            async def consume():
+                nonlocal total
+                while chunk := await process.stdout.read(8192):
+                    total += len(chunk)
+                    output.extend(chunk[: max(0, MAX_OUTPUT - len(output))])
+                return await process.wait()
+
+            try:
+                code = await asyncio.wait_for(consume(), timeout or 30)
+            except (asyncio.CancelledError, TimeoutError) as exc:
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(process.pid, signal.SIGKILL)
+                cleanup = asyncio.create_task(process.wait())
+                try:
+                    await asyncio.shield(cleanup)
+                except asyncio.CancelledError:
+                    await cleanup
+                if isinstance(exc, asyncio.CancelledError):
+                    raise
+                return ExecuteResponse(output="Execution timed out.", exit_code=124)
+            return ExecuteResponse(
+                output=output.decode("utf-8", errors="replace"),
+                exit_code=code,
+                truncated=total > MAX_OUTPUT,
+            )
         try:
             return await execute_in_workspace(
                 self.root,

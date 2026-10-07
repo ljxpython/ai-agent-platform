@@ -43,6 +43,8 @@ model_id使用平台模型记录UUID，不是provider:model或模型名称。默
 
 公开运行config只允许recursion_limit（1–1000，默认25）。内部委托与模型引用由服务端构造，模型凭据不进入浏览器、Run快照或普通日志。Runtime通过受信内部接口按当前权限兑换连接；master key只由Platform持有。
 
+`__graphharbor_run_budget` 是Worker私有attempt执行数据。标准Run、Protocol及恢复/配置归一化递归拒绝客户端提供该键；SDK查询、history和SSE出口递归过滤。不公开`metadata.execution_budget`，不新增预算接口、JWT claim或SSE事件。每次Worker领取刷新attempt预算，浏览器重连不刷新；正式post42已发布/锁定/隔离验收，见[运行超时专项](../../../../docs/projects/20261006-agent-run-timeout-governance/README.md)。
+
 ## 幂等与审批
 
 新动作使用新的 `Idempotency-Key`，同动作重试保留原key。相同key和内容复用原Run，不同内容返回409；没有key的标准请求是独立动作。HTTP超时表示结果未知，先查询原Run，不用新key盲重发。
@@ -65,7 +67,11 @@ run_requests只保存请求摘要、授权/config快照和Run关联，不存消�
 
 join stream支持stream_mode、last_event_id和cancel_on_disconnect参数，但当前只允许cancel_on_disconnect=false，true被拒绝。订阅断开不取消Run，必须显式cancel。重连先读Run/state和interrupt，不自动重新发送消息或批准。
 
-Protocol lifecycle可能规范化为completed；Run JSON保留上游状态，不能将两者机械替换。cancel成功ACK不等于终态确认，需继续读取Run。
+Protocol lifecycle可能规范化为completed；Run JSON保留上游状态，不能将两者机械替换。平台cancel保持HTTP200 `{"ok":true}`；默认只表示受理。停止确认需目标Run的 `execution_stopped=true` 终态事件，或同一路径JSON body `{"wait":true,"action":"interrupt"}` 成功。路由只读取body，不转发SDK query wait/action；GET interrupted/cancel_requested仍可能处于清理中。
+
+原生GraphHarbor默认wait=false为202空body，wait=true确认成功200/null，未确认503；平台保留既有ACK形状，将上游未确认503映射为502，网络等待超时为504，客户端保持待核实。`execution_stopped=false/lease_fenced=true` 仅证明旧执行不能再持久写入，不保证实际进程或外部操作退出。JSON/history/SSE脱敏保留上述公开停止事实，私有预算仍过滤；前端接入见[交接](../../../../docs/projects/20261006-agent-run-timeout-governance/frontend-handoff.md)。
+
+Worker attempt到期保持`timeout/reason=timeout`，SDK completed不能覆盖。模型/provider超时沿graph既有retry/fallback，未恢复则error；DB瞬时故障可pending/retry并产生新attempt，Worker不因模型超时整图重试。用户停止保持`interrupted/cancel_requested`，HITL保持`interrupted/hitl_interrupt`并由interrupt事实确认。连接结束、HTTP超时和cancel ACK不能替代Run终态。
 
 401重新认证，403检查权限，404检查资源与项目，409检查幂等或并发，5xx/超时核实提交结果。不得在HTTP 200后伪装前置失败。
 
@@ -102,4 +108,4 @@ GraphHarbor 为唯一定义/调度/Run 事实源。平台 metadata 保存产品�
 
 Runtime 图构造前以 HMAC 调用 POST /api/runtime/internal/scheduled-authorization，每个 Run 一次聚合核验身份/凭据/项目/Agent/模型/Thread；拒绝留痕且保留定义，回查不可用拒绝。批准后刷新当前角色/模型引用/工具限制。运行中不周期重验；暂停/删除不取消已接受 Run；无人值守审批失败。平台 HMAC 与 GraphHarbor 通用生产签名的责任边界见 [方案](../../../../docs/projects/20261005-scheduled-agent-tasks/plan.md)。
 
-平台 Runtime 锁定并安装 GraphHarbor post41，隔离链路通过；未部署现役或远端平台。Delegation 标准整体仍为 draft，消息内部 Run 回查的现役验收另行完成。
+定时任务原post41隔离验收保留；平台Runtime当前锁定并安装GraphHarbor post42，超时/取消及匹配版本回退隔离链路通过，未部署现役或远端平台。Delegation标准整体仍为draft，消息内部Run回查的现役验收另行完成。

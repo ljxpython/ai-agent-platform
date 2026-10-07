@@ -1,0 +1,41 @@
+ss..sss..........s........................s... [ 13%]
+..s.........................................s............................................................ [ 43%]
+................................................. [ 58%]
+.s..............................................s....FF.... [ 75%]
+.......................s.. [ 82%]
+...s...........s.s.............s...........................           [100%]
+=================================== FAILURES ===================================
+__________ WorkspaceGatewayTest.test_dear_artifacts_two_service_http ___________
+
+self = <test_runtime_gateway_workspace.WorkspaceGatewayTest testMethod=test_dear_artifacts_two_service_http>
+
+    async def test_dear_artifacts_two_service_http(self):
+>       await self._check_two_service_http("dearflow_agent", terminal=False)
+
+tests/test_runtime_gateway_workspace.py:197:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_runtime_gateway_workspace.py:325: in _check_two_service_http
+    self.assertNotIn("<script", result.text)
+E   AssertionError: '<script' unexpectedly found in '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src &#x27;none&#x27;; img-src data: https: blob:; style-src &#x27;unsafe-inline&#x27; https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; font-src https://fonts.gstatic.com data:; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; connect-src https:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;"><meta name="referrer" content="no-referrer"></head><body><h1>Architecture</h1><script>fetch("https://evil.test")</script></body></html>'
+_______________ WorkspaceGatewayTest.test_real_two_service_http ________________
+
+self = <test_runtime_gateway_workspace.WorkspaceGatewayTest testMethod=test_real_two_service_http>
+
+    async def test_real_two_service_http(self):
+>       await self._check_two_service_http("showcase_demo", terminal=True)
+
+tests/test_runtime_gateway_workspace.py:194:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests/test_runtime_gateway_workspace.py:325: in _check_two_service_http
+    self.assertNotIn("<script", result.text)
+E   AssertionError: '<script' unexpectedly found in '<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src &#x27;none&#x27;; img-src data: https: blob:; style-src &#x27;unsafe-inline&#x27; https://fonts.googleapis.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; font-src https://fonts.gstatic.com data:; script-src &#x27;unsafe-inline&#x27; &#x27;unsafe-eval&#x27; https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com; connect-src https:; frame-src &#x27;none&#x27;; object-src &#x27;none&#x27;; base-uri &#x27;none&#x27;; form-action &#x27;none&#x27;"><meta name="referrer" content="no-referrer"></head><body><h1>Architecture</h1><script>fetch("https://evil.test")</script></body></html>'
+=============================== warnings summary ===============================
+../../../../../../../../tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/fastapi/testclient.py:1
+  /tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_runtime_gateway_workspace.py::WorkspaceGatewayTest::test_dear_artifacts_two_service_http
+FAILED tests/test_runtime_gateway_workspace.py::WorkspaceGatewayTest::test_real_two_service_http
+2 failed, 326 passed, 16 skipped, 1 warning, 654 subtests passed in 103.59s (0:01:43)

@@ -25,6 +25,7 @@ from runtime_service.middlewares import (
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     RuntimeConfigMiddleware,
+    TimeoutWrapupMiddleware,
 )
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.runtime import (
@@ -40,6 +41,7 @@ from runtime_service.runtime import (
     runtime_context_hash,
     verified_delegation_from_user,
 )
+from runtime_service.runtime.run_budget import read_run_budget
 from runtime_service.services.dearflow_agent.capabilities import (
     CHART_NAMES,
     DEAR_TOOLS,
@@ -155,6 +157,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     user = configurable.get("langgraph_auth_user")
     facts = verified_delegation_from_user(user) if user is not None else None
     executing = facts is not None and facts.scope.operation == "run-create"
+    run_budget = None
     workspace = None
     resolved = None
     connection = None
@@ -182,6 +185,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
         if facts.scope.thread_id is not None and facts.scope.thread_id != thread_id:
             raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
+        run_budget = read_run_budget(config)
         requested_mcp = tuple(
             n for n in configured_mcp_names() if n not in facts.policy.denied_tool_names
         )
@@ -323,6 +327,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 exit_behavior="error",
             ),
             # Bound the whole reasoning response, not just the time to its first token.
+            TimeoutWrapupMiddleware(run_budget),
             ModelCallTimeoutMiddleware(),
         ]
 

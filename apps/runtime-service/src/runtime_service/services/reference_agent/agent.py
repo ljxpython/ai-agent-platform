@@ -22,6 +22,7 @@ from runtime_service.middlewares import (
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     RuntimeConfigMiddleware,
+    TimeoutWrapupMiddleware,
 )
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.runtime import (
@@ -41,6 +42,7 @@ from runtime_service.runtime.auth import VerifiedDelegation
 from runtime_service.runtime.capabilities import REFERENCE_TOOLS
 from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.runtime.modeling import fetch_model_connection
+from runtime_service.runtime.run_budget import RUN_BUDGET_KEY, read_run_budget
 from runtime_service.services.reference_agent.prompts import SYSTEM_PROMPT
 from runtime_service.services.reference_agent.tools import read_reference
 
@@ -153,6 +155,10 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         and configurable.get("_runtime_test_local_auth") is True
     )
     facts = None if probe_only else _runtime_facts(config)
+    run_budget = read_run_budget(
+        config,
+        required=bool(facts and facts.scope.operation == "run-create"),
+    )
     principal, policy = (facts.principal, facts.policy) if facts else (None, None)
     connection = None
     resolved = None
@@ -247,6 +253,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             if model_retry_enabled
             else []
         ),
+        TimeoutWrapupMiddleware(run_budget),
         ModelCallTimeoutMiddleware(),
         MessageQueueMiddleware(),
     ]
@@ -267,6 +274,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     configurable.pop("_runtime_model", None)
     configurable.pop("_runtime_fallback_model", None)
     configurable.pop("_runtime_model_retry", None)
+    configurable.pop(RUN_BUDGET_KEY, None)
     bound_config["configurable"] = configurable
     return with_langfuse_tracing(
         agent,

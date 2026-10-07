@@ -1,0 +1,96 @@
+/Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/platform-api/.venv/lib/python3.14/site-packages/langchain_core/utils/pydantic.py:41: UserWarning: Core Pydantic V1 functionality isn't compatible with Python 3.14 or greater.
+  from pydantic.v1 import BaseModel as BaseModelV1
+.......Executing <Task finished name='Task-25' coro=<RuntimeGatewayErrorMappingTest.test_protocol_stream_preserves_expired_cursor_response() done, defined at /Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/platform-api/tests/test_runtime_gateway_sdk_adapters.py:272> result=None created at /Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/asyncio/runners.py:110> took 0.176 seconds
+..................runtime SSE stream closed: invalid_json
+.....Executing <Task pending name='Task-317' coro=<RuntimeGatewayEventRedactionTest.test_frame_limit_is_per_frame_and_run_scalars_are_allowed() running at /Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/platform-api/tests/test_runtime_gateway_event_redaction.py:286> wait_for=<Future pending cb=[Task.task_wakeup()] created at /Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/asyncio/base_events.py:459> cb=[_run_until_complete_cb() at /Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/asyncio/base_events.py:181] created at /Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/asyncio/runners.py:110> took 0.323 seconds
+runtime SSE stream closed: frame_too_large
+Executing <Task finished name='Task-317' coro=<RuntimeGatewayEventRedactionTest.test_frame_limit_is_per_frame_and_run_scalars_are_allowed() done, defined at /Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/platform-api/tests/test_runtime_gateway_event_redaction.py:271> result=None created at /Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/asyncio/runners.py:110> took 0.133 seconds
+...runtime stream correlation log failed
+Traceback (most recent call last):
+  File "/Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py", line 350, in emit
+    log_event(event_logger, event, **fields, **extra)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1176, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1180, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1241, in _execute_mock_call
+    raise effect
+RuntimeError: observer unavailable
+runtime stream correlation log failed
+Traceback (most recent call last):
+  File "/Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py", line 350, in emit
+    log_event(event_logger, event, **fields, **extra)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1176, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1180, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1241, in _execute_mock_call
+    raise effect
+  File "/Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py", line 350, in emit
+    log_event(event_logger, event, **fields, **extra)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1176, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1180, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1241, in _execute_mock_call
+    raise effect
+RuntimeError: observer unavailable
+..runtime SSE stream closed: truncated_frame
+runtime SSE stream closed: invalid_utf8
+runtime SSE stream closed: invalid_protocol
+.runtime SSE stream closed: invalid_json
+..runtime SSE stream closed: invalid_json
+.........................runtime correlation observer failed
+Traceback (most recent call last):
+  File "/Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py", line 539, in _emit_correlation
+    self._on_correlation(event, fields)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1176, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1180, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1241, in _execute_mock_call
+    raise effect
+RuntimeError: observer failed
+runtime correlation observer failed
+Traceback (most recent call last):
+  File "/Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py", line 539, in _emit_correlation
+    self._on_correlation(event, fields)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1176, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1180, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1241, in _execute_mock_call
+    raise effect
+  File "/Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py", line 539, in _emit_correlation
+    self._on_correlation(event, fields)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1176, in __call__
+    return self._mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1180, in _mock_call
+    return self._execute_mock_call(*args, **kwargs)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/lijiaxin/.local/share/uv/python/cpython-3.14.6-macos-x86_64-none/lib/python3.14/unittest/mock.py", line 1241, in _execute_mock_call
+    raise effect
+RuntimeError: observer failed
+......................
+----------------------------------------------------------------------
+Ran 85 tests in 5.615s
+
+OK
+API frozen SDK 0.4.2

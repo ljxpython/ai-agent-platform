@@ -65,6 +65,30 @@ def test_local_skill_scripts_use_thread_root(monkeypatch, tmp_path):
     assert (backend.root / "work/deck.pptx").is_file()
 
 
+def test_local_cancellation_kills_shell_and_children(monkeypatch, tmp_path):
+    monkeypatch.setenv("RUNTIME_BACKEND", "local")
+    monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path))
+    backend = DearWorkspaceBackend("tenant", "project", "cancel-local")
+    backend.prepare()
+
+    async def run():
+        task = asyncio.create_task(
+            backend.aexecute(
+                "touch ready; (sleep 1; echo leaked > cancelled.txt) & wait"
+            )
+        )
+        async with asyncio.timeout(3):
+            while not (backend.root / "work/ready").exists():
+                await asyncio.sleep(0.02)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        await asyncio.sleep(1.2)
+        assert not (backend.root / "work/cancelled.txt").exists()
+
+    asyncio.run(run())
+
+
 @pytest.mark.integration
 def test_container_mounts_timeout_and_output_limit(monkeypatch, tmp_path):
     if (

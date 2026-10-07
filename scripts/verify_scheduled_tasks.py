@@ -56,22 +56,21 @@ from platform_api.modules.service_accounts.models import (
     ServiceAccountRecord,
     ServiceAccountTokenRecord,
 )
-from sqlalchemy import select
-
 from runtime_service.http.crons import router
+from sqlalchemy import select
 
 SECRET = "isolated-cron-verification-secret-32-bytes"
 
 
 @asynccontextmanager
-async def serve(app):
+async def serve(app, *, startup_timeout_seconds=15):
     sock = socket.socket()
     sock.bind(("127.0.0.1", 0))
     port = sock.getsockname()[1]
     server = uvicorn.Server(uvicorn.Config(app, log_level="error", access_log=False))
     task = asyncio.create_task(server.serve(sockets=[sock]))
     try:
-        async with asyncio.timeout(15):
+        async with asyncio.timeout(startup_timeout_seconds):
             while not server.started:
                 if task.done():
                     await task

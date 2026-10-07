@@ -11,7 +11,10 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import RunnableConfig
 from langgraph.pregel import Pregel
 
-from runtime_service.middlewares import ModelCallTimeoutMiddleware
+from runtime_service.middlewares import (
+    ModelCallTimeoutMiddleware,
+    TimeoutWrapupMiddleware,
+)
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.runtime import (
     AgentDefaults,
@@ -30,6 +33,7 @@ from runtime_service.runtime import (
 from runtime_service.runtime.auth import VerifiedDelegation
 from runtime_service.runtime.capabilities import REFERENCE_TOOLS
 from runtime_service.runtime.errors import RuntimeAuthError, RuntimeResolutionError
+from runtime_service.runtime.run_budget import RUN_BUDGET_KEY, read_run_budget
 from runtime_service.services.demo.workflow_demo.workflow import build_graph
 
 
@@ -121,6 +125,9 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         return build_graph(unavailable_model, probe_only=True)
 
     facts, local = _facts(config)
+    run_budget = read_run_budget(
+        config, required=not local and facts.scope.operation == "run-create"
+    )
     context = parse_runtime_context(config.get("context"))
     raw_context = config.get("context")
     if raw_context is not None and facts.context_hash != runtime_context_hash(context):
@@ -151,6 +158,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             system_prompt=_DEFAULTS.system_prompt,
             middleware=[
                 ModelCallLimitMiddleware(run_limit=10, exit_behavior="end"),
+                TimeoutWrapupMiddleware(run_budget),
                 ModelCallTimeoutMiddleware(),
             ],
             context_schema=RuntimeContext,
@@ -161,6 +169,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     bound_configurable = dict(bound_config.get("configurable") or {})
     bound_configurable.pop("_runtime_model", None)
     bound_configurable.pop("_runtime_test_local_auth", None)
+    bound_configurable.pop(RUN_BUDGET_KEY, None)
     bound_config["configurable"] = bound_configurable
     graph = build_graph(
         model_agent_for,

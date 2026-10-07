@@ -10,8 +10,9 @@ from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
 from pydantic import Field
-from support import BindableFakeMessagesChatModel
+from support import BindableFakeMessagesChatModel, with_run_budget
 
+from runtime_service.middlewares.timeout_wrapup import TIMEOUT_WRAPUP_INSTRUCTION
 from runtime_service.runtime import (
     RuntimeAuthError,
     RuntimeResolutionError,
@@ -66,15 +67,44 @@ def config(*, context=None, thread_id="teaching-thread", denied=()):
         },
         runtime_context_hash=runtime_context_hash(context),
     )
-    return {
-        "context": context,
-        "configurable": {
-            "langgraph_auth_user": user,
-            "thread_id": thread_id,
-            "assistant_id": "teaching-assistant",
-            "graph_id": "showcase_demo",
-        },
-    }
+    return with_run_budget(
+        {
+            "context": context,
+            "configurable": {
+                "langgraph_auth_user": user,
+                "thread_id": thread_id,
+                "assistant_id": "teaching-assistant",
+                "graph_id": "showcase_demo",
+            },
+        }
+    )
+
+
+def test_main_and_child_receive_the_same_wrapup_window(build):
+    async def run():
+        cfg = with_run_budget(config(), remaining=30)
+        graph, cfg, model = await build(
+            [
+                call(
+                    "task",
+                    {"description": "inspect", "subagent_type": "general-purpose"},
+                ),
+                AIMessage(content="child partial report"),
+                AIMessage(content="parent partial report"),
+            ],
+            cfg,
+        )
+        result = await graph.ainvoke(
+            {"messages": [("user", "inspect")]}, cfg, context={}
+        )
+        assert result["messages"][-1].text == "parent partial report"
+        assert len(model.seen_messages) >= 3
+        assert all(
+            TIMEOUT_WRAPUP_INSTRUCTION in messages[0].text
+            for messages in model.seen_messages
+        )
+
+    asyncio.run(run())
 
 
 def call(name, args, identifier="t1"):

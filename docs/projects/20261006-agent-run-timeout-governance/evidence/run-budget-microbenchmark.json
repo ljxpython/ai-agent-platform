@@ -1,0 +1,17 @@
+{
+  "recorded_at": "2026-10-07T02:10:46.685335+00:00",
+  "iterations": 10000,
+  "python": "3.13.9",
+  "graphharbor": "0.13.0.post42",
+  "graphharbor_runtime": "0.13.0.post42",
+  "load_average": [
+    7.39794921875,
+    10.19970703125,
+    12.37353515625
+  ],
+  "parse_us": 8.06057220324874,
+  "handler_only_us": 0.1995317987166345,
+  "before_window_us": 0.5424801027402282,
+  "in_window_us": 42.73119940189645,
+  "scope": "in-process microbenchmark only; excludes provider, DB and production SLO"
+}

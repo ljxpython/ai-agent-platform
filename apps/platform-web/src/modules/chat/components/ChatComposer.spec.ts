@@ -158,4 +158,36 @@ describe("ChatComposer", () => {
       wrapper.find('[data-testid="composer-suggestions-container"]').exists(),
     ).toBe(false);
   });
+
+  it("blocks send and queue submission when turnState is stopping or stop_unconfirmed", async () => {
+    const wrapper = mountComposer({
+      modelValue: "待发送草稿",
+      canSendFreshMessage: true,
+      canQueue: true,
+      turnState: "stopping",
+    });
+
+    const sendBtn = wrapper.findAll("button").at(-1);
+    expect(sendBtn?.attributes("disabled")).toBeDefined();
+
+    await wrapper
+      .find("textarea")
+      .trigger("keydown", { key: "Enter", shiftKey: false });
+    expect(wrapper.emitted("send")).toBeUndefined();
+    expect(wrapper.emitted("queue")).toBeUndefined();
+
+    // 切换到 stop_unconfirmed 同样一票否决
+    await wrapper.setProps({ turnState: "stop_unconfirmed" });
+    const sendBtnUnconfirmed = wrapper.findAll("button").at(-1);
+    expect(sendBtnUnconfirmed?.attributes("disabled")).toBeDefined();
+
+    await wrapper
+      .find("textarea")
+      .trigger("keydown", { key: "Enter", shiftKey: false });
+    expect(wrapper.emitted("send")).toBeUndefined();
+    expect(wrapper.emitted("queue")).toBeUndefined();
+
+    // 草稿仍可正常编辑保留
+    expect(wrapper.get("textarea").element.value).toBe("待发送草稿");
+  });
 });

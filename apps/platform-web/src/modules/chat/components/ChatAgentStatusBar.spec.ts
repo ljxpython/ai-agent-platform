@@ -57,4 +57,84 @@ describe("ChatAgentStatusBar", () => {
 
     expect(wrapper.text()).toContain("工具「bash」已被项目策略禁用，无法执行");
   });
+
+  it("renders timeout warning capsule without extra action buttons when turnState is timeout", () => {
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: false,
+        isInterrupted: false,
+        turnState: "timeout",
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("上一回合执行超时，已完成的内容已保留");
+    expect(wrapper.find("button").exists()).toBe(false);
+    expect(wrapper.classes()).toContain("bg-amber-50");
+  });
+
+  it("renders stopping spinner state when turnState is stopping", () => {
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: true,
+        isInterrupted: false,
+        turnState: "stopping",
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("正在停止...");
+    expect(wrapper.find("button").exists()).toBe(false);
+    expect(wrapper.classes()).toContain("bg-blue-50");
+  });
+
+  it("renders unconfirmed stop with verify button and emits verifyStop when clicked", async () => {
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: false,
+        isInterrupted: false,
+        turnState: "stop_unconfirmed",
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("停止结果待确认");
+    expect(wrapper.text()).toContain("核实停止");
+    expect(wrapper.text()).not.toContain("查看审批");
+
+    const button = wrapper.find("button");
+    expect(button.exists()).toBe(true);
+    await button.trigger("click");
+    expect(wrapper.emitted("verifyStop")).toHaveLength(1);
+  });
+
+  it("renders stopped state cleanly when turnState is stopped", () => {
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: false,
+        isInterrupted: false,
+        turnState: "stopped",
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("已停止");
+    expect(wrapper.find("button").exists()).toBe(false);
+  });
 });

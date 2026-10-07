@@ -6,7 +6,7 @@ import pytest
 from langchain_core.messages import AIMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.types import Command
-from support import BindableFakeMessagesChatModel
+from support import BindableFakeMessagesChatModel, with_run_budget
 
 from runtime_service.runtime import (
     RuntimeAuthError,
@@ -28,37 +28,39 @@ class User(dict):
 
 
 def config():
-    return {
-        "context": {},
-        "configurable": {
-            "thread_id": "dear-thread",
-            "assistant_id": "dearflow_agent",
-            "graph_id": "dearflow_agent",
-            "langgraph_auth_user": User(
-                runtime_principal={
-                    "user_id": "dear-test",
-                    "tenant_id": "tenant",
-                    "project_id": "project",
-                    "role": "developer",
-                    "permissions": [],
-                },
-                runtime_policy={
-                    "version": "test-v1",
-                    "allowed_model_ids": [agent._DEFAULTS.model_id],
-                    "tool_overrides": {},
-                    "tool_policy_version": "test-tools-v2",
-                },
-                runtime_scope={
-                    "tenant_id": "tenant",
-                    "project_id": "project",
-                    "thread_id": "dear-thread",
-                    "assistant_id": "dearflow_agent",
-                    "operation": "run-create",
-                },
-                runtime_context_hash=runtime_context_hash({}),
-            ),
-        },
-    }
+    return with_run_budget(
+        {
+            "context": {},
+            "configurable": {
+                "thread_id": "dear-thread",
+                "assistant_id": "dearflow_agent",
+                "graph_id": "dearflow_agent",
+                "langgraph_auth_user": User(
+                    runtime_principal={
+                        "user_id": "dear-test",
+                        "tenant_id": "tenant",
+                        "project_id": "project",
+                        "role": "developer",
+                        "permissions": [],
+                    },
+                    runtime_policy={
+                        "version": "test-v1",
+                        "allowed_model_ids": [agent._DEFAULTS.model_id],
+                        "tool_overrides": {},
+                        "tool_policy_version": "test-tools-v2",
+                    },
+                    runtime_scope={
+                        "tenant_id": "tenant",
+                        "project_id": "project",
+                        "thread_id": "dear-thread",
+                        "assistant_id": "dearflow_agent",
+                        "operation": "run-create",
+                    },
+                    runtime_context_hash=runtime_context_hash({}),
+                ),
+            },
+        }
+    )
 
 
 def call(name, args, identifier="tool-1"):

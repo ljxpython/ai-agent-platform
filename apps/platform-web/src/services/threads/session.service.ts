@@ -110,6 +110,13 @@ export function createSessionService(
     }
     return trimmed;
   }
+  function assertValidRunId(runId: string): string {
+    const trimmed = typeof runId === "string" ? runId.trim() : "";
+    if (!trimmed) {
+      throw new Error("Invalid runId: runId must be a non-empty string");
+    }
+    return trimmed;
+  }
 
   return {
     client,
@@ -286,6 +293,17 @@ export function createSessionService(
         false,
         "interrupt",
       ),
+    cancelAndWait: (threadId: string, runId: string) => {
+      const validThreadId = assertValidThreadId(threadId);
+      const validRunId = assertValidRunId(runId);
+      return read<{ ok: boolean; status?: string }>(
+        `/threads/${encodeURIComponent(validThreadId)}/runs/${encodeURIComponent(validRunId)}/cancel`,
+        {
+          method: "POST",
+          body: JSON.stringify({ wait: true, action: "interrupt" }),
+        },
+      );
+    },
     fork: (threadId: string, checkpointId: string, title?: string) => {
       const validId = assertValidThreadId(threadId);
       return read<ChatThread>(`/threads/${encodeURIComponent(validId)}/fork`, {

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import math
 import os
 import sys
 from pathlib import Path
@@ -61,6 +62,23 @@ def validate(path: Path) -> list[str]:
             continue
         if value <= 0:
             errors.append(f"{key} must be greater than zero")
+
+    reserve_key = "AGENT_RUN_WRAPUP_RESERVE_SECONDS"
+    try:
+        reserve = int(settings.get(reserve_key, "").strip() or "120")
+        hard_limit = float(settings.get("GRAPHHARBOR_RUN_TIMEOUT_SECONDS", "0"))
+        if (
+            reserve < 0
+            or not math.isfinite(hard_limit)
+            or (reserve > 0 and reserve >= hard_limit)
+        ):
+            errors.append(
+                f"{reserve_key} must be zero or less than GRAPHHARBOR_RUN_TIMEOUT_SECONDS"
+            )
+    except ValueError:
+        errors.append(
+            f"{reserve_key} must be a non-negative integer with a valid run timeout"
+        )
 
     for key in URLS:
         value = settings.get(key, "").strip()

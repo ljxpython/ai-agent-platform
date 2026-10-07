@@ -1,0 +1,117 @@
+FF                                                                       [100%]
+=================================== FAILURES ===================================
+_______________ test_dearflow_local_terminal_uses_shared_backend _______________
+
+manager = <runtime_service.workspace.terminal.TerminalManager object at 0x115de0910>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x115dec640>
+tmp_path = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-219/test_dearflow_local_terminal_u0')
+
+    def test_dearflow_local_terminal_uses_shared_backend(manager, monkeypatch, tmp_path):
+        monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path / "dear"))
+        owner = (*OWNER[:3], "dearflow_agent", OWNER[4])
+        ref = manager.create(owner, str(uuid4()), 24, 80)
+        assert ref["backend"] == "local"
+        session = manager.get(owner, ref["terminal_id"])
+        session.write(b"printf 'local-dear' > work/result.txt; cat work/result.txt\n", 0)
+        wait_output(session, b"local-dear")
+>       assert (session.root / "work/result.txt").read_text() == "local-dear"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_terminal.py:188:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/pathlib/_local.py:546: in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/pathlib/_abc.py:632: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-219/test_dearflow_local_...nal_u0/dear/dearflow_agent/b3dc7f5d124cd1f56113173f5f2f576b63affd6175e89f5e93cd7f61d2e626ba/workspace/work/result.txt')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-219/test_dearflow_local_terminal_u0/dear/dearflow_agent/b3dc7f5d124cd1f56113173f5f2f576b63affd6175e89f5e93cd7f61d2e626ba/workspace/work/result.txt'
+
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/pathlib/_local.py:537: FileNotFoundError
+_____________________ test_dearflow_terminal_mount_policy ______________________
+
+manager = <runtime_service.workspace.terminal.TerminalManager object at 0x115de3610>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x115def490>
+tmp_path = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-219/test_dearflow_terminal_mount_p0')
+
+    def test_dearflow_terminal_mount_policy(manager, monkeypatch, tmp_path):
+        if (
+            not shutil.which("docker")
+            or subprocess.run(
+                ["docker", "info"], capture_output=True, timeout=10, check=False
+            ).returncode
+        ):
+            pytest.skip("Docker daemon unavailable")
+        monkeypatch.setenv("RUNTIME_WORKSPACE_IMAGE", "python:3.13-slim")
+        monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path / "dear"))
+        owner = (*OWNER[:3], "dearflow_agent", OWNER[4])
+        session = manager.get(
+            owner, manager.create(owner, str(uuid4()), 24, 80)["terminal_id"]
+        )
+        session.write(
+            b"echo ok > /workspace/work/writable.txt; touch /workspace/denied 2>/dev/null || echo readonly-root; touch /skills/denied 2>/dev/null || echo readonly-skills\n",
+            0,
+        )
+        wait_output(session, b"\r\nreadonly-skills\r\n")
+>       assert (session.root / "work/writable.txt").read_text().strip() == "ok"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_terminal.py:210:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/pathlib/_local.py:546: in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/pathlib/_abc.py:632: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-219/test_dearflow_termin...t_p0/dear/dearflow_agent/b3dc7f5d124cd1f56113173f5f2f576b63affd6175e89f5e93cd7f61d2e626ba/workspace/work/writable.txt')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-219/test_dearflow_terminal_mount_p0/dear/dearflow_agent/b3dc7f5d124cd1f56113173f5f2f576b63affd6175e89f5e93cd7f61d2e626ba/workspace/work/writable.txt'
+
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/pathlib/_local.py:537: FileNotFoundError
+=============================== warnings summary ===============================
+<frozen importlib._bootstrap>:488
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_terminal.py::test_dearflow_local_terminal_uses_shared_backend
+FAILED tests/test_terminal.py::test_dearflow_terminal_mount_policy - FileNotF...
+2 failed, 5 warnings in 6.94s
+<sys>:0: DeprecationWarning: builtin type swigvarlink has no __module__ attribute

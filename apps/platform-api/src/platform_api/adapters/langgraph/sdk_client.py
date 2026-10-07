@@ -103,6 +103,7 @@ def redact_runtime_private_fields(value: Any) -> Any:
                 str(key).startswith("_runtime_")
                 or key
                 in {
+                    "__graphharbor_run_budget",
                     "runtime_model_ref",
                     "runtime_message_claim",
                     "authorization_ref",

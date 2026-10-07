@@ -1,0 +1,119 @@
+2026-10-07 09:56:12 [info     ] Postgres schema at Alembic head
+2026-10-07 09:56:12 [info     ] PG pool started                uri=127.0.0.1:61937/agent_run_budget_e2e_20261006_e7dd
+{"event": "PG pool already started", "level": "info", "timestamp": "2026-10-07T01:56:12.925867Z"}
+{"event": "GraphHarbor production runtime ready", "level": "info", "timestamp": "2026-10-07T01:56:12.936320Z"}
+StreamableHTTP session manager started
+/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph_runtime_pg/graph_executor.py:119: LangChainBetaWarning: The v3 streaming protocol on Pregel is experimental.
+  stream = await graph.astream_events(
+/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph/pregel/main.py:3612: LangChainBetaWarning: The v3 streaming protocol on Pregel is experimental.
+  return AsyncGraphRunStream(graph_aiter, mux)
+{"run_id": "aa9de36d-a2f1-4a6f-9204-f878dcbd79bf", "thread_id": "6cfb1bf2-34ea-46e3-b33c-516af9024688", "status": "success", "budget": {"version": 1, "started_at": "2026-10-07T01:56:14.034437+00:00", "deadline_at": "2026-10-07T01:56:44.034437+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "6ecb4cf6-835e-4fc3-aacf-9da8b8e4485f", "thread_id": "6ed4a59c-8bdb-4813-89b8-cf8dbb2f6874", "status": "success", "budget": {"version": 1, "started_at": "2026-10-07T01:56:15.226954+00:00", "deadline_at": "2026-10-07T01:56:45.226954+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "8e8ad5e8-7611-4f12-8a95-28b40bae5759", "graph_id": "budget_probe", "event": "run execution failed", "level": "error", "timestamp": "2026-10-07T01:57:06.686853Z", "exception": "Traceback (most recent call last):\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph_runtime_pg/production_worker.py\", line 860, in run_once\n    raise RunTimedOut(\"graphharbor.run_timeout\")\nlanggraph_runtime_pg.production_worker.RunTimedOut: graphharbor.run_timeout"}
+{"run_id": "8e8ad5e8-7611-4f12-8a95-28b40bae5759", "thread_id": "6f3c6841-dc2f-4000-b48c-1dd10ee3876c", "status": "timeout", "budget": {"version": 1, "started_at": "2026-10-07T01:56:36.663843+00:00", "deadline_at": "2026-10-07T01:57:06.663843+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "4869ea23-d7be-48b5-8949-5de73d1d1441", "graph_id": "budget_probe", "event": "run execution failed", "level": "error", "timestamp": "2026-10-07T01:57:07.759971Z", "exception": "Traceback (most recent call last):\n  File \"/Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/model_call_timeout.py\", line 50, in awrap_model_call\n    return await handler(request)\n           ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/run-budget-e2e-f9ip6gto/graph.py\", line 88, in slow\n    await asyncio.sleep(30)\n  File \"/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/asyncio/tasks.py\", line 718, in sleep\n    return await future\n           ^^^^^^^^^^^^\nasyncio.exceptions.CancelledError\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/model_call_timeout.py\", line 49, in awrap_model_call\n    async with scope:\n               ^^^^^\n  File \"/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/asyncio/timeouts.py\", line 116, in __aexit__\n    raise TimeoutError from exc_val\nTimeoutError\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph_runtime_pg/production_worker.py\", line 869, in run_once\n    result = execution.result()\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph_runtime_pg/production_worker.py\", line 803, in execute\n    return await invoke_graph(\n           ^^^^^^^^^^^^^^^^^^^\n    ...<8 lines>...\n    )\n    ^\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph_runtime_pg/graph_executor.py\", line 138, in invoke_graph\n    async for part in stream:\n    ...<27 lines>...\n        )\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph/stream/stream_channel.py\", line 232, in _async_cursor\n    raise self._error\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph/stream/run_stream.py\", line 455, in _apump_next\n    part = await self._anext_task\n           ^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph/pregel/main.py\", line 3440, in astream\n    async for _ in runner.atick(\n    ...<16 lines>...\n            yield o\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph/pregel/_runner.py\", line 557, in atick\n    _panic_or_proceed(\n    ~~~~~~~~~~~~~~~~~^\n        futures.done.union(f for f, t in futures.items() if t is not None),\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    ...<3 lines>...\n        handled_futures=handled_futures,\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph/pregel/_runner.py\", line 687, in _panic_or_proceed\n    raise exc\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph/pregel/_retry.py\", line 744, in arun_with_retry\n    return await task.proc.ainvoke(task.input, config)\n           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py\", line 756, in ainvoke\n    input = await asyncio.create_task(\n            ^^^^^^^^^^^^^^^^^^^^^^^^^^\n        step.ainvoke(input, config, **kwargs), context=context\n        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n    )\n    ^\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph/_internal/_runnable.py\", line 522, in ainvoke\n    ret = await self.afunc(*args, **kwargs)\n          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/run-budget-e2e-f9ip6gto/graph.py\", line 90, in work\n    await ModelCallTimeoutMiddleware(0.03).awrap_model_call(None, slow)\n  File \"/Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/model_call_timeout.py\", line 53, in awrap_model_call\n    raise ModelCallTimeoutError(\"runtime.model_call_timeout\") from exc\nruntime_service.middlewares.model_call_timeout.ModelCallTimeoutError: runtime.model_call_timeout\nDuring task with name 'work' and id '57923314-096e-0ba2-9c77-a0660d2b485f'"}
+{"run_id": "4869ea23-d7be-48b5-8949-5de73d1d1441", "thread_id": "92187b29-f287-4e84-8220-4b09d37064bd", "status": "error", "budget": {"version": 1, "started_at": "2026-10-07T01:57:07.538273+00:00", "deadline_at": "2026-10-07T01:57:37.538273+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "ab2a61a4-342f-4826-9ba4-29fefe56f122", "thread_id": "8f16e3e8-7242-43fe-8c63-d8b7fdfaa5ce", "status": "interrupted", "budget": {"version": 1, "started_at": "2026-10-07T01:57:08.465526+00:00", "deadline_at": "2026-10-07T01:57:38.465526+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "13151343-fa3b-4461-b850-5f1b82a03531", "thread_id": "8f16e3e8-7242-43fe-8c63-d8b7fdfaa5ce", "status": "success", "budget": {"version": 1, "started_at": "2026-10-07T01:57:39.007083+00:00", "deadline_at": "2026-10-07T01:58:09.007083+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "875b0bbd-3481-47ec-887f-c4638f589d1c", "thread_id": "2beca021-2fa8-4413-802e-31dd8e9e629f", "status": "timeout", "budget": {"version": 1, "started_at": "2026-10-07T01:58:34.418250+00:00", "deadline_at": "2026-10-07T01:58:54.418250+00:00", "timeout_seconds": 20.0}, "terminal_events": 1}
+{"run_id": "e1f9203f-f075-4026-95eb-0f44ee4b6c09", "graph_id": "budget_probe", "event": "run execution failed", "level": "error", "timestamp": "2026-10-07T01:59:31.846547Z", "exception": "Traceback (most recent call last):\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph_runtime_pg/production_worker.py\", line 860, in run_once\n    raise RunTimedOut(\"graphharbor.run_timeout\")\nlanggraph_runtime_pg.production_worker.RunTimedOut: graphharbor.run_timeout"}
+{"run_id": "e1f9203f-f075-4026-95eb-0f44ee4b6c09", "thread_id": "e24decb0-734b-455c-a0d3-c3dd0853f4a4", "status": "timeout", "budget": {"version": 1, "started_at": "2026-10-07T01:59:01.820487+00:00", "deadline_at": "2026-10-07T01:59:31.820487+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "7329a93a-0537-4118-9e70-118381e40257", "thread_id": "a0de1ad9-6273-4e43-9330-3a09d4aec1cc", "status": "success", "budget": {"version": 1, "started_at": "2026-10-07T01:59:01.829141+00:00", "deadline_at": "2026-10-07T01:59:31.829141+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "eeab8dec-da78-424f-bab3-a2ddb43f039e", "thread_id": "dd40e175-824f-4a4e-a9b6-a6bae91909c3", "status": "success", "budget": {"version": 1, "started_at": "2026-10-07T01:59:01.899169+00:00", "deadline_at": "2026-10-07T01:59:31.899169+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x113881310>>
+Traceback (most recent call last):
+  File "/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/sqlalchemy/pool/base.py", line 373, in _close_connection
+    self._dialect.do_terminate(connection)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^
+  File "/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 1131, in do_terminate
+    dbapi_connection.terminate()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/sqlalchemy/connectors/asyncio.py", line 402, in terminate
+    self.await_(asyncio.shield(self._terminate_graceful_close()))  # type: ignore[attr-defined] # noqa: E501
+    ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 132, in await_only
+    return current.parent.switch(awaitable)  # type: ignore[no-any-return,attr-defined] # noqa: E501
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^
+  File "/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 196, in greenlet_spawn
+    value = await result
+            ^^^^^^^^^^^^
+asyncio.exceptions.CancelledError: Cancelled via cancel scope 1151a5250 by <Task pending name='Task-5201' coro=<RequestResponseCycle.run_asgi() running at /tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/uvicorn/protocols/http/httptools_impl.py:422> cb=[set.discard()]>
+{"run_id": "2db29999-595b-4ad8-923e-6bf9436dea22", "graph_id": "budget_probe", "event": "run execution failed", "level": "error", "timestamp": "2026-10-07T02:00:04.105225Z", "exception": "Traceback (most recent call last):\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph_runtime_pg/production_worker.py\", line 860, in run_once\n    raise RunTimedOut(\"graphharbor.run_timeout\")\nlanggraph_runtime_pg.production_worker.RunTimedOut: graphharbor.run_timeout"}
+{"run_id": "2db29999-595b-4ad8-923e-6bf9436dea22", "thread_id": "b6204674-15d2-42fa-8f23-2ec5e9e982d2", "status": "timeout", "budget": {"version": 1, "started_at": "2026-10-07T01:59:34.079571+00:00", "deadline_at": "2026-10-07T02:00:04.079571+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "1de293f8-180e-41de-9c9b-fa4954dd760e", "thread_id": "b6204674-15d2-42fa-8f23-2ec5e9e982d2", "status": "success", "budget": {"version": 1, "started_at": "2026-10-07T02:00:05.178783+00:00", "deadline_at": "2026-10-07T02:00:35.178783+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "21e0ec3d-b669-47eb-993d-1fa36f3a5ddb", "action": "interrupt", "event": "run cancel control received", "level": "info", "timestamp": "2026-10-07T02:00:36.913363Z"}
+{"run_id": "21e0ec3d-b669-47eb-993d-1fa36f3a5ddb", "thread_id": "90d571fb-9485-4b1f-ba82-06234363f16c", "status": "interrupted", "budget": {"version": 1, "started_at": "2026-10-07T02:00:06.937088+00:00", "deadline_at": "2026-10-07T02:00:36.937088+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "3b715511-4492-4809-8df9-7f7dd641d05d", "graph_id": "budget_probe", "event": "run execution failed", "level": "error", "timestamp": "2026-10-07T02:01:08.019884Z", "exception": "Traceback (most recent call last):\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph_runtime_pg/production_worker.py\", line 860, in run_once\n    raise RunTimedOut(\"graphharbor.run_timeout\")\nlanggraph_runtime_pg.production_worker.RunTimedOut: graphharbor.run_timeout"}
+{"run_id": "3b715511-4492-4809-8df9-7f7dd641d05d", "thread_id": "a4aee632-db26-4e40-8e89-4f53f670548a", "status": "timeout", "budget": {"version": 1, "started_at": "2026-10-07T02:00:37.957827+00:00", "deadline_at": "2026-10-07T02:01:07.957827+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "d1e67f84-8545-44bf-9ba4-923a1e46c0e8", "graph_id": "budget_probe", "event": "run execution failed", "level": "error", "timestamp": "2026-10-07T02:01:39.867051Z", "exception": "Traceback (most recent call last):\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph_runtime_pg/production_worker.py\", line 860, in run_once\n    raise RunTimedOut(\"graphharbor.run_timeout\")\nlanggraph_runtime_pg.production_worker.RunTimedOut: graphharbor.run_timeout"}
+{"run_id": "d1e67f84-8545-44bf-9ba4-923a1e46c0e8", "thread_id": "201f7454-394c-44c8-a29d-728131a97574", "status": "timeout", "budget": {"version": 1, "started_at": "2026-10-07T02:01:09.838127+00:00", "deadline_at": "2026-10-07T02:01:39.838127+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "76e21582-4bde-4e4b-a60d-f32a640b2e50", "graph_id": "budget_probe", "event": "run execution failed", "level": "error", "timestamp": "2026-10-07T02:02:11.314776Z", "exception": "Traceback (most recent call last):\n  File \"/tmp/run-budget-pypi-post42-venv/lib/python3.13/site-packages/langgraph_runtime_pg/production_worker.py\", line 860, in run_once\n    raise RunTimedOut(\"graphharbor.run_timeout\")\nlanggraph_runtime_pg.production_worker.RunTimedOut: graphharbor.run_timeout"}
+{"run_id": "76e21582-4bde-4e4b-a60d-f32a640b2e50", "thread_id": "7e0f15da-7f6a-4281-bab6-04b19230b134", "status": "timeout", "budget": {"version": 1, "started_at": "2026-10-07T02:01:41.289631+00:00", "deadline_at": "2026-10-07T02:02:11.289631+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "b1af56b1-ad98-4c5d-8cbc-2aa9e15fd526", "thread_id": "7e0f15da-7f6a-4281-bab6-04b19230b134", "status": "success", "budget": {"version": 1, "started_at": "2026-10-07T02:02:11.980909+00:00", "deadline_at": "2026-10-07T02:02:41.980909+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+{"run_id": "414e8e4e-4f43-43e1-b615-6225ab35a841", "thread_id": "75859fe0-dd7e-4325-a12b-4402af0cecd1", "status": "success", "budget": {"version": 1, "started_at": "2026-10-07T02:02:13.403777+00:00", "deadline_at": "2026-10-07T02:02:43.403777+00:00", "timeout_seconds": 30.0}, "terminal_events": 1}
+StreamableHTTP session manager shutting down
+{"event": "PG pool stopped", "level": "info", "timestamp": "2026-10-07T02:02:15.075561Z"}
+{
+  "database": "agent_run_budget_e2e_20261006_e7dd",
+  "results": [
+    {
+      "scenario": "short",
+      "run_id": "aa9de36d-a2f1-4a6f-9204-f878dcbd79bf",
+      "status": "success"
+    },
+    {
+      "scenario": "wrapup",
+      "run_id": "6ecb4cf6-835e-4fc3-aacf-9da8b8e4485f",
+      "status": "success"
+    },
+    {
+      "scenario": "slow",
+      "run_id": "8e8ad5e8-7611-4f12-8a95-28b40bae5759",
+      "status": "timeout"
+    },
+    {
+      "scenario": "model-timeout",
+      "run_id": "4869ea23-d7be-48b5-8949-5de73d1d1441",
+      "status": "error"
+    },
+    {
+      "scenario": "hitl-new-run",
+      "run_id": "13151343-fa3b-4461-b850-5f1b82a03531",
+      "status": "success"
+    },
+    {
+      "scenario": "restart-fresh-attempt",
+      "run_id": "875b0bbd-3481-47ec-887f-c4638f589d1c",
+      "status": "timeout",
+      "worker_pids": [
+        11475,
+        12285
+      ]
+    },
+    {
+      "scenario": "three-thread-isolation",
+      "status": "passed"
+    },
+    {
+      "scenario": "sse-disconnect-rejoin-next-run",
+      "status": "passed",
+      "run_id": "2db29999-595b-4ad8-923e-6bf9436dea22"
+    },
+    {
+      "scenario": "cancel-timeout-race",
+      "status": "passed"
+    },
+    {
+      "scenario": "queued-message-does-not-renew-budget",
+      "status": "passed"
+    },
+    {
+      "scenario": "disable-reminder",
+      "status": "passed"
+    },
+    {
+      "scenario": "http-private-budget-rejection",
+      "status": "passed"
+    }
+  ]
+}

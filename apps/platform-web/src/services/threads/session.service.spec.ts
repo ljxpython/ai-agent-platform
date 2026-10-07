@@ -242,5 +242,65 @@ it("rejects empty or whitespace-only threadId to prevent invalid path requests",
     expect(() => service.fork(empty, "cp")).toThrow("Invalid threadId");
     expect(() => service.update(empty, {})).toThrow("Invalid threadId");
     expect(() => service.summarizeTitle(empty)).toThrow("Invalid threadId");
+    expect(() => service.cancelAndWait(empty, "run-1")).toThrow(
+      "Invalid threadId",
+    );
+    expect(() => service.cancelAndWait("thread-1", empty)).toThrow(
+      "Invalid runId",
+    );
   }
+});
+
+it("cancelAndWait sends POST with JSON body wait=true and x-project-id", async () => {
+  const requests: Array<{
+    url: string;
+    method?: string;
+    body?: Record<string, unknown>;
+    headers: Headers;
+  }> = [];
+  const transport = vi.fn<typeof fetch>(async (input, init) => {
+    requests.push({
+      url: String(input),
+      method: init?.method,
+      body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+      headers: new Headers(init?.headers),
+    });
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "content-type": "application/json" },
+    });
+  });
+  const service = createSessionService(transport, "project-123");
+  const res = await service.cancelAndWait("thread-abc", "run-xyz");
+
+  expect(res).toEqual({ ok: true });
+  expect(requests[0]?.url).toMatch(
+    /\/threads\/thread-abc\/runs\/run-xyz\/cancel$/,
+  );
+  expect(requests[0]?.method).toBe("POST");
+  expect(requests[0]?.body).toEqual({ wait: true, action: "interrupt" });
+  expect(requests[0]?.headers.get("x-project-id")).toBe("project-123");
+  expect(requests[0]?.headers.get("content-type")).toBe("application/json");
+});
+
+it("cancelAndWait handles platform error envelopes on failure", async () => {
+  const transport = vi.fn<typeof fetch>(async () => {
+    return new Response(
+      JSON.stringify({
+        error: {
+          code: "gateway_timeout",
+          message: "Wait timeout on cancel",
+        },
+        request_id: "req-cancel-504",
+      }),
+      { status: 504, headers: { "content-type": "application/json" } },
+    );
+  });
+  const service = createSessionService(transport, "project-123");
+  await expect(
+    service.cancelAndWait("thread-1", "run-1"),
+  ).rejects.toMatchObject({
+    status: 504,
+    code: "gateway_timeout",
+    requestId: "req-cancel-504",
+  });
 });

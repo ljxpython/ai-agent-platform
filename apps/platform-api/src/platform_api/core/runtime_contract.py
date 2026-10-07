@@ -60,6 +60,7 @@ PROTOCOL_V2_EVENT_CHANNELS = {
 PROTOCOL_V2_RUN_DURABILITY = {"sync", "async", "exit"}
 PROTOCOL_V2_RUN_DISCONNECT = {"cancel", "continue"}
 PRIVATE_RUNTIME_STATE_KEYS = {
+    "__graphharbor_run_budget",
     "runtime_message_claim",
     "dear_memory_source",
     "dear_skill_snapshot",
@@ -69,6 +70,17 @@ PRIVATE_RUNTIME_STATE_KEYS = {
 def reject_private_runtime_state(value: Any) -> None:
     if isinstance(value, dict) and (set(value) & PRIVATE_RUNTIME_STATE_KEYS):
         raise ValueError("Runtime private state cannot be supplied by a client")
+
+
+def _reject_run_budget(value: Any) -> None:
+    if isinstance(value, dict):
+        if "__graphharbor_run_budget" in value:
+            raise ValueError("Runtime run budget cannot be supplied by a client")
+        for item in value.values():
+            _reject_run_budget(item)
+    elif isinstance(value, list):
+        for item in value:
+            _reject_run_budget(item)
 
 
 def _validate_runtime_option_values(options: dict[str, Any]) -> None:
@@ -174,6 +186,7 @@ def normalize_runtime_contract(
     project_id: str,
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
     for value in (config, context, metadata, ensure_dict(config.get("configurable"))):
+        _reject_run_budget(value)
         if set(value) & {
             "tools",
             "enable_tools",
@@ -228,6 +241,7 @@ def normalize_runtime_payload(
     next_payload = strip_keys(
         normalize_runtime_object(payload), PROJECT_SCOPE_ALIAS_KEYS
     )
+    _reject_run_budget(next_payload)
     reject_private_runtime_state(next_payload.get("input"))
     next_config, next_context, next_metadata = normalize_runtime_contract(
         config=normalize_runtime_object(next_payload.get("config")),
@@ -256,6 +270,7 @@ def normalize_protocol_v2_command(
     payload: dict[str, Any],
     default_model_id: str | None = None,
 ) -> dict[str, Any]:
+    _reject_run_budget(payload)
     command_id = payload.get("id")
     method = payload.get("method")
     params = payload.get("params")
