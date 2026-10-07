@@ -86,11 +86,10 @@
 ## runtime-service
 
 | 功能 | 状态 | 关联文档 |
-|---|---|---|
 | Agent 模型调用稳定性与中间件容灾降级 | 已完成：显式 transient 错误分类、Retry-After 冷却、ModelResilienceMiddleware 有界重试与自动故障转移（fallback）、单次与总预算控制、流式安全、四组合根与子图装配；单测 43 passed，故障注入死端口实测毫秒级平滑降级至备用模型并流式完成全生命周期，用户人工实测验收合格 | [项目概览](projects/20261006-agent-model-resilience/README.md) · [实现记录](projects/20261006-agent-model-resilience/implementation/01-managed-model-resilience.md) |
 | Agent 工具调用容错与生产接线 | 已完成：全链路闭环，Runtime/API 选择性错误分类、主子图接线、安全消息与流出口脱敏完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化代码排版实装，31 项单测全绿，三服务全栈浏览器联合验收 F01-F08 全部通过，未生产部署 | [方案与任务](projects/20261006-agent-tool-error-resilience/README.md) · [前端交接](projects/20261006-agent-tool-error-resilience/frontend-handoff.md) |
 | Agent 上下文窗口管理工程化 | 已完成：全链路交付闭环；模型容量配置与展示、预算 guard、隐藏摘要流、根/子图装配、维护副作用隔离、前端整理微胶囊及平滑淡出打断、受控手动整理；隔离真 PG、真实模型质量集及全栈单测/类型/构建全绿，用户人工实测验收通过 | [项目入口](projects/20261006-agent-context-window-governance/README.md) |
-| 定时 Run 执行前聚合授权与无人值守策略 | 后端 done：身份/凭据/项目/Agent/模型/Thread 失效拒绝，审批转失败，原生预览与历史；GraphHarbor post41 已锁定安装，未重启现役栈 | [验证](projects/20261005-scheduled-agent-tasks/verification.md) |
+| 定时 Run 执行前聚合授权与无人值守策略 | 后端 done：身份/凭据/项目/Agent/模型/Thread 失效拒绝，审批转失败，原生预览与历史；原post41验收保留，当前依赖锁定post42，未重启现役栈 | [验证](projects/20261005-scheduled-agent-tasks/verification.md) |
 | 工作区 HTML 预览 CSP 策略升级与白名单扩充 | 已完成：放行公认安全 CDN（Tailwind CDN / Google Fonts / cdnjs / unpkg / jsdelivr / SVG），严格限制 connect-src https: 阻断内网探测，43 项单测全绿 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
 | DearFlow Agent 接入 Jina Reader 网页深度提取与双通道容灾 | 已完成：Jina Reader API（r.jina.ai）高质量 Markdown 提取上线，首选 Jina、超时/异常自动平滑降级 Tavily Extract，严守 public_url 防御与 SHA256 证据落盘 | [Jina Reader 集成](projects/20261002-dearflow-jina-reader-integration/README.md) |
 | DearFlow Agent 单文件交互式创意编程与惊喜作品规范 | 已完成：确立纯原生零外部依赖、Web Audio 音效合成、Canvas/SVG 交互的单文件 HTML 规范，通过 present_artifacts 发布并在 SandboxedHtmlFrame 免刷新实时试玩 | [小惊喜迁移专项](projects/20261002-dearflow-surprise-me-feature/README.md) |
@@ -103,6 +102,7 @@
 | GraphHarbor官方v3对齐与平台迁移 | 后端完成：post30已发布／接入，生命周期／并行中断／恢复版本／步数限制修复，真实研究、文件、子任务、父取消及观测已验；前端交接完成，浏览器与默认切换后置，默认仍v2 | [完成项与代码证据](projects/20260915-graphharbor-v3-alignment/README.md) |
 | DearFlowAgent：Deep Agents 能力迁移与生产化 | partial：2026-09-28重审确认主Agent/四模式/研究/文件/审批/只读子Agent及19个上游Skill资源已有；4项未迁入；逐Skill页面、部分供应商和生产Final仍未闭环。当前Skills采用单份内容＋执行快照，Dear复用Chat，记忆接续独立专项；核心抽测28 passed/1 skipped；14效果审计另复现7个可靠性缺口，不能认定同名能力效果等价；新增治理实施范围待评审 | [能力与缺口](projects/20260913-dearflow-agent/11-20260928-capability-reassessment.md) · [效果与可靠性](projects/20260913-dearflow-agent/14-effect-parity-and-reliability.md) · [补齐任务](projects/20260913-dearflow-agent/12-completion-plan.md) · [验证基线](projects/20260913-dearflow-agent/13-verification-baseline.md) |
 | Graph 注册、模型参数解析、工具装配 | 已完成 | `apps/runtime-service/docs/standards/*.md` |
+| Agent 运行生命周期超时治理 | 已完成：正式 post42 接入、12 组 HTTP 及匹配回退通过；前端 T11 超时治理实装（胶囊展示/停止双通道防死锁）与 T12 端到端用户联调验收通过（含排队提交死锁根除与切换自愈）；服务已安全停止 | [项目记录](projects/20261006-agent-run-timeout-governance/README.md) · [前端交接](projects/20261006-agent-run-timeout-governance/frontend-handoff.md) |
 | Agent 回答后推荐问题 one-shot capability | 部分完成：独立 suggestions endpoint、JWT scope 隔离、无工具模型调用、输出清洗和超时/provider 降级已完成；真实模型与三服务 E2E 待验证 | [项目文档](projects/20261005-agent-followup-suggestions/README.md) |
 | MCP 接入 | 已完成 | `apps/runtime-service/docs/knowledge/19-runtime-tool-capability-mcp-and-side-effect-design.md` |
 | 公共图片工具 Middleware、Showcase 图表 MCP 子智能体与平台图片链路 | 部分完成：G0 契约、Runtime 运输层、Platform API 网关与 Platform Web 前端交互及确定性自动化测试全部通过；待配置真实生产环境模型凭据进行线上 Smoke 联调 | [图片与图表能力方案](projects/20260913-showcase-image-chart-capabilities/README.md) |
@@ -144,3 +144,4 @@
 | 多会话流连接与运行缓存治理 | post39 已发布并升级本地 Runtime；后台 SSE 暂停、队列继续执行，三会话切换与权限浏览器验收通过 | [专项](projects/20261005-chat-stream-resource-governance/README.md) |
 
 | Chat 服务端持久消息队列 | 规划完成，治理方案待评审；当前仍由页面消费 localStorage 队列，不支持关闭浏览器后自动提交后续消息 | [专项](projects/20261005-durable-chat-prompt-queue/README.md) |
+| 排队提交未决死锁与会话切换自愈 | 已完成；修复 storageKey 漂移遗留幽灵锁，补充历史 Runs 双重自愈与【放弃并恢复草稿】逃生通道 | [变更](apps/platform-web/docs/changes/20261007-prompt-queue-unconfirmed-deadlock-and-switch-healing.md) |

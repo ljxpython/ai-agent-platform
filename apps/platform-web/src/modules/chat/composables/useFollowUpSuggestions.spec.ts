@@ -205,6 +205,31 @@ describe("useFollowUpSuggestions", () => {
     expect(hook.suggestions.value).toEqual([]);
   });
 
+  it("当 turnState 为 timeout 或 error 时抑制建议生成，避免半截回答触发推荐", async () => {
+    const isRunning = ref(true);
+    const turnState = ref("timeout");
+    const messages = ref([{ id: "ai-1", type: "ai", content: "半截超时回答" }]);
+
+    const hook = useFollowUpSuggestions({
+      projectId: "proj-1",
+      threadId: "thread-1",
+      messages,
+      isRunning,
+      turnState,
+    });
+
+    isRunning.value = false;
+    await nextTick();
+
+    expect(api.generateThreadSuggestions).not.toHaveBeenCalled();
+    expect(hook.suggestions.value).toEqual([]);
+
+    // 切换到 error 同样抑制
+    turnState.value = "error";
+    await hook.trigger();
+    expect(api.generateThreadSuggestions).not.toHaveBeenCalled();
+  });
+
   it("当 runStatus 非 success (如 error 或 interrupted) 时严格拦截推荐问题生成", async () => {
     vi.mocked(api.loadSuggestionsConfig).mockResolvedValue({
       enabled: true,

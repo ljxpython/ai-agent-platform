@@ -36,6 +36,18 @@ import {
   type OffloadDisplayState,
 } from "../offload-status";
 
+export type SessionTurnState =
+  | "idle"
+  | "running"
+  | "stopping"
+  | "stop_unconfirmed"
+  | "stopped"
+  | "timeout"
+  | "awaiting_review"
+  | "error";
+
+export type SessionStopState = "idle" | "stopping" | "unconfirmed" | "stopped";
+
 const active = (run: Run | null) =>
   run != null && ["pending", "running"].includes(run.status);
 
@@ -122,7 +134,8 @@ export function useChatSession(options: {
   );
   const checking = ref(!hasCachedContent);
   const verified = ref(hasCachedContent);
-  const cancelling = ref(false);
+  const stopState = ref<SessionStopState>("idle");
+  const cancelling = computed(() => stopState.value === "stopping");
   const unconfirmedStopRunId = ref<string | null>(null);
   const error = ref("");
   let disposed = false;
@@ -374,34 +387,71 @@ export function useChatSession(options: {
       !hasFatalStreamError.value &&
       (eventsParked.value || connectionState.value !== "paused") &&
       !checking.value &&
-      !cancelling.value &&
+      stopState.value !== "stopping" &&
+      stopState.value !== "unconfirmed" &&
       !pendingAction.value &&
       !(pendingMessage.value?.status === "sending") &&
       !busy.value &&
       !hasPendingInterrupts.value,
   );
+
+  const turnState = computed<SessionTurnState>(() => {
+    if (stopState.value === "stopping") return "stopping";
+    if (stopState.value === "unconfirmed") return "stop_unconfirmed";
+    if (reviews.value.length > 0 || hasPendingInterrupts.value) {
+      return "awaiting_review";
+    }
+    if (busy.value || active(run.value) || stream.isLoading.value) {
+      return "running";
+    }
+    if (stopState.value === "stopped") return "stopped";
+    const currentRun = run.value;
+    const runReason = (currentRun as { reason?: string } | null)?.reason;
+    if (currentRun?.status === "timeout" || runReason === "timeout") {
+      return "timeout";
+    }
+    if (
+      currentRun?.status === "interrupted" &&
+      runReason === "cancel_requested"
+    ) {
+      return "stopped";
+    }
+    if (error.value || stream.error.value || currentRun?.status === "error") {
+      return "error";
+    }
+    return "idle";
+  });
+
   const status = computed(() =>
-    cancelling.value
-      ? "正在停止"
-      : unconfirmedStopRunId.value
-        ? "停止尚未确认"
-        : reviews.value.length
-          ? "等待审批"
-          : clarifications.value.length
-            ? "等待补充信息"
-            : actions.current.value?.status === "unknown"
-              ? "提交结果待确认"
-              : checking.value
-                ? "正在核实会话"
-                : actions.current.value?.status === "submitting"
-                  ? "正在发送"
-                  : busy.value
-                    ? "正在执行"
-                    : error.value || stream.error.value
-                      ? "连接或执行异常"
-                      : run.value?.status === "timeout"
+    !threadId.value
+      ? "新会话"
+      : actions.current.value?.status === "unknown"
+        ? "提交结果待确认"
+        : checking.value
+          ? "正在核实会话"
+          : actions.current.value?.status === "submitting"
+            ? "正在发送"
+            : turnState.value === "stopping"
+              ? "正在停止..."
+              : turnState.value === "stopped"
+                ? "已停止"
+                : turnState.value === "stop_unconfirmed"
+                  ? error.value.includes("停止尚未确认")
+                    ? "停止尚未确认"
+                    : "停止结果待确认"
+                  : unconfirmedStopRunId.value
+                    ? "停止尚未确认"
+                    : turnState.value === "awaiting_review"
+                      ? clarifications.value.length
+                        ? "等待补充信息"
+                        : "等待审批"
+                      : turnState.value === "timeout"
                         ? "上一回合执行超时"
-                        : "可以发送",
+                        : turnState.value === "error"
+                          ? "连接或执行异常"
+                          : busy.value
+                            ? "正在执行"
+                            : "可以发送",
   );
 
   function fail(cause: unknown) {
@@ -700,7 +750,8 @@ export function useChatSession(options: {
       !canComment.value ||
       connectionState.value === "paused" ||
       !threadId.value ||
-      cancelling.value ||
+      stopState.value === "stopping" ||
+      stopState.value === "unconfirmed" ||
       reviews.value.length ||
       pendingMessage.value?.status === "sending"
     )
@@ -902,6 +953,9 @@ export function useChatSession(options: {
         }
       }
       if (disposed || !canComment.value) return false;
+      if (stopState.value === "stopping" || stopState.value === "unconfirmed") {
+        throw new Error("停止结果尚未确认，请核实停止后再发送");
+      }
       if (
         threadId.value &&
         (stream.isLoading.value ||
@@ -948,6 +1002,7 @@ export function useChatSession(options: {
             }
           }
           const action = actions.begin(threadId.value, "send", input);
+          stopState.value = "idle";
           streamInFlight.value = true;
           if (run.value && !active(run.value)) {
             run.value = null;
@@ -1043,54 +1098,114 @@ export function useChatSession(options: {
     }
   }
 
+  async function performCancel(targetThreadId: string, targetRunId: string) {
+    if (typeof service.cancelAndWait === "function") {
+      await service.cancelAndWait(targetThreadId, targetRunId);
+    } else {
+      await service.cancel(targetThreadId, targetRunId);
+    }
+  }
+
   async function stop() {
     if (
       !canEdit.value ||
-      cancelling.value ||
+      stopState.value === "stopping" ||
       pendingAction.value ||
       !threadId.value ||
       options.visible?.value === false
     )
       return;
-    cancelling.value = true;
-    try {
-      // stream 仍在传输时，服务端 run 可能已终态但前端尚未感知；
-      // 优先复用已知 runId，跳过前置 verify 避免把终态覆写进 run.value。
-      const knownRunId = actions.current.value?.runId ?? run.value?.run_id;
-      if (knownRunId && stream.isLoading.value) {
-        try {
-          await service.cancel(threadId.value, knownRunId);
-          unconfirmedStopRunId.value = null;
-        } catch (cause) {
-          unconfirmedStopRunId.value = knownRunId;
-          throw cause;
-        }
-        await verify(true);
-        return;
-      }
+    const knownRunId =
+      actions.current.value?.runId ??
+      run.value?.run_id ??
+      unconfirmedStopRunId.value;
+    let targetRunId = knownRunId;
+    if (!targetRunId) {
       if (!(await verify())) return;
-      if (disposed || !canEdit.value) return;
-      const targetRunId = run.value?.run_id ?? unconfirmedStopRunId.value;
-      const isRetryingUnconfirmed = Boolean(
-        targetRunId && targetRunId === unconfirmedStopRunId.value,
-      );
-      // run 已终态说明 Agent 刚刚执行完，若不是处于未确认停止的显式重试，停止操作自然完成，静默刷新即可。
-      if (!targetRunId || (!active(run.value) && !isRetryingUnconfirmed)) {
-        await verify(true);
-        return;
-      }
-      try {
-        await service.cancel(threadId.value, targetRunId);
-        unconfirmedStopRunId.value = null;
-      } catch (cause) {
-        unconfirmedStopRunId.value = targetRunId;
-        throw cause;
-      }
+      targetRunId = run.value?.run_id ?? unconfirmedStopRunId.value;
+    }
+    if (disposed || !canEdit.value) return;
+    const isRetryingUnconfirmed = Boolean(
+      targetRunId &&
+      (targetRunId === unconfirmedStopRunId.value ||
+        stopState.value === "unconfirmed"),
+    );
+    if (!targetRunId || (!active(run.value) && !isRetryingUnconfirmed)) {
       await verify(true);
+      if (!disposed && !active(run.value)) {
+        stopState.value = "stopped";
+        unconfirmedStopRunId.value = null;
+      }
+      return;
+    }
+
+    stopState.value = "stopping";
+    try {
+      await performCancel(threadId.value, targetRunId);
+      unconfirmedStopRunId.value = null;
+      await verify(true);
+      if (!disposed) {
+        if (!active(run.value)) {
+          stopState.value = "stopped";
+        } else {
+          stopState.value = "unconfirmed";
+          unconfirmedStopRunId.value = targetRunId;
+        }
+      }
     } catch (cause) {
-      fail(cause);
-    } finally {
-      if (!disposed) cancelling.value = false;
+      if (!disposed) {
+        stopState.value = "unconfirmed";
+        unconfirmedStopRunId.value = targetRunId;
+        fail(cause);
+      }
+    }
+  }
+
+  async function verifyStop(): Promise<boolean> {
+    if (
+      !canEdit.value ||
+      !threadId.value ||
+      disposed ||
+      options.visible?.value === false
+    )
+      return false;
+    const targetRunId = actions.current.value?.runId ?? run.value?.run_id;
+    if (!targetRunId) {
+      stopState.value = "idle";
+      unconfirmedStopRunId.value = null;
+      return true;
+    }
+    stopState.value = "stopping";
+    try {
+      // 1. 双通道容错：先查服务端 Run 当前状态，若已是非 active 终态直接收敛，彻底杜绝对已终态 Run 重复 cancel 触发 400/409 死锁
+      const current = await service.run(threadId.value, targetRunId);
+      if (!disposed && current) {
+        run.value = current;
+        if (!active(current)) {
+          stopState.value = "stopped";
+          unconfirmedStopRunId.value = null;
+          await verify(false);
+          return true;
+        }
+      }
+      // 2. 依然处于 active 状态时，才再次发起 cancelAndWait
+      await performCancel(threadId.value, targetRunId);
+      await verify(true);
+      if (!disposed) {
+        if (!active(run.value)) {
+          stopState.value = "stopped";
+          unconfirmedStopRunId.value = null;
+        } else {
+          stopState.value = "unconfirmed";
+        }
+      }
+      return true;
+    } catch (cause) {
+      if (!disposed) {
+        stopState.value = "unconfirmed";
+        fail(cause);
+      }
+      return false;
     }
   }
 
@@ -1099,13 +1214,18 @@ export function useChatSession(options: {
       !canEdit.value ||
       !threadId.value ||
       checking.value ||
-      cancelling.value ||
+      stopState.value === "stopping" ||
+      stopState.value === "unconfirmed" ||
       pendingAction.value ||
       options.visible?.value === false
     )
       return;
     const currentRun = run.value;
     if (!currentRun || currentRun.status !== "interrupted") return;
+    const runReason = (currentRun as { reason?: string }).reason;
+    if (runReason === "cancel_requested") {
+      return;
+    }
     checking.value = true;
     error.value = "";
     try {
@@ -1403,6 +1523,9 @@ export function useChatSession(options: {
     verified,
     cancelling,
     unconfirmedStopRunId,
+    stopState,
+    turnState,
+    verifyStop,
     error,
     busy,
     canSend,

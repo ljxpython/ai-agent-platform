@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
+from uuid import NAMESPACE_URL, uuid5
 
 from langchain.agents.middleware import AgentMiddleware, ModelRequest, ToolCallRequest
 from langchain_core.language_models import BaseChatModel
@@ -327,15 +328,18 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
     def _check_scope(runtime: object, facts: VerifiedDelegation) -> None:
         server_info = getattr(runtime, "server_info", None)
         execution_info = getattr(runtime, "execution_info", None)
-        if facts.scope.assistant_id is not None and (
-            server_info is None
-            or facts.scope.assistant_id
-            not in {
+        if facts.scope.assistant_id is not None:
+            scope_assistant_id = facts.scope.assistant_id
+            allowed = {
                 getattr(server_info, "assistant_id", None),
                 getattr(server_info, "graph_id", None),
             }
-        ):
-            raise RuntimeAuthError("runtime.auth.invalid_principal", "assistant_id")
+            try:
+                allowed.add(str(uuid5(NAMESPACE_URL, scope_assistant_id)))
+            except Exception:
+                pass
+            if server_info is None or scope_assistant_id not in allowed:
+                raise RuntimeAuthError("runtime.auth.invalid_principal", "assistant_id")
         if facts.scope.thread_id is not None and (
             execution_info is None
             or facts.scope.thread_id != getattr(execution_info, "thread_id", None)

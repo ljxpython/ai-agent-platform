@@ -32,6 +32,7 @@ from runtime_service.middlewares import (
     ModelResilienceMiddleware,
     ModelResilienceSummarizationMiddleware,
     RuntimeConfigMiddleware,
+    TimeoutWrapupMiddleware,
     context_management_enabled,
 )
 from runtime_service.observability import with_langfuse_tracing
@@ -51,6 +52,7 @@ from runtime_service.runtime import (
     runtime_context_hash,
     verified_delegation_from_user,
 )
+from runtime_service.runtime.run_budget import read_run_budget
 from runtime_service.services.dearflow_agent.capabilities import (
     CHART_NAMES,
     DEAR_TOOLS,
@@ -173,6 +175,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     user = configurable.get("langgraph_auth_user")
     facts = verified_delegation_from_user(user) if user is not None else None
     executing = facts is not None and facts.scope.operation == "run-create"
+    run_budget = None
     workspace = None
     resolved = None
     connection = None
@@ -205,6 +208,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 )
             if facts.scope.thread_id is not None and facts.scope.thread_id != thread_id:
                 raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
+            run_budget = read_run_budget(config)
         with startup.phase("factory.memory_policy"):
             memory_enabled = (
                 governance
@@ -400,6 +404,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 exit_behavior="error",
             ),
             # Bound the whole reasoning response, not just the time to its first token.
+            TimeoutWrapupMiddleware(run_budget),
             *(
                 [
                     ModelResilienceMiddleware(

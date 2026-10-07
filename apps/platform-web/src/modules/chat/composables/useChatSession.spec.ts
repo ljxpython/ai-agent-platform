@@ -39,6 +39,7 @@ vi.mock("@/services/threads/session.service", async (importOriginal) => ({
       : async () => [{ run_id: "run", status: "running" }],
     run: mocks.run,
     cancel: mocks.cancel,
+    cancelAndWait: mocks.cancel,
     resume: mocks.resume,
     get: mocks.getThread.getMockImplementation()
       ? mocks.getThread
@@ -2030,5 +2031,195 @@ it("maps runtime.model.retry_exhausted and whitelist error codes to safe user-fr
     scope.stop();
     mocks.cancel.mockReset();
     mocks.runs.mockReset();
+  }
+});
+
+it("transitions to stop_unconfirmed on cancel failure and auto-heals via verifyStop status check", async () => {
+  const scope = effectScope();
+  const loading = ref(false);
+  mocks.stream.mockReturnValue({
+    isLoading: loading,
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    getThread: () => ({
+      onConnectionChange: vi.fn(),
+      suspendEvents: vi.fn(),
+      getConnectionState: () => ({ state: "connected", streams: [] }),
+      reconnectEvents: vi.fn(),
+    }),
+    disconnect: vi.fn(async () => {
+      loading.value = false;
+    }),
+  });
+  mocks.runs.mockResolvedValue([{ run_id: "run-1", status: "running" }]);
+  mocks.run.mockResolvedValue({ run_id: "run-1", status: "running" });
+  mocks.cancel.mockRejectedValueOnce(new Error("504 Gateway Timeout"));
+
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "p",
+      graphId: "dearflow_agent",
+      threadId: "t-stop",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await session.verify();
+    await flushPromises();
+    expect(session.turnState.value).toBe("running");
+
+    // 点击停止，cancel 失败
+    await session.stop();
+    await flushPromises();
+
+    expect(session.stopState.value).toBe("unconfirmed");
+    expect(session.turnState.value).toBe("stop_unconfirmed");
+    expect(session.status.value).toBe("停止结果待确认");
+    expect(session.canSend.value).toBe(false);
+
+    // 双通道核实：服务端实际已终止 (interrupted / cancel_requested)
+    mocks.run.mockResolvedValue({
+      run_id: "run-1",
+      status: "interrupted",
+      reason: "cancel_requested",
+    });
+    mocks.runs.mockResolvedValue([
+      {
+        run_id: "run-1",
+        status: "interrupted",
+        reason: "cancel_requested",
+      },
+    ]);
+
+    const healed = await session.verifyStop();
+    await flushPromises();
+
+    expect(healed).toBe(true);
+    expect(session.turnState.value).toBe("stopped");
+    expect(session.status.value).toBe("已停止");
+    expect(session.canSend.value).toBe(true);
+  } finally {
+    scope.stop();
+    mocks.runs.mockReset();
+    mocks.run.mockReset();
+    mocks.cancel.mockReset();
+  }
+});
+
+it("resumeInterruptedRun ignores cancel_requested to prevent reviving cancelled run", async () => {
+  const scope = effectScope();
+  const loading = ref(false);
+  mocks.stream.mockReturnValue({
+    isLoading: loading,
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    getThread: () => ({
+      onConnectionChange: vi.fn(),
+      suspendEvents: vi.fn(),
+      getConnectionState: () => ({ state: "connected", streams: [] }),
+      reconnectEvents: vi.fn(),
+    }),
+    disconnect: vi.fn(async () => {
+      loading.value = false;
+    }),
+  });
+  mocks.runs.mockResolvedValue([
+    { run_id: "run-cancel", status: "interrupted", reason: "cancel_requested" },
+  ]);
+  mocks.run.mockResolvedValue({
+    run_id: "run-cancel",
+    status: "interrupted",
+    reason: "cancel_requested",
+  });
+  mocks.resume.mockClear();
+
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "p",
+      graphId: "dearflow_agent",
+      threadId: "t-cancel",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await session.verify();
+    await flushPromises();
+
+    expect(session.turnState.value).toBe("stopped");
+    await session.resumeInterruptedRun();
+    await flushPromises();
+
+    // 严禁调用 service.resume
+    expect(mocks.resume).not.toHaveBeenCalled();
+  } finally {
+    scope.stop();
+    mocks.runs.mockReset();
+    mocks.run.mockReset();
+  }
+});
+
+it("reflects timeout turnState and permits next turn submission", async () => {
+  const scope = effectScope();
+  const loading = ref(false);
+  mocks.stream.mockReturnValue({
+    isLoading: loading,
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    getThread: () => ({
+      onConnectionChange: vi.fn(),
+      suspendEvents: vi.fn(),
+      getConnectionState: () => ({ state: "connected", streams: [] }),
+      reconnectEvents: vi.fn(),
+    }),
+    disconnect: vi.fn(async () => {
+      loading.value = false;
+    }),
+  });
+  mocks.runs.mockResolvedValue([
+    { run_id: "run-timeout", status: "timeout", reason: "timeout" },
+  ]);
+  mocks.run.mockResolvedValue({
+    run_id: "run-timeout",
+    status: "timeout",
+    reason: "timeout",
+  });
+
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "p",
+      graphId: "dearflow_agent",
+      threadId: "t-timeout",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await session.verify();
+    await flushPromises();
+
+    expect(session.turnState.value).toBe("timeout");
+    expect(session.status.value).toBe("上一回合执行超时");
+    expect(session.canSend.value).toBe(true);
+  } finally {
+    scope.stop();
+    mocks.runs.mockReset();
+    mocks.run.mockReset();
   }
 });

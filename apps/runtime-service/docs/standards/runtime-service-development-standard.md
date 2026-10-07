@@ -32,6 +32,14 @@ schema-only 与执行图必须声明相同 OffloadingState，保留 DeepAgentSta
 
 `AGENT_CONTEXT_MANAGEMENT_ENABLED` 默认 0，目录容量、输出预算、迁移和双端 Context v5 就绪后才能开启。关闭时沿用官方摘要并保留历史/私有事件，不清数据。reference/其他教学图未接入，不宣称支持。依赖升级需复跑隐藏流、预算、归档、父子隔离、真实 PG/Worker 恢复测试，证据见 [上下文专项](../../../../docs/projects/20261006-agent-context-window-governance/verification.md)。
 
+## Run 时间预算与收尾
+
+正式执行按 LangGraph Server Worker attempt 计时：每次 claim 生成 `GRAPHHARBOR_RUN_TIMEOUT_SECONDS`（官方别名 `BG_JOB_TIMEOUT_SECS`）预算。Runtime 组合根通过 `read_run_budget` 消费快照，主/子 Agent 和 workflow 内部重建共享本 attempt 不可变值；不得按构图、模型重试或子 Agent 重新计时。DB故障/Worker接管从checkpoint继续并获得新attempt H；跨attempt累计总限不在本期。私有预算不绑定公开 invocation/state/checkpoint，schema/probe可无预算，正式执行缺预算明确失败。
+
+`TimeoutWrapupMiddleware` 在硬限前 `AGENT_RUN_WRAPUP_RESERVE_SECONDS` 秒（默认120，0关闭，正值须小于H）向后续模型请求追加通用收尾指令；软提醒不代表总结已生成、文件全量保存或审批豁免。Worker硬限落timeout；`ModelCallTimeoutError`只标识模型scope，provider超时和外部取消保留原异常。模型/provider错误由图内policy恢复，未恢复则error，不自动触发Worker整图重试。
+
+该能力需要GraphHarbor post42；当前正式双包已发布并锁定/安装，API-Worker隔离HTTP及匹配源码回退通过。新Runtime不可只降依赖为post41，回退须同时恢复已验证旧Runtime源码并先暂停提交/drain。现役服务没有被本轮升级；发布、取消清理及回退证据见[运行超时专项](../../../../docs/projects/20261006-agent-run-timeout-governance/README.md)。
+
 ## 新增代码粒度规范
 
 > **适用范围：仅约束新增代码。存量代码不在此规范的覆盖范围内，不得借此规范触发对旧代码的"顺手重构"。**

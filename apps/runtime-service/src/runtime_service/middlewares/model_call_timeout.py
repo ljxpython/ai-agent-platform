@@ -25,6 +25,10 @@ def resolve_model_call_timeout_seconds(
     return float(default)
 
 
+class ModelCallTimeoutError(TimeoutError):
+    """The middleware's own model-call budget expired."""
+
+
 class ModelCallTimeoutMiddleware(AgentMiddleware):
     """Cancel a provider call after a bounded wall-clock duration."""
 
@@ -40,12 +44,19 @@ class ModelCallTimeoutMiddleware(AgentMiddleware):
         self.timeout_seconds = float(resolved)
 
     async def awrap_model_call(self, request: ModelRequest, handler):
-        async with asyncio.timeout(self.timeout_seconds):
-            return await handler(request)
+        scope = asyncio.timeout(self.timeout_seconds)
+        try:
+            async with scope:
+                return await handler(request)
+        except TimeoutError as exc:
+            if scope.expired():
+                raise ModelCallTimeoutError("runtime.model_call_timeout") from exc
+            raise
 
 
 __all__ = [
     "DEFAULT_MODEL_CALL_TIMEOUT_SECONDS",
     "ModelCallTimeoutMiddleware",
+    "ModelCallTimeoutError",
     "resolve_model_call_timeout_seconds",
 ]

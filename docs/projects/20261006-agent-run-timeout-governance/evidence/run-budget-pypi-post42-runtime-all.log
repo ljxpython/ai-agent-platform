@@ -1,0 +1,169 @@
+s....................................................................... [ 11%]
+........................................................................ [ 22%]
+........................................................................ [ 33%]
+............................................s................s.......... [ 44%]
+..............s.sssssssssssss.s.s.sssss..ss........s.......sssss....s... [ 55%]
+........................................................................ [ 66%]
+.........................s.............................................. [ 77%]
+........................................................................ [ 88%]
+.................FF..................................................... [ 99%]
+.....                                                                    [100%]
+=================================== FAILURES ===================================
+_______________ test_dearflow_local_terminal_uses_shared_backend _______________
+
+manager = <runtime_service.workspace.terminal.TerminalManager object at 0x11e1c3790>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11ce75780>
+tmp_path = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-218/test_dearflow_local_terminal_u0')
+
+    def test_dearflow_local_terminal_uses_shared_backend(manager, monkeypatch, tmp_path):
+        monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path / "dear"))
+        owner = (*OWNER[:3], "dearflow_agent", OWNER[4])
+        ref = manager.create(owner, str(uuid4()), 24, 80)
+        assert ref["backend"] == "local"
+        session = manager.get(owner, ref["terminal_id"])
+        session.write(b"printf 'local-dear' > work/result.txt; cat work/result.txt\n", 0)
+        wait_output(session, b"local-dear")
+>       assert (session.root / "work/result.txt").read_text() == "local-dear"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_terminal.py:188:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/pathlib/_local.py:546: in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/pathlib/_abc.py:632: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-218/test_dearflow_local_...nal_u0/dear/dearflow_agent/b3dc7f5d124cd1f56113173f5f2f576b63affd6175e89f5e93cd7f61d2e626ba/workspace/work/result.txt')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-218/test_dearflow_local_terminal_u0/dear/dearflow_agent/b3dc7f5d124cd1f56113173f5f2f576b63affd6175e89f5e93cd7f61d2e626ba/workspace/work/result.txt'
+
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/pathlib/_local.py:537: FileNotFoundError
+_____________________ test_dearflow_terminal_mount_policy ______________________
+
+manager = <runtime_service.workspace.terminal.TerminalManager object at 0x11e1c3570>
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x11f6c1400>
+tmp_path = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-218/test_dearflow_terminal_mount_p0')
+
+    def test_dearflow_terminal_mount_policy(manager, monkeypatch, tmp_path):
+        if (
+            not shutil.which("docker")
+            or subprocess.run(
+                ["docker", "info"], capture_output=True, timeout=10, check=False
+            ).returncode
+        ):
+            pytest.skip("Docker daemon unavailable")
+        monkeypatch.setenv("RUNTIME_WORKSPACE_IMAGE", "python:3.13-slim")
+        monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path / "dear"))
+        owner = (*OWNER[:3], "dearflow_agent", OWNER[4])
+        session = manager.get(
+            owner, manager.create(owner, str(uuid4()), 24, 80)["terminal_id"]
+        )
+        session.write(
+            b"echo ok > /workspace/work/writable.txt; touch /workspace/denied 2>/dev/null || echo readonly-root; touch /skills/denied 2>/dev/null || echo readonly-skills\n",
+            0,
+        )
+        wait_output(session, b"\r\nreadonly-skills\r\n")
+>       assert (session.root / "work/writable.txt").read_text().strip() == "ok"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_terminal.py:210:
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/pathlib/_local.py:546: in read_text
+    return PathBase.read_text(self, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/pathlib/_abc.py:632: in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors, newline=newline) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = PosixPath('/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-218/test_dearflow_termin...t_p0/dear/dearflow_agent/b3dc7f5d124cd1f56113173f5f2f576b63affd6175e89f5e93cd7f61d2e626ba/workspace/work/writable.txt')
+mode = 'r', buffering = -1, encoding = 'locale', errors = None, newline = None
+
+    def open(self, mode='r', buffering=-1, encoding=None,
+             errors=None, newline=None):
+        """
+        Open the file pointed to by this path and return a file object, as
+        the built-in open() function does.
+        """
+        if "b" not in mode:
+            encoding = io.text_encoding(encoding)
+>       return io.open(self, mode, buffering, encoding, errors, newline)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       FileNotFoundError: [Errno 2] No such file or directory: '/private/var/folders/q6/4nvs05t90rg041hyp3_kws640000gn/T/pytest-of-lijiaxin/pytest-218/test_dearflow_terminal_mount_p0/dear/dearflow_agent/b3dc7f5d124cd1f56113173f5f2f576b63affd6175e89f5e93cd7f61d2e626ba/workspace/work/writable.txt'
+
+/Users/lijiaxin/.local/share/uv/python/cpython-3.13.9-macos-x86_64-none/lib/python3.13/pathlib/_local.py:537: FileNotFoundError
+=============================== warnings summary ===============================
+<frozen importlib._bootstrap>:488
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyPacked has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type SwigPyObject has no __module__ attribute
+
+<frozen importlib._bootstrap>:488
+  <frozen importlib._bootstrap>:488: DeprecationWarning: builtin type swigvarlink has no __module__ attribute
+
+tests/http/test_title_summary.py:8
+  /Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/runtime-service/tests/http/test_title_summary.py:8: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient
+
+tests/services/dearflow_agent/skills/test_deep_research.py::test_k01_progressive_load_and_conflicting_evidence
+tests/services/dearflow_agent/skills/test_deep_research.py::test_k01_progressive_load_and_conflicting_evidence
+tests/services/dearflow_agent/skills/test_deep_research.py::test_k01_progressive_load_and_conflicting_evidence
+tests/services/dearflow_agent/skills/test_deep_research.py::test_k01_read_only_and_unavailable_page
+tests/services/dearflow_agent/test_research.py::test_source_records_are_scoped_and_read_only
+tests/services/dearflow_agent/test_research.py::test_source_records_are_scoped_and_read_only
+tests/services/dearflow_agent/test_research.py::test_agent_available_tools_with_jina_only
+  /Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/runtime-service/.venv/lib/python3.13/site-packages/pydantic/functional_validators.py:839: UserWarning: Pydantic serializer warnings:
+    PydanticSerializationUnexpectedValue(Expected `none` - serialized value may not be as expected [field_name='context', input_value=RuntimeContext(model_id=N...one, access_policy=None), input_type=RuntimeContext])
+    function=lambda v, h: h(v), schema=original_schema
+
+tests/services/dearflow_agent/skills/test_deep_research.py::test_k01_progressive_load_and_conflicting_evidence
+tests/services/dearflow_agent/skills/test_deep_research.py::test_k01_progressive_load_and_conflicting_evidence
+tests/services/dearflow_agent/skills/test_deep_research.py::test_k01_progressive_load_and_conflicting_evidence
+tests/services/dearflow_agent/skills/test_deep_research.py::test_k01_read_only_and_unavailable_page
+tests/services/dearflow_agent/test_research.py::test_source_records_are_scoped_and_read_only
+tests/services/dearflow_agent/test_research.py::test_source_records_are_scoped_and_read_only
+tests/services/dearflow_agent/test_research.py::test_agent_available_tools_with_jina_only
+  /Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/runtime-service/.venv/lib/python3.13/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+    PydanticSerializationUnexpectedValue(Expected `none` - serialized value may not be as expected [field_name='context', input_value=RuntimeContext(model_id=N...one, access_policy=None), input_type=RuntimeContext])
+    return self.__pydantic_serializer__.to_python(
+
+tests/services/dearflow_agent/test_subagents.py: 10 warnings
+  /Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/runtime-service/.venv/lib/python3.13/site-packages/pydantic/functional_validators.py:839: UserWarning: Pydantic serializer warnings:
+    PydanticSerializationUnexpectedValue(Expected `none` - serialized value may not be as expected [field_name='context', input_value=RuntimeContext(model_id=N...ra', access_policy=None), input_type=RuntimeContext])
+    function=lambda v, h: h(v), schema=original_schema
+
+tests/services/dearflow_agent/test_subagents.py: 10 warnings
+  /Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/runtime-service/.venv/lib/python3.13/site-packages/pydantic/main.py:464: UserWarning: Pydantic serializer warnings:
+    PydanticSerializationUnexpectedValue(Expected `none` - serialized value may not be as expected [field_name='context', input_value=RuntimeContext(model_id=N...ra', access_policy=None), input_type=RuntimeContext])
+    return self.__pydantic_serializer__.to_python(
+
+tests/services/dearflow_agent/test_subagents.py::test_parallel_children_are_isolated_and_follow_parent_cancel[False-False]
+  /Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/runtime-service/tests/services/dearflow_agent/test_subagents.py:199: LangChainBetaWarning: The v3 streaming protocol on Pregel is experimental.
+    native = await graph.astream_events(
+
+tests/services/dearflow_agent/test_subagents.py::test_parallel_children_are_isolated_and_follow_parent_cancel[False-False]
+  /Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/runtime-service/.venv/lib/python3.13/site-packages/langgraph/pregel/main.py:3612: LangChainBetaWarning: The v3 streaming protocol on Pregel is experimental.
+    return AsyncGraphRunStream(graph_aiter, mux)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/test_terminal.py::test_dearflow_local_terminal_uses_shared_backend
+FAILED tests/test_terminal.py::test_dearflow_terminal_mount_policy - FileNotF...
+2 failed, 617 passed, 34 skipped, 51 deselected, 42 warnings in 224.41s (0:03:44)

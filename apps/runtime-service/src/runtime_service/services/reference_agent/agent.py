@@ -25,6 +25,7 @@ from runtime_service.middlewares import (
     ModelErrorMiddleware,
     ModelResilienceMiddleware,
     RuntimeConfigMiddleware,
+    TimeoutWrapupMiddleware,
 )
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.observability.startup import StartupDiagnostics
@@ -47,6 +48,7 @@ from runtime_service.runtime import (
 from runtime_service.runtime.auth import VerifiedDelegation
 from runtime_service.runtime.capabilities import REFERENCE_TOOLS
 from runtime_service.runtime.errors import RuntimeAuthError
+from runtime_service.runtime.run_budget import RUN_BUDGET_KEY, read_run_budget
 from runtime_service.services.reference_agent.prompts import SYSTEM_PROMPT
 from runtime_service.services.reference_agent.tools import read_reference
 from runtime_service.tools.errors import on_tool_error
@@ -173,6 +175,10 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         and configurable.get("_runtime_test_local_auth") is True
     )
     facts = None if probe_only else _runtime_facts(config)
+    run_budget = read_run_budget(
+        config,
+        required=bool(facts and facts.scope.operation == "run-create"),
+    )
     principal, policy = (facts.principal, facts.policy) if facts else (None, None)
     bundle = ModelConnectionBundle()
     resolved = None
@@ -291,6 +297,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             if model_retry_enabled
             else []
         ),
+        TimeoutWrapupMiddleware(run_budget),
         ModelErrorMiddleware(startup.metadata),
         ModelCallTimeoutMiddleware(
             bundle.policy.attempt_timeout_seconds if bundle.policy.enabled else None
@@ -315,6 +322,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     configurable.pop("_runtime_model", None)
     configurable.pop("_runtime_fallback_model", None)
     configurable.pop("_runtime_model_retry", None)
+    configurable.pop(RUN_BUDGET_KEY, None)
     bound_config["configurable"] = configurable
     return with_langfuse_tracing(
         agent,

@@ -9,7 +9,10 @@ from runtime_service.middlewares.conversation_offloading import (
 )
 from runtime_service.middlewares.documents import DocumentToolsMiddleware
 from runtime_service.middlewares.message_queue import MessageQueueMiddleware
-from runtime_service.middlewares.model_call_timeout import ModelCallTimeoutMiddleware
+from runtime_service.middlewares.model_call_timeout import (
+    ModelCallTimeoutError,
+    ModelCallTimeoutMiddleware,
+)
 from runtime_service.middlewares.model_errors import ModelErrorMiddleware
 from runtime_service.middlewares.model_resilience import (
     ModelResilienceMiddleware,
@@ -19,12 +22,15 @@ from runtime_service.middlewares.runtime_config import (
     RuntimeConfigMiddleware,
     sanitize_tool_call_messages,
 )
+from runtime_service.middlewares.timeout_wrapup import TimeoutWrapupMiddleware
 
 __all__ = [
     "ModelCallTimeoutMiddleware",
+    "ModelCallTimeoutError",
     "ModelErrorMiddleware",
     "ModelResilienceMiddleware",
     "ModelResilienceSummarizationMiddleware",
+    "TimeoutWrapupMiddleware",
     "RuntimeConfigMiddleware",
     "sanitize_tool_call_messages",
     "MessageQueueMiddleware",

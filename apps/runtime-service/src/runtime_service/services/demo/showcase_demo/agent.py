@@ -27,6 +27,7 @@ from runtime_service.middlewares import (
     ModelResilienceMiddleware,
     ModelResilienceSummarizationMiddleware,
     RuntimeConfigMiddleware,
+    TimeoutWrapupMiddleware,
     context_management_enabled,
 )
 from runtime_service.middlewares.images import ImageToolsMiddleware
@@ -48,6 +49,7 @@ from runtime_service.runtime import (
     verified_delegation_from_user,
 )
 from runtime_service.runtime.capabilities import SHOWCASE_TOOLS
+from runtime_service.runtime.run_budget import read_run_budget
 from runtime_service.services.demo.showcase_demo.backend import (
     WorkspaceMiddleware,
     build_backend,
@@ -100,6 +102,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     user = configurable.get("langgraph_auth_user")
     facts = verified_delegation_from_user(user) if user is not None else None
     executing = facts is not None and facts.scope.operation == "run-create"
+    run_budget = None
     workspace = None
     resolved = None
     connection = None
@@ -118,6 +121,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 )
             if facts.scope.thread_id is not None and facts.scope.thread_id != thread_id:
                 raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
+            run_budget = read_run_budget(config)
             resolved = resolve_runtime_config(
                 principal=facts.principal,
                 context=context,
@@ -229,6 +233,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 thread_limit=_env_int("AGENT_TOOL_CALL_LIMIT_PER_THREAD", 1000),
                 exit_behavior="error",
             ),
+            TimeoutWrapupMiddleware(run_budget),
             *(
                 [
                     ModelResilienceMiddleware(

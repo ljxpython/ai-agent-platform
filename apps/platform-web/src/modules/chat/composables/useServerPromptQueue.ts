@@ -1,4 +1,4 @@
-import { onScopeDispose, ref, watch, type Ref } from "vue";
+import { computed, onScopeDispose, ref, watch, type Ref } from "vue";
 import type { AgentContext } from "@/services/agents/types";
 import type {
   createSessionService,
@@ -7,7 +7,17 @@ import type {
 import type { QueuedPromptItem } from "./usePromptQueue";
 
 type Service = ReturnType<typeof createSessionService>;
-type Pending = { id: string; key: string; body: unknown; content: unknown };
+
+export type PendingPromptSubmission = {
+  id: string;
+  key: string;
+  body: unknown;
+  content: unknown;
+  threadId?: string;
+  storageKey?: string;
+  createdAt?: number;
+  status?: "submitting" | "unconfirmed";
+};
 
 function items(rows: QueuedRun[]): QueuedPromptItem[] {
   return rows
@@ -29,17 +39,43 @@ export function useServerPromptQueue(options: {
   storageKey: Ref<string>;
 }) {
   const queue = ref<QueuedPromptItem[]>([]);
-  const pending = ref<Pending | null>(null);
+  const pending = ref<PendingPromptSubmission | null>(null);
+  const submitting = ref(false);
+  const unconfirmed = computed(() =>
+    Boolean(pending.value && pending.value.status === "unconfirmed"),
+  );
   const error = ref("");
   let disposed = false;
   let epoch = 0;
 
-  function remember(value: Pending | null) {
+  function clearPending(item?: PendingPromptSubmission | null) {
+    const target = item || pending.value;
+    if (pending.value && (!item || pending.value.id === item.id)) {
+      pending.value = null;
+    }
+    try {
+      if (options.storageKey.value) {
+        localStorage.removeItem(options.storageKey.value);
+      }
+      if (target?.storageKey) {
+        localStorage.removeItem(target.storageKey);
+      }
+    } catch {
+      /* Storage may be disabled. */
+    }
+  }
+
+  function remember(value: PendingPromptSubmission | null) {
+    if (!value) {
+      clearPending();
+      return;
+    }
     pending.value = value;
     try {
-      if (value)
-        localStorage.setItem(options.storageKey.value, JSON.stringify(value));
-      else localStorage.removeItem(options.storageKey.value);
+      const key = value.storageKey || options.storageKey.value;
+      if (key) {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
     } catch {
       /* Storage may be disabled. */
     }
@@ -58,11 +94,31 @@ export function useServerPromptQueue(options: {
       )
         return;
       queue.value = items(rows);
-      if (
-        pending.value &&
-        rows.some((run) => run.metadata?.client_queue_id === pending.value?.id)
-      ) {
-        remember(null);
+
+      if (pending.value) {
+        const pendingItem = pending.value;
+        const pendingId = pendingItem.id;
+        // 场景 1: 排队队列中已确认存在该 client_queue_id
+        if (rows.some((run) => run.metadata?.client_queue_id === pendingId)) {
+          clearPending(pendingItem);
+        } else if (typeof options.service.runs === "function") {
+          // 场景 2: 排队队列中未找到，检查最近已执行/执行中的运行记录
+          try {
+            const recentRuns = await options.service.runs(threadId);
+            if (
+              !disposed &&
+              generation === epoch &&
+              options.threadId.value === threadId &&
+              recentRuns.some(
+                (run) => run.metadata?.client_queue_id === pendingId,
+              )
+            ) {
+              clearPending(pendingItem);
+            }
+          } catch {
+            /* Ignore optional run detection errors. */
+          }
+        }
       }
       error.value = "";
     } catch (cause) {
@@ -71,33 +127,55 @@ export function useServerPromptQueue(options: {
     }
   }
 
-  async function dispatch(value: Pending) {
-    const threadId = options.threadId.value;
-    if (!threadId) throw new Error("请先创建会话");
+  async function dispatch(value: PendingPromptSubmission) {
+    const targetThreadId = value.threadId || options.threadId.value;
+    if (!targetThreadId) throw new Error("请先创建会话");
+    submitting.value = true;
     try {
       const run = await options.service.enqueueRun(
-        threadId,
+        targetThreadId,
         value.body,
         value.key,
       );
       if (!run.run_id) throw new Error("服务端未确认运行 ID");
-      remember(null);
+      clearPending(value);
       await refresh();
       return true;
     } catch (cause) {
       error.value = cause instanceof Error ? cause.message : String(cause);
       const status = (cause as { status?: number })?.status;
       if (status && status >= 400 && status < 500) {
-        remember(null);
+        clearPending(value);
         return false;
       }
+      // 非 4xx（网络中断、超时、500/504 等未决状态）：将状态转为 unconfirmed！
+      value.status = "unconfirmed";
+      remember(value);
       return false;
+    } finally {
+      submitting.value = false;
     }
   }
 
   async function enqueue(content: unknown) {
-    if (!options.threadId.value) throw new Error("请先创建会话");
-    if (pending.value) throw new Error("请先确认上一条消息的提交结果");
+    const currentThreadId = options.threadId.value;
+    if (!currentThreadId) throw new Error("请先创建会话");
+    if (unconfirmed.value) {
+      throw new Error("上一条消息排队结果待确认，请先核实或恢复草稿");
+    }
+
+    // 若有上一个请求正在提交中（用户快速连击），平滑等待最多 3 秒
+    if (submitting.value) {
+      let waited = 0;
+      while (submitting.value && waited < 3000) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        waited += 50;
+      }
+      if (unconfirmed.value) {
+        throw new Error("上一条消息排队结果待确认，请先核实或恢复草稿");
+      }
+    }
+
     const id = crypto.randomUUID();
     const body = {
       assistant_id: options.graphId,
@@ -109,9 +187,26 @@ export function useServerPromptQueue(options: {
       multitask_strategy: "enqueue",
       metadata: { client_queue_id: id },
     };
-    const value = { id, key: `run:${id}`, body, content };
+    const value: PendingPromptSubmission = {
+      id,
+      key: `run:${id}`,
+      body,
+      content,
+      threadId: currentThreadId,
+      storageKey: options.storageKey.value,
+      createdAt: Date.now(),
+      status: "submitting",
+    };
     remember(value);
     return dispatch(value);
+  }
+
+  function dismiss(): PendingPromptSubmission | null {
+    const current = pending.value;
+    if (current) {
+      clearPending(current);
+    }
+    return current;
   }
 
   async function operate(operation: "cancel" | "reorder", runIds: string[]) {
@@ -151,12 +246,33 @@ export function useServerPromptQueue(options: {
 
   watch(
     options.threadId,
-    () => {
+    (newThreadId) => {
       queue.value = [];
       pending.value = null;
+      if (!newThreadId) return;
+
       try {
         const raw = localStorage.getItem(options.storageKey.value);
-        if (raw) pending.value = JSON.parse(raw) as Pending;
+        if (raw) {
+          const item = JSON.parse(raw) as PendingPromptSubmission;
+          const isMatchingThread =
+            !item.threadId || item.threadId === newThreadId;
+          const isNotStale =
+            !item.createdAt || Date.now() - item.createdAt < 30 * 60 * 1000;
+          if (isMatchingThread && isNotStale) {
+            // 切回读取到的遗留记录，直接标记为 unconfirmed
+            item.status = "unconfirmed";
+            pending.value = item;
+          } else {
+            localStorage.removeItem(options.storageKey.value);
+            if (
+              item.storageKey &&
+              item.storageKey !== options.storageKey.value
+            ) {
+              localStorage.removeItem(item.storageKey);
+            }
+          }
+        }
       } catch {
         /* Storage may be disabled. */
       }
@@ -164,21 +280,34 @@ export function useServerPromptQueue(options: {
     },
     { immediate: true },
   );
-  const timer = setInterval(() => {
-    if (!document.hidden) void refresh();
-  }, 2000);
-  onScopeDispose(() => {
-    disposed = true;
-    clearInterval(timer);
-  });
+
+  let timer: ReturnType<typeof setInterval> | null = null;
+  if (typeof window !== "undefined") {
+    timer = setInterval(() => {
+      if (!document.hidden) void refresh();
+    }, 2000);
+  }
+
+  try {
+    onScopeDispose(() => {
+      disposed = true;
+      if (timer) clearInterval(timer);
+    });
+  } catch {
+    /* Safe fallback when outside effect scope. */
+  }
+
   return {
     queue,
     pending,
+    unconfirmed,
+    submitting,
     error,
     enqueue,
     refresh,
     retry: () =>
       pending.value ? dispatch(pending.value) : Promise.resolve(false),
+    dismiss,
     remove,
     clear,
     moveUp,

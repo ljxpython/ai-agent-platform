@@ -1,15 +1,17 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-07（Agent 模型调用稳定性治理全链路闭环，Platform API/Runtime/Platform Web 全栈用户人工实测验收通过，项目标记为 done；本地服务安全停止并释放端口）。
+> **最后更新：** 2026-10-08（Agent 运行生命周期超时治理与排队死锁根除全链路闭环，用户端到端人工验收通过，项目标为 done；合并进入主分支）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-07
+**最后更新：** 2026-10-08
 
 ## 最近改动
+
+2026-10-08 | **Agent 运行生命周期超时治理与排队死锁根除**：done。用户在真实浏览器端完成全链路验收。四图主子共享 attempt 预算、软收尾、模型 error 与 Worker timeout 分离；前端实装黄色超时警示胶囊、双通道停止确认；治本修复 `storageKey` 响应式漂移导致的本地 localStorage 幽灵未决锁残留，补充双重自愈机制与【放弃并恢复草稿】逃生通道；服务安全停止。见 [专项](projects/20261006-agent-run-timeout-governance/README.md) 及 [变更记录](apps/platform-web/docs/changes/20261007-prompt-queue-unconfirmed-deadlock-and-switch-healing.md)。
 
 2026-10-07 | **Agent 模型调用稳定性治理**：done。Platform API/Runtime Service/Platform Web 全栈交付闭环。修复 FastAPI 500 强类型校验拦截与前端表单 step/就地保存高亮反馈；故障注入死端口实测 ModelResilienceMiddleware 毫秒级降级至 DeepSeek 备用模型并流式完成全生命周期；用户在浏览器端完成全链路人工实测，验收通过。见 [专项](projects/20261006-agent-model-resilience/README.md)。
 
@@ -25,7 +27,7 @@
 
 ### 同日流资源专项
 
-2026-10-05 | **多会话流连接与运行缓存治理**：done；GraphHarbor post39 双包正式发布并完成 PyPI 独立安装，本地 Runtime API/Worker 升级重启；Redis 清理确认终态与用户授权的 618 个未知遗留流后约 586 MiB。三会话连续切换、后台队列、六个 Run success 与消息去重浏览器验收通过；权限故障/真实撤权 4 项通过。见 [专项](projects/20261005-chat-stream-resource-governance/README.md)。
+2026-10-05 | **多会话流连接与运行缓存治理**：多会话与真实撤权浏览器、最终构建验证通过；GraphHarbor post39 双包已发布，本地 Runtime 已升级重启；Redis 从峰值 18.01 GiB 降至约 0.57 GiB。见 [专项](projects/20261005-chat-stream-resource-governance/README.md)。
 
 ### 同日权限专项
 
@@ -33,11 +35,13 @@
 
 ## 本月归并
 
-2026-10（截至 10-07）| Agent 上下文窗口管理工程化、工具调用容错与可观测性补齐全链路闭环（全栈 3 服务验收通过）；Agent 回答后推荐问题全链路完成；Chat state/history 委托补齐与错误恢复；Chat 后台会话 DOM 虚拟化隔离与流式切换卡死根治、智能体切换隔离与列表远程拉取解耦治理、Chat 顶栏选择 Agent 历史列表联动过滤失效与 Pad 侧栏体验治理、对话前端视口平滑锚定与流式跟随根治、Clean Architecture 五层解耦重构、多会话后台无感自动排队消费与权限失效误杀彻底根治、切回历史时序正序合并、多会话切回假死死锁/空白水合/报错隔离、LangGraph v3 默认消费与 DeltaChannel 离线/PG 评估、模型畸形 ToolCall 自动缝合与孤儿块剔除、平台用户软删除三重安全栅栏、DeepSeek 官方多模态视觉识图、长会话断流解耦与历史懒加载、DearFlow 防死循环护栏、小惊喜创意工坊与 Jina Reader 接入、HTML 沙箱现代化渲染、Runtime DB 精简重构。
+2026-10（截至 10-08）| 运行超时治理、模型稳定性、上下文窗口、工具容错、可观测性、推荐问题、定时任务、Chat/权限/流恢复与 Worker 超时语义对齐；详情见各专项。
 
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
+
+- [Agent 运行生命周期超时治理](projects/20261006-agent-run-timeout-governance/README.md)：done；已完成正式post42接入、12组HTTP、匹配回退、前端T11超时治理与停止时序实装，以及T12用户真实浏览器端端到端联调验收（含排队死锁自愈）。本地服务已安全停止。
 
 - [Agent 模型调用稳定性治理](projects/20261006-agent-model-resilience/README.md)：`done`；全链路闭环，Platform API、Runtime Service 与 Platform Web 全栈交付。后端模型恢复策略/受管备模型/分类重试/契约签名与网关快照、前端编辑页配置/真实失败态/推荐问题门禁/停止确认超时保护/备用模型微胶囊 Tag 全量实装；单测门禁全绿，故障注入主备降级实测通过，用户人工浏览器实测验收通过。
 
@@ -74,26 +78,14 @@
 - [消息内部Run回查委托修复](projects/20260927-message-run-read-delegation/README.md)：partial；Platform API只在消息入口转发请求内已有read委托，Runtime配对验证后用于内部Run GET；本机自动化通过，现役跨服务链路未验证，未部署。
 - [Runtime 与 GraphHarbor 业务边界解耦](projects/20260925-runtime-business-boundary-decoupling/README.md)：`partial`，本机两库已清理旧运行数据并迁移，归档隔离恢复通过，正式依赖 post33 已锁定。单项目 run/SSE/HITL 与文件正向链路已有证据；官方全入口差分、跨项目故障和回退门禁仍缺。
 
-- [interaction-data-service 退役](projects/20260924-interaction-data-service-retirement/README.md)：done（本机范围）；仓库/本机独占资源清理、备份恢复、浏览器聊天与成果交付通过。
-
-- [Dear Agent记忆闭环](projects/20260920-dear-agent-memory/README.md)：partial（后端 + Runtime + 前端 `F01—F07` 代码与单测全部完成；仅剩联调环境完整平台 run/SSE 与浏览器 E2E 验收）。
-
-- [前端对话会话 SWR 缓存与流式长效保活治理](projects/20260924-chat-session-cache-and-stream-resumption/README.md)：原项目记录done；现役已有页面KeepAlive及SWR消息水合。切Thread重建与SDK断流缺口由[SSE专项](projects/20260926-sse-event-contract/README.md)阶段实现补齐，普通真实链路及1/4条短容量已验，8条容量受HTTP/1.1浏览器连接槽限制，Final blocked。
-- [模型思考内容输出排查](projects/20260923-model-reasoning-output/README.md)：done；`ChatOpenAIWithReasoning` 显式标记 `model_provider="openai_compatible"` 使流式 `AIMessageChunk.content_blocks` 实时产出 `reasoning` 块，配合 `MessageContent.vue` 流式默认展开修复，流式实时展示与完成态均通过。
-- [前端代码冗余清理与结构化重构](projects/20260923-platform-web-codebase-refactor/README.md)：✅ 已完成（子专题 01~04 全部 `done`，净减 11,760 行代码，`pnpm build` 与 88 套单测全绿）
-- [跨服务规范治理](projects/20260922-cross-service-governance/README.md)：错误响应与追踪本期done；追踪T1—T8、真实链路、PG查询及性能实测见专项Final。JWT J1—J6与R01—R04已验，后续消息回查源码修复与本机测试通过、部署后真实链路未验证；SSE S1—S10完成，S11容量Final受HTTP/1.1连接槽限制而blocked。原专项边界保留，后续消息专项单独授权Runtime入口修改；GraphHarbor不改。
-- [全平台权限治理](projects/20260920-platform-access-governance/README.md)：技术实现与自动化 Final done，用户人工验收中；完整手工用例、证据模板和清理清单见 08。仅项目内个人记忆入口治理；共享/跨项目记忆、自定义角色等 deferred。未提交或生产部署。
-- [代码规范自动化](projects/20260925-code-quality-automation/README.md)：partial；根级 pre-commit 与变更文件 CI 门禁已落地，历史 Python 格式基线待单独清理。
-- [Python 格式基线清理](projects/20260925-python-format-baseline-cleanup/README.md)：done；历史存量 315 条诊断全部清零（0 errors），全仓 574 个 Python 源码文件完成格式化，CI 成功升级全量 Ruff check 与 format check 门禁。
-
 ## 各服务当前状态
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-07 | 工具容错与生产接线完成；新增有界模型错误诊断、启动阶段计时与只读查询；上下文窗口管理官方摘要薄扩展、预算 guard、隐藏流、根/子图装配和维护副作用隔离已完成，定向测试与真实模型/PG恢复全部通过；未部署现役。 |
-| platform-api | 2026-10-07 | 工具消息保真与公开 fatal 安全出口；新增 Run diagnostics GET 与脱敏投影；上下文容量 CRUD、受信连接、Context v5、维护网关和公开脱敏已完成，API 回归测试全绿；未部署现役。 |
-| platform-web | 2026-10-07 | 工具错误摘要微胶囊实装；运行诊断 RunDiagnostics 面板实装；模型容量配置/展示、整理状态微胶囊（含4秒淡出打断机制）及手动整理菜单守卫全链路交付；全仓单测、vue-tsc 与生产打包全绿；未部署现役。 |
-| AI Harness（AGENTS.md + Skills） | 2026-10-04 | AGENTS.md 与 Skill 重复内容已去除（场景步骤 + 验证标准章节移入 Skill），CONTEXT.md 改为渐进式快照结构；整单结束前须逐项核对未完成任务，Task 未完成时只记 Phase |
+| runtime-service | 2026-10-08 | 锁定/安装正式 post42；四图主子共享 attempt 预算/软收尾，模型 error 与 Worker timeout 分开；模型稳定性降级、工具容错与上下文窗口管理全部融合就绪；未部署现役。 |
+| platform-api | 2026-10-08 | 私有预算注入拒绝/脱敏及停止确认透传；模型恢复策略、上下文容量 CRUD 与 Run 诊断端点全量实装；未部署现役。 |
+| platform-web | 2026-10-08 | 超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板与上下文容量展示全部融合；全仓单测、vue-tsc 与生产打包全绿。 |
+| AI Harness（AGENTS.md + Skills） | 2026-10-07 | 整单结束前须逐项核对未完成任务，未完成时只记Phase；用户批准的多会话发布协作经验已写入ai-workflow经验库，恢复时先核对正式产物归属与锁文件 |
 
 ## 近期关键决策
 

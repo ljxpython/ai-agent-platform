@@ -7,8 +7,9 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langgraph.checkpoint.memory import InMemorySaver
-from support import BindableFakeMessagesChatModel
+from support import BindableFakeMessagesChatModel, with_run_budget
 
+from runtime_service.middlewares.timeout_wrapup import TIMEOUT_WRAPUP_INSTRUCTION
 from runtime_service.runtime import runtime_context_hash
 from runtime_service.services.dearflow_agent import agent
 from runtime_service.services.dearflow_agent.tools import search
@@ -17,8 +18,9 @@ from .test_agent import config
 
 
 @pytest.mark.parametrize("cancel", [False, True])
+@pytest.mark.parametrize("wrapup", [False, True])
 def test_parallel_children_are_isolated_and_follow_parent_cancel(
-    monkeypatch, tmp_path, cancel
+    monkeypatch, tmp_path, cancel, wrapup
 ):
     async def run():
         entered = set()
@@ -39,6 +41,7 @@ def test_parallel_children_are_isolated_and_follow_parent_cancel(
 
         class Model(BindableFakeMessagesChatModel):
             async def _agenerate(self, messages, **kwargs):
+                assert (TIMEOUT_WRAPUP_INSTRUCTION in messages[0].text) == wrapup
                 human = next(m.content for m in messages if isinstance(m, HumanMessage))
                 if human == "parent-private-input":
                     result = (
@@ -109,7 +112,7 @@ def test_parallel_children_are_isolated_and_follow_parent_cancel(
 
         monkeypatch.setattr(search, "tavily", provider)
         monkeypatch.setattr(agent, "build_model", lambda *a, **kw: Model(responses=[]))
-        cfg = config()
+        cfg = with_run_budget(config(), remaining=30 if wrapup else 300)
         cfg["context"] = {"execution_mode": "ultra"}
         cfg["configurable"]["langgraph_auth_user"]["runtime_context_hash"] = (
             runtime_context_hash(cfg["context"])

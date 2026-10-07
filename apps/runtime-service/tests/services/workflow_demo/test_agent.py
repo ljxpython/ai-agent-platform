@@ -6,11 +6,18 @@ import hmac
 
 import httpx
 import pytest
+from langchain.agents import create_agent as real_create_agent
+from langchain_core.messages import AIMessage
 from langgraph.pregel import Pregel
 from langgraph.types import Command
-from support import BindableFakeChatModel
+from support import (
+    BindableFakeChatModel,
+    BindableFakeMessagesChatModel,
+    with_run_budget,
+)
 
 from runtime_service.graphs.workflow_demo import get_agent
+from runtime_service.middlewares.timeout_wrapup import TIMEOUT_WRAPUP_INSTRUCTION
 from runtime_service.runtime.errors import RuntimeResolutionError
 from runtime_service.services.demo.workflow_demo import agent
 
@@ -31,6 +38,47 @@ def _graph(*responses: str) -> Pregel:
 
 def _config(thread_id: str) -> dict[str, object]:
     return {"configurable": {"thread_id": thread_id}}
+
+
+def test_internal_model_rebuild_keeps_outer_budget_and_actual_prompt(monkeypatch):
+    budgets, prompts = [], []
+
+    class Model(BindableFakeMessagesChatModel):
+        def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+            prompts.append(messages[0].text)
+            return super()._generate(
+                messages, stop=stop, run_manager=run_manager, **kwargs
+            )
+
+    def capture(**kwargs):
+        budgets.append(
+            next(
+                item.budget
+                for item in kwargs["middleware"]
+                if type(item).__name__ == "TimeoutWrapupMiddleware"
+            )
+        )
+        return real_create_agent(**kwargs)
+
+    monkeypatch.setattr(agent, "create_agent", capture)
+
+    async def run():
+        cfg = with_run_budget(
+            {
+                "configurable": {
+                    "thread_id": "workflow-budget",
+                    "_runtime_model": Model(responses=[AIMessage(content="report")]),
+                }
+            },
+            remaining=30,
+        )
+        graph = await get_agent(cfg)
+        await graph.ainvoke({"message": "first"}, _config("workflow-budget"))
+        await graph.ainvoke({"message": "second"}, _config("workflow-budget"))
+        assert len(budgets) == 2 and budgets[0] is budgets[1]
+        assert all(TIMEOUT_WRAPUP_INSTRUCTION in prompt for prompt in prompts)
+
+    asyncio.run(run())
 
 
 @pytest.mark.parametrize("resume_reference", [None, "renewed-reference"])

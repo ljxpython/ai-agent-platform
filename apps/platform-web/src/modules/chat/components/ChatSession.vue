@@ -158,6 +158,8 @@ const {
   clearOffloadState,
   offloadConversation,
   isOffloading,
+  turnState,
+  verifyStop,
 } = session;
 
 watch(
@@ -445,6 +447,7 @@ const followUp = useFollowUpSuggestions({
   hasPendingInterrupts: () => hasPendingInterrupts.value,
   visible: () => props.visible,
   disabled: () => !props.canWrite,
+  turnState: () => turnState.value,
   runStatus: () => session.run.value?.status,
   hasError: () =>
     Boolean(
@@ -459,6 +462,11 @@ const handleStop = () => {
   if (props.visible === false || !props.canWrite) return;
   followUp.markStoppedByUser();
   void session.stop();
+};
+
+const handleVerifyStop = async () => {
+  if (props.visible === false || !props.canWrite) return;
+  await verifyStop();
 };
 
 watch(
@@ -737,7 +745,7 @@ async function submitQueuedMessage(content: unknown) {
     const prepared = await session.prepareQueueContent(content);
     const accepted = await promptQueue.enqueue(prepared);
     if (!accepted) {
-      localError.value = promptQueue.pending.value
+      localError.value = promptQueue.unconfirmed.value
         ? "排队结果待确认，请先重试原消息"
         : promptQueue.error.value || "排队请求被拒绝";
     }
@@ -749,6 +757,13 @@ async function submitQueuedMessage(content: unknown) {
 }
 
 async function send(queued = false) {
+  if (
+    cancelling.value ||
+    turnState.value === "stopping" ||
+    turnState.value === "stop_unconfirmed"
+  ) {
+    return;
+  }
   const isAgentActive =
     busy.value ||
     checking.value ||
@@ -915,6 +930,13 @@ async function restoreQueuedDraft(content?: unknown, messageId?: string) {
     ];
   }
   if (restoringPending) session.pendingMessage.value = null;
+}
+
+function handleDismissPendingQueue() {
+  const item = promptQueue.dismiss();
+  if (item?.content) {
+    void restoreQueuedDraft(item.content);
+  }
 }
 
 async function resendQueuedMessage(content: unknown, messageId?: string) {
@@ -1597,11 +1619,13 @@ defineExpose({
               class="sticky top-0 z-10 mb-4"
               :is-running="isSessionRunning"
               :is-interrupted="isSessionInterrupted"
+              :turn-state="turnState"
               :last-event-at="lastEventAt"
               :error="error || streamError"
-              :disabled="!canWrite || cancelling"
+              :disabled="!canWrite || cancelling || turnState === 'stopping'"
               @cancel="handleStop"
               @resume="handleResume"
+              @verify-stop="handleVerifyStop"
             />
             <div
               v-if="
@@ -1726,18 +1750,27 @@ defineExpose({
               />
             </div>
             <div
-              v-if="promptQueue.pending.value"
+              v-if="promptQueue.unconfirmed.value"
               role="alert"
-              class="mx-auto w-full max-w-3xl rounded-xl border border-amber-500/40 p-3 text-xs"
+              class="mx-auto flex w-full max-w-3xl items-center justify-between rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-amber-700 dark:text-amber-300"
             >
-              排队提交结果待确认；请用原消息和原幂等键重试。
-              <button
-                type="button"
-                class="ml-2 underline"
-                @click="promptQueue.retry()"
-              >
-                核实并重试
-              </button>
+              <span>排队提交结果待确认；请用原消息和原幂等键重试。</span>
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  class="font-medium underline hover:text-amber-800 dark:hover:text-amber-200"
+                  @click="promptQueue.retry()"
+                >
+                  核实并重试
+                </button>
+                <button
+                  type="button"
+                  class="text-muted-foreground underline hover:text-foreground"
+                  @click="handleDismissPendingQueue"
+                >
+                  放弃并恢复草稿
+                </button>
+              </div>
             </div>
             <div
               v-if="legacyPromptQueue.queue.value.length"
@@ -1819,11 +1852,13 @@ defineExpose({
                 v-if="liveFollowView.showStopAction"
                 type="button"
                 class="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                :disabled="cancelling"
+                :disabled="cancelling || turnState === 'stopping'"
                 @click="handleStop"
               >
                 <BaseIcon name="x" class="h-3 w-3" />
-                {{ cancelling ? "停止中..." : "停止" }}
+                {{
+                  turnState === "stopping" || cancelling ? "停止中..." : "停止"
+                }}
               </button>
               <button
                 type="button"
@@ -1894,6 +1929,7 @@ defineExpose({
       :can-write="canWrite"
       :can-set-policy="session.canSetPolicy.value"
       :can-full-access="session.canFullAccess.value"
+      :turn-state="turnState"
       :show-suggestions="shouldShowComposerSuggestions"
       @update:access-policy="session.setAccessPolicy"
       @change:access-policy="session.setAccessPolicy"

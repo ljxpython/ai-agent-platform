@@ -18,6 +18,7 @@ export interface UseFollowUpSuggestionsOptions {
   hasPendingInterrupts?: MaybeRefOrGetter<boolean>;
   visible?: MaybeRefOrGetter<boolean>;
   disabled?: MaybeRefOrGetter<boolean>;
+  turnState?: MaybeRefOrGetter<string | undefined>;
   runStatus?: MaybeRefOrGetter<string | undefined>;
   hasError?: MaybeRefOrGetter<boolean>;
 }
@@ -88,6 +89,26 @@ export function useFollowUpSuggestions(options: UseFollowUpSuggestionsOptions) {
 
     if (stoppedByUser) {
       stoppedByUser = false;
+      return;
+    }
+
+    const currentTurnState = toValue(options.turnState);
+    if (
+      currentTurnState &&
+      [
+        "timeout",
+        "error",
+        "stopping",
+        "stop_unconfirmed",
+        "stopped",
+        "awaiting_review",
+      ].includes(currentTurnState)
+    ) {
+      return;
+    }
+
+    const currentRunStatus = toValue(options.runStatus);
+    if (currentRunStatus && currentRunStatus !== "success") {
       return;
     }
 

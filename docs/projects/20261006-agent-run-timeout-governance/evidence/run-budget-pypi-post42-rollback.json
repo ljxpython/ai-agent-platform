@@ -1,0 +1,34 @@
+{
+  "results": [
+    {
+      "case": "post42-runtime",
+      "run_id": "8803dd37-c0c0-447b-bd75-28acfe9110a5",
+      "graphharbor": "0.13.0.post42",
+      "runtime": "0.13.0.post42",
+      "source": "/Users/lijiaxin/.codex/worktrees/e7dd/ai-agent-platform/apps/runtime-service/src/runtime_service/__init__.py"
+    },
+    {
+      "case": "matching-post41-rollback",
+      "run_id": "e9fd1e38-5d4c-4cf0-9e06-aea029d680b6",
+      "queued_run_id": "e3733be2-1b8e-4030-955d-8b059110bc4a",
+      "worker_exit": 0,
+      "checkpoint_resumed": true,
+      "history_and_artifacts_preserved": true,
+      "schema_migration": false,
+      "graphharbor": "0.13.0.post41",
+      "runtime": "0.13.0.post41",
+      "source": "/private/tmp/run-budget-rollback-9ozzQn/apps/runtime-service/src/runtime_service/__init__.py"
+    },
+    {
+      "case": "post41-ordinary-cancel-hitl",
+      "ordinary_run": "77583f93-b76c-4eee-b944-f6c08c563289",
+      "cancel_run": "8e5e6943-cce4-4c8b-adda-5660c7ddb4cc",
+      "approval_run": "62c39b5a-c6fc-4953-aab7-8fdbce8d33a6",
+      "resumed_run": "2b67e0d0-86a0-4c99-acb1-67ab8737a0da",
+      "lease_released": true,
+      "graphharbor": "0.13.0.post41",
+      "runtime": "0.13.0.post41",
+      "source": "/private/tmp/run-budget-rollback-9ozzQn/apps/runtime-service/src/runtime_service/__init__.py"
+    }
+  ]
+}

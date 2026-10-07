@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import { formatThreadTime } from "@/utils/threads";
+import type { SessionTurnState } from "../composables/useChatSession";
 
 const props = defineProps<{
   isRunning: boolean;
@@ -9,11 +10,13 @@ const props = defineProps<{
   error?: string;
   lastEventAt?: string;
   disabled?: boolean;
+  turnState?: SessionTurnState;
 }>();
 
 const emit = defineEmits<{
   resume: [];
   cancel: [];
+  verifyStop: [];
 }>();
 
 function formatError(raw: string): string {
@@ -29,58 +32,145 @@ function formatError(raw: string): string {
   return raw;
 }
 
-const statusText = computed(() => {
-  if (props.isRunning) return "Agent 正在执行...";
-  if (props.isInterrupted) {
-    return "等待人工确认";
+const resolvedState = computed<SessionTurnState>(() => {
+  if (props.turnState) {
+    return props.turnState;
   }
-  if (props.error) return `执行出错: ${formatError(props.error)}`;
-  return props.lastEventAt
-    ? `最后活跃于 ${formatThreadTime(props.lastEventAt)}`
-    : "就绪";
+  if (props.error) return "error";
+  if (props.isInterrupted) return "awaiting_review";
+  if (props.isRunning) return "running";
+  return "idle";
+});
+
+const shouldRender = computed(() => {
+  if (props.turnState) {
+    return (
+      props.turnState === "stopping" ||
+      props.turnState === "stop_unconfirmed" ||
+      props.turnState === "timeout" ||
+      props.turnState === "awaiting_review" ||
+      props.turnState === "stopped" ||
+      props.turnState === "error" ||
+      Boolean(props.error)
+    );
+  }
+  return props.isInterrupted || Boolean(props.error);
+});
+
+const statusText = computed(() => {
+  switch (resolvedState.value) {
+    case "timeout":
+      return "上一回合执行超时，已完成的内容已保留";
+    case "stopping":
+      return "正在停止...";
+    case "stop_unconfirmed":
+      return "停止结果待确认";
+    case "stopped":
+      return "已停止";
+    case "awaiting_review":
+      return "等待人工确认";
+    case "error":
+      return props.error ? `执行出错: ${formatError(props.error)}` : "执行出错";
+    case "running":
+      return "Agent 正在执行...";
+    default:
+      return props.lastEventAt
+        ? `最后活跃于 ${formatThreadTime(props.lastEventAt)}`
+        : "就绪";
+  }
 });
 
 const statusIcon = computed(() => {
-  if (props.isRunning) return "refresh";
-  if (props.isInterrupted) return "alert";
-  if (props.error) return "x";
-  return "check";
+  switch (resolvedState.value) {
+    case "timeout":
+    case "stop_unconfirmed":
+    case "awaiting_review":
+      return "alert";
+    case "stopping":
+    case "running":
+      return "refresh";
+    case "error":
+      return "x";
+    case "stopped":
+    default:
+      return "check";
+  }
 });
+
+const isSpinning = computed(() => {
+  return (
+    resolvedState.value === "stopping" ||
+    (resolvedState.value === "running" && props.isRunning)
+  );
+});
+
+const isAmber = computed(() => {
+  return (
+    resolvedState.value === "timeout" ||
+    resolvedState.value === "stop_unconfirmed" ||
+    resolvedState.value === "awaiting_review"
+  );
+});
+
+const isError = computed(() => resolvedState.value === "error");
+const isBlue = computed(
+  () => resolvedState.value === "stopping" || resolvedState.value === "running",
+);
 </script>
 
 <template>
   <div
-    v-if="isInterrupted || error"
-    class="flex flex-wrap sm:flex-nowrap items-center justify-between p-3 rounded-lg border shadow-sm transition-all"
+    v-if="shouldRender"
+    class="flex flex-wrap sm:flex-nowrap items-center justify-between p-3 rounded-lg border shadow-sm transition-all gap-2"
     :class="{
-      'bg-blue-50 border-blue-200': isRunning,
-      'bg-amber-50 border-amber-200': isInterrupted,
-      'bg-red-50 border-red-200': error,
+      'bg-blue-50 border-blue-200': isBlue,
+      'bg-amber-50 border-amber-200': isAmber,
+      'bg-red-50 border-red-200': isError,
+      'bg-gray-50 border-gray-200': resolvedState === 'stopped',
     }"
   >
-    <div class="flex items-center gap-3 w-full sm:w-auto overflow-hidden">
+    <div class="flex items-center gap-3 min-w-0 flex-1">
       <BaseIcon
         :name="statusIcon"
+        class="shrink-0"
         :class="{
-          'animate-spin text-blue-500': isRunning,
-          'text-amber-500': isInterrupted,
-          'text-red-500': error,
+          'animate-spin text-blue-500': isSpinning,
+          'text-amber-500': isAmber,
+          'text-red-500': isError,
+          'text-gray-500': resolvedState === 'stopped',
         }"
       />
       <span
-        class="text-sm font-medium truncate"
+        class="text-sm font-medium break-words"
         :class="{
-          'text-blue-800': isRunning,
-          'text-amber-800': isInterrupted,
-          'text-red-800': error,
+          'text-blue-800': isBlue,
+          'text-amber-800': isAmber,
+          'text-red-800': isError,
+          'text-gray-700': resolvedState === 'stopped',
         }"
         :title="statusText"
         >{{ statusText }}</span
       >
     </div>
 
+    <!-- 停止待确认：核实停止按钮 -->
     <div
-      v-if="isInterrupted"
+      v-if="resolvedState === 'stop_unconfirmed'"
+      class="flex items-center gap-2 mt-2 sm:mt-0 shrink-0"
+    >
+      <button
+        type="button"
+        :disabled="disabled"
+        class="px-3 py-1.5 text-xs font-medium text-amber-900 bg-white border border-amber-300 rounded hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-colors disabled:opacity-50"
+        @click="emit('verifyStop')"
+      >
+        核实停止
+      </button>
+    </div>
+
+    <!-- 人工审批：查看审批按钮（严禁在 stopping/stop_unconfirmed 下显示） -->
+    <div
+      v-else-if="resolvedState === 'awaiting_review'"
       class="flex items-center gap-2 mt-2 sm:mt-0 shrink-0"
     >
       <button
