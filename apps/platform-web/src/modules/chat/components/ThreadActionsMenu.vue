@@ -1,27 +1,34 @@
 <script setup lang="ts">
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import { useTopbarDropdown } from '@/composables/useTopbarDropdown'
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import { useTopbarDropdown } from "@/composables/useTopbarDropdown";
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
-    focusMode?: boolean
-    canTakeover?: boolean
-    canDelete?: boolean
+    focusMode?: boolean;
+    canTakeover?: boolean;
+    canDelete?: boolean;
+    showOffload?: boolean;
+    offloadDisabled?: boolean;
+    offloadDisabledReason?: string;
   }>(),
   {
     focusMode: false,
     canTakeover: false,
-    canDelete: false
-  }
-)
+    canDelete: false,
+    showOffload: true,
+    offloadDisabled: false,
+    offloadDisabledReason: "",
+  },
+);
 
 const emit = defineEmits<{
-  'toggle-focus': []
-  'open-drawer': []
-  'open-options': []
-  'open-takeover': []
-  'delete-thread': []
-}>()
+  "toggle-focus": [];
+  "open-drawer": [];
+  "open-options": [];
+  "open-takeover": [];
+  "delete-thread": [];
+  "offload-conversation": [];
+}>();
 
 const {
   close,
@@ -31,42 +38,48 @@ const {
   isOpen,
   rootRef,
   toggle,
-  triggerRef
+  triggerRef,
 } = useTopbarDropdown({
-  alignment: 'end',
+  alignment: "end",
   fallbackWidth: 176,
   minWidth: 176,
-  offset: 6
-})
+  offset: 6,
+});
 
-function handleAction(action: 'focus' | 'drawer' | 'options' | 'takeover' | 'delete') {
-  close()
-  if (action === 'focus') emit('toggle-focus')
-  else if (action === 'drawer') emit('open-drawer')
-  else if (action === 'options') emit('open-options')
-  else if (action === 'takeover') emit('open-takeover')
-  else if (action === 'delete') emit('delete-thread')
+function handleAction(
+  action: "focus" | "drawer" | "options" | "takeover" | "delete" | "offload",
+) {
+  if (action === "offload") {
+    if (props.offloadDisabled) return;
+    close();
+    emit("offload-conversation");
+    return;
+  }
+  close();
+  if (action === "focus") emit("toggle-focus");
+  else if (action === "drawer") emit("open-drawer");
+  else if (action === "options") emit("open-options");
+  else if (action === "takeover") emit("open-takeover");
+  else if (action === "delete") emit("delete-thread");
 }
 </script>
 
 <template>
-  <div
-    ref="rootRef"
-    class="relative shrink-0"
-  >
+  <div ref="rootRef" class="relative shrink-0">
     <button
       ref="triggerRef"
       type="button"
       class="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200/70 bg-white text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
-      :class="isOpen ? 'bg-gray-100 dark:bg-dark-800 text-gray-800 dark:text-white' : ''"
+      :class="
+        isOpen
+          ? 'bg-gray-100 dark:bg-dark-800 text-gray-800 dark:text-white'
+          : ''
+      "
       title="更多操作"
       aria-label="更多操作"
       @click="toggle"
     >
-      <BaseIcon
-        name="ellipsis-horizontal"
-        size="xs"
-      />
+      <BaseIcon name="ellipsis-horizontal" size="xs" />
     </button>
 
     <Transition
@@ -90,10 +103,7 @@ function handleAction(action: 'focus' | 'drawer' | 'options' | 'takeover' | 'del
             class="pw-dropdown-item text-xs"
             @click="handleAction('drawer')"
           >
-            <BaseIcon
-              name="overview"
-              size="xs"
-            />
+            <BaseIcon name="overview" size="xs" />
             <span>会话详情与上下文</span>
           </button>
 
@@ -102,11 +112,29 @@ function handleAction(action: 'focus' | 'drawer' | 'options' | 'takeover' | 'del
             class="pw-dropdown-item text-xs"
             @click="handleAction('options')"
           >
-            <BaseIcon
-              name="runtime"
-              size="xs"
-            />
+            <BaseIcon name="runtime" size="xs" />
             <span>运行参数配置</span>
+          </button>
+
+          <button
+            v-if="showOffload"
+            type="button"
+            class="pw-dropdown-item text-xs"
+            :class="
+              offloadDisabled
+                ? 'opacity-50 cursor-not-allowed text-gray-400 dark:text-dark-500 hover:bg-transparent dark:hover:bg-transparent'
+                : ''
+            "
+            :disabled="offloadDisabled"
+            :title="
+              offloadDisabled
+                ? offloadDisabledReason || '当前无法整理上下文'
+                : '整理会话历史，将超出容量的消息归档以释放上下文窗口'
+            "
+            @click="handleAction('offload')"
+          >
+            <BaseIcon name="refresh" size="xs" />
+            <span>整理上下文</span>
           </button>
 
           <button
@@ -114,11 +142,8 @@ function handleAction(action: 'focus' | 'drawer' | 'options' | 'takeover' | 'del
             class="pw-dropdown-item text-xs"
             @click="handleAction('focus')"
           >
-            <BaseIcon
-              name="focus"
-              size="xs"
-            />
-            <span>{{ focusMode ? '退出专注模式' : '进入专注模式' }}</span>
+            <BaseIcon name="focus" size="xs" />
+            <span>{{ focusMode ? "退出专注模式" : "进入专注模式" }}</span>
           </button>
 
           <button
@@ -127,10 +152,7 @@ function handleAction(action: 'focus' | 'drawer' | 'options' | 'takeover' | 'del
             class="pw-dropdown-item text-xs text-amber-700 dark:text-amber-300"
             @click="handleAction('takeover')"
           >
-            <BaseIcon
-              name="shield"
-              size="xs"
-            />
+            <BaseIcon name="shield" size="xs" />
             <span>管理员临时接管</span>
           </button>
 
@@ -145,10 +167,7 @@ function handleAction(action: 'focus' | 'drawer' | 'options' | 'takeover' | 'del
             class="pw-dropdown-item text-xs text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/30"
             @click="handleAction('delete')"
           >
-            <BaseIcon
-              name="trash"
-              size="xs"
-            />
+            <BaseIcon name="trash" size="xs" />
             <span>删除当前会话</span>
           </button>
         </div>

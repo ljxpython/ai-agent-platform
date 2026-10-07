@@ -15,6 +15,9 @@ from langgraph.runtime import Runtime
 
 from runtime_service.messaging import MessageInbox
 from runtime_service.messaging.reconcile import reconcile_run
+from runtime_service.middlewares.conversation_offloading import (
+    is_conversation_maintenance,
+)
 
 
 class MessageQueueState(AgentState):
@@ -27,6 +30,8 @@ class MessageQueueMiddleware(AgentMiddleware):
     async def abefore_model(
         self, state: MessageQueueState, runtime: Runtime
     ) -> dict[str, Any] | None:
+        if is_conversation_maintenance(runtime):
+            return None
         config = get_config()
         configurable = config.get("configurable", {})
         info = runtime.execution_info

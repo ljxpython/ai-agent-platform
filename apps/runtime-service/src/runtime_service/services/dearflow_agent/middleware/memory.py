@@ -17,6 +17,9 @@ from langgraph.constants import TAG_HIDDEN, TAG_NOSTREAM
 from pydantic import BaseModel, Field
 
 from runtime_service.messaging import MessageInbox
+from runtime_service.middlewares.conversation_offloading import (
+    is_conversation_maintenance,
+)
 from runtime_service.runtime import RuntimeAuthError
 from runtime_service.services.dearflow_agent.memory import FactInput, MemoryStorage
 from runtime_service.services.dearflow_agent.memory_access import memory_allowed
@@ -68,6 +71,8 @@ class MemoryContextMiddleware(AgentMiddleware):
         self.model = model
 
     async def abefore_agent(self, state, runtime):
+        if is_conversation_maintenance(runtime):
+            return None
         if not await memory_allowed(runtime):
             return None
         messages = state.get("messages", [])
@@ -97,6 +102,8 @@ class MemoryContextMiddleware(AgentMiddleware):
         }
 
     async def awrap_model_call(self, request, handler):
+        if is_conversation_maintenance(request.runtime):
+            return await handler(request)
         if not await memory_allowed(request.runtime):
             return await handler(request)
         query = next(
@@ -130,6 +137,8 @@ class MemoryContextMiddleware(AgentMiddleware):
         return response
 
     async def aafter_agent(self, state, runtime):
+        if is_conversation_maintenance(runtime):
+            return
         source = state.get("dear_memory_source", {})
         if not await memory_allowed(runtime):
             return

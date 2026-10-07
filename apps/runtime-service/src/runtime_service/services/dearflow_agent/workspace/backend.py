@@ -27,6 +27,9 @@ from deepagents.backends.protocol import (
 )
 from langchain.agents.middleware import AgentMiddleware
 
+from runtime_service.middlewares.conversation_offloading import (
+    is_conversation_maintenance,
+)
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
 from runtime_service.tools.images import ImageWorkspace
 from runtime_service.workspace.execution import (
@@ -246,4 +249,5 @@ class WorkspaceMiddleware(AgentMiddleware):
             or facts.scope.assistant_id != "dearflow_agent"
         ):
             raise RuntimeAuthError("runtime.workspace.scope_mismatch")
-        await asyncio.to_thread(self.workspace.prepare)
+        if not is_conversation_maintenance(runtime):
+            await asyncio.to_thread(self.workspace.prepare)

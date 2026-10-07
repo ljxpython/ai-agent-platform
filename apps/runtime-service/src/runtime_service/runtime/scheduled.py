@@ -16,7 +16,10 @@ import httpx
 from runtime_service.auth.acl_client import post_acl
 from runtime_service.runtime.auth import verified_delegation_from_user
 from runtime_service.runtime.errors import RuntimeAuthError
-from runtime_service.runtime.resolver import runtime_context_hash
+from runtime_service.runtime.resolver import (
+    persisted_context_hash_v4,
+    runtime_context_hash,
+)
 
 logger = logging.getLogger(__name__)
 MARKER = "platform_scheduled_task"
@@ -171,7 +174,10 @@ def scheduled_execution(factory, *, agent_key):
         ):
             raise RuntimeAuthError("scheduled_task_scope_denied")
         context = config.get("context") or {}
-        if facts.context_hash != runtime_context_hash(context):
+        if isinstance(context, dict) and context.get("offload_conversation") is True:
+            raise RuntimeAuthError("scheduled_task_context_offload_forbidden")
+        current_hash = runtime_context_hash(context)
+        if facts.context_hash not in {current_hash, persisted_context_hash_v4(context)}:
             raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
         payload = {
             "tenant_id": facts.principal.tenant_id,
@@ -190,6 +196,8 @@ def scheduled_execution(factory, *, agent_key):
         if not result["allowed"]:
             raise RuntimeAuthError(result.get("error_code", "scheduled_task_denied"))
         user = dict(configurable["langgraph_auth_user"])
+        # Only upgrade after the signed platform callback reauthorizes the saved cron.
+        user["runtime_context_hash"] = current_hash
         user["runtime_policy"] = result["policy"]
         user["runtime_principal"] = {
             **user["runtime_principal"],

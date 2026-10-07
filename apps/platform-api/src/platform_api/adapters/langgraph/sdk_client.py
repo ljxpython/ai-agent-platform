@@ -8,6 +8,7 @@ import langgraph_sdk
 
 from platform_api.core.errors import PlatformApiError, UpstreamServiceError
 from platform_api.core.errors.payload import safe_error_headers, safe_validation_details
+from platform_api.core.runtime_contract import is_runtime_history_file_path
 
 FORWARDED_HEADER_KEYS = ("x-request-id",)
 
@@ -96,8 +97,23 @@ def get_langgraph_client(
 
 def redact_runtime_private_fields(value: Any) -> Any:
     if isinstance(value, dict):
+        if value.get("type") == "conversation_offloading":
+            return _offloading_status(value)
+        # CompositeBackend removes route prefixes from checkpoint file keys.
+        value = {
+            key: {
+                path: data
+                for path, data in item.items()
+                if not is_runtime_history_file_path(path)
+            }
+            if key == "files" and isinstance(item, dict)
+            else item
+            for key, item in value.items()
+        }
         return {
-            key: redact_runtime_private_fields(item)
+            key: _offloading_status(item)
+            if key == "conversation_offloading" and type(item) is not bool
+            else redact_runtime_private_fields(item)
             for key, item in value.items()
             if not (
                 str(key).startswith("_runtime_")
@@ -108,12 +124,49 @@ def redact_runtime_private_fields(value: Any) -> Any:
                     "authorization_ref",
                     "dear_skill_snapshot",
                     "dear_memory_source",
+                    "_summarization_event",
+                    "_summarization_session_id",
                 }
             )
         }
     if isinstance(value, list):
         return [redact_runtime_private_fields(item) for item in value]
     return value
+
+
+def _offloading_status(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict) or value.get("type") != "conversation_offloading":
+        return {}
+    if value.get("status") not in (
+        "started",
+        "completed",
+        "skipped",
+        "failed",
+    ) or value.get("trigger") not in ("automatic", "manual"):
+        return {}
+    result = {
+        "type": "conversation_offloading",
+        "status": value["status"],
+        "trigger": value["trigger"],
+    }
+    for key in ("operation_id", "run_id"):
+        item = value.get(key)
+        if isinstance(item, str) and 0 < len(item) <= 128:
+            result[key] = item
+    if type(value.get("history_saved")) is bool:
+        result["history_saved"] = value["history_saved"]
+    if value.get("reason_code") in (
+        "nothing_to_offload",
+        "cancelled",
+        "summary_timeout",
+        "run_failed",
+        "history_save_failed",
+        "media_save_failed",
+        "input_budget_exceeded",
+        "summary_input_budget_exceeded",
+    ):
+        result["reason_code"] = value["reason_code"]
+    return result
 
 
 def create_runtime_upstream_error(

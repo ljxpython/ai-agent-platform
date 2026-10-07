@@ -77,6 +77,10 @@ def test_context_parser_rejects_unknown_and_identity_fields() -> None:
         parse_context({"platform_runtime": {}})
     assert legacy.value.code == "runtime.context.unknown_field"
 
+    with pytest.raises(RuntimeResolutionError) as invalid_offload:
+        parse_runtime_context({"offload_conversation": "true"})
+    assert invalid_offload.value.code == "runtime.context.invalid_field_type"
+
 
 def test_resolver_merges_context_and_uses_declared_tools() -> None:
     principal, policy, defaults = _inputs()
@@ -217,6 +221,12 @@ def test_runtime_context_hash_and_snapshot_are_safe_and_stable() -> None:
 def test_runtime_context_hash_changes_with_semantics() -> None:
     assert runtime_context_hash(RuntimeContext(temperature=0)) != runtime_context_hash(
         RuntimeContext(temperature=1)
+    )
+    assert runtime_context_hash(RuntimeContext()) != runtime_context_hash(
+        RuntimeContext(offload_conversation=True)
+    )
+    assert runtime_context_hash({}) == runtime_context_hash(
+        {"offload_conversation": False}
     )
 
 

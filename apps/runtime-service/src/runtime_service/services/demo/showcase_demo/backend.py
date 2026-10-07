@@ -17,6 +17,9 @@ from deepagents.backends import (
 from deepagents.backends.protocol import ExecuteResponse, SandboxBackendProtocol
 from langchain.agents.middleware import AgentMiddleware
 
+from runtime_service.middlewares.conversation_offloading import (
+    is_conversation_maintenance,
+)
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
 from runtime_service.workspace.execution import runtime_backend
 from runtime_service.workspace.scoped import hashed_thread_root, thread_scope_hash
@@ -136,6 +139,7 @@ def build_backend(workspace: _ThreadWorkspaceBackend | None) -> CompositeBackend
                 root_dir=str(files(_PACKAGE).joinpath("skills")), virtual_mode=True
             ),
             "/conversation_history/": StateBackend(),
+            "/large_tool_results/": StateBackend(),
         },
     )
 
@@ -157,4 +161,5 @@ class WorkspaceMiddleware(AgentMiddleware):
         )
         if scope != self.workspace.scope:
             raise RuntimeAuthError("runtime.workspace.scope_mismatch")
-        await asyncio.to_thread(self.workspace.prepare)
+        if not is_conversation_maintenance(runtime):
+            await asyncio.to_thread(self.workspace.prepare)

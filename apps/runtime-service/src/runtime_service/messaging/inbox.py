@@ -207,6 +207,13 @@ class MessageInbox:
             for row in rows
         ]
 
+    def has_pending(self, *, thread_id: str) -> bool:
+        with connect(self.dsn, row_factory=tuple_row) as connection:
+            return connection.execute(
+                "SELECT EXISTS (SELECT 1 FROM runtime_message_inbox WHERE thread_id=%s AND status IN ('queued','claimed'))",
+                (thread_id,),
+            ).fetchone()[0]
+
     def reconcile_checkpoint(
         self,
         *,

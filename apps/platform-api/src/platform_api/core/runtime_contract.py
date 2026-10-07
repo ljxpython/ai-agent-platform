@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable
 from typing import Any
 
@@ -34,6 +35,7 @@ RUNTIME_CONTEXT_BUSINESS_KEYS = (
     "temperature",
     "max_tokens",
     "top_p",
+    "offload_conversation",
 )
 
 RUNTIME_OPTION_KEYS = (
@@ -43,6 +45,7 @@ RUNTIME_OPTION_KEYS = (
     "max_tokens",
     "top_p",
     "access_policy",
+    "offload_conversation",
 )
 
 PROTOCOL_V2_EVENT_CHANNELS = {
@@ -63,12 +66,34 @@ PRIVATE_RUNTIME_STATE_KEYS = {
     "runtime_message_claim",
     "dear_memory_source",
     "dear_skill_snapshot",
+    "_summarization_event",
+    "_summarization_session_id",
+    "conversation_offloading",
 }
+
+
+def is_runtime_history_file_path(value: Any) -> bool:
+    return isinstance(value, str) and (
+        value.startswith("/conversation_history/")
+        or re.fullmatch(r"/session_[0-9a-f]{32}\.md", value) is not None
+        or re.fullmatch(r"/media/[0-9a-f]{16}\.[^/]+", value) is not None
+    )
 
 
 def reject_private_runtime_state(value: Any) -> None:
     if isinstance(value, dict) and (set(value) & PRIVATE_RUNTIME_STATE_KEYS):
         raise ValueError("Runtime private state cannot be supplied by a client")
+    if isinstance(value, dict):
+        files = value.get("files")
+        if isinstance(files, dict) and any(
+            is_runtime_history_file_path(path) for path in files
+        ):
+            raise ValueError("Runtime history files cannot be supplied by a client")
+        for item in value.values():
+            reject_private_runtime_state(item)
+    elif isinstance(value, list):
+        for item in value:
+            reject_private_runtime_state(item)
 
 
 def _validate_runtime_option_values(options: dict[str, Any]) -> None:
@@ -110,6 +135,9 @@ def _validate_runtime_option_values(options: dict[str, Any]) -> None:
         or max_tokens <= 0
     ):
         raise ValueError("platform_runtime.max_tokens must be a positive integer")
+    offload = options.get("offload_conversation")
+    if "offload_conversation" in options and not isinstance(offload, bool):
+        raise ValueError("platform_runtime.offload_conversation must be a boolean")
 
 
 RUNTIME_CONTEXT_PROPERTY_TYPES: dict[str, str] = {
@@ -129,6 +157,7 @@ RUNTIME_OPTION_PROPERTY_TYPES: dict[str, str] = {
     "top_p": "number",
     "multimodal_parser_model_id": "string",
     "access_policy": "string",
+    "offload_conversation": "boolean",
 }
 
 EXECUTION_CONFIG_PROPERTIES: dict[str, dict[str, Any]] = {
@@ -182,6 +211,28 @@ def normalize_runtime_contract(
         }:
             raise ValueError("Client tool configuration is not supported")
     next_context = strip_keys(context, TRUSTED_RUNTIME_CONTEXT_KEYS)
+
+    runtime_options = ensure_dict(
+        ensure_dict(config.get("configurable")).get("platform_runtime")
+    )
+    for options in (context, runtime_options):
+        if (
+            "offload_conversation" in options
+            and type(options["offload_conversation"]) is not bool
+        ):
+            raise ValueError("offload_conversation must be a boolean")
+    if (
+        "offload_conversation" in context
+        and "offload_conversation" in runtime_options
+        and context["offload_conversation"] != runtime_options["offload_conversation"]
+    ):
+        raise ValueError("offload_conversation values conflict")
+
+    configurable = ensure_dict(config.get("configurable"))
+    if "offload_conversation" in config or "offload_conversation" in configurable:
+        raise ValueError(
+            "offload_conversation must be supplied in config.configurable.platform_runtime"
+        )
 
     next_config = strip_keys(config, PROJECT_SCOPE_ALIAS_KEYS)
     next_metadata = strip_keys(metadata, PROJECT_SCOPE_ALIAS_KEYS)
@@ -350,6 +401,12 @@ def normalize_protocol_v2_command(
             raise ValueError(
                 f"{location} must not contain trusted identity fields: "
                 + ", ".join(forbidden)
+            )
+
+    for location, value in forbidden_locations[:-1]:
+        if "offload_conversation" in value:
+            raise ValueError(
+                f"{location} must not contain offload_conversation; use config.configurable.platform_runtime"
             )
 
     unknown_option_keys = sorted(set(runtime_options) - set(RUNTIME_OPTION_KEYS))

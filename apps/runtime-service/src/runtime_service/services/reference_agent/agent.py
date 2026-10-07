@@ -93,7 +93,7 @@ def _runtime_fallback_model(config: RunnableConfig) -> BaseChatModel | None:
 
 
 def _build_runtime_model(
-    config: object, connection: Mapping[str, str] | None
+    config: object, connection: Mapping[str, object] | None
 ) -> BaseChatModel:
     if connection is None:
         return build_model(config)  # type: ignore[arg-type]
@@ -118,7 +118,7 @@ async def _runtime_model_connection(
     *,
     model_id: str,
     project_id: str,
-) -> dict[str, str] | None:
+) -> dict[str, str | int | None] | None:
     """Fetch the selected model connection; only the opaque reference crosses GraphHarbor."""
     configurable = config.get("configurable") or {}
     if not isinstance(configurable, Mapping):
@@ -159,6 +159,8 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     if facts:
         raw_context = config.get("context")
         context = parse_runtime_context(raw_context)
+        if context.offload_conversation:
+            raise RuntimeAuthError("runtime.context.offload_not_supported")
         if raw_context is not None and facts.context_hash != runtime_context_hash(
             context
         ):

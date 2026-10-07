@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RuntimeModelCatalogItem(BaseModel):
@@ -16,6 +16,7 @@ class RuntimeModelCatalogItem(BaseModel):
     model: str
     enabled: bool
     credential_configured: bool
+    context_window_tokens: int | None = None
     scope_type: str = "platform"
     project_id: str | None = None
 
@@ -28,6 +29,7 @@ class RuntimeModelCreate(BaseModel):
     model: str
     api_key: str
     enabled: bool = True
+    context_window_tokens: int | None = Field(default=None, gt=0, strict=True)
     scope_type: str = "platform"
     project_id: str | None = None
 
@@ -40,6 +42,7 @@ class RuntimeModelUpdate(BaseModel):
     model: str | None = None
     api_key: str | None = None
     enabled: bool | None = None
+    context_window_tokens: int | None = Field(default=None, gt=0, strict=True)
 
 
 class RuntimeModelCatalogList(BaseModel):

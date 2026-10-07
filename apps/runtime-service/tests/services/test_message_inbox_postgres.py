@@ -83,6 +83,7 @@ def test_checkpoint_reconciliation_is_idempotent(inbox):
         idempotency_key="cp",
         content="hello",
     )
+
     assert (
         inbox.reconcile_checkpoint(
             thread_id=thread,
@@ -101,6 +102,26 @@ def test_checkpoint_reconciliation_is_idempotent(inbox):
         )
         == 0
     )
+
+
+def test_pending_summary_guard_covers_queued_and_claimed_only(inbox):
+    thread, run = str(uuid4()), str(uuid4())
+    assert not inbox.has_pending(thread_id=thread)
+    inbox.enqueue(
+        thread_id=thread,
+        target_run_id=run,
+        sender_id="u",
+        client_message_id=str(uuid4()),
+        idempotency_key="pending-guard",
+        content="later",
+    )
+    assert inbox.has_pending(thread_id=thread)
+    token, rows = inbox.claim(
+        thread_id=thread, target_run_id=run, owner="worker", limit=1
+    )
+    assert inbox.has_pending(thread_id=thread)
+    inbox.ack(token=token, message_ids=[rows[0]["message_id"]], checkpoint_id="cp")
+    assert not inbox.has_pending(thread_id=thread)
 
 
 def test_cancel_race_closes_only_undelivered_messages(inbox):

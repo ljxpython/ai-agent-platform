@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import unittest
 from collections.abc import AsyncIterator
 from types import SimpleNamespace
@@ -10,9 +11,12 @@ import anyio
 import anyio.lowlevel
 from starlette.requests import Request
 
+from platform_api.adapters.langgraph.sdk_client import redact_runtime_private_fields
+from platform_api.core.runtime_contract import reject_private_runtime_state
 from platform_api.modules.runtime_gateway.presentation.http import (
     RuntimeStreamingResponse,
     _redact_protocol_event_stream,
+    _redact_sse_frame,
     _runtime_sse_response,
 )
 
@@ -23,6 +27,103 @@ async def _chunks(*values: bytes) -> AsyncIterator[bytes]:
 
 
 class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
+    def test_offloading_capability_remains_boolean(self):
+        for supported in (True, False):
+            self.assertEqual(
+                redact_runtime_private_fields({"conversation_offloading": supported}),
+                {"conversation_offloading": supported},
+            )
+
+    def test_malformed_offloading_status_is_bounded_without_crashing(self):
+        for value in (
+            None,
+            [],
+            {"type": "conversation_offloading", "status": [], "trigger": {}},
+        ):
+            self.assertEqual(
+                redact_runtime_private_fields({"conversation_offloading": value}),
+                {"conversation_offloading": {}},
+            )
+        value = {
+            "type": "conversation_offloading",
+            "status": "failed",
+            "trigger": "manual",
+            "reason_code": ["private"],
+            "operation_id": "x" * 129,
+        }
+        self.assertEqual(
+            redact_runtime_private_fields(value),
+            {
+                "type": "conversation_offloading",
+                "status": "failed",
+                "trigger": "manual",
+            },
+        )
+
+    def test_offloading_whitelist_applies_to_state_history_and_protocol_envelopes(self):
+        public = {
+            "type": "conversation_offloading",
+            "operation_id": "operation",
+            "status": "completed",
+            "trigger": "automatic",
+            "history_saved": True,
+        }
+        private = {
+            **public,
+            "summary": "PRIVATE",
+            "file_path": "/private/history",
+            "reason_code": "secret exception",
+        }
+        state = {
+            "values": {
+                "conversation_offloading": private,
+                "_summarization_event": {"summary_message": "PRIVATE"},
+                "_summarization_session_id": "private-id",
+                "files": {
+                    "/outputs/result.txt": "visible",
+                    "/conversation_history/session_private.md": "PRIVATE",
+                    "/session_" + "a" * 32 + ".md": "PRIVATE",
+                    "/media/" + "b" * 16 + ".png": "PRIVATE",
+                },
+            }
+        }
+        redacted = redact_runtime_private_fields([state])[0]
+        self.assertEqual(redacted["values"]["conversation_offloading"], public)
+        self.assertEqual(
+            redacted["values"]["files"], {"/outputs/result.txt": "visible"}
+        )
+        for payload, protocol in (
+            (private, False),
+            (
+                {
+                    "method": "custom",
+                    "params": {"namespace": ["child"], "data": private},
+                },
+                True,
+            ),
+            ({"method": "values", "params": {"namespace": [], "data": state}}, True),
+        ):
+            frame = b"data: " + json.dumps(payload).encode()
+            cleaned = _redact_sse_frame(frame, protocol=protocol)
+            self.assertNotIn(b"PRIVATE", cleaned)
+            self.assertNotIn(b"file_path", cleaned)
+            self.assertNotIn(b"private-id", cleaned)
+        for key in (
+            "conversation_offloading",
+            "_summarization_event",
+            "_summarization_session_id",
+        ):
+            with self.assertRaises(ValueError):
+                reject_private_runtime_state({"nested": [{key: {}}]})
+        for path in (
+            "/conversation_history/session_private.md",
+            "/session_" + "a" * 32 + ".md",
+            "/media/" + "b" * 16 + ".png",
+        ):
+            with self.assertRaises(ValueError):
+                reject_private_runtime_state({"nested": [{"files": {path: "fake"}}]})
+        reject_private_runtime_state({"files": {"/outputs/result.txt": "visible"}})
+
     async def test_plain_stream_close_and_failed_observer_do_not_change_body(self):
         reasons = []
         sent = []

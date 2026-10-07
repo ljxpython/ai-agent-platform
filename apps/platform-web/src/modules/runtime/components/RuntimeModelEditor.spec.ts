@@ -126,9 +126,7 @@ describe("RuntimeModelEditor", () => {
 
     // 输入不合法 Route ID（大写字母/数字开头）
     await routeInput.setValue("123-bad-route");
-    expect(wrapper.text()).toContain(
-      "Provider 标识必须以小写英文字母开头",
-    );
+    expect(wrapper.text()).toContain("Provider 标识必须以小写英文字母开头");
 
     // 点击提交应阻止并提示
     const submitBtn = wrapper
@@ -204,5 +202,107 @@ describe("RuntimeModelEditor", () => {
     expect(payload.isEdit).toBe(true);
     expect(payload.editingId).toBe("model-101");
     expect(payload.display_name).toBe("GPT-4o Custom");
+    expect(payload.context_window_tokens).toBeNull();
+  });
+
+  it("supports configuring context_window_tokens in edit mode and emits positive integer", async () => {
+    const wrapper = createWrapper({
+      editingModel: {
+        id: "model-102",
+        model: "deepseek-chat",
+        display_name: "DeepSeek V3",
+        provider: "deepseek",
+        base_url: "https://api.deepseek.com/v1",
+        protocol: "openai-compatible",
+        enabled: true,
+        context_window_tokens: 65536,
+      },
+    });
+
+    const tokenInput = wrapper.find(
+      'input[placeholder="例如 128000 (正整数)"]',
+    );
+    expect((tokenInput.element as HTMLInputElement).value).toBe("65536");
+
+    // 点击 128K 预设按钮
+    const presetBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("128K"));
+    expect(presetBtn).toBeDefined();
+    await presetBtn?.trigger("click");
+    expect((tokenInput.element as HTMLInputElement).value).toBe("131072");
+
+    const submitBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("保存修改"));
+    await submitBtn?.trigger("click");
+
+    const emitted = wrapper.emitted("submit");
+    expect(emitted).toBeDefined();
+    const payload = emitted?.[0][0] as Record<string, unknown>;
+    expect(payload.context_window_tokens).toBe(131072);
+  });
+
+  it("validates context_window_tokens must be positive integer in edit mode", async () => {
+    const wrapper = createWrapper({
+      editingModel: {
+        id: "model-103",
+        model: "deepseek-chat",
+        display_name: "DeepSeek V3",
+        provider: "deepseek",
+        base_url: "https://api.deepseek.com/v1",
+        protocol: "openai-compatible",
+        enabled: true,
+      },
+    });
+
+    const tokenInput = wrapper.find(
+      'input[placeholder="例如 128000 (正整数)"]',
+    );
+    await tokenInput.setValue("0");
+
+    const submitBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("保存修改"));
+    await submitBtn?.trigger("click");
+
+    expect(wrapper.text()).toContain("上下文窗口容量必须为大于 0 的整数");
+    expect(wrapper.emitted("submit")).toBeUndefined();
+  });
+
+  it("emits context_window_tokens as null when cleared in edit mode", async () => {
+    const wrapper = createWrapper({
+      editingModel: {
+        id: "model-104",
+        model: "deepseek-chat",
+        display_name: "DeepSeek V3",
+        provider: "deepseek",
+        base_url: "https://api.deepseek.com/v1",
+        protocol: "openai-compatible",
+        enabled: true,
+        context_window_tokens: 128000,
+      },
+    });
+
+    const clearBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("清除设置"));
+    expect(clearBtn).toBeDefined();
+    await clearBtn?.trigger("click");
+
+    const tokenInput = wrapper.find(
+      'input[placeholder="例如 128000 (正整数)"]',
+    );
+    expect((tokenInput.element as HTMLInputElement).value).toBe("");
+
+    const submitBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text().includes("保存修改"));
+    await submitBtn?.trigger("click");
+
+    const emitted = wrapper.emitted("submit");
+    expect(emitted).toBeDefined();
+    const payload = emitted?.[0][0] as Record<string, unknown>;
+    expect(payload.context_window_tokens).toBeNull();
   });
 });

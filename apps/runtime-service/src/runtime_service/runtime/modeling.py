@@ -106,11 +106,24 @@ def _required(settings: Mapping[str, str], name: str) -> str:
     return value
 
 
+def _with_context_capacity(
+    model: BaseChatModel, connection: Mapping[str, object] | None
+) -> BaseChatModel:
+    capacity = connection.get("context_window_tokens") if connection else None
+    if capacity is not None:
+        if type(capacity) is not int or capacity <= 0:
+            raise RuntimeResolutionError(
+                "runtime.model.initialization_failed", "context_window_tokens"
+            )
+        model.profile = {**(model.profile or {}), "max_input_tokens": capacity}
+    return model
+
+
 def build_model(
     config: ResolvedRuntimeConfig,
     *,
     env: Mapping[str, str] | None = None,
-    connection: Mapping[str, str] | None = None,
+    connection: Mapping[str, object] | None = None,
     max_retries: int | None = None,
 ) -> BaseChatModel:
     """Build a model from a resolved ID; never accepts raw request config."""
@@ -140,24 +153,33 @@ def build_model(
         conn_base_url = connection.get("base_url") if connection is not None else None
 
         if provider in ("deepseek", "deepseek-proxy") or protocol == "deepseek":
-            return ChatDeepSeek(
-                model=model_name,
-                api_key=conn_api_key or _required(settings, "DEEPSEEK_PROXY_API_KEY"),
-                base_url=conn_base_url or _required(settings, "DEEPSEEK_PROXY_URL"),
-                stream_usage=True,
-                **kwargs,
+            return _with_context_capacity(
+                ChatDeepSeek(
+                    model=model_name,
+                    api_key=conn_api_key
+                    or _required(settings, "DEEPSEEK_PROXY_API_KEY"),
+                    base_url=conn_base_url or _required(settings, "DEEPSEEK_PROXY_URL"),
+                    stream_usage=True,
+                    **kwargs,
+                ),
+                connection,
             )
         if provider in ("openai", "gpt-proxy") or protocol in (
             "openai",
             "openai-compatible",
             "openai_compatible",
         ):
-            return ChatOpenAIWithReasoning(
-                model=model_name,
-                api_key=conn_api_key or settings.get("GPT_PROXY_API_KEY") or "EMPTY",
-                base_url=conn_base_url or _required(settings, "GPT_PROXY_URL"),
-                stream_usage=True,
-                **kwargs,
+            return _with_context_capacity(
+                ChatOpenAIWithReasoning(
+                    model=model_name,
+                    api_key=conn_api_key
+                    or settings.get("GPT_PROXY_API_KEY")
+                    or "EMPTY",
+                    base_url=conn_base_url or _required(settings, "GPT_PROXY_URL"),
+                    stream_usage=True,
+                    **kwargs,
+                ),
+                connection,
             )
         if (
             protocol in ("anthropic", "anthropic-messages")
@@ -172,28 +194,36 @@ def build_model(
                     "runtime.model.initialization_failed",
                     "langchain-anthropic not installed",
                 )
-            return ChatAnthropic(
-                model=model_name,
-                api_key=conn_api_key
-                or settings.get("ANTHROPIC_PROXY_API_KEY")
-                or settings.get("ANTHROPIC_API_KEY")
-                or "EMPTY",
-                base_url=conn_base_url
-                or settings.get("ANTHROPIC_PROXY_URL")
-                or settings.get("ANTHROPIC_API_URL")
-                or "https://api.anthropic.com",
-                stream_usage=True,
-                **kwargs,
+            return _with_context_capacity(
+                ChatAnthropic(
+                    model=model_name,
+                    api_key=conn_api_key
+                    or settings.get("ANTHROPIC_PROXY_API_KEY")
+                    or settings.get("ANTHROPIC_API_KEY")
+                    or "EMPTY",
+                    base_url=conn_base_url
+                    or settings.get("ANTHROPIC_PROXY_URL")
+                    or settings.get("ANTHROPIC_API_URL")
+                    or "https://api.anthropic.com",
+                    stream_usage=True,
+                    **kwargs,
+                ),
+                connection,
             )
         if connection is not None and conn_base_url:
-            return ChatOpenAIWithReasoning(
-                model=model_name,
-                api_key=conn_api_key or "EMPTY",
-                base_url=conn_base_url,
-                stream_usage=True,
-                **kwargs,
+            return _with_context_capacity(
+                ChatOpenAIWithReasoning(
+                    model=model_name,
+                    api_key=conn_api_key or "EMPTY",
+                    base_url=conn_base_url,
+                    stream_usage=True,
+                    **kwargs,
+                ),
+                connection,
             )
-        return init_chat_model(config.model_id, **kwargs)
+        return _with_context_capacity(
+            init_chat_model(config.model_id, **kwargs), connection
+        )
     except RuntimeResolutionError:
         raise
     except Exception as exc:
@@ -207,7 +237,7 @@ async def fetch_model_connection(
     *,
     model_id: str,
     project_id: str,
-) -> dict[str, str] | None:
+) -> dict[str, str | int | None] | None:
     """Resolve a server-issued opaque reference without persisting credentials."""
     if reference is None:
         return None
@@ -230,7 +260,7 @@ async def fetch_model_connection(
             hashlib.sha256,
         ).hexdigest()
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
+        async with httpx.AsyncClient(timeout=10, trust_env=False) as client:
             response = await client.get(
                 endpoint,
                 headers=headers,
@@ -258,7 +288,19 @@ async def fetch_model_connection(
         )
     ):
         raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
-    return {key: payload[key] for key in required} | {"model_id": model_id}
+    context_window_tokens = payload.get("context_window_tokens")
+    if context_window_tokens is not None and (
+        isinstance(context_window_tokens, bool)
+        or not isinstance(context_window_tokens, int)
+        or context_window_tokens <= 0
+    ):
+        raise RuntimeResolutionError(
+            "runtime.model.initialization_failed", "context_window_tokens"
+        )
+    return {key: payload[key] for key in required} | {
+        "model_id": model_id,
+        "context_window_tokens": context_window_tokens,
+    }
 
 
 __all__ = ["build_model", "fetch_model_connection"]

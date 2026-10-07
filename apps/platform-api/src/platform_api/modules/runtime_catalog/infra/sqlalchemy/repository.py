@@ -28,6 +28,7 @@ def _to_runtime_model(record: RuntimeCatalogModelRecord) -> StoredRuntimeModel:
         model_name=record.model_name,
         api_key_ciphertext=record.api_key_ciphertext,
         enabled=record.enabled if record.enabled is not None else True,
+        context_window_tokens=record.context_window_tokens,
         scope_type=record.scope_type or "platform",
         project_id=record.project_id,
     )
@@ -99,6 +100,7 @@ class SqlAlchemyRuntimeCatalogRepository:
             model_name=values["model"],
             api_key_ciphertext=values["api_key_ciphertext"],
             enabled=values["enabled"],
+            context_window_tokens=values.get("context_window_tokens"),
             scope_type=values.get("scope_type", "platform"),
             project_id=values.get("project_id"),
         )

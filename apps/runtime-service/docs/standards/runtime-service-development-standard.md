@@ -24,6 +24,14 @@
 
 阅读资料 → 复制 Showcase 的边界模式 → 在所属 Service 显式装配 → 编写最小测试 → 本地运行 → 更新文档和变更记录 → 提交评审。
 
+## 上下文窗口管理
+
+DearFlow/Showcase 根图与声明式子图在 agent.py 显式替换官方摘要，公共能力位于 `middlewares/conversation_offloading.py`。使用受信模型容量/输出预算；摘要副本 nostream，最终模型请求 guard 计入动态 system/tools。大批历史裁剪保留初始目标或上一轮摘要，归档继续由 checkpoint/StateBackend 保存。
+
+schema-only 与执行图必须声明相同 OffloadingState，保留 DeepAgentState 的 DeltaChannel；整理状态使用 PrivateStateAttr 防父子复制/合并，API 再按白名单公开，不以此注解替代网关脱敏。手动维护只运行根摘要，通过 before hook/end 结束；不得准备执行 MCP/Workspace、claim 队列或执行 Memory/Skills 后处理。
+
+`AGENT_CONTEXT_MANAGEMENT_ENABLED` 默认 0，目录容量、输出预算、迁移和双端 Context v5 就绪后才能开启。关闭时沿用官方摘要并保留历史/私有事件，不清数据。reference/其他教学图未接入，不宣称支持。依赖升级需复跑隐藏流、预算、归档、父子隔离、真实 PG/Worker 恢复测试，证据见 [上下文专项](../../../../docs/projects/20261006-agent-context-window-governance/verification.md)。
+
 ## 新增代码粒度规范
 
 > **适用范围：仅约束新增代码。存量代码不在此规范的覆盖范围内，不得借此规范触发对旧代码的"顺手重构"。**

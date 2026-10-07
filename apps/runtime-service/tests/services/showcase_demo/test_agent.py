@@ -83,6 +83,57 @@ def call(name, args, identifier="t1"):
     )
 
 
+def test_context_wrapper_is_explicit_for_root_and_all_children(monkeypatch, tmp_path):
+    from runtime_service.middlewares import ConversationOffloadingMiddleware
+    from runtime_service.runtime.capabilities import graph_capabilities
+
+    monkeypatch.setenv("AGENT_CONTEXT_MANAGEMENT_ENABLED", "1")
+    monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path))
+    instance = RecordingModel(
+        responses=[AIMessage(content="summary")],
+        profile={"max_input_tokens": 30000, "max_output_tokens": 2048},
+    )
+    monkeypatch.setattr(agent, "build_model", lambda *args, **kwargs: instance)
+    captured = []
+    original = agent.create_deep_agent
+
+    def capture(**kwargs):
+        captured.append(kwargs)
+        return original(**kwargs)
+
+    monkeypatch.setattr(agent, "create_deep_agent", capture)
+    cfg = config(context={"offload_conversation": True, "max_tokens": 2048})
+    graph = asyncio.run(agent.get_agent(cfg))
+    root = captured[0]
+    wrappers = [
+        mw
+        for mw in root["middleware"]
+        if isinstance(mw, ConversationOffloadingMiddleware)
+    ]
+    assert len(wrappers) == 1 and wrappers[0].manual
+    assert (
+        sum(
+            "SummarizationMiddleware.before_model" == name
+            for name in graph.get_graph().nodes
+        )
+        == 1
+    )
+    for child in root["subagents"]:
+        wrappers = [
+            mw
+            for mw in child["middleware"]
+            if isinstance(mw, ConversationOffloadingMiddleware)
+        ]
+        assert len(wrappers) == 1 and not wrappers[0].manual
+    assert graph_capabilities("showcase_demo")["conversation_offloading"]
+    assert not graph_capabilities("reference_agent")["conversation_offloading"]
+    monkeypatch.setenv("AGENT_CONTEXT_MANAGEMENT_ENABLED", "0")
+    assert not graph_capabilities("showcase_demo")["conversation_offloading"]
+    with pytest.raises(RuntimeAuthError, match="offload_disabled"):
+        asyncio.run(agent.get_agent(cfg))
+    assert not list(tmp_path.rglob(".initialized"))
+
+
 @pytest.mark.parametrize("decision", ["approve", "reject"])
 def test_artifact_publication_approval_and_checkpoint(build, decision):
     import json

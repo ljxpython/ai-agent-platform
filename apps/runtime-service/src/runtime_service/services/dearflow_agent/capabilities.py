@@ -87,6 +87,8 @@ def graph_capabilities(graph_id: str) -> dict:
         "images": graph_id in {"showcase_demo", "dearflow_agent"},
         "message_queue": graph_id
         in {"reference_agent", "showcase_demo", "dearflow_agent"},
+        "conversation_offloading": graph_id in {"showcase_demo", "dearflow_agent"}
+        and os.environ.get("AGENT_CONTEXT_MANAGEMENT_ENABLED") == "1",
         "execution_modes": ["flash", "standard", "pro", "ultra"]
         if graph_id == "dearflow_agent"
         else [],

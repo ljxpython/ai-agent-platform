@@ -10,6 +10,9 @@ from typing import Annotated, NotRequired
 from deepagents.middleware.skills import SkillsMiddleware, SkillsState
 from langchain.agents.middleware.types import PrivateStateAttr
 
+from runtime_service.middlewares.conversation_offloading import (
+    is_conversation_maintenance,
+)
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
 from runtime_service.services.dearflow_agent.skill_governance import SkillStorage
 from runtime_service.services.dearflow_agent.workspace.backend import (
@@ -93,6 +96,8 @@ class ExecutionSkillsMiddleware(SkillsMiddleware):
             runtime.execution_info.thread_id,
         ) != self.workspace.scope:
             raise RuntimeAuthError("runtime.workspace.scope_mismatch")
+        if is_conversation_maintenance(runtime):
+            return None
         ref = await asyncio.to_thread(
             self._prepare,
             (

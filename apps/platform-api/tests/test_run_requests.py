@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,6 +22,7 @@ from platform_api.core.errors import (
 )
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
+    _runtime_context_snapshot,
 )
 from platform_api.modules.runtime_gateway.infra.sqlalchemy.models import (
     RunRequestRecord,
@@ -495,6 +498,49 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         )
         sent = self.upstream.create_thread_run.call_args.args[1]
         self.assertEqual(sent["version"], "v3")
+
+    async def test_v4_approval_snapshot_resumes_with_reauthorized_v5_hash(self):
+        await self.start()
+        with self._session_factory.begin() as session:
+            row = session.scalar(select(RunRequestRecord))
+            snapshot = {
+                key: row.context_snapshot.get(key)
+                for key in ("model_id", "temperature", "max_tokens", "top_p")
+            }
+            encoded = json.dumps(
+                {"schema": "runtime-context/v4", **snapshot},
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            row.context_snapshot = snapshot
+            row.context_hash = "sha256:" + hashlib.sha256(encoded.encode()).hexdigest()
+        captured = []
+        self.service._delegation_headers_factory = lambda **values: (
+            captured.append(values) or {"authorization": "scoped"}
+        )
+        self.upstream.with_forwarded_headers = lambda headers: self.upstream
+        self.upstream.get_thread_run.return_value = {
+            "run_id": "run-1",
+            "status": "interrupted",
+            "kwargs": {},
+        }
+        self.upstream.create_thread_run.return_value = {"run_id": "run-2"}
+        await self.service.send_thread_command(
+            actor=self.actor,
+            project_id="project-1",
+            thread_id="thread-1",
+            payload={
+                "id": 3,
+                "method": "input.respond",
+                "params": {"resume": {"interrupt-1": True}},
+            },
+        )
+        sent = self.upstream.create_thread_run.call_args.args[1]
+        expected, _ = _runtime_context_snapshot({"params": {"context": snapshot}})
+        self.assertEqual(captured[-1]["context_hash"], expected)
+        self.assertFalse(sent["context"]["offload_conversation"])
+        self.service._assert_runtime_options_allowed.assert_called()
 
     async def test_model_revocation_rechecks_saved_context(self):
         self.service._project_default_model_id.return_value = "model-old"

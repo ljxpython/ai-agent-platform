@@ -26,6 +26,7 @@ _CONTEXT_FIELDS = frozenset(
         "top_p",
         "execution_mode",
         "access_policy",
+        "offload_conversation",
     }
 )
 _IDENTITY_FIELDS = frozenset(
@@ -61,6 +62,7 @@ _FORBIDDEN_CONFIGURABLE_FIELDS = frozenset(
         "tool_overrides",
         "tool_policy_version",
         "tools",
+        "offload_conversation",
     }
 )
 
@@ -160,6 +162,7 @@ def parse_runtime_context(
             top_p=raw.get("top_p"),
             execution_mode=raw.get("execution_mode"),
             access_policy=raw.get("access_policy"),
+            offload_conversation=raw.get("offload_conversation", False),
         )
     )
 
@@ -233,6 +236,8 @@ def _validate_context(value: RuntimeContext) -> RuntimeContext:
         or value.access_policy not in {"review", "workspace_write", "full_access"}
     ):
         raise _fail("runtime.context.invalid_value", "access_policy")
+    if not isinstance(value.offload_conversation, bool):
+        raise _fail("runtime.context.invalid_field_type", "offload_conversation")
     model_id = (
         None
         if value.model_id is None
@@ -341,18 +346,33 @@ def runtime_context_hash(raw: Mapping[str, Any] | RuntimeContext | None) -> str:
 
     context = parse_runtime_context(raw)
     payload = {
-        "schema": "runtime-context/v4",
+        "schema": "runtime-context/v5",
         "model_id": context.model_id,
         "temperature": context.temperature,
         "max_tokens": context.max_tokens,
         "top_p": context.top_p,
+        "execution_mode": context.execution_mode,
+        "access_policy": context.access_policy,
+        "offload_conversation": context.offload_conversation,
     }
-    if context.execution_mode is not None:
-        payload.update(
-            schema="runtime-context/v4", execution_mode=context.execution_mode
-        )
-    if context.access_policy is not None:
-        payload.update(schema="runtime-context/v4", access_policy=context.access_policy)
+    return _sha256(_canonical_json(payload))
+
+
+def persisted_context_hash_v4(raw: Mapping[str, Any]) -> str:
+    """Recognize server-persisted cron snapshots at their reauthorization boundary."""
+    context = parse_runtime_context(raw)
+    if context.offload_conversation:
+        raise _fail("runtime.context.invalid_value", "offload_conversation")
+    payload = {
+        "schema": "runtime-context/v4",
+        **{
+            key: getattr(context, key)
+            for key in ("model_id", "temperature", "max_tokens", "top_p")
+        },
+    }
+    for key in ("execution_mode", "access_policy"):
+        if getattr(context, key) is not None:
+            payload[key] = getattr(context, key)
     return _sha256(_canonical_json(payload))
 
 

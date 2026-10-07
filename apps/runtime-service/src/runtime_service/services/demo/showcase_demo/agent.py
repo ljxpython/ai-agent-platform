@@ -16,10 +16,14 @@ from langchain_openai import ChatOpenAI
 from langgraph.pregel import Pregel
 
 from runtime_service.middlewares import (
+    ContextBudgetMiddleware,
+    ConversationOffloadingMiddleware,
     DocumentToolsMiddleware,
+    MaintenanceSafeToolCallsMiddleware,
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     RuntimeConfigMiddleware,
+    context_management_enabled,
 )
 from runtime_service.middlewares.images import ImageToolsMiddleware
 from runtime_service.observability import with_langfuse_tracing
@@ -58,6 +62,7 @@ _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
     system_prompt=SYSTEM_PROMPT,
     prompt_version="showcase-demo-v3",
+    max_tokens=4096,
     optional_tool_names=SHOWCASE_TOOLS,
 )
 _EXECUTION_KEYS = {
@@ -90,6 +95,8 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         if not isinstance(thread_id, str) or not thread_id:
             raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
         context = parse_runtime_context(config.get("context"))
+        if context.offload_conversation and not context_management_enabled():
+            raise RuntimeAuthError("runtime.context.offload_disabled")
         if runtime_context_hash(context) != facts.context_hash:
             raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
         if facts.scope.thread_id is not None and facts.scope.thread_id != thread_id:
@@ -140,7 +147,23 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         raw = os.getenv(name, "").strip()
         return int(raw) if raw.isdigit() and int(raw) > 0 else default
 
-    def middleware(tool_names: Sequence[str]):
+    def middleware(tool_names: Sequence[str], *, child=False, tail=()):
+        offloading = (
+            [
+                ConversationOffloadingMiddleware(
+                    model,
+                    backend,
+                    output_budget_tokens=(
+                        resolved.max_tokens
+                        if resolved.max_tokens is not None
+                        else (4096 if context.offload_conversation else None)
+                    ),
+                    manual=bool(not child and context.offload_conversation),
+                )
+            ]
+            if context_management_enabled() and executing
+            else []
+        )
         return [
             RuntimeConfigMiddleware(
                 defaults=_DEFAULTS,
@@ -148,6 +171,8 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 model_builder=model_builder,
                 tool_names=tool_names,
             ),
+            *offloading,
+            *([MaintenanceSafeToolCallsMiddleware()] if offloading else []),
             WorkspaceMiddleware(workspace),
             ModelCallLimitMiddleware(
                 run_limit=_env_int("AGENT_MODEL_CALL_LIMIT_PER_RUN", 50),
@@ -160,6 +185,8 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 exit_behavior="error",
             ),
             ModelCallTimeoutMiddleware(),
+            *tail,
+            *([ContextBudgetMiddleware(offloading[0])] if offloading else []),
         ]
 
     agent = create_deep_agent(
@@ -181,7 +208,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         subagents=build_subagents(
             model,
             backend,
-            middleware,
+            lambda names: middleware(names, child=True),
             chart_tools,
             context.access_policy if executing else None,
         ),
@@ -193,13 +220,16 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 max_execute_timeout=60,
             ),
             *middleware(
-                (*_DEFAULTS.optional_tool_names, *image_names, *document_names)
+                (*_DEFAULTS.optional_tool_names, *image_names, *document_names),
+                tail=[
+                    image_middleware,
+                    document_middleware,
+                    TodoListMiddleware(),
+                    MessageQueueMiddleware(),
+                ],
             ),
-            image_middleware,
-            document_middleware,
-            TodoListMiddleware(),
-            MessageQueueMiddleware(),
         ],
+        state_schema=ConversationOffloadingMiddleware.state_schema,
         context_schema=RuntimeContext,
         name="showcase_demo",
     )

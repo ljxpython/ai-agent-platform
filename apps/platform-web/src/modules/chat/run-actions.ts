@@ -4,7 +4,7 @@ type ActionStatus = "submitting" | "acknowledged" | "unknown" | "rejected";
 export type RunAction = {
   readonly key: string;
   readonly threadId: string;
-  readonly kind: "send" | "resume" | "fork";
+  readonly kind: "send" | "resume" | "fork" | "offload";
   readonly input: string;
   readonly url?: string;
   readonly body?: string;

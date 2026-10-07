@@ -21,10 +21,14 @@ from langchain_openai import ChatOpenAI
 from langgraph.pregel import Pregel
 
 from runtime_service.middlewares import (
+    ContextBudgetMiddleware,
+    ConversationOffloadingMiddleware,
     DocumentToolsMiddleware,
+    MaintenanceSafeToolCallsMiddleware,
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     RuntimeConfigMiddleware,
+    context_management_enabled,
 )
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.runtime import (
@@ -120,6 +124,7 @@ _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
     system_prompt=SYSTEM_PROMPT,
     prompt_version="dearflow-research-p2",
+    max_tokens=4096,
     optional_tool_names=(*DEAR_TOOLS, *configured_mcp_names()),
 )
 _EXECUTION_KEYS = {
@@ -165,11 +170,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     mcp_tools = []
     reasoning = {"reasoning": "probe_only"}
     governance = os.environ.get("RUNTIME_DEAR_GOVERNANCE_ENABLED") == "1"
-    memory_enabled = (
-        governance
-        and executing
-        and await memory_allowed(user, configurable.get("thread_id"))
-    )
+    memory_enabled = False
     if executing:
         thread_id = configurable.get("thread_id")
         if not isinstance(thread_id, str) or not thread_id:
@@ -177,11 +178,18 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         if facts.scope.assistant_id != "dearflow_agent":
             raise RuntimeAuthError("runtime.auth.invalid_principal", "assistant_id")
         context = parse_runtime_context(config.get("context"))
+        if context.offload_conversation and not context_management_enabled():
+            raise RuntimeAuthError("runtime.context.offload_disabled")
         mode = resolve_mode(context.execution_mode)
         if runtime_context_hash(context) != facts.context_hash:
             raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
         if facts.scope.thread_id is not None and facts.scope.thread_id != thread_id:
             raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
+        memory_enabled = (
+            governance
+            and not context.offload_conversation
+            and await memory_allowed(user, thread_id)
+        )
         requested_mcp = tuple(
             n for n in configured_mcp_names() if n not in facts.policy.denied_tool_names
         )
@@ -192,9 +200,10 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             policy=facts.policy,
             defaults=defaults,
         )
-        mcp_tools = await load_mcp_tools(
-            config, facts.principal, requested_mcp, DEAR_TOOLS
-        )
+        if not context.offload_conversation:
+            mcp_tools = await load_mcp_tools(
+                config, facts.principal, requested_mcp, DEAR_TOOLS
+            )
         connection = await fetch_model_connection(
             configurable.get("runtime_model_ref"),
             model_id=resolved.model_id,
@@ -277,7 +286,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             ]
         )
 
-    def middleware(tool_names: Sequence[str], *, child=False):
+    def middleware(tool_names: Sequence[str], *, child=False, tail=()):
         default_run_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_RUN", 100)
         default_thread_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_THREAD", 1000)
         default_run_model = _get_env_limit("AGENT_MODEL_CALL_LIMIT_PER_RUN", 50)
@@ -304,6 +313,28 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             else max(mode.model_limit * 10, default_thread_model)
         )
 
+        offloading = (
+            [
+                ConversationOffloadingMiddleware(
+                    model,
+                    backend,
+                    output_budget_tokens=(
+                        resolved.max_tokens
+                        if resolved.max_tokens is not None
+                        else (
+                            4096
+                            if (executing and context.offload_conversation)
+                            else None
+                        )
+                    ),
+                    manual=bool(
+                        not child and executing and context.offload_conversation
+                    ),
+                )
+            ]
+            if context_management_enabled() and executing
+            else []
+        )
         return [
             RuntimeConfigMiddleware(
                 defaults=defaults,
@@ -311,6 +342,8 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 model_builder=model_builder,
                 tool_names=tool_names,
             ),
+            *offloading,
+            *([MaintenanceSafeToolCallsMiddleware()] if offloading else []),
             WorkspaceMiddleware(workspace),
             ModelCallLimitMiddleware(
                 run_limit=run_model,
@@ -324,6 +357,8 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             ),
             # Bound the whole reasoning response, not just the time to its first token.
             ModelCallTimeoutMiddleware(),
+            *tail,
+            *([ContextBudgetMiddleware(offloading[0])] if offloading else []),
         ]
 
     agent = create_deep_agent(
@@ -376,17 +411,25 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 _permissions=PERMISSIONS,
                 max_execute_timeout=60,
             ),
-            *middleware(available),
-            *([TodoListMiddleware()] if mode.planning else []),
-            ToolCallLimitMiddleware(
-                tool_name="task", run_limit=10, thread_limit=10, exit_behavior="error"
+            *middleware(
+                available,
+                tail=[
+                    *([TodoListMiddleware()] if mode.planning else []),
+                    ToolCallLimitMiddleware(
+                        tool_name="task",
+                        run_limit=10,
+                        thread_limit=10,
+                        exit_behavior="error",
+                    ),
+                    DelegationConcurrencyMiddleware(),
+                    MessageQueueMiddleware(),
+                    ClarificationBatchGuard(),
+                    document_middleware,
+                    *([MemoryContextMiddleware(model)] if memory_enabled else []),
+                ],
             ),
-            DelegationConcurrencyMiddleware(),
-            MessageQueueMiddleware(),
-            ClarificationBatchGuard(),
-            document_middleware,
-            *([MemoryContextMiddleware(model)] if memory_enabled else []),
         ],
+        state_schema=ConversationOffloadingMiddleware.state_schema,
         context_schema=RuntimeContext,
         name="dearflow_agent",
     )

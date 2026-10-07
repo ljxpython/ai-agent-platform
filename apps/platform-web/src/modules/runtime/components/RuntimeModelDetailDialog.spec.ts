@@ -83,4 +83,28 @@ describe("RuntimeModelDetailDialog", () => {
     await closeBtn?.trigger("click");
     expect(wrapper.emitted("close")).toBeDefined();
   });
+
+  it("renders context window tokens when configured", () => {
+    const wrapper = createWrapper({
+      model: {
+        ...mockModel,
+        context_window_tokens: 131072,
+      },
+    });
+
+    expect(wrapper.text()).toContain("上下文窗口");
+    expect(wrapper.text()).toContain("131,072 Tokens (131k)");
+  });
+
+  it("renders unconfigured text when context window tokens is null", () => {
+    const wrapper = createWrapper({
+      model: {
+        ...mockModel,
+        context_window_tokens: null,
+      },
+    });
+
+    expect(wrapper.text()).toContain("上下文窗口");
+    expect(wrapper.text()).toContain("未设置");
+  });
 });

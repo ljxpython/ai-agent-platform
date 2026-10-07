@@ -16,8 +16,8 @@
 |---|---|---|---|---|---|
 | 错误响应 Envelope | [error-envelope.md](error-envelope.md) | active | 2026-09-27 | 🟢 high | [20260926-error-response-contract](../projects/20260926-error-response-contract/README.md) |
 | 链路追踪传播 | [trace-propagation.md](trace-propagation.md) | active | 2026-09-27 | 🟢 high | [20260926-trace-context-propagation](../projects/20260926-trace-context-propagation/README.md) |
-| Delegation JWT Schema | [delegation-jwt.md](delegation-jwt.md) | draft | 2026-10-05 | 🟡 medium | [20260926-delegation-jwt-contract](../projects/20260926-delegation-jwt-contract/README.md) |
-| SSE 事件格式契约 | [sse-event.md](sse-event.md) | draft | 2026-09-27 | 🟡 medium | [20260926-sse-event-contract](../projects/20260926-sse-event-contract/README.md) |
+| Delegation JWT Schema | [delegation-jwt.md](delegation-jwt.md) | draft | 2026-10-07 | 🟡 medium | [20260926-delegation-jwt-contract](../projects/20260926-delegation-jwt-contract/README.md) |
+| SSE 事件格式契约 | [sse-event.md](sse-event.md) | draft | 2026-10-07 | 🟡 medium | [20260926-sse-event-contract](../projects/20260926-sse-event-contract/README.md) |
 
 ## 未完成项
 
@@ -25,6 +25,8 @@
 - **sse-event（draft）**：帧安全、SDK 重试、会话池、410 降级规则已验（S1–S10）；8 条并发容量（S11）因 HTTP/1.1 入口限制阻塞，待 HTTP/2 入口就绪后补验
 
 ## 更新规则
+
+2026-10-07 补充已批准的 Context v5、受控维护与整理 custom 契约，证据见 [上下文专项](../projects/20261006-agent-context-window-governance/verification.md)。此补充不代表上面原专项的剩余门禁通过。
 
 - 标准发生变化时，对应文件的 `last_verified` 和 `status` 必须同步更新
 - 专项从 partial/blocked → done 后，将对应文件 `status` 改为 `active`

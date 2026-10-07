@@ -15,8 +15,12 @@ const mocks = vi.hoisted(() => ({
   createThread: vi.fn(),
   state: vi.fn(),
   history: vi.fn(),
+  useChannelEffect: vi.fn(),
 }));
-vi.mock("@langchain/vue", () => ({ useStream: mocks.stream }));
+vi.mock("@langchain/vue", () => ({
+  useStream: mocks.stream,
+  useChannelEffect: mocks.useChannelEffect,
+}));
 vi.mock("@/services/threads/messages.service", () => ({
   enqueueThreadMessage: mocks.enqueue,
   listThreadMessages: mocks.list,
@@ -1750,6 +1754,168 @@ it("auto-heals and resets stream.isLoading when backend run is confirmed termina
     expect(session.canSend.value).toBe(true);
   } finally {
     scope.stop();
+    mocks.runs.mockReset();
+  }
+});
+
+it("offloadConversation submits null input with offload_conversation: true and acknowledges action", async () => {
+  const submitFn = vi.fn().mockResolvedValue(undefined);
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    submit: submitFn,
+    disconnect: vi.fn(),
+  });
+  mocks.runs.mockResolvedValue([]);
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "dearflow_agent",
+      threadId: "t",
+      context: ref({ execution_mode: "standard" }),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    const result = await session.offloadConversation();
+    expect(result).toBe(true);
+    expect(submitFn).toHaveBeenCalledWith(null, {
+      threadId: "t",
+      config: {
+        configurable: {
+          platform_runtime: {
+            execution_mode: "standard",
+            offload_conversation: true,
+          },
+        },
+      },
+    });
+  } finally {
+    scope.stop();
+    mocks.stream.mockReset();
+    mocks.runs.mockReset();
+  }
+});
+
+it("subscribes to custom offload events and clears offloadState upon send() or timer expiry", async () => {
+  vi.useFakeTimers();
+  let channelHandler: ((event: unknown) => void) | undefined;
+  mocks.useChannelEffect.mockImplementation((_stream, _channels, options) => {
+    channelHandler = options.onEvent;
+  });
+
+  const submitFn = vi.fn().mockResolvedValue(undefined);
+  mocks.stream.mockReturnValue({
+    isLoading: ref(false),
+    error: ref(null),
+    interrupts: ref([]),
+    hydrationPromise: ref(Promise.resolve()),
+    submit: submitFn,
+    disconnect: vi.fn(),
+  });
+  mocks.runs.mockResolvedValue([]);
+
+  const scope = effectScope();
+  const session = scope.run(() =>
+    useChatSession({
+      projectId: "proj-1",
+      graphId: "dearflow_agent",
+      threadId: "t",
+      context: ref({}),
+      canWrite: ref(true),
+      onThread: vi.fn(),
+      onRefresh: vi.fn(),
+      onReconnect: vi.fn(),
+    }),
+  )!;
+
+  try {
+    await flushPromises();
+    expect(channelHandler).toBeDefined();
+
+    // 1. 模拟 started 事件
+    channelHandler!({
+      method: "custom",
+      params: {
+        namespace: [],
+        data: {
+          type: "conversation_offloading",
+          status: "started",
+          operation_id: "op-1",
+        },
+      },
+    });
+    expect(session.isOffloading.value).toBe(true);
+    expect(session.offloadState.value).toEqual({
+      status: "started",
+      trigger: "automatic",
+      operationId: "op-1",
+      runId: "",
+      text: "正在整理上下文...",
+      icon: "refresh",
+      variant: "info",
+    });
+
+    // 2. 模拟 completed 事件
+    channelHandler!({
+      method: "custom",
+      params: {
+        namespace: [],
+        data: {
+          type: "conversation_offloading",
+          status: "completed",
+          operation_id: "op-1",
+          history_saved: true,
+        },
+      },
+    });
+    expect(session.isOffloading.value).toBe(false);
+    expect(session.offloadState.value).toEqual({
+      status: "completed",
+      trigger: "automatic",
+      operationId: "op-1",
+      runId: "",
+      text: "上下文已整理",
+      icon: "check",
+      variant: "success",
+    });
+
+    // 3. 测试 4 秒自动淡出
+    vi.advanceTimersByTime(3900);
+    expect(session.offloadState.value).not.toBeNull();
+    vi.advanceTimersByTime(200);
+    expect(session.offloadState.value).toBeNull();
+
+    // 4. 再次触发 completed，测试调用 send() 立即清除
+    channelHandler!({
+      method: "custom",
+      params: {
+        namespace: [],
+        data: {
+          type: "conversation_offloading",
+          status: "completed",
+          operation_id: "op-2",
+        },
+      },
+    });
+    expect(session.offloadState.value).not.toBeNull();
+    // 进场发送消息，立即打断
+    await session.send("Hello agent");
+    expect(session.offloadState.value).toBeNull();
+  } finally {
+    scope.stop();
+    vi.useRealTimers();
+    mocks.useChannelEffect.mockReset();
+    mocks.stream.mockReset();
     mocks.runs.mockReset();
   }
 });

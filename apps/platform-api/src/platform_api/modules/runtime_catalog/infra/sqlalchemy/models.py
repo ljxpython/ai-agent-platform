@@ -38,6 +38,7 @@ class RuntimeCatalogModelRecord(Base):
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     api_key_ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    context_window_tokens: Mapped[int | None] = mapped_column(nullable=True)
     scope_type: Mapped[str] = mapped_column(
         String(16), nullable=False, default="platform", server_default="platform"
     )

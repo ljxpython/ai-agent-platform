@@ -151,7 +151,25 @@ const {
   canSend,
   status,
   actions,
+  offloadState,
+  clearOffloadState,
+  offloadConversation,
+  isOffloading,
 } = session;
+
+watch(
+  () => props.draft,
+  (newDraft) => {
+    if (
+      newDraft &&
+      offloadState.value &&
+      (offloadState.value.status === "completed" ||
+        offloadState.value.status === "skipped")
+    ) {
+      clearOffloadState();
+    }
+  },
+);
 const action = actions.current;
 const connectionMessage = computed(() =>
   session.connectionState.value === "paused" ? "连接已断开，请重试" : "",
@@ -310,6 +328,11 @@ const isSessionRunning = computed(() => {
   );
 });
 
+const isMessageRunning = computed(() => {
+  if (isOffloading.value) return false;
+  return isSessionRunning.value;
+});
+
 const displayedMessages = computed(() => {
   const fallbackMessages =
     latestHistoryMessages.value.length >= cachedDisplayMessages.value.length
@@ -325,7 +348,7 @@ const displayedMessages = computed(() => {
     fallbackMessages,
     optimisticUserMessage: optimisticUserMessage.value,
     optimisticBaseCount,
-    isSessionRunning: isSessionRunning.value,
+    isSessionRunning: isMessageRunning.value,
   });
 });
 
@@ -1149,6 +1172,23 @@ defineExpose({
   openDrawer,
   openOptions,
   reconnectStream: session.reconnectStream,
+  offloadConversation,
+  clearOffloadState,
+  offloadState,
+  canOffload: computed(() =>
+    Boolean(
+      session.threadId.value &&
+      displayedMessages.value.length > 0 &&
+      !session.busy.value &&
+      !session.hasPendingInterrupts.value &&
+      session.canEdit.value,
+    ),
+  ),
+  hasMessages: computed(() => displayedMessages.value.length > 0),
+  busy: session.busy,
+  hasPendingInterrupts: session.hasPendingInterrupts,
+  canEdit: session.canEdit,
+  threadId: session.threadId,
 });
 </script>
 
@@ -1493,7 +1533,7 @@ defineExpose({
               :stream="stream"
               :messages="displayedMessages"
               :calls="snapshotMessages ? [] : calls"
-              :is-running="isSessionRunning && !hasPendingInterrupts"
+              :is-running="isMessageRunning && !hasPendingInterrupts"
               :is-interrupted="
                 hasPendingInterrupts ||
                 session.run.value?.status === 'interrupted'
@@ -1737,14 +1777,47 @@ defineExpose({
       @select-suggestion="handleSelectSuggestion"
     >
       <template #top-tray>
-        <ChatStickyTaskPill
-          v-if="activeView === 'chat'"
-          :plan-view="planView"
-          @open-tasks="
-            drawerTab = 'tasks';
-            drawerOpen = true;
-          "
-        />
+        <div class="flex flex-col gap-1.5">
+          <Transition
+            enter-active-class="transition-opacity duration-200 ease-out"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="transition-opacity duration-300 ease-in"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+          >
+            <div
+              v-if="offloadState"
+              data-testid="chat-offload-pill"
+              class="inline-flex items-center gap-1.5 self-start rounded-full border px-2.5 py-0.5 text-xs font-medium shadow-2xs backdrop-blur-sm"
+              :class="[
+                offloadState.variant === 'info'
+                  ? 'border-blue-200/80 bg-blue-50/90 text-blue-700 dark:border-blue-800/80 dark:bg-blue-950/40 dark:text-blue-300'
+                  : offloadState.variant === 'success'
+                    ? 'border-emerald-200/80 bg-emerald-50/90 text-emerald-700 dark:border-emerald-800/80 dark:bg-emerald-950/40 dark:text-emerald-300'
+                    : offloadState.variant === 'danger'
+                      ? 'border-red-200/80 bg-red-50/90 text-red-700 dark:border-red-800/80 dark:bg-red-950/40 dark:text-red-300'
+                      : 'border-gray-200/80 bg-gray-50/90 text-gray-600 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300',
+              ]"
+            >
+              <BaseIcon
+                :name="offloadState.icon"
+                size="xs"
+                :class="offloadState.status === 'started' ? 'animate-spin' : ''"
+              />
+              <span>{{ offloadState.text }}</span>
+            </div>
+          </Transition>
+
+          <ChatStickyTaskPill
+            v-if="activeView === 'chat'"
+            :plan-view="planView"
+            @open-tasks="
+              drawerTab = 'tasks';
+              drawerOpen = true;
+            "
+          />
+        </div>
       </template>
     </ChatComposer>
     <ChatRunOptionsDialog

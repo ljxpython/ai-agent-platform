@@ -12,6 +12,9 @@ from langchain_core.messages import AIMessage, BaseMessage, RemoveMessage, ToolM
 from langchain_core.tools import BaseTool
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 
+from runtime_service.middlewares.conversation_offloading import (
+    is_conversation_maintenance,
+)
 from runtime_service.runtime import (
     AgentDefaults,
     ResolvedRuntimeConfig,
@@ -385,6 +388,8 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
         self, state: object, runtime: object
     ) -> dict[str, Any] | None:
         self._resolve(runtime)
+        if is_conversation_maintenance(runtime):
+            return None
         return self._sanitize_state_messages(state)
 
     def before_model(self, state: object, runtime: object) -> dict[str, Any] | None:
@@ -393,7 +398,11 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
     async def abefore_model(
         self, state: object, runtime: object
     ) -> dict[str, Any] | None:
-        return self._sanitize_state_messages(state)
+        return (
+            None
+            if is_conversation_maintenance(runtime)
+            else self._sanitize_state_messages(state)
+        )
 
     def _allowed_tools(self, resolved: ResolvedRuntimeConfig) -> set[str]:
         return set(resolved.required_tool_names) | set(resolved.optional_tool_names)

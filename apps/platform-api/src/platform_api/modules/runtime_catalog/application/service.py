@@ -215,6 +215,7 @@ class RuntimeCatalogService:
             model=item.model_name,
             enabled=item.enabled,
             credential_configured=bool(item.api_key_ciphertext),
+            context_window_tokens=getattr(item, "context_window_tokens", None),
             scope_type=scope_type,
             project_id=str(project_id) if project_id else None,
         )
@@ -394,7 +395,7 @@ class RuntimeCatalogService:
         reference: str,
         project_id: str,
         trusted_runtime: bool = False,
-    ) -> dict[str, str]:
+    ) -> dict[str, str | int | None]:
         """Resolve one short-lived internal reference without exposing it publicly."""
         secret = (
             self._settings.runtime_model_config_secret
@@ -460,6 +461,7 @@ class RuntimeCatalogService:
                 "protocol": item.protocol,
                 "model": item.model_name,
                 "api_key": api_key,
+                "context_window_tokens": item.context_window_tokens,
             }
 
     @staticmethod

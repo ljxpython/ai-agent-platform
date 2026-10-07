@@ -1011,11 +1011,26 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
                 :can-delete="
                   Boolean(selectedThread && threadCan(selectedThread, 'delete'))
                 "
+                :offload-disabled="!sessionRef?.canOffload"
+                :offload-disabled-reason="
+                  !selectedThread
+                    ? '请先发起会话'
+                    : !sessionRef?.hasMessages
+                      ? '当前会话尚无历史消息，无需整理'
+                      : sessionRef?.busy
+                        ? '会话正在执行中'
+                        : sessionRef?.hasPendingInterrupts
+                          ? '会话正在等待审批'
+                          : !sessionRef?.canEdit
+                            ? '无权限执行整理'
+                            : ''
+                "
                 @toggle-focus="focusMode = !focusMode"
                 @open-drawer="sessionRef?.openDrawer()"
                 @open-options="sessionRef?.openOptions()"
                 @open-takeover="accessControlRef?.openTakeover()"
                 @delete-thread="selectedThread && requestDelete(selectedThread)"
+                @offload-conversation="sessionRef?.offloadConversation()"
               />
               <div
                 class="h-4 w-px bg-gray-200 dark:bg-dark-700 mx-1 hidden sm:block shrink-0"
