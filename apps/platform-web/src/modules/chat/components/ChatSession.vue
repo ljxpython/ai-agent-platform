@@ -164,6 +164,84 @@ const isSessionInterrupted = computed(() => {
   return hasPendingInterrupts.value || reviews.value.length > 0;
 });
 
+const historicalRuns = ref<
+  Array<{ run_id: string; status: string; created_at?: string }>
+>([]);
+const historicalRunsLoading = ref(false);
+const selectedRunId = ref<string | null>(null);
+
+const allThreadRuns = computed(() => {
+  const map = new Map<
+    string,
+    { run_id: string; status: string; created_at?: string }
+  >();
+  for (const r of historicalRuns.value) {
+    map.set(r.run_id, r);
+  }
+  if (session.run.value?.run_id && !map.has(session.run.value.run_id)) {
+    map.set(session.run.value.run_id, {
+      run_id: session.run.value.run_id,
+      status: session.run.value.status,
+    });
+  }
+  return Array.from(map.values());
+});
+
+watch(
+  () => session.run.value?.run_id,
+  (newId) => {
+    if (newId) {
+      selectedRunId.value = newId;
+      if (activeView.value === "trajectory") {
+        void ensureHistoricalRuns(true);
+      }
+    }
+  },
+  { immediate: true },
+);
+
+async function ensureHistoricalRuns(force = false) {
+  const tId = session.threadId.value;
+  if (!tId) return;
+  if (!force && historicalRuns.value.length > 0) return;
+  historicalRunsLoading.value = true;
+  try {
+    const list = await session.service.runs(tId);
+    historicalRuns.value = (list || []).map((r) => ({
+      run_id: r.run_id,
+      status: r.status,
+      created_at: r.created_at,
+    }));
+    if (!selectedRunId.value && historicalRuns.value.length > 0) {
+      selectedRunId.value = historicalRuns.value[0].run_id;
+    }
+  } catch {
+    // 静默降级
+  } finally {
+    historicalRunsLoading.value = false;
+  }
+}
+
+watch(
+  () => activeView.value,
+  (view) => {
+    if (view === "trajectory") {
+      void ensureHistoricalRuns(true);
+    }
+  },
+);
+
+watch(
+  () => session.threadId.value,
+  () => {
+    historicalRuns.value = [];
+    selectedRunId.value = session.run.value?.run_id ?? null;
+    if (activeView.value === "trajectory") {
+      void ensureHistoricalRuns(true);
+    }
+  },
+);
+
 const handleResume = () => {
   if (hasPendingInterrupts.value || reviews.value.length > 0) {
     approvalElement.value?.scrollIntoView({
@@ -1414,6 +1492,13 @@ defineExpose({
           :messages="displayedMessages"
           :calls="snapshotMessages ? [] : calls"
           :is-running="isSessionRunning"
+          :project-id="projectId"
+          :thread-id="session.threadId.value || ''"
+          :run-id="selectedRunId || session.run.value?.run_id || null"
+          :runs="allThreadRuns"
+          :runs-loading="historicalRunsLoading"
+          :can-read="session.canRead.value"
+          @select-run="selectedRunId = $event"
         />
         <div
           v-else

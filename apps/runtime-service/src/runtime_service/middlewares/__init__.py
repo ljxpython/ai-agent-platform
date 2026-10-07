@@ -3,6 +3,7 @@
 from runtime_service.middlewares.documents import DocumentToolsMiddleware
 from runtime_service.middlewares.message_queue import MessageQueueMiddleware
 from runtime_service.middlewares.model_call_timeout import ModelCallTimeoutMiddleware
+from runtime_service.middlewares.model_errors import ModelErrorMiddleware
 from runtime_service.middlewares.runtime_config import (
     RuntimeConfigMiddleware,
     sanitize_tool_call_messages,
@@ -10,6 +11,7 @@ from runtime_service.middlewares.runtime_config import (
 
 __all__ = [
     "ModelCallTimeoutMiddleware",
+    "ModelErrorMiddleware",
     "RuntimeConfigMiddleware",
     "sanitize_tool_call_messages",
     "MessageQueueMiddleware",

@@ -9,20 +9,24 @@
 
 ## 一、30秒速通全景：可观测性模块核心机制速查表
 
-`apps/runtime-service/src/runtime_service/observability/` 目录结构极其精悍，仅用 3 个文件（约 700 行代码）构建了双轨可观测底座：
+`apps/runtime-service/src/runtime_service/observability/` 复用 Langfuse 与可选 OTel，并补充有界错误诊断、构图计时与只读查询。2026-10-06 批准的实现及验证见 [专项](../../../projects/20261006-agent-observability-hardening/README.md)：
 ```
 observability/
 ├── __init__.py      # 统一暴露门面符号
 ├── langfuse.py      # Langfuse 软着陆适配器、数据脱敏、元数据白名单注入与本地轻量诊断
-└── otel.py          # OpenTelemetry OTLP 分布式追踪适配器与故障隔离导出器
+├── otel.py          # 可选 OTLP 根图/启动阶段 span 与故障隔离
+├── errors.py        # 模型边界有限分类，不输出异常正文
+├── diagnostics.py   # 安全 JSON 日志、受信关联字段及确定性 trace ID
+├── startup.py       # 构图局部阶段 collector，不缓存 Thread
+└── query.py         # 官方异步 observations 查询，白名单 DTO
 ```
 
 | 核心机制 | 核心代码 / 类 | 物理职责 (大白话) | 解决的生产致命痛点 |
 | :--- | :--- | :--- | :--- |
 | **一、软着陆动态代理 (Fail-Soft)** | `_FailSoftCallback`<br>`_RecordingExporter` | 利用动态代理包装原生 SDK 回调，将所有 `on_*` 方法产生的 401、429、500 或超时异常全部在内部消化并打点，绝不向外冒泡。 | 彻底杜绝监控平台网络抖动、限流或后端故障导致大模型长耗时推理任务被异常中断。 |
 | **二、零信任元数据消杀 (Zero-Trust)** | `_redact()`<br>`_mask()`<br>`_approved_metadata()`<br>`_trusted_metadata()` | 强行清洗敏感字段（API Key/Cookie/Token），截断长字符串；将调用方传入的外部身份强行用服务端验签小票覆盖；抹除回调大段 Payload 防 Prompt 泄密。 | 杜绝调用方伪造 `user_id` 篡改监控审计轨迹；防止商业机密与系统 API Key 在监控控制台明文裸奔。 |
-| **三、本地常驻离线诊断器** | `_RuntimeDiagnosticsCallback` | 即使关闭远程 Langfuse，本地仍常驻此回调，就地捕获 Token 消耗总量、执行状态、耗时（ms）与工具报错，输出结构化 JSON 日志。 | 脱离外部 APM 单体依赖，离线单测与本地开发 0.05 秒完成执行验证与断言。 |
-| **四、OTel 分布式链路穿透** | `OTelDiagnosticsCallback`<br>`initialize_otel()` | 基于 OTLP 协议将根图 Span（`runtime.graph`）打通上层 Platform-API 的 `platform_trace_id`，实现微服务全链路追踪。 | 告别各微服务日志孤岛，实现前端请求从网关到模型底层执行全流程 Trace 串联。 |
+| **三、本地离线诊断** | `_RuntimeDiagnosticsCallback`、`log_diagnostic` | 正式组合根即使关闭远程导出仍装本地回调；捕获 Token计数、graph退出、耗时与工具异常类型，模型尝试由 middleware 独立记录。 | 不依赖外部观测服务即可保留已写出的诊断；不保证进程崩溃后的完整记录。 |
+| **四、可选 OTel** | `OTelDiagnosticsCallback`<br>`initialize_otel()` | 配置OTLP后建立 runtime.execution/startup/graph；platform_trace_id仅作为关联属性，不是OTel trace ID。 | 本期没有W3C propagation，不宣称完整分布式父子trace；可按平台关联ID查日志。 |
 | **五、有界优雅排空 (Bounded Flush)** | `close_langfuse()`<br>`close_otel()` | 服务停机时在后台守护线程触发缓冲区 Flush，设置严格的 5 秒超时保护，超时果断撤退。 | 杜绝 K8s 节点滚动更新或进程退出时，由于网络挂起导致进程永久僵死，最终被 K8s 超时强杀。 |
 
 ---
@@ -59,7 +63,7 @@ observability/
 |                                                                                             |
 |   [回调三剑客注入 bound["callbacks"]]                                                         |
 |   ├── 1. _FailSoftCallback(LangfuseCallbackHandler) ──> 软着陆代理，吞掉所有 SDK 内部异常     |
-|   ├── 2. OTelDiagnosticsCallback ────────────────────> 建立 runtime.graph Root Span         |
+|   ├── 2. OTelDiagnosticsCallback ────────────────────> 可选 execution/startup/graph Span      |
 |   └── 3. _RuntimeDiagnosticsCallback ─────────────────> 本地度量：Token计数/耗时/工具异常   |
 +─────────────────────────────────────────────────────────────────────────────────────────────+
          │                                       │                                  │
@@ -155,7 +159,7 @@ _SENSITIVE_KEYS = frozenset({
 很多平台一旦关了外部 APM，本地就变成瞎子。底座在 `with_langfuse_tracing()` 中，无论是否开启远程 Langfuse，都会装配一个纯本地的轻量诊断器：
 
 ```python
-# 对应 apps/runtime-service/src/runtime_service/observability/langfuse.py 第 189 行
+# 对应 observability/langfuse.py（省略部分指标与兼容日志）
 class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
     """Bounded Run/Tool diagnostics independent of Langfuse export."""
 
@@ -168,20 +172,26 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
 
     def _finish(self, run_id: Any, status: str) -> None:
         started = self._starts.pop(run_id, None)
-        duration_ms = round((time.monotonic() - started) * 1000, 2) if started else None
+        duration_ms = (
+            round((time.monotonic() - started) * 1000, 2)
+            if started is not None else None
+        )
         _metrics[f"run_{status}"] += 1
-        logger.info(
-            "runtime_run_completed",
-            extra={
+        log_diagnostic(
+            "runtime.graph.completed",
+            {
                 "graph_id": self._graph_id,
                 **self._metadata,
                 "callback_run_id": str(run_id),
-                "status": status,
+                "outcome": status,
                 "duration_ms": duration_ms,
             },
         )
 ```
-- **核心价值**：本地单测或完全离线部署时，通过 `get_observability_metrics()` 可以在 0.05 秒内直接断言 `run_success`、`token_total` 与 `tool_error` 计数，无需依赖任何远程网络服务！
+- `get_observability_metrics()` 可断言 `run_success`、`token_total` 与 `tool_error`，具体耗时取决于图和环境，不承诺固定0.05秒。
+- `ModelErrorMiddleware` 位于 fallback/retry 内侧、timeout 外侧，记录每次失败后重新抛出同一异常。恢复后Run仍可success；取消/HITL不算provider失败。
+- 本地诊断只保存类型、稳定码、有限namespace/ID和duration；原始message/body/stack/header不得进入新诊断日志或安全OTel/Langfuse事件。
+- Langfuse diagnostic event 在创建前通过公开 `propagate_attributes(session_id=...)` 绑定session；tenant/project/native Run派生trace ID，与graph回调共用显式trace_context。关掉导出时页面无法从stdout回查，本期无诊断数据库。
 
 ---
 
@@ -262,17 +272,12 @@ return with_langfuse_tracing(
 
 ```python
 # webapp.py
-@asynccontextmanager
-async def lifespan(_: FastAPI) -> AsyncIterator[None]:
-    # 启动阶段：初始化 Langfuse 客户端单例与 OTel 全局 Provider
-    initialize_langfuse()
-    try:
-        yield
-    finally:
-        # 关闭阶段：安全清理终端容器，并在 5 秒超时保护下刷空监控缓冲区
-        from runtime_service.workspace.terminal import terminals
-        await asyncio.to_thread(terminals.shutdown)
-        close_langfuse(timeout_seconds=5.0)
+# 生命周期片段，完整代码以 webapp.py 为准
+initialize_langfuse()
+async with diagnostics_client_lifespan():
+    yield
+# 原有 finally 继续关闭 terminals 和观测客户端
+close_langfuse(timeout_seconds=5.0)
 ```
 
 ---
@@ -285,7 +290,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 | **调用方伪造身份** | 直接透传请求入参中的 `user_id` | 强制使用 HMAC 验签提取的 `trusted_metadata` 强行覆盖 | 攻击者可在请求体伪造超管身份，篡改审计日志，造成严重的安全合规漏洞！ |
 | **敏感凭证防泄露** | 回调原样上传全部 State 与参数 | `_SENSITIVE_KEYS` 严格过滤 + `_mask` 抹除裸文本 | 用户的私密 Token、大模型 API Key 容易随监控数据泄露给第三方 APM 服务商！ |
 | **停机退出流程** | 进程退出直接退出或无限同步 `flush()` | 守护线程异步刷盘 + 5.0 秒硬性超时看门狗 | 无限阻塞会导致 K8s 判定 Pod 优雅停机超时直接强杀，甚至引发级联停机阻塞！ |
-| **离线/单测环境** | 必须启动远程 Langfuse 容器才能跑通 | 未配置时 0ms 零依赖返回原图，本地提供轻量诊断回调 | 强依赖外部平台会导致微服务单测无法独立运行，沦为痛苦的“分布式单体”！ |
+| **离线/单测环境** | 必须启动远程 Langfuse 容器才能跑通 | 关闭导出仍绑定本地诊断，不作业务网络调用；有实际装配和日志成本 | 本地单测可以独立验证，增量成本按专项A/B实测。 |
 
 ---
 
@@ -294,4 +299,12 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 1. **软着陆铁律不变量**：可观测性模块发生的任何异常（网络失败、配置错误、反序列化异常），绝对禁止向外抛出中断 Agent 主业务执行流程。
 2. **元数据覆盖不变量**：调用方传入的外部元数据只允许读取白名单字段，核心租户、用户与追踪指纹必须由 `trusted_metadata` 权威小票强行覆盖。
 3. **单例与无死锁不变量**：进程内只允许维持一个 Langfuse 客户端与 OTel Provider 单例；退出排空必须受到最大 5 秒超时的严格钳制。
-4. **离线自治不变量**：在 `LANGFUSE_ENABLED != true` 的纯离线或单测环境下，底座必须完全解耦外部网络，支持 0.05 秒无依赖自测。
+4. **离线自治不变量**：在 `LANGFUSE_ENABLED != true` 且OTLP未配置时，诊断不调用外部观测网络；本地计时与日志仍执行，不承诺零成本。
+
+## 七、构图与安全查询
+
+四个正式graph在真实context/model/MCP/workspace/compile代码块记录阶段。UTC时间用于展示、monotonic用于duration；collector每次构图独立，最多16阶段，schema探测直接跳过。factory失败也可记录startup；授权前失败没有可信Run身份时只能保留安全本地事件，不能伪造跨服务归属。
+
+平台新增 `GET /api/langgraph/threads/{thread_id}/runs/{run_id}/diagnostics`。项目/Thread授权及原生Run归属校验后，以Thread绑定的diagnostics-read调用Runtime；Runtime再回查当前ACL/credential，用官方observations v2读取metadata，100 observations/50 traces/2秒总预算。未知字段不公开，外链URL固定null，不新增表或回写Thread。
+
+响应 `run_status` 来自原生Run，模型错误是尝试观察，不能据最后一次429推断最终失败。Langfuse最终一致，返回available/partial/disabled/unavailable；观测故障不改变Run。查询request_id与原执行request_id分开，前端实现和浏览器验收由同事按 [交接](../../../projects/20261006-agent-observability-hardening/frontend-handoff.md) 接续。

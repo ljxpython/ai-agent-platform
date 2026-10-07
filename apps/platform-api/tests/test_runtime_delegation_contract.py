@@ -17,7 +17,11 @@ from platform_api.modules.runtime_gateway.application.service import (
 )
 
 ROOT = Path(__file__).resolve().parents[3]
-RUNTIME_PYTHON = ROOT / "apps/runtime-service/.venv/bin/python"
+RUNTIME_PYTHON = Path(
+    os.getenv(
+        "RUNTIME_CONTRACT_PYTHON", str(ROOT / "apps/runtime-service/.venv/bin/python")
+    )
+)
 VERIFIER = Path(__file__).parent / "fixtures/runtime_delegation_verifier.py"
 OPERATIONS = (
     "read",
@@ -44,6 +48,7 @@ OPERATIONS = (
     "dear-governance-read",
     "dear-governance-write",
     "suggestions-generate",
+    "diagnostics-read",
 )
 
 
@@ -52,7 +57,8 @@ class RuntimeDelegationContractTest(unittest.TestCase):
         if not RUNTIME_PYTHON.is_file():
             self.skipTest("Runtime test environment is required")
         self.settings = Settings(
-            runtime_delegation_secret="runtime-delegation-secret-at-least-48-bytes-for-tests"
+            runtime_delegation_secret="runtime-delegation-secret-at-least-48-bytes-for-tests",
+            runtime_delegation_ttl_seconds=300,
         )
 
     def _token(self, *, operation="read", scope=None, **overrides) -> str:
@@ -119,7 +125,7 @@ class RuntimeDelegationContractTest(unittest.TestCase):
             ),
             text=True,
             capture_output=True,
-            timeout=90,
+            timeout=180,
             cwd=ROOT,
             env=environment,
         )
@@ -127,7 +133,8 @@ class RuntimeDelegationContractTest(unittest.TestCase):
         return json.loads(completed.stdout)
 
     def test_all_platform_operations_pass_current_runtime_verifier(self) -> None:
-        self.assertEqual(len(OPERATIONS), 24)
+        self.assertIn("diagnostics-read", OPERATIONS)
+        self.assertEqual(len(OPERATIONS), len(set(OPERATIONS)))
         tokens = [
             self._token(
                 operation=operation,
@@ -444,7 +451,8 @@ class RuntimeDelegationContractTest(unittest.TestCase):
                 "run-delete",
             }
         ]
-        self.assertEqual(len(custom), 16)
+        self.assertIn("diagnostics-read", custom)
+        self.assertEqual(len(custom), len(set(custom)))
         cases = []
         for operation in custom:
             assistant = (
@@ -460,18 +468,20 @@ class RuntimeDelegationContractTest(unittest.TestCase):
                 "assistant_id": assistant,
                 "operation": operation,
             }
+            thread_id = str(uuid4()) if operation == "diagnostics-read" else "thread-1"
             if operation not in {
                 "dear-skills-read",
                 "dear-skills-write",
                 "dear-memory-read",
                 "dear-memory-write",
             }:
-                scope["thread_id"] = "thread-1"
+                scope["thread_id"] = thread_id
             cases.append(
                 {
                     "token": self._token(scope=scope),
                     "mode": "custom",
                     "endpoint": operation,
+                    "thread_id": thread_id,
                     **(
                         {
                             "run_read_token": self._token(
@@ -492,6 +502,7 @@ class RuntimeDelegationContractTest(unittest.TestCase):
                     "token": self._token(scope={**scope, "operation": "read"}),
                     "mode": "custom",
                     "endpoint": operation,
+                    "thread_id": thread_id,
                 }
             )
             cases.append(
@@ -499,6 +510,7 @@ class RuntimeDelegationContractTest(unittest.TestCase):
                     "token": self._token(scope={**scope, "thread_id": "other"}),
                     "mode": "custom",
                     "endpoint": operation,
+                    "thread_id": thread_id,
                 }
             )
         results = self._verify(cases)

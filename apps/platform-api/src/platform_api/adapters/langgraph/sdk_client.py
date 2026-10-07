@@ -94,37 +94,83 @@ def get_langgraph_client(
     )
 
 
-def redact_runtime_private_fields(value: Any, *, _execution_errors: bool = True) -> Any:
-    if isinstance(value, dict):
-        if (
-            _execution_errors
-            and value.get("error") is not None
-            and (
-                value.get("event") in ("lifecycle", "failed")
-                or "thread_id" in value
-                and "status" in value
-                or {"id", "name", "result", "interrupts"}.issubset(value)
+_EXECUTION_ERROR_TYPES = frozenset(
+    {
+        "Exception",
+        "RuntimeError",
+        "ValueError",
+        "TimeoutError",
+        "ConnectionError",
+        "RateLimitError",
+        "APIStatusError",
+        "APIConnectionError",
+        "APITimeoutError",
+        "AuthenticationError",
+        "PermissionDeniedError",
+        "BadRequestError",
+        "NotFoundError",
+        "GraphRecursionError",
+        "InvalidUpdateError",
+    }
+)
+
+
+def project_execution_error(value: Any) -> Any:
+    """Preserve SDK error shapes while discarding exception bodies and stacks."""
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        return "Runtime execution failed"
+    result = {"message": "Runtime execution failed", "code": "runtime_execution_failed"}
+    for key in ("type", "error"):
+        if key in value:
+            result[key] = (
+                value[key]
+                if isinstance(value[key], str) and value[key] in _EXECUTION_ERROR_TYPES
+                else "RuntimeError"
             )
+    return result
+
+
+def redact_execution_fields(value: Any) -> Any:
+    if not isinstance(value, dict):
+        return value
+    return {
+        key: project_execution_error(item) if key == "error" else item
+        for key, item in value.items()
+        if key not in {"stack", "traceback", "body", "provider_response"}
+    }
+
+
+def redact_runtime_private_fields(value: Any, *, _resource: bool = True) -> Any:
+    if isinstance(value, dict):
+        result = dict(value)
+        if _resource and "thread_id" in result and "error" in result:
+            result["error"] = project_execution_error(result["error"])
+        if (
+            _resource
+            and isinstance(result.get("tasks"), list)
+            and any(key in result for key in ("values", "checkpoint", "next"))
         ):
-            error = value["error"]
-            safe_error: Any = "runtime.execution_failed"
-            if isinstance(error, dict):
-                safe_error = {"message": "runtime.execution_failed"}
-                category = error.get("type")
-                if (
-                    isinstance(category, str)
-                    and len(category) <= 128
-                    and category.isidentifier()
-                ):
-                    safe_error["type"] = category
-            value = {**value, "error": safe_error}
+            result["tasks"] = [
+                redact_execution_fields(task) for task in result["tasks"]
+            ]
         return {
             key: redact_runtime_private_fields(
                 item,
-                _execution_errors=_execution_errors
-                and key not in {"content", "artifact", "metadata", "values", "result"},
+                _resource=_resource
+                and key
+                not in {
+                    "values",
+                    "messages",
+                    "input",
+                    "output",
+                    "metadata",
+                    "args",
+                    "content",
+                },
             )
-            for key, item in value.items()
+            for key, item in result.items()
             if not (
                 str(key).startswith("_runtime_")
                 or key
@@ -139,8 +185,7 @@ def redact_runtime_private_fields(value: Any, *, _execution_errors: bool = True)
         }
     if isinstance(value, list):
         return [
-            redact_runtime_private_fields(item, _execution_errors=_execution_errors)
-            for item in value
+            redact_runtime_private_fields(item, _resource=_resource) for item in value
         ]
     return value
 

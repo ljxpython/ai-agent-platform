@@ -20,10 +20,12 @@ from runtime_service.middlewares import (
     DocumentToolsMiddleware,
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
+    ModelErrorMiddleware,
     RuntimeConfigMiddleware,
 )
 from runtime_service.middlewares.images import ImageToolsMiddleware
 from runtime_service.observability import with_langfuse_tracing
+from runtime_service.observability.startup import StartupDiagnostics
 from runtime_service.runtime import (
     AgentDefaults,
     RuntimeAuthError,
@@ -74,6 +76,11 @@ _EXECUTION_KEYS = {
 
 
 async def get_agent(config: RunnableConfig) -> Pregel:
+    with StartupDiagnostics("showcase_demo") as startup:
+        return await _build_agent(config, startup)
+
+
+async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> Pregel:
     """Bind a thread backend for runs; introspection never creates external resources."""
     configurable = config.get("configurable") or {}
     if not isinstance(configurable, Mapping):
@@ -91,26 +98,34 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         thread_id = configurable.get("thread_id")
         if not isinstance(thread_id, str) or not thread_id:
             raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
-        context = parse_runtime_context(config.get("context"))
-        if runtime_context_hash(context) != facts.context_hash:
-            raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
-        if facts.scope.thread_id is not None and facts.scope.thread_id != thread_id:
-            raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
-        resolved = resolve_runtime_config(
-            principal=facts.principal,
-            context=context,
-            policy=facts.policy,
-            defaults=_DEFAULTS,
-        )
-        connection = await fetch_model_connection(
-            configurable.get("runtime_model_ref"),
-            model_id=resolved.model_id,
-            project_id=facts.principal.project_id,
-        )
-        model = build_model(resolved, connection=connection)
-        workspace = create_workspace(
-            facts.principal.tenant_id, facts.principal.project_id, thread_id
-        )
+        startup.authorize(config, facts)
+        with startup.phase("factory.context_resolution"):
+            context = parse_runtime_context(config.get("context"))
+            if runtime_context_hash(context) != facts.context_hash:
+                raise RuntimeAuthError(
+                    "runtime.auth.context_hash_mismatch", "context_hash"
+                )
+            if facts.scope.thread_id is not None and facts.scope.thread_id != thread_id:
+                raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
+            resolved = resolve_runtime_config(
+                principal=facts.principal,
+                context=context,
+                policy=facts.policy,
+                defaults=_DEFAULTS,
+            )
+        startup.metadata["model_id"] = resolved.model_id
+        with startup.phase("factory.model_connection"):
+            connection = await fetch_model_connection(
+                configurable.get("runtime_model_ref"),
+                model_id=resolved.model_id,
+                project_id=facts.principal.project_id,
+            )
+        with startup.phase("factory.model_build"):
+            model = build_model(resolved, connection=connection)
+        with startup.phase("factory.workspace"):
+            workspace = create_workspace(
+                facts.principal.tenant_id, facts.principal.project_id, thread_id
+            )
     else:
         # Schema-only client: no request is sent, and WorkspaceMiddleware rejects invocation.
         model = ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
@@ -142,7 +157,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         raw = os.getenv(name, "").strip()
         return int(raw) if raw.isdigit() and int(raw) > 0 else default
 
-    def middleware(tool_names: Sequence[str]):
+    def middleware(tool_names: Sequence[str], *, child: bool = False):
         return [
             RuntimeConfigMiddleware(
                 defaults=_DEFAULTS,
@@ -161,51 +176,55 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 thread_limit=_env_int("AGENT_TOOL_CALL_LIMIT_PER_THREAD", 1000),
                 exit_behavior="error",
             ),
+            ModelErrorMiddleware(
+                startup.metadata, scope="subagent" if child else "primary"
+            ),
             ModelCallTimeoutMiddleware(),
             ToolErrorMiddleware(on_error=on_tool_error),
         ]
 
-    agent = create_deep_agent(
-        model=model,
-        system_prompt=SYSTEM_PROMPT,
-        tools=[fetch_documentation, build_artifact_tool(image_workspace.root)],
-        backend=backend,
-        skills=["/skills/"],
-        permissions=PERMISSIONS,
-        interrupt_on=interrupts_for_access_policy(
-            context.access_policy if executing else None,
-            {
-                **APPROVALS,
-                "present_artifacts": {
-                    "allowed_decisions": ["approve", "edit", "reject"]
+    with startup.phase("factory.agent_compile"):
+        agent = create_deep_agent(
+            model=model,
+            system_prompt=SYSTEM_PROMPT,
+            tools=[fetch_documentation, build_artifact_tool(image_workspace.root)],
+            backend=backend,
+            skills=["/skills/"],
+            permissions=PERMISSIONS,
+            interrupt_on=interrupts_for_access_policy(
+                context.access_policy if executing else None,
+                {
+                    **APPROVALS,
+                    "present_artifacts": {
+                        "allowed_decisions": ["approve", "edit", "reject"]
+                    },
                 },
-            },
-        ),
-        subagents=build_subagents(
-            model,
-            backend,
-            middleware,
-            chart_tools,
-            context.access_policy if executing else None,
-        ),
-        middleware=[
-            FilesystemMiddleware(
-                backend=backend,
-                tools=list(WORK_TOOLS),
-                _permissions=PERMISSIONS,
-                max_execute_timeout=60,
             ),
-            *middleware(
-                (*_DEFAULTS.optional_tool_names, *image_names, *document_names)
+            subagents=build_subagents(
+                model,
+                backend,
+                lambda names: middleware(names, child=True),
+                chart_tools,
+                context.access_policy if executing else None,
             ),
-            image_middleware,
-            document_middleware,
-            TodoListMiddleware(),
-            MessageQueueMiddleware(),
-        ],
-        context_schema=RuntimeContext,
-        name="showcase_demo",
-    )
+            middleware=[
+                FilesystemMiddleware(
+                    backend=backend,
+                    tools=list(WORK_TOOLS),
+                    _permissions=PERMISSIONS,
+                    max_execute_timeout=60,
+                ),
+                *middleware(
+                    (*_DEFAULTS.optional_tool_names, *image_names, *document_names)
+                ),
+                image_middleware,
+                document_middleware,
+                TodoListMiddleware(),
+                MessageQueueMiddleware(),
+            ],
+            context_schema=RuntimeContext,
+            name="showcase_demo",
+        )
     bound = {
         key: value
         for key, value in config.items()
@@ -224,6 +243,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         agent,
         bound,
         graph_id="showcase_demo",
+        startup=startup,
         trusted_metadata={
             "user_id": facts.principal.user_id,
             "tenant_id": facts.principal.tenant_id,

@@ -7,6 +7,7 @@ from collections.abc import AsyncIterator, Callable, Mapping
 from typing import Any
 from uuid import UUID, uuid4
 
+from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.concurrency import run_in_threadpool
@@ -55,6 +56,9 @@ from platform_api.modules.runtime_catalog.infra.sqlalchemy.repository import (
 from platform_api.modules.runtime_gateway.application import thread_access
 from platform_api.modules.runtime_gateway.application.clarification import (
     validate_clarification_resumes,
+)
+from platform_api.modules.runtime_gateway.application.diagnostics import (
+    RuntimeDiagnostics,
 )
 from platform_api.modules.runtime_gateway.application.ports import (
     BinaryPayload,
@@ -3369,6 +3373,58 @@ class RuntimeGatewayService:
         )
         snapshot = await self._upstream.get_thread_run(thread_id, run_id)
         return snapshot
+
+    async def get_thread_run_diagnostics(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        run_id: str,
+        request_id: str,
+    ) -> dict[str, Any]:
+        thread_id = str(parse_uuid(thread_id, code="invalid_thread_id"))
+        run_id = str(parse_uuid(run_id, code="invalid_run_id"))
+        thread = await self._load_thread(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            write=False,
+        )
+        snapshot = await self._upstream.get_thread_run(thread_id, run_id)
+        if (
+            not isinstance(snapshot, dict)
+            or snapshot.get("thread_id") != thread_id
+            or snapshot.get("run_id") != run_id
+        ):
+            raise NotFoundError(code="run_not_found", message="Run not found")
+        if not isinstance(snapshot.get("status"), str) or len(snapshot["status"]) > 128:
+            raise PlatformApiError(
+                code="langgraph_upstream_invalid_response",
+                status_code=502,
+                message="Invalid Runtime response",
+            )
+        upstream = await self._thread_upstream(
+            project_id=project_id,
+            thread=thread,
+            operation="diagnostics-read",
+        )
+        payload = await upstream.get_run_diagnostics(thread_id, run_id)
+        try:
+            summary = RuntimeDiagnostics.model_validate(payload).model_dump(mode="json")
+        except (ValidationError, TypeError, ValueError) as exc:
+            raise PlatformApiError(
+                code="langgraph_upstream_invalid_response",
+                status_code=502,
+                message="Invalid Runtime diagnostics",
+            ) from exc
+        return {
+            **summary,
+            "thread_id": thread_id,
+            "run_id": run_id,
+            "run_status": snapshot["status"],
+            "request_id": request_id,
+        }
 
     async def list_thread_runs(
         self,

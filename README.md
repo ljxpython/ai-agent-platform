@@ -278,6 +278,7 @@ ai-agent-platform/
   - Python 全仓 570+ 源码文件实现 Ruff 100% 格式化与诊断清零（0 errors）
   - 前端 Vitest 单元测试覆盖核心会话状态机，打包构建无告警
   - 后端核心单测全绿，保持端到端可执行契约验证
+- **Agent 可观测性与追踪补齐**：Runtime错误分类/启动阶段追踪、Platform API授权诊断查询及后端Final已完成；真实链路与容量降级边界已记录，只剩同事的前端展示与浏览器联合验收，见 [专项文档](docs/projects/20261006-agent-observability-hardening/README.md)。
 
 ---
 

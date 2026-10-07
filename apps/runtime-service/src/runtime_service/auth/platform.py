@@ -294,15 +294,29 @@ async def deny_image_scope_on_server_resources(
             status_code=403, detail="Thread scope mismatch"
         )
 
+    await authorize_thread_targets(ctx.user, targets, action=acl_action)
+    if action in {"create", "update"} and isinstance(value.get("metadata"), dict):
+        value["metadata"]["project_id"] = project_id
+    elif action == "create":
+        value["metadata"] = {"project_id": project_id}
+    return {"project_id": project_id}
+
+
+async def authorize_thread_targets(
+    user: object, targets: list[str], *, action: str
+) -> None:
+    """Recheck current platform ACL for native and custom Thread readers."""
+    project_id = _user_value(user, "project_id")
+    identity = _user_value(user, "identity")
     endpoint = _setting("PLATFORM_THREAD_AUTHORIZATION_URL")
     secret = _setting("PLATFORM_RUNTIME_DELEGATION_SECRET")
     payload = {
-        "action": acl_action,
+        "action": action,
         "project_id": project_id,
         "user_id": identity,
         "thread_ids": targets,
     }
-    credential_id = _user_value(ctx.user, "runtime_credential_id")
+    credential_id = _user_value(user, "runtime_credential_id")
     if credential_id is not None:
         payload["credential_id"] = credential_id
     stamp = str(int(time.time()))
@@ -328,7 +342,7 @@ async def deny_image_scope_on_server_resources(
         logger.warning(
             "Platform authorization unavailable project=%s action=%s targets=%s elapsed_ms=%.0f error=%s",
             project_id,
-            acl_action,
+            action,
             len(targets),
             (time.monotonic() - started) * 1000,
             type(exc).__name__,
@@ -347,11 +361,6 @@ async def deny_image_scope_on_server_resources(
         raise Auth.exceptions.HTTPException(
             status_code=403, detail="Thread access denied"
         )
-    if action in {"create", "update"} and isinstance(value.get("metadata"), dict):
-        value["metadata"]["project_id"] = project_id
-    elif action == "create":
-        value["metadata"] = {"project_id": project_id}
-    return {"project_id": project_id}
 
 
 __all__ = ["auth", "authenticate", "deny_image_scope_on_server_resources"]

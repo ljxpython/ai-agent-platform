@@ -8,6 +8,7 @@ from collections.abc import Callable, Mapping
 from typing import Any
 
 from langchain_core.callbacks import BaseCallbackHandler
+from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import ReadableSpan, Span, TracerProvider
 from opentelemetry.sdk.trace.export import (
@@ -16,6 +17,8 @@ from opentelemetry.sdk.trace.export import (
     SpanExportResult,
 )
 from opentelemetry.trace import Status, StatusCode
+
+from runtime_service.observability.errors import error_type, execution_outcome
 
 
 class OTelConfigurationError(RuntimeError):
@@ -159,7 +162,12 @@ class OTelDiagnosticsCallback(BaseCallbackHandler):
     """Record only the root graph span and bounded Runtime identifiers."""
 
     def __init__(
-        self, provider: TracerProvider, graph_id: str, metadata: Mapping[str, Any]
+        self,
+        provider: TracerProvider,
+        graph_id: str,
+        metadata: Mapping[str, Any],
+        *,
+        startup: Any = None,
     ) -> None:
         self._tracer = provider.get_tracer("runtime-service")
         self._graph_id = graph_id
@@ -169,6 +177,7 @@ class OTelDiagnosticsCallback(BaseCallbackHandler):
             if metadata.get(key) is not None
         }
         self._spans: dict[Any, Span] = {}
+        self._startup = startup
 
     def on_chain_start(
         self,
@@ -181,8 +190,13 @@ class OTelDiagnosticsCallback(BaseCallbackHandler):
     ) -> None:
         if parent_run_id is not None:
             return
+        if self._startup is not None:
+            self._startup.export_otel()
         self._spans[run_id] = self._tracer.start_span(
             "runtime.graph",
+            context=trace.set_span_in_context(self._startup.execution_span)
+            if self._startup is not None and self._startup.execution_span is not None
+            else None,
             attributes={"runtime.graph_id": self._graph_id, **self._metadata},
         )
 
@@ -203,15 +217,29 @@ class OTelDiagnosticsCallback(BaseCallbackHandler):
         if parent_run_id is None:
             span = self._spans.pop(run_id, None)
             if span is not None:
-                span.record_exception(error)
-                span.set_status(Status(StatusCode.ERROR, type(error).__name__))
+                span.add_event(
+                    "exception",
+                    {
+                        "exception.type": error_type(error),
+                        "runtime.outcome": execution_outcome(error),
+                    },
+                )
+                span.set_status(Status(StatusCode.ERROR, error_type(error)))
                 span.end()
+                self._end_execution(StatusCode.ERROR)
 
     def _finish(self, run_id: Any, status: StatusCode) -> None:
         span = self._spans.pop(run_id, None)
         if span is not None:
             span.set_status(Status(status))
             span.end()
+            self._end_execution(status)
+
+    def _end_execution(self, status: StatusCode) -> None:
+        if self._startup is not None and self._startup.execution_span is not None:
+            self._startup.execution_span.set_status(Status(status))
+            self._startup.execution_span.end()
+            self._startup.execution_span = None
 
 
 __all__ = [

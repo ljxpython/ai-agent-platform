@@ -23,13 +23,16 @@ class _Graph:
         return self
 
 
-def test_disabled_returns_original_graph_without_sdk(
+def test_disabled_keeps_local_diagnostics_without_sdk(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     graph = _Graph()
     monkeypatch.delenv("LANGFUSE_ENABLED", raising=False)
     assert langfuse.with_langfuse_tracing(graph, {}, graph_id="demo") is graph  # type: ignore[arg-type]
-    assert graph.bound is None
+    assert graph.bound is not None
+    assert [type(item).__name__ for item in graph.bound["callbacks"]] == [
+        "_RuntimeDiagnosticsCallback"
+    ]
 
 
 def test_enabled_requires_complete_settings(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -174,7 +177,7 @@ def test_diagnostics_classify_terminal_failures(
     with caplog.at_level("INFO"):
         callback.on_chain_start({}, {}, run_id=f"callback-{status}")
         callback.on_chain_error(error, run_id=f"callback-{status}")
-    assert any(record.status == status for record in caplog.records)
+    assert any(getattr(record, "status", None) == status for record in caplog.records)
 
 
 def test_diagnostics_count_tool_error_and_tokens(

@@ -1,0 +1,97 @@
+"""Validate and project the Runtime diagnostic contract at the public boundary."""
+
+from typing import Annotated, Literal
+
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+
+Identifier = Annotated[
+    str, Field(max_length=128, min_length=1, pattern=r"^[A-Za-z0-9_:.-]+$")
+]
+Duration = Annotated[float, Field(ge=0, allow_inf_nan=False, strict=True)]
+ModelErrorCode = Literal[
+    "provider_rate_limited",
+    "provider_overloaded",
+    "context_too_long",
+    "model_unavailable",
+    "provider_auth_failed",
+    "provider_access_denied",
+    "provider_timeout",
+    "provider_unavailable",
+    "model_call_failed",
+]
+
+
+class DiagnosticFields(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
+
+class Correlation(DiagnosticFields):
+    execution_request_id: Identifier | None = None
+    platform_trace_id: Identifier | None = None
+
+
+class TraceReference(DiagnosticFields):
+    provider: Literal["langfuse"]
+    trace_id: Identifier
+    url: None = None
+
+
+class GraphExecution(DiagnosticFields):
+    observation_id: Identifier
+    outcome: Literal["success", "failed", "timeout", "cancelled", "interrupted"]
+    error_code: ModelErrorCode | None = None
+    duration_ms: Duration | None = None
+
+
+class ModelFailure(DiagnosticFields):
+    observation_id: Identifier
+    scope: Literal["primary", "subagent"]
+    namespace: Annotated[list[Identifier], Field(max_length=8)]
+    code: ModelErrorCode
+    error_type: Identifier | None = None
+    provider_status: Annotated[int, Field(ge=100, le=599, strict=True)] | None = None
+    duration_ms: Duration | None = None
+
+
+class StartupPhase(DiagnosticFields):
+    name: Literal[
+        "factory.context_resolution",
+        "factory.memory_policy",
+        "factory.mcp_tools",
+        "factory.model_connection",
+        "factory.model_build",
+        "factory.workspace",
+        "factory.agent_compile",
+    ]
+    ordinal: Annotated[int, Field(ge=0, le=15, strict=True)]
+    outcome: Literal["completed", "failed", "cancelled", "incomplete"]
+    started_at: AwareDatetime | None = None
+    ended_at: AwareDatetime | None = None
+    duration_ms: Duration | None = None
+    error_code: ModelErrorCode | None = None
+
+
+class StartupSummary(DiagnosticFields):
+    duration_ms: Duration | None = None
+    phases: Annotated[list[StartupPhase], Field(max_length=16)]
+
+
+class RuntimeDiagnostics(DiagnosticFields):
+    version: Literal[1]
+    availability: Literal["available", "partial", "disabled", "unavailable"]
+    unavailable_reason: (
+        Literal["not_configured", "not_recorded", "backend_unavailable"] | None
+    ) = None
+    correlation: Correlation
+    trace: TraceReference | None
+    graph_executions: Annotated[list[GraphExecution], Field(max_length=10)]
+    model_errors: Annotated[list[ModelFailure], Field(max_length=20)]
+    startup: StartupSummary | None
+    truncated: Annotated[bool, Field(strict=True)]
+
+
+class RunDiagnostics(RuntimeDiagnostics):
+    thread_id: Identifier
+    run_id: Identifier
+    run_status: Annotated[str, Field(max_length=128)]
+    request_id: Annotated[str, Field(max_length=256)]

@@ -1,6 +1,6 @@
 ---
 status: draft
-last_verified: 2026-09-27
+last_verified: 2026-10-07
 confidence: medium
 source_project: docs/projects/20260926-sse-event-contract/verification.md
 note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容量(S11)因HTTP/1.1入口阻塞，持续容量/堆增长/三段脱敏样例未验
@@ -10,6 +10,7 @@ note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容
 
 > **适用服务：** runtime-service（产出）、platform-api（网关脱敏/心跳）、platform-web（消费）
 > **验证证据：** API 事件脱敏 11 passed；Web Vitest 391 passed；受控 Playwright 15 passed；真实 SDK 链路通过
+> **执行错误投影补充：** 2026-10-07隔离普通/Protocol/v3原生Run失败链路通过；debug task_result和checkpoint错误槽位安全，见[可观测性验收](../projects/20261006-agent-observability-hardening/implementation/02-backend-verification.md)。本轮未实施前端。
 > **⚠️ 未完成：** H2/H3 8 条并发容量（S11）因 HTTP/1.1 入口限制阻塞；30 分钟持续容量、堆增长、资源归零待验
 
 ## 网关帧安全规则
@@ -21,6 +22,9 @@ note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容
 | 心跳帧 | 注释心跳不作 JSON 解析，固定转为 `: heartbeat`，不透传上游文本 |
 | 异常帧处理 | 非 JSON data / 损坏 UTF-8 / 非法 Protocol 外层：不透传原文，安全记录原因后关闭上下游 |
 | 日志约束 | 只含固定 reason、request_id / trace_id 及授权范围内 thread_id；禁止记录 payload / token |
+| 执行错误槽位 | Protocol/v3 `lifecycle.params.data.error`、普通 `error`/`lifecycle`、`debug.task_result.payload.error` 及 checkpoint `tasks[].error` 使用固定安全消息；移除异常 stack/body/traceback/provider_response，保留 event/id/seq、终态与正常消息/工具正文 |
+
+执行错误投影不是 provider 分类来源。分类在 Runtime 模型边界记录，通过授权诊断 GET 查询；不能从安全消息猜原因或用模型尝试失败覆盖原生 Run 状态。实装与验收见 [可观测性专项](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md)。本次不代替原容量与浏览器验收，草案状态保留。
 
 ## SDK 自动重试规则（补丁扩展）
 

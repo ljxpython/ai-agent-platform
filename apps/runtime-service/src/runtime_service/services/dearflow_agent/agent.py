@@ -25,9 +25,11 @@ from runtime_service.middlewares import (
     DocumentToolsMiddleware,
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
+    ModelErrorMiddleware,
     RuntimeConfigMiddleware,
 )
 from runtime_service.observability import with_langfuse_tracing
+from runtime_service.observability.startup import StartupDiagnostics
 from runtime_service.runtime import (
     AgentDefaults,
     RuntimeAuthError,
@@ -147,6 +149,11 @@ def _get_env_limit(key: str, fallback: int) -> int:
 
 
 async def get_agent(config: RunnableConfig) -> Pregel:
+    with StartupDiagnostics("dearflow_agent") as startup:
+        return await _build_agent(config, startup)
+
+
+async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> Pregel:
     """Bind a thread backend for runs; introspection never creates external resources."""
     configurable = config.get("configurable") or {}
     if not isinstance(configurable, Mapping):
@@ -167,23 +174,28 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     mcp_tools = []
     reasoning = {"reasoning": "probe_only"}
     governance = os.environ.get("RUNTIME_DEAR_GOVERNANCE_ENABLED") == "1"
-    memory_enabled = (
-        governance
-        and executing
-        and await memory_allowed(user, configurable.get("thread_id"))
-    )
+    with startup.phase("factory.memory_policy"):
+        memory_enabled = (
+            governance
+            and executing
+            and await memory_allowed(user, configurable.get("thread_id"))
+        )
     if executing:
         thread_id = configurable.get("thread_id")
         if not isinstance(thread_id, str) or not thread_id:
             raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
         if facts.scope.assistant_id != "dearflow_agent":
             raise RuntimeAuthError("runtime.auth.invalid_principal", "assistant_id")
-        context = parse_runtime_context(config.get("context"))
-        mode = resolve_mode(context.execution_mode)
-        if runtime_context_hash(context) != facts.context_hash:
-            raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
-        if facts.scope.thread_id is not None and facts.scope.thread_id != thread_id:
-            raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
+        startup.authorize(config, facts)
+        with startup.phase("factory.context_resolution"):
+            context = parse_runtime_context(config.get("context"))
+            mode = resolve_mode(context.execution_mode)
+            if runtime_context_hash(context) != facts.context_hash:
+                raise RuntimeAuthError(
+                    "runtime.auth.context_hash_mismatch", "context_hash"
+                )
+            if facts.scope.thread_id is not None and facts.scope.thread_id != thread_id:
+                raise RuntimeAuthError("runtime.auth.invalid_principal", "thread_id")
         requested_mcp = tuple(
             n for n in configured_mcp_names() if n not in facts.policy.denied_tool_names
         )
@@ -194,19 +206,24 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             policy=facts.policy,
             defaults=defaults,
         )
-        mcp_tools = await load_mcp_tools(
-            config, facts.principal, requested_mcp, DEAR_TOOLS
-        )
-        connection = await fetch_model_connection(
-            configurable.get("runtime_model_ref"),
-            model_id=resolved.model_id,
-            project_id=facts.principal.project_id,
-        )
-        model = build_model(resolved, connection=connection)
-        model, reasoning = apply_reasoning(model, mode)
-        workspace = DearWorkspaceBackend(
-            facts.principal.tenant_id, facts.principal.project_id, thread_id
-        )
+        startup.metadata["model_id"] = resolved.model_id
+        with startup.phase("factory.mcp_tools"):
+            mcp_tools = await load_mcp_tools(
+                config, facts.principal, requested_mcp, DEAR_TOOLS
+            )
+        with startup.phase("factory.model_connection"):
+            connection = await fetch_model_connection(
+                configurable.get("runtime_model_ref"),
+                model_id=resolved.model_id,
+                project_id=facts.principal.project_id,
+            )
+        with startup.phase("factory.model_build"):
+            model = build_model(resolved, connection=connection)
+            model, reasoning = apply_reasoning(model, mode)
+        with startup.phase("factory.workspace"):
+            workspace = DearWorkspaceBackend(
+                facts.principal.tenant_id, facts.principal.project_id, thread_id
+            )
     else:
         # Schema-only client: no request is sent, and WorkspaceMiddleware rejects invocation.
         model = ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
@@ -325,74 +342,85 @@ async def get_agent(config: RunnableConfig) -> Pregel:
                 exit_behavior="error",
             ),
             # Bound the whole reasoning response, not just the time to its first token.
+            ModelErrorMiddleware(
+                startup.metadata, scope="subagent" if child else "primary"
+            ),
             ModelCallTimeoutMiddleware(),
             ToolErrorMiddleware(on_error=on_tool_error),
         ]
 
-    agent = create_deep_agent(
-        model=model,
-        system_prompt=SYSTEM_PROMPT
-        + "\n<current_date>"
-        + datetime.now(UTC).date().isoformat()
-        + " UTC</current_date>",
-        tools=[
-            request_information,
-            artifact_tool,
-            *research_tools,
-            github_tool,
-            arxiv_tool,
-            fetch_web_guidelines,
-            *chart_tools,
-            *media_tools,
-            *mcp_tools,
-            *(build_memory_tools() if memory_enabled else []),
-            *build_skill_tools(workspace, model),
-            build_deployment_tool(workspace),
-        ],
-        backend=backend,
-        skills=None,
-        permissions=PERMISSIONS,
-        interrupt_on=interrupts_for_access_policy(
-            context.access_policy if executing else None, APPROVALS
-        ),
-        subagents=[
-            researcher(
-                research_tools if mode.delegation else [],
-                [
-                    FilesystemMiddleware(
-                        backend=backend, tools=["read_file"], _permissions=PERMISSIONS
-                    ),
-                    *middleware(
-                        available & {"read_file", "search_web", "fetch_page"}
-                        if mode.delegation
-                        else (),
-                        child=True,
-                    ),
-                ],
-            )
-        ],
-        middleware=[
-            ExecutionSkillsMiddleware(workspace, backend, custom_enabled=governance),
-            FilesystemMiddleware(
-                backend=backend,
-                tools=list(WORK_TOOLS),
-                _permissions=PERMISSIONS,
-                max_execute_timeout=60,
+    with startup.phase("factory.agent_compile"):
+        agent = create_deep_agent(
+            model=model,
+            system_prompt=SYSTEM_PROMPT
+            + "\n<current_date>"
+            + datetime.now(UTC).date().isoformat()
+            + " UTC</current_date>",
+            tools=[
+                request_information,
+                artifact_tool,
+                *research_tools,
+                github_tool,
+                arxiv_tool,
+                fetch_web_guidelines,
+                *chart_tools,
+                *media_tools,
+                *mcp_tools,
+                *(build_memory_tools() if memory_enabled else []),
+                *build_skill_tools(workspace, model),
+                build_deployment_tool(workspace),
+            ],
+            backend=backend,
+            skills=None,
+            permissions=PERMISSIONS,
+            interrupt_on=interrupts_for_access_policy(
+                context.access_policy if executing else None, APPROVALS
             ),
-            *middleware(available),
-            *([TodoListMiddleware()] if mode.planning else []),
-            ToolCallLimitMiddleware(
-                tool_name="task", run_limit=10, thread_limit=10, exit_behavior="error"
-            ),
-            DelegationConcurrencyMiddleware(),
-            MessageQueueMiddleware(),
-            ClarificationBatchGuard(),
-            document_middleware,
-            *([MemoryContextMiddleware(model)] if memory_enabled else []),
-        ],
-        context_schema=RuntimeContext,
-        name="dearflow_agent",
-    )
+            subagents=[
+                researcher(
+                    research_tools if mode.delegation else [],
+                    [
+                        FilesystemMiddleware(
+                            backend=backend,
+                            tools=["read_file"],
+                            _permissions=PERMISSIONS,
+                        ),
+                        *middleware(
+                            available & {"read_file", "search_web", "fetch_page"}
+                            if mode.delegation
+                            else (),
+                            child=True,
+                        ),
+                    ],
+                )
+            ],
+            middleware=[
+                ExecutionSkillsMiddleware(
+                    workspace, backend, custom_enabled=governance
+                ),
+                FilesystemMiddleware(
+                    backend=backend,
+                    tools=list(WORK_TOOLS),
+                    _permissions=PERMISSIONS,
+                    max_execute_timeout=60,
+                ),
+                *middleware(available),
+                *([TodoListMiddleware()] if mode.planning else []),
+                ToolCallLimitMiddleware(
+                    tool_name="task",
+                    run_limit=10,
+                    thread_limit=10,
+                    exit_behavior="error",
+                ),
+                DelegationConcurrencyMiddleware(),
+                MessageQueueMiddleware(),
+                ClarificationBatchGuard(),
+                document_middleware,
+                *([MemoryContextMiddleware(model)] if memory_enabled else []),
+            ],
+            context_schema=RuntimeContext,
+            name="dearflow_agent",
+        )
     bound = {
         key: value
         for key, value in config.items()
@@ -411,6 +439,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         agent,
         bound,
         graph_id="dearflow_agent",
+        startup=startup,
         trusted_metadata={
             "user_id": facts.principal.user_id,
             "tenant_id": facts.principal.tenant_id,

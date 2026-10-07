@@ -136,6 +136,7 @@ def _parse_scope(raw: object) -> RuntimeScope:
         "dear-governance-read",
         "dear-governance-write",
         "suggestions-generate",
+        "diagnostics-read",
     }:
         raise _invalid("runtime.auth.invalid_principal", "operation")
     return RuntimeScope(
@@ -238,6 +239,8 @@ def verify_delegation_claims(
         or scope.project_id != principal.project_id
     ):
         raise _invalid("runtime.auth.invalid_principal", "scope")
+    if scope.operation == "diagnostics-read" and not scope.thread_id:
+        raise _invalid(field="scope")
     if (
         scope.operation
         not in {

@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Agent 运行诊断面板（Run Diagnostics） | 已完成：实装独立解耦面板 RunDiagnostics、Zod 白名单契约、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与模式切换、ChatSession 历史 Run 自动拉取与无缝切换，全仓 115 套件 535 项单测全绿，浏览器联合验收通过 | [前端交接](projects/20261006-agent-observability-hardening/frontend-handoff.md) |
 | 定时 Agent 任务页面 | 已完成：实装现代化卡片网格列表、双栏创建/编辑抽屉、DeerFlow 预设体系、历史记录抽屉与权限守卫，481 套单测、类型检查与生产打包全绿 | [前端交接](projects/20261005-scheduled-agent-tasks/frontend-handoff.md) |
 | 工具卡片错误结构化摘要提取与微胶囊 Tag 徽章展示 | 已完成：纯函数 parseToolErrorSummary 抽取，统一支持第一方 JSON、MCP 文本块数组与纯文本截断，微胶囊 Tag 徽章（recoveryHint）与展开态格式化排版实装，根治 tool.error 为空时不显红条 bug，31 项单测、类型检查与打包全绿 | [实现记录](projects/20261006-agent-tool-error-resilience/implementation/04-frontend-error-presentation.md) |
 | Chat 顶栏选择 Agent 历史会话队列联动过滤与 Pad 侧栏体验治理 | 已完成：修正 currentSelectedAgent 优先级倒挂、拔除 graph_id 过滤劫持恢复 agent_id 精准匹配、优化 Pad 侧边栏折叠交互，210项单测全绿 | [变更记录](../apps/platform-web/docs/changes/20261004-chat-agent-history-filter-fix.md) |
@@ -110,6 +111,7 @@
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
 | 跨服务规范治理专项群 | 四专项仅验收新Web+新API+当前锁定Runtime/GraphHarbor，不设置旧版兼容或混用测试；错误响应与追踪本期Final已完成，SSE/JWT按各专项状态推进；AI路由按仓库级文档小改动处理 | [总入口](projects/20260922-cross-service-governance/README.md) |
+| Agent 可观测性与追踪补齐 | 已完成：全链路闭环。Runtime/Platform API 完成模型错误分类、安全诊断、启动阶段计时与只读投影；Platform Web 完成独立面板 RunDiagnostics、Zod 白名单、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与多轮 Run 自由切换；单测全绿，浏览器联合验收通过，未部署现役 | [项目入口](projects/20261006-agent-observability-hardening/README.md) · [前端交接](projects/20261006-agent-observability-hardening/frontend-handoff.md) |
 | 平台错误响应统一 | 已完成：API公共安全出口、精确上游映射、Web无损解析、Thread对账、真实提交→Run→审计→Langfuse、memory409、SSE编号、peer ACL、workspace正向文件及现役浏览器403均已验；`reference_agent` 的 `runtime.tool.not_allowed` 属既有工具授权基线差异 | [错误响应专项](projects/20260926-error-response-contract/README.md) · [当前标准](standards/error-envelope.md) |
 | SSE事件契约治理 | 部分完成：S1—S10已完成，API分帧/安全关闭、Web SDK恢复、410单飞、Workspace线程池、真实普通SDK链路、1/4条短容量及390px视觉检查通过；8条容量受HTTP/1.1浏览器origin连接槽限制，h2/h3和30分钟Final blocked | [SSE专项](projects/20260926-sse-event-contract/README.md) |
 | 跨服务追踪传播治理 | 已完成本期验收：T1—T8、V01—V15、R1—R6，API编号/委托/审计精确查询/SSE关闭及真实Run→Langfuse反查均有证据；PG/SQLite性能留实测数据，不设SLO | [追踪专项](projects/20260926-trace-context-propagation/README.md) |

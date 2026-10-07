@@ -11,8 +11,9 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import RunnableConfig
 from langgraph.pregel import Pregel
 
-from runtime_service.middlewares import ModelCallTimeoutMiddleware
+from runtime_service.middlewares import ModelCallTimeoutMiddleware, ModelErrorMiddleware
 from runtime_service.observability import with_langfuse_tracing
+from runtime_service.observability.startup import StartupDiagnostics
 from runtime_service.runtime import (
     AgentDefaults,
     RuntimeContext,
@@ -105,6 +106,11 @@ def _runtime_model(config: RunnableConfig, *, local: bool) -> BaseChatModel | No
 
 
 async def get_agent(config: RunnableConfig) -> Pregel:
+    with StartupDiagnostics("workflow_demo") as startup:
+        return await _build_agent(config, startup)
+
+
+async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> Pregel:
     """Build the real model-backed workflow Agent with optional HITL routing."""
 
     configurable = _configurable(config)
@@ -121,36 +127,43 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         return build_graph(unavailable_model, probe_only=True)
 
     facts, local = _facts(config)
-    context = parse_runtime_context(config.get("context"))
-    raw_context = config.get("context")
-    if raw_context is not None and facts.context_hash != runtime_context_hash(context):
-        raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
-    resolved = resolve_runtime_config(
-        principal=facts.principal,
-        context=context,
-        policy=facts.policy,
-        defaults=_DEFAULTS,
-    )
+    startup.authorize(config, facts)
+    with startup.phase("factory.context_resolution"):
+        context = parse_runtime_context(config.get("context"))
+        raw_context = config.get("context")
+        if raw_context is not None and facts.context_hash != runtime_context_hash(
+            context
+        ):
+            raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
+        resolved = resolve_runtime_config(
+            principal=facts.principal,
+            context=context,
+            policy=facts.policy,
+            defaults=_DEFAULTS,
+        )
+    startup.metadata["model_id"] = resolved.model_id
     injected = _runtime_model(config, local=local)
 
     async def model_agent_for(state: Mapping[str, object]) -> object:
-        connection = (
-            None
-            if injected is not None
-            else await fetch_model_connection(
-                state.get("_runtime_model_ref")
-                or configurable.get("runtime_model_ref"),
-                model_id=resolved.model_id,
-                project_id=facts.principal.project_id,
+        with startup.phase("node.model_prepare"):
+            connection = (
+                None
+                if injected is not None
+                else await fetch_model_connection(
+                    state.get("_runtime_model_ref")
+                    or configurable.get("runtime_model_ref"),
+                    model_id=resolved.model_id,
+                    project_id=facts.principal.project_id,
+                )
             )
-        )
-        model = injected or build_model(resolved, connection=connection)
+            model = injected or build_model(resolved, connection=connection)
         return create_agent(
             model=model,
             tools=[read_reference],
             system_prompt=_DEFAULTS.system_prompt,
             middleware=[
                 ModelCallLimitMiddleware(run_limit=10, exit_behavior="end"),
+                ModelErrorMiddleware(startup.metadata),
                 ModelCallTimeoutMiddleware(),
             ],
             context_schema=RuntimeContext,
@@ -162,15 +175,17 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     bound_configurable.pop("_runtime_model", None)
     bound_configurable.pop("_runtime_test_local_auth", None)
     bound_config["configurable"] = bound_configurable
-    graph = build_graph(
-        model_agent_for,
-        model_config=bound_config,
-        runtime_context=context,
-    )
+    with startup.phase("factory.agent_compile"):
+        graph = build_graph(
+            model_agent_for,
+            model_config=bound_config,
+            runtime_context=context,
+        )
     return with_langfuse_tracing(
         graph,
         bound_config,
         graph_id="workflow_demo",
+        startup=startup,
         trusted_metadata={
             "user_id": facts.principal.user_id,
             "tenant_id": facts.principal.tenant_id,
