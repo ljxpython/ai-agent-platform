@@ -21,6 +21,7 @@ from runtime_service.http.crons import router as crons_router
 from runtime_service.http.dear_governance import router as dear_governance_router
 from runtime_service.http.dear_memory import router as dear_memory_router
 from runtime_service.http.dear_skills import router as dear_skills_router
+from runtime_service.http.diagnostics import router as diagnostics_router
 from runtime_service.http.documents import router as documents_router
 from runtime_service.http.images import router as images_router
 from runtime_service.http.suggestions import router as suggestions_router
@@ -30,6 +31,7 @@ from runtime_service.http.workspace import router as workspace_router
 from runtime_service.messaging import MessageInbox
 from runtime_service.messaging.reconcile import reconcile_run
 from runtime_service.observability import close_langfuse, initialize_langfuse
+from runtime_service.observability.query import diagnostics_client_lifespan
 from runtime_service.workspace.file_refs import validate_file_ref
 from runtime_service.workspace.image_refs import validate_image_ref
 
@@ -38,7 +40,7 @@ from runtime_service.workspace.image_refs import validate_image_ref
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     initialize_langfuse()
     try:
-        async with acl_client_lifespan():
+        async with acl_client_lifespan(), diagnostics_client_lifespan():
             yield
     finally:
         from runtime_service.workspace.terminal import terminals
@@ -58,6 +60,7 @@ app.include_router(dear_skills_router)
 app.include_router(dear_memory_router)
 app.include_router(title_summary_router)
 app.include_router(suggestions_router)
+app.include_router(diagnostics_router)
 
 
 @app.exception_handler(auth_exceptions.HTTPException)

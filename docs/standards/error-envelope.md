@@ -1,3 +1,10 @@
+---
+status: active
+last_verified: 2026-10-07
+confidence: high
+source_project: docs/projects/20260926-error-response-contract/verification.md
+---
+
 # 平台 HTTP 错误出口
 
 当前平台 API 的普通 JSON、文件及 SSE 握手前失败使用以下结构；已开始的 SSE 流不追加 HTTP 错误体。实施进度与未验证项见[错误响应专项](../projects/20260926-error-response-contract/README.md)。
@@ -12,3 +19,7 @@
 - 前端不得把网络失败、502/503/504 解释为权限撤销，也不得以此清除登录会话。403 只触发对应作用域的权威复核，项目 `/access` 空权限与 `project_not_found` 明确收回访问；路由不存在的 404 不作为撤权依据。
 - 上游 `thread_id/reconcile_path` 不透传；仅平台创建Thread结果未知时由平台生成并附加，客户端必须先调用 reconcile，不能直接重建。
 - 422详情最多20项，只有有界 `loc/type/message`；上游原文、任意extra、Cookie/Authorization等响应头均不公开。500固定 `internal_server_error` / `Internal server error`。
+
+授权成功的 Thread/Run JSON 中 `error` 和 state/history 中 `tasks[].error` 属于执行错误槽位，投影为固定 `Runtime execution failed`，保留兼容的字符串/对象形状及有限类型；不修改原生 Run 状态，不清理普通消息/工具正文。流内对应规则见 [SSE 契约](sse-event.md)。
+
+`GET /api/langgraph/threads/{thread_id}/runs/{run_id}/diagnostics` 的 provider 分类是 HTTP 200 安全 DTO 数据，不是 HTTP 错误码；`provider_auth_failed/provider_access_denied` 不触发平台登出或撤权。未启用/未录入/观测后端不可用以 availability 返回；授权拒绝、非法上游 DTO 等仍走本 Envelope。见 [诊断契约](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md)。

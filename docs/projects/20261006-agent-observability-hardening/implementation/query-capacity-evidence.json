@@ -1,0 +1,281 @@
+{
+  "complete": true,
+  "database": "graphharbor_observability_711a4ddf37f6",
+  "redis_prefix": "graphharbor:observability:711a4ddf37f6",
+  "cases": {
+    "native_429_safe_query": "passed",
+    "public_error_and_scope_isolation": "passed",
+    "shared_read_and_real_revocation": "passed",
+    "native_success": "passed"
+  },
+  "samples": {
+    "provider_rate_limited": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "1e41240c79eb406b8b7ebb25c171186e",
+        "platform_trace_id": "1e41240c79eb406b8b7ebb25c171186e"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "8f7e328f8ec80887c6b2c17524cb7e88",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "fa51f4c5daddfa16",
+          "outcome": "failed",
+          "error_code": null,
+          "duration_ms": 1923.29
+        }
+      ],
+      "model_errors": [
+        {
+          "observation_id": "29b5e78ac872ccf9",
+          "scope": "primary",
+          "namespace": [
+            "model:fa32ba3c-a454-5285-3334-28cf4ba37fbd"
+          ],
+          "code": "provider_rate_limited",
+          "error_type": "OpenAIRateLimitError",
+          "provider_status": 429,
+          "duration_ms": 1417.734
+        }
+      ],
+      "startup": {
+        "duration_ms": 1072.919626,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:04:03.726379Z",
+            "ended_at": "2026-10-06T20:04:03.726603Z",
+            "duration_ms": 0.228995,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:04:03.726618Z",
+            "ended_at": "2026-10-06T20:04:03.777849Z",
+            "duration_ms": 51.235199,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:04:03.777867Z",
+            "ended_at": "2026-10-06T20:04:04.752427Z",
+            "duration_ms": 974.557105,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 3,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:04:04.752498Z",
+            "ended_at": "2026-10-06T20:04:04.784237Z",
+            "duration_ms": 31.745055,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "2ef5d2ec-d710-4f85-afdd-458e8b3f2242",
+      "run_id": "92f3442f-850e-4a85-bea7-5d48d2cc0c58",
+      "run_status": "error",
+      "request_id": "04ba585d6dd94216b6c3af1c4aae9a3a"
+    },
+    "success": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "ddd621bf7a3e4d4e9960eaafe16f6704",
+        "platform_trace_id": "ddd621bf7a3e4d4e9960eaafe16f6704"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "f25191aea4d6653664766c752827cf60",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "58526bc1a4fa8f9a",
+          "outcome": "success",
+          "error_code": null,
+          "duration_ms": 608.56
+        }
+      ],
+      "model_errors": [],
+      "startup": {
+        "duration_ms": 64.586257,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:04:13.378144Z",
+            "ended_at": "2026-10-06T20:04:13.378359Z",
+            "duration_ms": 0.217984,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:04:13.378370Z",
+            "ended_at": "2026-10-06T20:04:13.420302Z",
+            "duration_ms": 41.936688,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:04:13.420326Z",
+            "ended_at": "2026-10-06T20:04:13.421963Z",
+            "duration_ms": 1.64152,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 3,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:04:13.422008Z",
+            "ended_at": "2026-10-06T20:04:13.442202Z",
+            "duration_ms": 20.197784,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "a35ad5e1-f58b-49bc-b7ff-3e7119b3b71f",
+      "run_id": "7541876c-8d36-4d40-a74c-e422d5da272c",
+      "run_status": "success",
+      "request_id": "c06263efa0f74b77a98b6fd019be3afe"
+    }
+  },
+  "performance": {
+    "single_diagnostics": {
+      "concurrency": 1,
+      "client_timeout_seconds": 120,
+      "success": 1,
+      "outcomes": {
+        "200": 1
+      },
+      "availability": {
+        "available": 1
+      },
+      "error_codes": {
+        "None": 1
+      },
+      "p50_ms": 269.89,
+      "p95_ms": 269.89,
+      "process_maxrss": 363167744,
+      "maxrss_unit": "bytes",
+      "langfuse_query": {
+        "count": 1,
+        "p50_ms": 159.61,
+        "p95_ms": 159.61
+      }
+    },
+    "ten_diagnostics": {
+      "concurrency": 10,
+      "client_timeout_seconds": 120,
+      "success": 10,
+      "outcomes": {
+        "200": 10
+      },
+      "availability": {
+        "available": 10
+      },
+      "error_codes": {
+        "None": 10
+      },
+      "p50_ms": 1415.7,
+      "p95_ms": 1574.02,
+      "process_maxrss": 400678912,
+      "maxrss_unit": "bytes",
+      "langfuse_query": {
+        "count": 10,
+        "p50_ms": 267.17,
+        "p95_ms": 295.94
+      }
+    },
+    "fifty_native_reads": {
+      "concurrency": 50,
+      "client_timeout_seconds": 120,
+      "success": 50,
+      "outcomes": {
+        "200": 50
+      },
+      "availability": {
+        "None": 50
+      },
+      "error_codes": {
+        "None": 50
+      },
+      "p50_ms": 4579.9,
+      "p95_ms": 5023.68,
+      "process_maxrss": 456695808,
+      "maxrss_unit": "bytes",
+      "langfuse_query": null
+    },
+    "fifty_diagnostics": {
+      "concurrency": 50,
+      "client_timeout_seconds": 120,
+      "success": 50,
+      "outcomes": {
+        "200": 50
+      },
+      "availability": {
+        "unavailable": 50
+      },
+      "error_codes": {
+        "None": 50
+      },
+      "p50_ms": 8784.84,
+      "p95_ms": 9351.97,
+      "process_maxrss": 552140800,
+      "maxrss_unit": "bytes",
+      "langfuse_query": {
+        "count": 50,
+        "p50_ms": 288.5,
+        "p95_ms": 987.98
+      }
+    }
+  },
+  "request_timings": {
+    "platform.acl": {
+      "count": 283,
+      "p50_ms": 84.48,
+      "p95_ms": 786.54
+    },
+    "runtime.native_read": {
+      "count": 222,
+      "p50_ms": 1560.16,
+      "p95_ms": 2957.18
+    },
+    "runtime.diagnostics": {
+      "count": 61,
+      "p50_ms": 1087.25,
+      "p95_ms": 2191.36
+    },
+    "platform.diagnostics": {
+      "count": 61,
+      "p50_ms": 7033.99,
+      "p95_ms": 8080.97
+    },
+    "platform.other": {
+      "count": 50,
+      "p50_ms": 3805.12,
+      "p95_ms": 4537.69
+    }
+  },
+  "scope": "query_capacity"
+}

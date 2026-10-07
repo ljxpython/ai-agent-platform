@@ -1,0 +1,1839 @@
+{
+  "complete": true,
+  "database": "graphharbor_observability_dddde4d356ea",
+  "redis_prefix": "graphharbor:observability:dddde4d356ea",
+  "cases": {
+    "native_429_safe_query": "passed",
+    "public_error_and_scope_isolation": "passed",
+    "shared_read_and_real_revocation": "passed",
+    "native_success": "passed",
+    "same_thread_run_isolation": "passed",
+    "native_fallback": "passed",
+    "native_later_tool_failure": "passed",
+    "parallel_subagent_run_identity": "passed",
+    "safe_http_fault_envelopes": "passed",
+    "native_factory_failure": "passed",
+    "hitl_not_provider_failure": "passed",
+    "native_cancel": "passed",
+    "disabled_capture_normal_run": "passed",
+    "query_outage_does_not_change_run": "passed",
+    "real_deepseek_success": "passed",
+    "real_deepseek_error": "passed"
+  },
+  "samples": {
+    "last_query": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "7edf2be248e9498498353fc15c07ef3d",
+        "platform_trace_id": "7edf2be248e9498498353fc15c07ef3d"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "3edd319d6c25a5be93082e38d74a6acb",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "6a6356ecc9bb81a6",
+          "outcome": "failed",
+          "error_code": null,
+          "duration_ms": 1452.37
+        }
+      ],
+      "model_errors": [
+        {
+          "observation_id": "f2f0b18154d10fa0",
+          "scope": "primary",
+          "namespace": [
+            "model:59079cdb-7cb8-75c8-a54d-63da4bdced61"
+          ],
+          "code": "model_unavailable",
+          "error_type": "OpenAIModelNotFoundError",
+          "provider_status": 404,
+          "duration_ms": 74.189
+        }
+      ],
+      "startup": {
+        "duration_ms": 250.797792,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:13:20.369760Z",
+            "ended_at": "2026-10-06T20:13:20.370135Z",
+            "duration_ms": 0.380766,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:13:20.370155Z",
+            "ended_at": "2026-10-06T20:13:20.465362Z",
+            "duration_ms": 95.217179,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:13:20.465403Z",
+            "ended_at": "2026-10-06T20:13:20.582692Z",
+            "duration_ms": 117.295677,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 3,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:13:20.582752Z",
+            "ended_at": "2026-10-06T20:13:20.619950Z",
+            "duration_ms": 37.202968,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "2f88de18-3639-4cba-aa98-a1fe2daa5631",
+      "run_id": "13f152ef-9e44-4c94-a450-9d67e3690fa9",
+      "run_status": "error",
+      "request_id": "8960c88b4d1b40ea9a20f0987f21af56"
+    },
+    "provider_rate_limited": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "2c9982b05d8a49bc81cb246c472202c4",
+        "platform_trace_id": "2c9982b05d8a49bc81cb246c472202c4"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "46f44d4a435710eef44109914cbee818",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "d0cdafe84db4256f",
+          "outcome": "failed",
+          "error_code": null,
+          "duration_ms": 1797.73
+        }
+      ],
+      "model_errors": [
+        {
+          "observation_id": "cb5a6ba98420258a",
+          "scope": "primary",
+          "namespace": [
+            "model:26738ac5-73ca-803b-482b-3c348b33c006"
+          ],
+          "code": "provider_rate_limited",
+          "error_type": "OpenAIRateLimitError",
+          "provider_status": 429,
+          "duration_ms": 1267.145
+        }
+      ],
+      "startup": {
+        "duration_ms": 1054.734072,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:14.804670Z",
+            "ended_at": "2026-10-06T20:11:14.805089Z",
+            "duration_ms": 0.426965,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:14.805125Z",
+            "ended_at": "2026-10-06T20:11:14.857943Z",
+            "duration_ms": 52.826872,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:14.857978Z",
+            "ended_at": "2026-10-06T20:11:15.806055Z",
+            "duration_ms": 948.073725,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 3,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:15.806125Z",
+            "ended_at": "2026-10-06T20:11:15.837682Z",
+            "duration_ms": 31.561274,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "4cfe2b7b-9d28-4c0f-99eb-78e172cc9c08",
+      "run_id": "09319dea-3a1d-48ad-8663-526d3edaec26",
+      "run_status": "error",
+      "request_id": "71f11f04908046e6856f34c78401c6c9"
+    },
+    "success": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "b4b8a69e71754201a98f45bbbcbe33ea",
+        "platform_trace_id": "b4b8a69e71754201a98f45bbbcbe33ea"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "842aecb30619571971b077a1dc88b335",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "d592c80c947a6ab0",
+          "outcome": "success",
+          "error_code": null,
+          "duration_ms": 754.97
+        }
+      ],
+      "model_errors": [],
+      "startup": {
+        "duration_ms": 76.440588,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:23.513398Z",
+            "ended_at": "2026-10-06T20:11:23.513752Z",
+            "duration_ms": 0.35744,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:23.513768Z",
+            "ended_at": "2026-10-06T20:11:23.561957Z",
+            "duration_ms": 48.193095,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:23.561976Z",
+            "ended_at": "2026-10-06T20:11:23.562989Z",
+            "duration_ms": 1.019747,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 3,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:23.563057Z",
+            "ended_at": "2026-10-06T20:11:23.589208Z",
+            "duration_ms": 26.155392,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "0ee259d1-46ea-4a38-9ec2-85f968ab2b61",
+      "run_id": "58abbd6b-9dc9-43cb-a429-f4649e14d4aa",
+      "run_status": "success",
+      "request_id": "bc4c442ba2e845a5915c41cb2bc26fa4"
+    },
+    "same_thread_second_run": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "4de7b62619ae4cbd91134b52b7678533",
+        "platform_trace_id": "4de7b62619ae4cbd91134b52b7678533"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "c0b8b9dbc1554ebe2c64e7bc0f0f69a5",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "473079b699c7e1ca",
+          "outcome": "failed",
+          "error_code": null,
+          "duration_ms": 1771.5
+        }
+      ],
+      "model_errors": [
+        {
+          "observation_id": "2610d2c7447283c8",
+          "scope": "primary",
+          "namespace": [
+            "model:69ecec0f-8298-2874-dff3-5a8f57df2794"
+          ],
+          "code": "provider_rate_limited",
+          "error_type": "OpenAIRateLimitError",
+          "provider_status": 429,
+          "duration_ms": 1230.449
+        }
+      ],
+      "startup": {
+        "duration_ms": 87.183394,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:30.950196Z",
+            "ended_at": "2026-10-06T20:11:30.950482Z",
+            "duration_ms": 0.289962,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:30.950498Z",
+            "ended_at": "2026-10-06T20:11:31.008449Z",
+            "duration_ms": 57.956406,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:31.008470Z",
+            "ended_at": "2026-10-06T20:11:31.009807Z",
+            "duration_ms": 1.339912,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 3,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:31.009870Z",
+            "ended_at": "2026-10-06T20:11:31.036710Z",
+            "duration_ms": 26.846445,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "0ee259d1-46ea-4a38-9ec2-85f968ab2b61",
+      "run_id": "8c02f994-b391-48e6-b3dc-6c07fc16c9ae",
+      "run_status": "error",
+      "request_id": "41ce511c342748c9be01c2b7a84407dc"
+    },
+    "fallback": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "1d13bcc62d014ff0a2bf067b481e4366",
+        "platform_trace_id": "1d13bcc62d014ff0a2bf067b481e4366"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "788fe4e5025659a8327a7362dbba1f9d",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "4c14ed39ef8d9e97",
+          "outcome": "success",
+          "error_code": null,
+          "duration_ms": 1127.29
+        }
+      ],
+      "model_errors": [
+        {
+          "observation_id": "1717e14ea7358d91",
+          "scope": "primary",
+          "namespace": [
+            "model:263f8a50-6fa8-e3c9-828b-2404eb3f7735"
+          ],
+          "code": "provider_rate_limited",
+          "error_type": "RateLimitError",
+          "provider_status": 429,
+          "duration_ms": 6.441
+        }
+      ],
+      "startup": {
+        "duration_ms": 69.885741,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:38.675000Z",
+            "ended_at": "2026-10-06T20:11:38.675525Z",
+            "duration_ms": 0.532789,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:38.675548Z",
+            "ended_at": "2026-10-06T20:11:38.675555Z",
+            "duration_ms": 0.011347,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:38.675565Z",
+            "ended_at": "2026-10-06T20:11:38.675571Z",
+            "duration_ms": 0.010145,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 3,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:38.675658Z",
+            "ended_at": "2026-10-06T20:11:38.744377Z",
+            "duration_ms": 68.722424,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "6f6324af-7f22-496d-aed4-f1698f9adbe2",
+      "run_id": "cb98d0da-261f-4e21-addb-1b901c6fd719",
+      "run_status": "success",
+      "request_id": "b77d241fa964490da466ba5f09643166"
+    },
+    "later_tool_failure": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "f8274158baff4dc69b399dd3bf33bdd4",
+        "platform_trace_id": "f8274158baff4dc69b399dd3bf33bdd4"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "e34283a262c939e49242d433c172c76c",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "0b580df771f949ee",
+          "outcome": "failed",
+          "error_code": null,
+          "duration_ms": 1364.42
+        }
+      ],
+      "model_errors": [
+        {
+          "observation_id": "9bf62b2ba4f0d55f",
+          "scope": "primary",
+          "namespace": [
+            "model:1c145f57-65eb-4f6a-62c9-1d163c2e198e"
+          ],
+          "code": "provider_rate_limited",
+          "error_type": "RateLimitError",
+          "provider_status": 429,
+          "duration_ms": 6.162
+        }
+      ],
+      "startup": {
+        "duration_ms": 34.816344,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:43.928009Z",
+            "ended_at": "2026-10-06T20:11:43.928236Z",
+            "duration_ms": 0.230644,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:43.928249Z",
+            "ended_at": "2026-10-06T20:11:43.928254Z",
+            "duration_ms": 0.006725,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:43.928259Z",
+            "ended_at": "2026-10-06T20:11:43.928262Z",
+            "duration_ms": 0.005896,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 3,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:11:43.928312Z",
+            "ended_at": "2026-10-06T20:11:43.962155Z",
+            "duration_ms": 33.8495,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "27deae49-4ffd-400d-ab5c-d59052b2f341",
+      "run_id": "b4b0367c-a4b6-4aff-9fbc-35049ec754ca",
+      "run_status": "error",
+      "request_id": "223265067cfd4d339ede43df1ab9c614"
+    },
+    "parallel_subagents": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "a495c3cb65024434b3a8ad31358e8b6e",
+        "platform_trace_id": "a495c3cb65024434b3a8ad31358e8b6e"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "abdcf3a655f9ee1381ddbc18077d42f8",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "b2cb83d9be31af9c",
+          "outcome": "failed",
+          "error_code": null,
+          "duration_ms": 3857.21
+        }
+      ],
+      "model_errors": [
+        {
+          "observation_id": "9da0451e1d1790aa",
+          "scope": "subagent",
+          "namespace": [
+            "tools:e010367f-7444-df85-c255-04627eac2a54",
+            "model:2885c1fc-470d-32f0-cf85-f4c28f684281"
+          ],
+          "code": "provider_rate_limited",
+          "error_type": "RateLimitError",
+          "provider_status": 429,
+          "duration_ms": 16.495
+        },
+        {
+          "observation_id": "a228e67d93c99a81",
+          "scope": "subagent",
+          "namespace": [
+            "tools:50f4e436-b2a6-a8f0-9c23-a6c0aef841a0",
+            "model:58b92293-987e-8a91-ccbe-e7be0743eb5a"
+          ],
+          "code": "provider_rate_limited",
+          "error_type": "RateLimitError",
+          "provider_status": 429,
+          "duration_ms": 12.813
+        }
+      ],
+      "startup": {
+        "duration_ms": 696.904975,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:19.289883Z",
+            "ended_at": "2026-10-06T20:12:19.290212Z",
+            "duration_ms": 0.332928,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:19.290226Z",
+            "ended_at": "2026-10-06T20:12:19.355932Z",
+            "duration_ms": 65.763005,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:19.355961Z",
+            "ended_at": "2026-10-06T20:12:19.355970Z",
+            "duration_ms": 0.014338,
+            "error_code": null
+          },
+          {
+            "name": "factory.workspace",
+            "ordinal": 3,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:19.355981Z",
+            "ended_at": "2026-10-06T20:12:19.358733Z",
+            "duration_ms": 2.761406,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 4,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:19.390416Z",
+            "ended_at": "2026-10-06T20:12:19.985352Z",
+            "duration_ms": 595.42125,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "4ad02058-747a-4444-8a57-e06a043d512d",
+      "run_id": "f795f013-1ecd-4383-b1b4-38851039bef2",
+      "run_status": "error",
+      "request_id": "af4df360021a4ca490192a4da2ea20ac"
+    },
+    "factory_failure": {
+      "version": 1,
+      "availability": "partial",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "482d590def36438394f1a5008c182170",
+        "platform_trace_id": "482d590def36438394f1a5008c182170"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "8864e3cc387730944ea89a13fed1c8f8",
+        "url": null
+      },
+      "graph_executions": [],
+      "model_errors": [],
+      "startup": {
+        "duration_ms": 67.579101,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:30.940374Z",
+            "ended_at": "2026-10-06T20:12:30.940578Z",
+            "duration_ms": 0.207581,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:30.940590Z",
+            "ended_at": "2026-10-06T20:12:31.007543Z",
+            "duration_ms": 66.983579,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "failed",
+            "started_at": "2026-10-06T20:12:31.007594Z",
+            "ended_at": "2026-10-06T20:12:31.007720Z",
+            "duration_ms": 0.133208,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "ac78d650-ae5a-42ac-807c-599d1c14af65",
+      "run_id": "3fcd3bc4-d52d-43db-9d24-393bc17b521f",
+      "run_status": "error",
+      "request_id": "06f971f367c74476bf5f6583fb099e20"
+    },
+    "interrupted": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "0bacb6a5353b47e086510e47a1c575b7",
+        "platform_trace_id": "0bacb6a5353b47e086510e47a1c575b7"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "db810cf6fed22fec0519806dcdc5b087",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "c9376a11c0119f7e",
+          "outcome": "success",
+          "error_code": null,
+          "duration_ms": 218.93
+        }
+      ],
+      "model_errors": [],
+      "startup": {
+        "duration_ms": 14.56925,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:37.590018Z",
+            "ended_at": "2026-10-06T20:12:37.590189Z",
+            "duration_ms": 0.175052,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:37.590213Z",
+            "ended_at": "2026-10-06T20:12:37.604147Z",
+            "duration_ms": 13.942565,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "f9f03123-d70e-464a-9bc0-e3932a455b2a",
+      "run_id": "68a22448-609b-4790-8343-fb93de71079b",
+      "run_status": "interrupted",
+      "request_id": "7529207c5a1e443aa4fb3e701fbdb762"
+    },
+    "cancelled": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "15e74e4aa6eb4a25bbcb52a6b0e6e9d9",
+        "platform_trace_id": "15e74e4aa6eb4a25bbcb52a6b0e6e9d9"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "5d2290492bd548100a458bfefc1383a5",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "ff6bfcd3df57cc64",
+          "outcome": "failed",
+          "error_code": null,
+          "duration_ms": 3541.02
+        }
+      ],
+      "model_errors": [],
+      "startup": {
+        "duration_ms": 73.420082,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:40.115560Z",
+            "ended_at": "2026-10-06T20:12:40.115850Z",
+            "duration_ms": 0.298025,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:40.115874Z",
+            "ended_at": "2026-10-06T20:12:40.161099Z",
+            "duration_ms": 45.240922,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:40.161130Z",
+            "ended_at": "2026-10-06T20:12:40.162566Z",
+            "duration_ms": 1.442676,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 3,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:12:40.162630Z",
+            "ended_at": "2026-10-06T20:12:40.188435Z",
+            "duration_ms": 25.81372,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "776d7e75-5d0f-4858-86ff-f300d748b97e",
+      "run_id": "6a0dd995-75a7-449e-8e72-ffab233ade50",
+      "run_status": "interrupted",
+      "request_id": "a53290f4795b429bab9f8fc4456d5283"
+    },
+    "disabled": {
+      "version": 1,
+      "availability": "disabled",
+      "unavailable_reason": "not_configured",
+      "correlation": {
+        "execution_request_id": null,
+        "platform_trace_id": null
+      },
+      "trace": null,
+      "graph_executions": [],
+      "model_errors": [],
+      "startup": null,
+      "truncated": false,
+      "thread_id": "2b9945f8-004b-4131-817a-5279c7e3237c",
+      "run_id": "0ff71333-cda6-4adf-8e0c-6bf1258b1f11",
+      "run_status": "success",
+      "request_id": "4e09e306aa274facacc207ae849cab69"
+    },
+    "not_recorded": {
+      "version": 1,
+      "availability": "unavailable",
+      "unavailable_reason": "not_recorded",
+      "correlation": {
+        "execution_request_id": null,
+        "platform_trace_id": null
+      },
+      "trace": null,
+      "graph_executions": [],
+      "model_errors": [],
+      "startup": null,
+      "truncated": false,
+      "thread_id": "0ee259d1-46ea-4a38-9ec2-85f968ab2b61",
+      "run_id": "58abbd6b-9dc9-43cb-a429-f4649e14d4aa",
+      "run_status": "success",
+      "request_id": "4061a6fd6dda40c798cdc06c1f74dae7"
+    },
+    "backend_unavailable": {
+      "version": 1,
+      "availability": "unavailable",
+      "unavailable_reason": "backend_unavailable",
+      "correlation": {
+        "execution_request_id": null,
+        "platform_trace_id": null
+      },
+      "trace": null,
+      "graph_executions": [],
+      "model_errors": [],
+      "startup": null,
+      "truncated": false,
+      "thread_id": "0ee259d1-46ea-4a38-9ec2-85f968ab2b61",
+      "run_id": "58abbd6b-9dc9-43cb-a429-f4649e14d4aa",
+      "run_status": "success",
+      "request_id": "cb08f535b3614befa31f8a5e84cd3aa7"
+    },
+    "real_deepseek_success": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "3f8c9f4bbffb441c81b184a258b3a749",
+        "platform_trace_id": "3f8c9f4bbffb441c81b184a258b3a749"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "9f018c281e3a9961930cde94098b4880",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "38038aea70a97fa7",
+          "outcome": "success",
+          "error_code": null,
+          "duration_ms": 1149.22
+        }
+      ],
+      "model_errors": [],
+      "startup": {
+        "duration_ms": 154.614321,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:13:04.200616Z",
+            "ended_at": "2026-10-06T20:13:04.200861Z",
+            "duration_ms": 0.249072,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:13:04.200874Z",
+            "ended_at": "2026-10-06T20:13:04.260323Z",
+            "duration_ms": 59.458991,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:13:04.260358Z",
+            "ended_at": "2026-10-06T20:13:04.331393Z",
+            "duration_ms": 71.044089,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 3,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:13:04.331464Z",
+            "ended_at": "2026-10-06T20:13:04.354517Z",
+            "duration_ms": 23.05827,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "1f4629ae-490e-4a4f-a0b8-28b2362cd74e",
+      "run_id": "e80b65d6-aa7d-47bc-a1c0-7aca3b72725d",
+      "run_status": "success",
+      "request_id": "b8b04b0b26e44026a7e8a182bb308eee"
+    },
+    "real_deepseek_error": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "correlation": {
+        "execution_request_id": "7edf2be248e9498498353fc15c07ef3d",
+        "platform_trace_id": "7edf2be248e9498498353fc15c07ef3d"
+      },
+      "trace": {
+        "provider": "langfuse",
+        "trace_id": "3edd319d6c25a5be93082e38d74a6acb",
+        "url": null
+      },
+      "graph_executions": [
+        {
+          "observation_id": "6a6356ecc9bb81a6",
+          "outcome": "failed",
+          "error_code": null,
+          "duration_ms": 1452.37
+        }
+      ],
+      "model_errors": [
+        {
+          "observation_id": "f2f0b18154d10fa0",
+          "scope": "primary",
+          "namespace": [
+            "model:59079cdb-7cb8-75c8-a54d-63da4bdced61"
+          ],
+          "code": "model_unavailable",
+          "error_type": "OpenAIModelNotFoundError",
+          "provider_status": 404,
+          "duration_ms": 74.189
+        }
+      ],
+      "startup": {
+        "duration_ms": 250.797792,
+        "phases": [
+          {
+            "name": "factory.context_resolution",
+            "ordinal": 0,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:13:20.369760Z",
+            "ended_at": "2026-10-06T20:13:20.370135Z",
+            "duration_ms": 0.380766,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_connection",
+            "ordinal": 1,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:13:20.370155Z",
+            "ended_at": "2026-10-06T20:13:20.465362Z",
+            "duration_ms": 95.217179,
+            "error_code": null
+          },
+          {
+            "name": "factory.model_build",
+            "ordinal": 2,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:13:20.465403Z",
+            "ended_at": "2026-10-06T20:13:20.582692Z",
+            "duration_ms": 117.295677,
+            "error_code": null
+          },
+          {
+            "name": "factory.agent_compile",
+            "ordinal": 3,
+            "outcome": "completed",
+            "started_at": "2026-10-06T20:13:20.582752Z",
+            "ended_at": "2026-10-06T20:13:20.619950Z",
+            "duration_ms": 37.202968,
+            "error_code": null
+          }
+        ]
+      },
+      "truncated": false,
+      "thread_id": "2f88de18-3639-4cba-aa98-a1fe2daa5631",
+      "run_id": "13f152ef-9e44-4c94-a450-9d67e3690fa9",
+      "run_status": "error",
+      "request_id": "8960c88b4d1b40ea9a20f0987f21af56"
+    }
+  },
+  "http_samples": {
+    "403": {
+      "error": {
+        "code": "thread_action_denied",
+        "message": "Thread action is not permitted",
+        "details": []
+      },
+      "request_id": "d1a3298ff10f4f329be8b509a96e89a3"
+    },
+    "404": {
+      "error": {
+        "code": "langgraph_run_request_failed",
+        "message": "Runtime request failed",
+        "details": [],
+        "extra": {
+          "upstream": "langgraph",
+          "upstream_status_code": 404
+        }
+      },
+      "request_id": "55d7f4889ebb43998c24df014ba2e3c1"
+    },
+    "401": {
+      "error": {
+        "code": "not_authenticated",
+        "message": "Missing authentication credential",
+        "details": []
+      },
+      "request_id": "c4e55f5cd833463e8d098f317bd184b3"
+    },
+    "502": {
+      "error": {
+        "code": "langgraph_upstream_unavailable",
+        "message": "Isolated diagnostics upstream unavailable",
+        "details": [],
+        "extra": {
+          "upstream": "langgraph"
+        }
+      },
+      "request_id": "9ae6ceb3c990424b87794edcde121994"
+    },
+    "503": {
+      "error": {
+        "code": "runtime_delegation_not_configured",
+        "message": "Isolated diagnostics upstream unavailable",
+        "details": [],
+        "extra": {
+          "upstream": "langgraph"
+        }
+      },
+      "request_id": "9033cb7c6632472a8d782ff55865f837"
+    },
+    "504": {
+      "error": {
+        "code": "langgraph_upstream_timeout",
+        "message": "Isolated diagnostics upstream unavailable",
+        "details": [],
+        "extra": {
+          "upstream": "langgraph"
+        }
+      },
+      "request_id": "9556068e72e945608d59963ef9cea7d5"
+    }
+  },
+  "langfuse_query_failures": [
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    },
+    {
+      "error_type": "ApiError",
+      "status": 429
+    }
+  ],
+  "performance": {
+    "single_diagnostics": {
+      "concurrency": 1,
+      "client_timeout_seconds": 120,
+      "success": 1,
+      "outcomes": {
+        "200": 1
+      },
+      "availability": {
+        "available": 1
+      },
+      "error_codes": {
+        "None": 1
+      },
+      "p50_ms": 335.86,
+      "p95_ms": 335.86,
+      "process_maxrss": 384286720,
+      "maxrss_unit": "bytes",
+      "langfuse_query": {
+        "count": 1,
+        "p50_ms": 165.62,
+        "p95_ms": 165.62
+      },
+      "langfuse_failures": []
+    },
+    "ten_diagnostics": {
+      "concurrency": 10,
+      "client_timeout_seconds": 120,
+      "success": 10,
+      "outcomes": {
+        "200": 10
+      },
+      "availability": {
+        "available": 1,
+        "unavailable": 9
+      },
+      "error_codes": {
+        "None": 10
+      },
+      "p50_ms": 1449.68,
+      "p95_ms": 1572.96,
+      "process_maxrss": 411983872,
+      "maxrss_unit": "bytes",
+      "langfuse_query": {
+        "count": 10,
+        "p50_ms": 147.39,
+        "p95_ms": 250.91
+      },
+      "langfuse_failures": [
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        }
+      ]
+    },
+    "fifty_native_reads": {
+      "concurrency": 50,
+      "client_timeout_seconds": 120,
+      "success": 50,
+      "outcomes": {
+        "200": 50
+      },
+      "availability": {
+        "None": 50
+      },
+      "error_codes": {
+        "None": 50
+      },
+      "p50_ms": 4366.51,
+      "p95_ms": 4778.55,
+      "process_maxrss": 472334336,
+      "maxrss_unit": "bytes",
+      "langfuse_query": null,
+      "langfuse_failures": []
+    },
+    "fifty_diagnostics": {
+      "concurrency": 50,
+      "client_timeout_seconds": 120,
+      "success": 50,
+      "outcomes": {
+        "200": 50
+      },
+      "availability": {
+        "unavailable": 50
+      },
+      "error_codes": {
+        "None": 50
+      },
+      "p50_ms": 6819.31,
+      "p95_ms": 7535.7,
+      "process_maxrss": 570621952,
+      "maxrss_unit": "bytes",
+      "langfuse_query": {
+        "count": 50,
+        "p50_ms": 268.83,
+        "p95_ms": 651.07
+      },
+      "langfuse_failures": [
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        },
+        {
+          "error_type": "ApiError",
+          "status": 429
+        }
+      ]
+    }
+  },
+  "request_timings": {
+    "platform.acl": {
+      "count": 617,
+      "p50_ms": 14.81,
+      "p95_ms": 501.75
+    },
+    "runtime.other": {
+      "count": 26,
+      "p50_ms": 34.27,
+      "p95_ms": 79.85
+    },
+    "platform.other": {
+      "count": 101,
+      "p50_ms": 276.11,
+      "p95_ms": 4197.77
+    },
+    "runtime.native_read": {
+      "count": 448,
+      "p50_ms": 72.89,
+      "p95_ms": 2084.21
+    },
+    "runtime.diagnostics": {
+      "count": 141,
+      "p50_ms": 295.79,
+      "p95_ms": 1541.16
+    },
+    "platform.diagnostics": {
+      "count": 149,
+      "p50_ms": 441.75,
+      "p95_ms": 6361.34
+    }
+  },
+  "startup_performance": {
+    "samples_per_mode": 50,
+    "remote_export": "disabled",
+    "baseline": {
+      "factory_ms": {
+        "p50_ms": 121.835,
+        "p95_ms": 160.091
+      },
+      "first_model_ms": {
+        "p50_ms": 163.295,
+        "p95_ms": 209.743
+      },
+      "first_token_ms": {
+        "p50_ms": 165.973,
+        "p95_ms": 211.985
+      },
+      "graph_ms": {
+        "p50_ms": 80.047,
+        "p95_ms": 101.07
+      },
+      "python_peak_bytes": 7950587
+    },
+    "enabled": {
+      "factory_ms": {
+        "p50_ms": 140.384,
+        "p95_ms": 268.138
+      },
+      "first_model_ms": {
+        "p50_ms": 185.691,
+        "p95_ms": 317.921
+      },
+      "first_token_ms": {
+        "p50_ms": 188.616,
+        "p95_ms": 322.164
+      },
+      "graph_ms": {
+        "p50_ms": 84.94,
+        "p95_ms": 112.862
+      },
+      "python_peak_bytes": 7103409
+    }
+  },
+  "provider_calls": 9,
+  "diagnostic_events": 461,
+  "export_metrics": {
+    "trace_bound": 117,
+    "run_failed": 6,
+    "run_success": 111,
+    "tool_error": 3
+  }
+}

@@ -216,8 +216,11 @@ def create_runtime_delegation_token(
         "dear-governance-read",
         "dear-governance-write",
         "suggestions-generate",
+        "diagnostics-read",
     }:
         raise ValueError("runtime delegation scope operation is unsupported")
+    if operation == "diagnostics-read" and not normalized_scope.get("thread_id"):
+        raise ValueError("runtime diagnostics delegation requires thread_id")
     if operation not in {
         "read",
         "cron-read",

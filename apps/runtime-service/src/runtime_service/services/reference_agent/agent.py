@@ -21,9 +21,11 @@ from langgraph.pregel import Pregel
 from runtime_service.middlewares import (
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
+    ModelErrorMiddleware,
     RuntimeConfigMiddleware,
 )
 from runtime_service.observability import with_langfuse_tracing
+from runtime_service.observability.startup import StartupDiagnostics
 from runtime_service.runtime import (
     AgentDefaults,
     RuntimeContext,
@@ -138,6 +140,11 @@ def _runtime_identity_and_policy(
 
 
 async def get_agent(config: RunnableConfig) -> Pregel:
+    with StartupDiagnostics("reference_agent") as startup:
+        return await _build_agent(config, startup)
+
+
+async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> Pregel:
     """Resolve Runtime values and return the compiled reference graph."""
 
     configurable = config.get("configurable") or {}
@@ -157,32 +164,39 @@ async def get_agent(config: RunnableConfig) -> Pregel:
     connection = None
     resolved = None
     if facts:
-        raw_context = config.get("context")
-        context = parse_runtime_context(raw_context)
-        if raw_context is not None and facts.context_hash != runtime_context_hash(
-            context
-        ):
-            raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
-        resolved = resolve_runtime_config(
-            principal=principal,
-            context=context,
-            policy=policy,
-            defaults=_DEFAULTS,
-        )
-        connection = (
-            None
-            if runtime_model is not None
-            else await _runtime_model_connection(
-                config,
-                model_id=resolved.model_id,
-                project_id=principal.project_id,
+        startup.authorize(config, facts)
+        with startup.phase("factory.context_resolution"):
+            raw_context = config.get("context")
+            context = parse_runtime_context(raw_context)
+            if raw_context is not None and facts.context_hash != runtime_context_hash(
+                context
+            ):
+                raise RuntimeAuthError(
+                    "runtime.auth.context_hash_mismatch", "context_hash"
+                )
+            resolved = resolve_runtime_config(
+                principal=principal,
+                context=context,
+                policy=policy,
+                defaults=_DEFAULTS,
             )
+        startup.metadata["model_id"] = resolved.model_id
+        with startup.phase("factory.model_connection"):
+            connection = (
+                None
+                if runtime_model is not None
+                else await _runtime_model_connection(
+                    config,
+                    model_id=resolved.model_id,
+                    project_id=principal.project_id,
+                )
+            )
+    with startup.phase("factory.model_build"):
+        model = (
+            ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
+            if probe_only
+            else runtime_model or _build_runtime_model(resolved, connection)
         )
-    model = (
-        ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
-        if probe_only
-        else runtime_model or _build_runtime_model(resolved, connection)
-    )
     fallback_model = (
         _runtime_fallback_model(config) if runtime_model is not None else None
     )
@@ -247,17 +261,19 @@ async def get_agent(config: RunnableConfig) -> Pregel:
             if model_retry_enabled
             else []
         ),
+        ModelErrorMiddleware(startup.metadata),
         ModelCallTimeoutMiddleware(),
         MessageQueueMiddleware(),
     ]
-    agent = create_agent(
-        model=model,
-        tools=[read_reference],
-        system_prompt=_DEFAULTS.system_prompt,
-        middleware=middleware,
-        context_schema=RuntimeContext,
-        name="reference_agent",
-    )
+    with startup.phase("factory.agent_compile"):
+        agent = create_agent(
+            model=model,
+            tools=[read_reference],
+            system_prompt=_DEFAULTS.system_prompt,
+            middleware=middleware,
+            context_schema=RuntimeContext,
+            name="reference_agent",
+        )
 
     if probe_only:
         return agent
@@ -272,6 +288,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         agent,
         bound_config,
         graph_id="reference_agent",
+        startup=startup,
         trusted_metadata={
             "user_id": principal.user_id,
             "tenant_id": principal.tenant_id,

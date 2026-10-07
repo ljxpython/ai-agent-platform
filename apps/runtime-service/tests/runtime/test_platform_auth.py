@@ -154,6 +154,7 @@ def test_platform_auth_requires_audience_configuration(
         "message-enqueue",
         "message-read",
         "terminal-write",
+        "diagnostics-read",
         "unknown",
     ],
 )

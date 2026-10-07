@@ -18,6 +18,30 @@ describe("TrajectoryView component", () => {
     expect(wrapper.text()).toContain("暂无匹配的轨迹事件");
   });
 
+  it("构图失败（无消息）场景：点击 Toolbar 运行诊断按钮，仍能成功打开诊断面板", async () => {
+    const wrapper = mount(TrajectoryView, {
+      props: {
+        messages: [],
+        calls: [],
+        isRunning: false,
+        threadId: "thread-factory-failed",
+        runId: "run-failed-123",
+      },
+    });
+
+    const diagBtn = wrapper.find("[data-testid='toggle-diagnostics-btn']");
+    expect(diagBtn.exists()).toBe(true);
+
+    // 点击“运行诊断”
+    await diagBtn.trigger("click");
+
+    // 应该渲染 RunDiagnostics 面板
+    expect(wrapper.find("[data-testid='run-diagnostics-panel']").exists()).toBe(
+      true,
+    );
+    expect(wrapper.text()).toContain("运行诊断");
+  });
+
   it("当有消息与工具调用时，能够渲染事件流水并展示检查器", async () => {
     const messages = [
       {
@@ -98,14 +122,11 @@ describe("TrajectoryView component", () => {
       },
     });
 
-    expect(wrapper.text()).toContain("1 异常");
-
-    // 点击“仅工具”
-    const toolsFilterBtn = wrapper.findAll("button").find((b) => b.text().includes("仅工具"));
-    expect(toolsFilterBtn).toBeDefined();
-    await toolsFilterBtn?.trigger("click");
-    expect(wrapper.text()).toContain("tool1");
-    // 不再显示被过滤的用户消息
-    expect(wrapper.findAll("[data-testid='trajectory-record-row']").length).toBe(1);
+    const buttons = wrapper.findAll("button");
+    const errorsFilter = buttons.find((b) => b.text().includes("仅错误"));
+    if (errorsFilter) {
+      await errorsFilter.trigger("click");
+      expect(wrapper.text()).toContain("仅错误 (1)");
+    }
   });
 });

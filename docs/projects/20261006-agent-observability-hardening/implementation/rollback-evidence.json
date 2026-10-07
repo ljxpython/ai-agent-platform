@@ -1,0 +1,55 @@
+{
+  "complete": true,
+  "database": "graphharbor_observability_927e33f8233e",
+  "redis_prefix": "graphharbor:observability:927e33f8233e",
+  "cases": {
+    "rollback_routes_removed": "passed",
+    "rollback_normal_sse": "passed",
+    "rollback_approve_resume": "passed",
+    "rollback_reject_resume": "passed",
+    "rollback_cancel": "passed",
+    "rollback_previous_capture": "passed"
+  },
+  "samples": {
+    "rollback_normal": {
+      "thread_id": "0461e0e3-de7c-4fb4-87f5-2e0fd40c67bc",
+      "run_id": "26aedb9e-d64d-4112-b596-1fffcd91d12f",
+      "status": "success"
+    },
+    "rollback_approve": {
+      "thread_id": "f5dd045a-8f8f-482f-b44c-5815d166c670",
+      "interrupted_run_id": "02b66f30-fc9e-4e6d-b8d1-f21d2f175fc9",
+      "resumed_run_id": "be4e9e97-489c-4806-bbe6-4b275e8d2e4e",
+      "status": "success",
+      "confirmation": "approve"
+    },
+    "rollback_reject": {
+      "thread_id": "b9f5528d-aa1e-48dc-b003-0eedb343ff73",
+      "interrupted_run_id": "69412f95-ea44-484e-af10-8ec0d7ab72e7",
+      "resumed_run_id": "6f91b6b6-793b-4dfb-9b50-79f4f886c8ff",
+      "status": "success",
+      "confirmation": "reject"
+    },
+    "rollback_cancel": {
+      "thread_id": "b7c57a7d-0b50-497c-8a44-701540b638d8",
+      "run_id": "08489c73-07de-46cb-b5c0-dd929ba4b8d7",
+      "status": "interrupted"
+    }
+  },
+  "http_samples": {
+    "404": {
+      "error": {
+        "code": "route_not_found",
+        "message": "Route not found",
+        "details": []
+      },
+      "request_id": "1891cd9fac184f0a832897d61f153ab4"
+    }
+  },
+  "langfuse_query_failures": [],
+  "internal_diagnostics_route_present": false,
+  "baseline_revision": "0bc15df1840c83750d821c93fb65600d0d483fa4",
+  "collection": "previous_revision_with_remote_export_disabled",
+  "diagnostic_events": 0,
+  "scope": "rollback"
+}

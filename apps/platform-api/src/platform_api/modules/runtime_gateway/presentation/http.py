@@ -27,6 +27,10 @@ from starlette.types import Receive, Send
 from platform_api.adapters.langgraph import (
     LangGraphRuntimeGatewayUpstream,
 )
+from platform_api.adapters.langgraph.sdk_client import (
+    project_execution_error,
+    redact_execution_fields,
+)
 from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import (
     BadRequestError,
@@ -43,6 +47,7 @@ from platform_api.core.security import (
     empty_runtime_context_hash,
 )
 from platform_api.entrypoints.http.dependencies import get_actor_context
+from platform_api.modules.runtime_gateway.application.diagnostics import RunDiagnostics
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
     _normalize_protocol_lifecycle_frame,
@@ -185,16 +190,18 @@ def _normalize_ack(value: Any) -> Any:
     return _redact_runtime_private_fields(value)
 
 
-def _redact_event_value(value: Any) -> Any:
+def _redact_event_value(value: Any, *, _project_private: bool = True) -> Any:
+    if _project_private:
+        value = _redact_runtime_private_fields(value)
     if isinstance(value, list):
-        return [_redact_event_value(item) for item in value]
+        return [_redact_event_value(item, _project_private=False) for item in value]
     if not isinstance(value, dict):
         return value
     return {
         key: "[REDACTED]"
         if key.lower().replace("-", "_") in _SENSITIVE_EVENT_KEYS
-        else _redact_event_value(item)
-        for key, item in _redact_runtime_private_fields(value).items()
+        else _redact_event_value(item, _project_private=False)
+        for key, item in value.items()
     }
 
 
@@ -218,6 +225,36 @@ def _redact_sse_frame(frame: bytes, *, protocol: bool = True) -> bytes:
         payload = json.loads(data)
     except ValueError as exc:
         raise InvalidSseFrame("invalid_json") from exc
+    event_name = next(
+        (line[6:].strip() for line in lines if line.startswith("event:")), ""
+    )
+    typed = (
+        isinstance(payload, dict)
+        and isinstance(payload.get("method"), str)
+        and isinstance(payload.get("params"), dict)
+    )
+    method = payload.get("method") if typed else event_name.partition("|")[0]
+    event_data = payload["params"].get("data") if typed else payload
+    if method == "lifecycle":
+        event_data = redact_execution_fields(event_data)
+    elif not protocol and not typed and method == "error":
+        event_data = project_execution_error(event_data)
+    elif (
+        method == "debug"
+        and isinstance(event_data, dict)
+        and event_data.get("type") == "task_result"
+    ):
+        event_data = {
+            **event_data,
+            "payload": redact_execution_fields(event_data.get("payload")),
+        }
+    if typed:
+        payload["params"] = {
+            **payload["params"],
+            "data": event_data,
+        }
+    else:
+        payload = event_data
     if protocol and (
         not isinstance(payload, dict)
         or not isinstance(payload.get("method"), str)
@@ -404,6 +441,8 @@ def _delegation_operation(request: Request) -> str:
         return "message-enqueue" if request.method == "POST" else "message-read"
     if path.endswith("/suggestions"):
         return "suggestions-generate"
+    if path.endswith("/diagnostics"):
+        return "diagnostics-read"
     if request.method == "POST" and (path.endswith("/commands") or "/runs" in path):
         return "run-create"
     return "read"
@@ -495,7 +534,12 @@ def get_runtime_gateway_service(
             )
             if agent_key
             and operation
-            not in {"thread-create", "thread-reconcile", "suggestions-generate"}
+            not in {
+                "thread-create",
+                "thread-reconcile",
+                "suggestions-generate",
+                "diagnostics-read",
+            }
             else {
                 "tool_overrides": {},
                 "tool_policy_version": "unscoped-thread-operation",
@@ -1966,6 +2010,27 @@ async def get_thread_run(
             thread_id=thread_id,
             run_id=run_id,
         )
+    )
+
+
+@router.get(
+    "/threads/{thread_id}/runs/{run_id}/diagnostics", response_model=RunDiagnostics
+)
+async def get_thread_run_diagnostics(
+    request: Request,
+    thread_id: UUID,
+    run_id: UUID,
+    response: Response,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    response.headers["Cache-Control"] = "no-store"
+    return await service.get_thread_run_diagnostics(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=str(thread_id),
+        run_id=str(run_id),
+        request_id=request.state.platform_context.request.request_id,
     )
 
 

@@ -6,7 +6,11 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
+**最后更新：** 2026-10-07
+
 ## 最近改动
+
+2026-10-07 | **Agent 可观测性与追踪补齐**：全链路闭环完成。Runtime/Platform API 完成模型错误分类、安全诊断、启动阶段计时与只读投影；Platform Web 完成独立解耦面板 RunDiagnostics、Zod 白名单剔除敏感字段、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与模式切换、ChatSession 历史 Run 自动拉取与最新默认选中；vue-tsc 0 错误、ESLint 0 错误、Vite build 与前端全仓 115 套件 535 项单测全绿。未部署现役服务。见 [专项](projects/20261006-agent-observability-hardening/README.md)。
 
 2026-10-06 | **Agent 回答后推荐问题**：全链路完成。Platform API 与 Runtime Service 完成 suggestions 配置/生成、Delegation 隔离与 one-shot 推理；Platform Web 实装带 x-project-id 与单例缓存 API、思维链与多模态清洗纯函数、生命周期状态机（KeepAlive 补偿、Stop 抑制、竞态防护）、FollowUpSuggestions 紧凑展示组件与草稿冲突确认弹窗；27 项单测、vue-tsc 0 错误、ESLint 0 错误与生产打包全绿。未部署现役或远端平台。见 [专项](projects/20261005-agent-followup-suggestions/README.md)。
 
@@ -27,6 +31,8 @@
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
+
+- [Agent 可观测性与追踪补齐](projects/20261006-agent-observability-hardening/README.md)：done（本地隔离环境全链路闭环）；Runtime/API 诊断与安全投影完成；Platform Web 独立解耦面板 RunDiagnostics、模式切换、防竞态 Composable 与全量门禁总检全绿（vue-tsc 0 errors、ESLint 0 errors、打包全绿、535 项单测全绿）。未部署现役服务。
 
 - [Agent 回答后推荐问题](projects/20261005-agent-followup-suggestions/README.md)：done（本地全链路代码与门禁已完成）；Platform API + Runtime Service + Platform Web 全栈闭环，单测、静态类型、Lint 与生产构建全绿；真实三服务 E2E 与远端人工标准评审待具备环境后执行。
 
@@ -71,9 +77,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-06 | 新增 follow-up suggestions 独立 endpoint、JWT scope 隔离、无工具 one-shot 模型调用与输出清洗；suggestions 定向测试 10 passed，改动文件 Ruff 通过。真实模型与现役 Runtime 未联调。 |
-| platform-api | 2026-10-06 | 新增 suggestions 配置/Thread API、ACL/模型策略校验、`suggestions-generate` delegation 与 Runtime 降级；suggestions + delegation 定向测试 8 passed、48 个子测试，改动文件 Ruff 通过。未部署现役或远端平台。 |
-| platform-web | 2026-10-06 | Agent 回答后推荐问题全链路实装（带 x-project-id API、思维链清洗纯函数、生命周期状态机、FollowUpSuggestions 紧凑展示与草稿冲突确认弹窗）；定时 Agent 任务模块维持已验状态。全仓单测全绿、vue-tsc 0 errors、生产打包通过。 |
+| runtime-service | 2026-10-07 | 新增有界模型错误诊断、本地常驻回调、四graph启动阶段计时、Langfuse安全event与只读查询；后端Final完成。240项主定向、最新35项诊断和真实Worker/provider链路通过；Langfuse429按unavailable安全降级，未部署现役。 |
+| platform-api | 2026-10-07 | 新增Run diagnostics GET、diagnostics-read、当前ACL/Run归属核验及JSON/SSE明确错误槽位投影；后端Final完成。分层回归、隔离权限撤销/故障/回退通过；真实样例交接齐全，未部署现役或远端。 |
+| platform-web | 2026-10-07 | 运行诊断独立面板 RunDiagnostics 实装，TrajectoryView 顶层模式控制与 Toolbar 常驻入口集成，ChatSession 历史 Run 自动按需拉取并最新默认选中；Zod 白名单剔除敏感字段，useRunDiagnostics 递增 epoch 防竞态。vue-tsc 0 errors、ESLint 0 errors、Vite 生产构建全绿、全仓 115 套件 535 项单测全绿。未部署现役服务。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-04 | AGENTS.md 与 Skill 重复内容已去除（场景步骤 + 验证标准章节移入 Skill），CONTEXT.md 改为渐进式快照结构；整单结束前须逐项核对未完成任务，Task 未完成时只记 Phase |
 
 ## 近期关键决策

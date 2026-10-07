@@ -7,7 +7,6 @@ import logging
 import os
 import threading
 import time
-from asyncio import CancelledError
 from collections import Counter
 from collections.abc import Mapping
 from typing import Any, cast
@@ -16,6 +15,12 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.runnables import RunnableConfig
 from langgraph.pregel import Pregel
 
+from runtime_service.observability.diagnostics import (
+    log_diagnostic,
+    safe_fields,
+    trace_id_for,
+)
+from runtime_service.observability.errors import error_type, execution_outcome
 from runtime_service.observability.otel import (
     OTelDiagnosticsCallback,
     close_otel,
@@ -113,6 +118,11 @@ class _FailSoftCallback(BaseCallbackHandler):
             method = getattr(delegate, name)
 
             def call(*args: Any, **kwargs: Any) -> Any:
+                if name.endswith("_error"):
+                    if args and isinstance(args[0], BaseException):
+                        args = (RuntimeError(error_type(args[0])), *args[1:])
+                    if isinstance(kwargs.get("error"), BaseException):
+                        kwargs["error"] = RuntimeError(error_type(kwargs["error"]))
                 try:
                     result = method(*args, **kwargs)
                 except Exception as error:  # noqa: BLE001 - exporter must remain fail-soft.
@@ -186,14 +196,54 @@ def _mask(*, data: Any, **_: Any) -> Any:
     return _redact(data)
 
 
+def _mask_spans(*, params: Any) -> Any:
+    from langfuse.types import MaskOtelSpansResult, OtelSpanPatch
+
+    patches = {}
+    for identifier, span in params.spans.items():
+        keys = tuple(
+            key
+            for key in span.attributes
+            if key.startswith("exception.")
+            or "status_message" in key
+            or key
+            in {
+                "langfuse.observation.input",
+                "langfuse.observation.output",
+                "langfuse.trace.input",
+                "langfuse.trace.output",
+            }
+        )
+        if keys:
+            patches[identifier] = OtelSpanPatch(delete_attributes=keys)
+    return MaskOtelSpansResult(span_patches=patches)
+
+
+def record_diagnostic_event(event: str, fields: Mapping[str, Any]) -> None:
+    trace_id = trace_id_for(fields)
+    if _client is None or trace_id is None:
+        return
+    try:
+        from langfuse import propagate_attributes
+
+        metadata = safe_fields(fields)
+        with propagate_attributes(session_id=metadata.get("thread_id")):
+            _client.create_event(
+                name=event,
+                trace_context={"trace_id": trace_id},
+                metadata={"schema_version": 1, "event": event, **metadata},
+                level="ERROR" if event == "runtime.model_call.failed" else "DEFAULT",
+            )
+    except Exception as error:
+        _record_export_error(error)
+
+
 class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
     """Bounded Run/Tool diagnostics independent of Langfuse export."""
 
     def __init__(self, graph_id: str, metadata: Mapping[str, Any]) -> None:
         self._graph_id = graph_id
-        self._metadata = {
-            key: metadata.get(key) for key in ("run_id", "thread_id", "request_id")
-        }
+        self._metadata = safe_fields(metadata)
         self._starts: dict[Any, float] = {}
 
     def on_chain_start(
@@ -207,6 +257,14 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
     ) -> None:
         if parent_run_id is None:
             self._starts[run_id] = time.monotonic()
+            log_diagnostic(
+                "runtime.graph.started",
+                {
+                    **self._metadata,
+                    "graph_id": self._graph_id,
+                    "callback_run_id": str(run_id),
+                },
+            )
 
     def on_chain_end(
         self,
@@ -217,7 +275,12 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
         **_: Any,
     ) -> None:
         if parent_run_id is None:
-            self._finish(run_id, "success")
+            self._finish(
+                run_id,
+                "interrupted"
+                if isinstance(outputs, Mapping) and outputs.get("__interrupt__")
+                else "success",
+            )
 
     def on_chain_error(
         self,
@@ -228,19 +291,21 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
         **_: Any,
     ) -> None:
         if parent_run_id is None:
-            status = (
-                "cancelled"
-                if isinstance(error, CancelledError)
-                else "timeout"
-                if isinstance(error, TimeoutError)
-                else "failed"
-            )
+            status = execution_outcome(error)
             self._finish(run_id, status)
 
     def on_tool_error(
         self, error: BaseException, *, run_id: Any, **kwargs: Any
     ) -> None:
         _metrics["tool_error"] += 1
+        fields = {
+            **self._metadata,
+            "graph_id": self._graph_id,
+            "callback_run_id": str(run_id),
+            "error_type": error_type(error),
+        }
+        log_diagnostic("runtime.tool.failed", fields)
+        record_diagnostic_event("runtime.tool.failed", fields)
         logger.warning(
             "runtime_tool_error",
             extra={
@@ -270,6 +335,15 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
             else None
         )
         _metrics[f"run_{status}"] += 1
+        fields = {
+            **self._metadata,
+            "graph_id": self._graph_id,
+            "callback_run_id": str(run_id),
+            "outcome": status,
+            "duration_ms": duration_ms,
+        }
+        log_diagnostic("runtime.graph.completed", fields)
+        record_diagnostic_event("runtime.graph.completed", fields)
         logger.info(
             "runtime_run_completed",
             extra={
@@ -297,18 +371,20 @@ def initialize_langfuse(*, env: Mapping[str, str] | None = None) -> Any | None:
         if _client is None:
             from langfuse import Langfuse
 
-            _client = Langfuse(mask=_mask, **settings)
+            _client = Langfuse(mask=_mask, mask_otel_spans=_mask_spans, **settings)
     return _client
 
 
-def _new_callback() -> Any:
+def _new_callback(*, trace_context: dict | None = None) -> Any:
     settings = _settings(os.environ)
     if settings is None:
         return None
     initialize_langfuse()
     from langfuse.langchain import CallbackHandler
 
-    return _FailSoftCallback(CallbackHandler(public_key=settings["public_key"]))
+    return _FailSoftCallback(
+        CallbackHandler(public_key=settings["public_key"], trace_context=trace_context)
+    )
 
 
 def _values(value: Any) -> list[Any]:
@@ -376,43 +452,52 @@ def with_langfuse_tracing(
     *,
     graph_id: str,
     trusted_metadata: Mapping[str, Any] | None = None,
+    startup: Any = None,
 ) -> Pregel:
     """Bind one Langfuse callback without changing graph construction or failures."""
 
+    bound = _merge_config(config, None, graph_id)
+    bound_metadata = dict(bound.get("metadata") or {})
+    bound_metadata.update(_trusted_metadata(trusted_metadata))
+    if startup is not None:
+        bound_metadata.update(
+            {key: value for key, value in startup.metadata.items() if value is not None}
+        )
+    callbacks = list(bound["callbacks"])
+    trace_id = trace_id_for(bound_metadata)
     try:
-        callback = _new_callback()
-        otel_provider = initialize_otel(on_error=_record_export_error)
-        if callback is None and otel_provider is None:
-            return graph
-        bound = _merge_config(config, callback, graph_id)
-        callbacks = list(bound["callbacks"])
-        bound_metadata = dict(bound.get("metadata") or {})
-        if trusted_metadata:
-            bound_metadata.update(_trusted_metadata(trusted_metadata))
-        if otel_provider is not None:
-            callbacks.append(
-                OTelDiagnosticsCallback(otel_provider, graph_id, bound_metadata)
-            )
-        callbacks.append(_RuntimeDiagnosticsCallback(graph_id, bound_metadata))
-        bound["callbacks"] = callbacks
-        bound_metadata["langfuse_trace_name"] = graph_id
-        if isinstance(bound_metadata.get("thread_id"), (str, int)):
-            bound_metadata["langfuse_session_id"] = str(bound_metadata["thread_id"])
-        if isinstance(bound_metadata.get("user_id"), (str, int)):
-            bound_metadata["langfuse_user_id"] = str(bound_metadata["user_id"])
-        bound_metadata["langfuse_tags"] = ["runtime-service", graph_id]
-        bound["metadata"] = bound_metadata
-        _metrics["trace_bound"] += 1
-        return cast(Pregel, graph.with_config(bound))
+        callback = (
+            _new_callback(trace_context={"trace_id": trace_id})
+            if trace_id
+            else _new_callback()
+        )
+        if callback is not None:
+            callbacks.append(callback)
     except LangfuseConfigurationError:
         raise
-    except Exception:
-        _metrics["callback_error"] += 1
-        _metrics["export_error"] += 1
-        logger.exception(
-            "runtime_langfuse_callback_error", extra={"graph_id": graph_id}
-        )
-        return graph
+    except Exception as error:
+        _record_export_error(error)
+    try:
+        otel_provider = initialize_otel(on_error=_record_export_error)
+        if otel_provider is not None:
+            callbacks.append(
+                OTelDiagnosticsCallback(
+                    otel_provider, graph_id, bound_metadata, startup=startup
+                )
+            )
+    except Exception as error:
+        _record_export_error(error)
+    callbacks.append(_RuntimeDiagnosticsCallback(graph_id, bound_metadata))
+    bound["callbacks"] = callbacks
+    bound_metadata["langfuse_trace_name"] = graph_id
+    if isinstance(bound_metadata.get("thread_id"), (str, int)):
+        bound_metadata["langfuse_session_id"] = str(bound_metadata["thread_id"])
+    if isinstance(bound_metadata.get("user_id"), (str, int)):
+        bound_metadata["langfuse_user_id"] = str(bound_metadata["user_id"])
+    bound_metadata["langfuse_tags"] = ["runtime-service", graph_id]
+    bound["metadata"] = bound_metadata
+    _metrics["trace_bound"] += 1
+    return cast(Pregel, graph.with_config(bound))
 
 
 def close_langfuse(*, timeout_seconds: float = 5.0) -> None:
@@ -426,11 +511,14 @@ def close_langfuse(*, timeout_seconds: float = 5.0) -> None:
         def flush() -> None:
             try:
                 client.flush()
-            except Exception:
+            except Exception as error:
                 _metrics["flush_error"] += 1
                 _metrics["export_error"] += 1
                 _metrics["event_dropped"] += 1
-                logger.exception("runtime_langfuse_flush_error")
+                logger.warning(
+                    "runtime_langfuse_flush_error",
+                    extra={"error_category": _error_category(error)},
+                )
             finally:
                 done.set()
 
@@ -458,5 +546,6 @@ __all__ = [
     "close_langfuse",
     "get_observability_metrics",
     "initialize_langfuse",
+    "record_diagnostic_event",
     "with_langfuse_tracing",
 ]
