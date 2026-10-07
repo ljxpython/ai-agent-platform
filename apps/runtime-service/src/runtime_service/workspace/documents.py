@@ -139,7 +139,7 @@ class DocumentWorkspace:
         if hashlib.sha256(data).hexdigest() != digest:
             raise DocumentError("file_hash_mismatch")
         try:
-            directory = self.io._directory(("uploads",), create=True)
+            directory = self.io._directory(("uploads",), create=True, create_root=True)
         except ToolException:
             raise DocumentError("file_workspace_unavailable", 409) from None
         temporary = f".document-{uuid4().hex}"

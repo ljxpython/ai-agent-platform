@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import io
+import json
 import os
 from pathlib import Path
 from types import SimpleNamespace
@@ -13,6 +14,7 @@ import pytest
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.tools import ToolException, tool
 from langgraph.types import Command
+from openai import BadRequestError
 from PIL import Image
 
 from runtime_service.tools import chart, images
@@ -160,22 +162,16 @@ def test_image_content_policy_violation_message(monkeypatch, tmp_path):
             pass
 
         async def generate(self, **kwargs):
-            exc = Exception("Error code: 400 - content_policy_violation")
-            exc.body = {
-                "code": "content_policy_violation",
-                "message": "Policy violation",
-            }
-            exc.status_code = 400
-            raise exc
+            raise BadRequestError(
+                "PROVIDER_CANARY",
+                response=httpx.Response(
+                    400, request=httpx.Request("POST", "https://provider.invalid")
+                ),
+                body={"code": "content_policy_violation", "message": "PROVIDER_CANARY"},
+            )
 
         async def edit(self, **kwargs):
-            exc = Exception("Error code: 400 - content_policy_violation")
-            exc.body = {
-                "code": "content_policy_violation",
-                "message": "Policy violation",
-            }
-            exc.status_code = 400
-            raise exc
+            await self.generate(**kwargs)
 
     monkeypatch.setattr(images, "AsyncOpenAI", Client)
     for key in ("IMAGE_25_KEY", "IMAGE_25_URL", "IMAGE_25_MODEL"):
@@ -189,12 +185,14 @@ def test_image_content_policy_violation_message(monkeypatch, tmp_path):
 
     async def run():
         res_gen = await generate_tool.ainvoke({"prompt": "test sensitive"})
-        assert "content_policy_violation" in str(res_gen)
+        assert json.loads(res_gen)["recovery"] == "do_not_repeat"
+        assert "PROVIDER_CANARY" not in res_gen
 
         res_edit = await edit_tool.ainvoke(
             {"image_path": path, "prompt": "test sensitive"}
         )
-        assert "content_policy_violation" in str(res_edit)
+        assert json.loads(res_edit)["outcome"] == "unknown"
+        assert "PROVIDER_CANARY" not in res_edit
 
     asyncio.run(run())
 
@@ -437,7 +435,7 @@ def test_missing_mcp_executable_returns_error_without_artifact(monkeypatch, tmp_
     )
     assert result.status == "error"
     assert not list(tmp_path.iterdir())
-    assert "Chart MCP failed" in str(result.content)
+    assert json.loads(result.content[0]["text"])["code"] == "tool.upstream_unavailable"
 
 
 def test_edited_file_action_cannot_skip_generation_approval(build, monkeypatch):
@@ -700,7 +698,8 @@ def test_chart_validation_error_returns_friendly_message(monkeypatch, tmp_path):
         )
     )
     assert result.isError
-    assert "Chart argument validation failed" in result.content[0].text
+    assert json.loads(result.content[0].text)["code"] == "tool.invalid_input"
+    assert "invalid_number" not in result.content[0].text
 
 
 def test_chart_mcp_error_returns_friendly_message(monkeypatch, tmp_path):
@@ -733,10 +732,8 @@ def test_chart_mcp_error_returns_friendly_message(monkeypatch, tmp_path):
         )
     )
     assert result.isError
-    assert (
-        "Chart generation failed: Failed to generate chart: Something went wrong in AntV"
-        in result.content[0].text
-    )
+    assert json.loads(result.content[0].text)["code"] == "tool.upstream_unavailable"
+    assert "Something went wrong" not in result.content[0].text
 
 
 def test_resolve_vision_config_precedence(monkeypatch):
@@ -797,7 +794,7 @@ def test_resolve_vision_config_precedence(monkeypatch):
     )
 
 
-def test_analyze_image_preserves_error_details(monkeypatch, tmp_path):
+def test_analyze_image_hides_provider_error_details(monkeypatch, tmp_path):
     workspace = images.ImageWorkspace(tmp_path)
     tools = images.build_image_tools(workspace)
     analyze_tool = next(t for t in tools if t.name == "analyze_image")
@@ -808,19 +805,23 @@ def test_analyze_image_preserves_error_details(monkeypatch, tmp_path):
             pass
 
         async def ainvoke(self, messages, **kwargs):
-            exc = Exception("ClosedEndpoint")
-            exc.body = {
-                "error": {
-                    "code": "InvalidEndpoint.ClosedEndpoint",
-                    "message": "Endpoint is closed",
-                }
-            }
-            raise exc
+            raise BadRequestError(
+                "PROVIDER_CANARY",
+                response=httpx.Response(
+                    400, request=httpx.Request("POST", "https://provider.invalid")
+                ),
+                body={
+                    "error": {
+                        "code": "InvalidEndpoint.ClosedEndpoint",
+                        "message": "PROVIDER_CANARY",
+                    }
+                },
+            )
 
     monkeypatch.setattr(images, "ChatOpenAI", FailingVision)
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
 
     res = asyncio.run(analyze_tool.ainvoke({"image_path": path, "question": "test"}))
-    assert "InvalidEndpoint.ClosedEndpoint" in str(res) or "Endpoint is closed" in str(
-        res
-    )
+    assert json.loads(res)["code"] == "tool.upstream_unavailable"
+    assert "PROVIDER_CANARY" not in res
+    assert "ClosedEndpoint" not in res

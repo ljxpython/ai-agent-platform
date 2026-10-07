@@ -98,7 +98,9 @@ def test_pdf_scanned_corrupt_and_missing_page_limits(tmp_path):
     tool = build_document_tools(tmp_path)[0]
     result = tool.invoke({"file_path": ref["path"]})
     assert not result["text"] and "page_1_no_text_layer_ocr_required" in result["warnings"]
-    assert "invalid_page_range" in tool.invoke({"file_path": ref["path"], "page_start": 2})
+    page_error = tool.invoke({"file_path": ref["path"], "page_start": 2})
+    assert json.loads(page_error)["code"] == "tool.invalid_input"
+    assert json.loads(page_error)["name"] == "parse_document"
     for data in (b"not a PDF", b"%PDF-1.7\nbroken"):
         with pytest.raises(DocumentError):
             open_pdf(data)

@@ -15,6 +15,7 @@ from runtime_service.services.dearflow_agent.skill_governance import (
     SkillStorage,
 )
 from runtime_service.services.dearflow_agent.tools.memory import memory_scope
+from runtime_service.tools.errors import tool_error_handler
 from runtime_service.workspace.artifact_refs import ArtifactWorkspace
 from runtime_service.workspace.documents import DocumentError, DocumentWorkspace
 
@@ -194,5 +195,5 @@ def build_skill_tools(workspace, model):
         import_skill,
     ]
     for item in result:
-        item.handle_tool_error = True
+        item.handle_tool_error = tool_error_handler(item.name)
     return result

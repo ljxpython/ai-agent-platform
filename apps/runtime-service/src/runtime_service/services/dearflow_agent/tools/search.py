@@ -15,6 +15,7 @@ import httpx
 from langchain.tools import ToolRuntime
 from langchain_core.tools import ToolException, tool
 
+from runtime_service.tools.errors import tool_error_handler
 from runtime_service.tools.images import ImageWorkspace
 
 
@@ -72,17 +73,22 @@ async def tavily(operation: str, payload: dict) -> dict:
                         raise ToolException("research_response_too_large")
         result = json.loads(data)
         if not isinstance(result, dict) or not isinstance(result.get("results"), list):
-            raise ValueError()
+            raise ToolException("research_provider_failed")
         for record in result["results"]:
             if not isinstance(record, dict) or not isinstance(record.get("url"), str):
-                raise ValueError()
+                raise ToolException("research_provider_failed")
             if any(
                 record.get(key) is not None and not isinstance(record[key], str)
                 for key in ("title", "content", "raw_content")
             ):
-                raise ValueError()
+                raise ToolException("research_provider_failed")
         return result
-    except (httpx.HTTPError, ValueError, TimeoutError) as exc:
+    except (
+        httpx.HTTPError,
+        json.JSONDecodeError,
+        UnicodeDecodeError,
+        TimeoutError,
+    ) as exc:
         raise ToolException("research_provider_failed") from exc
 
 
@@ -138,7 +144,7 @@ async def jina_extract(url: str) -> dict:
             "title": "",
             "content": text,
         }
-    except (httpx.HTTPError, ValueError, TimeoutError) as exc:
+    except (httpx.HTTPError, TimeoutError) as exc:
         raise ToolException("jina_provider_failed") from exc
 
 
@@ -271,10 +277,11 @@ def build_research_tools(workspace):
                         }
                     )
             except ToolException as exc:
-                if exc.args and exc.args[0] == "research_response_too_large":
+                if exc.args not in (
+                    ("jina_provider_failed",),
+                    ("research_url_denied",),
+                ):
                     raise
-            except Exception:
-                pass
 
         if not records:
             if os.environ.get("TAVILY_API_KEY"):
@@ -298,10 +305,7 @@ def build_research_tools(workspace):
                             }
                         )
                 except ToolException as exc:
-                    if exc.args and exc.args[0] in (
-                        "research_response_too_large",
-                        "research_empty_page",
-                    ):
+                    if exc.args != ("research_provider_failed",):
                         raise
             elif not jina_key:
                 raise ToolException(
@@ -312,6 +316,6 @@ def build_research_tools(workspace):
             raise ToolException("research_extract_failed")
         return _evidence(workspace, runtime, records)
 
-    search_web.handle_tool_error = True
-    fetch_page.handle_tool_error = True
+    search_web.handle_tool_error = tool_error_handler(search_web.name)
+    fetch_page.handle_tool_error = tool_error_handler(fetch_page.name)
     return [search_web, fetch_page]

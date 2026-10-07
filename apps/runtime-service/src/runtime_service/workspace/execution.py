@@ -10,6 +10,8 @@ from uuid import uuid4
 
 from deepagents.backends.protocol import ExecuteResponse
 
+from runtime_service.runtime.errors import RuntimeWorkspaceError
+
 MAX_OUTPUT = 128 * 1024
 logger = logging.getLogger(__name__)
 
@@ -17,7 +19,7 @@ logger = logging.getLogger(__name__)
 def runtime_backend() -> str:
     backend = os.getenv("RUNTIME_BACKEND", "docker")
     if backend not in {"local", "docker"}:
-        raise ValueError("RUNTIME_BACKEND must be local or docker")
+        raise RuntimeWorkspaceError("runtime.workspace.backend_invalid")
     return backend
 
 
@@ -31,9 +33,9 @@ def docker_workspace_args(
 ) -> list[str]:
     """Share the same mount and resource policy between commands and terminals."""
     if not workspace.is_dir() or workspace.is_symlink():
-        raise ValueError("workspace not ready")
+        raise RuntimeWorkspaceError("runtime.workspace.unavailable")
     if not image or image.startswith("-"):
-        raise ValueError("execution image required")
+        raise RuntimeWorkspaceError("runtime.workspace.image_invalid")
     args = [
         "docker",
         "run",
@@ -98,9 +100,12 @@ async def execute_in_workspace(
         str(seconds),
         command,
     ]
-    process = await asyncio.create_subprocess_exec(
-        *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
-    )
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
+        )
+    except OSError as exc:
+        raise RuntimeWorkspaceError("runtime.workspace.execution_unavailable") from exc
     output = bytearray()
     total = 0
 

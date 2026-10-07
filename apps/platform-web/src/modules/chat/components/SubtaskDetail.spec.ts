@@ -1,19 +1,22 @@
 import { shallowRef } from "vue";
 import { mount } from "@vue/test-utils";
 import { describe, expect, it, vi } from "vitest";
-import { AIMessage, HumanMessage } from "@langchain/core/messages";
+import { AIMessage, HumanMessage, ToolMessage } from "@langchain/core/messages";
 import type { AnyStream } from "@langchain/vue";
 
 // Mock @langchain/vue to return scoped messages and tools
 vi.mock("@langchain/vue", () => ({
-  useTranscriptMessages: (_stream: unknown, _namespace: unknown) => shallowRef([]),
+  useTranscriptMessages: (_stream: unknown, _namespace: unknown) =>
+    shallowRef([]),
   useToolCalls: (_stream: unknown, _target: unknown) => shallowRef([]),
 }));
 
 // Mock useTranscriptMessages composable
 vi.mock("../composables/useTranscriptMessages", () => ({
-  useTranscriptMessages: (_stream: { messagesMock?: unknown }, _namespace: unknown) =>
-    _stream?.messagesMock ?? shallowRef([]),
+  useTranscriptMessages: (
+    _stream: { messagesMock?: unknown },
+    _namespace: unknown,
+  ) => _stream?.messagesMock ?? shallowRef([]),
 }));
 
 import SubtaskDetail from "./SubtaskDetail.vue";
@@ -44,7 +47,8 @@ describe("SubtaskDetail.vue", () => {
           BaseIcon: true,
           MessageContent: {
             props: ["blocks"],
-            template: "<div class='directive-content'>{{ blocks.map(b => b.text).join('') }}</div>",
+            template:
+              "<div class='directive-content'>{{ blocks.map(b => b.text).join('') }}</div>",
           },
           ToolResult: true,
         },
@@ -53,7 +57,9 @@ describe("SubtaskDetail.vue", () => {
 
     // Verify it labels it as parent agent delegation
     expect(wrapper.text()).toContain("主智能体指派任务");
-    expect(wrapper.text()).toContain("对 /workspace/report.py 做只读分析，请勿修改或执行任何代码");
+    expect(wrapper.text()).toContain(
+      "对 /workspace/report.py 做只读分析，请勿修改或执行任何代码",
+    );
     // Verify it NEVER displays "你"
     expect(wrapper.text()).not.toContain("你");
   });
@@ -64,7 +70,11 @@ describe("SubtaskDetail.vue", () => {
       content: "",
       tool_calls: [
         { name: "ls", args: { path: "/workspace" }, id: "call-ls" },
-        { name: "read_file", args: { path: "/workspace/report.py" }, id: "call-read" },
+        {
+          name: "read_file",
+          args: { path: "/workspace/report.py" },
+          id: "call-read",
+        },
       ],
     });
 
@@ -88,7 +98,8 @@ describe("SubtaskDetail.vue", () => {
           MessageContent: true,
           ToolResult: {
             props: ["tool"],
-            template: "<div class='mock-sub-tool'>{{ tool.name }} {{ tool.input ? JSON.stringify(tool.input) : '' }}</div>",
+            template:
+              "<div class='mock-sub-tool'>{{ tool.name }} {{ tool.input ? JSON.stringify(tool.input) : '' }}</div>",
           },
         },
       },
@@ -99,5 +110,67 @@ describe("SubtaskDetail.vue", () => {
     expect(renderedTools.length).toBe(2);
     expect(renderedTools[0].text()).toContain("ls");
     expect(renderedTools[1].text()).toContain("read_file");
+  });
+
+  it("passes failed scoped tool with error status and output to ToolResult inside subtask", () => {
+    const errorJson = JSON.stringify({
+      status: "error",
+      code: "tool.invalid_input",
+      error: "文件路径不在允许范围",
+      recovery: "correct_input",
+    });
+
+    const toolCallMsg = new AIMessage({
+      id: "sub-ai-call-err",
+      content: "",
+      tool_calls: [
+        {
+          name: "read_file",
+          args: { path: "/etc/passwd" },
+          id: "call-read-err",
+        },
+      ],
+    });
+
+    const toolErrorMsg = new ToolMessage({
+      tool_call_id: "call-read-err",
+      name: "read_file",
+      content: errorJson,
+      status: "error",
+    });
+
+    const stream = {
+      messagesMock: shallowRef([toolCallMsg, toolErrorMsg]),
+      values: shallowRef({ messages: [] }),
+      isLoading: shallowRef(false),
+      subgraphs: shallowRef(new Map()),
+      subagents: shallowRef(new Map()),
+    };
+
+    const wrapper = mount(SubtaskDetail, {
+      props: {
+        stream: stream as unknown as AnyStream,
+        namespace: ["tools:subagent-researcher"],
+        running: false,
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+          MessageContent: true,
+          ToolResult: {
+            props: ["tool"],
+            template:
+              "<div class='mock-sub-tool' :data-status='tool.status' :data-output='tool.output'>{{ tool.name }}:{{ tool.status }}</div>",
+          },
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("执行步骤（1 项操作）");
+    const renderedTool = wrapper.find(".mock-sub-tool");
+    expect(renderedTool.exists()).toBe(true);
+    expect(renderedTool.text()).toBe("read_file:error");
+    expect(renderedTool.attributes("data-status")).toBe("error");
+    expect(renderedTool.attributes("data-output")).toBe(errorJson);
   });
 });

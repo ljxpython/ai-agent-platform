@@ -30,6 +30,7 @@ from runtime_service.http.workspace import router as workspace_router
 from runtime_service.messaging import MessageInbox
 from runtime_service.messaging.reconcile import reconcile_run
 from runtime_service.observability import close_langfuse, initialize_langfuse
+from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.workspace.file_refs import validate_file_ref
 from runtime_service.workspace.image_refs import validate_image_ref
 
@@ -65,6 +66,36 @@ async def auth_exception_handler(
     request: Request, exc: auth_exceptions.HTTPException
 ) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
+@app.exception_handler(RuntimeWorkspaceError)
+async def workspace_exception_handler(
+    request: Request, exc: RuntimeWorkspaceError
+) -> JSONResponse:
+    missing = request.method == "GET" and isinstance(exc.__cause__, FileNotFoundError)
+    code = exc.code
+    if missing:
+        if request.url.path.endswith("/images/content"):
+            code = "image_not_found"
+        elif request.query_params.get("path", "").startswith("/workspace/outputs/"):
+            code = "artifact_not_found"
+        elif request.url.path.endswith("/files/content"):
+            code = "file_not_found"
+        elif request.url.path.endswith(("/workspace/content", "/workspace/preview")):
+            code = "workspace_file_unavailable"
+        else:
+            code = "workspace_not_found"
+    return JSONResponse(
+        status_code=404 if missing else 500,
+        content={
+            "detail": {
+                "code": code,
+                "message": "Workspace not found"
+                if missing
+                else "Workspace unavailable",
+            }
+        },
+    )
 
 
 logger = logging.getLogger(__name__)

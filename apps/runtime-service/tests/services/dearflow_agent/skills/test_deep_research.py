@@ -86,7 +86,8 @@ def test_k01_read_only_and_unavailable_page(build, monkeypatch):
         if state.get("__interrupt__"):
             state = await graph.ainvoke(Command(resume={"decisions": [{"type": "approve"}]}), cfg, context={})
         outputs = {m.tool_call_id: m for m in state["messages"] if isinstance(m, ToolMessage)}
-        assert "research_extract_failed" in str(outputs["missing"].content)
+        assert json.loads(outputs["missing"].content)["code"] == "tool.upstream_unavailable"
+        assert json.loads(outputs["missing"].content)["name"] == "fetch_page"
         assert not getattr(outputs["missing"], "artifact", None)
         assert "denied" in str(outputs["write"].content).lower() or "permission" in str(outputs["write"].content).lower()
         assert "Deep Research Skill" in files(backend.PACKAGE).joinpath("skills/deep-research/SKILL.md").read_text()

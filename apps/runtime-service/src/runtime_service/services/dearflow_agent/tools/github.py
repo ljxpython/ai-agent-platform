@@ -9,6 +9,8 @@ from urllib.parse import quote, urlencode
 from langchain.tools import ToolRuntime
 from langchain_core.tools import ToolException, tool
 
+from runtime_service.tools.errors import tool_error_handler
+
 from .research_http import get_public
 from .search import _evidence
 
@@ -184,5 +186,5 @@ def build_github_tool(workspace):
         }
         return _evidence(workspace, runtime, [record])
 
-    github_query.handle_tool_error = True
+    github_query.handle_tool_error = tool_error_handler(github_query.name)
     return github_query

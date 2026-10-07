@@ -43,6 +43,7 @@ from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.runtime.modeling import fetch_model_connection
 from runtime_service.services.reference_agent.prompts import SYSTEM_PROMPT
 from runtime_service.services.reference_agent.tools import read_reference
+from runtime_service.tools.errors import on_tool_error
 
 _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
@@ -192,14 +193,6 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         and configurable.get("_runtime_model_retry") is True
     )
 
-    def _tool_error(exc: Exception, request) -> str | None:
-        if isinstance(exc, (ConnectionError, ValueError)):
-            return (
-                f"Tool `{request.tool_call['name']}` failed with {type(exc).__name__}; "
-                "fix the input and retry."
-            )
-        return None
-
     def model_builder(next_config):
         next_connection = (
             connection
@@ -220,7 +213,7 @@ async def get_agent(config: RunnableConfig) -> Pregel:
         ),
         ModelCallLimitMiddleware(run_limit=10, exit_behavior="end"),
         ToolCallLimitMiddleware(run_limit=10, exit_behavior="error"),
-        ToolErrorMiddleware(on_error=_tool_error, tools=["read_reference"]),
+        ToolErrorMiddleware(on_error=on_tool_error, tools=["read_reference"]),
         ToolRetryMiddleware(
             max_retries=1,
             tools=["read_reference"],

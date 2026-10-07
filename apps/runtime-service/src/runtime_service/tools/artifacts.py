@@ -2,6 +2,7 @@
 
 from langchain_core.tools import tool
 
+from runtime_service.tools.errors import tool_error_handler
 from runtime_service.workspace.artifact_refs import ArtifactWorkspace
 
 
@@ -11,5 +12,5 @@ def build_artifact_tool(root):
         """Publish a validated document, source file, image or archive from /workspace/work/, generated/ or charts/; return an immutable reference."""
         return ArtifactWorkspace(root).publish(file_path)
 
-    present_artifacts.handle_tool_error = True
+    present_artifacts.handle_tool_error = tool_error_handler(present_artifacts.name)
     return present_artifacts

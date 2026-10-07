@@ -40,6 +40,28 @@ Middleware。Langfuse Callback、Agent Server events 和 Run 记录已经提供�
 本设计借鉴 Open SWE 的恢复、顺序和可靠性经验，但不复制它面向 GitHub、Slack、Sandbox
 和 coding agent 的完整 Middleware 栈。
 
+### 1.1 工具容错实施补充（2026-10-06）
+
+工具错误采用选择性处理：复用官方 `ToolErrorMiddleware(on_error=...)`，由
+`runtime_service.tools.errors` 按可信工具名和精确安全 code 分类。第一方已知输入/业务/上游失败返回有界
+JSON；未知异常、权限/契约错误、`GraphBubbleUp`、取消和 workspace 基础故障继续传播。第一方内容上限为
+2 KiB，工具名上限为 128 字节。`operation_failed/not_started` 仅表示动作尚未提交；媒体、部署等提交后
+不确定结果使用 `outcome_unknown/do_not_repeat` 并保留 task receipt。
+
+DearFlow 与 Showcase 在组合根显式装配该策略，Reference 保留只读有限重试。LangGraph v3 的独立
+`tool-error` 流出口由现有 patch 输出固定 `tool.execution_failed`，不复用 ToolMessage 内的业务 code；
+取消和中断不生成该事件。Platform API 公开的致命 lifecycle/Thread/原生任务 error 统一为
+`runtime.execution_failed`，普通 ToolMessage、MCP 多模态块和成功结果保持原样。GraphHarbor 内部原始
+fatal 记录仍属于底座排障数据，不能把平台公开脱敏等同于底座所有日志已脱敏。
+
+Runtime HTTP 读取未创建的作用域工作区仍返回原 404；可信根不可用返回安全 500，不创建新目录。
+同一基础故障在 Agent 执行中仍传播并停止，HTTP 映射不会改变工具分类。
+可信根创建仅限工作区准备、上传和终端初始化入口显式允许；普通工具写入只创建根内子目录，
+运行期间缺根不会悄悄重建一个空工作区。
+
+证据和命令见[工具容错专项](../../../../docs/projects/20261006-agent-tool-error-resilience/verification.md)。
+此 Draft 仍不替代跨服务 active 标准。
+
 ## 2. 责任边界
 
 ```mermaid

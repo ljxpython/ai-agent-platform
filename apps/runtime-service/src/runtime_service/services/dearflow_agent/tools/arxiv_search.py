@@ -10,6 +10,8 @@ from urllib.parse import urlencode, urlsplit
 from langchain.tools import ToolRuntime
 from langchain_core.tools import ToolException, tool
 
+from runtime_service.tools.errors import tool_error_handler
+
 from .arxiv import NS_MAP, _build_search_query, _parse_entry
 from .research_http import get_public
 from .search import _evidence
@@ -128,5 +130,5 @@ def build_arxiv_tool(workspace):
         result["evidence"] = artifact["sources"][0]
         return json.dumps(result, ensure_ascii=False), artifact
 
-    arxiv_search.handle_tool_error = True
+    arxiv_search.handle_tool_error = tool_error_handler(arxiv_search.name)
     return arxiv_search

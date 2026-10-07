@@ -68,7 +68,7 @@ class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
     def prepare(self):
         io = ImageWorkspace(self.root)
         for folder in ("uploads", "work", "outputs"):
-            os.close(io._directory((folder,), create=True))
+            os.close(io._directory((folder,), create=True, create_root=True))
 
     def _can_write(self, path: str) -> bool:
         # Shell access is restricted by mounts; filesystem tools need their own guard.

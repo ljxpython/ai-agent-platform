@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from asyncio import CancelledError
 from typing import Any
 from uuid import UUID
 
@@ -24,20 +25,33 @@ def _patch_stream_tool_call_handler() -> None:
         if getattr(StreamToolCallHandler, "_bubble_up_patched", False):
             return
 
-        orig_error = StreamToolCallHandler._error
-
         def _patched_error(
             self: StreamToolCallHandler, error: BaseException, *, run_id: UUID
         ) -> None:
             # GraphBubbleUp (including GraphInterrupt) is a control-flow interrupt signal,
             # not a failure of the tool execution. Do not emit a "tool-error" event to clients.
-            if isinstance(error, GraphBubbleUp):
+            if isinstance(error, (GraphBubbleUp, CancelledError)):
                 info = self._run_to_call.pop(run_id, None)
                 if info is not None:
                     _, _, token = info
                     self._reset_writer(token)
                 return
-            return orig_error(self, error, run_id=run_id)
+            info = self._run_to_call.pop(run_id, None)
+            if info is None:
+                return
+            namespace, tool_call_id, token = info
+            self._reset_writer(token)
+            self.stream(
+                (
+                    namespace,
+                    "tools",
+                    {
+                        "event": "tool-error",
+                        "tool_call_id": tool_call_id,
+                        "message": "tool.execution_failed",
+                    },
+                )
+            )
 
         StreamToolCallHandler._error = _patched_error  # type: ignore[method-assign]
         StreamToolCallHandler._bubble_up_patched = True  # type: ignore[attr-defined]

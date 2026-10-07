@@ -17,3 +17,11 @@ class RuntimeResolutionError(RuntimeErrorBase):
 
 class RuntimeAuthError(RuntimeErrorBase):
     """Invalid or unverifiable Runtime Delegation token."""
+
+
+class RuntimeWorkspaceError(RuntimeError):
+    """Must escape filesystem tools' ValueError-to-parameter-error handling."""
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)

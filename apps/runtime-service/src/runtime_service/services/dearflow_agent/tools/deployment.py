@@ -17,6 +17,7 @@ from runtime_service.services.dearflow_agent.external_task_storage import (
     ExternalTaskStorage,
 )
 from runtime_service.services.dearflow_agent.tools.memory import memory_scope
+from runtime_service.tools.errors import tool_error_handler
 from runtime_service.workspace.archives import read_zip
 from runtime_service.workspace.artifact_refs import ArtifactWorkspace
 from runtime_service.workspace.documents import DocumentError
@@ -154,5 +155,5 @@ def build_deployment_tool(workspace):
             "error_code": row["error_code"],
         }
 
-    deploy_preview.handle_tool_error = True
+    deploy_preview.handle_tool_error = tool_error_handler(deploy_preview.name)
     return deploy_preview

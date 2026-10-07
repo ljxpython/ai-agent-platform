@@ -184,7 +184,7 @@ def test_dearflow_local_terminal_uses_shared_backend(manager, monkeypatch, tmp_p
     assert ref["backend"] == "local"
     session = manager.get(owner, ref["terminal_id"])
     session.write(b"printf 'local-dear' > work/result.txt; cat work/result.txt\n", 0)
-    wait_output(session, b"local-dear")
+    wait_output(session, b"\r\nlocal-dear")
     assert (session.root / "work/result.txt").read_text() == "local-dear"
 
 
@@ -196,6 +196,7 @@ def test_dearflow_terminal_mount_policy(manager, monkeypatch, tmp_path):
         ).returncode
     ):
         pytest.skip("Docker daemon unavailable")
+    monkeypatch.setenv("RUNTIME_BACKEND", "docker")
     monkeypatch.setenv("RUNTIME_WORKSPACE_IMAGE", "python:3.13-slim")
     monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path / "dear"))
     owner = (*OWNER[:3], "dearflow_agent", OWNER[4])

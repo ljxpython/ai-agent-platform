@@ -6,7 +6,6 @@ import sys
 import time
 from pathlib import Path
 
-import httpx
 import pytest
 
 from runtime_service.runtime import RuntimePrincipal, RuntimeResolutionError
@@ -15,6 +14,7 @@ from runtime_service.services.dearflow_agent.tools.mcp import load_mcp_tools
 
 
 def test_real_mcp_binding_permissions_disconnect_and_close(monkeypatch):
+    monkeypatch.setenv("NO_PROXY", "127.0.0.1,localhost")
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         port = sock.getsockname()[1]
@@ -40,7 +40,7 @@ def test_real_mcp_binding_permissions_disconnect_and_close(monkeypatch):
                     "test": {
                         "transport": "streamable_http",
                         "url": f"http://127.0.0.1:{port}/mcp",
-                        "allowed_tools": ["mcp_echo", "mcp_write"],
+                        "allowed_tools": ["mcp_echo", "mcp_write", "mcp_error_blocks"],
                         "timeout": 2,
                     }
                 }
@@ -66,6 +66,18 @@ def test_real_mcp_binding_permissions_disconnect_and_close(monkeypatch):
             assert await load_mcp_tools({}, principal, [], []) == []
             tools = await load_mcp_tools(cfg, principal, ["mcp_echo"], [])
             assert "verified" in str(await tools[0].ainvoke({"text": "verified"}))
+            blocks = await load_mcp_tools(cfg, principal, ["mcp_error_blocks"], [])
+            result = await blocks[0].ainvoke(
+                {
+                    "type": "tool_call",
+                    "name": "mcp_error_blocks",
+                    "id": "block-call",
+                    "args": {},
+                }
+            )
+            assert result.status == "error" and result.tool_call_id == "block-call"
+            assert result.content[0]["text"] == "controlled protocol error"
+            assert any(block["type"] == "image" for block in result.content)
             with pytest.raises(RuntimeResolutionError):
                 await load_mcp_tools(cfg, principal, ["mcp_echo"], ["mcp_echo"])
             with pytest.raises(RuntimeResolutionError):
@@ -79,8 +91,17 @@ def test_real_mcp_binding_permissions_disconnect_and_close(monkeypatch):
                 )
             process.terminate()
             process.wait(timeout=10)
-            with pytest.raises((ExceptionGroup, httpx.HTTPError, ConnectionError)):
-                await tools[0].ainvoke({"text": "disconnected"})
+            result = await tools[0].ainvoke(
+                {
+                    "type": "tool_call",
+                    "name": "mcp_echo",
+                    "id": "disconnect-call",
+                    "args": {"text": "disconnected"},
+                }
+            )
+            assert result.status == "error" and result.tool_call_id == "disconnect-call"
+            assert json.loads(result.content)["code"] == "tool.upstream_unavailable"
+            assert str(port) not in result.content and "127.0.0.1" not in result.content
 
         asyncio.run(run())
     finally:
@@ -91,7 +112,7 @@ def test_real_mcp_binding_permissions_disconnect_and_close(monkeypatch):
 
 if __name__ == "__main__":
     from mcp.server.fastmcp import FastMCP
-    from mcp.types import ToolAnnotations
+    from mcp.types import CallToolResult, ImageContent, TextContent, ToolAnnotations
 
     server = FastMCP("dear-p2-read", host="127.0.0.1", port=int(sys.argv[1]))
 
@@ -102,5 +123,15 @@ if __name__ == "__main__":
     @server.tool(annotations=ToolAnnotations(readOnlyHint=False))
     def mcp_write() -> str:
         return "must not execute"
+
+    @server.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    def mcp_error_blocks() -> CallToolResult:
+        return CallToolResult(
+            isError=True,
+            content=[
+                TextContent(type="text", text="controlled protocol error"),
+                ImageContent(type="image", data="aW1hZ2U=", mimeType="image/png"),
+            ],
+        )
 
     server.run(transport="streamable-http")

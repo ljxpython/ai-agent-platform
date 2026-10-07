@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
@@ -11,6 +12,7 @@ from platform_api.adapters.langgraph.runtime_client import LangGraphRuntimeClien
 from platform_api.adapters.langgraph.runtime_gateway_upstream import (
     LangGraphRuntimeGatewayUpstream,
 )
+from platform_api.adapters.langgraph.sdk_client import redact_runtime_private_fields
 from platform_api.adapters.langgraph.threads_sdk_adapter import (
     LangGraphThreadsSdkAdapter,
 )
@@ -34,6 +36,84 @@ async def _stream_events(*events):
 
 
 class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
+    def test_thread_fatal_error_is_safe_and_success_or_tool_content_is_unchanged(self):
+        failed = {
+            "thread_id": "thread",
+            "status": "idle",
+            "error": {"type": "RuntimeError", "message": "EXCEPTION_CANARY"},
+        }
+        self.assertEqual(
+            redact_runtime_private_fields(failed)["error"],
+            {"type": "RuntimeError", "message": "runtime.execution_failed"},
+        )
+        for unchanged in (
+            {"thread_id": "thread", "status": "idle", "error": None},
+            {"type": "tool", "status": "error", "content": "legacy error"},
+            {"error": {"type": "user-data", "message": "unchanged artifact"}},
+            {
+                "type": "tool",
+                "status": "success",
+                "artifact": {
+                    "thread_id": "business-thread",
+                    "status": "idle",
+                    "error": "unchanged business result",
+                },
+                "content": [{"event": "failed", "error": "unchanged block"}],
+                "result": {
+                    "id": "business",
+                    "name": "custom",
+                    "result": {},
+                    "interrupts": [],
+                    "error": "unchanged result",
+                },
+            },
+        ):
+            self.assertEqual(redact_runtime_private_fields(unchanged), unchanged)
+
+    async def test_v3_stream_preserves_error_message_and_namespace(self):
+        message = {
+            "type": "tool",
+            "tool_call_id": "child-call",
+            "name": "search_web",
+            "status": "error",
+            "content": json.dumps(
+                {
+                    "status": "error",
+                    "code": "tool.invalid_input",
+                    "error": "Safe input failure",
+                    "recovery": "correct_input",
+                    "outcome": "not_started",
+                }
+            ),
+        }
+        client = SimpleNamespace(
+            runs=SimpleNamespace(
+                stream=Mock(
+                    return_value=_stream_events(
+                        ("updates|tools:child", {"messages": [message]}, "event-1")
+                    )
+                )
+            )
+        )
+        with patch(
+            "platform_api.adapters.langgraph.runs_sdk_adapter.get_langgraph_client",
+            return_value=client,
+        ):
+            adapter = LangGraphRunsSdkAdapter(base_url="http://runtime")
+            stream = await adapter.stream(
+                "thread-1", {"assistant_id": "agent-1", "version": "v3"}
+            )
+            body = b"".join(await _collect_chunks(stream)).decode()
+        self.assertIn("event: updates|tools:child", body)
+        self.assertIn("id: event-1", body)
+        payload = next(
+            json.loads(line[6:])
+            for line in body.splitlines()
+            if line.startswith("data: ")
+        )
+        self.assertEqual(payload["messages"], [message])
+        client.runs.stream.assert_called_once_with("thread-1", "agent-1", version="v3")
+
     async def test_dear_memory_upstream_error_does_not_echo_fact_text(self):
         marker = "SENSITIVE_MEMORY_BODY"
         adapter = LangGraphRuntimeGatewayUpstream(

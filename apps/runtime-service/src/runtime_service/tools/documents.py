@@ -10,6 +10,7 @@ from typing import Any
 
 from langchain_core.tools import tool
 
+from runtime_service.tools.errors import tool_error_handler
 from runtime_service.workspace.documents import (
     DocumentError,
     DocumentWorkspace,
@@ -180,7 +181,7 @@ def build_document_tools(workspace: Path | None):
             "warnings": warnings,
         }
 
-    parse_document.handle_tool_error = True
+    parse_document.handle_tool_error = tool_error_handler(parse_document.name)
     return [parse_document]
 
 

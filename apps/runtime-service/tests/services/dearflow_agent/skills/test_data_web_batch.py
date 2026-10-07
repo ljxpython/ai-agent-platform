@@ -88,7 +88,9 @@ def test_guidelines_version_and_provider_failure(monkeypatch):
         raise ToolException("research_provider_failed")
     monkeypatch.setattr(web_guidelines, "get_public", failure)
     failed = asyncio.run(web_guidelines.fetch_web_guidelines.ainvoke({"type": "tool_call", "name": "fetch_web_guidelines", "id": "failure", "args": {}}))
-    assert failed.status == "error" and "research_provider_failed" in failed.content
+    assert failed.status == "error"
+    assert json.loads(failed.content)["code"] == "tool.upstream_unavailable"
+    assert json.loads(failed.content)["name"] == "fetch_web_guidelines"
 
 
 def test_all_skills_load_and_chart_requires_approval(build, monkeypatch):
