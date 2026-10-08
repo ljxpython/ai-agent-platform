@@ -63,6 +63,7 @@ PRIVATE_RUNTIME_STATE_KEYS = {
     "runtime_message_claim",
     "dear_memory_source",
     "dear_skill_snapshot",
+    "runtime_prepare",
 }
 
 

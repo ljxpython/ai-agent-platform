@@ -19,6 +19,10 @@ class RuntimeAuthError(RuntimeErrorBase):
     """Invalid or unverifiable Runtime Delegation token."""
 
 
+class RuntimeExecutionError(RuntimeErrorBase):
+    """Confirmed model failure; Worker must not requeue it as infrastructure failure."""
+
+
 class RuntimeWorkspaceError(RuntimeError):
     """Must escape filesystem tools' ValueError-to-parameter-error handling."""
 

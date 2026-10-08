@@ -11,6 +11,8 @@ import {
   truncateIdentifier,
 } from "../../diagnostics/view-model";
 import BaseIcon from "@/components/base/BaseIcon.vue";
+import RunPreparationsSection from "./RunPreparationsSection.vue";
+import RunRetriesSection from "./RunRetriesSection.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -141,6 +143,7 @@ const modelErrorSeverity = computed(() =>
         <!-- 刷新按钮 -->
         <button
           type="button"
+          data-testid="refresh-diagnostics-btn"
           class="inline-flex h-6 w-6 items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-dark-800 dark:hover:text-gray-200 transition-colors"
           :class="{ 'animate-spin text-blue-600': loading || isRefreshing }"
           :disabled="loading || isRefreshing || !runId"
@@ -385,6 +388,19 @@ const modelErrorSeverity = computed(() =>
             </div>
           </div>
         </div>
+
+        <!-- 运行准备记录 (Preparations) -->
+        <RunPreparationsSection
+          v-if="data.preparations && data.preparations.length > 0"
+          :preparations="data.preparations"
+        />
+
+        <!-- 调用尝试与重试 (Retries) -->
+        <RunRetriesSection
+          v-if="data.retries && data.retries.length > 0"
+          :retries="data.retries"
+          :run-status="currentRunStatus"
+        />
 
         <!-- 关联标识卡片 (可复制 ID 矩阵，绝不开通配 Raw JSON) -->
         <div

@@ -11,6 +11,7 @@ from langchain.agents.middleware import (
     ToolRetryMiddleware,
 )
 from langchain.tools import tool
+from langchain_core.exceptions import ModelTimeoutError
 from langchain_core.language_models.fake_chat_models import FakeListChatModel
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 from langgraph.runtime import Runtime
@@ -248,7 +249,7 @@ def test_model_call_timeout_propagates_timeout() -> None:
         await asyncio.sleep(0.1)
         return "never"
 
-    with pytest.raises(TimeoutError):
+    with pytest.raises(ModelTimeoutError):
         asyncio.run(middleware.awrap_model_call(object(), handler))
 
 

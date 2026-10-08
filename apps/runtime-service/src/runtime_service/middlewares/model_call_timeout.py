@@ -7,6 +7,7 @@ import math
 import os
 
 from langchain.agents.middleware import AgentMiddleware, ModelRequest
+from langchain_core.exceptions import ModelTimeoutError
 
 DEFAULT_MODEL_CALL_TIMEOUT_SECONDS = 600.0
 
@@ -40,8 +41,14 @@ class ModelCallTimeoutMiddleware(AgentMiddleware):
         self.timeout_seconds = float(resolved)
 
     async def awrap_model_call(self, request: ModelRequest, handler):
-        async with asyncio.timeout(self.timeout_seconds):
-            return await handler(request)
+        deadline = asyncio.timeout(self.timeout_seconds)
+        try:
+            async with deadline:
+                return await handler(request)
+        except TimeoutError as exc:
+            if deadline.expired():
+                raise ModelTimeoutError("Model call deadline exceeded") from exc
+            raise
 
 
 __all__ = [

@@ -80,6 +80,8 @@ GET `/api/langgraph/threads/{thread_id}/runs/{run_id}/diagnostics` 沿当前项�
 
 200响应使用实际 `RunDiagnostics` v1 DTO/OpenAPI，并带 `Cache-Control: no-store`。`run_status`来自原生Run；模型失败记录只是调用尝试，graph/startup不能证明最终错误分类时 `error_code=null`。`request_id`是本次查询，`correlation.execution_request_id`是原执行。`trace.url`首期固定null，未知字段删除，非法上游DTO安全502。
 
+2026-10-07 用户批准的运行可靠性增量：v1 可选 `preparations`/`retries` 各最多20项，旧响应默认空数组；attempts 严格为1或2，表示单个调用单元总次数。失败尝试不能覆盖原生 run_status，不新增自动重发或 retry endpoint。`runtime_prepare` 加入共享私有状态拒绝/剥离规则，客户端不能伪造；普通 ToolMessage artifact 保真。字段和前端验收见 [交接](../../../../docs/projects/20261007-agent-production-capabilities/frontend-handoff.md)。
+
 远程关闭返回disabled/not_configured，无记录返回unavailable/not_recorded，观测连接/超时返回unavailable/backend_unavailable；均不影响Run。权限拒绝、Runtime delegation拒绝、上游结构错误保持现有Envelope。Runtime查询100 observations、50 trace、2秒总预算，实际契约和交接见 [专项](../../../../docs/projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md)。
 
 ### Dear Agent 治理资源（P6）

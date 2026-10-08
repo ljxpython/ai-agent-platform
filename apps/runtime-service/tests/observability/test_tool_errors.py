@@ -66,7 +66,8 @@ def test_control_flow_does_not_increment_tool_failure_metrics():
     callback.on_chain_start({}, {}, run_id="interrupt")
     callback.on_chain_error(GraphBubbleUp(), run_id="interrupt")
     assert "interrupt" not in callback._starts
-    assert dict(langfuse._metrics) == before
+    expected = {**before, "run_interrupted": before.get("run_interrupted", 0) + 1}
+    assert dict(langfuse._metrics) == expected
 
 
 def test_unstructured_native_error_uses_generic_diagnostic(caplog):

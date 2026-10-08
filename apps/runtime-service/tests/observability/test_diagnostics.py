@@ -419,7 +419,9 @@ def test_real_fallback_retry_and_timeout_log_attempts_separately(monkeypatch, ca
             await asyncio.sleep(1)
             return await super()._agenerate(*args, **kwargs)
 
-    with caplog.at_level("INFO"), pytest.raises(TimeoutError):
+    from langchain_core.exceptions import ModelTimeoutError
+
+    with caplog.at_level("INFO"), pytest.raises(ModelTimeoutError):
         asyncio.run(
             invoke({"_runtime_model": SlowModel(responses=[AIMessage(content="late")])})
         )

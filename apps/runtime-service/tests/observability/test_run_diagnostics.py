@@ -112,6 +112,60 @@ def test_query_disabled_failure_timeout_and_cancellation(monkeypatch):
         asyncio.run(query.query_run_diagnostics(**SCOPE))
 
 
+def test_preparation_and_retry_projection_bounds_duplicates_and_canaries():
+    prepare = observation(
+        "runtime.prepare.completed",
+        scope="primary",
+        namespace=[],
+        component="workspace",
+        outcome="reused",
+        duration_ms=0,
+        fingerprint="CANARY",
+    )
+    retry = observation(
+        "runtime.retry.completed",
+        scope="primary",
+        namespace=[],
+        unit="task",
+        role="research",
+        attempts=2,
+        outcome="exhausted",
+        code="provider_rate_limited",
+        message="CANARY",
+        duration_ms=10,
+    )
+    result = query._project([prepare, retry, retry], SCOPE, truncated=False)
+    assert len(result["retries"]) == 1 and len(result["preparations"]) == 1
+    assert result["preparations"][0]["duration_ms"] == 0
+    assert result["retries"][0]["attempts"] == 2
+    assert "CANARY" not in json.dumps(result)
+    invalid = [
+        observation(
+            "runtime.retry.completed",
+            scope="primary",
+            unit="model",
+            attempts=attempts,
+            outcome="success",
+        )
+        for attempts in (0, 3, True, 1.5)
+    ]
+    assert not query._project(invalid, SCOPE, truncated=False)["retries"]
+    rows = [
+        observation(
+            "runtime.retry.completed",
+            scope="subagent",
+            unit="model",
+            attempts=1,
+            outcome="failed",
+            code="provider_timeout",
+        )
+        for _ in range(25)
+    ]
+    result = query._project(rows, SCOPE, truncated=False)
+    assert len(result["retries"]) == 20 and result["truncated"]
+    assert query.empty_diagnostics("not_configured")["preparations"] == []
+
+
 def test_sdk_metadata_only_queries_and_legacy_fallback(monkeypatch):
     requests = []
     event = observation("runtime.graph.completed", outcome="failed")

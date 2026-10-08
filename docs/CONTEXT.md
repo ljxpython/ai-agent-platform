@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-07（Agent 工具调用容错全链路闭环，前端结构化摘要与微胶囊 Tag 徽章实装，全栈三服务浏览器联合验收通过，全专项 done）。
+> **最后更新：** 2026-10-08（Agent 运行准备幂等与有界重试全链路完成，前端实施/门禁及 Playwright + Chromium 自动化 E2E 闭环验证全部通过，保留 12 项真实浏览器高保真截图证据，整专项 done，未部署现役）。
 
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
@@ -8,9 +8,11 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-07
+**最后更新：** 2026-10-08
 
 ## 最近改动
+
+2026-10-08 | **Agent 运行准备幂等与有界重试**：全链路闭环完成。公共 prepare latch、目录修复/篡改拒绝、按 graph 的模型/只读 task 有界重试、部分流保护、provider 终止与 Worker 基础设施恢复分离已实现；v1 diagnostics 新增安全 preparations/retries。Platform Web 完成拆分 RunPreparationsSection 与 RunRetriesSection 专职展示子组件，严格 attempts/role 正则防注入与琥珀色降级；49 项定向单测、vue-tsc 0 错误、eslint 0 错误、生产打包全绿；Playwright + Chromium 全链路三服务真实模型问答、轨迹排障及 F01-F10 专项浏览器视觉与安全验收全部通过，全流程截图留存。专项 done，未部署现役。见 [专项](projects/20261007-agent-production-capabilities/README.md)。
 
 2026-10-07 | **Agent 工具调用容错与生产接线全链路完成**：Runtime/Platform API 完成选择性错误分类、DearFlow/Showcase/Reference 主子图接线、MCP/workspace 边界、v3 tools 流安全出口和公开 fatal 脱敏；Platform Web 完成纯函数错误摘要提取、微胶囊 Tag 徽章与展开态格式化代码块排版；核心单测全绿（31 passed），静态类型与构建通过；三服务全栈浏览器联合验收 F01-F08 全部通过，全专项闭环 done。见 [专项](projects/20261006-agent-tool-error-resilience/README.md)。
 
@@ -35,6 +37,8 @@
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
+
+- [Agent 运行准备幂等与有界重试](projects/20261007-agent-production-capabilities/README.md)：非前端 T01-T09/T11/T12 done，本机恢复/回退/Final 证据与前端报告齐全。前端 T10/浏览器联合 Final 交同事，整专项 partial；未部署或提交，自主唤醒后置。
 
 - [Agent 工具调用容错与生产接线补齐](projects/20261006-agent-tool-error-resilience/README.md)：done；全链路闭环，Runtime/API 共享选择性分类、主子图接线、安全消息与执行中缺根保护完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化排版实装；核心单测全绿，浏览器联合验收 F01-F08 全部通过。未生产部署。
 
@@ -83,9 +87,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-07 | 工具容错与生产接线完成，安全/工作区/未知异常传播；新增有界模型错误诊断、本地常驻回调、四graph启动阶段计时与只读查询；Langfuse 429 安全降级；未部署现役。 |
-| platform-api | 2026-10-07 | 工具消息保真与公开 fatal 安全出口；新增 Run diagnostics GET、diagnostics-read 权限核验与错误槽位脱敏投影；分层回归通过；未部署现役。 |
-| platform-web | 2026-10-07 | 工具错误纯函数摘要与展开态代码排版实装；运行诊断独立解耦面板 RunDiagnostics、模式切换与多轮 Run 自动拉取实装；535 项单测、vue-tsc 与生产打包全绿。未部署现役。 |
+| runtime-service | 2026-10-07 | DearFlow/Showcase 装配公共 workspace prepare、有界模型/只读 task 重试与部分流保护，provider 耗尽不触发 Worker 重排；准备/重试安全摘要实现。本机 PG/Redis 的崩溃恢复、故障、取消、deadline、回退及非前端 Final 通过，未部署现役。 |
+| platform-api | 2026-10-07 | runtime_prepare 私有字段防注入/公开剥离；diagnostics v1 增 optional preparations/retries，strict bounds/no-store/权限及旧响应兼容；ToolMessage artifact 保真。真实本地链路与非前端 Final 通过，交接报告已冻结，未部署现役。 |
+| platform-web | 2026-10-08 | 运行准备与重试摘要前端实装与全链路 E2E 验收完成；拆分 RunPreparationsSection 与 RunRetriesSection 专职展示子组件，严格 attempts/role 正则防注入与琥珀色降级；49 项定向单测、vue-tsc 0 错误、eslint 0 错误、生产打包全绿；Playwright + Chromium 自动化端到端全链路验收 100% 通过。未部署现役。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-04 | AGENTS.md 与 Skill 重复内容已去除（场景步骤 + 验证标准章节移入 Skill），CONTEXT.md 改为渐进式快照结构；整单结束前须逐项核对未完成任务，Task 未完成时只记 Phase |
 
 ## 近期关键决策

@@ -60,6 +60,8 @@ describe("RunDiagnostics.vue", () => {
         },
       ],
     },
+    preparations: [],
+    retries: [],
     truncated: false,
   };
 
@@ -143,5 +145,76 @@ describe("RunDiagnostics.vue", () => {
     await select.setValue("run-789");
 
     expect(wrapper.emitted("select-run")?.[0]).toEqual(["run-789"]);
+  });
+
+  it("当 preparations 和 retries 为空时隐藏两子区域，不显示任何空态占位", () => {
+    mockData.value = {
+      ...baseDiagnostic,
+      preparations: [],
+      retries: [],
+    };
+
+    const wrapper = mount(RunDiagnostics, {
+      props: {
+        threadId: "thread-123",
+        runId: "run-456",
+      },
+    });
+
+    expect(
+      wrapper.find('[data-testid="run-preparations-section"]').exists(),
+    ).toBe(false);
+    expect(wrapper.find('[data-testid="run-retries-section"]').exists()).toBe(
+      false,
+    );
+    expect(wrapper.text()).not.toContain("运行准备记录");
+    expect(wrapper.text()).not.toContain("调用尝试与重试");
+  });
+
+  it("当 preparations 和 retries 包含数据时正确挂载并渲染对应子组件", () => {
+    mockData.value = {
+      ...baseDiagnostic,
+      preparations: [
+        {
+          observation_id: "prep-1",
+          scope: "primary",
+          namespace: [],
+          component: "workspace",
+          outcome: "prepared",
+          duration_ms: 10,
+          error_code: null,
+        },
+      ],
+      retries: [
+        {
+          observation_id: "retry-1",
+          scope: "primary",
+          namespace: [],
+          unit: "model",
+          role: null,
+          attempts: 2,
+          outcome: "success",
+          code: "provider_rate_limited",
+          duration_ms: 800,
+        },
+      ],
+    };
+
+    const wrapper = mount(RunDiagnostics, {
+      props: {
+        threadId: "thread-123",
+        runId: "run-456",
+      },
+    });
+
+    expect(
+      wrapper.find('[data-testid="run-preparations-section"]').exists(),
+    ).toBe(true);
+    expect(wrapper.find('[data-testid="run-retries-section"]').exists()).toBe(
+      true,
+    );
+    expect(wrapper.text()).toContain("运行准备记录");
+    expect(wrapper.text()).toContain("调用尝试与重试");
+    expect(wrapper.text()).toContain("重试 1 次");
   });
 });

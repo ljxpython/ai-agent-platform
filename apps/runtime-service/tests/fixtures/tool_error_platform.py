@@ -6,7 +6,7 @@ import os
 import sys
 from pathlib import Path
 
-if __name__ != "__main__" or sys.argv[1] != "platform":
+if sys.argv[1:2] != ["platform"]:
     from runtime_service.auth.platform import auth  # noqa: F401 - fixture config symbol
 
 
@@ -182,7 +182,7 @@ def platform_app(spec):
                             id=model,
                             display_name="fixture",
                             provider="openai",
-                            base_url="https://unused.invalid",
+                            base_url=spec.get("provider_url", "https://unused.invalid"),
                             protocol="openai",
                             model_name="fixture",
                             api_key_ciphertext=encrypt_api_key(

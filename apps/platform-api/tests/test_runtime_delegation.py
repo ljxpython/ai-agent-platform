@@ -755,6 +755,7 @@ class ProtocolV2RuntimeNormalizationTest(unittest.TestCase):
             "dear_memory_source",
             "runtime_message_claim",
             "dear_skill_snapshot",
+            "runtime_prepare",
         ):
             with self.subTest(key=key), self.assertRaises(ValueError):
                 normalize_runtime_payload(

@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Agent 运行准备与有界重试诊断摘要展示 | 已完成：实装运行准备（RunPreparationsSection）与受管重试（RunRetriesSection）独立子组件，支持 strict attempts/role 正则校验、主 Run 成功时琥珀色 Amber 警示降级、空态完全隐藏、敏感字段剥离，49 项单测与 Playwright 全链路 E2E 验证全绿 | [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | Agent 运行诊断面板（Run Diagnostics） | 已完成：实装独立解耦面板 RunDiagnostics、Zod 白名单契约、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与模式切换、ChatSession 历史 Run 自动拉取与无缝切换，全仓 115 套件 535 项单测全绿，浏览器联合验收通过 | [前端交接](projects/20261006-agent-observability-hardening/frontend-handoff.md) |
 | 定时 Agent 任务页面 | 已完成：实装现代化卡片网格列表、双栏创建/编辑抽屉、DeerFlow 预设体系、历史记录抽屉与权限守卫，481 套单测、类型检查与生产打包全绿 | [前端交接](projects/20261005-scheduled-agent-tasks/frontend-handoff.md) |
 | 工具卡片错误结构化摘要提取与微胶囊 Tag 徽章展示 | 已完成：纯函数 parseToolErrorSummary 抽取，统一支持第一方 JSON、MCP 文本块数组与纯文本截断，微胶囊 Tag 徽章（recoveryHint）与展开态格式化排版实装，根治 tool.error 为空时不显红条 bug，31 项单测、类型检查与打包全绿 | [实现记录](projects/20261006-agent-tool-error-resilience/implementation/04-frontend-error-presentation.md) |
@@ -83,6 +84,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 通用运行准备幂等与有界重试 | 已完成：全链路闭环，两 Agent workspace latch、资源安全修复、单一重试负责人/最多 2 次尝试、部分流保护及安全诊断；Platform Web 准备与重试专用子组件、主 Run 成功琥珀色降级；单测、本机故障恢复及 Playwright 全链路 E2E 验证通过，自主唤醒后置，未部署现役 | [方案与任务](projects/20261007-agent-production-capabilities/README.md) · [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | Agent 工具调用容错与生产接线 | 已完成：全链路闭环，Runtime/API 选择性错误分类、主子图接线、安全消息与流出口脱敏完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化代码排版实装，31 项单测全绿，三服务全栈浏览器联合验收 F01-F08 全部通过，未生产部署 | [方案与任务](projects/20261006-agent-tool-error-resilience/README.md) · [前端交接](projects/20261006-agent-tool-error-resilience/frontend-handoff.md) |
 | 定时 Run 执行前聚合授权与无人值守策略 | 后端 done：身份/凭据/项目/Agent/模型/Thread 失效拒绝，审批转失败，原生预览与历史；GraphHarbor post41 已锁定安装，未重启现役栈 | [验证](projects/20261005-scheduled-agent-tasks/verification.md) |
 | 工作区 HTML 预览 CSP 策略升级与白名单扩充 | 已完成：放行公认安全 CDN（Tailwind CDN / Google Fonts / cdnjs / unpkg / jsdelivr / SVG），严格限制 connect-src https: 阻断内网探测，43 项单测全绿 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |

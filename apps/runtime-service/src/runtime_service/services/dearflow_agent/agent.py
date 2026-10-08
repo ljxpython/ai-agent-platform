@@ -8,6 +8,7 @@ import os
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
+from functools import partial
 
 from deepagents import create_deep_agent
 from deepagents.middleware import FilesystemMiddleware, FilesystemPermission
@@ -27,6 +28,10 @@ from runtime_service.middlewares import (
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
     RuntimeConfigMiddleware,
+)
+from runtime_service.middlewares.retry import (
+    DelegatedTaskRetryMiddleware,
+    RuntimeModelRetryMiddleware,
 )
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.observability.startup import StartupDiagnostics
@@ -218,8 +223,13 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 project_id=facts.principal.project_id,
             )
         with startup.phase("factory.model_build"):
-            model = build_model(resolved, connection=connection)
+            model = build_model(resolved, connection=connection, max_retries=0)
             model, reasoning = apply_reasoning(model, mode)
+            auxiliary_model = (
+                apply_reasoning(build_model(resolved, connection=connection), mode)[0]
+                if governance
+                else model
+            )
         with startup.phase("factory.workspace"):
             workspace = DearWorkspaceBackend(
                 facts.principal.tenant_id, facts.principal.project_id, thread_id
@@ -227,6 +237,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     else:
         # Schema-only client: no request is sent, and WorkspaceMiddleware rejects invocation.
         model = ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
+        auxiliary_model = model
 
     backend = build_backend(workspace)
     document_middleware = DocumentToolsMiddleware(
@@ -291,12 +302,13 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         return (
             model
             if next_config == resolved
-            else apply_reasoning(build_model(next_config, connection=connection), mode)[
-                0
-            ]
+            else apply_reasoning(
+                build_model(next_config, connection=connection, max_retries=0), mode
+            )[0]
         )
 
     def middleware(tool_names: Sequence[str], *, child=False):
+        metadata = {**startup.metadata, "scope": "subagent" if child else "primary"}
         default_run_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_RUN", 100)
         default_thread_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_THREAD", 1000)
         default_run_model = _get_env_limit("AGENT_MODEL_CALL_LIMIT_PER_RUN", 50)
@@ -330,7 +342,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 model_builder=model_builder,
                 tool_names=tool_names,
             ),
-            WorkspaceMiddleware(workspace),
+            WorkspaceMiddleware(
+                workspace,
+                resolved.config_hash if resolved else None,
+                metadata=metadata,
+            ),
             ModelCallLimitMiddleware(
                 run_limit=run_model,
                 thread_limit=thread_model,
@@ -342,11 +358,19 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 exit_behavior="error",
             ),
             # Bound the whole reasoning response, not just the time to its first token.
+            RuntimeModelRetryMiddleware(metadata, delegated=child),
             ModelErrorMiddleware(
                 startup.metadata, scope="subagent" if child else "primary"
             ),
             ModelCallTimeoutMiddleware(),
-            ToolErrorMiddleware(on_error=on_tool_error),
+            ToolErrorMiddleware(
+                on_error=partial(on_tool_error, readonly_roles={"general-purpose"})
+            ),
+            *(
+                []
+                if child
+                else [DelegatedTaskRetryMiddleware({"general-purpose"}, metadata)]
+            ),
         ]
 
     with startup.phase("factory.agent_compile"):
@@ -367,7 +391,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 *media_tools,
                 *mcp_tools,
                 *(build_memory_tools() if memory_enabled else []),
-                *build_skill_tools(workspace, model),
+                *build_skill_tools(workspace, auxiliary_model),
                 build_deployment_tool(workspace),
             ],
             backend=backend,
@@ -416,7 +440,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 MessageQueueMiddleware(),
                 ClarificationBatchGuard(),
                 document_middleware,
-                *([MemoryContextMiddleware(model)] if memory_enabled else []),
+                *([MemoryContextMiddleware(auxiliary_model)] if memory_enabled else []),
             ],
             context_schema=RuntimeContext,
             name="dearflow_agent",

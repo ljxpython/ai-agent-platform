@@ -7,6 +7,15 @@ from asyncio import CancelledError
 from collections.abc import Mapping
 from typing import Any
 
+from langchain_core.exceptions import (
+    ContextOverflowError,
+    ModelAuthenticationError,
+    ModelConnectionError,
+    ModelNotFoundError,
+    ModelPermissionDeniedError,
+    ModelRateLimitError,
+    ModelTimeoutError,
+)
 from langgraph.errors import GraphBubbleUp
 
 MODEL_ERROR_CODES = frozenset(
@@ -85,6 +94,18 @@ def classify_exception(exc: BaseException) -> str | None:
         return None
     chain = _chain(exc)
     for item in chain:
+        for error_class, code in (
+            (ModelRateLimitError, "provider_rate_limited"),
+            (ModelTimeoutError, "provider_timeout"),
+            (ModelConnectionError, "provider_unavailable"),
+            (ContextOverflowError, "context_too_long"),
+            (ModelAuthenticationError, "provider_auth_failed"),
+            (ModelPermissionDeniedError, "provider_access_denied"),
+            (ModelNotFoundError, "model_unavailable"),
+        ):
+            if isinstance(item, error_class):
+                return code
+    for item in chain:
         for code in _provider_codes(item):
             if code in _CODES:
                 return _CODES[code]
@@ -148,7 +169,7 @@ def execution_outcome(exc: BaseException | None) -> str:
         return "cancelled"
     if isinstance(exc, GraphBubbleUp):
         return "interrupted"
-    return "timeout" if isinstance(exc, TimeoutError) else "failed"
+    return "timeout" if isinstance(exc, (TimeoutError, ModelTimeoutError)) else "failed"
 
 
 __all__ = [

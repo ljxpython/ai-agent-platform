@@ -159,6 +159,7 @@ def redact_runtime_private_fields(value: Any, *, _resource: bool = True) -> Any:
             key: redact_runtime_private_fields(
                 item,
                 _resource=_resource
+                and result.get("type") != "tool"
                 and key
                 not in {
                     "values",
@@ -180,6 +181,7 @@ def redact_runtime_private_fields(value: Any, *, _resource: bool = True) -> Any:
                     "authorization_ref",
                     "dear_skill_snapshot",
                     "dear_memory_source",
+                    "runtime_prepare",
                 }
             )
         }

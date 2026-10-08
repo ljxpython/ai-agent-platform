@@ -39,6 +39,10 @@ _FIELDS = frozenset(
         "started_at",
         "ended_at",
         "factory_id",
+        "component",
+        "unit",
+        "role",
+        "attempts",
     }
 )
 
