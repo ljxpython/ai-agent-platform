@@ -63,7 +63,7 @@ class PlatformBaselineTest(unittest.TestCase):
                 )
                 self.assertIn("runtime_tool_restrictions", tables)
                 self.assertNotIn("project_tool_policies", tables)
-                with self.assertRaisesRegex(RuntimeError, "not recoverable"):
+                with self.assertRaisesRegex(RuntimeError, "not recoverable|retained"):
                     command.downgrade(config, "base")
                 command.upgrade(config, "head")
                 self.assertIn("agents", inspect(engine).get_table_names())

@@ -330,6 +330,22 @@ export type ServiceAccountProjectGrant = {
   created_at: string | null;
   updated_at: string | null;
 };
+export type RuntimeModelPricingInput = {
+  currency: "USD";
+  basis: "per_million_tokens";
+  input?: string | null;
+  output?: string | null;
+  cache_read?: string | null;
+  cache_write?: string | null;
+  cache_write_5m?: string | null;
+  cache_write_1h?: string | null;
+};
+
+export type RuntimeModelPricingSnapshot = RuntimeModelPricingInput & {
+  version: string;
+  source: "configured_catalog";
+  updated_at: string;
+};
 
 export type RuntimeModelItem = {
   id: string;
@@ -340,9 +356,10 @@ export type RuntimeModelItem = {
   model: string;
   enabled: boolean;
   credential_configured: boolean;
+  context_window_tokens?: number | null;
+  pricing?: RuntimeModelPricingSnapshot | null;
   scope_type?: "platform" | "project";
   project_id?: string | null;
-  context_window_tokens?: number | null;
 };
 
 export type RuntimeModelsResponse = {

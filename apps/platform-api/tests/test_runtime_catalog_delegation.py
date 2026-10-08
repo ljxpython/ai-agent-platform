@@ -381,6 +381,7 @@ class RuntimeCatalogDelegationTest(unittest.IsolatedAsyncioTestCase):
                 protocol="openai",
                 model_name="gpt-test",
                 api_key_ciphertext="ciphertext",
+                pricing=None,
                 enabled=True,
             )
         )

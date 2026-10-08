@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import json
 import time
+from typing import Any
 
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import sessionmaker
@@ -152,7 +153,7 @@ def get_runtime_catalog_service(request: Request) -> RuntimeCatalogService:
 def get_internal_runtime_model_config(
     request: Request,
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
-) -> dict:
+) -> dict[str, Any]:
     """Serve a model connection only to Runtime using a short-lived opaque reference."""
     reference = request.headers.get("x-runtime-model-ref", "").strip()
     project_id = request.headers.get("x-project-id", "").strip()
@@ -397,7 +398,13 @@ def create_runtime_model(
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
 ) -> RuntimeModelCatalogItem:
     project_id = _optional_project_id(request)
-    return service.create_model(actor=actor, project_id=project_id, payload=payload)
+    item = service.create_model(actor=actor, project_id=project_id, payload=payload)
+    request.state.audit_metadata = {
+        "model_id": item.id,
+        "pricing_version": str(item.pricing.version) if item.pricing else None,
+        "changed_fields": sorted(payload.model_fields_set - {"api_key"}),
+    }
+    return item
 
 
 @router.patch("/models/{model_id}", response_model=RuntimeModelCatalogItem)
@@ -409,12 +416,18 @@ def update_runtime_model(
     service: RuntimeCatalogService = Depends(get_runtime_catalog_service),
 ) -> RuntimeModelCatalogItem:
     project_id = _optional_project_id(request)
-    return service.update_model(
+    item = service.update_model(
         actor=actor,
         project_id=project_id,
         model_id=model_id,
         payload=payload,
     )
+    request.state.audit_metadata = {
+        "model_id": item.id,
+        "pricing_version": str(item.pricing.version) if item.pricing else None,
+        "changed_fields": sorted(payload.model_fields_set - {"api_key"}),
+    }
+    return item
 
 
 @router.delete("/models/{model_id}", status_code=204)

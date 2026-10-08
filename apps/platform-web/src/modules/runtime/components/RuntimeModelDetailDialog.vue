@@ -273,6 +273,54 @@ function formatContextWindowLabel(tokens: number): string {
         <div
           class="rounded-lg border border-gray-100 bg-white p-3 shadow-sm dark:border-dark-800 dark:bg-dark-900"
         >
+          <div class="text-gray-500 dark:text-dark-400">用量费率配置</div>
+          <div class="mt-1 flex items-center gap-1.5 font-medium">
+            <span
+              class="h-2 w-2 rounded-full"
+              :class="model.pricing ? 'bg-emerald-500' : 'bg-gray-400'"
+            />
+            <span
+              :class="
+                model.pricing
+                  ? 'text-emerald-700 dark:text-emerald-400'
+                  : 'text-gray-500 dark:text-dark-400'
+              "
+            >
+              {{
+                model.pricing
+                  ? `已配置 (版本 ${model.pricing.version.slice(0, 8)})`
+                  : "未配置费率"
+              }}
+            </span>
+          </div>
+          <div
+            v-if="model.pricing"
+            class="mt-1.5 text-[11px] font-mono text-gray-500 dark:text-dark-400 flex flex-wrap gap-x-2.5 gap-y-1"
+          >
+            <span v-if="model.pricing.input"
+              >In: ${{ model.pricing.input }}</span
+            >
+            <span v-if="model.pricing.output"
+              >Out: ${{ model.pricing.output }}</span
+            >
+            <span v-if="model.pricing.cache_read"
+              >CacheRead: ${{ model.pricing.cache_read }}</span
+            >
+            <span v-if="model.pricing.cache_write"
+              >CacheWrite: ${{ model.pricing.cache_write }}</span
+            >
+            <span v-if="model.pricing.cache_write_5m"
+              >Write5m: ${{ model.pricing.cache_write_5m }}</span
+            >
+            <span v-if="model.pricing.cache_write_1h"
+              >Write1h: ${{ model.pricing.cache_write_1h }}</span
+            >
+          </div>
+        </div>
+
+        <div
+          class="rounded-lg border border-gray-100 bg-white p-3 shadow-sm dark:border-dark-800 dark:bg-dark-900"
+        >
           <div
             class="flex items-center justify-between text-gray-500 dark:text-dark-400"
           >

@@ -40,6 +40,7 @@ from runtime_service.runtime import (
     build_fallback_model,
     build_model,
     fetch_model_bundle,
+    fetch_model_connection,
     parse_runtime_context,
     reject_untrusted_configurable,
     resolve_runtime_config,
@@ -104,7 +105,7 @@ def _runtime_fallback_model(config: RunnableConfig) -> BaseChatModel | None:
 
 def _build_runtime_model(
     config: object,
-    connection: Mapping[str, str] | None,
+    connection: Mapping[str, Any] | None,
     *,
     max_retries: int | None = None,
 ) -> BaseChatModel:
@@ -145,6 +146,22 @@ async def _runtime_model_bundle(
         model_id=model_id,
         project_id=project_id,
         allowed_model_ids=allowed_model_ids,
+    )
+
+
+async def _runtime_model_connection(
+    config: RunnableConfig,
+    *,
+    model_id: str,
+    project_id: str,
+) -> dict[str, Any] | None:
+    configurable = config.get("configurable") or {}
+    if not isinstance(configurable, Mapping):
+        return None
+    return await fetch_model_connection(
+        configurable.get("runtime_model_ref"),
+        model_id=model_id,
+        project_id=project_id,
     )
 
 

@@ -31,6 +31,7 @@ def _to_runtime_model(record: RuntimeCatalogModelRecord) -> StoredRuntimeModel:
         context_window_tokens=record.context_window_tokens,
         scope_type=record.scope_type or "platform",
         project_id=record.project_id,
+        pricing=record.pricing_json,
     )
 
 
@@ -103,6 +104,7 @@ class SqlAlchemyRuntimeCatalogRepository:
             context_window_tokens=values.get("context_window_tokens"),
             scope_type=values.get("scope_type", "platform"),
             project_id=values.get("project_id"),
+            pricing_json=values.get("pricing_json"),
         )
         self.session.add(record)
         self.session.flush()

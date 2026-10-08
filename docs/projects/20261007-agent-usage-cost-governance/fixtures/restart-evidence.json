@@ -1,0 +1,30 @@
+{
+  "complete": true,
+  "databases": [
+    "agent_usage_runtime_1ec497e819bc",
+    "agent_usage_platform_1ec497e819bc"
+  ],
+  "postgres_restart_history": "passed",
+  "collection_disabled_history": "passed",
+  "tokens": {
+    "input_tokens": 2000,
+    "output_tokens": 200,
+    "total_tokens": 2200,
+    "cache_read_tokens": 400,
+    "cache_creation_tokens": 0,
+    "cache_creation_5m_tokens": 0,
+    "cache_creation_1h_tokens": 0,
+    "reasoning_tokens": 60
+  },
+  "cost": {
+    "status": "estimated",
+    "estimated_cost_usd": "0.004880000000",
+    "known_cost_usd": "0.004880000000",
+    "currency": "USD",
+    "source": "configured_catalog",
+    "unpriced_call_count": 0,
+    "pricing_versions": [
+      "b23197dc-7274-42c9-8928-6210671fa3fd"
+    ]
+  }
+}

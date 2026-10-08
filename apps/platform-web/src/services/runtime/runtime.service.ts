@@ -1,6 +1,7 @@
 import { platformHttpClient } from "@/services/http/client";
 import type {
   RuntimeModelItem,
+  RuntimeModelPricingInput,
   RuntimeModelsResponse,
   RuntimeToolsResponse,
 } from "@/types/management";
@@ -13,9 +14,10 @@ export type RuntimeModelInput = {
   model: string;
   api_key?: string;
   enabled?: boolean;
+  context_window_tokens?: number | null;
+  pricing?: RuntimeModelPricingInput | null;
   scope_type?: "platform" | "project";
   project_id?: string | null;
-  context_window_tokens?: number | null;
 };
 
 function buildRuntimeHeaders(projectId?: string) {

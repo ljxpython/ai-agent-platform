@@ -1,0 +1,18 @@
+{
+  "complete": true,
+  "baseline_revision": "bf47991b7592b19cbda1051c6a674623450318ae",
+  "cases": {
+    "migrated_db_old_apps_start": "passed",
+    "normal_chat_sse": "passed",
+    "hitl_resume_sse": "passed",
+    "usage_routes_removed": "passed",
+    "ledger_retained": "passed"
+  },
+  "ledger_calls_before": 23,
+  "ledger_calls_after": 23,
+  "databases": [
+    "agent_usage_runtime_1ec497e819bc",
+    "agent_usage_platform_1ec497e819bc"
+  ],
+  "migration_or_downgrade_executed": false
+}

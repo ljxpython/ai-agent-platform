@@ -130,7 +130,7 @@ def build_model(
     config: ResolvedRuntimeConfig,
     *,
     env: Mapping[str, str] | None = None,
-    connection: Mapping[str, object] | None = None,
+    connection: Mapping[str, Any] | None = None,
     max_retries: int | None = None,
 ) -> BaseChatModel:
     """Build a model from a resolved ID; never accepts raw request config."""
@@ -154,6 +154,17 @@ def build_model(
         protocol = str(connection.get("protocol", "")).strip().lower()
 
     kwargs = _generation_kwargs(config, max_retries=max_retries)
+    from runtime_service.observability.usage import safe_pricing
+
+    kwargs["metadata"] = {
+        "runtime_usage_model": {
+            "model_id": connection.get("model_id") if connection else None,
+            "provider": provider,
+            "protocol": protocol,
+            "model_name": model_name,
+            "pricing": safe_pricing(connection.get("pricing")) if connection else None,
+        }
+    }
 
     try:
         conn_api_key = connection.get("api_key") if connection is not None else None
@@ -332,10 +343,16 @@ def _parse_connection(payload: object, *, model_id: str) -> Mapping[str, Any]:
         raise RuntimeResolutionError(
             "runtime.model.initialization_failed", "context_window_tokens"
         )
-    return {key: payload[key] for key in required} | {
+    from runtime_service.observability.usage import safe_pricing
+
+    connection = {key: payload[key] for key in required} | {
         "model_id": model_id,
         "context_window_tokens": context_window_tokens,
     }
+    pricing = safe_pricing(payload.get("pricing"))
+    if pricing is not None:
+        connection["pricing"] = pricing
+    return connection
 
 
 async def fetch_model_connection(

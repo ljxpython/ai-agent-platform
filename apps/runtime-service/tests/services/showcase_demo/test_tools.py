@@ -75,7 +75,10 @@ def test_documentation_fetch_is_bounded_and_reports_failures(monkeypatch, kind):
     assert len(result) < tools._MAX_BYTES + 100
 
 
-def test_model_reference_is_validated_without_leaking_credentials(monkeypatch):
+@pytest.mark.parametrize("explicit_null_pricing", [False, True])
+def test_model_reference_is_validated_without_leaking_credentials(
+    monkeypatch, explicit_null_pricing
+):
     monkeypatch.setenv(
         "PLATFORM_RUNTIME_MODEL_CONFIG_URL", "https://platform.invalid/model"
     )
@@ -88,6 +91,8 @@ def test_model_reference_is_validated_without_leaking_credentials(monkeypatch):
         "api_key": "test-only-secret",
         "context_window_tokens": 128000,
     }
+    if explicit_null_pricing:
+        payload["pricing"] = None
 
     def handler(request):
         assert request.headers["x-runtime-model-ref"] == "opaque-ref"
@@ -103,7 +108,7 @@ def test_model_reference_is_validated_without_leaking_credentials(monkeypatch):
     result = asyncio.run(
         fetch_model_connection("opaque-ref", model_id="model-a", project_id="project")
     )
-    assert result == payload
+    assert result == {key: value for key, value in payload.items() if key != "pricing"}
     with pytest.raises(RuntimeResolutionError) as error:
         asyncio.run(
             fetch_model_connection(

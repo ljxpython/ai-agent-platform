@@ -3,7 +3,7 @@ status: draft
 last_verified: 2026-10-07
 confidence: medium
 source_project: docs/projects/20260926-delegation-jwt-contract/verification.md
-note: 当前operation枚举为27项，diagnostics-read契约及隔离真实权限撤销链路已验；cron隔离链路独立覆盖；消息内部Run回查仍待message-run-read-delegation部署后补验
+note: 当前operation枚举为28项，diagnostics-read和usage-read的Thread绑定/原生拒绝及隔离当前ACL链路已验；cron独立覆盖；消息内部Run回查仍待原专项部署后补验
 ---
 
 # Delegation JWT Schema（draft）
@@ -11,6 +11,7 @@ note: 当前operation枚举为27项，diagnostics-read契约及隔离真实权�
 > **适用服务：** platform-api（签发方）、runtime-service（校验方）
 > **验证证据：** 历史 API 299 passed、Runtime 只读鉴权 46 passed；本次 diagnostics-read 跨环境契约 5 passed / 50 subtests。Contract 测试中的 `OPERATIONS` 覆盖 25 个通用/自定义 operation（含 `suggestions-generate`、`diagnostics-read`），`cron-read`/`cron-write` 由独立隔离测试覆盖。证据见 [可观测性专项](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md)。
 > **未完成：** 消息内部原生 Run 回查源码和本机测试已修复，现役链路尚未验证，见 message-run-read-delegation 专项。标准整体仍为 draft。
+> **本次补充：** `usage-read` 已按 2026-10-07 用户批准落地；通用/自定义 contract 名称集合增至 26 项，另含 cron 两项共 28 项。价格/用量/路由定向 32 passed、305 subtests；真实隔离 HTTP/Worker 链路 15 项通过，见 [用量专项](../projects/20261007-agent-usage-cost-governance/05-verification-rollout.md)。不以本专项替全局 draft 遗留项毕业。
 
 ## JWT Header
 
@@ -52,7 +53,7 @@ note: 当前operation枚举为27项，diagnostics-read契约及隔离真实权�
     "project_id": "<必须与顶层一致>",
     "assistant_id": "<string 或 null>",
     "thread_id": "<string 或 null>",
-    "operation": "<27 项枚举之一>"
+    "operation": "<28 项枚举之一>"
   },
 
   "context_hash": "sha256:<64位十六进制>",
@@ -76,7 +77,7 @@ note: 当前operation枚举为27项，diagnostics-read契约及隔离真实权�
 | scope 额外键 | 只允许五个键，未知键拒绝 |
 | 未知顶层 claim | Runtime 严格拒绝 |
 
-## scope.operation 枚举（27 项）
+## scope.operation 枚举（28 项）
 
 ```
 read                    thread-create           thread-reconcile
@@ -88,12 +89,13 @@ terminal-read           terminal-write          dear-skills-read
 dear-skills-write       dear-memory-read        dear-memory-write
 dear-governance-read    dear-governance-write   cron-read
 cron-write              suggestions-generate    diagnostics-read
+usage-read
 ```
 
 **原生资源白名单（仅 10 项可访问原生资源）：**
 `read` / `thread-create` / `thread-reconcile` / `thread-edit` / `thread-delete` / `run-create` / `run-cancel` / `run-delete` / `cron-read` / `cron-write`
 
-其余 17 项自定义 token，不能访问原生资源。`suggestions-generate` 只能访问
+其余 18 项自定义 token，不能访问原生资源。`suggestions-generate` 只能访问
 `/internal/threads/{thread_id}/suggestions`，不能访问原生 Thread、Run、workspace、工具或 MCP 资源。
 
 `diagnostics-read` 必须绑定非空 Thread，且只允许
@@ -101,6 +103,14 @@ cron-write              suggestions-generate    diagnostics-read
 tenant/project/graph 与当前 Thread ACL、服务账号 credential。不能访问原生资源，
 也不能代替 `read`、模型连接或其他自定义 operation。Platform 先授权读取原生 Run，
 确认存在及归属后才签发；观测故障不能绕过授权。
+
+`usage-read` 同样必须绑定非空 Thread，只允许
+`GET /internal/threads/{thread_id}/runs/{run_id}/usage` 和
+`GET /internal/threads/{thread_id}/usage`。Platform 先检查当前项目/Thread ACL，
+Run 级再确认原生 Run 存在且属于该 Thread；Runtime 重查当前 ACL/服务账号凭据，
+SQL 匹配 tenant/project/graph/Thread/Run。scope 仍只有五字段，不增加 run_id。
+该委托不能访问模型连接、Workspace、MCP、原生资源、诊断或其他自定义入口；
+read/diagnostics-read/run-create 也不能代替 usage-read。采集开关和数据库故障不绕过授权。
 
 ## 生命周期规则
 

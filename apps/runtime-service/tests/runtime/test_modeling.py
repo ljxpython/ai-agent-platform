@@ -230,6 +230,9 @@ def test_build_model_uses_standard_initializer_for_other_provider(
 
     monkeypatch.setattr(modeling, "init_chat_model", fake_initializer)
     modeling.build_model(_resolved("anthropic:claude-sonnet"), env={})
+    metadata = calls["kwargs"].pop("metadata")
+    assert metadata["runtime_usage_model"]["provider"] == "anthropic"
+    assert metadata["runtime_usage_model"]["pricing"] is None
     assert calls == {
         "model": "anthropic:claude-sonnet",
         "kwargs": {"temperature": 0.0, "max_tokens": 100},

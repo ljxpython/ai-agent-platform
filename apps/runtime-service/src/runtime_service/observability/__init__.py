@@ -8,6 +8,7 @@ from runtime_service.observability.langfuse import (
     with_langfuse_tracing,
 )
 from runtime_service.observability.otel import OTelConfigurationError
+from runtime_service.observability.usage import with_runtime_usage
 
 __all__ = [
     "LangfuseConfigurationError",
@@ -16,4 +17,5 @@ __all__ = [
     "get_observability_metrics",
     "initialize_langfuse",
     "with_langfuse_tracing",
+    "with_runtime_usage",
 ]

@@ -355,14 +355,10 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
         )
 
     def on_llm_end(self, response: Any, *, run_id: Any, **_: Any) -> None:
-        usage = getattr(response, "llm_output", None) or {}
-        token_usage = usage.get("token_usage", {}) if isinstance(usage, Mapping) else {}
-        total = (
-            token_usage.get("total_tokens")
-            if isinstance(token_usage, Mapping)
-            else None
-        )
-        if isinstance(total, int) and total >= 0:
+        from runtime_service.observability.usage import normalize_usage
+
+        total = normalize_usage(response)["tokens"]["total_tokens"]
+        if total is not None:
             _metrics["token_total"] += total
 
     def _finish(self, run_id: Any, status: str) -> None:
@@ -535,7 +531,14 @@ def with_langfuse_tracing(
     bound_metadata["langfuse_tags"] = ["runtime-service", graph_id]
     bound["metadata"] = bound_metadata
     _metrics["trace_bound"] += 1
-    return cast(Pregel, graph.with_config(bound))
+    from runtime_service.observability.usage import with_runtime_usage
+
+    return cast(
+        Pregel,
+        with_runtime_usage(
+            graph, bound, graph_id=graph_id, trusted_metadata=trusted_metadata
+        ),
+    )
 
 
 def close_langfuse(*, timeout_seconds: float = 5.0) -> None:
@@ -576,7 +579,9 @@ def close_langfuse(*, timeout_seconds: float = 5.0) -> None:
 def get_observability_metrics() -> dict[str, int]:
     """Return a snapshot for tests and service diagnostics."""
 
-    return dict(_metrics)
+    from runtime_service.observability.usage import _metrics as usage_metrics
+
+    return dict(_metrics) | dict(usage_metrics)
 
 
 __all__ = [

@@ -21,6 +21,7 @@ from openai import AsyncOpenAI, OpenAIError
 from PIL import Image
 from pydantic import SecretStr
 
+from runtime_service.observability.usage import usage_only_config
 from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.tools.errors import tool_error_handler
 from runtime_service.workspace.image_refs import (
@@ -556,6 +557,15 @@ def build_image_tools(workspace: ImageWorkspace):
                 max_completion_tokens=max_tokens,
                 timeout=60,
                 max_retries=0,
+                stream_usage=True,
+                metadata={
+                    "runtime_usage_model": {
+                        "model_id": None,
+                        "provider": "openai",
+                        "model_name": model_name,
+                        "pricing": None,
+                    }
+                },
             )
             result = await model.ainvoke(
                 [
@@ -572,7 +582,7 @@ def build_image_tools(workspace: ImageWorkspace):
                         ],
                     }
                 ],
-                config={"callbacks": []},
+                config=usage_only_config("vision"),
             )
             text_content = result.text or (
                 result.content if isinstance(result.content, str) else ""

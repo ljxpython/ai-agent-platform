@@ -387,14 +387,19 @@ async function save(payload: ModelEditorSubmitPayload) {
   };
   try {
     if (payload.isEdit && payload.editingId) {
-      await updateRuntimeModel(project, payload.editingId, {
+      const updatePayload: Partial<RuntimeModelInput> = {
         ...common,
         model: payload.models[0].id,
         display_name: payload.display_name,
         ...(payload.context_window_tokens !== undefined
           ? { context_window_tokens: payload.context_window_tokens }
           : {}),
-      });
+      };
+      // 严格遵从 dirty 机制：未改动价格绝不携带 pricing 键，防止误覆盖已有费率
+      if (payload.pricingDirty) {
+        updatePayload.pricing = payload.pricing;
+      }
+      await updateRuntimeModel(project, payload.editingId, updatePayload);
       if (requestEpoch !== epoch) return;
       notice.value = "模型配置已保存";
     } else {

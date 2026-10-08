@@ -3,7 +3,11 @@ import { computed, ref, watch } from "vue";
 import BaseButton from "@/components/base/BaseButton.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import BaseSelect from "@/components/base/BaseSelect.vue";
-import type { RuntimeModelItem } from "@/types/management";
+import type {
+  RuntimeModelItem,
+  RuntimeModelPricingInput,
+  RuntimeModelPricingSnapshot,
+} from "@/types/management";
 
 export type ModelEditorMode = "standard" | "custom" | "edit";
 
@@ -23,6 +27,8 @@ export interface ModelEditorSubmitPayload {
   enabled: boolean;
   models: ModelRowDraft[];
   context_window_tokens?: number | null;
+  pricing?: RuntimeModelPricingInput | null;
+  pricingDirty?: boolean;
 }
 
 const CONTEXT_WINDOW_PRESETS = [
@@ -222,9 +228,77 @@ const customModelList = ref<ModelRowDraft[]>([{ id: "", name: "" }]);
 const editModelId = ref("");
 const editDisplayName = ref("");
 const editBaseUrl = ref("");
-const editProtocol = ref("openai-compatible");
 const editProvider = ref("");
 const editContextWindowTokensInput = ref("");
+const editProtocol = ref("openai-compatible");
+
+// 定价配置状态 (仅编辑模式生效)
+interface PricingDraft {
+  input: string;
+  output: string;
+  cache_read: string;
+  cache_write: string;
+  cache_write_5m: string;
+  cache_write_1h: string;
+}
+
+const pricingDraft = ref<PricingDraft>({
+  input: "",
+  output: "",
+  cache_read: "",
+  cache_write: "",
+  cache_write_5m: "",
+  cache_write_1h: "",
+});
+
+const isPricingDirty = ref(false);
+const isPricingCleared = ref(false);
+const pricingSnapshot = ref<RuntimeModelPricingSnapshot | null>(null);
+const DECIMAL_RATE_REGEX = /^\d{1,10}(\.\d{1,10})?$/;
+
+function onPricingFieldInput() {
+  isPricingDirty.value = true;
+  isPricingCleared.value = false;
+}
+
+function onPricingFieldBlur(key: keyof PricingDraft) {
+  let val = pricingDraft.value[key].trim();
+  if (val.startsWith(".")) {
+    val = "0" + val;
+    pricingDraft.value[key] = val;
+  } else if (val.endsWith(".") && !val.includes("..")) {
+    val = val + "0";
+    pricingDraft.value[key] = val;
+  }
+}
+
+function handleClearPricing() {
+  pricingDraft.value = {
+    input: "",
+    output: "",
+    cache_read: "",
+    cache_write: "",
+    cache_write_5m: "",
+    cache_write_1h: "",
+  };
+  isPricingDirty.value = true;
+  isPricingCleared.value = true;
+}
+
+function handleRestorePricing() {
+  if (!pricingSnapshot.value) return;
+  const p = pricingSnapshot.value;
+  pricingDraft.value = {
+    input: p.input ?? "",
+    output: p.output ?? "",
+    cache_read: p.cache_read ?? "",
+    cache_write: p.cache_write ?? "",
+    cache_write_5m: p.cache_write_5m ?? "",
+    cache_write_1h: p.cache_write_1h ?? "",
+  };
+  isPricingDirty.value = false;
+  isPricingCleared.value = false;
+}
 
 const isEditMode = computed(() => activeMode.value === "edit");
 
@@ -292,51 +366,79 @@ function initForm() {
       typeof m.context_window_tokens === "number" && m.context_window_tokens > 0
         ? String(m.context_window_tokens)
         : "";
-  } else if (props.initialStation) {
-    const s = props.initialStation;
-    apiKey.value = "";
-    enabled.value = true;
-    editContextWindowTokensInput.value = "";
 
-    // 判断是标准厂商还是自定义提供方
-    const matchedPreset = PROVIDER_PRESETS.find(
-      (p) => p.id === s.provider?.toLowerCase(),
-    );
-    if (matchedPreset && props.initialMode !== "custom") {
-      activeMode.value = "standard";
-      selectedPreset.value = matchedPreset.id;
-      standardBaseUrl.value = s.baseUrl || matchedPreset.defaultBaseUrl;
-      standardProtocol.value = s.protocol || matchedPreset.defaultProtocol;
-      standardModelList.value = [{ id: "", name: "" }];
+    // 初始化定价数据
+    pricingSnapshot.value = m.pricing || null;
+    const p = m.pricing;
+    pricingDraft.value = {
+      input: p?.input ?? "",
+      output: p?.output ?? "",
+      cache_read: p?.cache_read ?? "",
+      cache_write: p?.cache_write ?? "",
+      cache_write_5m: p?.cache_write_5m ?? "",
+      cache_write_1h: p?.cache_write_1h ?? "",
+    };
+    isPricingDirty.value = false;
+    isPricingCleared.value = false;
+  } else {
+    pricingSnapshot.value = null;
+    pricingDraft.value = {
+      input: "",
+      output: "",
+      cache_read: "",
+      cache_write: "",
+      cache_write_5m: "",
+      cache_write_1h: "",
+    };
+    isPricingDirty.value = false;
+    isPricingCleared.value = false;
+
+    if (props.initialStation) {
+      const s = props.initialStation;
+      apiKey.value = "";
+      enabled.value = true;
+      editContextWindowTokensInput.value = "";
+
+      // 判断是标准厂商还是自定义提供方
+      const matchedPreset = PROVIDER_PRESETS.find(
+        (p) => p.id === s.provider?.toLowerCase(),
+      );
+      if (matchedPreset && props.initialMode !== "custom") {
+        activeMode.value = "standard";
+        selectedPreset.value = matchedPreset.id;
+        standardBaseUrl.value = s.baseUrl || matchedPreset.defaultBaseUrl;
+        standardProtocol.value = s.protocol || matchedPreset.defaultProtocol;
+        standardModelList.value = [{ id: "", name: "" }];
+      } else {
+        activeMode.value = "custom";
+        customRoute.value = s.provider || "";
+        customDisplayName.value = s.provider || "";
+        customBaseUrl.value = s.baseUrl || "";
+        customProtocol.value = s.protocol || "openai-compatible";
+        customModelList.value = [{ id: "", name: "" }];
+      }
     } else {
-      activeMode.value = "custom";
-      customRoute.value = s.provider || "";
-      customDisplayName.value = s.provider || "";
-      customBaseUrl.value = s.baseUrl || "";
-      customProtocol.value = s.protocol || "openai-compatible";
+      activeMode.value = props.initialMode || "standard";
+      apiKey.value = "";
+      enabled.value = true;
+      editContextWindowTokensInput.value = "";
+
+      // 默认标准预设
+      selectedPreset.value = "deepseek";
+      standardBaseUrl.value = "https://api.deepseek.com/v1";
+      standardProtocol.value = "openai-compatible";
+      standardModelList.value = [
+        { id: "deepseek-chat", name: "DeepSeek V3" },
+        { id: "deepseek-reasoner", name: "DeepSeek R1" },
+      ];
+
+      // 默认自定义项
+      customRoute.value = "";
+      customDisplayName.value = "";
+      customBaseUrl.value = "";
+      customProtocol.value = "openai-compatible";
       customModelList.value = [{ id: "", name: "" }];
     }
-  } else {
-    activeMode.value = props.initialMode || "standard";
-    apiKey.value = "";
-    enabled.value = true;
-    editContextWindowTokensInput.value = "";
-
-    // 默认标准预设
-    selectedPreset.value = "deepseek";
-    standardBaseUrl.value = "https://api.deepseek.com/v1";
-    standardProtocol.value = "openai-compatible";
-    standardModelList.value = [
-      { id: "deepseek-chat", name: "DeepSeek V3" },
-      { id: "deepseek-reasoner", name: "DeepSeek R1" },
-    ];
-
-    // 默认自定义项
-    customRoute.value = "";
-    customDisplayName.value = "";
-    customBaseUrl.value = "";
-    customProtocol.value = "openai-compatible";
-    customModelList.value = [{ id: "", name: "" }];
   }
 }
 
@@ -393,6 +495,50 @@ function handleSubmit() {
     } else {
       parsedContextWindowTokens = null;
     }
+    // 组装定价 payload (严格遵从 dirty 机制)
+    let pricingPayload: RuntimeModelPricingInput | null | undefined = undefined;
+    if (isPricingDirty.value) {
+      if (isPricingCleared.value) {
+        pricingPayload = null;
+      } else {
+        const rates: (keyof PricingDraft)[] = [
+          "input",
+          "output",
+          "cache_read",
+          "cache_write",
+          "cache_write_5m",
+          "cache_write_1h",
+        ];
+        for (const key of rates) {
+          let val = pricingDraft.value[key].trim();
+          if (val.startsWith(".")) {
+            val = "0" + val;
+            pricingDraft.value[key] = val;
+          }
+          if (val && !DECIMAL_RATE_REGEX.test(val)) {
+            formError.value = `费率 ${key} 格式不合法：必须为不超过 10 位整数与 10 位小数的非负十进制数字`;
+            return;
+          }
+        }
+        const hasAnyRate = rates.some(
+          (k) => pricingDraft.value[k].trim() !== "",
+        );
+        if (!hasAnyRate) {
+          pricingPayload = null;
+        } else {
+          pricingPayload = {
+            currency: "USD",
+            basis: "per_million_tokens",
+            input: pricingDraft.value.input.trim() || null,
+            output: pricingDraft.value.output.trim() || null,
+            cache_read: pricingDraft.value.cache_read.trim() || null,
+            cache_write: pricingDraft.value.cache_write.trim() || null,
+            cache_write_5m: pricingDraft.value.cache_write_5m.trim() || null,
+            cache_write_1h: pricingDraft.value.cache_write_1h.trim() || null,
+          };
+        }
+      }
+    }
 
     emit("submit", {
       isEdit: true,
@@ -405,6 +551,8 @@ function handleSubmit() {
       enabled: enabled.value,
       models: [{ id: trimmedId, name: editDisplayName.value.trim() }],
       context_window_tokens: parsedContextWindowTokens,
+      pricing: pricingPayload,
+      pricingDirty: isPricingDirty.value,
     });
     return;
   }
@@ -1161,6 +1309,184 @@ function handleSubmit() {
               />
               <span>启用该模型</span>
             </label>
+          </div>
+
+          <!-- 模型费率配置卡片 (USD / 百万 Token) -->
+          <div
+            class="rounded-lg border border-gray-200 bg-gray-50/70 p-4 dark:border-dark-800 dark:bg-dark-900/60 space-y-3"
+            data-testid="model-pricing-section"
+          >
+            <div
+              class="flex items-center justify-between border-b pb-2.5 border-gray-200/80 dark:border-dark-800"
+            >
+              <div>
+                <h4
+                  class="text-xs font-semibold text-gray-900 dark:text-gray-100"
+                >
+                  模型费率配置 (USD / 百万 Token)
+                </h4>
+                <p class="text-[11px] text-gray-500 dark:text-dark-400 mt-0.5">
+                  用于用量成本估算。留空表示未配置对应费率；清空或修改将触发版本快照归档。
+                </p>
+              </div>
+
+              <button
+                v-if="pricingSnapshot || isPricingDirty"
+                type="button"
+                data-testid="clear-pricing-btn"
+                class="text-[11px] text-red-600 hover:text-red-700 dark:text-red-400 transition-colors"
+                :disabled="busy"
+                @click="handleClearPricing"
+              >
+                清空费率配置
+              </button>
+            </div>
+
+            <!-- 服务端快照只读元数据 -->
+            <div
+              v-if="pricingSnapshot && !isPricingCleared"
+              class="flex flex-wrap items-center gap-3 text-[10px] font-mono text-gray-500 dark:text-dark-400 bg-white/60 dark:bg-dark-950/40 px-2.5 py-1.5 rounded border border-gray-200/60 dark:border-dark-800"
+            >
+              <span>快照版本: {{ pricingSnapshot.version }}</span>
+              <span>·</span>
+              <span>来源: {{ pricingSnapshot.source }}</span>
+              <span>·</span>
+              <span
+                >更新时间:
+                {{
+                  new Date(pricingSnapshot.updated_at).toLocaleString()
+                }}</span
+              >
+            </div>
+
+            <!-- 清空状态待生效提示及撤销按钮 -->
+            <div
+              v-else-if="isPricingCleared"
+              data-testid="pricing-cleared-banner"
+              class="flex items-center justify-between text-xs bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 px-3 py-2 rounded border border-amber-200 dark:border-amber-900"
+            >
+              <span>费率已标记待清空，保存后将移除该模型的价格配置。</span>
+              <button
+                v-if="pricingSnapshot"
+                type="button"
+                data-testid="restore-pricing-btn"
+                class="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 ml-2"
+                @click="handleRestorePricing"
+              >
+                撤销恢复
+              </button>
+            </div>
+
+            <!-- 六项费率表单输入网格 -->
+            <div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 pt-1">
+              <div>
+                <label
+                  class="mb-1 block text-[11px] font-medium text-gray-700 dark:text-dark-300"
+                >
+                  输入费率 (Input)
+                </label>
+                <input
+                  v-model="pricingDraft.input"
+                  type="text"
+                  inputmode="decimal"
+                  class="pw-input text-xs font-mono"
+                  placeholder="如 2.0"
+                  :disabled="busy"
+                  @input="onPricingFieldInput"
+                  @blur="onPricingFieldBlur('input')"
+                />
+              </div>
+
+              <div>
+                <label
+                  class="mb-1 block text-[11px] font-medium text-gray-700 dark:text-dark-300"
+                >
+                  输出费率 (Output)
+                </label>
+                <input
+                  v-model="pricingDraft.output"
+                  type="text"
+                  inputmode="decimal"
+                  class="pw-input text-xs font-mono"
+                  placeholder="如 8.0"
+                  :disabled="busy"
+                  @input="onPricingFieldInput"
+                  @blur="onPricingFieldBlur('output')"
+                />
+              </div>
+
+              <div>
+                <label
+                  class="mb-1 block text-[11px] font-medium text-gray-700 dark:text-dark-300"
+                >
+                  缓存读取 (Cache Read)
+                </label>
+                <input
+                  v-model="pricingDraft.cache_read"
+                  type="text"
+                  inputmode="decimal"
+                  class="pw-input text-xs font-mono"
+                  placeholder="如 0.2"
+                  :disabled="busy"
+                  @input="onPricingFieldInput"
+                  @blur="onPricingFieldBlur('cache_read')"
+                />
+              </div>
+
+              <div>
+                <label
+                  class="mb-1 block text-[11px] font-medium text-gray-700 dark:text-dark-300"
+                >
+                  缓存写入 (Cache Write)
+                </label>
+                <input
+                  v-model="pricingDraft.cache_write"
+                  type="text"
+                  inputmode="decimal"
+                  class="pw-input text-xs font-mono"
+                  placeholder="如 2.5"
+                  :disabled="busy"
+                  @input="onPricingFieldInput"
+                  @blur="onPricingFieldBlur('cache_write')"
+                />
+              </div>
+
+              <div>
+                <label
+                  class="mb-1 block text-[11px] font-medium text-gray-700 dark:text-dark-300"
+                >
+                  5分钟写入 (5m TTL)
+                </label>
+                <input
+                  v-model="pricingDraft.cache_write_5m"
+                  type="text"
+                  inputmode="decimal"
+                  class="pw-input text-xs font-mono"
+                  placeholder="如 2.5"
+                  :disabled="busy"
+                  @input="onPricingFieldInput"
+                  @blur="onPricingFieldBlur('cache_write_5m')"
+                />
+              </div>
+
+              <div>
+                <label
+                  class="mb-1 block text-[11px] font-medium text-gray-700 dark:text-dark-300"
+                >
+                  1小时写入 (1h TTL)
+                </label>
+                <input
+                  v-model="pricingDraft.cache_write_1h"
+                  type="text"
+                  inputmode="decimal"
+                  class="pw-input text-xs font-mono"
+                  placeholder="如 4.0"
+                  :disabled="busy"
+                  @input="onPricingFieldInput"
+                  @blur="onPricingFieldBlur('cache_write_1h')"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </template>

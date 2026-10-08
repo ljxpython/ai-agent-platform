@@ -27,6 +27,7 @@ from runtime_service.http.images import router as images_router
 from runtime_service.http.suggestions import router as suggestions_router
 from runtime_service.http.terminal import router as terminal_router
 from runtime_service.http.title_summary import router as title_summary_router
+from runtime_service.http.usage import router as usage_router
 from runtime_service.http.workspace import router as workspace_router
 from runtime_service.messaging import MessageInbox
 from runtime_service.messaging.reconcile import reconcile_run
@@ -64,6 +65,7 @@ app.include_router(dear_memory_router)
 app.include_router(title_summary_router)
 app.include_router(suggestions_router)
 app.include_router(diagnostics_router)
+app.include_router(usage_router)
 
 
 @app.exception_handler(auth_exceptions.HTTPException)
@@ -319,7 +321,9 @@ async def list_messages(
 @app.get("/internal/capabilities/tools")
 async def tool_catalog(authorization: str | None = Header(default=None)) -> dict:
     """Display declarations only; catalog freshness never grants tools."""
-    await authenticate(authorization)
+    facts = await authenticate(authorization)
+    if facts.get("runtime_scope", {}).get("operation") == "usage-read":
+        raise HTTPException(403, "usage scope denied")
     from runtime_service.runtime.capabilities import tool_catalog as catalog
 
     return catalog()
@@ -335,6 +339,9 @@ async def graph_capability(
     from runtime_service.runtime.capabilities import graph_capabilities
 
     facts = await authenticate(authorization)
-    if facts.get("runtime_scope", {}).get("assistant_id") != graph_id:
+    if (
+        facts.get("runtime_scope", {}).get("assistant_id") != graph_id
+        or facts.get("runtime_scope", {}).get("operation") == "usage-read"
+    ):
         raise HTTPException(403, "graph scope denied")
     return graph_capabilities(graph_id)

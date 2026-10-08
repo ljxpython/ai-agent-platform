@@ -429,10 +429,7 @@ export function buildTrajectoryRecords(
           contentText.length,
           baseTime,
         );
-        const tokens = extractTokens(msg) || {
-          input: Math.max(120, Math.round(contentText.length * 0.45 + 520)),
-          output: Math.max(15, Math.round(contentText.length * 0.72)),
-        };
+        const tokens = extractTokens(msg);
         const resilience = extractModelResilienceSummary(msg);
         let assistantSummary = truncate(contentText);
         if (resilience?.fallbackUsed) {

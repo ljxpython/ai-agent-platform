@@ -11,6 +11,7 @@ import TrajectoryLedger from "./TrajectoryLedger.vue";
 import TrajectoryInspector from "./TrajectoryInspector.vue";
 import TrajectoryTimeline from "./TrajectoryTimeline.vue";
 import RunDiagnostics from "./RunDiagnostics.vue";
+import RunUsage from "./RunUsage.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 
 const props = withDefaults(
@@ -27,6 +28,8 @@ const props = withDefaults(
     runs?: Array<{ run_id: string; status: string; created_at?: string }>;
     runsLoading?: boolean;
     canRead?: boolean;
+    runStatus?: string | null;
+    initialInspectorMode?: "record" | "diagnostics" | "usage";
   }>(),
   {
     projectId: undefined,
@@ -38,6 +41,7 @@ const props = withDefaults(
     runs: () => [],
     runsLoading: false,
     canRead: true,
+    initialInspectorMode: "record",
   },
 );
 
@@ -68,8 +72,10 @@ const records = computed(() =>
 
 const groups = computed(() => groupTrajectoryByTurn(records.value));
 
-type InspectorMode = "record" | "diagnostics";
-const inspectorMode = ref<InspectorMode>("record");
+type InspectorMode = "record" | "diagnostics" | "usage";
+const inspectorMode = ref<InspectorMode>(
+  props.initialInspectorMode || "record",
+);
 
 const selectedRecordId = ref<string | null>(null);
 const isInspectorOpen = ref(true);
@@ -84,6 +90,16 @@ watch(
   () => props.runId,
   (val) => {
     selectedRunId.value = val ?? null;
+  },
+);
+
+watch(
+  () => props.initialInspectorMode,
+  (val) => {
+    if (val) {
+      inspectorMode.value = val;
+      isInspectorOpen.value = true;
+    }
   },
 );
 
@@ -144,6 +160,15 @@ function handleToggleDiagnostics() {
   }
 }
 
+function handleToggleUsage() {
+  if (inspectorMode.value === "usage") {
+    inspectorMode.value = "record";
+  } else {
+    inspectorMode.value = "usage";
+    isInspectorOpen.value = true;
+  }
+}
+
 function handleSelectRun(runId: string) {
   selectedRunId.value = runId;
   emit("select-run", runId);
@@ -151,7 +176,10 @@ function handleSelectRun(runId: string) {
 
 function handleCloseInspector() {
   isInspectorOpen.value = false;
-  if (inspectorMode.value === "diagnostics") {
+  if (
+    inspectorMode.value === "diagnostics" ||
+    inspectorMode.value === "usage"
+  ) {
     inspectorMode.value = "record";
   }
 }
@@ -253,6 +281,23 @@ function handleCloseInspector() {
           >
             <BaseIcon name="shield" size="xs" />
             <span>运行诊断</span>
+          </button>
+
+          <!-- 用量与成本常驻入口 -->
+          <button
+            type="button"
+            data-testid="toggle-usage-btn"
+            class="inline-flex h-6.5 items-center gap-1 rounded border px-2 text-[11px] font-mono transition-colors"
+            :class="
+              inspectorMode === 'usage' && isInspectorOpen
+                ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800/60 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold shadow-2xs'
+                : 'border-gray-200 bg-white text-gray-600 shadow-2xs hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-900 dark:text-dark-300 dark:hover:bg-dark-800'
+            "
+            title="查看当前 Run 用量与成本"
+            @click="handleToggleUsage"
+          >
+            <BaseIcon name="activity" size="xs" />
+            <span>用量与成本</span>
           </button>
         </div>
 
@@ -363,7 +408,9 @@ function handleCloseInspector() {
         :class="{
           'max-w-[48%] border-r border-gray-200 dark:border-dark-800':
             isInspectorOpen &&
-            (inspectorMode === 'diagnostics' || selectedRecord),
+            (inspectorMode === 'diagnostics' ||
+              inspectorMode === 'usage' ||
+              selectedRecord),
         }"
       >
         <TrajectoryLedger
@@ -379,10 +426,13 @@ function handleCloseInspector() {
         />
       </div>
 
-      <!-- Right: Inspector Panel (Record or Diagnostics) -->
+      <!-- Right: Inspector Panel (Record or Diagnostics or Usage) -->
       <div
         v-if="
-          isInspectorOpen && (inspectorMode === 'diagnostics' || selectedRecord)
+          isInspectorOpen &&
+          (inspectorMode === 'diagnostics' ||
+            inspectorMode === 'usage' ||
+            selectedRecord)
         "
         class="flex-1 min-w-0 h-full overflow-hidden"
       >
@@ -395,6 +445,20 @@ function handleCloseInspector() {
           :runs="runs"
           :runs-loading="runsLoading"
           :can-read="canRead"
+          @select-run="handleSelectRun"
+          @close="handleCloseInspector"
+        />
+
+        <!-- 用量与成本独立面板 -->
+        <RunUsage
+          v-else-if="inspectorMode === 'usage'"
+          :project-id="projectId"
+          :thread-id="threadId || ''"
+          :run-id="selectedRunId"
+          :runs="runs"
+          :runs-loading="runsLoading"
+          :can-read="canRead"
+          :run-status="runStatus"
           @select-run="handleSelectRun"
           @close="handleCloseInspector"
         />
@@ -416,13 +480,6 @@ function handleCloseInspector() {
         <span>{{ stats.turns }} 轮 · {{ stats.steps }} 步</span>
         <span>|</span>
         <span>工具 {{ stats.tools }} 次</span>
-        <template v-if="stats.inputTokens > 0 || stats.outputTokens > 0">
-          <span>|</span>
-          <span
-            >Tokens: In {{ stats.inputTokens.toLocaleString() }} · Out
-            {{ stats.outputTokens.toLocaleString() }}</span
-          >
-        </template>
       </div>
       <div class="text-[10px] text-gray-400 dark:text-dark-500">
         Trajectory Engine

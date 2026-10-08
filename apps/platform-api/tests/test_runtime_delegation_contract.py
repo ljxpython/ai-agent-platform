@@ -49,6 +49,7 @@ OPERATIONS = (
     "dear-governance-write",
     "suggestions-generate",
     "diagnostics-read",
+    "usage-read",
 )
 
 
@@ -468,7 +469,11 @@ class RuntimeDelegationContractTest(unittest.TestCase):
                 "assistant_id": assistant,
                 "operation": operation,
             }
-            thread_id = str(uuid4()) if operation == "diagnostics-read" else "thread-1"
+            thread_id = (
+                str(uuid4())
+                if operation in {"diagnostics-read", "usage-read"}
+                else "thread-1"
+            )
             if operation not in {
                 "dear-skills-read",
                 "dear-skills-write",

@@ -20,6 +20,7 @@ from runtime_service.messaging import MessageInbox
 from runtime_service.middlewares.conversation_offloading import (
     is_conversation_maintenance,
 )
+from runtime_service.observability.usage import usage_only_config
 from runtime_service.runtime import RuntimeAuthError
 from runtime_service.services.dearflow_agent.memory import FactInput, MemoryStorage
 from runtime_service.services.dearflow_agent.memory_access import memory_allowed
@@ -251,7 +252,7 @@ class MemoryContextMiddleware(AgentMiddleware):
                                 HumanMessage(content=prompt_input),
                             ],
                             config={
-                                "callbacks": [],
+                                **usage_only_config("memory_extraction"),
                                 "tags": [
                                     TAG_NOSTREAM,
                                     TAG_HIDDEN,

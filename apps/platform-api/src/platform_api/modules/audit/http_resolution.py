@@ -312,6 +312,20 @@ def _resolve_action(
             return "assistant.schema.read", "graph", clean_str(segments[2])
 
     if len(segments) >= 2 and segments[:2] == ["api", "runtime"]:
+        if segments[2:] == ["models"] and method == "POST":
+            return "runtime.model.item.created", "runtime_model", None
+        if (
+            len(segments) == 4
+            and segments[2] == "models"
+            and method in {"PATCH", "DELETE"}
+        ):
+            return (
+                "runtime.model.item.updated"
+                if method == "PATCH"
+                else "runtime.model.item.deleted",
+                "runtime_model",
+                clean_str(segments[3]),
+            )
         if segments[2:] == ["models"] and method == "GET":
             return (
                 "runtime.model.collection.listed",
@@ -720,10 +734,31 @@ def _resolve_metadata(
                     "close_reason",
                     "reused_submission",
                     "correlation_version",
+                    "model_id",
+                    "pricing_version",
                 }
                 and isinstance(value, (str, int, float, bool))
             }
         )
+        if target_type == "runtime_model":
+            fields = request.metadata.get("changed_fields")
+            if isinstance(fields, list):
+                metadata["changed_fields"] = [
+                    field
+                    for field in fields[:16]
+                    if field
+                    in {
+                        "provider",
+                        "display_name",
+                        "base_url",
+                        "protocol",
+                        "model",
+                        "enabled",
+                        "scope_type",
+                        "project_id",
+                        "pricing",
+                    }
+                ]
     return {key: value for key, value in metadata.items() if value is not None}
 
 

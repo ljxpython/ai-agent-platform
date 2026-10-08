@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-08（Agent 执行预算/步骤限制告警与软收尾、运行生命周期超时治理与排队死锁自愈全链路闭环，用户端到端人工验收通过，项目标为 done；合并进入主分支）。
+> **最后更新：** 2026-10-08（Agent 执行预算/步骤限制告警与软收尾、运行生命周期超时治理与排队死锁自愈，以及 Agent 通用 Token/Cost 跟踪治理全栈闭环，用户端到端自动化与人工验收通过，全项标为 done 并零功能损失合并进入主分支）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -10,6 +10,8 @@
 **最后更新：** 2026-10-08
 
 ## 最近改动
+
+2026-10-08 | **Agent 通用 Token/Cost 跟踪治理全栈闭环**：done。用户端到端与真实大模型自动化闭环验收通过，合并入主分支。Runtime Service 实现自有 ledger、缓存计价与内部 Usage 汇聚；Platform API 实现模型费率快照与 Usage 授权网关代理；Platform Web 实装 Run/Thread 双级 Token/Cost 检查器、open-swe 风格上下文运行水位仪表（Usage Meter）、模型调用流水明细、服务端截断预警，以及模型编辑器 6 项费率 Decimal 安全配置与可逆清空保护；全栈真实模型自动化闭环与单测全绿。见 [专项](projects/20261007-agent-usage-cost-governance/README.md)。
 
 2026-10-08 | **Agent 执行预算与软收尾全链路完成**：done。用户端到端自动化与人工验收通过，合并入主分支。Runtime/Platform API 完成通用预算模型限额薄扩展、managed 图余量、软时间、精确预算安全码、custom 白名单及隔离 Worker 验证；Platform Web 完成 Zod 白名单投影、弹性解包 safeExtractBudgetNotice、响应式 useRunBudget（200条LRU有界去重、增量指针防掉帧、运行态防闪烁、Run/namespace 隔离）、ChatAgentStatusBar Amber/Success 停机展示（预警态保留取消按钮、文案解耦、A11y）、子任务独立微横条/徽章、Thread 耗尽禁用分流；修复拖选退出、文案截断及继续执行报错消失；单测全绿，vue-tsc/ESLint 0 错误与 Vite build 全绿。见 [专项](projects/20261007-agent-execution-budget/README.md)。
 
@@ -37,12 +39,13 @@
 
 ## 本月归并
 
-2026-10（截至 10-08）| 执行预算与软收尾、运行超时治理、模型稳定性、上下文窗口、工具容错、可观测性、推荐问题、定时任务、Chat/权限/流恢复与 Worker 超时语义对齐；详情见各专项。
+2026-10（截至 10-08）| Token/Cost 全栈跟踪治理闭环（含真实大模型全链路 E2E）；执行预算与软收尾、超时治理与排队死锁自愈；模型稳定性降级、上下文窗口工程化；工具容错、观测、推荐问题和定时任务闭环；聊天、权限及流资源治理。
 
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
 
+- [Agent 通用 Token/Cost 跟踪与运行用量治理](projects/20261007-agent-usage-cost-governance/README.md)：done；Runtime + Platform API + Platform Web 全栈闭环，16 项隔离真实后端链路与包含真实大模型调用的 5 项 Playwright 自动化端到端测试全部通过，五重质量门禁全绿。未部署现役服务。
 - [Agent 执行预算、步骤限制告警与软收尾](projects/20261007-agent-execution-budget/README.md)：done（全链路闭环）；Runtime 253 项回归、API 81 项回归与 23 场景真实 Worker 验证齐全；前端 F01-F04 实装并完成 116 套件 571 项单测、vue-tsc 0 错误、ESLint 0 错误。端到端自动化验收与人工实测完成。
 - [Agent 运行生命周期超时治理](projects/20261006-agent-run-timeout-governance/README.md)：done；已完成正式post42接入、12组HTTP、匹配回退、前端T11超时治理与停止时序实装，以及T12用户真实浏览器端端到端联调验收（含排队死锁自愈）。本地服务已安全停止。
 - [Agent 模型调用稳定性治理](projects/20261006-agent-model-resilience/README.md)：`done`；全链路闭环，Platform API、Runtime Service 与 Platform Web 全栈交付。后端模型恢复策略/受管备模型/分类重试/契约签名与网关快照、前端编辑页配置/真实失败态/推荐问题门禁/停止确认超时保护/备用模型微胶囊 Tag 全量实装；单测门禁全绿，故障注入主备降级实测通过，用户人工浏览器实测验收通过。
@@ -74,9 +77,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-08 | 锁定/安装正式 post42；四图主子共享 attempt 预算/软收尾，模型 error 与 Worker timeout 分开；模型稳定性降级、工具容错、上下文窗口管理与执行预算全链路融合就绪；未部署现役。 |
-| platform-api | 2026-10-08 | 私有预算注入拒绝/脱敏及停止确认透传；预算四精确安全码、custom 白名单、tasks/debug 错误清洗；模型恢复策略、上下文容量 CRUD 与 Run 诊断端点全量实装；未部署现役。 |
-| platform-web | 2026-10-08 | 预算告警投影、useRunBudget、ChatAgentStatusBar Amber/Success 停机展示、子任务独立微横条；超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板与上下文容量展示全部融合；全仓单测、vue-tsc 与生产打包全绿。 |
+| runtime-service | 2026-10-08 | 锁定/安装正式 post42；四图主子共享 attempt 预算/软收尾，模型 error 与 Worker timeout 分开；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理（自有 ledger/缓存计价）全链路融合就绪；未部署现役。 |
+| platform-api | 2026-10-08 | 私有预算注入拒绝/脱敏及停止确认透传；预算四精确安全码、custom 白名单、tasks/debug 错误清洗；模型恢复策略、上下文容量 CRUD 与 Run 诊断端点、模型费率快照与 Usage 授权网关代理全量实装；未部署现役。 |
+| platform-web | 2026-10-08 | 预算告警投影、useRunBudget、ChatAgentStatusBar Amber/Success 停机展示、子任务独立微横条；超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板、上下文容量展示、Run/Thread 用量与成本检查器、open-swe 水位表全部融合；全仓单测、vue-tsc 与生产打包全绿。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-07 | 整单结束前须逐项核对未完成任务，未完成时只记Phase；用户批准的多会话发布协作经验已写入ai-workflow经验库，恢复时先核对正式产物归属与锁文件 |
 
 ## 近期关键决策
@@ -88,7 +91,3 @@
 - 2026-09-22: 全平台权限治理按人工批准实施；P1 ACL 属平台数据库，保留 D08 删除/审批、60 秒与激活刷新、限时审计 takeover；旧会话数据库历史已按授权清理。Runtime/GraphHarbor 代码不改，自定义角色 deferred，D24—D28 保留后续讨论。
 - 2026-09-22: 批准采纳平台公共模型与项目私有模型 (BYOK) 双层架构决策（详见 docs/decisions/20260922-byok-project-model-architecture.md），解耦平台中心化底座与项目自主密钥，消除脱敏凭据误报假故障问题。
 - 2026-09-27: 追踪审计查询性能本期仅记录实测数据；仓库无批准SLO，不临时设达标阈值。
-
-## 踩坑提醒
-
-→ 见 `docs/lessons/`（按服务索引，开工前按需读取对应文件）

@@ -37,6 +37,9 @@ class RuntimeCatalogModelRecord(Base):
     protocol: Mapped[str] = mapped_column(String(64), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     api_key_ciphertext: Mapped[str] = mapped_column(Text, nullable=False)
+    pricing_json: Mapped[dict | None] = mapped_column(
+        JSON(none_as_null=True), nullable=True
+    )
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     context_window_tokens: Mapped[int | None] = mapped_column(nullable=True)
     scope_type: Mapped[str] = mapped_column(

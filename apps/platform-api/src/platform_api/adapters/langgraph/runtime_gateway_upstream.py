@@ -395,6 +395,26 @@ class LangGraphRuntimeGatewayUpstream:
     ) -> Any:
         return await self._runs.list(thread_id, params)
 
+    async def get_run_usage(
+        self, thread_id: str, run_id: str, params: dict
+    ) -> dict[str, Any]:
+        from urllib.parse import quote
+
+        return await self._http.require_json(
+            "GET",
+            f"/internal/threads/{quote(thread_id, safe='')}/runs/{quote(run_id, safe='')}/usage",
+            params=params,
+        )
+
+    async def get_thread_usage(self, thread_id: str, params: dict) -> dict[str, Any]:
+        from urllib.parse import quote
+
+        return await self._http.require_json(
+            "GET",
+            f"/internal/threads/{quote(thread_id, safe='')}/usage",
+            params=params,
+        )
+
     async def manage_thread_run_queue(
         self, thread_id: str, payload: dict[str, Any]
     ) -> Any:

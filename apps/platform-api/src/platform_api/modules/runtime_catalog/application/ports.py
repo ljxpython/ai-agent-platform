@@ -18,6 +18,7 @@ class StoredRuntimeModel:
     context_window_tokens: int | None = None
     scope_type: str = "platform"
     project_id: UUID | None = None
+    pricing: dict | None = None
 
 
 @dataclass(frozen=True, slots=True)

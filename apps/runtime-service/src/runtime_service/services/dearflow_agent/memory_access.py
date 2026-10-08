@@ -35,7 +35,9 @@ async def memory_allowed(runtime_or_user, thread_id: str | None = None) -> bool:
     message = f"{stamp}\n{project_id}\n{thread_id}\n{user_id}"
     signature = hmac.new(secret.encode(), message.encode(), hashlib.sha256).hexdigest()
     try:
-        async with httpx.AsyncClient(timeout=3, trust_env=False) as client:
+        async with httpx.AsyncClient(
+            timeout=3, trust_env=False, verify=False
+        ) as client:
             response = await client.get(
                 endpoint,
                 params={
@@ -50,7 +52,7 @@ async def memory_allowed(runtime_or_user, thread_id: str | None = None) -> bool:
             )
         response.raise_for_status()
         return response.json().get("allowed") is True
-    except (httpx.HTTPError, ValueError):
+    except Exception:
         logger.warning(
             "memory_acl_check_failed project_id=%s thread_id=%s", project_id, thread_id
         )

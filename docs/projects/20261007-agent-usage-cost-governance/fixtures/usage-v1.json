@@ -1,0 +1,2285 @@
+{
+  "version": 1,
+  "schemas": {
+    "RunUsage": {
+      "$defs": {
+        "CallPage": {
+          "properties": {
+            "items": {
+              "items": {
+                "$ref": "#/$defs/UsageCall"
+              },
+              "maxItems": 200,
+              "title": "Items",
+              "type": "array"
+            },
+            "next_cursor": {
+              "anyOf": [
+                {
+                  "maxLength": 512,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Next Cursor"
+            }
+          },
+          "required": [
+            "items",
+            "next_cursor"
+          ],
+          "title": "CallPage",
+          "type": "object"
+        },
+        "TokenCounts": {
+          "properties": {
+            "input_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Input Tokens"
+            },
+            "output_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Output Tokens"
+            },
+            "total_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Total Tokens"
+            },
+            "cache_read_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cache Read Tokens"
+            },
+            "cache_creation_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cache Creation Tokens"
+            },
+            "cache_creation_5m_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cache Creation 5M Tokens"
+            },
+            "cache_creation_1h_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cache Creation 1H Tokens"
+            },
+            "reasoning_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Reasoning Tokens"
+            }
+          },
+          "required": [
+            "input_tokens",
+            "output_tokens",
+            "total_tokens",
+            "cache_read_tokens",
+            "cache_creation_tokens",
+            "cache_creation_5m_tokens",
+            "cache_creation_1h_tokens",
+            "reasoning_tokens"
+          ],
+          "title": "TokenCounts",
+          "type": "object"
+        },
+        "UsageCall": {
+          "properties": {
+            "model_call_id": {
+              "format": "uuid",
+              "title": "Model Call Id",
+              "type": "string"
+            },
+            "model_id": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model Id"
+            },
+            "provider": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9_:.-]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Provider"
+            },
+            "model_name": {
+              "anyOf": [
+                {
+                  "maxLength": 128,
+                  "minLength": 1,
+                  "pattern": "^[A-Za-z0-9_:.-]+$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Model Name"
+            },
+            "scope": {
+              "enum": [
+                "primary",
+                "subagent",
+                "auxiliary"
+              ],
+              "title": "Scope",
+              "type": "string"
+            },
+            "purpose": {
+              "enum": [
+                "agent",
+                "summarization",
+                "memory_extraction",
+                "vision",
+                "other"
+              ],
+              "title": "Purpose",
+              "type": "string"
+            },
+            "namespace": {
+              "items": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_:.-]+$",
+                "type": "string"
+              },
+              "maxItems": 8,
+              "title": "Namespace",
+              "type": "array"
+            },
+            "outcome": {
+              "enum": [
+                "started",
+                "completed",
+                "failed",
+                "cancelled"
+              ],
+              "title": "Outcome",
+              "type": "string"
+            },
+            "quality": {
+              "enum": [
+                "reported",
+                "derived_from_reported",
+                "partial",
+                "missing",
+                "invalid"
+              ],
+              "title": "Quality",
+              "type": "string"
+            },
+            "tokens": {
+              "$ref": "#/$defs/TokenCounts"
+            },
+            "cost": {
+              "$ref": "#/$defs/UsageCost"
+            },
+            "started_at": {
+              "format": "date-time",
+              "title": "Started At",
+              "type": "string"
+            },
+            "ended_at": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Ended At"
+            }
+          },
+          "required": [
+            "model_call_id",
+            "model_id",
+            "provider",
+            "model_name",
+            "scope",
+            "purpose",
+            "namespace",
+            "outcome",
+            "quality",
+            "tokens",
+            "cost",
+            "started_at",
+            "ended_at"
+          ],
+          "title": "UsageCall",
+          "type": "object"
+        },
+        "UsageCost": {
+          "properties": {
+            "status": {
+              "enum": [
+                "estimated",
+                "partial",
+                "unknown",
+                "not_applicable"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "estimated_cost_usd": {
+              "anyOf": [
+                {
+                  "maxLength": 29,
+                  "pattern": "^[0-9]{1,16}\\.[0-9]{12}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estimated Cost Usd"
+            },
+            "known_cost_usd": {
+              "anyOf": [
+                {
+                  "maxLength": 29,
+                  "pattern": "^[0-9]{1,16}\\.[0-9]{12}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known Cost Usd"
+            },
+            "currency": {
+              "const": "USD",
+              "title": "Currency",
+              "type": "string"
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "const": "configured_catalog",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            },
+            "unpriced_call_count": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "title": "Unpriced Call Count",
+              "type": "integer"
+            },
+            "pricing_versions": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "maxItems": 50,
+              "title": "Pricing Versions",
+              "type": "array"
+            }
+          },
+          "required": [
+            "status",
+            "estimated_cost_usd",
+            "known_cost_usd",
+            "currency",
+            "source",
+            "unpriced_call_count",
+            "pricing_versions"
+          ],
+          "title": "UsageCost",
+          "type": "object"
+        },
+        "UsageCoverage": {
+          "properties": {
+            "observed_call_count": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "title": "Observed Call Count",
+              "type": "integer"
+            },
+            "reported_call_count": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "title": "Reported Call Count",
+              "type": "integer"
+            },
+            "missing_usage_call_count": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "title": "Missing Usage Call Count",
+              "type": "integer"
+            },
+            "incomplete_call_count": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "title": "Incomplete Call Count",
+              "type": "integer"
+            },
+            "collection_degraded": {
+              "title": "Collection Degraded",
+              "type": "boolean"
+            },
+            "excluded_operations": {
+              "items": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_:.-]+$",
+                "type": "string"
+              },
+              "maxItems": 16,
+              "title": "Excluded Operations",
+              "type": "array"
+            }
+          },
+          "required": [
+            "observed_call_count",
+            "reported_call_count",
+            "missing_usage_call_count",
+            "incomplete_call_count",
+            "collection_degraded",
+            "excluded_operations"
+          ],
+          "title": "UsageCoverage",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "version": {
+          "const": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "availability": {
+          "enum": [
+            "available",
+            "partial",
+            "disabled",
+            "unavailable"
+          ],
+          "title": "Availability",
+          "type": "string"
+        },
+        "unavailable_reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "not_recorded",
+                "backend_unavailable"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Unavailable Reason"
+        },
+        "tokens": {
+          "$ref": "#/$defs/TokenCounts"
+        },
+        "known_tokens": {
+          "$ref": "#/$defs/TokenCounts"
+        },
+        "cost": {
+          "$ref": "#/$defs/UsageCost"
+        },
+        "coverage": {
+          "$ref": "#/$defs/UsageCoverage"
+        },
+        "truncated": {
+          "title": "Truncated",
+          "type": "boolean"
+        },
+        "thread_id": {
+          "format": "uuid",
+          "title": "Thread Id",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "finalized": {
+          "title": "Finalized",
+          "type": "boolean"
+        },
+        "calls": {
+          "$ref": "#/$defs/CallPage"
+        },
+        "run_status": {
+          "maxLength": 128,
+          "title": "Run Status",
+          "type": "string"
+        },
+        "request_id": {
+          "maxLength": 256,
+          "title": "Request Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "availability",
+        "unavailable_reason",
+        "tokens",
+        "known_tokens",
+        "cost",
+        "coverage",
+        "truncated",
+        "thread_id",
+        "run_id",
+        "finalized",
+        "calls",
+        "run_status",
+        "request_id"
+      ],
+      "title": "RunUsage",
+      "type": "object"
+    },
+    "ThreadUsage": {
+      "$defs": {
+        "TokenCounts": {
+          "properties": {
+            "input_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Input Tokens"
+            },
+            "output_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Output Tokens"
+            },
+            "total_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Total Tokens"
+            },
+            "cache_read_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cache Read Tokens"
+            },
+            "cache_creation_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cache Creation Tokens"
+            },
+            "cache_creation_5m_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cache Creation 5M Tokens"
+            },
+            "cache_creation_1h_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cache Creation 1H Tokens"
+            },
+            "reasoning_tokens": {
+              "anyOf": [
+                {
+                  "maximum": 9007199254740991,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Reasoning Tokens"
+            }
+          },
+          "required": [
+            "input_tokens",
+            "output_tokens",
+            "total_tokens",
+            "cache_read_tokens",
+            "cache_creation_tokens",
+            "cache_creation_5m_tokens",
+            "cache_creation_1h_tokens",
+            "reasoning_tokens"
+          ],
+          "title": "TokenCounts",
+          "type": "object"
+        },
+        "UsageCost": {
+          "properties": {
+            "status": {
+              "enum": [
+                "estimated",
+                "partial",
+                "unknown",
+                "not_applicable"
+              ],
+              "title": "Status",
+              "type": "string"
+            },
+            "estimated_cost_usd": {
+              "anyOf": [
+                {
+                  "maxLength": 29,
+                  "pattern": "^[0-9]{1,16}\\.[0-9]{12}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Estimated Cost Usd"
+            },
+            "known_cost_usd": {
+              "anyOf": [
+                {
+                  "maxLength": 29,
+                  "pattern": "^[0-9]{1,16}\\.[0-9]{12}$",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Known Cost Usd"
+            },
+            "currency": {
+              "const": "USD",
+              "title": "Currency",
+              "type": "string"
+            },
+            "source": {
+              "anyOf": [
+                {
+                  "const": "configured_catalog",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source"
+            },
+            "unpriced_call_count": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "title": "Unpriced Call Count",
+              "type": "integer"
+            },
+            "pricing_versions": {
+              "items": {
+                "format": "uuid",
+                "type": "string"
+              },
+              "maxItems": 50,
+              "title": "Pricing Versions",
+              "type": "array"
+            }
+          },
+          "required": [
+            "status",
+            "estimated_cost_usd",
+            "known_cost_usd",
+            "currency",
+            "source",
+            "unpriced_call_count",
+            "pricing_versions"
+          ],
+          "title": "UsageCost",
+          "type": "object"
+        },
+        "UsageCoverage": {
+          "properties": {
+            "observed_call_count": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "title": "Observed Call Count",
+              "type": "integer"
+            },
+            "reported_call_count": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "title": "Reported Call Count",
+              "type": "integer"
+            },
+            "missing_usage_call_count": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "title": "Missing Usage Call Count",
+              "type": "integer"
+            },
+            "incomplete_call_count": {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "title": "Incomplete Call Count",
+              "type": "integer"
+            },
+            "collection_degraded": {
+              "title": "Collection Degraded",
+              "type": "boolean"
+            },
+            "excluded_operations": {
+              "items": {
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_:.-]+$",
+                "type": "string"
+              },
+              "maxItems": 16,
+              "title": "Excluded Operations",
+              "type": "array"
+            }
+          },
+          "required": [
+            "observed_call_count",
+            "reported_call_count",
+            "missing_usage_call_count",
+            "incomplete_call_count",
+            "collection_degraded",
+            "excluded_operations"
+          ],
+          "title": "UsageCoverage",
+          "type": "object"
+        }
+      },
+      "properties": {
+        "version": {
+          "const": 1,
+          "title": "Version",
+          "type": "integer"
+        },
+        "availability": {
+          "enum": [
+            "available",
+            "partial",
+            "disabled",
+            "unavailable"
+          ],
+          "title": "Availability",
+          "type": "string"
+        },
+        "unavailable_reason": {
+          "anyOf": [
+            {
+              "enum": [
+                "not_recorded",
+                "backend_unavailable"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Unavailable Reason"
+        },
+        "tokens": {
+          "$ref": "#/$defs/TokenCounts"
+        },
+        "known_tokens": {
+          "$ref": "#/$defs/TokenCounts"
+        },
+        "cost": {
+          "$ref": "#/$defs/UsageCost"
+        },
+        "coverage": {
+          "$ref": "#/$defs/UsageCoverage"
+        },
+        "truncated": {
+          "title": "Truncated",
+          "type": "boolean"
+        },
+        "thread_id": {
+          "format": "uuid",
+          "title": "Thread Id",
+          "type": "string"
+        },
+        "coverage_basis": {
+          "const": "recorded_native_runs",
+          "title": "Coverage Basis",
+          "type": "string"
+        },
+        "created_from": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Created From"
+        },
+        "created_to": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Created To"
+        },
+        "recorded_run_count": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Recorded Run Count",
+          "type": "integer"
+        },
+        "first_recorded_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "First Recorded At"
+        },
+        "last_recorded_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Recorded At"
+        },
+        "request_id": {
+          "maxLength": 256,
+          "title": "Request Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "availability",
+        "unavailable_reason",
+        "tokens",
+        "known_tokens",
+        "cost",
+        "coverage",
+        "truncated",
+        "thread_id",
+        "coverage_basis",
+        "created_from",
+        "created_to",
+        "recorded_run_count",
+        "first_recorded_at",
+        "last_recorded_at",
+        "request_id"
+      ],
+      "title": "ThreadUsage",
+      "type": "object"
+    },
+    "PricingInput": {
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "const": "USD",
+          "default": "USD",
+          "title": "Currency",
+          "type": "string"
+        },
+        "basis": {
+          "const": "per_million_tokens",
+          "default": "per_million_tokens",
+          "title": "Basis",
+          "type": "string"
+        },
+        "input": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Input"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output"
+        },
+        "cache_read": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Read"
+        },
+        "cache_write": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Write"
+        },
+        "cache_write_5m": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Write 5M"
+        },
+        "cache_write_1h": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Write 1H"
+        }
+      },
+      "title": "PricingInput",
+      "type": "object"
+    },
+    "PricingSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "currency": {
+          "const": "USD",
+          "default": "USD",
+          "title": "Currency",
+          "type": "string"
+        },
+        "basis": {
+          "const": "per_million_tokens",
+          "default": "per_million_tokens",
+          "title": "Basis",
+          "type": "string"
+        },
+        "input": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Input"
+        },
+        "output": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Output"
+        },
+        "cache_read": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Read"
+        },
+        "cache_write": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Write"
+        },
+        "cache_write_5m": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Write 5M"
+        },
+        "cache_write_1h": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Cache Write 1H"
+        },
+        "version": {
+          "format": "uuid",
+          "title": "Version",
+          "type": "string"
+        },
+        "source": {
+          "const": "configured_catalog",
+          "title": "Source",
+          "type": "string"
+        },
+        "updated_at": {
+          "format": "date-time",
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "source",
+        "updated_at"
+      ],
+      "title": "PricingSnapshot",
+      "type": "object"
+    }
+  },
+  "samples": {
+    "run_complete_page1": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "tokens": {
+        "input_tokens": 2000,
+        "output_tokens": 200,
+        "total_tokens": 2200,
+        "cache_read_tokens": 400,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 60
+      },
+      "known_tokens": {
+        "input_tokens": 2000,
+        "output_tokens": 200,
+        "total_tokens": 2200,
+        "cache_read_tokens": 400,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 60
+      },
+      "cost": {
+        "status": "estimated",
+        "estimated_cost_usd": "0.004880000000",
+        "known_cost_usd": "0.004880000000",
+        "currency": "USD",
+        "source": "configured_catalog",
+        "unpriced_call_count": 0,
+        "pricing_versions": [
+          "b23197dc-7274-42c9-8928-6210671fa3fd"
+        ]
+      },
+      "coverage": {
+        "observed_call_count": 2,
+        "reported_call_count": 2,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "truncated": false,
+      "thread_id": "119c50f2-4e36-4eb7-a9d8-46884a24febc",
+      "run_id": "d783cd78-a582-4060-ba70-70229497d3d4",
+      "finalized": true,
+      "calls": {
+        "items": [
+          {
+            "model_call_id": "01a11620-f705-79d2-8ef6-2c2c2db11151",
+            "model_id": "1aae8bca-20c6-43ef-b100-61a4c65bb1a5",
+            "provider": "openai",
+            "model_name": "usage-probe",
+            "scope": "primary",
+            "purpose": "agent",
+            "namespace": [
+              "model"
+            ],
+            "outcome": "completed",
+            "quality": "reported",
+            "tokens": {
+              "input_tokens": 1000,
+              "output_tokens": 100,
+              "total_tokens": 1100,
+              "cache_read_tokens": 200,
+              "cache_creation_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_1h_tokens": 0,
+              "reasoning_tokens": 30
+            },
+            "cost": {
+              "status": "estimated",
+              "estimated_cost_usd": "0.002440000000",
+              "known_cost_usd": "0.002440000000",
+              "currency": "USD",
+              "source": "configured_catalog",
+              "unpriced_call_count": 0,
+              "pricing_versions": [
+                "b23197dc-7274-42c9-8928-6210671fa3fd"
+              ]
+            },
+            "started_at": "2026-10-07T11:30:21.574664Z",
+            "ended_at": "2026-10-07T11:30:21.851849Z"
+          }
+        ],
+        "next_cursor": "WyIyMDI2LTEwLTA3VDExOjMwOjIxLjU3NDY2NCswMDowMCIsICIwMWExMTYyMC1mNzA1LTc5ZDItOGVmNi0yYzJjMmRiMTExNTEiXQ=="
+      },
+      "run_status": "success",
+      "request_id": "21636237c4e24e84a895477a72c5a2f2"
+    },
+    "thread_complete": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "tokens": {
+        "input_tokens": 4000,
+        "output_tokens": 400,
+        "total_tokens": 4400,
+        "cache_read_tokens": 800,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 120
+      },
+      "known_tokens": {
+        "input_tokens": 4000,
+        "output_tokens": 400,
+        "total_tokens": 4400,
+        "cache_read_tokens": 800,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 120
+      },
+      "cost": {
+        "status": "estimated",
+        "estimated_cost_usd": "0.009760000000",
+        "known_cost_usd": "0.009760000000",
+        "currency": "USD",
+        "source": "configured_catalog",
+        "unpriced_call_count": 0,
+        "pricing_versions": [
+          "b23197dc-7274-42c9-8928-6210671fa3fd"
+        ]
+      },
+      "coverage": {
+        "observed_call_count": 4,
+        "reported_call_count": 4,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "truncated": false,
+      "thread_id": "119c50f2-4e36-4eb7-a9d8-46884a24febc",
+      "coverage_basis": "recorded_native_runs",
+      "created_from": null,
+      "created_to": null,
+      "recorded_run_count": 2,
+      "first_recorded_at": "2026-10-07T11:30:19.545903Z",
+      "last_recorded_at": "2026-10-07T11:30:31.182040Z",
+      "request_id": "60bfd54b207a46f09fa73ff78725ee22"
+    },
+    "run_unknown_price": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "tokens": {
+        "input_tokens": 2000,
+        "output_tokens": 200,
+        "total_tokens": 2200,
+        "cache_read_tokens": 400,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 60
+      },
+      "known_tokens": {
+        "input_tokens": 2000,
+        "output_tokens": 200,
+        "total_tokens": 2200,
+        "cache_read_tokens": 400,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 60
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 2,
+        "pricing_versions": []
+      },
+      "coverage": {
+        "observed_call_count": 2,
+        "reported_call_count": 2,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "truncated": false,
+      "thread_id": "119c50f2-4e36-4eb7-a9d8-46884a24febc",
+      "run_id": "952d5a1a-6486-49db-8eb4-d94534e6bced",
+      "finalized": true,
+      "calls": {
+        "items": [
+          {
+            "model_call_id": "01a11623-1c4e-71e0-b77b-4ad3b2c843a7",
+            "model_id": "1aae8bca-20c6-43ef-b100-61a4c65bb1a5",
+            "provider": "openai",
+            "model_name": "usage-probe",
+            "scope": "primary",
+            "purpose": "agent",
+            "namespace": [
+              "model"
+            ],
+            "outcome": "completed",
+            "quality": "reported",
+            "tokens": {
+              "input_tokens": 1000,
+              "output_tokens": 100,
+              "total_tokens": 1100,
+              "cache_read_tokens": 200,
+              "cache_creation_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_1h_tokens": 0,
+              "reasoning_tokens": 30
+            },
+            "cost": {
+              "status": "unknown",
+              "estimated_cost_usd": null,
+              "known_cost_usd": null,
+              "currency": "USD",
+              "source": null,
+              "unpriced_call_count": 1,
+              "pricing_versions": []
+            },
+            "started_at": "2026-10-07T11:32:42.191555Z",
+            "ended_at": "2026-10-07T11:32:42.265634Z"
+          },
+          {
+            "model_call_id": "01a11623-29d6-7d40-9a3a-208b4c554ac9",
+            "model_id": "1aae8bca-20c6-43ef-b100-61a4c65bb1a5",
+            "provider": "openai",
+            "model_name": "usage-probe",
+            "scope": "primary",
+            "purpose": "agent",
+            "namespace": [
+              "model"
+            ],
+            "outcome": "completed",
+            "quality": "reported",
+            "tokens": {
+              "input_tokens": 1000,
+              "output_tokens": 100,
+              "total_tokens": 1100,
+              "cache_read_tokens": 200,
+              "cache_creation_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_1h_tokens": 0,
+              "reasoning_tokens": 30
+            },
+            "cost": {
+              "status": "unknown",
+              "estimated_cost_usd": null,
+              "known_cost_usd": null,
+              "currency": "USD",
+              "source": null,
+              "unpriced_call_count": 1,
+              "pricing_versions": []
+            },
+            "started_at": "2026-10-07T11:32:45.659039Z",
+            "ended_at": "2026-10-07T11:32:45.911416Z"
+          }
+        ],
+        "next_cursor": null
+      },
+      "run_status": "success",
+      "request_id": "a101f0a2983444fa98c8731c4232196f"
+    },
+    "run_zero_calls": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "tokens": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 0
+      },
+      "known_tokens": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 0
+      },
+      "cost": {
+        "status": "not_applicable",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 0,
+        "pricing_versions": []
+      },
+      "coverage": {
+        "observed_call_count": 0,
+        "reported_call_count": 0,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "truncated": false,
+      "thread_id": "514fa36c-3cc0-43b8-b1b5-d60cf482c422",
+      "run_id": "12dd587e-7e4f-4eee-aeb9-1326f90357a1",
+      "finalized": true,
+      "calls": {
+        "items": [],
+        "next_cursor": null
+      },
+      "run_status": "interrupted",
+      "request_id": "ee9acf98115e4280b4974f42b97b965b"
+    },
+    "run_collection_degraded": {
+      "version": 1,
+      "availability": "partial",
+      "unavailable_reason": null,
+      "tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "known_tokens": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 0
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 0,
+        "pricing_versions": []
+      },
+      "coverage": {
+        "observed_call_count": 0,
+        "reported_call_count": 0,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": true,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "truncated": false,
+      "thread_id": "9707a40f-d69d-4144-b59f-acbb71256583",
+      "run_id": "db58e521-6252-42e9-b829-4bef24a83c69",
+      "finalized": false,
+      "calls": {
+        "items": [],
+        "next_cursor": null
+      },
+      "run_status": "success",
+      "request_id": "f5612af01b3c4b9d94745f35e705f7fc"
+    },
+    "run_child": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "tokens": {
+        "input_tokens": 3000,
+        "output_tokens": 300,
+        "total_tokens": 3300,
+        "cache_read_tokens": 600,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 90
+      },
+      "known_tokens": {
+        "input_tokens": 3000,
+        "output_tokens": 300,
+        "total_tokens": 3300,
+        "cache_read_tokens": 600,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 90
+      },
+      "cost": {
+        "status": "estimated",
+        "estimated_cost_usd": "0.007320000000",
+        "known_cost_usd": "0.007320000000",
+        "currency": "USD",
+        "source": "configured_catalog",
+        "unpriced_call_count": 0,
+        "pricing_versions": [
+          "b23197dc-7274-42c9-8928-6210671fa3fd"
+        ]
+      },
+      "coverage": {
+        "observed_call_count": 3,
+        "reported_call_count": 3,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "truncated": false,
+      "thread_id": "67accb23-8b29-421a-8222-3a07103ead88",
+      "run_id": "64a302df-33bb-4965-b55e-4d29ff8f2560",
+      "finalized": true,
+      "calls": {
+        "items": [
+          {
+            "model_call_id": "01a11621-5aaf-7422-a32d-241f00c3d97f",
+            "model_id": "1aae8bca-20c6-43ef-b100-61a4c65bb1a5",
+            "provider": "openai",
+            "model_name": "usage-probe",
+            "scope": "primary",
+            "purpose": "agent",
+            "namespace": [
+              "model"
+            ],
+            "outcome": "completed",
+            "quality": "reported",
+            "tokens": {
+              "input_tokens": 1000,
+              "output_tokens": 100,
+              "total_tokens": 1100,
+              "cache_read_tokens": 200,
+              "cache_creation_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_1h_tokens": 0,
+              "reasoning_tokens": 30
+            },
+            "cost": {
+              "status": "estimated",
+              "estimated_cost_usd": "0.002440000000",
+              "known_cost_usd": "0.002440000000",
+              "currency": "USD",
+              "source": "configured_catalog",
+              "unpriced_call_count": 0,
+              "pricing_versions": [
+                "b23197dc-7274-42c9-8928-6210671fa3fd"
+              ]
+            },
+            "started_at": "2026-10-07T11:30:47.087850Z",
+            "ended_at": "2026-10-07T11:30:47.147312Z"
+          },
+          {
+            "model_call_id": "01a11621-6618-7843-ad1a-d2f1aca00783",
+            "model_id": "1aae8bca-20c6-43ef-b100-61a4c65bb1a5",
+            "provider": "openai",
+            "model_name": "usage-probe",
+            "scope": "subagent",
+            "purpose": "agent",
+            "namespace": [
+              "tools",
+              "model"
+            ],
+            "outcome": "completed",
+            "quality": "reported",
+            "tokens": {
+              "input_tokens": 1000,
+              "output_tokens": 100,
+              "total_tokens": 1100,
+              "cache_read_tokens": 200,
+              "cache_creation_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_1h_tokens": 0,
+              "reasoning_tokens": 30
+            },
+            "cost": {
+              "status": "estimated",
+              "estimated_cost_usd": "0.002440000000",
+              "known_cost_usd": "0.002440000000",
+              "currency": "USD",
+              "source": "configured_catalog",
+              "unpriced_call_count": 0,
+              "pricing_versions": [
+                "b23197dc-7274-42c9-8928-6210671fa3fd"
+              ]
+            },
+            "started_at": "2026-10-07T11:30:50.009638Z",
+            "ended_at": "2026-10-07T11:30:50.057481Z"
+          },
+          {
+            "model_call_id": "01a11621-7552-7a92-9d57-c6b0c6612e3b",
+            "model_id": "1aae8bca-20c6-43ef-b100-61a4c65bb1a5",
+            "provider": "openai",
+            "model_name": "usage-probe",
+            "scope": "primary",
+            "purpose": "agent",
+            "namespace": [
+              "model"
+            ],
+            "outcome": "completed",
+            "quality": "reported",
+            "tokens": {
+              "input_tokens": 1000,
+              "output_tokens": 100,
+              "total_tokens": 1100,
+              "cache_read_tokens": 200,
+              "cache_creation_tokens": 0,
+              "cache_creation_5m_tokens": 0,
+              "cache_creation_1h_tokens": 0,
+              "reasoning_tokens": 30
+            },
+            "cost": {
+              "status": "estimated",
+              "estimated_cost_usd": "0.002440000000",
+              "known_cost_usd": "0.002440000000",
+              "currency": "USD",
+              "source": "configured_catalog",
+              "unpriced_call_count": 0,
+              "pricing_versions": [
+                "b23197dc-7274-42c9-8928-6210671fa3fd"
+              ]
+            },
+            "started_at": "2026-10-07T11:30:53.906696Z",
+            "ended_at": "2026-10-07T11:30:54.340311Z"
+          }
+        ],
+        "next_cursor": null
+      },
+      "run_status": "success",
+      "request_id": "35ce087d2b824947a7b714b09f43a3e6"
+    },
+    "run_not_recorded": {
+      "version": 1,
+      "availability": "unavailable",
+      "unavailable_reason": "not_recorded",
+      "tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "known_tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 0,
+        "pricing_versions": []
+      },
+      "coverage": {
+        "observed_call_count": 0,
+        "reported_call_count": 0,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "truncated": false,
+      "thread_id": "119c50f2-4e36-4eb7-a9d8-46884a24febc",
+      "run_id": "d783cd78-a582-4060-ba70-70229497d3d4",
+      "finalized": false,
+      "calls": {
+        "items": [],
+        "next_cursor": null
+      },
+      "run_status": "success",
+      "request_id": "21636237c4e24e84a895477a72c5a2f2"
+    },
+    "run_backend_unavailable": {
+      "version": 1,
+      "availability": "unavailable",
+      "unavailable_reason": "backend_unavailable",
+      "tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "known_tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 0,
+        "pricing_versions": []
+      },
+      "coverage": {
+        "observed_call_count": 0,
+        "reported_call_count": 0,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "truncated": false,
+      "thread_id": "119c50f2-4e36-4eb7-a9d8-46884a24febc",
+      "run_id": "d783cd78-a582-4060-ba70-70229497d3d4",
+      "finalized": false,
+      "calls": {
+        "items": [],
+        "next_cursor": null
+      },
+      "run_status": "success",
+      "request_id": "21636237c4e24e84a895477a72c5a2f2"
+    },
+    "run_disabled": {
+      "version": 1,
+      "availability": "disabled",
+      "unavailable_reason": null,
+      "tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "known_tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 0,
+        "pricing_versions": []
+      },
+      "coverage": {
+        "observed_call_count": 0,
+        "reported_call_count": 0,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "truncated": false,
+      "thread_id": "119c50f2-4e36-4eb7-a9d8-46884a24febc",
+      "run_id": "d783cd78-a582-4060-ba70-70229497d3d4",
+      "finalized": false,
+      "calls": {
+        "items": [],
+        "next_cursor": null
+      },
+      "run_status": "success",
+      "request_id": "21636237c4e24e84a895477a72c5a2f2"
+    },
+    "run_cache_ttl": {
+      "version": 1,
+      "availability": "available",
+      "unavailable_reason": null,
+      "tokens": {
+        "input_tokens": 1000,
+        "output_tokens": 100,
+        "total_tokens": 1100,
+        "cache_read_tokens": 200,
+        "cache_creation_tokens": 100,
+        "cache_creation_5m_tokens": 40,
+        "cache_creation_1h_tokens": 60,
+        "reasoning_tokens": 30
+      },
+      "known_tokens": {
+        "input_tokens": 1000,
+        "output_tokens": 100,
+        "total_tokens": 1100,
+        "cache_read_tokens": 200,
+        "cache_creation_tokens": 100,
+        "cache_creation_5m_tokens": 40,
+        "cache_creation_1h_tokens": 60,
+        "reasoning_tokens": 30
+      },
+      "cost": {
+        "status": "estimated",
+        "estimated_cost_usd": "0.002580000000",
+        "known_cost_usd": "0.002580000000",
+        "currency": "USD",
+        "source": "configured_catalog",
+        "unpriced_call_count": 0,
+        "pricing_versions": [
+          "b23197dc-7274-42c9-8928-6210671fa3fd"
+        ]
+      },
+      "coverage": {
+        "observed_call_count": 1,
+        "reported_call_count": 1,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "truncated": false,
+      "thread_id": "119c50f2-4e36-4eb7-a9d8-46884a24febc",
+      "run_id": "d783cd78-a582-4060-ba70-70229497d3d4",
+      "finalized": true,
+      "calls": {
+        "items": [
+          {
+            "model_call_id": "01a11620-f705-79d2-8ef6-2c2c2db11151",
+            "model_id": "1aae8bca-20c6-43ef-b100-61a4c65bb1a5",
+            "provider": "openai",
+            "model_name": "usage-probe",
+            "scope": "primary",
+            "purpose": "agent",
+            "namespace": [
+              "model"
+            ],
+            "outcome": "completed",
+            "quality": "reported",
+            "tokens": {
+              "input_tokens": 1000,
+              "output_tokens": 100,
+              "total_tokens": 1100,
+              "cache_read_tokens": 200,
+              "cache_creation_tokens": 100,
+              "cache_creation_5m_tokens": 40,
+              "cache_creation_1h_tokens": 60,
+              "reasoning_tokens": 30
+            },
+            "cost": {
+              "status": "estimated",
+              "estimated_cost_usd": "0.002580000000",
+              "known_cost_usd": "0.002580000000",
+              "currency": "USD",
+              "source": "configured_catalog",
+              "unpriced_call_count": 0,
+              "pricing_versions": [
+                "b23197dc-7274-42c9-8928-6210671fa3fd"
+              ]
+            },
+            "started_at": "2026-10-07T11:30:21.574664Z",
+            "ended_at": "2026-10-07T11:30:21.851849Z"
+          }
+        ],
+        "next_cursor": null
+      },
+      "run_status": "success",
+      "request_id": "21636237c4e24e84a895477a72c5a2f2"
+    },
+    "run_partial_missing_usage": {
+      "version": 1,
+      "availability": "partial",
+      "unavailable_reason": null,
+      "tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "known_tokens": {
+        "input_tokens": 1000,
+        "output_tokens": 100,
+        "total_tokens": 1100,
+        "cache_read_tokens": 200,
+        "cache_creation_tokens": 100,
+        "cache_creation_5m_tokens": 40,
+        "cache_creation_1h_tokens": 60,
+        "reasoning_tokens": 30
+      },
+      "cost": {
+        "status": "partial",
+        "estimated_cost_usd": null,
+        "known_cost_usd": "0.002580000000",
+        "currency": "USD",
+        "source": "configured_catalog",
+        "unpriced_call_count": 1,
+        "pricing_versions": [
+          "b23197dc-7274-42c9-8928-6210671fa3fd"
+        ]
+      },
+      "coverage": {
+        "observed_call_count": 2,
+        "reported_call_count": 1,
+        "missing_usage_call_count": 1,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "truncated": false,
+      "thread_id": "119c50f2-4e36-4eb7-a9d8-46884a24febc",
+      "run_id": "d783cd78-a582-4060-ba70-70229497d3d4",
+      "finalized": true,
+      "calls": {
+        "items": [
+          {
+            "model_call_id": "01a11620-f705-79d2-8ef6-2c2c2db11151",
+            "model_id": "1aae8bca-20c6-43ef-b100-61a4c65bb1a5",
+            "provider": "openai",
+            "model_name": "usage-probe",
+            "scope": "primary",
+            "purpose": "agent",
+            "namespace": [
+              "model"
+            ],
+            "outcome": "completed",
+            "quality": "reported",
+            "tokens": {
+              "input_tokens": 1000,
+              "output_tokens": 100,
+              "total_tokens": 1100,
+              "cache_read_tokens": 200,
+              "cache_creation_tokens": 100,
+              "cache_creation_5m_tokens": 40,
+              "cache_creation_1h_tokens": 60,
+              "reasoning_tokens": 30
+            },
+            "cost": {
+              "status": "estimated",
+              "estimated_cost_usd": "0.002580000000",
+              "known_cost_usd": "0.002580000000",
+              "currency": "USD",
+              "source": "configured_catalog",
+              "unpriced_call_count": 0,
+              "pricing_versions": [
+                "b23197dc-7274-42c9-8928-6210671fa3fd"
+              ]
+            },
+            "started_at": "2026-10-07T11:30:21.574664Z",
+            "ended_at": "2026-10-07T11:30:21.851849Z"
+          },
+          {
+            "model_call_id": "ac605e82-129c-457d-8ea3-6ea5f3ee6432",
+            "model_id": "1aae8bca-20c6-43ef-b100-61a4c65bb1a5",
+            "provider": "openai",
+            "model_name": "usage-probe",
+            "scope": "primary",
+            "purpose": "agent",
+            "namespace": [
+              "model"
+            ],
+            "outcome": "completed",
+            "quality": "missing",
+            "tokens": {
+              "input_tokens": null,
+              "output_tokens": null,
+              "total_tokens": null,
+              "cache_read_tokens": null,
+              "cache_creation_tokens": null,
+              "cache_creation_5m_tokens": null,
+              "cache_creation_1h_tokens": null,
+              "reasoning_tokens": null
+            },
+            "cost": {
+              "status": "unknown",
+              "estimated_cost_usd": null,
+              "known_cost_usd": null,
+              "currency": "USD",
+              "source": "configured_catalog",
+              "unpriced_call_count": 1,
+              "pricing_versions": [
+                "b23197dc-7274-42c9-8928-6210671fa3fd"
+              ]
+            },
+            "started_at": "2026-10-07T11:30:21.574664Z",
+            "ended_at": "2026-10-07T11:30:21.851849Z"
+          }
+        ],
+        "next_cursor": null
+      },
+      "run_status": "success",
+      "request_id": "21636237c4e24e84a895477a72c5a2f2"
+    },
+    "run_running": {
+      "version": 1,
+      "availability": "partial",
+      "unavailable_reason": null,
+      "tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "known_tokens": {
+        "input_tokens": 1000,
+        "output_tokens": 100,
+        "total_tokens": 1100,
+        "cache_read_tokens": 200,
+        "cache_creation_tokens": 100,
+        "cache_creation_5m_tokens": 40,
+        "cache_creation_1h_tokens": 60,
+        "reasoning_tokens": 30
+      },
+      "cost": {
+        "status": "partial",
+        "estimated_cost_usd": null,
+        "known_cost_usd": "0.002580000000",
+        "currency": "USD",
+        "source": "configured_catalog",
+        "unpriced_call_count": 0,
+        "pricing_versions": [
+          "b23197dc-7274-42c9-8928-6210671fa3fd"
+        ]
+      },
+      "coverage": {
+        "observed_call_count": 1,
+        "reported_call_count": 1,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ]
+      },
+      "truncated": false,
+      "thread_id": "119c50f2-4e36-4eb7-a9d8-46884a24febc",
+      "run_id": "d783cd78-a582-4060-ba70-70229497d3d4",
+      "finalized": false,
+      "calls": {
+        "items": [
+          {
+            "model_call_id": "01a11620-f705-79d2-8ef6-2c2c2db11151",
+            "model_id": "1aae8bca-20c6-43ef-b100-61a4c65bb1a5",
+            "provider": "openai",
+            "model_name": "usage-probe",
+            "scope": "primary",
+            "purpose": "agent",
+            "namespace": [
+              "model"
+            ],
+            "outcome": "completed",
+            "quality": "reported",
+            "tokens": {
+              "input_tokens": 1000,
+              "output_tokens": 100,
+              "total_tokens": 1100,
+              "cache_read_tokens": 200,
+              "cache_creation_tokens": 100,
+              "cache_creation_5m_tokens": 40,
+              "cache_creation_1h_tokens": 60,
+              "reasoning_tokens": 30
+            },
+            "cost": {
+              "status": "estimated",
+              "estimated_cost_usd": "0.002580000000",
+              "known_cost_usd": "0.002580000000",
+              "currency": "USD",
+              "source": "configured_catalog",
+              "unpriced_call_count": 0,
+              "pricing_versions": [
+                "b23197dc-7274-42c9-8928-6210671fa3fd"
+              ]
+            },
+            "started_at": "2026-10-07T11:30:21.574664Z",
+            "ended_at": "2026-10-07T11:30:21.851849Z"
+          }
+        ],
+        "next_cursor": null
+      },
+      "run_status": "running",
+      "request_id": "21636237c4e24e84a895477a72c5a2f2"
+    }
+  },
+  "errors": [
+    {
+      "http_status": 401,
+      "body": {
+        "error": {
+          "code": "not_authenticated",
+          "message": "Authentication required",
+          "details": []
+        },
+        "request_id": "fixture-query"
+      }
+    },
+    {
+      "http_status": 403,
+      "body": {
+        "error": {
+          "code": "forbidden",
+          "message": "Permission denied",
+          "details": []
+        },
+        "request_id": "fixture-query"
+      }
+    },
+    {
+      "http_status": 404,
+      "body": {
+        "error": {
+          "code": "run_not_found",
+          "message": "Run not found",
+          "details": []
+        },
+        "request_id": "fixture-query"
+      }
+    },
+    {
+      "http_status": 400,
+      "body": {
+        "error": {
+          "code": "invalid_usage_query",
+          "message": "Invalid usage pagination",
+          "details": []
+        },
+        "request_id": "fixture-query"
+      }
+    },
+    {
+      "http_status": 422,
+      "body": {
+        "error": {
+          "code": "validation_failed",
+          "message": "Validation failed",
+          "details": []
+        },
+        "request_id": "fixture-query"
+      }
+    },
+    {
+      "http_status": 502,
+      "body": {
+        "error": {
+          "code": "langgraph_upstream_invalid_response",
+          "message": "Invalid Runtime usage",
+          "details": []
+        },
+        "request_id": "fixture-query"
+      }
+    },
+    {
+      "http_status": 503,
+      "body": {
+        "error": {
+          "code": "langgraph_upstream_unavailable",
+          "message": "Runtime unavailable",
+          "details": []
+        },
+        "request_id": "fixture-query"
+      }
+    },
+    {
+      "http_status": 504,
+      "body": {
+        "error": {
+          "code": "langgraph_upstream_timeout",
+          "message": "Runtime request timed out",
+          "details": []
+        },
+        "request_id": "fixture-query"
+      }
+    }
+  ],
+  "sample_origins": {
+    "http": [
+      "run_complete_page1",
+      "thread_complete",
+      "run_unknown_price",
+      "run_zero_calls",
+      "run_collection_degraded",
+      "run_child"
+    ],
+    "controlled_contract": [
+      "run_cache_ttl",
+      "run_partial_missing_usage",
+      "run_running",
+      "run_not_recorded",
+      "run_backend_unavailable",
+      "run_disabled"
+    ]
+  }
+}
