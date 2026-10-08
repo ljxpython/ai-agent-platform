@@ -14,14 +14,14 @@
 
 | 规范 | 文件 | 状态 | last_verified | 置信度 | 源专项 |
 |---|---|---|---|---|---|
-| 错误响应 Envelope | [error-envelope.md](error-envelope.md) | active | 2026-10-07 | 🟢 high | [20260926-error-response-contract](../projects/20260926-error-response-contract/README.md) · [执行预算安全码](../projects/20261007-agent-execution-budget/verification.md) |
+| 错误响应 Envelope | [error-envelope.md](error-envelope.md) | active | 2026-10-07 | 🟢 high | [20260926-error-response-contract](../projects/20260926-error-response-contract/README.md) · [执行预算安全码](../projects/20261007-agent-execution-budget/verification.md) · [Stop 错误映射](../projects/20261007-agent-run-cancellation/verification.md) |
 | 链路追踪传播 | [trace-propagation.md](trace-propagation.md) | active | 2026-09-27 | 🟢 high | [20260926-trace-context-propagation](../projects/20260926-trace-context-propagation/README.md) |
-| Delegation JWT Schema | [delegation-jwt.md](delegation-jwt.md) | draft | 2026-10-07 | 🟡 medium | [Delegation 专项](../projects/20260926-delegation-jwt-contract/README.md) · [diagnostics-read](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md) · [usage-read](../projects/20261007-agent-usage-cost-governance/03-platform-cost-contract.md) |
+| Delegation JWT Schema | [delegation-jwt.md](delegation-jwt.md) | draft | 2026-10-07 | 🟡 medium | [Delegation 专项](../projects/20260926-delegation-jwt-contract/README.md) · [diagnostics-read](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md) · [usage-read](../projects/20261007-agent-usage-cost-governance/03-platform-cost-contract.md) · [Stop 精确委托](../projects/20261007-agent-run-cancellation/verification.md) |
 | SSE 事件格式契约 | [sse-event.md](sse-event.md) | draft | 2026-10-07 | 🟡 medium | [SSE 专项](../projects/20260926-sse-event-contract/README.md) · [执行错误投影](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md) · [执行预算 custom](../projects/20261007-agent-execution-budget/frontend-handoff.md) |
 
 ## 未完成项
 
-- **delegation-jwt（draft）**：28 项 operation，`diagnostics-read` 与 `usage-read` 的内部 GET/Thread 绑定、原生拒绝和隔离当前 ACL 链路已验；`suggestions-generate` 和 cron 独立证据保留。消息内部原生 Run 回查源码已修复，现役链路尚未验证，待 [message-run-read-delegation](../projects/20260927-message-run-read-delegation/README.md) 专项部署后补验
+- **delegation-jwt（draft）**：31 项 operation；`diagnostics-read`、`usage-read` 与新增会话 Stop 两项自定义 scope/固定回执原生例外契约、HMAC 与接受后撤权隔离链路已验。Stop 正式配套接入 blocked；`suggestions-generate` 与 cron 保持独立证据。消息内部原生 Run 回查源码已修复，现役链路尚未验证，待 [message-run-read-delegation](../projects/20260927-message-run-read-delegation/README.md) 专项部署后补验
 - **sse-event（draft）**：帧安全、SDK 重试、会话池、410 降级规则已验（S1–S10）；8 条并发容量（S11）因 HTTP/1.1 入口限制阻塞，待 HTTP/2 入口就绪后补验
 
 ## 更新规则

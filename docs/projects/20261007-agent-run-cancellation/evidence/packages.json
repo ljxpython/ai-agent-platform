@@ -1,0 +1,32 @@
+{
+  "candidate": "unpublished unique post43; not PyPI evidence",
+  "python": "3.13.9",
+  "graphharbor": "0.13.0.post43",
+  "runtime": "0.13.0.post43",
+  "langgraph_sdk": "0.4.3",
+  "migration": "011_run_cancellations",
+  "artifacts_sha256": {
+    "graphharbor-0.13.0.post43-py3-none-any.whl": "8fcb0910829355df2582e5e88881c527e442ff5dc94a92de85b760d9e2911670",
+    "graphharbor-0.13.0.post43.tar.gz": "53a87a10d3edbead97e8ffbd50d350ab38ba6fc37afd71a13b64b4070dfc7fdd",
+    "graphharbor_runtime-0.13.0.post43-py3-none-any.whl": "96c16ccff6314855d5d65a38b8c8633ee3791deeb907f841810c87e334659b65",
+    "graphharbor_runtime-0.13.0.post43.tar.gz": "2455bb803dbbdf8ab6688a07f932341ab85b1c86588a66cdad29112519606bb7"
+  },
+  "cli": "graphharbor, version 0.13.0.post43",
+  "import_check": "passed; installed site-packages, not source PYTHONPATH",
+  "pypi_post42_wheel_sha256": {
+    "graphharbor": "ee1ed7e3c5d9025613da55cd1325079112395efc044a68b62c62ac40e11e0dc0",
+    "graphharbor-runtime": "b7f50e9bd94c4cc735aedb0eddef177bd26995e685740fb2d8f662cdc1c69be9"
+  },
+  "code_delta_from_pypi_post42": {
+    "added": ["langhost/cancellation.py", "langgraph_runtime_pg/migrations/versions/011_run_cancellations.py"],
+    "changed": ["langhost/server.py", "langgraph_runtime_pg/graph_executor.py", "langgraph_runtime_pg/models.py"]
+  },
+  "runtime_dependency_rehearsal": "temporary copied manifest/lock; only GraphHarbor packages changed; repository lock remains official post41",
+  "twine_check": "passed for all four post43 artifacts",
+  "pypi_release_check": {
+    "checked_at": "2026-10-07",
+    "current_official_version": "0.13.0.post42",
+    "post43_files": 0,
+    "published_by_this_project": false
+  }
+}

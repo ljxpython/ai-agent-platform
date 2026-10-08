@@ -11,7 +11,7 @@ from urllib.parse import quote
 from uuid import UUID
 
 from anyio import CancelScope
-from fastapi import APIRouter, Body, Depends, Query, Request
+from fastapi import APIRouter, Body, Depends, Header, Query, Request
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from pydantic import (
     AwareDatetime,
@@ -48,6 +48,11 @@ from platform_api.core.security import (
 )
 from platform_api.entrypoints.http.dependencies import get_actor_context
 from platform_api.modules.runtime_gateway.application.diagnostics import RunDiagnostics
+from platform_api.modules.runtime_gateway.application.run_control import (
+    StopBody,
+    StopRequest,
+    StopRequestList,
+)
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
     _normalize_protocol_lifecycle_frame,
@@ -2166,6 +2171,77 @@ async def join_thread_run_stream(
         stream_kind="run",
         protocol=False,
     )
+
+
+@router.post("/threads/{thread_id}/cancel", status_code=202, response_model=StopRequest)
+async def cancel_thread(
+    request: Request,
+    thread_id: UUID,
+    payload: StopBody,
+    response: Response,
+    idempotency_key: str = Header(min_length=1, max_length=128),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    _stop_query(request, set())
+    response.headers["Cache-Control"] = "no-store"
+    return await service.thread_stop_action(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=str(thread_id),
+        key=idempotency_key,
+        request_id=request.state.platform_context.request.request_id,
+    )
+
+
+@router.get("/threads/{thread_id}/stop-requests/{stop_id}", response_model=StopRequest)
+async def get_stop_request(
+    request: Request,
+    thread_id: UUID,
+    stop_id: UUID,
+    response: Response,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    _stop_query(request, set())
+    response.headers["Cache-Control"] = "no-store"
+    return await service.thread_stop_action(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=str(thread_id),
+        stop_id=str(stop_id),
+        request_id=request.state.platform_context.request.request_id,
+    )
+
+
+@router.get("/threads/{thread_id}/stop-requests", response_model=StopRequestList)
+async def list_stop_requests(
+    request: Request,
+    thread_id: UUID,
+    response: Response,
+    limit: int = Query(default=20, ge=1, le=100),
+    cursor: str | None = Query(default=None, max_length=256),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    _stop_query(request, {"limit", "cursor"})
+    response.headers["Cache-Control"] = "no-store"
+    return await service.thread_stop_action(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=str(thread_id),
+        params={"limit": limit, **({"cursor": cursor} if cursor else {})},
+        request_id=request.state.platform_context.request.request_id,
+    )
+
+
+def _stop_query(request, allowed):
+    if set(request.query_params) - allowed or any(
+        len(request.query_params.getlist(key)) != 1 for key in request.query_params
+    ):
+        raise PlatformApiError(
+            code="invalid_stop_query", status_code=422, message="Invalid stop query"
+        )
 
 
 @router.post("/threads/{thread_id}/runs/{run_id}/cancel")

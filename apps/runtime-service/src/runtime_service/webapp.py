@@ -24,6 +24,7 @@ from runtime_service.http.dear_skills import router as dear_skills_router
 from runtime_service.http.diagnostics import router as diagnostics_router
 from runtime_service.http.documents import router as documents_router
 from runtime_service.http.images import router as images_router
+from runtime_service.http.run_control import router as run_control_router
 from runtime_service.http.suggestions import router as suggestions_router
 from runtime_service.http.terminal import router as terminal_router
 from runtime_service.http.title_summary import router as title_summary_router
@@ -34,6 +35,7 @@ from runtime_service.messaging.reconcile import reconcile_run
 from runtime_service.middlewares.timeout_wrapup import resolve_wrapup_after_seconds
 from runtime_service.observability import close_langfuse, initialize_langfuse
 from runtime_service.observability.query import diagnostics_client_lifespan
+from runtime_service.run_control.service import run_control_lifespan
 from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.workspace.file_refs import validate_file_ref
 from runtime_service.workspace.image_refs import validate_image_ref
@@ -44,7 +46,11 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     resolve_wrapup_after_seconds()
     initialize_langfuse()
     try:
-        async with acl_client_lifespan(), diagnostics_client_lifespan():
+        async with (
+            acl_client_lifespan(),
+            diagnostics_client_lifespan(),
+            run_control_lifespan(),
+        ):
             yield
     finally:
         from runtime_service.workspace.terminal import terminals
@@ -66,6 +72,7 @@ app.include_router(title_summary_router)
 app.include_router(suggestions_router)
 app.include_router(diagnostics_router)
 app.include_router(usage_router)
+app.include_router(run_control_router)
 
 
 @app.exception_handler(auth_exceptions.HTTPException)
@@ -300,8 +307,17 @@ async def list_messages(
             response = await client.get(f"/threads/{thread_id}/runs/{run_id}")
             response.raise_for_status()
             status = response.json()["status"]
+            from runtime_service.run_control.repository import run_stop_pending
+
+            stopping = await asyncio.to_thread(run_stop_pending, thread_id, run_id)
             reason = (
-                ("run_cancelled" if status == "cancelled" else "run_ended")
+                None
+                if stopping
+                else (
+                    "run_cancelled"
+                    if status in {"cancelled", "interrupted"}
+                    else "run_ended"
+                )
                 if status in {"success", "error", "timeout", "cancelled", "interrupted"}
                 else None
             )

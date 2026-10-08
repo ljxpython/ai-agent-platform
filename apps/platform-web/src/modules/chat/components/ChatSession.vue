@@ -63,6 +63,8 @@ import ClarificationCard from "./ClarificationCard.vue";
 import MessageContent from "./MessageContent.vue";
 import TrajectoryView from "./trajectory/TrajectoryView.vue";
 import QueuedMessagesBanner from "./QueuedMessagesBanner.vue";
+import RunStopReportBanner from "./RunStopReportBanner.vue";
+import RunStopReportDetails from "./RunStopReportDetails.vue";
 import { usePromptQueue } from "../composables/usePromptQueue";
 import { useServerPromptQueue } from "../composables/useServerPromptQueue";
 import { useFollowUpSuggestions } from "../composables/useFollowUpSuggestions";
@@ -143,6 +145,9 @@ const session = useChatSession({
     );
     submittedDraft = undefined;
     submittedAttachments = new Set();
+  },
+  onStopConfirmed: () => {
+    void promptQueue?.refresh();
   },
 });
 const {
@@ -398,6 +403,10 @@ function openDrawer() {
   drawerOpen.value = true;
   drawerTab.value = "overview";
   void loadHistory(true);
+}
+const showStopReportDrawer = ref(false);
+function openStopReportDrawer() {
+  showStopReportDrawer.value = true;
 }
 const chatSessionStore = useChatSessionStore();
 const initialCachedSession = chatSessionStore.getSession(
@@ -883,11 +892,14 @@ async function submitQueuedMessage(content: unknown) {
 async function send(queued = false) {
   if (
     cancelling.value ||
+    session.stopControl?.isStopping.value ||
+    session.stopControl?.isConfirmationUnavailable.value ||
     turnState.value === "stopping" ||
     turnState.value === "stop_unconfirmed"
   ) {
     return;
   }
+  session.stopControl?.clearFeedback();
   const isAgentActive =
     busy.value ||
     checking.value ||
@@ -2071,6 +2083,11 @@ defineExpose({
     >
       <template #top-tray>
         <div class="flex flex-col gap-1.5">
+          <RunStopReportBanner
+            v-if="session.stopControl"
+            :stop-control="session.stopControl"
+            @open-report="openStopReportDrawer"
+          />
           <Transition
             enter-active-class="transition-opacity duration-200 ease-out"
             enter-from-class="opacity-0"
@@ -2171,5 +2188,12 @@ defineExpose({
         <MessageContent :blocks="contentItems(inspector.value, 'inspector')" />
       </template>
     </BaseDialog>
+    <RunStopReportDetails
+      :show="showStopReportDrawer"
+      :receipt="session.stopControl?.latestReceipt.value ?? null"
+      :project-id="projectId"
+      :thread-id="threadId || ''"
+      @close="showStopReportDrawer = false"
+    />
   </div>
 </template>

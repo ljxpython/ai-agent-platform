@@ -103,6 +103,33 @@ async def deny_image_scope_on_server_resources(
 ) -> dict[str, str] | None:
     """Enforce delegation scope and recheck platform ACL for thread resources."""
     scope = _user_value(ctx.user, "runtime_scope")
+    if value.get("cancel_active") is True:
+        from runtime_service.run_control.authorization import cancellation_context_hash
+
+        cancellation_id = value.get("cancellation_id")
+        if not cancellation_id or _user_value(
+            ctx.user, "runtime_context_hash"
+        ) != cancellation_context_hash(cancellation_id):
+            raise Auth.exceptions.HTTPException(
+                status_code=403, detail="Cancellation action scope mismatch"
+            )
+    if isinstance(scope, dict) and scope.get("operation") == "run-cancellation-read":
+        from runtime_service.run_control.authorization import cancellation_context_hash
+
+        cancellation_id = value.get("cancellation_id")
+        if (
+            str(ctx.resource) != "threads"
+            or str(ctx.action) != "read"
+            or value.get("cancellation_receipt") is not True
+            or str(value.get("thread_id")) != scope.get("thread_id")
+            or not cancellation_id
+            or _user_value(ctx.user, "runtime_context_hash")
+            != cancellation_context_hash(cancellation_id)
+        ):
+            raise Auth.exceptions.HTTPException(
+                status_code=403, detail="Cancellation receipt scope mismatch"
+            )
+        return {"project_id": scope["project_id"]}
     if not isinstance(scope, dict) or scope.get("operation") not in {
         "read",
         "cron-read",
@@ -238,6 +265,10 @@ async def deny_image_scope_on_server_resources(
         if (
             scope["operation"] in {"run-cancel", "run-delete"}
             and value.get("run_id") is None
+            and not (
+                scope["operation"] == "run-cancel"
+                and value.get("cancel_active") is True
+            )
         ):
             raise Auth.exceptions.HTTPException(
                 status_code=403, detail="Run target is required"

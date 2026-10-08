@@ -30,8 +30,41 @@ from platform_api.modules.runtime_catalog.domain import (
     RuntimeToolCatalogList,
 )
 from platform_api.modules.runtime_gateway.application import thread_access
+from platform_api.modules.runtime_gateway.application.run_control import (
+    StopAuditBody,
+    authorize_and_audit_stop,
+)
 
 router = APIRouter(prefix="/api/runtime", tags=["runtime-catalog"])
+
+
+@router.post("/internal/stop-authorization")
+def authorize_stop_request(request: Request, payload: StopAuditBody) -> dict:
+    stamp = request.headers.get("x-runtime-acl-timestamp", "")
+    secret = request.app.state.settings.runtime_delegation_secret
+    canonical = json.dumps(
+        payload.model_dump(mode="json"), sort_keys=True, separators=(",", ":")
+    )
+    expected = hmac.new(
+        secret.encode(),
+        f"{stamp}\nstop-authorization\n{canonical}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+    try:
+        timely = abs(time.time() - int(stamp)) <= 30
+    except ValueError:
+        timely = False
+    if (
+        not secret
+        or not timely
+        or not hmac.compare_digest(
+            request.headers.get("x-runtime-acl-signature", ""), expected
+        )
+    ):
+        raise ForbiddenError(
+            code="runtime_acl_signature_invalid", message="Invalid Runtime signature"
+        )
+    return authorize_and_audit_stop(request.app.state.db_session_factory, payload)
 
 
 @router.post("/internal/scheduled-authorization")

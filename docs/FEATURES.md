@@ -12,6 +12,7 @@
 | Agent Run/Thread 用量与成本展示 | 已完成：实装独立解耦面板 RunUsage 与 useRunUsage 防竞态状态机、open-swe 水位进度条 (Usage Meter)、服务端截断告警卡片、模型费率安全编辑（Decimal 精度、自动补零、可逆清空保护）以及假数据彻底切除。Playwright + Chromium 端到端 5 项全绿（含真实百炼 qwen-plus 全链路调用闭环与 24,069 Tokens / $0.0051 落库上屏）并生成 7 张高清渲染截图，全仓 120 套件 583 项单测、typecheck、lint 和生产打包 100% 通过 | [前端交接](projects/20261007-agent-usage-cost-governance/04-frontend-handoff.md) |
 | Agent 执行预算告警与限制原因展示 | 已完成：Zod 契约投影、安全解包、useRunBudget 有界 LRU 去重与 Run/namespace 隔离、ChatAgentStatusBar Amber/Success 停机展示（保留取消、文案解耦、A11y）、子任务微横条与徽章、Thread 耗尽禁用；571 单测、类型检查与 ESLint 全绿 | [项目入口](projects/20261007-agent-execution-budget/README.md) · [实施记录](projects/20261007-agent-execution-budget/implementation/02-frontend-budget-implementation.md) |
 | Agent 模型调用稳定性与容灾降级界面 | 已完成：实装 AgentEditorPage 模型恢复策略配置（主备去重、等待时间联动推高、schemaEpoch 防草稿覆盖、step=1 步长修复与保存成功就地高亮微反馈）；接通 4000ms 前端超时保护与 wait=true 取消确认；useChatSession 映射 5 大稳定机器码，trajectory-adapter 真实终态修正与备用模型微胶囊渲染；全量单测 559 passed，三服务端到端故障注入实测通过，用户在浏览器端人工验收通过 | [项目概览](projects/20261006-agent-model-resilience/README.md) · [前端交接](projects/20261006-agent-model-resilience/frontend-handoff.md) |
+| Agent 会话级停止控制与状态报告展示 | 已完成：实装三接口接入、Zod DTO 校验、useThreadStopControl 状态机解耦、45s 超时降级与单飞保护、RunStopReportBanner 顶部提示条与 RunStopReportDetails 抽屉报告，Vitest 553 项全绿，Playwright+Chromium 真实模型全链路自动化闭环通过（1440/768/390 截图已存档） | [前端交接](projects/20261007-agent-run-cancellation/frontend-handoff.md) |
 | Agent 运行诊断面板（Run Diagnostics） | 已完成：实装独立解耦面板 RunDiagnostics、Zod 白名单契约、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与模式切换、ChatSession 历史 Run 自动拉取与无缝切换，全仓 115 套件 535 项单测全绿，浏览器联合验收通过 | [前端交接](projects/20261006-agent-observability-hardening/frontend-handoff.md) |
 | Agent 上下文整理反馈与手动动作 | 已完成：单模型容量编辑与查看（F01）、整理微胶囊与 4 秒淡出/输入打断机制（F02）、手动整理菜单与守卫隔离（F03）；63 项单测、vue-tsc 0 错误与生产打包全通过；用户在真实平台页面完成端到端人工实测联合验收，全链路闭环通过 | [项目概览](projects/20261006-agent-context-window-governance/README.md) · [前端交接](projects/20261006-agent-context-window-governance/frontend-handoff.md) |
 | 定时 Agent 任务页面 | 已完成：实装现代化卡片网格列表、双栏创建/编辑抽屉、DeerFlow 预设体系、历史记录抽屉与权限守卫，481 套单测、类型检查与生产打包全绿 | [前端交接](projects/20261005-scheduled-agent-tasks/frontend-handoff.md) |
@@ -66,6 +67,7 @@
 | 长会话断流恢复解耦与历史快照按需懒加载治理 | 已完成：剥离 recoverExpiredStream 对 3.4MB 巨型 history 的阻塞强依赖，改为 state 毫秒级极速自愈 + history 后台静默预热软降级；加固 ChatSession 抽屉懒加载守卫并隔离全局横幅报错；单测全通与打包通过 | [历史懒加载治理专项](projects/20261002-chat-history-lazy-loading-and-timeout-resilience/README.md) |
 | Chat 前端对话 Clean Architecture 架构治理与中断/时序缺陷修复 | 已完成：对标谷歌开发范式，拆解上帝组件（ChatSession 净减 923 行），根治手动中断 400 报错与消息队列出队跳顶/并排时序倒挂；102 个测试套件、441 项单测全绿、vue-tsc 0 错误、生产打包通过 | [Chat 干净架构重构](projects/20261004-chat-frontend-clean-architecture-refactor/README.md) |
 | 平台用户管理软删除操作与自杀保护交互 | 已完成：操作菜单与详情页实装软删除操作、二次确认弹窗、防自杀禁用与状态筛选；单测及生产构建全绿 | [软删除治理](projects/20261003-platform-user-soft-delete/README.md) |
+| Agent 会话停止与状态报告交互 | 已完成：前端 Stop 按钮接入会话级停止控制、幂等重试、状态自愈、报告横幅与抽屉展示、全链路 Playwright E2E 与人工验收通过 | [取消专项](projects/20261007-agent-run-cancellation/README.md) · [前端交接](projects/20261007-agent-run-cancellation/frontend-handoff.md) |
 
 ## platform-api
 
@@ -75,6 +77,7 @@
 | Agent 预算通知与安全错误出口 | 全链路 done：四精确预算安全码、custom/end 标记白名单、tasks.error 清洗、input/update/command/resume 防伪已实装；81 passed/423 subtests，1 skipped；真实 Worker 链路通过，前端联合 F01-F04 全绿，未部署 | [验证](projects/20261007-agent-execution-budget/verification.md) |
 | Agent 模型调用稳定性与受管备模型网关 | 已完成：配置持久化、主备候选授权与项目隔离、受管连接与策略快照签名、修复 FastAPI 500 强类型校验异常，全入口受管组装与公开脱敏；定向单测 17 passed，三服务全链路故障注入联验通过，用户人工实测验收合格 | [项目概览](projects/20261006-agent-model-resilience/README.md) · [整体方案](projects/20261006-agent-model-resilience/plan.md) |
 | 模型容量治理与上下文维护网关 | 后端已完成：容量 CRUD/受信连接、Context v5、手动维护全入口校验/幂等/ACL、公开脱敏与真实 HTTP/回滚验证通过；前端入口待交接，未部署 | [整体方案](projects/20261006-agent-context-window-governance/plan.md) |
+| 会话停止与回执查询 API | 源码及隔离验证完成：cancel/detail/list、当前执行/读取授权、安全 DTO、精确委托/HMAC 和阶段审计；正式 Runtime 配套接入 blocked，未部署现役 | [取消专项](projects/20261007-agent-run-cancellation/README.md) |
 | 定时 Agent 任务 API | 后端 done：CRUD、预览、once、pause/resume/manual、私有历史分页与执行拒绝审计；发布包隔离链路通过，未部署现役平台 | [专项](projects/20261005-scheduled-agent-tasks/README.md) |
 | 平台用户软删除与生命周期治理 | 已完成：实现 DELETE /api/users/{user_id}，内置防自杀、最后超管保护、唯一项目管理员防孤儿项目三重护栏，释放原始用户名与凭据吊销 | [软删除治理](projects/20261003-platform-user-soft-delete/README.md) |
 | 鉴权、项目治理、审计、catalog | 已完成 | `apps/platform-api/docs/handbook/project-handbook.md` |
@@ -94,6 +97,7 @@
 | 通用 Agent Token/Cost 采集与持久化 | 全链路已完成：主/子图、摘要和可信旁路 callback、自有 Run/call ledger、缓存 TTL 与 Decimal 估算；真实隔离 PG/Worker/重启/回退与包含真实百炼大模型的 5 项 Playwright 端到端全部闭环，未部署现役 | [方案与任务](projects/20261007-agent-usage-cost-governance/02-runtime-usage.md) |
 | 通用 Agent 执行预算预警与软收尾 | 全链路 done：官方模型限额薄扩展、managed 图余量、幂等提示、四正式 graph 主/子接线和可选 invocation 软计时完成；253 passed，23 真实 Worker 场景通过；原 hard limits/end/error 不变，前端联合 F01-F04 全绿，未部署 | [项目入口](projects/20261007-agent-execution-budget/README.md) · [验证](projects/20261007-agent-execution-budget/verification.md) |
 | Agent 模型调用稳定性与中间件容灾降级 | 已完成：显式 transient 错误分类、Retry-After 冷却、ModelResilienceMiddleware 有界重试与自动故障转移（fallback）、单次与总预算控制、流式安全、四组合根与子图装配；单测 43 passed，故障注入死端口实测毫秒级平滑降级至备用模型并流式完成全生命周期，用户人工实测验收合格 | [项目概览](projects/20261006-agent-model-resilience/README.md) · [实现记录](projects/20261006-agent-model-resilience/implementation/01-managed-model-resilience.md) |
+| 持久会话停止、inbox 收敛与证据报告 | 源码/唯一post43包版16场景与真实Docker完成，B01解除；固定目标、恢复、inbox及报告通过，B02正式发布指令/正式源锁接入待完成 | [取消专项](projects/20261007-agent-run-cancellation/README.md) |
 | Agent 工具调用容错与生产接线 | 已完成：全链路闭环，Runtime/API 选择性错误分类、主子图接线、安全消息与流出口脱敏完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化代码排版实装，31 项单测全绿，三服务全栈浏览器联合验收 F01-F08 全部通过，未生产部署 | [方案与任务](projects/20261006-agent-tool-error-resilience/README.md) · [前端交接](projects/20261006-agent-tool-error-resilience/frontend-handoff.md) |
 | Agent 上下文窗口管理工程化 | 已完成：全链路交付闭环；模型容量配置与展示、预算 guard、隐藏摘要流、根/子图装配、维护副作用隔离、前端整理微胶囊及平滑淡出打断、受控手动整理；隔离真 PG、真实模型质量集及全栈单测/类型/构建全绿，用户人工实测验收通过 | [项目入口](projects/20261006-agent-context-window-governance/README.md) |
 | 定时 Run 执行前聚合授权与无人值守策略 | 后端 done：身份/凭据/项目/Agent/模型/Thread 失效拒绝，审批转失败，原生预览与历史；原post41验收保留，当前依赖锁定post42，未重启现役栈 | [验证](projects/20261005-scheduled-agent-tasks/verification.md) |
@@ -123,6 +127,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Agent通用运行取消与中断闭环 | 已完成：全链路闭环。后端会话停止、回执详情/分页、幂等重试、恢复与审计已闭环；前端完成会话级停止控制、RunStopReportBanner/Details 状态反馈与报告抽屉、队列刷新、多端隔离与防竞态；Playwright E2E/响应式与单元测试全绿 | [方案与任务](projects/20261007-agent-run-cancellation/README.md) · [前端交接](projects/20261007-agent-run-cancellation/frontend-handoff.md) |
 | 跨服务规范治理专项群 | 四专项仅验收新Web+新API+当前锁定Runtime/GraphHarbor，不设置旧版兼容或混用测试；错误响应与追踪本期Final已完成，SSE/JWT按各专项状态推进；AI路由按仓库级文档小改动处理 | [总入口](projects/20260922-cross-service-governance/README.md) |
 | Agent 通用 Token/Cost 跟踪治理 | 非前端 done：开发/Final/隔离真实链路与冻结契约已交付；既有全量失败已记录，前端同事接续，整项目 partial，未生产部署 | [项目入口](projects/20261007-agent-usage-cost-governance/README.md) |
 | Agent 可观测性与追踪补齐 | 已完成：全链路闭环。Runtime/Platform API 完成模型错误分类、安全诊断、启动阶段计时与只读投影；Platform Web 完成独立面板 RunDiagnostics、Zod 白名单、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与多轮 Run 自由切换；单测全绿，浏览器联合验收通过，未部署现役 | [项目入口](projects/20261006-agent-observability-hardening/README.md) · [前端交接](projects/20261006-agent-observability-hardening/frontend-handoff.md) |

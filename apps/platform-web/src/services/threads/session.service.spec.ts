@@ -233,7 +233,7 @@ it("summarizes thread title with POST request", async () => {
   expect(res.title).toBe("智能标题");
 });
 
-it("rejects empty or whitespace-only threadId to prevent invalid path requests", () => {
+it("rejects empty or whitespace-only threadId to prevent invalid path requests", async () => {
   const service = createSessionService(vi.fn(), "project");
   for (const empty of ["", "   ", "\t\n"]) {
     expect(() => service.state(empty)).toThrow("Invalid threadId");
@@ -247,6 +247,15 @@ it("rejects empty or whitespace-only threadId to prevent invalid path requests",
     );
     expect(() => service.cancelAndWait("thread-1", empty)).toThrow(
       "Invalid runId",
+    );
+    await expect(service.stopThread(empty, "key-1")).rejects.toThrow(
+      "Invalid threadId",
+    );
+    await expect(service.getStopRequest(empty, "stop-1")).rejects.toThrow(
+      "Invalid threadId",
+    );
+    await expect(service.listStopRequests(empty)).rejects.toThrow(
+      "Invalid threadId",
     );
   }
 });
@@ -303,4 +312,139 @@ it("cancelAndWait handles platform error envelopes on failure", async () => {
     code: "gateway_timeout",
     requestId: "req-cancel-504",
   });
+});
+
+it("supports stopThread, getStopRequest and listStopRequests with contract verification", async () => {
+  const validStopRequest = {
+    version: 1,
+    stop_id: "33333333-3333-4333-8333-333333333333",
+    thread_id: "11111111-1111-4111-8111-111111111111",
+    phase: "stopped",
+    requested_at: "2026-10-07T06:00:00Z",
+    accepted_at: "2026-10-07T06:00:00.100Z",
+    confirmed_at: "2026-10-07T06:00:01Z",
+    target_count: 2,
+    execution_stopped: true,
+    resource_cleanup: "confirmed",
+    has_pending_interrupts: false,
+    queue: {
+      pending_cancelled_count: 1,
+      inbox_consumed_count: 1,
+      inbox_not_consumed_count: 0,
+    },
+    report: {
+      version: 1,
+      source: "checkpoint_and_receipts",
+      checkpoint_id: "cp-1",
+      checkpoints: [
+        {
+          run_id: "22222222-2222-4222-8222-222222222222",
+          checkpoint_id: "cp-1",
+        },
+      ],
+      progress: [
+        {
+          kind: "tool_receipt",
+          label: "search",
+          observed_status: "recorded",
+          source_run_id: "22222222-2222-4222-8222-222222222222",
+        },
+      ],
+      artifacts: [
+        {
+          artifact_id:
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          path: "/workspace/outputs/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.txt",
+          source_run_id: "22222222-2222-4222-8222-222222222222",
+        },
+      ],
+      uncertainties: [],
+      truncated: false,
+    },
+    reason_code: null,
+    request_id: "req-123",
+  };
+
+  const requests: Array<{
+    url: string;
+    method?: string;
+    body?: unknown;
+    headers: Headers;
+  }> = [];
+
+  const transport = vi.fn<typeof fetch>(async (input, init) => {
+    requests.push({
+      url: String(input),
+      method: init?.method,
+      body: typeof init?.body === "string" ? JSON.parse(init.body) : undefined,
+      headers: new Headers(init?.headers),
+    });
+
+    const url = String(input);
+    if (url.includes("/stop-requests?")) {
+      return new Response(
+        JSON.stringify({
+          items: [validStopRequest],
+          next_cursor: "cursor-token-2",
+        }),
+        { headers: { "content-type": "application/json" } },
+      );
+    }
+
+    return new Response(JSON.stringify(validStopRequest), {
+      headers: { "content-type": "application/json" },
+    });
+  });
+
+  const service = createSessionService(transport, "project-123");
+
+  // 1. 测试 stopThread
+  const stopRes = await service.stopThread("thread-1", "stop:uuid-123");
+  expect(stopRes.stop_id).toBe("33333333-3333-4333-8333-333333333333");
+  expect(requests[0]?.url).toMatch(/\/threads\/thread-1\/cancel$/);
+  expect(requests[0]?.method).toBe("POST");
+  expect(requests[0]?.headers.get("Idempotency-Key")).toBe("stop:uuid-123");
+  expect(requests[0]?.headers.get("x-project-id")).toBe("project-123");
+  expect(requests[0]?.body).toEqual({});
+
+  // 2. 测试 getStopRequest
+  const getRes = await service.getStopRequest(
+    "thread-1",
+    "33333333-3333-4333-8333-333333333333",
+  );
+  expect(getRes.phase).toBe("stopped");
+  expect(requests[1]?.url).toMatch(
+    /\/threads\/thread-1\/stop-requests\/33333333-3333-4333-8333-333333333333$/,
+  );
+
+  // 3. 测试 listStopRequests 无 cursor 时
+  const listResNoCursor = await service.listStopRequests("thread-1", {
+    limit: 10,
+  });
+  expect(listResNoCursor.items).toHaveLength(1);
+  expect(listResNoCursor.next_cursor).toBe("cursor-token-2");
+  expect(requests[2]?.url).toMatch(
+    /\/threads\/thread-1\/stop-requests\?limit=10$/,
+  );
+  expect(requests[2]?.url).not.toContain("cursor=");
+
+  // 4. 测试 listStopRequests 带 cursor 时（参数必须是 cursor）
+  await service.listStopRequests("thread-1", {
+    limit: 10,
+    cursor: "my-cursor",
+  });
+  expect(requests[3]?.url).toMatch(
+    /\/threads\/thread-1\/stop-requests\?limit=10&cursor=my-cursor$/,
+  );
+
+  // 5. 校验非法响应报错
+  const badTransport = vi.fn<typeof fetch>(async () => {
+    return new Response(JSON.stringify({ version: 999, invalid: true }), {
+      headers: { "content-type": "application/json" },
+    });
+  });
+  const badService = createSessionService(badTransport, "project-123");
+  await expect(badService.stopThread("thread-1", "key")).rejects.toThrow(
+    "停止请求回执校验失败",
+  );
 });

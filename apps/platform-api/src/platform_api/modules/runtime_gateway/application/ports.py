@@ -121,6 +121,16 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
         self, thread_id: str, params: dict
     ) -> dict[str, Any]: ...
 
+    async def stop_thread(self, thread_id: str, key: str) -> dict[str, Any]: ...
+
+    async def get_stop_request(
+        self, thread_id: str, stop_id: str
+    ) -> dict[str, Any]: ...
+
+    async def list_stop_requests(
+        self, thread_id: str, params: dict
+    ) -> dict[str, Any]: ...
+
     async def list_thread_runs(
         self,
         thread_id: str,

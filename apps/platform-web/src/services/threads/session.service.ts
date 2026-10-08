@@ -13,6 +13,13 @@ import {
 } from "@/utils/http-error";
 import type { ConversationOffloadPersistedState } from "@/modules/chat/offload-status";
 
+import {
+  safeParseStopRequest,
+  safeParseStopRequestList,
+  type StopRequest,
+  type StopRequestList,
+} from "@/modules/chat/stop/types";
+
 export type AccessPolicy = "review" | "workspace_write" | "full_access";
 export type ChatState = Record<string, unknown> & {
   messages: unknown[];
@@ -28,6 +35,7 @@ export type QueuedRun = Run & {
   };
   metadata?: Record<string, unknown>;
 };
+export type { StopRequest, StopRequestList };
 export type ThreadAction =
   | "read"
   | "comment"
@@ -322,6 +330,67 @@ export function createSessionService(
           body: JSON.stringify({ wait: true, action: "interrupt" }),
         },
       );
+    },
+    stopThread: async (
+      threadId: string,
+      idempotencyKey: string,
+    ): Promise<StopRequest> => {
+      const validId = assertValidThreadId(threadId);
+      const trimmedKey =
+        typeof idempotencyKey === "string" ? idempotencyKey.trim() : "";
+      if (!trimmedKey) {
+        throw new Error("Invalid idempotencyKey: must be a non-empty string");
+      }
+      const raw = await read<unknown>(
+        `/threads/${encodeURIComponent(validId)}/cancel`,
+        {
+          method: "POST",
+          headers: { "Idempotency-Key": trimmedKey },
+          body: JSON.stringify({}),
+        },
+      );
+      const parsed = safeParseStopRequest(raw);
+      if (!parsed.success || !parsed.data) {
+        throw new Error(`停止请求回执校验失败: ${parsed.errorMessage}`);
+      }
+      return parsed.data;
+    },
+    getStopRequest: async (
+      threadId: string,
+      stopId: string,
+    ): Promise<StopRequest> => {
+      const validId = assertValidThreadId(threadId);
+      const validStopId = typeof stopId === "string" ? stopId.trim() : "";
+      if (!validStopId) {
+        throw new Error("Invalid stopId: must be a non-empty string");
+      }
+      const raw = await read<unknown>(
+        `/threads/${encodeURIComponent(validId)}/stop-requests/${encodeURIComponent(validStopId)}`,
+      );
+      const parsed = safeParseStopRequest(raw);
+      if (!parsed.success || !parsed.data) {
+        throw new Error(`获取停止请求回执校验失败: ${parsed.errorMessage}`);
+      }
+      return parsed.data;
+    },
+    listStopRequests: async (
+      threadId: string,
+      options?: { limit?: number; cursor?: string | null },
+    ): Promise<StopRequestList> => {
+      const validId = assertValidThreadId(threadId);
+      const limit = options?.limit ?? 20;
+      const cursor = options?.cursor?.trim();
+      const query = cursor
+        ? `?limit=${encodeURIComponent(limit)}&cursor=${encodeURIComponent(cursor)}`
+        : `?limit=${encodeURIComponent(limit)}`;
+      const raw = await read<unknown>(
+        `/threads/${encodeURIComponent(validId)}/stop-requests${query}`,
+      );
+      const parsed = safeParseStopRequestList(raw);
+      if (!parsed.success || !parsed.data) {
+        throw new Error(`获取停止请求列表校验失败: ${parsed.errorMessage}`);
+      }
+      return parsed.data;
     },
     fork: (threadId: string, checkpointId: string, title?: string) => {
       const validId = assertValidThreadId(threadId);

@@ -50,6 +50,9 @@ OPERATIONS = (
     "suggestions-generate",
     "diagnostics-read",
     "usage-read",
+    "thread-stop",
+    "thread-stop-read",
+    "run-cancellation-read",
 )
 
 
@@ -112,6 +115,8 @@ class RuntimeDelegationContractTest(unittest.TestCase):
         environment = {
             "PYTHONPATH": str(ROOT / "apps/runtime-service/src"),
             "PATH": os.environ.get("PATH", ""),
+            "LANGFUSE_ENABLED": "false",
+            "OTEL_SDK_DISABLED": "true",
         }
         completed = subprocess.run(
             [str(RUNTIME_PYTHON), str(VERIFIER)],
@@ -450,6 +455,7 @@ class RuntimeDelegationContractTest(unittest.TestCase):
                 "thread-delete",
                 "run-cancel",
                 "run-delete",
+                "run-cancellation-read",
             }
         ]
         self.assertIn("diagnostics-read", custom)

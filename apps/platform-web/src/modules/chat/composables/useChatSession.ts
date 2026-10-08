@@ -36,6 +36,7 @@ import {
   type OffloadDisplayState,
 } from "../offload-status";
 import { safeExtractBudgetSafetyError } from "../budget/view-model";
+import { useThreadStopControl } from "./useThreadStopControl";
 
 export type SessionTurnState =
   | "idle"
@@ -111,6 +112,7 @@ export function useChatSession(options: {
   onReconnect: () => void;
   onAccepted?: () => void;
   onAccessRevoked?: () => void;
+  onStopConfirmed?: () => void;
 }) {
   const chatSessionStore = useChatSessionStore();
   const actions = createRunActions(
@@ -136,7 +138,6 @@ export function useChatSession(options: {
   const checking = ref(!hasCachedContent);
   const verified = ref(hasCachedContent);
   const stopState = ref<SessionStopState>("idle");
-  const cancelling = computed(() => stopState.value === "stopping");
   const unconfirmedStopRunId = ref<string | null>(null);
   const error = ref("");
   let disposed = false;
@@ -251,6 +252,21 @@ export function useChatSession(options: {
       }
     },
   });
+
+  const stopControl = useThreadStopControl({
+    projectId: computed(() => options.projectId),
+    threadId,
+    userId: computed(() => options.userId),
+    service,
+    canWrite: canEdit,
+    onStopConfirmed: () => {
+      void verify(true);
+      options.onStopConfirmed?.();
+    },
+  });
+  const cancelling = computed(
+    () => stopControl.isStopping.value || stopState.value === "stopping",
+  );
 
   watch(
     () => options.threadId,
@@ -423,37 +439,53 @@ export function useChatSession(options: {
     return "idle";
   });
 
-  const status = computed(() =>
-    !threadId.value
-      ? "新会话"
-      : actions.current.value?.status === "unknown"
-        ? "提交结果待确认"
-        : checking.value
-          ? "正在核实会话"
-          : actions.current.value?.status === "submitting"
-            ? "正在发送"
-            : turnState.value === "stopping"
-              ? "正在停止..."
-              : turnState.value === "stopped"
-                ? "已停止"
-                : turnState.value === "stop_unconfirmed"
-                  ? error.value.includes("停止尚未确认")
-                    ? "停止尚未确认"
-                    : "停止结果待确认"
-                  : unconfirmedStopRunId.value
-                    ? "停止尚未确认"
-                    : turnState.value === "awaiting_review"
-                      ? clarifications.value.length
-                        ? "等待补充信息"
-                        : "等待审批"
-                      : turnState.value === "timeout"
-                        ? "上一回合执行超时"
-                        : turnState.value === "error"
-                          ? "连接或执行异常"
-                          : busy.value
-                            ? "正在执行"
-                            : "可以发送",
-  );
+  const status = computed(() => {
+    if (stopControl.isStopping.value || turnState.value === "stopping") {
+      return "正在停止";
+    }
+    if (
+      stopControl.isConfirmationUnavailable.value ||
+      turnState.value === "stop_unconfirmed"
+    ) {
+      return error.value.includes("停止尚未确认")
+        ? "停止尚未确认"
+        : "停止结果待确认";
+    }
+    if (unconfirmedStopRunId.value) {
+      return "停止尚未确认";
+    }
+    if (!threadId.value) {
+      return "新会话";
+    }
+    if (actions.current.value?.status === "unknown") {
+      return "提交结果待确认";
+    }
+    if (checking.value) {
+      return "正在核实会话";
+    }
+    if (actions.current.value?.status === "submitting") {
+      return "正在发送";
+    }
+    if (reviews.value.length) {
+      return "等待审批";
+    }
+    if (clarifications.value.length) {
+      return "等待补充信息";
+    }
+    if (turnState.value === "stopped") {
+      return "已停止";
+    }
+    if (busy.value) {
+      return "正在执行";
+    }
+    if (error.value || stream.error.value || turnState.value === "error") {
+      return "连接或执行异常";
+    }
+    if (run.value?.status === "timeout" || turnState.value === "timeout") {
+      return "上一回合执行超时";
+    }
+    return "可以发送";
+  });
 
   function fail(cause: unknown) {
     if (!disposed) {
@@ -1147,12 +1179,22 @@ export function useChatSession(options: {
   async function stop() {
     if (
       !canEdit.value ||
+      stopControl.isStopping.value ||
       stopState.value === "stopping" ||
       pendingAction.value ||
       !threadId.value ||
       options.visible?.value === false
     )
       return;
+
+    let stopControlPromise: Promise<void> | undefined;
+    if (typeof (service as any).stopThread === "function") {
+      stopControlPromise = stopControl
+        .stop()
+        .then(() => {})
+        .catch(() => {});
+    }
+
     const knownRunId =
       actions.current.value?.runId ??
       run.value?.run_id ??
@@ -1190,6 +1232,9 @@ export function useChatSession(options: {
           unconfirmedStopRunId.value = targetRunId;
         }
       }
+      if (stopControlPromise) {
+        await stopControlPromise;
+      }
     } catch (cause) {
       if (!disposed) {
         stopState.value = "unconfirmed";
@@ -1207,7 +1252,10 @@ export function useChatSession(options: {
       options.visible?.value === false
     )
       return false;
-    const targetRunId = actions.current.value?.runId ?? run.value?.run_id;
+    const targetRunId =
+      actions.current.value?.runId ??
+      run.value?.run_id ??
+      unconfirmedStopRunId.value;
     if (!targetRunId) {
       stopState.value = "idle";
       unconfirmedStopRunId.value = null;
@@ -1215,6 +1263,7 @@ export function useChatSession(options: {
     }
     stopState.value = "stopping";
     try {
+      void stopControl.verifyLatest?.().catch(() => {});
       // 1. 双通道容错：先查服务端 Run 当前状态，若已是非 active 终态直接收敛，彻底杜绝对已终态 Run 重复 cancel 触发 400/409 死锁
       const current = await service.run(threadId.value, targetRunId);
       if (!disposed && current) {
@@ -1561,6 +1610,7 @@ export function useChatSession(options: {
     checking,
     verified,
     cancelling,
+    stopControl,
     unconfirmedStopRunId,
     stopState,
     turnState,

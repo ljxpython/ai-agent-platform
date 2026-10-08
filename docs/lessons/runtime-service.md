@@ -20,3 +20,21 @@
 - **错误：** 一刀切禁用 script/link 导致现代样式全毁；HTMLParser 中将自闭合标签（如 `<base>`）设为 `skip` 导致后续整个 DOM 被永久吞没；对 script/style 内容盲目调用 `html.escape` 导致 JS 逻辑运算符语法报错；或在前端错误地混合添加 `allow-same-origin` 与 `allow-scripts` 导致 XSS 逃逸。
 - **正确：** 前端 iframe 仅放权 `sandbox="allow-scripts"` 且绝不加 `allow-same-origin`（强制 Origin 为 null 隔绝宿主凭据）；后端 CSP 白名单放行公认安全 CDN 并限制 `connect-src https:` 阻断内网探测；HTMLParser 中自闭合标签单点忽略不设 skip，script/style 保留原始代码不转义。
 - **日期：** 2026-10-02
+
+---
+
+## [坑] 审批恢复必须使用当前 interrupt ID 与原执行快照
+
+- **场景：** 验证 HITL 停止后的显式恢复，或从前端提交审批决定。
+- **错误：** 使用非 ID 映射的 resume，或同时传入新 input/config/context，分别触发过期审批冲突或参数拒绝。
+- **正确：** 先读取当前 state 的真实 interrupt ID，按 ID 映射提交对应 decisions；恢复复用服务端原执行快照，不附带新配置，也不自动批准。
+- **日期：** 2026-10-07
+
+---
+
+## [坑] 同版本候选 wheel 冷安装不能证明正式包包含新能力
+
+- **场景：** 跨仓库配套开发，源码版本号与已发布版本相同，使用本地 wheel 做冷安装验收。
+- **错误：** 仅凭版本号、CLI 或候选安装通过，就认定 PyPI 同名正式包也包含新接口或迁移。
+- **正确：** 分别记录来源、双包版本、产物哈希、接口与迁移 head；候选只证明候选，正式接入须发布唯一新版本并从正式源独立安装复验。
+- **日期：** 2026-10-07

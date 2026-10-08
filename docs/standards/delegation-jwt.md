@@ -3,15 +3,14 @@ status: draft
 last_verified: 2026-10-07
 confidence: medium
 source_project: docs/projects/20260926-delegation-jwt-contract/verification.md
-note: 当前operation枚举为28项，diagnostics-read和usage-read的Thread绑定/原生拒绝及隔离当前ACL链路已验；cron独立覆盖；消息内部Run回查仍待原专项部署后补验
+note: 当前operation枚举为31项；覆盖diagnostics-read、usage-read与新增会话Stop/固定回执原生例外，隔离契约和撤权链路已验；消息内部Run回查仍待部署补验
 ---
 
 # Delegation JWT Schema（draft）
 
 > **适用服务：** platform-api（签发方）、runtime-service（校验方）
-> **验证证据：** 历史 API 299 passed、Runtime 只读鉴权 46 passed；本次 diagnostics-read 跨环境契约 5 passed / 50 subtests。Contract 测试中的 `OPERATIONS` 覆盖 25 个通用/自定义 operation（含 `suggestions-generate`、`diagnostics-read`），`cron-read`/`cron-write` 由独立隔离测试覆盖。证据见 [可观测性专项](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md)。
-> **未完成：** 消息内部原生 Run 回查源码和本机测试已修复，现役链路尚未验证，见 message-run-read-delegation 专项。标准整体仍为 draft。
-> **本次补充：** `usage-read` 已按 2026-10-07 用户批准落地；通用/自定义 contract 名称集合增至 26 项，另含 cron 两项共 28 项。价格/用量/路由定向 32 passed、305 subtests；真实隔离 HTTP/Worker 链路 15 项通过，见 [用量专项](../projects/20261007-agent-usage-cost-governance/05-verification-rollout.md)。不以本专项替全局 draft 遗留项毕业。
+> **验证证据：** 历史 API 299 passed、Runtime 只读鉴权 46 passed；diagnostics-read 跨环境契约 5 passed / 50 subtests 保留。Contract 测试中的 `OPERATIONS` 现覆盖 29 个通用/自定义 operation（含 usage-read、thread-stop 等），`cron-read`/`cron-write` 由独立隔离测试覆盖，共 31 项。Stop 的签名、服务账号、固定回执与接受后撤权证据见 [取消专项](../projects/20261007-agent-run-cancellation/verification.md)。价格/用量/路由定向 32 passed、305 subtests 见 [用量专项](../projects/20261007-agent-usage-cost-governance/05-verification-rollout.md)。
+> **未完成：** Stop 正式配套发布/锁接入与部署 blocked；消息内部原生 Run 回查源码和本机测试已修复，现役链路尚未验证，见 message-run-read-delegation 专项。标准整体仍为 draft。
 
 ## JWT Header
 
@@ -53,7 +52,7 @@ note: 当前operation枚举为28项，diagnostics-read和usage-read的Thread绑�
     "project_id": "<必须与顶层一致>",
     "assistant_id": "<string 或 null>",
     "thread_id": "<string 或 null>",
-    "operation": "<28 项枚举之一>"
+    "operation": "<31 项枚举之一>"
   },
 
   "context_hash": "sha256:<64位十六进制>",
@@ -77,7 +76,7 @@ note: 当前operation枚举为28项，diagnostics-read和usage-read的Thread绑�
 | scope 额外键 | 只允许五个键，未知键拒绝 |
 | 未知顶层 claim | Runtime 严格拒绝 |
 
-## scope.operation 枚举（28 项）
+## scope.operation 枚举（31 项）
 
 ```
 read                    thread-create           thread-reconcile
@@ -89,13 +88,14 @@ terminal-read           terminal-write          dear-skills-read
 dear-skills-write       dear-memory-read        dear-memory-write
 dear-governance-read    dear-governance-write   cron-read
 cron-write              suggestions-generate    diagnostics-read
-usage-read
+usage-read              thread-stop             thread-stop-read
+run-cancellation-read
 ```
 
-**原生资源白名单（仅 10 项可访问原生资源）：**
+**原生资源通用白名单（10 项）：**
 `read` / `thread-create` / `thread-reconcile` / `thread-edit` / `thread-delete` / `run-create` / `run-cancel` / `run-delete` / `cron-read` / `cron-write`
 
-其余 18 项自定义 token，不能访问原生资源。`suggestions-generate` 只能访问
+另有 `run-cancellation-read` 的精确原生回执例外，规则如下；其余 20 项自定义 token 不能访问原生资源。`suggestions-generate` 只能访问
 `/internal/threads/{thread_id}/suggestions`，不能访问原生 Thread、Run、workspace、工具或 MCP 资源。
 
 `diagnostics-read` 必须绑定非空 Thread，且只允许
@@ -111,6 +111,17 @@ Run 级再确认原生 Run 存在且属于该 Thread；Runtime 重查当前 ACL/
 SQL 匹配 tenant/project/graph/Thread/Run。scope 仍只有五字段，不增加 run_id。
 该委托不能访问模型连接、Workspace、MCP、原生资源、诊断或其他自定义入口；
 read/diagnostics-read/run-create 也不能代替 usage-read。采集开关和数据库故障不绕过授权。
+
+## 会话 Stop 委托（2026-10-07 用户批准）
+
+- `thread-stop` 仅用于 `POST /internal/threads/{thread_id}/cancel`，必须绑定 Thread，沿当前项目执行权限与 Thread edit；`thread-stop-read` 仅用于同 Thread 的 stop-requests detail/list，沿当前项目读取权限与 Thread read。两者不访问原生资源或模型连接。
+- Runtime 持久保存受信授权事实和 key 哈希，不保存浏览器 JWT。引擎固定取消目标之前，后台通过 HMAC 回查当前执行权限；回查不可用不提交新取消。已持久受理的引擎意图继续收敛，撤权不抹掉它。
+- Runtime 对固定 `stop_id` 签发 30 秒 `run-cancel` 委托；`context_hash=sha256("runtime-cancellation/v1:" + cancellation_id)`（结果加 `sha256:` 前缀）。原生 cancel-active 入口必须核对 hash 与当前 Thread/身份授权，不能用于另一取消 ID。
+- `run-cancellation-read` 只允许 `GET /threads/{thread_id}/runs/cancellations/{cancellation_id}`；原生授权事件必须为 Thread read 且标记 `cancellation_receipt=true`，Thread 与上述 hash 必须精确匹配。accepted 之后允许受信后台读取这一个回执，不持续要求操作者仍有权限；不能读取 Thread/state/Run/checkpoint，不能提交取消，也不能用于其他 ID。报告 checkpoint 取证留在 Runtime 内部，不借此 scope 扩大公开读权限。
+- 服务账号保留原 `credential_id`，普通用户不能伪装服务账号。公开 POST/GET 每次仍核对当前权限，后台回执例外不授权浏览器读已撤权数据。
+- `POST /api/runtime/internal/stop-authorization` 使用共享密钥，HMAC 绑定时间戳、`stop-authorization` 接口标识和规范 JSON 正文，校验 30 秒窗口；正文含 tenant/project/thread/stop/owner/credential。授权与审计使用短事务，阶段审计有持久重试且不保存正文或 JWT。
+
+固定目标、后台撤权与报告取证均已在隔离 HTTP 链路核验；正式版本/部署门禁见 [任务与 Block](../projects/20261007-agent-run-cancellation/tasks.md)，不以候选 wheel 冷安装替代正式源验证。
 
 ## 生命周期规则
 
