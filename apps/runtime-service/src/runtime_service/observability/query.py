@@ -26,6 +26,8 @@ _EVENTS = {
     "runtime.graph.completed",
     "runtime.startup.completed",
     "runtime.startup.phase_completed",
+    "runtime.prepare.completed",
+    "runtime.retry.completed",
 }
 
 
@@ -106,11 +108,67 @@ def empty_diagnostics(reason: str) -> dict:
         "graph_executions": [],
         "model_errors": [],
         "startup": None,
+        "preparations": [],
+        "retries": [],
         "truncated": False,
     }
 
 
-# Keep the four event schemas together so their scope and response limits agree.
+def _reliability(metadata: dict, common: dict) -> tuple[str, dict] | None:
+    if metadata.get("scope") not in {"primary", "subagent"}:
+        return None
+    namespace = metadata.get("namespace", [])
+    fields = {
+        **common,
+        "scope": metadata["scope"],
+        "namespace": [part for value in namespace[:8] if (part := _identifier(value))]
+        if isinstance(namespace, list)
+        else [],
+    }
+    if metadata["event"] == "runtime.prepare.completed":
+        if metadata.get("component") != "workspace" or metadata.get("outcome") not in {
+            "prepared",
+            "reused",
+            "repaired",
+            "failed",
+        }:
+            return None
+        return "preparations", {
+            **fields,
+            "component": "workspace",
+            "outcome": metadata["outcome"],
+            "error_code": metadata.get("error_code")
+            if metadata.get("error_code") in {"prepare_failed", "resource_unavailable"}
+            else None,
+        }
+    unit, attempts, role = (
+        metadata.get("unit"),
+        metadata.get("attempts"),
+        metadata.get("role"),
+    )
+    if (
+        unit not in {"model", "task"}
+        or type(attempts) is not int
+        or not 1 <= attempts <= 2
+        or metadata.get("outcome")
+        not in {"success", "exhausted", "failed", "cancelled", "interrupted"}
+        or unit == "task"
+        and (not _identifier(role) or len(role) > 64)
+    ):
+        return None
+    return "retries", {
+        **fields,
+        "unit": unit,
+        "role": role if unit == "task" else None,
+        "attempts": attempts,
+        "outcome": metadata["outcome"],
+        "code": metadata.get("code")
+        if metadata.get("code") in MODEL_ERROR_CODES
+        else None,
+    }
+
+
+# Keep event schemas together so scope and response limits agree.
 def _project(observations: list[dict], expected: dict, *, truncated: bool) -> dict:
     result = empty_diagnostics("not_recorded")
     records = [
@@ -138,7 +196,7 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
             _identifier(_dict(item.get("metadata")).get(source)) for item in records
         } - {None}
         result["correlation"][target] = next(iter(values)) if len(values) == 1 else None
-    phases, totals, factories = [], [], set()
+    phases, totals, factories, seen = [], [], set(), set()
     for item in records:
         metadata = _dict(item.get("metadata"))
         event = metadata.get("event")
@@ -148,13 +206,20 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
             or event not in _EVENTS
             or item.get("name") != event
             or identifier is None
+            or identifier in seen
         ):
             continue
+        seen.add(identifier)
         common = {
             "observation_id": identifier,
             "duration_ms": _duration(metadata.get("duration_ms")),
         }
-        if event == "runtime.model_call.failed" and metadata.get("scope") in {
+        if event in {"runtime.prepare.completed", "runtime.retry.completed"}:
+            projected = _reliability(metadata, common)
+            if projected is not None:
+                target, fields = projected
+                result[target].append(fields)
+        elif event == "runtime.model_call.failed" and metadata.get("scope") in {
             "primary",
             "subagent",
         }:
@@ -219,7 +284,12 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
             "duration_ms": _duration(totals[0].get("duration_ms")),
             "phases": sorted(phases, key=lambda phase: phase["ordinal"])[:16],
         }
-    for key, limit in (("model_errors", 20), ("graph_executions", 10)):
+    for key, limit in (
+        ("model_errors", 20),
+        ("graph_executions", 10),
+        ("preparations", 20),
+        ("retries", 20),
+    ):
         truncated |= len(result[key]) > limit
         result[key] = result[key][:limit]
     truncated |= len(phases) > 16

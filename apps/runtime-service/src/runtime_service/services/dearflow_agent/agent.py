@@ -8,6 +8,7 @@ import os
 from collections.abc import Mapping, Sequence
 from dataclasses import asdict, replace
 from datetime import UTC, datetime
+from functools import partial
 
 from deepagents import create_deep_agent
 from deepagents.middleware import FilesystemMiddleware, FilesystemPermission
@@ -35,6 +36,10 @@ from runtime_service.middlewares import (
     TimeoutWrapupMiddleware,
     context_management_enabled,
     resolve_wrapup_after_seconds,
+)
+from runtime_service.middlewares.retry import (
+    DelegatedTaskRetryMiddleware,
+    RuntimeModelRetryMiddleware,
 )
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.observability.startup import StartupDiagnostics
@@ -242,13 +247,15 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             connection = bundle.primary
         with startup.phase("factory.model_build"):
             fallback_model = build_fallback_model(resolved, bundle)
-            model = build_model(
-                resolved,
-                connection=connection,
-                **({"max_retries": 0} if bundle.policy.enabled else {}),
-            )
+            model = build_model(resolved, connection=connection, max_retries=0)
             model, reasoning = apply_reasoning(model, mode)
-            auxiliary_model = build_model(resolved, connection=connection)
+            auxiliary_model = (
+                apply_reasoning(
+                    build_model(resolved, connection=connection, max_retries=0), mode
+                )[0]
+                if governance
+                else model
+            )
         with startup.phase("factory.workspace"):
             workspace = DearWorkspaceBackend(
                 facts.principal.tenant_id, facts.principal.project_id, thread_id
@@ -256,6 +263,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     else:
         # Schema-only client: no request is sent, and WorkspaceMiddleware rejects invocation.
         model = ChatOpenAI(model="schema-only", api_key="schema-only", max_retries=0)
+        auxiliary_model = model
 
     backend = build_backend(workspace)
     document_middleware = DocumentToolsMiddleware(
@@ -321,16 +329,12 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             model
             if next_config == resolved
             else apply_reasoning(
-                build_model(
-                    next_config,
-                    connection=connection,
-                    **({"max_retries": 0} if bundle.policy.enabled else {}),
-                ),
-                mode,
+                build_model(next_config, connection=connection, max_retries=0), mode
             )[0]
         )
 
     def middleware(tool_names: Sequence[str], *, child=False, tail=()):
+        metadata = {**startup.metadata, "scope": "subagent" if child else "primary"}
         env_run_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_RUN", -1)
         env_thread_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_THREAD", -1)
         env_run_model = _get_env_limit("AGENT_MODEL_CALL_LIMIT_PER_RUN", -1)
@@ -389,7 +393,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             ),
             *offloading,
             *([MaintenanceSafeToolCallsMiddleware()] if offloading else []),
-            WorkspaceMiddleware(workspace),
+            WorkspaceMiddleware(
+                workspace,
+                resolved.config_hash if resolved else None,
+                metadata=metadata,
+            ),
             ExecutionBudgetMiddleware(
                 run_limit=run_model,
                 thread_limit=thread_model,
@@ -420,13 +428,21 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 if bundle.policy.enabled
                 else []
             ),
+            RuntimeModelRetryMiddleware(metadata, delegated=child),
             ModelErrorMiddleware(
                 startup.metadata, scope="subagent" if child else "primary"
             ),
             ModelCallTimeoutMiddleware(
                 bundle.policy.attempt_timeout_seconds if bundle.policy.enabled else None
             ),
-            ToolErrorMiddleware(on_error=on_tool_error),
+            ToolErrorMiddleware(
+                on_error=partial(on_tool_error, readonly_roles={"general-purpose"})
+            ),
+            *(
+                []
+                if child
+                else [DelegatedTaskRetryMiddleware({"general-purpose"}, metadata)]
+            ),
             *tail,
             *([ContextBudgetMiddleware(offloading[0])] if offloading else []),
         ]
@@ -449,7 +465,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 *media_tools,
                 *mcp_tools,
                 *(build_memory_tools() if memory_enabled else []),
-                *build_skill_tools(workspace, model),
+                *build_skill_tools(workspace, auxiliary_model),
                 build_deployment_tool(workspace),
             ],
             backend=backend,

@@ -9,6 +9,7 @@ from importlib.resources import files
 
 import anyio
 import httpx
+from langchain_core.exceptions import ContextOverflowError, ModelInvalidRequestError
 from langchain_core.tools import ToolException
 from langgraph.errors import GraphBubbleUp
 
@@ -309,7 +310,44 @@ def tool_error_content(exc: BaseException, tool_name: str) -> str | None:
     return None
 
 
-def on_tool_error(exc: Exception, request) -> str | None:
+def task_failure_content(exc: BaseException) -> str:
+    return _content(
+        "task",
+        type(exc).__name__,
+        "tool.upstream_unavailable",
+        "choose_alternative",
+        "failed",
+    )
+
+
+def on_tool_error(exc: Exception, request, *, readonly_roles=frozenset()) -> str | None:
+    args = request.tool_call.get("args") or {}
+    role = args.get("subagent_type") if isinstance(args, dict) else None
+    if (
+        request.tool_call["name"] == "task"
+        and isinstance(role, str)
+        and role in readonly_roles
+    ):
+        body = getattr(exc, "body", None)
+        body = body.get("error", body) if isinstance(body, dict) else {}
+        code = body.get("code") or body.get("type") if isinstance(body, dict) else None
+        if isinstance(exc, ContextOverflowError) or (
+            isinstance(exc, ModelInvalidRequestError)
+            and code
+            in {
+                "context_length_exceeded",
+                "context_window_exceeded",
+                "invalid_prompt",
+                "invalid_prompt_input",
+            }
+        ):
+            return _content(
+                "task",
+                type(exc).__name__,
+                "tool.invalid_input",
+                "correct_input",
+                "failed",
+            )
     return tool_error_content(exc, request.tool_call["name"])
 
 

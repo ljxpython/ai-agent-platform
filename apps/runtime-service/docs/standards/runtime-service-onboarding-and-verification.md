@@ -19,6 +19,15 @@ uv run pytest tests/services/showcase_demo -m "not integration and not e2e"
 
 ## 提交前检查
 
+运行可靠性验证可复用本机已安装的 PostgreSQL（PATH 中的 initdb/postgres，或 macOS `/Library/PostgreSQL/17/bin`）和 redis-server。以下测试自行创建临时数据目录、随机端口和独立 API/Worker/provider，退出仅关闭自己创建的进程，不调用 Docker或使用现役数据目录：
+
+```bash
+TOOL_ERROR_PLATFORM_TEST=1 PLATFORM_API_TEST_PYTHON="/absolute/path/to/platform-api/.venv/bin/python" \
+  uv run pytest tests/e2e/test_run_reliability.py -q -s
+```
+
+故障 provider 和观测 HTTP 服务使用合成凭据；真实现役 Langfuse/模型验收需单独记录，不与受控故障证据混记。前端浏览器验证由对应交接负责人完成。
+
 - Graph entrypoint 可导入，注册文件指向正确的 `get_agent`。
 - 组合测试确认工具列表、Middleware 顺序、Subagent 权限和 Context 语义。
 - integration 测试确认真实文件产物、退出码、隔离和资源限制。

@@ -43,7 +43,10 @@ _FIELDS = frozenset(
         "limit",
         "used",
         "remaining",
+        "component",
         "unit",
+        "role",
+        "attempts",
     }
 )
 

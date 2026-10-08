@@ -1,4 +1,4 @@
-"""Opt-in HTTP/API/Worker chain on two disposable Docker containers and SQLite."""
+"""Opt-in HTTP/API/Worker chain on isolated local PostgreSQL/Redis and SQLite."""
 
 import json
 import os
@@ -38,17 +38,22 @@ def wait_for(check, timeout=180, *, process=None):
 
 
 @pytest.fixture
-def stack(tmp_path):
+def stack(tmp_path, request):
     if os.getenv("TOOL_ERROR_PLATFORM_TEST") != "1":
         pytest.skip(
-            "TOOL_ERROR_PLATFORM_TEST=1 enables disposable Docker/API/Worker verification"
+            "TOOL_ERROR_PLATFORM_TEST=1 enables isolated local API/Worker verification"
         )
     repo = Path(__file__).resolve().parents[5]
-    source = repo / "apps/runtime-service/tests/fixtures/tool_error_platform.py"
+    options = getattr(request, "param", {})
+    source = (
+        repo
+        / "apps/runtime-service/tests/fixtures"
+        / options.get("fixture", "tool_error_platform.py")
+    )
     fixture = tmp_path / "fixture.py"
     shutil.copyfile(source, fixture)
     prefix = "tool-errors-" + uuid4().hex[:12]
-    containers, processes, logs = [], {}, []
+    processes, logs = {}, []
     runtime_port, platform_port = port(), port()
     spec = {
         "runtime_port": runtime_port,
@@ -59,11 +64,16 @@ def stack(tmp_path):
         "secret": "disposable-tool-error-verification-secret",
         **{k: str(uuid4()) for k in ("tenant", "project", "model")},
     }
+    if options.get("provider"):
+        spec["provider_port"] = port()
+        spec["provider_url"] = f"http://127.0.0.1:{spec['provider_port']}/v1"
     spec["config"] = {
         "graphs": {"dearflow_agent": "fixture.py:graph"},
         "auth": {"path": "fixture.py:auth"},
         "http": {"disable_mcp": True},
     }
+    if options.get("http_app"):
+        spec["config"]["http"]["app"] = "fixture.py:app"
     spec_path = tmp_path / "spec.json"
     spec_path.write_text(json.dumps(spec))
     (tmp_path / "langgraph.json").write_text(json.dumps(spec["config"]))
@@ -93,16 +103,22 @@ def stack(tmp_path):
         "GRAPHHARBOR_RUNTIME_CONTEXT_AUDIENCE": "graphharbor-worker",
         "PLATFORM_THREAD_AUTHORIZATION_URL": f"http://127.0.0.1:{platform_port}/api/runtime/internal/thread-authorization",
         "PLATFORM_RUNTIME_MODEL_CONFIG_URL": f"http://127.0.0.1:{platform_port}/api/runtime/internal/model-config",
+        **options.get("env", {}),
     }
     for key in tuple(env):
         if key.startswith(("LANGFUSE_", "OTEL_EXPORTER_")):
             env.pop(key)
+    if options.get("provider"):
+        env["RELIABILITY_OBSERVATIONS_URL"] = (
+            f"http://127.0.0.1:{spec['provider_port']}"
+        )
 
-    def start(role, source=None):
+    def start(role, source=None, command=None):
         output = (tmp_path / f"{role}-{len(logs)}.log").open("w")
         logs.append(output)
         processes[role] = subprocess.Popen(
-            [
+            command
+            or [
                 os.getenv("PLATFORM_API_TEST_PYTHON", sys.executable)
                 if role == "platform"
                 else sys.executable,
@@ -129,67 +145,111 @@ def stack(tmp_path):
                 process.wait(timeout=10)
 
     try:
-        for service, image, container_port in (
-            ("pg", "postgres:16", 5432),
-            ("redis", "redis:7-alpine", 6379),
-        ):
-            name = prefix + "-" + service
-            command = [
-                "docker",
-                "run",
-                "--rm",
-                "-d",
-                "--name",
-                name,
+        initdb = shutil.which("initdb") or "/Library/PostgreSQL/17/bin/initdb"
+        postgres = str(Path(initdb).with_name("postgres"))
+        redis_server = shutil.which("redis-server")
+        assert Path(initdb).is_file() and Path(postgres).is_file(), (
+            "Local PostgreSQL initdb/postgres binaries are required"
+        )
+        assert redis_server, "Local redis-server is required"
+        pg_port, redis_port = port(), port()
+        pg_data = tmp_path / "postgres"
+        initialization = subprocess.run(
+            [
+                initdb,
+                "-D",
+                str(pg_data),
+                "-U",
+                "postgres",
+                "-A",
+                "trust",
+                "--encoding=UTF8",
+                "--locale=C",
+            ],
+            capture_output=True,
+            timeout=45,
+        )
+        (tmp_path / "initdb.log").write_bytes(
+            initialization.stdout + initialization.stderr
+        )
+        assert initialization.returncode == 0, initialization.stderr.decode(
+            errors="replace"
+        )
+        env["DATABASE_URI"] = f"postgresql://postgres@127.0.0.1:{pg_port}/postgres"
+        env["REDIS_URI"] = f"redis://127.0.0.1:{redis_port}/0"
+        pg_process = start(
+            "postgres",
+            command=[
+                postgres,
+                "-D",
+                str(pg_data),
+                "-h",
+                "127.0.0.1",
                 "-p",
-                f"127.0.0.1::{container_port}",
-            ]
-            if service == "pg":
-                command += [
-                    "-e",
-                    "POSTGRES_PASSWORD=synthetic",
-                    "-e",
-                    "POSTGRES_DB=tool_errors",
-                ]
-            subprocess.run(
-                [*command, image], check=True, capture_output=True, timeout=45
-            )
-            containers.append(name)
+                str(pg_port),
+                "-c",
+                "unix_socket_directories=",
+            ],
+        )
+        wait_for(
+            lambda: (
+                subprocess.run(
+                    [
+                        str(Path(initdb).with_name("pg_isready")),
+                        "-h",
+                        "127.0.0.1",
+                        "-p",
+                        str(pg_port),
+                        "-U",
+                        "postgres",
+                    ],
+                    capture_output=True,
+                ).returncode
+                == 0
+            ),
+            process=pg_process,
+        )
+        redis_process = start(
+            "redis",
+            command=[
+                redis_server,
+                "--bind",
+                "127.0.0.1",
+                "--port",
+                str(redis_port),
+                "--dir",
+                str(tmp_path),
+                "--save",
+                "",
+                "--appendonly",
+                "no",
+            ],
+        )
+        from redis import Redis
 
-            def exposed_port(name=name, container_port=container_port):
-                info = json.loads(subprocess.check_output(["docker", "inspect", name]))[
-                    0
-                ]
-                bindings = info["NetworkSettings"]["Ports"].get(f"{container_port}/tcp")
-                return bindings[0]["HostPort"] if bindings else None
-
-            exposed = wait_for(exposed_port)
-            if service == "pg":
-                env["DATABASE_URI"] = (
-                    f"postgresql://postgres:synthetic@127.0.0.1:{exposed}/tool_errors"
-                )
-                wait_for(
-                    lambda name=name: (
-                        subprocess.run(
-                            ["docker", "exec", name, "pg_isready", "-U", "postgres"],
-                            capture_output=True,
-                        ).returncode
-                        == 0
-                    )
-                )
-            else:
-                env["REDIS_URI"] = f"redis://127.0.0.1:{exposed}/0"
-        subprocess.run(
+        wait_for(lambda: Redis.from_url(env["REDIS_URI"]).ping(), process=redis_process)
+        migration = subprocess.run(
             [
                 sys.executable,
                 "-c",
                 "import os; from langgraph_runtime_pg.migrate import upgrade_head; upgrade_head(os.environ['DATABASE_URI']); from runtime_service.db import upgrade; upgrade()",
             ],
             env=env,
-            check=True,
             capture_output=True,
             timeout=90,
         )
+        (tmp_path / "migration.log").write_bytes(migration.stdout + migration.stderr)
+        assert migration.returncode == 0, migration.stderr.decode(errors="replace")
+        if options.get("provider"):
+            provider_process = start("provider")
+            wait_for(
+                lambda: (
+                    httpx.get(
+                        spec["provider_url"] + "/ready", trust_env=False
+                    ).is_success
+                ),
+                process=provider_process,
+            )
         runtime_process = start("runtime")
         wait_for(
             lambda: (
@@ -217,12 +277,10 @@ def stack(tmp_path):
         ) as client:
             yield client, spec, env, processes, start, stop, tmp_path
     finally:
-        for role in tuple(processes):
+        for role in reversed(tuple(processes)):
             stop(role)
         for output in logs:
             output.close()
-        for name in containers:
-            subprocess.run(["docker", "stop", name], capture_output=True, timeout=30)
 
 
 def request(client, method, path, **kwargs):

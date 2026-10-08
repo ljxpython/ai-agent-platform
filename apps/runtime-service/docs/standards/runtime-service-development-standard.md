@@ -51,6 +51,14 @@ run/thread/exit_behavior；主子图分别声明 scope，禁止合并为未实�
 Agent invocation 起算。通知沿现有 custom writer，不接 Slack 或新事件存储；公开数据由平台白名单投影。
 接入/自定义 StateGraph 样例见 [Showcase](../../src/runtime_service/services/demo/showcase_demo/README.md)。
 
+## 准备与重试装配
+
+`middlewares/run_prepare.py` 的 `RunPrepareMiddleware` 供可幂等的资源准备继承：实现 `_validate()`、`_is_prepared()`、`_prepare()`，传入固定 component/revision 与 resolved config_hash。授权/路径检查每次执行，成功后提交私有 `runtime_prepare`；标记不保护 checkpoint 提交前的副作用，操作仍需幂等。不缓存模型、凭据或 MCP 连接。
+
+`middlewares/retry.py` 复用官方模型/工具 retry，总尝试最多 2 次；主/写子图的 SDK max_retries=0，由模型 middleware 负责。只读子图由父 `DelegatedTaskRetryMiddleware` 负责，其模型 middleware 使用 delegated=True。只读角色集合由本图组合根固定声明并核对工具闭包，不能根据另一个图的同名角色授权。任何 content/reasoning/tool delta 后禁止重放，取消/中断/权限/未知缺陷继续传播。
+
+provider 最终失败用安全 RuntimeExecutionError，真实 PG/checkpoint/lease 故障保留 Worker 恢复。Reference 沿用现有接线；其他 graph 显式选择接入。诊断只记录安全 preparations/retries，不增加 SSE 运行控制。接线与故障证据见 [专项](../../../../docs/projects/20261007-agent-production-capabilities/README.md)。
+
 ## 新增代码粒度规范
 
 > **适用范围：仅约束新增代码。存量代码不在此规范的覆盖范围内，不得借此规范触发对旧代码的"顺手重构"。**

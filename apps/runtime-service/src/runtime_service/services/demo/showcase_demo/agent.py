@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from functools import partial
 
 from deepagents import create_deep_agent
 from deepagents.middleware import FilesystemMiddleware
@@ -32,6 +33,10 @@ from runtime_service.middlewares import (
     resolve_wrapup_after_seconds,
 )
 from runtime_service.middlewares.images import ImageToolsMiddleware
+from runtime_service.middlewares.retry import (
+    DelegatedTaskRetryMiddleware,
+    RuntimeModelRetryMiddleware,
+)
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.observability.startup import StartupDiagnostics
 from runtime_service.runtime import (
@@ -61,6 +66,7 @@ from runtime_service.services.demo.showcase_demo.prompts import SYSTEM_PROMPT
 from runtime_service.services.demo.showcase_demo.subagents import (
     APPROVALS,
     PERMISSIONS,
+    READ_TOOLS,
     WORK_TOOLS,
     build_subagents,
 )
@@ -139,11 +145,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             )
             connection = bundle.primary
         with startup.phase("factory.model_build"):
-            model = build_model(
-                resolved,
-                connection=connection,
-                **({"max_retries": 0} if bundle.policy.enabled else {}),
-            )
+            model = build_model(resolved, connection=connection, max_retries=0)
             fallback_model = build_fallback_model(resolved, bundle)
         with startup.phase("factory.workspace"):
             workspace = create_workspace(
@@ -179,11 +181,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         return (
             model
             if next_config == resolved
-            else build_model(
-                next_config,
-                connection=connection,
-                **({"max_retries": 0} if bundle.policy.enabled else {}),
-            )
+            else build_model(next_config, connection=connection, max_retries=0)
         )
 
     def _env_int(name: str, default: int) -> int:
@@ -192,7 +190,14 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         raw = os.getenv(name, "").strip()
         return int(raw) if raw.isdigit() and int(raw) > 0 else default
 
-    def middleware(tool_names: Sequence[str], *, child: bool = False, tail=()):
+    def middleware(
+        tool_names: Sequence[str],
+        *,
+        child: bool = False,
+        readonly: bool = False,
+        tail=(),
+    ):
+        metadata = {**startup.metadata, "scope": "subagent" if child else "primary"}
         offloading = (
             [
                 ConversationOffloadingMiddleware(
@@ -223,7 +228,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             ),
             *offloading,
             *([MaintenanceSafeToolCallsMiddleware()] if offloading else []),
-            WorkspaceMiddleware(workspace),
+            WorkspaceMiddleware(
+                workspace,
+                resolved.config_hash if resolved else None,
+                metadata=metadata,
+            ),
             ExecutionBudgetMiddleware(
                 run_limit=_env_int("AGENT_MODEL_CALL_LIMIT_PER_RUN", 50),
                 thread_limit=_env_int("AGENT_MODEL_CALL_LIMIT_PER_THREAD", 500),
@@ -260,13 +269,17 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 if bundle.policy.enabled
                 else []
             ),
+            RuntimeModelRetryMiddleware(metadata, delegated=readonly),
             ModelErrorMiddleware(
                 startup.metadata, scope="subagent" if child else "primary"
             ),
             ModelCallTimeoutMiddleware(
                 bundle.policy.attempt_timeout_seconds if bundle.policy.enabled else None
             ),
-            ToolErrorMiddleware(on_error=on_tool_error),
+            ToolErrorMiddleware(
+                on_error=partial(on_tool_error, readonly_roles={"research"})
+            ),
+            *([] if child else [DelegatedTaskRetryMiddleware({"research"}, metadata)]),
             *tail,
             *([ContextBudgetMiddleware(offloading[0])] if offloading else []),
         ]
@@ -291,7 +304,9 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             subagents=build_subagents(
                 model,
                 backend,
-                lambda names: middleware(names, child=True),
+                lambda names: middleware(
+                    names, child=True, readonly=set(names) <= set(READ_TOOLS)
+                ),
                 chart_tools,
                 context.access_policy if executing else None,
             ),

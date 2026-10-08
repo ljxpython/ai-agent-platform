@@ -119,6 +119,61 @@ def test_service_run_authorization_and_safe_projection():
     assert invalid.value.status_code == 502
 
 
+def test_reliability_optional_dto_safety_and_private_marker_boundary():
+    from platform_api.core.runtime_contract import reject_private_runtime_state
+
+    preparation = {
+        "observation_id": "prep",
+        "scope": "primary",
+        "namespace": [],
+        "component": "workspace",
+        "outcome": "reused",
+        "duration_ms": 0,
+        "fingerprint": CANARY,
+    }
+    retry = {
+        "observation_id": "retry",
+        "scope": "primary",
+        "namespace": [],
+        "unit": "model",
+        "role": None,
+        "attempts": 2,
+        "outcome": "success",
+        "code": "provider_rate_limited",
+        "body": CANARY,
+    }
+    old = RuntimeDiagnostics.model_validate(summary()).model_dump()
+    assert old["preparations"] == old["retries"] == []
+    new = RuntimeDiagnostics.model_validate(
+        {**summary(), "preparations": [preparation], "retries": [retry]}
+    ).model_dump()
+    assert CANARY not in json.dumps(new) and new["retries"][0]["attempts"] == 2
+    for attempts in (0, 3, True, 1.5):
+        with pytest.raises(ValidationError):
+            RuntimeDiagnostics.model_validate(
+                {**summary(), "retries": [{**retry, "attempts": attempts}]}
+            )
+    for duration in (-1, float("nan"), float("inf")):
+        with pytest.raises(ValidationError):
+            RuntimeDiagnostics.model_validate(
+                {
+                    **summary(),
+                    "preparations": [{**preparation, "duration_ms": duration}],
+                }
+            )
+    with pytest.raises(ValidationError):
+        RuntimeDiagnostics.model_validate({**summary(), "retries": [retry] * 21})
+    with pytest.raises(ValueError, match="private state"):
+        reject_private_runtime_state({"runtime_prepare": {"workspace": "a" * 64}})
+    values = {
+        "runtime_prepare": {"workspace": CANARY},
+        "messages": [{"content": "ordinary"}],
+    }
+    assert _redact_runtime_private_fields({"values": values}) == {
+        "values": {"messages": [{"content": "ordinary"}]}
+    }
+
+
 def test_real_acl_owner_shared_peer_and_cross_project():
     with tempfile.TemporaryDirectory() as directory:
         engine = build_engine(f"sqlite:///{Path(directory) / 'acl.db'}")

@@ -8,7 +8,7 @@
 ## platform-web
 
 | 功能 | 状态 | 关联文档 |
-|---|---|---|
+| Agent 运行准备与有界重试诊断摘要展示 | 已完成：实装运行准备（RunPreparationsSection）与受管重试（RunRetriesSection）独立子组件，支持 strict attempts/role 正则校验、主 Run 成功时琥珀色 Amber 警示降级、空态完全隐藏、敏感字段剥离，49 项单测与 Playwright 全链路 E2E 验证全绿 | [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | Agent Run/Thread 用量与成本展示 | 已完成：实装独立解耦面板 RunUsage 与 useRunUsage 防竞态状态机、open-swe 水位进度条 (Usage Meter)、服务端截断告警卡片、模型费率安全编辑（Decimal 精度、自动补零、可逆清空保护）以及假数据彻底切除。Playwright + Chromium 端到端 5 项全绿（含真实百炼 qwen-plus 全链路调用闭环与 24,069 Tokens / $0.0051 落库上屏）并生成 7 张高清渲染截图，全仓 120 套件 583 项单测、typecheck、lint 和生产打包 100% 通过 | [前端交接](projects/20261007-agent-usage-cost-governance/04-frontend-handoff.md) |
 | Agent 执行预算告警与限制原因展示 | 已完成：Zod 契约投影、安全解包、useRunBudget 有界 LRU 去重与 Run/namespace 隔离、ChatAgentStatusBar Amber/Success 停机展示（保留取消、文案解耦、A11y）、子任务微横条与徽章、Thread 耗尽禁用；571 单测、类型检查与 ESLint 全绿 | [项目入口](projects/20261007-agent-execution-budget/README.md) · [实施记录](projects/20261007-agent-execution-budget/implementation/02-frontend-budget-implementation.md) |
 | Agent 模型调用稳定性与容灾降级界面 | 已完成：实装 AgentEditorPage 模型恢复策略配置（主备去重、等待时间联动推高、schemaEpoch 防草稿覆盖、step=1 步长修复与保存成功就地高亮微反馈）；接通 4000ms 前端超时保护与 wait=true 取消确认；useChatSession 映射 5 大稳定机器码，trajectory-adapter 真实终态修正与备用模型微胶囊渲染；全量单测 559 passed，三服务端到端故障注入实测通过，用户在浏览器端人工验收通过 | [项目概览](projects/20261006-agent-model-resilience/README.md) · [前端交接](projects/20261006-agent-model-resilience/frontend-handoff.md) |
@@ -90,6 +90,7 @@
 ## runtime-service
 
 | 功能 | 状态 | 关联文档 |
+| 通用运行准备幂等与有界重试 | 已完成：全链路闭环，两 Agent workspace latch、资源安全修复、单一重试负责人/最多 2 次尝试、部分流保护及安全诊断；Platform Web 准备与重试专用子组件、主 Run 成功琥珀色降级；单测、本机故障恢复及 Playwright 全链路 E2E 验证通过，自主唤醒后置，未部署现役 | [方案与任务](projects/20261007-agent-production-capabilities/README.md) · [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | 通用 Agent Token/Cost 采集与持久化 | 全链路已完成：主/子图、摘要和可信旁路 callback、自有 Run/call ledger、缓存 TTL 与 Decimal 估算；真实隔离 PG/Worker/重启/回退与包含真实百炼大模型的 5 项 Playwright 端到端全部闭环，未部署现役 | [方案与任务](projects/20261007-agent-usage-cost-governance/02-runtime-usage.md) |
 | 通用 Agent 执行预算预警与软收尾 | 全链路 done：官方模型限额薄扩展、managed 图余量、幂等提示、四正式 graph 主/子接线和可选 invocation 软计时完成；253 passed，23 真实 Worker 场景通过；原 hard limits/end/error 不变，前端联合 F01-F04 全绿，未部署 | [项目入口](projects/20261007-agent-execution-budget/README.md) · [验证](projects/20261007-agent-execution-budget/verification.md) |
 | Agent 模型调用稳定性与中间件容灾降级 | 已完成：显式 transient 错误分类、Retry-After 冷却、ModelResilienceMiddleware 有界重试与自动故障转移（fallback）、单次与总预算控制、流式安全、四组合根与子图装配；单测 43 passed，故障注入死端口实测毫秒级平滑降级至备用模型并流式完成全生命周期，用户人工实测验收合格 | [项目概览](projects/20261006-agent-model-resilience/README.md) · [实现记录](projects/20261006-agent-model-resilience/implementation/01-managed-model-resilience.md) |

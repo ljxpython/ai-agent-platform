@@ -7,6 +7,7 @@ import math
 import os
 
 from langchain.agents.middleware import AgentMiddleware, ModelRequest
+from langchain_core.exceptions import ModelTimeoutError
 
 DEFAULT_MODEL_CALL_TIMEOUT_SECONDS = 600.0
 
@@ -25,7 +26,7 @@ def resolve_model_call_timeout_seconds(
     return float(default)
 
 
-class ModelCallTimeoutError(TimeoutError):
+class ModelCallTimeoutError(ModelTimeoutError, TimeoutError):
     """The middleware's own model-call budget expired."""
 
 

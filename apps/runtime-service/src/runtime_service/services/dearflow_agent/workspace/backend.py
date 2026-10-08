@@ -26,11 +26,11 @@ from deepagents.backends.protocol import (
     SandboxBackendProtocol,
     WriteResult,
 )
-from langchain.agents.middleware import AgentMiddleware
 
 from runtime_service.middlewares.conversation_offloading import (
     is_conversation_maintenance,
 )
+from runtime_service.middlewares.run_prepare import RunPrepareMiddleware
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
 from runtime_service.tools.images import ImageWorkspace
 from runtime_service.workspace.execution import (
@@ -70,9 +70,21 @@ class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
         return "dearflow-" + thread_scope_hash(*self.scope)
 
     def prepare(self):
+        self.is_prepared()
         io = ImageWorkspace(self.root)
         for folder in ("uploads", "work", "outputs"):
             os.close(io._directory((folder,), create=True, create_root=True))
+
+    def is_prepared(self) -> bool:
+        paths = (
+            self.root,
+            *(self.root / name for name in ("uploads", "work", "outputs")),
+        )
+        if any(path.is_symlink() for path in (*self.root.parents, *paths)):
+            raise RuntimeAuthError("runtime.workspace.invalid_path")
+        if any(path.exists() and not path.is_dir() for path in paths):
+            raise RuntimeAuthError("runtime.workspace.invalid_path")
+        return all(path.is_dir() for path in paths)
 
     def _can_write(self, path: str) -> bool:
         # Shell access is restricted by mounts; filesystem tools need their own guard.
@@ -260,11 +272,12 @@ def build_backend(workspace):
     )
 
 
-class WorkspaceMiddleware(AgentMiddleware):
-    def __init__(self, workspace):
+class WorkspaceMiddleware(RunPrepareMiddleware):
+    def __init__(self, workspace, config_hash=None, *, metadata=None):
+        super().__init__("workspace", config_hash, metadata=metadata)
         self.workspace = workspace
 
-    async def abefore_agent(self, state, runtime):
+    def _validate(self, runtime):
         if self.workspace is None:
             raise RuntimeAuthError("runtime.graph.probe_only")
         facts = verified_delegation_from_user(runtime.server_info.user)
@@ -278,5 +291,14 @@ class WorkspaceMiddleware(AgentMiddleware):
             or facts.scope.assistant_id != "dearflow_agent"
         ):
             raise RuntimeAuthError("runtime.workspace.scope_mismatch")
-        if not is_conversation_maintenance(runtime):
-            await asyncio.to_thread(self.workspace.prepare)
+
+    async def abefore_agent(self, state, runtime, config):
+        if is_conversation_maintenance(runtime):
+            return None
+        return await super().abefore_agent(state, runtime, config)
+
+    def _is_prepared(self):
+        return self.workspace.is_prepared()
+
+    def _prepare(self):
+        self.workspace.prepare()

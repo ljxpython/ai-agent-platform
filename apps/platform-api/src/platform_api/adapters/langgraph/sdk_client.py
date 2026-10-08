@@ -336,6 +336,7 @@ def redact_runtime_private_fields(
             else redact_runtime_private_fields(
                 item,
                 _resource=_resource
+                and result.get("type") != "tool"
                 and key
                 not in {
                     "values",
@@ -378,6 +379,7 @@ def redact_runtime_private_fields(
                     "fallback_model_id",
                     "fallback_connection",
                     "resilience_version",
+                    "runtime_prepare",
                 }
             )
         }

@@ -108,14 +108,83 @@ export const traceInfoSchema = z.object({
 
 export type TraceInfo = z.infer<typeof traceInfoSchema>;
 
+export const PREPARATION_COMPONENTS = ["workspace"] as const;
+export type PreparationComponent = (typeof PREPARATION_COMPONENTS)[number];
+
+export const PREPARATION_OUTCOMES = [
+  "prepared",
+  "reused",
+  "repaired",
+  "failed",
+] as const;
+export type PreparationOutcome = (typeof PREPARATION_OUTCOMES)[number];
+
+export const PREPARATION_ERROR_CODES = [
+  "prepare_failed",
+  "resource_unavailable",
+] as const;
+export type PreparationErrorCode = (typeof PREPARATION_ERROR_CODES)[number];
+
+export const RETRY_UNITS = ["model", "task"] as const;
+export type RetryUnit = (typeof RETRY_UNITS)[number];
+
+export const RETRY_OUTCOMES = [
+  "success",
+  "exhausted",
+  "failed",
+  "cancelled",
+  "interrupted",
+] as const;
+export type RetryOutcome = (typeof RETRY_OUTCOMES)[number];
+
+// 安全标识符正则：仅允许字母、数字、下划线、冒号、点号与短横线
+const identifierRegex = /^[A-Za-z0-9_:.-]+$/;
+
+export const preparationSummarySchema = z.object({
+  observation_id: z.string().min(1).max(128).regex(identifierRegex),
+  scope: z.enum(["primary", "subagent"]),
+  namespace: z.array(z.string().min(1).max(128).regex(identifierRegex)).max(8),
+  component: z.enum(PREPARATION_COMPONENTS),
+  outcome: z.enum(PREPARATION_OUTCOMES),
+  duration_ms: safeDurationSchema.optional().default(null),
+  error_code: z
+    .enum(PREPARATION_ERROR_CODES)
+    .nullable()
+    .optional()
+    .default(null),
+});
+
+export type PreparationSummaryItem = z.infer<typeof preparationSummarySchema>;
+
+export const retrySummarySchema = z.object({
+  observation_id: z.string().min(1).max(128).regex(identifierRegex),
+  scope: z.enum(["primary", "subagent"]),
+  namespace: z.array(z.string().min(1).max(128).regex(identifierRegex)).max(8),
+  unit: z.enum(RETRY_UNITS),
+  role: z
+    .string()
+    .min(1)
+    .max(64)
+    .regex(identifierRegex)
+    .nullable()
+    .optional()
+    .default(null),
+  attempts: z.number().int().min(1).max(2),
+  outcome: z.enum(RETRY_OUTCOMES),
+  code: z.enum(MODEL_ERROR_CODES).nullable().optional().default(null),
+  duration_ms: safeDurationSchema.optional().default(null),
+});
+
+export type RetrySummaryItem = z.infer<typeof retrySummarySchema>;
+
 // v1 根 DTO 校验器：strip 模式会自动剥离未在 schema 中显式声明的未知字段
 export const runDiagnosticsV1Schema = z
   .object({
     version: z.literal(1),
     thread_id: z.string().max(128),
     run_id: z.string().max(128),
-    run_status: z.string().max(64),
-    request_id: z.string().max(128),
+    run_status: z.string().max(128),
+    request_id: z.string().max(256),
     availability: z.enum(AVAILABILITY_STATUSES),
     unavailable_reason: z.enum(UNAVAILABLE_REASONS).nullable(),
     correlation: correlationSchema,
@@ -123,6 +192,12 @@ export const runDiagnosticsV1Schema = z
     graph_executions: z.array(graphExecutionSchema).max(10),
     model_errors: z.array(modelErrorSchema).max(20),
     startup: startupDiagnosticsSchema.nullable(),
+    preparations: z
+      .array(preparationSummarySchema)
+      .max(20)
+      .optional()
+      .default([]),
+    retries: z.array(retrySummarySchema).max(20).optional().default([]),
     truncated: z.boolean(),
   })
   .strip();

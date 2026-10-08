@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-08（Agent 执行预算/步骤限制告警与软收尾、运行生命周期超时治理与排队死锁自愈，以及 Agent 通用 Token/Cost 跟踪治理全栈闭环，用户端到端自动化与人工验收通过，全项标为 done 并零功能损失合并进入主分支）。
+> **最后更新：** 2026-10-08（Agent 运行准备幂等与有界重试、执行预算/步骤限制告警与软收尾、运行生命周期超时治理与排队死锁自愈，以及 Agent 通用 Token/Cost 跟踪治理全栈闭环，用户端到端自动化与人工验收通过，全项标为 done 并零功能损失合并进入主分支）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -11,15 +11,9 @@
 
 ## 最近改动
 
+2026-10-08 | **Agent 运行准备幂等与有界重试**：全链路闭环完成。公共 prepare latch、目录修复/篡改拒绝、按 graph 的模型/只读 task 有界重试、部分流保护、provider 终止与 Worker 基础设施恢复分离已实现；v1 diagnostics 新增安全 preparations/retries。Platform Web 完成拆分 RunPreparationsSection 与 RunRetriesSection 专职展示子组件，严格 attempts/role 正则防注入与琥珀色降级；49 项定向单测、vue-tsc 0 错误、eslint 0 错误、生产打包全绿；Playwright + Chromium 全链路三服务真实模型问答、轨迹排障及 F01-F10 专项浏览器视觉与安全验收全部通过，全流程截图留存。专项 done，未部署现役。见 [专项](projects/20261007-agent-production-capabilities/README.md)。
+
 2026-10-08 | **Agent 通用 Token/Cost 跟踪治理全栈闭环**：done。用户端到端与真实大模型自动化闭环验收通过，合并入主分支。Runtime Service 实现自有 ledger、缓存计价与内部 Usage 汇聚；Platform API 实现模型费率快照与 Usage 授权网关代理；Platform Web 实装 Run/Thread 双级 Token/Cost 检查器、open-swe 风格上下文运行水位仪表（Usage Meter）、模型调用流水明细、服务端截断预警，以及模型编辑器 6 项费率 Decimal 安全配置与可逆清空保护；全栈真实模型自动化闭环与单测全绿。见 [专项](projects/20261007-agent-usage-cost-governance/README.md)。
-
-2026-10-08 | **Agent 执行预算与软收尾全链路完成**：done。用户端到端自动化与人工验收通过，合并入主分支。Runtime/Platform API 完成通用预算模型限额薄扩展、managed 图余量、软时间、精确预算安全码、custom 白名单及隔离 Worker 验证；Platform Web 完成 Zod 白名单投影、弹性解包 safeExtractBudgetNotice、响应式 useRunBudget（200条LRU有界去重、增量指针防掉帧、运行态防闪烁、Run/namespace 隔离）、ChatAgentStatusBar Amber/Success 停机展示（预警态保留取消按钮、文案解耦、A11y）、子任务独立微横条/徽章、Thread 耗尽禁用分流；修复拖选退出、文案截断及继续执行报错消失；单测全绿，vue-tsc/ESLint 0 错误与 Vite build 全绿。见 [专项](projects/20261007-agent-execution-budget/README.md)。
-
-2026-10-08 | **Agent 运行生命周期超时治理与排队死锁根除**：done。用户在真实浏览器端完成全链路验收。四图主子共享 attempt 预算、软收尾、模型 error 与 Worker timeout 分离；前端实装黄色超时警示胶囊、双通道停止确认；治本修复 `storageKey` 响应式漂移导致的本地 localStorage 幽灵未决锁残留，补充双重自愈机制与【放弃并恢复草稿】逃生通道；服务安全停止。见 [专项](projects/20261006-agent-run-timeout-governance/README.md) 及 [变更记录](apps/platform-web/docs/changes/20261007-prompt-queue-unconfirmed-deadlock-and-switch-healing.md)。
-
-2026-10-07 | **Agent 模型调用稳定性治理**：done。Platform API/Runtime Service/Platform Web 全栈交付闭环。修复 FastAPI 500 强类型校验拦截与前端表单 step/就地保存高亮反馈；故障注入死端口实测 ModelResilienceMiddleware 毫秒级降级至 DeepSeek 备用模型并流式完成全生命周期；用户在浏览器端完成全链路人工实测，验收通过。见 [专项](projects/20261006-agent-model-resilience/README.md)。
-
-2026-10-07 | **Agent 上下文窗口管理工程化**：done。Platform API/Runtime/Platform Web 完成全栈交付。后端与 Runtime 交付可信容量、预算 guard、隐藏摘要流、Context v5、受控维护 Run、私有字段脱敏；前端交付模型容量配置与展示（F01）、整理状态微胶囊及 4 秒自动淡出/草稿输入打断机制（F02）、手动维护动作与菜单守卫（F03）。隔离 PG、真实模型 10 次质量集、HTTP v2/v3、Worker 重启/回滚，以及前端 63 项定向单测、vue-tsc 0 错误与生产打包均通过。用户已在真实控制台与聊天会话中完成端到端人工实测，全链路验收通过，交付闭环。见 [专项](projects/20261006-agent-context-window-governance/README.md)。
 
 2026-10-07 | **Agent 工具调用容错与生产接线全链路完成**：Runtime/Platform API 完成选择性错误分类、DearFlow/Showcase/Reference 主子图接线、MCP/workspace 边界、v3 tools 流安全出口和公开 fatal 脱敏；Platform Web 完成纯函数错误摘要提取、微胶囊 Tag 徽章与展开态格式化代码块排版；核心单测全绿（31 passed），静态类型与构建通过；三服务全栈浏览器联合验收 F01-F08 全部通过，全专项闭环 done。见 [专项](projects/20261006-agent-tool-error-resilience/README.md)。
 
@@ -45,6 +39,7 @@
 
 ## 活跃项目
 
+- [Agent 运行准备幂等与有界重试](projects/20261007-agent-production-capabilities/README.md)：done；公共 prepare latch、目录修复、有界重试与诊断接口已实现，前端双专职子组件实装，49 项单测与 Playwright + Chromium 全链路自动化 E2E 闭环全部通过。未部署现役。
 - [Agent 通用 Token/Cost 跟踪与运行用量治理](projects/20261007-agent-usage-cost-governance/README.md)：done；Runtime + Platform API + Platform Web 全栈闭环，16 项隔离真实后端链路与包含真实大模型调用的 5 项 Playwright 自动化端到端测试全部通过，五重质量门禁全绿。未部署现役服务。
 - [Agent 执行预算、步骤限制告警与软收尾](projects/20261007-agent-execution-budget/README.md)：done（全链路闭环）；Runtime 253 项回归、API 81 项回归与 23 场景真实 Worker 验证齐全；前端 F01-F04 实装并完成 116 套件 571 项单测、vue-tsc 0 错误、ESLint 0 错误。端到端自动化验收与人工实测完成。
 - [Agent 运行生命周期超时治理](projects/20261006-agent-run-timeout-governance/README.md)：done；已完成正式post42接入、12组HTTP、匹配回退、前端T11超时治理与停止时序实装，以及T12用户真实浏览器端端到端联调验收（含排队死锁自愈）。本地服务已安全停止。
@@ -77,9 +72,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-08 | 锁定/安装正式 post42；四图主子共享 attempt 预算/软收尾，模型 error 与 Worker timeout 分开；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理（自有 ledger/缓存计价）全链路融合就绪；未部署现役。 |
-| platform-api | 2026-10-08 | 私有预算注入拒绝/脱敏及停止确认透传；预算四精确安全码、custom 白名单、tasks/debug 错误清洗；模型恢复策略、上下文容量 CRUD 与 Run 诊断端点、模型费率快照与 Usage 授权网关代理全量实装；未部署现役。 |
-| platform-web | 2026-10-08 | 预算告警投影、useRunBudget、ChatAgentStatusBar Amber/Success 停机展示、子任务独立微横条；超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板、上下文容量展示、Run/Thread 用量与成本检查器、open-swe 水位表全部融合；全仓单测、vue-tsc 与生产打包全绿。 |
+| runtime-service | 2026-10-08 | 锁定/安装正式 post42；四图主子共享 attempt 预算/软收尾，模型 error 与 Worker timeout 分开；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理（自有 ledger/缓存计价）与运行准备幂等/有界重试安全摘要全链路融合就绪；未部署现役。 |
+| platform-api | 2026-10-08 | 私有预算注入拒绝/脱敏及停止确认透传；预算四精确安全码、custom 白名单、tasks/debug 错误清洗；runtime_prepare 私有字段防注入/公开剥离；diagnostics v1 增 optional preparations/retries；模型恢复策略、上下文容量 CRUD 与 Run 诊断端点、模型费率快照与 Usage 授权网关代理全量实装；未部署现役。 |
+| platform-web | 2026-10-08 | 运行准备与重试摘要前端实装与全链路 E2E 验收完成；拆分 RunPreparationsSection 与 RunRetriesSection 专职展示子组件，严格 attempts/role 正则防注入与琥珀色降级；预算告警投影、useRunBudget、ChatAgentStatusBar Amber/Success 停机展示、子任务独立微横条；超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板、上下文容量展示、Run/Thread 用量与成本检查器、open-swe 水位表全部融合；全仓单测、vue-tsc 与生产打包全绿。未部署现役。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-07 | 整单结束前须逐项核对未完成任务，未完成时只记Phase；用户批准的多会话发布协作经验已写入ai-workflow经验库，恢复时先核对正式产物归属与锁文件 |
 
 ## 近期关键决策

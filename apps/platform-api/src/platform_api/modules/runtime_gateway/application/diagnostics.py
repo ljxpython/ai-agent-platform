@@ -76,6 +76,33 @@ class StartupSummary(DiagnosticFields):
     phases: Annotated[list[StartupPhase], Field(max_length=16)]
 
 
+class PreparationSummary(DiagnosticFields):
+    observation_id: Identifier
+    scope: Literal["primary", "subagent"]
+    namespace: Annotated[list[Identifier], Field(max_length=8)]
+    component: Literal["workspace"]
+    outcome: Literal["prepared", "reused", "repaired", "failed"]
+    duration_ms: Duration | None = None
+    error_code: Literal["prepare_failed", "resource_unavailable"] | None = None
+
+
+class RetrySummary(DiagnosticFields):
+    observation_id: Identifier
+    scope: Literal["primary", "subagent"]
+    namespace: Annotated[list[Identifier], Field(max_length=8)]
+    unit: Literal["model", "task"]
+    role: (
+        Annotated[
+            str, Field(max_length=64, min_length=1, pattern=r"^[A-Za-z0-9_:.-]+$")
+        ]
+        | None
+    ) = None
+    attempts: Annotated[int, Field(ge=1, le=2, strict=True)]
+    outcome: Literal["success", "exhausted", "failed", "cancelled", "interrupted"]
+    code: ModelErrorCode | None = None
+    duration_ms: Duration | None = None
+
+
 class RuntimeDiagnostics(DiagnosticFields):
     version: Literal[1]
     availability: Literal["available", "partial", "disabled", "unavailable"]
@@ -87,6 +114,12 @@ class RuntimeDiagnostics(DiagnosticFields):
     graph_executions: Annotated[list[GraphExecution], Field(max_length=10)]
     model_errors: Annotated[list[ModelFailure], Field(max_length=20)]
     startup: StartupSummary | None
+    preparations: Annotated[list[PreparationSummary], Field(max_length=20)] = Field(
+        default_factory=list
+    )
+    retries: Annotated[list[RetrySummary], Field(max_length=20)] = Field(
+        default_factory=list
+    )
     truncated: Annotated[bool, Field(strict=True)]
 
 

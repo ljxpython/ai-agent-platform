@@ -15,11 +15,11 @@ from deepagents.backends import (
     StateBackend,
 )
 from deepagents.backends.protocol import ExecuteResponse, SandboxBackendProtocol
-from langchain.agents.middleware import AgentMiddleware
 
 from runtime_service.middlewares.conversation_offloading import (
     is_conversation_maintenance,
 )
+from runtime_service.middlewares.run_prepare import RunPrepareMiddleware
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
 from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.workspace.execution import runtime_backend
@@ -48,8 +48,7 @@ class _ThreadWorkspaceBackend(FilesystemBackend):
     def prepare(self) -> None:
         """Seed a new workspace once, without overwriting the user's changes."""
         workspace = self.cwd / "workspace"
-        if self.cwd.is_symlink() or workspace.is_symlink():
-            raise RuntimeAuthError("runtime.workspace.invalid_path")
+        self.is_prepared()
         workspace.mkdir(parents=True, exist_ok=True)
         marker = self.cwd / ".initialized"
         if marker.exists():
@@ -62,6 +61,16 @@ class _ThreadWorkspaceBackend(FilesystemBackend):
                 except FileExistsError:
                     pass
         marker.touch()
+
+    def is_prepared(self) -> bool:
+        paths = (self.cwd, self.cwd / "workspace", self.cwd / ".initialized")
+        if any(path.is_symlink() for path in (*self.cwd.parents, *paths)):
+            raise RuntimeAuthError("runtime.workspace.invalid_path")
+        if any(path.exists() and not path.is_dir() for path in paths[:2]):
+            raise RuntimeAuthError("runtime.workspace.invalid_path")
+        if paths[2].exists() and not paths[2].is_file():
+            raise RuntimeAuthError("runtime.workspace.invalid_path")
+        return all(path.exists() for path in paths)
 
 
 class DockerWorkspaceBackend(_ThreadWorkspaceBackend, SandboxBackendProtocol):
@@ -145,13 +154,14 @@ def build_backend(workspace: _ThreadWorkspaceBackend | None) -> CompositeBackend
     )
 
 
-class WorkspaceMiddleware(AgentMiddleware):
+class WorkspaceMiddleware(RunPrepareMiddleware):
     """Check the bound scope before initializing any thread-owned resources."""
 
-    def __init__(self, workspace: _ThreadWorkspaceBackend | None) -> None:
+    def __init__(self, workspace, config_hash=None, *, metadata=None) -> None:
+        super().__init__("workspace", config_hash, metadata=metadata)
         self.workspace = workspace
 
-    async def abefore_agent(self, state, runtime) -> None:
+    def _validate(self, runtime) -> None:
         if self.workspace is None:
             raise RuntimeAuthError("runtime.graph.probe_only")
         facts = verified_delegation_from_user(runtime.server_info.user)
@@ -162,5 +172,14 @@ class WorkspaceMiddleware(AgentMiddleware):
         )
         if scope != self.workspace.scope:
             raise RuntimeAuthError("runtime.workspace.scope_mismatch")
-        if not is_conversation_maintenance(runtime):
-            await asyncio.to_thread(self.workspace.prepare)
+
+    async def abefore_agent(self, state, runtime, config):
+        if is_conversation_maintenance(runtime):
+            return None
+        return await super().abefore_agent(state, runtime, config)
+
+    def _is_prepared(self):
+        return self.workspace.is_prepared()
+
+    def _prepare(self):
+        self.workspace.prepare()

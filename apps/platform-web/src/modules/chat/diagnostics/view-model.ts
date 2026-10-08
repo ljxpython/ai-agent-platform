@@ -3,6 +3,11 @@ import type {
   GraphOutcome,
   ModelErrorCode,
   PhaseOutcome,
+  PreparationComponent,
+  PreparationErrorCode,
+  PreparationOutcome,
+  RetryOutcome,
+  RetryUnit,
   UnavailableReason,
 } from "./types";
 
@@ -190,4 +195,124 @@ export function truncateIdentifier(
   if (!id) return "—";
   if (id.length <= head) return id;
   return `${id.slice(0, head)}...`;
+}
+
+/**
+ * 格式化调用尝试次数
+ * 1 -> "单次调用", 2 -> "重试 1 次"
+ */
+export function formatAttempts(attempts: number | null | undefined): string {
+  if (attempts === 1) return "单次调用";
+  if (attempts === 2) return "重试 1 次";
+  if (typeof attempts === "number" && attempts > 0)
+    return `调用 ${attempts} 次`;
+  return "未知尝试";
+}
+
+/**
+ * 准备组件中文标签映射
+ */
+export function getPreparationComponentLabel(
+  component: PreparationComponent | string | null | undefined,
+): string {
+  if (component === "workspace") return "工作区";
+  return component ?? "未知组件";
+}
+
+/**
+ * 准备结果中文标签与徽章样式
+ */
+export function getPreparationOutcomeBadge(
+  outcome: PreparationOutcome | string,
+): {
+  label: string;
+  variant: "success" | "blue" | "warning" | "error" | "muted";
+} {
+  switch (outcome) {
+    case "prepared":
+      return { label: "已准备", variant: "success" };
+    case "reused":
+      return { label: "已复用", variant: "blue" };
+    case "repaired":
+      return { label: "已补齐", variant: "warning" };
+    case "failed":
+      return { label: "准备失败", variant: "error" };
+    default:
+      return { label: "未知", variant: "muted" };
+  }
+}
+
+/**
+ * 准备错误码中文说明
+ */
+export function getPreparationErrorCodeLabel(
+  code: PreparationErrorCode | string | null | undefined,
+): string {
+  if (!code) return "";
+  if (code === "prepare_failed") return "准备失败";
+  if (code === "resource_unavailable") return "资源不可用";
+  return "准备异常";
+}
+
+/**
+ * 重试单元中文标签
+ */
+export function getRetryUnitLabel(
+  unit: RetryUnit | string | null | undefined,
+  role?: string | null | undefined,
+): string {
+  if (unit === "task") {
+    return role ? `子任务 (${role})` : "子任务";
+  }
+  if (unit === "model") {
+    return "模型调用";
+  }
+  return "调用";
+}
+
+/**
+ * 核心视觉防坑：重试结果状态及警示等级计算
+ * 当整次 Run 已经成功时，失败/耗尽的重试必须降级为 warning（Amber 琥珀色），严禁标红报错误导用户！
+ */
+export function getRetryOutcomeBadge(
+  outcome: RetryOutcome | string,
+  runStatus?: string | null | undefined,
+): {
+  label: string;
+  variant: "success" | "warning" | "error" | "muted";
+} {
+  switch (outcome) {
+    case "success":
+      return { label: "成功", variant: "success" };
+    case "exhausted":
+      return {
+        label: "重试耗尽",
+        variant: runStatus === "success" ? "warning" : "error",
+      };
+    case "failed":
+      return {
+        label: "失败",
+        variant: runStatus === "success" ? "warning" : "error",
+      };
+    case "cancelled":
+      return { label: "已取消", variant: "muted" };
+    case "interrupted":
+      return { label: "已中断", variant: "warning" };
+    default:
+      return { label: "未知", variant: "muted" };
+  }
+}
+
+/**
+ * 重试卡片背景与边框的严重性等级
+ */
+export function getRetrySeverity(
+  outcome: string,
+  runStatus?: string | null | undefined,
+): "success" | "warning" | "error" | "muted" {
+  if (outcome === "success") return "success";
+  if (outcome === "cancelled") return "muted";
+  if (runStatus === "success") return "warning";
+  if (outcome === "failed" || outcome === "exhausted") return "error";
+  return "warning";
 }
