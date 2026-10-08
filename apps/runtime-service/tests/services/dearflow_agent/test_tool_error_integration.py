@@ -70,7 +70,7 @@ def test_execute_cli_start_failure_is_fatal_and_does_not_run_host_command(
     (backend.root / "work/keep.txt").write_text("keep")
     monkeypatch.setenv("PATH", "")
     with pytest.raises(
-        RuntimeWorkspaceError, match="runtime.workspace.execution_unavailable"
+        RuntimeWorkspaceError, match="runtime.workspace.execution_outcome_unknown"
     ):
         asyncio.run(backend.aexecute("touch host-execution-must-not-happen"))
     assert (backend.root / "work/keep.txt").read_text() == "keep"

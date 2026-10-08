@@ -8,6 +8,7 @@ from importlib.resources import files
 import pytest
 
 from runtime_service.runtime import RuntimeAuthError
+from runtime_service.runtime.errors import RuntimeWorkspaceError
 from runtime_service.services.demo.showcase_demo.backend import (
     DockerWorkspaceBackend,
     LocalWorkspaceBackend,
@@ -148,4 +149,10 @@ def test_docker_executes_real_files_and_enforces_limits(monkeypatch, tmp_path):
     with pytest.raises(ValueError):
         workspace.execute("true", timeout=0)
     monkeypatch.setenv("RUNTIME_SHOWCASE_IMAGE", "showcase-missing-image:never")
-    assert workspace.execute("echo must-not-succeed").exit_code != 0
+    try:
+        result = workspace.execute("touch must-not-succeed")
+    except RuntimeWorkspaceError as exc:
+        assert exc.code == "runtime.workspace.execution_outcome_unknown"
+    else:
+        assert result.exit_code == 125
+    assert not (workspace.cwd / "workspace/must-not-succeed").exists()

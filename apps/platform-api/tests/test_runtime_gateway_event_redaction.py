@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import anyio
 import anyio.lowlevel
+import pytest
 from starlette.requests import Request
 
 from platform_api.adapters.langgraph.sdk_client import redact_runtime_private_fields
@@ -16,6 +17,7 @@ from platform_api.core.runtime_contract import reject_private_runtime_state
 from platform_api.modules.runtime_gateway.presentation.http import (
     RuntimeStreamingResponse,
     _redact_protocol_event_stream,
+    _redact_runtime_private_fields,
     _redact_sse_frame,
     _runtime_sse_response,
 )
@@ -24,6 +26,81 @@ from platform_api.modules.runtime_gateway.presentation.http import (
 async def _chunks(*values: bytes) -> AsyncIterator[bytes]:
     for value in values:
         yield value
+
+
+@pytest.mark.parametrize(
+    "protocol,typed", [(False, False), (False, True), (True, True)]
+)
+def test_workspace_error_slots_survive_fragmented_native_events(protocol, typed):
+    code = "runtime.workspace.execution_outcome_unknown"
+    error = {
+        "type": "RuntimeWorkspaceError",
+        "message": code,
+        "stack": "PRIVATE_CANARY",
+    }
+    original = {"error": "normal", "content": "USER_TEXT"}
+
+    async def run():
+        for method, data in (
+            ("error", error),
+            ("lifecycle", {"status": "error", "error": error}),
+            ("tasks", {"id": "task", "error": error, "result": original}),
+            (
+                "debug",
+                {
+                    "type": "task_result",
+                    "payload": {"error": error, "result": original},
+                },
+            ),
+            (
+                "checkpoints",
+                {"tasks": [{"error": error}], "values": {"messages": [original]}},
+            ),
+        ):
+            if method == "error" and typed:
+                continue
+            payload = (
+                {
+                    "method": method,
+                    "seq": 3,
+                    "params": {"namespace": ["tools:child"], "data": data},
+                }
+                if typed
+                else data
+            )
+            raw = (
+                f"event: {method}|child\nid: cursor-3\ndata: {json.dumps(payload)}\n\n"
+            ).encode()
+            result = b"".join(
+                [
+                    chunk
+                    async for chunk in _redact_protocol_event_stream(
+                        _chunks(raw[:17], raw[17:51], raw[51:]), protocol=protocol
+                    )
+                ]
+            )
+            assert code.encode() in result and b"PRIVATE_CANARY" not in result
+            assert b"id: cursor-3" in result
+            if method in {"tasks", "debug", "checkpoints"}:
+                assert b"USER_TEXT" in result
+            if typed:
+                decoded = json.loads(result.decode().split("data: ")[1])
+                assert decoded["seq"] == 3 and decoded["params"]["namespace"] == [
+                    "tools:child"
+                ]
+        value = {
+            "thread_id": "thread",
+            "error": error,
+            "tasks": [{"error": error}],
+            "values": {"messages": [original]},
+        }
+        safe = _redact_runtime_private_fields([value, {"history": [value]}])
+        assert "PRIVATE_CANARY" not in repr(safe) and safe[0]["values"]["messages"] == [
+            original
+        ]
+        assert _redact_runtime_private_fields(safe) == safe
+
+    asyncio.run(run())
 
 
 class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):

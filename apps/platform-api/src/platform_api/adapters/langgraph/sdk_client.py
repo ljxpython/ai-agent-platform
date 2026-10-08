@@ -100,6 +100,7 @@ _EXECUTION_ERROR_TYPES = frozenset(
     {
         "Exception",
         "RuntimeError",
+        "RuntimeWorkspaceError",
         "ValueError",
         "TimeoutError",
         "ConnectionError",
@@ -133,6 +134,16 @@ _BUDGET_EXECUTION_ERRORS = {
         "Tool call limit reached",
     ),
     "RunTimedOut": ("runtime_run_timeout", "Run time limit reached"),
+}
+
+_WORKSPACE_EXECUTION_MESSAGES = {
+    "runtime.workspace.unavailable": "工作区暂不可用，本次运行已停止。",
+    "runtime.workspace.execution_unavailable": "执行环境暂不可用，本次运行已停止。",
+    "runtime.workspace.backend_invalid": "工作区执行配置不可用。",
+    "runtime.workspace.image_invalid": "工作区执行配置不可用。",
+    "runtime.workspace.execution_outcome_unknown": (
+        "命令执行结果尚不确定，本次运行已停止，请先核对工作区结果。"
+    ),
 }
 
 
@@ -206,52 +217,92 @@ def project_execution_error(value: Any) -> Any:
     if value is None:
         return None
     if not isinstance(value, dict):
-        if isinstance(value, str) and "CANARY" not in value:
-            if "GraphRecursionError" in value or "Recursion limit of" in value:
-                code, message = _BUDGET_EXECUTION_ERRORS["GraphRecursionError"]
-                return {"message": message, "code": code, "type": "GraphRecursionError"}
-            if "ModelCallLimitExceededError" in value or "Model call limit" in value:
-                code, message = _BUDGET_EXECUTION_ERRORS["ModelCallLimitExceededError"]
-                return {
-                    "message": message,
-                    "code": code,
-                    "type": "ModelCallLimitExceededError",
-                }
-            if "ToolCallLimitExceededError" in value or "Tool call limit" in value:
-                code, message = _BUDGET_EXECUTION_ERRORS["ToolCallLimitExceededError"]
-                return {
-                    "message": message,
-                    "code": code,
-                    "type": "ToolCallLimitExceededError",
-                }
-            if "RunTimedOut" in value or "Run time limit" in value:
-                code, message = _BUDGET_EXECUTION_ERRORS["RunTimedOut"]
-                return {"message": message, "code": code, "type": "RunTimedOut"}
+        if isinstance(value, str):
+            if value in _WORKSPACE_EXECUTION_MESSAGES:
+                return value
+            if "CANARY" not in value:
+                if "GraphRecursionError" in value or "Recursion limit of" in value:
+                    code, message = _BUDGET_EXECUTION_ERRORS["GraphRecursionError"]
+                    return {
+                        "message": message,
+                        "code": code,
+                        "type": "GraphRecursionError",
+                    }
+                if (
+                    "ModelCallLimitExceededError" in value
+                    or "Model call limit" in value
+                ):
+                    code, message = _BUDGET_EXECUTION_ERRORS[
+                        "ModelCallLimitExceededError"
+                    ]
+                    return {
+                        "message": message,
+                        "code": code,
+                        "type": "ModelCallLimitExceededError",
+                    }
+                if "ToolCallLimitExceededError" in value or "Tool call limit" in value:
+                    code, message = _BUDGET_EXECUTION_ERRORS[
+                        "ToolCallLimitExceededError"
+                    ]
+                    return {
+                        "message": message,
+                        "code": code,
+                        "type": "ToolCallLimitExceededError",
+                    }
+                if "RunTimedOut" in value or "Run time limit" in value:
+                    code, message = _BUDGET_EXECUTION_ERRORS["RunTimedOut"]
+                    return {"message": message, "code": code, "type": "RunTimedOut"}
         return "Runtime execution failed"
-    result = {"message": "Runtime execution failed", "code": "runtime_execution_failed"}
-    error_type = value.get("type") or value.get("error")
-    if isinstance(error_type, str):
-        if error_type in _BUDGET_EXECUTION_ERRORS:
-            code, message = _BUDGET_EXECUTION_ERRORS[error_type]
-            result = {"message": message, "code": code}
-        elif "GraphRecursionError" in error_type or "Recursion limit of" in error_type:
-            code, message = _BUDGET_EXECUTION_ERRORS["GraphRecursionError"]
-            result = {"message": message, "code": code}
-        elif (
-            "ModelCallLimitExceededError" in error_type
-            or "Model call limit" in error_type
-        ):
-            code, message = _BUDGET_EXECUTION_ERRORS["ModelCallLimitExceededError"]
-            result = {"message": message, "code": code}
-        elif (
-            "ToolCallLimitExceededError" in error_type
-            or "Tool call limit" in error_type
-        ):
-            code, message = _BUDGET_EXECUTION_ERRORS["ToolCallLimitExceededError"]
-            result = {"message": message, "code": code}
-        elif "RunTimedOut" in error_type:
-            code, message = _BUDGET_EXECUTION_ERRORS["RunTimedOut"]
-            result = {"message": message, "code": code}
+
+    code = value.get("code")
+    if value.get("type") == "RuntimeWorkspaceError":
+        code = code if isinstance(code, str) else value.get("message")
+    elif (
+        isinstance(code, str)
+        and code in _WORKSPACE_EXECUTION_MESSAGES
+        and value.get("message") == _WORKSPACE_EXECUTION_MESSAGES[code]
+        and set(value) <= {"code", "message"}
+    ):
+        pass
+    else:
+        code = None
+    known_workspace = isinstance(code, str) and code in _WORKSPACE_EXECUTION_MESSAGES
+    if known_workspace:
+        result = {
+            "message": _WORKSPACE_EXECUTION_MESSAGES[code],
+            "code": code,
+        }
+    else:
+        result = {
+            "message": "Runtime execution failed",
+            "code": "runtime_execution_failed",
+        }
+        error_type = value.get("type") or value.get("error")
+        if isinstance(error_type, str):
+            if error_type in _BUDGET_EXECUTION_ERRORS:
+                code, message = _BUDGET_EXECUTION_ERRORS[error_type]
+                result = {"message": message, "code": code}
+            elif (
+                "GraphRecursionError" in error_type
+                or "Recursion limit of" in error_type
+            ):
+                code, message = _BUDGET_EXECUTION_ERRORS["GraphRecursionError"]
+                result = {"message": message, "code": code}
+            elif (
+                "ModelCallLimitExceededError" in error_type
+                or "Model call limit" in error_type
+            ):
+                code, message = _BUDGET_EXECUTION_ERRORS["ModelCallLimitExceededError"]
+                result = {"message": message, "code": code}
+            elif (
+                "ToolCallLimitExceededError" in error_type
+                or "Tool call limit" in error_type
+            ):
+                code, message = _BUDGET_EXECUTION_ERRORS["ToolCallLimitExceededError"]
+                result = {"message": message, "code": code}
+            elif "RunTimedOut" in error_type:
+                code, message = _BUDGET_EXECUTION_ERRORS["RunTimedOut"]
+                result = {"message": message, "code": code}
     for key in ("type", "error"):
         if key in value:
             result[key] = (

@@ -19,6 +19,14 @@ ModelErrorCode = Literal[
     "provider_unavailable",
     "model_call_failed",
 ]
+WorkspaceErrorCode = Literal[
+    "runtime.workspace.unavailable",
+    "runtime.workspace.execution_unavailable",
+    "runtime.workspace.backend_invalid",
+    "runtime.workspace.image_invalid",
+    "runtime.workspace.execution_outcome_unknown",
+]
+ExecutionErrorCode = ModelErrorCode | WorkspaceErrorCode
 
 
 class DiagnosticFields(BaseModel):
@@ -39,7 +47,7 @@ class TraceReference(DiagnosticFields):
 class GraphExecution(DiagnosticFields):
     observation_id: Identifier
     outcome: Literal["success", "failed", "timeout", "cancelled", "interrupted"]
-    error_code: ModelErrorCode | None = None
+    error_code: ExecutionErrorCode | None = None
     duration_ms: Duration | None = None
 
 
@@ -68,7 +76,19 @@ class StartupPhase(DiagnosticFields):
     started_at: AwareDatetime | None = None
     ended_at: AwareDatetime | None = None
     duration_ms: Duration | None = None
-    error_code: ModelErrorCode | None = None
+    error_code: ExecutionErrorCode | None = None
+
+
+class WorkspaceExecution(DiagnosticFields):
+    observation_id: Identifier
+    backend: Literal["docker"]
+    phase: Literal["start", "execute", "cleanup"]
+    outcome: Literal["recovered", "failed", "cancelled"]
+    code: WorkspaceErrorCode | None = None
+    command_state: Literal["not_started", "started", "unknown"]
+    attempts: Annotated[int, Field(ge=1, le=4, strict=True)]
+    retry_wait_ms: Duration
+    duration_ms: Duration | None = None
 
 
 class StartupSummary(DiagnosticFields):
@@ -113,6 +133,9 @@ class RuntimeDiagnostics(DiagnosticFields):
     trace: TraceReference | None
     graph_executions: Annotated[list[GraphExecution], Field(max_length=10)]
     model_errors: Annotated[list[ModelFailure], Field(max_length=20)]
+    workspace_executions: Annotated[list[WorkspaceExecution], Field(max_length=20)] = (
+        Field(default_factory=list)
+    )
     startup: StartupSummary | None
     preparations: Annotated[list[PreparationSummary], Field(max_length=20)] = Field(
         default_factory=list

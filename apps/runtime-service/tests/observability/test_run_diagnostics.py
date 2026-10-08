@@ -10,7 +10,9 @@ import httpx
 import pytest
 from langfuse.api.client import AsyncLangfuseAPI
 
-from runtime_service.observability import query
+from runtime_service.observability import langfuse, query, startup
+from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.services.reference_agent.agent import _local_test_facts
 
 SCOPE = {
     "tenant_id": "tenant",
@@ -34,6 +36,148 @@ def observation(event, **fields):
             **fields,
         },
     }
+
+
+def workspace_summary(**fields):
+    return {
+        "backend": "docker",
+        "phase": "execute",
+        "outcome": "failed",
+        "command_state": "unknown",
+        "attempts": 1,
+        "retry_wait_ms": 0.0,
+        "code": "runtime.workspace.execution_outcome_unknown",
+        "duration_ms": 3,
+        **fields,
+    }
+
+
+def test_workspace_projection_limits_scope_and_execution_codes():
+    code = workspace_summary()["code"]
+    events = [
+        observation(
+            "runtime.workspace.execution_completed",
+            **workspace_summary(),
+            command="CANARY",
+        ),
+        observation("runtime.graph.completed", outcome="failed", error_code=code),
+        observation("runtime.startup.completed", factory_id="one"),
+        observation(
+            "runtime.startup.phase_completed",
+            factory_id="one",
+            phase="factory.workspace",
+            ordinal=0,
+            outcome="failed",
+            error_code=code,
+        ),
+        observation("runtime.model_call.failed", scope="primary", code=code),
+    ]
+    for field in SCOPE:
+        events.append(
+            observation(
+                "runtime.workspace.execution_completed",
+                **workspace_summary(),
+                **{field: "other"},
+            )
+        )
+    result = query._project(events, SCOPE, truncated=False)
+    assert len(result["workspace_executions"]) == 1 and not result["model_errors"]
+    assert result["graph_executions"][0]["error_code"] == code
+    assert result["startup"]["phases"][0]["error_code"] == code
+    assert "CANARY" not in json.dumps(result)
+    extra = [
+        observation("runtime.workspace.execution_completed", **workspace_summary())
+        for _ in range(21)
+    ]
+    result = query._project(events + extra, SCOPE, truncated=False)
+    assert result["truncated"] and len(result["workspace_executions"]) == 20
+    assert query.empty_diagnostics("not_configured")["workspace_executions"] == []
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"attempts": True},
+        {"attempts": 0},
+        {"attempts": 5},
+        {"attempts": 1.0},
+        {"retry_wait_ms": float("nan")},
+        {"retry_wait_ms": float("inf")},
+        {"retry_wait_ms": -1},
+        {"retry_wait_ms": False},
+        {"backend": "cloud"},
+        {"phase": []},
+        {"outcome": "success"},
+        {"command_state": "guessed"},
+        {"code": ["runtime.workspace.unavailable"]},
+    ],
+)
+def test_workspace_malformed_summary_is_not_exported_or_projected(monkeypatch, bad):
+    export = AsyncMock()
+    callback = langfuse._RuntimeDiagnosticsCallback("reference_agent", SCOPE)
+    monkeypatch.setattr(langfuse, "record_diagnostic_event", export)
+    summary = workspace_summary(**bad)
+    callback.on_custom_event(
+        "runtime.workspace.execution_completed", summary, run_id="callback"
+    )
+    export.assert_not_called()
+    result = query._project(
+        [observation("runtime.workspace.execution_completed", **summary)],
+        SCOPE,
+        truncated=False,
+    )
+    assert result["workspace_executions"] == []
+
+
+def test_workspace_callback_uses_trusted_scope_and_graph_startup_codes(monkeypatch):
+    events = []
+    monkeypatch.setattr(
+        langfuse,
+        "record_diagnostic_event",
+        lambda event, fields: events.append((event, fields)),
+    )
+    callback = langfuse._RuntimeDiagnosticsCallback("reference_agent", SCOPE)
+    callback.on_custom_event(
+        "runtime.workspace.execution_completed",
+        workspace_summary(**{key: "spoof" for key in SCOPE}, command="CANARY"),
+        run_id="callback",
+    )
+    assert all(events[0][1][key] == value for key, value in SCOPE.items())
+    assert "CANARY" not in repr(events)
+    callback.on_chain_start({}, {}, run_id="callback")
+    callback.on_chain_error(
+        RuntimeWorkspaceError("runtime.workspace.unavailable"), run_id="callback"
+    )
+    assert events[-1][1]["error_code"] == "runtime.workspace.unavailable"
+    callback.on_chain_error(
+        RuntimeError("runtime.workspace.unavailable"), run_id="callback"
+    )
+    assert events[-1][1]["error_code"] is None
+    monkeypatch.setattr(
+        startup,
+        "record_diagnostic_event",
+        lambda event, fields: events.append((event, fields)),
+    )
+    with pytest.raises(RuntimeWorkspaceError):
+        with startup.StartupDiagnostics("reference_agent") as collector:
+            collector.authorize(
+                {"metadata": {"run_id": SCOPE["run_id"]}}, _local_test_facts()
+            )
+            with collector.phase("factory.workspace"):
+                raise RuntimeWorkspaceError("runtime.workspace.unavailable")
+    assert (
+        events[-2][1]["error_code"]
+        == events[-1][1]["error_code"]
+        == "runtime.workspace.unavailable"
+    )
+    monkeypatch.setattr(
+        langfuse,
+        "record_diagnostic_event",
+        lambda *args: (_ for _ in ()).throw(RuntimeError("CANARY")),
+    )
+    callback.on_custom_event(
+        "runtime.workspace.execution_completed", workspace_summary(), run_id="callback"
+    )
 
 
 def test_safe_projection_scope_multiple_executions_and_bounds():

@@ -29,3 +29,20 @@ class RuntimeWorkspaceError(RuntimeError):
     def __init__(self, code: str) -> None:
         self.code = code
         super().__init__(code)
+
+
+WORKSPACE_ERROR_CODES = frozenset(
+    {
+        "runtime.workspace.unavailable",
+        "runtime.workspace.execution_unavailable",
+        "runtime.workspace.backend_invalid",
+        "runtime.workspace.image_invalid",
+        "runtime.workspace.execution_outcome_unknown",
+    }
+)
+
+
+def workspace_error_code(error: BaseException | None) -> str | None:
+    if isinstance(error, RuntimeWorkspaceError) and error.code in WORKSPACE_ERROR_CODES:
+        return error.code
+    return None

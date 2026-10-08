@@ -5,15 +5,133 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
+import time
 from pathlib import Path
 from uuid import uuid4
 
 from deepagents.backends.protocol import ExecuteResponse
+from langchain_core.callbacks.manager import adispatch_custom_event
 
 from runtime_service.runtime.errors import RuntimeWorkspaceError
 
 MAX_OUTPUT = 128 * 1024
 logger = logging.getLogger(__name__)
+
+
+async def _reap(process) -> bool:
+    try:
+        if process.returncode is None:
+            try:
+                process.kill()
+            except ProcessLookupError:
+                pass
+        await asyncio.wait_for(process.wait(), 2)
+        return True
+    except Exception:
+        return False
+
+
+async def _docker_control(*args: str, seconds: float) -> bool:
+    probe = args == ("info", "--format", "{{.ServerVersion}}")
+    creation = asyncio.create_task(
+        asyncio.create_subprocess_exec(
+            "docker",
+            *args,
+            stdout=asyncio.subprocess.PIPE if probe else asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+    )
+    process = None
+    try:
+        async with asyncio.timeout(seconds):
+            process = await asyncio.shield(creation)
+            if probe:
+                # Docker info can exit zero on daemon failure with an empty template.
+                output, _ = await process.communicate()
+                return process.returncode == 0 and bool(output.strip())
+            return await process.wait() == 0
+    except (OSError, TimeoutError):
+        return False
+    finally:
+        await _shielded(_control_cleanup(process, creation))
+
+
+def _reap_late_creation(creation) -> None:
+    if not creation.cancelled() and creation.exception() is None:
+        asyncio.create_task(_reap(creation.result()))
+
+
+async def _settle_creation(creation):
+    done, _ = await asyncio.wait({creation}, timeout=2)
+    if not done:
+        creation.cancel()
+        done, _ = await asyncio.wait({creation}, timeout=2)
+    if done and not creation.cancelled() and creation.exception() is None:
+        return creation.result(), True
+    return None, bool(done)
+
+
+async def _control_cleanup(process, creation) -> bool:
+    settled = True
+    if process is None:
+        process, settled = await _settle_creation(creation)
+        if not settled:
+            creation.cancel()
+            creation.add_done_callback(_reap_late_creation)
+    return (await _reap(process) if process is not None else True) and settled
+
+
+async def _cleanup(name: str, process, creation=None) -> bool:
+    settled = True
+    if process is None and creation is not None:
+        process, settled = await _settle_creation(creation)
+        if not settled:
+            creation.cancel()
+
+            def late_cleanup(completed):
+                if not completed.cancelled() and completed.exception() is None:
+                    asyncio.create_task(_cleanup(name, completed.result()))
+
+            creation.add_done_callback(late_cleanup)
+    # Stop the CLI before removing its container so it cannot submit a later run.
+    reaped = await _reap(process) if process is not None else True
+    try:
+        removed = await _docker_control("rm", "-f", name, seconds=10)
+    except Exception:
+        removed = False
+    if not removed or not reaped or not settled:
+        try:
+            logger.warning("workspace execution cleanup unconfirmed")
+        except Exception:
+            pass
+    return removed and reaped and settled
+
+
+async def _shielded(operation) -> bool:
+    task = asyncio.create_task(operation)
+    cancelled = False
+    while not task.done():
+        try:
+            await asyncio.shield(task)
+        except asyncio.CancelledError:
+            cancelled = True
+    if cancelled:
+        raise asyncio.CancelledError
+    return task.result()
+
+
+async def _shield_cleanup(name: str, process, creation=None) -> bool:
+    return await _shielded(_cleanup(name, process, creation))
+
+
+async def _report(fields: dict) -> None:
+    try:
+        async with asyncio.timeout(0.1):
+            await adispatch_custom_event(
+                "runtime.workspace.execution_completed", fields
+            )
+    except Exception:
+        pass
 
 
 def runtime_backend() -> str:
@@ -88,9 +206,34 @@ async def execute_in_workspace(
     if type(seconds) is not int or not 1 <= seconds <= 60:
         raise ValueError("timeout must be between 1 and 60 seconds")
     name = f"runtime-{uuid4().hex}"
-    args = docker_workspace_args(
-        workspace, image=image, name=name, skills=skills, protected=protected
-    )
+    started = time.monotonic()
+    deadline = started + seconds + 15
+    fields = {
+        "backend": "docker",
+        "phase": "start",
+        "outcome": "failed",
+        "command_state": "unknown",
+        "attempts": 1,
+        "retry_wait_ms": 0.0,
+    }
+
+    async def report(code=None, *, outcome="failed"):
+        await _report(
+            {
+                **fields,
+                "outcome": outcome,
+                "code": code,
+                "duration_ms": (time.monotonic() - started) * 1000,
+            }
+        )
+
+    try:
+        args = docker_workspace_args(
+            workspace, image=image, name=name, skills=skills, protected=protected
+        )
+    except RuntimeWorkspaceError as exc:
+        await report(exc.code)
+        raise
     args += [
         "sh",
         "-c",
@@ -103,28 +246,17 @@ async def execute_in_workspace(
     from runtime_service.run_control.resources import (
         finish_resource,
         register_resource,
-        wait_cleanup,
     )
 
     resource = await register_resource("docker_execute")
-    cancelled = None
-    spawn = asyncio.create_task(
+
+    # Creation can fail after exec while connecting pipes: never replay this call.
+    creation = asyncio.create_task(
         asyncio.create_subprocess_exec(
             *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
         )
     )
-    try:
-        process = await asyncio.shield(spawn)
-    except asyncio.CancelledError as exc:
-        cancelled = exc
-        try:
-            process = await wait_cleanup(spawn)
-        except OSError:
-            await finish_resource(resource, True)
-            raise cancelled from None
-    except OSError as exc:
-        await finish_resource(resource, True)
-        raise RuntimeWorkspaceError("runtime.workspace.execution_unavailable") from exc
+    process = None
     output = bytearray()
     total = 0
 
@@ -135,47 +267,42 @@ async def execute_in_workspace(
             output.extend(chunk[: max(0, MAX_OUTPUT - len(output))])
         return await process.wait()
 
-    async def cleanup():
-        confirmed = False
-        try:
-            remover = await asyncio.create_subprocess_exec(
-                "docker",
-                "rm",
-                "-f",
-                name,
-                stdout=asyncio.subprocess.DEVNULL,
-                stderr=asyncio.subprocess.DEVNULL,
-            )
-            try:
-                await asyncio.wait_for(remover.wait(), 10)
-                if remover.returncode:
-                    logger.warning(
-                        "execution cleanup requires inspection container=%s", name
-                    )
-                else:
-                    confirmed = True
-            except TimeoutError:
-                remover.kill()
-                await remover.wait()
-                logger.error("execution cleanup timed out container=%s", name)
-        except OSError:
-            logger.warning("Execution cleanup unavailable container=%s", name)
-        finally:
-            if process.returncode is None:
-                process.kill()
-            await process.wait()
-            await finish_resource(resource, confirmed)
-
     try:
-        if cancelled is not None:
-            raise cancelled
-        code = await asyncio.wait_for(consume(), seconds + 15)
-    except BaseException:
-        task = asyncio.create_task(cleanup())
-        try:
-            await asyncio.shield(task)
-        except asyncio.CancelledError:
-            await wait_cleanup(task)
+        process = await asyncio.wait_for(
+            asyncio.shield(creation), max(0, deadline - time.monotonic())
+        )
+        fields["phase"] = "execute"
+        code = await asyncio.wait_for(consume(), max(0, deadline - time.monotonic()))
+        if code == 125 and not await _docker_control(
+            "info", "--format", "{{.ServerVersion}}", seconds=2
+        ):
+            raise RuntimeWorkspaceError("runtime.workspace.execution_outcome_unknown")
+    except asyncio.CancelledError:
+        confirmed = await _shield_cleanup(name, process, creation)
+        if not confirmed:
+            fields["phase"] = "cleanup"
+        await report(outcome="cancelled")
+        await finish_resource(resource, confirmed)
+        raise
+    except (OSError, RuntimeWorkspaceError) as exc:
+        confirmed = await _shield_cleanup(name, process, creation)
+        stable = (
+            "runtime.workspace.execution_unavailable"
+            if fields["phase"] == "start"
+            else "runtime.workspace.execution_outcome_unknown"
+        )
+        if not confirmed:
+            fields["phase"] = "cleanup"
+            stable = "runtime.workspace.execution_outcome_unknown"
+        timed_out = isinstance(exc, TimeoutError) and process is not None and confirmed
+        await report(None if timed_out else stable)
+        await finish_resource(resource, confirmed)
+        if timed_out:
+            raise
+        raise RuntimeWorkspaceError(stable) from exc
+    except Exception:
+        confirmed = await _shield_cleanup(name, process, creation)
+        await finish_resource(resource, confirmed)
         raise
     await finish_resource(resource, True)
     return ExecuteResponse(

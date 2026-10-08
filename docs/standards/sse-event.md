@@ -22,9 +22,11 @@ note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容
 | 心跳帧 | 注释心跳不作 JSON 解析，固定转为 `: heartbeat`，不透传上游文本 |
 | 异常帧处理 | 非 JSON data / 损坏 UTF-8 / 非法 Protocol 外层：不透传原文，安全记录原因后关闭上下游 |
 | 日志约束 | 只含固定 reason、request_id / trace_id 及授权范围内 thread_id；禁止记录 payload / token |
-| 执行错误槽位 | Protocol/v3 `tasks/lifecycle.params.data.error`、普通 `tasks/error/lifecycle`、`debug.task_result.payload.error` 及 checkpoint `tasks[].error` 使用固定安全消息；移除异常 stack/body/traceback/provider_response，保留 event/id/seq、终态与正常消息/工具正文 |
+| 执行错误槽位 | Protocol/v3 `tasks/lifecycle.params.data.error`、普通 `tasks/error/lifecycle`、`debug.task_result.payload.error` 及 checkpoint `tasks[].error` 使用精确安全投影；移除异常 stack/body/traceback/provider_response，保留 event/id/seq、终态与正常消息/工具正文 |
 
 执行错误投影不是 provider 分类来源。分类在 Runtime 模型边界记录，通过授权诊断 GET 查询；不能从安全消息猜原因或用模型尝试失败覆盖原生 Run 状态。实装与验收见 [可观测性专项](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md)。本次不代替原容量与浏览器验收，草案状态保留。
+
+Workspace补充：仅完整白名单码或可信Worker类型/稳定message精确投影，字符串保持字符串、对象附固定code/message；未知字符串与对象code为 `runtime_execution_failed`，对象message为 `Runtime execution failed`。没有新增SSE事件、重试参数或独立终态；SDK恢复连接不重发Workspace命令。五码与安全v1诊断字段见 [交接契约](../projects/20261007-agent-workspace-resilience/frontend-handoff.md)。
 
 ## 执行预算通知 v1
 
