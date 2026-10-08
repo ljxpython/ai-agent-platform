@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Agent 执行预算告警与限制原因展示 | 已完成：Zod 契约投影、安全解包、useRunBudget 有界 LRU 去重与 Run/namespace 隔离、ChatAgentStatusBar Amber/Success 停机展示（保留取消、文案解耦、A11y）、子任务微横条与徽章、Thread 耗尽禁用；571 单测、类型检查与 ESLint 全绿 | [项目入口](projects/20261007-agent-execution-budget/README.md) · [实施记录](projects/20261007-agent-execution-budget/implementation/02-frontend-budget-implementation.md) |
 | Agent 运行诊断面板（Run Diagnostics） | 已完成：实装独立解耦面板 RunDiagnostics、Zod 白名单契约、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与模式切换、ChatSession 历史 Run 自动拉取与无缝切换，全仓 115 套件 535 项单测全绿，浏览器联合验收通过 | [前端交接](projects/20261006-agent-observability-hardening/frontend-handoff.md) |
 | 定时 Agent 任务页面 | 已完成：实装现代化卡片网格列表、双栏创建/编辑抽屉、DeerFlow 预设体系、历史记录抽屉与权限守卫，481 套单测、类型检查与生产打包全绿 | [前端交接](projects/20261005-scheduled-agent-tasks/frontend-handoff.md) |
 | 工具卡片错误结构化摘要提取与微胶囊 Tag 徽章展示 | 已完成：纯函数 parseToolErrorSummary 抽取，统一支持第一方 JSON、MCP 文本块数组与纯文本截断，微胶囊 Tag 徽章（recoveryHint）与展开态格式化排版实装，根治 tool.error 为空时不显红条 bug，31 项单测、类型检查与打包全绿 | [实现记录](projects/20261006-agent-tool-error-resilience/implementation/04-frontend-error-presentation.md) |
@@ -67,6 +68,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Agent 预算通知与安全错误出口 | 全链路 done：四精确预算安全码、custom/end 标记白名单、tasks.error 清洗、input/update/command/resume 防伪已实装；81 passed/423 subtests，1 skipped；真实 Worker 链路通过，前端联合 F01-F04 全绿，未部署 | [验证](projects/20261007-agent-execution-budget/verification.md) |
 | 定时 Agent 任务 API | 后端 done：CRUD、预览、once、pause/resume/manual、私有历史分页与执行拒绝审计；发布包隔离链路通过，未部署现役平台 | [专项](projects/20261005-scheduled-agent-tasks/README.md) |
 | 平台用户软删除与生命周期治理 | 已完成：实现 DELETE /api/users/{user_id}，内置防自杀、最后超管保护、唯一项目管理员防孤儿项目三重护栏，释放原始用户名与凭据吊销 | [软删除治理](projects/20261003-platform-user-soft-delete/README.md) |
 | 鉴权、项目治理、审计、catalog | 已完成 | `apps/platform-api/docs/handbook/project-handbook.md` |
@@ -83,6 +85,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 通用 Agent 执行预算预警与软收尾 | 全链路 done：官方模型限额薄扩展、managed 图余量、幂等提示、四正式 graph 主/子接线和可选 invocation 软计时完成；253 passed，23 真实 Worker 场景通过；原 hard limits/end/error 不变，前端联合 F01-F04 全绿，未部署 | [项目入口](projects/20261007-agent-execution-budget/README.md) · [验证](projects/20261007-agent-execution-budget/verification.md) |
 | Agent 工具调用容错与生产接线 | 已完成：全链路闭环，Runtime/API 选择性错误分类、主子图接线、安全消息与流出口脱敏完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化代码排版实装，31 项单测全绿，三服务全栈浏览器联合验收 F01-F08 全部通过，未生产部署 | [方案与任务](projects/20261006-agent-tool-error-resilience/README.md) · [前端交接](projects/20261006-agent-tool-error-resilience/frontend-handoff.md) |
 | 定时 Run 执行前聚合授权与无人值守策略 | 后端 done：身份/凭据/项目/Agent/模型/Thread 失效拒绝，审批转失败，原生预览与历史；GraphHarbor post41 已锁定安装，未重启现役栈 | [验证](projects/20261005-scheduled-agent-tasks/verification.md) |
 | 工作区 HTML 预览 CSP 策略升级与白名单扩充 | 已完成：放行公认安全 CDN（Tailwind CDN / Google Fonts / cdnjs / unpkg / jsdelivr / SVG），严格限制 connect-src https: 阻断内网探测，43 项单测全绿 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |

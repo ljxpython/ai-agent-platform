@@ -6,7 +6,6 @@ from collections.abc import Mapping
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
-    ModelCallLimitMiddleware,
     ModelFallbackMiddleware,
     ModelRetryMiddleware,
     ToolCallLimitMiddleware,
@@ -19,10 +18,13 @@ from langchain_openai import ChatOpenAI
 from langgraph.pregel import Pregel
 
 from runtime_service.middlewares import (
+    ExecutionBudgetMiddleware,
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
     RuntimeConfigMiddleware,
+    TimeoutWrapupMiddleware,
+    resolve_wrapup_after_seconds,
 )
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.observability.startup import StartupDiagnostics
@@ -225,7 +227,9 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             local_fallback=runtime_model is not None or local_test_auth,
             probe_only=probe_only,
         ),
-        ModelCallLimitMiddleware(run_limit=10, exit_behavior="end"),
+        ExecutionBudgetMiddleware(
+            run_limit=10, exit_behavior="end", graph_key="reference_agent"
+        ),
         ToolCallLimitMiddleware(run_limit=10, exit_behavior="error"),
         ToolErrorMiddleware(on_error=on_tool_error, tools=["read_reference"]),
         ToolRetryMiddleware(
@@ -252,6 +256,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 )
             ]
             if model_retry_enabled
+            else []
+        ),
+        *(
+            [TimeoutWrapupMiddleware(wrapup_seconds, graph_key="reference_agent")]
+            if (wrapup_seconds := resolve_wrapup_after_seconds()) is not None
             else []
         ),
         ModelErrorMiddleware(startup.metadata),

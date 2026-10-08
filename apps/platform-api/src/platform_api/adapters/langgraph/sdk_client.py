@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from typing import Any
 
@@ -111,8 +112,92 @@ _EXECUTION_ERROR_TYPES = frozenset(
         "NotFoundError",
         "GraphRecursionError",
         "InvalidUpdateError",
+        "ModelCallLimitExceededError",
+        "ToolCallLimitExceededError",
+        "RunTimedOut",
     }
 )
+
+_BUDGET_EXECUTION_ERRORS = {
+    "GraphRecursionError": (
+        "runtime_graph_step_limit_reached",
+        "Graph step limit reached",
+    ),
+    "ModelCallLimitExceededError": (
+        "runtime_model_call_limit_reached",
+        "Model call limit reached",
+    ),
+    "ToolCallLimitExceededError": (
+        "runtime_tool_call_limit_reached",
+        "Tool call limit reached",
+    ),
+    "RunTimedOut": ("runtime_run_timeout", "Run time limit reached"),
+}
+
+
+def project_budget_notice(value: Any) -> dict[str, Any] | None:
+    if (
+        not isinstance(value, dict)
+        or type(value.get("version")) is not int
+        or value.get("version") != 1
+        or value.get("type") != "runtime_budget_notice"
+    ):
+        return None
+    for key, maximum in (("run_id", 128), ("notice_id", 256)):
+        item = value.get(key)
+        if (
+            not isinstance(item, str)
+            or not 0 < len(item) <= maximum
+            or any(c in item for c in ("\n", "\r", "/", "\\"))
+        ):
+            return None
+    if value.get("scope") not in ("primary", "subagent"):
+        return None
+    combinations = {
+        "model_call_limit_approaching": ("model_calls", ("run", "thread")),
+        "model_call_limit_reached": ("model_calls", ("run", "thread")),
+        "graph_step_limit_approaching": ("graph_supersteps", ("graph",)),
+        "wrapup_started": ("seconds", ("run",)),
+    }
+    combination = (
+        combinations.get(value.get("code"))
+        if isinstance(value.get("code"), str)
+        else None
+    )
+    if (
+        combination is None
+        or value.get("unit") != combination[0]
+        or value.get("budget_scope") not in combination[1]
+    ):
+        return None
+    for key in ("limit", "used", "remaining"):
+        item = value.get(key)
+        if item is None:
+            continue
+        if (
+            type(item) not in (int, float)
+            or item < 0
+            or item > 9007199254740991
+            or not math.isfinite(item)
+            or (combination[0] != "seconds" and type(item) is not int)
+        ):
+            return None
+    return {
+        key: value.get(key)
+        for key in (
+            "version",
+            "type",
+            "notice_id",
+            "run_id",
+            "scope",
+            "budget_scope",
+            "code",
+            "limit",
+            "used",
+            "remaining",
+            "unit",
+        )
+    }
 
 
 def project_execution_error(value: Any) -> Any:
@@ -120,8 +205,52 @@ def project_execution_error(value: Any) -> Any:
     if value is None:
         return None
     if not isinstance(value, dict):
+        if isinstance(value, str) and "CANARY" not in value:
+            if "GraphRecursionError" in value or "Recursion limit of" in value:
+                code, message = _BUDGET_EXECUTION_ERRORS["GraphRecursionError"]
+                return {"message": message, "code": code, "type": "GraphRecursionError"}
+            if "ModelCallLimitExceededError" in value or "Model call limit" in value:
+                code, message = _BUDGET_EXECUTION_ERRORS["ModelCallLimitExceededError"]
+                return {
+                    "message": message,
+                    "code": code,
+                    "type": "ModelCallLimitExceededError",
+                }
+            if "ToolCallLimitExceededError" in value or "Tool call limit" in value:
+                code, message = _BUDGET_EXECUTION_ERRORS["ToolCallLimitExceededError"]
+                return {
+                    "message": message,
+                    "code": code,
+                    "type": "ToolCallLimitExceededError",
+                }
+            if "RunTimedOut" in value or "Run time limit" in value:
+                code, message = _BUDGET_EXECUTION_ERRORS["RunTimedOut"]
+                return {"message": message, "code": code, "type": "RunTimedOut"}
         return "Runtime execution failed"
     result = {"message": "Runtime execution failed", "code": "runtime_execution_failed"}
+    error_type = value.get("type") or value.get("error")
+    if isinstance(error_type, str):
+        if error_type in _BUDGET_EXECUTION_ERRORS:
+            code, message = _BUDGET_EXECUTION_ERRORS[error_type]
+            result = {"message": message, "code": code}
+        elif "GraphRecursionError" in error_type or "Recursion limit of" in error_type:
+            code, message = _BUDGET_EXECUTION_ERRORS["GraphRecursionError"]
+            result = {"message": message, "code": code}
+        elif (
+            "ModelCallLimitExceededError" in error_type
+            or "Model call limit" in error_type
+        ):
+            code, message = _BUDGET_EXECUTION_ERRORS["ModelCallLimitExceededError"]
+            result = {"message": message, "code": code}
+        elif (
+            "ToolCallLimitExceededError" in error_type
+            or "Tool call limit" in error_type
+        ):
+            code, message = _BUDGET_EXECUTION_ERRORS["ToolCallLimitExceededError"]
+            result = {"message": message, "code": code}
+        elif "RunTimedOut" in error_type:
+            code, message = _BUDGET_EXECUTION_ERRORS["RunTimedOut"]
+            result = {"message": message, "code": code}
     for key in ("type", "error"):
         if key in value:
             result[key] = (
@@ -144,7 +273,15 @@ def redact_execution_fields(value: Any) -> Any:
 
 def redact_runtime_private_fields(value: Any, *, _resource: bool = True) -> Any:
     if isinstance(value, dict):
+        if value.get("type") == "runtime_budget_notice":
+            return project_budget_notice(value)
         result = dict(value)
+        if "runtime_budget_notice" in result:
+            notice = project_budget_notice(result["runtime_budget_notice"])
+            if notice is not None and notice["code"] == "model_call_limit_reached":
+                result["runtime_budget_notice"] = notice
+            else:
+                result.pop("runtime_budget_notice")
         if _resource and "thread_id" in result and "error" in result:
             result["error"] = project_execution_error(result["error"])
         if (
@@ -168,6 +305,8 @@ def redact_runtime_private_fields(value: Any, *, _resource: bool = True) -> Any:
                     "metadata",
                     "args",
                     "content",
+                    "artifact",
+                    "result",
                 },
             )
             for key, item in result.items()
@@ -180,6 +319,15 @@ def redact_runtime_private_fields(value: Any, *, _resource: bool = True) -> Any:
                     "authorization_ref",
                     "dear_skill_snapshot",
                     "dear_memory_source",
+                    "remaining_steps",
+                    "runtime_budget_latches",
+                    "runtime_budget_wrapup",
+                    "runtime_wrapup_start",
+                    "runtime_wrapup_started",
+                    "thread_model_call_count",
+                    "run_model_call_count",
+                    "thread_tool_call_count",
+                    "run_tool_call_count",
                 }
             )
         }

@@ -28,6 +28,7 @@ import { createSessionAttachmentUploader } from "./useSessionAttachmentUpload";
 import { useSessionInterrupts } from "./useSessionInterrupts";
 import { useChatSessionStore } from "../stores/useChatSessionStore";
 import { useSessionConnection } from "./useSessionConnection";
+import { safeExtractBudgetSafetyError } from "../budget/view-model";
 
 const active = (run: Run | null) =>
   run != null && ["pending", "running"].includes(run.status);
@@ -314,7 +315,37 @@ export function useChatSession(options: {
 
   function fail(cause: unknown) {
     if (!disposed) {
-      error.value = cause instanceof Error ? cause.message : "请求失败，请重试";
+      if (
+        safeExtractBudgetSafetyError(cause) ||
+        safeExtractBudgetSafetyError((run.value as any)?.error) ||
+        safeExtractBudgetSafetyError(run.value) ||
+        safeExtractBudgetSafetyError((accessThread.value as any)?.error) ||
+        safeExtractBudgetSafetyError(accessThread.value)
+      ) {
+        // 预算安全受限由 runBudget 机制统一处理，不污染通用 error
+        return;
+      }
+      if (cause instanceof Error) {
+        if (cause.message === "[object Object]") {
+          const nestedMsg =
+            (cause as any)?.error?.message ||
+            (cause as any)?.cause?.message ||
+            (cause as any)?.code ||
+            (run.value as any)?.error?.message ||
+            (accessThread.value as any)?.error?.message ||
+            "";
+          error.value = nestedMsg
+            ? `执行异常: ${nestedMsg}`
+            : "执行服务响应异常，请点击右侧恢复连接重试";
+        } else {
+          error.value = cause.message;
+        }
+      } else if (typeof cause === "object" && cause !== null) {
+        const msg = (cause as any).message || (cause as any).error?.message;
+        error.value = msg ? String(msg) : "请求失败，请重试";
+      } else {
+        error.value = typeof cause === "string" ? cause : "请求失败，请重试";
+      }
     }
   }
   let activeVerifyPromise: Promise<boolean> | undefined;
@@ -932,6 +963,14 @@ export function useChatSession(options: {
           }
           actions.rejectUnsent();
           removeUncommittedMessage();
+          if (threadId.value) {
+            try {
+              await refreshAccessPolicy();
+              await verify(true);
+            } catch {
+              // ignore
+            }
+          }
           fail(cause);
           return false;
         }
@@ -1210,6 +1249,7 @@ export function useChatSession(options: {
     service,
     actions,
     threadId,
+    accessThread,
     accessPolicy,
     accessPolicyUpdating,
     setAccessPolicy,

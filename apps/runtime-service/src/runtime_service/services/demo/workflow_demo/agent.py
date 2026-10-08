@@ -5,13 +5,18 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import ModelCallLimitMiddleware
 from langchain.tools import tool
 from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import RunnableConfig
 from langgraph.pregel import Pregel
 
-from runtime_service.middlewares import ModelCallTimeoutMiddleware, ModelErrorMiddleware
+from runtime_service.middlewares import (
+    ExecutionBudgetMiddleware,
+    ModelCallTimeoutMiddleware,
+    ModelErrorMiddleware,
+    TimeoutWrapupMiddleware,
+    resolve_wrapup_after_seconds,
+)
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.observability.startup import StartupDiagnostics
 from runtime_service.runtime import (
@@ -144,7 +149,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     startup.metadata["model_id"] = resolved.model_id
     injected = _runtime_model(config, local=local)
 
-    async def model_agent_for(state: Mapping[str, object]) -> object:
+    async def model_agent_for(state: Mapping[str, object], *, writer=None) -> object:
         with startup.phase("node.model_prepare"):
             connection = (
                 None
@@ -162,7 +167,24 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             tools=[read_reference],
             system_prompt=_DEFAULTS.system_prompt,
             middleware=[
-                ModelCallLimitMiddleware(run_limit=10, exit_behavior="end"),
+                ExecutionBudgetMiddleware(
+                    run_limit=10,
+                    exit_behavior="end",
+                    graph_key="workflow_demo_model",
+                    writer=writer,
+                    wrapup_requested=bool(state.get("runtime_budget_wrapup")),
+                ),
+                *(
+                    [
+                        TimeoutWrapupMiddleware(
+                            wrapup_seconds,
+                            writer=writer,
+                            graph_key="workflow_demo_model",
+                        )
+                    ]
+                    if (wrapup_seconds := resolve_wrapup_after_seconds()) is not None
+                    else []
+                ),
                 ModelErrorMiddleware(startup.metadata),
                 ModelCallTimeoutMiddleware(),
             ],

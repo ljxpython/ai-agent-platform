@@ -12,7 +12,6 @@ from datetime import UTC, datetime
 from deepagents import create_deep_agent
 from deepagents.middleware import FilesystemMiddleware, FilesystemPermission
 from langchain.agents.middleware import (
-    ModelCallLimitMiddleware,
     TodoListMiddleware,
     ToolCallLimitMiddleware,
     ToolErrorMiddleware,
@@ -23,10 +22,13 @@ from langgraph.pregel import Pregel
 
 from runtime_service.middlewares import (
     DocumentToolsMiddleware,
+    ExecutionBudgetMiddleware,
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
     RuntimeConfigMiddleware,
+    TimeoutWrapupMiddleware,
+    resolve_wrapup_after_seconds,
 )
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.observability.startup import StartupDiagnostics
@@ -297,31 +299,24 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         )
 
     def middleware(tool_names: Sequence[str], *, child=False):
-        default_run_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_RUN", 100)
-        default_thread_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_THREAD", 1000)
-        default_run_model = _get_env_limit("AGENT_MODEL_CALL_LIMIT_PER_RUN", 50)
-        default_thread_model = _get_env_limit("AGENT_MODEL_CALL_LIMIT_PER_THREAD", 500)
+        env_run_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_RUN", -1)
+        env_thread_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_THREAD", -1)
+        env_run_model = _get_env_limit("AGENT_MODEL_CALL_LIMIT_PER_RUN", -1)
+        env_thread_model = _get_env_limit("AGENT_MODEL_CALL_LIMIT_PER_THREAD", -1)
 
-        run_tool = (
-            min(48, default_run_tool)
-            if child
-            else max(mode.tool_limit, default_run_tool)
+        base_run_tool = env_run_tool if env_run_tool > 0 else mode.tool_limit
+        base_thread_tool = (
+            env_thread_tool if env_thread_tool > 0 else mode.tool_limit * 10
         )
-        thread_tool = (
-            min(48, default_thread_tool)
-            if child
-            else max(mode.tool_limit * 10, default_thread_tool)
+        base_run_model = env_run_model if env_run_model > 0 else mode.model_limit
+        base_thread_model = (
+            env_thread_model if env_thread_model > 0 else mode.model_limit * 10
         )
-        run_model = (
-            min(24, default_run_model)
-            if child
-            else max(mode.model_limit, default_run_model)
-        )
-        thread_model = (
-            min(24, default_thread_model)
-            if child
-            else max(mode.model_limit * 10, default_thread_model)
-        )
+
+        run_tool = min(48, base_run_tool) if child else base_run_tool
+        thread_tool = min(48, base_thread_tool) if child else base_thread_tool
+        run_model = min(24, base_run_model) if child else base_run_model
+        thread_model = min(24, base_thread_model) if child else base_thread_model
 
         return [
             RuntimeConfigMiddleware(
@@ -331,10 +326,12 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 tool_names=tool_names,
             ),
             WorkspaceMiddleware(workspace),
-            ModelCallLimitMiddleware(
+            ExecutionBudgetMiddleware(
                 run_limit=run_model,
                 thread_limit=thread_model,
                 exit_behavior="error",
+                scope="subagent" if child else "primary",
+                graph_key="dearflow_agent",
             ),
             ToolCallLimitMiddleware(
                 run_limit=run_tool,
@@ -342,6 +339,12 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 exit_behavior="error",
             ),
             # Bound the whole reasoning response, not just the time to its first token.
+            *(
+                [TimeoutWrapupMiddleware(wrapup_seconds, graph_key="dearflow_agent")]
+                if not child
+                and (wrapup_seconds := resolve_wrapup_after_seconds()) is not None
+                else []
+            ),
             ModelErrorMiddleware(
                 startup.metadata, scope="subagent" if child else "primary"
             ),

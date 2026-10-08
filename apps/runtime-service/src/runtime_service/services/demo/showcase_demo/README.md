@@ -238,6 +238,40 @@ uv run python scripts/showcase_acceptance.py --output /tmp/showcase-acceptance-n
 运行需要 Docker、本地执行镜像和 `.env` 中的模型连接；输出目录必须不存在。
 验证完成后脚本停止自己启动的进程，保留证据、日志及工作区，不删除数据库或已有服务。
 
+### 通用执行预算接入
+
+在组合根中复用共享能力；已有模型限制器替换成薄扩展，原限额、退出策略和工具限制器保持原值：
+
+```python
+from runtime_service.middlewares import ExecutionBudgetMiddleware, TimeoutWrapupMiddleware
+from runtime_service.middlewares.timeout_wrapup import resolve_wrapup_after_seconds
+
+middleware = [
+    ExecutionBudgetMiddleware(
+        run_limit=50,
+        thread_limit=500,
+        exit_behavior="error",
+        scope="primary",  # Child composition uses "subagent".
+        graph_key="showcase_demo",
+    ),
+]
+if (seconds := resolve_wrapup_after_seconds()) is not None:
+    middleware.append(TimeoutWrapupMiddleware(seconds, graph_key="showcase_demo"))
+```
+
+主子 graph 各自计数，子图不另装主图软时间中间件。通知复用运行时 custom writer，不需要通知 Tool
+或 Slack 属性；默认余量为 3 次模型调用、8 个 graph supersteps。prompt override 只作用于原模型请求，
+不发额外总结调用。无受信 `metadata.run_id` 的本地调用不伪造公开通知，hard limit 仍有效。
+
+自定义 StateGraph 继承 `GraphBudgetState`，在模型前的节点调用 `check_graph_budget()`，公开 input/output
+仍声明原业务 schema；参考 Workflow 的 `schemas.py`/`workflow.py`。内层模型是主业务执行时，将通知 writer
+绑定到外层 ContextVar 上下文；真正委派子图保留自己的 namespace。图预算和模型次数不能混称“工具步骤”。
+
+`AGENT_WRAPUP_AFTER_SECONDS` 缺省关闭，启用后从模型 Agent invocation 开始计时，在下一模型边界触发，
+不包含排队/构图/人工等待，不能中断正在挂起的请求；Worker hard timeout 独立配置。
+原生 success + end 标记表示额度停止而不是任务完整完成；前端接入见
+[执行预算交接](../../../../../../../docs/projects/20261007-agent-execution-budget/frontend-handoff.md)。
+
 
 框架参考：[Deep Agents](https://docs.langchain.com/oss/python/deepagents/overview)、
 [Backends](https://docs.langchain.com/oss/python/deepagents/backends)、

@@ -90,6 +90,7 @@ _DEFAULT_STREAM_MODES: tuple[str, ...] = (
     "updates",
     "messages",
     "checkpoints",
+    "custom",
 )
 _SUGGESTION_ROLES = frozenset(("user", "assistant"))
 _SUGGESTION_MAX_MESSAGES = 6
@@ -412,22 +413,13 @@ def _interrupt_ids(state: Any) -> set[str]:
 
 
 def _normalize_payload(payload: dict[str, Any] | None) -> dict[str, Any]:
-    def check(value):
-        if isinstance(value, dict):
-            try:
-                reject_private_runtime_state(value)
-            except ValueError as exc:
-                raise BadRequestError(
-                    code="runtime_private_state",
-                    message="Runtime execution state is server-owned",
-                ) from exc
-            for item in value.values():
-                check(item)
-        elif isinstance(value, list):
-            for item in value:
-                check(item)
-
-    check(payload)
+    try:
+        reject_private_runtime_state(payload)
+    except ValueError as exc:
+        raise BadRequestError(
+            code="runtime_private_state",
+            message="Runtime execution state is server-owned",
+        ) from exc
     return ensure_dict(payload)
 
 
@@ -3013,7 +3005,7 @@ class RuntimeGatewayService:
         idempotency_key: str | None = None,
         scheduled_config: dict[str, Any] | None = None,
     ) -> Any:
-        raw = ensure_dict(payload)
+        raw = _normalize_payload(payload)
         if "command" in raw:
             command = raw["command"]
             if not isinstance(command, dict) or set(command) != {"resume"}:
@@ -3139,7 +3131,7 @@ class RuntimeGatewayService:
             write=True,
             action="approve" if payload.get("method") == "input.respond" else "comment",
         )
-        raw_payload = dict(payload)
+        raw_payload = _normalize_payload(payload)
         raw_params = ensure_dict(raw_payload.get("params"))
         if raw_payload.get("method") == "run.start":
             raw_params = await run_in_threadpool(

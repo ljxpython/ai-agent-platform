@@ -1,77 +1,103 @@
 <script lang="ts">
-const openDialogs = new Set<symbol>()
+const openDialogs = new Set<symbol>();
 </script>
 
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
-import { useI18n } from 'vue-i18n'
-import BaseIcon from '@/components/base/BaseIcon.vue'
+import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
+import BaseIcon from "@/components/base/BaseIcon.vue";
 
-type DialogWidth = 'narrow' | 'normal' | 'wide' | 'full'
+type DialogWidth = "narrow" | "normal" | "wide" | "full";
 
 const props = withDefaults(
   defineProps<{
-    show: boolean
-    title: string
-    width?: DialogWidth
-    closeOnEscape?: boolean
-    closeOnClickOutside?: boolean
+    show: boolean;
+    title: string;
+    width?: DialogWidth;
+    closeOnEscape?: boolean;
+    closeOnClickOutside?: boolean;
   }>(),
   {
-    width: 'normal',
+    width: "normal",
     closeOnEscape: true,
-    closeOnClickOutside: true
-  }
-)
+    closeOnClickOutside: true,
+  },
+);
 
 const emit = defineEmits<{
-  close: []
-}>()
+  close: [];
+}>();
 
-const { t } = useI18n()
-const dialogRef = ref<HTMLElement | null>(null)
-let previousActiveElement: HTMLElement | null = null
-const dialogId = Symbol('dialog')
+const { t } = useI18n();
+const dialogRef = ref<HTMLElement | null>(null);
+let previousActiveElement: HTMLElement | null = null;
+const dialogId = Symbol("dialog");
 function releaseScrollLock() {
-  openDialogs.delete(dialogId)
-  document.body.classList.toggle('pw-dialog-open', openDialogs.size > 0)
+  openDialogs.delete(dialogId);
+  document.body.classList.toggle("pw-dialog-open", openDialogs.size > 0);
 }
 
 function widthClass(width: DialogWidth) {
   switch (width) {
-    case 'narrow':
-      return 'max-w-md'
-    case 'wide':
-      return 'max-w-4xl'
-    case 'full':
-      return 'max-w-6xl'
+    case "narrow":
+      return "max-w-md";
+    case "wide":
+      return "max-w-4xl";
+    case "full":
+      return "max-w-6xl";
     default:
-      return 'max-w-xl'
+      return "max-w-xl";
   }
 }
 
 function closeDialog() {
-  emit('close')
+  emit("close");
+}
+
+let isMouseDownOnBackdrop = false;
+
+function onBackdropMouseDown(event: MouseEvent) {
+  isMouseDownOnBackdrop = event.target === event.currentTarget;
+}
+
+function onBackdropMouseUp(event: MouseEvent) {
+  if (isMouseDownOnBackdrop && event.target === event.currentTarget) {
+    if (props.closeOnClickOutside) {
+      closeDialog();
+    }
+  }
+  isMouseDownOnBackdrop = false;
 }
 
 function handleEscape(event: KeyboardEvent) {
-  const dialogs = document.querySelectorAll('[role="dialog"]')
-  if (!props.show || !dialogs[dialogs.length - 1]?.contains(dialogRef.value)) return
-  if (props.closeOnEscape && event.key === 'Escape') {
-    event.preventDefault()
-    emit('close')
+  const dialogs = document.querySelectorAll('[role="dialog"]');
+  if (!props.show || !dialogs[dialogs.length - 1]?.contains(dialogRef.value))
+    return;
+  if (props.closeOnEscape && event.key === "Escape") {
+    event.preventDefault();
+    emit("close");
   }
-  if (event.key === 'Tab' && dialogRef.value) {
-    const elements = [...dialogRef.value.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]'
-    )].filter(element => element.getClientRects().length > 0)
-    const first = elements[0]
-    const last = elements[elements.length - 1]
-    if (!first) { event.preventDefault(); dialogRef.value.focus() }
-    else if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.value)) {
-      event.preventDefault(); last?.focus()
+  if (event.key === "Tab" && dialogRef.value) {
+    const elements = [
+      ...dialogRef.value.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]',
+      ),
+    ].filter((element) => element.getClientRects().length > 0);
+    const first = elements[0];
+    const last = elements[elements.length - 1];
+    if (!first) {
+      event.preventDefault();
+      dialogRef.value.focus();
+    } else if (
+      event.shiftKey &&
+      (document.activeElement === first ||
+        document.activeElement === dialogRef.value)
+    ) {
+      event.preventDefault();
+      last?.focus();
     } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault(); first.focus()
+      event.preventDefault();
+      first.focus();
     }
   }
 }
@@ -79,34 +105,34 @@ function handleEscape(event: KeyboardEvent) {
 watch(
   () => props.show,
   async (isOpen) => {
-    if (typeof document === 'undefined') {
-      return
+    if (typeof document === "undefined") {
+      return;
     }
 
     if (isOpen) {
-      previousActiveElement = document.activeElement as HTMLElement | null
-      openDialogs.add(dialogId)
-      document.body.classList.add('pw-dialog-open')
-      await nextTick()
-      dialogRef.value?.focus()
-      return
+      previousActiveElement = document.activeElement as HTMLElement | null;
+      openDialogs.add(dialogId);
+      document.body.classList.add("pw-dialog-open");
+      await nextTick();
+      dialogRef.value?.focus();
+      return;
     }
 
-    releaseScrollLock()
-    previousActiveElement?.focus?.()
-    previousActiveElement = null
+    releaseScrollLock();
+    previousActiveElement?.focus?.();
+    previousActiveElement = null;
   },
-  { immediate: true }
-)
+  { immediate: true },
+);
 
 onMounted(() => {
-  document.addEventListener('keydown', handleEscape)
-})
+  document.addEventListener("keydown", handleEscape);
+});
 
 onUnmounted(() => {
-  document.removeEventListener('keydown', handleEscape)
-  releaseScrollLock()
-})
+  document.removeEventListener("keydown", handleEscape);
+  releaseScrollLock();
+});
 </script>
 
 <template>
@@ -125,7 +151,8 @@ onUnmounted(() => {
         role="dialog"
         :aria-label="title"
         aria-modal="true"
-        @click.self="closeOnClickOutside ? closeDialog() : undefined"
+        @mousedown="onBackdropMouseDown"
+        @mouseup="onBackdropMouseUp"
       >
         <div
           ref="dialogRef"
@@ -133,7 +160,9 @@ onUnmounted(() => {
           class="pw-dialog-panel my-3 flex max-h-[calc(100vh-1.5rem)] w-full flex-col overflow-hidden sm:my-0 sm:max-h-[calc(100vh-2rem)]"
           :class="widthClass(width)"
         >
-          <div class="flex shrink-0 items-center justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-800">
+          <div
+            class="flex shrink-0 items-center justify-between gap-4 border-b border-gray-100 px-6 py-4 dark:border-dark-800"
+          >
             <div class="text-base font-semibold text-gray-900 dark:text-white">
               {{ title }}
             </div>
@@ -143,10 +172,7 @@ onUnmounted(() => {
               :aria-label="t('common.close')"
               @click="closeDialog"
             >
-              <BaseIcon
-                name="x"
-                size="sm"
-              />
+              <BaseIcon name="x" size="sm" />
             </button>
           </div>
 

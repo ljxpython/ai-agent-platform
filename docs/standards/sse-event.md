@@ -22,9 +22,34 @@ note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容
 | 心跳帧 | 注释心跳不作 JSON 解析，固定转为 `: heartbeat`，不透传上游文本 |
 | 异常帧处理 | 非 JSON data / 损坏 UTF-8 / 非法 Protocol 外层：不透传原文，安全记录原因后关闭上下游 |
 | 日志约束 | 只含固定 reason、request_id / trace_id 及授权范围内 thread_id；禁止记录 payload / token |
-| 执行错误槽位 | Protocol/v3 `lifecycle.params.data.error`、普通 `error`/`lifecycle`、`debug.task_result.payload.error` 及 checkpoint `tasks[].error` 使用固定安全消息；移除异常 stack/body/traceback/provider_response，保留 event/id/seq、终态与正常消息/工具正文 |
+| 执行错误槽位 | Protocol/v3 `tasks/lifecycle.params.data.error`、普通 `tasks/error/lifecycle`、`debug.task_result.payload.error` 及 checkpoint `tasks[].error` 使用固定安全消息；移除异常 stack/body/traceback/provider_response，保留 event/id/seq、终态与正常消息/工具正文 |
 
 执行错误投影不是 provider 分类来源。分类在 Runtime 模型边界记录，通过授权诊断 GET 查询；不能从安全消息猜原因或用模型尝试失败覆盖原生 Run 状态。实装与验收见 [可观测性专项](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md)。本次不代替原容量与浏览器验收，草案状态保留。
+
+## 执行预算通知 v1
+
+获批 Runtime/API 实施复用现有 `custom` channel，普通默认 modes 已包含 custom；没有新增通知路由、
+物理 SSE 或事件存储。数据类型为 `runtime_budget_notice`，字段为 version/type/notice_id/run_id/scope/
+budget_scope/code/limit/used/remaining/unit，未知字段删除，非法通知投影为 null，客户端忽略。
+
+| code | unit | budget_scope |
+| --- | --- | --- |
+| model_call_limit_approaching / model_call_limit_reached | model_calls | run / thread |
+| graph_step_limit_approaching | graph_supersteps | graph |
+| wrapup_started | seconds | run |
+
+scope 为 primary/subagent；namespace 使用协议外层，notice_id 在相同 Run/graph namespace/维度内确定。
+run_id 最大128字符，notice_id最大256字符；数值为 null 或有限非负且不超过 JS safe integer，调用/步骤必须整数。
+没有工具预算 custom 或 graph reached custom；这两种硬异常按[错误出口](error-envelope.md)精确类型解释。
+
+Reference/Workflow 的 end 人工 AIMessage 带 `additional_kwargs.runtime_budget_notice`（仅 reached），
+用于历史辅助恢复；网络写入口拒绝该标记、预算 clock/latch/counters。end 仍是原生 success，不表示任务完整完成。
+error 路径保持原异常及真实终态，极低 recursion 可以只有安全错误而没有 custom。
+
+客户端复用官方 SDK channel，按当前 Run/namespace 筛选、notice_id 去重；停止原因不能改写原生状态。
+Run GET 没有 error，旧事件全部过期且无人工标记时安全降级，不借用最新 Thread.error 归因旧 Run。
+软收尾不是 Worker timeout，不展示硬剩余时间。实际接线、联调与 H01-H16 回执见
+[前端交接](../projects/20261007-agent-execution-budget/frontend-handoff.md)。本项不更改本规范容量门禁的 draft 状态。
 
 ## SDK 自动重试规则（补丁扩展）
 

@@ -677,3 +677,28 @@ def test_path_loaded_auth_uses_the_same_acl_transport():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     assert module.post_acl is acl_client.post_acl
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "runtime_budget_notice",
+        "runtime_budget_latches",
+        "runtime_wrapup_start",
+        "thread_model_call_count",
+        "run_tool_call_count",
+    ],
+)
+def test_budget_state_rejected_at_runtime_network_boundary(key):
+    from langgraph_sdk import Auth
+
+    from runtime_service.auth.platform import _reject_budget_state
+
+    for value in (
+        {"input": {key: 0}},
+        {"command": {"update": {key: 0}}},
+        {"command": {"resume": {"interrupt": {key: 0}}}},
+    ):
+        with pytest.raises(Auth.exceptions.HTTPException) as error:
+            _reject_budget_state(value)
+        assert error.value.status_code == 403

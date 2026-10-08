@@ -63,12 +63,30 @@ PRIVATE_RUNTIME_STATE_KEYS = {
     "runtime_message_claim",
     "dear_memory_source",
     "dear_skill_snapshot",
+    "remaining_steps",
+    "runtime_budget_latches",
+    "runtime_budget_wrapup",
+    "runtime_budget_notice",
+    "runtime_wrapup_start",
+    "runtime_wrapup_started",
+    "thread_model_call_count",
+    "run_model_call_count",
+    "thread_tool_call_count",
+    "run_tool_call_count",
 }
 
 
 def reject_private_runtime_state(value: Any) -> None:
     if isinstance(value, dict) and (set(value) & PRIVATE_RUNTIME_STATE_KEYS):
         raise ValueError("Runtime private state cannot be supplied by a client")
+    if isinstance(value, dict) and value.get("type") == "runtime_budget_notice":
+        raise ValueError("Runtime budget notices are server-owned")
+    if isinstance(value, dict):
+        for item in value.values():
+            reject_private_runtime_state(item)
+    elif isinstance(value, list):
+        for item in value:
+            reject_private_runtime_state(item)
 
 
 def _validate_runtime_option_values(options: dict[str, Any]) -> None:

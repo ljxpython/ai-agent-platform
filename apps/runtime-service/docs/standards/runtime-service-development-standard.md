@@ -24,6 +24,17 @@
 
 阅读资料 → 复制 Showcase 的边界模式 → 在所属 Service 显式装配 → 编写最小测试 → 本地运行 → 更新文档和变更记录 → 提交评审。
 
+## 执行预算接入
+
+复用 `middlewares.ExecutionBudgetMiddleware`，替换组合根里的官方模型限制器实例，保留已批准的
+run/thread/exit_behavior；主子图分别声明 scope，禁止合并为未实现的全局额度。默认余量为 3 次调用、
+8 个 supersteps。不要通过扫描模型消息或 after_agent 判断异常退出。
+
+可选 `TimeoutWrapupMiddleware` 只接主模型 Agent；单调时钟/latch 为 invocation 私有状态，不能持久化
+或接受客户端覆盖。阈值缺省关闭，Worker 独立持有 hard timeout；自定义 Workflow 的模型时间从内层
+Agent invocation 起算。通知沿现有 custom writer，不接 Slack 或新事件存储；公开数据由平台白名单投影。
+接入/自定义 StateGraph 样例见 [Showcase](../../src/runtime_service/services/demo/showcase_demo/README.md)。
+
 ## 新增代码粒度规范
 
 > **适用范围：仅约束新增代码。存量代码不在此规范的覆盖范围内，不得借此规范触发对旧代码的"顺手重构"。**

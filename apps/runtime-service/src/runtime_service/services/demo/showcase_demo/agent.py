@@ -7,7 +7,6 @@ from collections.abc import Mapping, Sequence
 from deepagents import create_deep_agent
 from deepagents.middleware import FilesystemMiddleware
 from langchain.agents.middleware import (
-    ModelCallLimitMiddleware,
     TodoListMiddleware,
     ToolCallLimitMiddleware,
     ToolErrorMiddleware,
@@ -18,10 +17,13 @@ from langgraph.pregel import Pregel
 
 from runtime_service.middlewares import (
     DocumentToolsMiddleware,
+    ExecutionBudgetMiddleware,
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
     RuntimeConfigMiddleware,
+    TimeoutWrapupMiddleware,
+    resolve_wrapup_after_seconds,
 )
 from runtime_service.middlewares.images import ImageToolsMiddleware
 from runtime_service.observability import with_langfuse_tracing
@@ -166,15 +168,23 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 tool_names=tool_names,
             ),
             WorkspaceMiddleware(workspace),
-            ModelCallLimitMiddleware(
+            ExecutionBudgetMiddleware(
                 run_limit=_env_int("AGENT_MODEL_CALL_LIMIT_PER_RUN", 50),
                 thread_limit=_env_int("AGENT_MODEL_CALL_LIMIT_PER_THREAD", 500),
                 exit_behavior="error",
+                scope="subagent" if child else "primary",
+                graph_key="showcase_demo",
             ),
             ToolCallLimitMiddleware(
                 run_limit=_env_int("AGENT_TOOL_CALL_LIMIT_PER_RUN", 100),
                 thread_limit=_env_int("AGENT_TOOL_CALL_LIMIT_PER_THREAD", 1000),
                 exit_behavior="error",
+            ),
+            *(
+                [TimeoutWrapupMiddleware(wrapup_seconds, graph_key="showcase_demo")]
+                if not child
+                and (wrapup_seconds := resolve_wrapup_after_seconds()) is not None
+                else []
             ),
             ModelErrorMiddleware(
                 startup.metadata, scope="subagent" if child else "primary"

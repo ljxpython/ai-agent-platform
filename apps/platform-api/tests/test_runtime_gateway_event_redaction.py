@@ -51,7 +51,7 @@ class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
                 ]
             )
             self.assertNotIn(b"TASK_EXCEPTION_CANARY", result)
-            self.assertIn(b"runtime.execution_failed", result)
+            self.assertIn(b"Runtime execution failed", result)
             self.assertIn(b'"id":"task-1"', result)
 
     async def test_fatal_run_error_hides_original_exception_in_both_streams(self):
@@ -85,7 +85,9 @@ class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
                     ]
                 )
                 self.assertNotIn(b"EXCEPTION_CANARY", result)
-                self.assertIn(b"runtime.execution_failed", result)
+                self.assertIn(b"Runtime execution failed", result)
+                if not protocol:
+                    self.assertIn(b"runtime_execution_failed", result)
                 self.assertIn(b'"status":"error"', result)
 
     async def test_safe_tool_error_survives_standard_and_protocol_streams(self):

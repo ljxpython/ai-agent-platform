@@ -235,9 +235,9 @@ def _redact_sse_frame(frame: bytes, *, protocol: bool = True) -> bytes:
     )
     method = payload.get("method") if typed else event_name.partition("|")[0]
     event_data = payload["params"].get("data") if typed else payload
-    if method == "lifecycle":
+    if method in {"lifecycle", "tasks"}:
         event_data = redact_execution_fields(event_data)
-    elif not protocol and not typed and method == "error":
+    elif method == "error":
         event_data = project_execution_error(event_data)
     elif (
         method == "debug"

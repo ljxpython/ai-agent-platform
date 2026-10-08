@@ -43,6 +43,7 @@ function renderEntry(entry: PoolEntry) {
         context: entry.context.value,
         attachments: entry.attachments.value,
         recursionLimit: entry.recursionLimit.value,
+        recursionLimitKey: entry.recursionLimitKey,
         "onUpdate:draft": (value: string) => {
           entry.draft.value = value;
         },
@@ -54,6 +55,17 @@ function renderEntry(entry: PoolEntry) {
         },
         "onUpdate:recursionLimit": (value: number) => {
           entry.recursionLimit.value = value;
+          try {
+            sessionStorage.setItem(entry.recursionLimitKey, String(value));
+            localStorage.setItem(entry.recursionLimitKey, String(value));
+            sessionStorage.setItem(
+              "pw:chat:last_recursion_limit",
+              String(value),
+            );
+            localStorage.setItem("pw:chat:last_recursion_limit", String(value));
+          } catch {
+            /* storage may be disabled */
+          }
         },
         onThread: (id: string) => {
           props.pool.bindThread(entry, id);

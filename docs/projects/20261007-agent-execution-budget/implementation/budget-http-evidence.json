@@ -1,0 +1,864 @@
+{
+  "complete": true,
+  "database": "graphharbor_budget_fce3e9b4e934",
+  "redis_prefix": "graphharbor:budget:fce3e9b4e934",
+  "cases": {
+    "normal_reference_agent": "passed",
+    "normal_workflow_demo": "passed",
+    "normal_showcase_demo": "passed",
+    "normal_dearflow_agent": "passed",
+    "end_marker_and_replay": "passed",
+    "history_end_marker": "passed",
+    "protocol_custom_replay": "passed",
+    "ordinary_v2_custom": "passed",
+    "model_error": "passed",
+    "thread_persistence_worker_recreate": "passed",
+    "parallel_child_error_preserves_parent_native_outcome": "passed",
+    "graph_low_no_hook": "passed",
+    "graph_warning": "passed",
+    "tool_limit": "passed",
+    "soft_finish": "passed",
+    "hard_timeout": "passed",
+    "hitl_resume": "passed",
+    "cancel_real_terminal": "passed",
+    "public_write_injection_denied": "passed",
+    "scope_isolation_and_read_revocation": "passed",
+    "protocol_410_native_snapshot": "passed",
+    "old_limiter_reads_checkpoint": "passed",
+    "real_model_normal": "passed"
+  },
+  "samples": {
+    "normal_reference_agent": {
+      "thread_id": "4c6c229a-3cc5-4d6e-aeb3-cc9bec814351",
+      "run_id": "366593a4-0fdb-47e5-8162-83243a5dc244",
+      "status": "success",
+      "notices": [],
+      "transport": []
+    },
+    "normal_workflow_demo": {
+      "thread_id": "cdc7694f-0bdf-48ac-9c57-586c4cd9bb24",
+      "run_id": "fe4ccf9a-10ae-4b46-b213-be920152cbd1",
+      "status": "success",
+      "notices": [],
+      "transport": []
+    },
+    "normal_showcase_demo": {
+      "thread_id": "7c62ea4c-2721-4b2d-8384-3e25ea068ff8",
+      "run_id": "ac02e7db-dc43-4a62-bf21-d2e085374916",
+      "status": "success",
+      "notices": [],
+      "transport": []
+    },
+    "normal_dearflow_agent": {
+      "thread_id": "a0274685-9100-4bb1-9251-af081ae9252a",
+      "run_id": "bc6b4f02-bc0b-4cf8-b6e9-16befe4c1fcb",
+      "status": "success",
+      "notices": [],
+      "transport": []
+    },
+    "model_end": {
+      "thread_id": "704aab00-562a-4910-a7af-c1fb83c6888e",
+      "run_id": "831cda62-2b71-4620-a7b3-36ba7b5c457a",
+      "status": "success",
+      "notices": [
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:831cda62-2b71-4620-a7b3-36ba7b5c457a:6fb9b9075ec282b22589:run:model_call_limit_approaching",
+          "run_id": "831cda62-2b71-4620-a7b3-36ba7b5c457a",
+          "scope": "primary",
+          "budget_scope": "run",
+          "code": "model_call_limit_approaching",
+          "limit": 10,
+          "used": 7,
+          "remaining": 3,
+          "unit": "model_calls"
+        },
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:831cda62-2b71-4620-a7b3-36ba7b5c457a:6fb9b9075ec282b22589:run:model_call_limit_reached",
+          "run_id": "831cda62-2b71-4620-a7b3-36ba7b5c457a",
+          "scope": "primary",
+          "budget_scope": "run",
+          "code": "model_call_limit_reached",
+          "limit": 10,
+          "used": 10,
+          "remaining": 0,
+          "unit": "model_calls"
+        }
+      ],
+      "transport": [
+        {
+          "event": "custom",
+          "id": "347",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:831cda62-2b71-4620-a7b3-36ba7b5c457a:6fb9b9075ec282b22589:run:model_call_limit_approaching",
+                "run_id": "831cda62-2b71-4620-a7b3-36ba7b5c457a",
+                "scope": "primary",
+                "budget_scope": "run",
+                "code": "model_call_limit_approaching",
+                "limit": 10,
+                "used": 7,
+                "remaining": 3,
+                "unit": "model_calls"
+              }
+            }
+          }
+        },
+        {
+          "event": "custom",
+          "id": "489",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:831cda62-2b71-4620-a7b3-36ba7b5c457a:6fb9b9075ec282b22589:run:model_call_limit_reached",
+                "run_id": "831cda62-2b71-4620-a7b3-36ba7b5c457a",
+                "scope": "primary",
+                "budget_scope": "run",
+                "code": "model_call_limit_reached",
+                "limit": 10,
+                "used": 10,
+                "remaining": 0,
+                "unit": "model_calls"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "end_marker": {
+      "version": 1,
+      "type": "runtime_budget_notice",
+      "notice_id": "budget:831cda62-2b71-4620-a7b3-36ba7b5c457a:6fb9b9075ec282b22589:run:model_call_limit_reached",
+      "run_id": "831cda62-2b71-4620-a7b3-36ba7b5c457a",
+      "scope": "primary",
+      "budget_scope": "run",
+      "code": "model_call_limit_reached",
+      "limit": 10,
+      "used": 10,
+      "remaining": 0,
+      "unit": "model_calls"
+    },
+    "v2_model_end": {
+      "thread_id": "ce3ba3aa-687a-4ae5-99e1-7f9911050918",
+      "run_id": "6dc0e220-37bf-45e0-a94c-7f14da21b1e6",
+      "status": "success",
+      "notices": [
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:6dc0e220-37bf-45e0-a94c-7f14da21b1e6:6fb9b9075ec282b22589:run:model_call_limit_approaching",
+          "run_id": "6dc0e220-37bf-45e0-a94c-7f14da21b1e6",
+          "scope": "primary",
+          "budget_scope": "run",
+          "code": "model_call_limit_approaching",
+          "limit": 10,
+          "used": 7,
+          "remaining": 3,
+          "unit": "model_calls"
+        },
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:6dc0e220-37bf-45e0-a94c-7f14da21b1e6:6fb9b9075ec282b22589:run:model_call_limit_reached",
+          "run_id": "6dc0e220-37bf-45e0-a94c-7f14da21b1e6",
+          "scope": "primary",
+          "budget_scope": "run",
+          "code": "model_call_limit_reached",
+          "limit": 10,
+          "used": 10,
+          "remaining": 0,
+          "unit": "model_calls"
+        }
+      ],
+      "transport": [
+        {
+          "event": "custom",
+          "id": "347",
+          "payload": {
+            "version": 1,
+            "type": "runtime_budget_notice",
+            "notice_id": "budget:6dc0e220-37bf-45e0-a94c-7f14da21b1e6:6fb9b9075ec282b22589:run:model_call_limit_approaching",
+            "run_id": "6dc0e220-37bf-45e0-a94c-7f14da21b1e6",
+            "scope": "primary",
+            "budget_scope": "run",
+            "code": "model_call_limit_approaching",
+            "limit": 10,
+            "used": 7,
+            "remaining": 3,
+            "unit": "model_calls"
+          }
+        },
+        {
+          "event": "custom",
+          "id": "489",
+          "payload": {
+            "version": 1,
+            "type": "runtime_budget_notice",
+            "notice_id": "budget:6dc0e220-37bf-45e0-a94c-7f14da21b1e6:6fb9b9075ec282b22589:run:model_call_limit_reached",
+            "run_id": "6dc0e220-37bf-45e0-a94c-7f14da21b1e6",
+            "scope": "primary",
+            "budget_scope": "run",
+            "code": "model_call_limit_reached",
+            "limit": 10,
+            "used": 10,
+            "remaining": 0,
+            "unit": "model_calls"
+          }
+        }
+      ]
+    },
+    "model_error": {
+      "thread_id": "30c05668-0541-422c-a473-bcf140bb53e0",
+      "run_id": "1ae7d243-f5cd-4b62-83d9-4a047c5c179f",
+      "status": "error",
+      "notices": [
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:1ae7d243-f5cd-4b62-83d9-4a047c5c179f:5aa6d72d794e938dec1c:run:model_call_limit_approaching",
+          "run_id": "1ae7d243-f5cd-4b62-83d9-4a047c5c179f",
+          "scope": "primary",
+          "budget_scope": "run",
+          "code": "model_call_limit_approaching",
+          "limit": 4,
+          "used": 1,
+          "remaining": 3,
+          "unit": "model_calls"
+        },
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:1ae7d243-f5cd-4b62-83d9-4a047c5c179f:5aa6d72d794e938dec1c:thread:model_call_limit_approaching",
+          "run_id": "1ae7d243-f5cd-4b62-83d9-4a047c5c179f",
+          "scope": "primary",
+          "budget_scope": "thread",
+          "code": "model_call_limit_approaching",
+          "limit": 5,
+          "used": 2,
+          "remaining": 3,
+          "unit": "model_calls"
+        },
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:1ae7d243-f5cd-4b62-83d9-4a047c5c179f:5aa6d72d794e938dec1c:run:model_call_limit_reached",
+          "run_id": "1ae7d243-f5cd-4b62-83d9-4a047c5c179f",
+          "scope": "primary",
+          "budget_scope": "run",
+          "code": "model_call_limit_reached",
+          "limit": 4,
+          "used": 4,
+          "remaining": 0,
+          "unit": "model_calls"
+        }
+      ],
+      "transport": [
+        {
+          "event": "custom",
+          "id": "96",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:1ae7d243-f5cd-4b62-83d9-4a047c5c179f:5aa6d72d794e938dec1c:run:model_call_limit_approaching",
+                "run_id": "1ae7d243-f5cd-4b62-83d9-4a047c5c179f",
+                "scope": "primary",
+                "budget_scope": "run",
+                "code": "model_call_limit_approaching",
+                "limit": 4,
+                "used": 1,
+                "remaining": 3,
+                "unit": "model_calls"
+              }
+            }
+          }
+        },
+        {
+          "event": "custom",
+          "id": "159",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:1ae7d243-f5cd-4b62-83d9-4a047c5c179f:5aa6d72d794e938dec1c:thread:model_call_limit_approaching",
+                "run_id": "1ae7d243-f5cd-4b62-83d9-4a047c5c179f",
+                "scope": "primary",
+                "budget_scope": "thread",
+                "code": "model_call_limit_approaching",
+                "limit": 5,
+                "used": 2,
+                "remaining": 3,
+                "unit": "model_calls"
+              }
+            }
+          }
+        },
+        {
+          "event": "custom",
+          "id": "284",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:1ae7d243-f5cd-4b62-83d9-4a047c5c179f:5aa6d72d794e938dec1c:run:model_call_limit_reached",
+                "run_id": "1ae7d243-f5cd-4b62-83d9-4a047c5c179f",
+                "scope": "primary",
+                "budget_scope": "run",
+                "code": "model_call_limit_reached",
+                "limit": 4,
+                "used": 4,
+                "remaining": 0,
+                "unit": "model_calls"
+              }
+            }
+          }
+        },
+        {
+          "event": "lifecycle",
+          "id": "286",
+          "payload": {
+            "method": "lifecycle",
+            "params": {
+              "namespace": [],
+              "data": {
+                "event": "failed",
+                "status": "error",
+                "reason": "business_error",
+                "error": {
+                  "message": "Model call limit reached",
+                  "code": "runtime_model_call_limit_reached",
+                  "type": "ModelCallLimitExceededError"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "thread_exhausted": {
+      "thread_id": "30c05668-0541-422c-a473-bcf140bb53e0",
+      "run_id": "7e385a40-9e25-4b62-9cd5-24d8a328055c",
+      "status": "error",
+      "notices": [
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:7e385a40-9e25-4b62-9cd5-24d8a328055c:5aa6d72d794e938dec1c:thread:model_call_limit_approaching",
+          "run_id": "7e385a40-9e25-4b62-9cd5-24d8a328055c",
+          "scope": "primary",
+          "budget_scope": "thread",
+          "code": "model_call_limit_approaching",
+          "limit": 5,
+          "used": 4,
+          "remaining": 1,
+          "unit": "model_calls"
+        },
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:7e385a40-9e25-4b62-9cd5-24d8a328055c:5aa6d72d794e938dec1c:thread:model_call_limit_reached",
+          "run_id": "7e385a40-9e25-4b62-9cd5-24d8a328055c",
+          "scope": "primary",
+          "budget_scope": "thread",
+          "code": "model_call_limit_reached",
+          "limit": 5,
+          "used": 5,
+          "remaining": 0,
+          "unit": "model_calls"
+        }
+      ],
+      "transport": [
+        {
+          "event": "custom",
+          "id": "319",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:7e385a40-9e25-4b62-9cd5-24d8a328055c:5aa6d72d794e938dec1c:thread:model_call_limit_approaching",
+                "run_id": "7e385a40-9e25-4b62-9cd5-24d8a328055c",
+                "scope": "primary",
+                "budget_scope": "thread",
+                "code": "model_call_limit_approaching",
+                "limit": 5,
+                "used": 4,
+                "remaining": 1,
+                "unit": "model_calls"
+              }
+            }
+          }
+        },
+        {
+          "event": "custom",
+          "id": "382",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:7e385a40-9e25-4b62-9cd5-24d8a328055c:5aa6d72d794e938dec1c:thread:model_call_limit_reached",
+                "run_id": "7e385a40-9e25-4b62-9cd5-24d8a328055c",
+                "scope": "primary",
+                "budget_scope": "thread",
+                "code": "model_call_limit_reached",
+                "limit": 5,
+                "used": 5,
+                "remaining": 0,
+                "unit": "model_calls"
+              }
+            }
+          }
+        },
+        {
+          "event": "lifecycle",
+          "id": "384",
+          "payload": {
+            "method": "lifecycle",
+            "params": {
+              "namespace": [],
+              "data": {
+                "event": "failed",
+                "status": "error",
+                "reason": "business_error",
+                "error": {
+                  "message": "Model call limit reached",
+                  "code": "runtime_model_call_limit_reached",
+                  "type": "ModelCallLimitExceededError"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "parallel_child_limit": {
+      "thread_id": "0dca58df-306f-4c9a-9d14-3a99b50fb8c6",
+      "run_id": "bf7870a2-a38e-4e93-afda-bf83956cd992",
+      "status": "error",
+      "notices": [
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:bf7870a2-a38e-4e93-afda-bf83956cd992:2f385b6c5f4b7528e4e8:run:model_call_limit_approaching",
+          "run_id": "bf7870a2-a38e-4e93-afda-bf83956cd992",
+          "scope": "subagent",
+          "budget_scope": "run",
+          "code": "model_call_limit_approaching",
+          "limit": 4,
+          "used": 1,
+          "remaining": 3,
+          "unit": "model_calls"
+        },
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:bf7870a2-a38e-4e93-afda-bf83956cd992:2f385b6c5f4b7528e4e8:thread:model_call_limit_approaching",
+          "run_id": "bf7870a2-a38e-4e93-afda-bf83956cd992",
+          "scope": "subagent",
+          "budget_scope": "thread",
+          "code": "model_call_limit_approaching",
+          "limit": 5,
+          "used": 2,
+          "remaining": 3,
+          "unit": "model_calls"
+        },
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:bf7870a2-a38e-4e93-afda-bf83956cd992:2f385b6c5f4b7528e4e8:run:model_call_limit_reached",
+          "run_id": "bf7870a2-a38e-4e93-afda-bf83956cd992",
+          "scope": "subagent",
+          "budget_scope": "run",
+          "code": "model_call_limit_reached",
+          "limit": 4,
+          "used": 4,
+          "remaining": 0,
+          "unit": "model_calls"
+        }
+      ],
+      "transport": [
+        {
+          "event": "custom",
+          "id": "211",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [
+                "tools:a48187a2-a255-4da5-e0ba-114623e5632e"
+              ],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:bf7870a2-a38e-4e93-afda-bf83956cd992:2f385b6c5f4b7528e4e8:run:model_call_limit_approaching",
+                "run_id": "bf7870a2-a38e-4e93-afda-bf83956cd992",
+                "scope": "subagent",
+                "budget_scope": "run",
+                "code": "model_call_limit_approaching",
+                "limit": 4,
+                "used": 1,
+                "remaining": 3,
+                "unit": "model_calls"
+              }
+            }
+          }
+        },
+        {
+          "event": "custom",
+          "id": "251",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [
+                "tools:a48187a2-a255-4da5-e0ba-114623e5632e"
+              ],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:bf7870a2-a38e-4e93-afda-bf83956cd992:2f385b6c5f4b7528e4e8:thread:model_call_limit_approaching",
+                "run_id": "bf7870a2-a38e-4e93-afda-bf83956cd992",
+                "scope": "subagent",
+                "budget_scope": "thread",
+                "code": "model_call_limit_approaching",
+                "limit": 5,
+                "used": 2,
+                "remaining": 3,
+                "unit": "model_calls"
+              }
+            }
+          }
+        },
+        {
+          "event": "custom",
+          "id": "330",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [
+                "tools:a48187a2-a255-4da5-e0ba-114623e5632e"
+              ],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:bf7870a2-a38e-4e93-afda-bf83956cd992:2f385b6c5f4b7528e4e8:run:model_call_limit_reached",
+                "run_id": "bf7870a2-a38e-4e93-afda-bf83956cd992",
+                "scope": "subagent",
+                "budget_scope": "run",
+                "code": "model_call_limit_reached",
+                "limit": 4,
+                "used": 4,
+                "remaining": 0,
+                "unit": "model_calls"
+              }
+            }
+          }
+        },
+        {
+          "event": "lifecycle",
+          "id": "335",
+          "payload": {
+            "method": "lifecycle",
+            "params": {
+              "namespace": [],
+              "data": {
+                "event": "failed",
+                "status": "error",
+                "reason": "business_error",
+                "error": {
+                  "message": "Model call limit reached",
+                  "code": "runtime_model_call_limit_reached",
+                  "type": "ModelCallLimitExceededError"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "graph_low": {
+      "thread_id": "a950bf32-938e-4cca-88d9-59ccaa1cee7d",
+      "run_id": "03f1a3b3-3d5d-43d6-9be1-98e078a3af30",
+      "status": "error",
+      "notices": [],
+      "transport": [
+        {
+          "event": "lifecycle",
+          "id": "10",
+          "payload": {
+            "method": "lifecycle",
+            "params": {
+              "namespace": [],
+              "data": {
+                "event": "failed",
+                "status": "error",
+                "reason": "business_error",
+                "error": {
+                  "message": "Graph step limit reached",
+                  "code": "runtime_graph_step_limit_reached",
+                  "type": "GraphRecursionError"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "graph_warning": {
+      "thread_id": "dfdd032e-9883-4f50-8c62-96d0cf120b1e",
+      "run_id": "f1b920e1-4246-4c32-8427-f09b6a758311",
+      "status": "error",
+      "notices": [
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:f1b920e1-4246-4c32-8427-f09b6a758311:6fb9b9075ec282b22589:graph:graph_step_limit_approaching",
+          "run_id": "f1b920e1-4246-4c32-8427-f09b6a758311",
+          "scope": "primary",
+          "budget_scope": "graph",
+          "code": "graph_step_limit_approaching",
+          "limit": 20,
+          "used": 17,
+          "remaining": 3,
+          "unit": "graph_supersteps"
+        }
+      ],
+      "transport": [
+        {
+          "event": "custom",
+          "id": "112",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:f1b920e1-4246-4c32-8427-f09b6a758311:6fb9b9075ec282b22589:graph:graph_step_limit_approaching",
+                "run_id": "f1b920e1-4246-4c32-8427-f09b6a758311",
+                "scope": "primary",
+                "budget_scope": "graph",
+                "code": "graph_step_limit_approaching",
+                "limit": 20,
+                "used": 17,
+                "remaining": 3,
+                "unit": "graph_supersteps"
+              }
+            }
+          }
+        },
+        {
+          "event": "lifecycle",
+          "id": "138",
+          "payload": {
+            "method": "lifecycle",
+            "params": {
+              "namespace": [],
+              "data": {
+                "event": "failed",
+                "status": "error",
+                "reason": "business_error",
+                "error": {
+                  "message": "Graph step limit reached",
+                  "code": "runtime_graph_step_limit_reached",
+                  "type": "GraphRecursionError"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "tool_limit": {
+      "thread_id": "9022b604-07b0-40b9-93b2-f0e6272b0649",
+      "run_id": "c8578f83-be38-4a61-ba51-cfa63049c3e7",
+      "status": "error",
+      "notices": [
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:c8578f83-be38-4a61-ba51-cfa63049c3e7:5aa6d72d794e938dec1c:run:model_call_limit_approaching",
+          "run_id": "c8578f83-be38-4a61-ba51-cfa63049c3e7",
+          "scope": "primary",
+          "budget_scope": "run",
+          "code": "model_call_limit_approaching",
+          "limit": 4,
+          "used": 1,
+          "remaining": 3,
+          "unit": "model_calls"
+        }
+      ],
+      "transport": [
+        {
+          "event": "custom",
+          "id": "96",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:c8578f83-be38-4a61-ba51-cfa63049c3e7:5aa6d72d794e938dec1c:run:model_call_limit_approaching",
+                "run_id": "c8578f83-be38-4a61-ba51-cfa63049c3e7",
+                "scope": "primary",
+                "budget_scope": "run",
+                "code": "model_call_limit_approaching",
+                "limit": 4,
+                "used": 1,
+                "remaining": 3,
+                "unit": "model_calls"
+              }
+            }
+          }
+        },
+        {
+          "event": "lifecycle",
+          "id": "135",
+          "payload": {
+            "method": "lifecycle",
+            "params": {
+              "namespace": [],
+              "data": {
+                "event": "failed",
+                "status": "error",
+                "reason": "business_error",
+                "error": {
+                  "message": "Tool call limit reached",
+                  "code": "runtime_tool_call_limit_reached",
+                  "type": "ToolCallLimitExceededError"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "soft_finish": {
+      "thread_id": "b2e2ec15-0004-4986-8d48-6910e9d1b641",
+      "run_id": "db20c8c2-bca2-4e39-9688-a21a22002d5a",
+      "status": "success",
+      "notices": [
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:db20c8c2-bca2-4e39-9688-a21a22002d5a:6fb9b9075ec282b22589:run:wrapup_started",
+          "run_id": "db20c8c2-bca2-4e39-9688-a21a22002d5a",
+          "scope": "primary",
+          "budget_scope": "run",
+          "code": "wrapup_started",
+          "limit": 0.01,
+          "used": 0.9075320040001316,
+          "remaining": null,
+          "unit": "seconds"
+        }
+      ],
+      "transport": [
+        {
+          "event": "custom",
+          "id": "30",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:db20c8c2-bca2-4e39-9688-a21a22002d5a:6fb9b9075ec282b22589:run:wrapup_started",
+                "run_id": "db20c8c2-bca2-4e39-9688-a21a22002d5a",
+                "scope": "primary",
+                "budget_scope": "run",
+                "code": "wrapup_started",
+                "limit": 0.01,
+                "used": 0.9075320040001316,
+                "remaining": null,
+                "unit": "seconds"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "hard_timeout": {
+      "thread_id": "752c79d8-eb4c-47e3-9db4-2f758be91512",
+      "run_id": "00a62db2-32f8-4d05-8649-8ba7d61cfcb8",
+      "status": "timeout",
+      "notices": [],
+      "transport": [
+        {
+          "event": "lifecycle",
+          "id": "8",
+          "payload": {
+            "method": "lifecycle",
+            "params": {
+              "namespace": [],
+              "data": {
+                "event": "failed",
+                "status": "timeout",
+                "reason": "timeout",
+                "error": {
+                  "message": "Run time limit reached",
+                  "code": "runtime_run_timeout",
+                  "type": "RunTimedOut"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "rollback": {
+      "thread_id": "704aab00-562a-4910-a7af-c1fb83c6888e",
+      "run_id": "09bf09cd-903d-47bf-be28-7a4e7d09a600",
+      "status": "success",
+      "notices": [],
+      "transport": []
+    },
+    "real_model_normal": {
+      "thread_id": "d44e9e0c-d25e-4ebc-9e73-a5dfd35967b3",
+      "run_id": "7ed22e49-5711-42b2-8975-e29f2b3328d6",
+      "status": "success",
+      "notices": [],
+      "transport": []
+    }
+  },
+  "provider_call_counts": {
+    "normal": 5,
+    "loop-end": 10,
+    "loop-v2": 10,
+    "loop-error": 4,
+    "loop-thread": 1,
+    "parallel-budget": 1,
+    "normal-child": 1,
+    "loop-child": 4,
+    "loop-graph": 3,
+    "loop-tool": 2,
+    "soft-finish": 2,
+    "hitl": 1,
+    "slow": 1
+  }
+}
