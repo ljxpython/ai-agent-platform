@@ -298,4 +298,4 @@ usage-read 只允许两个内部 GET，不能访问原生 Thread/Run、模型连
 
 ## 状态
 
-六项非前端开发及 Phase/Final 完成，Platform 范围 done；新能力定向与真实链路通过，全量既有失败见 05。按批准方案落地单一 catalog 价格、完整快照、独立 usage-read 和独立 GET，整项目 partial，前端待同事。
+六项开发及 Phase/Final 完成，Platform 范围 done；新能力定向与真实链路通过，全量既有失败见 05。按批准方案落地单一 catalog 价格、完整快照、独立 usage-read 和独立 GET，前端已闭环，整项目 done。

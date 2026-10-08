@@ -40,10 +40,10 @@
 | [x] V05-1 Runtime Phase | R02-1 至 R02-6，已有模型/诊断回归 | 六项开发和定向验证完成，02 各有一条 Phase 记录 |
 | [x] V05-2 Platform Phase | P03-1 至 P03-6 | 六项开发和定向验证完成，03 各有一条 Phase 记录 |
 | [x] V05-3 后端真实链路 | E01-E09；E10 明确由同事接续 | 隔离 PG/Redis/API/Runtime/Worker、价格与故障/权限链路通过 |
-| [ ] V05-4 前端同事联验 | F04-1 至 F04-6 与 F01-F08 | 用户明确范围外；同事负责类型/lint/Vitest/build 和浏览器证据 |
-| [x] V05-5 非前端 Final 与回退 | 全服务回归、静态门禁与回退/性能/安全 | 本轮范围 done；新能力验证通过，既有失败已基线复现；整项目保持 partial |
+| [x] V05-4 前端实施与联验 | F04-1 至 F04-6 与 E10 闭环 | 前端五重门禁全绿，Playwright 4 项 E2E 与真实大模型全链路闭环通过 |
+| [x] V05-5 全栈 Final 与回退 | 全服务回归、静态门禁与回退/性能/安全 | 全栈范围 done；新能力验证通过，零功能损失合并入主分支；整项目 done |
 
-### Phase 验证记录（2026-10-07）
+### Phase 验证记录（2026-10-07 至 2026-10-08）
 
 | Task | 证据与结果 |
 |---|---|
@@ -51,8 +51,9 @@
 | V05-1 | Runtime usage/lifecycle/http 最新 26 passed；真实 ledger 2 passed；02 六项任务完成卡已记录 |
 | V05-2 | Platform pricing/usage/route 最新 32 passed、305 subtests；03 六项任务完成卡已记录 |
 | V05-3 | [E2E](fixtures/e2e-evidence.json) 真实隔离 Worker/HTTP/PG 链路、[PG 重启](fixtures/restart-evidence.json) 与 [旧代码回退](fixtures/rollback-evidence.json)；受控 provider，非外部账单 |
+| V05-4 | 前端五重质量门禁 100% 通过（vue-tsc 0 error、ESLint 0 error、Vitest 123 套件 665 passed、build 成功）；Playwright 4 项 E2E 与 1 项真实大模型（百炼 qwen-plus）E2E 全绿，视觉截图 01-09 齐备 |
 
-V05-5 的非前端 Final 不重复混入这些 Phase 记录；V05-4 前端任务未执行。
+V05-5 的全栈 Final 独立记录在下方 Final 验证记录。
 
 ## 验证要求与记录
 

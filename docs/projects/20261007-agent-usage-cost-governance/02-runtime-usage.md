@@ -213,4 +213,4 @@ C = (U*P_input + R*P_read + W_generic*P_write
 
 ## 状态
 
-六项开发及 Phase/非前端 Final 完成，Runtime 范围 done；44 项修复后相关复验通过，全量既有失败见 05。前端不在本轮代码范围，整项目 partial。
+六项开发及 Phase/Final 完成，Runtime 范围 done；44 项修复后相关复验通过，全量既有失败见 05。前端亦已全部闭环，整项目 done。
