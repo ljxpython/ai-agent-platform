@@ -12,6 +12,7 @@ from typing import Any
 from uuid import UUID
 
 from runtime_service.runtime.auth import VerifiedDelegation
+from runtime_service.runtime.errors import WORKSPACE_ERROR_CODES
 
 logger = logging.getLogger(__name__)
 _FIELDS = frozenset(
@@ -39,6 +40,10 @@ _FIELDS = frozenset(
         "started_at",
         "ended_at",
         "factory_id",
+        "backend",
+        "command_state",
+        "attempts",
+        "retry_wait_ms",
     }
 )
 
@@ -99,6 +104,41 @@ def safe_fields(fields: Mapping[str, Any]) -> dict[str, Any]:
         elif type(value) in (int, float) and math.isfinite(value) and value >= 0:
             result[key] = value
     return result
+
+
+def workspace_execution_fields(fields: Mapping[str, Any]) -> dict[str, Any] | None:
+    """Validate only the execution summary; identity comes from the callback."""
+    for key, allowed in (
+        ("backend", {"docker"}),
+        ("phase", {"start", "execute", "cleanup"}),
+        ("outcome", {"recovered", "failed", "cancelled"}),
+        ("command_state", {"not_started", "started", "unknown"}),
+    ):
+        if not isinstance(fields.get(key), str) or fields[key] not in allowed:
+            return None
+    attempts = fields.get("attempts")
+    wait = fields.get("retry_wait_ms")
+    if type(attempts) is not int or not 1 <= attempts <= 4:
+        return None
+    if type(wait) not in (int, float) or not math.isfinite(wait) or wait < 0:
+        return None
+    code = fields.get("code")
+    if code is not None and (
+        not isinstance(code, str) or code not in WORKSPACE_ERROR_CODES
+    ):
+        return None
+    duration = fields.get("duration_ms")
+    return {
+        **{
+            key: fields[key] for key in ("backend", "phase", "outcome", "command_state")
+        },
+        "attempts": attempts,
+        "retry_wait_ms": wait,
+        "code": code,
+        "duration_ms": duration
+        if type(duration) in (int, float) and math.isfinite(duration) and duration >= 0
+        else None,
+    }
 
 
 def log_diagnostic(event: str, fields: Mapping[str, Any]) -> None:

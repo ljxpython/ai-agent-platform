@@ -13,6 +13,7 @@ import pytest
 from fastapi import FastAPI
 from pydantic import ValidationError
 
+from platform_api.adapters.langgraph.sdk_client import project_execution_error
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import (
     build_engine,
@@ -63,6 +64,123 @@ def summary():
         "startup": None,
         "truncated": False,
     }
+
+
+def workspace_summary(**fields):
+    return {
+        "observation_id": "workspace-event",
+        "backend": "docker",
+        "phase": "execute",
+        "outcome": "failed",
+        "code": "runtime.workspace.execution_outcome_unknown",
+        "command_state": "unknown",
+        "attempts": 1,
+        "retry_wait_ms": 0.0,
+        "duration_ms": 2.0,
+        **fields,
+    }
+
+
+def test_workspace_optional_v1_and_safe_error_projection():
+    assert RuntimeDiagnostics.model_validate(summary()).workspace_executions == []
+    result = RuntimeDiagnostics.model_validate(
+        {
+            **summary(),
+            "workspace_executions": [workspace_summary(command=CANARY, path=CANARY)],
+        }
+    ).model_dump()
+    assert result["workspace_executions"][0]["attempts"] == 1 and CANARY not in repr(
+        result
+    )
+    for code in (
+        "runtime.workspace.unavailable",
+        "runtime.workspace.execution_unavailable",
+        "runtime.workspace.backend_invalid",
+        "runtime.workspace.image_invalid",
+        "runtime.workspace.execution_outcome_unknown",
+    ):
+        for value in (
+            code,
+            {"type": "RuntimeWorkspaceError", "message": code, "stack": CANARY},
+        ):
+            projected = project_execution_error(value)
+            assert project_execution_error(projected) == projected
+            assert (
+                projected if isinstance(projected, str) else projected["code"]
+            ) == code
+        safe = project_execution_error(
+            {"type": "RuntimeWorkspaceError", "message": code}
+        )
+        safe.pop("type")
+        assert project_execution_error(safe) == safe
+        for bad in (
+            "prefix " + code,
+            {"type": "RuntimeError", "message": code},
+            {"code": code, "message": CANARY},
+            {"type": "RuntimeWorkspaceError", "code": [code]},
+        ):
+            projected = project_execution_error(bad)
+            assert (
+                projected if isinstance(projected, str) else projected["code"]
+            ) == "runtime.execution_failed"
+            assert CANARY not in repr(projected)
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"attempts": True},
+        {"attempts": 1.0},
+        {"attempts": 0},
+        {"attempts": 5},
+        {"retry_wait_ms": float("nan")},
+        {"retry_wait_ms": float("inf")},
+        {"retry_wait_ms": True},
+        {"retry_wait_ms": -1},
+        {"duration_ms": False},
+        {"duration_ms": float("nan")},
+        {"backend": "local"},
+        {"phase": "other"},
+        {"code": "runtime.workspace.other"},
+        {"observation_id": "x" * 129},
+    ],
+)
+def test_workspace_dto_rejects_malformed_fields(bad):
+    with pytest.raises(ValidationError):
+        RuntimeDiagnostics.model_validate(
+            {**summary(), "workspace_executions": [workspace_summary(**bad)]}
+        )
+
+
+def test_workspace_dto_limits_and_model_error_separation():
+    with pytest.raises(ValidationError):
+        RuntimeDiagnostics.model_validate(
+            {**summary(), "workspace_executions": [workspace_summary()] * 21}
+        )
+    code = workspace_summary()["code"]
+    value = {
+        **summary(),
+        "graph_executions": [
+            {"observation_id": "graph", "outcome": "failed", "error_code": code}
+        ],
+    }
+    assert (
+        RuntimeDiagnostics.model_validate(value).graph_executions[0].error_code == code
+    )
+    with pytest.raises(ValidationError):
+        RuntimeDiagnostics.model_validate(
+            {
+                **summary(),
+                "model_errors": [
+                    {
+                        "observation_id": "model",
+                        "scope": "primary",
+                        "namespace": [],
+                        "code": code,
+                    }
+                ],
+            }
+        )
 
 
 def test_service_run_authorization_and_safe_projection():
@@ -217,6 +335,19 @@ def test_real_acl_owner_shared_peer_and_cross_project():
             ]
             == "disabled"
         )
+        asyncio.run(
+            service.share_thread(
+                actor=owner,
+                project_id=project,
+                thread_id=THREAD,
+                user_id=peer.user_id,
+                actions=[],
+            )
+        )
+        upstream.get_run_diagnostics.reset_mock()
+        with pytest.raises(ForbiddenError):
+            asyncio.run(service.get_thread_run_diagnostics(actor=peer, **kwargs))
+        upstream.get_run_diagnostics.assert_not_awaited()
         engine.dispose()
 
 

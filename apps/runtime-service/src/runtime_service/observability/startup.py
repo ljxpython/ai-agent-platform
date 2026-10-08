@@ -20,6 +20,7 @@ from runtime_service.observability.errors import error_type, execution_outcome
 from runtime_service.observability.langfuse import record_diagnostic_event
 from runtime_service.observability.otel import initialize_otel
 from runtime_service.runtime.auth import VerifiedDelegation
+from runtime_service.runtime.errors import workspace_error_code
 
 PHASE_NAMES = frozenset(
     {
@@ -102,6 +103,7 @@ class StartupDiagnostics:
             }
             if error is not None:
                 record["error_type"] = error_type(error)
+                record["error_code"] = workspace_error_code(error)
             if ordinal < 16:
                 if self._finished:
                     self._emit("runtime.node.phase_completed", record)
@@ -129,6 +131,7 @@ class StartupDiagnostics:
                         "graph_id": self.metadata["graph_id"],
                         "outcome": execution_outcome(error),
                         "error_type": error_type(error),
+                        "error_code": workspace_error_code(error),
                     },
                 )
             return
@@ -137,6 +140,7 @@ class StartupDiagnostics:
             "started_at": _utc(self.started_ns),
             "ended_at": _utc(self.ended_ns),
             "outcome": execution_outcome(error),
+            "error_code": workspace_error_code(error),
         }
         for record in self.phases:
             self._emit("runtime.startup.phase_completed", record)

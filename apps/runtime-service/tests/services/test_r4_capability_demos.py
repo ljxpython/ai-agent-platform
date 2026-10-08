@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from deepagents.backends import StateBackend
@@ -78,7 +79,7 @@ def test_deep_agent_subagent_is_explicitly_restricted(
 
     def capture(**kwargs: object) -> object:
         captured.update(kwargs)
-        return object()
+        return SimpleNamespace(with_config=lambda _: None)
 
     monkeypatch.setattr(deep_agent_server, "create_deep_agent", capture)
     asyncio.run(deep_agent_server.get_agent(_config()))

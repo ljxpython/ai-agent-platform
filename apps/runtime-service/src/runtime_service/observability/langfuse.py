@@ -23,6 +23,7 @@ from runtime_service.observability.diagnostics import (
     log_diagnostic,
     safe_fields,
     trace_id_for,
+    workspace_execution_fields,
 )
 from runtime_service.observability.errors import error_type, execution_outcome
 from runtime_service.observability.otel import (
@@ -30,6 +31,7 @@ from runtime_service.observability.otel import (
     close_otel,
     initialize_otel,
 )
+from runtime_service.runtime.errors import workspace_error_code
 
 logger = logging.getLogger(__name__)
 
@@ -296,7 +298,7 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
     ) -> None:
         if parent_run_id is None:
             status = execution_outcome(error)
-            self._finish(run_id, status)
+            self._finish(run_id, status, workspace_error_code(error))
 
     def on_tool_error(
         self, error: BaseException, *, run_id: Any, **kwargs: Any
@@ -309,6 +311,7 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
             "graph_id": self._graph_id,
             "callback_run_id": str(run_id),
             "error_type": error_type(error),
+            "error_code": workspace_error_code(error),
         }
         log_diagnostic("runtime.tool.failed", fields)
         record_diagnostic_event("runtime.tool.failed", fields)
@@ -321,6 +324,26 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
                 "error_category": type(error).__name__,
             },
         )
+
+    def on_custom_event(self, name: str, data: Any, *, run_id: Any, **_: Any) -> None:
+        if name != "runtime.workspace.execution_completed" or not isinstance(
+            data, Mapping
+        ):
+            return
+        summary = workspace_execution_fields(data)
+        if summary is None:
+            return
+        fields = {
+            **self._metadata,
+            **summary,
+            "graph_id": self._graph_id,
+            "callback_run_id": str(run_id),
+        }
+        try:
+            log_diagnostic(name, fields)
+            record_diagnostic_event(name, fields)
+        except Exception:
+            pass
 
     def on_tool_end(self, output: Any, *, run_id: Any, **_: Any) -> None:
         if not isinstance(output, ToolMessage) or output.status != "error":
@@ -365,7 +388,7 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
         if isinstance(total, int) and total >= 0:
             _metrics["token_total"] += total
 
-    def _finish(self, run_id: Any, status: str) -> None:
+    def _finish(self, run_id: Any, status: str, error_code: str | None = None) -> None:
         started = self._starts.pop(run_id, None)
         duration_ms = (
             round((time.monotonic() - started) * 1000, 2)
@@ -379,6 +402,7 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
             "callback_run_id": str(run_id),
             "outcome": status,
             "duration_ms": duration_ms,
+            "error_code": error_code,
         }
         log_diagnostic("runtime.graph.completed", fields)
         record_diagnostic_event("runtime.graph.completed", fields)

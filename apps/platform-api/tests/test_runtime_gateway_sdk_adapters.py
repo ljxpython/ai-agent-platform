@@ -44,7 +44,11 @@ class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
         }
         self.assertEqual(
             redact_runtime_private_fields(failed)["error"],
-            {"type": "RuntimeError", "message": "runtime.execution_failed"},
+            {
+                "type": "RuntimeError",
+                "message": "Runtime execution failed",
+                "code": "runtime.execution_failed",
+            },
         )
         for unchanged in (
             {"thread_id": "thread", "status": "idle", "error": None},

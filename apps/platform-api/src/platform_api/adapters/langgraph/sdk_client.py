@@ -98,6 +98,7 @@ _EXECUTION_ERROR_TYPES = frozenset(
     {
         "Exception",
         "RuntimeError",
+        "RuntimeWorkspaceError",
         "ValueError",
         "TimeoutError",
         "ConnectionError",
@@ -114,14 +115,46 @@ _EXECUTION_ERROR_TYPES = frozenset(
     }
 )
 
+_WORKSPACE_EXECUTION_MESSAGES = {
+    "runtime.workspace.unavailable": "工作区暂不可用，本次运行已停止。",
+    "runtime.workspace.execution_unavailable": "执行环境暂不可用，本次运行已停止。",
+    "runtime.workspace.backend_invalid": "工作区执行配置不可用。",
+    "runtime.workspace.image_invalid": "工作区执行配置不可用。",
+    "runtime.workspace.execution_outcome_unknown": (
+        "命令执行结果尚不确定，本次运行已停止，请先核对工作区结果。"
+    ),
+}
+
 
 def project_execution_error(value: Any) -> Any:
     """Preserve SDK error shapes while discarding exception bodies and stacks."""
     if value is None:
         return None
     if not isinstance(value, dict):
-        return "Runtime execution failed"
-    result = {"message": "Runtime execution failed", "code": "runtime_execution_failed"}
+        return (
+            value
+            if isinstance(value, str) and value in _WORKSPACE_EXECUTION_MESSAGES
+            else "runtime.execution_failed"
+        )
+    code = value.get("code")
+    if value.get("type") == "RuntimeWorkspaceError":
+        code = code if isinstance(code, str) else value.get("message")
+    elif (
+        isinstance(code, str)
+        and code in _WORKSPACE_EXECUTION_MESSAGES
+        and value.get("message") == _WORKSPACE_EXECUTION_MESSAGES[code]
+        and set(value) <= {"code", "message"}
+    ):
+        pass
+    else:
+        code = None
+    known = isinstance(code, str) and code in _WORKSPACE_EXECUTION_MESSAGES
+    result = {
+        "message": _WORKSPACE_EXECUTION_MESSAGES[code]
+        if known
+        else "Runtime execution failed",
+        "code": code if known else "runtime.execution_failed",
+    }
     for key in ("type", "error"):
         if key in value:
             result[key] = (
@@ -168,6 +201,8 @@ def redact_runtime_private_fields(value: Any, *, _resource: bool = True) -> Any:
                     "metadata",
                     "args",
                     "content",
+                    "artifact",
+                    "result",
                 },
             )
             for key, item in result.items()

@@ -210,7 +210,11 @@ def test_mcp_disabled_or_unbound_never_connects_and_binding_limits_names(monkeyp
     client = SimpleNamespace(
         get_tools=AsyncMock(
             return_value=[
-                SimpleNamespace(name="mcp_one", metadata={"readOnlyHint": True})
+                SimpleNamespace(
+                    name="mcp_one",
+                    metadata={"readOnlyHint": True},
+                    handle_tool_error=False,
+                )
             ]
         )
     )

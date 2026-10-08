@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-07（Agent 工具调用容错全链路闭环，前端结构化摘要与微胶囊 Tag 徽章实装，全栈三服务浏览器联合验收通过，全专项 done）。
+> **最后更新：** 2026-10-07（Agent Workspace 非前端本地与 Docker 范围完成；T32/T33 已验收，Docker Desktop 已关闭）。
 
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
@@ -12,7 +12,7 @@
 
 ## 最近改动
 
-2026-10-07 | **Agent 工具调用容错与生产接线全链路完成**：Runtime/Platform API 完成选择性错误分类、DearFlow/Showcase/Reference 主子图接线、MCP/workspace 边界、v3 tools 流安全出口和公开 fatal 脱敏；Platform Web 完成纯函数错误摘要提取、微胶囊 Tag 徽章与展开态格式化代码块排版；核心单测全绿（31 passed），静态类型与构建通过；三服务全栈浏览器联合验收 F01-F08 全部通过，全专项闭环 done。见 [专项](projects/20261006-agent-tool-error-resilience/README.md)。
+2026-10-07 | **Agent Workspace 执行容错**：用户批准后在独立 worktree 完成共享失败保护/结果未知停止、取消清理、安全诊断与 API 投影。真实 EAGAIN 副作用复核后维持 G1 分支 B，命令单次执行，retry deferred；本地与 Docker 的实际 Worker、主子图/控制流、权限、重启/回退均已验，真实容器取消/并行/性能测量补齐，Docker Desktop 已关闭。前端交同事，未部署现役。见 [专项](projects/20261007-agent-workspace-resilience/README.md)。
 
 2026-10-07 | **Agent 可观测性与追踪补齐**：全链路闭环完成。Runtime/Platform API 完成模型错误分类、安全诊断、启动阶段计时与只读投影；Platform Web 完成独立解耦面板 RunDiagnostics、Zod 白名单剔除敏感字段、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与模式切换、ChatSession 历史 Run 自动拉取与最新默认选中；vue-tsc 0 错误、ESLint 0 错误、Vite build 与前端全仓 115 套件 535 项单测全绿。未部署现役服务。见 [专项](projects/20261006-agent-observability-hardening/README.md)。
 
@@ -30,11 +30,13 @@
 
 ## 本月归并
 
-2026-10（截至 10-06）| Agent 回答后推荐问题全链路完成（27 项定向、类型/lint/构建通过）；Chat state/history 委托补齐与错误恢复；Chat 后台会话 DOM 虚拟化隔离与流式切换卡死根治、智能体切换隔离与列表远程拉取解耦治理、Chat 顶栏选择 Agent 历史列表联动过滤失效与 Pad 侧栏体验治理、对话前端视口平滑锚定与流式跟随根治、Clean Architecture 五层解耦重构、多会话后台无感自动排队消费与权限失效误杀彻底根治、切回历史时序正序合并、多会话切回假死死锁/空白水合/报错隔离、LangGraph v3 默认消费与 DeltaChannel 离线/PG 评估、模型畸形 ToolCall 自动缝合与孤儿块剔除、平台用户软删除三重安全栅栏、DeepSeek 官方多模态视觉识图、长会话断流解耦与历史懒加载、DearFlow 防死循环护栏、小惊喜创意工坊与 Jina Reader 接入、HTML 沙箱现代化渲染、Runtime DB 精简重构。
+2026-10（截至 10-07）| Agent 工具调用容错专项原验收 done（详见活跃项目）；Agent 回答后推荐问题全链路完成（27 项定向、类型/lint/构建通过）；Chat state/history 委托补齐与错误恢复；Chat 后台会话 DOM 虚拟化隔离与流式切换卡死根治、智能体切换隔离与列表远程拉取解耦治理、Chat 顶栏选择 Agent 历史列表联动过滤失效与 Pad 侧栏体验治理、对话前端视口平滑锚定与流式跟随根治、Clean Architecture 五层解耦重构、多会话后台无感自动排队消费与权限失效误杀彻底根治、切回历史时序正序合并、多会话切回假死死锁/空白水合/报错隔离、LangGraph v3 默认消费与 DeltaChannel 离线/PG 评估、模型畸形 ToolCall 自动缝合与孤儿块剔除、平台用户软删除三重安全栅栏、DeepSeek 官方多模态视觉识图、长会话断流解耦与历史懒加载、DearFlow 防死循环护栏、小惊喜创意工坊与 Jina Reader 接入、HTML 沙箱现代化渲染、Runtime DB 精简重构。
 
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
+
+- [Agent Workspace 执行容错与安全失败报告](projects/20261007-agent-workspace-resilience/README.md)：本轮非前端本地与 Docker 范围 done；整体 partial 仅对应前端T23/浏览器交同事。T32/T33真实容器、两条HTTP/Worker与重启/回退已验，Docker Desktop已关闭；G1分支B单次执行，自动retry deferred，未部署现役。
 
 - [Agent 工具调用容错与生产接线补齐](projects/20261006-agent-tool-error-resilience/README.md)：done；全链路闭环，Runtime/API 共享选择性分类、主子图接线、安全消息与执行中缺根保护完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化排版实装；核心单测全绿，浏览器联合验收 F01-F08 全部通过。未生产部署。
 
@@ -83,9 +85,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-07 | 工具容错与生产接线完成，安全/工作区/未知异常传播；新增有界模型错误诊断、本地常驻回调、四graph启动阶段计时与只读查询；Langfuse 429 安全降级；未部署现役。 |
-| platform-api | 2026-10-07 | 工具消息保真与公开 fatal 安全出口；新增 Run diagnostics GET、diagnostics-read 权限核验与错误槽位脱敏投影；分层回归通过；未部署现役。 |
-| platform-web | 2026-10-07 | 工具错误纯函数摘要与展开态代码排版实装；运行诊断独立解耦面板 RunDiagnostics、模式切换与多轮 Run 自动拉取实装；535 项单测、vue-tsc 与生产打包全绿。未部署现役。 |
+| runtime-service | 2026-10-07 | Workspace共享失败保护、结果未知停止、取消回收与v1安全记录已实施；G1分支B不自动retry。本地及Docker主子图/Worker不requeue、重启/回退、并行取消与性能测量已验，Docker Desktop已关闭，未部署现役。 |
+| platform-api | 2026-10-07 | Workspace五码精确投影、原生tasks脱敏与v1 DTO已实施；generic统一runtime.execution_failed，HTTP Envelope独立。本地及Docker真实共享/撤权/跨项目诊断链路已验，前端T23交同事，未部署现役。 |
+| platform-web | 2026-10-07 | 工具错误纯函数摘要与展开态代码排版实装；运行诊断独立解耦面板 RunDiagnostics、模式切换与多轮 Run 自动拉取实装；原验收 535 项单测、vue-tsc 与生产打包全绿，未部署现役。Workspace 新契约仅规划交接，由同事后续实施。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-04 | AGENTS.md 与 Skill 重复内容已去除（场景步骤 + 验证标准章节移入 Skill），CONTEXT.md 改为渐进式快照结构；整单结束前须逐项核对未完成任务，Task 未完成时只记 Phase |
 
 ## 近期关键决策

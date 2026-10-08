@@ -84,6 +84,7 @@
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
 | Agent 工具调用容错与生产接线 | 已完成：全链路闭环，Runtime/API 选择性错误分类、主子图接线、安全消息与流出口脱敏完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化代码排版实装，31 项单测全绿，三服务全栈浏览器联合验收 F01-F08 全部通过，未生产部署 | [方案与任务](projects/20261006-agent-tool-error-resilience/README.md) · [前端交接](projects/20261006-agent-tool-error-resilience/frontend-handoff.md) |
+| Agent Workspace 执行容错与安全失败报告 | 非前端 done：Runtime/API 共享失败保护、结果未知停止、安全投影与v1诊断，本地/Docker真实Worker不重调度、权限/控制流及重启/回退已验；真实容器并行取消/清理与性能测量补齐，Docker Desktop已关闭。前端交同事，启动retry按批准G1分支B deferred，未部署现役 | [方案与任务](projects/20261007-agent-workspace-resilience/README.md) · [前端报告](projects/20261007-agent-workspace-resilience/frontend-report.md) |
 | 定时 Run 执行前聚合授权与无人值守策略 | 后端 done：身份/凭据/项目/Agent/模型/Thread 失效拒绝，审批转失败，原生预览与历史；GraphHarbor post41 已锁定安装，未重启现役栈 | [验证](projects/20261005-scheduled-agent-tasks/verification.md) |
 | 工作区 HTML 预览 CSP 策略升级与白名单扩充 | 已完成：放行公认安全 CDN（Tailwind CDN / Google Fonts / cdnjs / unpkg / jsdelivr / SVG），严格限制 connect-src https: 阻断内网探测，43 项单测全绿 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
 | DearFlow Agent 接入 Jina Reader 网页深度提取与双通道容灾 | 已完成：Jina Reader API（r.jina.ai）高质量 Markdown 提取上线，首选 Jina、超时/异常自动平滑降级 Tavily Extract，严守 public_url 防御与 SHA256 证据落盘 | [Jina Reader 集成](projects/20261002-dearflow-jina-reader-integration/README.md) |

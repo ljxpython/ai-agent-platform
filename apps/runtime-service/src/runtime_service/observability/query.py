@@ -15,9 +15,13 @@ from typing import Any
 import httpx
 from langfuse.api.client import AsyncLangfuseAPI
 
-from runtime_service.observability.diagnostics import trace_id_for
+from runtime_service.observability.diagnostics import (
+    trace_id_for,
+    workspace_execution_fields,
+)
 from runtime_service.observability.errors import MODEL_ERROR_CODES
 from runtime_service.observability.startup import PHASE_NAMES
+from runtime_service.runtime.errors import WORKSPACE_ERROR_CODES
 
 _client: AsyncLangfuseAPI | None = None
 _FIELDS = "core,basic,time,metadata"
@@ -26,6 +30,7 @@ _EVENTS = {
     "runtime.graph.completed",
     "runtime.startup.completed",
     "runtime.startup.phase_completed",
+    "runtime.workspace.execution_completed",
 }
 
 
@@ -105,12 +110,13 @@ def empty_diagnostics(reason: str) -> dict:
         "trace": None,
         "graph_executions": [],
         "model_errors": [],
+        "workspace_executions": [],
         "startup": None,
         "truncated": False,
     }
 
 
-# Keep the four event schemas together so their scope and response limits agree.
+# Keep event schemas together so their scope and response limits agree.
 def _project(observations: list[dict], expected: dict, *, truncated: bool) -> dict:
     result = empty_diagnostics("not_recorded")
     records = [
@@ -154,6 +160,13 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
             "observation_id": identifier,
             "duration_ms": _duration(metadata.get("duration_ms")),
         }
+        error_code = metadata.get("error_code")
+        error_code = (
+            error_code
+            if isinstance(error_code, str)
+            and error_code in MODEL_ERROR_CODES | WORKSPACE_ERROR_CODES
+            else None
+        )
         if event == "runtime.model_call.failed" and metadata.get("scope") in {
             "primary",
             "subagent",
@@ -188,8 +201,12 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
             "interrupted",
         }:
             result["graph_executions"].append(
-                {**common, "outcome": metadata["outcome"], "error_code": None}
+                {**common, "outcome": metadata["outcome"], "error_code": error_code}
             )
+        elif event == "runtime.workspace.execution_completed":
+            summary = workspace_execution_fields(metadata)
+            if summary is not None:
+                result["workspace_executions"].append({**common, **summary})
         elif event.startswith("runtime.startup.") and _identifier(
             metadata.get("factory_id")
         ):
@@ -211,7 +228,7 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
                         "started_at": _utc(metadata.get("started_at")),
                         "ended_at": _utc(metadata.get("ended_at")),
                         "duration_ms": common["duration_ms"],
-                        "error_code": None,
+                        "error_code": error_code,
                     }
                 )
     if len(factories) == 1 and len(totals) == 1:
@@ -219,7 +236,11 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
             "duration_ms": _duration(totals[0].get("duration_ms")),
             "phases": sorted(phases, key=lambda phase: phase["ordinal"])[:16],
         }
-    for key, limit in (("model_errors", 20), ("graph_executions", 10)):
+    for key, limit in (
+        ("model_errors", 20),
+        ("graph_executions", 10),
+        ("workspace_executions", 20),
+    ):
         truncated |= len(result[key]) > limit
         result[key] = result[key][:limit]
     truncated |= len(phases) > 16
