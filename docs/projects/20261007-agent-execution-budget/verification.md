@@ -288,14 +288,19 @@ custom/私有键白名单、默认stream模式和Runtime原生网络边界通过
 - **红条彻底静默**：`ChatSession.vue` 中在当前存在预算提示或预算终态时强制静默 `streamError`；并将顶部通用红条显隐条件严格限定为仅在无任何预算模型时生效（`!runBudget.budget.value`）；将 `session.run.value` 显式注入 `useRunBudget` 的 `nativeError` 依赖。
 
 #### 2. Playwright 自动化真实回归结果
-- **自动化测试脚本**：`apps/platform-web/scripts/test_live_execution_budget.cjs`（真实 Chromium 无头浏览器，登录 admin，进入项目，动态配置步数上限为 5，发送五子棋/贪吃蛇复杂 prompt，捕获终态与交互）。
+- **自动化测试脚本**：`scripts/test_budget_playwright_e2e.cjs`（真实 Chromium 浏览器，登录平台，使用真实模型 `deepseek-v4.1-flash`，覆盖正常对话基线、动态配置步数上限为 4、发送复杂长思考任务、捕获图步骤上限停机状态与调整请求交互）。
 - **自动化断言事实**：
-  1. 通用红条（`执行服务响应异常`）数量：**0**（✅ 100% 彻底静默，不再误报服务故障）；
-  2. 恢复连接按钮（`恢复连接`）数量：**0**（✅ 100% 消除误导）；
-  3. 专属安全状态栏（`本次执行达到图步骤上限`）数量：**1**（✅ 完美展示“已达智能体单次执行的最大步数限制。任务由于步骤上限中断，并非授权或服务故障。可调整或精简请求后重新发送”）；
-  4. 交互操作（`调整请求`）按钮数量：**1**（✅ 正常可用）；
-  5. 草稿回填联动：自动化点击“调整请求”后，上一条 Prompt **100% 准确回填至输入框**。
-- **全量门禁保障**：`pnpm test:run`（116 文件通过，**574 项测试全绿**，0 failed）；`pnpm check`（`vue-tsc` + `vite build` **0 errors**）。
-- **视觉验证证据**：
-  - 历史会话恢复实测证据：`thread_80ea961f_result.png`
-  - 实时执行截停实测证据：`live_execution_test_verified.png`
+  1. 真实模型正常调用（基线检验）：模型正常响应，思维链与回答流式生成，无任何异常横幅与预算误报；
+  2. 通用红条（`执行服务响应异常`）数量：**0**（✅ 100% 彻底静默，不再误报服务故障）；
+  3. 恢复连接按钮（`恢复连接`）数量：**0**（✅ 100% 消除误导）；
+  4. 专属安全状态栏（`本次执行达到图步骤上限`）数量：**1**（✅ 完美展示“已达智能体单次执行的最大步数限制。任务由于步骤上限中断，并非授权或服务故障。可调整或精简请求后重新发送”）；
+  5. 交互操作（`调整请求`）按钮数量：**1**（✅ 正常可用）；
+  6. 双态交互联动：点击“调整请求”后，系统自动唤起“运行参数与执行模式”配置面板，同时上一条 Prompt **100% 准确回填至输入框**。
+- **全量门禁保障**：`pnpm test:run`（116 文件通过，**571 项测试全绿**，0 failed）；`pnpm check`（`vue-tsc` + `vite build` **0 errors**）。
+- **全流程截图证据清单**（存放在 `docs/projects/20261007-agent-execution-budget/implementation/screenshots/`）：
+  - `01_workspace_overview.png`：登录成功进入工作区总览；
+  - `02_chat_page_initial.png`：进入项目对话工作台；
+  - `03_normal_model_response.png`：真实模型（`deepseek-v4.1-flash`）正常问答生成，思维链与正文完整，无误报；
+  - `04_budget_limit_reached.png`：低步数上限（recursion=4）触限停机，专属提示横条高亮，通用异常静默；
+  - `05_adjust_options_opened.png`：点击“调整请求”自动唤起运行参数与执行模式配置面板；
+  - `06_draft_restored_in_textarea.png`：草稿内容精准回填至底部输入框，会话流与输入框状态完美对齐。

@@ -28,7 +28,6 @@ const props = withDefaults(
     runs?: Array<{ run_id: string; status: string; created_at?: string }>;
     runsLoading?: boolean;
     canRead?: boolean;
-    runStatus?: string | null;
     initialInspectorMode?: "record" | "diagnostics" | "usage";
   }>(),
   {
