@@ -7,7 +7,6 @@ from collections.abc import Mapping, Sequence
 from deepagents import create_deep_agent
 from deepagents.middleware import FilesystemMiddleware
 from langchain.agents.middleware import (
-    ModelCallLimitMiddleware,
     TodoListMiddleware,
     ToolCallLimitMiddleware,
     ToolErrorMiddleware,
@@ -20,6 +19,7 @@ from runtime_service.middlewares import (
     ContextBudgetMiddleware,
     ConversationOffloadingMiddleware,
     DocumentToolsMiddleware,
+    ExecutionBudgetMiddleware,
     MaintenanceSafeToolCallsMiddleware,
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
@@ -29,6 +29,7 @@ from runtime_service.middlewares import (
     RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
     context_management_enabled,
+    resolve_wrapup_after_seconds,
 )
 from runtime_service.middlewares.images import ImageToolsMiddleware
 from runtime_service.observability import with_langfuse_tracing
@@ -223,17 +224,30 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             *offloading,
             *([MaintenanceSafeToolCallsMiddleware()] if offloading else []),
             WorkspaceMiddleware(workspace),
-            ModelCallLimitMiddleware(
+            ExecutionBudgetMiddleware(
                 run_limit=_env_int("AGENT_MODEL_CALL_LIMIT_PER_RUN", 50),
                 thread_limit=_env_int("AGENT_MODEL_CALL_LIMIT_PER_THREAD", 500),
                 exit_behavior="error",
+                scope="subagent" if child else "primary",
+                graph_key="showcase_demo",
             ),
             ToolCallLimitMiddleware(
                 run_limit=_env_int("AGENT_TOOL_CALL_LIMIT_PER_RUN", 100),
                 thread_limit=_env_int("AGENT_TOOL_CALL_LIMIT_PER_THREAD", 1000),
                 exit_behavior="error",
             ),
-            TimeoutWrapupMiddleware(run_budget),
+            *(
+                [
+                    TimeoutWrapupMiddleware(
+                        run_budget
+                        if run_budget is not None
+                        else resolve_wrapup_after_seconds(),
+                        graph_key="showcase_demo",
+                    )
+                ]
+                if not child
+                else []
+            ),
             *(
                 [
                     ModelResilienceMiddleware(

@@ -1,6 +1,7 @@
 """Workflow StateGraph topology around the model-backed Agent."""
 
 from collections.abc import Awaitable, Callable, Mapping
+from contextvars import copy_context
 from typing import Literal
 
 from langchain_core.runnables.config import var_child_runnable_config
@@ -8,9 +9,13 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import interrupt
 
+from runtime_service.middlewares.execution_budget import check_graph_budget
 from runtime_service.runtime.contracts import RuntimeContext
 from runtime_service.runtime.errors import RuntimeAuthError
-from runtime_service.services.demo.workflow_demo.schemas import WorkflowState
+from runtime_service.services.demo.workflow_demo.schemas import (
+    WorkflowBudgetState,
+    WorkflowState,
+)
 
 
 def _message_text(value: object) -> str:
@@ -45,7 +50,7 @@ def _requires_confirmation(message: str) -> bool:
     return "需要人工确认" in message
 
 
-def prepare(state: WorkflowState) -> dict[str, object]:
+def prepare(state: WorkflowBudgetState, runtime) -> dict[str, object]:
     message = state.get("message", "").strip()
     for candidate in reversed(state.get("messages", [])):
         if _is_user_message(candidate):
@@ -54,6 +59,7 @@ def prepare(state: WorkflowState) -> dict[str, object]:
                 message = latest_message
                 break
     return {
+        **check_graph_budget(state, runtime, graph_key="workflow_demo"),
         "prepared_count": state.get("prepared_count", 0) + 1,
         "message": message,
         "requires_confirmation": bool(state.get("requires_confirmation"))
@@ -112,9 +118,13 @@ def confirm(state: WorkflowState) -> dict[str, object]:
 
 
 def select_route(
-    state: WorkflowState,
+    state: WorkflowBudgetState,
+    runtime,
 ) -> dict[str, Literal["approve", "reject", "respond"]]:
-    return {"route": state.get("confirmation") or state.get("route", "respond")}
+    return {
+        **check_graph_budget(state, runtime, graph_key="workflow_demo"),
+        "route": state.get("confirmation") or state.get("route", "respond"),
+    }
 
 
 def choose_route(state: WorkflowState) -> Literal["approve", "reject", "respond"]:
@@ -140,7 +150,8 @@ def build_graph(
     runtime_context: RuntimeContext | None = None,
     probe_only: bool = False,
 ):
-    async def respond(state: WorkflowState, runtime) -> dict[str, object]:
+    async def respond(state: WorkflowBudgetState, runtime) -> dict[str, object]:
+        budget_update = check_graph_budget(state, runtime, graph_key="workflow_demo")
         messages = state.get("messages", [])
         if not messages and state.get("message"):
             messages = [{"role": "user", "content": state["message"]}]
@@ -151,7 +162,15 @@ def build_graph(
             configurable = dict(model_config.get("configurable") or {})
             configurable.update(current_config.get("configurable") or {})
             invoke_config["configurable"] = configurable
-        result = await (await model_agent(state)).ainvoke(  # type: ignore[attr-defined]
+        # LangGraph writers read namespace at call time; retain the outer node context.
+        writer_context = copy_context()
+
+        def write_notice(notice):
+            writer_context.run(runtime.stream_writer, notice)
+
+        result = await (
+            await model_agent({**state, **budget_update}, writer=write_notice)
+        ).ainvoke(  # type: ignore[attr-defined]
             {"messages": messages},
             config=invoke_config,
             # The outer GraphHarbor runtime may omit Context when entering a
@@ -167,7 +186,7 @@ def build_graph(
             if len(result_messages) > len(messages)
             else [response_message]
         )
-        return {"response": response, "messages": new_messages}
+        return {**budget_update, "response": response, "messages": new_messages}
 
     def after_prepare(state: WorkflowState) -> Literal["confirm", "route"]:
         return "confirm" if state.get("requires_confirmation", False) else "route"
@@ -175,7 +194,12 @@ def build_graph(
     def unavailable_node(state: WorkflowState) -> dict[str, object]:
         raise RuntimeAuthError("runtime.graph.probe_only")
 
-    graph = StateGraph(WorkflowState, context_schema=RuntimeContext)
+    graph = StateGraph(
+        WorkflowBudgetState,
+        input_schema=WorkflowState,
+        output_schema=WorkflowState,
+        context_schema=RuntimeContext,
+    )
     for name, node in (
         ("prepare", prepare),
         ("confirm", confirm),

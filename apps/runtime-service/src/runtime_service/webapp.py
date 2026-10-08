@@ -30,6 +30,7 @@ from runtime_service.http.title_summary import router as title_summary_router
 from runtime_service.http.workspace import router as workspace_router
 from runtime_service.messaging import MessageInbox
 from runtime_service.messaging.reconcile import reconcile_run
+from runtime_service.middlewares.timeout_wrapup import resolve_wrapup_after_seconds
 from runtime_service.observability import close_langfuse, initialize_langfuse
 from runtime_service.observability.query import diagnostics_client_lifespan
 from runtime_service.runtime.errors import RuntimeWorkspaceError
@@ -39,6 +40,7 @@ from runtime_service.workspace.image_refs import validate_image_ref
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    resolve_wrapup_after_seconds()
     initialize_langfuse()
     try:
         async with acl_client_lifespan(), diagnostics_client_lifespan():

@@ -43,6 +43,7 @@ export type PoolEntry = {
   context: Ref<AgentContext>;
   recursionLimit: Ref<number>;
   draftKey: string;
+  recursionLimitKey: string;
   view: Ref<PoolView | undefined>;
   sessionRef: Ref<InstanceType<typeof ChatSession> | null>;
   visible: Ref<boolean>;
@@ -93,9 +94,28 @@ export function createChatSessionPool() {
       target.agentId ?? target.graphId,
       threadId ?? draftId,
     ].join(":");
+    const recursionLimitKey = [
+      "pw:chat:recursion_limit",
+      scope,
+      kind,
+      target.agentId ?? target.graphId,
+      threadId ?? draftId,
+    ].join(":");
     let savedDraft = "";
+    let savedRecursionLimit = 1000;
     try {
       savedDraft = sessionStorage.getItem(draftKey) ?? "";
+      const storedLimit =
+        sessionStorage.getItem(recursionLimitKey) ??
+        localStorage.getItem(recursionLimitKey) ??
+        sessionStorage.getItem("pw:chat:last_recursion_limit") ??
+        localStorage.getItem("pw:chat:last_recursion_limit");
+      if (storedLimit) {
+        const parsed = parseInt(storedLimit, 10);
+        if (!isNaN(parsed) && parsed >= 1 && parsed <= 1000) {
+          savedRecursionLimit = parsed;
+        }
+      }
     } catch {
       /* storage may be disabled */
     }
@@ -109,8 +129,9 @@ export function createChatSessionPool() {
       draft: ref(savedDraft),
       attachments: ref([]),
       context: ref({ ...target.context }),
-      recursionLimit: ref(1000),
+      recursionLimit: ref(savedRecursionLimit),
       draftKey,
+      recursionLimitKey,
       view: shallowRef(),
       sessionRef: shallowRef(null),
       visible: ref(false),

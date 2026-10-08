@@ -3256,7 +3256,7 @@ class RuntimeGatewayService:
         idempotency_key: str | None = None,
         scheduled_config: dict[str, Any] | None = None,
     ) -> Any:
-        raw = ensure_dict(payload)
+        raw = _normalize_payload(payload)
         if "command" in raw:
             command = raw["command"]
             if not isinstance(command, dict) or set(command) != {"resume"}:
@@ -3382,7 +3382,7 @@ class RuntimeGatewayService:
             write=True,
             action="approve" if payload.get("method") == "input.respond" else "comment",
         )
-        raw_payload = dict(payload)
+        raw_payload = _normalize_payload(payload)
         raw_params = ensure_dict(raw_payload.get("params"))
         if raw_payload.get("method") == "run.start":
             raw_params = await run_in_threadpool(

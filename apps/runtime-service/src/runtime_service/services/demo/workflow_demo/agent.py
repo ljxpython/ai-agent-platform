@@ -5,17 +5,18 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from langchain.agents import create_agent
-from langchain.agents.middleware import ModelCallLimitMiddleware
 from langchain.tools import tool
 from langchain_core.language_models import BaseChatModel
 from langchain_core.runnables import RunnableConfig
 from langgraph.pregel import Pregel
 
 from runtime_service.middlewares import (
+    ExecutionBudgetMiddleware,
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
     ModelResilienceMiddleware,
     TimeoutWrapupMiddleware,
+    resolve_wrapup_after_seconds,
 )
 from runtime_service.observability import with_langfuse_tracing
 from runtime_service.observability.startup import StartupDiagnostics
@@ -155,7 +156,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     startup.metadata["model_id"] = resolved.model_id
     injected = _runtime_model(config, local=local)
 
-    async def model_agent_for(state: Mapping[str, object]) -> object:
+    async def model_agent_for(state: Mapping[str, object], *, writer=None) -> object:
         with startup.phase("node.model_prepare"):
             bundle = (
                 ModelConnectionBundle()
@@ -179,8 +180,20 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             tools=[read_reference],
             system_prompt=_DEFAULTS.system_prompt,
             middleware=[
-                ModelCallLimitMiddleware(run_limit=10, exit_behavior="end"),
-                TimeoutWrapupMiddleware(run_budget),
+                ExecutionBudgetMiddleware(
+                    run_limit=10,
+                    exit_behavior="end",
+                    graph_key="workflow_demo_model",
+                    writer=writer,
+                    wrapup_requested=bool(state.get("runtime_budget_wrapup")),
+                ),
+                TimeoutWrapupMiddleware(
+                    run_budget
+                    if run_budget is not None
+                    else resolve_wrapup_after_seconds(),
+                    writer=writer,
+                    graph_key="workflow_demo_model",
+                ),
                 ModelErrorMiddleware(startup.metadata),
                 *(
                     [
@@ -209,6 +222,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     bound_configurable.pop("_runtime_test_local_auth", None)
     bound_configurable.pop(RUN_BUDGET_KEY, None)
     bound_config["configurable"] = bound_configurable
+    bound_metadata = dict(bound_config.get("metadata") or {})
+    bound_metadata.pop("run_id", None)
+    bound_config["metadata"] = bound_metadata
+    bound_config.pop("run_id", None)
+    startup.metadata.pop("run_id", None)
     with startup.phase("factory.agent_compile"):
         graph = build_graph(
             model_agent_for,

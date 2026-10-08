@@ -121,6 +121,8 @@ async def deny_image_scope_on_server_resources(
         )
     resource = str(ctx.resource)
     action = str(ctx.action)
+    if action in {"create", "create_run", "update"}:
+        _reject_budget_state(value)
     if resource == "crons":
         operation = scope["operation"]
         if operation == "run-create" and action in {"create", "update"}:
@@ -300,6 +302,34 @@ async def deny_image_scope_on_server_resources(
     elif action == "create":
         value["metadata"] = {"project_id": project_id}
     return {"project_id": project_id}
+
+
+def _reject_budget_state(value: object) -> None:
+    if isinstance(value, dict):
+        if (
+            set(value)
+            & {
+                "remaining_steps",
+                "runtime_budget_latches",
+                "runtime_budget_wrapup",
+                "runtime_budget_notice",
+                "runtime_wrapup_start",
+                "runtime_wrapup_started",
+                "thread_model_call_count",
+                "run_model_call_count",
+                "thread_tool_call_count",
+                "run_tool_call_count",
+            }
+            or value.get("type") == "runtime_budget_notice"
+        ):
+            raise Auth.exceptions.HTTPException(
+                status_code=403, detail="Runtime budget state is server-owned"
+            )
+        for item in value.values():
+            _reject_budget_state(item)
+    elif isinstance(value, list):
+        for item in value:
+            _reject_budget_state(item)
 
 
 async def authorize_thread_targets(

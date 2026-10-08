@@ -40,6 +40,17 @@ schema-only 与执行图必须声明相同 OffloadingState，保留 DeepAgentSta
 
 该能力需要GraphHarbor post42；当前正式双包已发布并锁定/安装，API-Worker隔离HTTP及匹配源码回退通过。新Runtime不可只降依赖为post41，回退须同时恢复已验证旧Runtime源码并先暂停提交/drain。现役服务没有被本轮升级；发布、取消清理及回退证据见[运行超时专项](../../../../docs/projects/20261006-agent-run-timeout-governance/README.md)。
 
+## 执行预算接入
+
+复用 `middlewares.ExecutionBudgetMiddleware`，替换组合根里的官方模型限制器实例，保留已批准的
+run/thread/exit_behavior；主子图分别声明 scope，禁止合并为未实现的全局额度。默认余量为 3 次调用、
+8 个 supersteps。不要通过扫描模型消息或 after_agent 判断异常退出。
+
+可选 `TimeoutWrapupMiddleware` 只接主模型 Agent；单调时钟/latch 为 invocation 私有状态，不能持久化
+或接受客户端覆盖。阈值缺省关闭，Worker 独立持有 hard timeout；自定义 Workflow 的模型时间从内层
+Agent invocation 起算。通知沿现有 custom writer，不接 Slack 或新事件存储；公开数据由平台白名单投影。
+接入/自定义 StateGraph 样例见 [Showcase](../../src/runtime_service/services/demo/showcase_demo/README.md)。
+
 ## 新增代码粒度规范
 
 > **适用范围：仅约束新增代码。存量代码不在此规范的覆盖范围内，不得借此规范触发对旧代码的"顺手重构"。**

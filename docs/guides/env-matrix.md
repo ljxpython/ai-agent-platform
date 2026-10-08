@@ -27,7 +27,8 @@
 | GRAPHHARBOR_RUNTIME_CONTEXT_SECRET | 独立随机值，至少 32 字符，API/Worker 共用 |
 | GRAPHHARBOR_RUNTIME_CONTEXT_ISSUER | https://runtime-service.local，身份标识，无需建站 |
 | GRAPHHARBOR_RUNTIME_CONTEXT_AUDIENCE | graphharbor-worker |
-| GRAPHHARBOR_RUN_TIMEOUT_SECONDS | 900（支持长会话、深度调研与大型方案生成；默认 300） |
+| GRAPHHARBOR_RUN_TIMEOUT_SECONDS | Worker 硬超时，缺省/空值关闭；示例 1800 秒，部署示例 300 秒均非默认值；Worker 启动时读取 |
+| AGENT_WRAPUP_AFTER_SECONDS | Agent invocation 软收尾阈值，缺省/空值关闭；显式值必须有限且大于 0；非 Worker 剩余时间，不中断模型/工具 |
 | GRAPHHARBOR_WORKSPACE_ROOT | 可写绝对路径，推荐持久目录；本地原值 /tmp/aitestlab-runtime-workspaces |
 | RUNTIME_WORKSPACE_MAX_FILE_BYTES | 10485760 |
 | RUNTIME_WORKSPACE_MAX_FILES | 10000 |

@@ -39,6 +39,11 @@ _FIELDS = frozenset(
         "started_at",
         "ended_at",
         "factory_id",
+        "budget_scope",
+        "limit",
+        "used",
+        "remaining",
+        "unit",
     }
 )
 

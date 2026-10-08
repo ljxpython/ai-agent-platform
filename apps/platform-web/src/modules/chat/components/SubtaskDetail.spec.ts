@@ -9,6 +9,7 @@ vi.mock("@langchain/vue", () => ({
   useTranscriptMessages: (_stream: unknown, _namespace: unknown) =>
     shallowRef([]),
   useToolCalls: (_stream: unknown, _target: unknown) => shallowRef([]),
+  useChannel: vi.fn(() => shallowRef([])),
 }));
 
 // Mock useTranscriptMessages composable

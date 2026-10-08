@@ -42,7 +42,7 @@
 
 model_id使用平台模型记录UUID，不是provider:model或模型名称。默认值按项目→Agent→本次显式参数覆盖，仍受策略约束。Agent公开context为model_id、temperature、max_tokens、top_p；不能从客户端注入身份或内部模型引用。
 
-公开运行config只允许recursion_limit（1–1000，默认25）。内部委托与模型引用由服务端构造，模型凭据不进入浏览器、Run快照或普通日志。Runtime通过受信内部接口按当前权限兑换连接；master key只由Platform持有。
+公开运行config只允许recursion_limit（1–1000，默认1000）。内部委托与模型引用由服务端构造，模型凭据不进入浏览器、Run快照或普通日志。Runtime通过受信内部接口按当前权限兑换连接；master key只由Platform持有。
 
 `__graphharbor_run_budget` 是Worker私有attempt执行数据。标准Run、Protocol及恢复/配置归一化递归拒绝客户端提供该键；SDK查询、history和SSE出口递归过滤。不公开`metadata.execution_budget`，不新增预算接口、JWT claim或SSE事件。每次Worker领取刷新attempt预算，浏览器重连不刷新；正式post42已发布/锁定/隔离验收，见[运行超时专项](../../../../docs/projects/20261006-agent-run-timeout-governance/README.md)。
 
@@ -64,7 +64,13 @@ run_requests只保存请求摘要、授权/config快照和Run关联，不存消�
 
 平台公开HTTP错误结构、上游状态转换和pending恢复字段见[错误出口标准](../../../../docs/standards/error-envelope.md)；流内事件仍按SSE专项处理。
 
-授权和上游状态校验在发送200前完成。JSON/SSE移除内部runtime_model_ref；SSE敏感键脱敏。Thread/Run.error、state/history tasks错误、lifecycle/error帧及debug task_result的error使用固定安全消息，保留原生状态、事件ID/seq与正常消息/工具正文。网络chunk不等于完整事件，客户端使用SDK或正确SSE解析器。
+授权和上游状态校验在发送200前完成。JSON/SSE移除内部runtime_model_ref、预算计数/时钟/latch；SSE敏感键脱敏。Thread.error、state/history tasks错误、tasks/lifecycle/error帧及debug task_result的error使用固定安全消息，保留原生状态、事件ID/seq与正常消息/工具正文。原生 Run GET 不包含 error 字段，不能由最新 Thread.error 推断历史 Run 原因。网络chunk不等于完整事件，客户端使用SDK或正确SSE解析器。
+
+精确的 GraphRecursionError、ModelCallLimitExceededError、ToolCallLimitExceededError、RunTimedOut 分别投影为 `runtime_graph_step_limit_reached`、`runtime_model_call_limit_reached`、`runtime_tool_call_limit_reached`、`runtime_run_timeout`；字符串和未知异常保持安全泛化，Provider TimeoutError 不等于 Run 超时。
+
+默认普通 stream modes 包含 custom；预算 custom 为 `runtime_budget_notice` v1，网关只保留安全字段。Reference/Workflow end 人工消息的 `additional_kwargs.runtime_budget_notice` 可辅助历史解释，通知不改变原生 success/error/timeout 状态。写入口递归拒绝预算私有键及通知伪造，包含 input/update/command/resume。具体 schema 与同事验收见[预算交接](../../../../docs/projects/20261007-agent-execution-budget/frontend-handoff.md)。
+
+普通 Run 需要在创建时 `stream_subgraphs=true` 才回放子图事件；Protocol 沿已有 scoped namespace/depth 订阅。预算通知包含真实 run_id，但外层 params.run_id/seq 可能缺省，客户端用官方 Run 投影和 SSE 游标关联。DearFlow/Showcase child=error 可沿父图传播，不承诺父 Run 继续。
 
 join stream支持stream_mode、last_event_id和cancel_on_disconnect参数，但当前只允许cancel_on_disconnect=false，true被拒绝。订阅断开不取消Run，必须显式cancel。重连先读Run/state和interrupt，不自动重新发送消息或批准。
 

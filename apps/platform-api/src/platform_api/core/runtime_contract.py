@@ -75,6 +75,16 @@ PRIVATE_RUNTIME_STATE_KEYS = {
     "_summarization_event",
     "_summarization_session_id",
     "conversation_offloading",
+    "remaining_steps",
+    "runtime_budget_latches",
+    "runtime_budget_wrapup",
+    "runtime_budget_notice",
+    "runtime_wrapup_start",
+    "runtime_wrapup_started",
+    "thread_model_call_count",
+    "run_model_call_count",
+    "thread_tool_call_count",
+    "run_tool_call_count",
 }
 
 
@@ -89,6 +99,8 @@ def is_runtime_history_file_path(value: Any) -> bool:
 def reject_private_runtime_state(value: Any) -> None:
     if isinstance(value, dict) and (set(value) & PRIVATE_RUNTIME_STATE_KEYS):
         raise ValueError("Runtime private state cannot be supplied by a client")
+    if isinstance(value, dict) and value.get("type") == "runtime_budget_notice":
+        raise ValueError("Runtime budget notices are server-owned")
     if isinstance(value, dict):
         files = value.get("files")
         if isinstance(files, dict) and any(

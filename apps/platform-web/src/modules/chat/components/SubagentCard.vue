@@ -12,6 +12,7 @@ import MessageContent from "./MessageContent.vue";
 import SubtaskDetail from "./SubtaskDetail.vue";
 import ThreadImage from "./ThreadImage.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
+import { useRunBudget } from "../composables/useRunBudget";
 
 const props = defineProps<{
   tool: ToolItem;
@@ -104,6 +105,11 @@ const namespace = computed(() => {
     return [`tools:${props.tool.id}`];
   }
   return [];
+});
+
+const subagentBudget = useRunBudget(props.stream, {
+  runId: computed(() => (props.stream as any)?.run?.value?.run_id ?? null),
+  namespace,
 });
 
 const statusLabels: Record<string, string> = {
@@ -219,6 +225,31 @@ const runtimeImages = computed(() => {
       </div>
 
       <div class="flex shrink-0 items-center gap-2.5">
+        <!-- 子任务预算微胶囊 Pill (预警或停止) -->
+        <span
+          v-if="subagentBudget.budget.value"
+          class="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium"
+          :class="
+            subagentBudget.budget.value.isTerminal
+              ? 'bg-red-50 text-red-700 ring-1 ring-red-500/20 dark:bg-red-950/60 dark:text-red-300 dark:ring-red-500/30'
+              : 'bg-amber-50 text-amber-700 ring-1 ring-amber-500/20 dark:bg-amber-950/60 dark:text-amber-300 dark:ring-amber-500/30'
+          "
+        >
+          <span
+            class="h-1.5 w-1.5 rounded-full"
+            :class="
+              subagentBudget.budget.value.isTerminal
+                ? 'bg-red-500'
+                : 'bg-amber-500'
+            "
+          />
+          <span>{{
+            subagentBudget.budget.value.isTerminal
+              ? "额度限制停止"
+              : "额度接近上限"
+          }}</span>
+        </span>
+
         <!-- 现代化微胶囊状态 Pill -->
         <span
           class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium"

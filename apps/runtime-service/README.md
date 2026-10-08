@@ -155,6 +155,30 @@ uv run pytest tests/tools/test_tool_errors.py tests/services/dearflow_agent/test
 隔离跨服务验证（显式启用，使用临时 PostgreSQL/Redis）见
 `tests/services/dearflow_agent/test_tool_error_platform.py`，不连接现役本地栈。
 
+### 执行预算与软收尾
+
+正式 DearFlow/Showcase/Reference/Workflow 已接入共享 `ExecutionBudgetMiddleware`，沿用官方
+模型计数及原有 end/error 策略。默认在余量 3 次模型调用或 8 个图 superstep 内通知并注入收尾提示，
+不会增加模型调用；GraphHarbor 仍负责硬限制终态、取消、审批及事件重放。
+
+新 Agent 在自己的 `agent.py` 显式装配该中间件；委派子图声明 `scope="subagent"`，主子额度独立。
+自定义 StateGraph 采用 `GraphBudgetState` 和 `check_graph_budget()`；参考 Workflow 保持公开 schema
+并把内层主模型通知绑定到外层 writer 上下文。接入样例见
+[Showcase](src/runtime_service/services/demo/showcase_demo/README.md)。
+
+`AGENT_WRAPUP_AFTER_SECONDS` 缺省关闭，启用后按当前模型 Agent invocation 单调计时。
+Workflow 从内层模型 Agent 开始计时，不含外图 prepare/route/HITL 等待；子 Agent 不单独装软计时器。
+收尾只在下一次模型边界触发，不能中断挂起调用或显示 Worker 的剩余时间。
+`GRAPHHARBOR_RUN_TIMEOUT_SECONDS` 为独立 Worker 硬超时，缺省关闭，启动时读取。
+
+```bash
+uv run pytest -q tests/middlewares/test_execution_budget.py tests/middlewares/test_timeout_wrapup.py tests/services/test_execution_budget_composition.py
+BUDGET_RUNTIME_INTEGRATION=1 uv run pytest -q tests/durable/test_execution_budget.py
+```
+
+隔离链路脚本要求本地 PG/Redis，并创建独立测试库/prefix；不使用现役运行数据。
+平台流契约与前端交接见[专项](../../docs/projects/20261007-agent-execution-budget/README.md)。
+
 R4 已归档。R5 已完成 Runtime 本地生命周期、可信 metadata、Model/Tool/Subagent callback 和真实
 Langfuse smoke；目标镜像仅完成 custom app import，SDK queue drop 指标、生产容器 startup/SIGTERM/drain
 和跨服务传播仍未闭合。R6 Durable

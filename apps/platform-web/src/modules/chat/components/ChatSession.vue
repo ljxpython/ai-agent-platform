@@ -17,6 +17,8 @@ import ChatContextDrawer from "./ChatContextDrawer.vue";
 import ChatStickyTaskPill from "./ChatStickyTaskPill.vue";
 import WorkspacePanel from "@/components/workspace/WorkspacePanel.vue";
 import ChatAgentStatusBar from "./ChatAgentStatusBar.vue";
+import { useRunBudget } from "../composables/useRunBudget";
+import { safeExtractBudgetSafetyError } from "../budget/view-model";
 import {
   resolveDisplayedMessages,
   hasOptimisticEchoed,
@@ -82,6 +84,7 @@ const props = defineProps<{
   enableExecutionMode?: boolean;
   visible?: boolean;
   onAccessRevoked?: () => void;
+  recursionLimitKey?: string;
 }>();
 const emit = defineEmits<{
   thread: [id: string];
@@ -223,6 +226,28 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => (session.run.value as any)?.kwargs?.config?.recursion_limit,
+  (runLimit) => {
+    if (typeof runLimit === "number" && runLimit >= 1 && runLimit <= 1000) {
+      const key = props.recursionLimitKey;
+      let explicitStored: string | null = null;
+      if (key) {
+        try {
+          explicitStored =
+            sessionStorage.getItem(key) || localStorage.getItem(key);
+        } catch {
+          /* storage may be disabled */
+        }
+      }
+      if (!explicitStored && recursionLimit.value !== runLimit) {
+        recursionLimit.value = runLimit;
+      }
+    }
+  },
+  { immediate: true },
+);
+
 async function ensureHistoricalRuns(force = false) {
   const tId = session.threadId.value;
   if (!tId) return;
@@ -275,14 +300,53 @@ const handleResume = () => {
 };
 const streamError = computed(() => {
   if (!stream.error.value) return "";
+  // 1. 如果已命中预算类安全限制，静默交给 runBudget 状态条统一展示，不弹出顶部通用错误横幅
+  if (
+    safeExtractBudgetSafetyError(stream.error.value) ||
+    safeExtractBudgetSafetyError(error.value) ||
+    safeExtractBudgetSafetyError((session.run.value as any)?.error) ||
+    safeExtractBudgetSafetyError(session.run.value) ||
+    safeExtractBudgetSafetyError((session.accessThread.value as any)?.error) ||
+    safeExtractBudgetSafetyError(session.accessThread.value)
+  ) {
+    return "";
+  }
+  // 2. 如果当前运行已被识别为预算终态或预算错误，也直接静默
+  if (
+    runBudget?.budget.value?.isTerminal ||
+    runBudget?.budget.value?.level === "error"
+  ) {
+    return "";
+  }
   const runtimeModelMsg = extractRuntimeModelErrorMessage(stream.error.value);
   if (runtimeModelMsg) return runtimeModelMsg;
-  const raw =
-    stream.error.value instanceof Error
-      ? stream.error.value.message === "[object Object]"
-        ? "运行失败，请检查模型与工具授权，或打开运行详情查看原因"
-        : stream.error.value.message
-      : String(stream.error.value);
+  const errVal = stream.error.value;
+  let raw = "";
+  if (errVal instanceof Error) {
+    if (errVal.message === "[object Object]") {
+      const nestedMsg =
+        (errVal as any)?.error?.message ||
+        (errVal as any)?.cause?.message ||
+        (errVal as any)?.code ||
+        (session.run.value as any)?.error?.message ||
+        "";
+      raw = nestedMsg
+        ? `执行异常: ${nestedMsg}`
+        : "执行服务响应异常，请点击右侧恢复连接重试";
+    } else {
+      raw = errVal.message;
+    }
+  } else if (typeof errVal === "object" && errVal !== null) {
+    const code = (errVal as any).code || (errVal as any).error?.code;
+    const msg = (errVal as any).message || (errVal as any).error?.message;
+    raw = msg
+      ? String(msg)
+      : code
+        ? `执行异常 (${code})`
+        : "执行服务响应异常，请点击右侧恢复连接重试";
+  } else {
+    raw = String(errVal);
+  }
   if (raw.includes("409 Conflict") || raw.includes("pending or running run")) {
     return "";
   }
@@ -299,15 +363,6 @@ const streamError = computed(() => {
   }
   return raw;
 });
-const canSubmit = computed(
-  () =>
-    canSend.value &&
-    !hasPendingInterrupts.value &&
-    !modelsLoading.value &&
-    !!models.value.length &&
-    !attachmentsLoading.value &&
-    (!!props.draft.trim() || !!attachments.value.length),
-);
 const isModeLocked = computed(
   () => busy.value || hasPendingInterrupts.value || checking.value,
 );
@@ -436,6 +491,75 @@ const displayedMessages = computed(() => {
     isSessionRunning: isMessageRunning.value,
   });
 });
+
+const runBudget = useRunBudget(stream, {
+  runId: computed(() => session.run.value?.run_id ?? null),
+  nativeError: computed(
+    () =>
+      (session.run.value as any)?.error ||
+      session.run.value ||
+      (session.accessThread.value as any)?.error ||
+      stream.error.value ||
+      error.value ||
+      streamError.value,
+  ),
+  nativeStatus: computed(() => session.run.value?.status),
+  lastMessage: computed(() => {
+    const msgs = displayedMessages.value;
+    return msgs.length > 0 ? msgs[msgs.length - 1] : null;
+  }),
+  isRunning: isSessionRunning,
+});
+
+const canSubmit = computed(
+  () =>
+    canSend.value &&
+    !runBudget.isThreadExhausted.value &&
+    !hasPendingInterrupts.value &&
+    !modelsLoading.value &&
+    !!models.value.length &&
+    !attachmentsLoading.value &&
+    (!!props.draft.trim() || !!attachments.value.length),
+);
+
+function extractUserPromptText(content: unknown): string {
+  if (typeof content === "string") return content.trim();
+  if (Array.isArray(content)) {
+    return content
+      .map((block) => {
+        if (typeof block === "string") return block;
+        if (block && typeof block === "object") {
+          if ("text" in block && typeof (block as any).text === "string")
+            return (block as any).text;
+          if ("content" in block && typeof (block as any).content === "string")
+            return (block as any).content;
+        }
+        return "";
+      })
+      .filter(Boolean)
+      .join("\n")
+      .trim();
+  }
+  return "";
+}
+
+const handleBudgetAction = (actionType: "adjust_draft" | "new_thread") => {
+  if (actionType === "adjust_draft") {
+    const userMsgs = displayedMessages.value.filter(
+      (m) =>
+        (m as any)?.role === "user" || (m as any)?._getType?.() === "human",
+    );
+    const lastUserMsg =
+      userMsgs.length > 0 ? userMsgs[userMsgs.length - 1] : null;
+    const text = extractUserPromptText((lastUserMsg as any)?.content);
+    if (text) {
+      emit("update:draft", text);
+    }
+    openOptions();
+  } else if (actionType === "new_thread") {
+    emit("thread", "");
+  }
+};
 
 const followUp = useFollowUpSuggestions({
   projectId: () => props.projectId,
@@ -1534,7 +1658,10 @@ defineExpose({
       </RouterLink>
     </div>
     <div
-      v-if="error || streamError || localError || connectionMessage"
+      v-if="
+        !runBudget.budget.value &&
+        (error || streamError || localError || connectionMessage)
+      "
       role="alert"
       class="flex flex-wrap items-center gap-2 bg-red-50 px-4 py-3 text-sm text-red-700 dark:bg-red-950/20"
     >
@@ -1623,9 +1750,11 @@ defineExpose({
               :last-event-at="lastEventAt"
               :error="error || streamError"
               :disabled="!canWrite || cancelling || turnState === 'stopping'"
+              :budget="runBudget.budget.value"
               @cancel="handleStop"
               @resume="handleResume"
               @verify-stop="handleVerifyStop"
+              @action="handleBudgetAction"
             />
             <div
               v-if="
@@ -1899,7 +2028,9 @@ defineExpose({
       :has-blocking-interrupt="!!reviews.length"
       :has-queued-items="promptQueue.queue.value.length > 0"
       :can-send-fresh-message="canSubmit"
-      :can-queue="canWrite && !selectedCheckpoint"
+      :can-queue="
+        canWrite && !selectedCheckpoint && !runBudget.isThreadExhausted.value
+      "
       :cancelling="
         cancelling ||
         !canWrite ||
@@ -1908,9 +2039,11 @@ defineExpose({
       "
       :send-button-label="selectedCheckpoint ? '分叉执行' : '发送'"
       :placeholder="
-        selectedCheckpoint
-          ? '当前处于快照分叉模式，输入新指令即可从此快照分叉执行...'
-          : undefined
+        runBudget.isThreadExhausted.value
+          ? '本会话累计调用额度已耗尽，请创建新会话...'
+          : selectedCheckpoint
+            ? '当前处于快照分叉模式，输入新指令即可从此快照分叉执行...'
+            : undefined
       "
       :footer-text="
         (displayedMessages.length || messages.length) && activeView === 'chat'

@@ -20,6 +20,17 @@ source_project: docs/projects/20260926-error-response-contract/verification.md
 - 上游 `thread_id/reconcile_path` 不透传；仅平台创建Thread结果未知时由平台生成并附加，客户端必须先调用 reconcile，不能直接重建。
 - 422详情最多20项，只有有界 `loc/type/message`；上游原文、任意extra、Cookie/Authorization等响应头均不公开。500固定 `internal_server_error` / `Internal server error`。
 
-授权成功的 Thread/Run JSON 中 `error` 和 state/history 中 `tasks[].error` 属于执行错误槽位，投影为固定 `Runtime execution failed`，保留兼容的字符串/对象形状及有限类型；不修改原生 Run 状态，不清理普通消息/工具正文。流内对应规则见 [SSE 契约](sse-event.md)。
+授权成功的 Thread JSON 中 `error` 和 state/history 中 `tasks[].error` 属于执行错误槽位；字符串保持 `Runtime execution failed`，未知类型的对象使用 `runtime_execution_failed`，只保留有限类型。四种精确执行预算异常使用以下固定映射，不公开异常正文/堆栈，不修改原生 Run 状态，不清理普通消息/工具正文。原生 Run GET 没有 error 字段，Thread.error 不能作为历史 Run 的原因。流内对应规则见 [SSE 契约](sse-event.md)。
+
+| 原生精确类型 | 公开 code | 固定 message |
+| --- | --- | --- |
+| GraphRecursionError | runtime_graph_step_limit_reached | Graph step limit reached |
+| ModelCallLimitExceededError | runtime_model_call_limit_reached | Model call limit reached |
+| ToolCallLimitExceededError | runtime_tool_call_limit_reached | Tool call limit reached |
+| RunTimedOut | runtime_run_timeout | Run time limit reached |
+
+Provider TimeoutError/APITimeoutError 保持泛化，不解释为 Run 超时；字符串中含类型名称也不分类。
+预算字段是成功 HTTP 响应/事件中的执行原因，不触发登出或权限变更。获批方案与验证见
+[执行预算专项](../projects/20261007-agent-execution-budget/verification.md)。
 
 `GET /api/langgraph/threads/{thread_id}/runs/{run_id}/diagnostics` 的 provider 分类是 HTTP 200 安全 DTO 数据，不是 HTTP 错误码；`provider_auth_failed/provider_access_denied` 不触发平台登出或撤权。未启用/未录入/观测后端不可用以 availability 返回；授权拒绝、非法上游 DTO 等仍走本 Envelope。见 [诊断契约](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md)。
