@@ -100,11 +100,30 @@ async def execute_in_workspace(
         str(seconds),
         command,
     ]
-    try:
-        process = await asyncio.create_subprocess_exec(
+    from runtime_service.run_control.resources import (
+        finish_resource,
+        register_resource,
+        wait_cleanup,
+    )
+
+    resource = await register_resource("docker_execute")
+    cancelled = None
+    spawn = asyncio.create_task(
+        asyncio.create_subprocess_exec(
             *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT
         )
+    )
+    try:
+        process = await asyncio.shield(spawn)
+    except asyncio.CancelledError as exc:
+        cancelled = exc
+        try:
+            process = await wait_cleanup(spawn)
+        except OSError:
+            await finish_resource(resource, True)
+            raise cancelled from None
     except OSError as exc:
+        await finish_resource(resource, True)
         raise RuntimeWorkspaceError("runtime.workspace.execution_unavailable") from exc
     output = bytearray()
     total = 0
@@ -117,6 +136,7 @@ async def execute_in_workspace(
         return await process.wait()
 
     async def cleanup():
+        confirmed = False
         try:
             remover = await asyncio.create_subprocess_exec(
                 "docker",
@@ -132,24 +152,32 @@ async def execute_in_workspace(
                     logger.warning(
                         "execution cleanup requires inspection container=%s", name
                     )
+                else:
+                    confirmed = True
             except TimeoutError:
                 remover.kill()
                 await remover.wait()
                 logger.error("execution cleanup timed out container=%s", name)
+        except OSError:
+            logger.warning("Execution cleanup unavailable container=%s", name)
         finally:
             if process.returncode is None:
                 process.kill()
             await process.wait()
+            await finish_resource(resource, confirmed)
 
     try:
+        if cancelled is not None:
+            raise cancelled
         code = await asyncio.wait_for(consume(), seconds + 15)
-    except (asyncio.CancelledError, TimeoutError):
+    except BaseException:
         task = asyncio.create_task(cleanup())
         try:
             await asyncio.shield(task)
         except asyncio.CancelledError:
-            await task
+            await wait_cleanup(task)
         raise
+    await finish_resource(resource, True)
     return ExecuteResponse(
         output=output.decode("utf-8", errors="replace"),
         exit_code=code,

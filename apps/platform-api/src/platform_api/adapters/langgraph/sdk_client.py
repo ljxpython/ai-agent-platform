@@ -25,12 +25,12 @@ _PUBLIC_CODES = {
     403: (
         "dear_governance_scope_denied dear_memory_scope_denied dear_skills_scope_denied "
         "file_scope_denied file_target_denied terminal_scope_denied runtime.tool.not_allowed "
-        "image_scope_denied runtime_target_denied thread_project_denied"
+        "image_scope_denied runtime_target_denied thread_project_denied stop_scope_denied"
     ),
     404: (
         "artifact_not_found artifact_source_unavailable file_not_found memory_not_found "
         "skill_not_found terminal_not_found workspace_directory_unavailable "
-        "workspace_file_unavailable workspace_not_found image_not_found"
+        "workspace_file_unavailable workspace_not_found image_not_found stop_request_not_found"
     ),
     409: (
         "artifact_hash_mismatch dear_governance_disabled dear_skills_disabled "
@@ -42,7 +42,7 @@ _PUBLIC_CODES = {
         "terminal_input_sequence terminal_instance_changed terminal_offset_ahead "
         "terminal_workspace_unavailable workspace_capability_unavailable "
         "workspace_directory_changed thread_active_run_conflict run_start_in_progress "
-        "idempotency_key_conflict image_content_conflict image_capability_unavailable"
+        "idempotency_key_conflict image_content_conflict image_capability_unavailable thread_stopping"
     ),
     410: "cursor_expired",
     413: (
@@ -54,9 +54,9 @@ _PUBLIC_CODES = {
         "invalid_xls_magic unsupported_artifact_type unsupported_file_type workspace_not_file "
         "workspace_preview_unsupported image_type_unsupported"
     ),
-    422: "damaged_pdf encrypted_pdf invalid_document invalid_presentation",
+    422: "damaged_pdf encrypted_pdf invalid_document invalid_presentation invalid_stop_cursor invalid_stop_query",
     429: "terminal_input_busy terminal_session_limit queue_full",
-    503: "memory_storage_unavailable",
+    503: "memory_storage_unavailable stop_storage_unavailable",
 }
 _PUBLIC_CODES[400] += " file_hash_mismatch"
 _PUBLIC_CODES[409] += " message_scope_required idempotency_conflict message_id_conflict"
@@ -233,13 +233,16 @@ def create_runtime_upstream_error(
     elif status_code >= 500:
         public_status = 502
         code = (
-            "memory_storage_unavailable"
-            if registered and raw_code == "memory_storage_unavailable"
+            raw_code
+            if registered
+            and raw_code in {"memory_storage_unavailable", "stop_storage_unavailable"}
             else "langgraph_upstream_request_failed"
         )
         message = (
             "Memory storage unavailable"
             if code == "memory_storage_unavailable"
+            else "Stop storage unavailable"
+            if code == "stop_storage_unavailable"
             else "Runtime request failed"
         )
     elif registered:

@@ -614,6 +614,21 @@ def _resolve_action(
         ):
             return "runtime.run.item.cancelled", "run", clean_str(segments[5])
 
+        if (
+            len(segments) == 5
+            and segments[2] == "threads"
+            and segments[4] == "cancel"
+            and method == "POST"
+        ):
+            return "runtime.thread.stop.requested", "thread", clean_str(segments[3])
+        if (
+            len(segments) in {5, 6}
+            and segments[2] == "threads"
+            and segments[4] == "stop-requests"
+            and method == "GET"
+        ):
+            return "runtime.thread.stop.read", "thread", clean_str(segments[3])
+
     return "system.route.requested", "route", None
 
 

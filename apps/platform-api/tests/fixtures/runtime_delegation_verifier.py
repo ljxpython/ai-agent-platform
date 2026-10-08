@@ -124,6 +124,19 @@ async def _custom_endpoint(case: dict, token: str) -> dict:
             await run_diagnostics_endpoint(
                 thread_id, uuid4(), Response(), authorization
             )
+    elif operation in {"thread-stop", "thread-stop-read"}:
+        from unittest.mock import AsyncMock
+
+        from runtime_service.http.run_control import _authorize
+
+        with patch(
+            "runtime_service.http.run_control.authorize_thread_targets", AsyncMock()
+        ):
+            await _authorize(authorization, thread_id, operation)
+    elif operation == "run-cancellation-read":
+        raise HTTPException(403, "native receipt scope cannot access custom endpoints")
+    else:
+        raise AssertionError("Unknown custom endpoint: " + operation)
     return {"accepted": True, "boundary": "authorized"}
 
 

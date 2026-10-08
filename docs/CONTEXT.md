@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-07（Agent 工具调用容错全链路闭环，前端结构化摘要与微胶囊 Tag 徽章实装，全栈三服务浏览器联合验收通过，全专项 done）。
+> **最后更新：** 2026-10-07（Agent取消非前端源码、唯一post43候选16条包版与真实Docker完成，B01解除；B02正式发布指令/正式源锁接入及同事前端联合Final待完成，未部署现役）。
 
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
@@ -8,11 +8,13 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-07
+**最后更新：** 2026-10-08
 
 ## 最近改动
 
-2026-10-07 | **Agent 工具调用容错与生产接线全链路完成**：Runtime/Platform API 完成选择性错误分类、DearFlow/Showcase/Reference 主子图接线、MCP/workspace 边界、v3 tools 流安全出口和公开 fatal 脱敏；Platform Web 完成纯函数错误摘要提取、微胶囊 Tag 徽章与展开态格式化代码块排版；核心单测全绿（31 passed），静态类型与构建通过；三服务全栈浏览器联合验收 F01-F08 全部通过，全专项闭环 done。见 [专项](projects/20261006-agent-tool-error-resilience/README.md)。
+2026-10-08 | **Agent 会话停止与状态报告前端闭环完成**：Platform Web 完成三接口接入、严格 Zod DTO 校验、useThreadStopControl 状态机解耦、45s 超时降级与单飞保护、RunStopReportBanner 顶部提示条与 RunStopReportDetails 抽屉报告。vue-tsc 0 错误、ESLint 0 错误、Vite build 生产构建通过、Vitest 115 文件 553 项单测全绿；Playwright + Chromium 驱动三服务连接真实模型 `百炼 · qwen-plus` 自动化端到端测试全链路通过（耗时 10.57s，1440/768/390 视口截图已留痕）。详见[专项](projects/20261007-agent-run-cancellation/README.md)。
+
+2026-10-07 | **Agent取消非前端开发与Docker验收完成**：三接口、持久Stop/恢复、inbox屏障、确定性报告、授权/审计和引擎固定目标已实现。唯一post43四产物/锁步/冷安装/版本矩阵、16条包版HTTP/Docker与7条恢复通过；Runtime47项/inbox、API66项/376子测试，保留1条已HEAD复现的旧断言失败。B01解除，B02等待正式PyPI发布指令与正式源锁接入；前端交接已更新，整体Final未开始、未部署现役。见[专项](projects/20261007-agent-run-cancellation/README.md)。
 
 2026-10-07 | **Agent 可观测性与追踪补齐**：全链路闭环完成。Runtime/Platform API 完成模型错误分类、安全诊断、启动阶段计时与只读投影；Platform Web 完成独立解耦面板 RunDiagnostics、Zod 白名单剔除敏感字段、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与模式切换、ChatSession 历史 Run 自动拉取与最新默认选中；vue-tsc 0 错误、ESLint 0 错误、Vite build 与前端全仓 115 套件 535 项单测全绿。未部署现役服务。见 [专项](projects/20261006-agent-observability-hardening/README.md)。
 
@@ -30,11 +32,13 @@
 
 ## 本月归并
 
-2026-10（截至 10-06）| Agent 回答后推荐问题全链路完成（27 项定向、类型/lint/构建通过）；Chat state/history 委托补齐与错误恢复；Chat 后台会话 DOM 虚拟化隔离与流式切换卡死根治、智能体切换隔离与列表远程拉取解耦治理、Chat 顶栏选择 Agent 历史列表联动过滤失效与 Pad 侧栏体验治理、对话前端视口平滑锚定与流式跟随根治、Clean Architecture 五层解耦重构、多会话后台无感自动排队消费与权限失效误杀彻底根治、切回历史时序正序合并、多会话切回假死死锁/空白水合/报错隔离、LangGraph v3 默认消费与 DeltaChannel 离线/PG 评估、模型畸形 ToolCall 自动缝合与孤儿块剔除、平台用户软删除三重安全栅栏、DeepSeek 官方多模态视觉识图、长会话断流解耦与历史懒加载、DearFlow 防死循环护栏、小惊喜创意工坊与 Jina Reader 接入、HTML 沙箱现代化渲染、Runtime DB 精简重构。
+2026-10（截至 10-07）| 工具容错全链路完成；Agent 回答后推荐问题全链路完成（27 项定向、类型/lint/构建通过）；Chat state/history 委托补齐与错误恢复；Chat 后台会话 DOM 虚拟化隔离与流式切换卡死根治、智能体切换隔离与列表远程拉取解耦治理、Chat 顶栏选择 Agent 历史列表联动过滤失效与 Pad 侧栏体验治理、对话前端视口平滑锚定与流式跟随根治、Clean Architecture 五层解耦重构、多会话后台无感自动排队消费与权限失效误杀彻底根治、切回历史时序正序合并、多会话切回假死死锁/空白水合/报错隔离、LangGraph v3 默认消费与 DeltaChannel 离线/PG 评估、模型畸形 ToolCall 自动缝合与孤儿块剔除、平台用户软删除三重安全栅栏、DeepSeek 官方多模态视觉识图、长会话断流解耦与历史懒加载、DearFlow 防死循环护栏、小惊喜创意工坊与 Jina Reader 接入、HTML 沙箱现代化渲染、Runtime DB 精简重构。
 
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
+
+- [Agent运行取消与中断通用能力](projects/20261007-agent-run-cancellation/README.md)：blocked（前端已全链路闭环）；后端三接口、持久Stop/恢复、inbox屏障与确定性报告完成；前端状态机、Banner、Drawer与真实模型Playwright E2E自动化闭环完成（F01–F10闭环，截图已留痕）；B01解除；B02等待正式PyPI发布指令/正式源锁接入。整体Final未开始，现役部署另行指定。
 
 - [Agent 工具调用容错与生产接线补齐](projects/20261006-agent-tool-error-resilience/README.md)：done；全链路闭环，Runtime/API 共享选择性分类、主子图接线、安全消息与执行中缺根保护完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化排版实装；核心单测全绿，浏览器联合验收 F01-F08 全部通过。未生产部署。
 
@@ -83,9 +87,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-07 | 工具容错与生产接线完成，安全/工作区/未知异常传播；新增有界模型错误诊断、本地常驻回调、四graph启动阶段计时与只读查询；Langfuse 429 安全降级；未部署现役。 |
-| platform-api | 2026-10-07 | 工具消息保真与公开 fatal 安全出口；新增 Run diagnostics GET、diagnostics-read 权限核验与错误槽位脱敏投影；分层回归通过；未部署现役。 |
-| platform-web | 2026-10-07 | 工具错误纯函数摘要与展开态代码排版实装；运行诊断独立解耦面板 RunDiagnostics、模式切换与多轮 Run 自动拉取实装；535 项单测、vue-tsc 与生产打包全绿。未部署现役。 |
+| runtime-service | 2026-10-07 | 新增持久Stop/租约恢复、inbox屏障、Docker/local资源证据及确定性报告；post43候选16条包版/Docker、7条恢复与Stop/inbox47项通过。B01解除；仓库正式锁仍post41，B02正式发布指令/正式源接入待完成，未部署现役。工具容错、模型诊断与四graph启动计时保持已有能力。 |
+| platform-api | 2026-10-07 | 工具消息保真、fatal 安全出口与 Run diagnostics 已实现；新增会话 cancel/detail/list、安全 DTO、精确委托、HMAC 与阶段审计。相关回归 66 项/376 子测试通过，一条既有文案失败另记；Runtime 存储 503 按既有契约公开为 502；未部署现役。 |
+| platform-web | 2026-10-07 | 工具摘要/代码排版、运行诊断和多轮 Run 拉取已实现，既有 535 项单测与类型/构建通过。取消专项未改前端，实现版 API/状态机/F01–F10 报告已交付，由同事实施；未部署现役。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-04 | AGENTS.md 与 Skill 重复内容已去除（场景步骤 + 验证标准章节移入 Skill），CONTEXT.md 改为渐进式快照结构；整单结束前须逐项核对未完成任务，Task 未完成时只记 Phase |
 
 ## 近期关键决策

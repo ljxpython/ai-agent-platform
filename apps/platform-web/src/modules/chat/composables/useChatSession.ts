@@ -28,6 +28,7 @@ import { createSessionAttachmentUploader } from "./useSessionAttachmentUpload";
 import { useSessionInterrupts } from "./useSessionInterrupts";
 import { useChatSessionStore } from "../stores/useChatSessionStore";
 import { useSessionConnection } from "./useSessionConnection";
+import { useThreadStopControl } from "./useThreadStopControl";
 
 const active = (run: Run | null) =>
   run != null && ["pending", "running"].includes(run.status);
@@ -59,6 +60,7 @@ export function useChatSession(options: {
   onReconnect: () => void;
   onAccepted?: () => void;
   onAccessRevoked?: () => void;
+  onStopConfirmed?: () => void;
 }) {
   const chatSessionStore = useChatSessionStore();
   const actions = createRunActions(
@@ -83,7 +85,6 @@ export function useChatSession(options: {
   );
   const checking = ref(!hasCachedContent);
   const verified = ref(hasCachedContent);
-  const cancelling = ref(false);
   const error = ref("");
   let disposed = false;
   let checkEpoch = 0;
@@ -149,6 +150,19 @@ export function useChatSession(options: {
     reconnectStream,
     bindConnectionState,
   } = connection;
+
+  const stopControl = useThreadStopControl({
+    projectId: computed(() => options.projectId),
+    threadId,
+    userId: computed(() => options.userId),
+    service,
+    canWrite: canEdit,
+    onStopConfirmed: () => {
+      void verify(true);
+      options.onStopConfirmed?.();
+    },
+  });
+  const cancelling = stopControl.isStopping;
 
   watch(
     () => options.threadId,
@@ -291,25 +305,27 @@ export function useChatSession(options: {
       !hasPendingInterrupts.value,
   );
   const status = computed(() =>
-    cancelling.value
+    stopControl.isStopping.value
       ? "正在停止"
-      : reviews.value.length
-        ? "等待审批"
-        : clarifications.value.length
-          ? "等待补充信息"
-          : actions.current.value?.status === "unknown"
-            ? "提交结果待确认"
-            : checking.value
-              ? "正在核实会话"
-              : actions.current.value?.status === "submitting"
-                ? "正在发送"
-                : busy.value
-                  ? "正在执行"
-                  : error.value || stream.error.value
-                    ? "连接或执行异常"
-                    : run.value?.status === "timeout"
-                      ? "上一回合执行超时"
-                      : "可以发送",
+      : stopControl.isConfirmationUnavailable.value
+        ? "停止结果待确认"
+        : reviews.value.length
+          ? "等待审批"
+          : clarifications.value.length
+            ? "等待补充信息"
+            : actions.current.value?.status === "unknown"
+              ? "提交结果待确认"
+              : checking.value
+                ? "正在核实会话"
+                : actions.current.value?.status === "submitting"
+                  ? "正在发送"
+                  : busy.value
+                    ? "正在执行"
+                    : error.value || stream.error.value
+                      ? "连接或执行异常"
+                      : run.value?.status === "timeout"
+                        ? "上一回合执行超时"
+                        : "可以发送",
   );
 
   function fail(cause: unknown) {
@@ -946,36 +962,17 @@ export function useChatSession(options: {
   async function stop() {
     if (
       !canEdit.value ||
-      cancelling.value ||
+      stopControl.isStopping.value ||
       pendingAction.value ||
       !threadId.value ||
       options.visible?.value === false
     )
       return;
-    cancelling.value = true;
     try {
-      // stream 仍在传输时，服务端 run 可能已终态但前端尚未感知；
-      // 优先复用已知 runId，跳过前置 verify 避免把终态覆写进 run.value。
-      const knownRunId = actions.current.value?.runId ?? run.value?.run_id;
-      if (knownRunId && stream.isLoading.value) {
-        await service.cancel(threadId.value, knownRunId);
-        await verify(true);
-        return;
-      }
-      if (!(await verify())) return;
-      if (disposed || !canEdit.value) return;
-      const runId = run.value?.run_id;
-      // run 已终态说明 Agent 刚刚执行完，停止操作自然完成，静默刷新即可。
-      if (!runId || !active(run.value)) {
-        await verify(true);
-        return;
-      }
-      await service.cancel(threadId.value, runId);
-      await verify(true);
+      await stopControl.stop();
+      void verify(true);
     } catch (cause) {
       fail(cause);
-    } finally {
-      if (!disposed) cancelling.value = false;
     }
   }
 
@@ -1221,6 +1218,7 @@ export function useChatSession(options: {
     checking,
     verified,
     cancelling,
+    stopControl,
     error,
     busy,
     canSend,

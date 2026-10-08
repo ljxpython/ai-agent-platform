@@ -1,6 +1,6 @@
 import { effectScope, ref } from "vue";
 import { flushPromises } from "@vue/test-utils";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   enqueue: vi.fn(),
   list: vi.fn(),
@@ -8,6 +8,9 @@ const mocks = vi.hoisted(() => ({
   run: vi.fn(),
   runs: vi.fn(),
   cancel: vi.fn(),
+  stopThread: vi.fn(),
+  getStopRequest: vi.fn(),
+  listStopRequests: vi.fn(),
   resume: vi.fn(),
   actions: vi.fn(),
   updateAccessPolicy: vi.fn(),
@@ -35,6 +38,9 @@ vi.mock("@/services/threads/session.service", async (importOriginal) => ({
       : async () => [{ run_id: "run", status: "running" }],
     run: mocks.run,
     cancel: mocks.cancel,
+    stopThread: mocks.stopThread,
+    getStopRequest: mocks.getStopRequest,
+    listStopRequests: mocks.listStopRequests,
     resume: mocks.resume,
     get: mocks.getThread.getMockImplementation()
       ? mocks.getThread
@@ -212,10 +218,60 @@ it.each([useChatSession, useDearAgentSession])(
     }
   },
 );
+beforeEach(() => {
+  mocks.stopThread.mockImplementation(async (tid: string) => ({
+    version: 1,
+    stop_id: "stop-id-1",
+    thread_id: tid,
+    phase: "stopped",
+    requested_at: "2026-10-07T06:00:00Z",
+    confirmed_at: "2026-10-07T06:00:01Z",
+    target_count: 1,
+    execution_stopped: true,
+    resource_cleanup: "confirmed",
+    has_pending_interrupts: false,
+    queue: {
+      pending_cancelled_count: 0,
+      inbox_consumed_count: 0,
+      inbox_not_consumed_count: 0,
+    },
+    report: null,
+    reason_code: null,
+    request_id: "req-1",
+  }));
+  mocks.getStopRequest.mockImplementation(async (tid: string, sid: string) => ({
+    version: 1,
+    stop_id: sid,
+    thread_id: tid,
+    phase: "stopped",
+    requested_at: "2026-10-07T06:00:00Z",
+    confirmed_at: "2026-10-07T06:00:01Z",
+    target_count: 1,
+    execution_stopped: true,
+    resource_cleanup: "confirmed",
+    has_pending_interrupts: false,
+    queue: {
+      pending_cancelled_count: 0,
+      inbox_consumed_count: 0,
+      inbox_not_consumed_count: 0,
+    },
+    report: null,
+    reason_code: null,
+    request_id: "req-1",
+  }));
+  mocks.listStopRequests.mockImplementation(async () => ({
+    items: [],
+    next_cursor: null,
+  }));
+});
+
 afterEach(() => {
   vi.restoreAllMocks();
   mocks.actions.mockReset();
   mocks.updateAccessPolicy.mockReset();
+  mocks.stopThread.mockReset();
+  mocks.getStopRequest.mockReset();
+  mocks.listStopRequests.mockReset();
   sessionStorage.clear();
 });
 it("recovers one expired cursor when suspension synchronously reports the same 410", async () => {
@@ -661,7 +717,7 @@ it("keeps the stream after cancel ACK until the server confirms a terminal Run",
     await flushPromises();
     const stopping = session.stop();
     await vi.waitFor(() => expect(mocks.run).toHaveBeenCalledTimes(2));
-    expect(mocks.cancel).toHaveBeenCalledTimes(1);
+    expect(mocks.stopThread).toHaveBeenCalledTimes(1);
     expect(session.run.value?.status).toBe("running");
     expect(disconnect).not.toHaveBeenCalled();
     finish({ run_id: "run-1", status: "cancelled" });
@@ -1327,9 +1383,12 @@ it("seeds accessThread from initialThread with zero accessLoading and stops in-p
     expect(session.accessLoading.value).toBe(false);
     expect(mocks.getThread).not.toHaveBeenCalled();
 
-    // 2. 点击停止时，原地取消 run 并断开流，绝不触发 onReconnect 重建组件或开启 accessLoading
+    // 2. 点击停止时，原地取消会话并断开流，绝不触发 onReconnect 重建组件或开启 accessLoading
     await session.stop();
-    expect(mocks.cancel).toHaveBeenCalledWith("t-seeded", "run-active-1");
+    expect(mocks.stopThread).toHaveBeenCalledWith(
+      "t-seeded",
+      expect.any(String),
+    );
     expect(disconnect).not.toHaveBeenCalled();
     expect(onReconnect).not.toHaveBeenCalled();
     expect(session.accessLoading.value).toBe(false);
@@ -1659,13 +1718,13 @@ it("prevents stop() from canceling background run when session visible is false"
     await flushPromises();
 
     // Because visible was false, stop() was guarded and cancel was not invoked
-    expect(mocks.cancel).not.toHaveBeenCalled();
+    expect(mocks.stopThread).not.toHaveBeenCalled();
 
     // Now make it visible, stop() should proceed to invoke cancel
     visible.value = true;
     await session.stop();
     await flushPromises();
-    expect(mocks.cancel).toHaveBeenCalled();
+    expect(mocks.stopThread).toHaveBeenCalled();
   } finally {
     scope.stop();
     mocks.cancel.mockReset();

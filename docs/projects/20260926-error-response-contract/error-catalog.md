@@ -16,7 +16,7 @@ details生产者：core/errors/handlers.py的RequestValidationError；modules/ru
 
 下面清单固定在平台adapter，精确匹配code与来源HTTP（斜线表示允许多个来源状态）。
 静态来源中的动态str(exc)无法证明安全，不纳入；未知统一fallback。此表是本期确定的公开清单，不宣称枚举全部Runtime/GraphHarbor内部异常。
-普通已登记4xx保持code与HTTP；登记code却状态不匹配按未知处理。5xx仍转502；memory_storage_unavailable作为明确例外保留code。message完全由表生成，不信任上游message。
+普通已登记4xx保持code与HTTP；登记code却状态不匹配按未知处理。5xx仍转502；memory_storage_unavailable、stop_storage_unavailable作为明确例外保留code。message完全由表生成，不信任上游message。
 
 | code | 来源HTTP | 固定安全message | 只读生产/消费证据 |
 |---|---|---|---|
@@ -185,3 +185,18 @@ memory wrapper不携带原文extra；可以保留公共upstream与来源状态�
 | message_id_conflict | 409 | Message id conflict |
 
 这些代码只做平台映射，消息队列与Runtime实现不改。
+
+## G. 会话 Stop 公开码（2026-10-07 用户批准）
+
+源码与隔离契约证据见[取消专项](../20261007-agent-run-cancellation/verification.md)；正式配套接入blocked。以下均精确匹配来源状态，不透传任意上游正文。
+
+| code | 来源HTTP | 公开HTTP | 固定安全message | 生产证据 |
+|---|---|---|---|---|
+| stop_scope_denied | 403 | 403 | Stop scope denied | `apps/runtime-service/src/runtime_service/http/run_control.py::_authorize` |
+| stop_request_not_found | 404 | 404 | Stop request not found | `apps/runtime-service/src/runtime_service/http/run_control.py::get_stop` |
+| thread_stopping | 409 | 409 | Thread stopping | `apps/runtime-service/src/runtime_service/messaging/inbox.py::{enqueue,claim}` |
+| invalid_stop_cursor | 422 | 422 | Invalid stop cursor | `apps/runtime-service/src/runtime_service/http/run_control.py::list_stop` |
+| invalid_stop_query | 422 | 422 | Invalid stop query | `apps/runtime-service/src/runtime_service/http/run_control.py::_query` |
+| stop_storage_unavailable | 503 | 502 | Stop storage unavailable | `apps/runtime-service/src/runtime_service/http/run_control.py::_storage_call` |
+
+`stop_denied/stop_confirmation_unavailable/resource_cleanup_unconfirmed`是合法StopRequest的reason_code，不因值相同就当作任意HTTP上游码公开。POST 502/504或网络断开保留原scope/body/key对账；phase与HTTP结果分开处理。

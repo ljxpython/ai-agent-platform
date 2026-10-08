@@ -6,7 +6,7 @@ import os
 import sys
 from pathlib import Path
 
-if __name__ != "__main__" or sys.argv[1] != "platform":
+if len(sys.argv) < 2 or sys.argv[1] != "platform":
     from runtime_service.auth.platform import auth  # noqa: F401 - fixture config symbol
 
 

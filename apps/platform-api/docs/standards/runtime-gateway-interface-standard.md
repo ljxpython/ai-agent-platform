@@ -29,14 +29,17 @@
 | GET | /threads/t/runs/r/join | 等待Run |
 | GET | /threads/t/runs/r/stream | 重连Run事件 |
 | POST | /threads/t/runs/r/cancel | 显式取消 |
+| POST | /threads/t/cancel | 会话固定目标停止，持久受理 |
+| GET | /threads/t/stop-requests/{stop_id} | 查询安全停止回执与报告 |
+| GET | /threads/t/stop-requests | 分页回查停止动作 |
 
-此处通用面共21条；完整矩阵还独立覆盖文件、消息、Dear 等自定义入口，由[test_runtime_gateway_http_matrix.py](../../tests/test_runtime_gateway_http_matrix.py)与路由注册集合校验。未列出的上游能力不能因为SDK有方法就当作平台接口，完整LangGraph Server等价性另行验收。
+此处公开面共24条（21条通用入口与3条会话Stop入口）；完整矩阵还独立覆盖文件、消息、Dear 等自定义入口，由[test_runtime_gateway_http_matrix.py](../../tests/test_runtime_gateway_http_matrix.py)与路由注册集合校验。未列出的上游能力不能因为SDK有方法就当作平台接口，完整LangGraph Server等价性另行验收。
 
 ## 身份与参数
 
 请求携带平台认证与 `x-project-id`。Thread归属必须匹配项目；启动/恢复重新检查当前Agent、Graph、模型、工具与成员授权。委托scope.operation区分read和run-create。
 
-委托使用短时v2/HS256 JWT；Gateway与Catalog各自按当前请求签发，service account必须携带当前`credential_id`，用户不得携带。非法签发输入统一走安全`503 runtime_delegation_not_configured`，上游401对外映射`502 runtime_delegation_rejected`，不表示平台用户登录失效。已接受Run不因委托到期自动取消；SSE不持续重鉴权，重连/审批/取消新请求重新核对当前权限。27项operation及验证边界见[Delegation 标准](../../../../docs/standards/delegation-jwt.md)。消息入口额外转发同一请求已有的`read`委托供Runtime内部原生Run回查；Runtime核对身份、租户、项目、凭据和Thread绑定后才使用该委托，消息operation自身仍不得访问原生资源。该修复的现役真实链路尚未验证，见[消息回查专项](../../../../docs/projects/20260927-message-run-read-delegation/README.md)。
+委托使用短时v2/HS256 JWT；Gateway与Catalog各自按当前请求签发，service account必须携带当前`credential_id`，用户不得携带。非法签发输入统一走安全`503 runtime_delegation_not_configured`，上游401对外映射`502 runtime_delegation_rejected`，不表示平台用户登录失效。已接受Run不因委托到期自动取消；SSE不持续重鉴权，重连/审批/取消新请求重新核对当前权限。30项operation及验证边界见[Delegation 标准](../../../../docs/standards/delegation-jwt.md)。消息入口额外转发同一请求已有的`read`委托供Runtime内部原生Run回查；Runtime核对身份、租户、项目、凭据和Thread绑定后才使用该委托，消息operation自身仍不得访问原生资源。该修复的现役真实链路尚未验证，见[消息回查专项](../../../../docs/projects/20260927-message-run-read-delegation/README.md)。
 
 产品Agent执行键为graph_id，标准SDK字段仍为assistant_id；平台不创建/同步上游Assistant。Graph/Tool刷新是有限超时HTTP，普通目录只读快照；schema从远端读取，不扫描宿主源码。
 
@@ -69,6 +72,20 @@ join stream支持stream_mode、last_event_id和cancel_on_disconnect参数，但�
 Protocol lifecycle可能规范化为completed；Run JSON保留上游状态，不能将两者机械替换。cancel成功ACK不等于终态确认，需继续读取Run。
 
 401重新认证，403检查权限，404检查资源与项目，409检查幂等或并发，5xx/超时核实提交结果。不得在HTTP 200后伪装前置失败。
+
+## 会话停止与报告（2026-10-07 用户批准）
+
+三条入口在源码和隔离环境实现，正式 Runtime 配套接入仍 blocked，未部署现役。POST `/threads/{thread_id}/cancel` 要求平台身份、x-project-id、当前 `project.runtime.execute` + Thread edit；正文严格 `{}`，Idempotency-Key 必填且1–128字符，UUID/未知正文/query均严格校验。202只证明持久受理，同 actor/credential/project/thread/key 重试返回同 stop_id；正文不接受 run_ids、配置、模型或提示词。保留已有单 Run cancel。
+
+detail/list GET 要求当前 `project.runtime.read` + Thread read；200/no-store，列表 limit 默认20、1–100，cursor不透明且最多256字符；按 requested_at/stop_id倒序。重连、刷新或多端使用这些回执，不靠页面内存判断已停止。POST传输失败先保留原scope/body/key重试；不能按列表时间接近猜归属或用新key重扫目标。
+
+Gateway签发 `thread-stop`/`thread-stop-read`，仅访问Runtime内部同Thread自定义入口；公开 `StopRequest` v1字段白名单以[实际DTO](../../src/platform_api/modules/runtime_gateway/application/run_control.py)为准，校验归属/枚举/UUID/时间/计数，非法上游502，auth_facts/engine_receipt/lease不公开。
+
+phase为accepted/stopping/stopped/no_active_run/confirmation_unavailable/rejected。target_count/execution_stopped/队列计数取证前可null；has_pending_interrupts是引擎接受边界的审批快照，当前审批仍由SDK/state确认。stopped/no_active_run必须execution_stopped=true且有confirmed_at/report；资源pending/unconfirmed保持confirmation_unavailable，不伪装全部已清理。ACK、Run interrupted与工具退出不能互相替代。
+
+报告仅读取固定目标的已提交checkpoint/工具回执/成果，不运行模型、原Agent或注入AIMessage；最多20 checkpoints、30 progress（20计划+10工具）、20成果。truncated表明报告有界，不截断完整停止目标；uncertainties明确checkpoint/进度/外部结果/资源清理未知。成果仍通过现有授权预览/下载入口，报告不输出宿主路径。
+
+Runtime后台对旧固定目标inbox做checkpoint对账，consumed保留、其余user_stopped；后来的新Run不属于旧Stop。Stop不删除工作区、不停止独立Terminal/detached任务、不抹掉审批；显式resume仍绑定当前interrupt ID并复用服务端原执行快照。Runtime存储503按既有契约公开502 `stop_storage_unavailable`，提交超时仍是未知。前端状态机/代码落点/F01–F10见[实现版交接](../../../../docs/projects/20261007-agent-run-cancellation/frontend-handoff.md)。
 
 ## 变更验证
 
@@ -103,7 +120,7 @@ Runtime 代码声明工具上限；工具 Catalog 仅展示。Platform 从 runti
 
 ## 定时任务产品接口（2026-10-05）
 
-独立前缀 /api/scheduled-tasks：GET/POST 列表与创建、POST /preview、GET/PATCH/DELETE /{task_id}、POST /{task_id}/pause、/resume、/trigger，以及 GET /{task_id}/runs，共 10 条。普通 /api/langgraph 的通用面21条保持独立。字段与 HTTP 状态见 [前端交接](../../../../docs/projects/20261005-scheduled-agent-tasks/frontend-handoff.md)。
+独立前缀 /api/scheduled-tasks：GET/POST 列表与创建、POST /preview、GET/PATCH/DELETE /{task_id}、POST /{task_id}/pause、/resume、/trigger，以及 GET /{task_id}/runs，共 10 条。普通 /api/langgraph 的通用21条与新增会话Stop 3条保持独立。字段与 HTTP 状态见 [前端交接](../../../../docs/projects/20261005-scheduled-agent-tasks/frontend-handoff.md)。
 
 请求需平台身份与 x-project-id；定义和历史按 tenant/project/owner 私有隔离。cron-read/write 不能代替执行 payload 的 run-create；手动触发必须 Idempotency-Key，复用 run_requests、Thread reservation 和正常受管 Run，不推进计划时间。
 

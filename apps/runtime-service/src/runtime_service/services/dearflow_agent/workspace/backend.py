@@ -131,7 +131,9 @@ class DearWorkspaceBackend(FilesystemBackend, SandboxBackendProtocol):
                 timeout=30,
                 max_output_bytes=MAX_OUTPUT,
             )
-            return await asyncio.to_thread(shell.execute, command, timeout=timeout)
+            from runtime_service.run_control.resources import execute_local
+
+            return await execute_local(shell.execute, command, timeout)
         try:
             return await execute_in_workspace(
                 self.root,

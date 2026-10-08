@@ -24,6 +24,19 @@
 
 阅读资料 → 复制 Showcase 的边界模式 → 在所属 Service 显式装配 → 编写最小测试 → 本地运行 → 更新文档和变更记录 → 提交评审。
 
+## 通用会话停止与资源适配
+
+`run_control/`持有平台控制动作、恢复租约、inbox屏障、资源回执和确定性报告；GraphHarbor持有Run/lease/checkpoint执行事实。Runtime使用正式引擎cancel-active与固定回执接口，不直接改引擎runs/lease表、不新增Agent循环或停止工具。该源码已隔离验证，正式配套版本/锁接入与真实Docker仍blocked；本期不代表现役可用。
+
+- 新Agent沿当前组合根/图注册即可接入会话停止；`webapp.py`统一挂internal Stop路由和受管lifespan reconciler，无需每图加middleware。业务工具要传播 `CancelledError`，不要改成普通ToolMessage成功/失败。
+- 长命令资源复用 `workspace/execution.py::execute_in_workspace()` 与 `run_control/resources.py::{register_resource,finish_resource,wait_cleanup}`。资源登记只保存thread/run/kind/status，不保存命令、宿主路径或凭据；重复取消也要等待已拥有的清理任务并持久记录confirmed/unconfirmed。
+- LocalShellBackend仅用于受信本地开发；Python同步线程不能强杀，取消等待有界命令结束，超出确认等待保留unconfirmed。不得回退宿主shell提供生产隔离；真实Docker证据不能用local或mock替代。
+- inbox enqueue/claim与Stop准备共用Thread advisory lock，屏障绑定固定旧run_id；执行退出后复用 `reconcile_run()` 按committed checkpoint对账。保留consumed，旧未消费项标user_stopped；新Run和已有run_ended/run_cancelled原因不被覆盖。
+- 报告从固定目标取已保存计划/真实工具回执/合法成果，最多20 checkpoints、30 progress、20 artifacts，脱敏label/JWT/宿主路径；无证据明确unknown。业务工具可以沿现有Todo/ToolMessage/artifact引用提供证据，不为此自建业务摘要schema或自动summary Run。
+- Stop不抹掉HITL，不自动resume；显式恢复绑定当前interrupt ID，不携新input/config/context。媒体/部署已接受但丢响应的unknown回执必须保留，同key重试不能再次购买或发布；独立Terminal/detached任务不冒充已取消。
+
+职责、函数、迁移/回退与真实四图证据见[取消专项](../../../../docs/projects/20261007-agent-run-cancellation/README.md)；前端只消费安全DTO，未接入前不改变Run/SSE原契约。
+
 ## 新增代码粒度规范
 
 > **适用范围：仅约束新增代码。存量代码不在此规范的覆盖范围内，不得借此规范触发对旧代码的"顺手重构"。**

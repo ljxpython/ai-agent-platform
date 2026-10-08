@@ -76,6 +76,10 @@ class MessageInbox:
                 return MessageReceipt(
                     str(row[0]), thread_id, row[1], row[2], row[3], row[4], payload
                 )
+            from runtime_service.run_control.repository import inbox_blocked
+
+            if inbox_blocked(connection, thread_id, target_run_id):
+                raise ValueError("thread_stopping")
             pending = connection.execute(
                 "SELECT count(*) FROM runtime_message_inbox WHERE thread_id=%s AND status IN ('queued','claimed')",
                 (thread_id,),
@@ -124,6 +128,13 @@ class MessageInbox:
     ) -> tuple[str, list[dict[str, Any]]]:
         token = str(uuid.uuid4())
         with connect(self.dsn, row_factory=tuple_row) as connection:
+            from runtime_service.run_control.repository import inbox_blocked
+
+            connection.execute(
+                "SELECT pg_advisory_xact_lock(hashtextextended(%s,0))", (thread_id,)
+            )
+            if inbox_blocked(connection, thread_id, target_run_id):
+                return token, []
             connection.execute(
                 "UPDATE runtime_message_inbox SET status='queued', claim_token=NULL, claim_until=NULL WHERE thread_id=%s AND target_run_id=%s AND status='claimed' AND claim_until <= now()",
                 (thread_id, target_run_id),

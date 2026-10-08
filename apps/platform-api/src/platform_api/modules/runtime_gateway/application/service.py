@@ -3426,6 +3426,74 @@ class RuntimeGatewayService:
             "request_id": request_id,
         }
 
+    async def thread_stop_action(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        request_id: str,
+        key: str | None = None,
+        stop_id: str | None = None,
+        params: dict | None = None,
+    ) -> dict:
+        from platform_api.modules.runtime_gateway.application.run_control import (
+            StopRequest,
+            StopRequestList,
+        )
+
+        thread_id = str(parse_uuid(thread_id, code="invalid_thread_id"))
+        thread = await self._load_thread(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            write=key is not None,
+        )
+        upstream = await self._thread_upstream(
+            project_id=project_id,
+            thread=thread,
+            operation="thread-stop" if key is not None else "thread-stop-read",
+        )
+        try:
+            if key is not None:
+                payload = await upstream.stop_thread(thread_id, key)
+            elif stop_id is not None:
+                payload = await upstream.get_stop_request(thread_id, stop_id)
+            else:
+                payload = await upstream.list_stop_requests(thread_id, params or {})
+            model = StopRequestList if key is None and stop_id is None else StopRequest
+            result = model.model_validate(payload).model_dump(mode="json")
+            items = result.get("items", [result])
+            for item in items:
+                if item["thread_id"] != thread_id or (
+                    stop_id is not None and item["stop_id"] != stop_id
+                ):
+                    raise ValueError("stop ownership mismatch")
+                item["request_id"] = request_id
+        except (ValidationError, TypeError, ValueError) as exc:
+            raise PlatformApiError(
+                code="langgraph_upstream_invalid_response",
+                status_code=502,
+                message="Invalid Runtime stop response",
+            ) from exc
+        except PlatformApiError as exc:
+            if key is not None:
+                self._emit_correlation(
+                    "runtime.stop.result",
+                    thread_id=thread_id,
+                    outcome="rejected" if 400 <= exc.status_code < 500 else "unknown",
+                )
+            raise
+        if key is not None:
+            self._emit_correlation(
+                "runtime.stop.result",
+                thread_id=thread_id,
+                stop_id=result["stop_id"],
+                outcome=result["phase"],
+                target_count=result["target_count"],
+            )
+        return result
+
     async def list_thread_runs(
         self,
         *,

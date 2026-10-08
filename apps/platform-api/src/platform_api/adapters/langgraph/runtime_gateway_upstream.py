@@ -384,6 +384,24 @@ class LangGraphRuntimeGatewayUpstream:
             f"/internal/threads/{quote(thread_id, safe='')}/runs/{quote(run_id, safe='')}/diagnostics",
         )
 
+    async def stop_thread(self, thread_id: str, key: str) -> dict[str, Any]:
+        return await self._http.require_json(
+            "POST",
+            f"/internal/threads/{thread_id}/cancel",
+            payload={},
+            forwarded_headers={"Idempotency-Key": key},
+        )
+
+    async def get_stop_request(self, thread_id: str, stop_id: str) -> dict[str, Any]:
+        return await self._http.require_json(
+            "GET", f"/internal/threads/{thread_id}/stop-requests/{stop_id}"
+        )
+
+    async def list_stop_requests(self, thread_id: str, params: dict) -> dict[str, Any]:
+        return await self._http.require_json(
+            "GET", f"/internal/threads/{thread_id}/stop-requests", params=params
+        )
+
     async def list_thread_runs(
         self,
         thread_id: str,

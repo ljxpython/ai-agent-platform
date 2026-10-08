@@ -112,7 +112,9 @@ class LocalWorkspaceBackend(_ThreadWorkspaceBackend, SandboxBackendProtocol):
     async def aexecute(
         self, command: str, *, timeout: int | None = None
     ) -> ExecuteResponse:
-        return await asyncio.to_thread(self.execute, command, timeout=timeout)
+        from runtime_service.run_control.resources import execute_local
+
+        return await execute_local(self.execute, command, timeout)
 
 
 def create_workspace(tenant_id: str, project_id: str, thread_id: str):

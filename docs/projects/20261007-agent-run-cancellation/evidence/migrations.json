@@ -1,0 +1,11 @@
+{
+  "cases": {
+    "candidate_wheel_http_cancellation": "passed",
+    "runtime_downgrade_retains_receipts": "passed",
+    "runtime_forward_is_idempotent": "passed",
+    "pg_backup_restore": "passed",
+    "engine_downgrade_preserves_cancel_intent": "passed",
+    "old_package_single_run_cancel": "passed",
+    "engine_forward_after_rollback": "passed"
+  }
+}
