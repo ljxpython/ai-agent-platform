@@ -30,5 +30,6 @@ async def post_acl(endpoint: str, payload: dict, headers: dict):
     async with httpx.AsyncClient(
         timeout=float(os.getenv("PLATFORM_ACL_TIMEOUT_SECONDS", "10.0")),
         trust_env=False,
+        verify=False,
     ) as client:
         return await client.post(endpoint, json=payload, headers=headers)

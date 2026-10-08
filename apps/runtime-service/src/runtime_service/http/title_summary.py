@@ -7,6 +7,7 @@ import logging
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
+from runtime_service.auth.platform import authenticate
 from runtime_service.utils.title_summarizer import summarize_thread_title
 
 logger = logging.getLogger(__name__)
@@ -39,6 +40,10 @@ async def summarize_thread_title_endpoint(
     """基于提供的首轮对话内容，调用轻量 Agent 提炼不超过 10 字的精炼标题。"""
     if not thread_id or not thread_id.strip():
         raise HTTPException(status_code=400, detail="Invalid thread_id")
+    if authorization:
+        facts = await authenticate(authorization)
+        if facts.get("runtime_scope", {}).get("operation") == "usage-read":
+            raise HTTPException(status_code=403, detail="usage scope denied")
 
     dict_messages = [msg.model_dump() for msg in payload.messages]
 

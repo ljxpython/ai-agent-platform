@@ -17,6 +17,7 @@ class StoredRuntimeModel:
     enabled: bool
     scope_type: str = "platform"
     project_id: UUID | None = None
+    pricing: dict | None = None
 
 
 @dataclass(frozen=True, slots=True)

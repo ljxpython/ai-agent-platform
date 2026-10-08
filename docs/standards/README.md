@@ -16,12 +16,12 @@
 |---|---|---|---|---|---|
 | 错误响应 Envelope | [error-envelope.md](error-envelope.md) | active | 2026-10-07 | 🟢 high | [20260926-error-response-contract](../projects/20260926-error-response-contract/README.md) · [诊断查询](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md) |
 | 链路追踪传播 | [trace-propagation.md](trace-propagation.md) | active | 2026-09-27 | 🟢 high | [20260926-trace-context-propagation](../projects/20260926-trace-context-propagation/README.md) |
-| Delegation JWT Schema | [delegation-jwt.md](delegation-jwt.md) | draft | 2026-10-07 | 🟡 medium | [Delegation 专项](../projects/20260926-delegation-jwt-contract/README.md) · [diagnostics-read](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md) |
+| Delegation JWT Schema | [delegation-jwt.md](delegation-jwt.md) | draft | 2026-10-07 | 🟡 medium | [Delegation 专项](../projects/20260926-delegation-jwt-contract/README.md) · [diagnostics-read](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md) · [usage-read](../projects/20261007-agent-usage-cost-governance/03-platform-cost-contract.md) |
 | SSE 事件格式契约 | [sse-event.md](sse-event.md) | draft | 2026-10-07 | 🟡 medium | [SSE 专项](../projects/20260926-sse-event-contract/README.md) · [执行错误投影](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md) |
 
 ## 未完成项
 
-- **delegation-jwt（draft）**：27 项 operation，新增 `diagnostics-read` 的内部 GET/Thread 绑定和原生拒绝契约已验；`suggestions-generate` 路由隔离与 cron 实时授权隔离链路保持独立证据。消息内部原生 Run 回查源码已修复，现役链路尚未验证，待 [message-run-read-delegation](../projects/20260927-message-run-read-delegation/README.md) 专项部署后补验
+- **delegation-jwt（draft）**：28 项 operation，`diagnostics-read` 与 `usage-read` 的内部 GET/Thread 绑定、原生拒绝和隔离当前 ACL 链路已验；`suggestions-generate` 和 cron 独立证据保留。消息内部原生 Run 回查源码已修复，现役链路尚未验证，待 [message-run-read-delegation](../projects/20260927-message-run-read-delegation/README.md) 专项部署后补验
 - **sse-event（draft）**：帧安全、SDK 重试、会话池、410 降级规则已验（S1–S10）；8 条并发容量（S11）因 HTTP/1.1 入口限制阻塞，待 HTTP/2 入口就绪后补验
 
 ## 更新规则

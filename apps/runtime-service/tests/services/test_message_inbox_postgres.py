@@ -756,6 +756,7 @@ def test_limits_sender_isolation_metrics_and_additive_recovery(inbox):
     with psycopg.connect(inbox.dsn) as c:
         c.execute("ALTER TABLE runtime_message_inbox DROP COLUMN authorization_ref")
         # Legacy deployments predate the application Alembic chain.
+        c.execute("DROP TABLE runtime_usage_calls, runtime_usage_runs")
         c.execute("DROP TABLE runtime_app_alembic_version")
     inbox.initialize()
     inbox.initialize()

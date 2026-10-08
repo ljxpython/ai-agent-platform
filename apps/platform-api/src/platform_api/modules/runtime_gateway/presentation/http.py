@@ -53,6 +53,7 @@ from platform_api.modules.runtime_gateway.application.service import (
     _normalize_protocol_lifecycle_frame,
     _redact_runtime_private_fields,
 )
+from platform_api.modules.runtime_gateway.application.usage import RunUsage, ThreadUsage
 from platform_api.modules.runtime_policies.application import (
     RuntimePolicyOverlayService,
 )
@@ -443,6 +444,8 @@ def _delegation_operation(request: Request) -> str:
         return "suggestions-generate"
     if path.endswith("/diagnostics"):
         return "diagnostics-read"
+    if path.endswith("/usage"):
+        return "usage-read"
     if request.method == "POST" and (path.endswith("/commands") or "/runs" in path):
         return "run-create"
     return "read"
@@ -539,6 +542,7 @@ def get_runtime_gateway_service(
                 "thread-reconcile",
                 "suggestions-generate",
                 "diagnostics-read",
+                "usage-read",
             }
             else {
                 "tool_overrides": {},
@@ -2031,6 +2035,50 @@ async def get_thread_run_diagnostics(
         thread_id=str(thread_id),
         run_id=str(run_id),
         request_id=request.state.platform_context.request.request_id,
+    )
+
+
+@router.get("/threads/{thread_id}/runs/{run_id}/usage", response_model=RunUsage)
+async def get_thread_run_usage(
+    request: Request,
+    thread_id: str,
+    run_id: str,
+    response: Response,
+    limit: str = "50",
+    cursor: str | None = None,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    response.headers["Cache-Control"] = "no-store"
+    return await service.get_thread_run_usage(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=thread_id,
+        run_id=run_id,
+        request_id=request.state.platform_context.request.request_id,
+        limit=limit,
+        cursor=cursor,
+    )
+
+
+@router.get("/threads/{thread_id}/usage", response_model=ThreadUsage)
+async def get_thread_usage(
+    request: Request,
+    thread_id: str,
+    response: Response,
+    created_from: str | None = None,
+    created_to: str | None = None,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+) -> Any:
+    response.headers["Cache-Control"] = "no-store"
+    return await service.get_thread_usage(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=thread_id,
+        request_id=request.state.platform_context.request.request_id,
+        created_from=created_from,
+        created_to=created_to,
     )
 
 

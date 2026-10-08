@@ -1,8 +1,53 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
+from typing import Literal
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AwareDatetime, BaseModel, ConfigDict, field_validator
+
+
+class PricingInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    currency: Literal["USD"] = "USD"
+    basis: Literal["per_million_tokens"] = "per_million_tokens"
+    input: str | None = None
+    output: str | None = None
+    cache_read: str | None = None
+    cache_write: str | None = None
+    cache_write_5m: str | None = None
+    cache_write_1h: str | None = None
+
+    @field_validator(
+        "input",
+        "output",
+        "cache_read",
+        "cache_write",
+        "cache_write_5m",
+        "cache_write_1h",
+        mode="before",
+    )
+    @classmethod
+    def validate_rate(cls, value):
+        import re
+
+        if value is None:
+            return None
+        if not isinstance(value, str) or not re.fullmatch(
+            r"[0-9]{1,10}(?:\.[0-9]{1,10})?", value
+        ):
+            raise ValueError(
+                "Price must be a nonnegative decimal string with at most 10 decimal places"
+            )
+        return format(Decimal(value), ".10f")
+
+
+class PricingSnapshot(PricingInput):
+    version: UUID
+    source: Literal["configured_catalog"]
+    updated_at: AwareDatetime
 
 
 class RuntimeModelCatalogItem(BaseModel):
@@ -18,6 +63,7 @@ class RuntimeModelCatalogItem(BaseModel):
     credential_configured: bool
     scope_type: str = "platform"
     project_id: str | None = None
+    pricing: PricingSnapshot | None = None
 
 
 class RuntimeModelCreate(BaseModel):
@@ -30,6 +76,7 @@ class RuntimeModelCreate(BaseModel):
     enabled: bool = True
     scope_type: str = "platform"
     project_id: str | None = None
+    pricing: PricingInput | None = None
 
 
 class RuntimeModelUpdate(BaseModel):
@@ -40,6 +87,7 @@ class RuntimeModelUpdate(BaseModel):
     model: str | None = None
     api_key: str | None = None
     enabled: bool | None = None
+    pricing: PricingInput | None = None
 
 
 class RuntimeModelCatalogList(BaseModel):

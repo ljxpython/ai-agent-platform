@@ -30,6 +30,7 @@ def _to_runtime_model(record: RuntimeCatalogModelRecord) -> StoredRuntimeModel:
         enabled=record.enabled if record.enabled is not None else True,
         scope_type=record.scope_type or "platform",
         project_id=record.project_id,
+        pricing=record.pricing_json,
     )
 
 
@@ -101,6 +102,7 @@ class SqlAlchemyRuntimeCatalogRepository:
             enabled=values["enabled"],
             scope_type=values.get("scope_type", "platform"),
             project_id=values.get("project_id"),
+            pricing_json=values.get("pricing_json"),
         )
         self.session.add(record)
         self.session.flush()

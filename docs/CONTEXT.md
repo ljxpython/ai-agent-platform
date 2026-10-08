@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-07（Agent 工具调用容错全链路闭环，前端结构化摘要与微胶囊 Tag 徽章实装，全栈三服务浏览器联合验收通过，全专项 done）。
+> **最后更新：** 2026-10-08（Agent 通用 Token/Cost 跟踪治理全栈闭环，前端 F04-1 至 F04-6 及 Playwright 端到端闭环完成；全项目 done）。
 
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
@@ -8,33 +8,21 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-07
+**最后更新：** 2026-10-08
 
 ## 最近改动
 
-2026-10-07 | **Agent 工具调用容错与生产接线全链路完成**：Runtime/Platform API 完成选择性错误分类、DearFlow/Showcase/Reference 主子图接线、MCP/workspace 边界、v3 tools 流安全出口和公开 fatal 脱敏；Platform Web 完成纯函数错误摘要提取、微胶囊 Tag 徽章与展开态格式化代码块排版；核心单测全绿（31 passed），静态类型与构建通过；三服务全栈浏览器联合验收 F01-F08 全部通过，全专项闭环 done。见 [专项](projects/20261006-agent-tool-error-resilience/README.md)。
-
-2026-10-07 | **Agent 可观测性与追踪补齐**：全链路闭环完成。Runtime/Platform API 完成模型错误分类、安全诊断、启动阶段计时与只读投影；Platform Web 完成独立解耦面板 RunDiagnostics、Zod 白名单剔除敏感字段、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与模式切换、ChatSession 历史 Run 自动拉取与最新默认选中；vue-tsc 0 错误、ESLint 0 错误、Vite build 与前端全仓 115 套件 535 项单测全绿。未部署现役服务。见 [专项](projects/20261006-agent-observability-hardening/README.md)。
-
-2026-10-06 | **Agent 回答后推荐问题**：全链路完成。Platform API 与 Runtime Service 完成 suggestions 配置/生成、Delegation 隔离与 one-shot 推理；Platform Web 实装带 x-project-id 与单例缓存 API、思维链与多模态清洗纯函数、生命周期状态机（KeepAlive 补偿、Stop 抑制、竞态防护）、FollowUpSuggestions 紧凑展示组件与草稿冲突确认弹窗；27 项单测、vue-tsc 0 错误、ESLint 0 错误与生产打包全绿。未部署现役或远端平台。见 [专项](projects/20261005-agent-followup-suggestions/README.md)。
-
-2026-10-05 | **定时 Agent 任务**：全链路完成。后端与隔离验收 done；前端定时任务模块实装，对标 playbook 与 control-plane 规范，吸纳 DeerFlow 纯函数 Cron 预设，支持 Card Grid 列表、双栏响应式 Inspector 抽屉、运行历史按需懒加载与权限守卫；481 项单测全绿、vue-tsc 0 错误、生产构建全绿。见 [专项](projects/20261005-scheduled-agent-tasks/README.md)。
-
-### 同日流资源专项
-
-2026-10-05 | **多会话流连接与运行缓存治理**：done；GraphHarbor post39 双包正式发布并完成 PyPI 独立安装，本地 Runtime API/Worker 升级重启；Redis 清理确认终态与用户授权的 618 个未知遗留流后约 586 MiB。三会话连续切换、后台队列、六个 Run success 与消息去重浏览器验收通过；权限故障/真实撤权 4 项通过。见 [专项](projects/20261005-chat-stream-resource-governance/README.md)。
-
-### 同日权限专项
-
-2026-10-05 | **平台权限状态与刷新治理**：本地 done。项目权限区分临时不可确认与真实拒绝；列表/后台刷新失败保留有效快照，路由与页面统一具体权限判断；作用域 403、刷新合并、认证服务 503 保留会话；Runtime ACL 共享连接池兼容文件路径加载，默认超时 10 秒。前端 473 passed/1 skipped、Runtime 114 项及最终定向 41 项、API 13 项/299 子测试、4 项故障注入及 4 项真实安全浏览器通过。未部署远端平台；Runtime 更改已随本次本地升级重启生效。见 [专项](projects/20261005-platform-access-refresh-governance/README.md)。
+2026-10-08 | **Agent 通用 Token/Cost 跟踪治理**：前端交付（F04-1 至 F04-6）全部完成；实现 TrajectoryView 同级 RunUsage 用量与成本面板、open-swe 水位进度条 (Usage Meter)、服务端截断告警卡片、模型费率安全编辑（Decimal 精度、自动补零、可逆清空保护）以及伪造 Token 假数据彻底切除。修复了内部 HTTP 鉴权请求在本地环境下的 SSL 证书与通用异常保护，并彻底清理了后台残留的旧 worker 僵尸进程。通过 Playwright + Chromium 驱动真实大模型（百炼 `qwen-plus`）打通 `platform-web` -> `platform-api` -> `runtime-service` 完整真实服务栈，回答成功上屏（1加1等于2，1929ms），24,069 Tokens 与 $0.0051 成本成功落库并呈现在前端面板。全套 5 项 Playwright 端到端测试全绿，全仓 120 个套件 583 项单测、typecheck、lint 和生产打包 100% 通过。全项目达到 done 状态。见 [专项](projects/20261007-agent-usage-cost-governance/README.md)。
 
 ## 本月归并
 
-2026-10（截至 10-06）| Agent 回答后推荐问题全链路完成（27 项定向、类型/lint/构建通过）；Chat state/history 委托补齐与错误恢复；Chat 后台会话 DOM 虚拟化隔离与流式切换卡死根治、智能体切换隔离与列表远程拉取解耦治理、Chat 顶栏选择 Agent 历史列表联动过滤失效与 Pad 侧栏体验治理、对话前端视口平滑锚定与流式跟随根治、Clean Architecture 五层解耦重构、多会话后台无感自动排队消费与权限失效误杀彻底根治、切回历史时序正序合并、多会话切回假死死锁/空白水合/报错隔离、LangGraph v3 默认消费与 DeltaChannel 离线/PG 评估、模型畸形 ToolCall 自动缝合与孤儿块剔除、平台用户软删除三重安全栅栏、DeepSeek 官方多模态视觉识图、长会话断流解耦与历史懒加载、DearFlow 防死循环护栏、小惊喜创意工坊与 Jina Reader 接入、HTML 沙箱现代化渲染、Runtime DB 精简重构。
+2026-10（截至 10-08）| Token/Cost 全栈跟踪治理闭环（含真实大模型全链路 E2E）；工具容错、观测、推荐问题和定时任务闭环；聊天、权限及流资源治理。
 
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
+
+- [Agent 通用 Token/Cost 跟踪与运行用量治理](projects/20261007-agent-usage-cost-governance/README.md)：done；Runtime + Platform API + Platform Web 全栈闭环，16 项隔离真实后端链路与包含真实大模型调用的 5 项 Playwright 自动化端到端测试全部通过，五重质量门禁全绿。未部署现役服务。
 
 - [Agent 工具调用容错与生产接线补齐](projects/20261006-agent-tool-error-resilience/README.md)：done；全链路闭环，Runtime/API 共享选择性分类、主子图接线、安全消息与执行中缺根保护完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化排版实装；核心单测全绿，浏览器联合验收 F01-F08 全部通过。未生产部署。
 
@@ -83,9 +71,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-07 | 工具容错与生产接线完成，安全/工作区/未知异常传播；新增有界模型错误诊断、本地常驻回调、四graph启动阶段计时与只读查询；Langfuse 429 安全降级；未部署现役。 |
-| platform-api | 2026-10-07 | 工具消息保真与公开 fatal 安全出口；新增 Run diagnostics GET、diagnostics-read 权限核验与错误槽位脱敏投影；分层回归通过；未部署现役。 |
-| platform-web | 2026-10-07 | 工具错误纯函数摘要与展开态代码排版实装；运行诊断独立解耦面板 RunDiagnostics、模式切换与多轮 Run 自动拉取实装；535 项单测、vue-tsc 与生产打包全绿。未部署现役。 |
+| runtime-service | 2026-10-07 | Token/Cost callback、自有 ledger、缓存计价和内部 GET 已实现，非前端 Final done；采集默认关闭，隔离 PG/Worker/重启与回退通过，全量既有失败见专项 05。未部署现役。 |
+| platform-api | 2026-10-07 | 模型价格快照、nullable pricing_json 迁移、usage-read 与授权 Usage GET 已实现，非前端 Final done；只代理 Runtime 数字事实，冻结 schema/样本已交付，全量既有失败见专项 05。未部署现役。 |
+| platform-web | 2026-10-07 | 工具摘要与 RunDiagnostics/历史 Run 切换已实装；535 项单测、类型/build 通过，未部署现役。Usage inspector/模型价格编辑已写交接，由同事后续实施。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-04 | AGENTS.md 与 Skill 重复内容已去除（场景步骤 + 验证标准章节移入 Skill），CONTEXT.md 改为渐进式快照结构；整单结束前须逐项核对未完成任务，Task 未完成时只记 Phase |
 
 ## 近期关键决策

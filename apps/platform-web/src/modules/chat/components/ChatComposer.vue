@@ -38,9 +38,11 @@ const props = withDefaults(
     canSetPolicy?: boolean;
     canFullAccess?: boolean;
     showSuggestions?: boolean;
+    canOpenUsage?: boolean;
   }>(),
   {
     showSuggestions: true,
+    canOpenUsage: false,
   },
 );
 
@@ -56,6 +58,7 @@ const emit = defineEmits<{
   "update:accessPolicy": [value: AccessPolicy];
   "change:accessPolicy": [value: AccessPolicy];
   "select-suggestion": [prompt: string];
+  "open-usage": [];
 }>();
 
 const fileInputRef = ref<HTMLInputElement | null>(null);
@@ -457,11 +460,29 @@ defineExpose({
 
     <div
       v-if="!isFocusMode"
-      class="mx-auto mt-1 flex h-4 w-full max-w-4xl lg:max-w-5xl items-center justify-center px-2 text-center font-mono text-[11px] leading-4 text-gray-400 select-none dark:text-dark-400"
+      class="mx-auto mt-1 flex h-4 w-full max-w-4xl lg:max-w-5xl items-center justify-center gap-1.5 px-2 text-center font-mono text-[11px] leading-4 text-gray-400 select-none dark:text-dark-400"
     >
-      <span class="truncate">
+      <span
+        class="truncate"
+        :class="
+          canOpenUsage && footerText
+            ? 'cursor-pointer hover:text-gray-600 dark:hover:text-dark-200 transition-colors'
+            : ''
+        "
+        @click="canOpenUsage && footerText ? $emit('open-usage') : undefined"
+      >
         {{ helperText || footerText || "" }}
       </span>
+      <button
+        v-if="!helperText && footerText && canOpenUsage"
+        type="button"
+        class="inline-flex items-center gap-0.5 text-primary-600 hover:text-primary-700 hover:underline dark:text-primary-400 dark:hover:text-primary-300 font-medium transition-colors cursor-pointer"
+        title="查看详细用量与成本账单"
+        @click="$emit('open-usage')"
+      >
+        <span>明细</span>
+        <span class="text-[10px]">↗</span>
+      </button>
     </div>
   </div>
 </template>

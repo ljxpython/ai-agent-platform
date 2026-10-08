@@ -124,6 +124,16 @@ async def _custom_endpoint(case: dict, token: str) -> dict:
             await run_diagnostics_endpoint(
                 thread_id, uuid4(), Response(), authorization
             )
+    elif operation == "usage-read":
+        from unittest.mock import AsyncMock
+
+        from fastapi import Response
+        from runtime_service.http.usage import thread_usage_endpoint
+
+        with patch("runtime_service.http.usage.authorize_thread_targets", AsyncMock()):
+            await thread_usage_endpoint(
+                str(thread_id), Response(), authorization=authorization
+            )
     return {"accepted": True, "boundary": "authorized"}
 
 

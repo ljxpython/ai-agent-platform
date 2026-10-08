@@ -64,6 +64,12 @@ from platform_api.modules.runtime_gateway.application.ports import (
     BinaryPayload,
     RuntimeGatewayUpstreamProtocol,
 )
+from platform_api.modules.runtime_gateway.application.usage import (
+    RuntimeRunUsage,
+    RuntimeThreadUsage,
+    validate_run_query,
+    validate_thread_query,
+)
 from platform_api.modules.runtime_gateway.infra.sqlalchemy.repository import (
     RunRequestsRepository,
     StoredRunRequest,
@@ -3425,6 +3431,101 @@ class RuntimeGatewayService:
             "run_status": snapshot["status"],
             "request_id": request_id,
         }
+
+    async def get_thread_run_usage(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        run_id: str,
+        request_id: str,
+        limit=50,
+        cursor=None,
+    ) -> dict[str, Any]:
+        thread_id = str(parse_uuid(thread_id, code="invalid_thread_id"))
+        run_id = str(parse_uuid(run_id, code="invalid_run_id"))
+        params = validate_run_query(limit, cursor)
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=False
+        )
+        snapshot = await self._upstream.get_thread_run(thread_id, run_id)
+        if (
+            not isinstance(snapshot, dict)
+            or snapshot.get("thread_id") != thread_id
+            or snapshot.get("run_id") != run_id
+        ):
+            raise NotFoundError(code="run_not_found", message="Run not found")
+        status = snapshot.get("status")
+        if not isinstance(status, str) or not status or len(status) > 128:
+            raise PlatformApiError(
+                code="langgraph_upstream_invalid_response",
+                status_code=502,
+                message="Invalid Runtime response",
+            )
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="usage-read"
+        )
+        payload = await upstream.get_run_usage(thread_id, run_id, params)
+        summary = self._validated_usage(payload, RuntimeRunUsage, thread_id, run_id)
+        if status in {"running", "pending"} and summary["availability"] in {
+            "available",
+            "partial",
+        }:
+            summary.update(
+                finalized=False,
+                availability="partial",
+                tokens=dict.fromkeys(summary["tokens"]),
+            )
+            summary["cost"]["status"] = (
+                "partial"
+                if summary["cost"]["known_cost_usd"] is not None
+                else "unknown"
+            )
+            summary["cost"]["estimated_cost_usd"] = None
+        return {**summary, "run_status": status, "request_id": request_id}
+
+    async def get_thread_usage(
+        self,
+        *,
+        actor: ActorContext,
+        project_id: str,
+        thread_id: str,
+        request_id: str,
+        created_from=None,
+        created_to=None,
+    ) -> dict[str, Any]:
+        thread_id = str(parse_uuid(thread_id, code="invalid_thread_id"))
+        params = validate_thread_query(created_from, created_to)
+        thread = await self._load_thread(
+            actor=actor, project_id=project_id, thread_id=thread_id, write=False
+        )
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="usage-read"
+        )
+        payload = await upstream.get_thread_usage(thread_id, params)
+        return {
+            **self._validated_usage(payload, RuntimeThreadUsage, thread_id),
+            "request_id": request_id,
+        }
+
+    @staticmethod
+    def _validated_usage(payload, schema, thread_id, run_id=None):
+        try:
+            summary = schema.model_validate(payload).model_dump(mode="json")
+            if (
+                summary["thread_id"] != thread_id
+                or run_id is not None
+                and summary["run_id"] != run_id
+            ):
+                raise ValueError("usage_scope_mismatch")
+            return summary
+        except (ValidationError, TypeError, ValueError) as exc:
+            raise PlatformApiError(
+                code="langgraph_upstream_invalid_response",
+                status_code=502,
+                message="Invalid Runtime usage",
+            ) from exc
 
     async def list_thread_runs(
         self,

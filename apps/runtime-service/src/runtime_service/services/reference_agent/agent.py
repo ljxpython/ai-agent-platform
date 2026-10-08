@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import Any
 
 from langchain.agents import create_agent
 from langchain.agents.middleware import (
@@ -96,7 +97,7 @@ def _runtime_fallback_model(config: RunnableConfig) -> BaseChatModel | None:
 
 
 def _build_runtime_model(
-    config: object, connection: Mapping[str, str] | None
+    config: object, connection: Mapping[str, Any] | None
 ) -> BaseChatModel:
     if connection is None:
         return build_model(config)  # type: ignore[arg-type]
@@ -121,7 +122,7 @@ async def _runtime_model_connection(
     *,
     model_id: str,
     project_id: str,
-) -> dict[str, str] | None:
+) -> dict[str, Any] | None:
     """Fetch the selected model connection; only the opaque reference crosses GraphHarbor."""
     configurable = config.get("configurable") or {}
     if not isinstance(configurable, Mapping):

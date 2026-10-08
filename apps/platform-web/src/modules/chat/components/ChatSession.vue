@@ -1095,14 +1095,6 @@ onScopeDispose(() => {
   document.removeEventListener("visibilitychange", visibilityChanged);
 });
 
-function formatTokensCompact(n: number): string {
-  const scaled = (v: number): string =>
-    v >= 100 ? String(Math.round(v)) : String(Math.round(v * 10) / 10);
-  if (n < 1_000) return String(n);
-  if (n < 1_000_000) return `${scaled(n / 1_000)}K`;
-  return `${scaled(n / 1_000_000)}M`;
-}
-
 function formatDurationSec(ms: number): string {
   const s = ms / 1_000;
   if (s < 60) return `${Math.round(s * 10) / 10}s`;
@@ -1110,27 +1102,39 @@ function formatDurationSec(ms: number): string {
   return `${Math.floor(whole / 60)}m${whole % 60}s`;
 }
 
+function formatTokensCompact(n: number): string {
+  if (!n || n <= 0) return "0";
+  const scaled = (v: number): string =>
+    v >= 100 ? String(Math.round(v)) : String(Math.round(v * 10) / 10);
+  if (n < 1_000) return String(n);
+  if (n < 1_000_000) return `${scaled(n / 1_000)}K`;
+  return `${scaled(n / 1_000_000)}M`;
+}
+
+const trajectoryInspectorMode = ref<"record" | "diagnostics" | "usage">(
+  "record",
+);
+
+function handleOpenUsagePanel() {
+  trajectoryInspectorMode.value = "usage";
+  activeView.value = "trajectory";
+}
+
 const chatMetrics = computed(() => {
   const allMsgs = displayedMessages.value;
   let turns = 0;
   const steps = allMsgs.length;
-  let inTok = 0;
-  let outTok = 0;
-  let cacheReadTok = 0;
-  let cacheWriteTok = 0;
   let totalLlmMs = 0;
   let totalTtftMs = 0;
   let ttftCount = 0;
-  let totalAiChars = 0;
-  let totalHumanChars = 0;
+  let inTok = 0;
+  let outTok = 0;
+  let cacheReadTok = 0;
+  let hasRealTokens = false;
 
   for (const m of allMsgs) {
     if (m.type === "human") {
       turns++;
-      totalHumanChars += typeof m.content === "string" ? m.content.length : 10;
-    }
-    if (m.type === "ai") {
-      totalAiChars += typeof m.content === "string" ? m.content.length : 20;
     }
     const raw = m as unknown as Record<string, unknown>;
     const usage =
@@ -1138,13 +1142,20 @@ const chatMetrics = computed(() => {
       ((raw.response_metadata as Record<string, unknown> | undefined)
         ?.token_usage as Record<string, number> | undefined);
     if (usage) {
-      if (typeof usage.input_tokens === "number") inTok += usage.input_tokens;
-      if (typeof usage.output_tokens === "number")
+      if (typeof usage.input_tokens === "number" && usage.input_tokens > 0) {
+        inTok += usage.input_tokens;
+        hasRealTokens = true;
+      }
+      if (typeof usage.output_tokens === "number" && usage.output_tokens > 0) {
         outTok += usage.output_tokens;
-      if (typeof usage.cache_read_input_tokens === "number")
+        hasRealTokens = true;
+      }
+      if (
+        typeof usage.cache_read_input_tokens === "number" &&
+        usage.cache_read_input_tokens > 0
+      ) {
         cacheReadTok += usage.cache_read_input_tokens;
-      if (typeof usage.cache_creation_input_tokens === "number")
-        cacheWriteTok += usage.cache_creation_input_tokens;
+      }
     }
     const additional = raw.additional_kwargs as
       | Record<string, unknown>
@@ -1164,56 +1175,34 @@ const chatMetrics = computed(() => {
     }
   }
 
-  // 历史/缺少原生遥测时：智能安全推导
-  if (totalAiChars > 0) {
-    if (inTok === 0 && outTok === 0) {
-      inTok = Math.max(
-        160,
-        Math.round(totalHumanChars * 0.6 + 680 * Math.max(turns, 1)),
-      );
-      outTok = Math.max(25, Math.round(totalAiChars * 0.72));
-    }
-    if (totalLlmMs === 0) {
-      const estimatedTtft = Math.round(1500 * Math.max(turns, 1));
-      const estimatedDecode = Math.round((outTok / 38) * 1000);
-      totalTtftMs = estimatedTtft;
-      ttftCount = Math.max(turns, 1);
-      totalLlmMs = estimatedTtft + estimatedDecode;
-    }
-  }
-
   const groups: string[] = [];
   if (steps > 0) {
     groups.push(`${Math.max(turns, 1)} 轮 · ${steps} 步`);
+    if (hasRealTokens && (inTok > 0 || outTok > 0)) {
+      if (inTok > 0 && outTok > 0) {
+        groups.push(
+          `输入 ${formatTokensCompact(inTok)} · 输出 ${formatTokensCompact(outTok)} tok`,
+        );
+      } else if (inTok > 0) {
+        groups.push(`输入 ${formatTokensCompact(inTok)} tok`);
+      } else {
+        groups.push(`输出 ${formatTokensCompact(outTok)} tok`);
+      }
+    }
+    if (hasRealTokens && inTok > 0 && cacheReadTok > 0) {
+      const hitRate = Math.round((cacheReadTok / inTok) * 100);
+      groups.push(`缓存命中 ${hitRate}%`);
+    }
     if (totalLlmMs > 0) {
       groups.push(`LLM ${formatDurationSec(totalLlmMs)}`);
     }
-    if (ttftCount > 0 && outTok > 0) {
+    if (ttftCount > 0 && outTok > 0 && totalLlmMs > 0) {
       const avgTtft = totalTtftMs / ttftCount;
-      const speed =
-        totalLlmMs > 0
-          ? Math.max(1, Math.round(outTok / (totalLlmMs / 1000)))
-          : 40;
+      const speed = Math.max(1, Math.round(outTok / (totalLlmMs / 1000)));
       groups.push(
         `首 token 平均 ${formatDurationSec(avgTtft)} · ${speed} tok/s`,
       );
-    } else {
-      groups.push("LLM 8.4s");
     }
-  }
-
-  const billedInput = inTok + cacheReadTok + cacheWriteTok;
-  if (billedInput > 0) {
-    const hitRate = Math.round((cacheReadTok / billedInput) * 100);
-    groups.push(`缓存命中 ${hitRate}%`);
-  } else {
-    groups.push("缓存命中 0%");
-  }
-
-  if (inTok > 0 || outTok > 0) {
-    groups.push(
-      `输入 ${formatTokensCompact(inTok || billedInput || 46800)} tok · 输出 ${formatTokensCompact(outTok || 197)} tok`,
-    );
   }
 
   return {
@@ -1226,6 +1215,7 @@ const chatMetrics = computed(() => {
 defineExpose({
   openDrawer,
   openOptions,
+  openUsage: handleOpenUsagePanel,
   reconnectStream: session.reconnectStream,
 });
 </script>
@@ -1498,6 +1488,8 @@ defineExpose({
           :runs="allThreadRuns"
           :runs-loading="historicalRunsLoading"
           :can-read="session.canRead.value"
+          :run-status="session.run.value?.status || null"
+          :initial-inspector-mode="trajectoryInspectorMode"
           @select-run="selectedRunId = $event"
         />
         <div
@@ -1796,6 +1788,7 @@ defineExpose({
           ? chatMetrics.formattedLine
           : ''
       "
+      :can-open-usage="Boolean(displayedMessages.length || messages.length)"
       compact
       :focus-mode="focusMode"
       :models="models"
@@ -1809,6 +1802,7 @@ defineExpose({
       :can-set-policy="session.canSetPolicy.value"
       :can-full-access="session.canFullAccess.value"
       :show-suggestions="shouldShowComposerSuggestions"
+      @open-usage="handleOpenUsagePanel"
       @update:access-policy="session.setAccessPolicy"
       @change:access-policy="session.setAccessPolicy"
       @update:selected-model-id="context.model_id = $event || undefined"

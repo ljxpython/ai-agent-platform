@@ -7,6 +7,7 @@ import hmac
 import os
 import time
 from collections.abc import Mapping
+from typing import Any
 
 import httpx
 import openai
@@ -110,7 +111,7 @@ def build_model(
     config: ResolvedRuntimeConfig,
     *,
     env: Mapping[str, str] | None = None,
-    connection: Mapping[str, str] | None = None,
+    connection: Mapping[str, Any] | None = None,
     max_retries: int | None = None,
 ) -> BaseChatModel:
     """Build a model from a resolved ID; never accepts raw request config."""
@@ -134,6 +135,17 @@ def build_model(
         protocol = str(connection.get("protocol", "")).strip().lower()
 
     kwargs = _generation_kwargs(config, max_retries=max_retries)
+    from runtime_service.observability.usage import safe_pricing
+
+    kwargs["metadata"] = {
+        "runtime_usage_model": {
+            "model_id": connection.get("model_id") if connection else None,
+            "provider": provider,
+            "protocol": protocol,
+            "model_name": model_name,
+            "pricing": safe_pricing(connection.get("pricing")) if connection else None,
+        }
+    }
 
     try:
         conn_api_key = connection.get("api_key") if connection is not None else None
@@ -207,7 +219,7 @@ async def fetch_model_connection(
     *,
     model_id: str,
     project_id: str,
-) -> dict[str, str] | None:
+) -> dict[str, Any] | None:
     """Resolve a server-issued opaque reference without persisting credentials."""
     if reference is None:
         return None
@@ -258,7 +270,13 @@ async def fetch_model_connection(
         )
     ):
         raise RuntimeResolutionError("runtime.model.initialization_failed", "model_id")
-    return {key: payload[key] for key in required} | {"model_id": model_id}
+    from runtime_service.observability.usage import safe_pricing
+
+    connection = {key: payload[key] for key in required} | {"model_id": model_id}
+    pricing = safe_pricing(payload.get("pricing"))
+    if pricing is not None:
+        connection["pricing"] = pricing
+    return connection
 
 
 __all__ = ["build_model", "fetch_model_connection"]

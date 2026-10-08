@@ -68,5 +68,10 @@
     "vue-eslint-parser": "^9.4.3",
     "vue-tsc": "^2.2.0"
   },
+  "pnpm": {
+    "patchedDependencies": {
+      "@langchain/langgraph-sdk@1.10.2": "patches/@langchain__langgraph-sdk@1.10.2.patch"
+    }
+  },
   "packageManager": "pnpm@10.5.1"
 }

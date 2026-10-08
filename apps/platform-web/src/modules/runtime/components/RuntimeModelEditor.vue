@@ -3,7 +3,11 @@ import { computed, ref, watch } from "vue";
 import BaseButton from "@/components/base/BaseButton.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import BaseSelect from "@/components/base/BaseSelect.vue";
-import type { RuntimeModelItem } from "@/types/management";
+import type {
+  RuntimeModelItem,
+  RuntimeModelPricingInput,
+  RuntimeModelPricingSnapshot,
+} from "@/types/management";
 
 export type ModelEditorMode = "standard" | "custom" | "edit";
 
@@ -22,6 +26,8 @@ export interface ModelEditorSubmitPayload {
   api_key: string;
   enabled: boolean;
   models: ModelRowDraft[];
+  pricing?: RuntimeModelPricingInput | null;
+  pricingDirty?: boolean;
 }
 
 const props = withDefaults(
@@ -171,7 +177,10 @@ const providerOptions = PROVIDER_PRESETS.map((p) => ({
 }));
 
 const PROTOCOL_OPTIONS = [
-  { value: "openai-compatible", label: "openai-compatible (主流兼容网关，如 vLLM / Ollama)" },
+  {
+    value: "openai-compatible",
+    label: "openai-compatible (主流兼容网关，如 vLLM / Ollama)",
+  },
   { value: "anthropic", label: "anthropic (Anthropic Claude 原生网关)" },
   { value: "deepseek", label: "deepseek (DeepSeek 原生网关)" },
   { value: "openai", label: "openai (OpenAI 原生网关)" },
@@ -210,8 +219,76 @@ const customModelList = ref<ModelRowDraft[]>([{ id: "", name: "" }]);
 const editModelId = ref("");
 const editDisplayName = ref("");
 const editBaseUrl = ref("");
-const editProtocol = ref("openai-compatible");
 const editProvider = ref("");
+const editProtocol = ref("openai-compatible");
+
+// 定价配置状态 (仅编辑模式生效)
+interface PricingDraft {
+  input: string;
+  output: string;
+  cache_read: string;
+  cache_write: string;
+  cache_write_5m: string;
+  cache_write_1h: string;
+}
+
+const pricingDraft = ref<PricingDraft>({
+  input: "",
+  output: "",
+  cache_read: "",
+  cache_write: "",
+  cache_write_5m: "",
+  cache_write_1h: "",
+});
+
+const isPricingDirty = ref(false);
+const isPricingCleared = ref(false);
+const pricingSnapshot = ref<RuntimeModelPricingSnapshot | null>(null);
+const DECIMAL_RATE_REGEX = /^\d{1,10}(\.\d{1,10})?$/;
+
+function onPricingFieldInput() {
+  isPricingDirty.value = true;
+  isPricingCleared.value = false;
+}
+
+function onPricingFieldBlur(key: keyof PricingDraft) {
+  let val = pricingDraft.value[key].trim();
+  if (val.startsWith(".")) {
+    val = "0" + val;
+    pricingDraft.value[key] = val;
+  } else if (val.endsWith(".") && !val.includes("..")) {
+    val = val + "0";
+    pricingDraft.value[key] = val;
+  }
+}
+
+function handleClearPricing() {
+  pricingDraft.value = {
+    input: "",
+    output: "",
+    cache_read: "",
+    cache_write: "",
+    cache_write_5m: "",
+    cache_write_1h: "",
+  };
+  isPricingDirty.value = true;
+  isPricingCleared.value = true;
+}
+
+function handleRestorePricing() {
+  if (!pricingSnapshot.value) return;
+  const p = pricingSnapshot.value;
+  pricingDraft.value = {
+    input: p.input ?? "",
+    output: p.output ?? "",
+    cache_read: p.cache_read ?? "",
+    cache_write: p.cache_write ?? "",
+    cache_write_5m: p.cache_write_5m ?? "",
+    cache_write_1h: p.cache_write_1h ?? "",
+  };
+  isPricingDirty.value = false;
+  isPricingCleared.value = false;
+}
 
 const isEditMode = computed(() => activeMode.value === "edit");
 
@@ -275,7 +352,34 @@ function initForm() {
     editProtocol.value = m.protocol;
     apiKey.value = "";
     enabled.value = m.enabled !== false;
-  } else if (props.initialStation) {
+
+    // 初始化定价数据
+    pricingSnapshot.value = m.pricing || null;
+    const p = m.pricing;
+    pricingDraft.value = {
+      input: p?.input ?? "",
+      output: p?.output ?? "",
+      cache_read: p?.cache_read ?? "",
+      cache_write: p?.cache_write ?? "",
+      cache_write_5m: p?.cache_write_5m ?? "",
+      cache_write_1h: p?.cache_write_1h ?? "",
+    };
+    isPricingDirty.value = false;
+    isPricingCleared.value = false;
+  } else {
+    pricingSnapshot.value = null;
+    pricingDraft.value = {
+      input: "",
+      output: "",
+      cache_read: "",
+      cache_write: "",
+      cache_write_5m: "",
+      cache_write_1h: "",
+    };
+    isPricingDirty.value = false;
+    isPricingCleared.value = false;
+  }
+  if (props.initialStation) {
     const s = props.initialStation;
     apiKey.value = "";
     enabled.value = true;
@@ -322,7 +426,11 @@ function initForm() {
 }
 
 watch(
-  [() => props.editingModel, () => props.initialStation, () => props.initialMode],
+  [
+    () => props.editingModel,
+    () => props.initialStation,
+    () => props.initialMode,
+  ],
   () => {
     initForm();
   },
@@ -358,6 +466,51 @@ function handleSubmit() {
       }
     }
 
+    // 组装定价 payload (严格遵从 dirty 机制)
+    let pricingPayload: RuntimeModelPricingInput | null | undefined = undefined;
+    if (isPricingDirty.value) {
+      if (isPricingCleared.value) {
+        pricingPayload = null;
+      } else {
+        const rates: (keyof PricingDraft)[] = [
+          "input",
+          "output",
+          "cache_read",
+          "cache_write",
+          "cache_write_5m",
+          "cache_write_1h",
+        ];
+        for (const key of rates) {
+          let val = pricingDraft.value[key].trim();
+          if (val.startsWith(".")) {
+            val = "0" + val;
+            pricingDraft.value[key] = val;
+          }
+          if (val && !DECIMAL_RATE_REGEX.test(val)) {
+            formError.value = `费率 ${key} 格式不合法：必须为不超过 10 位整数与 10 位小数的非负十进制数字`;
+            return;
+          }
+        }
+        const hasAnyRate = rates.some(
+          (k) => pricingDraft.value[k].trim() !== "",
+        );
+        if (!hasAnyRate) {
+          pricingPayload = null;
+        } else {
+          pricingPayload = {
+            currency: "USD",
+            basis: "per_million_tokens",
+            input: pricingDraft.value.input.trim() || null,
+            output: pricingDraft.value.output.trim() || null,
+            cache_read: pricingDraft.value.cache_read.trim() || null,
+            cache_write: pricingDraft.value.cache_write.trim() || null,
+            cache_write_5m: pricingDraft.value.cache_write_5m.trim() || null,
+            cache_write_1h: pricingDraft.value.cache_write_1h.trim() || null,
+          };
+        }
+      }
+    }
+
     emit("submit", {
       isEdit: true,
       editingId: props.editingModel?.id,
@@ -368,6 +521,8 @@ function handleSubmit() {
       api_key: apiKey.value.trim(),
       enabled: enabled.value,
       models: [{ id: trimmedId, name: editDisplayName.value.trim() }],
+      pricing: pricingPayload,
+      pricingDirty: isPricingDirty.value,
     });
     return;
   }
@@ -431,7 +586,8 @@ function handleSubmit() {
       return;
     }
     if (!ROUTE_ID_PATTERN.test(route)) {
-      formError.value = "Provider 标识必须以小写字母开头，仅支持小写字母、数字和中划线（如 my-vllm）";
+      formError.value =
+        "Provider 标识必须以小写字母开头，仅支持小写字母、数字和中划线（如 my-vllm）";
       return;
     }
     if (!trimmedBaseUrl) {
@@ -484,10 +640,7 @@ function handleSubmit() {
         <div
           class="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400"
         >
-          <BaseIcon
-            name="sparkle"
-            size="sm"
-          />
+          <BaseIcon name="sparkle" size="sm" />
         </div>
         <div>
           <h2 class="text-base font-semibold text-gray-900 dark:text-white">
@@ -555,10 +708,7 @@ function handleSubmit() {
           :disabled="busy"
           @click="emit('close')"
         >
-          <BaseIcon
-            name="x"
-            size="sm"
-          />
+          <BaseIcon name="x" size="sm" />
           取消
         </BaseButton>
       </div>
@@ -571,11 +721,7 @@ function handleSubmit() {
         v-if="formError"
         class="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-300"
       >
-        <BaseIcon
-          name="alert"
-          size="sm"
-          class="shrink-0"
-        />
+        <BaseIcon name="alert" size="sm" class="shrink-0" />
         <span>{{ formError }}</span>
       </div>
 
@@ -608,10 +754,7 @@ function handleSubmit() {
                 class="flex items-center gap-1 text-[11px] font-normal text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200"
                 @click="showApiKey = !showApiKey"
               >
-                <BaseIcon
-                  :name="showApiKey ? 'eye-off' : 'eye'"
-                  size="xs"
-                />
+                <BaseIcon :name="showApiKey ? 'eye-off' : 'eye'" size="xs" />
                 {{ showApiKey ? "隐藏" : "显示" }}
               </button>
             </label>
@@ -623,17 +766,14 @@ function handleSubmit() {
                 :placeholder="activePlaceholderKey"
                 autocomplete="new-password"
                 :disabled="busy"
-              >
+              />
               <button
                 type="button"
                 class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-dark-200"
                 tabindex="-1"
                 @click="showApiKey = !showApiKey"
               >
-                <BaseIcon
-                  :name="showApiKey ? 'eye-off' : 'eye'"
-                  size="sm"
-                />
+                <BaseIcon :name="showApiKey ? 'eye-off' : 'eye'" size="sm" />
               </button>
             </div>
           </div>
@@ -645,7 +785,9 @@ function handleSubmit() {
         >
           <div class="mb-3 flex items-center justify-between">
             <div>
-              <h3 class="text-xs font-semibold text-gray-800 dark:text-dark-200">
+              <h3
+                class="text-xs font-semibold text-gray-800 dark:text-dark-200"
+              >
                 包含模型清单 (Model List)
               </h3>
               <p class="text-[11px] text-gray-500 dark:text-dark-400">
@@ -658,10 +800,7 @@ function handleSubmit() {
               :disabled="busy"
               @click="addStandardModelRow"
             >
-              <BaseIcon
-                name="plus"
-                size="xs"
-              />
+              <BaseIcon name="plus" size="xs" />
               <span>添加模型</span>
             </button>
           </div>
@@ -678,7 +817,7 @@ function handleSubmit() {
                   class="pw-input h-9 text-xs"
                   placeholder="Model ID，例如 deepseek-chat"
                   :disabled="busy"
-                >
+                />
               </div>
               <div class="flex-1">
                 <input
@@ -686,7 +825,7 @@ function handleSubmit() {
                   class="pw-input h-9 text-xs"
                   placeholder="Display Name，例如 DeepSeek V3"
                   :disabled="busy"
-                >
+                />
               </div>
               <button
                 type="button"
@@ -695,10 +834,7 @@ function handleSubmit() {
                 title="删除此模型"
                 @click="removeStandardModelRow(idx)"
               >
-                <BaseIcon
-                  name="trash"
-                  size="sm"
-                />
+                <BaseIcon name="trash" size="sm" />
               </button>
             </div>
           </div>
@@ -714,11 +850,7 @@ function handleSubmit() {
             @click="showAdvancedSettings = !showAdvancedSettings"
           >
             <div class="flex items-center gap-2">
-              <BaseIcon
-                name="settings-2"
-                size="sm"
-                class="text-gray-400"
-              />
+              <BaseIcon name="settings-2" size="sm" class="text-gray-400" />
               <span>高级设置 (自定义 API 端点与启用状态)</span>
             </div>
             <BaseIcon
@@ -745,7 +877,7 @@ function handleSubmit() {
                 placeholder="提供方默认，若内网反向代理可修改"
                 inputmode="url"
                 :disabled="busy"
-              >
+              />
               <p class="mt-1 text-[11px] text-gray-500 dark:text-dark-400">
                 已自动预设官方标准端点。如团队自建了反向代理网关，可展开修改。
               </p>
@@ -760,7 +892,7 @@ function handleSubmit() {
                   type="checkbox"
                   class="pw-table-checkbox rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                   :disabled="busy"
-                >
+                />
                 <span>配置完成后默认启用该模型</span>
               </label>
             </div>
@@ -782,10 +914,14 @@ function handleSubmit() {
               <input
                 v-model="customRoute"
                 class="pw-input text-xs"
-                :class="customRouteError ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500' : ''"
+                :class="
+                  customRouteError
+                    ? 'border-rose-300 focus:border-rose-500 focus:ring-rose-500'
+                    : ''
+                "
                 placeholder="例如 my-vllm, company-gateway, ollama-local"
                 :disabled="busy"
-              >
+              />
               <p
                 v-if="customRouteError"
                 class="mt-1 text-[11px] text-rose-600 dark:text-rose-400"
@@ -810,9 +946,11 @@ function handleSubmit() {
               <input
                 v-model="customDisplayName"
                 class="pw-input text-xs"
-                :placeholder="customRoute.trim() || '例如 公司自建 vLLM 集群 (选填)'"
+                :placeholder="
+                  customRoute.trim() || '例如 公司自建 vLLM 集群 (选填)'
+                "
                 :disabled="busy"
-              >
+              />
               <p class="mt-1 text-[11px] text-gray-500 dark:text-dark-400">
                 面向界面展示的友好别名，留空将默认使用 Provider 标识。
               </p>
@@ -833,7 +971,7 @@ function handleSubmit() {
                 placeholder="例如 http://192.168.1.100:8000/v1 或 https://gateway.company.com/v1"
                 inputmode="url"
                 :disabled="busy"
-              >
+              />
             </div>
 
             <!-- Protocol 协议 (必选) -->
@@ -862,10 +1000,7 @@ function handleSubmit() {
                 class="flex items-center gap-1 text-[11px] font-normal text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200"
                 @click="showApiKey = !showApiKey"
               >
-                <BaseIcon
-                  :name="showApiKey ? 'eye-off' : 'eye'"
-                  size="xs"
-                />
+                <BaseIcon :name="showApiKey ? 'eye-off' : 'eye'" size="xs" />
                 {{ showApiKey ? "隐藏" : "显示" }}
               </button>
             </label>
@@ -877,17 +1012,14 @@ function handleSubmit() {
                 :placeholder="activePlaceholderKey"
                 autocomplete="new-password"
                 :disabled="busy"
-              >
+              />
               <button
                 type="button"
                 class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-dark-200"
                 tabindex="-1"
                 @click="showApiKey = !showApiKey"
               >
-                <BaseIcon
-                  :name="showApiKey ? 'eye-off' : 'eye'"
-                  size="sm"
-                />
+                <BaseIcon :name="showApiKey ? 'eye-off' : 'eye'" size="sm" />
               </button>
             </div>
             <p class="mt-1 text-[11px] text-gray-500 dark:text-dark-400">
@@ -901,7 +1033,9 @@ function handleSubmit() {
           >
             <div class="mb-3 flex items-center justify-between">
               <div>
-                <h3 class="text-xs font-semibold text-gray-800 dark:text-dark-200">
+                <h3
+                  class="text-xs font-semibold text-gray-800 dark:text-dark-200"
+                >
                   包含模型清单 (Model List) <span class="text-rose-500">*</span>
                 </h3>
                 <p class="text-[11px] text-gray-500 dark:text-dark-400">
@@ -914,10 +1048,7 @@ function handleSubmit() {
                 :disabled="busy"
                 @click="addCustomModelRow"
               >
-                <BaseIcon
-                  name="plus"
-                  size="xs"
-                />
+                <BaseIcon name="plus" size="xs" />
                 <span>添加模型</span>
               </button>
             </div>
@@ -934,7 +1065,7 @@ function handleSubmit() {
                     class="pw-input h-9 text-xs"
                     placeholder="Model ID (必填)，例如 qwen2.5-72b-instruct"
                     :disabled="busy"
-                  >
+                  />
                 </div>
                 <div class="flex-1">
                   <input
@@ -942,7 +1073,7 @@ function handleSubmit() {
                     class="pw-input h-9 text-xs"
                     placeholder="Display Name (选填)，例如 通义千问 72B 深度推理"
                     :disabled="busy"
-                  >
+                  />
                 </div>
                 <button
                   type="button"
@@ -951,10 +1082,7 @@ function handleSubmit() {
                   title="删除此模型"
                   @click="removeCustomModelRow(idx)"
                 >
-                  <BaseIcon
-                    name="trash"
-                    size="sm"
-                  />
+                  <BaseIcon name="trash" size="sm" />
                 </button>
               </div>
             </div>
@@ -969,7 +1097,7 @@ function handleSubmit() {
                 type="checkbox"
                 class="pw-table-checkbox rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 :disabled="busy"
-              >
+              />
               <span>配置完成后默认启用该模型</span>
             </label>
           </div>
@@ -981,17 +1109,21 @@ function handleSubmit() {
         <div class="space-y-4">
           <div class="grid gap-4 md:grid-cols-2">
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 所属 Provider
               </label>
               <input
                 :value="editProvider"
                 class="pw-input bg-gray-50 text-xs text-gray-500 dark:bg-dark-800 dark:text-dark-400"
                 disabled
-              >
+              />
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 Protocol 协议
               </label>
               <BaseSelect
@@ -1004,7 +1136,9 @@ function handleSubmit() {
 
           <div class="grid gap-4 md:grid-cols-2">
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 Model ID (必填)
               </label>
               <input
@@ -1012,10 +1146,12 @@ function handleSubmit() {
                 class="pw-input text-xs"
                 placeholder="例如 deepseek-chat, gpt-4o"
                 :disabled="busy"
-              >
+              />
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 Display Name (显示别名)
               </label>
               <input
@@ -1023,13 +1159,15 @@ function handleSubmit() {
                 class="pw-input text-xs"
                 placeholder="例如 DeepSeek V3"
                 :disabled="busy"
-              >
+              />
             </div>
           </div>
 
           <div class="grid gap-4 md:grid-cols-2">
             <div>
-              <label class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 block text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 Base URL (API 接入端点)
               </label>
               <input
@@ -1038,20 +1176,19 @@ function handleSubmit() {
                 placeholder="https://api.example.com/v1"
                 inputmode="url"
                 :disabled="busy"
-              >
+              />
             </div>
             <div>
-              <label class="mb-1.5 flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-dark-200">
+              <label
+                class="mb-1.5 flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-dark-200"
+              >
                 <span>更新 API Key (留空表示不修改已有凭据)</span>
                 <button
                   type="button"
                   class="flex items-center gap-1 text-[11px] font-normal text-gray-500 hover:text-gray-700 dark:text-dark-400 dark:hover:text-dark-200"
                   @click="showApiKey = !showApiKey"
                 >
-                  <BaseIcon
-                    :name="showApiKey ? 'eye-off' : 'eye'"
-                    size="xs"
-                  />
+                  <BaseIcon :name="showApiKey ? 'eye-off' : 'eye'" size="xs" />
                   {{ showApiKey ? "隐藏" : "显示" }}
                 </button>
               </label>
@@ -1063,17 +1200,14 @@ function handleSubmit() {
                   placeholder="留空则保持现有凭据不变"
                   autocomplete="new-password"
                   :disabled="busy"
-                >
+                />
                 <button
                   type="button"
                   class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-dark-200"
                   tabindex="-1"
                   @click="showApiKey = !showApiKey"
                 >
-                  <BaseIcon
-                    :name="showApiKey ? 'eye-off' : 'eye'"
-                    size="sm"
-                  />
+                  <BaseIcon :name="showApiKey ? 'eye-off' : 'eye'" size="sm" />
                 </button>
               </div>
             </div>
@@ -1088,9 +1222,187 @@ function handleSubmit() {
                 type="checkbox"
                 class="pw-table-checkbox rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 :disabled="busy"
-              >
+              />
               <span>启用该模型</span>
             </label>
+          </div>
+
+          <!-- 模型费率配置卡片 (USD / 百万 Token) -->
+          <div
+            class="rounded-lg border border-gray-200 bg-gray-50/70 p-4 dark:border-dark-800 dark:bg-dark-900/60 space-y-3"
+            data-testid="model-pricing-section"
+          >
+            <div
+              class="flex items-center justify-between border-b pb-2.5 border-gray-200/80 dark:border-dark-800"
+            >
+              <div>
+                <h4
+                  class="text-xs font-semibold text-gray-900 dark:text-gray-100"
+                >
+                  模型费率配置 (USD / 百万 Token)
+                </h4>
+                <p class="text-[11px] text-gray-500 dark:text-dark-400 mt-0.5">
+                  用于用量成本估算。留空表示未配置对应费率；清空或修改将触发版本快照归档。
+                </p>
+              </div>
+
+              <button
+                v-if="pricingSnapshot || isPricingDirty"
+                type="button"
+                data-testid="clear-pricing-btn"
+                class="text-[11px] text-red-600 hover:text-red-700 dark:text-red-400 transition-colors"
+                :disabled="busy"
+                @click="handleClearPricing"
+              >
+                清空费率配置
+              </button>
+            </div>
+
+            <!-- 服务端快照只读元数据 -->
+            <div
+              v-if="pricingSnapshot && !isPricingCleared"
+              class="flex flex-wrap items-center gap-3 text-[10px] font-mono text-gray-500 dark:text-dark-400 bg-white/60 dark:bg-dark-950/40 px-2.5 py-1.5 rounded border border-gray-200/60 dark:border-dark-800"
+            >
+              <span>快照版本: {{ pricingSnapshot.version }}</span>
+              <span>·</span>
+              <span>来源: {{ pricingSnapshot.source }}</span>
+              <span>·</span>
+              <span
+                >更新时间:
+                {{
+                  new Date(pricingSnapshot.updated_at).toLocaleString()
+                }}</span
+              >
+            </div>
+
+            <!-- 清空状态待生效提示及撤销按钮 -->
+            <div
+              v-else-if="isPricingCleared"
+              data-testid="pricing-cleared-banner"
+              class="flex items-center justify-between text-xs bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 px-3 py-2 rounded border border-amber-200 dark:border-amber-900"
+            >
+              <span>费率已标记待清空，保存后将移除该模型的价格配置。</span>
+              <button
+                v-if="pricingSnapshot"
+                type="button"
+                data-testid="restore-pricing-btn"
+                class="text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 ml-2"
+                @click="handleRestorePricing"
+              >
+                撤销恢复
+              </button>
+            </div>
+
+            <!-- 六项费率表单输入网格 -->
+            <div class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 pt-1">
+              <div>
+                <label
+                  class="mb-1 block text-[11px] font-medium text-gray-700 dark:text-dark-300"
+                >
+                  输入费率 (Input)
+                </label>
+                <input
+                  v-model="pricingDraft.input"
+                  type="text"
+                  inputmode="decimal"
+                  class="pw-input text-xs font-mono"
+                  placeholder="如 2.0"
+                  :disabled="busy"
+                  @input="onPricingFieldInput"
+                  @blur="onPricingFieldBlur('input')"
+                />
+              </div>
+
+              <div>
+                <label
+                  class="mb-1 block text-[11px] font-medium text-gray-700 dark:text-dark-300"
+                >
+                  输出费率 (Output)
+                </label>
+                <input
+                  v-model="pricingDraft.output"
+                  type="text"
+                  inputmode="decimal"
+                  class="pw-input text-xs font-mono"
+                  placeholder="如 8.0"
+                  :disabled="busy"
+                  @input="onPricingFieldInput"
+                  @blur="onPricingFieldBlur('output')"
+                />
+              </div>
+
+              <div>
+                <label
+                  class="mb-1 block text-[11px] font-medium text-gray-700 dark:text-dark-300"
+                >
+                  缓存读取 (Cache Read)
+                </label>
+                <input
+                  v-model="pricingDraft.cache_read"
+                  type="text"
+                  inputmode="decimal"
+                  class="pw-input text-xs font-mono"
+                  placeholder="如 0.2"
+                  :disabled="busy"
+                  @input="onPricingFieldInput"
+                  @blur="onPricingFieldBlur('cache_read')"
+                />
+              </div>
+
+              <div>
+                <label
+                  class="mb-1 block text-[11px] font-medium text-gray-700 dark:text-dark-300"
+                >
+                  缓存写入 (Cache Write)
+                </label>
+                <input
+                  v-model="pricingDraft.cache_write"
+                  type="text"
+                  inputmode="decimal"
+                  class="pw-input text-xs font-mono"
+                  placeholder="如 2.5"
+                  :disabled="busy"
+                  @input="onPricingFieldInput"
+                  @blur="onPricingFieldBlur('cache_write')"
+                />
+              </div>
+
+              <div>
+                <label
+                  class="mb-1 block text-[11px] font-medium text-gray-700 dark:text-dark-300"
+                >
+                  5分钟写入 (5m TTL)
+                </label>
+                <input
+                  v-model="pricingDraft.cache_write_5m"
+                  type="text"
+                  inputmode="decimal"
+                  class="pw-input text-xs font-mono"
+                  placeholder="如 2.5"
+                  :disabled="busy"
+                  @input="onPricingFieldInput"
+                  @blur="onPricingFieldBlur('cache_write_5m')"
+                />
+              </div>
+
+              <div>
+                <label
+                  class="mb-1 block text-[11px] font-medium text-gray-700 dark:text-dark-300"
+                >
+                  1小时写入 (1h TTL)
+                </label>
+                <input
+                  v-model="pricingDraft.cache_write_1h"
+                  type="text"
+                  inputmode="decimal"
+                  class="pw-input text-xs font-mono"
+                  placeholder="如 4.0"
+                  :disabled="busy"
+                  @input="onPricingFieldInput"
+                  @blur="onPricingFieldBlur('cache_write_1h')"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </template>
@@ -1100,23 +1412,11 @@ function handleSubmit() {
     <div
       class="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50/50 px-6 py-3.5 dark:border-dark-800 dark:bg-dark-950/40"
     >
-      <BaseButton
-        variant="ghost"
-        :disabled="busy"
-        @click="emit('close')"
-      >
+      <BaseButton variant="ghost" :disabled="busy" @click="emit('close')">
         取消
       </BaseButton>
-      <BaseButton
-        :disabled="busy"
-        @click="handleSubmit"
-      >
-        <BaseIcon
-          v-if="busy"
-          name="refresh"
-          size="sm"
-          class="animate-spin"
-        />
+      <BaseButton :disabled="busy" @click="handleSubmit">
+        <BaseIcon v-if="busy" name="refresh" size="sm" class="animate-spin" />
         <span>{{
           busy
             ? "保存中..."

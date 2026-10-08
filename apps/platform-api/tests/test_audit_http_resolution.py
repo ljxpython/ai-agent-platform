@@ -10,6 +10,34 @@ from platform_api.modules.audit.schemas import AuditPlane, AuditResult
 
 
 class AuditHttpResolutionTest(unittest.TestCase):
+    def test_model_price_audit_only_records_version_and_field_names(self):
+        result = resolve_http_audit(
+            request=AuditHttpRequest(
+                method="PATCH",
+                path="/api/runtime/models/model-id",
+                query_params={},
+                query_string=None,
+                state_project_id="project",
+                client_ip=None,
+                user_agent=None,
+                response_content_length=None,
+                metadata={
+                    "model_id": "model-id",
+                    "pricing_version": "price-version",
+                    "changed_fields": ["pricing", "api_key"],
+                    "api_key": "SECRET",
+                },
+            ),
+            response_payload={"id": "model-id"},
+            actor_user_id="owner",
+            status_code=200,
+            result=AuditResult.SUCCESS,
+        )
+        self.assertEqual(result.action, "runtime.model.item.updated")
+        self.assertEqual(result.metadata["pricing_version"], "price-version")
+        self.assertEqual(result.metadata["changed_fields"], ["pricing"])
+        self.assertNotIn("SECRET", str(result))
+
     def test_personal_memory_audit_uses_action_without_body(self):
         resolved = resolve_http_audit(
             request=AuditHttpRequest(

@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import quote, urlparse
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy.orm import Session, sessionmaker
 from starlette.concurrency import run_in_threadpool
@@ -217,6 +217,7 @@ class RuntimeCatalogService:
             credential_configured=bool(item.api_key_ciphertext),
             scope_type=scope_type,
             project_id=str(project_id) if project_id else None,
+            pricing=item.pricing,
         )
 
     def _authorize_model_reference(self, values: dict, project_id: str) -> None:
@@ -394,7 +395,7 @@ class RuntimeCatalogService:
         reference: str,
         project_id: str,
         trusted_runtime: bool = False,
-    ) -> dict[str, str]:
+    ) -> dict[str, Any]:
         """Resolve one short-lived internal reference without exposing it publicly."""
         secret = (
             self._settings.runtime_model_config_secret
@@ -460,6 +461,7 @@ class RuntimeCatalogService:
                 "protocol": item.protocol,
                 "model": item.model_name,
                 "api_key": api_key,
+                "pricing": item.pricing,
             }
 
     @staticmethod
@@ -467,6 +469,8 @@ class RuntimeCatalogService:
         payload: RuntimeModelCreate | RuntimeModelUpdate, *, partial: bool
     ) -> dict[str, Any]:
         values = payload.model_dump(exclude_unset=partial)
+        if "pricing" in values and payload.pricing is not None:
+            values["pricing"] = payload.pricing.model_dump()
         if "enabled" in values and not isinstance(values["enabled"], bool):
             raise BadRequestError(
                 code="invalid_model_enabled", message="enabled must be a boolean"
@@ -535,6 +539,21 @@ class RuntimeCatalogService:
             )
         return values
 
+    @staticmethod
+    def _price_snapshot(
+        pricing: dict | None, current: dict | None = None
+    ) -> dict | None:
+        if pricing is None:
+            return None
+        if current and all(current.get(key) == value for key, value in pricing.items()):
+            return current
+        return {
+            **pricing,
+            "version": str(uuid4()),
+            "source": "configured_catalog",
+            "updated_at": datetime.now(UTC).isoformat(),
+        }
+
     def create_model(
         self,
         *,
@@ -568,6 +587,7 @@ class RuntimeCatalogService:
             )
 
         values = self._validated_model_values(payload, partial=False)
+        values["pricing_json"] = self._price_snapshot(values.pop("pricing", None))
         values["scope_type"] = scope_type
         values["project_id"] = target_project_uuid
         try:
@@ -638,6 +658,10 @@ class RuntimeCatalogService:
                 )
 
             values = self._validated_model_values(payload, partial=True)
+            if "pricing" in values:
+                values["pricing_json"] = self._price_snapshot(
+                    values.pop("pricing"), current.pricing
+                )
             if "api_key" in values:
                 try:
                     values["api_key_ciphertext"] = encrypt_api_key(
