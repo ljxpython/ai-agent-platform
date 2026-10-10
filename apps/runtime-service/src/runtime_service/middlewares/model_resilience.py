@@ -32,9 +32,11 @@ from langchain_deepseek import ChatDeepSeek
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphBubbleUp
 
+from runtime_service.middlewares.pii_redaction import PiiSummarizationMiddleware
 from runtime_service.observability.errors import classify_exception
 from runtime_service.runtime.contracts import ModelResiliencePolicy
 from runtime_service.runtime.errors import RuntimeErrorBase, RuntimeResolutionError
+from runtime_service.runtime.pii import PiiRedactionConfig
 
 logger = logging.getLogger(__name__)
 _STATUS_CODES = {408, 429, 500, 502, 503, 504, 529}
@@ -344,9 +346,19 @@ class ModelResilienceSummarizationMiddleware(AgentMiddleware):
     name = "SummarizationMiddleware"
     state_schema = SummarizationMiddleware.state_schema
 
-    def __init__(self, model, backend) -> None:
+    def __init__(
+        self,
+        model,
+        backend,
+        *,
+        pii_config: PiiRedactionConfig | None = None,
+    ) -> None:
         super().__init__()
-        self.summary = create_summarization_middleware(model, backend)
+        self.summary = (
+            PiiSummarizationMiddleware(model, backend, pii_config=pii_config)
+            if pii_config is not None and pii_config.enabled
+            else create_summarization_middleware(model, backend)
+        )
 
     async def awrap_model_call(self, request: ModelRequest, handler):
         try:

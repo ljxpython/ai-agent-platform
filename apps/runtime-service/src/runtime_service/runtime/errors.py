@@ -38,6 +38,10 @@ class TokenBudgetUnverifiableError(RuntimeExecutionError):
         super().__init__("runtime.token_budget.unverifiable")
 
 
+class RuntimePrivacyError(RuntimeExecutionError):
+    """Privacy guard failure; raw model input must never be retried or sent."""
+
+
 class RuntimeWorkspaceError(RuntimeError):
     """Must escape filesystem tools' ValueError-to-parameter-error handling."""
 

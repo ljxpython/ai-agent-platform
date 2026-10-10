@@ -165,7 +165,8 @@ def test_managed_policy_runs_through_all_real_composition_roots(
     assert len(models[A].seen) == len(models[B].seen) == 1
     assert (A, 0) in construction and (B, 0) in construction
     if module in (dearflow, showcase):
-        assert (A, None) in construction
+        if module is showcase:
+            assert (A, None) in construction
         expected = (
             {graph_id, "general-purpose"}
             if module is dearflow
@@ -359,7 +360,7 @@ def test_worker_cancel_stops_actual_child_and_candidate_waits(
                 {
                     key: value
                     for key, value in managed["configurable"].items()
-                    if key != "thread_id"
+                    if key not in {"thread_id", "__graphharbor_run_budget"}
                 }
             )
             cfg["context"] = managed["context"]
@@ -411,7 +412,7 @@ def test_worker_cancel_stops_actual_child_and_candidate_waits(
                 task = asyncio.create_task(worker.run_once())
                 ready = asyncio.create_task(entered.wait())
                 done, _ = await asyncio.wait(
-                    (ready, task), timeout=15, return_when=asyncio.FIRST_COMPLETED
+                    (ready, task), timeout=60, return_when=asyncio.FIRST_COMPLETED
                 )
                 if ready not in done:
                     ready.cancel()

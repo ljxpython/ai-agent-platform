@@ -25,6 +25,7 @@ from runtime_service.middlewares import (
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
     ModelResilienceMiddleware,
+    PiiRedactionMiddleware,
     PlanModeMiddleware,
     RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
@@ -54,6 +55,7 @@ from runtime_service.runtime import (
 from runtime_service.runtime.auth import VerifiedDelegation
 from runtime_service.runtime.capabilities import REFERENCE_TOOLS
 from runtime_service.runtime.errors import RuntimeAuthError
+from runtime_service.runtime.pii import load_pii_redaction_config, pii_config_for_facts
 from runtime_service.runtime.run_budget import RUN_BUDGET_KEY, read_run_budget
 from runtime_service.services.reference_agent.prompts import SYSTEM_PROMPT
 from runtime_service.services.reference_agent.tools import read_reference
@@ -197,6 +199,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         and configurable.get("_runtime_test_local_auth") is True
     )
     facts = None if probe_only else _runtime_facts(config)
+    pii_config = (
+        load_pii_redaction_config()
+        if probe_only
+        else pii_config_for_facts(facts, configurable.get("thread_id"))
+    )
     run_budget = read_run_budget(
         config,
         required=bool(facts and facts.scope.operation == "run-create"),
@@ -343,6 +350,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             if loop_detection_enabled()
             else []
         ),
+        *([PiiRedactionMiddleware(pii_config)] if pii_config.enabled else []),
     ]
     with startup.phase("factory.agent_compile"):
         agent = create_agent(

@@ -1,6 +1,6 @@
 import { effectScope, ref } from "vue";
 import { flushPromises } from "@vue/test-utils";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   enqueue: vi.fn(),
   list: vi.fn(),
@@ -96,7 +96,10 @@ vi.mock("../run-actions", () => ({
       dispose: vi.fn(),
     },
 }));
-import { useChatSession } from "./useChatSession";
+import {
+  useChatSession,
+  extractRuntimeModelErrorMessage,
+} from "./useChatSession";
 import { useDearAgentSession } from "../../dear-agent/composables/useDearAgentSession";
 
 it("parks background SSE, confirms terminal state and permits the next queued turn", async () => {
@@ -2281,4 +2284,277 @@ it("reflects timeout turnState and permits next turn submission", async () => {
     mocks.runs.mockReset();
     mocks.run.mockReset();
   }
+});
+
+describe("F05 Agent 模型上下文 PII 脱敏错误消费与界面回归", () => {
+  describe("extractRuntimeModelErrorMessage 契约与多形态解析", () => {
+    it("正确解析持久化重放字符串形态", () => {
+      const res = extractRuntimeModelErrorMessage(
+        "runtime.privacy.redaction_failed",
+      );
+      expect(res).toBe("隐私保护处理失败，本次模型请求未发送。");
+    });
+
+    it("正确解析实时 lifecycle 错误对象形态（含 code 字段）", () => {
+      const errorObj = {
+        type: "RuntimePrivacyError",
+        code: "runtime.privacy.redaction_failed",
+        message: "隐私保护处理失败，本次模型请求未发送。",
+      };
+      const res = extractRuntimeModelErrorMessage(errorObj);
+      expect(res).toBe("隐私保护处理失败，本次模型请求未发送。");
+    });
+
+    it("正确解析嵌套 error 对象的 HTTP 502 Envelope 结构", () => {
+      const envelope = {
+        error: {
+          code: "runtime.privacy.redaction_failed",
+          message: "隐私保护处理失败，本次模型请求未发送。",
+          details: [],
+          extra: {
+            upstream: "langgraph",
+            upstream_status_code: 500,
+          },
+        },
+        request_id: "req-pii-test-123",
+      };
+      const res = extractRuntimeModelErrorMessage(envelope);
+      expect(res).toBe("隐私保护处理失败，本次模型请求未发送。");
+    });
+
+    it("正确解析挂载在 Error 实例上的 code 属性", () => {
+      const err = new Error("Custom error wrapper");
+      (err as any).code = "runtime.privacy.redaction_failed";
+      const res = extractRuntimeModelErrorMessage(err);
+      expect(res).toBe("隐私保护处理失败，本次模型请求未发送。");
+    });
+
+    it("正确兼容旧有从 message 字段携带错误码的场景", () => {
+      const legacyObj = {
+        message: "runtime.model.retry_exhausted",
+      };
+      const res = extractRuntimeModelErrorMessage(legacyObj);
+      expect(res).toBe("模型服务暂不可用，本次运行未完成。");
+    });
+
+    it("非白名单未知错误返回 null", () => {
+      expect(extractRuntimeModelErrorMessage(null)).toBeNull();
+      expect(extractRuntimeModelErrorMessage(undefined)).toBeNull();
+      expect(
+        extractRuntimeModelErrorMessage("runtime.unknown.error"),
+      ).toBeNull();
+      expect(
+        extractRuntimeModelErrorMessage({ code: "random_error" }),
+      ).toBeNull();
+      expect(
+        extractRuntimeModelErrorMessage(new Error("Network timeout")),
+      ).toBeNull();
+    });
+  });
+
+  describe("useChatSession 状态机与界面回归行为", () => {
+    it("当 stream 发生隐私阻断错误时，展示固定失败原因并保留草稿", async () => {
+      const streamErrorRef = ref<unknown>(null);
+      mocks.stream.mockReturnValue({
+        isLoading: ref(false),
+        error: streamErrorRef,
+        interrupts: ref([]),
+        hydrationPromise: ref(Promise.resolve()),
+        disconnect: vi.fn(),
+      });
+      mocks.runs.mockResolvedValue([
+        { run_id: "run-pii-1", status: "running" },
+      ]);
+
+      const scope = effectScope();
+      const session = scope.run(() =>
+        useChatSession({
+          projectId: "proj-pii-1",
+          graphId: "dearflow_agent",
+          threadId: "t-privacy-error",
+          context: ref({}),
+          canWrite: ref(true),
+          onThread: vi.fn(),
+          onRefresh: vi.fn(),
+          onReconnect: vi.fn(),
+        }),
+      )!;
+
+      try {
+        await session.verify();
+        await flushPromises();
+
+        // 模拟 cancel 遇到隐私阻断错误对象
+        mocks.cancel.mockRejectedValueOnce({
+          type: "RuntimePrivacyError",
+          code: "runtime.privacy.redaction_failed",
+          message: "隐私保护处理失败，本次模型请求未发送。",
+        });
+
+        await session.stop();
+        await flushPromises();
+
+        expect(session.error.value).toBe(
+          "隐私保护处理失败，本次模型请求未发送。",
+        );
+        expect(session.turnState.value).toBe("stop_unconfirmed");
+      } finally {
+        scope.stop();
+        mocks.cancel.mockReset();
+        mocks.runs.mockReset();
+      }
+    });
+
+    it("当 stream 实时错误暴露隐私阻断时，turnState 能够进入 error 态", async () => {
+      const streamErrorRef = ref<unknown>(null);
+      mocks.stream.mockReturnValue({
+        isLoading: ref(false),
+        error: streamErrorRef,
+        interrupts: ref([]),
+        hydrationPromise: ref(Promise.resolve()),
+        disconnect: vi.fn(),
+      });
+      mocks.runs.mockResolvedValue([]);
+
+      const scope = effectScope();
+      const session = scope.run(() =>
+        useChatSession({
+          projectId: "proj-pii-stream",
+          graphId: "dearflow_agent",
+          threadId: "t-stream-error",
+          context: ref({}),
+          canWrite: ref(true),
+          onThread: vi.fn(),
+          onRefresh: vi.fn(),
+          onReconnect: vi.fn(),
+        }),
+      )!;
+
+      try {
+        await session.verify();
+        await flushPromises();
+
+        streamErrorRef.value = {
+          code: "runtime.privacy.redaction_failed",
+          message: "隐私保护处理失败，本次模型请求未发送。",
+        };
+        await flushPromises();
+
+        expect(session.turnState.value).toBe("error");
+      } finally {
+        scope.stop();
+        mocks.runs.mockReset();
+      }
+    });
+
+    it("普通用户输入或聊天正文包含该错误码时绝不误判为系统错误（负例）", async () => {
+      mocks.stream.mockReturnValue({
+        isLoading: ref(false),
+        error: ref(null),
+        interrupts: ref([]),
+        hydrationPromise: ref(Promise.resolve()),
+        disconnect: vi.fn(),
+      });
+      // 模拟聊天历史包含该错误码文本
+      mocks.list.mockResolvedValue([
+        {
+          id: "msg-1",
+          role: "user",
+          content: "用户正在讨论错误码 runtime.privacy.redaction_failed 的设计",
+        },
+      ]);
+      mocks.runs.mockResolvedValue([]);
+
+      const scope = effectScope();
+      const session = scope.run(() =>
+        useChatSession({
+          projectId: "proj-pii-2",
+          graphId: "dearflow_agent",
+          threadId: "t-safe-content",
+          context: ref({}),
+          canWrite: ref(true),
+          onThread: vi.fn(),
+          onRefresh: vi.fn(),
+          onReconnect: vi.fn(),
+        }),
+      )!;
+
+      try {
+        await session.verify();
+        await flushPromises();
+
+        // 正文包含错误码时不误判为系统错误
+        expect(session.error.value).toBe("");
+        expect(session.turnState.value).not.toBe("error");
+      } finally {
+        scope.stop();
+        mocks.list.mockReset();
+        mocks.runs.mockReset();
+      }
+    });
+
+    it("切换 Thread 后错误原因严格隔离不会串扰", async () => {
+      mocks.stream.mockReturnValue({
+        isLoading: ref(false),
+        error: ref(null),
+        interrupts: ref([]),
+        hydrationPromise: ref(Promise.resolve()),
+        disconnect: vi.fn(),
+      });
+      mocks.runs.mockResolvedValue([
+        { run_id: "run-pii-2", status: "running" },
+      ]);
+
+      const scope1 = effectScope();
+      const session1 = scope1.run(() =>
+        useChatSession({
+          projectId: "proj-pii-3",
+          graphId: "dearflow_agent",
+          threadId: "t-first",
+          context: ref({}),
+          canWrite: ref(true),
+          onThread: vi.fn(),
+          onRefresh: vi.fn(),
+          onReconnect: vi.fn(),
+        }),
+      )!;
+
+      await session1.verify();
+      await flushPromises();
+
+      mocks.cancel.mockRejectedValueOnce({
+        code: "runtime.privacy.redaction_failed",
+      });
+      await session1.stop();
+      await flushPromises();
+      expect(session1.error.value).toBe(
+        "隐私保护处理失败，本次模型请求未发送。",
+      );
+
+      // 切换到第二个 Thread
+      mocks.runs.mockResolvedValue([]);
+      const scope2 = effectScope();
+      const session2 = scope2.run(() =>
+        useChatSession({
+          projectId: "proj-pii-3",
+          graphId: "dearflow_agent",
+          threadId: "t-second",
+          context: ref({}),
+          canWrite: ref(true),
+          onThread: vi.fn(),
+          onRefresh: vi.fn(),
+          onReconnect: vi.fn(),
+        }),
+      )!;
+
+      await session2.verify();
+      await flushPromises();
+      expect(session2.error.value).toBe("");
+
+      scope1.stop();
+      scope2.stop();
+      mocks.cancel.mockReset();
+      mocks.runs.mockReset();
+    });
+  });
 });

@@ -15,6 +15,7 @@ FORWARDED_HEADER_KEYS = ("x-request-id",)
 
 # Public Runtime codes are exact matches; unknown upstream text never becomes a client message.
 _PUBLIC_CODES = {
+    500: "runtime.privacy.redaction_failed",
     400: (
         "artifact_source_denied invalid_artifact_ref invalid_file_ref invalid_memory_fact "
         "invalid_skill_frontmatter invalid_skill_metadata invalid_skill_package invalid_skill_path "
@@ -76,6 +77,7 @@ _PUBLIC_CODES[503] += (
 )
 _PUBLIC_CODES = {status: set(codes.split()) for status, codes in _PUBLIC_CODES.items()}
 _PUBLIC_MESSAGES = {
+    "runtime.privacy.redaction_failed": "隐私保护处理失败，本次模型请求未发送。",
     "workspace_directory_changed": "Directory changed",
     "cursor_expired": "Event cursor expired",
     "thread_active_run_conflict": "Thread already has an active run",
@@ -113,6 +115,7 @@ _EXECUTION_ERROR_TYPES = frozenset(
         "Exception",
         "RuntimeError",
         "RuntimeWorkspaceError",
+        "RuntimePrivacyError",
         "ValueError",
         "TimeoutError",
         "ConnectionError",
@@ -199,6 +202,31 @@ _MODEL_EXECUTION_CODES = frozenset(
 
 _LOOP_EXECUTION_CODE = "runtime.loop.detected"
 _LOOP_EXECUTION_MESSAGE = "检测到工具重复调用，本次运行已停止，请调整任务后继续。"
+
+_PRIVACY_CODE = "runtime.privacy.redaction_failed"
+
+
+def _privacy_execution_error(value: Any) -> dict[str, str] | str | None:
+    if isinstance(value, str):
+        return value if value == _PRIVACY_CODE else None
+    if not isinstance(value, dict):
+        return None
+    if (
+        value.get("type") == "RuntimePrivacyError"
+        and value.get("message") == _PRIVACY_CODE
+        and value.get("code", _PRIVACY_CODE) == _PRIVACY_CODE
+    ) or (
+        set(value) <= {"type", "code", "message"}
+        and value.get("type", "RuntimePrivacyError") == "RuntimePrivacyError"
+        and value.get("code") == _PRIVACY_CODE
+        and value.get("message") == _PUBLIC_MESSAGES[_PRIVACY_CODE]
+    ):
+        return {
+            "code": _PRIVACY_CODE,
+            "message": _PUBLIC_MESSAGES[_PRIVACY_CODE],
+            "type": "RuntimePrivacyError",
+        }
+    return None
 
 
 def project_budget_notice(value: Any) -> dict[str, Any] | None:
@@ -302,6 +330,9 @@ def project_execution_error(value: Any) -> Any:
     """Preserve SDK error shapes while discarding exception bodies and stacks."""
     if value is None:
         return None
+    privacy = _privacy_execution_error(value)
+    if privacy is not None:
+        return privacy
     if not isinstance(value, dict):
         if isinstance(value, str):
             if value == _LOOP_EXECUTION_CODE:
@@ -499,31 +530,34 @@ def redact_runtime_private_fields(
             )
         ):
             error = value["error"]
+            privacy = _privacy_execution_error(error)
             projected = project_execution_error(error)
-            safe_error: Any = "runtime.execution_failed"
-            projected = project_execution_error(error)
-            if isinstance(projected, dict) and projected.get("code") in {
-                "runtime_token_budget_exhausted",
-                "runtime_token_budget_unverifiable",
-            }:
-                safe_error = projected
-            elif isinstance(error, str) and error in _MODEL_EXECUTION_CODES:
-                safe_error = error
-            elif (
-                isinstance(error, dict)
-                and isinstance(error.get("message"), str)
-                and error["message"] in _MODEL_EXECUTION_CODES
-            ):
-                safe_error = project_execution_error(error)
-            elif isinstance(error, dict):
-                safe_error = {"message": "runtime.execution_failed"}
-                category = error.get("type")
-                if (
-                    isinstance(category, str)
-                    and len(category) <= 128
-                    and category.isidentifier()
+            safe_error: Any = (
+                privacy if privacy is not None else "runtime.execution_failed"
+            )
+            if privacy is None:
+                if isinstance(projected, dict) and projected.get("code") in {
+                    "runtime_token_budget_exhausted",
+                    "runtime_token_budget_unverifiable",
+                }:
+                    safe_error = projected
+                elif isinstance(error, str) and error in _MODEL_EXECUTION_CODES:
+                    safe_error = error
+                elif (
+                    isinstance(error, dict)
+                    and isinstance(error.get("message"), str)
+                    and error["message"] in _MODEL_EXECUTION_CODES
                 ):
-                    safe_error["type"] = category
+                    safe_error = project_execution_error(error)
+                elif isinstance(error, dict):
+                    safe_error = {"message": "runtime.execution_failed"}
+                    category = error.get("type")
+                    if (
+                        isinstance(category, str)
+                        and len(category) <= 128
+                        and category.isidentifier()
+                    ):
+                        safe_error["type"] = category
             if projected == _LOOP_EXECUTION_CODE or (
                 isinstance(projected, dict)
                 and projected.get("code") == _LOOP_EXECUTION_CODE
@@ -594,6 +628,11 @@ def redact_runtime_private_fields(
                     "origin_ref",
                     "runtime_context_token",
                     "__graphharbor_runtime_context",
+                    "pii_redaction",
+                    "pii_config",
+                    "pii_token_secret",
+                    "pii_scope",
+                    "pii_detectors",
                     "__graphharbor_run_budget",
                     "runtime_model_ref",
                     "runtime_message_claim",
@@ -731,11 +770,14 @@ def create_runtime_upstream_error(
                 "stop_storage_unavailable",
                 "background_task_storage_unavailable",
                 "background_task_control_unavailable",
+                _PRIVACY_CODE,
             }
             else "langgraph_upstream_request_failed"
         )
         message = (
-            "Memory storage unavailable"
+            _PUBLIC_MESSAGES[_PRIVACY_CODE]
+            if code == _PRIVACY_CODE
+            else "Memory storage unavailable"
             if code == "memory_storage_unavailable"
             else "Stop storage unavailable"
             if code == "stop_storage_unavailable"

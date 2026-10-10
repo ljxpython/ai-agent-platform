@@ -12,6 +12,7 @@ from langgraph.config import get_config
 from runtime_service.observability.diagnostics import log_diagnostic
 from runtime_service.observability.errors import is_control_flow, model_error_fields
 from runtime_service.observability.langfuse import record_diagnostic_event
+from runtime_service.runtime.errors import RuntimePrivacyError
 
 
 class ModelErrorMiddleware(AgentMiddleware):
@@ -48,7 +49,7 @@ class ModelErrorMiddleware(AgentMiddleware):
         try:
             return await handler(request)
         except Exception as exc:
-            if not is_control_flow(exc):
+            if not isinstance(exc, RuntimePrivacyError) and not is_control_flow(exc):
                 try:
                     self._record(request, exc, started)
                 except Exception:  # Keep the original exception and traceback.

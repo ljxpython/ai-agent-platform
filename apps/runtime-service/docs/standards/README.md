@@ -6,6 +6,7 @@
 2. [开发范式与规则](./runtime-service-development-standard.md)
 3. [运行与验证](./runtime-service-onboarding-and-verification.md)
 4. [通用后台任务接入](./background-task-integration.md)（受管 Docker；正式启用仍受专项门禁限制）
+5. [模型上下文隐私保护](./model-context-privacy.md)
 
 ## 权威优先级
 

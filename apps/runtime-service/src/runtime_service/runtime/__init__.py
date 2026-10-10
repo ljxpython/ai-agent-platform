@@ -20,6 +20,7 @@ from runtime_service.runtime.contracts import (
 from runtime_service.runtime.errors import (
     RuntimeAuthError,
     RuntimeErrorBase,
+    RuntimePrivacyError,
     RuntimeResolutionError,
 )
 from runtime_service.runtime.modeling import (
@@ -52,6 +53,7 @@ __all__ = [
     "RuntimeAuthError",
     "RuntimeContext",
     "RuntimeErrorBase",
+    "RuntimePrivacyError",
     "RuntimePolicy",
     "RuntimePrincipal",
     "RuntimeScope",

@@ -25,6 +25,10 @@ from runtime_service.middlewares.model_resilience import (
     ModelResilienceMiddleware,
     ModelResilienceSummarizationMiddleware,
 )
+from runtime_service.middlewares.pii_redaction import (
+    PiiRedactionMiddleware,
+    PiiSummarizationMiddleware,
+)
 from runtime_service.middlewares.plan_mode import PlanModeMiddleware
 from runtime_service.middlewares.runtime_config import (
     RuntimeConfigMiddleware,
@@ -49,6 +53,8 @@ __all__ = [
     "ModelErrorMiddleware",
     "ModelResilienceMiddleware",
     "ModelResilienceSummarizationMiddleware",
+    "PiiRedactionMiddleware",
+    "PiiSummarizationMiddleware",
     "TimeoutWrapupMiddleware",
     "RuntimeConfigMiddleware",
     "sanitize_tool_call_messages",

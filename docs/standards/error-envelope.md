@@ -45,6 +45,8 @@ Token 类型和完整 `runtime.token_budget.{exhausted,unverifiable}` / 公开�
 
 diagnostics v1 增加可选 `loop_detections=[]`（最多20条）；只公开 observation_id、scope、namespace、两个通知码及固定 3/3 或 5/5 的 repetitions/threshold。graph_executions 可返回上述精确执行码，model_errors 保持模型专用。`runtime_loop_state` 在写入口递归拒绝、读出口递归清理，签名和工具原文不进入诊断。实现、默认关闭策略及前端交接见 [F02 专题](../projects/20260913-dearflow-agent/15-f02-loop-detection.md) 和 [实现版契约](../projects/20260913-dearflow-agent/16-f02-frontend-handoff.md)。前端与生产启用尚未验收。
 
+隐私保护失败仅识别完整 `runtime.privacy.redaction_failed` 字符串，或 `RuntimePrivacyError` 的精确机器码对象；固定说明为“隐私保护处理失败，本次模型请求未发送。”。Runtime HTTP 来源 500 对外转 502，保留该码及 `error.extra.upstream_status_code=500`；已建流的失败沿原执行错误槽位投影，不追加 HTTP Envelope。说明只指失败的这一次模型调用，不代表整个 Run 从未调用模型或工具副作用已回滚。当前 Run GET/列表与 Thread GET 不提供 error 字段，历史原因应读取对应持久事件或 state/history 的 task 错误，不能用最新 Thread 原因补历史归因。该错误不触发登录、权限清理或自动重发原文。契约测试与实施边界见 [F05 验证](../projects/20261009-agent-pii-redaction/verification.md)。
+
 `GET /api/langgraph/threads/{thread_id}/runs/{run_id}/diagnostics` 的 provider 分类是 HTTP 200 安全 DTO 数据，不是 HTTP 错误码；`provider_auth_failed/provider_access_denied` 不触发平台登出或撤权。未启用/未录入/观测后端不可用以 availability 返回；授权拒绝、非法上游 DTO 等仍走本 Envelope。见 [诊断契约](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md)。同一 v1 DTO 新增可选 `workspace_executions=[]`（最多20条），以及 graph/startup 的 Workspace 白名单错误码；不新增 HTTP 错误码、路由或权限，`model_errors` 保持模型专用。Workspace 执行错误仍是原生失败终态数据，HTTP200 诊断或 SSE 握手成功不代表 Run 成功。
 
 会话 Stop 的 `confirmation_unavailable` 是合法回执 phase，不是 HTTP 错误；POST 202 只证明请求受理，不能据此显示执行已停止。POST 502/504 或网络断开时提交结果可能未知，客户端保留原 scope/body/Idempotency-Key 对账，不用新 key 重发。公开存储错误沿既有 503→502 转换，不增加特殊 503 透传。见 [Stop 实现版交接](../projects/20261007-agent-run-cancellation/frontend-handoff.md)。

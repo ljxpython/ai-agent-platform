@@ -38,7 +38,8 @@ from runtime_service.middlewares.timeout_wrapup import resolve_wrapup_after_seco
 from runtime_service.observability import close_langfuse, initialize_langfuse
 from runtime_service.observability.query import diagnostics_client_lifespan
 from runtime_service.run_control.service import run_control_lifespan
-from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.runtime.errors import RuntimePrivacyError, RuntimeWorkspaceError
+from runtime_service.runtime.pii import load_pii_redaction_config
 from runtime_service.workspace.file_refs import validate_file_ref
 from runtime_service.workspace.image_refs import validate_image_ref
 
@@ -48,6 +49,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     from runtime_service.middlewares import loop_detection_enabled
 
     loop_detection_enabled()
+    load_pii_redaction_config()
     resolve_wrapup_after_seconds()
     initialize_langfuse()
     try:
@@ -87,6 +89,21 @@ async def auth_exception_handler(
     request: Request, exc: auth_exceptions.HTTPException
 ) -> JSONResponse:
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
+@app.exception_handler(RuntimePrivacyError)
+async def privacy_exception_handler(
+    request: Request, exc: RuntimePrivacyError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": {
+                "code": "runtime.privacy.redaction_failed",
+                "message": "隐私保护处理失败，本次模型请求未发送。",
+            }
+        },
+    )
 
 
 @app.exception_handler(RuntimeWorkspaceError)

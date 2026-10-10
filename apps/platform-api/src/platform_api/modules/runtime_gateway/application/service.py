@@ -3466,11 +3466,14 @@ class RuntimeGatewayService:
             actor=actor, project_id=project_id, thread_id=thread_id, write=True
         )
         upstream_payload = dict(payload or {})
+        upstream = await self._thread_upstream(
+            project_id=project_id, thread=thread, operation="thread-edit"
+        )
         if not upstream_payload.get("messages") and hasattr(
-            self._upstream, "get_thread_state"
+            upstream, "get_thread_state"
         ):
             try:
-                state = await self._upstream.get_thread_state(thread_id)
+                state = await upstream.get_thread_state(thread_id)
                 if isinstance(state, dict):
                     values = state.get("values")
                     if isinstance(values, dict) and isinstance(
@@ -3510,11 +3513,11 @@ class RuntimeGatewayService:
                             upstream_payload["messages"] = extracted_msgs
             except Exception as exc:
                 logger.warning(
-                    "summarize_thread_title: failed to extract messages from thread state: %s",
-                    exc,
+                    "summarize_thread_title_state_failed type=%s",
+                    type(exc).__name__,
                 )
 
-        summary_result = await self._upstream.summarize_thread_title(
+        summary_result = await upstream.summarize_thread_title(
             thread_id, upstream_payload
         )
         generated_title = (
@@ -3527,9 +3530,6 @@ class RuntimeGatewayService:
         ):
             metadata = _thread_metadata(thread)
             metadata["title"] = generated_title.strip()
-            upstream = await self._thread_upstream(
-                project_id=project_id, thread=thread, operation="thread-edit"
-            )
             await upstream.update_thread(
                 thread_id, {"metadata": {"title": generated_title.strip()}}
             )

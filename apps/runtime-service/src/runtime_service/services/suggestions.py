@@ -24,6 +24,12 @@ from runtime_service.runtime import (
     resolve_runtime_config,
     runtime_context_hash,
 )
+from runtime_service.runtime.errors import RuntimePrivacyError
+from runtime_service.runtime.pii import (
+    pii_config_for_facts,
+    redact_messages,
+    redact_text,
+)
 
 MAX_SUGGESTIONS = 5
 MAX_MESSAGE_COUNT = 6
@@ -149,6 +155,14 @@ async def generate_suggestions(
         raise ValueError("suggestions payload too large")
     if not isinstance(thread_id, str) or not thread_id.strip():
         raise ValueError("invalid thread_id")
+    try:
+        pii_config = pii_config_for_facts(facts, thread_id)
+        normalized = [
+            {**item, "content": redact_text(item["content"], pii_config)}
+            for item in normalized
+        ]
+    except RuntimePrivacyError:
+        return []
 
     context = parse_runtime_context(payload.get("context"))
     if runtime_context_hash(context) != facts.context_hash:
@@ -202,8 +216,10 @@ async def generate_suggestions(
     ]
     timeout = _timeout_seconds(payload.get("timeout_seconds"))
     try:
+        prompt = redact_messages(prompt, pii_config)
         async with asyncio.timeout(timeout):
             response = await model.ainvoke(prompt)  # type: ignore[attr-defined]
+        text = redact_text(_response_text(response), pii_config)
     except TimeoutError:
         logger.info("runtime suggestions timed out", extra={"timeout_seconds": timeout})
         return []
@@ -212,7 +228,7 @@ async def generate_suggestions(
             "runtime suggestions provider failure", extra={"reason": type(exc).__name__}
         )
         return []
-    return clean_suggestions(response, count=count)
+    return clean_suggestions(text, count=count)
 
 
 __all__ = ["clean_suggestions", "generate_suggestions"]

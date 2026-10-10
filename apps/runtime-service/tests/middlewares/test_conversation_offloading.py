@@ -608,7 +608,7 @@ def test_offloading_auxiliary_failures_stop_without_provider(
             )
         elif failure == "media":
             monkeypatch.setattr(
-                module.SummarizationMiddleware,
+                module.PiiSummarizationMiddleware,
                 "_aoffload_inline_media",
                 AsyncMock(return_value=(history(), 1)),
             )

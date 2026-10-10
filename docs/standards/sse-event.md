@@ -79,6 +79,8 @@ Runtime 九个 `runtime.plan.*` 错误码只对可信异常类型与精确固定
 
 ## SDK 自动重试规则（补丁扩展）
 
+2026-10-09 补充隐私执行失败投影：`runtime.privacy.redaction_failed` 沿现有 lifecycle/tasks/error/debug/checkpoints 的可信错误槽位传播，固定文案“隐私保护处理失败，本次模型请求未发送。”。实时 lifecycle 的 `params.data.error` 可为 `{type,code,message}` 对象，持久重放可为完整机器码字符串；外层 event/id/seq/namespace 不变。不能从普通消息正文搜索该码，不能将该执行失败触发为重新提交 Run 或发送原文。HTTP/SSE 握手与 Run 成败分开判断；Run GET/列表及 Thread GET 没有 error 字段。对象/字符串、v2/Protocol/v3、分片投影证据见 [F05 验证](../projects/20261009-agent-pii-redaction/verification.md)。本增量不改变原容量门禁的 draft 状态。
+
 | 规则 | 值 |
 |---|---|
 | 最大重试次数 | 5 次 |

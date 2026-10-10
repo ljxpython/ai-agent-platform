@@ -29,6 +29,8 @@ from runtime_service.middlewares import (
     ModelErrorMiddleware,
     ModelResilienceMiddleware,
     ModelResilienceSummarizationMiddleware,
+    PiiRedactionMiddleware,
+    PiiSummarizationMiddleware,
     PlanModeMiddleware,
     ResultFilesystemMiddleware,
     RuntimeConfigMiddleware,
@@ -62,6 +64,7 @@ from runtime_service.runtime import (
     verified_delegation_from_user,
 )
 from runtime_service.runtime.capabilities import SHOWCASE_TOOLS
+from runtime_service.runtime.pii import load_pii_redaction_config, pii_config_for_facts
 from runtime_service.runtime.run_budget import read_run_budget
 from runtime_service.services.demo.showcase_demo.backend import (
     WorkspaceMiddleware,
@@ -118,6 +121,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     user = configurable.get("langgraph_auth_user")
     facts = verified_delegation_from_user(user) if user is not None else None
     executing = facts is not None and facts.scope.operation == "run-create"
+    pii_config = (
+        pii_config_for_facts(facts, configurable.get("thread_id"))
+        if executing
+        else load_pii_redaction_config()
+    )
     run_budget = None
     workspace = None
     resolved = None
@@ -177,7 +185,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     image_workspace = ImageWorkspace(
         None if workspace is None else workspace.cwd / "workspace"
     )
-    image_middleware = ImageToolsMiddleware(image_workspace)
+    image_middleware = ImageToolsMiddleware(image_workspace, pii_config)
     document_middleware = DocumentToolsMiddleware(
         None if workspace is None else workspace.cwd / "workspace",
         execution_image=os.getenv("RUNTIME_SHOWCASE_IMAGE", "python:3.13-slim"),
@@ -249,6 +257,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                         else (4096 if context.offload_conversation else None)
                     ),
                     manual=bool(not child and context.offload_conversation),
+                    pii_config=pii_config,
                 )
             ]
             if context_management_enabled() and executing
@@ -256,8 +265,18 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         )
         return [
             *(
-                [ModelResilienceSummarizationMiddleware(auxiliary_model, backend)]
-                if bundle.policy.enabled
+                [
+                    ModelResilienceSummarizationMiddleware(
+                        auxiliary_model, backend, pii_config=pii_config
+                    )
+                ]
+                if bundle.policy.enabled and not offloading
+                else [
+                    PiiSummarizationMiddleware(
+                        auxiliary_model, backend, pii_config=pii_config
+                    )
+                ]
+                if pii_config.enabled and executing and not offloading
                 else []
             ),
             RuntimeConfigMiddleware(
@@ -311,7 +330,9 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 if bundle.policy.enabled
                 else []
             ),
-            RuntimeModelRetryMiddleware(metadata, delegated=readonly),
+            RuntimeModelRetryMiddleware(
+                metadata, delegated=readonly or bundle.policy.enabled
+            ),
             ModelErrorMiddleware(
                 startup.metadata, scope="subagent" if child else "primary"
             ),
@@ -335,6 +356,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 if loop_detection_enabled()
                 else []
             ),
+            *([PiiRedactionMiddleware(pii_config)] if pii_config.enabled else []),
             *([ContextBudgetMiddleware(offloading[0])] if offloading else []),
         ]
 

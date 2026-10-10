@@ -25,6 +25,12 @@ from runtime_service.observability.usage import (
     usage_only_config,
 )
 from runtime_service.runtime import RuntimeAuthError
+from runtime_service.runtime.pii import (
+    PiiRedactionConfig,
+    contains_pii,
+    load_pii_redaction_config,
+    redact_messages,
+)
 from runtime_service.runtime.planning import plan_is_active
 from runtime_service.services.dearflow_agent.memory import FactInput, MemoryStorage
 from runtime_service.services.dearflow_agent.memory_access import memory_allowed
@@ -33,7 +39,7 @@ from runtime_service.services.dearflow_agent.tools.memory import memory_scope
 logger = logging.getLogger(__name__)
 
 
-def source_text(message):
+def source_text(message, *, limit: int | None = 6000):
     if (
         not isinstance(message, HumanMessage)
         or not message.id
@@ -41,7 +47,7 @@ def source_text(message):
     ):
         return None
     if isinstance(message.content, str):
-        return message.content[:6000]
+        return message.content if limit is None else message.content[:limit]
     if isinstance(message.content, list) and all(
         isinstance(block, dict)
         and set(block) == {"type", "text"}
@@ -49,8 +55,19 @@ def source_text(message):
         and isinstance(block["text"], str)
         for block in message.content
     ):
-        return "\n".join(block["text"] for block in message.content)[:6000]
+        text = "\n".join(block["text"] for block in message.content)
+        return text if limit is None else text[:limit]
     return None
+
+
+def safe_source_text(message, config):
+    text = source_text(message, limit=None)
+    if text is not None and config.enabled:
+        if redact_messages([message], config)[0] != message or contains_pii(
+            text, config
+        ):
+            return None
+    return text
 
 
 class Candidate(FactInput):
@@ -72,8 +89,15 @@ class MemoryState(AgentState):
 class MemoryContextMiddleware(AgentMiddleware):
     state_schema = MemoryState
 
-    def __init__(self, model):
+    def __init__(
+        self,
+        model,
+        pii_config: PiiRedactionConfig | None = None,
+    ):
         self.model = model
+        self.pii_config = (
+            pii_config if pii_config is not None else load_pii_redaction_config()
+        )
 
     async def abefore_agent(self, state, runtime):
         if is_conversation_maintenance(runtime):
@@ -87,7 +111,13 @@ class MemoryContextMiddleware(AgentMiddleware):
             "message_ids", []
         ):
             return None
-        text = source_text(source)
+        try:
+            full_text = safe_source_text(source, self.pii_config)
+            if self.pii_config.enabled and full_text is None:
+                return {"dear_memory_source": {}}
+        except Exception:
+            return {"dear_memory_source": {}}
+        text = full_text[:6000] if full_text else None
         if not text or state.get("dear_memory_source", {}).get("id") == source.id:
             return None
         try:
@@ -164,7 +194,15 @@ class MemoryContextMiddleware(AgentMiddleware):
         try:
             sources = []
             if source.get("enabled") and source.get("id") and source.get("text"):
-                sources.append({"id": source["id"], "text": source["text"]})
+                original = next(
+                    (m for m in state.get("messages", []) if m.id == source["id"]), None
+                )
+                full_text = safe_source_text(original, self.pii_config)
+                safe = not self.pii_config.enabled
+                if self.pii_config.enabled and full_text:
+                    safe = not contains_pii(full_text, self.pii_config)
+                if safe:
+                    sources.append({"id": source["id"], "text": source["text"]})
             claim = state.get("runtime_message_claim", {})
             dsn = os.getenv("DATABASE_URI")
             if claim.get("run_id") == run_id and dsn:
@@ -177,11 +215,25 @@ class MemoryContextMiddleware(AgentMiddleware):
                     limit=21,
                 )
                 for row in rows:
-                    content = source_text(
-                        HumanMessage(id=row["id"], content=row["content"])
+                    content = safe_source_text(
+                        HumanMessage(id=row["id"], content=row["content"]),
+                        self.pii_config,
                     )
-                    if content:
-                        sources.append({"id": row["id"], "text": content})
+                    try:
+                        protected = contains_pii(content, self.pii_config)
+                    except Exception:
+                        protected = True
+                    if content and not protected:
+                        # Scan the complete source, then preserve the existing prompt limit.
+                        sources.append({"id": row["id"], "text": content[:6000]})
+            if source.get("id") and source.get("text"):
+                try:
+                    if contains_pii(source["text"], self.pii_config):
+                        sources = [
+                            item for item in sources if item["id"] != source["id"]
+                        ]
+                except Exception:
+                    sources = [item for item in sources if item["id"] != source["id"]]
             if not sources:
                 return
             if not source:
@@ -204,6 +256,8 @@ class MemoryContextMiddleware(AgentMiddleware):
                 selected.append(item)
                 length += len(item["text"])
             if not selected:
+                return
+            if contains_pii(json.dumps(selected, ensure_ascii=False), self.pii_config):
                 return
             batch = len(selected) > 1
             extraction_id = f"run:{run_id}" if batch else selected[0]["id"]
@@ -281,6 +335,17 @@ class MemoryContextMiddleware(AgentMiddleware):
                     )
                     if result["parsed"] is None:
                         raise ValueError("invalid_memory_extraction")
+                    safe_candidates = []
+                    for candidate in result["parsed"].candidates:
+                        try:
+                            candidate_text = json.dumps(
+                                candidate.model_dump(mode="json"),
+                                ensure_ascii=False,
+                            )
+                            if not contains_pii(candidate_text, self.pii_config):
+                                safe_candidates.append(candidate)
+                        except Exception:
+                            continue
                     if not await memory_allowed(runtime):
                         return
                     outcome = await asyncio.to_thread(
@@ -290,10 +355,7 @@ class MemoryContextMiddleware(AgentMiddleware):
                         thread_id=thread_id,
                         message_id=extraction_id,
                         source_text=prompt_input,
-                        candidates=[
-                            c.model_dump(mode="json")
-                            for c in result["parsed"].candidates
-                        ],
+                        candidates=[c.model_dump(mode="json") for c in safe_candidates],
                         usage=result["raw"].usage_metadata,
                         run_id=run_id,
                         cancel_event=cancel_event,
