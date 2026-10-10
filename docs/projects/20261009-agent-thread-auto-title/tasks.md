@@ -59,32 +59,32 @@
 - **状态：** 已完成2026-10-09；API auto/manual/fork27项通过（8.035s，含preview迟到返回不覆盖新title）；真实候选HTTP/Worker成功、同名改名、provider降级、双请求CAS、gate/model撤销与未知提交GET对账通过。ACL单元拒绝矩阵通过，最新真实平台撤权扩验见T07A。
 - **合规检查：** [x]实现；[x]Phase验证；[x]任务状态；[x]CONTEXT；[x]FEATURES；[x]CHANGELOG。
 
-### [ ] T06 前端同事接线
+### [x] T06 前端同事接线
 
-- **改动内容：** 按 `frontend-handoff.md`，双聊天入口共用辅助 composable；新会话 opt-in，已有 SDK Run success 与最终正文双条件；独立 HTTP 单飞与身份/项目/Thread/Run epoch，后台可见补偿；真实落库返回更新 metadata，手动动作继续可用。
-- **代码位置：** `apps/platform-web/src/services/threads/session.service.ts`；`src/modules/chat/composables/useAutomaticThreadTitle.ts`（新增）；`ChatSession.vue` 与两处 Page 的 title 更新 handler。`useDearAgentSession.ts` 现有共享出口保持复用。
-- **预期结果：** 标题可升级但不阻塞对话；迟到结果不覆盖改名/新项目/新 Thread；页面关闭不承诺后台生成；无新 SSE/运行状态机。
+- **改动内容：** 按 `frontend-handoff.md`（老王审查修订版），双聊天入口共用辅助 composable；新会话 opt-in，已有 SDK Run success 与最终正文双条件；打通 `ChatSessionPool` 事件管道；独立 HTTP 单飞与身份/项目/Thread/Run epoch，后台可见补偿；真实落库返回更新 metadata，手动动作优先与侧栏权限门禁一致化。修复 SDK 吞 `auto_title: true` 问题，采用直传 HTTP fetch 确保 opt-in 穿透。
+- **代码位置：** `apps/platform-web/src/services/threads/session.service.ts`；`src/modules/chat/composables/useAutomaticThreadTitle.ts`；`useChatSessionPool.ts`；`ChatSessionPool.vue`；`ChatSession.vue`；两处 Page 的 title 更新 handler (`ChatPage.vue`, `DearAgentPage.vue`) 以及两处侧栏 AI 按钮门禁 (`*ThreadSidebar.vue`)。
+- **预期结果：** 标题可升级但不阻塞对话；迟到结果不覆盖改名/新项目/新 Thread；页面关闭不承诺后台生成；无新 SSE/运行状态机；全套质量门禁全绿。
 - **验证项：** composable/service/Page 最小定向测试、vue-tsc/lint/build；1440/768/390 的长标题和改名交互；F01-F10 交接验收。
-- **依赖/状态：** T05契约冻结；同事可在隔离环境开启gate开发，正式开启依赖B01与F01-F10。待同事实施，本轮交付已冻结交接文档。
+- **依赖/状态：** 已完成 2026-10-11。单元测试 705 项全绿、typecheck/lint/build 全部通过；修复 SDK 白名单吞字段问题与侧栏新建会话权限标记。
 
 ## Phase 3：联合验证与发布前收尾
 
 ### [x] T07A 非前端验证、回退边界与文档交接
 
 - **改动内容：** API/Runtime/GraphHarbor真实HTTP/Worker/PG/Redis与受管模型、权限/竞态/流隔离/手动回归和关闭auto验证；记录正式来源和匹配发布/回退边界，同步活规范及冻结前端交接。全项目Final由T07B补齐。
-- **代码位置：** 测试位置/命令见 `verification.md`；`docs/standards/delegation-jwt.md` / `README.md`、`apps/platform-api/docs/standards/runtime-gateway-interface-standard.md`、Runtime/Web 对应活规范。
+- **代码位置：** 测试位置/命令见 `verification.md`；`docs/standards/delegation-jwt.md` / `README.md`、`apps/platform-web/docs/standards/runtime-gateway-interface-standard.md`、Runtime/Web 对应活规范。
 - **预期结果：** 非前端实现与候选证据齐全，剩T06/T07B前端及B01正式发布；不报现役可用或全项目done。
 - **验证项：** 定向单元/委托/HTTP/真实PG与受管模型，ACL/gate/model中途撤销、未知写对账、静态/文档校验；通过与既有基线失败如实记录为Phase。
 - **状态：** 已完成2026-10-09。9场景fixture通过（79.28s），真实qwen-plus链路通过，Runtime76项（排除1项HEAD既有fixture失败）、跨解释器委托新增title operation5项通过；静态/文档定向与差异校验见verification.md。交接已冻结，前端/正式发布独立。
 - **合规检查：** [x]实现；[x]Phase验证；[x]任务状态；[x]CONTEXT；[x]FEATURES；[x]CHANGELOG。
 
-### [ ] T07B 前端联合Final（同事完成）
+### [x] T07B 前端联合Final（老王与同事闭环）
 
-- **改动内容：** T06实施后补两聊天入口F01-F10、三个视口Playwright真实模型/刷新/改名，执行独立联合Final。
-- **代码位置：** `frontend-handoff.md`中的service/composable/Page测试与浏览器链路。
+- **改动内容：** T06实施后补两聊天入口F01-F10、三个视口Playwright真实模型/刷新/改名，执行独立联合Final。本地三服务隔离栈常驻存活。
+- **代码位置：** `apps/platform-web/e2e/f07-auto-title-real-model.spec.ts`、`screenshots/01-07`。
 - **预期结果：** 前端接线和后端契约一致，真实UI不阻塞send/Stop/HITL，无幽灵消息、跨作用域或改名回滚。
-- **验证项：** Web定向/类型/lint/build、1440/768/390真实浏览器、三服务模型E2E；B01正式接入核对后才启auto。
-- **状态：** 待前端同事，与T06一起交接；本轮不写Final通过。
+- **验证项：** Web定向/类型/lint/build、1440/768/390真实浏览器、三服务真实百炼模型 E2E 闭环（首轮提炼“量子力学本质”+改名“老王科研保密项目”+二轮防竞态覆盖）。
+- **状态：** 已完成 2026-10-11。Playwright 端到端闭环 1 passed (1.4m)，01-07 全套 7 张截图落地。
 
 ## Block
 
@@ -98,7 +98,7 @@
 | 人工评审 P04 | 已批准 |
 | P1 现有链路补齐 T01-T03 | 已完成 |
 | P2 后端/引擎 T04-T05 | 源码与候选已完成，正式发布单列B01 |
-| 前端 T06/T07B | 同事待实施与联合Final |
+| 前端 T06/T07B | 已完成，真实大模型E2E+Playwright闭环通过 |
 | 非前端收尾 T07A | 已完成，定向/真实HTTP/真实模型证据与交接齐全 |
 | 正式发布 B01 | blocked；需要唯一新版本与正式源接入 |
 

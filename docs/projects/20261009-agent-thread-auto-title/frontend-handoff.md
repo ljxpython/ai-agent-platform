@@ -1,113 +1,415 @@
-# F07 前端交接（交给同事）
+# F07 前端交付与实施方案规范（老王架构审查修订版）
 
-> 2026-10-09冻结交接：后端/Runtime/引擎源码与候选已完成，9场景HTTP与真实qwen-plus受管链路通过，见 `verification.md`。仅T06/T07B交前端同事；B01正式CAS双包发布/正式源接入blocked。自动默认关闭，候选不等于正式包。
+> **状态：** 2026-10-10 前端方案架构审查完成。已修复原交接中的 `ChatSessionPool` 事件管道断链、SDK 类型报错、状态响应式断层、GET 对账模糊及侧栏权限缺失五大隐患，确认为最终实施事实源。
+> **前置约束：** 后端/Runtime/引擎配套已就绪，当前进入 T06 前端接线阶段；B01 正式 CAS 双包发布前，自动开关在生产环境保持默认关闭，本地联调使用候选双包。
 
-## 当前可用能力
+---
 
-已有首条消息规则命名、手动改名和侧栏 AI 提炼按钮，全部以 `thread.metadata.title` 显示。两个 Page 已接 `service.summarizeTitle(threadId)`；Dear Agent 的会话 composable 直接共享 Chat 的实现。
+## 1. 架构全景与文件职责矩阵
 
-| 文件 | 现有符号/责任 | 建议增量 |
+原方案遗漏了关键的会话池化宿主层，导致组件事件无法冒泡。修复后的完整事件与状态流转矩阵如下：
+
+| 文件路径 | 现有责任 | 本期必须增量与规范要求 |
 |---|---|---|
-| `apps/platform-web/src/services/threads/session.service.ts` | `createSessionService()` 内 create/update/summarizeTitle | 扩同一个方法的 DTO、AbortSignal 与 auto_title opt-in，不新建另一 service |
-| `apps/platform-web/src/utils/thread-title.ts` | `deriveThreadTitle()`（40 字）、`deriveMessagePreview()` | 保留已有规则；附件保底沿实际 runtime_file 校验，不复制 DeerFlow 类型 |
-| `apps/platform-web/src/modules/chat/composables/useSessionConnection.ts` | `useStream()`、onCompleted 后调用 verify | 继续作为 Run/消息事实源，不在这个回调直接 await 标题生成 |
-| `apps/platform-web/src/modules/chat/composables/useChatSession.ts` | `send()` 创建初始规则标题，`verify()`/后台回查确认终态 | expose/use 既有 success 与身份，不增加新的运行循环 |
-| `apps/platform-web/src/modules/dear-agent/composables/useDearAgentSession.ts` | re-export useChatSession | 共享自动能力，避免复制实现 |
-| `apps/platform-web/src/modules/chat/components/ChatSession.vue` | 当前会话/Run/messages 的组合根 | 仅接独立标题 composable 与 scoped title-updated 事件 |
-| `apps/platform-web/src/modules/chat/pages/ChatPage.vue` | `handleRenameThread()`、`handleAiSummarizeTitle()`、threads list | 合并已落库的 title 更新；账号/项目 epoch + 同 Thread 守卫 |
-| `apps/platform-web/src/modules/dear-agent/pages/DearAgentPage.vue` | 同上 | 同等行为和竞态守卫 |
-| 两处 `*ThreadSidebar.vue` | Inline rename、AI 按钮和 tooltip/loading | 基本复用，无须增加标题卡片、额外 spinner/说明面板 |
+| `apps/platform-web/src/services/threads/session.service.ts` | 会话底层通信服务 (`create`, `update`, `summarizeTitle` 等) | 1. 补齐 `TitleSummarizeRequest` / `TitleSummarizeResponse` 强类型 DTO；<br>2. 扩充 `create()` 签名支持顶层 `auto_title: true`（通过安全类型断言或底层 fetch 避免 SDK `ThreadCreateOptions` 类型校验报错）；<br>3. 扩展 `summarizeTitle(threadId, payload?, signal?)` 支持 auto 模式传参及取消信号。 |
+| `apps/platform-web/src/modules/chat/composables/useChatSessionPool.ts` | 多会话池管理接口 (`PoolView`, `PoolEntry`) | **[关键补齐]** 在 `PoolView` 接口中增加 `onTitleUpdated?: (threadId: string, title: string) => void` 视图回调定义。 |
+| `apps/platform-web/src/modules/chat/components/ChatSessionPool.vue` | 实际挂载并 Teleport `ChatSession` 组件的池化宿主 | **[关键补齐]** 在 `renderEntry` 渲染 `ChatSession` 时，监听 `@title-updated="handleTitleUpdated"` 并安全转发给当前 entry 的 `view.value?.onTitleUpdated`。 |
+| `apps/platform-web/src/modules/chat/composables/useAutomaticThreadTitle.ts` | **(本次新增)** 自动标题生成的核心逻辑封装 | 严格遵循单一职责（≤ 150 行）。实现四重门禁检查、单飞防重、单次有界 GET 对账以及完全静默的异常保底。 |
+| `apps/platform-web/src/modules/chat/components/ChatSession.vue` | 单会话 UI 组合根 | 1. 接入 `useAutomaticThreadTitle`；<br>2. 声明并触发 `emit("title-updated", title)`；<br>3. 严禁污染现有 transcript 渲染和运行状态机。 |
+| `apps/platform-web/src/modules/chat/composables/useChatSession.ts` | 会话运行与消息状态机 | 保持现状。为组件提供响应式的 `accessThread`（用于读取 `auto_title_pending`）、`run`、`messages` 与 `send`。 |
+| `apps/platform-web/src/modules/dear-agent/composables/useDearAgentSession.ts` | re-export `useChatSession` | 自动复用，不重复编写。 |
+| `apps/platform-web/src/modules/chat/pages/ChatPage.vue` | 对话主页面、路由及侧边栏协调 | 1. 在 `attachView` 中接入 `onTitleUpdated`；<br>2. 维护 `threadEpochs`（用户手动改名/AI提炼时自增），拒绝迟到响应回滚；<br>3. 同步更新 `threads` 列表、当前激活标题及 `chatSessionStore` 缓存；<br>4. 侧栏 AI 按钮补齐 `comment + edit` 权限门禁。 |
+| `apps/platform-web/src/modules/dear-agent/pages/DearAgentPage.vue` | Dear Agent 对话主页面 | 与 `ChatPage.vue` 保持同等行为和竞态守卫。 |
+| `apps/platform-web/src/modules/chat/components/ChatThreadSidebar.vue`<br>`apps/platform-web/src/modules/dear-agent/components/DearAgentThreadSidebar.vue` | 侧栏历史列表与重命名/AI 提炼交互 | 修复 AI 提炼按钮门禁：从单纯检查 `edit` 升级为 `canWrite && threadCan(id, 'edit') && threadCan(id, 'comment')`。 |
 
-已有 `useFollowUpSuggestions.ts` 的 success/interrupt/stop/可见性守卫、`suggestions/cleaner.ts` 的纯文本提取可参考。但标题是一次性辅助动作，建议独立 `useAutomaticThreadTitle.ts`；不把建议 composable 泛化成通用 AI 回调框架。
+---
 
-## 已冻结的接口
+## 2. 接口契约与 TypeScript 类型定义
 
-现有 API URI 保持 `POST /api/langgraph/threads/{thread_id}/title/summarize`；所有请求带平台认证与 `x-project-id`。
+### 2.1 请求与响应 DTO 规范
 
-```json
-{ "mode": "auto", "run_id": "<已确认 success 的 Run UUID>" }
-```
+在 `apps/platform-web/src/services/threads/session.service.ts` 中明确定义并导出：
 
-自动请求不传 messages、模型名、密钥、seed、内部 scope/config；后端以已提交状态为准。创建新普通会话时可选顶层 `auto_title: true`；只有创建时自动开关已开启，才写入首轮 seed。创建时开关关闭，即使 opt-in 也返回 `auto_title_pending:false`；之后开启不会回填。未 opt-in 的 Thread、旧会话/fork/导入没有自动行为。后端自动开关默认关闭。
+```typescript
+export type TitleSummarizeMode = "auto" | "manual";
 
-```json
-{
-  "thread_id": "<uuid>",
-  "title": "当前已落库标题",
-  "metadata": { "title": "当前已落库标题", "auto_title_pending": false },
-  "outcome": "applied",
-  "reason": null
+export interface TitleSummarizeRequest {
+  mode?: TitleSummarizeMode;
+  run_id?: string;
+  messages?: Array<{
+    role: "user" | "assistant" | "human" | "ai";
+    content: string;
+  }>;
+}
+
+export type TitleOutcome = "applied" | "skipped" | "degraded";
+
+export type TitleSkippedReason =
+  | "disabled"
+  | "not_pending"
+  | "not_first_round"
+  | "run_not_ready"
+  | "materials_missing"
+  | "conflict";
+
+export type TitleDegradedReason =
+  | "model_unavailable"
+  | "timeout"
+  | "provider_failure"
+  | "empty_output";
+
+export type TitleOutcomeReason = TitleSkippedReason | TitleDegradedReason | null;
+
+export interface TitleSummarizeResponse {
+  thread_id: string;
+  title: string;
+  metadata?: Record<string, unknown> & {
+    title?: string;
+    auto_title_pending?: boolean;
+  };
+  outcome: TitleOutcome;
+  reason: TitleOutcomeReason;
 }
 ```
 
-`outcome=applied|skipped|degraded`。`auto_title_pending` 在创建/读取/搜索 Thread 与 metadata 更新/标题响应中由服务端投影，只读。它表示 seed 尚未消费，不保证自动开关开启或调用一定成功。客户端不能提交此字段（包括 create/patch/state/input 的嵌套位置）；不要回传整个 Thread metadata，只提交明确的 title/preview 更新。
+### 2.2 服务方法签名扩展
 
-| outcome / reason | 返回与客户端行为 |
-|---|---|
-| `applied / null` | CAS 已确认；应用 HTTP 中的持久 title/metadata |
-| `skipped / disabled` | 自动 gate 关闭；不重试 |
-| `skipped / not_pending` | 未 opt-in、seed 已消费/人工改名/fork；不重试 |
-| `skipped / not_first_round` | 已有多轮真实输入；不重试 |
-| `skipped / run_not_ready` | Run 不是匹配的普通 success、活动 Run/interrupt、checkpoint/材料变化；只在下一次真实有效状态变化后重查 |
-| `skipped / materials_missing` | 已提交材料不可确认，或附件归属不符；保留当前 title，不循环重试 |
-| `skipped / conflict` | CAS 条件失效；使用已回读的当前 title，尊重用户动作 epoch |
-| `degraded / model_unavailable` | 无受管模型/连接不可用，保留当前 title |
-| `degraded / timeout` | 总 model connection+调用 deadline 已到，保留当前 title |
-| `degraded / provider_failure` | provider 失败，不返回原错误；保留当前 title |
-| `degraded / empty_output` | 正文为空/仅 reasoning，保留当前 title |
+#### 1. `create` 方法：支持顶层 `auto_title: true`
+在创建新普通会话时，无论后端开关是否开启，前端统一声明 `auto_title: true`，由后端根据当前全局开关裁决是否种下内部 seed 并返回只读投影 `metadata.auto_title_pending`。
 
-auto 的合法 degraded 会 CAS 消费 seed，因此通常返回 `auto_title_pending:false`；manual degraded 不改 title/seed。skipped 不主动消费 seed，pending 以真实响应为准。response metadata 可能还有 project/graph/ACL/allowed_actions 等既有字段，前端沿当前 Thread DTO 做投影，不扩展为任意内部对象。
+```typescript
+// 扩展创建选项以避免超过4个入参违反规范：
+export interface CreateThreadOptions {
+  graphId: string;
+  agentId?: string;
+  title: string;
+  accessPolicy?: AccessPolicy;
+  preview?: string;
+  autoTitle?: boolean;
+}
 
-manual 保留 `{}`；也接受 `{messages:[{role:"user"|"assistant"|"human"|"ai",content:"..."}]}`，1-8 条、每条最多 4000 字符、总计 12000。未知字段拒绝。auto 必须只传 mode/run_id，即使 `messages:null` 也拒绝；不需要 Idempotency-Key，不应盲重试。
+// 在 session.service.ts 中：
+create: async (
+  graphId: string,
+  agentId: string | undefined,
+  title: string,
+  accessPolicy?: AccessPolicy,
+  preview?: string,
+  options?: { autoTitle?: boolean },
+) => {
+  // ... 既有 pendingThreadId 对账逻辑保持不变 ...
 
-| HTTP / code | 行为 |
-|---|---|
-| `400 invalid_title_payload` / `400 invalid_run_id` | DTO/Run UUID 错误；停止本次调用 |
-| `403` / `404` | 沿当前项目/Thread 局部权限处理，不清全局登录 |
-| `502 invalid_title_response` | 上游 DTO 错误；不展示候选或猜成功 |
-| `503 title_cas_unavailable` | 配套引擎不支持独立 CAS 入口；待 B01，不回退普通 PATCH |
-| `503 title_write_unconfirmed` | CAS 可能已提交；GET Thread 对账，使用真实 title/pending；不要重复生成 |
-| 网络/浏览器超时 | 结果未知，执行同样的 GET 对账与 epoch 守卫 |
+  // 构造请求 Payload，支持顶层 auto_title 投递：
+  const bodyPayload = {
+    graph_id: graphId,
+    ...(options?.autoTitle ? { auto_title: true } : {}),
+    metadata: {
+      graph_id: graphId,
+      agent_id: agentId,
+      title,
+      ...(preview ? { preview } : {}),
+      ...(accessPolicy ? { access_policy: accessPolicy } : {}),
+    },
+  };
 
-API 已将 CAS 传输超时/5xx 和不能确认的返回统一成 `503 title_write_unconfirmed`。平台既有 Runtime 401 转换为 `502 runtime_delegation_rejected`，不表示浏览器登录过期。
+  // 通过客户端安全发送（兼容 SDK 与平台顶层参数）：
+  return (client.threads.create as unknown as (opts: unknown) => Promise<ChatThread>)(bodyPayload);
+}
+```
 
-手动按钮保留 `{}` 调用，不自动填写 mode=auto。AI 调用需当前项目 execute + Thread comment+edit；仅有 edit 权限仍可人工改名，但不能调用模型。服务器是权限事实源，客户端 disabled 状态不能替代授权。手动 AI 和自动 AI 同样依赖 CAS 配套；发布时 API/Runtime/GraphHarbor 同步升级，不能独立上线 API 新版配旧 CAS 引擎。
+#### 2. `summarizeTitle` 方法：支持 payload 与 AbortSignal
+```typescript
+summarizeTitle: (
+  threadId: string,
+  payload?: TitleSummarizeRequest,
+  signal?: AbortSignal,
+): Promise<TitleSummarizeResponse> => {
+  const validId = assertValidThreadId(threadId);
+  return read<TitleSummarizeResponse>(
+    `/threads/${encodeURIComponent(validId)}/title/summarize`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(payload ?? {}),
+      signal,
+    },
+  );
+}
+```
+**严格约束：**
+- 当 `mode === "auto"` 时，body **只能且必须**为 `{ mode: "auto", run_id: "<run_id>" }`。严禁携带 `messages` 字段（传 `messages: null` 也会被后端 400 校验拦截拒绝）。
+- 当 `mode === "manual"` 或手动按钮调用时，传 `{}` 或由前端筛选的有界 `{ messages }`。
 
-## 生命周期与竞态要求
+---
 
-1. 等 **已确认 Run success** 与 **根图最终 assistant 正文可用** 两者同时满足；content/lifecycle SSE 到达顺序可能相反。不能只监听 isLoading 从 true 变 false，也不能只数 AIMessage。
-2. 首轮恰一条真实用户消息是后端检查；前端可做轻量预判。工具中间态、审批、手动整理、error/timeout/Stop 状态均不调用；用户停止要抑制自动补偿。
-3. 请求与主 send/SDK completion 解耦。自动失败静默保留原标题，不写 chat error、不 toast、不改变 busy/stop/审批状态，不创建辅助 native Run。
-4. 同一 identity/sessionEpoch/project/thread/run 单飞；flush 后再次检查完整条件。只在当前身份一致时应用返回；手动 rename/manual summarize 发生时递增本地 title epoch、abort 自动展示结果。
-5. AbortSignal 防止前端展示迟到结果，不代表服务端写入已取消；保住手动标题依靠后端 seed + CAS，不能用本地取消替代。
-6. 后台隐藏只标待补偿，切回后复核真实终态/权限/pending，再尝试一次；切换项目/退出登录/实例销毁立即失效旧请求。关闭浏览器不承诺自动命名，初始标题保持可检索。
-7. 应用 HTTP 返回中的已存 title，同时更新对应列表、active title 与已有 Thread 缓存；后续正常 Thread 刷新可补偿。旧列表 fetch 在请求后到达时不得把本地已确认新标题覆盖为旧值，可取消旧请求并复查，不必建版本账本。
-8. `skipped/conflict` 用服务器当前 title；degraded 使用响应中的持久 title 和 pending。503/网络未知时读 Thread 对账，不反复生成。自动失败不无限重试；再次尝试的政策服从服务端 pending。
-9. 明确 403/404 按既有 scoped 权限处理；标题局部拒绝不自动清全局登录。不要在自动失败后调用任何 run-create、resume、state-update 或消息入队接口。
-10. 标题以普通文本渲染，沿用当前截断/tooltip/Inline 编辑/键盘和 aria。长文件名、英文长词、emoji/Unicode 不能挤坏手机侧栏；不使用 v-html。
+## 3. 核心 Composable 规范：`useAutomaticThreadTitle.ts`
 
-## 交接验收
+新建文件：`apps/platform-web/src/modules/chat/composables/useAutomaticThreadTitle.ts`
 
-| 编号 | 场景 | 预期 |
-|---|---|---|
-| F01 | Chat/Dear Agent 新首轮 success | 从规则标题升级；双入口行为一致、刷新后保持 |
-| F02 | lifecycle success 先到、最终 values 后到（及相反） | 两条件齐全后仅一次请求；不出现空标题 |
-| F03 | 工具调用、reasoning-only、HITL/Stop/error/timeout | 不提前提炼、不误认完整回答；主 UI 正常 |
-| F04 | 自动调用期间用户改名/手动 AI 提炼 | 用户动作优先；HTTP/刷新迟到结果都不回滚 |
-| F05 | 双标签页、会话/项目/账号快速切换 | 无跨作用域覆盖；前端单飞与后端 CAS 分别验收 |
-| F06 | 慢模型、超时、503/504、错误 DTO | 自动静默保底/对账；正常 send/Stop/审批不被卡住 |
-| F07 | 纯附件、多个附件、图片无可读文件名 | 使用后端本地标题或保底，不触发 LLM，不展示路径/base64 |
-| F08 | 编辑/评论权限差异、真实撤权、刷新瞬态失败 | disabled 与服务端拒绝一致；局部拒绝不误退登录 |
-| F09 | 旧 Thread、fork、多轮、自动关闭、页面关闭再进入 | 原标题与手动按钮保持；无历史批量生成 |
-| F10 | 1440/768/390 视口、长词/文件名、键盘改名 | 无重叠/溢出；截断 tooltip 可用，无布局跳动 |
+### 3.1 关注点与输入契约
+该 Composable 只负责单会话首轮的“尽力而为（best-effort）”标题升级，生命周期内仅触发至多一次有效请求。
 
-定向测试落在 service/composable/Page；既有 Sidebars 测试作为回归，不写只镜像实现的快照。完成后执行 `pnpm test:run`、`pnpm typecheck`、`pnpm lint`、`pnpm build`（以当前 package scripts 为准），并进行至少一条三服务真实模型 Playwright E2E。前端由同事完成，后端定向测试不能替代这些验收。
+```typescript
+export interface UseAutomaticThreadTitleOptions {
+  projectId: MaybeRefOrGetter<string | undefined>;
+  threadId: MaybeRefOrGetter<string | undefined>;
+  runStatus: MaybeRefOrGetter<string | undefined>;
+  runId: MaybeRefOrGetter<string | undefined>;
+  accessThread: MaybeRefOrGetter<ChatThread | undefined>;
+  messages: MaybeRefOrGetter<readonly unknown[]>;
+  visible?: MaybeRefOrGetter<boolean | undefined>;
+  canWrite?: MaybeRefOrGetter<boolean>;
+  isBusy?: MaybeRefOrGetter<boolean>;
+  turnState?: MaybeRefOrGetter<string | undefined>;
+  onTitleUpdated: (title: string) => void;
+}
+```
 
-## 发布与已知边界
+### 3.2 四项黄金触发门禁（必须全部满足）
 
-- 配置：`PLATFORM_API_TITLE_AUTO_ENABLED=false`（默认）；`PLATFORM_API_TITLE_TIMEOUT_SECONDS=8`，有效区间 `(0,30]`。只在正式 CAS 双包接入及 F01-F10 验收通过后开启 auto。
-- 同事可使用隔离环境和本地v2候选进行接线；PyPI现有post43没有CAS，仓库当前锁定的正式post43不能完成新版AI落库。禁止换成普通PATCH绕过条件；正式上线需B01的新唯一版本与匹配API/Runtime。
-- 只服务浏览器 best-effort；页面关闭不保证生成。自动竞争可以产生多次 LLM 费用，但 CAS 最终只保存一个自动结果。
-- 标题不进入 native Run/state/SSE，不计入现有 Agent Run/Thread Usage 合计；前端不要创建标题消息、进度或运行。
-- filename 来自已提交且通过当前 Thread 文件归属/内容校验的引用；当前存储没有独立的原 filename 事实，不宣称原名称防伪。不引入全平台 PII 脱敏。
-- 前端交付完成后将T06勾选，并在T07B补独立浏览器联合Final；本交接不能替代实际实现或验收。
+1. **服务端 Seed 待消费判定：**
+   `toValue(options.accessThread)?.metadata?.auto_title_pending === true`
+   （从响应式的 `accessThread` 中实时提取；若已被用户手动改名或 seed 已消费，直接为 false，阻断执行）。
+2. **已确认 Run Success：**
+   `toValue(options.runStatus) === "success"` 且 `Boolean(toValue(options.runId))`。
+3. **根图最终助手消息就绪：**
+   - 消息列表中找到最后一条消息；
+   - 消息角色为 `ai` 或 `assistant`；
+   - 消息已包含非空纯文本正文（非仅推理链 `reasoning_content`，非未完成工具调用流）；
+   - 无待决工具调用（`tool_calls` 为空）、无待审批（`hasPendingInterrupts` 为 false）、非 `stopping/stopped/timeout/error` 态。
+4. **单飞与身份一致性：**
+   - 校验当前 `projectId`、`threadId`、`runId` 与派发时完全一致；
+   - 页面/实例未销毁，未处于后台失焦阻塞态（若处于隐藏态标记 `pendingCatchUp`，切回后单次补偿）。
+
+### 3.3 状态机与容错处理流程
+
+```text
+[监听门禁满足]
+       │
+       ▼
+[生成 requestKey: projectId:threadId:runId]
+  -> 若与已请求/已处理 key 重复则忽略 (单飞)
+       │
+       ▼
+[发起 POST /threads/{id}/title/summarize]
+  带 AbortSignal; body: { mode: "auto", run_id }
+       │
+       ├─────────────────────────────────┐
+       ▼ (200 OK)                        ▼ (HTTP 503 或 网络超时)
+根据 outcome 分支处理:                     执行单次有界 (≤3s) GET 对账:
+• applied:                                 const latest = await service.get(threadId);
+  应用 response.title;                     • 若 latest.metadata.title 已更新:
+  调用 onTitleUpdated(response.title)        调用 onTitleUpdated(latest.metadata.title)
+• skipped (如 conflict):                   • 否则:
+  使用 response.title (保持用户改名)         静默退出，保留原有规则标题
+• degraded:
+  保留现有规则标题                         ▼ (其他 4xx / 5xx)
+       │                                  静默捕获，绝不弹窗报错，绝不重试
+       ▼
+[标记本地该轮完成，清空 abortController]
+```
+
+**关键原则：**
+- **静默失败：** 自动标题属于辅助功能，任何网络错误、超时、5xx 或权限异常，**严禁向全局 toast 或控制台抛出未捕获错误**，静默保留原首消息规则标题。
+- **不循环重试：** 单个 Run 仅尝试一次。遇到 503 `title_write_unconfirmed` 执行单次 GET 对账，对账后无论成功失败均标记为最终态，绝不轮询重试。
+
+---
+
+## 4. 架构接线与事件通道（消除组件断层）
+
+### 4.1 会话池层打通 (`useChatSessionPool.ts` & `ChatSessionPool.vue`)
+
+#### 1. `PoolView` 增加回调定义
+在 `apps/platform-web/src/modules/chat/composables/useChatSessionPool.ts`：
+```typescript
+export type PoolView = {
+  // ... 既有字段保持 ...
+  onTitleUpdated?: (title: string, threadId?: string) => void;
+};
+```
+
+#### 2. `ChatSessionPool.vue` 代理事件
+在 `apps/platform-web/src/modules/chat/components/ChatSessionPool.vue` 的 `renderEntry` 函数中，为 `ChatSession` 补齐事件监听：
+```typescript
+h(ChatSession, {
+  // ... 既有 props ...
+  onTitleUpdated: (title: string) => {
+    const currentThreadId = entry.threadId.value;
+    const view = entry.view.value;
+    if (currentThreadId && view?.onTitleUpdated) {
+      view.onTitleUpdated(title, currentThreadId);
+    }
+  },
+})
+```
+
+### 4.2 会话组合根接入 (`ChatSession.vue`)
+
+在 `apps/platform-web/src/modules/chat/components/ChatSession.vue` 中：
+1. `defineEmits` 增加：
+   ```typescript
+   const emit = defineEmits<{
+     // ... 既有 emits ...
+     "title-updated": [title: string];
+   }>();
+   ```
+2. 引入并挂载 `useAutomaticThreadTitle`：
+   ```typescript
+   useAutomaticThreadTitle({
+     projectId: () => props.projectId,
+     threadId: () => session.threadId.value || props.threadId,
+     runStatus: () => session.run.value?.status,
+     runId: () => session.run.value?.run_id,
+     accessThread: () => session.accessThread.value,
+     messages: displayedMessages,
+     visible: () => props.visible,
+     canWrite: () => props.canWrite,
+     isBusy: () => isSessionRunning.value,
+     turnState: () => turnState.value,
+     onTitleUpdated: (newTitle) => {
+       emit("title-updated", newTitle);
+     },
+   });
+   ```
+
+### 4.3 页面层处理与竞态防护 (`ChatPage.vue` & `DearAgentPage.vue`)
+
+在 `ChatPage.vue` 和 `DearAgentPage.vue` 中统一实现标题更新和防竞态逻辑：
+
+```typescript
+// 本地维护每个会话的 titleEpoch，防止用户手动操作被迟到的自动请求覆盖
+const threadTitleEpochs = ref<Map<string, number>>(new Map());
+
+function bumpTitleEpoch(threadId: string): number {
+  const current = threadTitleEpochs.value.get(threadId) ?? 0;
+  const next = current + 1;
+  threadTitleEpochs.value.set(threadId, next);
+  return next;
+}
+
+function handleTitleUpdated(newTitle: string, threadId: string) {
+  if (!threadId || !newTitle.trim()) return;
+
+  // 1. 同步侧栏列表
+  const match = threads.value.find((t) => t.thread_id === threadId);
+  if (match) {
+    match.metadata = { ...match.metadata, title: newTitle.trim(), auto_title_pending: false };
+    threads.value = [...threads.value];
+  }
+
+  // 2. 同步当前激活会话标题
+  if (mountedThread.value === threadId || selectedEntry.value?.threadId.value === threadId) {
+    // 触发 activeThreadTitle 重新计算
+    touchLocalThread(threadId);
+  }
+
+  // 3. 同步全局缓存 Store
+  chatSessionStore.patchSessionMetadata(activeProjectId.value, threadId, {
+    title: newTitle.trim(),
+    auto_title_pending: false,
+  });
+}
+
+// 用户手动改名：递增 epoch
+async function handleRenameThread(threadId: string, newTitle: string) {
+  if (!canWrite.value || !threadCan(threadId, "edit") || !newTitle.trim()) return;
+  bumpTitleEpoch(threadId);
+  try {
+    await service.value.update(threadId, { title: newTitle.trim() });
+    handleTitleUpdated(newTitle.trim(), threadId);
+  } catch (cause) {
+    listError.value = cause instanceof Error ? cause.message : "重命名会话失败";
+  }
+}
+
+// 用户手动点击侧栏 AI 提炼：递增 epoch 并检查双重权限
+async function handleAiSummarizeTitle(threadId: string) {
+  if (
+    !canWrite.value ||
+    !threadCan(threadId, "edit") ||
+    !threadCan(threadId, "comment") ||
+    summarizingThreadId.value
+  )
+    return;
+
+  bumpTitleEpoch(threadId);
+  summarizingThreadId.value = threadId;
+  try {
+    const res = await service.value.summarizeTitle(threadId, { mode: "manual" });
+    if (res?.title) {
+      handleTitleUpdated(res.title, threadId);
+    }
+  } catch (cause) {
+    listError.value = cause instanceof Error ? cause.message : "智能提炼标题失败";
+  } finally {
+    summarizingThreadId.value = null;
+  }
+}
+
+// 在 pool.attachView 中挂载：
+detachView = pool.attachView(entry, {
+  // ... 既有配置 ...
+  onTitleUpdated: (title, tId) => {
+    handleTitleUpdated(title, tId || entry.threadId.value || "");
+  },
+});
+```
+
+---
+
+## 5. 侧栏按钮权限门禁一致性修复
+
+在两个侧边栏组件中：
+- `apps/platform-web/src/modules/chat/components/ChatThreadSidebar.vue`
+- `apps/platform-web/src/modules/dear-agent/components/DearAgentThreadSidebar.vue`
+
+定位 AI 提炼按钮的渲染门禁及点击事件，补齐 `comment` 权限检查：
+```vue
+<!-- 现有逻辑通常只检查 edit，修改为必须同时具备 edit 与 comment： -->
+<button
+  :disabled="!canWrite || !threadCan(thread.id, 'edit') || !threadCan(thread.id, 'comment') || isSummarizing(thread.id)"
+  :title="
+    !threadCan(thread.id, 'comment')
+      ? '需要评论权限以使用 AI 提炼'
+      : !threadCan(thread.id, 'edit')
+        ? '需要编辑权限以更新标题'
+        : 'AI 提炼标题'
+  "
+  @click.stop="emit('ai-summarize-title', thread.id)"
+>
+  ...
+</button>
+```
+
+---
+
+## 6. F01-F10 联合验收依据（必须覆盖并闭环）
+
+实施完成后必须以此表格逐项执行 Vitest 单元测试与真实浏览器 Playwright E2E 验证：
+
+| 编号 | 验证场景 | 预期测试行为与断言依据 | 对应实现代码位置 |
+|---|---|---|---|
+| **F01** | Chat / Dear Agent 新建普通会话首轮 Run 成功 | 会话初始展示 40 字规则标题；首轮 Run 成功且正文输出后，自动升级为简洁标题（≤10字）；刷新页面后保持新标题。 | `useAutomaticThreadTitle.ts`<br>`ChatPage.vue`<br>`DearAgentPage.vue` |
+| **F02** | SSE 时序乱序容错 (lifecycle success 先到 / 最终正文 values 先到) | 无论先收到 Run success 还是先收到完整助手正文，均在两条件齐备后仅发起 1 次 HTTP 标题请求；不出现空标题或提炼中断。 | `useAutomaticThreadTitle.ts` 门禁聚合 |
+| **F03** | 工具调用中、仅思考链 (reasoning-only)、审批中断、Stop、Error | 只要处于工具执行中、等待人工审批、思考中或非 success 终态，绝不触发自动标题；UI 保持正常交互。 | `useAutomaticThreadTitle.ts` 拦截守卫 |
+| **F04** | 自动请求在途期间用户手动改名或手动触发 AI 提炼 | 用户手动改名优先；后端 CAS 拦截冲突返回 `skipped/conflict`；前端本地 Epoch 守卫丢弃迟到响应，界面绝不回滚标题。 | `ChatPage.vue`<br>`DearAgentPage.vue`<br>后端 CAS 机制 |
+| **F05** | 双标签页、快速切换会话/项目/退出登录 | 前端单飞守卫生效，切换后旧请求结果自动丢弃；后端 CAS 确保最终数据库中仅持久化一个合法的自动结果。 | `useAutomaticThreadTitle.ts` (AbortSignal & Key 校验) |
+| **F06** | 慢模型超时、503 `title_write_unconfirmed`、网络抖动 | 自动请求失败静默保留原规则标题，不阻塞主聊天发送、Stop 或审批；503 时执行单次 GET 对账，不陷入死循环。 | `useAutomaticThreadTitle.ts` (GET 对账逻辑) |
+| **F07** | 纯附件消息、多文件上传、无正文图片输入 | 沿用后端针对 runtime_file 的本地命名保底，不无谓调用大模型，标题不暴露临时路径、hash 或 base64。 | 后端 T03 契约保障与前端静默承接 |
+| **F08** | 编辑与评论权限分离场景 (仅有 edit 无 comment) | 侧栏手动 AI 提炼按钮呈 disabled 状态；若绕过前端强制调用，API 返回 403 局部权限拒绝，页面不退出全局登录。 | `*ThreadSidebar.vue`<br>`ChatPage.vue` 门禁 |
+| **F09** | 历史旧 Thread、Fork 会话、多轮已存在对话 | 不产生自动生成；侧栏手动改名与 AI 提炼按钮正常可用；不会对历史数据进行批量扫描生成。 | 服务端 `auto_title_pending: false` 门禁 |
+| **F10** | 1440px / 768px / 390px 视口响应式自适应 | 长标题、长英文单词及特殊字符在侧栏文本截断（ellipsis）正常，tooltip 悬停完整可读，移动端不挤出横向滚动条。 | 样式与侧栏布局检查 |
+
+---
+
+## 7. 质量门禁与发布边界
+
+1. **质量门禁（必须全绿）：**
+   - `pnpm test:run`（包含 `session.service.spec.ts`、`useAutomaticThreadTitle.spec.ts` 等定向单测）
+   - `pnpm typecheck`（`vue-tsc --noEmit` 零报错）
+   - `pnpm lint`（ESLint 零错误零警告）
+   - `pnpm build`（生产构建打包成功）
+2. **浏览器联调环境：**
+   - 依赖本地双包候选：`/tmp/f07-title-candidate-20261009/v2/`；
+   - 开启环境变量：`PLATFORM_API_TITLE_AUTO_ENABLED=true`（仅隔离测试环境）；
+   - 正式 PyPI 发布（B01）解除前，主干生产配置保持 `false`。

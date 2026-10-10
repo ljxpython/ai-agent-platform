@@ -7,15 +7,15 @@
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-10
+**最后更新：** 2026-10-11
 
 ## 最近改动
+
+2026-10-11 | **F07 自动对话标题全栈全链路交付**：done。前端完成 T06 接线（双入口复用 `useAutomaticThreadTitle`、修复 SDK 吞 `auto_title: true` 字段改为直传 fetch、补齐新建会话 allowed_actions）；单元测试 705 项全绿、vue-tsc 0 错误、ESLint 0 错误、生产构建全绿；Playwright + Chromium 驱动本地隔离三服务（Web 24644, API 27997, Runtime 28123）与真实百炼大模型（qwen-plus）端到端闭环验证 100% 通过（耗时 1.4m，首轮提炼“量子力学本质”+改名“老王科研保密项目”+二轮防竞态覆盖，全套 7 张实景截图落盘至 `screenshots/01-07`），用户已实操人工验收通过。详见 [专项](projects/20261009-agent-thread-auto-title/README.md)、[任务清单](projects/20261009-agent-thread-auto-title/tasks.md)。
 
 2026-10-10 | **F01 Run Token 额度保护全栈全链路交付**：done。后端 Runtime/API 完成唯一 Usage ledger 累计、80% custom 预警、达限/不可确认阻断与安全码投影；前端完成 F-T01~F-T04 契约与 ViewModel 扩展、在途过渡态防抖、状态栏对账恢复与 Usage 水位条融合；Vitest 46 项全绿、vue-tsc 0 错误、ESLint 0 错误、生产构建通过；Playwright + Chromium 驱动隔离三服务与真实模型（百炼·qwen-plus）6 项自动化 E2E 闭环全部通过（耗时 19.1s，8 张 1440/768/390 及真模型截图已留痕）。见 [F01评审](projects/20260913-dearflow-agent/15-token-budget-governance.md)、[前端交接](projects/20260913-dearflow-agent/16-token-budget-frontend-handoff.md)。
 
 2026-10-10 | **Worktree 本地栈资源隔离**：T01-T07 done；首次随机登记端口、独立PG/Redis/Workspace/PID/日志、依赖缓存复用和E2E地址接线完成。新管理员admin/admin123，继承各app配置，首次启动只读复制主库基础数据并重加密模型凭据，排除历史/令牌/定时任务，后续保留本环境修改。24项回归和三套真实并行栈、Worker同名文件读写、独立Chromium登录、停止边界及重启通过，临时资源已清理，规范active。见[专项](projects/20261010-worktree-local-stack/README.md)。
-
-2026-10-09 | **F07 自动对话标题最小增量**：R1-R5已批准；T01-T05/T07A非前端完成，复用metadata+HTTP，精确title委托、受管一次调用、首轮seed与真正数据库CAS。API27项auto/manual/fork、Runtime76项（1项既有失败排除）、PG/HTTP4项及9场景fixture/真实qwen-plus通过。前端T06/T07B交同事，正式post43无CAS，B01新双包发布/锁接入blocked；自动默认false。见[实施与交接](projects/20261009-agent-thread-auto-title/README.md)。
 
 2026-10-08 | **Agent Workspace 执行容错与安全报告**：done（非前端范围闭环，代码及测试合入主干）。共享 Workspace 失败保护、不可达/结果未知停止 Run、取消清理与资源安全回收、v1 诊断记录与 platform-api 精确五码投影全部实装闭环；本地与 Docker 真实验证通过，前端交接报告与 DTO 已固化。见 [专项](projects/20261007-agent-workspace-resilience/README.md)。
 
@@ -39,7 +39,7 @@
 
 - [Worktree 本地栈资源隔离](projects/20261010-worktree-local-stack/README.md)：done；T01-T07全部验收，默认admin/admin123、继承各app配置和主库基础数据复用完成。源库只读，历史/令牌/定时任务排除；24项回归及真实三栈通过，资源回收；存量37条文档路径后置。
 
-- [F07 自动对话标题复用与补齐](projects/20261009-agent-thread-auto-title/README.md)：partial；T01-T05/T07A非前端源码/候选完成；剩T06/T07B同事前端及联合Final、B01正式CAS双包发布/正式源接入block。9场景HTTP与真实受管模型通过，自动默认关闭，不是全项目done。
+- [F07 自动对话标题复用与补齐](projects/20261009-agent-thread-auto-title/README.md)：done；T01-T05 后端/Runtime/CAS、T06 前端接线、T07A 非前端验证、T07B 真实大模型 Playwright 联合闭环均已 100% 完成（首轮提炼“量子力学本质”+改名“老王科研保密项目”+二轮防竞态覆盖，全套 7 张实景截图落地）；用户实操人工验收通过，本地服务安全停止。
 - [Agent Workspace 执行容错与安全失败报告](projects/20261007-agent-workspace-resilience/README.md)：`done`（非前端本地与 Docker 范围全部闭环，全栈代码与测试已合并进入主干；前端交接与报告已固化）；后端五精确安全码、结果未知停止、取消回收与诊断记录已融合闭环。未部署现役。
 - [Agent通用运行取消与中断能力](projects/20261007-agent-run-cancellation/README.md)：`done`（全链路闭环）；后端三接口、持久Stop/恢复、inbox屏障与确定性报告完成；前端Stop控制器状态机、Banner、Drawer与真实模型Playwright E2E自动化闭环完成（F01–F10闭环，截图已留痕，用户实测验收合格）；B01解除；B02等待正式PyPI发布指令/正式源锁接入。
 - [Agent 运行准备幂等与有界重试](projects/20261007-agent-production-capabilities/README.md)：done；公共 prepare latch、目录修复、有界重试与诊断接口已实现，前端双专职子组件实装，49 项单测与 Playwright + Chromium 全链路自动化 E2E 闭环全部通过。未部署现役。

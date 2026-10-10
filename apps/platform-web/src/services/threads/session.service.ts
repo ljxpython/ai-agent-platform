@@ -46,6 +46,54 @@ export type ThreadAction =
   | "terminal"
   | "full_access";
 
+export type TitleSummarizeMode = "auto" | "manual";
+
+export interface TitleSummarizeRequest {
+  mode?: TitleSummarizeMode;
+  run_id?: string;
+  messages?: Array<{
+    role: "user" | "assistant" | "human" | "ai" | string;
+    content: string;
+  }>;
+}
+
+export type TitleOutcome = "applied" | "skipped" | "degraded";
+
+export type TitleSkippedReason =
+  | "disabled"
+  | "not_pending"
+  | "not_first_round"
+  | "run_not_ready"
+  | "materials_missing"
+  | "conflict";
+
+export type TitleDegradedReason =
+  | "model_unavailable"
+  | "timeout"
+  | "provider_failure"
+  | "empty_output";
+
+export type TitleOutcomeReason =
+  | TitleSkippedReason
+  | TitleDegradedReason
+  | string
+  | null;
+
+export interface TitleSummarizeResponse {
+  thread_id: string;
+  title: string;
+  metadata?: Record<string, unknown> & {
+    title?: string;
+    auto_title_pending?: boolean;
+  };
+  outcome: TitleOutcome;
+  reason: TitleOutcomeReason;
+}
+
+export interface CreateThreadOptions {
+  autoTitle?: boolean;
+}
+
 export function hasThreadAction(
   thread: Pick<ChatThread, "metadata"> | undefined,
   action: ThreadAction,
@@ -138,6 +186,7 @@ export function createSessionService(
       title: string,
       accessPolicy?: AccessPolicy,
       preview?: string,
+      options?: CreateThreadOptions,
     ) => {
       const pendingId = pendingThreadId();
       if (pendingId) {
@@ -152,8 +201,9 @@ export function createSessionService(
         throw new Error(`会话创建结果待确认（${pendingId}），请稍后重试`);
       }
       try {
-        return await client.threads.create({
+        const payload: Record<string, unknown> = {
           graphId,
+          ...(options?.autoTitle ? { auto_title: true } : {}),
           metadata: {
             graph_id: graphId,
             agent_id: agentId,
@@ -161,6 +211,10 @@ export function createSessionService(
             ...(preview ? { preview } : {}),
             ...(accessPolicy ? { access_policy: accessPolicy } : {}),
           },
+        };
+        return await read<ChatThread>("/threads", {
+          method: "POST",
+          body: JSON.stringify(payload),
         });
       } catch (error) {
         const fields = extractPlatformHttpError(error);
@@ -414,17 +468,36 @@ export function createSessionService(
     },
     summarizeTitle: (
       threadId: string,
-      messages?: Array<{ role: string; content: string }>,
-    ) => {
+      payload?:
+        | TitleSummarizeRequest
+        | Array<{ role: string; content: string }>,
+      signal?: AbortSignal,
+    ): Promise<TitleSummarizeResponse> => {
       const validId = assertValidThreadId(threadId);
-      return read<{
-        thread_id: string;
-        title: string;
-        metadata?: Record<string, unknown>;
-      }>(`/threads/${encodeURIComponent(validId)}/title/summarize`, {
-        method: "POST",
-        body: JSON.stringify(messages ? { messages } : {}),
-      });
+      let requestBody: Record<string, unknown> = {};
+      if (Array.isArray(payload)) {
+        requestBody = { messages: payload };
+      } else if (payload && typeof payload === "object") {
+        if (payload.mode === "auto") {
+          requestBody = {
+            mode: "auto",
+            ...(payload.run_id ? { run_id: payload.run_id } : {}),
+          };
+        } else {
+          requestBody = {
+            ...(payload.mode ? { mode: payload.mode } : {}),
+            ...(payload.messages ? { messages: payload.messages } : {}),
+          };
+        }
+      }
+      return read<TitleSummarizeResponse>(
+        `/threads/${encodeURIComponent(validId)}/title/summarize`,
+        {
+          method: "POST",
+          body: JSON.stringify(requestBody),
+          signal,
+        },
+      );
     },
   };
 }

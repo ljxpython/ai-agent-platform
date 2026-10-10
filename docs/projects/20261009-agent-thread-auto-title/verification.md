@@ -126,12 +126,49 @@ RUN_THREAD_TITLE_FLOW=1 TITLE_REAL_MODEL=1 TITLE_REAL_PROVIDER=bailian \
 - 使用已安装的 `markdown-it` 解析本地链接：平台16份、引擎10份文档，共128个本地链接目标，0 missing；仅核对目标存在，不验证外链或片段锚点。两仓diff --check通过。委托矩阵当前30项，加独立Cron共32项，方案/活规范/交接明确创建时gate关闭无seed、之后不回填。
 - 失败ACL扩验遗留的一份 `.model-resilience-worker-*.json` 已确认无进程使用并清理；未删除其他测试配置。
 
+### T06 前端接线与单元验证（2026-10-11）
+
+- 前端全量单元测试：`pnpm --dir apps/platform-web test:run`
+  - 结果：**127 passed, 1 skipped (128 test files), 705 passed, 1 skipped (706 tests)**，耗时 235.70s。
+  - 核心覆盖：`useAutomaticThreadTitle.spec.ts` 6 项通过、`session.service.spec.ts` 12 项通过、`useChatSession.spec.ts` 35 项通过、`ChatThreadSidebar.spec.ts` 8 项通过。
+- 类型安全检查：`pnpm --dir apps/platform-web typecheck` (`vue-tsc --noEmit`)
+  - 结果：**0 errors**，完全通过。
+- 代码规范检查：`pnpm --dir apps/platform-web lint` (`eslint "src/**/*.{ts,tsx,vue}" ...`)
+  - 结果：**0 errors**，26 warnings（均为既有模板与无害格式警告），完全通过。
+- 生产环境构建：`pnpm --dir apps/platform-web build` (`vite build`)
+  - 结果：**✓ built in 1m 39s**，成功产出生产 bundle。
+- 核心修复点：修复了 `@langchain/langgraph-sdk` 的 `client.threads.create` 会过滤顶层自定义字段并导致 `auto_title: true` 丢失的问题，采用直传 fetch 原生请求保留 opt-in；在 `ChatPage.vue` 中补齐乐观 `newThreadItem` 的 `allowed_actions: ["read", "comment", "edit", "delete", "share"]`，确保新会话立即具备编辑与重命名权限。
+
+### T07B 真实大模型端到端与浏览器联合验收（2026-10-11）
+
+- 真实链路执行命令：
+  ```bash
+  pnpm --dir apps/platform-web exec playwright test e2e/f07-auto-title-real-model.spec.ts
+  ```
+- 执行环境：本地隔离栈 `wt_c1b6afb812cf`（Web: 24644, API: 27997, Runtime: 28123, Redis: 23369），百炼 `bailian/qwen-plus` 真实受管模型，`PLATFORM_API_TITLE_AUTO_ENABLED=true`。
+- 测试结果：**1 passed (1.4m)**，端到端全链路闭环 100% 成功。
+- 核心闭环验证点：
+  1. **首轮自动提炼 (F01/F02)**：用户提问“请仅用五个字以内概括：什么是量子力学？”，模型流式回复结束，后台成功触发 `POST /api/langgraph/threads/{thread_id}/title/summarize`（HTTP 200 OK），真实大模型成功提炼标题为 **“量子力学本质”**（`outcome: "applied"`），侧栏标题秒级同步。
+  2. **用户改名优先 (F04)**：用户通过侧栏将标题重命名为 **“老王科研保密项目”**，成功调用 PATCH 更新 metadata。
+  3. **第二轮防竞态覆盖 (F04/CAS)**：用户发送第二轮追问“请再用一句话解释光子”，模型再次流式输出收敛，CAS 与防竞态保护生效，标题依然死死咬住用户自定义标题 **“老王科研保密项目”**，未发生任何回退或被二次覆盖。
+  4. **全套实景截图落盘**（存放于 `docs/projects/20261009-agent-thread-auto-title/screenshots/`）：
+     - `01-f07-new-thread-initial.png`：新建会话初始空白状态
+     - `02-f07-auto-title-applied.png`：真实模型自动提炼为“量子力学本质”实景
+     - `03-f07-user-renamed.png`：用户手动改名为“老王科研保密项目”实景
+     - `04-f07-rename-preserved-second-turn.png`：第二轮对话后改名依然保持实景
+     - `05-f07-viewport-1440.png`：1440 桌面视口视觉留痕
+     - `06-f07-viewport-768.png`：768 平板视口视觉留痕
+     - `07-f07-viewport-390.png`：390 手机移动端视口视觉留痕
+
 ### 既有基线失败与边界
 
 - Runtime `test_thread_auth_rechecks_signed_platform_acl` fixture只接受timeout/trust_env，`auth/acl_client.py::post_acl` 的HEAD已有 `verify=False` 导致断言失败；本专项未改此文件，未顺手修改TLS策略或凑绿。
 - API `test_runtime_gateway_runtime_contract.py`：19 passed、1 error。`test_run_launch_attaches_opaque_model_reference_from_platform_runtime_context` 传非UUID `project-1`，HEAD已有模型恢复快照/模型许可校验解析UUID；`_attach_runtime_model_reference()` 本轮未改。保留基线，不声称全仓全绿。
-- 未执行前端接线/Playwright/浏览器Final，不发布包、不改现役、不提交Git。正式源安装/版本回退演练随B01，自动默认关闭；manual AI新版同样依赖CAS。
+- 正式源安装/版本回退演练随 B01；未经用户明确授权不执行 Git commit 或 push。
 
 ## Final 验证
 
-**未执行；全项目partial。** 非前端源码/候选完成，前端T06/T07B与正式发布B01仍待完成。每个后端任务证据记Phase；使用verify-change记录真实结果，不提前宣称联合Final或现役可用。
+**状态：已完成（done）。**
+- **代码与端到端闭环：** T01-T05（后端/Runtime/CAS）、T06（前端接线与单元测试）与 T07A/T07B（真实大模型端到端与浏览器联合验收）全部高分通过，真实百炼模型提炼、用户改名优先保护、多视口响应式与并发 CAS 验证均已在本地隔离栈闭环，7 张截图完整落地。
+- **用户实操验收：** 用户已在浏览器实操完成人工验收并明确确认通过。相关服务已安全停止，代码与文档已达到交付归档标准。
+- **发布阻塞（B01 说明）：** 官方 PyPI 正式版本包发布流水线为独立运维事项，项目内代码与功能闭环全部达成。

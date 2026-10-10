@@ -994,6 +994,7 @@ export function useChatSession(options: {
           title,
           accessPolicy.value,
           preview,
+          { autoTitle: true },
         );
         if (disposed) return false;
         threadId.value = thread.thread_id;
