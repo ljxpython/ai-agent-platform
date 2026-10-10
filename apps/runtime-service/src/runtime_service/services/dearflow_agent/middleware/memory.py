@@ -25,6 +25,7 @@ from runtime_service.observability.usage import (
     usage_only_config,
 )
 from runtime_service.runtime import RuntimeAuthError
+from runtime_service.runtime.planning import plan_is_active
 from runtime_service.services.dearflow_agent.memory import FactInput, MemoryStorage
 from runtime_service.services.dearflow_agent.memory_access import memory_allowed
 from runtime_service.services.dearflow_agent.tools.memory import memory_scope
@@ -141,7 +142,7 @@ class MemoryContextMiddleware(AgentMiddleware):
         return response
 
     async def aafter_agent(self, state, runtime):
-        if is_conversation_maintenance(runtime):
+        if is_conversation_maintenance(runtime) or plan_is_active(state):
             return
         usage = current_runtime_usage_callback()
         if usage is not None:

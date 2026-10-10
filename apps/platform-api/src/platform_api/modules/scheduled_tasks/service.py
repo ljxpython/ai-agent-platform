@@ -624,6 +624,11 @@ def authorize_execution(factory, gateway, payload: dict, secret: str) -> dict:
             "assistant_id": payload["agent_key"],
             "context": payload["context"],
         }
+        if payload["context"].get("plan_mode") is True:
+            raise BadRequestError(
+                code="plan_mode_scheduled_forbidden",
+                message="Unattended runs cannot request planning",
+            )
         gateway._validate_run_options(
             project_id=payload["project_id"], payload=run_payload
         )

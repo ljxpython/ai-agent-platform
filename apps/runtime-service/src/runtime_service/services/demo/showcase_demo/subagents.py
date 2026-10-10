@@ -9,6 +9,7 @@ from langchain.agents.middleware import AgentMiddleware
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 
+from runtime_service.middlewares.plan_mode import PlanModeMiddleware
 from runtime_service.runtime import interrupts_for_access_policy
 from runtime_service.services.demo.showcase_demo.prompts import (
     CHART_PROMPT,
@@ -34,6 +35,22 @@ def build_subagents(
     chart_tools: Sequence[BaseTool] = (),
     access_policy: str | None = None,
 ) -> list[SubAgent]:
+    def scoped_middleware(names: Sequence[str]) -> list[AgentMiddleware]:
+        filesystem = FilesystemMiddleware(
+            backend=backend,
+            tools=[name for name in names if name in WORK_TOOLS],
+            _permissions=PERMISSIONS,
+            max_execute_timeout=60,
+        )
+        return [
+            filesystem,
+            PlanModeMiddleware(
+                [tool for tool in filesystem.tools if tool.name in READ_TOOLS],
+                child=True,
+            ),
+            *middleware(names),
+        ]
+
     agents = [
         {
             "name": "research",
@@ -43,12 +60,7 @@ def build_subagents(
             "tools": [],
             "permissions": PERMISSIONS,
             "interrupt_on": {},
-            "middleware": [
-                FilesystemMiddleware(
-                    backend=backend, tools=list(READ_TOOLS), _permissions=PERMISSIONS
-                ),
-                *middleware(READ_TOOLS),
-            ],
+            "middleware": scoped_middleware(READ_TOOLS),
         },
         {
             # Defining the official default name suppresses the implicit unrestricted one.
@@ -59,15 +71,7 @@ def build_subagents(
             "tools": [],
             "permissions": PERMISSIONS,
             "interrupt_on": interrupts_for_access_policy(access_policy, APPROVALS),
-            "middleware": [
-                FilesystemMiddleware(
-                    backend=backend,
-                    tools=list(WORK_TOOLS),
-                    _permissions=PERMISSIONS,
-                    max_execute_timeout=60,
-                ),
-                *middleware(WORK_TOOLS),
-            ],
+            "middleware": scoped_middleware(WORK_TOOLS),
         },
     ]
     if chart_tools:
@@ -80,14 +84,9 @@ def build_subagents(
                 "tools": list(chart_tools),
                 "permissions": PERMISSIONS,
                 "interrupt_on": {},
-                "middleware": [
-                    FilesystemMiddleware(
-                        backend=backend,
-                        tools=list(READ_TOOLS),
-                        _permissions=PERMISSIONS,
-                    ),
-                    *middleware((*READ_TOOLS, *(tool.name for tool in chart_tools))),
-                ],
+                "middleware": scoped_middleware(
+                    (*READ_TOOLS, *(tool.name for tool in chart_tools))
+                ),
             }
         )
     return agents

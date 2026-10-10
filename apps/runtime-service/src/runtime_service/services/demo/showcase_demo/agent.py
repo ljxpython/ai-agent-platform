@@ -27,6 +27,7 @@ from runtime_service.middlewares import (
     ModelErrorMiddleware,
     ModelResilienceMiddleware,
     ModelResilienceSummarizationMiddleware,
+    PlanModeMiddleware,
     RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
     TokenBudgetMiddleware,
@@ -175,6 +176,18 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     chart_tools = build_chart_tools(image_workspace)
     image_names = tuple(tool.name for tool in image_middleware.tools)
     document_names = tuple(tool.name for tool in document_middleware.tools)
+    filesystem = FilesystemMiddleware(
+        backend=backend,
+        tools=list(WORK_TOOLS),
+        _permissions=PERMISSIONS,
+        max_execute_timeout=60,
+    )
+    todos = TodoListMiddleware()
+    readonly_tools = [
+        fetch_documentation,
+        *(tool for tool in filesystem.tools if tool.name in READ_TOOLS),
+        *todos.tools,
+    ]
 
     def model_builder(next_config):
         if resolved is None:
@@ -227,6 +240,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 model_builder=model_builder,
                 tool_names=tool_names,
             ),
+            *([] if child else [PlanModeMiddleware(readonly_tools)]),
             *offloading,
             *([MaintenanceSafeToolCallsMiddleware()] if offloading else []),
             WorkspaceMiddleware(
@@ -313,18 +327,13 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 context.access_policy if executing else None,
             ),
             middleware=[
-                FilesystemMiddleware(
-                    backend=backend,
-                    tools=list(WORK_TOOLS),
-                    _permissions=PERMISSIONS,
-                    max_execute_timeout=60,
-                ),
+                filesystem,
                 *middleware(
                     (*_DEFAULTS.optional_tool_names, *image_names, *document_names),
                     tail=[
                         image_middleware,
                         document_middleware,
-                        TodoListMiddleware(),
+                        todos,
                         MessageQueueMiddleware(),
                     ],
                 ),

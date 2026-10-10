@@ -1,5 +1,13 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import {
+  computed,
+  nextTick,
+  onMounted,
+  onUnmounted,
+  ref,
+  watch,
+  type CSSProperties,
+} from "vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import {
   CHAT_ATTACHMENT_ACCEPT,
@@ -41,11 +49,15 @@ const props = withDefaults(
     showSuggestions?: boolean;
     turnState?: SessionTurnState;
     canOpenUsage?: boolean;
+    planMode?: boolean;
+    planModeSupported?: boolean;
   }>(),
   {
     showSuggestions: true,
     turnState: "idle",
     canOpenUsage: false,
+    planMode: false,
+    planModeSupported: false,
   },
 );
 
@@ -62,6 +74,7 @@ const emit = defineEmits<{
   "change:accessPolicy": [value: AccessPolicy];
   "select-suggestion": [prompt: string];
   "open-usage": [];
+  "update:planMode": [value: boolean];
 }>();
 
 const fileInputRef = ref<HTMLInputElement | null>(null);
@@ -251,8 +264,57 @@ function handleSelectSuggestion(prompt: string) {
   emit("select-suggestion", prompt);
 }
 
+const featureMenuOpen = ref(false);
+const featureMenuTriggerRef = ref<HTMLButtonElement | null>(null);
+const featureDropdownRef = ref<HTMLElement | null>(null);
+const featureDropdownStyle = ref<CSSProperties>({});
+
+function updateFeatureMenuPosition() {
+  if (!featureMenuOpen.value || !featureMenuTriggerRef.value) return;
+  const rect = featureMenuTriggerRef.value.getBoundingClientRect();
+  const dropdownWidth = 230;
+  featureDropdownStyle.value = {
+    position: "fixed",
+    left: `${Math.max(12, Math.min(rect.left, window.innerWidth - dropdownWidth - 12))}px`,
+    bottom: `${Math.max(12, window.innerHeight - rect.top + 8)}px`,
+    width: `${dropdownWidth}px`,
+    zIndex: 9999,
+  };
+}
+
+function toggleFeatureMenu() {
+  if (props.isRunning || props.hasBlockingInterrupt || isStopBlocked.value)
+    return;
+  featureMenuOpen.value = !featureMenuOpen.value;
+  if (featureMenuOpen.value) {
+    nextTick(() => updateFeatureMenuPosition());
+  }
+}
+
+function togglePlanModeFromMenu() {
+  emit("update:planMode", !props.planMode);
+  featureMenuOpen.value = false;
+}
+
+function handlePointerDownOutside(event: PointerEvent) {
+  if (!featureMenuOpen.value) return;
+  const target = event.target as Node | null;
+  if (
+    featureMenuTriggerRef.value?.contains(target) ||
+    featureDropdownRef.value?.contains(target)
+  ) {
+    return;
+  }
+  featureMenuOpen.value = false;
+}
+
 onMounted(async () => {
   await syncTextareaHeight();
+  document.addEventListener("pointerdown", handlePointerDownOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener("pointerdown", handlePointerDownOutside);
 });
 
 defineExpose({
@@ -306,6 +368,25 @@ defineExpose({
         />
       </div>
 
+      <!-- 规划模式常驻胶囊徽章 -->
+      <div v-if="props.planMode" class="mb-2 flex items-center">
+        <div
+          data-testid="plan-mode-active-pill"
+          class="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-800 dark:border-sky-500/30 dark:bg-sky-950/60 dark:text-sky-200 shadow-2xs"
+        >
+          <span>📋 规划模式已启用 (Plan Mode)</span>
+          <button
+            type="button"
+            class="ml-0.5 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full hover:bg-sky-200 dark:hover:bg-sky-800 text-sky-600 dark:text-sky-300 transition-colors cursor-pointer"
+            title="取消本次规划模式"
+            aria-label="取消本次规划模式"
+            @click="emit('update:planMode', false)"
+          >
+            <span class="text-xs leading-none">✕</span>
+          </button>
+        </div>
+      </div>
+
       <textarea
         ref="textareaRef"
         v-model="composerModel"
@@ -334,6 +415,42 @@ defineExpose({
             class="flex h-8 min-w-0 items-center gap-2 overflow-x-auto no-scrollbar"
             :class="isFocusMode || props.compact ? 'gap-2' : 'gap-2.5'"
           >
+            <!-- 拓展功能加号菜单（参考谷歌输入框交互） -->
+            <div class="relative inline-block text-left">
+              <button
+                ref="featureMenuTriggerRef"
+                type="button"
+                data-testid="composer-feature-menu-btn"
+                class="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-lg border px-2 text-xs font-medium transition-colors"
+                :class="[
+                  props.planMode
+                    ? 'border-sky-300 bg-sky-50 text-sky-700 dark:border-sky-600 dark:bg-sky-950/60 dark:text-sky-200'
+                    : 'border-gray-200/80 bg-white/90 text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white',
+                  isRunning || hasBlockingInterrupt || isStopBlocked
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'cursor-pointer',
+                ]"
+                :disabled="isRunning || hasBlockingInterrupt || isStopBlocked"
+                title="功能扩展"
+                aria-label="功能扩展"
+                @click="toggleFeatureMenu"
+              >
+                <svg
+                  class="h-3.5 w-3.5 transition-transform duration-150"
+                  :class="featureMenuOpen ? 'rotate-45' : ''"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <line x1="12" y1="5" x2="12" y2="19"></line>
+                  <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+              </button>
+            </div>
+
             <ThreadAccessPolicySelect
               v-if="projectId"
               :model-value="accessPolicy || 'review'"
@@ -497,5 +614,62 @@ defineExpose({
         <span class="text-[10px]">↗</span>
       </button>
     </div>
+
+    <!-- 功能菜单浮层 (Teleport 到 body，彻底解耦容器 overflow 与 stacking context) -->
+    <Teleport to="body">
+      <div
+        v-if="featureMenuOpen"
+        ref="featureDropdownRef"
+        :style="featureDropdownStyle"
+        data-testid="composer-feature-dropdown"
+        class="rounded-xl border border-gray-200 bg-white p-1.5 shadow-xl dark:border-dark-700 dark:bg-dark-800 animate-in fade-in zoom-in-95 duration-100"
+      >
+        <button
+          v-if="planModeSupported"
+          type="button"
+          data-testid="feature-toggle-plan-mode"
+          class="flex w-full items-start gap-2.5 rounded-lg px-2.5 py-2 text-left text-xs transition-colors hover:bg-gray-100 dark:hover:bg-dark-700/80 cursor-pointer"
+          @click="togglePlanModeFromMenu"
+        >
+          <div
+            class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border"
+            :class="
+              props.planMode
+                ? 'border-sky-500 bg-sky-500 text-white'
+                : 'border-gray-300 dark:border-dark-600'
+            "
+          >
+            <svg
+              v-if="props.planMode"
+              class="h-3 w-3 stroke-current stroke-2 fill-none"
+              viewBox="0 0 24 24"
+            >
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div
+              class="font-medium text-gray-900 dark:text-white flex items-center justify-between"
+            >
+              <span>先规划 (Plan Mode)</span>
+              <span class="text-[10px] text-sky-600 dark:text-sky-400 font-mono"
+                >单次</span
+              >
+            </div>
+            <p
+              class="mt-0.5 text-[11px] leading-3.5 text-gray-400 dark:text-dark-400"
+            >
+              先行调研并制定计划，待审阅批准后再执行
+            </p>
+          </div>
+        </button>
+        <div
+          v-else
+          class="px-2.5 py-2 text-[11px] text-gray-400 dark:text-dark-500"
+        >
+          当前 Agent 暂无可用扩展功能
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>

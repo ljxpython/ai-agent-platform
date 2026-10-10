@@ -29,6 +29,7 @@ PROJECT_SCOPE_ALIAS_KEYS = (
 )
 
 RUNTIME_CONTEXT_BUSINESS_KEYS = (
+    "plan_mode",
     "execution_mode",
     "model_id",
     "system_prompt",
@@ -39,6 +40,7 @@ RUNTIME_CONTEXT_BUSINESS_KEYS = (
 )
 
 RUNTIME_OPTION_KEYS = (
+    "plan_mode",
     "execution_mode",
     "model_id",
     "temperature",
@@ -63,6 +65,10 @@ PROTOCOL_V2_EVENT_CHANNELS = {
 PROTOCOL_V2_RUN_DURABILITY = {"sync", "async", "exit"}
 PROTOCOL_V2_RUN_DISCONNECT = {"cancel", "continue"}
 PRIVATE_RUNTIME_STATE_KEYS = {
+    "runtime_plan",
+    "agent_plan",
+    "plan_execution_id",
+    "plan_bootstrap_required",
     "_platform_model_resilience",
     "model_resilience",
     "fallback_model_id",
@@ -130,6 +136,8 @@ def _reject_run_budget(value: Any) -> None:
 
 
 def _validate_runtime_option_values(options: dict[str, Any]) -> None:
+    if "plan_mode" in options and type(options["plan_mode"]) is not bool:
+        raise ValueError("plan_mode must be a boolean")
     mode = options.get("execution_mode")
     if mode is not None and (
         not isinstance(mode, str) or mode not in {"flash", "standard", "pro", "ultra"}
@@ -182,6 +190,7 @@ RUNTIME_CONTEXT_PROPERTY_TYPES: dict[str, str] = {
 }
 
 RUNTIME_OPTION_PROPERTY_TYPES: dict[str, str] = {
+    "plan_mode": "boolean",
     "execution_mode": "string",
     "model_id": "string",
     "system_prompt": "string",
@@ -249,6 +258,17 @@ def normalize_runtime_contract(
     runtime_options = ensure_dict(
         ensure_dict(config.get("configurable")).get("platform_runtime")
     )
+    for options in (context, runtime_options):
+        if "plan_mode" in options and type(options["plan_mode"]) is not bool:
+            raise ValueError("plan_mode must be a boolean")
+    if (
+        "plan_mode" in context
+        and "plan_mode" in runtime_options
+        and context["plan_mode"] != runtime_options["plan_mode"]
+    ):
+        raise ValueError("plan_mode values conflict")
+    if "plan_mode" in config or "plan_mode" in ensure_dict(config.get("configurable")):
+        raise ValueError("plan_mode must be supplied in context or platform_runtime")
     for options in (context, runtime_options):
         if (
             "offload_conversation" in options

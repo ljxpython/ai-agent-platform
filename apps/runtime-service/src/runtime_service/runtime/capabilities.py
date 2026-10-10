@@ -3,17 +3,17 @@
 import json
 from importlib.resources import files
 
+from runtime_service.runtime.planning import PLAN_TOOL_NAMES
 from runtime_service.services.dearflow_agent.capabilities import (
     DEAR_TOOLS,
     WORK_TOOLS,
     configured_mcp_names,
-)
-from runtime_service.services.dearflow_agent.capabilities import (
-    graph_capabilities as graph_capabilities,
+    graph_capabilities,  # noqa: F401 - public compatibility export
 )
 
-REFERENCE_TOOLS = ("read_reference",)
+REFERENCE_TOOLS = ("read_reference", *PLAN_TOOL_NAMES)
 SHOWCASE_TOOLS = (
+    *PLAN_TOOL_NAMES,
     *WORK_TOOLS,
     "task",
     "write_todos",

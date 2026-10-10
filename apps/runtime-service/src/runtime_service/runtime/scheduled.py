@@ -18,6 +18,7 @@ from runtime_service.runtime.auth import verified_delegation_from_user
 from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.runtime.resolver import (
     persisted_context_hash_v4,
+    persisted_context_hash_v5,
     runtime_context_hash,
 )
 
@@ -176,8 +177,18 @@ def scheduled_execution(factory, *, agent_key):
         context = config.get("context") or {}
         if isinstance(context, dict) and context.get("offload_conversation") is True:
             raise RuntimeAuthError("scheduled_task_context_offload_forbidden")
+        if isinstance(context, dict) and context.get("plan_mode") is True:
+            raise RuntimeAuthError("scheduled_task_plan_mode_forbidden")
         current_hash = runtime_context_hash(context)
-        if facts.context_hash not in {current_hash, persisted_context_hash_v4(context)}:
+        legacy_hashes = (
+            set()
+            if context.get("plan_execution_id")
+            else {
+                persisted_context_hash_v4(context),
+                persisted_context_hash_v5(context),
+            }
+        )
+        if facts.context_hash not in {current_hash, *legacy_hashes}:
             raise RuntimeAuthError("runtime.auth.context_hash_mismatch", "context_hash")
         payload = {
             "tenant_id": facts.principal.tenant_id,

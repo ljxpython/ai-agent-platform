@@ -5,6 +5,7 @@ import os
 import re
 from importlib.resources import files
 
+from runtime_service.runtime.planning import PLAN_GRAPHS, PLAN_TOOL_NAMES
 from runtime_service.workspace.artifact_refs import ARTIFACT_MIMES
 
 CHART_NAMES = tuple(
@@ -30,6 +31,7 @@ SKILL_WRITE_TOOLS = (
 )
 MEDIA_TOOLS = ("generate_image", "edit_image", "get_media_task")
 DEAR_TOOLS = (
+    *PLAN_TOOL_NAMES,
     *WORK_TOOLS,
     *CHART_NAMES,
     *MEDIA_TOOLS,
@@ -79,6 +81,7 @@ def graph_capabilities(graph_id: str) -> dict:
     return {
         "schema_version": 1,
         "graph_id": graph_id,
+        "plan_mode": graph_id in PLAN_GRAPHS,
         "files": graph_id in {"showcase_demo", "dearflow_agent"},
         "workspace": graph_id in {"showcase_demo", "dearflow_agent"},
         "terminal": graph_id in {"showcase_demo", "dearflow_agent"}

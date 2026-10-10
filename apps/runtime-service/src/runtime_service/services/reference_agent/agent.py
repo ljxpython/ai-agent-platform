@@ -24,6 +24,7 @@ from runtime_service.middlewares import (
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
     ModelResilienceMiddleware,
+    PlanModeMiddleware,
     RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
     TokenBudgetMiddleware,
@@ -277,6 +278,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             probe_only=probe_only,
         ),
         TokenBudgetMiddleware(),
+        PlanModeMiddleware([read_reference]),
         ExecutionBudgetMiddleware(
             run_limit=10, exit_behavior="end", graph_key="reference_agent"
         ),

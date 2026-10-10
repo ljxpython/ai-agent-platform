@@ -119,3 +119,22 @@ it("ignores SDK aliases but detects actual action changes", () => {
     ])[0]?.fingerprint,
   ).not.toBe(original);
 });
+
+it("filters out agent_plan_review interrupts from tool approval panel", () => {
+  const planReviewInterrupt = {
+    id: "plan-int-1",
+    value: {
+      type: "agent_plan_review",
+      version: 1,
+      plan_id: "plan-123",
+      revision: 1,
+      content_hash: "sha256:abc",
+      title: "待审计划",
+      markdown: "正文",
+      allowed_decisions: ["approve", "request_changes", "abandon"],
+    },
+  };
+
+  const reviews = parseReviews([planReviewInterrupt]);
+  expect(reviews).toEqual([]);
+});

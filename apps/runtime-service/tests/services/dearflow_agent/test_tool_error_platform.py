@@ -70,13 +70,11 @@ def stack(tmp_path, request):
         spec["provider_port"] = port()
         spec["provider_url"] = f"http://127.0.0.1:{spec['provider_port']}/v1"
     spec["config"] = {
-        "graphs": options.get(
-            "graphs",
-            {
-                "dearflow_agent": "fixture.py:graph",
-                "showcase_demo": "fixture.py:showcase_graph",
-            },
-        ),
+        "graphs": {
+            "dearflow_agent": "fixture.py:graph",
+            "showcase_demo": "fixture.py:showcase_graph",
+            **options.get("graphs", {}),
+        },
         "auth": {"path": "fixture.py:auth"},
         "http": {"disable_mcp": True},
     }
@@ -158,7 +156,10 @@ def stack(tmp_path, request):
                     == str(processes[role].pid)
                 ),
                 process=processes[role],
-                timeout=options.get("startup_timeout", 180),
+                timeout=options.get(
+                    "startup_timeout",
+                    360 if env.get("PLAN_MODE_LIVE_TEST") == "1" else 180,
+                ),
             )
         return processes[role]
 

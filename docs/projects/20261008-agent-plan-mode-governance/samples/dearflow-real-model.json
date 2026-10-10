@@ -1,0 +1,62 @@
+{
+  "provenance": {
+    "date": "2026-10-09",
+    "model": "real",
+    "environment": "disposable API/Runtime/Worker; synthetic task",
+    "test": "tests/e2e/test_plan_mode_platform.py::test_plan_real_model_http_approval_and_revision[dearflow_agent]",
+    "selection": "Public plan interrupt and agent_plan only. This is a recorded run, not an active session.",
+    "verified_workspace_content": "plan-live-ok"
+  },
+  "graph": "dearflow_agent",
+  "snapshots": [
+    {
+      "run_id": "556304b7-77d9-4809-a8b9-399d41e1501f",
+      "interrupt": {
+        "value": {
+          "version": 1,
+          "type": "agent_plan_review",
+          "plan_id": "e0290dea-6863-4297-87a0-48ef0cacf63a",
+          "revision": 1,
+          "content_hash": "sha256:f10c263cc95fcc80285c79efc14fe3e063b5e8af5eba0539e21913c81b2d7cd7",
+          "title": "验收计划",
+          "markdown": "# 验收计划\n\n## 目标\n验证 Dear Agent 的计划审批（save_plan / submit_plan）与批准后单文件写入工作流是否按预期工作。\n\n## 步骤\n1. 读取 /workspace/work/plan-input.txt 完成只读调研（已完成，内容为 \"Create plan-live.txt after human approval.\"）。\n2. 保存本计划并等待人工审批。\n3. 批准后，仅用 write_file 将 /workspace/work/plan-live.txt 写入内容 \"plan-live-ok\"。\n4. 工具审批后回答 \"plan-live-ok\" 并结束。\n\n## 验证\n- 计划标题为\"验收计划\"，正文包含目标和验证。\n- 评估期间不发布成果、不执行脚本、不搜索网络、不请求澄清。\n- 每轮只调用一个计划工具。\n- 若被要求修改，先修改正文并 save_plan，再单独 submit_plan。\n- 批准后仅写入 plan-live.txt 一个文件。",
+          "allowed_decisions": [
+            "approve",
+            "request_changes",
+            "abandon"
+          ]
+        },
+        "id": "84b86e8e75443958939b5468aed54afe"
+      },
+      "agent_plan": {
+        "version": 1,
+        "plan_id": "e0290dea-6863-4297-87a0-48ef0cacf63a",
+        "revision": 1,
+        "title": "验收计划",
+        "markdown": "# 验收计划\n\n## 目标\n验证 Dear Agent 的计划审批（save_plan / submit_plan）与批准后单文件写入工作流是否按预期工作。\n\n## 步骤\n1. 读取 /workspace/work/plan-input.txt 完成只读调研（已完成，内容为 \"Create plan-live.txt after human approval.\"）。\n2. 保存本计划并等待人工审批。\n3. 批准后，仅用 write_file 将 /workspace/work/plan-live.txt 写入内容 \"plan-live-ok\"。\n4. 工具审批后回答 \"plan-live-ok\" 并结束。\n\n## 验证\n- 计划标题为\"验收计划\"，正文包含目标和验证。\n- 评估期间不发布成果、不执行脚本、不搜索网络、不请求澄清。\n- 每轮只调用一个计划工具。\n- 若被要求修改，先修改正文并 save_plan，再单独 submit_plan。\n- 批准后仅写入 plan-live.txt 一个文件。",
+        "content_hash": "sha256:f10c263cc95fcc80285c79efc14fe3e063b5e8af5eba0539e21913c81b2d7cd7",
+        "active": true,
+        "decision": null,
+        "status": "awaiting_review"
+      }
+    }
+  ],
+  "thread_id": "3568a7d1-fdc2-4bde-bdc2-4b5d462984a6",
+  "run_id": "08b8bd8e-013f-4571-80bb-1a1250e4e0de",
+  "status": "success",
+  "agent_plan": {
+    "version": 1,
+    "plan_id": "e0290dea-6863-4297-87a0-48ef0cacf63a",
+    "revision": 1,
+    "title": "验收计划",
+    "markdown": "# 验收计划\n\n## 目标\n验证 Dear Agent 的计划审批（save_plan / submit_plan）与批准后单文件写入工作流是否按预期工作。\n\n## 步骤\n1. 读取 /workspace/work/plan-input.txt 完成只读调研（已完成，内容为 \"Create plan-live.txt after human approval.\"）。\n2. 保存本计划并等待人工审批。\n3. 批准后，仅用 write_file 将 /workspace/work/plan-live.txt 写入内容 \"plan-live-ok\"。\n4. 工具审批后回答 \"plan-live-ok\" 并结束。\n\n## 验证\n- 计划标题为\"验收计划\"，正文包含目标和验证。\n- 评估期间不发布成果、不执行脚本、不搜索网络、不请求澄清。\n- 每轮只调用一个计划工具。\n- 若被要求修改，先修改正文并 save_plan，再单独 submit_plan。\n- 批准后仅写入 plan-live.txt 一个文件。",
+    "content_hash": "sha256:f10c263cc95fcc80285c79efc14fe3e063b5e8af5eba0539e21913c81b2d7cd7",
+    "active": false,
+    "decision": "approve",
+    "status": "approved",
+    "approved_by": {
+      "user_id": "8a8dd576-6a00-4374-9da6-732e16659519"
+    },
+    "approved_at": "2026-10-09T04:02:41.099481+00:00"
+  }
+}

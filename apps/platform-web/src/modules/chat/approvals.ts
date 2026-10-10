@@ -1,4 +1,5 @@
 import { isClarificationInterrupt } from "./human-input";
+import { isPlanReviewInterrupt } from "./plan-review";
 
 export type DecisionKind = "approve" | "reject" | "edit";
 export type ReviewAction = {
@@ -43,58 +44,69 @@ export function parseReviews(
   }[],
 ): PendingReview[] {
   return interrupts
-    .filter((interrupt) => !isClarificationInterrupt(interrupt.value))
-    .map((interrupt) => {
-    const value = object(interrupt.value) ? interrupt.value : {};
-    const requests = Array.isArray(value.action_requests)
-      ? value.action_requests
-      : [];
-    const configs = Array.isArray(value.review_configs)
-      ? value.review_configs
-      : [];
-    const actions: ReviewAction[] = [];
-    for (const request of requests) {
+    .filter((interrupt) => {
+      const val = interrupt.value as Record<string, unknown> | undefined;
+      if (isClarificationInterrupt(interrupt.value)) return false;
       if (
-        !object(request) ||
-        typeof request.name !== "string" ||
-        !object(request.args)
+        isPlanReviewInterrupt(interrupt.value) ||
+        isPlanReviewInterrupt(interrupt)
       )
-        continue;
-      const config = configs.find(
-        (entry) => object(entry) && entry.action_name === request.name,
+        return false;
+      if (val && typeof val === "object" && val.type === "agent_plan_review")
+        return false;
+      return true;
+    })
+    .map((interrupt) => {
+      const value = object(interrupt.value) ? interrupt.value : {};
+      const requests = Array.isArray(value.action_requests)
+        ? value.action_requests
+        : [];
+      const configs = Array.isArray(value.review_configs)
+        ? value.review_configs
+        : [];
+      const actions: ReviewAction[] = [];
+      for (const request of requests) {
+        if (
+          !object(request) ||
+          typeof request.name !== "string" ||
+          !object(request.args)
+        )
+          continue;
+        const config = configs.find(
+          (entry) => object(entry) && entry.action_name === request.name,
+        );
+        const allowed =
+          object(config) && Array.isArray(config.allowed_decisions)
+            ? config.allowed_decisions.filter((kind): kind is DecisionKind =>
+                ["approve", "reject", "edit"].includes(String(kind)),
+              )
+            : [];
+        actions.push({ name: request.name, args: request.args, allowed });
+      }
+      const details = Object.fromEntries(
+        Object.entries(value).filter(
+          ([key]) =>
+            ![
+              "action_requests",
+              "actionRequests",
+              "review_configs",
+              "reviewConfigs",
+            ].includes(key),
+        ),
       );
-      const allowed =
-        object(config) && Array.isArray(config.allowed_decisions)
-          ? config.allowed_decisions.filter((kind): kind is DecisionKind =>
-              ["approve", "reject", "edit"].includes(String(kind)),
-            )
-          : [];
-      actions.push({ name: request.name, args: request.args, allowed });
-    }
-    const details = Object.fromEntries(
-      Object.entries(value).filter(
-        ([key]) =>
-          ![
-            "action_requests",
-            "actionRequests",
-            "review_configs",
-            "reviewConfigs",
-          ].includes(key),
-      ),
-    );
-    return {
-      id: interrupt.id ?? "",
-      namespace: interrupt.ns ?? [],
-      actions,
-      fingerprint: JSON.stringify(canonical({ actions, details })),
-      raw: interrupt.value,
-      supported:
-        Boolean(interrupt.id) &&
-        actions.length > 0 &&
-        actions.length === requests.length &&
-        actions.every((action) => action.allowed.length > 0),
-    };
-  });
+      return {
+        id: interrupt.id ?? "",
+        namespace: interrupt.ns ?? [],
+        actions,
+        fingerprint: JSON.stringify(canonical({ actions, details })),
+        raw: interrupt.value,
+        supported:
+          Boolean(interrupt.id) &&
+          actions.length > 0 &&
+          actions.length === requests.length &&
+          actions.every((action) => action.allowed.length > 0),
+      };
+    });
 }
 
 function validateEdited(original: unknown, edited: unknown): void {

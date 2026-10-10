@@ -186,6 +186,19 @@ def platform_app(spec):
     ).decode()
     settings.langgraph_upstream_url = spec["runtime_url"]
     settings.langgraph_upstream_timeout_seconds = 180
+    live_model = {}
+    if os.getenv("PLAN_MODE_LIVE_TEST") == "1":
+        from dotenv import dotenv_values
+
+        live_model = dotenv_values(os.environ["PLAN_MODE_MODEL_ENV_FILE"])
+        assert all(
+            live_model.get(key)
+            for key in (
+                "DEEPSEEK_PROXY_API_KEY",
+                "DEEPSEEK_PROXY_URL",
+                "DEEPSEEK_PROXY_DEFAULT_MODEL",
+            )
+        ), "Real model configuration is incomplete"
     original = app.router.lifespan_context
 
     @asynccontextmanager
@@ -223,34 +236,29 @@ def platform_app(spec):
                             project_id=project, user_id=user.id, role="editor"
                         )
                     )
-                    session.add(
-                        AgentRecord(
-                            project_id=project,
-                            name="fixture",
-                            graph_id="dearflow_agent",
-                            created_by=user.id,
-                            updated_by=user.id,
+                    for graph_id in spec["config"]["graphs"]:
+                        session.add(
+                            AgentRecord(
+                                project_id=project,
+                                name=graph_id,
+                                graph_id=graph_id,
+                                created_by=user.id,
+                                updated_by=user.id,
+                            )
                         )
-                    )
-                    session.add(
-                        AgentRecord(
-                            project_id=project,
-                            name="workspace-fixture",
-                            graph_id="showcase_demo",
-                            created_by=user.id,
-                            updated_by=user.id,
-                        )
-                    )
                     session.add(
                         RuntimeCatalogModelRecord(
                             id=model,
                             display_name="fixture",
                             provider="openai",
-                            base_url=spec.get("provider_url", "https://unused.invalid"),
+                            base_url=live_model.get("DEEPSEEK_PROXY_URL")
+                            or spec.get("provider_url", "https://unused.invalid"),
                             protocol="openai",
-                            model_name="fixture",
+                            model_name=live_model.get("DEEPSEEK_PROXY_DEFAULT_MODEL")
+                            or "fixture",
                             api_key_ciphertext=encrypt_api_key(
-                                "synthetic", master_key=settings.model_config_master_key
+                                live_model.get("DEEPSEEK_PROXY_API_KEY") or "synthetic",
+                                master_key=settings.model_config_master_key,
                             ),
                             enabled=True,
                         )

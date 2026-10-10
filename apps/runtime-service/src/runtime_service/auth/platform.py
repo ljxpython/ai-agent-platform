@@ -148,6 +148,17 @@ async def deny_image_scope_on_server_resources(
         )
     resource = str(ctx.resource)
     action = str(ctx.action)
+    metadata = value.get("metadata")
+    if isinstance(metadata, dict) and "plan_bootstrap_required" in metadata:
+        if (
+            scope["operation"] != "thread-edit"
+            or resource != "threads"
+            or action != "update"
+            or type(metadata["plan_bootstrap_required"]) is not bool
+        ):
+            raise Auth.exceptions.HTTPException(
+                status_code=403, detail="Planning bootstrap is server-owned"
+            )
     if action in {"create", "create_run", "update"}:
         _reject_budget_state(value)
     if resource == "crons":
@@ -340,6 +351,8 @@ def _reject_budget_state(value: object) -> None:
         if (
             set(value)
             & {
+                "runtime_plan",
+                "agent_plan",
                 "remaining_steps",
                 "runtime_budget_latches",
                 "runtime_budget_wrapup",

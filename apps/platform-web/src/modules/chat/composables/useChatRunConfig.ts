@@ -13,7 +13,26 @@ import { listRuntimeModels } from "@/services/runtime/runtime.service";
 import { listRuntimeModelPolicies } from "@/services/runtime-policies/runtime-policies.service";
 import type { RuntimeModelItem } from "@/types/management";
 
+import type { WorkspaceCapabilities } from "@/types/workspace";
+
 export type ExecutionMode = "flash" | "standard" | "pro" | "ultra";
+
+export const PLAN_MODE_SUPPORTED_GRAPHS: readonly string[] = Object.freeze([
+  "dearflow_agent",
+  "reference_agent",
+  "showcase_demo",
+  "workflow_demo",
+]);
+
+export function isPlanModeSupported(
+  graphId: string,
+  capabilities?: WorkspaceCapabilities | null,
+): boolean {
+  if (capabilities && typeof capabilities.plan_mode === "boolean") {
+    return capabilities.plan_mode;
+  }
+  return PLAN_MODE_SUPPORTED_GRAPHS.includes(graphId);
+}
 
 const projectModelBundleCache = new Map<
   string,
@@ -64,6 +83,7 @@ export interface UseChatRunConfigOptions {
   recursionLimit: Ref<number>;
   enableExecutionMode?: boolean;
   isModeLocked: ComputedRef<boolean>;
+  capabilities?: Ref<WorkspaceCapabilities | undefined>;
   onLocalError?: (msg: string) => void;
 }
 
@@ -74,6 +94,11 @@ export function useChatRunConfig(options: UseChatRunConfigOptions) {
   const defaultModelName = ref("");
   const optionsOpen = ref(false);
   const optionsError = ref("");
+  const draftPlanMode = ref(false);
+
+  const planModeSupported = computed(() =>
+    isPlanModeSupported(options.graphId, options.capabilities?.value),
+  );
 
   const showExecutionMode = computed(
     () =>
@@ -87,6 +112,7 @@ export function useChatRunConfig(options: UseChatRunConfigOptions) {
     maxTokens: string;
     recursionLimit: string;
     executionMode: ExecutionMode;
+    planMode: boolean;
   }>({
     modelId: "",
     temperature: "",
@@ -94,6 +120,7 @@ export function useChatRunConfig(options: UseChatRunConfigOptions) {
     recursionLimit: options.recursionLimit.value.toString(),
     executionMode:
       (options.context.value.execution_mode as ExecutionMode) ?? "standard",
+    planMode: false,
   });
 
   const currentExecutionMode = computed<ExecutionMode>(
@@ -104,6 +131,21 @@ export function useChatRunConfig(options: UseChatRunConfigOptions) {
     parseAgentContext(options.initialContext ?? {}),
   );
 
+  function resetPlanMode() {
+    draftPlanMode.value = false;
+    draftRunOptions.planMode = false;
+  }
+
+  function setPlanMode(value: boolean) {
+    if (!planModeSupported.value && value) return;
+    draftPlanMode.value = value;
+    draftRunOptions.planMode = value;
+  }
+
+  function togglePlanMode() {
+    setPlanMode(!draftPlanMode.value);
+  }
+
   function resetOptions(value: AgentContext = initialContext.value) {
     Object.assign(draftRunOptions, {
       modelId: value.model_id ?? "",
@@ -111,12 +153,14 @@ export function useChatRunConfig(options: UseChatRunConfigOptions) {
       maxTokens: value.max_tokens?.toString() ?? "",
       recursionLimit: options.recursionLimit.value.toString(),
       executionMode: (value.execution_mode as ExecutionMode) ?? "standard",
+      planMode: draftPlanMode.value,
     });
     optionsError.value = "";
   }
 
   function openOptions() {
     resetOptions(options.context.value);
+    draftRunOptions.planMode = draftPlanMode.value;
     optionsOpen.value = true;
   }
 
@@ -146,6 +190,11 @@ export function useChatRunConfig(options: UseChatRunConfigOptions) {
         ...(showExecutionMode.value ? { execution_mode: nextMode } : {}),
       });
       options.context.value = updated;
+      if (planModeSupported.value) {
+        draftPlanMode.value = Boolean(draftRunOptions.planMode);
+      } else {
+        draftPlanMode.value = false;
+      }
       optionsOpen.value = false;
       return true;
     } catch (cause) {
@@ -208,6 +257,11 @@ export function useChatRunConfig(options: UseChatRunConfigOptions) {
     currentExecutionMode,
     showExecutionMode,
     initialContext,
+    draftPlanMode,
+    planModeSupported,
+    resetPlanMode,
+    setPlanMode,
+    togglePlanMode,
     resetOptions,
     openOptions,
     applyOptions,

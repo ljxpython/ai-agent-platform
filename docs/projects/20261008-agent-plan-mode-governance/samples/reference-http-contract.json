@@ -1,0 +1,1368 @@
+{
+  "provenance": {
+    "date": "2026-10-09",
+    "model": "controlled BindableFakeMessagesChatModel",
+    "environment": "real disposable API/Runtime/Worker with PostgreSQL/Redis/SQLite",
+    "test": "tests/e2e/test_plan_mode_platform.py::test_plan_http_review_decisions_and_public_handoff",
+    "result": "1 passed in 146.33s",
+    "selection": "Recorded public plan slots and native IDs/envelopes; unrelated messages, metadata and task results omitted. History is read-only. SSE frames are selected records, not consecutive events."
+  },
+  "graph": "reference_agent",
+  "commands": [
+    {
+      "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+      "headers": {
+        "Idempotency-Key": "handoff-0"
+      },
+      "request": {
+        "id": 1,
+        "method": "run.start",
+        "params": {
+          "assistant_id": "reference_agent",
+          "context": {
+            "model_id": "c872afe1-e43b-41bc-bea4-b134c832f6bb",
+            "plan_mode": true
+          },
+          "input": {
+            "messages": [
+              {
+                "role": "user",
+                "content": "plan"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "type": "success",
+        "id": 1,
+        "result": {
+          "run_id": "a80f8bdb-1b40-465b-a207-86a718955c22",
+          "thread_id": "52d3e455-0349-458d-a722-808aa60879af"
+        }
+      }
+    },
+    {
+      "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+      "headers": {
+        "Idempotency-Key": "handoff-1"
+      },
+      "request": {
+        "id": 1,
+        "method": "input.respond",
+        "params": {
+          "resume": {
+            "f45a8cf4bcfe130abd114c2321fe1921": {
+              "version": 1,
+              "type": "agent_plan_response",
+              "decision": "request_changes",
+              "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+              "revision": 1,
+              "content_hash": "sha256:f16f6e600c4144666ad738e97bc3f1b4f0cdf2134a564398c7b56b6d9dc61dec",
+              "feedback": "Add validation and rollback."
+            }
+          }
+        }
+      },
+      "response": {
+        "type": "success",
+        "id": 1,
+        "result": {
+          "run_id": "10aac65f-0634-46c7-8acf-36f51e76b02c",
+          "thread_id": "52d3e455-0349-458d-a722-808aa60879af"
+        }
+      }
+    },
+    {
+      "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+      "headers": {
+        "Idempotency-Key": "handoff-2"
+      },
+      "request": {
+        "id": 1,
+        "method": "input.respond",
+        "params": {
+          "resume": {
+            "5be213cf5368ff4e7abdc43d14442ea5": {
+              "version": 1,
+              "type": "agent_plan_response",
+              "decision": "approve",
+              "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+              "revision": 2,
+              "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149"
+            }
+          }
+        }
+      },
+      "response": {
+        "type": "success",
+        "id": 1,
+        "result": {
+          "run_id": "d9465663-908a-4e62-9a30-5df9704f183c",
+          "thread_id": "52d3e455-0349-458d-a722-808aa60879af"
+        }
+      }
+    },
+    {
+      "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+      "headers": {
+        "Idempotency-Key": "handoff-3"
+      },
+      "request": {
+        "id": 1,
+        "method": "run.start",
+        "params": {
+          "assistant_id": "reference_agent",
+          "context": {
+            "model_id": "c872afe1-e43b-41bc-bea4-b134c832f6bb",
+            "plan_mode": true
+          },
+          "input": {
+            "messages": [
+              {
+                "role": "user",
+                "content": "plan"
+              }
+            ]
+          }
+        }
+      },
+      "response": {
+        "type": "success",
+        "id": 1,
+        "result": {
+          "run_id": "4cdfa190-df1d-4914-8161-7d7424193b3e",
+          "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571"
+        }
+      }
+    },
+    {
+      "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+      "headers": {
+        "Idempotency-Key": "handoff-4"
+      },
+      "request": {
+        "id": 1,
+        "method": "input.respond",
+        "params": {
+          "resume": {
+            "5c2fade096e580bcc98c75e64515d6fc": {
+              "version": 1,
+              "type": "agent_plan_response",
+              "decision": "abandon",
+              "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+              "revision": 1,
+              "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3"
+            }
+          }
+        }
+      },
+      "response": {
+        "type": "success",
+        "id": 1,
+        "result": {
+          "run_id": "d3674748-3b91-4699-a689-c6bb96348bac",
+          "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571"
+        }
+      }
+    }
+  ],
+  "snapshots": [
+    {
+      "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+      "run_id": "a80f8bdb-1b40-465b-a207-86a718955c22",
+      "status": "interrupted",
+      "state": {
+        "values": {
+          "agent_plan": {
+            "version": 1,
+            "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+            "revision": 1,
+            "title": "Implementation plan",
+            "markdown": "Read, validate, then execute with existing permissions.",
+            "content_hash": "sha256:f16f6e600c4144666ad738e97bc3f1b4f0cdf2134a564398c7b56b6d9dc61dec",
+            "active": true,
+            "decision": null,
+            "status": "awaiting_review"
+          }
+        },
+        "next": [
+          "tools"
+        ],
+        "checkpoint": {
+          "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+          "checkpoint_ns": "",
+          "checkpoint_id": "1f1c398e-3e3a-65de-8014-565f6b1b1ada"
+        },
+        "created_at": "2026-10-09T04:21:25.098725+00:00",
+        "interrupts": [
+          {
+            "value": {
+              "version": 1,
+              "type": "agent_plan_review",
+              "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+              "revision": 1,
+              "content_hash": "sha256:f16f6e600c4144666ad738e97bc3f1b4f0cdf2134a564398c7b56b6d9dc61dec",
+              "title": "Implementation plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "allowed_decisions": [
+                "approve",
+                "request_changes",
+                "abandon"
+              ]
+            },
+            "id": "f45a8cf4bcfe130abd114c2321fe1921"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "dd853f4c-9e86-2e2c-c0b0-825541ce6c35",
+            "name": "tools",
+            "interrupts": [
+              {
+                "value": {
+                  "version": 1,
+                  "type": "agent_plan_review",
+                  "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+                  "revision": 1,
+                  "content_hash": "sha256:f16f6e600c4144666ad738e97bc3f1b4f0cdf2134a564398c7b56b6d9dc61dec",
+                  "title": "Implementation plan",
+                  "markdown": "Read, validate, then execute with existing permissions.",
+                  "allowed_decisions": [
+                    "approve",
+                    "request_changes",
+                    "abandon"
+                  ]
+                },
+                "id": "f45a8cf4bcfe130abd114c2321fe1921"
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "values": {
+            "agent_plan": {
+              "version": 1,
+              "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+              "revision": 1,
+              "title": "Implementation plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "content_hash": "sha256:f16f6e600c4144666ad738e97bc3f1b4f0cdf2134a564398c7b56b6d9dc61dec",
+              "active": true,
+              "decision": null,
+              "status": "awaiting_review"
+            }
+          },
+          "next": [
+            "tools"
+          ],
+          "checkpoint": {
+            "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1f1c398e-3e3a-65de-8014-565f6b1b1ada"
+          },
+          "created_at": "2026-10-09T04:21:25.098725+00:00",
+          "interrupts": [
+            {
+              "value": {
+                "version": 1,
+                "type": "agent_plan_review",
+                "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+                "revision": 1,
+                "content_hash": "sha256:f16f6e600c4144666ad738e97bc3f1b4f0cdf2134a564398c7b56b6d9dc61dec",
+                "title": "Implementation plan",
+                "markdown": "Read, validate, then execute with existing permissions.",
+                "allowed_decisions": [
+                  "approve",
+                  "request_changes",
+                  "abandon"
+                ]
+              },
+              "id": "f45a8cf4bcfe130abd114c2321fe1921"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "dd853f4c-9e86-2e2c-c0b0-825541ce6c35",
+              "name": "tools",
+              "interrupts": [
+                {
+                  "value": {
+                    "version": 1,
+                    "type": "agent_plan_review",
+                    "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+                    "revision": 1,
+                    "content_hash": "sha256:f16f6e600c4144666ad738e97bc3f1b4f0cdf2134a564398c7b56b6d9dc61dec",
+                    "title": "Implementation plan",
+                    "markdown": "Read, validate, then execute with existing permissions.",
+                    "allowed_decisions": [
+                      "approve",
+                      "request_changes",
+                      "abandon"
+                    ]
+                  },
+                  "id": "f45a8cf4bcfe130abd114c2321fe1921"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "values": {
+            "agent_plan": {
+              "version": 1,
+              "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+              "revision": 1,
+              "title": "Implementation plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "content_hash": "sha256:f16f6e600c4144666ad738e97bc3f1b4f0cdf2134a564398c7b56b6d9dc61dec",
+              "active": true,
+              "decision": null,
+              "status": "planning"
+            }
+          },
+          "next": [
+            "ExecutionBudgetMiddleware.after_model"
+          ],
+          "checkpoint": {
+            "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1f1c398e-3c45-6ac6-8013-6a816b3d9651"
+          },
+          "created_at": "2026-10-09T04:21:24.893738+00:00",
+          "interrupts": [],
+          "tasks": [
+            {
+              "id": "d6a7314c-546c-852a-86f2-63a623356e26",
+              "name": "ExecutionBudgetMiddleware.after_model",
+              "interrupts": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+      "run_id": "10aac65f-0634-46c7-8acf-36f51e76b02c",
+      "status": "interrupted",
+      "state": {
+        "values": {
+          "agent_plan": {
+            "version": 1,
+            "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+            "revision": 2,
+            "title": "Revised plan",
+            "markdown": "Read, validate, then execute with existing permissions.",
+            "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+            "active": true,
+            "decision": null,
+            "status": "awaiting_review"
+          }
+        },
+        "next": [
+          "tools"
+        ],
+        "checkpoint": {
+          "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+          "checkpoint_ns": "",
+          "checkpoint_id": "1f1c398e-70dc-6dfc-8026-64a79085da69"
+        },
+        "created_at": "2026-10-09T04:21:30.408262+00:00",
+        "interrupts": [
+          {
+            "value": {
+              "version": 1,
+              "type": "agent_plan_review",
+              "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+              "revision": 2,
+              "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+              "title": "Revised plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "allowed_decisions": [
+                "approve",
+                "request_changes",
+                "abandon"
+              ]
+            },
+            "id": "5be213cf5368ff4e7abdc43d14442ea5"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "882cbf74-5539-113b-5389-acfabe65581d",
+            "name": "tools",
+            "interrupts": [
+              {
+                "value": {
+                  "version": 1,
+                  "type": "agent_plan_review",
+                  "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+                  "revision": 2,
+                  "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+                  "title": "Revised plan",
+                  "markdown": "Read, validate, then execute with existing permissions.",
+                  "allowed_decisions": [
+                    "approve",
+                    "request_changes",
+                    "abandon"
+                  ]
+                },
+                "id": "5be213cf5368ff4e7abdc43d14442ea5"
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "values": {
+            "agent_plan": {
+              "version": 1,
+              "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+              "revision": 2,
+              "title": "Revised plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+              "active": true,
+              "decision": null,
+              "status": "awaiting_review"
+            }
+          },
+          "next": [
+            "tools"
+          ],
+          "checkpoint": {
+            "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1f1c398e-70dc-6dfc-8026-64a79085da69"
+          },
+          "created_at": "2026-10-09T04:21:30.408262+00:00",
+          "interrupts": [
+            {
+              "value": {
+                "version": 1,
+                "type": "agent_plan_review",
+                "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+                "revision": 2,
+                "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+                "title": "Revised plan",
+                "markdown": "Read, validate, then execute with existing permissions.",
+                "allowed_decisions": [
+                  "approve",
+                  "request_changes",
+                  "abandon"
+                ]
+              },
+              "id": "5be213cf5368ff4e7abdc43d14442ea5"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "882cbf74-5539-113b-5389-acfabe65581d",
+              "name": "tools",
+              "interrupts": [
+                {
+                  "value": {
+                    "version": 1,
+                    "type": "agent_plan_review",
+                    "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+                    "revision": 2,
+                    "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+                    "title": "Revised plan",
+                    "markdown": "Read, validate, then execute with existing permissions.",
+                    "allowed_decisions": [
+                      "approve",
+                      "request_changes",
+                      "abandon"
+                    ]
+                  },
+                  "id": "5be213cf5368ff4e7abdc43d14442ea5"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "values": {
+            "agent_plan": {
+              "version": 1,
+              "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+              "revision": 2,
+              "title": "Revised plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+              "active": true,
+              "decision": null,
+              "status": "planning"
+            }
+          },
+          "next": [
+            "ExecutionBudgetMiddleware.after_model"
+          ],
+          "checkpoint": {
+            "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1f1c398e-6e37-6ee4-8025-0aec9bbe4f88"
+          },
+          "created_at": "2026-10-09T04:21:30.130956+00:00",
+          "interrupts": [],
+          "tasks": [
+            {
+              "id": "e03a77c2-3e48-4d32-793a-2e9a216c3cb6",
+              "name": "ExecutionBudgetMiddleware.after_model",
+              "interrupts": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+      "run_id": "d9465663-908a-4e62-9a30-5df9704f183c",
+      "status": "success",
+      "state": {
+        "values": {
+          "agent_plan": {
+            "version": 1,
+            "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+            "revision": 2,
+            "title": "Revised plan",
+            "markdown": "Read, validate, then execute with existing permissions.",
+            "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+            "active": false,
+            "decision": "approve",
+            "status": "approved",
+            "approved_by": {
+              "user_id": "b7a16a7d-39fb-46e7-ab4e-41eca63d205d"
+            },
+            "approved_at": "2026-10-09T04:21:32.228866+00:00"
+          }
+        },
+        "next": [],
+        "checkpoint": {
+          "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+          "checkpoint_ns": "",
+          "checkpoint_id": "1f1c398e-9660-66fa-802f-1b55f734dbe4"
+        },
+        "created_at": "2026-10-09T04:21:34.341884+00:00",
+        "interrupts": [],
+        "tasks": []
+      },
+      "history": [
+        {
+          "values": {
+            "agent_plan": {
+              "version": 1,
+              "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+              "revision": 2,
+              "title": "Revised plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+              "active": false,
+              "decision": "approve",
+              "status": "approved",
+              "approved_by": {
+                "user_id": "b7a16a7d-39fb-46e7-ab4e-41eca63d205d"
+              },
+              "approved_at": "2026-10-09T04:21:32.228866+00:00"
+            }
+          },
+          "next": [],
+          "checkpoint": {
+            "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1f1c398e-9660-66fa-802f-1b55f734dbe4"
+          },
+          "created_at": "2026-10-09T04:21:34.341884+00:00",
+          "interrupts": [],
+          "tasks": []
+        },
+        {
+          "values": {
+            "agent_plan": {
+              "version": 1,
+              "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+              "revision": 2,
+              "title": "Revised plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+              "active": false,
+              "decision": "approve",
+              "status": "approved",
+              "approved_by": {
+                "user_id": "b7a16a7d-39fb-46e7-ab4e-41eca63d205d"
+              },
+              "approved_at": "2026-10-09T04:21:32.228866+00:00"
+            }
+          },
+          "next": [
+            "ExecutionBudgetMiddleware.after_model"
+          ],
+          "checkpoint": {
+            "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1f1c398e-940a-6bf8-802e-cc474b31444d"
+          },
+          "created_at": "2026-10-09T04:21:34.097066+00:00",
+          "interrupts": [],
+          "tasks": [
+            {
+              "id": "88c69938-7327-afb2-0f0e-53e7e9bddf7c",
+              "name": "ExecutionBudgetMiddleware.after_model",
+              "interrupts": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+      "run_id": "4cdfa190-df1d-4914-8161-7d7424193b3e",
+      "status": "interrupted",
+      "state": {
+        "values": {
+          "agent_plan": {
+            "version": 1,
+            "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+            "revision": 1,
+            "title": "Implementation plan",
+            "markdown": "Read, validate, then execute with existing permissions.",
+            "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+            "active": true,
+            "decision": null,
+            "status": "awaiting_review"
+          }
+        },
+        "next": [
+          "tools"
+        ],
+        "checkpoint": {
+          "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+          "checkpoint_ns": "",
+          "checkpoint_id": "1f1c398e-d81e-6d4e-8014-143b9ca49377"
+        },
+        "created_at": "2026-10-09T04:21:41.235612+00:00",
+        "interrupts": [
+          {
+            "value": {
+              "version": 1,
+              "type": "agent_plan_review",
+              "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+              "revision": 1,
+              "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+              "title": "Implementation plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "allowed_decisions": [
+                "approve",
+                "request_changes",
+                "abandon"
+              ]
+            },
+            "id": "5c2fade096e580bcc98c75e64515d6fc"
+          }
+        ],
+        "tasks": [
+          {
+            "id": "5d04a902-eb4d-e292-c638-f1a19a08e022",
+            "name": "tools",
+            "interrupts": [
+              {
+                "value": {
+                  "version": 1,
+                  "type": "agent_plan_review",
+                  "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+                  "revision": 1,
+                  "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+                  "title": "Implementation plan",
+                  "markdown": "Read, validate, then execute with existing permissions.",
+                  "allowed_decisions": [
+                    "approve",
+                    "request_changes",
+                    "abandon"
+                  ]
+                },
+                "id": "5c2fade096e580bcc98c75e64515d6fc"
+              }
+            ]
+          }
+        ]
+      },
+      "history": [
+        {
+          "values": {
+            "agent_plan": {
+              "version": 1,
+              "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+              "revision": 1,
+              "title": "Implementation plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+              "active": true,
+              "decision": null,
+              "status": "awaiting_review"
+            }
+          },
+          "next": [
+            "tools"
+          ],
+          "checkpoint": {
+            "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1f1c398e-d81e-6d4e-8014-143b9ca49377"
+          },
+          "created_at": "2026-10-09T04:21:41.235612+00:00",
+          "interrupts": [
+            {
+              "value": {
+                "version": 1,
+                "type": "agent_plan_review",
+                "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+                "revision": 1,
+                "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+                "title": "Implementation plan",
+                "markdown": "Read, validate, then execute with existing permissions.",
+                "allowed_decisions": [
+                  "approve",
+                  "request_changes",
+                  "abandon"
+                ]
+              },
+              "id": "5c2fade096e580bcc98c75e64515d6fc"
+            }
+          ],
+          "tasks": [
+            {
+              "id": "5d04a902-eb4d-e292-c638-f1a19a08e022",
+              "name": "tools",
+              "interrupts": [
+                {
+                  "value": {
+                    "version": 1,
+                    "type": "agent_plan_review",
+                    "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+                    "revision": 1,
+                    "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+                    "title": "Implementation plan",
+                    "markdown": "Read, validate, then execute with existing permissions.",
+                    "allowed_decisions": [
+                      "approve",
+                      "request_changes",
+                      "abandon"
+                    ]
+                  },
+                  "id": "5c2fade096e580bcc98c75e64515d6fc"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "values": {
+            "agent_plan": {
+              "version": 1,
+              "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+              "revision": 1,
+              "title": "Implementation plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+              "active": true,
+              "decision": null,
+              "status": "planning"
+            }
+          },
+          "next": [
+            "ExecutionBudgetMiddleware.after_model"
+          ],
+          "checkpoint": {
+            "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1f1c398e-d56d-6258-8013-5c6039f96b8d"
+          },
+          "created_at": "2026-10-09T04:21:40.953110+00:00",
+          "interrupts": [],
+          "tasks": [
+            {
+              "id": "2263bf55-780e-d0cf-6a77-d86e6296c5eb",
+              "name": "ExecutionBudgetMiddleware.after_model",
+              "interrupts": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+      "run_id": "d3674748-3b91-4699-a689-c6bb96348bac",
+      "status": "success",
+      "state": {
+        "values": {
+          "agent_plan": {
+            "version": 1,
+            "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+            "revision": 1,
+            "title": "Implementation plan",
+            "markdown": "Read, validate, then execute with existing permissions.",
+            "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+            "active": true,
+            "decision": "abandon",
+            "status": "abandoned"
+          }
+        },
+        "next": [],
+        "checkpoint": {
+          "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+          "checkpoint_ns": "",
+          "checkpoint_id": "1f1c398e-edb6-6774-8017-cebbae05f1a2"
+        },
+        "created_at": "2026-10-09T04:21:43.499733+00:00",
+        "interrupts": [],
+        "tasks": []
+      },
+      "history": [
+        {
+          "values": {
+            "agent_plan": {
+              "version": 1,
+              "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+              "revision": 1,
+              "title": "Implementation plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+              "active": true,
+              "decision": "abandon",
+              "status": "abandoned"
+            }
+          },
+          "next": [],
+          "checkpoint": {
+            "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1f1c398e-edb6-6774-8017-cebbae05f1a2"
+          },
+          "created_at": "2026-10-09T04:21:43.499733+00:00",
+          "interrupts": [],
+          "tasks": []
+        },
+        {
+          "values": {
+            "agent_plan": {
+              "version": 1,
+              "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+              "revision": 1,
+              "title": "Implementation plan",
+              "markdown": "Read, validate, then execute with existing permissions.",
+              "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+              "active": true,
+              "decision": "abandon",
+              "status": "abandoned"
+            }
+          },
+          "next": [
+            "PlanModeMiddleware.before_model"
+          ],
+          "checkpoint": {
+            "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+            "checkpoint_ns": "",
+            "checkpoint_id": "1f1c398e-eb56-6cfe-8016-5a92e3740f2a"
+          },
+          "created_at": "2026-10-09T04:21:43.250778+00:00",
+          "interrupts": [],
+          "tasks": [
+            {
+              "id": "e504e412-e028-f412-760f-f2db251d2de3",
+              "name": "PlanModeMiddleware.before_model",
+              "interrupts": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "sse": [
+    {
+      "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+      "frame_count": 86,
+      "frames": [
+        {
+          "type": "event",
+          "event_id": "3d227875-f573-4743-a02e-a1f6356d68ce",
+          "seq": 298,
+          "method": "values",
+          "params": {
+            "namespace": [],
+            "timestamp": 1791519694345,
+            "data": {
+              "agent_plan": {
+                "version": 1,
+                "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+                "revision": 2,
+                "title": "Revised plan",
+                "markdown": "Read, validate, then execute with existing permissions.",
+                "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+                "active": false,
+                "decision": "approve",
+                "status": "approved",
+                "approved_by": {
+                  "user_id": "b7a16a7d-39fb-46e7-ab4e-41eca63d205d"
+                },
+                "approved_at": "2026-10-09T04:21:32.228866+00:00"
+              }
+            },
+            "run_id": "d9465663-908a-4e62-9a30-5df9704f183c",
+            "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+            "interrupts": []
+          }
+        },
+        {
+          "type": "event",
+          "event_id": "a181ae75-ecc1-4dd8-bdb3-a35c32f62165",
+          "seq": 65,
+          "method": "values",
+          "params": {
+            "namespace": [],
+            "timestamp": 1791519683241,
+            "data": {
+              "agent_plan": {
+                "version": 1,
+                "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+                "revision": 0,
+                "title": "",
+                "markdown": "",
+                "content_hash": null,
+                "active": true,
+                "decision": null,
+                "status": "planning"
+              }
+            },
+            "run_id": "a80f8bdb-1b40-465b-a207-86a718955c22",
+            "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+            "interrupts": []
+          }
+        },
+        {
+          "type": "event",
+          "event_id": "3df26074-a20c-4383-b214-5a09560de48b",
+          "seq": 182,
+          "method": "values",
+          "params": {
+            "namespace": [],
+            "timestamp": 1791519688364,
+            "data": {
+              "agent_plan": {
+                "version": 1,
+                "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+                "revision": 1,
+                "title": "Implementation plan",
+                "markdown": "Read, validate, then execute with existing permissions.",
+                "content_hash": "sha256:f16f6e600c4144666ad738e97bc3f1b4f0cdf2134a564398c7b56b6d9dc61dec",
+                "active": true,
+                "decision": "request_changes",
+                "status": "planning"
+              }
+            },
+            "run_id": "10aac65f-0634-46c7-8acf-36f51e76b02c",
+            "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+            "interrupts": []
+          }
+        },
+        {
+          "type": "event",
+          "event_id": "9204a3cd-c498-45f3-a9f7-03e9c1e14fea",
+          "seq": 246,
+          "method": "values",
+          "params": {
+            "namespace": [],
+            "timestamp": 1791519691952,
+            "data": {
+              "agent_plan": {
+                "version": 1,
+                "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+                "revision": 2,
+                "title": "Revised plan",
+                "markdown": "Read, validate, then execute with existing permissions.",
+                "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+                "active": true,
+                "decision": null,
+                "status": "planning"
+              }
+            },
+            "run_id": "d9465663-908a-4e62-9a30-5df9704f183c",
+            "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+            "interrupts": []
+          }
+        },
+        {
+          "type": "event",
+          "event_id": "d79e1f55-e3f0-4a6d-8a78-3fd675bc1301",
+          "seq": 301,
+          "method": "lifecycle",
+          "params": {
+            "namespace": [],
+            "timestamp": 1791519694416,
+            "data": {
+              "event": "completed",
+              "status": "success",
+              "graph_name": "reference_agent",
+              "reason": "completed",
+              "execution_stopped": true,
+              "output": {
+                "messages": [
+                  {
+                    "id": "d0a90afa-3399-4f9f-97e1-3ebb04fd34a1",
+                    "name": null,
+                    "type": "human",
+                    "content": "plan",
+                    "additional_kwargs": {},
+                    "response_metadata": {}
+                  },
+                  {
+                    "id": "lc_run--01a11ee4-f0ba-70d1-8954-b29ff913bfbe-0",
+                    "name": "reference_agent",
+                    "type": "ai",
+                    "content": "",
+                    "tool_calls": [
+                      {
+                        "id": "aeb79c8c028e49c2a837268d85bb9d2a",
+                        "args": {
+                          "title": "Implementation plan",
+                          "markdown": "Read, validate, then execute with existing permissions."
+                        },
+                        "name": "save_plan",
+                        "type": "tool_call"
+                      }
+                    ],
+                    "usage_metadata": null,
+                    "additional_kwargs": {},
+                    "response_metadata": {},
+                    "invalid_tool_calls": []
+                  },
+                  {
+                    "id": "2934aba3-06e7-4348-8456-236010b285cb",
+                    "name": "save_plan",
+                    "type": "tool",
+                    "status": "success",
+                    "content": "Plan draft saved at revision 1. Submit it for human review before execution.",
+                    "artifact": null,
+                    "tool_call_id": "aeb79c8c028e49c2a837268d85bb9d2a",
+                    "additional_kwargs": {},
+                    "response_metadata": {}
+                  },
+                  {
+                    "id": "lc_run--01a11ee4-f794-7361-9d70-217d268582eb-0",
+                    "name": "reference_agent",
+                    "type": "ai",
+                    "content": "",
+                    "tool_calls": [
+                      {
+                        "id": "2f3d8447989e40b4a3b23f8d95ff8dcc",
+                        "args": {},
+                        "name": "submit_plan",
+                        "type": "tool_call"
+                      }
+                    ],
+                    "usage_metadata": null,
+                    "additional_kwargs": {},
+                    "response_metadata": {},
+                    "invalid_tool_calls": []
+                  },
+                  {
+                    "id": "aeb643e9-0a75-4601-83ba-319682fb1916",
+                    "name": "submit_plan",
+                    "type": "tool",
+                    "status": "success",
+                    "content": "Plan changes requested. Keep planning restrictions and revise the draft. Feedback: Add validation and rollback.",
+                    "artifact": null,
+                    "tool_call_id": "2f3d8447989e40b4a3b23f8d95ff8dcc",
+                    "additional_kwargs": {},
+                    "response_metadata": {}
+                  },
+                  {
+                    "id": "lc_run--01a11ee5-04de-7172-8f86-d4fe6fa612f6-0",
+                    "name": "reference_agent",
+                    "type": "ai",
+                    "content": "",
+                    "tool_calls": [
+                      {
+                        "id": "040c7ef5d6244a13a189cd62bdf148b6",
+                        "args": {
+                          "title": "Revised plan",
+                          "markdown": "Read, validate, then execute with existing permissions."
+                        },
+                        "name": "save_plan",
+                        "type": "tool_call"
+                      }
+                    ],
+                    "usage_metadata": null,
+                    "additional_kwargs": {},
+                    "response_metadata": {},
+                    "invalid_tool_calls": []
+                  },
+                  {
+                    "id": "f03f648b-355f-4cd3-96be-d73143d38c3d",
+                    "name": "save_plan",
+                    "type": "tool",
+                    "status": "success",
+                    "content": "Plan draft saved at revision 2. Submit it for human review before execution.",
+                    "artifact": null,
+                    "tool_call_id": "040c7ef5d6244a13a189cd62bdf148b6",
+                    "additional_kwargs": {},
+                    "response_metadata": {}
+                  },
+                  {
+                    "id": "lc_run--01a11ee5-0c7b-7a31-a223-243ac573e859-0",
+                    "name": "reference_agent",
+                    "type": "ai",
+                    "content": "",
+                    "tool_calls": [
+                      {
+                        "id": "7cef3944dd464e9b8be12eb164a6f728",
+                        "args": {},
+                        "name": "submit_plan",
+                        "type": "tool_call"
+                      }
+                    ],
+                    "usage_metadata": null,
+                    "additional_kwargs": {},
+                    "response_metadata": {},
+                    "invalid_tool_calls": []
+                  },
+                  {
+                    "id": "283ee314-2589-4ae3-b18a-95e726151c95",
+                    "name": "submit_plan",
+                    "type": "tool",
+                    "status": "success",
+                    "content": "Plan approved. Continue under the original execution mode and tool approval policy.",
+                    "artifact": null,
+                    "tool_call_id": "7cef3944dd464e9b8be12eb164a6f728",
+                    "additional_kwargs": {},
+                    "response_metadata": {}
+                  },
+                  {
+                    "id": "lc_run--01a11ee5-1b6d-7283-813c-ec403933805f-0",
+                    "name": "reference_agent",
+                    "type": "ai",
+                    "content": "done",
+                    "tool_calls": [],
+                    "usage_metadata": null,
+                    "additional_kwargs": {},
+                    "response_metadata": {},
+                    "invalid_tool_calls": []
+                  }
+                ],
+                "agent_plan": {
+                  "version": 1,
+                  "plan_id": "b4b6500e-ff23-4da7-81d3-79e25cc325cd",
+                  "revision": 2,
+                  "title": "Revised plan",
+                  "markdown": "Read, validate, then execute with existing permissions.",
+                  "content_hash": "sha256:fd6966e48bc5a9f78f105c66a793ca162cb91ca7f2e34871d5de6859802ed149",
+                  "active": false,
+                  "decision": "approve",
+                  "status": "approved",
+                  "approved_by": {
+                    "user_id": "b7a16a7d-39fb-46e7-ab4e-41eca63d205d"
+                  },
+                  "approved_at": "2026-10-09T04:21:32.228866+00:00"
+                }
+              }
+            },
+            "run_id": "d9465663-908a-4e62-9a30-5df9704f183c",
+            "thread_id": "52d3e455-0349-458d-a722-808aa60879af",
+            "interrupts": []
+          }
+        }
+      ]
+    },
+    {
+      "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+      "frame_count": 45,
+      "frames": [
+        {
+          "type": "event",
+          "event_id": "bf58a810-9b76-49a4-a50c-01292132de6b",
+          "seq": 148,
+          "method": "values",
+          "params": {
+            "namespace": [],
+            "timestamp": 1791519703504,
+            "data": {
+              "agent_plan": {
+                "version": 1,
+                "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+                "revision": 1,
+                "title": "Implementation plan",
+                "markdown": "Read, validate, then execute with existing permissions.",
+                "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+                "active": true,
+                "decision": "abandon",
+                "status": "abandoned"
+              }
+            },
+            "run_id": "d3674748-3b91-4699-a689-c6bb96348bac",
+            "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+            "interrupts": []
+          }
+        },
+        {
+          "type": "event",
+          "event_id": "cfeb9b0b-ac7d-4242-b496-8f2adaed3ecc",
+          "seq": 65,
+          "method": "values",
+          "params": {
+            "namespace": [],
+            "timestamp": 1791519699107,
+            "data": {
+              "agent_plan": {
+                "version": 1,
+                "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+                "revision": 0,
+                "title": "",
+                "markdown": "",
+                "content_hash": null,
+                "active": true,
+                "decision": null,
+                "status": "planning"
+              }
+            },
+            "run_id": "4cdfa190-df1d-4914-8161-7d7424193b3e",
+            "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+            "interrupts": []
+          }
+        },
+        {
+          "type": "event",
+          "event_id": "59689018-7a5e-46c9-9ebf-830e2c5eb5cf",
+          "seq": 129,
+          "method": "values",
+          "params": {
+            "namespace": [],
+            "timestamp": 1791519702788,
+            "data": {
+              "agent_plan": {
+                "version": 1,
+                "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+                "revision": 1,
+                "title": "Implementation plan",
+                "markdown": "Read, validate, then execute with existing permissions.",
+                "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+                "active": true,
+                "decision": null,
+                "status": "planning"
+              }
+            },
+            "run_id": "d3674748-3b91-4699-a689-c6bb96348bac",
+            "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+            "interrupts": []
+          }
+        },
+        {
+          "type": "event",
+          "event_id": "865c081d-b2f5-4749-9fdf-aba2d9a11d96",
+          "seq": 151,
+          "method": "lifecycle",
+          "params": {
+            "namespace": [],
+            "timestamp": 1791519703702,
+            "data": {
+              "event": "completed",
+              "status": "success",
+              "graph_name": "reference_agent",
+              "reason": "completed",
+              "execution_stopped": true,
+              "output": {
+                "jump_to": "end",
+                "messages": [
+                  {
+                    "id": "8129e3fb-f798-458e-9c82-89a83889aff2",
+                    "name": null,
+                    "type": "human",
+                    "content": "plan",
+                    "additional_kwargs": {},
+                    "response_metadata": {}
+                  },
+                  {
+                    "id": "lc_run--01a11ee5-2df4-7ab0-88e0-1d597883b0c1-0",
+                    "name": "reference_agent",
+                    "type": "ai",
+                    "content": "",
+                    "tool_calls": [
+                      {
+                        "id": "1cdd6904b8ce4735ae111ecc6fa8df5f",
+                        "args": {
+                          "title": "Implementation plan",
+                          "markdown": "Read, validate, then execute with existing permissions."
+                        },
+                        "name": "save_plan",
+                        "type": "tool_call"
+                      }
+                    ],
+                    "usage_metadata": null,
+                    "additional_kwargs": {},
+                    "response_metadata": {},
+                    "invalid_tool_calls": []
+                  },
+                  {
+                    "id": "27613f52-3c1a-4f0c-be87-6c3d5f950f88",
+                    "name": "save_plan",
+                    "type": "tool",
+                    "status": "success",
+                    "content": "Plan draft saved at revision 1. Submit it for human review before execution.",
+                    "artifact": null,
+                    "tool_call_id": "1cdd6904b8ce4735ae111ecc6fa8df5f",
+                    "additional_kwargs": {},
+                    "response_metadata": {}
+                  },
+                  {
+                    "id": "lc_run--01a11ee5-363f-72d2-83e0-2fcce660a7cb-0",
+                    "name": "reference_agent",
+                    "type": "ai",
+                    "content": "",
+                    "tool_calls": [
+                      {
+                        "id": "3392cc4e2b9d465696ccc7b049f2ef5c",
+                        "args": {},
+                        "name": "submit_plan",
+                        "type": "tool_call"
+                      }
+                    ],
+                    "usage_metadata": null,
+                    "additional_kwargs": {},
+                    "response_metadata": {},
+                    "invalid_tool_calls": []
+                  },
+                  {
+                    "id": "eaf6d4f2-7dbf-4adc-a755-123c279e882f",
+                    "name": "submit_plan",
+                    "type": "tool",
+                    "status": "success",
+                    "content": "Plan abandoned. This run ends and planning restrictions remain active.",
+                    "artifact": null,
+                    "tool_call_id": "3392cc4e2b9d465696ccc7b049f2ef5c",
+                    "additional_kwargs": {},
+                    "response_metadata": {}
+                  }
+                ],
+                "agent_plan": {
+                  "version": 1,
+                  "plan_id": "7ca7aa1d-8789-4bab-8a43-7b89a763d87d",
+                  "revision": 1,
+                  "title": "Implementation plan",
+                  "markdown": "Read, validate, then execute with existing permissions.",
+                  "content_hash": "sha256:63f6b73a1c48eb8821c21ab9e876ab199476aae34895a762790c9ec3a40c0ab3",
+                  "active": true,
+                  "decision": "abandon",
+                  "status": "abandoned"
+                }
+              }
+            },
+            "run_id": "d3674748-3b91-4699-a689-c6bb96348bac",
+            "thread_id": "2aca44cf-9c5a-4f36-9b02-03801b549571",
+            "interrupts": []
+          }
+        }
+      ]
+    }
+  ]
+}

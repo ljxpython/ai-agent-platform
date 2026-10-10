@@ -309,10 +309,15 @@ export function useChatSession(options: {
   const {
     reviews,
     clarifications,
+    planReview,
     hasPendingInterrupts,
     approve,
     answerClarification,
     resumeClarification,
+    respondPlan,
+    approvePlan,
+    requestPlanChanges,
+    abandonPlan,
   } = useSessionInterrupts({
     threadId,
     hydrated,
@@ -465,6 +470,9 @@ export function useChatSession(options: {
     }
     if (actions.current.value?.status === "submitting") {
       return "正在发送";
+    }
+    if (planReview.value) {
+      return "等待计划确认";
     }
     if (reviews.value.length) {
       return "等待审批";
@@ -963,7 +971,11 @@ export function useChatSession(options: {
   async function send(
     content: unknown,
     recursionLimit = 1000,
-    sendOptions?: { fromQueue?: boolean; messageId?: string },
+    sendOptions?: {
+      fromQueue?: boolean;
+      messageId?: string;
+      planMode?: boolean;
+    },
   ): Promise<boolean> {
     clearOffloadState();
     if (!canSend.value) return false;
@@ -1069,11 +1081,14 @@ export function useChatSession(options: {
           if (run.value && !active(run.value)) {
             run.value = null;
           }
+          const runtimeConfig = sendOptions?.planMode
+            ? { ...context, plan_mode: true }
+            : context;
           const completion = stream.submit(input, {
             threadId: threadId.value,
             config: {
               recursion_limit: recursionLimit,
-              configurable: { platform_runtime: context },
+              configurable: { platform_runtime: runtimeConfig },
             },
           });
           checking.value = false;
@@ -1606,6 +1621,7 @@ export function useChatSession(options: {
     run,
     reviews,
     clarifications,
+    planReview,
     hasPendingInterrupts,
     checking,
     verified,
@@ -1625,6 +1641,10 @@ export function useChatSession(options: {
     approve,
     answerClarification,
     resumeClarification,
+    respondPlan,
+    approvePlan,
+    requestPlanChanges,
+    abandonPlan,
     stop,
     resumeInterruptedRun,
     retry,

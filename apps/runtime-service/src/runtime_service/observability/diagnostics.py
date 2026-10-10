@@ -51,6 +51,11 @@ _FIELDS = frozenset(
         "backend",
         "command_state",
         "retry_wait_ms",
+        "plan_id",
+        "revision",
+        "content_hash",
+        "actor_id",
+        "decision",
     }
 )
 

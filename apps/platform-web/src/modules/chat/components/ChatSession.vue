@@ -60,6 +60,7 @@ import { useChatSessionStore } from "../stores/useChatSessionStore";
 import ChatComposer from "./ChatComposer.vue";
 import ChatMessageList from "./ChatMessageList.vue";
 import ApprovalPanel from "./ApprovalPanel.vue";
+import PlanReview from "./PlanReview.vue";
 import ClarificationCard from "./ClarificationCard.vue";
 import MessageContent from "./MessageContent.vue";
 import TrajectoryView from "./trajectory/TrajectoryView.vue";
@@ -155,6 +156,7 @@ const {
   stream,
   reviews,
   clarifications,
+  planReview,
   hasPendingInterrupts,
   checking,
   cancelling,
@@ -169,6 +171,9 @@ const {
   isOffloading,
   turnState,
   verifyStop,
+  approvePlan,
+  requestPlanChanges,
+  abandonPlan,
 } = session;
 
 watch(
@@ -383,6 +388,9 @@ const {
   draftRunOptions,
   currentExecutionMode,
   showExecutionMode,
+  draftPlanMode,
+  planModeSupported,
+  resetPlanMode,
   resetOptions,
   openOptions,
   applyOptions,
@@ -1081,11 +1089,14 @@ async function send(queued = false) {
         content,
       }),
     );
+    const submittedPlanMode = draftPlanMode.value;
     emit("update:draft", "");
     attachments.value = [];
+    resetPlanMode();
     try {
       const ok = await session.send(content, recursionLimit.value, {
         messageId,
+        planMode: submittedPlanMode,
       });
       if (!ok) {
         if (disposed) {
@@ -1100,6 +1111,9 @@ async function send(queued = false) {
           attachments.value = Array.from(
             submittedAttachments,
           ) as ChatAttachmentBlock[];
+          if (submittedPlanMode) {
+            draftPlanMode.value = true;
+          }
         }
         submittedDraft = undefined;
         submittedAttachments = new Set();
@@ -1110,6 +1124,9 @@ async function send(queued = false) {
       attachments.value = Array.from(
         submittedAttachments,
       ) as ChatAttachmentBlock[];
+      if (submittedPlanMode) {
+        draftPlanMode.value = true;
+      }
       submittedDraft = undefined;
       submittedAttachments = new Set();
     }
@@ -1938,6 +1955,25 @@ defineExpose({
               @submit-edit="submitEditedBranch"
             />
             <div
+              v-if="planReview"
+              data-testid="plan-review-container"
+              class="space-y-3"
+            >
+              <PlanReview
+                :review="planReview"
+                :disabled="
+                  !session.canApprove.value ||
+                  checking ||
+                  cancelling ||
+                  action?.status === 'unknown' ||
+                  action?.status === 'submitting'
+                "
+                @approve="approvePlan"
+                @request-changes="requestPlanChanges"
+                @abandon="abandonPlan"
+              />
+            </div>
+            <div
               v-if="clarifications.length"
               class="space-y-3"
               data-testid="clarification-container"
@@ -2118,8 +2154,10 @@ defineExpose({
       ref="composerRef"
       :model-value="draft"
       :attachments="attachments"
-      :is-running="isSessionRunning && !reviews.length"
-      :has-blocking-interrupt="!!reviews.length"
+      :is-running="isSessionRunning && !reviews.length && !planReview"
+      :has-blocking-interrupt="!!reviews.length || !!planReview"
+      :plan-mode="draftPlanMode"
+      :plan-mode-supported="planModeSupported"
       :has-queued-items="promptQueue.queue.value.length > 0"
       :can-send-fresh-message="canSubmit"
       :can-queue="
@@ -2171,6 +2209,7 @@ defineExpose({
       @composer-paste="handlePaste"
       @remove-attachment="removeAttachment"
       @select-suggestion="handleSelectSuggestion"
+      @update:plan-mode="draftPlanMode = $event"
     >
       <template #top-tray>
         <div class="flex flex-col gap-1.5">
@@ -2228,8 +2267,10 @@ defineExpose({
       :show-execution-mode="showExecutionMode"
       :mode-disabled="isModeLocked"
       :error="optionsError"
+      :plan-mode-supported="planModeSupported"
       @close="optionsOpen = false"
       @update:execution-mode="draftRunOptions.executionMode = $event"
+      @update:plan-mode="draftRunOptions.planMode = $event"
       @update:model-id="draftRunOptions.modelId = $event"
       @update:temperature="draftRunOptions.temperature = $event"
       @update:max-tokens="draftRunOptions.maxTokens = $event"

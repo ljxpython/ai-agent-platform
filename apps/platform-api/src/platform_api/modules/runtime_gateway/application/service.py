@@ -29,6 +29,7 @@ from platform_api.core.errors import (
 from platform_api.core.identifiers import parse_uuid
 from platform_api.core.normalization import clean_str, ensure_dict
 from platform_api.core.runtime_contract import (
+    PRIVATE_RUNTIME_STATE_KEYS,
     PROJECT_SCOPE_ALIAS_KEYS,
     normalize_protocol_v2_command,
     normalize_protocol_v2_event_request,
@@ -64,6 +65,13 @@ from platform_api.modules.runtime_gateway.application.clarification import (
 )
 from platform_api.modules.runtime_gateway.application.diagnostics import (
     RuntimeDiagnostics,
+)
+from platform_api.modules.runtime_gateway.application.planning import (
+    PLAN_GRAPHS,
+    execution_id,
+    interrupt_entries,
+    project_agent_plan,
+    validate_plan_resumes,
 )
 from platform_api.modules.runtime_gateway.application.ports import (
     BinaryPayload,
@@ -186,6 +194,19 @@ def _runtime_context_snapshot(command: dict[str, Any]) -> tuple[str, dict[str, A
     configurable = ensure_dict(config.get("configurable"))
     runtime_options = ensure_dict(configurable.get("platform_runtime"))
     context = ensure_dict(params.get("context"))
+    for options in (context, runtime_options):
+        if "plan_mode" in options and type(options["plan_mode"]) is not bool:
+            raise BadRequestError(
+                code="invalid_runtime_options", message="plan_mode must be a boolean"
+            )
+    if (
+        "plan_mode" in context
+        and "plan_mode" in runtime_options
+        and context["plan_mode"] != runtime_options["plan_mode"]
+    ):
+        raise BadRequestError(
+            code="runtime_context_conflict", message="plan_mode values conflict"
+        )
     context_offload = context.get("offload_conversation")
     runtime_offload = runtime_options.get("offload_conversation")
     if "offload_conversation" in context and not isinstance(context_offload, bool):
@@ -227,6 +248,8 @@ def _runtime_context_snapshot(command: dict[str, Any]) -> tuple[str, dict[str, A
             else merged.get("top_p")
         ),
         "execution_mode": merged.get("execution_mode"),
+        "plan_mode": merged.get("plan_mode", False),
+        "plan_execution_id": context.get("plan_execution_id"),
         "access_policy": merged.get("access_policy"),
         "offload_conversation": (
             runtime_offload
@@ -236,7 +259,7 @@ def _runtime_context_snapshot(command: dict[str, Any]) -> tuple[str, dict[str, A
             else False
         ),
     }
-    schema = "runtime-context/v5"
+    schema = "runtime-context/v6"
     encoded = json.dumps(
         {"schema": schema, **snapshot},
         ensure_ascii=False,
@@ -829,7 +852,13 @@ class RuntimeGatewayService:
         configurable = ensure_dict(config.get("configurable"))
         options = {**ensure_dict(configurable.get("platform_runtime")), **context}
         try:
-            validate_runtime_option_values(options)
+            validate_runtime_option_values(
+                {
+                    key: value
+                    for key, value in options.items()
+                    if key != "plan_execution_id"
+                }
+            )
         except ValueError as exc:
             raise BadRequestError(
                 code="invalid_runtime_options",
@@ -1989,14 +2018,25 @@ class RuntimeGatewayService:
             or "resume" in ensure_dict(upstream_payload.get("command"))
             else "comment"
         )
-        await self._load_thread(
+        thread = await self._load_thread(
             actor=actor,
             project_id=project_id,
             thread_id=thread_id,
             write=True,
             action=thread_action,
         )
-        _normalize_payload(upstream_payload)
+        _normalize_payload(
+            {
+                **upstream_payload,
+                "context": {
+                    key: value
+                    for key, value in ensure_dict(
+                        upstream_payload.get("context")
+                    ).items()
+                    if key != "plan_execution_id"
+                },
+            }
+        )
         if "version" in upstream_payload and upstream_payload["version"] not in (
             "v2",
             "v3",
@@ -2027,6 +2067,140 @@ class RuntimeGatewayService:
             )
         _execution_config(upstream_payload)
         digest = _request_digest(command)
+        factory = self._require_session_factory()
+
+        def known_request():
+            with factory() as session:
+                return RunRequestsRepository(session).get(
+                    project_id=project_id, thread_id=thread_id, idempotency_key=key
+                )
+
+        known = await run_in_threadpool(known_request)
+        next_context = dict(ensure_dict(upstream_payload.get("context")))
+        if not interrupt_id:
+            if "plan_execution_id" in next_context:
+                raise BadRequestError(
+                    code="runtime_private_state",
+                    message="Execution identity is server-owned",
+                )
+            next_context["plan_mode"] = _runtime_context_snapshot(
+                {"params": upstream_payload}
+            )[1]["plan_mode"]
+            config = dict(ensure_dict(upstream_payload.get("config")))
+            configurable = dict(ensure_dict(config.get("configurable")))
+            runtime_options = dict(ensure_dict(configurable.get("platform_runtime")))
+            if "plan_mode" in runtime_options:
+                runtime_options.pop("plan_mode")
+                configurable["platform_runtime"] = runtime_options
+                config["configurable"] = configurable
+                upstream_payload = {**upstream_payload, "config": config}
+            next_context["plan_execution_id"] = execution_id(project_id, thread_id, key)
+            if next_context.get("plan_mode") is True and agent_key not in PLAN_GRAPHS:
+                raise BadRequestError(
+                    code="plan_mode_unsupported",
+                    message="Graph does not support planning",
+                )
+            if known is not None and not known.run_id:
+                retry_upstream = await self._thread_upstream(
+                    project_id=project_id, thread=thread, operation="read"
+                )
+                retry_state = ensure_dict(
+                    await retry_upstream.get_thread_state(thread_id, {})
+                )
+                retry_plan = ensure_dict(retry_state.get("values")).get("runtime_plan")
+                protected = (
+                    retry_plan is not None
+                    or _thread_metadata(thread).get("plan_bootstrap_required") is True
+                    or any(
+                        isinstance(value, dict)
+                        and value.get("type") == "agent_plan_review"
+                        for value in interrupt_entries(retry_state).values()
+                    )
+                )
+                same_execution = isinstance(retry_plan, dict) and retry_plan.get(
+                    "bound_execution_id"
+                ) == known.context_snapshot.get("plan_execution_id")
+                if (
+                    protected
+                    and known.context_snapshot.get("plan_mode") is not True
+                    and not same_execution
+                ):
+                    raise ConflictError(
+                        code="plan_execution_conflict",
+                        message="Previous execution cannot bypass the current plan",
+                    )
+            if known is None:
+                planning_upstream = await self._thread_upstream(
+                    project_id=project_id, thread=thread, operation="read"
+                )
+                state = await planning_upstream.get_thread_state(thread_id, {})
+                if any(
+                    isinstance(value, dict) and value.get("type") == "agent_plan_review"
+                    for value in interrupt_entries(ensure_dict(state)).values()
+                ):
+                    raise ConflictError(
+                        code="plan_review_pending",
+                        message="Resolve the active plan review first",
+                    )
+                private_plan = ensure_dict(ensure_dict(state).get("values")).get(
+                    "runtime_plan"
+                )
+                if private_plan is not None and (
+                    project_agent_plan(private_plan) is None
+                    or private_plan.get("active") is True
+                ):
+                    next_context["plan_mode"] = True
+                if _thread_metadata(thread).get("plan_bootstrap_required") is True:
+                    if project_agent_plan(private_plan) is not None:
+                        edit_upstream = await self._thread_upstream(
+                            project_id=project_id,
+                            thread=thread,
+                            operation="thread-edit",
+                        )
+                        await edit_upstream.update_thread(
+                            thread_id, {"metadata": {"plan_bootstrap_required": False}}
+                        )
+                    else:
+                        next_context["plan_mode"] = True
+                checkpoint_id = upstream_payload.get("checkpoint_id") or ensure_dict(
+                    ensure_dict(upstream_payload.get("config")).get("configurable")
+                ).get("checkpoint_id")
+                if checkpoint_id:
+                    historical = await planning_upstream.get_thread_state(
+                        thread_id, {"checkpoint_id": checkpoint_id}
+                    )
+                    if (
+                        ensure_dict(ensure_dict(historical).get("values")).get(
+                            "runtime_plan"
+                        )
+                        is not None
+                    ):
+                        next_context["plan_mode"] = True
+                if next_context.get("plan_mode") is True:
+                    if scheduled_config is not None:
+                        raise BadRequestError(
+                            code="plan_mode_scheduled_forbidden",
+                            message="Unattended runs cannot request planning",
+                        )
+                    if agent_key not in PLAN_GRAPHS:
+                        raise BadRequestError(
+                            code="plan_mode_unsupported",
+                            message="Graph does not support planning",
+                        )
+                    capabilities = await planning_upstream.get_graph_capabilities(
+                        agent_key
+                    )
+                    if capabilities.get("plan_mode") is not True:
+                        raise BadRequestError(
+                            code="plan_mode_unsupported",
+                            message="Graph does not support planning",
+                        )
+        elif not next_context.get("plan_execution_id"):
+            next_context["plan_execution_id"] = execution_id(
+                project_id, thread_id, "legacy:" + str(parent_run_id)
+            )
+            next_context["plan_mode"] = False
+        upstream_payload = {**upstream_payload, "context": next_context}
         context_hash, snapshot = _runtime_context_snapshot({"params": upstream_payload})
         factory = self._require_session_factory()
 
@@ -2879,6 +3053,20 @@ class RuntimeGatewayService:
             "forked_from": {"thread_id": thread_id, "checkpoint_id": checkpoint_id},
         }
         source_metadata = _thread_metadata(source)
+        if (
+            source_metadata.get("plan_bootstrap_required") is True
+            or isinstance(values.get("runtime_plan"), dict)
+            or any(
+                isinstance(item, dict) and item.get("type") == "agent_plan_review"
+                for item in interrupt_entries(ensure_dict(state)).values()
+            )
+        ):
+            metadata["plan_bootstrap_required"] = True
+        values = {
+            key: value
+            for key, value in values.items()
+            if key not in PRIVATE_RUNTIME_STATE_KEYS
+        }
         if agent_id := clean_str(source_metadata.get("agent_id")):
             metadata["agent_id"] = agent_id
         if title := clean_str(title):
@@ -2888,7 +3076,14 @@ class RuntimeGatewayService:
         target = await self.create_thread(
             actor=actor,
             project_id=project_id,
-            payload={"metadata": metadata, "graph_id": graph_id},
+            payload={
+                "metadata": {
+                    key: value
+                    for key, value in metadata.items()
+                    if key != "plan_bootstrap_required"
+                },
+                "graph_id": graph_id,
+            },
         )
         target_id = clean_str(ensure_dict(target).get("thread_id"))
         if not target_id:
@@ -2901,6 +3096,10 @@ class RuntimeGatewayService:
             project_id=project_id, thread=target, operation="thread-edit"
         )
         try:
+            if metadata.get("plan_bootstrap_required") is True:
+                await target_upstream.update_thread(
+                    target_id, {"metadata": {"plan_bootstrap_required": True}}
+                )
             await target_upstream.update_thread_state(target_id, {"values": values})
         except Exception:
             try:
@@ -3058,6 +3257,12 @@ class RuntimeGatewayService:
         thread_id: str,
         metadata_updates: dict[str, Any],
     ) -> dict[str, Any]:
+        try:
+            reject_private_runtime_state(metadata_updates)
+        except ValueError as exc:
+            raise BadRequestError(
+                code="invalid_runtime_payload", message=str(exc)
+            ) from exc
         thread = await self._load_thread(
             actor=actor, project_id=project_id, thread_id=thread_id, write=True
         )
@@ -3211,6 +3416,25 @@ class RuntimeGatewayService:
         upstream = await self._thread_upstream(
             project_id=project_id, thread=thread, operation="thread-edit"
         )
+        state = await upstream.get_thread_state(thread_id, {})
+        if any(
+            isinstance(item, dict) and item.get("type") == "agent_plan_review"
+            for item in interrupt_entries(ensure_dict(state)).values()
+        ):
+            raise ConflictError(
+                code="plan_review_pending",
+                message="Resolve the active plan review first",
+            )
+        plan = ensure_dict(ensure_dict(state).get("values")).get("runtime_plan")
+        if (
+            plan is not None
+            and (project_agent_plan(plan) is None or plan.get("active") is True)
+            or _thread_metadata(thread).get("plan_bootstrap_required") is True
+        ):
+            raise ConflictError(
+                code="plan_state_update_denied",
+                message="State edits are unavailable while planning is active",
+            )
         return await upstream.update_thread_state(
             thread_id, _normalize_payload(payload)
         )
@@ -3499,6 +3723,13 @@ class RuntimeGatewayService:
                     )
 
             previous = await run_in_threadpool(load_request)
+            if previous is not None and previous.request_digest != _request_digest(
+                {"method": "input.respond", "params": {"resume": resumes}}
+            ):
+                raise ConflictError(
+                    code="idempotency_key_conflict",
+                    message="Key already used for a different request",
+                )
             parent = previous
             if previous is None:
                 state = await self._upstream.get_thread_state(thread_id, {})
@@ -3517,6 +3748,7 @@ class RuntimeGatewayService:
                     )
                 parent = await run_in_threadpool(load_request, checkpoint_run_id)
                 validate_clarification_resumes(state, resumes)
+                validate_plan_resumes(state, resumes, actor)
             if parent is None:
                 raise ConflictError(
                     code="run_request_missing",
@@ -3573,6 +3805,24 @@ class RuntimeGatewayService:
                 project_id=project_id,
                 payload=resume_payload,
             )
+            plan_replies = [
+                reply
+                for reply in resumes.values()
+                if isinstance(reply, dict)
+                and reply.get("type") == "agent_plan_response"
+            ]
+            for reply in plan_replies:
+                self._emit_correlation(
+                    "runtime.plan.response_received",
+                    thread_id=thread_id,
+                    parent_run_id=source_run_id,
+                    plan_id=reply["plan_id"],
+                    revision=reply["revision"],
+                    content_hash=reply["content_hash"],
+                    actor_id=actor.user_id,
+                    decision=reply["decision"],
+                    outcome="received",
+                )
             _, result = await self.launch_runtime_run(
                 actor=actor,
                 project_id=project_id,
@@ -3584,6 +3834,19 @@ class RuntimeGatewayService:
                 interrupt_id=interrupt_id,
                 model_resilience_snapshot=resume_policy,
             )
+            for reply in plan_replies:
+                self._emit_correlation(
+                    "runtime.plan.response_submitted",
+                    thread_id=thread_id,
+                    parent_run_id=source_run_id,
+                    run_id=_run_id_from_command_result(result),
+                    plan_id=reply["plan_id"],
+                    revision=reply["revision"],
+                    content_hash=reply["content_hash"],
+                    actor_id=actor.user_id,
+                    decision=reply["decision"],
+                    outcome="submitted",
+                )
             return _protocol_command_response(
                 command,
                 {"run_id": _run_id_from_command_result(result), "thread_id": thread_id},

@@ -98,9 +98,18 @@ export async function createPlatformFixture(graphId = "workflow_demo") {
       (item) =>
         item.enabled &&
         item.credential_configured &&
-        !item.model?.includes("broken") &&
-        !item.display_name?.includes("模拟"),
+        (item.model?.toLowerCase() === "deepseek-v4-flash" ||
+          item.display_name?.toLowerCase().includes("deepseek")),
     );
+    if (!model) {
+      model = models.models.find(
+        (item) =>
+          item.enabled &&
+          item.credential_configured &&
+          !item.model?.includes("broken") &&
+          !item.display_name?.includes("模拟"),
+      );
+    }
     if (!model && process.env.Q5_QUEUE_FIXTURE === "1") {
       model = await request("/api/runtime/models", "POST", {
         provider: "openai",

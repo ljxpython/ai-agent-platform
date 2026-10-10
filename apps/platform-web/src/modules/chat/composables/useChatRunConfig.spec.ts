@@ -112,4 +112,66 @@ describe("useChatRunConfig", () => {
     expect(context.value.model_id).toBe(updatedUuid);
     expect(config.optionsOpen.value).toBe(false);
   });
+
+  it("evaluates planModeSupported via two-tier capability checks and manages plan mode state", () => {
+    vi.spyOn(runtimeService, "listRuntimeModels").mockResolvedValue({
+      models: [],
+    });
+    vi.spyOn(policyService, "listRuntimeModelPolicies").mockResolvedValue({
+      items: [],
+    });
+
+    const context = ref({});
+    const recursionLimit = ref(100);
+    const isModeLocked = computed(() => false);
+
+    // 1. 白名单图在新会话中默认支持
+    const dearflowConfig = useChatRunConfig({
+      projectId: "proj-1",
+      graphId: "dearflow_agent",
+      context,
+      recursionLimit,
+      isModeLocked,
+    });
+    expect(dearflowConfig.planModeSupported.value).toBe(true);
+
+    // 2. 非白名单图默认不支持
+    const simpleConfig = useChatRunConfig({
+      projectId: "proj-1",
+      graphId: "unknown_custom_graph",
+      context,
+      recursionLimit,
+      isModeLocked,
+    });
+    expect(simpleConfig.planModeSupported.value).toBe(false);
+
+    // 3. 服务端显式 capabilities 具有权威覆盖权
+    const serverSupported = ref({ plan_mode: true });
+    const dynamicConfig = useChatRunConfig({
+      projectId: "proj-1",
+      graphId: "unknown_custom_graph",
+      capabilities: serverSupported,
+      context,
+      recursionLimit,
+      isModeLocked,
+    });
+    expect(dynamicConfig.planModeSupported.value).toBe(true);
+
+    serverSupported.value = { plan_mode: false };
+    expect(dynamicConfig.planModeSupported.value).toBe(false);
+
+    // 4. planMode 操作方法测试
+    dearflowConfig.setPlanMode(true);
+    expect(dearflowConfig.draftPlanMode.value).toBe(true);
+    expect(dearflowConfig.draftRunOptions.planMode).toBe(true);
+
+    dearflowConfig.togglePlanMode();
+    expect(dearflowConfig.draftPlanMode.value).toBe(false);
+
+    dearflowConfig.togglePlanMode();
+    expect(dearflowConfig.draftPlanMode.value).toBe(true);
+
+    dearflowConfig.resetPlanMode();
+    expect(dearflowConfig.draftPlanMode.value).toBe(false);
+  });
 });

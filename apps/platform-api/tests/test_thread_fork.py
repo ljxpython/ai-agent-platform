@@ -103,6 +103,91 @@ class ThreadForkTest(unittest.IsolatedAsyncioTestCase):
             )
         upstream.delete_thread.assert_awaited_once_with("target")
 
+    async def test_fork_preserves_bootstrap_before_any_plan_checkpoint(self):
+        upstream = SimpleNamespace(
+            get_thread_state=AsyncMock(
+                return_value={"values": {"messages": ["draft"]}}
+            ),
+            create_thread=AsyncMock(return_value={"thread_id": "target"}),
+            update_thread=AsyncMock(),
+            update_thread_state=AsyncMock(),
+            delete_thread=AsyncMock(),
+        )
+        service = RuntimeGatewayService(session_factory=self.factory, upstream=upstream)
+        service._prepare_project_scope = Mock()
+        service._load_thread = AsyncMock(
+            return_value={
+                "metadata": {
+                    "project_id": "p",
+                    "graph_id": "showcase_demo",
+                    "owner_user_id": "owner",
+                    "plan_bootstrap_required": True,
+                }
+            }
+        )
+        await service.fork_thread(
+            actor=self.actor,
+            project_id="p",
+            thread_id="source",
+            checkpoint_id="checkpoint",
+            title=None,
+        )
+        upstream.update_thread.assert_awaited_once_with(
+            "target", {"metadata": {"plan_bootstrap_required": True}}
+        )
+
+    async def test_fork_marks_planning_checkpoint_for_a_new_cycle(self) -> None:
+        upstream = SimpleNamespace(
+            get_thread_state=AsyncMock(
+                return_value={
+                    "values": {
+                        "messages": ["draft"],
+                        "runtime_plan": {"active": True},
+                    },
+                    "interrupts": [
+                        {"id": "review", "value": {"type": "agent_plan_review"}}
+                    ],
+                }
+            ),
+            create_thread=AsyncMock(return_value={"thread_id": "target"}),
+            update_thread=AsyncMock(),
+            update_thread_state=AsyncMock(),
+            delete_thread=AsyncMock(),
+        )
+        service = RuntimeGatewayService(session_factory=self.factory, upstream=upstream)
+        service._prepare_project_scope = Mock()
+        service._load_thread = AsyncMock(
+            return_value={
+                "metadata": {
+                    "project_id": "p",
+                    "owner_user_id": "owner",
+                    "graph_id": "showcase_demo",
+                }
+            }
+        )
+
+        await service.fork_thread(
+            actor=self.actor,
+            project_id="p",
+            thread_id="source",
+            checkpoint_id="checkpoint",
+            title=None,
+        )
+
+        upstream.create_thread.assert_awaited_once()
+        assert (
+            upstream.create_thread.call_args.args[0]["metadata"].get(
+                "plan_bootstrap_required"
+            )
+            is None
+        )
+        upstream.update_thread.assert_awaited_once_with(
+            "target", {"metadata": {"plan_bootstrap_required": True}}
+        )
+        upstream.update_thread_state.assert_awaited_once_with(
+            "target", {"values": {"messages": ["draft"]}}
+        )
+
     async def test_fork_invokes_workspace_fork_when_delegation_configured(self) -> None:
         fork_workspace_mock = AsyncMock(return_value={"forked": True})
         delegated_upstream = SimpleNamespace(

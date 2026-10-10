@@ -27,6 +27,8 @@ _CONTEXT_FIELDS = frozenset(
         "execution_mode",
         "access_policy",
         "offload_conversation",
+        "plan_mode",
+        "plan_execution_id",
     }
 )
 _IDENTITY_FIELDS = frozenset(
@@ -63,6 +65,10 @@ _FORBIDDEN_CONFIGURABLE_FIELDS = frozenset(
         "tool_policy_version",
         "tools",
         "offload_conversation",
+        "runtime_plan",
+        "agent_plan",
+        "plan_execution_id",
+        "plan_bootstrap_required",
     }
 )
 
@@ -163,6 +169,8 @@ def parse_runtime_context(
             execution_mode=raw.get("execution_mode"),
             access_policy=raw.get("access_policy"),
             offload_conversation=raw.get("offload_conversation", False),
+            plan_mode=raw.get("plan_mode", False),
+            plan_execution_id=raw.get("plan_execution_id"),
         )
     )
 
@@ -238,6 +246,14 @@ def _validate_context(value: RuntimeContext) -> RuntimeContext:
         raise _fail("runtime.context.invalid_value", "access_policy")
     if not isinstance(value.offload_conversation, bool):
         raise _fail("runtime.context.invalid_field_type", "offload_conversation")
+    if type(value.plan_mode) is not bool:
+        raise _fail("runtime.context.invalid_field_type", "plan_mode")
+    if value.plan_execution_id is not None:
+        _identifier(
+            value.plan_execution_id,
+            "plan_execution_id",
+            "runtime.context.invalid_value",
+        )
     model_id = (
         None
         if value.model_id is None
@@ -346,7 +362,7 @@ def runtime_context_hash(raw: Mapping[str, Any] | RuntimeContext | None) -> str:
 
     context = parse_runtime_context(raw)
     payload = {
-        "schema": "runtime-context/v5",
+        "schema": "runtime-context/v6",
         "model_id": context.model_id,
         "temperature": context.temperature,
         "max_tokens": context.max_tokens,
@@ -354,14 +370,42 @@ def runtime_context_hash(raw: Mapping[str, Any] | RuntimeContext | None) -> str:
         "execution_mode": context.execution_mode,
         "access_policy": context.access_policy,
         "offload_conversation": context.offload_conversation,
+        "plan_mode": context.plan_mode,
+        "plan_execution_id": context.plan_execution_id,
     }
     return _sha256(_canonical_json(payload))
+
+
+def persisted_context_hash_v5(raw: Mapping[str, Any]) -> str:
+    """Recognize only reauthorized, server-persisted pre-planning snapshots."""
+    context = parse_runtime_context(raw)
+    if context.plan_mode or context.plan_execution_id:
+        raise _fail("runtime.context.invalid_value", "plan_mode")
+    return _sha256(
+        _canonical_json(
+            {
+                "schema": "runtime-context/v5",
+                **{
+                    key: getattr(context, key)
+                    for key in (
+                        "model_id",
+                        "temperature",
+                        "max_tokens",
+                        "top_p",
+                        "execution_mode",
+                        "access_policy",
+                        "offload_conversation",
+                    )
+                },
+            }
+        )
+    )
 
 
 def persisted_context_hash_v4(raw: Mapping[str, Any]) -> str:
     """Recognize server-persisted cron snapshots at their reauthorization boundary."""
     context = parse_runtime_context(raw)
-    if context.offload_conversation:
+    if context.offload_conversation or context.plan_mode or context.plan_execution_id:
         raise _fail("runtime.context.invalid_value", "offload_conversation")
     payload = {
         "schema": "runtime-context/v4",

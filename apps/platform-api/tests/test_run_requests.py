@@ -20,6 +20,7 @@ from platform_api.core.errors import (
     PlatformApiError,
     UpstreamServiceError,
 )
+from platform_api.modules.agents.domain.models import ModelResilienceSettings
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
     _runtime_context_snapshot,
@@ -234,11 +235,14 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
             upstream=self.upstream,
         )
         self.service._load_thread = AsyncMock(
-            return_value={"metadata": {"graph_id": "agent-1"}}
+            return_value={"thread_id": "thread-1", "metadata": {"graph_id": "agent-1"}}
         )  # type: ignore[method-assign]
         self.service._project_default_model_id = Mock(return_value=None)  # type: ignore[method-assign]
         self.service._assert_runtime_options_allowed = Mock()  # type: ignore[method-assign]
         self.service._assert_runtime_target_allowed = Mock()  # type: ignore[method-assign]
+        self.service._model_resilience_snapshot = Mock(
+            return_value=ModelResilienceSettings.disabled()
+        )
 
     def tearDown(self) -> None:
         self._engine.dispose()
@@ -499,7 +503,7 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         sent = self.upstream.create_thread_run.call_args.args[1]
         self.assertEqual(sent["version"], "v3")
 
-    async def test_v4_approval_snapshot_resumes_with_reauthorized_v5_hash(self):
+    async def test_v4_approval_snapshot_resumes_with_reauthorized_v6_hash(self):
         await self.start()
         with self._session_factory.begin() as session:
             row = session.scalar(select(RunRequestRecord))
@@ -537,8 +541,12 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
             },
         )
         sent = self.upstream.create_thread_run.call_args.args[1]
-        expected, _ = _runtime_context_snapshot({"params": {"context": snapshot}})
+        expected, _ = _runtime_context_snapshot(
+            {"params": {"context": sent["context"]}}
+        )
         self.assertEqual(captured[-1]["context_hash"], expected)
+        self.assertTrue(sent["context"]["plan_execution_id"])
+        self.assertFalse(sent["context"]["plan_mode"])
         self.assertFalse(sent["context"]["offload_conversation"])
         self.service._assert_runtime_options_allowed.assert_called()
 
@@ -590,9 +598,9 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         )
         self.upstream.with_forwarded_headers = lambda headers: self.upstream
         await self.start()
-        self.assertEqual(captured[0]["context_hash"], self.records()[0].context_hash)
-        self.assertEqual(captured[0]["agent_key"], "agent-1")
-        self.assertEqual(captured[0]["thread_id"], "thread-1")
+        self.assertEqual(captured[-1]["context_hash"], self.records()[0].context_hash)
+        self.assertEqual(captured[-1]["agent_key"], "agent-1")
+        self.assertEqual(captured[-1]["thread_id"], "thread-1")
         sent = self.upstream.create_thread_run.call_args.args[1]
         self.assertEqual(sent["multitask_strategy"], "reject")
         self.assertTrue(sent["idempotency_key"].startswith("platform:"))
