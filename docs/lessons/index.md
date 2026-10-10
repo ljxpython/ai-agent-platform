@@ -5,7 +5,7 @@
 | 文件 | 覆盖范围 | 条数 |
 |---|---|---|
 | [ai-workflow.md](ai-workflow.md) | AI 工作流、Harness、Skill 设计、文档规范、Worktree 隔离/配置复用/审计验收与发布协作 | 9 |
-| [cross-service.md](cross-service.md) | Platform API、Runtime Service 跨服务契约与 Delegation | 1 |
+| [cross-service.md](cross-service.md) | Platform API、Runtime Service、GraphHarbor 跨服务契约与 Delegation | 2 |
 | [runtime-service.md](runtime-service.md) | runtime-service 服务内部、模块导入、工具治理、审批恢复、配套包验收与 callback 派发保护 | 5 |
 | [platform-web.md](platform-web.md) | 权限状态、刷新作用域与撤权回归 | 1 |
 

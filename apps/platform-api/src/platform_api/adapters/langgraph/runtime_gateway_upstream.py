@@ -300,12 +300,25 @@ class LangGraphRuntimeGatewayUpstream:
     async def update_thread(self, thread_id: str, payload: dict[str, Any]) -> Any:
         return await self._threads.update(thread_id, payload)
 
+    async def compare_thread_metadata(
+        self, thread_id: str, *, metadata: dict[str, Any], expected: dict[str, Any]
+    ) -> dict[str, Any]:
+        from urllib.parse import quote
+
+        return await self._http.require_json(
+            "PATCH",
+            f"/threads/{quote(thread_id, safe='')}/metadata/cas",
+            payload={"metadata": metadata, "if_metadata": expected},
+        )
+
     async def summarize_thread_title(
         self, thread_id: str, payload: dict[str, Any] | None = None
     ) -> dict[str, Any]:
+        from urllib.parse import quote
+
         return await self._http.require_json(
             "POST",
-            f"/internal/threads/{thread_id}/title/summarize",
+            f"/internal/threads/{quote(thread_id, safe='')}/title/summarize",
             payload=payload or {},
         )
 

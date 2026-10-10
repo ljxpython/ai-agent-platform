@@ -112,6 +112,21 @@ async def _custom_endpoint(case: dict, token: str) -> dict:
             ),
             user,
         )
+    elif operation == "title-generate":
+        from runtime_service.http.title_summary import (
+            SummarizeTitleRequest,
+            _authorize_scope,
+        )
+
+        user = await authenticate(authorization=authorization)
+        _authorize_scope(
+            thread_id,
+            SummarizeTitleRequest(
+                assistant_id="showcase_demo",
+                messages=[{"role": "user", "content": "title"}],
+            ),
+            user,
+        )
     elif operation == "diagnostics-read":
         from unittest.mock import AsyncMock
 

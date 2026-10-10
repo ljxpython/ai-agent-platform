@@ -52,7 +52,7 @@
 | 工作区全量文件打包下载（.zip） | 已完成：后端标准库流式 Zip 打包、网关安全透传及前端一键下载与 loading/toast 提示全量交付通过 | [工作区全量打包下载](projects/20260918-workspace-archive-download/README.md) |
 | 对话历史按智能体过滤与极简微型分页器优化（首页/末页直达 + 跳页输入） | 已完成：选择特定 Agent 时列表仅展示该 Agent 的历史会话并实时联动，支持总数呈现、«/» 极端直达与数字直接跳页 | [会话按 Agent 过滤与分页优化](../apps/platform-web/docs/changes/20260918-chat-agent-history-filter-and-pagination.md) |
 | Agent 与工具界面优化及权限治理（创建 Agent、详情高级化、工具卡片化与权限收紧） | 已完成：新增 Agent 创建全流程与 `/agents/new` 路由；修复 execution_mode 下拉渲染 bug 与布局；升级工具卡片与同步；收紧 PROJECT_RUNTIME_WRITE 排除 EXECUTOR | [项目概览](projects/20260918-agent-tool-ui-overhaul/README.md) |
-| 会话标题识别与消息预览优化（手动重命名、消除(无内容)、模板词清洗、最新预览同步与 LLM ✨ 魔法棒智能标题提炼） | 已完成：Phase 1 手动重命名/预览修复/模板词清洗与 Phase 2 基于 DeepSeek create_agent 10字标题 ✨ 魔法棒手动提炼全链路已全量交付通过 | [会话标题与预览优化](projects/20260918-thread-title-and-preview-enhancement/README.md) |
+| 会话标题识别与消息预览优化（规则命名、手动重命名与 AI 提炼） | 部分完成：F07后端/Runtime/引擎源码及候选已完成，精确委托、受管一次调用与首轮seed/CAS；9场景HTTP和真实受管模型通过。仅剩同事前端/联合Final及B01正式CAS包发布/锁接入；自动默认关闭、未部署 | [现有能力](projects/20260918-thread-title-and-preview-enhancement/README.md) · [F07 实施与交接](projects/20261009-agent-thread-auto-title/README.md) |
 | 新建用户一页流与多项目分配 | 已完成：彻底重构为一页流，支持动态添加/移除多个所属项目并独立指定角色，补充确认密码一致性校验与防自动填充 | [变更记录](../apps/platform-web/docs/changes/20260922-user-create-single-form-multi-project.md) |
 | 会话顶栏人机工程排布优化与专注模式沉浸感美化 | 已完成：毛玻璃浮岛胶囊与呼吸指示灯、支持ESC快捷退出、消除重复详情入口收敛至更多操作、项目切换器与最右侧用户账号分区分明 | [变更记录](../apps/platform-web/docs/changes/20260922-chat-topbar-and-focus-mode-ux-refinement.md) |
 | 排队补充消息体验深度美化与超时终态自愈 | 已完成：优雅气泡卡片、正文预览、呼吸感状态、未消费一键作为新消息发送/恢复草稿；终态自动断开僵尸流彻底解决假死 | [变更记录](../apps/platform-web/docs/changes/20260922-queued-messages-ux-and-run-timeout-self-healing.md) |

@@ -5,6 +5,8 @@
 > 当前平台：`ai-agent-platform`
 > 文档性质：技术调研知识文档，不是具体项目计划
 
+> 2026-10-09复核：总体统计与“未实现”表保留10-05调研判断，不能直接用于当前排期。F07已获批准并完成非前端源码/候选，剩前端与正式CAS发布，见[F07实施](../projects/20261009-agent-thread-auto-title/README.md)；其余能力须逐项核对代码，不以旧表判未实现。
+
 ---
 
 ## 一、总体概况
@@ -147,7 +149,7 @@
 | 特性开关 | 🟢 已实现 | |
 | SSE 心跳保活 | 🟢 已实现 | |
 | 国际化 i18n | 🟢 已实现 | |
-| **自动对话标题生成** | 🔴 未实现 | `TitleMiddleware`，首轮自动生成 |
+| **自动对话标题生成** | 🟡 非前端源码/候选已完成；前端/正式CAS发布待完成，自动默认关闭 | metadata+同一受管HTTP生成器，见[F07实施](../projects/20261009-agent-thread-auto-title/README.md) |
 | **输入润色（Input Polish）** | 🔴 未实现 | AI 优化用户草稿 |
 | **AI 跟进建议（Suggestions）** | 🔴 未实现 | 对话后自动生成 3 条建议 |
 | **Todo 列表（多步任务）** | 🔴 未实现 | `write_todos` 工具 + `TodoMiddleware` |
@@ -354,32 +356,15 @@ pii_redaction:
 
 ---
 
-### F07 — 自动对话标题生成（TitleMiddleware）
+### F07 — 自动对话标题生成（2026-10-09 复核）
 
-**是什么**：首轮对话完成后（1 条用户消息 + 1 条助手回复），自动用 LLM 生成简短标题写入 `title` 字段。无 LLM 时降级为截取用户消息前 50 字符。
+**当前已有：** 首消息规则命名、手动改名、Runtime 标题 helper/HTTP、API metadata 落库、双聊天入口 AI 提炼按钮与测试。旧项目明确撤回了 `onCompleted` 自动调用；缺自动触发，不缺整套标题基础能力。
 
-**DeerFlow 怎么做**
-- 文件：`agents/middlewares/title_middleware.py`
-- 挂载点：`aafter_model`（异步，首轮检测）
-- 触发条件：`state.title` 为空 + 只有 1 条真实用户消息（排除 `system_reminder/todo_reminder` 等）+ 至少 1 条 AIMessage
-- 附件优先：用户消息无文字仅上传文件 → 用文件名做标题，不调 LLM
-- PII 处理：从 `AIMessage.additional_kwargs["ORIGINAL_USER_CONTENT_KEY"]` 取原始用户内容，调 `redact_texts` 脱敏后发给 LLM
-- LLM 调用：带 `TAG_NOSTREAM`，不推送流式输出到前端
-- 前端：订阅 `values` SSE 事件，有 `title` 字段时更新侧边栏线程标题
+**DeerFlow 的实际设计：** `TitleMiddleware.aafter_model` 检查未命名/一条真实 human/至少一条 AI，返回 Graph `title`；该 hook 可在工具调用前执行，不能等同整轮任务完成。原始用户内容读取自 human.additional_kwargs。附件无正文优先本地命名，模型调用带 nostream；前端还消费 updates 并同步标题缓存。
 
-**我们需要做什么**
-1. Graph state 增加 `title: str | None` 字段
-2. 实现 `TitleMiddleware`（首轮检测 + oneshot LLM 调用）
-3. platform-api 确认 thread title 字段的更新接口
-4. 前端：`values` SSE 事件包含 `title` 时更新显示
+**已批准取舍与实施：** 保留 `metadata.title` 为唯一事实源，复用受管HTTP生成器，不增加Graph title/Middleware/模型YAML。精确委托、8s一次调用、正文/附件校验、首轮seed和真正数据库CAS已实现并验证；前端同事接浏览器best-effort请求。正式PyPI post43无CAS，新的正式配套发布/锁接入B01未完成，自动默认关闭。
 
-**配置**
-```yaml
-title:
-  model_name: gpt-4o-mini  # 可选
-  max_words: 8
-  max_chars: 80
-```
+具体源码证据、三层职责、任务、真实模型/HTTP验证与冻结前端交接见[F07项目](../projects/20261009-agent-thread-auto-title/README.md)。R1-R5已获批准，非前端源码/候选完成不等于正式部署或前端完成。
 
 ---
 
@@ -598,7 +583,7 @@ channels:
 
 ## 四、middleware 架构前置依赖
 
-**F01-F07（中间件类功能）全部依赖 middleware pipeline 能力。在实现任何中间件功能前，必须先确认以下问题：**
+**F01-F06需逐项核对middleware能力；F07已复用HTTP/metadata链路，不依赖新增middleware。实施中间件类功能前确认以下问题：**
 
 ### GraphHarbor middleware 支持情况检查
 
@@ -674,7 +659,7 @@ MemoryMiddleware        ← SummarizationMiddleware.before_summarization hooks�
 | 功能 | 工作量 | 类型 |
 |---|---|---|
 | F13 语音输入 | 1 天 | 纯前端 |
-| F07 自动标题（前端联动部分） | 半天 | 前端联动 |
+| F07 自动标题（前端联动部分） | 约 1 天，另需联合验证 | 等后端/CAS 门槛；同事按 [交接](../projects/20261009-agent-thread-auto-title/frontend-handoff.md) 实施 |
 | F11 输入润色（前端部分） | 1 天 | 前端为主 |
 | F12 AI 建议（前端部分） | 1 天 | 前端为主 |
 
@@ -684,7 +669,7 @@ MemoryMiddleware        ← SummarizationMiddleware.before_summarization hooks�
 
 | 功能 | 优先级 | 工作量 | 前置依赖 |
 |---|---|---|---|
-| F07 自动对话标题 | **P0** | 小（2天） | middleware 架构 |
+| F07 自动对话标题 | **P2已批准，非前端完成** | 前端与正式CAS发布/接入待完成 | 精确授权/受管模型/metadata CAS已有证据，见[实施](../projects/20261009-agent-thread-auto-title/README.md) |
 | F14 CSRF 防护 | **P0** | 小（1天） | 无 |
 | F01 Token 预算 | **P0** | 中（3天） | middleware 架构 |
 | F02 循环检测 | **P0** | 中（3天） | middleware 架构 |
@@ -706,7 +691,7 @@ MemoryMiddleware        ← SummarizationMiddleware.before_summarization hooks�
 
 ## 八、参考链接
 
-- DeerFlow 源码：`/Users/lijiaxin/PyCharmMiscProject/research/deer-flow/`
+- DeerFlow 源码：[本机参考 checkout](../../../research/deer-flow/)
 - 中间件体系入口：`backend/packages/harness/deerflow/agents/middlewares/`
 - Gateway API 路由：`backend/app/gateway/routers/`
 - 前端核心模块：`frontend/src/core/`

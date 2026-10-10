@@ -82,6 +82,14 @@ provider 最终失败用安全 RuntimeExecutionError，真实 PG/checkpoint/leas
 
 职责、函数、迁移/回退与真实四图证据见[取消专项](../../../../docs/projects/20261007-agent-run-cancellation/README.md)；前端只消费安全DTO，未接入前不改变Run/SSE原契约。
 
+## 会话标题辅助调用
+
+`http/title_summary.py` 只接受绑定 Thread/Graph 的精确 `title-generate`，强制认证、当前 comment+edit ACL 与 context hash。`services/thread_titles.py` 复用受管 connection/resolver/build_model；`utils/title_summarizer.py` 只做材料清洗和一次无工具 `ainvoke`，不读独立供应商配置、不创建 Agent。
+
+总 deadline 默认8s（包含连接解析），max_retries=0、disable_streaming、空 callbacks 与 nostream；取消/权限/契约拒绝继续传播。模型失败/超时/空正文返回固定 degraded，持久标题由平台决定；不读 reasoning 充当正文。附件-only 从当前 scoped workspace 校验引用/hash/mime/size后本地命名，当前存储不证明原 filename 防伪。
+
+Runtime 不写引擎 Thread 表，不把标题放进 graph state/SSE/native Run，不计入现有 Agent Usage 合计。API负责首轮/Run资格、生成后授权和 title/seed CAS。自动默认关闭，正式CAS双包发布与前端门禁见[F07](../../../../docs/projects/20261009-agent-thread-auto-title/README.md)。
+
 ## 新增代码粒度规范
 
 > **适用范围：仅约束新增代码。存量代码不在此规范的覆盖范围内，不得借此规范触发对旧代码的"顺手重构"。**

@@ -216,6 +216,7 @@ def create_runtime_delegation_token(
         "dear-governance-read",
         "dear-governance-write",
         "suggestions-generate",
+        "title-generate",
         "diagnostics-read",
         "usage-read",
         "thread-stop",
@@ -224,6 +225,7 @@ def create_runtime_delegation_token(
     }:
         raise ValueError("runtime delegation scope operation is unsupported")
     if operation in {
+        "title-generate",
         "diagnostics-read",
         "usage-read",
         "thread-stop",

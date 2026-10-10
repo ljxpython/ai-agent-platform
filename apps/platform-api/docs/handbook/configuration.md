@@ -53,6 +53,14 @@ uv run --frozen python -c 'from cryptography.fernet import Fernet; print(Fernet.
 
 输出属于秘密，写入自己的秘密管理配置，不贴进日志、文档或Git。丢失master key会导致模型连接无法解密，必须与数据库备份配套保管。
 
+## 会话标题
+
+`TITLE_AUTO_ENABLED=false` 默认关闭；`TITLE_TIMEOUT_SECONDS=8`（区间 `(0,30]`）限制 Runtime 受管模型连接、构造与一次调用。无需独立标题模型名或密钥，沿项目/Agent受管配置。
+
+只有创建时开关已开启且显式opt-in的新普通Thread才写首轮seed；开关关闭时创建的Thread之后不会自动回填。
+
+手动和自动 AI 标题新版都依赖引擎独立 metadata CAS 入口；匹配双包正式接入及前端验收前不得独立发布 API 新版或开启自动。浏览器只负责 opt-in/辅助请求，具体接口、未知写结果对账与验收见 [F07](../../../../docs/projects/20261009-agent-thread-auto-title/frontend-handoff.md)。
+
 ## 观测与生产校验
 
 `OBSERVABILITY_METRICS_TOP_PATHS_LIMIT` 默认10，范围1–50。metrics是进程内快照，不是跨实例持久化指标系统。

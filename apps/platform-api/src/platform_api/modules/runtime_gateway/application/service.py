@@ -5,7 +5,7 @@ import json
 import logging
 from collections.abc import AsyncIterator, Callable, Mapping
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import NAMESPACE_URL, UUID, uuid4, uuid5
 
 from pydantic import ValidationError
 from sqlalchemy.exc import IntegrityError
@@ -68,6 +68,14 @@ from platform_api.modules.runtime_gateway.application.diagnostics import (
 from platform_api.modules.runtime_gateway.application.ports import (
     BinaryPayload,
     RuntimeGatewayUpstreamProtocol,
+)
+from platform_api.modules.runtime_gateway.application.thread_titles import (
+    TITLE_SEED_KEY,
+    TitleGenerationResult,
+    TitleRequest,
+    conversation_materials,
+    public_title_metadata,
+    text_content,
 )
 from platform_api.modules.runtime_gateway.application.usage import (
     RuntimeRunUsage,
@@ -552,6 +560,8 @@ class RuntimeGatewayService:
         suggestions_enabled: bool = True,
         suggestions_max: int = 3,
         suggestions_timeout_seconds: float = 8.0,
+        title_timeout_seconds: float = 8.0,
+        title_auto_enabled: bool | Callable[[], bool] = False,
         on_correlation: Callable[[str, Mapping[str, Any]], None] | None = None,
     ) -> None:
         self._session_factory = session_factory
@@ -566,6 +576,8 @@ class RuntimeGatewayService:
         self._suggestions_timeout_seconds = max(
             0.1, min(suggestions_timeout_seconds, 30.0)
         )
+        self._title_timeout_seconds = max(0.1, min(title_timeout_seconds, 30.0))
+        self._title_auto_enabled = title_auto_enabled
         self._on_correlation = on_correlation
 
     def _emit_correlation(self, event: str, **fields: Any) -> None:
@@ -574,6 +586,13 @@ class RuntimeGatewayService:
                 self._on_correlation(event, fields)
             except Exception:
                 logger.exception("runtime correlation observer failed")
+
+    def _automatic_titles_enabled(self) -> bool:
+        return bool(
+            self._title_auto_enabled()
+            if callable(self._title_auto_enabled)
+            else self._title_auto_enabled
+        )
 
     async def _thread_upstream(
         self,
@@ -1027,6 +1046,9 @@ class RuntimeGatewayService:
             if key not in thread_access.ACL_KEYS
         }
         metadata.update(access)
+        metadata["auto_title_pending"] = public_title_metadata(metadata)[
+            "auto_title_pending"
+        ]
         metadata["allowed_actions"] = [
             action
             for action in (
@@ -2427,15 +2449,27 @@ class RuntimeGatewayService:
         payload: dict[str, Any] | None,
         reserved_thread_id: str | None = None,
     ) -> Any:
+        raw = _normalize_payload(payload)
+        opt_in = raw.pop("auto_title", False)
+        if not isinstance(opt_in, bool):
+            raise BadRequestError(
+                code="invalid_auto_title", message="auto_title must be a boolean"
+            )
         await run_in_threadpool(
             self._prepare_project_scope, actor=actor, project_id=project_id, write=True
         )
-        next_payload = self._inject_project_metadata(
-            project_id=project_id, payload=payload
-        )
+        next_payload = self._inject_project_metadata(project_id=project_id, payload=raw)
         metadata = thread_access.initial_metadata(
             actor, dict(ensure_dict(next_payload.get("metadata")))
         )
+        if (
+            opt_in
+            and self._automatic_titles_enabled()
+            and not raw.get("supersteps")
+            and not metadata.get("forked_from")
+        ):
+            initial_title = text_content(metadata.get("title"))[:80] or "新对话"
+            metadata.update({"title": initial_title, TITLE_SEED_KEY: initial_title})
         policy = metadata.get(_ACCESS_POLICY_KEY)
         if policy == "full_access":
             thread_access.require_action(actor, project_id, metadata, "full_access")
@@ -3058,6 +3092,7 @@ class RuntimeGatewayService:
         thread_id: str,
         metadata_updates: dict[str, Any],
     ) -> dict[str, Any]:
+        _normalize_payload(metadata_updates)
         thread = await self._load_thread(
             actor=actor, project_id=project_id, thread_id=thread_id, write=True
         )
@@ -3076,11 +3111,16 @@ class RuntimeGatewayService:
             raise BadRequestError(
                 code="invalid_metadata", message="No supported metadata fields provided"
             )
+        if "title" in updated_fields:
+            updated_fields[TITLE_SEED_KEY] = None
+            metadata[TITLE_SEED_KEY] = None
         upstream = await self._thread_upstream(
             project_id=project_id, thread=thread, operation="thread-edit"
         )
-        await upstream.update_thread(thread_id, {"metadata": updated_fields})
-        return {"thread_id": thread_id, "metadata": metadata}
+        saved = await upstream.update_thread(thread_id, {"metadata": updated_fields})
+        if isinstance(saved, dict) and isinstance(saved.get("metadata"), dict):
+            metadata.update(saved["metadata"])
+        return {"thread_id": thread_id, "metadata": public_title_metadata(metadata)}
 
     async def summarize_thread_title(
         self,
@@ -3090,83 +3130,291 @@ class RuntimeGatewayService:
         thread_id: str,
         payload: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        try:
+            request = TitleRequest.model_validate(payload or {})
+        except ValidationError as exc:
+            raise BadRequestError(
+                code="invalid_title_payload", message="Invalid title request"
+            ) from exc
+        if request.mode == "auto":
+            parse_uuid(request.run_id, code="invalid_run_id")
         thread = await self._load_thread(
-            actor=actor, project_id=project_id, thread_id=thread_id, write=True
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            write=True,
+            action="comment",
         )
-        upstream_payload = dict(payload or {})
-        if not upstream_payload.get("messages") and hasattr(
-            self._upstream, "get_thread_state"
-        ):
+        metadata = _thread_metadata(thread)
+        thread_access.require_action(actor, project_id, metadata, "edit")
+        auto = request.mode == "auto"
+        if auto:
+            reason = self._title_eligibility(thread)
+            if reason:
+                return self._title_result(thread_id, metadata, "skipped", reason)
+        if request.messages is not None:
+            messages, files, reason = conversation_materials(
+                [item.model_dump() for item in request.messages], first_round=False
+            )
+        else:
+            read_upstream = await self._thread_upstream(
+                project_id=project_id, thread=thread, operation="read"
+            )
             try:
-                state = await self._upstream.get_thread_state(thread_id)
-                if isinstance(state, dict):
-                    values = state.get("values")
-                    if isinstance(values, dict) and isinstance(
-                        values.get("messages"), list
-                    ):
-                        extracted_msgs = []
-                        for m in values["messages"]:
-                            if isinstance(m, dict):
-                                role = m.get("type") or m.get("role") or "user"
-                                content = m.get("content", "")
-                                if isinstance(content, list):
-                                    text_parts = [
-                                        b.get("text", "")
-                                        for b in content
-                                        if isinstance(b, dict)
-                                        and b.get("type") == "text"
-                                    ]
-                                    content = " ".join(text_parts)
-                                if content and str(content).strip():
-                                    extracted_msgs.append(
-                                        {
-                                            "role": str(role),
-                                            "content": str(content).strip(),
-                                        }
-                                    )
-                            elif hasattr(m, "content"):
-                                role = getattr(m, "type", "user")
-                                content = getattr(m, "content", "")
-                                if content and str(content).strip():
-                                    extracted_msgs.append(
-                                        {
-                                            "role": str(role),
-                                            "content": str(content).strip(),
-                                        }
-                                    )
-                        if extracted_msgs:
-                            upstream_payload["messages"] = extracted_msgs
-            except Exception as exc:
-                logger.warning(
-                    "summarize_thread_title: failed to extract messages from thread state: %s",
-                    exc,
+                if auto:
+                    reason = await self._check_title_run(
+                        read_upstream, thread, thread_id, request.run_id
+                    )
+                    if reason:
+                        return self._title_result(
+                            thread_id, metadata, "skipped", reason
+                        )
+                state = await read_upstream.get_thread_state(thread_id)
+            except PlatformApiError as exc:
+                status = getattr(exc, "upstream_status_code", None) or exc.status_code
+                if status < 500:
+                    raise
+                return self._title_result(
+                    thread_id, metadata, "skipped", "materials_missing"
                 )
-
-        summary_result = await self._upstream.summarize_thread_title(
-            thread_id, upstream_payload
-        )
-        generated_title = (
-            summary_result.get("title") if isinstance(summary_result, dict) else None
-        )
-        if (
-            generated_title
-            and isinstance(generated_title, str)
-            and generated_title.strip()
-        ):
-            metadata = _thread_metadata(thread)
-            metadata["title"] = generated_title.strip()
-            upstream = await self._thread_upstream(
-                project_id=project_id, thread=thread, operation="thread-edit"
+            if auto and (_interrupt_ids(state) or ensure_dict(state).get("next")):
+                return self._title_result(
+                    thread_id, metadata, "skipped", "run_not_ready"
+                )
+            messages, files, reason = conversation_materials(
+                ensure_dict(ensure_dict(state).get("values")).get("messages"),
+                first_round=auto,
             )
-            await upstream.update_thread(
-                thread_id, {"metadata": {"title": generated_title.strip()}}
+        if reason:
+            return self._title_result(thread_id, metadata, "skipped", reason)
+        graph_id = _thread_graph_id(thread)
+        if not graph_id:
+            raise BadRequestError(
+                code="graph_id_required", message="Thread graph is missing"
             )
-            return {
+        upstream_payload = {
+            "assistant_id": graph_id,
+            "messages": messages,
+            "files": files,
+            "timeout_seconds": self._title_timeout_seconds,
+            "context": {},
+            "config": {},
+        }
+        upstream_payload = await run_in_threadpool(
+            self._inject_project_default_model,
+            project_id=project_id,
+            payload=upstream_payload,
+        )
+        await run_in_threadpool(
+            self._validate_run_options, project_id=project_id, payload=upstream_payload
+        )
+        context_hash, _ = _runtime_context_snapshot({"params": upstream_payload})
+        upstream_payload = await run_in_threadpool(
+            self._attach_runtime_model_reference,
+            project_id=project_id,
+            actor=actor,
+            thread_id=thread_id,
+            thread_action="comment",
+            model_resilience=ModelResilienceSettings.disabled(),
+            payload=upstream_payload,
+        )
+        title_upstream = await self._thread_upstream(
+            project_id=project_id,
+            thread=thread,
+            operation="title-generate",
+            context_hash=context_hash,
+        )
+        try:
+            summary_result = await title_upstream.summarize_thread_title(
+                thread_id, upstream_payload
+            )
+        except PlatformApiError as exc:
+            if (
+                getattr(exc, "upstream_status_code", None) or exc.status_code
+            ) < 500 or exc.code == "runtime_delegation_rejected":
+                raise
+            summary_result = {
                 "thread_id": thread_id,
-                "title": generated_title.strip(),
-                "metadata": metadata,
+                "title": None,
+                "outcome": "degraded",
+                "reason": "provider_failure",
             }
-        return {"thread_id": thread_id, "title": "新对话"}
+        try:
+            summary_result = TitleGenerationResult.model_validate(
+                summary_result
+            ).model_dump()
+            if summary_result["thread_id"] != thread_id:
+                raise ValueError("title thread mismatch")
+        except (ValidationError, ValueError) as exc:
+            raise PlatformApiError(
+                code="invalid_title_response",
+                status_code=502,
+                message="Invalid title response",
+            ) from exc
+        current = await self._load_thread(
+            actor=actor,
+            project_id=project_id,
+            thread_id=thread_id,
+            write=True,
+            action="comment",
+        )
+        current_metadata = _thread_metadata(current)
+        thread_access.require_action(actor, project_id, current_metadata, "edit")
+        if auto:
+            reason = self._title_eligibility(current)
+            if not reason:
+                read_upstream = await self._thread_upstream(
+                    project_id=project_id, thread=current, operation="read"
+                )
+                reason = await self._check_title_run(
+                    read_upstream, current, thread_id, request.run_id
+                )
+                if not reason:
+                    latest_state = await read_upstream.get_thread_state(thread_id)
+                    latest_messages, latest_files, reason = conversation_materials(
+                        ensure_dict(ensure_dict(latest_state).get("values")).get(
+                            "messages"
+                        ),
+                        first_round=True,
+                    )
+                    if not reason and (
+                        _interrupt_ids(latest_state)
+                        or ensure_dict(latest_state).get("next")
+                    ):
+                        reason = "run_not_ready"
+                    if not reason and (
+                        latest_messages != messages
+                        or latest_files != files
+                        or ensure_dict(latest_state).get("checkpoint")
+                        != ensure_dict(state).get("checkpoint")
+                    ):
+                        reason = "run_not_ready"
+            if reason:
+                return self._title_result(
+                    thread_id, current_metadata, "skipped", reason
+                )
+        await run_in_threadpool(
+            self._validate_run_options, project_id=project_id, payload=upstream_payload
+        )
+        outcome = summary_result["outcome"]
+        reason = summary_result.get("reason")
+        candidate = (
+            text_content(summary_result.get("title"))[:10]
+            if outcome == "applied"
+            else None
+        )
+        if outcome == "applied" and not candidate:
+            outcome, reason = "degraded", "empty_output"
+        if outcome == "skipped" or not auto and outcome == "degraded":
+            return self._title_result(thread_id, current_metadata, outcome, reason)
+        write_upstream = await self._thread_upstream(
+            project_id=project_id, thread=current, operation="thread-edit"
+        )
+        changes = {TITLE_SEED_KEY: None}
+        if candidate:
+            changes["title"] = candidate
+        try:
+            saved = await write_upstream.compare_thread_metadata(
+                thread_id,
+                metadata=changes,
+                expected={
+                    "title": metadata.get("title"),
+                    TITLE_SEED_KEY: metadata.get(TITLE_SEED_KEY),
+                },
+            )
+        except PlatformApiError as exc:
+            status = getattr(exc, "upstream_status_code", None) or exc.status_code
+            if status in {404, 405}:
+                raise ServiceUnavailableError(
+                    code="title_cas_unavailable",
+                    message="Runtime metadata CAS is unavailable",
+                ) from exc
+            if status >= 500:
+                raise ServiceUnavailableError(
+                    code="title_write_unconfirmed",
+                    message="Title write is unconfirmed; read Thread before retrying",
+                ) from exc
+            if status != 409:
+                raise
+            current = await self._load_thread(
+                actor=actor, project_id=project_id, thread_id=thread_id, write=False
+            )
+            return self._title_result(
+                thread_id, _thread_metadata(current), "skipped", "conflict"
+            )
+        if (
+            not isinstance(saved, dict)
+            or saved.get("thread_id") != thread_id
+            or not isinstance(saved.get("metadata"), dict)
+            or any(
+                saved["metadata"].get(key) != value for key, value in changes.items()
+            )
+        ):
+            raise PlatformApiError(
+                code="title_write_unconfirmed",
+                status_code=503,
+                message="Title write is unconfirmed; read Thread before retrying",
+            )
+        return self._title_result(
+            thread_id, {**current_metadata, **saved["metadata"]}, outcome, reason
+        )
+
+    @staticmethod
+    def _title_result(
+        thread_id: str, metadata: dict, outcome: str, reason: str | None
+    ) -> dict:
+        return {
+            "thread_id": thread_id,
+            "title": metadata.get("title") or "新对话",
+            "metadata": public_title_metadata(metadata),
+            "outcome": outcome,
+            "reason": reason,
+        }
+
+    def _title_eligibility(self, thread: dict) -> str | None:
+        metadata = _thread_metadata(thread)
+        if not self._automatic_titles_enabled():
+            return "disabled"
+        if (
+            not metadata.get(TITLE_SEED_KEY)
+            or metadata.get(TITLE_SEED_KEY) != metadata.get("title")
+            or metadata.get("forked_from")
+        ):
+            return "not_pending"
+        if thread.get("status") != "idle" or thread.get("interrupts"):
+            return "run_not_ready"
+        return None
+
+    @staticmethod
+    async def _check_title_run(
+        upstream, thread: dict, thread_id: str, run_id: str
+    ) -> str | None:
+        run = await upstream.get_thread_run(thread_id, run_id)
+        graph_id = _thread_graph_id(thread)
+        if (
+            not isinstance(run, dict)
+            or run.get("thread_id") != thread_id
+            or run.get("run_id") != run_id
+            or run.get("assistant_id")
+            not in {graph_id, str(uuid5(NAMESPACE_URL, graph_id or ""))}
+        ):
+            return "run_not_ready"
+        kwargs = ensure_dict(run.get("kwargs"))
+        if (
+            run.get("status") != "success"
+            or kwargs.get("command")
+            or kwargs.get("checkpoint_id")
+            or kwargs.get("checkpoint")
+            or ensure_dict(kwargs.get("context")).get("offload_conversation")
+        ):
+            return "run_not_ready"
+        for status in ("pending", "running"):
+            active = await upstream.list_thread_runs(
+                thread_id, {"limit": 1, "status": status}
+            )
+            if not isinstance(active, list) or active:
+                return "run_not_ready"
+        return None
 
     async def get_thread_state(
         self,

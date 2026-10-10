@@ -7,8 +7,8 @@ from langchain_core.language_models import FakeListChatModel
 
 from runtime_service.utils.title_summarizer import (
     _fallback_extract_title,
-    build_title_summarizer_agent,
     clean_generated_title,
+    normalize_title_messages,
     summarize_thread_title,
 )
 
@@ -67,14 +67,13 @@ def test_fallback_extract_title_without_colon():
 @pytest.mark.anyio
 async def test_summarize_thread_title_success():
     fake_model = FakeListChatModel(responses=["《商城登录改造》"])
-    agent = build_title_summarizer_agent(model=fake_model)
 
     messages = [
         {"role": "user", "content": "帮我设计一下商城的用户登录与注册逻辑"},
         {"role": "assistant", "content": "好的，首先我们需要设计 JWT 鉴权..."},
     ]
 
-    title = await summarize_thread_title(messages, agent=agent)
+    title = await summarize_thread_title(messages, model=fake_model)
     assert title == "商城登录改造"
 
 
@@ -85,12 +84,35 @@ async def test_summarize_thread_title_fallback_on_error():
             raise ConnectionError("Upstream model connection timeout")
 
     broken_model = BrokenModel(responses=[])
-    agent = build_title_summarizer_agent(model=broken_model)
 
     messages = [
         {"role": "user", "content": "设计功能方案：秒杀库存扣减架构"},
     ]
 
-    # 不应抛出异常，而应优雅降级
-    title = await summarize_thread_title(messages, agent=agent)
-    assert title == "秒杀库存扣减架构"
+    # 服务层负责降级，helper 不吞授权或取消异常。
+    with pytest.raises(ConnectionError):
+        await summarize_thread_title(messages, model=broken_model)
+
+
+def test_reasoning_tools_reminders_and_references_are_not_title_materials():
+    assert clean_generated_title("<think>private</think>") == "新对话"
+    assert clean_generated_title([{"type": "reasoning", "text": "private"}]) == "新对话"
+    assert clean_generated_title("<think>private</think>标题：权限设计！") == "权限设计"
+    assert normalize_title_messages(
+        [
+            {"type": "system", "content": "system"},
+            {"type": "human", "name": "todo_reminder", "content": "reminder"},
+            {"type": "ai", "content": "tool", "tool_calls": [{"id": "tool"}]},
+            {
+                "type": "human",
+                "content": [
+                    {"type": "reasoning", "text": "private"},
+                    {"type": "text", "text": "你好"},
+                ],
+            },
+            {
+                "type": "ai",
+                "content": "<think>secret</think>完成 https://secret.test /Users/test/file data:base64,abc",
+            },
+        ]
+    ) == [{"role": "user", "content": "你好"}, {"role": "assistant", "content": "完成"}]

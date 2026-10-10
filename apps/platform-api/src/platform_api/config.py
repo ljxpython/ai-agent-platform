@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     suggestions_enabled: bool = True
     suggestions_max: int = Field(default=3, ge=1, le=5)
     suggestions_timeout_seconds: float = Field(default=8.0, gt=0, le=30)
+    title_timeout_seconds: float = Field(default=8.0, gt=0, le=30)
+    title_auto_enabled: bool = False
 
     platform_db_enabled: bool = False
     platform_db_auto_create: bool = False

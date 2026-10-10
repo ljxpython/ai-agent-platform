@@ -51,6 +51,10 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
 
     async def update_thread(self, thread_id: str, payload: dict[str, Any]) -> Any: ...
 
+    async def compare_thread_metadata(
+        self, thread_id: str, *, metadata: dict[str, Any], expected: dict[str, Any]
+    ) -> dict[str, Any]: ...
+
     async def summarize_thread_title(
         self,
         thread_id: str,

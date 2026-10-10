@@ -454,6 +454,8 @@ def _delegation_operation(request: Request) -> str:
         return "message-enqueue" if request.method == "POST" else "message-read"
     if path.endswith("/suggestions"):
         return "suggestions-generate"
+    if path.endswith("/title/summarize"):
+        return "title-generate"
     if path.endswith("/diagnostics"):
         return "diagnostics-read"
     if path.endswith("/usage"):
@@ -553,6 +555,7 @@ def get_runtime_gateway_service(
                 "thread-create",
                 "thread-reconcile",
                 "suggestions-generate",
+                "title-generate",
                 "diagnostics-read",
                 "usage-read",
             }
@@ -635,6 +638,8 @@ def get_runtime_gateway_service(
         suggestions_enabled=settings.suggestions_enabled,
         suggestions_max=settings.suggestions_max,
         suggestions_timeout_seconds=settings.suggestions_timeout_seconds,
+        title_timeout_seconds=getattr(settings, "title_timeout_seconds", 8.0),
+        title_auto_enabled=lambda: settings.title_auto_enabled,
     )
 
 
@@ -954,6 +959,7 @@ async def summarize_thread_title(
     actor: ActorContext = Depends(get_actor_context),
     service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
 ) -> Any:
+    _validate_thread_id(thread_id)
     request.state.audit_metadata = {"action": "summarize_title"}
     return _redact_runtime_private_fields(
         await service.summarize_thread_title(
