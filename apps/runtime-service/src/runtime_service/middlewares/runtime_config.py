@@ -30,6 +30,7 @@ from runtime_service.runtime import (
 )
 from runtime_service.runtime.auth import VerifiedDelegation
 from runtime_service.runtime.errors import RuntimeAuthError, RuntimeResolutionError
+from runtime_service.runtime.planning import PLAN_GRAPHS
 
 ModelBuilder = Callable[[ResolvedRuntimeConfig], BaseChatModel]
 
@@ -356,6 +357,13 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
             if principal is None or policy is None:
                 raise RuntimeAuthError("runtime.auth.missing_principal")
         else:
+            server = getattr(runtime, "server_info", None)
+            if (
+                context.plan_mode
+                and facts.scope.assistant_id not in PLAN_GRAPHS
+                and getattr(server, "graph_id", None) not in PLAN_GRAPHS
+            ):
+                raise RuntimeResolutionError("runtime.plan.unsupported")
             if facts.context_hash != runtime_context_hash(context):
                 raise RuntimeAuthError(
                     "runtime.auth.context_hash_mismatch", "context_hash"

@@ -259,6 +259,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.local-stack/
 env/
 venv/
 ENV/

@@ -65,6 +65,18 @@ run_requests只保存请求摘要、授权/config快照和Run关联，不存消�
 
 从当前state读取真实interrupt ID与动作，decisions必须与动作对应，不能硬编码全批准。恢复不允许覆盖input/config/context；多个interrupt使用ID映射。Protocol `/commands` 的input.respond共用授权与恢复路径，id为整数，不是HTTP幂等键。恢复产生新Run ID，父Run关联保留；重复/过期/异项目审批拒绝。
 
+## 计划审批（2026-10-09 用户批准）
+
+新 Run 接受严格 bool `context.plan_mode` 或 `config.configurable.platform_runtime.plan_mode`，冲突拒绝。只对显式支持图与 capability=true 启用，cron 禁止。四档 execution_mode 与三档 access_policy 保持独立；前端只能请求增加规划限制，不能设置执行 ID 或批准状态。
+
+Context 双端为 v6，API 从项目/Thread/幂等身份生成 plan_execution_id 并保存 RunRequests。input.respond 复用原请求配置和执行链，重新核对当前人类、Thread approve ACL、Agent/模型/工具授权及计划 ID/revision/hash；没有新计划审批路由。服务账号不能回复计划。相同 actor/body 的重复回复复用 resume:<interrupt_id>，不同决定或 actor 冲突，unknown 只重试原请求。
+
+每个新 Run 读取当前受授权 state，阻止切 graph/新 key/false 绕过 active 或待审计划；普通 Run 因此增加一次 scoped state 读取，含历史 checkpoint 再读历史。规划及 fork bootstrap 期间 update_state 拒绝，待审必须先处理当前 interrupt。新执行/fork/含计划历史不能复用旧批准，bootstrap 只在合法规划 checkpoint 持久后清除；不能公开修改该标记。
+
+state/history/SSE 仅投影有限 agent_plan，私有执行链/绑定/原始 runtime_plan 不公开；无计划键可缺失，未批准时批准人/时间省略，批准人只含 user_id。awaiting_review 以真实 interrupt 为准，公开投影不能用来恢复授权。九个 runtime.plan.* 仅精确安全码投影，异常正文不透出。DTO、HTTP错误与同事验收见 [前端交接](../../../../docs/projects/20261008-agent-plan-mode-governance/frontend-handoff.md)。
+
+API/Runtime v6 成对发布。旧版本不能保护计划 Thread 时先保留当前执行约束并禁用相关 Agent，停止/对账后保留计划和数据；不把卸载 middleware 或 plan_mode=false 当作回退。当前仍未部署现役。
+
 ## SSE、错误与取消
 
 平台公开HTTP错误结构、上游状态转换和pending恢复字段见[错误出口标准](../../../../docs/standards/error-envelope.md)；流内事件仍按SSE专项处理。
@@ -109,7 +121,7 @@ Runtime后台对旧固定目标inbox做checkpoint对账，consumed保留、其�
 
 DearFlow/Showcase 的当前 Thread capabilities 返回 `conversation_offloading`，结合 Runtime feature flag 和 comment ACL。现有 commands/runs/runs-stream 接收 `config.configurable.platform_runtime.offload_conversation=true`（标准 context 位置也接受，冲突拒绝），通过同一前置校验启动空输入维护 Run；禁止消息/附件/checkpoint override、活动 Run、未决 interrupt 和待发消息。pending 状态不可确认返回 503；最终并发由 GraphHarbor reject。
 
-复用 Idempotency-Key/run_requests/取消和审计，维护不 claim 队列、不执行普通模型/工具/MCP/子图/记忆后处理。Context 双端为 v5，省略/false 同 hash，存量 v4 服务端快照重新授权后升级；cron/resume/queue 禁止携带维护标志。
+复用 Idempotency-Key/run_requests/取消和审计，维护不 claim 队列、不执行普通模型/工具/MCP/子图/记忆后处理。Context 当前双端为 v6，省略/false 同 hash，存量 v4/v5 服务端快照重新授权后升级；cron/resume/queue 禁止携带维护标志。
 
 公开 custom 与 Thread state 只保留有界整理状态；私有摘要、session 和归档 files 不公开，所有 input/state update 拒绝注入。普通成果文件保持原访问语义。真实契约和前端待办见 [交接](../../../../docs/projects/20261006-agent-context-window-governance/frontend-handoff.md)。功能开关默认关闭，未部署现役平台。
 

@@ -30,7 +30,17 @@ DearFlow/Showcase 根图与声明式子图在 agent.py 显式替换官方摘要�
 
 schema-only 与执行图必须声明相同 OffloadingState，保留 DeepAgentState 的 DeltaChannel；整理状态使用 PrivateStateAttr 防父子复制/合并，API 再按白名单公开，不以此注解替代网关脱敏。手动维护只运行根摘要，通过 before hook/end 结束；不得准备执行 MCP/Workspace、claim 队列或执行 Memory/Skills 后处理。
 
-`AGENT_CONTEXT_MANAGEMENT_ENABLED` 默认 0，目录容量、输出预算、迁移和双端 Context v5 就绪后才能开启。关闭时沿用官方摘要并保留历史/私有事件，不清数据。reference/其他教学图未接入，不宣称支持。依赖升级需复跑隐藏流、预算、归档、父子隔离、真实 PG/Worker 恢复测试，证据见 [上下文专项](../../../../docs/projects/20261006-agent-context-window-governance/verification.md)。
+`AGENT_CONTEXT_MANAGEMENT_ENABLED` 默认 0，目录容量、输出预算、迁移和双端 Context（当前 v6）就绪后才能开启。关闭时沿用官方摘要并保留历史/私有事件，不清数据。reference/其他教学图未接入，不宣称支持。依赖升级需复跑隐藏流、预算、归档、父子隔离、真实 PG/Worker 恢复测试，证据见 [上下文专项](../../../../docs/projects/20261006-agent-context-window-governance/verification.md)。
+
+## 通用 Plan Mode 接入
+
+`runtime/planning.py`、`middlewares/plan_mode.py`、`tools/plan_mode.py` 是公共实现。组合根在 `RuntimeConfigMiddleware` 后装配 `PlanModeMiddleware`，传入经过审查的真实只读工具实例；middleware 提供 enter/save/submit 三工具，图 defaults/catalog 同步声明。工具列表裁剪和 ToolCall 执行门禁同时生效，三个控制工具必须独占批次；MCP、task、shell、普通写文件默认不放行。
+
+execution_mode/access_policy/plan_mode 正交；批准只解除规划限制，原工具授权和 HITL 继续。人工审批复用 submit 的原生 interrupt 与 API input.respond，不提供模型 approve 工具。Markdown 只写 checkpoint，正文64 KiB、反馈2000字符；计划状态和执行 ID 服务端持有，不允许客户端注入。
+
+DearFlow/Showcase 子图用 `child=True` 且绑定自己的只读工具实例，不拥有计划控制工具；自定义 Workflow 显式传递 runtime_plan 并保留嵌套 checkpointer。新增图还须同步 Runtime `runtime/planning.py:PLAN_GRAPHS`、API `application/planning.py:PLAN_GRAPHS`、capability、graph_tools 与测试；仅加 middleware 不能宣称完成平台接入。审查自动记忆、技能、受控证据缓存等隐式副作用，规划时不能写业务目录。
+
+双端 Context 使用 v6，服务端执行 ID 跨审批恢复保持、新 Run/fork/含计划历史建立新周期。发布与回退须成对处理，旧 Runtime 无法保护计划 Thread 时拒绝降版，保留当前约束。可执行契约与前端边界见 [专项](../../../../docs/projects/20261008-agent-plan-mode-governance/README.md)。
 
 ## Run 时间预算与收尾
 

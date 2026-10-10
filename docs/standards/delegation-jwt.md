@@ -1,6 +1,6 @@
 ---
 status: draft
-last_verified: 2026-10-07
+last_verified: 2026-10-09
 confidence: medium
 source_project: docs/projects/20260926-delegation-jwt-contract/verification.md
 note: 当前operation枚举为31项；覆盖diagnostics-read、usage-read与新增会话Stop/固定回执原生例外，隔离契约和撤权链路已验；消息内部Run回查仍待部署补验
@@ -130,13 +130,15 @@ read/diagnostics-read/run-create 也不能代替 usage-read。采集开关和数
 - 重连 / 审批 / 取消等新 HTTP 请求加载当前身份重新签发
 - 过期 JWT 用于新 Runtime 请求按现有 401 拒绝，不自动降级匿名，不自动重放用户动作
 
-## Runtime Context v5（2026-10-06 用户批准）
+## Runtime Context v6（2026-10-09 用户批准）
 
-API/Runtime 使用相同 `runtime-context/v5` hash，固定字段为 `model_id/temperature/max_tokens/top_p/execution_mode/access_policy/offload_conversation`；JSON 规范化后计算 sha256。`offload_conversation` 严格布尔，省略与 false 相同，true 仅表示当前维护 Run，不关闭自动摘要。
+API/Runtime 使用相同 `runtime-context/v6` hash，固定字段为 `model_id/temperature/max_tokens/top_p/execution_mode/access_policy/offload_conversation/plan_mode/plan_execution_id`；规范 JSON 后计算 sha256。`offload_conversation` 与 `plan_mode` 严格布尔，省略与 false 相同。前者仅表示当前维护 Run，不关闭自动摘要；后者在新 Run 增加规划限制，不改变四档执行模式或原工具 HITL。
+
+`plan_execution_id` 仅由 API 从项目、Thread 和持久请求身份生成，保存到 RunRequests。原生计划审批、后续工具审批和澄清恢复使用原执行链快照；恢复 Run ID 可以变化。客户端输入/config/state/metadata 不得设置执行 ID、`runtime_plan`、`agent_plan` 或 bootstrap 标记；公开出口移除私有绑定。计划审批沿已有 run-create，无新增 operation，须核验人类、Thread approve ACL、当前 interrupt 与 plan ID/revision/hash。
 
 维护使用已有 run-create 和当前 Thread comment 授权，不新增 operation；能力、空输入、最新根 checkpoint、活动 Run、待审批/澄清和持久待发状态须通过网关检查。禁止普通可编辑默认参数、cron、queued input 或 resume 开启维护。
 
-服务端已保存的 v4 审批/定时快照先按当前授权核验，再确定性归一并签发 v5；不接收客户端指定 hash/schema 旁路。双端同步升级，关闭整理 feature flag 不回退 Context hash。实现与隔离证据见 [上下文专项](../projects/20261006-agent-context-window-governance/verification.md)；本段不使 JWT 原专项整体毕业。
+服务端已保存的 v4/v5 审批/定时快照先按当前授权核验，再归一并签发 v6；旧恢复缺执行 ID 时由服务端建立 legacy 执行链，不接受外部旧 hash/token 或旧计划批准。cron 禁止 `plan_mode=true`。API/Runtime 必须成对升级；关闭 capability 不回退 hash，也不能卸载规划门禁后执行含计划 Thread。实现与隔离证据见 [计划专项](../projects/20261008-agent-plan-mode-governance/verification.md)；本段不使 JWT 原专项整体毕业。
 
 ## 定时任务执行身份（2026-10-05 用户批准）
 

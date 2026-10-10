@@ -6,6 +6,7 @@ from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
 from runtime_service.middlewares.execution_budget import GraphBudgetState
+from runtime_service.middlewares.plan_mode import PlanModeState
 
 MessageValue = Annotated[list[object], add_messages]
 
@@ -22,5 +23,5 @@ class WorkflowState(TypedDict, total=False):
     _runtime_model_ref: str
 
 
-class WorkflowBudgetState(WorkflowState, GraphBudgetState):
+class WorkflowBudgetState(WorkflowState, GraphBudgetState, PlanModeState):
     pass

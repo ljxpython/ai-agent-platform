@@ -1,6 +1,6 @@
 ---
 status: draft
-last_verified: 2026-10-07
+last_verified: 2026-10-09
 confidence: medium
 source_project: docs/projects/20260926-sse-event-contract/verification.md
 note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容量(S11)因HTTP/1.1入口阻塞，持续容量/堆增长/三段脱敏样例未验
@@ -52,6 +52,16 @@ error 路径保持原异常及真实终态，极低 recursion 可以只有安全
 Run GET 没有 error，旧事件全部过期且无人工标记时安全降级，不借用最新 Thread.error 归因旧 Run。
 软收尾不是 Worker timeout，不展示硬剩余时间。实际接线、联调与 H01-H16 回执见
 [前端交接](../projects/20261007-agent-execution-budget/frontend-handoff.md)。本项不更改本规范容量门禁的 draft 状态。
+
+## 计划状态与原生审批（2026-10-09 用户批准）
+
+计划复用 state/history/values/updates/checkpoints 和原生 interrupt，不新增物理 SSE 或计划 custom 事件。API 仅在可信 state 槽位把 `runtime_plan` 投影为有限 `agent_plan`，移除 `plan_execution_id`、`bound_execution_id`、bootstrap 与签名；消息和 ToolMessage 中的普通同名内容保持原样。
+
+公开字段为 version/status/active/plan_id/revision/title/markdown/content_hash/decision。无计划时该键可缺失；未批准时 approved_by/approved_at 省略，批准后只有 `approved_by={user_id}` 与服务端带时区 ISO8601 时间。revision=0 是空草稿；有效正文 UTF-8 最多64 KiB。status 为 planning/awaiting_review/approved/abandoned，只有当前真实 `agent_plan_review` interrupt 支撑时标记 awaiting_review；Workflow 的嵌套 interrupt 可投影当前快照。
+
+`agent_plan_review` v1 含 plan_id/revision/content_hash/title/markdown/allowed_decisions；回复为当前 interrupt ID 映射的 `agent_plan_response` v1，decision 仅 approve/request_changes/abandon，反馈最多2000字符。前端保留真实 id/ns，复用 input.respond 与固定请求重试；投影、历史批准或“批准”聊天文本都不是操作依据。
+
+Runtime 九个 `runtime.plan.*` 错误码只对可信异常类型与精确固定码公开；附带异常正文的字符串保持安全泛化。没有新终态：计划审批为原生 interrupted，abandon 结束但 active 保留，approve 不代表 Run success。完整 DTO、错误表与前端剩余验证见 [交接](../projects/20261008-agent-plan-mode-governance/frontend-handoff.md)。本补充不改变容量门禁的 draft 状态。
 
 ## SDK 自动重试规则（补丁扩展）
 

@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 from platform_api.core.errors import BadRequestError, ForbiddenError
+from platform_api.modules.agents.domain.models import ModelResilienceSettings
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
     _merge_runtime_context,
@@ -88,7 +89,7 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(terminal)
 
-    def test_context_hash_matches_runtime_context_v5_canonicalization(self) -> None:
+    def test_context_hash_matches_runtime_context_v6_canonicalization(self) -> None:
         context_hash, snapshot = _runtime_context_snapshot(
             {
                 "params": {
@@ -111,7 +112,7 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(
             context_hash,
-            "sha256:c7eb4961f3e693c8f776ed2bceafc886b3cd562591fd4fc9a48b13eea4319d6b",
+            "sha256:af2cf104dcd5d0809a0a5d48469ecf2d2477e2e1a68e86cf912390578fc0e77f",
         )
         self.assertEqual(
             snapshot,
@@ -121,6 +122,7 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
                 "top_p": 1.0,
                 "max_tokens": 128,
                 "offload_conversation": False,
+                "plan_mode": False,
             },
         )
 
@@ -417,6 +419,9 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
         service._runtime_model_config_secret = "test-secret"  # type: ignore[attr-defined]
         service._runtime_model_config_ttl_seconds = 60  # type: ignore[attr-defined]
         service._runtime_id = "runtime-1"  # type: ignore[attr-defined]
+        service._model_resilience_snapshot = Mock(
+            return_value=ModelResilienceSettings.disabled()
+        )
         item = SimpleNamespace(enabled=True)
         with (
             patch(
@@ -430,10 +435,14 @@ class RuntimeGatewayRuntimeContractTest(unittest.IsolatedAsyncioTestCase):
                 "platform_api.modules.runtime_gateway.application.service.create_model_reference",
                 return_value="v1.opaque.sig",
             ),
+            patch(
+                "platform_api.modules.runtime_gateway.application.service.enabled_model_ids",
+                return_value={"11111111-1111-1111-1111-111111111111"},
+            ),
         ):
             repository.return_value.get_model_by_id.return_value = item
             result = service._attach_runtime_model_reference(
-                project_id="project-1",
+                project_id="22222222-2222-2222-2222-222222222222",
                 payload={
                     "config": {
                         "configurable": {

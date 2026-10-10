@@ -146,6 +146,18 @@ _WORKSPACE_EXECUTION_MESSAGES = {
     ),
 }
 
+_PLAN_EXECUTION_MESSAGES = {
+    "runtime.plan.tool_denied": "规划期间不可执行此工具。",
+    "runtime.plan.batch_invalid": "计划工具必须单独执行。",
+    "runtime.plan.tool_invalid": "计划工具配置不可用。",
+    "runtime.plan.tools_unavailable": "计划工具不可用，本次运行已停止。",
+    "runtime.plan.state_invalid": "计划状态不可用，请重新核对当前计划。",
+    "runtime.plan.execution_missing": "计划执行标识不可用。",
+    "runtime.plan.content_invalid": "计划正文不符合格式或大小限制。",
+    "runtime.plan.response_invalid": "计划审批回复无效。",
+    "runtime.plan.unsupported": "当前智能体不支持规划模式。",
+}
+
 
 def project_budget_notice(value: Any) -> dict[str, Any] | None:
     if (
@@ -218,6 +230,8 @@ def project_execution_error(value: Any) -> Any:
         return None
     if not isinstance(value, dict):
         if isinstance(value, str):
+            if value in _PLAN_EXECUTION_MESSAGES:
+                return {"code": value, "message": _PLAN_EXECUTION_MESSAGES[value]}
             if value in _WORKSPACE_EXECUTION_MESSAGES:
                 return value
             if "CANARY" not in value:
@@ -254,6 +268,16 @@ def project_execution_error(value: Any) -> Any:
                     return {"message": message, "code": code, "type": "RunTimedOut"}
         return "Runtime execution failed"
 
+    plan_code = value.get("code") or value.get("message")
+    if (
+        isinstance(plan_code, str)
+        and plan_code in _PLAN_EXECUTION_MESSAGES
+        and (
+            value.get("type") == "RuntimeResolutionError"
+            or set(value) <= {"code", "message"}
+        )
+    ):
+        return {"code": plan_code, "message": _PLAN_EXECUTION_MESSAGES[plan_code]}
     code = value.get("code")
     if value.get("type") == "RuntimeWorkspaceError":
         code = code if isinstance(code, str) else value.get("message")
@@ -324,9 +348,22 @@ def redact_execution_fields(value: Any) -> Any:
 
 
 def redact_runtime_private_fields(
-    value: Any, *, _resource: bool = True, _execution_errors: bool = True
+    value: Any,
+    *,
+    _resource: bool = True,
+    _execution_errors: bool = True,
+    _planning_state: bool = True,
 ) -> Any:
     if isinstance(value, dict):
+        if _planning_state and "runtime_plan" in value:
+            from platform_api.modules.runtime_gateway.application.planning import (
+                project_agent_plan,
+            )
+
+            plan = project_agent_plan(value["runtime_plan"])
+            value = {key: item for key, item in value.items() if key != "runtime_plan"}
+            if plan is not None:
+                value["agent_plan"] = plan
         if value.get("type") == "runtime_budget_notice":
             return project_budget_notice(value)
         if value.get("type") == "conversation_offloading":
@@ -381,7 +418,7 @@ def redact_runtime_private_fields(
             result["tasks"] = [
                 redact_execution_fields(task) for task in result["tasks"]
             ]
-        return {
+        public = {
             key: _offloading_status(item)
             if key == "conversation_offloading" and type(item) is not bool
             else redact_runtime_private_fields(
@@ -402,10 +439,15 @@ def redact_runtime_private_fields(
                 },
                 _execution_errors=_execution_errors
                 and key not in {"content", "artifact", "metadata", "values", "result"},
+                _planning_state=_planning_state
+                and key
+                not in {"messages", "content", "artifact", "args", "additional_kwargs"},
             )
             for key, item in result.items()
             if not (
                 str(key).startswith("_runtime_")
+                or _planning_state
+                and key in {"plan_execution_id", "plan_bootstrap_required"}
                 or key
                 in {
                     "__graphharbor_run_budget",
@@ -434,10 +476,20 @@ def redact_runtime_private_fields(
                 }
             )
         }
+        if _planning_state:
+            from platform_api.modules.runtime_gateway.application.planning import (
+                mark_plan_review,
+            )
+
+            return mark_plan_review(public)
+        return public
     if isinstance(value, list):
         return [
             redact_runtime_private_fields(
-                item, _resource=_resource, _execution_errors=_execution_errors
+                item,
+                _resource=_resource,
+                _execution_errors=_execution_errors,
+                _planning_state=_planning_state,
             )
             for item in value
         ]

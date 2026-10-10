@@ -219,9 +219,24 @@ const displayTitle = computed(() => {
   ) {
     return "制作演示文稿 (PPTX)";
   }
+  if (props.tool.name === "enter_plan_mode") {
+    return "启用规划模式";
+  }
+  if (props.tool.name === "save_plan") {
+    return "保存执行计划草案";
+  }
+  if (props.tool.name === "submit_plan") {
+    return "提交执行计划审批";
+  }
   return props.tool.name;
 });
 const displaySubtitle = computed(() => {
+  if (
+    (props.tool.name === "save_plan" || props.tool.name === "submit_plan") &&
+    typeof input.value.title === "string"
+  ) {
+    return ` · ${input.value.title}`;
+  }
   if (props.tool.name === "write_todos") {
     return todoItems.value.length ? ` · 共 ${todoItems.value.length} 项` : "";
   }

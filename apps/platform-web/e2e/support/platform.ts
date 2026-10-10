@@ -6,7 +6,9 @@ export const platformUrl =
   process.env.PLATFORM_TEST_URL ?? "http://127.0.0.1:2142";
 
 export function testCredentials() {
-  const envPath = resolve(process.cwd(), "../platform-api/.env");
+  const envPath =
+    process.env.PLATFORM_TEST_ENV_FILE ??
+    resolve(process.cwd(), "../platform-api/.env");
   const settings = existsSync(envPath)
     ? parseEnv(readFileSync(envPath, "utf8"))
     : {};
@@ -96,9 +98,18 @@ export async function createPlatformFixture(graphId = "workflow_demo") {
       (item) =>
         item.enabled &&
         item.credential_configured &&
-        !item.model?.includes("broken") &&
-        !item.display_name?.includes("模拟"),
+        (item.model?.toLowerCase() === "deepseek-v4-flash" ||
+          item.display_name?.toLowerCase().includes("deepseek")),
     );
+    if (!model) {
+      model = models.models.find(
+        (item) =>
+          item.enabled &&
+          item.credential_configured &&
+          !item.model?.includes("broken") &&
+          !item.display_name?.includes("模拟"),
+      );
+    }
     if (!model && process.env.Q5_QUEUE_FIXTURE === "1") {
       model = await request("/api/runtime/models", "POST", {
         provider: "openai",
@@ -112,7 +123,11 @@ export async function createPlatformFixture(graphId = "workflow_demo") {
     }
     if (!model && process.env.PLATFORM_TEST_SEED_MODEL === "1") {
       const runtime = parseEnv(
-        readFileSync(resolve(process.cwd(), "../runtime-service/.env"), "utf8"),
+        readFileSync(
+          process.env.RUNTIME_TEST_ENV_FILE ??
+            resolve(process.cwd(), "../runtime-service/.env"),
+          "utf8",
+        ),
       );
       if (!runtime.DEEPSEEK_PROXY_URL || !runtime.DEEPSEEK_PROXY_API_KEY)
         throw new Error("Test model credentials are not configured");

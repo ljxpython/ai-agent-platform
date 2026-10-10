@@ -30,8 +30,7 @@
 | Dear Agent 独立成果页闭环 | 已完成：后端与前端核心对接全链路完成。前端实现独立 useArtifacts、右侧滑出抽屉（Drawer）、download 拦截、Axios Blob 错误解包，27 项单元测试及生产构建打包验证通过 | [分层规划](projects/20260920-dear-agent-artifacts-alignment/README.md) · [前端交接](projects/20260920-dear-agent-artifacts-alignment/04-frontend-handoff.md) |
 | Dear Agent Skills 页面改进与治理简化 | 前后端最高/已完成：无会话技能目录与详情、用户上传/更新/启停/删除、执行快照恢复、独立Alembic；前端组件重构、详情抽屉与单测全量通过，待浏览器联合演练 | [进度总览](projects/20260919-skills-page-improvement/README.md) |
 | 正式聊天 v2（LangChain 流式运行时、线程续接、工具调用与中断展示） | 已重写：官方 SDK 会话、按轮渲染、多 ID 审批、历史分支及移动工作区；最终验收见项目记录 | [Chat 重构](projects/20260910-platform-web-refactor/04-chat-session-and-interaction.md) |
-| 运行级调试配置 | 已完成：公开 Context/config 白名单、schema 参数校验；不保留旧提示词覆盖 | [接入契约](projects/20260910-platform-web-refactor/03-api-contracts.md) |
-| 控制面核心页面（overview/projects/users/agents/me/security/audit） | 已迁移：Agent/模型新契约、统一权限导航、列表四态；全路由浏览器验收见项目记录 | [现状与目标架构](projects/20260910-platform-web-refactor/02-architecture-and-ui.md) |
+| Agent 先规划开关与计划审阅 | 已完成：实装输入框“+”号菜单展开与先规划选项、单次 Run 胶囊徽章即时复位、两级 capability 校验、PlanReview 双重视图、Markdown XSS 伪协议安全清洗、待审态主输入框安全锁定与 409 状态自愈；Vitest 6/6 passed、vue-tsc 0 errors、ESLint 0 errors、Vite build 全绿；Playwright + Chromium 真实大模型 E2E 闭环全部通过并生成 7 张高精度截图 | [项目入口](projects/20261008-agent-plan-mode-governance/README.md) · [前端实施记录](projects/20261008-agent-plan-mode-governance/implementation/04-frontend-implementation.md) |
 | 旧 Chat 视觉与统一 Agent 入口 | 部分完成：Agent 归一已交付；旧工作台组件已直接取回；37 项定向测试及三尺寸回归通过；摘要数据与部分专项验收仍待补齐 | [09 还原功能核对](projects/20260910-platform-web-refactor/09-chat-workbench-restoration-audit.md) |
 | Platform Web 架构与 Agent Chat 重构 | 01—07 非后置范围已完成；旧展示组件已取回，专项验收边界见 09；双浏览器入队/完整文件与 Skills API/PTY 后置 | [项目概览](projects/20260910-platform-web-refactor/README.md) |
 | 运行中补充消息（多端入口、Runtime 队列与 Middleware） | 已实现：根模型注入、持久回执/恢复、权限复核与 Web 重试；消息内部原生Run回查委托源码修复及本机PostgreSQL测试通过，现役跨服务链路未验证；前端排队守卫和横幅状态修复已落地，双浏览器后置 | [队列与消费设计](projects/20260910-platform-web-refactor/07-message-queue-and-middleware.md) · [内部Run回查修复](projects/20260927-message-run-read-delegation/README.md) |
@@ -85,6 +84,7 @@
 | 重构后文档体系重建 | done：10篇活文档、28文件归档与引用修复，配置/契约核对及33项相关测试通过 | [文档工程](projects/20260910-platform-api-docs-rebuild/README.md) |
 | 控制面边界与代码简化重构 | 本阶段后端 done：事务/目录、Docker Showcase、真实备份恢复、混合负载及 20 条公开接口矩阵已验收；前端、整套容器部署与完整 Server 等价性 deferred | `docs/projects/20260910-platform-api-refactor/` |
 | 运行时网关（受管模型/工具/prompt 契约下发） | 已完成 | `apps/platform-api/docs/standards/runtime-gateway-interface-standard.md` |
+| Agent 原生计划审批与安全网关 | 已完成：原生 ACL/input.respond/RunRequests、Context v6执行链、私有投影/fork/cron及损坏态防绕过；末轮85项及6 subtests、并发/重启/封锁恢复通过，Playwright 真实模型全链路自动化闭环验证通过 | [整体方案](projects/20261008-agent-plan-mode-governance/plan.md) |
 | Agent 回答后推荐问题网关 | 部分完成：配置查询、Thread ACL/模型策略校验、`suggestions-generate` delegation、Runtime best-effort 降级已实现；前端接入与真实 E2E 待完成 | [项目文档](projects/20261005-agent-followup-suggestions/README.md) |
 | 中转站维度模型管理、对话高级模型选择器 | 已完成：支持端点防重与单项目默认模型互斥 | [模型防重与单默认策略](../apps/platform-api/docs/changes/20260915-model-uniqueness-and-single-default-policy.md) |
 | 运行时网关 Checkpoint 分叉白名单与恢复透传 | 已完成：支持 checkpoint_id/checkpoint_ns 校验与提级转发，拦截恶意字段 | [网关分支支持](../apps/platform-api/docs/changes/20260913-gateway-checkpoint-configurable-whitelist.md) |
@@ -121,6 +121,7 @@
 | Runtime Service 图片编辑（图生图 `edit_image`）与内容安全审核友好提示 | 已完成：支持基于已有图片执行图像编辑/风格转换，接入 HITL 人工审批，结构化捕获并友好提示 `content_policy_violation` | [图片编辑能力](../apps/runtime-service/docs/changes/20260913-image-editing-capability.md) |
 | 图像识别分析工具（`analyze_image`）支持 DeepSeek 官方识图与安全错误摘要 | 已完成：支持 DeepSeek 官方多模态识图（`deepseek-flash`）与通用 `VISION_*` 配置；provider/HTTP 失败对外使用稳定安全摘要，底层敏感正文不进入公开工具消息 | [变更记录](../apps/runtime-service/docs/changes/20261003-vision-deepseek-support.md) · [容错专项](projects/20261006-agent-tool-error-resilience/README.md) |
 | Runtime 鉴权、middleware 层、reference agent | 已完成 | `apps/runtime-service/docs/knowledge/28-runtime-refactor-development-plan.md` |
+| Agent 通用 Plan Mode 工具权限状态机 | 已完成：公共middleware/三个工具、双门禁、四图主子接线及memory写入跳过；末轮82项、DearFlow/Reference真实模型后端链与性能通过，原四档模式和HITL保持；配合前端 Playwright 真实大模型全链路自动化测试验收闭环 | [源码对照](projects/20261008-agent-plan-mode-governance/reference-analysis.md) · [方案与任务](projects/20261008-agent-plan-mode-governance/README.md) |
 | Runtime Service 开发文档体系（资料导航、开发范式、介入与验证） | 已完成：正式指南位于 `docs/standards/`，以 Showcase Demo 和 tests 为可执行范式 | `apps/runtime-service/docs/standards/README.md` |
 | showcase_demo — 教学智能体（工具调用/HITL/子智能体/Todo/Sandbox/Skills） | 部分完成：Docker 正式执行与 LocalShellBackend 本地开发模式均支持；前端后置 | `docs/projects/20260908-showcase-demo/`、`docs/projects/20260917-showcase-local-sandbox/` |
 
@@ -128,6 +129,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Worktree 本地联调资源隔离 | 已完成：首次随机登记端口并稳定复用，独立配置/数据/进程，共享依赖缓存及 E2E 地址接线；继承 app 配置、默认 admin/admin123、首次只读复制基础数据并重加密模型凭据，排除历史/令牌/定时任务；三栈、真实 Worker/Workspace、浏览器登录和重启验收通过 | [规范](standards/worktree-development.md) · [专项](projects/20261010-worktree-local-stack/README.md) |
 | Agent通用运行取消与中断闭环 | 已完成：全链路闭环。后端会话停止、回执详情/分页、幂等重试、恢复与审计已闭环；前端完成会话级停止控制、RunStopReportBanner/Details 状态反馈与报告抽屉、队列刷新、多端隔离与防竞态；Playwright E2E/响应式与单元测试全绿 | [方案与任务](projects/20261007-agent-run-cancellation/README.md) · [前端交接](projects/20261007-agent-run-cancellation/frontend-handoff.md) |
 | 跨服务规范治理专项群 | 四专项仅验收新Web+新API+当前锁定Runtime/GraphHarbor，不设置旧版兼容或混用测试；错误响应与追踪本期Final已完成，SSE/JWT按各专项状态推进；AI路由按仓库级文档小改动处理 | [总入口](projects/20260922-cross-service-governance/README.md) |
 | Agent 通用 Token/Cost 跟踪治理 | 非前端 done：开发/Final/隔离真实链路与冻结契约已交付；既有全量失败已记录，前端同事接续，整项目 partial，未生产部署 | [项目入口](projects/20261007-agent-usage-cost-governance/README.md) |

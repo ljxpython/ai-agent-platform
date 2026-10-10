@@ -32,6 +32,7 @@ from runtime_service.middlewares import (
     ModelErrorMiddleware,
     ModelResilienceMiddleware,
     ModelResilienceSummarizationMiddleware,
+    PlanModeMiddleware,
     RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
     context_management_enabled,
@@ -140,7 +141,7 @@ _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
     system_prompt=SYSTEM_PROMPT,
     prompt_version="dearflow-research-p2",
-    max_tokens=4096,
+    max_tokens=None,
     optional_tool_names=(*DEAR_TOOLS, *configured_mcp_names()),
 )
 _EXECUTION_KEYS = {
@@ -333,6 +334,31 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             )[0]
         )
 
+    filesystem = FilesystemMiddleware(
+        backend=backend,
+        tools=list(WORK_TOOLS),
+        _permissions=PERMISSIONS,
+        max_execute_timeout=60,
+    )
+    child_filesystem = FilesystemMiddleware(
+        backend=backend,
+        tools=["read_file"],
+        _permissions=PERMISSIONS,
+    )
+    todos = TodoListMiddleware()
+    memory_tools = build_memory_tools() if memory_enabled else []
+    skill_tools = build_skill_tools(workspace, auxiliary_model)
+    readonly_tools = [
+        request_information,
+        *research_tools,
+        github_tool,
+        arxiv_tool,
+        *(t for t in filesystem.tools if t.name in {"ls", "read_file", "glob", "grep"}),
+        *todos.tools,
+        *(t for t in memory_tools if t.name in MEMORY_READ_TOOLS),
+        *(t for t in skill_tools if t.name in SKILL_READ_TOOLS),
+    ]
+
     def middleware(tool_names: Sequence[str], *, child=False, tail=()):
         metadata = {**startup.metadata, "scope": "subagent" if child else "primary"}
         env_run_tool = _get_env_limit("AGENT_TOOL_CALL_LIMIT_PER_RUN", -1)
@@ -390,6 +416,10 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 base_model=model,
                 model_builder=model_builder,
                 tool_names=tool_names,
+            ),
+            PlanModeMiddleware(
+                [*research_tools, *child_filesystem.tools] if child else readonly_tools,
+                child=child,
             ),
             *offloading,
             *([MaintenanceSafeToolCallsMiddleware()] if offloading else []),
@@ -464,8 +494,8 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 *chart_tools,
                 *media_tools,
                 *mcp_tools,
-                *(build_memory_tools() if memory_enabled else []),
-                *build_skill_tools(workspace, auxiliary_model),
+                *memory_tools,
+                *skill_tools,
                 build_deployment_tool(workspace),
             ],
             backend=backend,
@@ -478,11 +508,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 researcher(
                     research_tools if mode.delegation else [],
                     [
-                        FilesystemMiddleware(
-                            backend=backend,
-                            tools=["read_file"],
-                            _permissions=PERMISSIONS,
-                        ),
+                        child_filesystem,
                         *middleware(
                             available & {"read_file", "search_web", "fetch_page"}
                             if mode.delegation
@@ -496,16 +522,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 ExecutionSkillsMiddleware(
                     workspace, backend, custom_enabled=governance
                 ),
-                FilesystemMiddleware(
-                    backend=backend,
-                    tools=list(WORK_TOOLS),
-                    _permissions=PERMISSIONS,
-                    max_execute_timeout=60,
-                ),
+                filesystem,
                 *middleware(
                     available,
                     tail=[
-                        *([TodoListMiddleware()] if mode.planning else []),
+                        *([todos] if mode.planning else []),
                         ToolCallLimitMiddleware(
                             tool_name="task",
                             run_limit=10,

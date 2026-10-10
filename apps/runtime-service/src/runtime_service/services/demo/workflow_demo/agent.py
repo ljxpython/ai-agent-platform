@@ -15,6 +15,8 @@ from runtime_service.middlewares import (
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
     ModelResilienceMiddleware,
+    PlanModeMiddleware,
+    RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
     resolve_wrapup_after_seconds,
 )
@@ -175,11 +177,28 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 **({"max_retries": 0} if bundle.policy.enabled else {}),
             )
             fallback_model = build_fallback_model(resolved, bundle)
+
+            def model_builder(candidate):
+                return injected or build_model(
+                    candidate,
+                    connection=bundle.primary,
+                    **({"max_retries": 0} if bundle.policy.enabled else {}),
+                )
+
         return create_agent(
             model=model,
             tools=[read_reference],
             system_prompt=_DEFAULTS.system_prompt,
             middleware=[
+                RuntimeConfigMiddleware(
+                    principal=facts.principal,
+                    policy=facts.policy,
+                    defaults=_DEFAULTS,
+                    base_model=model,
+                    local_fallback=local,
+                    model_builder=model_builder,
+                ),
+                PlanModeMiddleware([read_reference]),
                 ExecutionBudgetMiddleware(
                     run_limit=10,
                     exit_behavior="end",
@@ -214,6 +233,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             ],
             context_schema=RuntimeContext,
             name="workflow_demo_model",
+            checkpointer=True,
         )
 
     bound_config = dict(config)

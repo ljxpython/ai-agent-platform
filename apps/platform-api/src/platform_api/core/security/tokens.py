@@ -365,7 +365,7 @@ def _runtime_names(values: Sequence[str], field: str) -> list[str]:
 
 def empty_runtime_context_hash() -> str:
     payload = {
-        "schema": "runtime-context/v5",
+        "schema": "runtime-context/v6",
         "model_id": None,
         "temperature": None,
         "max_tokens": None,
@@ -373,6 +373,8 @@ def empty_runtime_context_hash() -> str:
         "execution_mode": None,
         "access_policy": None,
         "offload_conversation": False,
+        "plan_mode": False,
+        "plan_execution_id": None,
     }
     encoded = json.dumps(
         payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")

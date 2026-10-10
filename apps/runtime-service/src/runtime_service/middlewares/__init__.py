@@ -19,6 +19,7 @@ from runtime_service.middlewares.model_resilience import (
     ModelResilienceMiddleware,
     ModelResilienceSummarizationMiddleware,
 )
+from runtime_service.middlewares.plan_mode import PlanModeMiddleware
 from runtime_service.middlewares.runtime_config import (
     RuntimeConfigMiddleware,
     sanitize_tool_call_messages,
@@ -29,6 +30,7 @@ from runtime_service.middlewares.timeout_wrapup import (
 )
 
 __all__ = [
+    "PlanModeMiddleware",
     "ExecutionBudgetMiddleware",
     "TimeoutWrapupMiddleware",
     "resolve_wrapup_after_seconds",

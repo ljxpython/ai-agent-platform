@@ -1,84 +1,100 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import BaseButton from '@/components/base/BaseButton.vue'
-import BaseDialog from '@/components/base/BaseDialog.vue'
-import BaseSelect from '@/components/base/BaseSelect.vue'
-import type { RuntimeModelItem } from '@/types/management'
+import { computed } from "vue";
+import BaseButton from "@/components/base/BaseButton.vue";
+import BaseDialog from "@/components/base/BaseDialog.vue";
+import BaseSelect from "@/components/base/BaseSelect.vue";
+import type { RuntimeModelItem } from "@/types/management";
 
-export type ExecutionMode = 'flash' | 'standard' | 'pro' | 'ultra'
+export type ExecutionMode = "flash" | "standard" | "pro" | "ultra";
 export type ChatRunOptions = {
-  modelId: string
-  temperature: string
-  maxTokens: string
-  recursionLimit?: string
-  executionMode?: ExecutionMode
-}
+  modelId: string;
+  temperature: string;
+  maxTokens: string;
+  recursionLimit?: string;
+  executionMode?: ExecutionMode;
+  planMode?: boolean;
+};
 
 const props = withDefaults(
   defineProps<{
-    show: boolean
-    draftRunOptions: ChatRunOptions
-    runtimeModels: RuntimeModelItem[]
-    error?: string
-    showExecutionMode?: boolean
-    modeDisabled?: boolean
+    show: boolean;
+    draftRunOptions: ChatRunOptions;
+    runtimeModels: RuntimeModelItem[];
+    error?: string;
+    showExecutionMode?: boolean;
+    modeDisabled?: boolean;
+    planModeSupported?: boolean;
   }>(),
   {
     showExecutionMode: false,
-    modeDisabled: false
-  }
-)
+    modeDisabled: false,
+    planModeSupported: false,
+  },
+);
 
 const emit = defineEmits<{
-  close: []
-  'update:model-id': [value: string]
-  'update:temperature': [value: string]
-  'update:max-tokens': [value: string]
-  'update:recursion-limit': [value: string]
-  'update:execution-mode': [value: ExecutionMode]
-  restore: []
-  apply: []
-}>()
+  close: [];
+  "update:model-id": [value: string];
+  "update:temperature": [value: string];
+  "update:max-tokens": [value: string];
+  "update:recursion-limit": [value: string];
+  "update:execution-mode": [value: ExecutionMode];
+  "update:plan-mode": [value: boolean];
+  restore: [];
+  apply: [];
+}>();
 
 function getInputValue(event: Event) {
-  return (event.target as HTMLInputElement | HTMLSelectElement | null)?.value || ''
+  return (
+    (event.target as HTMLInputElement | HTMLSelectElement | null)?.value || ""
+  );
 }
 
 const hasExecutionMode = computed(
-  () => props.showExecutionMode || props.draftRunOptions.executionMode !== undefined
-)
-const currentMode = computed<ExecutionMode>(() => props.draftRunOptions.executionMode || 'standard')
+  () =>
+    props.showExecutionMode ||
+    props.draftRunOptions.executionMode !== undefined,
+);
+const currentMode = computed<ExecutionMode>(
+  () => props.draftRunOptions.executionMode || "standard",
+);
 
-const modes: Array<{ mode: ExecutionMode; title: string; badge: string; desc: string; note: string }> = [
+const modes: Array<{
+  mode: ExecutionMode;
+  title: string;
+  badge: string;
+  desc: string;
+  note: string;
+}> = [
   {
-    mode: 'standard',
-    title: 'Standard 标准模式',
-    badge: '默认推荐',
-    desc: '通用 Agent 规划与执行，平衡深度与响应时延。',
-    note: '通用步数'
+    mode: "standard",
+    title: "Standard 标准模式",
+    badge: "默认推荐",
+    desc: "通用 Agent 规划与执行，平衡深度与响应时延。",
+    note: "通用步数",
   },
   {
-    mode: 'flash',
-    title: 'Flash 极速模式',
-    badge: '低时延',
-    desc: '极简快速响应，减少思考开销。',
-    note: '若模型不支持推理控制则保持默认'
+    mode: "flash",
+    title: "Flash 极速模式",
+    badge: "低时延",
+    desc: "极简快速响应，减少思考开销。",
+    note: "若模型不支持推理控制则保持默认",
   },
   {
-    mode: 'pro',
-    title: 'Pro 深度模式',
-    badge: '规划与研究',
-    desc: '开启多步骤规划、深度搜索、正文抓取与交叉核实。',
-    note: '有界预算 100 步'
+    mode: "pro",
+    title: "Pro 深度模式",
+    badge: "规划与研究",
+    desc: "开启多步骤规划、深度搜索、正文抓取与交叉核实。",
+    note: "有界预算 100 步",
   },
   {
-    mode: 'ultra',
-    title: 'Ultra 超级委派',
-    badge: '子 Agent 委派',
-    desc: '支持向多子任务 Agent 委派复杂分析与研究。',
-    note: '有界预算 100 步'
-  }
-]
+    mode: "ultra",
+    title: "Ultra 超级委派",
+    badge: "子 Agent 委派",
+    desc: "支持向多子任务 Agent 委派复杂分析与研究。",
+    note: "有界预算 100 步",
+  },
+];
 </script>
 
 <template>
@@ -95,8 +111,47 @@ const modes: Array<{ mode: ExecutionMode; title: string; badge: string; desc: st
       >
         {{ error }}
       </p>
-      <div class="pw-card-highlight px-4 py-3 text-xs leading-6 text-primary-900 dark:text-primary-100">
+      <div
+        class="pw-card-highlight px-4 py-3 text-xs leading-6 text-primary-900 dark:text-primary-100"
+      >
         这里的设置只影响后续发送、继续执行或新建出来的下一次运行，不会回改已经开始的这轮会话。
+      </div>
+
+      <!-- 先规划模式开关（若支持） -->
+      <div
+        v-if="planModeSupported"
+        class="rounded-xl border border-gray-200 p-3.5 bg-gray-50/50 dark:border-dark-700 dark:bg-dark-800/40 transition-colors"
+      >
+        <label class="flex items-start justify-between cursor-pointer gap-3">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-gray-900 dark:text-white"
+                >先规划 (Plan Mode)</span
+              >
+              <span
+                class="rounded bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300 px-1.5 py-0.5 text-[10px] font-medium"
+                >单次生效</span
+              >
+            </div>
+            <p
+              class="mt-1 text-[11px] leading-4 text-gray-500 dark:text-dark-400"
+            >
+              开启后 Agent
+              将先行调研并拟定执行计划，待你审阅批准后再执行真实工具。提交后草稿自动复位。
+            </p>
+          </div>
+          <input
+            type="checkbox"
+            :checked="Boolean(props.draftRunOptions.planMode)"
+            class="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500 dark:border-dark-600 dark:bg-dark-700 cursor-pointer"
+            @change="
+              emit(
+                'update:plan-mode',
+                ($event.target as HTMLInputElement).checked,
+              )
+            "
+          />
+        </label>
       </div>
 
       <!-- 执行模式选择区（按需开启） -->
@@ -119,34 +174,54 @@ const modes: Array<{ mode: ExecutionMode; title: string; badge: string; desc: st
               currentMode === item.mode
                 ? 'border-primary-500 bg-primary-50/70 ring-1 ring-primary-500/30 dark:bg-primary-950/40 dark:border-primary-500'
                 : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/60 dark:border-dark-700 dark:hover:bg-dark-800/50',
-              modeDisabled ? 'opacity-60 cursor-not-allowed pointer-events-none' : ''
+              modeDisabled
+                ? 'opacity-60 cursor-not-allowed pointer-events-none'
+                : '',
             ]"
             role="button"
             :aria-pressed="currentMode === item.mode"
             tabindex="0"
             @click="!modeDisabled && emit('update:execution-mode', item.mode)"
-            @keydown.enter.prevent="!modeDisabled && emit('update:execution-mode', item.mode)"
-            @keydown.space.prevent="!modeDisabled && emit('update:execution-mode', item.mode)"
+            @keydown.enter.prevent="
+              !modeDisabled && emit('update:execution-mode', item.mode)
+            "
+            @keydown.space.prevent="
+              !modeDisabled && emit('update:execution-mode', item.mode)
+            "
           >
             <div>
               <div class="flex items-center justify-between gap-1">
-                <span class="text-xs font-semibold text-gray-900 dark:text-white">
+                <span
+                  class="text-xs font-semibold text-gray-900 dark:text-white"
+                >
                   {{ item.title }}
                 </span>
                 <span
                   class="rounded px-1.5 py-0.5 text-[10px] font-medium"
-                  :class="currentMode === item.mode ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-dark-300'"
+                  :class="
+                    currentMode === item.mode
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-gray-100 text-gray-600 dark:bg-dark-700 dark:text-dark-300'
+                  "
                 >
                   {{ item.badge }}
                 </span>
               </div>
-              <p class="mt-1 text-[11px] leading-4 text-gray-500 dark:text-dark-400">
+              <p
+                class="mt-1 text-[11px] leading-4 text-gray-500 dark:text-dark-400"
+              >
                 {{ item.desc }}
               </p>
             </div>
-            <div class="mt-2.5 pt-2 border-t border-gray-100 dark:border-dark-800 text-[10px] text-gray-400 dark:text-dark-400 font-mono flex items-center justify-between">
+            <div
+              class="mt-2.5 pt-2 border-t border-gray-100 dark:border-dark-800 text-[10px] text-gray-400 dark:text-dark-400 font-mono flex items-center justify-between"
+            >
               <span>{{ item.note }}</span>
-              <span v-if="currentMode === item.mode" class="text-primary-600 dark:text-primary-400 font-semibold">✓ 已选</span>
+              <span
+                v-if="currentMode === item.mode"
+                class="text-primary-600 dark:text-primary-400 font-semibold"
+                >✓ 已选</span
+              >
             </div>
           </div>
         </div>
@@ -154,11 +229,9 @@ const modes: Array<{ mode: ExecutionMode; title: string; badge: string; desc: st
 
       <div v-else class="grid gap-4 md:grid-cols-2">
         <div class="pw-panel-muted p-4">
-          <div class="text-xs text-gray-400 dark:text-dark-400">
-            当前模型
-          </div>
+          <div class="text-xs text-gray-400 dark:text-dark-400">当前模型</div>
           <div class="mt-2 text-sm font-semibold text-gray-900 dark:text-white">
-            {{ props.draftRunOptions.modelId || '默认模型' }}
+            {{ props.draftRunOptions.modelId || "默认模型" }}
           </div>
         </div>
       </div>
@@ -169,10 +242,10 @@ const modes: Array<{ mode: ExecutionMode; title: string; badge: string; desc: st
           :model-value="props.draftRunOptions.modelId"
           :options="[
             { value: '', label: '使用默认模型' },
-            ...props.runtimeModels.map(item => ({
+            ...props.runtimeModels.map((item) => ({
               value: item.id,
-              label: `${item.display_name} (${item.model})`
-            }))
+              label: `${item.display_name} (${item.model})`,
+            })),
           ]"
           placeholder="使用默认模型"
           @update:model-value="emit('update:model-id', String($event))"
@@ -187,7 +260,7 @@ const modes: Array<{ mode: ExecutionMode; title: string; badge: string; desc: st
             class="pw-input"
             placeholder="0 - 2，留空走默认"
             @input="emit('update:temperature', getInputValue($event))"
-          >
+          />
         </label>
 
         <label class="block">
@@ -197,7 +270,7 @@ const modes: Array<{ mode: ExecutionMode; title: string; badge: string; desc: st
             class="pw-input"
             placeholder="正整数，留空走默认"
             @input="emit('update:max-tokens', getInputValue($event))"
-          >
+          />
         </label>
       </div>
 
@@ -211,29 +284,20 @@ const modes: Array<{ mode: ExecutionMode; title: string; badge: string; desc: st
           class="pw-input"
           placeholder="默认 1000"
           @input="emit('update:recursion-limit', getInputValue($event))"
-        >
+        />
         <span class="mt-1 block text-xs text-gray-400 dark:text-dark-400">
-          控制单次运行允许的最大图执行步数（1~1000）。复杂多步骤 Agent 默认提供 1000 步充裕预算。
+          控制单次运行允许的最大图执行步数（1~1000）。复杂多步骤 Agent 默认提供
+          1000 步充裕预算。
         </span>
       </label>
     </div>
 
     <template #footer>
-      <BaseButton
-        variant="secondary"
-        @click="emit('restore')"
-      >
+      <BaseButton variant="secondary" @click="emit('restore')">
         恢复初始上下文
       </BaseButton>
-      <BaseButton
-        variant="secondary"
-        @click="emit('close')"
-      >
-        取消
-      </BaseButton>
-      <BaseButton @click="emit('apply')">
-        应用到当前会话
-      </BaseButton>
+      <BaseButton variant="secondary" @click="emit('close')"> 取消 </BaseButton>
+      <BaseButton @click="emit('apply')"> 应用到当前会话 </BaseButton>
     </template>
   </BaseDialog>
 </template>

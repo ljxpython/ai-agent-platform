@@ -10,6 +10,7 @@ export interface WorkspaceCapabilities {
   artifacts?: string[];
   terminal?: boolean;
   conversation_offloading?: boolean;
+  plan_mode?: boolean;
 }
 
 export interface WorkspaceEntry {

@@ -171,7 +171,7 @@ def build_graph(
         result = await (
             await model_agent({**state, **budget_update}, writer=write_notice)
         ).ainvoke(  # type: ignore[attr-defined]
-            {"messages": messages},
+            {"messages": messages, "runtime_plan": state.get("runtime_plan")},
             config=invoke_config,
             # The outer GraphHarbor runtime may omit Context when entering a
             # nested graph. Keep the signed, resolved context for the inner
@@ -186,7 +186,12 @@ def build_graph(
             if len(result_messages) > len(messages)
             else [response_message]
         )
-        return {**budget_update, "response": response, "messages": new_messages}
+        return {
+            **budget_update,
+            "response": response,
+            "messages": new_messages,
+            "runtime_plan": result.get("runtime_plan"),
+        }
 
     def after_prepare(state: WorkflowState) -> Literal["confirm", "route"]:
         return "confirm" if state.get("requires_confirmation", False) else "route"

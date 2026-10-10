@@ -26,6 +26,8 @@ class RuntimeContext:
     execution_mode: str | None = None
     access_policy: str | None = None
     offload_conversation: bool = False
+    plan_mode: bool = False
+    plan_execution_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

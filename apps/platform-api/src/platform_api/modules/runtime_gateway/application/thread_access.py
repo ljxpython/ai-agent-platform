@@ -75,7 +75,8 @@ def initial_metadata(actor: ActorContext, metadata: dict) -> dict:
     result = {
         key: value
         for key, value in metadata.items()
-        if key not in ACL_KEYS and key not in {"sandbox_id", "workspace_id"}
+        if key not in ACL_KEYS
+        and key not in {"sandbox_id", "workspace_id", "plan_bootstrap_required"}
     }
     personal = actor.principal_type == "user" and bool(actor.user_id)
     result.update(
