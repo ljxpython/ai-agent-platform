@@ -1,17 +1,14 @@
-import { computed, ref, shallowRef, watch, type Ref } from 'vue';
-import type { ArtifactRef } from '@/types/workspace';
+import { computed, ref, shallowRef, watch, type Ref } from "vue";
+import type { ArtifactRef } from "@/types/workspace";
 import {
   getArtifacts,
   getWorkspaceContentBlob,
   getWorkspacePreview,
   triggerBlobDownload,
   type WorkspacePreviewResult,
-} from '@/services/threads/workspace.service';
+} from "@/services/threads/workspace.service";
 
-export function useArtifacts(
-  projectId: Ref<string>,
-  threadId: Ref<string>,
-) {
+export function useArtifacts(projectId: Ref<string>, threadId: Ref<string>) {
   const artifacts = ref<ArtifactRef[]>([]);
   const cursor = ref<string | null>(null);
   const loading = ref(false);
@@ -20,7 +17,7 @@ export function useArtifacts(
 
   // 选中项与预览状态
   const selectedArtifact = ref<ArtifactRef | null>(null);
-  const selectedPath = computed(() => selectedArtifact.value?.path || '');
+  const selectedPath = computed(() => selectedArtifact.value?.path || "");
   const previewResult = shallowRef<WorkspacePreviewResult | null>(null);
   const loadingPreview = ref(false);
   const previewError = ref<string | null>(null);
@@ -70,10 +67,10 @@ export function useArtifacts(
 
       const e = err as { code?: string; message?: string };
       // 409 workspace_directory_changed: 游标失效，自动重试首页一次
-      if (e.code === 'workspace_directory_changed' && !isRetry) {
+      if (e.code === "workspace_directory_changed" && !isRetry) {
         return await loadInitial(true, true);
       }
-      error.value = e.message || '加载成果列表失败';
+      error.value = e.message || "加载成果列表失败";
       artifacts.value = [];
       cursor.value = null;
     } finally {
@@ -94,22 +91,23 @@ export function useArtifacts(
     error.value = null;
 
     try {
-      const page = await getArtifacts(
-        projectId.value,
-        threadId.value,
-        { limit: 100, cursor: cursor.value },
-      );
+      const page = await getArtifacts(projectId.value, threadId.value, {
+        limit: 100,
+        cursor: cursor.value,
+      });
 
       if (thisGen !== currentGeneration) return;
 
       const existingPaths = new Set(artifacts.value.map((item) => item.path));
-      const newItems = page.items.filter((item) => !existingPaths.has(item.path));
+      const newItems = page.items.filter(
+        (item) => !existingPaths.has(item.path),
+      );
       artifacts.value = [...artifacts.value, ...newItems];
       cursor.value = page.next_cursor;
     } catch (err: unknown) {
       if (thisGen !== currentGeneration) return;
       const e = err as { message?: string };
-      error.value = e.message || '加载更多成果失败';
+      error.value = e.message || "加载更多成果失败";
     } finally {
       if (thisGen === currentGeneration) {
         loading.value = false;
@@ -123,11 +121,13 @@ export function useArtifacts(
     await loadInitial(true);
 
     if (prevPath) {
-      const stillExists = artifacts.value.find((item) => item.path === prevPath);
+      const stillExists = artifacts.value.find(
+        (item) => item.path === prevPath,
+      );
       if (stillExists) {
         selectedArtifact.value = stillExists;
         // 如果不是 download 类型，重新拉取最新预览
-        if (stillExists.preview_kind !== 'download') {
+        if (stillExists.preview_kind !== "download") {
           void fetchPreview(stillExists);
         }
       } else {
@@ -163,8 +163,15 @@ export function useArtifacts(
         thisSeq === previewSequence &&
         selectedArtifact.value?.path === item.path
       ) {
-        const e = err as { message?: string };
-        previewError.value = e.message || '加载文件预览失败';
+        const e = err as { message?: string; code?: string };
+        const rawMessage = e.message || "加载文件预览失败";
+        const isUnsupported =
+          e.code === "workspace_preview_unsupported" ||
+          rawMessage.includes("Workspace preview unsupported") ||
+          rawMessage.includes("workspace_preview_unsupported");
+        previewError.value = isUnsupported
+          ? "该文件类型不支持在线预览，请下载查看"
+          : rawMessage;
       }
     } finally {
       if (
@@ -183,9 +190,9 @@ export function useArtifacts(
     previewError.value = null;
 
     // 核心决策：若已知为 download 类型，直接装配下载卡片，严禁发起 preview HTTP 请求避免 415 报错
-    if (item.preview_kind === 'download') {
+    if (item.preview_kind === "download") {
       previewResult.value = {
-        kind: 'download',
+        kind: "download",
         downloadOnly: true,
       };
       loadingPreview.value = false;
@@ -218,7 +225,7 @@ export function useArtifacts(
       triggerBlobDownload(blob, fileName);
     } catch (err: unknown) {
       const e = err as { message?: string };
-      console.error('下载成果失败:', e.message || err);
+      console.error("下载成果失败:", e.message || err);
       throw err;
     } finally {
       downloadingPath.value = null;

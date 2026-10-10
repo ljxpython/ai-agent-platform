@@ -24,6 +24,7 @@ def test_workspace_isolation_and_portable_skills(monkeypatch, tmp_path):
     assert not first.cwd.exists()
     first.prepare()
     second.prepare()
+    assert (first.cwd / "workspace" / "work").is_dir()
     assert first.cwd != second.cwd
     first.write("/workspace/private.txt", "thread one")
     assert second.read("/workspace/private.txt").error

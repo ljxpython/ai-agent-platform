@@ -94,6 +94,9 @@ T01为共同前置；T02为每项用户旅程提供底座；T03和T07的关键�
 - **状态：** [ ] 候选范围待评审；K14/K15/K16原deferred不自动转为实施。K22真实发布属于单独明确授权的外部写动作。
 
 ### T07 任务连续性、结果核验和可靠性（4—8日）
+
+2026-10-10：本任务的“有界附件发现/上下文”切片在 [F10 通用文档读取专项](../20261010-agent-document-reading/README.md)细化；该切片的实施与验收状态只维护在[专项任务表](../20261010-agent-document-reading/tasks.md)。用户已在F10专项确认DOCX/PPTX与附件上下文方案，未实施；OCR/旧DOC/PPT/复杂版面继续后置。本T07其他可靠性事项保持原状态，不再另开第二套UploadsMiddleware。
+
 - **改动内容：** 按14第6节先补模型length/safety终止、空终态、错误/重复无进展及完成证据；这部分进入B1。之后验证并补压缩后关键要求、子任务停止原因、来源连续性与文件日志回读。继续复用官方摘要/历史工具调用修复，避免复制所有上游Middleware。
 - **代码位置：** Runtime `services/dearflow_agent/agent.py`、`prompts.py`、`middleware/`（新增业务核验模块仅在测试证明需要时）、`subagents/researcher.py`、`workspace/artifact_refs.py`；Web共用ToolResult/轨迹展示。
 - **预期结果：** 工具失败不能被最终回答当成功；引用来源可回查；未完成清单/不确定核验可见；压缩不丢来源和用户追加约束；只读附件枚举有明确预算。

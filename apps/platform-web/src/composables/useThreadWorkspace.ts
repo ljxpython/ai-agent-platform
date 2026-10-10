@@ -1,10 +1,10 @@
-import { ref, shallowRef, watch, type Ref } from 'vue';
+import { ref, shallowRef, watch, type Ref } from "vue";
 import type {
   ArtifactRef,
   PreviewKind,
   WorkspaceCapabilities,
   WorkspaceEntry,
-} from '@/types/workspace';
+} from "@/types/workspace";
 import {
   downloadWorkspaceZip,
   getArtifacts,
@@ -14,7 +14,7 @@ import {
   getWorkspaceTree,
   triggerBlobDownload,
   type WorkspacePreviewResult,
-} from '@/services/threads/workspace.service';
+} from "@/services/threads/workspace.service";
 
 export function useThreadWorkspace(
   projectId: Ref<string>,
@@ -26,7 +26,7 @@ export function useThreadWorkspace(
   // 目录树：以目录路径为 key 的缓存
   const directoryCache = ref<Map<string, WorkspaceEntry[]>>(new Map());
   const directoryLoading = ref<Map<string, boolean>>(new Map());
-  const expandedPaths = ref<Set<string>>(new Set(['/workspace']));
+  const expandedPaths = ref<Set<string>>(new Set(["/workspace"]));
 
   // 产物列表
   const artifacts = ref<ArtifactRef[]>([]);
@@ -35,7 +35,7 @@ export function useThreadWorkspace(
   const hasNewArtifactNotice = ref(false);
 
   // 当前选中预览
-  const selectedPath = ref<string>('');
+  const selectedPath = ref<string>("");
   const previewResult = shallowRef<WorkspacePreviewResult | null>(null);
   const loadingPreview = ref(false);
   const previewError = ref<string | null>(null);
@@ -67,7 +67,7 @@ export function useThreadWorkspace(
   }
 
   // 加载单层目录
-  async function loadDirectory(path: string = '/workspace') {
+  async function loadDirectory(path: string = "/workspace") {
     if (!projectId.value || !threadId.value) return;
     const currentLoading = new Map(directoryLoading.value);
     currentLoading.set(path, true);
@@ -143,10 +143,10 @@ export function useThreadWorkspace(
     // 若已知为 download 类型，直接装配下载结果，绝不请求 preview 避免 415 报错
     const knownArtifact = artifacts.value.find((a) => a.path === path);
     const kind = entryOrArtifact?.preview_kind ?? knownArtifact?.preview_kind;
-    if (kind === 'download') {
+    if (kind === "download") {
       if (selectedPath.value === path) {
         previewResult.value = {
-          kind: 'download',
+          kind: "download",
           downloadOnly: true,
         };
         loadingPreview.value = false;
@@ -166,8 +166,16 @@ export function useThreadWorkspace(
       }
     } catch (err: unknown) {
       if (selectedPath.value === path) {
-        previewError.value =
-          err instanceof Error ? err.message : '加载文件预览失败';
+        const rawMessage =
+          err instanceof Error ? err.message : "加载文件预览失败";
+        const isUnsupported =
+          (err as { code?: string })?.code ===
+            "workspace_preview_unsupported" ||
+          rawMessage.includes("Workspace preview unsupported") ||
+          rawMessage.includes("workspace_preview_unsupported");
+        previewError.value = isUnsupported
+          ? "该文件类型不支持在线预览，请下载查看"
+          : rawMessage;
       }
     } finally {
       if (selectedPath.value === path) {
@@ -188,7 +196,7 @@ export function useThreadWorkspace(
       );
       triggerBlobDownload(blob, fileName);
     } catch (err: unknown) {
-      console.error('下载文件失败:', err);
+      console.error("下载文件失败:", err);
     }
   }
 
@@ -201,7 +209,7 @@ export function useThreadWorkspace(
     try {
       await downloadWorkspaceZip(projectId.value, threadId.value);
     } catch (err: unknown) {
-      console.error('打包下载工作区文件失败:', err);
+      console.error("打包下载工作区文件失败:", err);
       throw err;
     } finally {
       downloadingArchive.value = false;
@@ -217,13 +225,14 @@ export function useThreadWorkspace(
     try {
       const oldArtifactCount = artifacts.value.length;
       // 收集所有需要刷新的目录：根目录 + 用户当前已展开的所有子目录
-      const pathsToRefresh = Array.from(new Set(['/workspace', ...expandedPaths.value]));
-      const directoryLoads = pathsToRefresh.map((dirPath) => loadDirectory(dirPath));
+      const pathsToRefresh = Array.from(
+        new Set(["/workspace", ...expandedPaths.value]),
+      );
+      const directoryLoads = pathsToRefresh.map((dirPath) =>
+        loadDirectory(dirPath),
+      );
 
-      await Promise.all([
-        ...directoryLoads,
-        loadArtifacts(),
-      ]);
+      await Promise.all([...directoryLoads, loadArtifacts()]);
       if (options.notifyNew && artifacts.value.length > oldArtifactCount) {
         hasNewArtifactNotice.value = true;
       }
@@ -249,17 +258,17 @@ export function useThreadWorkspace(
         capabilities.value = null;
         directoryCache.value = new Map();
         directoryLoading.value = new Map();
-        expandedPaths.value = new Set(['/workspace']);
+        expandedPaths.value = new Set(["/workspace"]);
         artifacts.value = [];
         artifactsCursor.value = null;
-        selectedPath.value = '';
+        selectedPath.value = "";
         previewResult.value = null;
         previewError.value = null;
         hasNewArtifactNotice.value = false;
 
         if (newProject && newThread) {
           void loadCapabilities();
-          void loadDirectory('/workspace');
+          void loadDirectory("/workspace");
           void loadArtifacts();
         }
       }

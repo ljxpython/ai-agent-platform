@@ -470,6 +470,7 @@ class RuntimeGatewayErrorMappingTest(unittest.IsolatedAsyncioTestCase):
             "application/zip",
             "application/vnd.ms-excel",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "text/html",
             "text/css",

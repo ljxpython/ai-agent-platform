@@ -13,6 +13,11 @@ from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import (
     register_exception_handlers,
 )
+from platform_api.modules.audit.http_resolution import (
+    AuditHttpRequest,
+    resolve_http_audit,
+)
+from platform_api.modules.audit.schemas import AuditResult
 from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
@@ -268,6 +273,14 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
                     "xlsx",
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                 ),
+                (
+                    "docx",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ),
+                (
+                    "pptx",
+                    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                ),
                 ("html", "text/html"),
                 ("css", "text/css"),
                 ("js", "text/javascript"),
@@ -375,3 +388,56 @@ class RuntimeGatewayFilesTest(unittest.IsolatedAsyncioTestCase):
             )
             self.assertEqual(resp.status_code, 400)
             self.assertEqual(resp.json()["error"]["code"], "invalid_file_ref")
+
+    async def test_revoked_member_cannot_read_office_before_upstream(self):
+        self.actor = ActorContext(user_id="user-1")
+        self.upstream.get_thread = AsyncMock(
+            return_value={
+                "metadata": {"project_id": "proj-1", "graph_id": "showcase_demo"}
+            }
+        )
+        self.upstream.read_thread_file = AsyncMock()
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=self.app), base_url="http://test"
+        ) as client:
+            response = await client.get(
+                "/api/langgraph/threads/thread-1/files/content",
+                params={"path": "/workspace/uploads/" + "a" * 64 + ".docx"},
+                headers={"x-project-id": "proj-1"},
+            )
+        self.assertEqual(response.status_code, 403, response.text)
+        self.upstream.read_thread_file.assert_not_awaited()
+        self.assertFalse(self.delegation_calls)
+
+    def test_office_audit_keeps_only_safe_metadata(self):
+        resolved = resolve_http_audit(
+            request=AuditHttpRequest(
+                method="PUT",
+                path="/api/langgraph/threads/thread-1/files/uploads/" + "a" * 64,
+                query_params={"file_name": "private-name.docx"},
+                query_string="file_name=private-name.docx",
+                state_project_id="proj-1",
+                client_ip=None,
+                user_agent=None,
+                response_content_length="300",
+                metadata={
+                    "thread_id": "thread-1",
+                    "body": "private-body",
+                    "file_path": "/workspace/private",
+                    "markdown_path": "/derived.md",
+                },
+            ),
+            response_payload={"text": "private-body", "file_name": "private-name.docx"},
+            actor_user_id="user-1",
+            status_code=200,
+            result=AuditResult.SUCCESS,
+        )
+        self.assertEqual(resolved.project_id, "proj-1")
+        self.assertEqual(resolved.metadata["thread_id"], "thread-1")
+        for secret in (
+            "private-body",
+            "private-name",
+            "/workspace/private",
+            "/derived.md",
+        ):
+            self.assertNotIn(secret, str(resolved))

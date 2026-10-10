@@ -113,7 +113,8 @@ export function useChatAttachments(
       uiStore.pushToast({
         type: "warning",
         title: "存在不支持的附件",
-        message: "当前聊天支持图片（JPEG/PNG/WEBP）以及文档（PDF/TXT/MD/JSON/CSV）。",
+        message:
+          "当前聊天支持图片（JPEG/PNG/WEBP）以及文档（PDF/DOCX/PPTX/TXT/MD/JSON/CSV/Excel）。",
       });
     }
 

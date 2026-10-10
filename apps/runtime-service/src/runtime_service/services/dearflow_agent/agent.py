@@ -269,7 +269,10 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
 
     backend = build_backend(workspace)
     document_middleware = DocumentToolsMiddleware(
-        None if workspace is None else workspace.root
+        None if workspace is None else workspace.root,
+        execution_image=os.getenv(
+            "RUNTIME_WORKSPACE_IMAGE", "runtime-agent-workspace:p5"
+        ),
     )
     artifact_tool = build_artifact_tool(None if workspace is None else workspace.root)
     research_tools = build_research_tools(workspace)

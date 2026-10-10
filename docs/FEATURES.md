@@ -103,6 +103,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| F10 通用文档读取与附件上下文补齐 | 全链路已完成：FileRef/raw上传下载与同一parse_document补DOCX/PPTX有界读取；Docker6项、两图真实模型/历史/连续上传/fork、Worker重启通过，删除全目录系统索引；Excel保留沙箱分析。前端Task 3.1/3.2、DOC/PPT徽标纠偏、纯下载拦截及工作区415人性化提示实装，Vitest 726 passed通过、Playwright真实模型E2E 3项全绿，4张长图留痕完成，用户人工浏览器实测验收通过。未部署现役 | [专项](projects/20261010-agent-document-reading/README.md) · [前端交接](projects/20261010-agent-document-reading/frontend-handoff.md) |
 | F11 通用输入润色 one-shot | 规划中（暂缓）：用户确认 deferred；保留 suggestions 复用与旁路成本方案，未实施、未排期 | [需求取舍](projects/20261010-agent-input-polish/reference-analysis.md) |
 | 通用 Agent 安全终态与可靠完成投递 | 已完成：GraphHarbor post44 已提供原生 webhook、原子 terminal snapshot/outbox、HMAC/lease/retry/dead-letter/replay；Runtime projector 与跨服务隔离证据完成，正式包整链路和前端验收全绿，保持通用 Server 边界 | [方案](projects/20261009-agent-production-capability-extension/plan.md) · [引擎交接](projects/20261009-agent-production-capability-extension/03-engine-terminal-delivery.md) |
 | F17 项目知识检索（RAG） | 评估已完成，用户确认本期不开发：当前无企业知识服务，不自建向量库/入库/CRUD；后续优先复用知识 MCP，先核验可信项目绑定、协议兼容和来源回放；本期三服务无代码任务，前端交接完成 | [评估与条件方案](projects/20261010-agent-knowledge-retrieval-assessment/README.md) · [前端交接](projects/20261010-agent-knowledge-retrieval-assessment/frontend-handoff.md) |

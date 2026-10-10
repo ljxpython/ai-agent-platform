@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping, Sequence
 from functools import partial
 
@@ -171,7 +172,8 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     )
     image_middleware = ImageToolsMiddleware(image_workspace)
     document_middleware = DocumentToolsMiddleware(
-        None if workspace is None else workspace.cwd / "workspace"
+        None if workspace is None else workspace.cwd / "workspace",
+        execution_image=os.getenv("RUNTIME_SHOWCASE_IMAGE", "python:3.13-slim"),
     )
     chart_tools = build_chart_tools(image_workspace)
     image_names = tuple(tool.name for tool in image_middleware.tools)

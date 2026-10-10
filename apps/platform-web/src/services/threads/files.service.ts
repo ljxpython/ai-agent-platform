@@ -19,6 +19,8 @@ export const ALLOWED_DOCUMENT_MIMES = [
   "application/x-zip-compressed",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   "text/html",
   "text/css",
   "text/javascript",
@@ -34,11 +36,65 @@ export const ALLOWED_DOCUMENT_EXTENSIONS = [
   ".zip",
   ".xlsx",
   ".xls",
+  ".docx",
+  ".pptx",
   ".html",
   ".htm",
   ".css",
   ".js",
 ] as const;
+
+export function resolveDocumentMime(
+  file: File | { name: string; type?: string },
+): string {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".pdf")) return "application/pdf";
+  if (name.endsWith(".txt")) return "text/plain";
+  if (name.endsWith(".md") || name.endsWith(".markdown"))
+    return "text/markdown";
+  if (name.endsWith(".json")) return "application/json";
+  if (name.endsWith(".csv")) return "text/csv";
+  if (name.endsWith(".zip")) return "application/zip";
+  if (name.endsWith(".xlsx"))
+    return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  if (name.endsWith(".xls")) return "application/vnd.ms-excel";
+  if (name.endsWith(".docx"))
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (name.endsWith(".pptx"))
+    return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  if (name.endsWith(".html") || name.endsWith(".htm")) return "text/html";
+  if (name.endsWith(".css")) return "text/css";
+  if (name.endsWith(".js")) return "text/javascript";
+
+  const rawMime = (file.type || "").split(";")[0].trim().toLowerCase();
+  if (
+    rawMime === "application/msword" ||
+    rawMime === "application/vnd.ms-word.document.12" ||
+    (rawMime === "application/x-zip-compressed" && name.endsWith(".docx"))
+  ) {
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+  if (
+    rawMime === "application/vnd.ms-powerpoint" ||
+    rawMime === "application/vnd.ms-powerpoint.presentation.12" ||
+    (rawMime === "application/x-zip-compressed" && name.endsWith(".pptx"))
+  ) {
+    return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  }
+
+  return rawMime || "application/octet-stream";
+}
+
+export function isDocumentFile(
+  file: File | { name: string; type?: string },
+): boolean {
+  const name = file.name.toLowerCase();
+  if (ALLOWED_DOCUMENT_EXTENSIONS.some((ext) => name.endsWith(ext))) {
+    return true;
+  }
+  const mime = (file.type || "").split(";")[0].trim().toLowerCase();
+  return (ALLOWED_DOCUMENT_MIMES as readonly string[]).includes(mime);
+}
 
 export function isValidFileRef(val: unknown): val is RuntimeFileRef {
   if (!val || typeof val !== "object" || Array.isArray(val)) {
@@ -86,7 +142,7 @@ export async function uploadThreadFile(
   sha256: string,
   file: File,
 ): Promise<RuntimeFileRef> {
-  const mimeType = file.type || "application/octet-stream";
+  const mimeType = resolveDocumentMime(file);
   const { data } = await platformHttpClient.put<RuntimeFileRef>(
     `/api/langgraph/threads/${encodeURIComponent(threadId)}/files/uploads/${encodeURIComponent(sha256)}`,
     file,
@@ -135,7 +191,8 @@ function escapeHtml(text: string): string {
 
 function parseCsvToHtmlTable(csvText: string): string {
   const lines = csvText.split(/\r?\n/).filter((l) => l.trim().length > 0);
-  if (lines.length === 0) return '<p style="padding: 20px; color: var(--text-sub);">文件内容为空</p>';
+  if (lines.length === 0)
+    return '<p style="padding: 20px; color: var(--text-sub);">文件内容为空</p>';
 
   const parseLine = (line: string): string[] => {
     const values: string[] = [];
@@ -184,7 +241,11 @@ function parseCsvToHtmlTable(csvText: string): string {
   return html;
 }
 
-function buildPreviewHtml(fileName: string, type: "csv" | "markdown" | "text" | "json", textContent: string): string {
+function buildPreviewHtml(
+  fileName: string,
+  type: "csv" | "markdown" | "text" | "json",
+  textContent: string,
+): string {
   const safeName = escapeHtml(fileName);
   let bodyContent = "";
   if (type === "csv") {
@@ -394,10 +455,11 @@ export async function previewThreadFileInNewTab(
   const name = fileName || path.split("/").pop() || "document";
   const lower = name.toLowerCase();
 
-  // ZIP/PPTX/Excel 等二进制文件禁止文本预览，直接走安全原字节下载
+  // ZIP/PPTX/DOCX/Excel 等二进制文件禁止文本预览，直接走安全原字节下载
   if (
     lower.endsWith(".zip") ||
     lower.endsWith(".pptx") ||
+    lower.endsWith(".docx") ||
     lower.endsWith(".xlsx") ||
     lower.endsWith(".xls") ||
     lower.endsWith(".bin")
@@ -409,15 +471,35 @@ export async function previewThreadFileInNewTab(
   const blob = await getThreadFileBlob(projectId, threadId, path);
   const mime = (blob.type || "").toLowerCase();
 
+  // 若响应 MIME 是二进制 Office/ZIP 容器，同样直接触发原字节安全下载
+  if (
+    mime.includes("wordprocessingml") ||
+    mime.includes("presentationml") ||
+    mime.includes("spreadsheetml") ||
+    mime.includes("zip") ||
+    mime.includes("octet-stream")
+  ) {
+    await downloadThreadFile(projectId, threadId, path, fileName);
+    return;
+  }
+
   let targetBlob: Blob;
   if (lower.endsWith(".pdf") || mime.includes("pdf")) {
-    targetBlob = blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" });
+    targetBlob =
+      blob.type === "application/pdf"
+        ? blob
+        : new Blob([blob], { type: "application/pdf" });
   } else {
     // 文本类文档：使用 readBlobAsText 原生 UTF-8 解码，杜绝字符集乱码，并渲染为带样式的 HTML 视窗（避免 CSV 被浏览器强制下载）
     const textContent = await readBlobAsText(blob);
     let type: "csv" | "markdown" | "text" | "json" = "text";
     if (lower.endsWith(".csv") || mime.includes("csv")) type = "csv";
-    else if (lower.endsWith(".md") || lower.endsWith(".markdown") || mime.includes("markdown")) type = "markdown";
+    else if (
+      lower.endsWith(".md") ||
+      lower.endsWith(".markdown") ||
+      mime.includes("markdown")
+    )
+      type = "markdown";
     else if (lower.endsWith(".json") || mime.includes("json")) type = "json";
 
     const html = buildPreviewHtml(name, type, textContent);

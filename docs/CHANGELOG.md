@@ -24,6 +24,7 @@
 
 ### Added
 
+- **Agent 通用文档读取能力（DOCX/PPTX，全链路闭环）**：Runtime/API/Web 三服务全栈实施交付。同一 parse_document 工具支持 DOCX/PPTX 原字节按需读取、section/slide 定位与有界续读；前端补齐 DOCX/PPTX 扩展名与空 MIME 校验、DOCX 原字节认证下载拦截、Word/PPT 专属徽标、仅支持下载无假预览、工作区不可预览文件优雅降级为“该文件类型不支持在线预览，请下载查看”提示；ToolResult 专用模板实现错误优先绝对高亮、段落与幻灯片语义化展示、续读参数建议及 7 类 warnings 中文脱敏映射；Playwright 真实模型 E2E 3 项全绿，全栈人工浏览器实测验收通过。
 - Worktree 支持独立本地联调环境：统一分配端口、隔离数据和进程，依赖通过共享缓存复用。
 - 新 Worktree 可继承现有环境配置并复用项目、Agent、模型等基础数据，默认本地账号 admin/admin123，无需重新配置；对话历史和定时任务不复制。
 - **Agent Run 终态通知与失败回调（全栈闭环）**：新增通用终态安全投影、可信来源、持久回调收件、历史 completion、私有通知 feed/read 及 cron 来源回填；GraphHarbor post44 提供原子 webhook delivery、HMAC、重试与重放；前端完成 Pinia 全局通知 Store 单例（15s 指数退避轮询与乐观回滚）、顶栏与 ChatPage 双端通知中心、细粒度优先安全白名单错误码映射、任务执行中离开跳转防护二次确认拦截、以及历史 Run 安全终态诊断卡片；Playwright + Chromium 驱动本地隔离三服务与真实模型问答端到端自动化验证全链路通过。
@@ -49,6 +50,7 @@
 
 ### Changed
 
+- Agent 复用消息中的附件引用，不再每轮将线程全部上传文件注入系统提示，减少长会话上下文占用。
 - **LangGraph Run 默认事件流版本统一为 v3**：新建运行和默认恢复请求使用 v3 事件投影，同时保留显式 v2 与历史 v2 Run 兼容。
 - **前端 v3 状态投影防洪与版本回退支持**：前端 `useTranscriptMessages` 增加中间 values 帧防洪比对机制，消除长会话频繁深拷贝导致的掉帧；`run-actions` 开放 `version` 白名单参数，支持显式传递 `v2` 进行回滚或调试。
 - **长会话断流自愈与历史快照按需懒加载**：将长会话历史快照（Checkpoints History）由全量同步阻塞加载改造为侧边抽屉展开时按需懒加载；会话断流恢复（`recoverExpiredStream`）彻底与巨型快照解耦，仅依赖毫秒级当前状态（`service.state`）实现秒级极速自愈。

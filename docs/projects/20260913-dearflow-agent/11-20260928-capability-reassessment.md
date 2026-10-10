@@ -45,7 +45,7 @@
 | A06 | 搜索互联网、抓取网页、落地引用证据 | `community/` 搜索/抓取 providers | 已有 D `tools/search.py`、`research_http.py`；Tavily 缺 key 则不暴露 search/fetch；来源要求进入 prompt，但非通用自动事实核验 | T04/T07 |
 | A07 | GitHub 深研、论文/文献检索 | public Skills + 通用检索/脚本 | 已有专用 `github_query`、`arxiv_search`；旧外部限流待重验 | T04 |
 | A08 | 读写/搜索文件、执行 Python/SQL/Shell | `sandbox/tools.py`、`sandbox/sandbox_provider.py` | 已有 `DearWorkspaceBackend`、公共 execution；Docker 与受信开发 local 均可选；local cwd 不构成安全沙箱 | T03/T10 |
-| A09 | 上传、文档解析、历史附件发现 | `uploads_middleware.py`、`list_uploaded_files_tool.py` | 已有文档工具和附件链路；`DocumentToolsMiddleware` 每次枚举 uploads，未见有界历史附件查询等价机制 | T07 |
+| A09 | 上传、文档解析、历史附件发现 | `uploads_middleware.py`、`list_uploaded_files_tool.py` | 已有文档工具和附件链路；`DocumentToolsMiddleware` 每次枚举 uploads，未见有界历史附件查询等价机制 | T07 的附件切片见 [F10 通用文档读取规划](../20261010-agent-document-reading/README.md)，未实施 |
 | A10 | 看图/视觉理解 | `view_image_tool.py`、`view_image_middleware.py` | 平台有图片传输；Dear 根只装 DocumentToolsMiddleware，未装公共 ImageToolsMiddleware；不能由“可上传/生成图”推断 Dear 能读取工作区图像理解 | T03 |
 | A11 | 发布、预览、下载、打包成果 | `present_file_tool.py`、`artifact_registry.py`、workspace | 已有公共 artifact/workspace；HTML 隔离预览、ZIP、表格和图像式 PPTX；音视频不在 MEDIA_MIMES，产物读取仍全量 bytes | T02/T06 |
 | A12 | 子 Agent 独立上下文与并行委派 | `subagents/executor.py`、`task_tool.py` | 部分：只读研究角色覆盖 general-purpose，3 并发、task 总限10；不能执行代码、写成果、继续委派；与上游通用/bash worker不同 | T02/T07/T09 |
