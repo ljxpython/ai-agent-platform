@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-10（Agent Run completion 前端 P4.1-P4.3 全部交付闭环；Pinia 全局通知 Store、RunNotificationCenter 顶栏与 ChatPage 常驻挂载、细粒度优先错误码白名单投影、执行中跳转防护、useRunCompletion 历史 Run 终态诊断卡片完成；Vitest 722 passed，Playwright + Chromium 三视口与真实大模型端到端测试 4/4 passed，截图证据齐全；F11 输入润色评估完成并暂缓；F15 MCP 缓存热重置评估关闭；Plan Mode 交付与 Worktree 资源隔离基线保持）。
+> **最后更新：** 2026-10-10（F17 知识检索评估与前端交接完成，用户确认本期不开发、未来优先知识 MCP；Agent Run completion 前端 P4.1-P4.3 全部交付闭环；Pinia 全局通知 Store、RunNotificationCenter 顶栏与 ChatPage 常驻挂载、细粒度优先错误码白名单投影、执行中跳转防护、useRunCompletion 历史 Run 终态诊断卡片完成；Vitest 722 passed，Playwright + Chromium 三视口与真实大模型端到端测试 4/4 passed，截图证据齐全；F11 输入润色评估完成并暂缓；F15 MCP 缓存热重置评估关闭；Plan Mode 交付与 Worktree 资源隔离基线保持）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -77,6 +77,7 @@
 
 ## 近期关键决策
 
+- 2026-10-10：F17/A31 知识检索评估：用户确认本期不开发自建 PgVector/入库/CRUD，功能 `deferred`；当前无企业知识服务，未来优先知识 MCP，三服务无代码任务、前端交接完成。未来先核验现有 MCP 的可信项目绑定、名称/transport/只读兼容和来源回放；未授权接入实施，详见 [专项](projects/20261010-agent-knowledge-retrieval-assessment/README.md)。
 - 2026-09-21: 引入两阶段验证（Phase 验证 + Final 验证），禁止每改一小块就全量回归
 - 2026-09-21: tasks.md 改为四段式结构（改动内容/代码位置/预期结果/验证项）
 - 2026-09-21: 引入 Task Completion Card + 合规 checklist（可观测层）

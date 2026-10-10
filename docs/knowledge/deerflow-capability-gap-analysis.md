@@ -5,6 +5,8 @@
 > 当前平台：`ai-agent-platform`
 > 文档性质：技术调研知识文档，不是具体项目计划
 
+> 2026-10-10：F17 已按真实代码和用户补充条件重审，用户确认本期不开发、未来优先知识 MCP，详见 [评估专项](../projects/20261010-agent-knowledge-retrieval-assessment/README.md)。下文其余维度仍为原分析日期的取样，本次不更新其状态或统计。
+
 ---
 
 ## 一、总体概况
@@ -159,7 +161,7 @@
 | 能力 | 状态 | 备注 |
 |---|---|---|
 | **CSRF 防护** | 🔴 未实现 | `csrf_middleware.py` |
-| **知识库（RAG）** | 🔴 未实现 | 项目级文档检索 |
+| **知识库（RAG）** | 评估已完成，本期不开发 | 当前无知识服务；未来优先受管知识 MCP，不自建入库/CRUD |
 | **Langfuse 用户反馈** | 🔴 未实现 | 用户反馈直传 Langfuse |
 | **Checkpoint 保留策略** | 🔴 未实现 | 自动清理旧 Checkpoint |
 | **上下文用量统计** | 🔴 未实现 | Token 用量分析 API |
@@ -580,21 +582,21 @@ channels:
 
 ### F17 — 知识库（RAG）
 
-**是什么**：项目级文档库，管理员预置文档，Agent 在回答时可检索相关内容（RAG），减少幻觉。
+**当前结论（2026-10-10）**：用户确认本期不开发自建知识库，并要求合入结论及前端交接。当前没有企业知识检索服务，后续优先 MCP；本期不选向量库、不排期。完整代码对照、条件代码落点、验证要求和前端交接见 [专项](../projects/20261010-agent-knowledge-retrieval-assessment/README.md)。
 
-**DeerFlow 怎么做**
-- 文件：`app/gateway/routers/knowledge.py`、`deerflow/knowledge_scope.py`
-- 工具：`search_knowledge(query)` → 返回 `[(content, source_url, score)]`
-- 存储：文档向量化 + 向量数据库（按项目 namespace 隔离）
-- 支持格式：PDF/Markdown/URL（通过 markitdown 转换）
+**DeerFlow 实际实现**
 
-**我们需要做什么**（较大功能，约 2-3 周）
-1. 选定向量数据库（推荐 PgVector 扩展 PostgreSQL，与现有 PG 共用）
-2. 实现文档上传 → 切片 → Embedding → 存储 pipeline
-3. 实现 `search_knowledge` 工具（向量相似度检索）
-4. 知识库 CRUD API
-5. 项目级 namespace 隔离
-6. 前端：项目设置 → 知识库 tab
+- `backend/app/gateway/routers/knowledge.py` 是外部 RAGFlow 的只读目录，不是知识库 CRUD。
+- `backend/packages/harness/deerflow/community/ragflow/tools.py:knowledge_search_tool` 返回模型可读片段与可选引用 artifact；不是 `search_knowledge` 三元组列表。
+- `backend/packages/harness/deerflow/knowledge_scope.py` 和对应 middleware 负责消息级范围与门禁；索引/入库由外部 RAGFlow 承担，另有互选的 LightRAG 只读检索接入。
+- 线程上传/MarkItDown 文档转换不能等同于项目 RAG 入库。DeerFlow README 明确要求在 RAGFlow 中创建、上传、解析与删除知识文档，没有独立知识管理页。
+
+**当前项目的取舍**
+
+1. 已有 MCP Adapter、工具策略、资源 scope 校验、附件解析和个人记忆；项目知识检索仍未接入，但不为功能清单完整性建设第二套资料系统。
+2. 不新增 PgVector pipeline、知识 CRUD、原生同义检索工具或项目设置知识库 Tab；前端同事本期无任务。
+3. 有实际知识 MCP 后先核验可信项目绑定、名称/transport/只读兼容、来源回放和撤权，优先复用已有接入路径；MCP 协议不自动保证检索质量和项目隔离。
+4. 原“2–3 周”没有数据、格式、ACL、Embedding 和运维前提，不作为开发承诺。后续按真实服务的最小接入差距重新估算。
 
 ---
 
@@ -702,7 +704,7 @@ MemoryMiddleware        ← SummarizationMiddleware.before_summarization hooks�
 | F09 网页抓取 | **P1** | 小（1天） | 无（Jina 免费） |
 | F05 PII 脱敏 | **P2** | 中（3天） | middleware 架构 |
 | F16 飞书集成 | **P2** | 大（7天） | 飞书应用审核 |
-| F17 知识库 | **P3** | 大（2-3周） | 向量数据库 |
+| F17 知识库 | **deferred（用户确认本期不开发）** | 本期零代码，后续接入核验后重估 | 真实知识 MCP、可信项目隔离、资料与运维负责人 |
 
 ---
 

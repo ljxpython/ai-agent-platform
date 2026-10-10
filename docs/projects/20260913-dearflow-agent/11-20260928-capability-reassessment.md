@@ -67,7 +67,7 @@
 | A28 | Token 成本预算、循环/停滞检测 | `token_budget_middleware.py`、`loop_detection_middleware.py`、`tool_progress_middleware.py` | 部分：已有调用次数、超时、recursion cap；不是 token/金额预算。主根 max(mode,env) 无法由低环境值收紧 | T03/T07 |
 | A29 | 长度截断/拒绝/空响应修复、模型错误控制 | `model_length_finish_reason_middleware.py`、`safety_finish_reason_middleware.py`、`llm_error_handling_middleware.py`、`terminal_response_middleware.py` | 已有 SDK/模型与超时处理；未见 Dear 等价专项装配，需针对锁版本做故障验证后决定是否添加 | T07 |
 | A30 | 注入输入隔离、PII、工具结果清洗、读后写门禁 | `input_sanitization_middleware.py`、`pii_redaction_middleware.py`、`read_before_write_middleware.py` | 已有 scope/审批/包检查/SSRF/路径边界；未见等价通用 Middleware；安全差异列评审，不默认导入上游规则 | T03/T07 |
-| A31 | 私有知识检索与消息级知识范围 | `knowledge_scope.py`、`knowledge_scope_middleware.py`、community RAGFlow | Dear 未接入等价知识范围；平台项目/工具绑定不等于资料检索，先盘点已装 MCP 再定是否新增知识产品 | T09 |
+| A31 | 私有知识检索与消息级知识范围 | `knowledge_scope.py`、`knowledge_scope_middleware.py`、community RAGFlow | Dear 未接入等价知识范围；2026-10-10 F17评估：用户确认本期不开发自建知识产品、未来优先知识MCP；现有MCP底座仍需核验可信项目绑定与来源回放 | T09；[F17专项](../20261010-agent-knowledge-retrieval-assessment/README.md) |
 | A32 | 项目指令和资料架、归档/回收站 | `projects/context.py`、`documents.py`、`tools.py`、`trash.py` | 平台已有 IAM 项目；并非同义的 Agent 资料架。未接入上述业务；不能直接复用 project_id 就认定完成 | T09 |
 | A33 | 显式引用其他会话并分页阅读 | `tools/conversation.py` | 当前会话历史/分叉已有；未见按 Run 授权的跨会话阅读，涉及 ACL 与被读内容留存 | T09 |
 | A34 | 浏览器导航/点击/表单/截图/实时画面 | `community/browser_automation/` | 旧专项明确不做；静态网页成果预览不等于浏览器自动化 | T09（排除待重选） |
