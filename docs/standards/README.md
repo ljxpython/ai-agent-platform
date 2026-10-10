@@ -14,6 +14,7 @@
 
 | 规范 | 文件 | 状态 | last_verified | 置信度 | 源专项 |
 |---|---|---|---|---|---|
+| Worktree 开发与资源隔离 | [worktree-development.md](worktree-development.md) | active | 2026-10-10 | high | [Worktree 本地栈专项](../projects/20261010-worktree-local-stack/README.md) |
 | 错误响应 Envelope | [error-envelope.md](error-envelope.md) | active | 2026-10-08 | 🟢 high | [20260926-error-response-contract](../projects/20260926-error-response-contract/README.md) · [执行预算安全码](../projects/20261007-agent-execution-budget/verification.md) · [Stop 错误映射](../projects/20261007-agent-run-cancellation/verification.md) · [Workspace 执行保护](../projects/20261007-agent-workspace-resilience/README.md) |
 | 链路追踪传播 | [trace-propagation.md](trace-propagation.md) | active | 2026-09-27 | 🟢 high | [20260926-trace-context-propagation](../projects/20260926-trace-context-propagation/README.md) |
 | Delegation JWT Schema | [delegation-jwt.md](delegation-jwt.md) | draft | 2026-10-08 | 🟡 medium | [Delegation 专项](../projects/20260926-delegation-jwt-contract/README.md) · [diagnostics-read](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md) · [usage-read](../projects/20261007-agent-usage-cost-governance/03-platform-cost-contract.md) · [Stop 精确委托](../projects/20261007-agent-run-cancellation/verification.md) |
