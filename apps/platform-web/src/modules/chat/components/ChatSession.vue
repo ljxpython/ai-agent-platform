@@ -644,6 +644,17 @@ const canSubmit = computed(
     (!!props.draft.trim() || !!attachments.value.length),
 );
 
+const canDictate = computed(() =>
+  Boolean(
+    props.visible !== false &&
+    props.canWrite &&
+    canSend.value &&
+    !hasPendingInterrupts.value &&
+    !isSessionRunning.value &&
+    !runBudget.isThreadExhausted.value,
+  ),
+);
+
 function extractUserPromptText(content: unknown): string {
   if (typeof content === "string") return content.trim();
   if (Array.isArray(content)) {
@@ -2174,6 +2185,7 @@ defineExpose({
       :plan-mode-supported="planModeSupported"
       :has-queued-items="promptQueue.queue.value.length > 0"
       :can-send-fresh-message="canSubmit"
+      :can-dictate="canDictate"
       :can-queue="
         canWrite && !selectedCheckpoint && !runBudget.isThreadExhausted.value
       "

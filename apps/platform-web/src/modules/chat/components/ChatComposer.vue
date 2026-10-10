@@ -17,6 +17,12 @@ import ChatAttachmentPreview from "./ChatAttachmentPreview.vue";
 import ChatModelSelector from "./ChatModelSelector.vue";
 import ThreadAccessPolicySelect from "./ThreadAccessPolicySelect.vue";
 import ComposerSuggestions from "./ComposerSuggestions.vue";
+import { useI18n } from "vue-i18n";
+import { useUiStore } from "@/stores/ui";
+import {
+  useVoiceInput,
+  type VoiceInputErrorKind,
+} from "../composables/useVoiceInput";
 import type { RuntimeModelItem } from "@/types/management";
 import type { AccessPolicy } from "@/services/threads/session.service";
 import type { SessionTurnState } from "../composables/useChatSession";
@@ -51,6 +57,7 @@ const props = withDefaults(
     canOpenUsage?: boolean;
     planMode?: boolean;
     planModeSupported?: boolean;
+    canDictate?: boolean;
   }>(),
   {
     showSuggestions: true,
@@ -58,6 +65,7 @@ const props = withDefaults(
     canOpenUsage: false,
     planMode: false,
     planModeSupported: false,
+    canDictate: false,
   },
 );
 
@@ -127,7 +135,153 @@ const helperText = computed(() =>
       : "",
 );
 
+// --- 语音输入逻辑 ---
+let i18nInstance: any = null;
+try {
+  i18nInstance = useI18n();
+} catch {
+  // 无 i18n 环境
+}
+const currentLocale = computed(() => i18nInstance?.locale?.value ?? "zh-CN");
+
+function getI18nText(key: string, defaultText: string): string {
+  if (i18nInstance?.t) {
+    const val = i18nInstance.t(key);
+    if (val && val !== key) return val;
+  }
+  return defaultText;
+}
+
+const baseDraft = ref("");
+const lastEmittedVoiceDraft = ref<string | null>(null);
+const voiceStatusNotice = ref("");
+
+function combineVoiceDraft(base: string, finalVoice: string): string {
+  if (!finalVoice) return base;
+  if (!base) return finalVoice;
+  if (/\s$/.test(base)) {
+    return `${base}${finalVoice}`;
+  }
+  return `${base}\n${finalVoice}`;
+}
+
+const voiceInput = useVoiceInput({
+  lang: currentLocale,
+  onResult: ({ finalText }) => {
+    handleVoiceResult(finalText);
+  },
+  onError: (kind, rawError) => {
+    handleVoiceError(kind, rawError);
+  },
+  onEnd: (reason) => {
+    handleVoiceEnd(reason);
+  },
+});
+
+const isVoiceActive = computed(() => voiceInput.state.value !== "idle");
+
+function handleVoiceResult(finalVoice: string) {
+  if (!finalVoice) return;
+  const nextVal = combineVoiceDraft(baseDraft.value, finalVoice);
+  lastEmittedVoiceDraft.value = nextVal;
+  emit("update:modelValue", nextVal);
+}
+
+function handleVoiceError(kind: VoiceInputErrorKind, _raw?: string) {
+  if (kind === "cancelled" || kind === "no_speech") {
+    return;
+  }
+  const errorKeyMap: Record<string, string> = {
+    microphone_unavailable: "chat.voiceInput.micUnavailable",
+    permission_denied: "chat.voiceInput.permissionDenied",
+    unsupported_language: "chat.voiceInput.unsupportedLanguage",
+    network: "chat.voiceInput.networkError",
+  };
+  const key = errorKeyMap[kind] || "chat.voiceInput.unknownError";
+  const msg = getI18nText(key, "语音识别服务异常");
+
+  try {
+    const uiStore = useUiStore();
+    uiStore.pushToast({ message: msg, type: "error" });
+  } catch {
+    // 无 pinia 或测试 mock
+  }
+}
+
+function handleVoiceEnd(reason: "stop" | "cancel" | "natural" | "error") {
+  lastEmittedVoiceDraft.value = null;
+  if (reason === "natural") {
+    const msg = getI18nText("chat.voiceInput.naturalEnded", "语音输入已结束");
+    voiceStatusNotice.value = msg;
+    setTimeout(() => {
+      if (voiceStatusNotice.value === msg) {
+        voiceStatusNotice.value = "";
+      }
+    }, 3000);
+  }
+}
+
+function toggleVoiceInput() {
+  if (voiceInput.state.value === "listening") {
+    voiceInput.stop();
+    return;
+  }
+  if (voiceInput.state.value === "starting") {
+    voiceInput.cancel();
+    return;
+  }
+  if (voiceInput.state.value === "stopping") {
+    voiceInput.cancel();
+    return;
+  }
+  if (!props.canDictate || isStopBlocked.value || props.isRunning) {
+    return;
+  }
+
+  baseDraft.value = props.modelValue;
+  lastEmittedVoiceDraft.value = null;
+  voiceStatusNotice.value = "";
+  voiceInput.start();
+}
+
+// 监听 props.modelValue：Self-Echo 守卫与外部修改抢占
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    if (isVoiceActive.value) {
+      if (
+        lastEmittedVoiceDraft.value !== null &&
+        newVal === lastEmittedVoiceDraft.value
+      ) {
+        // 自身 final 回流（Self-Echo），放行
+        return;
+      }
+      // 外部修改，取消录音
+      voiceInput.cancel();
+    }
+  },
+);
+
+// 门禁失效立即取消
+watch(
+  () => props.canDictate,
+  (can) => {
+    if (!can && isVoiceActive.value) {
+      voiceInput.cancel();
+    }
+  },
+);
+
+function handleComposerInput() {
+  if (isVoiceActive.value) {
+    voiceInput.cancel();
+  }
+}
+
 function handleComposerPaste(event: ClipboardEvent) {
+  if (isVoiceActive.value) {
+    voiceInput.cancel();
+  }
   emit("composer-paste", event);
 }
 
@@ -208,7 +362,11 @@ const isStopBlocked = computed(() => {
 });
 
 const canSubmitFreshOrQueue = computed(() => {
-  if (isStopBlocked.value || props.hasBlockingInterrupt) {
+  if (
+    isStopBlocked.value ||
+    props.hasBlockingInterrupt ||
+    isVoiceActive.value
+  ) {
     return false;
   }
   const hasContent =
@@ -228,7 +386,11 @@ function handleKeydown(event: KeyboardEvent) {
       return;
     }
     event.preventDefault();
-    if (props.hasBlockingInterrupt || isStopBlocked.value) {
+    if (
+      props.hasBlockingInterrupt ||
+      isStopBlocked.value ||
+      isVoiceActive.value
+    ) {
       return;
     }
     const hasContent =
@@ -243,6 +405,10 @@ function handleKeydown(event: KeyboardEvent) {
         emit("send");
       }
     }
+  } else {
+    if (isVoiceActive.value) {
+      voiceInput.cancel();
+    }
   }
 }
 
@@ -256,6 +422,9 @@ const shouldShowSuggestions = computed(
 );
 
 function handleSelectSuggestion(prompt: string) {
+  if (isVoiceActive.value) {
+    voiceInput.cancel();
+  }
   composerModel.value = prompt;
   nextTick(async () => {
     textareaRef.value?.focus();
@@ -402,6 +571,7 @@ defineExpose({
           props.placeholder || '输入消息，Enter 发送，Shift + Enter 换行。'
         "
         aria-label="消息草稿"
+        @input="handleComposerInput"
         @keydown="handleKeydown"
         @paste="handleComposerPaste"
       />
@@ -412,11 +582,11 @@ defineExpose({
           :class="isFocusMode || props.compact ? '' : 'sm:gap-3'"
         >
           <div
-            class="flex h-8 min-w-0 items-center gap-2 overflow-x-auto no-scrollbar"
+            class="flex h-8 min-w-0 flex-1 items-center gap-2 overflow-x-hidden no-scrollbar scrollbar-none [&::-webkit-scrollbar]:hidden"
             :class="isFocusMode || props.compact ? 'gap-2' : 'gap-2.5'"
           >
-            <!-- 拓展功能加号菜单（参考谷歌输入框交互） -->
-            <div class="relative inline-block text-left">
+            <!-- 拓展功能加号菜单（录音进行中隐藏避让） -->
+            <div v-if="!isVoiceActive" class="relative inline-block text-left">
               <button
                 ref="featureMenuTriggerRef"
                 type="button"
@@ -451,8 +621,9 @@ defineExpose({
               </button>
             </div>
 
+            <!-- 权限策略选择器（录音进行中隐藏避让） -->
             <ThreadAccessPolicySelect
-              v-if="projectId"
+              v-if="projectId && !isVoiceActive"
               :model-value="accessPolicy || 'review'"
               :disabled="
                 isRunning ||
@@ -467,7 +638,10 @@ defineExpose({
               @update:model-value="emit('update:accessPolicy', $event)"
               @change="emit('change:accessPolicy', $event)"
             />
+
+            <!-- 附件按钮（录音进行中隐藏避让） -->
             <button
+              v-if="!isVoiceActive"
               type="button"
               class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border border-gray-200/80 bg-white/90 px-2.5 text-xs font-medium text-gray-600 shadow-2xs hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white transition-colors"
               :disabled="isRunning || hasBlockingInterrupt || isStopBlocked"
@@ -477,6 +651,109 @@ defineExpose({
               <BaseIcon name="paperclip" size="xs" />
               <span class="hidden sm:inline">附件</span>
             </button>
+
+            <!-- 语音听写按钮（纯图标设计） -->
+            <button
+              v-if="voiceInput.isSupported.value"
+              type="button"
+              class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border text-xs font-medium shadow-2xs transition-all"
+              :class="[
+                voiceInput.state.value === 'listening'
+                  ? 'border-rose-400 bg-rose-50 text-rose-600 dark:border-rose-800 dark:bg-rose-950/60 dark:text-rose-400 animate-pulse'
+                  : voiceInput.state.value === 'starting' ||
+                      voiceInput.state.value === 'stopping'
+                    ? 'border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
+                    : 'border-gray-200/80 bg-white/90 text-gray-600 hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900 dark:border-dark-700/80 dark:bg-dark-800/90 dark:text-dark-300 dark:hover:border-dark-600 dark:hover:text-white',
+                !props.canDictate || isStopBlocked || isRunning
+                  ? 'opacity-40 cursor-not-allowed'
+                  : 'cursor-pointer',
+              ]"
+              :disabled="!props.canDictate || isStopBlocked || isRunning"
+              :title="
+                voiceInput.state.value === 'listening'
+                  ? getI18nText('chat.voiceInput.stop', '停止听写')
+                  : getI18nText('chat.voiceInput.start', '语音输入')
+              "
+              :aria-label="
+                voiceInput.state.value === 'listening'
+                  ? getI18nText('chat.voiceInput.stop', '停止听写')
+                  : getI18nText('chat.voiceInput.start', '语音输入')
+              "
+              :aria-pressed="voiceInput.state.value === 'listening'"
+              data-testid="composer-voice-input-btn"
+              @click="toggleVoiceInput"
+            >
+              <BaseIcon name="mic" size="xs" />
+            </button>
+
+            <!-- 随行微胶囊：听写中展示声波动效与实时转写文字（弹性全宽） -->
+            <div
+              v-if="voiceInput.state.value !== 'idle'"
+              data-testid="composer-voice-interim-box"
+              role="status"
+              aria-live="polite"
+              class="flex-1 min-w-0 inline-flex h-8 items-center gap-1.5 rounded-lg border border-rose-200/70 bg-rose-50/70 px-2.5 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-300 transition-all shadow-2xs overflow-hidden"
+            >
+              <span
+                class="flex items-center gap-0.5 shrink-0"
+                aria-hidden="true"
+              >
+                <span
+                  class="inline-block h-2 w-0.5 rounded-full bg-rose-500 animate-pulse"
+                />
+                <span
+                  class="inline-block h-3 w-0.5 rounded-full bg-rose-500 animate-pulse delay-75"
+                />
+                <span
+                  class="inline-block h-1.5 w-0.5 rounded-full bg-rose-500 animate-pulse delay-150"
+                />
+              </span>
+              <span
+                v-if="voiceInput.interimText.value"
+                class="flex-1 min-w-0 truncate font-normal text-slate-700 dark:text-slate-200"
+              >
+                {{ voiceInput.interimText.value }}
+              </span>
+              <span
+                v-else
+                class="flex-1 min-w-0 truncate font-medium text-rose-600 dark:text-rose-400"
+              >
+                {{
+                  voiceInput.state.value === "starting"
+                    ? getI18nText("chat.voiceInput.starting", "启动中...")
+                    : voiceInput.state.value === "stopping"
+                      ? getI18nText("chat.voiceInput.stopping", "收尾中...")
+                      : getI18nText("chat.voiceInput.listening", "正在聆听...")
+                }}
+              </span>
+              <button
+                type="button"
+                class="ml-0.5 shrink-0 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+                title="取消"
+                aria-label="取消语音听写"
+                @click="voiceInput.cancel()"
+              >
+                <svg
+                  class="h-3 w-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            <!-- 自然结束弱提示（平滑退场） -->
+            <div
+              v-else-if="voiceStatusNotice"
+              class="inline-flex h-8 items-center gap-1.5 rounded-lg bg-gray-50/90 px-2.5 text-xs text-gray-500 dark:bg-dark-800/80 dark:text-dark-400 transition-all shadow-2xs"
+            >
+              <span>ℹ️ {{ voiceStatusNotice }}</span>
+            </div>
+
             <input
               ref="fileInputRef"
               type="file"
@@ -515,7 +792,7 @@ defineExpose({
               <button
                 type="button"
                 class="flex h-8 items-center gap-1.5 rounded-full bg-blue-600 px-3 text-xs font-medium text-white shadow-xs transition-all hover:bg-blue-700 active:scale-95 disabled:opacity-50"
-                :disabled="isStopBlocked"
+                :disabled="isStopBlocked || isVoiceActive"
                 title="排队加入执行队列"
                 @click="emit('queue')"
               >

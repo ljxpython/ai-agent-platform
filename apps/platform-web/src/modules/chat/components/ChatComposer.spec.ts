@@ -190,4 +190,209 @@ describe("ChatComposer", () => {
     // 草稿仍可正常编辑保留
     expect(wrapper.get("textarea").element.value).toBe("待发送草稿");
   });
+
+  describe("F13 Voice Input Integration", () => {
+    class TestMockRecognition {
+      continuous = true;
+      interimResults = true;
+      lang = "zh-CN";
+      maxAlternatives = 1;
+      onstart: (() => void) | null = null;
+      onend: (() => void) | null = null;
+      onerror: ((e: any) => void) | null = null;
+      onresult: ((e: any) => void) | null = null;
+      static instances: TestMockRecognition[] = [];
+
+      constructor() {
+        TestMockRecognition.instances.push(this);
+      }
+
+      start() {
+        setTimeout(() => this.onstart?.(), 0);
+      }
+      stop() {
+        setTimeout(() => this.onend?.(), 0);
+      }
+      abort() {
+        setTimeout(() => this.onend?.(), 0);
+      }
+    }
+
+    const origRecognition = (window as any).SpeechRecognition;
+    const origSecureContext = window.isSecureContext;
+
+    beforeEach(() => {
+      TestMockRecognition.instances = [];
+      Object.defineProperty(window, "isSecureContext", {
+        value: true,
+        configurable: true,
+      });
+      (window as any).SpeechRecognition = TestMockRecognition;
+    });
+
+    afterEach(() => {
+      (window as any).SpeechRecognition = origRecognition;
+      Object.defineProperty(window, "isSecureContext", {
+        value: origSecureContext,
+        configurable: true,
+      });
+    });
+
+    it("C01: empty draft can start voice dictation when canDictate is true, independent of send button", async () => {
+      const wrapper = mountComposer({
+        modelValue: "",
+        canDictate: true,
+        canSendFreshMessage: false,
+      });
+
+      const micBtn = wrapper.find('[data-testid="composer-voice-input-btn"]');
+      expect(micBtn.exists()).toBe(true);
+      expect(micBtn.attributes("disabled")).toBeUndefined();
+
+      await micBtn.trigger("click");
+      expect(TestMockRecognition.instances.length).toBe(1);
+    });
+
+    it("C02: appends final to existing draft, keeps trailing whitespace/code, only final enters model", async () => {
+      let currentVal = "function test() {\n  ";
+      const wrapper = mountComposer({
+        modelValue: currentVal,
+        canDictate: true,
+        "onUpdate:modelValue": (val: string) => {
+          currentVal = val;
+        },
+      });
+
+      const micBtn = wrapper.find('[data-testid="composer-voice-input-btn"]');
+      await micBtn.trigger("click");
+      const inst = TestMockRecognition.instances[0];
+
+      // interim 不进入 modelValue
+      inst.onresult?.({
+        results: {
+          0: { 0: { transcript: "console.log(1)" }, isFinal: false, length: 1 },
+          length: 1,
+        },
+      });
+      await wrapper.vm.$nextTick();
+      expect(wrapper.emitted("update:modelValue")).toBeUndefined();
+
+      // final 进入 modelValue，由于 base 结尾有空白，直接追加
+      inst.onresult?.({
+        results: {
+          0: { 0: { transcript: "console.log(1)" }, isFinal: true, length: 1 },
+          length: 1,
+        },
+      });
+      await wrapper.vm.$nextTick();
+      const emitted = wrapper.emitted("update:modelValue");
+      expect(emitted).toBeDefined();
+      expect(emitted?.at(-1)?.[0]).toBe("function test() {\n  console.log(1)");
+    });
+
+    it("C03: textarea input preempts voice; self-echo of final does not cancel voice", async () => {
+      const wrapper = mountComposer({
+        modelValue: "原草稿",
+        canDictate: true,
+      });
+
+      const micBtn = wrapper.find('[data-testid="composer-voice-input-btn"]');
+      await micBtn.trigger("click");
+      const inst = TestMockRecognition.instances[0];
+      inst.onstart?.();
+      await wrapper.vm.$nextTick();
+
+      // final 发出后，模拟父组件 echo 回传相同值
+      inst.onresult?.({
+        results: {
+          0: { 0: { transcript: "语音新内容" }, isFinal: true, length: 1 },
+          length: 1,
+        },
+      });
+      await wrapper.vm.$nextTick();
+      const nextEmitted = wrapper.emitted("update:modelValue")?.at(-1)?.[0];
+      expect(nextEmitted).toBe("原草稿\n语音新内容");
+
+      // 模拟父组件以相同值更新 prop（Self-Echo）
+      await wrapper.setProps({ modelValue: nextEmitted });
+      // 确认未被取消
+      expect(
+        wrapper.find('[data-testid="composer-voice-interim-box"]').exists(),
+      ).toBe(true);
+
+      // 用户主动在 textarea 打字触发 input，立即抢占取消
+      await wrapper.find("textarea").trigger("input");
+      await wrapper.vm.$nextTick();
+      expect(
+        wrapper.find('[data-testid="composer-voice-interim-box"]').exists(),
+      ).toBe(false);
+    });
+
+    it("C04: Enter, send and queue are locked while voice is active", async () => {
+      const wrapper = mountComposer({
+        modelValue: "已识别的文字",
+        canDictate: true,
+        canSendFreshMessage: true,
+        canQueue: true,
+      });
+
+      const micBtn = wrapper.find('[data-testid="composer-voice-input-btn"]');
+      await micBtn.trigger("click");
+      const inst = TestMockRecognition.instances[0];
+      inst.onstart?.();
+      await wrapper.vm.$nextTick();
+
+      // Enter 键发送被锁定
+      await wrapper
+        .find("textarea")
+        .trigger("keydown", { key: "Enter", shiftKey: false });
+      expect(wrapper.emitted("send")).toBeUndefined();
+      expect(wrapper.emitted("queue")).toBeUndefined();
+
+      // 发送按钮被禁用
+      const sendBtn = wrapper.findAll("button").at(-1);
+      expect(sendBtn?.attributes("disabled")).toBeDefined();
+    });
+
+    it("C05: revoking canDictate cancels active voice session immediately", async () => {
+      const wrapper = mountComposer({
+        modelValue: "测试",
+        canDictate: true,
+      });
+
+      const micBtn = wrapper.find('[data-testid="composer-voice-input-btn"]');
+      await micBtn.trigger("click");
+      const inst = TestMockRecognition.instances[0];
+      inst.onstart?.();
+      await wrapper.vm.$nextTick();
+      expect(
+        wrapper.find('[data-testid="composer-voice-interim-box"]').exists(),
+      ).toBe(true);
+
+      // 撤掉门禁
+      await wrapper.setProps({ canDictate: false });
+      expect(
+        wrapper.find('[data-testid="composer-voice-interim-box"]').exists(),
+      ).toBe(false);
+    });
+
+    it("C06: hidden when unsupported, disabled when canDictate=false, active pulse style correct", async () => {
+      // 1. 不支持隐藏
+      (window as any).SpeechRecognition = null;
+      const unsuppWrapper = mountComposer({ canDictate: true });
+      expect(
+        unsuppWrapper.find('[data-testid="composer-voice-input-btn"]').exists(),
+      ).toBe(false);
+
+      // 2. 支持但门禁为 false 时禁用
+      (window as any).SpeechRecognition = TestMockRecognition;
+      const disWrapper = mountComposer({ canDictate: false });
+      const disBtn = disWrapper.find(
+        '[data-testid="composer-voice-input-btn"]',
+      );
+      expect(disBtn.exists()).toBe(true);
+      expect(disBtn.attributes("title")).toContain("语音");
+      expect(disBtn.attributes("aria-label")).toContain("语音");
+    });
+  });
 });
