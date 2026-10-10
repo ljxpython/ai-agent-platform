@@ -45,6 +45,7 @@ _RESEARCH_FAILURES = {
 }
 _FILES = {
     "invalid_query",
+    "invalid_read_options",
     "invalid_page_range",
     "invalid_csv",
     "damaged_pdf",
@@ -58,6 +59,7 @@ _FILES = {
     "macro_workbook_denied",
     "invalid_document",
     "invalid_file_ref",
+    "file_hash_mismatch",
     "file_not_found",
     "invalid_artifact_ref",
     "artifact_not_found",
@@ -265,6 +267,18 @@ def tool_error_content(exc: BaseException, tool_name: str) -> str | None:
             "tool.invalid_input",
             "correct_input",
             "not_started",
+        )
+    if tool_name == "parse_document" and native_code in {
+        "office_async_required",
+        "office_reader_unavailable",
+        "office_read_failed",
+    }:
+        return _content(
+            tool_name,
+            type(exc).__name__,
+            "tool.operation_failed",
+            "choose_alternative",
+            "failed",
         )
     if tool_name in {"generate_image", "edit_image"} and native_code in {
         "Image provider is not configured; no submission.",

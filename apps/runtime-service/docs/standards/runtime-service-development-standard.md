@@ -24,6 +24,14 @@
 
 阅读资料 → 复制 Showcase 的边界模式 → 在所属 Service 显式装配 → 编写最小测试 → 本地运行 → 更新文档和变更记录 → 提交评审。
 
+## 通用文档读取
+
+复用 `DocumentWorkspace`、六字段 `FileRef v1` 与公共 `tools/documents.py:build_document_tools()`；DOCX/PPTX 上传只存原字节，不自动转换或持久派生 Markdown。`DocumentToolsMiddleware.tools` 沿官方 Agent 装配同一工具，消息已有附件引用，不逐轮枚举 uploads 注入 SystemMessage。
+
+Office 异步读取固定 Docker reader，要求组合根绑定现有 workspace image；即使受信开发 shell 选择 local，Office 也没有宿主 parser 回退。单次 20 section/slide、12,000 字符，DOCX section 为正文段落/表格而非打印页码，续读使用返回的 `next_read` / `char_offset`。结构/哈希/输出边界由共享模块校验；取消和 execution unknown 保留控制流。
+
+仅 Showcase/DearFlow 普通主图授权读取，Plan/子图不因格式扩展获得权限；Excel 保持 data-analysis，OCR/旧 DOC/PPT/复杂版面后置。锁、镜像、资源与前端契约见 [F10 专项](../../../../docs/projects/20261010-agent-document-reading/README.md)。
+
 ## 上下文窗口管理
 
 DearFlow/Showcase 根图与声明式子图在 agent.py 显式替换官方摘要，公共能力位于 `middlewares/conversation_offloading.py`。使用受信模型容量/输出预算；摘要副本 nostream，最终模型请求 guard 计入动态 system/tools。大批历史裁剪保留初始目标或上一轮摘要，归档继续由 checkpoint/StateBackend 保存。

@@ -22,6 +22,7 @@ from runtime_service.middlewares.conversation_offloading import (
 from runtime_service.middlewares.run_prepare import RunPrepareMiddleware
 from runtime_service.runtime import RuntimeAuthError, verified_delegation_from_user
 from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.tools.images import ImageWorkspace
 from runtime_service.workspace.execution import runtime_backend
 from runtime_service.workspace.scoped import hashed_thread_root, thread_scope_hash
 
@@ -50,6 +51,8 @@ class _ThreadWorkspaceBackend(FilesystemBackend):
         workspace = self.cwd / "workspace"
         self.is_prepared()
         workspace.mkdir(parents=True, exist_ok=True)
+        io = ImageWorkspace(workspace)
+        os.close(io._directory(("work",), create=True))
         marker = self.cwd / ".initialized"
         if marker.exists():
             return
@@ -64,13 +67,16 @@ class _ThreadWorkspaceBackend(FilesystemBackend):
 
     def is_prepared(self) -> bool:
         paths = (self.cwd, self.cwd / "workspace", self.cwd / ".initialized")
-        if any(path.is_symlink() for path in (*self.cwd.parents, *paths)):
+        directories = (self.cwd / "workspace" / "work",)
+        if any(path.is_symlink() for path in (*self.cwd.parents, *paths, *directories)):
             raise RuntimeAuthError("runtime.workspace.invalid_path")
         if any(path.exists() and not path.is_dir() for path in paths[:2]):
             raise RuntimeAuthError("runtime.workspace.invalid_path")
         if paths[2].exists() and not paths[2].is_file():
             raise RuntimeAuthError("runtime.workspace.invalid_path")
-        return all(path.exists() for path in paths)
+        if any(path.exists() and not path.is_dir() for path in directories):
+            raise RuntimeAuthError("runtime.workspace.invalid_path")
+        return all(path.exists() for path in (*paths, *directories))
 
 
 class DockerWorkspaceBackend(_ThreadWorkspaceBackend, SandboxBackendProtocol):

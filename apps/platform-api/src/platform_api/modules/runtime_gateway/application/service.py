@@ -1378,6 +1378,8 @@ class RuntimeGatewayService:
         media_type = content_type.split(";")[0].strip().lower()
         allowed_mimes = {
             "application/zip",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
             "application/vnd.ms-excel",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             "text/html",

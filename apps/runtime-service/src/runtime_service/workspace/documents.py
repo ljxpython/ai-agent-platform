@@ -49,6 +49,14 @@ def validate_document(data: bytes, mime: str) -> None:
         raise DocumentError("file_too_large", 413)
     if mime not in MIME_EXT:
         raise DocumentError("unsupported_file_type", 415)
+    from runtime_service.workspace.document_reader import OFFICE_MIMES, validate_office
+
+    if mime in OFFICE_MIMES:
+        try:
+            validate_office(data, mime)
+        except ValueError as exc:
+            raise DocumentError(str(exc), 422) from None
+        return
     if mime == "application/vnd.ms-excel":
         if not data.startswith(bytes.fromhex("d0cf11e0a1b11ae1")):
             raise DocumentError("invalid_xls_magic", 415)

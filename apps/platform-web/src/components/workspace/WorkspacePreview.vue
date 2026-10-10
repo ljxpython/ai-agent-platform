@@ -1,13 +1,13 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 import {
   getWorkspacePreview,
   type WorkspacePreviewResult,
-} from '@/services/threads/workspace.service';
-import BaseIcon from '@/components/base/BaseIcon.vue';
-import SandboxedHtmlFrame from './SandboxedHtmlFrame.vue';
-import { renderMarkdown } from '@/utils/markdown';
-import { copyText } from '@/utils/clipboard';
+} from "@/services/threads/workspace.service";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import SandboxedHtmlFrame from "./SandboxedHtmlFrame.vue";
+import { renderMarkdown } from "@/utils/markdown";
+import { copyText } from "@/utils/clipboard";
 
 const props = defineProps<{
   projectId?: string;
@@ -19,24 +19,35 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'download', path: string): void;
+  (e: "download", path: string): void;
 }>();
 
 const fileName = computed(() => {
-  return props.path.split('/').filter(Boolean).pop() || '';
+  return props.path.split("/").filter(Boolean).pop() || "";
+});
+
+const formattedError = computed(() => {
+  if (!props.error) return "";
+  if (
+    props.error.includes("workspace_preview_unsupported") ||
+    props.error.includes("Workspace preview unsupported")
+  ) {
+    return "该文件类型不支持在线预览，请下载查看";
+  }
+  return props.error;
 });
 
 // Markdown 模式切换：'preview' | 'source'
-const markdownViewMode = ref<'preview' | 'source'>('preview');
+const markdownViewMode = ref<"preview" | "source">("preview");
 
 // 单张独立图片预览时的 Blob Object URL
-const imageUrl = ref<string>('');
+const imageUrl = ref<string>("");
 watch(
   () => props.previewResult?.imageBlob,
   (blob) => {
     if (imageUrl.value) {
       URL.revokeObjectURL(imageUrl.value);
-      imageUrl.value = '';
+      imageUrl.value = "";
     }
     if (blob) {
       imageUrl.value = URL.createObjectURL(blob);
@@ -47,7 +58,7 @@ watch(
 
 // Markdown 内部工作区图片解析与 Blob Object URL 资源池
 const markdownBlobUrls = ref<string[]>([]);
-const resolvedMarkdown = ref<string>('');
+const resolvedMarkdown = ref<string>("");
 
 function cleanupMarkdownBlobUrls() {
   for (const url of markdownBlobUrls.value) {
@@ -61,45 +72,52 @@ function cleanupMarkdownBlobUrls() {
 }
 
 function resolveWorkspacePath(imageSrc: string, baseFilePath: string): string {
-  const trimmed = imageSrc.trim().split('?')[0].split('#')[0];
-  if (!trimmed || trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
-    return '';
+  const trimmed = imageSrc.trim().split("?")[0].split("#")[0];
+  if (
+    !trimmed ||
+    trimmed.startsWith("http://") ||
+    trimmed.startsWith("https://") ||
+    trimmed.startsWith("data:")
+  ) {
+    return "";
   }
-  if (trimmed.startsWith('/workspace/')) {
+  if (trimmed.startsWith("/workspace/")) {
     return trimmed;
   }
-  if (trimmed.startsWith('/workspace')) {
-    return '/workspace' + trimmed.slice('/workspace'.length);
+  if (trimmed.startsWith("/workspace")) {
+    return "/workspace" + trimmed.slice("/workspace".length);
   }
-  if (trimmed.startsWith('/')) {
+  if (trimmed.startsWith("/")) {
     return `/workspace${trimmed}`;
   }
   // 相对路径常见目录前缀
   if (
-    trimmed.startsWith('charts/') ||
-    trimmed.startsWith('generated/') ||
-    trimmed.startsWith('work/') ||
-    trimmed.startsWith('outputs/') ||
-    trimmed.startsWith('reports/')
+    trimmed.startsWith("charts/") ||
+    trimmed.startsWith("generated/") ||
+    trimmed.startsWith("work/") ||
+    trimmed.startsWith("outputs/") ||
+    trimmed.startsWith("reports/")
   ) {
     return `/workspace/${trimmed}`;
   }
 
   // 基于当前文档所在目录进行相对路径解析
-  const dir = baseFilePath.split('/').slice(0, -1).join('/') || '/workspace';
-  const combined = `${dir}/${trimmed}`.replace(/\/+/g, '/');
-  const segments = combined.split('/');
+  const dir = baseFilePath.split("/").slice(0, -1).join("/") || "/workspace";
+  const combined = `${dir}/${trimmed}`.replace(/\/+/g, "/");
+  const segments = combined.split("/");
   const stack: string[] = [];
   for (const seg of segments) {
-    if (!seg || seg === '.') continue;
-    if (seg === '..') {
+    if (!seg || seg === ".") continue;
+    if (seg === "..") {
       stack.pop();
     } else {
       stack.push(seg);
     }
   }
-  const normalized = '/' + stack.join('/');
-  return normalized.startsWith('/workspace') ? normalized : `/workspace${normalized}`;
+  const normalized = "/" + stack.join("/");
+  return normalized.startsWith("/workspace")
+    ? normalized
+    : `/workspace${normalized}`;
 }
 
 let markdownTaskSeq = 0;
@@ -115,8 +133,8 @@ watch(
     const taskId = ++markdownTaskSeq;
     cleanupMarkdownBlobUrls();
 
-    if (!rawText || props.previewResult?.kind !== 'markdown') {
-      resolvedMarkdown.value = rawText || '';
+    if (!rawText || props.previewResult?.kind !== "markdown") {
+      resolvedMarkdown.value = rawText || "";
       return;
     }
 
@@ -149,8 +167,12 @@ watch(
       const workspaceTarget = resolveWorkspacePath(src, currentPath);
       if (!workspaceTarget) return null;
       try {
-        const preview = await getWorkspacePreview(projId, thId, workspaceTarget);
-        if (preview.kind === 'image' && preview.imageBlob) {
+        const preview = await getWorkspacePreview(
+          projId,
+          thId,
+          workspaceTarget,
+        );
+        if (preview.kind === "image" && preview.imageBlob) {
           const blobUrl = URL.createObjectURL(preview.imageBlob);
           return { src, blobUrl };
         }
@@ -165,7 +187,7 @@ watch(
     // 代际检查：若期间已切换文件，立即销毁所有新创建的 Object URL，杜绝泄漏与串台
     if (taskId !== markdownTaskSeq) {
       for (const res of results) {
-        if (res.status === 'fulfilled' && res.value?.blobUrl) {
+        if (res.status === "fulfilled" && res.value?.blobUrl) {
           URL.revokeObjectURL(res.value.blobUrl);
         }
       }
@@ -175,9 +197,11 @@ watch(
     let modifiedText = rawText;
     const newBlobUrls: string[] = [];
     for (const res of results) {
-      if (res.status === 'fulfilled' && res.value) {
+      if (res.status === "fulfilled" && res.value) {
         newBlobUrls.push(res.value.blobUrl);
-        modifiedText = modifiedText.split(res.value.src).join(res.value.blobUrl);
+        modifiedText = modifiedText
+          .split(res.value.src)
+          .join(res.value.blobUrl);
       }
     }
 
@@ -207,18 +231,22 @@ function copyContent(text: string) {
 // Markdown 内部代码块一键复制事件代理
 async function handleMarkdownClick(event: MouseEvent) {
   const target = event.target as HTMLElement | null;
-  const copyButton = target?.closest('[data-copy-code]') as HTMLButtonElement | null;
+  const copyButton = target?.closest(
+    "[data-copy-code]",
+  ) as HTMLButtonElement | null;
   if (!copyButton) return;
 
-  const codeElement = copyButton.closest('.pw-markdown-code')?.querySelector('code');
-  const code = codeElement?.textContent || '';
+  const codeElement = copyButton
+    .closest(".pw-markdown-code")
+    ?.querySelector("code");
+  const code = codeElement?.textContent || "";
   if (!code) return;
 
   const success = await copyText(code);
   if (success) {
-    copyButton.textContent = '已复制';
+    copyButton.textContent = "已复制";
     window.setTimeout(() => {
-      copyButton.textContent = '复制';
+      copyButton.textContent = "复制";
     }, 1600);
   }
 }
@@ -226,21 +254,20 @@ async function handleMarkdownClick(event: MouseEvent) {
 // 代码行号处理
 const codeLines = computed(() => {
   if (!props.previewResult?.textPreview?.text) return [];
-  return props.previewResult.textPreview.text.split('\n');
+  return props.previewResult.textPreview.text.split("\n");
 });
 </script>
 
 <template>
-  <div class="flex h-full w-full flex-col bg-white text-gray-900 dark:bg-dark-900 dark:text-gray-100">
+  <div
+    class="flex h-full w-full flex-col bg-white text-gray-900 dark:bg-dark-900 dark:text-gray-100"
+  >
     <!-- 空状态 -->
     <div
       v-if="!path"
       class="flex h-full flex-col items-center justify-center p-8 text-center text-gray-400 dark:text-dark-400"
     >
-      <BaseIcon
-        name="file"
-        class="h-10 w-10 stroke-1 opacity-40"
-      />
+      <BaseIcon name="file" class="h-10 w-10 stroke-1 opacity-40" />
       <p class="mt-3 text-sm">选择左侧文件或产物查看预览</p>
     </div>
 
@@ -249,10 +276,7 @@ const codeLines = computed(() => {
       v-else-if="loading"
       class="flex h-full flex-col items-center justify-center p-8 text-center text-gray-400 dark:text-dark-400"
     >
-      <BaseIcon
-        name="refresh"
-        class="h-6 w-6 animate-spin text-primary-500"
-      />
+      <BaseIcon name="refresh" class="h-6 w-6 animate-spin text-primary-500" />
       <p class="mt-2 text-xs">正在加载预览...</p>
     </div>
 
@@ -261,38 +285,28 @@ const codeLines = computed(() => {
       v-else-if="error"
       class="flex h-full flex-col items-center justify-center p-8 text-center"
     >
-      <BaseIcon
-        name="alert"
-        class="h-8 w-8 text-amber-500"
-      />
-      <p class="mt-3 text-sm font-medium text-gray-700 dark:text-dark-200">{{ error }}</p>
+      <BaseIcon name="alert" class="h-8 w-8 text-amber-500" />
+      <p class="mt-3 text-sm font-medium text-gray-700 dark:text-dark-200">
+        {{ formattedError }}
+      </p>
       <button
         type="button"
         class="mt-4 inline-flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-dark-700 dark:bg-dark-800 dark:text-dark-200 dark:hover:bg-dark-700"
         @click="emit('download', path)"
       >
-        <BaseIcon
-          name="download"
-          class="h-3.5 w-3.5"
-        />
+        <BaseIcon name="download" class="h-3.5 w-3.5" />
         直接下载原文件
       </button>
     </div>
 
     <!-- 正常预览内容 -->
-    <div
-      v-else
-      class="flex h-full flex-col"
-    >
+    <div v-else class="flex h-full flex-col">
       <!-- 预览顶部工具栏 -->
       <div
         class="flex h-11 shrink-0 items-center justify-between border-b border-gray-200 bg-gray-50/60 px-4 dark:border-dark-800 dark:bg-dark-950/40"
       >
         <div class="flex min-w-0 items-center gap-2">
-          <BaseIcon
-            name="file"
-            class="h-4 w-4 shrink-0 text-gray-400"
-          />
+          <BaseIcon name="file" class="h-4 w-4 shrink-0 text-gray-400" />
           <span
             class="truncate text-xs font-semibold text-gray-800 dark:text-dark-100"
             :title="path"
@@ -343,11 +357,8 @@ const codeLines = computed(() => {
             class="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-200/70 hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-dark-100"
             @click="copyContent(previewResult.textPreview.text)"
           >
-            <BaseIcon
-              :name="copied ? 'check' : 'copy'"
-              class="h-3.5 w-3.5"
-            />
-            {{ copied ? '已复制' : '复制' }}
+            <BaseIcon :name="copied ? 'check' : 'copy'" class="h-3.5 w-3.5" />
+            {{ copied ? "已复制" : "复制" }}
           </button>
 
           <!-- 下载按钮 -->
@@ -356,10 +367,7 @@ const codeLines = computed(() => {
             class="inline-flex items-center gap-1 rounded px-2 py-1 text-xs text-gray-600 hover:bg-gray-200/70 hover:text-gray-900 dark:text-dark-300 dark:hover:bg-dark-800 dark:hover:text-dark-100"
             @click="emit('download', path)"
           >
-            <BaseIcon
-              name="download"
-              class="h-3.5 w-3.5"
-            />
+            <BaseIcon name="download" class="h-3.5 w-3.5" />
             下载
           </button>
         </div>
@@ -392,10 +400,16 @@ const codeLines = computed(() => {
 
         <!-- 3. Markdown 渲染态 -->
         <div
-          v-else-if="previewResult?.kind === 'markdown' && markdownViewMode === 'preview'"
+          v-else-if="
+            previewResult?.kind === 'markdown' && markdownViewMode === 'preview'
+          "
           class="pw-markdown pw-workspace-markdown max-w-none p-6"
           @click="handleMarkdownClick"
-          v-html="renderMarkdown(resolvedMarkdown || previewResult.textPreview?.text || '')"
+          v-html="
+            renderMarkdown(
+              resolvedMarkdown || previewResult.textPreview?.text || '',
+            )
+          "
         />
 
         <!-- 4. 文本或 Markdown 源码态 -->
@@ -407,10 +421,7 @@ const codeLines = computed(() => {
           <div
             class="select-none border-r border-gray-200 bg-gray-50/60 py-4 pr-3 pl-3 text-right text-gray-400 dark:border-dark-800 dark:bg-dark-950/40 dark:text-dark-500"
           >
-            <div
-              v-for="(_, index) in codeLines"
-              :key="index"
-            >
+            <div v-for="(_, index) in codeLines" :key="index">
               {{ index + 1 }}
             </div>
           </div>
@@ -425,11 +436,10 @@ const codeLines = computed(() => {
           v-else
           class="flex h-full flex-col items-center justify-center p-8 text-center"
         >
-          <BaseIcon
-            name="archive"
-            class="h-12 w-12 text-gray-400"
-          />
-          <h3 class="mt-3 text-sm font-semibold text-gray-800 dark:text-dark-100">
+          <BaseIcon name="archive" class="h-12 w-12 text-gray-400" />
+          <h3
+            class="mt-3 text-sm font-semibold text-gray-800 dark:text-dark-100"
+          >
             {{ fileName }}
           </h3>
           <p class="mt-1 text-xs text-gray-500 dark:text-dark-400">
@@ -440,10 +450,7 @@ const codeLines = computed(() => {
             class="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-xs font-medium text-white shadow-sm hover:bg-primary-700"
             @click="emit('download', path)"
           >
-            <BaseIcon
-              name="download"
-              class="h-4 w-4"
-            />
+            <BaseIcon name="download" class="h-4 w-4" />
             下载原文件
           </button>
         </div>

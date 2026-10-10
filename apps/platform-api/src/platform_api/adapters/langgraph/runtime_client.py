@@ -486,6 +486,7 @@ class LangGraphRuntimeClient:
             "text/jsx",
             "text/tsx",
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/pdf",
             "text/plain",
             "text/markdown",

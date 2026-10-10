@@ -95,6 +95,7 @@
 ## runtime-service
 
 | 功能 | 状态 | 关联文档 |
+| F10 通用文档读取与附件上下文补齐 | 全链路已完成：FileRef/raw上传下载与同一parse_document补DOCX/PPTX有界读取；Docker6项、两图真实模型/历史/连续上传/fork、Worker重启通过，删除全目录系统索引；Excel保留沙箱分析。前端Task 3.1/3.2、DOC/PPT徽标纠偏、纯下载拦截及工作区415人性化提示实装，Vitest 726 passed通过、Playwright真实模型E2E 3项全绿，4张长图留痕完成，用户人工浏览器实测验收通过。未部署现役 | [专项](projects/20261010-agent-document-reading/README.md) · [前端交接](projects/20261010-agent-document-reading/frontend-handoff.md) |
 | 通用运行准备幂等与有界重试 | 已完成：全链路闭环，两 Agent workspace latch、资源安全修复、单一重试负责人/最多 2 次尝试、部分流保护及安全诊断；Platform Web 准备与重试专用子组件、主 Run 成功琥珀色降级；单测、本机故障恢复及 Playwright 全链路 E2E 验证通过，自主唤醒后置，未部署现役 | [方案与任务](projects/20261007-agent-production-capabilities/README.md) · [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | 通用 Agent Token/Cost 采集与持久化 | 全链路已完成：主/子图、摘要和可信旁路 callback、自有 Run/call ledger、缓存 TTL 与 Decimal 估算；真实隔离 PG/Worker/重启/回退与包含真实百炼大模型的 5 项 Playwright 端到端全部闭环，未部署现役 | [方案与任务](projects/20261007-agent-usage-cost-governance/02-runtime-usage.md) |
 | F01 Run Token 额度保护 | 已完成（非前端）：复用唯一 Usage ledger，在受信 native Run 全树累计，80%预警、达限/unknown阻止新增模型与工具；157项定向、真实PG/Worker/Provider/恢复/取消/回退与性能已验，默认关闭、在途可超额，前端联合验收待完成，未部署 | [F01评审](projects/20260913-dearflow-agent/15-token-budget-governance.md) · [前端交接](projects/20260913-dearflow-agent/16-token-budget-frontend-handoff.md) |

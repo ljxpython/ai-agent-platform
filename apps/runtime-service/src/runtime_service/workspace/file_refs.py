@@ -14,6 +14,8 @@ MIME_EXT = {
     "text/javascript": "js",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": "xlsx",
     "application/vnd.ms-excel": "xls",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": "pptx",
     "text/html": "html",
     "text/css": "css",
 }

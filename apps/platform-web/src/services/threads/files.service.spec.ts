@@ -47,7 +47,8 @@ describe("files.service", () => {
       file_name: "test.pdf",
       mime_type: "application/pdf",
       size_bytes: 1024,
-      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      sha256:
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     };
     expect(isValidFileRef(valid)).toBe(true);
 
@@ -77,11 +78,14 @@ describe("files.service", () => {
       file_name: "合同.pdf",
       mime_type: "application/pdf",
       size_bytes: 14,
-      sha256: "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
+      sha256:
+        "b94d27b9934d3e08a52e52d7da7dabfac484efe37a5380ee9088f7ace2efcde9",
     };
     platformHttpClientMock.put.mockResolvedValueOnce({ data: payload });
 
-    const file = new File(["hello document"], "合同.pdf", { type: "application/pdf" });
+    const file = new File(["hello document"], "合同.pdf", {
+      type: "application/pdf",
+    });
     const result = await uploadThreadFile(
       "proj-1",
       "th-1",
@@ -138,7 +142,12 @@ describe("files.service", () => {
       return {} as Window;
     });
 
-    await previewThreadFileInNewTab("proj-1", "th-1", "/workspace/uploads/data.csv", "数据.csv");
+    await previewThreadFileInNewTab(
+      "proj-1",
+      "th-1",
+      "/workspace/uploads/data.csv",
+      "数据.csv",
+    );
 
     expect(window.open).toHaveBeenCalledTimes(1);
     expect(openedUrl).toMatch(/^blob:/);
@@ -158,9 +167,77 @@ describe("files.service", () => {
       return {} as Window;
     });
 
-    await previewThreadFileInNewTab("proj-1", "th-1", "/workspace/uploads/guide.md", "guide.md");
+    await previewThreadFileInNewTab(
+      "proj-1",
+      "th-1",
+      "/workspace/uploads/guide.md",
+      "guide.md",
+    );
 
     expect(window.open).toHaveBeenCalledTimes(1);
     expect(openedUrl).toMatch(/^blob:/);
+  });
+
+  it("resolves DOCX and PPTX MIME types accurately even when file.type is empty or alias", () => {
+    // Empty file.type
+    expect(uploadThreadFile).toBeDefined();
+
+    const emptyDocx = new File(["docx content"], "方案.docx", { type: "" });
+    const resultDocx = uploadThreadFile("p1", "t1", "hash", emptyDocx);
+    // Promise rejected because of mock not set, but let's check mock call
+    resultDocx.catch(() => {});
+
+    expect(platformHttpClientMock.put).toHaveBeenCalledWith(
+      expect.stringContaining("/files/uploads/hash"),
+      emptyDocx,
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        }),
+      }),
+    );
+
+    // PPTX with zip alias
+    const aliasPptx = new File(["pptx content"], "汇报.pptx", {
+      type: "application/x-zip-compressed",
+    });
+    const resultPptx = uploadThreadFile("p1", "t1", "hash2", aliasPptx);
+    resultPptx.catch(() => {});
+
+    expect(platformHttpClientMock.put).toHaveBeenCalledWith(
+      expect.stringContaining("/files/uploads/hash2"),
+      aliasPptx,
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        }),
+      }),
+    );
+  });
+
+  it("routes DOCX to direct byte download in previewThreadFileInNewTab without window.open preview", async () => {
+    const mockBlob = new Blob(["docx zip binary"], {
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    });
+    platformHttpClientMock.get.mockResolvedValueOnce({ data: mockBlob });
+
+    const openSpy = vi.spyOn(window, "open");
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+
+    await previewThreadFileInNewTab(
+      "proj-1",
+      "th-1",
+      "/workspace/uploads/方案.docx",
+      "方案.docx",
+    );
+
+    // Must NOT call window.open for html preview
+    expect(openSpy).not.toHaveBeenCalled();
+    // Must trigger anchor click for download
+    expect(clickSpy).toHaveBeenCalled();
   });
 });

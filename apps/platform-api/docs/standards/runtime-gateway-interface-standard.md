@@ -37,6 +37,12 @@
 
 此处公开面共24条（21条通用入口与3条会话Stop入口）；完整矩阵还独立覆盖文件、消息、Dear 等自定义入口，由[test_runtime_gateway_http_matrix.py](../../tests/test_runtime_gateway_http_matrix.py)与路由注册集合校验。未列出的上游能力不能因为SDK有方法就当作平台接口，完整LangGraph Server等价性另行验收。
 
+## 文档文件契约
+
+原有 `PUT /threads/t/files/uploads/{sha256}?file_name=...` 接收 raw bytes，单文件 20 MiB；DOCX/PPTX 使用标准 OOXML MIME，响应仅 `version/path/file_name/mime_type/size_bytes/sha256` 六字段 FileRef v1。平台只做当前项目/Thread 授权、Delegation 和透传，结构解析归 Runtime；上传成功不代表已解析。
+
+`GET /threads/t/files/content?path=...` 保留认证下载、原字节、private/no-store、nosniff 与 attachment；回退 Office 写入口也须保留已接收文件的 GET MIME/哈希读取路径。fork 继续沿后端授权工作区复制，前端不新增复制或解析状态存储。实际工具字段与前端接续验收见 [F10 交接](../../../../docs/projects/20261010-agent-document-reading/frontend-handoff.md)。
+
 ## 身份与参数
 
 请求携带平台认证与 `x-project-id`。Thread归属必须匹配项目；启动/恢复重新检查当前Agent、Graph、模型、工具与成员授权。委托scope.operation区分read和run-create。

@@ -243,7 +243,23 @@ const displaySubtitle = computed(() => {
   if (props.tool.name === "parse_document") {
     const filePath =
       typeof input.value.file_path === "string" ? input.value.file_path : "";
-    const fileName = filePath.split("/").pop() || filePath;
+    const fileName = resolveMessageFileName(filePath);
+    const format = String(result.value.format || "").toLowerCase();
+
+    if (
+      format === "docx" &&
+      Array.isArray(result.value.matched_sections) &&
+      result.value.matched_sections.length
+    ) {
+      return ` · ${fileName} (第 ${result.value.matched_sections.join("、")} 段)`;
+    }
+    if (
+      format === "pptx" &&
+      Array.isArray(result.value.matched_pages) &&
+      result.value.matched_pages.length
+    ) {
+      return ` · ${fileName} (第 ${result.value.matched_pages.join("、")} 张幻灯片)`;
+    }
     const pages = Array.isArray(result.value.matched_pages)
       ? result.value.matched_pages
       : [];
@@ -258,20 +274,106 @@ const displaySubtitle = computed(() => {
   return path.value ? ` · ${path.value}` : "";
 });
 
-function formatDocumentWarning(w: string, query?: unknown): string {
-  if (w === "no_query_match_in_selected_range") {
-    return query && typeof query === "string"
-      ? `在指定页码范围内未匹配到关键词 "${query}"`
-      : "在指定页码范围内未匹配到关键词内容";
+function resolveMessageFileName(filePath: unknown): string {
+  const pathStr = typeof filePath === "string" ? filePath : "";
+  if (!pathStr) return "文档";
+  const rawMessages = (
+    props.stream as unknown as { messages?: { value?: unknown[] } }
+  )?.messages?.value;
+  if (Array.isArray(rawMessages)) {
+    for (const msg of rawMessages) {
+      const content = (msg as Record<string, unknown>)?.content;
+      if (Array.isArray(content)) {
+        for (const item of content) {
+          const rf = (item as Record<string, unknown>)?.extras as
+            | Record<string, unknown>
+            | undefined;
+          const runtimeFile = rf?.runtime_file as
+            | Record<string, unknown>
+            | undefined;
+          if (
+            runtimeFile &&
+            runtimeFile.path === pathStr &&
+            typeof runtimeFile.file_name === "string"
+          ) {
+            return runtimeFile.file_name;
+          }
+        }
+      }
+    }
+  }
+  const fileObj = asObject(result.value.file);
+  if (
+    typeof fileObj.file_name === "string" &&
+    fileObj.file_name &&
+    !/^[0-9a-f]{64}\.[a-z0-9]+$/i.test(fileObj.file_name)
+  ) {
+    return fileObj.file_name;
+  }
+  return pathStr.split("/").pop() || "文档";
+}
+
+function formatNextReadSummary(nextRead: unknown): string {
+  if (!nextRead || typeof nextRead !== "object") return "";
+  const nr = nextRead as Record<string, unknown>;
+  const opts = asObject(nr.read_options);
+  if (typeof opts.section_start === "number") {
+    return `section_start = ${opts.section_start}`;
+  }
+  if (typeof opts.page_start === "number") {
+    return `page_start = ${opts.page_start}`;
+  }
+  return "指定偏移范围起";
+}
+
+function formatDocumentWarning(
+  w: string,
+  query?: unknown,
+  format?: unknown,
+): string {
+  if (w === "docx_body_only") {
+    return "已读取正文，页眉页脚等未包含";
+  }
+  if (w === "docx_table_structure_flattened") {
+    return "表格结构可能简化";
+  }
+  if (w === "presentation_text_only") {
+    return "仅读取幻灯片文本，图片与动画未解析";
+  }
+  const slideMatch = /^slide_(\d+)_no_text_layer_ocr_required$/.exec(w);
+  if (slideMatch) {
+    return `第 ${slideMatch[1]} 张幻灯片无可读取文本`;
+  }
+  const pageMatch = /^page_(\d+)_no_text_layer_ocr_required$/.exec(w);
+  if (pageMatch) {
+    return `第 ${pageMatch[1]} 页无文本层（纯扫描页），需要 OCR 识别`;
+  }
+  if (w === "document_no_text") {
+    return "文档内没有可读取的文本内容";
+  }
+  if (w === "external_relationship_ignored") {
+    return "外部链接已忽略";
   }
   if (w === "csv_row_limit_2000") {
     return "CSV 达到 2000 行上限，超出部分已受控截断";
   }
-  const match = /^page_(\d+)_no_text_layer_ocr_required$/.exec(w);
-  if (match) {
-    return `第 ${match[1]} 页无文本层（纯扫描页），需要 OCR 识别`;
+  if (w === "use_data_analysis_skill_in_sandbox") {
+    return "该表格交由数据分析工具读取";
   }
-  return w;
+  if (w === "no_query_match_in_selected_range") {
+    const fmt = typeof format === "string" ? format.toLowerCase() : "";
+    const isPptx = fmt === "pptx";
+    const isDocx = fmt === "docx";
+    const scope = isDocx
+      ? "指定段落范围"
+      : isPptx
+        ? "指定幻灯片范围"
+        : "指定页码范围";
+    return query && typeof query === "string"
+      ? `在${scope}内未匹配到关键词 "${query}"`
+      : `在${scope}内未匹配到关键词内容`;
+  }
+  return "文档读取提示：存在未识别的格式限制";
 }
 
 export type EvidenceSourceItem = {
@@ -377,7 +479,8 @@ function getSourceKindBadge(source: EvidenceSourceItem): {
   />
   <div
     v-else
-    class="rounded-xl border border-gray-200/90 bg-white/95 text-sm shadow-2xs dark:border-dark-700/80 dark:bg-dark-900/90 overflow-hidden"
+    class="pw-tool-call rounded-xl border border-gray-200/90 bg-white/95 text-sm shadow-2xs dark:border-dark-700/80 dark:bg-dark-900/90 overflow-hidden"
+    data-testid="tool-result"
   >
     <button
       type="button"
@@ -608,45 +711,98 @@ $ {{ input.command }}</pre
         </div>
       </template>
       <template v-else-if="tool.name === 'parse_document'">
-        <div class="space-y-3">
+        <div v-if="tool.status === 'error'" class="space-y-3">
+          <div v-if="errorInfo?.isStructured && errorInfo.rawJson" class="mb-3">
+            <pre
+              class="pw-tool-error-output max-h-60 overflow-auto rounded-lg border border-red-200/80 bg-red-50/40 p-2.5 font-mono text-xs text-red-900 whitespace-pre-wrap select-text dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-200"
+              >{{ formatJson(errorInfo.rawJson) }}</pre
+            >
+          </div>
+          <div
+            v-else
+            class="rounded-lg border border-red-200/80 bg-red-50/60 p-3 text-xs text-red-800 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-300 flex items-start gap-2"
+          >
+            <BaseIcon
+              name="alert"
+              size="xs"
+              class="shrink-0 text-red-600 mt-0.5 dark:text-red-400"
+            />
+            <span class="break-all font-mono">{{
+              errorInfo?.summary ||
+              readable(tool.error) ||
+              readable(tool.output) ||
+              "文档读取失败"
+            }}</span>
+          </div>
+        </div>
+        <div v-else class="space-y-3">
           <div
             class="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs dark:border-dark-700 dark:bg-dark-800/60"
           >
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 min-w-0">
               <BaseIcon
                 name="file"
                 size="xs"
-                class="text-primary-600 dark:text-primary-400"
+                class="text-primary-600 dark:text-primary-400 shrink-0"
               />
-              <span class="font-medium text-slate-900 dark:text-white">
-                {{
-                  input.file_path
-                    ? String(input.file_path).split("/").pop()
-                    : "文档"
-                }}
+              <span
+                class="font-medium text-slate-900 dark:text-white truncate"
+                :title="resolveMessageFileName(input.file_path)"
+              >
+                {{ resolveMessageFileName(input.file_path) }}
               </span>
               <span
                 v-if="result.format"
-                class="rounded bg-slate-200/80 px-1.5 py-0.5 text-[10px] uppercase text-slate-700 dark:bg-dark-700 dark:text-dark-300"
+                class="rounded bg-slate-200/80 px-1.5 py-0.5 text-[10px] uppercase text-slate-700 dark:bg-dark-700 dark:text-dark-300 shrink-0"
               >
                 {{ result.format }}
               </span>
             </div>
             <div
-              class="flex items-center gap-3 text-slate-500 dark:text-dark-300"
+              class="flex items-center gap-3 text-slate-500 dark:text-dark-300 shrink-0"
             >
-              <span v-if="typeof result.pages === 'number'"
-                >共 {{ result.pages }} 页</span
-              >
-              <span
-                v-if="
-                  Array.isArray(result.matched_pages) &&
-                  result.matched_pages.length
-                "
-                class="text-primary-600 dark:text-primary-400 font-medium"
-              >
-                已命中第 {{ result.matched_pages.join("、") }} 页
-              </span>
+              <template v-if="result.format === 'docx'">
+                <span v-if="typeof result.sections === 'number'">
+                  共 {{ result.sections }} 个段落/表格
+                </span>
+                <span
+                  v-if="
+                    Array.isArray(result.matched_sections) &&
+                    result.matched_sections.length
+                  "
+                  class="text-primary-600 dark:text-primary-400 font-medium"
+                >
+                  已命中第 {{ result.matched_sections.join("、") }} 段
+                </span>
+              </template>
+              <template v-else-if="result.format === 'pptx'">
+                <span v-if="typeof result.pages === 'number'">
+                  共 {{ result.pages }} 张幻灯片
+                </span>
+                <span
+                  v-if="
+                    Array.isArray(result.matched_pages) &&
+                    result.matched_pages.length
+                  "
+                  class="text-primary-600 dark:text-primary-400 font-medium"
+                >
+                  已命中第 {{ result.matched_pages.join("、") }} 张幻灯片
+                </span>
+              </template>
+              <template v-else>
+                <span v-if="typeof result.pages === 'number'">
+                  共 {{ result.pages }} 页
+                </span>
+                <span
+                  v-if="
+                    Array.isArray(result.matched_pages) &&
+                    result.matched_pages.length
+                  "
+                  class="text-primary-600 dark:text-primary-400 font-medium"
+                >
+                  已命中第 {{ result.matched_pages.join("、") }} 页
+                </span>
+              </template>
             </div>
           </div>
 
@@ -655,8 +811,25 @@ $ {{ input.command }}</pre
             class="rounded-lg border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/40 dark:text-amber-300 flex items-center gap-1.5"
           >
             <BaseIcon name="alert" size="xs" />
+            <span v-if="result.format === 'docx'">
+              内容已截断，可继续指定 section_start 和 section_end 查询后续段落
+            </span>
+            <span v-else-if="result.format === 'pptx'">
+              内容已截断，可继续指定 page_start 和 page_end 查询后续幻灯片
+            </span>
+            <span v-else>
+              内容已截断，可继续指定 page_start 和 page_end 查询后续页码
+            </span>
+          </div>
+
+          <div
+            v-if="result.next_read && typeof result.next_read === 'object'"
+            class="rounded-lg border border-sky-200 bg-sky-50/80 px-3 py-2 text-xs text-sky-800 dark:border-sky-900/50 dark:bg-sky-950/40 dark:text-sky-300 flex items-center gap-1.5"
+          >
+            <BaseIcon name="info" size="xs" class="shrink-0" />
             <span
-              >内容已截断，可继续指定 page_start 和 page_end 查询后续页码</span
+              >建议续读参数：{{ formatNextReadSummary(result.next_read) }}（由
+              Agent 后续按需读取）</span
             >
           </div>
 
@@ -674,7 +847,9 @@ $ {{ input.command }}</pre
                 size="xs"
                 class="shrink-0 text-amber-600 dark:text-amber-400"
               />
-              <span>{{ formatDocumentWarning(w, input.query) }}</span>
+              <span>{{
+                formatDocumentWarning(w, input.query, result.format)
+              }}</span>
             </div>
           </div>
 
@@ -690,9 +865,22 @@ $ {{ input.command }}</pre
               <div
                 class="mb-1 flex items-center justify-between font-mono text-[10px] text-gray-500 dark:text-dark-400"
               >
-                <span v-if="typeof chunk.page === 'number'"
-                  >第 {{ chunk.page }} 页</span
+                <span v-if="typeof chunk.section === 'number'">
+                  第 {{ chunk.section }} 段
+                </span>
+                <span
+                  v-else-if="
+                    result.format === 'pptx' && typeof chunk.page === 'number'
+                  "
                 >
+                  第 {{ chunk.page }} 张幻灯片
+                </span>
+                <span v-else-if="typeof chunk.page === 'number'">
+                  第 {{ chunk.page }} 页
+                </span>
+                <span v-if="typeof chunk.char_offset === 'number'">
+                  偏移量: {{ chunk.char_offset }}
+                </span>
               </div>
               <div
                 class="whitespace-pre-wrap leading-relaxed text-gray-800 dark:text-dark-200"

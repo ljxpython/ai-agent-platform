@@ -417,4 +417,182 @@ describe("ToolResult.vue", () => {
     expect(wrapper.text()).toContain("task-img-999");
     expect(wrapper.text()).toContain("切勿盲目重复点击生成");
   });
+
+  it("renders parse_document error with highest priority when tool.status is error", async () => {
+    const tool: ToolItem = {
+      key: "doc-err-1",
+      id: "call-doc-err-1",
+      name: "parse_document",
+      input: { file_path: "/workspace/uploads/corrupted.docx" },
+      output: JSON.stringify({
+        error: "invalid_document",
+        message: "文档结构损坏，无法解析 OOXML 容器",
+      }),
+      status: "error",
+      error: "文档结构损坏，无法解析 OOXML 容器",
+    };
+
+    const wrapper = mount(ToolResult, {
+      props: { tool },
+      global: {
+        stubs: {
+          SubagentCard: true,
+          MessageContent: true,
+          BaseIcon: true,
+        },
+      },
+    });
+
+    // 展开状态
+    await wrapper.find("button").trigger("click");
+    expect(wrapper.text()).toContain("文档结构损坏，无法解析 OOXML 容器");
+    // 确保没有渲染正常的空成功卡片（如“共 0 页”）
+    expect(wrapper.text()).not.toContain("共 0 个段落");
+    expect(wrapper.text()).not.toContain("共 0 页");
+  });
+
+  it("renders DOCX with sections, matched_sections, truncation and next_read suggestion", async () => {
+    const tool: ToolItem = {
+      key: "doc-docx-1",
+      id: "call-docx-1",
+      name: "parse_document",
+      input: { file_path: "/workspace/uploads/方案.docx", query: "交付" },
+      output: JSON.stringify({
+        version: 1,
+        format: "docx",
+        sections: 45,
+        read_range: [1, 20],
+        matched_sections: [2],
+        chunks: [{ section: 2, char_offset: 0, text: "交付时间为周五。" }],
+        text: "交付时间为周五。",
+        truncated: true,
+        warnings: ["docx_body_only", "docx_table_structure_flattened"],
+        next_read: {
+          file_path: "/workspace/uploads/方案.docx",
+          query: "交付",
+          read_options: { section_start: 21 },
+        },
+      }),
+      status: "finished",
+    };
+
+    const wrapper = mount(ToolResult, {
+      props: { tool },
+      global: {
+        stubs: {
+          SubagentCard: true,
+          MessageContent: true,
+          BaseIcon: true,
+        },
+      },
+    });
+
+    // 副标题包含段落号
+    expect(wrapper.text()).toContain("方案.docx (第 2 段)");
+
+    await wrapper.find("button").trigger("click");
+    expect(wrapper.text()).toContain("共 45 个段落/表格");
+    expect(wrapper.text()).toContain("已命中第 2 段");
+    expect(wrapper.text()).toContain("可继续指定 section_start 和 section_end");
+    expect(wrapper.text()).toContain("建议续读参数：section_start = 21");
+    expect(wrapper.text()).toContain("已读取正文，页眉页脚等未包含");
+    expect(wrapper.text()).toContain("表格结构可能简化");
+    expect(wrapper.text()).toContain("第 2 段");
+    expect(wrapper.text()).toContain("偏移量: 0");
+    expect(wrapper.text()).toContain("交付时间为周五。");
+  });
+
+  it("renders PPTX with slides count, matched slides, and slide chunks", async () => {
+    const tool: ToolItem = {
+      key: "doc-pptx-1",
+      id: "call-pptx-1",
+      name: "parse_document",
+      input: { file_path: "/workspace/uploads/汇报.pptx" },
+      output: JSON.stringify({
+        version: 1,
+        format: "pptx",
+        pages: 12,
+        read_range: [1, 5],
+        matched_pages: [1, 3],
+        chunks: [{ page: 1, char_offset: 0, text: "季度架构总结汇报" }],
+        text: "季度架构总结汇报",
+        truncated: true,
+        warnings: ["presentation_text_only"],
+        next_read: {
+          file_path: "/workspace/uploads/汇报.pptx",
+          read_options: { page_start: 6 },
+        },
+      }),
+      status: "finished",
+    };
+
+    const wrapper = mount(ToolResult, {
+      props: { tool },
+      global: {
+        stubs: {
+          SubagentCard: true,
+          MessageContent: true,
+          BaseIcon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("汇报.pptx (第 1、3 张幻灯片)");
+
+    await wrapper.find("button").trigger("click");
+    expect(wrapper.text()).toContain("共 12 张幻灯片");
+    expect(wrapper.text()).toContain("已命中第 1、3 张幻灯片");
+    expect(wrapper.text()).toContain(
+      "可继续指定 page_start 和 page_end 查询后续幻灯片",
+    );
+    expect(wrapper.text()).toContain("建议续读参数：page_start = 6");
+    expect(wrapper.text()).toContain("仅读取幻灯片文本，图片与动画未解析");
+    expect(wrapper.text()).toContain("第 1 张幻灯片");
+  });
+
+  it("formats all document warnings and desensitizes unknown warnings", async () => {
+    const tool: ToolItem = {
+      key: "doc-warn-1",
+      id: "call-doc-warn-1",
+      name: "parse_document",
+      input: { file_path: "/workspace/uploads/test.docx" },
+      output: JSON.stringify({
+        version: 1,
+        format: "docx",
+        sections: 10,
+        text: "内容",
+        truncated: false,
+        warnings: [
+          "slide_3_no_text_layer_ocr_required",
+          "document_no_text",
+          "external_relationship_ignored",
+          "use_data_analysis_skill_in_sandbox",
+          "suspicious_internal_path_disclosure_error",
+        ],
+      }),
+      status: "finished",
+    };
+
+    const wrapper = mount(ToolResult, {
+      props: { tool },
+      global: {
+        stubs: {
+          SubagentCard: true,
+          MessageContent: true,
+          BaseIcon: true,
+        },
+      },
+    });
+
+    await wrapper.find("button").trigger("click");
+    expect(wrapper.text()).toContain("第 3 张幻灯片无可读取文本");
+    expect(wrapper.text()).toContain("文档内没有可读取的文本内容");
+    expect(wrapper.text()).toContain("外部链接已忽略");
+    expect(wrapper.text()).toContain("该表格交由数据分析工具读取");
+    // 未知 warning 脱敏
+    expect(wrapper.text()).toContain("文档读取提示：存在未识别的格式限制");
+    expect(wrapper.text()).not.toContain(
+      "suspicious_internal_path_disclosure_error",
+    );
+  });
 });
