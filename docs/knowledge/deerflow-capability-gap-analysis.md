@@ -450,6 +450,8 @@ markitdown = { version = ">=0.0.1a2", extras = ["all", "xlsx"] }
 
 ### F11 — 输入润色（Input Polish）
 
+> **2026-10-10 已确认：暂缓开发（deferred），保留为 P2 候选，不列为生产可靠性必补。** 本节下方是原始候选描述，不能据此直接实施；当前取舍、复用方案和后置前端交接以 [F11 专项](../projects/20261010-agent-input-polish/README.md) 为准。
+
 **是什么**：用户写完草稿后点"润色"，AI 将模糊指令重写为清晰的 Agent 指令（不执行任务，只优化提示词）。
 
 **DeerFlow 怎么做**
@@ -675,7 +677,7 @@ MemoryMiddleware        ← SummarizationMiddleware.before_summarization hooks�
 |---|---|---|
 | F13 语音输入 | 1 天 | 纯前端 |
 | F07 自动标题（前端联动部分） | 半天 | 前端联动 |
-| F11 输入润色（前端部分） | 1 天 | 前端为主 |
+| F11 输入润色（前端部分） | 暂缓，未排期 | 三层协作；同事交接保留为参考 |
 | F12 AI 建议（前端部分） | 1 天 | 前端为主 |
 
 ---
@@ -690,7 +692,7 @@ MemoryMiddleware        ← SummarizationMiddleware.before_summarization hooks�
 | F02 循环检测 | **P0** | 中（3天） | middleware 架构 |
 | F10 文件上传转换 | **P0** | 中（3天） | markitdown |
 | F13 语音输入 | **P1** | 小（1天） | 纯前端 |
-| F11 输入润色 | **P1** | 小（2天） | oneshot LLM |
+| F11 输入润色 | **P2（暂缓）** | 未排期 | 复用 suggestions；无 Thread 授权/旁路成本评审，见 F11 专项 |
 | F12 AI 建议 | **P1** | 小（2天） | oneshot LLM |
 | F15 MCP 缓存重置 | **P1** | 小（半天） | 无 |
 | F06 Todo 中间件 | **P1** | 中（3天） | middleware 架构 |

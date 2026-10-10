@@ -8,6 +8,8 @@
 ## platform-web
 
 | 功能 | 状态 | 关联文档 |
+|---|---|---|
+| F11 发送前输入润色 | 规划中（暂缓）：用户确认 deferred，P2 候选、功能未实施；同事交接保留为后续参考，未排期 | [前端交接](projects/20261010-agent-input-polish/frontend-handoff.md) |
 | Agent 运行准备与有界重试诊断摘要展示 | 已完成：实装运行准备（RunPreparationsSection）与受管重试（RunRetriesSection）独立子组件，支持 strict attempts/role 正则校验、主 Run 成功时琥珀色 Amber 警示降级、空态完全隐藏、敏感字段剥离，49 项单测与 Playwright 全链路 E2E 验证全绿 | [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | Agent Run/Thread 用量与成本展示 | 已完成：实装独立解耦面板 RunUsage 与 useRunUsage 防竞态状态机、open-swe 水位进度条 (Usage Meter)、服务端截断告警卡片、模型费率安全编辑（Decimal 精度、自动补零、可逆清空保护）以及假数据彻底切除。Playwright + Chromium 端到端 5 项全绿（含真实百炼 qwen-plus 全链路调用闭环与 24,069 Tokens / $0.0051 落库上屏）并生成 7 张高清渲染截图，全仓 120 套件 583 项单测、typecheck、lint 和生产打包 100% 通过 | [前端交接](projects/20261007-agent-usage-cost-governance/04-frontend-handoff.md) |
 | F01 Run Token 额度保护展示 | 已完成：实装 budget/usage 类型与精确安全错误码扩展、ViewModel 在途硬停过渡态防抖、状态栏对账恢复与草稿回填、RunUsage 紧凑额度水位条融合及超额 105% 视觉 clamp；46 项单测、typecheck、lint、生产构建全绿；Playwright 真实模型（百炼·qwen-plus）6 项自动化 E2E 闭环全部通过（耗时 19.1s，8 张 1440/768/390 截图留痕） | [F01评审](projects/20260913-dearflow-agent/15-token-budget-governance.md) · [前端交接](projects/20260913-dearflow-agent/16-token-budget-frontend-handoff.md) |
@@ -73,6 +75,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| F11 受管草稿润色网关 | 规划中（暂缓）：用户确认 deferred；无 Thread 用途授权与治理方案未批准，未新增接口或配置 | [整体方案](projects/20261010-agent-input-polish/plan.md) |
 | 模型价格快照与授权用量查询 | 全链路已完成：可空六费率/版本与历史快照、usage-read、Run/Thread GET、安全投影和当前 ACL；隔离链路/Final 完成，未部署现役 | [方案与任务](projects/20261007-agent-usage-cost-governance/03-platform-cost-contract.md) |
 | Agent 预算通知与安全错误出口 | 全链路 done：四精确预算安全码、custom/end 标记白名单、tasks.error 清洗、input/update/command/resume 防伪已实装；81 passed/423 subtests，1 skipped；真实 Worker 链路通过，前端联合 F01-F04 全绿，未部署 | [验证](projects/20261007-agent-execution-budget/verification.md) |
 | F01 Run Token 额度保护投影 | 已完成（非前端）：Token custom 白名单、两个精确安全码、可空 Run Usage 摘要与防私有注入已实装；61项/177 subtests及真实授权/撤权链路通过，前端联合验收待接续，未部署 | [F01评审](projects/20260913-dearflow-agent/15-token-budget-governance.md) |
@@ -95,6 +98,8 @@
 ## runtime-service
 
 | 功能 | 状态 | 关联文档 |
+|---|---|---|
+| F11 通用输入润色 one-shot | 规划中（暂缓）：用户确认 deferred；保留 suggestions 复用与旁路成本方案，未实施、未排期 | [需求取舍](projects/20261010-agent-input-polish/reference-analysis.md) |
 | 通用运行准备幂等与有界重试 | 已完成：全链路闭环，两 Agent workspace latch、资源安全修复、单一重试负责人/最多 2 次尝试、部分流保护及安全诊断；Platform Web 准备与重试专用子组件、主 Run 成功琥珀色降级；单测、本机故障恢复及 Playwright 全链路 E2E 验证通过，自主唤醒后置，未部署现役 | [方案与任务](projects/20261007-agent-production-capabilities/README.md) · [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | 通用 Agent Token/Cost 采集与持久化 | 全链路已完成：主/子图、摘要和可信旁路 callback、自有 Run/call ledger、缓存 TTL 与 Decimal 估算；真实隔离 PG/Worker/重启/回退与包含真实百炼大模型的 5 项 Playwright 端到端全部闭环，未部署现役 | [方案与任务](projects/20261007-agent-usage-cost-governance/02-runtime-usage.md) |
 | F01 Run Token 额度保护 | 已完成（非前端）：复用唯一 Usage ledger，在受信 native Run 全树累计，80%预警、达限/unknown阻止新增模型与工具；157项定向、真实PG/Worker/Provider/恢复/取消/回退与性能已验，默认关闭、在途可超额，前端联合验收待完成，未部署 | [F01评审](projects/20260913-dearflow-agent/15-token-budget-governance.md) · [前端交接](projects/20260913-dearflow-agent/16-token-budget-frontend-handoff.md) |

@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-10（F15 MCP 缓存热重置评估关闭：用户确认不开发新增 reset/连接池，前端交接完成；部署配置热更新未实现，可选回归未排期，未改业务代码。F01/Plan Mode 交付与 Worktree 资源隔离基线保持）。
+> **最后更新：** 2026-10-10（F11 输入润色评估与规划完成，用户确认暂缓、保留 P2 候选；F15 MCP 缓存热重置评估关闭，用户确认不开发 reset/连接池，部署配置热更新未实现、可选回归未排期；两项均未改业务代码。F01/Plan Mode 交付与 Worktree 资源隔离基线保持）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -10,6 +10,8 @@
 **最后更新：** 2026-10-10
 
 ## 最近改动
+
+2026-10-10 | **F11 通用输入润色评估**：评估与规划已完成；用户确认暂缓开发（`deferred`），保留为 P2 候选，不列为生产可靠性必补。复用 suggestions 底座的备选方案、代码落点、验证计划及同事前端交接保留，实施未排期、未获批准。见 [专项](projects/20261010-agent-input-polish/README.md)。
 
 2026-10-10 | **F15 MCP 缓存热重置评估**：已完成（评估关闭）。用户确认不开发新增 reset/连接池。当前普通 MCP 每次执行构图重新 discovery，官方临时 session 无跨 Run cache/pool；已有平台工具目录同步。`.env` 无重启生效属于另行评审的配置热更新，未实现；源码对照、未排期测试候选与前端交接已补入 [17评估](projects/20260913-dearflow-agent/17-mcp-cache-reset-assessment.md) / [18交接](projects/20260913-dearflow-agent/18-mcp-cache-reset-frontend-handoff.md)。未实施或重新验证功能。
 
@@ -27,6 +29,7 @@
 
 ## 活跃项目
 
+- [F11 通用输入润色](projects/20261010-agent-input-polish/README.md)：评估与规划完成，用户确认暂缓（`deferred`），P2 候选、功能未实施。suggestions 复用、无 Thread 用途授权与旁路成本方案保留，未来重新投入时需人工批准；同事前端交接未排期。
 - [Agent 通用 Plan Mode 与计划审批治理](projects/20261008-agent-plan-mode-governance/README.md)：`done`；三服务（Runtime/API/Web）全链路实施与自动化验收全部完成。后端双重门禁、原生审批、快照幂等与安全脱敏闭环；前端开关/徽章、待审卡片、输入框锁定、XSS 防御与状态自愈实装；静态代码门禁全部通过；Playwright + Chromium 真实大模型（DeepSeek-V4-Flash）自动化端到端测试 100% 绿灯；7 张全景截图与 Thread/Run/interrupt 对账无误。未部署现役。
 - [Worktree 本地栈资源隔离](projects/20261010-worktree-local-stack/README.md)：done；T01-T07全部验收，默认admin/admin123、继承各app配置和主库基础数据复用完成。源库只读，历史/令牌/定时任务排除；24项回归及真实三栈通过，资源回收；存量37条文档路径后置。
 - [Agent Workspace 执行容错与安全失败报告](projects/20261007-agent-workspace-resilience/README.md)：`done`（非前端本地与 Docker 范围全部闭环，全栈代码与测试已合并进入主干；前端交接与报告已固化）；后端五精确安全码、结果未知停止、取消回收与诊断记录已融合闭环。未部署现役。
@@ -64,9 +67,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-10 | 锁定/安装正式 post43；四图主子共享 attempt 预算/软收尾与 Run Token 额度；Plan 公共状态/三工具/双门禁、四图主子接线、Context v6 和规划 memory 跳过完成；解除默认 4096 max_tokens 兜底限制，系统提示词强化思考链 Token 预算约束；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理与运行准备幂等/有界重试全链路融合；Workspace 执行容错闭环；F15评估关闭，用户确认不开发新增MCP reset/连接池，部署配置热更新未实现；未部署现役。 |
-| platform-api | 2026-10-10 | 私有预算/Token 注入拒绝与脱敏；执行预算及 F01 Token 两类精确安全码；Plan 原生审批/ACL/幂等、Context v6执行链、公开agent_plan/fork/cron边界完成；Run Usage 可选 token_budget DTO、ACL/撤权真实链路通过；模型恢复、上下文、诊断、费率 Usage、Stop 接口均已实装；Workspace 五码精确投影与 DTO 校验完成；未部署现役。 |
-| platform-web | 2026-10-10 | F01 Token 额度保护（F-T01—F-T04）全栈落地；规划开关（“+”号菜单 Teleport 展开）、单次 Run 胶囊徽章即时复位、两级能力判定、PlanReview 待审卡片与 Inspector 抽屉联动、Markdown XSS 伪协议清洗、待审态输入框安全锁定及 409 自愈实装；Vitest/vue-tsc/ESLint/build 全绿，Playwright 真实模型 E2E 与多视口双主题截图全绿通过。 |
+| runtime-service | 2026-10-10 | 锁定/安装正式 post43；四图主子共享 attempt 预算/软收尾与 Run Token 额度；Plan 公共状态/三工具/双门禁、四图主子接线、Context v6 和规划 memory 跳过完成；解除默认 4096 max_tokens 兜底限制，系统提示词强化思考链 Token 预算约束；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理与运行准备幂等/有界重试全链路融合；Workspace 执行容错闭环；F15评估关闭，用户确认不开发新增MCP reset/连接池，部署配置热更新未实现；未部署现役。F11 用户确认暂缓，受管 one-shot 复用方案仅保留为参考，未实施。 |
+| platform-api | 2026-10-10 | 私有预算/Token 注入拒绝与脱敏；执行预算及 F01 Token 两类精确安全码；Plan 原生审批/ACL/幂等、Context v6执行链、公开agent_plan/fork/cron边界完成；Run Usage 可选 token_budget DTO、ACL/撤权真实链路通过；模型恢复、上下文、诊断、费率 Usage、Stop 接口均已实装；Workspace 五码精确投影与 DTO 校验完成；未部署现役。F11 用户确认暂缓，无 Thread 用途授权及精确委托未批准实施，未新增接口。 |
+| platform-web | 2026-10-10 | F01 Token 额度保护（F-T01—F-T04）全栈落地；规划开关（“+”号菜单 Teleport 展开）、单次 Run 胶囊徽章即时复位、两级能力判定、PlanReview 待审卡片与 Inspector 抽屉联动、Markdown XSS 伪协议清洗、待审态输入框安全锁定及 409 自愈实装；Vitest/vue-tsc/ESLint/build 全绿，Playwright 真实模型 E2E 与多视口双主题截图全绿通过。F11 用户确认暂缓，同事交接未排期，未改源码。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-10 | Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号、配置继承与首次只读基础数据初始化已验收。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)，共9条。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 ## 近期关键决策
