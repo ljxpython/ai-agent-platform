@@ -20,6 +20,16 @@ vi.mock("../../composables/useRunDiagnostics", () => ({
   }),
 }));
 
+vi.mock("../../composables/useRunCompletion", () => ({
+  useRunCompletion: () => ({
+    data: ref(null),
+    loading: ref(false),
+    completion: ref(null),
+    failurePresentation: ref(null),
+    refresh: vi.fn(),
+  }),
+}));
+
 describe("RunDiagnostics.vue", () => {
   const baseDiagnostic: RunDiagnosticsV1 = {
     version: 1,

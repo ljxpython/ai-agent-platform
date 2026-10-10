@@ -25,6 +25,7 @@
 | POST | /threads/t/stream/events | Protocol事件订阅 |
 | GET | /threads/t/runs/r | 读取Run |
 | GET | /threads/t/runs/r/diagnostics | 授权读取安全诊断摘要 |
+| GET | /threads/t/runs/r/completion | 当前权限下读取持久安全终态摘要 |
 | GET | /threads/t/runs/r/usage | 授权读取 Run Token/成本与分页调用明细 |
 | GET | /threads/t/usage | 授权读取已采集 native Runs 的 Thread 合计 |
 | GET | /threads/t/runs | 列表，支持limit/offset/status/select |
@@ -35,7 +36,13 @@
 | GET | /threads/t/stop-requests/{stop_id} | 查询安全停止回执与报告 |
 | GET | /threads/t/stop-requests | 分页回查停止动作 |
 
-此处公开面共24条（21条通用入口与3条会话Stop入口）；完整矩阵还独立覆盖文件、消息、Dear 等自定义入口，由[test_runtime_gateway_http_matrix.py](../../tests/test_runtime_gateway_http_matrix.py)与路由注册集合校验。未列出的上游能力不能因为SDK有方法就当作平台接口，完整LangGraph Server等价性另行验收。
+completion 的独立 router 还提供当前用户 feed/read，路径和验证见下文；现有原生代理矩阵与 completion 契约测试分别覆盖。未列出的上游能力不能因为SDK有方法就当作平台接口，完整LangGraph Server等价性另行验收。
+
+## 运行完成与私有通知（2026-10-09 用户批准）
+
+独立 `presentation/completion_http.py` 提供 `GET /api/langgraph/threads/{thread_id}/runs/{run_id}/completion`、`GET /api/runtime/run-notifications`、`POST /api/runtime/run-notifications/{event_id}/read`。原生 Run 查询和当前 Thread ACL 校验目标；available/pending/unsupported/expired 不替换实时 Run 状态。feed 只含当前用户/项目的 error/timeout，共享读取者可看历史但不代写已读；删除/撤权后不展示旧摘要，全部响应 private,no-store。
+
+内部 `POST /api/runtime/internal/run-completion` 使用原始正文 HMAC、独立服务器 key 和提交后 ACK；origin、event、receipt 全属 Platform 数据库，不查引擎 SQL。GraphHarbor post44 持有通用终态/Outbox，Runtime 持有纯安全 projector；平台身份策略、模型码和文案不进入 GraphHarbor。默认关闭，配置与前端交接见 [完成通知专项](../../../../docs/projects/20261009-agent-production-capability-extension/README.md)。
 
 ## 身份与参数
 

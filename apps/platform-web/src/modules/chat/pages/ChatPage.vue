@@ -29,6 +29,7 @@ import BaseButton from "@/components/base/BaseButton.vue";
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import EmptyState from "@/components/platform/EmptyState.vue";
 import WorkspaceProjectSwitcher from "@/components/platform/WorkspaceProjectSwitcher.vue";
+import RunNotificationCenter from "@/components/layout/RunNotificationCenter.vue";
 import UserMenu from "@/components/layout/UserMenu.vue";
 import ChatSessionOutlet from "../components/ChatSessionOutlet.vue";
 import ChatThreadSidebar from "../components/ChatThreadSidebar.vue";
@@ -1035,39 +1036,50 @@ defineExpose({ choose, loadThreads, currentSelectedAgent, threads });
               <div
                 class="h-4 w-px bg-gray-200 dark:bg-dark-700 mx-1 hidden sm:block shrink-0"
               />
-              <div class="hidden sm:flex items-center gap-1.5 shrink-0">
+              <div class="flex items-center gap-1.5 shrink-0">
                 <WorkspaceProjectSwitcher compact />
+                <RunNotificationCenter />
                 <UserMenu compact />
               </div>
             </div>
           </template>
         </ChatSessionOutlet>
-        <div
-          v-else
-          class="flex min-w-0 flex-1 flex-col items-center justify-center p-6 text-center"
-        >
+        <div v-else class="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div
-            class="mx-auto w-full max-w-md rounded-2xl border border-gray-200/80 bg-white/95 p-8 shadow-sm dark:border-dark-800 dark:bg-dark-900/90"
+            class="flex h-12 shrink-0 items-center justify-end px-4 border-b border-gray-100 dark:border-dark-800"
           >
-            <span
-              class="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-500 text-white shadow-md"
+            <div class="flex items-center gap-1.5 shrink-0">
+              <WorkspaceProjectSwitcher compact />
+              <RunNotificationCenter />
+              <UserMenu compact />
+            </div>
+          </div>
+          <div
+            class="flex min-w-0 flex-1 flex-col items-center justify-center p-6 text-center"
+          >
+            <div
+              class="mx-auto w-full max-w-md rounded-2xl border border-gray-200/80 bg-white/95 p-8 shadow-sm dark:border-dark-800 dark:bg-dark-900/90"
             >
-              <BaseIcon name="assistant" size="md" />
-            </span>
-            <h2
-              class="mt-4 text-base font-semibold text-gray-900 dark:text-white"
-            >
-              请选择一个对话智能体
-            </h2>
-            <p class="mt-2 text-xs text-gray-500 dark:text-dark-400">
-              从当前项目已授权的 Agent 中挑选一个，立即开启智能会话。
-            </p>
-            <div class="mt-6 flex justify-center">
-              <ChatAgentSelector
-                :agents="agents"
-                :selected-agent-id="selectedTarget"
-                @select="choose"
-              />
+              <span
+                class="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-500 text-white shadow-md"
+              >
+                <BaseIcon name="assistant" size="md" />
+              </span>
+              <h2
+                class="mt-4 text-base font-semibold text-gray-900 dark:text-white"
+              >
+                请选择一个对话智能体
+              </h2>
+              <p class="mt-2 text-xs text-gray-500 dark:text-dark-400">
+                从当前项目已授权的 Agent 中挑选一个，立即开启智能会话。
+              </p>
+              <div class="mt-6 flex justify-center">
+                <ChatAgentSelector
+                  :agents="agents"
+                  :selected-agent-id="selectedTarget"
+                  @select="choose"
+                />
+              </div>
             </div>
           </div>
         </div>

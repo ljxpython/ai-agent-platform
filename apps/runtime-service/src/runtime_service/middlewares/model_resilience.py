@@ -32,6 +32,7 @@ from langchain_deepseek import ChatDeepSeek
 from langchain_openai import ChatOpenAI
 from langgraph.errors import GraphBubbleUp
 
+from runtime_service.observability.errors import classify_exception
 from runtime_service.runtime.contracts import ModelResiliencePolicy
 from runtime_service.runtime.errors import RuntimeErrorBase, RuntimeResolutionError
 
@@ -420,6 +421,7 @@ class ModelResilienceMiddleware(AgentMiddleware):
             )
             if code is None:
                 raise
+            model_error_code = classify_exception(exc)
         else:
             code = None
         if code is not None:
@@ -432,7 +434,9 @@ class ModelResilienceMiddleware(AgentMiddleware):
                 },
             )
             # Raise outside the except block so raw provider context is not retained.
-            raise RuntimeResolutionError(code)
+            error = RuntimeResolutionError(code)
+            error.model_error_code = model_error_code
+            raise error
         summary = invocation.summary()
         _add_summary(result, summary)
         logger.info(

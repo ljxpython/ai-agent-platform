@@ -1,0 +1,335 @@
+{
+  "date": "2026-10-09",
+  "source": "actual JUnit XML; skipped and failed cases are not passes",
+  "reports": [
+    {
+      "source": "run-completion-api-final.xml",
+      "sha256": "d3c0d24269009ee90191f74ffdfc5467acb00466a43d28a831618b0bf2083c1f",
+      "passed": 57,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 57,
+      "reported_tests_including_subtests": 63,
+      "duration_seconds": 39.391,
+      "failed_tests": []
+    },
+    {
+      "source": "run-completion-api-regression.xml",
+      "sha256": "626eb30545940e1f0b961a2875ac1ff9e59f64d1e01bdf70c0ec713035f57879",
+      "passed": 132,
+      "failed": 5,
+      "errors": 0,
+      "skipped": 5,
+      "testcase_count": 142,
+      "reported_tests_including_subtests": 742,
+      "duration_seconds": 63.452,
+      "failed_tests": [
+        "test_all_start_entries_use_same_preflight",
+        "test_capability_false_and_read_only_acl_do_not_enable_maintenance",
+        "test_maintenance_accepts_empty_input_and_retry_reuses_active_run",
+        "test_preflight_rejects_busy_interrupt_empty_pending_and_input",
+        "test_unknown_retries_forward_original_key_without_rechecking_busy_state"
+      ]
+    },
+    {
+      "source": "run-completion-context-head-baseline.xml",
+      "sha256": "50544ec164c6b1ede7bfca2a55cd88f9540972ee97d957d0bde749d256c47ebb",
+      "passed": 1,
+      "failed": 5,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 6,
+      "reported_tests_including_subtests": 6,
+      "duration_seconds": 15.176,
+      "failed_tests": [
+        "test_all_start_entries_use_same_preflight",
+        "test_capability_false_and_read_only_acl_do_not_enable_maintenance",
+        "test_maintenance_accepts_empty_input_and_retry_reuses_active_run",
+        "test_preflight_rejects_busy_interrupt_empty_pending_and_input",
+        "test_unknown_retries_forward_original_key_without_rechecking_busy_state"
+      ]
+    },
+    {
+      "source": "run-completion-engine-final.xml",
+      "sha256": "18f980ff0448d7867ec9dfea7d80ae3335a1db7f28a115567ce5aa79461781c1",
+      "passed": 339,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 9,
+      "testcase_count": 348,
+      "reported_tests_including_subtests": 348,
+      "duration_seconds": 394.408,
+      "failed_tests": []
+    },
+    {
+      "source": "run-completion-post44-api-contract-baseline.xml",
+      "sha256": "bc473cafb3a47223ec96f6eae3d403597748f047f600ee6921966f6169631745",
+      "passed": 0,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 1,
+      "reported_tests_including_subtests": 1,
+      "duration_seconds": 12.596,
+      "failed_tests": [
+        "test_run_launch_attaches_opaque_model_reference_from_platform_runtime_context"
+      ]
+    },
+    {
+      "source": "run-completion-post44-artifact-cas.xml",
+      "sha256": "9b42233f6195390dd7f51413e6c622bd555d0a939265be1cdc28d52b2447a400",
+      "passed": 4,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 4,
+      "reported_tests_including_subtests": 4,
+      "duration_seconds": 56.848,
+      "failed_tests": []
+    },
+    {
+      "source": "run-completion-post44-http-matrix.xml",
+      "sha256": "b9bd7204b5a116d2c35fbe23a405ee8d562a2f769a6fba6f929d75b233913f58",
+      "passed": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 1,
+      "reported_tests_including_subtests": 1,
+      "duration_seconds": 28.758,
+      "failed_tests": []
+    },
+    {
+      "source": "run-completion-post44-official-api-regression.xml",
+      "sha256": "8f92662304e65c653be327942ad8dbfd6a26ad46cbc2848eefd1346c1fc99e61",
+      "passed": 122,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 123,
+      "reported_tests_including_subtests": 452,
+      "duration_seconds": 108.827,
+      "failed_tests": [
+        "test_run_launch_attaches_opaque_model_reference_from_platform_runtime_context"
+      ]
+    },
+    {
+      "source": "run-completion-post44-official-api-v2.xml",
+      "sha256": "f39ae9d486dc4ab563bf1ceb47997168f9ef78750aefac3f79a2de737de8f615",
+      "passed": 32,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 32,
+      "reported_tests_including_subtests": 32,
+      "duration_seconds": 72.566,
+      "failed_tests": []
+    },
+    {
+      "source": "run-completion-post44-official-api.xml",
+      "sha256": "a6031f714a25c54cc6b8cad87e28dd01d75d6dc0dfa9d91392c88165c3958032",
+      "passed": 0,
+      "failed": 0,
+      "errors": 1,
+      "skipped": 0,
+      "testcase_count": 1,
+      "reported_tests_including_subtests": 1,
+      "duration_seconds": 17.972,
+      "failed_tests": [
+        "tests.test_run_completion_backfill"
+      ]
+    },
+    {
+      "source": "run-completion-post44-official-chain-focused.xml",
+      "sha256": "4cc2d2ce44c9da20da10f3351ee43ed70fa7356e724312ddb9cd743375f44122",
+      "passed": 1,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 1,
+      "reported_tests_including_subtests": 1,
+      "duration_seconds": 449.393,
+      "failed_tests": []
+    },
+    {
+      "source": "run-completion-post44-official-chain-v2.xml",
+      "sha256": "b4280fff77f9282f3b5651c4722fb417b0057a6d7c1211bb016dcd07b3a47be9",
+      "passed": 0,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 1,
+      "reported_tests_including_subtests": 1,
+      "duration_seconds": 442.586,
+      "failed_tests": [
+        "test_isolated_completion_platform_runtime_worker"
+      ]
+    },
+    {
+      "source": "run-completion-post44-official-chain-v3.xml",
+      "sha256": "054e3a5e4dd94edd9aeb12fd1218c5ad4ca994dc0e203e71ffb206911817de48",
+      "passed": 0,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 1,
+      "reported_tests_including_subtests": 1,
+      "duration_seconds": 560.635,
+      "failed_tests": [
+        "test_isolated_completion_platform_runtime_worker"
+      ]
+    },
+    {
+      "source": "run-completion-post44-official-chain-v5.xml",
+      "sha256": "2de6e4dd219e48fb7953bc4b2ed54b833bb708bcb8ff1824b0f33cfd5459ecda",
+      "passed": 0,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 1,
+      "reported_tests_including_subtests": 1,
+      "duration_seconds": 407.12,
+      "failed_tests": [
+        "test_isolated_completion_platform_runtime_worker"
+      ]
+    },
+    {
+      "source": "run-completion-post44-official-chain-v6.xml",
+      "sha256": "3526e641921d40637d3a5cd08fa1618ea107297799c4b9621fe5ec3897078c72",
+      "passed": 0,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 1,
+      "reported_tests_including_subtests": 1,
+      "duration_seconds": 853.363,
+      "failed_tests": [
+        "test_isolated_completion_platform_runtime_worker"
+      ]
+    },
+    {
+      "source": "run-completion-post44-official-chain-v7.xml",
+      "sha256": "5c57bb959e716cf3d3e361a34522c12c461ea11d6e4555503a9caf4e8e216b2b",
+      "passed": 0,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 1,
+      "reported_tests_including_subtests": 1,
+      "duration_seconds": 433.438,
+      "failed_tests": [
+        "test_isolated_completion_platform_runtime_worker"
+      ]
+    },
+    {
+      "source": "run-completion-post44-official-chain.xml",
+      "sha256": "34e919080b57c3b94fcfce5004eb76ebf0701e4426a1dc9b9842ff8b6366cd40",
+      "passed": 0,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 1,
+      "reported_tests_including_subtests": 1,
+      "duration_seconds": 729.895,
+      "failed_tests": [
+        "test_isolated_completion_platform_runtime_worker"
+      ]
+    },
+    {
+      "source": "run-completion-post44-official-runtime.xml",
+      "sha256": "12139bf52584a2f3fa926bae26ebeb262c6a6a39dc92d0eeb5cf1fb38d44d9dd",
+      "passed": 152,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 153,
+      "reported_tests_including_subtests": 153,
+      "duration_seconds": 145.595,
+      "failed_tests": [
+        "test_thread_auth_rechecks_signed_platform_acl"
+      ]
+    },
+    {
+      "source": "run-completion-post44-platform-auth-baseline.xml",
+      "sha256": "bc7d05e016cf16ad726fa4eebeba0c24f57e23548ec06ceb099f6aa9cb52383e",
+      "passed": 0,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 1,
+      "reported_tests_including_subtests": 1,
+      "duration_seconds": 48.363,
+      "failed_tests": [
+        "test_thread_auth_rechecks_signed_platform_acl"
+      ]
+    },
+    {
+      "source": "run-completion-post44-tail-v1.xml",
+      "sha256": "9db57c52ed76e0805da0e366861b823fceb8822c216d4380b5279fe1e6800b27",
+      "passed": 0,
+      "failed": 1,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 1,
+      "reported_tests_including_subtests": 1,
+      "duration_seconds": 563.1,
+      "failed_tests": [
+        "test_official_post44_scheduled_backfill_queue_restart"
+      ]
+    },
+    {
+      "source": "run-completion-run-requests-baseline.xml",
+      "sha256": "934c2de023adc258cc067dacf35a3a85bfde91ff839ed7516346d5b6264d5457",
+      "passed": 1,
+      "failed": 28,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 29,
+      "reported_tests_including_subtests": 31,
+      "duration_seconds": 25.287,
+      "failed_tests": [
+        "test_cancel_correlation_distinguishes_ack_rejection_and_unknown",
+        "test_cancel_then_new_action_gets_new_submission",
+        "test_changed_protocol_id_is_not_a_new_action",
+        "test_clarification_validation_precedes_resume_creation",
+        "test_commit_response_loss_and_cancelled_submission_reuse_key",
+        "test_correlation_tracks_reuse_unknown_and_observer_failure",
+        "test_delegation_is_bound_to_frozen_context_and_upstream_key",
+        "test_explicit_stream_version_survives_run_creation",
+        "test_fork_and_checkpoint_execution_config_allowed_and_preserved",
+        "test_identical_standard_requests_without_key_are_independent",
+        "test_internal_401_is_rejected_using_source_status",
+        "test_missing_run_id_is_recoverable",
+        "test_model_revocation_rechecks_saved_context",
+        "test_other_identity_and_missing_membership_are_denied",
+        "test_rejection_has_no_local_active_lock",
+        "test_request_record_does_not_store_message_or_replace_run",
+        "test_resume_maps_interrupt_and_preserves_both_run_ids",
+        "test_resume_retry_after_restart_uses_source_run_version",
+        "test_resume_uses_checkpoint_origin_not_latest_cancelled_request",
+        "test_resume_with_sdk_native_responses_format",
+        "test_resume_without_saved_version_defaults_to_v3",
+        "test_retry_conflict_and_independent_actions",
+        "test_sdk_injected_thread_id_execution_config_allowed",
+        "test_stale_interrupt_and_configurable_secrets_are_rejected",
+        "test_standard_multi_resume_uses_parent_config_and_current_authorization",
+        "test_stream_creation_preserves_version_and_join_uses_saved_run",
+        "test_unknown_submission_retries_same_upstream_key_after_restart",
+        "test_v4_approval_snapshot_resumes_with_reauthorized_v5_hash"
+      ]
+    },
+    {
+      "source": "run-completion-runtime-final.xml",
+      "sha256": "a2e2387adf571f2890fe1f8e70ed05a68237152853161a3664bf46be41434c54",
+      "passed": 108,
+      "failed": 0,
+      "errors": 0,
+      "skipped": 0,
+      "testcase_count": 108,
+      "reported_tests_including_subtests": 108,
+      "duration_seconds": 47.99,
+      "failed_tests": []
+    }
+  ]
+}

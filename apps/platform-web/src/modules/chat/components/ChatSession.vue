@@ -56,6 +56,7 @@ import {
 import { useChatViewport } from "../composables/useChatViewport";
 import { useChatActions } from "../composables/useChatActions";
 import { useChatSessionStore } from "../stores/useChatSessionStore";
+import { useRunNotificationsStore } from "@/stores/run-notifications";
 import ChatComposer from "./ChatComposer.vue";
 import ChatMessageList from "./ChatMessageList.vue";
 import ApprovalPanel from "./ApprovalPanel.vue";
@@ -475,6 +476,19 @@ const isSessionRunning = computed(() => {
     actions.current.value?.status === "submitting" ||
     Boolean(optimisticUserMessage.value)
   );
+});
+
+const runNotificationsStore = useRunNotificationsStore();
+watch(
+  isSessionRunning,
+  (running) => {
+    runNotificationsStore.isChatExecuting = running;
+  },
+  { immediate: true },
+);
+
+onScopeDispose(() => {
+  runNotificationsStore.isChatExecuting = false;
 });
 
 const isMessageRunning = computed(() => {

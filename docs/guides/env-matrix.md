@@ -11,6 +11,11 @@
 | apps/platform-api/.env | Settings、database.py | dotenv 读取，进程环境优先，不直接 source |
 | apps/platform-web/.env.local | Vite | 仅公开参数；脚本覆盖 API、代理、端口 |
 | 根目录 .env | 私有保留文件 | 非统一启动配置，不整体注入 |
+| Worktree .local-stack/runtime.env、platform.env、web.env | 统一启动脚本 | init 继承各 app .env 并重写隔离字段；Web .env.local 优先，只注入 VITE_*；dotenv 解析，不整体 source |
+
+关联 Worktree 使用生成配置，禁止回退默认库/Redis/端口；细则见 [Worktree 规范](../standards/worktree-development.md)。主工作区继续使用上述 app-local 配置。
+
+新 Worktree 管理员初始账号为 `admin / admin123`；JWT/委托/数据库/Redis 和模型加密密钥独立。首次启动只读复制主库基础配置，模型凭据重加密，不复制会话历史与登录令牌。
 
 旧 Runtime 嵌套目录和 conf/settings*.yaml 已退出默认链路，模型来源是平台模型目录。
 
@@ -27,6 +32,9 @@
 | GRAPHHARBOR_RUNTIME_CONTEXT_SECRET | 独立随机值，至少 32 字符，API/Worker 共用 |
 | GRAPHHARBOR_RUNTIME_CONTEXT_ISSUER | https://runtime-service.local，身份标识，无需建站 |
 | GRAPHHARBOR_RUNTIME_CONTEXT_AUDIENCE | graphharbor-worker |
+| GRAPHHARBOR_TERMINAL_WEBHOOK_ENABLED | 默认0；receiver就绪、GraphHarbor post44/head012 后才设1，API/所有Worker一致 |
+| GRAPHHARBOR_TERMINAL_WEBHOOK_URL | 固定内部可达HTTPS地址，路径为 /api/runtime/internal/run-completion；路径参与签名，不经代理重写 |
+| GRAPHHARBOR_TERMINAL_WEBHOOK_KEY_ID / SECRET | 与API主验证key一致，secret至少32字节；不写入Web或普通Run字段 |
 | GRAPHHARBOR_RUN_TIMEOUT_SECONDS | Worker 硬超时，缺省/空值关闭；示例 1800 秒，部署示例 300 秒均非默认值；Worker 启动时读取 |
 | AGENT_WRAPUP_AFTER_SECONDS | Agent invocation 软收尾阈值，缺省/空值关闭；显式值必须有限且大于 0；非 Worker 剩余时间，不中断模型/工具 |
 | GRAPHHARBOR_WORKSPACE_ROOT | 可写绝对路径，推荐持久目录；本地原值 /tmp/aitestlab-runtime-workspaces |
@@ -65,6 +73,10 @@ DEEPSEEK_PROXY_* / GPT_PROXY_* 供独立 smoke 等使用，不会创建平台模
 | RUNTIME_DELEGATION_AUDIENCE | runtime-service |
 | MODEL_CONFIG_MASTER_KEY | 有效 Fernet 密钥，持久保存 |
 | RUNTIME_MODEL_CONFIG_SECRET | 可选，默认复用委托密钥 |
+| RUNTIME_COMPLETION_ENABLED | 默认false；先迁移至20261009_0007并配置验证key，再开启receiver/admission/feed |
+| RUNTIME_COMPLETION_KEY_ID / SECRET | 与Runtime发送方一致；只在服务器私有环境保存 |
+| RUNTIME_COMPLETION_VERIFICATION_KEYS | JSON key ID→secret映射；轮换时临时保留旧key，本期全部绑定default runtime |
+| RUNTIME_COMPLETION_CLOCK_SKEW_SECONDS | 默认30，范围1..300；服务器应同步时钟 |
 | JWT_ACCESS_SECRET / JWT_REFRESH_SECRET | 两个独立随机值，不能保留模板值 |
 | AUTH_REQUIRED | true |
 | BOOTSTRAP_ADMIN_ENABLED | 首次 true，确认后可关闭 |

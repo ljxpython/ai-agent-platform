@@ -1,0 +1,11 @@
+{
+  "date": "2026-10-09",
+  "source": "PyPI graphharbor==0.13.0.post44 and graphharbor-runtime==0.13.0.post44",
+  "command": "RUN_COMPLETION_WORKER=1 MODEL_RESILIENCE_WORKER_SCENARIOS=fallback,exhausted,cancel pytest tests/integration/test_run_completion_worker.py",
+  "result": "passed",
+  "tests": 1,
+  "duration_seconds": 449.393,
+  "coverage": ["fallback success", "retry exhausted error", "cancel and stop confirmation", "history completion", "private feed", "read receipt", "HMAC ACK"],
+  "full_matrix_status": "partial",
+  "full_matrix_note": "The focused completion path passed; the broader official-package matrix remains limited by local host load and long fixture timing."
+}

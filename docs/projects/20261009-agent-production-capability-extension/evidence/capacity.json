@@ -1,0 +1,46 @@
+{
+  "callback": {
+    "requests": 120,
+    "p50_ms": 20.777,
+    "p95_ms": 27.692,
+    "p99_ms": 33.169
+  },
+  "feed": {
+    "requests": 60,
+    "p50_ms": 21.038,
+    "p95_ms": 27.057,
+    "p99_ms": 54.332
+  },
+  "events": 100000,
+  "callback_per_second": 20,
+  "feed_per_second": 10,
+  "query_plan": [
+    "Limit  (cost=0.42..53.55 rows=50 width=24)",
+    "  ->  Index Only Scan Backward using ix_run_completion_feed on run_completion_events  (cost=0.42..10665.66 rows=10037 width=24)",
+    "        Index Cond: ((project_id = 'c9fdf2ee-71f8-4cb8-8fa8-87679dae961c'::text) AND (recipient_user_id = '21fb8707-6d99-4f54-98e1-39bbb7b748c5'::text))"
+  ],
+  "feed_query_plan": [
+    "Sort  (cost=472.60..472.73 rows=50 width=790)",
+    "  Sort Key: run_completion_events.accepted_at DESC, run_completion_events.event_id DESC",
+    "  ->  Nested Loop Left Join  (cost=0.83..471.19 rows=50 width=790)",
+    "        Join Filter: (run_completion_receipts.event_id = run_completion_events.event_id)",
+    "        ->  Nested Loop Left Join  (cost=0.83..470.57 rows=50 width=782)",
+    "              Join Filter: ((thread_access.thread_id)::text = (run_completion_events.thread_id)::text)",
+    "              ->  Nested Loop  (cost=0.83..468.80 rows=50 width=640)",
+    "                    ->  Limit  (cost=0.42..54.55 rows=50 width=24)",
+    "                          ->  Nested Loop Anti Join  (cost=0.42..10866.36 rows=10036 width=24)",
+    "                                Join Filter: (run_completion_receipts_1.event_id = run_completion_events_1.event_id)",
+    "                                ->  Index Scan Backward using ix_run_completion_feed on run_completion_events run_completion_events_1  (cost=0.42..10740.91 rows=10036 width=24)",
+    "                                      Index Cond: (((project_id)::text = 'c9fdf2ee-71f8-4cb8-8fa8-87679dae961c'::text) AND ((recipient_user_id)::text = '21fb8707-6d99-4f54-98e1-39bbb7b748c5'::text) AND (accepted_at <= '2026-10-09 11:55:31.237054+08'::timestamp with time zone))",
+    "                                      Filter: ((suppressed IS FALSE) AND ((status)::text = ANY ('{error,timeout}'::text[])) AND (detail_expires_at > '2026-10-09 11:55:31.237678+08'::timestamp with time zone))",
+    "                                ->  Seq Scan on run_completion_receipts run_completion_receipts_1  (cost=0.00..0.00 rows=1 width=16)",
+    "                                      Filter: ((actor_user_id)::text = '21fb8707-6d99-4f54-98e1-39bbb7b748c5'::text)",
+    "                    ->  Index Scan using run_completion_events_pkey on run_completion_events  (cost=0.42..8.28 rows=1 width=640)",
+    "                          Index Cond: (event_id = run_completion_events_1.event_id)",
+    "              ->  Materialize  (cost=0.00..1.02 rows=1 width=142)",
+    "                    ->  Seq Scan on thread_access  (cost=0.00..1.01 rows=1 width=142)",
+    "                          Filter: ((project_id)::text = 'c9fdf2ee-71f8-4cb8-8fa8-87679dae961c'::text)",
+    "        ->  Seq Scan on run_completion_receipts  (cost=0.00..0.00 rows=1 width=24)",
+    "              Filter: ((actor_user_id)::text = '21fb8707-6d99-4f54-98e1-39bbb7b748c5'::text)"
+  ]
+}

@@ -49,6 +49,7 @@ _ALLOWED_CLAIMS = frozenset(
         "request_id",
         "platform_trace_id",
         "credential_id",
+        "callback_context",
     }
 )
 
@@ -76,6 +77,7 @@ class VerifiedDelegation:
     request_id: str | None = None
     platform_trace_id: str | None = None
     credential_id: str | None = None
+    callback_context: Mapping[str, str] | None = None
 
 
 def _invalid(
@@ -91,6 +93,31 @@ def _optional_correlation(claims: Mapping[str, Any], name: str) -> str | None:
     if not isinstance(value, str) or not value.strip() or len(value) > 256:
         raise _invalid("runtime.auth.invalid_claim", name)
     return value.strip()
+
+
+def _optional_callback_context(
+    claims: Mapping[str, Any],
+) -> Mapping[str, str] | None:
+    raw = claims.get("callback_context")
+    if raw is None:
+        return None
+    if not isinstance(raw, Mapping) or set(raw) != {"origin_ref"}:
+        raise _invalid("runtime.auth.invalid_claim", "callback_context")
+    origin_ref = raw.get("origin_ref")
+    if (
+        not isinstance(origin_ref, str)
+        or not origin_ref.strip()
+        or len(origin_ref) > 128
+        or origin_ref != origin_ref.strip()
+        or not origin_ref.isascii()
+    ):
+        raise _invalid("runtime.auth.invalid_claim", "callback_context")
+    try:
+        if str(UUID(origin_ref)) != origin_ref:
+            raise ValueError()
+    except ValueError as exc:
+        raise _invalid("runtime.auth.invalid_claim", "callback_context") from exc
+    return {"origin_ref": origin_ref}
 
 
 def _parse_scope(raw: object) -> RuntimeScope:
@@ -292,6 +319,7 @@ def verify_delegation_claims(
         _optional_correlation(claims, "request_id"),
         _optional_correlation(claims, "platform_trace_id"),
         credential_id,
+        _optional_callback_context(claims),
     )
 
 
@@ -353,6 +381,11 @@ def verified_delegation_from_user(user: object) -> VerifiedDelegation:
     request_id = _user_value(user, "request_id")
     platform_trace_id = _user_value(user, "platform_trace_id")
     credential_id = _user_value(user, "runtime_credential_id")
+    callback_context = _user_value(user, "callback_context")
+    if callback_context is not None:
+        callback_context = _optional_callback_context(
+            {"callback_context": callback_context}
+        )
     for name, value in (
         ("request_id", request_id),
         ("platform_trace_id", platform_trace_id),
@@ -369,6 +402,7 @@ def verified_delegation_from_user(user: object) -> VerifiedDelegation:
         request_id.strip() if isinstance(request_id, str) else None,
         platform_trace_id.strip() if isinstance(platform_trace_id, str) else None,
         credential_id if isinstance(credential_id, str) else None,
+        callback_context,
     )
 
 

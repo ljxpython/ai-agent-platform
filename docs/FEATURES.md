@@ -8,6 +8,8 @@
 ## platform-web
 
 | 功能 | 状态 | 关联文档 |
+|---|---|---|
+| Agent 私有失败通知与历史完成摘要 | 已完成：Platform API 私有 feed/read、历史 Run completion 与严格 DTO 契约；Platform Web 实装 Pinia 全局通知 Store 单例（15s 指数退避轮询与乐观回滚）、RunNotificationCenter 顶栏与 ChatPage 双端常驻挂载、细粒度优先（model_error_code -> reason_code -> notification_code）安全白名单文案与动作映射、执行中离开二次确认拦截、useRunCompletion 历史 Run 终态诊断卡片；Vitest 722 passed、Playwright + Chromium 真实大模型 E2E 闭环与三视口截图全绿 | [前端交接](projects/20261009-agent-production-capability-extension/05-frontend-handoff.md) · [实施记录](projects/20261009-agent-production-capability-extension/implementation/02-frontend-implementation.md) |
 | Agent 运行准备与有界重试诊断摘要展示 | 已完成：实装运行准备（RunPreparationsSection）与受管重试（RunRetriesSection）独立子组件，支持 strict attempts/role 正则校验、主 Run 成功时琥珀色 Amber 警示降级、空态完全隐藏、敏感字段剥离，49 项单测与 Playwright 全链路 E2E 验证全绿 | [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | Agent Run/Thread 用量与成本展示 | 已完成：实装独立解耦面板 RunUsage 与 useRunUsage 防竞态状态机、open-swe 水位进度条 (Usage Meter)、服务端截断告警卡片、模型费率安全编辑（Decimal 精度、自动补零、可逆清空保护）以及假数据彻底切除。Playwright + Chromium 端到端 5 项全绿（含真实百炼 qwen-plus 全链路调用闭环与 24,069 Tokens / $0.0051 落库上屏）并生成 7 张高清渲染截图，全仓 120 套件 583 项单测、typecheck、lint 和生产打包 100% 通过 | [前端交接](projects/20261007-agent-usage-cost-governance/04-frontend-handoff.md) |
 | Agent 执行预算告警与限制原因展示 | 已完成：Zod 契约投影、安全解包、useRunBudget 有界 LRU 去重与 Run/namespace 隔离、ChatAgentStatusBar Amber/Success 停机展示（保留取消、文案解耦、A11y）、子任务微横条与徽章、Thread 耗尽禁用；571 单测、类型检查与 ESLint 全绿 | [项目入口](projects/20261007-agent-execution-budget/README.md) · [实施记录](projects/20261007-agent-execution-budget/implementation/02-frontend-budget-implementation.md) |
@@ -73,6 +75,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Agent 终态回调与私有通知 API | 部分完成：来源、HMAC收件、ACL、历史completion/feed/read、删除抑制和cron回填已实现；源码完整/正式最短通过，native定时/回填已有部分证据，正式完整矩阵资源blocked；前端由同事实现 | [项目概览](projects/20261009-agent-production-capability-extension/README.md) · [前端交接](projects/20261009-agent-production-capability-extension/05-frontend-handoff.md) · [官方边界核对](projects/20261009-agent-production-capability-extension/07-langgraph-server-boundary.md) |
 | 模型价格快照与授权用量查询 | 全链路已完成：可空六费率/版本与历史快照、usage-read、Run/Thread GET、安全投影和当前 ACL；隔离链路/Final 完成，未部署现役 | [方案与任务](projects/20261007-agent-usage-cost-governance/03-platform-cost-contract.md) |
 | Agent 预算通知与安全错误出口 | 全链路 done：四精确预算安全码、custom/end 标记白名单、tasks.error 清洗、input/update/command/resume 防伪已实装；81 passed/423 subtests，1 skipped；真实 Worker 链路通过，前端联合 F01-F04 全绿，未部署 | [验证](projects/20261007-agent-execution-budget/verification.md) |
 | Agent 模型调用稳定性与受管备模型网关 | 已完成：配置持久化、主备候选授权与项目隔离、受管连接与策略快照签名、修复 FastAPI 500 强类型校验异常，全入口受管组装与公开脱敏；定向单测 17 passed，三服务全链路故障注入联验通过，用户人工实测验收合格 | [项目概览](projects/20261006-agent-model-resilience/README.md) · [整体方案](projects/20261006-agent-model-resilience/plan.md) |
@@ -93,6 +96,8 @@
 ## runtime-service
 
 | 功能 | 状态 | 关联文档 |
+|---|---|---|
+| 通用 Agent 安全终态与可靠完成投递 | 部分完成：GraphHarbor post44 已提供原生 webhook、原子 terminal snapshot/outbox、HMAC/lease/retry/dead-letter/replay；Runtime projector 与跨服务隔离证据完成，正式包整链路和前端验收待补，保持通用 Server 边界 | [方案](projects/20261009-agent-production-capability-extension/plan.md) · [引擎交接](projects/20261009-agent-production-capability-extension/03-engine-terminal-delivery.md) |
 | 通用运行准备幂等与有界重试 | 已完成：全链路闭环，两 Agent workspace latch、资源安全修复、单一重试负责人/最多 2 次尝试、部分流保护及安全诊断；Platform Web 准备与重试专用子组件、主 Run 成功琥珀色降级；单测、本机故障恢复及 Playwright 全链路 E2E 验证通过，自主唤醒后置，未部署现役 | [方案与任务](projects/20261007-agent-production-capabilities/README.md) · [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | 通用 Agent Token/Cost 采集与持久化 | 全链路已完成：主/子图、摘要和可信旁路 callback、自有 Run/call ledger、缓存 TTL 与 Decimal 估算；真实隔离 PG/Worker/重启/回退与包含真实百炼大模型的 5 项 Playwright 端到端全部闭环，未部署现役 | [方案与任务](projects/20261007-agent-usage-cost-governance/02-runtime-usage.md) |
 | 通用 Agent 执行预算预警与软收尾 | 全链路 done：官方模型限额薄扩展、managed 图余量、幂等提示、四正式 graph 主/子接线和可选 invocation 软计时完成；253 passed，23 真实 Worker 场景通过；原 hard limits/end/error 不变，前端联合 F01-F04 全绿，未部署 | [项目入口](projects/20261007-agent-execution-budget/README.md) · [验证](projects/20261007-agent-execution-budget/verification.md) |
@@ -128,6 +133,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Worktree 本地联调资源隔离 | 已完成：首次随机登记端口并稳定复用，独立配置/数据/进程，共享依赖缓存及 E2E 地址接线；继承 app 配置、默认 admin/admin123、首次只读复制基础数据并重加密模型凭据，排除历史/令牌/定时任务；三栈、真实 Worker/Workspace、浏览器登录和重启验收通过 | [规范](standards/worktree-development.md) · [专项](projects/20261010-worktree-local-stack/README.md) |
 | Agent通用运行取消与中断闭环 | 已完成：全链路闭环。后端会话停止、回执详情/分页、幂等重试、恢复与审计已闭环；前端完成会话级停止控制、RunStopReportBanner/Details 状态反馈与报告抽屉、队列刷新、多端隔离与防竞态；Playwright E2E/响应式与单元测试全绿 | [方案与任务](projects/20261007-agent-run-cancellation/README.md) · [前端交接](projects/20261007-agent-run-cancellation/frontend-handoff.md) |
 | 跨服务规范治理专项群 | 四专项仅验收新Web+新API+当前锁定Runtime/GraphHarbor，不设置旧版兼容或混用测试；错误响应与追踪本期Final已完成，SSE/JWT按各专项状态推进；AI路由按仓库级文档小改动处理 | [总入口](projects/20260922-cross-service-governance/README.md) |
 | Agent 通用 Token/Cost 跟踪治理 | 非前端 done：开发/Final/隔离真实链路与冻结契约已交付；既有全量失败已记录，前端同事接续，整项目 partial，未生产部署 | [项目入口](projects/20261007-agent-usage-cost-governance/README.md) |

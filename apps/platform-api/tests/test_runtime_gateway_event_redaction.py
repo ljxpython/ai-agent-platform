@@ -28,6 +28,63 @@ async def _chunks(*values: bytes) -> AsyncIterator[bytes]:
         yield value
 
 
+def test_callback_source_is_private_in_nested_checkpoint_and_run_resources():
+    value = {
+        "kwargs": {"runtime_context_token": "SECRET", "input": {"x": 1}},
+        "metadata": {
+            "origin_ref": "PRIVATE",
+            "callback_context": {"origin_ref": "PRIVATE"},
+        },
+        "config": {
+            "configurable": {
+                "langgraph_auth_user": {"callback_context": {"origin_ref": "PRIVATE"}}
+            }
+        },
+    }
+    safe = redact_runtime_private_fields(value)
+    assert "SECRET" not in repr(safe) and "PRIVATE" not in repr(safe)
+    assert safe["kwargs"]["input"] == {"x": 1}
+
+
+@pytest.mark.parametrize("protocol", [False, True])
+def test_stable_model_failure_survives_fragmented_stream_without_provider_text(
+    protocol,
+):
+    async def run():
+        code = "runtime.model.retry_exhausted"
+        data = {
+            "event": "lifecycle",
+            "status": "error",
+            "error": {
+                "type": "RuntimeResolutionError",
+                "message": code,
+                "stack": "PRIVATE_PROVIDER_CANARY",
+            },
+        }
+        payload = (
+            {"method": "lifecycle", "params": {"namespace": [], "data": data}}
+            if protocol
+            else data
+        )
+        raw = ("event: lifecycle\ndata: " + json.dumps(payload) + "\n\n").encode()
+        safe = b"".join(
+            [
+                part
+                async for part in _redact_protocol_event_stream(
+                    _chunks(raw[:19], raw[19:]), protocol=protocol
+                )
+            ]
+        )
+        assert code.encode() in safe and b"PRIVATE_PROVIDER_CANARY" not in safe
+        unsafe = {
+            "event": "lifecycle",
+            "error": {"type": "RuntimeResolutionError", "message": code + " SECRET"},
+        }
+        assert "SECRET" not in str(redact_runtime_private_fields(unsafe))
+
+    asyncio.run(run())
+
+
 @pytest.mark.parametrize(
     "protocol,typed", [(False, False), (False, True), (True, True)]
 )

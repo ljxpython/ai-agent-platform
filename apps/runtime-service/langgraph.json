@@ -27,6 +27,11 @@
     }
   },
   "env": ".env",
+  "webhooks": {
+    "terminal": {
+      "projector": "./src/runtime_service/run_completion/projector.py:project_terminal_outcome"
+    }
+  },
   "auth": {
     "path": "./src/runtime_service/auth/platform.py:auth",
     "openapi": {

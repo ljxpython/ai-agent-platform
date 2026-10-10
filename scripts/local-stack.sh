@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ "${LOCAL_STACK_LOCKED_ROOT:-}" != "$ROOT_DIR" ] && [ "${BASH_SOURCE[0]}" = "$0" ] && [ "${1:-help}" != help ] && [ "${1:-}" != --help ] && [ "${1:-}" != -h ]; then
+  exec python3 "$ROOT_DIR/scripts/local_stack_worktree.py" run "$ROOT_DIR" "$@"
+fi
 RUNTIME_DIR="$ROOT_DIR/apps/runtime-service"
 PLATFORM_API_DIR="$ROOT_DIR/apps/platform-api"
 PLATFORM_WEB_DIR="$ROOT_DIR/apps/platform-web"
-STATE_DIR="${TMPDIR:-/tmp}/aitestlab-local-stack"
+STATE_DIR="$ROOT_DIR/.local-stack"
 PID_DIR="$STATE_DIR/pids"
 LOG_DIR="$STATE_DIR/logs"
 RUNTIME_ENV_FILE="${RUNTIME_ENV_FILE:-$RUNTIME_DIR/.env}"
+PLATFORM_ENV_FILE="${PLATFORM_ENV_FILE:-$PLATFORM_API_DIR/.env}"
 RUNTIME_PORT="${RUNTIME_PORT:-}"
 PLATFORM_API_PORT="${PLATFORM_API_PORT:-2142}"
 PLATFORM_WEB_PORT="${PLATFORM_WEB_PORT:-3000}"
@@ -16,27 +20,43 @@ GRAPH_CONFIG=""
 RUNTIME_BACKEND_OVERRIDE="${RUNTIME_BACKEND-}"
 TERMINAL_ENABLED_OVERRIDE="${RUNTIME_TERMINAL_ENABLED-}"
 STARTED_KEYS=()
-
-mkdir -p "$PID_DIR" "$LOG_DIR"
+LOCAL_STACK_PYTHON="${LOCAL_STACK_PYTHON:-python3}"
+LOCAL_STACK_WORKTREE=0
+LOCAL_STACK_WORKER_JOBS=4
 
 usage() {
   cat <<'EOF'
 Usage: bash scripts/local-stack.sh <command>
 
 Commands:
+  init     initialize a linked Worktree private configuration and databases
+  deps     install frozen dependencies using shared package caches
   doctor   validate local env, dependencies, config, and ports
   migrate  run Platform API and GraphHarbor database migrations
+  seed     copy main-workspace configuration data once into migrated empty Worktree databases
   start    start Runtime API/Worker, Platform API, and Platform Web
   stop     stop this repository's stack, including manually started dev servers
   restart  stop and start the local stack
+  restart-one <service>  restart only one application process
   status   show managed processes and HTTP health
   logs     show recent logs; optionally pass runtime-api, runtime-worker,
-           platform-api or platform-web
+           platform-api, platform-web or redis
+  list     show registered Worktree environments (no secrets)
+  destroy  delete a stopped environment's data: destroy --confirm <environment-id>
 
 Environment:
   RUNTIME_BACKEND=local|docker (default: local)
   RUNTIME_TERMINAL_ENABLED=0|1 (default: 1 for local stack)
 EOF
+}
+
+load_stack_identity() {
+  local exports
+  exports="$("$LOCAL_STACK_PYTHON" "$ROOT_DIR/scripts/local_stack_worktree.py" exports "$ROOT_DIR" "$@")" || exit 1
+  eval "$exports"
+  PID_DIR="$STATE_DIR/pids"
+  LOG_DIR="$STATE_DIR/logs"
+  if [ "$LOCAL_STACK_WORKTREE" = 1 ]; then RUNTIME_BACKEND_OVERRIDE=local; fi
 }
 
 die() {
@@ -46,10 +66,10 @@ die() {
 
 load_runtime_env() {
   [ -f "$RUNTIME_ENV_FILE" ] || die "missing Runtime env file: $RUNTIME_ENV_FILE"
-  [ -f "$PLATFORM_API_DIR/.env" ] || die "missing Platform API env file: $PLATFORM_API_DIR/.env"
+  [ -f "$PLATFORM_ENV_FILE" ] || die "missing Platform API env file: $PLATFORM_ENV_FILE"
   require_command python3
   local platform_runtime_secret
-  platform_runtime_secret="$(python3 - "$PLATFORM_API_DIR/.env" <<'PY'
+  platform_runtime_secret="$("$LOCAL_STACK_PYTHON" - "$PLATFORM_ENV_FILE" <<'PY'
 import sys
 from pathlib import Path
 
@@ -64,7 +84,9 @@ PY
   set -a
   export PLATFORM_API_RUNTIME_DELEGATION_SECRET="$platform_runtime_secret"
   # shellcheck disable=SC1090
-  . "$RUNTIME_ENV_FILE"
+  if [ "$LOCAL_STACK_WORKTREE" = 0 ]; then
+    . "$RUNTIME_ENV_FILE"
+  fi
   set +a
   export RUNTIME_BACKEND="${RUNTIME_BACKEND_OVERRIDE:-${RUNTIME_BACKEND:-local}}"
   export RUNTIME_TERMINAL_ENABLED="${TERMINAL_ENABLED_OVERRIDE:-${RUNTIME_TERMINAL_ENABLED:-1}}"
@@ -128,27 +150,12 @@ check_port() {
     return 0
   fi
 
-  if managed_alive "$key"; then
-    return 0
-  fi
-
   local owner_status
   owner_status="$(python3 "$ROOT_DIR/scripts/local_stack_processes.py" port-owner "$ROOT_DIR" "$key" "$port" 2>/dev/null || true)"
   case "$owner_status" in
     owned*)
-      local stale_pid
-      stale_pid="$(echo "$owner_status" | awk '{print $2}')"
-      printf '[cleanup] port %s is in use by stale %s (pid=%s); terminating real process...\n' "$port" "$key" "$stale_pid"
-      stop_process "$key" "$port"
-      for _ in {1..30}; do
-        if ! port_in_use "$port"; then
-          break
-        fi
-        sleep 0.1
-      done
-      if port_in_use "$port"; then
-        die "port $port is still in use after terminating $key (pid=$stale_pid)"
-      fi
+      if managed_alive "$key"; then return 0; fi
+      die "port $port is used by an untracked $key; stop this environment explicitly before starting"
       ;;
     external*)
       local ext_detail
@@ -167,10 +174,14 @@ spawn_detached() {
   local logfile="$3"
 
   python3 - "$workdir" "$command" "$logfile" <<'PY'
+import os
 import subprocess
 import sys
 
 workdir, command, logfile = sys.argv[1:]
+environment = dict(os.environ)
+environment.pop("LOCAL_STACK_LOCKED_ROOT", None)
+environment.pop("LOCAL_STACK_PG_ADMIN_DSN", None)
 with open(logfile, "ab", buffering=0) as stream:
     process = subprocess.Popen(
         ["/bin/bash", "-lc", f"exec {command}"],
@@ -180,6 +191,7 @@ with open(logfile, "ab", buffering=0) as stream:
         stderr=subprocess.STDOUT,
         start_new_session=True,
         close_fds=True,
+        env=environment,
     )
 print(process.pid)
 PY
@@ -197,6 +209,10 @@ start_process() {
     printf '[skip] %s already running\n' "$key"
     return
   fi
+  local untracked
+  untracked="$(python3 "$ROOT_DIR/scripts/local_stack_processes.py" find "$ROOT_DIR" "$key")"
+  [ -z "$untracked" ] || die "$key has untracked processes in this environment; stop them explicitly first"
+  mkdir -p "$PID_DIR" "$LOG_DIR"
   rm -f "$(pid_file "$key")"
   [ -z "$port" ] || check_port "$key" "$port"
   pid="$(spawn_detached "$workdir" "$command" "$logfile")"
@@ -208,24 +224,29 @@ start_process() {
 start_managed_key() {
   local key="$1"
   case "$key" in
+    redis)
+      start_process redis "$STATE_DIR" \
+        "redis-server $(shell_quote "$STATE_DIR/redis.conf")" \
+        "$LOG_DIR/redis.log" "$LOCAL_STACK_REDIS_PORT"
+      ;;
     runtime-api)
       start_process runtime-api "$RUNTIME_DIR" \
-        "env RUNTIME_SELF_URL=http://127.0.0.1:$(shell_quote "$RUNTIME_PORT") uv run --frozen graphharbor serve --host 127.0.0.1 --port $(shell_quote "$RUNTIME_PORT") --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 0" \
+        "env RUNTIME_SELF_URL=http://127.0.0.1:$(shell_quote "$RUNTIME_PORT") uv run --no-sync --frozen graphharbor serve --host 127.0.0.1 --port $(shell_quote "$RUNTIME_PORT") --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 0" \
         "$LOG_DIR/runtime-api.log" "$RUNTIME_PORT"
       ;;
     runtime-worker)
       start_process runtime-worker "$RUNTIME_DIR" \
-        "env PLATFORM_RUNTIME_MESSAGE_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/message-authorization PLATFORM_RUNTIME_MEMORY_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/memory-authorization uv run --frozen graphharbor worker --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 4" \
+        "env PLATFORM_RUNTIME_MESSAGE_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/message-authorization PLATFORM_RUNTIME_MEMORY_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/memory-authorization uv run --no-sync --frozen graphharbor worker --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker $(shell_quote "$LOCAL_STACK_WORKER_JOBS")" \
         "$LOG_DIR/runtime-worker.log"
       ;;
     platform-api)
       start_process platform-api "$PLATFORM_API_DIR" \
-        "uv run uvicorn platform_api.main:create_app --factory --host 127.0.0.1 --port $(shell_quote "$PLATFORM_API_PORT") --reload" \
+        "uv run --no-sync --frozen uvicorn platform_api.main:create_app --factory --host 127.0.0.1 --port $(shell_quote "$PLATFORM_API_PORT") --reload" \
         "$LOG_DIR/platform-api.log" "$PLATFORM_API_PORT"
       ;;
     platform-web)
       start_process platform-web "$PLATFORM_WEB_DIR" \
-        "env VITE_PLATFORM_API_URL=/ VITE_PLATFORM_API_RUNTIME_ENABLED=true VITE_DEV_PORT=$(shell_quote "$PLATFORM_WEB_PORT") VITE_DEV_PROXY_TARGET=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT") pnpm dev -- --host 127.0.0.1 --port $(shell_quote "$PLATFORM_WEB_PORT")" \
+        "env VITE_PLATFORM_API_URL=/ VITE_PLATFORM_API_RUNTIME_ENABLED=true VITE_DEV_PORT=$(shell_quote "$PLATFORM_WEB_PORT") VITE_DEV_PROXY_TARGET=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT") pnpm exec vite --host 127.0.0.1 --port $(shell_quote "$PLATFORM_WEB_PORT")" \
         "$LOG_DIR/platform-web.log" "$PLATFORM_WEB_PORT"
       ;;
     *)
@@ -239,6 +260,7 @@ stop_process() {
   local port="${2:-}"
   if [ -z "$port" ]; then
     case "$key" in
+      redis) port="$LOCAL_STACK_REDIS_PORT" ;;
       runtime-api) port="$RUNTIME_PORT" ;;
       platform-api) port="$PLATFORM_API_PORT" ;;
       platform-web) port="$PLATFORM_WEB_PORT" ;;
@@ -289,15 +311,16 @@ cleanup_startup_failure() {
 
 validate_runtime() {
   load_runtime_env
+  check_installed_sources
   require_command uv
   require_command python3
   [ -f "$GRAPH_CONFIG" ] || die "missing Runtime graph config: $GRAPH_CONFIG"
-  (cd "$RUNTIME_DIR" && uv run --frozen python scripts/validate_runtime_config.py \
+  (cd "$RUNTIME_DIR" && uv run --no-sync --frozen python scripts/validate_runtime_config.py \
     --env-file "$RUNTIME_ENV_FILE")
 }
 
 check_redis() {
-  (cd "$RUNTIME_DIR" && uv run --frozen python - "$RUNTIME_ENV_FILE" <<'PY'
+  (cd "$RUNTIME_DIR" && uv run --no-sync --frozen python - "$RUNTIME_ENV_FILE" <<'PY'
 import asyncio
 import os
 import sys
@@ -366,13 +389,19 @@ PY
 validate_stack() {
   validate_runtime
   check_postgres
-  (cd "$PLATFORM_API_DIR" && uv run --frozen python scripts/database.py preflight)
-  check_redis
+  (cd "$PLATFORM_API_DIR" && uv run --no-sync --frozen python scripts/database.py preflight)
+  if [ "$LOCAL_STACK_WORKTREE" = 1 ]; then
+    require_command redis-server
+    check_port redis "$LOCAL_STACK_REDIS_PORT"
+    if managed_alive redis; then check_redis; fi
+  else
+    check_redis
+  fi
   require_command curl
   require_command lsof
   require_command pnpm
-  [ -f "$PLATFORM_API_DIR/.env" ] || die "missing Platform API env file: $PLATFORM_API_DIR/.env"
-  (cd "$PLATFORM_API_DIR" && uv run --frozen python - "$RUNTIME_PORT" "$RUNTIME_ENV_FILE" .env <<'PY'
+  [ -f "$PLATFORM_ENV_FILE" ] || die "missing Platform API env file: $PLATFORM_ENV_FILE"
+  (cd "$PLATFORM_API_DIR" && uv run --no-sync --frozen python - "$RUNTIME_PORT" "$RUNTIME_ENV_FILE" "$PLATFORM_ENV_FILE" <<'PY'
 import os
 import sys
 from pathlib import Path
@@ -404,9 +433,9 @@ PY
 migrate() {
   validate_runtime
   check_postgres
-  (cd "$PLATFORM_API_DIR" && uv run --frozen python scripts/database.py upgrade)
-  (cd "$RUNTIME_DIR" && uv run --frozen graphharbor migrate upgrade)
-  (cd "$RUNTIME_DIR" && uv run --frozen python -m runtime_service.messaging)
+  (cd "$PLATFORM_API_DIR" && uv run --no-sync --frozen python scripts/database.py upgrade)
+  (cd "$RUNTIME_DIR" && uv run --no-sync --frozen graphharbor migrate upgrade)
+  (cd "$RUNTIME_DIR" && uv run --no-sync --frozen python -m runtime_service.messaging)
 }
 
 start() {
@@ -414,21 +443,37 @@ start() {
   STARTED_KEYS=()
   validate_stack
   migrate
+  if [ "$LOCAL_STACK_WORKTREE" = 1 ]; then
+    "$LOCAL_STACK_PYTHON" "$ROOT_DIR/scripts/local_stack_worktree.py" seed "$ROOT_DIR" --if-empty
+    start_managed_key redis
+    for _ in {1..50}; do
+      if port_in_use "$LOCAL_STACK_REDIS_PORT"; then break; fi
+      sleep 0.1
+    done
+    require_managed_process redis
+    check_redis
+  fi
   start_managed_key runtime-api
   start_managed_key runtime-worker
   require_managed_process runtime-worker
   wait_http runtime-api "http://127.0.0.1:$RUNTIME_PORT/ready" 120
+  require_managed_process runtime-api
   start_managed_key platform-api
   wait_http platform-api "http://127.0.0.1:$PLATFORM_API_PORT/_system/health"
+  require_managed_process platform-api
   start_managed_key platform-web
   wait_http platform-web "http://127.0.0.1:$PLATFORM_WEB_PORT"
+  require_managed_process platform-web
   printf '[done] local stack is ready: http://127.0.0.1:%s\n' "$PLATFORM_WEB_PORT"
   trap - EXIT
 }
 
 status() {
-  load_runtime_env
-  for key in runtime-api runtime-worker platform-api platform-web; do
+  printf '[environment] %s\n[web] http://127.0.0.1:%s\n[api] http://127.0.0.1:%s\n[runtime] http://127.0.0.1:%s\n[state] %s\n' \
+    "${LOCAL_STACK_ID:-primary}" "$PLATFORM_WEB_PORT" "$PLATFORM_API_PORT" "$RUNTIME_PORT" "$STATE_DIR"
+  local keys=(runtime-api runtime-worker platform-api platform-web)
+  if [ "$LOCAL_STACK_WORKTREE" = 1 ]; then keys+=(redis); fi
+  for key in "${keys[@]}"; do
     if managed_alive "$key"; then
       printf '%-16s running\n' "$key"
     else
@@ -473,7 +518,7 @@ restart_one() {
     runtime-api|runtime-worker) validate_runtime ;;
   esac
   if [ "$key" = "platform-api" ]; then
-    (cd "$PLATFORM_API_DIR" && uv run --frozen python scripts/database.py upgrade)
+    (cd "$PLATFORM_API_DIR" && uv run --no-sync --frozen python scripts/database.py upgrade)
   fi
   stop_process "$key"
   start_managed_key "$key"
@@ -485,18 +530,59 @@ restart_one() {
   esac
 }
 
+deps() {
+  require_command uv
+  require_command pnpm
+  uv sync --project "$RUNTIME_DIR" --python 3.13 --frozen
+  uv sync --project "$PLATFORM_API_DIR" --python 3.13 --frozen
+  pnpm --dir "$PLATFORM_WEB_DIR" install --frozen-lockfile
+  check_installed_sources
+}
+
+check_installed_sources() {
+  for app in runtime-service platform-api; do
+    local module="${app//-/_}"
+    [ -x "$ROOT_DIR/apps/$app/.venv/bin/python" ] || die "missing $app dependencies; run bash scripts/local-stack.sh deps"
+    "$ROOT_DIR/apps/$app/.venv/bin/python" - "$module" "$ROOT_DIR/apps/$app/src" <<'PY'
+import importlib.util
+import sys
+from pathlib import Path
+
+spec = importlib.util.find_spec(sys.argv[1])
+paths = list(spec.submodule_search_locations or []) if spec else []
+if not paths or any(not Path(path).resolve().is_relative_to(Path(sys.argv[2]).resolve()) for path in paths):
+    raise SystemExit("Dependency environment imports another Worktree's application source")
+print(f"[deps] {sys.argv[1]} resolves to this Worktree")
+PY
+  done
+}
+
+stop_stack() {
+  stop_process platform-web
+  stop_process platform-api
+  stop_process runtime-worker
+  stop_process runtime-api
+  if [ "$LOCAL_STACK_WORKTREE" = 1 ]; then stop_process redis; fi
+}
+
 command="${1:-help}"
 case "$command" in
+  init|seed|destroy|list)
+    "$LOCAL_STACK_PYTHON" "$ROOT_DIR/scripts/local_stack_worktree.py" "$command" "$ROOT_DIR" "${@:2}"
+    exit
+    ;;
+  help|-h|--help) usage; return 0 2>/dev/null || exit 0 ;;
+  stop|status|logs) load_stack_identity --resources-only ;;
+  doctor|migrate|start|restart|restart-one|deps) load_stack_identity ;;
+  *) usage >&2; exit 2 ;;
+esac
+case "$command" in
+  deps) deps ;;
   doctor) validate_stack ;;
   migrate) migrate ;;
   start) start ;;
-  stop)
-    stop_process platform-web
-    stop_process platform-api
-    stop_process runtime-worker
-    stop_process runtime-api
-    ;;
-  restart) stop_process platform-web; stop_process platform-api; stop_process runtime-worker; stop_process runtime-api; start ;;
+  stop) stop_stack ;;
+  restart) validate_runtime; stop_stack; start ;;
   restart-one) restart_one "${2:-}" ;;
   status) status ;;
   logs) logs "${2:-}" ;;

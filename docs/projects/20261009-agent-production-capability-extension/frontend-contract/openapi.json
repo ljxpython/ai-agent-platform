@@ -1,0 +1,731 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Run Completion API",
+    "version": "1"
+  },
+  "paths": {
+    "/api/runtime/internal/run-completion": {
+      "post": {
+        "tags": [
+          "runtime-completion"
+        ],
+        "summary": "Receive Run Completion",
+        "operationId": "receive_run_completion_api_runtime_internal_run_completion_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletionAck"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/langgraph/threads/{thread_id}/runs/{run_id}/completion": {
+      "get": {
+        "tags": [
+          "runtime-completion"
+        ],
+        "summary": "Get Run Completion",
+        "operationId": "get_run_completion_api_langgraph_threads__thread_id__runs__run_id__completion_get",
+        "parameters": [
+          {
+            "name": "thread_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Thread Id"
+            }
+          },
+          {
+            "name": "run_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Run Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunCompletion"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runtime/run-notifications": {
+      "get": {
+        "tags": [
+          "runtime-completion"
+        ],
+        "summary": "Get Run Notifications",
+        "operationId": "get_run_notifications_api_runtime_run_notifications_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1024
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "unread_only",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": true,
+              "title": "Unread Only"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunNotifications"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/runtime/run-notifications/{event_id}/read": {
+      "post": {
+        "tags": [
+          "runtime-completion"
+        ],
+        "summary": "Read Run Notification",
+        "operationId": "read_run_notification_api_runtime_run_notifications__event_id__read_post",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Event Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadCompletion"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "CompletionAck": {
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "const": true,
+            "title": "Accepted",
+            "default": true
+          },
+          "event_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Event Id"
+          },
+          "duplicate": {
+            "type": "boolean",
+            "title": "Duplicate"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "duplicate"
+        ],
+        "title": "CompletionAck"
+      },
+      "CompletionSummary": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Event Id"
+          },
+          "graph_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_:.-]+$",
+            "title": "Graph Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "error",
+              "timeout",
+              "interrupted"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_:.-]+$",
+            "title": "Reason"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "runtime.workspace.unavailable",
+                  "runtime.workspace.execution_unavailable",
+                  "runtime.workspace.backend_invalid",
+                  "runtime.workspace.image_invalid",
+                  "runtime.workspace.execution_outcome_unknown"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "runtime_execution_failed",
+                  "runtime_run_timeout",
+                  "runtime_graph_step_limit_reached",
+                  "runtime_model_call_limit_reached",
+                  "runtime_tool_call_limit_reached",
+                  "runtime.model.retry_exhausted",
+                  "runtime.model.retry_budget_exceeded",
+                  "runtime.model.stream_interrupted",
+                  "runtime.model.provider_rejected",
+                  "runtime.model.fallback_incompatible"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "model_error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "provider_rate_limited",
+                  "provider_overloaded",
+                  "context_too_long",
+                  "model_unavailable",
+                  "provider_auth_failed",
+                  "provider_access_denied",
+                  "provider_timeout",
+                  "provider_unavailable",
+                  "model_call_failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Error Code"
+          },
+          "notification_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_:.-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notification Code"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          },
+          "can_mark_read": {
+            "type": "boolean",
+            "title": "Can Mark Read"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "graph_id",
+          "status",
+          "reason",
+          "reason_code",
+          "model_error_code",
+          "notification_code",
+          "occurred_at",
+          "can_mark_read",
+          "read_at"
+        ],
+        "title": "CompletionSummary"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "ReadBody": {
+        "properties": {},
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ReadBody"
+      },
+      "ReadCompletion": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "event_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Event Id"
+          },
+          "read_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Read At"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "read_at",
+          "request_id"
+        ],
+        "title": "ReadCompletion"
+      },
+      "RunCompletion": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "thread_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Thread Id"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "pending",
+              "unsupported",
+              "expired"
+            ],
+            "title": "Availability"
+          },
+          "completion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompletionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "thread_id",
+          "run_id",
+          "availability",
+          "completion",
+          "request_id"
+        ],
+        "title": "RunCompletion"
+      },
+      "RunNotification": {
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Event Id"
+          },
+          "graph_id": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_:.-]+$",
+            "title": "Graph Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "error",
+              "timeout",
+              "interrupted"
+            ],
+            "title": "Status"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_:.-]+$",
+            "title": "Reason"
+          },
+          "reason_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "runtime.workspace.unavailable",
+                  "runtime.workspace.execution_unavailable",
+                  "runtime.workspace.backend_invalid",
+                  "runtime.workspace.image_invalid",
+                  "runtime.workspace.execution_outcome_unknown"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "runtime_execution_failed",
+                  "runtime_run_timeout",
+                  "runtime_graph_step_limit_reached",
+                  "runtime_model_call_limit_reached",
+                  "runtime_tool_call_limit_reached",
+                  "runtime.model.retry_exhausted",
+                  "runtime.model.retry_budget_exceeded",
+                  "runtime.model.stream_interrupted",
+                  "runtime.model.provider_rejected",
+                  "runtime.model.fallback_incompatible"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason Code"
+          },
+          "model_error_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "provider_rate_limited",
+                  "provider_overloaded",
+                  "context_too_long",
+                  "model_unavailable",
+                  "provider_auth_failed",
+                  "provider_access_denied",
+                  "provider_timeout",
+                  "provider_unavailable",
+                  "model_call_failed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Error Code"
+          },
+          "notification_code": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[A-Za-z0-9_:.-]+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notification Code"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Occurred At"
+          },
+          "can_mark_read": {
+            "type": "boolean",
+            "title": "Can Mark Read"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          },
+          "thread_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Thread Id"
+          },
+          "run_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Run Id"
+          },
+          "received_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Received At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "event_id",
+          "graph_id",
+          "status",
+          "reason",
+          "reason_code",
+          "model_error_code",
+          "notification_code",
+          "occurred_at",
+          "can_mark_read",
+          "read_at",
+          "thread_id",
+          "run_id",
+          "received_at"
+        ],
+        "title": "RunNotification"
+      },
+      "RunNotifications": {
+        "properties": {
+          "version": {
+            "type": "integer",
+            "const": 1,
+            "title": "Version",
+            "default": 1
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "available",
+              "disabled"
+            ],
+            "title": "Availability"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RunNotification"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "scan_limit_reached": {
+            "type": "boolean",
+            "title": "Scan Limit Reached"
+          },
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "availability",
+          "items",
+          "next_cursor",
+          "scan_limit_reached",
+          "request_id"
+        ],
+        "title": "RunNotifications"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

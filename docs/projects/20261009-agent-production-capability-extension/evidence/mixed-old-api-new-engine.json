@@ -1,0 +1,21 @@
+[
+  {
+    "scenario": "fallback",
+    "run_id": "b0afb1c7-75cf-4267-994f-36d6a718156f",
+    "status": "success",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "worker_attempts": 1,
+    "duration_seconds": 17.188,
+    "summary": {
+      "version": 1,
+      "requested_model_id": "2b5ae35a-70ba-4361-8287-d4ba04aec795",
+      "effective_model_id": "65d22c06-929c-47c2-a42a-58b53ee5a297",
+      "attempts": 2,
+      "fallback_used": true
+    },
+    "error_events": []
+  }
+]

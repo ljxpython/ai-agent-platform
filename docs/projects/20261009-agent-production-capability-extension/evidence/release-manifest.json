@@ -1,0 +1,40 @@
+{
+  "released_at": "2026-10-09",
+  "version": "0.13.0.post44",
+  "source": "https://pypi.org/simple/",
+  "files": [
+    {
+      "filename": "graphharbor_runtime-0.13.0.post44-py3-none-any.whl",
+      "sha256": "d5b3ee0a2b74760cf418e115c0be41e9390fcae222e8fa0a10172fda6aa37677"
+    },
+    {
+      "filename": "graphharbor_runtime-0.13.0.post44.tar.gz",
+      "sha256": "8c7747e25bfaf94590938a9666d539188667d87d248a96ef6037ccb70c4085f2"
+    },
+    {
+      "filename": "graphharbor-0.13.0.post44-py3-none-any.whl",
+      "sha256": "8202169f5419edbf9d9b68d5c849aaa0832335a12ad426fd3f3de450a6d865d0"
+    },
+    {
+      "filename": "graphharbor-0.13.0.post44.tar.gz",
+      "sha256": "d31fb45c7383b24b123bd513a7cff681c080ff6981778cc0e152754509e10b76"
+    }
+  ],
+  "migration_head": "012_run_callback_deliveries",
+  "platform_dependency": "graphharbor==0.13.0.post44",
+  "included_existing_generic_capabilities": {
+    "thread_metadata_cas_route": "PATCH /threads/{thread_id}/metadata/cas",
+    "atomic_thread_metadata_merge": true,
+    "thread_cancellation_migration": "011_run_cancellations",
+    "note": "These pre-existing changes are present in the published artifacts; their separate consumer acceptance tasks are not completed by this release record."
+  },
+  "verification": {
+    "pypi_hashes_match": true,
+    "wheel_sdist_cold_install": true,
+    "isolated_pypi_cli": "graphharbor, version 0.13.0.post44",
+    "installed_from_platform_lock": true,
+    "wheel_source_equality_python_files": 55
+  },
+  "git_commit_created": false,
+  "production_deployed": false
+}

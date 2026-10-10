@@ -1,6 +1,6 @@
 ---
 status: draft
-last_verified: 2026-10-07
+last_verified: 2026-10-09
 confidence: medium
 source_project: docs/projects/20260926-delegation-jwt-contract/verification.md
 note: 当前operation枚举为31项；覆盖diagnostics-read、usage-read与新增会话Stop/固定回执原生例外，隔离契约和撤权链路已验；消息内部Run回查仍待部署补验
@@ -47,6 +47,8 @@ note: 当前operation枚举为31项；覆盖diagnostics-read、usage-read与新�
   "tool_overrides": {"tool_name": false},
   "tool_policy_version": "<non-empty-string>",
 
+  "callback_context": {"origin_ref": "<可选的规范 UUID>"},
+
   "scope": {
     "tenant_id": "<必须与顶层一致>",
     "project_id": "<必须与顶层一致>",
@@ -73,8 +75,15 @@ note: 当前operation枚举为31项；覆盖diagnostics-read、usage-read与新�
 | `credential_id` | service account 签发必须携带；普通用户禁止携带 |
 | `tool_overrides` | 值只能为 `false`；键符合名称规则；≤128 键；紧凑 JSON ≤4096 字节 |
 | `context_hash` | 格式：`sha256:` + 64 位十六进制，总长 71 字符 |
+| `callback_context` | 可选；仅一个 `origin_ref`，必须为规范小写 UUID；未知/空/额外键拒绝，不允许URL或recipient |
 | scope 额外键 | 只允许五个键，未知键拒绝 |
 | 未知顶层 claim | Runtime 严格拒绝 |
+
+### 可选运行完成来源（2026-10-09 用户批准）
+
+平台在受理前持久化 origin，再为受管 Run/cron 创建与更新签发可选 `callback_context`。Runtime 验签后只把该字段放入 GraphHarbor 私有受签 context；不进入 State、Prompt、公开 kwargs/SSE。旧 token 没有该字段仍可执行，但没有受管 completion 来源；新 API 遇到旧引擎能力缺失不注入新 claim。
+
+来源不是查询权限或回调凭据；terminal 不重新验证启动 JWT 的有效期，API 接收回调使用独立正文 HMAC，查询/feed/read 仍按当前项目/Thread ACL。operation 仍为31项，无新增 webhook scope。正式 post44、双端契约与隔离 Worker 证据见 [完成通知专项](../projects/20261009-agent-production-capability-extension/verification.md)。本补充不将其他待验收的 JWT 项目自动升为 active。
 
 ## scope.operation 枚举（31 项）
 

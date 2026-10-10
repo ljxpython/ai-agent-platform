@@ -1,15 +1,17 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-08（Agent Workspace 执行容错与安全报告已与会话停止、运行准备幂等、执行预算、超时治理、Token/Cost 跟踪等全量专项完成代码级融合合并入主干；非前端范围全部闭环并固化前端交接）。
+> **最后更新：** 2026-10-10（Agent Run completion 前端 P4.1-P4.3 全部交付闭环；Pinia 全局通知 Store、RunNotificationCenter 顶栏与 ChatPage 常驻挂载、细粒度优先错误码白名单投影、执行中跳转防护、useRunCompletion 历史 Run 终态诊断卡片完成；Vitest 722 passed，Playwright + Chromium 三视口与真实大模型端到端测试 4/4 passed，截图证据齐全；P3.3 后端正式包完整矩阵仍受资源限制保持 partial）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-08
+**最后更新：** 2026-10-10
 
 ## 最近改动
+
+2026-10-10 | **Agent Run终态通知与失败回调（前端闭环与真实模型E2E）**：前端 P4.1-P4.3 全量完成。Pinia Store 全局通知单例（15s 指数退避轮询与乐观已读回滚）、细粒度优先（model_error_code -> reason_code -> notification_code）安全白名单文案与建议动作映射、全局顶栏与 Chat 页面通知中心挂载、正在执行任务离开跳转二次确认防护、历史 Run 安全终态诊断卡片接入全部实装。vue-tsc 0 错误、ESLint 0 错误、生产打包成功、Vitest 134 文件 722 项单测全绿；Playwright + Chromium 驱动本地隔离三服务，连接真实模型 `deepseek-v4.1-flash` 进行全链路端到端问答与状态对账，F01-F08 核心链路 4 项 E2E 自动化测试全绿（24.8s），1440/768/390 三视口自适应截图已真实留痕（`evidence/screenshots/`）。见 [专项](projects/20261009-agent-production-capability-extension/README.md)。
 
 2026-10-08 | **Agent Workspace 执行容错与安全报告**：done（非前端范围闭环，代码及测试合入主干）。共享 Workspace 失败保护、不可达/结果未知停止 Run、取消清理与资源安全回收、v1 诊断记录与 platform-api 精确五码投影全部实装闭环；本地与 Docker 真实验证通过，前端交接报告与 DTO 已固化。见 [专项](projects/20261007-agent-workspace-resilience/README.md)。
 
@@ -31,6 +33,7 @@
 
 ## 活跃项目
 
+- [Agent 运行完成通知与失败回调](projects/20261009-agent-production-capability-extension/README.md)：`partial`。GraphHarbor/Runtime/API非前端实现、post44发布和交接完成；正式最短通过，native定时/回填部分证据已固化；前端 P4.1-P4.3 全部交付并通过 Vitest 与真实模型 Playwright E2E 闭环验收。正式完整矩阵 P3.3 资源 blocked，等用户通知资源可用后本地复验。
 - [Agent Workspace 执行容错与安全失败报告](projects/20261007-agent-workspace-resilience/README.md)：`done`（非前端本地与 Docker 范围全部闭环，全栈代码与测试已合并进入主干；前端交接与报告已固化）；后端五精确安全码、结果未知停止、取消回收与诊断记录已融合闭环。未部署现役。
 - [Agent通用运行取消与中断能力](projects/20261007-agent-run-cancellation/README.md)：`done`（全链路闭环）；后端三接口、持久Stop/恢复、inbox屏障与确定性报告完成；前端Stop控制器状态机、Banner、Drawer与真实模型Playwright E2E自动化闭环完成（F01–F10闭环，截图已留痕，用户实测验收合格）；B01解除；B02等待正式PyPI发布指令/正式源锁接入。
 - [Agent 运行准备幂等与有界重试](projects/20261007-agent-production-capabilities/README.md)：done；公共 prepare latch、目录修复、有界重试与诊断接口已实现，前端双专职子组件实装，49 项单测与 Playwright + Chromium 全链路自动化 E2E 闭环全部通过。未部署现役。
@@ -66,9 +69,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-08 | 锁定/安装正式 post42；四图主子共享 attempt 预算/软收尾，模型 error 与 Worker timeout 分开；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理（自有 ledger/缓存计价）与运行准备幂等/有界重试安全摘要全链路融合就绪；新增持久Stop/租约恢复、inbox屏障、资源证据及确定性报告；Workspace 执行容错、结果未知停止、取消回收与安全记录融合闭环；post43候选验证通过，B01解除，未部署现役。 |
-| platform-api | 2026-10-08 | 私有预算注入拒绝/脱敏及停止确认透传；预算四精确安全码、custom 白名单、tasks/debug 错误清洗；runtime_prepare 私有字段防注入/公开剥离；diagnostics v1 增 optional preparations/retries 与 workspace_executions；Workspace 五码精确投影与 DTO 校验完成；模型恢复策略、上下文容量 CRUD 与 Run 诊断端点、模型费率快照与 Usage 授权网关代理、会话 cancel/detail/list 及精确委托全量实装；未部署现役。 |
-| platform-web | 2026-10-08 | 会话停止控制器与状态机、停止报告抽屉及 Banner 全链路实装，Playwright 真实模型 E2E 与人工实测验收通过；运行准备与重试摘要、预算告警投影、超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板、上下文容量展示、Run/Thread 用量与成本检查器、open-swe 水位表全部融合；全仓单测、vue-tsc 与生产打包全绿。未部署现役。 |
+| runtime-service | 2026-10-09 | 新增completion projector、安全白名单和受签callback context，接入post44；定向108 passed、源码完整/正式最短链路通过，native尾段定时/回填完成但队列等待失败，正式完整矩阵资源blocked；无需Docker，未部署现役。 |
+| platform-api | 2026-10-09 | 新增 migration 20261009_0007、origin/event/receipt、HMAC receiver、历史 completion、私有 feed/read、ACL/deletion suppression 和 cron backfill；真 PG 定向57 passed、正式最小32 passed，未迁移现役数据库或部署。 |
+| platform-web | 2026-10-09 | 会话停止控制器与状态机、停止报告抽屉及 Banner 全链路实装，Playwright 真实模型 E2E 与人工实测验收通过；运行准备与重试摘要、预算告警投影、超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板、上下文容量展示、Run/Thread 用量与成本检查器、open-swe 水位表全部融合；全仓单测、vue-tsc 与生产打包全绿。未部署现役。本轮 completion/feed 前端交接已规划，实现与浏览器验收由同事负责，未改前端代码。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-08 | 整单结束前须逐项核对未完成任务，未完成时只记Phase；用户批准的多会话发布协作经验已写入ai-workflow经验库，恢复时先核对正式产物归属与锁文件。 |
 
 ## 近期关键决策

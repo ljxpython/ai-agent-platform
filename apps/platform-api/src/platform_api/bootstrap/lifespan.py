@@ -24,6 +24,12 @@ def _verify_thread_access_schema(engine: Engine) -> None:
         raise RuntimeError(
             "Platform database schema is outdated; apply Alembic revision 20260925_0005 before starting platform-api"
         )
+    if "origin_ref" not in {
+        column["name"] for column in inspector.get_columns("run_requests")
+    }:
+        raise RuntimeError(
+            "Apply Platform Alembic revision 20261009_0007 before starting platform-api"
+        )
 
 
 @asynccontextmanager

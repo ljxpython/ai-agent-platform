@@ -142,6 +142,7 @@ def create_runtime_delegation_token(
     request_id: str | None = None,
     platform_trace_id: str | None = None,
     credential_id: str | None = None,
+    callback_context: Mapping[str, str | None] | None = None,
 ) -> str:
     secret = settings.runtime_delegation_secret
     if len(secret.encode("utf-8")) < 32:
@@ -333,6 +334,28 @@ def create_runtime_delegation_token(
         except (TypeError, ValueError) as exc:
             raise ValueError("runtime delegation credential_id is invalid") from exc
         payload["credential_id"] = credential_id
+    if callback_context is not None:
+        if set(callback_context) != {"origin_ref"}:
+            raise ValueError("runtime delegation callback_context is invalid")
+        origin_ref = callback_context.get("origin_ref")
+        if (
+            not isinstance(origin_ref, str)
+            or not origin_ref.strip()
+            or len(origin_ref) > 128
+            or origin_ref != origin_ref.strip()
+            or not origin_ref.isascii()
+        ):
+            raise ValueError(
+                "runtime delegation callback_context origin_ref is invalid"
+            )
+        try:
+            if str(uuid.UUID(origin_ref)) != origin_ref:
+                raise ValueError()
+        except ValueError as exc:
+            raise ValueError(
+                "runtime delegation callback_context origin_ref is invalid"
+            ) from exc
+        payload["callback_context"] = {"origin_ref": origin_ref}
     return jwt.encode(
         payload,
         secret,

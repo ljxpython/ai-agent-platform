@@ -7,6 +7,7 @@ class RuntimeErrorBase(ValueError):
     def __init__(self, code: str, field: str | None = None) -> None:
         self.code = code
         self.field = field
+        self.model_error_code: str | None = None
         message = f"{code}: {field}" if field else code
         super().__init__(message)
 

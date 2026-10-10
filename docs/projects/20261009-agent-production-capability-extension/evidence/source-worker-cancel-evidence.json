@@ -1,0 +1,20 @@
+{
+  "scenario": "cancel",
+  "run_id": "ae5eb295-8ac3-4d06-8de8-d36037e2441b",
+  "status": "interrupted",
+  "provider_calls": [
+    "primary"
+  ],
+  "duration_seconds": 5.68,
+  "worker_lease_released": true,
+  "worker_heartbeat_setting": "1",
+  "provider_calls_at_ack": [
+    "primary"
+  ],
+  "provider_calls_at_stop_confirmation": [
+    "primary"
+  ],
+  "terminal_execution_stopped": true,
+  "terminal_committed_at": "2026-10-09T12:53:44.587516+08:00",
+  "ack_to_lease_release_seconds": 0.372
+}

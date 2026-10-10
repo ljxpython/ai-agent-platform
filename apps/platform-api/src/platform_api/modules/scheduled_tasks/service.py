@@ -130,6 +130,7 @@ class ScheduledTasksService:
         write: bool,
         payload: dict | None = None,
         thread_id: str | None = None,
+        origin_ref: str | None = None,
     ):
         await run_in_threadpool(
             self.gateway._prepare_project_scope,
@@ -150,6 +151,7 @@ class ScheduledTasksService:
             else "cron-write"
             if write
             else "cron-read",
+            **({"origin_ref": origin_ref} if origin_ref else {}),
         )
         return self.gateway._upstream.with_forwarded_headers(headers)
 
@@ -300,18 +302,59 @@ class ScheduledTasksService:
 
     async def create(self, *, actor, project_id: str, spec: TaskCreate):
         payload = await self._payload(actor=actor, project_id=project_id, spec=spec)
+        origin_ref = await self._reserve_completion_origin(actor, project_id, spec)
         upstream = await self._upstream(
             actor=actor,
             project_id=project_id,
             write=True,
             payload=payload,
             thread_id=spec.thread_id,
+            origin_ref=origin_ref,
         )
-        return task_item(
-            await upstream.cron_request(
-                "POST", payload=payload, thread_id=spec.thread_id
-            )
+        row = await upstream.cron_request(
+            "POST", payload=payload, thread_id=spec.thread_id
         )
+        await self._bind_completion_schedule(origin_ref, row["cron_id"])
+        return task_item(row)
+
+    async def _reserve_completion_origin(self, actor, project_id, spec):
+        if not self.gateway._completion_enabled:
+            return None
+        from platform_api.modules.runtime_gateway.infra.sqlalchemy.completion_repository import (
+            reserve_origin,
+        )
+
+        def reserve():
+            with session_scope(self.gateway._session_factory) as session:
+                return reserve_origin(
+                    session,
+                    project_id=project_id,
+                    thread_id=spec.thread_id,
+                    agent_key=spec.agent_key,
+                    requested_by=actor.user_id
+                    if actor.principal_type == "user"
+                    else None,
+                    runtime_id="default",
+                    source_kind="schedule",
+                    thread_mode=spec.thread_mode,
+                    state="active",
+                )
+
+        return await run_in_threadpool(reserve)
+
+    async def _bind_completion_schedule(self, origin_ref, task_id):
+        if not origin_ref:
+            return
+        from platform_api.modules.runtime_gateway.infra.sqlalchemy.completion_repository import (
+            get_origin,
+        )
+
+        def bind():
+            with session_scope(self.gateway._session_factory) as session:
+                get_origin(session, origin_ref).source_id = task_id
+                get_origin(session, origin_ref).state = "active"
+
+        await run_in_threadpool(bind)
 
     async def update(self, *, actor, project_id: str, task_id: str, changes: dict):
         row = await self.get_native(
@@ -329,18 +372,22 @@ class ScheduledTasksService:
         payload = await self._payload(
             actor=actor, project_id=project_id, spec=spec, validate_time=changed_time
         )
+        origin_ref = await self._reserve_completion_origin(actor, project_id, spec)
         upstream = await self._upstream(
             actor=actor,
             project_id=project_id,
             write=True,
             payload=payload,
             thread_id=spec.thread_id,
+            origin_ref=origin_ref,
         )
         if not {"cron", "run_at", "timezone"} & changes.keys():
             payload.pop("schedule")
             payload.pop("timezone")
         payload["thread_id"] = spec.thread_id
-        return task_item(await upstream.cron_request("PATCH", task_id, payload=payload))
+        updated = await upstream.cron_request("PATCH", task_id, payload=payload)
+        await self._bind_completion_schedule(origin_ref, task_id)
+        return task_item(updated)
 
     async def set_enabled(self, *, actor, project_id: str, task_id: str, enabled: bool):
         row = await self.get_native(

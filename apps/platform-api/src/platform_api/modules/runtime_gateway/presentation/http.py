@@ -532,6 +532,7 @@ def get_runtime_gateway_service(
         thread_id: str | None,
         context_hash: str,
         operation: str = "run-create",
+        origin_ref: str | None = None,
     ) -> dict[str, str]:
         restrictions = (
             RuntimePolicyOverlayService(
@@ -576,6 +577,9 @@ def get_runtime_gateway_service(
                 },
                 context_hash=context_hash,
                 settings=settings,
+                callback_context=(
+                    {"origin_ref": origin_ref} if origin_ref is not None else None
+                ),
                 **correlation,
             )
         except ValueError as exc:
@@ -628,6 +632,7 @@ def get_runtime_gateway_service(
         suggestions_enabled=settings.suggestions_enabled,
         suggestions_max=settings.suggestions_max,
         suggestions_timeout_seconds=settings.suggestions_timeout_seconds,
+        completion_enabled=settings.runtime_completion_enabled,
     )
 
 

@@ -63,6 +63,9 @@ PROTOCOL_V2_EVENT_CHANNELS = {
 PROTOCOL_V2_RUN_DURABILITY = {"sync", "async", "exit"}
 PROTOCOL_V2_RUN_DISCONNECT = {"cancel", "continue"}
 PRIVATE_RUNTIME_STATE_KEYS = {
+    "callback_context",
+    "origin_ref",
+    "runtime_context_token",
     "_platform_model_resilience",
     "model_resilience",
     "fallback_model_id",

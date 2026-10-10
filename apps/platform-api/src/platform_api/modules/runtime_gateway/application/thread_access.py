@@ -243,6 +243,11 @@ def get(factory, thread_id: str) -> dict:
 
 def remove(factory, *, actor: ActorContext, project_id: str, thread_id: str) -> None:
     with session_scope(factory) as session:
+        from platform_api.modules.runtime_gateway.infra.sqlalchemy.completion_repository import (
+            suppress,
+        )
+
+        suppress(session, project_id=project_id, thread_id=thread_id)
         row = session.get(ThreadAccessRecord, thread_id, with_for_update=True)
         if row is not None:
             if row.project_id != project_id:

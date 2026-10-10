@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from platform_api.core.errors import ConflictError
 from platform_api.modules.runtime_gateway.infra.sqlalchemy.models import (
+    RunCompletionOriginRecord,
     RunRequestRecord,
 )
 
@@ -28,6 +29,7 @@ class StoredRunRequest:
     submission_status: str
     parent_run_id: str | None
     interrupt_id: str | None
+    origin_ref: str | None
 
 
 def _stored(row: RunRequestRecord) -> StoredRunRequest:
@@ -72,6 +74,18 @@ class RunRequestsRepository:
         return _stored(row)
 
     def mark(self, request_id: str, status: str, run_id: str | None = None):
+        origin_ref = self.session.scalar(
+            select(RunRequestRecord.origin_ref).where(
+                RunRequestRecord.id == UUID(request_id)
+            )
+        )
+        origin = (
+            self.session.get(
+                RunCompletionOriginRecord, origin_ref, with_for_update=True
+            )
+            if origin_ref
+            else None
+        )
         row = self.session.get(RunRequestRecord, UUID(request_id), with_for_update=True)
         if row is None:
             raise RuntimeError("Run request disappeared")
@@ -84,5 +98,12 @@ class RunRequestsRepository:
             return
         row.submission_status = status
         if run_id:
+            if origin:
+                if origin and origin.run_id and origin.run_id != run_id:
+                    raise ConflictError(
+                        code="completion_run_conflict",
+                        message="Completion origin run conflicts",
+                    )
+                origin.run_id = run_id
             row.run_id = run_id
         self.session.flush()

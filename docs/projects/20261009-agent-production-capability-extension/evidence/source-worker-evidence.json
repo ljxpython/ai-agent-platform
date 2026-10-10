@@ -1,0 +1,236 @@
+[
+  {
+    "scenario": "fallback",
+    "run_id": "cf4d5956-c579-459d-a106-1c3fb05a639a",
+    "status": "success",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "worker_attempts": 1,
+    "duration_seconds": 11.251,
+    "summary": {
+      "version": 1,
+      "requested_model_id": "85a7624e-4c56-4afe-91a7-f053a5abe09a",
+      "effective_model_id": "c8a0b894-a17f-42fa-9a39-e3f9c5e0a222",
+      "attempts": 2,
+      "fallback_used": true
+    },
+    "error_events": []
+  },
+  {
+    "scenario": "recover",
+    "run_id": "c24e7a94-c0eb-4260-918f-3281c3c35baa",
+    "status": "success",
+    "provider_calls": [
+      "primary",
+      "backup",
+      "primary"
+    ],
+    "worker_attempts": 1,
+    "duration_seconds": 13.468,
+    "summary": {
+      "version": 1,
+      "requested_model_id": "85a7624e-4c56-4afe-91a7-f053a5abe09a",
+      "effective_model_id": "85a7624e-4c56-4afe-91a7-f053a5abe09a",
+      "attempts": 3,
+      "fallback_used": false
+    },
+    "error_events": []
+  },
+  {
+    "scenario": "exhausted",
+    "run_id": "8b384760-c56b-43a9-81c2-8193cc9fbb90",
+    "status": "error",
+    "provider_calls": [
+      "primary",
+      "backup",
+      "primary"
+    ],
+    "worker_attempts": 1,
+    "duration_seconds": 5.998,
+    "summary": null,
+    "error_events": [
+      {
+        "event": "failed",
+        "status": "error",
+        "graph_name": "reference_agent",
+        "reason": "business_error",
+        "error": {
+          "message": "runtime.model.retry_exhausted",
+          "type": "RuntimeResolutionError"
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "partial",
+    "run_id": "f8bb2fec-160c-4db6-89bc-a94365d5d858",
+    "status": "error",
+    "provider_calls": [
+      "primary"
+    ],
+    "worker_attempts": 1,
+    "duration_seconds": 5.233,
+    "summary": null,
+    "error_events": [
+      {
+        "event": "failed",
+        "status": "error",
+        "graph_name": "reference_agent",
+        "reason": "business_error",
+        "error": {
+          "message": "runtime.model.stream_interrupted",
+          "type": "RuntimeResolutionError"
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "reasoning",
+    "run_id": "46db0c70-890b-4571-b855-28deb263d4ad",
+    "status": "error",
+    "provider_calls": [
+      "primary"
+    ],
+    "worker_attempts": 1,
+    "duration_seconds": 5.303,
+    "summary": null,
+    "error_events": [
+      {
+        "event": "failed",
+        "status": "error",
+        "graph_name": "reference_agent",
+        "reason": "business_error",
+        "error": {
+          "message": "runtime.model.stream_interrupted",
+          "type": "RuntimeResolutionError"
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "tool_partial",
+    "run_id": "aa911455-303b-4efb-be87-7dc286facddc",
+    "status": "error",
+    "provider_calls": [
+      "primary"
+    ],
+    "worker_attempts": 1,
+    "duration_seconds": 5.21,
+    "summary": null,
+    "error_events": [
+      {
+        "event": "failed",
+        "status": "error",
+        "graph_name": "reference_agent",
+        "reason": "business_error",
+        "error": {
+          "message": "runtime.model.stream_interrupted",
+          "type": "RuntimeResolutionError"
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "slow",
+    "run_id": "874e42ed-fc87-4044-9c64-bdc5141918cd",
+    "status": "error",
+    "provider_calls": [
+      "primary",
+      "backup",
+      "primary"
+    ],
+    "worker_attempts": 1,
+    "duration_seconds": 8.991,
+    "summary": null,
+    "error_events": [
+      {
+        "event": "failed",
+        "status": "error",
+        "graph_name": "reference_agent",
+        "reason": "business_error",
+        "error": {
+          "message": "runtime.model.retry_exhausted",
+          "type": "RuntimeResolutionError"
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "budget",
+    "run_id": "ee3c6efd-666d-4299-b488-109f64370f48",
+    "status": "error",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "worker_attempts": 1,
+    "duration_seconds": 10.063,
+    "summary": null,
+    "error_events": [
+      {
+        "event": "failed",
+        "status": "error",
+        "graph_name": "reference_agent",
+        "reason": "business_error",
+        "error": {
+          "message": "runtime.model.retry_budget_exceeded",
+          "type": "RuntimeResolutionError"
+        }
+      }
+    ]
+  },
+  {
+    "scenario": "cancel",
+    "run_id": "ae5eb295-8ac3-4d06-8de8-d36037e2441b",
+    "status": "interrupted",
+    "provider_calls": [
+      "primary"
+    ],
+    "worker_attempts": 1,
+    "duration_seconds": 5.682,
+    "summary": null,
+    "error_events": []
+  },
+  {
+    "scenario": "empty",
+    "run_id": "dd51c88f-3492-4e1b-9220-dba97c467bf8",
+    "status": "success",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ],
+    "worker_attempts": 1,
+    "duration_seconds": 7.182,
+    "summary": {
+      "version": 1,
+      "requested_model_id": "85a7624e-4c56-4afe-91a7-f053a5abe09a",
+      "effective_model_id": "c8a0b894-a17f-42fa-9a39-e3f9c5e0a222",
+      "attempts": 2,
+      "fallback_used": true
+    },
+    "error_events": []
+  },
+  {
+    "scenario": "tool",
+    "run_id": "dcaabb23-d65e-4a61-bab0-f921525b9e3f",
+    "status": "success",
+    "provider_calls": [
+      "primary",
+      "backup",
+      "primary",
+      "backup"
+    ],
+    "worker_attempts": 1,
+    "duration_seconds": 11.275,
+    "summary": {
+      "version": 1,
+      "requested_model_id": "85a7624e-4c56-4afe-91a7-f053a5abe09a",
+      "effective_model_id": "c8a0b894-a17f-42fa-9a39-e3f9c5e0a222",
+      "attempts": 2,
+      "fallback_used": true
+    },
+    "error_events": []
+  }
+]

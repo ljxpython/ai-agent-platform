@@ -89,6 +89,7 @@ start
 source "$1" help >/dev/null
 RUNTIME_ENV_FILE="$2/.env"
 PLATFORM_API_DIR="$2"
+PLATFORM_ENV_FILE="$2/.env"
 python3() { printf 'test-secret'; }
 load_runtime_env
 start_process() { bash -c 'printf "terminal=%s\\n" "$RUNTIME_TERMINAL_ENABLED"'; }
@@ -125,6 +126,7 @@ start_managed_key runtime-worker
 source "$1" help >/dev/null
 RUNTIME_ENV_FILE="$2/.env"
 PLATFORM_API_DIR="$2"
+PLATFORM_ENV_FILE="$2/.env"
 python3() { printf 'test-secret'; }
 load_runtime_env
 start_process() { bash -c 'printf "mode=%s\\n" "$RUNTIME_BACKEND"'; }

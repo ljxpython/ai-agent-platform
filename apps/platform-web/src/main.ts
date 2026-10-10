@@ -1,25 +1,28 @@
-import { createApp } from 'vue'
-import { createPinia } from 'pinia'
-import App from './App.vue'
-import router from './router'
-import i18n from './i18n'
-import { useThemeStore } from '@/stores/theme'
-import '@/styles/index.css'
+import { createApp } from "vue";
+import { createPinia } from "pinia";
+import App from "./App.vue";
+import router from "./router";
+import i18n from "./i18n";
+import { useThemeStore } from "@/stores/theme";
+import "@/styles/index.css";
 
 async function bootstrap() {
-  const app = createApp(App)
-  const pinia = createPinia()
+  const app = createApp(App);
+  const pinia = createPinia();
 
-  app.use(pinia)
+  app.use(pinia);
+  if (typeof window !== "undefined") {
+    (window as any).__pinia = pinia;
+  }
 
-  const themeStore = useThemeStore(pinia)
-  themeStore.init()
+  const themeStore = useThemeStore(pinia);
+  themeStore.init();
 
-  app.use(router)
-  app.use(i18n)
+  app.use(router);
+  app.use(i18n);
 
-  await router.isReady()
-  app.mount('#app')
+  await router.isReady();
+  app.mount("#app");
 }
 
-void bootstrap()
+void bootstrap();
