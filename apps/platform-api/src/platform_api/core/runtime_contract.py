@@ -86,6 +86,8 @@ PRIVATE_RUNTIME_STATE_KEYS = {
     "thread_tool_call_count",
     "run_tool_call_count",
     "runtime_prepare",
+    "runtime_loop_state",
+    "_runtime_tool_call_repaired",
 }
 
 

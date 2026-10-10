@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 Identifier = Annotated[
     str, Field(max_length=128, min_length=1, pattern=r"^[A-Za-z0-9_:.-]+$")
@@ -26,7 +26,9 @@ WorkspaceErrorCode = Literal[
     "runtime.workspace.image_invalid",
     "runtime.workspace.execution_outcome_unknown",
 ]
-ExecutionErrorCode = ModelErrorCode | WorkspaceErrorCode
+ExecutionErrorCode = (
+    ModelErrorCode | WorkspaceErrorCode | Literal["runtime.loop.detected"]
+)
 
 
 class DiagnosticFields(BaseModel):
@@ -123,6 +125,22 @@ class RetrySummary(DiagnosticFields):
     duration_ms: Duration | None = None
 
 
+class LoopDetectionSummary(DiagnosticFields):
+    observation_id: Identifier
+    scope: Literal["primary", "subagent"]
+    namespace: Annotated[list[Identifier], Field(max_length=8)]
+    code: Literal["tool_loop_approaching", "tool_loop_reached"]
+    repetitions: Annotated[int, Field(ge=1, le=5, strict=True)]
+    threshold: Annotated[int, Field(ge=1, le=5, strict=True)]
+
+    @model_validator(mode="after")
+    def validate_transition(self):
+        expected = 3 if self.code == "tool_loop_approaching" else 5
+        if self.repetitions != expected or self.threshold != expected:
+            raise ValueError("Invalid loop transition")
+        return self
+
+
 class RuntimeDiagnostics(DiagnosticFields):
     version: Literal[1]
     availability: Literal["available", "partial", "disabled", "unavailable"]
@@ -142,6 +160,9 @@ class RuntimeDiagnostics(DiagnosticFields):
     )
     retries: Annotated[list[RetrySummary], Field(max_length=20)] = Field(
         default_factory=list
+    )
+    loop_detections: Annotated[list[LoopDetectionSummary], Field(max_length=20)] = (
+        Field(default_factory=list)
     )
     truncated: Annotated[bool, Field(strict=True)]
 

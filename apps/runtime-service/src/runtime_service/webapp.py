@@ -43,6 +43,9 @@ from runtime_service.workspace.image_refs import validate_image_ref
 
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    from runtime_service.middlewares import loop_detection_enabled
+
+    loop_detection_enabled()
     resolve_wrapup_after_seconds()
     initialize_langfuse()
     try:

@@ -1,0 +1,95 @@
+{
+  "date": "2026-10-09",
+  "scope": "F02 runtime-service and platform-api; frontend handoff only",
+  "baseline_head": "85d63d87bdf84dabbb963f79e8dd4b2db4432ade",
+  "default_enabled": false,
+  "deployed": false,
+  "unit_and_contract": {
+    "shared_detector": {"passed": 33, "warnings": 5, "seconds": 41.14},
+    "runtime_composition_diagnostics_config": {"passed": 35},
+    "api_four_files": {"passed": 88, "subtests_passed": 168, "seconds": 21.4},
+    "postgres_compaction": {"passed": 1, "warnings": 5, "seconds": 83.15}
+  },
+  "http_worker": {
+    "sources": [
+      "/tmp/f02-boundaries-evidence.json",
+      "/tmp/f02-recovery-evidence-final.json",
+      "/tmp/f02-real-model-evidence-final.json"
+    ],
+    "boundary_session": "17-scenario test body returned successfully; duplicate recovery setup interrupted after -k matched the function name; session exit was nonzero",
+    "recovery_session": {"passed": 1, "deselected": 1, "seconds": 1996.75},
+    "real_model_session": {"passed": 1, "seconds": 96.03},
+    "deterministic_runs": [
+      {"case": "dearflow_agent", "status": "error", "claims": 1, "loop_scope": "primary", "transitions": [3, 5]},
+      {"case": "showcase_demo", "status": "error", "claims": 1, "loop_scope": "primary", "transitions": [3, 5]},
+      {"case": "reference_agent", "status": "error", "claims": 1, "loop_scope": "primary", "transitions": [3, 5]},
+      {"case": "loop-v2", "status": "error", "claims": 1, "loop_scope": "primary", "transitions": [3, 5]},
+      {"case": "f02-pages", "status": "success", "claims": 1, "transitions": []},
+      {"case": "f02-alternating", "status": "success", "claims": 1, "transitions": []},
+      {"case": "f02-changing", "status": "success", "claims": 1, "transitions": []},
+      {"case": "f02-warn-finish", "status": "success", "claims": 1, "transitions": [3]},
+      {"case": "dearflow_agent-child", "status": "error", "claims": 1, "loop_scope": "subagent", "transitions": [3, 5]},
+      {"case": "showcase_demo-child", "status": "error", "claims": 1, "loop_scope": "subagent", "transitions": [3, 5]},
+      {"case": "same-role-parallel", "status": "success", "claims": 1, "loop_scope": "subagent", "transitions": [3, 3], "distinct_namespaces": 2},
+      {"case": "approval-approve", "status": "interrupted", "claims": 1, "transitions": []},
+      {"case": "resume-approve", "status": "success", "claims": 1, "transitions": []},
+      {"case": "approval-edit", "status": "interrupted", "claims": 1, "transitions": []},
+      {"case": "resume-edit", "status": "success", "claims": 1, "transitions": []},
+      {"case": "approval-reject", "status": "interrupted", "claims": 1, "transitions": []},
+      {"case": "resume-reject", "status": "success", "claims": 1, "transitions": []},
+      {"case": "rollback-checkpoint", "status": "error", "claims": 1, "transitions": [3, 5]},
+      {"case": "f02-cancel", "status": "interrupted", "claims": 1, "transitions": [3]},
+      {"case": "f02-inbox", "status": "success", "claims": 1, "transitions": [3], "receipt": "consumed"},
+      {"case": "worker-takeover", "status": "error", "claims": 2, "transitions": [3, 5], "committed_tool_results": 5, "provider_requests_including_crashed_request": 6},
+      {"case": "disabled-new-run", "status": "success", "claims": 1, "transitions": [], "completed_tool_rounds": 6},
+      {"case": "old-code-checkpoint", "status": "success", "claims": 1, "transitions": []},
+      {"case": "reenabled-new-run", "status": "error", "claims": 1, "transitions": [3, 5]}
+    ],
+    "security_and_recovery": {
+      "private_input_command_resume_state_writes": "400",
+      "cross_user_and_project": "403",
+      "shared_read": "200",
+      "revoked_read": "403",
+      "expired_event_cursor": "410 cursor_expired",
+      "target_diagnostics_after_410": "passed",
+      "openapi_optional_loop_field": "passed",
+      "automatic_manual_compaction_and_new_run": "passed"
+    },
+    "real_model": {
+      "model": "DeepSeek-V4-Flash",
+      "source_lines": 8,
+      "runs": [
+        {"case": "research", "status": "success", "claims": 1, "reads": [[0, 100]], "tool_results": ["success"], "loop_records": 0, "source_unchanged": true},
+        {"case": "pagination", "status": "success", "claims": 1, "reads": [[0, 1], [1, 1], [2, 1]], "tool_results": ["success", "success", "success"], "loop_records": 0, "source_unchanged": true},
+        {"case": "verification", "status": "success", "claims": 1, "reads": [[0, 100], [0, 100]], "tool_results": ["success", "success"], "same_result": true, "loop_records": 0, "source_unchanged": true}
+      ],
+      "earlier_attempts": [
+        "One-line pagination produced two out-of-range errors; excluded from normal pagination evidence",
+        "Wrong fixture tenant path fixed to actual request DEFAULT_TENANT_ID",
+        "One verification attempt ended with provider_timeout",
+        "One standalone fixture exceeded the 180-second runtime startup readiness window"
+      ]
+    }
+  },
+  "cost_comparison": {
+    "passed": 1,
+    "seconds": 85.55,
+    "disabled": {"model_calls": 2, "last_model_step": 6, "median_ms": 11.083, "loop_state_bytes": 2},
+    "enabled": {"model_calls": 2, "last_model_step": 9, "median_ms": 115.411, "loop_state_bytes": 378},
+    "host_load_approximate": 900,
+    "latency_is_production_slo": false,
+    "recursion_limit_increased": false
+  },
+  "full_regression": {
+    "runtime": {"passed": 1002, "failed": 15, "skipped": 73, "deselected": 59, "seconds": 1657.2, "head_reproduced_failures": 14, "vector_test_passed_with_correct_api_interpreter": 1},
+    "api": {"passed": 421, "failed": 35, "skipped": 25, "subtests_passed": 800, "seconds": 519.39, "head_reproduced_failures": 35},
+    "head_inbox_crash_windows": {"failed": 2, "seconds": 196.68},
+    "services_lint": "passed",
+    "root_lint": {"errors": 44, "files": 11, "modified_files_with_diagnostics": 0},
+    "new_python_files_format": {"passed": 6},
+    "existing_showcase_readme_format": "failed",
+    "modified_markdown_links": {"new_issues": 0, "existing_bad_links": 4}
+  },
+  "frontend": "F02-T07 F01-F07 and browser E01-E04 pending colleague implementation",
+  "production_calibration": "Small smoke sample only; production false-positive rate and cost savings not measured"
+}

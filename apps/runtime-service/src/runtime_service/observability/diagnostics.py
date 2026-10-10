@@ -51,6 +51,8 @@ _FIELDS = frozenset(
         "backend",
         "command_state",
         "retry_wait_ms",
+        "repetitions",
+        "threshold",
     }
 )
 
@@ -160,10 +162,40 @@ def log_diagnostic(event: str, fields: Mapping[str, Any]) -> None:
         return
 
 
+def loop_detection_fields(fields: Mapping[str, Any]) -> dict[str, Any] | None:
+    code = fields.get("code")
+    expected = {"tool_loop_approaching": 3, "tool_loop_reached": 5}
+    if not isinstance(code, str) or code not in expected:
+        return None
+    if any(
+        type(fields.get(key)) is not int or fields[key] != expected[code]
+        for key in ("repetitions", "threshold")
+    ):
+        return None
+    namespace = fields.get("namespace", [])
+    if (
+        fields.get("scope") not in ("primary", "subagent")
+        or not isinstance(namespace, list)
+        or len(namespace) > 8
+    ):
+        return None
+    if any(
+        not isinstance(part, str)
+        or not re.fullmatch(r"[\w:.-]{1,128}", part, flags=re.ASCII)
+        for part in namespace
+    ):
+        return None
+    return {
+        key: fields.get(key, [])
+        for key in ("scope", "namespace", "code", "repetitions", "threshold")
+    }
+
+
 __all__ = [
     "diagnostic_metadata",
     "log_diagnostic",
     "safe_fields",
     "trace_id_for",
     "uuid_string",
+    "loop_detection_fields",
 ]

@@ -167,6 +167,12 @@ export function safeExtractBudgetSafetyError(
         message: "Run time limit reached",
       };
     }
+    if (code === "runtime.loop.detected") {
+      return {
+        code: "runtime.loop.detected",
+        message: "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+      };
+    }
 
     // Support inferring from completed run object with status === 'error'
     if (asAny.status === "error") {
@@ -265,6 +271,16 @@ export function safeExtractBudgetSafetyError(
     };
   }
 
+  if (
+    text.includes("runtime.loop.detected") ||
+    text.includes("RuntimeExecutionError: runtime.loop.detected")
+  ) {
+    return {
+      code: "runtime.loop.detected",
+      message: "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+    };
+  }
+
   return null;
 }
 
@@ -278,6 +294,9 @@ export function deriveBudgetViewModel(
   safetyError: BudgetSafetyError | null,
   nativeStatus?: string,
 ): BudgetViewModel | null {
+  const isStillRunning =
+    nativeStatus === "running" || nativeStatus === "pending";
+
   // 1. Thread-level limit reached (highest restriction, confirmed by notice)
   if (
     notice &&
@@ -316,6 +335,29 @@ export function deriveBudgetViewModel(
       code: "model_call_limit_reached",
       scope: "run",
       unit: "model_calls",
+      limit: notice.limit,
+      used: notice.used,
+      remaining: 0,
+      actionType: "adjust_draft",
+      actionLabel: "调整请求",
+    };
+  }
+
+  // 2.5 Run-level tool loop reached terminal stop (when run is no longer running)
+  if (
+    notice &&
+    notice.code === "tool_loop_reached" &&
+    notice.budget_scope === "run" &&
+    !isStillRunning
+  ) {
+    return {
+      level: "error",
+      isTerminal: true,
+      title: "本次执行因重复工具调用停止",
+      description: "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+      code: "tool_loop_reached",
+      scope: "run",
+      unit: "tool_rounds",
       limit: notice.limit,
       used: notice.used,
       remaining: 0,
@@ -380,6 +422,19 @@ export function deriveBudgetViewModel(
           remaining: 0,
           actionType: "none",
         };
+      case "runtime.loop.detected":
+        return {
+          level: "error",
+          isTerminal: true,
+          title: "本次执行因重复工具调用停止",
+          description: "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+          code: safetyError.code,
+          scope: "run",
+          unit: "tool_rounds",
+          remaining: 0,
+          actionType: "adjust_draft",
+          actionLabel: "调整请求",
+        };
     }
   }
 
@@ -389,6 +444,42 @@ export function deriveBudgetViewModel(
     // it was completed normally, warning should not persist as terminal error
     if (nativeStatus === "success") {
       return null;
+    }
+
+    if (notice.code === "tool_loop_reached") {
+      return {
+        level: "warning",
+        isTerminal: false,
+        title: "重复工具调用达到阈值",
+        description: "重复工具调用已达到保护阈值，正在等待终止",
+        code: notice.code,
+        scope: notice.budget_scope,
+        unit: notice.unit,
+        remaining: 0,
+        limit: notice.limit,
+        used: notice.used,
+        actionType: "none",
+      };
+    }
+
+    if (notice.code === "tool_loop_approaching") {
+      const detail =
+        typeof notice.remaining === "number"
+          ? `已连续重复调用 ${notice.used} 轮，剩余 ${notice.remaining} 轮保护容限，正在提醒收尾`
+          : "检测到重复工具调用，正在提醒智能体收尾";
+      return {
+        level: "warning",
+        isTerminal: false,
+        title: "检测到重复工具调用",
+        description: detail,
+        code: notice.code,
+        scope: notice.budget_scope,
+        unit: notice.unit,
+        remaining: notice.remaining,
+        limit: notice.limit,
+        used: notice.used,
+        actionType: "none",
+      };
     }
 
     if (notice.code === "model_call_limit_approaching") {

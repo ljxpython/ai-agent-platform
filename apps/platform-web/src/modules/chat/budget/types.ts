@@ -5,6 +5,8 @@ export const BUDGET_CODES = [
   "model_call_limit_reached",
   "graph_step_limit_approaching",
   "wrapup_started",
+  "tool_loop_approaching",
+  "tool_loop_reached",
 ] as const;
 
 export type BudgetCode = (typeof BUDGET_CODES)[number];
@@ -16,6 +18,7 @@ export const BUDGET_UNITS = [
   "model_calls",
   "graph_supersteps",
   "seconds",
+  "tool_rounds",
 ] as const;
 export type BudgetUnit = (typeof BUDGET_UNITS)[number];
 
@@ -24,6 +27,7 @@ export const BUDGET_SAFETY_ERROR_CODES = [
   "runtime_model_call_limit_reached",
   "runtime_tool_call_limit_reached",
   "runtime_run_timeout",
+  "runtime.loop.detected",
 ] as const;
 export type BudgetSafetyErrorCode = (typeof BUDGET_SAFETY_ERROR_CODES)[number];
 
@@ -61,9 +65,25 @@ const SecondsBudgetNoticeSchema = z.object({
   unit: z.literal("seconds"),
 });
 
+// Schema for tool loop detection rounds (integers, strictly bound to run budget_scope)
+const ToolLoopBudgetNoticeSchema = z.object({
+  version: z.literal(1),
+  type: z.literal("runtime_budget_notice"),
+  notice_id: z.string().min(1).max(256),
+  run_id: z.string().min(1).max(128),
+  scope: z.enum(["primary", "subagent"]),
+  budget_scope: z.literal("run"),
+  code: z.enum(["tool_loop_approaching", "tool_loop_reached"]),
+  limit: z.number().int().positive(),
+  used: z.number().int().nonnegative(),
+  remaining: z.number().int().nonnegative(),
+  unit: z.literal("tool_rounds"),
+});
+
 export const BudgetNoticeSchema = z.discriminatedUnion("unit", [
   StepOrCallBudgetNoticeSchema,
   SecondsBudgetNoticeSchema,
+  ToolLoopBudgetNoticeSchema,
 ]);
 
 export type BudgetNotice = z.infer<typeof BudgetNoticeSchema>;

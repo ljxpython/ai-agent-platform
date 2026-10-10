@@ -683,6 +683,7 @@ def test_path_loaded_auth_uses_the_same_acl_transport():
     "key",
     [
         "runtime_budget_notice",
+        "runtime_loop_state",
         "runtime_budget_latches",
         "runtime_wrapup_start",
         "thread_model_call_count",

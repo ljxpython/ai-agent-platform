@@ -9,6 +9,10 @@ from runtime_service.middlewares.conversation_offloading import (
 )
 from runtime_service.middlewares.documents import DocumentToolsMiddleware
 from runtime_service.middlewares.execution_budget import ExecutionBudgetMiddleware
+from runtime_service.middlewares.loop_detection import (
+    LoopDetectionMiddleware,
+    loop_detection_enabled,
+)
 from runtime_service.middlewares.message_queue import MessageQueueMiddleware
 from runtime_service.middlewares.model_call_timeout import (
     ModelCallTimeoutError,
@@ -30,6 +34,8 @@ from runtime_service.middlewares.timeout_wrapup import (
 
 __all__ = [
     "ExecutionBudgetMiddleware",
+    "LoopDetectionMiddleware",
+    "loop_detection_enabled",
     "TimeoutWrapupMiddleware",
     "resolve_wrapup_after_seconds",
     "ModelCallTimeoutMiddleware",

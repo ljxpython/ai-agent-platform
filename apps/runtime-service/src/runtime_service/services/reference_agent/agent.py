@@ -20,12 +20,14 @@ from langgraph.pregel import Pregel
 
 from runtime_service.middlewares import (
     ExecutionBudgetMiddleware,
+    LoopDetectionMiddleware,
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
     ModelResilienceMiddleware,
     RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
+    loop_detection_enabled,
     resolve_wrapup_after_seconds,
 )
 from runtime_service.observability import with_langfuse_tracing
@@ -326,6 +328,17 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             bundle.policy.attempt_timeout_seconds if bundle.policy.enabled else None
         ),
         MessageQueueMiddleware(),
+        *(
+            [
+                LoopDetectionMiddleware(
+                    ["read_reference"],
+                    graph_key="reference_agent",
+                    metadata=startup.metadata,
+                )
+            ]
+            if loop_detection_enabled()
+            else []
+        ),
     ]
     with startup.phase("factory.agent_compile"):
         agent = create_agent(

@@ -16,6 +16,7 @@ import httpx
 from langfuse.api.client import AsyncLangfuseAPI
 
 from runtime_service.observability.diagnostics import (
+    loop_detection_fields,
     trace_id_for,
     workspace_execution_fields,
 )
@@ -33,6 +34,7 @@ _EVENTS = {
     "runtime.prepare.completed",
     "runtime.retry.completed",
     "runtime.workspace.execution_completed",
+    "runtime.loop.transition",
 }
 
 
@@ -113,6 +115,7 @@ def empty_diagnostics(reason: str) -> dict:
         "graph_executions": [],
         "model_errors": [],
         "workspace_executions": [],
+        "loop_detections": [],
         "startup": None,
         "preparations": [],
         "retries": [],
@@ -224,7 +227,8 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
         error_code = (
             error_code
             if isinstance(error_code, str)
-            and error_code in MODEL_ERROR_CODES | WORKSPACE_ERROR_CODES
+            and error_code
+            in MODEL_ERROR_CODES | WORKSPACE_ERROR_CODES | {"runtime.loop.detected"}
             else None
         )
         if event in {"runtime.prepare.completed", "runtime.retry.completed"}:
@@ -232,6 +236,12 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
             if projected is not None:
                 target, fields = projected
                 result[target].append(fields)
+        elif event == "runtime.loop.transition":
+            summary = loop_detection_fields(metadata)
+            if summary is not None:
+                result["loop_detections"].append(
+                    {"observation_id": identifier, **summary}
+                )
         elif event == "runtime.model_call.failed" and metadata.get("scope") in {
             "primary",
             "subagent",
@@ -305,6 +315,7 @@ def _project(observations: list[dict], expected: dict, *, truncated: bool) -> di
         ("model_errors", 20),
         ("graph_executions", 10),
         ("workspace_executions", 20),
+        ("loop_detections", 20),
         ("preparations", 20),
         ("retries", 20),
     ):

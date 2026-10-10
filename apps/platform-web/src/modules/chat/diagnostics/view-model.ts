@@ -1,6 +1,7 @@
 import type {
   AvailabilityStatus,
   GraphOutcome,
+  LoopDetectionCode,
   ModelErrorCode,
   PhaseOutcome,
   PreparationComponent,
@@ -315,4 +316,49 @@ export function getRetrySeverity(
   if (runStatus === "success") return "warning";
   if (outcome === "failed" || outcome === "exhausted") return "error";
   return "warning";
+}
+
+/**
+ * 循环保护错误说明
+ */
+export function getLoopDetectionCodeLabel(
+  code: LoopDetectionCode | string | null | undefined,
+): string {
+  if (code === "tool_loop_approaching") {
+    return "检测到重复工具调用，已提醒收尾";
+  }
+  if (code === "tool_loop_reached") {
+    return "达到重复工具调用上限，已停止运行";
+  }
+  return "循环保护触发";
+}
+
+/**
+ * 循环保护状态徽章映射
+ */
+export function getLoopDetectionBadge(code: LoopDetectionCode | string): {
+  label: string;
+  variant: "warning" | "error" | "muted";
+} {
+  switch (code) {
+    case "tool_loop_approaching":
+      return { label: "收尾提醒", variant: "warning" };
+    case "tool_loop_reached":
+      return { label: "保护停止", variant: "error" };
+    default:
+      return { label: "循环保护", variant: "muted" };
+  }
+}
+
+/**
+ * 图观察执行错误码中文映射（避免将 loop.detected 误标为模型服务异常）
+ */
+export function getGraphErrorCodeLabel(
+  code: string | null | undefined,
+): string {
+  if (!code) return "无错误";
+  if (code === "runtime.loop.detected") {
+    return "工具重复调用超限";
+  }
+  return code;
 }

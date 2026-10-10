@@ -178,6 +178,7 @@ def sanitize_tool_call_messages(
                             name=tc_name,
                             tool_call_id=tc_id,
                             status="error",
+                            additional_kwargs={"_runtime_tool_call_repaired": True},
                         )
                     )
         else:

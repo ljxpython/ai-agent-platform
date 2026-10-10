@@ -13,6 +13,7 @@ import {
 import BaseIcon from "@/components/base/BaseIcon.vue";
 import RunPreparationsSection from "./RunPreparationsSection.vue";
 import RunRetriesSection from "./RunRetriesSection.vue";
+import RunLoopDetectionsSection from "./RunLoopDetectionsSection.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -400,6 +401,12 @@ const modelErrorSeverity = computed(() =>
           v-if="data.retries && data.retries.length > 0"
           :retries="data.retries"
           :run-status="currentRunStatus"
+        />
+
+        <!-- 循环保护记录 (Loop Detections) -->
+        <RunLoopDetectionsSection
+          v-if="data.loop_detections && data.loop_detections.length > 0"
+          :loop-detections="data.loop_detections"
         />
 
         <!-- 关联标识卡片 (可复制 ID 矩阵，绝不开通配 Raw JSON) -->

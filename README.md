@@ -201,6 +201,10 @@ bash "scripts/local-stack.sh" stop
 
 首次运行的配置初始化、数据库建表及密码配置，请查阅 [非容器化本地部署手册](docs/guides/deployment-guide.md)。
 
+使用 Codex/Git Worktree 并行开发时，先阅读 [Worktree 开发与资源隔离规范](docs/standards/worktree-development.md)，在各 Worktree 执行 `init`、`deps`、`start`。各环境独立分配端口、数据库、Redis 和 Workspace，实际访问地址由 `status` 输出。
+
+新 Worktree 继承主目录各 app 的 `.env` 并重写隔离字段，默认本地账号 `admin / admin123`；首次启动复用主库项目、Agent、模型与策略等基础配置，不复制对话历史，后续启动保留本环境改动。
+
 ---
 
 ### 2. Docker / Docker Compose 启动

@@ -73,6 +73,7 @@ def stack(tmp_path, request):
         "graphs": {
             "dearflow_agent": "fixture.py:graph",
             "showcase_demo": "fixture.py:showcase_graph",
+            **options.get("graphs", {}),
         },
         "auth": {"path": "fixture.py:auth"},
         "http": {"disable_mcp": True},

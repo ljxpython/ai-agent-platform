@@ -1,6 +1,6 @@
 ---
 status: draft
-last_verified: 2026-10-07
+last_verified: 2026-10-09
 confidence: medium
 source_project: docs/projects/20260926-sse-event-contract/verification.md
 note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容量(S11)因HTTP/1.1入口阻塞，持续容量/堆增长/三段脱敏样例未验
@@ -39,10 +39,15 @@ budget_scope/code/limit/used/remaining/unit，未知字段删除，非法通知�
 | model_call_limit_approaching / model_call_limit_reached | model_calls | run / thread |
 | graph_step_limit_approaching | graph_supersteps | graph |
 | wrapup_started | seconds | run |
+| tool_loop_approaching / tool_loop_reached | tool_rounds | run |
 
 scope 为 primary/subagent；namespace 使用协议外层，notice_id 在相同 Run/graph namespace/维度内确定。
 run_id 最大128字符，notice_id最大256字符；数值为 null 或有限非负且不超过 JS safe integer，调用/步骤必须整数。
 没有工具预算 custom 或 graph reached custom；这两种硬异常按[错误出口](error-envelope.md)精确类型解释。
+
+重复调用通知的 `tool_rounds` 表示连续相同参数和结果的完整只读工具批次，不是累计工具调用额度。approaching 固定 limit/used/remaining=5/3/2；reached 固定5/5/0；非法组合丢弃。复用 custom 和现有 Run/namespace/notice_id 去重，序列变更会产生新的 notice_id；前端不拼接 ID。v3 的数据在 `params.data`，v2 是直接 payload。reached 只证明触限转移，终态仍从原生生命周期/Run查询核实，不发送额外 cancel。
+
+精确 `runtime.loop.detected` 在原生 error/tasks/debug/lifecycle 槽位按[错误出口](error-envelope.md)清洗，普通工具消息与记录保留。诊断不可用或事件410时不能根据最新 Thread.error 解释旧 Run；只用目标匹配的诊断/历史错误，否则安全降级。`runtime_loop_state` 递归剥离且拒绝客户端注入。当前默认关闭，前端待同事接入；真实 v2/v3 样例及后端验证见 [F02 交接](../projects/20260913-dearflow-agent/16-f02-frontend-handoff.md)。此补充不改变原容量门禁的 draft 状态。
 
 Reference/Workflow 的 end 人工 AIMessage 带 `additional_kwargs.runtime_budget_notice`（仅 reached），
 用于历史辅助恢复；网络写入口拒绝该标记、预算 clock/latch/counters。end 仍是原生 success，不表示任务完整完成。

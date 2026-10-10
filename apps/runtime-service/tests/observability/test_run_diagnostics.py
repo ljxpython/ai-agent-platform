@@ -52,6 +52,47 @@ def workspace_summary(**fields):
     }
 
 
+def test_loop_projection_scope_duplicates_bounds_and_graph_only_error():
+    fields = {
+        "scope": "subagent",
+        "namespace": ["tools:child"],
+        "code": "tool_loop_approaching",
+        "repetitions": 3,
+        "threshold": 3,
+    }
+    event = observation("runtime.loop.transition", **fields, signature="SECRET_CANARY")
+    events = [
+        event,
+        event,
+        observation(
+            "runtime.graph.completed",
+            outcome="failed",
+            error_code="runtime.loop.detected",
+        ),
+        observation(
+            "runtime.model_call.failed", scope="primary", code="runtime.loop.detected"
+        ),
+    ]
+    for changes in (
+        {"run_id": "other"},
+        {"threshold": 5},
+        {"repetitions": True},
+        {"scope": []},
+        {"namespace": ["/private/path"]},
+    ):
+        events.append(observation("runtime.loop.transition", **{**fields, **changes}))
+    result = query._project(events, SCOPE, truncated=False)
+    assert len(result["loop_detections"]) == 1 and not result["model_errors"]
+    assert result["graph_executions"][0]["error_code"] == "runtime.loop.detected"
+    assert "CANARY" not in json.dumps(result)
+    result = query._project(
+        [observation("runtime.loop.transition", **fields) for _ in range(21)],
+        SCOPE,
+        truncated=False,
+    )
+    assert result["truncated"] and len(result["loop_detections"]) == 20
+
+
 def test_workspace_projection_limits_scope_and_execution_codes():
     code = workspace_summary()["code"]
     events = [

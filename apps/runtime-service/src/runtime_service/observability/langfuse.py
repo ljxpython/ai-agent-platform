@@ -31,7 +31,7 @@ from runtime_service.observability.otel import (
     close_otel,
     initialize_otel,
 )
-from runtime_service.runtime.errors import workspace_error_code
+from runtime_service.runtime.errors import RuntimeExecutionError, workspace_error_code
 
 logger = logging.getLogger(__name__)
 
@@ -298,7 +298,13 @@ class _RuntimeDiagnosticsCallback(BaseCallbackHandler):
     ) -> None:
         if parent_run_id is None:
             status = execution_outcome(error)
-            self._finish(run_id, status, workspace_error_code(error))
+            code = (
+                error.code
+                if isinstance(error, RuntimeExecutionError)
+                and error.code == "runtime.loop.detected"
+                else workspace_error_code(error)
+            )
+            self._finish(run_id, status, code)
 
     def on_tool_error(
         self, error: BaseException, *, run_id: Any, **kwargs: Any

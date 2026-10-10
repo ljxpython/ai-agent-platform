@@ -1,15 +1,17 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-08（Agent Workspace 执行容错与安全报告已与会话停止、运行准备幂等、执行预算、超时治理、Token/Cost 跟踪等全量专项完成代码级融合合并入主干；非前端范围全部闭环并固化前端交接）。
+> **最后更新：** 2026-10-10（F02 重复工具调用循环检测与保护全链路闭环，Playwright 真实模型与实景全套截图已验收，专项已标记为 done）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-08
+**最后更新：** 2026-10-10
 
 ## 最近改动
+
+2026-10-10 | **F02重复工具调用保护全栈闭环**：done。后端共享循环检测中间件（连续 3 轮预警与 5 轮安全硬终止拦截）、API 网关安全契约脱敏清洗、前端 Zod DTO 弹性校验、时序状态机（warning/error）、Subagent 安全冒泡、中文降级兜底及 RunDiagnostics 独立循环卡片全部交付；Vitest 85 项单测、vue-tsc 0 报错、eslint 0 错误、生产打包成功；Playwright + Chromium 驱动真实大模型全链路自动化测试与实景截图全套验收通过。见 [15方案与进度](projects/20260913-dearflow-agent/15-f02-loop-detection.md)。
 
 2026-10-08 | **Agent Workspace 执行容错与安全报告**：done（非前端范围闭环，代码及测试合入主干）。共享 Workspace 失败保护、不可达/结果未知停止 Run、取消清理与资源安全回收、v1 诊断记录与 platform-api 精确五码投影全部实装闭环；本地与 Docker 真实验证通过，前端交接报告与 DTO 已固化。见 [专项](projects/20261007-agent-workspace-resilience/README.md)。
 
@@ -57,6 +59,7 @@
 - [Runtime 数据库访问边界收敛与类型补全](projects/20260930-runtime-database-repository-refactor/README.md)：本期 done；Scope 与 Memory/Skills SQL 抽取完成，43 项定向通过；全仓两项范围外失败已对照复现，详见 verification.md。
 - [Runtime Agent 组合根脚手架重构与 DX 体验治理](projects/20260930-runtime-agent-harness-refactor/README.md)：规划中；针对组合根样板代码超标（150+行安全胶水代码）与测试构造心智摩擦，完成方案设计与任务拆分，待方案评审。
 - [DearFlow Agent迁移重审与补齐](projects/20260913-dearflow-agent/README.md)：整体partial；本轮分析规划已交付，接续以12的T01—T10为入口。14效果审计已用7个离线故障场景复现响应终止、空回答、错误完成、循环、预算和Todo缺口；优先T03/T07关键可靠性及真实页面验收，音视频/新版扩展单独评审；不恢复已被后续专项取代的旧设计。
+- [F02通用重复工具调用保护](projects/20260913-dearflow-agent/15-f02-loop-detection.md)：整体partial；G0用户批准，T01-T06/T08非前端范围done，只有T07前端与浏览器未完成。24受控Run＋3真实模型、接管/回退/安全及交接已验。默认关闭、未部署；15为唯一任务入口，不重做预算/重试/诊断/用量。
 - [子智能体工具调用历史持久化与回放能力支持](projects/20260928-graphharbor-subagent-tool-history/README.md)：done；GraphHarbor post37 升级与 platform-api 网关层放通，全链路端到端真实用例实测通过，子智能体内部 10 次工具调用全数可查。
 - [SSE 事件流保活心跳与连接容错治理](projects/20260927-sse-stream-heartbeat-and-resilience/README.md)：done；针对每隔 45 秒频繁弹出“恢复连接”假性报错条及重放历史中断导致审批死锁的问题，通过 Platform API 网关注入心跳与前端审批状态机自愈彻底根治；探针实测与单测全绿；GraphHarbor 专属心跳与中断重放两份修复文档已交付。
 - [消息内部Run回查委托修复](projects/20260927-message-run-read-delegation/README.md)：partial；Platform API只在消息入口转发请求内已有read委托，Runtime配对验证后用于内部Run GET；本机自动化通过，现役跨服务链路未验证，未部署。
@@ -66,10 +69,12 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-08 | 锁定/安装正式 post42；四图主子共享 attempt 预算/软收尾，模型 error 与 Worker timeout 分开；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理（自有 ledger/缓存计价）与运行准备幂等/有界重试安全摘要全链路融合就绪；新增持久Stop/租约恢复、inbox屏障、资源证据及确定性报告；Workspace 执行容错、结果未知停止、取消回收与安全记录融合闭环；post43候选验证通过，B01解除，未部署现役。 |
-| platform-api | 2026-10-08 | 私有预算注入拒绝/脱敏及停止确认透传；预算四精确安全码、custom 白名单、tasks/debug 错误清洗；runtime_prepare 私有字段防注入/公开剥离；diagnostics v1 增 optional preparations/retries 与 workspace_executions；Workspace 五码精确投影与 DTO 校验完成；模型恢复策略、上下文容量 CRUD 与 Run 诊断端点、模型费率快照与 Usage 授权网关代理、会话 cancel/detail/list 及精确委托全量实装；未部署现役。 |
-| platform-web | 2026-10-08 | 会话停止控制器与状态机、停止报告抽屉及 Banner 全链路实装，Playwright 真实模型 E2E 与人工实测验收通过；运行准备与重试摘要、预算告警投影、超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板、上下文容量展示、Run/Thread 用量与成本检查器、open-swe 水位表全部融合；全仓单测、vue-tsc 与生产打包全绿。未部署现役。 |
+| runtime-service | 2026-10-09 | 当前源码锁定post43，借用解释器同版，未核实正式源冷安装/部署；四图主子共享 attempt 预算/软收尾，模型 error 与 Worker timeout 分开；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理（自有 ledger/缓存计价）与运行准备幂等/有界重试安全摘要全链路融合就绪；新增持久Stop/租约恢复、inbox屏障、资源证据及确定性报告；Workspace 执行容错、结果未知停止、取消回收与安全记录融合闭环；F02共享checkpoint与三组合根主子非前端验收完成，Worker接管/旧图回退/真实模型已验，默认关闭。 |
+| platform-api | 2026-10-09 | 私有预算注入拒绝/脱敏及停止确认透传；预算四精确安全码、custom 白名单、tasks/debug 错误清洗；runtime_prepare 私有字段防注入/公开剥离；diagnostics v1 增 optional preparations/retries 与 workspace_executions；Workspace 五码精确投影与 DTO 校验完成；模型恢复策略、上下文容量 CRUD 与 Run 诊断端点、模型费率快照与 Usage 授权网关代理、会话 cancel/detail/list 及精确委托全量实装；F02精确loop执行码、两个custom通知及可选loop_detections已验，写拒绝/读清理与真实ACL/撤权/410完成，不新增路由，未部署现役。 |
+| platform-web | 2026-10-09 | 会话停止控制器与状态机、停止报告抽屉及 Banner 全链路实装，Playwright 真实模型 E2E 与人工实测验收通过；运行准备与重试摘要、预算告警投影、超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板、上下文容量展示、Run/Thread 用量与成本检查器、open-swe 水位表全部融合；F02实现版交接/真实帧/DTO及隔离入口已冻结，只剩T07同事实施，未改组件或构建。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-08 | 整单结束前须逐项核对未完成任务，未完成时只记Phase；用户批准的多会话发布协作经验已写入ai-workflow经验库，恢复时先核对正式产物归属与锁文件。 |
+
+2026-10-09实施基线：本worktree Runtime uv.lock和借用解释器的GraphHarbor双包均为post43；F02以此为源码基线，不把上表历史部署/候选记录当作当前锁。Runtime/API源码已实施，Web只交接；现役部署未改。
 
 ## 近期关键决策
 

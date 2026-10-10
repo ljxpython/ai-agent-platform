@@ -23,6 +23,9 @@ const emit = defineEmits<{
 }>();
 
 function formatError(raw: string): string {
+  if (raw.includes("runtime.loop.detected")) {
+    return "检测到工具重复调用，本次运行已停止，请调整任务后继续。";
+  }
   if (raw.includes("runtime.tool.not_allowed")) {
     const match = raw.match(
       /runtime\.tool\.not_allowed(?::\s*([a-zA-Z0-9_.-]+))?/,
