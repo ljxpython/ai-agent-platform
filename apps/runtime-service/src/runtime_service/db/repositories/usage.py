@@ -43,18 +43,37 @@ def _begin(conn, identity, *, reopen=False):
     )
 
 
-def begin_collection(identity):
+def begin_collection(identity, token_budget_policy=None):
     with _connection() as conn:
-        _begin(conn, identity, reopen=True)
-
-
-def finish_collection(identity, degraded):
-    with _connection() as conn:
+        if token_budget_policy is None:
+            _begin(conn, identity, reopen=True)
+            return
+        values = {**identity, "token_budget_policy": Jsonb(token_budget_policy)}
         conn.execute(
-            "UPDATE runtime_usage_runs SET collection_ended_at=now(), degraded=degraded OR %(degraded)s "
-            "WHERE tenant_id=%(tenant_id)s AND project_id=%(project_id)s AND run_id=%(run_id)s "
+            "INSERT INTO runtime_usage_runs "
+            "(tenant_id,project_id,run_id,thread_id,graph_id,token_budget_policy) "
+            "VALUES (%(tenant_id)s,%(project_id)s,%(run_id)s,%(thread_id)s,%(graph_id)s,"
+            "%(token_budget_policy)s) "
+            "ON CONFLICT (tenant_id,project_id,run_id) DO UPDATE SET "
+            "collection_ended_at=NULL",
+            values,
+        )
+
+
+def finish_collection(identity, degraded, stop_code=None):
+    with _connection() as conn:
+        budget_update = (
+            ", token_budget_stop_code=COALESCE(token_budget_stop_code, %(stop_code)s) "
+            if stop_code is not None
+            else " "
+        )
+        conn.execute(
+            "UPDATE runtime_usage_runs SET collection_ended_at=now(), "
+            "degraded=degraded OR %(degraded)s"
+            + budget_update
+            + "WHERE tenant_id=%(tenant_id)s AND project_id=%(project_id)s AND run_id=%(run_id)s "
             "AND thread_id=%(thread_id)s AND graph_id=%(graph_id)s",
-            {**identity, "degraded": degraded},
+            {**identity, "degraded": degraded, "stop_code": stop_code},
         )
 
 
@@ -85,6 +104,40 @@ def upsert_call(identity, call):
             "AND EXCLUDED.quality IN ('reported','derived_from_reported'))",
             values,
         )
+
+
+def read_budget(identity):
+    """Read the persisted policy and rebuild its projection from call facts."""
+
+    where, values = _where(identity, None)
+    with _connection(readonly=True) as conn:
+        run = conn.execute(
+            "SELECT token_budget_policy, token_budget_stop_code, degraded "
+            "FROM runtime_usage_runs r WHERE " + where,
+            values,
+        ).fetchone()
+        if run is None:
+            return None
+        facts = conn.execute(
+            "SELECT COALESCE(sum(c.total_tokens), 0) AS used_tokens, "
+            "bool_or(c.quality NOT IN ('reported','derived_from_reported') "
+            "OR c.outcome='started') AS unverifiable "
+            "FROM runtime_usage_calls c JOIN runtime_usage_runs r "
+            "USING(tenant_id,project_id,run_id,thread_id,graph_id) WHERE " + where,
+            values,
+        ).fetchone()
+        return {
+            "policy": run["token_budget_policy"],
+            "used_tokens": facts["used_tokens"],
+            "unverifiable": bool(facts["unverifiable"] or run["degraded"]),
+            "stop_code": run["token_budget_stop_code"],
+            "calls": conn.execute(
+                "SELECT c.model_call_id, c.total_tokens, c.quality "
+                "FROM runtime_usage_calls c JOIN runtime_usage_runs r "
+                "USING(tenant_id,project_id,run_id,thread_id,graph_id) WHERE " + where,
+                values,
+            ).fetchall(),
+        }
 
 
 def _where(identity, window):
@@ -137,6 +190,21 @@ def read_run_usage(identity, limit, cursor):
     where, values = _where(identity, None)
     with _connection(readonly=True) as conn:
         summary = _summary(conn, where, values)
+        budget = conn.execute(
+            "SELECT token_budget_policy, token_budget_stop_code "
+            "FROM runtime_usage_runs r WHERE " + where,
+            values,
+        ).fetchone()
+        summary.update(
+            {
+                "token_budget_policy": budget["token_budget_policy"]
+                if budget
+                else None,
+                "token_budget_stop_code": budget["token_budget_stop_code"]
+                if budget
+                else None,
+            }
+        )
         page_where = where
         if cursor:
             page_where += (

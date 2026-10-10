@@ -56,6 +56,18 @@ export interface CallPageV1 {
   next_cursor: string | null;
 }
 
+export interface TokenBudgetSummary {
+  version: 1;
+  budget_scope: "run";
+  unit: "tokens_total";
+  max_tokens: number;
+  warn_at_tokens: number;
+  known_used_tokens: number | null;
+  remaining_tokens: number | null;
+  coverage: "complete" | "partial" | "unavailable";
+  stop_code: "token_budget_exhausted" | "token_budget_unverifiable" | null;
+}
+
 export interface RunUsageV1 {
   version: 1;
   thread_id: string;
@@ -71,6 +83,7 @@ export interface RunUsageV1 {
   coverage: UsageCoverage;
   calls: CallPageV1;
   truncated: boolean;
+  token_budget?: TokenBudgetSummary | null;
 }
 
 export interface ThreadUsageV1 {
@@ -179,6 +192,22 @@ export const callPageSchema = z
   })
   .strip();
 
+export const tokenBudgetSummarySchema = z
+  .object({
+    version: z.literal(1),
+    budget_scope: z.literal("run"),
+    unit: z.literal("tokens_total"),
+    max_tokens: z.number().int().min(1).max(Number.MAX_SAFE_INTEGER),
+    warn_at_tokens: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+    known_used_tokens: safeIntegerToken,
+    remaining_tokens: safeIntegerToken,
+    coverage: z.enum(["complete", "partial", "unavailable"]),
+    stop_code: z
+      .enum(["token_budget_exhausted", "token_budget_unverifiable"])
+      .nullable(),
+  })
+  .strip();
+
 export const runUsageSchema = z
   .object({
     version: z.literal(1),
@@ -197,6 +226,10 @@ export const runUsageSchema = z
     coverage: usageCoverageSchema,
     calls: callPageSchema,
     truncated: z.boolean(),
+    token_budget: z
+      .union([tokenBudgetSummarySchema, z.null()])
+      .optional()
+      .catch(null),
   })
   .strip();
 

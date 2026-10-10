@@ -29,6 +29,7 @@ from runtime_service.middlewares import (
     ModelResilienceSummarizationMiddleware,
     RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
+    TokenBudgetMiddleware,
     context_management_enabled,
     resolve_wrapup_after_seconds,
 )
@@ -233,6 +234,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 resolved.config_hash if resolved else None,
                 metadata=metadata,
             ),
+            TokenBudgetMiddleware(root=not child),
             ExecutionBudgetMiddleware(
                 run_limit=_env_int("AGENT_MODEL_CALL_LIMIT_PER_RUN", 50),
                 thread_limit=_env_int("AGENT_MODEL_CALL_LIMIT_PER_THREAD", 500),

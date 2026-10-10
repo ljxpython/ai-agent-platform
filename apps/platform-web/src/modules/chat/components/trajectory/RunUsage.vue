@@ -126,6 +126,40 @@ const cacheHitPercentage = computed(() => {
   );
 });
 
+const tokenBudget = computed(() => runData.value?.token_budget ?? null);
+
+const budgetUsagePercentage = computed(() => {
+  if (!tokenBudget.value) return 0;
+  const used = tokenBudget.value.known_used_tokens ?? 0;
+  const max = tokenBudget.value.max_tokens;
+  if (!max || max <= 0) return 0;
+  return Math.min(Math.round((used / max) * 100), 100);
+});
+
+const budgetColorClass = computed(() => {
+  if (!tokenBudget.value) return "bg-blue-500";
+  if (tokenBudget.value.coverage === "unavailable") return "bg-amber-500";
+  const used = tokenBudget.value.known_used_tokens ?? 0;
+  const max = tokenBudget.value.max_tokens;
+  if (used >= max) return "bg-red-500";
+  if (used >= (tokenBudget.value.warn_at_tokens || max * 0.8)) {
+    return "bg-amber-500";
+  }
+  return "bg-blue-500";
+});
+
+const stopCodeBadge = computed(() => {
+  const code = tokenBudget.value?.stop_code;
+  if (!code) return null;
+  if (code === "token_budget_exhausted") {
+    return { label: "额度耗尽强停", variant: "error" };
+  }
+  if (code === "token_budget_unverifiable") {
+    return { label: "用量待对账停机", variant: "warning" };
+  }
+  return null;
+});
+
 function handleRunChange(e: Event) {
   const target = e.target as HTMLSelectElement;
   if (target?.value) {
@@ -256,35 +290,107 @@ function handleRunChange(e: Event) {
           </div>
         </div>
 
-        <!-- 借鉴 open-swe Context Usage Meter 紧凑水位仪表 -->
+        <!-- 借鉴 open-swe Context Usage Meter 紧凑水位仪表（结合 Token Budget 额度保护） -->
         <div
-          class="rounded-lg border border-gray-200 bg-gray-50/70 p-3 dark:border-dark-800 dark:bg-dark-900/60"
+          class="rounded-lg border border-gray-200 bg-gray-50/70 p-3 dark:border-dark-800 dark:bg-dark-900/60 space-y-2.5"
           data-testid="context-meter-card"
         >
-          <div class="flex items-center justify-between text-xs">
-            <div
-              class="flex items-center gap-1.5 font-medium text-gray-700 dark:text-gray-300"
-            >
-              <BaseIcon name="activity" size="xs" class="text-blue-500" />
-              <span>运行水位 (Usage Meter)</span>
+          <!-- 1. Token 额度水位条（仅在 token_budget 存在时展示） -->
+          <div
+            v-if="tokenBudget"
+            class="space-y-1.5"
+            data-testid="token-budget-section"
+          >
+            <div class="flex items-center justify-between text-xs">
+              <div
+                class="flex items-center gap-1.5 font-medium text-gray-700 dark:text-gray-300"
+              >
+                <BaseIcon name="shield" size="xs" class="text-indigo-500" />
+                <span>Token 额度保护 (Run Cap)</span>
+                <span
+                  v-if="stopCodeBadge"
+                  class="rounded px-1.5 py-0.2 text-[10px] font-mono leading-tight border"
+                  :class="{
+                    'bg-red-50 text-red-700 border-red-200 dark:bg-red-950/60 dark:text-red-300 dark:border-red-900':
+                      stopCodeBadge.variant === 'error',
+                    'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-900':
+                      stopCodeBadge.variant === 'warning',
+                  }"
+                >
+                  {{ stopCodeBadge.label }}
+                </span>
+              </div>
+              <div
+                class="font-mono text-[11px] text-gray-600 dark:text-dark-300"
+              >
+                <template v-if="tokenBudget.coverage === 'unavailable'">
+                  <span class="text-amber-600 dark:text-amber-400">
+                    用量待对账
+                  </span>
+                  · 上限 {{ tokenBudget.max_tokens.toLocaleString() }}
+                </template>
+                <template v-else>
+                  {{ (tokenBudget.known_used_tokens ?? 0).toLocaleString() }} /
+                  {{ tokenBudget.max_tokens.toLocaleString() }}
+                  <span
+                    v-if="
+                      (tokenBudget.known_used_tokens ?? 0) >=
+                      tokenBudget.max_tokens
+                    "
+                    class="text-red-500 font-semibold ml-0.5"
+                    >({{
+                      Math.round(
+                        ((tokenBudget.known_used_tokens ?? 0) /
+                          tokenBudget.max_tokens) *
+                          100,
+                      )
+                    }}%)</span
+                  >
+                </template>
+              </div>
             </div>
-            <div class="font-mono text-[11px] text-gray-500 dark:text-dark-400">
-              {{ formatTokenCompact(displayTokens.tokens?.total_tokens) }}
-              tokens
-              <template v-if="cacheHitRate !== '未采集'">
-                · 缓存命中 {{ cacheHitRate }}
-              </template>
+            <!-- 额度进度条 -->
+            <div
+              class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-700"
+            >
+              <div
+                class="h-full rounded-full transition-all duration-500"
+                :class="budgetColorClass"
+                :style="{ width: budgetUsagePercentage + '%' }"
+                :title="`额度使用率: ${tokenBudget.coverage === 'unavailable' ? '未知' : budgetUsagePercentage + '%'}`"
+              />
             </div>
           </div>
-          <!-- 缓存读取在输入中的占比进度条 -->
-          <div
-            class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-700"
-          >
+
+          <!-- 2. 缓存命中水位条 -->
+          <div class="space-y-1.5 pt-0.5">
+            <div class="flex items-center justify-between text-xs">
+              <div
+                class="flex items-center gap-1.5 font-medium text-gray-700 dark:text-gray-300"
+              >
+                <BaseIcon name="activity" size="xs" class="text-blue-500" />
+                <span>运行水位 (Usage Meter)</span>
+              </div>
+              <div
+                class="font-mono text-[11px] text-gray-500 dark:text-dark-400"
+              >
+                {{ formatTokenCompact(displayTokens.tokens?.total_tokens) }}
+                tokens
+                <template v-if="cacheHitRate !== '未采集'">
+                  · 缓存命中 {{ cacheHitRate }}
+                </template>
+              </div>
+            </div>
+            <!-- 缓存读取在输入中的占比进度条 -->
             <div
-              class="h-full rounded-full bg-emerald-500 transition-all duration-500"
-              :style="{ width: cacheHitPercentage + '%' }"
-              :title="`缓存命中率: ${cacheHitRate}`"
-            />
+              class="h-1.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-700"
+            >
+              <div
+                class="h-full rounded-full bg-emerald-500 transition-all duration-500"
+                :style="{ width: cacheHitPercentage + '%' }"
+                :title="`缓存命中率: ${cacheHitRate}`"
+              />
+            </div>
           </div>
         </div>
 

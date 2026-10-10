@@ -23,6 +23,20 @@ class RuntimeExecutionError(RuntimeErrorBase):
     """Confirmed model failure; Worker must not requeue it as infrastructure failure."""
 
 
+class TokenBudgetExceededError(RuntimeExecutionError):
+    """A new operation was refused after the native Run token cap."""
+
+    def __init__(self) -> None:
+        super().__init__("runtime.token_budget.exhausted")
+
+
+class TokenBudgetUnverifiableError(RuntimeExecutionError):
+    """A new operation was refused because usage cannot be verified."""
+
+    def __init__(self) -> None:
+        super().__init__("runtime.token_budget.unverifiable")
+
+
 class RuntimeWorkspaceError(RuntimeError):
     """Must escape filesystem tools' ValueError-to-parameter-error handling."""
 

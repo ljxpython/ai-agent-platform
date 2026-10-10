@@ -67,6 +67,7 @@ def test_reference_agent_declares_reliability_middleware_in_order(monkeypatch) -
     middleware = captured["middleware"]
     assert [type(item).__name__ for item in middleware] == [
         "RuntimeConfigMiddleware",
+        "TokenBudgetMiddleware",
         "ExecutionBudgetMiddleware",
         "ToolCallLimitMiddleware",
         "ToolErrorMiddleware",

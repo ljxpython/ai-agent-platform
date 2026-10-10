@@ -27,8 +27,10 @@ from runtime_service.middlewares.timeout_wrapup import (
     TimeoutWrapupMiddleware,
     resolve_wrapup_after_seconds,
 )
+from runtime_service.middlewares.token_budget import TokenBudgetMiddleware
 
 __all__ = [
+    "TokenBudgetMiddleware",
     "ExecutionBudgetMiddleware",
     "TimeoutWrapupMiddleware",
     "resolve_wrapup_after_seconds",

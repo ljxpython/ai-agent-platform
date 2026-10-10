@@ -34,6 +34,7 @@ from runtime_service.middlewares import (
     ModelResilienceSummarizationMiddleware,
     RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
+    TokenBudgetMiddleware,
     context_management_enabled,
     resolve_wrapup_after_seconds,
 )
@@ -380,6 +381,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             run_budget if run_budget is not None else resolve_wrapup_after_seconds()
         )
         return [
+            TokenBudgetMiddleware(root=not child),
             *(
                 [ModelResilienceSummarizationMiddleware(auxiliary_model, backend)]
                 if bundle.policy.enabled

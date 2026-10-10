@@ -245,4 +245,68 @@ describe("ChatAgentStatusBar", () => {
     await cancelBtn.trigger("click");
     expect(wrapper.emitted("cancel")).toHaveLength(1);
   });
+
+  it("renders in-flight hard stop transition state (Amber) and disables cancel button", () => {
+    const budget: BudgetViewModel = {
+      level: "warning",
+      isTerminal: false,
+      title: "Token额度已耗尽",
+      description: "已触发额度保护，正在确认执行结果",
+      code: "token_budget_exhausted",
+      scope: "run",
+      actionType: "none",
+    };
+
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: true,
+        isInterrupted: false,
+        budget,
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("已触发额度保护，正在确认执行结果");
+    const btn = wrapper.find("button");
+    expect(btn.exists()).toBe(true);
+    expect(btn.text()).toContain("等待停止中...");
+    expect(btn.attributes("disabled")).toBeDefined();
+  });
+
+  it("renders terminal Token budget exhausted error with adjust_draft action", async () => {
+    const budget: BudgetViewModel = {
+      level: "error",
+      isTerminal: true,
+      title: "本次执行因Token额度停止",
+      description: "本次执行因Token额度停止，任务可能未完成",
+      code: "token_budget_exhausted",
+      scope: "run",
+      actionType: "adjust_draft",
+      actionLabel: "调整请求",
+    };
+
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: false,
+        isInterrupted: false,
+        budget,
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain("本次执行因Token额度停止");
+    expect(wrapper.text()).toContain("调整请求");
+
+    const btn = wrapper.find("button");
+    await btn.trigger("click");
+    expect(wrapper.emitted("action")).toEqual([["adjust_draft"]]);
+  });
 });

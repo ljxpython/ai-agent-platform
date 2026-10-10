@@ -256,4 +256,165 @@ describe("composables/useRunBudget.ts", () => {
     expect(activeNotice.value).toBeNull();
     expect(budget.value).toBeNull();
   });
+
+  describe("Token Budget governance (F01)", () => {
+    it("handles token_budget_approaching in-flight warning", () => {
+      const runId = ref("run-token-1");
+      const stream = {} as any;
+
+      const { activeNotice, budget } = useRunBudget(stream, {
+        runId,
+        nativeStatus: ref("running"),
+        isRunning: ref(true),
+      });
+
+      mockRawEvents.value = [
+        {
+          method: "custom",
+          params: {
+            namespace: [],
+            data: {
+              version: 1,
+              type: "runtime_budget_notice",
+              notice_id: "notice-token-warn",
+              run_id: "run-token-1",
+              scope: "primary",
+              budget_scope: "run",
+              code: "token_budget_approaching",
+              limit: 100000,
+              used: 81000,
+              remaining: 19000,
+              unit: "tokens_total",
+            },
+          },
+        },
+      ];
+
+      expect(activeNotice.value).not.toBeNull();
+      expect(activeNotice.value?.code).toBe("token_budget_approaching");
+      expect(budget.value?.level).toBe("warning");
+      expect(budget.value?.isTerminal).toBe(false);
+      expect(budget.value?.remaining).toBe(19000);
+      expect(budget.value?.description).toContain("19,000");
+    });
+
+    it("handles token_budget_exhausted in-flight transitioning to terminal error", () => {
+      const runId = ref("run-token-2");
+      const stream = {} as any;
+      const nativeStatus = ref("running");
+      const isRunning = ref(true);
+
+      const { activeNotice, budget, isThreadExhausted } = useRunBudget(stream, {
+        runId,
+        nativeStatus,
+        isRunning,
+      });
+
+      mockRawEvents.value = [
+        {
+          method: "custom",
+          params: {
+            namespace: [],
+            data: {
+              version: 1,
+              type: "runtime_budget_notice",
+              notice_id: "notice-token-exhausted",
+              run_id: "run-token-2",
+              scope: "primary",
+              budget_scope: "run",
+              code: "token_budget_exhausted",
+              limit: 100000,
+              used: 105000,
+              remaining: 0,
+              unit: "tokens_total",
+            },
+          },
+        },
+      ];
+
+      // 1. In-flight transitioning state (running)
+      expect(activeNotice.value?.code).toBe("token_budget_exhausted");
+      expect(budget.value?.level).toBe("warning");
+      expect(budget.value?.isTerminal).toBe(false);
+      expect(budget.value?.description).toBe(
+        "已触发额度保护，正在确认执行结果",
+      );
+      expect(budget.value?.actionType).toBe("none");
+      expect(isThreadExhausted.value).toBe(false);
+
+      // 2. Native error arrives (terminal)
+      nativeStatus.value = "error";
+      isRunning.value = false;
+
+      expect(budget.value?.level).toBe("error");
+      expect(budget.value?.isTerminal).toBe(true);
+      expect(budget.value?.title).toBe("本次执行因Token额度停止");
+      expect(budget.value?.actionType).toBe("adjust_draft");
+      expect(budget.value?.actionLabel).toBe("调整请求");
+      expect(isThreadExhausted.value).toBe(false);
+    });
+
+    it("handles token_budget_unverifiable with remaining=null and no retry action", () => {
+      const runId = ref("run-token-3");
+      const stream = {} as any;
+      const nativeStatus = ref("error");
+      const isRunning = ref(false);
+
+      const { budget } = useRunBudget(stream, {
+        runId,
+        nativeStatus,
+        isRunning,
+      });
+
+      mockRawEvents.value = [
+        {
+          method: "custom",
+          params: {
+            namespace: [],
+            data: {
+              version: 1,
+              type: "runtime_budget_notice",
+              notice_id: "notice-token-unverifiable",
+              run_id: "run-token-3",
+              scope: "primary",
+              budget_scope: "run",
+              code: "token_budget_unverifiable",
+              limit: 100000,
+              used: 0,
+              remaining: null,
+              unit: "tokens_total",
+            },
+          },
+        },
+      ];
+
+      expect(budget.value?.level).toBe("error");
+      expect(budget.value?.isTerminal).toBe(true);
+      expect(budget.value?.title).toBe("用量无法确认");
+      expect(budget.value?.remaining).toBeNull();
+      expect(budget.value?.actionType).toBe("none");
+    });
+
+    it("recovers budget state via historicalStopCode when events are expired", () => {
+      const runId = ref("run-token-hist");
+      const stream = {} as any;
+      mockRawEvents.value = []; // No live SSE events
+
+      const historicalStopCode = ref<
+        "token_budget_exhausted" | "token_budget_unverifiable" | null
+      >("token_budget_exhausted");
+
+      const { budget } = useRunBudget(stream, {
+        runId,
+        nativeStatus: ref("error"),
+        isRunning: ref(false),
+        historicalStopCode,
+      });
+
+      expect(budget.value).not.toBeNull();
+      expect(budget.value?.code).toBe("token_budget_exhausted");
+      expect(budget.value?.title).toBe("本次执行因Token额度停止");
+      expect(budget.value?.actionType).toBe("adjust_draft");
+    });
+  });
 });

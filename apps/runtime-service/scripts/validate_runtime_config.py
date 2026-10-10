@@ -95,6 +95,31 @@ def validate(path: Path) -> list[str]:
     workspace_root = settings.get("GRAPHHARBOR_WORKSPACE_ROOT", "").strip()
     if workspace_root and not Path(workspace_root).is_absolute():
         errors.append("GRAPHHARBOR_WORKSPACE_ROOT must be absolute")
+    token_key = "RUNTIME_TOKEN_BUDGET_ENABLED"
+    enabled = settings.get(token_key, "false").strip().lower()
+    if enabled not in {"0", "false", "no", "off", "1", "true", "yes", "on"}:
+        errors.append(f"{token_key} must be a boolean")
+    if enabled in {"1", "true", "yes", "on"}:
+        if settings.get("RUNTIME_USAGE_ENABLED", "false").strip().lower() not in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
+            errors.append("RUNTIME_TOKEN_BUDGET_ENABLED requires RUNTIME_USAGE_ENABLED")
+        maximum_key = "RUNTIME_TOKEN_BUDGET_MAX_TOKENS"
+        try:
+            maximum = int(settings.get(maximum_key, "100000"))
+            if not 1 <= maximum <= 2**53 - 1:
+                raise ValueError
+        except ValueError:
+            errors.append(f"{maximum_key} must be a positive safe integer")
+        if not _present(settings, "DATABASE_URI") and not _present(
+            settings, "RUNTIME_POSTGRES_DB"
+        ):
+            errors.append(
+                "RUNTIME_TOKEN_BUDGET_ENABLED requires a migrated Usage database"
+            )
     return errors
 
 

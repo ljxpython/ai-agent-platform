@@ -48,6 +48,8 @@ class ExecutionBudgetProjectionTest(unittest.TestCase):
             ("RunTimedOut", "runtime_run_timeout"),
             ("TimeoutError", "runtime_execution_failed"),
             ("UnknownCanary", "runtime_execution_failed"),
+            ("TokenBudgetExceededError", "runtime_token_budget_exhausted"),
+            ("TokenBudgetUnverifiableError", "runtime_token_budget_unverifiable"),
         ):
             for field in ("type", "error"):
                 with self.subTest(kind=kind, field=field):
@@ -191,6 +193,93 @@ class ExecutionBudgetProjectionTest(unittest.TestCase):
             redact_runtime_private_fields({**private, "normal": 1}), {"normal": 1}
         )
         self.assertIn("custom", _DEFAULT_STREAM_MODES)
+
+    def test_token_notice_cross_fields_and_exact_machine_codes(self):
+        for code, used, remaining in (
+            ("token_budget_approaching", 80, 20),
+            ("token_budget_exhausted", 105, 0),
+            ("token_budget_unverifiable", None, None),
+        ):
+            value = notice(
+                code=code,
+                unit="tokens_total",
+                limit=100,
+                used=used,
+                remaining=remaining,
+            )
+            self.assertEqual(project_budget_notice(value), value)
+            for change in (
+                {"scope": "subagent"},
+                {"limit": 0},
+                {"remaining": 10},
+                {"unit": "model_calls"},
+            ):
+                self.assertIsNone(project_budget_notice({**value, **change}))
+        for value in (
+            "runtime.token_budget.exhausted",
+            {"code": "runtime_token_budget_exhausted", "message": "SECRET_CANARY"},
+        ):
+            result = project_execution_error(value)
+            self.assertEqual(result["code"], "runtime_token_budget_exhausted")
+            self.assertNotIn("CANARY", json.dumps(result))
+        for value in (
+            "TokenBudgetExceededError SECRET_CANARY",
+            {"type": "prefix TokenBudgetExceededError", "message": "SECRET_CANARY"},
+        ):
+            result = project_execution_error(value)
+            self.assertNotIn("runtime_token_budget_exhausted", str(result))
+
+    def test_token_error_survives_recursive_v3_projection(self):
+        for kind, code in (
+            ("TokenBudgetExceededError", "runtime_token_budget_exhausted"),
+            ("TokenBudgetUnverifiableError", "runtime_token_budget_unverifiable"),
+        ):
+            detail = {"type": kind, "message": "SECRET_CANARY"}
+            for method, data in (
+                ("lifecycle", {"event": "failed", "status": "error", "error": detail}),
+                (
+                    "tasks",
+                    {
+                        "id": "t",
+                        "name": "tools",
+                        "result": {},
+                        "interrupts": [],
+                        "error": detail,
+                    },
+                ),
+                (
+                    "debug",
+                    {
+                        "type": "task_result",
+                        "payload": {
+                            "id": "t",
+                            "name": "tools",
+                            "result": {},
+                            "interrupts": [],
+                            "error": detail,
+                        },
+                    },
+                ),
+                ("checkpoints", {"values": {}, "tasks": [{"error": detail}]}),
+                ("tools", {"event": "on_tool_end", "error": detail}),
+            ):
+                for protocol in (False, True):
+                    frame = (
+                        {
+                            "method": method,
+                            "params": {"namespace": [], "data": data},
+                            "seq": 1,
+                        }
+                        if protocol
+                        else data
+                    )
+                    encoded = (
+                        "event: " + method + "\ndata: " + json.dumps(frame)
+                    ).encode()
+                    result = _redact_sse_frame(encoded, protocol=protocol)
+                    self.assertIn(code.encode(), result, result)
+                    self.assertNotIn(b"SECRET_CANARY", result)
+            self.assertNotIn("CANARY", str(result))
 
 
 class BudgetWriteBoundaryTest(unittest.IsolatedAsyncioTestCase):

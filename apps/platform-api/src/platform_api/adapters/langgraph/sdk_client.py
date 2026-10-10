@@ -117,6 +117,8 @@ _EXECUTION_ERROR_TYPES = frozenset(
         "ModelCallLimitExceededError",
         "ToolCallLimitExceededError",
         "RunTimedOut",
+        "TokenBudgetExceededError",
+        "TokenBudgetUnverifiableError",
     }
 )
 
@@ -134,6 +136,21 @@ _BUDGET_EXECUTION_ERRORS = {
         "Tool call limit reached",
     ),
     "RunTimedOut": ("runtime_run_timeout", "Run time limit reached"),
+    "TokenBudgetExceededError": (
+        "runtime_token_budget_exhausted",
+        "本次执行因 Token 额度停止，任务可能未完成。",
+    ),
+    "TokenBudgetUnverifiableError": (
+        "runtime_token_budget_unverifiable",
+        "用量无法确认，本次执行已停止新增工作。",
+    ),
+}
+
+_TOKEN_BUDGET_ERRORS = {
+    "runtime.token_budget.exhausted": "TokenBudgetExceededError",
+    "runtime.token_budget.unverifiable": "TokenBudgetUnverifiableError",
+    "runtime_token_budget_exhausted": "TokenBudgetExceededError",
+    "runtime_token_budget_unverifiable": "TokenBudgetUnverifiableError",
 }
 
 _WORKSPACE_EXECUTION_MESSAGES = {
@@ -170,6 +187,9 @@ def project_budget_notice(value: Any) -> dict[str, Any] | None:
         "model_call_limit_reached": ("model_calls", ("run", "thread")),
         "graph_step_limit_approaching": ("graph_supersteps", ("graph",)),
         "wrapup_started": ("seconds", ("run",)),
+        "token_budget_approaching": ("tokens_total", ("run",)),
+        "token_budget_exhausted": ("tokens_total", ("run",)),
+        "token_budget_unverifiable": ("tokens_total", ("run",)),
     }
     combination = (
         combinations.get(value.get("code"))
@@ -192,6 +212,25 @@ def project_budget_notice(value: Any) -> dict[str, Any] | None:
             or item > 9007199254740991
             or not math.isfinite(item)
             or (combination[0] != "seconds" and type(item) is not int)
+        ):
+            return None
+    if combination[0] == "tokens_total":
+        limit, used, remaining = (
+            value.get(key) for key in ("limit", "used", "remaining")
+        )
+        if value.get("scope") != "primary" or type(limit) is not int or limit <= 0:
+            return None
+        if value["code"] == "token_budget_unverifiable":
+            if remaining is not None:
+                return None
+        elif (
+            type(used) is not int
+            or type(remaining) is not int
+            or remaining != max(0, limit - used)
+            or value["code"] == "token_budget_exhausted"
+            and used < limit
+            or value["code"] == "token_budget_approaching"
+            and not (limit * 4 + 4) // 5 <= used < limit
         ):
             return None
     return {
@@ -218,6 +257,10 @@ def project_execution_error(value: Any) -> Any:
         return None
     if not isinstance(value, dict):
         if isinstance(value, str):
+            if value in _TOKEN_BUDGET_ERRORS:
+                kind = _TOKEN_BUDGET_ERRORS[value]
+                code, message = _BUDGET_EXECUTION_ERRORS[kind]
+                return {"code": code, "message": message, "type": kind}
             if value in _WORKSPACE_EXECUTION_MESSAGES:
                 return value
             if "CANARY" not in value:
@@ -255,6 +298,10 @@ def project_execution_error(value: Any) -> Any:
         return "Runtime execution failed"
 
     code = value.get("code")
+    if isinstance(code, str) and code in _TOKEN_BUDGET_ERRORS:
+        kind = _TOKEN_BUDGET_ERRORS[code]
+        code, message = _BUDGET_EXECUTION_ERRORS[kind]
+        return {"code": code, "message": message, "type": kind}
     if value.get("type") == "RuntimeWorkspaceError":
         code = code if isinstance(code, str) else value.get("message")
     elif (
@@ -343,7 +390,13 @@ def redact_runtime_private_fields(
         ):
             error = value["error"]
             safe_error: Any = "runtime.execution_failed"
-            if isinstance(error, dict):
+            projected = project_execution_error(error)
+            if isinstance(projected, dict) and projected.get("code") in {
+                "runtime_token_budget_exhausted",
+                "runtime_token_budget_unverifiable",
+            }:
+                safe_error = projected
+            elif isinstance(error, dict):
                 safe_error = {"message": "runtime.execution_failed"}
                 category = error.get("type")
                 if (
@@ -431,6 +484,9 @@ def redact_runtime_private_fields(
                     "fallback_connection",
                     "resilience_version",
                     "runtime_prepare",
+                    "token_budget",
+                    "token_budget_policy",
+                    "token_budget_stop_code",
                 }
             )
         }

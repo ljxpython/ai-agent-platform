@@ -23,6 +23,9 @@ export interface UseRunBudgetOptions {
   nativeStatus?: MaybeRefOrGetter<string | undefined>;
   lastMessage?: MaybeRefOrGetter<unknown>;
   isRunning?: MaybeRefOrGetter<boolean>;
+  historicalStopCode?: MaybeRefOrGetter<
+    "token_budget_exhausted" | "token_budget_unverifiable" | null | undefined
+  >;
 }
 
 export function isNamespaceMatch(
@@ -195,11 +198,14 @@ export function useRunBudget(
 
   // Most authoritative active notice for the current run
   const activeNotice = computed<BudgetNotice | null>(() => {
-    // 1. Reached in live notices takes highest priority
-    const reached = currentNotices.value.find(
-      (n) => n.code === "model_call_limit_reached",
+    // 1. Hard limits (reached / exhausted / unverifiable) take highest priority
+    const hardLimitNotice = currentNotices.value.find(
+      (n) =>
+        n.code === "model_call_limit_reached" ||
+        n.code === "token_budget_exhausted" ||
+        n.code === "token_budget_unverifiable",
     );
-    if (reached) return reached;
+    if (hardLimitNotice) return hardLimitNotice;
 
     // 2. End marker from AIMessage
     if (endMarkerNotice.value) {
@@ -237,10 +243,12 @@ export function useRunBudget(
       status === "pending",
     );
     const effectiveSafetyError = isRunning ? null : safetyError.value;
+    const histStop = toValue(options.historicalStopCode) ?? null;
     return deriveBudgetViewModel(
       activeNotice.value,
       effectiveSafetyError,
       status,
+      histStop,
     );
   });
 

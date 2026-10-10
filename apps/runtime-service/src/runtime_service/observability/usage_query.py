@@ -16,6 +16,7 @@ from runtime_service.observability.usage import (
     empty_tokens,
     usage_enabled,
 )
+from runtime_service.runtime.token_budget import RunTokenBudget, TokenBudgetPolicy
 
 
 def parse_limit(value) -> int:
@@ -223,6 +224,7 @@ async def query_run_usage(identity, *, limit=50, cursor=None):
         "run_id": identity["run_id"],
         "finalized": False,
         "calls": {"items": [], "next_cursor": None},
+        "token_budget": None,
     }
     try:
         summary, rows = await asyncio.to_thread(
@@ -240,6 +242,7 @@ async def query_run_usage(identity, *, limit=50, cursor=None):
             "finalized": not summary["open_run_count"]
             and not summary["incomplete_call_count"]
             and not summary["degraded"],
+            "token_budget": project_token_budget(summary),
             "calls": {
                 "items": [project_call(row) for row in page],
                 "next_cursor": _cursor(page[-1]) if len(rows) > limit else None,
@@ -247,6 +250,23 @@ async def query_run_usage(identity, *, limit=50, cursor=None):
         }
     except Exception:
         return {**empty_summary("backend_unavailable"), **base}
+
+
+def project_token_budget(summary):
+    policy = summary.get("token_budget_policy")
+    if policy is None:
+        return None
+    budget = RunTokenBudget(TokenBudgetPolicy.from_dict(policy))
+    budget.load(
+        used_tokens=int(summary["total_tokens"] or 0),
+        unverifiable=bool(
+            summary["missing_usage_call_count"]
+            or summary["incomplete_call_count"]
+            or summary["degraded"]
+        ),
+        stop_code=summary.get("token_budget_stop_code"),
+    )
+    return budget.public_snapshot()
 
 
 async def query_thread_usage(identity, *, created_from=None, created_to=None):

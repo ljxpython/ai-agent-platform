@@ -151,6 +151,29 @@ def test_build_model_uses_catalog_connection(monkeypatch: pytest.MonkeyPatch) ->
     assert calls["base_url"] == "https://catalog.test/v1"
 
 
+def test_token_budget_disables_unobservable_sdk_retries(monkeypatch):
+    calls = {}
+    monkeypatch.setattr(
+        modeling,
+        "ChatOpenAIWithReasoning",
+        lambda **kwargs: calls.update(kwargs) or object(),
+    )
+    monkeypatch.setenv("RUNTIME_TOKEN_BUDGET_ENABLED", "true")
+    modeling.build_model(
+        _resolved("openai:test"),
+        connection={"base_url": "https://fixture.invalid", "api_key": "synthetic"},
+        max_retries=3,
+    )
+    assert calls["max_retries"] == 0
+    monkeypatch.setenv("RUNTIME_TOKEN_BUDGET_ENABLED", "false")
+    modeling.build_model(
+        _resolved("openai:test"),
+        connection={"base_url": "https://fixture.invalid", "api_key": "synthetic"},
+        max_retries=3,
+    )
+    assert calls["max_retries"] == 3
+
+
 def test_catalog_capacity_overrides_only_current_model_profile() -> None:
     connection = {
         "provider": "openai",

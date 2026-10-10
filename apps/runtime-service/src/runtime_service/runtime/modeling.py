@@ -153,7 +153,12 @@ def build_model(
         model_name = connection.get("model", model_name)
         protocol = str(connection.get("protocol", "")).strip().lower()
 
-    kwargs = _generation_kwargs(config, max_retries=max_retries)
+    from runtime_service.runtime.token_budget import token_budget_enabled
+
+    # SDK retries run inside one callback and cannot report separate usage facts.
+    kwargs = _generation_kwargs(
+        config, max_retries=0 if token_budget_enabled() else max_retries
+    )
     from runtime_service.observability.usage import safe_pricing
 
     kwargs["metadata"] = {

@@ -12,10 +12,19 @@ from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation, localcontext
 from typing import Any
 
-from langchain_core.callbacks import AsyncCallbackHandler
+from langchain_core.callbacks import AsyncCallbackHandler, BaseCallbackHandler
 from langgraph.config import get_config
 
 from runtime_service.observability.diagnostics import uuid_string
+from runtime_service.runtime.errors import (
+    TokenBudgetExceededError,
+    TokenBudgetUnverifiableError,
+)
+from runtime_service.runtime.token_budget import (
+    RunTokenBudget,
+    TokenBudgetPolicy,
+    resolve_token_budget_policy,
+)
 
 logger = logging.getLogger(__name__)
 MAX_TOKEN = 2**53 - 1
@@ -34,7 +43,12 @@ _metrics: Counter = Counter()
 
 
 def usage_enabled() -> bool:
-    return os.getenv("RUNTIME_USAGE_ENABLED", "false").lower() in {"1", "true", "yes"}
+    return os.getenv("RUNTIME_USAGE_ENABLED", "false").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def empty_tokens(value=None) -> dict:
@@ -317,13 +331,19 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
         self._usage_providers: dict = {}
         self._degraded = False
         self._active = False
+        policy = resolve_token_budget_policy()
+        self.token_budget = RunTokenBudget(policy) if policy else None
+        self.run_inline = policy is not None
+        self._budget_writer = None
+        self._budget_ready = False
 
-    async def _write(self, function: str, *args) -> None:
+    async def _write(self, function: str, *args) -> bool:
         from runtime_service.db.repositories import usage as repository
 
         try:
             await asyncio.to_thread(getattr(repository, function), self.identity, *args)
             _metrics["usage_write_succeeded"] += 1
+            return True
         except Exception:
             self._degraded = True
             _metrics["usage_write_failed"] += 1
@@ -331,6 +351,77 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
                 "runtime_usage_write_failed",
                 extra={"code": "usage_persistence_failed", **self.identity},
             )
+            if self.token_budget:
+                self.token_budget.mark_unverifiable()
+            return False
+
+    async def _load_budget(self):
+        from runtime_service.db.repositories import usage as repository
+
+        try:
+            snapshot = await asyncio.to_thread(repository.read_budget, self.identity)
+            if snapshot is None or snapshot["policy"] is None:
+                raise ValueError("missing frozen token budget policy")
+            self.token_budget.load(
+                policy=TokenBudgetPolicy.from_dict(snapshot["policy"]),
+                used_tokens=int(snapshot["used_tokens"]),
+                unverifiable=snapshot["unverifiable"],
+                stop_code=snapshot["stop_code"],
+                calls=snapshot["calls"],
+            )
+            if self._degraded:
+                self.token_budget.mark_unverifiable()
+        except Exception:
+            self._degraded = True
+            self.token_budget.mark_unverifiable()
+        self._budget_ready = True
+
+    def bind_budget_writer(self, writer):
+        if self._budget_writer is None:
+            self._budget_writer = writer
+
+    def check_budget(self, *, optional=False):
+        budget = self.token_budget
+        if budget is None:
+            return "ok"
+        state = budget.check() if self._budget_ready else "unverifiable"
+        if optional and state in {"exhausted", "unverifiable"}:
+            return state
+        if state != "ok":
+            code = "token_budget_" + state
+            if state in {"exhausted", "unverifiable"}:
+                budget.mark_stop(code)
+            self._emit_budget_notice(code)
+        if state == "exhausted":
+            raise TokenBudgetExceededError()
+        if state == "unverifiable":
+            raise TokenBudgetUnverifiableError()
+        return state
+
+    def _emit_budget_notice(self, code):
+        from runtime_service.middlewares.execution_budget import (
+            build_budget_notice,
+            emit_budget_notice,
+        )
+
+        if self._budget_writer is None or not self.token_budget.claim_notice(code):
+            return
+        snapshot = self.token_budget.public_snapshot()
+        notice = build_budget_notice(
+            code=code,
+            budget_scope="run",
+            unit="tokens_total",
+            graph_key=self.identity["graph_id"],
+            limit=snapshot["max_tokens"],
+            used=snapshot["known_used_tokens"],
+            remaining=snapshot["remaining_tokens"],
+        )
+        if notice is not None:
+            notice["run_id"] = self.identity["run_id"]
+            notice["notice_id"] = (
+                f"budget:{self.identity['run_id']}:tokens_total:run:{code}"
+            )
+            emit_budget_notice(notice, None, writer=self._budget_writer)
 
     async def on_chain_start(
         self, serialized, inputs, *, run_id, parent_run_id=None, **kwargs
@@ -338,17 +429,37 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
         if not self._active:
             self._root = run_id
             self._active = True
-            await self._write("begin_collection")
+            if self.token_budget:
+                await self._write(
+                    "begin_collection", self.token_budget.policy.as_dict()
+                )
+                await self._load_budget()
+            else:
+                await self._write("begin_collection")
 
     async def on_chain_end(self, outputs, *, run_id, **kwargs):
         if run_id == self._root:
-            await self._write("finish_collection", self._degraded)
+            await self._finish_collection(self._degraded)
             self._active = False
 
     async def on_chain_error(self, error, *, run_id, **kwargs):
         if run_id == self._root:
-            await self._write("finish_collection", True)
+            await self._finish_collection(
+                self._degraded
+                if isinstance(
+                    error, (TokenBudgetExceededError, TokenBudgetUnverifiableError)
+                )
+                else True
+            )
             self._active = False
+
+    async def _finish_collection(self, degraded):
+        if self.token_budget:
+            await self._write(
+                "finish_collection", degraded, self.token_budget.stop_code
+            )
+        else:
+            await self._write("finish_collection", degraded)
 
     async def on_chat_model_start(
         self,
@@ -361,6 +472,11 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
         tags=None,
         **kwargs,
     ):
+        if self.token_budget and self.check_budget(optional=True) in {
+            "exhausted",
+            "unverifiable",
+        }:
+            return
         if run_id in self._calls:
             return
         metadata = metadata or {}
@@ -421,14 +537,29 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
             "cost_reason": "incomplete_call",
         }
         self._calls[run_id] = call
+        if self.token_budget:
+            self.token_budget.begin_call(str(run_id))
         await self._write("upsert_call", call)
 
     async def _finish_call(self, run_id, response, outcome):
         call = self._calls.get(run_id)
         if call is None:
             self._degraded = True
+            if self.token_budget:
+                self.token_budget.mark_unverifiable()
             return
         usage = normalize_usage(response, provider=self._usage_providers[run_id])
+        if call["outcome"] != "started" and (
+            call["quality"] in {"reported", "derived_from_reported"}
+            or usage["quality"] not in {"reported", "derived_from_reported"}
+        ):
+            return
+        if self.token_budget:
+            self.token_budget.record_call(
+                str(run_id),
+                total_tokens=usage["tokens"]["total_tokens"],
+                quality=usage["quality"],
+            )
         _metrics["usage_" + usage["quality"]] += 1
         cost, reason = estimate_usage_cost(usage, call["pricing_snapshot"])
         call.update(
@@ -442,6 +573,8 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
             ended_at=datetime.now(UTC).isoformat(),
         )
         await self._write("upsert_call", call)
+        if self.token_budget and self.token_budget.check() == "approaching":
+            self._emit_budget_notice("token_budget_approaching")
 
     async def on_llm_end(self, response, *, run_id, **kwargs):
         await self._finish_call(run_id, response, "completed")
@@ -451,9 +584,24 @@ class RuntimeUsageCallback(AsyncCallbackHandler):
         await self._finish_call(run_id, kwargs.get("response"), outcome)
 
 
+class _TokenBudgetDispatchGuard(BaseCallbackHandler):
+    """Sync guard because LangChain's sync bridge swallows coroutine errors."""
+
+    raise_error = True
+    # Async dispatch must schedule all handlers before a refusal can propagate.
+    run_inline = False
+
+    def __init__(self, usage: RuntimeUsageCallback):
+        self.usage = usage
+
+    def on_chat_model_start(self, serialized, messages, **kwargs):
+        self.usage.check_budget()
+
+
 def with_runtime_usage(
     graph, config, *, graph_id: str, trusted_metadata: Mapping | None = None
 ):
+    policy = resolve_token_budget_policy()
     if not usage_enabled():
         return graph.with_config(config)
     metadata = config.get("metadata") or {}
@@ -467,13 +615,18 @@ def with_runtime_usage(
         run_id=uuid_string(metadata.get("run_id")),
     )
     if not all(identity.values()):
+        if policy:
+            raise TokenBudgetUnverifiableError()
         return graph.with_config(config)
     callbacks = list(config.get("callbacks") or [])
     if not any(
         isinstance(c, RuntimeUsageCallback) and c.identity == identity
         for c in callbacks
     ):
-        callbacks.append(RuntimeUsageCallback(identity))
+        usage = RuntimeUsageCallback(identity)
+        if usage.token_budget:
+            callbacks.append(_TokenBudgetDispatchGuard(usage))
+        callbacks.append(usage)
     existing = (getattr(graph, "config", None) or {}).get("callbacks") or []
     return graph.with_config(
         {**config, "callbacks": [c for c in callbacks if c not in existing]}
@@ -488,9 +641,22 @@ def usage_only_config(purpose: str) -> dict:
         callbacks = []
     handlers = getattr(callbacks, "handlers", callbacks)
     return {
-        "callbacks": [c for c in handlers if isinstance(c, RuntimeUsageCallback)],
+        "callbacks": [
+            c
+            for c in handlers
+            if isinstance(c, (RuntimeUsageCallback, _TokenBudgetDispatchGuard))
+        ],
         "metadata": {"runtime_usage_purpose": purpose},
     }
+
+
+def current_runtime_usage_callback() -> RuntimeUsageCallback | None:
+    try:
+        callbacks = get_config().get("callbacks") or []
+    except RuntimeError:
+        return None
+    handlers = getattr(callbacks, "handlers", callbacks)
+    return next((c for c in handlers if isinstance(c, RuntimeUsageCallback)), None)
 
 
 __all__ = [
@@ -499,4 +665,5 @@ __all__ = [
     "estimate_usage_cost",
     "with_runtime_usage",
     "usage_only_config",
+    "current_runtime_usage_callback",
 ]
