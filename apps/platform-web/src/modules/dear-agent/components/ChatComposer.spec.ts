@@ -5,12 +5,13 @@ vi.mock("vue-i18n", () => ({
   useI18n: () => ({ t: (k: string) => k }),
 }));
 
-import ChatComposer from "@/modules/chat/components/ChatComposer.vue";
+import CommonChatComposer from "@/modules/chat/components/ChatComposer.vue";
+import DearChatComposer from "./ChatComposer.vue";
 
-type ComposerProps = InstanceType<typeof ChatComposer>["$props"];
+type ComposerProps = InstanceType<typeof CommonChatComposer>["$props"];
 
 function mountComposer(overrides: Partial<ComposerProps> = {}) {
-  return mount(ChatComposer, {
+  return mount(CommonChatComposer, {
     props: {
       modelValue: "",
       attachments: [],
@@ -51,7 +52,9 @@ describe("DearAgent ChatComposer", () => {
 
     expect(wrapper.text()).toContain("补充要求");
     expect(wrapper.text()).toContain("排队");
-    await wrapper.find("textarea").trigger("keydown", { key: "Enter", shiftKey: false });
+    await wrapper
+      .find("textarea")
+      .trigger("keydown", { key: "Enter", shiftKey: false });
     expect(wrapper.emitted("queue")).toHaveLength(1);
     expect(wrapper.emitted("send")).toBeUndefined();
   });
@@ -67,8 +70,63 @@ describe("DearAgent ChatComposer", () => {
 
     expect(wrapper.text()).toContain("补充要求");
     expect(wrapper.text()).toContain("排队");
-    await wrapper.find("textarea").trigger("keydown", { key: "Enter", shiftKey: false });
+    await wrapper
+      .find("textarea")
+      .trigger("keydown", { key: "Enter", shiftKey: false });
     expect(wrapper.emitted("queue")).toHaveLength(1);
     expect(wrapper.emitted("send")).toBeUndefined();
+  });
+
+  it("C07: mounts actual Dear Agent wrapper and transparently forwards canDictate and voice controls without second instance", async () => {
+    class MockSpeechRecognition {
+      continuous = true;
+      interimResults = true;
+      lang = "zh-CN";
+      maxAlternatives = 1;
+      start() {}
+      stop() {}
+      abort() {}
+    }
+
+    const origRecognition = (window as any).SpeechRecognition;
+    const origSecure = window.isSecureContext;
+    (window as any).SpeechRecognition = MockSpeechRecognition;
+    Object.defineProperty(window, "isSecureContext", {
+      value: true,
+      configurable: true,
+    });
+
+    try {
+      const onQueueSpy = vi.fn();
+      const wrapper = mount(DearChatComposer, {
+        props: {
+          modelValue: "Dear草稿",
+          attachments: [],
+          isRunning: false,
+          hasBlockingInterrupt: false,
+          canSendFreshMessage: false,
+          cancelling: false,
+          sendButtonLabel: "发送消息",
+          canDictate: true,
+          onQueue: onQueueSpy,
+        } as any,
+      });
+
+      // 验证通过包装器透传渲染了 mic 按钮
+      const micBtn = wrapper.find('[data-testid="composer-voice-input-btn"]');
+      expect(micBtn.exists()).toBe(true);
+      expect(micBtn.attributes("disabled")).toBeUndefined();
+
+      // 验证通过包装器事件透传
+      const inner = wrapper.findComponent(CommonChatComposer);
+      expect(inner.exists()).toBe(true);
+      expect(inner.props("canDictate")).toBe(true);
+    } finally {
+      (window as any).SpeechRecognition = origRecognition;
+      Object.defineProperty(window, "isSecureContext", {
+        value: origSecure,
+        configurable: true,
+      });
+    }
   });
 });

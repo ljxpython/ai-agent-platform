@@ -8,6 +8,7 @@
 ## platform-web
 
 | 功能 | 状态 | 关联文档 |
+| F13 浏览器语音听写 | 已完成：基于原生 SpeechRecognition / webkitSpeechRecognition 实现单实例 useVoiceInput，只在 final 写入草稿末尾、interim 不落草稿、用户按键抢占取消防自杀误关；共享 ChatComposer 采用方案 A 纯图标按钮 + 录音专注模式 + 全宽声波微胶囊设计；28 项单测、Playwright 自动化 E2E 及真实环境验收全部通过 | [评审与任务](projects/20260913-dearflow-agent/17-f13-voice-input-assessment.md) · [前端交接](projects/20260913-dearflow-agent/18-f13-voice-input-frontend-handoff.md) |
 | Agent 运行准备与有界重试诊断摘要展示 | 已完成：实装运行准备（RunPreparationsSection）与受管重试（RunRetriesSection）独立子组件，支持 strict attempts/role 正则校验、主 Run 成功时琥珀色 Amber 警示降级、空态完全隐藏、敏感字段剥离，49 项单测与 Playwright 全链路 E2E 验证全绿 | [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | Agent Run/Thread 用量与成本展示 | 已完成：实装独立解耦面板 RunUsage 与 useRunUsage 防竞态状态机、open-swe 水位进度条 (Usage Meter)、服务端截断告警卡片、模型费率安全编辑（Decimal 精度、自动补零、可逆清空保护）以及假数据彻底切除。Playwright + Chromium 端到端 5 项全绿（含真实百炼 qwen-plus 全链路调用闭环与 24,069 Tokens / $0.0051 落库上屏）并生成 7 张高清渲染截图，全仓 120 套件 583 项单测、typecheck、lint 和生产打包 100% 通过 | [前端交接](projects/20261007-agent-usage-cost-governance/04-frontend-handoff.md) |
 | F01 Run Token 额度保护展示 | 已完成：实装 budget/usage 类型与精确安全错误码扩展、ViewModel 在途硬停过渡态防抖、状态栏对账恢复与草稿回填、RunUsage 紧凑额度水位条融合及超额 105% 视觉 clamp；46 项单测、typecheck、lint、生产构建全绿；Playwright 真实模型（百炼·qwen-plus）6 项自动化 E2E 闭环全部通过（耗时 19.1s，8 张 1440/768/390 截图留痕） | [F01评审](projects/20260913-dearflow-agent/15-token-budget-governance.md) · [前端交接](projects/20260913-dearflow-agent/16-token-budget-frontend-handoff.md) |
@@ -68,6 +69,7 @@
 | Chat 前端对话 Clean Architecture 架构治理与中断/时序缺陷修复 | 已完成：对标谷歌开发范式，拆解上帝组件（ChatSession 净减 923 行），根治手动中断 400 报错与消息队列出队跳顶/并排时序倒挂；102 个测试套件、441 项单测全绿、vue-tsc 0 错误、生产打包通过 | [Chat 干净架构重构](projects/20261004-chat-frontend-clean-architecture-refactor/README.md) |
 | 平台用户管理软删除操作与自杀保护交互 | 已完成：操作菜单与详情页实装软删除操作、二次确认弹窗、防自杀禁用与状态筛选；单测及生产构建全绿 | [软删除治理](projects/20261003-platform-user-soft-delete/README.md) |
 | Agent 会话停止与状态报告交互 | 已完成：前端 Stop 按钮接入会话级停止控制、幂等重试、状态自愈、报告横幅与抽屉展示、全链路 Playwright E2E 与人工验收通过 | [取消专项](projects/20261007-agent-run-cancellation/README.md) · [前端交接](projects/20261007-agent-run-cancellation/frontend-handoff.md) |
+| F13 浏览器语音听写（Web Speech Recognition）输入 | 已完成前端实施与自动化验证：原生 useVoiceInput、共享 ChatComposer 与 ChatSession 接线、双语 i18n、末尾追加与 Self-echo 保护、阻断错误 Toast/静默处理；Vitest 28 项单测、typecheck、lint、build 与 Playwright 2 项 E2E 全绿（真机环境 ASR 待验） | [F13评审](projects/20260913-dearflow-agent/17-f13-voice-input-assessment.md) · [前端交接](projects/20260913-dearflow-agent/18-f13-voice-input-frontend-handoff.md) |
 
 ## platform-api
 

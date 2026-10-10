@@ -1,6 +1,6 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-10（F01 Run Token 额度保护与 Plan Mode 计划审批治理全栈全链路交付完成，三服务联合 Playwright 真实模型 E2E 闭环验收通过；单次输出 Token 预算解绑与思考链聚焦规则优化完成；Worktree 资源隔离基线已建立）。
+> **最后更新：** 2026-10-10（F13 浏览器语音听写输入前端实施与自动化验收全绿闭环；F01 与 Plan Mode 全栈验收已完成；Worktree 资源隔离基线已建立）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
@@ -10,6 +10,8 @@
 **最后更新：** 2026-10-10
 
 ## 最近改动
+
+2026-10-10 | **F13 浏览器语音听写前端实施与全体验收**：done（全链路闭环）。完成原生 useVoiceInput Composable、方案 A 纯图标微胶囊与录音专注模式、共享 ChatComposer/ChatSession 门禁接线、双语 i18n、末尾追加与 Self-echo 保护、阻断错误 Toast/静默处理；Vitest 28 项单测、typecheck 0 错误、lint 0 错误、build 成功以及 Playwright 2 项 E2E 自动化测试全绿通过；用户在真实环境完成物理麦克风与网络听写验收通过。中途打断流式未落盘经排查为 LangGraph 事务机制，经用户确认该优化暂不开展。见 [17-f13-voice-input-assessment.md](projects/20260913-dearflow-agent/17-f13-voice-input-assessment.md)。
 
 2026-10-10 | **Agent 通用 Plan Mode 与计划审批治理**：全链路闭环（done）。Runtime/API/Web 三服务全栈实施完成。公共状态/三工具/双重门禁、四图主子接线、Context v6 执行链、原生审批/幂等/私有投影/fork/cron 安全闭环；前端实现输入框“+”号菜单展开与规划徽章、两级 capability 校验、PlanReview 双重视图、Markdown XSS Canary 安全清洗、待审态输入框严格锁定与 409 状态自愈；解除默认 4096 max_tokens 硬编码限制，支持留空默认走模型单次最大输出；增加系统提示词思考链聚焦约束；用户真实浏览器端到端实测验收通过。见 [专项](projects/20261008-agent-plan-mode-governance/README.md)。
 
@@ -52,7 +54,7 @@
 - [工作区 HTML 现代化沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md)：done；前后端精准沙箱隔离与 CSP 白名单升级，Tailwind CDN / Google Fonts 完整放行，单元测试与全链路真实博客页面验收全绿。
 - [Runtime 数据库访问边界收敛与类型补全](projects/20260930-runtime-database-repository-refactor/README.md)：本期 done；Scope 与 Memory/Skills SQL 抽取完成，43 项定向通过；全仓两项范围外失败已对照复现，详见 verification.md。
 - [Runtime Agent 组合根脚手架重构与 DX 体验治理](projects/20260930-runtime-agent-harness-refactor/README.md)：规划中；针对组合根样板代码超标（150+行安全胶水代码）与测试构造心智摩擦，完成方案设计与任务拆分，待方案评审。
-- [DearFlow Agent迁移重审与补齐](projects/20260913-dearflow-agent/README.md)：整体partial；F01 Run Token 额度保护全栈（Runtime/API/Web）与真实大模型联合浏览器验收已全部完成闭环；其他12的T01—T10、14效果审计和音视频/新版扩展仍独立推进，不因F01完成而宣称整体done。
+- [DearFlow Agent迁移重审与补齐](projects/20260913-dearflow-agent/README.md)：整体partial；F01 Run Token 额度保护全栈（Runtime/API/Web）与真实大模型联合浏览器验收已全部完成闭环；其他12的T01—T10、14效果审计和音视频/新版扩展仍独立推进；F13 前端浏览器语音听写已按 17/18 全部实施完毕，28 项单测、全套质量门禁、Playwright 自动化及真实物理环境用户验收全绿闭环；不因单项交付宣称整体done。
 - [子智能体工具调用历史持久化与回放能力支持](projects/20260928-graphharbor-subagent-tool-history/README.md)：done；GraphHarbor post37 升级与 platform-api 网关层放通，全链路端到端真实用例实测通过，子智能体内部 10 次工具调用全数可查。
 - [SSE 事件流保活心跳与连接容错治理](projects/20260927-sse-stream-heartbeat-and-resilience/README.md)：done；针对每隔 45 秒频繁弹出“恢复连接”假性报错条及重放历史中断导致审批死锁的问题，通过 Platform API 网关注入心跳与前端审批状态机自愈彻底根治；探针实测与单测全绿；GraphHarbor 专属心跳与中断重放两份修复文档已交付。
 - [消息内部Run回查委托修复](projects/20260927-message-run-read-delegation/README.md)：partial；Platform API只在消息入口转发请求内已有read委托，Runtime配对验证后用于内部Run GET；本机自动化通过，现役跨服务链路未验证，未部署。
@@ -64,7 +66,7 @@
 |---|---|---|
 | runtime-service | 2026-10-10 | 锁定/安装正式 post43；四图主子共享 attempt 预算/软收尾与 Run Token 额度；Plan 公共状态/三工具/双门禁、四图主子接线、Context v6 和规划 memory 跳过完成；解除默认 4096 max_tokens 兜底限制，系统提示词强化思考链 Token 预算约束；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理与运行准备幂等/有界重试全链路融合；Workspace 执行容错闭环；未部署现役。 |
 | platform-api | 2026-10-10 | 私有预算/Token 注入拒绝与脱敏；执行预算及 F01 Token 两类精确安全码；Plan 原生审批/ACL/幂等、Context v6执行链、公开agent_plan/fork/cron边界完成；Run Usage 可选 token_budget DTO、ACL/撤权真实链路通过；模型恢复、上下文、诊断、费率 Usage、Stop 接口均已实装；Workspace 五码精确投影与 DTO 校验完成；未部署现役。 |
-| platform-web | 2026-10-10 | F01 Token 额度保护（F-T01—F-T04）全栈落地；规划开关（“+”号菜单 Teleport 展开）、单次 Run 胶囊徽章即时复位、两级能力判定、PlanReview 待审卡片与 Inspector 抽屉联动、Markdown XSS 伪协议清洗、待审态输入框安全锁定及 409 自愈实装；Vitest/vue-tsc/ESLint/build 全绿，Playwright 真实模型 E2E 与多视口双主题截图全绿通过。 |
+| platform-web | 2026-10-10 | F01 Token 额度保护（F-T01—F-T04）全栈落地；规划开关（“+”号菜单 Teleport 展开）、单次 Run 胶囊徽章即时复位、两级能力判定、PlanReview 待审卡片与 Inspector 抽屉联动、Markdown XSS 伪协议清洗、待审态输入框安全锁定及 409 自愈实装；Vitest/vue-tsc/ESLint/build 全绿，Playwright 真实模型 E2E 与多视口双主题截图全绿通过；F13 已批准，17/18 交接已就绪，T01-T04 前端开发/验收未实施，无新增后端接口依赖。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-10 | Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号、配置继承与首次只读基础数据初始化已验收。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)，共9条。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 ## 近期关键决策

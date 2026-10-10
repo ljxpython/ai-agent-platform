@@ -497,20 +497,13 @@ input_polish:
 
 ### F13 — 语音输入（Voice Input）
 
-**是什么**：麦克风按钮语音识别，结果自动填入输入框。纯前端，无需后端。
+**2026-10-10 实施与验收：** 前端已基于原生 SpeechRecognition / webkitSpeechRecognition 完成单实例 useVoiceInput 与共享 ChatComposer 接线；28 项单测、Playwright 自动化 E2E 及用户真实麦克风/网络听写验收通过。没有后端改动项。唯一实施记录见 [17 差异评审与任务](../projects/20260913-dearflow-agent/17-f13-voice-input-assessment.md)。
 
-**DeerFlow 怎么做**
-- 前端：`frontend/src/core/voice-input/speech-recognition.ts`
-- 封装浏览器原生 `SpeechRecognition` / `webkitSpeechRecognition`
-- 错误分类：`cancelled | microphone_unavailable | permission_denied | unsupported_language | network | no_speech | unknown`
-- 连续模式 + 实时中间结果展示
-- 不支持时隐藏按钮（能力检测：`'SpeechRecognition' in window`）
+DeerFlow 使用浏览器原生 `SpeechRecognition` / `webkitSpeechRecognition`、完整结果快照聚合、七类错误和连续/interim；实际不支持时仍渲染禁用按钮，并在正常结束/no_speech 后自动重启。原“隐藏按钮、只检查标准名、简单 append、一日完整交付”不能直接作为施工依据。
 
-**我们需要做什么**（纯前端，1 天）
-1. `useVoiceInput.ts` composable
-2. 语言跟随 i18n locale
-3. 识别结果 append 到输入框 modelValue
-4. 输入框旁增加麦克风图标按钮
+本平台建议隐藏无能力入口、final 回填且 interim 独立预览、保持原草稿格式、取消旧回调、自然结束不自动重启。纯前端不代表离线识别或音频不出网。Open-SWE 当前参考工作树未见现役浏览器语音实现，已有 VueUse 10.11.1 封装也不直接满足完整结果/取消边界。
+
+唯一实施/进度入口：[17 差异评审与任务](../projects/20260913-dearflow-agent/17-f13-voice-input-assessment.md)；前端同事按[18 施工交接](../projects/20260913-dearflow-agent/18-f13-voice-input-frontend-handoff.md)接续，不在知识文档维护第二份任务。
 
 ---
 
@@ -673,7 +666,7 @@ MemoryMiddleware        ← SummarizationMiddleware.before_summarization hooks�
 
 | 功能 | 工作量 | 类型 |
 |---|---|---|
-| F13 语音输入 | 1 天 | 纯前端 |
+| F13 语音输入 | 约 2-3 人天（含前端验收，不含外部等待） | 可选纯前端，见 17/18 |
 | F07 自动标题（前端联动部分） | 半天 | 前端联动 |
 | F11 输入润色（前端部分） | 1 天 | 前端为主 |
 | F12 AI 建议（前端部分） | 1 天 | 前端为主 |
@@ -689,7 +682,7 @@ MemoryMiddleware        ← SummarizationMiddleware.before_summarization hooks�
 | F01 Token 预算 | **P0** | 中（3天） | middleware 架构 |
 | F02 循环检测 | **P0** | 中（3天） | middleware 架构 |
 | F10 文件上传转换 | **P0** | 中（3天） | markitdown |
-| F13 语音输入 | **P1** | 小（1天） | 纯前端 |
+| F13 语音输入 | **已完成（done）** | 小（约2-3人天） | 详见 17 评审任务与 18 实施记录，用户真机验收通过 |
 | F11 输入润色 | **P1** | 小（2天） | oneshot LLM |
 | F12 AI 建议 | **P1** | 小（2天） | oneshot LLM |
 | F15 MCP 缓存重置 | **P1** | 小（半天） | 无 |
