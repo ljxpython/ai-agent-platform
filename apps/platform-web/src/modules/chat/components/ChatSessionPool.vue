@@ -87,6 +87,13 @@ function renderEntry(entry: PoolEntry) {
         onReconnect: () => {
           void entry.sessionRef.value?.reconnectStream();
         },
+        onTitleUpdated: (title: string) => {
+          const currentThreadId = entry.threadId.value;
+          const current = entry.view.value;
+          if (currentThreadId && current?.onTitleUpdated) {
+            current.onTitleUpdated(title, currentThreadId);
+          }
+        },
       },
       view?.slots ?? {},
     ),

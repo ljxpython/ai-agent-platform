@@ -30,6 +30,7 @@ export type PoolView = {
   onFork: (id: string) => void;
   onRefresh: () => void;
   onRevoked: () => void;
+  onTitleUpdated?: (title: string, threadId?: string) => void;
 };
 export type PoolEntry = {
   instanceId: string;

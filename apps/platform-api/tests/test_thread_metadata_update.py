@@ -1,14 +1,51 @@
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
+from platform_api.core.context.models import ActorContext
 from platform_api.core.errors import BadRequestError
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
 )
+from platform_api.modules.runtime_gateway.application.thread_titles import (
+    TITLE_SEED_KEY,
+)
 
 
 class ThreadMetadataUpdateTest(unittest.IsolatedAsyncioTestCase):
+    def make_service(self, upstream):
+        service = RuntimeGatewayService(session_factory=None, upstream=upstream)
+        self.actor = ActorContext(
+            user_id="owner", project_roles={"proj-1": ("project_member",)}
+        )
+        self.thread = {
+            "thread_id": "th-1",
+            "metadata": {
+                "project_id": "proj-1",
+                "graph_id": "reference_agent",
+                "title": "旧标题",
+                "access_version": 1,
+                "owner_user_id": "owner",
+                "visibility": "private",
+            },
+        }
+        service._load_thread = AsyncMock(return_value=self.thread)
+        service._inject_project_default_model = Mock(
+            side_effect=lambda **kwargs: kwargs["payload"]
+        )
+        service._validate_run_options = Mock()
+        service._attach_runtime_model_reference = Mock(
+            side_effect=lambda **kwargs: kwargs["payload"]
+        )
+        upstream.summarize_thread_title.return_value["thread_id"] = "th-1"
+        upstream.compare_thread_metadata = AsyncMock(
+            return_value={
+                "thread_id": "th-1",
+                "metadata": {"title": "用户注册架构", TITLE_SEED_KEY: None},
+            }
+        )
+        return service
+
     async def test_update_thread_title_and_preview_success(self) -> None:
         upstream = SimpleNamespace(update_thread=AsyncMock())
         service = RuntimeGatewayService(session_factory=None, upstream=upstream)
@@ -37,6 +74,7 @@ class ThreadMetadataUpdateTest(unittest.IsolatedAsyncioTestCase):
                 "metadata": {
                     "title": "新标题",
                     "preview": "最新消息摘要",
+                    TITLE_SEED_KEY: None,
                 }
             },
         )
@@ -73,15 +111,18 @@ class ThreadMetadataUpdateTest(unittest.IsolatedAsyncioTestCase):
 
     async def test_summarize_thread_title_success_and_persists_metadata(self) -> None:
         upstream = SimpleNamespace(
-            summarize_thread_title=AsyncMock(return_value={"title": "用户注册架构"}),
+            summarize_thread_title=AsyncMock(
+                return_value={
+                    "title": "用户注册架构",
+                    "outcome": "applied",
+                    "reason": None,
+                }
+            ),
             update_thread=AsyncMock(),
         )
-        service = RuntimeGatewayService(session_factory=None, upstream=upstream)
-        service._load_thread = AsyncMock(
-            return_value={"metadata": {"project_id": "proj-1", "title": "旧标题"}}
-        )
+        service = self.make_service(upstream)
         result = await service.summarize_thread_title(
-            actor=SimpleNamespace(),
+            actor=self.actor,
             project_id="proj-1",
             thread_id="th-1",
             payload={"messages": [{"role": "user", "content": "帮我设计注册系统"}]},
@@ -89,29 +130,41 @@ class ThreadMetadataUpdateTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["thread_id"], "th-1")
         self.assertEqual(result["title"], "用户注册架构")
         self.assertEqual(result["metadata"]["title"], "用户注册架构")
-        upstream.summarize_thread_title.assert_awaited_once_with(
-            "th-1", {"messages": [{"role": "user", "content": "帮我设计注册系统"}]}
+        self.assertEqual(
+            upstream.summarize_thread_title.await_args.args[1]["messages"],
+            [{"role": "user", "content": "帮我设计注册系统"}],
         )
-        upstream.update_thread.assert_awaited_once_with(
-            "th-1", {"metadata": {"title": "用户注册架构"}}
+        upstream.compare_thread_metadata.assert_awaited_once_with(
+            "th-1",
+            metadata={"title": "用户注册架构", TITLE_SEED_KEY: None},
+            expected={"title": "旧标题", TITLE_SEED_KEY: None},
         )
 
     async def test_summarize_thread_title_handles_empty_title_fallback(self) -> None:
         upstream = SimpleNamespace(
-            summarize_thread_title=AsyncMock(return_value={"title": ""}),
+            get_thread_state=AsyncMock(
+                return_value={
+                    "values": {"messages": [{"role": "user", "content": "hello"}]}
+                }
+            ),
+            summarize_thread_title=AsyncMock(
+                return_value={
+                    "title": None,
+                    "outcome": "degraded",
+                    "reason": "empty_output",
+                }
+            ),
             update_thread=AsyncMock(),
         )
-        service = RuntimeGatewayService(session_factory=None, upstream=upstream)
-        service._load_thread = AsyncMock(
-            return_value={"metadata": {"project_id": "proj-1", "title": "旧标题"}}
-        )
+        service = self.make_service(upstream)
         result = await service.summarize_thread_title(
-            actor=SimpleNamespace(),
+            actor=self.actor,
             project_id="proj-1",
             thread_id="th-1",
         )
         self.assertEqual(result["thread_id"], "th-1")
-        self.assertEqual(result["title"], "新对话")
+        self.assertEqual(result["title"], "旧标题")
+        self.assertEqual(result["outcome"], "degraded")
         upstream.update_thread.assert_not_called()
 
     async def test_summarize_thread_title_auto_extracts_messages_from_thread_state(
@@ -128,30 +181,30 @@ class ThreadMetadataUpdateTest(unittest.IsolatedAsyncioTestCase):
                     }
                 }
             ),
-            summarize_thread_title=AsyncMock(return_value={"title": "画鹈鹕"}),
+            summarize_thread_title=AsyncMock(
+                return_value={"title": "画鹈鹕", "outcome": "applied", "reason": None}
+            ),
             update_thread=AsyncMock(),
         )
-        service = RuntimeGatewayService(session_factory=None, upstream=upstream)
-        service._load_thread = AsyncMock(
-            return_value={"metadata": {"project_id": "proj-1", "title": "旧标题"}}
-        )
+        service = self.make_service(upstream)
+        upstream.compare_thread_metadata.return_value["metadata"]["title"] = "画鹈鹕"
         result = await service.summarize_thread_title(
-            actor=SimpleNamespace(),
+            actor=self.actor,
             project_id="proj-1",
             thread_id="th-1",
             payload={},  # 没有传入 messages
         )
         self.assertEqual(result["thread_id"], "th-1")
         self.assertEqual(result["title"], "画鹈鹕")
-        upstream.summarize_thread_title.assert_awaited_once_with(
-            "th-1",
-            {
-                "messages": [
-                    {"role": "human", "content": "你来给我画一只鹈鹕"},
-                    {"role": "ai", "content": "好的，我来帮你画"},
-                ]
-            },
+        self.assertEqual(
+            upstream.summarize_thread_title.await_args.args[1]["messages"],
+            [
+                {"role": "user", "content": "你来给我画一只鹈鹕"},
+                {"role": "assistant", "content": "好的，我来帮你画"},
+            ],
         )
-        upstream.update_thread.assert_awaited_once_with(
-            "th-1", {"metadata": {"title": "画鹈鹕"}}
+        upstream.compare_thread_metadata.assert_awaited_once_with(
+            "th-1",
+            metadata={"title": "画鹈鹕", TITLE_SEED_KEY: None},
+            expected={"title": "旧标题", TITLE_SEED_KEY: None},
         )

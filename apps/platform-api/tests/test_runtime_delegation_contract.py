@@ -48,6 +48,7 @@ OPERATIONS = (
     "dear-governance-read",
     "dear-governance-write",
     "suggestions-generate",
+    "title-generate",
     "diagnostics-read",
     "usage-read",
     "thread-stop",

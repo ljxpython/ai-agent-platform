@@ -164,6 +164,18 @@ DearFlow/Showcase 的当前 Thread capabilities 返回 `conversation_offloading`
 
 新增路由更新显式清单，覆盖scope、授权拒绝、字段过滤与参数；业务语义由run_requests/SDK/事件测试以及[真实验收](../../../../docs/projects/20260910-platform-api-refactor/implementation/13-backend-acceptance-closeout.md)证明。router替身不能替代真实执行，前端适配见[交接](../../../../docs/projects/20260910-platform-api-refactor/05-frontend-handoff.md)。
 
+## 会话标题（2026-10-09 用户批准）
+
+`Thread.metadata.title` 是唯一标题事实源，沿用 `PATCH /threads/{id}` 改名/preview 与 `POST /threads/{id}/title/summarize` 手动提炼。AI 操作要求项目 execute + Thread comment+edit；人工改名仍只要求 edit。生成/读取/写入分别使用 `title-generate`、`read`、`thread-edit`，标题模型只使用当前项目/Agent受管配置。
+
+创建新普通Thread可提交顶层 `auto_title:true`；仅创建时自动开关已开启，服务端才写内部 `_runtime_title_seed`，公开只投影 `auto_title_pending`。创建时开关关闭则pending为false，之后开启不回填。客户端 create/patch/state/input 不能注入 seed/pending。fork/导入/旧Thread不自动回填；preview-only不消费seed，任何显式title改名（包括同名）均消费。普通metadata更新使用上游实际返回，避免旧preview快照覆盖新title。
+
+summarize manual 保留 `{}` 或有界 messages（1–8条、单条4000、总12000，user/assistant及human/ai别名）；auto只接受 `{mode:"auto",run_id:"<uuid>"}`，不可传messages/model/config。自动校验匹配的普通success Run、idle/无活跃Run或interrupt、首轮根图最终正文；生成后再次检查权限、模型、开关、Run、材料和checkpoint。响应保留thread_id/title/metadata，新增 `outcome=applied|skipped|degraded` 与固定reason。
+
+持久化调用独立引擎 `PATCH /threads/{id}/metadata/cas`，原子比较title+seed并写入/消费；409回读当前title，404/405为 `503 title_cas_unavailable`，超时/5xx/非法确认统一 `503 title_write_unconfirmed`。客户端GET Thread对账，禁止将未落库candidate展示成成功或盲目重新生成。手动/自动AI新版均依赖CAS，匹配正式引擎接入前不能单独发布。
+
+`PLATFORM_API_TITLE_AUTO_ENABLED=false` 默认关闭；`PLATFORM_API_TITLE_TIMEOUT_SECONDS=8`，区间(0,30]，只限制Runtime受管连接、构造与一次调用，不是完整HTTP链总耗时。合法auto degraded保留规则title并CAS消费seed，manual degraded不改；辅助模型输出不进入主Run/state/SSE和现有Agent Usage。源码/候选验证及前端F01-F10见[F07交接](../../../../docs/projects/20261009-agent-thread-auto-title/frontend-handoff.md)，正式包B01与浏览器Final独立。
+
 ## Run 诊断查询（2026-10-06 用户批准）
 
 GET `/api/langgraph/threads/{thread_id}/runs/{run_id}/diagnostics` 沿当前项目 Runtime read + Thread read授权，先以原生 `read` 确认Run存在及归属，再签发Thread绑定的 `diagnostics-read` 调用Runtime内部只读入口。查询Langfuse不占平台数据库事务，不增加模型调用，也不回写Thread metadata。

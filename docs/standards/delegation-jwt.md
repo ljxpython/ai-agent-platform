@@ -3,13 +3,13 @@ status: draft
 last_verified: 2026-10-09
 confidence: medium
 source_project: docs/projects/20260926-delegation-jwt-contract/verification.md
-note: 当前operation枚举为34项；后台元数据/日志/取消精确委托已增补；lost-ACK引擎回查及现役部署仍待完成，整体保留draft
+note: 当前operation枚举为35项；后台元数据/日志/取消精确委托已增补；F07增加精确title-generate全栈闭环；lost-ACK引擎回查及现役部署仍待完成，整体保留draft
 ---
 
 # Delegation JWT Schema（draft）
 
 > **适用服务：** platform-api（签发方）、runtime-service（校验方）
-> **验证证据：** 历史 API 299 passed、Runtime 只读鉴权 46 passed；diagnostics-read 跨环境契约 5 passed / 50 subtests 保留。Contract 的 `OPERATIONS` 覆盖 32 个 operation，另有独立 cron-read/cron-write，共 34 项。2026-10-09 后台与完整 delegation 定向回归 21 passed / 63 subtests；后台三 operation 的实际授权、HMAC 和 guard 证据见 [后台专项](../projects/20261009-agent-generic-production-capabilities/verification.md)。Stop 与价格/用量既有证据分别见 [取消专项](../projects/20261007-agent-run-cancellation/verification.md)、[用量专项](../projects/20261007-agent-usage-cost-governance/05-verification-rollout.md)。
+> **验证证据：** 历史 API 299 passed、Runtime 只读鉴权 46 passed；diagnostics-read 跨环境契约 5 passed / 50 subtests 保留。Contract 的 `OPERATIONS` 覆盖 33 个 operation，另有独立 cron-read/cron-write，共 35 项。F07 `title-generate` 证据见 [F07](../projects/20261009-agent-thread-auto-title/verification.md)。2026-10-09 后台与完整 delegation 定向回归 21 passed / 63 subtests；后台三 operation 的实际授权、HMAC 和 guard 证据见 [后台专项](../projects/20261009-agent-generic-production-capabilities/verification.md)。Stop 与价格/用量既有证据分别见 [取消专项](../projects/20261007-agent-run-cancellation/verification.md)、[用量专项](../projects/20261007-agent-usage-cost-governance/05-verification-rollout.md)。
 > **未完成：** Stop 正式配套发布/锁接入与部署 blocked；消息内部原生 Run 回查源码和本机测试已修复，现役链路尚未验证，见 message-run-read-delegation 专项。标准整体仍为 draft。
 
 ## JWT Header
@@ -54,7 +54,7 @@ note: 当前operation枚举为34项；后台元数据/日志/取消精确委托�
     "project_id": "<必须与顶层一致>",
     "assistant_id": "<string 或 null>",
     "thread_id": "<string 或 null>",
-    "operation": "<34 项枚举之一>"
+    "operation": "<35 项枚举之一>"
   },
 
   "context_hash": "sha256:<64位十六进制>",
@@ -85,7 +85,7 @@ note: 当前operation枚举为34项；后台元数据/日志/取消精确委托�
 
 来源不是查询权限或回调凭据；terminal 不重新验证启动 JWT 的有效期，API 接收回调使用独立正文 HMAC，查询/feed/read 仍按当前项目/Thread ACL。无新增 webhook scope。正式 post44、双端契约与隔离 Worker 证据见 [完成通知专项](../projects/20261009-agent-production-capability-extension/verification.md)。本补充不将其他待验收的 JWT 项目自动升为 active。
 
-## scope.operation 枚举（34 项）
+## scope.operation 枚举（35 项）
 
 ```
 read                    thread-create           thread-reconcile
@@ -98,14 +98,14 @@ dear-skills-write       dear-memory-read        dear-memory-write
 dear-governance-read    dear-governance-write   cron-read
 cron-write              suggestions-generate    diagnostics-read
 usage-read              thread-stop             thread-stop-read
-run-cancellation-read
+run-cancellation-read   title-generate
 background-task-read    background-task-log-read background-task-cancel
 ```
 
 **原生资源通用白名单（10 项）：**
 `read` / `thread-create` / `thread-reconcile` / `thread-edit` / `thread-delete` / `run-create` / `run-cancel` / `run-delete` / `cron-read` / `cron-write`
 
-另有 `run-cancellation-read` 的精确原生回执例外，规则如下；其余 23 项自定义 token 不能访问原生资源。`suggestions-generate` 只能访问
+另有 `run-cancellation-read` 的精确原生回执例外，规则如下；其余 24 项自定义 token 不能访问原生资源。`suggestions-generate` 只能访问
 `/internal/threads/{thread_id}/suggestions`，不能访问原生 Thread、Run、workspace、工具或 MCP 资源。
 
 `diagnostics-read` 必须绑定非空 Thread，且只允许
@@ -121,6 +121,14 @@ Run 级再确认原生 Run 存在且属于该 Thread；Runtime 重查当前 ACL/
 SQL 匹配 tenant/project/graph/Thread/Run。scope 仍只有五字段，不增加 run_id。
 该委托不能访问模型连接、Workspace、MCP、原生资源、诊断或其他自定义入口；
 read/diagnostics-read/run-create 也不能代替 usage-read。采集开关和数据库故障不绕过授权。
+
+## 标题精确委托（2026-10-09 用户批准）
+
+`title-generate` 必须绑定非空 Thread 和 Graph，tenant/project 与 principal 一致；只允许 `POST /internal/threads/{thread_id}/title/summarize`。Runtime 检查当前 comment+edit ACL、assistant 与 context hash；read/suggestions/usage 等不能代用，标题 token 不访问原生 Thread/Run/Workspace/MCP。
+
+API 读取使用 `read`，受管模型引用沿 `thread_action=comment`，落库使用 `thread-edit`。一次非流式受管模型调用，8s 总 deadline，标题正文不进入主 Run/Graph/state/SSE 或 Agent Usage 合计。生成后再次核对 ACL、模型、auto gate、Run 和材料；数据库 CAS 比较 title/内部 seed，未知提交结果返回 `503 title_write_unconfirmed` 并要求 GET Thread 对账。
+
+手动 AI 新授权要求 comment+edit，人工改名沿 edit。自动 gate 默认关闭；手动/自动 AI 的匹配引擎 CAS 正式发布均为独立门禁。验证边界见 [F07](../projects/20261009-agent-thread-auto-title/verification.md)，此补充不将 JWT 原专项提升为 active。
 
 ## 会话 Stop 委托（2026-10-07 用户批准）
 

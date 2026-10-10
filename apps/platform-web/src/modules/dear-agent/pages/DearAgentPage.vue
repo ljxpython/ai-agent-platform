@@ -183,15 +183,58 @@ async function deleteThread() {
     deleting.value = false;
   }
 }
+const threadTitleEpochs = ref<Map<string, number>>(new Map());
+
+function bumpTitleEpoch(threadId: string): number {
+  const current = threadTitleEpochs.value.get(threadId) ?? 0;
+  const next = current + 1;
+  threadTitleEpochs.value.set(threadId, next);
+  return next;
+}
+
+function handleTitleUpdated(
+  newTitle: string,
+  threadId: string,
+  fromEpoch?: number,
+) {
+  if (!threadId || !newTitle.trim()) return;
+  if (fromEpoch !== undefined) {
+    const currentEpoch = threadTitleEpochs.value.get(threadId) ?? 0;
+    if (fromEpoch < currentEpoch) return;
+  }
+  const match = threads.value.find((t) => t.thread_id === threadId);
+  if (match) {
+    match.metadata = {
+      ...match.metadata,
+      title: newTitle.trim(),
+      auto_title_pending: false,
+    };
+    threads.value = [...threads.value];
+  }
+  touchLocalThread(threadId);
+}
+
+function touchLocalThread(threadId: string, status?: ChatThread["status"]) {
+  if (!threadId) return;
+  const index = threads.value.findIndex((t) => t.thread_id === threadId);
+  if (index >= 0) {
+    const item = threads.value[index];
+    item.updated_at = new Date().toISOString();
+    if (status) item.status = status;
+    if (index > 0) {
+      threads.value.splice(index, 1);
+      threads.value.unshift(item);
+    }
+  }
+}
+
 async function handleRenameThread(threadId: string, newTitle: string) {
   if (!canWrite.value || !threadCan(threadId, "edit") || !newTitle.trim())
     return;
+  bumpTitleEpoch(threadId);
   try {
     await service.value.update(threadId, { title: newTitle.trim() });
-    const match = threads.value.find((t) => t.thread_id === threadId);
-    if (match) {
-      match.metadata = { ...match.metadata, title: newTitle.trim() };
-    }
+    handleTitleUpdated(newTitle.trim(), threadId);
   } catch (cause) {
     listError.value = cause instanceof Error ? cause.message : "重命名会话失败";
   }
@@ -201,18 +244,18 @@ async function handleAiSummarizeTitle(threadId: string) {
   if (
     !canWrite.value ||
     !threadCan(threadId, "edit") ||
+    !threadCan(threadId, "comment") ||
     summarizingThreadId.value
   )
     return;
+  bumpTitleEpoch(threadId);
   summarizingThreadId.value = threadId;
   try {
-    const res = await service.value.summarizeTitle(threadId);
+    const res = await service.value.summarizeTitle(threadId, {
+      mode: "manual",
+    });
     if (res?.title) {
-      const match = threads.value.find((t) => t.thread_id === threadId);
-      if (match) {
-        match.metadata = { ...match.metadata, title: res.title };
-        threads.value = [...threads.value];
-      }
+      handleTitleUpdated(res.title, threadId);
     }
   } catch (cause) {
     listError.value =
@@ -268,6 +311,10 @@ function attachCurrentView() {
     onRevoked: () => {
       selectedEntry.value = undefined;
       error.value = "当前会话访问权限已失效";
+    },
+    onTitleUpdated: (title, tId) => {
+      const targetId = tId || entry.threadId.value || mountedThread.value || "";
+      if (targetId) handleTitleUpdated(title, targetId);
     },
   });
 }
@@ -793,6 +840,10 @@ onScopeDispose(() => {
           :has-more="hasMore"
           :can-delete-thread="(id: string) => threadCan(id, 'delete')"
           :can-edit-thread="(id: string) => canWrite && threadCan(id, 'edit')"
+          :can-summarize-thread="
+            (id: string) =>
+              canWrite && threadCan(id, 'edit') && threadCan(id, 'comment')
+          "
           :summarizing-thread-id="summarizingThreadId || ''"
           @start-new-thread="newThread"
           @select-thread="openThread"

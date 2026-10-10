@@ -76,6 +76,7 @@ import RunStopReportDetails from "./RunStopReportDetails.vue";
 import { usePromptQueue } from "../composables/usePromptQueue";
 import { useServerPromptQueue } from "../composables/useServerPromptQueue";
 import { useFollowUpSuggestions } from "../composables/useFollowUpSuggestions";
+import { useAutomaticThreadTitle } from "../composables/useAutomaticThreadTitle";
 
 const activeView = ref<"chat" | "trajectory">("chat");
 
@@ -102,6 +103,7 @@ const emit = defineEmits<{
   refresh: [];
   reconnect: [];
   "update:draft": [value: string];
+  "title-updated": [title: string];
 }>();
 const context = defineModel<AgentContext>("context", { required: true });
 const recursionLimit = defineModel<number>("recursionLimit", {
@@ -778,6 +780,22 @@ const followUp = useFollowUpSuggestions({
       localError.value ||
       session.error.value,
     ),
+});
+
+useAutomaticThreadTitle({
+  projectId: () => props.projectId,
+  threadId: () => session.threadId.value || props.threadId,
+  runStatus: () => session.run.value?.status,
+  runId: () => session.run.value?.run_id,
+  accessThread: () => session.accessThread.value,
+  messages: displayedMessages,
+  visible: () => props.visible,
+  canWrite: () => props.canWrite,
+  isBusy: () => isSessionRunning.value,
+  turnState: () => turnState.value,
+  onTitleUpdated: (newTitle) => {
+    emit("title-updated", newTitle);
+  },
 });
 
 const handleStop = () => {

@@ -166,6 +166,7 @@ def _parse_scope(raw: object) -> RuntimeScope:
         "dear-governance-read",
         "dear-governance-write",
         "suggestions-generate",
+        "title-generate",
         "diagnostics-read",
         "usage-read",
         "thread-stop",
@@ -279,6 +280,7 @@ def verify_delegation_claims(
     if (
         scope.operation
         in {
+            "title-generate",
             "diagnostics-read",
             "usage-read",
             "thread-stop",

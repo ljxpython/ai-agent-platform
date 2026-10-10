@@ -34,6 +34,7 @@ const props = defineProps<{
   canDelete?: boolean;
   canDeleteThread?: (threadId: string) => boolean;
   canEditThread?: (threadId: string) => boolean;
+  canSummarizeThread?: (threadId: string) => boolean;
 }>();
 
 const emit = defineEmits<{
@@ -286,7 +287,11 @@ function jumpToPage() {
                     "
                     :disabled="
                       summarizingThreadId === item.id ||
-                      (canEditThread ? !canEditThread(item.id) : false)
+                      (canSummarizeThread
+                        ? !canSummarizeThread(item.id)
+                        : canEditThread
+                          ? !canEditThread(item.id)
+                          : false)
                     "
                     :aria-label="
                       summarizingThreadId === item.id

@@ -77,6 +77,8 @@ PRIVATE_RUNTIME_STATE_KEYS = {
     "pii_token_secret",
     "pii_scope",
     "pii_detectors",
+    "_runtime_title_seed",
+    "auto_title_pending",
     "_platform_model_resilience",
     "model_resilience",
     "fallback_model_id",
