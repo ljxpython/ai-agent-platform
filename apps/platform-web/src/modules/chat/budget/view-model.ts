@@ -167,6 +167,24 @@ export function safeExtractBudgetSafetyError(
         message: "Run time limit reached",
       };
     }
+    if (
+      code === "runtime_token_budget_exhausted" ||
+      type === "TokenBudgetExceededError"
+    ) {
+      return {
+        code: "runtime_token_budget_exhausted",
+        message: "本次执行因 Token 额度停止，任务可能未完成。",
+      };
+    }
+    if (
+      code === "runtime_token_budget_unverifiable" ||
+      type === "TokenBudgetUnverifiableError"
+    ) {
+      return {
+        code: "runtime_token_budget_unverifiable",
+        message: "用量无法确认，本次执行已停止新增工作。",
+      };
+    }
 
     // Support inferring from completed run object with status === 'error'
     if (asAny.status === "error") {
@@ -277,7 +295,13 @@ export function deriveBudgetViewModel(
   notice: BudgetNotice | null,
   safetyError: BudgetSafetyError | null,
   nativeStatus?: string,
+  historicalStopCode?:
+    | "token_budget_exhausted"
+    | "token_budget_unverifiable"
+    | null,
 ): BudgetViewModel | null {
+  const isRunning = nativeStatus === "running" || nativeStatus === "pending";
+
   // 1. Thread-level limit reached (highest restriction, confirmed by notice)
   if (
     notice &&
@@ -324,12 +348,88 @@ export function deriveBudgetViewModel(
     };
   }
 
-  // 3. Safety error codes (hard stops without custom notice or on error path)
+  // 3. Token budget hard stops (notice / safety error / historical stop code)
+  const isTokenExhausted =
+    notice?.code === "token_budget_exhausted" ||
+    safetyError?.code === "runtime_token_budget_exhausted" ||
+    historicalStopCode === "token_budget_exhausted";
+
+  if (isTokenExhausted) {
+    if (isRunning) {
+      // 在途触限过渡态：不清 busy、不发新请求、等待原生终态
+      return {
+        level: "warning",
+        isTerminal: false,
+        title: "Token额度已耗尽",
+        description: "已触发额度保护，正在确认执行结果",
+        code: "token_budget_exhausted",
+        scope: "run",
+        unit: "tokens_total",
+        remaining: 0,
+        limit: notice?.limit ?? null,
+        used: notice?.used ?? null,
+        actionType: "none",
+      };
+    }
+    // 原生已进入终态 (error / failed)
+    return {
+      level: "error",
+      isTerminal: true,
+      title: "本次执行因Token额度停止",
+      description: "本次执行因Token额度停止，任务可能未完成",
+      code: "token_budget_exhausted",
+      scope: "run",
+      unit: "tokens_total",
+      remaining: 0,
+      limit: notice?.limit ?? null,
+      used: notice?.used ?? null,
+      actionType: "adjust_draft",
+      actionLabel: "调整请求",
+    };
+  }
+
+  const isTokenUnverifiable =
+    notice?.code === "token_budget_unverifiable" ||
+    safetyError?.code === "runtime_token_budget_unverifiable" ||
+    historicalStopCode === "token_budget_unverifiable";
+
+  if (isTokenUnverifiable) {
+    if (isRunning) {
+      // 在途不可验证过渡态
+      return {
+        level: "warning",
+        isTerminal: false,
+        title: "Token用量无法确认",
+        description: "已触发额度保护，正在确认执行结果",
+        code: "token_budget_unverifiable",
+        scope: "run",
+        unit: "tokens_total",
+        remaining: null,
+        limit: notice?.limit ?? null,
+        used: notice?.used ?? null,
+        actionType: "none",
+      };
+    }
+    // 原生终态不可确认：不提供重试按钮，避免再次触发
+    return {
+      level: "error",
+      isTerminal: true,
+      title: "用量无法确认",
+      description: "用量无法确认，本次执行已停止新增工作",
+      code: "token_budget_unverifiable",
+      scope: "run",
+      unit: "tokens_total",
+      remaining: null,
+      limit: notice?.limit ?? null,
+      used: notice?.used ?? null,
+      actionType: "none",
+    };
+  }
+
+  // 4. Other safety error codes (hard stops without custom notice or on error path)
   if (safetyError) {
     switch (safetyError.code) {
       case "runtime_model_call_limit_reached":
-        // Notice scope is unknown when only native safetyError is present.
-        // DO NOT presume "run" and do not grant adjust_draft to prevent bypassing exhausted threads.
         return {
           level: "error",
           isTerminal: true,
@@ -383,12 +483,32 @@ export function deriveBudgetViewModel(
     }
   }
 
-  // 4. In-flight warnings (approaching / soft wrapup)
+  // 5. In-flight warnings (approaching / soft wrapup)
   if (notice) {
     // If native status is finished/success and notice was only approaching,
     // it was completed normally, warning should not persist as terminal error
     if (nativeStatus === "success") {
       return null;
+    }
+
+    if (notice.code === "token_budget_approaching") {
+      const detail =
+        typeof notice.remaining === "number"
+          ? `剩余 Token 约 ${notice.remaining.toLocaleString()}，正在收尾`
+          : "正在收尾";
+      return {
+        level: "warning",
+        isTerminal: false,
+        title: "Token额度接近上限",
+        description: detail,
+        code: notice.code,
+        scope: notice.budget_scope,
+        unit: notice.unit,
+        remaining: notice.remaining,
+        limit: notice.limit,
+        used: notice.used,
+        actionType: "none",
+      };
     }
 
     if (notice.code === "model_call_limit_approaching") {

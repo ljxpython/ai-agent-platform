@@ -86,6 +86,9 @@ PRIVATE_RUNTIME_STATE_KEYS = {
     "thread_tool_call_count",
     "run_tool_call_count",
     "runtime_prepare",
+    "token_budget",
+    "token_budget_policy",
+    "token_budget_stop_code",
 }
 
 

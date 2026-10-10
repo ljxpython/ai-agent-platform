@@ -7,7 +7,14 @@ from datetime import datetime, timedelta
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_validator,
+    model_validator,
+)
 
 from platform_api.core.errors import BadRequestError
 
@@ -155,11 +162,50 @@ class UsageSummary(UsageFields):
         return self
 
 
+class TokenBudgetSummary(UsageFields):
+    version: Literal[1]
+    budget_scope: Literal["run"]
+    unit: Literal["tokens_total"]
+    max_tokens: Annotated[int, Field(strict=True, ge=1, le=2**53 - 1)]
+    warn_at_tokens: Count
+    known_used_tokens: Count | None
+    remaining_tokens: Count | None
+    coverage: Literal["complete", "partial", "unavailable"]
+    stop_code: Literal["token_budget_exhausted", "token_budget_unverifiable"] | None
+
+    @field_validator("version", mode="before")
+    @classmethod
+    def check_version(cls, value):
+        if type(value) is not int or value != 1:
+            raise ValueError("Invalid token budget version")
+        return value
+
+    @model_validator(mode="after")
+    def validate_budget(self):
+        if self.warn_at_tokens != (self.max_tokens * 4 + 4) // 5:
+            raise ValueError("Inconsistent token warning threshold")
+        if self.known_used_tokens is None and self.coverage != "unavailable":
+            raise ValueError("Invalid token budget subtotal")
+        if self.coverage == "unavailable" and self.known_used_tokens not in (None, 0):
+            raise ValueError("Inconsistent token budget availability")
+        expected = max(0, self.max_tokens - (self.known_used_tokens or 0))
+        if self.remaining_tokens != (expected if self.coverage == "complete" else None):
+            raise ValueError("Inconsistent token budget coverage")
+        if (
+            self.stop_code == "token_budget_exhausted"
+            and self.known_used_tokens is not None
+            and self.known_used_tokens < self.max_tokens
+        ):
+            raise ValueError("Inconsistent token budget stop reason")
+        return self
+
+
 class RuntimeRunUsage(UsageSummary):
     thread_id: UUID
     run_id: UUID
     finalized: Annotated[bool, Field(strict=True)]
     calls: CallPage
+    token_budget: TokenBudgetSummary | None = None
 
 
 class RunUsage(RuntimeRunUsage):

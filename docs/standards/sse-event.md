@@ -1,6 +1,6 @@
 ---
 status: draft
-last_verified: 2026-10-07
+last_verified: 2026-10-09
 confidence: medium
 source_project: docs/projects/20260926-sse-event-contract/verification.md
 note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容量(S11)因HTTP/1.1入口阻塞，持续容量/堆增长/三段脱敏样例未验
@@ -39,10 +39,15 @@ budget_scope/code/limit/used/remaining/unit，未知字段删除，非法通知�
 | model_call_limit_approaching / model_call_limit_reached | model_calls | run / thread |
 | graph_step_limit_approaching | graph_supersteps | graph |
 | wrapup_started | seconds | run |
+| token_budget_approaching / token_budget_exhausted / token_budget_unverifiable | tokens_total | run |
 
 scope 为 primary/subagent；namespace 使用协议外层，notice_id 在相同 Run/graph namespace/维度内确定。
 run_id 最大128字符，notice_id最大256字符；数值为 null 或有限非负且不超过 JS safe integer，调用/步骤必须整数。
 没有工具预算 custom 或 graph reached custom；这两种硬异常按[错误出口](error-envelope.md)精确类型解释。
+
+Token 额度分支固定 scope=primary，代表根 native Run 全树；不按子 namespace 分配新余额。limit 是正安全整数，known used 可超额，remaining=max(0,limit-used)；unverifiable 的 used 是已知小计或 null、remaining 固定 null。Token approaching 只在 ceil(max*4/5)<=used<max 且可验证时有效，exhausted 只在确实拒绝新增工作时通知。notice_id 是不透明去重键；自然最后回答达到 cap 不生成 exhausted/失败事实。
+
+两个 Token 精确安全码在普通/Protocol/v3 的 tools/tasks/lifecycle/error/debug/checkpoint 错误槽位保留，异常正文仍隐藏。不新增物理 SSE 或状态机，通知不清 busy、不批准 HITL、不自动重发或加额恢复。历史通过现有 Run Usage 的可选摘要读取，已冻结样本见 [F01 前端交接](../projects/20260913-dearflow-agent/16-token-budget-frontend-handoff.md)。本补充不代表本规范容量门禁或 F01 浏览器验收已完成，draft 状态保留。
 
 Reference/Workflow 的 end 人工 AIMessage 带 `additional_kwargs.runtime_budget_notice`（仅 reached），
 用于历史辅助恢复；网络写入口拒绝该标记、预算 clock/latch/counters。end 仍是原生 success，不表示任务完整完成。

@@ -26,6 +26,7 @@ from runtime_service.middlewares import (
     ModelResilienceMiddleware,
     RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
+    TokenBudgetMiddleware,
     resolve_wrapup_after_seconds,
 )
 from runtime_service.observability import with_langfuse_tracing
@@ -275,6 +276,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             local_fallback=runtime_model is not None or local_test_auth,
             probe_only=probe_only,
         ),
+        TokenBudgetMiddleware(),
         ExecutionBudgetMiddleware(
             run_limit=10, exit_behavior="end", graph_key="reference_agent"
         ),

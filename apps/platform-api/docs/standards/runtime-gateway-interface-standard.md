@@ -101,6 +101,16 @@ phase为accepted/stopping/stopped/no_active_run/confirmation_unavailable/rejecte
 
 Runtime后台对旧固定目标inbox做checkpoint对账，consumed保留、其余user_stopped；后来的新Run不属于旧Stop。Stop不删除工作区、不停止独立Terminal/detached任务、不抹掉审批；显式resume仍绑定当前interrupt ID并复用服务端原执行快照。Runtime存储503按既有契约公开502 `stop_storage_unavailable`，提交超时仍是未知。前端状态机/代码落点/F01–F10见[实现版交接](../../../../docs/projects/20261007-agent-run-cancellation/frontend-handoff.md)。
 
+## Run Token 额度保护（2026-10-09 用户批准）
+
+Token 额度沿现有 `runtime_budget_notice` v1 custom，固定 `unit=tokens_total`、`budget_scope=run`、`scope=primary`。三码为 `token_budget_approaching`、`token_budget_exhausted`、`token_budget_unverifiable`；used/remaining 为非负安全整数或 null，unknown 的 remaining 必须 null。额度通知属于 native 根 Run 全树，不是各子任务余额，不替代原生终态确认。
+
+`TokenBudgetExceededError` / `TokenBudgetUnverifiableError` 及其完整机器码精确投影为 `runtime_token_budget_exhausted` / `runtime_token_budget_unverifiable`，正文和堆栈不公开；JSON、普通 SSE、Protocol/v3 的 tools/tasks/lifecycle/debug/checkpoint 错误槽位一致。两个码是 HTTP200 数据/流内的执行失败原因，不触发登出或撤权，不按任意字符串子串猜触限。
+
+Run Usage v1 新增可选 `token_budget`：max/warn、known_used/remaining、coverage 和 stop_code；旧响应省略或 null 均兼容，Thread Usage 不扩展。自然最终回答用量达到/超过 cap 时 stop_code 可 null，不能仅按 used>=max 推断失败。沿原 usage-read、Thread ACL 与 no-store，不新增权限或 endpoint；`token_budget/token_budget_policy/token_budget_stop_code` 在客户端写入/普通 Runtime 状态出口拒绝或剥离，专门 Usage DTO 是安全摘要出口。
+
+实际 DTO/schema、HTTP 样本与前端任务见 [F01 交接](../../../../docs/projects/20260913-dearflow-agent/16-token-budget-frontend-handoff.md)。后端默认关闭；部署变量不等于公开 Agent 配置，不新增 AgentEditor 表单。
+
 ## 变更验证
 
 ### 上下文维护（2026-10-06 用户批准）

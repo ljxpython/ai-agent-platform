@@ -51,6 +51,16 @@ run/thread/exit_behavior；主子图分别声明 scope，禁止合并为未实�
 Agent invocation 起算。通知沿现有 custom writer，不接 Slack 或新事件存储；公开数据由平台白名单投影。
 接入/自定义 StateGraph 样例见 [Showcase](../../src/runtime_service/services/demo/showcase_demo/README.md)。
 
+## Run Token 额度保护
+
+`RUNTIME_TOKEN_BUDGET_ENABLED` 默认 false；启用要求 `RUNTIME_USAGE_ENABLED=true`、Runtime 应用迁移 `0003_token_budget` 和完整受信 native Run 身份。`RUNTIME_TOKEN_BUDGET_MAX_TOKENS` 默认 100000，范围为正 JS safe integer；固定 80% 向后续模型追加已有 system 收尾指令。API/Worker 使用一致部署配置，客户端 Context 不能指定或提升此额度，schema/probe 不访问账本。
+
+复用唯一 `RuntimeUsageCallback` 与 `runtime_usage_calls`，按 model_call_id 增量去重；`RunTokenBudget` 是 Run 绑定、可恢复投影，不扫描 Thread 消息、不新增全局缓存。策略在 `runtime_usage_runs` 首写冻结，Worker 接管同 Run 时恢复消耗与停止原因，旧 attempt 未确认 started 或持久化故障按不可验证处理。四图主子、Workflow 内层及可信摘要/vision/memory 共享额度。同步派发守卫只检查，不另采集或计价；启用时 SDK max_retries=0，防止单次 callback 内发生隐藏物理重试。
+
+额度耗尽或不可验证时，拒绝新增模型/工具工作，分别传播 `TokenBudgetExceededError` / `TokenBudgetUnverifiableError`；既有取消、HITL、retry/fallback 与 Worker 基础设施恢复语义保留。自然最终回答达到/超过 cap 仍可成功，只有实际拒绝新增工作才持久记录 stop_code；可选 memory 后处理在不足时跳过并保留主回答。已在途请求可完成并超额，这是已观测 Token 保护，不是供应商账单严格封顶。
+
+通知复用 custom `runtime_budget_notice`；历史原因由现有 Run Usage 的可选 `token_budget` 读取。扩展列与历史用量保留，回退先暂停/drain、统一关闭开关，再恢复已验证旧源码，不做删除式 downgrade。实现和验证见 [F01](../../../../docs/projects/20260913-dearflow-agent/15-token-budget-governance.md)，前端接入见 [交接](../../../../docs/projects/20260913-dearflow-agent/16-token-budget-frontend-handoff.md)。
+
 ## 准备与重试装配
 
 `middlewares/run_prepare.py` 的 `RunPrepareMiddleware` 供可幂等的资源准备继承：实现 `_validate()`、`_is_prepared()`、`_prepare()`，传入固定 component/revision 与 resolved config_hash。授权/路径检查每次执行，成功后提交私有 `runtime_prepare`；标记不保护 checkpoint 提交前的副作用，操作仍需幂等。不缓存模型、凭据或 MCP 连接。

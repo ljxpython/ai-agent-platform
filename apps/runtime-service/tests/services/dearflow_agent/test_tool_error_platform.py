@@ -70,10 +70,13 @@ def stack(tmp_path, request):
         spec["provider_port"] = port()
         spec["provider_url"] = f"http://127.0.0.1:{spec['provider_port']}/v1"
     spec["config"] = {
-        "graphs": {
-            "dearflow_agent": "fixture.py:graph",
-            "showcase_demo": "fixture.py:showcase_graph",
-        },
+        "graphs": options.get(
+            "graphs",
+            {
+                "dearflow_agent": "fixture.py:graph",
+                "showcase_demo": "fixture.py:showcase_graph",
+            },
+        ),
         "auth": {"path": "fixture.py:auth"},
         "http": {"disable_mcp": True},
     }
@@ -155,6 +158,7 @@ def stack(tmp_path, request):
                     == str(processes[role].pid)
                 ),
                 process=processes[role],
+                timeout=options.get("startup_timeout", 180),
             )
         return processes[role]
 
@@ -286,9 +290,14 @@ def stack(tmp_path, request):
                 == 200
             ),
             process=runtime_process,
+            timeout=options.get("startup_timeout", 180),
         )
         platform_process = start("platform")
-        wait_for(lambda: Path(spec["ready"]).is_file(), process=platform_process)
+        wait_for(
+            lambda: Path(spec["ready"]).is_file(),
+            process=platform_process,
+            timeout=options.get("startup_timeout", 180),
+        )
         wait_for(
             lambda: (
                 httpx.get(

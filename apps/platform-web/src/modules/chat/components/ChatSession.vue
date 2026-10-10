@@ -19,6 +19,7 @@ import WorkspacePanel from "@/components/workspace/WorkspacePanel.vue";
 import ChatAgentStatusBar from "./ChatAgentStatusBar.vue";
 import { useRunBudget } from "../composables/useRunBudget";
 import { safeExtractBudgetSafetyError } from "../budget/view-model";
+import { getRunUsage } from "@/services/threads/usage.service";
 import {
   resolveDisplayedMessages,
   hasOptimisticEchoed,
@@ -501,6 +502,13 @@ const displayedMessages = computed(() => {
   });
 });
 
+const historicalBudgetStopCode = ref<
+  "token_budget_exhausted" | "token_budget_unverifiable" | null
+>(null);
+
+let activeReconcileAbortController: AbortController | null = null;
+let lastReconciledRunId: string | null = null;
+
 const runBudget = useRunBudget(stream, {
   runId: computed(() => session.run.value?.run_id ?? null),
   nativeError: computed(
@@ -518,6 +526,89 @@ const runBudget = useRunBudget(stream, {
     return msgs.length > 0 ? msgs[msgs.length - 1] : null;
   }),
   isRunning: isSessionRunning,
+  historicalStopCode: historicalBudgetStopCode,
+});
+
+// 首屏/刷新历史终态静默对账：当 Run 处于终态 error 且本地缺少原因时发起一次性查询
+watch(
+  [
+    () => session.run.value?.run_id,
+    () => session.run.value?.status,
+    () => isSessionRunning.value,
+  ],
+  async ([currentRunId, currentStatus, running]) => {
+    if (running || !currentRunId || !props.threadId) {
+      if (activeReconcileAbortController) {
+        activeReconcileAbortController.abort();
+        activeReconcileAbortController = null;
+      }
+      if (!currentRunId || currentRunId !== lastReconciledRunId) {
+        historicalBudgetStopCode.value = null;
+      }
+      return;
+    }
+
+    const statusStr = String(currentStatus || "");
+    const isTerminalError =
+      statusStr === "error" ||
+      statusStr === "failed" ||
+      Boolean((session.run.value as any)?.error);
+    if (!isTerminalError) {
+      historicalBudgetStopCode.value = null;
+      return;
+    }
+
+    // 若已经有活动的 live notice 或本地已匹配出 safety error，无需对账
+    if (runBudget.activeNotice.value || runBudget.safetyError.value) {
+      return;
+    }
+
+    // 防止同 Run 重复发起对账
+    if (
+      lastReconciledRunId === currentRunId &&
+      historicalBudgetStopCode.value !== null
+    ) {
+      return;
+    }
+
+    if (activeReconcileAbortController) {
+      activeReconcileAbortController.abort();
+    }
+    const controller = new AbortController();
+    activeReconcileAbortController = controller;
+    lastReconciledRunId = currentRunId;
+
+    try {
+      const usageDto = await getRunUsage(props.threadId, currentRunId, {
+        projectId: props.projectId,
+        signal: controller.signal,
+      });
+      if (controller.signal.aborted) return;
+      if (session.run.value?.run_id !== currentRunId) return;
+
+      const stopCode = usageDto.token_budget?.stop_code;
+      if (
+        stopCode === "token_budget_exhausted" ||
+        stopCode === "token_budget_unverifiable"
+      ) {
+        historicalBudgetStopCode.value = stopCode;
+      }
+    } catch {
+      // 容错处理：网络中断或权限缺失静默忽略，不破坏现有展示
+    } finally {
+      if (activeReconcileAbortController === controller) {
+        activeReconcileAbortController = null;
+      }
+    }
+  },
+  { immediate: true },
+);
+
+onScopeDispose(() => {
+  if (activeReconcileAbortController) {
+    activeReconcileAbortController.abort();
+    activeReconcileAbortController = null;
+  }
 });
 
 const canSubmit = computed(

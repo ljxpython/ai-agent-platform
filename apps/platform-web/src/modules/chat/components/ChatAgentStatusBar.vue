@@ -65,6 +65,16 @@ const shouldRender = computed(() => {
   return Boolean(props.error || props.budget);
 });
 
+const isInFlightHardStop = computed(() => {
+  return Boolean(
+    props.isRunning &&
+    props.budget &&
+    !props.budget.isTerminal &&
+    (props.budget.code === "token_budget_exhausted" ||
+      props.budget.code === "token_budget_unverifiable"),
+  );
+});
+
 const statusText = computed(() => {
   // 1. 人工审批最高优先级
   if (props.isInterrupted || resolvedState.value === "awaiting_review") {
@@ -86,6 +96,9 @@ const statusText = computed(() => {
   // 3. 运行态
   if (props.isRunning) {
     if (props.budget && !props.budget.isTerminal) {
+      if (isInFlightHardStop.value) {
+        return props.budget.description;
+      }
       return `${props.budget.title}（${props.budget.description}）`;
     }
     return "Agent 正在执行...";
@@ -165,6 +178,8 @@ const isBlue = computed(() => {
 <template>
   <div
     v-if="shouldRender"
+    role="status"
+    data-testid="chat-agent-status-bar"
     aria-live="polite"
     class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-lg border shadow-sm transition-all"
     :class="{
@@ -266,11 +281,11 @@ const isBlue = computed(() => {
       class="flex items-center gap-2 shrink-0 self-end sm:self-center"
     >
       <button
-        :disabled="disabled"
-        class="px-3 py-1.5 text-xs text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-colors"
+        :disabled="disabled || isInFlightHardStop"
+        class="px-3 py-1.5 text-xs text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-colors disabled:opacity-50"
         @click="emit('cancel')"
       >
-        取消
+        {{ isInFlightHardStop ? "等待停止中..." : "取消" }}
       </button>
     </div>
   </div>

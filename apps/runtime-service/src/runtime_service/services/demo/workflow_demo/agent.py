@@ -16,6 +16,7 @@ from runtime_service.middlewares import (
     ModelErrorMiddleware,
     ModelResilienceMiddleware,
     TimeoutWrapupMiddleware,
+    TokenBudgetMiddleware,
     resolve_wrapup_after_seconds,
 )
 from runtime_service.observability import with_langfuse_tracing
@@ -180,6 +181,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             tools=[read_reference],
             system_prompt=_DEFAULTS.system_prompt,
             middleware=[
+                TokenBudgetMiddleware(writer=writer),
                 ExecutionBudgetMiddleware(
                     run_limit=10,
                     exit_behavior="end",
@@ -223,10 +225,8 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     bound_configurable.pop(RUN_BUDGET_KEY, None)
     bound_config["configurable"] = bound_configurable
     bound_metadata = dict(bound_config.get("metadata") or {})
-    bound_metadata.pop("run_id", None)
     bound_config["metadata"] = bound_metadata
     bound_config.pop("run_id", None)
-    startup.metadata.pop("run_id", None)
     with startup.phase("factory.agent_compile"):
         graph = build_graph(
             model_agent_for,

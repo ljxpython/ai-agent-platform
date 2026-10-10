@@ -1,0 +1,141 @@
+{
+  "provider": "real_deepseek",
+  "trial_max_tokens": 4096,
+  "max_output_per_call": 128,
+  "physical_calls": 2,
+  "usage": {
+    "version": 1,
+    "availability": "available",
+    "unavailable_reason": null,
+    "tokens": {
+      "input_tokens": 31,
+      "output_tokens": 12,
+      "total_tokens": 43,
+      "cache_read_tokens": null,
+      "cache_creation_tokens": 0,
+      "cache_creation_5m_tokens": 0,
+      "cache_creation_1h_tokens": 0,
+      "reasoning_tokens": null
+    },
+    "known_tokens": {
+      "input_tokens": 31,
+      "output_tokens": 12,
+      "total_tokens": 43,
+      "cache_read_tokens": null,
+      "cache_creation_tokens": 0,
+      "cache_creation_5m_tokens": 0,
+      "cache_creation_1h_tokens": 0,
+      "reasoning_tokens": null
+    },
+    "coverage": {
+      "observed_call_count": 2,
+      "reported_call_count": 2,
+      "missing_usage_call_count": 0,
+      "incomplete_call_count": 0,
+      "collection_degraded": false,
+      "excluded_operations": [
+        "suggestions",
+        "title",
+        "non_llm_provider_fees"
+      ]
+    },
+    "cost": {
+      "status": "unknown",
+      "estimated_cost_usd": null,
+      "known_cost_usd": null,
+      "currency": "USD",
+      "source": null,
+      "unpriced_call_count": 2,
+      "pricing_versions": []
+    },
+    "truncated": false,
+    "thread_id": "bde177c7-499f-4af0-bfee-d0500798278b",
+    "run_id": "ac5ee711-39cb-4d56-9a44-3e88b2ea7a9b",
+    "finalized": true,
+    "calls": {
+      "items": [
+        {
+          "provider": "deepseek",
+          "model_name": "DeepSeek-V4-Flash",
+          "scope": "auxiliary",
+          "purpose": "summarization",
+          "namespace": [
+            "summary_and_child"
+          ],
+          "outcome": "completed",
+          "quality": "reported",
+          "model_call_id": "01a11e9a-8e32-70b1-92b6-e1bc280d9462",
+          "model_id": null,
+          "started_at": "2026-10-09T03:00:07.858685+00:00",
+          "ended_at": "2026-10-09T03:00:13.737355+00:00",
+          "tokens": {
+            "input_tokens": 19,
+            "output_tokens": 9,
+            "total_tokens": 28,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": null
+          },
+          "cost": {
+            "status": "unknown",
+            "estimated_cost_usd": null,
+            "known_cost_usd": null,
+            "currency": "USD",
+            "source": null,
+            "unpriced_call_count": 1,
+            "pricing_versions": []
+          }
+        },
+        {
+          "provider": "deepseek",
+          "model_name": "DeepSeek-V4-Flash",
+          "scope": "subagent",
+          "purpose": "agent",
+          "namespace": [
+            "summary_and_child",
+            "model"
+          ],
+          "outcome": "completed",
+          "quality": "reported",
+          "model_call_id": "01a11e9a-a543-7970-9aba-437a2cbc13c0",
+          "model_id": null,
+          "started_at": "2026-10-09T03:00:13.764151+00:00",
+          "ended_at": "2026-10-09T03:00:14.082670+00:00",
+          "tokens": {
+            "input_tokens": 12,
+            "output_tokens": 3,
+            "total_tokens": 15,
+            "cache_read_tokens": null,
+            "cache_creation_tokens": 0,
+            "cache_creation_5m_tokens": 0,
+            "cache_creation_1h_tokens": 0,
+            "reasoning_tokens": null
+          },
+          "cost": {
+            "status": "unknown",
+            "estimated_cost_usd": null,
+            "known_cost_usd": null,
+            "currency": "USD",
+            "source": null,
+            "unpriced_call_count": 1,
+            "pricing_versions": []
+          }
+        }
+      ],
+      "next_cursor": null
+    },
+    "token_budget": {
+      "version": 1,
+      "budget_scope": "run",
+      "unit": "tokens_total",
+      "max_tokens": 4096,
+      "warn_at_tokens": 3277,
+      "known_used_tokens": 43,
+      "remaining_tokens": 4053,
+      "coverage": "complete",
+      "stop_code": null
+    }
+  }
+}

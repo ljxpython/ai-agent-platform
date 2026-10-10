@@ -14,10 +14,11 @@
 
 | 规范 | 文件 | 状态 | last_verified | 置信度 | 源专项 |
 |---|---|---|---|---|---|
-| 错误响应 Envelope | [error-envelope.md](error-envelope.md) | active | 2026-10-08 | 🟢 high | [20260926-error-response-contract](../projects/20260926-error-response-contract/README.md) · [执行预算安全码](../projects/20261007-agent-execution-budget/verification.md) · [Stop 错误映射](../projects/20261007-agent-run-cancellation/verification.md) · [Workspace 执行保护](../projects/20261007-agent-workspace-resilience/README.md) |
+| Worktree 开发与资源隔离 | [worktree-development.md](worktree-development.md) | active | 2026-10-10 | high | [Worktree 本地栈专项](../projects/20261010-worktree-local-stack/README.md) |
+| 错误响应 Envelope | [error-envelope.md](error-envelope.md) | active | 2026-10-09 | 🟢 high | [20260926-error-response-contract](../projects/20260926-error-response-contract/README.md) · [执行预算安全码](../projects/20261007-agent-execution-budget/verification.md) · [Stop 错误映射](../projects/20261007-agent-run-cancellation/verification.md) · [Workspace 执行保护](../projects/20261007-agent-workspace-resilience/README.md) · [F01精确Token码](../projects/20260913-dearflow-agent/15-token-budget-governance.md) |
 | 链路追踪传播 | [trace-propagation.md](trace-propagation.md) | active | 2026-09-27 | 🟢 high | [20260926-trace-context-propagation](../projects/20260926-trace-context-propagation/README.md) |
 | Delegation JWT Schema | [delegation-jwt.md](delegation-jwt.md) | draft | 2026-10-08 | 🟡 medium | [Delegation 专项](../projects/20260926-delegation-jwt-contract/README.md) · [diagnostics-read](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md) · [usage-read](../projects/20261007-agent-usage-cost-governance/03-platform-cost-contract.md) · [Stop 精确委托](../projects/20261007-agent-run-cancellation/verification.md) |
-| SSE 事件格式契约 | [sse-event.md](sse-event.md) | draft | 2026-10-08 | 🟡 medium | [SSE 专项](../projects/20260926-sse-event-contract/README.md) · [执行错误投影](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md) · [执行预算 custom](../projects/20261007-agent-execution-budget/frontend-handoff.md) · [Workspace 错误与 tasks 脱敏](../projects/20261007-agent-workspace-resilience/README.md) |
+| SSE 事件格式契约 | [sse-event.md](sse-event.md) | draft | 2026-10-09 | 🟡 medium | [SSE 专项](../projects/20260926-sse-event-contract/README.md) · [执行错误投影](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md) · [执行预算 custom](../projects/20261007-agent-execution-budget/frontend-handoff.md) · [Workspace 错误与 tasks 脱敏](../projects/20261007-agent-workspace-resilience/README.md) · [F01 Token custom](../projects/20260913-dearflow-agent/16-token-budget-frontend-handoff.md) |
 
 ## 未完成项
 
@@ -27,6 +28,8 @@
 ## 更新规则
 
 2026-10-07 补充已批准的 Context v5、受控维护与整理 custom 契约，证据见 [上下文专项](../projects/20261006-agent-context-window-governance/verification.md)。此补充不代表上面原专项的剩余门禁通过。
+
+2026-10-09 补充已批准且完成非前端验证的 F01 Token 精确错误码、三类 custom 和 Run Usage 可选摘要，证据见 [F01](../projects/20260913-dearflow-agent/15-token-budget-governance.md)。前端及联合 Final 待接续，SSE/JWT 原草案状态不毕业。
 
 - 标准发生变化时，对应文件的 `last_verified` 和 `status` 必须同步更新
 - 专项从 partial/blocked → done 后，将对应文件 `status` 改为 `active`

@@ -93,6 +93,9 @@ def default_port(key: str) -> int | None:
     if key == "runtime-api":
         val = os.environ.get("RUNTIME_PORT") or os.environ.get("RUNTIME_SERVICE_PORT")
         return int(val) if val and val.isdigit() else 8123
+    if key == "redis":
+        val = os.environ.get("LOCAL_STACK_REDIS_PORT")
+        return int(val) if val and val.isdigit() else None
     return None
 
 
@@ -108,6 +111,8 @@ def is_within(path: Path | None, parent: Path) -> bool:
 
 def matches(key: str, args: list[str]) -> bool:
     names = [Path(arg).name for arg in args]
+    if key == "redis":
+        return "redis-server" in names
     if key == "platform-web":
         return any(name in {"vite", "vite.js"} for name in names) or (
             any(name in {"pnpm", "pnpm.cjs", "npm", "npm-cli.js"} for name in names)
@@ -125,11 +130,22 @@ def matches(key: str, args: list[str]) -> bool:
     ) and mode in args
 
 
+def process_directory(root: Path, key: str) -> Path:
+    if key == "redis":
+        directory = root / ".local-stack"
+    else:
+        app = "runtime-service" if key.startswith("runtime-") else key
+        directory = root / "apps" / app
+    resolved = directory.resolve()
+    if not resolved.is_relative_to(root.resolve()):
+        raise ValueError("Refusing to manage processes from outside this repository")
+    return resolved
+
+
 def owned(
     root: Path, key: str, port: int | None = None
 ) -> dict[int, tuple[int, list[str]]]:
-    app = "runtime-service" if key.startswith("runtime-") else key
-    directory = (root / "apps" / app).resolve()
+    directory = process_directory(root, key)
     dir_str = str(directory)
     target_port = port if port is not None else default_port(key)
 
@@ -221,8 +237,7 @@ def stop(root: Path, key: str, port: int | None = None) -> None:
         if targets:
             time.sleep(0.1)
 
-    app = "runtime-service" if key.startswith("runtime-") else key
-    directory = (root / "apps" / app).resolve()
+    directory = process_directory(root, key)
     for pid, identity in targets.items():
         curr = snapshot()
         if (

@@ -1,6 +1,6 @@
 ---
 status: active
-last_verified: 2026-10-07
+last_verified: 2026-10-09
 confidence: high
 source_project: docs/projects/20260926-error-response-contract/verification.md
 ---
@@ -22,7 +22,7 @@ source_project: docs/projects/20260926-error-response-contract/verification.md
 
 授权成功的 Thread JSON 中 `error` 和 state/history 中 `tasks[].error` 属于执行错误槽位，保留字符串/对象形状及有限类型。未知对象为 `code=runtime_execution_failed`、固定 `message=Runtime execution failed`；未知字符串为 `Runtime execution failed`。
 
-四种精确执行预算异常使用以下固定映射，不公开异常正文/堆栈，不修改原生 Run 状态，不清理普通消息/工具正文。原生 Run GET 没有 error 字段，Thread.error 不能作为历史 Run 的原因。流内对应规则见 [SSE 契约](sse-event.md)。
+执行预算异常使用以下固定映射，不公开异常正文/堆栈，不修改原生 Run 状态，不清理普通消息/工具正文。原生 Run GET 没有 error 字段，Thread.error 不能作为历史 Run 的原因。流内对应规则见 [SSE 契约](sse-event.md)。
 
 | 原生精确类型 | 公开 code | 固定 message |
 | --- | --- | --- |
@@ -30,10 +30,14 @@ source_project: docs/projects/20260926-error-response-contract/verification.md
 | ModelCallLimitExceededError | runtime_model_call_limit_reached | Model call limit reached |
 | ToolCallLimitExceededError | runtime_tool_call_limit_reached | Tool call limit reached |
 | RunTimedOut | runtime_run_timeout | Run time limit reached |
+| TokenBudgetExceededError | runtime_token_budget_exhausted | 本次执行因 Token 额度停止，任务可能未完成。 |
+| TokenBudgetUnverifiableError | runtime_token_budget_unverifiable | 用量无法确认，本次执行已停止新增工作。 |
 
 Provider TimeoutError/APITimeoutError 保持泛化，不解释为 Run 超时；字符串中含类型名称也不分类。
 预算字段是成功 HTTP 响应/事件中的执行原因，不触发登出或权限变更。获批方案与验证见
 [执行预算专项](../projects/20261007-agent-execution-budget/verification.md)。
+
+Token 类型和完整 `runtime.token_budget.{exhausted,unverifiable}` / 公开机器码都精确匹配；包含型字符串不分类。实时通知不代表停止确认；旧事件过期后通过 Run Usage 的可选 `token_budget.stop_code` 查询原因。自然回答达到上限可 success 且 stop_code=null。后端证据与前端剩余项见 [F01](../projects/20260913-dearflow-agent/15-token-budget-governance.md)。已批准的旧四码字符串匹配差异仍在专项 R5 记录，不由本轮扩大修改。
 
 已知 Workspace 错误按完整五码精确投影为稳定码和固定说明，原生 `RuntimeWorkspaceError` 的 `message` 可作为精确机器码来源；不从嵌入文本抽码。详见 [Workspace 交接契约](../projects/20261007-agent-workspace-resilience/frontend-handoff.md)。不修改原生 Run 状态，普通消息/工具正文、artifact/result 不是执行错误槽位；私有字段仍递归清理。
 

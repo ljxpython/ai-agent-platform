@@ -20,7 +20,10 @@ from runtime_service.messaging import MessageInbox
 from runtime_service.middlewares.conversation_offloading import (
     is_conversation_maintenance,
 )
-from runtime_service.observability.usage import usage_only_config
+from runtime_service.observability.usage import (
+    current_runtime_usage_callback,
+    usage_only_config,
+)
 from runtime_service.runtime import RuntimeAuthError
 from runtime_service.services.dearflow_agent.memory import FactInput, MemoryStorage
 from runtime_service.services.dearflow_agent.memory_access import memory_allowed
@@ -140,6 +143,14 @@ class MemoryContextMiddleware(AgentMiddleware):
     async def aafter_agent(self, state, runtime):
         if is_conversation_maintenance(runtime):
             return
+        usage = current_runtime_usage_callback()
+        if usage is not None:
+            budget_state = usage.check_budget(optional=True)
+            if budget_state in {"exhausted", "unverifiable"}:
+                logger.info(
+                    "memory_extraction_skipped reason=token_budget_%s", budget_state
+                )
+                return
         source = state.get("dear_memory_source", {})
         if not await memory_allowed(runtime):
             return
@@ -221,6 +232,11 @@ class MemoryContextMiddleware(AgentMiddleware):
                 else selected[0]["text"]
             )
             for attempt in range(2):
+                if usage is not None and usage.check_budget(optional=True) in {
+                    "exhausted",
+                    "unverifiable",
+                }:
+                    return
                 remaining = (
                     datetime.fromisoformat(deadline) - datetime.now(UTC)
                 ).total_seconds()

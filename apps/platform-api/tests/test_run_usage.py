@@ -211,3 +211,79 @@ def test_http_uses_no_store_and_frozen_contract():
             assert response.json()["unavailable_reason"] == "not_recorded"
 
     asyncio.run(run())
+
+
+def token_budget(**changes):
+    return {
+        "version": 1,
+        "budget_scope": "run",
+        "unit": "tokens_total",
+        "max_tokens": 100,
+        "warn_at_tokens": 80,
+        "known_used_tokens": 105,
+        "remaining_tokens": 0,
+        "coverage": "complete",
+        "stop_code": "token_budget_exhausted",
+        **changes,
+    }
+
+
+def test_optional_budget_old_payload_and_projection():
+    assert RuntimeRunUsage.model_validate(summary()).token_budget is None
+    for value in (
+        None,
+        token_budget(),
+        token_budget(stop_code=None),
+        token_budget(
+            remaining_tokens=None,
+            coverage="partial",
+            stop_code="token_budget_unverifiable",
+        ),
+    ):
+        result = RuntimeRunUsage.model_validate({**summary(), "token_budget": value})
+        assert (
+            result.token_budget is None or result.token_budget.known_used_tokens == 105
+        )
+    result = RuntimeRunUsage.model_validate(
+        {**summary(), "token_budget": token_budget(prompt="SECRET")}
+    )
+    assert "SECRET" not in result.model_dump_json()
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"version": True},
+        {"version": 1.0},
+        {"version": "1"},
+        {"max_tokens": True},
+        {"known_used_tokens": -1},
+        {"known_used_tokens": 2**53},
+        {"warn_at_tokens": 95},
+        {"remaining_tokens": 1},
+        {"scope": "subagent", "budget_scope": "thread"},
+        {"stop_code": "anything"},
+        {"coverage": "partial"},
+        {"known_used_tokens": 10, "remaining_tokens": 90},
+    ],
+)
+def test_invalid_budget_dto(changes):
+    with pytest.raises(ValidationError):
+        RuntimeRunUsage.model_validate(
+            {**summary(), "token_budget": token_budget(**changes)}
+        )
+
+
+def test_unrepresentable_budget_subtotal_is_unavailable():
+    value = token_budget(
+        known_used_tokens=None,
+        coverage="unavailable",
+        remaining_tokens=None,
+        stop_code="token_budget_unverifiable",
+    )
+    assert (
+        RuntimeRunUsage.model_validate(
+            {**summary(), "token_budget": value}
+        ).token_budget.known_used_tokens
+        is None
+    )

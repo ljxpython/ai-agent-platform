@@ -245,6 +245,13 @@ def _redact_sse_frame(frame: bytes, *, protocol: bool = True) -> bytes:
         event_data = redact_execution_fields(event_data)
     elif method == "error":
         event_data = project_execution_error(event_data)
+    elif method == "tools" and isinstance(event_data, dict) and "error" in event_data:
+        projected = project_execution_error(event_data["error"])
+        if isinstance(projected, dict) and projected.get("code") in {
+            "runtime_token_budget_exhausted",
+            "runtime_token_budget_unverifiable",
+        }:
+            event_data = {**event_data, "error": projected}
     elif (
         method == "debug"
         and isinstance(event_data, dict)

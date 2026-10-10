@@ -67,3 +67,25 @@ def test_runtime_config_accepts_disabled_reminder_with_small_hard_limit(
         module.validate(_write(tmp_path, _base(GRAPHHARBOR_RUN_TIMEOUT_SECONDS="1")))
         == []
     )
+
+
+@pytest.mark.parametrize("maximum", ["0", "-1", "True", "1.5", str(2**53)])
+def test_invalid_token_budget_deployment_config(tmp_path, monkeypatch, maximum):
+    monkeypatch.setenv("RUNTIME_TOKEN_BUDGET_ENABLED", "true")
+    monkeypatch.setenv("RUNTIME_USAGE_ENABLED", "true")
+    monkeypatch.setenv("RUNTIME_TOKEN_BUDGET_MAX_TOKENS", maximum)
+    assert any(
+        "MAX_TOKENS" in item for item in module.validate(_write(tmp_path, _base()))
+    )
+
+
+@pytest.mark.parametrize("enabled", ["true", "on"])
+def test_token_budget_requires_usage_and_storage(tmp_path, monkeypatch, enabled):
+    monkeypatch.setenv("RUNTIME_TOKEN_BUDGET_ENABLED", "true")
+    monkeypatch.setenv("RUNTIME_TOKEN_BUDGET_MAX_TOKENS", "100")
+    monkeypatch.setenv("RUNTIME_USAGE_ENABLED", "false")
+    errors = module.validate(_write(tmp_path, _base()))
+    assert any("RUNTIME_USAGE_ENABLED" in item for item in errors)
+    monkeypatch.setenv("RUNTIME_USAGE_ENABLED", enabled)
+    monkeypatch.setenv("DATABASE_URI", "postgresql://test/test")
+    assert module.validate(_write(tmp_path, _base())) == []
