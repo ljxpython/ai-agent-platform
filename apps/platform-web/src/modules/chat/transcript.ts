@@ -778,6 +778,7 @@ const RECOVERY_HINT_MAP: Record<string, string> = {
   correct_input: "可修正参数",
   choose_alternative: "可选择其他方式",
   do_not_repeat: "先核对结果",
+  use_execute_for_short_task: "短任务可改用前台执行，最长60秒",
 };
 
 const MAX_PLAIN_ERROR_SUMMARY_CHARS = 100;

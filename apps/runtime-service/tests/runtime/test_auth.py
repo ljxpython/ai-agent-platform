@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import time
+from uuid import uuid4
 
 import jwt
 import pytest
@@ -14,6 +17,79 @@ from runtime_service.runtime.errors import RuntimeAuthError
 from runtime_service.runtime.resolver import runtime_context_hash
 
 SECRET = "r1-test-secret-with-at-least-32-bytes"
+
+
+def acceptance(thread):
+    def binding(values):
+        return hashlib.sha256(
+            json.dumps(values, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    return {
+        "scope_id": binding(
+            ["platform:run-receipt-scope:v1", "tenant-a", "project-a", "user-a"]
+        ),
+        "credential_id": binding(
+            ["platform:run-receipt-credential:v1", "user", "user-a"]
+        ),
+        "operation": "read",
+        "thread_id": thread,
+        "key_sha256": "a" * 64,
+        "request_digest": "sha256:" + "b" * 64,
+    }
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        None,
+        "scope_id",
+        "credential_id",
+        "operation",
+        "thread_id",
+        "key_sha256",
+        "request_digest",
+    ],
+)
+def test_fixed_acceptance_read_delegation(field):
+    thread = str(uuid4())
+    grant = acceptance(thread)
+    if field is not None:
+        grant[field] = "wrong"
+    token = _token(
+        scope={
+            "tenant_id": "tenant-a",
+            "project_id": "project-a",
+            "assistant_id": "graph",
+            "thread_id": thread,
+            "operation": "run-acceptance-read",
+        },
+        run_acceptance=grant,
+    )
+    if field is None:
+        facts = verify_delegation_claims(
+            token, secret=SECRET, issuer="runtime-test", audience="runtime-service"
+        )
+        assert facts.run_acceptance == grant
+    else:
+        with pytest.raises(RuntimeAuthError):
+            verify_delegation_claims(
+                token, secret=SECRET, issuer="runtime-test", audience="runtime-service"
+            )
+
+
+def test_read_operation_requires_grant():
+    with pytest.raises(RuntimeAuthError):
+        _verify(
+            _token(
+                scope={
+                    "tenant_id": "tenant-a",
+                    "project_id": "project-a",
+                    "thread_id": str(uuid4()),
+                    "operation": "run-acceptance-read",
+                }
+            )
+        )
 
 
 def _token(**overrides: object) -> str:

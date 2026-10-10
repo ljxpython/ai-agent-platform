@@ -20,7 +20,6 @@ from platform_api.core.errors import (
     PlatformApiError,
     UpstreamServiceError,
 )
-from platform_api.modules.agents.domain.models import ModelResilienceSettings
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
     _runtime_context_snapshot,
@@ -204,6 +203,17 @@ class RunRequestsTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.upstream.create_thread_run.await_count, 2)
 
     def setUp(self) -> None:
+        from platform_api.modules.runtime_gateway.application.service import (
+            ModelResilienceSettings,
+        )
+
+        resilience = patch.object(
+            RuntimeGatewayService,
+            "_model_resilience_snapshot",
+            return_value=ModelResilienceSettings.disabled(),
+        )
+        resilience.start()
+        self.addCleanup(resilience.stop)
         self._tmpdir = tempfile.TemporaryDirectory()
         database_path = Path(self._tmpdir.name) / "durable-runs.db"
         self._engine = build_engine(f"sqlite:///{database_path}")

@@ -53,6 +53,9 @@ OPERATIONS = (
     "thread-stop",
     "thread-stop-read",
     "run-cancellation-read",
+    "background-task-read",
+    "background-task-log-read",
+    "background-task-cancel",
 )
 
 

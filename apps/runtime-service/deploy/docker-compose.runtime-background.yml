@@ -1,0 +1,35 @@
+# Opt-in single execution host. Both services use identical daemon-visible paths.
+x-background-environment: &background-environment
+  RUNTIME_BACKGROUND_TASKS_ENABLED: "${RUNTIME_BACKGROUND_TASKS_ENABLED:-0}"
+  RUNTIME_BACKEND: docker
+  RUNTIME_EXECUTION_HOST_ID: "${RUNTIME_EXECUTION_HOST_ID:?Set a stable execution host ID}"
+  RUNTIME_WORKSPACE_ROOT: "${RUNTIME_BACKGROUND_WORKSPACE_PATH:?Set an absolute host workspace path}/dearflow"
+  RUNTIME_SHOWCASE_WORKSPACE_ROOT: "${RUNTIME_BACKGROUND_WORKSPACE_PATH}/showcase"
+  RUNTIME_BACKGROUND_LOG_ROOT: /var/lib/runtime-service/background-logs
+  RUNTIME_WORKSPACE_IMAGE: "${RUNTIME_WORKSPACE_IMAGE:-runtime-agent-workspace:p5}"
+  RUNTIME_SHOWCASE_IMAGE: "${RUNTIME_SHOWCASE_IMAGE:-python:3.13-slim}"
+  RUNTIME_SELF_URL: http://runtime-service:8000
+
+x-background-volumes: &background-volumes
+  - type: bind
+    source: "${RUNTIME_BACKGROUND_WORKSPACE_PATH}"
+    target: "${RUNTIME_BACKGROUND_WORKSPACE_PATH}"
+    bind:
+      create_host_path: false
+  - runtime-background-logs:/var/lib/runtime-service/background-logs
+  - type: bind
+    source: "${RUNTIME_DOCKER_SOCKET:-/var/run/docker.sock}"
+    target: /var/run/docker.sock
+    bind:
+      create_host_path: false
+
+services:
+  runtime-service:
+    environment: *background-environment
+    volumes: *background-volumes
+  worker:
+    environment: *background-environment
+    volumes: *background-volumes
+
+volumes:
+  runtime-background-logs:

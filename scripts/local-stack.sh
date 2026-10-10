@@ -56,7 +56,7 @@ load_stack_identity() {
   eval "$exports"
   PID_DIR="$STATE_DIR/pids"
   LOG_DIR="$STATE_DIR/logs"
-  if [ "$LOCAL_STACK_WORKTREE" = 1 ]; then RUNTIME_BACKEND_OVERRIDE=local; fi
+  if [ "$LOCAL_STACK_WORKTREE" = 1 ] && [ -z "$RUNTIME_BACKEND_OVERRIDE" ]; then RUNTIME_BACKEND_OVERRIDE=local; fi
 }
 
 die() {
@@ -231,12 +231,12 @@ start_managed_key() {
       ;;
     runtime-api)
       start_process runtime-api "$RUNTIME_DIR" \
-        "env RUNTIME_SELF_URL=http://127.0.0.1:$(shell_quote "$RUNTIME_PORT") uv run --no-sync --frozen graphharbor serve --host 127.0.0.1 --port $(shell_quote "$RUNTIME_PORT") --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 0" \
+        "env RUNTIME_BACKEND=$(shell_quote "$RUNTIME_BACKEND") RUNTIME_BACKGROUND_TASKS_ENABLED=1 RUNTIME_EXECUTION_HOST_ID=worktree-host RUNTIME_SELF_URL=http://127.0.0.1:$(shell_quote "$RUNTIME_PORT") uv run --no-sync --frozen graphharbor serve --host 127.0.0.1 --port $(shell_quote "$RUNTIME_PORT") --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 0" \
         "$LOG_DIR/runtime-api.log" "$RUNTIME_PORT"
       ;;
     runtime-worker)
       start_process runtime-worker "$RUNTIME_DIR" \
-        "env PLATFORM_RUNTIME_MESSAGE_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/message-authorization PLATFORM_RUNTIME_MEMORY_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/memory-authorization uv run --no-sync --frozen graphharbor worker --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker $(shell_quote "$LOCAL_STACK_WORKER_JOBS")" \
+        "env RUNTIME_BACKEND=$(shell_quote "$RUNTIME_BACKEND") RUNTIME_BACKGROUND_TASKS_ENABLED=1 RUNTIME_EXECUTION_HOST_ID=worktree-host PLATFORM_RUNTIME_MESSAGE_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/message-authorization PLATFORM_RUNTIME_MEMORY_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/memory-authorization uv run --no-sync --frozen graphharbor worker --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker $(shell_quote "$LOCAL_STACK_WORKER_JOBS")" \
         "$LOG_DIR/runtime-worker.log"
       ;;
     platform-api)
@@ -370,9 +370,9 @@ PY
 )"
   local host port
   read -r host port <<< "$endpoint"
-  if ! pg_isready -q -t 30 -h "$host" -p "$port"; then
+  if ! pg_isready -q -h "$host" -p "$port"; then
     local detail
-    detail="$(pg_isready -t 30 -h "$host" -p "$port" 2>&1 || true)"
+    detail="$(pg_isready -h "$host" -p "$port" 2>&1 || true)"
     local data_dir="/usr/local/var/postgresql@17"
     if [ -f "$data_dir/postmaster.pid" ]; then
       local pid

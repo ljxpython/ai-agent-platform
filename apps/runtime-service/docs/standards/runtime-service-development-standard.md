@@ -104,6 +104,8 @@ provider 最终失败用安全 RuntimeExecutionError，真实 PG/checkpoint/leas
 
 ## 新增代码粒度规范
 
+后台 Workspace 长命令通过公共 `build_background_tools()` 显式接入根 Agent，使用持久任务/受管容器/无模型对账与开始前完成 guard；不新增 Agent 循环、每 Thread cron 或宿主 shell 回退。普通 execute/Terminal 语义保持。接入步骤、审批/权限/重放验证与正式启用限制见 [后台任务接入](background-task-integration.md)。
+
 > **适用范围：仅约束新增代码。存量代码不在此规范的覆盖范围内，不得借此规范触发对旧代码的"顺手重构"。**
 
 ### 函数原子化

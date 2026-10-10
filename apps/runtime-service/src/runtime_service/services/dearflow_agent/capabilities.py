@@ -5,6 +5,7 @@ import os
 import re
 from importlib.resources import files
 
+from runtime_service.background_tasks.capabilities import query_enabled, start_enabled
 from runtime_service.runtime.planning import PLAN_GRAPHS, PLAN_TOOL_NAMES
 from runtime_service.workspace.artifact_refs import ARTIFACT_MIMES
 
@@ -33,6 +34,9 @@ MEDIA_TOOLS = ("generate_image", "edit_image", "get_media_task")
 DEAR_TOOLS = (
     *PLAN_TOOL_NAMES,
     *WORK_TOOLS,
+    "background_execute",
+    "background_task",
+    "cancel_background_task",
     *CHART_NAMES,
     *MEDIA_TOOLS,
     *MEMORY_READ_TOOLS,
@@ -84,6 +88,11 @@ def graph_capabilities(graph_id: str) -> dict:
         "plan_mode": graph_id in PLAN_GRAPHS,
         "files": graph_id in {"showcase_demo", "dearflow_agent"},
         "workspace": graph_id in {"showcase_demo", "dearflow_agent"},
+        "background_tasks": graph_id in {"showcase_demo", "dearflow_agent"}
+        and query_enabled(),
+        "background_tasks_start_enabled": graph_id
+        in {"showcase_demo", "dearflow_agent"}
+        and start_enabled(),
         "terminal": graph_id in {"showcase_demo", "dearflow_agent"}
         and os.name == "posix"
         and os.getenv("RUNTIME_TERMINAL_ENABLED", "0") == "1",

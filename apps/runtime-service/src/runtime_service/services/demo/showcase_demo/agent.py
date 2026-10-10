@@ -79,8 +79,10 @@ from runtime_service.services.demo.showcase_demo.subagents import (
 )
 from runtime_service.services.demo.showcase_demo.tools import fetch_documentation
 from runtime_service.tools.artifacts import build_artifact_tool
+from runtime_service.tools.background import build_background_tools
 from runtime_service.tools.errors import on_tool_error
 from runtime_service.tools.images import ImageWorkspace
+from runtime_service.workspace.background import BackgroundBinding
 
 _DEFAULTS = AgentDefaults(
     model_id="deepseek:DeepSeek-V4-Flash",
@@ -340,7 +342,21 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         agent = create_deep_agent(
             model=model,
             system_prompt=SYSTEM_PROMPT,
-            tools=[fetch_documentation, build_artifact_tool(image_workspace.root)],
+            tools=[
+                fetch_documentation,
+                build_artifact_tool(image_workspace.root),
+                *build_background_tools(
+                    None
+                    if workspace is None
+                    else BackgroundBinding(
+                        workspace.cwd / "workspace",
+                        os.getenv("RUNTIME_SHOWCASE_IMAGE", "python:3.13-slim"),
+                        workspace.scope,
+                        "showcase_demo",
+                    ),
+                    completion=bool(configurable.get("platform_background_completion")),
+                ),
+            ],
             backend=backend,
             skills=["/skills/"],
             permissions=PERMISSIONS,
@@ -348,6 +364,12 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 context.access_policy if executing else None,
                 {
                     **APPROVALS,
+                    "background_execute": {
+                        "allowed_decisions": ["approve", "edit", "reject"]
+                    },
+                    "cancel_background_task": {
+                        "allowed_decisions": ["approve", "reject"]
+                    },
                     "present_artifacts": {
                         "allowed_decisions": ["approve", "edit", "reject"]
                     },

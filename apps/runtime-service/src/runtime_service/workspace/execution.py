@@ -120,8 +120,15 @@ async def _shielded(operation) -> bool:
     return task.result()
 
 
-async def _shield_cleanup(name: str, process, creation=None) -> bool:
-    return await _shielded(_cleanup(name, process, creation))
+async def _shield_cleanup(name: str, process, creation=None, *, resource=None) -> bool:
+    from runtime_service.run_control.resources import finish_resource
+
+    async def cleanup_and_record():
+        confirmed = await _cleanup(name, process, creation)
+        await finish_resource(resource, confirmed)
+        return confirmed
+
+    return await _shielded(cleanup_and_record())
 
 
 async def _report(fields: dict) -> None:
@@ -148,6 +155,7 @@ def docker_workspace_args(
     name: str,
     skills: Path | None = None,
     protected: bool = False,
+    background: bool = False,
 ) -> list[str]:
     """Share the same mount and resource policy between commands and terminals."""
     if not workspace.is_dir() or workspace.is_symlink():
@@ -156,8 +164,8 @@ def docker_workspace_args(
         raise RuntimeWorkspaceError("runtime.workspace.image_invalid")
     args = [
         "docker",
-        "run",
-        "--rm",
+        "create" if background else "run",
+        *([] if background else ["--rm"]),
         "--pull=never",
         "--name",
         name,
@@ -278,14 +286,13 @@ async def execute_in_workspace(
         ):
             raise RuntimeWorkspaceError("runtime.workspace.execution_outcome_unknown")
     except asyncio.CancelledError:
-        confirmed = await _shield_cleanup(name, process, creation)
+        confirmed = await _shield_cleanup(name, process, creation, resource=resource)
         if not confirmed:
             fields["phase"] = "cleanup"
         await report(outcome="cancelled")
-        await finish_resource(resource, confirmed)
         raise
     except (OSError, RuntimeWorkspaceError) as exc:
-        confirmed = await _shield_cleanup(name, process, creation)
+        confirmed = await _shield_cleanup(name, process, creation, resource=resource)
         stable = (
             "runtime.workspace.execution_unavailable"
             if fields["phase"] == "start"
@@ -296,13 +303,11 @@ async def execute_in_workspace(
             stable = "runtime.workspace.execution_outcome_unknown"
         timed_out = isinstance(exc, TimeoutError) and process is not None and confirmed
         await report(None if timed_out else stable)
-        await finish_resource(resource, confirmed)
         if timed_out:
             raise
         raise RuntimeWorkspaceError(stable) from exc
     except Exception:
-        confirmed = await _shield_cleanup(name, process, creation)
-        await finish_resource(resource, confirmed)
+        await _shield_cleanup(name, process, creation, resource=resource)
         raise
     await finish_resource(resource, True)
     return ExecuteResponse(

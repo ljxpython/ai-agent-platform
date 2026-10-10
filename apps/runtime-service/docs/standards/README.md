@@ -5,6 +5,7 @@
 1. [资料导航](./runtime-service-reading-guide.md)
 2. [开发范式与规则](./runtime-service-development-standard.md)
 3. [运行与验证](./runtime-service-onboarding-and-verification.md)
+4. [通用后台任务接入](./background-task-integration.md)（受管 Docker；正式启用仍受专项门禁限制）
 
 ## 权威优先级
 

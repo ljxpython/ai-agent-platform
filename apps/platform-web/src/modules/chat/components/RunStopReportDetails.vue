@@ -150,6 +150,73 @@ function formatIso(iso: string | null | undefined): string {
         报告证据项已做有界截断，停止确认覆盖完整目标。
       </div>
 
+      <!-- 3.5. 后台长任务清理快照摘要 -->
+      <div
+        v-if="
+          report?.background_tasks &&
+          (report.background_tasks.target_count ?? 0) > 0
+        "
+        class="rounded-xl border border-blue-200/80 bg-blue-50/40 p-3.5 shadow-2xs dark:border-blue-900/50 dark:bg-blue-950/20"
+      >
+        <div class="mb-2 flex items-center justify-between">
+          <span
+            class="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-1.5"
+          >
+            <BaseIcon name="runtime" class="h-3.5 w-3.5 text-primary-500" />
+            后台长任务清理快照
+          </span>
+          <span
+            v-if="(report.background_tasks.cleanup_unconfirmed_count ?? 0) > 0"
+            class="rounded bg-amber-100 px-1.5 py-0.5 text-2xs font-semibold text-amber-800 dark:bg-amber-900/50 dark:text-amber-300"
+          >
+            {{ report.background_tasks.cleanup_unconfirmed_count }} 项未完全确认
+          </span>
+          <span
+            v-else
+            class="rounded bg-emerald-100 px-1.5 py-0.5 text-2xs font-semibold text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300"
+          >
+            全部已清理
+          </span>
+        </div>
+        <div
+          class="grid grid-cols-2 gap-2 text-2xs text-gray-600 dark:text-dark-300"
+        >
+          <div>
+            快照目标总数:
+            <span class="font-mono font-semibold">{{
+              report.background_tasks.target_count ?? 0
+            }}</span>
+          </div>
+          <div>
+            确认清理完成:
+            <span
+              class="font-mono font-semibold text-emerald-600 dark:text-emerald-400"
+              >{{ report.background_tasks.cleanup_confirmed_count ?? 0 }}</span
+            >
+          </div>
+          <div>
+            未确认清理数:
+            <span
+              class="font-mono font-semibold"
+              :class="
+                (report.background_tasks.cleanup_unconfirmed_count ?? 0) > 0
+                  ? 'text-amber-600 dark:text-amber-400'
+                  : ''
+              "
+              >{{
+                report.background_tasks.cleanup_unconfirmed_count ?? 0
+              }}</span
+            >
+          </div>
+          <div>
+            通知已抑制数:
+            <span class="font-mono font-semibold">{{
+              report.background_tasks.notifications_suppressed_count ?? 0
+            }}</span>
+          </div>
+        </div>
+      </div>
+
       <!-- 4. 工具证据与计划进度（Progress） -->
       <div v-if="report && report.progress.length > 0" class="space-y-2">
         <h4 class="font-semibold text-gray-900 dark:text-gray-100">

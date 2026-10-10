@@ -158,6 +158,15 @@ async def build_report(row, saver):
     if not progress:
         uncertainties.append("progress_unavailable")
     cleanup = await asyncio.to_thread(resource_state, row["thread_id"], targets)
+    from runtime_service.background_tasks.repository import background_summary
+
+    background = await asyncio.to_thread(
+        background_summary, row.get("background_task_ids", [])
+    )
+    if background["cleanup_unconfirmed_count"]:
+        cleanup = "unconfirmed"
+    elif background["target_count"] and cleanup == "not_required":
+        cleanup = "confirmed"
     if cleanup in {"pending", "unconfirmed"}:
         uncertainties.append("resource_cleanup_unconfirmed")
     # Tool receipts prove only that a result was saved, never remote rollback.
@@ -178,6 +187,7 @@ async def build_report(row, saver):
         "uncertainties": uncertainties,
         "truncated": truncated,
         "resource_cleanup": cleanup,
+        "background_tasks": background,
         "queue": {
             "pending_cancelled_count": receipt["pending_cancelled_count"],
             **(await asyncio.to_thread(inbox_counts, row["thread_id"], targets)),

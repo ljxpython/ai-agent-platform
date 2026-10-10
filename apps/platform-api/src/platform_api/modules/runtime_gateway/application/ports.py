@@ -16,6 +16,16 @@ class BinaryPayload:
 
 
 class RuntimeGatewayUpstreamProtocol(Protocol):
+    async def create_run_with_acceptance(
+        self,
+        thread_id: str,
+        body_bytes: bytes,
+        idempotency_key: str,
+        request_digest: str,
+    ) -> dict: ...
+    async def get_run_acceptance(
+        self, thread_id: str, idempotency_key: str, request_digest: str
+    ) -> dict: ...
     async def list_thread_messages(
         self, thread_id: str, *, pending_only: bool = False
     ) -> Any: ...
@@ -130,6 +140,13 @@ class RuntimeGatewayUpstreamProtocol(Protocol):
     async def list_stop_requests(
         self, thread_id: str, params: dict
     ) -> dict[str, Any]: ...
+
+    async def list_background_tasks(self, thread_id: str, params: dict) -> dict: ...
+    async def get_background_task(self, thread_id: str, task_id: str) -> dict: ...
+    async def get_background_output(self, thread_id: str, task_id: str) -> dict: ...
+    async def cancel_background_task(
+        self, thread_id: str, task_id: str, key: str
+    ) -> dict: ...
 
     async def list_thread_runs(
         self,

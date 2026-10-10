@@ -35,8 +35,12 @@
 | POST | /threads/t/cancel | 会话固定目标停止，持久受理 |
 | GET | /threads/t/stop-requests/{stop_id} | 查询安全停止回执与报告 |
 | GET | /threads/t/stop-requests | 分页回查停止动作 |
+| GET | /threads/t/background-tasks | 分页读取受管后台任务及完成 Run 关联 |
+| GET | /threads/t/background-tasks/{task_id} | 读取任务状态快照 |
+| GET | /threads/t/background-tasks/{task_id}/output | 授权读取有界文本日志 |
+| POST | /threads/t/background-tasks/{task_id}/cancel | 持久受理单任务取消意图 |
 
-completion 的独立 router 还提供当前用户 feed/read，路径和验证见下文；现有原生代理矩阵与 completion 契约测试分别覆盖。未列出的上游能力不能因为SDK有方法就当作平台接口，完整LangGraph Server等价性另行验收。
+后台四入口是 Runtime 自定义资源，不是原生 Run/PTY API；完整矩阵还独立覆盖文件、消息、Dear 等自定义入口，由[test_runtime_gateway_http_matrix.py](../../tests/test_runtime_gateway_http_matrix.py)与路由注册集合校验。completion 的独立 router 还提供当前用户 feed/read，路径和验证见下文；现有原生代理矩阵与 completion 契约测试分别覆盖。未列出的上游能力不能因为SDK有方法就当作平台接口，完整LangGraph Server等价性另行验收。
 
 ## 运行完成与私有通知（2026-10-09 用户批准）
 
@@ -54,7 +58,7 @@ completion 的独立 router 还提供当前用户 feed/read，路径和验证见
 
 请求携带平台认证与 `x-project-id`。Thread归属必须匹配项目；启动/恢复重新检查当前Agent、Graph、模型、工具与成员授权。委托scope.operation区分read和run-create。
 
-委托使用短时v2/HS256 JWT；Gateway与Catalog各自按当前请求签发，service account必须携带当前`credential_id`，用户不得携带。非法签发输入统一走安全`503 runtime_delegation_not_configured`，上游401对外映射`502 runtime_delegation_rejected`，不表示平台用户登录失效。已接受Run不因委托到期自动取消；SSE不持续重鉴权，重连/审批/取消新请求重新核对当前权限。31项operation及验证边界见[Delegation 标准](../../../../docs/standards/delegation-jwt.md)。消息入口额外转发同一请求已有的`read`委托供Runtime内部原生Run回查；Runtime核对身份、租户、项目、凭据和Thread绑定后才使用该委托，消息operation自身仍不得访问原生资源。该修复的现役真实链路尚未验证，见[消息回查专项](../../../../docs/projects/20260927-message-run-read-delegation/README.md)。
+委托使用短时v2/HS256 JWT；Gateway与Catalog各自按当前请求签发，service account必须携带当前`credential_id`，用户不得携带。非法签发输入统一走安全`503 runtime_delegation_not_configured`，上游401对外映射`502 runtime_delegation_rejected`，不表示平台用户登录失效。已接受Run不因委托到期自动取消；SSE不持续重鉴权，重连/审批/取消新请求重新核对当前权限。34项operation及验证边界见[Delegation 标准](../../../../docs/standards/delegation-jwt.md)。消息入口额外转发同一请求已有的`read`委托供Runtime内部原生Run回查；Runtime核对身份、租户、项目、凭据和Thread绑定后才使用该委托，消息operation自身仍不得访问原生资源。该修复的现役真实链路尚未验证，见[消息回查专项](../../../../docs/projects/20260927-message-run-read-delegation/README.md)。
 
 产品Agent执行键为graph_id，标准SDK字段仍为assistant_id；平台不创建/同步上游Assistant。Graph/Tool刷新是有限超时HTTP，普通目录只读快照；schema从远端读取，不扫描宿主源码。
 
@@ -124,7 +128,17 @@ phase为accepted/stopping/stopped/no_active_run/confirmation_unavailable/rejecte
 
 报告仅读取固定目标的已提交checkpoint/工具回执/成果，不运行模型、原Agent或注入AIMessage；最多20 checkpoints、30 progress（20计划+10工具）、20成果。truncated表明报告有界，不截断完整停止目标；uncertainties明确checkpoint/进度/外部结果/资源清理未知。成果仍通过现有授权预览/下载入口，报告不输出宿主路径。
 
-Runtime后台对旧固定目标inbox做checkpoint对账，consumed保留、其余user_stopped；后来的新Run不属于旧Stop。Stop不删除工作区、不停止独立Terminal/detached任务、不抹掉审批；显式resume仍绑定当前interrupt ID并复用服务端原执行快照。Runtime存储503按既有契约公开502 `stop_storage_unavailable`，提交超时仍是未知。前端状态机/代码落点/F01–F10见[实现版交接](../../../../docs/projects/20261007-agent-run-cancellation/frontend-handoff.md)。
+Runtime后台对旧固定目标inbox做checkpoint对账，consumed保留、其余user_stopped；后来的新Run不属于旧Stop。Stop不删除工作区、不停止独立Terminal或不受管的 detached 任务、不抹掉审批；2026-10-09 增加受管后台任务的固定快照/通知抑制和可选 `report.background_tasks` 摘要。未知派发或迟到 Run 未确认仍计入未确认清理，不能冒称全部停止。显式resume仍绑定当前interrupt ID并复用服务端原执行快照。Runtime存储503按既有契约公开502 `stop_storage_unavailable`，提交超时仍是未知。前端状态机/代码落点/F01–F10见[实现版交接](../../../../docs/projects/20261007-agent-run-cancellation/frontend-handoff.md)。
+
+## 受管后台任务（2026-10-09 用户批准）
+
+四个公开入口绑定当前项目/Thread ACL。元数据、日志、取消分别使用 `background-task-read/background-task-log-read/background-task-cancel`，不能互换或访问原生资源；Task 归属和 DTO 在两层核验，返回 `Cache-Control: no-store`。list 的 limit 为1–100、默认20，cursor不透明；`has_unresolved/latest_delivery_run_id` 取完整授权 scope，不能从当前分页推断。日志为最多64KiB的文本快照，不是终端/SSE，私有控制字段不公开。
+
+cancel 正文严格 `{}`、Idempotency-Key 必填且1–128字符；202仅证明取消意图已受理，同 task 重试不重复执行。Task、cleanup、delivery和原生 Run 状态分别解释。`background_task_storage_unavailable/background_task_control_unavailable` 来源503公开502、固定安全消息 `Background task unavailable`；未知提交不能自动换 key 重跑。
+
+完成交付与开始前授权经过两个精确 HMAC 内部入口，复用原 RunRequests 与正常 `launch_runtime_run`；固定 event/key，同 Thread enqueue一个新 Run。开始前复核当前身份/模型/tool/Thread与Stop，审批不自动恢复，通知 Run 不提供后台启动工具。新执行计入独立 Run Usage，轮询不调用模型。原始日志/命令不进入通知提示或审计。
+
+新提交默认关闭，正式 post43 缺按幂等 key 的只读 Run 回查，所有 lost-ACK 窗口仍受 B01 阻塞；隔离实现/实测不等同现役启用。实际 DTO、开关、Stop 摘要和前端工作见[后台交接](../../../../docs/projects/20261009-agent-generic-production-capabilities/frontend-handoff.md)，解除条件见[引擎接续](../../../../docs/projects/20261009-agent-generic-production-capabilities/engine-handoff.md)。
 
 ## Run Token 额度保护（2026-10-09 用户批准）
 

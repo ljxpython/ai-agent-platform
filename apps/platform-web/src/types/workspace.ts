@@ -11,6 +11,8 @@ export interface WorkspaceCapabilities {
   terminal?: boolean;
   conversation_offloading?: boolean;
   plan_mode?: boolean;
+  background_tasks?: boolean;
+  background_tasks_start_enabled?: boolean;
 }
 
 export interface WorkspaceEntry {

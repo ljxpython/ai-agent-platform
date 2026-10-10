@@ -12,6 +12,12 @@ import {
   type MessageItem,
   type ToolItem,
 } from "../transcript";
+import {
+  isBackgroundTaskCompletionMessage,
+  parseBackgroundTaskCompletionNotification,
+  getTaskCompletionStatusMeta,
+  type BackgroundTaskCompletionInfo,
+} from "../background-tasks/completion-parser";
 const props = defineProps<{
   messages: readonly BaseMessage[];
   calls: readonly AssembledToolCall[];
@@ -43,6 +49,7 @@ const emit = defineEmits<{
   "submit-edit": [];
   "select-follow-up": [prompt: string, mode: "direct" | "append" | "replace"];
   "dismiss-follow-up": [];
+  "view-tasks": [taskId?: string];
 }>();
 const text = (items: MessageItem[]) =>
   items
@@ -64,21 +71,64 @@ const visibleDisplayMessages = computed(() => {
     const user = turn.user;
     const entries = [];
     if (user) {
-      entries.push({
-        id: user.id ?? user.key,
-        renderKey: `turn-${turnIndex}:user`,
-        messageId: user.id,
-        author: "user" as const,
-        turnIndex,
-        totalTurns,
-        isLastUserTurn: isLastTurn,
-        work: [],
-        content: [user],
-        text: text([user]),
-        userId: user.id,
-        userText: text([user]),
-        isStreaming: false,
-      });
+      const userRawText = text([user]);
+      const isBgCompletion =
+        isBackgroundTaskCompletionMessage(user.raw) ||
+        isBackgroundTaskCompletionMessage(user.id) ||
+        isBackgroundTaskCompletionMessage(userRawText);
+
+      if (isBgCompletion) {
+        const parsed =
+          parseBackgroundTaskCompletionNotification(userRawText) ??
+          parseBackgroundTaskCompletionNotification(
+            typeof user.raw?.content === "string" ? user.raw.content : "",
+          );
+        const completionInfo: BackgroundTaskCompletionInfo = parsed ?? {
+          taskId: "",
+          shortTaskId: "",
+          status: "succeeded",
+          exitCode: 0,
+          rawPrompt: userRawText,
+        };
+
+        entries.push({
+          id: user.id ?? user.key,
+          renderKey: `turn-${turnIndex}:system-completion`,
+          messageId: user.id,
+          author: "system" as const,
+          systemType: "background_completion" as const,
+          completionInfo,
+          turnIndex,
+          totalTurns,
+          isLastUserTurn: false,
+          work: [],
+          content: [user],
+          text: userRawText,
+          userId: user.id,
+          userText: userRawText,
+          isStreaming: false,
+          resilienceSummary: undefined,
+        });
+      } else {
+        entries.push({
+          id: user.id ?? user.key,
+          renderKey: `turn-${turnIndex}:user`,
+          messageId: user.id,
+          author: "user" as const,
+          systemType: undefined,
+          completionInfo: undefined,
+          turnIndex,
+          totalTurns,
+          isLastUserTurn: isLastTurn,
+          work: [],
+          content: [user],
+          text: userRawText,
+          userId: user.id,
+          userText: userRawText,
+          isStreaming: false,
+          resilienceSummary: undefined,
+        });
+      }
     }
     const hasVisibleAgentOutput =
       turn.work.some(
@@ -127,6 +177,8 @@ const visibleDisplayMessages = computed(() => {
         renderKey: `turn-${turnIndex}:agent`,
         messageId: turn.answer[turn.answer.length - 1]?.id,
         author: "agent" as const,
+        systemType: undefined,
+        completionInfo: undefined,
         turnIndex,
         totalTurns,
         isLastUserTurn: false,
@@ -150,7 +202,8 @@ const shouldShowLiveStep = computed(() => {
   if (!turns.length) return true;
   const lastEntry = turns[turns.length - 1];
 
-  if (lastEntry?.author === "user") return true;
+  if (lastEntry?.author === "user" || lastEntry?.author === "system")
+    return true;
 
   // 澄清/等待人工输入工具（如 request_information）处于挂起等待态，不能作为普通后台运行中工具展示 Live Step
   const clarificationToolNames = new Set([
@@ -271,7 +324,13 @@ function getFallbackModelName(modelId?: string): string {
         :data-author="displayEntry.author"
         :data-turn-index="displayEntry.turnIndex"
         :data-is-last-user="displayEntry.isLastUserTurn ? 'true' : undefined"
-        :class="displayEntry.author === 'user' ? 'items-end' : 'items-start'"
+        :class="[
+          displayEntry.author === 'user'
+            ? 'items-end'
+            : displayEntry.author === 'system'
+              ? 'items-center my-3'
+              : 'items-start',
+        ]"
       >
         <div
           v-if="displayEntry.author === 'agent'"
@@ -288,7 +347,78 @@ function getFallbackModelName(modelId?: string): string {
           >
         </div>
 
+        <!-- 1. 系统微胶囊：后台任务完成通知 -->
         <div
+          v-if="
+            displayEntry.author === 'system' &&
+            displayEntry.systemType === 'background_completion'
+          "
+          class="w-full flex flex-col items-center justify-center py-2"
+          data-testid="system-task-completion-capsule"
+        >
+          <div
+            class="inline-flex max-w-[95%] sm:max-w-[85%] items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium shadow-2xs transition-colors"
+            :class="
+              getTaskCompletionStatusMeta(
+                displayEntry.completionInfo?.status || '',
+              ).colorClass
+            "
+          >
+            <BaseIcon
+              :name="
+                getTaskCompletionStatusMeta(
+                  displayEntry.completionInfo?.status || '',
+                ).icon
+              "
+              size="xs"
+              class="shrink-0"
+            />
+            <span class="truncate">
+              {{
+                getTaskCompletionStatusMeta(
+                  displayEntry.completionInfo?.status || "",
+                ).label
+              }}:
+              <span class="font-mono font-semibold"
+                >#{{ displayEntry.completionInfo?.shortTaskId || "任务" }}</span
+              >
+            </span>
+            <span
+              v-if="displayEntry.completionInfo?.exitCode !== null"
+              class="text-[11px] opacity-80 shrink-0"
+            >
+              (退出码: {{ displayEntry.completionInfo?.exitCode }})
+            </span>
+            <button
+              type="button"
+              class="ml-1 inline-flex shrink-0 items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-normal hover:bg-white text-gray-700 shadow-2xs dark:bg-dark-800/80 dark:text-dark-200 dark:hover:bg-dark-800 transition-colors"
+              title="在右侧面板查看任务与日志"
+              @click="emit('view-tasks', displayEntry.completionInfo?.taskId)"
+            >
+              <span>查看任务</span>
+              <BaseIcon name="chevron-right" size="xs" />
+            </button>
+          </div>
+          <!-- 详细提示词轻量折叠 -->
+          <details
+            v-if="displayEntry.completionInfo?.rawPrompt"
+            class="group/raw-prompt mt-1 text-[11px] text-gray-400 dark:text-dark-500 text-center"
+          >
+            <summary
+              class="cursor-pointer select-none hover:text-gray-600 dark:hover:text-dark-300"
+            >
+              展开系统通知上下文
+            </summary>
+            <pre
+              class="mt-1.5 max-w-xl overflow-x-auto whitespace-pre-wrap rounded-lg bg-gray-100/80 p-2 text-left font-mono text-[10px] text-gray-600 dark:bg-dark-900/80 dark:text-dark-300"
+              >{{ displayEntry.completionInfo?.rawPrompt }}</pre
+            >
+          </details>
+        </div>
+
+        <!-- 2. 普通用户气泡或 Agent 卡片 -->
+        <div
+          v-else
           :class="[
             displayEntry.author === 'user'
               ? 'w-auto max-w-[85%] sm:max-w-[75%] self-end rounded-2xl rounded-tr-xs bg-blue-50/85 text-gray-900 border border-blue-100/90 px-4 py-2.5 shadow-2xs dark:bg-blue-950/40 dark:border-blue-900/50 dark:text-gray-100'
@@ -403,6 +533,7 @@ function getFallbackModelName(modelId?: string): string {
         </div>
 
         <div
+          v-if="displayEntry.author !== 'system'"
           class="flex max-w-[780px] flex-wrap items-center gap-1.5 pt-1 text-xs transition-all duration-200"
           :class="[
             displayEntry.author === 'user'

@@ -1,44 +1,26 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-10（F04 工具输出预算前端收尾与全链路闭环 done，用户人工验收通过；F02 重复工具调用循环检测与保护全链路闭环，Playwright 真实模型与实景全套截图已验收，专项已标记为 done；F10 通用文档读取全栈全链路闭环 done，用户人工验收通过；F13 浏览器语音听写输入前端实施与全体验收全绿闭环；F17 知识检索评估与前端交接完成，用户确认本期不开发；Agent Run completion 前端 P4.1-P4.3 全部交付闭环；Pinia 全局通知 Store、RunNotificationCenter 顶栏与 ChatPage 常驻挂载、细粒度优先错误码白名单投影、执行中跳转防护、useRunCompletion 历史 Run 终态诊断卡片完成；Vitest 726 passed，Playwright + Chromium 三视口与真实大模型端到端测试全绿；F11 输入润色评估完成并暂缓；F15 MCP 缓存热重置评估关闭；Plan Mode 交付与 Worktree 资源隔离基线保持）。
+> **最后更新：** 2026-10-11（A/B非Docker兼容前后端AB01-AB03与ABF01-ABF03全链路完成并通过用户真实浏览器人工真机验收；post45接受回执与notify/Stop/撤权联合通过，B01解除；F04/F02/F10/F13/通知/Plan Mode/Worktree本地栈基线保持；T08剩余矩阵、T10/F12待全栈收口）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-10
+**最后更新：** 2026-10-11
 
 ## 最近改动
 
-2026-10-10 | **F04工具输出预算前端收尾与全链路联合验收**：done。前端完成大工具结果防爆加固：`transcript.ts` 与 `trajectory-adapter.ts` 引入 `${namespace}:${callId}` 复合键隔离映射并优先消费落盘 ToolMessage，根治流式 110 KB 跳变与父子任务同名 ID 覆盖；`ToolResult.vue` 拦截 `/large_tool_results/` 虚拟路径详情跳转防 404、强化十六进制 Hash 与长路径 `break-all` 防 390px 溢出、补齐数组与对象格式证据来源解析；Vitest 3 文件 42 项全绿、`vue-tsc` 0 错误、`pnpm build` 成功；Playwright + Chromium 端到端自动化驱动隔离栈三服务与真实大模型（百炼 · qwen-plus）多轮问答、流式输出、轨迹排障及 F04-W01~W09 多视口全流程验证通过，8 张高保真验证截图已持久化；用户人工验收通过，专属隔离服务已安全停止。详见[15专题](projects/20260913-dearflow-agent/15-tool-output-budget-review.md)和[前端落地文档](projects/20260913-dearflow-agent/frontend-handoff-f04.md)。
-
-2026-10-10 | **F02重复工具调用保护全栈闭环**：done。后端共享循环检测中间件（连续 3 轮预警与 5 轮安全硬终止拦截）、API 网关安全契约脱敏清洗、前端 Zod DTO 弹性校验、时序状态机（warning/error）、Subagent 安全冒泡、中文降级兜底及 RunDiagnostics 独立循环卡片全部交付；Vitest 85 项单测、vue-tsc 0 报错、eslint 0 错误、生产打包成功；Playwright + Chromium 驱动真实大模型全链路自动化测试与实景截图全套验收通过。见 [15方案与进度](projects/20260913-dearflow-agent/15-f02-loop-detection.md)。
-
-2026-10-10 | **F10通用文档读取**：全链路闭环（done）。Runtime/API/Web 三服务全栈实施与自动化验收全部完成。后端同一 parse_document 补 DOCX/PPTX 纯文本/定位/有界续读与 Docker reader，复用 FileRef/raw 接口并删除全 uploads 索引；前端补齐空 MIME 纠正、DOCX 原字节认证下载拦截、长文件名截断、Word/PPT 标签、专用模板错误优先绝对高亮渲染、DOCX 段落与 PPTX 幻灯片语义化投影、续读建议范围展示与 7 类 warning 精确映射/脱敏；前端 726/726 单测、vue-tsc 0 错误、ESLint 0 错误、Vite build 成功；Playwright + Chromium 驱动隔离本地栈与真实模型（DeepSeek-V4-Flash）3 项全链路 E2E 全绿（1.5m），Showcase DOCX、DearFlow PPTX、刷新历史持久化恢复与移动端深色模式 4 张全景截图落盘留痕；用户人工浏览器实测验收通过，本地专属服务已安全停止。见[专项](projects/20261010-agent-document-reading/README.md).
-
-2026-10-10 | **F13 浏览器语音听写前端实施与全体验收**：done（全链路闭环）。完成原生 useVoiceInput Composable、方案 A 纯图标微胶囊与录音专注模式、共享 ChatComposer/ChatSession 门禁接线、双语 i18n、末尾追加与 Self-echo 保护、阻断错误 Toast/静默处理；Vitest 28 项单测、typecheck 0 错误、lint 0 错误、build 成功以及 Playwright 2 项 E2E 自动化测试全绿通过；用户在真实环境完成物理麦克风与网络听写验收通过。中途打断流式未落盘经排查为 LangGraph 事务机制，经用户确认该优化暂不开展。见 [17-f13-voice-input-assessment.md](projects/20260913-dearflow-agent/17-f13-voice-input-assessment.md)。
-
-2026-10-10 | **Agent Run终态通知与失败回调（前端闭环与真实模型E2E）**：前端 P4.1-P4.3 全量完成。Pinia Store 全局通知单例（15s 指数退避轮询与乐观已读回滚）、细粒度优先（model_error_code -> reason_code -> notification_code）安全白名单文案与建议动作映射、全局顶栏与 Chat 页面通知中心挂载、正在执行任务离开跳转二次确认防护、历史 Run 安全终态诊断卡片接入全部实装。vue-tsc 0 错误、ESLint 0 错误、生产打包成功、Vitest 134 文件 722 项单测全绿；Playwright + Chromium 驱动本地隔离三服务，连接真实模型 `deepseek-v4.1-flash` 进行全链路端到端问答与状态对账，F01-F08 核心链路 4 项 E2E 自动化测试全绿（24.8s），1440/768/390 三视口自适应截图已真实留痕（`evidence/screenshots/`）。见 [专项](projects/20261009-agent-production-capability-extension/README.md)。
-
-2026-10-10 | **F11 通用输入润色评估**：评估与规划已完成；用户确认暂缓开发（`deferred`），保留为 P2 候选，不列为生产可靠性必补。复用 suggestions 底座的备选方案、代码落点、验证计划及同事前端交接保留，实施未排期、未获批准。见 [专项](projects/20261010-agent-input-polish/README.md)。
-
-2026-10-10 | **F15 MCP 缓存热重置评估**：已完成（评估关闭）。用户确认不开发新增 reset/连接池。当前普通 MCP 每次执行构图重新 discovery，官方临时 session 无跨 Run cache/pool；已有平台工具目录同步。`.env` 无重启生效属于另行评审的配置热更新，未实现；源码对照、未排期测试候选与前端交接已补入 [17评估](projects/20260913-dearflow-agent/17-mcp-cache-reset-assessment.md) / [18交接](projects/20260913-dearflow-agent/18-mcp-cache-reset-frontend-handoff.md)。未实施或重新验证功能。
-
-2026-10-10 | **Agent 通用 Plan Mode 与计划审批治理**：全链路闭环（done）。Runtime/API/Web 三服务全栈实施完成。公共状态/三工具/双重门禁、四图主子接线、Context v6 执行链、原生审批/幂等/私有投影/fork/cron 安全闭环；前端实现输入框“+”号菜单展开与规划徽章、两级 capability 校验、PlanReview 双重视图、Markdown XSS Canary 安全清洗、待审态输入框严格锁定与 409 状态自愈；解除默认 4096 max_tokens 硬编码限制，支持留空默认走模型单次最大输出；增加系统提示词思考链聚焦约束；用户真实浏览器端到端实测验收通过。见 [专项](projects/20261008-agent-plan-mode-governance/README.md)。
-
-2026-10-10 | **F01 Run Token 额度保护全栈全链路交付**：done。后端 Runtime/API 完成唯一 Usage ledger 累计、80% custom 预警、达限/不可确认阻断与安全码投影；前端完成 F-T01~F-T04 契约与 ViewModel 扩展、在途过渡态防抖、状态栏对账恢复与 Usage 水位条融合；Vitest 46 项全绿、vue-tsc 0 错误、ESLint 0 错误、生产构建通过；Playwright + Chromium 驱动隔离三服务与真实模型（百炼·qwen-plus）6 项自动化 E2E 闭环全部通过。见 [F01评审](projects/20260913-dearflow-agent/15-token-budget-governance.md)。
-
-2026-10-10 | **Worktree 本地栈资源隔离**：T01-T07 done；首次随机登记端口、独立PG/Redis/Workspace/PID/日志、依赖缓存复用和E2E地址接线完成。见[专项](projects/20261010-worktree-local-stack/README.md)。
+2026-10-11 | **A/B 非 Docker 兼容全栈与人工浏览器真机验收完成**：能力门禁与响应式状态机（ABF01）、短任务恢复提示映射（ABF02）、真实 local 浏览器端到端链路（ABF03，Playwright 1/1 passed）全部完成并通过用户真机人工体验验收。post45 接受回执正式锁与 B01 解除保留。
 
 ## 本月归并
 
-2026-10（截至 10-10）| F04 工具输出预算、F02 循环检测、F10 通用文档读取、F13 语音输入、通知中心、Plan Mode、停止、预算、超时、用量、重试、Workspace、模型/上下文、工具/观测、定时任务闭环。
-
+2026-10（截至 10-11）| 后台任务A/B前后端与真机验收闭环；F04工具输出预算、F02循环检测、F10通用文档读取、F13语音输入、通知中心、Plan Mode、Worktree本地栈隔离保持。
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
 
+- [Agent 通用后台非阻塞任务能力](projects/20261009-agent-generic-production-capabilities/README.md)：`partial`；B01已由post45正式发布/锁接入和notify/Stop/撤权联合验收解除，T02/T03/T04/T06/T07/T09与F01-F11、A/B前后端完成。T01/T05/T08保留全范围验证和新Linux应用镜像门禁，T10/F12尚未全栈Final。新提交默认关闭，现役未部署。
 - [F10 Agent通用文档读取能力补齐](projects/20261010-agent-document-reading/README.md)：`done`；全链路闭环，Runtime/API/Web 三服务全栈交付。同一 parse_document 补 DOCX/PPTX、定位/有界续读和 Docker reader，移除全 uploads 系统索引，FileRef/raw 接口保留。python-docx1.2.0 与专属镜像冻结；前端 MIME 纠正、原字节认证下载拦截、错误优先绝对高亮、DOCX 段落/表格与 PPTX 幻灯片语义化投影全部实装；Vitest 726 项全绿、vue-tsc 0 错误、ESLint 0 错误、生产构建成功；Playwright + Chromium 真实大模型（DeepSeek-V4-Flash）自动化端到端测试 3 项全绿，4 张全景截图已留痕。用户人工浏览器实测验收通过，本地专属服务已安全停止。未部署现役。
 - [Agent 运行完成通知与失败回调](projects/20261009-agent-production-capability-extension/README.md)：`done`。GraphHarbor/Runtime/API非前端实现、post44发布和交接完成；正式最短通过，native定时/回填部分证据已固化；前端 P4.1-P4.3 全部交付并通过 Vitest 与真实模型 Playwright E2E 闭环验收。用户人工实测验收合格，安全合并入主干。
 - [F11 通用输入润色](projects/20261010-agent-input-polish/README.md)：评估与规划完成，用户确认暂缓（`deferred`），P2 候选、功能未实施。suggestions 复用、无 Thread 用途授权与旁路成本方案保留，未来重新投入时需人工批准；同事前端交接未排期。
@@ -80,13 +62,14 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-10 | 锁定/安装正式 post44；新增 completion projector、安全白名单和受签 callback context；四图主子共享 attempt 预算/软收尾与 Run Token 额度；F04 官方参数压缩/主备阈值与正文 SHA256 引用保护（filesystem_cls 预算）全链路闭环；F02 共享循环检测中间件（连续 3 轮预警与 5 轮安全硬终止拦截）、Worker 接管支持、真实模型验证通过；Plan 公共状态/三工具/双门禁、四图主子接线、Context v6 和规划 memory 跳过完成；解除默认 4096 max_tokens 兜底限制，系统提示词强化思考链 Token 预算约束；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理与运行准备幂等/有界重试全链路融合；Workspace 执行容错闭环；F15评估关闭；F11 暂缓；F10 固定 Docker reader/DOCX/PPTX 有界续读/附件索引收紧与全链路验收已闭环；未部署现役。 |
-| platform-api | 2026-10-10 | 新增 migration 20261009_0007、origin/event/receipt、HMAC receiver、历史 completion、私有 feed/read、ACL/deletion suppression 和 cron backfill；F04 契约与回归通过，无破坏性改动；私有预算/Token/loop 注入拒绝与脱敏；执行预算、F01 Token 及 F02 loop 精确安全码；Plan 原生审批/ACL/幂等、Context v6执行链、公开agent_plan/fork/cron边界完成；Run Usage 可选 token_budget DTO、ACL/撤权真实链路通过；模型恢复、上下文、诊断、费率 Usage、Stop 接口均已实装；Workspace 五码精确投影与 DTO 校验完成；F10 Office MIME网关与六字段/撤权/审计、两图真实链路专项验收完成；未部署现役。 |
-| platform-web | 2026-10-10 | F04 大工具输出预算防爆加固：transcript 复合键防覆盖与 ToolMessage 优先、ToolResult 虚拟路径防跳转与多格式证据来源解析；F02 循环检测 ViewModel/状态机/RunDiagnostics 卡片与 Playwright 真实模型测试通过；F13 浏览器语音听写（F13-T01~T04）全链路交付；Agent Run completion 前端 P4.1-P4.3 全部交付闭环（Pinia 全局通知 Store 单例、RunNotificationCenter 顶栏与 ChatPage 双端常驻挂载、细粒度错误码白名单投影与离开跳转防护、useRunCompletion 历史 Run 终态诊断卡片）；F10 DOCX/PPTX 扩展名/空 MIME 校验、原字节认证下载拦截、Word/PPT 专属徽标、无预览仅下载、工作区415人性化提示、专用模板错误优先高亮与段落/幻灯片语义投影全实装；F01 Token 额度保护全栈落地；规划开关与审阅卡片闭环；Vitest/vue-tsc/ESLint/build 全绿，Playwright 真实大模型 E2E 闭环全部通过。 |
-| AI Harness（AGENTS.md + Skills） | 2026-10-10 | Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号、配置继承与首次只读基础数据初始化已验收。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)，共9条。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
+| runtime-service | 2026-10-11 | 锁定/安装正式 post45；受管后台执行/对账/Stop及A/B前后端已验，B01解除；新增 completion projector、安全白名单和受签 callback context；四图主子共享 attempt 预算/软收尾与 Run Token 额度；F04 官方参数压缩/主备阈值与正文 SHA256 引用保护（filesystem_cls 预算）全链路闭环；F02 共享循环检测中间件（连续 3 轮预警与 5 轮安全硬终止拦截）、Worker 接管支持、真实模型验证通过；Plan 公共状态/三工具/双门禁、四图主子接线、Context v6 和规划 memory 跳过完成；解除默认 4096 max_tokens 兜底限制，系统提示词强化思考链 Token 预算约束；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理与运行准备幂等/有界重试全链路融合；Workspace 执行容错闭环；F15评估关闭；F11 暂缓；F10 固定 Docker reader/DOCX/PPTX 有界续读/附件索引收紧与全链路验收已闭环；未部署现役。 |
+| platform-api | 2026-10-11 | 后台四入口/精确operation/DTO/ACL/审计/HMAC与guard已验；post45正式acceptance adapter、最终bytes/key/digest发送前落盘与平台迁移0007完成，Platform132+116subtests/真实PG迁移1通过，发布后notify/Stop/撤权联合通过，B01解除；新增 migration 20261009_0007、origin/event/receipt、HMAC receiver、历史 completion、私有 feed/read、ACL/deletion suppression 和 cron backfill；F04 契约与回归通过，无破坏性改动；私有预算/Token/loop 注入拒绝与脱敏；执行预算、F01 Token 及 F02 loop 精确安全码；Plan 原生审批/ACL/幂等、Context v6执行链、公开agent_plan/fork/cron边界完成；Run Usage 可选 token_budget DTO、ACL/撤权真实链路通过；模型恢复、上下文、诊断、费率 Usage、Stop 接口均已实装；Workspace 五码精确投影与 DTO 校验完成；F10 Office MIME网关与六字段/撤权/审计、两图真实链路专项验收完成；未部署现役。 |
+| platform-web | 2026-10-11 | F01-F11与ABF01-ABF03已完成：能力/探针门禁、短任务恢复提示及真实local浏览器独立验收通过；F04 大工具输出预算防爆加固：transcript 复合键防覆盖与 ToolMessage 优先、ToolResult 虚拟路径防跳转与多格式证据来源解析；F02 循环检测 ViewModel/状态机/RunDiagnostics 卡片与 Playwright 真实模型测试通过；F13 浏览器语音听写（F13-T01~T04）全链路交付；Agent Run completion 前端 P4.1-P4.3 全部交付闭环（Pinia 全局通知 Store 单例、RunNotificationCenter 顶栏与 ChatPage 双端常驻挂载、细粒度错误码白名单投影与离开跳转防护、useRunCompletion 历史 Run 终态诊断卡片）；F10 DOCX/PPTX 扩展名/空 MIME 校验、原字节认证下载拦截、Word/PPT 专属徽标、无预览仅下载、工作区415人性化提示、专用模板错误优先高亮与段落/幻灯片语义投影全实装；F01 Token 额度保护全栈落地；规划开关与审阅卡片闭环；Vitest/vue-tsc/ESLint/build 全绿，Playwright 真实大模型 E2E 闭环全部通过。 |
+| AI Harness（AGENTS.md + Skills） | 2026-10-10 | Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号、配置继承与首次只读基础数据初始化已验收。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 ## 近期关键决策
 
+- 2026-10-10: 非Docker后台任务兼容A主方案+B精确兜底的前后端独立验收已完成；隐藏模型启动工具、保留旧checkpoint回执。关闭新启动保留查询/取消/原执行域对账，unknown不重跑，前台最大60秒与原审批不变，Docker故障不自动切local。B01已由GraphHarbor接受回执专项的正式双包/服务锁和发布后联合证据解除；不据此完成T08/T10/F12或启用现役。
 - 2026-10-10：F17/A31 知识检索评估：用户确认本期不开发自建 PgVector/入库/CRUD，功能 `deferred`；当前无企业知识服务，未来优先知识 MCP，三服务无代码任务、前端交接完成。未来先核验现有 MCP 的可信项目绑定、名称/transport/只读兼容和来源回放；未授权接入实施，详见 [专项](projects/20261010-agent-knowledge-retrieval-assessment/README.md)。
 - 2026-09-21: 引入两阶段验证（Phase 验证 + Final 验证），禁止每改一小块就全量回归
 - 2026-09-21: tasks.md 改为四段式结构（改动内容/代码位置/预期结果/验证项）

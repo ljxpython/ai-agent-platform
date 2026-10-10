@@ -15,6 +15,9 @@ REFERENCE_TOOLS = ("read_reference", *PLAN_TOOL_NAMES)
 SHOWCASE_TOOLS = (
     *PLAN_TOOL_NAMES,
     *WORK_TOOLS,
+    "background_execute",
+    "background_task",
+    "cancel_background_task",
     "task",
     "write_todos",
     "fetch_documentation",

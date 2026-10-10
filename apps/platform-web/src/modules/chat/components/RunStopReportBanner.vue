@@ -33,6 +33,13 @@ const statusText = computed(() => {
     return "正在停止会话...";
   }
   if (isConfirmed.value) {
+    const bgReport = props.stopControl.report.value?.background_tasks;
+    if (bgReport && (bgReport.target_count ?? 0) > 0) {
+      if ((bgReport.cleanup_unconfirmed_count ?? 0) > 0) {
+        return `已停止（后台任务清理未完全确认：${bgReport.cleanup_unconfirmed_count} 项待核实）`;
+      }
+      return `已停止（成功清理 ${bgReport.cleanup_confirmed_count ?? 0} 个后台任务）`;
+    }
     const count = props.stopControl.targetCount.value;
     if (count != null && count > 0) {
       return `已停止（取消 ${count} 个任务）`;

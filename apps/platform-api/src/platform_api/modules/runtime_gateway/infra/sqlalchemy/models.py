@@ -9,6 +9,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Index,
+    LargeBinary,
     String,
     UniqueConstraint,
     Uuid,
@@ -61,6 +62,20 @@ class RunRequestRecord(Base):
     requested_by: Mapped[str] = mapped_column(String(255), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
     request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    upstream_idempotency_key: Mapped[str | None] = mapped_column(
+        String(256), nullable=True
+    )
+    upstream_body: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    upstream_request_digest: Mapped[str | None] = mapped_column(
+        String(71), nullable=True
+    )
+    upstream_receipt_scope_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    upstream_receipt_credential_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    upstream_auth_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     context_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
     config_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     context_hash: Mapped[str] = mapped_column(String(128), nullable=False)

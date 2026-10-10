@@ -3,11 +3,15 @@ import {
   computed,
   nextTick,
   onScopeDispose,
+  provide,
   ref,
   shallowRef,
   toRef,
   watch,
 } from "vue";
+import { useBackgroundTasks } from "../composables/useBackgroundTasks";
+import { getWorkspaceCapabilities } from "@/services/threads/workspace.service";
+import type { WorkspaceCapabilities } from "@/types/workspace";
 import {
   coerceMessageLikeToMessage,
   type BaseMessage,
@@ -153,6 +157,55 @@ const session = useChatSession({
     void promptQueue?.refresh();
   },
 });
+
+const capabilities = ref<WorkspaceCapabilities | null>(null);
+let capabilitiesAbortController: AbortController | null = null;
+
+watch(
+  [() => props.projectId, () => session.threadId.value || props.threadId],
+  async ([curPid, curTid]) => {
+    if (capabilitiesAbortController) {
+      capabilitiesAbortController.abort();
+      capabilitiesAbortController = null;
+    }
+    if (!curPid || !curTid) {
+      capabilities.value = null;
+      return;
+    }
+    const controller = new AbortController();
+    capabilitiesAbortController = controller;
+    try {
+      capabilities.value = await getWorkspaceCapabilities(
+        curPid,
+        curTid,
+        controller.signal,
+      );
+    } catch {
+      if (!controller.signal.aborted) {
+        capabilities.value = null;
+      }
+    } finally {
+      if (capabilitiesAbortController === controller) {
+        capabilitiesAbortController = null;
+      }
+    }
+  },
+  { immediate: true },
+);
+
+const backgroundTasks = useBackgroundTasks(
+  computed(() => props.projectId),
+  computed(() => session.threadId.value || props.threadId),
+  {
+    capabilities,
+    onRunDiscovered: (runId) => {
+      void session.acceptDiscoveredRun(runId);
+    },
+  },
+);
+
+provide("backgroundTasks", backgroundTasks);
+
 const {
   stream,
   reviews,
@@ -858,6 +911,16 @@ watch(busy, (isBusy, wasBusy) => {
 function handleAddToChat(text: string) {
   emit("update:draft", props.draft ? `${props.draft}\n\n${text}` : text);
 }
+
+function handleViewTasks(taskId?: string) {
+  showWorkspace.value = true;
+  nextTick(() => {
+    workspacePanelRef.value?.openTab("tasks");
+    if (taskId) {
+      void backgroundTasks.refresh();
+    }
+  });
+}
 let disposed = false;
 
 const composerRef = ref<{ focus: () => void } | null>(null);
@@ -1419,6 +1482,10 @@ function visibilityChanged() {
 document.addEventListener("visibilitychange", visibilityChanged);
 onScopeDispose(() => {
   disposed = true;
+  if (capabilitiesAbortController) {
+    capabilitiesAbortController.abort();
+    capabilitiesAbortController = null;
+  }
   document.removeEventListener("visibilitychange", visibilityChanged);
 });
 
@@ -1733,6 +1800,7 @@ defineExpose({
           </button>
           <button
             type="button"
+            data-testid="toggle-workspace-button"
             class="relative inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
             :class="
               showWorkspace
@@ -1978,6 +2046,7 @@ defineExpose({
               @update:editing-message-value="editDraft = $event"
               @cancel-edit="cancelEdit"
               @submit-edit="submitEditedBranch"
+              @view-tasks="handleViewTasks"
             />
             <div
               v-if="planReview"
@@ -2167,10 +2236,10 @@ defineExpose({
         </div>
       </div>
       <WorkspacePanel
-        v-if="showWorkspace && threadId"
+        v-if="showWorkspace && (session.threadId.value || threadId)"
         ref="workspacePanelRef"
         :project-id="projectId"
-        :thread-id="threadId"
+        :thread-id="session.threadId.value || threadId"
         @close="showWorkspace = false"
         @add-to-chat="handleAddToChat"
       />
@@ -2179,7 +2248,11 @@ defineExpose({
       ref="composerRef"
       :model-value="draft"
       :attachments="attachments"
-      :is-running="isSessionRunning && !reviews.length && !planReview"
+      :is-running="
+        (isSessionRunning || backgroundTasks.hasActiveBackgroundTasks.value) &&
+        !reviews.length &&
+        !planReview
+      "
       :has-blocking-interrupt="!!reviews.length || !!planReview"
       :plan-mode="draftPlanMode"
       :plan-mode-supported="planModeSupported"

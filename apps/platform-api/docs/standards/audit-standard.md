@@ -20,7 +20,7 @@ plane为control_plane/runtime_gateway/system_internal；result为success/failed/
 
 ## 敏感数据
 
-仅对有Content-Length且不超过64KiB的JSON响应临时捕获以提取目标ID，不持久化整份响应或SSE正文。metadata包含query、client_ip、user_agent、目标、结果及响应大小等，额外业务metadata仅允许reason。
+仅对有Content-Length且不超过64KiB的JSON响应临时捕获以提取目标ID，不持久化整份响应或SSE正文。metadata包含query、client_ip、user_agent、目标、结果及响应大小等，额外业务metadata只保留reason与受信后台回调的有界 task/event/thread/origin_run ID。
 
 query当前原样进入审计，禁止在URL携带token、密码或模型密钥。不得将Authorization、Cookie、原始请求体或模型凭据加入metadata。公开响应过滤不能代替日志和审计数据最小化。
 
@@ -39,3 +39,11 @@ Runtime停止控制表将accepted/stopping/stopped/no_active_run/confirmation_un
 平台将stopped/no_active_run映射为 `runtime.thread.stop.confirmed`，confirmation_unavailable映射为unknown，其余保留阶段名。`uuid5(stop_id, phase)`作为审计记录ID防重复；只记录可信owner、tenant/project/thread/stop、phase、target_count和request/trace关联，不存原始正文、JWT、工具参数或模型凭据。HTTP中间件的成功规则不用于证明后台confirmed。
 
 回调30秒窗口签名绑定规范正文；authorize=true核对当前身份/服务账号credential、执行权限与Thread edit。authorize=false仅在scope核验后写已受理阶段，操作者之后撤权仍可记录收敛；该行为不授予其公开回执读取或新取消权限。真实撤权后confirmed入库、待发送项清空证据见[取消专项验证](../../../../docs/projects/20261007-agent-run-cancellation/verification.md)。正式配套/部署仍blocked。
+
+## 后台任务 HTTP 审计（2026-10-09 用户批准）
+
+list/detail 记录 `runtime.background_task.read`，output 记录 `runtime.background_task.logs.read`，cancel 记录 `runtime.background_task.cancel.requested`；目标为 Thread 或 background_task，plane为runtime_gateway。GET不制造执行/清理事实，cancel 202只记录HTTP受理。
+
+两个精确 HMAC 入口记录 `runtime.background_task.delivery.checked` 与 `runtime.background_task.authorization.checked`。验证签名/源请求后绑定原主体和scope，只允许 task_id/event_id/thread_id/origin_run_id 及安全reason；没有绑定主体的未知回执查询不能伪造owner。`checked` 的HTTP成功也可能返回 unknown/blocked，不等同通知已接受或模型已执行。
+
+本增量复用HTTP审计短事务，不新增审计outbox或承诺无丢失；原始命令、日志、签名、模型引用与控制handle全部排除。动作、脱敏与实际权限证据见[后台专项](../../../../docs/projects/20261009-agent-generic-production-capabilities/verification.md)。

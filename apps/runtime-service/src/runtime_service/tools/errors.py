@@ -13,7 +13,11 @@ from langchain_core.exceptions import ContextOverflowError, ModelInvalidRequestE
 from langchain_core.tools import ToolException
 from langgraph.errors import GraphBubbleUp
 
-from runtime_service.runtime.errors import RuntimeErrorBase, RuntimeWorkspaceError
+from runtime_service.runtime.errors import (
+    BackgroundTaskNotStarted,
+    RuntimeErrorBase,
+    RuntimeWorkspaceError,
+)
 
 _RESEARCH = {
     "invalid_research_query",
@@ -195,6 +199,8 @@ _FAILURE_BY_TOOL = {
     **dict.fromkeys(_CHART_NAMES, {"chart_provider_failed", "chart_image_missing"}),
 }
 _MESSAGES = {
+    "background_task_not_supported": "当前环境不支持后台执行，本次调用未登记任务。短任务可改用 execute（默认30秒、最大60秒）；长任务请拆分或选择支持后台执行的环境。",
+    "background_task_disabled": "后台新任务已关闭，本次调用未登记任务。已有任务仍可查询或取消。短任务可改用 execute（默认30秒、最大60秒）；长任务请拆分或选择支持后台执行的环境。",
     "tool.invalid_input": "工具输入不符合要求，请修正参数后继续。",
     "tool.upstream_unavailable": "工具暂时无法完成请求，请选择其他方式。",
     "tool.operation_failed": "工具未返回可用结果，请选择其他方式。",
@@ -221,6 +227,18 @@ def _content(
 
 
 def tool_error_content(exc: BaseException, tool_name: str) -> str | None:
+    if (
+        isinstance(exc, BackgroundTaskNotStarted)
+        and tool_name == "background_execute"
+        and exc.code in {"background_task_not_supported", "background_task_disabled"}
+    ):
+        return _content(
+            tool_name,
+            type(exc).__name__,
+            exc.code,
+            "use_execute_for_short_task",
+            "not_started",
+        )
     if isinstance(
         exc, (RuntimeErrorBase, RuntimeWorkspaceError, GraphBubbleUp, CancelledError)
     ):

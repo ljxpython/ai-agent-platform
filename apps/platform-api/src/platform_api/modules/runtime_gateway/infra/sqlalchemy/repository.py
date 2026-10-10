@@ -29,7 +29,13 @@ class StoredRunRequest:
     submission_status: str
     parent_run_id: str | None
     interrupt_id: str | None
-    origin_ref: str | None
+    origin_ref: str | None = None
+    upstream_idempotency_key: str | None = None
+    upstream_body: bytes | None = None
+    upstream_request_digest: str | None = None
+    upstream_receipt_scope_id: str | None = None
+    upstream_receipt_credential_id: str | None = None
+    upstream_auth_snapshot: dict | None = None
 
 
 def _stored(row: RunRequestRecord) -> StoredRunRequest:
@@ -107,3 +113,28 @@ class RunRequestsRepository:
                 origin.run_id = run_id
             row.run_id = run_id
         self.session.flush()
+
+    def bind_acceptance(self, request_id: str, **values):
+        row = self.session.get(RunRequestRecord, UUID(request_id), with_for_update=True)
+        if row is None:
+            raise RuntimeError("Run request disappeared")
+        if row.upstream_body is not None:
+            if any(getattr(row, name) != value for name, value in values.items()):
+                raise ConflictError(
+                    code="upstream_request_conflict",
+                    message="Acceptance request is already bound",
+                )
+            return _stored(row)
+        for name, value in values.items():
+            if name not in {
+                "upstream_idempotency_key",
+                "upstream_body",
+                "upstream_request_digest",
+                "upstream_receipt_scope_id",
+                "upstream_receipt_credential_id",
+                "upstream_auth_snapshot",
+            }:
+                raise ValueError("Invalid acceptance field")
+            setattr(row, name, value)
+        self.session.flush()
+        return _stored(row)

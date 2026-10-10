@@ -427,6 +427,44 @@ export function deriveBudgetViewModel(
     };
   }
 
+  const isTokenUnverifiable =
+    notice?.code === "token_budget_unverifiable" ||
+    safetyError?.code === "runtime_token_budget_unverifiable" ||
+    historicalStopCode === "token_budget_unverifiable";
+
+  if (isTokenUnverifiable) {
+    if (isRunning) {
+      // 在途不可验证过渡态
+      return {
+        level: "warning",
+        isTerminal: false,
+        title: "Token用量无法确认",
+        description: "已触发额度保护，正在确认执行结果",
+        code: "token_budget_unverifiable",
+        scope: "run",
+        unit: "tokens_total",
+        remaining: null,
+        limit: notice?.limit ?? null,
+        used: notice?.used ?? null,
+        actionType: "none",
+      };
+    }
+    // 原生终态不可确认：不提供重试按钮，避免再次触发
+    return {
+      level: "error",
+      isTerminal: true,
+      title: "用量无法确认",
+      description: "用量无法确认，本次执行已停止新增工作",
+      code: "token_budget_unverifiable",
+      scope: "run",
+      unit: "tokens_total",
+      remaining: null,
+      limit: notice?.limit ?? null,
+      used: notice?.used ?? null,
+      actionType: "none",
+    };
+  }
+
   if (safetyError) {
     switch (safetyError.code) {
       case "runtime_model_call_limit_reached":

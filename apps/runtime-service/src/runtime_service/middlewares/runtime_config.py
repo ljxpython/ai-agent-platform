@@ -13,6 +13,7 @@ from langchain_core.messages import AIMessage, BaseMessage, RemoveMessage, ToolM
 from langchain_core.tools import BaseTool
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 
+from runtime_service.background_tasks.capabilities import query_enabled, start_enabled
 from runtime_service.middlewares.conversation_offloading import (
     is_conversation_maintenance,
 )
@@ -438,6 +439,13 @@ class RuntimeConfigMiddleware(AgentMiddleware[object, RuntimeContext, object]):
             for tool in tools:
                 name = _tool_name(tool)
                 if name is None or name not in allowed:
+                    continue
+                if name == "background_execute" and not start_enabled():
+                    continue
+                if (
+                    name in {"background_task", "cancel_background_task"}
+                    and not query_enabled()
+                ):
                     continue
                 filtered.append(tool)
             tools = filtered

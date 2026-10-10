@@ -60,6 +60,11 @@ async def authenticate(authorization: str | None = None) -> Auth.types.MinimalUs
     principal = verified.principal
     policy = verified.policy
     return {
+        **(
+            {"run_acceptance": verified.run_acceptance}
+            if verified.run_acceptance is not None
+            else {}
+        ),
         "identity": principal.user_id,
         "is_authenticated": True,
         "tenant_id": principal.tenant_id,
@@ -106,6 +111,47 @@ async def deny_image_scope_on_server_resources(
 ) -> dict[str, str] | None:
     """Enforce delegation scope and recheck platform ACL for thread resources."""
     scope = _user_value(ctx.user, "runtime_scope")
+    from runtime_service.background_tasks.authorization import (
+        authorize_completion_cleanup,
+        is_completion_cleanup,
+    )
+
+    if is_completion_cleanup(ctx.user):
+        return await authorize_completion_cleanup(ctx, value)
+    if isinstance(scope, dict) and scope.get("operation") == "run-acceptance-read":
+        grant = _user_value(ctx.user, "run_acceptance")
+        if (
+            not isinstance(grant, dict)
+            or str(ctx.resource) != "threads"
+            or str(ctx.action) != "read"
+            or value.get("run_acceptance_receipt") is not True
+            or str(value.get("thread_id")) != grant["thread_id"]
+            or value.get("key_sha256") != grant["key_sha256"]
+            or value.get("request_digest") != grant["request_digest"]
+        ):
+            raise Auth.exceptions.HTTPException(
+                status_code=403, detail="Acceptance receipt scope mismatch"
+            )
+        return {"project_id": scope["project_id"]}
+    if (
+        isinstance(scope, dict)
+        and scope.get("operation") == "run-create"
+        and value.get("run_acceptance_receipt") is True
+        and str(ctx.resource) == "threads"
+        and str(ctx.action) == "read"
+    ):
+        grant = _user_value(ctx.user, "run_acceptance")
+        if (
+            not isinstance(grant, dict)
+            or str(value.get("thread_id")) != grant["thread_id"]
+            or value.get("key_sha256") != grant["key_sha256"]
+            or value.get("request_digest") != grant["request_digest"]
+        ):
+            raise Auth.exceptions.HTTPException(
+                status_code=403, detail="Acceptance receipt scope mismatch"
+            )
+        await authorize_thread_targets(ctx.user, [grant["thread_id"]], action="read")
+        return {"project_id": scope["project_id"]}
     if value.get("cancel_active") is True:
         from runtime_service.run_control.authorization import cancellation_context_hash
 
@@ -163,7 +209,32 @@ async def deny_image_scope_on_server_resources(
                 status_code=403, detail="Planning bootstrap is server-owned"
             )
     if action in {"create", "create_run", "update"}:
-        _reject_budget_state(value)
+        marker = None
+        if action == "create_run" and scope.get("operation") == "run-create":
+            from runtime_service.runtime.auth import verified_delegation_from_user
+            from runtime_service.runtime.background_completion import (
+                verify_completion_marker,
+            )
+
+            marker = (
+                (value.get("config") or {})
+                .get("configurable", {})
+                .get("platform_background_completion")
+            )
+            if marker is not None:
+                try:
+                    verify_completion_marker(
+                        marker,
+                        verified_delegation_from_user(ctx.user),
+                        value.get("context"),
+                        value.get("thread_id"),
+                        scope.get("assistant_id"),
+                    )
+                except RuntimeAuthError as exc:
+                    raise Auth.exceptions.HTTPException(
+                        status_code=403, detail="Background completion signature denied"
+                    ) from exc
+        _reject_budget_state(value, marker)
     if resource == "crons":
         operation = scope["operation"]
         if operation == "run-create" and action in {"create", "update"}:
@@ -349,7 +420,7 @@ async def deny_image_scope_on_server_resources(
     return {"project_id": project_id}
 
 
-def _reject_budget_state(value: object) -> None:
+def _reject_budget_state(value: object, completion_marker=None) -> None:
     if isinstance(value, dict):
         if (
             set(value)
@@ -369,16 +440,21 @@ def _reject_budget_state(value: object) -> None:
                 "thread_tool_call_count",
                 "run_tool_call_count",
             }
+            or "platform_background_completion" in value
+            and (
+                completion_marker is None
+                or value["platform_background_completion"] != completion_marker
+            )
             or value.get("type") == "runtime_budget_notice"
         ):
             raise Auth.exceptions.HTTPException(
                 status_code=403, detail="Runtime budget state is server-owned"
             )
         for item in value.values():
-            _reject_budget_state(item)
+            _reject_budget_state(item, completion_marker)
     elif isinstance(value, list):
         for item in value:
-            _reject_budget_state(item)
+            _reject_budget_state(item, completion_marker)
 
 
 async def authorize_thread_targets(

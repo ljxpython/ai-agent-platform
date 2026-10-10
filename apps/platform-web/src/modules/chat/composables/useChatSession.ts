@@ -1558,6 +1558,61 @@ export function useChatSession(options: {
       options.onRefresh();
     }
   });
+
+  const pendingDiscoveredRunIds = ref<string[]>([]);
+
+  async function acceptDiscoveredRun(discoveredRunId: string) {
+    if (disposed || !threadId.value) return;
+    if (run.value?.run_id === discoveredRunId) return;
+
+    if (active(run.value) || stream.isLoading.value) {
+      if (!pendingDiscoveredRunIds.value.includes(discoveredRunId)) {
+        pendingDiscoveredRunIds.value.push(discoveredRunId);
+      }
+      return;
+    }
+
+    try {
+      const list = await service.runs(threadId.value);
+      if (disposed) return;
+      const target = list.find((r) => r.run_id === discoveredRunId);
+      if (target) {
+        run.value = target;
+        options.onRefresh();
+        if (active(target)) {
+          scheduleBackgroundRunPoll(threadId.value);
+        } else {
+          await refreshAccessPolicy();
+        }
+      }
+    } catch {
+      // 保持当前快照
+    }
+  }
+
+  function flushPendingDiscoveredRuns() {
+    if (
+      pendingDiscoveredRunIds.value.length === 0 ||
+      active(run.value) ||
+      stream.isLoading.value
+    ) {
+      return;
+    }
+    const nextRunId = pendingDiscoveredRunIds.value.shift();
+    if (nextRunId) {
+      void acceptDiscoveredRun(nextRunId);
+    }
+  }
+
+  watch(
+    [() => active(run.value), () => stream.isLoading.value],
+    ([isActive, isLoading]) => {
+      if (!isActive && !isLoading) {
+        flushPendingDiscoveredRuns();
+      }
+    },
+  );
+
   watch(stream.error, (cause) => {
     if (cause && !disposed && !isNonFatalStreamError(cause)) {
       fail(cause);
@@ -1650,6 +1705,7 @@ export function useChatSession(options: {
     retry,
     fork,
     verify,
+    acceptDiscoveredRun,
     offloadState,
     clearOffloadState,
     offloadConversation,

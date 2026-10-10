@@ -46,6 +46,15 @@ def stack(tmp_path, request):
         )
     repo = Path(__file__).resolve().parents[5]
     options = getattr(request, "param", {})
+    runtime_image = (
+        os.getenv("BACKGROUND_RUNTIME_IMAGE") if options.get("runtime_image") else None
+    )
+    if options.get("runtime_image") and not runtime_image:
+        pytest.skip("BACKGROUND_RUNTIME_IMAGE must name the locked release image")
+    if options.get("real_model") and os.getenv("BACKGROUND_REAL_MODEL_TEST") != "1":
+        pytest.skip(
+            "BACKGROUND_REAL_MODEL_TEST=1 enables managed real-model verification"
+        )
     source = (
         repo
         / "apps/runtime-service/tests/fixtures"
@@ -64,13 +73,16 @@ def stack(tmp_path, request):
         "ready": str(tmp_path / "ready.json"),
         "worker_ready": str(tmp_path / "worker-ready"),
         "secret": "disposable-tool-error-verification-secret",
+        "real_model": bool(options.get("real_model")),
         **{k: str(uuid4()) for k in ("tenant", "project", "other_project", "model")},
     }
     if options.get("provider"):
         spec["provider_port"] = port()
-        spec["provider_url"] = f"http://127.0.0.1:{spec['provider_port']}/v1"
+        provider_host = "host.docker.internal" if runtime_image else "127.0.0.1"
+        spec["provider_url"] = f"http://{provider_host}:{spec['provider_port']}/v1"
     spec["config"] = {
-        "graphs": {
+        "graphs": options.get("graphs")
+        or {
             "dearflow_agent": "fixture.py:graph",
             "showcase_demo": "fixture.py:showcase_graph",
             **options.get("graphs", {}),
@@ -99,6 +111,8 @@ def stack(tmp_path, request):
         "RUNTIME_BACKEND": "local" if native else "docker",
         "RUNTIME_WORKSPACE_IMAGE": "python:3.13-slim",
         "RUNTIME_SHOWCASE_IMAGE": "python:3.13-slim",
+        "RUNTIME_SELF_URL": spec["runtime_url"],
+        "RUNTIME_BACKGROUND_LOG_ROOT": str(tmp_path / "background-logs"),
         "WORKSPACE_TEST_PROBE_FAILURE_FILE": str(tmp_path / "probe-failed"),
         "RUNTIME_DEAR_GOVERNANCE_ENABLED": "0",
         "TAVILY_API_KEY": "synthetic",
@@ -119,6 +133,9 @@ def stack(tmp_path, request):
     for key in tuple(env):
         if key.startswith(("LANGFUSE_", "OTEL_EXPORTER_")):
             env.pop(key)
+    if env.get("RUNTIME_BACKGROUND_TASKS_ENABLED") == "1":
+        env["RUNTIME_EXECUTION_HOST_ID"] = "background-" + prefix
+        env["BACKGROUND_FAULT_MODE_PATH"] = str(tmp_path / "background-fault")
     if options.get("provider"):
         env["RELIABILITY_OBSERVATIONS_URL"] = (
             f"http://127.0.0.1:{spec['provider_port']}"
@@ -132,6 +149,57 @@ def stack(tmp_path, request):
     def start(role, source=None, command=None):
         output = (tmp_path / f"{role}-{len(logs)}.log").open("w")
         logs.append(output)
+        if role == "worker" and runtime_image:
+            Path(spec["worker_ready"]).unlink(missing_ok=True)
+        if runtime_image and role in {"runtime", "worker"} and command is None:
+            container_env = {
+                key: value.replace("127.0.0.1", "host.docker.internal")
+                for key, value in env.items()
+                if key.startswith(
+                    (
+                        "RUNTIME_",
+                        "GRAPHHARBOR_",
+                        "PLATFORM_",
+                        "AGENT_",
+                        "TOOL_ERROR_",
+                        "RELIABILITY_",
+                        "BACKGROUND_",
+                    )
+                )
+                or key
+                in {
+                    "DATABASE_URI",
+                    "REDIS_URI",
+                    "LG_RUNTIME_PG_AUTO_MIGRATE",
+                    "TAVILY_API_KEY",
+                }
+            }
+            container_env.update(
+                PYTHONPATH="/app/src:/app/tests",
+                NO_PROXY="host.docker.internal,127.0.0.1,localhost",
+                RUNTIME_SELF_URL="http://127.0.0.1:8000",
+                TOOL_ERROR_TEST_BIND="0.0.0.0",
+                TOOL_ERROR_TEST_RUNTIME_PORT="8000",
+            )
+            command = [
+                "docker",
+                "run",
+                "--rm",
+                "--name",
+                prefix + "-" + role,
+                "--label",
+                "runtime.background.verification=" + prefix,
+                "--entrypoint=python",
+                "--volume",
+                f"{tmp_path}:{tmp_path}",
+                "--volume",
+                "/var/run/docker.sock:/var/run/docker.sock",
+            ]
+            if role == "runtime":
+                command += ["--publish", f"127.0.0.1:{runtime_port}:8000"]
+            for key, value in container_env.items():
+                command += ["--env", key + "=" + value]
+            command += [runtime_image, str(fixture), role, str(spec_path)]
         processes[role] = subprocess.Popen(
             command
             or [
@@ -152,8 +220,11 @@ def stack(tmp_path, request):
             wait_for(
                 lambda: (
                     Path(spec["worker_ready"]).is_file()
-                    and Path(spec["worker_ready"]).read_text()
-                    == str(processes[role].pid)
+                    and (
+                        runtime_image
+                        or Path(spec["worker_ready"]).read_text()
+                        == str(processes[role].pid)
+                    )
                 ),
                 process=processes[role],
                 timeout=options.get(
@@ -166,6 +237,12 @@ def stack(tmp_path, request):
     def stop(role):
         process = processes.pop(role, None)
         if process is not None:
+            if runtime_image and role in {"runtime", "worker"}:
+                subprocess.run(
+                    ["docker", "stop", "--time=10", prefix + "-" + role],
+                    capture_output=True,
+                    timeout=30,
+                )
             process.terminate()
             try:
                 process.wait(timeout=30)
@@ -256,10 +333,15 @@ def stack(tmp_path, request):
                 ],
             )
             from redis import Redis
+            from redis.exceptions import RedisError
 
-            wait_for(
-                lambda: Redis.from_url(env["REDIS_URI"]).ping(), process=redis_process
-            )
+            def redis_ready():
+                try:
+                    return Redis.from_url(env["REDIS_URI"]).ping()
+                except RedisError:
+                    return False
+
+            wait_for(redis_ready, process=redis_process)
         migration = subprocess.run(
             [
                 sys.executable,
@@ -277,7 +359,8 @@ def stack(tmp_path, request):
             wait_for(
                 lambda: (
                     httpx.get(
-                        spec["provider_url"] + "/ready", trust_env=False
+                        f"http://127.0.0.1:{spec['provider_port']}/v1/ready",
+                        trust_env=False,
                     ).is_success
                 ),
                 process=provider_process,
@@ -290,8 +373,8 @@ def stack(tmp_path, request):
                 ).status_code
                 == 200
             ),
-            process=runtime_process,
             timeout=options.get("startup_timeout", 180),
+            process=runtime_process,
         )
         platform_process = start("platform")
         wait_for(
@@ -327,6 +410,28 @@ def stack(tmp_path, request):
     finally:
         for role in reversed(tuple(processes)):
             stop(role)
+        if env.get("RUNTIME_EXECUTION_HOST_ID", "").startswith(
+            "background-tool-errors-"
+        ):
+            owned = subprocess.run(
+                [
+                    "docker",
+                    "ps",
+                    "-aq",
+                    "--filter",
+                    "label=runtime.background.host=" + env["RUNTIME_EXECUTION_HOST_ID"],
+                ],
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            for container in owned.stdout.split():
+                subprocess.run(
+                    ["docker", "rm", "-f", container],
+                    capture_output=True,
+                    timeout=15,
+                    check=True,
+                )
         for output in logs:
             output.close()
 

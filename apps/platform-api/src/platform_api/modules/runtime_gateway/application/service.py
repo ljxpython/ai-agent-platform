@@ -1664,6 +1664,39 @@ class RuntimeGatewayService:
                 )
             )
         capabilities = await upstream.get_graph_capabilities(agent_key)
+        if capabilities.get("background_tasks"):
+            from platform_api.modules.runtime_policies.application import (
+                RuntimePolicyOverlayService,
+            )
+
+            def tool_policy():
+                return (
+                    RuntimePolicyOverlayService(
+                        session_factory=self._require_session_factory(),
+                        runtime_base_url=self._runtime_id,
+                    )
+                    .resolve_tool_overrides(
+                        project_id=project_id, user_id=actor.user_id, graph_id=agent_key
+                    )
+                    .get("tool_overrides", {})
+                )
+
+            restrictions = await run_in_threadpool(tool_policy)
+            capabilities = {
+                **capabilities,
+                "background_tasks": restrictions.get("background_task") is not False,
+                "background_tasks_start_enabled": capabilities.get(
+                    "background_tasks_start_enabled"
+                )
+                is True
+                and all(
+                    restrictions.get(name) is not False
+                    for name in ("execute", "background_execute")
+                )
+                and thread_access.allowed(
+                    actor, project_id, _thread_metadata(thread), "comment"
+                ),
+            }
         return {
             **capabilities,
             "terminal": bool(capabilities.get("terminal"))
@@ -2015,6 +2048,7 @@ class RuntimeGatewayService:
         parent_run_id: str | None = None,
         interrupt_id: str | None = None,
         scheduled_config: dict[str, Any] | None = None,
+        completion_config: dict[str, Any] | None = None,
         model_resilience_snapshot: ModelResilienceSettings | None = None,
     ) -> tuple[StoredRunRequest, Any]:
         """Persist submission identity; Agent Server owns execution and concurrency."""
@@ -2321,6 +2355,14 @@ class RuntimeGatewayService:
             )
             return record, await self._upstream.get_thread_run(thread_id, record.run_id)
 
+        if completion_config is not None and reused:
+            # Recovery is read-only; even a record without bytes may represent an in-flight send.
+            raise UpstreamServiceError(
+                upstream="langgraph",
+                code="run_acceptance_unknown",
+                message="Run acceptance requires reconciliation",
+            )
+
         current_context_hash, current_snapshot = _runtime_context_snapshot(
             {"params": {"context": record.context_snapshot}}
         )
@@ -2369,10 +2411,10 @@ class RuntimeGatewayService:
             thread_action=thread_action,
             model_resilience=snapshot_policy,
         )
-        if scheduled_config is not None:
+        if scheduled_config is not None or completion_config is not None:
             payload["config"]["configurable"] = {
                 **payload["config"].get("configurable", {}),
-                **scheduled_config,
+                **(scheduled_config or completion_config or {}),
             }
             # Public normalization removes scope aliases; restore server-owned scope.
             payload["metadata"] = {
@@ -2387,7 +2429,68 @@ class RuntimeGatewayService:
             ).hexdigest()
         )
         upstream = self._upstream
-        if self._delegation_headers_factory is not None and hasattr(
+        acceptance_mode = completion_config is not None
+        if acceptance_mode:
+            from platform_api.adapters.langgraph.runs_sdk_adapter import (
+                LangGraphRunsSdkAdapter,
+            )
+            from platform_api.core.context import get_current_request_context
+            from platform_api.core.security.run_acceptance import receipt_binding
+
+            if self._delegation_headers_factory is None:
+                raise ServiceUnavailableError(
+                    code="runtime_delegation_not_configured",
+                    message="Acceptance requires authenticated delegation",
+                )
+            context = get_current_request_context()
+            tenant_id = context.tenant.tenant_id or "__default"
+            subject = actor.user_id or actor.subject
+            scope_id, credential_id = receipt_binding(
+                tenant_id,
+                project_id,
+                subject,
+                actor.credential_id
+                if actor.principal_type == "service_account"
+                else None,
+            )
+            body_bytes = LangGraphRunsSdkAdapter.acceptance_body(payload)
+            upstream_digest = "sha256:" + hashlib.sha256(body_bytes).hexdigest()
+            grant = {
+                "scope_id": scope_id,
+                "credential_id": credential_id,
+                "operation": "create",
+                "thread_id": str(UUID(thread_id)),
+                "key_sha256": hashlib.sha256(
+                    payload["idempotency_key"].encode()
+                ).hexdigest(),
+                "request_digest": upstream_digest,
+            }
+            auth_snapshot = {}
+            forwarded = await run_in_threadpool(
+                self._delegation_headers_factory,
+                project_id=project_id,
+                agent_key=agent_key,
+                thread_id=thread_id,
+                context_hash=current_context_hash,
+                run_acceptance=grant,
+                auth_snapshot=auth_snapshot,
+            )
+
+            def bind_acceptance():
+                with factory.begin() as session:
+                    return RunRequestsRepository(session).bind_acceptance(
+                        record.id,
+                        upstream_idempotency_key=payload["idempotency_key"],
+                        upstream_body=body_bytes,
+                        upstream_request_digest=upstream_digest,
+                        upstream_receipt_scope_id=scope_id,
+                        upstream_receipt_credential_id=credential_id,
+                        upstream_auth_snapshot=auth_snapshot,
+                    )
+
+            record = await run_in_threadpool(bind_acceptance)
+            upstream = upstream.with_forwarded_headers(forwarded)
+        elif self._delegation_headers_factory is not None and hasattr(
             upstream, "with_forwarded_headers"
         ):
             upstream = upstream.with_forwarded_headers(
@@ -2406,7 +2509,34 @@ class RuntimeGatewayService:
                 RunRequestsRepository(session).mark(record.id, status, run_id)
 
         try:
-            result = await upstream.create_thread_run(thread_id, payload)
+            if acceptance_mode:
+                from platform_api.modules.runtime_gateway.application.run_acceptance import (
+                    validate_receipt,
+                )
+
+                result = await upstream.create_run_with_acceptance(
+                    thread_id,
+                    record.upstream_body,
+                    record.upstream_idempotency_key,
+                    record.upstream_request_digest,
+                )
+                receipt_result = validate_receipt(
+                    result,
+                    thread_id,
+                    record.upstream_idempotency_key,
+                    record.upstream_request_digest,
+                )
+                if receipt_result == "definitively_not_accepted":
+                    await run_in_threadpool(mark, "rejected")
+                    return record, result
+                if receipt_result != "accepted":
+                    raise UpstreamServiceError(
+                        upstream="langgraph",
+                        code="run_acceptance_unknown",
+                        message="Run acceptance remains unknown",
+                    )
+            else:
+                result = await upstream.create_thread_run(thread_id, payload)
             run_id = _run_id_from_command_result(result)
             if not run_id:
                 raise UpstreamServiceError(
@@ -2421,7 +2551,11 @@ class RuntimeGatewayService:
                 and exc.upstream_status_code is not None
                 else exc.status_code
             )
-            outcome = "rejected" if 400 <= source_status < 500 else "unknown"
+            outcome = (
+                "rejected"
+                if not acceptance_mode and 400 <= source_status < 500
+                else "unknown"
+            )
             self._emit_correlation(
                 "runtime.submission.result", **relation, outcome=outcome
             )
@@ -4145,6 +4279,13 @@ class RuntimeGatewayService:
                 target_count=result["target_count"],
             )
         return result
+
+    async def background_task_action(self, **kwargs):
+        from platform_api.modules.runtime_gateway.application.background_tasks import (
+            background_task_action,
+        )
+
+        return await background_task_action(self, **kwargs)
 
     async def list_thread_runs(
         self,

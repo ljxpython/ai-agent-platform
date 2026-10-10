@@ -9,6 +9,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 通用后台 Workspace 任务界面 | F01-F11 与 A/B 增量 ABF01-ABF03 已完成：查询探针门禁、短任务恢复提示与真实 local 浏览器验收通过；B01已解除，T10/F12全栈Final待完成 | [原前端契约](projects/20261009-agent-generic-production-capabilities/frontend-handoff.md) · [A/B 前端交接](projects/20261009-agent-generic-production-capabilities/local-compatibility-frontend-handoff.md) |
 | F13 浏览器语音听写 | 已完成：基于原生 SpeechRecognition / webkitSpeechRecognition 实现单实例 useVoiceInput，只在 final 写入草稿末尾、interim 不落草稿、用户按键抢占取消防自杀误关；共享 ChatComposer 采用方案 A 纯图标按钮 + 录音专注模式 + 全宽声波微胶囊设计；28 项单测、Playwright 自动化 E2E 及真实环境验收全部通过 | [评审与任务](projects/20260913-dearflow-agent/17-f13-voice-input-assessment.md) · [前端交接](projects/20260913-dearflow-agent/18-f13-voice-input-frontend-handoff.md) |
 | F11 发送前输入润色 | 规划中（暂缓）：用户确认 deferred，P2 候选、功能未实施；同事交接保留为后续参考，未排期 | [前端交接](projects/20261010-agent-input-polish/frontend-handoff.md) |
 | Agent 私有失败通知与历史完成摘要 | 已完成：Platform API 私有 feed/read、历史 Run completion 与严格 DTO 契约；Platform Web 实装 Pinia 全局通知 Store 单例（15s 指数退避轮询与乐观回滚）、RunNotificationCenter 顶栏与 ChatPage 双端常驻挂载、细粒度优先（model_error_code -> reason_code -> notification_code）安全白名单文案与动作映射、执行中离开二次确认拦截、useRunCompletion 历史 Run 终态诊断卡片；Vitest 722 passed、Playwright + Chromium 真实大模型 E2E 闭环与三视口截图全绿 | [前端交接](projects/20261009-agent-production-capability-extension/05-frontend-handoff.md) · [实施记录](projects/20261009-agent-production-capability-extension/implementation/02-frontend-implementation.md) |
@@ -78,6 +79,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 后台任务网关与受管完成续接 | 部分完成（partial）：四入口/精确operation、DTO/ACL/审计、HMAC与执行前重授权已验；post45正式acceptance adapter、发送前bytes/key/digest落盘、平台迁移0007及notify/Stop/撤权发布后联合通过，B01解除；全范围Final和现役部署未完成 | [专项](projects/20261009-agent-generic-production-capabilities/README.md) · [引擎接续](projects/20261009-agent-generic-production-capabilities/engine-handoff.md) |
 | F11 受管草稿润色网关 | 规划中（暂缓）：用户确认 deferred；无 Thread 用途授权与治理方案未批准，未新增接口或配置 | [整体方案](projects/20261010-agent-input-polish/plan.md) |
 | Agent 终态回调与私有通知 API | 已完成：来源、HMAC收件、ACL、历史completion/feed/read、删除抑制和cron回填已实现；源码完整/正式最短通过，native定时/回填已有部分证据；前端全栈闭环接入并经用户验收，安全合并入主干 | [项目概览](projects/20261009-agent-production-capability-extension/README.md) · [前端交接](projects/20261009-agent-production-capability-extension/05-frontend-handoff.md) · [官方边界核对](projects/20261009-agent-production-capability-extension/07-langgraph-server-boundary.md) |
 | 模型价格快照与授权用量查询 | 全链路已完成：可空六费率/版本与历史快照、usage-read、Run/Thread GET、安全投影和当前 ACL；隔离链路/Final 完成，未部署现役 | [方案与任务](projects/20261007-agent-usage-cost-governance/03-platform-cost-contract.md) |
@@ -103,6 +105,8 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| 通用后台非阻塞 Workspace 任务 | 部分完成（partial）：Docker runner、PG幂等/lease/fence/容量、有界日志、无模型对账、三工具与Stop已实现；正式post45依赖/部署断言与固定只读回查联合验收完成，B01解除。全范围后端/T10/F12、新Linux应用镜像待验，新提交默认关闭、现役未部署 | [专项入口](projects/20261009-agent-generic-production-capabilities/README.md) · [验证](projects/20261009-agent-generic-production-capabilities/verification.md) |
+| 非 Docker 后台任务兼容 A/B | 前后端 done：隐藏模型启动工具、保留旧checkpoint回执、仅确认未登记的环境限制给短任务建议；unknown不重跑，execute最大60秒/原审批。两图真实local API/Worker及ABF能力门禁/恢复提示/浏览器独立验收通过；B01另由接受回执专项解除 | [兼容方案](projects/20261009-agent-generic-production-capabilities/plan.md#43-非-docker-兼容与精确降级后端已实施前端接续) · [实施记录](projects/20261009-agent-generic-production-capabilities/implementation/05-local-background-compatibility.md) |
 | F10 通用文档读取与附件上下文补齐 | 全链路已完成：FileRef/raw上传下载与同一parse_document补DOCX/PPTX有界读取；Docker6项、两图真实模型/历史/连续上传/fork、Worker重启通过，删除全目录系统索引；Excel保留沙箱分析。前端Task 3.1/3.2、DOC/PPT徽标纠偏、纯下载拦截及工作区415人性化提示实装，Vitest 726 passed通过、Playwright真实模型E2E 3项全绿，4张长图留痕完成，用户人工浏览器实测验收通过。未部署现役 | [专项](projects/20261010-agent-document-reading/README.md) · [前端交接](projects/20261010-agent-document-reading/frontend-handoff.md) |
 | F11 通用输入润色 one-shot | 规划中（暂缓）：用户确认 deferred；保留 suggestions 复用与旁路成本方案，未实施、未排期 | [需求取舍](projects/20261010-agent-input-polish/reference-analysis.md) |
 | 通用 Agent 安全终态与可靠完成投递 | 已完成：GraphHarbor post44 已提供原生 webhook、原子 terminal snapshot/outbox、HMAC/lease/retry/dead-letter/replay；Runtime projector 与跨服务隔离证据完成，正式包整链路和前端验收全绿，保持通用 Server 边界 | [方案](projects/20261009-agent-production-capability-extension/plan.md) · [引擎交接](projects/20261009-agent-production-capability-extension/03-engine-terminal-delivery.md) |

@@ -73,6 +73,10 @@ Run GET 没有 error，旧事件全部过期且无人工标记时安全降级，
 
 Runtime 九个 `runtime.plan.*` 错误码只对可信异常类型与精确固定码公开；附带异常正文的字符串保持安全泛化。没有新终态：计划审批为原生 interrupted，abandon 结束但 active 保留，approve 不代表 Run success。完整 DTO、错误表与前端剩余验证见 [交接](../projects/20261008-agent-plan-mode-governance/frontend-handoff.md)。本补充不改变容量门禁的 draft 状态。
 
+## 后台任务完成 Run（2026-10-09 用户批准）
+
+后台任务不新增 SSE channel/custom 事件。完成通知是同 Thread 的独立 enqueue Run，客户端从任务元数据的 `latest_delivery_run_id/delivery.run_id` 发现后复用官方 SDK。源 Run 已结束不代表后续通知已创建，delivery accepted 也不代表 Run 已执行。私有 `platform_background_completion` 在 HTTP/history/Protocol/v3 JSON 出口递归剥离，普通输入递归拒绝；安全 task/event/source Run metadata 可保留用于关联。日志单独 GET 纯文本，不注入系统消息或执行错误槽位。见 [F06 前端接续](../projects/20261009-agent-generic-production-capabilities/frontend-handoff.md)。此加法契约不改变本规范原有容量门禁的 draft 状态。
+
 ## SDK 自动重试规则（补丁扩展）
 
 | 规则 | 值 |

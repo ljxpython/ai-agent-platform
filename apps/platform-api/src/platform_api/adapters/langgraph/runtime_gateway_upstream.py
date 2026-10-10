@@ -67,6 +67,24 @@ class LangGraphRuntimeGatewayUpstream:
     async def get_info(self) -> dict[str, Any]:
         return await self._http.require_json("GET", "/info")
 
+    async def create_run_with_acceptance(
+        self,
+        thread_id: str,
+        body_bytes: bytes,
+        idempotency_key: str,
+        request_digest: str,
+    ):
+        return await self._runs.acceptance(
+            "POST", thread_id, idempotency_key, request_digest, body_bytes
+        )
+
+    async def get_run_acceptance(
+        self, thread_id: str, idempotency_key: str, request_digest: str
+    ):
+        return await self._runs.acceptance(
+            "GET", thread_id, idempotency_key, request_digest
+        )
+
     async def cron_request(
         self,
         method: str,
@@ -404,6 +422,31 @@ class LangGraphRuntimeGatewayUpstream:
     async def list_stop_requests(self, thread_id: str, params: dict) -> dict[str, Any]:
         return await self._http.require_json(
             "GET", f"/internal/threads/{thread_id}/stop-requests", params=params
+        )
+
+    async def list_background_tasks(self, thread_id: str, params: dict) -> dict:
+        return await self._http.require_json(
+            "GET", f"/internal/threads/{thread_id}/background-tasks", params=params
+        )
+
+    async def get_background_task(self, thread_id: str, task_id: str) -> dict:
+        return await self._http.require_json(
+            "GET", f"/internal/threads/{thread_id}/background-tasks/{task_id}"
+        )
+
+    async def get_background_output(self, thread_id: str, task_id: str) -> dict:
+        return await self._http.require_json(
+            "GET", f"/internal/threads/{thread_id}/background-tasks/{task_id}/output"
+        )
+
+    async def cancel_background_task(
+        self, thread_id: str, task_id: str, key: str
+    ) -> dict:
+        return await self._http.require_json(
+            "POST",
+            f"/internal/threads/{thread_id}/background-tasks/{task_id}/cancel",
+            payload={},
+            forwarded_headers={"Idempotency-Key": key},
         )
 
     async def list_thread_runs(

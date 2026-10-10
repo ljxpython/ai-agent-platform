@@ -439,6 +439,24 @@ describe("parseToolErrorSummary", () => {
       recoveryHint: "先核对结果",
       rawJson: unknownJson,
     });
+
+    const notStartedJson = JSON.stringify({
+      status: "error",
+      code: "background_task_not_supported",
+      error:
+        "当前环境不支持后台执行，本次调用未登记任务。短任务可改用 execute（默认30秒、最大60秒）；长任务请拆分或选择支持后台执行的环境。",
+      error_type: "BackgroundTaskNotStarted",
+      name: "background_execute",
+      recovery: "use_execute_for_short_task",
+      outcome: "not_started",
+    });
+    expect(parseToolErrorSummary(notStartedJson)).toEqual({
+      isStructured: true,
+      summary:
+        "当前环境不支持后台执行，本次调用未登记任务。短任务可改用 execute（默认30秒、最大60秒）；长任务请拆分或选择支持后台执行的环境。",
+      recoveryHint: "短任务可改用前台执行，最长60秒",
+      rawJson: notStartedJson,
+    });
   });
 
   it("extracts structured error from MCP content blocks array", () => {
