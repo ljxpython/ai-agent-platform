@@ -1,0 +1,277 @@
+{
+  "source": "HTTP contract test with real PostgreSQL; upstream Run lookup fixture",
+  "responses": [
+    {
+      "scenario": "pending",
+      "method": "GET",
+      "path": "/api/langgraph/threads/1a5f91fc-5f37-4ca1-99e5-17150ab6f4ff/runs/c56aac54-6178-40c2-90cd-03c308e81fd6/completion",
+      "status_code": 200,
+      "cache_control": "private, no-store",
+      "body": {
+        "version": 1,
+        "thread_id": "1a5f91fc-5f37-4ca1-99e5-17150ab6f4ff",
+        "run_id": "c56aac54-6178-40c2-90cd-03c308e81fd6",
+        "availability": "pending",
+        "completion": null,
+        "request_id": "5696005d85534c2dbf121cc4ae7079ab"
+      }
+    },
+    {
+      "scenario": "unsupported",
+      "method": "GET",
+      "path": "/api/langgraph/threads/1a5f91fc-5f37-4ca1-99e5-17150ab6f4ff/runs/f350d659-0533-4600-b896-f543e04640df/completion",
+      "status_code": 200,
+      "cache_control": "private, no-store",
+      "body": {
+        "version": 1,
+        "thread_id": "1a5f91fc-5f37-4ca1-99e5-17150ab6f4ff",
+        "run_id": "f350d659-0533-4600-b896-f543e04640df",
+        "availability": "unsupported",
+        "completion": null,
+        "request_id": "cde6e865977d4becbb564aa896672b60"
+      }
+    },
+    {
+      "scenario": "available",
+      "method": "GET",
+      "path": "/api/langgraph/threads/1a5f91fc-5f37-4ca1-99e5-17150ab6f4ff/runs/c56aac54-6178-40c2-90cd-03c308e81fd6/completion",
+      "status_code": 200,
+      "cache_control": "private, no-store",
+      "body": {
+        "version": 1,
+        "thread_id": "1a5f91fc-5f37-4ca1-99e5-17150ab6f4ff",
+        "run_id": "c56aac54-6178-40c2-90cd-03c308e81fd6",
+        "availability": "available",
+        "completion": {
+          "event_id": "c1d1bd33-208e-4d03-a9e1-289f73f2c4b4",
+          "graph_id": "probe",
+          "status": "error",
+          "reason": "business_error",
+          "reason_code": "runtime_execution_failed",
+          "model_error_code": null,
+          "notification_code": "run_failed",
+          "occurred_at": "2026-10-09T05:32:08.502106Z",
+          "can_mark_read": true,
+          "read_at": null
+        },
+        "request_id": "693e62b4ae4b4e159a467df4569e1dda"
+      }
+    },
+    {
+      "scenario": "private_feed",
+      "method": "GET",
+      "path": "/api/runtime/run-notifications",
+      "status_code": 200,
+      "cache_control": "private, no-store",
+      "body": {
+        "version": 1,
+        "availability": "available",
+        "items": [
+          {
+            "event_id": "c1d1bd33-208e-4d03-a9e1-289f73f2c4b4",
+            "graph_id": "probe",
+            "status": "error",
+            "reason": "business_error",
+            "reason_code": "runtime_execution_failed",
+            "model_error_code": null,
+            "notification_code": "run_failed",
+            "occurred_at": "2026-10-09T05:32:08.502106Z",
+            "can_mark_read": true,
+            "read_at": null,
+            "thread_id": "1a5f91fc-5f37-4ca1-99e5-17150ab6f4ff",
+            "run_id": "c56aac54-6178-40c2-90cd-03c308e81fd6",
+            "received_at": "2026-10-09T05:32:08.765018Z"
+          }
+        ],
+        "next_cursor": null,
+        "scan_limit_reached": false,
+        "request_id": "f237930be9ba4966ace2a52238e78f3b"
+      }
+    },
+    {
+      "scenario": "read",
+      "method": "POST",
+      "path": "/api/runtime/run-notifications/c1d1bd33-208e-4d03-a9e1-289f73f2c4b4/read",
+      "status_code": 200,
+      "cache_control": "private, no-store",
+      "body": {
+        "version": 1,
+        "event_id": "c1d1bd33-208e-4d03-a9e1-289f73f2c4b4",
+        "read_at": "2026-10-09T05:32:08.896466Z",
+        "request_id": "f1b328962eb64ecdbcb296e9daf46077"
+      }
+    },
+    {
+      "scenario": "read_duplicate",
+      "method": "POST",
+      "path": "/api/runtime/run-notifications/c1d1bd33-208e-4d03-a9e1-289f73f2c4b4/read",
+      "status_code": 200,
+      "cache_control": "private, no-store",
+      "body": {
+        "version": 1,
+        "event_id": "c1d1bd33-208e-4d03-a9e1-289f73f2c4b4",
+        "read_at": "2026-10-09T05:32:08.896466Z",
+        "request_id": "bcf8c5d04b464b80a148a0ebe6e6a41f"
+      }
+    },
+    {
+      "scenario": "empty_unread",
+      "method": "GET",
+      "path": "/api/runtime/run-notifications",
+      "status_code": 200,
+      "cache_control": "private, no-store",
+      "body": {
+        "version": 1,
+        "availability": "available",
+        "items": [],
+        "next_cursor": null,
+        "scan_limit_reached": false,
+        "request_id": "d890f33e2e23481f88831e159f0c14de"
+      }
+    },
+    {
+      "scenario": "invalid_query",
+      "method": "GET",
+      "path": "/api/runtime/run-notifications",
+      "status_code": 400,
+      "cache_control": "private, no-store",
+      "body": {
+        "error": {
+          "code": "invalid_completion_query",
+          "message": "Invalid completion query",
+          "details": []
+        },
+        "request_id": "cd59fc952fb443d884f7c760bf6ce6ba"
+      }
+    },
+    {
+      "scenario": "invalid_read_body",
+      "method": "POST",
+      "path": "/api/runtime/run-notifications/c1d1bd33-208e-4d03-a9e1-289f73f2c4b4/read",
+      "status_code": 422,
+      "cache_control": "private, no-store",
+      "body": {
+        "error": {
+          "code": "validation_failed",
+          "message": "Validation failed",
+          "details": [
+            {
+              "loc": [
+                "body",
+                "secret"
+              ],
+              "type": "extra_forbidden",
+              "message": "Extra field not permitted"
+            }
+          ]
+        },
+        "request_id": "756dc31ca06a4a9089626902da2ff3c2"
+      }
+    },
+    {
+      "scenario": "disabled",
+      "method": "GET",
+      "path": "/api/runtime/run-notifications",
+      "status_code": 200,
+      "cache_control": "private, no-store",
+      "body": {
+        "version": 1,
+        "availability": "disabled",
+        "items": [],
+        "next_cursor": null,
+        "scan_limit_reached": false,
+        "request_id": "c903e51ef47b484c946cda2b83522c68"
+      }
+    },
+    {
+      "scenario": "disabled_read",
+      "method": "POST",
+      "path": "/api/runtime/run-notifications/c1d1bd33-208e-4d03-a9e1-289f73f2c4b4/read",
+      "status_code": 503,
+      "cache_control": "private, no-store",
+      "body": {
+        "error": {
+          "code": "runtime_completion_disabled",
+          "message": "Runtime completion disabled",
+          "details": []
+        },
+        "request_id": "78cdb628dd014865a48c90f3b11c67b6"
+      }
+    },
+    {
+      "scenario": "revoked_history",
+      "method": "GET",
+      "path": "/api/langgraph/threads/1a5f91fc-5f37-4ca1-99e5-17150ab6f4ff/runs/c56aac54-6178-40c2-90cd-03c308e81fd6/completion",
+      "status_code": 404,
+      "cache_control": "private, no-store",
+      "body": {
+        "error": {
+          "code": "completion_not_found",
+          "message": "Completion unavailable",
+          "details": []
+        },
+        "request_id": "e2dc12f68a364ef6a956fbe311649524"
+      }
+    },
+    {
+      "scenario": "revoked_feed",
+      "method": "GET",
+      "path": "/api/runtime/run-notifications",
+      "status_code": 403,
+      "cache_control": "private, no-store",
+      "body": {
+        "error": {
+          "code": "completion_user_required",
+          "message": "User notifications unavailable",
+          "details": []
+        },
+        "request_id": "ede6396c5c3f4540a366c75acdc78f0d"
+      }
+    },
+    {
+      "scenario": "storage_unavailable",
+      "method": "GET",
+      "path": "/api/langgraph/threads/1a5f91fc-5f37-4ca1-99e5-17150ab6f4ff/runs/c56aac54-6178-40c2-90cd-03c308e81fd6/completion",
+      "status_code": 503,
+      "cache_control": "private, no-store",
+      "body": {
+        "error": {
+          "code": "completion_storage_unavailable",
+          "message": "Completion storage is unavailable",
+          "details": []
+        },
+        "request_id": "cbc19abbed3e4fd8a7793f82ca6e7360"
+      }
+    },
+    {
+      "scenario": "expired",
+      "method": "GET",
+      "path": "/api/langgraph/threads/1a5f91fc-5f37-4ca1-99e5-17150ab6f4ff/runs/c56aac54-6178-40c2-90cd-03c308e81fd6/completion",
+      "status_code": 200,
+      "cache_control": "private, no-store",
+      "body": {
+        "version": 1,
+        "thread_id": "1a5f91fc-5f37-4ca1-99e5-17150ab6f4ff",
+        "run_id": "c56aac54-6178-40c2-90cd-03c308e81fd6",
+        "availability": "expired",
+        "completion": null,
+        "request_id": "1d5365081df2479aa8ecb59b2f29a696"
+      }
+    },
+    {
+      "scenario": "expired_read",
+      "method": "POST",
+      "path": "/api/runtime/run-notifications/c1d1bd33-208e-4d03-a9e1-289f73f2c4b4/read",
+      "status_code": 404,
+      "cache_control": "private, no-store",
+      "body": {
+        "error": {
+          "code": "notification_not_found",
+          "message": "Notification unavailable",
+          "details": []
+        },
+        "request_id": "06859c697890415cb531c3a67dc300d6"
+      }
+    }
+  ]
+}

@@ -1,0 +1,88 @@
+[
+  {
+    "trigger": "manual",
+    "scenario": "fallback",
+    "status": "success",
+    "run_id": "5c92c17c-6bef-4698-991b-1010fd2108f1",
+    "error_code": null,
+    "provider_calls": [
+      "primary",
+      "backup"
+    ]
+  },
+  {
+    "trigger": "manual",
+    "scenario": "exhausted",
+    "status": "error",
+    "run_id": "64b86cb7-7f42-4bb2-803c-76ab84268ac2",
+    "error_code": "scheduled_task_execution_failed",
+    "provider_calls": [
+      "primary",
+      "backup",
+      "primary"
+    ]
+  },
+  {
+    "trigger": "scheduled",
+    "scenario": "fallback",
+    "status": "success",
+    "run_id": "77a67ada-8d7b-4b64-b844-e6e723550dfc",
+    "error_code": null,
+    "provider_calls": [
+      "primary",
+      "backup"
+    ]
+  },
+  {
+    "trigger": "scheduled",
+    "scenario": "exhausted",
+    "status": "error",
+    "run_id": "2071b135-59f4-4d93-9ba5-70fd246291e8",
+    "error_code": "scheduled_task_execution_failed",
+    "provider_calls": [
+      "primary",
+      "backup",
+      "primary"
+    ]
+  },
+  {
+    "trigger": "cron",
+    "scenario": "fallback",
+    "status": "success",
+    "run_id": "18a1865c-5169-4f90-b673-74a0c9833a7e",
+    "error_code": null,
+    "provider_calls": [
+      "primary",
+      "backup"
+    ]
+  },
+  {
+    "trigger": "cron",
+    "scenario": "exhausted",
+    "status": "error",
+    "run_id": "da5c31dc-914b-45d2-b638-27bd7bc2d08b",
+    "error_code": "scheduled_task_execution_failed",
+    "provider_calls": [
+      "primary",
+      "backup",
+      "primary"
+    ]
+  },
+  {
+    "trigger": "scheduled",
+    "scenario": "backup-disabled",
+    "status": "error",
+    "error_code": "runtime_model_denied",
+    "provider_calls": []
+  },
+  {
+    "trigger": "scheduled",
+    "actor": "service_account",
+    "scenario": "fallback",
+    "status": "success",
+    "provider_calls": [
+      "primary",
+      "backup"
+    ]
+  }
+]

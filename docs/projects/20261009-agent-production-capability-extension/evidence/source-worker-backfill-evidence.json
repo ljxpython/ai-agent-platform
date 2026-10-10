@@ -1,0 +1,11 @@
+{
+  "task_id": "5bb91e8f-9377-4947-bc49-d3fabe0cc77c",
+  "thread_mode": "reuse",
+  "origin_ref": "14ee9c3e-e449-4640-868b-8178dd65e981",
+  "dry_run": "no mutation",
+  "repeat_apply": "same origin",
+  "managed_run": "16c7d922-084d-4d85-91a1-8df5c8b0b129",
+  "reverted_run": "5877da95-e58a-430a-9d18-408d297b724d",
+  "reverted_availability": "unsupported",
+  "thread_delete": 403
+}

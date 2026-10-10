@@ -175,6 +175,16 @@ _PLAN_EXECUTION_MESSAGES = {
     "runtime.plan.unsupported": "当前智能体不支持规划模式。",
 }
 
+_MODEL_EXECUTION_CODES = frozenset(
+    {
+        "runtime.model.retry_exhausted",
+        "runtime.model.retry_budget_exceeded",
+        "runtime.model.stream_interrupted",
+        "runtime.model.provider_rejected",
+        "runtime.model.fallback_incompatible",
+    }
+)
+
 
 def project_budget_notice(value: Any) -> dict[str, Any] | None:
     if (
@@ -275,7 +285,10 @@ def project_execution_error(value: Any) -> Any:
                 return {"code": code, "message": message, "type": kind}
             if value in _PLAN_EXECUTION_MESSAGES:
                 return {"code": value, "message": _PLAN_EXECUTION_MESSAGES[value]}
-            if value in _WORKSPACE_EXECUTION_MESSAGES:
+            if (
+                value in _WORKSPACE_EXECUTION_MESSAGES
+                or value in _MODEL_EXECUTION_CODES
+            ):
                 return value
             if "CANARY" not in value:
                 if "GraphRecursionError" in value or "Recursion limit of" in value:
@@ -321,6 +334,20 @@ def project_execution_error(value: Any) -> Any:
         )
     ):
         return {"code": plan_code, "message": _PLAN_EXECUTION_MESSAGES[plan_code]}
+    if (
+        isinstance(value.get("message"), str)
+        and value["message"] in _MODEL_EXECUTION_CODES
+        and (
+            isinstance(value.get("type"), str)
+            and value["type"] in {"RuntimeResolutionError", "RuntimeExecutionError"}
+            or set(value) <= {"code", "message"}
+        )
+    ):
+        return {
+            "message": value["message"],
+            **({"code": value["message"]} if "code" in value else {}),
+            **({"type": value["type"]} if "type" in value else {}),
+        }
     code = value.get("code")
     if isinstance(code, str) and code in _TOKEN_BUDGET_ERRORS:
         kind = _TOKEN_BUDGET_ERRORS[code]
@@ -433,6 +460,14 @@ def redact_runtime_private_fields(
                 "runtime_token_budget_unverifiable",
             }:
                 safe_error = projected
+            elif isinstance(error, str) and error in _MODEL_EXECUTION_CODES:
+                safe_error = error
+            elif (
+                isinstance(error, dict)
+                and isinstance(error.get("message"), str)
+                and error["message"] in _MODEL_EXECUTION_CODES
+            ):
+                safe_error = project_execution_error(error)
             elif isinstance(error, dict):
                 safe_error = {"message": "runtime.execution_failed"}
                 category = error.get("type")
@@ -503,6 +538,10 @@ def redact_runtime_private_fields(
                 and key in {"plan_execution_id", "plan_bootstrap_required"}
                 or key
                 in {
+                    "callback_context",
+                    "origin_ref",
+                    "runtime_context_token",
+                    "__graphharbor_runtime_context",
                     "__graphharbor_run_budget",
                     "runtime_model_ref",
                     "runtime_message_claim",

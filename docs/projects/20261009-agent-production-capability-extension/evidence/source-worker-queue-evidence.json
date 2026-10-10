@@ -1,0 +1,18 @@
+{
+  "scenario": "expired-reference-queue",
+  "run_id": "ff62a826-71d2-4417-a9a4-5989ae20a50f",
+  "status": "success",
+  "reference_ttl_seconds": 10,
+  "duration_seconds": 19.739,
+  "provider_calls": [
+    "primary",
+    "backup"
+  ],
+  "summary": {
+    "version": 1,
+    "requested_model_id": "85a7624e-4c56-4afe-91a7-f053a5abe09a",
+    "effective_model_id": "c8a0b894-a17f-42fa-9a39-e3f9c5e0a222",
+    "attempts": 2,
+    "fallback_used": true
+  }
+}

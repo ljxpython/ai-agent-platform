@@ -94,6 +94,9 @@ async def authenticate(authorization: str | None = None) -> Auth.types.MinimalUs
         "request_id": verified.request_id,
         "platform_trace_id": verified.platform_trace_id,
         "runtime_credential_id": verified.credential_id,
+        "callback_context": dict(verified.callback_context)
+        if verified.callback_context is not None
+        else None,
     }
 
 

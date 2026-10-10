@@ -1,0 +1,9 @@
+{
+  "receiver_outage_seconds": 300.006,
+  "recovery_seconds": 285.497,
+  "snapshots": 20,
+  "unique_acks": 20,
+  "dispatchers": 2,
+  "http_attempts": 180,
+  "agent_runs_created": 0
+}

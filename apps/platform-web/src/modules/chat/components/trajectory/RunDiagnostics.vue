@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, toRef } from "vue";
 import { useRunDiagnostics } from "../../composables/useRunDiagnostics";
+import { useRunCompletion } from "../../composables/useRunCompletion";
+import { formatNotificationTime } from "../../completion/presentation";
 import {
   formatDuration,
   getAvailabilityBadge,
@@ -44,6 +46,20 @@ const { data, loading, isRefreshing, error, refresh } = useRunDiagnostics({
   enabled: computed(() => true),
 });
 
+const currentRunStatus = computed(() => {
+  if (data.value?.run_status) return data.value.run_status;
+  const match = props.runs.find((r) => r.run_id === props.runId);
+  return match?.status ?? null;
+});
+
+const { completion, failurePresentation } = useRunCompletion({
+  projectId: toRef(props, "projectId"),
+  threadId: toRef(props, "threadId"),
+  runId: toRef(props, "runId"),
+  canRead: toRef(props, "canRead"),
+  isRunning: computed(() => currentRunStatus.value === "running"),
+});
+
 const copiedKey = ref<string | null>(null);
 
 async function copyText(key: string, text: string | null | undefined) {
@@ -58,12 +74,6 @@ async function copyText(key: string, text: string | null | undefined) {
     // 静默降级
   }
 }
-
-const currentRunStatus = computed(() => {
-  if (data.value?.run_status) return data.value.run_status;
-  const match = props.runs.find((r) => r.run_id === props.runId);
-  return match?.status ?? null;
-});
 
 const statusBadge = computed(() => getRunStatusBadge(currentRunStatus.value));
 const availBadge = computed(() =>
@@ -209,6 +219,38 @@ const modelErrorSeverity = computed(() =>
 
       <!-- 4. 正常诊断数据展示 -->
       <template v-else-if="data">
+        <!-- 终态安全失败摘要卡片 (来自受管 completion) -->
+        <div
+          v-if="failurePresentation"
+          data-testid="completion-failure-summary-card"
+          class="rounded-lg border border-rose-200 bg-rose-50/80 p-3 text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/40 dark:text-rose-200 space-y-1.5 shadow-2xs"
+        >
+          <div class="flex items-center justify-between">
+            <div
+              class="flex items-center gap-1.5 font-semibold text-xs text-rose-700 dark:text-rose-300"
+            >
+              <BaseIcon name="alert" size="xs" />
+              <span>终态原因：{{ failurePresentation.title }}</span>
+            </div>
+            <span
+              v-if="completion?.occurred_at"
+              class="text-[10px] text-rose-500/80 dark:text-rose-400/80 font-mono"
+            >
+              {{ formatNotificationTime(completion.occurred_at) }}
+            </span>
+          </div>
+          <p class="text-[11px] text-rose-700/90 dark:text-rose-300/90">
+            {{ failurePresentation.detail }}
+          </p>
+          <div
+            class="flex items-center justify-between pt-1 text-[11px] border-t border-rose-200/60 dark:border-rose-900/40"
+          >
+            <span class="text-rose-600/90 dark:text-rose-400">
+              建议：{{ failurePresentation.suggestedAction }}
+            </span>
+          </div>
+        </div>
+
         <!-- Running 状态提示横幅 -->
         <div
           v-if="data.run_status === 'running'"

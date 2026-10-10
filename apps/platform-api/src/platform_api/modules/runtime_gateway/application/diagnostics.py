@@ -4,28 +4,15 @@ from typing import Annotated, Literal
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
 
+from platform_api.modules.runtime_gateway.domain.error_codes import (
+    ModelErrorCode,
+    WorkspaceErrorCode,
+)
+
 Identifier = Annotated[
     str, Field(max_length=128, min_length=1, pattern=r"^[A-Za-z0-9_:.-]+$")
 ]
 Duration = Annotated[float, Field(ge=0, allow_inf_nan=False, strict=True)]
-ModelErrorCode = Literal[
-    "provider_rate_limited",
-    "provider_overloaded",
-    "context_too_long",
-    "model_unavailable",
-    "provider_auth_failed",
-    "provider_access_denied",
-    "provider_timeout",
-    "provider_unavailable",
-    "model_call_failed",
-]
-WorkspaceErrorCode = Literal[
-    "runtime.workspace.unavailable",
-    "runtime.workspace.execution_unavailable",
-    "runtime.workspace.backend_invalid",
-    "runtime.workspace.image_invalid",
-    "runtime.workspace.execution_outcome_unknown",
-]
 ExecutionErrorCode = ModelErrorCode | WorkspaceErrorCode
 
 

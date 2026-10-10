@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-09",
+  "source": "PyPI graphharbor==0.13.0.post44 and graphharbor-runtime==0.13.0.post44",
+  "topology": "native isolated PostgreSQL/Redis, Platform API HTTP, Runtime API, two Workers/dispatchers, controlled provider; no Docker",
+  "driver": "run-completion-post44-tail-check.py",
+  "driver_sha256": "c099c527b7c72542753b2338e6a324c7650df9e7f8ea582aa481f3f80ceba845",
+  "command": "RUN_COMPLETION_WORKER=1 PYTHONPATH=src:../platform-api/src python -m pytest <temporary-driver>/run-completion-post44-tail-check.py -v --junitxml=<temporary-output>/run-completion-post44-tail-v1.xml",
+  "result": "failed",
+  "junit": "run-completion-post44-tail-v1.xml",
+  "duration_seconds": 563.1,
+  "failed_step": "verify_expired_queue: two blocker model calls were not observed within the 10-second fixture deadline",
+  "unverified_steps": ["expired-reference queue assertions", "Worker restart assertions", "full monolithic official-package matrix"],
+  "limitation": "Completed steps below are partial evidence; the temporary driver does not replace a passing original complete test.",
+  "scheduled": [
+    {
+      "trigger": "manual",
+      "scenario": "fallback",
+      "status": "success",
+      "run_id": "5cca7a47-56f2-4808-b380-2e189d522d19",
+      "error_code": null,
+      "provider_calls": ["primary", "backup"]
+    },
+    {
+      "trigger": "manual",
+      "scenario": "exhausted",
+      "status": "error",
+      "run_id": "1540426b-0b68-40a8-8af4-2c3c754e3e4f",
+      "error_code": "scheduled_task_execution_failed",
+      "provider_calls": ["primary", "backup", "primary"]
+    },
+    {
+      "trigger": "scheduled",
+      "scenario": "fallback",
+      "status": "success",
+      "run_id": "423ecf15-ad76-4c28-9428-c57ae985822b",
+      "error_code": null,
+      "provider_calls": ["primary", "backup"]
+    },
+    {
+      "trigger": "scheduled",
+      "scenario": "exhausted",
+      "status": "error",
+      "run_id": "6f1dcaa8-2ab9-4121-bef8-80db2183d7f2",
+      "error_code": "scheduled_task_execution_failed",
+      "provider_calls": ["primary", "backup", "primary"]
+    },
+    {
+      "trigger": "cron",
+      "scenario": "fallback",
+      "status": "success",
+      "run_id": "0e242619-4de7-4545-8dc7-58322089f162",
+      "error_code": null,
+      "provider_calls": ["primary", "backup"]
+    },
+    {
+      "trigger": "cron",
+      "scenario": "exhausted",
+      "status": "error",
+      "run_id": "46f8dda7-46a5-4afe-b6d1-8038864dc0e9",
+      "error_code": "scheduled_task_execution_failed",
+      "provider_calls": ["primary", "backup", "primary"]
+    },
+    {
+      "trigger": "scheduled",
+      "scenario": "backup-disabled",
+      "status": "error",
+      "error_code": "runtime_model_denied",
+      "provider_calls": []
+    },
+    {
+      "trigger": "scheduled",
+      "actor": "service_account",
+      "scenario": "fallback",
+      "status": "success",
+      "provider_calls": ["primary", "backup"]
+    }
+  ],
+  "backfill": {
+    "task_id": "2d3d6635-7c8f-4e9a-922e-9089f27c89aa",
+    "thread_mode": "reuse",
+    "origin_ref": "0eb045b6-d2bd-42d7-a436-930c57d13d93",
+    "dry_run": "no mutation",
+    "repeat_apply": "same origin",
+    "managed_run": "227cdd02-a03e-44e6-8b38-317d5490cd3b",
+    "reverted_run": "a12ddbd0-1898-4c49-ac0d-014cd2ecd15f",
+    "reverted_availability": "unsupported",
+    "thread_delete": 403
+  }
+}

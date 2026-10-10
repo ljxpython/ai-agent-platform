@@ -1,0 +1,566 @@
+{
+  "version": 1,
+  "source": "isolated real PostgreSQL/API/Worker",
+  "history": [
+    {
+      "version": 1,
+      "thread_id": "5752312c-5893-4ba9-914e-d4b7748f42b8",
+      "run_id": "cf4d5956-c579-459d-a106-1c3fb05a639a",
+      "availability": "available",
+      "completion": {
+        "event_id": "354bd564-c2b7-4d38-b538-f53f53a8d37a",
+        "graph_id": "reference_agent",
+        "status": "success",
+        "reason": "completed",
+        "reason_code": null,
+        "model_error_code": null,
+        "notification_code": null,
+        "occurred_at": "2026-10-09T04:52:44.707165Z",
+        "can_mark_read": false,
+        "read_at": null
+      },
+      "request_id": "a62df6adea8d46628164a5e9a14058e9"
+    },
+    {
+      "version": 1,
+      "thread_id": "7eb3742e-3d91-487c-a6af-075fcaa49456",
+      "run_id": "c24e7a94-c0eb-4260-918f-3281c3c35baa",
+      "availability": "available",
+      "completion": {
+        "event_id": "477d07ff-e6ca-4ea6-b93b-35a0e4faaa2b",
+        "graph_id": "reference_agent",
+        "status": "success",
+        "reason": "completed",
+        "reason_code": null,
+        "model_error_code": null,
+        "notification_code": null,
+        "occurred_at": "2026-10-09T04:52:58.235302Z",
+        "can_mark_read": false,
+        "read_at": null
+      },
+      "request_id": "cdea8468910a44d8bd5c897bf6211d8a"
+    },
+    {
+      "version": 1,
+      "thread_id": "f0c647b6-9c10-4617-8d15-0bc8f828ff63",
+      "run_id": "8b384760-c56b-43a9-81c2-8193cc9fbb90",
+      "availability": "available",
+      "completion": {
+        "event_id": "edc8b41a-489e-42bd-afdd-ba02cf8d120e",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_exhausted",
+        "model_error_code": "provider_overloaded",
+        "notification_code": "run_failed_provider_overloaded",
+        "occurred_at": "2026-10-09T04:53:04.419044Z",
+        "can_mark_read": true,
+        "read_at": null
+      },
+      "request_id": "f382af82dff34984afefd6c96b32d89e"
+    },
+    {
+      "version": 1,
+      "thread_id": "776fa592-2de0-436e-955a-e198eaae101d",
+      "run_id": "f8bb2fec-160c-4db6-89bc-a94365d5d858",
+      "availability": "available",
+      "completion": {
+        "event_id": "a98e1f17-d8bc-4cd1-83d4-9e2f41d2b5bc",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.stream_interrupted",
+        "model_error_code": "model_call_failed",
+        "notification_code": "run_failed_model_call_failed",
+        "occurred_at": "2026-10-09T04:53:09.351470Z",
+        "can_mark_read": true,
+        "read_at": null
+      },
+      "request_id": "f6503f53c67d416ea0a513672d052868"
+    },
+    {
+      "version": 1,
+      "thread_id": "5261ee2a-488d-4fa4-95e7-75449964db99",
+      "run_id": "46db0c70-890b-4571-b855-28deb263d4ad",
+      "availability": "available",
+      "completion": {
+        "event_id": "c180e714-f0ea-46dc-bfdc-6a51c4fb6d7e",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.stream_interrupted",
+        "model_error_code": "model_call_failed",
+        "notification_code": "run_failed_model_call_failed",
+        "occurred_at": "2026-10-09T04:53:14.448289Z",
+        "can_mark_read": true,
+        "read_at": null
+      },
+      "request_id": "06d7c42136ba4afda340856d4fa42ea0"
+    },
+    {
+      "version": 1,
+      "thread_id": "3b1bdbcc-d4b0-4729-9749-7daf791b2715",
+      "run_id": "aa911455-303b-4efb-be87-7dc286facddc",
+      "availability": "available",
+      "completion": {
+        "event_id": "3f18bbe4-4e5d-4685-a0a7-2f63a2a19e12",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.stream_interrupted",
+        "model_error_code": "model_call_failed",
+        "notification_code": "run_failed_model_call_failed",
+        "occurred_at": "2026-10-09T04:53:19.908412Z",
+        "can_mark_read": true,
+        "read_at": null
+      },
+      "request_id": "2b66906fe0ff4eef864b7e23fa0d88b4"
+    },
+    {
+      "version": 1,
+      "thread_id": "755a5ac3-69cf-41b0-a350-70a870e47edf",
+      "run_id": "874e42ed-fc87-4044-9c64-bdc5141918cd",
+      "availability": "available",
+      "completion": {
+        "event_id": "d7537c17-73f3-4e43-88b2-42573fc7a967",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_exhausted",
+        "model_error_code": "provider_timeout",
+        "notification_code": "run_failed_provider_timeout",
+        "occurred_at": "2026-10-09T04:53:29.072057Z",
+        "can_mark_read": true,
+        "read_at": null
+      },
+      "request_id": "6d037b7d33044442ad55ac9216cb01b9"
+    },
+    {
+      "version": 1,
+      "thread_id": "189346d8-e12d-4227-9dc4-dce3be8f353b",
+      "run_id": "ee3c6efd-666d-4299-b488-109f64370f48",
+      "availability": "available",
+      "completion": {
+        "event_id": "7aec8f0e-1500-40bd-8b4e-7d8c0bf99f44",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_budget_exceeded",
+        "model_error_code": "provider_timeout",
+        "notification_code": "run_failed_provider_timeout",
+        "occurred_at": "2026-10-09T04:53:39.197140Z",
+        "can_mark_read": true,
+        "read_at": null
+      },
+      "request_id": "1fbe0d0adb1d4c9b8cc46a20ae1953ee"
+    },
+    {
+      "version": 1,
+      "thread_id": "b011793e-e1f9-4bb9-a4a9-7db7511a211e",
+      "run_id": "ae5eb295-8ac3-4d06-8de8-d36037e2441b",
+      "availability": "available",
+      "completion": {
+        "event_id": "ce3b08c1-a89e-477d-889e-472168583f1b",
+        "graph_id": "reference_agent",
+        "status": "interrupted",
+        "reason": "cancel_requested",
+        "reason_code": null,
+        "model_error_code": null,
+        "notification_code": null,
+        "occurred_at": "2026-10-09T04:53:44.587516Z",
+        "can_mark_read": false,
+        "read_at": null
+      },
+      "request_id": "6c192913bb824fe9af18d5ff52a5d2d2"
+    },
+    {
+      "version": 1,
+      "thread_id": "91aee73c-3d29-41f7-8bcd-836b37286d84",
+      "run_id": "dd51c88f-3492-4e1b-9220-dba97c467bf8",
+      "availability": "available",
+      "completion": {
+        "event_id": "817328a2-1dca-4a75-9181-0eca824c178d",
+        "graph_id": "reference_agent",
+        "status": "success",
+        "reason": "completed",
+        "reason_code": null,
+        "model_error_code": null,
+        "notification_code": null,
+        "occurred_at": "2026-10-09T04:53:51.635902Z",
+        "can_mark_read": false,
+        "read_at": null
+      },
+      "request_id": "3361a29c660740c6b1b343cc7e51df36"
+    },
+    {
+      "version": 1,
+      "thread_id": "28402548-9c9c-491f-a3de-f2465585fdc2",
+      "run_id": "dcaabb23-d65e-4a61-bab0-f921525b9e3f",
+      "availability": "available",
+      "completion": {
+        "event_id": "04891aab-ecd1-4f52-a680-0e2ca8683b8a",
+        "graph_id": "reference_agent",
+        "status": "success",
+        "reason": "completed",
+        "reason_code": null,
+        "model_error_code": null,
+        "notification_code": null,
+        "occurred_at": "2026-10-09T04:54:02.954264Z",
+        "can_mark_read": false,
+        "read_at": null
+      },
+      "request_id": "a36b649caecc46289b72aba085ca1773"
+    },
+    {
+      "version": 1,
+      "thread_id": "1bb79f55-a3a0-4618-b24b-7597917f21bd",
+      "run_id": "6b7a416a-69fd-4104-a63e-39ba431ff8b9",
+      "availability": "available",
+      "completion": {
+        "event_id": "074b3152-0c3f-41bd-ab68-ccfb37d52d43",
+        "graph_id": "reference_agent",
+        "status": "success",
+        "reason": "completed",
+        "reason_code": null,
+        "model_error_code": null,
+        "notification_code": null,
+        "occurred_at": "2026-10-09T04:54:09.987456Z",
+        "can_mark_read": false,
+        "read_at": null
+      },
+      "request_id": "b407e5d36565406e9618a0219fb29954"
+    },
+    {
+      "version": 1,
+      "thread_id": "90ec1abf-0167-5986-b057-7a201f0b3b17",
+      "run_id": "5c92c17c-6bef-4698-991b-1010fd2108f1",
+      "availability": "available",
+      "completion": {
+        "event_id": "4c20546f-dcdd-4411-8f8f-478615481e12",
+        "graph_id": "reference_agent",
+        "status": "success",
+        "reason": "completed",
+        "reason_code": null,
+        "model_error_code": null,
+        "notification_code": null,
+        "occurred_at": "2026-10-09T04:54:17.634348Z",
+        "can_mark_read": false,
+        "read_at": null
+      },
+      "request_id": "1332df21c3424d2793b9b4c282ed9d46"
+    },
+    {
+      "version": 1,
+      "thread_id": "e36cba36-7aa4-5a32-875a-9ba5983f3ad4",
+      "run_id": "64b86cb7-7f42-4bb2-803c-76ab84268ac2",
+      "availability": "available",
+      "completion": {
+        "event_id": "4ece1cf6-b7dc-4b7c-a4e9-d7fda9cb1006",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_exhausted",
+        "model_error_code": "provider_overloaded",
+        "notification_code": "run_failed_provider_overloaded",
+        "occurred_at": "2026-10-09T04:54:24.633594Z",
+        "can_mark_read": true,
+        "read_at": null
+      },
+      "request_id": "301ab66e94ff4b8591e9539d9744de4e"
+    },
+    {
+      "version": 1,
+      "thread_id": "1d656c9f-0b97-4455-ac3b-dd89db04fe34",
+      "run_id": "77a67ada-8d7b-4b64-b844-e6e723550dfc",
+      "availability": "available",
+      "completion": {
+        "event_id": "9dacf618-ad07-4ab8-be53-5e4f2bac1e56",
+        "graph_id": "reference_agent",
+        "status": "success",
+        "reason": "completed",
+        "reason_code": null,
+        "model_error_code": null,
+        "notification_code": null,
+        "occurred_at": "2026-10-09T04:54:32.806728Z",
+        "can_mark_read": false,
+        "read_at": null
+      },
+      "request_id": "fd71fe601b514826882855cbb7f160fe"
+    },
+    {
+      "version": 1,
+      "thread_id": "9f98da61-e092-4cb5-a065-6f86b2c69eed",
+      "run_id": "2071b135-59f4-4d93-9ba5-70fd246291e8",
+      "availability": "available",
+      "completion": {
+        "event_id": "92feb6e4-189b-4f40-aacb-762d4515bb58",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_exhausted",
+        "model_error_code": "provider_overloaded",
+        "notification_code": "run_failed_provider_overloaded",
+        "occurred_at": "2026-10-09T04:54:40.799751Z",
+        "can_mark_read": true,
+        "read_at": null
+      },
+      "request_id": "3462e53ec1384506911a7f314e56bd04"
+    },
+    {
+      "version": 1,
+      "thread_id": "56bab4f1-684d-41fc-b4bd-a8fd09950237",
+      "run_id": "18a1865c-5169-4f90-b673-74a0c9833a7e",
+      "availability": "available",
+      "completion": {
+        "event_id": "263170db-e19d-4623-a6b7-6687bea26b81",
+        "graph_id": "reference_agent",
+        "status": "success",
+        "reason": "completed",
+        "reason_code": null,
+        "model_error_code": null,
+        "notification_code": null,
+        "occurred_at": "2026-10-09T04:54:46.470669Z",
+        "can_mark_read": false,
+        "read_at": null
+      },
+      "request_id": "4b8fb5ce5cb649a3833b99f2c20c2abc"
+    },
+    {
+      "version": 1,
+      "thread_id": "5094213b-d9cd-412c-81b8-9fdae31298f1",
+      "run_id": "da5c31dc-914b-45d2-b638-27bd7bc2d08b",
+      "availability": "available",
+      "completion": {
+        "event_id": "0fb36de5-e1df-432f-ace6-3f7704977ae2",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_exhausted",
+        "model_error_code": "provider_overloaded",
+        "notification_code": "run_failed_provider_overloaded",
+        "occurred_at": "2026-10-09T04:54:52.847230Z",
+        "can_mark_read": true,
+        "read_at": null
+      },
+      "request_id": "f82a0f4763eb4ca5b4ee49602335269b"
+    },
+    {
+      "version": 1,
+      "thread_id": "3ebeeded-f52a-4656-a2ef-6ed98506550a",
+      "run_id": "dad2833a-74b4-4ed7-99cf-4d8530cc103c",
+      "availability": "available",
+      "completion": {
+        "event_id": "f842a2b3-7247-4928-9c01-9351db19d389",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime_execution_failed",
+        "model_error_code": null,
+        "notification_code": "run_failed",
+        "occurred_at": "2026-10-09T04:54:56.981234Z",
+        "can_mark_read": true,
+        "read_at": null
+      },
+      "request_id": "9038246fc5d4424782aacf0c85b666ca"
+    },
+    {
+      "version": 1,
+      "thread_id": "58060265-5ef7-42b4-9acf-e316a867f3ab",
+      "run_id": "16c7d922-084d-4d85-91a1-8df5c8b0b129",
+      "availability": "available",
+      "completion": {
+        "event_id": "fbdd4f98-6a68-42ec-b1a4-af04d5ee0688",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_exhausted",
+        "model_error_code": "provider_overloaded",
+        "notification_code": "run_failed_provider_overloaded",
+        "occurred_at": "2026-10-09T04:55:16.057288Z",
+        "can_mark_read": true,
+        "read_at": null
+      },
+      "request_id": "d115946217204bc2bac517497d9f9efa"
+    }
+  ],
+  "feed": {
+    "version": 1,
+    "availability": "available",
+    "items": [
+      {
+        "event_id": "fbdd4f98-6a68-42ec-b1a4-af04d5ee0688",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_exhausted",
+        "model_error_code": "provider_overloaded",
+        "notification_code": "run_failed_provider_overloaded",
+        "occurred_at": "2026-10-09T04:55:16.057288Z",
+        "can_mark_read": true,
+        "read_at": null,
+        "thread_id": "58060265-5ef7-42b4-9acf-e316a867f3ab",
+        "run_id": "16c7d922-084d-4d85-91a1-8df5c8b0b129",
+        "received_at": "2026-10-09T04:55:16.233518Z"
+      },
+      {
+        "event_id": "f842a2b3-7247-4928-9c01-9351db19d389",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime_execution_failed",
+        "model_error_code": null,
+        "notification_code": "run_failed",
+        "occurred_at": "2026-10-09T04:54:56.981234Z",
+        "can_mark_read": true,
+        "read_at": "2026-10-09T04:54:57.752538Z",
+        "thread_id": "3ebeeded-f52a-4656-a2ef-6ed98506550a",
+        "run_id": "dad2833a-74b4-4ed7-99cf-4d8530cc103c",
+        "received_at": "2026-10-09T04:54:57.445459Z"
+      },
+      {
+        "event_id": "0fb36de5-e1df-432f-ace6-3f7704977ae2",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_exhausted",
+        "model_error_code": "provider_overloaded",
+        "notification_code": "run_failed_provider_overloaded",
+        "occurred_at": "2026-10-09T04:54:52.847230Z",
+        "can_mark_read": true,
+        "read_at": "2026-10-09T04:54:53.373712Z",
+        "thread_id": "5094213b-d9cd-412c-81b8-9fdae31298f1",
+        "run_id": "da5c31dc-914b-45d2-b638-27bd7bc2d08b",
+        "received_at": "2026-10-09T04:54:52.943187Z"
+      },
+      {
+        "event_id": "92feb6e4-189b-4f40-aacb-762d4515bb58",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_exhausted",
+        "model_error_code": "provider_overloaded",
+        "notification_code": "run_failed_provider_overloaded",
+        "occurred_at": "2026-10-09T04:54:40.799751Z",
+        "can_mark_read": true,
+        "read_at": "2026-10-09T04:54:41.324505Z",
+        "thread_id": "9f98da61-e092-4cb5-a065-6f86b2c69eed",
+        "run_id": "2071b135-59f4-4d93-9ba5-70fd246291e8",
+        "received_at": "2026-10-09T04:54:41.080961Z"
+      },
+      {
+        "event_id": "4ece1cf6-b7dc-4b7c-a4e9-d7fda9cb1006",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_exhausted",
+        "model_error_code": "provider_overloaded",
+        "notification_code": "run_failed_provider_overloaded",
+        "occurred_at": "2026-10-09T04:54:24.633594Z",
+        "can_mark_read": true,
+        "read_at": "2026-10-09T04:54:25.267717Z",
+        "thread_id": "e36cba36-7aa4-5a32-875a-9ba5983f3ad4",
+        "run_id": "64b86cb7-7f42-4bb2-803c-76ab84268ac2",
+        "received_at": "2026-10-09T04:54:25.018256Z"
+      },
+      {
+        "event_id": "7aec8f0e-1500-40bd-8b4e-7d8c0bf99f44",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_budget_exceeded",
+        "model_error_code": "provider_timeout",
+        "notification_code": "run_failed_provider_timeout",
+        "occurred_at": "2026-10-09T04:53:39.197140Z",
+        "can_mark_read": true,
+        "read_at": "2026-10-09T04:53:40.581299Z",
+        "thread_id": "189346d8-e12d-4227-9dc4-dce3be8f353b",
+        "run_id": "ee3c6efd-666d-4299-b488-109f64370f48",
+        "received_at": "2026-10-09T04:53:39.333199Z"
+      },
+      {
+        "event_id": "d7537c17-73f3-4e43-88b2-42573fc7a967",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_exhausted",
+        "model_error_code": "provider_timeout",
+        "notification_code": "run_failed_provider_timeout",
+        "occurred_at": "2026-10-09T04:53:29.072057Z",
+        "can_mark_read": true,
+        "read_at": "2026-10-09T04:53:30.461198Z",
+        "thread_id": "755a5ac3-69cf-41b0-a350-70a870e47edf",
+        "run_id": "874e42ed-fc87-4044-9c64-bdc5141918cd",
+        "received_at": "2026-10-09T04:53:29.236023Z"
+      },
+      {
+        "event_id": "3f18bbe4-4e5d-4685-a0a7-2f63a2a19e12",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.stream_interrupted",
+        "model_error_code": "model_call_failed",
+        "notification_code": "run_failed_model_call_failed",
+        "occurred_at": "2026-10-09T04:53:19.908412Z",
+        "can_mark_read": true,
+        "read_at": "2026-10-09T04:53:21.395361Z",
+        "thread_id": "3b1bdbcc-d4b0-4729-9749-7daf791b2715",
+        "run_id": "aa911455-303b-4efb-be87-7dc286facddc",
+        "received_at": "2026-10-09T04:53:20.025836Z"
+      },
+      {
+        "event_id": "c180e714-f0ea-46dc-bfdc-6a51c4fb6d7e",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.stream_interrupted",
+        "model_error_code": "model_call_failed",
+        "notification_code": "run_failed_model_call_failed",
+        "occurred_at": "2026-10-09T04:53:14.448289Z",
+        "can_mark_read": true,
+        "read_at": "2026-10-09T04:53:16.064022Z",
+        "thread_id": "5261ee2a-488d-4fa4-95e7-75449964db99",
+        "run_id": "46db0c70-890b-4571-b855-28deb263d4ad",
+        "received_at": "2026-10-09T04:53:14.882934Z"
+      },
+      {
+        "event_id": "a98e1f17-d8bc-4cd1-83d4-9e2f41d2b5bc",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.stream_interrupted",
+        "model_error_code": "model_call_failed",
+        "notification_code": "run_failed_model_call_failed",
+        "occurred_at": "2026-10-09T04:53:09.351470Z",
+        "can_mark_read": true,
+        "read_at": "2026-10-09T04:53:10.879457Z",
+        "thread_id": "776fa592-2de0-436e-955a-e198eaae101d",
+        "run_id": "f8bb2fec-160c-4db6-89bc-a94365d5d858",
+        "received_at": "2026-10-09T04:53:09.978878Z"
+      },
+      {
+        "event_id": "edc8b41a-489e-42bd-afdd-ba02cf8d120e",
+        "graph_id": "reference_agent",
+        "status": "error",
+        "reason": "business_error",
+        "reason_code": "runtime.model.retry_exhausted",
+        "model_error_code": "provider_overloaded",
+        "notification_code": "run_failed_provider_overloaded",
+        "occurred_at": "2026-10-09T04:53:04.419044Z",
+        "can_mark_read": true,
+        "read_at": "2026-10-09T04:53:05.656247Z",
+        "thread_id": "f0c647b6-9c10-4617-8d15-0bc8f828ff63",
+        "run_id": "8b384760-c56b-43a9-81c2-8193cc9fbb90",
+        "received_at": "2026-10-09T04:53:04.791014Z"
+      }
+    ],
+    "next_cursor": null,
+    "scan_limit_reached": false,
+    "request_id": "279626ced766467b8d83147394991221"
+  },
+  "read": {
+    "version": 1,
+    "event_id": "fbdd4f98-6a68-42ec-b1a4-af04d5ee0688",
+    "read_at": "2026-10-09T04:55:16.690383Z",
+    "request_id": "e4349e6d9a2f44fdbae4a0acfa2c1bf6"
+  }
+}

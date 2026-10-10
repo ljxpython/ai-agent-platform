@@ -22,6 +22,11 @@ class Settings(BaseSettings):
     runtime_delegation_issuer: str = "platform-api"
     runtime_delegation_audience: str = "runtime-service"
     runtime_delegation_ttl_seconds: int = Field(default=60, ge=10, le=300)
+    runtime_completion_key_id: str = ""
+    runtime_completion_secret: str = ""
+    runtime_completion_clock_skew_seconds: int = Field(default=30, ge=1, le=300)
+    runtime_completion_enabled: bool = False
+    runtime_completion_verification_keys: dict[str, str] = Field(default_factory=dict)
     model_config_master_key: str | None = None
     runtime_model_config_secret: str | None = None
     suggestions_enabled: bool = True
@@ -104,6 +109,26 @@ class Settings(BaseSettings):
             and len(self.runtime_delegation_secret.encode("utf-8")) < 32
         ):
             raise ValueError("runtime_delegation_secret must be at least 32 bytes")
+        completion_keys = {**self.runtime_completion_verification_keys}
+        if self.runtime_completion_secret:
+            completion_keys[self.runtime_completion_key_id] = (
+                self.runtime_completion_secret
+            )
+        if any(
+            not key
+            or not key.isascii()
+            or len(key) > 128
+            or not all(c.isalnum() or c in "_.-" for c in key)
+            or len(secret.encode()) < 32
+            for key, secret in completion_keys.items()
+        ):
+            raise ValueError(
+                "runtime completion keys require an ID and at least 32 secret bytes"
+            )
+        if self.runtime_completion_enabled and not completion_keys:
+            raise ValueError(
+                "runtime completion must have verification keys when enabled"
+            )
         if is_production:
             if self.api_docs_enabled:
                 raise ValueError("API docs must be disabled in production")

@@ -1,23 +1,31 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import AnnouncementCenter from '@/components/layout/AnnouncementCenter.vue'
-import LocaleSwitcher from '@/components/layout/LocaleSwitcher.vue'
-import UserMenu from '@/components/layout/UserMenu.vue'
-import WorkspaceProjectSwitcher from '@/components/platform/WorkspaceProjectSwitcher.vue'
-import BaseDialog from '@/components/base/BaseDialog.vue'
-import { useNavigation } from '@/composables/useNavigation'
-import { useThemeStore } from '@/stores/theme'
-const navigation = useNavigation()
-const menuOpen = ref(false)
-const theme = useThemeStore()
-const route = useRoute()
-watch(() => route.fullPath, () => { menuOpen.value = false })
-const { t } = useI18n()
+import { computed, ref, watch } from "vue";
+import { useRoute } from "vue-router";
+import { useI18n } from "vue-i18n";
+import AnnouncementCenter from "@/components/layout/AnnouncementCenter.vue";
+import RunNotificationCenter from "@/components/layout/RunNotificationCenter.vue";
+import LocaleSwitcher from "@/components/layout/LocaleSwitcher.vue";
+import UserMenu from "@/components/layout/UserMenu.vue";
+import WorkspaceProjectSwitcher from "@/components/platform/WorkspaceProjectSwitcher.vue";
+import BaseDialog from "@/components/base/BaseDialog.vue";
+import { useNavigation } from "@/composables/useNavigation";
+import { useThemeStore } from "@/stores/theme";
+const navigation = useNavigation();
+const menuOpen = ref(false);
+const theme = useThemeStore();
+const route = useRoute();
+watch(
+  () => route.fullPath,
+  () => {
+    menuOpen.value = false;
+  },
+);
+const { t } = useI18n();
 
-const routeTitle = computed(() => String(route.meta.title || t('brand.title')))
-const routeEyebrow = computed(() => String(route.meta.eyebrow || t('common.workspace')))
+const routeTitle = computed(() => String(route.meta.title || t("brand.title")));
+const routeEyebrow = computed(() =>
+  String(route.meta.eyebrow || t("common.workspace")),
+);
 </script>
 
 <template>
@@ -32,36 +40,33 @@ const routeEyebrow = computed(() => String(route.meta.eyebrow || t('common.works
           ☰
         </button>
         <div class="hidden min-w-0 md:block">
-          <div class="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500">
+          <div
+            class="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 dark:text-dark-500"
+          >
             {{ routeEyebrow }}
           </div>
-          <div class="mt-0.5 truncate text-[17px] font-semibold tracking-[-0.01em] text-gray-900 dark:text-white md:text-lg">
+          <div
+            class="mt-0.5 truncate text-[17px] font-semibold tracking-[-0.01em] text-gray-900 dark:text-white md:text-lg"
+          >
             {{ routeTitle }}
           </div>
         </div>
       </div>
 
-      <div class="flex min-w-0 flex-1 items-center justify-end gap-1.5 overflow-x-auto md:flex-none md:gap-2">
+      <div
+        class="flex min-w-0 flex-1 items-center justify-end gap-1.5 overflow-x-auto md:flex-none md:gap-2"
+      >
         <WorkspaceProjectSwitcher />
         <LocaleSwitcher />
+        <RunNotificationCenter />
         <AnnouncementCenter />
         <UserMenu />
       </div>
     </div>
   </header>
-  <BaseDialog
-    :show="menuOpen"
-    title="平台导航"
-    @close="menuOpen = false"
-  >
-    <nav
-      aria-label="移动端导航"
-      class="space-y-4"
-    >
-      <section
-        v-for="group in navigation"
-        :key="group.id"
-      >
+  <BaseDialog :show="menuOpen" title="平台导航" @close="menuOpen = false">
+    <nav aria-label="移动端导航" class="space-y-4">
+      <section v-for="group in navigation" :key="group.id">
         <h2 class="mb-2 text-xs text-gray-500">
           {{ group.label }}
         </h2>
@@ -75,10 +80,7 @@ const routeEyebrow = computed(() => String(route.meta.eyebrow || t('common.works
         </RouterLink>
       </section>
     </nav>
-    <button
-      class="pw-table-tool-button mt-4"
-      @click="theme.toggleMode"
-    >
+    <button class="pw-table-tool-button mt-4" @click="theme.toggleMode">
       切换浅色/深色
     </button>
   </BaseDialog>

@@ -14,6 +14,9 @@ from platform_api.modules.runtime_catalog.presentation import (
 from platform_api.modules.runtime_gateway.presentation import (
     router as runtime_gateway_router,
 )
+from platform_api.modules.runtime_gateway.presentation.completion_http import (
+    router as runtime_completion_router,
+)
 from platform_api.modules.runtime_policies.presentation import (
     router as runtime_policies_router,
 )
@@ -35,4 +38,5 @@ api_router.include_router(audit_router)
 api_router.include_router(runtime_catalog_router)
 api_router.include_router(runtime_policies_router)
 api_router.include_router(runtime_gateway_router)
+api_router.include_router(runtime_completion_router)
 api_router.include_router(scheduled_tasks_router)

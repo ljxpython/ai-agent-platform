@@ -277,6 +277,7 @@ ai-agent-platform/
 
 ## 当前状态与工程基线
 
+- **Agent 运行完成通知与失败回调**：部分完成；GraphHarbor post44、Runtime安全投影、Platform API持久completion/feed/read和前端交接已完成；正式最短通过，native完整矩阵资源blocked，前端实现/浏览器验收待同事，见 [项目入口](docs/projects/20261009-agent-production-capability-extension/README.md)。
 - **当前正式版本**：`v0.5.0`（迭代记录见 [CHANGELOG.md](docs/CHANGELOG.md)）
 - **代码质量与门禁**：
   - Python 全仓 570+ 源码文件实现 Ruff 100% 格式化与诊断清零（0 errors）

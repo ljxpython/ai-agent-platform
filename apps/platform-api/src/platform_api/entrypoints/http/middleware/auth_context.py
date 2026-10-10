@@ -62,6 +62,7 @@ def register_auth_context_middleware(app: FastAPI, settings: Settings) -> None:
         "/api/runtime/internal/thread-authorization",
         "/api/runtime/internal/scheduled-authorization",
         "/api/runtime/internal/stop-authorization",
+        "/api/runtime/internal/run-completion",
     }
     public_path_methods = {
         ("DELETE", "/api/identity/session"),

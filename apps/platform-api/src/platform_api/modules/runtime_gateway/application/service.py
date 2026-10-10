@@ -83,6 +83,9 @@ from platform_api.modules.runtime_gateway.application.usage import (
     validate_run_query,
     validate_thread_query,
 )
+from platform_api.modules.runtime_gateway.infra.sqlalchemy.models import (
+    RunCompletionOriginRecord,
+)
 from platform_api.modules.runtime_gateway.infra.sqlalchemy.repository import (
     RunRequestsRepository,
     StoredRunRequest,
@@ -576,6 +579,7 @@ class RuntimeGatewayService:
         suggestions_max: int = 3,
         suggestions_timeout_seconds: float = 8.0,
         on_correlation: Callable[[str, Mapping[str, Any]], None] | None = None,
+        completion_enabled: bool = False,
     ) -> None:
         self._session_factory = session_factory
         self._upstream = upstream
@@ -590,6 +594,7 @@ class RuntimeGatewayService:
             0.1, min(suggestions_timeout_seconds, 30.0)
         )
         self._on_correlation = on_correlation
+        self._completion_enabled = completion_enabled
 
     def _emit_correlation(self, event: str, **fields: Any) -> None:
         if self._on_correlation is not None:
@@ -2037,6 +2042,11 @@ class RuntimeGatewayService:
                 },
             }
         )
+        if "webhook" in upstream_payload:
+            raise BadRequestError(
+                code="runtime_webhook_not_allowed",
+                message="Platform runs use the managed completion channel",
+            )
         if "version" in upstream_payload and upstream_payload["version"] not in (
             "v2",
             "v3",
@@ -2219,7 +2229,7 @@ class RuntimeGatewayService:
                             code="idempotency_key_conflict",
                             message="Key already used for a different request",
                         )
-                    return existing, True
+                    return existing, True, existing.origin_ref
                 resilience = (
                     model_resilience_snapshot
                     or self._model_resilience_snapshot(
@@ -2230,7 +2240,8 @@ class RuntimeGatewayService:
                 execution_config[MODEL_RESILIENCE_KEY] = resilience.model_dump(
                     mode="json"
                 )
-                return repo.create(
+                origin_ref = str(uuid4()) if self._completion_enabled else None
+                record = repo.create(
                     project_id=project_id,
                     thread_id=thread_id,
                     agent_key=agent_key,
@@ -2242,13 +2253,32 @@ class RuntimeGatewayService:
                     config_snapshot=execution_config,
                     parent_run_id=parent_run_id,
                     interrupt_id=interrupt_id,
+                    origin_ref=origin_ref,
                     submission_status="submitted",
-                ), False
+                )
+                if origin_ref is not None:
+                    session.add(
+                        RunCompletionOriginRecord(
+                            origin_ref=origin_ref,
+                            project_id=project_id,
+                            thread_id=thread_id,
+                            agent_key=agent_key,
+                            requested_by=actor.user_id
+                            if actor.principal_type == "user"
+                            else None,
+                            state="active",
+                            runtime_id="default",
+                            source_kind="submission",
+                            source_id=record.id,
+                        )
+                    )
+                session.flush()
+                return record, False, origin_ref
 
         try:
-            record, reused = await run_in_threadpool(reserve)
+            record, reused, origin_ref = await run_in_threadpool(reserve)
         except IntegrityError:
-            record, reused = await run_in_threadpool(reserve)
+            record, reused, origin_ref = await run_in_threadpool(reserve)
         relation = {
             "submission_id": record.id,
             "thread_id": thread_id,
@@ -2365,6 +2395,7 @@ class RuntimeGatewayService:
                     agent_key=agent_key,
                     thread_id=thread_id,
                     context_hash=current_context_hash,
+                    origin_ref=origin_ref,
                 )
             )
 
@@ -4172,7 +4203,23 @@ class RuntimeGatewayService:
         upstream = await self._thread_upstream(
             project_id=project_id, thread=thread, operation="run-delete"
         )
-        return await upstream.delete_thread_run(thread_id, run_id)
+        result = await upstream.delete_thread_run(thread_id, run_id)
+        if self._completion_enabled:
+            from platform_api.modules.runtime_gateway.infra.sqlalchemy.completion_repository import (
+                suppress,
+            )
+
+            def suppress_completion():
+                with session_scope(self._require_session_factory()) as session:
+                    suppress(
+                        session,
+                        project_id=project_id,
+                        thread_id=thread_id,
+                        run_id=run_id,
+                    )
+
+            await run_in_threadpool(suppress_completion)
+        return result
 
     async def join_thread_run(
         self,
