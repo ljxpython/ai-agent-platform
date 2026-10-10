@@ -31,6 +31,10 @@ class RuntimeWorkspaceError(RuntimeError):
         super().__init__(code)
 
 
+class BackgroundTaskNotStarted(RuntimeWorkspaceError):
+    """Expected start restriction after a successful lookup found no submission."""
+
+
 WORKSPACE_ERROR_CODES = frozenset(
     {
         "runtime.workspace.unavailable",

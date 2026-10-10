@@ -12,6 +12,7 @@ import psycopg
 from langgraph_sdk.client import LangGraphClient
 
 from runtime_service.background_tasks import repository
+from runtime_service.background_tasks.capabilities import query_enabled
 from runtime_service.background_tasks.output import (
     check_space,
     delete_output,
@@ -20,7 +21,10 @@ from runtime_service.background_tasks.output import (
 from runtime_service.run_control.authorization import native_headers
 from runtime_service.run_control.resources import wait_cleanup
 from runtime_service.run_control.service import engine_url
-from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.runtime.errors import (
+    BackgroundTaskNotStarted,
+    RuntimeWorkspaceError,
+)
 from runtime_service.workspace.background import (
     create_task_container,
     host_id,
@@ -49,11 +53,21 @@ def validate_input(command, timeout):
 
 async def start_task(identity, binding, command, timeout=900):
     validate_input(command, timeout)
-    if runtime_backend() != "docker":
+    if not query_enabled():
         raise RuntimeWorkspaceError("background_task_not_supported")
-    if not enabled():
-        raise RuntimeWorkspaceError("background_task_disabled")
-    host = host_id()
+    existing = await asyncio.to_thread(repository.read_submission, identity)
+    if existing is None:
+        if runtime_backend() != "docker":
+            raise BackgroundTaskNotStarted("background_task_not_supported")
+        if not enabled():
+            raise BackgroundTaskNotStarted("background_task_disabled")
+        try:
+            host = host_id()
+        except RuntimeWorkspaceError as exc:
+            raise BackgroundTaskNotStarted(exc.code) from exc
+    else:
+        # The execution host is an immutable receipt fact, not today's start config.
+        host = existing["execution_host_id"]
     bound = repository.digest(
         [
             str(binding.workspace),
@@ -66,10 +80,12 @@ async def start_task(identity, binding, command, timeout=900):
         ]
     )
     request_digest = repository.digest([command, timeout, bound])
-    existing = await asyncio.to_thread(
-        repository.read_submission, identity, bound, request_digest
-    )
     if existing is not None:
+        if (
+            existing["binding_digest"] != bound
+            or existing["request_digest"] != request_digest
+        ):
+            raise RuntimeWorkspaceError("background_task_idempotency_conflict")
         return existing
 
     async def reserve():
@@ -305,7 +321,10 @@ async def _reconcile(row):
                     reason=row["reason_code"],
                 )
             return await _observe(row, state, deadline=deadline)
-        if not row["stop_id"] and await source_failed(row):
+        uncertain = row["delivery_state"] in {"unknown", "dispatching"} or row.get(
+            "delivery_inflight"
+        )
+        if not row["stop_id"] and not uncertain and await source_failed(row):
             await asyncio.to_thread(repository.request_source_cancel, row)
             return await asyncio.to_thread(
                 repository.finish_delivery,
@@ -415,7 +434,7 @@ async def _loop():
 @asynccontextmanager
 async def background_tasks_lifespan():
     if not os.getenv("DATABASE_URI") or not os.getenv("RUNTIME_EXECUTION_HOST_ID"):
-        if enabled():
+        if enabled() and runtime_backend() == "docker":
             raise RuntimeWorkspaceError("background_task_not_supported")
         yield
         return

@@ -3,16 +3,55 @@
 import asyncio
 from dataclasses import replace
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
 import pytest
 from langchain_core.tools import ToolException
 
 from runtime_service.runtime.access_policy import interrupts_for_access_policy
+from runtime_service.runtime.capabilities import graph_capabilities
 from runtime_service.runtime.resolver import runtime_context_hash
 from runtime_service.tools import background
 from runtime_service.workspace.background import BackgroundBinding
+
+
+@pytest.fixture(autouse=True)
+def supported_start(monkeypatch):
+    monkeypatch.setenv("DATABASE_URI", "isolated-test-only")
+    monkeypatch.setenv("RUNTIME_BACKEND", "docker")
+    monkeypatch.setenv("RUNTIME_BACKGROUND_TASKS_ENABLED", "1")
+    monkeypatch.setenv("RUNTIME_EXECUTION_HOST_ID", "test-host")
+
+
+@pytest.mark.parametrize(
+    "key,value,query,start",
+    [
+        ("RUNTIME_BACKEND", "docker", True, True),
+        ("RUNTIME_BACKEND", "local", True, False),
+        ("RUNTIME_BACKGROUND_TASKS_ENABLED", "0", True, False),
+        ("RUNTIME_EXECUTION_HOST_ID", "", True, False),
+        ("RUNTIME_EXECUTION_HOST_ID", "invalid host", True, False),
+        ("DATABASE_URI", "", False, False),
+    ],
+)
+@pytest.mark.parametrize("graph_id", ["showcase_demo", "dearflow_agent"])
+def test_capabilities_and_receipt_routes_preserve_query_gate(
+    key, value, query, start, graph_id, monkeypatch
+):
+    monkeypatch.setenv(key, value)
+    binding = Mock(side_effect=AssertionError("probe must not resolve a Workspace"))
+    names = {tool.name for tool in background.build_background_tools(binding)}
+    caps = graph_capabilities(graph_id)
+    assert caps["background_tasks"] is query
+    assert caps["background_tasks_start_enabled"] is start
+    assert (
+        "background_execute" in names
+    )  # Hidden at the model boundary, retained for replay.
+    assert ("background_task" in names) is query
+    assert ("cancel_background_task" in names) is query
+    assert not graph_capabilities("reference_agent")["background_tasks"]
+    binding.assert_not_called()
 
 
 def invocation(tmp_path):

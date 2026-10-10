@@ -167,6 +167,39 @@ class LangGraphRunsSdkAdapter:
                 exc, fallback_detail="langgraph_run_request_failed"
             )
 
+    @classmethod
+    def acceptance_body(cls, payload: dict[str, Any]) -> bytes:
+        value = {
+            name: payload[name]
+            for name in ("assistant_id", *cls._CREATE_FIELDS, "version")
+            if name in payload
+        }
+        return json.dumps(
+            jsonable_encoder(value),
+            ensure_ascii=False,
+            allow_nan=False,
+            separators=(",", ":"),
+        ).encode("utf-8")
+
+    async def acceptance(
+        self,
+        method: str,
+        thread_id: str,
+        key: str,
+        digest: str,
+        body: bytes | None = None,
+    ):
+        return await self._http.request_json(
+            method,
+            f"/threads/{thread_id}/runs/acceptance",
+            body_bytes=body,
+            forwarded_headers={
+                "Idempotency-Key": key,
+                "GraphHarbor-Request-Digest": digest,
+                "Content-Type": "application/json",
+            },
+        )
+
     async def stream(
         self, thread_id: str, payload: dict[str, Any]
     ) -> AsyncIterator[bytes]:

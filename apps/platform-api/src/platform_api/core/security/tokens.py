@@ -142,6 +142,7 @@ def create_runtime_delegation_token(
     request_id: str | None = None,
     platform_trace_id: str | None = None,
     credential_id: str | None = None,
+    run_acceptance: dict | None = None,
 ) -> str:
     secret = settings.runtime_delegation_secret
     if len(secret.encode("utf-8")) < 32:
@@ -196,6 +197,7 @@ def create_runtime_delegation_token(
         "thread-create",
         "thread-reconcile",
         "run-create",
+        "run-acceptance-read",
         "thread-edit",
         "thread-delete",
         "run-cancel",
@@ -315,7 +317,12 @@ def create_runtime_delegation_token(
         "nbf": int(now.timestamp()),
         "exp": int(
             (
-                now + timedelta(seconds=settings.runtime_delegation_ttl_seconds)
+                now
+                + timedelta(
+                    seconds=min(settings.runtime_delegation_ttl_seconds, 60)
+                    if operation == "run-acceptance-read"
+                    else settings.runtime_delegation_ttl_seconds
+                )
             ).timestamp()
         ),
     }
@@ -339,6 +346,19 @@ def create_runtime_delegation_token(
         except (TypeError, ValueError) as exc:
             raise ValueError("runtime delegation credential_id is invalid") from exc
         payload["credential_id"] = credential_id
+    if run_acceptance is not None:
+        from platform_api.core.security.run_acceptance import validate_grant
+
+        payload["run_acceptance"] = validate_grant(
+            run_acceptance,
+            subject=subject,
+            tenant_id=tenant_id,
+            project_id=project_id,
+            credential_id=credential_id,
+            scope=normalized_scope,
+        )
+    elif operation == "run-acceptance-read":
+        raise ValueError("Run acceptance read requires a fixed grant")
     return jwt.encode(
         payload,
         secret,

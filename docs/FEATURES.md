@@ -8,7 +8,7 @@
 ## platform-web
 
 | 功能 | 状态 | 关联文档 |
-| 通用后台 Workspace 任务界面 | 待同事实施：v1 DTO、capability/Stop、真实样本、关联完成 Run 发现与 F01-F12 已交接，Web 代码未改；联合验收待后端 B01 与前端完成 | [前端交接](projects/20261009-agent-generic-production-capabilities/frontend-handoff.md) |
+| 通用后台 Workspace 任务界面 | F01-F11 与 A/B 增量 ABF01-ABF03 已完成：查询探针门禁、短任务恢复提示与真实 local 浏览器验收通过；B01已解除，T10/F12全栈Final待完成 | [原前端契约](projects/20261009-agent-generic-production-capabilities/frontend-handoff.md) · [A/B 前端交接](projects/20261009-agent-generic-production-capabilities/local-compatibility-frontend-handoff.md) |
 | Agent 运行准备与有界重试诊断摘要展示 | 已完成：实装运行准备（RunPreparationsSection）与受管重试（RunRetriesSection）独立子组件，支持 strict attempts/role 正则校验、主 Run 成功时琥珀色 Amber 警示降级、空态完全隐藏、敏感字段剥离，49 项单测与 Playwright 全链路 E2E 验证全绿 | [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | Agent Run/Thread 用量与成本展示 | 已完成：实装独立解耦面板 RunUsage 与 useRunUsage 防竞态状态机、open-swe 水位进度条 (Usage Meter)、服务端截断告警卡片、模型费率安全编辑（Decimal 精度、自动补零、可逆清空保护）以及假数据彻底切除。Playwright + Chromium 端到端 5 项全绿（含真实百炼 qwen-plus 全链路调用闭环与 24,069 Tokens / $0.0051 落库上屏）并生成 7 张高清渲染截图，全仓 120 套件 583 项单测、typecheck、lint 和生产打包 100% 通过 | [前端交接](projects/20261007-agent-usage-cost-governance/04-frontend-handoff.md) |
 | Agent 执行预算告警与限制原因展示 | 已完成：Zod 契约投影、安全解包、useRunBudget 有界 LRU 去重与 Run/namespace 隔离、ChatAgentStatusBar Amber/Success 停机展示（保留取消、文案解耦、A11y）、子任务微横条与徽章、Thread 耗尽禁用；571 单测、类型检查与 ESLint 全绿 | [项目入口](projects/20261007-agent-execution-budget/README.md) · [实施记录](projects/20261007-agent-execution-budget/implementation/02-frontend-budget-implementation.md) |
@@ -74,7 +74,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| 后台任务网关与受管完成续接 | 部分完成（blocked）：四入口/三精确 operation、DTO/ACL/审计、HMAC 完成交付与开始前重授权已实现并经隔离验证；完整 lost-ACK 恢复待正式引擎只读回查 B01，未部署 | [专项](projects/20261009-agent-generic-production-capabilities/README.md) · [引擎接续](projects/20261009-agent-generic-production-capabilities/engine-handoff.md) |
+| 后台任务网关与受管完成续接 | 部分完成（partial）：四入口/精确operation、DTO/ACL/审计、HMAC与执行前重授权已验；post45正式acceptance adapter、发送前bytes/key/digest落盘、平台迁移0007及notify/Stop/撤权发布后联合通过，B01解除；全范围Final和现役部署未完成 | [专项](projects/20261009-agent-generic-production-capabilities/README.md) · [引擎接续](projects/20261009-agent-generic-production-capabilities/engine-handoff.md) |
 | 模型价格快照与授权用量查询 | 全链路已完成：可空六费率/版本与历史快照、usage-read、Run/Thread GET、安全投影和当前 ACL；隔离链路/Final 完成，未部署现役 | [方案与任务](projects/20261007-agent-usage-cost-governance/03-platform-cost-contract.md) |
 | Agent 预算通知与安全错误出口 | 全链路 done：四精确预算安全码、custom/end 标记白名单、tasks.error 清洗、input/update/command/resume 防伪已实装；81 passed/423 subtests，1 skipped；真实 Worker 链路通过，前端联合 F01-F04 全绿，未部署 | [验证](projects/20261007-agent-execution-budget/verification.md) |
 | Agent 模型调用稳定性与受管备模型网关 | 已完成：配置持久化、主备候选授权与项目隔离、受管连接与策略快照签名、修复 FastAPI 500 强类型校验异常，全入口受管组装与公开脱敏；定向单测 17 passed，三服务全链路故障注入联验通过，用户人工实测验收合格 | [项目概览](projects/20261006-agent-model-resilience/README.md) · [整体方案](projects/20261006-agent-model-resilience/plan.md) |
@@ -96,7 +96,8 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
-| 通用后台非阻塞 Workspace 任务 | 部分完成（blocked）：D01-D06 已批准；Docker runner、PG 幂等/lease/fence/容量、有界日志、无模型对账、三工具及固定 Stop 已实现，两组合根真实模型与正式 post43 镜像链路通过；引擎只读回查 B01/后端 Final 未完成，新提交默认关闭，未部署 | [专项入口](projects/20261009-agent-generic-production-capabilities/README.md) · [验证](projects/20261009-agent-generic-production-capabilities/verification.md) |
+| 通用后台非阻塞 Workspace 任务 | 部分完成（partial）：Docker runner、PG幂等/lease/fence/容量、有界日志、无模型对账、三工具与Stop已实现；正式post45依赖/部署断言与固定只读回查联合验收完成，B01解除。全范围后端/T10/F12、新Linux应用镜像待验，新提交默认关闭、现役未部署 | [专项入口](projects/20261009-agent-generic-production-capabilities/README.md) · [验证](projects/20261009-agent-generic-production-capabilities/verification.md) |
+| 非 Docker 后台任务兼容 A/B | 前后端 done：隐藏模型启动工具、保留旧checkpoint回执、仅确认未登记的环境限制给短任务建议；unknown不重跑，execute最大60秒/原审批。两图真实local API/Worker及ABF能力门禁/恢复提示/浏览器独立验收通过；B01另由接受回执专项解除 | [兼容方案](projects/20261009-agent-generic-production-capabilities/plan.md#43-非-docker-兼容与精确降级后端已实施前端接续) · [实施记录](projects/20261009-agent-generic-production-capabilities/implementation/05-local-background-compatibility.md) |
 | 通用运行准备幂等与有界重试 | 已完成：全链路闭环，两 Agent workspace latch、资源安全修复、单一重试负责人/最多 2 次尝试、部分流保护及安全诊断；Platform Web 准备与重试专用子组件、主 Run 成功琥珀色降级；单测、本机故障恢复及 Playwright 全链路 E2E 验证通过，自主唤醒后置，未部署现役 | [方案与任务](projects/20261007-agent-production-capabilities/README.md) · [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | 通用 Agent Token/Cost 采集与持久化 | 全链路已完成：主/子图、摘要和可信旁路 callback、自有 Run/call ledger、缓存 TTL 与 Decimal 估算；真实隔离 PG/Worker/重启/回退与包含真实百炼大模型的 5 项 Playwright 端到端全部闭环，未部署现役 | [方案与任务](projects/20261007-agent-usage-cost-governance/02-runtime-usage.md) |
 | 通用 Agent 执行预算预警与软收尾 | 全链路 done：官方模型限额薄扩展、managed 图余量、幂等提示、四正式 graph 主/子接线和可选 invocation 软计时完成；253 passed，23 真实 Worker 场景通过；原 hard limits/end/error 不变，前端联合 F01-F04 全绿，未部署 | [项目入口](projects/20261007-agent-execution-budget/README.md) · [验证](projects/20261007-agent-execution-budget/verification.md) |

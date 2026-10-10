@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ref } from "vue";
+import { effectScope, ref } from "vue";
 import { useBackgroundTasks } from "./useBackgroundTasks";
 import * as service from "@/services/threads/background-tasks.service";
 import type { TaskV1 } from "@/modules/chat/background-tasks/types";
+import type { WorkspaceCapabilities } from "@/types/workspace";
 
 vi.mock("@/services/threads/background-tasks.service");
 
@@ -47,110 +48,281 @@ describe("useBackgroundTasks", () => {
     threadId.value = "thread-1";
   });
 
-  it("正确加载任务并派生活跃任务状态", async () => {
-    vi.mocked(service.listBackgroundTasks).mockResolvedValueOnce({
-      version: 1,
-      thread_id: "thread-1",
-      items: [mockRunningTask],
-      next_cursor: null,
-      has_unresolved: true,
-      latest_delivery_run_id: null,
+  describe("能力矩阵与门禁 (ABF01)", () => {
+    it("true/false (Local/启动关闭): 保留任务查询能力、日志与授权取消", async () => {
+      const caps = ref<WorkspaceCapabilities>({
+        workspace: true,
+        background_tasks: true,
+        background_tasks_start_enabled: false,
+      });
+
+      vi.mocked(service.listBackgroundTasks).mockResolvedValueOnce({
+        version: 1,
+        thread_id: "thread-1",
+        items: [mockRunningTask],
+        next_cursor: null,
+        has_unresolved: false,
+        latest_delivery_run_id: null,
+      });
+      vi.mocked(service.getBackgroundTaskOutput).mockResolvedValueOnce({
+        version: 1,
+        task_id: "task-1111",
+        thread_id: "thread-1",
+        available: true,
+        text: "log output test",
+        retained_bytes: 15,
+        omitted_bytes: 0,
+        truncated: false,
+        updated_at: "2026-10-09T01:00:05Z",
+      });
+      vi.mocked(service.cancelBackgroundTask).mockResolvedValueOnce({
+        ...mockRunningTask,
+        status: "cancel_requested",
+      });
+
+      const composable = useBackgroundTasks(projectId, threadId, {
+        capabilities: caps,
+      });
+
+      expect(composable.queryEnabled.value).toBe(true);
+      await vi.waitFor(() => expect(composable.tasks.value).toHaveLength(1));
+
+      // 验证能够正常查询已有任务
+      expect(service.listBackgroundTasks).toHaveBeenCalledTimes(1);
+
+      // 验证能正常查看日志
+      await composable.openTaskLog("task-1111");
+      expect(composable.activeLogTaskId.value).toBe("task-1111");
+      expect(composable.logOutput.value?.text).toBe("log output test");
+      composable.closeTaskLog();
+      expect(composable.activeLogTaskId.value).toBeNull();
+
+      // 验证能正常授权取消并置位单飞锁
+      await composable.cancelTask("task-1111");
+      expect(composable.tasks.value[0]?.status).toBe("cancel_requested");
+      expect(service.cancelBackgroundTask).toHaveBeenCalledWith(
+        "proj-1",
+        "thread-1",
+        "task-1111",
+        expect.stringContaining("cancel-task-1111-"),
+      );
     });
 
-    const composable = useBackgroundTasks(projectId, threadId);
-    await vi.waitFor(() => expect(composable.loading.value).toBe(false));
+    it("true/true (Docker/全开): 正常加载任务并触发 onRunDiscovered", async () => {
+      const caps = ref<WorkspaceCapabilities>({
+        workspace: true,
+        background_tasks: true,
+        background_tasks_start_enabled: true,
+      });
+      const onRunDiscovered = vi.fn();
+      const taskWithDelivery: TaskV1 = {
+        ...mockRunningTask,
+        status: "succeeded",
+        delivery: {
+          state: "accepted",
+          event_id: "evt-1",
+          run_id: "run-delivered-999",
+          reason_code: null,
+        },
+      };
 
-    expect(composable.tasks.value).toHaveLength(1);
-    expect(composable.hasActiveBackgroundTasks.value).toBe(true);
-    expect(composable.activeTaskCount.value).toBe(1);
-    expect(composable.hasUnresolved.value).toBe(true);
-  });
+      vi.mocked(service.listBackgroundTasks).mockResolvedValueOnce({
+        version: 1,
+        thread_id: "thread-1",
+        items: [taskWithDelivery],
+        next_cursor: null,
+        has_unresolved: false,
+        latest_delivery_run_id: "run-delivered-999",
+      });
 
-  it("发现新完成 Run 时调用 onRunDiscovered", async () => {
-    const onRunDiscovered = vi.fn();
-    const taskWithDelivery: TaskV1 = {
-      ...mockRunningTask,
-      status: "succeeded",
-      delivery: {
-        state: "accepted",
-        event_id: "evt-1",
-        run_id: "run-delivered-999",
-        reason_code: null,
-      },
-    };
+      const composable = useBackgroundTasks(projectId, threadId, {
+        capabilities: caps,
+        onRunDiscovered,
+      });
 
-    vi.mocked(service.listBackgroundTasks).mockResolvedValueOnce({
-      version: 1,
-      thread_id: "thread-1",
-      items: [taskWithDelivery],
-      next_cursor: null,
-      has_unresolved: false,
-      latest_delivery_run_id: "run-delivered-999",
+      expect(composable.queryEnabled.value).toBe(true);
+      await vi.waitFor(() =>
+        expect(onRunDiscovered).toHaveBeenCalledWith("run-delivered-999"),
+      );
+      expect(composable.tasks.value).toHaveLength(1);
+      expect(composable.hasActiveBackgroundTasks.value).toBe(false);
     });
 
-    useBackgroundTasks(projectId, threadId, { onRunDiscovered });
-    await vi.waitFor(() =>
-      expect(onRunDiscovered).toHaveBeenCalledWith("run-delivered-999"),
-    );
-    expect(onRunDiscovered).toHaveBeenCalledTimes(1);
-  });
+    it("false/false (无任务存储/未接入): 彻底禁用，零任务请求", async () => {
+      const caps = ref<WorkspaceCapabilities>({
+        workspace: true,
+        background_tasks: false,
+        background_tasks_start_enabled: false,
+      });
 
-  it("打开与读取日志，关闭时重置", async () => {
-    vi.mocked(service.listBackgroundTasks).mockResolvedValueOnce({
-      version: 1,
-      thread_id: "thread-1",
-      items: [mockRunningTask],
-      next_cursor: null,
-      has_unresolved: false,
-      latest_delivery_run_id: null,
-    });
-    vi.mocked(service.getBackgroundTaskOutput).mockResolvedValueOnce({
-      version: 1,
-      task_id: "task-1111",
-      thread_id: "thread-1",
-      available: true,
-      text: "running test suite",
-      retained_bytes: 18,
-      omitted_bytes: 0,
-      truncated: false,
-      updated_at: "2026-10-09T01:00:05Z",
-    });
+      const composable = useBackgroundTasks(projectId, threadId, {
+        capabilities: caps,
+      });
 
-    const composable = useBackgroundTasks(projectId, threadId);
-    await composable.openTaskLog("task-1111");
+      expect(composable.queryEnabled.value).toBe(false);
+      // 零任务请求
+      expect(service.listBackgroundTasks).not.toHaveBeenCalled();
+      expect(composable.tasks.value).toEqual([]);
+      expect(composable.hasActiveBackgroundTasks.value).toBe(false);
 
-    expect(composable.activeLogTaskId.value).toBe("task-1111");
-    expect(composable.logOutput.value?.text).toBe("running test suite");
+      // 手动刷新亦不发起请求
+      await composable.refresh();
+      expect(service.listBackgroundTasks).not.toHaveBeenCalled();
 
-    composable.closeTaskLog();
-    expect(composable.activeLogTaskId.value).toBeNull();
-    expect(composable.logOutput.value).toBeNull();
-  });
-
-  it("取消任务时置位单飞锁并更新本地状态", async () => {
-    vi.mocked(service.listBackgroundTasks).mockResolvedValue({
-      version: 1,
-      thread_id: "thread-1",
-      items: [mockRunningTask],
-      next_cursor: null,
-      has_unresolved: false,
-      latest_delivery_run_id: null,
-    });
-    vi.mocked(service.cancelBackgroundTask).mockResolvedValueOnce({
-      ...mockRunningTask,
-      status: "cancel_requested",
+      // 日志和取消操作防守
+      await composable.openTaskLog("task-1111");
+      expect(service.getBackgroundTaskOutput).not.toHaveBeenCalled();
+      await composable.cancelTask("task-1111");
+      expect(service.cancelBackgroundTask).not.toHaveBeenCalled();
     });
 
-    const composable = useBackgroundTasks(projectId, threadId);
-    await vi.waitFor(() => expect(composable.tasks.value.length).toBe(1));
+    it("字段缺省 (undefined / null / {}): 按 false 处理，零任务请求", async () => {
+      // 1. 完全不传 options
+      const composableDefault = useBackgroundTasks(projectId, threadId);
+      expect(composableDefault.queryEnabled.value).toBe(false);
+      expect(service.listBackgroundTasks).not.toHaveBeenCalled();
+      expect(composableDefault.tasks.value).toEqual([]);
 
-    await composable.cancelTask("task-1111");
-    expect(composable.tasks.value[0]?.status).toBe("cancel_requested");
-    expect(service.cancelBackgroundTask).toHaveBeenCalledWith(
-      "proj-1",
-      "thread-1",
-      "task-1111",
-      expect.stringContaining("cancel-task-1111-"),
-    );
+      // 2. 传 null
+      const capsNull = ref<WorkspaceCapabilities | null>(null);
+      const composableNull = useBackgroundTasks(projectId, threadId, {
+        capabilities: capsNull,
+      });
+      expect(composableNull.queryEnabled.value).toBe(false);
+      expect(service.listBackgroundTasks).not.toHaveBeenCalled();
+
+      // 3. 传 {} (无 background_tasks 字段)
+      const capsEmpty = ref<WorkspaceCapabilities>({ workspace: true });
+      const composableEmpty = useBackgroundTasks(projectId, threadId, {
+        capabilities: capsEmpty,
+      });
+      expect(composableEmpty.queryEnabled.value).toBe(false);
+      expect(service.listBackgroundTasks).not.toHaveBeenCalled();
+    });
+
+    it("能力动态变化: false -> true 自动加载，true -> false 立即清理旧作用域", async () => {
+      const caps = ref<WorkspaceCapabilities>({
+        workspace: true,
+        background_tasks: false,
+        background_tasks_start_enabled: false,
+      });
+
+      vi.mocked(service.listBackgroundTasks).mockResolvedValue({
+        version: 1,
+        thread_id: "thread-1",
+        items: [mockRunningTask],
+        next_cursor: null,
+        has_unresolved: false,
+        latest_delivery_run_id: null,
+      });
+
+      const composable = useBackgroundTasks(projectId, threadId, {
+        capabilities: caps,
+      });
+
+      expect(composable.queryEnabled.value).toBe(false);
+      expect(service.listBackgroundTasks).not.toHaveBeenCalled();
+
+      // 动态开启
+      caps.value = {
+        workspace: true,
+        background_tasks: true,
+        background_tasks_start_enabled: false,
+      };
+      await vi.waitFor(() => expect(composable.tasks.value).toHaveLength(1));
+      expect(service.listBackgroundTasks).toHaveBeenCalledTimes(1);
+
+      // 动态关闭 -> 作用域被清空
+      caps.value = {
+        workspace: true,
+        background_tasks: false,
+        background_tasks_start_enabled: false,
+      };
+      await vi.waitFor(() => expect(composable.tasks.value).toHaveLength(0));
+      expect(composable.queryEnabled.value).toBe(false);
+      expect(composable.hasUnresolved.value).toBe(false);
+    });
+
+    it("切换会话: 重置作用域且不残留上一会话的任务", async () => {
+      const caps = ref<WorkspaceCapabilities>({
+        workspace: true,
+        background_tasks: true,
+        background_tasks_start_enabled: true,
+      });
+
+      vi.mocked(service.listBackgroundTasks).mockImplementation(
+        async (_pid, tid) => {
+          if (tid === "thread-2") {
+            return {
+              version: 1,
+              thread_id: "thread-2",
+              items: [],
+              next_cursor: null,
+              has_unresolved: false,
+              latest_delivery_run_id: null,
+            };
+          }
+          return {
+            version: 1,
+            thread_id: "thread-1",
+            items: [mockRunningTask],
+            next_cursor: null,
+            has_unresolved: false,
+            latest_delivery_run_id: null,
+          };
+        },
+      );
+
+      const composable = useBackgroundTasks(projectId, threadId, {
+        capabilities: caps,
+      });
+
+      await vi.waitFor(() => expect(composable.tasks.value).toHaveLength(1));
+
+      // 切换到 thread-2 (mock 返回空列表)
+      threadId.value = "thread-2";
+      await vi.waitFor(() => expect(composable.tasks.value).toHaveLength(0));
+      expect(service.listBackgroundTasks).toHaveBeenCalledWith(
+        "proj-1",
+        "thread-2",
+        { limit: 50 },
+        expect.any(AbortSignal),
+      );
+    });
+
+    it("作用域卸载 (onScopeDispose): 停止定时器与中止在途请求", async () => {
+      const caps = ref<WorkspaceCapabilities>({
+        workspace: true,
+        background_tasks: true,
+        background_tasks_start_enabled: true,
+      });
+
+      vi.mocked(service.listBackgroundTasks).mockResolvedValue({
+        version: 1,
+        thread_id: "thread-1",
+        items: [mockRunningTask],
+        next_cursor: null,
+        has_unresolved: false,
+        latest_delivery_run_id: null,
+      });
+
+      let composable!: ReturnType<typeof useBackgroundTasks>;
+      const scope = effectScope();
+      scope.run(() => {
+        composable = useBackgroundTasks(projectId, threadId, {
+          capabilities: caps,
+        });
+      });
+
+      await vi.waitFor(() => expect(composable.tasks.value).toHaveLength(1));
+
+      // 停止 scope
+      scope.stop();
+
+      // 卸载后手动调用 refresh 不应重新触发有效加载
+      vi.clearAllMocks();
+      await composable.refresh();
+      expect(service.listBackgroundTasks).not.toHaveBeenCalled();
+    });
   });
 });

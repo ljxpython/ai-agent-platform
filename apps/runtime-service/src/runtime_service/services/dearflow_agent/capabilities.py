@@ -5,6 +5,7 @@ import os
 import re
 from importlib.resources import files
 
+from runtime_service.background_tasks.capabilities import query_enabled, start_enabled
 from runtime_service.workspace.artifact_refs import ARTIFACT_MIMES
 
 CHART_NAMES = tuple(
@@ -84,12 +85,11 @@ def graph_capabilities(graph_id: str) -> dict:
         "graph_id": graph_id,
         "files": graph_id in {"showcase_demo", "dearflow_agent"},
         "workspace": graph_id in {"showcase_demo", "dearflow_agent"},
-        "background_tasks": graph_id in {"showcase_demo", "dearflow_agent"},
+        "background_tasks": graph_id in {"showcase_demo", "dearflow_agent"}
+        and query_enabled(),
         "background_tasks_start_enabled": graph_id
         in {"showcase_demo", "dearflow_agent"}
-        and os.getenv("RUNTIME_BACKEND", "docker") == "docker"
-        and bool(os.getenv("RUNTIME_EXECUTION_HOST_ID"))
-        and os.getenv("RUNTIME_BACKGROUND_TASKS_ENABLED") == "1",
+        and start_enabled(),
         "terminal": graph_id in {"showcase_demo", "dearflow_agent"}
         and os.name == "posix"
         and os.getenv("RUNTIME_TERMINAL_ENABLED", "0") == "1",

@@ -12,7 +12,7 @@
 
 **人工评审已通过。** 2026-10-09，用户明确“我已经评审完成，可以开始实施了，任务推进到只剩下前端的相关事项，除非遇到 block”。本轮授权推进 T01-T08 与 T10 的非前端验证/交接；T09/F01-F12 和依赖前端的联合浏览器验收交给同事。批准范围为本专项 D01-D06；未授权 Git 提交/推送或生产发布。
 
-**当前进度：** T02/T03/T04/T06/T07 已实现并取得阶段证据；最新发布镜像/旧源码回退、HITL通知与固定Stop后新任务追加链路已通过，证据矩阵和资源收口已记录。T01/T05/T08 的完整故障窗口及后端Final受 [B01](engine-handoff.md) 阻塞；新提交默认关闭。T09/F01-F12 待前端同事；T10 联合 Final 在B01解除及前端交付后接续。
+**当前进度：** `partial`；[B01](engine-handoff.md) 已解除，post45 正式锁/部署断言和 lost-ACK notify/Stop/撤权联合验收完成。T02/T03/T04/T06/T07、T09/F01-F11 已完成；T01/T05/T08 仍需本专项全范围验证和新 Linux 镜像门禁，T10/F12 尚未全栈 Final。新提交默认关闭，现役未部署。AB01-AB03 与 ABF01-ABF03 前后端独立验收已完成。
 
 | 决策 | 状态 | 批准内容/评审证据 |
 |---|---|---|
@@ -32,7 +32,7 @@
 - **预期结果：** 冻结一个可以恢复的执行域、bounded log 实现、未知提交恢复规则、guard 时机、标准新增字段及版本/来源/哈希；能力缺口逐项有真实证据。失败时不绕过鉴权、不复用宿主 shell；提出具体修订供评审。
 - **验证项：** verification.md 的 I01、I03、I06-I08、R01、S01；仅容器能启动不算完成，不能拿 mock 或当前依赖版本字符串代替正式包冷安装。
 - **依赖/预计：** D01-D06 批准；1-2 人天。
-- **状态：** [ ] `blocked`（2026-10-09）：正式双包 post43/冷构建、两 Linux controller 与原生 enqueue/固定Stop已实测；只读 key 回查缺失，不能冻结“所有 ACK 窗口可恢复”的引擎语义。所需产物与复验清单见 engine-handoff.md。
+- **状态：** [ ] `partial`（2026-10-10）：原 post43/两 Linux controller 拓扑证据保留；正式 post45 接受回执、冷安装、服务锁与 Dockerfile 断言已交付，B01 解除。新 post45 Linux 应用镜像与完整拓扑门禁尚未验，不能仅凭依赖更新勾选本任务。
 
 ### Task T02：应用迁移、幂等与租约存储
 
@@ -75,8 +75,8 @@
 - **预期结果：** 一个 event 至多一个接受的完成 Run，丢响应/双进程/迟到更新复用原回执；活动 Run 不被 interrupt；HITL 不被自动批准；Stop 后迟到 Run 的 guard 不进入模型/工具；原始日志/身份/命令不被当系统授权。
 - **验证项：** U09-U12、I06-I10、E03-E08、S02-S04；现有 `apps/platform-api/tests/{test_run_requests,test_scheduled_tasks,test_runtime_delegation_contract}.py` 与 Runtime scheduled/access policy 测试回归。
 - **依赖/预计：** T04；1.5-2 人天。
-- **状态：** [ ] `blocked`（2026-10-09）：代码、HMAC/guard/撤权、正常接受、lost-ACK后Worker guard回填及独立Usage已验。post43无只读key回查，Worker未进入guard时run_id可能未知；保持unknown/inflight、禁止二次POST，不能宣称通知/Stop完整闭环。见 [B01接续](engine-handoff.md)。
-- **实施记录：** [平台续接与公开契约](implementation/03-platform-completion-and-contract.md)；本状态不能被正常ACK链路通过覆盖。
+- **状态：** [ ] `partial`（2026-10-10）：原 HMAC/guard/Usage 证据保留；正式 post45 最终 bytes 发送前落盘、reconcile-only、固定 GET 与 Stop suppressed 已接入，notify/Stop/撤权各独立联合验收通过，[B01](engine-handoff.md) 解除。本专项完整故障/竞态矩阵仍待 T08/T10，未以三场景替代全部门禁。
+- **实施记录：** [平台续接与公开契约](implementation/03-platform-completion-and-contract.md)及 [B01 正式交付](engine-handoff.md)；Final 验证范围分别记录。
 
 ### Task T06：通用工具、两组合根和未接入图隔离
 
@@ -107,7 +107,7 @@
 - **预期结果：** 后端所有门禁有真实证据；报告仅判定后端 done，整项目等待前端和联合验收；未验拓扑默认关闭。依赖发布或生产部署不因测试通过自动授权。
 - **验证项：** verification.md 中后端 U/I/E/L/S/R 全覆盖；lint/格式/定向+Final 回归；无新后台资源遗留、旧 foreground/cron/Stop/inbox/Usage 关键链路通过。
 - **依赖/预计：** T07；1-2 人天，包含前述验证总量，避免重复计时。
-- **状态：** [ ] `blocked`：部署/回退与非前端契约已实施，最终镜像、旧源码回退、K轮HITL/固定Stop及质量/文档/资源收口已完成Phase验证；完整故障/竞态矩阵及后端Final必须等T01/T05的B01解除。现役未启用，生产发布未授权。未完成证据逐项见verification覆盖矩阵，不能把Phase通过算Final。
+- **状态：** [ ] `partial`：原镜像/回退、K轮HITL/固定Stop及质量/文档/资源 Phase 保留；B01 已解除，正式 post45 锁/部署断言与三条接受回执联合链路完成。本专项完整故障/竞态矩阵、post45 Linux 应用镜像及后端 Final 尚未执行；现役未启用，不能把引擎专项 Final 算作本任务全范围 Final。
 
 ### Task T09：前端同事实施 F01-F12
 
@@ -125,7 +125,46 @@
 - **预期结果：** 后端/前端/联合验收分别有状态；全部范围完成才整项目 done；缺真实条件说明具体条件、已尝试替代和接续步骤，不能用一次 Phase passed 提前收工。
 - **验证项：** 全部冻结验收项与 E10；记录测试命令、版本/产物/环境、数量、故障注入、日志/截图、安全脱敏和退出资源盘点。
 - **依赖/预计：** T08-T09；联合 1-2 人天。
-- **状态：** [ ] 待 B01 解除后全栈联合 Final；非前端证据与前端 F01-F11 证据已分别收口。
+- **状态：** [ ] `partial`：B01 已解除，非前端、F01-F11与ABF01-ABF03独立证据保留；全范围联合 Final/F12 尚未执行。
+
+## 非 Docker 兼容：A/B 独立实施（2026-10-10）
+
+用户已批准 A 主方案+B 兜底，并明确在指定 99f7 Worktree 实施；随后明确前端只写交接，完成其余非前端开发项。引擎团队按 GraphHarbor 的 `20261010-run-acceptance-receipts` 专项开发；A/B 本身不修改引擎或接入其 U01-U03，不重复申请架构审批。
+
+### Task AB01：共享能力门禁
+
+- **改动内容：** 统一查询/新启动能力判断；公共 middleware 过滤模型可见工具，保留 ToolNode 内部启动入口供旧 checkpoint 重放。无任务存储配置不提供查询工具/任务 Tab；有存储时关闭新启动仍可查询、日志、取消和对账。
+- **代码位置：** `apps/runtime-service/src/runtime_service/background_tasks/capabilities.py::{query_enabled,start_enabled}`；`middlewares/runtime_config.py::RuntimeConfigMiddleware.awrap_model_call()`；`tools/background.py::build_background_tools()`；`services/dearflow_agent/capabilities.py::graph_capabilities()`。Platform/Web 复用既有 capability 消费。
+- **预期结果：** Showcase/DearFlow 的模型工具与能力一致；probe 零资源 IO、completion 无启动工具；关闭启动后旧 checkpoint 仍能取原回执。
+- **验证项：** Runtime 两组合根/工具/服务/middleware/probe 合计 91 项，Platform 2 项，既有 Web 11 项通过；命令与 mock 边界见 [Phase A/B](verification.md#phase-ab-非-docker-兼容独立验收2026-10-10)。
+- **状态：** [x] `done`（2026-10-10）；见 [实施记录](implementation/05-local-background-compatibility.md)。
+- **合规检查：** 代码、直接验证、任务进度已完成；CONTEXT/FEATURES/CHANGELOG 已在 AB03 统一收口。
+
+### Task AB02：精确未启动兜底
+
+- **改动内容：** 按可信 key 先查原回执，使用记录原 host 核对原摘要；同请求返回原事实（含 unknown），异请求保持冲突。数据库确认无记录且源未 Stop 后，预期环境限制才抛专门的未启动异常，由现有工具错误 middleware 返回恢复建议。
+- **代码位置：** `apps/runtime-service/src/runtime_service/background_tasks/service.py::start_task()`；`background_tasks/repository.py::{read_submission,_assert_source_active,reserve_task}`；`runtime/errors.py::BackgroundTaskNotStarted`；`tools/errors.py::tool_error_content()`。
+- **预期结果：** 短任务可用普通 execute（默认30秒/最大60秒），长任务提示拆分或支持环境；未知回执不重跑。存储失败、权限、Stop、取消、程序错误及已登记后故障保持原语义，Docker 故障不切宿主 shell。
+- **验证项：** 真实 PG 12 项通过，覆盖原回执/异摘要/固定 Stop/两进程容量/旧 fence；两组合根 B 后模型继续及同码普通异常 Fatal 包含于 18 项；服务边界包含于 73 项。记录见 [Phase A/B](verification.md#phase-ab-非-docker-兼容独立验收2026-10-10)。
+- **状态：** [x] `done`（2026-10-10）；见 [实施记录](implementation/05-local-background-compatibility.md)。
+- **合规检查：** 代码、直接验证、任务进度已完成；CONTEXT/FEATURES/CHANGELOG 已在 AB03 统一收口。
+
+### Task AB03：非前端独立验收与前端交接
+
+- **改动内容：** 使用指定 Worktree 独立 PG/依赖/本地栈完成两组合根真实 local→Platform API→Worker→HITL→execute→success；同步实施/Phase/能力标准/功能/变更/上下文，并按用户最新授权交接前端。
+- **代码位置：** 本专项 `local-compatibility-frontend-handoff.md` 与 `implementation/05-local-background-compatibility.md`、`verification.md`；`apps/runtime-service/docs/standards/background-task-integration.md`；`docs/runbooks/runtime-background-tasks.md`；`docs/{FEATURES,CHANGELOG,CONTEXT}.md`。浏览器草稿 `apps/platform-web/e2e/background-compatibility.draft.ts` 不进入默认 Playwright 收集。
+- **预期结果：** 非前端 A/B 范围有真实模型、显式审批、普通 execute、Run success 和查询接口证据；前端拿到明确需求/代码入口/联调条件。A/B 后端独立 done，不覆盖引擎 B01、原专项 Final 或浏览器完成状态。
+- **验证项：** 91 项 Runtime、12 项真实 PG、2 项 Platform 与既有 Web 11 项通过；两图使用 `deepseek-v4-flash`，均一次审批、真实输出 `AB_LOCAL_OK`/退出码0、Run success、query=true/start=false、后台列表为空。`qwen-plus` 空工具 ID 引起重复执行有基线诊断，不归因于前端。质量/文档/资源盘点见 verification。
+- **状态：** [x] `done`（2026-10-10），完成用户指定的非前端范围与交接；浏览器由 ABF03 接续。
+- **合规检查：** 非前端代码/直接验证/本任务文档与全局状态已同步；PG 临时 schema 已清理，本轮 API 测试项目已软删除；专属栈保留供并行工作和前端联调。
+
+### 前端接续任务（已实施并完成，2026-10-10）
+
+- [x] **ABF01：** 核对 query/start 独立能力，query=true/start=false 时保留任务 Tab、已有任务与授权取消；query=false 或缺省时隐藏并停止探针/取消在途请求，切会话不残留旧数据。在 `useBackgroundTasks.ts` 接入 `capabilities` 门禁与响应式重置；在 `ChatSession.vue` 注入线程 capabilities；在 `useBackgroundTasks.spec.ts` 覆盖 7 项能力矩阵/缺省/切会话/卸载单测并通过。
+- [x] **ABF02：** 接入 `use_execute_for_short_task` 的中文恢复提示（"短任务可改用前台执行，最长60秒"）及测试；确认 `outcome=not_started` 只在工具卡片局部展示，unknown 不出现重新执行建议，前端不自动调用 execute/批准/续接。在 `transcript.ts` 与 `transcript.test.ts` 落地并通过 18 项单测。
+- [x] **ABF03：** 完成真实 local 浏览器链路和既有 Docker/任务界面回归；交接草稿修正并升级为 `apps/platform-web/e2e/background-compatibility.spec.ts` 纳入 Playwright。显式选择已验证的 `deepseek-v4-flash` 模型，真实前台执行 `printf AB_LOCAL_OK`、HITL 审批成功、Run `success`、能力判定正确、任务 Tab 空态呈现，1/1 passed（58.4s）。`pnpm check`（lint/typecheck/build）全绿。
+
+详细需求、验收、环境与可转发话术见 [A/B 前端交接](local-compatibility-frontend-handoff.md)。既有 F01-F11 不重做；B01已解除，F12仍由T10收口。
 
 ## 进度追踪
 
@@ -136,7 +175,8 @@
 - [ ] Phase 2 完成（T06已完成；T05/B01）。
 - [x] 前端可消费的v1查询/日志/取消/能力/Stop加法契约交接已形成。
 - [ ] 后端 Final 完成并冻结前端契约。
-- [x] 前端 F01-F11 完成（F12 待 B01 解除后全栈联合交付）。
+- [x] 前端 F01-F11 完成（B01已解除，F12待T10全栈联合交付）。
+- [x] A/B 非前端 AB01-AB03 与前端增量 ABF01-ABF03 全部开发与验证完成（2026-10-10）。
 - [ ] 全栈联合 Final 完成。
 
 后端阶段实施调用 implement-feature；后端与全栈验证分别留实测范围，整项目四态按最终批准范围判定。本轮推进非前端范围，前端和依赖前端的联合验收保留待接续。
@@ -153,4 +193,4 @@ T02/T03/T04/T06/T07 的改动、真实代码位置、预期和对应 Phase 证�
 - [x] CHANGELOG.md的Unreleased已记录默认关闭、受管后台与清理摘要。
 - [x] 收尾经验提案已由用户确认；四条经验写入docs/lessons/runtime-service.md并更新索引（2026-10-09）。
 
-T01/T05/T08为未完成Card：代码与已执行证据可评审，B01缺正式只读契约/发行产物，不能勾“必要验证完成”或生成后端Final。T09不改Web代码；T10不把前端缺口和后端B01合并成已完成。
+T01/T05/T08仍为未完成Card：B01已由引擎专项正式交付解除，本专项剩余矩阵/镜像/后端Final另验，不能凭A/B或接受回执三场景勾全范围完成。T09/F01-F11与AB01-AB03/ABF01-ABF03已完成；T10/F12尚未全栈Final。

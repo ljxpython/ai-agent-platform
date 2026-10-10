@@ -16,6 +16,16 @@ class BinaryPayload:
 
 
 class RuntimeGatewayUpstreamProtocol(Protocol):
+    async def create_run_with_acceptance(
+        self,
+        thread_id: str,
+        body_bytes: bytes,
+        idempotency_key: str,
+        request_digest: str,
+    ) -> dict: ...
+    async def get_run_acceptance(
+        self, thread_id: str, idempotency_key: str, request_digest: str
+    ) -> dict: ...
     async def list_thread_messages(
         self, thread_id: str, *, pending_only: bool = False
     ) -> Any: ...

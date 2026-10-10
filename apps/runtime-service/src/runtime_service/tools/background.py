@@ -9,6 +9,7 @@ from langchain_core.tools import ToolException
 from pydantic import Field
 
 from runtime_service.background_tasks import repository
+from runtime_service.background_tasks.capabilities import query_enabled
 from runtime_service.background_tasks.output import read_output
 from runtime_service.background_tasks.schemas import list_view, output_view, task_view
 from runtime_service.background_tasks.service import start_task
@@ -123,8 +124,8 @@ def build_background_tools(binding, *, completion=False):
             raise ToolException("background_task_not_found")
         return task_view(row)
 
-    return (
-        [background_task, cancel_background_task]
-        if completion
-        else [background_execute, background_task, cancel_background_task]
-    )
+    return [
+        # Keep the receipt route for checkpoint replay; model visibility is gated.
+        *([background_execute] if not completion else []),
+        *([background_task, cancel_background_task] if query_enabled() else []),
+    ]

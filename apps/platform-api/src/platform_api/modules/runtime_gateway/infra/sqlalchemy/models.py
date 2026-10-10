@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import JSON, DateTime, String, UniqueConstraint, Uuid, func
+from sqlalchemy import JSON, DateTime, LargeBinary, String, UniqueConstraint, Uuid, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from platform_api.core.db.base import Base
@@ -51,6 +51,20 @@ class RunRequestRecord(Base):
     requested_by: Mapped[str] = mapped_column(String(255), nullable=False)
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False)
     request_digest: Mapped[str] = mapped_column(String(64), nullable=False)
+    upstream_idempotency_key: Mapped[str | None] = mapped_column(
+        String(256), nullable=True
+    )
+    upstream_body: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
+    upstream_request_digest: Mapped[str | None] = mapped_column(
+        String(71), nullable=True
+    )
+    upstream_receipt_scope_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    upstream_receipt_credential_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True
+    )
+    upstream_auth_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     context_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False)
     config_snapshot: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     context_hash: Mapped[str] = mapped_column(String(128), nullable=False)

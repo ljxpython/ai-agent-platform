@@ -10,6 +10,8 @@ import {
   watch,
 } from "vue";
 import { useBackgroundTasks } from "../composables/useBackgroundTasks";
+import { getWorkspaceCapabilities } from "@/services/threads/workspace.service";
+import type { WorkspaceCapabilities } from "@/types/workspace";
 import {
   coerceMessageLikeToMessage,
   type BaseMessage,
@@ -153,10 +155,46 @@ const session = useChatSession({
   },
 });
 
+const capabilities = ref<WorkspaceCapabilities | null>(null);
+let capabilitiesAbortController: AbortController | null = null;
+
+watch(
+  [() => props.projectId, () => session.threadId.value || props.threadId],
+  async ([curPid, curTid]) => {
+    if (capabilitiesAbortController) {
+      capabilitiesAbortController.abort();
+      capabilitiesAbortController = null;
+    }
+    if (!curPid || !curTid) {
+      capabilities.value = null;
+      return;
+    }
+    const controller = new AbortController();
+    capabilitiesAbortController = controller;
+    try {
+      capabilities.value = await getWorkspaceCapabilities(
+        curPid,
+        curTid,
+        controller.signal,
+      );
+    } catch {
+      if (!controller.signal.aborted) {
+        capabilities.value = null;
+      }
+    } finally {
+      if (capabilitiesAbortController === controller) {
+        capabilitiesAbortController = null;
+      }
+    }
+  },
+  { immediate: true },
+);
+
 const backgroundTasks = useBackgroundTasks(
   computed(() => props.projectId),
   computed(() => session.threadId.value || props.threadId),
   {
+    capabilities,
     onRunDiscovered: (runId) => {
       void session.acceptDiscoveredRun(runId);
     },
@@ -1311,6 +1349,10 @@ function visibilityChanged() {
 document.addEventListener("visibilitychange", visibilityChanged);
 onScopeDispose(() => {
   disposed = true;
+  if (capabilitiesAbortController) {
+    capabilitiesAbortController.abort();
+    capabilitiesAbortController = null;
+  }
   document.removeEventListener("visibilitychange", visibilityChanged);
 });
 

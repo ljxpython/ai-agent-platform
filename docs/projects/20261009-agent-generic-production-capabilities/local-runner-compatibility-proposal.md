@@ -1,9 +1,13 @@
 # 架构讨论提案：非 Docker / 本地与异构云端环境下的后台长任务兼容方案
 
-> **文件状态：** 讨论与技术预研备忘录 (Discussion RFC)
+> **文件状态：** A/B 后端已实施并完成独立验证；前端增量已交接，C 暂缓。
 > **提出日期：** 2026-10-10
 > **发起人：** 老王（技术流）与团队协同
 > **关联专项：** `docs/projects/20261009-agent-generic-production-capabilities/`
+
+**人工评审结论（2026-10-10）：** 用户明确同意“A 主方案 + B 兜底”。当前实施边界以 [整体方案 4.3](plan.md#43-非-docker-兼容与精确降级后端已实施前端接续) 为准：只关闭不支持的新启动，保留已有任务查询/日志/取消/对账；仅确定未启动的环境限制可降级，unknown 不重跑；前台执行保留 60 秒上限和原权限/审批，Docker 故障不自动切宿主 local shell。下文第 2、3 节保留原始候选分析，“三个工具一起隐藏”“自动完成所有长任务”“C 完全平替”等表述不作为实施要求。此批准不解除引擎 B01，不授权发布。
+
+**实施结果：** 指定 Worktree `/Users/lijiaxin/.codex/worktrees/99f7/ai-agent-platform` 的 AB01-AB03 后端已完成，见 [实施记录](implementation/05-local-background-compatibility.md) 与 [独立验证](verification.md#phase-ab-非-docker-兼容独立验收2026-10-10)。模型隐藏启动工具，但内部保留旧 checkpoint 回执入口；任务 Tab 按查询能力显示。用户要求前端由同事完成，本轮只交付 [A/B 前端交接](local-compatibility-frontend-handoff.md)，未修改前端产品源码。
 
 ---
 

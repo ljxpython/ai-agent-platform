@@ -10,7 +10,11 @@ import httpx
 import pytest
 
 from runtime_service.background_tasks import delivery, service
-from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.runtime.errors import (
+    BackgroundTaskNotStarted,
+    RuntimeWorkspaceError,
+)
+from runtime_service.tools.errors import tool_error_content
 
 
 def task(**changes):
@@ -172,6 +176,18 @@ def test_source_failure_suppresses_completed_notification(monkeypatch):
     notify.assert_not_awaited()
 
 
+@pytest.mark.parametrize("state", ["unknown", "dispatching"])
+def test_uncertain_acceptance_reconciles_before_current_acl(monkeypatch, state):
+    row = task(status="succeeded", cleanup_state="confirmed", delivery_state=state)
+    source = AsyncMock(side_effect=AssertionError("receipt recovery used current ACL"))
+    notify = AsyncMock()
+    monkeypatch.setattr(service, "source_failed", source)
+    monkeypatch.setattr(delivery, "deliver_completion", notify)
+    asyncio.run(service._reconcile(row))
+    source.assert_not_awaited()
+    notify.assert_awaited_once_with(row)
+
+
 @pytest.mark.parametrize(
     "reason,failed",
     [("hitl_interrupt", False), ("cancel_requested", True), ("rollback", True)],
@@ -213,6 +229,7 @@ def test_control_response_loss_preserves_unknown_submission(monkeypatch):
     monkeypatch.setenv("RUNTIME_BACKGROUND_TASKS_ENABLED", "1")
     monkeypatch.setenv("RUNTIME_EXECUTION_HOST_ID", "test-host")
     monkeypatch.setenv("RUNTIME_BACKEND", "docker")
+    monkeypatch.setenv("DATABASE_URI", "isolated-test-only")
     monkeypatch.setattr(service, "check_space", Mock())
     monkeypatch.setattr(service.repository, "read_submission", Mock(return_value=None))
     monkeypatch.setattr(
@@ -239,6 +256,7 @@ def test_cancelled_start_records_late_resource_cleanup_and_propagates(monkeypatc
     monkeypatch.setenv("RUNTIME_BACKGROUND_TASKS_ENABLED", "1")
     monkeypatch.setenv("RUNTIME_EXECUTION_HOST_ID", "test-host")
     monkeypatch.setenv("RUNTIME_BACKEND", "docker")
+    monkeypatch.setenv("DATABASE_URI", "isolated-test-only")
     monkeypatch.setattr(service, "check_space", Mock())
     monkeypatch.setattr(service.repository, "read_submission", Mock(return_value=None))
     monkeypatch.setattr(
@@ -282,6 +300,88 @@ def test_cancelled_start_records_late_resource_cleanup_and_propagates(monkeypatc
         assert row["container_id"] == "late-container"
 
     asyncio.run(verify())
+
+
+@pytest.mark.parametrize(
+    "backend,enabled,host,code",
+    [
+        ("local", "1", "test-host", "background_task_not_supported"),
+        ("docker", "0", "test-host", "background_task_disabled"),
+        ("docker", "1", "", "background_task_not_supported"),
+    ],
+)
+def test_only_confirmed_absent_submission_can_recover(
+    backend, enabled, host, code, monkeypatch
+):
+    monkeypatch.setenv("DATABASE_URI", "isolated-test-only")
+    monkeypatch.setenv("RUNTIME_BACKEND", backend)
+    monkeypatch.setenv("RUNTIME_BACKGROUND_TASKS_ENABLED", enabled)
+    monkeypatch.setenv("RUNTIME_EXECUTION_HOST_ID", host)
+    read = Mock(return_value=None)
+    reserve, create = Mock(), AsyncMock()
+    monkeypatch.setattr(service.repository, "read_submission", read)
+    monkeypatch.setattr(service.repository, "reserve_task", reserve)
+    monkeypatch.setattr(service, "create_task_container", create)
+    with pytest.raises(BackgroundTaskNotStarted) as error:
+        asyncio.run(service.start_task({}, None, "sleep 300", 300))
+    assert error.value.code == code
+    payload = json.loads(tool_error_content(error.value, "background_execute"))
+    assert payload["code"] == code and payload["outcome"] == "not_started"
+    assert "最大60秒" in payload["error"] and "长任务请拆分" in payload["error"]
+    read.assert_called_once_with({})
+    reserve.assert_not_called()
+    create.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        RuntimeWorkspaceError("background_task_not_supported"),
+        RuntimeWorkspaceError("background_task_disabled"),
+        RuntimeWorkspaceError("background_task_idempotency_conflict"),
+        RuntimeError("storage unavailable"),
+        asyncio.CancelledError(),
+    ],
+)
+def test_receipt_read_failure_is_never_not_started(error, monkeypatch):
+    monkeypatch.setenv("DATABASE_URI", "isolated-test-only")
+    monkeypatch.setenv("RUNTIME_BACKEND", "local")
+    reserve = Mock()
+    monkeypatch.setattr(service.repository, "read_submission", Mock(side_effect=error))
+    monkeypatch.setattr(service.repository, "reserve_task", reserve)
+    with pytest.raises(type(error)) as caught:
+        asyncio.run(service.start_task({}, None, "printf done"))
+    assert caught.value is error
+    assert tool_error_content(error, "background_execute") is None
+    reserve.assert_not_called()
+
+
+def test_missing_storage_does_not_claim_no_previous_submission(monkeypatch):
+    monkeypatch.delenv("DATABASE_URI", raising=False)
+    read = Mock()
+    monkeypatch.setattr(service.repository, "read_submission", read)
+    with pytest.raises(RuntimeWorkspaceError) as caught:
+        asyncio.run(service.start_task({}, None, "printf done"))
+    assert tool_error_content(caught.value, "background_execute") is None
+    read.assert_not_called()
+
+
+def test_local_startup_without_background_storage_never_probes_resources(monkeypatch):
+    monkeypatch.setenv("RUNTIME_BACKEND", "local")
+    monkeypatch.setenv("RUNTIME_BACKGROUND_TASKS_ENABLED", "1")
+    monkeypatch.delenv("DATABASE_URI", raising=False)
+    monkeypatch.delenv("RUNTIME_EXECUTION_HOST_ID", raising=False)
+    loop, space = AsyncMock(), Mock()
+    monkeypatch.setattr(service, "_loop", loop)
+    monkeypatch.setattr(service, "check_space", space)
+
+    async def start():
+        async with service.background_tasks_lifespan():
+            pass
+
+    asyncio.run(start())
+    loop.assert_not_awaited()
+    space.assert_not_called()
 
 
 def test_uncertain_delivery_after_deadline_only_queries_original_receipt(monkeypatch):

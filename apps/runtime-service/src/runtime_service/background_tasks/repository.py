@@ -6,6 +6,7 @@ import secrets
 from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from runtime_service.db import connect
+from runtime_service.run_control.repository import inbox_blocked
 from runtime_service.runtime.errors import RuntimeWorkspaceError
 
 TERMINAL = frozenset(("succeeded", "failed", "timed_out", "cancelled"))
@@ -52,18 +53,20 @@ def submission_key(identity):
     )
 
 
-def read_submission(identity, binding_digest, request_digest):
+def read_submission(identity):
     with connect() as connection:
         row = connection.execute(
             "SELECT * FROM runtime_background_tasks WHERE submission_key=%s",
             (submission_key(identity),),
         ).fetchone()
-        if row and (
-            row["binding_digest"] != binding_digest
-            or row["request_digest"] != request_digest
-        ):
-            raise RuntimeWorkspaceError("background_task_idempotency_conflict")
+        if row is None:
+            _assert_source_active(connection, identity)
         return row
+
+
+def _assert_source_active(connection, identity):
+    if inbox_blocked(connection, identity["thread_id"], identity["origin_run_id"]):
+        raise RuntimeWorkspaceError("background_task_denied")
 
 
 def reserve_task(identity, binding_digest, request_digest, host, timeout):
@@ -83,16 +86,7 @@ def reserve_task(identity, binding_digest, request_digest, host, timeout):
             ):
                 raise RuntimeWorkspaceError("background_task_idempotency_conflict")
             return existing, False
-        if connection.execute(
-            """SELECT 1 FROM runtime_stop_requests WHERE thread_id=%s AND phase!='rejected'
-        AND (engine_receipt->'targets' @> %s::jsonb OR inbox_run_ids @> %s::jsonb) LIMIT 1""",
-            (
-                identity["thread_id"],
-                json.dumps([{"run_id": identity["origin_run_id"]}]),
-                json.dumps([identity["origin_run_id"]]),
-            ),
-        ).fetchone():
-            raise RuntimeWorkspaceError("background_task_denied")
+        _assert_source_active(connection, identity)
         counts = connection.execute(
             """SELECT
           count(*) FILTER(WHERE thread_id=%s AND tenant_id=%s AND project_id=%s) AS thread,
@@ -336,7 +330,8 @@ def finish_delivery(row, state, *, run_id=None, reason=None, retry=30, attempted
         delivery_run_id=coalesce(delivery_run_id,%s),delivery_accepted_at=CASE WHEN %s::text IS NOT NULL THEN coalesce(delivery_accepted_at,now()) ELSE delivery_accepted_at END,
         delivery_inflight=CASE WHEN %s::text IS NOT NULL OR %s IN ('pending','blocked','expired') THEN false ELSE delivery_inflight END,
         delivery_reason=%s,delivery_attempts=delivery_attempts+%s,next_check_at=now()+%s*interval '1 second',updated_at=now(),lease_token=NULL,lease_until=NULL
-        WHERE task_id=%s AND lease_token=%s AND fence=%s AND lease_until>now() RETURNING *""",
+        WHERE task_id=%s AND lease_token=%s AND fence=%s AND lease_until>now()
+        AND (%s::text IS NULL OR delivery_run_id IS NULL OR delivery_run_id=%s) RETURNING *""",
             (
                 state,
                 run_id,
@@ -349,6 +344,8 @@ def finish_delivery(row, state, *, run_id=None, reason=None, retry=30, attempted
                 row["task_id"],
                 row["lease_token"],
                 row["fence"],
+                run_id,
+                run_id,
             ),
         ).fetchone()
 

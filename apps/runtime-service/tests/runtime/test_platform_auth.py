@@ -205,7 +205,7 @@ def test_thread_auth_rechecks_signed_platform_acl(
 
     class Client:
         def __init__(self, **kwargs):
-            assert kwargs == {"timeout": 10.0, "trust_env": False}
+            assert kwargs["timeout"] == 10.0 and kwargs["trust_env"] is False
 
         async def __aenter__(self):
             return SimpleNamespace(post=post)

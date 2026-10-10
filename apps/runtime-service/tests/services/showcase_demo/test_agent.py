@@ -545,7 +545,7 @@ def test_probe_has_no_io_and_cannot_be_invoked(monkeypatch, tmp_path):
         pytest.fail("Probe attempted external model/backend initialization")
 
     monkeypatch.setattr(agent, "build_model", forbidden)
-    monkeypatch.setattr(agent, "fetch_model_connection", forbidden)
+    monkeypatch.setattr(agent, "fetch_model_bundle", forbidden)
     monkeypatch.setattr(DockerWorkspaceBackend, "prepare", forbidden)
 
     async def run():

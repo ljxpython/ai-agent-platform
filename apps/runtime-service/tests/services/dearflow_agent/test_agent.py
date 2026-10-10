@@ -300,7 +300,7 @@ def test_schema_probe_has_no_model_or_workspace_io(monkeypatch, tmp_path):
         pytest.fail("schema probe initialized external resources")
 
     monkeypatch.setattr(agent, "build_model", forbidden)
-    monkeypatch.setattr(agent, "fetch_model_connection", forbidden)
+    monkeypatch.setattr(agent, "fetch_model_bundle", forbidden)
 
     async def run():
         graph = await agent.get_agent({})

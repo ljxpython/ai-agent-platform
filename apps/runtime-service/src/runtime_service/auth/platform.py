@@ -60,6 +60,11 @@ async def authenticate(authorization: str | None = None) -> Auth.types.MinimalUs
     principal = verified.principal
     policy = verified.policy
     return {
+        **(
+            {"run_acceptance": verified.run_acceptance}
+            if verified.run_acceptance is not None
+            else {}
+        ),
         "identity": principal.user_id,
         "is_authenticated": True,
         "tenant_id": principal.tenant_id,
@@ -110,6 +115,40 @@ async def deny_image_scope_on_server_resources(
 
     if is_completion_cleanup(ctx.user):
         return await authorize_completion_cleanup(ctx, value)
+    if isinstance(scope, dict) and scope.get("operation") == "run-acceptance-read":
+        grant = _user_value(ctx.user, "run_acceptance")
+        if (
+            not isinstance(grant, dict)
+            or str(ctx.resource) != "threads"
+            or str(ctx.action) != "read"
+            or value.get("run_acceptance_receipt") is not True
+            or str(value.get("thread_id")) != grant["thread_id"]
+            or value.get("key_sha256") != grant["key_sha256"]
+            or value.get("request_digest") != grant["request_digest"]
+        ):
+            raise Auth.exceptions.HTTPException(
+                status_code=403, detail="Acceptance receipt scope mismatch"
+            )
+        return {"project_id": scope["project_id"]}
+    if (
+        isinstance(scope, dict)
+        and scope.get("operation") == "run-create"
+        and value.get("run_acceptance_receipt") is True
+        and str(ctx.resource) == "threads"
+        and str(ctx.action) == "read"
+    ):
+        grant = _user_value(ctx.user, "run_acceptance")
+        if (
+            not isinstance(grant, dict)
+            or str(value.get("thread_id")) != grant["thread_id"]
+            or value.get("key_sha256") != grant["key_sha256"]
+            or value.get("request_digest") != grant["request_digest"]
+        ):
+            raise Auth.exceptions.HTTPException(
+                status_code=403, detail="Acceptance receipt scope mismatch"
+            )
+        await authorize_thread_targets(ctx.user, [grant["thread_id"]], action="read")
+        return {"project_id": scope["project_id"]}
     if value.get("cancel_active") is True:
         from runtime_service.run_control.authorization import cancellation_context_hash
 

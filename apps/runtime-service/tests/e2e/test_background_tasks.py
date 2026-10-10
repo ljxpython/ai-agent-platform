@@ -6,7 +6,6 @@ import sqlite3
 import subprocess
 import sys
 import tarfile
-import time
 from pathlib import Path
 
 import pytest
@@ -454,8 +453,10 @@ def test_completion_waits_for_hitl_and_new_tasks_survive_old_stop(stack):
         client,
         thread,
         row["task_id"],
-        lambda value: value["delivery"]["state"] == "pending"
-        and value["delivery"]["reason_code"] == "background_task_approval_pending",
+        lambda value: (
+            value["delivery"]["state"] == "pending"
+            and value["delivery"]["reason_code"] == "background_task_approval_pending"
+        ),
     )
     assert pending["status"] == "succeeded" and pending["cleanup_state"] == "confirmed"
     assert interrupts(client, thread)[0]["id"] == interrupt_id
@@ -561,7 +562,8 @@ def test_completion_waits_for_hitl_and_new_tasks_survive_old_stop(stack):
 
 
 @pytest.mark.parametrize("stack", [BACKGROUND_STACK], indirect=True)
-def test_lost_native_ack_is_not_resubmitted_and_late_guard_binds_receipt(stack):
+@pytest.mark.parametrize("outcome", ["notify", "stop", "revoke"])
+def test_lost_native_ack_reconciles_queued_run_without_resubmission(stack, outcome):
     client, spec, env, processes, start, stop, tmp_path = stack
     thread = background_thread(client)
     source = request(
@@ -572,9 +574,10 @@ def test_lost_native_ack_is_not_resubmitted_and_late_guard_binds_receipt(stack):
     )
     assert terminal(client, thread, source["run_id"])["status"] == "success"
     stop("worker")
-    Path(env["BACKGROUND_FAULT_MODE_PATH"]).write_text("lost-ack")
+    fault = Path(env["BACKGROUND_FAULT_MODE_PATH"])
+    fault.write_text("lost-ack-hold")
     row = first_task(client, thread)
-    unknown = task_when(
+    task_when(
         client,
         thread,
         row["task_id"],
@@ -591,33 +594,114 @@ def test_lost_native_ack_is_not_resubmitted_and_late_guard_binds_receipt(stack):
     assert len(completion) == 1 and completion[0]["status"] == "pending"
     import psycopg
 
+    stop_receipt = None
+    if outcome == "stop":
+        stop_receipt = request(
+            client,
+            "POST",
+            f"/threads/{thread}/cancel",
+            json={},
+            headers={"Idempotency-Key": "queued-lost-ack-stop"},
+        )
+        assert (
+            request(
+                client,
+                "GET",
+                f"/threads/{thread}/stop-requests/{stop_receipt['stop_id']}",
+            )["resource_cleanup"]
+            != "confirmed"
+        )
+    if outcome == "revoke":
+        with sqlite3.connect(spec["database"]) as connection:
+            connection.execute(
+                "DELETE FROM project_members WHERE project_id=? AND user_id=(SELECT id FROM users WHERE username='tool-error-test')",
+                (spec["project"].replace("-", ""),),
+            )
+        assert client.get(f"/threads/{thread}/runs").status_code == 403
+        assert (
+            client.post(
+                f"/threads/{thread}/runs", json=run_body(spec, "denied")
+            ).status_code
+            == 403
+        )
+    fault.write_text("reconcile")
     with psycopg.connect(env["DATABASE_URI"]) as connection:
         connection.execute(
             "UPDATE runtime_background_tasks SET next_check_at=now() WHERE task_id=%s",
             (row["task_id"],),
         )
-    time.sleep(2)
-    assert len(request(client, "GET", f"/threads/{thread}/runs")) == 2
+
+    def recovered():
+        with psycopg.connect(env["DATABASE_URI"]) as connection:
+            value = connection.execute(
+                "SELECT delivery_run_id::text,delivery_state,delivery_cancel_confirmed FROM runtime_background_tasks WHERE task_id=%s",
+                (row["task_id"],),
+            ).fetchone()
+        return value if value and value[0] == completion[0]["run_id"] else None
+
+    accepted = wait_for(recovered)
+    assert accepted[1] == ("suppressed" if outcome == "stop" else "accepted")
+    assert any(value["event"] == "completion-receipt-result" for value in facts(env))
+    assert not [value for value in facts(env) if value["event"] == "completion-model"]
     start("worker")
-    assert terminal(client, thread, completion[0]["run_id"])["status"] == "success"
-    with psycopg.connect(env["DATABASE_URI"]) as connection:
-        connection.execute(
-            "UPDATE runtime_background_tasks SET next_check_at=now() WHERE task_id=%s",
-            (row["task_id"],),
-        )
-    accepted = task_when(
-        client,
-        thread,
-        row["task_id"],
-        lambda value: value["delivery"]["state"] == "accepted",
-    )
-    assert accepted["delivery"]["run_id"] == completion[0]["run_id"]
+
+    def completed():
+        with psycopg.connect(env["DATABASE_URI"]) as connection:
+            status = connection.execute(
+                "SELECT status FROM runs WHERE run_id=%s", (completion[0]["run_id"],)
+            ).fetchone()[0]
+        return status if status not in {"pending", "running"} else None
+
     assert (
-        len([value for value in facts(env) if value["event"] == "completion-model"])
-        == 1
+        wait_for(completed)
+        == {"notify": "success", "stop": "interrupted", "revoke": "error"}[outcome]
+    )
+    if outcome == "stop":
+        confirmed = wait_for(
+            lambda: (
+                value
+                if (
+                    value := request(
+                        client,
+                        "GET",
+                        f"/threads/{thread}/stop-requests/{stop_receipt['stop_id']}",
+                    )
+                )["resource_cleanup"]
+                == "confirmed"
+                else None
+            )
+        )
+        assert confirmed["report"]["background_tasks"]["cleanup_confirmed_count"] == 1
+    with psycopg.connect(env["DATABASE_URI"]) as connection:
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM runs WHERE thread_id=%s", (thread,)
+            ).fetchone()[0]
+            == 2
+        )
+        assert (
+            connection.execute(
+                "SELECT count(*) FROM run_acceptance_receipts WHERE thread_id=%s",
+                (thread,),
+            ).fetchone()[0]
+            == 1
+        )
+    assert sum(value["event"] == "completion-model" for value in facts(env)) == (
+        1 if outcome == "notify" else 0
     )
     (tmp_path / "background-lost-ack-evidence.json").write_text(
-        json.dumps({"unknown": unknown, "accepted": accepted}, indent=2)
+        json.dumps(
+            {
+                "outcome": outcome,
+                "run_id": completion[0]["run_id"],
+                "accepted_while_worker_stopped": True,
+                "run_count": 2,
+                "ledger_count": 1,
+                "completion_model_calls": 1 if outcome == "notify" else 0,
+                "pids": {name: value.pid for name, value in processes.items()},
+            },
+            indent=2,
+        )
     )
 
 
@@ -668,8 +752,10 @@ def test_source_native_timeout_cancel_and_disabled_drain(stack):
     env["RUNTIME_BACKGROUND_TASKS_ENABLED"] = "0"
     start("runtime")
     wait_for(
-        lambda: client.get(f"http://127.0.0.1:{spec['runtime_port']}/ready").status_code
-        == 200
+        lambda: (
+            client.get(f"http://127.0.0.1:{spec['runtime_port']}/ready").status_code
+            == 200
+        )
     )
     start("worker")
     capabilities = request(client, "GET", f"/threads/{thread}/capabilities")
@@ -681,8 +767,10 @@ def test_source_native_timeout_cancel_and_disabled_drain(stack):
         client,
         thread,
         row["task_id"],
-        lambda value: value["cleanup_state"] == "confirmed"
-        and value["delivery"]["state"] == "blocked",
+        lambda value: (
+            value["cleanup_state"] == "confirmed"
+            and value["delivery"]["state"] == "blocked"
+        ),
     )
     assert (
         blocked["status"] == "succeeded"
@@ -739,8 +827,10 @@ def test_source_native_timeout_cancel_and_disabled_drain(stack):
     (tmp_path / "langgraph.json").write_text(json.dumps(spec["config"]))
     start("runtime", source=previous)
     wait_for(
-        lambda: client.get(f"http://127.0.0.1:{spec['runtime_port']}/ready").status_code
-        == 200
+        lambda: (
+            client.get(f"http://127.0.0.1:{spec['runtime_port']}/ready").status_code
+            == 200
+        )
     )
     start("worker", source=previous)
     thread = new_thread(client)

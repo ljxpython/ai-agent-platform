@@ -17,6 +17,6 @@ RUN apt-get update \
 RUN pip install --no-cache-dir "uv==0.9.9"
 
 RUN uv sync --locked --no-dev --no-editable --no-cache \
-    && python -c "import importlib.metadata as m; assert m.version('graphharbor') == '0.13.0.post43'; assert m.version('graphharbor-runtime') == '0.13.0.post43'"
+    && python -c "import importlib.metadata as m; assert m.version('graphharbor') == '0.13.0.post45'; assert m.version('graphharbor-runtime') == '0.13.0.post45'"
 
 ENTRYPOINT ["graphharbor"]

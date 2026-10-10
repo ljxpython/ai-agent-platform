@@ -1,6 +1,8 @@
 # 前端交接：通用后台非阻塞任务能力（v2 工业级设计方案）
 
-> **状态：实现版 v2 交接（老王技术审查订正版）。** 修复了原 v1 方案中「Stop 报告 Schema 丢字段」、「新 Run 发现职责割裂与双重轮询」、「SFC 组件颗粒度超标」、「日志 ANSI 转义乱码」、「退出码为负数时校验崩溃」五大严重缺陷。正式启用仍受 [B01 引擎只读回查门禁](engine-handoff.md) 限制，前端可先完成 F01-F11 的高质量交付与组件/单元验证，F12 联合验收及正式启用待 B01 解除。
+> **状态：实现版 v2 交接（老王技术审查订正版）。** 修复了原 v1 方案中「Stop 报告 Schema 丢字段」、「新 Run 发现职责割裂与双重轮询」、「SFC 组件颗粒度超标」、「日志 ANSI 转义乱码」、「退出码为负数时校验崩溃」五大严重缺陷。F01-F11 已实施，[B01 引擎只读回查门禁](engine-handoff.md) 已解除；F12 仍需 T10 全栈联合验收，正式启用另需部署门禁。本页保留原设计与验收契约，表中的“拟新增”等不表示现在仍需从零开发。
+
+**2026-10-10 增量接续：** 非 Docker 兼容 A/B 后端已完成，前端只接续 ABF01-ABF03；具体 Worktree、代码入口、能力语义、恢复提示与浏览器草稿见 [A/B 前端交接](local-compatibility-frontend-handoff.md)。
 
 ---
 
@@ -343,7 +345,7 @@ BackgroundTasksPanel.vue ◄──── inject('backgroundTasks')
 | **F09** | 三态独立正交展示 | 命令状态 (status)、容器清理 (cleanup)、通知交付 (delivery) 独立 Badge 呈现，严禁揉成单个 spinner。 | 多状态组合快照测试 |
 | **F10** | 空闲时会话 Stop | LLM 空闲但后台任务活跃时，会话 Stop 按钮依然可达；Stop 报告正确消费并展示 `background_tasks` 摘要；未确认清理有告警。 | Stop 状态机单测 + 模拟 StopReport |
 | **F11** | 响应式与视觉无障碍 | 390×844 (移动)、768×1024 (平板)、1440×900 (宽屏) 下面板无溢出、无文本重叠；浅色/深色主题适配；键盘 Esc 与 aria 属性完备。 | 浏览器全分辨率截图 + 无障碍键盘验证 |
-| **F12** | 全链路真实环境联合验收 | 真实 Platform API + Runtime Service + LLM 链路联调（需待后端 B01 解除后联合执行）。 | E2E 联合测试 |
+| **F12** | 全链路真实环境联合验收 | B01已解除；真实 Platform API + Runtime Service + LLM/浏览器的全范围联合验收由T10执行，尚未完成。 | E2E 联合测试 |
 
 ---
 
@@ -351,7 +353,7 @@ BackgroundTasksPanel.vue ◄──── inject('backgroundTasks')
 
 1. **当前实施范围**：
    - 本轮实施聚焦于 **F01-F11** 的全部前端代码、单文件拆分、Composable 与 Vitest / Vue Test Utils 单元测试。
-   - 依赖引擎 B01 解除的 F12 全链路端到端验收与生产部署开关，暂不作为本次前端代码编写的阻塞条件。
+   - B01已解除；F12全链路端到端验收由T10收口，生产部署开关另验，不据引擎交付自动启用。
 2. **前端本地质量门禁（必须全绿）**：
    - `pnpm vitest run src/modules/chat/background-tasks src/components/workspace`（新增单测全绿）
    - `pnpm vitest run`（全仓回归单测 0 失败）

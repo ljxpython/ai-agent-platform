@@ -1,0 +1,61 @@
+{
+  "verified_on": "2026-10-10",
+  "worktree": "/Users/lijiaxin/.codex/worktrees/99f7/ai-agent-platform",
+  "environment": "wt_27df0f537b6d",
+  "backend": "local",
+  "engine": {
+    "graphharbor": "0.13.0.post45",
+    "graphharbor-runtime": "0.13.0.post45"
+  },
+  "scope": "A/B backend API, Worker, managed model, explicit HITL, foreground execute; browser excluded",
+  "scenarios": [
+    {
+      "graph": "showcase_demo",
+      "project_id": "6858924f-e993-4210-9f52-54249746be8a",
+      "model": "deepseek-v4-flash",
+      "thread_id": "643547f5-a7ab-4504-8f3e-106ff16b1c5e",
+      "capabilities": {
+        "background_tasks": true,
+        "background_tasks_start_enabled": false
+      },
+      "runs": [
+        "dc1b2013-6ce5-4329-a443-fb31d2230ab9",
+        "cd34e163-04e9-45de-ab66-14f53220e662"
+      ],
+      "status": "success",
+      "tool_results": [
+        {
+          "name": "execute",
+          "content": "AB_LOCAL_OK\n[Command succeeded with exit code 0]"
+        }
+      ],
+      "approvals": 1,
+      "background_task_count": 0,
+      "project_soft_deleted": true
+    },
+    {
+      "graph": "dearflow_agent",
+      "project_id": "1ac9604c-1143-4be9-a639-8ba6663e8216",
+      "model": "deepseek-v4-flash",
+      "thread_id": "3b73a085-1d0a-4aed-9726-311bcc919609",
+      "capabilities": {
+        "background_tasks": true,
+        "background_tasks_start_enabled": false
+      },
+      "runs": [
+        "b8b147b1-f9d5-41cf-bd0a-081f6683fb9b",
+        "835485d6-1127-4aaf-b636-1e64745a3f93"
+      ],
+      "status": "success",
+      "tool_results": [
+        {
+          "name": "execute",
+          "content": "AB_LOCAL_OK\n[Command succeeded with exit code 0]"
+        }
+      ],
+      "approvals": 1,
+      "background_task_count": 0,
+      "project_soft_deleted": true
+    }
+  ]
+}

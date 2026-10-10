@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
@@ -49,6 +51,7 @@ _ALLOWED_CLAIMS = frozenset(
         "request_id",
         "platform_trace_id",
         "credential_id",
+        "run_acceptance",
     }
 )
 
@@ -76,6 +79,7 @@ class VerifiedDelegation:
     request_id: str | None = None
     platform_trace_id: str | None = None
     credential_id: str | None = None
+    run_acceptance: dict | None = None
 
 
 def _invalid(
@@ -116,6 +120,7 @@ def _parse_scope(raw: object) -> RuntimeScope:
         "thread-create",
         "thread-reconcile",
         "run-create",
+        "run-acceptance-read",
         "thread-edit",
         "thread-delete",
         "run-cancel",
@@ -298,7 +303,78 @@ def verify_delegation_claims(
         _optional_correlation(claims, "request_id"),
         _optional_correlation(claims, "platform_trace_id"),
         credential_id,
+        _parse_run_acceptance(
+            claims.get("run_acceptance"), principal, scope, credential_id
+        ),
     )
+
+
+def _parse_run_acceptance(value, principal, scope, credential_id):
+    if value is None:
+        if scope.operation == "run-acceptance-read":
+            raise _invalid(field="run_acceptance")
+        return None
+    try:
+        names = {
+            "scope_id",
+            "credential_id",
+            "operation",
+            "thread_id",
+            "key_sha256",
+            "request_digest",
+        }
+        if not isinstance(value, dict) or set(value) != names:
+            raise ValueError()
+        if any(
+            not isinstance(value[name], str)
+            or not re.fullmatch("[0-9a-f]{64}", value[name])
+            for name in ("scope_id", "credential_id", "key_sha256")
+        ):
+            raise ValueError()
+        if (
+            str(UUID(value["thread_id"])) != value["thread_id"]
+            or not isinstance(value["request_digest"], str)
+            or not _HASH_PATTERN.fullmatch(value["request_digest"])
+        ):
+            raise ValueError()
+    except (ValueError, TypeError, AttributeError) as exc:
+        raise _invalid(field="run_acceptance") from exc
+
+    def digest(values):
+        return hashlib.sha256(
+            json.dumps(values, separators=(",", ":")).encode()
+        ).hexdigest()
+
+    expected_scope = digest(
+        [
+            "platform:run-receipt-scope:v1",
+            principal.tenant_id,
+            principal.project_id,
+            principal.user_id,
+        ]
+    )
+    expected_credential = digest(
+        [
+            "platform:run-receipt-credential:v1",
+            "service-account" if credential_id else "user",
+            credential_id or principal.user_id,
+        ]
+    )
+    operation = (
+        "create"
+        if scope.operation == "run-create"
+        else "read"
+        if scope.operation == "run-acceptance-read"
+        else None
+    )
+    if (
+        value["scope_id"] != expected_scope
+        or value["credential_id"] != expected_credential
+        or value["thread_id"] != scope.thread_id
+        or value["operation"] != operation
+    ):
+        raise _invalid(field="run_acceptance")
+    return dict(value)
 
 
 def verify_delegation_token(

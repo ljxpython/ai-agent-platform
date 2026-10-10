@@ -15,17 +15,21 @@ if os.getenv("BACKGROUND_FAULT_MODE_PATH") and sys.argv[1:2] == ["platform"]:
     )
     from platform_api.core.errors import UpstreamServiceError
 
-    original_submit = LangGraphRuntimeGatewayUpstream.create_thread_run
+    original_submit = LangGraphRuntimeGatewayUpstream.create_run_with_acceptance
+    original_read = LangGraphRuntimeGatewayUpstream.get_run_acceptance
 
-    async def submit_with_lost_ack(upstream, thread_id, payload):
-        result = await original_submit(upstream, thread_id, payload)
+    async def submit_with_lost_ack(upstream, thread_id, body, key, digest):
+        result = await original_submit(upstream, thread_id, body, key, digest)
+        payload = json.loads(body)
         fault = Path(os.environ["BACKGROUND_FAULT_MODE_PATH"])
         if (
             payload.get("metadata", {}).get("background_event_id")
             and fault.exists()
-            and fault.read_text() == "lost-ack"
+            and fault.read_text() in {"lost-ack", "lost-ack-hold"}
         ):
-            fault.write_text("ack-lost")
+            fault.write_text(
+                "receipt-held" if fault.read_text() == "lost-ack-hold" else "ack-lost"
+            )
             record("completion-ack-lost", run_id=result["run_id"])
             raise UpstreamServiceError(
                 code="langgraph_upstream_timeout",
@@ -35,7 +39,22 @@ if os.getenv("BACKGROUND_FAULT_MODE_PATH") and sys.argv[1:2] == ["platform"]:
             )
         return result
 
-    LangGraphRuntimeGatewayUpstream.create_thread_run = submit_with_lost_ack
+    LangGraphRuntimeGatewayUpstream.create_run_with_acceptance = submit_with_lost_ack
+
+    async def read_receipt(upstream, thread_id, key, digest):
+        record("completion-receipt-get")
+        fault = Path(os.environ["BACKGROUND_FAULT_MODE_PATH"])
+        if fault.exists() and fault.read_text() == "receipt-held":
+            raise UpstreamServiceError(
+                status_code=504,
+                message="Synthetic receipt timeout",
+                upstream="langgraph",
+            )
+        result = await original_read(upstream, thread_id, key, digest)
+        record("completion-receipt-result", result=result["result"])
+        return result
+
+    LangGraphRuntimeGatewayUpstream.get_run_acceptance = read_receipt
 
 if __name__ != "__main__" or sys.argv[1] not in {"platform", "provider"}:
     from contextlib import asynccontextmanager

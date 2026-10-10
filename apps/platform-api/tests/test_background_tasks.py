@@ -352,7 +352,7 @@ def test_reconcile_only_with_lost_ack_never_creates_new_run(monkeypatch):
         Mock(
             return_value=(
                 SimpleNamespace(context_snapshot={}),
-                SimpleNamespace(run_id=None),
+                SimpleNamespace(run_id=None, upstream_body=b"{}"),
             )
         ),
     )

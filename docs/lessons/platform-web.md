@@ -16,3 +16,9 @@
 - **错误：** 仅依赖 `!session.run.value?.run_id` 作为拉取历史 Run 的守卫，导致内存刚执行完 Run 的会话在切到轨迹视图时跳过历史 runs 查询，使多 Run 下拉选择器无法渲染；或者将模型备选重试（Fallback）直接判定为整屏报错。
 - **正确：** 进入轨迹视图时无条件拉取当前 Thread 历史 runs，并与内存实时活跃 run 进行安全去重合并；模型 Fallback 成功保持 Completed 绿标，仅以 Amber 警示框展示重试记录。
 - **日期：** 2026-10-07；Agent 可观测性与追踪补齐项目。
+
+## [坑] Vue 3 多数据源 watch 在 immediate 模式下的参数解构防崩
+- **场景：** 使用 `watch([() => a, () => b], ... , { immediate: true })` 监听多个响应式依赖并立即触发初始化。
+- **错误：** 在回调参数中直接进行数组解构 `([newA, newB], [oldA, oldB])`。首次执行时 Vue 传入的 `oldValue` 为 `undefined`，解构引发 `TypeError: undefined is not iterable`，导致 watcher runner 静默报废且后续依赖变化不再响应。
+- **正确：** 回调参数保持 `([newA, newB], oldValues)`，在函数体内通过安全可选链读取 `const oldA = oldValues?.[0]; const oldB = oldValues?.[1];`。
+- **日期：** 2026-10-10（用户批准）；非 Docker 后台任务兼容 A/B 前端增量项目。

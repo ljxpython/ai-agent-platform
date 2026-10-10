@@ -7,6 +7,8 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
+from unittest.mock import AsyncMock, Mock
 from uuid import uuid4
 
 import psycopg
@@ -17,7 +19,10 @@ from psycopg.conninfo import make_conninfo
 from runtime_service.background_tasks import output, repository, service
 from runtime_service.db import connect, upgrade
 from runtime_service.run_control.repository import request_stop
-from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.runtime.errors import (
+    BackgroundTaskNotStarted,
+    RuntimeWorkspaceError,
+)
 from runtime_service.workspace.background import (
     BackgroundBinding,
     remove_task_container,
@@ -70,6 +75,59 @@ def reserve(value):
     return repository.reserve_task(value, "binding", "request", "background-test", 300)
 
 
+@pytest.mark.parametrize("status", ["running", "unknown", "succeeded"])
+@pytest.mark.parametrize("backend", ["local", "docker"])
+def test_start_replay_after_disabling_preserves_original_receipt(
+    database, tmp_path, monkeypatch, status, backend
+):
+    values = identity()
+    binding = BackgroundBinding(
+        tmp_path,
+        "python:3.13-slim",
+        ("tenant", "project", values["thread_id"]),
+        "showcase_demo",
+    )
+    bound = repository.digest(
+        [
+            str(binding.workspace),
+            binding.image,
+            str(binding.skills),
+            binding.protected,
+            binding.scope,
+            binding.graph_id,
+            "background-test",
+        ]
+    )
+    request = repository.digest(["printf done", 30, bound])
+    row, _ = repository.reserve_task(values, bound, request, "background-test", 30)
+    repository.save(
+        row,
+        status=status,
+        cleanup="unconfirmed" if status == "unknown" else "confirmed",
+    )
+    monkeypatch.setenv("RUNTIME_BACKGROUND_TASKS_ENABLED", "0")
+    monkeypatch.setenv("RUNTIME_BACKEND", backend)
+    monkeypatch.delenv("RUNTIME_EXECUTION_HOST_ID")
+    reserve_call, create = Mock(), AsyncMock()
+    monkeypatch.setattr(repository, "reserve_task", reserve_call)
+    monkeypatch.setattr(service, "create_task_container", create)
+    replay = asyncio.run(service.start_task(values, binding, "printf done", 30))
+    assert replay["task_id"] == row["task_id"] and replay["status"] == status
+    for changed, command, timeout in (
+        (binding, "printf changed", 30),
+        (binding, "printf done", 31),
+        (replace(binding, workspace=tmp_path / "other"), "printf done", 30),
+        (replace(binding, skills=tmp_path / "other-skills"), "printf done", 30),
+        (replace(binding, protected=True), "printf done", 30),
+    ):
+        with pytest.raises(RuntimeWorkspaceError, match="idempotency_conflict"):
+            asyncio.run(service.start_task(values, changed, command, timeout))
+    with pytest.raises(BackgroundTaskNotStarted):
+        asyncio.run(service.start_task(identity(), binding, "printf done", 30))
+    reserve_call.assert_not_called()
+    create.assert_not_awaited()
+
+
 def test_replay_cancel_and_log_expiry_keep_receipts(database):
     values = identity()
     row, fresh = reserve(values)
@@ -93,6 +151,31 @@ def test_replay_cancel_and_log_expiry_keep_receipts(database):
         repository.read_task({**scope(values), "project_id": "other"}, row["task_id"])
         is None
     )
+
+
+def test_disabled_start_after_source_stop_is_not_recoverable(database, monkeypatch):
+    values = identity()
+    facts = {
+        "identity": "owner",
+        "tenant_id": "tenant",
+        "project_id": "project",
+        "role": "developer",
+        "runtime_scope": {**scope(values), "operation": "thread-stop"},
+    }
+    stop = request_stop(facts, values["thread_id"], "source-stop")
+    with connect() as connection:
+        connection.execute(
+            "UPDATE runtime_stop_requests SET engine_receipt=%s::jsonb WHERE stop_id=%s",
+            (
+                json.dumps({"targets": [{"run_id": values["origin_run_id"]}]}),
+                stop["stop_id"],
+            ),
+        )
+    monkeypatch.setenv("RUNTIME_BACKEND", "local")
+    monkeypatch.setenv("RUNTIME_BACKGROUND_TASKS_ENABLED", "0")
+    with pytest.raises(RuntimeWorkspaceError, match="background_task_denied") as caught:
+        asyncio.run(service.start_task(values, None, "printf done"))
+    assert not isinstance(caught.value, BackgroundTaskNotStarted)
 
 
 def test_container_cleanup_preserves_real_command_exit_code(database):
@@ -611,6 +694,47 @@ def test_stop_waits_for_inflight_receipt_and_late_run_cleanup(database):
     assert (
         repository.bind_completion_run(row["task_id"], row["event_id"], str(uuid4()))
         is None
+    )
+
+
+def test_delivery_reconcile_after_stop_keeps_suppressed_and_rejects_changed_run(
+    database,
+):
+    values = identity()
+    row, _ = reserve(values)
+    repository.save(row, status="succeeded", cleanup="confirmed", delay=0)
+    claimed = repository.claim_due("background-test")
+    repository.delivery_intent(claimed)
+    facts = {
+        "identity": "owner",
+        "tenant_id": "tenant",
+        "project_id": "project",
+        "role": "developer",
+        "runtime_scope": {**scope(values), "operation": "thread-stop"},
+    }
+    stop = request_stop(facts, values["thread_id"], "lost-ack-stop")
+    run_id = str(uuid4())
+    restored = repository.finish_delivery(claimed, "accepted", run_id=run_id, retry=0)
+    assert restored["delivery_state"] == "suppressed"
+    assert restored["delivery_run_id"] == run_id and not restored["delivery_inflight"]
+    assert not restored["delivery_cancel_confirmed"]
+    assert (
+        repository.background_summary(stop["background_task_ids"])[
+            "cleanup_unconfirmed_count"
+        ]
+        == 1
+    )
+    claimed = repository.claim_due("background-test")
+    assert repository.finish_delivery(claimed, "accepted", run_id=str(uuid4())) is None
+    assert (
+        repository.read_task(scope(values), row["task_id"])["delivery_run_id"] == run_id
+    )
+    repository.confirm_delivery_cancel(restored)
+    assert (
+        repository.background_summary(stop["background_task_ids"])[
+            "cleanup_confirmed_count"
+        ]
+        == 1
     )
 
 

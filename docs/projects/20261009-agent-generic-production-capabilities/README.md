@@ -7,8 +7,9 @@
 - **负责人：** 本轮 Codex 实施非前端范围；前端由用户同事负责；方案评审已由用户完成。
 - **模板类型：** 标准模板。执行、授权、通知和停止互相依赖，按一个专项分阶段验收。
 - **改动级别：** 治理改动。涉及跨服务契约、Runtime 应用表迁移、脱离原 Run 的资源生命周期和自动创建有费用的后续 Run。
-- **状态：** `blocked`。D01-D06 已获用户批准；T02/T03/T04/T06/T07 已实现并取得阶段证据，T01/T05/T08 的完整验收受 [B01](engine-handoff.md) 阻塞；T09/F01-F12 由前端同事接续。
-- **本次交付：** 后台 Docker 执行、持久租约对账、有界日志、三工具、四个公开接口、平台完成续接/开始前授权及 Stop 摘要已实施。正式 post43 镜像 Linux API/Worker、旧源码回退、K轮审批/固定Stop后新任务链路通过；55个Python文件质量检查和专项证据矩阵已收口，验证资源已关闭。post43 缺按幂等 key 只读回查原生 Run 的接口，Worker 尚未进入 guard 的 lost-ACK 窗口只能保留 unknown/inflight；新提交默认关闭，完整故障/竞态矩阵和后端 Final 未完成，未部署现役。
+- **状态：** `partial`。[B01](engine-handoff.md) 已解除：正式 post45 双包、服务锁与部署断言已接入，lost-ACK notify/Stop/撤权联合验收通过。T02/T03/T04/T06/T07 与 T09/F01-F11 已完成；T01/T05/T08 保留全范围验证和新镜像门禁，T10/F12 待全栈联合 Final。非 Docker 兼容 AB01-AB03 与 ABF01-ABF03 前后端独立验收已完成。
+- **基础交付：** 后台 Docker 执行、持久租约对账、有界日志、三工具、四个公开接口、平台完成续接/开始前授权及 Stop 摘要已实施。原 post43 Linux 镜像、旧源码回退、K轮审批/固定Stop证据保留；新增 post45 固定接受回执与平台迁移 0007，发送前落盘最终 bytes/key/digest，未知接受只 GET 原回执、不二次 POST。正式源 notify/Stop/撤权三场景通过；新提交默认关闭，全范围故障/竞态矩阵和后端/全栈 Final 尚未完成，现役未部署。
+- **2026-10-10 A/B 交付：** 指定 99f7 Worktree 完成模型能力门禁、旧 checkpoint 原回执和精确未启动兜底；91项 Runtime、12项真实PG、2项平台能力及两图真实 local API/Worker 通过。前端 ABF01-ABF03 独立验收已完成，专属栈保留联调。安装、服务锁与 Dockerfile 现均为 post45；B01 由独立接受回执专项的正式源联合证据解除。
 
 ## 阅读顺序
 
@@ -19,6 +20,7 @@
 5. [前端交接](frontend-handoff.md)：已实现的 v1 接口与 DTO、实际样本、交互状态、接续 Run 发现机制及 F01-F12 验收清单。
 6. [引擎接续](engine-handoff.md)：B01 触发窗口、现有降级、所需只读契约和正式发行/复验清单。
 7. [运维手册](../../runbooks/runtime-background-tasks.md)与 [Agent 接入规范](../../../apps/runtime-service/docs/standards/background-task-integration.md)：部署、drain/回退及新 Agent 四个接入点。
+8. [A/B 非 Docker 兼容前端交接](local-compatibility-frontend-handoff.md)：本轮同事接续入口，含能力/探针门禁、恢复提示、浏览器验收、专属环境与可转发话术；既有 F01-F11 不重做。
 
 `implementation/` 保存实际改动与验证细节；进度只看 tasks.md。
 
@@ -26,10 +28,10 @@
 
 | 层 | 必要性 | 实施状态 |
 |---|---|---|
-| runtime-service | 必须 | 持久任务/runner/对账/三工具/Stop 已实施；通知未知回执仍受 B01 限制 |
-| platform-api | 必须 | 当前授权、三精确 operation、四入口/安全 DTO/审计已验；全部 lost-ACK 恢复待 B01 |
-| platform-web | 建议随产品交付 | F01-F12 交接已交付，Web 代码未改；同事可按当前 v1 契约开发，联合验收待 T08/T09 |
-| GraphHarbor | 复用并需接续 | 正式 post43 原生 Run/enqueue/Worker/Stop 已实测；缺按 key 只读接受回执，详见 B01 |
+| runtime-service | 必须 | 持久任务/runner/对账/三工具/Stop 与 A/B 后端已实施；post45 固定只读回查及 suppressed/撤权链路已验，剩余全范围 Final 另验 |
+| platform-api | 必须 | 当前授权、三精确 operation、四入口/安全 DTO/审计已验；最终 bytes 落盘与正式 acceptance adapter 已接入，B01 解除 |
+| platform-web | 建议随产品交付 | F01-F11与ABF01-ABF03已完成；B01已解除，F12待T10全范围联合Final |
+| GraphHarbor | 复用并需接续 | 原 post43 验收与只读回查缺口保留；新接受回执/正式依赖接线由 `20261010-run-acceptance-receipts` 专项实施，本轮不解除 B01 |
 | 部署/工具链 | 必须检查 | Dockerfile 已对齐 uv.lock；默认关闭的单主机 overlay、运行/回退手册已交付，阶段结果见 verification |
 
 本期只补后台 Workspace shell 命令。MCP Tasks、媒体供应商任务、持久 DAG、自动 Goal 续跑、GitHub/Slack/Linear、环境刷新、网络部署和预览端口发布不纳入。

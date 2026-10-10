@@ -68,6 +68,8 @@ def sign_marker(values, secret):
 
 
 def records(factory, data):
+    from platform_api.modules.runtime_gateway.application.service import _request_digest
+
     with factory() as session:
         project = session.get(ProjectRecord, UUID(data["project_id"]))
         if project is None or data["tenant_id"] not in {
@@ -99,6 +101,26 @@ def records(factory, data):
         if source.context_snapshot.get("offload_conversation"):
             raise ForbiddenError(
                 code="background_task_denied", message="Background task source denied"
+            )
+        if existing and (
+            existing.requested_by != source.requested_by
+            or existing.agent_key != source.agent_key
+            or (
+                "status" in data
+                and existing.request_digest
+                != _request_digest(
+                    {
+                        "method": "background-completion",
+                        "params": {
+                            k: v for k, v in data.items() if k != "reconcile_only"
+                        },
+                    }
+                )
+            )
+        ):
+            raise ForbiddenError(
+                code="background_task_denied",
+                message="Background task receipt source denied",
             )
         return source, existing
 
@@ -196,13 +218,8 @@ async def deliver(request, payload):
     source, existing = await run_in_threadpool(records, factory, data)
     if existing and existing.run_id:
         return {"state": "accepted", "run_id": existing.run_id, "reason_code": None}
-    if payload.reconcile_only:
-        # No native read-by-key exists in post43; never turn receipt lookup into execution.
-        return {
-            "state": "unknown",
-            "run_id": None,
-            "reason_code": "background_task_delivery_unavailable",
-        }
+    if payload.reconcile_only or existing is not None:
+        return await reconcile_acceptance(request, data, existing)
     try:
         actor = await run_in_threadpool(current_actor, factory, data)
         bind_request(request, actor, data)
@@ -311,18 +328,27 @@ async def deliver(request, payload):
                 "origin_run_id": data["origin_run_id"],
             },
         }
-        _, result = await gateway.launch_runtime_run(
-            actor=actor,
-            project_id=data["project_id"],
-            thread_id=data["thread_id"],
-            command={
-                "method": "background-completion",
-                "params": {k: v for k, v in data.items() if k != "reconcile_only"},
-            },
-            upstream_payload=body,
-            idempotency_key="background:" + data["event_id"],
-            completion_config={MARKER: marker},
-        )
+        try:
+            _, result = await gateway.launch_runtime_run(
+                actor=actor,
+                project_id=data["project_id"],
+                thread_id=data["thread_id"],
+                command={
+                    "method": "background-completion",
+                    "params": {k: v for k, v in data.items() if k != "reconcile_only"},
+                },
+                upstream_payload=body,
+                idempotency_key="background:" + data["event_id"],
+                completion_config={MARKER: marker},
+            )
+        except PlatformApiError:
+            return unknown_acceptance()
+        if result.get("result") == "definitively_not_accepted":
+            return {
+                "state": "blocked",
+                "run_id": None,
+                "reason_code": "background_task_denied",
+            }
         return {"state": "accepted", "run_id": result["run_id"], "reason_code": None}
     except PlatformApiError as exc:
         if 400 <= exc.status_code < 500:
@@ -337,6 +363,147 @@ async def deliver(request, payload):
 def save_receipt(factory, record_id, run_id):
     with factory.begin() as session:
         RunRequestsRepository(session).mark(record_id, "accepted", run_id)
+
+
+def unknown_acceptance():
+    return {
+        "state": "unknown",
+        "run_id": None,
+        "reason_code": "background_task_delivery_unavailable",
+    }
+
+
+async def reconcile_acceptance(request, data, existing):
+    from platform_api.adapters.langgraph.runtime_gateway_upstream import (
+        LangGraphRuntimeGatewayUpstream,
+    )
+    from platform_api.modules.runtime_gateway.application.run_acceptance import (
+        receipt_headers,
+        validate_receipt,
+    )
+
+    if existing is None:
+        return unknown_acceptance()
+    if existing.upstream_body is None:
+        return await reconcile_legacy(request, data, existing)
+    try:
+        settings = request.app.state.settings
+        body = json.loads(existing.upstream_body)
+        marker = body["config"]["configurable"][MARKER]
+        values = marker["values"]
+        if any(
+            values.get(name) != data[name]
+            for name in (
+                "tenant_id",
+                "project_id",
+                "owner_id",
+                "credential_id",
+                "graph_id",
+                "thread_id",
+                "origin_run_id",
+                "task_id",
+                "event_id",
+            )
+        ):
+            raise ValueError("Receipt belongs to another completion event")
+        expected = sign_marker(values, settings.runtime_delegation_secret)
+        if not hmac.compare_digest(marker["signature"], expected["signature"]):
+            raise ValueError("Original completion marker is invalid")
+        upstream = LangGraphRuntimeGatewayUpstream(
+            base_url=settings.langgraph_upstream_url,
+            api_key=settings.langgraph_upstream_api_key,
+            timeout_seconds=settings.langgraph_upstream_timeout_seconds,
+            forwarded_headers=receipt_headers(existing, settings),
+        )
+        receipt = await upstream.get_run_acceptance(
+            existing.thread_id,
+            existing.upstream_idempotency_key,
+            existing.upstream_request_digest,
+        )
+        outcome = validate_receipt(
+            receipt,
+            existing.thread_id,
+            existing.upstream_idempotency_key,
+            existing.upstream_request_digest,
+        )
+        if outcome == "accepted":
+            await run_in_threadpool(
+                save_receipt,
+                request.app.state.db_session_factory,
+                existing.id,
+                receipt["run_id"],
+            )
+            return {
+                "state": "accepted",
+                "run_id": receipt["run_id"],
+                "reason_code": None,
+            }
+        if outcome == "definitively_not_accepted":
+
+            def rejected():
+                with request.app.state.db_session_factory.begin() as session:
+                    RunRequestsRepository(session).mark(existing.id, "rejected")
+
+            await run_in_threadpool(rejected)
+            return {
+                "state": "blocked",
+                "run_id": None,
+                "reason_code": "background_task_denied",
+            }
+    except PlatformApiError as exc:
+        if getattr(exc, "upstream_status_code", None) in {404, 405}:
+            return await reconcile_legacy(request, data, existing)
+    except (ValueError, KeyError, TypeError, AttributeError, OSError):
+        pass
+    return unknown_acceptance()
+
+
+async def reconcile_legacy(request, data, existing):
+    from platform_api.modules.runtime_gateway.presentation.http import (
+        get_runtime_gateway_service,
+    )
+
+    try:
+        factory = request.app.state.db_session_factory
+        actor = await run_in_threadpool(current_actor, factory, data)
+        bind_request(request, actor, data)
+        gateway = await run_in_threadpool(get_runtime_gateway_service, request, actor)
+        thread = await gateway._load_thread(
+            actor=actor,
+            project_id=data["project_id"],
+            thread_id=data["thread_id"],
+            write=False,
+        )
+        upstream = await gateway._thread_upstream(
+            project_id=data["project_id"], thread=thread, operation="read"
+        )
+        for offset in range(0, 1000, 100):
+            rows = await upstream.list_thread_runs(
+                data["thread_id"], {"limit": 100, "offset": offset}
+            )
+            for row in rows:
+                metadata = row.get("metadata") or {}
+                if all(
+                    metadata.get(name) == data[target]
+                    for name, target in (
+                        ("background_event_id", "event_id"),
+                        ("background_task_id", "task_id"),
+                        ("origin_run_id", "origin_run_id"),
+                    )
+                ):
+                    await run_in_threadpool(
+                        save_receipt, factory, existing.id, row["run_id"]
+                    )
+                    return {
+                        "state": "accepted",
+                        "run_id": row["run_id"],
+                        "reason_code": None,
+                    }
+            if len(rows) < 100:
+                break
+    except (PlatformApiError, ValueError, KeyError, TypeError):
+        pass
+    return unknown_acceptance()
 
 
 async def authorize_completion(request, payload):
@@ -380,6 +547,12 @@ async def authorize_completion(request, payload):
             or existing.context_snapshot != context
         ):
             raise ValueError()
+        if existing.upstream_body is not None:
+            original_marker = json.loads(existing.upstream_body)["config"][
+                "configurable"
+            ][MARKER]
+            if original_marker != marker:
+                raise ValueError()
         if existing.run_id is None:
             await run_in_threadpool(
                 save_receipt, factory, existing.id, str(payload.run_id)

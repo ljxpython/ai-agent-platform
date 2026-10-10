@@ -67,6 +67,24 @@ class LangGraphRuntimeGatewayUpstream:
     async def get_info(self) -> dict[str, Any]:
         return await self._http.require_json("GET", "/info")
 
+    async def create_run_with_acceptance(
+        self,
+        thread_id: str,
+        body_bytes: bytes,
+        idempotency_key: str,
+        request_digest: str,
+    ):
+        return await self._runs.acceptance(
+            "POST", thread_id, idempotency_key, request_digest, body_bytes
+        )
+
+    async def get_run_acceptance(
+        self, thread_id: str, idempotency_key: str, request_digest: str
+    ):
+        return await self._runs.acceptance(
+            "GET", thread_id, idempotency_key, request_digest
+        )
+
     async def cron_request(
         self,
         method: str,

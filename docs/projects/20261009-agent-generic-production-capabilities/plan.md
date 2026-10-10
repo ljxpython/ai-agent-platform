@@ -2,9 +2,9 @@
 
 > 用户于 2026-10-09 批准 D01-D06，记录见 tasks.md。本文为实施设计；代码与验证状态以 tasks.md 为准，不代表生产已支持。
 
-**实施状态：** `blocked`。T02/T03/T04/T06/T07 已实现并取得阶段证据；T01/T05/T08 因正式 post43 缺少按幂等 key 只读回查接受 Run 的接口而未完成。正常 ACK 与 Worker guard 回填已验；无回执且 Worker 未开始时保持 unknown/inflight，禁止重复 POST。新提交默认关闭，前端 F01-F12 交同事，后端/全栈 Final 均未执行。解除条件见 [引擎接续](engine-handoff.md)，实际样本见 [前端交接](frontend-handoff.md)。
+**实施状态：** `partial`。正式 post45 接受回执、服务锁/部署断言及 lost-ACK notify/Stop/撤权联合验收已交付，[B01](engine-handoff.md) 解除。T02/T03/T04/T06/T07、F01-F11 已完成，T01/T05/T08 剩余全范围验证和新 Linux 镜像门禁、T10/F12 全栈 Final 尚未收口。无记录或过期仍 unknown，不重复 POST；新提交默认关闭，现役未部署。A/B 前后端独立验收已 done。
 
-发布镜像、旧源码回退、HITL通知和固定Stop后新任务的追加Phase已通过，验证资源已关闭；完整证据与未覆盖边界见verification.md覆盖矩阵，阶段通过不解除B01或代替Final。
+原发布镜像、旧源码回退、HITL通知和固定Stop追加 Phase 保留；post45 接受回执使用方 Final 独立见引擎交接，不代替本专项全范围后端/全栈 Final。完整证据与未覆盖边界见 verification.md。
 
 ## 1. 目标与范围
 
@@ -79,9 +79,22 @@ graph factory 拟新增 `runtime/background_completion.py::background_completion
 
 ### 4.2 能力声明
 
-拟增加 `background_tasks`（本图已接入）与 `background_tasks_start_enabled`（拓扑/开关/当前策略允许新提交）。默认新提交关闭；关提交开关不关闭已接受任务的对账/日志/取消。
+已增加 `background_tasks`（本图已接入且配置任务存储）与 `background_tasks_start_enabled`（拓扑/开关/当前策略允许新提交）。默认新提交关闭；关提交开关不关闭已接受任务的对账/日志/取消。
 
 capability 只是声明；Platform 结合 Thread ACL/tool overrides 投影，Runtime 执行时再次核验。未接入图返回 false；新图要显式登记 Workspace resolver、工具声明和 guard，不能宣称任意 graph 零适配。保留 `independent_subagent_cancel=false`。
+
+### 4.3 非 Docker 兼容与精确降级（后端已实施，前端接续）
+
+2026-10-10，用户明确同意“A 主方案 + B 兜底”，并指定在 99f7 Worktree 完成非前端项、前端交接同事；原始候选见 [兼容提案](local-runner-compatibility-proposal.md)。AB01-AB03 后端及独立验证已完成，前端增量见 [A/B 前端交接](local-compatibility-frontend-handoff.md)。本轮不改变 T01/T05/T08 的 B01 门禁状态，不授权引擎修改、Git 提交或发布。
+
+- **A：** 模型工具过滤与 `background_tasks_start_enabled` 复用同一能力判断；非支持拓扑或新提交开关关闭时不向执行模型提供 `background_execute`。ToolNode 内部保留该工具入口，让旧 checkpoint 仍能查询原回执；completion 不装配启动入口。底层 Docker/身份/权限/审批/Stop 校验继续保留，capability 不授予权限。
+- **查询与关停：** `background_tasks` 继续表示任务查询能力。关闭新启动不关闭已有任务的查询、日志、授权取消和无模型对账；任务 Tab 按查询能力展示，只有完全不提供任务查询的环境才隐藏。schema/probe 不触发资源探测或创建。
+- **B：** 工具边界仅将 `background_task_not_supported`、`background_task_disabled` 等已明确确认未登记/未执行的预期限制转为可恢复结果，并复用现有工具错误格式。幂等重放先核对原回执，已有任务返回原事实；已提交或结果 unknown 时不得建议前台重跑。鉴权、审批、Stop、取消与程序错误保持原语义。
+- **前台边界：** 普通 `execute` 继续遵守默认 30 秒、最大 60 秒及原权限/审批。短任务可选择已有前台工具；必须后台或超过同步时限的需求解释限制，提供拆分或受支持执行环境的选择，不承诺自动完成。
+- **部署边界：** 配置为 docker 不证明 daemon 可用；Docker 故障不能自动切宿主 local shell。可信本地开发显式选择 local，受限生产云端的普通执行仍需独立隔离评审。`LocalBackgroundRunner` 暂缓，不将本地子进程视为生产异步能力的完整平替。
+- **独立验收：** Runtime 91 项定向回归、真实 PG 12 项、平台能力 2 项、既有 Web 11 项通过；两个组合根的真实 local→Platform API→Worker→审批→execute→success 链路通过。浏览器及新恢复提示由同事接续，见 [Phase A/B](verification.md#phase-ab-非-docker-兼容独立验收2026-10-10)。完成通知 lost-ACK 的正式启用仍须解除 [B01](engine-handoff.md)。
+
+实施细化（用户已授权，2026-10-10）：查询能力要求 Runtime 配置任务存储；启动能力另要求 docker、有效 execution host 和开启新任务开关，仅检查配置，不探测 Docker/创建资源。启动先按可信 key 读取记录，使用记录的原 host 验证原有请求/绑定摘要，不迁移摘要或去重记录。数据库确认无记录后的预期环境限制使用专门的“未启动”异常类型，经现有工具错误分类恢复；相同错误码的底层 Workspace 异常不能被泛化吞掉。任务见 AB01-AB03。
 
 ## 5. Runtime 持久事实与执行
 
@@ -89,7 +102,7 @@ capability 只是声明；Platform 结合 Thread ACL/tool overrides 投影，Run
 
 支持同一受管 Docker daemon、持久 Workspace、共享 Runtime PG 的单主机部署，以及该主机上的多个 API/Worker 副本。`execution_host_id` 绑定同一个 daemon/Workspace 域，不能复制到不共享资源的机器。管理进程重启可恢复对账，Docker daemon/宿主重启后的原命令不承诺继续执行，只收敛真实事实且不重跑。
 
-LocalShell 首期返回 capability=false。不在宿主机启动 detached shell；不给命令容器 Docker socket、平台环境变量或远端模型密钥。现有生产限制 `network=none`、read-only root、cap-drop、no-new-privileges、PID/CPU/256 MiB 内存、受限文件大小和 skills 只读保持一致。编译/测试需在镜像中预装依赖并适应该资源边界；本期不为等待预览部署开网络/端口。
+LocalShell 的新启动 capability=false；配置任务存储的已接入图仍可查询已有任务。原执行域的 Docker/host/挂载是继续对账与清理的条件，不能由 local 节点替代。不在宿主机启动 detached shell；不给命令容器 Docker socket、平台环境变量或远端模型密钥。现有生产限制 `network=none`、read-only root、cap-drop、no-new-privileges、PID/CPU/256 MiB 内存、受限文件大小和 skills 只读保持一致。编译/测试需在镜像中预装依赖并适应该资源边界；本期不为等待预览部署开网络/端口。
 
 T01 必须冻结 API 与 Worker 如何连接同 daemon、daemon 看见的宿主路径/volume 如何映射、受管镜像与 runner 的打包方式。现有 Runtime Dockerfile 没有本次证明可用的 docker CLI/连接配置，不能只在 Compose 挂 socket 就声称生产可用。D01 批准前不修改部署权限。
 
@@ -250,7 +263,7 @@ fork/time-travel 只继承普通 Workspace 文件，不继承私有任务表/han
 
 检查 `apps/runtime-service/deploy/Dockerfile`、`Dockerfile.agent-workspace`、`docker-compose.runtime-service.yml`、`deploy/docker-compose.stack{,.nginx}.yml`、`scripts/local-stack.sh` 的真实启动/迁移/挂载；优先只更新批准使用的拓扑，其他拓扑保持新能力关闭并明确 capability=false。锁文件与构建镜像对齐 T01 核验的正式包，不盲目升级依赖或改引擎代码。
 
-Runtime 接入规范、Platform gateway/audit standards、`docs/standards/{delegation-jwt,error-envelope,sse-event}.md` 和 FEATURES/CHANGELOG/CONTEXT 已同步批准的已实现契约与 B01 限制；原 JWT/SSE 整体仍为 draft，本专项 blocked 不触发标准毕业。部署只更新默认关闭的单主机 overlay 与锁定 Dockerfile，其他拓扑未启用。
+Runtime接入规范、Platform gateway/audit standards、FEATURES/CHANGELOG/CONTEXT已同步实施契约和B01正式解除；原JWT/SSE整体仍draft，本专项partial不触发标准毕业。部署配置保留默认关闭的单主机overlay和post45精确依赖断言，新Linux应用镜像另验，其他拓扑未启用。
 
 运行手册与 Runtime 接入说明一起交付，明确新 Agent 的 Workspace binding、三工具/策略声明、组合根和完成 guard 四个接入点，以及 scope/审批/非阻塞/Stop 的最小验证集。
 

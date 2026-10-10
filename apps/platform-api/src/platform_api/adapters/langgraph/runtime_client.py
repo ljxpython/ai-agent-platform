@@ -75,6 +75,7 @@ class LangGraphRuntimeClient:
         payload: Any = None,
         params: Mapping[str, Any] | None = None,
         forwarded_headers: Mapping[str, str] | None = None,
+        body_bytes: bytes | None = None,
     ) -> Any:
         json_payload = dict(payload) if isinstance(payload, Mapping) else payload
         try:
@@ -84,7 +85,11 @@ class LangGraphRuntimeClient:
                 response = await client.request(
                     method=method,
                     url=self._url(path),
-                    json=json_payload,
+                    **(
+                        {"content": body_bytes}
+                        if body_bytes is not None
+                        else {"json": json_payload}
+                    ),
                     params=dict(params) if params is not None else None,
                     headers=self._headers(
                         accept="application/json",

@@ -538,6 +538,8 @@ def get_runtime_gateway_service(
         thread_id: str | None,
         context_hash: str,
         operation: str = "run-create",
+        run_acceptance: dict | None = None,
+        auth_snapshot: dict | None = None,
     ) -> dict[str, str]:
         restrictions = (
             RuntimePolicyOverlayService(
@@ -561,7 +563,7 @@ def get_runtime_gateway_service(
             }
         )
         try:
-            scoped = create_runtime_delegation_token(
+            token_values = dict(
                 subject=subject,
                 credential_id=actor.credential_id
                 if actor.principal_type == "service_account"
@@ -583,6 +585,17 @@ def get_runtime_gateway_service(
                 context_hash=context_hash,
                 settings=settings,
                 **correlation,
+            )
+            if auth_snapshot is not None:
+                auth_snapshot.update(
+                    {
+                        name: value
+                        for name, value in token_values.items()
+                        if name != "settings"
+                    }
+                )
+            scoped = create_runtime_delegation_token(
+                **token_values, run_acceptance=run_acceptance
             )
         except ValueError as exc:
             raise ServiceUnavailableError(

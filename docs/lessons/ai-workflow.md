@@ -83,3 +83,12 @@
 - **错误：** 启动或健康检查产生了新审计后，仍要求 audit_logs 绝对为空，把本环境正常记录当成源历史
 - **正确：** 首次业务链路前核对未复制源审计 ID，区分源历史和目标新记录；其他历史表按检查时点验证为空，见 [三栈基础数据验收](../projects/20261010-worktree-local-stack/verification.md)
 - **日期：** 2026-10-10（用户批准）
+
+---
+
+## [坑] Playwright 在流式/长轮询页面中禁用 waitForLoadState("networkidle")
+
+- **场景：** 页面包含 SSE 事件流、低频心跳或后台探针轮询时的端到端浏览器自动化测试。
+- **错误：** 使用 `page.waitForLoadState("networkidle")` 等待页面就绪；由于持续在途的低频探针或流连接，页面永远无法进入持续 500ms 零网络请求的 idle 状态，导致测试挂起直至 3 分钟超时报废。
+- **正确：** 禁用 `networkidle`，改用显式 DOM 状态等待（如 `await expect(composer).toBeVisible()` 或等待模型选择器完成水合渲染）。
+- **日期：** 2026-10-10（用户批准）；A/B 兼容真实浏览器端到端验收。

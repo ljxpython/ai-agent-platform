@@ -2,7 +2,7 @@
 
 ## 当前结论
 
-用户已于 2026-10-09 批准 D01-D06；T02/T03/T04/T06/T07 的实现和阶段证据已完成，T01/T05/T08 的完整验收受 B01 阻塞。最新发布镜像/旧源码回退、HITL通知与固定Stop后新任务追加链路均取得Phase通过证据；证据覆盖矩阵明确仍缺的完整故障/竞态和Final门禁。前端由同事接续；未部署现役、未调用生产 API。
+当前状态 `partial`。用户已批准 D01-D06，T02/T03/T04/T06/T07 与 F01-F11 已完成；正式 post45 锁/部署断言、接受回执三条发布后联合链路已交付，B01 解除。T01/T05/T08 的完整矩阵、新 Linux 应用镜像及后端 Final、T10/F12 全栈 Final 尚未收口；A/B 前后端独立验收已完成。以下历史 Phase 与失败记录保留，不能把引擎专项 Final 当作本专项全范围 Final。现役未部署、未调用生产 API。
 
 本轮源码对照的基线、参考文件哈希、官方资料和环境限制见 reference-analysis.md。文档检查记录在“规划交付校验”，不得写成后端/全栈 Final。
 
@@ -194,7 +194,7 @@ uv run --frozen --project "apps/platform-api" pytest "apps/platform-api/tests/te
 
 ### Phase 证据覆盖矩阵
 
-本表将冻结的44项要求映射到上述实际证据，不能替代后端Final。`阶段覆盖`只声明列出的场景；B01阻塞的窗口、尚未整条通过的追加用例和前端项保持未完成，不把skip/基线失败计pass。
+本表保留接受回执正式交付前的44项 Phase 覆盖快照，不能替代后端Final。表中 B01 阻塞描述为该阶段事实；后续正式解除与新增联合证据见“接受回执专项正式交付”。其余完整矩阵及F12仍未完成，不把skip/基线失败计pass。
 
 | 验收 ID | 当前证据与边界 | 状态 |
 |---|---|---|
@@ -265,6 +265,90 @@ uv run --frozen --project "apps/platform-api" pytest "apps/platform-api/tests/te
      - 桌面端（1440×900）：`docs/projects/20261009-agent-generic-production-capabilities/screenshots/1440x900-desktop-tasks.png`
      - 平板端（768×1024）：`docs/projects/20261009-agent-generic-production-capabilities/screenshots/768x1024-tablet-tasks.png`
      - 移动端（390×844）：`docs/projects/20261009-agent-generic-production-capabilities/screenshots/390x844-mobile-tasks.png`
+
+### Phase A/B 非 Docker 兼容独立验收，2026-10-10
+
+此阶段只验 AB01-AB03 的非前端范围与交接，采用用户已批准的 A 主方案+B 精确兜底；不替代 B01、T08 或 T10 Final。在指定99f7 Worktree使用各app独立 `.venv`/`node_modules`，专属环境 `wt_27df0f537b6d`。该阶段前端只交接，后续ABF验证另列；外部模型额度共享，现役未部署、未提交Git。A/B本身未改引擎依赖；当时安装post45、服务锁/部署post43的差异已由下文正式接受回执交付消除。
+
+#### AB01 能力与工具门禁
+
+- `apps/runtime-service` 下 `.venv/bin/python -m pytest tests/background/test_compatibility.py -q --tb=line`：**18 passed，360.84 秒**。两真实组合根 × 六配置验证模型工具可见性、B 后继续、同码非专门异常 Fatal、旧 checkpoint 中断/重建/恢复。模型为 RecordingModel，checkpoint 为 InMemorySaver；synthetic DSN 不访问数据库，消息队列 before_model 用 AsyncMock 隔离无关 inbox。这组不冒充真实 shell 或持久引擎 E2E。
+- `.venv/bin/python -m pytest tests/background/test_tools_and_assembly.py tests/background/test_service.py tests/middlewares/test_runtime_middleware.py tests/services/showcase_demo/test_agent.py::test_probe_has_no_io_and_cannot_be_invoked tests/services/dearflow_agent/test_agent.py::test_schema_probe_has_no_model_or_workspace_io -q --tb=line`：**73 passed，136.10 秒**。公共能力/工具路由矩阵、probe 零 IO、权限/maintenance/completion 拒绝、现有中间件与取消保持原语义。
+- Platform：`.venv/bin/python -m unittest discover -s tests -p test_background_capabilities.py -v`，**2 passed，2.962 秒**；Runtime 新启动 false、execute/background_execute deny、只读 ACL 均保留查询。
+- Web：`pnpm exec vitest run src/modules/chat/composables/useBackgroundTasks.spec.ts src/components/workspace/BackgroundTasksPanel.spec.ts src/services/threads/background-tasks.service.spec.ts`，**3 files / 11 tests passed，41.19 秒**。前端原有 capability 消费按查询显示任务入口，无需复制业务逻辑。
+
+并行安装正式 post45 后复验当前代码：Runtime `.venv/bin/python -m pytest tests/background/test_compatibility.py tests/background/test_tools_and_assembly.py tests/background/test_service.py tests/middlewares/test_runtime_middleware.py tests/services/showcase_demo/test_agent.py::test_probe_has_no_io_and_cannot_be_invoked tests/services/dearflow_agent/test_agent.py::test_schema_probe_has_no_model_or_workspace_io -q --tb=line`，**91 passed，17 warnings，39.84 秒**；Platform 同能力 unittest **2 passed，0.847 秒**。这91项是上述18+73的当前版本合并复验，不重复累计为新用例。
+
+#### AB02 原回执与精确兜底
+
+- 从 `.local-stack/runtime.env` 私有读取 DSN，连接断言 `current_database()` 等于本环境 runtime 数据库，然后仅在子 pytest 进程设置 `BACKGROUND_TEST_DSN`。命令：`.venv/bin/python -m pytest tests/background/test_repository.py -k 'start_replay or disabled_start_after_source_stop or two_processes_cannot or replay_cancel or fence_rejects or fork_and_checkpoint or stop_snapshot' -q --tb=line`，**12 passed，14 deselected，831.72 秒**。每 case 随机 schema，fixture 退出清理；没有加载主库或输出 DSN。
+- 覆盖 running/unknown/succeeded × local/docker、flag0/缺当前 host 的原回执；同 key 改 command/timeout/Workspace/skills/protected 冲突；原日志清理不丢去重；无记录后源 Stop 不能恢复；两进程容量、旧 fence、fork/checkpoint 与固定 Stop。Docker 专项用例未开启，deselected 不算通过。
+- 初次完全移除启动 ToolNode 的实现使两图重建 checkpoint 测试失败（返回未知工具）；修为保留内部回执入口、只过滤模型可见工具后上述 18 项通过。不会将 unknown 误导为前台重跑。
+
+#### AB03 真实 local 后端链路、前端交接与质量
+
+非前端验收改用专属 API 脚本 `.local-stack/ab-local-api-check.py`：私有读取本环境配置，先断言环境根路径/ID、本环境 Runtime 数据库和 local backend；通过 Platform API 正常登录、创建临时项目、授权图/已配置模型、绑定 Agent、创建 Thread，再提交 Protocol v2 `run.start`。读取真实当前 interrupt ID 并显式提交 `input.respond`，不绕 ACL/HITL、不 stub 模型/Worker/shell。使用已授权 `deepseek-v4-flash`，两个图均一次审批后真实 execute 成功并最终 `success`：
+
+| 图 | Thread | 原 Run → 恢复 Run | 结果 |
+|---|---|---|---|
+| Showcase | `643547f5-a7ab-4504-8f3e-106ff16b1c5e` | `dc1b2013-6ce5-4329-a443-fb31d2230ab9` → `cd34e163-04e9-45de-ab66-14f53220e662` | `AB_LOCAL_OK`，退出码0，success |
+| DearFlow | `3b73a085-1d0a-4aed-9726-311bcc919609` | `b8b147b1-f9d5-41cf-bd0a-081f6683fb9b` → `835485d6-1127-4aaf-b636-1e64745a3f93` | `AB_LOCAL_OK`，退出码0，success |
+
+两图 capabilities 均 query=true/start=false；state 中均只有普通 execute ToolMessage、无 background_execute；真实任务列表均为空。平台测试项目 `6858924f-e993-4210-9f52-54249746be8a` / `1ac9604c-1143-4be9-a639-8ba6663e8216` 在 finally 通过平台接口软删除。脱敏持久摘要见 [API 证据](implementation/ab-local-api-evidence.json)，完整方法/路径/状态保留在本 Worktree `.local-stack/ab-local-api-evidence.json`，不含 token/凭据。
+
+此前新增浏览器测试使用本环境三服务/Worker/已授权模型，无 `page.route` stub；但未通过，现作为 `apps/platform-web/e2e/background-compatibility.draft.ts` 交接，不进入默认 Playwright 收集。诊断只记录方法、路径与 HTTP 状态，不附带 token、请求正文或模型凭据。产品前端源码未改；ABF01-ABF03 的增量开发和浏览器验收见 [前端交接](local-compatibility-frontend-handoff.md)。
+
+已执行的失败轮如实保留：普通 commands HTTP500 来自并行接入 ORM 新增字段与测试库旧 schema 不一致；通过 `scripts/local-stack.sh migrate` 将本环境 Platform 升到 `20261010_0007`，未改主库。随后有 PG 短时不响应、API/Worker 超过启动等待上限但稍后 ready，以及 Platform API 多次热重载。浏览器分别在创建项目400、权限同步暂不可用/未发 commands、Agent 列表加载及等待 commands 时失败，不能算成功链路。新会话后来等待实际授权模型名后能提交；最近浏览器 **1 failed，约1.4分钟**，五轮审批后未达终态。
+
+最近浏览器 Thread `5ce3e8f6-fd80-44eb-a12c-ea412c15497f` 的6个 Run 最终均 `interrupted`，不是重复点击同一 interrupt：PG checkpoint_writes 已有普通 execute 输出 `AB_LOCAL_OK`/退出码0，模型又要求同命令。脱离浏览器使用 `qwen-plus` 的真实 API 复验（Thread `6ab38717-da0f-4aac-8bc8-4a39d6acf815`）同样在3次成功 execute 后又等待审批，主动停止继续批准。保存消息的工具调用 `id=""`、工具结果 `tool_call_id=""`；既有 sanitizer 的实际重放将3份工具输出清洗为0份。`_normalize_ai_message_tool_calls` / `sanitize_tool_call_messages` / `repair_model_tool_calls` 与 HEAD 的 AST 比较相同，本轮没有改这些函数，已定位现有清洗与空 ID 的兼容缺口；没有执行完整旧源码的同模型链路，不扩大为全链路旧版本基线结论。不能归因为前端审批错误、增加审批次数掩盖，或声称该 qwen 模型链路成功。改用已配置 deepseek 后两条后端链路通过；前端接续时显式选同一已验模型，qwen 兼容修复另交 Runtime 模型适配。
+
+- A/B 修改的 Python 文件 Ruff check/format check 通过；新 E2E Prettier check 通过；`git diff --check` 通过。
+- 收尾复验：`uv tool run ruff check/format --check --config apps/runtime-service/pyproject.toml` 检查15个A/B Python文件，全部通过；draft与脱敏API JSON的Prettier通过。专项48个本地文档链接及7个新增锚点通过，API证据结构与两条实际成功结果一致。全仓FEATURES检查另发现4个HEAD已存在的无效链接，本轮未修改相关行，不声称全仓文档无误。
+- 较宽 Runtime 回归：**186 passed，1 skipped，3 failed**；扩展工具/Dear 回归 **49 passed，2 failed**。两图 schema probe 夹具指向已移除 `fetch_model_connection`，本轮修为当前 `fetch_model_bundle`，必要 probe 已包含上面的 73 passed。`test_real_parallel_repeated_cancel_reaps_only_owned_resources` 单独重跑通过；主/子图 wrapup 断言单独仍失败，并在内存替换为 HEAD 的 `RuntimeConfigMiddleware.awrap_model_call` 后复现 **1 failed**，未改写预算业务。Dear auxiliary SDK budget 测试同旧夹具问题属于范围外未修。较宽回归不声称全绿，Pydantic/context 与 LangChain beta 等既有 warnings 未消除。
+
+#### ABF01-ABF03 前端增量消费与浏览器验收（2026-10-10）
+
+前端增量由本轮完全实施并通过所有单元测试与 Playwright 浏览器验收，达成零外部冗余依赖：
+
+1. **ABF01 能力门禁与响应式状态机：**
+   - 在 `apps/platform-web/src/modules/chat/composables/useBackgroundTasks.ts` 接入 `capabilities` 选项，基于 `queryEnabled = computed(() => Boolean(toValue(options.capabilities)?.background_tasks))` 实现硬门禁。
+   - 门禁关闭或缺省时：彻底禁请求、停止定时探针、abort 在途探针及日志请求、重置作用域数据，不残留上一会话数据。
+   - 门禁开启但启动关闭时（Local）：保留任务 Tab，支持历史任务查询、有界日志阅读与基于 `allowed_actions` 的授权取消。
+   - 动态切换与生命周期：能力由 false 变为 true 自动恢复按需加载；能力由 true 变为 false 立即清空作用域；组件卸载（scope dispose）安全中止在途请求并清理定时器；watch 参数安全解构避免 TypeError。
+   - 在 `ChatSession.vue` 顶层拉取当前线程 capabilities（带 AbortController 保护）并注入 `useBackgroundTasks`。
+   - 单元测试：`useBackgroundTasks.spec.ts` 7 个专项测试 100% 通过（144ms），覆盖 true/false、true/true、false/false、字段缺省、动态变化、切会话、scope dispose。
+
+2. **ABF02 局部恢复提示与安全映射：**
+   - 在 `apps/platform-web/src/modules/chat/transcript.ts` 的 `RECOVERY_HINT_MAP` 中补齐 `use_execute_for_short_task: "短任务可改用前台执行，最长60秒"`。
+   - 单元测试：`transcript.test.ts` 补充针对 `BackgroundTaskNotStarted` 结构化 JSON 的解析及局部恢复提示断言，18 项单测全部通过（412ms）。
+
+3. **ABF03 真实 Local 浏览器端到端闭环验证：**
+   - 升级交接草稿为正式 Playwright 规范 `apps/platform-web/e2e/background-compatibility.spec.ts`。
+   - 显式绑定已验证的 `deepseek-v4-flash` 模型，避免 `qwen-plus` 工具调用空 ID 引起重复执行的已知 Runtime 适配问题。
+   - 真实前台执行命令 `printf AB_LOCAL_OK`，经真实 HITL 人工审批通过，普通前台 `execute` 真实执行并成功返回 `AB_LOCAL_OK`，Run 终态为 `success`。
+   - 验证 ToolMessage 仅包含 `execute`，无 `background_execute`；验证工作区「任务」Tab 正确保留且呈现空态（empty state），后台任务列表为 `[]`，零 pageerror。
+   - 执行结果：`pnpm test:e2e e2e/background-compatibility.spec.ts`，**1 passed（58.4s，退出码 0）**。
+
+4. **前端工程质量门禁全绿：**
+   - `pnpm lint`：0 错误通过；
+   - `pnpm typecheck`（`vue-tsc --noEmit`）：0 错误通过；
+   - `pnpm check`（lint + typecheck + build）：全绿通过。
+
+#### 边界与资源
+
+本轮未实现 C、未测试受限生产 Pod/Serverless 或滚动切换 backend；普通 local shell 的可信部署边界不改变。新启动关闭后的对账仍需原 Docker/host/共享挂载，local 节点不能替代它。原 B01 接受回执及其并行平台接线验收由引擎专项收口，不能写入 A/B 完成项。
+
+测试新增 PG schema 已由 fixture 清理，收尾只读查询 `background_test_%` schema 数量为0。浏览器及 API fixture 通过平台接口对本轮项目执行 soft-delete；qwen API 临时项目同样已软删除，不删除其他会话历史或他人数据。Playwright 测试生成的截图和脱敏 API 响应日志保留在测试输出目录。`scripts/local-stack.sh status` 验证服务运行正常。
+
+**A/B范围结论：** AB01-AB03与ABF01-ABF03全部为 `done`；前端增量与真实 Local 浏览器链路已获用户人工真机验收通过（2026-10-11，验证能力门禁、任务 Tab 保留、短任务 execute 审批流执行成功）；该阶段未承担原专项接受回执门禁或全范围Final。随后B01由正式接受回执专项解除，原专项当前 `partial`，T01/T05/T08剩余门禁与T10/F12未收口。qwen空工具ID与较宽预算回归失败保留为范围外限制，不宣称全量或所有模型通过。
+
+### 接受回执专项正式交付（2026-10-10）
+
+[B01](engine-handoff.md) 已解除。GraphHarbor 正式双包 `0.13.0.post45` 已接入本 Worktree 服务锁与 Dockerfile 断言，平台迁移 head 为 `20261010_0007`。引擎源码/发行包、固定只读回查、迁移/并发/故障矩阵及使用方接线 Final 的独立记录见 GraphHarbor 仓库 `docs/projects/20261010-run-acceptance-receipts/verification.md`，入口保留在 engine-handoff.md。
+
+本 Worktree 正式 PyPI 依赖的 `test_lost_native_ack_reconciles_queued_run_without_resubmission` 在各自 disposable PG/Redis 执行：notify **1 passed/249.96s**、stop **1 passed/322.48s**、revoke **1 passed/339.07s**。每场景 2 Run（源+完成）、1 ledger，完成模型调用 1/0/0；ACK 丢失且 Worker 暂停时固定 GET 找回原 Run，Stop 仍 suppressed 并精确清理，撤权公开查询/新执行 403、内部 GET 可读、execution guard 拒绝模型。
+
+脱敏 JSON/JUnit、四产物哈希及安装/锁来源随引擎专项保留；本范围还包括 Platform **132 passed/1 skipped/116 subtests**、Runtime **115 passed**、真实 PG repository **21 passed/5 skipped**、平台 PG 迁移 **1 passed**。skip 未算通过，其他专项既有范围外失败仍保留。B01 完成只解除引擎门禁；T01/T05/T08 未勾选、T10/F12 未验；ABF 前端独立验收保留，新 Linux 应用镜像与现役启用未执行。
 
 ### Final 后端验证
 
