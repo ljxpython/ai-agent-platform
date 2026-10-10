@@ -124,6 +124,8 @@ P0—P7 是施工阶段编号，不是文档章节编号。每个阶段都有一
 | 13 | [验证基线与验收计划](13-verification-baseline.md) | 本轮实际验证了什么、以后逐项怎么验、何时可判done |
 | F01 | [Token额度保护评审](15-token-budget-governance.md) | DeerFlow/Open-SWE 对照、现有能力去重、Runtime/API/Web 边界、实施任务与验证门禁 |
 | F01 前端 | [Token额度前端交接](16-token-budget-frontend-handoff.md) | 前端同事接入现有预算/Usage 组件的字段、状态、验收和禁止项 |
+| F15 | [MCP缓存热重置评估](17-mcp-cache-reset-assessment.md) | 2026-10-10 用户确认不开发 reset/连接池，评估关闭；部署配置热更新独立且未实现，可选回归未排期 |
+| F15 前端 | [MCP刷新前端交接](18-mcp-cache-reset-frontend-handoff.md) | 交接评估关闭，无新增 reset UI/API；复用现有工具目录入口，条件回归未排期 |
 | 01 | [架构、边界与参考基线](01-architecture-and-boundaries.md) | 什么归属哪个服务、目录与状态由谁持有、底座先验证什么 |
 | 02 | [Agent 装配与执行模式](02-agent-composition-and-modes.md) | 如何改成 Deep Agents；Flash／Standard／Pro／Ultra 怎么落地 |
 | 03 | [工具、MCP 与结果证据](03-tools-mcp-and-evidence.md) | 搜索、抓取、生成服务、工具权限与结果核验怎么实现 |
