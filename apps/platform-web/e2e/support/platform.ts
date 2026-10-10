@@ -6,7 +6,9 @@ export const platformUrl =
   process.env.PLATFORM_TEST_URL ?? "http://127.0.0.1:2142";
 
 export function testCredentials() {
-  const envPath = resolve(process.cwd(), "../platform-api/.env");
+  const envPath =
+    process.env.PLATFORM_TEST_ENV_FILE ??
+    resolve(process.cwd(), "../platform-api/.env");
   const settings = existsSync(envPath)
     ? parseEnv(readFileSync(envPath, "utf8"))
     : {};
@@ -112,7 +114,11 @@ export async function createPlatformFixture(graphId = "workflow_demo") {
     }
     if (!model && process.env.PLATFORM_TEST_SEED_MODEL === "1") {
       const runtime = parseEnv(
-        readFileSync(resolve(process.cwd(), "../runtime-service/.env"), "utf8"),
+        readFileSync(
+          process.env.RUNTIME_TEST_ENV_FILE ??
+            resolve(process.cwd(), "../runtime-service/.env"),
+          "utf8",
+        ),
       );
       if (!runtime.DEEPSEEK_PROXY_URL || !runtime.DEEPSEEK_PROXY_API_KEY)
         throw new Error("Test model credentials are not configured");

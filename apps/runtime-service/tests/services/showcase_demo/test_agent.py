@@ -80,7 +80,7 @@ def config(*, context=None, thread_id="teaching-thread", denied=()):
     )
 
 
-def test_main_and_child_receive_the_same_wrapup_window(build):
+def test_wrapup_instruction_is_scoped_to_main_agent(build):
     async def run():
         cfg = with_run_budget(config(), remaining=30)
         graph, cfg, model = await build(
@@ -99,10 +99,9 @@ def test_main_and_child_receive_the_same_wrapup_window(build):
         )
         assert result["messages"][-1].text == "parent partial report"
         assert len(model.seen_messages) >= 3
-        assert all(
-            TIMEOUT_WRAPUP_INSTRUCTION in messages[0].text
-            for messages in model.seen_messages
-        )
+        assert TIMEOUT_WRAPUP_INSTRUCTION in model.seen_messages[0][0].text
+        assert TIMEOUT_WRAPUP_INSTRUCTION not in model.seen_messages[1][0].text
+        assert TIMEOUT_WRAPUP_INSTRUCTION in model.seen_messages[2][0].text
 
     asyncio.run(run())
 
@@ -114,7 +113,12 @@ def call(name, args, identifier="t1"):
 
 
 def test_context_wrapper_is_explicit_for_root_and_all_children(monkeypatch, tmp_path):
-    from runtime_service.middlewares import ConversationOffloadingMiddleware
+    from deepagents.middleware import FilesystemMiddleware
+
+    from runtime_service.middlewares import (
+        ConversationOffloadingMiddleware,
+        ResultFilesystemMiddleware,
+    )
     from runtime_service.runtime.capabilities import graph_capabilities
 
     monkeypatch.setenv("AGENT_CONTEXT_MANAGEMENT_ENABLED", "1")
@@ -135,6 +139,12 @@ def test_context_wrapper_is_explicit_for_root_and_all_children(monkeypatch, tmp_
     cfg = config(context={"offload_conversation": True, "max_tokens": 2048})
     graph = asyncio.run(agent.get_agent(cfg))
     root = captured[0]
+    expected_tool_limit = 1653
+    root_filesystem = next(
+        mw for mw in root["middleware"] if isinstance(mw, FilesystemMiddleware)
+    )
+    assert root_filesystem._tool_token_limit_before_evict == expected_tool_limit
+    assert isinstance(root_filesystem, ResultFilesystemMiddleware)
     wrappers = [
         mw
         for mw in root["middleware"]
@@ -149,6 +159,11 @@ def test_context_wrapper_is_explicit_for_root_and_all_children(monkeypatch, tmp_
         == 1
     )
     for child in root["subagents"]:
+        child_filesystem = next(
+            mw for mw in child["middleware"] if isinstance(mw, FilesystemMiddleware)
+        )
+        assert isinstance(child_filesystem, ResultFilesystemMiddleware)
+        assert child_filesystem._tool_token_limit_before_evict == expected_tool_limit
         wrappers = [
             mw
             for mw in child["middleware"]
@@ -545,7 +560,7 @@ def test_probe_has_no_io_and_cannot_be_invoked(monkeypatch, tmp_path):
         pytest.fail("Probe attempted external model/backend initialization")
 
     monkeypatch.setattr(agent, "build_model", forbidden)
-    monkeypatch.setattr(agent, "fetch_model_connection", forbidden)
+    monkeypatch.setattr(agent, "fetch_model_bundle", forbidden)
     monkeypatch.setattr(DockerWorkspaceBackend, "prepare", forbidden)
 
     async def run():

@@ -1,0 +1,126 @@
+{
+  "scope": "three disposable native stacks; Git path queries are fixtures",
+  "checks": [
+    "real main-workspace configuration data copied once; model keys reencrypted; admin defaults and empty history verified",
+    "three concurrent real native stacks and isolated-source dependency installations",
+    "three real Workers consume only their own queues and write/read independent same-name Workspace files",
+    "three independent Chromium contexts log in through registered Web/API addresses",
+    "idempotent start and registered Playwright configuration",
+    "stopping the first stack leaves the other two chains available",
+    "restart retains allocation, credentials and persisted project",
+    "only disposable test resources stopped and explicitly destroyed"
+  ],
+  "baseline_copies": [
+    {
+      "platform": {
+        "users": 15,
+        "agents": 477,
+        "tenants": 1,
+        "projects": 223,
+        "announcements": 1,
+        "project_members": 229,
+        "service_accounts": 1,
+        "runtime_catalog_tools": 65,
+        "project_graph_policies": 85,
+        "project_model_policies": 77,
+        "runtime_catalog_graphs": 4,
+        "runtime_catalog_models": 28,
+        "platform_config_entries": 0,
+        "runtime_tool_restrictions": 1,
+        "service_account_project_grants": 1
+      },
+      "runtime": {
+        "assistants": 4,
+        "dear_skills": 2,
+        "assistant_versions": 4
+      }
+    },
+    {
+      "platform": {
+        "users": 15,
+        "agents": 477,
+        "tenants": 1,
+        "projects": 223,
+        "announcements": 1,
+        "project_members": 229,
+        "service_accounts": 1,
+        "runtime_catalog_tools": 65,
+        "project_graph_policies": 85,
+        "project_model_policies": 77,
+        "runtime_catalog_graphs": 4,
+        "runtime_catalog_models": 28,
+        "platform_config_entries": 0,
+        "runtime_tool_restrictions": 1,
+        "service_account_project_grants": 1
+      },
+      "runtime": {
+        "assistants": 4,
+        "dear_skills": 2,
+        "assistant_versions": 4
+      }
+    },
+    {
+      "platform": {
+        "users": 15,
+        "agents": 477,
+        "tenants": 1,
+        "projects": 223,
+        "announcements": 1,
+        "project_members": 229,
+        "service_accounts": 1,
+        "runtime_catalog_tools": 65,
+        "project_graph_policies": 85,
+        "project_model_policies": 77,
+        "runtime_catalog_graphs": 4,
+        "runtime_catalog_models": 28,
+        "platform_config_entries": 0,
+        "runtime_tool_restrictions": 1,
+        "service_account_project_grants": 1
+      },
+      "runtime": {
+        "assistants": 4,
+        "dear_skills": 2,
+        "assistant_versions": 4
+      }
+    }
+  ],
+  "environments": [
+    {
+      "id": "wt_70a5e949a81a",
+      "ports": {
+        "PLATFORM_WEB_PORT": 27299,
+        "PLATFORM_API_PORT": 23104,
+        "RUNTIME_PORT": 26592,
+        "LOCAL_STACK_REDIS_PORT": 26844
+      },
+      "graph_count": 5,
+      "project_id": "72bbb206-0d49-41c8-a0c3-d883a79f36d9",
+      "worker_thread_id": "503765a6-7118-41cc-8e7b-93e4c0df597e"
+    },
+    {
+      "id": "wt_6546f6ae4722",
+      "ports": {
+        "PLATFORM_WEB_PORT": 25005,
+        "PLATFORM_API_PORT": 27814,
+        "RUNTIME_PORT": 26409,
+        "LOCAL_STACK_REDIS_PORT": 25597
+      },
+      "graph_count": 5,
+      "project_id": "ff59a88d-a787-46d9-b3c6-21afb648e31b",
+      "worker_thread_id": "8e2eac0f-a2d3-4b4f-8e23-68313c92ebf3"
+    },
+    {
+      "id": "wt_031db7a49b86",
+      "ports": {
+        "PLATFORM_WEB_PORT": 25167,
+        "PLATFORM_API_PORT": 23370,
+        "RUNTIME_PORT": 25099,
+        "LOCAL_STACK_REDIS_PORT": 29912
+      },
+      "graph_count": 5,
+      "project_id": "b5e1ae94-ded9-44d3-b810-66f3a9c49f70",
+      "worker_thread_id": "130f1360-26e7-4677-9ab9-3cbff42cec1a"
+    }
+  ],
+  "result": "passed"
+}

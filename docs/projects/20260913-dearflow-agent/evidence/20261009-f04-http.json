@@ -1,0 +1,473 @@
+{
+  "verification_scope": "F04 non-frontend Phase, disposable HTTP/PG/Redis/Worker",
+  "fixture_only": true,
+  "environment": {
+    "deepagents": "0.7.8",
+    "langchain": "1.3.17",
+    "langgraph": "1.2.11",
+    "graphharbor": "0.13.0.post43",
+    "graphharbor-runtime": "0.13.0.post43",
+    "langgraph-sdk": "0.4.3",
+    "lock_sha256": "780e842efbdbd9da297f05d6d37f9b1c9fec93400c48bd575b565f8a50ca8ba3",
+    "fresh_frozen_offline_install": true
+  },
+  "runs": [
+    {
+      "graph_id": "dearflow_agent",
+      "thread_id": "a4a71e54-db7a-4c67-a8d4-75e5a1284fbc",
+      "run_id": "d3022a02-703b-4021-8936-77501d14e1f7",
+      "version": "v3",
+      "sha256": "3afa3b3de3c839f459926cc015a69943cfcc546bc0c130f85f723448292901b0",
+      "raw_bytes": 110885,
+      "state_http_bytes": 127706,
+      "stream_bytes": 11361954,
+      "checkpoint_blob_bytes": 9993,
+      "duration_seconds": 17.21,
+      "child_run_id": "25137b8b-3211-4932-803f-a31f0f7424b3",
+      "child_sha256": "bdc2fdfa144cf2bb2f78541a3ab5284f0d93519f4bb4d42aac5f63d74cd3ff53",
+      "child_raw_bytes": 110887,
+      "restart_recovery_run_id": "851f822a-3447-48e1-8bf3-444d56e3c634",
+      "switch_off_recovery_run_id": "417f308d-1e21-4438-86e0-8bd3ac87340c"
+    },
+    {
+      "graph_id": "showcase_demo",
+      "thread_id": "d781ceea-9391-46da-b201-736e53db3748",
+      "run_id": "712da9c2-015c-4e0e-9958-fc0cc362752c",
+      "version": "v2",
+      "sha256": "3afa3b3de3c839f459926cc015a69943cfcc546bc0c130f85f723448292901b0",
+      "raw_bytes": 110885,
+      "state_http_bytes": 117626,
+      "stream_bytes": 1169304,
+      "checkpoint_blob_bytes": 656,
+      "duration_seconds": 8.38,
+      "child_run_id": "9dbdeb6f-2cce-4c14-a779-eb7d7111bb41",
+      "child_sha256": "d0f6ee540d2a84ab74bfb898fb1bde0c5efaebe15081f8d8f949e288f384e9ac",
+      "child_raw_bytes": 110924,
+      "restart_recovery_run_id": "3a13be7f-38d6-4286-81de-14c2f787f686",
+      "switch_off_recovery_run_id": "117ccffd-2a2a-4e58-b4f0-4785f23d8a3a"
+    }
+  ],
+  "approvals": [
+    {
+      "decision": "approve",
+      "thread_id": "64d2f3e6-a965-43ac-8e63-d3b923f10235",
+      "run_id": "724ca6bf-5d29-4e35-a4c8-fc21875f82e0",
+      "worker_restart": true
+    },
+    {
+      "decision": "reject",
+      "thread_id": "4d25fc34-1eb8-406c-a40b-83fc6ce9bc0e",
+      "run_id": "69c8d840-6607-4a87-a13c-d84231466fb5",
+      "worker_restart": true
+    }
+  ],
+  "model_inputs": [
+    {
+      "event": "model-input",
+      "chars": 14679,
+      "summary": false,
+      "last_type": "human",
+      "last_name": null,
+      "last_tool_call_id": null
+    },
+    {
+      "event": "model-input",
+      "chars": 16175,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "parse_document",
+      "last_tool_call_id": "budget-large"
+    },
+    {
+      "event": "model-input",
+      "chars": 16278,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "read_file",
+      "last_tool_call_id": "read-middle-8c677b211ee1"
+    },
+    {
+      "event": "model-input",
+      "chars": 16389,
+      "summary": false,
+      "last_type": "human",
+      "last_name": null,
+      "last_tool_call_id": null
+    },
+    {
+      "event": "model-input",
+      "chars": 172,
+      "summary": false,
+      "last_type": "human",
+      "last_name": null,
+      "last_tool_call_id": null
+    },
+    {
+      "event": "model-input",
+      "chars": 1668,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "search_web",
+      "last_tool_call_id": "budget-large"
+    },
+    {
+      "event": "model-input",
+      "chars": 1772,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "read_file",
+      "last_tool_call_id": "read-middle-c4289253bce5"
+    },
+    {
+      "event": "model-input",
+      "chars": 16493,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "task",
+      "last_tool_call_id": "budget-child"
+    },
+    {
+      "event": "model-input",
+      "chars": 5640,
+      "summary": false,
+      "last_type": "human",
+      "last_name": null,
+      "last_tool_call_id": null
+    },
+    {
+      "event": "model-input",
+      "chars": 7136,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "parse_document",
+      "last_tool_call_id": "budget-large"
+    },
+    {
+      "event": "model-input",
+      "chars": 7239,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "read_file",
+      "last_tool_call_id": "read-middle-34e96f9cfe68"
+    },
+    {
+      "event": "model-input",
+      "chars": 7350,
+      "summary": false,
+      "last_type": "human",
+      "last_name": null,
+      "last_tool_call_id": null
+    },
+    {
+      "event": "model-input",
+      "chars": 1019,
+      "summary": false,
+      "last_type": "human",
+      "last_name": null,
+      "last_tool_call_id": null
+    },
+    {
+      "event": "model-input",
+      "chars": 2478,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "execute",
+      "last_tool_call_id": "budget-large"
+    },
+    {
+      "event": "model-input",
+      "chars": 2582,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "read_file",
+      "last_tool_call_id": "read-middle-aeeaee24ed74"
+    },
+    {
+      "event": "model-input",
+      "chars": 7454,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "task",
+      "last_tool_call_id": "budget-child"
+    },
+    {
+      "event": "model-input",
+      "chars": 14681,
+      "summary": false,
+      "last_type": "human",
+      "last_name": null,
+      "last_tool_call_id": null
+    },
+    {
+      "event": "model-input",
+      "chars": 14681,
+      "summary": false,
+      "last_type": "human",
+      "last_name": null,
+      "last_tool_call_id": null
+    },
+    {
+      "event": "model-input",
+      "chars": 14722,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "write_file",
+      "last_tool_call_id": "budget-write"
+    },
+    {
+      "event": "model-input",
+      "chars": 14842,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "write_file",
+      "last_tool_call_id": "budget-write"
+    },
+    {
+      "event": "model-input",
+      "chars": 16509,
+      "summary": false,
+      "last_type": "human",
+      "last_name": null,
+      "last_tool_call_id": null
+    },
+    {
+      "event": "model-input",
+      "chars": 16618,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "read_file",
+      "last_tool_call_id": "read-restored-ab1a18b94799"
+    },
+    {
+      "event": "model-input",
+      "chars": 7470,
+      "summary": false,
+      "last_type": "human",
+      "last_name": null,
+      "last_tool_call_id": null
+    },
+    {
+      "event": "model-input",
+      "chars": 7579,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "read_file",
+      "last_tool_call_id": "read-restored-fb955476c9b8"
+    },
+    {
+      "event": "model-input",
+      "chars": 16734,
+      "summary": false,
+      "last_type": "human",
+      "last_name": null,
+      "last_tool_call_id": null
+    },
+    {
+      "event": "model-input",
+      "chars": 16843,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "read_file",
+      "last_tool_call_id": "read-restored-3fb520c410d9"
+    },
+    {
+      "event": "model-input",
+      "chars": 7695,
+      "summary": false,
+      "last_type": "human",
+      "last_name": null,
+      "last_tool_call_id": null
+    },
+    {
+      "event": "model-input",
+      "chars": 7804,
+      "summary": false,
+      "last_type": "tool",
+      "last_name": "read_file",
+      "last_tool_call_id": "read-restored-5ba8cf2c4a9b"
+    }
+  ],
+  "postgres_after_root_child_and_two_recoveries": [
+    {
+      "thread_id": "a4a71e54-db7a-4c67-a8d4-75e5a1284fbc",
+      "graph_id": "dearflow_agent",
+      "checkpoints": 155,
+      "checkpoint_json_bytes": 1041234,
+      "blob_bytes": 151299,
+      "write_bytes": 605708,
+      "namespaces": [
+        "",
+        "tools:c8e36568-890c-e408-7430-b89ecd70910e"
+      ]
+    },
+    {
+      "thread_id": "d781ceea-9391-46da-b201-736e53db3748",
+      "graph_id": "showcase_demo",
+      "checkpoints": 155,
+      "checkpoint_json_bytes": 983265,
+      "blob_bytes": 113550,
+      "write_bytes": 568206,
+      "namespaces": [
+        "",
+        "tools:c6458fe7-4e26-8d90-0af9-59dcdee9cc10"
+      ]
+    }
+  ],
+  "http_boundary_probes": [
+    {
+      "case": "state-private",
+      "status": 400,
+      "code": "invalid_runtime_payload"
+    },
+    {
+      "case": "run-private-input",
+      "status": 400,
+      "code": "runtime_private_state"
+    },
+    {
+      "case": "cross-project-read",
+      "status": 403,
+      "code": "thread_action_denied"
+    }
+  ],
+  "live_provider": {
+    "model": "DeepSeek-V4-Flash",
+    "middle": {
+      "duration_seconds": 1.42,
+      "tool_calls": 2,
+      "input_tokens": [
+        2879,
+        3315,
+        3521
+      ],
+      "output_tokens": [
+        29,
+        153,
+        32
+      ],
+      "exact_canary": true
+    },
+    "summary_samples": [
+      {
+        "sample": 0,
+        "round": 0,
+        "duration_seconds": 3.19,
+        "provider_input_tokens": 6082,
+        "provider_output_tokens": 651,
+        "effective_estimated_input": 3327,
+        "checkpoint_blob_bytes": 57992,
+        "quality_anchors": 7
+      },
+      {
+        "sample": 0,
+        "round": 1,
+        "duration_seconds": 2.72,
+        "provider_input_tokens": 7951,
+        "provider_output_tokens": 735,
+        "effective_estimated_input": 3395,
+        "checkpoint_blob_bytes": 61958,
+        "quality_anchors": 7
+      },
+      {
+        "sample": 1,
+        "round": 0,
+        "duration_seconds": 2.2,
+        "provider_input_tokens": 6082,
+        "provider_output_tokens": 512,
+        "effective_estimated_input": 3163,
+        "checkpoint_blob_bytes": 57333,
+        "quality_anchors": 7
+      },
+      {
+        "sample": 1,
+        "round": 1,
+        "duration_seconds": 2.16,
+        "provider_input_tokens": 7810,
+        "provider_output_tokens": 512,
+        "effective_estimated_input": 3163,
+        "checkpoint_blob_bytes": 60368,
+        "quality_anchors": 7
+      },
+      {
+        "sample": 2,
+        "round": 0,
+        "duration_seconds": 2.58,
+        "provider_input_tokens": 6082,
+        "provider_output_tokens": 622,
+        "effective_estimated_input": 3323,
+        "checkpoint_blob_bytes": 57977,
+        "quality_anchors": 7
+      },
+      {
+        "sample": 2,
+        "round": 1,
+        "duration_seconds": 2.42,
+        "provider_input_tokens": 7923,
+        "provider_output_tokens": 489,
+        "effective_estimated_input": 3142,
+        "checkpoint_blob_bytes": 60930,
+        "quality_anchors": 7
+      },
+      {
+        "sample": 3,
+        "round": 0,
+        "duration_seconds": 2.18,
+        "provider_input_tokens": 6082,
+        "provider_output_tokens": 540,
+        "effective_estimated_input": 3193,
+        "checkpoint_blob_bytes": 57447,
+        "quality_anchors": 7
+      },
+      {
+        "sample": 3,
+        "round": 1,
+        "duration_seconds": 2.14,
+        "provider_input_tokens": 7836,
+        "provider_output_tokens": 540,
+        "effective_estimated_input": 3193,
+        "checkpoint_blob_bytes": 60596,
+        "quality_anchors": 7
+      },
+      {
+        "sample": 4,
+        "round": 0,
+        "duration_seconds": 2.61,
+        "provider_input_tokens": 6082,
+        "provider_output_tokens": 630,
+        "effective_estimated_input": 3316,
+        "checkpoint_blob_bytes": 57951,
+        "quality_anchors": 7
+      },
+      {
+        "sample": 4,
+        "round": 1,
+        "duration_seconds": 2.85,
+        "provider_input_tokens": 7935,
+        "provider_output_tokens": 636,
+        "effective_estimated_input": 2926,
+        "checkpoint_blob_bytes": 61355,
+        "quality_anchors": 7
+      }
+    ],
+    "overflow": {
+      "code": "context_length_exceeded",
+      "sdk_http_calls": 3,
+      "real_summary_and_answer": true,
+      "quality_anchors": 2,
+      "recovery_seconds": 2.32,
+      "ordinary_followup_seconds": 0.26,
+      "ordinary_followup_calls": 1,
+      "ordinary_followup_input_tokens": 4392,
+      "ordinary_followup_output_tokens": 3
+    }
+  },
+  "limitations": [
+    "checkpoint_blob_bytes from initial runs excludes checkpoint_writes and checkpoint JSON; supplemental PG measurements are after both recoveries.",
+    "PG byte totals are logical payload lengths, not physical table/WAL/TOAST/backup footprint.",
+    "v3 tool-finished can carry full pre-offload text; state/files and values also carry originals.",
+    "stream bytes are whole Run responses with fixture stream settings, not an isolated tool payload or a v2-v3 controlled benchmark.",
+    "Model input chars exclude dynamically added system/tool-schema overhead; final guard is covered separately.",
+    "Archive contains synthetic identifiers and selected public fields, no credentials or original 110 KB file bodies.",
+    "Disposable Run IDs are historical evidence; they cannot be queried on a live platform."
+  ]
+}

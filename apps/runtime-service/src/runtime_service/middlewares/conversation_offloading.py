@@ -8,7 +8,7 @@ import math
 import os
 import time
 import uuid
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from contextvars import ContextVar
 from copy import copy
 from dataclasses import dataclass, field
@@ -136,6 +136,21 @@ def _input_budget(model: Any, capacity: int | None, output: int | None) -> int:
     return budget
 
 
+def resolve_tool_output_limit(
+    models: Iterable[Any], output_budget_tokens: int | None
+) -> int:
+    """Keep one large result below a conservative fraction of model input budget."""
+
+    budgets = [
+        _input_budget(model, None, output_budget_tokens)
+        for model in models
+        if model is not None
+    ]
+    if not budgets:
+        raise RuntimeResolutionError("runtime.context.input_budget_unknown")
+    return max(1, min(20_000, min(budgets) // 16))
+
+
 class _CheckedArchiveBackend:
     """Make official overflow-tail writes fail before they can emit a bad pointer."""
 
@@ -201,6 +216,11 @@ class ConversationOffloadingMiddleware(SummarizationMiddleware):
             trigger=("tokens", max(1, math.floor(0.85 * self.input_budget))),
             keep=("tokens", max(1, math.floor(0.10 * self.input_budget))),
             trim_tokens_to_summarize=self.input_budget,
+            truncate_args_settings={
+                "trigger": ("tokens", max(1, math.floor(0.85 * self.input_budget))),
+                "keep": ("tokens", max(1, math.floor(0.10 * self.input_budget))),
+                "max_length": 2000,
+            },
         )
         prompt_tokens = self._count_tokens(
             [HumanMessage(content=self._lc_helper.summary_prompt.format(messages=""))],
@@ -488,4 +508,5 @@ __all__ = [
     "MaintenanceSafeToolCallsMiddleware",
     "context_management_enabled",
     "is_conversation_maintenance",
+    "resolve_tool_output_limit",
 ]

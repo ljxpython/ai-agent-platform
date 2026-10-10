@@ -1,6 +1,6 @@
 # 本地开发与联调
 
-2026-09-20 核对。新机安装、账号、配置和远程访问见[非 Docker 部署手册](deployment-guide.md)。
+2026-10-10 核对。新机安装、账号、配置和远程访问见[非 Docker 部署手册](deployment-guide.md)。
 
 默认：platform-web:3000 → platform-api:2142 → runtime-api:8123 → runtime-worker。
 PostgreSQL、Redis 必需；LightRAG 不在当前默认范围。
@@ -19,7 +19,7 @@ bash "scripts/local-stack.sh" stop
 ```
 
 脚本加载 Runtime app-local .env，读取平台委托密钥，检查依赖、执行迁移并管理四个进程。
-不安装 PG/Redis，不生成配置、不安装前端依赖。doctor 可能清理本仓库旧占用进程，不是纯只读。
+主工作区不安装 PG/Redis，不生成配置、不自动安装前端依赖。doctor 只检查，不清理占用进程或执行迁移。
 
 - Runtime：apps/runtime-service/.env，API/Worker 共用。
 - 平台：apps/platform-api/.env，PG 独立库，关闭自动建表。
@@ -42,3 +42,19 @@ curl -fsS "http://127.0.0.1:2142/_system/health"
 
 各应用独立 .venv/锁文件，不搬跨系统依赖目录。
 另见[配置矩阵](env-matrix.md)、[数据库规范](../guides/database-operations.md)。
+
+## Worktree 并行开发
+
+先读 [Worktree 规范](../standards/worktree-development.md)，在目标 Worktree 根目录执行：
+
+```bash
+bash "scripts/local-stack.sh" init
+bash "scripts/local-stack.sh" deps
+bash "scripts/local-stack.sh" doctor
+bash "scripts/local-stack.sh" start
+bash "scripts/local-stack.sh" status
+```
+
+首次随机分配并登记 Web/API/Runtime/Redis 端口，重启复用。配置、PID、日志和 Workspace 在本目录 `.local-stack/`；数据库和 Redis 独立。PostgreSQL 管理员连接默认本机 socket，也可私有设置 `LOCAL_STACK_PG_ADMIN_DSN`。主工作区保留上面的默认地址。依赖共享 uv/pnpm 包缓存，各自安装目录独立。
+
+`init` 继承主目录各 app 的私有环境配置并重写隔离字段，新 Worktree 默认管理员为 `admin / admin123`。首次 `start` 自动只读复制主库的用户/项目/Agent/模型与策略等基础配置，排除对话、执行历史、令牌、定时任务和队列；后续启动不覆盖本环境改动。已迁移的空库可单独运行 `bash "scripts/local-stack.sh" seed`；已有非空环境保留数据，不支持覆盖式导入。数据白名单和异常处理以 Worktree 规范为准。

@@ -1,9 +1,9 @@
-version: 2
+version: 3
 kind: local-deployment-contract
 name: ai-agent-platform
 source_of_truth: true
 scope: non-docker-development
-reviewed_on: "2026-09-29"
+reviewed_on: "2026-10-10"
 
 document_precedence:
   canonical:
@@ -13,6 +13,7 @@ document_precedence:
     - docs/guides/local-dev.md
     - docs/guides/env-matrix.md
     - docs/guides/database-operations.md
+    - docs/standards/worktree-development.md
   rule: Documents must agree with scripts/local-stack.sh and app config; report drift instead of executing obsolete commands.
 
 agent_entrypoint:
@@ -31,6 +32,20 @@ profiles:
     excluded:
       - platform-worker
       - lightrag-service
+  worktree-local:
+    description: Isolated native stack per linked Git Worktree
+    standard: docs/standards/worktree-development.md
+    processes: [redis, runtime-api, runtime-worker, platform-api, platform-web]
+    port_pool: {minimum: 23000, maximum: 29999, allocation: random-first-init, restart: reuse}
+    registry: git-common-dir/local-stacks/registry.json
+    state: worktree-root/.local-stack
+    postgres: {server: shared-local, databases_and_roles: per-environment}
+    redis: {instance: per-environment, bind: 127.0.0.1, db: 0, maxmemory: 512mb}
+    worker_jobs: 1
+    dependency_policy: independent-install-directories-with-shared-uv-cache-and-pnpm-store
+    config_policy: inherit-primary-app-env-and-override-isolation-fields
+    bootstrap_admin: {username: admin, password: admin123, scope: trusted-loopback-development-only}
+    baseline_data: {source: primary-local-postgres, copy: whitelist-once-after-migration, existing_data: retain, model_credentials: reencrypt}
 
 global:
   dependencies:
@@ -43,15 +58,18 @@ global:
     shell_tools: [bash, python3, curl, lsof, pg_isready]
     bootstrap_python_module: dotenv
   helper_scripts: [scripts/local-stack.sh]
-  commands: [doctor, migrate, start, status, logs, restart-one, restart, stop]
+  commands: [init, deps, doctor, migrate, seed, start, status, logs, restart-one, restart, stop, list, destroy]
   rules:
-    - Install dependencies first; doctor is not an installer and can reclaim stale owned processes.
-    - Activate Runtime venv before running the script if system python3 lacks dotenv.
+    - Install dependencies first; doctor checks resources without killing processes or migrating.
+    - The launcher selects the current or primary Runtime Python for helper modules; prepare primary Runtime dependencies before initializing a linked Worktree.
     - Do not source the repo-root or Platform API .env.
-    - Runtime .env is shell-sourced and must use shell-compatible quoting.
+    - Primary-workspace Runtime .env is shell-sourced; linked Worktree generated env is parsed without sourcing.
     - Do not copy venv, node_modules, databases, Redis state or workspaces across machines.
     - Default startup manages exactly four processes; PostgreSQL and Redis are external prerequisites.
-    - Use one active stack per user; temporary PID/log paths are shared across repository copies.
+    - PID/log paths belong to each repository root at .local-stack; linked Worktrees require isolated initialization.
+    - Worktree credentials and callback addresses are generated together; never fall back to primary workspace resources.
+    - Worktree startup copies primary configuration data read-only once; history, sessions, tokens, scheduled tasks, Redis state and Workspace files are excluded.
+    - Stop preserves data and port allocation; destroy requires an exact environment ID and explicit user confirmation.
     - This is a development profile, not an approved production deployment.
 
 services:

@@ -30,6 +30,8 @@ DearFlow/Showcase 根图与声明式子图在 agent.py 显式替换官方摘要�
 
 schema-only 与执行图必须声明相同 OffloadingState，保留 DeepAgentState 的 DeltaChannel；整理状态使用 PrivateStateAttr 防父子复制/合并，API 再按白名单公开，不以此注解替代网关脱敏。手动维护只运行根摘要，通过 before hook/end 结束；不得准备执行 MCP/Workspace、claim 队列或执行 Memory/Skills 后处理。
 
+开启受管上下文治理时，历史 write/edit 大参数复用官方 request-only 压缩（输入预算85%触发、保留最近10% token、字符串上限2000）；不按后续成功覆盖判定删除历史。现有 Filesystem 使用 `resolve_tool_output_limit`，取主/备最小输入预算B并设 `max(1,min(20000,B//16))`，实际外置门槛为4T字符，仍由完整请求guard兜底。`ResultFilesystemMiddleware` 以官方同名替换，只为新外置路径增加正文SHA256，避免父子/并行同call ID覆盖原文；保留官方文件工具、预览、失败处理与旧路径读取。正文仍在checkpoint files，不承诺PG/HTTP体积减少；超长单行的行分页仍可能无法取到中部。薄扩展依赖锁版本内部方法，升级需重验。见[F04](../../../../docs/projects/20260913-dearflow-agent/15-tool-output-budget-review.md)。
+
 `AGENT_CONTEXT_MANAGEMENT_ENABLED` 默认 0，目录容量、输出预算、迁移和双端 Context v5 就绪后才能开启。关闭时沿用官方摘要并保留历史/私有事件，不清数据。reference/其他教学图未接入，不宣称支持。依赖升级需复跑隐藏流、预算、归档、父子隔离、真实 PG/Worker 恢复测试，证据见 [上下文专项](../../../../docs/projects/20261006-agent-context-window-governance/verification.md)。
 
 ## Run 时间预算与收尾

@@ -100,6 +100,7 @@
 | 持久会话停止、inbox 收敛与证据报告 | 源码/唯一post43包版16场景与真实Docker完成，B01解除；固定目标、恢复、inbox及报告通过，B02正式发布指令/正式源锁接入待完成 | [取消专项](projects/20261007-agent-run-cancellation/README.md) |
 | Agent 工具调用容错与生产接线 | 已完成：全链路闭环，Runtime/API 选择性错误分类、主子图接线、安全消息与流出口脱敏完成；Platform Web 纯函数摘要、微胶囊 Tag 徽章与格式化代码排版实装，31 项单测全绿，三服务全栈浏览器联合验收 F01-F08 全部通过，未生产部署 | [方案与任务](projects/20261006-agent-tool-error-resilience/README.md) · [前端交接](projects/20261006-agent-tool-error-resilience/frontend-handoff.md) |
 | Agent 上下文窗口管理工程化 | 已完成：全链路交付闭环；模型容量配置与展示、预算 guard、隐藏摘要流、根/子图装配、维护副作用隔离、前端整理微胶囊及平滑淡出打断、受控手动整理；隔离真 PG、真实模型质量集及全栈单测/类型/构建全绿，用户人工实测验收通过 | [项目入口](projects/20261006-agent-context-window-governance/README.md) |
+| 工具大结果预算补齐（F04） | 已完成（全链路done）：复用官方外置/StateBackend/head-tail，历史write/edit参数压缩、主备阈值与正文SHA256引用保护；前端完成防覆盖复合键隔离、ToolMessage优先流式、虚拟路径防跳转拦截与多格式证据解析；42项单测、vue-tsc 0错误、Playwright真实模型端到端E2E及8张截图留痕，全链路闭环，未生产部署 | [复核与任务](projects/20260913-dearflow-agent/15-tool-output-budget-review.md) · [前端落地方案与记录](projects/20260913-dearflow-agent/frontend-handoff-f04.md) |
 | Agent Workspace 执行容错与安全失败报告 | 非前端 done：Runtime/API 共享失败保护、结果未知停止、安全投影与v1诊断，本地/Docker真实Worker不重调度、权限/控制流及重启/回退已验；真实容器并行取消/清理与性能测量补齐，Docker Desktop已关闭。前端交同事，启动retry按批准G1分支B deferred，未部署现役 | [方案与任务](projects/20261007-agent-workspace-resilience/README.md) · [前端报告](projects/20261007-agent-workspace-resilience/frontend-report.md) |
 | 定时 Run 执行前聚合授权与无人值守策略 | 后端 done：身份/凭据/项目/Agent/模型/Thread 失效拒绝，审批转失败，原生预览与历史；原post41验收保留，当前依赖锁定post42，未重启现役栈 | [验证](projects/20261005-scheduled-agent-tasks/verification.md) |
 | 工作区 HTML 预览 CSP 策略升级与白名单扩充 | 已完成：放行公认安全 CDN（Tailwind CDN / Google Fonts / cdnjs / unpkg / jsdelivr / SVG），严格限制 connect-src https: 阻断内网探测，43 项单测全绿 | [沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md) |
@@ -128,6 +129,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Worktree 本地联调资源隔离 | 已完成：首次随机登记端口并稳定复用，独立配置/数据/进程，共享依赖缓存及 E2E 地址接线；继承 app 配置、默认 admin/admin123、首次只读复制基础数据并重加密模型凭据，排除历史/令牌/定时任务；三栈、真实 Worker/Workspace、浏览器登录和重启验收通过 | [规范](standards/worktree-development.md) · [专项](projects/20261010-worktree-local-stack/README.md) |
 | Agent通用运行取消与中断闭环 | 已完成：全链路闭环。后端会话停止、回执详情/分页、幂等重试、恢复与审计已闭环；前端完成会话级停止控制、RunStopReportBanner/Details 状态反馈与报告抽屉、队列刷新、多端隔离与防竞态；Playwright E2E/响应式与单元测试全绿 | [方案与任务](projects/20261007-agent-run-cancellation/README.md) · [前端交接](projects/20261007-agent-run-cancellation/frontend-handoff.md) |
 | 跨服务规范治理专项群 | 四专项仅验收新Web+新API+当前锁定Runtime/GraphHarbor，不设置旧版兼容或混用测试；错误响应与追踪本期Final已完成，SSE/JWT按各专项状态推进；AI路由按仓库级文档小改动处理 | [总入口](projects/20260922-cross-service-governance/README.md) |
 | Agent 通用 Token/Cost 跟踪治理 | 非前端 done：开发/Final/隔离真实链路与冻结契约已交付；既有全量失败已记录，前端同事接续，整项目 partial，未生产部署 | [项目入口](projects/20261007-agent-usage-cost-governance/README.md) |

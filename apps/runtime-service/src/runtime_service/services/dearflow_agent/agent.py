@@ -32,9 +32,11 @@ from runtime_service.middlewares import (
     ModelErrorMiddleware,
     ModelResilienceMiddleware,
     ModelResilienceSummarizationMiddleware,
+    ResultFilesystemMiddleware,
     RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
     context_management_enabled,
+    resolve_tool_output_limit,
     resolve_wrapup_after_seconds,
 )
 from runtime_service.middlewares.retry import (
@@ -188,6 +190,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     bundle = ModelConnectionBundle()
     fallback_model = None
     auxiliary_model = None
+    tool_output_limit = None
     mode = resolve_mode(None)
     defaults = replace(
         _DEFAULTS, optional_tool_names=(*DEAR_TOOLS, *configured_mcp_names())
@@ -321,6 +324,21 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             defaults=defaults,
             available_tool_names=frozenset(available),
         )
+
+    if context_management_enabled() and executing:
+        tool_output_limit = resolve_tool_output_limit(
+            (model, fallback_model), resolved.max_tokens
+        )
+    filesystem_kwargs = (
+        {"tool_token_limit_before_evict": tool_output_limit}
+        if tool_output_limit is not None
+        else {}
+    )
+    filesystem_cls = (
+        ResultFilesystemMiddleware
+        if tool_output_limit is not None
+        else FilesystemMiddleware
+    )
 
     def model_builder(next_config):
         if resolved is None:
@@ -478,10 +496,11 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 researcher(
                     research_tools if mode.delegation else [],
                     [
-                        FilesystemMiddleware(
+                        filesystem_cls(
                             backend=backend,
                             tools=["read_file"],
                             _permissions=PERMISSIONS,
+                            **filesystem_kwargs,
                         ),
                         *middleware(
                             available & {"read_file", "search_web", "fetch_page"}
@@ -496,11 +515,12 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 ExecutionSkillsMiddleware(
                     workspace, backend, custom_enabled=governance
                 ),
-                FilesystemMiddleware(
+                filesystem_cls(
                     backend=backend,
                     tools=list(WORK_TOOLS),
                     _permissions=PERMISSIONS,
                     max_execute_timeout=60,
+                    **filesystem_kwargs,
                 ),
                 *middleware(
                     available,

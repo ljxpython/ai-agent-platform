@@ -11,6 +11,11 @@
 | apps/platform-api/.env | Settings、database.py | dotenv 读取，进程环境优先，不直接 source |
 | apps/platform-web/.env.local | Vite | 仅公开参数；脚本覆盖 API、代理、端口 |
 | 根目录 .env | 私有保留文件 | 非统一启动配置，不整体注入 |
+| Worktree .local-stack/runtime.env、platform.env、web.env | 统一启动脚本 | init 继承各 app .env 并重写隔离字段；Web .env.local 优先，只注入 VITE_*；dotenv 解析，不整体 source |
+
+关联 Worktree 使用生成配置，禁止回退默认库/Redis/端口；细则见 [Worktree 规范](../standards/worktree-development.md)。主工作区继续使用上述 app-local 配置。
+
+新 Worktree 管理员初始账号为 `admin / admin123`；JWT/委托/数据库/Redis 和模型加密密钥独立。首次启动只读复制主库基础配置，模型凭据重加密，不复制会话历史与登录令牌。
 
 旧 Runtime 嵌套目录和 conf/settings*.yaml 已退出默认链路，模型来源是平台模型目录。
 

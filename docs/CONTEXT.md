@@ -1,15 +1,17 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-08（Agent Workspace 执行容错与安全报告已与会话停止、运行准备幂等、执行预算、超时治理、Token/Cost 跟踪等全量专项完成代码级融合合并入主干；非前端范围全部闭环并固化前端交接）。
+> **最后更新：** 2026-10-10（F04 工具输出预算前端收尾与全链路闭环 done，三服务隔离栈持续常驻等待验收）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-08
+**最后更新：** 2026-10-10
 
 ## 最近改动
+
+2026-10-10 | **F04工具输出预算前端收尾与全链路联合验收**：done。前端完成大工具结果防爆加固：`transcript.ts` 与 `trajectory-adapter.ts` 引入 `${namespace}:${callId}` 复合键隔离映射并优先消费落盘 ToolMessage，根治流式 110 KB 跳变与父子任务同名 ID 覆盖；`ToolResult.vue` 拦截 `/large_tool_results/` 虚拟路径详情跳转防 404、强化十六进制 Hash 与长路径 `break-all` 防 390px 溢出、补齐数组与对象格式证据来源解析；Vitest 3 文件 42 项全绿、`vue-tsc` 0 错误、`pnpm build` 成功；Playwright + Chromium 端到端自动化驱动隔离栈三服务与真实大模型（百炼 · qwen-plus）多轮问答、流式输出、轨迹排障及 F04-W01~W09 多视口全流程验证通过，8 张高保真验证截图已持久化；三服务常驻待人工验收。详见[15专题](projects/20260913-dearflow-agent/15-tool-output-budget-review.md)和[前端落地文档](projects/20260913-dearflow-agent/frontend-handoff-f04.md)。
 
 2026-10-08 | **Agent Workspace 执行容错与安全报告**：done（非前端范围闭环，代码及测试合入主干）。共享 Workspace 失败保护、不可达/结果未知停止 Run、取消清理与资源安全回收、v1 诊断记录与 platform-api 精确五码投影全部实装闭环；本地与 Docker 真实验证通过，前端交接报告与 DTO 已固化。见 [专项](projects/20261007-agent-workspace-resilience/README.md)。
 
@@ -25,7 +27,7 @@
 
 ## 本月归并
 
-2026-10（截至 10-08）| 会话停止与报告闭环；Token/Cost 全栈跟踪治理；运行准备幂等与重试；执行预算与软收尾；超时治理与排队死锁自愈；模型稳定性降级、上下文窗口工程化；Workspace 执行容错与安全报告；工具容错、观测、推荐问题和定时任务闭环；聊天、权限及流资源治理。
+2026-10（截至 10-10）| F04 工具输出预算前后端全链路闭环；会话停止与报告闭环；Token/Cost 全栈跟踪治理；运行准备幂等与重试；执行预算与软收尾；超时治理与排队死锁自愈；模型稳定性降级、上下文窗口工程化；Workspace 执行容错与安全报告；工具容错、观测、推荐问题和定时任务闭环；聊天、权限及流资源治理。
 
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
@@ -56,7 +58,7 @@
 - [工作区 HTML 现代化沙箱渲染支持](projects/20261002-workspace-html-sandbox-preview/README.md)：done；前后端精准沙箱隔离与 CSP 白名单升级，Tailwind CDN / Google Fonts 完整放行，单元测试与全链路真实博客页面验收全绿。
 - [Runtime 数据库访问边界收敛与类型补全](projects/20260930-runtime-database-repository-refactor/README.md)：本期 done；Scope 与 Memory/Skills SQL 抽取完成，43 项定向通过；全仓两项范围外失败已对照复现，详见 verification.md。
 - [Runtime Agent 组合根脚手架重构与 DX 体验治理](projects/20260930-runtime-agent-harness-refactor/README.md)：规划中；针对组合根样板代码超标（150+行安全胶水代码）与测试构造心智摩擦，完成方案设计与任务拆分，待方案评审。
-- [DearFlow Agent迁移重审与补齐](projects/20260913-dearflow-agent/README.md)：整体partial；本轮分析规划已交付，接续以12的T01—T10为入口。14效果审计已用7个离线故障场景复现响应终止、空回答、错误完成、循环、预算和Todo缺口；优先T03/T07关键可靠性及真实页面验收，音视频/新版扩展单独评审；不恢复已被后续专项取代的旧设计。
+- [DearFlow Agent迁移重审与补齐](projects/20260913-dearflow-agent/README.md)：整体partial；接续以12的T01—T10为入口。2026-10-10 [15/F04](projects/20260913-dearflow-agent/15-tool-output-budget-review.md)全链路done，R01—R04/R05-A后端实现与真实HTTP/PG/Worker质量回退通过，R05-B前端防爆加固、42项单测、Playwright真实模型E2E及8张截图通过，R05-C联合验收闭环。14效果审计原可靠性/Todo缺口及其余T07日志事项保留，不因F04实施而标完成；音视频/新版扩展单独评审。
 - [子智能体工具调用历史持久化与回放能力支持](projects/20260928-graphharbor-subagent-tool-history/README.md)：done；GraphHarbor post37 升级与 platform-api 网关层放通，全链路端到端真实用例实测通过，子智能体内部 10 次工具调用全数可查。
 - [SSE 事件流保活心跳与连接容错治理](projects/20260927-sse-stream-heartbeat-and-resilience/README.md)：done；针对每隔 45 秒频繁弹出“恢复连接”假性报错条及重放历史中断导致审批死锁的问题，通过 Platform API 网关注入心跳与前端审批状态机自愈彻底根治；探针实测与单测全绿；GraphHarbor 专属心跳与中断重放两份修复文档已交付。
 - [消息内部Run回查委托修复](projects/20260927-message-run-read-delegation/README.md)：partial；Platform API只在消息入口转发请求内已有read委托，Runtime配对验证后用于内部Run GET；本机自动化通过，现役跨服务链路未验证，未部署。
@@ -66,9 +68,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-08 | 锁定/安装正式 post42；四图主子共享 attempt 预算/软收尾，模型 error 与 Worker timeout 分开；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理（自有 ledger/缓存计价）与运行准备幂等/有界重试安全摘要全链路融合就绪；新增持久Stop/租约恢复、inbox屏障、资源证据及确定性报告；Workspace 执行容错、结果未知停止、取消回收与安全记录融合闭环；post43候选验证通过，B01解除，未部署现役。 |
-| platform-api | 2026-10-08 | 私有预算注入拒绝/脱敏及停止确认透传；预算四精确安全码、custom 白名单、tasks/debug 错误清洗；runtime_prepare 私有字段防注入/公开剥离；diagnostics v1 增 optional preparations/retries 与 workspace_executions；Workspace 五码精确投影与 DTO 校验完成；模型恢复策略、上下文容量 CRUD 与 Run 诊断端点、模型费率快照与 Usage 授权网关代理、会话 cancel/detail/list 及精确委托全量实装；未部署现役。 |
-| platform-web | 2026-10-08 | 会话停止控制器与状态机、停止报告抽屉及 Banner 全链路实装，Playwright 真实模型 E2E 与人工实测验收通过；运行准备与重试摘要、预算告警投影、超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板、上下文容量展示、Run/Thread 用量与成本检查器、open-swe 水位表全部融合；全仓单测、vue-tsc 与生产打包全绿。未部署现役。 |
+| runtime-service | 2026-10-09 | F04非前端done：官方参数压缩/主备阈值与正文SHA256引用保护，真实HTTP/PG/Worker/审批/回退/质量均验；仅前端接续。当前锁定/安装正式post43（本轮未升级）；四图主子共享attempt预算/软收尾，模型error与Worker timeout分开；稳定性降级、工具容错、上下文窗口管理、执行预算及Token/Cost跟踪、运行准备幂等/有界重试已融合；持久Stop/租约恢复、inbox屏障、资源证据及确定性报告、Workspace执行容错/取消回收已融合；未部署现役。 |
+| platform-api | 2026-10-09 | F04现有state/history/v2-v3/ACL/Workspace契约回归通过，无新API/DTO或生产源码改动；普通files和原文tools流维持现状。私有预算注入拒绝/脱敏及停止确认透传；预算四精确安全码、custom 白名单、tasks/debug 错误清洗；runtime_prepare 私有字段防注入/公开剥离；diagnostics v1 增 optional preparations/retries 与 workspace_executions；Workspace 五码精确投影与 DTO 校验完成；模型恢复策略、上下文容量 CRUD 与 Run 诊断端点、模型费率快照与 Usage 授权网关代理、会话 cancel/detail/list 及精确委托全量实装；未部署现役。 |
+| platform-web | 2026-10-10 | F04大工具输出预算加固实装：transcript复合键防覆盖与ToolMessage优先、ToolResult虚拟路径防跳转与多格式证据来源解析；42项单测、vue-tsc 0错误、Playwright真实模型端到端E2E全绿；会话停止控制器与状态机、停止报告抽屉及 Banner 全链路实装；运行准备与重试摘要、预算告警投影、超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板、上下文容量展示、Run/Thread 用量与成本检查器、open-swe 水位表全部融合；全仓单测、vue-tsc 与生产打包全绿。未部署现役。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-08 | 整单结束前须逐项核对未完成任务，未完成时只记Phase；用户批准的多会话发布协作经验已写入ai-workflow经验库，恢复时先核对正式产物归属与锁文件。 |
 
 ## 近期关键决策

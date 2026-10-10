@@ -417,4 +417,85 @@ describe("ToolResult.vue", () => {
     expect(wrapper.text()).toContain("task-img-999");
     expect(wrapper.text()).toContain("切勿盲目重复点击生成");
   });
+
+  it("renders large tool output preview and suppresses inspect button for virtual large result paths", async () => {
+    const previewContent =
+      "Tool result too large, the result of this tool call budget-large was saved in the filesystem at this path: /large_tool_results/3afa3b3de3c839f459926cc015a69943cfcc546bc0c130f85f723448292901b0/budget-large\n\nHere is a preview...";
+
+    const tool: ToolItem = {
+      key: "virtual-read-1",
+      id: "call-read-1",
+      name: "read_file",
+      input: {
+        file_path:
+          "/large_tool_results/3afa3b3de3c839f459926cc015a69943cfcc546bc0c130f85f723448292901b0/budget-large",
+      },
+      output: previewContent,
+      status: "finished",
+    };
+
+    const wrapper = mount(ToolResult, {
+      props: { tool },
+      global: {
+        stubs: {
+          SubagentCard: true,
+          MessageContent: true,
+          BaseIcon: true,
+        },
+      },
+    });
+
+    await wrapper.find("button").trigger("click");
+    // 虚拟路径下绝对不渲染在详情面板查看按钮
+    expect(wrapper.find(".pw-table-tool-button").exists()).toBe(false);
+    // 显示虚拟大结果文件提示
+    expect(wrapper.text()).toContain("虚拟大结果文件 · 仅供模型按需回读");
+  });
+
+  it("preserves evidence sources and artifacts when text result is offloaded as plain text", async () => {
+    const offloadedContent =
+      "Tool result too large, saved at /large_tool_results/abc/call-1";
+
+    const tool: ToolItem = {
+      key: "evidence-tool-1",
+      id: "call-ev-1",
+      name: "search_web",
+      input: { query: "AI 架构" },
+      output: offloadedContent, // 纯文本，非 JSON
+      artifact: {
+        sources: [
+          {
+            title: "架构设计论文",
+            source_url: "https://example.com/paper.pdf",
+            kind: "full_text",
+            content_hash: "hash123456",
+            preview: "这是抓取的正文预览证据",
+          },
+        ],
+      },
+      status: "finished",
+    };
+
+    const wrapper = mount(ToolResult, {
+      props: { tool },
+      global: {
+        stubs: {
+          SubagentCard: true,
+          MessageContent: true,
+          BaseIcon: true,
+        },
+      },
+    });
+
+    await wrapper.find("button").trigger("click");
+    // 即使 output 无法 JSON.parse，依靠 artifact.sources 依然能展示证据来源
+    expect(wrapper.text()).toContain("核实的证据来源 · 共 1 条");
+    const sourcesToggle = wrapper
+      .findAll(".cursor-pointer")
+      .find((el) => el.text().includes("核实的证据来源"));
+    if (sourcesToggle) {
+      await sourcesToggle.trigger("click");
+      expect(wrapper.text()).toContain("架构设计论文");
+    }
+  });
 });

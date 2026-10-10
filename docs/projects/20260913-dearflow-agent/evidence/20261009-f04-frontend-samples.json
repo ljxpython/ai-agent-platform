@@ -1,0 +1,162 @@
+{
+  "fixture_only": true,
+  "projection_note": "Selected real HTTP fields and tool messages. files bodies, full checkpoint metadata and full raw SSE are omitted. This document is evidence, not a new wire DTO.",
+  "dearflow_v3": {
+    "checkpoint": {
+      "thread_id": "a4a71e54-db7a-4c67-a8d4-75e5a1284fbc",
+      "checkpoint_ns": "",
+      "checkpoint_id": "1f1c396c-43a3-6632-8046-75b66d7c6846"
+    },
+    "tools": [
+      {
+        "type": "tool",
+        "name": "parse_document",
+        "status": "success",
+        "tool_call_id": "budget-large",
+        "content": "Tool result too large, the result of this tool call budget-large was saved in the filesystem at this path: /large_tool_results/3afa3b3de3c839f459926cc015a69943cfcc546bc0c130f85f723448292901b0/budget-large\n\nYou can read the result from the filesystem by using the read_file tool, but make sure to only read part of the result at a time.\n\nYou can do this by specifying an offset and limit in the read_file tool call. For example, to read the first 100 lines, you can use the read_file tool with offset=0 and limit=100.\n\nHere is a preview showing the head and tail of the result (lines of the form `... [N lines truncated] ...` indicate omitted lines in the middle of the content):\n\n1  ROW_0000 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n2  ROW_0001 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n3  ROW_0002 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n4  ROW_0003 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n5  ROW_0004 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n... [1490 lines truncated] ...\n1496  ROW_1495 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1497  ROW_1496 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1498  ROW_1497 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1499  ROW_1498 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1500  ROW_1499 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+        "artifact": null
+      },
+      {
+        "type": "tool",
+        "name": "read_file",
+        "status": "success",
+        "tool_call_id": "read-middle-8c677b211ee1",
+        "content": "601  F04_MIDDLE_main\n\n[Read 1 line (lines 601-601 of 1500 total). 899 lines remaining from offset 601.]",
+        "artifact": null
+      },
+      {
+        "type": "tool",
+        "name": "task",
+        "status": "success",
+        "tool_call_id": "budget-child",
+        "content": "601  F04_MIDDLE_child\n\n[Read 1 line (lines 601-601 of 1500 total). 899 lines remaining from offset 601.]",
+        "artifact": null
+      }
+    ],
+    "files": [
+      {
+        "state_key": "/3afa3b3de3c839f459926cc015a69943cfcc546bc0c130f85f723448292901b0/budget-large",
+        "content_chars": 110885
+      },
+      {
+        "state_key": "/bdc2fdfa144cf2bb2f78541a3ab5284f0d93519f4bb4d42aac5f63d74cd3ff53/budget-large",
+        "content_chars": 110887
+      }
+    ],
+    "namespaces": [
+      [],
+      [
+        "tools:c8e36568-890c-e408-7430-b89ecd70910e"
+      ]
+    ],
+    "raw_tool_events": [
+      {
+        "method": "tools",
+        "seq": 381,
+        "namespace": [
+          "tools:c8e36568-890c-e408-7430-b89ecd70910e"
+        ],
+        "tool_call_id": "budget-large",
+        "output_name": "search_web",
+        "output_content_chars": 110887
+      }
+    ],
+    "child_messages": [
+      {
+        "namespace": [
+          "tools:c8e36568-890c-e408-7430-b89ecd70910e"
+        ],
+        "type": "tool",
+        "name": "read_file",
+        "status": "success",
+        "tool_call_id": "read-middle-c4289253bce5",
+        "content": "601  F04_MIDDLE_child\n\n[Read 1 line (lines 601-601 of 1500 total). 899 lines remaining from offset 601.]",
+        "artifact": null
+      },
+      {
+        "namespace": [
+          "tools:c8e36568-890c-e408-7430-b89ecd70910e"
+        ],
+        "type": "tool",
+        "name": "search_web",
+        "status": "success",
+        "tool_call_id": "budget-large",
+        "content": "Tool result too large, the result of this tool call budget-large was saved in the filesystem at this path: /large_tool_results/bdc2fdfa144cf2bb2f78541a3ab5284f0d93519f4bb4d42aac5f63d74cd3ff53/budget-large\n\nYou can read the result from the filesystem by using the read_file tool, but make sure to only read part of the result at a time.\n\nYou can do this by specifying an offset and limit in the read_file tool call. For example, to read the first 100 lines, you can use the read_file tool with offset=0 and limit=100.\n\nHere is a preview showing the head and tail of the result (lines of the form `... [N lines truncated] ...` indicate omitted lines in the middle of the content):\n\n1  ROW_0000 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n2  ROW_0001 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n3  ROW_0002 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n4  ROW_0003 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n5  ROW_0004 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n... [1490 lines truncated] ...\n1496  ROW_1495 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1497  ROW_1496 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1498  ROW_1497 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1499  ROW_1498 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1500  ROW_1499 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+        "artifact": null
+      }
+    ]
+  },
+  "showcase_v2": {
+    "checkpoint": {
+      "thread_id": "d781ceea-9391-46da-b201-736e53db3748",
+      "checkpoint_ns": "",
+      "checkpoint_id": "1f1c396d-6c52-6cda-8046-91086be6db03"
+    },
+    "tools": [
+      {
+        "type": "tool",
+        "name": "parse_document",
+        "status": "success",
+        "tool_call_id": "budget-large",
+        "content": "Tool result too large, the result of this tool call budget-large was saved in the filesystem at this path: /large_tool_results/3afa3b3de3c839f459926cc015a69943cfcc546bc0c130f85f723448292901b0/budget-large\n\nYou can read the result from the filesystem by using the read_file tool, but make sure to only read part of the result at a time.\n\nYou can do this by specifying an offset and limit in the read_file tool call. For example, to read the first 100 lines, you can use the read_file tool with offset=0 and limit=100.\n\nHere is a preview showing the head and tail of the result (lines of the form `... [N lines truncated] ...` indicate omitted lines in the middle of the content):\n\n1  ROW_0000 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n2  ROW_0001 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n3  ROW_0002 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n4  ROW_0003 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n5  ROW_0004 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n... [1490 lines truncated] ...\n1496  ROW_1495 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1497  ROW_1496 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1498  ROW_1497 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1499  ROW_1498 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1500  ROW_1499 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n",
+        "artifact": null
+      },
+      {
+        "type": "tool",
+        "name": "read_file",
+        "status": "success",
+        "tool_call_id": "read-middle-34e96f9cfe68",
+        "content": "601  F04_MIDDLE_main\n\n[Read 1 line (lines 601-601 of 1500 total). 899 lines remaining from offset 601.]",
+        "artifact": null
+      },
+      {
+        "type": "tool",
+        "name": "task",
+        "status": "success",
+        "tool_call_id": "budget-child",
+        "content": "601  F04_MIDDLE_child\n\n[Read 1 line (lines 601-601 of 1501 total). 900 lines remaining from offset 601.]",
+        "artifact": null
+      }
+    ],
+    "files": [
+      {
+        "state_key": "/3afa3b3de3c839f459926cc015a69943cfcc546bc0c130f85f723448292901b0/budget-large",
+        "content_chars": 110885
+      },
+      {
+        "state_key": "/d0f6ee540d2a84ab74bfb898fb1bde0c5efaebe15081f8d8f949e288f384e9ac/budget-large",
+        "content_chars": 110924
+      }
+    ],
+    "child_update_frames": [
+      {
+        "event": "updates|tools:c6458fe7-4e26-8d90-0af9-59dcdee9cc10",
+        "messages": [
+          {
+            "type": "tool",
+            "name": "execute",
+            "status": "success",
+            "tool_call_id": "budget-large",
+            "content": "Tool result too large, the result of this tool call budget-large was saved in the filesystem at this path: /large_tool_results/d0f6ee540d2a84ab74bfb898fb1bde0c5efaebe15081f8d8f949e288f384e9ac/budget-large\n\nYou can read the result from the filesystem by using the read_file tool, but make sure to only read part of the result at a time.\n\nYou can do this by specifying an offset and limit in the read_file tool call. For example, to read the first 100 lines, you can use the read_file tool with offset=0 and limit=100.\n\nHere is a preview showing the head and tail of the result (lines of the form `... [N lines truncated] ...` indicate omitted lines in the middle of the content):\n\n1  ROW_0000 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n2  ROW_0001 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n3  ROW_0002 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n4  ROW_0003 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n5  ROW_0004 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n... [1491 lines truncated] ...\n1497  ROW_1496 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1498  ROW_1497 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1499  ROW_1498 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1500  ROW_1499 xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n1501  [Command succeeded with exit code 0]\n",
+            "artifact": {
+              "exit_code": 0
+            }
+          }
+        ]
+      },
+      {
+        "event": "updates|tools:c6458fe7-4e26-8d90-0af9-59dcdee9cc10",
+        "messages": [
+          {
+            "type": "tool",
+            "name": "read_file",
+            "status": "success",
+            "tool_call_id": "read-middle-aeeaee24ed74",
+            "content": "601  F04_MIDDLE_child\n\n[Read 1 line (lines 601-601 of 1501 total). 900 lines remaining from offset 601.]",
+            "artifact": null
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -9,6 +9,7 @@ from langchain.agents.middleware import AgentMiddleware
 from langchain_core.language_models import BaseChatModel
 from langchain_core.tools import BaseTool
 
+from runtime_service.middlewares.filesystem import ResultFilesystemMiddleware
 from runtime_service.runtime import interrupts_for_access_policy
 from runtime_service.services.demo.showcase_demo.prompts import (
     CHART_PROMPT,
@@ -33,7 +34,18 @@ def build_subagents(
     middleware: Callable[[Sequence[str]], list[AgentMiddleware]],
     chart_tools: Sequence[BaseTool] = (),
     access_policy: str | None = None,
+    tool_output_limit: int | None = None,
 ) -> list[SubAgent]:
+    filesystem_kwargs = (
+        {"tool_token_limit_before_evict": tool_output_limit}
+        if tool_output_limit is not None
+        else {}
+    )
+    filesystem_cls = (
+        ResultFilesystemMiddleware
+        if tool_output_limit is not None
+        else FilesystemMiddleware
+    )
     agents = [
         {
             "name": "research",
@@ -44,8 +56,11 @@ def build_subagents(
             "permissions": PERMISSIONS,
             "interrupt_on": {},
             "middleware": [
-                FilesystemMiddleware(
-                    backend=backend, tools=list(READ_TOOLS), _permissions=PERMISSIONS
+                filesystem_cls(
+                    backend=backend,
+                    tools=list(READ_TOOLS),
+                    _permissions=PERMISSIONS,
+                    **filesystem_kwargs,
                 ),
                 *middleware(READ_TOOLS),
             ],
@@ -60,11 +75,12 @@ def build_subagents(
             "permissions": PERMISSIONS,
             "interrupt_on": interrupts_for_access_policy(access_policy, APPROVALS),
             "middleware": [
-                FilesystemMiddleware(
+                filesystem_cls(
                     backend=backend,
                     tools=list(WORK_TOOLS),
                     _permissions=PERMISSIONS,
                     max_execute_timeout=60,
+                    **filesystem_kwargs,
                 ),
                 *middleware(WORK_TOOLS),
             ],
@@ -81,10 +97,11 @@ def build_subagents(
                 "permissions": PERMISSIONS,
                 "interrupt_on": {},
                 "middleware": [
-                    FilesystemMiddleware(
+                    filesystem_cls(
                         backend=backend,
                         tools=list(READ_TOOLS),
                         _permissions=PERMISSIONS,
+                        **filesystem_kwargs,
                     ),
                     *middleware((*READ_TOOLS, *(tool.name for tool in chart_tools))),
                 ],

