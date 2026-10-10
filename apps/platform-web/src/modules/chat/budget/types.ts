@@ -8,6 +8,8 @@ export const BUDGET_CODES = [
   "token_budget_approaching",
   "token_budget_exhausted",
   "token_budget_unverifiable",
+  "tool_loop_approaching",
+  "tool_loop_reached",
 ] as const;
 
 export type BudgetCode = (typeof BUDGET_CODES)[number];
@@ -20,6 +22,7 @@ export const BUDGET_UNITS = [
   "graph_supersteps",
   "seconds",
   "tokens_total",
+  "tool_rounds",
 ] as const;
 export type BudgetUnit = (typeof BUDGET_UNITS)[number];
 
@@ -30,6 +33,7 @@ export const BUDGET_SAFETY_ERROR_CODES = [
   "runtime_run_timeout",
   "runtime_token_budget_exhausted",
   "runtime_token_budget_unverifiable",
+  "runtime.loop.detected",
 ] as const;
 export type BudgetSafetyErrorCode = (typeof BUDGET_SAFETY_ERROR_CODES)[number];
 
@@ -120,12 +124,30 @@ const TokensUnverifiableNoticeSchema = z
   })
   .strip();
 
+// Schema for tool loop detection rounds (integers, strictly bound to run budget_scope)
+const ToolLoopBudgetNoticeSchema = z
+  .object({
+    version: z.literal(1),
+    type: z.literal("runtime_budget_notice"),
+    notice_id: z.string().min(1).max(256),
+    run_id: z.string().min(1).max(128),
+    scope: z.enum(["primary", "subagent"]),
+    budget_scope: z.literal("run"),
+    code: z.enum(["tool_loop_approaching", "tool_loop_reached"]),
+    limit: z.number().int().positive(),
+    used: z.number().int().nonnegative(),
+    remaining: z.number().int().nonnegative(),
+    unit: z.literal("tool_rounds"),
+  })
+  .strip();
+
 export const BudgetNoticeSchema = z.union([
   StepOrCallBudgetNoticeSchema,
   SecondsBudgetNoticeSchema,
   TokensApproachingNoticeSchema,
   TokensExhaustedNoticeSchema,
   TokensUnverifiableNoticeSchema,
+  ToolLoopBudgetNoticeSchema,
 ]);
 
 export type BudgetNotice = z.infer<typeof BudgetNoticeSchema>;

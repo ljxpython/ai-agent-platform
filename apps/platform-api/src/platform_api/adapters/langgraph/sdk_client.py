@@ -185,6 +185,9 @@ _MODEL_EXECUTION_CODES = frozenset(
     }
 )
 
+_LOOP_EXECUTION_CODE = "runtime.loop.detected"
+_LOOP_EXECUTION_MESSAGE = "检测到工具重复调用，本次运行已停止，请调整任务后继续。"
+
 
 def project_budget_notice(value: Any) -> dict[str, Any] | None:
     if (
@@ -212,6 +215,8 @@ def project_budget_notice(value: Any) -> dict[str, Any] | None:
         "token_budget_approaching": ("tokens_total", ("run",)),
         "token_budget_exhausted": ("tokens_total", ("run",)),
         "token_budget_unverifiable": ("tokens_total", ("run",)),
+        "tool_loop_approaching": ("tool_rounds", ("run",)),
+        "tool_loop_reached": ("tool_rounds", ("run",)),
     }
     combination = (
         combinations.get(value.get("code"))
@@ -255,6 +260,14 @@ def project_budget_notice(value: Any) -> dict[str, Any] | None:
             and not (limit * 4 + 4) // 5 <= used < limit
         ):
             return None
+    elif combination[0] == "tool_rounds":
+        used = 3 if value["code"] == "tool_loop_approaching" else 5
+        if (value.get("limit"), value.get("used"), value.get("remaining")) != (
+            5,
+            used,
+            5 - used,
+        ):
+            return None
     return {
         key: value.get(key)
         for key in (
@@ -279,6 +292,8 @@ def project_execution_error(value: Any) -> Any:
         return None
     if not isinstance(value, dict):
         if isinstance(value, str):
+            if value == _LOOP_EXECUTION_CODE:
+                return value
             if value in _TOKEN_BUDGET_ERRORS:
                 kind = _TOKEN_BUDGET_ERRORS[value]
                 code, message = _BUDGET_EXECUTION_ERRORS[kind]
@@ -323,6 +338,25 @@ def project_execution_error(value: Any) -> Any:
                     code, message = _BUDGET_EXECUTION_ERRORS["RunTimedOut"]
                     return {"message": message, "code": code, "type": "RunTimedOut"}
         return "Runtime execution failed"
+
+    loop_error_type = value.get("type") or value.get("error")
+    if (
+        loop_error_type == "RuntimeExecutionError"
+        and value.get("code", value.get("message")) == _LOOP_EXECUTION_CODE
+    ) or (
+        value.get("code") == _LOOP_EXECUTION_CODE
+        and value.get("message") == _LOOP_EXECUTION_MESSAGE
+        and set(value) <= {"code", "message"}
+    ):
+        return {
+            "code": _LOOP_EXECUTION_CODE,
+            "message": _LOOP_EXECUTION_MESSAGE,
+            **{
+                key: "RuntimeExecutionError"
+                for key in ("type", "error")
+                if key in value
+            },
+        }
 
     plan_code = value.get("code") or value.get("message")
     if (
@@ -453,6 +487,7 @@ def redact_runtime_private_fields(
             )
         ):
             error = value["error"]
+            projected = project_execution_error(error)
             safe_error: Any = "runtime.execution_failed"
             projected = project_execution_error(error)
             if isinstance(projected, dict) and projected.get("code") in {
@@ -477,6 +512,11 @@ def redact_runtime_private_fields(
                     and category.isidentifier()
                 ):
                     safe_error["type"] = category
+            if projected == _LOOP_EXECUTION_CODE or (
+                isinstance(projected, dict)
+                and projected.get("code") == _LOOP_EXECUTION_CODE
+            ):
+                safe_error = projected
             value = {**value, "error": safe_error}
 
         # CompositeBackend removes route prefixes from checkpoint file keys.
@@ -568,6 +608,7 @@ def redact_runtime_private_fields(
                     "token_budget",
                     "token_budget_policy",
                     "token_budget_stop_code",
+                    "runtime_loop_state",
                 }
             )
         }

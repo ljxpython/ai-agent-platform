@@ -1,0 +1,517 @@
+{
+  "capture_date": "2026-10-09",
+  "environment": "disposable HTTP provider, real PostgreSQL/Redis and production Worker",
+  "primary_diagnostics": {
+    "version": 1,
+    "availability": "available",
+    "unavailable_reason": null,
+    "correlation": {
+      "execution_request_id": "4a20b85b4979445595e7d67fee7568f8",
+      "platform_trace_id": "4a20b85b4979445595e7d67fee7568f8"
+    },
+    "trace": {
+      "provider": "langfuse",
+      "trace_id": "e24026bbd9698cbbfdf92ac73763d16a",
+      "url": null
+    },
+    "graph_executions": [
+      {
+        "observation_id": "4ec96dfff4f54a09990d3924742423cf",
+        "outcome": "failed",
+        "error_code": "runtime.loop.detected",
+        "duration_ms": 31617.61
+      }
+    ],
+    "model_errors": [],
+    "workspace_executions": [],
+    "startup": {
+      "duration_ms": 9829.231923,
+      "phases": [
+        {
+          "name": "factory.context_resolution",
+          "ordinal": 0,
+          "outcome": "completed",
+          "started_at": "2026-10-09T01:54:53.477993Z",
+          "ended_at": "2026-10-09T01:54:53.478152Z",
+          "duration_ms": 0.166299,
+          "error_code": null
+        },
+        {
+          "name": "factory.memory_policy",
+          "ordinal": 1,
+          "outcome": "completed",
+          "started_at": "2026-10-09T01:54:53.478170Z",
+          "ended_at": "2026-10-09T01:54:53.478177Z",
+          "duration_ms": 0.010364,
+          "error_code": null
+        },
+        {
+          "name": "factory.mcp_tools",
+          "ordinal": 2,
+          "outcome": "completed",
+          "started_at": "2026-10-09T01:54:53.478548Z",
+          "ended_at": "2026-10-09T01:54:53.478561Z",
+          "duration_ms": 0.017735,
+          "error_code": null
+        },
+        {
+          "name": "factory.model_connection",
+          "ordinal": 3,
+          "outcome": "completed",
+          "started_at": "2026-10-09T01:54:53.478572Z",
+          "ended_at": "2026-10-09T01:54:53.958990Z",
+          "duration_ms": 480.426844,
+          "error_code": null
+        },
+        {
+          "name": "factory.model_build",
+          "ordinal": 4,
+          "outcome": "completed",
+          "started_at": "2026-10-09T01:54:53.959005Z",
+          "ended_at": "2026-10-09T01:54:57.261152Z",
+          "duration_ms": 3302.178961,
+          "error_code": null
+        },
+        {
+          "name": "factory.workspace",
+          "ordinal": 5,
+          "outcome": "completed",
+          "started_at": "2026-10-09T01:54:57.261177Z",
+          "ended_at": "2026-10-09T01:54:57.261962Z",
+          "duration_ms": 0.814958,
+          "error_code": null
+        },
+        {
+          "name": "factory.agent_compile",
+          "ordinal": 6,
+          "outcome": "completed",
+          "started_at": "2026-10-09T01:55:00.158446Z",
+          "ended_at": "2026-10-09T01:55:03.240055Z",
+          "duration_ms": 3081.6388,
+          "error_code": null
+        }
+      ]
+    },
+    "preparations": [
+      {
+        "observation_id": "abb9932d05574e7aa017798aa3acae19",
+        "scope": "primary",
+        "namespace": [
+          "ProbeWorkspace_workspace.before_agent:77cf6a79-b53d-4186-c713-a071fd37d6e6"
+        ],
+        "component": "workspace",
+        "outcome": "prepared",
+        "duration_ms": 3.217,
+        "error_code": null
+      }
+    ],
+    "retries": [
+      {
+        "observation_id": "e295fe4c859a401b8add467620a9a23b",
+        "scope": "primary",
+        "namespace": [
+          "model:08fc8b41-ff8e-6163-2241-7771d84aacc5"
+        ],
+        "unit": "model",
+        "role": null,
+        "attempts": 1,
+        "outcome": "success",
+        "code": null,
+        "duration_ms": 430.324
+      },
+      {
+        "observation_id": "549570429e1c4cf0a1552707d33ac5dc",
+        "scope": "primary",
+        "namespace": [
+          "model:5a9ed000-414d-1227-ee46-be48c196d110"
+        ],
+        "unit": "model",
+        "role": null,
+        "attempts": 1,
+        "outcome": "success",
+        "code": null,
+        "duration_ms": 237.166
+      },
+      {
+        "observation_id": "2aada13ed9c547bdac9406274ef2adc3",
+        "scope": "primary",
+        "namespace": [
+          "model:469ee6e1-d2d1-eda3-07d1-5fb55478ccb5"
+        ],
+        "unit": "model",
+        "role": null,
+        "attempts": 1,
+        "outcome": "success",
+        "code": null,
+        "duration_ms": 216.702
+      },
+      {
+        "observation_id": "38e48d12551545159630b5b66ee8e177",
+        "scope": "primary",
+        "namespace": [
+          "model:ff0d8272-a984-b2ae-6c52-9505f2591a88"
+        ],
+        "unit": "model",
+        "role": null,
+        "attempts": 1,
+        "outcome": "success",
+        "code": null,
+        "duration_ms": 250.694
+      },
+      {
+        "observation_id": "44e108dcfcd043818171fc4f297dcc1c",
+        "scope": "primary",
+        "namespace": [
+          "model:d0fe65a8-ce3b-4a6b-f5c6-398c4b46e5ea"
+        ],
+        "unit": "model",
+        "role": null,
+        "attempts": 1,
+        "outcome": "success",
+        "code": null,
+        "duration_ms": 313.838
+      }
+    ],
+    "loop_detections": [
+      {
+        "observation_id": "edaf15645c334b9e8431dad277cce2da",
+        "scope": "primary",
+        "namespace": [],
+        "code": "tool_loop_approaching",
+        "repetitions": 3,
+        "threshold": 3
+      },
+      {
+        "observation_id": "a8b5ce0921ae40b9890bd85ae77f7bc4",
+        "scope": "primary",
+        "namespace": [],
+        "code": "tool_loop_reached",
+        "repetitions": 5,
+        "threshold": 5
+      }
+    ],
+    "truncated": false,
+    "thread_id": "a1580c3d-456f-4eb2-b342-5b0e4f7625a2",
+    "run_id": "7e44f65c-d148-48fe-b717-69724f4f4554",
+    "run_status": "error",
+    "request_id": "d725c94f47114e2a98569cad94b06c5e"
+  },
+  "transport_samples": [
+    {
+      "case": "dearflow_agent",
+      "thread_id": "a1580c3d-456f-4eb2-b342-5b0e4f7625a2",
+      "run_id": "7e44f65c-d148-48fe-b717-69724f4f4554",
+      "status": "error",
+      "notices": [
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:7e44f65c-d148-48fe-b717-69724f4f4554:c35952af634e6aafbfe2:run:tool_loop_approaching",
+          "run_id": "7e44f65c-d148-48fe-b717-69724f4f4554",
+          "scope": "primary",
+          "budget_scope": "run",
+          "code": "tool_loop_approaching",
+          "limit": 5,
+          "used": 3,
+          "remaining": 2,
+          "unit": "tool_rounds"
+        },
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:7e44f65c-d148-48fe-b717-69724f4f4554:c35952af634e6aafbfe2:run:tool_loop_reached",
+          "run_id": "7e44f65c-d148-48fe-b717-69724f4f4554",
+          "scope": "primary",
+          "budget_scope": "run",
+          "code": "tool_loop_reached",
+          "limit": 5,
+          "used": 5,
+          "remaining": 0,
+          "unit": "tool_rounds"
+        }
+      ],
+      "transport": [
+        {
+          "event": "custom",
+          "id": "280",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:7e44f65c-d148-48fe-b717-69724f4f4554:c35952af634e6aafbfe2:run:tool_loop_approaching",
+                "run_id": "7e44f65c-d148-48fe-b717-69724f4f4554",
+                "scope": "primary",
+                "budget_scope": "run",
+                "code": "tool_loop_approaching",
+                "limit": 5,
+                "used": 3,
+                "remaining": 2,
+                "unit": "tool_rounds"
+              }
+            }
+          }
+        },
+        {
+          "event": "custom",
+          "id": "427",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:7e44f65c-d148-48fe-b717-69724f4f4554:c35952af634e6aafbfe2:run:tool_loop_reached",
+                "run_id": "7e44f65c-d148-48fe-b717-69724f4f4554",
+                "scope": "primary",
+                "budget_scope": "run",
+                "code": "tool_loop_reached",
+                "limit": 5,
+                "used": 5,
+                "remaining": 0,
+                "unit": "tool_rounds"
+              }
+            }
+          }
+        },
+        {
+          "event": "lifecycle",
+          "id": "429",
+          "payload": {
+            "method": "lifecycle",
+            "params": {
+              "namespace": [],
+              "data": {
+                "event": "failed",
+                "status": "error",
+                "reason": "business_error",
+                "error": {
+                  "code": "runtime.loop.detected",
+                  "message": "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+                  "type": "RuntimeExecutionError"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "loop_detections": [
+        {
+          "observation_id": "edaf15645c334b9e8431dad277cce2da",
+          "scope": "primary",
+          "namespace": [],
+          "code": "tool_loop_approaching",
+          "repetitions": 3,
+          "threshold": 3
+        },
+        {
+          "observation_id": "a8b5ce0921ae40b9890bd85ae77f7bc4",
+          "scope": "primary",
+          "namespace": [],
+          "code": "tool_loop_reached",
+          "repetitions": 5,
+          "threshold": 5
+        }
+      ]
+    },
+    {
+      "case": "loop-v2",
+      "thread_id": "afc6e080-48fa-4344-a855-b2370bce3838",
+      "run_id": "50944ddc-064e-4344-bba4-c4dcad683fad",
+      "status": "error",
+      "notices": [
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:50944ddc-064e-4344-bba4-c4dcad683fad:53fdc052dac120de40d5:run:tool_loop_approaching",
+          "run_id": "50944ddc-064e-4344-bba4-c4dcad683fad",
+          "scope": "primary",
+          "budget_scope": "run",
+          "code": "tool_loop_approaching",
+          "limit": 5,
+          "used": 3,
+          "remaining": 2,
+          "unit": "tool_rounds"
+        },
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:50944ddc-064e-4344-bba4-c4dcad683fad:53fdc052dac120de40d5:run:tool_loop_reached",
+          "run_id": "50944ddc-064e-4344-bba4-c4dcad683fad",
+          "scope": "primary",
+          "budget_scope": "run",
+          "code": "tool_loop_reached",
+          "limit": 5,
+          "used": 5,
+          "remaining": 0,
+          "unit": "tool_rounds"
+        }
+      ],
+      "transport": [
+        {
+          "event": "custom",
+          "id": "280",
+          "payload": {
+            "version": 1,
+            "type": "runtime_budget_notice",
+            "notice_id": "budget:50944ddc-064e-4344-bba4-c4dcad683fad:53fdc052dac120de40d5:run:tool_loop_approaching",
+            "run_id": "50944ddc-064e-4344-bba4-c4dcad683fad",
+            "scope": "primary",
+            "budget_scope": "run",
+            "code": "tool_loop_approaching",
+            "limit": 5,
+            "used": 3,
+            "remaining": 2,
+            "unit": "tool_rounds"
+          }
+        },
+        {
+          "event": "custom",
+          "id": "427",
+          "payload": {
+            "version": 1,
+            "type": "runtime_budget_notice",
+            "notice_id": "budget:50944ddc-064e-4344-bba4-c4dcad683fad:53fdc052dac120de40d5:run:tool_loop_reached",
+            "run_id": "50944ddc-064e-4344-bba4-c4dcad683fad",
+            "scope": "primary",
+            "budget_scope": "run",
+            "code": "tool_loop_reached",
+            "limit": 5,
+            "used": 5,
+            "remaining": 0,
+            "unit": "tool_rounds"
+          }
+        }
+      ],
+      "loop_detections": [
+        {
+          "observation_id": "0b652b9764e14f4f89b384ed5abd76cf",
+          "scope": "primary",
+          "namespace": [],
+          "code": "tool_loop_approaching",
+          "repetitions": 3,
+          "threshold": 3
+        },
+        {
+          "observation_id": "64f2aa31374d405cb53910cce5174a5e",
+          "scope": "primary",
+          "namespace": [],
+          "code": "tool_loop_reached",
+          "repetitions": 5,
+          "threshold": 5
+        }
+      ]
+    },
+    {
+      "case": "same-role-parallel",
+      "thread_id": "1baa69a5-e7b5-4713-b20b-f627053ceeea",
+      "run_id": "1fbe6a26-dae1-40b6-8e58-20134e8751a8",
+      "status": "success",
+      "notices": [
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:1fbe6a26-dae1-40b6-8e58-20134e8751a8:0e7e8d639c03549c72ee:run:tool_loop_approaching",
+          "run_id": "1fbe6a26-dae1-40b6-8e58-20134e8751a8",
+          "scope": "subagent",
+          "budget_scope": "run",
+          "code": "tool_loop_approaching",
+          "limit": 5,
+          "used": 3,
+          "remaining": 2,
+          "unit": "tool_rounds"
+        },
+        {
+          "version": 1,
+          "type": "runtime_budget_notice",
+          "notice_id": "budget:1fbe6a26-dae1-40b6-8e58-20134e8751a8:cbb9956d4c317902897c:run:tool_loop_approaching",
+          "run_id": "1fbe6a26-dae1-40b6-8e58-20134e8751a8",
+          "scope": "subagent",
+          "budget_scope": "run",
+          "code": "tool_loop_approaching",
+          "limit": 5,
+          "used": 3,
+          "remaining": 2,
+          "unit": "tool_rounds"
+        }
+      ],
+      "transport": [
+        {
+          "event": "custom",
+          "id": "442",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [
+                "tools:511d56ca-529e-ce68-5d55-742aa2d18653"
+              ],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:1fbe6a26-dae1-40b6-8e58-20134e8751a8:0e7e8d639c03549c72ee:run:tool_loop_approaching",
+                "run_id": "1fbe6a26-dae1-40b6-8e58-20134e8751a8",
+                "scope": "subagent",
+                "budget_scope": "run",
+                "code": "tool_loop_approaching",
+                "limit": 5,
+                "used": 3,
+                "remaining": 2,
+                "unit": "tool_rounds"
+              }
+            }
+          }
+        },
+        {
+          "event": "custom",
+          "id": "456",
+          "payload": {
+            "method": "custom",
+            "params": {
+              "namespace": [
+                "tools:1ea8d2d5-ca43-a213-1f6b-0c8a516c3525"
+              ],
+              "data": {
+                "version": 1,
+                "type": "runtime_budget_notice",
+                "notice_id": "budget:1fbe6a26-dae1-40b6-8e58-20134e8751a8:cbb9956d4c317902897c:run:tool_loop_approaching",
+                "run_id": "1fbe6a26-dae1-40b6-8e58-20134e8751a8",
+                "scope": "subagent",
+                "budget_scope": "run",
+                "code": "tool_loop_approaching",
+                "limit": 5,
+                "used": 3,
+                "remaining": 2,
+                "unit": "tool_rounds"
+              }
+            }
+          }
+        }
+      ],
+      "loop_detections": [
+        {
+          "observation_id": "6bc28b0428a4470cbd73b403601cec29",
+          "scope": "subagent",
+          "namespace": [
+            "tools:511d56ca-529e-ce68-5d55-742aa2d18653"
+          ],
+          "code": "tool_loop_approaching",
+          "repetitions": 3,
+          "threshold": 3
+        },
+        {
+          "observation_id": "7195f05720d846bd87e02ed598026fe4",
+          "scope": "subagent",
+          "namespace": [
+            "tools:1ea8d2d5-ca43-a213-1f6b-0c8a516c3525"
+          ],
+          "code": "tool_loop_approaching",
+          "repetitions": 3,
+          "threshold": 3
+        }
+      ]
+    }
+  ]
+}

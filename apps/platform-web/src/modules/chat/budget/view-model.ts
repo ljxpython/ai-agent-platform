@@ -185,6 +185,12 @@ export function safeExtractBudgetSafetyError(
         message: "用量无法确认，本次执行已停止新增工作。",
       };
     }
+    if (code === "runtime.loop.detected") {
+      return {
+        code: "runtime.loop.detected",
+        message: "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+      };
+    }
 
     // Support inferring from completed run object with status === 'error'
     if (asAny.status === "error") {
@@ -283,6 +289,16 @@ export function safeExtractBudgetSafetyError(
     };
   }
 
+  if (
+    text.includes("runtime.loop.detected") ||
+    text.includes("RuntimeExecutionError: runtime.loop.detected")
+  ) {
+    return {
+      code: "runtime.loop.detected",
+      message: "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+    };
+  }
+
   return null;
 }
 
@@ -348,6 +364,29 @@ export function deriveBudgetViewModel(
     };
   }
 
+  // 2.5 Run-level tool loop reached terminal stop (when run is no longer running)
+  if (
+    notice &&
+    notice.code === "tool_loop_reached" &&
+    notice.budget_scope === "run" &&
+    !isRunning
+  ) {
+    return {
+      level: "error",
+      isTerminal: true,
+      title: "本次执行因重复工具调用停止",
+      description: "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+      code: "tool_loop_reached",
+      scope: "run",
+      unit: "tool_rounds",
+      limit: notice.limit,
+      used: notice.used,
+      remaining: 0,
+      actionType: "adjust_draft",
+      actionLabel: "调整请求",
+    };
+  }
+
   // 3. Token budget hard stops (notice / safety error / historical stop code)
   const isTokenExhausted =
     notice?.code === "token_budget_exhausted" ||
@@ -388,45 +427,6 @@ export function deriveBudgetViewModel(
     };
   }
 
-  const isTokenUnverifiable =
-    notice?.code === "token_budget_unverifiable" ||
-    safetyError?.code === "runtime_token_budget_unverifiable" ||
-    historicalStopCode === "token_budget_unverifiable";
-
-  if (isTokenUnverifiable) {
-    if (isRunning) {
-      // 在途不可验证过渡态
-      return {
-        level: "warning",
-        isTerminal: false,
-        title: "Token用量无法确认",
-        description: "已触发额度保护，正在确认执行结果",
-        code: "token_budget_unverifiable",
-        scope: "run",
-        unit: "tokens_total",
-        remaining: null,
-        limit: notice?.limit ?? null,
-        used: notice?.used ?? null,
-        actionType: "none",
-      };
-    }
-    // 原生终态不可确认：不提供重试按钮，避免再次触发
-    return {
-      level: "error",
-      isTerminal: true,
-      title: "用量无法确认",
-      description: "用量无法确认，本次执行已停止新增工作",
-      code: "token_budget_unverifiable",
-      scope: "run",
-      unit: "tokens_total",
-      remaining: null,
-      limit: notice?.limit ?? null,
-      used: notice?.used ?? null,
-      actionType: "none",
-    };
-  }
-
-  // 4. Other safety error codes (hard stops without custom notice or on error path)
   if (safetyError) {
     switch (safetyError.code) {
       case "runtime_model_call_limit_reached":
@@ -480,6 +480,19 @@ export function deriveBudgetViewModel(
           remaining: 0,
           actionType: "none",
         };
+      case "runtime.loop.detected":
+        return {
+          level: "error",
+          isTerminal: true,
+          title: "本次执行因重复工具调用停止",
+          description: "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+          code: safetyError.code,
+          scope: "run",
+          unit: "tool_rounds",
+          remaining: 0,
+          actionType: "adjust_draft",
+          actionLabel: "调整请求",
+        };
     }
   }
 
@@ -489,6 +502,42 @@ export function deriveBudgetViewModel(
     // it was completed normally, warning should not persist as terminal error
     if (nativeStatus === "success") {
       return null;
+    }
+
+    if (notice.code === "tool_loop_reached") {
+      return {
+        level: "warning",
+        isTerminal: false,
+        title: "重复工具调用达到阈值",
+        description: "重复工具调用已达到保护阈值，正在等待终止",
+        code: notice.code,
+        scope: notice.budget_scope,
+        unit: notice.unit,
+        remaining: 0,
+        limit: notice.limit,
+        used: notice.used,
+        actionType: "none",
+      };
+    }
+
+    if (notice.code === "tool_loop_approaching") {
+      const detail =
+        typeof notice.remaining === "number"
+          ? `已连续重复调用 ${notice.used} 轮，剩余 ${notice.remaining} 轮保护容限，正在提醒收尾`
+          : "检测到重复工具调用，正在提醒智能体收尾";
+      return {
+        level: "warning",
+        isTerminal: false,
+        title: "检测到重复工具调用",
+        description: detail,
+        code: notice.code,
+        scope: notice.budget_scope,
+        unit: notice.unit,
+        remaining: notice.remaining,
+        limit: notice.limit,
+        used: notice.used,
+        actionType: "none",
+      };
     }
 
     if (notice.code === "token_budget_approaching") {

@@ -360,6 +360,8 @@ def _reject_budget_state(value: object) -> None:
                 "runtime_budget_latches",
                 "runtime_budget_wrapup",
                 "runtime_budget_notice",
+                "runtime_loop_state",
+                "_runtime_tool_call_repaired",
                 "runtime_wrapup_start",
                 "runtime_wrapup_started",
                 "thread_model_call_count",

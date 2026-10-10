@@ -98,6 +98,8 @@ PRIVATE_RUNTIME_STATE_KEYS = {
     "token_budget",
     "token_budget_policy",
     "token_budget_stop_code",
+    "runtime_loop_state",
+    "_runtime_tool_call_repaired",
 }
 
 

@@ -21,7 +21,7 @@ class RuntimeAuthError(RuntimeErrorBase):
 
 
 class RuntimeExecutionError(RuntimeErrorBase):
-    """Confirmed model failure; Worker must not requeue it as infrastructure failure."""
+    """Confirmed execution failure; Worker must not requeue it as infrastructure failure."""
 
 
 class TokenBudgetExceededError(RuntimeExecutionError):

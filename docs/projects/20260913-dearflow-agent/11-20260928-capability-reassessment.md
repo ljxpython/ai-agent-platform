@@ -64,7 +64,7 @@
 | A25 | 一批大量独立任务，后台进度/取消/导出 | `batch_task_tool.py`、`subagents/batch_service.py` | 未接入；3个普通 task 并发不等于 durable batch | T09 |
 | A26 | Goal 跨 Run 评估、自主续跑、无进展熔断 | `runtime/goal.py`、`agents/goal_state.py` | 未接入；不能把 Todo 或当前会话消息队列当 Goal | T09（原延期） |
 | A27 | 定时 cron/interval/时区任务 | `scheduler/schedules.py`、`persistence/scheduled_tasks/` | 未接入；需授权主体、撤权、去重、错过触发策略，不能在 Web setInterval 执行 | T09（原延期） |
-| A28 | Token 成本预算、循环/停滞检测 | `token_budget_middleware.py`、`loop_detection_middleware.py`、`tool_progress_middleware.py` | 部分：已有调用次数、超时、recursion cap；不是 token/金额预算。主根 max(mode,env) 无法由低环境值收紧 | T03/T07 |
+| A28 | Token 成本预算、循环/停滞检测 | `token_budget_middleware.py`、`loop_detection_middleware.py`、`tool_progress_middleware.py` | 部分：截至2026-10-09已补执行预算/软收尾、超时、Token/Cost采集（不等于金额预算）；当前正数env优先。F02只读连续参数/结果保护已实装，三组合根主子、Worker恢复、旧checkpoint回退有证据；默认关闭，前端仍待接续，非通用停滞判官 | T03其余范围；T07/F02接续[15](15-f02-loop-detection.md) |
 | A29 | 长度截断/拒绝/空响应修复、模型错误控制 | `model_length_finish_reason_middleware.py`、`safety_finish_reason_middleware.py`、`llm_error_handling_middleware.py`、`terminal_response_middleware.py` | 已有 SDK/模型与超时处理；未见 Dear 等价专项装配，需针对锁版本做故障验证后决定是否添加 | T07 |
 | A30 | 注入输入隔离、PII、工具结果清洗、读后写门禁 | `input_sanitization_middleware.py`、`pii_redaction_middleware.py`、`read_before_write_middleware.py` | 已有 scope/审批/包检查/SSRF/路径边界；未见等价通用 Middleware；安全差异列评审，不默认导入上游规则 | T03/T07 |
 | A31 | 私有知识检索与消息级知识范围 | `knowledge_scope.py`、`knowledge_scope_middleware.py`、community RAGFlow | Dear 未接入等价知识范围；2026-10-10 F17评估：用户确认本期不开发自建知识产品、未来优先知识MCP；现有MCP底座仍需核验可信项目绑定与来源回放 | T09；[F17专项](../20261010-agent-knowledge-retrieval-assessment/README.md) |

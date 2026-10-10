@@ -22,6 +22,7 @@ from runtime_service.middlewares import (
     ConversationOffloadingMiddleware,
     DocumentToolsMiddleware,
     ExecutionBudgetMiddleware,
+    LoopDetectionMiddleware,
     MaintenanceSafeToolCallsMiddleware,
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
@@ -33,6 +34,7 @@ from runtime_service.middlewares import (
     TimeoutWrapupMiddleware,
     TokenBudgetMiddleware,
     context_management_enabled,
+    loop_detection_enabled,
     resolve_wrapup_after_seconds,
 )
 from runtime_service.middlewares.images import ImageToolsMiddleware
@@ -299,6 +301,18 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             ),
             *([] if child else [DelegatedTaskRetryMiddleware({"research"}, metadata)]),
             *tail,
+            *(
+                [
+                    LoopDetectionMiddleware(
+                        tool_names,
+                        scope="subagent" if child else "primary",
+                        graph_key="showcase_demo",
+                        metadata=metadata,
+                    )
+                ]
+                if loop_detection_enabled()
+                else []
+            ),
             *([ContextBudgetMiddleware(offloading[0])] if offloading else []),
         ]
 

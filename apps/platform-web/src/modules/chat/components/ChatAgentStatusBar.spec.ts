@@ -309,4 +309,23 @@ describe("ChatAgentStatusBar", () => {
     await btn.trigger("click");
     expect(wrapper.emitted("action")).toEqual([["adjust_draft"]]);
   });
+
+  it("formats runtime.loop.detected accurately into Chinese stopping text", () => {
+    const wrapper = mount(ChatAgentStatusBar, {
+      props: {
+        isRunning: false,
+        isInterrupted: false,
+        error: "RuntimeExecutionError: runtime.loop.detected",
+      },
+      global: {
+        stubs: {
+          BaseIcon: true,
+        },
+      },
+    });
+
+    expect(wrapper.text()).toContain(
+      "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+    );
+  });
 });

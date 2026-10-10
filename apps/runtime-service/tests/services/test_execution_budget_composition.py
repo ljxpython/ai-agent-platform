@@ -9,6 +9,7 @@ from support import BindableFakeMessagesChatModel
 
 from runtime_service.middlewares import (
     ExecutionBudgetMiddleware,
+    LoopDetectionMiddleware,
     TimeoutWrapupMiddleware,
 )
 
@@ -29,6 +30,7 @@ def test_deep_agent_primary_and_children_explicitly_compose_budget(
     monkeypatch.setenv("RUNTIME_WORKSPACE_ROOT", str(tmp_path))
     monkeypatch.setenv("RUNTIME_SHOWCASE_WORKSPACE_ROOT", str(tmp_path / "showcase"))
     monkeypatch.setenv("AGENT_WRAPUP_AFTER_SECONDS", "600")
+    monkeypatch.setenv("AGENT_LOOP_DETECTION_ENABLED", "1")
     monkeypatch.setattr(
         agent,
         "build_model",
@@ -52,6 +54,16 @@ def test_deep_agent_primary_and_children_explicitly_compose_budget(
     )
     assert budget.scope == "primary" and budget.exit_behavior == "error"
     assert any(isinstance(item, TimeoutWrapupMiddleware) for item in primary)
+    detector = next(
+        item for item in primary if isinstance(item, LoopDetectionMiddleware)
+    )
+    assert detector.scope == "primary" and detector.observed_tools <= {
+        "ls",
+        "read_file",
+        "glob",
+        "grep",
+    }
+    assert primary.index(detector) > primary.index(budget)
     for child in captured["subagents"]:
         child_budget = next(
             item
@@ -64,7 +76,16 @@ def test_deep_agent_primary_and_children_explicitly_compose_budget(
         assert not any(
             isinstance(item, TimeoutWrapupMiddleware) for item in child["middleware"]
         )
+        assert (
+            next(
+                item
+                for item in child["middleware"]
+                if isinstance(item, LoopDetectionMiddleware)
+            ).scope
+            == "subagent"
+        )
     assert "runtime_budget_latches" not in graph.get_input_jsonschema()["properties"]
+    assert "runtime_loop_state" not in graph.get_input_jsonschema()["properties"]
 
 
 def test_workflow_inner_primary_notifications_reach_root_stream():

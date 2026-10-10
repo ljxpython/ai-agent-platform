@@ -4,7 +4,10 @@ import {
   formatDuration,
   formatIsoTimestamp,
   getAvailabilityBadge,
+  getGraphErrorCodeLabel,
   getGraphOutcomeLabel,
+  getLoopDetectionBadge,
+  getLoopDetectionCodeLabel,
   getModelErrorCodeLabel,
   getModelErrorSeverity,
   getPhaseOutcomeLabel,
@@ -490,5 +493,89 @@ describe("diagnostics resilience view-model functions", () => {
       variant: "error",
     });
     expect(getRetrySeverity("failed", "error")).toBe("error");
+  });
+
+  describe("loop detections & graph errors", () => {
+    it("getLoopDetectionCodeLabel & getLoopDetectionBadge: 正确映射循环保护标签与徽章", () => {
+      expect(getLoopDetectionCodeLabel("tool_loop_approaching")).toBe(
+        "检测到重复工具调用，已提醒收尾",
+      );
+      expect(getLoopDetectionBadge("tool_loop_approaching")).toEqual({
+        label: "收尾提醒",
+        variant: "warning",
+      });
+
+      expect(getLoopDetectionCodeLabel("tool_loop_reached")).toBe(
+        "达到重复工具调用上限，已停止运行",
+      );
+      expect(getLoopDetectionBadge("tool_loop_reached")).toEqual({
+        label: "保护停止",
+        variant: "error",
+      });
+    });
+
+    it("getGraphErrorCodeLabel: 正确映射 runtime.loop.detected 为专有中文，不误标为模型异常", () => {
+      expect(getGraphErrorCodeLabel("runtime.loop.detected")).toBe(
+        "工具重复调用超限",
+      );
+      expect(getGraphErrorCodeLabel(null)).toBe("无错误");
+      expect(getGraphErrorCodeLabel("some_other_error")).toBe(
+        "some_other_error",
+      );
+    });
+
+    it("safeParseRunDiagnostics: 正确解析包含 loop_detections 的 DTO 并过滤未知字段", () => {
+      const rawDto = {
+        version: 1,
+        thread_id: "thread-123",
+        run_id: "run-456",
+        run_status: "error",
+        request_id: "req-789",
+        availability: "available",
+        unavailable_reason: null,
+        correlation: {
+          execution_request_id: "exec-1",
+          platform_trace_id: "trace-1",
+        },
+        trace: null,
+        graph_executions: [],
+        model_errors: [],
+        startup: null,
+        preparations: [],
+        retries: [],
+        loop_detections: [
+          {
+            observation_id: "obs-1",
+            scope: "primary",
+            namespace: [],
+            code: "tool_loop_approaching",
+            repetitions: 3,
+            threshold: 3,
+            unknown_foo: "bar", // 必须被 strip 剥离
+          },
+          {
+            observation_id: "obs-2",
+            scope: "subagent",
+            namespace: ["researcher"],
+            code: "tool_loop_reached",
+            repetitions: 5,
+            threshold: 5,
+          },
+        ],
+        truncated: false,
+      };
+
+      const parsed = safeParseRunDiagnostics(rawDto);
+      expect(parsed.success).toBe(true);
+      expect(parsed.data?.loop_detections).toHaveLength(2);
+      expect(parsed.data?.loop_detections[0].code).toBe(
+        "tool_loop_approaching",
+      );
+      expect(
+        (parsed.data?.loop_detections[0] as any).unknown_foo,
+      ).toBeUndefined();
+      expect(parsed.data?.loop_detections[1].scope).toBe("subagent");
+      expect(parsed.data?.loop_detections[1].namespace).toEqual(["researcher"]);
+    });
   });
 });

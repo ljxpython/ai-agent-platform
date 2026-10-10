@@ -177,6 +177,23 @@ export const retrySummarySchema = z.object({
 
 export type RetrySummaryItem = z.infer<typeof retrySummarySchema>;
 
+export const LOOP_DETECTION_CODES = [
+  "tool_loop_approaching",
+  "tool_loop_reached",
+] as const;
+export type LoopDetectionCode = (typeof LOOP_DETECTION_CODES)[number];
+
+export const loopDetectionSchema = z.object({
+  observation_id: z.string().min(1).max(128).regex(identifierRegex),
+  scope: z.enum(["primary", "subagent"]),
+  namespace: z.array(z.string().min(1).max(128).regex(identifierRegex)).max(8),
+  code: z.enum(LOOP_DETECTION_CODES),
+  repetitions: z.number().int().positive(),
+  threshold: z.number().int().positive(),
+});
+
+export type LoopDetectionItem = z.infer<typeof loopDetectionSchema>;
+
 // v1 根 DTO 校验器：strip 模式会自动剥离未在 schema 中显式声明的未知字段
 export const runDiagnosticsV1Schema = z
   .object({
@@ -198,6 +215,11 @@ export const runDiagnosticsV1Schema = z
       .optional()
       .default([]),
     retries: z.array(retrySummarySchema).max(20).optional().default([]),
+    loop_detections: z
+      .array(loopDetectionSchema)
+      .max(20)
+      .optional()
+      .default([]),
     truncated: z.boolean(),
   })
   .strip();

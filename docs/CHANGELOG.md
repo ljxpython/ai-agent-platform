@@ -24,6 +24,7 @@
 
 ### Added
 
+- **Agent 重复工具调用循环保护与诊断闭环（全链路）**：后端共享循环检测中间件识别连续重复只读工具调用，第 3 轮预警、第 5 轮安全硬终止拦截；前端实装 Zod DTO 弹性校验、时序状态机（warning/error）、Subagent 冒泡、报错降级兜底及 RunDiagnostics 循环记录独立卡片；默认关闭（环境变量控制），Playwright 端到端全绿通过并沉淀实景截图。
 - **Agent 通用文档读取能力（DOCX/PPTX，全链路闭环）**：Runtime/API/Web 三服务全栈实施交付。同一 parse_document 工具支持 DOCX/PPTX 原字节按需读取、section/slide 定位与有界续读；前端补齐 DOCX/PPTX 扩展名与空 MIME 校验、DOCX 原字节认证下载拦截、Word/PPT 专属徽标、仅支持下载无假预览、工作区不可预览文件优雅降级为“该文件类型不支持在线预览，请下载查看”提示；ToolResult 专用模板实现错误优先绝对高亮、段落与幻灯片语义化展示、续读参数建议及 7 类 warnings 中文脱敏映射；Playwright 真实模型 E2E 3 项全绿，全栈人工浏览器实测验收通过。
 - Worktree 支持独立本地联调环境：统一分配端口、隔离数据和进程，依赖通过共享缓存复用。
 - 新 Worktree 可继承现有环境配置并复用项目、Agent、模型等基础数据，默认本地账号 admin/admin123，无需重新配置；对话历史和定时任务不复制。

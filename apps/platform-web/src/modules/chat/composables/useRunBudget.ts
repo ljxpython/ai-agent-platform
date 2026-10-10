@@ -31,8 +31,12 @@ export interface UseRunBudgetOptions {
 export function isNamespaceMatch(
   eventNamespace: unknown,
   targetNamespace: readonly string[] | undefined,
+  allowSubagentBubbling = false,
 ): boolean {
   if (!targetNamespace || targetNamespace.length === 0) {
+    if (allowSubagentBubbling) {
+      return true;
+    }
     // Root listener: accept empty or non-array root namespace events
     return !Array.isArray(eventNamespace) || eventNamespace.length === 0;
   }
@@ -163,10 +167,10 @@ export function useRunBudget(
     const entries = cache.entries();
 
     for (const entry of entries) {
-      if (
-        entry.notice.run_id === activeRunId &&
-        isNamespaceMatch(entry.namespace, currentNs)
-      ) {
+      if (entry.notice.run_id !== activeRunId) continue;
+      const isLoopNotice = entry.notice.unit === "tool_rounds";
+      const match = isNamespaceMatch(entry.namespace, currentNs, isLoopNotice);
+      if (match) {
         matching.push(entry.notice);
       }
     }
@@ -203,7 +207,8 @@ export function useRunBudget(
       (n) =>
         n.code === "model_call_limit_reached" ||
         n.code === "token_budget_exhausted" ||
-        n.code === "token_budget_unverifiable",
+        n.code === "token_budget_unverifiable" ||
+        (n.unit === "tool_rounds" && n.code === "tool_loop_reached"),
     );
     if (hardLimitNotice) return hardLimitNotice;
 

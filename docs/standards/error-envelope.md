@@ -41,6 +41,10 @@ Token 类型和完整 `runtime.token_budget.{exhausted,unverifiable}` / 公开�
 
 已知 Workspace 错误按完整五码精确投影为稳定码和固定说明，原生 `RuntimeWorkspaceError` 的 `message` 可作为精确机器码来源；不从嵌入文本抽码。详见 [Workspace 交接契约](../projects/20261007-agent-workspace-resilience/frontend-handoff.md)。不修改原生 Run 状态，普通消息/工具正文、artifact/result 不是执行错误槽位；私有字段仍递归清理。
 
+重复工具调用保护使用精确执行码 `runtime.loop.detected`。可信 `RuntimeExecutionError` 的完整 `code`（或未提供 code 时的 message）必须等于该码；公开对象的固定 message 为“检测到工具重复调用，本次运行已停止，请调整任务后继续。”。字符串错误槽位只保留完整机器码，带前后缀的文本继续泛化；已投影对象可再次安全清洗，不丢失精确码。不从普通模型/工具正文猜测停止原因。它是 Run 原生 error 的原因，不是 HTTP 鉴权错误、取消或超时，不触发自动重试或登出。
+
+diagnostics v1 增加可选 `loop_detections=[]`（最多20条）；只公开 observation_id、scope、namespace、两个通知码及固定 3/3 或 5/5 的 repetitions/threshold。graph_executions 可返回上述精确执行码，model_errors 保持模型专用。`runtime_loop_state` 在写入口递归拒绝、读出口递归清理，签名和工具原文不进入诊断。实现、默认关闭策略及前端交接见 [F02 专题](../projects/20260913-dearflow-agent/15-f02-loop-detection.md) 和 [实现版契约](../projects/20260913-dearflow-agent/16-f02-frontend-handoff.md)。前端与生产启用尚未验收。
+
 `GET /api/langgraph/threads/{thread_id}/runs/{run_id}/diagnostics` 的 provider 分类是 HTTP 200 安全 DTO 数据，不是 HTTP 错误码；`provider_auth_failed/provider_access_denied` 不触发平台登出或撤权。未启用/未录入/观测后端不可用以 availability 返回；授权拒绝、非法上游 DTO 等仍走本 Envelope。见 [诊断契约](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md)。同一 v1 DTO 新增可选 `workspace_executions=[]`（最多20条），以及 graph/startup 的 Workspace 白名单错误码；不新增 HTTP 错误码、路由或权限，`model_errors` 保持模型专用。Workspace 执行错误仍是原生失败终态数据，HTTP200 诊断或 SSE 握手成功不代表 Run 成功。
 
 会话 Stop 的 `confirmation_unavailable` 是合法回执 phase，不是 HTTP 错误；POST 202 只证明请求受理，不能据此显示执行已停止。POST 502/504 或网络断开时提交结果可能未知，客户端保留原 scope/body/Idempotency-Key 对账，不用新 key 重发。公开存储错误沿既有 503→502 转换，不增加特殊 503 透传。见 [Stop 实现版交接](../projects/20261007-agent-run-cancellation/frontend-handoff.md)。

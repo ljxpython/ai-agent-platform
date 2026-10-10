@@ -26,6 +26,7 @@ from runtime_service.middlewares import (
     ConversationOffloadingMiddleware,
     DocumentToolsMiddleware,
     ExecutionBudgetMiddleware,
+    LoopDetectionMiddleware,
     MaintenanceSafeToolCallsMiddleware,
     MessageQueueMiddleware,
     ModelCallTimeoutMiddleware,
@@ -37,6 +38,7 @@ from runtime_service.middlewares import (
     TimeoutWrapupMiddleware,
     TokenBudgetMiddleware,
     context_management_enabled,
+    loop_detection_enabled,
     resolve_wrapup_after_seconds,
 )
 from runtime_service.middlewares.retry import (
@@ -479,6 +481,18 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 else [DelegatedTaskRetryMiddleware({"general-purpose"}, metadata)]
             ),
             *tail,
+            *(
+                [
+                    LoopDetectionMiddleware(
+                        tool_names,
+                        scope="subagent" if child else "primary",
+                        graph_key="dearflow_agent",
+                        metadata=metadata,
+                    )
+                ]
+                if loop_detection_enabled()
+                else []
+            ),
             *([ContextBudgetMiddleware(offloading[0])] if offloading else []),
         ]
 

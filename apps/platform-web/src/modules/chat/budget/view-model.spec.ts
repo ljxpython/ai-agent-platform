@@ -328,5 +328,88 @@ describe("budget/view-model.ts", () => {
       expect(notice?.notice_id).toBe("budget:wrapped-1");
       expect(notice?.remaining).toBe(2);
     });
+
+    it("extracts and derives tool loop approaching notice correctly", () => {
+      const notice = {
+        version: 1 as const,
+        type: "runtime_budget_notice" as const,
+        notice_id: "budget:run-loop:primary:run:tool_loop_approaching",
+        run_id: "run-loop",
+        scope: "primary" as const,
+        budget_scope: "run" as const,
+        code: "tool_loop_approaching" as const,
+        limit: 5,
+        used: 3,
+        remaining: 2,
+        unit: "tool_rounds" as const,
+      };
+
+      const vm = deriveBudgetViewModel(notice, null, "running");
+      expect(vm).not.toBeNull();
+      expect(vm?.level).toBe("warning");
+      expect(vm?.isTerminal).toBe(false);
+      expect(vm?.title).toBe("检测到重复工具调用");
+      expect(vm?.description).toContain(
+        "已连续重复调用 3 轮，剩余 2 轮保护容限",
+      );
+      expect(vm?.code).toBe("tool_loop_approaching");
+      expect(vm?.unit).toBe("tool_rounds");
+    });
+
+    it("derives tool loop reached as warning during running and terminal stop after error", () => {
+      const notice = {
+        version: 1 as const,
+        type: "runtime_budget_notice" as const,
+        notice_id: "budget:run-loop:primary:run:tool_loop_reached",
+        run_id: "run-loop",
+        scope: "primary" as const,
+        budget_scope: "run" as const,
+        code: "tool_loop_reached" as const,
+        limit: 5,
+        used: 5,
+        remaining: 0,
+        unit: "tool_rounds" as const,
+      };
+
+      // 1. While still running -> Warning, not terminal
+      const runningVm = deriveBudgetViewModel(notice, null, "running");
+      expect(runningVm).not.toBeNull();
+      expect(runningVm?.level).toBe("warning");
+      expect(runningVm?.isTerminal).toBe(false);
+      expect(runningVm?.title).toBe("重复工具调用达到阈值");
+
+      // 2. Once run completes/fails -> Error, terminal stop
+      const stoppedVm = deriveBudgetViewModel(notice, null, "error");
+      expect(stoppedVm).not.toBeNull();
+      expect(stoppedVm?.level).toBe("error");
+      expect(stoppedVm?.isTerminal).toBe(true);
+      expect(stoppedVm?.title).toBe("本次执行因重复工具调用停止");
+      expect(stoppedVm?.description).toBe(
+        "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+      );
+      expect(stoppedVm?.actionType).toBe("adjust_draft");
+    });
+
+    it("derives runtime.loop.detected safety error accurately", () => {
+      const safetyErr = safeExtractBudgetSafetyError({
+        error: {
+          code: "runtime.loop.detected",
+          message: "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+          type: "RuntimeExecutionError",
+        },
+      });
+      expect(safetyErr).not.toBeNull();
+      expect(safetyErr?.code).toBe("runtime.loop.detected");
+
+      const vm = deriveBudgetViewModel(null, safetyErr, "error");
+      expect(vm).not.toBeNull();
+      expect(vm?.level).toBe("error");
+      expect(vm?.isTerminal).toBe(true);
+      expect(vm?.code).toBe("runtime.loop.detected");
+      expect(vm?.title).toBe("本次执行因重复工具调用停止");
+      expect(vm?.description).toBe(
+        "检测到工具重复调用，本次运行已停止，请调整任务后继续。",
+      );
+    });
   });
 });
