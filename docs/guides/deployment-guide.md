@@ -424,7 +424,7 @@ bash "scripts/local-stack.sh" stop
 ```
 
 Runtime 配置变化后同时重启 API 和 Worker。
-日志/PID 在系统临时目录的 aitestlab-local-stack 中；同一用户多仓库副本共享该状态目录，
+日志/PID 在本仓库 `.local-stack/` 中；关联 Worktree 先按 [Worktree 规范](../standards/worktree-development.md) 初始化独立资源，
 本指南按一套活动栈使用。脚本不注册开机启动，服务器重启后手工 start。
 
 | 现象 | 检查 |

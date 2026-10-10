@@ -1,6 +1,6 @@
 ---
 status: draft
-last_verified: 2026-10-07
+last_verified: 2026-10-09
 confidence: medium
 source_project: docs/projects/20260926-sse-event-contract/verification.md
 note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容量(S11)因HTTP/1.1入口阻塞，持续容量/堆增长/三段脱敏样例未验
@@ -54,6 +54,8 @@ Run GET 没有 error，旧事件全部过期且无人工标记时安全降级，
 [前端交接](../projects/20261007-agent-execution-budget/frontend-handoff.md)。本项不更改本规范容量门禁的 draft 状态。
 
 ## SDK 自动重试规则（补丁扩展）
+
+2026-10-09 补充隐私执行失败投影：`runtime.privacy.redaction_failed` 沿现有 lifecycle/tasks/error/debug/checkpoints 的可信错误槽位传播，固定文案“隐私保护处理失败，本次模型请求未发送。”。实时 lifecycle 的 `params.data.error` 可为 `{type,code,message}` 对象，持久重放可为完整机器码字符串；外层 event/id/seq/namespace 不变。不能从普通消息正文搜索该码，不能将该执行失败触发为重新提交 Run 或发送原文。HTTP/SSE 握手与 Run 成败分开判断；Run GET/列表及 Thread GET 没有 error 字段。对象/字符串、v2/Protocol/v3、分片投影证据见 [F05 验证](../projects/20261009-agent-pii-redaction/verification.md)。本增量不改变原容量门禁的 draft 状态。
 
 | 规则 | 值 |
 |---|---|

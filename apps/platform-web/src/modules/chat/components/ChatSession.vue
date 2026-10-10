@@ -42,6 +42,7 @@ import {
 import {
   useChatSession,
   extractRuntimeModelErrorMessage,
+  RUNTIME_MODEL_ERROR_MESSAGES,
 } from "../composables/useChatSession";
 import { useChatAttachments } from "../composables/useChatAttachments";
 import { useTranscriptMessages } from "../composables/useTranscriptMessages";
@@ -372,6 +373,17 @@ const isModeLocked = computed(
   () => busy.value || hasPendingInterrupts.value || checking.value,
 );
 const localError = ref("");
+const isPrivacyBlockedError = computed(() => {
+  const currentMsg =
+    error.value ||
+    streamError.value ||
+    localError.value ||
+    connectionMessage.value;
+  return (
+    currentMsg ===
+    RUNTIME_MODEL_ERROR_MESSAGES["runtime.privacy.redaction_failed"]
+  );
+});
 const {
   models,
   modelsLoading,
@@ -1671,7 +1683,11 @@ defineExpose({
         error || streamError || localError || connectionMessage
       }}</span>
       <button
-        v-if="action?.status !== 'unknown' && action?.status !== 'submitting'"
+        v-if="
+          action?.status !== 'unknown' &&
+          action?.status !== 'submitting' &&
+          !isPrivacyBlockedError
+        "
         class="underline"
         @click="emit('reconnect')"
       >

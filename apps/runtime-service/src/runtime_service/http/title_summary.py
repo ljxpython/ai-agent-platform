@@ -8,6 +8,8 @@ from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
 from runtime_service.auth.platform import authenticate
+from runtime_service.runtime import verified_delegation_from_user
+from runtime_service.runtime.pii import load_pii_redaction_config, pii_config_for_facts
 from runtime_service.utils.title_summarizer import summarize_thread_title
 
 logger = logging.getLogger(__name__)
@@ -40,20 +42,34 @@ async def summarize_thread_title_endpoint(
     """基于提供的首轮对话内容，调用轻量 Agent 提炼不超过 10 字的精炼标题。"""
     if not thread_id or not thread_id.strip():
         raise HTTPException(status_code=400, detail="Invalid thread_id")
+    user = None
     if authorization:
-        facts = await authenticate(authorization)
-        if facts.get("runtime_scope", {}).get("operation") == "usage-read":
+        user = await authenticate(authorization)
+        if user.get("runtime_scope", {}).get("operation") == "usage-read":
             raise HTTPException(status_code=403, detail="usage scope denied")
 
     dict_messages = [msg.model_dump() for msg in payload.messages]
 
     try:
-        title = await summarize_thread_title(dict_messages)
+        policy = load_pii_redaction_config()
+        if policy.enabled:
+            facts = verified_delegation_from_user(user) if user is not None else None
+            if (
+                facts is None
+                or facts.scope.thread_id != thread_id
+                or facts.scope.operation not in {"read", "thread-edit"}
+            ):
+                return SummarizeTitleResponse(thread_id=thread_id, title="新对话")
+            title = await summarize_thread_title(
+                dict_messages, pii_config=pii_config_for_facts(facts, thread_id)
+            )
+        else:
+            title = await summarize_thread_title(dict_messages)
         return SummarizeTitleResponse(thread_id=thread_id, title=title)
     except Exception as exc:
         logger.error(
-            "title_summary: unexpected error summarizing title for thread %s: %s",
+            "title_summary_failed thread=%s type=%s",
             thread_id,
-            exc,
+            type(exc).__name__,
         )
         return SummarizeTitleResponse(thread_id=thread_id, title="新对话")

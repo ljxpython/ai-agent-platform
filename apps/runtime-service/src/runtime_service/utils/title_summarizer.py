@@ -13,6 +13,15 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_deepseek import ChatDeepSeek
 
+from runtime_service.middlewares.pii_redaction import PiiRedactionMiddleware
+from runtime_service.runtime.pii import (
+    PiiRedactionConfig,
+    contains_pii,
+    load_pii_redaction_config,
+    redact_messages,
+    redact_text,
+)
+
 logger = logging.getLogger(__name__)
 
 TITLE_SYSTEM_PROMPT = """你是一个极简会话标题提炼专家。
@@ -45,7 +54,9 @@ def clean_generated_title(raw_title: str) -> str:
     return cleaned[:10].strip()
 
 
-def build_title_summarizer_agent(model: BaseChatModel | None = None) -> Any:
+def build_title_summarizer_agent(
+    model: BaseChatModel | None = None, pii_config: PiiRedactionConfig | None = None
+) -> Any:
     """根据 runtime-service/.env 构建符合 LangChain 范式的轻量 Agent。"""
     if model is None:
         try:
@@ -75,12 +86,16 @@ def build_title_summarizer_agent(model: BaseChatModel | None = None) -> Any:
         model=model,
         tools=[],
         system_prompt=TITLE_SYSTEM_PROMPT,
+        middleware=[PiiRedactionMiddleware(pii_config)]
+        if pii_config and pii_config.enabled
+        else [],
         name="title_summarizer_agent",
     )
 
 
 def _format_messages_for_agent(
     messages: Sequence[dict[str, Any] | BaseMessage],
+    pii_config: PiiRedactionConfig | None = None,
 ) -> list[BaseMessage]:
     """格式化输入对话为明确的提炼指令材料，兼顾会话起初目标与最新讨论进展。"""
     dialogue_lines: list[str] = []
@@ -93,6 +108,7 @@ def _format_messages_for_agent(
         role = "用户"
         content = ""
         if isinstance(msg, BaseMessage):
+            msg = redact_messages([msg], pii_config)[0]
             content = str(msg.content).strip()
             if isinstance(msg, HumanMessage):
                 role = "用户"
@@ -112,6 +128,7 @@ def _format_messages_for_agent(
             content = str(msg.get("content", "")).strip()
 
         if content:
+            content = redact_text(content, pii_config)
             cleaned_content = content.replace("\r", " ").replace("\n", " ").strip()
             dialogue_lines.append(f"{role}: {cleaned_content[:200]}")
 
@@ -127,8 +144,13 @@ def _format_messages_for_agent(
     return [HumanMessage(content=prompt)]
 
 
-def _fallback_extract_title(messages: Sequence[dict[str, Any] | BaseMessage]) -> str:
+def _fallback_extract_title(
+    messages: Sequence[dict[str, Any] | BaseMessage],
+    pii_config: PiiRedactionConfig | None = None,
+) -> str:
     """当 LLM 不可用或超时时的保底规则提取。"""
+    if pii_config is not None and pii_config.enabled:
+        return "新对话"
     for msg in messages:
         content = ""
         if isinstance(msg, BaseMessage) and isinstance(msg, HumanMessage):
@@ -154,17 +176,22 @@ async def summarize_thread_title(
     *,
     model: BaseChatModel | None = None,
     agent: Any = None,
+    pii_config: PiiRedactionConfig | None = None,
 ) -> str:
     """对外统一异步调用入口，提炼不超过 10 个字符的高精炼会话标题。"""
     if not messages:
         return "新对话"
 
-    formatted_msgs = _format_messages_for_agent(messages)
-    if not formatted_msgs:
-        return "新对话"
-
     try:
-        title_agent = agent or build_title_summarizer_agent(model=model)
+        pii_config = (
+            pii_config if pii_config is not None else load_pii_redaction_config()
+        )
+        formatted_msgs = _format_messages_for_agent(messages, pii_config)
+        if not formatted_msgs:
+            return "新对话"
+        title_agent = agent or build_title_summarizer_agent(
+            model=model, pii_config=pii_config
+        )
         response = await title_agent.ainvoke({"messages": formatted_msgs})
         msg_list = response.get("messages") or []
         if msg_list:
@@ -174,13 +201,25 @@ async def summarize_thread_title(
                 last_msg, "additional_kwargs"
             ):
                 raw_title = last_msg.additional_kwargs.get("reasoning_content", "")
+            if pii_config.enabled and (
+                contains_pii(str(raw_title), pii_config)
+                or re.search(
+                    r"(?:EMAIL|API_KEY|NATIONAL_ID|CREDIT_CARD|PHONE)_", str(raw_title)
+                )
+            ):
+                return "新对话"
             cleaned = clean_generated_title(str(raw_title))
             if cleaned and cleaned != "新对话":
                 return cleaned
-        return _fallback_extract_title(messages)
+        return _fallback_extract_title(messages, pii_config)
     except Exception as exc:
         logger.warning(
-            "title_summarizer: failed to summarize title via agent: %s, falling back to rule extraction",
-            exc,
+            "title_summarizer_failed type=%s",
+            type(exc).__name__,
         )
-        return _fallback_extract_title(messages)
+        # A policy load failure must not fall back to extracting raw user text.
+        return (
+            "新对话"
+            if pii_config is None
+            else _fallback_extract_title(messages, pii_config)
+        )

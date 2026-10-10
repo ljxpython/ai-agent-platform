@@ -26,6 +26,10 @@
 - CONTEXT.md 只保留"当前有效"的信息，不堆历史；过期信息删掉，历史在 `docs/projects/` 和 `docs/changes/` 里
 - **改动涉及具体服务时**，在同步 CONTEXT.md 后额外读取该服务规范入口（见「服务边界 → 服务规范读取规则」）
 
+### Worktree 开发与联调
+
+在关联 Git Worktree 中开发，或准备启停本地服务、迁移、联调、执行 E2E 测试前，必须阅读 [Worktree 开发与资源隔离规范](docs/standards/worktree-development.md)。资源统一通过 `scripts/local-stack.sh` 初始化、分配和管理；禁止缺配置时回退到主工作区，禁止共享其他 Worktree 的 `.venv` / `node_modules`，使用 uv/pnpm 缓存复用依赖。具体资源、测试和清理规则只维护在该规范中。
+
 ## 经验库读取规则
 
 **开始处理某个服务改动前，按需读取 `docs/lessons/` 下对应的经验文件（文件存在时）。**

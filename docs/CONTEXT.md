@@ -1,15 +1,17 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-08（Agent Workspace 执行容错与安全报告已与会话停止、运行准备幂等、执行预算、超时治理、Token/Cost 跟踪等全量专项完成代码级融合合并入主干；非前端范围全部闭环并固化前端交接）。
+> **最后更新：** 2026-10-10（F05 全栈闭环完成：后端脱敏算法与网关、前端错误消费与草稿保留、Playwright E2E 闭环与全链路四态联合验收 100% 绿灯通过，整体 done）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-08
+**最后更新：** 2026-10-10
 
 ## 最近改动
+
+2026-10-10 | **F05 模型上下文 PII 脱敏全栈闭环完成**：后端算法、网关、四图接线与防注入已实装；前端完成 `useChatSession.ts`、`ChatSession.vue` 脱敏错误消费与 fast-path 草稿/附件保留重构；Playwright + Chromium 驱动 4 个端到端自动化测试（覆盖 1440 桌面与 390 移动视口、真实大模型流式调用与脱敏占位符、用户原输入保持、阻断错误消费草稿保留、用户正文输入错误码负例不误判）全部 100% 绿灯通过；单测 55 项全绿；7 张过程截图落盘归档；本地隔离专属栈持续存活就绪供验收。见 [专项](projects/20261009-agent-pii-redaction/README.md)。
 
 2026-10-08 | **Agent Workspace 执行容错与安全报告**：done（非前端范围闭环，代码及测试合入主干）。共享 Workspace 失败保护、不可达/结果未知停止 Run、取消清理与资源安全回收、v1 诊断记录与 platform-api 精确五码投影全部实装闭环；本地与 Docker 真实验证通过，前端交接报告与 DTO 已固化。见 [专项](projects/20261007-agent-workspace-resilience/README.md)。
 
@@ -31,6 +33,7 @@
 
 ## 活跃项目
 
+- [F05 Agent 模型上下文 PII 脱敏](projects/20261009-agent-pii-redaction/README.md)：`done`；全栈闭环完成，后端算法网关、前端错误消费草稿保留、Playwright 自动化测试闭环及全链路 E01-E03 验收 100% 通过。未部署现役。
 - [Agent Workspace 执行容错与安全失败报告](projects/20261007-agent-workspace-resilience/README.md)：`done`（非前端本地与 Docker 范围全部闭环，全栈代码与测试已合并进入主干；前端交接与报告已固化）；后端五精确安全码、结果未知停止、取消回收与诊断记录已融合闭环。未部署现役。
 - [Agent通用运行取消与中断能力](projects/20261007-agent-run-cancellation/README.md)：`done`（全链路闭环）；后端三接口、持久Stop/恢复、inbox屏障与确定性报告完成；前端Stop控制器状态机、Banner、Drawer与真实模型Playwright E2E自动化闭环完成（F01–F10闭环，截图已留痕，用户实测验收合格）；B01解除；B02等待正式PyPI发布指令/正式源锁接入。
 - [Agent 运行准备幂等与有界重试](projects/20261007-agent-production-capabilities/README.md)：done；公共 prepare latch、目录修复、有界重试与诊断接口已实现，前端双专职子组件实装，49 项单测与 Playwright + Chromium 全链路自动化 E2E 闭环全部通过。未部署现役。
@@ -66,8 +69,8 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-08 | 锁定/安装正式 post42；四图主子共享 attempt 预算/软收尾，模型 error 与 Worker timeout 分开；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理（自有 ledger/缓存计价）与运行准备幂等/有界重试安全摘要全链路融合就绪；新增持久Stop/租约恢复、inbox屏障、资源证据及确定性报告；Workspace 执行容错、结果未知停止、取消回收与安全记录融合闭环；post43候选验证通过，B01解除，未部署现役。 |
-| platform-api | 2026-10-08 | 私有预算注入拒绝/脱敏及停止确认透传；预算四精确安全码、custom 白名单、tasks/debug 错误清洗；runtime_prepare 私有字段防注入/公开剥离；diagnostics v1 增 optional preparations/retries 与 workspace_executions；Workspace 五码精确投影与 DTO 校验完成；模型恢复策略、上下文容量 CRUD 与 Run 诊断端点、模型费率快照与 Usage 授权网关代理、会话 cancel/detail/list 及精确委托全量实装；未部署现役。 |
+| runtime-service | 2026-10-09（F05 后端完成） | 既有四图预算/软收尾、模型稳定性、工具容错、上下文、Usage、准备/重试、Stop 与 Workspace 保护继续复用；依赖为 GraphHarbor post43、LangChain 1.3.17、DeepAgents 0.7.8、Langfuse 4.15.1。F05 默认关闭，模型副本/旁路与结构失效阻断实装；真实收包、取消、恢复/轮换/回退和打包已验，前端/联合验收待接续，未部署现役。 |
+| platform-api | 2026-10-09（F05 后端完成） | 私有预算注入拒绝/脱敏及停止确认透传；预算四精确安全码、custom 白名单、tasks/debug 错误清洗；runtime_prepare 私有字段防注入/公开剥离；diagnostics v1 增 optional preparations/retries 与 workspace_executions；Workspace 五码、Usage 与 Stop 契约继续复用。F05 精确隐私失败投影、私有策略剥离与标题 Thread 委托已验，51 项/300 subtests 定向通过；六个旧 fixture 失败已对照 HEAD，未部署现役。 |
 | platform-web | 2026-10-08 | 会话停止控制器与状态机、停止报告抽屉及 Banner 全链路实装，Playwright 真实模型 E2E 与人工实测验收通过；运行准备与重试摘要、预算告警投影、超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板、上下文容量展示、Run/Thread 用量与成本检查器、open-swe 水位表全部融合；全仓单测、vue-tsc 与生产打包全绿。未部署现役。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-08 | 整单结束前须逐项核对未完成任务，未完成时只记Phase；用户批准的多会话发布协作经验已写入ai-workflow经验库，恢复时先核对正式产物归属与锁文件。 |
 

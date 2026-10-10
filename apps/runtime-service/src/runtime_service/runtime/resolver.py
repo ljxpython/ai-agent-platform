@@ -43,6 +43,11 @@ _IDENTITY_FIELDS = frozenset(
 )
 _FORBIDDEN_CONFIGURABLE_FIELDS = frozenset(
     {
+        "pii_redaction",
+        "pii_config",
+        "pii_token_secret",
+        "pii_scope",
+        "pii_detectors",
         "backend",
         "backend_factory",
         "command",

@@ -112,6 +112,7 @@ details生产者：core/errors/handlers.py的RequestValidationError；modules/ru
 | run_start_in_progress | 409 | Run start is in progress | `apps/platform-web/src/services/runtime-gateway/workspace.service.ts` |
 | idempotency_key_conflict | 409 | Idempotency key conflict | `apps/platform-web/src/services/runtime-gateway/workspace.service.ts` |
 | runtime.tool.not_allowed | 403 | Tool access denied | `apps/runtime-service/src/runtime_service/runtime/tool_access.py` |
+| runtime.privacy.redaction_failed | 500（对外 502） | 隐私保护处理失败，本次模型请求未发送。 | `apps/runtime-service/src/runtime_service/webapp.py`；`apps/platform-api/tests/test_pii_error_projection.py` |
 | image_scope_denied | 403 | Image scope denied | `apps/runtime-service/src/runtime_service/http/images.py` |
 | runtime_target_denied | 403 | Runtime target denied | `apps/runtime-service/src/runtime_service/http/images.py` |
 | image_capability_unavailable | 409 | Image capability unavailable | `apps/runtime-service/src/runtime_service/http/images.py` |
@@ -171,6 +172,8 @@ memory wrapper不携带原文extra；可以保留公共upstream与来源状态�
 | apps/platform-web/src/services/threads/session.service.ts | 仅平台pending UUID驱动reconcile；不因502/503/504盲目重建 |
 
 固定机器码不意味着所有页面本期都改为公共解析：只修改会丢字段的service边界，其余页面加定向回归。未来新增公开码必须同步本表、平台映射和契约测试，不用运行时自动扫描源码作为生产逻辑。
+
+2026-10-09 F05 增量：`runtime.privacy.redaction_failed` 同时用于精确执行错误槽位；`RuntimePrivacyError.message` 必须恰为该码，或对象为已投影的固定 `{type,code,message}`。嵌入字符串、冲突 code 和普通用户正文不分类。来源 HTTP 500 保留机器码但仍遵守 5xx→502；流内不改 Run 状态、不追加 Envelope、不自动重发。完整证据见 [F05 验证](../20261009-agent-pii-redaction/verification.md)。
 
 ## F. 消息队列HTTP字符串码
 

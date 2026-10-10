@@ -9,6 +9,7 @@ from langchain.tools import ToolRuntime
 from langchain_core.tools import ToolException, tool
 
 from runtime_service.runtime import verified_delegation_from_user
+from runtime_service.runtime.pii import PiiRedactionConfig
 from runtime_service.services.dearflow_agent.external_task_storage import (
     ExternalTaskStorage,
 )
@@ -29,8 +30,11 @@ def receipt(row):
     }
 
 
-def build_media_tools(workspace: ImageWorkspace):
-    images = {item.name: item for item in build_image_tools(workspace)}
+def build_media_tools(
+    workspace: ImageWorkspace,
+    pii_config: PiiRedactionConfig | None = None,
+):
+    images = {item.name: item for item in build_image_tools(workspace, pii_config)}
 
     def context(runtime):
         facts = verified_delegation_from_user(runtime.server_info.user)

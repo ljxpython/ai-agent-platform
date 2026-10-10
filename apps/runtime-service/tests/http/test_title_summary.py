@@ -77,3 +77,20 @@ def test_summarize_title_endpoint_handles_exception_gracefully(client):
         data = response.json()
         assert data["thread_id"] == "th-crash"
         assert data["title"] == "新对话"
+
+
+def test_enabled_title_requires_trusted_thread_scope(client, monkeypatch):
+    monkeypatch.setenv("RUNTIME_PII_REDACTION_ENABLED", "true")
+    monkeypatch.setenv(
+        "RUNTIME_PII_TOKEN_SECRET", "synthetic-redaction-secret-32-bytes"
+    )
+    with patch(
+        "runtime_service.http.title_summary.summarize_thread_title",
+        new_callable=AsyncMock,
+    ) as summarize:
+        response = client.post(
+            "/internal/threads/th-12345/title/summarize",
+            json={"messages": [{"role": "user", "content": "alice@example.test"}]},
+        )
+    assert response.status_code == 200 and response.json()["title"] == "新对话"
+    summarize.assert_not_awaited()

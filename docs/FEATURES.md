@@ -92,7 +92,7 @@
 
 ## runtime-service
 
-| 功能 | 状态 | 关联文档 |
+| Agent 模型上下文 PII 脱敏（F05） | 已完成：全链路闭环，默认关闭，唯一五检测器/Thread HMAC、四图请求副本/摘要/旁路、失效阻断与策略防注入已验；前端完成 useChatSession 错误消费与草稿保留重构，隐藏误导恢复按钮；Playwright 4 个 E2E 自动化端到端测试与单测全部绿灯通过，未部署现役 | [实施与取舍](projects/20261009-agent-pii-redaction/README.md) · [前端交接](projects/20261009-agent-pii-redaction/frontend-handoff.md) |
 | 通用运行准备幂等与有界重试 | 已完成：全链路闭环，两 Agent workspace latch、资源安全修复、单一重试负责人/最多 2 次尝试、部分流保护及安全诊断；Platform Web 准备与重试专用子组件、主 Run 成功琥珀色降级；单测、本机故障恢复及 Playwright 全链路 E2E 验证通过，自主唤醒后置，未部署现役 | [方案与任务](projects/20261007-agent-production-capabilities/README.md) · [前端交接](projects/20261007-agent-production-capabilities/frontend-handoff.md) |
 | 通用 Agent Token/Cost 采集与持久化 | 全链路已完成：主/子图、摘要和可信旁路 callback、自有 Run/call ledger、缓存 TTL 与 Decimal 估算；真实隔离 PG/Worker/重启/回退与包含真实百炼大模型的 5 项 Playwright 端到端全部闭环，未部署现役 | [方案与任务](projects/20261007-agent-usage-cost-governance/02-runtime-usage.md) |
 | 通用 Agent 执行预算预警与软收尾 | 全链路 done：官方模型限额薄扩展、managed 图余量、幂等提示、四正式 graph 主/子接线和可选 invocation 软计时完成；253 passed，23 真实 Worker 场景通过；原 hard limits/end/error 不变，前端联合 F01-F04 全绿，未部署 | [项目入口](projects/20261007-agent-execution-budget/README.md) · [验证](projects/20261007-agent-execution-budget/verification.md) |
@@ -128,6 +128,7 @@
 
 | 功能 | 状态 | 关联文档 |
 |---|---|---|
+| Worktree 本地联调资源隔离 | 已完成：首次随机登记端口并稳定复用，独立配置/数据/进程，共享依赖缓存及 E2E 地址接线；继承 app 配置、默认 admin/admin123、首次只读复制基础数据并重加密模型凭据，排除历史/令牌/定时任务；三栈、真实 Worker/Workspace、浏览器登录和重启验收通过 | [规范](standards/worktree-development.md) · [专项](projects/20261010-worktree-local-stack/README.md) |
 | Agent通用运行取消与中断闭环 | 已完成：全链路闭环。后端会话停止、回执详情/分页、幂等重试、恢复与审计已闭环；前端完成会话级停止控制、RunStopReportBanner/Details 状态反馈与报告抽屉、队列刷新、多端隔离与防竞态；Playwright E2E/响应式与单元测试全绿 | [方案与任务](projects/20261007-agent-run-cancellation/README.md) · [前端交接](projects/20261007-agent-run-cancellation/frontend-handoff.md) |
 | 跨服务规范治理专项群 | 四专项仅验收新Web+新API+当前锁定Runtime/GraphHarbor，不设置旧版兼容或混用测试；错误响应与追踪本期Final已完成，SSE/JWT按各专项状态推进；AI路由按仓库级文档小改动处理 | [总入口](projects/20260922-cross-service-governance/README.md) |
 | Agent 通用 Token/Cost 跟踪治理 | 非前端 done：开发/Final/隔离真实链路与冻结契约已交付；既有全量失败已记录，前端同事接续，整项目 partial，未生产部署 | [项目入口](projects/20261007-agent-usage-cost-governance/README.md) |

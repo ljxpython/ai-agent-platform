@@ -23,6 +23,10 @@ class RuntimeExecutionError(RuntimeErrorBase):
     """Confirmed model failure; Worker must not requeue it as infrastructure failure."""
 
 
+class RuntimePrivacyError(RuntimeExecutionError):
+    """Privacy guard failure; raw model input must never be retried or sent."""
+
+
 class RuntimeWorkspaceError(RuntimeError):
     """Must escape filesystem tools' ValueError-to-parameter-error handling."""
 

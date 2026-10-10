@@ -23,6 +23,7 @@ from pydantic import SecretStr
 
 from runtime_service.observability.usage import usage_only_config
 from runtime_service.runtime.errors import RuntimeWorkspaceError
+from runtime_service.runtime.pii import PiiRedactionConfig, redact_text
 from runtime_service.tools.errors import tool_error_handler
 from runtime_service.workspace.image_refs import (
     ASSET_MAX_BYTES,
@@ -439,7 +440,10 @@ def resolve_vision_config() -> tuple[str, str, str, int]:
     return model, api_key, base_url, max_tokens
 
 
-def build_image_tools(workspace: ImageWorkspace):
+def build_image_tools(
+    workspace: ImageWorkspace,
+    pii_config: PiiRedactionConfig | None = None,
+):
     async def _extract_and_save_image(
         result: Any, operation: str
     ) -> tuple[str, dict[str, Any]]:
@@ -547,6 +551,9 @@ def build_image_tools(workspace: ImageWorkspace):
         if not question.strip() or len(question) > 8000:
             raise ToolException("Question must contain 1 to 8000 characters.")
         try:
+            safe_question = redact_text(question, pii_config)
+            if not isinstance(safe_question, str):
+                raise ToolException("image_analysis_unavailable")
             data = await asyncio.to_thread(workspace.read, image_path)
             _, mime = image_type(data)
             model_name, api_key, base_url, max_tokens = resolve_vision_config()
@@ -572,7 +579,7 @@ def build_image_tools(workspace: ImageWorkspace):
                     {
                         "role": "user",
                         "content": [
-                            {"type": "text", "text": question},
+                            {"type": "text", "text": safe_question},
                             {
                                 "type": "image_url",
                                 "image_url": {

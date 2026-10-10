@@ -5,6 +5,7 @@
 1. [资料导航](./runtime-service-reading-guide.md)
 2. [开发范式与规则](./runtime-service-development-standard.md)
 3. [运行与验证](./runtime-service-onboarding-and-verification.md)
+4. [模型上下文隐私保护](./model-context-privacy.md)
 
 ## 权威优先级
 

@@ -15,6 +15,7 @@ from runtime_service.middlewares import (
     ModelCallTimeoutMiddleware,
     ModelErrorMiddleware,
     ModelResilienceMiddleware,
+    PiiRedactionMiddleware,
     TimeoutWrapupMiddleware,
     resolve_wrapup_after_seconds,
 )
@@ -39,6 +40,7 @@ from runtime_service.runtime import (
 from runtime_service.runtime.auth import VerifiedDelegation
 from runtime_service.runtime.capabilities import REFERENCE_TOOLS
 from runtime_service.runtime.errors import RuntimeAuthError, RuntimeResolutionError
+from runtime_service.runtime.pii import load_pii_redaction_config, pii_config_for_facts
 from runtime_service.runtime.run_budget import RUN_BUDGET_KEY, read_run_budget
 from runtime_service.services.demo.workflow_demo.workflow import build_graph
 
@@ -123,6 +125,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     """Build the real model-backed workflow Agent with optional HITL routing."""
 
     configurable = _configurable(config)
+    load_pii_redaction_config()
     if configurable and set(configurable) <= {
         "graph_id",
         "thread_id",
@@ -136,6 +139,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
         return build_graph(unavailable_model, probe_only=True)
 
     facts, local = _facts(config)
+    pii_config = pii_config_for_facts(facts, configurable.get("thread_id"))
     startup.authorize(config, facts)
     with startup.phase("factory.context_resolution"):
         run_budget = read_run_budget(
@@ -211,6 +215,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                     if bundle.policy.enabled
                     else None
                 ),
+                *([PiiRedactionMiddleware(pii_config)] if pii_config.enabled else []),
             ],
             context_schema=RuntimeContext,
             name="workflow_demo_model",

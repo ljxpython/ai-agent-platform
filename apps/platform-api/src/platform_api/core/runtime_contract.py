@@ -63,6 +63,11 @@ PROTOCOL_V2_EVENT_CHANNELS = {
 PROTOCOL_V2_RUN_DURABILITY = {"sync", "async", "exit"}
 PROTOCOL_V2_RUN_DISCONNECT = {"cancel", "continue"}
 PRIVATE_RUNTIME_STATE_KEYS = {
+    "pii_redaction",
+    "pii_config",
+    "pii_token_secret",
+    "pii_scope",
+    "pii_detectors",
     "_platform_model_resilience",
     "model_resilience",
     "fallback_model_id",

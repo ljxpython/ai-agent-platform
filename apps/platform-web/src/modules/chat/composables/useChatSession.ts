@@ -59,28 +59,71 @@ export const RUNTIME_MODEL_ERROR_MESSAGES: Record<string, string> = {
   "runtime.model.stream_interrupted": "本次回答中断，已保留部分内容。",
   "runtime.model.provider_rejected": "模型配置或额度不可用，请联系项目管理员。",
   "runtime.model.fallback_incompatible": "备用模型不支持当前请求，请调整配置。",
+  "runtime.privacy.redaction_failed": "隐私保护处理失败，本次模型请求未发送。",
 };
 
 export function extractRuntimeModelErrorMessage(cause: unknown): string | null {
   if (!cause) return null;
+  if (typeof cause === "string") {
+    if (RUNTIME_MODEL_ERROR_MESSAGES[cause]) {
+      return RUNTIME_MODEL_ERROR_MESSAGES[cause];
+    }
+    if (
+      cause.includes("runtime.privacy.redaction_failed") ||
+      cause.includes("隐私保护处理失败，本次模型请求未发送。")
+    ) {
+      return "隐私保护处理失败，本次模型请求未发送。";
+    }
+    return null;
+  }
   if (typeof cause === "object" && cause !== null) {
     const raw = cause as Record<string, unknown>;
     const errorObj =
       raw.error && typeof raw.error === "object"
         ? (raw.error as Record<string, unknown>)
         : raw;
-    const msg =
-      typeof errorObj.message === "string"
-        ? errorObj.message
-        : typeof raw.message === "string"
-          ? raw.message
-          : "";
-    if (msg && RUNTIME_MODEL_ERROR_MESSAGES[msg]) {
-      return RUNTIME_MODEL_ERROR_MESSAGES[msg];
+    const innerCause =
+      raw.cause && typeof raw.cause === "object"
+        ? (raw.cause as Record<string, unknown>)
+        : undefined;
+
+    // 1. 优先提取 code 槽位（覆盖对象错误码、HTTP Envelope 与解包后的 Error）
+    const candidateCodes: unknown[] = [
+      raw.code,
+      errorObj.code,
+      innerCause?.code,
+      (errorObj.cause as Record<string, unknown> | undefined)?.code,
+    ];
+    for (const code of candidateCodes) {
+      if (typeof code === "string") {
+        if (RUNTIME_MODEL_ERROR_MESSAGES[code]) {
+          return RUNTIME_MODEL_ERROR_MESSAGES[code];
+        }
+        if (code.includes("runtime.privacy.redaction_failed")) {
+          return "隐私保护处理失败，本次模型请求未发送。";
+        }
+      }
     }
-  }
-  if (typeof cause === "string" && RUNTIME_MODEL_ERROR_MESSAGES[cause]) {
-    return RUNTIME_MODEL_ERROR_MESSAGES[cause];
+
+    // 2. 兼容从 message 字段携带错误码或固定文案（含带请求编号后缀）的场景
+    const candidateMsgs: unknown[] = [
+      errorObj.message,
+      raw.message,
+      innerCause?.message,
+    ];
+    for (const msg of candidateMsgs) {
+      if (typeof msg === "string") {
+        if (RUNTIME_MODEL_ERROR_MESSAGES[msg]) {
+          return RUNTIME_MODEL_ERROR_MESSAGES[msg];
+        }
+        if (
+          msg.includes("runtime.privacy.redaction_failed") ||
+          msg.includes("隐私保护处理失败，本次模型请求未发送。")
+        ) {
+          return "隐私保护处理失败，本次模型请求未发送。";
+        }
+      }
+    }
   }
   return null;
 }
@@ -1149,6 +1192,11 @@ export function useChatSession(options: {
           }
           actions.rejectUnsent();
           removeUncommittedMessage();
+          const runtimeErr = extractRuntimeModelErrorMessage(cause);
+          if (runtimeErr) {
+            fail(cause);
+            return false;
+          }
           if (threadId.value) {
             try {
               await refreshAccessPolicy();

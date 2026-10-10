@@ -1,6 +1,6 @@
 ---
 status: active
-last_verified: 2026-10-07
+last_verified: 2026-10-09
 confidence: high
 source_project: docs/projects/20260926-error-response-contract/verification.md
 ---
@@ -36,6 +36,8 @@ Provider TimeoutError/APITimeoutError 保持泛化，不解释为 Run 超时；�
 [执行预算专项](../projects/20261007-agent-execution-budget/verification.md)。
 
 已知 Workspace 错误按完整五码精确投影为稳定码和固定说明，原生 `RuntimeWorkspaceError` 的 `message` 可作为精确机器码来源；不从嵌入文本抽码。详见 [Workspace 交接契约](../projects/20261007-agent-workspace-resilience/frontend-handoff.md)。不修改原生 Run 状态，普通消息/工具正文、artifact/result 不是执行错误槽位；私有字段仍递归清理。
+
+隐私保护失败仅识别完整 `runtime.privacy.redaction_failed` 字符串，或 `RuntimePrivacyError` 的精确机器码对象；固定说明为“隐私保护处理失败，本次模型请求未发送。”。Runtime HTTP 来源 500 对外转 502，保留该码及 `error.extra.upstream_status_code=500`；已建流的失败沿原执行错误槽位投影，不追加 HTTP Envelope。说明只指失败的这一次模型调用，不代表整个 Run 从未调用模型或工具副作用已回滚。当前 Run GET/列表与 Thread GET 不提供 error 字段，历史原因应读取对应持久事件或 state/history 的 task 错误，不能用最新 Thread 原因补历史归因。该错误不触发登录、权限清理或自动重发原文。契约测试与实施边界见 [F05 验证](../projects/20261009-agent-pii-redaction/verification.md)。
 
 `GET /api/langgraph/threads/{thread_id}/runs/{run_id}/diagnostics` 的 provider 分类是 HTTP 200 安全 DTO 数据，不是 HTTP 错误码；`provider_auth_failed/provider_access_denied` 不触发平台登出或撤权。未启用/未录入/观测后端不可用以 availability 返回；授权拒绝、非法上游 DTO 等仍走本 Envelope。见 [诊断契约](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md)。同一 v1 DTO 新增可选 `workspace_executions=[]`（最多20条），以及 graph/startup 的 Workspace 白名单错误码；不新增 HTTP 错误码、路由或权限，`model_errors` 保持模型专用。Workspace 执行错误仍是原生失败终态数据，HTTP200 诊断或 SSE 握手成功不代表 Run 成功。
 

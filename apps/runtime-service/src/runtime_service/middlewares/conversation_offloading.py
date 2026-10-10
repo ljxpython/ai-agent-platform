@@ -18,7 +18,6 @@ import openai
 from deepagents.graph import DeepAgentState
 from deepagents.middleware.patch_tool_calls import PatchToolCallsMiddleware
 from deepagents.middleware.summarization import (
-    SummarizationMiddleware,
     SummarizationState,
 )
 from langchain.agents.middleware.types import (
@@ -44,7 +43,9 @@ from langgraph.types import Command
 from runtime_service.middlewares.model_call_timeout import (
     resolve_model_call_timeout_seconds,
 )
+from runtime_service.middlewares.pii_redaction import PiiSummarizationMiddleware
 from runtime_service.runtime.errors import RuntimeResolutionError
+from runtime_service.runtime.pii import PiiRedactionConfig, redact_messages
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +162,7 @@ class _CheckedArchiveBackend:
                 operation.pending.discard(task)
 
 
-class ConversationOffloadingMiddleware(SummarizationMiddleware):
+class ConversationOffloadingMiddleware(PiiSummarizationMiddleware):
     """Keep official cutoff, pairing, archive and checkpoint semantics."""
 
     state_schema = OffloadingState
@@ -178,8 +179,10 @@ class ConversationOffloadingMiddleware(SummarizationMiddleware):
         context_window_tokens: int | None = None,
         output_budget_tokens: int | None = None,
         manual: bool = False,
+        pii_config: PiiRedactionConfig | None = None,
     ) -> None:
         self.manual = manual
+        self.pii_config = pii_config
         self.capacity = context_window_tokens
         self.output = output_budget_tokens
         self.input_budget = _input_budget(model, self.capacity, self.output)
@@ -198,6 +201,7 @@ class ConversationOffloadingMiddleware(SummarizationMiddleware):
         super().__init__(
             model=summary_model,
             backend=backend,
+            pii_config=pii_config,
             trigger=("tokens", max(1, math.floor(0.85 * self.input_budget))),
             keep=("tokens", max(1, math.floor(0.10 * self.input_budget))),
             trim_tokens_to_summarize=self.input_budget,
@@ -284,6 +288,9 @@ class ConversationOffloadingMiddleware(SummarizationMiddleware):
         started = time.monotonic()
         prompt_tokens = None
         try:
+            messages_to_summarize = redact_messages(
+                messages_to_summarize, self.pii_config
+            )
             limit = self._lc_helper.trim_tokens_to_summarize
             if (
                 messages_to_summarize

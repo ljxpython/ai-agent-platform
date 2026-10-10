@@ -8,11 +8,16 @@ from typing import Any
 from langchain.agents.middleware import HumanInTheLoopMiddleware
 from langchain_core.messages import HumanMessage
 
+from runtime_service.runtime.pii import PiiRedactionConfig
 from runtime_service.tools.images import ImageWorkspace, build_image_tools
 
 
 class ImageToolsMiddleware(HumanInTheLoopMiddleware):
-    def __init__(self, workspace: ImageWorkspace):
+    def __init__(
+        self,
+        workspace: ImageWorkspace,
+        pii_config: PiiRedactionConfig | None = None,
+    ):
         super().__init__(
             interrupt_on={
                 "generate_image": {
@@ -24,7 +29,7 @@ class ImageToolsMiddleware(HumanInTheLoopMiddleware):
             }
         )
         self.workspace = workspace
-        self.tools = build_image_tools(workspace)
+        self.tools = build_image_tools(workspace, pii_config)
 
     async def awrap_model_call(
         self,
