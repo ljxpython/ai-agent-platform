@@ -8,7 +8,15 @@ REVIEW = "review"
 WORKSPACE_WRITE = "workspace_write"
 FULL_ACCESS = "full_access"
 ACCESS_POLICIES = frozenset((REVIEW, WORKSPACE_WRITE, FULL_ACCESS))
-WORKSPACE_WRITE_TOOLS = frozenset(("write_file", "edit_file", "execute"))
+WORKSPACE_WRITE_TOOLS = frozenset(
+    (
+        "write_file",
+        "edit_file",
+        "execute",
+        "background_execute",
+        "cancel_background_task",
+    )
+)
 
 
 def interrupts_for_access_policy(

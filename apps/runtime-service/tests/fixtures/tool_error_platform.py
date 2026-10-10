@@ -173,6 +173,29 @@ def platform_app(spec):
     )
 
     app = create_app()
+    model_values = {
+        "base_url": spec.get("provider_url", "https://unused.invalid"),
+        "name": "fixture",
+        "api_key": "synthetic",
+    }
+    if spec.get("real_model"):
+        from dotenv import dotenv_values
+
+        source = dotenv_values(
+            os.getenv(
+                "BACKGROUND_REAL_MODEL_ENV_FILE", str(Path.home() / ".my_best/.env")
+            )
+        )
+        required = ("GPT_PROXY_URL", "GPT_PROXY_DEFAULT_MODEL", "GPT_PROXY_API_KEY")
+        if any(not source.get(name) for name in required):
+            raise ValueError("Missing managed real-model test configuration")
+        model_values = dict(
+            zip(
+                ("base_url", "name", "api_key"),
+                (source[name] for name in required),
+                strict=True,
+            )
+        )
     settings = app.state.settings
     settings.platform_db_enabled = settings.platform_db_auto_create = True
     settings.database_url = "sqlite:///" + spec["database"]
@@ -246,11 +269,12 @@ def platform_app(spec):
                             id=model,
                             display_name="fixture",
                             provider="openai",
-                            base_url=spec.get("provider_url", "https://unused.invalid"),
+                            base_url=model_values["base_url"],
                             protocol="openai",
-                            model_name="fixture",
+                            model_name=model_values["name"],
                             api_key_ciphertext=encrypt_api_key(
-                                "synthetic", master_key=settings.model_config_master_key
+                                model_values["api_key"],
+                                master_key=settings.model_config_master_key,
                             ),
                             enabled=True,
                         )

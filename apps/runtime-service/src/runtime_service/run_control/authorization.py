@@ -27,7 +27,7 @@ def _setting(name):
     return value
 
 
-def native_headers(row, operation):
+def native_headers(row, operation, *, policy_version="stop-control-v1"):
     facts = row["auth_facts"]
     stamp = int(time.time())
     payload = {
@@ -37,7 +37,7 @@ def native_headers(row, operation):
         "project_id": facts["project_id"],
         "role": facts["role"],
         "permissions": [],
-        "policy_version": "stop-control-v1",
+        "policy_version": policy_version,
         "allowed_model_ids": ["platform:no-enabled-model"],
         "delegation_version": 2,
         "tool_overrides": {},

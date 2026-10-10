@@ -1628,6 +1628,39 @@ class RuntimeGatewayService:
                 )
             )
         capabilities = await upstream.get_graph_capabilities(agent_key)
+        if capabilities.get("background_tasks"):
+            from platform_api.modules.runtime_policies.application import (
+                RuntimePolicyOverlayService,
+            )
+
+            def tool_policy():
+                return (
+                    RuntimePolicyOverlayService(
+                        session_factory=self._require_session_factory(),
+                        runtime_base_url=self._runtime_id,
+                    )
+                    .resolve_tool_overrides(
+                        project_id=project_id, user_id=actor.user_id, graph_id=agent_key
+                    )
+                    .get("tool_overrides", {})
+                )
+
+            restrictions = await run_in_threadpool(tool_policy)
+            capabilities = {
+                **capabilities,
+                "background_tasks": restrictions.get("background_task") is not False,
+                "background_tasks_start_enabled": capabilities.get(
+                    "background_tasks_start_enabled"
+                )
+                is True
+                and all(
+                    restrictions.get(name) is not False
+                    for name in ("execute", "background_execute")
+                )
+                and thread_access.allowed(
+                    actor, project_id, _thread_metadata(thread), "comment"
+                ),
+            }
         return {
             **capabilities,
             "terminal": bool(capabilities.get("terminal"))
@@ -1979,6 +2012,7 @@ class RuntimeGatewayService:
         parent_run_id: str | None = None,
         interrupt_id: str | None = None,
         scheduled_config: dict[str, Any] | None = None,
+        completion_config: dict[str, Any] | None = None,
         model_resilience_snapshot: ModelResilienceSettings | None = None,
     ) -> tuple[StoredRunRequest, Any]:
         """Persist submission identity; Agent Server owns execution and concurrency."""
@@ -2163,10 +2197,10 @@ class RuntimeGatewayService:
             thread_action=thread_action,
             model_resilience=snapshot_policy,
         )
-        if scheduled_config is not None:
+        if scheduled_config is not None or completion_config is not None:
             payload["config"]["configurable"] = {
                 **payload["config"].get("configurable", {}),
-                **scheduled_config,
+                **(scheduled_config or completion_config or {}),
             }
             # Public normalization removes scope aliases; restore server-owned scope.
             payload["metadata"] = {
@@ -3849,6 +3883,13 @@ class RuntimeGatewayService:
                 target_count=result["target_count"],
             )
         return result
+
+    async def background_task_action(self, **kwargs):
+        from platform_api.modules.runtime_gateway.application.background_tasks import (
+            background_task_action,
+        )
+
+        return await background_task_action(self, **kwargs)
 
     async def list_thread_runs(
         self,

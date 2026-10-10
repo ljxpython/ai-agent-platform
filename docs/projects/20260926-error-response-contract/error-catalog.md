@@ -16,10 +16,21 @@ details生产者：core/errors/handlers.py的RequestValidationError；modules/ru
 
 下面清单固定在平台adapter，精确匹配code与来源HTTP（斜线表示允许多个来源状态）。
 静态来源中的动态str(exc)无法证明安全，不纳入；未知统一fallback。此表是本期确定的公开清单，不宣称枚举全部Runtime/GraphHarbor内部异常。
-普通已登记4xx保持code与HTTP；登记code却状态不匹配按未知处理。5xx仍转502；memory_storage_unavailable、stop_storage_unavailable作为明确例外保留code。message完全由表生成，不信任上游message。
+普通已登记4xx保持code与HTTP；登记code却状态不匹配按未知处理。5xx仍转502；memory_storage_unavailable、stop_storage_unavailable与后台 storage/control 两码作为明确例外保留code。message完全由表生成，不信任上游message。
 
 | code | 来源HTTP | 固定安全message | 只读生产/消费证据 |
 |---|---|---|---|
+| background_task_denied | 403 | Background task denied | `apps/runtime-service/src/runtime_service/http/background_tasks.py` |
+| background_task_not_found | 404 | Background task not found | `apps/runtime-service/src/runtime_service/http/background_tasks.py` |
+| invalid_background_task_cursor | 422 | Invalid background task cursor | `apps/runtime-service/src/runtime_service/http/background_tasks.py` |
+| invalid_background_task_query | 422 | Invalid background task query | `apps/runtime-service/src/runtime_service/http/background_tasks.py` |
+| background_task_storage_unavailable | 503 | Background task unavailable | `apps/runtime-service/src/runtime_service/http/background_tasks.py` |
+| background_task_control_unavailable | 503 | Background task unavailable | `apps/runtime-service/src/runtime_service/workspace/background.py` |
+| background_task_not_supported | 409 | Background task not supported | 仅工具启动路径；`apps/platform-api/src/platform_api/adapters/langgraph/sdk_client.py` 登记 |
+| background_task_disabled | 409 | Background task disabled | 仅工具启动路径；同上 |
+| background_task_idempotency_conflict | 409 | Background task idempotency conflict | 仅工具启动路径；同上 |
+| background_task_limit_reached | 429 | Background task limit reached | 仅工具启动路径；同上 |
+| background_task_log_capacity_reached | 429 | Background task log capacity reached | 仅工具启动路径；同上 |
 | artifact_hash_mismatch | 409 | Artifact hash mismatch | `apps/runtime-service/src/runtime_service/workspace/artifact_refs.py:85` |
 | artifact_image_type_mismatch | 415 | Artifact image type mismatch | `apps/runtime-service/src/runtime_service/workspace/media.py:21` |
 | artifact_not_found | 404 | Artifact not found | `apps/runtime-service/src/runtime_service/workspace/artifact_refs.py:79` |

@@ -3,11 +3,13 @@ import {
   computed,
   nextTick,
   onScopeDispose,
+  provide,
   ref,
   shallowRef,
   toRef,
   watch,
 } from "vue";
+import { useBackgroundTasks } from "../composables/useBackgroundTasks";
 import {
   coerceMessageLikeToMessage,
   type BaseMessage,
@@ -150,6 +152,19 @@ const session = useChatSession({
     void promptQueue?.refresh();
   },
 });
+
+const backgroundTasks = useBackgroundTasks(
+  computed(() => props.projectId),
+  computed(() => session.threadId.value || props.threadId),
+  {
+    onRunDiscovered: (runId) => {
+      void session.acceptDiscoveredRun(runId);
+    },
+  },
+);
+
+provide("backgroundTasks", backgroundTasks);
+
 const {
   stream,
   reviews,
@@ -733,6 +748,16 @@ watch(busy, (isBusy, wasBusy) => {
 
 function handleAddToChat(text: string) {
   emit("update:draft", props.draft ? `${props.draft}\n\n${text}` : text);
+}
+
+function handleViewTasks(taskId?: string) {
+  showWorkspace.value = true;
+  nextTick(() => {
+    workspacePanelRef.value?.openTab("tasks");
+    if (taskId) {
+      void backgroundTasks.refresh();
+    }
+  });
 }
 let disposed = false;
 
@@ -1600,6 +1625,7 @@ defineExpose({
           </button>
           <button
             type="button"
+            data-testid="toggle-workspace-button"
             class="relative inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-gray-200/70 bg-white px-2 text-xs font-medium text-gray-500 shadow-2xs hover:bg-gray-50 hover:text-gray-800 dark:border-dark-700/80 dark:bg-dark-900 dark:text-dark-300 dark:hover:text-white transition-colors"
             :class="
               showWorkspace
@@ -1845,6 +1871,7 @@ defineExpose({
               @update:editing-message-value="editDraft = $event"
               @cancel-edit="cancelEdit"
               @submit-edit="submitEditedBranch"
+              @view-tasks="handleViewTasks"
             />
             <div
               v-if="clarifications.length"
@@ -2015,10 +2042,10 @@ defineExpose({
         </div>
       </div>
       <WorkspacePanel
-        v-if="showWorkspace && threadId"
+        v-if="showWorkspace && (session.threadId.value || threadId)"
         ref="workspacePanelRef"
         :project-id="projectId"
-        :thread-id="threadId"
+        :thread-id="session.threadId.value || threadId"
         @close="showWorkspace = false"
         @add-to-chat="handleAddToChat"
       />
@@ -2027,7 +2054,10 @@ defineExpose({
       ref="composerRef"
       :model-value="draft"
       :attachments="attachments"
-      :is-running="isSessionRunning && !reviews.length"
+      :is-running="
+        (isSessionRunning || backgroundTasks.hasActiveBackgroundTasks.value) &&
+        !reviews.length
+      "
       :has-blocking-interrupt="!!reviews.length"
       :has-queued-items="promptQueue.queue.value.length > 0"
       :can-send-fresh-message="canSubmit"

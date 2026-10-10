@@ -15,6 +15,9 @@ from runtime_service.services.dearflow_agent.capabilities import (
 REFERENCE_TOOLS = ("read_reference",)
 SHOWCASE_TOOLS = (
     *WORK_TOOLS,
+    "background_execute",
+    "background_task",
+    "cancel_background_task",
     "task",
     "write_todos",
     "fetch_documentation",

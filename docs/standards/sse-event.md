@@ -1,6 +1,6 @@
 ---
 status: draft
-last_verified: 2026-10-07
+last_verified: 2026-10-09
 confidence: medium
 source_project: docs/projects/20260926-sse-event-contract/verification.md
 note: 帧安全/SDK重试/会话池/410降级已验(S1-S10)；8条并发H2/H3容量(S11)因HTTP/1.1入口阻塞，持续容量/堆增长/三段脱敏样例未验
@@ -52,6 +52,10 @@ error 路径保持原异常及真实终态，极低 recursion 可以只有安全
 Run GET 没有 error，旧事件全部过期且无人工标记时安全降级，不借用最新 Thread.error 归因旧 Run。
 软收尾不是 Worker timeout，不展示硬剩余时间。实际接线、联调与 H01-H16 回执见
 [前端交接](../projects/20261007-agent-execution-budget/frontend-handoff.md)。本项不更改本规范容量门禁的 draft 状态。
+
+## 后台任务完成 Run（2026-10-09 用户批准）
+
+后台任务不新增 SSE channel/custom 事件。完成通知是同 Thread 的独立 enqueue Run，客户端从任务元数据的 `latest_delivery_run_id/delivery.run_id` 发现后复用官方 SDK。源 Run 已结束不代表后续通知已创建，delivery accepted 也不代表 Run 已执行。私有 `platform_background_completion` 在 HTTP/history/Protocol/v3 JSON 出口递归剥离，普通输入递归拒绝；安全 task/event/source Run metadata 可保留用于关联。日志单独 GET 纯文本，不注入系统消息或执行错误槽位。见 [F06 前端接续](../projects/20261009-agent-generic-production-capabilities/frontend-handoff.md)。此加法契约不改变本规范原有容量门禁的 draft 状态。
 
 ## SDK 自动重试规则（补丁扩展）
 

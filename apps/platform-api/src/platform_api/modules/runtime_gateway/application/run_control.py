@@ -66,6 +66,15 @@ class StopReport(Fields):
         Field(max_length=10),
     ]
     truncated: Annotated[bool, Field(strict=True)]
+    background_tasks: "BackgroundStopSummary | None" = None
+
+
+class BackgroundStopSummary(Fields):
+    target_count: Count
+    cleanup_confirmed_count: Count
+    cleanup_unconfirmed_count: Count
+    notifications_suppressed_count: Count
+    truncated: Annotated[bool, Field(strict=True)]
 
 
 class StopRequest(Fields):

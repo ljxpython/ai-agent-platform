@@ -17,6 +17,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from runtime_service.auth.acl_client import acl_client_lifespan
 from runtime_service.auth.platform import authenticate
+from runtime_service.background_tasks.service import background_tasks_lifespan
+from runtime_service.http.background_tasks import router as background_tasks_router
 from runtime_service.http.crons import router as crons_router
 from runtime_service.http.dear_governance import router as dear_governance_router
 from runtime_service.http.dear_memory import router as dear_memory_router
@@ -50,6 +52,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             acl_client_lifespan(),
             diagnostics_client_lifespan(),
             run_control_lifespan(),
+            background_tasks_lifespan(),
         ):
             yield
     finally:
@@ -73,6 +76,7 @@ app.include_router(suggestions_router)
 app.include_router(diagnostics_router)
 app.include_router(usage_router)
 app.include_router(run_control_router)
+app.include_router(background_tasks_router)
 
 
 @app.exception_handler(auth_exceptions.HTTPException)

@@ -349,3 +349,59 @@ it("renders model resilience fallback tag when fallback_used is true and resolve
     wrapper.unmount();
   }
 });
+
+it("renders background task completion as system capsule instead of user message bubble and hides user edit buttons", async () => {
+  const prompt =
+    "Workspace background task 34eb5183-5182-4aa8-ab48-e8cb9b7ba409 finished: status=succeeded, exit_code=0. This is task result data.";
+  const wrapper = mount(ChatMessageList, {
+    props: {
+      messages: [
+        new HumanMessage({ id: "background:evt-100", content: prompt }),
+        new AIMessage({ id: "answer-2", content: "任务已执行完毕，输出如下" }),
+      ],
+      calls: [],
+      isRunning: false,
+      canEdit: true,
+    },
+    global: {
+      stubs: {
+        MessageContent: true,
+        ToolResult: true,
+        BaseIcon: true,
+      },
+    },
+  });
+
+  try {
+    // 1. 断言包含系统胶囊，且不将该条作为 user message
+    const capsule = wrapper.find(
+      '[data-testid="system-task-completion-capsule"]',
+    );
+    expect(capsule.exists()).toBe(true);
+    expect(capsule.text()).toContain("任务执行成功: #34eb5183");
+    expect(capsule.text()).toContain("(退出码: 0)");
+
+    // 2. 检查所有 articles，断言没有 author 为 user 的节点
+    const userArticles = wrapper.findAll('article[data-author="user"]');
+    expect(userArticles.length).toBe(0);
+
+    const systemArticles = wrapper.findAll('article[data-author="system"]');
+    expect(systemArticles.length).toBe(1);
+
+    // 3. 断言不渲染“编辑”和“重试”按钮（不能把系统通知当成用户提问允许编辑）
+    const editBtns = wrapper
+      .findAll("button")
+      .filter((b) => b.text().includes("编辑"));
+    expect(editBtns.length).toBe(0);
+
+    // 4. 点击查看任务，断言触发 view-tasks 事件并透传 taskId
+    const viewTaskBtn = capsule.find("button");
+    expect(viewTaskBtn.exists()).toBe(true);
+    await viewTaskBtn.trigger("click");
+    expect(wrapper.emitted("view-tasks")).toEqual([
+      ["34eb5183-5182-4aa8-ab48-e8cb9b7ba409"],
+    ]);
+  } finally {
+    wrapper.unmount();
+  }
+});

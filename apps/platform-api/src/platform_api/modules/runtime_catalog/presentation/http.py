@@ -136,6 +136,70 @@ def authorize_scheduled_execution(request: Request, payload: dict) -> dict:
     return authorize_execution(factory, gateway, payload, secret)
 
 
+def _verify_background_signature(
+    request: Request, payload: dict, operation: str
+) -> None:
+    stamp = request.headers.get("x-runtime-acl-timestamp", "")
+    secret = request.app.state.settings.runtime_delegation_secret
+    canonical = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    )
+    expected = hmac.new(
+        secret.encode(), f"{stamp}\n{operation}\n{canonical}".encode(), hashlib.sha256
+    ).hexdigest()
+    try:
+        timely = abs(time.time() - int(stamp)) <= 30
+    except (TypeError, ValueError):
+        timely = False
+    signature = request.headers.get("x-runtime-acl-signature", "")
+    if (
+        not secret
+        or not timely
+        or len(signature) != 64
+        or any(char not in "0123456789abcdef" for char in signature)
+        or not hmac.compare_digest(signature, expected)
+    ):
+        raise ForbiddenError(
+            code="runtime_acl_signature_invalid", message="Invalid Runtime signature"
+        )
+
+
+@router.post("/internal/background-task-delivery")
+async def deliver_background_task(request: Request, payload: dict) -> dict:
+    from platform_api.modules.runtime_gateway.application.background_completion import (
+        CompletionEvent,
+        deliver,
+    )
+
+    _verify_background_signature(request, payload, "background-task-delivery")
+    try:
+        event = CompletionEvent.model_validate(payload)
+    except Exception as exc:
+        raise BadRequestError(
+            code="runtime_acl_invalid_request", message="Invalid background task event"
+        ) from exc
+    result = await deliver(request, event)
+    return result
+
+
+@router.post("/internal/background-task-authorization")
+async def authorize_background_completion(request: Request, payload: dict) -> dict:
+    from platform_api.modules.runtime_gateway.application.background_completion import (
+        CompletionAuthorization,
+        authorize_completion,
+    )
+
+    _verify_background_signature(request, payload, "background-task-authorization")
+    try:
+        authorization = CompletionAuthorization.model_validate(payload)
+    except Exception as exc:
+        raise BadRequestError(
+            code="runtime_acl_invalid_request",
+            message="Invalid background authorization",
+        ) from exc
+    return await authorize_completion(request, authorization)
+
+
 def _require_project_id(request: Request) -> str:
     project_id = getattr(request.state.platform_context.project, "project_id", None)
     normalized = project_id.strip() if isinstance(project_id, str) else ""

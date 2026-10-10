@@ -141,6 +141,9 @@ def _parse_scope(raw: object) -> RuntimeScope:
         "thread-stop",
         "thread-stop-read",
         "run-cancellation-read",
+        "background-task-read",
+        "background-task-log-read",
+        "background-task-cancel",
     }:
         raise _invalid("runtime.auth.invalid_principal", "operation")
     return RuntimeScope(
@@ -251,6 +254,9 @@ def verify_delegation_claims(
             "thread-stop",
             "thread-stop-read",
             "run-cancellation-read",
+            "background-task-read",
+            "background-task-log-read",
+            "background-task-cancel",
         }
         and not scope.thread_id
     ):

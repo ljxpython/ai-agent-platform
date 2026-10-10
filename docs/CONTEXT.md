@@ -1,36 +1,27 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-08（Agent Workspace 执行容错与安全报告已与会话停止、运行准备幂等、执行预算、超时治理、Token/Cost 跟踪等全量专项完成代码级融合合并入主干；非前端范围全部闭环并固化前端交接）。
+> **最后更新：** 2026-10-10（前端 F01-F11 实施完成，通过 Vitest 131 套件 710 单测、vue-tsc 0 错误、ESLint 0 错误、生产构建全绿；Playwright + Chromium 自动化 E2E 全链路 4/4 满分通过并留痕三档渲染截图；F12 待 B01 解除后全栈联合交付）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-08
+**最后更新：** 2026-10-10
 
 ## 最近改动
 
-2026-10-08 | **Agent Workspace 执行容错与安全报告**：done（非前端范围闭环，代码及测试合入主干）。共享 Workspace 失败保护、不可达/结果未知停止 Run、取消清理与资源安全回收、v1 诊断记录与 platform-api 精确五码投影全部实装闭环；本地与 Docker 真实验证通过，前端交接报告与 DTO 已固化。见 [专项](projects/20261007-agent-workspace-resilience/README.md)。
-
-2026-10-08 | **Agent 会话停止与状态报告闭环（全链路）**：done。后端会话停止、回执详情/分页、幂等重试、后台恢复与审计闭环；前端完成三接口接入、严格 Zod DTO 校验、useThreadStopControl 状态机解耦、45s 超时降级与单飞保护、RunStopReportBanner 顶部提示条与 RunStopReportDetails 抽屉报告。vue-tsc 0 错误、ESLint 0 错误、Vite build 生产构建通过、Vitest 115 文件 553 项单测全绿；Playwright + Chromium 驱动三服务连接真实模型 `百炼 · qwen-plus` 自动化端到端测试全链路通过（耗时 10.57s，1440/768/390 视口截图已留痕），用户人工验收通过并零功能损失合并入主分支。详见 [专项](projects/20261007-agent-run-cancellation/README.md)。
-
-2026-10-08 | **Agent 运行准备幂等与有界重试**：全链路闭环完成。公共 prepare latch、目录修复/篡改拒绝、按 graph 的模型/只读 task 有界重试、部分流保护、provider 终止与 Worker 基础设施恢复分离已实现；v1 diagnostics 新增安全 preparations/retries。Platform Web 完成拆分 RunPreparationsSection 与 RunRetriesSection 专职展示子组件，严格 attempts/role 正则防注入与琥珀色降级；49 项定向单测、vue-tsc 0 错误、eslint 0 错误、生产打包全绿；Playwright + Chromium 全链路三服务真实模型问答、轨迹排障及 F01-F10 专项浏览器视觉与安全验收全部通过，全流程截图留存。专项 done，未部署现役。见 [专项](projects/20261007-agent-production-capabilities/README.md)。
-
-2026-10-08 | **Agent 通用 Token/Cost 跟踪治理全栈闭环**：done。用户端到端与真实大模型自动化闭环验收通过，合并入主分支。Runtime Service 实现自有 ledger、缓存计价与内部 Usage 汇聚；Platform API 实现模型费率快照与 Usage 授权网关代理；Platform Web 实装 Run/Thread 双级 Token/Cost 检查器、open-swe 风格上下文运行水位仪表（Usage Meter）、模型调用流水明细、服务端截断预警，以及模型编辑器 6 项费率 Decimal 安全配置与可逆清空保护；全栈真实模型自动化闭环与单测全绿。见 [专项](projects/20261007-agent-usage-cost-governance/README.md)。
-
-2026-10-07 | **Agent 工具调用容错与生产接线全链路完成**：Runtime/Platform API 完成选择性错误分类、DearFlow/Showcase/Reference 主子图接线、MCP/workspace 边界、v3 tools 流安全出口和公开 fatal 脱敏；Platform Web 完成纯函数错误摘要提取、微胶囊 Tag 徽章与展开态格式化代码块排版；核心单测全绿（31 passed），静态类型与构建通过；三服务全栈浏览器联合验收 F01-F08 全部通过，全专项闭环 done。见 [专项](projects/20261006-agent-tool-error-resilience/README.md)。
-
-2026-10-07 | **Agent 可观测性与追踪补齐**：全链路闭环完成。Runtime/Platform API 完成模型错误分类、安全诊断、启动阶段计时与只读投影；Platform Web 完成独立解耦面板 RunDiagnostics、Zod 白名单剔除敏感字段、防竞态 useRunDiagnostics、TrajectoryView 常驻入口与模式切换、ChatSession 历史 Run 自动拉取与最新默认选中；vue-tsc 0 错误、ESLint 0 错误、Vite build 与前端全仓 115 套件 535 项单测全绿。未部署现役服务。见 [专项](projects/20261006-agent-observability-hardening/README.md)。
+2026-10-10 | **Agent 通用后台非阻塞任务能力（前端实施与自动化 E2E 闭环）**：完成前端 F01-F11 全部能力（任务 Tab、列表/分页/正交 Badge、ANSI 清洗与截断容量警示纯文本日志、单任务防重取消与二次确认、LLM 空闲时 Stop 控制台可用与后台停止报告解析、三档分辨率响应式适配）。全仓 131 个 Vitest 测试套件、710 个单测全部满分通过；vue-tsc 0 错误；ESLint 0 错误；build 生产构建打包成功；Playwright + Chromium 4/4 自动化 E2E 全链路闭环（含真实百炼模型交互、任务流转、日志清洗、取消确认及 1440x900、768x1024、390x844 三档全页面渲染截图留痕）。F12 待引擎 B01 解除后全栈联合交付。
 
 ## 本月归并
 
-2026-10（截至 10-08）| 会话停止与报告闭环；Token/Cost 全栈跟踪治理；运行准备幂等与重试；执行预算与软收尾；超时治理与排队死锁自愈；模型稳定性降级、上下文窗口工程化；Workspace 执行容错与安全报告；工具容错、观测、推荐问题和定时任务闭环；聊天、权限及流资源治理。
+2026-10（截至 10-09）| Agent稳定性、预算与用量治理；停止、准备及Workspace闭环；后台任务实施。
 
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
 
+- [Agent 通用后台非阻塞任务能力](projects/20261009-agent-generic-production-capabilities/README.md)：`blocked`（后端等待 B01 引擎解除，前端 F01-F11 全部完成且 E2E 验证闭环）；T02/T03/T04/T06/T07/T09 阶段完成；前端 F01-F11 经 Vitest、vue-tsc、ESLint、build 以及 Playwright + Chromium 真实大模型 E2E 自动化闭环通过，留痕三档渲染截图。B01 解除后进行 T10/F12 全栈联合 Final。未部署现役。
 - [Agent Workspace 执行容错与安全失败报告](projects/20261007-agent-workspace-resilience/README.md)：`done`（非前端本地与 Docker 范围全部闭环，全栈代码与测试已合并进入主干；前端交接与报告已固化）；后端五精确安全码、结果未知停止、取消回收与诊断记录已融合闭环。未部署现役。
 - [Agent通用运行取消与中断能力](projects/20261007-agent-run-cancellation/README.md)：`done`（全链路闭环）；后端三接口、持久Stop/恢复、inbox屏障与确定性报告完成；前端Stop控制器状态机、Banner、Drawer与真实模型Playwright E2E自动化闭环完成（F01–F10闭环，截图已留痕，用户实测验收合格）；B01解除；B02等待正式PyPI发布指令/正式源锁接入。
 - [Agent 运行准备幂等与有界重试](projects/20261007-agent-production-capabilities/README.md)：done；公共 prepare latch、目录修复、有界重试与诊断接口已实现，前端双专职子组件实装，49 项单测与 Playwright + Chromium 全链路自动化 E2E 闭环全部通过。未部署现役。
@@ -66,10 +57,10 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-08 | 锁定/安装正式 post42；四图主子共享 attempt 预算/软收尾，模型 error 与 Worker timeout 分开；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理（自有 ledger/缓存计价）与运行准备幂等/有界重试安全摘要全链路融合就绪；新增持久Stop/租约恢复、inbox屏障、资源证据及确定性报告；Workspace 执行容错、结果未知停止、取消回收与安全记录融合闭环；post43候选验证通过，B01解除，未部署现役。 |
-| platform-api | 2026-10-08 | 私有预算注入拒绝/脱敏及停止确认透传；预算四精确安全码、custom 白名单、tasks/debug 错误清洗；runtime_prepare 私有字段防注入/公开剥离；diagnostics v1 增 optional preparations/retries 与 workspace_executions；Workspace 五码精确投影与 DTO 校验完成；模型恢复策略、上下文容量 CRUD 与 Run 诊断端点、模型费率快照与 Usage 授权网关代理、会话 cancel/detail/list 及精确委托全量实装；未部署现役。 |
-| platform-web | 2026-10-08 | 会话停止控制器与状态机、停止报告抽屉及 Banner 全链路实装，Playwright 真实模型 E2E 与人工实测验收通过；运行准备与重试摘要、预算告警投影、超时警示黄色胶囊、双通道停止确认、排队提交死锁治本根除与切换自愈实装；备用模型微胶囊、工具错误摘要、运行诊断面板、上下文容量展示、Run/Thread 用量与成本检查器、open-swe 水位表全部融合；全仓单测、vue-tsc 与生产打包全绿。未部署现役。 |
-| AI Harness（AGENTS.md + Skills） | 2026-10-08 | 整单结束前须逐项核对未完成任务，未完成时只记Phase；用户批准的多会话发布协作经验已写入ai-workflow经验库，恢复时先核对正式产物归属与锁文件。 |
+| runtime-service | 2026-10-09 | 源码/部署 Dockerfile 均锁正式 post43，最终镜像冷构建及 Linux API/Worker 链路已验，现役未升级；模型/工具/上下文/预算/Usage/prepare 与持久 Stop、inbox/Workspace 保护保持既有能力。后台runner、PG租约/容量、无模型对账、三工具、Stop及两组合根已实施，HITL/固定Stop后新任务/旧源码回退Phase通过，专项资源已关闭。后台专项B01缺只读Run回查，后端Final blocked，新提交默认关闭；取消专项同名B01已解除，二者不是同一事项。 |
+| platform-api | 2026-10-09 | 既有模型/上下文/预算/Usage/诊断、私有输入拒绝/公开投影及会话 Stop 网关保持；新增后台四入口、三精确 operation、安全 DTO、审计与 HMAC 完成续接/开始前重授权，隔离 ACL/撤权/delegation与K轮HITL接续已验证。无原生接受回执时只返回 unknown/inflight，不再次 POST；后台 B01 阻塞全部失响应恢复与后端 Final，44项证据矩阵说明残余门禁。未部署现役。 |
+| platform-web | 2026-10-10 | 既有会话 Stop、prepare/重试、预算/超时/备模型/工具错误/诊断/上下文/Usage 页面及其既有验收保持。后台任务前端 F01-F11 实施完成并通过五重质量门禁与 Playwright + Chromium 真实大模型 E2E 闭环（截图留痕）；F12 待 B01 解除后全栈联合交付。未部署现役。 |
+| AI Harness（AGENTS.md + Skills） | 2026-10-09 | 整单结束前须逐项核对未完成任务，未完成时只记Phase；用户批准的多会话发布协作经验已写入ai-workflow；本轮四条回调/迁移回退/Docker日志/执行目录经验已批准写入runtime-service经验库。恢复时先核对正式产物归属与锁文件。 |
 
 ## 近期关键决策
 

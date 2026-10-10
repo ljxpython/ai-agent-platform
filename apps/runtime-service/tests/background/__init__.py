@@ -1,0 +1,1 @@
+"""Managed background task contracts."""

@@ -9,6 +9,34 @@ from uuid import uuid4
 
 from fixtures.tool_error_platform import platform_app, record
 
+if os.getenv("BACKGROUND_FAULT_MODE_PATH") and sys.argv[1:2] == ["platform"]:
+    from platform_api.adapters.langgraph.runtime_gateway_upstream import (
+        LangGraphRuntimeGatewayUpstream,
+    )
+    from platform_api.core.errors import UpstreamServiceError
+
+    original_submit = LangGraphRuntimeGatewayUpstream.create_thread_run
+
+    async def submit_with_lost_ack(upstream, thread_id, payload):
+        result = await original_submit(upstream, thread_id, payload)
+        fault = Path(os.environ["BACKGROUND_FAULT_MODE_PATH"])
+        if (
+            payload.get("metadata", {}).get("background_event_id")
+            and fault.exists()
+            and fault.read_text() == "lost-ack"
+        ):
+            fault.write_text("ack-lost")
+            record("completion-ack-lost", run_id=result["run_id"])
+            raise UpstreamServiceError(
+                code="langgraph_upstream_timeout",
+                status_code=504,
+                message="Synthetic response loss",
+                upstream="langgraph",
+            )
+        return result
+
+    LangGraphRuntimeGatewayUpstream.create_thread_run = submit_with_lost_ack
+
 if __name__ != "__main__" or sys.argv[1] not in {"platform", "provider"}:
     from contextlib import asynccontextmanager
 
@@ -134,7 +162,25 @@ async def graph(config):
 
     assert issubclass(ProbeWorkspace, RunPrepareMiddleware)
     agent.WorkspaceMiddleware = ProbeWorkspace
-    return await agent.get_agent(config)
+    from runtime_service.runtime.background_completion import (
+        background_completion_execution,
+    )
+
+    return await background_completion_execution(
+        agent.get_agent, agent_key="dearflow_agent"
+    )(config)
+
+
+async def production_dear_graph(config):
+    from runtime_service.graphs.dearflow_agent import get_agent
+
+    return await get_agent(config)
+
+
+async def production_showcase_graph(config):
+    from runtime_service.graphs.showcase_demo import get_agent
+
+    return await get_agent(config)
 
 
 def provider_app():
@@ -182,7 +228,17 @@ def provider_app():
         key = prompt + ("-after-tool" if after_tool else "")
         count = len(recorded("http-model", key=key)) + 1
         record("http-model", key=key, count=count)
-        if prompt in {"timeout", "run-deadline"}:
+        if prompt == "background-source-error" and after_tool:
+            return JSONResponse(
+                {"error": {"message": "PROVIDER_CANARY", "type": "permission_error"}},
+                status_code=403,
+            )
+        if (
+            prompt in {"background-source-timeout", "background-source-cancel"}
+            and after_tool
+        ):
+            await asyncio.sleep(120)
+        if prompt in {"timeout", "run-deadline", "background-gate-block"}:
             await asyncio.sleep(60)
         if prompt == "prepare-after" and count == 1:
             record("crash-window", prompt=prompt)
@@ -215,8 +271,36 @@ def provider_app():
                 {"error": {"message": "PROVIDER_CANARY", "type": "permission_error"}},
                 status_code=403,
             )
+        if prompt.startswith("Workspace background task "):
+            record("completion-model", prompt=prompt)
         child = prompt in {"child", "parallel"}
         tools = []
+        if (
+            prompt.startswith("background-")
+            and prompt != "background-gate-block"
+            and not after_tool
+        ):
+            commands = {
+                "background-short": ("sleep 2; printf BACKGROUND_DONE", 30),
+                "background-long": ("printf started; sleep 120; printf finished", 180),
+                "background-timeout": ("sleep 120", 2),
+                "background-exit124": ("exit 124", 30),
+                "background-drain-short": ("sleep 15; printf DRAIN_DONE", 90),
+                "background-after-stop": ("sleep 15; printf AFTER_STOP", 90),
+            }
+            command, timeout = commands.get(prompt, commands["background-long"])
+            tools = [
+                {
+                    "id": "background-start-" + prompt,
+                    "type": "function",
+                    "function": {
+                        "name": "background_execute",
+                        "arguments": json.dumps(
+                            {"command": command, "timeout": timeout}
+                        ),
+                    },
+                }
+            ]
         if not after_tool and (child or prompt == "write-retry"):
             names = (
                 ["child-exhausted"]
@@ -368,12 +452,23 @@ if __name__ == "__main__":
 
         uvicorn.run(
             create_app(spec["config"], base_dir=Path(path).parent),
-            host="127.0.0.1",
-            port=spec["runtime_port"],
+            host=os.getenv("TOOL_ERROR_TEST_BIND", "127.0.0.1"),
+            port=int(os.getenv("TOOL_ERROR_TEST_RUNTIME_PORT", spec["runtime_port"])),
             log_level="error",
             access_log=False,
         )
     elif role == "worker":
-        from langgraph_runtime_pg.production_worker import run_worker
+        from importlib import import_module
+
+        from langgraph_runtime_pg.production_worker import ProductionWorker, run_worker
+
+        original_run_forever = ProductionWorker.run_forever
+
+        async def ready_worker(worker):
+            Path(spec["worker_ready"]).write_text(str(os.getpid()))
+            await original_run_forever(worker)
+
+        ProductionWorker.run_forever = ready_worker
+        import_module("runtime_service.services.dearflow_agent.agent")
 
         asyncio.run(run_worker(Path(path).parent / "langgraph.json"))

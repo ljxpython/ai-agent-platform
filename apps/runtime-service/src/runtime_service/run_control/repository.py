@@ -30,6 +30,11 @@ def request_stop(facts, thread_id, key):
         ).fetchone()
         if row:
             return row
+        background = connection.execute(
+            """SELECT task_id,event_id FROM runtime_background_tasks WHERE tenant_id=%s AND project_id=%s AND thread_id=%s
+            AND (cleanup_state IN ('pending','unconfirmed') OR delivery_state IN ('pending','dispatching','blocked','unknown','accepted')) FOR UPDATE""",
+            params[:3],
+        ).fetchall()
         inbox_runs = connection.execute(
             "SELECT DISTINCT target_run_id FROM runtime_message_inbox WHERE thread_id=%s AND status IN ('queued','claimed') LIMIT 100",
             (thread_id,),
@@ -47,15 +52,25 @@ def request_stop(facts, thread_id, key):
                 "platform_trace_id",
             )
         }
-        return connection.execute(
-            "INSERT INTO runtime_stop_requests(stop_id,tenant_id,project_id,thread_id,actor_scope,idem_hash,auth_facts,inbox_run_ids) VALUES(%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb) RETURNING *",
+        saved = connection.execute(
+            "INSERT INTO runtime_stop_requests(stop_id,tenant_id,project_id,thread_id,actor_scope,idem_hash,auth_facts,inbox_run_ids,background_task_ids,background_event_ids) VALUES(%s,%s,%s,%s,%s,%s,%s::jsonb,%s::jsonb,%s::jsonb,%s::jsonb) RETURNING *",
             (
                 uuid4(),
                 *params,
                 json.dumps(safe_facts),
                 json.dumps(sorted(r["target_run_id"] for r in inbox_runs)),
+                json.dumps([str(r["task_id"]) for r in background]),
+                json.dumps([str(r["event_id"]) for r in background]),
             ),
         ).fetchone()
+        connection.execute(
+            """UPDATE runtime_background_tasks SET stop_id=%s,delivery_state='suppressed',next_check_at=now(),
+            cancel_requested_at=CASE WHEN cleanup_state IN ('pending','unconfirmed') THEN coalesce(cancel_requested_at,now()) ELSE cancel_requested_at END,
+            status=CASE WHEN status IN ('starting','running','unknown','cancel_requested') THEN 'cancel_requested' ELSE status END
+            WHERE task_id=ANY(%s::uuid[])""",
+            (saved["stop_id"], [str(r["task_id"]) for r in background]),
+        )
+        return saved
 
 
 def read_stop(scope, stop_id):

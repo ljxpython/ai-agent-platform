@@ -96,6 +96,18 @@ export const artifactSchema = z
 
 export type StopArtifact = z.infer<typeof artifactSchema>;
 
+export const backgroundStopSummarySchema = z
+  .object({
+    target_count: safeCountSchema,
+    cleanup_confirmed_count: safeCountSchema,
+    cleanup_unconfirmed_count: safeCountSchema,
+    notifications_suppressed_count: safeCountSchema,
+    truncated: z.boolean(),
+  })
+  .strip();
+
+export type BackgroundStopSummary = z.infer<typeof backgroundStopSummarySchema>;
+
 export const stopReportSchema = z
   .object({
     version: z.literal(1),
@@ -107,6 +119,7 @@ export const stopReportSchema = z
     artifacts: z.array(artifactSchema).max(20),
     uncertainties: z.array(z.enum(UNCERTAINTIES)).max(10),
     truncated: z.boolean(),
+    background_tasks: backgroundStopSummarySchema.nullable().optional(),
   })
   .strip();
 

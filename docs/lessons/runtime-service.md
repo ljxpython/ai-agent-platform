@@ -32,6 +32,42 @@
 
 ---
 
+## [坑] HTTP 200 不等于调用者已收到回执
+
+- **场景：** Runtime 通过 Platform 回调派发后台完成 Run，网络响应在服务端已写审计后才超时。
+- **错误：** 看到 Platform HTTP 200 就把 Runtime 的交付状态标为 accepted，或立刻换 key 重发。
+- **正确：** 调用者超时仍按 unknown/inflight 保留原 event/key；只有本地回执、Worker guard 或引擎只读接受回查能绑定原 Run。引擎没有只读回查时禁止自动重发。
+- **日期：** 2026-10-09
+
+---
+
+## [坑] 旧源码回退必须先退应用迁移
+
+- **场景：** Runtime 新增 Alembic head 后执行旧源码 drain/回退验证。
+- **错误：** 直接启动旧源码，旧版本不认识新迁移 head，误把启动失败当作旧代码不兼容。
+- **正确：** 先停止新 API/Worker 并完成受控 drain，再用新迁移代码 downgrade 到旧 head；保留后台回执后启动旧源码验证普通 Run。
+- **日期：** 2026-10-09
+
+---
+
+## [坑] Docker local 日志盘占用不能依赖 `inspect.LogPath`
+
+- **场景：** 验证 Docker local logging 的轮转和实际磁盘占用。
+- **错误：** 在 macOS Docker Desktop 上直接读取 `inspect.LogPath`；该字段可能为空，导致错误结论或误报失败。
+- **正确：** 读取 Docker daemon 的 `DockerRootDir`，再按受验容器 ID 定位 `containers/<id>/local-logs`，用只读诊断容器统计文件大小。
+- **日期：** 2026-10-09
+
+---
+
+## [坑] 受管后台命令工作目录是 `/workspace/work`
+
+- **场景：** 用 Workspace 文件作为长命令测试的同步信号。
+- **错误：** 已在 `/workspace/work` 下执行命令，却再拼接 `work/<filename>`，导致信号文件永远找不到。
+- **正确：** 以 runner 的实际 workdir 为准，命令直接使用文件名；新增 fixture 要显式核对容器工作目录和挂载路径。
+- **日期：** 2026-10-09
+
+---
+
 ## [坑] 同版本候选 wheel 冷安装不能证明正式包包含新能力
 
 - **场景：** 跨仓库配套开发，源码版本号与已发布版本相同，使用本地 wheel 做冷安装验收。

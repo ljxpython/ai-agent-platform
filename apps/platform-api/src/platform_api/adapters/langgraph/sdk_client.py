@@ -62,6 +62,18 @@ _PUBLIC_CODES = {
 }
 _PUBLIC_CODES[400] += " file_hash_mismatch"
 _PUBLIC_CODES[409] += " message_scope_required idempotency_conflict message_id_conflict"
+_PUBLIC_CODES[403] += " background_task_denied"
+_PUBLIC_CODES[404] += " background_task_not_found"
+_PUBLIC_CODES[409] += (
+    " background_task_not_supported background_task_disabled background_task_idempotency_conflict"
+)
+_PUBLIC_CODES[422] += " invalid_background_task_cursor invalid_background_task_query"
+_PUBLIC_CODES[429] += (
+    " background_task_limit_reached background_task_log_capacity_reached"
+)
+_PUBLIC_CODES[503] += (
+    " background_task_storage_unavailable background_task_control_unavailable"
+)
 _PUBLIC_CODES = {status: set(codes.split()) for status, codes in _PUBLIC_CODES.items()}
 _PUBLIC_MESSAGES = {
     "workspace_directory_changed": "Directory changed",
@@ -431,6 +443,7 @@ def redact_runtime_private_fields(
                     "fallback_connection",
                     "resilience_version",
                     "runtime_prepare",
+                    "platform_background_completion",
                 }
             )
         }
@@ -524,7 +537,13 @@ def create_runtime_upstream_error(
         code = (
             raw_code
             if registered
-            and raw_code in {"memory_storage_unavailable", "stop_storage_unavailable"}
+            and raw_code
+            in {
+                "memory_storage_unavailable",
+                "stop_storage_unavailable",
+                "background_task_storage_unavailable",
+                "background_task_control_unavailable",
+            }
             else "langgraph_upstream_request_failed"
         )
         message = (
@@ -532,6 +551,12 @@ def create_runtime_upstream_error(
             if code == "memory_storage_unavailable"
             else "Stop storage unavailable"
             if code == "stop_storage_unavailable"
+            else "Background task unavailable"
+            if code
+            in {
+                "background_task_storage_unavailable",
+                "background_task_control_unavailable",
+            }
             else "Runtime request failed"
         )
     elif registered:

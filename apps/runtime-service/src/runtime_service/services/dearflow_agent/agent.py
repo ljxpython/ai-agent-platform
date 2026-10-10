@@ -108,9 +108,11 @@ from runtime_service.services.dearflow_agent.workspace.backend import (
     skills_hash,
 )
 from runtime_service.tools.artifacts import build_artifact_tool
+from runtime_service.tools.background import build_background_tools
 from runtime_service.tools.chart import build_chart_tools
 from runtime_service.tools.errors import on_tool_error
 from runtime_service.tools.images import ImageWorkspace
+from runtime_service.workspace.background import BackgroundBinding
 
 PERMISSIONS = [
     FilesystemPermission(operations=["write"], paths=["/skills/**"], mode="deny"),
@@ -126,6 +128,8 @@ APPROVALS = {
         "write_file",
         "edit_file",
         "execute",
+        "background_execute",
+        "cancel_background_task",
         "present_artifacts",
         "generate_image",
         "edit_image",
@@ -464,6 +468,23 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 *chart_tools,
                 *media_tools,
                 *mcp_tools,
+                *build_background_tools(
+                    lambda: (
+                        None
+                        if workspace is None
+                        else BackgroundBinding(
+                            workspace.root,
+                            os.getenv(
+                                "RUNTIME_WORKSPACE_IMAGE", "runtime-agent-workspace:p5"
+                            ),
+                            workspace.scope,
+                            "dearflow_agent",
+                            workspace.skills_root,
+                            True,
+                        )
+                    ),
+                    completion=bool(configurable.get("platform_background_completion")),
+                ),
                 *(build_memory_tools() if memory_enabled else []),
                 *build_skill_tools(workspace, auxiliary_model),
                 build_deployment_tool(workspace),

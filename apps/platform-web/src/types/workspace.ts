@@ -10,6 +10,8 @@ export interface WorkspaceCapabilities {
   artifacts?: string[];
   terminal?: boolean;
   conversation_offloading?: boolean;
+  background_tasks?: boolean;
+  background_tasks_start_enabled?: boolean;
 }
 
 export interface WorkspaceEntry {

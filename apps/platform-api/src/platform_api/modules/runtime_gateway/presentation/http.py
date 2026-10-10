@@ -47,6 +47,12 @@ from platform_api.core.security import (
     empty_runtime_context_hash,
 )
 from platform_api.entrypoints.http.dependencies import get_actor_context
+from platform_api.modules.runtime_gateway.application.background_tasks import (
+    BackgroundOutput,
+    BackgroundTask,
+    BackgroundTaskList,
+    CancelBody,
+)
 from platform_api.modules.runtime_gateway.application.diagnostics import RunDiagnostics
 from platform_api.modules.runtime_gateway.application.run_control import (
     StopBody,
@@ -2242,6 +2248,109 @@ def _stop_query(request, allowed):
         raise PlatformApiError(
             code="invalid_stop_query", status_code=422, message="Invalid stop query"
         )
+
+
+def _background_query(request, allowed):
+    if set(request.query_params) - allowed or any(
+        len(request.query_params.getlist(key)) != 1 for key in request.query_params
+    ):
+        raise PlatformApiError(
+            code="invalid_background_task_query",
+            status_code=422,
+            message="Invalid background task query",
+        )
+
+
+@router.get("/threads/{thread_id}/background-tasks", response_model=BackgroundTaskList)
+async def list_background_tasks(
+    request: Request,
+    thread_id: UUID,
+    response: Response,
+    limit: int = Query(default=20, ge=1, le=100),
+    before: str | None = Query(default=None, max_length=256),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    _background_query(request, {"limit", "before"})
+    response.headers["Cache-Control"] = "no-store"
+    return await service.background_task_action(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=str(thread_id),
+        params={"limit": limit, **({"before": before} if before else {})},
+    )
+
+
+@router.get(
+    "/threads/{thread_id}/background-tasks/{task_id}", response_model=BackgroundTask
+)
+async def get_background_task(
+    request: Request,
+    thread_id: UUID,
+    task_id: UUID,
+    response: Response,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    _background_query(request, set())
+    response.headers["Cache-Control"] = "no-store"
+    return await service.background_task_action(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=str(thread_id),
+        task_id=str(task_id),
+        action="status",
+    )
+
+
+@router.get(
+    "/threads/{thread_id}/background-tasks/{task_id}/output",
+    response_model=BackgroundOutput,
+)
+async def get_background_output(
+    request: Request,
+    thread_id: UUID,
+    task_id: UUID,
+    response: Response,
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    _background_query(request, set())
+    response.headers["Cache-Control"] = "no-store"
+    return await service.background_task_action(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=str(thread_id),
+        task_id=str(task_id),
+        action="output",
+    )
+
+
+@router.post(
+    "/threads/{thread_id}/background-tasks/{task_id}/cancel",
+    response_model=BackgroundTask,
+    status_code=202,
+)
+async def cancel_background_task(
+    request: Request,
+    thread_id: UUID,
+    task_id: UUID,
+    payload: CancelBody,
+    response: Response,
+    idempotency_key: str = Header(min_length=1, max_length=128),
+    actor: ActorContext = Depends(get_actor_context),
+    service: RuntimeGatewayService = Depends(get_runtime_gateway_service),
+):
+    _background_query(request, set())
+    response.headers["Cache-Control"] = "no-store"
+    return await service.background_task_action(
+        actor=actor,
+        project_id=_require_project_id(request),
+        thread_id=str(thread_id),
+        task_id=str(task_id),
+        action="cancel",
+        key=idempotency_key,
+    )
 
 
 @router.post("/threads/{thread_id}/runs/{run_id}/cancel")

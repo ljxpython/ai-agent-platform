@@ -61,6 +61,11 @@ def _resolve_plane(path: str) -> AuditPlane:
         return AuditPlane.RUNTIME_GATEWAY
     if path == "/api/langgraph" or path.startswith("/api/langgraph/"):
         return AuditPlane.RUNTIME_GATEWAY
+    if path in {
+        "/api/runtime/internal/background-task-delivery",
+        "/api/runtime/internal/background-task-authorization",
+    }:
+        return AuditPlane.RUNTIME_GATEWAY
     return AuditPlane.CONTROL_PLANE
 
 
@@ -83,6 +88,16 @@ def _resolve_action(
     method = request.method
     segments = _route_segments(path)
     action_override = clean_str(request.action_override)
+    if method == "POST" and path in {
+        "/api/runtime/internal/background-task-delivery",
+        "/api/runtime/internal/background-task-authorization",
+    }:
+        operation = "delivery" if path.endswith("-delivery") else "authorization"
+        return (
+            f"runtime.background_task.{operation}.checked",
+            "background_task",
+            clean_str((request.metadata or {}).get("task_id")),
+        )
     if (
         action_override
         in {
@@ -643,6 +658,28 @@ def _resolve_action(
         ):
             return "runtime.thread.stop.read", "thread", clean_str(segments[3])
 
+        if (
+            len(segments) in {5, 6, 7}
+            and segments[2] == "threads"
+            and segments[4] == "background-tasks"
+        ):
+            if method == "GET":
+                return (
+                    (
+                        "runtime.background_task.logs.read"
+                        if len(segments) == 7 and segments[6] == "output"
+                        else "runtime.background_task.read"
+                    ),
+                    "background_task" if len(segments) >= 6 else "thread",
+                    clean_str(segments[5] if len(segments) >= 6 else segments[3]),
+                )
+            if method == "POST" and len(segments) == 7 and segments[6] == "cancel":
+                return (
+                    "runtime.background_task.cancel.requested",
+                    "background_task",
+                    clean_str(segments[5]),
+                )
+
     return "system.route.requested", "route", None
 
 
@@ -751,6 +788,9 @@ def _resolve_metadata(
                     "correlation_version",
                     "model_id",
                     "pricing_version",
+                    "task_id",
+                    "event_id",
+                    "origin_run_id",
                 }
                 and isinstance(value, (str, int, float, bool))
             }

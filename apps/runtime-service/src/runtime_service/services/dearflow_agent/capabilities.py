@@ -31,6 +31,9 @@ SKILL_WRITE_TOOLS = (
 MEDIA_TOOLS = ("generate_image", "edit_image", "get_media_task")
 DEAR_TOOLS = (
     *WORK_TOOLS,
+    "background_execute",
+    "background_task",
+    "cancel_background_task",
     *CHART_NAMES,
     *MEDIA_TOOLS,
     *MEMORY_READ_TOOLS,
@@ -81,6 +84,12 @@ def graph_capabilities(graph_id: str) -> dict:
         "graph_id": graph_id,
         "files": graph_id in {"showcase_demo", "dearflow_agent"},
         "workspace": graph_id in {"showcase_demo", "dearflow_agent"},
+        "background_tasks": graph_id in {"showcase_demo", "dearflow_agent"},
+        "background_tasks_start_enabled": graph_id
+        in {"showcase_demo", "dearflow_agent"}
+        and os.getenv("RUNTIME_BACKEND", "docker") == "docker"
+        and bool(os.getenv("RUNTIME_EXECUTION_HOST_ID"))
+        and os.getenv("RUNTIME_BACKGROUND_TASKS_ENABLED") == "1",
         "terminal": graph_id in {"showcase_demo", "dearflow_agent"}
         and os.name == "posix"
         and os.getenv("RUNTIME_TERMINAL_ENABLED", "0") == "1",

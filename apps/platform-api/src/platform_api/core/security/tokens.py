@@ -221,6 +221,9 @@ def create_runtime_delegation_token(
         "thread-stop",
         "thread-stop-read",
         "run-cancellation-read",
+        "background-task-read",
+        "background-task-log-read",
+        "background-task-cancel",
     }:
         raise ValueError("runtime delegation scope operation is unsupported")
     if operation in {
@@ -229,6 +232,9 @@ def create_runtime_delegation_token(
         "thread-stop",
         "thread-stop-read",
         "run-cancellation-read",
+        "background-task-read",
+        "background-task-log-read",
+        "background-task-cancel",
     } and not normalized_scope.get("thread_id"):
         raise ValueError("runtime delegation requires thread_id")
     if operation not in {

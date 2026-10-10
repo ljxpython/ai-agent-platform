@@ -1,0 +1,51 @@
+{
+  "scope": "three disposable native stacks; Git path queries are fixtures",
+  "checks": [
+    "three concurrent real native stacks and isolated-source dependency installations",
+    "three real Workers consume only their own queues and write/read independent same-name Workspace files",
+    "three independent Chromium contexts log in through registered Web/API addresses",
+    "idempotent start and registered Playwright configuration",
+    "stopping the first stack leaves the other two chains available",
+    "restart retains allocation, credentials and persisted project",
+    "only disposable test resources stopped and explicitly destroyed"
+  ],
+  "environments": [
+    {
+      "id": "wt_dd2d3d582d48",
+      "ports": {
+        "PLATFORM_WEB_PORT": 29627,
+        "PLATFORM_API_PORT": 26424,
+        "RUNTIME_PORT": 23987,
+        "LOCAL_STACK_REDIS_PORT": 24471
+      },
+      "graph_count": 5,
+      "project_id": "4391736c-a3f8-41d6-8eb7-0daa900a0933",
+      "worker_thread_id": "57c9f114-e046-414c-a66a-6543b6b1e77c"
+    },
+    {
+      "id": "wt_0badae373adb",
+      "ports": {
+        "PLATFORM_WEB_PORT": 28562,
+        "PLATFORM_API_PORT": 27809,
+        "RUNTIME_PORT": 25803,
+        "LOCAL_STACK_REDIS_PORT": 23222
+      },
+      "graph_count": 5,
+      "project_id": "75903591-867c-469d-be80-64507634b020",
+      "worker_thread_id": "548e3fe5-2fed-40dd-a427-2e7ddc94edae"
+    },
+    {
+      "id": "wt_8f349352a7ec",
+      "ports": {
+        "PLATFORM_WEB_PORT": 25003,
+        "PLATFORM_API_PORT": 26594,
+        "RUNTIME_PORT": 26154,
+        "LOCAL_STACK_REDIS_PORT": 23516
+      },
+      "graph_count": 5,
+      "project_id": "baadbab9-5e5e-4f8c-a02e-712b6c94116d",
+      "worker_thread_id": "be8f4921-aef3-4dae-ba31-a4856f7f96af"
+    }
+  ],
+  "result": "passed"
+}
