@@ -371,6 +371,7 @@ class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
                 "_summarization_session_id": "private-id",
                 "files": {
                     "/outputs/result.txt": "visible",
+                    "/budget-large": {"content": "FULL_TOOL_RESULT"},
                     "/conversation_history/session_private.md": "PRIVATE",
                     "/session_" + "a" * 32 + ".md": "PRIVATE",
                     "/media/" + "b" * 16 + ".png": "PRIVATE",
@@ -380,7 +381,11 @@ class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
         redacted = redact_runtime_private_fields([state])[0]
         self.assertEqual(redacted["values"]["conversation_offloading"], public)
         self.assertEqual(
-            redacted["values"]["files"], {"/outputs/result.txt": "visible"}
+            redacted["values"]["files"],
+            {
+                "/outputs/result.txt": "visible",
+                "/budget-large": {"content": "FULL_TOOL_RESULT"},
+            },
         )
         for payload, protocol in (
             (private, False),
@@ -413,6 +418,9 @@ class RuntimeGatewayEventRedactionTest(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(ValueError):
                 reject_private_runtime_state({"nested": [{"files": {path: "fake"}}]})
         reject_private_runtime_state({"files": {"/outputs/result.txt": "visible"}})
+        reject_private_runtime_state(
+            {"files": {"/budget-large": {"content": "FULL_TOOL_RESULT"}}}
+        )
 
     async def test_plain_stream_close_and_failed_observer_do_not_change_body(self):
         reasons = []

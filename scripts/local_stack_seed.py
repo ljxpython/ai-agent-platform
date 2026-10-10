@@ -167,7 +167,7 @@ def copy_database(
             raise ValueError(
                 "Baseline copy requires a local server without connection overrides"
             )
-    with psycopg.connect(target_uri, connect_timeout=5) as target:
+    with psycopg.connect(target_uri, connect_timeout=30) as target:
         target.execute("SET LOCAL lock_timeout = '5s'")
         target.execute(
             "SELECT pg_advisory_xact_lock(hashtext(%s))", ("local-stack:seed",)
@@ -201,7 +201,7 @@ def copy_database(
                     "Target database is not empty; baseline copy never overwrites existing data"
                 )
         tables = PLATFORM_TABLES if kind == "platform" else RUNTIME_TABLES
-        with psycopg.connect(source_uri, connect_timeout=5) as source:
+        with psycopg.connect(source_uri, connect_timeout=30) as source:
             source.execute("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY")
             if (
                 source.info.dbname == target.info.dbname
@@ -261,7 +261,7 @@ def seed_environment(
     states = {}
     for kind, _, key, values in databases:
         with psycopg.connect(
-            values[key].replace("postgresql+psycopg:", "postgresql:"), connect_timeout=5
+            values[key].replace("postgresql+psycopg:", "postgresql:"), connect_timeout=30
         ) as target:
             states[kind] = seed_state(target, entry, kind)
     if any(state[0] == "existing-data-retained" for state in states.values()):

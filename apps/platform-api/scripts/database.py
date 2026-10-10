@@ -34,7 +34,9 @@ def configured_engine():
         raise ValueError("Configure a dedicated postgresql+psycopg database.")
     if url.database in {"postgres", "template0", "template1"}:
         raise ValueError("A maintenance database cannot host Platform API.")
-    return create_engine(url, connect_args={"connect_timeout": 5}, hide_parameters=True)
+    return create_engine(
+        url, connect_args={"connect_timeout": 30}, hide_parameters=True
+    )
 
 
 def check_database(connection, config: Config, *, require_head: bool = True):

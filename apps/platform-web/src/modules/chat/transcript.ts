@@ -495,9 +495,23 @@ export function buildTranscript(
   const prefix = JSON.stringify(namespace);
   const results = new Map<string, BaseMessage>();
   for (const message of messages) {
-    const id = asObject(message).tool_call_id;
-    if (message.type === "tool" && typeof id === "string")
-      results.set(id, message);
+    const raw = asObject(message);
+    const id = raw.tool_call_id;
+    if (message.type === "tool" && typeof id === "string") {
+      const msgNs = Array.isArray(raw.namespace)
+        ? (raw.namespace as string[])
+        : Array.isArray(asObject(raw.additional_kwargs).namespace)
+          ? (asObject(raw.additional_kwargs).namespace as string[])
+          : Array.isArray(asObject(raw.response_metadata).namespace)
+            ? (asObject(raw.response_metadata).namespace as string[])
+            : undefined;
+      const isCurrentNs = msgNs ? JSON.stringify(msgNs) === prefix : true;
+      if (isCurrentNs) {
+        results.set(id, message);
+      } else if (!results.has(id)) {
+        results.set(id, message);
+      }
+    }
   }
   const callMap = new Map(calls.map((call) => [call.callId, call]));
   const requestedIds = new Set<string>();
@@ -580,7 +594,7 @@ export function buildTranscript(
       callId: id,
       name: resolvedName,
       input: resolvedInput,
-      output: call?.output ?? result?.content,
+      output: result?.content ?? call?.output,
       artifact: resultObj.artifact,
       status: finalStatus,
       ...(streamingInput

@@ -138,6 +138,10 @@ const path = computed(() =>
     ? (input.value.file_path ?? input.value.path)
     : undefined,
 );
+const isVirtualLargeResultPath = computed(() => {
+  const p = path.value;
+  return typeof p === "string" && p.startsWith("/large_tool_results/");
+});
 const diff = computed(
   () =>
     props.tool.name === "edit_file" &&
@@ -391,40 +395,36 @@ export type EvidenceSourceItem = {
 
 const evidenceSources = computed<EvidenceSourceItem[]>(() => {
   const list: EvidenceSourceItem[] = [];
-  const artifactObj = asObject(props.tool.artifact);
-  if (Array.isArray(artifactObj.sources)) {
-    for (const s of artifactObj.sources) {
-      if (s && typeof s === "object") list.push(s as EvidenceSourceItem);
+  const addEvidence = (item: unknown) => {
+    if (!item || typeof item !== "object") return;
+    if (Array.isArray(item)) {
+      item.forEach(addEvidence);
+      return;
     }
-  }
-  const res = result.value;
-  if (Array.isArray(res.sources)) {
-    for (const s of res.sources) {
-      if (
-        s &&
-        typeof s === "object" &&
-        !list.some(
-          (existing) =>
-            existing.content_hash &&
-            existing.content_hash ===
-              (s as Record<string, unknown>).content_hash,
-        )
-      ) {
-        list.push(s as EvidenceSourceItem);
-      }
-    }
-  }
-  if (res.evidence && typeof res.evidence === "object") {
-    const s = res.evidence as EvidenceSourceItem;
+    const ev = item as EvidenceSourceItem;
+    const idKey = ev.content_hash || ev.source_url || ev.title;
     if (
       !list.some(
         (existing) =>
-          existing.content_hash && existing.content_hash === s.content_hash,
+          (existing.content_hash &&
+            existing.content_hash === ev.content_hash) ||
+          (idKey &&
+            existing.source_url === ev.source_url &&
+            existing.title === ev.title),
       )
     ) {
-      list.push(s);
+      list.push(ev);
     }
-  }
+  };
+
+  const artifactObj = asObject(props.tool.artifact);
+  if (artifactObj.sources) addEvidence(artifactObj.sources);
+  if (artifactObj.evidence) addEvidence(artifactObj.evidence);
+
+  const res = result.value;
+  if (res.sources) addEvidence(res.sources);
+  if (res.evidence) addEvidence(res.evidence);
+
   return list;
 });
 
@@ -899,9 +899,10 @@ $ {{ input.command }}</pre
       </template>
       <template v-else>
         <p class="text-xs text-gray-500">参数</p>
-        <pre class="max-h-80 overflow-auto whitespace-pre-wrap text-xs">{{
-          readable(tool.input)
-        }}</pre>
+        <pre
+          class="max-h-80 overflow-auto whitespace-pre-wrap break-all text-xs font-mono"
+          >{{ readable(tool.input) }}</pre
+        >
       </template>
       <div
         v-if="
@@ -914,23 +915,24 @@ $ {{ input.command }}</pre
         <template v-if="tool.status === 'error'">
           <div v-if="errorInfo?.isStructured && errorInfo.rawJson" class="mb-3">
             <pre
-              class="pw-tool-error-output max-h-60 overflow-auto rounded-lg border border-red-200/80 bg-red-50/40 p-2.5 font-mono text-xs text-red-900 whitespace-pre-wrap select-text dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-200"
+              class="pw-tool-error-output max-h-60 overflow-auto rounded-lg border border-red-200/80 bg-red-50/40 p-2.5 font-mono text-xs text-red-900 whitespace-pre-wrap break-all select-text dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-200"
               >{{ formatJson(errorInfo.rawJson) }}</pre
             >
           </div>
           <div v-else class="mb-3">
             <pre
-              class="pw-tool-error-output max-h-60 overflow-auto rounded-lg border border-red-200/80 bg-red-50/40 p-2.5 font-mono text-xs text-red-900 whitespace-pre-wrap select-text dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-200"
+              class="pw-tool-error-output max-h-60 overflow-auto rounded-lg border border-red-200/80 bg-red-50/40 p-2.5 font-mono text-xs text-red-900 whitespace-pre-wrap break-all select-text dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-200"
               >{{ readable(tool.output) }}</pre
             >
           </div>
         </template>
-        <MessageContent
-          v-else
-          :blocks="output"
-          :project-id="projectId"
-          :thread-id="threadId"
-        />
+        <div v-else class="break-all">
+          <MessageContent
+            :blocks="output"
+            :project-id="projectId"
+            :thread-id="threadId"
+          />
+        </div>
         <!-- 生图/生成任务 unknown 状态告警防御 -->
         <div
           v-if="result.status === 'unknown' && !runtimeImages.length"
@@ -1115,7 +1117,10 @@ $ {{ input.command }}</pre
         尚无公开结果
       </p>
       <button
-        v-if="tool.artifact != null || path || tool.name === 'write_todos'"
+        v-if="
+          (tool.artifact != null || path || tool.name === 'write_todos') &&
+          !isVirtualLargeResultPath
+        "
         type="button"
         class="pw-table-tool-button h-8 rounded-lg px-3 text-xs"
         @click="emit('inspect', tool)"
@@ -1126,6 +1131,12 @@ $ {{ input.command }}</pre
             : "在详情面板查看"
         }}
       </button>
+      <div
+        v-else-if="isVirtualLargeResultPath"
+        class="text-[11px] text-gray-400 dark:text-dark-400 font-mono mt-1"
+      >
+        虚拟大结果文件 · 仅供模型按需回读
+      </div>
     </div>
   </div>
 </template>

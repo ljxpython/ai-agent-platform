@@ -370,9 +370,9 @@ PY
 )"
   local host port
   read -r host port <<< "$endpoint"
-  if ! pg_isready -q -h "$host" -p "$port"; then
+  if ! pg_isready -q -t 30 -h "$host" -p "$port"; then
     local detail
-    detail="$(pg_isready -h "$host" -p "$port" 2>&1 || true)"
+    detail="$(pg_isready -t 30 -h "$host" -p "$port" 2>&1 || true)"
     local data_dir="/usr/local/var/postgresql@17"
     if [ -f "$data_dir/postmaster.pid" ]; then
       local pid

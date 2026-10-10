@@ -91,6 +91,17 @@ Web侧复用 `apps/platform-web/src/modules/dear-agent/pages/*.spec.ts`、`src/s
 - T03/T07优先级已调整；同条件故障配对、真实模型多次盲评与产品链路验收按14执行。此前“未做故障注入”的描述仅适用于前一核心抽测阶段。
 - 文档检查与`git diff --check`通过；诊断脚本Ruff check/format check通过。Runtime虚拟环境未安装Ruff，使用参考项目已有Ruff可执行文件在当前仓库检查，未安装/更新依赖。文档检查首次发现本地绝对路径，改为相对参考根后通过。
 
+### Phase：2026-10-09 F04复用核查
+
+- 对照当前平台、用户指定的DeerFlow/Open-SWE本机工作树和锁定DeepAgents 0.7.8；推荐复用现有外置/存储/预览，恢复官方历史大参数压缩并校准阈值。方案、精确落点及后续V01—V14见[15](15-tool-output-budget-review.md)，原始取样、命令、输出及限制见[取证](evidence/20261009-f04-review.md)。
+- 官方真实图配合当前Dear backend与InMemorySaver：118813字符转1299字符预览，中部回读、artifact与重建全文恢复断言通过。写失败保留原文；当前历史参数压缩未开启；50000字符结果未达外置门槛但已超过受控小窗口输入预算。未调用provider证明溢出。
+- 定向两文件pytest：**24 passed / 1 failed，15.59s，exit 1**。失败为维护组合测试直接调用WorkspaceMiddleware时缺少新签名的`config`；本轮未修源码，不记全绿，R01先修测试调用再复验。
+- API helper只证明当前普通files正文保留、private-state guard不拒绝普通files；未证明HTTP越权。没有新业务实现，真实PG/Worker、模型质量、浏览器、生产负载与回退未执行；F04 Final仅在15维护，本次记录不替代整体Final。
+
+### Phase：2026-10-09 F04 实施
+
+非前端范围done。官方参数压缩、主备阈值与引用SHA256保护已接入；干净锁环境102 passed/1 skipped、API契约31 passed/6 subtests、Workspace4 passed、策略/授权9 passed；180组async并行、真实HTTP整链1 passed（PG子测试1 passed、真模型3 passed），含Worker/HITL/关闭开关回退。详细证据、范围外既有失败和唯一任务状态见[15](15-tool-output-budget-review.md)及[实施证据](evidence/20261009-f04-implementation.md)；仅同事前端W01—W09和统一Final未完成，F04及整体Final均未提前执行。
+
 ### Final：整体迁移验收
 
 **未执行。** 原专项07/10及后续记忆/Skills/SSE/JWT/业务边界仍有未验项。历史阶段记录不得复制到此区当作当前版本Final。全部纳入范围及V01—V12通过后再记录结论，未达到done不将JWT/SSE草案改active。

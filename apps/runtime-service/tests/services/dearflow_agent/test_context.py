@@ -14,7 +14,10 @@ from runtime_service.services.dearflow_agent.workspace.backend import build_back
 
 
 @pytest.mark.parametrize("graph_name", ["dearflow_agent", "showcase_demo"])
-def test_schema_only_graph_reads_offloading_terminal_state(monkeypatch, graph_name):
+@pytest.mark.parametrize("enabled", ["0", "1"])
+def test_schema_only_graph_reads_offloading_terminal_state(
+    monkeypatch, graph_name, enabled
+):
     from importlib import import_module
 
     from langgraph.channels.delta import DeltaChannel
@@ -22,7 +25,7 @@ def test_schema_only_graph_reads_offloading_terminal_state(monkeypatch, graph_na
     from runtime_service.middlewares import ConversationOffloadingMiddleware
 
     async def run():
-        monkeypatch.delenv("AGENT_CONTEXT_MANAGEMENT_ENABLED", raising=False)
+        monkeypatch.setenv("AGENT_CONTEXT_MANAGEMENT_ENABLED", enabled)
         module = import_module(
             "runtime_service.services.dearflow_agent.agent"
             if graph_name == "dearflow_agent"
@@ -64,6 +67,7 @@ def test_schema_only_graph_reads_offloading_terminal_state(monkeypatch, graph_na
 def test_dearflow_maintenance_composition_skips_business_setup(monkeypatch, tmp_path):
     from runtime_service.middlewares import (
         ConversationOffloadingMiddleware,
+        ResultFilesystemMiddleware,
         RuntimeConfigMiddleware,
     )
     from runtime_service.runtime import RuntimeContext, runtime_context_hash
@@ -104,6 +108,12 @@ def test_dearflow_maintenance_composition_skips_business_setup(monkeypatch, tmp_
     user["runtime_context_hash"] = runtime_context_hash(cfg["context"])
     graph = asyncio.run(agent.get_agent(cfg))
     root = captured[0]
+    expected_tool_limit = 1653
+    root_filesystem = next(
+        mw for mw in root["middleware"] if isinstance(mw, FilesystemMiddleware)
+    )
+    assert root_filesystem._tool_token_limit_before_evict == expected_tool_limit
+    assert isinstance(root_filesystem, ResultFilesystemMiddleware)
     wrappers = [
         mw
         for mw in root["middleware"]
@@ -118,6 +128,11 @@ def test_dearflow_maintenance_composition_skips_business_setup(monkeypatch, tmp_
         == 1
     )
     for child in root["subagents"]:
+        child_filesystem = next(
+            mw for mw in child["middleware"] if isinstance(mw, FilesystemMiddleware)
+        )
+        assert isinstance(child_filesystem, ResultFilesystemMiddleware)
+        assert child_filesystem._tool_token_limit_before_evict == expected_tool_limit
         wrappers = [
             mw
             for mw in child["middleware"]
@@ -134,8 +149,10 @@ def test_dearflow_maintenance_composition_skips_business_setup(monkeypatch, tmp_
         ),
     )
     for mw in root["middleware"]:
-        if isinstance(mw, (RuntimeConfigMiddleware, WorkspaceMiddleware)):
+        if isinstance(mw, RuntimeConfigMiddleware):
             assert asyncio.run(mw.abefore_agent({}, runtime)) is None
+        elif isinstance(mw, WorkspaceMiddleware):
+            assert asyncio.run(mw.abefore_agent({}, runtime, cfg)) is None
         elif isinstance(mw, ExecutionSkillsMiddleware):
             assert asyncio.run(mw.abefore_agent({}, runtime, cfg)) is None
     mcp.assert_not_awaited()

@@ -1,4 +1,5 @@
 import asyncio
+import json
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
@@ -23,6 +24,7 @@ from runtime_service.middlewares import (
     ConversationOffloadingMiddleware,
     MaintenanceSafeToolCallsMiddleware,
     MessageQueueMiddleware,
+    resolve_tool_output_limit,
 )
 from runtime_service.middlewares import conversation_offloading as module
 from runtime_service.runtime import RuntimeContext, RuntimeResolutionError
@@ -75,6 +77,9 @@ def test_budget_sources_and_boundaries(tmp_path):
     assert mw.input_budget == 12000 - 256 - 1024
     assert "nostream" not in (instance.tags or [])
     assert {"nostream", "langsmith:hidden"} <= set(mw.model.tags)
+    assert mw._truncate_args_trigger == ("tokens", 9112)
+    assert mw._truncate_args_keep == ("tokens", 1072)
+    assert mw._max_arg_length == 2000
     boundary = mw._lc_helper.trigger[1]
     assert not mw._should_summarize([], boundary - 1)
     assert mw._should_summarize([], boundary)
@@ -96,6 +101,205 @@ def test_budget_sources_and_boundaries(tmp_path):
                 FilesystemBackend(root_dir=str(tmp_path)),
                 output_budget_tokens=output,
             )
+
+
+def test_tool_output_limit_uses_smallest_candidate_input_budget():
+    primary = SimpleNamespace(
+        profile={"max_input_tokens": 12_000, "max_output_tokens": 1_024}
+    )
+    fallback = SimpleNamespace(
+        profile={"max_input_tokens": 32_000, "max_output_tokens": 2_048}
+    )
+
+    assert resolve_tool_output_limit((primary, fallback), 256) == 670
+    assert resolve_tool_output_limit((fallback, primary), 256) == 670
+    assert resolve_tool_output_limit((fallback,), 256) == 1_884
+    with pytest.raises(RuntimeResolutionError, match="input_budget_unknown"):
+        resolve_tool_output_limit((), 256)
+    with pytest.raises(RuntimeResolutionError, match="capacity_unknown"):
+        resolve_tool_output_limit((SimpleNamespace(profile={}),), 256)
+    huge = SimpleNamespace(profile={"max_input_tokens": 1_000_000})
+    assert resolve_tool_output_limit((huge,), 256) == 20_000
+
+
+@pytest.mark.parametrize("representation", ["standard", "openai", "anthropic"])
+@pytest.mark.parametrize("tool_name", ["write_file", "edit_file"])
+def test_historical_write_args_shrink_only_in_model_request(
+    tmp_path, monkeypatch, representation, tool_name
+):
+    async def run():
+        instance = model()
+        mw = ConversationOffloadingMiddleware(
+            instance, FilesystemBackend(root_dir=str(tmp_path))
+        )
+        long_content = "payload " * 5000
+        arg_name = "content" if tool_name == "write_file" else "new_string"
+        args = {"file_path": "/workspace/report.txt", arg_name: long_content}
+        call = {"name": tool_name, "args": args, "id": "write-1"}
+        native_kwargs = (
+            {
+                "tool_calls": [
+                    {
+                        "id": "write-1",
+                        "type": "function",
+                        "function": {
+                            "name": tool_name,
+                            "arguments": json.dumps(args),
+                        },
+                    }
+                ]
+            }
+            if representation == "openai"
+            else {}
+        )
+        messages = [
+            AIMessage(
+                content=[
+                    {
+                        "type": "tool_use",
+                        "id": "write-1",
+                        "name": tool_name,
+                        "input": args,
+                    }
+                ]
+                if representation == "anthropic"
+                else "",
+                tool_calls=[call],
+                additional_kwargs=native_kwargs,
+            ),
+            ToolMessage(content="saved", tool_call_id="write-1", name=tool_name),
+            HumanMessage(content="Keep ANCHOR_TODO and https://docs.python.org"),
+        ]
+        monkeypatch.setattr(mw, "_should_summarize", lambda *_: False)
+        seen = []
+
+        async def handler(request):
+            seen.append(request.messages)
+            return ModelResponse(result=[AIMessage(content="ok")])
+
+        request = ModelRequest(
+            model=instance,
+            messages=messages,
+            tools=[],
+            state={"messages": messages},
+            runtime=SimpleNamespace(execution_info=None),
+        )
+        await mw.awrap_model_call(request, handler)
+        compacted_message = seen[0][0]
+        compacted = compacted_message.tool_calls[0]["args"][arg_name]
+        assert len(compacted) < len(long_content)
+        assert messages[0].tool_calls[0]["args"][arg_name] == long_content
+        assert request.state["messages"] is messages
+        assert seen[0][1:] == messages[1:]
+        if representation == "anthropic":
+            from langchain_anthropic.chat_models import _format_messages
+
+            _, serialized = _format_messages([compacted_message])
+            assert serialized[0]["content"][0]["input"][arg_name] == compacted
+        else:
+            from langchain_openai.chat_models.base import _convert_message_to_dict
+
+            serialized = _convert_message_to_dict(compacted_message)
+            assert (
+                json.loads(serialized["tool_calls"][0]["function"]["arguments"])[
+                    arg_name
+                ]
+                == compacted
+            )
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("outcome", ["success", "error", "reject", "unpaired"])
+def test_args_compaction_keeps_outcome_pairing_and_recent_writes(tmp_path, outcome):
+    mw = ConversationOffloadingMiddleware(model(), FilesystemBackend(root_dir=tmp_path))
+    old = AIMessage(
+        content="",
+        tool_calls=[
+            {
+                "name": "write_file",
+                "args": {"file_path": "/report.txt", "content": "evidence " * 5000},
+                "id": "old",
+            },
+            {
+                "name": "read_file",
+                "args": {"file_path": "/report.txt"},
+                "id": "parallel-read",
+            },
+        ],
+    )
+    recent = AIMessage(
+        content="",
+        tool_calls=[
+            {
+                "name": "edit_file",
+                "args": {"file_path": "/report.txt", "new_string": "r" * 2100},
+                "id": "recent",
+            }
+        ],
+    )
+    messages = [old]
+    if outcome != "unpaired":
+        messages.append(
+            ToolMessage(
+                content=outcome,
+                tool_call_id="old",
+                status="success" if outcome == "success" else "error",
+                artifact={"source": "fixed"},
+            )
+        )
+    messages.extend(
+        [
+            HumanMessage(
+                content="ANCHOR_NO_DELETE ANCHOR_TODO https://docs.python.org"
+            ),
+            recent,
+        ]
+    )
+    original = old.model_dump()
+    shortened, modified = mw._truncate_args(messages, mw.input_budget)
+    assert modified and old.model_dump() == original
+    assert shortened[0].tool_calls[0]["id"] == "old"
+    assert shortened[0].tool_calls[1] == old.tool_calls[1]
+    assert shortened[1:] == messages[1:]
+    assert shortened[-1].tool_calls[0]["args"]["new_string"] == "r" * 2100
+
+
+def test_final_budget_checks_system_and_schemas_after_offload(tmp_path):
+    async def run():
+        instance = model()
+        mw = ConversationOffloadingMiddleware(
+            instance, FilesystemBackend(root_dir=tmp_path)
+        )
+        guard = ContextBudgetMiddleware(mw)
+        called = []
+
+        async def handler(request):
+            called.append(request)
+            return ModelResponse(result=[AIMessage(content="ok")])
+
+        request = ModelRequest(
+            model=instance,
+            messages=[ToolMessage(content="small preview", tool_call_id="result")],
+            system_message=SystemMessage(content="trusted memory and skills " * 3000),
+            tools=[
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "mcp_evidence",
+                        "description": "schema " * 3000,
+                        "parameters": {"type": "object", "properties": {}},
+                    },
+                }
+            ],
+            state={},
+            runtime=SimpleNamespace(execution_info=None),
+        )
+        with pytest.raises(ContextOverflowError, match="input_budget_exceeded"):
+            await guard.awrap_model_call(request, handler)
+        assert not called
+
+    asyncio.run(run())
 
 
 def test_manual_preserves_messages_and_rebuilt_graph_returns_to_automatic(

@@ -1,9 +1,10 @@
 import unittest
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, Mock
 
 import test_run_requests as fixtures
 
 from platform_api.core.errors import BadRequestError, ConflictError
+from platform_api.modules.agents.domain.models import ModelResilienceSettings
 
 
 class ContextOffloadingTest(unittest.IsolatedAsyncioTestCase):
@@ -11,6 +12,9 @@ class ContextOffloadingTest(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         fixtures.RunRequestsTest.setUp(self)
+        self.service._model_resilience_snapshot = Mock(
+            return_value=ModelResilienceSettings.disabled()
+        )
         self.service._load_thread.return_value["metadata"].update(
             visibility="private",
             owner_user_id="user-1",

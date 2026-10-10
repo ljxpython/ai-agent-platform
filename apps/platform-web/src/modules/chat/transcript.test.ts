@@ -519,4 +519,82 @@ describe("parseToolErrorSummary", () => {
     expect(res.summary).toBe("直接传入的对象错误");
     expect(res.recoveryHint).toBe("可选择其他方式");
   });
+
+  it("prioritizes persisted ToolMessage preview content over large raw streaming output", () => {
+    const previewContent = "Tool result too large... preview head and tail";
+    const hugeStreamingOutput = "X".repeat(110000);
+    const messages = [
+      new AIMessage({
+        id: "ai-1",
+        content: "Calling tool",
+        tool_calls: [{ id: "call-1", name: "search_web", args: {} }],
+      }),
+      new ToolMessage({
+        content: previewContent,
+        tool_call_id: "call-1",
+      }),
+    ];
+    const calls = [
+      {
+        callId: "call-1",
+        name: "search_web",
+        input: {},
+        output: hugeStreamingOutput,
+        status: "finished" as const,
+      },
+    ];
+    const turns = buildTranscript(messages, calls as any, false);
+    const tools = turns.flatMap((t) => t.work.flatMap((item) => item.tools));
+    expect(tools).toHaveLength(1);
+    expect(tools[0]?.output).toBe(previewContent);
+  });
+
+  it("isolates same tool_call_id between root and child namespaces without collision", () => {
+    const rootMessage = new ToolMessage({
+      content: "Root output preview",
+      tool_call_id: "budget-large",
+      additional_kwargs: { namespace: [] },
+    });
+    const childMessage = new ToolMessage({
+      content: "Child output preview",
+      tool_call_id: "budget-large",
+      additional_kwargs: { namespace: ["tools:subagent-1"] },
+    });
+
+    const rootTurns = buildTranscript(
+      [
+        new AIMessage({
+          content: "root call",
+          tool_calls: [
+            { id: "budget-large", name: "parse_document", args: {} },
+          ],
+        }),
+        rootMessage,
+        childMessage,
+      ],
+      [],
+      false,
+      [],
+    );
+
+    const childTurns = buildTranscript(
+      [
+        new AIMessage({
+          content: "child call",
+          tool_calls: [{ id: "budget-large", name: "search_web", args: {} }],
+        }),
+        rootMessage,
+        childMessage,
+      ],
+      [],
+      false,
+      ["tools:subagent-1"],
+    );
+
+    const rootTool = rootTurns[0]?.work[0]?.tools[0];
+    const childTool = childTurns[0]?.work[0]?.tools[0];
+
+    expect(rootTool?.output).toBe("Root output preview");
+    expect(childTool?.output).toBe("Child output preview");
+  });
 });

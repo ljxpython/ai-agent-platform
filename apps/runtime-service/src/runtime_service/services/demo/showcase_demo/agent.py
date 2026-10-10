@@ -30,11 +30,13 @@ from runtime_service.middlewares import (
     ModelResilienceMiddleware,
     ModelResilienceSummarizationMiddleware,
     PlanModeMiddleware,
+    ResultFilesystemMiddleware,
     RuntimeConfigMiddleware,
     TimeoutWrapupMiddleware,
     TokenBudgetMiddleware,
     context_management_enabled,
     loop_detection_enabled,
+    resolve_tool_output_limit,
     resolve_wrapup_after_seconds,
 )
 from runtime_service.middlewares.images import ImageToolsMiddleware
@@ -118,6 +120,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     workspace = None
     resolved = None
     connection = None
+    tool_output_limit = None
     if executing:
         thread_id = configurable.get("thread_id")
         if not isinstance(thread_id, str) or not thread_id:
@@ -180,11 +183,28 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     chart_tools = build_chart_tools(image_workspace)
     image_names = tuple(tool.name for tool in image_middleware.tools)
     document_names = tuple(tool.name for tool in document_middleware.tools)
-    filesystem = FilesystemMiddleware(
+    tool_output_limit = None
+    if context_management_enabled() and executing:
+        tool_output_limit = resolve_tool_output_limit(
+            (model, fallback_model), resolved.max_tokens
+        )
+    filesystem_kwargs = (
+        {"tool_token_limit_before_evict": tool_output_limit}
+        if tool_output_limit is not None
+        else {}
+    )
+    filesystem_cls = (
+        ResultFilesystemMiddleware
+        if tool_output_limit is not None
+        else FilesystemMiddleware
+    )
+
+    filesystem = filesystem_cls(
         backend=backend,
         tools=list(WORK_TOOLS),
         _permissions=PERMISSIONS,
         max_execute_timeout=60,
+        **filesystem_kwargs,
     )
     todos = TodoListMiddleware()
     readonly_tools = [
@@ -341,6 +361,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 ),
                 chart_tools,
                 context.access_policy if executing else None,
+                tool_output_limit=tool_output_limit,
             ),
             middleware=[
                 filesystem,

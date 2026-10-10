@@ -194,13 +194,15 @@ export function buildTrajectoryRecords(
   let currentTurn = 0;
   let currentStep = 0;
 
-  // 1. 建立 ToolMessage 查找映射 (by tool_call_id)
-  const toolResults = new Map<string, BaseMessage>();
+  // 1. 建立 ToolMessage 查找映射 (by tool_call_id, 支持同名 callId 队列与命名空间识别)
+  const toolResultsList = new Map<string, BaseMessage[]>();
   for (const msg of messages) {
     if (msg.type === "tool") {
       const callId = String(asObject(msg).tool_call_id ?? "");
       if (callId) {
-        toolResults.set(callId, msg);
+        const list = toolResultsList.get(callId) ?? [];
+        list.push(msg);
+        toolResultsList.set(callId, list);
       }
     }
   }
@@ -345,10 +347,24 @@ export function buildTrajectoryRecords(
           if (!callId) continue;
 
           processedToolCallIds.add(callId);
-          currentStep++;
-
           const assembled = assembledMap.get(callId);
-          const toolResultMsg = toolResults.get(callId);
+          const candidates = toolResultsList.get(callId);
+          let toolResultMsg: BaseMessage | undefined;
+          if (candidates && candidates.length > 0) {
+            const msgNs = Array.isArray(rawMsg.namespace)
+              ? JSON.stringify(rawMsg.namespace)
+              : undefined;
+            const matchIdx = msgNs
+              ? candidates.findIndex(
+                  (c) => JSON.stringify(asObject(c).namespace) === msgNs,
+                )
+              : -1;
+            if (matchIdx !== -1) {
+              toolResultMsg = candidates.splice(matchIdx, 1)[0];
+            } else {
+              toolResultMsg = candidates.shift();
+            }
+          }
 
           const toolName = String(
             callObj.name ?? assembled?.name ?? "未知工具",
