@@ -47,6 +47,7 @@ Commands:
 Environment:
   RUNTIME_BACKEND=local|docker (default: local)
   RUNTIME_TERMINAL_ENABLED=0|1 (default: 1 for local stack)
+  RUNTIME_BACKGROUND_TASKS_ENABLED=0|1 in Runtime env (default: 0)
 EOF
 }
 
@@ -90,6 +91,11 @@ PY
   set +a
   export RUNTIME_BACKEND="${RUNTIME_BACKEND_OVERRIDE:-${RUNTIME_BACKEND:-local}}"
   export RUNTIME_TERMINAL_ENABLED="${TERMINAL_ENABLED_OVERRIDE:-${RUNTIME_TERMINAL_ENABLED:-1}}"
+  export RUNTIME_BACKGROUND_TASKS_ENABLED="${RUNTIME_BACKGROUND_TASKS_ENABLED:-0}"
+  case "$RUNTIME_BACKGROUND_TASKS_ENABLED" in
+    0|1) ;;
+    *) die "RUNTIME_BACKGROUND_TASKS_ENABLED must be 0 or 1" ;;
+  esac
   case "$RUNTIME_TERMINAL_ENABLED" in
     0|1) ;;
     *) die "RUNTIME_TERMINAL_ENABLED must be 0 or 1" ;;
@@ -231,12 +237,12 @@ start_managed_key() {
       ;;
     runtime-api)
       start_process runtime-api "$RUNTIME_DIR" \
-        "env RUNTIME_BACKEND=$(shell_quote "$RUNTIME_BACKEND") RUNTIME_BACKGROUND_TASKS_ENABLED=1 RUNTIME_EXECUTION_HOST_ID=worktree-host RUNTIME_SELF_URL=http://127.0.0.1:$(shell_quote "$RUNTIME_PORT") uv run --no-sync --frozen graphharbor serve --host 127.0.0.1 --port $(shell_quote "$RUNTIME_PORT") --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 0" \
+        "env RUNTIME_BACKEND=$(shell_quote "$RUNTIME_BACKEND") RUNTIME_SELF_URL=http://127.0.0.1:$(shell_quote "$RUNTIME_PORT") uv run --no-sync --frozen graphharbor serve --host 127.0.0.1 --port $(shell_quote "$RUNTIME_PORT") --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker 0" \
         "$LOG_DIR/runtime-api.log" "$RUNTIME_PORT"
       ;;
     runtime-worker)
       start_process runtime-worker "$RUNTIME_DIR" \
-        "env RUNTIME_BACKEND=$(shell_quote "$RUNTIME_BACKEND") RUNTIME_BACKGROUND_TASKS_ENABLED=1 RUNTIME_EXECUTION_HOST_ID=worktree-host PLATFORM_RUNTIME_MESSAGE_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/message-authorization PLATFORM_RUNTIME_MEMORY_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/memory-authorization uv run --no-sync --frozen graphharbor worker --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker $(shell_quote "$LOCAL_STACK_WORKER_JOBS")" \
+        "env RUNTIME_BACKEND=$(shell_quote "$RUNTIME_BACKEND") PLATFORM_RUNTIME_MESSAGE_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/message-authorization PLATFORM_RUNTIME_MEMORY_AUTH_URL=http://127.0.0.1:$(shell_quote "$PLATFORM_API_PORT")/api/runtime/internal/memory-authorization uv run --no-sync --frozen graphharbor worker --config $(shell_quote "$GRAPH_CONFIG") --n-jobs-per-worker $(shell_quote "$LOCAL_STACK_WORKER_JOBS")" \
         "$LOG_DIR/runtime-worker.log"
       ;;
     platform-api)

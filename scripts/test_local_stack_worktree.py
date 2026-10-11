@@ -193,6 +193,7 @@ class WorktreeRegistryTest(unittest.TestCase):
                 "redis.conf",
                 "pids",
                 "logs",
+                "background-logs",
                 "redis",
                 "workspaces",
                 "workspaces/graphharbor",
@@ -254,6 +255,9 @@ spawn_detached "$2" "python3 -c 'import os; print(any(k in os.environ for k in (
                 {
                     "DATABASE_URI": "postgresql://runtime:private@127.0.0.1:5432/runtime",
                     "PROVIDER_KEY": secret,
+                    "RUNTIME_BACKGROUND_TASKS_ENABLED": "1",
+                    "RUNTIME_EXECUTION_HOST_ID": "primary-host",
+                    "RUNTIME_BACKGROUND_LOG_ROOT": str(primary / "private-logs"),
                 },
             )
             write_env(
@@ -283,6 +287,12 @@ spawn_detached "$2" "python3 -c 'import os; print(any(k in os.environ for k in (
             entry = record(root, common)
             runtime, platform = configs(root, entry)
             self.assertEqual(runtime["PROVIDER_KEY"], secret)
+            self.assertEqual(runtime["RUNTIME_BACKGROUND_TASKS_ENABLED"], "0")
+            self.assertEqual(runtime["RUNTIME_EXECUTION_HOST_ID"], entry["id"])
+            self.assertEqual(
+                runtime["RUNTIME_BACKGROUND_LOG_ROOT"],
+                str(root / ".local-stack/background-logs"),
+            )
             self.assertEqual(platform["PLATFORM_API_BOOTSTRAP_ADMIN_USERNAME"], "admin")
             self.assertEqual(
                 platform["PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD"], "admin123"
@@ -308,6 +318,28 @@ spawn_detached "$2" "python3 -c 'import os; print(any(k in os.environ for k in (
                 )
             exported = export_environment(root, common, True)
             self.assertEqual(exported["LOCAL_STACK_WORKER_JOBS"], "1")
+            self.assertEqual(exported["RUNTIME_EXECUTION_HOST_ID"], entry["id"])
+            write_env(
+                root / ".local-stack/runtime.env",
+                {
+                    "RUNTIME_BACKGROUND_TASKS_ENABLED": "1",
+                    "RUNTIME_EXECUTION_HOST_ID": "primary-host",
+                    "RUNTIME_BACKGROUND_LOG_ROOT": str(primary / "private-logs"),
+                },
+            )
+            exported = export_environment(root, common, True)
+            self.assertEqual(exported["RUNTIME_BACKGROUND_TASKS_ENABLED"], "1")
+            self.assertEqual(exported["RUNTIME_EXECUTION_HOST_ID"], entry["id"])
+            self.assertEqual(
+                exported["RUNTIME_BACKGROUND_LOG_ROOT"],
+                str(root / ".local-stack/background-logs"),
+            )
+            other_root = Path(temporary) / "other-worktree"
+            with patch("local_stack_worktree.database_resources"):
+                initialize(other_root, common, primary)
+            other = export_environment(other_root, common, True)
+            self.assertNotEqual(other["RUNTIME_EXECUTION_HOST_ID"], entry["id"])
+            self.assertEqual(other["RUNTIME_BACKGROUND_TASKS_ENABLED"], "0")
             self.assertEqual(exported["VITE_TEST_LABEL"], "local")
             self.assertEqual(
                 exported["VITE_DEV_PORT"], str(entry["ports"]["PLATFORM_WEB_PORT"])

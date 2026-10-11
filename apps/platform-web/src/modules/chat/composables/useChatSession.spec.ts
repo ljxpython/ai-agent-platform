@@ -2557,4 +2557,193 @@ describe("F05 Agent 模型上下文 PII 脱敏错误消费与界面回归", () =
       mocks.runs.mockReset();
     });
   });
+
+  describe("后台任务接续时序闸机与 HITL 保护 (K09)", () => {
+    function setupSession(threadIdRef = ref("t-test-gate")) {
+      const loading = ref(false);
+      const interrupts = ref<any[]>([]);
+      mocks.stream.mockReturnValue({
+        isLoading: loading,
+        error: ref(null),
+        interrupts,
+        hydrationPromise: ref(Promise.resolve()),
+        getThread: () => ({
+          onConnectionChange: vi.fn(),
+          suspendEvents: vi.fn(),
+          getConnectionState: () => ({ state: "connected", streams: [] }),
+          reconnectEvents: vi.fn(),
+        }),
+        disconnect: vi.fn(),
+      });
+      mocks.runs.mockResolvedValue([]);
+      mocks.list.mockResolvedValue([]);
+      mocks.state.mockResolvedValue({ values: { messages: [] } });
+
+      const onRefresh = vi.fn();
+      const scope = effectScope();
+      const session = scope.run(() =>
+        useChatSession({
+          projectId: "p-gate",
+          graphId: "showcase_demo",
+          threadId: threadIdRef.value,
+          context: ref({}),
+          canWrite: ref(true),
+          onThread: vi.fn(),
+          onRefresh,
+          onReconnect: vi.fn(),
+        }),
+      )!;
+      return { session, scope, onRefresh, loading, interrupts };
+    }
+
+    it("空闲态下调用 acceptDiscoveredRun 成功接纳并赋值 run.value", async () => {
+      const { session, scope, onRefresh } = setupSession();
+      await session.verify();
+      await flushPromises();
+
+      const targetRun = { run_id: "discovered-run-1", status: "success" };
+      mocks.runs.mockResolvedValue([targetRun]);
+
+      await session.acceptDiscoveredRun("discovered-run-1");
+      await flushPromises();
+
+      expect(session.run.value?.run_id).toBe("discovered-run-1");
+      expect(onRefresh).toHaveBeenCalled();
+      scope.stop();
+    });
+
+    it("前台处于繁忙态 (active run 或 loading) 时，绝不打断当前 run，排队暂存", async () => {
+      const { session, scope, loading } = setupSession();
+      await session.verify();
+      await flushPromises();
+
+      // 设置当前有 active run
+      session.run.value = {
+        run_id: "current-active-run",
+        status: "running",
+      } as any;
+      loading.value = true;
+
+      const discoveredRun = { run_id: "discovered-run-bg", status: "success" };
+      mocks.runs.mockResolvedValue([discoveredRun]);
+
+      // 尝试接纳后台 run
+      await session.acceptDiscoveredRun("discovered-run-bg");
+      await flushPromises();
+
+      // run.value 保持为当前 active run，没有被冲刷
+      expect(session.run.value?.run_id).toBe("current-active-run");
+
+      // 当 active run 结束且 loading 结束，恢复空闲，触发消费
+      loading.value = false;
+      session.run.value = {
+        run_id: "current-active-run",
+        status: "success",
+      } as any;
+      await flushPromises();
+
+      expect(session.run.value?.run_id).toBe("discovered-run-bg");
+      scope.stop();
+    });
+
+    it("前台处于人机协同审批 (reviews) 时，绝不覆盖 run.value 破坏审批卡片", async () => {
+      const { session, scope, interrupts } = setupSession();
+      await session.verify();
+      await flushPromises();
+
+      // 模拟中断状态机：当前 run 处于 interrupted 状态且携带审批请求
+      session.run.value = {
+        run_id: "current-hitl-run",
+        status: "interrupted",
+      } as any;
+      interrupts.value = [
+        {
+          id: "review-1",
+          value: {
+            action_requests: [
+              {
+                id: "act-1",
+                action: "execute_command",
+                args: { cmd: "ls" },
+              },
+            ],
+          },
+        },
+      ];
+      await flushPromises();
+
+      const discoveredRun = {
+        run_id: "discovered-run-hitl",
+        status: "success",
+      };
+      mocks.runs.mockResolvedValue([discoveredRun]);
+
+      await session.acceptDiscoveredRun("discovered-run-hitl");
+      await flushPromises();
+
+      // 绝不覆盖正在展示的审批 Run
+      expect(session.run.value?.run_id).toBe("current-hitl-run");
+
+      // 用户审批完成，清空中断且 run 变为终端态
+      interrupts.value = [];
+      session.run.value = {
+        run_id: "current-hitl-run",
+        status: "success",
+      } as any;
+      await flushPromises();
+
+      // 审批完成后安全消费后台完成 Run
+      expect(session.run.value?.run_id).toBe("discovered-run-hitl");
+      scope.stop();
+    });
+
+    it("异步 await 期间切换 Thread 时，作用域锁丢弃旧请求结果，防止跨会话串台", async () => {
+      const { session, scope } = setupSession();
+      await session.verify();
+      await flushPromises();
+
+      let resolveRuns!: (runs: any[]) => void;
+      mocks.runs.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveRuns = resolve;
+          }),
+      );
+
+      // 发起接纳
+      const p = session.acceptDiscoveredRun("discovered-run-cross");
+
+      // 在 await 期间切会话
+      session.threadId.value = "t-new-session";
+
+      // 慢速网络响应返回
+      resolveRuns([{ run_id: "discovered-run-cross", status: "success" }]);
+      await p;
+      await flushPromises();
+
+      // 新会话的 run.value 绝不被老会话的 run 污染
+      expect(session.run.value?.run_id).not.toBe("discovered-run-cross");
+      scope.stop();
+    });
+
+    it("会话处于 stopping / cancelling 态时，拒绝接纳后台 Run", async () => {
+      const { session, scope } = setupSession();
+      await session.verify();
+      await flushPromises();
+
+      session.stopState.value = "stopping";
+
+      const discoveredRun = {
+        run_id: "discovered-run-stop",
+        status: "success",
+      };
+      mocks.runs.mockResolvedValue([discoveredRun]);
+
+      await session.acceptDiscoveredRun("discovered-run-stop");
+      await flushPromises();
+
+      expect(session.run.value?.run_id).not.toBe("discovered-run-stop");
+      scope.stop();
+    });
+  });
 });

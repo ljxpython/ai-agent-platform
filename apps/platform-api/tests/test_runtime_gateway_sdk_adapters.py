@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import unittest
 from types import SimpleNamespace
@@ -36,6 +37,40 @@ async def _stream_events(*events):
 
 
 class RuntimeGatewaySdkAdaptersTest(unittest.IsolatedAsyncioTestCase):
+    async def test_acceptance_transport_preserves_wire_bytes_and_fixed_get(self):
+        sent = []
+
+        def receive(request):
+            sent.append(request)
+            return httpx.Response(200, json={"result": "accepted"})
+
+        adapter = LangGraphRunsSdkAdapter(
+            base_url="http://runtime.invalid",
+            forwarded_headers={"authorization": "Bearer synthetic-fixed-grant"},
+        )
+        body = (
+            '{ "assistant_id": "showcase_demo", "input": {"text": "中文"} }\n'.encode()
+        )
+        digest = "sha256:" + hashlib.sha256(body).hexdigest()
+        client = httpx.AsyncClient
+        with patch(
+            "platform_api.adapters.langgraph.runtime_client.httpx.AsyncClient",
+            side_effect=lambda **kwargs: client(
+                **kwargs, transport=httpx.MockTransport(receive)
+            ),
+        ):
+            await adapter.acceptance("POST", "fixed-thread", "fixed-key", digest, body)
+            await adapter.acceptance("GET", "fixed-thread", "fixed-key", digest)
+        self.assertEqual([value.method for value in sent], ["POST", "GET"])
+        self.assertEqual([value.content for value in sent], [body, b""])
+        for value in sent:
+            self.assertEqual(value.url.path, "/threads/fixed-thread/runs/acceptance")
+            self.assertEqual(value.headers["idempotency-key"], "fixed-key")
+            self.assertEqual(value.headers["graphharbor-request-digest"], digest)
+            self.assertEqual(
+                value.headers["authorization"], "Bearer synthetic-fixed-grant"
+            )
+
     def test_thread_fatal_error_is_safe_and_success_or_tool_content_is_unchanged(self):
         failed = {
             "thread_id": "thread",

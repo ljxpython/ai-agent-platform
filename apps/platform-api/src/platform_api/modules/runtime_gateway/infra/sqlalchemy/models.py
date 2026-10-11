@@ -105,6 +105,7 @@ class RunCompletionOriginRecord(Base):
     """Platform ownership for a generic runtime terminal callback."""
 
     __tablename__ = "run_completion_origins"
+    __table_args__ = (UniqueConstraint("run_id", name="uq_run_completion_origins_run"),)
     origin_ref: Mapped[str] = mapped_column(String(128), primary_key=True)
     runtime_id: Mapped[str] = mapped_column(
         String(64), nullable=False, default="default"

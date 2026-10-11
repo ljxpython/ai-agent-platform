@@ -60,14 +60,11 @@ from platform_api.modules.runtime_gateway.presentation.http import (
 def fixture(tmp_path):
     schema = None
     if os.getenv("RUN_COMPLETION_PG_TEST") == "1":
-        target = make_url(os.environ["POSTGRES_URI"]).set(
+        target = make_url(os.environ["ACCEPTANCE_TEST_PLATFORM_DATABASE_URL"]).set(
             drivername="postgresql+psycopg"
         )
-        if (
-            target.host != "127.0.0.1"
-            or target.database != "graphharbor_event_retention_verify"
-        ):
-            raise RuntimeError("Only the disposable completion database is allowed")
+        if target.host not in {"127.0.0.1", "localhost", "::1"} or not target.database:
+            raise RuntimeError("An explicit isolated local PostgreSQL URL is required")
         schema = "completion_" + uuid4().hex
         admin = create_engine(target, hide_parameters=True)
         with admin.begin() as conn:

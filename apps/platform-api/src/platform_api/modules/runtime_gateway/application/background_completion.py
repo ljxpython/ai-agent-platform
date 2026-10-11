@@ -238,6 +238,8 @@ async def deliver(request, payload):
                 thread=thread, payload={"context": source.context_snapshot}, actor=actor
             )["context"]
         )
+        # A completion starts a new execution; the source's identity is not reusable.
+        context = {k: v for k, v in context.items() if k != "plan_execution_id"}
         await run_in_threadpool(
             authorize_snapshot, factory, gateway, data, context, actor
         )

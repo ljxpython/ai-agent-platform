@@ -19,6 +19,8 @@ if os.getenv("BACKGROUND_FAULT_MODE_PATH") and sys.argv[1:2] == ["platform"]:
     original_read = LangGraphRuntimeGatewayUpstream.get_run_acceptance
 
     async def submit_with_lost_ack(upstream, thread_id, body, key, digest):
+        if json.loads(body).get("metadata", {}).get("background_event_id"):
+            record("completion-acceptance-post")
         result = await original_submit(upstream, thread_id, body, key, digest)
         payload = json.loads(body)
         fault = Path(os.environ["BACKGROUND_FAULT_MODE_PATH"])
@@ -50,7 +52,16 @@ if os.getenv("BACKGROUND_FAULT_MODE_PATH") and sys.argv[1:2] == ["platform"]:
                 message="Synthetic receipt timeout",
                 upstream="langgraph",
             )
-        result = await original_read(upstream, thread_id, key, digest)
+        if fault.exists() and fault.read_text() == "reconcile":
+            results = []
+            for _ in range(20):
+                result = await original_read(upstream, thread_id, key, digest)
+                results.append((result["result"], result.get("run_id")))
+                record("completion-receipt-repeat", result=result["result"])
+            assert len(set(results)) == 1
+            fault.write_text("reconciled")
+        else:
+            result = await original_read(upstream, thread_id, key, digest)
         record("completion-receipt-result", result=result["result"])
         return result
 
@@ -256,7 +267,7 @@ def provider_app():
             prompt in {"background-source-timeout", "background-source-cancel"}
             and after_tool
         ):
-            await asyncio.sleep(120)
+            await asyncio.sleep(600)
         if prompt in {"timeout", "run-deadline", "background-gate-block"}:
             await asyncio.sleep(60)
         if prompt == "prepare-after" and count == 1:
@@ -301,11 +312,42 @@ def provider_app():
         ):
             commands = {
                 "background-short": ("sleep 2; printf BACKGROUND_DONE", 30),
+                "background-lost-ack": (
+                    "while [ ! -f background-lost-ack-ready ]; do sleep 0.1; done; printf BACKGROUND_DONE",
+                    180,
+                ),
                 "background-long": ("printf started; sleep 120; printf finished", 180),
+                "background-restart-gated": (
+                    "printf started; while [ ! -f background-restart-ready ]; do sleep 0.1; done; printf finished",
+                    900,
+                ),
                 "background-timeout": ("sleep 120", 2),
                 "background-exit124": ("exit 124", 30),
                 "background-drain-short": ("sleep 15; printf DRAIN_DONE", 90),
-                "background-after-stop": ("sleep 15; printf AFTER_STOP", 90),
+                "background-drain-gated": (
+                    "while [ ! -f background-drain-ready ]; do sleep 0.1; done; printf DRAIN_DONE",
+                    900,
+                ),
+                "background-model-gated": (
+                    "while [ ! -f background-model-ready ]; do sleep 0.1; done; printf MODEL_READY",
+                    900,
+                ),
+                "background-stop-target": (
+                    "while [ ! -f background-stop-ready ]; do sleep 0.1; done",
+                    900,
+                ),
+                "background-after-stop": (
+                    "while [ ! -f background-after-stop-ready ]; do sleep 0.1; done; printf AFTER_STOP",
+                    900,
+                ),
+                "background-source-timeout": (
+                    "while [ ! -f background-source-ready ]; do sleep 0.1; done",
+                    900,
+                ),
+                "background-source-cancel": (
+                    "while [ ! -f background-source-ready ]; do sleep 0.1; done",
+                    900,
+                ),
             }
             command, timeout = commands.get(prompt, commands["background-long"])
             tools = [
@@ -463,6 +505,7 @@ if __name__ == "__main__":
             app,
             host="127.0.0.1",
             port=spec[role + "_port"],
+            loop="asyncio" if role == "platform" else "auto",
             log_level="error",
             access_log=False,
         )

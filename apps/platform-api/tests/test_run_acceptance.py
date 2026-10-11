@@ -11,12 +11,17 @@ from uuid import UUID, uuid4
 
 import jwt
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
+from sqlalchemy.exc import IntegrityError
 
 from platform_api.config import Settings
 from platform_api.core.context.models import ActorContext
 from platform_api.core.db import build_engine, build_session_factory, create_core_tables
-from platform_api.core.errors import ForbiddenError, UpstreamServiceError
+from platform_api.core.errors import (
+    BadRequestError,
+    ForbiddenError,
+    UpstreamServiceError,
+)
 from platform_api.core.security.run_acceptance import receipt_binding, validate_grant
 from platform_api.core.security.tokens import create_runtime_delegation_token
 from platform_api.modules.agents.domain.models import ModelResilienceSettings
@@ -30,6 +35,7 @@ from platform_api.modules.runtime_gateway.application.run_acceptance import (
 )
 from platform_api.modules.runtime_gateway.application.service import (
     RuntimeGatewayService,
+    _runtime_context_snapshot,
 )
 from platform_api.modules.runtime_gateway.infra.sqlalchemy.models import (
     RunRequestRecord,
@@ -87,11 +93,14 @@ def setup(tmp_path, monkeypatch):
         create_run_with_acceptance=AsyncMock(),
         get_run_acceptance=AsyncMock(),
         create_thread_run=AsyncMock(),
+        get_thread_state=AsyncMock(return_value={"values": {}, "tasks": []}),
     )
     upstream.with_forwarded_headers = Mock(return_value=upstream)
     snapshot = {}
 
     def delegation(**values):
+        if "auth_snapshot" not in values:
+            return {"authorization": "Bearer synthetic-read"}
         snapshot.update(
             subject="owner",
             credential_id=None,
@@ -113,19 +122,27 @@ def setup(tmp_path, monkeypatch):
             context_hash=values["context_hash"],
         )
         values["auth_snapshot"].update(snapshot)
+        if values.get("origin_ref"):
+            values["auth_snapshot"]["callback_context"] = {
+                "origin_ref": values["origin_ref"]
+            }
         return {"authorization": "Bearer synthetic"}
 
     service = RuntimeGatewayService(
         session_factory=factory,
         upstream=upstream,
         delegation_headers_factory=delegation,
+        runtime_delegation_secret=SECRET,
     )
     service._model_resilience_snapshot = Mock(
         return_value=ModelResilienceSettings.disabled()
     )
     service._validate_run_options = Mock()
     service._load_thread = AsyncMock(
-        return_value={"metadata": {"graph_id": data["graph_id"]}}
+        return_value={
+            "thread_id": data["thread_id"],
+            "metadata": {"graph_id": data["graph_id"]},
+        }
     )
     service._attach_runtime_model_reference = Mock(
         side_effect=lambda **kw: kw["payload"]
@@ -184,6 +201,97 @@ def saved(factory):
     with factory() as session:
         row = session.scalar(select(RunRequestRecord))
         return _stored(row)
+
+
+def test_completion_starts_new_execution_and_signs_final_context(setup, monkeypatch):
+    service, factory, upstream, data, settings = setup
+    actor = ActorContext(user_id="owner")
+    source_context = {"plan_execution_id": "source-execution", "plan_mode": False}
+    monkeypatch.setattr(
+        completion,
+        "records",
+        Mock(return_value=(SimpleNamespace(context_snapshot=source_context), None)),
+    )
+    monkeypatch.setattr(completion, "current_actor", Mock(return_value=actor))
+    monkeypatch.setattr(completion, "bind_request", Mock())
+    monkeypatch.setattr(completion, "authorize_snapshot", Mock())
+    monkeypatch.setattr(
+        "platform_api.modules.runtime_gateway.presentation.http.get_runtime_gateway_service",
+        Mock(return_value=service),
+    )
+    service._inject_thread_access_policy = Mock(side_effect=lambda **kw: kw["payload"])
+    upstream.get_thread_run = AsyncMock(return_value={"status": "success"})
+    upstream.list_thread_runs = AsyncMock(return_value=[])
+    run_id = str(uuid4())
+    upstream.create_run_with_acceptance.side_effect = (
+        lambda thread, body, key, digest: (
+            receipt(thread, key, digest) | {"run_id": run_id}
+        )
+    )
+    request = SimpleNamespace(
+        app=SimpleNamespace(
+            state=SimpleNamespace(settings=settings, db_session_factory=factory)
+        )
+    )
+    result = asyncio.run(
+        completion.deliver(request, completion.CompletionEvent.model_validate(data))
+    )
+    assert result == {"state": "accepted", "run_id": run_id, "reason_code": None}
+    record = saved(factory)
+    body = json.loads(record.upstream_body)
+    marker = body["config"]["configurable"][completion.MARKER]
+    context_hash = _runtime_context_snapshot({"params": body})[0]
+    assert body["context"]["plan_execution_id"] != source_context["plan_execution_id"]
+    assert source_context == {
+        "plan_execution_id": "source-execution",
+        "plan_mode": False,
+    }
+    assert marker["values"]["context_hash"] == context_hash == record.context_hash
+    assert record.upstream_auth_snapshot["context_hash"] == context_hash
+    assert marker == completion.sign_marker(marker["values"], SECRET)
+
+
+def test_public_run_still_rejects_execution_identity(setup):
+    service, _, _, data, _ = setup
+    with pytest.raises(BadRequestError, match="server-owned"):
+        asyncio.run(
+            service.launch_runtime_run(
+                actor=ActorContext(user_id="owner"),
+                project_id=data["project_id"],
+                thread_id=data["thread_id"],
+                command={"method": "run"},
+                upstream_payload={
+                    "assistant_id": data["graph_id"],
+                    "context": {"plan_execution_id": "forged"},
+                },
+                idempotency_key="public-run",
+            )
+        )
+
+
+def test_completion_origin_and_receipt_share_saved_authorization(setup):
+    service, factory, upstream, data, settings = setup
+    service._completion_enabled = True
+    upstream.create_run_with_acceptance.side_effect = TimeoutError()
+    with pytest.raises(TimeoutError):
+        asyncio.run(launch(service, data))
+    record = saved(factory)
+    assert record.origin_ref
+    assert record.upstream_auth_snapshot["callback_context"] == {
+        "origin_ref": record.origin_ref
+    }
+    from platform_api.modules.runtime_gateway.application.run_acceptance import (
+        receipt_headers,
+    )
+
+    claims = jwt.decode(
+        receipt_headers(record, settings)["authorization"].removeprefix("Bearer "),
+        SECRET,
+        algorithms=["HS256"],
+        audience=settings.runtime_delegation_audience,
+    )
+    assert claims["callback_context"] == {"origin_ref": record.origin_ref}
+    assert claims["scope"]["operation"] == "run-acceptance-read"
 
 
 def test_completion_records_check_event_digest_and_execution_identity(setup):
@@ -315,6 +423,91 @@ def test_final_bytes_commit_before_send_and_no_repeat_after_unknown(setup, failu
     )
     with pytest.raises(UpstreamServiceError, match="reconciliation"):
         asyncio.run(launch(service, data))
+    assert upstream.create_run_with_acceptance.await_count == 1
+    upstream.create_thread_run.assert_not_awaited()
+
+
+@pytest.mark.parametrize("boundary", ["reserve", "bytes", "send", "backfill"])
+def test_durable_submission_fault_boundaries_never_resubmit(
+    setup, monkeypatch, boundary
+):
+    service, factory, upstream, data, settings = setup
+    run_id = str(uuid4())
+    accepted = None
+
+    async def send(thread, body, key, digest):
+        nonlocal accepted
+        accepted = receipt(thread, key, digest) | {"run_id": run_id}
+        return accepted
+
+    upstream.create_run_with_acceptance.side_effect = send
+    if boundary in {"reserve", "bytes", "backfill"}:
+        event = {
+            "reserve": "INSERT",
+            "bytes": "UPDATE OF upstream_body",
+            "backfill": "UPDATE OF run_id",
+        }[boundary]
+        with factory.begin() as session:
+            session.execute(
+                text(
+                    f"CREATE TRIGGER submission_fault BEFORE {event} ON run_requests BEGIN SELECT RAISE(ABORT, 'synthetic submission disk fault'); END"
+                )
+            )
+        failure = IntegrityError
+    else:
+
+        class ProcessInterrupted(BaseException):
+            pass
+
+        upstream.create_run_with_acceptance.side_effect = ProcessInterrupted()
+        failure = ProcessInterrupted
+    with pytest.raises(failure):
+        asyncio.run(launch(service, data))
+    with factory() as session:
+        row = session.scalar(select(RunRequestRecord))
+    assert upstream.create_run_with_acceptance.await_count == (
+        1 if boundary in {"send", "backfill"} else 0
+    )
+    if boundary == "reserve":
+        assert row is None
+        return
+    record = _stored(row)
+    assert record.run_id is None
+    if boundary == "bytes":
+        assert record.upstream_body is None
+        with pytest.raises(UpstreamServiceError, match="reconciliation"):
+            asyncio.run(launch(service, data))
+        upstream.create_run_with_acceptance.assert_not_awaited()
+        return
+    if boundary == "backfill":
+        with factory.begin() as session:
+            session.execute(text("DROP TRIGGER submission_fault"))
+    # Reopen connections as a new API process would; only the saved identity is used.
+    factory.kw["bind"].dispose()
+    upstream.get_run_acceptance.return_value = accepted or receipt(
+        record.thread_id,
+        record.upstream_idempotency_key,
+        record.upstream_request_digest,
+        "unknown",
+    )
+    monkeypatch.setattr(
+        "platform_api.adapters.langgraph.runtime_gateway_upstream.LangGraphRuntimeGatewayUpstream",
+        Mock(return_value=upstream),
+    )
+    monkeypatch.setattr(
+        completion,
+        "current_actor",
+        Mock(side_effect=AssertionError("receipt read reconstructed execution")),
+    )
+    request = SimpleNamespace(
+        app=SimpleNamespace(
+            state=SimpleNamespace(settings=settings, db_session_factory=factory)
+        )
+    )
+    result = asyncio.run(completion.reconcile_acceptance(request, data, record))
+    assert result["state"] == ("accepted" if boundary == "backfill" else "unknown")
+    assert result["run_id"] == (run_id if boundary == "backfill" else None)
+    upstream.get_run_acceptance.assert_awaited_once()
     assert upstream.create_run_with_acceptance.await_count == 1
     upstream.create_thread_run.assert_not_awaited()
 

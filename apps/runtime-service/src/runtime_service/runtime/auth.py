@@ -50,6 +50,7 @@ _ALLOWED_CLAIMS = frozenset(
         "context_hash",
         "request_id",
         "platform_trace_id",
+        "credential_id",
         "callback_context",
         "run_acceptance",
     }
@@ -78,6 +79,7 @@ class VerifiedDelegation:
     context_hash: str
     request_id: str | None = None
     platform_trace_id: str | None = None
+    credential_id: str | None = None
     callback_context: Mapping[str, str] | None = None
     run_acceptance: dict | None = None
 
@@ -327,8 +329,9 @@ def verify_delegation_claims(
         context_claim,
         _optional_correlation(claims, "request_id"),
         _optional_correlation(claims, "platform_trace_id"),
-        _optional_callback_context(claims),
-        _parse_run_acceptance(
+        credential_id=credential_id,
+        callback_context=_optional_callback_context(claims),
+        run_acceptance=_parse_run_acceptance(
             claims.get("run_acceptance"), principal, scope, credential_id
         ),
     )
@@ -480,8 +483,8 @@ def verified_delegation_from_user(user: object) -> VerifiedDelegation:
         context_claim,
         request_id.strip() if isinstance(request_id, str) else None,
         platform_trace_id.strip() if isinstance(platform_trace_id, str) else None,
-        credential_id if isinstance(credential_id, str) else None,
-        callback_context,
+        credential_id=credential_id if isinstance(credential_id, str) else None,
+        callback_context=callback_context,
     )
 
 

@@ -1,0 +1,395 @@
+{
+  "reports": [
+    {
+      "file": "final-platform-nonfrontend.xml",
+      "sha256": "fbb57a453ac805a2d81238336cf2a39ba8ccdffe306c8dea462bc218049b5368",
+      "passed": 139,
+      "subtests_passed": 114,
+      "skipped": 1,
+      "failed": 0,
+      "errors": 0,
+      "seconds": 13.353,
+      "timestamp": "2026-10-11T08:54:45.347465+08:00"
+    },
+    {
+      "file": "final-platform-regression-migrations-fixed.xml",
+      "sha256": "3b985437a46c22e04917f9e9b6077cd75d6db89b693b9f732d3430a3a5c271e4",
+      "passed": 77,
+      "subtests_passed": 10,
+      "skipped": 0,
+      "failed": 0,
+      "errors": 0,
+      "seconds": 14.534,
+      "timestamp": "2026-10-11T08:56:01.690186+08:00"
+    },
+    {
+      "file": "final-platform-concurrent-pg.xml",
+      "sha256": "bf735a4080725d997b4b07ce650e4374d2a92bd7956fe5e90c971b9e0a203fcd",
+      "passed": 1,
+      "subtests_passed": 0,
+      "skipped": 0,
+      "failed": 0,
+      "errors": 0,
+      "seconds": 2.778,
+      "timestamp": "2026-10-11T08:55:24.899937+08:00"
+    },
+    {
+      "file": "final-runtime-core.xml",
+      "sha256": "6831b9c26d6fdd9d01447d28cf624ada3a083dfcf910e5152fa4e7ab0f2a581c",
+      "passed": 367,
+      "subtests_passed": 0,
+      "skipped": 5,
+      "failed": 0,
+      "errors": 0,
+      "seconds": 97.91,
+      "timestamp": "2026-10-11T08:59:09.325237+08:00"
+    },
+    {
+      "file": "final-runtime-docker-recovered.xml",
+      "sha256": "2a6902942db2c8aa01f9d50ff3a329bdda058b278414d0054a210306cfbc0fd2",
+      "passed": 14,
+      "subtests_passed": 0,
+      "skipped": 0,
+      "failed": 0,
+      "errors": 0,
+      "seconds": 116.918,
+      "timestamp": "2026-10-11T09:01:12.029699+08:00"
+    },
+    {
+      "file": "final-local-stack-current.xml",
+      "sha256": "0df63816b49b54a041649b083a04ee2660af0d082e999d8d17b8018120179a2c",
+      "passed": 20,
+      "subtests_passed": 19,
+      "skipped": 1,
+      "failed": 0,
+      "errors": 0,
+      "seconds": 94.926,
+      "timestamp": "2026-10-11T10:09:36.716477+08:00"
+    },
+    {
+      "file": "final-system-complete.xml",
+      "sha256": "25ac508b264c9fed1715e5187bff8a6167ce8e6dc1602f21cfa38d860fb4c1ad",
+      "passed": 6,
+      "subtests_passed": 0,
+      "skipped": 0,
+      "failed": 0,
+      "errors": 0,
+      "deselected": 9,
+      "seconds": 2285.02,
+      "timestamp": "2026-10-11T10:02:16.397973+08:00"
+    }
+  ],
+  "lost_ack": [
+    {
+      "source": "final-system-complete/test_lost_native_ack_reconcile0/background-lost-ack-evidence.json",
+      "outcome": "notify",
+      "run_id": "bfe5d34f-8a26-441b-8901-0c2271e89ee3",
+      "accepted_while_worker_stopped": true,
+      "run_count": 2,
+      "ledger_count": 1,
+      "acceptance_post_count": 1,
+      "readonly_receipt_get_count": 20,
+      "completion_model_calls": 1,
+      "platform_restarted": true
+    },
+    {
+      "source": "final-system-complete/test_lost_native_ack_reconcile1/background-lost-ack-evidence.json",
+      "outcome": "stop",
+      "run_id": "d9c325e8-e40b-4f17-b8a7-a5c63a7ff6a0",
+      "accepted_while_worker_stopped": true,
+      "run_count": 2,
+      "ledger_count": 1,
+      "acceptance_post_count": 1,
+      "readonly_receipt_get_count": 20,
+      "completion_model_calls": 0,
+      "platform_restarted": true
+    },
+    {
+      "source": "final-system-complete/test_lost_native_ack_reconcile2/background-lost-ack-evidence.json",
+      "outcome": "revoke",
+      "run_id": "f34b79db-cd7b-4633-9b8b-6eaf6cfc069c",
+      "accepted_while_worker_stopped": true,
+      "run_count": 2,
+      "ledger_count": 1,
+      "acceptance_post_count": 1,
+      "readonly_receipt_get_count": 20,
+      "completion_model_calls": 0,
+      "platform_restarted": true
+    }
+  ],
+  "managed_real_models": [
+    {
+      "graph_id": "dearflow_agent",
+      "task_id": "56a1eb3f-e430-4112-b6ce-98a386ea63a3",
+      "source_run_id": "b9082eef-81fc-4c08-962b-c9af284ad394",
+      "completion_run_id": "4154d418-4e55-484d-9e23-f594ec83e5e9",
+      "status": "succeeded",
+      "delivery": "accepted",
+      "source_model_calls": 2,
+      "completion_model_calls": 1,
+      "completion_total_tokens": 21046,
+      "usage_finalized": true,
+      "missing_usage_calls": 0,
+      "cost_status": "unknown"
+    },
+    {
+      "graph_id": "showcase_demo",
+      "task_id": "016b1ac0-77c5-473a-92e3-fd254f100288",
+      "source_run_id": "78d3e859-66b5-4d65-a835-5ccff0c303aa",
+      "completion_run_id": "a91d7555-f735-4a00-94d7-079d41ffaee9",
+      "status": "succeeded",
+      "delivery": "accepted",
+      "source_model_calls": 2,
+      "completion_model_calls": 1,
+      "completion_total_tokens": 10269,
+      "usage_finalized": true,
+      "missing_usage_calls": 0,
+      "cost_status": "unknown"
+    }
+  ],
+  "source_freeze": {
+    "scope": "non-frontend Final frozen production source",
+    "source_sha256": {
+      "apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py": "1e8364cdbaf602530e291d110a2c32077b2d95c74ead0380049b34513c548528",
+      "apps/platform-api/src/platform_api/modules/runtime_gateway/application/background_completion.py": "24e20c5f1e636653a7f778869d433240dc8bdacc0b4abc99b8dca4374634f4ab",
+      "apps/platform-api/src/platform_api/modules/runtime_gateway/infra/sqlalchemy/models.py": "3db2fa10d2a434305f3fcaa298bbd5be8094824e608ddc453ae32cf5d6069d6b",
+      "apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py": "8561cb827870f3b20854f411cbc720915617e7139c98f1df2f28506457164349",
+      "apps/runtime-service/src/runtime_service/background_tasks/repository.py": "4c66f866dc5da5447d3917d98bbd0c75d09936d39fa93e37253c21a35e60a710",
+      "apps/runtime-service/src/runtime_service/runtime/auth.py": "bb3db219315bccfdec8edf8ea940dcbf7c047e88f65a73b08ff5442120021b7a",
+      "apps/platform-api/migrations/versions/20261011_0008_merge_completion_acceptance.py": "18c11147f390f9680ad35f6d8975c5d26324f04e6d41c497ebf69cdfeb1d9de4",
+      "apps/platform-api/migrations/versions/20261011_0009_completion_sqlite_uuid.py": "77eef1105016083ab9cf77c4129c69e14668cd42847e488c92b2cf9f324bb0c5",
+      "apps/runtime-service/src/runtime_service/db/migrations/versions/0004_merge_background_token_budget.py": "2ac7ecf40467bb7c39261385826502c22fab6b8f941b9da33fe4792d1ca1ce77",
+      "scripts/local-stack.sh": "403cca3134f45ddf4228b0710a8fb3cbefd9cbee278e17827826c24db96e13d5",
+      "scripts/local_stack_worktree.py": "1eb06a68e3b339ab870afc5493c8c843d918055b8f0eeef1d15d4c4147b7862c",
+      "scripts/local_stack_processes.py": "483fa4b794b45cfeca95093bd9955830ba1e04ec34710f3b3ba67c29b7c28bce"
+    },
+    "runtime_image": "sha256:3b7a07136c46d7d151218571f45a40016dbd1044938ae976aff2aadc7a992601"
+  },
+  "source_terminal": [
+    {
+      "task_id": "44f826bc-6f8d-4e56-8adc-6a32f7d91139",
+      "thread_id": "42b2ce0d-3a56-4ab1-91c4-431b1d8ceac0",
+      "graph_id": "dearflow_agent",
+      "origin_run_id": "46c69846-cdbf-45b3-b77c-c3ba6845e741",
+      "status": "cancelled",
+      "cleanup_state": "confirmed",
+      "delivery": {
+        "state": "suppressed",
+        "event_id": "c4bd5d20-d442-5053-b24d-ea3f6d4b24e2",
+        "run_id": null,
+        "reason_code": null
+      }
+    },
+    {
+      "task_id": "9d42cd2d-bd28-4ebd-80ac-d6aeaa270b19",
+      "thread_id": "f8714396-3f0a-48a7-9e3c-ee8a213ca45e",
+      "graph_id": "dearflow_agent",
+      "origin_run_id": "1d74d02e-61a2-4401-a52c-c2438655db43",
+      "status": "cancelled",
+      "cleanup_state": "confirmed",
+      "delivery": {
+        "state": "suppressed",
+        "event_id": "9aefb504-ea29-52f6-8deb-6341c885d722",
+        "run_id": null,
+        "reason_code": null
+      }
+    }
+  ],
+  "drain": {
+    "task": {
+      "task_id": "44ba4a01-38d1-4466-811c-74ecde00ac15",
+      "thread_id": "61777390-1a8d-47be-aeb3-a63f999106f6",
+      "graph_id": "dearflow_agent",
+      "origin_run_id": "2883457c-9b58-4546-8039-9df60cf0023f",
+      "status": "succeeded",
+      "cleanup_state": "confirmed",
+      "delivery": {
+        "state": "suppressed",
+        "event_id": "1ecd6ef8-dc4c-518e-8228-950a14b7b3da",
+        "run_id": null,
+        "reason_code": "background_task_disabled"
+      }
+    },
+    "rollback": {
+      "previous_source": "bd476ae62a61acb7c55bc0f08eba3645ce50daf0",
+      "application_head": "0003_token_budget",
+      "application_stamp": "0003_token_budget",
+      "normal_run": "80f01dee-c3e8-42c5-b389-8b1762e48b06",
+      "receipts_retained": 1
+    }
+  },
+  "release": {
+    "task": {
+      "task_id": "0b29c6dd-381d-4c38-8044-cf85bfc94aff",
+      "thread_id": "ee64faad-1064-473d-b1d5-f981807df71d",
+      "graph_id": "dearflow_agent",
+      "origin_run_id": "79489cef-7902-4fb6-98da-bf5f924e9916",
+      "status": "succeeded",
+      "cleanup_state": "confirmed",
+      "delivery": {
+        "state": "accepted",
+        "event_id": "286fa4ff-5469-52ae-a7e7-0d473fe452f5",
+        "run_id": "762c5724-f14a-474d-8083-6f19c05b3278",
+        "reason_code": null
+      }
+    },
+    "output_bytes": 15,
+    "completion_model_calls": 1
+  },
+  "linux_controllers": {
+    "image": "sha256:3b7a07136c46d7d151218571f45a40016dbd1044938ae976aff2aadc7a992601",
+    "controllers": 2,
+    "results": [
+      {
+        "running": true,
+        "ack_seconds": 0.8500522289999992
+      },
+      {
+        "shared_mount": true,
+        "cleanup": true
+      }
+    ]
+  },
+  "quality": {
+    "python_syntax_files": 27,
+    "syntax": "passed",
+    "shell_syntax": "passed",
+    "frontend_changed_files": [],
+    "runtime_source_freeze": "unchanged",
+    "platform_source_freeze": "unchanged",
+    "scripts_ruff_new_findings": 0,
+    "scripts_ruff_preexisting_findings": 4
+  },
+  "resource_check": {
+    "fixture_processes": [],
+    "evidence_task_ids_checked": 18,
+    "owned_task_containers": [],
+    "final_image_containers": [],
+    "evidence_process_ids_checked": 42
+  },
+  "worktree": "/Users/lijiaxin/.codex/worktrees/b01-closeout/ai-agent-platform",
+  "baseline": "2b94585b544f055be3f1a0098a1563fa8a0e5ea3",
+  "environment_id": "wt_43727db9404e",
+  "non_frontend_status": "done",
+  "overall_status": "partial",
+  "remaining": [
+    "K09 frontend implementation and regression",
+    "K10 browser joint acceptance / F12",
+    "K11 full-scope closeout after frontend"
+  ],
+  "block_items": [],
+  "handoff_stack": {
+    "environment_id": "wt_43727db9404e",
+    "checked_at": "2026-10-11T02:45:39.361367+00:00",
+    "backend": "docker",
+    "background_start_enabled": true,
+    "health": {
+      "runtime": {
+        "url": "http://127.0.0.1:24548/ready",
+        "status": 200
+      },
+      "platform_api": {
+        "url": "http://127.0.0.1:23818/_system/health",
+        "status": 200
+      },
+      "platform_web": {
+        "url": "http://127.0.0.1:29286/",
+        "status": 200
+      }
+    },
+    "processes": {
+      "runtime-api": {
+        "pid": 70575,
+        "owned": true
+      },
+      "runtime-worker": {
+        "pid": 70594,
+        "owned": true
+      },
+      "platform-api": {
+        "pid": 70866,
+        "owned": true
+      },
+      "platform-web": {
+        "pid": 71073,
+        "owned": true
+      },
+      "redis": {
+        "pid": 70532,
+        "owned": true
+      }
+    },
+    "state": "ready"
+  },
+  "final_system_command": {
+    "cwd": "apps/runtime-service",
+    "environment": {
+      "TOOL_ERROR_PLATFORM_TEST": "1",
+      "PLATFORM_API_TEST_PYTHON": "/Users/lijiaxin/.codex/worktrees/b01-closeout/ai-agent-platform/apps/platform-api/.venv/bin/python",
+      "BACKGROUND_RUNTIME_IMAGE": "sha256:3b7a07136c46d7d151218571f45a40016dbd1044938ae976aff2aadc7a992601",
+      "TOOL_ERROR_PLATFORM_NATIVE": "unset"
+    },
+    "argv": [
+      ".venv/bin/python",
+      "-m",
+      "pytest",
+      "tests/e2e/test_background_tasks.py",
+      "-q",
+      "-k",
+      "test_source_native_timeout_and_cancel_suppress_completion or test_disabled_drain_preserves_receipts_and_matching_source_rollback or test_release_linux_api_worker_completion_and_shared_storage or (test_lost_native_ack_reconciles_queued_run_without_resubmission and linux-release)",
+      "--basetemp=/Users/lijiaxin/.codex/worktrees/b01-closeout/ai-agent-platform/.local-stack/verification/final-system-complete",
+      "--junitxml=/Users/lijiaxin/.codex/worktrees/b01-closeout/ai-agent-platform/.local-stack/verification/final-system-complete.xml"
+    ]
+  },
+  "documentation_check": {
+    "changed_markdown_files": 24,
+    "links_checked": 425,
+    "introduced_errors": [],
+    "preexisting_missing_links": [
+      {
+        "file": "docs/FEATURES.md",
+        "target": "apps/platform-web/docs/changes/20260923-fix-zombie-clarification-on-thread-switch.md"
+      },
+      {
+        "file": "docs/FEATURES.md",
+        "target": "quickstart/deployment-guide.md"
+      },
+      {
+        "file": "docs/FEATURES.md",
+        "target": "quickstart/operator-handoff.md"
+      },
+      {
+        "file": "docs/FEATURES.md",
+        "target": "apps/platform-web/docs/changes/20261007-prompt-queue-unconfirmed-deadlock-and-switch-healing.md"
+      }
+    ]
+  },
+  "closeout_consistency": {
+    "non_frontend": "done",
+    "overall": "partial",
+    "blocked": [],
+    "task_states": {
+      "K01": true,
+      "K02": true,
+      "K03": true,
+      "K04": true,
+      "K05": true,
+      "K06": true,
+      "K07": true,
+      "K08": true,
+      "K09": false,
+      "K10": false,
+      "K11": false
+    },
+    "original_task_states": {
+      "T01": true,
+      "T05": true,
+      "T08": true,
+      "T10": false
+    },
+    "production_frozen_files": 12,
+    "changed_production_files": [],
+    "frontend_changed_files": [],
+    "final_reports_hashes": "matched"
+  }
+}

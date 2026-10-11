@@ -346,6 +346,7 @@ if __name__ == "__main__":
             platform_app(spec),
             host="127.0.0.1",
             port=spec["platform_port"],
+            loop="asyncio",
             log_level="error",
             access_log=False,
         )

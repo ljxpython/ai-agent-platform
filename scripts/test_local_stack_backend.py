@@ -8,6 +8,75 @@ from pathlib import Path
 
 
 class LocalStackBackendTest(unittest.TestCase):
+    def test_background_switch_reaches_both_runtime_processes(self):
+        script = Path(__file__).with_name("local-stack.sh").resolve()
+        for configured, expected in (
+            (None, "0"),
+            ("0", "0"),
+            ("1", "1"),
+            ("invalid", None),
+        ):
+            with (
+                self.subTest(configured=configured),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                root = Path(directory)
+                env_file = root / ".env"
+                env_file.write_text(
+                    "RUNTIME_EXECUTION_HOST_ID=test-host\n"
+                    + (
+                        f"RUNTIME_BACKGROUND_TASKS_ENABLED={configured}\n"
+                        if configured
+                        else ""
+                    )
+                )
+                binary = root / "bin"
+                binary.mkdir()
+                uv = binary / "uv"
+                uv.write_text(
+                    '#!/bin/bash\nprintf "background=%s host=%s\\n" "$RUNTIME_BACKGROUND_TASKS_ENABLED" "$RUNTIME_EXECUTION_HOST_ID"\n'
+                )
+                uv.chmod(0o700)
+                env = {
+                    **os.environ,
+                    "PATH": str(binary) + os.pathsep + os.environ["PATH"],
+                }
+                env.pop("RUNTIME_BACKGROUND_TASKS_ENABLED", None)
+                env.pop("RUNTIME_EXECUTION_HOST_ID", None)
+                result = subprocess.run(
+                    [
+                        "bash",
+                        "-c",
+                        """
+source "$1" help >/dev/null
+RUNTIME_ENV_FILE="$2/.env"
+PLATFORM_ENV_FILE="$2/.env"
+python3() { printf 'test-secret'; }
+load_runtime_env
+start_process() { bash -c "$3"; }
+start_managed_key runtime-api
+start_managed_key runtime-worker
+""",
+                        "test",
+                        str(script),
+                        directory,
+                    ],
+                    env=env,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                    check=False,
+                )
+                if expected is None:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn("must be 0 or 1", result.stderr)
+                else:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(
+                        result.stdout.count(f"background={expected} host=test-host\n"),
+                        2,
+                    )
+
     def test_runtime_restart_preflight_runs_before_stop(self):
         script = Path(__file__).with_name("local-stack.sh").resolve()
         for key in ("runtime-api", "runtime-worker"):

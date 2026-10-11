@@ -116,16 +116,23 @@ export function useBackgroundTasks(
     discoveredRunIds.clear();
   }
 
+  function clearDiscoveredRuns() {
+    discoveredRunIds.clear();
+  }
+
   function checkDiscoveredRuns(items: TaskV1[], latestRunId: string | null) {
     if (latestRunId && !discoveredRunIds.has(latestRunId)) {
       discoveredRunIds.add(latestRunId);
       options.onRunDiscovered?.(latestRunId);
     }
     for (const task of items) {
-      const deliveryRunId = task.delivery.run_id;
-      if (deliveryRunId && !discoveredRunIds.has(deliveryRunId)) {
-        discoveredRunIds.add(deliveryRunId);
-        options.onRunDiscovered?.(deliveryRunId);
+      // 严苛白名单：必须且仅当 delivery.state 为 accepted 且存在有效 run_id 时才放行候选转交
+      if (task.delivery.state === "accepted" && task.delivery.run_id) {
+        const deliveryRunId = task.delivery.run_id;
+        if (!discoveredRunIds.has(deliveryRunId)) {
+          discoveredRunIds.add(deliveryRunId);
+          options.onRunDiscovered?.(deliveryRunId);
+        }
       }
     }
   }
@@ -447,6 +454,7 @@ export function useBackgroundTasks(
     cancelTask,
     // 动作
     refresh,
+    clearDiscoveredRuns,
   };
 }
 

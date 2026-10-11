@@ -291,6 +291,7 @@ def check_install_directories(root: Path) -> None:
         "redis.conf",
         "pids",
         "logs",
+        "background-logs",
         "redis",
         "workspaces",
         "workspaces/graphharbor",
@@ -334,6 +335,9 @@ def initialize(root: Path, common: Path, primary: Path) -> None:
     if not (state / "environment.json").exists():
         runtime_overrides, platform_overrides = expected_values(root, entry)
         runtime = {**baseline_runtime, **runtime_overrides}
+        runtime["RUNTIME_BACKGROUND_TASKS_ENABLED"] = "0"
+        runtime["RUNTIME_EXECUTION_HOST_ID"] = entry["id"]
+        runtime["RUNTIME_BACKGROUND_LOG_ROOT"] = str(state / "background-logs")
         platform = {**baseline_platform, **platform_overrides}
         delegation = secrets.token_urlsafe(48)
         runtime["PLATFORM_RUNTIME_DELEGATION_SECRET"] = delegation
@@ -539,6 +543,8 @@ def export_environment(
         **runtime,
         **platform,
         **resources,
+        "RUNTIME_EXECUTION_HOST_ID": entry["id"],
+        "RUNTIME_BACKGROUND_LOG_ROOT": str(root / ".local-stack/background-logs"),
         "LOCAL_STACK_WORKER_JOBS": "1",
         "PLAYWRIGHT_BASE_URL": f"http://127.0.0.1:{entry['ports']['PLATFORM_WEB_PORT']}",
         **web_overrides(entry),

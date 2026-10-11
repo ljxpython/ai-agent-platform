@@ -66,6 +66,7 @@ describe("BackgroundTasksPanel.vue", () => {
       cancellingTaskIds: ref(new Set()),
       cancelTask: vi.fn(),
       refresh: vi.fn(),
+      clearDiscoveredRuns: vi.fn(),
       ...overrides,
     };
   }

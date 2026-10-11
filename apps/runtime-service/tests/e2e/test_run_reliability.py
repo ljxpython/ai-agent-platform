@@ -57,12 +57,12 @@ def counts(env, key):
     )
 
 
-def terminal(client, thread, run_id):
+def terminal(client, thread, run_id, *, timeout=180):
     def read():
         value = request(client, "GET", f"/threads/{thread}/runs/{run_id}")
         return value if value["status"] not in {"pending", "running"} else None
 
-    return wait_for(read)
+    return wait_for(read, timeout=timeout)
 
 
 def db_attempts(env, run_id):

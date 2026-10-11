@@ -622,6 +622,40 @@ def test_fence_rejects_late_facts_and_late_log_publication(database, monkeypatch
     assert repository.finish_delivery(row, "accepted", run_id=str(uuid4())) is None
 
 
+def test_independent_controllers_claim_once_and_recover_dead_lease(database):
+    row, _ = reserve(identity())
+    saved = repository.save(row, status="succeeded", cleanup="confirmed", delay=0)
+    script = "import json,os; from runtime_service.background_tasks.repository import claim_due; row=claim_due('background-test'); print(json.dumps({'pid':os.getpid(),'row':row},default=str))"
+
+    def claim(_):
+        result = subprocess.run(
+            [sys.executable, "-c", script], capture_output=True, text=True, timeout=90
+        )
+        assert result.returncode == 0, result.stderr
+        return json.loads(result.stdout)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(claim, range(2)))
+    assert len({result["pid"] for result in results}) == 2
+    claimed = [result["row"] for result in results if result["row"]]
+    assert len(claimed) == 1
+    old = claimed[0]
+    with connect() as connection:
+        connection.execute(
+            "UPDATE runtime_background_tasks SET lease_until=now()-interval '1 second'"
+        )
+    current = claim(None)["row"]
+    assert current["task_id"] == str(saved["task_id"])
+    assert current["event_id"] == str(saved["event_id"])
+    assert current["fence"] > old["fence"]
+    assert not repository.renew(old)
+    assert repository.finish_delivery(old, "accepted", run_id=str(uuid4())) is None
+    run_id = str(uuid4())
+    actual = repository.finish_delivery(current, "accepted", run_id=run_id)
+    assert actual["delivery_run_id"] == run_id
+    assert actual["event_id"] == saved["event_id"]
+
+
 def test_stop_snapshot_suppresses_only_existing_tasks(database):
     values = identity()
     row, _ = reserve(values)
@@ -718,6 +752,7 @@ def test_delivery_reconcile_after_stop_keeps_suppressed_and_rejects_changed_run(
     assert restored["delivery_state"] == "suppressed"
     assert restored["delivery_run_id"] == run_id and not restored["delivery_inflight"]
     assert not restored["delivery_cancel_confirmed"]
+    assert repository.list_tasks(scope(values))[2] is None
     assert (
         repository.background_summary(stop["background_task_ids"])[
             "cleanup_unconfirmed_count"
@@ -760,6 +795,30 @@ def test_scope_pagination_and_global_flags_do_not_depend_on_page(database):
     )
 
 
+@pytest.mark.parametrize(
+    "state,stopped", [("suppressed", True), ("unknown", False), ("accepted", True)]
+)
+def test_latest_candidate_ignores_ineligible_later_receipts(database, state, stopped):
+    values = identity()
+    first, _ = reserve(values)
+    repository.save(first, status="succeeded", cleanup="confirmed", delay=0)
+    accepted = str(uuid4())
+    repository.finish_delivery(
+        repository.claim_due("background-test"), "accepted", run_id=accepted
+    )
+    later, _ = reserve({**values, "tool_call_id": "later"})
+    with connect() as connection:
+        connection.execute(
+            "UPDATE runtime_background_tasks SET delivery_run_id=%s,delivery_state=%s,delivery_accepted_at=now(),stop_id=%s WHERE task_id=%s",
+            (str(uuid4()), state, uuid4() if stopped else None, later["task_id"]),
+        )
+    rows, unresolved, latest = repository.list_tasks(scope(values), 1)
+    assert rows[0]["task_id"] == later["task_id"] and unresolved and latest == accepted
+    assert repository.read_task(scope(values), later["task_id"])["delivery_run_id"]
+    before = [rows[0]["created_at"].isoformat(), str(rows[0]["task_id"])]
+    assert repository.list_tasks(scope(values), 1, before)[2] == accepted
+
+
 def test_receipt_preserving_migration_round_trip(database):
     from pathlib import Path
 
@@ -796,7 +855,7 @@ def test_receipt_preserving_migration_round_trip(database):
                 connection.execute(
                     "SELECT version_num FROM runtime_app_alembic_version"
                 ).fetchone()["version_num"]
-                == "0003_background_tasks"
+                == "0004_background_token_budget"
             )
     finally:
         engine.dispose()

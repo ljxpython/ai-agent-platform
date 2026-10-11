@@ -87,6 +87,7 @@ def test_platform_auth_preserves_signed_service_credential(
     )
     claims["sub"] = f"service-account:{account_id}"
     claims["credential_id"] = str(credential_id)
+    claims["callback_context"] = {"origin_ref": str(uuid4())}
     user = asyncio.run(
         authenticate(
             authorization=f"Bearer {jwt.encode(claims, SECRET, algorithm='HS256')}"
@@ -94,6 +95,11 @@ def test_platform_auth_preserves_signed_service_credential(
     )
     assert user["identity"] == f"service-account:{account_id}"
     assert user["runtime_credential_id"] == str(credential_id)
+    from runtime_service.runtime.auth import verified_delegation_from_user
+
+    facts = verified_delegation_from_user(user)
+    assert facts.credential_id == str(credential_id)
+    assert facts.callback_context == claims["callback_context"]
 
 
 def test_platform_auth_rejects_missing_or_invalid_authorization(

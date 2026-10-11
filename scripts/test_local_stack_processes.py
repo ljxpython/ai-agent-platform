@@ -6,11 +6,54 @@ import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from local_stack_processes import owned, stop
 
 
 class LocalStackProcessesTest(unittest.TestCase):
+    def test_redis_management_excludes_disposable_postgres_in_state_directory(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            state = root / ".local-stack"
+            state.mkdir()
+            rows = {
+                10001: (1, ["postgres", "-D", str(state / "verification/postgres")]),
+                10002: (1, ["redis-server", str(state / "redis.conf")]),
+                10003: (10002, ["postgres", "-D", str(state / "verification/child")]),
+                10004: (1, ["redis-server", str(root / "other/redis.conf")]),
+            }
+            directories = {
+                10001: state / "verification/postgres",
+                10002: state / "redis",
+                10003: state / "verification/child",
+                10004: root / "other",
+            }
+            with (
+                patch("local_stack_processes.snapshot", return_value=rows),
+                patch("local_stack_processes.cwd", side_effect=directories.get),
+                patch("local_stack_processes.port_pids", return_value={10001}),
+            ):
+                self.assertEqual(set(owned(root, "redis", 28816)), {10002})
+
+            with (
+                patch(
+                    "local_stack_processes.snapshot",
+                    side_effect=[rows, {10001: rows[10001]}, {10001: rows[10001]}],
+                ),
+                patch("local_stack_processes.cwd", side_effect=directories.get),
+                patch("local_stack_processes.port_pids", return_value={10001}),
+                patch("local_stack_processes.os.kill") as kill,
+                patch(
+                    "local_stack_processes.time.monotonic", side_effect=[0, 1, 6, 7, 10]
+                ),
+                patch("local_stack_processes.time.sleep"),
+            ):
+                stop(root, "redis", 28816)
+                self.assertEqual(
+                    [call.args[0] for call in kill.call_args_list], [10002]
+                )
+
     def test_untracked_server_and_stubborn_child_but_not_other_repository(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -72,8 +115,9 @@ class LocalStackProcessesTest(unittest.TestCase):
                     )
 
     def test_port_owner_and_cleanup_real_process(self):
-        from local_stack_processes import check_port_owner, default_port
         import socket
+
+        from local_stack_processes import check_port_owner
 
         # Find an open port
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

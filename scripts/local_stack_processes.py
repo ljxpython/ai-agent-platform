@@ -156,6 +156,8 @@ def owned(
     for pid, (_, args) in rows.items():
         if not args:
             continue
+        if key == "redis" and not matches(key, args):
+            continue
         if key.startswith("runtime-"):
             is_candidate = matches(key, args)
         else:
@@ -170,6 +172,8 @@ def owned(
         for pid in port_pids(target_port):
             if pid in rows and pid not in selected:
                 args = rows[pid][1]
+                if key == "redis" and not matches(key, args):
+                    continue
                 exe = Path(args[0]) if args else None
                 proc_cwd = cwd(pid)
                 if (
@@ -186,6 +190,7 @@ def owned(
             pid
             for pid, (parent, _) in rows.items()
             if parent in selected
+            and (key != "redis" or matches(key, rows[pid][1]))
             and (
                 matches(key, rows[pid][1])
                 or cwd(pid) == directory
@@ -205,7 +210,7 @@ def owned(
             candidate_parent = matches(key, p_args) or (
                 not key.startswith("runtime-") and any(dir_str in a for a in p_args)
             )
-            if candidate_parent:
+            if candidate_parent and (key != "redis" or matches(key, p_args)):
                 p_cwd = cwd(parent_pid)
                 if p_cwd == directory or is_within(p_cwd, directory):
                     selected.add(parent_pid)
@@ -240,9 +245,8 @@ def stop(root: Path, key: str, port: int | None = None) -> None:
     directory = process_directory(root, key)
     for pid, identity in targets.items():
         curr = snapshot()
-        if (
-            curr.get(pid, (None, []))[1] == identity[1]
-            and (cwd(pid) == directory or is_within(cwd(pid), directory))
+        if curr.get(pid, (None, []))[1] == identity[1] and (
+            cwd(pid) == directory or is_within(cwd(pid), directory)
         ):
             try:
                 os.kill(pid, signal.SIGKILL)
@@ -258,6 +262,8 @@ def stop(root: Path, key: str, port: int | None = None) -> None:
             if not pids:
                 break
             for p in pids:
+                if key == "redis" and not matches(key, snapshot().get(p, (0, []))[1]):
+                    continue
                 if p in targets or cwd(p) == directory or is_within(cwd(p), directory):
                     try:
                         os.kill(p, signal.SIGKILL)
@@ -290,16 +296,28 @@ if __name__ == "__main__":
         root = Path(sys.argv[2])
         key = sys.argv[3]
         if action == "stop":
-            port = int(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4].isdigit() else None
+            port = (
+                int(sys.argv[4])
+                if len(sys.argv) > 4 and sys.argv[4].isdigit()
+                else None
+            )
             stop(root, key, port)
         elif action == "check":
             if len(sys.argv) <= 4:
                 raise SystemExit("Missing pid for check")
             pid = int(sys.argv[4])
-            port = int(sys.argv[5]) if len(sys.argv) > 5 and sys.argv[5].isdigit() else None
+            port = (
+                int(sys.argv[5])
+                if len(sys.argv) > 5 and sys.argv[5].isdigit()
+                else None
+            )
             sys.exit(0 if pid in owned(root, key, port) else 1)
         elif action == "find":
-            port = int(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4].isdigit() else None
+            port = (
+                int(sys.argv[4])
+                if len(sys.argv) > 4 and sys.argv[4].isdigit()
+                else None
+            )
             pids = list(owned(root, key, port).keys())
             print(" ".join(str(p) for p in pids))
         elif action == "port-owner":

@@ -1,11 +1,11 @@
 # Runtime 后台任务运行手册
 
-适用：单执行主机、API/Worker 连接同一 Docker daemon，Workspace 使用相同宿主绝对路径。新提交默认关闭；post45接受回执已发布并接入正式依赖锁，发布后 notify/Stop/撤权联合复验通过，[B01](../projects/20261009-agent-generic-production-capabilities/engine-handoff.md) 已解除。正式启用还须该专项T08/T10/F12、应用镜像验证和部署授权。这里只操作当前服务明确拥有的资源，不使用全局 prune。
+适用：单执行主机、API/Worker 连接同一 Docker daemon，Workspace 使用相同宿主绝对路径。新提交默认关闭；正式 post45 与冷 Linux 应用镜像、notify/Stop/撤权、资源/回退和[非前端 Final](../projects/20261011-background-acceptance-closeout/verification.md)已验，T01/T05/T08 完成，[B01](../projects/20261009-agent-generic-production-capabilities/engine-handoff.md)保持解除。正式启用还须 K09/K10、T10/F12 浏览器联合及部署授权。这里只操作当前服务明确拥有的资源，不使用全局 prune。
 
 ## 安装与启动
 
-1. 构建 `apps/runtime-service/deploy/Dockerfile`；依赖使用服务自己的 `apps/runtime-service/uv.lock` 冷安装，GraphHarbor 双包均为 `0.13.0.post45`。Workspace 镜像提前准备，不在工具执行时 pull。此版本部署断言已更新，完整Linux应用镜像重建仍由部署验收执行。
-2. 原生迁移head013后执行 `python -m runtime_service.db upgrade`；Runtime应用 head 为 `0003_background_tasks`，Platform迁移head为`20261010_0007`。平台先保存最终body bytes/key/digest/非secret授权快照再发送；任务表和Stop加法字段由Runtime维护，不读写引擎runs/lease表处理业务对账。所有接收受管完成POST的API必须支持新acceptance路由及配套Auth。
+1. 构建 `apps/runtime-service/deploy/Dockerfile`；依赖使用服务自己的 `apps/runtime-service/uv.lock` 冷安装，GraphHarbor 双包均为 `0.13.0.post45`。Workspace 镜像提前准备，不在工具执行时 pull。本轮冷构建和 API/Worker 共享摘要 `sha256:3b7a07136c46d7d151218571f45a40016dbd1044938ae976aff2aadc7a992601` 已完成 Linux 系统验收，见[接续专项](../projects/20261011-background-acceptance-closeout/verification.md)；不是现役部署。
+2. 原生迁移 head `013_run_acceptance_receipts` 后执行 `python -m runtime_service.db upgrade`；Runtime 应用 head 为 `0004_background_token_budget`，Platform head 为 `20261011_0009`。`0008` 汇合完成/接受分支，`0009` 对齐 SQLite 历史 UUID 类型并保留记录，PostgreSQL 无数据操作；数值化损坏 UUID 在改表前拒绝，须恢复原身份。平台先保存最终 body bytes/key/digest/非 secret 授权快照再发送；任务表和 Stop 加法字段由 Runtime 维护，不读写引擎 runs/lease 表处理业务对账。所有受管完成 POST 接收 API 必须支持新 acceptance 路由及配套 Auth。
 3. 配置 `RUNTIME_EXECUTION_HOST_ID` 为 1-64 字符的稳定主机标识，只含字母、数字、点、下划线、连字符。变更 ID 会失去旧资源的控制域，不能用于规避额度或 unknown。
 4. 配置 `RUNTIME_BACKGROUND_WORKSPACE_PATH` 为存在的宿主绝对目录。API/Worker 在同一绝对路径挂载该目录，私有日志 volume 共享；命令容器只挂当前 Workspace 和只读技能，不能挂 Docker socket。
 5. Compose 使用基础文件和 `apps/runtime-service/deploy/docker-compose.runtime-background.yml`。示例只适用于已审查的受管执行主机；API/Worker 的管理 socket 有主机控制权限，不能开放给租户或任意容器。
@@ -18,6 +18,8 @@ docker compose -f "apps/runtime-service/deploy/docker-compose.runtime-service.ym
 基础部署要求 `deploy/.env.runtime-service` 已配置。overlay 也默认关闭新提交；门禁通过后显式配置 `RUNTIME_BACKGROUND_TASKS_ENABLED=1`。停用时显式设为 0，并重建 API/Worker 容器，保留管理连接和共享挂载供 drain。开启前分别验证 API/Worker 的 Docker 连接、绝对挂载和技能 snapshot，不以 capability 或 `/ready` 代替全链路验收。
 
 非 Docker、关闭开关或无有效 host 时，模型看不到后台新启动工具；保留配置的任务存储后，已有任务的查询/日志/授权取消入口仍可用。无任务存储配置时隐藏查询和任务 Tab。旧调用先核对原回执，只有确认无记录的环境限制才提示短任务使用普通 execute（默认 30 秒、最大 60 秒）。unknown 不重跑，数据库与 Docker 故障不泛化成“未启动”；Docker 不可用不自动落宿主 shell。切换执行 backend 前先按下文 drain，不将 local 节点当作原 Docker 执行域的对账替代。
+
+关联 Worktree 的 `local-stack` 现按登记 ID 派生 API/Worker host 与所属后台日志目录，新环境默认不开启。Docker 联调在私有 runtime.env 显式设后台开关为 1，启动/重启带 `RUNTIME_BACKEND=docker`。若旧环境已有 `worktree-host` 未结任务，先用旧代码/原 host 排空，再升级启动脚本；禁止借共享 host 认领另一环境资源。不要复制 `.local-stack/` 到新目录。
 
 ## 受管资源与容量
 
@@ -52,9 +54,9 @@ docker inspect --type=container "<任务私有记录中的 container_name>"
 1. 将新提交开关设为 0，API/Worker 保留相同 host、日志和 daemon 配置，重启应用后继续对账。该开关禁止新任务与新通知准入，不能单独证明资源回收。
 2. 对已接受活跃任务调用公开 cancel，或对指定 Thread 发原 key 的会话 Stop；持续 GET 核验 `cleanup_state=confirmed` 和固定后台摘要。完成通知若已接受，Stop 还需确认该固定 Run 停止。
 3. 将unknown、inflight、迟到Run和daemon不可达项逐项列出；任何未确认资源都阻止“drain已完成”。先GET原接受回执、绑定原Run并精确停止；无回执/到期/旧记录且无当前ACL正向证据时，由负责人受控处置。
-4. 确认所有当前资源已收敛后，停止新代码的 API/Worker；使用新代码的 Alembic 配置将应用版本降到 `0002_run_control`，再回退匹配的应用源码/依赖。`0003_background_tasks` 的 downgrade 保留任务表、索引与 Stop 加法字段；旧应用忽略它们。只换旧源码会因不认识 `0003_background_tasks` 而启动失败，不能跳过版本回退；不能删回执、Workspace 或 checkpoint。
+4. 确认所有当前资源已收敛后，停止新代码的 API/Worker；使用新代码的 Alembic 配置在同一事务内先 `downgrade` 到两分支共同父节点 `0002_run_control`，再 `stamp` 到旧源码的单一 head `0003_token_budget`。核验 `runtime_app_alembic_version` 只有该 head 且任务/Stop/用量事实保留后，再回退匹配的应用源码/依赖。直接退到 Token 分支会遗留 `0003_background_tasks`，旧源码无法识别。本轮已核实后台引入前的集成提交 `bd476ae62a61acb7c55bc0f08eba3645ce50daf0`，包含 Plan Mode/Token；不能混用早于 Plan Mode 的 Runtime 与当前 API。两条 `0003` 的 downgrade 均保留加法表/列，stamp 只收敛应用版本标记；旧应用忽略后台表和回执。只换旧源码会因不认识新的应用 merge head 而启动失败，不能跳过版本回退；不能删回执、Workspace 或 checkpoint。
 5. 不需要的本轮测试 API/Worker/PG/Redis、带专项 label 的容器及时停止。只按明确身份清理本轮资源，保留现役与其他 worktree 的服务。
 
-引擎013与平台0007均拒绝删除接受事实的downgrade；Runtime应用0003保留表的downgrade是另一套迁移，不能混用。引擎/平台代码回退必须保留ledger、墓碑及最终传输字段；旧unknown不切换namespace重投。备份恢复到接受前快照会失去防重事实，须冻结新受管提交并人工对账。
+引擎 013、Platform 接受 0007、merge 0008 与一致性 0009 均拒绝删除接受事实的 downgrade；Runtime 应用 0003 保留表的 downgrade 是另一套迁移，不能混用。引擎/平台代码回退必须保留 ledger、墓碑及最终传输字段；旧 unknown 不切换 namespace 重投。备份恢复到接受前快照会失去防重事实，须冻结新受管提交并人工对账。
 
 验证与限制见 [专项记录](../projects/20261009-agent-generic-production-capabilities/verification.md)。正式发布/生产迁移/删除生产数据不由此手册自动授权。
