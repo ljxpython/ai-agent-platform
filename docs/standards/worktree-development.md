@@ -1,7 +1,7 @@
 ---
 status: active
 approved_on: 2026-10-10
-last_verified: 2026-10-10
+last_verified: 2026-10-11
 source_project: docs/projects/20261010-worktree-local-stack/
 ---
 
@@ -32,7 +32,7 @@ bash "scripts/local-stack.sh" restart-one platform-api
 bash "scripts/local-stack.sh" stop
 ```
 
-- `init` 继承主工作区 `apps/runtime-service/.env`、`apps/platform-api/.env`，以及存在时的 Web `.env` / `.env.local`（后者优先），生成独立资源地址和环境密钥；外部模型/搜索/观测配置直接复用。私有副本在 `.local-stack/runtime.env`、`platform.env`、`web.env`，不修改原文件、不整体 source；Web 只注入 `VITE_*` 公开参数。新 Worktree 管理员默认 `admin / admin123`，仅用于回环监听的可信本地开发环境；主目录账号不改变。重复执行保持本环境配置，不重新复制或重置密码。
+- `init` 继承主工作区 `apps/runtime-service/.env`、`apps/platform-api/.env`，以及存在时的 Web `.env` / `.env.local`（后者优先），生成独立资源地址和环境密钥；外部模型/搜索/观测配置直接复用。私有副本在 `.local-stack/runtime.env`、`platform.env`、`web.env`，不修改原文件、不整体 source；Web 只注入 `VITE_*` 公开参数。新 Worktree 管理员默认 `admin / admin123456`，与主环境、开发契约和测试用例完全保持一致，消除双密码不一致引起的认证阻断与登录锁定风险，仅用于回环监听的可信本地开发环境；主目录账号不改变。重复执行保持本环境配置，不重新复制或重置密码。
 - 需要本机 PostgreSQL 创建数据库和角色权限。默认使用 Unix socket 的 `dbname=postgres`，也可通过私有环境变量 `LOCAL_STACK_PG_ADMIN_DSN` 提供本机管理员连接。不创建或改动 PostgreSQL 服务器配置，不覆盖现有非本环境资源。
 - `deps` 用当前分支 frozen 锁文件安装依赖。主工作区和 Worktree 各自拥有安装目录，共享 uv cache / pnpm store；不复制或链接主工作区 `.venv` / `node_modules`。
 - `doctor` 检查配置和资源，不杀进程、不迁移。未启动的专属 Redis 只检查配置、程序和端口；运行中的 Redis 检查实际连接。
@@ -73,6 +73,21 @@ bash "scripts/local-stack.sh" stop
 | 定时任务、长期记忆、store、旧技能版本、Redis 队列、Workspace 文件 | 不复制，避免历史内容污染新测试以及定时任务重复自动执行 |
 
 导入有完成标记后不追随主库变更，Worktree 内修改互不影响。源库停机、模型密文无法解密或白名单表结构不同会明确失败，目标事务回滚；另一个已经完成的库可在重试时复用。工具不清空已有环境来重新导入，也不自动复制未知新表。初始 Workspace 为空，依赖旧会话文件的配置需在新环境准备对应测试文件。
+
+### 本地模型选型与默认策略
+
+Worktree 环境进行本地联调、Agent 执行、L2 Smoke 及 Playwright E2E 真实模型测试时，统一遵循以下模型规约：
+
+- **首选基准模型（Default Preferred Model）**：统一选用 **miaomiaoai 的 DeepSeek 极速模型（`deepseek-v4.1-flash` / flashv1）**。
+  - **模态与协议支持**：经真实环境验收，该模型稳定支持文本流式生成、多轮工具调用（Tool History）与图片（Image URL）多模态输入，协议为 `openai-compatible`。
+  - **避坑约束**：
+    1. 严禁在联调中依赖 Qwen-plus（存在空工具 ID 适配缺陷，易引发 Runtime 异常）；
+    2. 严禁依赖旧代理 `DeepSeek-V4-Flash`（不支持图片模态，发送 `image_url` 会直接报 HTTP 400 失败）；
+    3. 外部模型额度由本机所有 Worktree 共享，测试需严格遵守有界步数与预算限制。
+- **种子数据自动对齐（Seed Alignment）**：
+  首次 `start` 或执行 `seed` 导入主库数据时，初始化工具会自动检索 `runtime_catalog_models` 中启用的 miaomiaoai `deepseek-v4.1-flash`，并将所有复制项目的默认模型策略（`project_model_policies`）统一对齐至该模型（`is_default_for_project = true, is_enabled = true`）。开发人员在新 Worktree 中打开界面或调用 API 时直接生效，无需手动翻找配置切换模型。
+- **自动化测试匹配优先级**：
+  前端 Playwright E2E 辅助脚本（`platform.ts`）与 L2 Smoke 脚本默认优先检索并绑定 `deepseek-v4.1-flash`，仅当缺失时回退至其它可用 DeepSeek 模型。
 
 ## 依赖复用与源码归属
 

@@ -26,7 +26,10 @@
 - CONTEXT.md 只保留"当前有效"的信息，不堆历史；过期信息删掉，历史在 `docs/projects/` 和 `docs/changes/` 里
 - **改动涉及具体服务时**，在同步 CONTEXT.md 后额外读取该服务规范入口（见「服务边界 → 服务规范读取规则」）
 
-### Worktree 开发与联调
+### 本地原生资源与 Worktree 联调
+
+**本地资源优先原则（全场景适用）：**
+无论是主工作区还是关联 Git Worktree，本地日常开发、测试与联调**必须优先使用宿主机本地原生的 PostgreSQL 与 Redis 服务**，智能体执行默认走 `RUNTIME_BACKEND=local`。除非需求中明确要求容器沙箱隔离（如特定镜像 reader 或不可信代码隔离），否则一律尽可能走本地原生资源，严禁擅自引入或依赖 Docker 增加机器负担与排障摩擦。模型调用与测试优先使用 miaomiaoai 的 DeepSeek 模型（`deepseek-v4.1-flash`）。
 
 在关联 Git Worktree 中开发，或准备启停本地服务、迁移、联调、执行 E2E 测试前，必须阅读 [Worktree 开发与资源隔离规范](docs/standards/worktree-development.md)。资源统一通过 `scripts/local-stack.sh` 初始化、分配和管理；禁止缺配置时回退到主工作区，禁止共享其他 Worktree 的 `.venv` / `node_modules`，使用 uv/pnpm 缓存复用依赖。具体资源、测试和清理规则只维护在该规范中。
 
@@ -330,6 +333,7 @@ docs/
 - ❌ 不得自己批准治理改动，评审必须由人完成
 - ❌ 不得编造测试结果，验证记录必须是真实执行的产物
 - ❌ 不得用 `implementation/` 来判断项目进度，进度只看 `tasks.md`
+- ❌ 不得在没有沙箱隔离明确需求时擅自引入或依赖 Docker（数据库、Redis 与应用开发必须优先走宿主机本地原生资源）
 
 ## 注意事项
 

@@ -269,7 +269,7 @@ class WorktreeSeedTest(unittest.TestCase):
                     "SELECT id, password_hash, must_change_password, failed_login_attempts FROM users WHERE username = 'admin'"
                 ).fetchone()
                 self.assertEqual(user[0], ids["user"])
-                self.assertTrue(verify_password("admin123", user[1]))
+                self.assertTrue(verify_password("admin123456", user[1]))
                 self.assertEqual(user[2:], (False, 0))
                 ciphertext = target.execute(
                     "SELECT api_key_ciphertext FROM runtime_catalog_models"
@@ -549,7 +549,7 @@ class WorktreeSeedTest(unittest.TestCase):
                 )
                 self.assertTrue(
                     verify_password(
-                        "admin123",
+                        "admin123456",
                         target.execute(
                             "SELECT password_hash FROM users WHERE username = 'admin'"
                         ).fetchone()[0],
@@ -573,6 +573,50 @@ class WorktreeSeedTest(unittest.TestCase):
             self.assertTrue(
                 all(item["status"] == "already-seeded" for item in report.values())
             )
+
+    def test_seed_aligns_preferred_deepseek_model_policy(self):
+        with self.fixture() as (
+            root,
+            common,
+            primary,
+            _entry,
+            source_platform,
+            source_runtime,
+            platform,
+            runtime,
+            ids,
+        ):
+            deepseek_model_id = uuid4()
+            with psycopg.connect(
+                source_platform["PLATFORM_API_DATABASE_URL"].replace(
+                    "postgresql+psycopg:", "postgresql:"
+                )
+            ) as source:
+                source.execute(
+                    "INSERT INTO runtime_catalog_models (id, display_name, provider, base_url, protocol, model_name, enabled, api_key_ciphertext) "
+                    "VALUES (%s, 'deepseek-v4.1-flash', 'maomaoai', 'https://example.invalid/v1', 'openai-compatible', 'deepseek-v4.1-flash', true, %s)",
+                    (deepseek_model_id, ids["ciphertext"]),
+                )
+                source.execute(
+                    "INSERT INTO project_model_policies (id, project_id, model_catalog_id, is_enabled, is_default_for_project) "
+                    "VALUES (%s, %s, %s, true, true)",
+                    (uuid4(), ids["project"], ids["model"]),
+                )
+            report = seed_environment(root, common, primary)
+            self.assertEqual(report["platform"]["status"], "seeded")
+            with psycopg.connect(
+                platform["PLATFORM_API_DATABASE_URL"].replace(
+                    "postgresql+psycopg:", "postgresql:"
+                )
+            ) as target:
+                policies = target.execute(
+                    "SELECT model_catalog_id, is_enabled, is_default_for_project FROM project_model_policies WHERE project_id = %s",
+                    (ids["project"],),
+                ).fetchall()
+                policy_map = {row[0]: (row[1], row[2]) for row in policies}
+                self.assertIn(deepseek_model_id, policy_map)
+                self.assertEqual(policy_map[deepseek_model_id], (True, True))
+                self.assertEqual(policy_map[ids["model"]], (True, False))
 
 
 if __name__ == "__main__":

@@ -104,7 +104,7 @@ def verify_baseline(root: Path, common: Path) -> dict:
     if (
         platform["PLATFORM_API_BOOTSTRAP_ADMIN_USERNAME"],
         platform["PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD"],
-    ) != ("admin", "admin123"):
+    ) != ("admin", "admin123456"):
         raise RuntimeError("Worktree local administrator defaults differ")
     report = {}
     for kind, uri, history in (

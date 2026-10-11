@@ -350,7 +350,7 @@ def initialize(root: Path, common: Path, primary: Path) -> None:
         ):
             platform[key] = "{}"
         platform["PLATFORM_API_BOOTSTRAP_ADMIN_USERNAME"] = "admin"
-        platform["PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD"] = "admin123"
+        platform["PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD"] = "admin123456"
         platform["PLATFORM_API_MODEL_CONFIG_MASTER_KEY"] = base64.urlsafe_b64encode(
             secrets.token_bytes(32)
         ).decode()

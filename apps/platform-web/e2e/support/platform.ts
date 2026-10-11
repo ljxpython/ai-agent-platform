@@ -98,9 +98,18 @@ export async function createPlatformFixture(graphId = "workflow_demo") {
       (item) =>
         item.enabled &&
         item.credential_configured &&
-        (item.model?.toLowerCase() === "deepseek-v4-flash" ||
-          item.display_name?.toLowerCase().includes("deepseek")),
+        (item.model?.toLowerCase() === "deepseek-v4.1-flash" ||
+          item.display_name?.toLowerCase().includes("deepseek-v4.1-flash")),
     );
+    if (!model) {
+      model = models.models.find(
+        (item) =>
+          item.enabled &&
+          item.credential_configured &&
+          (item.model?.toLowerCase() === "deepseek-v4-flash" ||
+            item.display_name?.toLowerCase().includes("deepseek")),
+      );
+    }
     if (!model) {
       model = models.models.find(
         (item) =>

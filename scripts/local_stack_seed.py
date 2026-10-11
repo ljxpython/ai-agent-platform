@@ -115,6 +115,37 @@ def prepare_platform(target, source_config: dict, target_config: dict) -> None:
             "failed_login_attempts = 0, locked_until = NULL WHERE id = %s",
             (password, Json(["platform_super_admin"]), user[0]),
         )
+    preferred_model = target.execute(
+        "SELECT id FROM public.runtime_catalog_models "
+        "WHERE enabled = true AND ("
+        "  model_name = 'deepseek-v4.1-flash' "
+        "  OR (provider IN ('maomaoai', 'miaomiaoai') AND model_name ILIKE '%deepseek%flash%')"
+        ") ORDER BY CASE WHEN model_name = 'deepseek-v4.1-flash' THEN 0 ELSE 1 END LIMIT 1"
+    ).fetchone()
+    if preferred_model:
+        preferred_model_id = preferred_model[0]
+        projects = target.execute("SELECT id FROM public.projects").fetchall()
+        for (project_id,) in projects:
+            target.execute(
+                "UPDATE public.project_model_policies SET is_default_for_project = false WHERE project_id = %s",
+                (project_id,),
+            )
+            existing_policy = target.execute(
+                "SELECT id FROM public.project_model_policies WHERE project_id = %s AND model_catalog_id = %s",
+                (project_id, preferred_model_id),
+            ).fetchone()
+            if existing_policy:
+                target.execute(
+                    "UPDATE public.project_model_policies SET is_enabled = true, is_default_for_project = true "
+                    "WHERE id = %s",
+                    (existing_policy[0],),
+                )
+            else:
+                target.execute(
+                    "INSERT INTO public.project_model_policies (id, project_id, model_catalog_id, is_enabled, is_default_for_project) "
+                    "VALUES (%s, %s, %s, true, true)",
+                    (uuid4(), project_id, preferred_model_id),
+                )
 
 
 def seed_state(target, entry: dict, kind: str) -> tuple[str, dict, list[str]]:

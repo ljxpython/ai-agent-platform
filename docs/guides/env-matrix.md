@@ -15,7 +15,7 @@
 
 关联 Worktree 使用生成配置，禁止回退默认库/Redis/端口；细则见 [Worktree 规范](../standards/worktree-development.md)。主工作区继续使用上述 app-local 配置。
 
-新 Worktree 管理员初始账号为 `admin / admin123`；JWT/委托/数据库/Redis 和模型加密密钥独立。首次启动只读复制主库基础配置，模型凭据重加密，不复制会话历史与登录令牌。
+新 Worktree 管理员初始账号为 `admin / admin123456`；JWT/委托/数据库/Redis 和模型加密密钥独立。首次启动只读复制主库基础配置（项目默认模型策略自动对齐至 miaomiaoai `deepseek-v4.1-flash`），模型凭据重加密，不复制会话历史与登录令牌。
 
 旧 Runtime 嵌套目录和 conf/settings*.yaml 已退出默认链路，模型来源是平台模型目录。
 

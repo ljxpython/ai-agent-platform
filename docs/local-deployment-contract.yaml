@@ -44,7 +44,7 @@ profiles:
     worker_jobs: 1
     dependency_policy: independent-install-directories-with-shared-uv-cache-and-pnpm-store
     config_policy: inherit-primary-app-env-and-override-isolation-fields
-    bootstrap_admin: {username: admin, password: admin123, scope: trusted-loopback-development-only}
+    bootstrap_admin: {username: admin, password: admin123456, scope: trusted-loopback-development-only}
     baseline_data: {source: primary-local-postgres, copy: whitelist-once-after-migration, existing_data: retain, model_credentials: reencrypt}
 
 global:

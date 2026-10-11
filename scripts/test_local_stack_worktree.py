@@ -285,7 +285,7 @@ spawn_detached "$2" "python3 -c 'import os; print(any(k in os.environ for k in (
             self.assertEqual(runtime["PROVIDER_KEY"], secret)
             self.assertEqual(platform["PLATFORM_API_BOOTSTRAP_ADMIN_USERNAME"], "admin")
             self.assertEqual(
-                platform["PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD"], "admin123"
+                platform["PLATFORM_API_BOOTSTRAP_ADMIN_PASSWORD"], "admin123456"
             )
             self.assertEqual(
                 platform["PLATFORM_API_LANGGRAPH_UPSTREAM_TIMEOUT_SECONDS"], "60"

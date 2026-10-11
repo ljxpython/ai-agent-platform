@@ -11,15 +11,11 @@
 
 ## 最近改动
 
-2026-10-11 | **F07 自动对话标题全栈全链路交付**：done。前端完成 T06 接线（双入口复用 `useAutomaticThreadTitle`、修复 SDK 吞 `auto_title: true` 字段改为直传 fetch、补齐新建会话 allowed_actions）；单元测试 705 项全绿、vue-tsc 0 错误、ESLint 0 错误、生产构建全绿；Playwright + Chromium 驱动本地隔离三服务（Web 24644, API 27997, Runtime 28123）与真实百炼大模型（qwen-plus）端到端闭环验证 100% 通过（耗时 1.4m，首轮提炼“量子力学本质”+改名“老王科研保密项目”+二轮防竞态覆盖，全套 7 张实景截图落盘至 `screenshots/01-07`），用户已实操人工验收通过。详见 [专项](projects/20261009-agent-thread-auto-title/README.md)、[任务清单](projects/20261009-agent-thread-auto-title/tasks.md)。
-
-2026-10-11 | **A/B 非 Docker 兼容全栈与人工浏览器真机验收完成**：能力门禁与响应式状态机（ABF01）、短任务恢复提示映射（ABF02）、真实 local 浏览器端到端链路（ABF03，Playwright 1/1 passed）全部完成并通过用户真机人工体验验收。post45 接受回执正式锁与 B01 解除保留。
-
-2026-10-10 | **F05 模型上下文 PII 脱敏全栈闭环完成**：后端算法、网关、四图接线与防注入已实装；前端完成 `useChatSession.ts`、`ChatSession.vue` 脱敏错误消费与 fast-path 草稿/附件保留重构；Playwright + Chromium 驱动 4 个端到端自动化测试（覆盖 1440 桌面与 390 移动视口、真实大模型流式调用与脱敏占位符、用户原输入保持、阻断错误消费草稿保留、用户正文输入错误码负例不误判）全部 100% 绿灯通过；单测 55 项全绿；7 张过程截图落盘归档；本地隔离专属栈持续存活就绪供验收。见 [专项](projects/20261009-agent-pii-redaction/README.md)。
+2026-10-11 | **全场景本地原生资源优先与严禁滥用 Docker 规则固化（AGENTS.md）**：done。明确无论是否使用 Worktree，日常开发/测试/联调必须优先使用宿主机本地 PostgreSQL 与原生 Redis，智能体执行默认走 `RUNTIME_BACKEND=local`；除非明确需要容器沙箱隔离，否则严禁擅自引入 Docker 容器；`AGENTS.md` 顶层红线第 7 条正式确立。详见 [变更记录](changes/20261011-prefer-local-native-resources.md)。
 
 ## 本月归并
 
-2026-10（截至 10-11）| F07 自动对话标题全栈闭环；后台任务A/B前后端与真机验收闭环；F05 PII脱敏全栈闭环；F04工具输出预算、F02循环检测、F10通用文档读取、F13语音输入、通知中心、Plan Mode、Worktree本地栈隔离保持。
+2026-10（截至 10-11）| 全场景本地原生资源硬约束；Worktree密码admin123456与deepseek-v4.1-flash默认模型对齐；F07自动对话标题全栈闭环；后台任务A/B前后端验收；F05 PII脱敏全栈闭环；F04/F02/F10/F13/通知/Plan Mode保持。
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
@@ -31,7 +27,7 @@
 - [Agent 运行完成通知与失败回调](projects/20261009-agent-production-capability-extension/README.md)：`done`。GraphHarbor/Runtime/API非前端实现、post44发布和交接完成；正式最短通过，native定时/回填部分证据已固化；前端 P4.1-P4.3 全部交付并通过 Vitest 与真实模型 Playwright E2E 闭环验收。用户人工实测验收合格，安全合并入主干。
 - [F11 通用输入润色](projects/20261010-agent-input-polish/README.md)：评估与规划完成，用户确认暂缓（`deferred`），P2 候选、功能未实施。suggestions 复用、无 Thread 用途授权与旁路成本方案保留，未来重新投入时需人工批准；同事前端交接未排期。
 - [Agent 通用 Plan Mode 与计划审批治理](projects/20261008-agent-plan-mode-governance/README.md)：`done`；三服务（Runtime/API/Web）全链路实施与自动化验收全部完成。后端双重门禁、原生审批、快照幂等与安全脱敏闭环；前端开关/徽章、待审卡片、输入框锁定、XSS 防御与状态自愈实装；静态代码门禁全部通过；Playwright + Chromium 真实大模型（DeepSeek-V4-Flash）自动化端到端测试 100% 绿灯；7 张全景截图与 Thread/Run/interrupt 对账无误。未部署现役。
-- [Worktree 本地栈资源隔离](projects/20261010-worktree-local-stack/README.md)：done；T01-T07全部验收，默认admin/admin123、继承各app配置和主库基础数据复用完成。源库只读，历史/令牌/定时任务排除；24项回归及真实三栈通过，资源回收；存量37条文档路径后置。
+- [Worktree 本地栈资源隔离](projects/20261010-worktree-local-stack/README.md)：done；T01-T07全部验收，默认admin/admin123456、继承各app配置并自动对齐miaomiaoai deepseek-v4.1-flash默认模型策略，主库基础数据复用完成。源库只读，历史/令牌/定时任务排除；24项回归及真实三栈通过，资源回收；存量37条文档路径后置。
 - [Agent Workspace 执行容错与安全失败报告](projects/20261007-agent-workspace-resilience/README.md)：`done`（非前端本地与 Docker 范围全部闭环，全栈代码与测试已合并进入主干；前端交接与报告已固化）；后端五精确安全码、结果未知停止、取消回收与诊断记录已融合闭环。未部署现役。
 - [Agent通用运行取消与中断能力](projects/20261007-agent-run-cancellation/README.md)：`done`（全链路闭环）；后端三接口、持久Stop/恢复、inbox屏障与确定性报告完成；前端Stop控制器状态机、Banner、Drawer与真实模型Playwright E2E自动化闭环完成（F01–F10闭环，截图已留痕，用户实测验收合格）；B01解除；B02等待正式PyPI发布指令/正式源锁接入。
 - [Agent 运行准备幂等与有界重试](projects/20261007-agent-production-capabilities/README.md)：done；公共 prepare latch、目录修复、有界重试与诊断接口已实现，前端双专职子组件实装，49 项单测与 Playwright + Chromium 全链路自动化 E2E 闭环全部通过。未部署现役。
@@ -58,6 +54,6 @@
 | runtime-service | 2026-10-11 | 锁定/安装正式 post45；F07精确标题委托、受管一次非流式调用就绪；受管后台执行/对账/Stop及A/B前后端已验，B01解除；新增 completion projector、安全白名单和受签 callback context；四图主子共享 attempt 预算/软收尾与 Run Token 额度；F05 PII脱敏默认关闭，模型副本/旁路脱敏与结构失效阻断已实装；F04 官方参数压缩/主备阈值与正文 SHA256 引用保护（filesystem_cls 预算）全链路闭环；F02 共享循环检测中间件（连续 3 轮预警与 5 轮安全硬终止拦截）、Worker 接管支持、真实模型验证通过；Plan 公共状态/三工具/双门禁、四图主子接线、Context v6 和规划 memory 跳过完成；解除默认 4096 max_tokens 兜底限制，系统提示词强化思考链 Token 预算约束；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理与运行准备幂等/有界重试全链路融合；Workspace 执行容错闭环；F15评估关闭；F11 暂缓；F10 固定 Docker reader/DOCX/PPTX 有界续读/附件索引收紧与全链路验收已闭环；未部署现役。 |
 | platform-api | 2026-10-11 | F07首轮opt-in/私有seed与公开pending、comment+edit与CAS就绪；后台四入口/精确operation/DTO/ACL/审计/HMAC与guard已验；post45正式acceptance adapter、最终bytes/key/digest发送前落盘与平台迁移0007完成，Platform132+116subtests/真实PG迁移1通过，发布后notify/Stop/撤权联合通过，B01解除；新增 migration 20261009_0007、origin/event/receipt、HMAC receiver、历史 completion、私有 feed/read、ACL/deletion suppression 和 cron backfill；F05 精确隐私失败投影、私有策略剥离与标题 Thread 委托已验；F04 契约与回归通过，无破坏性改动；私有预算/Token/loop 注入拒绝与脱敏；执行预算、F01 Token 及 F02 loop 精确安全码；Plan 原生审批/ACL/幂等、Context v6执行链、公开agent_plan/fork/cron边界完成；Run Usage 可选 token_budget DTO、ACL/撤权真实链路通过；模型恢复、上下文、诊断、费率 Usage、Stop 接口均已实装；Workspace 五码精确投影与 DTO 校验完成；F10 Office MIME网关与六字段/撤权/审计、两图真实链路专项验收完成；未部署现役。 |
 | platform-web | 2026-10-11 | F07 自动对话标题全栈全链路闭环，双入口统一复用 useAutomaticThreadTitle；F01-F11与ABF01-ABF03已完成：能力/探针门禁、短任务恢复提示及真实local浏览器独立验收通过；F05 PII脱敏错误消费、输入草稿/附件保留、Playwright E2E自动化闭环完成；F04 大工具输出预算防爆加固：transcript 复合键防覆盖与 ToolMessage 优先、ToolResult 虚拟路径防跳转与多格式证据来源解析；F02 循环检测 ViewModel/状态机/RunDiagnostics 卡片与 Playwright 真实模型测试通过；F13 浏览器语音听写（F13-T01~T04）全链路交付；Agent Run completion 前端 P4.1-P4.3 全部交付闭环（Pinia 全局通知 Store 单例、RunNotificationCenter 顶栏与 ChatPage 双端常驻挂载、细粒度错误码白名单投影与离开跳转防护、useRunCompletion 历史 Run 终态诊断卡片）；F10 DOCX/PPTX 扩展名/空 MIME 校验、原字节认证下载拦截、Word/PPT 专属徽标、无预览仅下载、工作区415人性化提示、专用模板错误优先高亮与段落/幻灯片语义投影全实装；F01 Token 额度保护全栈落地；规划开关与审阅卡片闭环；Vitest/vue-tsc/ESLint/build 全绿，Playwright 真实大模型 E2E 闭环全部通过。 |
-| AI Harness（AGENTS.md + Skills） | 2026-10-10 | Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号、配置继承与首次只读基础数据初始化已验收。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
+| AI Harness（AGENTS.md + Skills） | 2026-10-11 | 全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。

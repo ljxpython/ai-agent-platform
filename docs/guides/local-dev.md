@@ -57,4 +57,4 @@ bash "scripts/local-stack.sh" status
 
 首次随机分配并登记 Web/API/Runtime/Redis 端口，重启复用。配置、PID、日志和 Workspace 在本目录 `.local-stack/`；数据库和 Redis 独立。PostgreSQL 管理员连接默认本机 socket，也可私有设置 `LOCAL_STACK_PG_ADMIN_DSN`。主工作区保留上面的默认地址。依赖共享 uv/pnpm 包缓存，各自安装目录独立。
 
-`init` 继承主目录各 app 的私有环境配置并重写隔离字段，新 Worktree 默认管理员为 `admin / admin123`。首次 `start` 自动只读复制主库的用户/项目/Agent/模型与策略等基础配置，排除对话、执行历史、令牌、定时任务和队列；后续启动不覆盖本环境改动。已迁移的空库可单独运行 `bash "scripts/local-stack.sh" seed`；已有非空环境保留数据，不支持覆盖式导入。数据白名单和异常处理以 Worktree 规范为准。
+`init` 继承主目录各 app 的私有环境配置并重写隔离字段，新 Worktree 默认管理员为 `admin / admin123456`。首次 `start` 自动只读复制主库的用户/项目/Agent/模型与策略等基础配置（默认模型策略自动优先对齐至 miaomiaoai 的 `deepseek-v4.1-flash`），排除对话、执行历史、令牌、定时任务和队列；后续启动不覆盖本环境改动。已迁移的空库可单独运行 `bash "scripts/local-stack.sh" seed`；已有非空环境保留数据，不支持覆盖式导入。数据白名单和异常处理以 Worktree 规范为准。
