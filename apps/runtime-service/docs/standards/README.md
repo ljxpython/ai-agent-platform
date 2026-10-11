@@ -7,6 +7,7 @@
 3. [运行与验证](./runtime-service-onboarding-and-verification.md)
 4. [通用后台任务接入](./background-task-integration.md)（受管 Docker；正式启用仍受专项门禁限制）
 5. [模型上下文隐私保护](./model-context-privacy.md)
+6. [项目知识 MCP](./project-knowledge-mcp.md)（项目范围、来源契约与维护回退）
 
 ## 权威优先级
 

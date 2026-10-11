@@ -187,7 +187,13 @@ class ExecutionBudgetProjectionTest(unittest.TestCase):
         private = {
             key: "SECRET_CANARY"
             for key in PRIVATE_RUNTIME_STATE_KEYS
-            if key not in ("runtime_budget_notice", "conversation_offloading")
+            if key
+            not in (
+                "runtime_budget_notice",
+                "conversation_offloading",
+                "agent_plan",
+                "auto_title_pending",
+            )
         }
         self.assertEqual(
             redact_runtime_private_fields({**private, "normal": 1}), {"normal": 1}

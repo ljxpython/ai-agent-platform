@@ -66,6 +66,9 @@ from platform_api.modules.runtime_gateway.application.clarification import (
 from platform_api.modules.runtime_gateway.application.diagnostics import (
     RuntimeDiagnostics,
 )
+from platform_api.modules.runtime_gateway.application.knowledge_bindings import (
+    build_knowledge_binding,
+)
 from platform_api.modules.runtime_gateway.application.planning import (
     PLAN_GRAPHS,
     execution_id,
@@ -590,6 +593,8 @@ class RuntimeGatewayService:
         title_auto_enabled: bool | Callable[[], bool] = False,
         on_correlation: Callable[[str, Mapping[str, Any]], None] | None = None,
         completion_enabled: bool = False,
+        knowledge_mcp_bindings: Mapping[str, str] | None = None,
+        tenant_id: str = "__default",
     ) -> None:
         self._session_factory = session_factory
         self._upstream = upstream
@@ -607,6 +612,8 @@ class RuntimeGatewayService:
         self._title_auto_enabled = title_auto_enabled
         self._on_correlation = on_correlation
         self._completion_enabled = completion_enabled
+        self._knowledge_mcp_bindings = dict(knowledge_mcp_bindings or {})
+        self._tenant_id = tenant_id
 
     def _emit_correlation(self, event: str, **fields: Any) -> None:
         if self._on_correlation is not None:
@@ -2822,6 +2829,21 @@ class RuntimeGatewayService:
             if key not in thread_access.ACL_KEYS
         }
         next_payload["thread_id"] = reserved_thread_id or str(uuid4())
+        binding = build_knowledge_binding(
+            self._knowledge_mcp_bindings,
+            self._tenant_id,
+            project_id,
+            next_payload["thread_id"],
+        )
+        if binding:
+            managed = ensure_dict(
+                next_payload["metadata"].get("runtime_resource_bindings")
+            )
+            next_payload["metadata"]["runtime_resource_bindings"] = {
+                **managed,
+                "schema": "runtime-resource-bindings/v1",
+                **binding,
+            }
         next_payload["if_exists"] = "raise"
         next_payload = _promote_thread_graph_id(next_payload)
         upstream = self._upstream

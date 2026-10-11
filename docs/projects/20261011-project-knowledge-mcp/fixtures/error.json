@@ -1,0 +1,21 @@
+{
+  "origin": "controlled-http-provider-through-official-adapter",
+  "scenario": "error",
+  "tool_message": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"code\":\"knowledge_retrieval_failed\"}",
+        "id": "lc_a51fa9a4-244e-43f1-84ad-3d528bae079d"
+      }
+    ],
+    "additional_kwargs": {},
+    "response_metadata": {},
+    "type": "tool",
+    "name": "mcp_query_project_knowledge",
+    "id": null,
+    "tool_call_id": "fixture-error",
+    "artifact": null,
+    "status": "error"
+  }
+}

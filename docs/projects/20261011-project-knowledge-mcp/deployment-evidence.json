@@ -1,0 +1,8 @@
+{
+  "serving_reader_prevents_writer": true,
+  "failed_ingest_not_published": true,
+  "strict_inputs_and_cross_scope_status": true,
+  "model_signature_frozen": true,
+  "new_version_independent_token_and_old_version_preserved": true,
+  "mcp_embedding_restart_preserves_both_indexes": true
+}

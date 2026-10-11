@@ -10,7 +10,7 @@ import pytest
 
 from runtime_service.runtime import RuntimePrincipal, RuntimeResolutionError
 from runtime_service.runtime.resource_bindings import thread_resource_metadata
-from runtime_service.services.dearflow_agent.tools.mcp import load_mcp_tools
+from runtime_service.tools.mcp import load_mcp_tools
 
 
 def test_real_mcp_binding_permissions_disconnect_and_close(monkeypatch):
@@ -38,6 +38,7 @@ def test_real_mcp_binding_permissions_disconnect_and_close(monkeypatch):
             json.dumps(
                 {
                     "test": {
+                        "scope": {"tenant_id": "tenant", "project_id": "project"},
                         "transport": "streamable_http",
                         "url": f"http://127.0.0.1:{port}/mcp",
                         "allowed_tools": ["mcp_echo", "mcp_write", "mcp_error_blocks"],

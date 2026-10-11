@@ -172,6 +172,25 @@ def test_unknown_claim_is_rejected() -> None:
     assert error.value.code == "runtime.auth.invalid_claim"
 
 
+def test_service_account_credential_is_verified_and_preserved():
+    credential = str(uuid4())
+    subject = "service-account:" + str(uuid4())
+    verified = verify_delegation_claims(
+        _token(sub=subject, credential_id=credential),
+        secret=SECRET,
+        issuer="runtime-test",
+        audience="runtime-service",
+    )
+    assert verified.credential_id == credential
+    assert verified.callback_context is None and verified.run_acceptance is None
+    for change in (
+        {"sub": "user-a", "credential_id": credential},
+        {"sub": subject, "credential_id": "bad"},
+    ):
+        with pytest.raises(RuntimeAuthError):
+            _verify(_token(**change))
+
+
 def test_old_or_incomplete_tool_delegations_are_rejected():
     claims = jwt.decode(_token(), options={"verify_signature": False})
     for field in ("delegation_version", "tool_overrides", "tool_policy_version"):

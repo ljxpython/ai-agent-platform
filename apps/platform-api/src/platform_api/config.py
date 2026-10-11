@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
+from uuid import UUID
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -34,6 +36,9 @@ class Settings(BaseSettings):
     suggestions_timeout_seconds: float = Field(default=8.0, gt=0, le=30)
     title_timeout_seconds: float = Field(default=8.0, gt=0, le=30)
     title_auto_enabled: bool = False
+    knowledge_mcp_bindings: dict[str, str] = Field(
+        default_factory=dict, validation_alias="PLATFORM_KNOWLEDGE_MCP_BINDINGS_JSON"
+    )
 
     platform_db_enabled: bool = False
     platform_db_auto_create: bool = False
@@ -67,7 +72,27 @@ class Settings(BaseSettings):
         env_file=".env",
         env_prefix="PLATFORM_API_",
         extra="ignore",
+        populate_by_name=True,
     )
+
+    @field_validator("knowledge_mcp_bindings")
+    @classmethod
+    def validate_knowledge_bindings(cls, value: dict[str, str]) -> dict[str, str]:
+        if len(set(value.values())) != len(value):
+            raise ValueError("knowledge resources must belong to exactly one project")
+        for scope, resource in value.items():
+            parts = scope.split(":")
+            if (
+                len(parts) != 2
+                or (parts[0] != "__default" and str(UUID(parts[0])) != parts[0])
+                or str(UUID(parts[-1])) != parts[-1]
+            ):
+                raise ValueError(
+                    "knowledge scope must be tenant UUID (or __default):project UUID"
+                )
+            if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", resource):
+                raise ValueError("invalid knowledge resource ID")
+        return value
 
     @field_validator("cors_allow_origins", mode="before")
     @classmethod

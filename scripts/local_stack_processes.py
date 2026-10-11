@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shlex
 import signal
@@ -84,6 +85,14 @@ def port_pids(port: int | None) -> set[int]:
 
 
 def default_port(key: str) -> int | None:
+    if key.startswith("knowledge-"):
+        variable = (
+            "KNOWLEDGE_MCP_PORT"
+            if key == "knowledge-mcp"
+            else "KNOWLEDGE_EMBEDDING_PORT"
+        )
+        value = os.environ.get(variable)
+        return int(value) if value and value.isdigit() else None
     if key == "platform-api":
         val = os.environ.get("PLATFORM_API_PORT")
         return int(val) if val and val.isdigit() else 2142
@@ -111,6 +120,10 @@ def is_within(path: Path | None, parent: Path) -> bool:
 
 def matches(key: str, args: list[str]) -> bool:
     names = [Path(arg).name for arg in args]
+    if key == "knowledge-mcp":
+        return "src/mcp_server.py" in args
+    if key == "knowledge-embedding":
+        return "ollama" in names and "serve" in args
     if key == "redis":
         return "redis-server" in names
     if key == "platform-web":
@@ -131,6 +144,15 @@ def matches(key: str, args: list[str]) -> bool:
 
 
 def process_directory(root: Path, key: str) -> Path:
+    if key.startswith("knowledge-"):
+        entry = json.loads((root / ".local-stack/environment.json").read_text())
+        if not entry.get("knowledge") or entry["root"] != str(root.resolve()):
+            raise ValueError("Knowledge resources are not registered for this Worktree")
+        return (
+            Path(entry["knowledge"]["source"]).resolve()
+            if key == "knowledge-mcp"
+            else root.resolve()
+        )
     if key == "redis":
         directory = root / ".local-stack"
     else:
@@ -151,12 +173,17 @@ def owned(
 
     rows = snapshot()
     selected: set[int] = set()
+    knowledge_listeners = (
+        port_pids(target_port) if key.startswith("knowledge-") else None
+    )
 
     # 1. 快速短路扫描：只有符合命令行特征或引用了本工程目录的进程，才进行 cwd 检查
     for pid, (_, args) in rows.items():
         if not args:
             continue
-        if key.startswith("runtime-"):
+        if knowledge_listeners is not None and pid not in knowledge_listeners:
+            continue
+        if key.startswith(("runtime-", "knowledge-")):
             is_candidate = matches(key, args)
         else:
             is_candidate = matches(key, args) or any(dir_str in a for a in args)
@@ -170,6 +197,8 @@ def owned(
         for pid in port_pids(target_port):
             if pid in rows and pid not in selected:
                 args = rows[pid][1]
+                if key.startswith("knowledge-") and not matches(key, args):
+                    continue
                 exe = Path(args[0]) if args else None
                 proc_cwd = cwd(pid)
                 if (
@@ -203,7 +232,8 @@ def owned(
         if parent_pid > 1 and parent_pid in rows and parent_pid not in selected:
             p_args = rows[parent_pid][1]
             candidate_parent = matches(key, p_args) or (
-                not key.startswith("runtime-") and any(dir_str in a for a in p_args)
+                not key.startswith(("runtime-", "knowledge-"))
+                and any(dir_str in a for a in p_args)
             )
             if candidate_parent:
                 p_cwd = cwd(parent_pid)
@@ -240,9 +270,8 @@ def stop(root: Path, key: str, port: int | None = None) -> None:
     directory = process_directory(root, key)
     for pid, identity in targets.items():
         curr = snapshot()
-        if (
-            curr.get(pid, (None, []))[1] == identity[1]
-            and (cwd(pid) == directory or is_within(cwd(pid), directory))
+        if curr.get(pid, (None, []))[1] == identity[1] and (
+            cwd(pid) == directory or is_within(cwd(pid), directory)
         ):
             try:
                 os.kill(pid, signal.SIGKILL)
@@ -258,7 +287,10 @@ def stop(root: Path, key: str, port: int | None = None) -> None:
             if not pids:
                 break
             for p in pids:
-                if p in targets or cwd(p) == directory or is_within(cwd(p), directory):
+                if p in targets or (
+                    not key.startswith("knowledge-")
+                    and (cwd(p) == directory or is_within(cwd(p), directory))
+                ):
                     try:
                         os.kill(p, signal.SIGKILL)
                     except ProcessLookupError:
@@ -290,16 +322,28 @@ if __name__ == "__main__":
         root = Path(sys.argv[2])
         key = sys.argv[3]
         if action == "stop":
-            port = int(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4].isdigit() else None
+            port = (
+                int(sys.argv[4])
+                if len(sys.argv) > 4 and sys.argv[4].isdigit()
+                else None
+            )
             stop(root, key, port)
         elif action == "check":
             if len(sys.argv) <= 4:
                 raise SystemExit("Missing pid for check")
             pid = int(sys.argv[4])
-            port = int(sys.argv[5]) if len(sys.argv) > 5 and sys.argv[5].isdigit() else None
+            port = (
+                int(sys.argv[5])
+                if len(sys.argv) > 5 and sys.argv[5].isdigit()
+                else None
+            )
             sys.exit(0 if pid in owned(root, key, port) else 1)
         elif action == "find":
-            port = int(sys.argv[4]) if len(sys.argv) > 4 and sys.argv[4].isdigit() else None
+            port = (
+                int(sys.argv[4])
+                if len(sys.argv) > 4 and sys.argv[4].isdigit()
+                else None
+            )
             pids = list(owned(root, key, port).keys())
             print(" ".join(str(p) for p in pids))
         elif action == "port-owner":

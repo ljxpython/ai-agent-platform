@@ -1,6 +1,6 @@
 ---
 status: draft
-last_verified: 2026-10-09
+last_verified: 2026-10-11
 confidence: medium
 source_project: docs/projects/20260926-delegation-jwt-contract/verification.md
 note: 当前operation枚举为35项；后台元数据/日志/取消精确委托已增补；F07增加精确title-generate全栈闭环；lost-ACK引擎回查及现役部署仍待完成，整体保留draft
@@ -78,6 +78,8 @@ note: 当前operation枚举为35项；后台元数据/日志/取消精确委托�
 | `callback_context` | 可选；仅一个 `origin_ref`，必须为规范小写 UUID；未知/空/额外键拒绝，不允许URL或recipient |
 | scope 额外键 | 只允许五个键，未知键拒绝 |
 | 未知顶层 claim | Runtime 严格拒绝 |
+
+2026-10-11 知识MCP真实服务账号链发现Runtime遗漏既有 `credential_id` 顶层白名单/验签结果，已按上表原约束修复并保留UUID/subject核验；从受信用户重建委托时用命名参数保留credential、callback_context和run_acceptance。鉴权相关91项（14项skip）及普通用户/服务账号真实检索后撤权403/provider0见[知识专项](../projects/20261011-project-knowledge-mcp/verification.md)。未新增JWT operation/claim语义，不代表本标准原剩余门禁通过，状态仍draft。
 
 ### 可选运行完成来源（2026-10-09 用户批准）
 

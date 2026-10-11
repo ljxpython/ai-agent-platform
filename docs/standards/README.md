@@ -14,7 +14,7 @@
 
 | 规范 | 文件 | 状态 | last_verified | 置信度 | 源专项 |
 |---|---|---|---|---|---|
-| Worktree 开发与资源隔离 | [worktree-development.md](worktree-development.md) | active | 2026-10-10 | high | [Worktree 本地栈专项](../projects/20261010-worktree-local-stack/README.md) |
+| Worktree 开发与资源隔离 | [worktree-development.md](worktree-development.md) | active | 2026-10-11 | high | [Worktree 本地栈专项](../projects/20261010-worktree-local-stack/README.md) · [知识资源登记/启停](../projects/20261011-project-knowledge-mcp/verification.md) |
 | 错误响应 Envelope | [error-envelope.md](error-envelope.md) | active | 2026-10-10 | 🟢 high | [20260926-error-response-contract](../projects/20260926-error-response-contract/README.md) · [执行预算安全码](../projects/20261007-agent-execution-budget/verification.md) · [Stop 错误映射](../projects/20261007-agent-run-cancellation/verification.md) · [Workspace 执行保护](../projects/20261007-agent-workspace-resilience/README.md) · [F01精确Token码](../projects/20260913-dearflow-agent/15-token-budget-governance.md) · [F02 精确执行码](../projects/20260913-dearflow-agent/15-f02-loop-detection.md) · [后台任务错误](../projects/20261009-agent-generic-production-capabilities/verification.md) · [F05 隐私失败](../projects/20261009-agent-pii-redaction/verification.md) |
 | 链路追踪传播 | [trace-propagation.md](trace-propagation.md) | active | 2026-09-27 | 🟢 high | [20260926-trace-context-propagation](../projects/20260926-trace-context-propagation/README.md) |
 | Delegation JWT Schema | [delegation-jwt.md](delegation-jwt.md) | draft | 2026-10-11 | 🟡 medium | [Delegation 专项](../projects/20260926-delegation-jwt-contract/README.md) · [diagnostics-read](../projects/20261006-agent-observability-hardening/03-run-diagnostics-query.md) · [usage-read](../projects/20261007-agent-usage-cost-governance/03-platform-cost-contract.md) · [Stop 精确委托](../projects/20261007-agent-run-cancellation/verification.md) · [Context v6](../projects/20261008-agent-plan-mode-governance/verification.md) · [title-generate](../projects/20261009-agent-thread-auto-title/verification.md) · [completion来源](../projects/20261009-agent-production-capability-extension/verification.md) · [后台三 operation](../projects/20261009-agent-generic-production-capabilities/verification.md) |
@@ -32,6 +32,8 @@
 2026-10-09 补充已批准且完成非前端验证的 F01 Token 精确错误码、三类 custom 和 Run Usage 可选摘要，证据见 [F01](../projects/20260913-dearflow-agent/15-token-budget-governance.md)。前端及联合 Final 待接续，SSE/JWT 原草案状态不毕业。
 
 2026-10-09 已批准的 Plan Mode 将双端 Context 升为 v6，补充原生计划 interrupt 与安全 agent_plan 投影；未新增 JWT operation 或 SSE 类型。证据见 [计划专项](../projects/20261008-agent-plan-mode-governance/verification.md)，两标准仍保留原专项 draft 门禁。
+
+2026-10-11 知识MCP文本链新增受管来源投影及私有binding过滤，沿现有SSE/Thread ACL；服务账号credential保留按既有JWT约束修复。证据见[知识专项](../projects/20261011-project-knowledge-mcp/verification.md)。两草案仅补本次证据，原门禁/状态不毕业；Worktree增加知识源码服务登记与所属启停。
 
 - 标准发生变化时，对应文件的 `last_verified` 和 `status` 必须同步更新
 - 专项从 partial/blocked → done 后，将对应文件 `status` 改为 `active`

@@ -664,6 +664,8 @@ def get_runtime_gateway_service(
         completion_enabled=settings.runtime_completion_enabled,
         title_timeout_seconds=getattr(settings, "title_timeout_seconds", 8.0),
         title_auto_enabled=lambda: settings.title_auto_enabled,
+        knowledge_mcp_bindings=settings.knowledge_mcp_bindings,
+        tenant_id=context.tenant.tenant_id or "__default",
     )
 
 

@@ -1,0 +1,21 @@
+{
+  "origin": "controlled-http-provider-through-official-adapter",
+  "scenario": "malformed",
+  "tool_message": {
+    "content": [
+      {
+        "type": "text",
+        "text": "{\"code\":\"knowledge_retrieval_failed\"}",
+        "id": "lc_babed0cc-67da-4342-8032-00a6af8540a7"
+      }
+    ],
+    "additional_kwargs": {},
+    "response_metadata": {},
+    "type": "tool",
+    "name": "mcp_query_project_knowledge",
+    "id": null,
+    "tool_call_id": "fixture-malformed",
+    "artifact": null,
+    "status": "error"
+  }
+}

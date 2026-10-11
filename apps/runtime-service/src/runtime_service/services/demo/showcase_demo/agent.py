@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from functools import partial
 
 from deepagents import create_deep_agent
@@ -64,6 +65,7 @@ from runtime_service.runtime import (
     verified_delegation_from_user,
 )
 from runtime_service.runtime.capabilities import SHOWCASE_TOOLS
+from runtime_service.runtime.mcp_config import configured_mcp_names
 from runtime_service.runtime.pii import load_pii_redaction_config, pii_config_for_facts
 from runtime_service.runtime.run_budget import read_run_budget
 from runtime_service.services.demo.showcase_demo.backend import (
@@ -85,6 +87,7 @@ from runtime_service.tools.artifacts import build_artifact_tool
 from runtime_service.tools.background import build_background_tools
 from runtime_service.tools.errors import on_tool_error
 from runtime_service.tools.images import ImageWorkspace
+from runtime_service.tools.mcp import load_mcp_tools
 from runtime_service.workspace.background import BackgroundBinding
 
 _DEFAULTS = AgentDefaults(
@@ -131,6 +134,10 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
     resolved = None
     connection = None
     tool_output_limit = None
+    defaults = replace(
+        _DEFAULTS, optional_tool_names=(*SHOWCASE_TOOLS, *configured_mcp_names())
+    )
+    mcp_tools = []
     if executing:
         thread_id = configurable.get("thread_id")
         if not isinstance(thread_id, str) or not thread_id:
@@ -151,9 +158,19 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 principal=facts.principal,
                 context=context,
                 policy=facts.policy,
-                defaults=_DEFAULTS,
+                defaults=defaults,
             )
         startup.metadata["model_id"] = resolved.model_id
+        with startup.phase("factory.mcp_tools"):
+            if not context.offload_conversation and not context.plan_mode:
+                requested = tuple(
+                    n
+                    for n in configured_mcp_names()
+                    if n not in facts.policy.denied_tool_names
+                )
+                mcp_tools = await load_mcp_tools(
+                    config, facts.principal, requested, SHOWCASE_TOOLS
+                )
         with startup.phase("factory.model_connection"):
             bundle = await fetch_model_bundle(
                 configurable.get("runtime_model_ref"),
@@ -280,7 +297,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
                 else []
             ),
             RuntimeConfigMiddleware(
-                defaults=_DEFAULTS,
+                defaults=defaults,
                 base_model=model,
                 model_builder=model_builder,
                 tool_names=tool_names,
@@ -366,6 +383,7 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             system_prompt=SYSTEM_PROMPT,
             tools=[
                 fetch_documentation,
+                *mcp_tools,
                 build_artifact_tool(image_workspace.root),
                 *build_background_tools(
                     None
@@ -410,7 +428,12 @@ async def _build_agent(config: RunnableConfig, startup: StartupDiagnostics) -> P
             middleware=[
                 filesystem,
                 *middleware(
-                    (*_DEFAULTS.optional_tool_names, *image_names, *document_names),
+                    (
+                        *SHOWCASE_TOOLS,
+                        *(tool.name for tool in mcp_tools),
+                        *image_names,
+                        *document_names,
+                    ),
                     tail=[
                         image_middleware,
                         document_middleware,

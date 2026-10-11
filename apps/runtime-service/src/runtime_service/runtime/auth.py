@@ -52,6 +52,7 @@ _ALLOWED_CLAIMS = frozenset(
         "platform_trace_id",
         "callback_context",
         "run_acceptance",
+        "credential_id",
     }
 )
 
@@ -80,6 +81,7 @@ class VerifiedDelegation:
     platform_trace_id: str | None = None
     callback_context: Mapping[str, str] | None = None
     run_acceptance: dict | None = None
+    credential_id: str | None = None
 
 
 def _invalid(
@@ -333,6 +335,7 @@ def verify_delegation_claims(
         _parse_run_acceptance(
             claims.get("run_acceptance"), principal, scope, credential_id
         ),
+        credential_id,
     )
 
 
@@ -482,8 +485,9 @@ def verified_delegation_from_user(user: object) -> VerifiedDelegation:
         context_claim,
         request_id.strip() if isinstance(request_id, str) else None,
         platform_trace_id.strip() if isinstance(platform_trace_id, str) else None,
-        credential_id if isinstance(credential_id, str) else None,
-        callback_context,
+        callback_context=callback_context,
+        run_acceptance=_user_value(user, "run_acceptance"),
+        credential_id=credential_id if isinstance(credential_id, str) else None,
     )
 
 

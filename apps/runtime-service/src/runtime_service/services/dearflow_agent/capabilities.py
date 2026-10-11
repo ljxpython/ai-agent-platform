@@ -1,8 +1,6 @@
 """Dear Agent capability declarations."""
 
-import json
 import os
-import re
 from importlib.resources import files
 
 from runtime_service.background_tasks.capabilities import query_enabled, start_enabled
@@ -55,29 +53,6 @@ DEAR_TOOLS = (
     "write_todos",
     "task",
 )
-
-
-def configured_mcp_names() -> tuple[str, ...]:
-    configured = json.loads(os.environ.get("RUNTIME_MCP_CONNECTIONS_JSON", "{}"))
-    if not isinstance(configured, dict) or any(
-        not isinstance(connection, dict)
-        or not isinstance(connection.get("allowed_tools", []), list)
-        for connection in configured.values()
-    ):
-        raise ValueError("invalid_mcp_tool_declarations")
-    names = [
-        name
-        for connection in configured.values()
-        for name in connection.get("allowed_tools", [])
-    ]
-    if any(
-        not isinstance(n, str)
-        or len(n) > 128
-        or not re.fullmatch(r"mcp_[A-Za-z0-9_.:-]+", n)
-        for n in names
-    ) or len(names) != len(set(names)):
-        raise ValueError("invalid_or_duplicate_mcp_tool_name")
-    return tuple(sorted(names))
 
 
 def graph_capabilities(graph_id: str) -> dict:

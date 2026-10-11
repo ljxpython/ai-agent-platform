@@ -3,11 +3,11 @@
 import json
 from importlib.resources import files
 
+from runtime_service.runtime.mcp_config import configured_mcp_names
 from runtime_service.runtime.planning import PLAN_TOOL_NAMES
 from runtime_service.services.dearflow_agent.capabilities import (
     DEAR_TOOLS,
     WORK_TOOLS,
-    configured_mcp_names,
     graph_capabilities,  # noqa: F401 - public compatibility export
 )
 
@@ -40,7 +40,7 @@ def graph_tools(graph_id: str) -> tuple[str, ...]:
     return {
         "reference_agent": REFERENCE_TOOLS,
         "workflow_demo": REFERENCE_TOOLS,
-        "showcase_demo": SHOWCASE_TOOLS,
+        "showcase_demo": (*SHOWCASE_TOOLS, *configured_mcp_names()),
         "dearflow_agent": (*DEAR_TOOLS, *configured_mcp_names()),
     }[graph_id]
 

@@ -66,3 +66,9 @@ uv run --frozen python -c 'from cryptography.fernet import Fernet; print(Fernet.
 `OBSERVABILITY_METRICS_TOP_PATHS_LIMIT` 默认10，范围1–50。metrics是进程内快照，不是跨实例持久化指标系统。
 
 prod/production启动要求关闭API文档与bootstrap、覆盖内置默认JWT秘密、配置Runtime委托secret。staging不执行全部生产校验；这些校验不代表生产部署已验收，也不替部署者启用数据库或配置网络。
+
+## 项目知识 MCP
+
+`PLATFORM_KNOWLEDGE_MCP_BINDINGS_JSON` 默认 `{}`，服务端配置可信 `tenant:project UUID` → Runtime MCP resource。当前平台可信tenant为 `__default`，示例 `{"__default:11111111-1111-4111-8111-111111111111":"knowledge_project_a"}`。不保存知识凭据，不提供浏览器绑定接口；只在新Thread/create与fork路径内部签发，旧Thread不迁移。删除映射只影响新Thread，撤销须先用现有tool-restrictions deny query再撤知识token。
+
+Runtime/知识配置、结果/维护约束见[项目知识MCP规范](../../../runtime-service/docs/standards/project-knowledge-mcp.md)。

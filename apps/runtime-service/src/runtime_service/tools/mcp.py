@@ -1,13 +1,12 @@
 """Optional MCP tools from a server-owned, scoped resource binding."""
 
-import json
-import os
-
 from langchain_core.tools import ToolException
 from langchain_mcp_adapters.client import MultiServerMCPClient
 
 from runtime_service.runtime import RuntimeResolutionError, resolve_resource_binding
+from runtime_service.runtime.mcp_config import mcp_connections
 from runtime_service.tools.errors import is_transport_error, tool_error_content
+from runtime_service.tools.knowledge import knowledge_result_interceptor
 
 
 async def _read_only_transport(request, handler):
@@ -30,8 +29,11 @@ async def load_mcp_tools(config, principal, requested, reserved):
         return []
     binding = resolve_resource_binding(config, principal, "mcp")
     try:
-        connections = json.loads(os.environ.get("RUNTIME_MCP_CONNECTIONS_JSON", "{}"))
+        connections = mcp_connections()
         connection = dict(connections[binding.resource_id])
+        scope = connection.pop("scope")
+        if scope != {"tenant_id": binding.tenant_id, "project_id": binding.project_id}:
+            raise ValueError()
         allowed = connection.pop("allowed_tools", [])
         names.intersection_update(allowed)
         if (
@@ -47,7 +49,7 @@ async def load_mcp_tools(config, principal, requested, reserved):
     client = MultiServerMCPClient(
         {"bound": connection},
         tool_name_prefix=False,
-        tool_interceptors=[_read_only_transport],
+        tool_interceptors=[_read_only_transport, knowledge_result_interceptor],
     )
     tools = await client.get_tools()
     actual = [tool.name for tool in tools]

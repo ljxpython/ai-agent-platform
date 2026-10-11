@@ -50,6 +50,21 @@ bash "scripts/local-stack.sh" stop
 - API upstream、Runtime self URL、模型/Thread/message/memory 授权回调和前端代理统一生成，指向同一环境。不能手工指向其他 Worktree 或主工作区。
 - 额外预览/测试服务同样不能硬编码公共端口或抢占登记端口；先使用 OS 分配空闲端口并保留所属进程句柄，结束时仅停止自己启动的进程。长期联调服务应先扩展统一登记再接入。
 
+### 外部源码知识服务
+
+知识MCP与独立Ollama也可登记到本环境，数据/模型/私有配置放 `.local-stack/knowledge/`，知识源码使用自身独立 `.venv`。登记的 `knowledge.source` 指向实际源码目录，`knowledge.ports` 包含MCP/Embedding两端口；平台身份、四个现有端口及数据库保持原分配。复用缓存，不复用其他环境的可写资料/模型目录或安装目录。
+
+维护者先准备 `knowledge.env`、`mcp-process.json`（环境/source/配置路径/端口）与 `ollama-process.json`（模型目录/端口），再执行：
+
+```bash
+bash "scripts/local-stack.sh" knowledge-register
+bash "scripts/local-stack.sh" knowledge-start
+bash "scripts/local-stack.sh" knowledge-restart
+bash "scripts/local-stack.sh" knowledge-stop
+```
+
+登记检查回环地址、本环境corpus/models、源码依赖、监听归属与全登记端口冲突；不自动抢占外来进程。登记后 `start/status/stop` 包含知识服务，最新PID位于本环境 `pids/`。停进程同时核对登记端口、命令及真实目录，不停止同目录其他端口的Ollama。知识服务监听未释放时 `destroy` 拒绝删除；资料销毁仍需原有明确确认。精确配置/版本更新与证据见[知识MCP部署手册](../projects/20261011-project-knowledge-mcp/deployment-runbook.md)。
+
 ## 数据与文件
 
 - 每套环境有 `<环境ID>_platform`、`<环境ID>_runtime` 两个数据库，使用同名非超级用户角色。数据库和角色带环境归属标记；不采用公共 schema 代替数据库隔离。

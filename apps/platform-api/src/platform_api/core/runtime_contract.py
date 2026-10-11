@@ -65,6 +65,8 @@ PROTOCOL_V2_EVENT_CHANNELS = {
 PROTOCOL_V2_RUN_DURABILITY = {"sync", "async", "exit"}
 PROTOCOL_V2_RUN_DISCONNECT = {"cancel", "continue"}
 PRIVATE_RUNTIME_STATE_KEYS = {
+    "runtime_resource_bindings",
+    "__graphharbor_thread_metadata",
     "runtime_plan",
     "agent_plan",
     "plan_execution_id",
@@ -343,6 +345,7 @@ def normalize_runtime_payload(
     payload: dict[str, Any] | None,
     project_id: str,
 ) -> dict[str, Any]:
+    reject_private_runtime_state(payload)
     next_payload = strip_keys(
         normalize_runtime_object(payload), PROJECT_SCOPE_ALIAS_KEYS
     )
@@ -375,6 +378,7 @@ def normalize_protocol_v2_command(
     payload: dict[str, Any],
     default_model_id: str | None = None,
 ) -> dict[str, Any]:
+    reject_private_runtime_state(payload)
     _reject_run_budget(payload)
     command_id = payload.get("id")
     method = payload.get("method")
