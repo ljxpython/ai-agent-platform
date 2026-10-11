@@ -12,7 +12,7 @@
 
 **人工评审已通过。** 2026-10-09，用户明确“我已经评审完成，可以开始实施了，任务推进到只剩下前端的相关事项，除非遇到 block”。本轮授权推进 T01-T08 与 T10 的非前端验证/交接；T09/F01-F12 和依赖前端的联合浏览器验收交给同事。批准范围为本专项 D01-D06；未授权 Git 提交/推送或生产发布。
 
-**当前进度：** `partial`；[B01](engine-handoff.md) 已解除，post45 正式锁/部署断言和 lost-ACK notify/Stop/撤权联合验收完成。T02/T03/T04/T06/T07、T09/F01-F11 已完成；T01/T05/T08 仍需本专项全范围验证和新 Linux 镜像门禁，T10/F12 尚未全栈 Final。新提交默认关闭，现役未部署。AB01-AB03 与 ABF01-ABF03 前后端独立验收已完成。
+**当前进度：** 非前端 `done`，整体 `partial`；[B01](engine-handoff.md) 已解除，合并后接续 K01–K08 已完成正式 post45 Linux 产物和非前端 Final，T01–T08 全部回填完成。T09/F01–F11 和 AB01–AB03/ABF01–ABF03 来源完成保留；新增前端 K09、联合 K10/T10/F12 尚未完成。无非前端 Block，新提交默认关闭，现役未部署。见[接续验证](../20261011-background-acceptance-closeout/verification.md)。
 
 | 决策 | 状态 | 批准内容/评审证据 |
 |---|---|---|
@@ -32,7 +32,7 @@
 - **预期结果：** 冻结一个可以恢复的执行域、bounded log 实现、未知提交恢复规则、guard 时机、标准新增字段及版本/来源/哈希；能力缺口逐项有真实证据。失败时不绕过鉴权、不复用宿主 shell；提出具体修订供评审。
 - **验证项：** verification.md 的 I01、I03、I06-I08、R01、S01；仅容器能启动不算完成，不能拿 mock 或当前依赖版本字符串代替正式包冷安装。
 - **依赖/预计：** D01-D06 批准；1-2 人天。
-- **状态：** [ ] `partial`（2026-10-10）：原 post43/两 Linux controller 拓扑证据保留；正式 post45 接受回执、冷安装、服务锁与 Dockerfile 断言已交付，B01 解除。新 post45 Linux 应用镜像与完整拓扑门禁尚未验，不能仅凭依赖更新勾选本任务。
+- **状态：** [x] `done`（2026-10-11）：合并后接续 K01/K02/K05 已冻结正式 post45/SDK/三个唯一 head；冷 Linux 镜像、真实两个独立 controller 的 daemon/挂载/日志/清理及镜像 API/Worker 正常和丢 ACK notify/Stop/撤权通过。B01 保持解除，实际产物/报告见[非前端 Final](../20261011-background-acceptance-closeout/verification.md)，未凭版本字符串代替验收。
 
 ### Task T02：应用迁移、幂等与租约存储
 
@@ -75,7 +75,7 @@
 - **预期结果：** 一个 event 至多一个接受的完成 Run，丢响应/双进程/迟到更新复用原回执；活动 Run 不被 interrupt；HITL 不被自动批准；Stop 后迟到 Run 的 guard 不进入模型/工具；原始日志/身份/命令不被当系统授权。
 - **验证项：** U09-U12、I06-I10、E03-E08、S02-S04；现有 `apps/platform-api/tests/{test_run_requests,test_scheduled_tasks,test_runtime_delegation_contract}.py` 与 Runtime scheduled/access policy 测试回归。
 - **依赖/预计：** T04；1.5-2 人天。
-- **状态：** [ ] `partial`（2026-10-10）：原 HMAC/guard/Usage 证据保留；正式 post45 最终 bytes 发送前落盘、reconcile-only、固定 GET 与 Stop suppressed 已接入，notify/Stop/撤权各独立联合验收通过，[B01](engine-handoff.md) 解除。本专项完整故障/竞态矩阵仍待 T08/T10，未以三场景替代全部门禁。
+- **状态：** [x] `done`（2026-10-11）：接续 K03–K06 补最终 Context/签名及 origin/callback/credential 共存、accepted 自动候选过滤；持久化故障、重启固定 GET、HITL/旧 Stop 与新任务、当前 ACL/撤销和开始前 guard 均通过。最终镜像每条 POST=1/固定 GET=20/2 Runs/1 ledger，完成模型 1/0/0；完整非前端矩阵索引见[接续验证](../20261011-background-acceptance-closeout/verification.md)，浏览器表现由 T10/F12 接续。
 - **实施记录：** [平台续接与公开契约](implementation/03-platform-completion-and-contract.md)及 [B01 正式交付](engine-handoff.md)；Final 验证范围分别记录。
 
 ### Task T06：通用工具、两组合根和未接入图隔离
@@ -107,7 +107,7 @@
 - **预期结果：** 后端所有门禁有真实证据；报告仅判定后端 done，整项目等待前端和联合验收；未验拓扑默认关闭。依赖发布或生产部署不因测试通过自动授权。
 - **验证项：** verification.md 中后端 U/I/E/L/S/R 全覆盖；lint/格式/定向+Final 回归；无新后台资源遗留、旧 foreground/cron/Stop/inbox/Usage 关键链路通过。
 - **依赖/预计：** T07；1-2 人天，包含前述验证总量，避免重复计时。
-- **状态：** [ ] `partial`：原镜像/回退、K轮HITL/固定Stop及质量/文档/资源 Phase 保留；B01 已解除，正式 post45 锁/部署断言与三条接受回执联合链路完成。本专项完整故障/竞态矩阵、post45 Linux 应用镜像及后端 Final 尚未执行；现役未启用，不能把引擎专项 Final 算作本任务全范围 Final。
+- **状态：** [x] `done`（2026-10-11）：接续 K05–K08 完成正式冷镜像、非前端原矩阵、受影响回归、权限/资源/真实模型、排空与匹配旧源码回退以及独立 Final。实际 head 为 Platform `20261011_0009`、Runtime `0004_background_token_budget`、引擎 `013_run_acceptance_receipts`；回执逐字段保留。规范、运行手册、环境与前端增量交接均完成；失败轮/skip 和范围外限制保留，现役未部署。见[收口记录](../20261011-background-acceptance-closeout/implementation/04-nonfrontend-final.md)。
 
 ### Task T09：前端同事实施 F01-F12
 
@@ -125,7 +125,7 @@
 - **预期结果：** 后端/前端/联合验收分别有状态；全部范围完成才整项目 done；缺真实条件说明具体条件、已尝试替代和接续步骤，不能用一次 Phase passed 提前收工。
 - **验证项：** 全部冻结验收项与 E10；记录测试命令、版本/产物/环境、数量、故障注入、日志/截图、安全脱敏和退出资源盘点。
 - **依赖/预计：** T08-T09；联合 1-2 人天。
-- **状态：** [ ] `partial`：B01 已解除，非前端、F01-F11与ABF01-ABF03独立证据保留；全范围联合 Final/F12 尚未执行。
+- **状态：** [ ] `partial`：B01 已解除且非前端 Final 已完成；F01–F11/ABF01–ABF03 来源证据保留。前端增量 K09、浏览器联合 K10/F12 及全范围 Final 尚未执行，见[当前交接](../20261011-background-acceptance-closeout/frontend-handoff.md)。
 
 ## 非 Docker 兼容：A/B 独立实施（2026-10-10）
 
@@ -170,11 +170,11 @@
 
 - [x] 规划交付校验完成（P01-P05，2026-10-09）。
 - [x] 人工评审批准 D01-D06（用户，2026-10-09，本会话）。
-- [ ] Phase 0 完成且引擎契约冻结（T01/B01；T02已完成）。
+- [x] Phase 0 完成且引擎契约冻结（T01/T02；B01已解除，post45最终Linux产物通过）。
 - [x] Phase 1 核心执行与受管资源清理完成（T03-T04；未知通知Run清理由T05/B01承接）。
-- [ ] Phase 2 完成（T06已完成；T05/B01）。
+- [x] Phase 2 完成（T05/T06；固定接受对账、guard和完整非前端矩阵通过）。
 - [x] 前端可消费的v1查询/日志/取消/能力/Stop加法契约交接已形成。
-- [ ] 后端 Final 完成并冻结前端契约。
+- [x] 后端 Final 完成并冻结前端契约（接续K01–K08，2026-10-11）。
 - [x] 前端 F01-F11 完成（B01已解除，F12待T10全栈联合交付）。
 - [x] A/B 非前端 AB01-AB03 与前端增量 ABF01-ABF03 全部开发与验证完成（2026-10-10）。
 - [ ] 全栈联合 Final 完成。
@@ -193,4 +193,4 @@ T02/T03/T04/T06/T07 的改动、真实代码位置、预期和对应 Phase 证�
 - [x] CHANGELOG.md的Unreleased已记录默认关闭、受管后台与清理摘要。
 - [x] 收尾经验提案已由用户确认；四条经验写入docs/lessons/runtime-service.md并更新索引（2026-10-09）。
 
-T01/T05/T08仍为未完成Card：B01已由引擎专项正式交付解除，本专项剩余矩阵/镜像/后端Final另验，不能凭A/B或接受回执三场景勾全范围完成。T09/F01-F11与AB01-AB03/ABF01-ABF03已完成；T10/F12尚未全栈Final。
+T01/T05/T08 的四段完成卡及验证已在各任务回填，最终报告是本仓库接续专项独立执行，不拿引擎 Final 或三场景替代全部矩阵。共享合规项：实现/测试、tasks、CONTEXT/FEATURES、规范、CHANGELOG 和前端交接完成，真实结果与 skip/旧告警/失败轮分别保留。T09/F01–F11 与 AB01–AB03/ABF01–ABF03 来源完成保留；T10/F12 和新增 K09/K10 尚未全栈 Final。新经验仅提出建议，待用户确认后入库，不影响已完成的非前端交付。

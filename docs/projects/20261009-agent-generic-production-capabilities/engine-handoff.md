@@ -1,5 +1,7 @@
 # GraphHarbor 接续：后台完成 Run 的只读回查
 
+**2026-10-11 使用方接续：** 合并后的 Platform/Runtime 补修、正式 post45 新 Linux 产物和非前端 Final 已完成，原 T01/T05/T08 回填 done，无 Block。见[接续专项](../20261011-background-acceptance-closeout/README.md)与[验证记录](../20261011-background-acceptance-closeout/verification.md)；引擎 post45/013 保持，B01 不重新开发。K09 前端及 K10/T10/F12 仍待同事，见[当前交接](../20261011-background-acceptance-closeout/frontend-handoff.md)。下文 2026-10-10 正式交付为来源历史证据，不能覆盖此处最新状态。
+
 ## B01：Run接受回执正式交付，lost-ACK引擎门禁已解除
 
 状态：**done（B01解除）**，2026-10-10；所属任务T01/T05/T08的引擎门禁由GraphHarbor接受回执专项交付。双包正式post45已发布，`apps/runtime-service/pyproject.toml`、服务`uv.lock`及Dockerfile精确断言已接入；四产物独立下载hash匹配，Worktree从PyPI同步，两包来自本目录site-packages。应用对账只用正式adapter，不直读引擎表。原专项T08剩余矩阵、T10/F12全栈Final及新Linux镜像/现役启用未因B01自动完成。
@@ -37,4 +39,4 @@
 4. 已撤权内部固定回执可清理，公开查询拒绝；错 tenant/project/Thread/key/摘要/credential 均拒绝。
 5. 在 API/Worker 两进程和重启后补验迟到回包、原 key 对账、Stop 摘要从 unconfirmed 到 confirmed；旧 foreground、cron、HITL、inbox/Usage 回归通过。
 
-上述引擎门禁已有真实证据，B01解除。原专项继续完成T08剩余矩阵、T10/F12与部署拓扑门禁；新提交默认关闭，未自动启用现役。前端不得将unknown渲染为失败后自动重试。永久墓碑随key线性增长，恢复到接受前备份会丢防重事实；receipt.accepted不能代替停止确认。
+上述引擎门禁已有真实证据，B01解除；原 T01/T05/T08 的应用产物、矩阵和非前端 Final 现已由接续专项完成。剩余 K09/K10、T10/F12 浏览器联合和独立现役部署决定；新提交默认关闭，未自动启用现役。前端不得将 unknown 渲染为失败后自动重试。永久墓碑随 key 线性增长，恢复到接受前备份会丢防重事实；receipt.accepted 不能代替停止确认。

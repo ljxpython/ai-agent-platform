@@ -314,8 +314,6 @@ describe("useBackgroundTasks", () => {
         });
       });
 
-      await vi.waitFor(() => expect(composable.tasks.value).toHaveLength(1));
-
       // 停止 scope
       scope.stop();
 
@@ -323,6 +321,117 @@ describe("useBackgroundTasks", () => {
       vi.clearAllMocks();
       await composable.refresh();
       expect(service.listBackgroundTasks).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("候选过滤严苛白名单与协同清理 (K09)", () => {
+    const caps = ref<WorkspaceCapabilities>({
+      workspace: true,
+      background_tasks: true,
+      background_tasks_start_enabled: true,
+    });
+
+    it("当 delivery.state === 'suppressed' 或 'unknown' 时，即使存在 run_id 也绝不触发 onRunDiscovered", async () => {
+      const onRunDiscovered = vi.fn();
+      const suppressedTask: TaskV1 = {
+        ...mockRunningTask,
+        task_id: "task-suppressed",
+        status: "cancelled",
+        delivery: {
+          state: "suppressed",
+          event_id: "evt-suppressed",
+          run_id: "run-suppressed-999",
+          reason_code: null,
+        },
+      };
+      const unknownTask: TaskV1 = {
+        ...mockRunningTask,
+        task_id: "task-unknown",
+        status: "succeeded",
+        delivery: {
+          state: "unknown",
+          event_id: null,
+          run_id: "run-unknown-888",
+          reason_code: null,
+        },
+      };
+
+      vi.mocked(service.listBackgroundTasks).mockResolvedValueOnce({
+        version: 1,
+        thread_id: "thread-1",
+        items: [suppressedTask, unknownTask],
+        next_cursor: null,
+        has_unresolved: false,
+        latest_delivery_run_id: null,
+      });
+
+      const composable = useBackgroundTasks(projectId, threadId, {
+        capabilities: caps,
+        onRunDiscovered,
+      });
+
+      await vi.waitFor(() => expect(composable.tasks.value).toHaveLength(2));
+      // 绝不触发
+      expect(onRunDiscovered).not.toHaveBeenCalled();
+    });
+
+    it("仅在 delivery.state === 'accepted' 且具备 run_id 时放行，并支持 clearDiscoveredRuns 协同清理", async () => {
+      const onRunDiscovered = vi.fn();
+      const acceptedTask: TaskV1 = {
+        ...mockRunningTask,
+        task_id: "task-accepted",
+        status: "succeeded",
+        delivery: {
+          state: "accepted",
+          event_id: "evt-accepted",
+          run_id: "run-accepted-777",
+          reason_code: null,
+        },
+      };
+
+      vi.mocked(service.listBackgroundTasks).mockResolvedValueOnce({
+        version: 1,
+        thread_id: "thread-1",
+        items: [acceptedTask],
+        next_cursor: null,
+        has_unresolved: false,
+        latest_delivery_run_id: null,
+      });
+
+      const composable = useBackgroundTasks(projectId, threadId, {
+        capabilities: caps,
+        onRunDiscovered,
+      });
+
+      await vi.waitFor(() =>
+        expect(onRunDiscovered).toHaveBeenCalledWith("run-accepted-777"),
+      );
+      expect(onRunDiscovered).toHaveBeenCalledTimes(1);
+
+      // 再次刷新，由于已记录，不会重复触发
+      vi.mocked(service.listBackgroundTasks).mockResolvedValueOnce({
+        version: 1,
+        thread_id: "thread-1",
+        items: [acceptedTask],
+        next_cursor: null,
+        has_unresolved: false,
+        latest_delivery_run_id: null,
+      });
+      await composable.refresh(true);
+      expect(onRunDiscovered).toHaveBeenCalledTimes(1);
+
+      // 调用 clearDiscoveredRuns 协同清理后再次刷新，可重新触发
+      composable.clearDiscoveredRuns();
+      vi.mocked(service.listBackgroundTasks).mockResolvedValueOnce({
+        version: 1,
+        thread_id: "thread-1",
+        items: [acceptedTask],
+        next_cursor: null,
+        has_unresolved: false,
+        latest_delivery_run_id: null,
+      });
+      await composable.refresh(true);
+      expect(onRunDiscovered).toHaveBeenCalledTimes(2);
     });
   });
 });

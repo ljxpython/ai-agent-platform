@@ -158,6 +158,7 @@ const session = useChatSession({
   },
   onStopConfirmed: () => {
     void promptQueue?.refresh();
+    backgroundTasks?.clearDiscoveredRuns();
   },
 });
 

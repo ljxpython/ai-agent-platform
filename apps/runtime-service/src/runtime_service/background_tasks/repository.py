@@ -176,7 +176,7 @@ def list_tasks(scope, limit=20, before=None):
             is not None
         )
         latest = connection.execute(
-            "SELECT delivery_run_id FROM runtime_background_tasks WHERE tenant_id=%s AND project_id=%s AND graph_id=%s AND thread_id=%s AND delivery_run_id IS NOT NULL ORDER BY delivery_accepted_at DESC,task_id DESC LIMIT 1",
+            "SELECT delivery_run_id FROM runtime_background_tasks WHERE tenant_id=%s AND project_id=%s AND graph_id=%s AND thread_id=%s AND delivery_run_id IS NOT NULL AND delivery_state='accepted' AND stop_id IS NULL ORDER BY delivery_accepted_at DESC,task_id DESC LIMIT 1",
             scope_params(scope),
         ).fetchone()
         return rows, unresolved, latest["delivery_run_id"] if latest else None

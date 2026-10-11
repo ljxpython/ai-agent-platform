@@ -2,7 +2,7 @@
 
 ## 当前结论
 
-当前状态 `partial`。用户已批准 D01-D06，T02/T03/T04/T06/T07 与 F01-F11 已完成；正式 post45 锁/部署断言、接受回执三条发布后联合链路已交付，B01 解除。T01/T05/T08 的完整矩阵、新 Linux 应用镜像及后端 Final、T10/F12 全栈 Final 尚未收口；A/B 前后端独立验收已完成。以下历史 Phase 与失败记录保留，不能把引擎专项 Final 当作本专项全范围 Final。现役未部署、未调用生产 API。
+当前非前端 `done`，整体 `partial`。用户已批准 D01–D06；合并后接续 K01–K08 已完成正式 post45 冷 Linux 产物、原非前端矩阵和独立 Final，T01–T08 全部回填完成，B01 保持解除。F01–F11/A-B 来源完成保留；新增 K09、K10/T10/F12 浏览器联合尚未收口。以下历史 Phase 与失败记录保留；本轮仓库验收不等于引擎 Final，不宣称所有服务/模型全仓测试通过。现役未部署、未调用生产 API，无非前端 Block。
 
 本轮源码对照的基线、参考文件哈希、官方资料和环境限制见 reference-analysis.md。文档检查记录在“规划交付校验”，不得写成后端/全栈 Final。
 
@@ -352,8 +352,12 @@ uv run --frozen --project "apps/platform-api" pytest "apps/platform-api/tests/te
 
 ### Final 后端验证
 
-尚未执行。T08全部后端门禁通过才填写，范围明确排除同事未完成的前端。
+**`done`，2026-10-11。** 在 `~/.codex/worktrees/b01-closeout/ai-agent-platform`、基线 `2b94585b` 和隔离环境 `wt_43727db9404e` 完成，原 T01/T05/T08 对应接续 K01–K08。原非前端 U/I/E/L/S/R 逐项映射、准确计数、实际命令、版本/head/hash、资源和限制见[独立 Final 与矩阵](../20261011-background-acceptance-closeout/verification.md)、[收口记录](../20261011-background-acceptance-closeout/implementation/04-nonfrontend-final.md)及[脱敏证据](../20261011-background-acceptance-closeout/implementation/final-evidence.json)。不重复粘贴完整报告或把来源引擎证据当成仓库本轮执行。
+
+独立系统 Final **6 passed、9 deselected（2285.02s）**：最终 Linux 正常续接、丢 ACK notify/Stop/撤权、原生超时/取消、排空与匹配旧源码回退。三故障每条 POST=1/重复固定 GET=20/2 Runs/1 ledger，完成模型 1/0/0；旧 API/Worker 普通 Run 成功、回执保留。Platform 与 Runtime 的受影响全量回归、真实 PG/SQLite 迁移、Docker/日志/容量及本地栈 Final 另有独立报告，skip 与 subtests 分别列示。两根真实模型和审批/进程恢复/模型撤销复用通过的具体 Phase，失败轮保留。
+
+前端源码/测试修改 0；Web/浏览器/生产部署不计入后端完成范围。验收 fixture 退出且相关容器无残留，长期 Docker 交接栈已启动，三个 HTTP 入口均 200。单样本 ACK/本机性能不是生产 SLO；4 条旧脚本告警、4 个旧文档断链和三环境 opt-in skip 单列，无新增错误。
 
 ### Final 全栈验证
 
-尚未执行。T10覆盖全部批准范围后按verify-change给出done/partial/blocked/deferred；本轮规划完成不能把功能标done。
+尚未执行，整体 `partial`；待 K09 前端修补及 K10/T10/F12 浏览器联合完成后再判定整体。后端独立 done 不自动完成本区块或现役部署。

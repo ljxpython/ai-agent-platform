@@ -215,7 +215,9 @@ asyncio.run(run())
             results.append(json.loads(result.stdout.strip().splitlines()[-1]))
         assert results[0]["running"] and results[1]["cleanup"]
         assert (tmp_path / "proof.txt").read_text() == "SHARED"
-        print(json.dumps({"image": image, "controllers": 2, "results": results}))
+        evidence = {"image": image, "controllers": 2, "results": results}
+        (tmp_path / "linux-controller-evidence.json").write_text(json.dumps(evidence))
+        print(json.dumps(evidence))
     finally:
         asyncio.run(stop_task_container(row))
         asyncio.run(remove_task_container(row))

@@ -581,6 +581,7 @@ class RuntimeGatewayService:
         runtime_base_url: str = "",
         policy_engine: IamPolicyEngine | None = None,
         delegation_headers_factory: Callable[..., Mapping[str, str]] | None = None,
+        runtime_delegation_secret: str | None = None,
         runtime_model_config_secret: str | None = None,
         runtime_model_config_ttl_seconds: int = 60,
         suggestions_enabled: bool = True,
@@ -596,6 +597,7 @@ class RuntimeGatewayService:
         self._runtime_id = "default" if runtime_base_url else ""
         self._policy_engine = policy_engine or IamPolicyEngine()
         self._delegation_headers_factory = delegation_headers_factory
+        self._runtime_delegation_secret = runtime_delegation_secret
         self._runtime_model_config_secret = runtime_model_config_secret
         self._runtime_model_config_ttl_seconds = runtime_model_config_ttl_seconds
         self._suggestions_enabled = suggestions_enabled
@@ -2433,6 +2435,24 @@ class RuntimeGatewayService:
             thread_action=thread_action,
             model_resilience=snapshot_policy,
         )
+        if completion_config is not None:
+            from .background_completion import MARKER, sign_marker
+
+            if not self._runtime_delegation_secret:
+                raise ServiceUnavailableError(
+                    code="runtime_delegation_not_configured",
+                    message="Completion requires authenticated delegation",
+                )
+            # Bind the trusted marker after the new execution Context is finalized.
+            completion_config = {
+                MARKER: sign_marker(
+                    {
+                        **completion_config[MARKER]["values"],
+                        "context_hash": current_context_hash,
+                    },
+                    self._runtime_delegation_secret,
+                )
+            }
         if scheduled_config is not None or completion_config is not None:
             payload["config"]["configurable"] = {
                 **payload["config"].get("configurable", {}),
@@ -2494,6 +2514,7 @@ class RuntimeGatewayService:
                 agent_key=agent_key,
                 thread_id=thread_id,
                 context_hash=current_context_hash,
+                origin_ref=origin_ref,
                 run_acceptance=grant,
                 auth_snapshot=auth_snapshot,
             )

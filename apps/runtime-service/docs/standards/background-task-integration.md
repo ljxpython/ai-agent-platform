@@ -45,4 +45,4 @@ origin_run_id 必须取可信 execution_info 或引擎 metadata 并核对一致�
 
 检验 schema-only/probe/maintenance 零资源；配置矩阵与模型可见工具/平台 capability 一致；错误 scope、execute deny、拒绝审批零启动；审批 resume 保留 call/命令摘要；关闭启动后重建 checkpoint 仍核对原 task、unknown 零重复；源 success 延续、error/timeout/Stop 清理，HITL interrupted 不误取消。完成 Run 的 guard 拒绝发生在 factory 前，新提交工具不可见。验证打包资源、真实 Docker 输出/退出码、两进程恢复、公开四路由、当前权限与 Stop 摘要。
 
-部署、容量、日志 TTL 与 drain 见 [运行手册](../../../../docs/runbooks/runtime-background-tasks.md)。post43 lost-ACK 固定回执缺口仍阻止正式启用；接入新 Agent 不会自动消除此门禁。
+部署、容量、日志 TTL 与 drain 见 [运行手册](../../../../docs/runbooks/runtime-background-tasks.md)。正式 post45 的固定接受回执已解除 B01；完成 marker 绑定新执行的最终 Context v6，接受事实不等于执行或通知完成。接入与最终 Linux 产物验证见 [接续专项](../../../../docs/projects/20261011-background-acceptance-closeout/verification.md)；正式启用仍按整体验收和部署决定执行。

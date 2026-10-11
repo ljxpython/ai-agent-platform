@@ -654,6 +654,7 @@ def get_runtime_gateway_service(
         upstream=upstream,
         runtime_base_url=settings.langgraph_upstream_url,
         delegation_headers_factory=delegation_headers_factory,
+        runtime_delegation_secret=settings.runtime_delegation_secret,
         on_correlation=on_correlation,
         runtime_model_config_secret=(
             settings.runtime_model_config_secret or settings.runtime_delegation_secret

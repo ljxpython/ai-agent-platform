@@ -137,13 +137,23 @@ function formatTime(isoStr: string | null): string {
       </span>
       <span
         v-if="task.delivery.state === 'accepted' && task.delivery.run_id"
+        data-testid="delivery-accepted-badge"
         class="rounded bg-purple-100 px-1.5 py-0.2 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300"
-        :title="`关联完成通知 Run: ${task.delivery.run_id}`"
+        :title="`关联完成通知 Run: ${task.delivery.run_id} (续接请求已接受，等待原生处理)`"
       >
-        已送达通知
+        续接已接受
+      </span>
+      <span
+        v-else-if="task.delivery.state === 'unknown'"
+        data-testid="delivery-unknown-badge"
+        class="rounded bg-amber-100 px-1.5 py-0.2 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300"
+        title="续接状态确认中，正在保持只读查询"
+      >
+        续接待确认
       </span>
       <span
         v-else-if="task.delivery.state === 'suppressed'"
+        data-testid="delivery-suppressed-badge"
         class="rounded bg-gray-100 px-1.5 py-0.2 text-gray-600 dark:bg-dark-800 dark:text-dark-400"
       >
         通知已抑制

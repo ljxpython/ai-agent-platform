@@ -1,0 +1,144 @@
+{
+  "worktree": "/Users/lijiaxin/.codex/worktrees/b01-closeout/ai-agent-platform",
+  "baseline": "2b94585b544f055be3f1a0098a1563fa8a0e5ea3",
+  "environment_id": "wt_43727db9404e",
+  "ports": {
+    "PLATFORM_WEB_PORT": 29286,
+    "PLATFORM_API_PORT": 23818,
+    "RUNTIME_PORT": 24548,
+    "LOCAL_STACK_REDIS_PORT": 28816
+  },
+  "migration_heads": {
+    "platform": [
+      "20261011_0009"
+    ],
+    "runtime": [
+      "0004_background_token_budget"
+    ],
+    "graphharbor": [
+      "013_run_acceptance_receipts"
+    ]
+  },
+  "runtime_packages": {
+    "graphharbor": "0.13.0.post45",
+    "graphharbor-runtime": "0.13.0.post45",
+    "langgraph-sdk": "0.4.3"
+  },
+  "runtime_image": "sha256:3b7a07136c46d7d151218571f45a40016dbd1044938ae976aff2aadc7a992601",
+  "source_sha256": {
+    "apps/runtime-service/src/runtime_service/runtime/auth.py": "bb3db219315bccfdec8edf8ea940dcbf7c047e88f65a73b08ff5442120021b7a",
+    "apps/runtime-service/src/runtime_service/background_tasks/repository.py": "4c66f866dc5da5447d3917d98bbd0c75d09936d39fa93e37253c21a35e60a710",
+    "apps/runtime-service/uv.lock": "ae87e773572242b29347d4679a55d6b75b879f120a799a2c31db5243282b86b6",
+    "apps/runtime-service/deploy/Dockerfile": "4658f9694d41e6ca4daefd6ff07a5ddae1365d9efee09f42033545a5ef3b0043",
+    "apps/platform-api/src/platform_api/modules/runtime_gateway/application/service.py": "1e8364cdbaf602530e291d110a2c32077b2d95c74ead0380049b34513c548528",
+    "apps/platform-api/src/platform_api/modules/runtime_gateway/application/background_completion.py": "24e20c5f1e636653a7f778869d433240dc8bdacc0b4abc99b8dca4374634f4ab",
+    "apps/platform-api/src/platform_api/modules/runtime_gateway/infra/sqlalchemy/models.py": "3db2fa10d2a434305f3fcaa298bbd5be8094824e608ddc453ae32cf5d6069d6b",
+    "apps/platform-api/src/platform_api/modules/runtime_gateway/presentation/http.py": "8561cb827870f3b20854f411cbc720915617e7139c98f1df2f28506457164349",
+    "apps/platform-api/migrations/versions/20261011_0008_merge_completion_acceptance.py": "18c11147f390f9680ad35f6d8975c5d26324f04e6d41c497ebf69cdfeb1d9de4",
+    "apps/platform-api/migrations/versions/20261011_0009_completion_sqlite_uuid.py": "77eef1105016083ab9cf77c4129c69e14668cd42847e488c92b2cf9f324bb0c5",
+    "apps/runtime-service/src/runtime_service/db/migrations/versions/0004_merge_background_token_budget.py": "2ac7ecf40467bb7c39261385826502c22fab6b8f941b9da33fe4792d1ca1ce77",
+    "scripts/local-stack.sh": "403cca3134f45ddf4228b0710a8fb3cbefd9cbee278e17827826c24db96e13d5",
+    "scripts/local_stack_worktree.py": "1eb06a68e3b339ab870afc5493c8c843d918055b8f0eeef1d15d4c4147b7862c",
+    "scripts/local_stack_processes.py": "483fa4b794b45cfeca95093bd9955830ba1e04ec34710f3b3ba67c29b7c28bce"
+  },
+  "frontend_changed_files": [],
+  "scope": "non-frontend Final complete; frontend/browser joint acceptance remains",
+  "published_artifacts": [
+    {
+      "name": "graphharbor",
+      "version": "0.13.0.post45",
+      "source": {
+        "registry": "https://pypi.org/simple"
+      },
+      "sdist": {
+        "url": "https://files.pythonhosted.org/packages/7e/74/7832953cac81d05ef59f41a9b2206157e8acef5298333f586a7e591f4ab6/graphharbor-0.13.0.post45.tar.gz",
+        "hash": "sha256:61f1052fa6f18d39dba8035d6a7e5628222d769ae1be1a4965104e6b37817f73",
+        "size": 65652,
+        "upload-time": "2026-10-10T15:09:07.302Z"
+      },
+      "wheels": [
+        {
+          "url": "https://files.pythonhosted.org/packages/9e/e5/0aad70589a970c4009773f47c29687f10b315cdcbec67cf4ec0be57da1bc/graphharbor-0.13.0.post45-py3-none-any.whl",
+          "hash": "sha256:2a9e79a9674452925bdddf5fc121e8e6d366ca310f959d0371539c53114b9643",
+          "size": 51092,
+          "upload-time": "2026-10-10T15:09:05.898Z"
+        }
+      ]
+    },
+    {
+      "name": "graphharbor-runtime",
+      "version": "0.13.0.post45",
+      "source": {
+        "registry": "https://pypi.org/simple"
+      },
+      "sdist": {
+        "url": "https://files.pythonhosted.org/packages/8e/16/5de477af3e2a0a6089477d8b4f6577dd3f5bb9788f077bf9644fcebecea0/graphharbor_runtime-0.13.0.post45.tar.gz",
+        "hash": "sha256:82bed4dd8430c77f94ea01a46ce75ec2f72e11b10a59b4d404ad83ebd854c6f0",
+        "size": 190239,
+        "upload-time": "2026-10-10T15:09:03.448Z"
+      },
+      "wheels": [
+        {
+          "url": "https://files.pythonhosted.org/packages/53/ae/4cd845e6c865d778e1208af6ce2a1f217e30615f66b8b5992106198ce618/graphharbor_runtime-0.13.0.post45-py3-none-any.whl",
+          "hash": "sha256:88824d784bbcf7d4c75234c83bec24dbc691323013a45d3804f208fe1367ab2d",
+          "size": 134613,
+          "upload-time": "2026-10-10T15:09:01.731Z"
+        }
+      ]
+    }
+  ],
+  "platform_sdk": "0.4.2",
+  "runtime_source_scope": "Runtime and Platform production source stayed frozen across Final; later closeout edits only affect documentation.",
+  "non_frontend_status": "done",
+  "overall_status": "partial",
+  "block_items": [],
+  "handoff_stack": {
+    "environment_id": "wt_43727db9404e",
+    "checked_at": "2026-10-11T02:45:39.361367+00:00",
+    "backend": "docker",
+    "background_start_enabled": true,
+    "health": {
+      "runtime": {
+        "url": "http://127.0.0.1:24548/ready",
+        "status": 200
+      },
+      "platform_api": {
+        "url": "http://127.0.0.1:23818/_system/health",
+        "status": 200
+      },
+      "platform_web": {
+        "url": "http://127.0.0.1:29286/",
+        "status": 200
+      }
+    },
+    "processes": {
+      "runtime-api": {
+        "pid": 70575,
+        "owned": true
+      },
+      "runtime-worker": {
+        "pid": 70594,
+        "owned": true
+      },
+      "platform-api": {
+        "pid": 70866,
+        "owned": true
+      },
+      "platform-web": {
+        "pid": 71073,
+        "owned": true
+      },
+      "redis": {
+        "pid": 70532,
+        "owned": true
+      }
+    },
+    "state": "ready"
+  },
+  "final_evidence": "final-evidence.json",
+  "remaining_tasks": [
+    "K09",
+    "K10",
+    "K11"
+  ]
+}

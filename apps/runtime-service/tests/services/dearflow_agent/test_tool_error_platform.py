@@ -149,7 +149,7 @@ def stack(tmp_path, request):
     def start(role, source=None, command=None):
         output = (tmp_path / f"{role}-{len(logs)}.log").open("w")
         logs.append(output)
-        if role == "worker" and runtime_image:
+        if role == "worker":
             Path(spec["worker_ready"]).unlink(missing_ok=True)
         if runtime_image and role in {"runtime", "worker"} and command is None:
             container_env = {

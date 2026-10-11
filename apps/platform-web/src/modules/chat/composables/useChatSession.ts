@@ -189,6 +189,7 @@ export function useChatSession(options: {
   let releaseWait: (() => void) | undefined;
   const hydrated = ref(!threadId.value);
   const streamInFlight = ref(false);
+  const pendingDiscoveredRunIds = ref<string[]>([]);
 
   const connection = useSessionConnection({
     projectId: options.projectId,
@@ -317,6 +318,7 @@ export function useChatSession(options: {
       const next = normalizeThreadId(rawNext);
       if (next && next !== threadId.value) {
         clearOffloadState();
+        pendingDiscoveredRunIds.value = [];
         threadId.value = next;
         unconfirmedStopRunId.value = null;
         hydrated.value = false;
@@ -339,6 +341,7 @@ export function useChatSession(options: {
         }
       } else if (!next) {
         threadId.value = null;
+        pendingDiscoveredRunIds.value = [];
         hydrated.value = true;
         accessThread.value = undefined;
         accessLoading.value = false;
@@ -1608,28 +1611,58 @@ export function useChatSession(options: {
     }
   });
 
-  const pendingDiscoveredRunIds = ref<string[]>([]);
+  const isDiscoveredRunBlocked = computed(() => {
+    return (
+      busy.value ||
+      active(run.value) ||
+      run.value?.status === "interrupted" ||
+      stream.isLoading.value ||
+      streamInFlight.value ||
+      actions.current.value?.status === "submitting" ||
+      hasPendingInterrupts.value ||
+      reviews.value.length > 0 ||
+      clarifications.value.length > 0 ||
+      planReview.value != null ||
+      cancelling.value ||
+      stopState.value !== "idle" ||
+      unconfirmedStopRunId.value != null
+    );
+  });
 
   async function acceptDiscoveredRun(discoveredRunId: string) {
     if (disposed || !threadId.value) return;
     if (run.value?.run_id === discoveredRunId) return;
 
-    if (active(run.value) || stream.isLoading.value) {
+    // 1. 若当前会话繁忙、等待人机审批（HITL）或正处于停止态，绝不直接打断，排队避让
+    if (isDiscoveredRunBlocked.value) {
       if (!pendingDiscoveredRunIds.value.includes(discoveredRunId)) {
         pendingDiscoveredRunIds.value.push(discoveredRunId);
       }
       return;
     }
 
+    const currentThreadId = threadId.value;
     try {
-      const list = await service.runs(threadId.value);
-      if (disposed) return;
+      const list = await service.runs(currentThreadId);
+      // 2. 异步 await 返回后严格核对作用域版本锁 (Scope Lock)，切会话立即丢弃
+      if (disposed || threadId.value !== currentThreadId) {
+        return;
+      }
+
+      // 3. 再次校验 await 期间是否进入了阻塞态（例如用户在此期间发起了新输入或点了停止）
+      if (isDiscoveredRunBlocked.value) {
+        if (!pendingDiscoveredRunIds.value.includes(discoveredRunId)) {
+          pendingDiscoveredRunIds.value.push(discoveredRunId);
+        }
+        return;
+      }
+
       const target = list.find((r) => r.run_id === discoveredRunId);
       if (target) {
         run.value = target;
         options.onRefresh();
         if (active(target)) {
-          scheduleBackgroundRunPoll(threadId.value);
+          scheduleBackgroundRunPoll(currentThreadId);
         } else {
           await refreshAccessPolicy();
         }
@@ -1642,8 +1675,7 @@ export function useChatSession(options: {
   function flushPendingDiscoveredRuns() {
     if (
       pendingDiscoveredRunIds.value.length === 0 ||
-      active(run.value) ||
-      stream.isLoading.value
+      isDiscoveredRunBlocked.value
     ) {
       return;
     }
@@ -1653,14 +1685,11 @@ export function useChatSession(options: {
     }
   }
 
-  watch(
-    [() => active(run.value), () => stream.isLoading.value],
-    ([isActive, isLoading]) => {
-      if (!isActive && !isLoading) {
-        flushPendingDiscoveredRuns();
-      }
-    },
-  );
+  watch(isDiscoveredRunBlocked, (blocked) => {
+    if (!blocked) {
+      flushPendingDiscoveredRuns();
+    }
+  });
 
   watch(stream.error, (cause) => {
     if (cause && !disposed && !isNonFatalStreamError(cause)) {
@@ -1681,6 +1710,7 @@ export function useChatSession(options: {
     disposed = true;
     ++checkEpoch;
     clearOffloadState();
+    pendingDiscoveredRunIds.value = [];
     clearTimeout(receiptTimer);
     clearTimeout(backgroundRunTimer);
     receiptController?.abort();

@@ -7,9 +7,11 @@
 - **负责人：** 本轮 Codex 实施非前端范围；前端由用户同事负责；方案评审已由用户完成。
 - **模板类型：** 标准模板。执行、授权、通知和停止互相依赖，按一个专项分阶段验收。
 - **改动级别：** 治理改动。涉及跨服务契约、Runtime 应用表迁移、脱离原 Run 的资源生命周期和自动创建有费用的后续 Run。
-- **状态：** `partial`。[B01](engine-handoff.md) 已解除：正式 post45 双包、服务锁与部署断言已接入，lost-ACK notify/Stop/撤权联合验收通过。T02/T03/T04/T06/T07 与 T09/F01-F11 已完成；T01/T05/T08 保留全范围验证和新镜像门禁，T10/F12 待全栈联合 Final。非 Docker 兼容 AB01-AB03 与 ABF01-ABF03 前后端独立验收已完成。
-- **基础交付：** 后台 Docker 执行、持久租约对账、有界日志、三工具、四个公开接口、平台完成续接/开始前授权及 Stop 摘要已实施。原 post43 Linux 镜像、旧源码回退、K轮审批/固定Stop证据保留；新增 post45 固定接受回执与平台迁移 0007，发送前落盘最终 bytes/key/digest，未知接受只 GET 原回执、不二次 POST。正式源 notify/Stop/撤权三场景通过；新提交默认关闭，全范围故障/竞态矩阵和后端/全栈 Final 尚未完成，现役未部署。
+- **状态：** 非前端 `done`，整体 `partial`。[B01](engine-handoff.md) 已解除；接续 K01–K08 完成正式 post45 Linux 镜像、原非前端矩阵及独立 Final，T01–T08 全部回填完成，无非前端 Block。T09/F01–F11 和 A/B 来源完成保留；新增 K09 前端修补、K10/T10/F12 浏览器联合及整体收口待同事。
+- **基础交付：** 后台 Docker 执行、持久租约对账、有界日志、三工具、四个公开接口、平台完成续接/开始前授权及 Stop 摘要已实施。合并后补完成 Context/签名、credential/callback 共存、候选过滤和应用迁移汇合/SQLite一致性；正式 post45 最终 bytes/key/digest、固定 GET、正常与丢 ACK 三链路、权限/资源/回退全部有本轮证据。新提交默认关闭，现役未部署；原 Phase 与失败记录保留，浏览器全范围 Final 尚未完成。
 - **2026-10-10 A/B 交付：** 指定 99f7 Worktree 完成模型能力门禁、旧 checkpoint 原回执和精确未启动兜底；91项 Runtime、12项真实PG、2项平台能力及两图真实 local API/Worker 通过。前端 ABF01-ABF03 独立验收已完成，专属栈保留联调。安装、服务锁与 Dockerfile 现均为 post45；B01 由独立接受回执专项的正式源联合证据解除。
+
+**2026-10-11 合并后接续：** 非前端验证、补丁和交付已在独立 `b01-closeout` Worktree 完成，见[接续专项](../20261011-background-acceptance-closeout/README.md)与[非前端 Final](../20261011-background-acceptance-closeout/verification.md)。此处保留原设计/来源证据；最终状态以两份 tasks 为准。前端同事从[当前交接](../20261011-background-acceptance-closeout/frontend-handoff.md)接手 K09/K10，交接栈已启动，本轮增量未提交。
 
 ## 阅读顺序
 
@@ -28,11 +30,11 @@
 
 | 层 | 必要性 | 实施状态 |
 |---|---|---|
-| runtime-service | 必须 | 持久任务/runner/对账/三工具/Stop 与 A/B 后端已实施；post45 固定只读回查及 suppressed/撤权链路已验，剩余全范围 Final 另验 |
+| runtime-service | 必须 | 持久任务/runner/对账/三工具/Stop 与 A/B 保留；接续credential/callback/候选补缺与post45 Linux镜像、权限/资源/匹配回退的非前端Final完成 |
 | platform-api | 必须 | 当前授权、三精确 operation、四入口/安全 DTO/审计已验；最终 bytes 落盘与正式 acceptance adapter 已接入，B01 解除 |
 | platform-web | 建议随产品交付 | F01-F11与ABF01-ABF03已完成；B01已解除，F12待T10全范围联合Final |
-| GraphHarbor | 复用并需接续 | 原 post43 验收与只读回查缺口保留；新接受回执/正式依赖接线由 `20261010-run-acceptance-receipts` 专项实施，本轮不解除 B01 |
-| 部署/工具链 | 必须检查 | Dockerfile 已对齐 uv.lock；默认关闭的单主机 overlay、运行/回退手册已交付，阶段结果见 verification |
+| GraphHarbor | 复用并需接续 | 原 post43 证据保留；接受回执/正式 post45 已由引擎专项完成，B01 已解除；使用方后续见接续专项 |
+| 部署/工具链 | 必须检查 | Dockerfile 对齐正式 frozen 锁；默认关闭/执行域隔离、单主机 overlay、真实资源与保留回执回退验收完成；现役部署另行决定 |
 
 本期只补后台 Workspace shell 命令。MCP Tasks、媒体供应商任务、持久 DAG、自动 Goal 续跑、GitHub/Slack/Linear、环境刷新、网络部署和预览端口发布不纳入。
 

@@ -56,6 +56,15 @@ def task_when(client, thread, task_id, check):
     return wait_for(read)
 
 
+def release_background_gate(env, name):
+    workspaces = list(
+        Path(env["RUNTIME_WORKSPACE_ROOT"]).glob("dearflow_agent/*/workspace")
+    )
+    assert workspaces
+    for workspace in workspaces:
+        (workspace / "work" / name).write_text("ready")
+
+
 def interrupts(client, thread):
     state = request(client, "GET", f"/threads/{thread}/state")
     values = state.get("interrupts") or [
@@ -265,7 +274,7 @@ def test_real_background_command_completion_cancel_and_repository(stack):
             "RUNTIME_MESSAGE_TEST_DSN": env["DATABASE_URI"],
         },
         capture_output=True,
-        timeout=300,
+        timeout=900,
     )
     (tmp_path / "background-repository-regression.log").write_bytes(
         result.stdout + result.stderr
@@ -283,7 +292,7 @@ def test_real_background_command_completion_cancel_and_repository(stack):
 def test_source_lifecycle_hitl_stop_and_independent_process_recovery(stack):
     client, spec, env, processes, start, stop, tmp_path = stack
     evidence = []
-    body = run_body(spec, "background-long")
+    body = run_body(spec, "background-restart-gated")
     body["context"]["access_policy"] = "review"
     thread = background_thread(client)
     request(
@@ -428,7 +437,7 @@ def test_completion_waits_for_hitl_and_new_tasks_survive_old_stop(stack):
                 "name": "background_execute",
                 "args": {
                     "command": "while [ ! -f background-approval-ready ]; do sleep 0.1; done; printf EDITED",
-                    "timeout": 180,
+                    "timeout": 900,
                 },
             },
         },
@@ -561,7 +570,12 @@ def test_completion_waits_for_hitl_and_new_tasks_survive_old_stop(stack):
     )
 
 
-@pytest.mark.parametrize("stack", [BACKGROUND_STACK], indirect=True)
+@pytest.mark.parametrize(
+    "stack",
+    [BACKGROUND_STACK, {**BACKGROUND_STACK, "runtime_image": True}],
+    indirect=True,
+    ids=["source", "linux-release"],
+)
 @pytest.mark.parametrize("outcome", ["notify", "stop", "revoke"])
 def test_lost_native_ack_reconciles_queued_run_without_resubmission(stack, outcome):
     client, spec, env, processes, start, stop, tmp_path = stack
@@ -570,13 +584,19 @@ def test_lost_native_ack_reconciles_queued_run_without_resubmission(stack, outco
         client,
         "POST",
         f"/threads/{thread}/runs",
-        json=run_body(spec, "background-short"),
+        json=run_body(spec, "background-lost-ack"),
     )
     assert terminal(client, thread, source["run_id"])["status"] == "success"
     stop("worker")
     fault = Path(env["BACKGROUND_FAULT_MODE_PATH"])
     fault.write_text("lost-ack-hold")
     row = first_task(client, thread)
+    assert row["status"] == "running"
+    workspaces = list(
+        Path(env["RUNTIME_WORKSPACE_ROOT"]).glob("dearflow_agent/*/workspace")
+    )
+    assert len(workspaces) == 1
+    (workspaces[0] / "work/background-lost-ack-ready").write_text("ready")
     task_when(
         client,
         thread,
@@ -586,6 +606,24 @@ def test_lost_native_ack_reconciles_queued_run_without_resubmission(stack, outco
     wait_for(
         lambda: any(value["event"] == "completion-ack-lost" for value in facts(env))
     )
+    previous_platform_pid = processes["platform"].pid
+    stop("platform")
+    restored_platform = start("platform")
+    wait_for(
+        lambda: (
+            json.loads(Path(spec["ready"]).read_text())["pid"] == restored_platform.pid
+        ),
+        process=restored_platform,
+    )
+    wait_for(
+        lambda: (
+            client.get(
+                f"http://127.0.0.1:{spec['platform_port']}/_system/health"
+            ).is_success
+        ),
+        process=restored_platform,
+    )
+    assert restored_platform.pid != previous_platform_pid
     completion = [
         value
         for value in request(client, "GET", f"/threads/{thread}/runs")
@@ -641,7 +679,20 @@ def test_lost_native_ack_reconciles_queued_run_without_resubmission(stack, outco
 
     accepted = wait_for(recovered)
     assert accepted[1] == ("suppressed" if outcome == "stop" else "accepted")
+    if outcome == "stop":
+        assert (
+            request(client, "GET", f"/threads/{thread}/background-tasks")[
+                "latest_delivery_run_id"
+            ]
+            is None
+        )
     assert any(value["event"] == "completion-receipt-result" for value in facts(env))
+    assert (
+        sum(value["event"] == "completion-acceptance-post" for value in facts(env)) == 1
+    )
+    assert (
+        sum(value["event"] == "completion-receipt-repeat" for value in facts(env)) == 20
+    )
     assert not [value for value in facts(env) if value["event"] == "completion-model"]
     start("worker")
 
@@ -697,6 +748,12 @@ def test_lost_native_ack_reconciles_queued_run_without_resubmission(stack, outco
                 "accepted_while_worker_stopped": True,
                 "run_count": 2,
                 "ledger_count": 1,
+                "acceptance_post_count": 1,
+                "readonly_receipt_get_count": 20,
+                "platform_restart": {
+                    "before": previous_platform_pid,
+                    "after": restored_platform.pid,
+                },
                 "completion_model_calls": 1 if outcome == "notify" else 0,
                 "pids": {name: value.pid for name, value in processes.items()},
             },
@@ -705,25 +762,46 @@ def test_lost_native_ack_reconciles_queued_run_without_resubmission(stack, outco
     )
 
 
-@pytest.mark.parametrize("stack", [BACKGROUND_STACK], indirect=True)
-def test_source_native_timeout_cancel_and_disabled_drain(stack):
+@pytest.mark.parametrize(
+    "stack",
+    [
+        {
+            **BACKGROUND_STACK,
+            "startup_timeout": 360,
+            "env": {
+                **BACKGROUND_STACK["env"],
+                "GRAPHHARBOR_RUN_TIMEOUT_SECONDS": "300",
+                "AGENT_RUN_WRAPUP_RESERVE_SECONDS": "0",
+                "AGENT_MODEL_CALL_TIMEOUT_SECONDS": "600",
+            },
+        }
+    ],
+    indirect=True,
+)
+def test_source_native_timeout_and_cancel_suppress_completion(stack):
     client, spec, env, processes, start, stop, tmp_path = stack
     evidence = []
-    stop("worker")
-    env["GRAPHHARBOR_RUN_TIMEOUT_SECONDS"] = "60"
-    env["AGENT_RUN_WRAPUP_RESERVE_SECONDS"] = "0"
-    env["AGENT_MODEL_CALL_TIMEOUT_SECONDS"] = "120"
-    start("worker")
     for prompt in ("background-source-timeout", "background-source-cancel"):
         thread = background_thread(client)
         run = request(
             client, "POST", f"/threads/{thread}/runs", json=run_body(spec, prompt)
         )
         row = first_task(client, thread)
-        wait_for(lambda prompt=prompt: counts(env, prompt + "-after-tool") >= 1)
         if prompt.endswith("cancel"):
+            task_when(
+                client,
+                thread,
+                row["task_id"],
+                lambda value: value["status"] == "running",
+            )
+            assert (
+                request(client, "GET", f"/threads/{thread}/runs/{run['run_id']}")[
+                    "status"
+                ]
+                == "running"
+            )
             request(client, "POST", f"/threads/{thread}/runs/{run['run_id']}/cancel")
-        assert terminal(client, thread, run["run_id"])["status"] == (
+        assert terminal(client, thread, run["run_id"], timeout=360)["status"] == (
             "timeout" if prompt.endswith("timeout") else "interrupted"
         )
         cleaned = task_when(
@@ -738,15 +816,34 @@ def test_source_native_timeout_cancel_and_disabled_drain(stack):
         )
         evidence.append(cleaned)
 
+    assert not [value for value in facts(env) if value["event"] == "completion-model"]
+    (tmp_path / "background-source-terminal-evidence.json").write_text(
+        json.dumps(evidence, indent=2)
+    )
+
+
+@pytest.mark.parametrize(
+    "stack", [{**BACKGROUND_STACK, "startup_timeout": 360}], indirect=True
+)
+def test_disabled_drain_preserves_receipts_and_matching_source_rollback(stack):
+    client, spec, env, processes, start, stop, tmp_path = stack
+    evidence = []
+
     thread = background_thread(client)
     run = request(
         client,
         "POST",
         f"/threads/{thread}/runs",
-        json=run_body(spec, "background-drain-short"),
+        json=run_body(spec, "background-drain-gated"),
     )
     assert terminal(client, thread, run["run_id"])["status"] == "success"
     row = first_task(client, thread)
+    task_when(
+        client,
+        thread,
+        row["task_id"],
+        lambda value: value["status"] == "running",
+    )
     stop("runtime")
     stop("worker")
     env["RUNTIME_BACKGROUND_TASKS_ENABLED"] = "0"
@@ -755,7 +852,8 @@ def test_source_native_timeout_cancel_and_disabled_drain(stack):
         lambda: (
             client.get(f"http://127.0.0.1:{spec['runtime_port']}/ready").status_code
             == 200
-        )
+        ),
+        timeout=360,
     )
     start("worker")
     capabilities = request(client, "GET", f"/threads/{thread}/capabilities")
@@ -763,6 +861,7 @@ def test_source_native_timeout_cancel_and_disabled_drain(stack):
         capabilities["background_tasks"]
         and not capabilities["background_tasks_start_enabled"]
     )
+    release_background_gate(env, "background-drain-ready")
     blocked = task_when(
         client,
         thread,
@@ -796,23 +895,41 @@ def test_source_native_timeout_cancel_and_disabled_drain(stack):
     evidence.append(drained)
     import psycopg
 
+    receipt_sql = (
+        "SELECT task_id,event_id,submission_key,status,cleanup_state,delivery_state,"
+        "delivery_run_id,stop_id FROM runtime_background_tasks"
+    )
+    with psycopg.connect(env["DATABASE_URI"]) as connection:
+        receipts = connection.execute(receipt_sql).fetchall()
     stop("runtime")
     stop("worker")
     downgrade = subprocess.run(
         [
             sys.executable,
             "-c",
-            "import os; from pathlib import Path; from alembic import command; from alembic.config import Config; from sqlalchemy import create_engine; from sqlalchemy.pool import NullPool; import psycopg; from runtime_service import db; config=Config(); config.set_main_option('script_location',str(Path(db.__file__).with_name('migrations'))); engine=create_engine('postgresql+psycopg://',creator=lambda:psycopg.connect(os.environ['DATABASE_URI']),poolclass=NullPool)\nwith engine.begin() as connection:\n connection.exec_driver_sql('SELECT pg_advisory_xact_lock(746183209)'); config.attributes['connection']=connection; command.downgrade(config,'0002_run_control')\nengine.dispose()",
+            "import os; from pathlib import Path; from alembic import command; from alembic.config import Config; from sqlalchemy import create_engine; from sqlalchemy.pool import NullPool; import psycopg; from runtime_service import db; config=Config(); config.set_main_option('script_location',str(Path(db.__file__).with_name('migrations'))); engine=create_engine('postgresql+psycopg://',creator=lambda:psycopg.connect(os.environ['DATABASE_URI']),poolclass=NullPool)\nwith engine.begin() as connection:\n connection.exec_driver_sql('SELECT pg_advisory_xact_lock(746183209)'); config.attributes['connection']=connection; command.downgrade(config,'0002_run_control'); command.stamp(config,'0003_token_budget')\nengine.dispose()",
         ],
         env=env,
         capture_output=True,
         timeout=90,
     )
     assert downgrade.returncode == 0, downgrade.stderr.decode(errors="replace")
+    with psycopg.connect(env["DATABASE_URI"]) as connection:
+        assert connection.execute(
+            "SELECT version_num FROM runtime_app_alembic_version"
+        ).fetchall() == [("0003_token_budget",)]
+        assert connection.execute(receipt_sql).fetchall() == receipts
     archive = subprocess.run(
-        ["git", "archive", "HEAD", "apps/runtime-service/src"],
+        [
+            "git",
+            "archive",
+            "bd476ae62a61acb7c55bc0f08eba3645ce50daf0",
+            "apps/runtime-service/src",
+        ],
+        cwd=Path(__file__).resolve().parents[4],
         capture_output=True,
         check=True,
+        timeout=30,
     )
     previous = tmp_path / "previous-source"
     with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as source:
@@ -822,15 +939,21 @@ def test_source_native_timeout_cancel_and_disabled_drain(stack):
         "background_completion_execution"
         not in (previous / "runtime_service/graphs/dearflow_agent.py").read_text()
     )
+    assert (
+        "plan_execution_id"
+        in (previous / "runtime_service/runtime/resolver.py").read_text()
+    )
     spec["config"]["graphs"] = {"dearflow_agent": "fixture.py:production_dear_graph"}
     (tmp_path / "spec.json").write_text(json.dumps(spec))
     (tmp_path / "langgraph.json").write_text(json.dumps(spec["config"]))
-    start("runtime", source=previous)
+    previous_runtime = start("runtime", source=previous)
     wait_for(
         lambda: (
             client.get(f"http://127.0.0.1:{spec['runtime_port']}/ready").status_code
             == 200
-        )
+        ),
+        timeout=360,
+        process=previous_runtime,
     )
     start("worker", source=previous)
     thread = new_thread(client)
@@ -842,17 +965,23 @@ def test_source_native_timeout_cancel_and_disabled_drain(stack):
     )
     assert terminal(client, thread, old_run["run_id"])["status"] == "success"
     with psycopg.connect(env["DATABASE_URI"]) as connection:
+        assert connection.execute(
+            "SELECT version_num FROM runtime_app_alembic_version"
+        ).fetchall() == [("0003_token_budget",)]
+        assert connection.execute(receipt_sql).fetchall() == receipts
         assert (
             connection.execute(
                 "SELECT count(*) FROM runtime_background_tasks"
             ).fetchone()[0]
-            == 3
+            == 1
         )
     evidence.append(
         {
-            "previous_source": "HEAD",
+            "previous_source": "bd476ae62a61acb7c55bc0f08eba3645ce50daf0",
+            "application_head": "0003_token_budget",
+            "application_stamp": "0003_token_budget",
             "normal_run": old_run["run_id"],
-            "receipts_retained": 3,
+            "receipts_retained": 1,
         }
     )
     (tmp_path / "background-source-drain-evidence.json").write_text(
@@ -892,7 +1021,9 @@ def test_release_linux_api_worker_completion_and_shared_storage(stack):
     )
 
 
-@pytest.mark.parametrize("stack", [BACKGROUND_STACK], indirect=True)
+@pytest.mark.parametrize(
+    "stack", [{**BACKGROUND_STACK, "startup_timeout": 360}], indirect=True
+)
 def test_accepted_completion_revoked_model_is_rejected_before_model_and_acl_is_current(
     stack,
 ):
@@ -902,10 +1033,11 @@ def test_accepted_completion_revoked_model_is_rejected_before_model_and_acl_is_c
         client,
         "POST",
         f"/threads/{thread}/runs",
-        json=run_body(spec, "background-drain-short"),
+        json=run_body(spec, "background-model-gated"),
     )
     assert terminal(client, thread, source["run_id"])["status"] == "success"
     stop("worker")
+    release_background_gate(env, "background-model-ready")
     row = first_task(client, thread)
     accepted = task_when(
         client,

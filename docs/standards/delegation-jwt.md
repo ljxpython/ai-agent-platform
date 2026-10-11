@@ -1,15 +1,15 @@
 ---
 status: draft
-last_verified: 2026-10-09
+last_verified: 2026-10-11
 confidence: medium
 source_project: docs/projects/20260926-delegation-jwt-contract/verification.md
-note: 当前operation枚举为35项；后台元数据/日志/取消精确委托已增补；F07增加精确title-generate全栈闭环；lost-ACK引擎回查及现役部署仍待完成，整体保留draft
+note: 当前operation枚举为36项；后台元数据/日志/取消与run-acceptance-read精确委托已同步；F07增加精确title-generate全栈闭环；B01解除；消息内部Run现役链路等独立门禁仍保留，整体保持draft
 ---
 
 # Delegation JWT Schema（draft）
 
 > **适用服务：** platform-api（签发方）、runtime-service（校验方）
-> **验证证据：** 历史 API 299 passed、Runtime 只读鉴权 46 passed；diagnostics-read 跨环境契约 5 passed / 50 subtests 保留。Contract 的 `OPERATIONS` 覆盖 33 个 operation，另有独立 cron-read/cron-write，共 35 项。F07 `title-generate` 证据见 [F07](../projects/20261009-agent-thread-auto-title/verification.md)。2026-10-09 后台与完整 delegation 定向回归 21 passed / 63 subtests；后台三 operation 的实际授权、HMAC 和 guard 证据见 [后台专项](../projects/20261009-agent-generic-production-capabilities/verification.md)。Stop 与价格/用量既有证据分别见 [取消专项](../projects/20261007-agent-run-cancellation/verification.md)、[用量专项](../projects/20261007-agent-usage-cost-governance/05-verification-rollout.md)。
+> **验证证据：** 历史 API 299 passed、Runtime 只读鉴权 46 passed；diagnostics-read 跨环境契约 5 passed / 50 subtests 保留。Contract 的 `OPERATIONS` 覆盖包含 cron-read/cron-write、run-acceptance-read 与 F07 `title-generate`（见 [F07](../projects/20261009-agent-thread-auto-title/verification.md) 及 [接续专项](../projects/20261011-background-acceptance-closeout/verification.md)）。2026-10-09 后台与完整 delegation 定向回归 21 passed / 63 subtests；后台三 operation 的实际授权、HMAC 和 guard 证据见 [后台专项](../projects/20261009-agent-generic-production-capabilities/verification.md)。Stop 与价格/用量既有证据分别见 [取消专项](../projects/20261007-agent-run-cancellation/verification.md)、[用量专项](../projects/20261007-agent-usage-cost-governance/05-verification-rollout.md)。
 > **未完成：** Stop 正式配套发布/锁接入与部署 blocked；消息内部原生 Run 回查源码和本机测试已修复，现役链路尚未验证，见 message-run-read-delegation 专项。标准整体仍为 draft。
 
 ## JWT Header
@@ -85,7 +85,7 @@ note: 当前operation枚举为35项；后台元数据/日志/取消精确委托�
 
 来源不是查询权限或回调凭据；terminal 不重新验证启动 JWT 的有效期，API 接收回调使用独立正文 HMAC，查询/feed/read 仍按当前项目/Thread ACL。无新增 webhook scope。正式 post44、双端契约与隔离 Worker 证据见 [完成通知专项](../projects/20261009-agent-production-capability-extension/verification.md)。本补充不将其他待验收的 JWT 项目自动升为 active。
 
-## scope.operation 枚举（35 项）
+## scope.operation 枚举（36 项）
 
 ```
 read                    thread-create           thread-reconcile
@@ -98,14 +98,14 @@ dear-skills-write       dear-memory-read        dear-memory-write
 dear-governance-read    dear-governance-write   cron-read
 cron-write              suggestions-generate    diagnostics-read
 usage-read              thread-stop             thread-stop-read
-run-cancellation-read   title-generate
+run-cancellation-read   title-generate          run-acceptance-read
 background-task-read    background-task-log-read background-task-cancel
 ```
 
 **原生资源通用白名单（10 项）：**
 `read` / `thread-create` / `thread-reconcile` / `thread-edit` / `thread-delete` / `run-create` / `run-cancel` / `run-delete` / `cron-read` / `cron-write`
 
-另有 `run-cancellation-read` 的精确原生回执例外，规则如下；其余 24 项自定义 token 不能访问原生资源。`suggestions-generate` 只能访问
+另有 `run-cancellation-read` / `run-acceptance-read` 的精确原生回执例外，规则如下；其余 24 项自定义 token 不能访问原生资源。`suggestions-generate` 只能访问
 `/internal/threads/{thread_id}/suggestions`，不能访问原生 Thread、Run、workspace、工具或 MCP 资源。
 
 `diagnostics-read` 必须绑定非空 Thread，且只允许
@@ -145,9 +145,18 @@ API 读取使用 `read`，受管模型引用沿 `thread_action=comment`，落库
 
 - `background-task-read` 仅访问 `/internal/threads/{thread_id}/background-tasks` 的 list/detail；`background-task-log-read` 仅访问同任务 `/output`；`background-task-cancel` 仅 POST 同任务 `/cancel`。三者绑定非空 Thread/graph，不能互相替换，也不能兑换模型、原生 Run、MCP 或其他自定义资源。
 - Platform 每次检查当前项目/Thread ACL；Runtime 重查 Thread 与工具政策，SQL 先过滤 tenant/project/graph/Thread，再处理 task_id 或分页。启动同时要求 execute/background_execute；capability 不授予权限。
-- 完成交付与开始前复核使用 HMAC 内部回调，绑定 30 秒时间窗、operation、规范 JSON、原 owner/credential/scope/源 Run。完成 marker 再绑定 Context v5；服务端存最小事实和签名意图，不存浏览器 JWT。普通入口拒绝/剥离 `platform_background_completion`。
+- 完成交付与开始前复核使用 HMAC 内部回调，绑定 30 秒时间窗、operation、规范 JSON、原 owner/credential/scope/源 Run。完成 marker 再绑定最终新执行 Context v6；源 plan_execution_id 不复用，marker/创建委托/持久快照 hash 一致。服务端存最小事实和签名意图，不存浏览器 JWT。普通入口拒绝/剥离 `platform_background_completion`。
 - `background-control-v1:<task_id>` 是 Runtime 持久 Stop 后的固定清理例外：仅允许原 owner/credential/scope、固定 delivery_run_id 的原生 read/run-cancel，context_hash 必须等于该 task 的 cancellation hash。允许撤权后完成已接受资源清理，不授权公开读取、创建新 Run、读取其他 Run 或改目标。由应用回执精确核对，不能仅凭 policy 字符串授权。
-- post43 尚无按幂等 key 的只读 Run 回查；未知派发只对账，不二次 POST。该缺口和接续要求见 [引擎交接](../projects/20261009-agent-generic-production-capabilities/engine-handoff.md)，本补充不使 JWT 整体毕业。
+- 正式 post45 已提供按固定幂等 key 的只读 Run 接受回执，B01 已解除；未知派发仍只对账，不二次 POST。版本与证据见 [引擎交接](../projects/20261009-agent-generic-production-capabilities/engine-handoff.md)，本补充不使 JWT 整体毕业。
+
+## 固定 Run 接受回执委托
+
+`run-acceptance-read` 仅用于服务端 `GET /threads/{thread_id}/runs/acceptance`。JWT v2 中必须有 `run_acceptance={scope_id,credential_id,operation,thread_id,key_sha256,request_digest}`，read 操作为 `read`，创建委托仍用 `scope.operation=run-create` 与 `run_acceptance.operation=create`。两个稳定 opaque hash 绑定原 tenant/project/subject 和原用户或服务账号凭据，不绑定短期 JWT jti；Thread/key SHA256/最终传输 bytes 的 SHA256 不可换目标。
+
+- Platform 从发送前已保存的 bytes/key/digest/非 secret 授权快照重建此固定 read JWT，TTL 最长 60 秒，不重新调用模型/写权限授权，也不重建最终 body。
+- Runtime 核对签名、期限、tenant/project/subject/credential、Thread 与 hash；原生授权事件必须是 Thread read 且 `run_acceptance_receipt=true`，key/digest 与 grant 完全匹配。只能读这一接受回执，不能读 state/Run/Thread、创建、取消、访问模型/MCP/Workspace。
+- 接受后撤权仍允许受信固定只读对账；浏览器公开 ACL 不扩大，完成执行仍在 factory 前按当前权限和持久 Stop 拒绝。服务账号保留原 credential_id，callback_context 也可同时保留，不相互替代。
+- `accepted` 仅证明创建接受；`unknown`、no_receipt/receipt_expired、GET 超时/畸形响应/旧路由 404/405 均不能判为未执行或触发新 POST。只有持久 `definitively_not_accepted` 才是拒绝事实。
 
 ## 生命周期规则
 

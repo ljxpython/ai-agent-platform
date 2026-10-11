@@ -58,7 +58,7 @@
 
 请求携带平台认证与 `x-project-id`。Thread归属必须匹配项目；启动/恢复重新检查当前Agent、Graph、模型、工具与成员授权。委托scope.operation区分read和run-create。
 
-委托使用短时v2/HS256 JWT；Gateway与Catalog各自按当前请求签发，service account必须携带当前`credential_id`，用户不得携带。非法签发输入统一走安全`503 runtime_delegation_not_configured`，上游401对外映射`502 runtime_delegation_rejected`，不表示平台用户登录失效。已接受Run不因委托到期自动取消；SSE不持续重鉴权，重连/审批/取消新请求重新核对当前权限。34项operation及验证边界见[Delegation 标准](../../../../docs/standards/delegation-jwt.md)。消息入口额外转发同一请求已有的`read`委托供Runtime内部原生Run回查；Runtime核对身份、租户、项目、凭据和Thread绑定后才使用该委托，消息operation自身仍不得访问原生资源。该修复的现役真实链路尚未验证，见[消息回查专项](../../../../docs/projects/20260927-message-run-read-delegation/README.md)。
+委托使用短时v2/HS256 JWT；Gateway与Catalog各自按当前请求签发，service account必须携带当前`credential_id`，用户不得携带。非法签发输入统一走安全`503 runtime_delegation_not_configured`，上游401对外映射`502 runtime_delegation_rejected`，不表示平台用户登录失效。已接受Run不因委托到期自动取消；SSE不持续重鉴权，重连/审批/取消新请求重新核对当前权限。35项operation及验证边界见[Delegation 标准](../../../../docs/standards/delegation-jwt.md)。消息入口额外转发同一请求已有的`read`委托供Runtime内部原生Run回查；Runtime核对身份、租户、项目、凭据和Thread绑定后才使用该委托，消息operation自身仍不得访问原生资源。该修复的现役真实链路尚未验证，见[消息回查专项](../../../../docs/projects/20260927-message-run-read-delegation/README.md)。
 
 产品Agent执行键为graph_id，标准SDK字段仍为assistant_id；平台不创建/同步上游Assistant。Graph/Tool刷新是有限超时HTTP，普通目录只读快照；schema从远端读取，不扫描宿主源码。
 
@@ -138,7 +138,7 @@ cancel 正文严格 `{}`、Idempotency-Key 必填且1–128字符；202仅证明
 
 完成交付与开始前授权经过两个精确 HMAC 内部入口，复用原 RunRequests 与正常 `launch_runtime_run`；固定 event/key，同 Thread enqueue一个新 Run。开始前复核当前身份/模型/tool/Thread与Stop，审批不自动恢复，通知 Run 不提供后台启动工具。新执行计入独立 Run Usage，轮询不调用模型。原始日志/命令不进入通知提示或审计。
 
-新提交默认关闭，正式 post43 缺按幂等 key 的只读 Run 回查，所有 lost-ACK 窗口仍受 B01 阻塞；隔离实现/实测不等同现役启用。实际 DTO、开关、Stop 摘要和前端工作见[后台交接](../../../../docs/projects/20261009-agent-generic-production-capabilities/frontend-handoff.md)，解除条件见[引擎接续](../../../../docs/projects/20261009-agent-generic-production-capabilities/engine-handoff.md)。
+新提交默认关闭；正式 post45 固定接受回执已解除 B01。Platform 在新执行 Context v6 确定后签 completion marker，并保存最终 bytes/key/digest 和非 secret 授权快照；恢复只读 GET 原接受回执，Stop suppressed 的原 run_id 保留在详情、排除自动接续候选。接受不等于执行或通知完成，隔离实测不等同现役启用；最终验收见[接续专项](../../../../docs/projects/20261011-background-acceptance-closeout/verification.md)。实际 DTO、开关、Stop 摘要和前端工作见[后台交接](../../../../docs/projects/20261009-agent-generic-production-capabilities/frontend-handoff.md)，解除条件见[引擎接续](../../../../docs/projects/20261009-agent-generic-production-capabilities/engine-handoff.md)。
 
 ## Run Token 额度保护（2026-10-09 用户批准）
 
