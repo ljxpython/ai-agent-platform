@@ -31,12 +31,14 @@ from runtime_service.http.suggestions import router as suggestions_router
 from runtime_service.http.terminal import router as terminal_router
 from runtime_service.http.title_summary import router as title_summary_router
 from runtime_service.http.usage import router as usage_router
+from runtime_service.http.usage_analytics import router as usage_analytics_router
 from runtime_service.http.workspace import router as workspace_router
 from runtime_service.messaging import MessageInbox
 from runtime_service.messaging.reconcile import reconcile_run
 from runtime_service.middlewares.timeout_wrapup import resolve_wrapup_after_seconds
 from runtime_service.observability import close_langfuse, initialize_langfuse
 from runtime_service.observability.query import diagnostics_client_lifespan
+from runtime_service.observability.usage_projection import usage_projection_lifespan
 from runtime_service.run_control.service import run_control_lifespan
 from runtime_service.runtime.errors import RuntimePrivacyError, RuntimeWorkspaceError
 from runtime_service.runtime.pii import load_pii_redaction_config
@@ -57,6 +59,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
             acl_client_lifespan(),
             diagnostics_client_lifespan(),
             run_control_lifespan(),
+            usage_projection_lifespan(),
             background_tasks_lifespan(),
         ):
             yield
@@ -80,6 +83,7 @@ app.include_router(title_summary_router)
 app.include_router(suggestions_router)
 app.include_router(diagnostics_router)
 app.include_router(usage_router)
+app.include_router(usage_analytics_router)
 app.include_router(run_control_router)
 app.include_router(background_tasks_router)
 

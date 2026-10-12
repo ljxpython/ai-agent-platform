@@ -88,6 +88,20 @@ def _resolve_action(
     method = request.method
     segments = _route_segments(path)
     action_override = clean_str(request.action_override)
+    if method == "GET" and segments == ["api", "usage", "dashboard"]:
+        return "platform.usage.read", "usage", None
+    if (
+        method == "GET"
+        and len(segments) == 5
+        and segments[:2] == ["api", "projects"]
+        and segments[3] == "usage"
+        and segments[4] in {"dashboard", "runs"}
+    ):
+        return (
+            ("usage.runs.read" if segments[4] == "runs" else "project.usage.read"),
+            "project",
+            segments[2],
+        )
     if method == "POST" and path in {
         "/api/runtime/internal/background-task-delivery",
         "/api/runtime/internal/background-task-authorization",
@@ -791,6 +805,10 @@ def _resolve_metadata(
                     "task_id",
                     "event_id",
                     "origin_run_id",
+                    "usage_from",
+                    "usage_to",
+                    "usage_group_by",
+                    "usage_project_count",
                 }
                 and isinstance(value, (str, int, float, bool))
             }

@@ -168,7 +168,7 @@ const isImmersive = computed(
     <AppSidebar />
 
     <div
-      class="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-all duration-300"
+      class="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden transition-[margin-left] duration-300"
       :class="sidebarCollapsed ? 'lg:ml-[72px]' : 'lg:ml-64'"
     >
       <TopContextBar v-if="!isImmersive" class="shrink-0" />
@@ -178,7 +178,7 @@ const isImmersive = computed(
       >
         <ChatSessionPool :pool="chatSessionPool" />
         <div
-          class="flex min-h-0 w-full flex-1 flex-col"
+          class="flex min-h-0 w-full flex-1 flex-col [scrollbar-gutter:stable]"
           :class="isImmersive ? 'overflow-hidden' : 'overflow-y-auto'"
         >
           <div

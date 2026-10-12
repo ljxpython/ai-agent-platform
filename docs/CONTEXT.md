@@ -1,25 +1,26 @@
 # 项目当前状态 - AI 上下文
 
-> **最后更新：** 2026-10-11（F07 自动对话标题全栈全链路交付完成并通过用户真实浏览器人工真机验收；A/B非Docker兼容前后端AB01-AB03与ABF01-ABF03全链路完成并通过用户真实浏览器人工真机验收；post45接受回执与notify/Stop/撤权联合通过，B01解除；F05 PII 脱敏全栈闭环完成；F04/F02/F10/F13/通知/Plan Mode/Worktree本地栈基线保持；T08剩余矩阵、T10/F12待全栈收口）。
+> **最后更新：** 2026-10-12（Token看板全栈闭环完成：B01容量门禁已解除；前端W01–W04、布局防抖消除、503容量保护适配完成；Playwright真实模型端到端联合复验通过，全套实景截图留痕；用户人工浏览器实测验收通过，本地服务安全停止）。
 > **AI 读取规则：** 每次新会话开始前主动读此文件；改动完成后更新对应行。
 > **维护规则（渐进式快照）：**
 > - 「最近改动」只保留最新一条完整描述；新条目写入时将上一条折叠进「本月归并」
 > - 「本月归并」每月一行（月份 + 核心事项，50 字内）；超过 2 个月的月份直接删除，历史在 `docs/projects/` 和 `docs/changes/` 里
 > - 各服务状态表和活跃项目始终保留当前有效信息，过期条目直接删除
 
-**最后更新：** 2026-10-11
+**最后更新：** 2026-10-12
 
 ## 最近改动
 
-2026-10-11 | **全场景本地原生资源优先与严禁滥用 Docker 规则固化（AGENTS.md）**：done。明确无论是否使用 Worktree，日常开发/测试/联调必须优先使用宿主机本地 PostgreSQL 与原生 Redis，智能体执行默认走 `RUNTIME_BACKEND=local`；除非明确需要容器沙箱隔离，否则严禁擅自引入 Docker 容器；`AGENTS.md` 顶层红线第 7 条正式确立。详见 [变更记录](changes/20261011-prefer-local-native-resources.md)。
+2026-10-12 | **Token看板全栈交付与联合验收完成**：B01容量优化通过（百万调用/50项目/30天两轮可用，查询p95≤1.17s，写入增幅11.62%）；Platform API整链路2并发槽/5秒预算与503容量错误码实装；前端完成W01–W04（双入口、4组指标卡、原生SVG图表、排行榜钻取、分页及无头RunUsage抽屉），彻底解决滚动条抖动与布局缩放（CLS），完成503友好适配；两项新经验入库；Playwright真实大模型（deepseek-v4.1-flash）全链路自动化测试通过（24.1s，全套实景截图落库）；用户人工浏览器验收通过，本地三服务已安全停止。
 
 ## 本月归并
 
-2026-10（截至 10-11）| 全场景本地原生资源硬约束；Worktree密码admin123456与deepseek-v4.1-flash默认模型对齐；F07自动对话标题全栈闭环；后台任务A/B前后端验收；F05 PII脱敏全栈闭环；F04/F02/F10/F13/通知/Plan Mode保持。
+2026-10（截至10-12）| 原生资源/Worktree隔离；F07/F05/A/B闭环；Token看板全栈交付（B01容量解除、W01–W04前端闭环、503适配、E2E实测通过）。
 2026-09 | DearFlow Agent 全链路迁移（partial）、SSE 保活心跳与容错、GraphHarbor post37 子智能体历史持久化、跨服务规范治理（error-envelope/trace active）、权限治理、代码规范自动化与 Python 格式基线清理、前端 SWR 缓存治理、v0.5.0 里程碑发布。
 
 ## 活跃项目
 
+- [平台/项目Token看板](projects/20261011-token-usage-dashboard/README.md)：`done`；全栈端到端实现、B01容量优化、W01–W04前端交付、无头抽屉复用、布局防抖消除、503容量饱和适配全部完成；Playwright真实模型端到端自动化联合复验通过（24.1s，全套截图已留痕）；用户人工浏览器实测验收通过，本地服务已安全停止。代码保留在b2b1 Worktree待提交合并。
 - [Agent 通用后台非阻塞任务能力](projects/20261009-agent-generic-production-capabilities/README.md)：`partial`；B01已由post45正式发布/锁接入和notify/Stop/撤权联合验收解除，T02/T03/T04/T06/T07/T09与F01-F11、A/B前后端完成。T01/T05/T08保留全范围验证和新Linux应用镜像门禁，T10/F12尚未全栈Final。新提交默认关闭，现役未部署。
 - [F07 自动对话标题复用与补齐](projects/20261009-agent-thread-auto-title/README.md)：`done`；T01-T05 后端/Runtime/CAS、T06 前端接线、T07A 非前端验证、T07B 真实大模型 Playwright 联合闭环均已 100% 完成（首轮提炼“量子力学本质”+改名“老王科研保密项目”+二轮防竞态覆盖，全套 7 张实景截图落地）；用户实操人工验收通过，本地服务安全停止。
 - [F05 Agent 模型上下文 PII 脱敏](projects/20261009-agent-pii-redaction/README.md)：`done`；全栈闭环完成，后端算法网关、前端错误消费草稿保留、Playwright 自动化测试闭环及全链路 E01-E03 验收 100% 通过。未部署现役。
@@ -51,9 +52,9 @@
 
 | 服务 | 最后改动日期 | 关键约束/注意 |
 |---|---|---|
-| runtime-service | 2026-10-11 | 锁定/安装正式 post45；F07精确标题委托、受管一次非流式调用就绪；受管后台执行/对账/Stop及A/B前后端已验，B01解除；新增 completion projector、安全白名单和受签 callback context；四图主子共享 attempt 预算/软收尾与 Run Token 额度；F05 PII脱敏默认关闭，模型副本/旁路脱敏与结构失效阻断已实装；F04 官方参数压缩/主备阈值与正文 SHA256 引用保护（filesystem_cls 预算）全链路闭环；F02 共享循环检测中间件（连续 3 轮预警与 5 轮安全硬终止拦截）、Worker 接管支持、真实模型验证通过；Plan 公共状态/三工具/双门禁、四图主子接线、Context v6 和规划 memory 跳过完成；解除默认 4096 max_tokens 兜底限制，系统提示词强化思考链 Token 预算约束；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理与运行准备幂等/有界重试全链路融合；Workspace 执行容错闭环；F15评估关闭；F11 暂缓；F10 固定 Docker reader/DOCX/PPTX 有界续读/附件索引收紧与全链路验收已闭环；未部署现役。 |
-| platform-api | 2026-10-11 | F07首轮opt-in/私有seed与公开pending、comment+edit与CAS就绪；后台四入口/精确operation/DTO/ACL/审计/HMAC与guard已验；post45正式acceptance adapter、最终bytes/key/digest发送前落盘与平台迁移0007完成，Platform132+116subtests/真实PG迁移1通过，发布后notify/Stop/撤权联合通过，B01解除；新增 migration 20261009_0007、origin/event/receipt、HMAC receiver、历史 completion、私有 feed/read、ACL/deletion suppression 和 cron backfill；F05 精确隐私失败投影、私有策略剥离与标题 Thread 委托已验；F04 契约与回归通过，无破坏性改动；私有预算/Token/loop 注入拒绝与脱敏；执行预算、F01 Token 及 F02 loop 精确安全码；Plan 原生审批/ACL/幂等、Context v6执行链、公开agent_plan/fork/cron边界完成；Run Usage 可选 token_budget DTO、ACL/撤权真实链路通过；模型恢复、上下文、诊断、费率 Usage、Stop 接口均已实装；Workspace 五码精确投影与 DTO 校验完成；F10 Office MIME网关与六字段/撤权/审计、两图真实链路专项验收完成；未部署现役。 |
-| platform-web | 2026-10-11 | F07 自动对话标题全栈全链路闭环，双入口统一复用 useAutomaticThreadTitle；F01-F11与ABF01-ABF03已完成：能力/探针门禁、短任务恢复提示及真实local浏览器独立验收通过；F05 PII脱敏错误消费、输入草稿/附件保留、Playwright E2E自动化闭环完成；F04 大工具输出预算防爆加固：transcript 复合键防覆盖与 ToolMessage 优先、ToolResult 虚拟路径防跳转与多格式证据来源解析；F02 循环检测 ViewModel/状态机/RunDiagnostics 卡片与 Playwright 真实模型测试通过；F13 浏览器语音听写（F13-T01~T04）全链路交付；Agent Run completion 前端 P4.1-P4.3 全部交付闭环（Pinia 全局通知 Store 单例、RunNotificationCenter 顶栏与 ChatPage 双端常驻挂载、细粒度错误码白名单投影与离开跳转防护、useRunCompletion 历史 Run 终态诊断卡片）；F10 DOCX/PPTX 扩展名/空 MIME 校验、原字节认证下载拦截、Word/PPT 专属徽标、无预览仅下载、工作区415人性化提示、专用模板错误优先高亮与段落/幻灯片语义投影全实装；F01 Token 额度保护全栈落地；规划开关与审阅卡片闭环；Vitest/vue-tsc/ESLint/build 全绿，Playwright 真实大模型 E2E 闭环全部通过。 |
+| runtime-service | 2026-10-12 | Token看板HMAC两入口、0004索引/0005可重建桶、精确Run位集合/脏补齐/重建及单查询线程/连接已验；公开百万容量两轮和写影响通过、B01解除，原额度恢复/价格保留；真实PG/应用重启、旧应用保留0005链回退及DeepSeek核账/安全通过。聚合负载与迁移回退经验已沉淀；修复credential_id认证500。锁定/安装正式 post45；F07精确标题委托、受管一次非流式调用就绪；受管后台执行/对账/Stop及A/B前后端已验，B01解除；新增 completion projector、安全白名单和受签 callback context；四图主子共享 attempt 预算/软收尾与 Run Token 额度；F05 PII脱敏默认关闭，模型副本/旁路脱敏与结构失效阻断已实装；F04 官方参数压缩/主备阈值与正文 SHA256 引用保护（filesystem_cls 预算）全链路闭环；F02 共享循环检测中间件（连续 3 轮预警与 5 轮安全硬终止拦截）、Worker 接管支持、真实模型验证通过；Plan 公共状态/三工具/双门禁、四图主子接线、Context v6 和规划 memory 跳过完成；解除默认 4096 max_tokens 兜底限制，系统提示词强化思考链 Token 预算约束；模型稳定性降级、工具容错、上下文窗口管理、执行预算及 Token/Cost 跟踪治理与运行准备幂等/有界重试全链路融合；Workspace 执行容错闭环；F15评估关闭；F11 暂缓；F10 固定 Docker reader/DOCX/PPTX 有界续读/附件索引收紧与全链路验收已闭环；未部署现役。 |
+| platform-api | 2026-10-12 | Token看板三GET、usage两权限、当前范围/ACL/cursor/审计及merge0008已验；整链路2admission槽/5秒含排队，新增503 fixture；公开百万容量两轮通过、B01解除，不直查Runtime库，前端/全栈Final待接续。F07首轮opt-in/私有seed与公开pending、comment+edit与CAS就绪；后台四入口/精确operation/DTO/ACL/审计/HMAC与guard已验；post45正式acceptance adapter、最终bytes/key/digest发送前落盘与平台迁移0007完成，Platform132+116subtests/真实PG迁移1通过，发布后notify/Stop/撤权联合通过，B01解除；新增 migration 20261009_0007、origin/event/receipt、HMAC receiver、历史 completion、私有 feed/read、ACL/deletion suppression 和 cron backfill；F05 精确隐私失败投影、私有策略剥离与标题 Thread 委托已验；F04 契约与回归通过，无破坏性改动；私有预算/Token/loop 注入拒绝与脱敏；执行预算、F01 Token 及 F02 loop 精确安全码；Plan 原生审批/ACL/幂等、Context v6执行链、公开agent_plan/fork/cron边界完成；Run Usage 可选 token_budget DTO、ACL/撤权真实链路通过；模型恢复、上下文、诊断、费率 Usage、Stop 接口均已实装；Workspace 五码精确投影与 DTO 校验完成；F10 Office MIME网关与六字段/撤权/审计、两图真实链路专项验收完成；未部署现役。 |
+| platform-web | 2026-10-12 | Token看板W01–W04全栈交付完成：双入口、4组指标卡、原生SVG图表、排行榜钻取、明细分页、无头RunUsage抽屉、顶栏切项目布局防抖与503容量保护友好适配；Playwright真实大模型E2E全绿；F07 自动对话标题全栈全链路闭环，双入口统一复用 useAutomaticThreadTitle；F01-F11与ABF01-ABF03已完成：能力/探针门禁、短任务恢复提示及真实local浏览器独立验收通过；F05 PII脱敏错误消费、输入草稿/附件保留、Playwright E2E自动化闭环完成；F04 大工具输出预算防爆加固：transcript 复合键防覆盖与 ToolMessage 优先、ToolResult 虚拟路径防跳转与多格式证据来源解析；F02 循环检测 ViewModel/状态机/RunDiagnostics 卡片与 Playwright 真实模型测试通过；F13 浏览器语音听写（F13-T01~T04）全链路交付；Agent Run completion 前端 P4.1-P4.3 全部交付闭环；F10 DOCX/PPTX 扩展名/空 MIME 校验、原字节认证下载拦截、Word/PPT 专属徽标；F01 Token 额度保护全栈落地；规划开关与审阅卡片闭环；Vitest/vue-tsc/ESLint/build 全绿。 |
 | AI Harness（AGENTS.md + Skills） | 2026-10-11 | 全场景本地原生PG/Redis优先及禁止滥用Docker硬约束实装；Worktree 开发/联调前必读 worktree-development 规范；统一登记隔离资源，共享依赖缓存但独立安装，默认本地账号 admin/admin123456、默认模型对齐 miaomiaoai deepseek-v4.1-flash、配置继承与首次只读基础数据初始化已验收。7个既有Worktree已同步31个本地栈工具/规范文件；未来新Worktree需从包含该基线的提交创建。Worktree依赖/真实Worker隔离、模型配置重加密、源历史与新审计区分及多会话发布协作经验已写入[ai-workflow](lessons/ai-workflow.md)；回调/迁移回退/Docker日志/执行目录经验已写入[runtime-service](lessons/runtime-service.md)。整单结束前须逐项核对未完成任务，未完成时只记Phase；恢复发布任务时核对正式产物归属与锁文件。 |
 
 F07实施与验证入口以tasks.md/verification.md为准；正式post43和同名本地CAS候选来源/哈希不同，不能只凭版本名认定正式能力。

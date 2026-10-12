@@ -1,0 +1,254 @@
+{
+  "version": 1,
+  "scope": {
+    "kind": "project",
+    "project_ids": [
+      "10000000-0000-0000-0000-000000000001"
+    ],
+    "covered_project_count": 1
+  },
+  "window": {
+    "from": "2026-10-01T00:00:00Z",
+    "to": "2026-10-02T00:00:00Z",
+    "timezone": "UTC",
+    "granularity": "day",
+    "time_basis": "model_call_started_at"
+  },
+  "as_of": "2026-10-02T00:00:00Z",
+  "availability": "unavailable",
+  "unavailable_reason": "backend_unavailable",
+  "coverage_basis": "recorded_native_runs",
+  "summary": {
+    "tokens": {
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "cache_read_tokens": null,
+      "cache_creation_tokens": null,
+      "cache_creation_5m_tokens": null,
+      "cache_creation_1h_tokens": null,
+      "reasoning_tokens": null
+    },
+    "known_tokens": {
+      "input_tokens": null,
+      "output_tokens": null,
+      "total_tokens": null,
+      "cache_read_tokens": null,
+      "cache_creation_tokens": null,
+      "cache_creation_5m_tokens": null,
+      "cache_creation_1h_tokens": null,
+      "reasoning_tokens": null
+    },
+    "cost": {
+      "status": "unknown",
+      "estimated_cost_usd": null,
+      "known_cost_usd": null,
+      "currency": "USD",
+      "source": null,
+      "unpriced_call_count": 0,
+      "pricing_versions": []
+    },
+    "coverage": {
+      "observed_call_count": 0,
+      "reported_call_count": 0,
+      "missing_usage_call_count": 0,
+      "incomplete_call_count": 0,
+      "collection_degraded": false,
+      "excluded_operations": [
+        "suggestions",
+        "title",
+        "non_llm_provider_fees"
+      ],
+      "priced_call_count": 0,
+      "field_call_counts": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_creation_tokens": 0,
+        "cache_creation_5m_tokens": 0,
+        "cache_creation_1h_tokens": 0,
+        "reasoning_tokens": 0
+      }
+    },
+    "recorded_run_count": 0,
+    "open_collection_run_count": 0,
+    "zero_call_manifest_count": null,
+    "cache_read_ratio": null,
+    "ratio_sample_call_count": 0,
+    "average_tokens_per_recorded_run": null,
+    "pricing_versions_truncated": false
+  },
+  "previous_window": {
+    "window": {
+      "from": "2026-09-30T00:00:00Z",
+      "to": "2026-10-01T00:00:00Z",
+      "timezone": "UTC",
+      "granularity": "day",
+      "time_basis": "model_call_started_at"
+    },
+    "summary": {
+      "tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "known_tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 0,
+        "pricing_versions": []
+      },
+      "coverage": {
+        "observed_call_count": 0,
+        "reported_call_count": 0,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ],
+        "priced_call_count": 0,
+        "field_call_counts": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "total_tokens": 0,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0,
+          "cache_creation_5m_tokens": 0,
+          "cache_creation_1h_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "recorded_run_count": 0,
+      "open_collection_run_count": 0,
+      "zero_call_manifest_count": null,
+      "cache_read_ratio": null,
+      "ratio_sample_call_count": 0,
+      "average_tokens_per_recorded_run": null,
+      "pricing_versions_truncated": false
+    },
+    "total_token_change_ratio": null
+  },
+  "series": [
+    {
+      "tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "known_tokens": {
+        "input_tokens": null,
+        "output_tokens": null,
+        "total_tokens": null,
+        "cache_read_tokens": null,
+        "cache_creation_tokens": null,
+        "cache_creation_5m_tokens": null,
+        "cache_creation_1h_tokens": null,
+        "reasoning_tokens": null
+      },
+      "cost": {
+        "status": "unknown",
+        "estimated_cost_usd": null,
+        "known_cost_usd": null,
+        "currency": "USD",
+        "source": null,
+        "unpriced_call_count": 0,
+        "pricing_versions": []
+      },
+      "coverage": {
+        "observed_call_count": 0,
+        "reported_call_count": 0,
+        "missing_usage_call_count": 0,
+        "incomplete_call_count": 0,
+        "collection_degraded": false,
+        "excluded_operations": [
+          "suggestions",
+          "title",
+          "non_llm_provider_fees"
+        ],
+        "priced_call_count": 0,
+        "field_call_counts": {
+          "input_tokens": 0,
+          "output_tokens": 0,
+          "total_tokens": 0,
+          "cache_read_tokens": 0,
+          "cache_creation_tokens": 0,
+          "cache_creation_5m_tokens": 0,
+          "cache_creation_1h_tokens": 0,
+          "reasoning_tokens": 0
+        }
+      },
+      "recorded_run_count": 0,
+      "open_collection_run_count": 0,
+      "zero_call_manifest_count": null,
+      "cache_read_ratio": null,
+      "ratio_sample_call_count": 0,
+      "average_tokens_per_recorded_run": null,
+      "pricing_versions_truncated": false,
+      "from": "2026-10-01T00:00:00Z",
+      "to": "2026-10-02T00:00:00Z"
+    }
+  ],
+  "breakdown": {
+    "group_by": "model",
+    "rank_by": "known_total_tokens",
+    "items": [],
+    "other": null
+  },
+  "facets": {
+    "projects": {
+      "items": [
+        {
+          "id": "10000000-0000-0000-0000-000000000001",
+          "label": "示例项目"
+        }
+      ],
+      "truncated": false
+    },
+    "models": {
+      "items": [],
+      "truncated": false
+    },
+    "agents": {
+      "items": [],
+      "truncated": false
+    }
+  },
+  "collection": {
+    "enabled_now": true,
+    "first_recorded_at": null,
+    "last_recorded_at": null,
+    "excluded_operations": [
+      "suggestions",
+      "title",
+      "non_llm_provider_fees"
+    ]
+  },
+  "request_id": "fixture-usage"
+}

@@ -26,6 +26,7 @@ class PermissionCode(StrEnum):
     PLATFORM_PROJECT_WRITE = "platform.project.write"
     PLATFORM_PROJECT_TAKEOVER = "platform.project.takeover"
     PLATFORM_AUDIT_READ = "platform.audit.read"
+    PLATFORM_USAGE_READ = "platform.usage.read"
     PLATFORM_CATALOG_REFRESH = "platform.catalog.refresh"
     PLATFORM_MODEL_READ = "platform.model.read"
     PLATFORM_MODEL_WRITE = "platform.model.write"
@@ -39,6 +40,7 @@ class PermissionCode(StrEnum):
     PROJECT_MEMBER_READ = "project.member.read"
     PROJECT_MEMBER_WRITE = "project.member.write"
     PROJECT_AUDIT_READ = "project.audit.read"
+    PROJECT_USAGE_READ = "project.usage.read"
     PROJECT_ANNOUNCEMENT_READ = "project.announcement.read"
     PROJECT_ANNOUNCEMENT_WRITE = "project.announcement.write"
     PROJECT_ASSISTANT_READ = "project.assistant.read"
@@ -60,6 +62,9 @@ class PolicyReason(StrEnum):
 
 
 PLATFORM_PERMISSION_MAP: dict[PermissionCode, frozenset[PlatformRole]] = {
+    PermissionCode.PLATFORM_USAGE_READ: frozenset(
+        {PlatformRole.SUPER_ADMIN, PlatformRole.OPERATOR}
+    ),
     PermissionCode.PLATFORM_MODEL_READ: frozenset(
         {PlatformRole.SUPER_ADMIN, PlatformRole.OPERATOR, PlatformRole.VIEWER}
     ),
@@ -119,6 +124,9 @@ PLATFORM_PERMISSION_MAP: dict[PermissionCode, frozenset[PlatformRole]] = {
 }
 
 PROJECT_PERMISSION_MAP: dict[PermissionCode, frozenset[ProjectRole]] = {
+    PermissionCode.PROJECT_USAGE_READ: frozenset(
+        {ProjectRole.ADMIN, ProjectRole.EDITOR}
+    ),
     PermissionCode.PROJECT_MEMBER_READ: frozenset(
         {ProjectRole.ADMIN, ProjectRole.EDITOR, ProjectRole.EXECUTOR}
     ),

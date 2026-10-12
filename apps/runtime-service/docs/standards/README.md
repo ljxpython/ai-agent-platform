@@ -7,6 +7,7 @@
 3. [运行与验证](./runtime-service-onboarding-and-verification.md)
 4. [通用后台任务接入](./background-task-integration.md)（受管 Docker；正式启用仍受专项门禁限制）
 5. [模型上下文隐私保护](./model-context-privacy.md)
+6. [已采集用量聚合查询](runtime-service-development-standard.md#已采集用量的受控聚合查询)（可重建投影、整链路容量和恢复已验，B01已解除；[专项](../../../../docs/projects/20261011-token-usage-dashboard/README.md)）
 
 ## 权威优先级
 

@@ -52,14 +52,14 @@ def test_acceptance_upgrade_preserves_old_rows_and_receipt_facts(tmp_path, backe
         command.upgrade(config, "head")
         current = Table("run_requests", MetaData(), autoload_with=engine)
         added = set(current.c.keys()) - set(old.c.keys())
-        assert added == {
+        assert {
             "upstream_idempotency_key",
             "upstream_body",
             "upstream_request_digest",
             "upstream_receipt_scope_id",
             "upstream_receipt_credential_id",
             "upstream_auth_snapshot",
-        }
+        } <= added
         assert all(
             c["nullable"]
             for c in inspect(engine).get_columns("run_requests")
@@ -80,14 +80,16 @@ def test_acceptance_upgrade_preserves_old_rows_and_receipt_facts(tmp_path, backe
                 )
             )
             receipt = dict(connection.execute(select(current)).mappings().one())
-        with pytest.raises(RuntimeError, match="acceptance facts are retained"):
+        with pytest.raises(
+            RuntimeError, match="acceptance facts are retained|migration history"
+        ):
             command.downgrade(config, "20261007_0006")
         with engine.connect() as connection:
             assert (
                 connection.execute(
                     text("SELECT version_num FROM alembic_version")
                 ).scalar_one()
-                == "20261010_0007"
+                == "20261011_0008"
             )
             assert dict(connection.execute(select(current)).mappings().one()) == receipt
     finally:

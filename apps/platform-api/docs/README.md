@@ -13,6 +13,7 @@
 | 角色、项目与服务账号 | [权限标准](standards/permission-standard.md) |
 | 审计动作与收尾 | [审计标准](standards/audit-standard.md) |
 | Runs、审批与SSE | [网关标准](standards/runtime-gateway-interface-standard.md) |
+| Token看板聚合、权限和前端接入（后端完成，B01解除，Web/全栈Final待接续） | [接口专题](../../../docs/projects/20261011-token-usage-dashboard/03-platform-api-and-security.md) · [交接](../../../docs/projects/20261011-token-usage-dashboard/frontend-handoff.md) |
 
 ## 事实来源与维护
 

@@ -49,6 +49,12 @@ def register_request_context_middleware(app: FastAPI) -> None:
             )
             response.headers["x-request-id"] = current_context.request.request_id
             response.headers["x-trace-id"] = current_context.request.trace_id
+            path = current_context.request.path
+            if path == "/api/usage/dashboard" or (
+                path.startswith("/api/projects/")
+                and path.endswith(("/usage/dashboard", "/usage/runs"))
+            ):
+                response.headers["Cache-Control"] = "no-store"
             return response
         finally:
             reset_current_request_context(token)

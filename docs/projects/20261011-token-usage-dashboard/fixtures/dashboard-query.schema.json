@@ -1,0 +1,143 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "from": {
+      "format": "date-time",
+      "title": "From",
+      "type": "string"
+    },
+    "to": {
+      "format": "date-time",
+      "title": "To",
+      "type": "string"
+    },
+    "timezone": {
+      "default": "Asia/Shanghai",
+      "enum": [
+        "UTC",
+        "Asia/Shanghai"
+      ],
+      "title": "Timezone",
+      "type": "string"
+    },
+    "granularity": {
+      "default": "day",
+      "enum": [
+        "day",
+        "hour"
+      ],
+      "title": "Granularity",
+      "type": "string"
+    },
+    "model_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Id"
+    },
+    "model_mapping": {
+      "anyOf": [
+        {
+          "const": "unmapped",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Mapping"
+    },
+    "agent_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Agent Id"
+    },
+    "purpose": {
+      "anyOf": [
+        {
+          "enum": [
+            "agent",
+            "summarization",
+            "memory_extraction",
+            "vision",
+            "other"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Purpose"
+    },
+    "scope": {
+      "anyOf": [
+        {
+          "enum": [
+            "primary",
+            "subagent",
+            "auxiliary"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scope"
+    },
+    "group_by": {
+      "default": "model",
+      "enum": [
+        "project",
+        "model",
+        "agent",
+        "purpose",
+        "scope"
+      ],
+      "title": "Group By",
+      "type": "string"
+    },
+    "rank_by": {
+      "default": "known_total_tokens",
+      "enum": [
+        "known_total_tokens",
+        "known_cost_usd",
+        "observed_call_count"
+      ],
+      "title": "Rank By",
+      "type": "string"
+    },
+    "top_n": {
+      "default": 10,
+      "maximum": 50,
+      "minimum": 1,
+      "title": "Top N",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "from",
+    "to"
+  ],
+  "title": "DashboardQuery",
+  "type": "object"
+}

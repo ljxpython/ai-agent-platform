@@ -69,6 +69,8 @@ _PUBLIC_CODES[409] += (
     " background_task_not_supported background_task_disabled background_task_idempotency_conflict"
 )
 _PUBLIC_CODES[422] += " invalid_background_task_cursor invalid_background_task_query"
+_PUBLIC_CODES[400] += " invalid_usage_analytics_query"
+_PUBLIC_CODES[422] += " usage_aggregate_range_exceeded"
 _PUBLIC_CODES[429] += (
     " background_task_limit_reached background_task_log_capacity_reached"
 )
@@ -77,6 +79,8 @@ _PUBLIC_CODES[503] += (
 )
 _PUBLIC_CODES = {status: set(codes.split()) for status, codes in _PUBLIC_CODES.items()}
 _PUBLIC_MESSAGES = {
+    "invalid_usage_analytics_query": "Invalid usage query; reduce the range or correct the filters",
+    "usage_aggregate_range_exceeded": "Usage total exceeds the numeric limit; select a smaller range",
     "runtime.privacy.redaction_failed": "隐私保护处理失败，本次模型请求未发送。",
     "workspace_directory_changed": "Directory changed",
     "cursor_expired": "Event cursor expired",

@@ -24,6 +24,7 @@ from platform_api.modules.scheduled_tasks.router import router as scheduled_task
 from platform_api.modules.service_accounts.router import (
     router as service_accounts_router,
 )
+from platform_api.modules.usage_analytics.router import router as usage_analytics_router
 from platform_api.modules.users.router import router as users_router
 
 api_router = APIRouter()
@@ -40,3 +41,4 @@ api_router.include_router(runtime_policies_router)
 api_router.include_router(runtime_gateway_router)
 api_router.include_router(runtime_completion_router)
 api_router.include_router(scheduled_tasks_router)
+api_router.include_router(usage_analytics_router)

@@ -81,6 +81,20 @@ Agent invocation 起算。通知沿现有 custom writer，不接 Slack 或新事
 
 通知复用 custom `runtime_budget_notice`；历史原因由现有 Run Usage 的可选 `token_budget` 读取。扩展列与历史用量保留，回退先暂停/drain、统一关闭开关，再恢复已验证旧源码，不做删除式 downgrade。实现和验证见 [F01](../../../../docs/projects/20260913-dearflow-agent/15-token-budget-governance.md)，前端接入见 [交接](../../../../docs/projects/20260913-dearflow-agent/16-token-budget-frontend-handoff.md)。
 
+## 已采集用量的受控聚合查询
+
+Runtime保留唯一调用采集/去重/价格快照/额度恢复，新增 `POST /internal/usage/aggregate` 和 `/internal/usage/runs/query`；Platform负责当前主体、scope、目录名、数字契约、Run明细ACL与审计，不直连Runtime库。
+
+两个入口使用用途 `usage-query/v1`、时间/精确POST/path/raw bytes HMAC，共享委托secret≥32字节，30秒窗口、body64KiB；不新增/放宽旧JWT operation。SDK ingress仅分发精确入口，真实验签仍由router完成，分发身份不持native scope或permissions。普通JWT及签名访问其他资源互拒。
+
+只读REPEATABLE READ按调用 `started_at` 聚合；最多200项目/90天/200桶/50排行/200候选。专属查询executor/SQL槽/连接池各1、最多16在途，提交起4.5秒deadline、异步≤4.8秒，statement≤1秒、lock250ms/connect1秒；取消由有界SQL退出后归还配额。Platform看板整条授权/上游/复核/DTO流程共享2个admission槽，排队计入5秒总预算，耗尽503。预算按进程计算，多副本生产部署需联合验证。采集独立连接及原额度恢复继续复用。
+
+迁移0004合并两旧head和时间索引，0005增加项目内Run槽/调用存在标记及可重建维度桶。小时、UTC日、上海日和内部8小时桶保存Token/known count/Decimal费用/价格版本及精确Run位集合；原调用事实和预算仍是唯一事实源。事实INSERT/UPDATE/DELETE在同事务追加脏版本；后台独占advisory lock，每批最多8任务/2秒调度预算，单SQL2.5秒/锁250ms，失败回滚并5秒后重试。每0.5秒调度，无数据库配置时不启动。
+
+查询在同快照检查active generation及dirty，完整桶优先、最多8个脏项目日/5000条边界或脏事实补查，超限明确不可用，不能返回旧/半份假完整。后台RR重算完整替换，只清理本快照可见且≤任务水位的脏版本；序号先分配不代表先提交，晚提交低版本仍保留。新代逐项目可恢复重建、事实双代标脏、追平后原子切换，旧代保留；额度恢复不读取投影。
+
+前向/重复升级、并发/晚提交、故障、重建、真实PG/应用重启及旧应用保留0005迁移链回退已验，不做破坏性downgrade。2026-10-12公开百万/50项目/30天容量两轮通过原门槛，**B01已解除**。同库CPU/I/O仍共享，不能将投影或连接池称为物理隔离；生产负载和多副本预算需再验，Web/全栈Final另追踪。契约和证据见[看板专题](../../../../docs/projects/20261011-token-usage-dashboard/02-runtime-aggregation.md)与[验证](../../../../docs/projects/20261011-token-usage-dashboard/05-delivery-and-verification.md)。
+
 ## 准备与重试装配
 
 `middlewares/run_prepare.py` 的 `RunPrepareMiddleware` 供可幂等的资源准备继承：实现 `_validate()`、`_is_prepared()`、`_prepare()`，传入固定 component/revision 与 resolved config_hash。授权/路径检查每次执行，成功后提交私有 `runtime_prepare`；标记不保护 checkpoint 提交前的副作用，操作仍需幂等。不缓存模型、凭据或 MCP 连接。

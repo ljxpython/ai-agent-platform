@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "usage_aggregate_range_exceeded",
+    "message": "Usage response exceeds limit; reduce the query range",
+    "details": []
+  },
+  "request_id": "fixture-usage"
+}

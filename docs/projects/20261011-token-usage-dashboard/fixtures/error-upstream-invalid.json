@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "usage_backend_invalid_response",
+    "message": "Runtime returned an invalid usage projection",
+    "details": []
+  },
+  "request_id": "fixture-usage"
+}

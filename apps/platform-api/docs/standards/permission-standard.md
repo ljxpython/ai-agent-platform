@@ -28,6 +28,14 @@
 
 ## 命名与验证
 
+### 已采集 Agent 用量查询（2026-10-11 方案批准）
+
+`platform.usage.read` 映射 `platform_super_admin/platform_operator`，只读当前 tenant 有效项目的数字统计与安全目录标签；`platform_viewer` 不授予。`project.usage.read` 映射 `project_admin/project_editor`，服务账号需当前有效凭据与对应项目 grant；`project_executor` 不新增此权限。
+
+项目聚合以路径项目为准，平台查询显式集合最多200；SQL前后重新加载身份/授权/有效项目。聚合保留有效项目中已删除 Thread 曾发生的消费，不授予私有 Thread/文件/模型凭据访问。Runs候选页单次最多200，按现有当前Thread ACL/ready状态过滤，manager接管保留审计；公开游标认证加密且绑定身份/筛选，有效15分钟。Run删除过滤依现有成功删除审计，直接引擎删除/审计丢失不能由此证明。
+
+三个 GET、参数和真实验证见 [Token 看板接口](../../../../docs/projects/20261011-token-usage-dashboard/03-platform-api-and-security.md)。接口已实现供小规模联调，容量 B01 尚未通过，不能据此开放正式发布。
+
 产品称Agent，权限枚举仍为 `project.assistant.read/write`，不要自行增加第二组权限。网关使用 `project.runtime.read/write`。
 
 401为未认证，403为权限不足，缺项目scope为400。资源不存在和生命周期错误按用例处理，不能将所有404等同于越权。
