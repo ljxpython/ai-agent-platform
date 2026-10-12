@@ -1,0 +1,117 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "from": {
+      "format": "date-time",
+      "title": "From",
+      "type": "string"
+    },
+    "to": {
+      "format": "date-time",
+      "title": "To",
+      "type": "string"
+    },
+    "model_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Id"
+    },
+    "model_mapping": {
+      "anyOf": [
+        {
+          "const": "unmapped",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Mapping"
+    },
+    "agent_id": {
+      "anyOf": [
+        {
+          "format": "uuid",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Agent Id"
+    },
+    "purpose": {
+      "anyOf": [
+        {
+          "enum": [
+            "agent",
+            "summarization",
+            "memory_extraction",
+            "vision",
+            "other"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Purpose"
+    },
+    "scope": {
+      "anyOf": [
+        {
+          "enum": [
+            "primary",
+            "subagent",
+            "auxiliary"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Scope"
+    },
+    "limit": {
+      "default": 50,
+      "maximum": 200,
+      "minimum": 1,
+      "title": "Limit",
+      "type": "integer"
+    },
+    "cursor": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cursor"
+    }
+  },
+  "required": [
+    "from",
+    "to"
+  ],
+  "title": "RunsQuery",
+  "type": "object"
+}

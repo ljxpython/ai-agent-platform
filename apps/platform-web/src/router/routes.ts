@@ -325,6 +325,27 @@ const workspaceChildren: RouteRecordRaw[] = [
       requiredPermissions: ["platform.config.read"],
     },
   },
+  {
+    path: "usage",
+    name: "workspace-usage",
+    component: () => import("@/modules/usage/pages/UsageDashboardPage.vue"),
+    meta: {
+      title: "Token 看板",
+      eyebrow: "Governance",
+      requiredPermissions: ["platform.usage.read"],
+    },
+  },
+  {
+    path: "projects/:projectId/usage",
+    name: "workspace-project-usage",
+    component: () => import("@/modules/usage/pages/UsageDashboardPage.vue"),
+    meta: {
+      title: "Token 看板",
+      eyebrow: "Projects",
+      requiredPermissions: ["project.usage.read"],
+      permissionProjectSource: "route",
+    },
+  },
 ];
 
 const navigation: Record<
@@ -402,6 +423,16 @@ const navigation: Record<
     group: "平台管理",
     label: "系统探测",
     icon: "shield",
+  },
+  "workspace-usage": {
+    group: "平台管理",
+    label: "Token 看板",
+    icon: "activity",
+  },
+  "workspace-project-usage": {
+    group: "项目管理",
+    label: "Token 看板",
+    icon: "activity",
   },
   "workspace-audit": { group: "平台管理", label: "审计", icon: "audit" },
 };

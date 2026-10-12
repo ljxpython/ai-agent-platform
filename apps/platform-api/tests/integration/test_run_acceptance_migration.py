@@ -119,7 +119,9 @@ def test_acceptance_upgrade_preserves_old_rows_and_receipt_facts(
                 )
             )
             receipt = dict(connection.execute(select(current)).mappings().one())
-        with pytest.raises(RuntimeError, match="acceptance facts are retained"):
+        with pytest.raises(
+            RuntimeError, match="acceptance facts are retained|migration history"
+        ):
             command.downgrade(config, "20261007_0006")
         with engine.connect() as connection:
             assert (

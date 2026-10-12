@@ -24,6 +24,7 @@ const props = withDefaults(
     runsLoading?: boolean;
     canRead?: boolean;
     runStatus?: string | null;
+    headless?: boolean;
   }>(),
   {
     projectId: undefined,
@@ -31,6 +32,7 @@ const props = withDefaults(
     runsLoading: false,
     canRead: true,
     runStatus: null,
+    headless: false,
   },
 );
 
@@ -170,11 +172,13 @@ function handleRunChange(e: Event) {
 
 <template>
   <aside
-    class="flex h-full flex-col border-l border-gray-200 bg-white font-sans select-text dark:border-dark-800 dark:bg-dark-900"
+    class="flex h-full flex-col bg-white font-sans select-text dark:bg-dark-900"
+    :class="headless ? '' : 'border-l border-gray-200 dark:border-dark-800'"
     data-testid="run-usage-panel"
   >
     <!-- 头部工具栏 -->
     <header
+      v-if="!headless"
       class="flex h-11 items-center justify-between border-b border-gray-200 px-3.5 dark:border-dark-800"
     >
       <div class="flex items-center gap-2 min-w-0">

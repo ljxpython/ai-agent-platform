@@ -1,0 +1,10 @@
+{
+  "secret_for_test_only": "usage-test-secret-at-least-32-bytes",
+  "timestamp": "1790899200",
+  "method": "POST",
+  "path": "/internal/usage/aggregate",
+  "body_utf8": "{\"actor_id\":\"fixture-actor\",\"from\":\"2026-10-01T00:00:00Z\",\"project_ids\":[\"10000000-0000-0000-0000-000000000001\"],\"request_id\":\"fixture-usage\",\"tenant_id\":\"__default\",\"to\":\"2026-10-02T00:00:00Z\",\"version\":1}",
+  "canonical_sha256": "66780aa72a1a86f9feb52a43b84fddd516707601c13242abee92d631007598d9",
+  "signature": "sha256=6726f01e02791fdbe8a27a5ca0d7c5ef9c0fc2e1fd0154bd22377d6795639d80",
+  "note": "固定向量验证算法；HTTP调用必须使用当前时间和真实配置密钥。"
+}

@@ -45,7 +45,9 @@ export type PermissionCode =
   | "project.runtime.write"
   | "project.runtime.execute"
   | "platform.model.read"
-  | "platform.model.write";
+  | "platform.model.write"
+  | "platform.usage.read"
+  | "project.usage.read";
 
 export type PaginatedResponse<T> = {
   items: T[];

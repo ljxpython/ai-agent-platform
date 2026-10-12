@@ -277,6 +277,7 @@ ai-agent-platform/
 
 ## 当前状态与工程基线
 
+- **平台/项目 Token 看板**：后端受控聚合、Runtime可重建投影、权限/报表/明细及容量/安全/耐久/真实模型核账已完成，公开百万容量两轮通过、B01解除；整体partial，前端和全栈Final待接续，未发布。冻结接口/样例与接续项见[交接](docs/projects/20261011-token-usage-dashboard/frontend-handoff.md)，完整证据见[项目入口](docs/projects/20261011-token-usage-dashboard/README.md)。
 - **Agent 运行完成通知与失败回调**：部分完成；GraphHarbor post44、Runtime安全投影、Platform API持久completion/feed/read和前端交接已完成；正式最短通过，native完整矩阵资源blocked，前端实现/浏览器验收待同事，见 [项目入口](docs/projects/20261009-agent-production-capability-extension/README.md)。
 - **当前正式版本**：`v0.5.0`（迭代记录见 [CHANGELOG.md](docs/CHANGELOG.md)）
 - **代码质量与门禁**：

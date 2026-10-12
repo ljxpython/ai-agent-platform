@@ -35,9 +35,16 @@ def _connection(*, readonly=False):
 
 def _begin(conn, identity, *, reopen=False):
     suffix = "DO UPDATE SET collection_ended_at=NULL" if reopen else "DO NOTHING"
+    existing = (
+        ""
+        if reopen
+        else " WHERE NOT EXISTS (SELECT 1 FROM runtime_usage_runs WHERE tenant_id=%(tenant_id)s AND project_id=%(project_id)s AND run_id=%(run_id)s)"
+    )
     conn.execute(
         "INSERT INTO runtime_usage_runs (tenant_id,project_id,run_id,thread_id,graph_id) "
-        "VALUES (%(tenant_id)s,%(project_id)s,%(run_id)s,%(thread_id)s,%(graph_id)s) "
+        "SELECT %(tenant_id)s,%(project_id)s,%(run_id)s,%(thread_id)s,%(graph_id)s"
+        + existing
+        + " "
         f"ON CONFLICT (tenant_id,project_id,run_id) {suffix}",
         identity,
     )

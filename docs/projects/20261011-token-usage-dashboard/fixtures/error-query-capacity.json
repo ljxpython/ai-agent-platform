@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "usage_query_capacity_exhausted",
+    "message": "Usage query capacity is temporarily unavailable",
+    "details": []
+  },
+  "request_id": "fixture-usage"
+}

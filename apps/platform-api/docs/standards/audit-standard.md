@@ -30,6 +30,12 @@ query当前原样进入审计，禁止在URL携带token、密码或模型密钥�
 
 复用test_audit_http_resolution.py和test_transaction_boundaries.py验证定位、线程和取消收尾；不为已退役平台Worker增加job生命周期事件。
 
+## Token 看板 HTTP 审计（2026-10-11 方案批准）
+
+三个 GET 分别记录 `platform.usage.read/project.usage.read/usage.runs.read`，plane为control_plane。额外metadata仅登记 `usage_from/usage_to/usage_group_by/usage_project_count`，不保存整份报表/原始调用/签名或凭据；通用query字段仍按现有审计规则保存，公开cursor已加密，不能把秘密放URL。manager私有明细接管沿用 `thread.takeover.accessed`。
+
+HTTP 200 `availability=unavailable` 只代表请求完成，不能把审计 success 当作查询数据完整。普通审计仍fail-soft、非原子；Run删除审计过滤依赖其存在，不能承诺所有来源Run删除均无残留。响应成功和失败均no-store。代码与真实权限/审计证据见 [看板专题](../../../../docs/projects/20261011-token-usage-dashboard/03-platform-api-and-security.md)，生产容量门禁尚未通过。
+
 ## 会话 Stop 阶段审计（2026-10-07 用户批准）
 
 公开POST Thread cancel记录 `runtime.thread.stop.requested`；detail/list GET记录 `runtime.thread.stop.read`。这些是HTTP请求结果，不证明引擎接受或停止，也不由GET生成confirmed。

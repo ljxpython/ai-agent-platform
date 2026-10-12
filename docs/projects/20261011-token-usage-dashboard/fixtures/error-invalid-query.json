@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "invalid_usage_analytics_query",
+    "message": "Invalid usage window, filters or project range",
+    "details": []
+  },
+  "request_id": "fixture-usage"
+}

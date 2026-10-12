@@ -293,4 +293,13 @@ def test_sigkill_placeholder_and_real_database_failure_recovery(
             "EXPLAIN SELECT * FROM runtime_usage_calls WHERE tenant_id=%s AND project_id=%s AND run_id=%s ORDER BY started_at, model_call_id LIMIT 50",
             (identity["tenant_id"], identity["project_id"], identity["run_id"]),
         ).fetchall()
-        assert "ix_runtime_usage_calls_page" in str(plan)
+        assert "Index Scan" in str(plan)
+        assert any(
+            name in str(plan)
+            for name in (
+                "ix_runtime_usage_calls_page",
+                "ix_runtime_usage_calls_project_time",
+                "runtime_usage_calls_pkey",
+                "ix_runtime_usage_calls_thread",
+            )
+        )

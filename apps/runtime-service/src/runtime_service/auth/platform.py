@@ -39,7 +39,6 @@ def _bearer_token(authorization: str | None) -> str:
     return token.strip()
 
 
-@auth.authenticate
 async def authenticate(authorization: str | None = None) -> Auth.types.MinimalUserDict:
     """Validate the request token and expose only non-secret Runtime auth facts."""
 
@@ -103,6 +102,27 @@ async def authenticate(authorization: str | None = None) -> Auth.types.MinimalUs
         if verified.callback_context is not None
         else None,
     }
+
+
+@auth.authenticate
+async def authenticate_ingress(
+    authorization: str | None = None,
+    *,
+    path: str = "",
+    method: str = "GET",
+    headers: dict[bytes, bytes] | None = None,
+) -> Auth.types.MinimalUserDict:
+    if (
+        not authorization
+        and method == "POST"
+        and path in {"/internal/usage/aggregate", "/internal/usage/runs/query"}
+        and headers
+        and headers.get(b"x-usage-query-timestamp")
+        and headers.get(b"x-usage-query-signature")
+    ):
+        # The router authenticates the raw body; this ingress grants no resource scope.
+        return {"identity": "usage-query-ingress", "permissions": []}
+    return await authenticate(authorization)
 
 
 @auth.on

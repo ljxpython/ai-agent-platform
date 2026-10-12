@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { useI18n } from 'vue-i18n'
-import BaseIcon from '@/components/base/BaseIcon.vue'
-import { useTopbarDropdown } from '@/composables/useTopbarDropdown'
-import { useWorkspaceProjectContext } from '@/composables/useWorkspaceProjectContext'
+import { computed, onMounted, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+import { useI18n } from "vue-i18n";
+import BaseIcon from "@/components/base/BaseIcon.vue";
+import { useTopbarDropdown } from "@/composables/useTopbarDropdown";
+import { useWorkspaceProjectContext } from "@/composables/useWorkspaceProjectContext";
 
-const { t } = useI18n()
-const route = useRoute()
-const router = useRouter()
-const { activeProjectId, activeProjects, setActiveProjectId, workspaceStore } = useWorkspaceProjectContext()
-const refreshing = ref(false)
+const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
+const { activeProjectId, activeProjects, setActiveProjectId, workspaceStore } =
+  useWorkspaceProjectContext();
+const refreshing = ref(false);
 const {
   close,
   dropdownPlacement,
@@ -19,97 +20,104 @@ const {
   isOpen,
   rootRef,
   toggle: toggleDropdown,
-  triggerRef
+  triggerRef,
 } = useTopbarDropdown({
-  alignment: 'end',
+  alignment: "end",
   fallbackWidth: 260,
-  minWidth: 220
-})
+  minWidth: 220,
+});
 
 const projectOptions = computed(() =>
   activeProjects.value.map((project) => ({
     value: project.id,
-    label: project.name
-  }))
-)
+    label: project.name,
+  })),
+);
 
 const currentProjectLabel = computed(
-  () => projectOptions.value.find((project) => project.value === activeProjectId.value)?.label || t('topbar.projectPlaceholder')
-)
+  () =>
+    projectOptions.value.find(
+      (project) => project.value === activeProjectId.value,
+    )?.label || t("topbar.projectPlaceholder"),
+);
 
 async function ensureProjectOptions() {
-  if (refreshing.value || workspaceStore.contextLoaded && !workspaceStore.error) {
-    return
+  if (
+    refreshing.value ||
+    (workspaceStore.contextLoaded && !workspaceStore.error)
+  ) {
+    return;
   }
 
-  refreshing.value = true
+  refreshing.value = true;
 
   try {
-    await workspaceStore.hydrateContext()
+    await workspaceStore.hydrateContext();
   } finally {
-    refreshing.value = false
+    refreshing.value = false;
   }
 }
 
 async function toggle() {
-  await ensureProjectOptions()
+  await ensureProjectOptions();
 
   if (!projectOptions.value.length) {
-    return
+    return;
   }
 
-  toggleDropdown()
+  toggleDropdown();
 }
 
 async function selectProject(projectId: string) {
   if (projectId === activeProjectId.value) {
-    close()
-    return
+    close();
+    return;
   }
 
   try {
-    if (typeof route.params.projectId === 'string') {
-      const section = route.path.match(/\/projects\/[^/]+\/(agents|chat|models|graphs|members)/)?.[1]
-      await router.replace(`/workspace/projects/${encodeURIComponent(projectId)}${section ? `/${section}` : ''}`)
+    if (typeof route.params.projectId === "string") {
+      const section = route.path.match(
+        /\/projects\/[^/]+\/(agents|chat|models|graphs|members|usage)/,
+      )?.[1];
+      await router.replace(
+        `/workspace/projects/${encodeURIComponent(projectId)}${section ? `/${section}` : ""}`,
+      );
     } else {
-      await setActiveProjectId(projectId)
+      await setActiveProjectId(projectId);
     }
   } catch {
     // The store exposes the loading error; keep the selector available to retry.
-    return
+    return;
   }
 
-  close()
+  close();
 }
 
 withDefaults(
   defineProps<{
-    compact?: boolean
+    compact?: boolean;
   }>(),
   {
-    compact: false
-  }
-)
+    compact: false,
+  },
+);
 
 onMounted(() => {
   if (projectOptions.value.length <= 1) {
-    void ensureProjectOptions()
+    void ensureProjectOptions();
   }
-})
+});
 </script>
 
 <template>
-  <div
-    ref="rootRef"
-    class="relative max-w-full shrink-0"
-  >
+  <div ref="rootRef" class="relative max-w-full shrink-0">
     <button
       ref="triggerRef"
       type="button"
       class="pw-topbar-action min-w-0 max-w-full justify-start gap-1.5 shrink-0"
       :class="[
         isOpen ? 'pw-topbar-action-active' : '',
-        compact ? '!min-h-7 !h-7 !px-2 !gap-1 text-xs' : 'min-h-9 px-2.5'
+        compact ? '!min-h-7 !h-7 !px-2 !gap-1 text-xs' : 'min-h-9 px-2.5',
       ]"
       :disabled="refreshing || !projectOptions.length"
       :aria-label="t('common.project')"
@@ -122,7 +130,11 @@ onMounted(() => {
       />
       <span
         class="truncate font-medium text-gray-800 dark:text-gray-100"
-        :class="compact ? 'max-w-[80px] 2xl:max-w-[120px] text-xs' : 'max-w-[min(112px,28vw)] text-sm sm:max-w-[120px]'"
+        :class="
+          compact
+            ? 'max-w-[80px] 2xl:max-w-[120px] text-xs'
+            : 'max-w-[min(112px,28vw)] text-sm sm:max-w-[120px]'
+        "
         :title="currentProjectLabel"
       >
         {{ currentProjectLabel }}

@@ -239,8 +239,10 @@ def verify_delegation_claims(
         raise _invalid(field="type")
     credential_id = claims.get("credential_id")
     if credential_id is not None:
-        if not isinstance(credential_id, str) or not claims["sub"].startswith(
-            "service-account:"
+        if (
+            not isinstance(credential_id, str)
+            or not isinstance(claims["sub"], str)
+            or not claims["sub"].startswith("service-account:")
         ):
             raise _invalid(field="credential_id")
         try:
@@ -325,12 +327,12 @@ def verify_delegation_claims(
         if any(actual.get(key) != value for key, value in expected_scope.items()):
             raise _invalid("runtime.auth.invalid_principal", "scope")
     return VerifiedDelegation(
-        principal,
-        policy,
-        scope,
-        context_claim,
-        _optional_correlation(claims, "request_id"),
-        _optional_correlation(claims, "platform_trace_id"),
+        principal=principal,
+        policy=policy,
+        scope=scope,
+        context_hash=context_claim,
+        request_id=_optional_correlation(claims, "request_id"),
+        platform_trace_id=_optional_correlation(claims, "platform_trace_id"),
         credential_id=credential_id,
         callback_context=_optional_callback_context(claims),
         run_acceptance=_parse_run_acceptance(
@@ -479,14 +481,19 @@ def verified_delegation_from_user(user: object) -> VerifiedDelegation:
         ):
             raise _invalid("runtime.auth.invalid_claim", name)
     return VerifiedDelegation(
-        principal,
-        policy,
-        scope,
-        context_claim,
-        request_id.strip() if isinstance(request_id, str) else None,
-        platform_trace_id.strip() if isinstance(platform_trace_id, str) else None,
+        principal=principal,
+        policy=policy,
+        scope=scope,
+        context_hash=context_claim,
+        request_id=request_id.strip() if isinstance(request_id, str) else None,
+        platform_trace_id=platform_trace_id.strip()
+        if isinstance(platform_trace_id, str)
+        else None,
         credential_id=credential_id if isinstance(credential_id, str) else None,
         callback_context=callback_context,
+        run_acceptance=_parse_run_acceptance(
+            _user_value(user, "run_acceptance"), principal, scope, credential_id
+        ),
     )
 
 

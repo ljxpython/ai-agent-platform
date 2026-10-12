@@ -1,0 +1,468 @@
+{
+  "$defs": {
+    "Coverage": {
+      "properties": {
+        "observed_call_count": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Observed Call Count",
+          "type": "integer"
+        },
+        "reported_call_count": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Reported Call Count",
+          "type": "integer"
+        },
+        "missing_usage_call_count": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Missing Usage Call Count",
+          "type": "integer"
+        },
+        "incomplete_call_count": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Incomplete Call Count",
+          "type": "integer"
+        },
+        "collection_degraded": {
+          "title": "Collection Degraded",
+          "type": "boolean"
+        },
+        "excluded_operations": {
+          "items": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_:.-]+$",
+            "type": "string"
+          },
+          "maxItems": 16,
+          "title": "Excluded Operations",
+          "type": "array"
+        },
+        "priced_call_count": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Priced Call Count",
+          "type": "integer"
+        },
+        "field_call_counts": {
+          "$ref": "#/$defs/TokenCounts"
+        }
+      },
+      "required": [
+        "observed_call_count",
+        "reported_call_count",
+        "missing_usage_call_count",
+        "incomplete_call_count",
+        "collection_degraded",
+        "excluded_operations",
+        "priced_call_count",
+        "field_call_counts"
+      ],
+      "title": "Coverage",
+      "type": "object"
+    },
+    "TokenCounts": {
+      "properties": {
+        "input_tokens": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Input Tokens"
+        },
+        "output_tokens": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Output Tokens"
+        },
+        "total_tokens": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Total Tokens"
+        },
+        "cache_read_tokens": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Read Tokens"
+        },
+        "cache_creation_tokens": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Creation Tokens"
+        },
+        "cache_creation_5m_tokens": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Creation 5M Tokens"
+        },
+        "cache_creation_1h_tokens": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Creation 1H Tokens"
+        },
+        "reasoning_tokens": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Reasoning Tokens"
+        }
+      },
+      "required": [
+        "input_tokens",
+        "output_tokens",
+        "total_tokens",
+        "cache_read_tokens",
+        "cache_creation_tokens",
+        "cache_creation_5m_tokens",
+        "cache_creation_1h_tokens",
+        "reasoning_tokens"
+      ],
+      "title": "TokenCounts",
+      "type": "object"
+    },
+    "UsageCost": {
+      "properties": {
+        "status": {
+          "enum": [
+            "estimated",
+            "partial",
+            "unknown",
+            "not_applicable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "estimated_cost_usd": {
+          "anyOf": [
+            {
+              "maxLength": 29,
+              "pattern": "^[0-9]{1,16}\\.[0-9]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Estimated Cost Usd"
+        },
+        "known_cost_usd": {
+          "anyOf": [
+            {
+              "maxLength": 29,
+              "pattern": "^[0-9]{1,16}\\.[0-9]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Known Cost Usd"
+        },
+        "currency": {
+          "const": "USD",
+          "title": "Currency",
+          "type": "string"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "const": "configured_catalog",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Source"
+        },
+        "unpriced_call_count": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Unpriced Call Count",
+          "type": "integer"
+        },
+        "pricing_versions": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "title": "Pricing Versions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "status",
+        "estimated_cost_usd",
+        "known_cost_usd",
+        "currency",
+        "source",
+        "unpriced_call_count",
+        "pricing_versions"
+      ],
+      "title": "UsageCost",
+      "type": "object"
+    },
+    "UsageRun": {
+      "properties": {
+        "tokens": {
+          "$ref": "#/$defs/TokenCounts"
+        },
+        "known_tokens": {
+          "$ref": "#/$defs/TokenCounts"
+        },
+        "cost": {
+          "$ref": "#/$defs/UsageCost"
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "recorded_run_count": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Recorded Run Count",
+          "type": "integer"
+        },
+        "open_collection_run_count": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Open Collection Run Count",
+          "type": "integer"
+        },
+        "zero_call_manifest_count": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Zero Call Manifest Count"
+        },
+        "cache_read_ratio": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Cache Read Ratio"
+        },
+        "ratio_sample_call_count": {
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "title": "Ratio Sample Call Count",
+          "type": "integer"
+        },
+        "average_tokens_per_recorded_run": {
+          "anyOf": [
+            {
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Average Tokens Per Recorded Run"
+        },
+        "pricing_versions_truncated": {
+          "title": "Pricing Versions Truncated",
+          "type": "boolean"
+        },
+        "project_id": {
+          "format": "uuid",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "thread_id": {
+          "format": "uuid",
+          "title": "Thread Id",
+          "type": "string"
+        },
+        "run_id": {
+          "format": "uuid",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "graph_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9_:.-]+$",
+          "title": "Graph Id",
+          "type": "string"
+        },
+        "agent_id": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Agent Id"
+        },
+        "agent_name": {
+          "maxLength": 255,
+          "title": "Agent Name",
+          "type": "string"
+        },
+        "first_matching_call_at": {
+          "format": "date-time",
+          "title": "First Matching Call At",
+          "type": "string"
+        },
+        "last_matching_call_at": {
+          "format": "date-time",
+          "title": "Last Matching Call At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tokens",
+        "known_tokens",
+        "cost",
+        "coverage",
+        "recorded_run_count",
+        "open_collection_run_count",
+        "zero_call_manifest_count",
+        "cache_read_ratio",
+        "ratio_sample_call_count",
+        "average_tokens_per_recorded_run",
+        "pricing_versions_truncated",
+        "project_id",
+        "thread_id",
+        "run_id",
+        "graph_id",
+        "agent_name",
+        "first_matching_call_at",
+        "last_matching_call_at"
+      ],
+      "title": "UsageRun",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "version": {
+      "const": 1,
+      "title": "Version",
+      "type": "integer"
+    },
+    "items": {
+      "items": {
+        "$ref": "#/$defs/UsageRun"
+      },
+      "maxItems": 200,
+      "title": "Items",
+      "type": "array"
+    },
+    "next_cursor": {
+      "anyOf": [
+        {
+          "maxLength": 2048,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Next Cursor"
+    },
+    "as_of": {
+      "format": "date-time",
+      "title": "As Of",
+      "type": "string"
+    },
+    "request_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9_:.-]+$",
+      "title": "Request Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "version",
+    "items",
+    "next_cursor",
+    "as_of",
+    "request_id"
+  ],
+  "title": "UsageRunPageV1",
+  "type": "object"
+}

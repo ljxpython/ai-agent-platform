@@ -1,0 +1,8 @@
+{
+  "error": {
+    "code": "langgraph_upstream_timeout",
+    "message": "Usage query timed out",
+    "details": []
+  },
+  "request_id": "fixture-usage"
+}

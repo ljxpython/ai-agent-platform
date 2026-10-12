@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator, Mapping
 from typing import Any
 
@@ -9,11 +10,68 @@ from platform_api.adapters.langgraph.runtime_client import LangGraphRuntimeClien
 from platform_api.adapters.langgraph.threads_sdk_adapter import (
     LangGraphThreadsSdkAdapter,
 )
-from platform_api.core.errors import PlatformApiError
+from platform_api.core.errors import PlatformApiError, UpstreamServiceError
 from platform_api.modules.runtime_gateway.application.ports import BinaryPayload
 
 
 class LangGraphRuntimeGatewayUpstream:
+    async def usage_analytics(self, payload: dict, *, secret: str, runs: bool = False):
+        import hashlib
+        import hmac
+        import json
+        import time
+
+        if len(secret.encode()) < 32:
+            raise PlatformApiError(
+                code="usage_query_not_configured",
+                status_code=503,
+                message="Usage query authentication is not configured",
+            )
+        path = "/internal/usage/runs/query" if runs else "/internal/usage/aggregate"
+        body = json.dumps(
+            payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode()
+        stamp = str(int(time.time()))
+        signature = hmac.new(
+            secret.encode(),
+            f"usage-query/v1\n{stamp}\nPOST\n{path}\n".encode() + body,
+            hashlib.sha256,
+        ).hexdigest()
+        client = LangGraphRuntimeClient(base_url=self._base_url, timeout_seconds=5)
+        try:
+            async with asyncio.timeout(5):
+                return await client.request_json(
+                    "POST",
+                    path,
+                    body_bytes=body,
+                    forwarded_headers={
+                        "content-type": "application/json",
+                        "x-usage-query-timestamp": stamp,
+                        "x-usage-query-signature": "sha256=" + signature,
+                        "x-request-id": payload["request_id"],
+                    },
+                )
+        except TimeoutError as exc:
+            raise UpstreamServiceError(
+                upstream="langgraph",
+                status_code=504,
+                code="langgraph_upstream_timeout",
+                message="Usage query timed out",
+            ) from exc
+        except PlatformApiError as exc:
+            if exc.code in {
+                "usage_aggregate_range_exceeded",
+                "invalid_usage_analytics_query",
+            }:
+                raise
+            if exc.status_code < 500:
+                raise PlatformApiError(
+                    code="usage_backend_rejected",
+                    status_code=502,
+                    message="Runtime rejected the platform usage query",
+                ) from exc
+            raise
+
     def __init__(
         self,
         *,

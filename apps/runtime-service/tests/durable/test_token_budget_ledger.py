@@ -4,6 +4,7 @@ import asyncio
 import io
 import json
 import os
+import shutil
 import statistics
 import subprocess
 import sys
@@ -131,17 +132,30 @@ def test_old_runtime_reads_extended_ledger_and_preserves_budget_facts(
     with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
         bundle.extractall(tmp_path, filter="data")
     source = tmp_path / "apps/runtime-service/src"
+    # Rollback keeps the current migration chain on the retained database.
+    shutil.copytree(
+        Path(__file__).resolve().parents[2] / "src/runtime_service/db/migrations",
+        source / "runtime_service/db/migrations",
+        dirs_exist_ok=True,
+    )
     script = """
 import asyncio, json, sys
 from runtime_service.db.repositories import usage as repo
 from runtime_service.observability.usage_query import query_run_usage
+from runtime_service.webapp import app, lifespan
 identity = json.load(sys.stdin)
 repo.begin_collection(identity)
 repo.finish_collection(identity, False)
-result = asyncio.run(query_run_usage(identity))
+
+async def verify():
+    async with lifespan(app):
+        return await query_run_usage(identity)
+
+result = asyncio.run(verify())
 assert result['availability'] == 'available', result
 assert result['tokens']['total_tokens'] == 0, result
-assert 'token_budget' not in result, result
+assert result['token_budget']['max_tokens'] == 10, result
+assert result['token_budget']['stop_code'] == 'token_budget_exhausted', result
 """
     result = subprocess.run(
         ["rtk", "proxy", sys.executable, "-c", script],
@@ -157,6 +171,10 @@ assert 'token_budget' not in result, result
         timeout=180,
     )
     assert result.returncode == 0, result.stderr
+    with psycopg.connect(ledger_dsn) as connection:
+        assert connection.execute(
+            "SELECT version_num FROM runtime_app_alembic_version"
+        ).fetchall() == [("0005_usage_projection",)]
     snapshot = repo.read_budget(scope)
     assert snapshot["policy"]["max_tokens"] == 10
     assert snapshot["stop_code"] == "token_budget_exhausted"
