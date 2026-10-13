@@ -1,6 +1,6 @@
 # 前端交接：知识文档、可信图片与来源 v2
 
-负责人：老王 & 前端团队。平台 API、Runtime 与 Ubuntu RAG 非前端联验已由后端专项完成。当前 worktree 是 `/Users/lijiaxin/.codex/worktrees/6394/ai-agent-platform`，复用现有 F01–F03 前端组件并彻底纠正旧方案漏洞，不另建独立管理后台。完整后端证据见 [verification.md](verification.md)，接口样本见 [fixtures/README.md](fixtures/README.md)。
+负责人：老王 & 前端团队。平台 API、Runtime 与 Ubuntu RAG 非前端联验已由后端专项完成。当前 worktree 是 `<worktree-root>`，复用现有 F01–F03 前端组件并彻底纠正旧方案漏洞，不另建独立管理后台。完整后端证据见 [verification.md](verification.md)，接口样本见 [fixtures/README.md](fixtures/README.md)。
 
 ## 要实现的用户行为
 

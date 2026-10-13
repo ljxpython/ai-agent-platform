@@ -46,7 +46,7 @@
 
 这是未完成 Task 的尝试记录，不新增已完成 Task，不进入 Final。[安全证据](evidence/rag-recheck.json)保存代码版本、测试结果、实际 HTTP 状态和模型调用摘要。
 
-- **代码与环境：** 平台 Worktree `6394/ai-agent-platform` / `feat/project-knowledge-mcp`；RAG 源码 `/Users/lijiaxin/PyCharmMiscProject/research/rag-anything-use` / `febe70a`。使用各自独立 `.venv`、临时 SQL/知识库和 OS 分配的两个独立 loopback 端口；平台应用、SQL/IAM/Run、RAG HTTP/MCP/supervisor 均为实际源码。没有 Runtime Agent 或浏览器参与该协议 fixture，不作为完整用户链验收。
+- **代码与环境：** 平台 Worktree `6394/ai-agent-platform` / `feat/project-knowledge-mcp`；RAG 源码 `research/rag-anything-use` / `febe70a`。使用各自独立 `.venv`、临时 SQL/知识库和 OS 分配的两个独立 loopback 端口；平台应用、SQL/IAM/Run、RAG HTTP/MCP/supervisor 均为实际源码。没有 Runtime Agent 或浏览器参与该协议 fixture，不作为完整用户链验收。
 - **回归通过：** RAG `uv run --frozen --env-file ".env" pytest tests/ -q --tb=short`：67 passed in 32.62s，包含去重、候选/回退和本机持久恢复测试。平台 `uv run --frozen python -m pytest "tests/test_knowledge_member_upload.py" "tests/test_knowledge_authorization.py" -q --tb=short`：17 passed in 10.90s。直接执行 API `pytest` 曾因命名空间 `tests` 不在导入路径而收集失败，改用文档既定的 `python -m pytest` 后通过；临时 fixture 也先按应用入口初始化，避免直接导入授权模块触发既有循环导入。
 - **后台授权失败已实测：** 同一平台成员、项目、原 Run 和知识库下，完整字段的 upload/start/activate 对照请求均 200；RAG `operation_identity()` 和 `authorize()` 生成的 start/activate 请求均 403 / `knowledge_upload_denied`，缺 issuer/audience/iat/exp/nonce/graph_id/sha256/size_bytes/file_name/mime_type。真实平台 upload grant → RAG PUT 200 → MCP queued → 实际 supervisor 的 start 被拒 → failed / `knowledge_authorization_denied`，约 0.205 秒；没有任何模型 usage。修复属于 RAG 协议，平台不放宽安全 DTO。
 - **失 ACK 回查失败已实测：** 对已持久受理请求，使用有效同项目 Bearer 和平台 upload grant 发起 `GET /internal/knowledge/uploads/{request_id}`，实际 405，`Allow: PUT`；预期为 200 和原请求安全回执。已有 legacy 服务上的无效探测为 404，仅说明 legacy 不注册逻辑库路由；正式判据以上述 online 逻辑库 405 为准。
@@ -109,7 +109,7 @@ RAG仓库本轮命令：
 
 ```bash
 uv run --frozen --env-file ".env" pytest "tests/" -q --tb=short
-uv run --frozen --env-file ".env" python "scripts/verify_provider_contract.py" --platform-root "/Users/lijiaxin/.codex/worktrees/6394/ai-agent-platform" --output "/Users/lijiaxin/.codex/worktrees/6394/ai-agent-platform/.local-stack/evidence/member-knowledge-upload/rag-5be564a/provider-real.json"
+uv run --frozen --env-file ".env" python "scripts/verify_provider_contract.py" --platform-root "<worktree-root>" --output "<worktree-root>/.local-stack/evidence/member-knowledge-upload/rag-5be564a/provider-real.json"
 ```
 
 Runtime补测probe留在上述忽略证据目录，命令/输入路径及边界写在脚本中；平台/RAG各自独立Python运行，不复制密钥到文档。它们只用于本次验收，不作为新业务服务或平台第二队列。

@@ -4,7 +4,7 @@
 
 ## 当前资源和配置位置
 
-Worktree `/Users/lijiaxin/.codex/worktrees/6394/ai-agent-platform`，登记环境 `wt_39abb85e02a2`；Web/API/Runtime 地址分别为 `http://127.0.0.1:25457`、`http://127.0.0.1:24748`、`http://127.0.0.1:23512`，知识 MCP `http://127.0.0.1:63311/mcp`。以 `bash "scripts/local-stack.sh" status` 的实时登记为准。原生 PG、专属 Redis、Runtime local；三仓分别使用自己的 `.venv`。
+Worktree `<worktree-root>`，登记环境 `wt_39abb85e02a2`；Web/API/Runtime 地址分别为 `http://127.0.0.1:25457`、`http://127.0.0.1:24748`、`http://127.0.0.1:23512`，知识 MCP `http://127.0.0.1:63311/mcp`。以 `bash "scripts/local-stack.sh" status` 的实时登记为准。原生 PG、专属 Redis、Runtime local；三仓分别使用自己的 `.venv`。
 
 Platform/Runtime 私有配置在本环境 `.local-stack/platform.env` / `runtime.env`，RAG 在 `.local-stack/knowledge/knowledge.env`。不打印、提交或复制秘密到其他 Worktree；不使用主环境库/Workspace。新 Worktree 先按 [资源隔离规范](../../standards/worktree-development.md) init/deps/doctor。
 

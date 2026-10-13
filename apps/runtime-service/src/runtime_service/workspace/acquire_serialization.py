@@ -107,7 +107,9 @@ class AcquireSerializer[KeyT: Hashable]:
         self._table: dict[KeyT, _Entry] = {}
         self._table_lock = threading.Lock()
         self._closed = False
-        self._executor = ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix=thread_name_prefix)
+        self._executor = ThreadPoolExecutor(
+            max_workers=max_workers, thread_name_prefix=thread_name_prefix
+        )
 
     @property
     def executor(self) -> ThreadPoolExecutor:
@@ -120,7 +122,9 @@ class AcquireSerializer[KeyT: Hashable]:
         """
         return self._executor
 
-    async def run_on_executor[**P, T](self, func: Callable[P, T], /, *args: P.args, **kwargs: P.kwargs) -> T:
+    async def run_on_executor[**P, T](
+        self, func: Callable[P, T], /, *args: P.args, **kwargs: P.kwargs
+    ) -> T:
         """Run a blocking callable on the serializer's dedicated executor.
 
         ``asyncio.to_thread`` copies ``ContextVar`` values automatically; raw
@@ -163,7 +167,11 @@ class AcquireSerializer[KeyT: Hashable]:
             acquired = await asyncio.shield(acquire_future)
         except asyncio.CancelledError:
             task = asyncio.current_task()
-            if acquire_future.cancelled() and task is not None and task.cancelling() == 0:
+            if (
+                acquire_future.cancelled()
+                and task is not None
+                and task.cancelling() == 0
+            ):
                 # close() cancelled the queued wait via executor shutdown, not
                 # the caller: check in exactly once (no done callback — the
                 # cancelled future is already done) and report the documented

@@ -1,7 +1,7 @@
 # 定时 Agent 任务 - 前端实施标准与交接规范
 
 > **最后更新：** 2026-10-05
-> **文档定位：** `apps/platform-web` 定时任务模块前端实施唯一事实源。已吸纳参考项目 `/Users/lijiaxin/PyCharmMiscProject/research/deer-flow` 的优秀交互实践，并彻底对齐平台控制面与前端开发规范。
+> **文档定位：** `apps/platform-web` 定时任务模块前端实施唯一事实源。已吸纳参考项目 `research/deer-flow` 的优秀交互实践，并彻底对齐平台控制面与前端开发规范。
 
 ---
 

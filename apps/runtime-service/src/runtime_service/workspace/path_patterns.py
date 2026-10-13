@@ -68,7 +68,9 @@ def normalize_mask_tail(tail: str) -> str:
     return tail.lstrip("/\\").replace("\\", "/")
 
 
-def build_output_mask_pattern(base: str, *, separator_agnostic: bool = False) -> re.Pattern[str]:
+def build_output_mask_pattern(
+    base: str, *, separator_agnostic: bool = False
+) -> re.Pattern[str]:
     """Compile the matcher for one host ``base`` in model-visible output.
 
     Args:
@@ -109,8 +111,12 @@ def replace_output_path_matches(
     if not output or not base:
         return output
 
-    searchable_output = output.replace("\\", "/") if separator_agnostic and "\\" in output else output
-    searchable_base = base.replace("\\", "/") if separator_agnostic and "\\" in base else base
+    searchable_output = (
+        output.replace("\\", "/") if separator_agnostic and "\\" in output else output
+    )
+    searchable_base = (
+        base.replace("\\", "/") if separator_agnostic and "\\" in base else base
+    )
     chunks: list[str] = []
     copied_until = 0
     search_from = 0

@@ -39,7 +39,7 @@
 ## 1. 模型调用稳定性 (开发中)
 
 ```
-/Users/lijiaxin/.codex/worktrees/39b3/ai-agent-platform/docs/projects/20261006-agent-model-resilience/README.md
+<worktree-root>/docs/projects/20261006-agent-model-resilience/README.md
 ```
 
 ### 优先级：🔴 高（生产级必须）
@@ -54,11 +54,11 @@
 - Transient error 检测列表（APIConnectionError / APITimeoutError / ReadTimeout 等）
 - backoff jitter 抖动退避
 
-**现有文件**：[`middlewares/model_call_timeout.py`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/model_call_timeout.py)
+**现有文件**：[`middlewares/model_call_timeout.py`](apps/runtime-service/src/runtime_service/middlewares/model_call_timeout.py)
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/model_fallback.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/model_fallback.py)
+**文件**：[`agent/middleware/model_fallback.py`](open-swe/agent/middleware/model_fallback.py)
 
 ```python
 # 核心逻辑：主/备轮询，backoff jitter
@@ -115,7 +115,7 @@ _RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504, 529})
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/tool_error_handler.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/tool_error_handler.py)
+**文件**：[`agent/middleware/tool_error_handler.py`](open-swe/agent/middleware/tool_error_handler.py)
 
 ```python
 class ToolErrorMiddleware(OpenSWEMiddleware):
@@ -168,7 +168,7 @@ class ToolErrorMiddleware(OpenSWEMiddleware):
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/conversation_offloading.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/conversation_offloading.py)
+**文件**：[`agent/middleware/conversation_offloading.py`](open-swe/agent/middleware/conversation_offloading.py)
 
 基于 `deepagents.middleware.summarization.SummarizationMiddleware`，核心行为：
 
@@ -216,7 +216,7 @@ class ConversationOffloadingMiddleware(SummarizationMiddleware):
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/timeout_wrapup.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/timeout_wrapup.py)
+**文件**：[`agent/middleware/timeout_wrapup.py`](open-swe/agent/middleware/timeout_wrapup.py)
 
 ```python
 _DEFAULT_TIMEOUT_SECONDS = 45 * 60  # 45 分钟
@@ -264,11 +264,11 @@ class TimeoutWrapupMiddleware(OpenSWEMiddleware):
 - 没有多媒体（图片 URL）异步解析后注入
 - 没有 `injected_dynamic_context_hashes` 去重（同一 context 注入多次）
 
-**现有文件**：[`middlewares/message_queue.py`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/middlewares/message_queue.py)
+**现有文件**：[`middlewares/message_queue.py`](apps/runtime-service/src/runtime_service/middlewares/message_queue.py)
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/check_message_queue.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/check_message_queue.py)
+**文件**：[`agent/middleware/check_message_queue.py`](open-swe/agent/middleware/check_message_queue.py)
 
 核心增量特性：
 
@@ -308,7 +308,7 @@ injected = visible_dynamic_context_hashes(state)
 
 ### open-swe 实现
 
-**文件**：[`agent/completion.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/completion.py)
+**文件**：[`agent/completion.py`](open-swe/agent/completion.py)
 
 ```python
 # 每个 dispatch 的 run 都携带 webhook 地址
@@ -369,11 +369,11 @@ def verify_run_complete_token(token: str | None) -> bool:
 - 没有 startup phase 追踪（factory/准备阶段的 span 无法附到 run trace 里）
 - `LangSmith` trace 回写（在 thread metadata 留 trace URL）
 
-**现有文件**：[`observability/langfuse.py`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/langfuse.py), [`observability/otel.py`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/observability/otel.py)
+**现有文件**：[`observability/langfuse.py`](apps/runtime-service/src/runtime_service/observability/langfuse.py), [`observability/otel.py`](apps/runtime-service/src/runtime_service/observability/otel.py)
 
 ### open-swe 实现
 
-**文件**：[`agent/utils/errors.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/utils/errors.py), [`agent/middleware/model_errors.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/model_errors.py)
+**文件**：[`agent/utils/errors.py`](open-swe/agent/utils/errors.py), [`agent/middleware/model_errors.py`](open-swe/agent/middleware/model_errors.py)
 
 ```python
 # 1. 异常分类（感知 provider 状态码 + body）
@@ -434,7 +434,7 @@ class ModelErrorMiddleware(OpenSWEMiddleware):
 
 ### open-swe 实现
 
-**文件**：[`agent/sandboxes/retry.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/sandboxes/retry.py), [`agent/middleware/sandbox_circuit_breaker.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/sandbox_circuit_breaker.py)
+**文件**：[`agent/sandboxes/retry.py`](open-swe/agent/sandboxes/retry.py), [`agent/middleware/sandbox_circuit_breaker.py`](open-swe/agent/middleware/sandbox_circuit_breaker.py)
 
 ```python
 # 指数退避，最多 4 次重试（仅 gateway 5xx，命令未开始执行）
@@ -532,7 +532,7 @@ def classify_model_error(exc: Exception) -> str | None:
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/repair_orphaned_tool_calls.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/repair_orphaned_tool_calls.py)
+**文件**：[`agent/middleware/repair_orphaned_tool_calls.py`](open-swe/agent/middleware/repair_orphaned_tool_calls.py)
 
 ```python
 class RepairOrphanedToolCallsMiddleware(OpenSWEMiddleware):
@@ -577,7 +577,7 @@ def _repair_messages(messages):
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/sanitize_tool_inputs.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/sanitize_tool_inputs.py)
+**文件**：[`agent/middleware/sanitize_tool_inputs.py`](open-swe/agent/middleware/sanitize_tool_inputs.py)
 
 ```python
 def _coerce_int(value: object) -> int | None:
@@ -605,7 +605,7 @@ def _coerce_int(value: object) -> int | None:
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/dynamic_tools.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/dynamic_tools.py)
+**文件**：[`agent/middleware/dynamic_tools.py`](open-swe/agent/middleware/dynamic_tools.py)
 
 ```python
 class DynamicIntegrationToolsMiddleware(OpenSWEMiddleware):
@@ -633,7 +633,7 @@ Factory 初始化（`prepare_run`、sandbox 准备等）发生在 LangGraph trac
 
 ### open-swe 实现
 
-**文件**：[`agent/utils/startup_trace.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/utils/startup_trace.py)
+**文件**：[`agent/utils/startup_trace.py`](open-swe/agent/utils/startup_trace.py)
 
 ```python
 # 1. Factory 阶段用 aphase() context manager 记录时间
@@ -669,7 +669,7 @@ LangGraph 的 `recursion_limit` 会在超步时抛 `GraphRecursionError`，但�
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/notify_step_limit.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/notify_step_limit.py)
+**文件**：[`agent/middleware/notify_step_limit.py`](open-swe/agent/middleware/notify_step_limit.py)
 
 ```python
 @after_agent
@@ -705,7 +705,7 @@ async def notify_step_limit_reached(state, runtime):
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/prepare_run.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/prepare_run.py)
+**文件**：[`agent/middleware/prepare_run.py`](open-swe/agent/middleware/prepare_run.py)
 
 ```python
 class BasePrepareRunMiddleware(OpenSWEMiddleware):
@@ -748,7 +748,7 @@ LangGraph 会把 `run_prepared_for` checkpoint，同一 invocation 的重试自�
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/pr_creation_guard.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/pr_creation_guard.py), [`agent/middleware/workflow_push_guard.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/workflow_push_guard.py)
+**文件**：[`agent/middleware/pr_creation_guard.py`](open-swe/agent/middleware/pr_creation_guard.py), [`agent/middleware/workflow_push_guard.py`](open-swe/agent/middleware/workflow_push_guard.py)
 
 ```python
 # pr_creation_guard：阻止通过 shell/curl 绕过官方 open_pull_request 工具
@@ -783,7 +783,7 @@ class WorkflowPushGuardMiddleware:
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/model_selection.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/model_selection.py)
+**文件**：[`agent/middleware/model_selection.py`](open-swe/agent/middleware/model_selection.py)
 
 ```python
 Route = Literal["fast", "balanced", "performance"]
@@ -815,7 +815,7 @@ class ModelSelectionMiddleware(OpenSWEMiddleware):
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/record_run_usage.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/record_run_usage.py), [`agent/utils/run_usage.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/utils/run_usage.py)
+**文件**：[`agent/middleware/record_run_usage.py`](open-swe/agent/middleware/record_run_usage.py), [`agent/utils/run_usage.py`](open-swe/agent/utils/run_usage.py)
 
 ```python
 # run_usage.py：精确 token 计算
@@ -908,7 +908,7 @@ class RecordRunUsageMiddleware:
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/stable_tool_order.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/stable_tool_order.py)
+**文件**：[`agent/middleware/stable_tool_order.py`](open-swe/agent/middleware/stable_tool_order.py)
 
 ```python
 class StableToolResultOrderMiddleware(OpenSWEMiddleware):
@@ -955,7 +955,7 @@ sorted_block = sorted(block,
 
 ### open-swe 实现
 
-**文件**：[`agent/slack/stop.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/slack/stop.py)
+**文件**：[`agent/slack/stop.py`](open-swe/agent/slack/stop.py)
 
 ```python
 # 用户触发停止（Slack 表情 / 指令）→ 优雅中断，而非强杀
@@ -999,7 +999,7 @@ await dispatch_agent_run(thread_id, _stop_summary_prompt(state), ...)
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/task_retry.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/task_retry.py)
+**文件**：[`agent/middleware/task_retry.py`](open-swe/agent/middleware/task_retry.py)
 
 ```python
 # 定义哪些 run-level 异常可以被平台层自动重试
@@ -1049,7 +1049,7 @@ _MAX_WAKEUPS_BETWEEN_USER_MESSAGES = 10  # 两次用户消息之间最多 10 次
 
 ### open-swe 实现
 
-**文件**：[`agent/input_messages.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/input_messages.py)
+**文件**：[`agent/input_messages.py`](open-swe/agent/input_messages.py)
 
 ```xml
 <!-- 结构化 XML 信封，而非裸字符串 -->
@@ -1089,7 +1089,7 @@ _MAX_WAKEUPS_BETWEEN_USER_MESSAGES = 10  # 两次用户消息之间最多 10 次
 
 ### open-swe 实现
 
-**文件**：[`agent/middleware/plan_mode.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/middleware/plan_mode.py)
+**文件**：[`agent/middleware/plan_mode.py`](open-swe/agent/middleware/plan_mode.py)
 
 ```python
 class PlanModeMiddleware(OpenSWEMiddleware):
@@ -1135,7 +1135,7 @@ enter_plan_mode() ──→ plan_mode=True ──→ [只读调研 + 写草案�
 
 ### open-swe 实现
 
-**文件**：[`agent/tools/background_execute.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/tools/background_execute.py), [`agent/background_tasks.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/background_tasks.py)
+**文件**：[`agent/tools/background_execute.py`](open-swe/agent/tools/background_execute.py), [`agent/background_tasks.py`](open-swe/agent/background_tasks.py)
 
 ```python
 # 1. 工具：在沙箱里用独立进程组启动命令（非阻塞，立即返回 task_id）
@@ -1185,7 +1185,7 @@ MAX_LOG_BYTES = 1 * 1024 * 1024
 
 ### open-swe 额外实现
 
-**文件**：[`agent/utils/url_safety.py`](file:///Users/lijiaxin/PyCharmMiscProject/research/open-swe/agent/utils/url_safety.py)
+**文件**：[`agent/utils/url_safety.py`](open-swe/agent/utils/url_safety.py)
 
 ```python
 # DNS Pinning：解析所有 DNS 结果，任一为私有 IP 则拒绝（防 DNS Rebinding）
@@ -1214,7 +1214,7 @@ for addr_info in socket.getaddrinfo(hostname, port):
 
 ### 状态：✅ 当前项目实现远超 open-swe
 
-当前项目的 [`workspace/execution.py`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/workspace/execution.py) 实现了 **11 维度**的 Docker 安全参数：
+当前项目的 [`workspace/execution.py`](apps/runtime-service/src/runtime_service/workspace/execution.py) 实现了 **11 维度**的 Docker 安全参数：
 
 | 参数                               | 防御目标                                      |
 | ---------------------------------- | --------------------------------------------- |
@@ -1242,7 +1242,7 @@ open-swe 的 sandbox 是云端虚拟机（langsmith/e2b/daytona），**没有**�
 
 ### 状态：✅ 当前项目独有，open-swe 没有
 
-当前项目的 [`patches.py`](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/runtime-service/src/runtime_service/patches.py) 包含了一个关键的 LangGraph 底层修复：
+当前项目的 [`patches.py`](apps/runtime-service/src/runtime_service/patches.py) 包含了一个关键的 LangGraph 底层修复：
 
 ```python
 def _patch_stream_tool_call_handler() -> None:

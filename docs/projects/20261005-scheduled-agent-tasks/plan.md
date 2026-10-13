@@ -8,7 +8,7 @@ GraphHarbor 是唯一 scheduler 和 Run 事实源。平台不新增 cron 表、o
 
 ## DeerFlow 对照与成果
 
-参考仓库：`/Users/lijiaxin/PyCharmMiscProject/research/deer-flow`。
+参考仓库：`research/deer-flow`。
 
 | 层 | DeerFlow 源码与做法 | 本平台成果与边界 |
 |---|---|---|

@@ -48,7 +48,7 @@
 
 ## 参考实现
 
-参考目录：`/Users/lijiaxin/PyCharmMiscProject/research/deer-flow`
+参考目录：`research/deer-flow`
 
 已核对的关键文件：
 

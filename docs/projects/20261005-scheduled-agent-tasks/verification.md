@@ -98,7 +98,7 @@ uv run python -m pytest -q tests
 
 ```bash
 # apps/runtime-service；PYTHONPATH 不含 GraphHarbor 源码
-PYTHONPATH="/Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-api/src" DATABASE_URI="postgresql+asyncpg://lijiaxin@127.0.0.1:5432/graphharbor_cron_probe_20261005" REDIS_URI="redis://localhost:6379/0" GRAPHHARBOR_REDIS_PREFIX="graphharbor:cron-probe-20261005" uv run --with pydantic-settings --with asgi-lifespan python "../../scripts/verify_scheduled_tasks.py"
+PYTHONPATH="apps/platform-api/src" DATABASE_URI="postgresql+asyncpg://lijiaxin@127.0.0.1:5432/graphharbor_cron_probe_20261005" REDIS_URI="redis://localhost:6379/0" GRAPHHARBOR_REDIS_PREFIX="graphharbor:cron-probe-20261005" uv run --with pydantic-settings --with asgi-lifespan python "../../scripts/verify_scheduled_tasks.py"
 ```
 
 GraphHarbor 原生 app/scheduler/ProductionWorker、PostgreSQL/Redis、生产签名、Runtime guard 与 Platform API/HMAC 都是真实实现；模型图为确定性替身。源码版和已发布 post41 包各完成一次同场景探针，最终按发布包结果验收。

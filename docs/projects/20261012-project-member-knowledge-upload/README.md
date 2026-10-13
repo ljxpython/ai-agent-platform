@@ -2,7 +2,7 @@
 
 **状态：非前端与Final已完成；前端多格式/图片/v2与真实浏览器接续待同事完成。** 2026-10-12起，治理改动，标准模板。2026-10-13承接专项已完成真实Agent/成员共享、生命周期、两项目排队/去重与回退及Final；记录、当前方案与源码位置看[平台接线专项](../20261013-knowledge-documents-platform/README.md)。
 
-当前 Worktree：`/Users/lijiaxin/.codex/worktrees/6394/ai-agent-platform`，沿既有 `feat/project-knowledge-mcp` 分支开发，不自行提交或推送。
+当前 Worktree：`<worktree-root>`，沿既有 `feat/project-knowledge-mcp` 分支开发，不自行提交或推送。
 
 本专项承接 [只读知识 MCP](../20261011-project-knowledge-mcp/README.md)。RAG 侧 G01/K01–K08 由同事负责；其原方案位于 `rag-anything-use/docs/projects/20261012-project-member-knowledge-upload/`。平台只负责权限、状态代理、精确授权、可信附件传输、MCP 与组合根接线，不保存索引、不创建第二队列。
 

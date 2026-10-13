@@ -406,7 +406,13 @@ class ThreadAclTest(unittest.IsolatedAsyncioTestCase):
             metadata_updates={"title": "new"},
         )
         self.upstream.update_thread.assert_awaited_once_with(
-            "private", {"metadata": {"title": "new"}}
+            "private",
+            {
+                "metadata": {
+                    "title": "new",
+                    "_runtime_title_seed": None,
+                }
+            },
         )
 
     async def test_service_account_only_sees_project_shared_threads(self):

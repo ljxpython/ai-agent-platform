@@ -4,7 +4,7 @@
 - **阶段：** Phase 5 & Phase 6 (F01-F04, T08B)
 - **实现人：** 老王（技术流）
 - **完成日期：** 2026-10-07
-- **工作树：** `/Users/lijiaxin/.codex/worktrees/ce00/ai-agent-platform`
+- **工作树：** `<worktree-root>`
 
 ---
 

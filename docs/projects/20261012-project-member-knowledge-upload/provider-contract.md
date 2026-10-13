@@ -6,7 +6,7 @@
 
 ## 当前源码事实
 
-当前只读核对 `/Users/lijiaxin/PyCharmMiscProject/rag-anything-use/src/knowledge/` 和其专项证据：G01 选择**完整冻结快照恢复到独立 workspace，仅原生增量处理新文档**；12 个存储完整 flush/finalize，不需要平台另建成果缓存/索引或队列。早期`implementation/g01-evidence.md`、`g01-real.json` 和 `rag-real-chain.json` 属于 RAG 团队证据；2026-10-13平台实际联验另有[独立记录](../20261013-knowledge-documents-platform/verification.md)。
+当前只读核对 `research/rag-anything-use/src/knowledge/` 和其专项证据：G01 选择**完整冻结快照恢复到独立 workspace，仅原生增量处理新文档**；12 个存储完整 flush/finalize，不需要平台另建成果缓存/索引或队列。早期`implementation/g01-evidence.md`、`g01-real.json` 和 `rag-real-chain.json` 属于 RAG 团队证据；2026-10-13平台实际联验另有[独立记录](../20261013-knowledge-documents-platform/verification.md)。
 
 平台已兼容 capability `read`→公开 `read_enabled`、PUT 仅返回 upload_id、用户 `credential_id=""`、service_account UUID、activate 的整数 base_revision，以及 RAG 安全错误码。普通用户空凭据已可被 RAG 当前 verifier 接纳，不再将其列为仍未修复的阻塞。
 

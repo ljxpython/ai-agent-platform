@@ -243,7 +243,10 @@ uv run python scripts/showcase_acceptance.py --output /tmp/showcase-acceptance-n
 在组合根中复用共享能力；已有模型限制器替换成薄扩展，原限额、退出策略和工具限制器保持原值：
 
 ```python
-from runtime_service.middlewares import ExecutionBudgetMiddleware, TimeoutWrapupMiddleware
+from runtime_service.middlewares import (
+    ExecutionBudgetMiddleware,
+    TimeoutWrapupMiddleware,
+)
 from runtime_service.middlewares.timeout_wrapup import resolve_wrapup_after_seconds
 
 middleware = [

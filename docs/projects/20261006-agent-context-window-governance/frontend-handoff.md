@@ -199,7 +199,7 @@ Content-Type: application/json
 ### 5.4 后处理副作用隔离
 
 维护 Run 无论成功还是失败，均受以下隔离保护：
-1. **不触发推荐问题**：[useFollowUpSuggestions.ts](file:///Users/lijiaxin/PyCharmMiscProject/ai-agent-platform/apps/platform-web/src/modules/chat/composables/useFollowUpSuggestions.ts) 不会因为维护 Run 完成而请求新建议；
+1. **不触发推荐问题**：[useFollowUpSuggestions.ts](apps/platform-web/src/modules/chat/composables/useFollowUpSuggestions.ts) 不会因为维护 Run 完成而请求新建议；
 2. **不触发排队消息消费**：不会触发持久消息队列出队（`drainNextQueuedItem`）；
 3. **保留草稿与附件**：输入框中已有的文本草稿、选中的附件或待上传图片**原封不动保留**，不被清空或作为消息误发。
 

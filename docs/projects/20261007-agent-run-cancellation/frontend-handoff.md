@@ -329,7 +329,7 @@ stopped / no_active_run      confirmation_unavailable
 ## 9. 实施与回交规范
 
 1. **环境与实施路径**：
-   - 在当前 worktree `/Users/lijiaxin/.codex/worktrees/5543/ai-agent-platform` 的 `apps/platform-web/` 下进行。
+   - 在当前 worktree `<worktree-root>` 的 `apps/platform-web/` 下进行。
    - 正式依赖未升级前，优先编写纯函数状态机、Zod 校验与 Unit/Fixture 测试（Vitest），确保契约与状态机 100% 闭环。
 2. **回交产物要求**：
    - 提交 Vitest 单测报告、`pnpm vue-tsc` 0 错误、`pnpm eslint` 0 错误、`pnpm build` 构建成功输出。

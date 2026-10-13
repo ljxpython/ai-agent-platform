@@ -12,8 +12,8 @@
 
 | 位置 | 本轮实际改动 |
 | --- | --- |
-| 平台 Worktree：`/Users/lijiaxin/.codex/worktrees/6394/ai-agent-platform` | Platform API可信绑定/私有输入拒绝、Runtime公共装配/来源预算、两主图/权限/测试、本地资源管理与文档 |
-| 知识工程原工作目录：`/Users/lijiaxin/PyCharmMiscProject/research/rag-anything-use` | 认证/scope、路径与发布锁、单次检索/来源、文本离线入库、异步生命周期、重型依赖可选、CLI/测试/运行文档；不是新worktree |
+| 平台 Worktree：`<worktree-root>` | Platform API可信绑定/私有输入拒绝、Runtime公共装配/来源预算、两主图/权限/测试、本地资源管理与文档 |
+| 知识工程原工作目录：`research/rag-anything-use` | 认证/scope、路径与发布锁、单次检索/来源、文本离线入库、异步生命周期、重型依赖可选、CLI/测试/运行文档；不是新worktree |
 | DeerFlow参考目录 | 只读借鉴外部RAG边界，未改参考项目 |
 | `apps/platform-web` | 未改业务源码；真实fixture与交接文档在本专项 |
 

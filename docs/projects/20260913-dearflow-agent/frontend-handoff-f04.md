@@ -83,7 +83,7 @@
 
 ## 五、 本地联调与验证规范
 
-严格遵守项目 [Worktree 开发与资源隔离规范](file:///Users/lijiaxin/.codex/worktrees/7105/ai-agent-platform/docs/standards/worktree-development.md)，禁止使用依赖 `/dev/tty` 的脆弱临时脚本。
+严格遵守项目 [Worktree 开发与资源隔离规范](docs/standards/worktree-development.md)，禁止使用依赖 `/dev/tty` 的脆弱临时脚本。
 
 ### 1. 启动本地隔离联调环境
 

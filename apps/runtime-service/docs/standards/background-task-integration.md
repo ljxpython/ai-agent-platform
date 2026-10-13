@@ -10,14 +10,18 @@
 4. `graphs/{agent}.py` 用 `background_completion_execution(factory, agent_key=...)` 包装入口；可与现有 scheduled wrapper 共存，但 completion/cron marker 不能混用。guard 必须早于模型、MCP、Workspace 构造，复核签名/Context/当前授权/Stop。
 
 ```python
-from runtime_service.runtime.background_completion import background_completion_execution
+from runtime_service.runtime.background_completion import (
+    background_completion_execution,
+)
 from runtime_service.tools.background import build_background_tools
 from runtime_service.workspace.background import BackgroundBinding
 
 binding = lambda: BackgroundBinding(
     workspace.root, image, workspace.scope, "my_agent", workspace.skills_root, True
 )
-tools = build_background_tools(binding, completion=bool(configurable.get("platform_background_completion")))
+tools = build_background_tools(
+    binding, completion=bool(configurable.get("platform_background_completion"))
+)
 get_agent = background_completion_execution(get_agent, agent_key="my_agent")
 ```
 

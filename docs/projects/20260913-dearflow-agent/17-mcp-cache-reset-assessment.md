@@ -22,8 +22,8 @@
 | 来源 | 路径/版本 | 证据边界 |
 | --- | --- | --- |
 | 当前平台 | HEAD `2f08c5462571cd0244a7181e5d0d1388341b79c4` | 开始核对时工作树干净；已读 CONTEXT、服务入口、Runtime 范式、相关经验和现有项目 |
-| DeerFlow | `/Users/lijiaxin/PyCharmMiscProject/research/deer-flow`，HEAD `cc664451f03140b376611f329ae400c313530bdb` | MCP harness、reset router 和本次检查的前端 MCP 文件无 HEAD 差异；不据此声称整个参考仓库干净 |
-| Open-SWE | `/Users/lijiaxin/PyCharmMiscProject/research/open-swe`，HEAD `ad417d64d91cc349d63d832c7b643637dc1774cf` | 已分别检查 HEAD 的 `agent/integrations/*_mcp.py` 与本机新增的 `agent/mcp/runtime.py`；后者及 server/TTL cache 存在本地改动，不能冒称上游已发布实现 |
+| DeerFlow | `research/deer-flow`，HEAD `cc664451f03140b376611f329ae400c313530bdb` | MCP harness、reset router 和本次检查的前端 MCP 文件无 HEAD 差异；不据此声称整个参考仓库干净 |
+| Open-SWE | `research/open-swe`，HEAD `ad417d64d91cc349d63d832c7b643637dc1774cf` | 已分别检查 HEAD 的 `agent/integrations/*_mcp.py` 与本机新增的 `agent/mcp/runtime.py`；后者及 server/TTL cache 存在本地改动，不能冒称上游已发布实现 |
 | 官方适配器 | `apps/runtime-service/uv.lock` 锁定 `langchain-mcp-adapters==0.3.2` | 只读核对 uv 缓存中该版本的 `client.py`、`tools.py` 和版本元数据；没有借用其他工作区的运行环境 |
 | 官方文档 | 已查询 `langchain-docs`、`langchain-reference` MCP | Docs 的[迁移对照](https://docs.langchain.com/oss/python/migrate/langchain-mcp-adapters#client-methods)说明旧 API 与 session 语义；Reference 搜索返回 [session](https://reference.langchain.com/python/langchain-mcp-adapters/client/MultiServerMCPClient/session)，但详细符号查询未命中。具体行为以锁定版本源码为依据，不在本轮迁移到新 API |
 

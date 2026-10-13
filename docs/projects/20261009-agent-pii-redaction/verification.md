@@ -250,7 +250,7 @@ B03 的配置一致性依赖运维管理器统一密钥版本与重启；本期�
 ### 验证判定：PASS（已完成全栈验证闭环）
 
 - **验证时间：** 2026-10-10
-- **执行环境：** 专属隔离 Worktree（`/Users/lijiaxin/.codex/worktrees/b646/ai-agent-platform`）
+- **执行环境：** 专属隔离 Worktree（`<worktree-root>`）
 - **本地服务栈（wt_d132a907232b）：**
   - Web 前端：`http://127.0.0.1:26637`
   - Platform API：`http://127.0.0.1:28576`
